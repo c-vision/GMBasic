@@ -1,0 +1,9 @@
+[submodule "GMBasic"]
+	path = GMBasic
+	url = ../GMBasic
+[submodule "GMBasicSharp"]
+	path = GMBasicSharp
+	url = ../GMBasicSharp
+[submodule "shared"]
+	path = shared
+	url = ../shared

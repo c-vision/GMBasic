@@ -1,0 +1,28 @@
+# build / runtime artifacts
+**/build/
+**/bin/
+**/obj/
+**/work/
+**/out/
+*.o
+*.a
+*.dylib
+*.so
+*.dll
+*.exe
+*.pdb
+*.gcda
+*.gcno
+
+# deps/stato locale
+GMBasic/libs-runtime/
+GMBasic/Resources/libs/
+GMBasic/Resources/bin/
+GMBasicSharp/Resources/bin/
+GMBasicSharp/Resources/libs/
+migration/tools-unclassified/
+migration/_import/
+graphs/
+rag/
+docs/graphify/
+.DS_Store
