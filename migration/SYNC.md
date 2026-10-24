@@ -281,3 +281,12 @@
 - `GmbEnv` ora usa `gmb_ai_llm` (dove `gmb_opt_env` è esportato con `-Wl,-u,_gmb_opt_env`),
   non `gmb_ai_mlx`. Il fallback non maschera più un EntryPointNotFound.
 - Sharp builda 0 errori; `check_all` ABI OK (ai_llm 61/61).
+
+## Repo locali creati (2026-10-25)
+- `GMBasic` → commit `d6ed1fd` (C baseline; include plugin/lib dylib prebuilt da ripulire prima della pubblicazione).
+- `GMBasicSharp` → commit `bb05cb3` (C# baseline).
+- `shared` → commit `875f649` (samples/minitests/spec/conformance/runtime-abi; 212 MB).
+- Workspace `GMBasicMonoRepo` → commit `7f29463` con submodule gitlink e `.gitmodules` (URL relativi
+  placeholder: da sostituire con i remote definitivi). Submodule **non inizializzati** (solo gitlink).
+- `BASE_COMMIT` riportato a `66ab81ddc` (ultimo commit importato): **pending sync `66ab..50a6552df`**
+  (~20 commit: DYNAMIC VM/C, model-quantize, READ write-through, LIBRARY runner).
