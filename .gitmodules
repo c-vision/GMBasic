@@ -10,4 +10,4 @@
 
 [submodule "GMBasicIDE"]
 	path = GMBasicIDE
-	url = ../GMBasicIDE
+	url = https://github.com/c-vision/GMBasicIDE.git
