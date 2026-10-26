@@ -290,3 +290,28 @@
   placeholder: da sostituire con i remote definitivi). Submodule **non inizializzati** (solo gitlink).
 - `BASE_COMMIT` riportato a `66ab81ddc` (ultimo commit importato): **pending sync `66ab..50a6552df`**
   (~20 commit: DYNAMIC VM/C, model-quantize, READ write-through, LIBRARY runner).
+
+## Port LIBRARY (CLI + runner) e ingresso di GMBasicIDE (2026-10-26)
+- Importati nel progetto **C** i due commit con cui l'originale ha reso LIBRARY un prodotto
+  vero: `ca349c5bf` (`gmb build` produce la `.dylib`, l'eseguibile linka chart/SDL/MoltenVK)
+  e `cb310534f` (gamba LIBRARY nel runner MiniTest), applicati con `cherry-pick -x` perché
+  il clone del monorepo ha una storia diversa.
+  - Conflitto risolto in `gmb_cli.c`: il baseline del monorepo aggiungeva
+    `-L/opt/homebrew/lib -lcrypto -lssl` al link (plugin TLS); sono stati mantenuti in
+    **entrambe** le forme (libreria ed eseguibile), insieme ai flag nuovi `GMB_LIB_LDFLAGS`
+    e al link chart/SDL. Corretto anche il formato (`%s` mancante) che il merge aveva
+    lasciato: niente warning con `-Wall -Wextra`.
+  - `samples/modules/README.md` e `tools/check_minitests.sh`: il monorepo li aveva
+    deliberatamente fuori dall'indice. Restano tali (il secondo, aggiornato, resta su disco
+    non tracciato) invece di reintrodurli.
+  - Verifica: `cmake --build native/gmb_compiler_c/build --target gmb_cli` e
+    `native/gmb_compiler_c/tests/gmb_cli_project_test.sh` → **20/20 PASS**, inclusi
+    `LIBRARY → bin/gmbmath.dylib`, ABI esportata, nessun `main` esportato, `run` che non esegue.
+- Progetto **C#**: nessuna modifica da importare. Il supporto LIBRARY era già completo
+  (`BasicModule.LibraryName`, `IlProgramCompiler.EmitLibraryEntry`, progetto senza entry
+  point accettato in `Orchestrator`), e non esiste in Sharp un CLI `build --project` che sia
+  il corrispettivo della modifica fatta in C.
+- **GMBasicIDE** entra come quarto submodule (`url = ../GMBasicIDE`): l'ex `VB6Clone`,
+  rinominato in cartella, bundle, identificatore, menu di sistema, titoli runtime e docs.
+  Il marker dei breakpoint nel `.frm` resta `'@VB6CloneBreakpoints` (formato su disco dei
+  progetti esistenti, round-trip byte-identico). Build e `make check` verdi dopo il rename.
