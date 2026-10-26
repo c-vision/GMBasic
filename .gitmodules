@@ -7,3 +7,7 @@
 [submodule "shared"]
 	path = shared
 	url = ../shared
+
+[submodule "GMBasicIDE"]
+	path = GMBasicIDE
+	url = ../GMBasicIDE
