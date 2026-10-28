@@ -149,7 +149,7 @@
 - Ripristinato in `GMBasic/native/gmb_runtime_c/CMakeLists.txt` l'embed SPIR-V in CMake puro
   (`embed_spirv.cmake`): il HEAD originale usa ancora `embed_spirv.py` (Python).
 - Build: `gmb_runtime`, `gmb_ai_llm`, `gmb_db`, `gmb_vm_host` OK.
-- emitter C#: assente dal monorepo (già rimosso); `parity5` ora 4 gambe nel repo originale.
+- emitter C#: assente dal monorepo (già rimosso); `parity4` ora 4 gambe nel repo originale.
 
 ## Rifinitura Sharp post-ritiro C99 (2026-10-25)
 - Rimossa da `GMBasicSharp/REPL` la vecchia gamba C99: blocco `#if GMB_C99`/`RunC99Safe`,
@@ -164,7 +164,7 @@
   `GMBasic-Deprecated/monorepo-import-2026-10-25`.
 - Rimossi i symlink `tools/` e `GMBasic/tools/` → `migration/tools-unclassified`.
 - `GMBasic/tools/` è ora reale e contiene solo gli script shell del progetto C presi da HEAD
-  (`gmb_ensure_ai_libs.sh`, `install_mlx_dylib.sh`, `gmb_c99native_run.sh`, `parity5` 4 gambe,
+  (`gmb_ensure_ai_libs.sh`, `install_mlx_dylib.sh`, `gmb_c99native_run.sh`, `parity4` 4 gambe,
   `test_minitests_c99native`, `check_file_size.sh`, `rebuild_ai_native.sh`, `gmb_http_probe.sh`,
   `llm_llvm_gate.sh`, `test_mcp_e2e.sh`).
 - Build `gmb_vm_host` OK con i tool reali; nessun `.py` in `GMBasic/tools`.
