@@ -1,0 +1,18 @@
+{
+  "name": "webp",
+  "version": "1.0.0",
+  "description": "WebP (decode/encode) via shim FFI gmbsuite libgmbwebp: libwebp e' linkata STATICAMENTE dentro lo shim (self-contained, nessuna lib di sistema a runtime).",
+  "contentType": "c-ffi",
+  "edition": "any",
+  "exports": ["webp.inc"],
+  "samples": ["samples"],
+  "build": { "command": "bash build.sh", "cwd": ".", "tool": "cc", "outputs": ["lib/{platform}/libgmbwebp.dylib"] },
+  "ffi": {
+    "api": "c-abi",
+    "headers": ["include/gmbwebp.h"],
+    "libs": { "osx-arm64": "lib/osx-arm64/libgmbwebp.dylib" },
+    "link": "",
+    "declareExample": "DECLARE FUNCTION INFO LIB \"gmbwebp\" ALIAS \"gmbwebp_info\" (path AS STRING, BYREF w AS LONG, BYREF h AS LONG) AS LONG"
+  },
+  "dependencies": {}
+}

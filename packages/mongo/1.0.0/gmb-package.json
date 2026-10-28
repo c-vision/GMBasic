@@ -1,0 +1,17 @@
+{
+  "name": "mongo",
+  "version": "1.0.0",
+  "description": "MongoDB (shim FFI minimale): AVAILABLE + CONNECT (TCP reale con timeout) + PING/CLOSE. Nessun handshake MongoDB: PING su un socket aperto ritorna 0 (niente falsi successi).",
+  "contentType": "c-ffi-source",
+  "edition": "any",
+  "exports": ["mongo.inc"],
+  "build": { "command": "bash build.sh", "cwd": ".", "tool": "cc", "outputs": ["lib/{platform}/libgmbmongo.dylib"] },
+  "ffi": {
+    "api": "c-abi",
+    "headers": ["include/gmbmongo.h"],
+    "libs": { "osx-arm64": "lib/osx-arm64/libgmbmongo.dylib" },
+    "link": "",
+    "declareExample": "DECLARE FUNCTION AVAILABLE LIB \"gmbmongo\" ALIAS \"gmbmongo_available\" () AS LONG"
+  },
+  "dependencies": {}
+}

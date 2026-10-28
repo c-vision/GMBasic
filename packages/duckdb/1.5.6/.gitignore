@@ -1,0 +1,4 @@
+# Artefatti di build (dylib + pacchetto) — non vanno in git.
+lib/
+*.gmbpkg
+include/gmbduckdb.h

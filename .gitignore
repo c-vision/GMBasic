@@ -15,8 +15,7 @@
 *.gcno
 
 # deps/stato locale
-GMBasic/libs-runtime/
-GMBasic/Resources/libs/
+GMBasic/libs-runtime/GMBasic/Resources/libs/
 GMBasic/Resources/bin/
 GMBasicSharp/Resources/bin/
 GMBasicSharp/Resources/libs/
@@ -26,3 +25,10 @@ graphs/
 rag/
 docs/graphify/
 .DS_Store
+
+# PACCHETTI: in git solo manifest (gmb-package.json), export (.inc), header, sorgenti e
+# script di build. Le lib native (*.dylib/*.so, già ignorate sopra), i sorgenti esterni
+# (.build/) e gli archivi (.gmbpkg) si ottengono con `gmb pkg install` (registry) oppure
+# `gmb pkg build` (dai sorgenti nel pacchetto). Decisione 2026-10-28.
+packages/*/*/*.gmbpkg
+packages/*/*/.build/
