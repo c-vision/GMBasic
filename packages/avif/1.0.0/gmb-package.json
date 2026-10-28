@@ -1,0 +1,18 @@
+{
+  "name": "avif",
+  "version": "1.0.0",
+  "description": "AVIF (decode/encode) via shim FFI gmbsuite libgmbavif: libavif e' COMPILATA DAI SORGENTI e linkata staticamente (con libaom/libvmaf statiche) dentro lo shim -> self-contained, nessuna lib di sistema.",
+  "contentType": "c-ffi-source",
+  "edition": "any",
+  "exports": ["avif.inc"],
+  "samples": ["samples"],
+  "build": { "command": "bash build.sh", "cwd": ".", "tool": "cc", "outputs": ["lib/{platform}/libgmbavif.dylib"] },
+  "ffi": {
+    "api": "c-abi",
+    "headers": ["include/gmbavif.h"],
+    "libs": { "osx-arm64": "lib/osx-arm64/libgmbavif.dylib" },
+    "link": "",
+    "declareExample": "DECLARE FUNCTION INFO LIB \"gmbavif\" ALIAS \"gmbavif_info\" (path AS STRING, BYREF w AS LONG, BYREF h AS LONG) AS LONG"
+  },
+  "dependencies": {}
+}

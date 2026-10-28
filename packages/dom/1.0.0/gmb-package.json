@@ -1,0 +1,17 @@
+{
+  "name": "dom",
+  "version": "1.0.0",
+  "description": "DOM/HTML (shim FFI su libxml2): PARSE di HTML in memoria, TEXT/SELECT via XPath, NUMNODES/NODEATTR, FREE. Deterministico, nessuna rete.",
+  "contentType": "c-ffi-source",
+  "edition": "any",
+  "exports": ["dom.inc"],
+  "build": { "command": "bash build.sh", "cwd": ".", "tool": "cc", "outputs": ["lib/{platform}/libgmbdom.dylib"] },
+  "ffi": {
+    "api": "c-abi",
+    "headers": ["include/gmbdom.h"],
+    "libs": { "osx-arm64": "lib/osx-arm64/libgmbdom.dylib" },
+    "link": "",
+    "declareExample": "DECLARE FUNCTION AVAILABLE LIB \"gmbdom\" ALIAS \"gmbdom_available\" () AS LONG"
+  },
+  "dependencies": {}
+}

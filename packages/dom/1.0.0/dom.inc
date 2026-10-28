@@ -1,0 +1,11 @@
+' dom.inc — pacchetto `dom` (namespace DOM), shim FFI `libgmbdom` su libxml2.
+NAMESPACE DOM
+
+PUBLIC DECLARE FUNCTION AVAILABLE LIB "gmbdom" ALIAS "gmbdom_available" () AS LONG
+PUBLIC DECLARE FUNCTION PARSE LIB "gmbdom" ALIAS "gmbdom_parse" (html AS STRING) AS LONG
+PUBLIC DECLARE FUNCTION TEXT LIB "gmbdom" ALIAS "gmbdom_text" (h AS LONG, xpath AS STRING) AS STRING
+PUBLIC DECLARE FUNCTION SELECT LIB "gmbdom" ALIAS "gmbdom_select" (h AS LONG, xpath AS STRING) AS LONG
+PUBLIC DECLARE FUNCTION NUMNODES LIB "gmbdom" ALIAS "gmbdom_numnodes" (ns AS LONG) AS LONG
+PUBLIC DECLARE FUNCTION NODEATTR LIB "gmbdom" ALIAS "gmbdom_nodeattr" (ns AS LONG, i AS LONG, attr AS STRING) AS STRING
+PUBLIC DECLARE FUNCTION FREENODESET LIB "gmbdom" ALIAS "gmbdom_freenodeset" (ns AS LONG) AS LONG
+PUBLIC DECLARE FUNCTION FREE LIB "gmbdom" ALIAS "gmbdom_free" (h AS LONG) AS LONG
