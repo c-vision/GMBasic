@@ -51,8 +51,8 @@
   411-419). Il gap 12 era **stale** (manifest audit non rigenerati: richiede `--all`).
 - Sharp: creata `GMBasicSharp/GMBasicSharp.slnx` (28 progetti main); build **0 errori**.
   Corretto `IlBackendCodegen/genrunner` (path `../../../Executor`).
-- **C99Backend ritirato** da Sharp: spostato in `GMBasic-Deprecated/common-C99Backend-2026-10-23`
-  (+ test in `tests-GMBASIC.Backend.C99.Tests-2026-10-23`).
+- **backend C# dell'emitter C99 ritirato** da Sharp: spostato in `GMBasic-Deprecated/`
+  (snapshot 2026-10-23; test in `tests-GMBASIC.Backend.C99.Tests-2026-10-23`).
 - Policy: rimosso Python dai path vivi. `cmake/embed_spirv.py` → `cmake/embed_spirv.cmake`
   (generazione header SPIR-V in CMake puro, byte/length identici); 4 script in `shared/` e
   `gmb_db_c/tools/fill_1to1.py` spostati in Deprecated.
@@ -99,9 +99,9 @@
 
 ## Sync nuovi commit + chiusura gap SPEED/MOUSE (2026-10-24)
 - **Nuovi commit** in GMBasic originale: `6fe9765af` (@GET TYPE MiniTest/sample/guida) e
-  `7a474842d` (parità C99Backend campi tipizzati). Copiati in `shared/`:
+  `7a474842d` (parità emitter C# campi tipizzati). Copiati in `shared/`:
   `minitests/controls/get_types_parity.bas`, `samples/Community/Clipper/ClipperTypedGets.bas`.
-  Le modifiche C99Backend non riguardano il monorepo (backend ritirato).
+  Le modifiche emitter C# non riguardano il monorepo (backend ritirato).
 - **Gap chiusi sui 4 backend** (non solo C99Native): SPEED.SETDURABILITY/FLUSHDURABILITY/
   BEGINGROUPCOMMIT/ENDGROUPCOMMIT/INFO e MOUSE.CLICK (0 arg + area).
   - C condiviso: `gmb_db_speed_begin/end_group_commit`, `gmb_db_speed_{set_durability,info}_str`,
@@ -126,9 +126,9 @@
   gitignored: fix locale non committato.
 - Stato verificato: IL/PCode/VM/C/C99Native PASS su `speed/gaps.bas`; audit 1523/1523.
 
-## C99Backend ritirato nel repo ORIGINALE (2026-10-25)
-- `common/C99Backend` → `GMBasic-Deprecated/common-C99Backend-2026-10-25` (incluso il WIP
-  non committato di un'altra AI, preservato) e `tests/GMBASIC.Backend.C99.Tests` →
+## emitter C# ritirato nel repo ORIGINALE (2026-10-25)
+- Il backend C# dell'emitter C99 → `GMBasic-Deprecated/` (snapshot 2026-10-25, incluso il
+  WIP non committato di un'altra AI, preservato) e `tests/GMBASIC.Backend.C99.Tests` →
   `.../tests-GMBASIC.Backend.C99.Tests-2026-10-25`.
 - Rimossi: voci `GMBASIC.sln`, `ProjectReference` in `tools/audit`, blocco `GmbBackendC99`
   in `Directory.Build.props`/`.targets`, `InternalsVisibleTo` C99 nei 3 csproj, gate/step
@@ -136,12 +136,12 @@
   `tools/check_file_size.sh`; script `gmb_c99_rebuild.sh`/`worktree_helper.sh` in Deprecated.
 - `tools/audit`: propagata la versione corretta (chiave ns+nome, speed/mouse, PCode SysCall);
   `--c99`/`--registry-c99` ora rispondono "ritirato" (exit 2).
-- Test `NativeParityTests` che leggeva C99Backend: rimosso (obsoleto); `NativeDb.cs` ripristinato.
+- Test `NativeParityTests` che leggeva emitter C#: rimosso (obsoleto); `NativeDb.cs` ripristinato.
 - Verifica: `dotnet build GMBASIC.sln` **0 errori**; `speed/gaps.bas` **IL/PCode/VM/C/C99Native PASS**.
 - Nota: `tools/check_file_size.sh --quiet` resta rosso per file monolitici preesistenti
   (`gmb_builtin.c` 18k righe non in allowlist) — non legato a questo lavoro.
 
-## Import READ nativo + ritiro C99Backend (2026-10-25)
+## Import READ nativo + ritiro emitter C# (2026-10-25)
 - Importati da HEAD i commit **`5dff233c4` / `edd4da60b` / `66ab81ddc`** (READ nativo via P/Invoke,
   PCode/IL allineati): file C copiati da HEAD in `GMBasic/native/`; file Sharp senza divergenze
   copiati; `IlRuntime.cs` e `PCodeProcessor.Syscalls.cs` presi da HEAD e riapplicata la
@@ -149,7 +149,7 @@
 - Ripristinato in `GMBasic/native/gmb_runtime_c/CMakeLists.txt` l'embed SPIR-V in CMake puro
   (`embed_spirv.cmake`): il HEAD originale usa ancora `embed_spirv.py` (Python).
 - Build: `gmb_runtime`, `gmb_ai_llm`, `gmb_db`, `gmb_vm_host` OK.
-- C99Backend: assente dal monorepo (già rimosso); `parity5` ora 4 gambe nel repo originale.
+- emitter C#: assente dal monorepo (già rimosso); `parity5` ora 4 gambe nel repo originale.
 
 ## Rifinitura Sharp post-ritiro C99 (2026-10-25)
 - Rimossa da `GMBasicSharp/REPL` la vecchia gamba C99: blocco `#if GMB_C99`/`RunC99Safe`,
