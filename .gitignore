@@ -32,3 +32,5 @@ docs/graphify/
 # `gmb pkg build` (dai sorgenti nel pacchetto). Decisione 2026-10-28.
 packages/*/*/*.gmbpkg
 packages/*/*/.build/
+# Blob store content-addressable del Package Manager: rigenerabile (dedup), NON va in git.
+**/.content/

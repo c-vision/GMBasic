@@ -45,8 +45,11 @@ dotnet run --project REPL -- -n <file.bas>             # -n/--native: eseguibile
 # (poi GMBASIC_VM_HOST=native/gmb_vm_c/build/gmb_vm_host, o copialo accanto all'eseguibile del test)
 dotnet run --project tests/GMBASIC.Conformance -- vmtest <file.bas>
 
-# C99 transpiler (generates .c, compiles with `cc` against the shared C runtime, runs it)
-dotnet run --project tests/GMBASIC.Backend.C99.Tests -p:GmbEdition=Commercial -p:GmbBackendC99=true -- --file=<file.bas>
+# C99Native backend (C frontend + emitter generate .c, `cc` against the shared C runtime, run it).
+# The old C# C99 transpiler gate (tests/GMBASIC.Backend.C99.Tests) is retired.
+# CWD must be GMBasic/ (the script resolves the repo from its own path); sample paths are
+# relative to it, hence ../shared/...
+(cd GMBasic && bash tools/gmb_c99native_run.sh ../shared/samples/Community/Network/WebSocketEcho.bas)
 ```
 
 Development mode (bypasses the licensing gate) — set `GMBASIC_DEV_MODE=1` before any of the
@@ -211,7 +214,7 @@ CALL SleepAsync(1000)
 | VM/C (compile → P-Code → run as external process `gmb_vm_host`) | `dotnet run --project tests/GMBASIC.Conformance -- vmtest <file.bas>` |
 | IL Backend execution (xunit, incl. Clipper/Loops samples) | `dotnet test tests/GMBASIC.IlBackend.Tests` |
 | Clipper-specific IL execution | `dotnet test tests/GMBASIC.Clipper.Tests` |
-| C99 transpiler gate (Commercial edition only) | `dotnet run --project tests/GMBASIC.Backend.C99.Tests -p:GmbEdition=Commercial -p:GmbBackendC99=true [<filtro>]` |
+| C99Native backend (C frontend + emitter → `cc` → run) | `(cd GMBasic && bash tools/gmb_c99native_run.sh ../shared/samples/<file>.bas)` |
 | Native C database module (oracle vs. C# implementation) | `dotnet test tests/GMBASIC.Database.Native.Tests` |
 | Native C runtime/VM unit tests | `tests/native_tests/run_tests.c` (compilato/eseguito via il build CMake di `native/gmb_runtime_c`) |
 | AI agents/RAG | `dotnet test tests/AI.Tests` |
