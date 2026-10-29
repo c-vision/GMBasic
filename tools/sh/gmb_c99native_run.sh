@@ -44,76 +44,17 @@ LIBS_CACHE="$HOME/.gmbasic/libs/$RID"
 
 # ── Download on-demand (asset per-file) ─────────────────────────────────────────────────────
 # `libs.txt` = indice RIDOTTO per il downloader C: nome<TAB>sha256<TAB>size<TAB>url.
-# È la PROIEZIONE del manifest (`shared/settings/libs-index-<rid>.tsv`) scritta da
-# `tools/sh/libs_manifest_gh.sh build`: così la catena C non dipende da Python né da un parser
-# JSON (prima si passava da `tools/data/libs_index_tsv.py`). Se il file non c'è non si scarica
-# niente e il comportamento resta quello di prima.
+# La costruzione dell'indice vive in `tools/sh/libs_index_lib.sh` (UNA implementazione,
+# condivisa col runner dei MiniTest C99Native): qui si dichiara solo DOVE sta la proiezione.
+# È la proiezione `shared/settings/libs-index-<rid>.tsv` scritta da `libs_manifest_gh.sh build`:
+# la catena C non dipende né da Python né da un parser JSON.
 # Serve a DUE cose: (a) il COMPILATORE C che scarica le librerie mancanti prima del link,
 # (b) l'eseguibile compilato, che porta accanto `<exe>.libs.txt` e scarica da solo ciò che gli
 # serve quando `dlopen` non trova la lib (gmb_ffi_dl → gmb_libs_autoensure).
 LIBS_INDEX="$ROOT/../shared/settings/libs-index-$RID.tsv"
+. "$TOOLS_DIR/libs_index_lib.sh"
 
-emit_libs_index() { # $1 = file di output  (tutti i file pubblicati per-file di questo RID)
-  if [ -f "$LIBS_INDEX" ]; then cp -f "$LIBS_INDEX" "$1"; else : > "$1"; fi
-}
-
-# Post-link: `<exe>.libs.txt` con le lib dell'indice da cui l'eseguibile DIPENDE davvero (letto
-# dal binario prodotto: otool -L / readelf -d) PIÙ le lib FFI dichiarate (`DECLARE … LIB`, che
-# non sono dipendenze di link). Così l'exe scarica solo ciò che gli serve.
-emit_exe_libs() { # $1 = eseguibile, $2 = output, $3 = C generato (per le FFI dichiarate)
-  local exe="$1" out="$2"
-  [ -f "$LIBS_INDEX" ] || return 0
-  local names=""
-  case "$(uname -s)" in
-    Darwin) names=$(otool -L "$exe" 2>/dev/null | tail -n +2 | awk '{print $1}' | sed 's|.*/||') ;;
-    *)      names=$(readelf -d "$exe" 2>/dev/null | sed -n 's/.*\[\(.*\)\]/\1/p') ;;
-  esac
-  # FFI (`DECLARE … LIB "<nome>"`): NON è una dipendenza di LINK — il runtime fa `dlopen` — quindi
-  # `otool -L`/`readelf -d` non la vedono. Senza questo blocco un eseguibile che fa `REQUIRE amqp`
-  # non porta `libgmbamqp.dylib` nel suo libs.txt → su una macchina senza la lib in libs/ e con la
-  # cache vuota il `dlopen` fallisce (mentre nel runtime C il download on-demand esiste già).
-  # I nomi dichiarati si leggono dal C GENERATO, dove l'emitter scrive `gmb_ffi_dl_open("<nome>")`.
-  if [ -n "${3:-}" ] && [ -f "$3" ]; then
-    local lext ffilib
-    case "$(uname -s)" in Darwin) lext=dylib;; Linux) lext=so;; *) lext=dll;; esac
-    for ffilib in $(sed -n 's/.*gmb_ffi_dl_open("\([^"]*\)").*/\1/p' "$3" | sort -u); do
-      case "$ffilib" in
-        lib*) names="$names ${ffilib}.${lext}" ;;
-        *)    names="$names lib${ffilib}.${lext} ${ffilib}.${lext}" ;;
-      esac
-    done
-  fi
-  [ -n "$names" ] || return 0
-  # CHIUSURA TRANSITIVA: una lib del manifest può dipendere da un'ALTRA lib del manifest che
-  # l'eseguibile non linka direttamente (caso reale: libbrotlidec → libbrotlicommon). Senza
-  # questo, l'exe parte e muore su "Library not loaded: libbrotlicommon.1.dylib".
-  local queue="$names" seen=" " n f dep
-  while [ -n "$queue" ]; do
-    local next=""
-    for n in $queue; do
-      case "$seen" in *" $n "*) continue;; esac
-      seen="$seen$n "
-      f=""
-      for d in "$LIBS_CACHE" "$ROOT/build/libs/$RID"; do
-        [ -f "$d/$n" ] && { f="$d/$n"; break; }
-      done
-      [ -n "$f" ] || continue
-      for dep in $(otool -L "$f" 2>/dev/null | tail -n +2 | awk '{print $1}' | sed 's|.*/||'); do
-        case "$seen" in *" $dep "*) ;; *) next="$next $dep";; esac
-      done
-    done
-    queue="$next"
-    names="$names $next"
-  done
-  # shellcheck disable=SC2086
-  local wantdir; wantdir="$(mktemp -d "${TMPDIR:-/tmp}/gmblibswant.XXXXXX")"
-  printf '%s\n' $names | sed '/^[[:space:]]*$/d' | sort -u > "$wantdir/want"
-  : > "$out"
-  grep '^#' "$LIBS_INDEX" >> "$out" 2>/dev/null || true
-  awk -F'\t' -v OFS='\t' 'NR==FNR{w[$1]=1;next} /^#/{next} ($1 in w)' \
-      "$wantdir/want" "$LIBS_INDEX" >> "$out"
-  rm -rf "$wantdir"
-}
+# `emit_exe_libs` / `emit_libs_index` vivono in tools/sh/libs_index_lib.sh (sourced sopra).
 
 B="${1:?uso: $0 <file.bas> [suffisso] [cflags]}"
 SUFF="${2:-out}"

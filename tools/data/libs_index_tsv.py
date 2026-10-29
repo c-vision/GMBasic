@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
-"""libs_index_tsv.py — emette l'indice TSV usato dal downloader C (`<exe>.libs.txt`).
+"""libs_index_tsv.py — DEPRECATO (2026-10-29): non è più usato da nessuno.
+
+L'indice TSV lo scrive ORA `tools/sh/libs_manifest_gh.sh build` come PROIEZIONE del manifest
+(`shared/settings/libs-index-<rid>.tsv`), e `tools/sh/gmb_c99native_run.sh` lo legge
+direttamente con `cp` + `awk`: la catena di build C non dipende più da Python né da un parser
+JSON. Resta qui solo come riferimento/documentazione del formato; si può eliminare.
+
+---
+Emette l'indice TSV usato dal downloader C (`<exe>.libs.txt`).
 
 Il runtime C (`gmb_libs_fetch.c`) legge un file **TSV** (niente parser JSON):
 

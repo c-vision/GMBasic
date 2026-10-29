@@ -18,7 +18,9 @@ fi
 set -u
 ROOT="$(cd "$(dirname "$0")/../../GMBasic" && pwd)"; cd "$ROOT"
 # I TOOL vivono nella radice del MONOREPO (`tools/`), non più in GMBasic/tools.
-MONO="$(cd "$(dirname "$0")/../.." && pwd)"
+# NB: si ricava da ROOT (assoluto) e NON da `$0`: dopo il `cd` un `$0` relativo
+# (`tools/sh/…`) non è più risolvibile — succedeva e MONO restava vuoto.
+MONO="$(cd "$ROOT/.." && pwd)"
 # llmtoken.h (gmb_distill.c lo include) vive in LLMEnv/LLMToken (radice, non include/).
 LLMENV="${LLMENV:-$HOME/Documents/Projects/LLMEnv}"
 # Include LLMEnv (post-migrazione: header rinominati gmb_* -> llmengine_*/*): gli stessi -I del
@@ -138,7 +140,12 @@ fi
 # incExtra/ext (stesso setup del gate C99)
 # Terze parti: SOLO dalla CACHE del RID (`gmb install --runtime-only` / `--dev`). Nessun path
 # del builder: renderebbe gli eseguibili dipendenti da una cartella che esiste solo qui.
-LIBS_CACHE="$HOME/.gmbasic/libs/osx-arm64"
+# L'indice TSV (`<bin>.libs.txt`) è lo STESSO di `gmb_c99native_run.sh` (una sola implementazione):
+# serve al download on-demand delle lib che non stanno più nel repo (le nostre FFI, release `ffi-v1`).
+. "$MONO/tools/sh/libs_index_lib.sh"
+RID="$(li_rid)"
+li_init
+LIBS_CACHE="$HOME/.gmbasic/libs/$RID"
 ZSTD_INC="$LIBS_CACHE/include"; ZSTD_LIB="-L$LIBS_CACHE -lzstd"
 EXT=" -lcurl -lz -lbz2 -lsqlite3 $ZSTD_LIB"
 if [ -f "$LIBS_CACHE/libbrotlidec.dylib" ]; then EXT="$EXT -L$LIBS_CACHE -lbrotlidec -lbrotlienc"; fi
@@ -315,7 +322,10 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
   # Il motore MLX (dlopen in LLM QUALITY/REGISTRY MEASURE) e' raggiungibile via loader path: senza,
   # le gambe C sono standalone e la PPL reale darebbe `ppl=na` (divergenza vs IL). I log engine
   # restano su stderr e vengono filtrati sotto, come gia' `LLM QUALITY:`.
-  if ! (cd "$(dirname "$f")" && DYLD_LIBRARY_PATH="$ROOT/build/libs/osx-arm64:$HOME/.gmbasic/libs/osx-arm64${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}" "$WORK/bin" >"$WORK/out.txt" 2>&1); then
+  # `<bin>.libs.txt` accanto all'eseguibile: le lib dell'indice da cui dipende + le FFI dichiarate
+  # (`DECLARE … LIB`). Il runtime C lo legge se una lib manca e la scarica (sha verificato).
+  emit_exe_libs "$WORK/bin" "$WORK/bin.libs.txt" "$WORK/out.c" 2>/dev/null || true
+  if ! (cd "$(dirname "$f")" && DYLD_LIBRARY_PATH="$ROOT/build/libs/$RID:$HOME/.gmbasic/libs/$RID${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}" "$WORK/bin" >"$WORK/out.txt" 2>&1); then
     # TEST DI ERRORE ATTESO (marker header `' TAG: expected-error`): l'EXPECT descrive il
     # messaggio che DEVE comparire. Serve ai MiniTest che verificano un errore esplicito
     # (es. AI.DISCOVER su endpoint irraggiungibile): prima erano FAIL solo per l'exit != 0.
