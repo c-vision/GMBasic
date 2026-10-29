@@ -84,6 +84,7 @@ duplicated built-in implementations between the two.
 | **Providers** | LLM provider abstraction (OpenAI-compatible, Ollama, ONNX) with auto-failover | `common/AI/Providers/` |
 | **RAG** | Retrieval-Augmented Generation pipeline, vector runtime | `common/AI/Rag/` |
 | **VectorDB** | Pure .NET vector database (embedded) | `common/Databases/VectorDB/` |
+| **Model descriptors** | `.gmbarch` files owned by LLMEnv (`ABI/`); folder path in `paths.abiDir`, located on first use ([docs/llmenv-abi.md](docs/llmenv-abi.md)) | `GMBasic/native/gmb_runtime_c/src/gmb_abi.c` |
 
 Note: the AI subsystem is C# only — it currently runs on the IL Backend path. Availability on the
 VM/C and C99 backends is not yet verified.
