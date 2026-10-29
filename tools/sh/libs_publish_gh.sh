@@ -76,7 +76,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/../../GMBasic" && pwd)"
 [ -n "$MANIFEST" ] || MANIFEST="$ROOT/../shared/settings/libs-manifest.json"
 if [ -z "$SRC" ]; then
-  # più sorgenti (prima vince sul nome): le lib di core vivono in Resources/libs, alcune
+  # più sorgenti (prima vince sul nome): i nostri artefatti stanno in build/libs, le terze parti
   # (compress/grep) stanno nel build o nella cache → si passano entrambe.
   a="$ROOT/build/libs/$RID"; b="$HOME/.gmbasic/libs/$RID"
   if [ -d "$a" ] && [ -d "$b" ]; then SRC="$a,$b"; elif [ -d "$a" ]; then SRC="$a"; else SRC="$b"; fi
