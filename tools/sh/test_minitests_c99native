@@ -218,13 +218,34 @@ if [ -z "$NOISE_FILE" ]; then
 fi
 [ -n "$NOISE_FILE" ] && [ -f "$NOISE_FILE" ] || echo "attenzione: engine_noise_prefixes.txt assente, nessun filtro del rumore del motore" >&2
 
+# Filtro ambientale: come l'harness xUnit, GMB_MINI_ONLY accetta UNA o PIÙ sottostringhe
+# separate da virgola (match ANY). Prima era confrontato con la variabile INTERA: con
+# GMB_MINI_ONLY="a.bas,b.bas" nessun file corrispondeva, la gamba non eseguiva NULLA e
+# stampava `PASS=0 FAIL=0` con exit 0 — un FALSO VERDE (le altre tre gambe erano passate),
+# osservato il 2026-10-29 lanciando due file in una sola invocazione.
+ONLY_NEEDLES=()
+if [ -n "${GMB_MINI_ONLY:-}" ]; then
+  IFS=',' read -r -a _raw_needles <<< "$GMB_MINI_ONLY"
+  for _n in "${_raw_needles[@]}"; do
+    _n="${_n#"${_n%%[![:space:]]*}"}"; _n="${_n%"${_n##*[![:space:]]}"}"
+    [ -n "$_n" ] && ONLY_NEEDLES+=("$_n")
+  done
+fi
+ONLY_MATCHED=0
+
 for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
+  # Filtro (lista di sottostringhe, match ANY): conta anche i file poi saltati per TAG, così
+  # un filtro che punta a un interattivo/heavy resta legittimo e non diventa "filtro errato".
+  if [ ${#ONLY_NEEDLES[@]} -gt 0 ]; then
+    _hit=0
+    for _n in "${ONLY_NEEDLES[@]}"; do [[ "$f" == *"$_n"* ]] && { _hit=1; break; }; done
+    [ "$_hit" = 1 ] || continue
+    ONLY_MATCHED=$((ONLY_MATCHED+1))
+  fi
   # INTERATTIVI (marker header `' TAG: interactive`): esclusi di default; inclusi con GMB_RUN_INTERACTIVE=1.
   if [ "${GMB_RUN_INTERACTIVE:-0}" != "1" ] && grep -q "^' TAG: interactive" "$f" 2>/dev/null; then skip=$((skip+1)); continue; fi
   # HEAVY (marker header `' TAG: heavy`): richiede modello reale + training; escluso di default.
   if [ "${GMB_RUN_HEAVY:-0}" != "1" ] && grep -q "^' TAG: heavy" "$f" 2>/dev/null; then skip=$((skip+1)); continue; fi
-  # Filtro ambientale (come l'harness xUnit): GMB_MINI_ONLY=<sottostringa>
-  if [ -n "${GMB_MINI_ONLY:-}" ] && [[ "$f" != *"$GMB_MINI_ONLY"* ]]; then continue; fi
   [ -f "$f" ] || continue
   name="${f#$MINI/}"
   if ! "$DRV" "$f" "$WORK/out.c" --no-exe >/dev/null 2>"$WORK/derr.txt"; then
@@ -387,6 +408,13 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
   if [ "${GMB_C99NATIVE_SHOW_C:-0}" = "1" ]; then echo "  --- C generato ($CNAME) ---"; cat "$CDEST"; echo "  --- fine C ---"; fi
   pass=$((pass+1))
 done
+# Filtro che non corrisponde ad ALCUN file = gate ROSSO: senza questo controllo la gamba
+# nativa riportava `PASS=0 FAIL=0` con exit 0 (falso verde) su un nome file sbagliato.
+if [ ${#ONLY_NEEDLES[@]} -gt 0 ] && [ "$ONLY_MATCHED" -eq 0 ]; then
+  echo "ERRORE: GMB_MINI_ONLY=\"$GMB_MINI_ONLY\" non corrisponde ad alcun MiniTest in $MINI" >&2
+  echo "        (la gamba C99Native non ha eseguito NULLA: filtro errato, non un esito verde)" >&2
+  exit 1
+fi
 echo "---------------------------------"
 echo "C99Native MiniTests: PASS=$pass FAIL=$fail SKIP=$skip"
 [ "$fail" -eq 0 ]

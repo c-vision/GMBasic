@@ -3,6 +3,10 @@
 # C99Native) nel monorepo. Le gambe sono SEMPRE 4: il backend C# C99 non esiste piu'.
 # Le prime 3 girano nell'harness xUnit, la 4a nel runner nativo (tools/sh/test_minitests_c99native).
 # Uso: tools/sh/test_minitests_parity.sh <sottostringa> [<altra> ...] | --all | --interactive [filtri]
+# I filtri sono una LISTA (match ANY) su TUTTE e 4 le gambe: gli argomenti vengono uniti con
+# virgola in GMB_MINI_ONLY e sia l'xUnit sia il runner nativo la leggono come lista. Un filtro
+# che non corrisponde ad alcun file fa FALLIRE la gamba nativa (exit 1): prima la gamba
+# stampava `PASS=0 FAIL=0` con exit 0, cioè un falso verde.
 set -e
 ROOT="$(cd "$(dirname "$0")/../../GMBasicSharp" && pwd)"          # GMBasicSharp
 WS="$(cd "$ROOT/.." && pwd)"                       # GMBasicMonoRepo
