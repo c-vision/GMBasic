@@ -68,7 +68,12 @@ ROOT="$(cd "$SCRIPT_DIR/../../GMBasic" && pwd)"
 MANIFEST="$ROOT/../shared/settings/libs-manifest.json"   # CONFIG CONDIVISA
 TORCH_MANIFEST="$ROOT/../shared/settings/ml-manifest.json"       # CONFIG CONDIVISA (radice monorepo)
 RID=""
-GROUP_LIST="boot,support,engine,llmmotor,core,ffi"
+# Gruppi INDICIZZATI di default. `runtime` (boot+core+engine+support: ciò che serve a ESEGUIRE),
+# `llmmotor` (motori AI), `dev` (header/statiche per compilare), `ffi` (le nostre lib caricate con
+# DECLARE … LIB: amqp, grpc, kafka, media, mqtt, nats, protobuf) + `torch` (external, sotto).
+# I gruppi storici `boot`/`engine`/`core`/`support` NON hanno più una release propria (sono
+# confluiti in `runtime-vN`): chiederli faceva fallire il build con "nessuna release trovata".
+GROUP_LIST="runtime,llmmotor,dev,ffi"
 WITH_TORCH=1
 CMD="${1:-build}"; [ $# -gt 0 ] && shift
 
@@ -333,6 +338,22 @@ do_build() {
   # La copia SPEDITA con l'app non si scrive qui: la build la genera da questo canonico
   # (`REPL.csproj` → `<exe>/config/libs-manifest.json`). Un solo file versionato in `shared/settings/`.
   echo "manifest: $MANIFEST (RID $RID, $(jq -r --arg r "$RID" '.rids[$r].files|length' "$MANIFEST") file totali)"
+
+  # PROIEZIONE TSV del manifest per il RID, accanto al manifest. La legge la catena C
+  # (`gmb_c99native_run.sh` → `<exe>.libs.txt` → downloader runtime): prima la produceva uno
+  # script Python a ogni build (`tools/data/libs_index_tsv.py`), ora è un artefatto generato
+  # QUI una volta sola. Formato identico a quello che il runtime legge:
+  #   riga `# requires <gruppo>-v<n> …` (solo informativa) poi  nome<TAB>sha256<TAB>size<TAB>url
+  local sidecar="${MANIFEST%/*}/libs-index-$RID.tsv"
+  jq -r --arg r "$RID" '
+      ((.rids[$r].groups // {}) | to_entries
+        | map(select(.value.version != null) | "\(.key)-\(.value.version)") | sort) as $g
+    | (if ($g|length) > 0 then "# requires " + ($g|join(" ")) else empty end),
+      (.rids[$r].files // {} | to_entries | sort_by(.key)[]
+        | select(.value.url != null and .value.url != "")
+        | [ .key, .value.sha256, (.value.size|tostring), .value.url ] | @tsv)' \
+    "$MANIFEST" > "$sidecar"
+  echo "indice TSV: $sidecar ($(grep -cv '^#' "$sidecar" 2>/dev/null || echo 0) file per-file)"
 }
 
 do_push() {

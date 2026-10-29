@@ -101,9 +101,49 @@ done < <(if [ "$TREE" = "1" ]; then find "$SRC" -type f \( -name "*.h" -o -name 
 
 echo "== per-file: gruppo=$GROUP rid=$RID tag=$TAG file=${#FILES[@]} (repo=$REPO)" >&2
 
+# ── igiene dell'API GitHub: REST ha un limite orario (5000/h), GraphQL un altro. ───────────────
+# Caso reale 2026-10-29: REST esaurita → `gh release view` risponde "release not found" (non
+# "rate limit"), il publisher credeva che la release non esistesse, tentava di ricrearla (422
+# "tag_name already exists") e poi l'upload falliva. Qui si controlla PRIMA la quota (l'endpoint
+# `rate_limit` non consuma) e si esce con la causa vera: "REST esaurita, reset alle HH:MM".
+gh_core_left() { gh api rate_limit --jq '.resources.core.remaining' 2>/dev/null || echo "1"; }
+gh_core_reset() { gh api rate_limit --jq '.resources.core.reset' 2>/dev/null | { read -r t; [ -n "$t" ] && date -r "$t" '+%H:%M' || echo "?"; }; }
+if [ "$DRY" != "1" ]; then
+  LEFT="$(gh_core_left)"
+  if [ "${LEFT:-0}" -le 2 ] 2>/dev/null; then
+    echo "ERRORE: quota REST di GitHub esaurita (usata/h), reset alle $(gh_core_reset)." >&2
+    echo "        Il caricamento degli asset usa REST: non si può pubblicare adesso (niente è stato toccato)." >&2
+    exit 1
+  fi
+fi
+
+# Asset di una release via GRAPHQL: name<TAB>sha256. Si usa GraphQL (non `gh release view`) perché
+# la REST, oltre al limite basso, con la quota esaurita risponde "release not found" (falso).
+release_assets_sha() { # $1 = tag
+  gh api graphql --paginate -f query='
+    query($owner:String!,$repo:String!,$tag:String!,$endCursor:String){
+      repository(owner:$owner,name:$repo){
+        release(tagName:$tag){
+          releaseAssets(first:100, after:$endCursor){
+            pageInfo{ hasNextPage endCursor }
+            nodes{ name digest }
+          }
+        }
+      }
+    }' -f owner="${REPO%%/*}" -f repo="${REPO##*/}" -f tag="$1" \
+    --jq '.data.repository.release.releaseAssets.nodes[] | [.name, ((.digest // "") | sub("^sha256:";""))] | @tsv' 2>/dev/null
+}
+release_exists() { # $1 = tag
+  [ -n "$(gh api graphql -f query='
+      query($owner:String!,$repo:String!,$tag:String!){
+        repository(owner:$owner,name:$repo){ release(tagName:$tag){ id } }
+      }' -f owner="${REPO%%/*}" -f repo="${REPO##*/}" -f tag="$1" \
+      --jq '.data.repository.release.id // empty' 2>/dev/null)" ]
+}
+
 # release: creata se non esiste (gli asset si aggiungono con --clobber)
 if [ "$DRY" != "1" ]; then
-  if ! gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+  if ! release_exists "$TAG"; then
     echo "== creo la release $TAG ==" >&2
     gh release create "$TAG" --repo "$REPO" \
       --title "GMBasic libs — $GROUP (per-file, tutti i RID)" \
@@ -118,9 +158,8 @@ IMMUTABLE=0
 case "$TAG" in *-v[0-9]*) IMMUTABLE=1;; esac
 EXIST_SHA=""
 if [ "$DRY" != "1" ]; then
-  EXISTING="$(gh release view "$TAG" --repo "$REPO" --json assets -q '.assets[].name' 2>/dev/null)"
-  EXIST_SHA="$(gh release view "$TAG" --repo "$REPO" --json assets \
-                -q '.assets[] | "\(.name)\t\(.digest // "" | sub("^sha256:";""))"' 2>/dev/null)"
+  EXIST_SHA="$(release_assets_sha "$TAG")"
+  EXISTING="$(printf '%s\n' "$EXIST_SHA" | awk -F'\t' 'NF{print $1}')"
 fi
 
 # sha pubblicato di un asset (vuoto se non c'è)
@@ -171,7 +210,7 @@ if [ "${#UPLOAD[@]}" -gt 0 ] && ! gh release upload "$TAG" "${UPLOAD[@]}" --repo
 fi
 
 # verifica: gli asset devono esistere con il nome <file>-<rid>
-NOW="$(gh release view "$TAG" --repo "$REPO" --json assets -q '.assets[].name' 2>/dev/null)"
+NOW="$(release_assets_sha "$TAG" | awk -F'\t' 'NF{print $1}')"
 MISSING=0
 for f in "${FILES[@]}"; do
   a="$(A "$f")"

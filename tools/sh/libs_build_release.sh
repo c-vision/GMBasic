@@ -53,6 +53,10 @@ ROOT="$(cd "$SCRIPT_DIR/../../GMBasic" && pwd)"
 
 GROUP="${1:-}"; [ $# -gt 0 ] && shift
 [ -n "$GROUP" ] || { sed -n '2,45p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
+# Il gruppo `ffi` (nostre lib di gmbsuite: amqp, grpc, kafka, mqtt, nats, protobuf, media) NON si
+# costruisce qui: i sorgenti vivono in `gmbsuite/` e pubblicano i loro `build.sh --publish`
+# (helper `gmbsuite/tools/gmb_lib.sh` → `libs_publish_files_gh.sh ffi <rid>`). Qui si indicizza
+# soltanto (`libs_manifest_gh.sh build`), che tratta `ffi` come gli altri gruppi.
 
 RID=""; DO_BUILD=1; PUBLISH=0; TAG=""; ALLOW_GAPS=0; DO_VERIFY=1; DRY=0; YES=0; NO_INDEX=0
 STAGE_DIR=""; BUILD_ROOT=""; CMAKE_ARGS=()
