@@ -161,7 +161,12 @@ RT_STAMP="$RT_CACHE_DIR/src.stamp"
 # le vecchie dichiarazioni → simboli/ABI stantii in silenzio. Sono le -I usate qui sotto.
 RT_HDR_DIRS="$ROOT/native/gmb_runtime_c/include $ROOT/native/gmb_runtime_c/src $ROOT/native/gmb_chart/include $ROOT/native/gmb_agent_runtime $ROOT/native/gmb_doc_c/include $ROOT/native/gmb_db_c/include $ROOT/native/gmb_torch/include $ROOT/native/gmb_tokenizer_bpe"
 RT_HDRS="$(find $RT_HDR_DIRS -type f -name '*.h' 2>/dev/null | tr '\n' ' ')"
-STAMP="$(for s in $RT_SRCS $RT_HDRS; do printf '%s %s\n' "$(stat -f '%m' "$s" 2>/dev/null || echo 0)" "$s"; done | shasum | cut -c1-16)"
+# STAMP = HASH DEL CONTENUTO (non mtime): una cache basata sui timestamp può servire codice che
+# nei sorgenti non esiste più — caso reale 2026-10-28: una stampa di debug `[GFX-LOAD] …`
+# (simbolo `gmb_graphics_trace_load`) rimasta in un oggetto in cache mentre nei sorgenti era già
+# stata rimossa → ogni MiniTest C99Native stampava quella traccia, invisibile con `grep` sul codice.
+# Con l'hash del contenuto, qualunque modifica (anche un revert nello stesso secondo) invalida la cache.
+STAMP="$( ( for s in $RT_SRCS $RT_HDRS; do printf '%s\n' "$s"; shasum -a 1 "$s" 2>/dev/null | cut -d' ' -f1; done ) | shasum | cut -c1-16)"
 mkdir -p "$RT_CACHE_DIR"
 if [ "${GMB_RT_REBUILD:-}" != "1" ] && [ -f "$RT_CACHE" ] && [ -f "$RT_STAMP" ] && [ "$(cat "$RT_STAMP")" = "$STAMP" ]; then
   echo "runtime C: cache valida ($RT_CACHE)"
