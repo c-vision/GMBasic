@@ -75,7 +75,7 @@ BUILT="native/gmb_compiler_c/build/gmb_c99native_driver"
 if [ -x "$BUILT" ] && { [ ! -x "$BIN" ] || [ "$BUILT" -nt "$BIN" ]; }; then
   BIN="$BUILT"
 fi
-[ -x "$BIN" ] || { echo "driver assente: $BIN (build tools/)"; exit 2; }
+[ -x "$BIN" ] || { echo "driver assente: $BIN (build tools/)" >&2; exit 2; }
 # Profilo C: bootstrap deterministico (i settings del compilatore sono letti dal toolchain C;
 # qui niente Python). CF_OVERRIDE permette di forzare i flag.
 CF="${CF_OVERRIDE:--O1 -w}"
@@ -94,7 +94,7 @@ CASE=work/$(basename "$B" .bas)_${SUFF}
 if ! "$BIN" "$ABS" "$DIR/$CASE.c" --no-exe >/dev/null 2>"$DIR/$CASE.drivererr.txt"; then
   # In caso di fallimento il file resta (post-mortem); in caso di successo sparisce:
   # work/ è già pieno di artefatti, non aggiungiamo rumore a ogni run che va a buon fine.
-  echo "driver fallito:"; sed -n '1,5p' "$DIR/$CASE.drivererr.txt"; exit 2
+  { echo "driver fallito:"; sed -n '1,5p' "$DIR/$CASE.drivererr.txt"; } >&2; exit 2
 fi
 rm -f "$DIR/$CASE.drivererr.txt"
 
@@ -150,9 +150,9 @@ RUNTIME_LIB="$MIN_LIB"; MIN_LINK=1
 if [ ! -f "$RUNTIME_LIB" ]; then RUNTIME_LIB="$L/gmb_runtime_c_build/libgmb_runtime.a"; MIN_LINK=0; fi
 if grep -qiE '^[[:space:]]*(FORM|READ|TORCH|TRAIN|JINJA|SCREEN|GRAPHICS|SPRITE|SPRITESET|PSET|PRESET|CIRCLE|PAINT|DRAW|POLYGON|PCOPY|SCREENSET|PALETTE|MOUSE|WINDOW|IMAGE|BITMAP|TILE|FONT|PLOT|CHART|VIDEO)[[:space:](]' "$B" 2>/dev/null; then
   RUNTIME_LIB="$L/gmb_runtime_c_build/libgmb_runtime.a"; MIN_LINK=0
-  echo "[c99native] programma con UI/grafica → runtime completo (SDL/Vulkan)"
+  echo "[c99native] programma con UI/grafica → runtime completo (SDL/Vulkan)" >&2
 else
-  echo "[c99native] programma testuale → runtime minimo (0 librerie esterne)"
+  echo "[c99native] programma testuale → runtime minimo (0 librerie esterne)" >&2
 fi
 ASRLIB="$L/gmb_runtime_c_build/llmasr_build/libllm_asr.a"
 [ -f "$ASRLIB" ] || ASRLIB="$ROOT/native/gmb_runtime_c/build/llmasr_build/libllm_asr.a"
@@ -251,7 +251,7 @@ emit_program_bundle() { # $1 = eseguibile
       cmp -s "$_f" "$out/Resources/$(basename "$_f")" || { cp -f "$_f" "$out/Resources/"; n=$((n+1)); }
     done
   fi
-  [ "$n" -gt 0 ] && echo "[c99native] bundle -> $out ($n file: settings + app.settings + Resources)"
+  [ "$n" -gt 0 ] && echo "[c99native] bundle -> $out ($n file: settings + app.settings + Resources)" >&2
   return 0
 }
 
@@ -261,7 +261,7 @@ emit_program_bundle() { # $1 = eseguibile
 if [ -f "$OUTBIN" ]; then
   emit_program_bundle "$OUTBIN"
   emit_exe_libs "$OUTBIN" "${OUTBIN%.dylib}.libs.txt" "$DIR/$CASE.c" 2>/dev/null || true
-  [ -s "${OUTBIN%.dylib}.libs.txt" ] && echo "[c99native] libs.txt -> ${OUTBIN%.dylib}.libs.txt ($(grep -cv '^#' "${OUTBIN%.dylib}.libs.txt" | tr -d ' ') lib)"
+  [ -s "${OUTBIN%.dylib}.libs.txt" ] && echo "[c99native] libs.txt -> ${OUTBIN%.dylib}.libs.txt ($(grep -cv '^#' "${OUTBIN%.dylib}.libs.txt" | tr -d ' ') lib)" >&2
 fi
 
 # Esegue (CWD = cartella del sample) per un eseguibile; per una libreria si verifica solo
@@ -276,8 +276,8 @@ else
   LIBPREFIX=$(sed -nE 's/.*static void ([A-Za-z0-9_]+)__ctor.*/\1/p' "$DIR/$CASE.c" | sed -n '1p')
   if [ -n "$LIBPREFIX" ] && grep -q " T _${LIBPREFIX}_init" "$DIR/$CASE.syms"; then
     NE=$(grep -c " T _${LIBPREFIX}_" "$DIR/$CASE.syms" || true)
-    echo "LIB ${LIBPREFIX}.dylib export OK (${NE} simboli)"
+    echo "LIB ${LIBPREFIX}.dylib export OK (${NE} simboli)" >&2
   else
-    echo "LIB: dylib costruita ma export non trovati (prefix='${LIBPREFIX}')"
+    echo "LIB: dylib costruita ma export non trovati (prefix='${LIBPREFIX}')" >&2
   fi
 fi
