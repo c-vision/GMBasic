@@ -312,7 +312,7 @@
   e `cb310534f` (gamba LIBRARY nel runner MiniTest), applicati con `cherry-pick -x` perché
   il clone del monorepo ha una storia diversa.
   - Conflitto risolto in `gmb_cli.c`: il baseline del monorepo aggiungeva
-    `-L/opt/homebrew/lib -lcrypto -lssl` al link (plugin TLS); sono stati mantenuti in
+    `-lcrypto -lssl` al link (plugin TLS, risolti dalla cache); sono stati mantenuti in
     **entrambe** le forme (libreria ed eseguibile), insieme ai flag nuovi `GMB_LIB_LDFLAGS`
     e al link chart/SDL. Corretto anche il formato (`%s` mancante) che il merge aveva
     lasciato: niente warning con `-Wall -Wextra`.

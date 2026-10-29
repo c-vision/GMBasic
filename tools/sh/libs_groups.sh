@@ -84,7 +84,7 @@ libs_group_pick() {
       dev)
         # PAYLOAD per COMPILARE: header di terze parti (`include/…`) e le nostre statiche
         # (`lib/*.a`). Il nome è il PATH RELATIVO nella cache; l'asset è piatto con `/` → `__`.
-        # Direttiva 2026-10-29: si compila senza Homebrew, scaricando questo gruppo.
+        # Direttiva 2026-10-29: si compila senza dipendenze di sistema, scaricando questo gruppo.
         case "$f" in
           include/*|lib/*.a|lib/*.dylib) echo "$f";;
         esac;;
