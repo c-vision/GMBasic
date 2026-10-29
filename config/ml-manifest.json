@@ -1,0 +1,111 @@
+{
+  "version": "0.1.0",
+  "cacheDir": "~/.gmbasic/ml",
+  "comment": "Librerie runtime ML per RID. source: 'build'=host libgmb_torch (da Resources/libs/<rid>), 'local'=libtorch da un torch locale (GMB_TORCH_LOCAL o venv ~/ai), 'url'=download ufficiale pytorch.org (da popolare con URL+sha256 verificati). SHA256 ricalcolato a ogni caricamento.",
+  "runtimes": {
+    "osx-arm64": {
+      "torchVersion": "2.13.0",
+      "device": "cpu",
+      "archive": {
+        "url": "https://download.pytorch.org/libtorch/cpu/libtorch-macos-arm64-2.13.0.zip",
+        "libDir": "libtorch/lib"
+      },
+      "files": [
+        {
+          "name": "libgmb_torch.dylib",
+          "sha256": "5ad253f4fc62c988320b7ad48845e345dbc27dfc3f2fb2b3be66fd5e47d7901f",
+          "size": 418976,
+          "source": "build"
+        },
+        {
+          "name": "libgmb_torch_loader.dylib",
+          "sha256": "c2bcf8e89492851f3d151c8eba1c510304a924ec4d1bc9ac9ab629a82ca2e3ee",
+          "size": 72808,
+          "source": "build"
+        },
+        {
+          "name": "libtorch_cpu.dylib",
+          "sha256": "f1584a65a2a09b5ddbe90a4e195ba824087b430a9f21cb1df9b8894177b99987",
+          "size": 337911904,
+          "source": "archive"
+        },
+        {
+          "name": "libc10.dylib",
+          "sha256": "5db5749503cd842562a666510a72fa127dedd3a0046784760fdaeee9c562f23b",
+          "size": 1102704,
+          "source": "archive"
+        },
+        {
+          "name": "libomp.dylib",
+          "sha256": "6256bee09e93c28d71c65711cc69224d69994c6965648b628b70a22772fe98d4",
+          "size": 856096,
+          "source": "archive"
+        },
+        {
+          "name": "libtorch.dylib",
+          "sha256": "c9d126afd218772f9cd17387f79eaf117cdf15d89d5a0b6231c03c9a43ace910",
+          "size": 16752,
+          "source": "archive"
+        }
+      ]
+    },
+    "osx-x64": {
+      "torchVersion": "2.13.0",
+      "device": "cpu",
+      "files": [
+        {
+          "name": "libgmb_torch.dylib",
+          "sha256": "",
+          "size": 0,
+          "source": "build"
+        }
+      ]
+    },
+    "linux-x64": {
+      "torchVersion": "2.13.0",
+      "device": "cpu",
+      "archive": {
+        "url": "https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-2.13.0%2Bcpu.zip",
+        "libDir": "libtorch/lib",
+        "extractAll": true
+      },
+      "files": [
+        {
+          "name": "libgmb_torch.so",
+          "sha256": "",
+          "size": 0,
+          "source": "build"
+        }
+      ]
+    },
+    "linux-arm64": {
+      "torchVersion": "2.13.0",
+      "device": "cpu",
+      "files": [
+        {
+          "name": "libgmb_torch.so",
+          "sha256": "",
+          "size": 0,
+          "source": "build"
+        }
+      ]
+    },
+    "win-x64": {
+      "torchVersion": "2.13.0",
+      "device": "cpu",
+      "archive": {
+        "url": "https://download.pytorch.org/libtorch/cpu/libtorch-win-shared-with-deps-2.13.0%2Bcpu.zip",
+        "libDir": "libtorch/lib",
+        "extractAll": true
+      },
+      "files": [
+        {
+          "name": "gmb_torch.dll",
+          "sha256": "",
+          "size": 0,
+          "source": "build"
+        }
+      ]
+    }
+  }
+}
