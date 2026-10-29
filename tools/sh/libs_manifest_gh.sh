@@ -328,13 +328,26 @@ do_build() {
     exit 1
   fi
 
-  # manifest: merge (altri RID restano)
+  # manifest: merge per GRUPPO (gli altri RID restano, e restano anche i gruppi NON ricostruiti).
+  # Prima si sostituiva l'intero oggetto del RID: con un build parziale (`--groups ffi`, quello che
+  # usa `tools/sh/gmb_lib.sh publish`) il RID perdeva runtime/dev/llmmotor/torch → indice mutilato
+  # in silenzio (rischio reale: 534 voci cancellate pubblicando una sola lib).
   [ -f "$MANIFEST" ] || echo '{"version":"0","cacheDir":"~/.gmbasic/libs","rids":{}}' > "$MANIFEST"
-  local tmpm; tmpm="$(mktemp)"
-  jq --arg rid "$RID" --arg v "$(date +%Y.%m.%d)" --slurpfile n "$work/rid.json" '
+  local tmpm built_json; tmpm="$(mktemp)"
+  built_json="$(jq -cn --arg g "$GROUP_LIST" '$g | split(",")')"
+  jq --arg rid "$RID" --arg v "$(date +%Y.%m.%d)" --argjson built "$built_json" \
+     --slurpfile n "$work/rid.json" '
       .version = $v
     | .cacheDir = "~/.gmbasic/libs"
-    | .rids = ((.rids // {}) + {($rid): $n[0]})' "$MANIFEST" > "$tmpm" && mv "$tmpm" "$MANIFEST"
+    | (.rids // {}) as $rids
+    | ($rids[$rid] // {}) as $old
+    | ($built | map({(.): true}) | add // {}) as $b
+    | .rids = ($rids + {($rid): {
+          groups: ((($old.groups // {}) + (($n[0].groups) // {}))),
+          # i file dei gruppi RICOSTRUITI si rimpiazzano (una lib può essere SPARITA dalla
+          # release); quelli degli altri gruppi restano invariati.
+          files: ( ( (($old.files) // {}) | with_entries(select(((.value.group) // "") as $g | ($b[$g] // false) | not)) )
+                   + (($n[0].files) // {}) ) } })' "$MANIFEST" > "$tmpm" && mv "$tmpm" "$MANIFEST"
   # La copia SPEDITA con l'app non si scrive qui: la build la genera da questo canonico
   # (`REPL.csproj` → `<exe>/config/libs-manifest.json`). Un solo file versionato in `shared/settings/`.
   echo "manifest: $MANIFEST (RID $RID, $(jq -r --arg r "$RID" '.rids[$r].files|length' "$MANIFEST") file totali)"
