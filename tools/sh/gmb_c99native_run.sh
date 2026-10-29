@@ -249,11 +249,15 @@ emit_program_bundle() { # $1 = eseguibile
   local out; out="$(cd "$(dirname "$exe")" && pwd)"
   local n=0
   local shared="$ROOT/../shared/settings"
-  if [ -f "$shared/system.settings.json" ]; then
-    cp -f "$shared/system.settings.json" "$out/system.settings.json" && n=$((n+1))
-  fi
-  if [ -f "$DIR/app.settings.json" ]; then
-    cp -f "$DIR/app.settings.json" "$out/app.settings.json" && n=$((n+1))
+  # SETTINGS MINIMI: si distribuisce SOLO `app.settings.json`, con le sezioni che il runtime
+  # legge (paths/consoleConfiguration/engine) prese dai settings condivisi e sovrascritte da
+  # quelle del programma. `system.settings.json` NON si distribuisce: contiene `compiler`,
+  # `importFolders`, `defaultNamespaces`… roba del COMPILATORE, non del programma.
+  if [ -x "$FETCH" ] || command -v python3 >/dev/null 2>&1; then
+    python3 "$TOOLS_DIR/../data/settings_bundle.py" \
+      --system "$shared/system.settings.json" \
+      --app "$DIR/app.settings.json" \
+      --out "$out/app.settings.json" >/dev/null 2>&1 && n=$((n+1))
   fi
   local res="$ROOT/../Resources"
   if [ -d "$res" ]; then
