@@ -57,6 +57,14 @@ ALLOW_OVER_LIMIT=(
     "common/IlBackendCodegen/Partial/IlProgramCompiler.Builtins.cs"
     "native/gmb_compiler_c/src/compiler/gmb_compiler.c"
     "native/gmb_vm_c/gmb_gpm.c"
+    # ── aggiunte 2026-10-29 (gate reso onesto dopo lo split di gmb_vm_tui.c) ──────────────
+    # `gmb_builtin.c` è IL dispatcher dei builtin della VM/C (equivalente C di
+    # PCodeProcessor.Builtins.cs, già in elenco): la sua lunghezza è la somma degli handler per
+    # dominio, non un file monolitico da splittare alla cieca.
+    "native/gmb_vm_c/gmb_builtin.c"
+    # `gmb_syscall_db.c` è una TABELLA pura {codice, handler} (dati, zero logica): rientra
+    # nell'eccezione "file tabellari puri" come *tokenkind*.
+    "native/gmb_vm_c/gmb_syscall_db.c"
 )
 
 # Elenco esteso dei file di dispatch/logica dei 4 backend. Quando un file viene
