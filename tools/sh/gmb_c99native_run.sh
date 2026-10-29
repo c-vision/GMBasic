@@ -238,10 +238,41 @@ $CC_BIN $CF $CCFIRST -Wl,-dead_strip_dylibs -Wl,-rpath,@loader_path -Wl,-rpath,"
   "$LIBS_CACHE/liblzma.5.dylib" "$LIBS_CACHE/liblz4.1.10.0.dylib" "$LIBS_CACHE/libMoltenVK.dylib" \
   -L"$LLMTOKEN_DIR" -lllmtoken -Wl,-rpath,"$LLMTOKEN_DIR" -lz
 fi
+# ── BUNDLE: il compilato si distribuisce SENZA compilatore ────────────────────────────────────
+# Accanto all'eseguibile finiscono i file che gli servono a girare da solo, su una macchina dove
+# non esistono né il repo né `shared/settings/`: i settings (`system.settings.json`), l'override
+# dell'applicazione (`app.settings.json`, preso accanto al `.bas`) e gli asset (`Resources/`:
+# font e sprite). Vale per OGNI build — anche quella senza librerie: le librerie sono opzionali,
+# settings e font no. Il runtime li cerca PRIMA nella cartella dell'eseguibile.
+emit_program_bundle() { # $1 = eseguibile
+  local exe="$1"; [ -f "$exe" ] || return 0
+  local out; out="$(cd "$(dirname "$exe")" && pwd)"
+  local n=0
+  local shared="$ROOT/../shared/settings"
+  if [ -f "$shared/system.settings.json" ]; then
+    cp -f "$shared/system.settings.json" "$out/system.settings.json" && n=$((n+1))
+  fi
+  if [ -f "$DIR/app.settings.json" ]; then
+    cp -f "$DIR/app.settings.json" "$out/app.settings.json" && n=$((n+1))
+  fi
+  local res="$ROOT/../Resources"
+  if [ -d "$res" ]; then
+    mkdir -p "$out/Resources"
+    # `cp -p` non va: vogliamo il contenuto, non i timestamp del repo (evita churn inutile).
+    for _f in "$res"/*; do
+      [ -f "$_f" ] || continue
+      cmp -s "$_f" "$out/Resources/$(basename "$_f")" || { cp -f "$_f" "$out/Resources/"; n=$((n+1)); }
+    done
+  fi
+  [ "$n" -gt 0 ] && echo "[c99native] bundle -> $out ($n file: settings + app.settings + Resources)"
+  return 0
+}
+
 # `<exe>.libs.txt` accanto all'eseguibile: le librerie del manifest da cui DIPENDE (lette dal
 # binario prodotto). Serve al runtime C (`gmb_ffi_dl` → `gmb_libs_autoensure`) per scaricare da
 # solo ciò che manca nella cache, senza elenchi hardcoded né caricare tutto il gruppo.
 if [ -f "$OUTBIN" ]; then
+  emit_program_bundle "$OUTBIN"
   emit_exe_libs "$OUTBIN" "${OUTBIN%.dylib}.libs.txt" 2>/dev/null || true
   [ -s "${OUTBIN%.dylib}.libs.txt" ] && echo "[c99native] libs.txt -> ${OUTBIN%.dylib}.libs.txt ($(wc -l < "${OUTBIN%.dylib}.libs.txt" | tr -d ' ') lib)"
 fi
