@@ -75,15 +75,24 @@ lzma, pcre2, openssl, freetype, SDL2, SDL2_ttf. Con `-I <triple>/include` il run
 | `support` (SDL/OpenSSL/curl/…) | ❌ | terze parti: servono i loro sorgenti compilati per arm64-windows (vcpkg/MSVC o zig con i rispettivi build) |
 | `runtime`/`core` | ✅ **costruito** | **310/310** file compilano (incluso `gmb_gfx_vulkan.c`, previa generazione di `gmb_gfx_spirv.h` dai `.spv`). Build CMake completa per **win-arm64 e win-x64**: `libgmb_runtime.a` 17,7 MB + `libgmb_gfx.dll` 6,9 · `libgmb_pkg.dll` 9,3 · `libgmb_grep.dll` 9,2 · `libgmb_compress.dll` 7,9 · `libgmb_tray.dll` 0,2 · `libgmb_boot.dll` 0,2. `tools/c/build-windows.sh` fa tutto (toolchain, flag, librerie di sistema). |
 
-## Cosa resta (Windows)
+## Stato: completo
 
-Su 113 target del progetto, **104 si costruiscono** (runtime, gfx, pkg, grep, compress, tray,
-boot + selfcheck). I 9 mancanti non sono del runtime:
+**111 / 111 target costruiti, `rc=0`, su win-arm64 e win-x64** (`make -k` completo).
 
-| target | causa |
+| | |
 |---|---|
-| `libgmb_ai_llm.dll`, `gmb_agents_selfcheck`, `gmb_community_db_selfcheck` | le DLL di **LLMEnv** (`llmtoken`, `llmcodec`, …) sono `add_library(... SHARED)` **senza** `__declspec(dllexport)`: su macOS esportano tutto, su Windows esportano 0 simboli (verificato: `llmtoken.dll` espone solo i 78 di cJSON). Serve una `.def`/`WINDOWS_EXPORT_ALL_SYMBOLS` **in LLMEnv**. |
-| `llmtoken_*_selfcheck` | stessi simboli (test del repo LLMEnv) |
-| `gmb_net_http_selfcheck` | usa `fork()` POSIX puro (un test che lancia un server) |
+| runtime | `libgmb_runtime.a` 17,7 MB |
+| DLL | `gmb_gfx` 6,9 · `gmb_pkg` 9,3 · `gmb_grep` 9,2 · `gmb_compress` 7,9 · `gmb_tray` 0,2 · `gmb_boot` 0,2 · `gmb_ai_llm` 1,0 MB |
+| selfcheck | tutti compilano e linkano |
+| Vulkan | `gmb_gfx_vulkan.c` compila (header SPIR-V generato dai `.spv`); present Vulkan resta opt-in |
 
-Nessuno di questi blocca runtime/gfx/pkg: si costruiscono e linkano su entrambe le architetture.
+Due cose sono servite fuori dal runtime e sono documentate qui perché non sono ovvie:
+
+1. **cJSON su Windows**: `cJSON.h` definisce da solo `CJSON_EXPORT_SYMBOLS` e ogni funzione
+   diventa `__declspec(dllexport)`, che l'oggetto traduce in `.drectve` con `-export:`.
+   Con lld quelle direttive rendono ESPLICITA la lista export: la DLL esporta **solo**
+   cJSON. Misurato: `llmtoken.dll` esportava 78 simboli (tutti cJSON, zero `llmtoken_*`).
+   Fix in LLMEnv: `CJSON_HIDE_SYMBOLS` sul target cjson → 193 export.
+2. **`fork()` non esiste**: il selfcheck HTTP ora usa un thread; `posix_spawn` c'è
+   (`shared/include/win32/spawn.h`) ma `fork` no — se serve, si riscrive come thread o
+   processo.
