@@ -1,0 +1,18 @@
+{
+  "backend": "C99Native",
+  "superficie": "GMB_STMT_* (statement linguaggio, header gmb_ast.h)",
+  "file_emit": "native/gmb_c99native/src/gmb_c99_emit.c",
+  "totale": 219,
+  "implementate": 214,
+  "non_coperte": 0,
+  "percentuale": 97.7,
+  "non_coperte_lista": [],
+  "correttamente_assenti": 5,
+  "correttamente_assenti_lista": [
+    "CATCH",
+    "FINALLY",
+    "LOOP",
+    "NEXT",
+    "WEND"
+  ]
+}
