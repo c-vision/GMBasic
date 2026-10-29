@@ -219,11 +219,20 @@ emit_program_bundle() { # $1 = eseguibile
   # legge (paths/consoleConfiguration/engine) prese dai settings condivisi e sovrascritte da
   # quelle del programma. `system.settings.json` NON si distribuisce: contiene `compiler`,
   # `importFolders`, `defaultNamespaces`… roba del COMPILATORE, non del programma.
-  if [ -x "$FETCH" ] || command -v python3 >/dev/null 2>&1; then
-    python3 "$TOOLS_DIR/../data/settings_bundle.py" \
-      --system "$shared/system.settings.json" \
-      --app "$DIR/app.settings.json" \
-      --out "$out/app.settings.json" >/dev/null 2>&1 && n=$((n+1))
+  # Settings minimi: UNA regola (CommonLib/ProgramBundle.cs, RuntimeSections) implementata in
+  # BASIC — niente Python. Il vecchio tools/data/settings_bundle.py usava `dict | None`
+  # (Python 3.10+): su python3 3.9 falliva in SILENZIO (stdout/stderr a /dev/null) e
+  # l'eseguibile partiva SENZA settings. Il .bas non ha quel vincolo di versione.
+  bundle_tool="$TOOLS_DIR/../basic/settings_bundle.bas"
+  if [ -f "$bundle_tool" ]; then
+    if command -v gmb >/dev/null 2>&1; then
+      gmb "$bundle_tool" --system "$shared/system.settings.json" \
+        --app "$DIR/app.settings.json" --out "$out/app.settings.json" >/dev/null && n=$((n+1))
+    elif [ -f "$ROOT/../GMBasicSharp/test_ilrun/bin/Debug/net10.0/test_ilrun.dll" ]; then
+      dotnet "$ROOT/../GMBasicSharp/test_ilrun/bin/Debug/net10.0/test_ilrun.dll" --engine=il \
+        "$bundle_tool" --system "$shared/system.settings.json" \
+        --app "$DIR/app.settings.json" --out "$out/app.settings.json" >/dev/null && n=$((n+1))
+    fi
   fi
   local res="$ROOT/../Resources"
   if [ -d "$res" ]; then
