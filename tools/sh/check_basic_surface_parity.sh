@@ -4,6 +4,8 @@
 # delle 4 gambe (IL, PCode, VM/C, C99Native) e verifica i parametri con i MiniTest.
 set -u
 ROOT="$(cd "$(dirname "$0")/../../GMBasicSharp" && pwd)"
+# I TOOL vivono nella radice del MONOREPO (`tools/`), non più in GMBasic/tools.
+MONO="$(cd "$(dirname "$0")/../.." && pwd)"
 GB="$(cd "$ROOT/.." && pwd)/GMBasic"
 export SDL_VIDEODRIVER=dummy
 export DYLD_LIBRARY_PATH="$HOME/.gmbasic/libs/osx-arm64:$GB/build/libs/osx-arm64"
@@ -28,7 +30,7 @@ parity "print_paren_expr_sep" "$GB/../shared/minitests/constructs/print_paren_ex
 parity "named_tuple_field_access" "$GB/../shared/minitests/types/named_tuple_field_access.bas"
 parity "OperatorsDoEventsDemo" "$GB/../shared/samples/Community/Types/OperatorsDoEventsDemo.bas"
 # Exit code: FUNCTION Main() AS INTEGER -> 7 su tutte le gambe.
-F="$ROOT/tools/fixtures/exitcode_main.bas"
+F="$MONO/tools/fixtures/exitcode_main.bas"
 chk() { local n="$1" got="$2"; [ "$got" = 7 ] && echo "  PASS $n exit=7" || { echo "  FAIL $n exit=$got"; FAIL=1; }; }
 dotnet "$ROOT/test_ilrun/bin/Debug/net10.0/test_ilrun.dll" --engine=il "$F" >/dev/null 2>&1; chk IL $?
 dotnet "$ROOT/test_ilrun/bin/Debug/net10.0/test_ilrun.dll" --engine=pcode "$F" >/dev/null 2>&1; chk PCode $?

@@ -3,8 +3,10 @@
 # processo sulle 4 gambe: IL, PCode, VM/C (chunk C#), C99Native. Atteso: 7.
 set -u
 ROOT="$(cd "$(dirname "$0")/../../GMBasicSharp" && pwd)"
+# I TOOL vivono nella radice del MONOREPO (`tools/`), non più in GMBasic/tools.
+MONO="$(cd "$(dirname "$0")/../.." && pwd)"
 GB="$(cd "$ROOT/.." && pwd)/GMBasic"
-F="$ROOT/tools/fixtures/exitcode_main.bas"
+F="$MONO/tools/fixtures/exitcode_main.bas"
 export SDL_VIDEODRIVER=dummy
 export DYLD_LIBRARY_PATH="$HOME/.gmbasic/libs/osx-arm64:$GB/build/libs/osx-arm64"
 FAIL=0
