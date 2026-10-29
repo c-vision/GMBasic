@@ -17,7 +17,8 @@
 #
 # USO
 #   tools/sh/libs_build_container.sh <gruppo> [opzioni]
-#     gruppo: core (default) | engine | llmmotor   (engine/llmmotor richiedono LLMEnv montato)
+#     gruppo: runtime (default consigliato) | core | engine | llmmotor | support
+#             (engine/llmmotor richiedono LLMEnv montato)
 #     --rid linux-arm64|linux-x64   default: linux-<arch della macchina>
 #     --out DIR                     default: $HOME/gmb-bundles/<rid>
 #     --image IMG                   default: ubuntu:22.04 (glibc 2.35: compatibile con distro 2022+)
@@ -54,7 +55,9 @@ while [ $# -gt 0 ]; do
     *) echo "opzione sconosciuta: $1" >&2; exit 2;;
   esac
 done
-case "$GROUP" in core|engine|llmmotor|support) ;; *) echo "gruppo non valido: $GROUP" >&2; exit 2;; esac
+# `runtime` è il gruppo CHIUSO che serve a ESEGUIRE (boot+core+engine+support): la pipeline
+# `libs_build_release.sh` lo conosce, questo wrapper era rimasto ai gruppi storici.
+case "$GROUP" in runtime|runtime-core|boot|core|engine|llmmotor|support) ;; *) echo "gruppo non valido: $GROUP" >&2; exit 2;; esac
 
 if [ -z "$RID" ]; then
   case "$(uname -m)" in
