@@ -15,6 +15,7 @@
 #   lzma pcre2                     — CMake, cross-toolchain generata qui
 #   openssl                        — Configure + perl (statica, no-shared, no-asm)
 #   freetype sdl2 sdl2_ttf         — catena grafica (CMake; freetype usa zlib+brotli di $OUT)
+#   curl                           — HTTP client (OpenSSL/zlib/brotli/zstd di $OUT)
 #
 # USO:
 #   tools/c/build-deps.sh --all-targets [--out-base DIR] [lib...]
@@ -40,7 +41,7 @@ while [ $# -gt 0 ]; do
     *)             LIBS="$LIBS $1"; shift ;;
   esac
 done
-[ -n "$LIBS" ] || LIBS="zlib sqlite3 zstd lz4 brotli lzma pcre2 openssl freetype sdl2 sdl2_ttf"
+[ -n "$LIBS" ] || LIBS="zlib sqlite3 zstd lz4 brotli lzma pcre2 openssl freetype sdl2 sdl2_ttf curl"
 [ -x "$ZIG_BIN" ] || { echo "zig non trovato: $ZIG_BIN (ZIG=... )" >&2; exit 2; }
 SDK="$(xcrun --sdk macosx --show-sdk-path)"
 mkdir -p "$SRC_BASE"
@@ -133,8 +134,11 @@ build_zstd() {
   fetch "https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz" "$SRC_BASE/zstd.tar.gz"
   [ -d "$SRC_BASE/zstd-1.5.7" ] || untar "$SRC_BASE/zstd.tar.gz" "$SRC_BASE"
   local d="$SRC_BASE/zstd-1.5.7/lib" o="$WORK/o_zstd"; mkdir -p "$o"; local objs=()
-  for f in "$d"/common/*.c "$d"/compress/*.c "$d"/decompress/*.c "$d"/dictBuilder/*.c; do
-    local b; b="$(basename "$f" .c)"
+  # NB: i .S ci sono solo su x86-64 (HUF_decompress*_asm_loop) e sono OBBLIGATORI: senza,
+  # il C compilato per x86_64 li referenzia e il link si ferma su "undefined symbol
+  # HUF_decompress4X2_usingDTable_internal_fast_asm_loop".
+  for f in "$d"/common/*.c "$d"/compress/*.c "$d"/decompress/*.c "$d"/dictBuilder/*.c "$d"/decompress/*.S; do
+    local b; b="$(basename "${f%.*}")"
     $CC_CMD -O2 -I"$d" -I"$d/common" -I"$d/legacy" -c -o "$o/$b.o" "$f" 2>/dev/null || true
     [ -f "$o/$b.o" ] && objs+=("$o/$b.o")
   done
@@ -317,6 +321,29 @@ build_sdl2_ttf() {
   cp "$b"/include-config-*/SDL2_ttf/*.h "$OUT/include/SDL2/" 2>/dev/null || true
 }
 
+# curl: HTTP client del runtime (gmb_net_http_*). Statico, con OpenSSL/zlib/brotli/zstd di $OUT.
+build_curl() {
+  echo "  [curl 8.11.0 (cmake)]"
+  fetch "https://github.com/curl/curl/releases/download/curl-8_11_0/curl-8.11.0.tar.gz" "$SRC_BASE/curl.tar.gz"
+  [ -d "$SRC_BASE/curl-8.11.0" ] || untar "$SRC_BASE/curl.tar.gz" "$SRC_BASE"
+  local b="$WORK/b_curl"; rm -rf "$b"; mkdir -p "$b"
+  ( cd "$b" && cmake -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN" -DCMAKE_BUILD_TYPE=Release \
+      -DBUILD_SHARED_LIBS=OFF -DBUILD_CURL_EXE=OFF -DBUILD_EXAMPLES=OFF -DBUILD_TESTING=OFF \
+      -DCURL_USE_OPENSSL=ON -DOPENSSL_ROOT_DIR="$OUT" -DOPENSSL_INCLUDE_DIR="$OUT/include" \
+      -DCURL_ZLIB=ON -DZLIB_INCLUDE_DIR="$OUT/include" -DZLIB_LIBRARY="$OUT/lib/libz.a" \
+      -DCURL_BROTLI=ON -DCURL_ZSTD=ON -DCURL_USE_LIBPSL=OFF -DCURL_USE_LIBSSH2=OFF \
+      -DUSE_NGHTTP2=OFF -DUSE_LIBIDN2=OFF -DCURL_DISABLE_LDAP=ON -DCMAKE_PREFIX_PATH="$OUT" \
+      "$SRC_BASE/curl-8.11.0" > "$b/cfg.log" 2>&1 \
+      && make -j8 libcurl_static > "$b/build.log" 2>&1 ) || { echo "    curl FALLITA ($b/*.log)" >&2; return 1; }
+  local a=""
+  for cand in "$b/lib/libcurl.a" "$b/libcurl.a" "$b/lib/libcurl-d.a"; do
+    [ -f "$cand" ] && { a="$cand"; break; }
+  done
+  [ -n "$a" ] || { echo "    curl: archivio non trovato in $b" >&2; return 1; }
+  cp "$a" "$OUT/lib/libcurl.a"; cp "$a" "$OUT/lib/curl.lib" 2>/dev/null || true
+  mkdir -p "$OUT/include/curl"; cp "$SRC_BASE"/curl-8.11.0/include/curl/*.h "$OUT/include/curl/"; cp "$b"/include/curl/curl.h "$OUT/include/curl/" 2>/dev/null || true
+}
+
 run_for() { # $1=triple $2=out
   prepare "$1"
   TARGET="$1"
@@ -335,6 +362,7 @@ run_for() { # $1=triple $2=out
       freetype) build_freetype ;;
       sdl2)    build_sdl2 ;;
       sdl2_ttf) build_sdl2_ttf ;;
+      curl)    build_curl ;;
       *)       echo "  [$l] sconosciuta" >&2; continue ;;
     esac
   done

@@ -52,8 +52,12 @@ tools/sh/libs_index_publish.sh --publish
 ## Terze parti per win-arm64
 
 ```bash
-# tutte le terze parti per i 4 target (win-arm64, win-x64, osx-arm64, osx-x64)
+# 1. terze parti (una volta per target): zlib sqlite3 zstd lz4 brotli lzma pcre2 openssl
+#    freetype sdl2 sdl2_ttf curl
 tools/c/build-deps.sh --all-targets
+# 2. runtime C: toolchain CMake + build (libgmb_runtime.a + 6 DLL)
+tools/c/build-windows.sh                     # win-arm64
+tools/c/build-windows.sh --rid win-x64 --triple x86_64-windows-gnu
 # un target solo / una libreria sola
 tools/c/build-deps.sh --target aarch64-windows-gnu openssl sdl2 sdl2_ttf
 ```
@@ -69,4 +73,4 @@ lzma, pcre2, openssl, freetype, SDL2, SDL2_ttf. Con `-I <triple>/include` il run
 | protobuf, amqp, grpc, kafka, mqtt, nats | ✅ compilano, caricano, `available=1` | pubblicate su `ffi-v1` |
 | media | ❌ | richiede `dlfcn`/`dirent`/`pwd`/`arm_neon` (port a sé) |
 | `support` (SDL/OpenSSL/curl/…) | ❌ | terze parti: servono i loro sorgenti compilati per arm64-windows (vcpkg/MSVC o zig con i rispettivi build) |
-| `runtime`/`core` | ✅ **compila** | **309/310** file di `gmb_runtime_c` compilano per win-arm64 **e** win-x64 (e per osx-arm64/osx-x64): 321 oggetti → `libgmb_runtime.a` (14 MB). L'escluso è `gmb_gfx_vulkan.c` (header SPIR-V generato dal build, manca anche su macOS). Al link restano i simboli dei PROGETTI FRATELLI (gmb_chart, gmb_doc_c, gmb_compiler_c) e delle lib LLMEnv (llmtoken/llmdesc/asr), più i deboli opzionali (`gmb_net_http_request`, `gmb_cua_browser_*`, `gmb_gfx_input_*`, `gmb_sql_iface`). |
+| `runtime`/`core` | ✅ **costruito** | **310/310** file compilano (incluso `gmb_gfx_vulkan.c`, previa generazione di `gmb_gfx_spirv.h` dai `.spv`). Build CMake completa per **win-arm64 e win-x64**: `libgmb_runtime.a` 17,7 MB + `libgmb_gfx.dll` 6,9 · `libgmb_pkg.dll` 9,3 · `libgmb_grep.dll` 9,2 · `libgmb_compress.dll` 7,9 · `libgmb_tray.dll` 0,2 · `libgmb_boot.dll` 0,2. `tools/c/build-windows.sh` fa tutto (toolchain, flag, librerie di sistema). |
