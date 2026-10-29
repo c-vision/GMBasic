@@ -119,14 +119,18 @@ watchdog() { # <secondi> <cmd...>  → status del comando, o 124 se scade
   wait "$p"
 }
 
-if [ "$RUN_CS" = "1" ] && command -v dotnet >/dev/null 2>&1 \
-   && [ -f "$ROOT/tests/GMBASIC.IlBackend.Tests/VmHostFreshnessTests.cs" ]; then
-  CS_PROJ="$ROOT/tests/GMBASIC.IlBackend.Tests/GMBASIC.IlBackend.Tests.csproj"
-  CS_DLL="$ROOT/tests/GMBASIC.IlBackend.Tests/bin/Debug/net10.0/GMBASIC.IlBackend.Tests.dll"
+# Percorsi dei test C#: sono in `GMBasicSharp/tests-mixed/` (non più `GMBasic/tests/`, dove il
+# tool li cercava prima: la condizione era sempre falsa e il caso C# veniva SALTATO in silenzio).
+CS_TESTS="$MONO/GMBasicSharp/tests-mixed"
+CS_HELPER="$CS_TESTS/Shared/VmHostFreshness.cs"
+CS_TESTFILE="$CS_TESTS/GMBASIC.IlBackend.Tests/VmHostFreshnessTests.cs"
+if [ "$RUN_CS" = "1" ] && command -v dotnet >/dev/null 2>&1 && [ -f "$CS_TESTFILE" ]; then
+  CS_PROJ="$CS_TESTS/GMBASIC.IlBackend.Tests/GMBASIC.IlBackend.Tests.csproj"
+  CS_DLL="$CS_TESTS/GMBASIC.IlBackend.Tests/bin/Debug/net10.0/GMBASIC.IlBackend.Tests.dll"
   need_build=0
   if [ ! -f "$CS_DLL" ]; then need_build=1; else
-    for s in tests/Shared/VmHostFreshness.cs tests/GMBASIC.IlBackend.Tests/VmHostFreshnessTests.cs; do
-      [ "$CS_DLL" -ot "$ROOT/$s" ] && need_build=1
+    for s in "$CS_HELPER" "$CS_TESTFILE"; do
+      [ "$CS_DLL" -ot "$s" ] && need_build=1
     done
   fi
   if [ "$need_build" = "1" ]; then
@@ -153,6 +157,17 @@ if [ "$RUN_CS" = "1" ] && command -v dotnet >/dev/null 2>&1 \
       echo "FAIL VmHostFreshness (xUnit)"; tail -15 "$WORK/cs.log" | sed 's/^/      | /'
       fail=$((fail+1))
     fi
+  fi
+elif [ "$RUN_CS" = "1" ]; then
+  # NON silenzioso (2026-10-29): la classe xUnit `VmHostFreshnessTests` non esiste più nel
+  # progetto. La garanzia anti-stale lato C# è coperta da `GMBasicSharp/test_vmrun/Program.cs`
+  # (`VmHostFreshness.Ensure(root)`): qui si dichiara lo SKIP, senza fingere un PASS.
+  if [ -f "$CS_HELPER" ]; then
+    echo "SKIP VmHostFreshness (xUnit): classe VmHostFreshnessTests assente"
+    echo "     (helper: $CS_HELPER · la garanzia C# è esercitata da GMBasicSharp/test_vmrun)"
+  else
+    echo "FAIL VmHostFreshness (xUnit): né la classe né l'helper esistono ($CS_TESTS)"
+    fail=$((fail+1))
   fi
 fi
 
