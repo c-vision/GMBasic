@@ -7,7 +7,7 @@ set -u
 ROOT="$(cd "$(dirname "$0")/../../GMBasicSharp" && pwd)"
 MONO="$(cd "$ROOT/.." && pwd)"
 GB="$MONO/GMBasic"
-FIX="$ROOT/tools/fixtures"
+FIX="$MONO/tools/fixtures"
 WHAT="${1:-tutti}"
 export SDL_VIDEODRIVER=dummy
 export GMB_FORM_AUTOKEY="${GMB_FORM_AUTOKEY:-0,ab;30,ENTER;60,25;90,ENTER}"
