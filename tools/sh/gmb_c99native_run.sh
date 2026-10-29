@@ -161,9 +161,17 @@ ASRLIB="$L/gmb_runtime_c_build/llmasr_build/libllm_asr.a"
 if [ "$MIN_LINK" = "1" ]; then
   # Link MINIMO: solo runtime minimo + chart (matrici) e le lib di sistema. Niente UI,
   # niente doc/agent/compiler: l'eseguibile che ne esce NON ha librerie esterne.
-  # niente TORCH_OBJS/JINJA_OBJ: tirano dentro gfx/UI (e un programma testuale non li usa)
+  # niente TORCH_OBJS/JINJA_OBJ: tirano dentro gfx/UI (e un programma testuale non li usa).
+  # LLMDESC: il runtime MINIMO include `gmb_abi.o` (forzato nel link da `gmb_paths.c` via
+  # `gmb_abi_link_anchor`) che usa `llmdesc_abi_*` e registra la policy ABI: senza questa
+  # statica il link minimo falliva SEMPRE ("_llmdesc_abi_locate non definito") e si ripiegava
+  # in silenzio sul lib-set completo — quindi nessun programma testuale usava davvero il minimo.
+  LLMDESC_LIB="$ROOT/native/gmb_runtime_c/build/llmdesc_build/libllmdesc.a"
+  [ -f "$LLMDESC_LIB" ] || LLMDESC_LIB="$ROOT/native/gmb_vm_c/build/gmb_runtime_c_build/llmdesc_build/libllmdesc.a"
+  [ -f "$LLMDESC_LIB" ] || LLMDESC_LIB=""
   $CC_BIN $CF $CCFIRST -Wl,-dead_strip_dylibs "$DIR/$CASE.o" -o "$OUTBIN" \
     "$RUNTIME_LIB" "$ROOT/native/gmb_runtime_c/build/gmb_chart_build/libgmb_chart.a" \
+    ${LLMDESC_LIB:+"$LLMDESC_LIB"} \
     -lpthread -lm -lz -lbz2 -lcurl -lcompression 2>/tmp/gmb_minlink.err || {
       echo "[c99native] link minimo fallito, uso il lib-set completo (vedi /tmp/gmb_minlink.err)" >&2
       MIN_LINK=0
