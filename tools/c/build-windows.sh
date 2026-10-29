@@ -80,7 +80,12 @@ printf '#!/bin/sh\nexec "%s" cc -target %s "$@"\n' "$ZIG_BIN" "$TRIPLE" > "$BUIL
 printf '#!/bin/sh\nexec "%s" ar "$@"\n'             "$ZIG_BIN"          > "$BUILD/ar.sh"
 printf '#!/bin/sh\nexec "%s" ar s "$@"\n'           "$ZIG_BIN"          > "$BUILD/ranlib.sh"
 printf '#!/bin/sh\nexec "%s" rc "$@"\n'             "$ZIG_BIN"          > "$BUILD/rc.sh"
-chmod +x "$BUILD/cc.sh" "$BUILD/ar.sh" "$BUILD/ranlib.sh" "$BUILD/rc.sh"
+# CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ha bisogno di leggere i simboli dagli oggetti: senza
+# CMAKE_OBJDUMP/CMAKE_DLLTOOL CMake non riesce e la shared lib esporta ZERO simboli.
+printf '#!/bin/sh\nexec "%s" objdump "$@"\n'       "$ZIG_BIN"          > "$BUILD/objdump.sh"
+printf '#!/bin/sh\nexec "%s" dlltool "$@"\n'       "$ZIG_BIN"          > "$BUILD/dlltool.sh"
+chmod +x "$BUILD/cc.sh" "$BUILD/ar.sh" "$BUILD/ranlib.sh" "$BUILD/rc.sh" \
+         "$BUILD/objdump.sh" "$BUILD/dlltool.sh"
 
 # Librerie di sistema Win32 usate dal runtime/grafica (dx/dinput/imm sono del present SDL).
 WIN_SYSTEM_LIBS="-lwinmm -lsetupapi -limm32 -ldinput8 -ldxguid -lole32 -loleaut32 -luuid \
@@ -95,12 +100,17 @@ set(CMAKE_C_COMPILER $BUILD/cc.sh)
 set(CMAKE_AR $BUILD/ar.sh)
 set(CMAKE_RANLIB $BUILD/ranlib.sh)
 set(CMAKE_RC_COMPILER $BUILD/rc.sh)
+set(CMAKE_OBJDUMP $BUILD/objdump.sh)
+set(CMAKE_DLLTOOL $BUILD/dlltool.sh)
 set(CMAKE_C_COMPILER_AR $BUILD/ar.sh)
 set(CMAKE_C_COMPILER_RANLIB $BUILD/ranlib.sh)
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
-set(CMAKE_C_FLAGS "-DPCRE2_STATIC -DCURL_STATICLIB -I$WINC -include $WINC/gmb_win32.h" CACHE STRING "" FORCE)
+# Le shared lib dei progetti (llmtoken/llmcodec/…) non hanno __declspec(dllexport): su macOS
+# esportano tutto, su Windows non esportano NULLA. CMake genera un .def con tutti i simboli.
+set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+set(CMAKE_C_FLAGS "-DPCRE2_STATIC -DCURL_STATICLIB -DSDL_MAIN_HANDLED -Wno-incompatible-pointer-types -Wno-int-conversion -I$WINC -include $WINC/gmb_win32.h" CACHE STRING "" FORCE)
 set(CMAKE_EXE_LINKER_FLAGS    "-L$LIBDIR $WIN_SYSTEM_LIBS" CACHE STRING "" FORCE)
-set(CMAKE_SHARED_LINKER_FLAGS "-L$LIBDIR $WIN_SYSTEM_LIBS" CACHE STRING "" FORCE)
+set(CMAKE_SHARED_LINKER_FLAGS "-L$LIBDIR -Wl,--export-all-symbols $WIN_SYSTEM_LIBS" CACHE STRING "" FORCE)
 set(CMAKE_PREFIX_PATH "$LIBDIR;$RID_LIBS;$HOME/gmb-deps/$TRIPLE")
 EOF
 
