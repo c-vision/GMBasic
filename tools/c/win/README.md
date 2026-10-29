@@ -49,6 +49,16 @@ tools/sh/libs_manifest_gh.sh build --rid win-arm64 --groups ffi
 tools/sh/libs_index_publish.sh --publish
 ```
 
+## Terze parti per win-arm64
+
+```bash
+tools/c/win/build-deps.sh              # zlib + sqlite3 in ~/gmb-winbuild/deps/win-arm64
+```
+
+Con `-I deps/include` i file del runtime che usano zlib/sqlite compilano (273/310). Le altre
+(zstd, lz4, lzma, brotli, pcre2, openssl, SDL2) vanno aggiunte una alla volta: ognuna sblocca i
+propri file e riduce i simboli indefiniti al link.
+
 ## Stato
 
 | libreria | win-arm64 | nota |
@@ -56,4 +66,4 @@ tools/sh/libs_index_publish.sh --publish
 | protobuf, amqp, grpc, kafka, mqtt, nats | ✅ compilano, caricano, `available=1` | pubblicate su `ffi-v1` |
 | media | ❌ | richiede `dlfcn`/`dirent`/`pwd`/`arm_neon` (port a sé) |
 | `support` (SDL/OpenSSL/curl/…) | ❌ | terze parti: servono i loro sorgenti compilati per arm64-windows (vcpkg/MSVC o zig con i rispettivi build) |
-| `runtime`/`core` | 🟡 **in corso** | 271/310 file di `gmb_runtime_c` **compilano** per win-arm64 con `shared/include/win32` (dirent, dlfcn, poll, stat/time/strcasestr). Restano 39 file che dipendono da terze parti non ancora costruite per arm64-windows: zlib/zstd/brotli/lzma/lz4 (`gmb_compress`), OpenSSL (`gmb_pkg_ecdsa/ed25519`, `gmb_ai_server`, `gmb_moestream`), pcre2 (`gmb_regex_extra`), SDL2/chart (`gmb_graphics_*`), Vulkan (`gmb_gfx_vulkan`), termios (TUI), sqlite3 (`gmb_parquet_vtab`, vtab SQL). Il link è bloccato da quei moduli: servono le loro librerie, oppure una build "core" con quelle feature disattivate. |
+| `runtime`/`core` | 🟡 **in corso** | 273/310 file di `gmb_runtime_c` **compilano** per win-arm64 con `shared/include/win32` (dirent, dlfcn, poll, stat/time/strcasestr). Restano 39 file che dipendono da terze parti non ancora costruite per arm64-windows: zlib/zstd/brotli/lzma/lz4 (`gmb_compress`), OpenSSL (`gmb_pkg_ecdsa/ed25519`, `gmb_ai_server`, `gmb_moestream`), pcre2 (`gmb_regex_extra`), SDL2/chart (`gmb_graphics_*`), Vulkan (`gmb_gfx_vulkan`), termios (TUI), sqlite3 (`gmb_parquet_vtab`, vtab SQL). Il link è bloccato da quei moduli: servono le loro librerie, oppure una build "core" con quelle feature disattivate. |
