@@ -136,13 +136,16 @@ if [ ! -x "$DRV" ] || [ "$DRV" -ot "$HOST_BUILD/libgmb_compiler_c.a" ] || \
 fi
 
 # incExtra/ext (stesso setup del gate C99)
-ZSTD_INC="/opt/homebrew/opt/zstd/include"; ZSTD_LIB="-L/opt/homebrew/opt/zstd/lib -lzstd"
+# Terze parti: SOLO dalla CACHE del RID (`gmb install --runtime-only` / `--dev`). Nessun path
+# del builder: renderebbe gli eseguibili dipendenti da una cartella che esiste solo qui.
+LIBS_CACHE="$HOME/.gmbasic/libs/osx-arm64"
+ZSTD_INC="$LIBS_CACHE/include"; ZSTD_LIB="-L$LIBS_CACHE -lzstd"
 EXT=" -lcurl -lz -lbz2 -lsqlite3 $ZSTD_LIB"
-if [ -d "/opt/homebrew/lib" ]; then EXT="$EXT -L/opt/homebrew/lib -lbrotlidec -lbrotlienc"; fi
-if [ -d "/opt/homebrew/opt/pcre2/lib" ]; then EXT="$EXT -L/opt/homebrew/opt/pcre2/lib -lpcre2-8"; fi
+if [ -f "$LIBS_CACHE/libbrotlidec.dylib" ]; then EXT="$EXT -L$LIBS_CACHE -lbrotlidec -lbrotlienc"; fi
+if [ -f "$LIBS_CACHE/libpcre2-8.dylib" ]; then EXT="$EXT -L$LIBS_CACHE -lpcre2-8"; fi
 INC_EXTRA="-I$ROOT/native/gmb_runtime_c/src"
-if [ -d "/opt/homebrew/include/SDL2" ]; then INC_EXTRA="$INC_EXTRA -I/opt/homebrew/include"; EXT="$EXT -L/opt/homebrew/lib -lSDL2 -lSDL2_ttf"; fi
-if [ -d "/opt/homebrew/opt/openssl@3/lib" ]; then EXT="$EXT -L/opt/homebrew/opt/openssl@3/lib -lcrypto -lssl -DHAVE_OPENSSL"; INC_EXTRA="$INC_EXTRA -I/opt/homebrew/opt/openssl@3/include"; fi
+if [ -d "$LIBS_CACHE/include/SDL2" ]; then INC_EXTRA="$INC_EXTRA -I$LIBS_CACHE/include"; EXT="$EXT -L$LIBS_CACHE -lSDL2 -lSDL2_ttf"; fi
+if [ -f "$LIBS_CACHE/libcrypto.dylib" ]; then EXT="$EXT -L$LIBS_CACHE -lcrypto -lssl -DHAVE_OPENSSL"; INC_EXTRA="$INC_EXTRA -I$LIBS_CACHE/include"; fi
 
 WORK="$(mktemp -d /tmp/minitests_c99native.XXXXXX)"
 trap 'rm -rf "$WORK"' EXIT
