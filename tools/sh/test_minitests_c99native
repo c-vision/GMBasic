@@ -169,7 +169,9 @@ RT_STAMP="$RT_CACHE_DIR/src.stamp"
 # Gli HEADER contano: prima la cache era invalidata solo dai .c, quindi una modifica a un header
 # (es. gmb_runtime.h, dove vive ogni prototipo gmb_*) lasciava in cache un runtime compilato con
 # le vecchie dichiarazioni → simboli/ABI stantii in silenzio. Sono le -I usate qui sotto.
-RT_HDR_DIRS="$ROOT/native/gmb_runtime_c/include $ROOT/native/gmb_runtime_c/src $ROOT/native/gmb_chart/include $ROOT/native/gmb_agent_runtime $ROOT/native/gmb_doc_c/include $ROOT/native/gmb_db_c/include $ROOT/native/gmb_torch/include $ROOT/native/gmb_tokenizer_bpe"
+# NB: `native/gmb_tokenizer_bpe` NON esiste più (tokenizer in LLMEnv/LLMToken, già in LLM_INC):
+# tenerlo qui non copriva nulla e lasciava fuori dallo STAMP gli header del tokenizer.
+RT_HDR_DIRS="$ROOT/native/gmb_runtime_c/include $ROOT/native/gmb_runtime_c/src $ROOT/native/gmb_chart/include $ROOT/native/gmb_agent_runtime $ROOT/native/gmb_doc_c/include $ROOT/native/gmb_db_c/include $ROOT/native/gmb_torch/include $LLMENV/LLMToken"
 RT_HDRS="$(find $RT_HDR_DIRS -type f -name '*.h' 2>/dev/null | tr '\n' ' ')"
 # STAMP = HASH DEL CONTENUTO (non mtime): una cache basata sui timestamp può servire codice che
 # nei sorgenti non esiste più — caso reale 2026-10-28: una stampa di debug `[GFX-LOAD] …`
@@ -186,7 +188,7 @@ else
   RT_O=0; OBJS=""
   for s in $RT_SRCS; do
     RT_O=$((RT_O+1))
-    cc -c "$s" -o "$WORK/rt_$RT_O.o" $INC_RT -I"$INC_CHART" -I"$ROOT/native/gmb_runtime_c/build" -I"$ROOT/native/gmb_agent_runtime" -I"$ROOT/native/gmb_doc_c/include" -I"$ROOT/native/gmb_db_c/include" -I"$ROOT/native/gmb_torch/include" -I"$ROOT/native/gmb_tokenizer_bpe" $LLM_INC -I"$ZSTD_INC" $CODEC_INC $INC_EXTRA -O2 -ffunction-sections -fdata-sections -w -ffp-contract=off -DHAVE_OPENSSL -DGMB_PARQUET_HAVE_ZSTD || exit 1
+    cc -c "$s" -o "$WORK/rt_$RT_O.o" $INC_RT -I"$INC_CHART" -I"$ROOT/native/gmb_runtime_c/build" -I"$ROOT/native/gmb_agent_runtime" -I"$ROOT/native/gmb_doc_c/include" -I"$ROOT/native/gmb_db_c/include" -I"$ROOT/native/gmb_torch/include" $LLM_INC -I"$ZSTD_INC" $CODEC_INC $INC_EXTRA -O2 -ffunction-sections -fdata-sections -w -ffp-contract=off -DHAVE_OPENSSL -DGMB_PARQUET_HAVE_ZSTD || exit 1
     OBJS="$OBJS $WORK/rt_$RT_O.o"
   done
   ar rcs "$RT_CACHE.tmp" $OBJS && mv "$RT_CACHE.tmp" "$RT_CACHE"
