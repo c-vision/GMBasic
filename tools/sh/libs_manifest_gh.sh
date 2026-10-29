@@ -133,11 +133,10 @@ latest_tag() {
   for t in $tags; do
     # il tag è valido per questo RID se ha l'archivio di gruppo OPPURE almeno un asset PER-FILE
     # (`<libreria>-<rid>.<ext>`): con il modello per-file l'archivio non esiste più.
-    if gh release view "$t" --repo "$REPO" --json assets 2>/dev/null \
-         | jq -e --arg a "gmb-$g-$RID.zip" --arg rid "$RID" '
-             (.assets | map(.name)) as $n
-             | ($n | index($a)) != null
-               or ($n | map(select(test("-" + $rid + "\\.[A-Za-z0-9.]+$"))) | length > 0)' \
+    if release_assets "$t" | jq -Rse --arg a "gmb-$g-$RID.zip" --arg rid "$RID" '
+         split("\n") | map(select(length > 0) | split("\t")[0]) as $n
+         | ($n | index($a)) != null
+           or ($n | map(select(test("-" + $rid + "\\.[A-Za-z0-9.]+$"))) | length > 0)' \
          >/dev/null 2>&1; then
       echo "$t"; return 0
     fi
@@ -147,10 +146,29 @@ latest_tag() {
 # ── asset PER-FILE della release per il RID: "asset<TAB>nomefile<TAB>sha256<TAB>size" ──────────
 # Formato del nome: <stem>-<rid>.<ext>  (libgmb_gfx-linux-arm64.so, libllama-linux-x64.so.0).
 # Il nome "vero" del file si ricostruisce togliendo "-<rid>" prima dell'estensione.
+# Asset di una release via GRAPHQL (name<TAB>size<TAB>digest), paginati.
+# Perché non `gh release view`: usa la REST API, che ha un limite orario basso e restituisce
+# "release not found" quando è esaurito — e il manifest veniva scritto MUTILATO in silenzio.
+release_assets() { # $1 = tag
+  gh api graphql --paginate -f query='
+    query($owner:String!,$repo:String!,$tag:String!,$endCursor:String){
+      repository(owner:$owner,name:$repo){
+        release(tagName:$tag){
+          releaseAssets(first:100, after:$endCursor){
+            pageInfo{ hasNextPage endCursor }
+            nodes{ name size digest }
+          }
+        }
+      }
+    }' -f owner="${REPO%%/*}" -f repo="${REPO##*/}" -f tag="$1" \
+    --jq '.data.repository.release.releaseAssets.nodes[] | [.name, (.size|tostring), (.digest // "")] | @tsv' 2>/dev/null
+}
+
 assets_perfile() {
   local tag="$1"
-  gh release view "$tag" --repo "$REPO" --json assets 2>/dev/null | jq -r --arg rid "$RID" '
-    .assets[]
+  release_assets "$tag" | jq -Rrs --arg rid "$RID" '
+    split("\n") | map(select(length > 0) | split("\t") | {name: .[0], size: (.[1]|tonumber?), digest: .[2]})
+    | .[]
     | .name as $n
     | (try ($n | capture("^(?<stem>.+)-" + $rid + "(?<ext>\\.[A-Za-z0-9.]+)$")) catch null) as $c
     | select($c != null)
@@ -222,9 +240,16 @@ do_build() {
   local files_jsonl="$work/files.jsonl"; : > "$files_jsonl"
   local g tag
 
+  # Un gruppo che NON si riesce a indicizzare è un ERRORE, non uno "salto": scrivere il manifest
+  # senza quel gruppo lo lascia mutilato (successo reale: rate-limit GitHub → i tre gruppi per-file
+  # spariti dall'indice e `gmb libs status` vuoto). Meglio non scrivere nulla.
+  local failed=0
   for g in ${GROUP_LIST//,/ }; do
     tag="$(latest_tag "$g")"
-    if [ -z "$tag" ]; then echo "[$g] nessuna release pubblicata — salto" >&2; continue; fi
+    if [ -z "$tag" ]; then
+      echo "[$g] ERRORE: nessuna release trovata (rate-limit GitHub? rete?)" >&2
+      failed=1; continue
+    fi
     local out="$work/$g.jsonl"; : > "$out"
     LIBS_RID="$RID"   # regole di gruppo per RID di DESTINAZIONE
 
@@ -255,7 +280,8 @@ do_build() {
     fi
 
     # (2) ARCHIVIO di gruppo (legacy/compatibilità)
-    local meta; meta="$(index_release "$tag" "$g" "$out")" || { echo "[$g] indicizzazione fallita ($tag) — salto" >&2; continue; }
+    local meta; meta="$(index_release "$tag" "$g" "$out")" || {
+      echo "[$g] ERRORE: indicizzazione fallita ($tag)" >&2; failed=1; continue; }
     local asset sha size
     asset="$(printf '%s' "$meta" | cut -f1)"
     sha="$(printf '%s' "$meta" | cut -f2)"
@@ -291,6 +317,11 @@ do_build() {
                    value:({group:.group, sha256:.sha256, size:.size}
                           + (if .url then {url:.url} else {} end))}) | from_entries) }' \
     "$files_jsonl" > "$work/rid.json"
+
+  if [ "$failed" = "1" ]; then
+    echo "manifest NON aggiornato: gruppi non indicizzati (il file resta quello precedente)" >&2
+    exit 1
+  fi
 
   # manifest: merge (altri RID restano)
   [ -f "$MANIFEST" ] || echo '{"version":"0","cacheDir":"~/.gmbasic/libs","rids":{}}' > "$MANIFEST"
