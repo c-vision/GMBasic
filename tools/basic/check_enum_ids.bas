@@ -13,13 +13,41 @@ FUNCTION Main() AS INTEGER
   DIM i AS INTEGER
   DIM genArg AS INTEGER
   DIM checkArg AS INTEGER
-  ' l'harness imposta la CWD sulla cartella dello script (tools/): root = ..
-  croot = "../"
-  IF FILEEXISTS(croot + "common/Ast/TokenKind.cs") THEN
-    pref = croot
-  ELSE
-    pref = croot + "../GMBasicSharp/"
-  END IF
+  ' RADICI: si SCOPRE dove sono i due alberi, senza assumere la CWD. Il vecchio `croot = "../"`
+  ' valeva solo per il layout `GMBasic/tools/`; dopo lo spostamento in `<monorepo>/tools/basic/`
+  ' risolveva a `tools/` e i controlli C finivano in SKIP silenzioso (il gate «passava» senza
+  ' guardare né `gmb_tokenkind.h` né le tabelle VM/C: così un drift vero è passato inosservato).
+  ' C  = albero con `native/gmb_vm_c/gmb_builtin.c`
+  ' C# = albero con `common/Ast/TokenKind.cs` + `common/Compiler/SysCalls.cs`
+  DIM cand(8) AS STRING
+  DIM csz(6) AS STRING
+  cand(0) = "../"            ' cwd = GMBasic/tools (layout storico)
+  cand(1) = "./"             ' cwd = GMBasic
+  cand(2) = "../../GMBasic/" ' cwd = tools/basic
+  cand(3) = "GMBasic/"       ' cwd = radice monorepo
+  cand(4) = "../../"         ' cwd = tools/<x> (una risalita in meno)
+  cand(5) = "../GMBasic/"    ' cwd = GMBasicSharp
+  croot = ""
+  FOR i = 0 TO 5
+    IF croot = "" THEN
+      IF FILEEXISTS(cand(i) + "native/gmb_vm_c/gmb_builtin.c") THEN croot = cand(i)
+    END IF
+  NEXT i
+  IF croot = "" THEN croot = "./"
+  pref = ""
+  csz(0) = croot                 ' layout originale: C# dentro l'albero C
+  csz(1) = croot + "../GMBasicSharp/"   ' monorepo, C# accanto a GMBasic
+  csz(2) = croot + "GMBasicSharp/"
+  csz(3) = "../../GMBasicSharp/"        ' cwd = tools/basic
+  csz(4) = "../GMBasicSharp/"           ' cwd = GMBasic
+  FOR i = 0 TO 4
+    IF pref = "" THEN
+      IF FILEEXISTS(csz(i) + "common/Ast/TokenKind.cs") THEN
+        IF FILEEXISTS(csz(i) + "common/Compiler/SysCalls.cs") THEN pref = csz(i)
+      END IF
+    END IF
+  NEXT i
+  IF pref = "" THEN pref = croot
   gquiet = 0
   genArg = 0
   checkArg = 0
@@ -79,8 +107,10 @@ FUNCTION CheckEnum(path AS STRING, label AS STRING, cs AS INTEGER) AS INTEGER
   inBlock = 0
   pend = 0
   IF NOT FILEEXISTS(path) THEN
-    PRINT "SKIP "; label; ": file assente ("; path; ")"
-    CheckEnum = 0
+    ' NON si salta in silenzio: un path sbagliato/rinominato spegnerebbe il controllo
+    ' (è quello che è successo dopo lo spostamento in tools/basic/).
+    PRINT "ERRORE "; label; ": file assente ("; path; ")"
+    CheckEnum = 1
     EXIT FUNCTION
   END IF
   OPEN path FOR INPUT AS #1
@@ -296,8 +326,8 @@ FUNCTION LoadSysCalls(pref AS STRING, BYREF names() AS STRING, BYREF vals() AS L
   inEnum = 0
   pend = 0
   IF NOT FILEEXISTS(path) THEN
-    PRINT "SKIP SysCalls.cs: file assente"
-    RETURN 0
+    PRINT "ERRORE SysCalls.cs: file assente ("; path; ")"
+    RETURN 1
   END IF
   OPEN path FOR INPUT AS #7
   DO UNTIL EOF(7)
@@ -619,8 +649,8 @@ FUNCTION ScanTable(path AS STRING, BYREF codes() AS LONG, BYREF whr() AS STRING,
   DIM bad AS INTEGER
   bad = 0
   IF NOT FILEEXISTS(path) THEN
-    PRINT "SKIP tabella: "; path
-    ScanTable = 0
+    PRINT "ERRORE tabella: file assente ("; path; ")"
+    ScanTable = 1
     EXIT FUNCTION
   END IF
   OPEN path FOR INPUT AS #9
