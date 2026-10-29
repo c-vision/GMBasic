@@ -12,6 +12,13 @@
 > `GMBasicSharp/common/ClipperLib/docs/`: il contenuto è in `docs/comparison/`,
 > `docs/implemented/`, `docs/ClipperLib/` e `docs/gmb_env_audit.tsv`. Anche i riferimenti a
 > `shared/docs/...` nelle sezioni datate sono **storici**.
+>
+> **`tools/` versionato 2026-10-29.** I 78 file di `tools/` erano **untracked** (solo su disco):
+> ora sono in git. Due `.py` della repo originale non avevano controparte e sono stati portati
+> in BASIC con parità verificata contro l'oracolo Python: `check_minitest_expect.bas` (gate
+> oracoli EXPECT) e `validate_stdlib_csv.bas` (5 controlli sui CSV del registry). L'inventario
+> dei `.py` residui e il motivo per cui non vanno convertiti è nel vault,
+> `Knowledge/Tool-Python-Residui-GMBasic.md`.
 
 ## Base
 - BASE_COMMIT: `c9ad151ebfaad12f6f312850102c807074de9776` (2026-10-23) — watermark corrente,

@@ -7,10 +7,10 @@ erano copie parziali, e la cartella canonica alla radice restava vuota.
 
 ```
 tools/
-  basic/    gate e generatori scritti in BASIC (26)      es. no_stub.bas, check_enum_ids.bas, gen_c_tokenkind.bas
+  basic/    gate e generatori scritti in BASIC (28)      es. no_stub.bas, check_enum_ids.bas, gen_c_tokenkind.bas
   c/        tool di supporto scritti in C (5)            es. gmb_fixture_stats.c, brain_manifest.c
 sh/       wrapper, harness e gate shell (27)           es. check_file_size.sh, parity4, test_minitests_c99native
-data/     dati letti dai tool                          hf_causal_lm_models.txt, llm_arch_allowlist.tsv, base_commit.txt, libs_index_tsv.py
+data/     dati letti dai tool                          hf_causal_lm_models.txt, llm_arch_allowlist.tsv, base_commit.txt
   fixtures/ fixture minime per i test di parity          *.bas + gmb_torch*.o
   audit/    gmb_audit: copertura builtin per backend     Program.cs (rif. di progetto legacy: vedi README)
   registry-export/  esportatore del registro (.NET)      Program.cs + update.sh
