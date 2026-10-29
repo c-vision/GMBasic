@@ -18,8 +18,22 @@ esac
 flags="--no-build"
 [ "${GMB_MINITEST_BUILD:-0}" = "1" ] && flags=""
 
+# RID della macchina (per i path delle librerie native).
+case "$(uname -s)-$(uname -m)" in
+  Darwin-arm64) RID=osx-arm64 ;;
+  Darwin-x86_64) RID=osx-x64 ;;
+  Linux-x86_64) RID=linux-x64 ;;
+  Linux-aarch64|Linux-arm64) RID=linux-arm64 ;;
+  *) RID=osx-arm64 ;;
+esac
+# ORDINE = il codice che si sta testando PRIMA della cache: `build/libs/<rid>` sono le librerie
+# appena costruite (AI/engine comprese), `~/.gmbasic/libs` è la cache dei bundle PUBBLICATI.
+# Con la cache davanti, una lib pubblicata più vecchia dei sorgenti veniva caricata in SILENZIO
+# dalle gambe IL/PCode mentre VM/C e C99 (link statici) usavano il build locale → divergenze
+# fantasma su llm/* (caso reale 2026-10-29: `LLM TENSOR INFO` con `arch=` vuoto su IL/PCode e
+# `arch=qwen3_moe` su VM/C; con build/libs davanti: PASS su tutte le gambe).
 if [ "$(uname)" = "Darwin" ]; then
-  export DYLD_LIBRARY_PATH="$HOME/.gmbasic/libs/ml/osx-arm64:$HOME/.gmbasic/libs/osx-arm64:${DYLD_LIBRARY_PATH:-}"
+  export DYLD_LIBRARY_PATH="$WS/GMBasic/build/libs/$RID:$HOME/.gmbasic/libs/ml/$RID:$HOME/.gmbasic/libs/$RID:${DYLD_LIBRARY_PATH:-}"
 fi
 export GMBASIC_ROOT="$WS/GMBasic"
 
