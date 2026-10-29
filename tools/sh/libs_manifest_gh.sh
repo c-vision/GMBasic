@@ -68,7 +68,7 @@ ROOT="$(cd "$SCRIPT_DIR/../../GMBasic" && pwd)"
 MANIFEST="$ROOT/../shared/settings/libs-manifest.json"   # CONFIG CONDIVISA
 TORCH_MANIFEST="$ROOT/../shared/settings/ml-manifest.json"       # CONFIG CONDIVISA (radice monorepo)
 RID=""
-GROUP_LIST="boot,support,engine,llmmotor,core"
+GROUP_LIST="boot,support,engine,llmmotor,core,ffi"
 WITH_TORCH=1
 CMD="${1:-build}"; [ $# -gt 0 ] && shift
 

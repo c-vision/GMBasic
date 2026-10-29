@@ -1,0 +1,5 @@
+FUNCTION Main() AS INTEGER
+  PRINT "exitcode-ok"
+  SLEEP 1
+  RETURN 7
+END FUNCTION

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>preview</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Basic.Tools.RegistryExport</RootNamespace>
+    <AssemblyName>registry-export</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\common\StdLib\StdLib.csproj" />
+    <ProjectReference Include="..\..\common\Ast\Ast.csproj" />
+    <ProjectReference Include="..\..\common\Compiler\Compiler.csproj" />
+    <ProjectReference Include="..\..\common\CommonLib\CommonLib.csproj" />
+  </ItemGroup>
+</Project>
