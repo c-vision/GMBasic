@@ -35,7 +35,7 @@ one() { # one <nome> <file> <marker>
   # compilatore C nativo → chunk → VM/C (stesso binario host)
   run_to 60 "/tmp/verify_gfx_${name}_vmcC.log" "$marker" bash -c "\"$GB/native/gmb_compiler_c/build/gmb_chunk_driver\" \"$f\" /tmp/vg_$name.chunk >/dev/null && \"$GB/native/gmb_vm_c/build/gmb_vm_host\" /tmp/vg_$name.chunk"
   # compilatore C nativo → C → eseguibile (C99Native)
-  run_to 60 "/tmp/verify_gfx_${name}_c99.log"  "$marker" bash "$GB/tools/sh/gmb_c99native_run.sh" "$f"
+  run_to 60 "/tmp/verify_gfx_${name}_c99.log"  "$marker" bash "$MONO/tools/sh/gmb_c99native_run.sh" "$f"
 }
 
 [ "$WHAT" = controlli ] || [ "$WHAT" = tutti ] && one controlli "$FIX/gfx_controls.bas" "gfx-ctls-ok"
