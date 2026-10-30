@@ -6,7 +6,10 @@
 #      tools/registry-export/update.sh --check   (solo verifica, exit 1 su drift)
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$HERE/../../.." && pwd)"
+# ROOT = radice del monorepo. Il tool vive in <monorepo>/tools/registry-export → due livelli
+# sopra, NON tre: con `../../..` si usciva in Documenti/Projects (fuori dal monorepo) e il
+# controllo `--check` moriva con «root del monorepo non trovata» prima di verificare qualsiasi cosa.
+ROOT="$(cd "$HERE/../.." && pwd)"
 cd "$ROOT"
 
 if [ "${1:-}" = "--check" ]; then
