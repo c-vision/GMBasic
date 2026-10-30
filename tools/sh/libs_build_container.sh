@@ -119,6 +119,8 @@ DOCKER_CMD=(docker run --rm $PLATFORM_ARG --name "$NAME"
     apt-get install -y -qq --no-install-recommends $DEPS
     echo '--- bootstrap: terze parti del RID nella cache ---'
     bash /src/tools/sh/libs_bundle_bootstrap.sh $RID || true
+    echo '--- header di sviluppo nella cache (gruppo dev locale) ---'
+    bash /src/tools/sh/libs_cache_headers_linux.sh $RID
     echo '--- build dentro il container ---'
     # NB: gli script vivono nella RADICE del monorepo (/src/tools/sh), non piu' in
     # /src/GMBasic/tools: la CWD era quella vecchia e il container moriva con
