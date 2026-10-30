@@ -1,5 +1,8 @@
 # docs/ — documentazione del monorepo
 
+> Struttura canonica delle directory e "dove vive cosa":
+> `Knowledge/Struttura-Monorepo` (vault `AiWiki/01-Projects/GMBasicMonoRepo`).
+
 **Unica cartella di documentazione, alla radice del monorepo.** Dal 2026-10-29 non esistono
 più cartelle `docs/` annidate: quelle che c'erano in `GMBasic/`, `GMBasicSharp/common/ClipperLib/`
 e `shared/` sono state consolidate qui (vedi "Provenienza").

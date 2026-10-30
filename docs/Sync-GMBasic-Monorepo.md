@@ -1,4 +1,10 @@
-# SYNC GMBasic → GMBasicMonoRepo
+# Sync GMBasicMonoRepo
+
+> [!NOTE] **Documento STORICO** (sync 2026-10-26/28). I path citati riflettono lo stato di allora
+> (`tests-mixed`, `migration/tools-unclassified`, `GMBASIC.sln`, …). Struttura e path correnti:
+> `Knowledge/Struttura-Monorepo` (vault) e `docs/README.md`.
+
+SYNC GMBasic → GMBasicMonoRepo
 
 > **Struttura aggiornata 2026-10-29.** La cartella `migration/` **non esiste più**: questo log
 > sta in `docs/Sync-GMBasic-Monorepo.md` e il watermark del sync in `tools/data/base_commit.txt`.
