@@ -103,7 +103,7 @@ esac
 DEPS="build-essential cmake pkg-config git ca-certificates unzip zip jq \
       libssl-dev zlib1g-dev libbz2-dev libzstd-dev liblz4-dev libbrotli-dev \
       libcurl4-openssl-dev libsqlite3-dev libsdl2-dev libsdl2-ttf-dev \
-      libjpeg-dev libpng-dev libtiff-dev libwebp-dev libopenblas-dev libgomp1"
+      libjpeg-dev libpng-dev libtiff-dev libwebp-dev libopenblas-dev libgomp1 curl"
 
 INNER_ARGS=("$GROUP" "--rid" "$RID" "--build-root" "/build" "--stage-dir" "/out")
 [ "$NO_BUILD" = "1" ] && INNER_ARGS+=("--no-build")
@@ -112,13 +112,21 @@ INNER_ARGS=("$GROUP" "--rid" "$RID" "--build-root" "/build" "--stage-dir" "/out"
 NAME="gmb-libs-$RID-$$"
 DOCKER_CMD=(docker run --rm $PLATFORM_ARG --name "$NAME"
   -v "$MONO":/src -v "$LLMENV_HOST":/llmenv:ro -v "$OUT":/out
-  -e LLMENV=/llmenv -w /src/GMBasic "$IMAGE"
+  -e LLMENV=/llmenv -w /src "$IMAGE"
   bash -lc "set -euo pipefail
     export DEBIAN_FRONTEND=noninteractive
     apt-get update -qq
     apt-get install -y -qq --no-install-recommends $DEPS
+    echo '--- bootstrap: terze parti del RID nella cache ---'
+    bash /src/tools/sh/libs_bundle_bootstrap.sh $RID || true
     echo '--- build dentro il container ---'
-    bash tools/sh/libs_build_release.sh ${INNER_ARGS[*]}")
+    # NB: gli script vivono nella RADICE del monorepo (/src/tools/sh), non piu' in
+    # /src/GMBasic/tools: la CWD era quella vecchia e il container moriva con
+    # errore 127 (script non trovato).
+    # NB2: in questo blocco NIENTE apici inversi ne' doppi apici: e' una stringa fra
+    # doppi apici dell'outer script e verrebbero interpretati (command substitution /
+    # chiusura anticipata della stringa).
+    bash /src/tools/sh/libs_build_release.sh ${INNER_ARGS[*]}")
 
 echo "== libs_build_container: gruppo=$GROUP rid=$RID immagine=$IMAGE"
 echo "   repo:   $MONO  → /src"
