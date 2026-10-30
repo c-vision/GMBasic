@@ -28,10 +28,15 @@
 '      funziona con qualunque tokenizer, fixture compresa;
 '   3) il corpus è parametrico (`--repo`).
 '
-' Note di implementazione (dettagli che hanno richiesto di evitare due bug noti del backend IL):
-'   - niente `ON ERROR` dentro una FUNCTION con label (rompe il body: Bugs/…OnError-Label…);
-'   - niente array GLOBALI passati come parametro `a() AS LONG` (NullReferenceException su IL):
-'     le funzioni lavorano sui globali e la scrittura del .bin è incrementale (niente buffer enorme).
+' Note di implementazione:
+'   - `ReadText` usa `ON ERROR GOTO` con etichetta dentro la FUNCTION (idioma canonico di
+'     lettura file): fino al 2026-10-30 rompeva il body su IL (Bugs/(solved) - IL-OnError-…),
+'     oggi funziona e resta coperto dal MiniTest constructs/on_error_label_in_function.bas;
+'   - `ParseIdsInto` riceve l'array GLOBALE come parametro `a() AS LONG`: fino al 2026-10-30
+'     dava NullReferenceException solo su IL (Bugs/(solved) - IL-Array-Globale-…), oggi
+'     funziona ed è coperto da constructs/array_global_param.bas;
+'   - la scrittura del .bin è incrementale (un int32 per volta): `PUT #` scrive TUTTI gli
+'     elementi dell'array, quindi un buffer grande verrebbe scritto per intero a ogni PUT.
 IMPORT LLM
 IMPORT IO
 
@@ -67,10 +72,7 @@ END FUNCTION
 FUNCTION ReadText(p AS STRING) AS STRING
   DIM s AS STRING, ln AS STRING
   s = ""
-  IF NOT FILEEXISTS(p) THEN
-    ReadText = ""
-    EXIT FUNCTION
-  END IF
+  ON ERROR GOTO NoFile
   OPEN p FOR INPUT AS #7
   DO WHILE NOT EOF(7)
     LINE INPUT #7, ln
@@ -81,6 +83,7 @@ FUNCTION ReadText(p AS STRING) AS STRING
     END IF
   LOOP
   CLOSE #7
+NoFile:
   ReadText = s
 END FUNCTION
 
@@ -108,8 +111,8 @@ SUB PutI32At(pos AS LONG, v AS LONG)
   PUT #9, pos, g_i32()
 END SUB
 
-' "74,71,78" → g_ids; ritorna quanti (cap = dimensione dell'array)
-FUNCTION ParseIdsInto(s AS STRING, cap AS LONG) AS LONG
+' "74,71,78" → array passato (a()); ritorna quanti (cap = dimensione dell'array)
+FUNCTION ParseIdsInto(s AS STRING, a() AS LONG, cap AS LONG) AS LONG
   DIM i AS LONG, n AS LONG, d AS LONG, started AS INTEGER
   DIM v AS DOUBLE
   n = 0 : v = 0 : started = 0
@@ -119,14 +122,14 @@ FUNCTION ParseIdsInto(s AS STRING, cap AS LONG) AS LONG
       v = v * 10 + (d - 48) : started = 1
     ELSE
       IF started = 1 THEN
-        IF n < cap THEN g_ids(n) = v
+        IF n < cap THEN a(n) = v
         n = n + 1 : v = 0 : started = 0
         IF n >= cap THEN EXIT FOR
       END IF
     END IF
   NEXT i
   IF started = 1 AND n < cap THEN
-    g_ids(n) = v : n = n + 1
+    a(n) = v : n = n + 1
   END IF
   ParseIdsInto = n
 END FUNCTION
@@ -327,7 +330,7 @@ SUB Main()
 
   ' 2) tokenizzazione (fonte unica: LLM.TOKENS)
   csv = LLM.TOKENS(model, corpus)
-  g_tok = ParseIdsInto(csv, 1000000)
+  g_tok = ParseIdsInto(csv, g_ids(), 1000000)
   PRINT "[ds] tokens="; g_tok
   IF g_tok < g_cap + 2 THEN
     PRINT "[ds] corpus troppo piccolo per finestre di "; g_cap; " token"
