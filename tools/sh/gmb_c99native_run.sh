@@ -174,6 +174,12 @@ if [ "$MIN_LINK" = "1" ]; then
     ${LLMDESC_LIB:+"$LLMDESC_LIB"} \
     -lpthread -lm -lz -lbz2 -lcurl -lcompression 2>/tmp/gmb_minlink.err || {
       echo "[c99native] link minimo fallito, uso il lib-set completo (vedi /tmp/gmb_minlink.err)" >&2
+      # Il ripiego deve CAMBIARE davvero runtime: prima RUNTIME_LIB restava la MIN lib, così
+      # il "lib-set completo" linkava il runtime minimo e falliva con "Undefined symbols"
+      # (caso reale 2026-10-30: `_gmb_msg_delivery_stats` mancante nella min stale) — un
+      # messaggio che accusa il programma invece della lib.
+      RUNTIME_LIB="$L/gmb_runtime_c_build/libgmb_runtime.a"
+      [ -f "$RUNTIME_LIB" ] || RUNTIME_LIB="$ROOT/native/gmb_runtime_c/build/libgmb_runtime.a"
       MIN_LINK=0
     }
 fi
