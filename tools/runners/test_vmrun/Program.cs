@@ -153,11 +153,23 @@ if (forwardStdin)
         System.Runtime.InteropServices.Architecture.X64 => OperatingSystem.IsMacOS() ? "osx-x64" : "linux-x64",
         _ => "osx-arm64",
     };
-    var mlDir = Path.Combine(root, "GMBasic", "libs-runtime", "ml", rid);
-    var resDir = Path.Combine(root, "GMBasic", "Resources", "libs", rid);
-    psi.Environment["GMB_TORCH_PATH"] = mlDir;
+    // Cache utente `~/.gmbasic/libs` (default di GmbiPaths.LibsDir): i componenti stanno in
+    // `<cache>/<componente>/<rid>/` (ml = torch), le librerie in `<cache>/<rid>/`; in sviluppo
+    // si aggiunge `GMBasic/build/libs/<rid>/`. `libs-runtime` e `Resources/libs` non esistono
+    // più nel checkout (2026-10-30).
+    var libsCache = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".gmbasic", "libs");
+    var mlDir = Path.Combine(libsCache, "ml", rid);
+    var libsDir = Path.Combine(libsCache, rid);
+    var buildDir = Path.Combine(root, "GMBasic", "build", "libs", rid);
+    psi.Environment["GMB_TORCH_PATH"] = Environment.GetEnvironmentVariable("GMB_TORCH_PATH") ?? mlDir;
     if (OperatingSystem.IsMacOS())
-        psi.Environment["DYLD_LIBRARY_PATH"] = $"{mlDir}:{resDir}:{Environment.GetEnvironmentVariable("DYLD_LIBRARY_PATH")}";
+    {
+        var dirs = new[] { mlDir, libsDir, buildDir }.Where(Directory.Exists);
+        var prev = Environment.GetEnvironmentVariable("DYLD_LIBRARY_PATH");
+        var joined = string.Join(":", dirs);
+        psi.Environment["DYLD_LIBRARY_PATH"] = string.IsNullOrEmpty(prev) ? joined : $"{joined}:{prev}";
+    }
 }
 
 var p = Process.Start(psi);
