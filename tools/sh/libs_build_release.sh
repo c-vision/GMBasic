@@ -237,6 +237,10 @@ for pr in gmb_runtime_c gmb_compiler_c gmb_sql_ext gmb_torch; do
 done
 # engine/llmmotor: i file sono nei sottoprogetti (llmcodec_build/, llmtoken_build/, …) → ricorsivo
 STAGE_DEPTH=1
+# `runtime` incorpora anche i sottoprogetti LLMEnv, che scrivono in `<build>/llmtoken_build/` e
+# `<build>/llmcodec_build/` (profondità 2): con depth 1 il bundle restava senza libllmtoken.so,
+# e `libgmb_ai_llm.so`/`libgmb_grep.so` non erano caricabili ("libllmtoken.so: cannot open").
+[ "$GROUP" = "runtime" ] || [ "$GROUP" = "runtime-core" ] && STAGE_DEPTH=2
 [ "$ENGINE_LOCAL" = "1" ] && STAGE_DEPTH=6
 echo "== 2) staging in $STAGE =="
 for r in "${ROOTS[@]}"; do

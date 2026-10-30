@@ -13,8 +13,14 @@ export DEBIAN_FRONTEND=noninteractive
 : "${PATTERNS:?PATTERNS non impostata}"
 
 apt-get update -qq
+# I nomi dei pacchetti cambiano fra release: si installa il set e, se un nome non esiste in
+# questa immagine, si segnala e si prosegue (le dipendenze mancanti emergono da `ldd`).
 # shellcheck disable=SC2086
-apt-get install -y -qq --no-install-recommends $PKGS
+apt-get install -y -qq --no-install-recommends $PKGS 2>/dev/null || {
+  for p in $PKGS; do
+    apt-get install -y -qq --no-install-recommends "$p" >/dev/null 2>&1 || echo "  (pacchetto assente in questa immagine: $p)"
+  done
+}
 
 LIBDIR=$(dirname "$(ldconfig -p | awk '/libzstd\.so\.1 /{print $NF; exit}')")
 echo "libdir=$LIBDIR"

@@ -21,7 +21,7 @@
 #             (engine/llmmotor richiedono LLMEnv montato)
 #     --rid linux-arm64|linux-x64   default: linux-<arch della macchina>
 #     --out DIR                     default: $HOME/gmb-bundles/<rid>
-#     --image IMG                   default: ubuntu:22.04 (glibc 2.35: compatibile con distro 2022+)
+#     --image IMG                   default: ubuntu:24.04 (glibc 2.35: compatibile con distro 2022+)
 #     --no-build                    solo staging+gate (usa artefatti già presenti)
 #     --allow-gaps                  passa --allow-gaps alla pipeline
 #     --dry-run                     stampa il comando docker e non esegue
@@ -41,7 +41,7 @@ ROOT="$(cd "$SCRIPT_DIR/../../GMBasic" && pwd)"          # <monorepo>/GMBasic
 MONO="$(cd "$ROOT/.." && pwd)"                # <monorepo>
 
 GROUP="${1:-core}"; [ $# -gt 0 ] && shift
-RID=""; OUT=""; IMAGE="ubuntu:22.04"; NO_BUILD=0; ALLOW_GAPS=0; DRY=0; KEEP=0
+RID=""; OUT=""; IMAGE="ubuntu:24.04"; NO_BUILD=0; ALLOW_GAPS=0; DRY=0; KEEP=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --rid) RID="${2:-}"; shift 2;;
