@@ -34,13 +34,17 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MONO="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # Librerie richieste dal runtime (nomi dei pacchetti Debian) e pattern dei file.
-PKGS="libzstd1 liblz4-1 liblzma5 libbrotli1 libpcre2-8-0 libsqlite3-0 libcurl4 zlib1g libtiff5 liblerc3 libwebp7 libsharpyuv0"
+# 24.04: libtiff6/liblerc4/libwebp7/libsharpyuv0 coprono anche le dipendenze delle librerie
+# ereditate da support-v1 (libtiff.so.6 → libLerc.so.4, libwebp.so.7 → libsharpyuv.so.0).
+PKGS="libzstd1 liblz4-1 liblzma5 libbrotli1 libpcre2-8-0 libsqlite3-0 libcurl4t64 zlib1g \
+libtiff6 liblerc4 libwebp7 libsharpyuv0 libsdl2-2.0-0 libsdl2-image-2.0-0 libsdl2-mixer-2.0-0 \
+libsdl2-ttf-2.0-0 libsdl3-0 libxmp4 libxtst6 libaec0 libflac12 libfribidi0 libogg0 libvorbis0a libopus0 libfreetype6 libharfbuzz0b libpng16-16t64 libjpeg-turbo8 libssl3t64"
 PATTERNS="libzstd.so liblz4.so liblzma.so libbrotlienc.so libbrotlidec.so libbrotlicommon.so libpcre2-8.so libsqlite3.so libcurl.so libz.so.1"
 
 docker run --rm --platform "$PLATFORM" \
   -v "$OUT":/out -v "$MONO":/src:ro \
   -e OUT=/out -e PKGS="$PKGS" -e PATTERNS="$PATTERNS" \
-  ubuntu:22.04 bash /src/tools/sh/libs_support_linux_inner.sh || { echo "container fallito" >&2; exit 1; }
+  ubuntu:24.04 bash /src/tools/sh/libs_support_linux_inner.sh || { echo "container fallito" >&2; exit 1; }
 
 echo "staging: $OUT"
 ls -1 "$OUT" | head -20
