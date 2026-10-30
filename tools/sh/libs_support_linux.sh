@@ -39,7 +39,7 @@ MONO="$(cd "$SCRIPT_DIR/../.." && pwd)"
 PKGS="libzstd1 liblz4-1 liblzma5 libbrotli1 libpcre2-8-0 libsqlite3-0 libcurl4t64 zlib1g \
 libtiff6 liblerc4 libwebp7 libsharpyuv0 libsdl2-2.0-0 libsdl2-image-2.0-0 libsdl2-mixer-2.0-0 \
 libsdl2-ttf-2.0-0 libsdl3-0 libxmp4 libxtst6 libaec0 libflac12 libfribidi0 libogg0 libvorbis0a libopus0 libfreetype6 libharfbuzz0b libpng16-16t64 libjpeg-turbo8 libssl3t64"
-PATTERNS="libzstd.so liblz4.so liblzma.so libbrotlienc.so libbrotlidec.so libbrotlicommon.so libpcre2-8.so libsqlite3.so libcurl.so libz.so.1"
+PATTERNS="libzstd.so liblz4.so liblzma.so libbrotlienc.so libbrotlidec.so libbrotlicommon.so libpcre2-8.so libsqlite3.so libcurl.so libz.so.1 libSDL2-2.0.so libSDL2_ttf-2.0.so libSDL2_image-2.0.so libSDL2_mixer-2.0.so"
 
 docker run --rm --platform "$PLATFORM" \
   -v "$OUT":/out -v "$MONO":/src:ro \

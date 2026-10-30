@@ -73,4 +73,32 @@ for f in "$OUT"/*.so.*; do
   [ -e "$base" ] || cp -L "$f" "$base"
 done
 
+# ── SDL2 / SDL2_ttf dai SORGENTI ──────────────────────────────────────────────────────────────
+# In Ubuntu 24.04 `libsdl2-2.0-0` è **sdl2-compat**: un adattatore che implementa l'API SDL2
+# sopra SDL3 e al `dlopen` pretende `libSDL3.so.0` (assente in 24.04). Risultato: ogni nostra
+# libreria che linka SDL2 falliva il caricamento con "Failed loading SDL3 library.".
+# Si compila la SDL2 vera (2.30.9) e SDL2_ttf (2.22.0) e si installano nel bundle.
+if [ "${SDL_FROM_SOURCE:-1}" = "1" ]; then
+  apt-get install -y -qq --no-install-recommends cmake make gcc g++ pkg-config libfreetype-dev curl tar gzip ca-certificates libx11-dev libxext-dev libxrandr-dev libxi-dev libxcursor-dev libxinerama-dev libxss-dev libxkbcommon-dev >/dev/null
+  cd /tmp
+  [ -d SDL2-2.30.9 ] || { curl -fsSL -o sdl2.tgz https://github.com/libsdl-org/SDL/releases/download/release-2.30.9/SDL2-2.30.9.tar.gz && tar -xzf sdl2.tgz; }
+  cmake -S SDL2-2.30.9 -B b_sdl2 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/out \
+        -DSDL_SHARED=ON -DSDL_STATIC=OFF -DSDL_TESTS=OFF >/dev/null
+  cmake --build b_sdl2 -j4 >/dev/null && cmake --build b_sdl2 --target install >/dev/null
+  [ -d SDL2_ttf-2.22.0 ] || { curl -fsSL -o sdttf.tgz https://github.com/libsdl-org/SDL_ttf/releases/download/release-2.22.0/SDL2_ttf-2.22.0.tar.gz && tar -xzf sdttf.tgz; }
+  cmake -S SDL2_ttf-2.22.0 -B b_ttf -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/out \
+        -DBUILD_SHARED_LIBS=ON -DSDL2TTF_VENDORED=OFF -DSDL2TTF_HARFBUZZ=OFF \
+        -DSDL2_INCLUDE_DIR="$OUT/include/SDL2" -DSDL2_LIBRARY="$OUT/libSDL2.so" -DCMAKE_PREFIX_PATH=/out >/dev/null
+  cmake --build b_ttf -j4 >/dev/null && cmake --build b_ttf --target install >/dev/null
+  rm -rf /out/lib/cmake /out/share 2>/dev/null || true
+  echo "SDL2/SDL2_ttf dai sorgenti: $(ls /out/libSDL2-2.0.so.0 /out/libSDL2_ttf-2.0.so.0 2>/dev/null | wc -l) file"
+  for f in /out/libSDL2-2.0.so.0 /out/libSDL2_ttf-2.0.so.0; do [ -f "$f" ] && close_deps "$f"; done
+fi
+
+# ALIAS: il CMake cerca `libSDL2.so` / `libSDL2_ttf.so` (find_library NAMES SDL2_ttf), ma su
+# Linux i file si chiamano `libSDL2_ttf-2.0.so.0`. Senza questi nomi il link di gmb_gfx non
+# trovava SDL2_ttf e lasciava TTF_* indefiniti (dlopen KO su Linux, tollerato su macOS).
+[ -f "$OUT/libSDL2-2.0.so.0" ] && [ ! -e "$OUT/libSDL2.so" ] && cp -L "$OUT/libSDL2-2.0.so.0" "$OUT/libSDL2.so"
+[ -f "$OUT/libSDL2_ttf-2.0.so.0" ] && [ ! -e "$OUT/libSDL2_ttf.so" ] && cp -L "$OUT/libSDL2_ttf-2.0.so.0" "$OUT/libSDL2_ttf.so"
+
 echo "file raccolti: $(ls "$OUT" | wc -l)"
