@@ -77,6 +77,27 @@ if [ "${GMB_RUN_HEAVY:-0}" != "1" ] && grep -q "^' TAG: heavy" "$FILE" 2>/dev/nu
 # percorso relativo (risolto dalla shell di parity4) si romperebbe DENTRO la gamba.
 FILE="$(cd "$(dirname "$FILE")" && pwd)/$(basename "$FILE")"
 
+# ── broker pub/sub: se il sample apre un `tcp://` loopback, parity4 lo avvia e lo ferma da sé ──
+# È un prerequisito del test, non del codice in prova: un broker morto fa fallire (o rende
+# ambiguo) un campione tcp che invece è corretto. `ensure` non tocca un broker già attivo.
+BROKER_SH="$MONOREPO/tools/sh/msg_broker.sh"
+BROKER_PORTS=""
+broker_cleanup() {
+  local p
+  for p in $BROKER_PORTS; do "$BROKER_SH" release "$p" >/dev/null 2>&1; done
+}
+trap broker_cleanup EXIT
+if [ -x "$BROKER_SH" ]; then
+  for _bp in $("$BROKER_SH" ports "$FILE" 2>/dev/null); do
+    _bres="$("$BROKER_SH" ensure "$_bp" 2>/dev/null)" || _bres=failed
+    case "$_bres" in
+      started) BROKER_PORTS="$BROKER_PORTS $_bp"; echo "broker pub/sub avviato da parity4 su :$_bp" ;;
+      already) echo "broker pub/sub già attivo su :$_bp (lo lascio a chi l'ha avviato)" ;;
+      *)       echo "attenzione: broker non avviabile su :$_bp" >&2 ;;
+    esac
+  done
+fi
+
 # TORCH (macOS): la gamba VM-C/C99 carica libgmb_torch, che ha una LC_RPATH stale verso il
 # torch di una virtualenv (stub incompatibile) → dyld carica il torch sbagliato e il processo
 # ABORTA (SIGSEGV). Puntiamo DYLD_LIBRARY_PATH alla dir col torch CORRETTO, PRIMA delle gambe

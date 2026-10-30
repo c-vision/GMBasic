@@ -41,6 +41,43 @@ if [ "$(uname)" = "Darwin" ]; then
 fi
 export GMBASIC_ROOT="$WS/GMBasic"
 
+# ── broker pub/sub: lo avvia e lo ferma il GATE, non l'utente ────────────────────────────────
+# `ports` è autodescrittivo: legge i MiniTest SELEZIONATI e prende le porte dai loro `tcp://`
+# loopback (oggi messaging/message_tcp_parity.bas e message_close_parity.bas su :9215). Prima il
+# broker era un prerequisito manuale: se era morto i test tcp fallivano con "timeout" e restava
+# ambiguo se la consegna verificata fosse quella cross-connessione o un altro percorso. `ensure`
+# non tocca un broker già attivo (lo lascia a chi l'ha avviato), `release` ferma SOLO i nostri.
+BROKER_SH="$WS/tools/sh/msg_broker.sh"
+BROKER_STARTED=()
+broker_cleanup() {
+  local p
+  for p in "${BROKER_STARTED[@]}"; do
+    [ -n "$p" ] && "$BROKER_SH" release "$p" >/dev/null 2>&1
+  done
+}
+trap broker_cleanup EXIT          # ferma il broker anche se un test fallisce
+# INT/TERM: non intercettarli (swallow) — si esce, e l'EXIT fa la pulizia.
+trap 'exit 130' INT
+trap 'exit 143' TERM
+if [ -x "$BROKER_SH" ]; then
+  if [ -n "${GMB_MINI_ONLY:-}" ]; then
+    broker_ports=("${(@f)$("$BROKER_SH" ports "${(s:,:)GMB_MINI_ONLY}")}")
+  else
+    broker_ports=("${(@f)$("$BROKER_SH" ports)}")
+  fi
+  for _bp in "${broker_ports[@]}"; do
+    [ -n "$_bp" ] || continue
+    _bres="$("$BROKER_SH" ensure "$_bp" 2>/dev/null)" || _bres=failed
+    case "$_bres" in
+      started) BROKER_STARTED+=("$_bp"); echo "broker pub/sub avviato dal gate su :$_bp" ;;
+      already) echo "broker pub/sub già attivo su :$_bp (lo lascio a chi l'ha avviato)" ;;
+      *)       echo "attenzione: broker non avviabile su :$_bp" >&2 ;;
+    esac
+  done
+else
+  echo "attenzione: $BROKER_SH assente — i MiniTest tcp non hanno il loro broker" >&2
+fi
+
 dotnet test "$ROOT/tests/GMBASIC.IlBackend.Tests" \
   -p:GmbEdition=Commercial \
   --filter "FullyQualifiedName~MiniTests_IL_PCode_Parity" \
