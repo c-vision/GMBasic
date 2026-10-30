@@ -154,8 +154,19 @@ INC_EXTRA="-I$ROOT/native/gmb_runtime_c/src"
 if [ -d "$LIBS_CACHE/include/SDL2" ]; then INC_EXTRA="$INC_EXTRA -I$LIBS_CACHE/include"; EXT="$EXT -L$LIBS_CACHE -lSDL2 -lSDL2_ttf"; fi
 if [ -f "$LIBS_CACHE/libcrypto.dylib" ]; then EXT="$EXT -L$LIBS_CACHE -lcrypto -lssl -DHAVE_OPENSSL"; INC_EXTRA="$INC_EXTRA -I$LIBS_CACHE/include"; fi
 
+# ── broker pub/sub: lo avvia e lo ferma il GATE (vedi tools/sh/msg_broker.sh) ──────────────
+# I MiniTest tcp aprono un broker esterno: senza, falliscono con "timeout" per un prerequisito
+# che non è il codice in prova. Le porte si leggono dai `tcp://` loopback dei file selezionati.
+BROKER_STARTED=()
+broker_cleanup() {
+  local p
+  for p in ${BROKER_STARTED[@]+"${BROKER_STARTED[@]}"}; do
+    "$MONO/tools/sh/msg_broker.sh" release "$p" >/dev/null 2>&1
+  done
+}
+
 WORK="$(mktemp -d /tmp/minitests_c99native.XXXXXX)"
-trap 'rm -rf "$WORK"' EXIT
+trap 'rm -rf "$WORK"; broker_cleanup' EXIT
 pass=0; fail=0; skip=0
 # Il runtime C e' compilato UNA volta per invocazione in una static library, poi ogni
 # MiniTest linka solo il proprio out.c (prima il runtime veniva ricompilato per ogni test).
@@ -232,6 +243,24 @@ if [ -n "${GMB_MINI_ONLY:-}" ]; then
   done
 fi
 ONLY_MATCHED=0
+
+# Broker delle porte richieste dai file selezionati (tutti, se non c'è filtro).
+BROKER_SH="$MONO/tools/sh/msg_broker.sh"
+if [ -x "$BROKER_SH" ]; then
+  if [ ${#ONLY_NEEDLES[@]} -gt 0 ]; then
+    _bports="$("$BROKER_SH" ports "${ONLY_NEEDLES[@]}" 2>/dev/null)"
+  else
+    _bports="$("$BROKER_SH" ports 2>/dev/null)"
+  fi
+  for _bp in $_bports; do
+    _bres="$("$BROKER_SH" ensure "$_bp" 2>/dev/null)" || _bres=failed
+    case "$_bres" in
+      started) BROKER_STARTED+=("$_bp"); echo "broker pub/sub avviato dal gate su :$_bp" ;;
+      already) echo "broker pub/sub già attivo su :$_bp (lo lascio a chi l'ha avviato)" ;;
+      *)       echo "attenzione: broker non avviabile su :$_bp" >&2 ;;
+    esac
+  done
+fi
 
 for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
   # Filtro (lista di sottostringhe, match ANY): conta anche i file poi saltati per TAG, così
