@@ -120,15 +120,13 @@ group_syntax() {
     local py=0 pybad=0
     while IFS= read -r f; do
         py=$((py + 1))
-        if ! python3 -c 'import sys; compile(open(sys.argv[1], encoding="utf-8").read(), sys.argv[1], "exec")' "$f" 2>"$WORK/py.err"; then
-            pybad=$((pybad + 1))
-            rel="$(printf '%s' "$f" | sed "s|^$TOOLS/||")"
-            msg="$(head -1 "$WORK/py.err" | sed "s|$TOOLS/||g")"
-            detail="$detail  $rel: ${msg#"$rel": }"$'\n'
-        fi
+        pybad=$((pybad + 1))
+        rel="$(printf '%s' "$f" | sed "s|^$TOOLS/||")"
+        detail="$detail  $rel: tool Python vietato (policy: niente Python in tools/)"$'\n'
     done < <(find "$TOOLS" -type f -name '*.py' | sort)
 
-    local sb="$total script shell, $py Python"
+    local sb="$total script shell"
+    [ "$py" -gt 0 ] && sb="$sb, $py Python (VIETATI)"
     if [ "$bad" -eq 0 ] && [ "$pybad" -eq 0 ]; then
         record PASS "statici" "$sb — sintassi valida"
     else

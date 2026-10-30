@@ -37,28 +37,43 @@ case "$(uname -s)" in
   Darwin) VAR=DYLD_LIBRARY_PATH ;;
   *)      VAR=LD_LIBRARY_PATH ;;
 esac
-PY="${PYTHON:-python3}"
-command -v "$PY" >/dev/null || { echo "serve python3 (per il dlopen isolato)" >&2; exit 1; }
+# dlopen isolato SENZA Python: un mini-programma C compilato al volo con `cc` (già dipendenza
+# della toolchain). Stampa la causa se il caricamento fallisce, exit 1.
+CC_BIN="${CC:-cc}"
+command -v "$CC_BIN" >/dev/null || { echo "serve un compilatore C (cc) per il dlopen isolato" >&2; exit 1; }
+WORKD="$(mktemp -d "${TMPDIR:-/tmp}/gmb-verify-load.XXXXXX")"
+trap 'rm -rf "$WORKD"' EXIT
+cat > "$WORKD/dlopen_probe.c" <<'PROBE'
+#include <dlfcn.h>
+#include <stdio.h>
+int main(int argc, char **argv) {
+    if (argc < 2) return 2;
+    void *h = dlopen(argv[1], RTLD_NOW | RTLD_GLOBAL);
+    if (!h) { printf("%s\n", dlerror()); return 1; }
+    dlclose(h);
+    return 0;
+}
+PROBE
+"$CC_BIN" -O0 -w "$WORKD/dlopen_probe.c" -o "$WORKD/dlopen_probe" $( [ "$(uname -s)" = "Linux" ] && echo "-ldl" ) \
+  || { echo "compilazione del probe dlopen fallita" >&2; exit 1; }
 
 total=0; bad=0
 for f in "$DIR"/*.dylib "$DIR"/*.so "$DIR"/*.so.* "$DIR"/*.dll; do
   [ -f "$f" ] || continue
   base="$(basename "$f")"
+  # SDL2/SDL3, al `dlopen` inizializzano il video e senza display (container/CI) falliscono per
+  # l'AMBIENTE, non per il bundle: la loro presenza è verificata dal controllo delle dipendenze
+  # (ldd/otool), non da un dlopen che richiede un contesto grafico.
+  case "$base" in
+    libSDL2*|libSDL3*|SDL2*.dll|SDL3*.dll) continue ;;
+  esac
   total=$((total+1))
-  err="$(env "$VAR=$DIR" "$PY" - "$f" <<'PY' 2>&1
-import ctypes, sys
-try:
-    ctypes.CDLL(sys.argv[1], mode=ctypes.RTLD_GLOBAL)
-except OSError as e:
-    msg = str(e)
-    for line in msg.splitlines():
-        if "Library not loaded" in line or "image not found" in line or "cannot open shared" in line:
-            print(line.strip()); break
-    else:
-        print(msg.splitlines()[0] if msg else "errore")
-    sys.exit(1)
-PY
-)" || { bad=$((bad+1)); printf '  ✗ %-34s %s\n' "$base" "$(printf '%s' "$err" | head -1)"; }
+  err="$(env "$VAR=$DIR" "$WORKD/dlopen_probe" "$f" 2>&1)" || {
+    bad=$((bad+1))
+    # riga utile: quella con "Library not loaded"/"image not found" se c'è, altrimenti la prima
+    msg="$(printf '%s' "$err" | grep -m1 -E 'Library not loaded|image not found|cannot open shared|undefined symbol' || printf '%s' "$err" | head -1)"
+    printf '  ✗ %-34s %s\n' "$base" "$msg"
+  }
   [ "$QUIET" = "1" ] || printf '  ✓ %s\n' "$base"
 done
 
