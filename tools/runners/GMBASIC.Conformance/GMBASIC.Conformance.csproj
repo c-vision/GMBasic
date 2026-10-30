@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>preview</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Basic.Conformance</RootNamespace>
+  </PropertyGroup>
+
+  <!--
+    GMBASIC.Conformance — runner di conformance (D11).
+    Compila tutti gli esempi COMMUNITY come metro di misura di ciò che funziona.
+    Gli esempi COMMERCIAL non vengono mai eseguiti qui (solo nel modulo Database).
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\GMBasicSharp\common\Ast\Ast.csproj" />
+    <ProjectReference Include="..\..\..\GMBasicSharp\common\Lexer\Lexer.csproj" />
+    <ProjectReference Include="..\..\..\GMBasicSharp\common\Parser\Parser.csproj" />
+    <ProjectReference Include="..\..\..\GMBasicSharp\common\Compilation\Compilation.csproj" />
+    <ProjectReference Include="..\..\..\GMBasicSharp\common\Linker\Linker.csproj" />
+    <ProjectReference Include="..\..\..\GMBasicSharp\common\Compiler\Compiler.csproj" />
+    <ProjectReference Include="..\..\..\GMBasicSharp\common\CommonLib\CommonLib.csproj" />
+    <ProjectReference Include="..\..\..\GMBasicSharp\common\StdLib\StdLib.csproj" />
+    <ProjectReference Include="..\..\..\GMBasicSharp\common\BRT\BRT.csproj" />
+    <ProjectReference Include="..\..\..\GMBasicSharp\common\SemanticGraph\SemanticGraph.csproj" />
+  </ItemGroup>
+
+  <!-- Orchestrator è compile-only (niente PCodeVm): incluso come file linkato -->
+  <ItemGroup>
+    <Compile Include="..\..\..\GMBasicSharp\Executor\Orchestrator.cs" Link="Orchestrator.cs" />
+    <Compile Include="..\..\..\GMBasicSharp\Executor\Opt.cs" Link="Opt.cs" />
+    <Compile Include="..\..\..\GMBasicSharp\Executor\SettingsManager.cs" Link="SettingsManager.cs" />
+  </ItemGroup>
+
+  <!-- VmBridgeTest esegue con gmb_vm_host (VM/C, build separata sotto
+       native/gmb_vm_c/) come processo esterno — niente più bridge P/Invoke in-process,
+       niente più invocazione CMake da questa build C# (vedi
+       Executor-CSharp-C-Split-Plan.md). Risolve il percorso via GMBASIC_VM_HOST o
+       copiandolo accanto a questo eseguibile. -->
+
+</Project>

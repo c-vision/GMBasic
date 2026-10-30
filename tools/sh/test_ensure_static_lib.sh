@@ -119,9 +119,9 @@ watchdog() { # <secondi> <cmd...>  → status del comando, o 124 se scade
   wait "$p"
 }
 
-# Percorsi dei test C#: sono in `GMBasicSharp/tests-mixed/` (non più `GMBasic/tests/`, dove il
+# Percorsi dei test C#: sono in `GMBasicSharp/tests/` (non più `GMBasic/tests/`, dove il
 # tool li cercava prima: la condizione era sempre falsa e il caso C# veniva SALTATO in silenzio).
-CS_TESTS="$MONO/GMBasicSharp/tests-mixed"
+CS_TESTS="$MONO/GMBasicSharp/tests"
 CS_HELPER="$CS_TESTS/Shared/VmHostFreshness.cs"
 CS_TESTFILE="$CS_TESTS/GMBASIC.IlBackend.Tests/VmHostFreshnessTests.cs"
 if [ "$RUN_CS" = "1" ] && command -v dotnet >/dev/null 2>&1 && [ -f "$CS_TESTFILE" ]; then

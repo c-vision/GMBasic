@@ -73,7 +73,7 @@ catch { /* browser già su o launch non disponibile: si prosegue */ }
 // 2. esegue il vmtest con il timeout.
 // NB: si lancia la DLL compilata (non `dotnet run`): il wrapper `dotnet run` non inoltra
 // stdin in modo affidabile e l'input scriptato andrebbe perso. Build incrementale prima.
-var confProj = Path.Combine(root, "GMBasicSharp", "tests-mixed", "GMBASIC.Conformance", "GMBASIC.Conformance.csproj");
+var confProj = Path.Combine(root, "tools", "runners", "GMBASIC.Conformance", "GMBASIC.Conformance.csproj");
 var buildPsi = new ProcessStartInfo("dotnet", $"build \"{confProj}\" -v q --nologo")
 {
     WorkingDirectory = root,
