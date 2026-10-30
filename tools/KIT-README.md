@@ -24,7 +24,7 @@ tools/sh/test_minitests_parity.sh --all          # suite completa (esplicita)
 tools/sh/test_minitests_parity.sh --interactive get_valid_parity.bas
 ```
 
-Legge i MiniTest da `shared/minitests/`, usa `tests-mixed/GMBASIC.IlBackend.Tests` e i binari
+Legge i MiniTest da `shared/minitests/`, usa `tests/GMBASIC.IlBackend.Tests` e i binari
 C in `GMBasic/native/gmb_vm_c/build`. `GMB_MINITEST_BUILD=1` forza la build del progetto test.
 
 ## VM/C e test interattivi

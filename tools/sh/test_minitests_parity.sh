@@ -41,7 +41,7 @@ if [ "$(uname)" = "Darwin" ]; then
 fi
 export GMBASIC_ROOT="$WS/GMBasic"
 
-dotnet test "$ROOT/tests-mixed/GMBASIC.IlBackend.Tests" \
+dotnet test "$ROOT/tests/GMBASIC.IlBackend.Tests" \
   -p:GmbEdition=Commercial \
   --filter "FullyQualifiedName~MiniTests_IL_PCode_Parity" \
   $flags

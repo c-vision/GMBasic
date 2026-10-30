@@ -7,7 +7,7 @@
 '     ' EXPECT: <riga1>|<riga2>|...
 '
 ' e viene letto da DUE consumer, con la STESSA regola stretta:
-'   * GMBasicSharp/tests-mixed/GMBASIC.IlBackend.Tests/MiniTestsParityTests.cs -> ReadExpect():
+'   * GMBasicSharp/tests/GMBASIC.IlBackend.Tests/MiniTestsParityTests.cs -> ReadExpect():
 '     prima riga che, dopo TrimStart(), inizia ESATTAMENTE con "' EXPECT: ";
 '   * tools/sh/test_minitests_c99native -> grep -m1 "^' EXPECT: " (a colonna 0).
 ' Ogni deviazione NON è un errore visibile: il file smette semplicemente di avere un

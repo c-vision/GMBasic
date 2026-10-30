@@ -209,10 +209,10 @@ fi
 }
 echo "MiniTest: $MINI"
 # Rumore diagnostico del motore MLX: prefissi in UNA fonte di verità (`tests/engine_noise_prefixes.txt`
-# nel repo originale, `GMBasicSharp/tests-mixed/` nel monorepo — la stessa lista dell'xUnit).
+# nel repo originale, `GMBasicSharp/tests/` nel monorepo — la stessa lista dell'xUnit).
 NOISE_FILE="${GMB_NOISE_FILE:-}"
 if [ -z "$NOISE_FILE" ]; then
-  for cand in "$ROOT/tests/engine_noise_prefixes.txt" "$ROOT/../GMBasicSharp/tests-mixed/engine_noise_prefixes.txt"; do
+  for cand in "$ROOT/tests/engine_noise_prefixes.txt" "$ROOT/../GMBasicSharp/tests/engine_noise_prefixes.txt"; do
     [ -f "$cand" ] && { NOISE_FILE="$cand"; break; }
   done
 fi
