@@ -134,11 +134,11 @@ scan_roots=("$ROOT")
 # Il gate e' BASIC (tools/basic/find_illegal_escapes.bas), non piu' uno script Python: gira sulla
 # gamba IL del runner. Se il runner non e' compilato il gate FALLISCE (non "pulisce" in
 # silenzio): un gate che non puo' leggere i file non deve dire verde.
-ILRUN="$ROOT/test_ilrun/bin/Debug/net10.0/test_ilrun.dll"
-[ -f "$ILRUN" ] || ILRUN="$ROOT/../GMBasicSharp/test_ilrun/bin/Debug/net10.0/test_ilrun.dll"
+ILRUN="$MONO/tools/runners/test_ilrun/bin/Debug/net10.0/test_ilrun.dll"
+[ -f "$ILRUN" ] || ILRUN="$ROOT/../tools/runners/test_ilrun/bin/Debug/net10.0/test_ilrun.dll"
 esc_rc=0
 if [ ! -f "$ILRUN" ]; then
-    echo "ESCAPE GATE FAIL: runner IL assente ($ILRUN). Compila: dotnet build GMBasicSharp/test_ilrun"
+    echo "ESCAPE GATE FAIL: runner IL assente ($ILRUN). Compila: dotnet build tools/runners/test_ilrun"
     esc_rc=1
 elif [ "$QUIET" -eq 1 ]; then
     # exit code del GATE preso direttamente (niente pipeline: $? sarebbe quello di grep).

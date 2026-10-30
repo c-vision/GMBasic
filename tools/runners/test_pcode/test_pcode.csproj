@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <!-- Progetti annidati (domcheck/, survey/ — tool one-off con proprio .csproj):
+         il glob di default li includerebbe → 3 Program.cs nella stessa assembly
+         (CS0260/CS0579). Esclusi dal build del parent. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);domcheck/**;survey/**</DefaultItemExcludes>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\GMBasicSharp\common\Pipeline\Pipeline.csproj" />
+    <ProjectReference Include="..\..\..\GMBasicSharp\common\IlBackendRuntime\IlBackendRuntime.csproj" />
+    <ProjectReference Include="..\..\..\GMBasicSharp\common\BRT\BRT.csproj" />
+    <ProjectReference Include="..\..\..\GMBasicSharp\common\StdLib\StdLib.csproj" />
+  </ItemGroup>
+</Project>

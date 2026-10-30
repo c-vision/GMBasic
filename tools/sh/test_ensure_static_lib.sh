@@ -160,11 +160,11 @@ if [ "$RUN_CS" = "1" ] && command -v dotnet >/dev/null 2>&1 && [ -f "$CS_TESTFIL
   fi
 elif [ "$RUN_CS" = "1" ]; then
   # NON silenzioso (2026-10-29): la classe xUnit `VmHostFreshnessTests` non esiste più nel
-  # progetto. La garanzia anti-stale lato C# è coperta da `GMBasicSharp/test_vmrun/Program.cs`
+  # progetto. La garanzia anti-stale lato C# è coperta da `tools/runners/test_vmrun/Program.cs`
   # (`VmHostFreshness.Ensure(root)`): qui si dichiara lo SKIP, senza fingere un PASS.
   if [ -f "$CS_HELPER" ]; then
     echo "SKIP VmHostFreshness (xUnit): classe VmHostFreshnessTests assente"
-    echo "     (helper: $CS_HELPER · la garanzia C# è esercitata da GMBasicSharp/test_vmrun)"
+    echo "     (helper: $CS_HELPER · la garanzia C# è esercitata da tools/runners/test_vmrun)"
   else
     echo "FAIL VmHostFreshness (xUnit): né la classe né l'helper esistono ($CS_TESTS)"
     fail=$((fail+1))

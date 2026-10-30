@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>preview</LangVersion>
+    <AssemblyName>test_ilrun</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\GMBasicSharp\common\Pipeline\Pipeline.csproj" />
+    <ProjectReference Include="..\..\..\GMBasicSharp\Executor\Executor.csproj" />
+    <ProjectReference Include="..\..\..\GMBasicSharp\common\IlBackendCodegen\IlBackendCodegen.csproj" />
+    <ProjectReference Include="..\..\..\GMBasicSharp\common\BRT\BRT.csproj" />
+    <ProjectReference Include="..\..\..\GMBasicSharp\common\StdLib\StdLib.csproj" />
+    <ProjectReference Include="..\..\..\GMBasicSharp\common\StdLib.Runtime\StdLib.Runtime.csproj" />
+  </ItemGroup>
+</Project>

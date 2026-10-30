@@ -14,9 +14,9 @@ fi
 # normalizzato. Le gambe sono 4, una per backend vivo: il backend C99Backend (emitter C#) e'
 # DEPRECATO nel monorepo e non e' piu' una gamba di parita'.
 #
-#   gamba 1  IL          : GMBasicSharp/test_ilrun --engine=il     (in-process, IL generato)
-#   gamba 2  PCodeVM     : GMBasicSharp/test_ilrun --engine=pcode  (PCodeVm C#)
-#   gamba 3  VM/C        : GMBasicSharp/test_vmrun                 (gmb_vm_host, chunk A1)
+#   gamba 1  IL          : tools/runners/test_ilrun --engine=il     (in-process, IL generato)
+#   gamba 2  PCodeVM     : tools/runners/test_ilrun --engine=pcode  (PCodeVm C#)
+#   gamba 3  VM/C        : tools/runners/test_vmrun                 (gmb_vm_host, chunk A1)
 #   gamba 4  C99Native   : gmb_c99native_run.sh (lexer/parser/emitter C -> C)
 #
 # Gli harness C# NON stanno dentro GMBasic/: vivono in `GMBasicSharp/`, sibling di `GMBasic/`
@@ -35,7 +35,7 @@ set -u
 export LC_ALL=C
 ROOT="$(cd "$(dirname "$0")/../../GMBasic" && pwd)"        # GMBasic/
 MONOREPO="$(cd "$ROOT/.." && pwd)"              # monorepo: contiene GMBasic/ e GMBasicSharp/
-HARNESS_DIR="$MONOREPO/GMBasicSharp"            # harness C# del monorepo
+HARNESS_DIR="$MONOREPO/tools/runners"            # harness C# (spostati da GMBasicSharp/ il 2026-10-30)
 if [ ! -d "$HARNESS_DIR/test_ilrun" ] || [ ! -d "$HARNESS_DIR/test_vmrun" ]; then
   echo "harness C# non trovati in $HARNESS_DIR (attesi test_ilrun/ e test_vmrun/)"
   echo "parity4 gira sul MONOREPO: GMBasic/ e GMBasicSharp/ devono essere sibling."
