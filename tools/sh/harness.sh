@@ -12,9 +12,9 @@ if [ "$(uname)" = "Darwin" ]; then
   export DYLD_LIBRARY_PATH="$HOME/.gmbasic/libs/ml/osx-arm64:$HOME/.gmbasic/libs/osx-arm64:${DYLD_LIBRARY_PATH:-}"
 fi
 case $MODE in
-  il)    exec dotnet "$ROOT/test_ilrun/bin/Debug/net10.0/test_ilrun.dll" --engine=il "$FILE" ;;
-  pcode) exec dotnet "$ROOT/test_pcode/bin/Debug/net10.0/test_pcode.dll" "$FILE" ;;
-  vmc)   exec dotnet "$ROOT/test_vmrun/bin/Debug/net10.0/test_vmrun.dll" "$FILE" ;;
-  ast)   exec dotnet "$ROOT/test_astdump/bin/Debug/net10.0/test_astdump.dll" "$FILE" ;;
+  il)    exec dotnet "$WS/tools/runners/test_ilrun/bin/Debug/net10.0/test_ilrun.dll" --engine=il "$FILE" ;;
+  pcode) exec dotnet "$WS/tools/runners/test_pcode/bin/Debug/net10.0/test_pcode.dll" "$FILE" ;;
+  vmc)   exec dotnet "$WS/tools/runners/test_vmrun/bin/Debug/net10.0/test_vmrun.dll" "$FILE" ;;
+  ast)   exec dotnet "$WS/tools/runners/test_astdump/bin/Debug/net10.0/test_astdump.dll" "$FILE" ;;
   *) echo "modo sconosciuto: $MODE" >&2; exit 2 ;;
 esac

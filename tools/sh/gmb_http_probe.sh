@@ -17,7 +17,9 @@ export LC_ALL=C
 [ $# -ge 2 ] || { echo "uso: $0 <sample.bas> <expect> [url] [legs]"; exit 2; }
 FILE="$1"; EXPECT="$2"; URL="${3:-http://127.0.0.1:8156/test}"; LEGS="${4:-il,pcode,vmc,c99n}"
 PORT=$(printf '%s' "$URL" | sed -E 's#.*://[^/]*:([0-9]+).*#\1#')
-ROOT=$(cd "$(dirname "$0")/../../GMBasic" && pwd); cd "$ROOT"
+ROOT=$(cd "$(dirname "$0")/../../GMBasic" && pwd)
+RUNNERS="$(cd "$(dirname "$0")/../.." && pwd)/tools/runners"   # harness C# (IL/PCode/VM-C)
+cd "$ROOT"
 DIR=$(mktemp -d); trap 'rm -rf "$DIR"' EXIT
 
 wait_port_free() {
@@ -32,9 +34,9 @@ wait_port_free() {
 run_leg() {
   local leg="$1" cmd
   case "$leg" in
-    il)    cmd="dotnet test_ilrun/bin/Debug/net10.0/test_ilrun.dll --engine=il \"$FILE\"" ;;
-    pcode) cmd="dotnet test_ilrun/bin/Debug/net10.0/test_ilrun.dll --engine=pcode \"$FILE\"" ;;
-    vmc)   cmd="dotnet test_vmrun/bin/Debug/net10.0/test_vmrun.dll \"$FILE\"" ;;
+    il)    cmd="dotnet "$RUNNERS/test_ilrun/bin/Debug/net10.0/test_ilrun.dll" --engine=il \"$FILE\"" ;;
+    pcode) cmd="dotnet "$RUNNERS/test_ilrun/bin/Debug/net10.0/test_ilrun.dll" --engine=pcode \"$FILE\"" ;;
+    vmc)   cmd="dotnet "$RUNNERS/test_vmrun/bin/Debug/net10.0/test_vmrun.dll" \"$FILE\"" ;;
     c99n)  cmd="bash tools/sh/gmb_c99native_run.sh \"$FILE\"" ;;
 
     *) echo "lega ignota: $leg"; return 2 ;;

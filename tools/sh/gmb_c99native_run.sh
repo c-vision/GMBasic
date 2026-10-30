@@ -236,8 +236,8 @@ emit_program_bundle() { # $1 = eseguibile
     if command -v gmb >/dev/null 2>&1; then
       gmb "$bundle_tool" --system "$shared/system.settings.json" \
         --app "$DIR/app.settings.json" --out "$out/app.settings.json" >/dev/null && n=$((n+1))
-    elif [ -f "$ROOT/../GMBasicSharp/test_ilrun/bin/Debug/net10.0/test_ilrun.dll" ]; then
-      dotnet "$ROOT/../GMBasicSharp/test_ilrun/bin/Debug/net10.0/test_ilrun.dll" --engine=il \
+    elif [ -f "$ROOT/../tools/runners/test_ilrun/bin/Debug/net10.0/test_ilrun.dll" ]; then
+      dotnet "$ROOT/../tools/runners/test_ilrun/bin/Debug/net10.0/test_ilrun.dll" --engine=il \
         "$bundle_tool" --system "$shared/system.settings.json" \
         --app "$DIR/app.settings.json" --out "$out/app.settings.json" >/dev/null && n=$((n+1))
     fi

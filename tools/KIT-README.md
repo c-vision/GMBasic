@@ -7,9 +7,9 @@ Tutti gli harness vivono in `GMBasicSharp/` e linkano i progetti in `common/` e 
 
 | strumento | uso |
 |---|---|
-| `test_ilrun` | `dotnet GMBasicSharp/test_ilrun/bin/Debug/net10.0/test_ilrun.dll --engine=il <file.bas>` (anche `--engine=pcode`/`vmc`) |
-| `test_pcode` | `dotnet GMBasicSharp/test_pcode/bin/Debug/net10.0/test_pcode.dll <file.bas>` |
-| `test_vmrun` | `dotnet GMBasicSharp/test_vmrun/bin/Debug/net10.0/test_vmrun.dll <file.bas> [timeout_s]` — VM/C con anti-stale di `gmb_vm_host` e cleanup browser/CDP |
+| `test_ilrun` | `dotnet tools/runners/test_ilrun/bin/Debug/net10.0/test_ilrun.dll --engine=il <file.bas>` (anche `--engine=pcode`/`vmc`) |
+| `test_pcode` | `dotnet tools/runners/test_pcode/bin/Debug/net10.0/test_pcode.dll <file.bas>` |
+| `test_vmrun` | `dotnet tools/runners/test_vmrun/bin/Debug/net10.0/test_vmrun.dll <file.bas> [timeout_s]` — VM/C con anti-stale di `gmb_vm_host` e cleanup browser/CDP |
 | `test_astdump` | dump AST di un `.bas` |
 
 Input scriptato (test interattivi `@GET`/`READ`): `GMB_TUI_SCRIPT=$'a\rb\r'`.

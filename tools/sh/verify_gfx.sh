@@ -28,10 +28,10 @@ run_to() { # run_to <secs> <file> <marker> <cmd...>
 one() { # one <nome> <file> <marker>
   local name=$1 f=$2 marker=$3
   echo "== $name"
-  run_to 40 "/tmp/verify_gfx_${name}_il.log"   "$marker" dotnet "$ROOT/test_ilrun/bin/Debug/net10.0/test_ilrun.dll" --engine=il --gfx "$f"
-  run_to 40 "/tmp/verify_gfx_${name}_pc.log"   "$marker" dotnet "$ROOT/test_ilrun/bin/Debug/net10.0/test_ilrun.dll" --engine=pcode "$f"
+  run_to 40 "/tmp/verify_gfx_${name}_il.log"   "$marker" dotnet "$MONO/tools/runners/test_ilrun/bin/Debug/net10.0/test_ilrun.dll" --engine=il --gfx "$f"
+  run_to 40 "/tmp/verify_gfx_${name}_pc.log"   "$marker" dotnet "$MONO/tools/runners/test_ilrun/bin/Debug/net10.0/test_ilrun.dll" --engine=pcode "$f"
   # compilatore C# → chunk → VM/C
-  run_to 60 "/tmp/verify_gfx_${name}_vmc.log"  "$marker" dotnet "$ROOT/test_vmrun/bin/Debug/net10.0/test_vmrun.dll" "$f"
+  run_to 60 "/tmp/verify_gfx_${name}_vmc.log"  "$marker" dotnet "$MONO/tools/runners/test_vmrun/bin/Debug/net10.0/test_vmrun.dll" "$f"
   # compilatore C nativo → chunk → VM/C (stesso binario host)
   run_to 60 "/tmp/verify_gfx_${name}_vmcC.log" "$marker" bash -c "\"$GB/native/gmb_compiler_c/build/gmb_chunk_driver\" \"$f\" /tmp/vg_$name.chunk >/dev/null && \"$GB/native/gmb_vm_c/build/gmb_vm_host\" /tmp/vg_$name.chunk"
   # compilatore C nativo → C → eseguibile (C99Native)
