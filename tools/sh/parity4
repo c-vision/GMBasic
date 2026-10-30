@@ -81,15 +81,24 @@ FILE="$(cd "$(dirname "$FILE")" && pwd)/$(basename "$FILE")"
 # torch di una virtualenv (stub incompatibile) → dyld carica il torch sbagliato e il processo
 # ABORTA (SIGSEGV). Puntiamo DYLD_LIBRARY_PATH alla dir col torch CORRETTO, PRIMA delle gambe
 # (deve essere presente al lancio del processo). Vedi Bugs/(solved) - MiniTest-Filter-Array-Crash.md.
-ROOT5="$(cd "$(dirname "$0")/../../GMBasic" && pwd)"
+# ROOT = GMBasic/ (calcolata prima del cd); usata per build/libs
 case "$(uname -m)" in
   arm64) RID5=osx-arm64;;
   x86_64) RID5=osx-x64;;
   *) RID5="";;
 esac
+# Componenti e librerie NON stanno nel checkout: la cache utente `~/.gmbasic/libs` contiene
+# `<componente>/<rid>/` (ml = torch, chromium, obscura, ocr) e `<rid>/` (nostre lib + esterne);
+# in sviluppo si aggiunge `GMBasic/build/libs/<rid>/`. Stessa regola di tools/sh/harness.sh.
+LIBS_CACHE="$HOME/.gmbasic/libs"
 if [ "$(uname)" = "Darwin" ] && [ -n "$RID5" ]; then
-  export GMB_TORCH_PATH="$ROOT5/libs-runtime/ml/$RID5"
-  export DYLD_LIBRARY_PATH="$ROOT5/libs-runtime/ml/$RID5:$ROOT5/Resources/libs/$RID5:${DYLD_LIBRARY_PATH:-}"
+  export GMB_TORCH_PATH="${GMB_TORCH_PATH:-$LIBS_CACHE/ml/$RID5}"
+  DYLD4="$LIBS_CACHE/ml/$RID5:$LIBS_CACHE/$RID5:$ROOT/build/libs/$RID5"
+  if [ -n "${DYLD_LIBRARY_PATH:-}" ]; then
+    export DYLD_LIBRARY_PATH="$DYLD4:$DYLD_LIBRARY_PATH"
+  else
+    export DYLD_LIBRARY_PATH="$DYLD4"
+  fi
 fi
 
 # CONTRATTO PARITÀ: un sample dichiara nelle prime righe `' PARITY-EXCLUDE: <motivo>` se la
