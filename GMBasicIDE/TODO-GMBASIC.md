@@ -1,28 +1,28 @@
 # TODO — GMBasicIDE come IDE per GMBasic
 
-**Stato:** piano aggiornato il 2026-10-22 dopo tre decisioni di prodotto:
+**Status:** plan updated on 2026-10-22 after three product decisions:
 
-1. l'IDE edita **GMBasic nativo** (non traduce VB6 in GMBasic);
-2. il compilatore è **C99Native** (unico target; IL non è più il default né il fallback);
-3. i form sono **`.frm` compatibili VB6** (layout), con il codice GMBasic in file `.bas`.
+1. the IDE edits **native GMBasic** (it does not translate VB6 into GMBasic);
+2. the compiler is **C99Native** (single target; IL is no longer the default nor the fallback);
+3. forms are **VB6-compatible `.frm`** (layout), with the GMBasic code in `.bas` files.
 
-Nessun sorgente di GMBasic o di GMBasicIDE è stato modificato da questo documento. Le prove
-hanno prodotto solo file in `/tmp` e artefatti di build in `work/` del repo GMBasic.
+No source of GMBasic or GMBasicIDE has been modified by this document. The probes
+produced only files in `/tmp` and build artifacts in the `work/` directory of the GMBasic repo.
 
-**Perimetro:** rendere GMBasicIDE la shell IDE (progetto, editor, designer, properties, output,
-run) del compilatore GMBasic, senza incorporare GMBasic nel processo dell'IDE.
+**Scope:** make GMBasicIDE the IDE shell (project, editor, designer, properties, output,
+run) of the GMBasic compiler, without embedding GMBasic in the IDE process.
 
-**Legenda:** `P0` = serve per il primo uso reale · `P1` = necessario per un flusso completo ·
-`P2` = rifinitura o ricerca. `[x]` = fatto e verificato.
+**Legend:** `P0` = needed for the first real use · `P1` = required for a complete flow ·
+`P2` = polish or research. `[x]` = done and verified.
 
-Fonti lette (vault `~/Documents/AiWiki/01-Projects/GMBasic`):
+Sources read (vault `~/Documents/AiWiki/01-Projects/GMBasic`):
 `_Index_GMBasic.md`, `Guide/utente/Controlli-Pixel-Proprieta-Metodi-Guida-Utente.md`,
 `Guide/utente/Controlli-Utente-Struttura.md`, `Guide/utente/Finestre-Eventi-Guida-Utente.md`,
 `Guide/utente/Clipper-Controls-Reference.md`, `Guide/utente/CLI-Flags.md`,
 `Todo/(open) - IDE-TUI-BASIC-e-standalone-e-VSCode-LSP.md`,
 `Piani/(open) - Modello-Eventi-Controlli-Finestre.md`.
 
-Fonti lette (repo `~/Documents/Projects/GMBasic`):
+Sources read (repo `~/Documents/Projects/GMBasic`):
 `README.md`, `Executor/`, `test_ilrun/`, `test_graphics_visible/`,
 `native/gmb_compiler_c/frontend/`, `native/gmb_c99native/driver/`,
 `native/gmb_c99native/src/gmb_c99_emit_controls.c`,
@@ -30,139 +30,139 @@ Fonti lette (repo `~/Documents/Projects/GMBasic`):
 `common/Registry/canonical.registry.json`, `samples/Community/graphics/ControlsFullDemo.bas`,
 `tools/gmb_c99native_run.sh`.
 
-Fonti lette (questo repo): `src/core/vb_parse.c`, `src/core/vb_model.h`,
+Sources read (this repo): `src/core/vb_parse.c`, `src/core/vb_model.h`,
 `src/platform/mac/VBEditorWindow.m`, `src/platform/mac/VBCodeEditor.m`, `src/tools/vbtool.c`.
 
-**Sintesi delle modifiche rispetto alla versione precedente:**
+**Summary of the changes compared with the previous version:**
 
-- target unico **C99Native**: niente Run IL di default, niente "grafica solo su IL";
-- form **`.frm` VB6** (layout) invece di `.gmbform` JSON; codice in `.bas`, `.ui.bas` generato;
-- aggiunte le **omissioni upstream** O1–O10 (Label pixel, progetto/CLI, mappa diagnostica,
-  checkbox/combo/frame/timer e round-trip `.frm`);
-- misurata la capability reale di C99Native (sezione 1.1) e i suoi limiti;
-- **correzione 2026-10-24**: la risoluzione multi-file via `IMPORT` **esiste già** (misurata in
-  sezione 1.1); manca il progetto/CLI, non il linking. O7 riformulata e declassata a P1.
-- **O7 fatto (2026-10-24)** in GMBasic: `gmb_inc_resolve` è ricorsivo, legge
-  `importFolders`/`importFiles` dei settings, segue gli `IMPORT` di ogni modulo e usa
-  `compiler.searchFolders` (default `include`/`Controls`/`<install>/libs/*`) al posto
-  dell'elenco cablato — stesse regole nell'Orchestrator C#. In più il CLI di progetto
-  `gmb check/build/run --project` (esclusioni, entry, `NAMESPACE`/`IMPORT`, `--json`).
+- single target **C99Native**: no default IL Run, no "graphics only on IL";
+- **VB6 `.frm`** forms (layout) instead of `.gmbform` JSON; code in `.bas`, generated `.ui.bas`;
+- added the **upstream omissions** O1–O10 (pixel Label, project/CLI, diagnostic map,
+  checkbox/combo/frame/timer and `.frm` round-trip);
+- measured the real capability of C99Native (section 1.1) and its limits;
+- **correction 2026-10-24**: multi-file resolution via `IMPORT` **already exists** (measured in
+  section 1.1); what is missing is the project/CLI, not the linking. O7 reworded and downgraded to P1.
+- **O7 done (2026-10-24)** in GMBasic: `gmb_inc_resolve` is recursive, reads the settings
+  `importFolders`/`importFiles`, follows the `IMPORT` of every module and uses
+  `compiler.searchFolders` (default `include`/`Controls`/`<install>/libs/*`) in place of
+  the hardcoded list — same rules in the C# Orchestrator. Plus the project CLI
+  `gmb check/build/run --project` (exclusions, entry, `NAMESPACE`/`IMPORT`, `--json`).
   Sample `samples/modules/FolderResolution`.
-- **O8 implementato (2026-10-24)** in GMBasic: `#line` per statement (`gmb_c99_emit.c`),
-  segmenti dei moduli in `gmb_inc_resolve`, `--line-map <json>` nel driver. `cc` e gli errori
-  di emissione citano `file:riga` del `.bas`; gate `native/gmb_c99native/tests/c99_line_map_test.sh`.
+- **O8 implemented (2026-10-24)** in GMBasic: `#line` per statement (`gmb_c99_emit.c`),
+  module segments in `gmb_inc_resolve`, `--line-map <json>` in the driver. `cc` and the emission
+  errors cite `file:riga` of the `.bas`; gate `native/gmb_c99native/tests/c99_line_map_test.sh`.
 
 ---
 
-## 0. Decisioni confermate e perimetro
+## 0. Confirmed decisions and scope
 
-| # | Decisione | Conseguenza |
+| # | Decision | Consequence |
 |---|---|---|
-| D1 | **GMBasic nativo** | L'IDE colora, completa e controlla la grammatica GMBasic; nessun traduttore VB6→GMBasic. |
-| D2 | **C99Native** | Check, Run e Build usano il driver/emitter C99Native. IL non è richiesto; non si apre l'interprete VB6 per GMBasic. |
-| D3 | **Form `.frm` compatibili VB6** | Il layout vive in un `.frm` VB6 (`VERSION 5.00`, `Begin VB.Form`, `Begin VB.*`, proprietà in twip); il codice GMBasic vive in `.bas`. Niente formato `.gmbform` JSON. |
-| D4 | **Confine a processo** | L'IDE invoca un CLI stabile (`gmb check/run/build --json`); non linka il compilatore né il runtime GMBasic. |
-| D5 | **Omissioni esplicite** | Se C99Native non ha un controllo/feature necessario, o si implementa upstream (sezione 6) o il designer lo rifiuta con un messaggio. Mai emulazione silenziosa. |
+| D1 | **Native GMBasic** | The IDE colors, completes and checks the GMBasic grammar; no VB6→GMBasic translator. |
+| D2 | **C99Native** | Check, Run and Build use the C99Native driver/emitter. IL is not required; the VB6 interpreter is not opened for GMBasic. |
+| D3 | **VB6-compatible `.frm` forms** | The layout lives in a VB6 `.frm` (`VERSION 5.00`, `Begin VB.Form`, `Begin VB.*`, properties in twip); the GMBasic code lives in `.bas`. No `.gmbform` JSON format. |
+| D4 | **Process boundary** | The IDE invokes a stable CLI (`gmb check/run/build --json`); it does not link the compiler nor the GMBasic runtime. |
+| D5 | **Explicit omissions** | If C99Native lacks a needed control/feature, either it is implemented upstream (section 6) or the designer rejects it with a message. Never silent emulation. |
 
-**Non obiettivi (MVP):**
+**Non-goals (MVP):**
 
-- riscrivere GMBasic dentro `src/core/vb_code.c` o nel runtime VB6 di GMBasicIDE;
-- linkare `gmb_compiler_c`, le assembly C# o la VM/C di GMBasic nel processo dell'IDE;
-- tradurre codice **VB6** in GMBasic (proprietà `Control.Property`, handler `Private Sub`,
-  control array, `Me`, `DoEvents`, `Option Explicit`): il `.frm` è compatibile come **layout**,
-  non come codice eseguibile VB6;
-- un debugger GMBasic completo, IntelliSense semantico su tutti i 1567 built-in, Menu Editor
-  completo, data binding ADO.
+- rewriting GMBasic inside `src/core/vb_code.c` or in the GMBasicIDE VB6 runtime;
+- linking `gmb_compiler_c`, the C# assemblies or the GMBasic VM/C into the IDE process;
+- translating **VB6** code into GMBasic (`Control.Property` properties, `Private Sub` handlers,
+  control array, `Me`, `DoEvents`, `Option Explicit`): the `.frm` is compatible as a **layout**,
+  not as executable VB6 code;
+- a complete GMBasic debugger, semantic IntelliSense over all 1567 built-ins, complete Menu Editor,
+  ADO data binding.
 
-Il principio resta quello del core: **tutta la logica testabile sta in C99 in `src/core/`**,
-Cocoa fa solo I/O e UI. Il confine con GMBasic è un contratto CLI versionato.
+The principle remains that of the core: **all testable logic lives in C99 in `src/core/`**,
+Cocoa only does I/O and UI. The boundary with GMBasic is a versioned CLI contract.
 
 ---
 
-## 1. Che lingua e che compilatore sono GMBasic
+## 1. What language and what compiler GMBasic are
 
-GMBasic **non è Visual Basic 6**: è un BASIC compilato, con una superficie molto più larga e un
-modello UI che vive nel codice. Il target è C99Native, quindi la verità sulla grammatica è il
-**front-end C + emitter C99Native**, non il registry C# né i runner IL.
+GMBasic **is not Visual Basic 6**: it is a compiled BASIC, with a much wider surface and a
+UI model that lives in the code. The target is C99Native, so the truth about the grammar is the
+**C front-end + C99Native emitter**, not the C# registry nor the IL runners.
 
-| Aspetto | Fatto verificato | Conseguenza per l'IDE |
+| Aspect | Verified fact | Consequence for the IDE |
 |---|---|---|
-| Natura | Compilatore con front-end C e C# e più backend storici; il target scelto è `native/gmb_c99native`, che emette C e lo linka al runtime C. | L'IDE compila e lancia un processo; non interpreta. |
-| Lessico | Keyword **case-insensitive**; il lexer C ha **1285** entry `GMB_KEYWORD_ENTRY`; molte parole sono **soft keyword** riconosciute dal parser (`BUTTON`, `TEXTBOX`, `CONTROL`, `LABEL`, …), non dal lexer. | La tabella del syntax highlighting va generata dal lexer **C99Native** + parser, non copiata dal registry C#. |
-| Superficie | `common/Registry/canonical.registry.json`: **1567** procedure, **115** comandi, **284** costanti. | Highlight/completion: keyword dal compilatore, nomi delle procedure dal registry; test di sincronia. |
-| Sintassi | Statement per riga o separati da `:`; commenti `'` e `REM`; continuazione `_`; numeri di riga BASIC opzionali; label. | Serve un lexer GMBasic dedicato; quello VB6 attuale non basta. |
-| Tipi | `STRING`, `BOOLEAN`, `BYTE`, `INTEGER`, `LONG`, `DATE`, `SINGLE`, `DOUBLE`, `CURRENCY`; `TYPE`/`CLASS` utente. | Highlight dei tipi; niente tipi VB6 non presenti. |
-| Dichiarazioni | `DIM … AS`, `CONST`, `TYPE`, `ENUM`, `CLASS … INHERITS`, `NAMESPACE`, `IMPORT`, `DECLARE … LIB`. | Outline e procedure combo devono conoscere classi, namespace e tipi, non solo `Sub`/`Function`. |
-| Controllo | `IF/ELSEIF/END IF`, `SELECT CASE`, `FOR/NEXT`, `FOR EACH`, `DO/LOOP`, `WHILE/WEND`, `GOTO`/`GOSUB`, `ON ERROR`/`RESUME`/`ERR`, `TRY/CATCH`. | Il "line executable" e i breakpoint non sono quelli VB6: in modalità GMBasic i breakpoint sono disabilitati. |
-| UI | Namespace `CONTROLS` + `WINDOWS`; controlli **a celle** in TUI e **a pixel** con `SCREEN`; `WINDOW PUMP`, `ON …`, proprietà come clausole (`NAME`, `TAG`, `TOOLTIP`, `VISIBLE`, `ENABLED`, `TABINDEX`, `TABSTOP`, `STYLE`) e `CONTROL SET/GET`. | Il designer genera codice pixel; il chrome è SDL/GMBasic, non VB6: non è un preview WYSIWYG al 100%. |
-| Progetto | Il compilatore non ha un progetto `.vbp`/`.frm` nativo. `DiscoverSourceFiles` scansiona ricorsivamente `*.bas` e `*.inc`, più `include/` e `Controls/`; `app.settings.json` e `Resources/system.settings.json` contengono le impostazioni. | L'IDE aggiunge il `.frm` come layout e un manifest proprio, e genera `.ui.bas`; il compilatore continua a ignorare `.frm`. |
-| Build | `gmb_c99native_driver` emette C (`--no-exe`) e di default prova a linkare; il link nudo fallisce (`gmb_runtime.h` non trovato), il link completo è in `tools/gmb_c99native_run.sh`. | Serve un CLI stabile che incorpori il link completo e la scoperta del progetto. |
-| Multi-file | **Già risolto via `IMPORT`**: un modulo `.bas`/`.inc` che dichiara `NAMESPACE X` entra nel build se il sorgente scrive `IMPORT X`; il driver ne prepende il testo (misurato: `Main.bas` + `Ui.bas` → `gmb_user_frmShow()` nel C emesso). Cerca nella dir del programma, `include/`, `Controls/` e `<root>/libs/*`: **non è ricorsivo**, e un file senza `NAMESPACE` o non importato non viene compilato. | Nessun ponte di concatenazione: il codegen emette `NAMESPACE`/`IMPORT` e il progetto resta su una dir piatta (o `include/`). Al CLI serve l'elenco file/esclusioni e la entry (O7). |
-| Diagnostica | Front-end: `parse error: <msg>` con la riga, rc=3. Emitter: `emissione: <file>:<riga>: <msg>`, rc=4 (era `riga N` del testo unito). Errori `cc`: **citano il `.bas`** grazie ai `#line` (O8, fatto il 2026-10-24). | L'IDE usa direttamente `file:riga`; `--line-map <json>` dà gli anchor per chi compila il C per conto proprio. |
-| Driver | `tools/gmb_c99native_driver` può essere **stantio** rispetto a `native/gmb_compiler_c/build/gmb_c99native_driver`; `tools/gmb_c99native_run.sh` preferisce il build più recente. | Il CLI deve costruire/verificare il driver e dichiarare la versione; non usare il binario in `tools/` a occhi chiusi. |
-| Toolchain | Su questa macchina: .NET **10.0.301**, Apple clang **21.0.0**, cmake **4.4.3**, driver C99Native compilato. `GMBASIC_DEV_MODE=1` serve per il licensing in sviluppo. | First-run check di `cc`, `cmake`, driver, root GMBasic e librerie runtime. |
+| Nature | Compiler with C and C# front-ends and several historical backends; the chosen target is `native/gmb_c99native`, which emits C and links it to the C runtime. | The IDE compiles and launches a process; it does not interpret. |
+| Lexicon | **Case-insensitive** keywords; the C lexer has **1285** `GMB_KEYWORD_ENTRY` entries; many words are **soft keywords** recognized by the parser (`BUTTON`, `TEXTBOX`, `CONTROL`, `LABEL`, …), not by the lexer. | The syntax highlighting table must be generated from the **C99Native** lexer + parser, not copied from the C# registry. |
+| Surface | `common/Registry/canonical.registry.json`: **1567** procedures, **115** commands, **284** constants. | Highlight/completion: keywords from the compiler, procedure names from the registry; synchronization test. |
+| Syntax | Statements per line or separated by `:`; comments `'` and `REM`; continuation `_`; optional BASIC line numbers; labels. | A dedicated GMBasic lexer is needed; the current VB6 one is not enough. |
+| Types | `STRING`, `BOOLEAN`, `BYTE`, `INTEGER`, `LONG`, `DATE`, `SINGLE`, `DOUBLE`, `CURRENCY`; user `TYPE`/`CLASS`. | Type highlighting; no VB6 types that are absent. |
+| Declarations | `DIM … AS`, `CONST`, `TYPE`, `ENUM`, `CLASS … INHERITS`, `NAMESPACE`, `IMPORT`, `DECLARE … LIB`. | Outline and procedure combo must know classes, namespaces and types, not only `Sub`/`Function`. |
+| Control | `IF/ELSEIF/END IF`, `SELECT CASE`, `FOR/NEXT`, `FOR EACH`, `DO/LOOP`, `WHILE/WEND`, `GOTO`/`GOSUB`, `ON ERROR`/`RESUME`/`ERR`, `TRY/CATCH`. | The "line executable" and the breakpoints are not the VB6 ones: in GMBasic mode breakpoints are disabled. |
+| UI | `CONTROLS` + `WINDOWS` namespaces; **cell-based** controls in TUI and **pixel-based** with `SCREEN`; `WINDOW PUMP`, `ON …`, properties as clauses (`NAME`, `TAG`, `TOOLTIP`, `VISIBLE`, `ENABLED`, `TABINDEX`, `TABSTOP`, `STYLE`) and `CONTROL SET/GET`. | The designer generates pixel code; the chrome is SDL/GMBasic, not VB6: it is not a 100% WYSIWYG preview. |
+| Project | The compiler has no native `.vbp`/`.frm` project. `DiscoverSourceFiles` scans `*.bas` and `*.inc` recursively, plus `include/` and `Controls/`; `app.settings.json` and `Resources/system.settings.json` contain the settings. | The IDE adds the `.frm` as layout and its own manifest, and generates `.ui.bas`; the compiler keeps ignoring `.frm`. |
+| Build | `gmb_c99native_driver` emits C (`--no-exe`) and by default tries to link; the bare link fails (`gmb_runtime.h` not found), the full link is in `tools/gmb_c99native_run.sh`. | A stable CLI is needed that embeds the full link and project discovery. |
+| Multi-file | **Already solved via `IMPORT`**: a `.bas`/`.inc` module declaring `NAMESPACE X` enters the build if the source writes `IMPORT X`; the driver prepends its text (measured: `Main.bas` + `Ui.bas` → `gmb_user_frmShow()` in the emitted C). It searches the program dir, `include/`, `Controls/` and `<root>/libs/*`: **it is not recursive**, and a file without `NAMESPACE` or not imported is not compiled. | No concatenation bridge: the codegen emits `NAMESPACE`/`IMPORT` and the project stays on a flat dir (or `include/`). The CLI needs the file list/exclusions and the entry (O7). |
+| Diagnostics | Front-end: `parse error: <msg>` with the line, rc=3. Emitter: `emissione: <file>:<riga>: <msg>`, rc=4 (it used to be `riga N` of the merged text). `cc` errors: **cite the `.bas`** thanks to the `#line` (O8, done on 2026-10-24). | The IDE directly uses `file:riga`; `--line-map <json>` gives the anchors for those who compile the C on their own. |
+| Driver | `tools/gmb_c99native_driver` may be **stale** compared with `native/gmb_compiler_c/build/gmb_c99native_driver`; `tools/gmb_c99native_run.sh` prefers the most recent build. | The CLI must build/verify the driver and declare the version; do not use the binary in `tools/` blindly. |
+| Toolchain | On this machine: .NET **10.0.301**, Apple clang **21.0.0**, cmake **4.4.3**, C99Native driver compiled. `GMBASIC_DEV_MODE=1` is needed for licensing in development. | First-run check of `cc`, `cmake`, driver, GMBasic root and runtime libraries. |
 
-### 1.1 Cosa fa davvero C99Native (misurato il 2026-10-22)
+### 1.1 What C99Native really does (measured on 2026-10-22)
 
-Prova eseguita con `tools/gmb_c99native_run.sh /tmp/gmbprobe/ui3.bas c99ui3s` e
+Probe run with `tools/gmb_c99native_run.sh /tmp/gmbprobe/ui3.bas c99ui3s` and
 `native/gmb_compiler_c/build/gmb_c99native_driver … --no-exe`.
 
-| Costrutto | Esito C99Native | Note per il codegen |
+| Construct | C99Native outcome | Notes for the codegen |
 |---|---|---|
-| `SCREEN 12, 320, 200, 32` + `WINDOW PUMP` | **Funziona** | Il log dice `window 320x200 (logical)`, renderer software. |
-| `WINDOW SET TITLE "…"` | **Funziona** | Emette `gmb_winstmt_set_title("", …)`. |
-| `BUTTON x,y,w,h,"…" ON CLICK handler` | **Funziona** | Con `NAME`/`STYLE` passa da `gmb_form_add_button_css`, che applica anche `name=`, `tabindex=`, ecc. |
-| `TEXTBOX x,y,w,h INTO var` | **Funziona solo con `INTO` + variabile dichiarata `STRING`** | Senza `INTO`: `CONTROL 'TEXTBOX' non supportato dall'emitter nativo`. Con `DIM var` (numerico) il puntatore stringa finisce in un `double`: sbagliato. Il codegen deve emettere `DIM var AS STRING` a livello modulo. |
-| `CHECKBOX x,y,"…" INTO var` | **Percorso pixel presente nel sorgente attuale** (`gmb_control_add_checkbox`) | La proprietà viene applicata con `gmb_tui_last_handle()`: in grafica quel valore è l'ultimo controllo TUI, non il checkbox appena creato. `NAME`/`TABINDEX` vanno persi. Da correggere (O2). Dimensione fissa 200×22: il layout VB6 non è rispettato. |
-| `LABEL …` | **Solo TUI** | `gmb_label_init` registra un controllo TUI; non esiste `gmb_form_add_label`. In una form pixel non compare. Da implementare (O1). |
-| `PIXCOMBOBOX` / `PIXLISTBOX` | **Parser: `statement non riconosciuto`** | I rami esistono nell'emitter ma non sono raggiungibili dalla sintassi. ComboBox/ListBox pixel mancano (O3). |
-| `ON WINDOW CLOSE GOSUB handler` | **Funziona** | Senza `GOSUB` l'emitter emette `gmb_window_unregister_event("CLOSE")`; la forma corretta è con `GOSUB`/`GOTO`. |
-| `WINDOWCLOSED()` | **Funziona** | `gmb_form_closed()` nel ciclo. |
-| `TIMER` / `TI` in espressione | **Non disponibile** | `TIMER` resta un identificatore C non definito; `TI` non viene risolto a `gmb_timer()` in espressione. Per un Timer serve un builtin/controllo (O6) o un'altra sorgente di tempo. |
-| Form con figli `FRAME`/`PICTUREBOX` | **Nessun contenitore pixel** | Non esistono `gmb_form_add_frame`/`add_picturebox`; i figli vanno appiattiti o serve O4. |
-| `#line` / mappa C→BASIC | **Fatto (O8)** | Ogni statement emette `#line <riga bas> "<file bas>"`; il driver accetta `--line-map <file.json>` con gli anchor `c_line → file/riga`. Misurato: `cc` su un MiniTest riporta `toggle_parity.bas:5:55: error: ...` invece di `out.c:132`. |
-| `IMPORT` multi-file | **Funziona** | `Main.bas` con `IMPORT UI` + `Ui.bas` con `NAMESPACE UI`: il C emesso contiene `gmb_user_frmShow()` e il corpo. La lookup è per namespace, non per nome file; senza `IMPORT` (o con il modulo in una sottocartella) → `simbolo non trovato`, rc=4. |
+| `SCREEN 12, 320, 200, 32` + `WINDOW PUMP` | **Works** | The log says `window 320x200 (logical)`, software renderer. |
+| `WINDOW SET TITLE "…"` | **Works** | Emits `gmb_winstmt_set_title("", …)`. |
+| `BUTTON x,y,w,h,"…" ON CLICK handler` | **Works** | With `NAME`/`STYLE` it goes through `gmb_form_add_button_css`, which also applies `name=`, `tabindex=`, etc. |
+| `TEXTBOX x,y,w,h INTO var` | **Works only with `INTO` + a variable declared `STRING`** | Without `INTO`: `CONTROL 'TEXTBOX' non supportato dall'emitter nativo`. With `DIM var` (numeric) the string pointer ends up in a `double`: wrong. The codegen must emit `DIM var AS STRING` at module level. |
+| `CHECKBOX x,y,"…" INTO var` | **Pixel path present in the current source** (`gmb_control_add_checkbox`) | The property is applied with `gmb_tui_last_handle()`: in graphics that value is the last TUI control, not the checkbox just created. `NAME`/`TABINDEX` are lost. To be fixed (O2). Fixed size 200×22: the VB6 layout is not respected. |
+| `LABEL …` | **TUI only** | `gmb_label_init` registers a TUI control; there is no `gmb_form_add_label`. In a pixel form it does not appear. To be implemented (O1). |
+| `PIXCOMBOBOX` / `PIXLISTBOX` | **Parser: `statement non riconosciuto`** | The branches exist in the emitter but are not reachable from the syntax. Pixel ComboBox/ListBox are missing (O3). |
+| `ON WINDOW CLOSE GOSUB handler` | **Works** | Without `GOSUB` the emitter emits `gmb_window_unregister_event("CLOSE")`; the correct form is with `GOSUB`/`GOTO`. |
+| `WINDOWCLOSED()` | **Works** | `gmb_form_closed()` in the loop. |
+| `TIMER` / `TI` in an expression | **Not available** | `TIMER` stays an undefined C identifier; `TI` is not resolved to `gmb_timer()` in an expression. A Timer needs a builtin/control (O6) or another time source. |
+| Form with `FRAME`/`PICTUREBOX` children | **No pixel container** | `gmb_form_add_frame`/`add_picturebox` do not exist; the children must be flattened or O4 is needed. |
+| `#line` / C→BASIC map | **Done (O8)** | Every statement emits `#line <riga bas> "<file bas>"`; the driver accepts `--line-map <file.json>` with the anchors `c_line → file/riga`. Measured: `cc` on a MiniTest reports `toggle_parity.bas:5:55: error: ...` instead of `out.c:132`. |
+| Multi-file `IMPORT` | **Works** | `Main.bas` with `IMPORT UI` + `Ui.bas` with `NAMESPACE UI`: the emitted C contains `gmb_user_frmShow()` and the body. The lookup is by namespace, not by file name; without `IMPORT` (or with the module in a subfolder) → `simbolo non trovato`, rc=4. |
 
-### 1.2 Cosa NON esiste rispetto a VB6
+### 1.2 What does NOT exist compared with VB6
 
-- `LABEL` pixel, `FRAME`/`PICTUREBOX` come contenitori, `TIMER` come controllo.
-- `OPTIONBUTTON` singolo (esiste `RADIO` come gruppo di opzioni).
-- Control array (`Index`, `Load`/`Unload` di controlli).
+- Pixel `LABEL`, `FRAME`/`PICTUREBOX` as containers, `TIMER` as a control.
+- Single `OPTIONBUTTON` (`RADIO` exists as an option group).
+- Control array (`Index`, `Load`/`Unload` of controls).
 - `ME`, `DOEVENTS`, `Option Explicit`.
-- Proprietà VB6 `Control.Property = valore`: si usano clausole e `CONTROL SET/GET/GETS`.
-- Access key `&` nelle caption: da verificare; non assumere la semantica VB6.
-- Codifica eseguibile VB6 nel `.frm`: il file è compatibile come **layout**, non come codice.
+- VB6 property `Control.Property = valore`: clauses and `CONTROL SET/GET/GETS` are used.
+- Access key `&` in captions: to be verified; do not assume the VB6 semantics.
+- Executable VB6 encoding in the `.frm`: the file is compatible as a **layout**, not as code.
 
-Queste assenze non sono tutte "bug da colmare" per l'MVP: il designer deve **rifiutarle o
-marcarle** esplicitamente. La sezione 6 elenca quelle che servono davvero al primo flusso.
+These absences are not all "bugs to close" for the MVP: the designer must **reject them or
+flag them** explicitly. Section 6 lists the ones that the first flow really needs.
 
 ---
 
-## 2. Cosa c'è già in GMBasicIDE (e cosa va adattato)
+## 2. What already exists in GMBasicIDE (and what must be adapted)
 
-| Area | Stato | Evidenza | Lavoro per GMBasic |
+| Area | Status | Evidence | Work for GMBasic |
 |---|---|---|---|
-| Shell, tema, menu, toolbar, status bar | Pronto | `VBTheme`, `VBMenuBarView`, `VBToolbarView`, `VBEditorWindow` | Riuso; indicatore modalità `GMBASIC — C99Native`. |
-| Project Explorer | Pronto per `.vbp` | `VBProjectOutlineView` | Nodi cartella, `.frm` (form), `.bas` (codice), `.inc`, `.ui.bas` generato; dirty marker. |
-| Code editor | Pronto, highlighting VB6 | `VBCodeEditor`, `vb_code_highlight` con `keywords[]` fisso | Language mode GMBasic + tabella generata; handler `SUB`/`FUNCTION`; niente `Private Sub` automatico. |
-| Moduli `.bas` | Già editabili e salvati | `codeForItem:` + `_moduleCodes` + `saveModules` | Spostare la cache e il salvataggio in `src/core/` (`VbDocument`), così `vbtool` li testa senza finestre. |
-| Designer | Pronto, coordinate twip, multi-selezione, z-order, tab order | `VBDesignerView`, `vb_model.h` | Riusare `VbForm` come modello del `.frm`; filtro controlli supportati; scala twip→pixel. |
-| Properties | Pronto, nomi proprietà VB6 | `VBPropertyPanel` | Mapping VB6 → clausole GMBasic; disabilitare ciò che non esiste; non perdere i valori nel `.frm`. |
-| Progetto | `.vbp`/`.frm` | `vb_parse.c`, `vb_project_*` | **Riusare `vb_form_parse`/`serialize`** per il `.frm`; nuovo `VbGmbProject` per manifest e documenti. |
-| Run | Interprete VB6 in-process | `VBRuntimeWindow`, `vb_run_event` | **Sostituire** con processo esterno `gmb run` (C99Native); nessun interprete VB6 per GMBasic. |
-| Build | Assente | nessun `NSTask`/`fork` nel progetto | `VBProcessRunner` (Cocoa) + specifica comandi in core. |
-| Diagnostica | Assente | `-diagnostics` è solo una stringa di stato | Modello errori, pannello Output/Error List, click-to-line. |
-| Breakpoint/step | Solo VB6 | `VbForm.breakpoints`, gutter | **Disabilitare** in modalità GMBasic finché non esiste un DAP reale. |
-| Form round-trip | `.frm` VB6 | `vb_form_parse`, `vb_form_serialize` | Preservare EOL (CRLF/LF), blocchi `BeginProperty` non-Font, proprietà sconosciute; test con form VB6 reale. |
-| Harness headless | Pronto | `vbtool check` | Nuove sezioni `gmb *`; nessuna finestra. |
+| Shell, theme, menus, toolbar, status bar | Ready | `VBTheme`, `VBMenuBarView`, `VBToolbarView`, `VBEditorWindow` | Reuse; `GMBASIC — C99Native` mode indicator. |
+| Project Explorer | Ready for `.vbp` | `VBProjectOutlineView` | Folder nodes, `.frm` (form), `.bas` (code), `.inc`, generated `.ui.bas`; dirty marker. |
+| Code editor | Ready, VB6 highlighting | `VBCodeEditor`, `vb_code_highlight` with fixed `keywords[]` | GMBasic language mode + generated table; `SUB`/`FUNCTION` handlers; no automatic `Private Sub`. |
+| `.bas` modules | Already editable and saved | `codeForItem:` + `_moduleCodes` + `saveModules` | Move the cache and the saving into `src/core/` (`VbDocument`), so `vbtool` tests them without windows. |
+| Designer | Ready, twip coordinates, multi-selection, z-order, tab order | `VBDesignerView`, `vb_model.h` | Reuse `VbForm` as the `.frm` model; filter of supported controls; twip→pixel scale. |
+| Properties | Ready, VB6 property names | `VBPropertyPanel` | VB6 → GMBasic clause mapping; disable what does not exist; do not lose the values in the `.frm`. |
+| Project | `.vbp`/`.frm` | `vb_parse.c`, `vb_project_*` | **Reuse `vb_form_parse`/`serialize`** for the `.frm`; new `VbGmbProject` for manifest and documents. |
+| Run | In-process VB6 interpreter | `VBRuntimeWindow`, `vb_run_event` | **Replace** with the external `gmb run` process (C99Native); no VB6 interpreter for GMBasic. |
+| Build | Absent | no `NSTask`/`fork` in the project | `VBProcessRunner` (Cocoa) + command specification in core. |
+| Diagnostics | Absent | `-diagnostics` is only a status string | Error model, Output/Error List panel, click-to-line. |
+| Breakpoint/step | VB6 only | `VbForm.breakpoints`, gutter | **Disable** in GMBasic mode until a real DAP exists. |
+| Form round-trip | VB6 `.frm` | `vb_form_parse`, `vb_form_serialize` | Preserve EOL (CRLF/LF), non-Font `BeginProperty` blocks, unknown properties; test with a real VB6 form. |
+| Headless harness | Ready | `vbtool check` | New `gmb *` sections; no window. |
 
-Nota importante: i moduli sono già modificabili e salvati, ma la cache vive nella finestra Cocoa
-(`_moduleCodes`, `saveModules`). Per GMBasic — dove tutti i file sono moduli e il progetto è una
-cartella — questa logica va spostata in un documento di progetto C, testabile da `vbtool`.
+Important note: the modules are already editable and saved, but the cache lives in the Cocoa window
+(`_moduleCodes`, `saveModules`). For GMBasic — where every file is a module and the project is a
+folder — this logic must move into a C project document, testable from `vbtool`.
 
 ---
 
-## 3. Architettura proposta
+## 3. Proposed architecture
 
 ```
 GMBasicIDE (Cocoa)
@@ -179,7 +179,7 @@ GMBasicIDE (Cocoa)
    GMBasic C99Native: gmb check/run/build --json
 ```
 
-### 3.1 Layout di un progetto GMBasic gestito dall'IDE
+### 3.1 Layout of a GMBasic project managed by the IDE
 
 ```
 HelloForm/
@@ -191,23 +191,23 @@ HelloForm/
   Main.bas                   # SUB Main, generato una volta poi utente
 ```
 
-Regole:
+Rules:
 
-- `frmMain.frm` è l'unico sorgente del layout. Contiene `VERSION 5.00`, `Begin VB.Form`,
-  i controlli VB6 con proprietà in twip e la sezione codice con solo gli `Attribute` e un
-  commento `' GMBasic code: frmMain.bas`. È un `.frm` **valido per VB6 come layout**.
-- `frmMain.bas` è l'unico sorgente del codice della form. Non viene mai sovrascritto.
-- `frmMain.ui.bas` è generato, deterministico e rigenerabile; non si modifica a mano.
-- `Main.bas` viene creato una volta (con `SUB Main` che chiama la form di startup) e poi è
-  dell'utente. Se manca, l'IDE lo ricrea solo dopo conferma.
-- Il compilatore GMBasic ignora `.frm` e `.gmbide.json`; vede solo `.bas`/`.inc`.
-- Il `.frm` **non** contiene codice GMBasic eseguibile. Questa è una scelta deliberata:
-  - evita due copie dello stesso codice (`.frm` e `.bas`);
-  - mantiene il `.frm` apribile da VB6 senza errori di sintassi;
-  - permette di importare un `.frm` VB6 esistente e mostrarne il codice VB6 in sola lettura,
-    senza fingere che sia compilabile da GMBasic.
+- `frmMain.frm` is the only source of the layout. It contains `VERSION 5.00`, `Begin VB.Form`,
+  the VB6 controls with twip properties and the code section with only the `Attribute`s and a
+  comment `' GMBasic code: frmMain.bas`. It is a `.frm` **valid for VB6 as a layout**.
+- `frmMain.bas` is the only source of the form code. It is never overwritten.
+- `frmMain.ui.bas` is generated, deterministic and regenerable; it is not edited by hand.
+- `Main.bas` is created once (with `SUB Main` calling the startup form) and then it belongs to
+  the user. If it is missing, the IDE recreates it only after confirmation.
+- The GMBasic compiler ignores `.frm` and `.gmbide.json`; it only sees `.bas`/`.inc`.
+- The `.frm` does **not** contain executable GMBasic code. This is a deliberate choice:
+  - it avoids two copies of the same code (`.frm` and `.bas`);
+  - it keeps the `.frm` openable from VB6 without syntax errors;
+  - it allows importing an existing VB6 `.frm` and showing its VB6 code read-only,
+    without pretending that it is compilable by GMBasic.
 
-### 3.2 Manifest `HelloForm.gmbide.json`
+### 3.2 `HelloForm.gmbide.json` manifest
 
 ```json
 {
@@ -227,49 +227,49 @@ Regole:
 }
 ```
 
-- I percorsi sono relativi alla cartella del progetto.
-- Il manifest non contiene percorsi assoluti né credenziali; il root del toolchain e
-  `GMBASIC_DEV_MODE` stanno nelle impostazioni dell'app.
-- Se il manifest manca, l'IDE può inferire l'entry (`Main.bas` o il primo `.bas`) e mostrare
-  un avviso; non deve indovinare le form.
-- I comandi non sono nel manifest: l'IDE usa `gmb` dal settings, con fallback configurabile.
+- The paths are relative to the project folder.
+- The manifest contains no absolute paths nor credentials; the toolchain root and
+  `GMBASIC_DEV_MODE` live in the app settings.
+- If the manifest is missing, the IDE can infer the entry (`Main.bas` or the first `.bas`) and show
+  a warning; it must not guess the forms.
+- The commands are not in the manifest: the IDE uses `gmb` from the settings, with a configurable fallback.
 
-Perché non un `.vbp`: un `.vbp` che elenca i `.bas` GMBasic non è compilabile da VB6 e
-tradirebbe l'aspettativa di compatibilità. Il `.frm` è l'artefatto compatibile; il progetto
-resta una cartella con manifest. (Import/export `.vbp` come contenitore di soli layout: P2.)
+Why not a `.vbp`: a `.vbp` listing GMBasic `.bas` files is not compilable by VB6 and
+would betray the compatibility expectation. The `.frm` is the compatible artifact; the project
+remains a folder with a manifest. (Import/export of `.vbp` as a container of layouts only: P2.)
 
-Perché non un `.gmbform` JSON: il `.frm` ha già tutto il layout, lo z-order, il tab order e le
-proprietà; un secondo formato sarebbe una copia da tenere sincronizzata, contro la richiesta di
-formato VB6.
+Why not a `.gmbform` JSON: the `.frm` already has all the layout, the z-order, the tab order and the
+properties; a second format would be a copy to keep in sync, against the request for a VB6
+format.
 
-### 3.3 Round-trip del `.frm`
+### 3.3 `.frm` round-trip
 
-Il parser/serializer esistente è il punto di partenza, ma per un `.frm` VB6 reale servono:
+The existing parser/serializer is the starting point, but a real VB6 `.frm` needs:
 
-- **EOL**: il parser normalizza a LF; il serializer scrive LF. Un `.frm` VB6 è normalmente CRLF.
-  Aggiungere `VbForm.eol` (rilevato al load) e usarlo in `vb_form_serialize`; i form nuovi in
-  modalità GMBasic usano CRLF. Il fixture HelloWorld attuale è LF e deve restare byte-identico.
-- **Proprietà sconosciute**: il parser le conserva in `VbProp`; il serializer le riscrive.
-  Verificare che l'ordine e la spaziatura restino stabili abbastanza per un secondo salvataggio
-  identico; per un `.frm` importato è accettabile una normalizzazione al primo salvataggio,
-  purché nessuna proprietà vada persa.
-- **`BeginProperty` non-Font**: oggi il serializer scrive solo il blocco `Font`; altri blocchi
-  (es. `Picture`, `OLEDragImage`) diventano proprietà piatte e perdono la struttura. O si
-  preserva il blocco raw, o si rifiuta il form con un errore esplicito. Non salvare in silenzio
-  un `.frm` che VB6 non riaprirebbe.
-- **Codice**: la sezione codice del `.frm` si conserva così com'è. Per un form nuovo è il
-  commento/attributi; per un `.frm` VB6 importato è codice VB6 in sola lettura.
-- **Form name**: il nome del form è quello del `Begin VB.Form` (es. `frmMain`); gli `Attribute`
-  devono corrispondere. Il designer non rinomina il form senza aggiornare il `.frm` e il
+- **EOL**: the parser normalizes to LF; the serializer writes LF. A VB6 `.frm` is normally CRLF.
+  Add `VbForm.eol` (detected at load) and use it in `vb_form_serialize`; new forms in
+  GMBasic mode use CRLF. The current HelloWorld fixture is LF and must stay byte-identical.
+- **Unknown properties**: the parser keeps them in `VbProp`; the serializer writes them back.
+  Verify that the order and spacing stay stable enough for an identical second save;
+  for an imported `.frm` a normalization on the first save is acceptable,
+  provided that no property is lost.
+- **Non-Font `BeginProperty`**: today the serializer writes only the `Font` block; other blocks
+  (e.g. `Picture`, `OLEDragImage`) become flat properties and lose the structure. Either the raw
+  block is preserved, or the form is rejected with an explicit error. Do not silently save
+  a `.frm` that VB6 would not reopen.
+- **Code**: the code section of the `.frm` is preserved as it is. For a new form it is the
+  comment/attributes; for an imported VB6 `.frm` it is VB6 code read-only.
+- **Form name**: the form name is the one of the `Begin VB.Form` (e.g. `frmMain`); the `Attribute`s
+  must match. The designer does not rename the form without updating the `.frm` and the
   manifest.
 
-Accettazione: `vb_form_load` → `vb_form_save` su un fixture CRLF con `Font` e proprietà
-sconosciute non perde proprietà; il secondo salvataggio è byte-identico. Il fixture HelloWorld
-resta byte-identico al primo salvataggio.
+Acceptance: `vb_form_load` → `vb_form_save` on a CRLF fixture with `Font` and unknown
+properties does not lose properties; the second save is byte-identical. The HelloWorld fixture
+stays byte-identical on the first save.
 
-### 3.4 Contratto di codegen
+### 3.4 Codegen contract
 
-`frmMain.ui.bas` (generato):
+`frmMain.ui.bas` (generated):
 
 ```basic
 ' frmMain.ui.bas — GENERATED by GMBasicIDE. Do not edit.
@@ -295,7 +295,7 @@ SUB frmMain_Show()
 END SUB
 ```
 
-`frmMain.bas` (utente, stub creati una volta):
+`frmMain.bas` (user, stubs created once):
 
 ```basic
 SUB frmMain_Load()
@@ -319,60 +319,60 @@ SUB Main()
 END SUB
 ```
 
-Regole:
+Rules:
 
-- **Nomi handler**: `frmX_<control>_<event>` (es. `frmMain_cmdOK_Click`). GMBasic non ha lo
-  scope di form di VB6 e i `SUB` di primo livello sono globali; il prefisso evita collisioni.
-  `Form_Load`/`Form_Unload` diventano `frmX_Load`/`frmX_Unload`.
-- **Variabili valore**: `DIM <control> AS STRING` a livello modulo in `.ui.bas` per TextBox,
-  ComboBox/ListBox (quando disponibili), DatePicker; `DIM <control> AS DOUBLE`/`BOOLEAN` per
-  CheckBox, Radio, Slider. La `DIM` top-level è verificata in un file singolo; la visibilità
-  cross-file va verificata con il progetto (O7). Fallback documentato: accesso con
+- **Handler names**: `frmX_<control>_<event>` (e.g. `frmMain_cmdOK_Click`). GMBasic does not have the
+  VB6 form scope and top-level `SUB`s are global; the prefix avoids collisions.
+  `Form_Load`/`Form_Unload` become `frmX_Load`/`frmX_Unload`.
+- **Value variables**: `DIM <control> AS STRING` at module level in `.ui.bas` for TextBox,
+  ComboBox/ListBox (when available), DatePicker; `DIM <control> AS DOUBLE`/`BOOLEAN` for
+  CheckBox, Radio, Slider. The top-level `DIM` is verified in a single file; cross-file
+  visibility must be verified with the project (O7). Documented fallback: access with
   `CONTROL GET/GETS "<name>", "text"`.
-- **Eventi**: il codegen collega gli eventi previsti dalla tabella di mapping; crea gli stub in
-  `frmMain.bas` solo se mancano. Se l'utente cancella un handler collegato, `Check` deve dare un
-  errore chiaro ("SUB ... non definita"), non un crash.
-- **Ordine**: l'ordine di emissione è lo z-order del `.frm` (figli dopo il contenitore, come nel
-  file). Per i Frame/PictureBox appiattiti, le coordinate dei figli sono rese assolute.
-- **Tab order**: VB6 ha un `TabIndex` per contenitore; GMBasic ha un ordine globale per la
-  finestra. Il codegen calcola un ordine DFS stabile: contenitore, poi figli per `TabIndex`,
-  poi fratelli successivi; assegna `TABINDEX` globali 0..n-1. Documentare la differenza.
-- **Generato**: `frmMain.ui.bas` non contiene mai `SUB Main`, handler utente o codice
-  personalizzato. L'hash nell'header permette di rilevare una modifica manuale: l'IDE avvisa e
-  non sovrascrive senza conferma.
-- **Determinismo**: stessi `.frm` + stessa versione del generatore → stesso `.ui.bas` byte per
-  byte. I test golden lo verificano.
+- **Events**: the codegen wires the events provided by the mapping table; it creates the stubs in
+  `frmMain.bas` only if they are missing. If the user deletes a wired handler, `Check` must give a
+  clear error ("SUB ... not defined"), not a crash.
+- **Order**: the emission order is the z-order of the `.frm` (children after the container, as in the
+  file). For flattened Frame/PictureBox, the children coordinates are made absolute.
+- **Tab order**: VB6 has one `TabIndex` per container; GMBasic has a global order per
+  window. The codegen computes a stable DFS order: container, then children by `TabIndex`,
+  then following siblings; it assigns global `TABINDEX` 0..n-1. Document the difference.
+- **Generated**: `frmMain.ui.bas` never contains `SUB Main`, user handlers or custom
+  code. The hash in the header allows detecting a manual change: the IDE warns and
+  does not overwrite without confirmation.
+- **Determinism**: same `.frm` + same generator version → same `.ui.bas` byte for
+  byte. The golden tests verify it.
 
-### 3.5 Progetto e scoperta dei file
+### 3.5 Project and file discovery
 
-Il compilatore **non è mono-file**: `IMPORT <NS>` più `NAMESPACE <NS>` nel modulo importato
-bastano a compilare insieme più `.bas` (sezione 1.1). Il driver nativo cerca i moduli nella
-directory del programma, in `include/` risalendo, in `Controls/` e in `<root>/libs/*`; **non**
-scende nelle sottocartelle. Il C# `Orchestrator` è più largo, ma resta `IMPORT`-driven: un file
-che nessuno importa non viene compilato.
+The compiler **is not single-file**: `IMPORT <NS>` plus `NAMESPACE <NS>` in the imported module
+are enough to compile several `.bas` together (section 1.1). The native driver looks for modules in the
+program directory, in `include/` going up, in `Controls/` and in `<root>/libs/*`; it does **not**
+descend into subfolders. The C# `Orchestrator` is wider, but it remains `IMPORT`-driven: a file
+that nobody imports is not compiled.
 
-**Allineate il 2026-10-24.** Il driver nativo (`gmb_inc_resolve.c`) fa ora le stesse cose
-dell'Orchestrator C#: scansione **ricorsiva** della radice, `importFolders`/`importFiles` dei
-settings, grafo `IMPORT` seguito su **ogni** file caricato (la dipendenza è emessa prima del
-dipendente), shadowing per nome fra progetto e cartelle globali. Erano cinque divergenze
-misurate: dir piatta, import solo dalla entry, `forms/` invisibile, `app.settings.json`
-ignorato, nessun transito.
+**Aligned on 2026-10-24.** The native driver (`gmb_inc_resolve.c`) now does the same things as
+the C# Orchestrator: **recursive** scan of the root, `importFolders`/`importFiles` from the
+settings, `IMPORT` graph followed on **every** loaded file (the dependency is emitted before the
+dependent one), name shadowing between project and global folders. They were five measured
+divergences: flat dir, imports only from the entry, `forms/` invisible, `app.settings.json`
+ignored, no transitivity.
 
-Le cartelle `include/`, `Controls/`, `<install>/include`, `<install>/Controls`,
-`<install>/libs/*` restano, ma come **default** di `compiler.searchFolders` nei settings del
-**compilatore** (non dell'app): `{project}`/`{install}` come placeholder, `*` finale = ogni
-sottocartella, percorsi assoluti ammessi, scansione ricorsiva di ogni voce. Un progetto le
-sostituisce da `app.settings.json`; `ImportFolders`/`ImportFiles` continuano a vivere nei
-settings dell'app e sono risolti sia rispetto al progetto sia alla root dell'install.
+The `include/`, `Controls/`, `<install>/include`, `<install>/Controls`,
+`<install>/libs/*` folders remain, but as **defaults** of `compiler.searchFolders` in the settings of the
+**compiler** (not of the app): `{project}`/`{install}` as placeholders, trailing `*` = every
+subfolder, absolute paths allowed, recursive scan of every entry. A project overrides them from
+`app.settings.json`; `ImportFolders`/`ImportFiles` keep living in the app
+settings and are resolved both against the project and against the install root.
 
-Misurato sul sample `samples/modules/FolderResolution`: C# e C99Native caricano gli **stessi 8
-moduli** e compilano; il C nativo stampa una riga per cartella. Gate:
-`native/gmb_c99native/tests/c99_module_resolve_test.sh` (15 asserzioni: ricorsione, import
-folder/file fuori dalla radice, glob, transito, esclusione dei non importati, ordine, shadowing,
-default, path assoluti e `searchFolders: []`).
+Measured on the `samples/modules/FolderResolution` sample: C# and C99Native load the **same 8
+modules** and compile; the native C prints one line per folder. Gate:
+`native/gmb_c99native/tests/c99_module_resolve_test.sh` (15 assertions: recursion, import
+folder/file outside the root, glob, transitivity, exclusion of non-imported, order, shadowing,
+defaults, absolute paths and `searchFolders: []`).
 
-**CLI di progetto: implementato (2026-10-24).** `native/gmb_compiler_c/src/cli/gmb_cli.c`,
-target CMake `gmb_cli` → `build/gmb`:
+**Project CLI: implemented (2026-10-24).** `native/gmb_compiler_c/src/cli/gmb_cli.c`,
+CMake target `gmb_cli` → `build/gmb`:
 
 ```
 gmb check --project <dir> [--entry <f>] [--json] [--strict]
@@ -380,20 +380,20 @@ gmb build --project <dir> [--entry <f>] [--out <exe>] [--json]
 gmb run   --project <dir> [--entry <f>] [--json]
 ```
 
-La discovery non è duplicata: il CLI chiama `gmb_project_sources` / `gmb_resolve_module_files`
-(la stessa del compilatore). Entry esplicita o unico `SUB Main` (altrimenti errore con i
-candidati); `work/`, `bin/`, `obj/`, `.git/`, `.vs/`, `.build/`, `node_modules/` esclusi;
-`NAMESPACE` mancante = avviso (`--strict` lo rende errore); **`IMPORT` non risolto = errore**
-con `file:riga`, riconoscendo i namespace builtin (`gmb_ns.h`: `IMPORT TRADING`, `CONSOLE`…
-non richiedono un file). Exit stabili: 0 ok · 2 progetto/compilazione · 3 parse · 4
-emissione/cc · 5 link · 6 runtime. Gate: `native/gmb_compiler_c/tests/gmb_cli_project_test.sh`
-(14 asserzioni).
+The discovery is not duplicated: the CLI calls `gmb_project_sources` / `gmb_resolve_module_files`
+(the same as the compiler). Explicit entry or single `SUB Main` (otherwise error with the
+candidates); `work/`, `bin/`, `obj/`, `.git/`, `.vs/`, `.build/`, `node_modules/` excluded;
+missing `NAMESPACE` = warning (`--strict` turns it into an error); **unresolved `IMPORT` = error**
+with `file:riga`, recognizing the builtin namespaces (`gmb_ns.h`: `IMPORT TRADING`, `CONSOLE`…
+do not require a file). Stable exits: 0 ok · 2 project/compilation · 3 parse · 4
+emission/cc · 5 link · 6 runtime. Gate: `native/gmb_compiler_c/tests/gmb_cli_project_test.sh`
+(14 assertions).
 
-Limite dichiarato del link: `build` linka `libgmb_runtime.a` + `-lm -lpthread`, sufficiente per
-i programmi console. Chi usa chart/db/AI/torch richiede la ricetta completa di
-`tools/gmb_c99native_run.sh`; il CLI lo dice esplicitamente quando l'archivio runtime manca.
+Declared limit of the link: `build` links `libgmb_runtime.a` + `-lm -lpthread`, enough for
+console programs. Those who use chart/db/AI/torch require the complete recipe of
+`tools/gmb_c99native_run.sh`; the CLI says so explicitly when the runtime archive is missing.
 
-### Verifica della suite: `gmb minitests`
+### Suite verification: `gmb minitests`
 
 ```bash
 build/gmb minitests                        # riepilogo + istogramma CC-FAIL per categoria
@@ -405,603 +405,603 @@ tools/check_minitests.sh                   # GATE: usa il baseline versionato
 tools/check_minitests.sh --update          # rigenera il baseline dopo un fix
 ```
 
-Sostituisce lo sweep ad hoc di `tools/c99_compile_errors.sh` (che ora è un alias che delega
-qui): scoperta ricorsiva ordinata, **la stessa ricetta `-I` di `build`** (`build_inc()`), TAG
-`interactive`/`heavy` esclusi come prima, exit 0/2/1. Nessun link, nessuna esecuzione: misura
-il codegen. Gate del comando: `native/gmb_compiler_c/tests/gmb_cli_minitests_test.sh` (31).
-Misura 2026-10-24: 1948 file, 1914 eseguiti, **1830 PASS · 37 CC-FAIL · 47 DRIVER-FAIL · 0 crash**.
-Dopo il fix di `LIBRARY` (stesso giorno, §12): **1831 PASS · 36 CC-FAIL · 47 DRIVER-FAIL · 0
+It replaces the ad hoc sweep of `tools/c99_compile_errors.sh` (which is now an alias delegating
+here): ordered recursive discovery, **the same `-I` recipe as `build`** (`build_inc()`), TAG
+`interactive`/`heavy` excluded as before, exit 0/2/1. No link, no execution: it measures
+the codegen. Command gate: `native/gmb_compiler_c/tests/gmb_cli_minitests_test.sh` (31).
+Measurement 2026-10-24: 1948 files, 1914 executed, **1830 PASS · 37 CC-FAIL · 47 DRIVER-FAIL · 0 crash**.
+After the `LIBRARY` fix (same day, §12): **1831 PASS · 36 CC-FAIL · 47 DRIVER-FAIL · 0
 crash**.
-Baseline versionato: `native/gmb_compiler_c/tests/minitests_baseline.json` (83 FAIL noti); il
-gate è `tools/check_minitests.sh` (exit 0 nessuna regressione, 2 regressione, 1 setup).
+Versioned baseline: `native/gmb_compiler_c/tests/minitests_baseline.json` (83 known FAIL); the
+gate is `tools/check_minitests.sh` (exit 0 no regression, 2 regression, 1 setup).
 
 
-**Nessun ponte di concatenazione**: il codegen genera già moduli importabili (`NAMESPACE` in
-`frmX.ui.bas` + `IMPORT` in `frmX.bas`/`Main.bas`), quindi la demo può girare su una dir piatta
-senza aspettare O7.
+**No concatenation bridge**: the codegen already generates importable modules (`NAMESPACE` in
+`frmX.ui.bas` + `IMPORT` in `frmX.bas`/`Main.bas`), so the demo can run on a flat dir
+without waiting for O7.
 
 ---
 
-## 4. Mappatura VB6 → GMBasic
+## 4. VB6 → GMBasic mapping
 
-### 4.1 Form e finestra
+### 4.1 Form and window
 
-| VB6 | GMBasic | Stato |
+| VB6 | GMBasic | Status |
 |---|---|---|
-| `Form` | `SCREEN 12, w, h, 32` + controlli + `WINDOW PUMP` | Funziona; w/h in pixel. |
-| `Caption` | `WINDOW SET TITLE "…"` | Funziona. |
-| `ClientWidth`/`ClientHeight` | argomenti di `SCREEN` | twip / 15, arrotondato; test. |
-| `Left`/`Top` della finestra | `WINDOW MOVE` | P2. |
-| `BorderStyle` | `WINDOW FRAME SINGLE/DOUBLE/ROUNDED` | Da verificare sul path `SCREEN`; P1. |
-| `BackColor` | `STYLE "bg=#RRGGBB"` / sfondo finestra | Da verificare per la finestra; P1. |
-| `Font` | `STYLE` / API font | Solo se il runtime lo espone per il controllo; P1. |
+| `Form` | `SCREEN 12, w, h, 32` + controls + `WINDOW PUMP` | Works; w/h in pixels. |
+| `Caption` | `WINDOW SET TITLE "…"` | Works. |
+| `ClientWidth`/`ClientHeight` | `SCREEN` arguments | twip / 15, rounded; test. |
+| Window `Left`/`Top` | `WINDOW MOVE` | P2. |
+| `BorderStyle` | `WINDOW FRAME SINGLE/DOUBLE/ROUNDED` | To be verified on the `SCREEN` path; P1. |
+| `BackColor` | `STYLE "bg=#RRGGBB"` / window background | To be verified for the window; P1. |
+| `Font` | `STYLE` / font API | Only if the runtime exposes it per control; P1. |
 | `StartUpPosition` | `WINDOW MOVE` | P2. |
-| `ScaleMode` | sempre pixel | Conversione fissa 15 twip = 1 px. |
-| `Caption` con `&` | testo letterale | Verificare access key; P2. |
+| `ScaleMode` | always pixels | Fixed conversion 15 twip = 1 px. |
+| `Caption` with `&` | literal text | Verify access key; P2. |
 
-### 4.2 Controlli
+### 4.2 Controls
 
-| VB6 | GMBasic | Stato |
+| VB6 | GMBasic | Status |
 |---|---|---|
-| Label | `LABEL x, y, w, h, "testo"` | **P0 upstream O1**: oggi `LABEL` è solo TUI e non ha altezza. |
-| TextBox | `TEXTBOX x, y, w, h INTO var$` | Funziona con `DIM var AS STRING`; senza `INTO` l'emitter rifiuta. |
-| CommandButton | `BUTTON x, y, w, h, "caption"` + `ON CLICK` | Funziona; `NAME`/`TABINDEX` via CSS-like spec. |
-| CheckBox | `CHECKBOX x, y, "caption" INTO var` | Pixel presente ma dimensione fissa e proprietà non applicate (O2). |
-| OptionButton | `RADIO` (gruppo) | **Non equivalente**: un gruppo, non un controllo per opzione. O5 o rifiuto esplicito. |
-| ComboBox | `COMBOBOX` (TUI) / `PIXCOMBOBOX` (emitter non raggiungibile) | **P1 O3**: il parser rifiuta la variante pixel. |
-| ListBox | `LISTBOX` (TUI) / `PIXLISTBOX` (emitter non raggiungibile) | **P1 O3**. |
-| Frame | — | **Nessun contenitore pixel** (O4). MVP: figli appiattiti + etichetta/bordo; P1: vero contenitore. |
-| PictureBox | `CANVAS` / `IMAGE` | Solo disegno; niente figli (O4). |
-| HScrollBar / VScrollBar | `SCROLLBAR`; `PIXSLIDER` è solo emitter | Adattamento (orientamento da w/h); il parser non raggiunge `PIXSLIDER` (come O3). |
-| Timer | — | **Nessun controllo**; `TIMER`/`TI` non sono espressioni utilizzabili (O6). Il Timer del designer resta disabilitato finché non c'è O6. |
-| Data / DataGrid | `GRID`; `PIXGRID` è solo emitter | P2, senza binding ADO; parser da verificare. |
-| Menu | `MENU` (TUI); `PIXMENU` è solo emitter | P2; Menu Editor assente. |
-| CommonDialog | `FILEDIALOG`/`PRINTERDIALOG`/`COLORPICKER`/`DATEPICKER` | Per tipo; P2. |
-| StatusBar | `STATUSBAR` | Diretto, pannelli limitati; P1. |
-| ProgressBar | `PROGRESS` | Diretto; P1. |
+| Label | `LABEL x, y, w, h, "testo"` | **P0 upstream O1**: today `LABEL` is TUI only and has no height. |
+| TextBox | `TEXTBOX x, y, w, h INTO var$` | Works with `DIM var AS STRING`; without `INTO` the emitter rejects it. |
+| CommandButton | `BUTTON x, y, w, h, "caption"` + `ON CLICK` | Works; `NAME`/`TABINDEX` via CSS-like spec. |
+| CheckBox | `CHECKBOX x, y, "caption" INTO var` | Pixel present but fixed size and properties not applied (O2). |
+| OptionButton | `RADIO` (group) | **Not equivalent**: a group, not one control per option. O5 or explicit rejection. |
+| ComboBox | `COMBOBOX` (TUI) / `PIXCOMBOBOX` (unreachable emitter) | **P1 O3**: the parser rejects the pixel variant. |
+| ListBox | `LISTBOX` (TUI) / `PIXLISTBOX` (unreachable emitter) | **P1 O3**. |
+| Frame | — | **No pixel container** (O4). MVP: flattened children + label/border; P1: real container. |
+| PictureBox | `CANVAS` / `IMAGE` | Drawing only; no children (O4). |
+| HScrollBar / VScrollBar | `SCROLLBAR`; `PIXSLIDER` is emitter only | Adaptation (orientation from w/h); the parser does not reach `PIXSLIDER` (as in O3). |
+| Timer | — | **No control**; `TIMER`/`TI` are not usable expressions (O6). The designer Timer stays disabled until O6 exists. |
+| Data / DataGrid | `GRID`; `PIXGRID` is emitter only | P2, without ADO binding; parser to be verified. |
+| Menu | `MENU` (TUI); `PIXMENU` is emitter only | P2; Menu Editor absent. |
+| CommonDialog | `FILEDIALOG`/`PRINTERDIALOG`/`COLORPICKER`/`DATEPICKER` | By type; P2. |
+| StatusBar | `STATUSBAR` | Direct, limited panels; P1. |
+| ProgressBar | `PROGRESS` | Direct; P1. |
 | Image | `IMAGE` | Pixel-only; P1. |
-| Line / Shape | `LINE` / `CIRCLE` / `PSET` | Non sono controlli; P2. |
-| DriveListBox / DirListBox / FileListBox | `FILEEXPLORER` | Adattamento; P2. |
-| ListView | `DATALIST` / `TBROWSE` | Adattamento; P2. |
-| TreeView | `TREEVIEW` (TUI); `PIXTREEVIEW` è solo emitter | P2; pixel da verificare. |
+| Line / Shape | `LINE` / `CIRCLE` / `PSET` | They are not controls; P2. |
+| DriveListBox / DirListBox / FileListBox | `FILEEXPLORER` | Adaptation; P2. |
+| ListView | `DATALIST` / `TBROWSE` | Adaptation; P2. |
+| TreeView | `TREEVIEW` (TUI); `PIXTREEVIEW` is emitter only | P2; pixel to be verified. |
 | RichTextBox | `RICHTEXT` | Pixel-only; P2. |
-| UpDown | `NUMERICUPDOWN` / `SPINNER` | Adattamento; P2. |
-| SSTab | `TAB` | Adattamento; P2. |
-| Slider (non standard VB6) | `SLIDER` | Diretto; P2. |
+| UpDown | `NUMERICUPDOWN` / `SPINNER` | Adaptation; P2. |
+| SSTab | `TAB` | Adaptation; P2. |
+| Slider (not standard VB6) | `SLIDER` | Direct; P2. |
 | Chart | `CHART` | Pixel-only; P2. |
-| OLE / Toolbar / CoolBar / ImageList | — | **Non supportati**: rifiuto esplicito. |
+| OLE / Toolbar / CoolBar / ImageList | — | **Not supported**: explicit rejection. |
 
-Le righe P1/P2 non sono tutte verificate: `PIX*` nell'emitter non implica che il parser lo
-accetti (è il caso di O3). Il designer abilita un controllo solo dopo un probe di capability
-nel progetto; le voci non provate restano disabilitate con tooltip.
+The P1/P2 rows are not all verified: `PIX*` in the emitter does not imply that the parser
+accepts it (this is the case of O3). The designer enables a control only after a capability probe
+in the project; the untested items stay disabled with a tooltip.
 
-### 4.3 Proprietà
+### 4.3 Properties
 
-| VB6 | GMBasic | Note |
+| VB6 | GMBasic | Notes |
 |---|---|---|
-| `Name` | clausola `NAME "…"` / `name=` nello spec | Obbligatoria per gli handler e `CONTROL *`. |
-| `Caption` | argomento di creazione / `caption` / `CONTROL SET` | Per Label/Button è l'argomento; per il form `WINDOW SET TITLE`. |
-| `Text` | variabile `INTO` / `CONTROL SET "x", "text"` | Per TextBox il valore è la variabile; initial text assegnato prima della creazione. |
-| `Visible` / `Enabled` | `VISIBLE n` / `ENABLED n` / `visible=`/`enabled=` | Lo spec base supporta entrambi; test per ogni tipo. |
-| `TabIndex` / `TabStop` | `TABINDEX n` / `TABSTOP n` | Ordine globale calcolato (vedi 3.4). |
-| `ToolTipText` / `Tag` | `TOOLTIP "…"` / `TAG "…"` | Supportati nello spec base. |
-| `Left`/`Top`/`Width`/`Height` | argomenti di creazione / `CONTROL MOVE` | twip / 15. |
-| `BackColor`/`ForeColor`/`Font` | `STYLE "bg=#… fg=#… font=…"` | Solo i token supportati dal runtime; verificare. |
-| `BorderStyle`/`Locked`/`MaxLength`/`PasswordChar` | `STYLE` o `CONTROL SET` | Da verificare per tipo; altrimenti badge "non mappato". |
-| `Index` (control array), `DataSource` | — | Non supportati; errore esplicito. |
+| `Name` | `NAME "…"` clause / `name=` in the spec | Mandatory for the handlers and `CONTROL *`. |
+| `Caption` | creation argument / `caption` / `CONTROL SET` | For Label/Button it is the argument; for the form `WINDOW SET TITLE`. |
+| `Text` | `INTO` variable / `CONTROL SET "x", "text"` | For TextBox the value is the variable; initial text assigned before creation. |
+| `Visible` / `Enabled` | `VISIBLE n` / `ENABLED n` / `visible=`/`enabled=` | The base spec supports both; test for every type. |
+| `TabIndex` / `TabStop` | `TABINDEX n` / `TABSTOP n` | Global order computed (see 3.4). |
+| `ToolTipText` / `Tag` | `TOOLTIP "…"` / `TAG "…"` | Supported in the base spec. |
+| `Left`/`Top`/`Width`/`Height` | creation arguments / `CONTROL MOVE` | twip / 15. |
+| `BackColor`/`ForeColor`/`Font` | `STYLE "bg=#… fg=#… font=…"` | Only the tokens supported by the runtime; verify. |
+| `BorderStyle`/`Locked`/`MaxLength`/`PasswordChar` | `STYLE` or `CONTROL SET` | To be verified per type; otherwise "non mappato" badge. |
+| `Index` (control array), `DataSource` | — | Not supported; explicit error. |
 
-### 4.4 Eventi
+### 4.4 Events
 
-| VB6 | GMBasic | Note |
+| VB6 | GMBasic | Notes |
 |---|---|---|
-| `Form_Load` | chiamata a `frmX_Load()` in `frmX_Show()` | Stub generato; se manca, errore di compilazione chiaro. |
-| `Form_Unload` | `ON WINDOW CLOSE GOSUB frmX_Unload` | Verificato: serve `GOSUB`; senza, l'emitter disregistra. |
-| `Click` / `DblClick` | `ON CLICK` / `ON DBLCLICK` | `Click` verificato su Button; gli altri da testare. |
-| `Change` | `ON CHANGE` | Diretto; test. |
-| `KeyPress`/`KeyDown`/`KeyUp` | `ON KEYPRESS`/`ON KEYDOWN`/`ON KEYUP` | **Senza argomenti**: `KeyAscii` non arriva; usare i getter di stato. |
-| `MouseDown`/`MouseUp`/`MouseMove` | `ON MOUSEDOWN`/… | **Senza** button/x/y; usare `MOUSE.X/Y/BUTTON`. |
-| `GotFocus`/`LostFocus` | `ON GOTFOCUS`/`ON LOSTFOCUS` | Diretto; test. |
-| `Validate` | `ON VALIDATE` | Diretto; test. |
-| `DragOver`/`DragDrop` | `ON DRAGOVER`/`ON DRAGDROP` | Diretto; test. |
-| `Form_Resize`/`Activate`/`Deactivate` | `ON WINDOW RESIZE/ACTIVATE/DEACTIVATE GOSUB` | Da verificare sul runtime SDL. |
-| `Timer` | — | O6; nessun evento nativo. |
+| `Form_Load` | call to `frmX_Load()` in `frmX_Show()` | Generated stub; if missing, clear compilation error. |
+| `Form_Unload` | `ON WINDOW CLOSE GOSUB frmX_Unload` | Verified: `GOSUB` is required; without it the emitter unregisters. |
+| `Click` / `DblClick` | `ON CLICK` / `ON DBLCLICK` | `Click` verified on Button; the others to be tested. |
+| `Change` | `ON CHANGE` | Direct; test. |
+| `KeyPress`/`KeyDown`/`KeyUp` | `ON KEYPRESS`/`ON KEYDOWN`/`ON KEYUP` | **Without arguments**: `KeyAscii` does not arrive; use the state getters. |
+| `MouseDown`/`MouseUp`/`MouseMove` | `ON MOUSEDOWN`/… | **Without** button/x/y; use `MOUSE.X/Y/BUTTON`. |
+| `GotFocus`/`LostFocus` | `ON GOTFOCUS`/`ON LOSTFOCUS` | Direct; test. |
+| `Validate` | `ON VALIDATE` | Direct; test. |
+| `DragOver`/`DragDrop` | `ON DRAGOVER`/`ON DRAGDROP` | Direct; test. |
+| `Form_Resize`/`Activate`/`Deactivate` | `ON WINDOW RESIZE/ACTIVATE/DEACTIVATE GOSUB` | To be verified on the SDL runtime. |
+| `Timer` | — | O6; no native event. |
 
 ---
 
-## 5. Omissioni da implementare (prerequisiti upstream)
+## 5. Omissions to implement (upstream prerequisites)
 
-Le voci O1–O9 sono modifiche al repo **GMBasic**; O10 è una modifica al **core di GMBasicIDE**.
-Senza queste, l'IDE può funzionare solo con un sottoinsieme dichiarato.
+Items O1–O9 are changes to the **GMBasic** repo; O10 is a change to the **GMBasicIDE core**.
+Without them, the IDE can only work with a declared subset.
 
-| ID | Omissione | Priorità | Criterio di accettazione |
+| ID | Omission | Priority | Acceptance criterion |
 |---|---|---|---|
-| O1 | **Label pixel** | P0 | `gmb_form_add_label(x,y,w,h,text)` / `gmb_control_add_label`; sintassi `LABEL x,y,w,h,"text"` (5 argomenti) distinta dalla TUI a 4; testo disegnato con tema, `NAME`/`STYLE`/`VISIBLE` applicati; test dummy SDL. |
-| O2 | **CheckBox pixel completo** | P1 | API con `w,h` (o `_ex`); `NAME`/`TABINDEX`/`VISIBLE`/`ENABLED` applicati al widget restituito, non a `gmb_tui_last_handle()`; test di rendering e proprietà. |
-| O3 | **ComboBox/ListBox pixel** | P1 | Il parser accetta la variante pixel (o rende `COMBOBOX`/`LISTBOX` polimorfici con `SCREEN`); `INTO`; runtime `gmb_form_add_dropdown`/`listbox`; test. |
-| O4 | **Frame/PictureBox contenitore** | P1 | Contenitore pixel con figli, clipping, offset e `Enabled=False` che disabilita i figli; codegen e designer; test annidato. MVP senza O4: appiattimento esplicito con badge. |
-| O5 | **OptionButton pixel** | P1 | Controllo singolo con gruppo (o API radio-group con layout esplicito); semantica VB6; test. Senza O5: rifiuto esplicito. |
-| O6 | **Timer** | P1 | Builtin `TIMER()` in ms (o controllo `TIMER`) utilizzabile in espressione; il codegen genera il dispatch a intervallo; test. Senza O6: Timer disabilitato. |
-| O7 | **Progetto e scoperta file** | **Fatto 2026-10-24** | Risoluzione allineata (`gmb_inc_resolve`: ricorsione, `importFolders`/`importFiles`, `compiler.searchFolders`, `IMPORT` transitivi, shadowing) **e** CLI `gmb check/build/run --project`: esclusioni (`work/`, `bin/`, `obj/`, `.git/`, …), entry esplicita o unico `SUB Main`, `NAMESPACE` mancante = avviso (`--strict` = errore), `IMPORT` non risolto = errore `file:riga` con i namespace builtin riconosciuti, `--json`, exit 0/2/3/4/5/6. In più `gmb minitests`: **punto unico di verifica della suite** (driver → C → `cc -fsyntax-only`) con `--baseline` per essere rosso solo sulle regressioni; gate `tools/check_minitests.sh` + baseline versionato `native/gmb_compiler_c/tests/minitests_baseline.json`; `tools/c99_compile_errors.sh` è ora solo un alias. Gate: `c99_module_resolve_test.sh` (15) + `gmb_cli_project_test.sh` (14) + `gmb_cli_minitests_test.sh` (31), sample `samples/modules/FolderResolution`. Limite: il link è console-only (`libgmb_runtime`), chart/db/AI richiedono la ricetta di `tools/gmb_c99native_run.sh`. |
-| O8 | **Mappa diagnostica C→BASIC** | **Fatto 2026-10-24** | Implementati entrambi: `#line` per statement e `--line-map <json>`. `gmb_resolve_includes_mapped` produce i segmenti (modulo `IMPORT`ato + file di ingresso), l'emitter li usa e `c99_fail` cita `file:riga`. Test: `native/gmb_c99native/tests/c99_line_map_test.sh` (8 asserzioni). Resta solo l'esposizione in `gmb check --json`, che è O9. |
-| O9 | **CLI stabile `gmb`** | **P0** | `check/run/build --json`, exit code stabili, stdout dati/stderr progress, `doctor`, versione driver, link completo. |
-| O10 | **`.frm` VB6 round-trip** | **P0** (GMBasicIDE) | EOL preservato (CRLF/LF), proprietà sconosciute conservate, blocchi `BeginProperty` non-Font preservati o rifiutati; secondo salvataggio identico; fixture CRLF. |
+| O1 | **Pixel Label** | P0 | `gmb_form_add_label(x,y,w,h,text)` / `gmb_control_add_label`; syntax `LABEL x,y,w,h,"text"` (5 arguments) distinct from the 4-argument TUI one; text drawn with theme, `NAME`/`STYLE`/`VISIBLE` applied; SDL dummy test. |
+| O2 | **Complete pixel CheckBox** | P1 | API with `w,h` (or `_ex`); `NAME`/`TABINDEX`/`VISIBLE`/`ENABLED` applied to the returned widget, not to `gmb_tui_last_handle()`; rendering and property test. |
+| O3 | **Pixel ComboBox/ListBox** | P1 | The parser accepts the pixel variant (or makes `COMBOBOX`/`LISTBOX` polymorphic with `SCREEN`); `INTO`; runtime `gmb_form_add_dropdown`/`listbox`; test. |
+| O4 | **Frame/PictureBox container** | P1 | Pixel container with children, clipping, offset and `Enabled=False` that disables the children; codegen and designer; nested test. MVP without O4: explicit flattening with badge. |
+| O5 | **Pixel OptionButton** | P1 | Single control with group (or radio-group API with explicit layout); VB6 semantics; test. Without O5: explicit rejection. |
+| O6 | **Timer** | P1 | `TIMER()` builtin in ms (or `TIMER` control) usable in an expression; the codegen generates the interval dispatch; test. Without O6: Timer disabled. |
+| O7 | **Project and file discovery** | **Done 2026-10-24** | Aligned resolution (`gmb_inc_resolve`: recursion, `importFolders`/`importFiles`, `compiler.searchFolders`, transitive `IMPORT`, shadowing) **and** `gmb check/build/run --project` CLI: exclusions (`work/`, `bin/`, `obj/`, `.git/`, …), explicit entry or single `SUB Main`, missing `NAMESPACE` = warning (`--strict` = error), unresolved `IMPORT` = `file:riga` error with the builtin namespaces recognized, `--json`, exit 0/2/3/4/5/6. Plus `gmb minitests`: **single point of suite verification** (driver → C → `cc -fsyntax-only`) with `--baseline` to be red only on regressions; gate `tools/check_minitests.sh` + versioned baseline `native/gmb_compiler_c/tests/minitests_baseline.json`; `tools/c99_compile_errors.sh` is now only an alias. Gate: `c99_module_resolve_test.sh` (15) + `gmb_cli_project_test.sh` (14) + `gmb_cli_minitests_test.sh` (31), sample `samples/modules/FolderResolution`. Limit: the link is console-only (`libgmb_runtime`), chart/db/AI require the recipe of `tools/gmb_c99native_run.sh`. |
+| O8 | **C→BASIC diagnostic map** | **Done 2026-10-24** | Both implemented: `#line` per statement and `--line-map <json>`. `gmb_resolve_includes_mapped` produces the segments (imported module + entry file), the emitter uses them and `c99_fail` cites `file:riga`. Test: `native/gmb_c99native/tests/c99_line_map_test.sh` (8 assertions). Only the exposure in `gmb check --json` is left, which is O9. |
+| O9 | **Stable `gmb` CLI** | **P0** | `check/run/build --json`, stable exit codes, stdout data/stderr progress, `doctor`, driver version, full link. |
+| O10 | **VB6 `.frm` round-trip** | **P0** (GMBasicIDE) | EOL preserved (CRLF/LF), unknown properties kept, non-Font `BeginProperty` blocks preserved or rejected; identical second save; CRLF fixture. |
 
-### 5.1 Priorità per il primo flusso
+### 5.1 Priority for the first flow
 
-**P0 reale:** O1, O9, O10 — **O8 è fatto** (2026-10-24). Con questi si può fare una form con
-Label/TextBox/Button, compilarla e lanciarla da C99Native, con errori cliccabili. La risoluzione
-multi-file non è un prerequisito: esiste già (sezione 1.1).
+**Real P0:** O1, O9, O10 — **O8 is done** (2026-10-24). With these one can build a form with
+Label/TextBox/Button, compile it and launch it from C99Native, with clickable errors. The multi-file
+resolution is not a prerequisite: it already exists (section 1.1).
 
-**P1:** O2, O3, O4, O5, O6 — **O7 è fatto** (risoluzione + CLI di progetto). Completano la
-maggior parte delle form VB6.
+**P1:** O2, O3, O4, O5, O6 — **O7 is done** (resolution + project CLI). They complete
+most of the VB6 forms.
 
-**P2:** Data/DataGrid, Menu Editor, grafica vettoriale, debug.
+**P2:** Data/DataGrid, Menu Editor, vector graphics, debug.
 
 ---
 
-## 6. Piano di lavoro
+## 6. Work plan
 
-### G0 — Contratto toolchain e omissioni C99Native (P0, upstream)
+### G0 — Toolchain contract and C99Native omissions (P0, upstream)
 
-- [ ] **G0.1** CLI `gmb` con `check`, `build`, `run`, `doctor`; `--project <dir>`, `--json`,
-      `--out <dir>`, `--backend c99native` (unico valore accettato nell'MVP), `--headless`
-      per i test (`SDL_VIDEODRIVER=dummy`).
-- [x] **G0.2** Progetto (O7): discovery ricorsiva + settings (parità C#/nativo), CLI
-      `gmb check/build/run --project` con esclusioni, entry, `NAMESPACE`/`IMPORT` e `--json`.
-      Il link è console-only: la ricetta completa (`tools/gmb_c99native_run.sh`) resta da
-      integrare per chart/db/AI (vedi O7).
-- [~] **G0.3** Diagnostica strutturata: la parte C→BASIC (O8) è fatta — `#line`, `--line-map`,
-      `emissione: file:riga`. Resta il formato JSON `{"file","line","column","severity",
-      "code","message"}` e la tabella degli exit code (0 ok, 2 compilazione, 3 parse, 4
-      emissione, 5 link, 6 runtime) nel CLI, cioè O9.
-- [ ] **G0.4** Driver fresco e dichiarato: `gmb doctor` costruisce/verifica il driver, stampa
-      versione/hash e non usa un `tools/gmb_c99native_driver` stantio.
-- [ ] **G0.5** Pixel Label (O1); test con `SDL_VIDEODRIVER=dummy` e con finestra reale.
-- [x] **G0.6** `#line`/mappa (O8): fatto — `#line` per statement, `--line-map`, errori di
-      emissione con `file:riga`; il gate è `native/gmb_c99native/tests/c99_line_map_test.sh`.
-      Il test su un errore C reale è `gmb minitests` (l'alias `tools/c99_compile_errors.sh`
-      delega lì), che ora stampa il `.bas`.
-- [ ] **G0.7** Documentare la matrice C99Native (sezione 1.1) in `Guide/utente/`; niente
-      promesse IL.
-- [ ] **G0.8** (P1) O2–O6 in ordine: checkbox proprietà, combo/list, frame, option button,
+- [ ] **G0.1** `gmb` CLI with `check`, `build`, `run`, `doctor`; `--project <dir>`, `--json`,
+      `--out <dir>`, `--backend c99native` (the only accepted value in the MVP), `--headless`
+      for the tests (`SDL_VIDEODRIVER=dummy`).
+- [x] **G0.2** Project (O7): recursive discovery + settings (C#/native parity), CLI
+      `gmb check/build/run --project` with exclusions, entry, `NAMESPACE`/`IMPORT` and `--json`.
+      The link is console-only: the complete recipe (`tools/gmb_c99native_run.sh`) is still to be
+      integrated for chart/db/AI (see O7).
+- [~] **G0.3** Structured diagnostics: the C→BASIC part (O8) is done — `#line`, `--line-map`,
+      `emissione: file:riga`. What is left is the JSON format `{"file","line","column","severity",
+      "code","message"}` and the exit code table (0 ok, 2 compilation, 3 parse, 4
+      emission, 5 link, 6 runtime) in the CLI, that is O9.
+- [ ] **G0.4** Fresh and declared driver: `gmb doctor` builds/verifies the driver, prints
+      version/hash and does not use a stale `tools/gmb_c99native_driver`.
+- [ ] **G0.5** Pixel Label (O1); test with `SDL_VIDEODRIVER=dummy` and with a real window.
+- [x] **G0.6** `#line`/map (O8): done — `#line` per statement, `--line-map`, emission errors
+      with `file:riga`; the gate is `native/gmb_c99native/tests/c99_line_map_test.sh`.
+      The test on a real C error is `gmb minitests` (the alias `tools/c99_compile_errors.sh`
+      delegates there), which now prints the `.bas`.
+- [ ] **G0.7** Document the C99Native matrix (section 1.1) in `Guide/utente/`; no
+      IL promises.
+- [ ] **G0.8** (P1) O2–O6 in order: checkbox properties, combo/list, frame, option button,
       timer.
 
-**Fallback IDE** (se G0 non è disponibile subito): comandi configurabili + parser diagnostica
-tollerante. Non è il target e va marcato nei log; la concatenazione non serve più.
-**Accettazione:** un progetto con `Main.bas`, `frmMain.ui.bas`, `frmMain.bas` compila e gira;
-un errore in `frmMain.bas` è riportato con file/riga; `gmb doctor` dice cosa manca.
+**IDE fallback** (if G0 is not available right away): configurable commands + tolerant diagnostics
+parser. It is not the target and must be flagged in the logs; the concatenation is no longer needed.
+**Acceptance:** a project with `Main.bas`, `frmMain.ui.bas`, `frmMain.bas` compiles and runs;
+an error in `frmMain.bas` is reported with file/line; `gmb doctor` says what is missing.
 
-### G1 — Modello progetto e `.frm` (P0)
+### G1 — Project model and `.frm` (P0)
 
-- [ ] **G1.1** `VbGmbProject` in `src/core/vb_gmb_project.c/.h`: caricamento cartella, manifest
-      `.gmbide.json`, discovery `.frm`/`.bas`/`.inc`, esclusioni; associazione
-      layout→codice→generato.
-- [ ] **G1.2** Riuso di `vb_form_load`/`vb_form_save` per il layout; nessun adapter `.gmbform`.
-- [ ] **G1.3** O10: `VbForm.eol`, preservazione proprietà sconosciute, blocchi `BeginProperty`
-      non-Font; fixture CRLF; test di secondo salvataggio identico.
-- [ ] **G1.4** `VbDocument`: path, testo, dirty, kind, encoding/EOL, save atomico; spostare qui
-      la cache `_moduleCodes`/`saveModules` oggi in `VBEditorWindow.m`.
-- [ ] **G1.5** Project Explorer GMBasic: cartelle, `.frm` (form), `.bas` (codice), `.inc`,
-      `.ui.bas` (generato, read-only); doppio click, dirty marker, Save All.
-- [ ] **G1.6** Import di un `.frm` VB6: layout nel designer; codice VB6 in una tab sola lettura
-      con banner "non compilato da GMBasic"; nessuna traduzione.
-- [ ] **G1.7** (P2) Import/export `.vbp` come elenco di layout, non come progetto compilabile.
+- [ ] **G1.1** `VbGmbProject` in `src/core/vb_gmb_project.c/.h`: folder loading, `.gmbide.json`
+      manifest, `.frm`/`.bas`/`.inc` discovery, exclusions; layout→code→generated
+      association.
+- [ ] **G1.2** Reuse of `vb_form_load`/`vb_form_save` for the layout; no `.gmbform` adapter.
+- [ ] **G1.3** O10: `VbForm.eol`, preservation of unknown properties, non-Font `BeginProperty`
+      blocks; CRLF fixture; identical second save test.
+- [ ] **G1.4** `VbDocument`: path, text, dirty, kind, encoding/EOL, atomic save; move here
+      the `_moduleCodes`/`saveModules` cache that is today in `VBEditorWindow.m`.
+- [ ] **G1.5** GMBasic Project Explorer: folders, `.frm` (form), `.bas` (code), `.inc`,
+      `.ui.bas` (generated, read-only); double click, dirty marker, Save All.
+- [ ] **G1.6** Import of a VB6 `.frm`: layout in the designer; VB6 code in a read-only tab
+      with banner "not compiled by GMBasic"; no translation.
+- [ ] **G1.7** (P2) `.vbp` import/export as a list of layouts, not as a compilable project.
 
-**Accettazione:** `vbtool gmb-project <fixture>` elenca form/codice/entry; aprire, modificare e
-salvare lascia il `.frm` senza perdite; il codice VB6 importato non viene riscritto.
+**Acceptance:** `vbtool gmb-project <fixture>` lists form/code/entry; opening, modifying and
+saving leaves the `.frm` with no losses; the imported VB6 code is not rewritten.
 
-### G2 — Language mode GMBasic (P0)
+### G2 — GMBasic language mode (P0)
 
-- [ ] **G2.1** Generatore della tabella keyword dal **lexer C99Native** + elenco soft keyword
-      del parser; registry per i nomi delle procedure/comandi/costanti. Output
-      `src/core/vb_gmb_keywords.h` con hash/versione di origine.
-- [ ] **G2.2** `VbCodeLanguage` (`VB6`, `GMBASIC`) e `vb_code_highlight(..., language, out)`;
-      commenti `'`/`REM`, continuazione `_`, stringhe, numeri, operatori, label, numeri di riga,
-      keyword hard/soft; case-insensitive.
-- [ ] **G2.3** Outline e procedure combo GMBasic: `SUB`, `FUNCTION`, `PUBLIC CLASS`, `TYPE`,
-      `ENUM`, `NAMESPACE`, `GENERATOR`, label; niente `Property Get/Let` VB6.
-- [ ] **G2.4** Handler template: `SUB frmX_<control>_<event>()` / `END SUB`; il combo eventi
-      usa i nomi GMBasic e il prefisso form; nessun `Private Sub` automatico.
-- [ ] **G2.5** In modalità GMBasic disabilitare gutter breakpoint, F8/F10, `Form_Load` VB6 e
-      qualunque auto-handler VB6.
-- [ ] **G2.6** (P1) Completion: keyword + simboli progetto + registry; se disponibile, usare
-      `gmb ide --json`/LSP invece di duplicare l'analisi.
-- [ ] **G2.7** Test di sincronia: `make check` fallisce se la tabella è più vecchia del lexer
-      C99Native o se il conteggio non coincide.
+- [ ] **G2.1** Keyword table generator from the **C99Native lexer** + soft keyword list
+      of the parser; registry for the procedure/command/constant names. Output
+      `src/core/vb_gmb_keywords.h` with source hash/version.
+- [ ] **G2.2** `VbCodeLanguage` (`VB6`, `GMBASIC`) and `vb_code_highlight(..., language, out)`;
+      comments `'`/`REM`, continuation `_`, strings, numbers, operators, labels, line numbers,
+      hard/soft keywords; case-insensitive.
+- [ ] **G2.3** GMBasic outline and procedure combo: `SUB`, `FUNCTION`, `PUBLIC CLASS`, `TYPE`,
+      `ENUM`, `NAMESPACE`, `GENERATOR`, labels; no VB6 `Property Get/Let`.
+- [ ] **G2.4** Handler template: `SUB frmX_<control>_<event>()` / `END SUB`; the events combo
+      uses the GMBasic names and the form prefix; no automatic `Private Sub`.
+- [ ] **G2.5** In GMBasic mode disable the breakpoint gutter, F8/F10, VB6 `Form_Load` and
+      any VB6 auto-handler.
+- [ ] **G2.6** (P1) Completion: keywords + project symbols + registry; if available, use
+      `gmb ide --json`/LSP instead of duplicating the analysis.
+- [ ] **G2.7** Synchronization test: `make check` fails if the table is older than the C99Native
+      lexer or if the count does not match.
 
-**Accettazione:** fixture `samples/GMBasic/Language.bas`; snapshot degli span; nessun keyword
-VB6 colorato per errore; handler GMBasic inserito dal combo.
+**Acceptance:** fixture `samples/GMBasic/Language.bas`; span snapshots; no VB6 keyword
+colored by mistake; GMBasic handler inserted from the combo.
 
 ### G3 — Check / Run / Build / Output (P0)
 
-- [ ] **G3.1** `VbGmbBuild` in core: specifica comando, cwd, env, timeout, stop, exit code,
-      quoting; nessuna stringa di shell costruita a mano.
-- [ ] **G3.2** `VBProcessRunner` Cocoa (`NSTask`, pipe, streaming, stop del process group,
-      terminazione) e `VBOutputView` in stile VB6 (monospace, sfondo bianco, niente Aqua).
-- [ ] **G3.3** Parser diagnostica: JSON del CLI; fallback su `parse error`/`emissione`/`cc`;
-      deduplica, ordina, click → `jumpToLine`; nessuna riga inventata.
-- [ ] **G3.4** Comandi e stati: **Check** (C99Native, no link, multi-file), **Run**
-      (C99Native, finestra SDL), **Build** (C99Native, eseguibile), **Stop**; status bar
+- [ ] **G3.1** `VbGmbBuild` in core: command specification, cwd, env, timeout, stop, exit code,
+      quoting; no hand-built shell string.
+- [ ] **G3.2** Cocoa `VBProcessRunner` (`NSTask`, pipe, streaming, process group stop,
+      termination) and `VBOutputView` in VB6 style (monospace, white background, no Aqua).
+- [ ] **G3.3** Diagnostics parser: CLI JSON; fallback on `parse error`/`emissione`/`cc`;
+      dedup, sort, click → `jumpToLine`; no invented lines.
+- [ ] **G3.4** Commands and states: **Check** (C99Native, no link, multi-file), **Run**
+      (C99Native, SDL window), **Build** (C99Native, executable), **Stop**; status bar
       `CHECKING`/`BUILDING`/`RUNNING`/`ERROR`.
-- [ ] **G3.5** First-run `gmb doctor`: root GMBasic, driver, cc, cmake, runtime/SDL, licenza;
-      dialog Win98 con il comando esatto mancante; nessun crash.
+- [ ] **G3.5** First-run `gmb doctor`: GMBasic root, driver, cc, cmake, runtime/SDL, license;
+      Win98 dialog with the exact missing command; no crash.
 - [ ] **G3.6** (P1) Log in `~/Library/Logs/GMBasicIDE/gmbasic.log`: command line, cwd, exit code,
-      prime/ultime righe; nessun segreto.
-- [ ] **G3.7** Ambiente Run: `GMBASIC_HEADLESS=0`, `SDL_VIDEODRIVER=cocoa` (default),
-      `GMBASIC_DEV_MODE` solo se attivato; test headless con `SDL_VIDEODRIVER=dummy`.
+      first/last lines; no secrets.
+- [ ] **G3.7** Run environment: `GMBASIC_HEADLESS=0`, `SDL_VIDEODRIVER=cocoa` (default),
+      `GMBASIC_DEV_MODE` only if enabled; headless test with `SDL_VIDEODRIVER=dummy`.
 
-**Accettazione:** un file con errore mostra file/riga e il click salta; Run apre la finestra
-SDL e Stop la chiude senza orfani; Build produce un binario o un errore chiaro; l'IDE resta
-reattivo.
+**Acceptance:** a file with an error shows file/line and the click jumps there; Run opens the
+SDL window and Stop closes it without orphans; Build produces a binary or a clear error; the IDE stays
+responsive.
 
 ### G4 — Designer → `.frm` → `.ui.bas` (P0/P1)
 
-- [ ] **G4.1** Il designer in modalità GMBasic carica/salva `.frm` con `vb_form_load/save`;
-      nessun sidecar di layout.
-- [ ] **G4.2** Tabella di mapping come **dato** in core (tipo VB6 → verbo GMBasic, proprietà,
-      stato `ok`/`adattato`/`non supportato`, note). Alimenta designer, properties, codegen e
-      documentazione.
-- [ ] **G4.3** Codegen deterministico `frmX.ui.bas`: header+hash, `DIM` value vars,
-      `SCREEN`, `WINDOW SET TITLE`, controlli in z-order, `frmX_Load`, `ON WINDOW CLOSE GOSUB`,
-      loop `WINDOW PUMP`.
-- [ ] **G4.4** Stub in `frmX.bas` per gli eventi collegati, nomi `frmX_<control>_<event>`, mai
-      sovrascritti; `Main.bas` generato una volta.
-- [ ] **G4.5** Conversione twip→pixel: `VB_TWIPS_PER_PIXEL = 15`, interi, nessun drift;
-      test di andata/ritorno.
-- [ ] **G4.6** Properties panel: mapping di `Name`, `Caption`, `Text`, `Visible`, `Enabled`,
-      `TabIndex`, `TabStop`, `ToolTip`, `Tag`, `BackColor`/`ForeColor`/`Font` (se supportati);
-      valori non mappati restano nel `.frm` con badge, non vengono cancellati.
-- [ ] **G4.7** Controlli: Label/TextBox/Button (P0); CheckBox (O2); ComboBox/ListBox (O3);
-      Frame/PictureBox (O4, con appiattimento P0); OptionButton (O5); Timer (O6); Data/DataGrid
-      e Menu (P2). I non supportati sono disabilitati nel toolbox con tooltip.
-- [ ] **G4.8** Tab order globale stabile (DFS) e z-order; test con form annidata.
-- [ ] **G4.9** Badge "adattato"/"non supportato" nel designer; (P2) "Preview" lancia `Run`.
-- [ ] **G4.10** (P2) Round-trip inverso: parse di `.ui.bas` → `.frm` per progetti code-first.
-- [ ] **G4.11** (P2) Menu Editor limitato a `MENU "File|Edit"`; niente sottomenu VB6 completi.
+- [ ] **G4.1** The designer in GMBasic mode loads/saves `.frm` with `vb_form_load/save`;
+      no layout sidecar.
+- [ ] **G4.2** Mapping table as **data** in core (VB6 type → GMBasic verb, properties,
+      `ok`/`adattato`/`non supportato` state, notes). It feeds designer, properties, codegen and
+      documentation.
+- [ ] **G4.3** Deterministic codegen `frmX.ui.bas`: header+hash, `DIM` value vars,
+      `SCREEN`, `WINDOW SET TITLE`, controls in z-order, `frmX_Load`, `ON WINDOW CLOSE GOSUB`,
+      `WINDOW PUMP` loop.
+- [ ] **G4.4** Stubs in `frmX.bas` for the wired events, names `frmX_<control>_<event>`, never
+      overwritten; `Main.bas` generated once.
+- [ ] **G4.5** twip→pixel conversion: `VB_TWIPS_PER_PIXEL = 15`, integers, no drift;
+      round-trip test.
+- [ ] **G4.6** Properties panel: mapping of `Name`, `Caption`, `Text`, `Visible`, `Enabled`,
+      `TabIndex`, `TabStop`, `ToolTip`, `Tag`, `BackColor`/`ForeColor`/`Font` (if supported);
+      unmapped values stay in the `.frm` with a badge, they are not deleted.
+- [ ] **G4.7** Controls: Label/TextBox/Button (P0); CheckBox (O2); ComboBox/ListBox (O3);
+      Frame/PictureBox (O4, with P0 flattening); OptionButton (O5); Timer (O6); Data/DataGrid
+      and Menu (P2). The unsupported ones are disabled in the toolbox with a tooltip.
+- [ ] **G4.8** Stable global tab order (DFS) and z-order; test with a nested form.
+- [ ] **G4.9** Badge "adattato"/"non supportato" in the designer; (P2) "Preview" launches `Run`.
+- [ ] **G4.10** (P2) Reverse round-trip: parse of `.ui.bas` → `.frm` for code-first projects.
+- [ ] **G4.11** (P2) Menu Editor limited to `MENU "File|Edit"`; no complete VB6 submenus.
 
-**Accettazione:** golden `*.ui.bas`; modifica caption/posizione → salvataggio → `Check` verde →
-`Run` mostra il controllo nella posizione attesa; un controllo non supportato produce un errore
-chiaro e **non** codice invalido; il secondo salvataggio è byte-identico.
+**Acceptance:** golden `*.ui.bas`; caption/position change → save → green `Check` →
+`Run` shows the control in the expected position; an unsupported control produces a clear
+error and **not** invalid code; the second save is byte-identical.
 
 ### G5 — Debug (P2)
 
-- [ ] **G5.1** In modalità GMBasic gutter breakpoint e F8/F10 sono **disabilitati** con un
-      messaggio "debugger GMBasic non disponibile"; non riusare il break mode VB6.
-- [ ] **G5.2** Solo se GMBasic espone un DAP reale (`--debug-tcp` è documentato, ma non è stato
-      trovato nell'albero attuale): client DAP con breakpoint, step, call stack, locali.
-- [ ] **G5.3** Fino ad allora: Run/Stop, output, salto alla riga d'errore; nessuna barra gialla
-      finta.
+- [ ] **G5.1** In GMBasic mode the breakpoint gutter and F8/F10 are **disabled** with a
+      message "GMBasic debugger not available"; do not reuse the VB6 break mode.
+- [ ] **G5.2** Only if GMBasic exposes a real DAP (`--debug-tcp` is documented, but it has not been
+      found in the current tree): DAP client with breakpoints, step, call stack, locals.
+- [ ] **G5.3** Until then: Run/Stop, output, jump to the error line; no fake
+      yellow bar.
 
-### G6 — UX, documentazione, packaging (P1/P2)
+### G6 — UX, documentation, packaging (P1/P2)
 
-- [ ] **G6.1** Indicatore "GMBASIC — C99Native" nel titolo/status; menu Project/Run
-      contestuali; niente voci VB6 senza senso (Menu Editor, Componenti, Data).
-- [ ] **G6.2** Dialog impostazioni: root GMBasic, path `gmb`, backend fisso `c99native`,
-      dev mode; persistenza in Application Support, non nel progetto.
-- [ ] **G6.3** Apri cartella / progetti recenti / drag&drop di una cartella o di un `.bas`;
+- [ ] **G6.1** "GMBASIC — C99Native" indicator in the title/status; contextual Project/Run
+      menus; no meaningless VB6 items (Menu Editor, Components, Data).
+- [ ] **G6.2** Settings dialog: GMBasic root, `gmb` path, fixed `c99native` backend,
+      dev mode; persistence in Application Support, not in the project.
+- [ ] **G6.3** Open folder / recent projects / drag&drop of a folder or of a `.bas`;
       (P2) document types in `Info.plist`.
-- [ ] **G6.4** Documentazione: sezione "GMBasic mode" in `AGENTS.md`, README con limiti noti,
-      guida utente con la tabella di mapping e il flusso `.frm`→`.ui.bas`.
-- [ ] **G6.5** Licenza/distribuzione: non incorporare GMBasic; `GMBASIC_DEV_MODE` solo in
-      sviluppo; rispettare le edizioni del compilatore.
+- [ ] **G6.4** Documentation: "GMBasic mode" section in `AGENTS.md`, README with known limits,
+      user guide with the mapping table and the `.frm`→`.ui.bas` flow.
+- [ ] **G6.5** License/distribution: do not embed GMBasic; `GMBASIC_DEV_MODE` only in
+      development; respect the compiler editions.
 
-### G7 — Verifica (P0)
+### G7 — Verification (P0)
 
-- [ ] **G7.1** Sezioni `vbtool check` (headless, solo core C):
-      - `gmb project`: manifest, discovery, associazione form/codice, esclusioni;
-      - `gmb form`: `.frm` load/save, EOL, proprietà sconosciute, `BeginProperty`, fixture CRLF;
-      - `gmb language`: span (hard/soft keyword, commenti, stringhe, tipi, numeri, label),
-        handler, case-insensitive, nessun keyword VB6;
+- [ ] **G7.1** `vbtool check` sections (headless, C core only):
+      - `gmb project`: manifest, discovery, form/code association, exclusions;
+      - `gmb form`: `.frm` load/save, EOL, unknown properties, `BeginProperty`, CRLF fixture;
+      - `gmb language`: spans (hard/soft keyword, comments, strings, types, numbers, labels),
+        handlers, case-insensitive, no VB6 keyword;
       - `gmb codegen`: `.frm` → `.ui.bas` golden, z-order, tab order, twip, stub, hash,
-        idempotenza;
-      - `gmb diagnostics`: parse/emissione/cc con e senza mappa, multi-file;
-      - `gmb mapping`: ogni controllo/proprietà VB6 ha uno stato; nessun fallback silenzioso;
-      - `gmb command`: quoting, env, temp dir, exit code; nessun processo lanciato dal core.
-- [ ] **G7.2** Fixture in `samples/GMBasic/`:
+        idempotence;
+      - `gmb diagnostics`: parse/emission/cc with and without the map, multi-file;
+      - `gmb mapping`: every VB6 control/property has a state; no silent fallback;
+      - `gmb command`: quoting, env, temp dir, exit code; no process launched by the core.
+- [ ] **G7.2** Fixtures in `samples/GMBasic/`:
       `HelloForm` (Label/TextBox/Button), `MultiFile` (Main+Ui+User), `ImportedVB6`
-      (CRLF, Font, codice VB6), `SyntaxError`, `Unsupported` (Timer/OptionButton/control array),
+      (CRLF, Font, VB6 code), `SyntaxError`, `Unsupported` (Timer/OptionButton/control array),
       `Nested` (Frame/PictureBox).
-- [ ] **G7.3** Golden file + diff; test di mutazione (rompere parser/codegen e verificare che il
-      test fallisca).
-- [ ] **G7.4** End-to-end headless: `gmb check`/`gmb run` con `SDL_VIDEODRIVER=dummy` su un
-      fixture che fa pochi `WINDOW PUMP` ed esce; exit code e output asseriti.
-- [ ] **G7.5** Ispezione visiva manuale con `--window-snapshot` per output pane, error list,
-      badge del designer; nessun test GUI automatico (regola del repo).
-- [ ] **G7.6** (P2) Performance: apertura 50 file < 200 ms, rigenerazione 50 controlli < 50 ms.
+- [ ] **G7.3** Golden files + diff; mutation test (break parser/codegen and verify that the
+      test fails).
+- [ ] **G7.4** Headless end-to-end: `gmb check`/`gmb run` with `SDL_VIDEODRIVER=dummy` on a
+      fixture that does a few `WINDOW PUMP` and exits; asserted exit code and output.
+- [ ] **G7.5** Manual visual inspection with `--window-snapshot` for output pane, error list,
+      designer badge; no automatic GUI test (repo rule).
+- [ ] **G7.6** (P2) Performance: opening 50 files < 200 ms, regeneration of 50 controls < 50 ms.
 
 ---
 
-## 7. Matrice operazioni (C99Native)
+## 7. Operations matrix (C99Native)
 
-| Operazione | Comando target | Cosa copre | Limiti |
+| Operation | Target command | What it covers | Limits |
 |---|---|---|---|
-| **Check** | `gmb check --project <dir> --json` | front-end + emitter C99Native, multi-file, no link | non esegue; errori runtime non coperti. |
-| **Run** | `gmb run --project <dir> --json` | build+link+esecuzione, finestra SDL | finestra esterna, non incorporata; debug assente. |
-| **Build** | `gmb build --project <dir> --out <dir> --json` | eseguibile nativo | link completo dipende dal runtime GMBasic. |
-| **Test headless** | `gmb run --project <dir> --headless` | esecuzione senza finestra (`SDL_VIDEODRIVER=dummy`) | non prova il rendering reale. |
-| **Doctor** | `gmb doctor --json` | driver, cc, cmake, runtime, SDL, licenza | non installa dipendenze. |
-| **Debug** | — | — | nessun DAP verificato. |
+| **Check** | `gmb check --project <dir> --json` | C99Native front-end + emitter, multi-file, no link | does not execute; runtime errors not covered. |
+| **Run** | `gmb run --project <dir> --json` | build+link+execution, SDL window | external window, not embedded; debug absent. |
+| **Build** | `gmb build --project <dir> --out <dir> --json` | native executable | the full link depends on the GMBasic runtime. |
+| **Headless test** | `gmb run --project <dir> --headless` | execution without a window (`SDL_VIDEODRIVER=dummy`) | does not test the real rendering. |
+| **Doctor** | `gmb doctor --json` | driver, cc, cmake, runtime, SDL, license | does not install dependencies. |
+| **Debug** | — | — | no verified DAP. |
 
-Ambiente Run: cwd = cartella progetto, `GMBASIC_HEADLESS=0`, `SDL_VIDEODRIVER=cocoa` (default),
-`GMBASIC_DEV_MODE=1` solo in sviluppo. Per Check/Build: stesso cwd, `GMBASIC_ROOT` esplicito,
-niente `GMBASIC_HEADLESS=1`. Output: stdout dati, stderr progress/diagnostica.
+Run environment: cwd = project folder, `GMBASIC_HEADLESS=0`, `SDL_VIDEODRIVER=cocoa` (default),
+`GMBASIC_DEV_MODE=1` only in development. For Check/Build: same cwd, explicit `GMBASIC_ROOT`,
+no `GMBASIC_HEADLESS=1`. Output: stdout data, stderr progress/diagnostics.
 
-Per **Run** il JSON non deve mescolarsi all'output dell'app: il CLI emette un solo evento di
-avvio/diagnostica (o li scrive su un fd/file di controllo), poi lascia stdout/stderr del processo
-figlio raw. L'IDE distingue la fase di build (diagnostica JSON) dall'esecuzione (output utente).
+For **Run** the JSON must not mix with the app output: the CLI emits a single
+startup/diagnostic event (or writes them to a control fd/file), then it leaves the child process
+stdout/stderr raw. The IDE distinguishes the build phase (JSON diagnostics) from the execution (user output).
 
-Nota operativa: il driver scrive in `work/` accanto al sorgente se non si passa un `out.c`;
-l'IDE deve passare una directory temporanea per **Check** e una build dir per **Build**, per non
-sporcare il progetto. Il CLI di progetto deve fare lo stesso.
+Operational note: the driver writes into `work/` next to the source if no `out.c` is passed;
+the IDE must pass a temporary directory for **Check** and a build dir for **Build**, to avoid
+dirtying the project. The project CLI must do the same.
 
 ---
 
-## 8. Rischi e mitigazioni
+## 8. Risks and mitigations
 
-| # | Rischio | Impatto | Mitigazione |
+| # | Risk | Impact | Mitigation |
 |---|---|---|---|
-| R1 | Un nome non importato usato come statement diventa una variabile implicita senza errore; e un modulo senza `NAMESPACE` (o non raggiungibile da un `IMPORT`) non entra nel build | medio | La **risoluzione** è allineata (ricorsione + settings + transito, 2026-10-24); resta O7/G0.2: `NAMESPACE` obbligatorio nel generato ed errore sui nomi non risolti. |
-| R2 | Label pixel assente; checkbox/combo/list incompleti | alto | O1 P0, O2/O3 P1; designer filtra e dichiara i limiti. |
-| R3 | Il chrome GMBasic è SDL, non VB6 | alto | Designer = layout editor + codegen, non preview WYSIWYG; badge. |
-| R4 | `.frm` compatibile come layout, non come codice | alto | Documentare; codice VB6 importato in sola lettura; nessuna traduzione. |
-| R5 | ~~Errori `cc` senza `#line`~~ — chiuso da O8 | — | `#line` + `--line-map`; resta solo il glue generato (es. la chiamata in `int main`) che non ha una riga BASIC propria. |
-| R6 | Driver `tools/` stantio | medio | G0.4 `doctor`; usare il build più recente; versione/hash. |
-| R7 | Superficie linguistica enorme e in evoluzione | medio | Tabella generata dal lexer C99Native + registry; hash e test di sincronia; commit pinnato. |
-| R8 | Discovery ricorsiva di tutti i `.bas` | medio | Manifest + esclusioni; avvisare sui file estranei; nessun file generato in root. |
-| R9 | `app.settings.json`/runtime risolti rispetto alla cwd | medio | cwd = progetto, `GMBASIC_ROOT` esplicito, log della command line. |
-| R10 | Licensing/dev mode | medio | Mai `GMBASIC_DEV_MODE` di default; documentare; nessun bypass. |
-| R11 | Nomi handler globali in GMBasic | medio | Prefisso `frmX_`; test di collisione tra due form. |
-| R12 | Timer/debug promessi e non disponibili | medio | Disabilitare con messaggio; O6/DAP solo quando reali. |
-| R13 | Twip/DPI e dimensioni diverse | basso | Conversione fissa 15; test su form VB6 reali; nessun drift. |
+| R1 | A non-imported name used as a statement becomes an implicit variable without an error; and a module without `NAMESPACE` (or not reachable from an `IMPORT`) does not enter the build | medium | The **resolution** is aligned (recursion + settings + transitivity, 2026-10-24); O7/G0.2 is still open: mandatory `NAMESPACE` in the generated file and error on unresolved names. |
+| R2 | Pixel Label absent; checkbox/combo/list incomplete | high | O1 P0, O2/O3 P1; the designer filters and declares the limits. |
+| R3 | The GMBasic chrome is SDL, not VB6 | high | Designer = layout editor + codegen, not WYSIWYG preview; badge. |
+| R4 | `.frm` compatible as layout, not as code | high | Document it; imported VB6 code read-only; no translation. |
+| R5 | ~~`cc` errors without `#line`~~ — closed by O8 | — | `#line` + `--line-map`; only the generated glue is left (e.g. the call in `int main`) which has no BASIC line of its own. |
+| R6 | Stale `tools/` driver | medium | G0.4 `doctor`; use the most recent build; version/hash. |
+| R7 | Huge and evolving language surface | medium | Table generated from the C99Native lexer + registry; hash and synchronization test; pinned commit. |
+| R8 | Recursive discovery of all `.bas` files | medium | Manifest + exclusions; warn about foreign files; no generated file in the root. |
+| R9 | `app.settings.json`/runtime resolved against the cwd | medium | cwd = project, explicit `GMBASIC_ROOT`, command line log. |
+| R10 | Licensing/dev mode | medium | Never `GMBASIC_DEV_MODE` by default; document it; no bypass. |
+| R11 | Global handler names in GMBasic | medium | `frmX_` prefix; collision test between two forms. |
+| R12 | Timer/debug promised and not available | medium | Disable with a message; O6/DAP only when real. |
+| R13 | Twip/DPI and different sizes | low | Fixed conversion 15; test on real VB6 forms; no drift. |
 
 ---
 
-## 9. Decisioni ancora aperte
+## 9. Still open decisions
 
-1. **Sezione codice del `.frm`**: layout-only con commento (consigliato) o codice GMBasic
-   incorporato con mirror `.bas`? Il secondo duplica il codice e rende il `.frm` non-VB6.
-2. **Manifest**: `.gmbide.json` (consigliato) o `.vbp` come contenitore? Il `.vbp` con `.bas`
-   GMBasic non è compilabile da VB6; usarlo solo per import/export di layout (P2).
-3. **Frame/PictureBox**: appiattimento con coordinate assolute (P0) o contenitore pixel reale
-   (O4, P1)? Consigliato: appiattimento per la demo, O4 subito dopo.
-4. **ComboBox/ListBox**: implementare O3 prima della demo o limitare la demo a
-   Label/TextBox/Button/CheckBox? Consigliato: O3 in P1, demo con i quattro controlli base.
-5. **Timer**: builtin `TIMER()` (O6) o generazione di un loop con `SLEEP`/`TI`? Consigliato:
-   O6, perché `TI`/`TIMER` oggi non sono espressioni utilizzabili.
-6. **CLI**: `gmb` upstream (consigliato) o wrapper locale che chiama driver+script? Il wrapper
-   non aggiunge progetto né mappa righe; va bene solo come ponte.
-7. **Naming handler**: `frmX_<control>_<event>` (consigliato) o namespace per form? Il namespace
-   GMBasic esiste ma va verificato sul linker e sul codegen.
-8. ~~**Build ponte**~~: chiusa. `IMPORT` multi-file funziona; il generato dichiara `NAMESPACE` e
-   chi lo usa emette `IMPORT`. Resta O7 per elenco file/esclusioni/entry.
-
----
-
-## 10. Primo incremento consigliato (demo end-to-end)
-
-1. **O1 + O9** — Label pixel e CLI minimo (O8 mappa diagnostica è fatto; O7 progetto subito dopo).
-2. **G1** — aprire una cartella con `HelloForm.gmbide.json`, `frmMain.frm`, `frmMain.bas`,
-   `Main.bas`; Explorer con form/codice/generato.
-3. **G2** — language mode GMBasic e highlighting; handler `frmMain_cmdOK_Click` generato.
-4. **G3** — Check con errori cliccabili, Run C99Native, Output, Stop.
-5. **G4** — designer su `.frm`: Label/TextBox/Button, modifica caption/posizione, `.ui.bas`
-   deterministico, stub handler.
-6. **G7** — fixture `HelloForm` + test headless; snapshot manuale.
-
-**Demo:** aprire `samples/GMBasic/HelloForm`, cambiare la caption e spostare il bottone nel
-designer, scrivere `frmMain_cmdOK_Click`, premere Check (nessun errore), Run (finestra SDL con
-il bottone nella posizione attesa), Stop; il `.frm` resta apribile da VB6 come layout e il
-secondo salvataggio è identico.
+1. **Code section of the `.frm`**: layout-only with a comment (recommended) or embedded GMBasic
+   code with a `.bas` mirror? The second duplicates the code and makes the `.frm` non-VB6.
+2. **Manifest**: `.gmbide.json` (recommended) or `.vbp` as container? The `.vbp` with GMBasic
+   `.bas` is not compilable by VB6; use it only for layout import/export (P2).
+3. **Frame/PictureBox**: flattening with absolute coordinates (P0) or real pixel container
+   (O4, P1)? Recommended: flattening for the demo, O4 right after.
+4. **ComboBox/ListBox**: implement O3 before the demo or limit the demo to
+   Label/TextBox/Button/CheckBox? Recommended: O3 in P1, demo with the four basic controls.
+5. **Timer**: `TIMER()` builtin (O6) or generation of a loop with `SLEEP`/`TI`? Recommended:
+   O6, because `TI`/`TIMER` today are not usable expressions.
+6. **CLI**: upstream `gmb` (recommended) or local wrapper calling driver+script? The wrapper
+   adds neither project nor line map; it is fine only as a bridge.
+7. **Handler naming**: `frmX_<control>_<event>` (recommended) or namespace per form? The GMBasic
+   namespace exists but must be verified on the linker and on the codegen.
+8. ~~**Bridge build**~~: closed. Multi-file `IMPORT` works; the generated file declares `NAMESPACE` and
+   whoever uses it emits `IMPORT`. O7 is still open for file list/exclusions/entry.
 
 ---
 
-## 11. Cose da NON fare
+## 10. Recommended first increment (end-to-end demo)
 
-- Non usare IL come default o fallback: il target è C99Native; se manca una feature, si dichiara.
-- Non compilare/linkare GMBasic dentro GMBasicIDE: il confine è il processo.
-- Non implementare la semantica GMBasic in `vb_code.c`: l'interprete VB6 resta per i progetti
-  VB6 e non deve "quasi funzionare" con GMBasic.
-- Non tradurre codice VB6 in GMBasic: il `.frm` è compatibile come layout, non come sorgente.
-- Non mettere codice GMBasic nel `.frm` per default: il file deve restare un `.frm` VB6 valido.
-- Non usare controlli TUI (`LABEL`, `COMBOBOX`, `LISTBOX`) in una form pixel: non si vedono.
-- Non mantenere a mano 1285 keyword: generarle dal lexer C99Native e testare la sincronia.
-- Non inventare file/riga: se `cc` non ha la mappa, mostrare il messaggio grezzo.
-- Non sovrascrivere mai `Main.bas`, `frmX.bas` o un `.ui.bas` modificato a mano senza conferma.
-- Non promettere un preview VB6 del runtime GMBasic: la finestra è SDL e il chrome è diverso.
-- Non introdurre dipendenze (package manager, framework) per questa integrazione: CLI + C99 +
-  Cocoa, come il resto del progetto.
+1. **O1 + O9** — Pixel Label and minimal CLI (O8 diagnostic map is done; O7 project right after).
+2. **G1** — open a folder with `HelloForm.gmbide.json`, `frmMain.frm`, `frmMain.bas`,
+   `Main.bas`; Explorer with form/code/generated.
+3. **G2** — GMBasic language mode and highlighting; `frmMain_cmdOK_Click` handler generated.
+4. **G3** — Check with clickable errors, C99Native Run, Output, Stop.
+5. **G4** — designer on `.frm`: Label/TextBox/Button, caption/position change, deterministic
+   `.ui.bas`, handler stubs.
+6. **G7** — `HelloForm` fixture + headless test; manual snapshot.
+
+**Demo:** open `samples/GMBasic/HelloForm`, change the caption and move the button in the
+designer, write `frmMain_cmdOK_Click`, press Check (no errors), Run (SDL window with
+the button in the expected position), Stop; the `.frm` stays openable by VB6 as a layout and the
+second save is identical.
 
 ---
 
-## 12. Verifiche già fatte (per non rifarle)
+## 11. Things NOT to do
+
+- Do not use IL as the default or fallback: the target is C99Native; if a feature is missing, it is declared.
+- Do not compile/link GMBasic inside GMBasicIDE: the boundary is the process.
+- Do not implement the GMBasic semantics in `vb_code.c`: the VB6 interpreter stays for VB6
+  projects and must not "almost work" with GMBasic.
+- Do not translate VB6 code into GMBasic: the `.frm` is compatible as a layout, not as source.
+- Do not put GMBasic code in the `.frm` by default: the file must stay a valid VB6 `.frm`.
+- Do not use TUI controls (`LABEL`, `COMBOBOX`, `LISTBOX`) in a pixel form: they are not visible.
+- Do not maintain 1285 keywords by hand: generate them from the C99Native lexer and test the synchronization.
+- Do not invent file/line: if `cc` has no map, show the raw message.
+- Never overwrite `Main.bas`, `frmX.bas` or a hand-modified `.ui.bas` without confirmation.
+- Do not promise a VB6 preview of the GMBasic runtime: the window is SDL and the chrome is different.
+- Do not introduce dependencies (package manager, framework) for this integration: CLI + C99 +
+  Cocoa, like the rest of the project.
+
+---
+
+## 12. Checks already done (so as not to redo them)
 
 ### GMBasicIDE
 
-- `make check` → **0**, tutte le sezioni `PASS` (ultima esecuzione prima di questo piano).
-- `vb_form_parse/serialize` sul sample `HelloWorld` è LF, non CRLF; il serializer scrive LF.
-- `serialize_control` tratta solo `Font.` come `BeginProperty`; altri blocchi `BeginProperty`
-  vengono piatti in proprietà.
-- Nessun `NSTask`/spawn nel repo; moduli editabili/salvati via `_moduleCodes`/`saveModules`;
-  nessun pannello output/diagnostica.
+- `make check` → **0**, all sections `PASS` (last run before this plan).
+- `vb_form_parse/serialize` on the `HelloWorld` sample is LF, not CRLF; the serializer writes LF.
+- `serialize_control` treats only `Font.` as `BeginProperty`; other `BeginProperty` blocks
+  are flattened into properties.
+- No `NSTask`/spawn in the repo; modules editable/saved via `_moduleCodes`/`saveModules`;
+  no output/diagnostics panel.
 
 ### GMBasic / C99Native (2026-10-22)
 
-- `tools/gmb_c99native_run.sh /tmp/gmbprobe/ui3.bas c99ui3s` con `DIM txtNome AS STRING`:
+- `tools/gmb_c99native_run.sh /tmp/gmbprobe/ui3.bas c99ui3s` with `DIM txtNome AS STRING`:
   **rc=0**, log `[gmb_gfx] window 320x200 (logical)`, `renderer=software`.
-- Stesso form senza `INTO`: `CONTROL 'TEXTBOX' non supportato dall'emitter nativo`.
-- `TEXTBOX` con `DIM txtNome` numerico: compila ma passa `double*` a `gmb_form_add_textbox`
-  (atteso `gmb_string_t*`); il codegen deve usare `STRING`.
-- `LABEL 10,130,120,"Etichetta" INTO lab`: emette `gmb_label_init` (TUI); nessun
-  `gmb_form_add_label` nel runtime. In pixel non compare.
-- `CHECKBOX` con il driver fresco: `gmb_control_add_checkbox(...)`; la riga successiva applica
-  le proprietà a `gmb_tui_last_handle()`, che in grafica non è il checkbox. `NAME`/`TABINDEX`
-  non sono garantiti.
-- `PIXCOMBOBOX`/`PIXLISTBOX`: `parse error: statement non riconosciuto`, rc=3; i rami
-  dell'emitter non sono raggiungibili.
-- `ON WINDOW CLOSE GOSUB OnClose`: emette `gmb_window_register_event("CLOSE","OnClose")`;
-  senza `GOSUB` emette `gmb_window_unregister_event("CLOSE")`.
-- `TIMER` in espressione: emette l'identificatore `TIMER` (C non definito); `TIMER()` dà
-  `simbolo non trovato: funzione o subroutine 'TIMER' non definita`, rc=4; `TI` resta `TI`.
-- O8 (2026-10-24): ogni statement emette `#line <riga bas> "<file bas>"` prima del suo C
-  (misurato: `#line 4 "/…/Ui.bas"` sopra la `gmb_print_string` del modulo). `--line-map`
-  scrive gli anchor: `{"c_line": 80, "line": 4, "file": "…/Ui.bas"}`. Errore di emissione con
-  `TIMER()` in un modulo → `emissione: …/Ui.bas:5: simbolo non trovato…`, rc=4 (prima: `riga 13`
-  del testo unito). `native/gmb_c99native/tests/c99_line_map_test.sh`: 8/8 PASS.
-- O8, regressione: lo sweep su tutti i MiniTests dava gli **stessi** 58 CC-FAIL e 51
-  DRIVER-FAIL con e senza `#line` (stessi file), quindi le direttive non cambiano la
-  compilabilità; gli errori `cc` ora citano il `.bas` (es. `toggle_parity.bas:5:55: error:`).
-- O7, risoluzione (2026-10-24): `sample samples/modules/FolderResolution/AllFolders.bas`
-  compila e gira su C99Native (8 moduli da 8 cartelle diverse, transito `DEMO_CHAIN → DEMO_DEEP`),
-  e l'Orchestrator C# carica gli stessi 8 moduli. `c99_module_resolve_test.sh`: 15/15 PASS.
-  `app.settings.json` era ignorato dal C# (`LoadSettings` riceveva il file della entry invece
-  della cartella): corretto in `SettingsManager.LoadSettings`.
-- O7, CLI (2026-10-24): `build/gmb` (target `gmb_cli`) su `samples/modules/FolderResolution`:
-  `gmb check` → rc=0, **7 sorgenti del progetto, 8 moduli, 0 avvisi**; `gmb run` → le 8 righe
-  del sample, rc=0; `gmb check` su un progetto con `IMPORT FANTASMA` → **rc=2** con
-  `Main.bas:1: IMPORT FANTASMA non risolto`; `--strict` promuove `no-namespace` a errore; due
-  `SUB Main` → errore con invito a `--entry`. `gmb_cli_project_test.sh`: **14/14 PASS**.
-  Build in tre passi: driver `--no-exe`, `cc -c` con la lista `-I` del runtime/LLMEnv, link
+- Same form without `INTO`: `CONTROL 'TEXTBOX' non supportato dall'emitter nativo`.
+- `TEXTBOX` with numeric `DIM txtNome`: it compiles but passes a `double*` to `gmb_form_add_textbox`
+  (expected `gmb_string_t*`); the codegen must use `STRING`.
+- `LABEL 10,130,120,"Etichetta" INTO lab`: emits `gmb_label_init` (TUI); no
+  `gmb_form_add_label` in the runtime. In pixel mode it does not appear.
+- `CHECKBOX` with the fresh driver: `gmb_control_add_checkbox(...)`; the next line applies
+  the properties to `gmb_tui_last_handle()`, which in graphics is not the checkbox. `NAME`/`TABINDEX`
+  are not guaranteed.
+- `PIXCOMBOBOX`/`PIXLISTBOX`: `parse error: statement non riconosciuto`, rc=3; the emitter
+  branches are not reachable.
+- `ON WINDOW CLOSE GOSUB OnClose`: emits `gmb_window_register_event("CLOSE","OnClose")`;
+  without `GOSUB` it emits `gmb_window_unregister_event("CLOSE")`.
+- `TIMER` in an expression: emits the identifier `TIMER` (undefined C); `TIMER()` gives
+  `simbolo non trovato: funzione o subroutine 'TIMER' non definita`, rc=4; `TI` stays `TI`.
+- O8 (2026-10-24): every statement emits `#line <riga bas> "<file bas>"` before its C
+  (measured: `#line 4 "/…/Ui.bas"` above the `gmb_print_string` of the module). `--line-map`
+  writes the anchors: `{"c_line": 80, "line": 4, "file": "…/Ui.bas"}`. Emission error with
+  `TIMER()` in a module → `emissione: …/Ui.bas:5: simbolo non trovato…`, rc=4 (before: `riga 13`
+  of the merged text). `native/gmb_c99native/tests/c99_line_map_test.sh`: 8/8 PASS.
+- O8, regression: the sweep over all the MiniTests gave the **same** 58 CC-FAIL and 51
+  DRIVER-FAIL with and without `#line` (same files), so the directives do not change
+  compilability; the `cc` errors now cite the `.bas` (e.g. `toggle_parity.bas:5:55: error:`).
+- O7, resolution (2026-10-24): the `sample samples/modules/FolderResolution/AllFolders.bas`
+  compiles and runs on C99Native (8 modules from 8 different folders, transitivity `DEMO_CHAIN → DEMO_DEEP`),
+  and the C# Orchestrator loads the same 8 modules. `c99_module_resolve_test.sh`: 15/15 PASS.
+  `app.settings.json` was ignored by C# (`LoadSettings` received the entry file instead of
+  the folder): fixed in `SettingsManager.LoadSettings`.
+- O7, CLI (2026-10-24): `build/gmb` (target `gmb_cli`) on `samples/modules/FolderResolution`:
+  `gmb check` → rc=0, **7 project sources, 8 modules, 0 warnings**; `gmb run` → the 8 lines
+  of the sample, rc=0; `gmb check` on a project with `IMPORT FANTASMA` → **rc=2** with
+  `Main.bas:1: IMPORT FANTASMA non risolto`; `--strict` promotes `no-namespace` to an error; two
+  `SUB Main` → error inviting `--entry`. `gmb_cli_project_test.sh`: **14/14 PASS**.
+  Build in three steps: driver `--no-exe`, `cc -c` with the `-I` list of the runtime/LLMEnv, link
   `libgmb_runtime.a` + `-lm -lpthread` (console).
-- O7, regressione: lo sweep su tutti i MiniTests scende da 58 CC-FAIL / 51 DRIVER-FAIL a
-  **53 / 47** (nessuna nuova classe di errore, zero `già definita`): la ricorsione e `modules/`
-  recuperano 5 casi C e 4 di emissione. Il set è un soprainsieme del precedente (stessi
-  `IMPORT` + transito + più candidati), quindi un errore nuovo sarebbe comparso come aumento.
-- Verifica della suite, punto UNICO (2026-10-24, dopo O7): `gmb minitests` sostituisce lo
-  sweep ad hoc di `tools/c99_compile_errors.sh`. Scoperta ricorsiva e ORDINATA (`readdir` non
-  lo è: senza `qsort` due run davano diff inutili), stessa ricetta `-I` di `gmb build`
-  (`build_inc()`, unica copia), esclusione dei `' TAG: interactive`/`heavy` come prima
-  (`--all`/`--interactive`/`--heavy` per includerli), `--filter`, `--driver`/`--cc` per
-  l'A/B, istogramma dei CC-FAIL per categoria (apici → `'*'`, parentesi via, taglio a parola:
-  altrimenti lo stesso errore finisce in più categorie).
-  **Numero misurato oggi: 1948 file, 1914 eseguiti (7 interactive + 27 heavy esclusi), 1831
+- O7, regression: the sweep over all the MiniTests drops from 58 CC-FAIL / 51 DRIVER-FAIL to
+  **53 / 47** (no new error class, zero `già definita`): the recursion and `modules/`
+  recover 5 C cases and 4 emission ones. The set is a superset of the previous one (same
+  `IMPORT` + transitivity + more candidates), so a new error would have shown up as an increase.
+- Suite verification, SINGLE point (2026-10-24, after O7): `gmb minitests` replaces the
+  ad hoc sweep of `tools/c99_compile_errors.sh`. Recursive and ORDERED discovery (`readdir` is not:
+  without `qsort` two runs gave useless diffs), same `-I` recipe as `gmb build`
+  (`build_inc()`, single copy), exclusion of `' TAG: interactive`/`heavy` as before
+  (`--all`/`--interactive`/`--heavy` to include them), `--filter`, `--driver`/`--cc` for
+  the A/B, histogram of the CC-FAILs by category (quotes → `'*'`, parentheses removed, cut at word
+  boundary: otherwise the same error ends up in several categories).
+  **Number measured today: 1948 files, 1914 executed (7 interactive + 27 heavy excluded), 1831
   PASS, 36 CC-FAIL, 47 DRIVER-FAIL, 0 crash** (`native/gmb_compiler_c/build/gmb minitests`,
-  ~2m30s). Il set coincideva **file per file** con quello del vecchio script (diff vuoto su CC e
-  DRIVER), quindi il cambio di strumento non ha cambiato il verdetto: i 16 CC-FAIL in meno
-  rispetto a `1a4715122` vengono dai fix atterrati nel frattempo, non dal gate. Gli ultimi due
-  numeri (1831/36) sono dopo il fix di `LIBRARY`.
-- Exit code del gate: 0 tutti PASS · 2 almeno un FAIL · 1 setup rotto (driver/radice/cc). Con
-  un pavimento di 83 file un "verde se 0 FAIL" sarebbe rosso per sempre, quindi `--baseline
-  <json>` confronta con un run registrato: rosso solo per le **regressioni** (`REGRESSIONE
-  <file>`), e `RISOLTO <file>` per i file che tornano a passare. `--json` è stabile fra run
-  (stesso ordine, stessi numeri): è il diff da mettere in CI.
-- Gate del gate: `native/gmb_compiler_c/tests/gmb_cli_minitests_test.sh`, **31/31 PASS** su una
-  radice sintetica (ricorsione, TAG, `--cc /usr/bin/false` → CC-FAIL, driver ucciso da
-  SIGSEGV → `crash` e non CC-FAIL, `--driver`/radice/filtro inesistenti → rc 1, `--baseline`
-  identico/riparato/regressione/case diverso, JSON deterministico). `gmb_cli_project_test.sh`
-  resta 14/14.
-- Baseline registrato (2026-10-24): `native/gmb_compiler_c/tests/minitests_baseline.json`
-  (35 KB, 83 FAIL noti) + `tools/check_minitests.sh`. Due scelte non ovvie:
-  (a) `--update` considera **rc=2 un successo** — un baseline con FAIL è il caso normale, solo
-  rc=1 (driver/radice) o un JSON vuoto lasciano il file com'era, e la scrittura è atomica
-  (tmp + `mv`) perché un'interruzione non deve troncare il riferimento del gate;
-  (b) il confronto è **case-insensitive**: su macOS la cartella si chiama `minitests`, su un
-  checkout Linux `MiniTests`, e senza normalizzazione tutti i file noti sarebbero "nuovi".
-  Da solo il pavimento non rende il gate inutilizzabile: si è rossi solo per le regressioni.
-- Baseline ripetibile (2026-10-24): gli errori `cc` che puntano al **C generato** citavano
-  `/tmp/gmb-minitests.<random>/out.c`, quindi ogni `--update` produceva un diff spurio di una
-  riga e il riferimento registrato puntava a un file inesistente. Nel JSON (e
-  nell'output leggibile) il path diventa `<out.c>`: la rigenerazione ora è idempotente
-  (verificato: `--update` → `git status` pulito per il baseline).
-- Bug del gate trovato dal primo run senza argomenti: `"${args[@]}"` con `set -u` e array
-  vuoto fa abortire **bash 3.2** (macOS) con `args[@]: unbound variable` — cioè falliva
-  proprio l'invocazione nuda della CI, non quelle con `--json`/`--filter` provate prima.
-  Corretto con `${args[@]+"${args[@]}"}` e verificato con un run completo (rc=0, 37 CC-FAIL,
-  0 nuovi FAIL).
-- Caso isolato emerso dal gate, risolto: `constructs/LibraryDirective.bas` non falliva per i
-  tipi ma perché la modalità `LIBRARY` emetteva `#include "gmb_host.h"` — header **assente dal
-  repo**, copiato dal transpiler `basic2c` di GMTrading (dove `gbmtraderuntime` lo spedisce).
-  Vedi la voce dedicata più sotto: emettitore e runner corretti, test PASS sul backend C
-  nativo.
-- Nota (non O8): `MiniTests/tui/widgets_all_parity.bas`, `statusbar_parity.bas` e
-  `MiniTests/controls/keyword_controls.bas` facevano crashare il driver (SIGSEGV/SIGBUS) anche
-  con le direttive disattivate: era un difetto del sorgente di allora, non della mappa.
-  **Riverificato 2026-10-24: 0 crash sui 1914 file eseguiti** (`driver_crash: 0`).
-- Multi-file (riverificato il 2026-10-24): `Main.bas` con `IMPORT UI` che chiama `frmShow`
-  definita in un `Ui.bas` con `NAMESPACE UI` **compila**; il C emesso contiene
-  `gmb_user_frmShow()` con il corpo. Senza `IMPORT` → `simbolo non trovato: funzione o
-  subroutine 'frmShow' non definita`, rc=4. Con `Ui.bas` in `forms/` → stesso errore: la
-  ricerca non è ricorsiva. Una chiamata come statement (`frmShow` senza parentesi) senza
-  `IMPORT` non dà errore: diventa una variabile implicita (da chiudere in O7).
-- `LIBRARY` non compilava, in nessun caso (2026-10-24, risolto). Due cause distinte, entrambe
-  invisibili a un gate che guardi solo il verdetto finale:
-  (a) **header fantasma**: `gmb_c99_emit.c` emetteva `#include "gmb_host.h"` + quattro
-  entry-point host (`<lib>_set_host/_configure/_flush/_query`) che chiamano `gmb_host_set`,
-  `gmb_host_set_token`, `gmb_host_serve`, `gmb_host_query` e leggono `gmb_config_t.transport`.
-  Nessuno di quei simboli esiste in GMBasic: sono del **contratto host del trading**, spedito da
-  `gbmtraderuntime` (GMTrading) e copiato qui dal transpiler `basic2c` che ne è la sorgente
-  comune. In GMBasic produceva `fatal error: 'gmb_host.h' file not found` su OGNI file
-  `LIBRARY`; l'include era in testa, quindi nemmeno i verdi tipi della libreria venivano a
-  galla. Rimosso: l'ABI v1 documentata (`Guide/utente/LIBRARY-gmblib-Guide.md` §2) è
-  `<lib>_init`/`<lib>_fini` + ctor/dtor + `<lib>_<Proc>` per i `PUBLIC`, esattamente ciò che
-  emette il C# (`C99CodeEmitter.EmitLibraryProgram`), che infatti non ha mai avuto l'host
-  glue. Gli hook `ONINIT`/`ONBAR`/`ONTRADE`/`ONDONE` restano (inoltrano solo a `gmb_user_*`,
-  quindi non creano dipendenze) e compaiono solo se il sorgente li definisce.
-  (b) **runner senza gamba libreria**: `tools/test_minitests_c99native` linkava sempre un
-  eseguibile, e una `LIBRARY` per contratto **non ha `main`** → dopo il fix (a) falliva con
-  `undefined _main` su un file corretto. Ora `' TAG: library` linka `-shared -fPIC` e verifica
-  l'ABI con `nm -gU`: `_<lib>_init`, `_<lib>_fini` e un `_<lib>_<Proc>` per ogni `PUBLIC
-  SUB|FUNCTION` del sorgente (nomi letti dal file, non un elenco hardcoded), più l'assenza di
-  `_main`. Il verdetto negativo è reale: un probe con un `PUBLIC SUB` ad argomento array
-  (legittimamente non esportabile in v1) dà `ABI: simboli non esportati: _probe_Run`.
-  Verificato end-to-end: MiniTest **PASS** (`minilib_Add/Mul/Greet`), sample
-  `samples/Community/C99/GmbLibMath.bas` → `gmbmath.dylib` con `gmbmath_Add/Mul/Greet/init/fini`
-  e nessun `main`, gate `tools/check_minitests.sh` → `RISOLTO`, baseline rigenerato a 83 FAIL
-  noti, 0 regressioni, `constructs` 40/41 (resta il gap noto `types_operator`).
-  (c) **`gmb build` compilava una libreria come eseguibile** (2026-10-25, risolto): il CLI di
-  progetto non aveva una gamba `LIBRARY` — emetteva il C, poi linkava un eseguibile e moriva
-  con `_main` non definito su un C corretto. Ora la modalità si legge dall'**artefatto**
-  (assenza di `int main`, la stessa sonda di `tools/gmb_c99native_run.sh`), il link è
-  `-shared -fPIC -Wl,-undefined,dynamic_lookup` verso `<progetto>/bin/<nome-direttiva>.dylib`,
-  `pick_entry` accetta un progetto senza `SUB Main` quando un modulo dichiara `LIBRARY "..."`
-  (è quella l'entry), `run` costruisce e non esegue, e `--json` porta `"library": true`.
-  Verificato caricando l'artefatto con `dlopen` e chiamando l'ABI: `Add(2,3)=5`,
-  `Mul(1.5,4)=6`, `Greet("GMB")="Ciao, GMB"`; 6 asserzioni nuove in
-  `gmb_cli_project_test.sh`. Resta rosso, ma **preesistente e non di LIBRARY**, il link
-  dell'eseguibile: la ricetta minima di `gmb build` (solo `libgmb_runtime.a`) non copre più
-  le SDL che il runtime console trascina con sé (vedi `build → bin/Main eseguibile`).
-  (d) **la ricetta di link dell'eseguibile era incompleta** (2026-10-26, risolto): il runtime
-  console trascina il motore grafico (`gmb_tui_app` → SDL2/SDL2_ttf/SDL2_mixer, Vulkan via
-  MoltenVK) più il chart e zlib, quindi anche un programma con un solo `PRINT` moriva su
-  `_SDL_*`/`_vk*`/`gmb_chart_*`. Ora il link di `build` aggiunge `libgmb_chart.a` (statica
-  accanto al runtime), le `-L`/`-Wl,-rpath` delle dir esistenti (la cache utente
-  `~/.gmbasic/libs/<rid>`, `/usr/lib`) e le `-l` **solo se la libreria c'è davvero** (così su
-  Linux, senza MoltenVK, la riga resta valida invece di fermarsi su una `-l` inesistente), più i
-  framework Apple. Non si copia l'intero lib-set di `tools/gmb_c99native_run.sh` (db/agent/doc/
-  AI): serve ai programmi che usano quei domini. L'`-rpath` non è cosmetico: senza, il link
-  riesce e l'avvio muore con `Library not loaded: @rpath/libSDL2.dylib`. Verificato:
-  `gmb_cli_project_test.sh` 20/20 PASS, incluso `build → bin/Main eseguibile` e
-  `run → stdout del programma` (prima FAIL), `LibraryDirective` ancora PASS e `--out` invariato.
-- `tools/gmb_c99native_driver` è del 2026-10-10; il build `native/gmb_compiler_c/build/…` è del
-  2026-10-22 e `tools/gmb_c99native_run.sh` preferisce il più recente. Il driver vecchio emetteva
-  `gmb_tui_add_checkbox` per il checkbox; quello fresco usa `gmb_control_add_checkbox`. `LABEL`
-  resta TUI in entrambi.
-- `canonical.registry.json`: 1567 procedure, 115 comandi, 284 costanti; lexer C: 1285 entry.
+  ~2m30s). The set matched **file by file** with the one of the old script (empty diff on CC and
+  DRIVER), so the tool change did not change the verdict: the 16 fewer CC-FAIL compared
+  with `1a4715122` come from the fixes landed in the meantime, not from the gate. The last two
+  numbers (1831/36) are after the `LIBRARY` fix.
+- Gate exit code: 0 all PASS · 2 at least one FAIL · 1 broken setup (driver/root/cc). With
+  a floor of 83 files a "green if 0 FAIL" would be red forever, so `--baseline
+  <json>` compares with a recorded run: red only for **regressions** (`REGRESSIONE
+  <file>`), and `RISOLTO <file>` for the files that pass again. `--json` is stable between runs
+  (same order, same numbers): it is the diff to put in CI.
+- Gate of the gate: `native/gmb_compiler_c/tests/gmb_cli_minitests_test.sh`, **31/31 PASS** on a
+  synthetic root (recursion, TAG, `--cc /usr/bin/false` → CC-FAIL, driver killed by
+  SIGSEGV → `crash` and not CC-FAIL, `--driver`/root/filter non-existent → rc 1, `--baseline`
+  identical/repaired/regression/different case, deterministic JSON). `gmb_cli_project_test.sh`
+  stays 14/14.
+- Recorded baseline (2026-10-24): `native/gmb_compiler_c/tests/minitests_baseline.json`
+  (35 KB, 83 known FAIL) + `tools/check_minitests.sh`. Two non-obvious choices:
+  (a) `--update` considers **rc=2 a success** — a baseline with FAIL is the normal case, only
+  rc=1 (driver/root) or an empty JSON leave the file as it was, and the write is atomic
+  (tmp + `mv`) because an interruption must not truncate the gate reference;
+  (b) the comparison is **case-insensitive**: on macOS the folder is called `minitests`, on a
+  Linux checkout `MiniTests`, and without normalization all the known files would be "new".
+  Alone the floor does not make the gate unusable: one is red only for the regressions.
+- Reproducible baseline (2026-10-24): the `cc` errors pointing to the **generated C** cited
+  `/tmp/gmb-minitests.<random>/out.c`, so every `--update` produced a spurious one-line
+  diff and the recorded reference pointed to a non-existent file. In the JSON (and in the
+  readable output) the path becomes `<out.c>`: the regeneration is now idempotent
+  (verified: `--update` → clean `git status` for the baseline).
+- Gate bug found by the first run without arguments: `"${args[@]}"` with `set -u` and an empty
+  array makes **bash 3.2** (macOS) abort with `args[@]: unbound variable` — that is, what failed was
+  exactly the bare CI invocation, not the ones with `--json`/`--filter` tried before.
+  Fixed with `${args[@]+"${args[@]}"}` and verified with a full run (rc=0, 37 CC-FAIL,
+  0 new FAIL).
+- Isolated case emerged from the gate, solved: `constructs/LibraryDirective.bas` did not fail because of the
+  types but because the `LIBRARY` mode emitted `#include "gmb_host.h"` — a header **absent from the
+  repo**, copied from the `basic2c` transpiler of GMTrading (where `gbmtraderuntime` ships it).
+  See the dedicated item further below: emitter and runner corrected, test PASS on the native C
+  backend.
+- Note (not O8): `MiniTests/tui/widgets_all_parity.bas`, `statusbar_parity.bas` and
+  `MiniTests/controls/keyword_controls.bas` made the driver crash (SIGSEGV/SIGBUS) even
+  with the directives disabled: it was a defect of the source at the time, not of the map.
+  **Re-verified 2026-10-24: 0 crash over the 1914 executed files** (`driver_crash: 0`).
+- Multi-file (re-verified on 2026-10-24): `Main.bas` with `IMPORT UI` calling `frmShow`
+  defined in a `Ui.bas` with `NAMESPACE UI` **compiles**; the emitted C contains
+  `gmb_user_frmShow()` with the body. Without `IMPORT` → `simbolo non trovato: funzione o
+  subroutine 'frmShow' non definita`, rc=4. With `Ui.bas` in `forms/` → same error: the
+  search is not recursive. A call as a statement (`frmShow` without parentheses) without
+  `IMPORT` gives no error: it becomes an implicit variable (to be closed in O7).
+- `LIBRARY` did not compile, in any case (2026-10-24, solved). Two distinct causes, both
+  invisible to a gate that only looks at the final verdict:
+  (a) **ghost header**: `gmb_c99_emit.c` emitted `#include "gmb_host.h"` + four host
+  entry-points (`<lib>_set_host/_configure/_flush/_query`) that call `gmb_host_set`,
+  `gmb_host_set_token`, `gmb_host_serve`, `gmb_host_query` and read `gmb_config_t.transport`.
+  None of those symbols exists in GMBasic: they belong to the **trading host contract**, shipped by
+  `gbmtraderuntime` (GMTrading) and copied here from the `basic2c` transpiler which is its common
+  source. In GMBasic it produced `fatal error: 'gmb_host.h' file not found` on EVERY `LIBRARY`
+  file; the include was at the top, so not even the green library types came
+  to the surface. Removed: the documented ABI v1 (`Guide/utente/LIBRARY-gmblib-Guide.md` §2) is
+  `<lib>_init`/`<lib>_fini` + ctor/dtor + `<lib>_<Proc>` for the `PUBLIC`s, exactly what
+  the C# emits (`C99CodeEmitter.EmitLibraryProgram`), which indeed never had the host
+  glue. The `ONINIT`/`ONBAR`/`ONTRADE`/`ONDONE` hooks remain (they only forward to `gmb_user_*`,
+  so they create no dependencies) and appear only if the source defines them.
+  (b) **runner without library leg**: `tools/test_minitests_c99native` always linked an
+  executable, and a `LIBRARY` by contract **has no `main`** → after fix (a) it failed with
+  `undefined _main` on a correct file. Now `' TAG: library` links `-shared -fPIC` and verifies
+  the ABI with `nm -gU`: `_<lib>_init`, `_<lib>_fini` and one `_<lib>_<Proc>` for every `PUBLIC
+  SUB|FUNCTION` of the source (names read from the file, not a hardcoded list), plus the absence of
+  `_main`. The negative verdict is real: a probe with a `PUBLIC SUB` with an array argument
+  (legitimately not exportable in v1) gives `ABI: simboli non esportati: _probe_Run`.
+  Verified end-to-end: MiniTest **PASS** (`minilib_Add/Mul/Greet`), sample
+  `samples/Community/C99/GmbLibMath.bas` → `gmbmath.dylib` with `gmbmath_Add/Mul/Greet/init/fini`
+  and no `main`, gate `tools/check_minitests.sh` → `RISOLTO`, baseline regenerated at 83 known
+  FAIL, 0 regressions, `constructs` 40/41 (the known `types_operator` gap remains).
+  (c) **`gmb build` compiled a library as an executable** (2026-10-25, solved): the project CLI
+  had no `LIBRARY` leg — it emitted the C, then linked an executable and died
+  with `_main` undefined on a correct C. Now the mode is read from the **artifact**
+  (absence of `int main`, the same probe as `tools/gmb_c99native_run.sh`), the link is
+  `-shared -fPIC -Wl,-undefined,dynamic_lookup` toward `<progetto>/bin/<nome-direttiva>.dylib`,
+  `pick_entry` accepts a project without `SUB Main` when a module declares `LIBRARY "..."`
+  (that is the entry), `run` builds and does not execute, and `--json` carries `"library": true`.
+  Verified by loading the artifact with `dlopen` and calling the ABI: `Add(2,3)=5`,
+  `Mul(1.5,4)=6`, `Greet("GMB")="Ciao, GMB"`; 6 new assertions in
+  `gmb_cli_project_test.sh`. Still red, but **pre-existing and not of LIBRARY**, is the link
+  of the executable: the minimal recipe of `gmb build` (only `libgmb_runtime.a`) no longer covers
+  the SDLs that the console runtime drags with it (see `build → bin/Main eseguibile`).
+  (d) **the executable link recipe was incomplete** (2026-10-26, solved): the console
+  runtime drags the graphics engine (`gmb_tui_app` → SDL2/SDL2_ttf/SDL2_mixer, Vulkan via
+  MoltenVK) plus chart and zlib, so even a program with a single `PRINT` died on
+  `_SDL_*`/`_vk*`/`gmb_chart_*`. Now the link of `build` adds `libgmb_chart.a` (static
+  next to the runtime), the `-L`/`-Wl,-rpath` of the existing dirs (the user cache
+  `~/.gmbasic/libs/<rid>`, `/usr/lib`) and the `-l` **only if the library is really there** (so on
+  Linux, without MoltenVK, the line stays valid instead of stopping on a non-existent `-l`), plus the
+  Apple frameworks. The whole lib-set of `tools/gmb_c99native_run.sh` is not copied (db/agent/doc/
+  AI): it is needed by the programs that use those domains. The `-rpath` is not cosmetic: without it, the link
+  succeeds and the startup dies with `Library not loaded: @rpath/libSDL2.dylib`. Verified:
+  `gmb_cli_project_test.sh` 20/20 PASS, including `build → bin/Main eseguibile` and
+  `run → stdout del programma` (formerly FAIL), `LibraryDirective` still PASS and `--out` unchanged.
+- `tools/gmb_c99native_driver` is from 2026-10-10; the `native/gmb_compiler_c/build/…` build is from
+  2026-10-22 and `tools/gmb_c99native_run.sh` prefers the most recent. The old driver emitted
+  `gmb_tui_add_checkbox` for the checkbox; the fresh one uses `gmb_control_add_checkbox`. `LABEL`
+  stays TUI in both.
+- `canonical.registry.json`: 1567 procedures, 115 commands, 284 constants; C lexer: 1285 entries.
 
-### Da verificare prima del codegen
+### To be verified before the codegen
 
-- `WINDOW FRAME` e i token `STYLE` per font/border/colore sul path `SCREEN`.
-- `WINDOWCLOSED()` e `ON WINDOW CLOSE` con la finestra SDL reale (non solo dummy).
-- `PIX*`/`COMBOBOX`/`LISTBOX` dopo O3.
-- Visibilità cross-file di `DIM` top-level con il progetto (O7); fallback
+- `WINDOW FRAME` and the `STYLE` tokens for font/border/color on the `SCREEN` path.
+- `WINDOWCLOSED()` and `ON WINDOW CLOSE` with the real SDL window (not only dummy).
+- `PIX*`/`COMBOBOX`/`LISTBOX` after O3.
+- Cross-file visibility of top-level `DIM` with the project (O7); fallback
   `CONTROL GET/GETS`.
-- `Form_Resize`/`Activate`/`Deactivate` con `ON WINDOW … GOSUB`.
-- Access key `&` nelle caption e `MOUSE.X/Y` nei handler senza argomenti.
-- DAP reale (`--debug-tcp`) prima di promettere debug.
+- `Form_Resize`/`Activate`/`Deactivate` with `ON WINDOW … GOSUB`.
+- Access key `&` in captions and `MOUSE.X/Y` in handlers without arguments.
+- Real DAP (`--debug-tcp`) before promising debug.
 
 ---
 
-## 13. Riferimenti rapidi
+## 13. Quick references
 
-- Codice GMBasicIDE: `src/core/vb_parse.c` (`.frm`), `src/core/vb_model.h` (`VbForm`/`VbControl`),
+- GMBasicIDE code: `src/core/vb_parse.c` (`.frm`), `src/core/vb_model.h` (`VbForm`/`VbControl`),
   `src/platform/mac/VBEditorWindow.m` (shell), `src/platform/mac/VBCodeEditor.m` (editor),
   `src/tools/vbtool.c` (harness).
 - GMBasic CLI/gate: `native/gmb_compiler_c/src/cli/gmb_cli.c` (`check/build/run/minitests`),
   `native/gmb_compiler_c/tests/gmb_cli_minitests_test.sh`,
-  `native/gmb_c99native/src/gmb_c99_emit_controls.c` (controlli),
-  `native/gmb_runtime_c/include/gmb_form.h` (API pixel),
+  `native/gmb_c99native/src/gmb_c99_emit_controls.c` (controls),
+  `native/gmb_runtime_c/include/gmb_form.h` (pixel API),
   `native/gmb_runtime_c/src/gmb_form.c` (runtime),
-  `native/gmb_compiler_c/frontend/include/gmb_fn_lookup.h` (nomi),
-  `tools/gmb_c99native_run.sh` (link di riferimento).
+  `native/gmb_compiler_c/frontend/include/gmb_fn_lookup.h` (names),
+  `tools/gmb_c99native_run.sh` (reference link).
 - Vault: `Guide/utente/Finestre-Eventi-Guida-Utente.md` (`ON WINDOW`),
-  `Guide/utente/Controlli-Pixel-Proprieta-Metodi-Guida-Utente.md` (controlli),
-  `Todo/(open) - IDE-TUI-BASIC-e-standalone-e-VSCode-LSP.md` (IDE TUI/LSP).
+  `Guide/utente/Controlli-Pixel-Proprieta-Metodi-Guida-Utente.md` (controls),
+  `Todo/(open) - IDE-TUI-BASIC-e-standalone-e-VSCode-LSP.md` (TUI/LSP IDE).

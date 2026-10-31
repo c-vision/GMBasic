@@ -1,61 +1,61 @@
-# tools/ — sede unica dei tool del monorepo
+# tools/ — single home of the monorepo tools
 
-Da 2026-10-29 **tutti i tool vivono qui**. `GMBasic/tools/` e `GMBasicSharp/tools/` sono state rimosse:
-erano copie parziali, e la cartella canonica alla radice restava vuota.
+As of 2026-10-29 **all tools live here**. `GMBasic/tools/` and `GMBasicSharp/tools/` were removed:
+they were partial copies, and the canonical folder at the root stayed empty.
 
-## Struttura
+## Structure
 
 ```
 tools/
-  basic/    gate e generatori scritti in BASIC (28)      es. no_stub.bas, check_enum_ids.bas, gen_c_tokenkind.bas
-  c/        tool di supporto scritti in C (5)            es. gmb_fixture_stats.c, brain_manifest.c
-sh/       wrapper, harness e gate shell (27)           es. check_file_size.sh, parity4, test_minitests_c99native
-data/     dati letti dai tool                          hf_causal_lm_models.txt, llm_arch_allowlist.tsv, base_commit.txt
-  fixtures/ fixture minime per i test di parity          *.bas + gmb_torch*.o
-  audit/    gmb_audit: copertura builtin per backend     Program.cs (rif. di progetto legacy: vedi README)
-  registry-export/  esportatore del registro (.NET)      Program.cs + update.sh
+  basic/    gates and generators written in BASIC (28)   e.g. no_stub.bas, check_enum_ids.bas, gen_c_tokenkind.bas
+  c/        support tools written in C (5)               e.g. gmb_fixture_stats.c, brain_manifest.c
+sh/       wrappers, harnesses and shell gates (27)      e.g. check_file_size.sh, parity4, test_minitests_c99native
+data/     data read by the tools                       hf_causal_lm_models.txt, llm_arch_allowlist.tsv, base_commit.txt
+  fixtures/ minimal fixtures for the parity tests         *.bas + gmb_torch*.o
+  audit/    gmb_audit: builtin coverage per backend      Program.cs (legacy project ref: see README)
+  registry-export/  registry exporter (.NET)             Program.cs + update.sh
 ```
 
-## Regole
+## Rules
 
-1. **Un tool nuovo va qui**, nella sottocartella del suo linguaggio. Mai dentro una cartella di progetto (`GMBasic/`, `GMBasicSharp/`): il tooling è della radice.
-2. **`basic/` e `c/` non si mescolano** (era il difetto della vecchia `GMBasic/tools`: 26 `.bas` e 5 `.c` nella stessa dir).
-3. **Niente output in `tools/`**: nessun `work/`, `out/`, `build/`, nessun `.o` o eseguibile. Lo scratch va in **`/tmp`**; un output persistente di un tool va in **`tools/out/`**. `work/` non si usa nel tooling (è riservata agli artefatti-dati dei sample).
-4. **Gli script shell calcolano la radice da soli**: `$(dirname "$0")/../../GMBasic` (tool che parlano col compilatore) o `../../GMBasicSharp` (kit di test). Non usare `$(dirname "$0")/..`, che ora punta alla radice del monorepo.
-5. **ABI**: i descrittori `.gmbarch` stanno in `LLMEnv/ABI` (sibling del monorepo), puntati dai settings. Nessuna copia locale.
+1. **A new tool goes here**, in the subfolder of its language. Never inside a project folder (`GMBasic/`, `GMBasicSharp/`): tooling belongs to the root.
+2. **`basic/` and `c/` do not mix** (that was the flaw of the old `GMBasic/tools`: 26 `.bas` and 5 `.c` in the same dir).
+3. **No output in `tools/`**: no `work/`, `out/`, `build/`, no `.o` or executable. Scratch goes to **`/tmp`**; a persistent output of a tool goes to **`tools/out/`**. `work/` is not used in tooling (it is reserved for the sample data artifacts).
+4. **Shell scripts compute the root by themselves**: `$(dirname "$0")/../../GMBasic` (tools that talk to the compiler) or `../../GMBasicSharp` (test kit). Do not use `$(dirname "$0")/..`, which now points to the monorepo root.
+5. **ABI**: the `.gmbarch` descriptors live in `LLMEnv/ABI` (sibling of the monorepo), referenced by the settings. No local copy.
 
-## Documentazione
+## Documentation
 
-Indice con una nota per tool: `AiWiki/01-Projects/GMBasic/Guide/Tools/Tools-Indice.md`.
-I launcher degli harness C# (i cui progetti restano in `GMBasicSharp/`) sono in `sh/`; la loro
-tabella di riferimento è [`KIT-README.md`](KIT-README.md).
+Index with one note per tool: `AiWiki/01-Projects/GMBasic/Guide/Tools/Tools-Indice.md`.
+The launchers of the C# harnesses (whose projects stay in `GMBasicSharp/`) are in `sh/`; their
+reference table is [`KIT-README.md`](KIT-README.md).
 
-La documentazione del monorepo (non dei tool) sta in **una sola** cartella: `docs/` alla radice,
-indice in [`docs/README.md`](../docs/README.md). Non esistono `docs/` annidate (`shared/docs`,
-`GMBasic/docs`, `ClipperLib/docs` sono state consolidate il 2026-10-29). Dentro `docs/`:
-`Sync-GMBasic-Monorepo.md` (log di sync, watermark in [`data/base_commit.txt`](data/base_commit.txt)),
-`gmb_env_audit.tsv` (audit env `GMB_*`), `comparison/` (report e manifest dell'audit),
-`ClipperLib/` (riferimento Clipper 5.3 e controlli).
+The monorepo documentation (not the tools') lives in **a single** folder: `docs/` at the root,
+index in [`docs/README.md`](../docs/README.md). There are no nested `docs/` (`shared/docs`,
+`GMBasic/docs`, `ClipperLib/docs` were consolidated on 2026-10-29). Inside `docs/`:
+`Sync-GMBasic-Monorepo.md` (sync log, watermark in [`data/base_commit.txt`](data/base_commit.txt)),
+`gmb_env_audit.tsv` (`GMB_*` env audit), `comparison/` (audit reports and manifests),
+`ClipperLib/` (Clipper 5.3 reference and checks).
 
-`audit/` e `registry-export/` sono progetti .NET con **riferimenti di progetto legacy**
-(`../../common/...`, `GMBASIC.sln`): vanno ripuntati a `GMBasicSharp/` prima di eseguirli. Vedi
+`audit/` and `registry-export/` are .NET projects with **legacy project references**
+(`../../common/...`, `GMBASIC.sln`): they must be repointed to `GMBasicSharp/` before running them. See
  [`audit/README.md`](audit/README.md).
 
-## Invocazione rapida
+## Quick invocation
 
 ```bash
-gmb tools/basic/no_stub.bas --quiet            # gate anti-stub
-bash tools/sh/check_file_size.sh --quiet       # soglia 1200 righe + gate escape
-tools/sh/parity4 <un-sample>.bas               # 4 gambe su un sample
-tools/sh/test_minitests_c99native              # gamba C99Native
-bash tools/sh/test_minitests_parity.sh --all   # 4 gambe su tutti i MiniTest
-bash tools/sh/tools_verify.sh                  # sintassi di tools/ + build C99Native
-bash tools/sh/brains_publish_doc.sh --check     # indice dei cervelli (BRAINS.md) dal manifest
+gmb tools/basic/no_stub.bas --quiet            # anti-stub gate
+bash tools/sh/check_file_size.sh --quiet       # 1200-line threshold + escape gate
+tools/sh/parity4 <un-sample>.bas               # 4 legs on one sample
+tools/sh/test_minitests_c99native              # C99Native leg
+bash tools/sh/test_minitests_parity.sh --all   # 4 legs on all MiniTests
+bash tools/sh/tools_verify.sh                  # tools/ syntax + C99Native build
+bash tools/sh/brains_publish_doc.sh --check     # brains index (BRAINS.md) from the manifest
 ```
 
-**Cervelli**: i pacchetti `.gmbrain.zip` sono **asset di release** di `c-vision/GMBasicBrains`
-(mai nel tree: `trading` è ~600 MB zippato, oltre il limite di 100 MB per file). Il tree di quel
-repo contiene solo i **metadati**, generati dalla fonte unica `shared/settings/brains-manifest.json`:
-`tools/sh/brains_publish_doc.sh` scrive `BRAINS.md` (tabella con forme `rag`/`graph`, release,
-sha256, dimensione) e `README.md`, poi committa e pusha (`--check` mostra il diff senza toccare
-il repo).
+**Brains**: the `.gmbrain.zip` packages are **release assets** of `c-vision/GMBasicBrains`
+(never in the tree: `trading` is ~600 MB zipped, beyond the 100 MB per-file limit). The tree of that
+repo contains only the **metadata**, generated from the single source `shared/settings/brains-manifest.json`:
+`tools/sh/brains_publish_doc.sh` writes `BRAINS.md` (table with `rag`/`graph` shapes, release,
+sha256, size) and `README.md`, then commits and pushes (`--check` shows the diff without touching
+the repo).

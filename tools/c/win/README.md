@@ -1,47 +1,47 @@
-# Librerie Windows (win-arm64) — come si producono
+# Windows libraries (win-arm64) — how they are produced
 
-Le nostre librerie FFI (`protobuf`, `amqp`, `grpc`, `kafka`, `mqtt`, `nats`) compilano per
-**Windows ARM64** con **Zig** dentro una VM Windows (`vmfc` su VMware Fusion), senza MSVC e senza
-permessi di amministratore.
+Our FFI libraries (`protobuf`, `amqp`, `grpc`, `kafka`, `mqtt`, `nats`) build for
+**Windows ARM64** with **Zig** inside a Windows VM (`vmfc` on VMware Fusion), without MSVC and without
+administrator permissions.
 
-## Perché Zig
+## Why Zig
 
-Sulla VM Windows 11 ARM non ci sono compilatori (`cl`, `cmake`, `clang`: assenti) e l'utente non è
-amministratore. Zig è un compilatore C autoportante (un solo `zig.exe`): con
-`zig cc -target aarch64-windows-gnu` compila C con headers mingw e linka DLL che dipendono **solo**
-da `WS2_32.dll`, `KERNEL32.dll` e dalle `api-ms-win-crt-*` di sistema — nessuna DLL di runtime da
-distribuire.
+On the Windows 11 ARM VM there are no compilers (`cl`, `cmake`, `clang`: absent) and the user is not
+an administrator. Zig is a self-contained C compiler (a single `zig.exe`): with
+`zig cc -target aarch64-windows-gnu` it compiles C with mingw headers and links DLLs that depend **only**
+on `WS2_32.dll`, `KERNEL32.dll` and the system `api-ms-win-crt-*` — no runtime DLL to
+distribute.
 
-## Strato POSIX→Win32
+## POSIX→Win32 layer
 
-I sorgenti sono gli stessi di macOS/Linux (nessuna `#if _WIN32`): su Windows si compila con
-`-include include/win32/gmb_win32.h` e `-I include/win32`, dove stanno
+The sources are the same as on macOS/Linux (no `#if _WIN32`): on Windows you build with
+`-include include/win32/gmb_win32.h` and `-I include/win32`, where these live
 
-- `gmb_win32.h`: include `winsock2`/`ws2tcpip`/`windows`, mappa `close`→`closesocket`,
-  `read`/`write`→`recv`/`send`, `usleep`/`sleep`→`Sleep`, e offre `gmb_win_net_init()` (`WSAStartup`);
-- header-stub (`netdb.h`, `sys/socket.h`, `sys/select.h`, `netinet/in.h`, `arpa/inet.h`,
-  `unistd.h`, …) che risolvono le `#include <…>` POSIX verso lo strato sopra.
+- `gmb_win32.h`: includes `winsock2`/`ws2tcpip`/`windows`, maps `close`→`closesocket`,
+  `read`/`write`→`recv`/`send`, `usleep`/`sleep`→`Sleep`, and provides `gmb_win_net_init()` (`WSAStartup`);
+- stub headers (`netdb.h`, `sys/socket.h`, `sys/select.h`, `netinet/in.h`, `arpa/inet.h`,
+  `unistd.h`, …) that resolve the POSIX `#include <…>` toward the layer above.
 
-Su macOS/Linux il file non viene usato: la compilazione resta identica a prima.
+On macOS/Linux the file is not used: the build stays identical to before.
 
-## Procedura
+## Procedure
 
 ```powershell
-# dentro Windows, con lo zip dei sorgenti accanto
+# inside Windows, with the sources zip next to it
 powershell -ExecutionPolicy Bypass -File build-ffi.ps1 -Zip gmb-ffi-src.tar.gz -Out out
 ```
 
-Lo zip si crea sul Mac (attenzione: `--no-mac-metadata`, altrimenti macOS infila file `._*` che
-rompono la compilazione):
+The zip is created on the Mac (careful: `--no-mac-metadata`, otherwise macOS inserts `._*` files that
+break the build):
 
 ```bash
 COPYFILE_DISABLE=1 tar --no-mac-metadata -czf gmb-ffi-src.tar.gz -C staging .
 ```
 
-## Verifica e pubblicazione
+## Verification and publication
 
-1. **Caricabilità** (dentro Windows): `LoadLibrary` + `GetProcAddress("gmb<lib>_available")` → 1.
-2. **Pubblicazione** (dal monorepo, asset per-file):
+1. **Loadability** (inside Windows): `LoadLibrary` + `GetProcAddress("gmb<lib>_available")` → 1.
+2. **Publication** (from the monorepo, per-file assets):
 
 ```bash
 tools/sh/libs_publish_files_gh.sh ffi win-arm64 --source <dir-con-le-dll> --tag ffi-v1 --yes
@@ -49,50 +49,50 @@ tools/sh/libs_manifest_gh.sh build --rid win-arm64 --groups ffi
 tools/sh/libs_index_publish.sh --publish
 ```
 
-## Terze parti per win-arm64
+## Third parties for win-arm64
 
 ```bash
-# 1. terze parti (una volta per target): zlib sqlite3 zstd lz4 brotli lzma pcre2 openssl
+# 1. third parties (once per target): zlib sqlite3 zstd lz4 brotli lzma pcre2 openssl
 #    freetype sdl2 sdl2_ttf curl
 tools/c/build-deps.sh --all-targets
-# 2. runtime C: toolchain CMake + build (libgmb_runtime.a + 6 DLL)
+# 2. C runtime: CMake toolchain + build (libgmb_runtime.a + 6 DLL)
 tools/c/build-windows.sh                     # win-arm64
 tools/c/build-windows.sh --rid win-x64 --triple x86_64-windows-gnu
-# un target solo / una libreria sola
+# a single target / a single library
 tools/c/build-deps.sh --target aarch64-windows-gnu openssl sdl2 sdl2_ttf
 ```
 
-Risultato in `~/gmb-deps/<triple>/{include,lib}`: zlib, sqlite3, zstd, lz4, brotli (common/enc/dec),
-lzma, pcre2, openssl, freetype, SDL2, SDL2_ttf. Con `-I <triple>/include` il runtime compila
-**309/310** file (l'escluso è `gmb_gfx_vulkan.c`, che include un header SPIR-V generato dal build).
+Result in `~/gmb-deps/<triple>/{include,lib}`: zlib, sqlite3, zstd, lz4, brotli (common/enc/dec),
+lzma, pcre2, openssl, freetype, SDL2, SDL2_ttf. With `-I <triple>/include` the runtime compiles
+**309/310** files (the excluded one is `gmb_gfx_vulkan.c`, which includes a SPIR-V header generated by the build).
 
-## Stato
+## Status
 
-| libreria | win-arm64 | nota |
+| library | win-arm64 | note |
 |---|---|---|
-| protobuf, amqp, grpc, kafka, mqtt, nats | ✅ compilano, caricano, `available=1` | pubblicate su `ffi-v1` |
-| media | ❌ | richiede `dlfcn`/`dirent`/`pwd`/`arm_neon` (port a sé) |
-| `support` (SDL/OpenSSL/curl/…) | ❌ | terze parti: servono i loro sorgenti compilati per arm64-windows (vcpkg/MSVC o zig con i rispettivi build) |
-| `runtime`/`core` | ✅ **costruito** | **310/310** file compilano (incluso `gmb_gfx_vulkan.c`, previa generazione di `gmb_gfx_spirv.h` dai `.spv`). Build CMake completa per **win-arm64 e win-x64**: `libgmb_runtime.a` 17,7 MB + `libgmb_gfx.dll` 6,9 · `libgmb_pkg.dll` 9,3 · `libgmb_grep.dll` 9,2 · `libgmb_compress.dll` 7,9 · `libgmb_tray.dll` 0,2 · `libgmb_boot.dll` 0,2. `tools/c/build-windows.sh` fa tutto (toolchain, flag, librerie di sistema). |
+| protobuf, amqp, grpc, kafka, mqtt, nats | ✅ they compile, load, `available=1` | published on `ffi-v1` |
+| media | ❌ | requires `dlfcn`/`dirent`/`pwd`/`arm_neon` (port of its own) |
+| `support` (SDL/OpenSSL/curl/…) | ❌ | third parties: their sources compiled for arm64-windows are needed (vcpkg/MSVC or zig with the respective builds) |
+| `runtime`/`core` | ✅ **built** | **310/310** files compile (including `gmb_gfx_vulkan.c`, after generating `gmb_gfx_spirv.h` from the `.spv`). Full CMake build for **win-arm64 and win-x64**: `libgmb_runtime.a` 17,7 MB + `libgmb_gfx.dll` 6,9 · `libgmb_pkg.dll` 9,3 · `libgmb_grep.dll` 9,2 · `libgmb_compress.dll` 7,9 · `libgmb_tray.dll` 0,2 · `libgmb_boot.dll` 0,2. `tools/c/build-windows.sh` does everything (toolchain, flags, system libraries). |
 
-## Stato: completo
+## Status: complete
 
-**111 / 111 target costruiti, `rc=0`, su win-arm64 e win-x64** (`make -k` completo).
+**111 / 111 targets built, `rc=0`, on win-arm64 and win-x64** (`make -k` complete).
 
 | | |
 |---|---|
 | runtime | `libgmb_runtime.a` 17,7 MB |
 | DLL | `gmb_gfx` 6,9 · `gmb_pkg` 9,3 · `gmb_grep` 9,2 · `gmb_compress` 7,9 · `gmb_tray` 0,2 · `gmb_boot` 0,2 · `gmb_ai_llm` 1,0 MB |
-| selfcheck | tutti compilano e linkano |
-| Vulkan | `gmb_gfx_vulkan.c` compila (header SPIR-V generato dai `.spv`); present Vulkan resta opt-in |
+| selfcheck | all of them compile and link |
+| Vulkan | `gmb_gfx_vulkan.c` compiles (SPIR-V header generated from the `.spv`); Vulkan present stays opt-in |
 
-Due cose sono servite fuori dal runtime e sono documentate qui perché non sono ovvie:
+Two things were needed outside the runtime and are documented here because they are not obvious:
 
-1. **cJSON su Windows**: `cJSON.h` definisce da solo `CJSON_EXPORT_SYMBOLS` e ogni funzione
-   diventa `__declspec(dllexport)`, che l'oggetto traduce in `.drectve` con `-export:`.
-   Con lld quelle direttive rendono ESPLICITA la lista export: la DLL esporta **solo**
-   cJSON. Misurato: `llmtoken.dll` esportava 78 simboli (tutti cJSON, zero `llmtoken_*`).
-   Fix in LLMEnv: `CJSON_HIDE_SYMBOLS` sul target cjson → 193 export.
-2. **`fork()` non esiste**: il selfcheck HTTP ora usa un thread; `posix_spawn` c'è
-   (`shared/include/win32/spawn.h`) ma `fork` no — se serve, si riscrive come thread o
-   processo.
+1. **cJSON on Windows**: `cJSON.h` defines `CJSON_EXPORT_SYMBOLS` by itself and every function
+   becomes `__declspec(dllexport)`, which the object translates into `.drectve` with `-export:`.
+   With lld those directives make the export list EXPLICIT: the DLL exports **only**
+   cJSON. Measured: `llmtoken.dll` exported 78 symbols (all cJSON, zero `llmtoken_*`).
+   Fix in LLMEnv: `CJSON_HIDE_SYMBOLS` on the cjson target → 193 exports.
+2. **`fork()` does not exist**: the HTTP selfcheck now uses a thread; `posix_spawn` is there
+   (`shared/include/win32/spawn.h`) but `fork` is not — if needed, it is rewritten as a thread or
+   process.

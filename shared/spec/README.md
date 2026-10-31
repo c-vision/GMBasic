@@ -1,16 +1,17 @@
-# spec — contratto canonico condiviso
+# spec — shared canonical contract
 
-Contenuto **versionato** e consumato da entrambi i progetti:
+**Versioned** content, consumed by both projects:
 
-- `registry/canonical.registry.json` — superficie canonica `(namespace, nome, TokenKind, arità)`;
-  id stabili append-only (procedure 1.., comandi 1000000+, costanti 2000000+).
-- `registry/generated/CanonicalLookup.g.cs` — lookup C# generata dal registry (fonte Sharp).
-- `registry/stdlib_tokens.csv` — coppie `(ns, token)` per audit/coverage.
-- `registry/architectures/*.json` — descrittori architetture LLM.
+- `registry/canonical.registry.json` — canonical surface `(namespace, name, TokenKind, arity)`;
+  stable append-only ids (procedures 1.., commands 1000000+, constants 2000000+).
+- `registry/generated/CanonicalLookup.g.cs` — C# lookup generated from the registry (Sharp side is
+  the source).
+- `registry/stdlib_tokens.csv` — `(ns, token)` pairs for audit/coverage.
+- `registry/architectures/*.json` — LLM architecture descriptors.
 
-Regole:
-- Il **TokenKind** è la chiave canonica; il lexeme non è mai chiave di dispatch.
-- Il registry si modifica **append-only**: mai riusare un id.
-- Il lato C consuma `registry/generated/gmb_registry.gen.h` (generato) e valida con i propri test;
-  il lato Sharp è la fonte di `StdLib`/TokenKind.
-- Ogni modifica al contratto va riflessa in `conformance/` e, per l'ABI, in `runtime-abi/`.
+Rules:
+- The **TokenKind** is the canonical key; the lexeme is never a dispatch key.
+- The registry is modified **append-only**: never reuse an id.
+- The C side consumes `registry/generated/gmb_registry.gen.h` (generated) and validates it with its
+  own tests; the Sharp side is the source of `StdLib`/TokenKind.
+- Every contract change must be reflected in `conformance/` and, for the ABI, in `runtime-abi/`.

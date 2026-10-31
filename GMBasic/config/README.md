@@ -1,64 +1,63 @@
-# `GMBasic/config/` — NIENTE codice o dati condivisi: solo stato locale
+# `GMBasic/config/` — NO shared code or data: local state only
 
-Questa cartella è il `<configDir>` del compilatore **e** del programma compilato (per un
-eseguibile distribuito è `<exe>/config/`). Contiene **solo stato di questa installazione**:
-nessun file qui è versionato (unica eccezione: questo README).
+This folder is the `<configDir>` of the compiler **and** of the compiled program (for a distributed
+executable it is `<exe>/config/`). It contains **only the state of this installation**: no file here
+is versioned (the only exception: this README).
 
-**Regola (2026-10-31):** un default non va mai nello stato di una macchina. Se serve un
-default, va **nel codice** (catalogo/`EnsureDefaults`) o in **`shared/settings/`** (config
-condivise del compilatore, versionate e indentiche su ogni macchina), con *fallback* a
-runtime.
+**Rule (2026-10-31):** a default never goes into a machine's state. If a default is needed, it goes
+**in the code** (catalog/`EnsureDefaults`) or in **`shared/settings/`** (compiler configuration,
+versioned and identical on every machine), with a runtime *fallback*.
 
-## Cosa può esserci qui (tutto locale, `.gitignore`)
+## What can be here (all local, `.gitignore`)
 
-| file | chi lo scrive | default quando manca |
+| file | who writes it | default when missing |
 |---|---|---|
-| `ai.json` | `AI PATH/SKILLS`, `AiConfig` | `AiConfig.Load()` → vuoto |
-| `brains.json` | `AI BRAIN INSTALL`, registry cervelli | registro vuoto |
-| `skills-index.json` | `AI SKILLS SET INDEX` (gamba C) | nessun override |
-| `SKILLS_PROMPT.md`, `PLUGINS_PROMPT.md` | `AI SKILLS/PLUGINS REFRESH` | rigenerati |
-| `mcp.json` | `AI MCP SERVER ADD/REMOVE` | nessun server (i 6 noti stanno in `McpMarketplace.cs`) |
-| `providers.json` | `AI PROVIDER SAVE` | **seed** `shared/settings/providers.json` (fallback in entrambe le gambe) |
-| `connectors.json` | `ConnectorConfig.Save` (solo C#) | rigenerato da `ConnectorMarketplace.Catalog` (53 voci) |
-| `ide.settings.json` | IDE | `new IdeSettings()` |
-| `support.agent.json` | sample `AgentBasic.bas` (`AI AGENT SAVE`) | nessun agente |
-| `recursivemas/` | `TeamServer.Save` | nessuna squadra |
-| `*.db` (`brain.db`, `vaults.db`, `orchestration.db`) | memoria/vault/registry | creati al primo uso |
+| `ai.json` | `AI PATH/SKILLS`, `AiConfig` | `AiConfig.Load()` → empty |
+| `brains.json` | `AI BRAIN INSTALL`, brain registry | empty registry |
+| `skills-index.json` | `AI SKILLS SET INDEX` (C leg) | no override |
+| `SKILLS_PROMPT.md`, `PLUGINS_PROMPT.md` | `AI SKILLS/PLUGINS REFRESH` | regenerated |
+| `mcp.json` | `AI MCP SERVER ADD/REMOVE` | no server (the 6 known ones are in `McpMarketplace.cs`) |
+| `providers.json` | `AI PROVIDER SAVE` | **seed** `shared/settings/providers.json` (fallback on both legs) |
+| `connectors.json` | `ConnectorConfig.Save` (C# only) | regenerated from `ConnectorMarketplace.Catalog` (53 entries) |
+| `ide.settings.json` | the IDE | `new IdeSettings()` |
+| `support.agent.json` | sample `AgentBasic.bas` (`AI AGENT SAVE`) | no agent |
+| `recursivemas/` | `TeamServer.Save` | no team |
+| `*.db` (`brain.db`, `vaults.db`, `orchestration.db`) | memory/vault/registry | created on first use |
 
-## Perché era sbagliato tenerli in git
+## What lands next to a compiled program
 
-`mcp.json` conteneva `python3 /var/folders/.../gmb_mcp_pool_test.py` e server finti (`fake`,
-`fakehttp`, `files`, `demo_full_surface`); `ai.json` conteneva `/Users/<nome>/...`;
-`support.agent.json` e `recursivemas/hfteam/` erano residui di sample/test. Con quei file in
-git il comportamento dipendeva da **quale macchina** aveva fatto il checkout — e il MiniTest
-`ai_envreads.bas` era già escluso dalla parità cross-leg proprio perché «il contenuto varia
-per macchina».
+The compiler (`ProgramBundle.CopyNextTo`, and the `emit_program_bundle` path of the C99Native
+harness) writes into `<exe>/config/` the files the program reads at runtime and cannot regenerate
+by itself:
 
-## Cosa finisce accanto al programma compilato
-
-Il compilatore (`ProgramBundle.CopyNextTo`, e il ramo `emit_program_bundle` dell'harness
-C99Native) scrive in `<exe>/config/` i file che il programma legge a runtime e non può
-rigenerare da sé:
-
-| file | come viene scelto |
+| file | how it is chosen |
 |---|---|
-| `providers.json` | **sempre**, dal seed `shared/settings/providers.json` (1,4 KB). `AI.PROVIDERS()` e le operazioni sui provider lo leggono; senza né file né seed la gamba C# lanciava `FileNotFoundException`. |
-| altri (`mcp.json`, `connectors.json`, …) | **solo se dichiarati** dal programma: `"config": ["mcp.json"]` nel suo `app.settings.json`. Sorgente: prima `<cartella del programma>/config/<nome>` (config propria dell'app, vince), poi `shared/settings/<nome>` (seed del compilatore). |
+| `providers.json` | **always**, from the seed `shared/settings/providers.json` (1.4 KB). `AI.PROVIDERS()` and the provider operations read it; without either file or seed the C# leg threw `FileNotFoundException`. |
+| others (`mcp.json`, `connectors.json`, …) | **only if declared** by the program: `"config": ["mcp.json"]` in its `app.settings.json`. Source: first `<program folder>/config/<name>` (the app's own config, which wins), then `shared/settings/<name>` (compiler seed). |
 
-Un file non dichiarato **non si distribuisce**: `ai.json`/`mcp.json` di sviluppo contengono i
-percorsi della macchina che ha compilato, e `connectors.json` il C# lo rigenera dal catalogo in
-codice. Una voce dichiarata e introvabile è un warning, non un errore.
+An undeclared file is **not** shipped: development `ai.json`/`mcp.json` contain the paths of the
+machine that compiled, and `connectors.json` is regenerated by C# from the catalog in the code. A
+declared entry that cannot be found is a warning, not an error.
 
-## Le due eccezioni storiche, risolte
+## Why having them in git was wrong
 
-- **`connectors.json`** sembrava una fixture (un MiniTest con oracolo `list= 13527`); in realtà
-  la gamba C **non legge il file**: serializza il proprio catalogo in codice, e il risultato è
-  identico con e senza file (verificato). Lato C# `ConnectorConfig.Load()` rigenera dal
-  catalogo quando il file manca. Quindi: nessun seed necessario.
-- **`providers.json`** è l'unico caso in cui il file *era* l'oracolo: `AI.PROVIDERS()` legge il
-  file e `shared/minitests/ai/gen_AI_Providers.bas` ha il suo contenuto come EXPECT. Il seed
-  canonico è ora **`shared/settings/providers.json`** (versionato, nessun percorso assoluto,
-  nessun segreto); entrambe le gambe lo leggono in fallback e il bundle lo copia in
-  `<exe>/config/providers.json` per i programmi distribuiti.
+`mcp.json` contained `python3 /var/folders/.../gmb_mcp_pool_test.py` and fake servers (`fake`,
+`fakehttp`, `files`, `demo_full_surface`); `ai.json` contained `/Users/<name>/...`;
+`support.agent.json` and `recursivemas/hfteam/` were sample/test leftovers. With those files in git
+the behaviour depended on **which machine** had made the checkout — and the MiniTest
+`ai_envreads.bas` was already excluded from cross-leg parity precisely because «the content varies
+per machine».
 
-Vedi anche [shared/settings/README.md](../../shared/settings/README.md).
+## The two historical exceptions, resolved
+
+- **`connectors.json`** looked like a fixture (a MiniTest with oracle `list= 13527`); in fact the C
+  leg **does not read the file**: it serializes its own catalog in the code, and the result is
+  identical with and without the file (verified). On the C# side `ConnectorConfig.Load()`
+  regenerates from the catalog when the file is missing. So: no seed needed.
+- **`providers.json`** is the only case where the file *was* the oracle: `AI.PROVIDERS()` reads the
+  file and `shared/minitests/ai/gen_AI_Providers.bas` has its content as EXPECT. The canonical seed
+  is now **`shared/settings/providers.json`** (versioned, no absolute paths, no secrets); both legs
+  read it as a fallback and the bundle copies it into `<exe>/config/providers.json` for distributed
+  programs.
+
+See also [shared/settings/README.md](../../shared/settings/README.md).

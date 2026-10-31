@@ -1,34 +1,34 @@
-# protobuf — codec wire-format Protocol Buffers (shim FFI self-contained)
+# protobuf — Protocol Buffers wire-format codec (self-contained FFI shim)
 
-Pacchetto gmbsuite (Prefisso C: `gmbprotobuf`). Codec **wire-format** Protocol Buffers esposto a
+gmbsuite package (C prefix: `gmbprotobuf`). Protocol Buffers **wire-format** codec exposed to
 GMBasic via FFI (namespace **PROTOBUF**).
 
-## Design (perché è self-contained)
-Lo shim `libgmbprotobuf.dylib` implementa la lettura/scrittura del **wire-format protobuf** in **C
-puro** (varint/tag/wire-types): **nessuna libreria esterna**, **nessun compilatore `.proto`** —
-dipende solo da `libSystem`. Build dal sorgente (`build.sh`, eseguito dal PM).
+## Design (why it is self-contained)
+The `libgmbprotobuf.dylib` shim implements reading/writing of the **protobuf wire format** in
+**pure C** (varint/tag/wire types): **no external library**, **no `.proto` compiler** — it depends
+only on `libSystem`. Built from source (`build.sh`, run by the package manager).
 
-Copre i wire type **0** (varint: int/bool/enum), **1** (64-bit), **2** (length-delimited:
-string/bytes), **5** (32-bit). I byte serializzati sono esposti come **stringa esadecimale**
-(evita il troncamento a NUL delle stringhe GMBasic).
+It covers wire types **0** (varint: int/bool/enum), **1** (64-bit), **2** (length-delimited:
+string/bytes), **5** (32-bit). Serialized bytes are exposed as a **hex string** (this avoids the
+NUL truncation of GMBasic strings).
 
-## API (BASIC, namespace `PROTOBUF`)
-| Membro | Firma | Semantica |
+## API (BASIC, `PROTOBUF` namespace)
+| Member | Signature | Semantics |
 |---|---|---|
-| `PROTOBUF.AVAILABLE()` | `() AS LONG` | 1 = shim disponibile |
-| `PROTOBUF.NEWMSG()` | `() AS LONG` | nuovo builder |
-| `PROTOBUF.ADDINT(h, field, value)` | `(LONG, LONG, LONG) AS LONG` | aggiunge campo varint |
-| `PROTOBUF.ADDSTRING(h, field, s)` | `(LONG, LONG, STRING) AS LONG` | aggiunge campo string |
-| `PROTOBUF.SERIALIZE(h)` | `(LONG) AS STRING` | byte → **hex** |
+| `PROTOBUF.AVAILABLE()` | `() AS LONG` | 1 = shim available |
+| `PROTOBUF.NEWMSG()` | `() AS LONG` | new builder |
+| `PROTOBUF.ADDINT(h, field, value)` | `(LONG, LONG, LONG) AS LONG` | append a varint field |
+| `PROTOBUF.ADDSTRING(h, field, s)` | `(LONG, LONG, STRING) AS LONG` | append a string field |
+| `PROTOBUF.SERIALIZE(h)` | `(LONG) AS STRING` | bytes → **hex** |
 | `PROTOBUF.PARSE(hex)` | `(STRING) AS LONG` | hex → reader |
 | `PROTOBUF.HASFIELD(h, field)` | `(LONG, LONG) AS LONG` | 1/0 |
-| `PROTOBUF.GETINT(h, field)` | `(LONG, LONG) AS LONG` | valore intero |
-| `PROTOBUF.GETSTRING(h, field)` | `(LONG, LONG) AS STRING` | valore stringa |
-| `PROTOBUF.FREEMSG(h)` | `(LONG) AS LONG` | libera builder/reader |
+| `PROTOBUF.GETINT(h, field)` | `(LONG, LONG) AS LONG` | integer value |
+| `PROTOBUF.GETSTRING(h, field)` | `(LONG, LONG) AS STRING` | string value |
+| `PROTOBUF.FREEMSG(h)` | `(LONG) AS LONG` | free builder/reader |
 
-## Test
-`protobuf_demo.bas` (round-trip, nessun server). MiniTest `minitests/packages/require_protobuf.bas`
-(deterministico: esempio canonico `field1=150, field2="testing"`).
+## Tests
+`protobuf_demo.bas` (round-trip, no server). MiniTest `minitests/packages/require_protobuf.bas`
+(deterministic: canonical example `field1=150, field2="testing"`).
 
-## Riferimenti
+## References
 - `protobuf.inc`, `include/gmbprotobuf.h`, `src/gmbprotobuf.c`, `build.sh`.

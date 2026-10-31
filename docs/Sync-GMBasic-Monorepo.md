@@ -1,345 +1,345 @@
 # Sync GMBasicMonoRepo
 
-> [!NOTE] **Documento STORICO** (sync 2026-10-26/28). I path citati riflettono lo stato di allora
-> (`tests-mixed`, `migration/tools-unclassified`, `GMBASIC.sln`, …). Struttura e path correnti:
-> `Knowledge/Struttura-Monorepo` (vault) e `docs/README.md`.
+> [!NOTE] **HISTORICAL document** (sync 2026-10-26/28). The paths cited reflect the state at that time
+> (`tests-mixed`, `migration/tools-unclassified`, `GMBASIC.sln`, …). Current structure and paths:
+> `Knowledge/Struttura-Monorepo` (vault) and `docs/README.md`.
 
 SYNC GMBasic → GMBasicMonoRepo
 
-> **Struttura aggiornata 2026-10-29.** La cartella `migration/` **non esiste più**: questo log
-> sta in `docs/Sync-GMBasic-Monorepo.md` e il watermark del sync in `tools/data/base_commit.txt`.
-> Tutti i tool vivono in `tools/` alla radice (`basic/`, `c/`, `sh/`, `data/`, `fixtures/`,
-> `registry-export/`); `migration/tools-unclassified` è stato eliminato e i path `GMBasic/tools`
-> e `GMBasicSharp/tools` non esistono più. I riferimenti a `migration/...` nelle sezioni datate
-> qui sotto descrivono lo stato di allora: si leggono come **storici**, non come istruzioni.
+> **Structure updated 2026-10-29.** The `migration/` folder **no longer exists**: this log
+> is in `docs/Sync-GMBasic-Monorepo.md` and the sync watermark in `tools/data/base_commit.txt`.
+> All the tools live in `tools/` at the root (`basic/`, `c/`, `sh/`, `data/`, `fixtures/`,
+> `registry-export/`); `migration/tools-unclassified` has been deleted and the paths `GMBasic/tools`
+> and `GMBasicSharp/tools` no longer exist. The references to `migration/...` in the dated sections
+> below describe the state at that time: they are read as **historical**, not as instructions.
 >
-> **Doc consolidati 2026-10-29.** Esiste una sola cartella di documentazione: `docs/` alla radice
-> (indice in [`docs/README.md`](README.md)). Non esistono più `shared/docs/`, `GMBasic/docs/` né
-> `GMBasicSharp/common/ClipperLib/docs/`: il contenuto è in `docs/comparison/`,
-> `docs/implemented/`, `docs/ClipperLib/` e `docs/gmb_env_audit.tsv`. Anche i riferimenti a
-> `shared/docs/...` nelle sezioni datate sono **storici**.
+> **Consolidated docs 2026-10-29.** There is only one documentation folder: `docs/` at the root
+> (index in [`docs/README.md`](README.md)). `shared/docs/`, `GMBasic/docs/` and
+> `GMBasicSharp/common/ClipperLib/docs/` no longer exist: the content is in `docs/comparison/`,
+> `docs/implemented/`, `docs/ClipperLib/` and `docs/gmb_env_audit.tsv`. The references to
+> `shared/docs/...` in the dated sections are **historical** too.
 >
-> **`tools/` versionato 2026-10-29.** I 78 file di `tools/` erano **untracked** (solo su disco):
-> ora sono in git. Due `.py` della repo originale non avevano controparte e sono stati portati
-> in BASIC con parità verificata contro l'oracolo Python: `check_minitest_expect.bas` (gate
-> oracoli EXPECT) e `validate_stdlib_csv.bas` (5 controlli sui CSV del registry). L'inventario
-> dei `.py` residui e il motivo per cui non vanno convertiti è nel vault,
+> **`tools/` versioned 2026-10-29.** The 78 files of `tools/` were **untracked** (only on disk):
+> now they are in git. Two `.py` of the original repo had no counterpart and have been ported
+> to BASIC with parity verified against the Python oracle: `check_minitest_expect.bas` (EXPECT
+> oracle gate) and `validate_stdlib_csv.bas` (5 checks on the registry CSVs). The inventory
+> of the residual `.py` and the reason why they must not be converted is in the vault,
 > `Knowledge/Tool-Python-Residui-GMBasic.md`.
 
 ## Base
-- BASE_COMMIT: `c9ad151ebfaad12f6f312850102c807074de9776` (2026-10-23) — watermark corrente,
-  avanzato dagli import successivi, in `tools/data/base_commit.txt` (`66ab81ddc`).
-- **Il solo commit NON basta**: il working tree di GMBasic conteneva **23 modifiche non
-  committate** in `native/` (es. `gmb_sdl_console.c` con `extern gmb_tui_menu_any_open`); con il
-  solo HEAD la build C fallisce. Lo snapshot iniziale usa quindi **working tree + commit base**.
-- Inventario modifiche al momento dello snapshot: `git -C GMBasic status --short native | wc -l`
-  = 23 (elencate sotto, hash del file di inventario da rigenerare ad ogni sync).
+- BASE_COMMIT: `c9ad151ebfaad12f6f312850102c807074de9776` (2026-10-23) — current watermark,
+  advanced by the subsequent imports, in `tools/data/base_commit.txt` (`66ab81ddc`).
+- **The commit alone is NOT enough**: the GMBasic working tree contained **23 uncommitted
+  changes** in `native/` (e.g. `gmb_sdl_console.c` with `extern gmb_tui_menu_any_open`); with
+  HEAD alone the C build fails. The initial snapshot therefore uses **working tree + base commit**.
+- Inventory of the changes at snapshot time: `git -C GMBasic status --short native | wc -l`
+  = 23 (listed below, hash of the inventory file to be regenerated at every sync).
 
-## Snapshot iniziale (2026-10-23)
-- `native/`, `gmbllm/` copiati dal **working tree** (esclusi build/_deps/oggetti).
-- `Resources/libs` (837 MB, include dylib non tracciate come `libMoltenVK.dylib`) e
-  `libs-runtime` (963 MB) copiati dal working tree: dipendenze locali di build, NON da git.
-- `tools/` e `GMBasic/tools` sono **symlink temporanei** a `migration/tools-unclassified`
-  (i tool vanno riscritti per progetto: F2/F3). Da rimuovere prima della pubblicazione.
+## Initial snapshot (2026-10-23)
+- `native/`, `gmbllm/` copied from the **working tree** (excluding build/_deps/objects).
+- `Resources/libs` (837 MB, includes untracked dylibs such as `libMoltenVK.dylib`) and
+  `libs-runtime` (963 MB) copied from the working tree: local build dependencies, NOT from git.
+- `tools/` and `GMBasic/tools` are **temporary symlinks** to `migration/tools-unclassified`
+  (the tools must be rewritten per project: F2/F3). To be removed before publication.
 - `shared/`, `GMBasicSharp/`, `spec/registry`, `GMBasic/tests-mixed`, `migration/tools-unclassified`
-  derivano dallo snapshot HEAD.
+  derive from the HEAD snapshot.
 
-## Build C (verificata)
+## C build (verified)
 - `gmb_runtime`: OK (`cmake -DCMAKE_BUILD_TYPE=Release`).
-- `gmb_vm_host`: OK con `-DGMB_HAS_COMMERCIAL_DB=ON -DGMB_VM_LINK_COMPILER=ON`
-  (i default freschi li disattivano → `gmb_db.h` mancante).
+- `gmb_vm_host`: OK with `-DGMB_HAS_COMMERCIAL_DB=ON -DGMB_VM_LINK_COMPILER=ON`
+  (the fresh defaults disable them → `gmb_db.h` missing).
 
-## Prossimi sync
-0. `<base>` = contenuto di `tools/data/base_commit.txt` (aggiornarlo a fine sync).
+## Next syncs
+0. `<base>` = content of `tools/data/base_commit.txt` (update it at the end of the sync).
 1. `git -C GMBasic fetch` + `git diff --name-status <base>..HEAD`.
-2. Aggiornare `<base>` e riapplicare ai path nuovi (`GMBasic/`, `GMBasicSharp/`, `shared/`).
-3. Registrare qui commit, file, esito; se il working tree cambia durante il port, ri-sync.
+2. Update `<base>` and reapply to the new paths (`GMBasic/`, `GMBasicSharp/`, `shared/`).
+3. Record here the commit, files, outcome; if the working tree changes during the port, re-sync.
 
-## POLICY TOOLS (2026-10-23)
-- Nessun Python. C → tool in C o GMBasic `.bas`; Sharp → tool in C#; shell solo bootstrap/CI.
-- I symlink `tools`/`GMBasic/tools` sono temporanei e vanno sostituiti da tool riscritti.
+## TOOLS POLICY (2026-10-23)
+- No Python. C → tool in C or GMBasic `.bas`; Sharp → tool in C#; shell only bootstrap/CI.
+- The `tools`/`GMBasic/tools` symlinks are temporary and must be replaced by rewritten tools.
 
-## REPL C# ripristinata (2026-10-23)
-- Copiata `REPL/` da `GMBasic-Deprecated/REPL` in `GMBasicSharp/REPL` (26 file).
-- Ripristinati gli originali C# necessari: **`common/ClipperLib` completo** (da Deprecated),
+## C# REPL restored (2026-10-23)
+- `REPL/` copied from `GMBasic-Deprecated/REPL` into `GMBasicSharp/REPL` (26 files).
+- The necessary C# originals restored: **complete `common/ClipperLib`** (from Deprecated),
   `SdlConsole*.cs`, `AlertBox.cs`.
-- `GMBasicSharp` usa ora gli **originali C#** per lo stato/controlli finestra: rimossa la copia
-  proxy `common/CommonLib/Consoles/Tui/State` (solo lato Sharp); `IlBackendRuntime` rifà
-  riferimento a `ClipperLib.csproj`; `GmBasicInputSource` → `ClipperLib.App`.
-- `ScreenConfig.Palettes.GetConsoleNamed()` ripristinato (per ora C-backed).
-- **Build REPL verde** (0 errori).
-- Il progetto C resta C-only: nessun riferimento a ClipperLib.
+- `GMBasicSharp` now uses the **C# originals** for window state/controls: the proxy copy
+  `common/CommonLib/Consoles/Tui/State` removed (Sharp side only); `IlBackendRuntime` references
+  `ClipperLib.csproj` again; `GmBasicInputSource` → `ClipperLib.App`.
+- `ScreenConfig.Palettes.GetConsoleNamed()` restored (C-backed for now).
+- **REPL build green** (0 errors).
+- The C project stays C-only: no reference to ClipperLib.
 
 ## C toolchain + Sharp solution (2026-10-23)
-- C: `gmb_runtime`, `gmb_vm_host`, `gmb_compiler_c` (build `gmb`) costruiti; C99Native è
-  consumato dai sorgenti dal gate (nessun eseguibile standalone). Configurazione:
+- C: `gmb_runtime`, `gmb_vm_host`, `gmb_compiler_c` (build `gmb`) built; C99Native is
+  consumed from sources by the gate (no standalone executable). Configuration:
   `-DGMB_HAS_COMMERCIAL_DB=ON -DGMB_VM_LINK_COMPILER=ON`.
-- **12 funzioni "solo IL" verificate GIÀ implementate in C**: C99Native le emette
-  (`gmb_c99_emit.c` 9530-9560) e VM/C le dispatcha (`gmb_vm_tui.c` 400-419, 402,404,405,
-  411-419). Il gap 12 era **stale** (manifest audit non rigenerati: richiede `--all`).
-- Sharp: creata `GMBasicSharp/GMBasicSharp.slnx` (28 progetti main); build **0 errori**.
-  Corretto `IlBackendCodegen/genrunner` (path `../../../Executor`).
-- **backend C# dell'emitter C99 ritirato** da Sharp: spostato in `GMBasic-Deprecated/`
-  (snapshot 2026-10-23; test in `tests-GMBASIC.Backend.C99.Tests-2026-10-23`).
-- Policy: rimosso Python dai path vivi. `cmake/embed_spirv.py` → `cmake/embed_spirv.cmake`
-  (generazione header SPIR-V in CMake puro, byte/length identici); 4 script in `shared/` e
-  `gmb_db_c/tools/fill_1to1.py` spostati in Deprecated.
-- Confini: `find GMBasic -name '*.cs'` = **0**; Sharp ha 2 helper C di test
-  (`tests-mixed/.../run_*.c`) da spostare nel progetto C.
-- `migration/_import` (snapshot completo) contiene ~270 .py legati ai tool legacy: **temporaneo**,
-  da escludere dalla pubblicazione; `tools/` e `GMBasic/tools` sono symlink temporanei.
+- **12 "IL-only" functions verified ALREADY implemented in C**: C99Native emits them
+  (`gmb_c99_emit.c` 9530-9560) and VM/C dispatches them (`gmb_vm_tui.c` 400-419, 402,404,405,
+  411-419). The gap of 12 was **stale** (audit manifests not regenerated: it requires `--all`).
+- Sharp: `GMBasicSharp/GMBasicSharp.slnx` created (28 main projects); build **0 errors**.
+  Fixed `IlBackendCodegen/genrunner` (path `../../../Executor`).
+- **C# backend of the C99 emitter retired** from Sharp: moved to `GMBasic-Deprecated/`
+  (snapshot 2026-10-23; tests in `tests-GMBASIC.Backend.C99.Tests-2026-10-23`).
+- Policy: Python removed from the live paths. `cmake/embed_spirv.py` → `cmake/embed_spirv.cmake`
+  (SPIR-V header generation in pure CMake, identical bytes/length); 4 scripts in `shared/` and
+  `gmb_db_c/tools/fill_1to1.py` moved to Deprecated.
+- Boundaries: `find GMBasic -name '*.cs'` = **0**; Sharp has 2 C test helpers
+  (`tests-mixed/.../run_*.c`) to be moved into the C project.
+- `migration/_import` (complete snapshot) contains ~270 .py tied to the legacy tools: **temporary**,
+  to be excluded from publication; `tools/` and `GMBasic/tools` are temporary symlinks.
 
-## Verifica C dopo il cambio SPIR-V (2026-10-23)
-- `gmb_runtime` ricostruita OK; `gmb_gfx_spirv.h` generato da CMake (sprite.vert=1508,
-  sprite.frag=636 byte, identici al vecchio script).
-- `tests/gmb_gaps_selfcheck.c` era **stale** rispetto all'API (`snap` → `snap_zone`, edges
-  stringa): aggiornato; il test WindowManager ora passa.
-- Restano 2 FAIL **pre-esistenti** nel selfcheck: `Graphics Texture Rotation` (serve GPU/contesto)
-  e `Keyboard read_line` (serve TTY). Target `gmb_gfx_present_input_selfcheck` non compila per
-  header SDL2 mancanti (config test, non la lib).
+## C verification after the SPIR-V change (2026-10-23)
+- `gmb_runtime` rebuilt OK; `gmb_gfx_spirv.h` generated by CMake (sprite.vert=1508,
+  sprite.frag=636 bytes, identical to the old script).
+- `tests/gmb_gaps_selfcheck.c` was **stale** with respect to the API (`snap` → `snap_zone`, edges
+  string): updated; the WindowManager test now passes.
+- 2 **pre-existing** FAIL remain in the selfcheck: `Graphics Texture Rotation` (needs a GPU/context)
+  and `Keyboard read_line` (needs a TTY). Target `gmb_gfx_present_input_selfcheck` does not compile due to
+  missing SDL2 headers (test config, not the lib).
 
-## Audit rigenerato + confini (2026-10-23)
-- Audit `--all` eseguito su staging (`/var/folders/.../gmb-audit-stage`): superficie canonica
+## Audit regenerated + boundaries (2026-10-23)
+- `--all` audit run on staging (`/var/folders/.../gmb-audit-stage`): canonical surface
   **1383**; **PCodeVM, IL, VMC, C99Native = 1383/1383 (100%)**.
-- I 12 gap storici (`CONTROLS.*` + `WINDOWS.WINDOWCLOSED`) erano **falsi negativi** dell'estrattore:
-  C99Native li emette per nome, PCodeVM via `case SysCall.FORM_*`, VMC via `vm_form_*`.
-  Patch (solo tool legacy in `migration/tools-unclassified/audit/Program.cs`): riconosce
-  `new HashSet<BuiltInFunction>{...}`, i rami per nome del percorso FORM e i case SysCall; C99
-  (C# transpiler ritirato) escluso da `--all`.
-- Manifest in `spec/registry/manifests/` (C99Native, IL, PCodeVM, VMC); report in
-  `docs/comparison/audit-backends.md` (allora in `shared/docs/comparison/`). **Da replicare nel futuro audit-tool C**: il
-  riconoscimento del dispatch per nome/SysCall è necessario (altrimenti 12 falsi gap).
-- Confini: **0 file C in `GMBasicSharp`**; `tests-mixed/native_tests/run_tests.c` →
+- The 12 historical gaps (`CONTROLS.*` + `WINDOWS.WINDOWCLOSED`) were **false negatives** of the extractor:
+  C99Native emits them by name, PCodeVM via `case SysCall.FORM_*`, VMC via `vm_form_*`.
+  Patch (legacy tool only in `migration/tools-unclassified/audit/Program.cs`): it recognizes
+  `new HashSet<BuiltInFunction>{...}`, the by-name branches of the FORM path and the SysCall cases; C99
+  (retired C# transpiler) excluded from `--all`.
+- Manifests in `spec/registry/manifests/` (C99Native, IL, PCodeVM, VMC); report in
+  `docs/comparison/audit-backends.md` (then in `shared/docs/comparison/`). **To be replicated in the future C audit-tool**: the
+  recognition of the dispatch by name/SysCall is necessary (otherwise 12 false gaps).
+- Boundaries: **0 C files in `GMBasicSharp`**; `tests-mixed/native_tests/run_tests.c` →
   `GMBasic/native/tests/native_tests/`; `run_db_checks.c` → `GMBasic/native/gmb_db_c/tests/`;
-  `NativeCChecks.cs` → Deprecated. Ripristinato `GMBasicSharp/Directory.Build.props` (matrice).
-  `GMBASIC.Database.Native.Tests` compila (0 errori); `GMBasicSharp.slnx` 0 errori.
+  `NativeCChecks.cs` → Deprecated. `GMBasicSharp/Directory.Build.props` restored (matrix).
+  `GMBASIC.Database.Native.Tests` compiles (0 errors); `GMBasicSharp.slnx` 0 errors.
 
-## Verifica "146 non implementate" (2026-10-24)
-- **Falso allarme**: l'audit deduplicava la superficie per solo NOME (1383), mentre il registry
-  canonico è per (namespace,nome) (1523). Corretto il tool (chiave ns+nome).
-- Confronto insiemi: **canonico 1523 = StdLib 1523**, differenza **0**. Nessuna funzione manca
-  da StdLib: né in Sharp né nel repo originale GMBasic → nessuna modifica a GMBasic.
-- Con la superficie corretta: IL/PCodeVM/VMC **1523/1523 (100%)**; C99Native **1517/1523**.
-- Unici gap reali (C99Native, emissione mancante): `SPEED.SETDURABILITY`, `SPEED.FLUSHDURABILITY`,
+## Verification of the "146 not implemented" (2026-10-24)
+- **False alarm**: the audit deduplicated the surface by NAME only (1383), while the canonical
+  registry is per (namespace,name) (1523). Tool fixed (key ns+name).
+- Set comparison: **canonical 1523 = StdLib 1523**, difference **0**. No function is missing
+  from StdLib: neither in Sharp nor in the original GMBasic repo → no modification to GMBasic.
+- With the correct surface: IL/PCodeVM/VMC **1523/1523 (100%)**; C99Native **1517/1523**.
+- Only real gaps (C99Native, missing emission): `SPEED.SETDURABILITY`, `SPEED.FLUSHDURABILITY`,
   `SPEED.BEGINGROUPCOMMIT`, `SPEED.ENDGROUPCOMMIT`, `SPEED.INFO`, `MOUSE.CLICK`.
-  Runtime: set/flush/group-commit esistono in gmb_db; `SPEED.INFO` e `MOUSE.CLICK` (forma area)
-  non hanno ancora una funzione C dedicata.
+  Runtime: set/flush/group-commit exist in gmb_db; `SPEED.INFO` and `MOUSE.CLICK` (area form)
+  do not yet have a dedicated C function.
 
-## Sync nuovi commit + chiusura gap SPEED/MOUSE (2026-10-24)
-- **Nuovi commit** in GMBasic originale: `6fe9765af` (@GET TYPE MiniTest/sample/guida) e
-  `7a474842d` (parità emitter C# campi tipizzati). Copiati in `shared/`:
+## Sync of new commits + closing SPEED/MOUSE gaps (2026-10-24)
+- **New commits** in the original GMBasic: `6fe9765af` (@GET TYPE MiniTest/sample/guide) and
+  `7a474842d` (C# emitter parity for typed fields). Copied into `shared/`:
   `minitests/controls/get_types_parity.bas`, `samples/Community/Clipper/ClipperTypedGets.bas`.
-  Le modifiche emitter C# non riguardano il monorepo (backend ritirato).
-- **Gap chiusi sui 4 backend** (non solo C99Native): SPEED.SETDURABILITY/FLUSHDURABILITY/
-  BEGINGROUPCOMMIT/ENDGROUPCOMMIT/INFO e MOUSE.CLICK (0 arg + area).
-  - C condiviso: `gmb_db_speed_begin/end_group_commit`, `gmb_db_speed_{set_durability,info}_str`,
-    getter `Database_GetDurabilityFull/GroupCommitDepth`, `gmb_mouse_click[_area]` (Clipper).
-  - C99Native: entry `emit_bf_speed` + `emit_bf_mouse` (nessuna logica inline).
-  - VM/C: builtin 454-458 (`gmb_builtin.c`) + MOUSE.CLICK in `gmb_bf_393`.
+  The C# emitter changes do not concern the monorepo (retired backend).
+- **Gaps closed on the 4 backends** (not only C99Native): SPEED.SETDURABILITY/FLUSHDURABILITY/
+  BEGINGROUPCOMMIT/ENDGROUPCOMMIT/INFO and MOUSE.CLICK (0 arg + area).
+  - Shared C: `gmb_db_speed_begin/end_group_commit`, `gmb_db_speed_{set_durability,info}_str`,
+    getters `Database_GetDurabilityFull/GroupCommitDepth`, `gmb_mouse_click[_area]` (Clipper).
+  - C99Native: entries `emit_bf_speed` + `emit_bf_mouse` (no inline logic).
+  - VM/C: builtins 454-458 (`gmb_builtin.c`) + MOUSE.CLICK in `gmb_bf_393`.
   - IL/PCode: `IlRuntime.Speed{Begin,End}GroupCommit`, flush via `SpeedDriverForArea`
-    (prima dipendeva da `_speedHandles`, non popolato da PCode/VM), emissione IL dei token.
-  - Fix harness `test_ilrun/Program.cs` (ClipperLib → CommonLib proxy).
+    (before it depended on `_speedHandles`, not populated by PCode/VM), IL emission of the tokens.
+  - Harness fix `test_ilrun/Program.cs` (ClipperLib → CommonLib proxy).
 - MiniTest `speed/gaps.bas` (EXPECT setdur/flush/begin/end/info/click0/area0).
-  Eseguito sul file singolo: **IL OK, PCode OK, VM/C OK, C99Native PASS**.
-- Audit rigenerato: **IL/PCodeVM/VMC/C99Native = 1523/1523 (100%)**.
+  Run on the single file: **IL OK, PCode OK, VM/C OK, C99Native PASS**.
+- Audit regenerated: **IL/PCodeVM/VMC/C99Native = 1523/1523 (100%)**.
 
-## Import commit + commit in GMBasic (2026-10-25)
-- Importati nel monorepo i commit **`7a474842d..8b77bfe00`** (6 commit, tutti `native/`):
+## Commit import + commit in GMBasic (2026-10-25)
+- Imported into the monorepo the commits **`7a474842d..8b77bfe00`** (6 commits, all `native/`):
   `gmb_compiler.c`, `gmb_c99gpm.c`, `gmb_read.c`, `gmb_vm_core.c`, `gmb_vm_host.c`,
-  `gmb_vm_tui.c` — presi da **HEAD** (`git show`), non dal working tree (che ha WIP altrui).
-- Build monorepo riverificate: `gmb_ai_llm` + `gmb_runtime` + `gmb_db` + `gmb_vm_host` OK.
-- **Commit in GMBasic**: `0bc552167` — 16 file, +231/−8 (runtime/DB/C99Native/VM/C/IL/PCode,
-  MiniTest `speed/gaps.bas`). `gmb_builtin.c` committato **solo per i propri hunk** (46 righe):
-  le 419 righe di WIP di un'altra AI restano non committate. `test_ilrun/Program.cs` è
-  gitignored: fix locale non committato.
-- Stato verificato: IL/PCode/VM/C/C99Native PASS su `speed/gaps.bas`; audit 1523/1523.
+  `gmb_vm_tui.c` — taken from **HEAD** (`git show`), not from the working tree (which has other people's WIP).
+- Monorepo builds re-verified: `gmb_ai_llm` + `gmb_runtime` + `gmb_db` + `gmb_vm_host` OK.
+- **Commit in GMBasic**: `0bc552167` — 16 files, +231/−8 (runtime/DB/C99Native/VM/C/IL/PCode,
+  MiniTest `speed/gaps.bas`). `gmb_builtin.c` committed **only for its own hunks** (46 lines):
+  the 419 lines of WIP of another AI stay uncommitted. `test_ilrun/Program.cs` is
+  gitignored: local fix not committed.
+- Verified state: IL/PCode/VM/C/C99Native PASS on `speed/gaps.bas`; audit 1523/1523.
 
-## emitter C# ritirato nel repo ORIGINALE (2026-10-25)
-- Il backend C# dell'emitter C99 → `GMBasic-Deprecated/` (snapshot 2026-10-25, incluso il
-  WIP non committato di un'altra AI, preservato) e `tests/GMBASIC.Backend.C99.Tests` →
+## C# emitter retired in the ORIGINAL repo (2026-10-25)
+- The C# backend of the C99 emitter → `GMBasic-Deprecated/` (snapshot 2026-10-25, including the
+  uncommitted WIP of another AI, preserved) and `tests/GMBASIC.Backend.C99.Tests` →
   `.../tests-GMBASIC.Backend.C99.Tests-2026-10-25`.
-- Rimossi: voci `GMBASIC.sln`, `ProjectReference` in `tools/audit`, blocco `GmbBackendC99`
-  in `Directory.Build.props`/`.targets`, `InternalsVisibleTo` C99 nei 3 csproj, gate/step
-  C99 in `tools/{gmb_http_probe,llm_llvm_gate,test_mcp_e2e}.sh`, voci in
-  `tools/check_file_size.sh`; script `gmb_c99_rebuild.sh`/`worktree_helper.sh` in Deprecated.
-- `tools/audit`: propagata la versione corretta (chiave ns+nome, speed/mouse, PCode SysCall);
-  `--c99`/`--registry-c99` ora rispondono "ritirato" (exit 2).
-- Test `NativeParityTests` che leggeva emitter C#: rimosso (obsoleto); `NativeDb.cs` ripristinato.
-- Verifica: `dotnet build GMBASIC.sln` **0 errori**; `speed/gaps.bas` **IL/PCode/VM/C/C99Native PASS**.
-- Nota: `tools/check_file_size.sh --quiet` resta rosso per file monolitici preesistenti
-  (`gmb_builtin.c` 18k righe non in allowlist) — non legato a questo lavoro.
+- Removed: entries in `GMBASIC.sln`, `ProjectReference` in `tools/audit`, `GmbBackendC99` block
+  in `Directory.Build.props`/`.targets`, C99 `InternalsVisibleTo` in the 3 csproj, C99 gate/step
+  in `tools/{gmb_http_probe,llm_llvm_gate,test_mcp_e2e}.sh`, entries in
+  `tools/check_file_size.sh`; scripts `gmb_c99_rebuild.sh`/`worktree_helper.sh` in Deprecated.
+- `tools/audit`: the correct version propagated (key ns+name, speed/mouse, PCode SysCall);
+  `--c99`/`--registry-c99` now answer "retired" (exit 2).
+- `NativeParityTests` test that read the C# emitter: removed (obsolete); `NativeDb.cs` restored.
+- Verification: `dotnet build GMBASIC.sln` **0 errors**; `speed/gaps.bas` **IL/PCode/VM/C/C99Native PASS**.
+- Note: `tools/check_file_size.sh --quiet` stays red for pre-existing monolithic files
+  (`gmb_builtin.c` 18k lines not in the allowlist) — not related to this work.
 
-## Import READ nativo + ritiro emitter C# (2026-10-25)
-- Importati da HEAD i commit **`5dff233c4` / `edd4da60b` / `66ab81ddc`** (READ nativo via P/Invoke,
-  PCode/IL allineati): file C copiati da HEAD in `GMBasic/native/`; file Sharp senza divergenze
-  copiati; `IlRuntime.cs` e `PCodeProcessor.Syscalls.cs` presi da HEAD e riapplicata la
-  trasformazione namespace Sharp (CommonLib→ClipperLib) → `GMBasicSharp.slnx` 0 errori.
-- Ripristinato in `GMBasic/native/gmb_runtime_c/CMakeLists.txt` l'embed SPIR-V in CMake puro
-  (`embed_spirv.cmake`): il HEAD originale usa ancora `embed_spirv.py` (Python).
+## Native READ import + C# emitter retirement (2026-10-25)
+- Imported from HEAD the commits **`5dff233c4` / `edd4da60b` / `66ab81ddc`** (native READ via P/Invoke,
+  PCode/IL aligned): C files copied from HEAD into `GMBasic/native/`; Sharp files without divergences
+  copied; `IlRuntime.cs` and `PCodeProcessor.Syscalls.cs` taken from HEAD and the Sharp namespace
+  transformation reapplied (CommonLib→ClipperLib) → `GMBasicSharp.slnx` 0 errors.
+- Restored in `GMBasic/native/gmb_runtime_c/CMakeLists.txt` the SPIR-V embed in pure CMake
+  (`embed_spirv.cmake`): the original HEAD still uses `embed_spirv.py` (Python).
 - Build: `gmb_runtime`, `gmb_ai_llm`, `gmb_db`, `gmb_vm_host` OK.
-- emitter C#: assente dal monorepo (già rimosso); `parity4` ora 4 gambe nel repo originale.
+- C# emitter: absent from the monorepo (already removed); `parity4` now 4 legs in the original repo.
 
-## Rifinitura Sharp post-ritiro C99 (2026-10-25)
-- Rimossa da `GMBasicSharp/REPL` la vecchia gamba C99: blocco `#if GMB_C99`/`RunC99Safe`,
-  parsing `--c99`/`UseC99`, help POC e `C99DebugDriver` (stub) spostato in
-  `GMBasic-Deprecated/GMBasicSharp-REPL-C99-2026-10-25`; `DebugBackend` ora {PCode, VmC}.
-- `GMBasicSharp.slnx` e `REPL` compilano 0 errori; C: `gmb_runtime`, `gmb_ai_llm`, `gmb_db`,
+## Sharp cleanup after the C99 retirement (2026-10-25)
+- Removed from `GMBasicSharp/REPL` the old C99 leg: `#if GMB_C99`/`RunC99Safe` block,
+  `--c99`/`UseC99` parsing, POC help and `C99DebugDriver` (stub) moved to
+  `GMBasic-Deprecated/GMBasicSharp-REPL-C99-2026-10-25`; `DebugBackend` now {PCode, VmC}.
+- `GMBasicSharp.slnx` and `REPL` compile with 0 errors; C: `gmb_runtime`, `gmb_ai_llm`, `gmb_db`,
   `gmb_vm_host`, `gmb_compiler_c` OK.
-- Compliance: 0 C# nel progetto C, 0 C nel progetto Sharp, 0 .py fuori da migration/tools/build.
+- Compliance: 0 C# in the C project, 0 C in the Sharp project, 0 .py outside migration/tools/build.
 
-## Pulizia pre-repo (2026-10-25)
-- `migration/_import` (snapshot duplicato, 270 .py) spostato in
+## Pre-repo cleanup (2026-10-25)
+- `migration/_import` (duplicated snapshot, 270 .py) moved to
   `GMBasic-Deprecated/monorepo-import-2026-10-25`.
-- Rimossi i symlink `tools/` e `GMBasic/tools/` → `migration/tools-unclassified`.
-- `GMBasic/tools/` è ora reale e contiene solo gli script shell del progetto C presi da HEAD
-  (`gmb_ensure_ai_libs.sh`, `install_mlx_dylib.sh`, `gmb_c99native_run.sh`, `parity4` 4 gambe,
+- Removed the `tools/` and `GMBasic/tools/` symlinks → `migration/tools-unclassified`.
+- `GMBasic/tools/` is now real and contains only the shell scripts of the C project taken from HEAD
+  (`gmb_ensure_ai_libs.sh`, `install_mlx_dylib.sh`, `gmb_c99native_run.sh`, `parity4` 4 legs,
   `test_minitests_c99native`, `check_file_size.sh`, `rebuild_ai_native.sh`, `gmb_http_probe.sh`,
   `llm_llvm_gate.sh`, `test_mcp_e2e.sh`).
-- Build `gmb_vm_host` OK con i tool reali; nessun `.py` in `GMBasic/tools`.
-- `migration/tools-unclassified` resta come archivio legacy (fuori dai repo da pubblicare).
+- `gmb_vm_host` build OK with the real tools; no `.py` in `GMBasic/tools`.
+- `migration/tools-unclassified` remains as a legacy archive (outside the repos to be published).
 
 ## F3 — runtime-abi (2026-10-25)
-- Creato `runtime-abi/`: `check_abi.c` (dlopen/dlsym), `CMakeLists.txt`, README e 4 elenchi
-  di entry point estratti dai binding Sharp: `gmb_db` (51), `gmb_gfx` (385), `gmb_ai_llm` (60),
+- `runtime-abi/` created: `check_abi.c` (dlopen/dlsym), `CMakeLists.txt`, README and 4 entry-point
+  lists extracted from the Sharp bindings: `gmb_db` (51), `gmb_gfx` (385), `gmb_ai_llm` (60),
   `gmb_ai_modelio` (4).
-- Verifica: **51/51, 385/385, 60/60, 4/4** simboli presenti nelle dylib buildate.
-- `conformance/` ancora da popolare (runner C per corpus `.bas` + EXPECT).
+- Verification: **51/51, 385/385, 60/60, 4/4** symbols present in the built dylibs.
+- `conformance/` still to be populated (C runner for `.bas` corpora + EXPECT).
 
-## F3 — conformance: blocco toolchain (2026-10-25)
-- `runtime-abi` completato e verde (51/51, 385/385, 60/60, 4/4).
-- `conformance/` **non ancora popolato**: il runner deve usare il toolchain C, ma in monorepo:
-  - `gmb` risolveva la root solo via `GMBASIC.sln` → aggiunto marker
-    `native/gmb_runtime_c/include/gmb_runtime.h` in `gmb_inc_resolve.c` (fix fatto) e fallback
-    LLMEnv `install/../../LLMEnv` in `gmb_cli.c`;
-  - il link minimo di `gmb` (`-lm -lpthread`) non copre SDL/OpenSSL del runtime → i sample
-    console falliscono su `_SDL_*` (aggiunto `-lcrypto -lssl`, resta SDL);
-  - `tools/gmb_c99native_run.sh` usa ancora i path del vecchio layout (LLMEnv accanto a
-    GMBasic, settings) → fallisce con `llmengine_plugin.h` non trovato.
-- Prossimo: unificare root/LLMEnv/link recipe in un'unica sorgente C (o settings del monorepo)
-  e poi implementare `conformance/run_conformance.c` (EXPECT vs output).
+## F3 — conformance: toolchain blocker (2026-10-25)
+- `runtime-abi` completed and green (51/51, 385/385, 60/60, 4/4).
+- `conformance/` **not yet populated**: the runner must use the C toolchain, but in the monorepo:
+  - `gmb` resolved the root only via `GMBASIC.sln` → marker
+    `native/gmb_runtime_c/include/gmb_runtime.h` added in `gmb_inc_resolve.c` (fix done) and LLMEnv
+    fallback `install/../../LLMEnv` in `gmb_cli.c`;
+  - the minimal link of `gmb` (`-lm -lpthread`) does not cover the runtime's SDL/OpenSSL → the console
+    samples fail on `_SDL_*` (`-lcrypto -lssl` added, SDL remains);
+  - `tools/gmb_c99native_run.sh` still uses the paths of the old layout (LLMEnv next to
+    GMBasic, settings) → it fails with `llmengine_plugin.h` not found.
+- Next: unify root/LLMEnv/link recipe in a single C source (or monorepo settings)
+  and then implement `conformance/run_conformance.c` (EXPECT vs output).
 
-## F3 — conformance (primo runner) (2026-10-25)
-- Creato `conformance/run_conformance.c` (+ CMake/README): estrae `' EXPECT:` dal `.bas`,
-  esegue `GMBasic/tools/gmb_c99native_run.sh`, normalizza (righe unite con `|`, spazi finali
-  rimossi) e confronta. Exit 0 PASS/SKIP, 1 FAIL, 2 setup.
-- PASS verificati: `bits/bitclear.bas`, `bits/bitcount.bas`, `keyword_named_var.bas`.
-- Fix toolchain monorepo: root C senza `.sln` riconosciuta dal marker
-  `native/gmb_runtime_c/include/gmb_runtime.h` (`gmb_inc_resolve.c`); LLMEnv cercato anche in
-  `install/../../LLMEnv` (`gmb_cli.c`); `gmb_c99native_run.sh` rileva LLMEnv sibling/workspace
-  (niente env) e linka `MoltenVK`.
-- Nota: `speed/gaps.bas` passa col runner C99Native ufficiale ma fallisce via
-  `gmb_c99native_run.sh` ("SPEED.SETDURABILITY non definita") — differenza driver/flags da
-  indagare (non è un gap di StdLib).
+## F3 — conformance (first runner) (2026-10-25)
+- `conformance/run_conformance.c` created (+ CMake/README): it extracts `' EXPECT:` from the `.bas`,
+  runs `GMBasic/tools/gmb_c99native_run.sh`, normalizes (lines joined with `|`, trailing spaces
+  removed) and compares. Exit 0 PASS/SKIP, 1 FAIL, 2 setup.
+- PASS verified: `bits/bitclear.bas`, `bits/bitcount.bas`, `keyword_named_var.bas`.
+- Monorepo toolchain fix: C root without `.sln` recognized by the marker
+  `native/gmb_runtime_c/include/gmb_runtime.h` (`gmb_inc_resolve.c`); LLMEnv also searched in
+  `install/../../LLMEnv` (`gmb_cli.c`); `gmb_c99native_run.sh` detects the sibling/workspace LLMEnv
+  (no env) and links `MoltenVK`.
+- Note: `speed/gaps.bas` passes with the official C99Native runner but fails through
+  `gmb_c99native_run.sh` ("SPEED.SETDURABILITY not defined") — driver/flags difference to
+  investigate (it is not a StdLib gap).
 
 ## Fix gmb_c99native_run.sh (2026-10-25)
-- Causa del "SPEED.SETDURABILITY non definita": driver del build **stantio**. Ora lo script
-  ricostruisce il target `gmb_c99native_driver` (incrementale) prima di scegliere il binario.
-- Rimosso l'uso di `python3` per i settings: bootstrap deterministico `-O1 -w` + `cc`
-  (override `CF_OVERRIDE`). Nessun Python nel tool.
-- Verifica con `conformance/run_conformance`: PASS su `bits/bitclear`, `bits/bitcount`,
+- Cause of "SPEED.SETDURABILITY not defined": **stale** build driver. Now the script
+  rebuilds the `gmb_c99native_driver` target (incremental) before choosing the binary.
+- Removed the use of `python3` for the settings: deterministic bootstrap `-O1 -w` + `cc`
+  (override `CF_OVERRIDE`). No Python in the tool.
+- Verification with `conformance/run_conformance`: PASS on `bits/bitclear`, `bits/bitcount`,
   `keyword_named_var`, `speed/gaps`.
-- Patch applicata anche al repo originale `GMBasic/tools/gmb_c99native_run.sh`.
+- Patch also applied to the original repo `GMBasic/tools/gmb_c99native_run.sh`.
 
 ## F3 — spec (2026-10-25)
-- Aggiunti `spec/README.md` (contratto: registry append-only, TokenKind chiave, consumo C/Sharp)
-  e `spec/VERSION`. `spec/registry` già versionato.
-- `conformance/run_conformance` operativo (single-file); verifica PASS su bits/keyword/speed.
+- Added `spec/README.md` (contract: append-only registry, TokenKind key, C/Sharp consumption)
+  and `spec/VERSION`. `spec/registry` already versioned.
+- `conformance/run_conformance` operational (single-file); PASS verified on bits/keyword/speed.
 
-## Conformance multi-file + fix script (2026-10-25)
-- `run_conformance` accetta N file (root assoluta, path risolti prima del chdir) e stampa il
-  totale con exit aggregato.
-- Verifica: `bits/bitclear`, `bits/bitcount`, `keyword_named_var`, `speed/gaps` → **4/4 PASS**.
-- `gmb_c99native_run.sh`: driver ricostruito prima dell'uso (fix stale) e niente Python.
+## Multi-file conformance + script fix (2026-10-25)
+- `run_conformance` accepts N files (absolute root, paths resolved before the chdir) and prints the
+  total with an aggregated exit.
+- Verification: `bits/bitclear`, `bits/bitcount`, `keyword_named_var`, `speed/gaps` → **4/4 PASS**.
+- `gmb_c99native_run.sh`: driver rebuilt before use (stale fix) and no Python.
 
-## Pulizia Python residuo (2026-10-25)
-- `GMBasic/tools/test_mcp_e2e.sh` (client Python) archiviato in Deprecated.
-- `GMBasicSharp/tests-mixed/convert_parity.sh`: copie fixture con `cp`; normalizzazione con
-  `awk`+`tr` (niente Python).
-- `GMBasicSharp/tests-mixed/AI.Tests/McpClientTests`: fixture MCP ora `/bin/sh` (script inline),
-  niente `python3`; test `StdioCall_ReusesProcessAcrossCalls` PASS.
-- Verifica: nessun `python3` nei path vivi del monorepo.
+## Residual Python cleanup (2026-10-25)
+- `GMBasic/tools/test_mcp_e2e.sh` (Python client) archived in Deprecated.
+- `GMBasicSharp/tests-mixed/convert_parity.sh`: fixture copies with `cp`; normalization with
+  `awk`+`tr` (no Python).
+- `GMBasicSharp/tests-mixed/AI.Tests/McpClientTests`: MCP fixture now `/bin/sh` (inline script),
+  no `python3`; test `StdioCall_ReusesProcessAcrossCalls` PASS.
+- Verification: no `python3` in the live paths of the monorepo.
 
-## Python residuo nei test (2026-10-25)
-- `gmb_compiler_c/tests/gmb_cli_project_test.sh`: JSON con `jq` (niente Python).
-- `gmb_compiler_c/tests/gmb_cli_minitests_test.sh`: `json_get`/validità/ordine-conteggi con `jq`.
-- `shared/settings/config/` (stato runtime, incluso `mcp.json` con `python3`) spostato in
+## Residual Python in the tests (2026-10-25)
+- `gmb_compiler_c/tests/gmb_cli_project_test.sh`: JSON with `jq` (no Python).
+- `gmb_compiler_c/tests/gmb_cli_minitests_test.sh`: `json_get`/validity/count-order with `jq`.
+- `shared/settings/config/` (runtime state, including `mcp.json` with `python3`) moved to
   `GMBasic-Deprecated/monorepo-shared-config-2026-10-25`.
-- Resta solo un **path** a site-packages torch in `native/gmb_torch/build_host.sh` (link a
-  libtorch, non esecuzione Python): dipendenza esterna ML da valutare in F5.
+- Only one **path** to torch site-packages remains in `native/gmb_torch/build_host.sh` (link to
+  libtorch, not Python execution): external ML dependency to be evaluated in F5.
 
-## F4 — verifica separazione + igiene repo (2026-10-25)
-- `GMBasicSharp.slnx` builda **senza** `SkipNativeAiLibs` / toolchain C (0 errori); `GMBasic`
-  builda con CMake (runtime/vm/db/compiler/ai) senza .NET.
-- Aggiunti `.gitignore` (root, GMBasic, GMBasicSharp, shared, conformance, runtime-abi):
-  bin/obj/build/work/out, `libs-runtime`, `Resources/libs`, stato (graphs/rag/graphify).
-- README per progetto: `GMBasic/README.md`, `GMBasicSharp/README.md`, `shared/README.md`
-  (build, dipendenze, ABI, licenza PUL/Apache).
-- Confini: 0 C# in GMBasic, 0 C in GMBasicSharp; nessun `.py` nei path vivi (resta solo un
-  path a site-packages torch nel build_host C, dipendenza esterna ML da decidere in F5).
+## F4 — separation verification + repo hygiene (2026-10-25)
+- `GMBasicSharp.slnx` builds **without** `SkipNativeAiLibs` / C toolchain (0 errors); `GMBasic`
+  builds with CMake (runtime/vm/db/compiler/ai) without .NET.
+- Added `.gitignore` (root, GMBasic, GMBasicSharp, shared, conformance, runtime-abi):
+  bin/obj/build/work/out, `libs-runtime`, `Resources/libs`, state (graphs/rag/graphify).
+- Per-project README: `GMBasic/README.md`, `GMBasicSharp/README.md`, `shared/README.md`
+  (build, dependencies, ABI, PUL/Apache license).
+- Boundaries: 0 C# in GMBasic, 0 C in GMBasicSharp; no `.py` in the live paths (only one
+  path to torch site-packages remains in the C build_host, external ML dependency to be decided in F5).
 
-## F3 — COMPLETATA (2026-10-25)
-- `spec/` (registry + README + VERSION), `conformance/` (runner multi-file; PASS su bits/keyword/speed),
-  `runtime-abi/` (4 elenchi + `check_abi` + `check_all.sh`, `ABI_VERSION` 1.0.0).
-- Gate ABI: **51/51, 385/385, 60/60, 4/4 → ABI 1.0.0 OK**.
-- Ownership/licenze: `LICENSING.md` (Apache runtime/Sharp/shared; PUL `gmbllm`; monodirezionalità).
-- Criterio F3 soddisfatto; F4 verificata; restano F5/F6.
+## F3 — COMPLETED (2026-10-25)
+- `spec/` (registry + README + VERSION), `conformance/` (multi-file runner; PASS on bits/keyword/speed),
+  `runtime-abi/` (4 lists + `check_abi` + `check_all.sh`, `ABI_VERSION` 1.0.0).
+- ABI gate: **51/51, 385/385, 60/60, 4/4 → ABI 1.0.0 OK**.
+- Ownership/licenses: `LICENSING.md` (Apache runtime/Sharp/shared; PUL `gmbllm`; monodirectionality).
+- F3 criterion satisfied; F4 verified; F5/F6 remain.
 
-## F5 — DECISIONE (2026-10-25)
-- **Nessuna reimplementazione C#**: GMBasicSharp usa le dylib C via P/Invoke. Il C resta l'unica
-  sorgente di runtime/UI/DB/AI; niente duplicazione, parità garantita dal contratto ABI.
-- F5 si riduce a: mantenere `runtime-abi` completo per ogni P/Invoke (4 lib verificate, altre
-  elencate da coprire), licenze (Sharp Apache + dipendenza PUL per `gmbllm`).
-- `gmbasic-sharp` pubblico = sorgente; l'esecuzione richiede il runtime C (repo privato/PUL).
+## F5 — DECISION (2026-10-25)
+- **No C# reimplementation**: GMBasicSharp uses the C dylibs via P/Invoke. C remains the only
+  source of runtime/UI/DB/AI; no duplication, parity guaranteed by the ABI contract.
+- F5 reduces to: keeping `runtime-abi` complete for every P/Invoke (4 libs verified, others
+  listed to be covered), licenses (Sharp Apache + PUL dependency for `gmbllm`).
+- Public `gmbasic-sharp` = source; execution requires the C runtime (private/PUL repo).
 
-## F5 — ABI estesa (2026-10-25)
-- `runtime-abi/check_all.sh` copre **13 dylib** (db, gfx, ai_llm, ai_modelio, ai_mlx,
-  finetune, llamacpp, llmtoken, torch_loader, compress, grep, pkg, moe_stream): **tutte OK**.
-- Rimossi da `MlxProviders` P/Invoke morti (`gmb_mlx_opts_register`, `gmb_opt_*`,
-  `llm_ai_mlx_model_lora_save`, `gmb_mlx_set_moe_swap_dir`): non esportati/rinominati.
-- Aperto: `GmbEnv.Get` usa `gmb_opt_env` su `gmb_ai_mlx` (non esportato); fallback settings/env
-  maschera l'errore, da rebind/export.
+## F5 — extended ABI (2026-10-25)
+- `runtime-abi/check_all.sh` covers **13 dylibs** (db, gfx, ai_llm, ai_modelio, ai_mlx,
+  finetune, llamacpp, llmtoken, torch_loader, compress, grep, pkg, moe_stream): **all OK**.
+- Dead P/Invokes removed from `MlxProviders` (`gmb_mlx_opts_register`, `gmb_opt_*`,
+  `llm_ai_mlx_model_lora_save`, `gmb_mlx_set_moe_swap_dir`): not exported/renamed.
+- Open: `GmbEnv.Get` uses `gmb_opt_env` on `gmb_ai_mlx` (not exported); the settings/env fallback
+  masks the error, to be rebound/exported.
 
-## Fix ABI `GmbEnv` (2026-10-25)
-- `gmb_opt_env` ora è esportato da `libgmb_ai_llm` (link option `-Wl,-u,_gmb_opt_env` su Apple):
-  `GmbEnv.Get` non ricade più nel fallback per EntryPoint mancante.
-- `gmb_ai_llm.symbols` aggiornato (61/61); `check_all.sh` verde.
-- Patch CMake da applicare anche al repo originale (stessa riga in `gmb_runtime_c/CMakeLists.txt`).
+## ABI fix `GmbEnv` (2026-10-25)
+- `gmb_opt_env` is now exported from `libgmb_ai_llm` (link option `-Wl,-u,_gmb_opt_env` on Apple):
+  `GmbEnv.Get` no longer falls back for a missing EntryPoint.
+- `gmb_ai_llm.symbols` updated (61/61); `check_all.sh` green.
+- CMake patch to be applied to the original repo as well (same line in `gmb_runtime_c/CMakeLists.txt`).
 
 ## Fix GmbEnv (2026-10-25)
-- `GmbEnv` ora usa `gmb_ai_llm` (dove `gmb_opt_env` è esportato con `-Wl,-u,_gmb_opt_env`),
-  non `gmb_ai_mlx`. Il fallback non maschera più un EntryPointNotFound.
-- Sharp builda 0 errori; `check_all` ABI OK (ai_llm 61/61).
+- `GmbEnv` now uses `gmb_ai_llm` (where `gmb_opt_env` is exported with `-Wl,-u,_gmb_opt_env`),
+  not `gmb_ai_mlx`. The fallback no longer masks an EntryPointNotFound.
+- Sharp builds with 0 errors; `check_all` ABI OK (ai_llm 61/61).
 
-## Repo locali creati (2026-10-25)
-- `GMBasic` → commit `d6ed1fd` (C baseline; include plugin/lib dylib prebuilt da ripulire prima della pubblicazione).
+## Local repos created (2026-10-25)
+- `GMBasic` → commit `d6ed1fd` (C baseline; includes prebuilt plugin/lib dylibs to be cleaned before publication).
 - `GMBasicSharp` → commit `bb05cb3` (C# baseline).
 - `shared` → commit `875f649` (samples/minitests/spec/conformance/runtime-abi; 212 MB).
-- Workspace `GMBasicMonoRepo` → commit `7f29463` con submodule gitlink e `.gitmodules` (URL relativi
-  placeholder: da sostituire con i remote definitivi). Submodule **non inizializzati** (solo gitlink).
-- `BASE_COMMIT` riportato a `66ab81ddc` (ultimo commit importato): **pending sync `66ab..50a6552df`**
-  (~20 commit: DYNAMIC VM/C, model-quantize, READ write-through, LIBRARY runner).
+- Workspace `GMBasicMonoRepo` → commit `7f29463` with submodule gitlinks and `.gitmodules` (placeholder
+  relative URLs: to be replaced with the definitive remotes). Submodules **not initialized** (gitlinks only).
+- `BASE_COMMIT` set back to `66ab81ddc` (last imported commit): **pending sync `66ab..50a6552df`**
+  (~20 commits: DYNAMIC VM/C, model-quantize, READ write-through, LIBRARY runner).
 
-## Port LIBRARY (CLI + runner) e ingresso di GMBasicIDE (2026-10-26)
-- Importati nel progetto **C** i due commit con cui l'originale ha reso LIBRARY un prodotto
-  vero: `ca349c5bf` (`gmb build` produce la `.dylib`, l'eseguibile linka chart/SDL/MoltenVK)
-  e `cb310534f` (gamba LIBRARY nel runner MiniTest), applicati con `cherry-pick -x` perché
-  il clone del monorepo ha una storia diversa.
-  - Conflitto risolto in `gmb_cli.c`: il baseline del monorepo aggiungeva
-    `-lcrypto -lssl` al link (plugin TLS, risolti dalla cache); sono stati mantenuti in
-    **entrambe** le forme (libreria ed eseguibile), insieme ai flag nuovi `GMB_LIB_LDFLAGS`
-    e al link chart/SDL. Corretto anche il formato (`%s` mancante) che il merge aveva
-    lasciato: niente warning con `-Wall -Wextra`.
-  - `samples/modules/README.md` e `tools/check_minitests.sh`: il monorepo li aveva
-    deliberatamente fuori dall'indice. Restano tali (il secondo, aggiornato, resta su disco
-    non tracciato) invece di reintrodurli.
-  - Verifica: `cmake --build native/gmb_compiler_c/build --target gmb_cli` e
-    `native/gmb_compiler_c/tests/gmb_cli_project_test.sh` → **20/20 PASS**, inclusi
-    `LIBRARY → bin/gmbmath.dylib`, ABI esportata, nessun `main` esportato, `run` che non esegue.
-- Progetto **C#**: nessuna modifica da importare. Il supporto LIBRARY era già completo
-  (`BasicModule.LibraryName`, `IlProgramCompiler.EmitLibraryEntry`, progetto senza entry
-  point accettato in `Orchestrator`), e non esiste in Sharp un CLI `build --project` che sia
-  il corrispettivo della modifica fatta in C.
-- **GMBasicIDE** entra come quarto submodule (`url = ../GMBasicIDE`): l'ex `VB6Clone`,
-  rinominato in cartella, bundle, identificatore, menu di sistema, titoli runtime e docs.
-  Il marker dei breakpoint nel `.frm` resta `'@VB6CloneBreakpoints` (formato su disco dei
-  progetti esistenti, round-trip byte-identico). Build e `make check` verdi dopo il rename.
+## LIBRARY port (CLI + runner) and the entry of GMBasicIDE (2026-10-26)
+- Imported into the **C** project the two commits with which the original turned LIBRARY into a real
+  product: `ca349c5bf` (`gmb build` produces the `.dylib`, the executable links chart/SDL/MoltenVK)
+  and `cb310534f` (LIBRARY leg in the MiniTest runner), applied with `cherry-pick -x` because
+  the monorepo clone has a different history.
+  - Conflict resolved in `gmb_cli.c`: the monorepo baseline added
+    `-lcrypto -lssl` to the link (TLS plugin, resolved from the cache); they were kept in
+    **both** forms (library and executable), together with the new `GMB_LIB_LDFLAGS` flags
+    and the chart/SDL link. Also fixed the format (`%s` missing) that the merge had
+    left: no warning with `-Wall -Wextra`.
+  - `samples/modules/README.md` and `tools/check_minitests.sh`: the monorepo had them
+    deliberately out of the index. They remain so (the second one, updated, stays on disk
+    untracked) instead of reintroducing them.
+  - Verification: `cmake --build native/gmb_compiler_c/build --target gmb_cli` and
+    `native/gmb_compiler_c/tests/gmb_cli_project_test.sh` → **20/20 PASS**, including
+    `LIBRARY → bin/gmbmath.dylib`, exported ABI, no exported `main`, `run` that does not execute.
+- **C#** project: no change to import. LIBRARY support was already complete
+  (`BasicModule.LibraryName`, `IlProgramCompiler.EmitLibraryEntry`, project without entry
+  point accepted in `Orchestrator`), and in Sharp there is no `build --project` CLI that is
+  the counterpart of the change made in C.
+- **GMBasicIDE** enters as the fourth submodule (`url = ../GMBasicIDE`): the former `VB6Clone`,
+  renamed in folder, bundle, identifier, system menu, runtime titles and docs.
+  The breakpoint marker in the `.frm` remains `'@VB6CloneBreakpoints` (on-disk format of the
+  existing projects, byte-identical round-trip). Build and `make check` green after the rename.

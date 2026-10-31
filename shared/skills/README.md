@@ -1,42 +1,41 @@
-# GMBASIC — Archivio Skills Agente
+# GMBASIC — Agent skills archive
 
-Cartella di default con le **skills** disponibili all'agente AI di GMBASIC.
+Default folder with the **skills** available to the GMBASIC AI agent.
 
-- **161 skill** in formato markdown, ognuna in `skills/<nome>/SKILL.md` (+ 20 skill dal
-  marketplace configurato in `config/ai.json` → **181** in `SKILLS_PROMPT.md`)
-- **`SKILLS_PROMPT.md`** — l'**indice** (istruzioni all'agente + elenco delle skill con la
-  descrizione). È un **output generato**: `AI SKILLS REFRESH` / `AI.SKILLSPROMPT()` lo
-  riscrivono in `<configDir>/SKILLS_PROMPT.md` (accanto ad `ai.json`), **non** qui dentro —
-  l'archivio resta contenuto puro e può essere in sola lettura (programma installato).
-  Il testo che l'agente deve leggere è comunque il **valore di ritorno** di
-  `AI.SKILLSPROMPT()`, non il file.
+- **161 skills** in markdown format, each in `skills/<name>/SKILL.md` (+ 20 skills from the
+  marketplace configured in `config/ai.json` → **181** in `SKILLS_PROMPT.md`)
+- **`SKILLS_PROMPT.md`** — the **index** (instructions for the agent + the list of skills with
+  their description). It is a **generated output**: `AI SKILLS REFRESH` / `AI.SKILLSPROMPT()`
+  rewrite it in `<configDir>/SKILLS_PROMPT.md` (next to `ai.json`), **not** inside this folder —
+  the archive stays pure content and can be read-only (installed program).
+  The text the agent must read is anyway the **return value** of `AI.SKILLSPROMPT()`, not the file.
 
-## Origine
+## Origin
 
-Le skill sono state selezionate dalle installazioni locali dei tool AI:
+The skills were selected from local installations of AI tools:
 Claude Code, Codex, opencode, Gemini, `~/.agents/skills` (GSD/utility).
-Priorità ai domini utili a un **agente in un programma compilato**: finanza/trading,
-email, documenti/PDF, business, dati, media, web, security, produttività.
+Priority to the domains useful to an **agent inside a compiled program**: finance/trading,
+email, documents/PDF, business, data, media, web, security, productivity.
 
-## Come usare le skill
+## How to use the skills
 
-1. L'agente legge `SKILLS_PROMPT.md` per conoscere l'indice delle skill.
-2. Quando una richiesta corrisponde a una skill, l'agente legge
-   `skills/<nome>/SKILL.md` e ne segue le istruzioni.
-3. L'utente può aggiungere altre skill da BASIC (file markdown nella stessa cartella).
+1. The agent reads `SKILLS_PROMPT.md` to learn the skills index.
+2. When a request matches a skill, the agent reads `skills/<name>/SKILL.md` and follows its
+   instructions.
+3. The user can add more skills from BASIC (markdown files in the same folder).
 
-## Categorie
+## Categories
 
-| Categoria | n. | Esempi |
+| Category | n. | Examples |
 |---|---|---|
-| Finanza / trading / investimenti | 25 | financial-analyst, fund-screener, commercial-forecaster, pricing-strategy |
+| Finance / trading / investing | 25 | financial-analyst, fund-screener, commercial-forecaster, pricing-strategy |
 | Email | 12 | gmail-inbox-triage, outlook-email, email-template-builder |
-| Documenti / PDF / Office | 14 | contract-review, docx, pdf, spreadsheets, invoice-chase |
-| Business / strategia | 36 | market-research, board-prep, content-strategy, crm |
-| Dati / analisi | 9 | data-visualization, dashboard-expert, statistical-analyst |
+| Documents / PDF / Office | 14 | contract-review, docx, pdf, spreadsheets, invoice-chase |
+| Business / strategy | 36 | market-research, board-prep, content-strategy, crm |
+| Data / analysis | 9 | data-visualization, dashboard-expert, statistical-analyst |
 | Media | 6 | video, image, social-media-manager |
-| Web / integrazione | 12 | browser-automation, browser-skill, mcp-integration, web-search |
+| Web / integration | 12 | browser-automation, browser-skill, mcp-integration, web-search |
 | Security / compliance | 8 | gdpr-audit-prep, ai-security, soc2-audit-prep |
-| Produttività / altro | 27 | gsd-*, goose-*, hallmark, impeccable |
+| Productivity / other | 27 | gsd-*, goose-*, hallmark, impeccable |
 
-*(i conteggi si riferiscono al momento della generazione di `SKILLS_PROMPT.md`)*
+*(counts refer to the moment `SKILLS_PROMPT.md` was generated)*

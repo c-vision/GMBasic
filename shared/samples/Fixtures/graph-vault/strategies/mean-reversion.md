@@ -6,4 +6,4 @@ author: gmb
 strategy: mean
 asset: equity
 ---
-Controparte di trend. Vedi anche trend-following come confronto.
+Counterpart of trend. See also trend-following as a comparison.

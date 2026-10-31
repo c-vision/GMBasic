@@ -311,4 +311,4 @@ Skip Steps 3–6 entirely on empty inbox.
 **Source spec:** [`megaprompts/07-inbox-triage-megaprompt.md`](../../../../megaprompts/07-inbox-triage-megaprompt.md)
 **Build pattern:** Path B (direct conversion). Paired with `inbox-setup`.
 
-> **Alias:** Triage issue backlog (AI Hero, engineering/triage) = per EMAIL; vedi questa per issue → GMBasic non la importa (già gsd-inbox)
+> **Alias:** Triage issue backlog (AI Hero, engineering/triage) = for EMAIL; see this one for issues → GMBasic does not import it (gsd-inbox already covers it)

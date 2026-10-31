@@ -1,45 +1,45 @@
-# docs/ — documentazione del monorepo
+# docs/ — monorepo documentation
 
-> Struttura canonica delle directory e "dove vive cosa":
+> Canonical directory structure and "what lives where":
 > `Knowledge/Struttura-Monorepo` (vault `AiWiki/01-Projects/GMBasicMonoRepo`).
 
-**Unica cartella di documentazione, alla radice del monorepo.** Dal 2026-10-29 non esistono
-più cartelle `docs/` annidate: quelle che c'erano in `GMBasic/`, `GMBasicSharp/common/ClipperLib/`
-e `shared/` sono state consolidate qui (vedi "Provenienza").
+**The only documentation folder, at the monorepo root.** Since 2026-10-29 there are no more
+nested `docs/` folders: the ones that were in `GMBasic/`, `GMBasicSharp/common/ClipperLib/`
+and `shared/` have been consolidated here (see "Provenance").
 
-Lo strumento (script, gate, generatore) **non** vive qui: sta in [`tools/`](../tools/README.md).
-In `docs/` restano solo documenti e artefatti di report generati.
+The tooling (script, gate, generator) does **not** live here: it is in [`tools/`](../tools/README.md).
+In `docs/` only documents and generated report artifacts remain.
 
-## Struttura
+## Structure
 
-| Percorso | Contenuto | Prodotto da |
+| Path | Content | Produced by |
 |---|---|---|
-| [`Sync-GMBasic-Monorepo.md`](Sync-GMBasic-Monorepo.md) | log del sync col progetto originale GMBasic, per data; base commit e inventario delle modifiche | a mano (log) |
-| [`gmb_env_audit.tsv`](gmb_env_audit.tsv) | audit delle variabili d'ambiente `GMB_*` (categoria + occorrenze + file:riga). Riferito da AGENTS.md §"VIETATE LE VARIABILI D'AMBIENTE" | `tools/basic/audit_gmb_env.bas` |
-| [`comparison/`](comparison/) | confronto superficie canonica ↔ backend: `audit-backends.md`, `audit-stdlib.md`, `recon-stdlib.{md,json}`, `unimplemented-canonical.md`, CSV di dispatch TokenKind, TODO del refactor TokenKind | `tools/audit` (`--all`), `tools/basic/gen_command_desc.bas`, `recon_stdlib.py` |
-| [`comparison/manifests/`](comparison/manifests/) | un manifest JSON per backend (`IL`, `PCodeVM`, `VMC`, `C99Native`) con copertura e lista dei gap | `tools/audit` (`--all`) |
-| [`comparison/command_desc.tsv`](comparison/command_desc.tsv) | indice nome → sintassi/descrizione usato per generare i blocchi di `COMMANDS.TXT` | `tools/basic/gen_command_desc.bas` |
-| [`implemented/audit/COMMANDS.txt`](implemented/audit/COMMANDS.txt) | **snapshot storico** del catalogo comandi. Il catalogo vivo è [`COMMANDS.TXT`](../COMMANDS.TXT) alla radice (più recente e completo) | — |
-| [`ClipperLib/clipper53.md`](ClipperLib/clipper53.md) | riferimento tecnico dell'emulazione Clipper 5.3 (`ClipperLib.Clipper`: SAY/GET/READ/BOX/INKEY/ACHOICE/MEMOEDIT/PICTURE, SET …) | a mano |
-| [`ClipperLib/controls.md`](ClipperLib/controls.md) | documentazione di `ClipperLib.Controls` (78+ controlli TUI) e `ClipperLib.TBrowse` | a mano |
+| [`Sync-GMBasic-Monorepo.md`](Sync-GMBasic-Monorepo.md) | sync log with the original GMBasic project, by date; base commit and inventory of changes | by hand (log) |
+| [`gmb_env_audit.tsv`](gmb_env_audit.tsv) | audit of the `GMB_*` environment variables (category + occurrences + file:line). Referenced by AGENTS.md §"ENVIRONMENT VARIABLES ARE FORBIDDEN" | `tools/basic/audit_gmb_env.bas` |
+| [`comparison/`](comparison/) | canonical surface ↔ backend comparison: `audit-backends.md`, `audit-stdlib.md`, `recon-stdlib.{md,json}`, `unimplemented-canonical.md`, TokenKind dispatch CSVs, TokenKind refactor TODO | `tools/audit` (`--all`), `tools/basic/gen_command_desc.bas`, `recon_stdlib.py` |
+| [`comparison/manifests/`](comparison/manifests/) | one JSON manifest per backend (`IL`, `PCodeVM`, `VMC`, `C99Native`) with coverage and gap list | `tools/audit` (`--all`) |
+| [`comparison/command_desc.tsv`](comparison/command_desc.tsv) | name → syntax/description index used to generate the `COMMANDS.TXT` blocks | `tools/basic/gen_command_desc.bas` |
+| [`implemented/audit/COMMANDS.txt`](implemented/audit/COMMANDS.txt) | **historical snapshot** of the command catalog. The live catalog is [`COMMANDS.TXT`](../COMMANDS.TXT) at the root (more recent and complete) | — |
+| [`ClipperLib/clipper53.md`](ClipperLib/clipper53.md) | technical reference for the Clipper 5.3 emulation (`ClipperLib.Clipper`: SAY/GET/READ/BOX/INKEY/ACHOICE/MEMOEDIT/PICTURE, SET …) | by hand |
+| [`ClipperLib/controls.md`](ClipperLib/controls.md) | documentation for `ClipperLib.Controls` (78+ TUI controls) and `ClipperLib.TBrowse` | by hand |
 
-## Provenienza (consolidamento 2026-10-29)
+## Provenance (2026-10-29 consolidation)
 
-| Prima | Ora |
+| Before | Now |
 |---|---|
 | `shared/docs/comparison/**` | `docs/comparison/**` |
 | `shared/docs/implemented/audit/COMMANDS.txt` | `docs/implemented/audit/COMMANDS.txt` |
-| `GMBasic/docs/gmb_env_audit.tsv` | `docs/gmb_env_audit.tsv` (sostituisce la copia **stale**, con path pre-split `GMBasic/`…`GMBasicSharp/`) |
+| `GMBasic/docs/gmb_env_audit.tsv` | `docs/gmb_env_audit.tsv` (replaces the **stale** copy, with pre-split paths `GMBasic/`…`GMBasicSharp/`) |
 | `GMBasicSharp/common/ClipperLib/docs/{clipper53,controls}.md` | `docs/ClipperLib/{clipper53,controls}.md` |
-| `docs/Sync-GMBasic-Monorepo.md` | invariato (era già alla radice) |
+| `docs/Sync-GMBasic-Monorepo.md` | unchanged (it was already at the root) |
 
-Le cartelle `shared/docs/`, `GMBasic/docs/` e `ClipperLib/docs/` **non esistono più**.
-Backup del pre-consolidamento: `/tmp/GMBasicMonoRepo-backup-<data>/`.
+The `shared/docs/`, `GMBasic/docs/` and `ClipperLib/docs/` folders **no longer exist**.
+Pre-consolidation backup: `/tmp/GMBasicMonoRepo-backup-<data>/`.
 
-## Cosa resta da decidere
+## What remains to be decided
 
-- `docs/implemented/audit/COMMANDS.txt` è una **copia superata** di `COMMANDS.TXT` (stesso numero
-  di righe, descrizioni più vecchie). Va **cancellata** appena confermato: nessuno la legge.
-- `tools/basic/audit_gmb_env.bas` ricava la radice da `IO.PARENTDIR(IO.CWD())` (presuppone di girare
-  da `GMBasic/tools/`): nel monorepo finisce sul root solo grazie al controllo sul fratello
-  `GMBasicSharp/`. Da rendere esplicito (radice del monorepo) quando si tocca quel tool.
+- `docs/implemented/audit/COMMANDS.txt` is an **outdated copy** of `COMMANDS.TXT` (same number
+  of lines, older descriptions). It should be **deleted** as soon as it is confirmed: nobody reads it.
+- `tools/basic/audit_gmb_env.bas` derives the root from `IO.PARENTDIR(IO.CWD())` (it assumes it runs
+  from `GMBasic/tools/`): in the monorepo it lands on the root only thanks to the check on the sibling
+  `GMBasicSharp/`. It should be made explicit (monorepo root) when that tool is touched.

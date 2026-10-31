@@ -1,7 +1,7 @@
 ---
 name: fs-scoped
-description: Lettura/scrittura file SOLO nella cartella work/ del progetto (sandbox).
-trigger: leggere file, scrivere file, salvare su file, cartella di lavoro
+description: File read/write restricted to the project `work/` folder (sandbox).
+trigger: read file, write file, save to file, working folder
 version: 1.0.0
 enabled: true
 tools: [fs_read, fs_write, fs_list]
@@ -10,5 +10,5 @@ procedures: [FsRead, FsWrite, FsList]
 ---
 # Plugin fs-scoped
 
-Istruzioni operative per l'agente: operazioni file SICURE limitate alla cartella `work/`
-del progetto (mai fuori). Usa `AI.PLUGIN.CALL("fs-scoped", ...)`.
+Operating instructions for the agent: SAFE file operations limited to the project `work/` folder
+(never outside). Use `AI.PLUGIN.CALL("fs-scoped", ...)`.

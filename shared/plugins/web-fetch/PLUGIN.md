@@ -1,7 +1,7 @@
 ---
 name: web-fetch
-description: Scarica una pagina web e ne produce un riassunto.
-trigger: url, pagina web, scaricare pagina, fetch web
+description: Downloads a web page and produces a summary of it.
+trigger: url, web page, download page, web fetch
 version: 1.0.0
 enabled: true
 tools: [web_fetch]
@@ -10,5 +10,5 @@ procedures: [WebFetch]
 ---
 # Plugin web-fetch
 
-Istruzioni operative per l'agente: usa `AI.PLUGIN.CALL("web-fetch", url)` per scaricare
-e riassumere una pagina. La procedura `WebFetch` usa `HTTP.FETCH` + `AI.ASK`.
+Operating instructions for the agent: use `AI.PLUGIN.CALL("web-fetch", url)` to download and
+summarize a page. The `WebFetch` procedure uses `HTTP.FETCH` + `AI.ASK`.

@@ -6,4 +6,4 @@ author: airline
 asset: airline
 concept: load
 ---
-Load factor airline. Collegato a [[momentum]].
+Airline load factor. Linked to [[momentum]].

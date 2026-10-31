@@ -1,56 +1,56 @@
 # TODO — RuleFlow (GMBasic port)
 
-Stato: **M1** — core headless funzionante: parser FlowLang (sottoinsieme), universo di celle
-con id/origine, eventi con delta, **grafo causale** e metriche (nodi, archi, densità,
-cammino massimo). Verificato su IL/PCode/VM-C/C99Native.
+Status: **M1** — working headless core: FlowLang parser (subset), cell universe
+with id/origin, events with delta, **causal graph** and metrics (nodes, edges, density,
+max path). Verified on IL/PCode/VM-C/C99Native.
 Upstream: <https://github.com/RuleFlow-OSS/RuleFlow> (MIT).
 
-## M2 — fedeltà al motore FlowLang
+## M2 — fidelity to the FlowLang engine
 
-- [ ] **Parallelismo per regola** (`-pl[n]`): oggi una regola si applica **una volta per
-      tick**. Con `-pl[inf]` (default upstream del README) si applicano tutte le occorrenze
-      non sovrapposte. Richiede: ricerca di tutti i match, gestione dei conflitti spaziali,
-      eventi multipli nello stesso tick.
-- [ ] **Branch multiway** (`-bl[n]`): quando più regole/matches competono, generare universi
-      alternativi e conservare la storia dei rami (`parent_delta`), con merge/esclusione.
-- [ ] **Protocolli di conflitto** (`-cmp`, `-crp`): marcatura/skip/branch sugli span sovrapposti.
-- [ ] **Probabilità stocastiche** (`-p_rule`, `-p_space`) con PRNG deterministico (seed nei
-      settings, così i run restano riproducibili).
-- [ ] **`@regress(n)`**: richiede la storia completa delle mutazioni (oggi si conservano solo
-      gli eventi, non lo stato precedente). Con M2 il grafo diventa reversibile.
-- [ ] **`@merge` / `@compress` / `@macro`**: composizione atomica di regole e import di flow
-      esterni.
-- [ ] **Vincoli per istruzione** (`-life[n]`, `-sr[...]`, `-g[...]`): contatori di vita e
-      range spaziali per regola.
+- [ ] **Per-rule parallelism** (`-pl[n]`): today a rule applies **once per
+      tick**. With `-pl[inf]` (upstream README default) all non-overlapping occurrences
+      apply. Requires: search of all matches, handling of spatial conflicts,
+      multiple events in the same tick.
+- [ ] **Multiway branch** (`-bl[n]`): when several rules/matches compete, generate alternative
+      universes and keep the branch history (`parent_delta`), with merge/exclusion.
+- [ ] **Conflict protocols** (`-cmp`, `-crp`): marking/skip/branch on overlapping spans.
+- [ ] **Stochastic probabilities** (`-p_rule`, `-p_space`) with a deterministic PRNG (seed in the
+      settings, so runs stay reproducible).
+- [ ] **`@regress(n)`**: requires the full history of mutations (today only
+      the events are kept, not the previous state). With M2 the graph becomes reversible.
+- [ ] **`@merge` / `@compress` / `@macro`**: atomic composition of rules and import of external
+      flows.
+- [ ] **Per-instruction constraints** (`-life[n]`, `-sr[...]`, `-g[...]`): life counters and
+      spatial ranges per rule.
 
-## M3 — bootstrap e analisi
+## M3 — bootstrap and analysis
 
-- [ ] **Bootstrap `.pflow` (Python) / `.wpflow` (Wolfram)**: nel mondo BASIC il ruolo del
-      bootstrap è di un *generatore di regole*; candidati: macro `#DEF`, `INCLUDE`, oppure un
-      piccolo linguaggio di template. Decidere l'equivalente (mai eseguire Python/Wolfram).
-- [ ] **Import/export del grafo**: GEXF (Gephi), GraphML, GML, Graph6/Sparse6 — il formato
-      atteso dal mondo NetworkX. Il DAG è già in memoria: serve il writer.
-- [ ] **Topologie** (upstream `core/topologies`): oggi l'universo è 1D (stringa). Aggiungere
-      2D/ND e topologie toroidali; `@init` da file `.npy`/binario.
-- [ ] **Ricerca di pattern prestazionale** (Boyer-Moore-Horspool/KMP/Rabin-Karp come
-      upstream): oggi `INSTR`; utile per universi grandi.
-- [ ] **Metriche aggiuntive**: degree assortativity, flow hierarchy, densità per generazione,
-      distribuzione delle lunghezze dei cammini.
-- [ ] **Enumerazione di sistemi** (Studio "System Enumeration"): valutare interi spazi di
-      regole con proprietà (identità, shortening, sbilanciamento) — con budget di celle/eventi.
+- [ ] **`.pflow` (Python) / `.wpflow` (Wolfram) bootstrap**: in the BASIC world the role of the
+      bootstrap is that of a *rule generator*; candidates: `#DEF` macros, `INCLUDE`, or a
+      small template language. Decide the equivalent (never run Python/Wolfram).
+- [ ] **Graph import/export**: GEXF (Gephi), GraphML, GML, Graph6/Sparse6 — the format
+      expected by the NetworkX world. The DAG is already in memory: the writer is needed.
+- [ ] **Topologies** (upstream `core/topologies`): today the universe is 1D (string). Add
+      2D/ND and toroidal topologies; `@init` from `.npy`/binary files.
+- [ ] **Performance pattern search** (Boyer-Moore-Horspool/KMP/Rabin-Karp as
+      upstream): today `INSTR`; useful for large universes.
+- [ ] **Additional metrics**: degree assortativity, flow hierarchy, density per generation,
+      distribution of path lengths.
+- [ ] **System enumeration** (Studio "System Enumeration"): evaluate whole rule
+      spaces with properties (identity, shortening, unbalancedness) — with a cell/event budget.
 
-## M4 — esperienza utente
+## M4 — user experience
 
-- [ ] **TUI** (il monorepo ha `MENU`/`TBROWSE`): workspace, step/regress, hover sulle celle
-      (quanta/generazione/id), grafo con sparkline. Oggi: 4 modi CLI.
-- [ ] **Snapshot/restore** di una sessione (universo + eventi) per riprendere un esperimento.
-- [ ] **Varianti di workspace** (upstream "Workspace Variants"): copie temporanee del flow.
+- [ ] **TUI** (the monorepo has `MENU`/`TBROWSE`): workspace, step/regress, hover on the cells
+      (quantity/generation/id), graph with sparkline. Today: 4 CLI modes.
+- [ ] **Snapshot/restore** of a session (universe + events) to resume an experiment.
+- [ ] **Workspace variants** (upstream "Workspace Variants"): temporary copies of the flow.
 
-## Vincoli (non negoziabili)
+## Constraints (non-negotiable)
 
-- **Nessuno stub**: ogni capacità o funziona o restituisce un **errore esplicito** documentato
-  (oggi: flag, direttive e bootstrap non-M1 falliscono con messaggio).
-- **Determinismo**: nessuna casualità non seminata; due run = stesso risultato.
-- **Parità 4 gambe** della superficie BASIC usata (AGENTS §4.1): `check` identico su
+- **No stubs**: every capability either works or returns a documented **explicit error**
+  (today: flags, directives and non-M1 bootstrap fail with a message).
+- **Determinism**: no unseeded randomness; two runs = same result.
+- **4-leg parity** of the BASIC surface used (AGENTS §4.1): `check` identical on
   IL/PCode/VM-C/C99Native.
-- **Licenza**: attribuzione MIT di RuleFlow nel `README.md`; nessun codice Python copiato.
+- **Licence**: MIT attribution of RuleFlow in `README.md`; no Python code copied.

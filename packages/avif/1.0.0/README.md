@@ -1,26 +1,27 @@
-# avif — AVIF (shim FFI self-contained)
+# avif — AVIF (self-contained FFI shim)
 
-Pacchetto gmbsuite (Prefisso C: `gmbavif`). AVIF **decode/encode** esposto a GMBasic via FFI
+gmbsuite package (C prefix: `gmbavif`). AVIF **decode/encode** exposed to GMBasic via FFI
 (namespace **AVIF**).
 
-## Design (perché è self-contained)
-Lo shim `libgmbavif.dylib` viene costruito dal **package manager** (`build.sh`): **compila
-libavif dai sorgenti** (git) e la **linka staticamente** insieme a `libaom.a` + `libvmaf.a`
-(statiche) — la libreria è **dentro il pacchetto**, **nessuna** dipendenza di sistema a runtime.
-(Stesso modello di `duckdb`/`webp`; qui il codec è compilato dai sorgenti perché non esistono
-statiche preconfezionate di libavif.) AV1 via **aom** (non serve davari1d).
+## Design (why it is self-contained)
+The `libgmbavif.dylib` shim is built by the **package manager** (`build.sh`): it **compiles libavif
+from source** (git) and **links it statically** together with `libaom.a` + `libvmaf.a` (static) —
+the library is **inside the package**, **no** system dependency at runtime. (Same model as
+`duckdb`/`webp`; here the codec is compiled from source because libavif ships no prebuilt static
+libs.) AV1 via **aom** (dav1d is not needed).
 
-## API (BASIC, namespace `AVIF`)
-| Membro | Firma | Semantica |
+## API (BASIC, `AVIF` namespace)
+| Member | Signature | Semantics |
 |---|---|---|
-| `AVIF.AVAILABLE()` | `() AS LONG` | 1 = shim disponibile |
-| `AVIF.INFO(path, w, h)` | `(STRING, BYREF LONG, BYREF LONG) AS LONG` | dimensioni; 0 ok |
+| `AVIF.AVAILABLE()` | `() AS LONG` | 1 = shim available |
+| `AVIF.INFO(path, w, h)` | `(STRING, BYREF LONG, BYREF LONG) AS LONG` | dimensions; 0 ok |
 | `AVIF.DECODEPPM(avif, ppm)` | `(STRING, STRING) AS LONG` | AVIF → PPM (P6 RGB8); 0 ok |
 | `AVIF.ENCODEPPM(ppm, avif, q)` | `(STRING, STRING, LONG) AS LONG` | PPM → AVIF (q 1..100); 0 ok |
-| `AVIF.CONVERT(in, out, q)` | `(STRING, STRING, LONG) AS LONG` | direzione da estensione di `out` |
+| `AVIF.CONVERT(in, out, q)` | `(STRING, STRING, LONG) AS LONG` | direction from the `out` extension |
 
 ## Build
-Il PM esegue `build.sh` (richiede: `git`, `cmake`, `brew aom libvmaf` per le statiche).
+The package manager runs `build.sh` (requires: `git`, `cmake`, `brew aom libvmaf` for the static
+libs).
 
-## Riferimenti
+## References
 - `avif.inc`, `include/gmbavif.h`, `src/gmbavif.c`, `build.sh`. Sample: `samples/avif_demo.bas`.

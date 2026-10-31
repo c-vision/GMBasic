@@ -1,149 +1,149 @@
-# RuleFlow (GMBasic port) — sistemi discreti con grafo causale
+# RuleFlow (GMBasic port) — discrete systems with a causal graph
 
-**RuleFlow** modella ed evolve sistemi discreti complessi (Sequential Substitution
-Systems, automa cellulare, riscritture di stringhe) tenendo traccia **non** del solo stato
-finale, ma di **ogni evento** che lo ha prodotto: quali celle sono state distrutte, quali
-create, e da quale evento discendono. Da lì si estrae un **DAG causale** con le sue metriche
-(nodi, archi, densità, cammino massimo).
+**RuleFlow** models and evolves complex discrete systems (Sequential Substitution
+Systems, cellular automaton, string rewrites) keeping track **not** only of the final
+state, but of **every event** that produced it: which cells were destroyed, which
+created, and from which event they descend. From there it extracts a **causal DAG** with its metrics
+(nodes, edges, density, max path).
 
-Questo è il **port GMBasic** dell'**ossatura headless**, scritto in BASIC e verificato sui
-quattro backend del monorepo.
+This is the **GMBasic port** of its **headless skeleton**, written in BASIC and verified on the
+four backends of the monorepo.
 
-## Upstream (sorgente del port)
+## Upstream (source of the port)
 
-| Cosa | Riferimento |
+| Item | Reference |
 |---|---|
 | Repository | <https://github.com/RuleFlow-OSS/RuleFlow> |
-| Sito | <https://www.ruleflow.org/> |
-| Licenza | **MIT** (obbligo di attribuzione: vedi sotto) |
-| Natura | framework Python di ricerca + IDE terminale (*RuleFlow Studio*, Textual) |
-| Core | `Cell`/`DeltaCell`/`Event`/`Flow`/`RuleSet`, topologie vettoriali, DSL **FlowLang** |
-| Analisi | `EventCausalityGraph` → NetworkX `MultiDiGraph` + metriche |
+| Site | <https://www.ruleflow.org/> |
+| Licence | **MIT** (attribution required: see below) |
+| Nature | Python research framework + terminal IDE (*RuleFlow Studio*, Textual) |
+| Core | `Cell`/`DeltaCell`/`Event`/`Flow`/`RuleSet`, vector topologies, **FlowLang** DSL |
+| Analysis | `EventCausalityGraph` → NetworkX `MultiDiGraph` + metrics |
 
-Attribuzione (MIT): RuleFlow © RuleFlow-OSS (Southern Adventist University research team),
-<https://github.com/RuleFlow-OSS/RuleFlow>. Il codice originale è MIT; questo port riprende
-**l'architettura e il comportamento osservabile**, non il codice Python.
+Attribution (MIT): RuleFlow © RuleFlow-OSS (Southern Adventist University research team),
+<https://github.com/RuleFlow-OSS/RuleFlow>. The original code is MIT; this port takes over
+**the architecture and the observable behaviour**, not the Python code.
 
-## Cosa fa questo port (M1 — core headless)
+## What this port does (M1 — headless core)
 
 ```
-script .flow ──► parser FlowLang (M1) ──► universo di CELLE (valore + id + origine)
+script .flow ──► FlowLang parser (M1) ──► universe of CELLS (value + id + origin)
                                              │
-                         per ogni tick: applica le regole
+                            per tick: apply the rules
                                              │
-                    una applicazione = un EVENTO con il suo DELTA
-                    (celle distrutte / create, ognuna con la sua origine)
+                       one application = one EVENT with its DELTA
+                       (cells destroyed / created, each with its origin)
                                              │
-                     archi causali: origine(cella toccata) ──► evento
+                        causal edges: origin(cell touched) ──► event
                                              │
-                    metriche del DAG: nodi, archi, densità, cammino massimo
+                       DAG metrics: nodes, edges, density, max path
 ```
 
-- **Celle**: universo come sequenza di simboli; ogni cella ha **id univoco** e **origine**
-  (l'evento che l'ha creata; `0` = generazione zero).
-- **Eventi**: una applicazione di regola registra tick, regola, posizione e il delta
-  (le celle toccate/prima e dopo).
-- **Causa**: un evento è collegato alle **origini delle celle che tocca** (per la
-  cancellazione: le celle distrutte; per l'inserimento: le celle di contesto).
-  Poiché le origini sono sempre eventi **precedenti**, il grafo è un DAG e l'ordine degli
-  id degli eventi è un ordine topologico.
-- **Metriche** (parità con `EventCausalityGraph` upstream):
+- **Cells**: the universe as a sequence of symbols; every cell has a **unique id** and an **origin**
+  (the event that created it; `0` = generation zero).
+- **Events**: a rule application records tick, rule, position and the delta
+  (the cells touched/before and after).
+- **Cause**: an event is linked to the **origins of the cells it touches** (for
+  deletion: the destroyed cells; for insertion: the context cells).
+  Since the origins are always **preceding** events, the graph is a DAG and the order of the
+  event ids is a topological order.
+- **Metrics** (parity with the upstream `EventCausalityGraph`):
 
-| metrica | definizione in questo port |
+| metric | definition in this port |
 |---|---|
-| `nodi` | numero di eventi **+ 1** (nodo radice = generazione zero) |
-| `archi` | archi causali distinti `(origine → evento)` |
+| `nodi` | number of events **+ 1** (root node = generation zero) |
+| `archi` | distinct causal edges `(origin → event)` |
 | `densità` | `archi / (nodi * (nodi - 1))` |
-| `cammino max` | lunghezza del cammino massimo nel DAG (DP in ordine di evento) |
+| `cammino max` | length of the maximum path in the DAG (DP in event order) |
 
-### Modi
+### Modes
 
-| Modo | Come si attiva | Cosa fa |
+| Mode | How it is activated | What it does |
 |---|---|---|
-| `status` (default) | — | banner, config, presenza del flow, limiti |
-| `run` | `#DEF RULEFLOW_MODE_RUN` in testa al `.bas` | evolvi, stampa regole, contatori, spazio finale, traccia eventi |
-| `graph` | `#DEF RULEFLOW_MODE_GRAPH` | evolvi e stampa le metriche del grafo causale |
-| `check` | `#DEF RULEFLOW_MODE_CHECK` | diagnostica: regole, evoluzione, DAG, metriche, spazio (`RULEFLOW-CHECK-OK`) |
+| `status` (default) | — | banner, config, presence of the flow, limits |
+| `run` | `#DEF RULEFLOW_MODE_RUN` at the top of the `.bas` | evolve, print rules, counters, final space, event trace |
+| `graph` | `#DEF RULEFLOW_MODE_GRAPH` | evolve and print the metrics of the causal graph |
+| `check` | `#DEF RULEFLOW_MODE_CHECK` | diagnostics: rules, evolution, DAG, metrics, space (`RULEFLOW-CHECK-OK`) |
 
-> BASIC non ha argv: il modo si sceglie con `#IFDEF` (i runner di `tools/runners/` non
-> passano `-D`) o con `[settings] mode` nel `.ruleflow.toml`.
+> BASIC has no argv: the mode is chosen with `#IFDEF` (the `tools/runners/` runners do not
+> pass `-D`) or with `[settings] mode` in `.ruleflow.toml`.
 
-## FlowLang supportato (M1)
+## Supported FlowLang (M1)
 
-| operatore | significato | esempio |
+| operator | meaning | example |
 |---|---|---|
-| `pat -> dst` | **substitution**: il selettore è rimpiazzato dal target | `ABA -> AAB;` |
-| `pat --> dst` | **overwrite**: sovrascrive le celle del selettore (stessa lunghezza) | `B --> Z;` |
-| `pat > dst` | **insertion**: inserisce `dst` **prima** del selettore | `Y > W;` |
-| `pat ><` | **deletion**: rimuove il selettore | `W ><;` |
+| `pat -> dst` | **substitution**: the selector is replaced by the target | `ABA -> AAB;` |
+| `pat --> dst` | **overwrite**: overwrites the cells of the selector (same length) | `B --> Z;` |
+| `pat > dst` | **insertion**: inserts `dst` **before** the selector | `Y > W;` |
+| `pat ><` | **deletion**: removes the selector | `W ><;` |
 
-Direttive: `@init("TEST0")` (universo iniziale), `@evolve(n)` (tick; **vince** su
-`[flow] steps`). Commenti: `#`. Case-insensitive (i simboli sono normalizzati a maiuscolo).
+Directives: `@init("TEST0")` (initial universe), `@evolve(n)` (tick; **wins** over
+`[flow] steps`). Comments: `#`. Case-insensitive (the symbols are normalized to uppercase).
 
-**Semantica M1 (deterministica):** in ogni tick, ogni regola si applica **una volta**, al
-primo match da sinistra (dopo un'applicazione la ricerca riparte oltre il target).
-Nessuna casualità, nessun branch: due run danno lo stesso risultato.
+**M1 semantics (deterministic):** in every tick, every rule applies **once**, at the
+first match from the left (after an application the search restarts past the target).
+No randomness, no branching: two runs give the same result.
 
-**NON supportato in M1 — errore esplicito, mai ignorato:**
+**NOT supported in M1 — explicit error, never ignored:**
 
-- flag FlowLang `-pl`, `-bl`, `-cmp`, `-crp`, `-p_rule`, `-p_space`, `-life`, `-sr`
-  (parallelismo, branch multiway, protocolli di conflitto);
-- direttive `@regress`, `@merge`, `@compress`, `@macro`;
-- bootstrap Python/Wolfram (`.pflow`/`.wpflow`);
-- reader `.npy`/binario per `@init`.
+- FlowLang flags `-pl`, `-bl`, `-cmp`, `-crp`, `-p_rule`, `-p_space`, `-life`, `-sr`
+  (parallelism, multiway branch, conflict protocols);
+- directives `@regress`, `@merge`, `@compress`, `@macro`;
+- Python/Wolfram bootstrap (`.pflow`/`.wpflow`);
+- `.npy`/binary reader for `@init`.
 
-Un flow che usa queste forme **fallisce** con un messaggio che indica la forma e il TODO.
+A flow that uses these forms **fails** with a message that indicates the form and the TODO.
 
-## Configurazione (`.ruleflow.toml`, accanto alla app o in una cartella superiore)
+## Configuration (`.ruleflow.toml`, next to the app or in a parent folder)
 
 ```toml
 [settings]
 mode = "status"          # status | run | graph | check
 
 [flow]
-file = "flows/sss.flow"  # script FlowLang-like, relativo alla cartella della app
-steps = 12               # tick se il flow NON dichiara @evolve(n)
+file = "flows/sss.flow"  # FlowLang-like script, relative to the app folder
+steps = 12               # ticks if the flow does NOT declare @evolve(n)
 
 [run]
-verbose = "true"         # "nessun regola applicabile" a fine evoluzione
+verbose = "true"         # "no applicable rule" at the end of the evolution
 ```
 
-## Fixtures (input versionati)
+## Fixtures (versioned inputs)
 
-| flow | cosa mostra |
+| flow | what it shows |
 |---|---|
-| `flows/sss.flow` | il **Sequential Substitution System del README upstream** (`ABA -> AAB; A -> ABA;`, 12 tick → 24 eventi, 27 celle) |
-| `flows/lsystem.flow` | L-system di Lindenmayer in semantica sequenziale (cresce di 1 cella/tick) |
-| `flows/ops.flow` | **tutti e quattro** gli operatori + il churn inserimento/cancellazione |
+| `flows/sss.flow` | the **Sequential Substitution System of the upstream README** (`ABA -> AAB; A -> ABA;`, 12 ticks → 24 events, 27 cells) |
+| `flows/lsystem.flow` | Lindenmayer L-system in sequential semantics (grows by 1 cell/tick) |
+| `flows/ops.flow` | **all four** operators + the insertion/deletion churn |
 
-## Come eseguire
+## How to run
 
-Dalla **root del monorepo** (`GMBasicMonoRepo/`):
+From the **monorepo root** (`GMBasicMonoRepo/`):
 
 ```sh
 # status (default)
 tools/sh/harness.sh pcode shared/APPS/RuleFlow/src/RuleFlow.bas
 tools/sh/harness.sh il    shared/APPS/RuleFlow/src/RuleFlow.bas
 
-# run / graph / check: aggiungere in testa al .bas  #DEF RULEFLOW_MODE_RUN (o _GRAPH/_CHECK)
+# run / graph / check: add at the top of the .bas   #DEF RULEFLOW_MODE_RUN (or _GRAPH/_CHECK)
 
-# gamba nativa (C99Native), percorso relativo a GMBasic/
+# native leg (C99Native), path relative to GMBasic/
 bash tools/sh/gmb_c99native_run.sh "$PWD/shared/APPS/RuleFlow/src/RuleFlow.bas"
 ```
 
-Nessun output su disco: la app è pura computazione in memoria (`bin/` viene solo creata,
-come da convenzione del compilatore).
+No output on disk: the app is pure in-memory computation (`bin/` is only created,
+as per the compiler convention).
 
-## Verifica registrata (2026-11-01, 4 gambe)
+## Recorded verification (2026-11-01, 4 legs)
 
-Flow `flows/sss.flow` (2 regole, `@evolve(12)`):
+Flow `flows/sss.flow` (2 rules, `@evolve(12)`):
 
-| passo | esito |
+| step | outcome |
 |---|---|
-| `status` | config letta, flow presente, limiti |
-| `run` | 24 eventi / 24 applicazioni / 24 archi; spazio finale `ABAAB…AB` (27 celle) |
-| `graph` | nodi **25**, archi **24**, densità **0.0400**, cammino max **24** |
+| `status` | config read, flow present, limits |
+| `run` | 24 events / 24 applications / 24 edges; final space `ABAAB…AB` (27 cells) |
+| `graph` | nodes **25**, edges **24**, density **0.0400**, max path **24** |
 | `check` | `check-rules/evolve/dag/metric/space` OK + `RULEFLOW-CHECK-OK` |
 
-Output **identico** su IL, PCode, VM/C e C99Native (verificato con `diff` sulle righe
+Output **identical** on IL, PCode, VM/C and C99Native (verified with `diff` on the lines
 `flow/eventi/nodi/archi/densità/cammino/spazio finale`).

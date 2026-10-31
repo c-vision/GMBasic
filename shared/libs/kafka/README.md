@@ -1,33 +1,34 @@
-# kafka — client Kafka (shim FFI self-contained)
+# kafka — Kafka client (self-contained FFI shim)
 
-Pacchetto gmbsuite (Prefisso C: `gmbkafka`). Client **Kafka** (wire protocol) esposto a GMBasic via
-FFI (namespace **KAFKA**).
+gmbsuite package (C prefix: `gmbkafka`). **Kafka** client (wire protocol) exposed to GMBasic via FFI
+(namespace **KAFKA**).
 
-## Design (perché è self-contained)
-Lo shim `libgmbkafka.dylib` implementa un sottoinsieme reale del **protocollo Kafka** in **C puro**
-(socket POSIX): **nessuna libreria esterna** (né librdkafka né altro) — dipende solo da `libSystem`.
+## Design (why it is self-contained)
+The `libgmbkafka.dylib` shim implements a real subset of the **Kafka protocol** in **pure C**
+(POSIX sockets): **no external library** (neither librdkafka nor anything else) — it depends only on
+`libSystem`.
 
-API implementate (broker moderni 0.11+):
-- **Metadata** (3, v1) — scoperta broker + leader di partizione (con auto-creazione topic).
-- **Produce** (0, v3) — **RecordBatch v2** con **CRC32C**, acks=1.
-- **Fetch** (1, v4) — lettura recordset.
+Implemented APIs (modern brokers 0.11+):
+- **Metadata** (3, v1) — broker discovery + partition leader (with topic auto-creation).
+- **Produce** (0, v3) — **RecordBatch v2** with **CRC32C**, acks=1.
+- **Fetch** (1, v4) — recordset reading.
 
-## API (BASIC, namespace `KAFKA`)
-| Membro | Firma | Semantica |
+## API (BASIC, `KAFKA` namespace)
+| Member | Signature | Semantics |
 |---|---|---|
-| `KAFKA.AVAILABLE()` | `() AS LONG` | 1 = shim disponibile |
-| `KAFKA.CONNECT(host, port, client_id)` | `(STRING, LONG, STRING) AS LONG` | handle >0, `-1` err |
+| `KAFKA.AVAILABLE()` | `() AS LONG` | 1 = shim available |
+| `KAFKA.CONNECT(host, port, client_id)` | `(STRING, LONG, STRING) AS LONG` | handle >0, `-1` error |
 | `KAFKA.PRODUCE(h, topic, partition, value)` | `(LONG, STRING, LONG, STRING) AS LONG` | error_code (0 ok) |
-| `KAFKA.CONSUME(h, topic, partition, offset, timeout_ms)` | `(LONG, STRING, LONG, LONG, LONG) AS LONG` | 1 record, 0 nessuno, -1 err |
-| `KAFKA.LASTVALUE(h)` | `(LONG) AS STRING` | ultimo valore |
-| `KAFKA.NEXTOFFSET(h)` | `(LONG) AS LONG` | prossimo offset |
+| `KAFKA.CONSUME(h, topic, partition, offset, timeout_ms)` | `(LONG, STRING, LONG, LONG, LONG) AS LONG` | 1 record, 0 none, -1 error |
+| `KAFKA.LASTVALUE(h)` | `(LONG) AS STRING` | last value |
+| `KAFKA.NEXTOFFSET(h)` | `(LONG) AS LONG` | next offset |
 | `KAFKA.DISCONNECT(h)` | `(LONG) AS LONG` | 0 ok |
 
 ## Test
-Include un broker: `docker run -d --name kafka -p 9092:9092 apache/kafka:latest`. Poi
-`samples/kafka_demo.bas`. MiniTest `minitests/packages/require_kafka.bas` (deterministico: AVAILABLE).
-Verificato end-to-end con **Apache Kafka** (KRaft single-node) in Docker: connect/metadata/produce/
-consume → valore corretto.
+Ships with a broker: `docker run -d --name kafka -p 9092:9092 apache/kafka:latest`. Then
+`samples/kafka_demo.bas`. MiniTest `minitests/packages/require_kafka.bas` (deterministic: AVAILABLE).
+Verified end-to-end with **Apache Kafka** (KRaft single-node) in Docker: connect/metadata/produce/
+consume → correct value.
 
-## Riferimenti
+## References
 - `kafka.inc`, `include/gmbkafka.h`, `src/gmbkafka.c`, `build.sh`. Sample: `samples/kafka_demo.bas`.

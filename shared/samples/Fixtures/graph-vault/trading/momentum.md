@@ -6,4 +6,4 @@ author: trader
 strategy: trend
 asset: futures
 ---
-Momentum trading. Collegato a [[trend-following]] e [[load-factor]].
+Momentum trading. Linked to [[trend-following]] and [[load-factor]].

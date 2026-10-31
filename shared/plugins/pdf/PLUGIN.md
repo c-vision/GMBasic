@@ -1,7 +1,7 @@
 ---
 name: pdf
-description: Converte un PDF in Markdown (PDFOxide, via CONVERT).
-trigger: pdf, documento pdf, convertire pdf, estrarre testo da pdf
+description: Converts a PDF to Markdown (PDFOxide, via CONVERT).
+trigger: pdf, pdf document, convert pdf, extract text from pdf
 version: 1.0.0
 enabled: true
 tools: [pdf_to_markdown]
@@ -10,5 +10,5 @@ procedures: [PdfToMarkdown]
 ---
 # Plugin pdf
 
-Istruzioni operative per l'agente: usa `AI.PLUGIN.CALL("pdf", src)` per convertire un PDF
-in Markdown. La procedura `PdfToMarkdown` usa `CONVERT <src> INTO out$` (backend PDFOxide).
+Operating instructions for the agent: use `AI.PLUGIN.CALL("pdf", src)` to convert a PDF to Markdown.
+The `PdfToMarkdown` procedure uses `CONVERT <src> INTO out$` (PDFOxide backend).
