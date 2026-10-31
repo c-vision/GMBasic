@@ -779,7 +779,13 @@ public sealed partial class IlProgramCompiler
                 }
                 else EmitDoubleArgument(expr.Right);
                 _il.Emit(OpCodes.Conv_I8);
+                // `conv.i8` lascia un Int64 sullo stack: il letterale 0 deve essere Int64
+                // (`conv.i8` anche su di lui), altrimenti `ceq` confronta Int64 con Int32 =
+                // IL INVALIDO per ECMA (bug reale: ILOptim rifiutava l'intero metodo con
+                // "typeL == typeR || (Int && NInt)" e l'ottimizzatore rinunciava; il JIT
+                // tollerava, ma l'IL restava non valido). Ogni `NOT x` ne era affetto.
                 _il.Emit(OpCodes.Ldc_I4_0);
+                _il.Emit(OpCodes.Conv_I8);
                 _il.Emit(OpCodes.Ceq);
                 _il.Emit(OpCodes.Neg);      /* 1 (x==0) -> -1 ; 0 -> 0 */
                 _il.Emit(OpCodes.Conv_R8);
