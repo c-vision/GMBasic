@@ -15,10 +15,10 @@ plugins/<nome>/
 |---|---|
 | **LLM agent** (`AI AGENT ...`) | injects into the system prompt the description + `trigger` of the enabled plugins (`AgentRecord`, `AgentServer`) and, with `AI PLUGINS ENABLE`, registers the **schemas** of `tool.json` in the `McpToolRegistry` (`PluginRegistry.Enable`) |
 | `AI PLUGINS LIST / INFO / REFRESH` | folder scan (`PluginIndex.Scan`) |
-| `AI.PLUGIN.CALL("name", arg)` | reads `procedures` from `PLUGIN.md` and invokes **the PROGRAM's first procedure** with that name: C# `CallHandler` → `_basicProcedures`; VM/C → hook in `gmb_builtin.c`; C99Native → generated dispatcher |
+| `AI.PLUGIN.CALL("nome", arg)` | reads `procedures` from `PLUGIN.md` and invokes **the first procedure of the PROGRAM** with that name: C# `CallHandler` → `_basicProcedures`; VM/C → hook in `gmb_builtin.c` |
 | **compiler** | **nothing.** No include in the linker/emitter: a `.bas` inside a plugin never enters the compilation |
 
-**The `<name>.bas` is not executed.** It is the reference contract (the expected signatures): that
+**The `<nome>.bas` is not executed.** It is the reference contract (the expected signatures): that
 is why `samples/Community/Browser/BrowserPluginTest.bas` and `samples/Community/Ai/AiPlugins.bas`
 **re-implement** the procedures inside themselves (`BrowserNavigate`, `WebFetch`, …).
 
@@ -33,11 +33,14 @@ is why `samples/Community/Browser/BrowserPluginTest.bas` and `samples/Community/
   { "plugins": ["web-fetch", "browser"] }
   ```
 
-  The compiler copies only the declared ones into `<exe>/plugins/<name>` (see
+  The compiler copies only the declared ones into `<exe>/plugins/<nome>` (see
   [ProgramBundle](../../GMBasicSharp/common/CommonLib/ProgramBundle.cs)).
-- **C99Native**: `AI.PLUGIN.CALL` **does** execute the program procedure: the transpiler emits a
-  generated dispatcher (`__gmb_plugin_call`) toward the `gmb_user_*` functions, and the procedure
-  name comes from `PLUGIN.md` (`procedures[0]`, runtime function `gmb_plugin_procedure`).
+- **`AI.PLUGIN.CALL` on all legs** (2026-10-31): the program procedure is invoked on
+  IL, PCodeVM, VM/C **and C99Native**. On C99Native there is no BASIC VM in the binary,
+  so the transpiler emits a **generated dispatcher** (`__gmb_plugin_call`) toward the
+  program's `gmb_user_*`; the procedure name comes from `PLUGIN.md`
+  (`procedures[0]`, C runtime `gmb_plugin_procedure`). Before, the declarative string
+  `"PLUGIN nome(arg) OK"` answered without executing anything.
 - **Arguments**: the first argument goes into the first parameter with the same rule as
   `mcp_push_args` — numeric text → number, otherwise string (the VM converts number→string when the
   parameter is `STRING`); the remaining parameters stay at their default (`""`, which a numeric
