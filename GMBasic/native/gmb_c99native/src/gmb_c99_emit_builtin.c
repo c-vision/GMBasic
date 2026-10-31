@@ -282,7 +282,7 @@ static const sx_row SX_TBL[] = {
     { GMB_TOK_Bin, sx_bin }, { GMB_TOK_Hex, sx_hex }, { GMB_TOK_Oct, sx_oct },
     { GMB_TOK_Camel, sx_camel }, { GMB_TOK_Kebab, sx_kebab }, { GMB_TOK_Pascal, sx_pascal },
     { GMB_TOK_Snake, sx_snake }, { GMB_TOK_Sentence, sx_sentence }, { GMB_TOK_Title, sx_title },
-    { GMB_TOK_Petscii, sx_petscii }, { GMB_TOK_Empty, sx_empty }, { GMB_TOK_COUNT, sx_count },
+    { GMB_TOK_Petscii, sx_petscii }, { GMB_TOK_Empty, sx_empty }, { GMB_TOK_Count, sx_count },
     { GMB_TOK_Replace, sx_replace }, { GMB_TOK_Search, sx_search }, { GMB_TOK_Tab, sx_tab },
     { GMB_TOK_Wrap, sx_wrap }, { GMB_TOK_Reverse, sx_reverse }, { GMB_TOK_Eval, sx_eval },
     { GMB_TOK_Dup, sx_dup },

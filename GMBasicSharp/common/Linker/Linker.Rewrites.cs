@@ -3234,7 +3234,22 @@ public static partial class Linker
 
             if (compatibleProcCandidates.Count > 0)
             {
-                if (compatibleProcCandidates.Count > 1)
+                // OVERLOAD dello stesso builtin (stesso BuiltinKind, stesso namespace): NON è
+                // un'ambiguità da errore — è la stessa funzione con più firme (es. INSTR
+                // canonica a 2/3 argomenti e variante Clipper `INSTR(start, haystack, needle)`),
+                // e il runtime/backend la risolve dal TIPO degli argomenti. Prendiamo la prima
+                // (parità con la risoluzione delle chiamate qualificate nel parser, che fa la
+                // stessa scelta per i Kind identici). Prima `INSTR(1, sysText, "{")` faceva
+                // fallire la compilazione con "La chiamata a 'INSTR' è ambigua" (rompeva
+                // tools/basic/settings_bundle.bas, cioè il bundle settings di OGNI run C99/IL).
+                var sameBuiltinOverloads = compatibleProcCandidates.Count > 1
+                    && compatibleProcCandidates.All(c => c is NativeProcedureDefinition npd0
+                        && compatibleProcCandidates[0] is NativeProcedureDefinition npd1
+                        && npd0.BuiltinKind == npd1.BuiltinKind)
+                    && compatibleProcCandidates
+                        .Select(c => program.Symbols.GetNamespaceNameForSymbol(c.SymbolId))
+                        .Distinct(StringComparer.OrdinalIgnoreCase).Count() == 1;
+                if (compatibleProcCandidates.Count > 1 && !sameBuiltinOverloads)
                 {
                     var namespaces = compatibleProcCandidates
                         .Select(p => program.Symbols.GetNamespaceNameForSymbol(p.SymbolId)).Distinct().ToList();
