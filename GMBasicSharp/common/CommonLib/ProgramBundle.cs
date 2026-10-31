@@ -167,6 +167,22 @@ public static class ProgramBundle
         }
         catch (Exception ex) { log?.Invoke($"[bundle] skills/plugins non copiati: {ex.Message}"); }
 
+        // 6) SEED dei PROVIDER (`shared/settings/providers.json` → `<out>/config/providers.json`).
+        //    `AI.PROVIDERS()` legge il file locale e, se manca, il seed: in un programma
+        //    distribuito né l'uno né l'altro esistono, quindi senza questa copia la funzione
+        //    fallirebbe (il C# faceva File.ReadAllText diretto). 1,4 KB.
+        try
+        {
+            var seedSrc = Path.Combine(GmbiPaths.SharedConfigDir, "providers.json");
+            if (File.Exists(seedSrc))
+            {
+                var cfgDst = Path.Combine(outputDir, "config");
+                Directory.CreateDirectory(cfgDst);
+                CopyIfNewer(seedSrc, Path.Combine(cfgDst, "providers.json"), written, null);
+            }
+        }
+        catch (Exception ex) { log?.Invoke($"[bundle] seed provider non copiato: {ex.Message}"); }
+
         return written;
     }
 

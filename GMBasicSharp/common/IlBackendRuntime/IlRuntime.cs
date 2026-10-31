@@ -19356,7 +19356,19 @@ public static double TextWidth(string s)
         catch { return 0; }
         finally { try { File.Delete(tmp); } catch { } }
     }
-    public static string AiProviders() => File.ReadAllText(GmbiPaths.ProvidersFile);
+    /// <summary>AI.PROVIDERS(): il file LOCALE (stato utente) vince; se manca si usa il SEED
+    /// condiviso del compilatore (`shared/settings/providers.json`, che il bundle copia accanto
+    /// all'eseguibile in `config/providers.json`). Prima faceva `File.ReadAllText` diretto: su un
+    /// checkout pulito (o in un programma distribuito senza il file) lanciava
+    /// FileNotFoundException invece di rispondere — e le due gambe divergevano (il C rispondeva
+    /// col registry serializzato ad array). Ora entrambe rispondono con lo stesso seed.</summary>
+    public static string AiProviders()
+    {
+        if (File.Exists(GmbiPaths.ProvidersFile)) return File.ReadAllText(GmbiPaths.ProvidersFile);
+        var seed = Path.Combine(GmbiPaths.SharedConfigDir, "providers.json");
+        if (File.Exists(seed)) return File.ReadAllText(seed);
+        return "{\"providers\":[]}";
+    }
     // AI SET KEY/MODEL: deve FONDERE la config del provider esistente (via Configure/AiSetOrGet),
     // non Register() con un descriptor nuovo solo-apiKey/model che SOVRASCRIVEVA baseUrl/kind —
     // bug: dopo `AI REGISTER <url> ... ; AI SET KEY` il provider perdeva 'model'/'baseUrl'
