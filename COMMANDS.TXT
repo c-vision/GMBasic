@@ -533,26 +533,26 @@
 │TYPE:BAGTYPE                │TYPE BagType                                                      │Campi: Count, UniqueCount, UniqueItems    │
 │TYPE:BINARYHEAPTYPE         │TYPE BinaryHeapType                                               │Campi: Count; metodi: Add, Clear, Extract │
 │TYPE:BINARYINDEXEDTREETYPE  │TYPE BinaryIndexedTreeType                                        │metodi: Update, Query, QueryRange         │
-│TYPE:BITREE                 │TYPE BITREE                                                       │Tipo BITREE.                              │
+│TYPE:BITREE                 │TYPE BITREE                                                       │Tipo definito dal runtime.                │
 │TYPE:BPLUSTREETYPE          │TYPE BPlusTreeType                                                │Campi: Count; metodi: Add, Clear, Min, Max│
 │TYPE:CACHETYPE              │TYPE CacheType                                                    │Campi: Count, Keys, Values; metodi: Set   │
-│TYPE:CIRCULAR               │TYPE CIRCULAR                                                     │Tipo CIRCULAR.                            │
+│TYPE:CIRCULAR               │TYPE CIRCULAR                                                     │Tipo definito dal runtime.                │
 │TYPE:CIRCULARLINKEDLISTTYPE │TYPE CircularLinkedListType                                       │Campi: Count, Current; metodi: Add        │
 │TYPE:DICTTYPE               │TYPE DictType                                                     │Campi: Count, Keys, Values; metodi: Add   │
 │TYPE:DOUBLYLINKEDLISTTYPE   │TYPE DoublyLinkedListType                                         │Campi: Count, First, Last; metodi         │
 │TYPE:GRAPHTYPE              │TYPE GraphType                                                    │Campi: NodeCount, Count; metodi: AddNode  │
 │TYPE:HASHRINGTYPE           │TYPE HashRingType                                                 │Campi: Count; metodi: AddNode, RemoveNode │
 │TYPE:HASHSETTYPE            │TYPE HashSetType                                                  │Campi: Count; metodi: Union, Intersect    │
-│TYPE:HEAP                   │TYPE HEAP                                                         │Tipo HEAP.                                │
+│TYPE:HEAP                   │TYPE HEAP                                                         │Tipo definito dal runtime.                │
 │TYPE:KEYVALUEPAIRTYPE       │TYPE KeyValuePairType                                             │Campi: Key, Value                         │
 │TYPE:LINKEDLISTTYPE         │TYPE LinkedListType                                               │Campi: Count, First, Last; metodi         │
 │TYPE:LISTTYPE               │TYPE ListType                                                     │Campi: Count; metodi: Add, Insert         │
-│TYPE:MAXHEAP                │TYPE MAXHEAP                                                      │Tipo MAXHEAP.                             │
+│TYPE:MAXHEAP                │TYPE MAXHEAP                                                      │Tipo definito dal runtime.                │
 │TYPE:QUEUETYPE              │TYPE QueueType                                                    │Campi: Count; metodi: Enqueue, Clear      │
-│TYPE:REDBLACK               │TYPE REDBLACK                                                     │Tipo REDBLACK.                            │
+│TYPE:REDBLACK               │TYPE REDBLACK                                                     │Tipo definito dal runtime.                │
 │TYPE:REDBLACKTREETYPE       │TYPE RedBlackTreeType                                             │Campi: Count; metodi: Add, Clear, Min, Max│
 │TYPE:RINGBUFFERTYPE         │TYPE RingBufferType                                               │Campi: Count, Capacity; metodi: Enqueue   │
-│TYPE:SORTED                 │TYPE SORTED                                                       │Tipo SORTED.                              │
+│TYPE:SORTED                 │TYPE SORTED                                                       │Tipo definito dal runtime.                │
 │TYPE:SORTEDDICTTYPE         │TYPE SortedDictType                                               │Campi: Count, Keys, Values; metodi: Add   │
 │TYPE:SPARSESETTYPE          │TYPE SparseSetType                                                │Campi: Count, Capacity; metodi: Add       │
 │TYPE:STACKTYPE              │TYPE StackType                                                    │Campi: Count; metodi: Push, Clear, Pop    │
@@ -629,8 +629,8 @@
 │SLEEPASYNC                  │x = CONCURRENCY.SLEEPASYNC(a1)                                    │Pausa asincrona.                          │
 │TASKYIELD                   │x = CONCURRENCY.TASKYIELD()                                       │Cede l'esecuzione.                        │
 │TRYLOCK                     │x = CONCURRENCY.TRYLOCK(mu)                                       │MUTEX.TRYLOCK(mu) → BIT (parità Go        │
-│TYPE:CHANNEL                │TYPE CHANNEL                                                      │Tipo CHANNEL.                             │
-│TYPE:ONCE                   │TYPE ONCE                                                         │Tipo ONCE.                                │
+│TYPE:CHANNEL                │TYPE CHANNEL                                                      │Tipo definito dal runtime.                │
+│TYPE:ONCE                   │TYPE ONCE                                                         │Tipo definito dal runtime.                │
 │TYPE:WAITGROUP              │TYPE WAITGROUP                                                    │Handle di attesa multipla (GO SUB/FUNCTION│
 └────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
 
@@ -1300,9 +1300,9 @@
 │TEXTHEIGHT                  │x = GRAPHICS.TEXTHEIGHT()                                         │Altezza del testo -> LONG.                │
 │TEXTWIDTH                   │x = GRAPHICS.TEXTWIDTH(text)                                      │Larghezza del testo -> LONG.              │
 │TYPE:DISPLAYMODETYPE        │TYPE DisplayModeType                                              │Campi: ModeID, Width, Height, Bpp (+3)    │
-│TYPE:RGBA                   │TYPE RGBA                                                         │Tipo RGBA.                                │
+│TYPE:RGBA                   │TYPE RGBA                                                         │Tipo definito dal runtime.                │
 │TYPE:RGBACOLORTYPE          │TYPE RgbaColorType                                                │Campi: Red, Green, Blue, Alpha            │
-│TYPE:SPRITEINFO             │TYPE SPRITEINFO                                                   │Tipo SPRITEINFO.                          │
+│TYPE:SPRITEINFO             │TYPE SPRITEINFO                                                   │Tipo definito dal runtime.                │
 └────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -1344,7 +1344,7 @@
 │TYPE:HTTPPOSTEDDATATYPE     │TYPE HttpPostedDataType                                           │Campi: FormFields, FileFields             │
 │TYPE:HTTPREQUESTTYPE        │TYPE HttpRequestType                                              │Campi: Method, Path, QueryString, Body    │
 │TYPE:HTTPRESPONSETYPE       │TYPE HttpResponseType                                             │Campi: StatusCode, ContentType, Headers   │
-│TYPE:NEXTHANDLER            │TYPE NextHandler                                                  │Tipo NextHandler.                         │
+│TYPE:NEXTHANDLER            │TYPE NextHandler                                                  │Tipo definito dal runtime.                │
 │TYPE:WEBSOCKETTYPE          │TYPE WebSocketType                                                │Campi: OnMessage, OnClose, OnError        │
 └────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
 
@@ -1397,8 +1397,8 @@
 │FSEEK                       │x = IO.FSEEK(handle, position)                                    │Posiziona il puntatore del file.          │
 │FWRITE                      │x = IO.FWRITE(handle, data)                                       │Scrive nel file -> LONG.                  │
 │GETFOLDERPATH               │x = IO.GETFOLDERPATH(folder [, maxDepth])                         │Cerca cartella per nome (su/giu) -> STRING│
-│GETTEMPDIR                  │x = IO.GETTEMPDIR()                                               │Funzione IO.GETTEMPDIR.                   │
-│GETTEMPFILE                 │x = IO.GETTEMPFILE()                                              │Funzione IO.GETTEMPFILE.                  │
+│GETTEMPDIR                  │x = IO.GETTEMPDIR()                                               │-> STRING                                 │
+│GETTEMPFILE                 │x = IO.GETTEMPFILE()                                              │-> STRING                                 │
 │LOF                         │x = IO.LOF(fileNumber)                                            │Lunghezza del file -> LONG.               │
 │MEMORYMAP                   │IO MEMORYMAP                                                      │Mappa un file in memoria -> LONG.         │
 │MMAPPEEK                    │x = MEMORYMAP.MMAPPEEK(handle, offset)                            │Legge un byte mappato; nome reale         │
@@ -1518,7 +1518,7 @@
 ├────────────────────────────┬──────────────────────────────────────────────────────────────────┬──────────────────────────────────────────┤
 │NOME                        │SINTASSI / ESEMPIO                                                │DESCRIZIONE                               │
 ├────────────────────────────┼──────────────────────────────────────────────────────────────────┼──────────────────────────────────────────┤
-│ARCH                        │x = LLM.ARCH()                                                    │Funzione LLM.ARCH.                        │
+│ARCH                        │x = LLM.ARCH(sub [, a, b, c])                                     │-> STRING · arg sub, a?, b?, c?           │
 │BENCHRESULT                 │x = LLM.BENCHRESULT(agent)                                        │-> STRING · arg agent                     │
 │CACHESTATS                  │x = LLM.CACHESTATS(agent)                                         │Statistiche motore/serving                │
 │CALLMAP                     │x = LLM.CALLMAP(name)                                             │-> STRING · arg name                      │
@@ -1527,7 +1527,7 @@
 │CONTEXT                     │x = LLM.CONTEXT(name [, depth])                                   │-> STRING · arg name, depth?              │
 │DATASETSTATS                │x = LLM.DATASETSTATS(path)                                        │-> STRING · arg path                      │
 │DECODESTATS                 │x = LLM.DECODESTATS(agent)                                        │-> STRING · arg agent                     │
-│DETOKENIZE                  │x = LLM.DETOKENIZE()                                              │Funzione LLM.DETOKENIZE.                  │
+│DETOKENIZE                  │x = LLM.DETOKENIZE(model, ids)                                    │`ids$ = LLM.TOKENS(m, t)`, `txt$ =        │
 │DISTILLCKPT                 │x = LLM.DISTILLCKPT()                                             │-> STRING                                 │
 │DISTILLDONE                 │x = LLM.DISTILLDONE()                                             │-> DOUBLE                                 │
 │DISTILLEVALACCEPT           │x = LLM.DISTILLEVALACCEPT(idx)                                    │-> DOUBLE · arg idx                       │
@@ -1554,14 +1554,14 @@
 │FINETUNESTATUS              │x = LLM.FINETUNESTATUS()                                          │-> STRING                                 │
 │IMPACT                      │x = LLM.IMPACT(name [, depth])                                    │-> STRING · arg name, depth?              │
 │INSPECT                     │x = LLM.INSPECT(name)                                             │-> STRING · arg name                      │
-│KERNEL                      │x = LLM.KERNEL()                                                  │Funzione LLM.KERNEL.                      │
-│KV                          │x = LLM.KV()                                                      │Funzione LLM.KV.                          │
+│KERNEL                      │x = LLM.KERNEL(sub [, a, b, c])                                   │-> STRING · arg sub, a?, b?, c?           │
+│KV                          │x = LLM.KV(sub [, a, b, c])                                       │cache/version-hash (context-cache ↔ prefix│
 │LORALIST                    │x = LLM.LORALIST()                                                │-> STRING                                 │
 │LORALOAD                    │x = LLM.LORALOAD(adapter, out)                                    │-> LONG · arg adapter, out                │
 │LORASAVE                    │x = LLM.LORASAVE(ckpt, out)                                       │-> LONG · arg ckpt, out                   │
-│MODULE                      │x = LLM.MODULE()                                                  │Funzione LLM.MODULE.                      │
+│MODULE                      │x = LLM.MODULE(sub [, a, b, c])                                   │-> STRING · arg sub, a?, b?, c?           │
 │PATCH                       │x = LLM.PATCH(target)                                             │-> STRING · arg target                    │
-│POLICY                      │x = LLM.POLICY()                                                  │Funzione LLM.POLICY.                      │
+│POLICY                      │x = LLM.POLICY(sub [, a, b, c])                                   │categorie di task → provider/modello      │
 │PREFILLSTATS                │x = LLM.PREFILLSTATS(agent)                                       │-> STRING · arg agent                     │
 │REPOMAP                     │x = LLM.REPOMAP()                                                 │-> STRING                                 │
 │REVISION                    │x = LLM.REVISION()                                                │-> STRING                                 │
@@ -1572,9 +1572,9 @@
 │RUNSTOP                     │x = LLM.RUNSTOP(id)                                               │-> LONG · arg id                          │
 │STREAMSTATS                 │x = LLM.STREAMSTATS(model)                                        │-> STRING · arg model                     │
 │SYMBOL                      │x = LLM.SYMBOL(name)                                              │(C# common/SemanticGraph; C gmb_semgraph) │
-│TENSOR                      │x = LLM.TENSOR()                                                  │Funzione LLM.TENSOR.                      │
+│TENSOR                      │x = LLM.TENSOR(sub [, a, b, c])                                   │restituisce l'output.                     │
 │TOKENCOUNT                  │x = LLM.TOKENCOUNT(model, text)                                   │B2 — LLM.TOKENCOUNT(model, testo): numero │
-│TOKENS                      │x = LLM.TOKENS()                                                  │Funzione LLM.TOKENS.                      │
+│TOKENS                      │x = LLM.TOKENS(model, text)                                       │`ids$ = LLM.TOKENS(m, t)`, `txt$ =        │
 │TRAINCONFIG                 │x = LLM.TRAINCONFIG()                                             │-> STRING                                 │
 │TRAINCONFIGSET              │x = LLM.TRAINCONFIGSET(key, value)                                │-> STRING · arg key, value                │
 │TRAINEXPORT                 │x = LLM.TRAINEXPORT(out [, run])                                  │-> LONG · arg out, run?                   │
@@ -1720,11 +1720,11 @@
 │TOEPLITZ                    │x = MATRIX.TOEPLITZ(a1, a2)                                       │Matrice di Toeplitz                       │
 │TRACE                       │x = MATRIX.TRACE(handle)                                          │Traccia -> DOUBLE.                        │
 │TRANSPOSE                   │x = MATRIX.TRANSPOSE(handle)                                      │Trasposta -> LONG.                        │
-│TYPE:CHOLESKYDECOMPOSITION  │TYPE CholeskyDecomposition                                        │Tipo CholeskyDecomposition.               │
-│TYPE:EVDDECOMPOSITION       │TYPE EvdDecomposition                                             │Tipo EvdDecomposition.                    │
-│TYPE:LUDECOMPOSITION        │TYPE LuDecomposition                                              │Tipo LuDecomposition.                     │
-│TYPE:QRDECOMPOSITION        │TYPE QrDecomposition                                              │Tipo QrDecomposition.                     │
-│TYPE:SVDDECOMPOSITION       │TYPE SvdDecomposition                                             │Tipo SvdDecomposition.                    │
+│TYPE:CHOLESKYDECOMPOSITION  │TYPE CholeskyDecomposition                                        │Tipo definito dal runtime.                │
+│TYPE:EVDDECOMPOSITION       │TYPE EvdDecomposition                                             │Tipo definito dal runtime.                │
+│TYPE:LUDECOMPOSITION        │TYPE LuDecomposition                                              │Tipo definito dal runtime.                │
+│TYPE:QRDECOMPOSITION        │TYPE QrDecomposition                                              │Tipo definito dal runtime.                │
+│TYPE:SVDDECOMPOSITION       │TYPE SvdDecomposition                                             │Tipo definito dal runtime.                │
 └────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -1745,7 +1745,7 @@
 │NOME                        │SINTASSI / ESEMPIO                                                │DESCRIZIONE                               │
 ├────────────────────────────┼──────────────────────────────────────────────────────────────────┼──────────────────────────────────────────┤
 │MESSAGE                     │MESSAGE MESSAGE                                                   │messaging generico (bus) + evento ON      │
-│DELIVERY                    │x = MESSAGE.DELIVERY()                                            │Funzione MESSAGE.DELIVERY.                │
+│DELIVERY                    │x = MESSAGE.DELIVERY(bus)                                         │contatori di consegna del bus             │
 └────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -2078,7 +2078,7 @@
 │JOIN                        │x = STRINGS.JOIN(a1, a2)                                          │Unisce un array -> STRING.                │
 │JSENCODE                    │x = STRINGS.JSENCODE(source)                                      │-> STRING · arg source:STRING             │
 │KEBAB                       │x = STRINGS.KEBAB(source)                                         │Converte in kebab-case -> STRING.         │
-│LCASE                       │x = STRINGS.LCASE()                                               │Funzione STRINGS.LCASE.                   │
+│LCASE                       │x = STRINGS.LCASE()                                               │-> STRING · arg :STRING                   │
 │LEFT                        │x = STRINGS.LEFT(source, length)                                  │Primi n caratteri -> STRING.              │
 │LEN                         │x = STRINGS.LEN(source)                                           │Lunghezza -> LONG.                        │
 │LOWER                       │x = STRINGS.LOWER(source)                                         │Minuscole -> STRING.                      │
@@ -2104,7 +2104,7 @@
 │STR                         │x = STRINGS.STR(number)                                           │Converte numero in stringa -> STRING.     │
 │TITLE                       │x = STRINGS.TITLE(source)                                         │Prima lettera maiuscola per parola -> STRI│
 │TRIM                        │x = STRINGS.TRIM(source)                                          │Rimuove spazi ai lati -> STRING.          │
-│UCASE                       │x = STRINGS.UCASE()                                               │Funzione STRINGS.UCASE.                   │
+│UCASE                       │x = STRINGS.UCASE()                                               │-> STRING · arg :STRING                   │
 │UPPER                       │x = STRINGS.UPPER(source)                                         │Maiuscole -> STRING.                      │
 │URLENCODE                   │x = STRINGS.URLENCODE(source)                                     │-> STRING · arg source:STRING             │
 │WRAP                        │x = STRINGS.WRAP(source, lineLength, alignment)                   │Spezza su larghezza -> ARRAY.             │
