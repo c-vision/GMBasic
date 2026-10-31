@@ -9762,13 +9762,17 @@ static int try_emit_var_method(ctx_t* c, const char* recv, const char* m, gmb_ex
             sb_put(&c->out, "gmb_coll_heap_extract("); emit_coll_handle_of(c, v); sb_put(&c->out, ")");
             return 1;
         case GMB_TOK_Count:
+            /* Count()/Count(item) sono NUMERI (gmb_double_t), non gmb_val_t: il wrapper
+             * gmb_make_val_double faceva fallire `PRINT B.Count()` — gmb_print_double vuole
+             * un double e riceveva una struct gmb_val (3 errori cc, MiniTest
+             * collections/typed_containers_parity). Coerente con Remove qui sotto. */
             if (n >= 1) {
-                sb_put(&c->out, "gmb_make_val_double((gmb_double_t)gmb_coll_bag_count_of(");
+                sb_put(&c->out, "(gmb_double_t)gmb_coll_bag_count_of(");
                 emit_coll_handle_of(c, v);
-                sb_put(&c->out, ", "); emit_coll_handle_arg(c, a[0]); sb_put(&c->out, "))");
+                sb_put(&c->out, ", "); emit_coll_handle_arg(c, a[0]); sb_put(&c->out, ")");
             } else {
-                sb_put(&c->out, "gmb_make_val_double((gmb_double_t)gmb_coll_count(");
-                emit_coll_handle_of(c, v); sb_put(&c->out, "))");
+                sb_put(&c->out, "(gmb_double_t)gmb_coll_count(");
+                emit_coll_handle_of(c, v); sb_put(&c->out, ")");
             }
             return 1;
         case GMB_TOK_Remove:
