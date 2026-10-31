@@ -18,6 +18,12 @@ apiPort       = 8765
 allowedIPs    = "127.0.0.1"
 # Sessioni HTTP (cookie GMBSESSION) — servono a eventuali middleware/CSRF futuri.
 sessions      = true
+# Rate limit del server dashboard (richieste/minuto; 0 = nessun limite).
+# Il DEFAULT del runtime è 60/min con burst 120: per una console locale con polling è
+# troppo basso (un browser con 2-3 tab arriva a 60+/min e riceve 429). Qui è disattivato;
+# alzalo se esponi la dashboard in LAN.
+rateLimitPerMinute = 0
+rateLimitBurst     = 0
 
 [app]
 # Crea Demo/Analyst/Support se il registry degli agenti è vuoto.
