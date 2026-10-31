@@ -15,7 +15,9 @@ static double now_sec(void) {
 }
 
 int main(int argc, char** argv) {
-    const char* root = argc > 1 ? argv[1] : "/Users/gaetano/Documents/AiFinanceWiki";
+    /* Radice del vault: SEMPRE da argv (nessun path personale hardcoded). Senza argomento si
+     * usa la CWD, che contiene comunque i .md del repo. */
+    const char* root = argc > 1 ? argv[1] : ".";
     const char* name = "bench-finance";
     double t0 = now_sec();
     long long cid = gmb_vault_create(name, root, "*.md");

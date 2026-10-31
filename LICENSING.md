@@ -1,38 +1,58 @@
-# Licensing / ownership (F3)
+# Licensing
 
-> **The repository is distributed under the PERSONAL USE LICENSE (PUL) v1.1** — see
-> [`LICENSE`](LICENSE). **No activation key, no online check, no trial, no dev-mode switch**:
-> the software runs as-is.
->
-> The table below describes the **planned split** of the code base that has to keep the
-> `LLMEnv` engine reusable under **Apache-2.0** (the engine is a separate, public repository);
-> entries marked *(proposal)* are not the current distribution license of this repository.
+## One license for the whole repository
 
-Decided boundary (see ADR `ADR-Confine-Licenza-Engine-Apache-Training-Quant-PUL`):
+**GMBasic is distributed under the PERSONAL USE LICENSE (PUL) v1.1** — see [`LICENSE`](LICENSE)
+and [`NOTICE`](NOTICE). There is **no edition split** (no "commercial" vs "community" build): the
+repository contains **everything**, and everything is under the same license.
 
-| Area | License | Notes |
-|---|---|---|
-| `GMBasic/native/gmb_runtime_c`, `gmb_compiler_c`, `gmb_vm_c`, `gmb_db_c`, `gmb_c99native`, `gmb_chart`, `gmb_doc_c`, `gmb_graph`, `gmb_gfx` | **Apache-2.0** | runtime, VM, compiler, DB: execution only |
-| `GMBasic/gmbllm/` | **PUL v1.1** | produces/transforms weights: model compiler, quant encode, training, LoRA |
-| `GMBasicSharp/` (frontend, IL, PCode, Executor, REPL, BRT, CommonLib) | **Apache-2.0** (proposal) | no code that produces weights |
-| `shared/` (samples, minitests, include, settings, fixtures) | **Apache-2.0** (code) / **CC-BY-4.0** (docs) | corpus and assets |
-| `shared/spec/`, `shared/conformance/`, `shared/runtime-abi/` | **Apache-2.0** | contract, runner, ABI |
+What that means in practice:
 
-Rules:
-- **One-way** dependencies: `gmbllm` (PUL) links the Apache libs; **never** Apache → PUL.
-- `LLMEnv`/`FastLLM` are Apache and stay inference-complete (load/run); everything that
-  produces/transforms weights lives in `gmbllm` (PUL).
-- `gmbasic-c` stays **private** until `gmbllm` (PUL) is split into a dedicated repo.
-- `runtime-abi/ABI_VERSION` is the semver reference of the C→Sharp ABI; CI pins this value.
+| | |
+|---|---|
+| **No activation key**, no online check, no trial, no development-mode switch | the software runs as-is |
+| **Personal / educational use** | granted by the license |
+| **Commercial use** | **not granted**. Only separate terms, agreed with the author, can allow it |
+| **Public or private forks** | allowed (PUL §Expressions), but every copy / fork / derivative **must keep the copyright notices, the license and the repository URL** |
+| **AI training on this code** | prohibited (see `LICENSE`) |
 
-## Note F5 (2026-10-25)
+> **PUL is not an OSI open-source license.** The source is public and readable, the license allows
+> personal use and forks, but it is **not** "open source" in the OSI sense and it forbids commercial
+> use. GitHub reports it as *License: other*.
 
-Decision: **GMBasicSharp stays a C# frontend that uses the C dylibs via P/Invoke**; no C#
-reimplementation of the runtime/UI modules. Consequences:
+## Why the old split is gone
 
-- `gmbasic-sharp` can be public as **Apache source**, but running the native functions requires
-  the C runtime (repo `gmbasic-c`, private as long as `gmbllm` is PUL).
-- `libgmb_ai_llm` includes `gmbllm` code (**PUL**): the model-compiler/quant/training functions
-  require the PUL license even when invoked from C#. Inference-only functions stay Apache.
-- The `runtime-abi/` contract is the Sharp↔C compatibility guarantee; every new P/Invoke must be
-  added to the symbols and to `check_all.sh`.
+Until 2026-10-31 the tree carried an `Edition` axis: a `Commercial`/`Community` MSBuild property, a
+`CommercialEditionRequiredException` for the database drivers, a `GMB_HAS_COMMERCIAL_DB` option, and
+two sample roots (`shared/samples/Commercial`, `shared/samples/Community`). That axis existed to
+sell a separate edition. It has been **removed**: one build, one set of samples, one license.
+
+The folder [`GMBasic/gmbllm/`](GMBasic/gmbllm/README.md) (model compiler: quantization encode,
+training, converter) stays **separate for technical reasons** — it is the part that produces or
+alters model weights — but it is **not** a different license: it is PUL like the rest.
+
+## What is not ours (third-party)
+
+Third-party material keeps **its own license**, and is listed in [`NOTICE`](NOTICE) and
+[`GMBasicIDE/THIRD_PARTY_NOTICES.md`](GMBasicIDE/THIRD_PARTY_NOTICES.md):
+
+- **SQLite** (`GMBasic/native/gmb_sql_ext/sqlite346/`) — public domain;
+- **stb_truetype** (`gmb_runtime_c/include/stb_truetype.h`) — MIT / public domain;
+- **pdf_oxide** C header (`GMBasic/native/deps/`) — generated header of an external project;
+- the **fonts** in `Resources/` and the **skills** in `shared/skills/` — see the notice files and
+  each skill's own header; several have no explicit license and **must not be redistributed**
+  without checking the upstream;
+- the **FFI packages** under `packages/` build third-party libraries from source at install time
+  (their sources are **not** in this repository).
+
+## External repositories consumed by this one
+
+| repo | visibility | license | role |
+|---|---|---|---|
+| [`c-vision/LLMEnv`](https://github.com/c-vision/LLMEnv) | public | **Apache-2.0** | inference engine (MLX, llama.cpp/GGUF, codecs, tokenizers, chat templates) |
+| [`c-vision/GMBasicModules`](https://github.com/c-vision/GMBasicModules) | public | release assets | prebuilt native libraries, market data feeds, ML/Chromium/OCR components |
+| [`c-vision/GMBasicBrains`](https://github.com/c-vision/GMBasicBrains) | **private** | release assets | brains (RAG + knowledge graph); a token is required |
+
+The dependency direction is one-way: **this repo → LLMEnv**. The Apache code of the engine stays
+Apache even when linked from PUL code; the reverse (Apache code depending on PUL code) is forbidden,
+and `LLMEnv/tools/gmb_license_gate.py` must exit 0 after any change on the LLM boundary.
