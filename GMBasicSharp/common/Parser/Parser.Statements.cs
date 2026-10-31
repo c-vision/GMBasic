@@ -230,7 +230,12 @@ public sealed partial class Parser
             {
                 case TokenKind.Namespace:
                     Advance();
-                    var nsToken = Consume(TokenKind.Identifier, "Expected a namespace name after 'NAMESPACE'.");
+                    // Il nome di un namespace è la sua GRAFIA: può coincidere con una keyword del
+                    // linguaggio (`NAMESPACE DASHBOARD`, dove DASHBOARD ha un TokenKind perché
+                    // esiste il comando omonimo). Rifiutiamo solo i token che non sono un nome.
+                    var nsToken = IsModuleName(Peek())
+                        ? Advance()
+                        : Consume(TokenKind.Identifier, "Expected a namespace name after 'NAMESPACE'.");
                     _currentNamespace = nsToken.Lexeme;
                     Log($"[PARSER-NS-TRACE] Namespace attivo impostato a: '{_currentNamespace}'");
                     continue;

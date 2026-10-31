@@ -84,7 +84,7 @@ public sealed class HttpService : IHttpService, IDisposable
     // HTTP SERVER (via HttpListener)
     // ================================================================
     private readonly ConcurrentDictionary<long, List<RouteEntry>> _routes = new();
-    private readonly ConcurrentDictionary<long, (string Prefix, string Directory)> _staticDirs = new();
+    private readonly ConcurrentDictionary<long, List<(string Prefix, string Directory)>> _staticDirs = new();
     private readonly ConcurrentDictionary<long, List<(string PathPrefix, Func<HttpRequest, (bool Continue, HttpResponse? Response)> Middleware)>> _middlewares = new();
     private readonly ConcurrentDictionary<long, List<(string Path, Func<HttpRequest, System.Net.WebSockets.WebSocket, Task> Handler)>> _webSocketRoutes = new();
     private readonly ConcurrentDictionary<long, HttpServerSettings> _settings = new();
@@ -330,7 +330,13 @@ public sealed class HttpService : IHttpService, IDisposable
             Path = req.Path,
             Body = req.Body,
             Headers = headers,
-            Query = query
+            Query = query,
+            // Query GREZZA ("a=1&b=2"): senza, `req.QueryString` era sempre vuoto sul backend IL
+            // (il PCode la popola) e un handler che la usa per ricostruire un URL perdeva i
+            // parametri — bug reale trovato sul proxy /api/* della webapp.
+            QueryString = string.IsNullOrEmpty(req.QueryString)
+                ? string.Join("&", query.Select(kv => kv.Key + "=" + Uri.EscapeDataString(kv.Value)))
+                : req.QueryString
         };
     }
 
@@ -425,7 +431,25 @@ public sealed class HttpService : IHttpService, IDisposable
     /// </summary>
     public void HttpAddStatic(long handle, string prefix, string directory)
     {
-        _staticDirs[handle] = (prefix.TrimEnd('/'), directory);
+        // PIÙ mount per lo stesso server sono legittimi (pagine su "/", asset su "/static"): prima
+        // se ne teneva UNO SOLO e il secondo `HTTP STATIC` sovrascriveva il primo in silenzio, per
+        // cui un'app che serve sia pagine sia statici esponeva solo l'ultima cartella.
+        var list = _staticDirs.GetOrAdd(handle, _ => []);
+        lock (list) list.Add((prefix.TrimEnd('/'), directory));
+    }
+
+    /// <summary>Mount statico vincente per <paramref name="path"/>: prefisso PIÙ LUNGO che combacia
+    /// (a parità, il primo registrato). Con la sola regola "primo che combacia" un mount generico
+    /// come "/" oscurava sempre i mount specifici come "/static".</summary>
+    private (string Prefix, string Directory)? ResolveStaticMount(List<(string Prefix, string Directory)> mounts, string path)
+    {
+        (string Prefix, string Directory)? best = null;
+        foreach (var mount in mounts)
+        {
+            if (!path.StartsWith(mount.Prefix, StringComparison.OrdinalIgnoreCase)) continue;
+            if (best is null || mount.Prefix.Length > best.Value.Prefix.Length) best = mount;
+        }
+        return best;
     }
 
     /// <summary>
@@ -653,13 +677,15 @@ public sealed class HttpService : IHttpService, IDisposable
             using var reader = new StreamReader(request.InputStream);
             body = reader.ReadToEnd();
         }
+        var rawQuery = (request.Url?.Query ?? "").TrimStart('?');
         return new HttpRequest
         {
             Method = request.HttpMethod,
             Path = request.Url?.AbsolutePath ?? "/",
             Body = body,
             Headers = request.Headers.AllKeys.ToDictionary(k => k ?? "", k => request.Headers[k] ?? ""),
-            Query = (request.Url?.Query ?? "").TrimStart('?').Split('&')
+            QueryString = rawQuery,
+            Query = rawQuery.Split('&')
                 .Where(s => s.Contains('='))
                 .Select(s => s.Split('=', 2))
                 .ToDictionary(p => p[0], p => Uri.UnescapeDataString(p[1])),
@@ -699,7 +725,8 @@ public sealed class HttpService : IHttpService, IDisposable
         }
 
         // Check static files
-        if (_staticDirs.TryGetValue(handle, out var mount) &&
+        if (_staticDirs.TryGetValue(handle, out var mounts) &&
+            ResolveStaticMount(mounts, req.Path) is { } mount &&
             req.Path.StartsWith(mount.Prefix, StringComparison.Ordinal))
         {
             var relativePath = req.Path[mount.Prefix.Length..].TrimStart('/');

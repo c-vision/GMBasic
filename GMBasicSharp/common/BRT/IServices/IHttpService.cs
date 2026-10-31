@@ -91,6 +91,11 @@ public class HttpRequest
     public Dictionary<string, string> Headers { get; set; } = new();
     public Dictionary<string, string> Query { get; set; } = new();
 
+    /// <summary>Query string GREZZA della richiesta ("a=1&amp;b=2", senza '?'). In BASIC:
+    /// <c>req.QueryString</c>. Il PCode la popolava, il backend IL no: un handler che ricostruisce
+    /// un URL (proxy /api/* della webapp) perdeva i parametri. Parità fra le gambe.</summary>
+    public string QueryString { get; set; } = string.Empty;
+
     /// <summary>Parametri estratti dal path template della route che ha fatto match (es.
     /// "/download/{name}/{version}" → Params["name"]/Params["version"]). Vuoto per route senza
     /// placeholder o quando il dispatch avviene fuori da HttpService.Dispatch (es. richieste

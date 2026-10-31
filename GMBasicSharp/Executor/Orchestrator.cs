@@ -454,45 +454,27 @@ public static class Orchestrator
     }
 
     /// <summary>
-    /// Costruisce una mappa `namespace -> file` in modo efficiente, leggendo i file
-    /// una sola volta ed eseguendo una scansione testuale minimale senza usare il Lexer.
+    /// True se il lessema può essere il nome di un modulo in `IMPORT` (parola: lettera/_ iniziale,
+    /// poi lettere/cifre/_). Serve perché il nome del modulo è la GRAFIA: una keyword del
+    /// linguaggio (es. `DASHBOARD`) deve restare importabile anche se il lexer la classifica con
+    /// un TokenKind dedicato.
+    /// </summary>
+    private static bool IsModuleNameLexeme(string lexeme)
+    {
+        if (string.IsNullOrEmpty(lexeme)) return false;
+        if (!char.IsLetter(lexeme[0]) && lexeme[0] != '_') return false;
+        foreach (var c in lexeme)
+            if (!char.IsLetterOrDigit(c) && c != '_') return false;
+        return true;
+    }
+
+    /// <summary>
+    /// Costruisce una mappa `namespace -> file` (implementazione condivisa:
+    /// <see cref="global::Basic.Pipeline.ModuleDiscovery.BuildNamespaceMap"/>).
     /// </summary>
     private static Dictionary<string, List<string>> BuildNamespaceMap(IEnumerable<string> files)
-    {
-        var map = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
-        foreach (var file in files)
-        {
-            try
-            {
-                // Usa una lettura a basso livello per massima efficienza, cercando solo le
-                // righe che iniziano con "NAMESPACE" e ignorando i commenti.
-                var lines = File.ReadLines(file);
-                foreach (var line in lines)
-                {
-                    var trimmedLine = line.Trim();
-                    if (!trimmedLine.StartsWith("NAMESPACE", StringComparison.OrdinalIgnoreCase)) continue;
-
-                    var parts = trimmedLine.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries);
-                    if (parts.Length <= 1) continue;
-
-                    var nsName = parts[1];
-                    if (!map.TryGetValue(nsName, out var fileList))
-                    {
-                        fileList = [];
-                        map[nsName] = fileList;
-                    }
-
-                    if (!fileList.Contains(file)) fileList.Add(file);
-                }
-            }
-            catch (IOException)
-            {
-                /* Ignora file illeggibili */
-            }
-        }
-
-        return map;
-    }
+        // Una sola implementazione: Pipeline/ModuleDiscovery.cs (condivisa con BSP/EVAL).
+        => global::Basic.Pipeline.ModuleDiscovery.BuildNamespaceMap(files);
 
     /// <summary>
     /// Esegue una scansione completa e corretta su una lista di token per estrarre
@@ -581,9 +563,15 @@ public static class Orchestrator
                         var part = Peek();
                         // Accetta un token se è un Identifier oppure se è una keyword di namespace
                         // builtin (es. IMPORT WINDOW, IMPORT MATRIX) — i namespace sono anche TokenKind.
+                        // Inoltre: il nome di un modulo è la sua GRAFIA, quindi qualunque parola è
+                        // importabile anche quando il lexer la classifica come keyword (es.
+                        // `IMPORT DASHBOARD`, dove DASHBOARD è TokenKind.Dashboard perché esiste il
+                        // comando omonimo). Si rifiutano solo i token che NON possono essere un nome
+                        // (newline, operatori, letterali, parentesi, virgole, ...).
                         if (part.Kind != TokenKind.Identifier &&
                             !StdLib.Instance.BuiltinProcedures.ContainsKey(part.Lexeme) &&
-                            !StdLib.Instance.BuiltinNamespaceNames.Contains(part.Lexeme))
+                            !StdLib.Instance.BuiltinNamespaceNames.Contains(part.Lexeme) &&
+                            !IsModuleNameLexeme(part.Lexeme))
                         {
                              if (namespaceParts.Count > 0) break; 
                              Log($"[ScanImports]   - ERRORE: Trovato token non valido '{part.Lexeme}' dopo IMPORT. Interruzione analisi della riga.", log);
@@ -1263,148 +1251,10 @@ public static class Orchestrator
     /// includendo la directory radice e le cartelle/file di importazione specificati nelle impostazioni.
     /// </summary>
     private static HashSet<string> DiscoverSourceFiles(string projectRoot, EffectiveSettings settings)
-    {
-        var projectSourceFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var searchPatterns = new[] { "*.bas", "*.inc" };
-        try
-        {
-            // 1. Scansiona la directory radice del progetto
-            if (Directory.Exists(projectRoot))
-            {
-                foreach (var pattern in searchPatterns)
-                {
-                    foreach (var file in Directory.GetFiles(projectRoot, pattern, SearchOption.AllDirectories))
-                        projectSourceFiles.Add(Path.GetFullPath(file));
-                }
-            }
-
-            // 2. Scansiona le cartelle di importazione aggiuntive — sia relative al progetto
-            //    sia alla repo-root (così una libreria condivisa come `Controls/` è importabile
-            //    da un sample in qualunque sottocartella).
-            foreach (var folder in settings.ImportFolders)
-            {
-                foreach (var baseDir in new[] { projectRoot, CommonLib.GmbiPaths.RepoRoot })
-                {
-                    var importPath = Path.GetFullPath(Path.Combine(baseDir, folder));
-                    if (!Directory.Exists(importPath)) continue;
-                    foreach (var pattern in searchPatterns)
-                    {
-                        foreach (var file in Directory.GetFiles(importPath, pattern, SearchOption.AllDirectories))
-                        {
-                            projectSourceFiles.Add(Path.GetFullPath(file));
-                        }
-                    }
-                }
-            }
-
-            // 3. Aggiungi i file di importazione specifici (relativi al progetto; se non ci
-            //    sono, alla root dell'install — stessa tolleranza delle cartelle di import).
-            foreach (var file in settings.ImportFiles)
-            {
-                foreach (var baseDir in new[] { projectRoot, CommonLib.GmbiPaths.RepoRoot })
-                {
-                    var importPath = Path.GetFullPath(Path.Combine(baseDir, file));
-                    if (File.Exists(importPath)) projectSourceFiles.Add(importPath);
-                }
-            }
-
-            // 4. Cartelle di ricerca del COMPILATORE (`compiler.searchFolders`). L'elenco non
-            //    è più cablato qui: il default (include/ · Controls/ · <install>/include ·
-            //    <install>/Controls · <install>/libs/<nome>) vive in CompilerSettings.SearchFolders
-            //    e un progetto può sostituirlo da app.settings.json. Prima dell'elenco fisso
-            //    c'erano quattro blocchi distinti (include, Controls, libs) con la stessa
-            //    regola di shadowing: un file del progetto o degli import espliciti con lo
-            //    STESSO NOME vince su quello della radice globale (shadowing 2026-09-13: senza
-            //    si registravano due volte le classi delle demo con framework affiancato).
-            var localNames = new HashSet<string>(
-                projectSourceFiles.Select(f => Path.GetFileName(f) ?? f), StringComparer.OrdinalIgnoreCase);
-            foreach (var searchRoot in ResolveSearchFolders(settings.Compiler.SearchFolders, projectRoot))
-            {
-                foreach (var pattern in searchPatterns)
-                {
-                    foreach (var file in Directory.GetFiles(searchRoot, pattern, SearchOption.AllDirectories))
-                    {
-                        if (localNames.Contains(Path.GetFileName(file))) continue;   // shadowato dal progetto
-                        projectSourceFiles.Add(Path.GetFullPath(file));
-                    }
-                }
-            }
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            throw new BasicException(ErrorCode.FileNotFound, SourcePosition.Unknown,
-                $"Errore durante la scansione del progetto: {ex.Message}");
-        }
-
-        return projectSourceFiles;
-    }
-
-    /// <summary>Radici di ricerca dei moduli BASIC configurate in `compiler.searchFolders`
-    /// (default in <see cref="CommonLib.CompilerSettings.SearchFolders"/>).
-    ///
-    /// Placeholder: `{project}` = cartella della entry, `{install}` = root di GMBasic.
-    /// Una voce relativa SENZA placeholder è cercata nella cartella del progetto, poi
-    /// risalendo le cartelle (include/ e Controls/ della root), poi nella root
-    /// dell'install: è il comportamento storico, e vale anche per un programma creato
-    /// fuori dall'albero di GMBasic. `*` finale = ogni sottocartella (una di livello).
-    /// Le radici inesistenti sono ignorate e i duplicati si confrontano
-    /// OrdinalIgnoreCase (macOS/Windows non distinguono le maiuscole).</summary>
-    private static List<string> ResolveSearchFolders(IReadOnlyList<string> entries, string projectRoot)
-    {
-        var installRoot = Path.GetFullPath(CommonLib.GmbiPaths.RepoRoot);
-        var roots = new List<string>();
-
-        void Add(string? dir)
-        {
-            if (string.IsNullOrWhiteSpace(dir)) return;
-            var full = Path.GetFullPath(dir);
-            if (!Directory.Exists(full)) return;
-            if (!roots.Contains(full, StringComparer.OrdinalIgnoreCase)) roots.Add(full);
-        }
-
-        foreach (var raw in entries)
-        {
-            if (string.IsNullOrWhiteSpace(raw)) continue;
-            var entry = raw.Trim();
-            var hinted = entry.Contains("{project}", StringComparison.OrdinalIgnoreCase)
-                      || entry.Contains("{install}", StringComparison.OrdinalIgnoreCase);
-            var expanded = entry
-                .Replace("{project}", projectRoot, StringComparison.OrdinalIgnoreCase)
-                .Replace("{install}", installRoot, StringComparison.OrdinalIgnoreCase);
-
-            if (expanded.EndsWith("/*", StringComparison.Ordinal)
-                || expanded.EndsWith("\\*", StringComparison.Ordinal))
-            {
-                var parent = expanded[..^2];
-                if (!Directory.Exists(parent)) continue;
-                foreach (var sub in Directory.EnumerateDirectories(parent)) Add(sub);
-                continue;
-            }
-
-            if (hinted) { Add(expanded); continue; }
-
-            var local = Path.Combine(projectRoot, expanded);
-            if (Directory.Exists(local)) { Add(local); continue; }
-            var up = FindSubdirUp(projectRoot, expanded);
-            if (up != null) { Add(up); continue; }
-            Add(Path.Combine(installRoot, expanded));
-        }
-
-        return roots;
-    }
-
-    /// <summary>Risale da <paramref name="fromDir"/> cercando `<livello>/<relative>` che sia
-    /// una cartella. Ritorna il primo trovato o null.</summary>
-    private static string? FindSubdirUp(string fromDir, string relative)
-    {
-        var dir = new DirectoryInfo(Path.GetFullPath(fromDir));
-        for (var depth = 0; dir != null && depth < 16; depth++, dir = dir.Parent)
-        {
-            var cand = Path.Combine(dir.FullName, relative);
-            if (Directory.Exists(cand)) return cand;
-        }
-        return null;
-    }
+        // Una sola implementazione (condivisa con i pipeline isolati BSP/EVAL): vedi
+        // Pipeline/ModuleDiscovery.cs. Prima stava qui come metodo privato e i pipeline isolati
+        // non potevano risolvere gli IMPORT delle librerie BASIC.
+        => global::Basic.Pipeline.ModuleDiscovery.DiscoverSourceFiles(projectRoot, settings);
 
     /// <summary>
     /// Metodo helper centralizzato per il logging condizionale durante la compilazione.

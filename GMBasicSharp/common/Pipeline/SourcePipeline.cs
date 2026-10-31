@@ -15,10 +15,11 @@ public static class SourcePipeline
     /// <summary>Come <see cref="CompileFromString"/>, ma espone anche il <see cref="global::Compiler.Compiler"/>
     /// usato — vedi CompileBspPage (GlobalSlots). Delega al core privato con StdLib.Instance.</summary>
     public static (global::Compiler.CompiledChunk Chunk, global::Compiler.Compiler Compiler) CompileFromStringWithCompiler(
-        string sourceText, string fileName, CommonLib.EffectiveSettings? settings = null)
+        string sourceText, string fileName, CommonLib.EffectiveSettings? settings = null,
+        string? rootDirectory = null)
     {
         var (compiler, program) = CompileFromStringCore(sourceText, fileName, settings,
-            global::Basic.StdLib.Instance, DefaultNamespacesStandard);
+            global::Basic.StdLib.Instance, DefaultNamespacesStandard, rootDirectory);
         return (compiler.Compile(program), compiler);
     }
 
@@ -30,12 +31,15 @@ public static class SourcePipeline
     /// (il chunk si compila a parte: chi fa IL non deve eseguire il bytecode-compile).</summary>
     public static (global::Compiler.Compiler Compiler, BasicProgram Program) CompileFromStringWithRegistry(
         string sourceText, string fileName, global::Basic.IParserRegistry registry,
-        IReadOnlyList<string>? defaultNamespaces = null, CommonLib.EffectiveSettings? settings = null)
-        => CompileFromStringCore(sourceText, fileName, settings, registry, defaultNamespaces ?? DefaultNamespacesStandard);
+        IReadOnlyList<string>? defaultNamespaces = null, CommonLib.EffectiveSettings? settings = null,
+        string? rootDirectory = null)
+        => CompileFromStringCore(sourceText, fileName, settings, registry,
+            defaultNamespaces ?? DefaultNamespacesStandard, rootDirectory);
 
     private static (global::Compiler.Compiler Compiler, BasicProgram Program) CompileFromStringCore(
         string sourceText, string fileName, CommonLib.EffectiveSettings? settings,
-        global::Basic.IParserRegistry registry, IReadOnlyList<string> defaultNamespaces)
+        global::Basic.IParserRegistry registry, IReadOnlyList<string> defaultNamespaces,
+        string? rootDirectory = null)
     {
         // DefaultNamespaces = [] (invece della lista standard di Resources/system.settings.json:
         // SYSTEM/CONSOLE/GRAPHICS/MATH/STRINGS/DATETIME/CONVERSIONS/IO/CONCURRENCY/ARRAYS) rendeva
@@ -49,18 +53,19 @@ public static class SourcePipeline
         // errore — isolato aggiungendo un dump del tipo di nodo AST visitato durante la compilazione
         // (VisitExpression), che ha mostrato ArrayAccessExpr al posto di BuiltinFunctionCallExpr per
         // ogni chiamata SQR/ABS/LEN/VAL in questo pipeline.
-        settings ??= new CommonLib.EffectiveSettings
-        {
-            DefaultNamespaces = defaultNamespaces.ToList(),
-            ImportFolders = [],
-            ImportFiles = [],
-            ConsoleConfiguration = [],
-            LibraryFolders = [],
-            DefaultProjectsFolder = "."
-        };
-
-        var root = Directory.GetCurrentDirectory();
+        // Impostazioni REALI (system.settings.json + app.settings.json del progetto): servono gli
+        // ImportFolders / compiler.searchFolders, senza i quali il pipeline isolato non risolve
+        // NESSUN `IMPORT` di una libreria BASIC (`include/*.inc`) — una pagina .bsp con
+        // `IMPORT DASHBOARD` vedeva il namespace ma non le sue procedure. La soglia di default
+        // namespaces resta quella del pipeline se il file non ne dichiara.
+        var root = string.IsNullOrWhiteSpace(rootDirectory)
+            ? Directory.GetCurrentDirectory()
+            : Path.GetFullPath(rootDirectory);
         var entryPath = Path.Combine(root, fileName);
+
+        settings ??= CommonLib.SettingsLoader.Load(entryPath);
+        if (settings.DefaultNamespaces.Count == 0)
+            settings = settings with { DefaultNamespaces = defaultNamespaces.ToList() };
 
         var program = new BasicProgram(settings, null, root);
         var preprocessed = TokenizeFile(entryPath, sourceText, program);
@@ -69,6 +74,11 @@ public static class SourcePipeline
 
         var imports = ScanImports(sourceText, entryPath);
         program.ImportsByFile[entryPath] = imports;
+
+        // Grafo degli IMPORT: aggiunge al programma i moduli delle librerie BASIC raggiungibili
+        // (stessa discovery dell'Orchestrator — Pipeline/ModuleDiscovery.cs).
+        ExpandImportedModules(entryPath, root, settings, program);
+
         program.FileIdToPathMap = program.GetFileIdMap().ToImmutableDictionary(kvp => kvp.Value, kvp => kvp.Key);
 
         CreateBuiltinNamespaces(program, registry);
@@ -128,7 +138,11 @@ public static class SourcePipeline
             if (!File.Exists(bspFilePath)) return false;
             var bspSource = File.ReadAllText(bspFilePath);
             var basicCode = BspCompiler.Compile(bspSource, bspFilePath);
-            var (compiledChunk, compiler) = CompileFromStringWithCompiler(basicCode, Path.GetFileName(bspFilePath));
+            // ROOT = cartella della pagina (non la CWD): le impostazioni del progetto (app.settings)
+            // e la discovery degli `include/` devono essere quelli della pagina, chiunque la serva.
+            var (compiledChunk, compiler) = CompileFromStringWithCompiler(
+                basicCode, Path.GetFileName(bspFilePath),
+                rootDirectory: Path.GetDirectoryName(Path.GetFullPath(bspFilePath)));
             chunk = compiledChunk;
             // Slot per NOME (REQ/RES/SESSION/FORM/QUERY/PAGE) invece di un ordine assunto: vedi
             // CompileFromStringWithCompiler per il perché (l'host HTTP deve seminare questi
@@ -251,6 +265,60 @@ public static class SourcePipeline
             imports.Add(new ImportStmt(nsToken, null, ImportMode.AllMembers, []));
         }
         return imports;
+    }
+
+    /// <summary>
+    /// Espande il grafo degli `IMPORT` a partire dalla entry: per ogni namespace importato cerca
+    /// il/i file che lo dichiarano (`NAMESPACE X`) fra i candidati della discovery condivisa
+    /// (<see cref="ModuleDiscovery"/>) e li tokenizza/registra nel programma, ripetendo sui loro
+    /// import. Senza questo passo un pipeline ISOLATO (pagina BSP, EVAL) vedeva il namespace ma
+    /// non le sue procedure: `IMPORT DASHBOARD` → "Nessuna funzione pubblica ... ".
+    /// Stessa semantica dell'Orchestrator (che però parte dal file su disco, non da una stringa).
+    /// </summary>
+    private static void ExpandImportedModules(string entryPath, string root,
+        CommonLib.EffectiveSettings settings, BasicProgram program)
+    {
+        Dictionary<string, List<string>> nsMap;
+        try
+        {
+            nsMap = ModuleDiscovery.BuildNamespaceMap(ModuleDiscovery.DiscoverSourceFiles(root, settings));
+        }
+        catch
+        {
+            // Discovery non disponibile (permessi/cartelle): si resta sulla sola entry, come prima.
+            return;
+        }
+        if (nsMap.Count == 0) return;
+
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { entryPath };
+        var queue = new Queue<string>();
+
+        void EnqueueImportsOf(string file)
+        {
+            foreach (var imp in program.ImportsByFile.GetValueOrDefault(file) ?? [])
+            {
+                var ns = imp.NamespaceName.Lexeme;
+                if (!nsMap.TryGetValue(ns, out var files)) continue;
+                foreach (var dep in files)
+                    if (!seen.Contains(dep)) queue.Enqueue(dep);
+            }
+        }
+
+        EnqueueImportsOf(entryPath);
+        while (queue.Count > 0)
+        {
+            var file = queue.Dequeue();
+            if (!seen.Add(file)) continue;
+            if (program.PreprocessedFiles.ContainsKey(file)) { EnqueueImportsOf(file); continue; }
+
+            string text;
+            try { text = File.ReadAllText(file); }
+            catch { continue; }
+
+            program.PreprocessedFiles[file] = TokenizeFile(file, text, program);
+            program.ImportsByFile[file] = ScanImports(text, file);
+            EnqueueImportsOf(file);
+        }
     }
 
     private static void CreateBuiltinNamespaces(BasicProgram program, global::Basic.IParserRegistry procRegistry)

@@ -607,6 +607,21 @@ public sealed partial class Parser
     /// e aggiorna la finestra di lookbehind (`_previousToken`, `_twoTokensBack`).
     /// </summary>
     /// <returns>Il token che è stato appena consumato.</returns>
+    /// <summary>
+    /// True se il token può essere il NOME di un namespace/modulo: una parola (lettera/_ iniziale,
+    /// poi lettere/cifre/_). Il nome è la GRAFIA, quindi una keyword con TokenKind dedicato
+    /// (es. `DASHBOARD`) resta un nome valido per `NAMESPACE`/`IMPORT`.
+    /// </summary>
+    private static bool IsModuleName(Token t)
+    {
+        var s = t.Lexeme;
+        if (string.IsNullOrEmpty(s)) return false;
+        if (!char.IsLetter(s[0]) && s[0] != '_') return false;
+        foreach (var c in s)
+            if (!char.IsLetterOrDigit(c) && c != '_') return false;
+        return true;
+    }
+
     private Token Advance()
     {
         if (IsAtEnd())
