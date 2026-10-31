@@ -86,3 +86,9 @@ GMBasic/config/mcp.json
 GMBasic/config/ide.settings.json
 GMBasic/config/support.agent.json
 GMBasic/config/recursivemas/
+# Seed COPIE locali: `connectors.json` (il C# lo rigenera dal catalogo in codice,
+# `ConnectorMarketplace.Catalog`; il runtime C non lo legge affatto) e `providers.json`
+# (seed canonico in `shared/settings/providers.json`, letto in fallback da entrambe le
+# gambe e copiato dal bundle in `<exe>/config/`). Qui sono solo copie di lavoro.
+GMBasic/config/connectors.json
+GMBasic/config/providers.json
