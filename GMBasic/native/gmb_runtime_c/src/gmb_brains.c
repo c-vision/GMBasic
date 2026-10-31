@@ -811,8 +811,11 @@ static int br_install_manifest(const char* manifest_path, const char* name, cons
     if (err && errcap) err[0] = '\0';
     if (!name || !*name) return GMB_BRAIN_E_ARG;
 
-    /* Già installato: idempotente (nessun download). */
-    if (gmb_brain_lookup(name, version, out_dir, cap)) return GMB_BRAIN_OK;
+    /* Già installato: idempotente (nessun download). Solo con una versione ESPLICITA: con
+     * `version` NULL qualunque versione installata passerebbe per "già fatto" e un aggiornamento
+     * (es. 1.0.0 → 1.1.0 nel manifest) non verrebbe MAI scaricato. La verifica esatta si fa dopo,
+     * quando `latest` è risolta dal manifest. */
+    if (version && *version && gmb_brain_lookup(name, version, out_dir, cap)) return GMB_BRAIN_OK;
 
     gmb_pkg_manifest_t* m = br_load_manifest_at(manifest_path, err, errcap);
     if (!m) return GMB_BRAIN_E_NO_MANIFEST;
@@ -852,6 +855,9 @@ static int br_install_manifest(const char* manifest_path, const char* name, cons
     snprintf(p, sizeof p, "brains.%d.versions.%d.asset", bi, vi);
     gmb_pkg_manifest_get(m, p, asset, sizeof asset);
     gmb_pkg_manifest_free(m);
+
+    /* ORA la versione è nota (esplicita o `latest`): se è già installata, nessun download. */
+    if (gmb_brain_lookup(name, ver, out_dir, cap)) return GMB_BRAIN_OK;
 
     int gh = br_ieq(src, "github-asset") || br_ieq(src, "github");
 
