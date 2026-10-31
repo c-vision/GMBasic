@@ -50,4 +50,12 @@ tools/sh/parity4 <un-sample>.bas               # 4 gambe su un sample
 tools/sh/test_minitests_c99native              # gamba C99Native
 bash tools/sh/test_minitests_parity.sh --all   # 4 gambe su tutti i MiniTest
 bash tools/sh/tools_verify.sh                  # sintassi di tools/ + build C99Native
+bash tools/sh/brains_publish_doc.sh --check     # indice dei cervelli (BRAINS.md) dal manifest
 ```
+
+**Cervelli**: i pacchetti `.gmbrain.zip` sono **asset di release** di `c-vision/GMBasicBrains`
+(mai nel tree: `trading` è ~600 MB zippato, oltre il limite di 100 MB per file). Il tree di quel
+repo contiene solo i **metadati**, generati dalla fonte unica `shared/settings/brains-manifest.json`:
+`tools/sh/brains_publish_doc.sh` scrive `BRAINS.md` (tabella con forme `rag`/`graph`, release,
+sha256, dimensione) e `README.md`, poi committa e pusha (`--check` mostra il diff senza toccare
+il repo).
