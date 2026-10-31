@@ -5,7 +5,7 @@ IMPORT AI
 
 SUB Main()
     DIM path AS STRING
-    path = "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/ai/fattura_it.txt"
+    path = "../../samples/Fixtures/ai/fattura_it.txt"
     c0 = AI.OBSERVATIONCOUNT()
     AI OBSERVE LOG path INTO id
     c1 = AI.OBSERVATIONCOUNT()

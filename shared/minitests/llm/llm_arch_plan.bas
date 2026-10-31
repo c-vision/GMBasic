@@ -2,5 +2,5 @@
 ' MiniTest: LLM ARCH PLAN <dir>, <out> -> piano per tensore dalla descrizione + conteggi per ruolo.
 IMPORT LLM
 SUB Main()
-  LLM ARCH PLAN "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/models/tiny_arch", "/tmp/gmb_tiny_plan.txt"
+  LLM ARCH PLAN "../../samples/Fixtures/models/tiny_arch", "/tmp/gmb_tiny_plan.txt"
 END SUB

@@ -8,6 +8,6 @@
 ' (model_type=qwen3_moe, descrittore presente in LLMEnv/ABI).
 IMPORT LLM
 SUB Main()
-  LLM ARCH RESOLVE "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/models/tiny_arch"
+  LLM ARCH RESOLVE "../../samples/Fixtures/models/tiny_arch"
   LLM ARCH SHOW
 END SUB

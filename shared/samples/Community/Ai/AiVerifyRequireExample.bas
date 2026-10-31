@@ -23,11 +23,11 @@ SUB Main()
     DIM esito AS STRING
     DIM soglia AS INTEGER
     soglia = 8
-    AI VERIFY "COMPILE /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/AIVerifyFixtureOk.bas" REQUIRE "LEN(RESULT$) > soglia" INTO esito
+    AI VERIFY "COMPILE ../../../samples/Fixtures/AIVerifyFixtureOk.bas" REQUIRE "LEN(RESULT$) > soglia" INTO esito
     IF esito = "Compile OK" THEN ok = ok + 1 ELSE PRINT "req-ex-FAIL1:"; esito
 
     ' --- 2. stesso REQUIRE ma come statement puro (senza INTO): l'esito è scartato ---
-    AI VERIFY "COMPILE /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/AIVerifyFixtureOk.bas" REQUIRE "LEN(RESULT$) > 0"
+    AI VERIFY "COMPILE ../../../samples/Fixtures/AIVerifyFixtureOk.bas" REQUIRE "LEN(RESULT$) > 0"
     ok = ok + 1
 
     ' NB: su fallimento (compile KO o REQUIRE mai soddisfatto dopo 3 tentativi) il comando

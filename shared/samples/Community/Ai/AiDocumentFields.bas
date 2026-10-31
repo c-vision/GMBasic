@@ -13,7 +13,7 @@ IMPORT AI
 
 SUB Main()
     DIM inv AS STRING
-    inv = "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/ai/fattura_it.txt"
+    inv = "../../../samples/Fixtures/ai/fattura_it.txt"
 
     ' ── FIELDS: numero/data/totale/IVA (null se assenti) ──────────────────────
     PRINT "FIELDS: ", AI.DOCFIELDS(inv)

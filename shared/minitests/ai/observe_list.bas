@@ -5,7 +5,7 @@ IMPORT AI
 
 SUB Main()
     DIM path AS STRING
-    path = "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/ai/fattura_it.txt"
+    path = "../../samples/Fixtures/ai/fattura_it.txt"
     AI OBSERVE FILE path INTO id
     n = AI.OBSERVATIONCOUNT()
     h$ = AI.OBSERVATIONHASH$(id)

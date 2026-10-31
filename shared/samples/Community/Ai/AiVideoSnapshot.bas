@@ -9,7 +9,7 @@ IMPORT AI
 
 SUB Main()
     DIM v AS STRING
-    v = "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/ai/video_4x4_3f.y4m"
+    v = "../../../samples/Fixtures/ai/video_4x4_3f.y4m"
 
     DIM ok AS LONG
     ok = AI.VIDEOSNAPSHOT(v, "work/ai_video_snapshot.png")

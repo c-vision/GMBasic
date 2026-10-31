@@ -16,11 +16,11 @@ public sealed class VaultScaleBenchmarkTests(ITestOutputHelper output)
     [Fact]
     public void VaultIndex_AiFinanceWiki_Scale()
     {
-        var root = Environment.GetEnvironmentVariable("GMB_BENCH_FINANCE_DIR")
-            ?? "/Users/gaetano/Documents/AiFinanceWiki";
-        if (!Directory.Exists(root))
+        // Nessun path personale: il vault si indica con GMB_BENCH_FINANCE_DIR, altrimenti si salta.
+        var root = Environment.GetEnvironmentVariable("GMB_BENCH_FINANCE_DIR");
+        if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root))
         {
-            output.WriteLine($"SKIP: vault '{root}' non trovato");
+            output.WriteLine($"SKIP: vault '{root}' non trovato (imposta GMB_BENCH_FINANCE_DIR)");
             return;
         }
         var mdCount = Directory.EnumerateFiles(root, "*.md", SearchOption.AllDirectories).Count();

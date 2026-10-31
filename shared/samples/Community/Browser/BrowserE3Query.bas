@@ -135,7 +135,7 @@ DIM r$ AS STRING
 
 PRINT "BrowserE3Query: avvio (DB su file riaperto)"
 
-SQL OPEN "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Community/Browser/work/rag.db" ALIAS RagDb
+SQL OPEN "work/rag.db" ALIAS RagDb
 AI RAG ENSURE COLLECTION "RagDb", "web", 8
 
 r$ = AI.SEARCH("RagDb", "web", "Chrome DevTools Protocol", 3)

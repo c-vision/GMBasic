@@ -9,6 +9,6 @@ SUB Main()
   KILL "bin/vframe.png"
   MKDIR "bin"
   ON ERROR GOTO 0
-  PRINT "frame0="; AI.VideoFrame("/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/video_test.y4m", 0, "bin/vframe.png")
-  PRINT "oob="; AI.VideoFrame("/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/video_test.y4m", 99, "bin/vframe_oob.png")
+  PRINT "frame0="; AI.VideoFrame("../../samples/Fixtures/video_test.y4m", 0, "bin/vframe.png")
+  PRINT "oob="; AI.VideoFrame("../../samples/Fixtures/video_test.y4m", 99, "bin/vframe_oob.png")
 END SUB

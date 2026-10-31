@@ -8,7 +8,7 @@ SUB Main()
     PRINT ""
 
     ' 1. OBSERVE FILE — registra un file con hash FNV-1a64
-    DIM f$ = "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/ai/fattura_it.txt"
+    DIM f$ = "../../../samples/Fixtures/ai/fattura_it.txt"
     AI OBSERVE FILE f$ INTO fid
     PRINT "1. FILE osservato, id=" + STR$(fid)
     PRINT "   hash=" + AI.OBSERVATIONHASH$(fid)

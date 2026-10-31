@@ -99,3 +99,6 @@ GMBasic/config/providers.json
 # (`tools/basic/make_lora_dataset.bas` li legge se ci sono e li salta se mancano).
 AGENTS.md
 CLAUDE.md
+
+# artefatti dei runner di test (xUnit): generati a ogni run, mai versionati
+TestResults/

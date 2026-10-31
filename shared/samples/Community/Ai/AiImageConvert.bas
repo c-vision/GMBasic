@@ -9,7 +9,7 @@ IMPORT AI
 
 SUB Main()
     DIM src AS STRING
-    src = "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/ai/img_4x4.png"
+    src = "../../../samples/Fixtures/ai/img_4x4.png"
 
     DIM ok AS LONG
     ok = AI.IMAGECONVERT(src, "work/ai_info_copy.png")

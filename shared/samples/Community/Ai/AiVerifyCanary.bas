@@ -14,14 +14,14 @@ SUB Main()
 
     ' 1. REQUIRE usa RESULT$ E una locale numerica del chiamante (parità S_eval)
     DIM res AS STRING
-    AI VERIFY "COMPILE /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/AIVerifyFixtureOk.bas" REQUIRE "LEN(RESULT$) > n - 8" INTO res
+    AI VERIFY "COMPILE ../../../samples/Fixtures/AIVerifyFixtureOk.bas" REQUIRE "LEN(RESULT$) > n - 8" INTO res
     IF res = expected THEN PRINT "verify-ok1" ELSE PRINT "verify-FAIL1:"; res
 
     ' 2. REQUIRE con aritmetica su RESULT$ (len > 5)
-    AI VERIFY "COMPILE /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/AIVerifyFixtureOk.bas" REQUIRE "LEN(RESULT$) > 5" INTO res
+    AI VERIFY "COMPILE ../../../samples/Fixtures/AIVerifyFixtureOk.bas" REQUIRE "LEN(RESULT$) > 5" INTO res
     IF res = expected THEN PRINT "verify-ok2" ELSE PRINT "verify-FAIL2:"; res
 
     ' 3. comando senza INTO: esito scartato (statement puro)
-    AI VERIFY "COMPILE /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/AIVerifyFixtureOk.bas" REQUIRE "LEN(RESULT$) > 5"
+    AI VERIFY "COMPILE ../../../samples/Fixtures/AIVerifyFixtureOk.bas" REQUIRE "LEN(RESULT$) > 5"
     PRINT "verify-ok3"
 END SUB

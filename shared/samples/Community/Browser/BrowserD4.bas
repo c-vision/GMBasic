@@ -36,7 +36,7 @@ DIM r$ AS STRING
 PRINT "BrowserD4: avvio"
 
 REM download (base64 via FETCH) + estrazione testo
-text = BrowserDownloadPdf(9222, "http://127.0.0.1:8104/d4.pdf.b64", "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Community/Browser/work", "d4.pdf")
+text = BrowserDownloadPdf(9222, "http://127.0.0.1:8104/d4.pdf.b64", "work", "d4.pdf")
 PRINT "D4 textlen:"; LEN(text)
 IF LEN(text) > 10 THEN
   PRINT "D4 estrazione: ok"

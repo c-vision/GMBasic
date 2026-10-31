@@ -31,8 +31,8 @@ SUB Main()
     SCREEN 64, 64
     DIM SpA
     DIM SpB
-    SPRITE LOAD "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/sprite_dot.png", SpA
-    SPRITE LOAD "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/sprite_dot.png", SpB
+    SPRITE LOAD "../../samples/Fixtures/sprite_dot.png", SpA
+    SPRITE LOAD "../../samples/Fixtures/sprite_dot.png", SpB
     SPRITE SET POSITION SpA, 10, 10
     SPRITE SET POSITION SpB, 10, 10
     SPRITE ON SpA

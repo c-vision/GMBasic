@@ -1,6 +1,6 @@
 {
   "model": "Qwen3.6-35B-A3B-OptiQ-4bit-textonly",
-  "config": "/Users/gaetano/ai/Models/Qwen3.6-35B-A3B-OptiQ-4bit-textonly/config.json",
+  "config": "Qwen3.6-35B-A3B-OptiQ-4bit-textonly/config.json",
   "spec": {
     "model_type": "qwen3_5_moe_text",
     "hidden_size": 2048,

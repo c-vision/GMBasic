@@ -1,6 +1,6 @@
 {
   "model": "Qwen3.8-27B-8bit",
-  "config": "/Users/gaetano/ai/Models/Qwen3.8-27B-8bit/config.json",
+  "config": "Qwen3.8-27B-8bit/config.json",
   "spec": {
     "model_type": "qwen3_5_text",
     "hidden_size": 5120,
