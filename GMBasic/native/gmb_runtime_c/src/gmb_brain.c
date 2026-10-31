@@ -9,6 +9,7 @@
  * ricerca è "id|kind|testo" (parità MemoryBrain.Search).
  */
 #include "gmb_runtime.h"
+#include "gmb_brains.h"   /* gmb_brain_lookup: risoluzione unica dei cervelli */
 #include <sqlite3.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,21 +28,51 @@ static void brain_db_path(char* out, size_t cap)
     gmb_paths_brain_db(out, cap);
 }
 
-/* DB RAG di un brain per-nome (parità BrainRegistry.RagDbPath C#): prima
- * <brains>/<name>/rag/<name>.db (import), poi <rag>/<name>.db (legacy). 1 se esiste. */
-static int brain_rag_db_path(const char* name, char* out, size_t cap)
+/* DB RAG di un brain per-nome (parità BrainRegistry.RagDbPath C#). Ordine:
+ *   1. RISOLUZIONE dei cervelli (vendor → exe → brainsDir → cache ~/.gmbasic/brains/<nome>/<ver>):
+ *      è dove `AI BRAIN INSTALL` mette il cervello, e dove sta anche sul programma distribuito;
+ *   2. <brainsDir>/<name>/rag/<name>.db (import classico);
+ *   3. <ragDir>/<name>.db (legacy: i feed prima della cache).
+ * 1 se esiste. */
+int gmb_brain_rag_db(const char* name, char* out, size_t cap)
 {
+    if (out && cap) out[0] = 0;
+    if (!name || !*name || !out || !cap) return 0;
+    char dir[4096];
+    if (gmb_brain_lookup(name, NULL, dir, sizeof dir)) {
+        snprintf(out, cap, "%s/rag/%s.db", dir, name);
+        if (access(out, F_OK) == 0) return 1;
+        /* cervello con un solo .db dentro rag/ (nome interno diverso dal nome logico) */
+        char rag[4200];
+        snprintf(rag, sizeof rag, "%s/rag", dir);
+        DIR* d = opendir(rag);
+        if (d) {
+            struct dirent* e;
+            while ((e = readdir(d)) != NULL) {
+                size_t l = strlen(e->d_name);
+                if (l > 3 && strcmp(e->d_name + l - 3, ".db") == 0) {
+                    snprintf(out, cap, "%s/%s", rag, e->d_name);
+                    closedir(d);
+                    return 1;
+                }
+            }
+            closedir(d);
+        }
+    }
     char bd[1024], rd[1024];
     gmb_paths_brains_dir(bd, sizeof(bd));
     gmb_paths_rag_dir(rd, sizeof(rd));
-    if (name && *name)
-    {
-        snprintf(out, cap, "%s/%s/rag/%s.db", bd, name, name);
-        if (access(out, F_OK) == 0) return 1;
-        snprintf(out, cap, "%s/%s.db", rd, name);
-        if (access(out, F_OK) == 0) return 1;
-    }
+    snprintf(out, cap, "%s/%s/rag/%s.db", bd, name, name);
+    if (access(out, F_OK) == 0) return 1;
+    snprintf(out, cap, "%s/%s.db", rd, name);
+    if (access(out, F_OK) == 0) return 1;
+    out[0] = 0;
     return 0;
+}
+
+static int brain_rag_db_path(const char* name, char* out, size_t cap)
+{
+    return gmb_brain_rag_db(name, out, cap);
 }
 
 /* 1 se il DB ha una tabella `memories` leggibile dal runtime C (il formato supportato).

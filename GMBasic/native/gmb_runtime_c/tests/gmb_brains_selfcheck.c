@@ -225,6 +225,15 @@ int main(void)
     snprintf(dbpath, sizeof dbpath, "%s/rag/%s.db", out_dir, brain);
     CHECK(fsize(dbpath) == (long long)sizeof blob);      /* il file c'è VERO (estratto) */
 
+    /* 6bis) il DB RAG si risolve dalla CACHE (è dove `AI BRAIN INSTALL` mette il cervello):
+     * è ciò che usano il RAG C e `AI.QAANSWER`, non più solo <ragDir>/<nome>.db. */
+    {
+        char ragp[1400];
+        CHECK(gmb_brain_rag_db(brain, ragp, sizeof ragp) == 1);
+        CHECK(strstr(ragp, ".gmbasic/brains/") != NULL);
+        CHECK(strstr(ragp, "rag/") != NULL);
+    }
+
     /* 7) risoluzione: lookup, versioni, modalità, lista */
     char dir[1200], vers[512], modes[64], list[2048];
     int cnt = 0;
