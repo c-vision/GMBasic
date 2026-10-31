@@ -298,6 +298,13 @@ emit_program_bundle() { # $1 = eseguibile
 # solo ciò che manca nella cache, senza elenchi hardcoded né caricare tutto il gruppo.
 if [ -f "$OUTBIN" ]; then
   emit_program_bundle "$OUTBIN"
+  # FIXTURE dichiarate dal programma (`"fixtures": [...]` in app.settings.json): il COMPILATORE
+  # scarica quelle mancanti, SEMPRE in shared/samples/Fixtures (manifest in shared/settings).
+  # Best-effort: senza rete si prosegue e il programma fallira' sulla fixture mancante.
+  FIXBIN="$ROOT/native/gmb_runtime_c/build/gmb_fixtures"
+  if [ -f "$DIR/app.settings.json" ] && [ -x "$FIXBIN" ]; then
+    "$FIXBIN" ensure --app "$DIR/app.settings.json" --quiet >/dev/null 2>&1 || true
+  fi
   emit_exe_libs "$OUTBIN" "${OUTBIN%.dylib}.libs.txt" "$DIR/$CASE.c" 2>/dev/null || true
   [ -s "${OUTBIN%.dylib}.libs.txt" ] && echo "[c99native] libs.txt -> ${OUTBIN%.dylib}.libs.txt ($(grep -cv '^#' "${OUTBIN%.dylib}.libs.txt" | tr -d ' ') lib)" >&2
 fi

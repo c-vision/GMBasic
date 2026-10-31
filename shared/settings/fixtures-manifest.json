@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "comment": "Fixture di mercato per i sample e i test (markets, option_chains, rates, darkpool). NON stanno in git: erano ~182 MB versionati in shared/samples/Fixtures/, ora sono asset PUBBLICI della release fixtures-v1 di c-vision/GMBasicModules. Si scaricano on demand con `gmb fixtures pull` (motore gmb_fetch: resume + sha256) in shared/samples/Fixtures/<nome>/, che è il percorso che il codice legge sempre. Un checkout di sviluppo può tenerli su un disco esterno (symlink): se il percorso risolve a una cartella, il pull NON tocca nulla. Le fixture PICCOLE (parquet/csv di test, modelli, tokenizer) restano versionate in shared/samples/Fixtures/: questa eccezione vale solo per i 4 feed grandi (AGENTS §11.4).",
+  "comment": "Fixture di mercato per sample e test. Manifest UNICO delle fixture del compilatore (shared/settings/ = punto di raccolta di tutte le configurazioni). Le fixture si scaricano SEMPRE e SOLO in shared/samples/Fixtures/<nome>/: niente symlink, nessun disco esterno (il checkout deve funzionare su qualunque macchina). Compilatore, REPL e CLI assicurano quelle MANCANTI (`gmb fixtures ensure`, e prima dell'esecuzione le voci dichiarate dal programma in \\\"fixtures\\\": [...] nel suo app.settings.json). `gmb fixtures pull` resta il comando esplicito.",
   "schema": {
     "fixtures[].name": "nome della cartella in shared/samples/Fixtures/",
     "fixtures[].description": "testo libero",

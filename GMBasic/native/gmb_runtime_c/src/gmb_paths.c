@@ -457,14 +457,37 @@ static void pr_shared_or_root(const char* key, const char* defrel, char* out, si
     snprintf(out, cap, "%s/%s", g_pr_root, defrel);
 }
 
+static void pr_user_root(const char* name, char* out, size_t cap);
+
+/* RAG e GRAFI sono dati che il COMPILATORE PRODUCE (RAG BUILD, BRAINVAULTBUILD, MERGE,
+ * INGEST): il default e' la CACHE utente (`~/.gmbasic/rag`, `~/.gmbasic/graphs`), NON una
+ * cartella del checkout — altrimenti lo stesso cervello esiste due volte (shared/ e cache) e
+ * il checkout si riempie di output (decisione 2026-10-31). `paths.ragDir`/`paths.graphsDir`
+ * lasciano al programmatore la scelta del percorso (assoluto o relativo alla root). */
+static void pr_user_dir(const char* key, const char* defrel, char* out, size_t cap)
+{
+    if (!out || !cap) return;
+    if (!g_pr_loaded) pr_load();
+    char v[1024];
+    if (pr_paths_value(key, v, sizeof(v)) && v[0])
+    {
+        char ex[2048];
+        pr_expand(v, ex, sizeof(ex));
+        if (ex[0] == '/') { snprintf(out, cap, "%s", ex); return; }
+        snprintf(out, cap, "%s/%s", g_pr_root, ex);
+        return;
+    }
+    pr_user_root(defrel, out, cap);
+}
+
 void gmb_paths_config_dir(char* out, size_t cap) { pr_dir("configDir", "config", out, cap); }
 void gmb_paths_skills_dir(char* out, size_t cap) { pr_shared_or_root("skillsDir", "skills", out, cap); }
 void gmb_paths_plugins_dir(char* out, size_t cap) { pr_shared_or_root("pluginsDir", "plugins", out, cap); }
 void gmb_paths_logs_dir(char* out, size_t cap) { pr_dir("logsDir", "ai-logs", out, cap); }
 /* RAG e grafi sono DATI condivisi dai due mondi (C# li scrive, il runtime li legge): nel
  * monorepo la copia unica sta in `<root>/../shared/<nome>`; altrove `<root>/<nome>`. */
-void gmb_paths_rag_dir(char* out, size_t cap) { pr_shared_or_root("ragDir", "rag", out, cap); }
-void gmb_paths_graphs_dir(char* out, size_t cap) { pr_shared_or_root("graphsDir", "graphs", out, cap); }
+void gmb_paths_rag_dir(char* out, size_t cap) { pr_user_dir("ragDir", "rag", out, cap); }
+void gmb_paths_graphs_dir(char* out, size_t cap) { pr_user_dir("graphsDir", "graphs", out, cap); }
 void gmb_paths_brains_dir(char* out, size_t cap) { pr_dir("brainsDir", "brains", out, cap); }
 void gmb_paths_brains_exports_dir(char* out, size_t cap) { pr_dir("brainsExportsDir", "brains-exports", out, cap); }
 

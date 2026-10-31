@@ -39,3 +39,11 @@ packages/*/*/.build/
 brains/
 brains-exports/
 
+# FIXTURE GRANDI (feed di mercato): NON in git, NESSUN symlink a dischi esterni.
+# Si scaricano on demand con `gmb fixtures pull|ensure` SEMPRE in shared/samples/Fixtures/<nome>/
+# (manifest in shared/settings/fixtures-manifest.json). Cosi' il checkout e' generico: nessun
+# percorso /Volumes/... e nessun disco personale. Decisione 2026-10-31.
+shared/samples/Fixtures/markets/
+shared/samples/Fixtures/option_chains/
+shared/samples/Fixtures/rates/
+shared/samples/Fixtures/darkpool/

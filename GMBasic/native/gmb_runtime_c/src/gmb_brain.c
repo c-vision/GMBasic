@@ -59,10 +59,17 @@ int gmb_brain_rag_db(const char* name, char* out, size_t cap)
             closedir(d);
         }
     }
-    /* NESSUN fallback su <ragDir>/<nome>.db: un cervello o e' in una radice di ricerca
-     * (vendor/exe/brainsDir/cache) o NON ESISTE — e il chiamante produce un errore esplicito.
-     * Il vecchio path legacy rendeva "disponibile" un file lasciato in shared/rag, scavalcando
-     * la regola (decisione utente, 2026-10-31). */
+    /* Ultimo passo: la cartella di BUILD configurata (`paths.ragDir`, default la CACHE utente
+     * `~/.gmbasic/rag`). NON e' il vecchio `shared/rag`: i builder scrivono li', quindi un
+     * cervello costruito in locale si trova. Nessuna scorciatoia su path hardcoded nel checkout. */
+    {
+        char rd[2048];
+        gmb_paths_rag_dir(rd, sizeof rd);
+        if (rd[0]) {
+            snprintf(out, cap, "%s/%s.db", rd, name);
+            if (access(out, F_OK) == 0) return 1;
+        }
+    }
     out[0] = 0;
     return 0;
 }
