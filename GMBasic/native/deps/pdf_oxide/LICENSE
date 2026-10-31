@@ -1,0 +1,48 @@
+PDFOxide ("pdf_oxide") — license for the C header vendored in this folder
+=========================================================================
+
+Source:      https://github.com/yfedoseev/pdf_oxide   (crate: pdf_oxide, crates.io)
+Author:      Yury Fedoseev and the PDFOxide contributors
+Code license: **MIT OR Apache-2.0** (dual, at your option)
+             crates.io metadata: `license = "MIT OR Apache-2.0"`
+
+The file `include/pdf_oxide_c/pdf_oxide.h` is **auto-generated** (cbindgen) from the crate's
+`src/ffi.rs`, so it is a derivative of that code and is covered by the same license. This
+project elects the **MIT** option, whose full text is reproduced below.
+
+Trademark: the product name "PDFOxide" and the package name "pdf_oxide" (and the logo) are
+**trademarks** of Yury Fedoseev and are NOT part of the code license (see TRADEMARKS.md
+upstream). GMBasic does not use those names as its own: it only states that it *uses* PDFOxide.
+
+The native library itself is not redistributed in this repository: it is fetched at install
+time from the upstream project (see the package/component manifests), under the same license.
+
+--------------------------------------------------------------------------------
+MIT License
+--------------------------------------------------------------------------------
+
+Copyright (c) 2025-present Yury Fedoseev
+
+Permission is hereby granted, free of charge, to any
+person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the
+Software without restriction, including without
+limitation the rights to use, copy, modify, merge,
+publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software
+is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice
+shall be included in all copies or substantial portions
+of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
+SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.

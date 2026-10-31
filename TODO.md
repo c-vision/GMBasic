@@ -80,8 +80,9 @@ tracked files). These remain:
       uses **Sixtyfour**; the 8x16 ASCII bitmap inside the console was **regenerated from
       Terminus 8x16** (`tools/py/cellfont_from_bdf.py`), so no font-derived data of a
       non-redistributable font remains. Box-drawing is drawn procedurally.
-- [ ] **`pdf_oxide` C header** (`GMBasic/native/deps/`) — upstream license not declared in the
-      header: verify and record it in `NOTICE`.
+- [x] **`pdf_oxide` C header verified**: crate `pdf_oxide` (PDFOxide, Yury Fedoseev) is
+      **MIT OR Apache-2.0** — this project elects **MIT**; attribution and full text in
+      `GMBasic/native/deps/pdf_oxide/LICENSE`, recorded in `NOTICE` and `LICENSING.md`.
 - [ ] **History cleanup (optional)**: `AGENTS.md` and `GMBasic/config/*.json` were removed from
       the tree but are still in older commits; `git filter-repo` would scrub them (the `.git`
       directory is ~98 MB).
