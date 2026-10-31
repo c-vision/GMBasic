@@ -17,6 +17,7 @@
 #include "gmb_commonlib.h"
 #include "gmb_pkg_manifest.h"
 #include "gmb_compress.h"
+#include "gmb_fsutil.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -49,31 +50,10 @@ const char* gmb_brain_strerror(int code)
 
 /* ── utilità ─────────────────────────────────────────────────────────────────────────────── */
 
-static void br_mkdir_p(const char* path)
-{
-    char tmp[BR_PATH];
-    if (!path || !*path) return;
-    snprintf(tmp, sizeof tmp, "%s", path);
-    for (char* p = tmp + 1; *p; p++) {
-        if (*p != '/') continue;
-        *p = '\0';
-        mkdir(tmp, 0755);
-        *p = '/';
-    }
-    mkdir(tmp, 0755);
-}
-
-static int br_isdir(const char* p)
-{
-    struct stat st;
-    return (p && stat(p, &st) == 0 && S_ISDIR(st.st_mode)) ? 1 : 0;
-}
-
-static int br_isfile(const char* p)
-{
-    struct stat st;
-    return (p && stat(p, &st) == 0 && S_ISREG(st.st_mode)) ? 1 : 0;
-}
+/* mkdir -p / isdir / isfile / rmtree: implementazione UNICA in gmb_fsutil.c. */
+#define br_mkdir_p(path) gmb_fs_mkdir_p(path)
+#define br_isdir(p)      gmb_fs_isdir(p)
+#define br_isfile(p)     gmb_fs_isfile(p)
 
 static int br_ieq(const char* a, const char* b)
 {
@@ -611,21 +591,7 @@ static int br_validate(const char* dir, const char* name, char* err, size_t errc
 }
 
 /* Rimozione ricorsiva LIMITATA alla cache (mai vendor/exe). */
-static void br_rmtree(const char* path)
-{
-    DIR* d = opendir(path);
-    if (!d) { remove(path); return; }
-    struct dirent* e;
-    while ((e = readdir(d)) != NULL) {
-        if (strcmp(e->d_name, ".") == 0 || strcmp(e->d_name, "..") == 0) continue;
-        char p[BR_PATH];
-        snprintf(p, sizeof p, "%s/%s", path, e->d_name);
-        if (br_isdir(p)) br_rmtree(p);
-        else remove(p);
-    }
-    closedir(d);
-    rmdir(path);
-}
+#define br_rmtree(path) gmb_fs_rmtree(path)
 
 int gmb_brain_remove(const char* name, const char* version)
 {

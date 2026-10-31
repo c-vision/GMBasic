@@ -1,0 +1,72 @@
+{
+  "version": "1.0.0",
+  "comment": "Fixture di mercato per i sample e i test (markets, option_chains, rates, darkpool). NON stanno in git: erano ~182 MB versionati in shared/samples/Fixtures/, ora sono asset PUBBLICI della release fixtures-v1 di c-vision/GMBasicModules. Si scaricano on demand con `gmb fixtures pull` (motore gmb_fetch: resume + sha256) in shared/samples/Fixtures/<nome>/, che è il percorso che il codice legge sempre. Un checkout di sviluppo può tenerli su un disco esterno (symlink): se il percorso risolve a una cartella, il pull NON tocca nulla. Le fixture PICCOLE (parquet/csv di test, modelli, tokenizer) restano versionate in shared/samples/Fixtures/: questa eccezione vale solo per i 4 feed grandi (AGENTS §11.4).",
+  "schema": {
+    "fixtures[].name": "nome della cartella in shared/samples/Fixtures/",
+    "fixtures[].description": "testo libero",
+    "fixtures[].latest": "versione usata da `gmb fixtures pull` senza --version",
+    "fixtures[].versions[].version": "versione",
+    "fixtures[].versions[].source": "url (pubblico, nessun token)",
+    "fixtures[].versions[].url": "URL dell'archivio .zip (le entry sono il CONTENUTO della cartella)",
+    "fixtures[].versions[].sha256": "sha256 dell'archivio (verificato dal motore PRIMA di estrarre)",
+    "fixtures[].versions[].size": "dimensione in byte (controllo dello spazio prima del download)"
+  },
+  "fixtures": [
+    {
+      "name": "markets",
+      "description": "Serie storiche di mercato (indici e azioni, CSV) usate dai sample di finanza e dai test di indicatori.",
+      "latest": "1.0.0",
+      "versions": [
+        {
+          "version": "1.0.0",
+          "source": "url",
+          "url": "https://github.com/c-vision/GMBasicModules/releases/download/fixtures-v1/markets-1.0.0.zip",
+          "sha256": "f6a7b57ab3fd29565379d4a46e63678c358cf6121dfaec90c33066c3f86ac09f",
+          "size": 7988978
+        }
+      ]
+    },
+    {
+      "name": "option_chains",
+      "description": "Catene di opzioni (snapshot e serie) per i sample di option pricing e i test di superficie di volatilità.",
+      "latest": "1.0.0",
+      "versions": [
+        {
+          "version": "1.0.0",
+          "source": "url",
+          "url": "https://github.com/c-vision/GMBasicModules/releases/download/fixtures-v1/option_chains-1.0.0.zip",
+          "sha256": "1bb8a52572bab5fc39ba58accaeb31b151cd6704c5b74bf74074dea42f983b38",
+          "size": 39493019
+        }
+      ]
+    },
+    {
+      "name": "rates",
+      "description": "Curve dei tassi e serie di riferimento per i sample di finanza.",
+      "latest": "1.0.0",
+      "versions": [
+        {
+          "version": "1.0.0",
+          "source": "url",
+          "url": "https://github.com/c-vision/GMBasicModules/releases/download/fixtures-v1/rates-1.0.0.zip",
+          "sha256": "8ee6fc7253d6426768bf0ab08530c13a6a0e55379d815b3895efb0c827cf6c1a",
+          "size": 752379
+        }
+      ]
+    },
+    {
+      "name": "darkpool",
+      "description": "Dati di dark pool per i sample di analisi degli scambi.",
+      "latest": "1.0.0",
+      "versions": [
+        {
+          "version": "1.0.0",
+          "source": "url",
+          "url": "https://github.com/c-vision/GMBasicModules/releases/download/fixtures-v1/darkpool-1.0.0.zip",
+          "sha256": "681e83677062fc72eae4480817a645279e043720e26bbbb76167fea6327e5218",
+          "size": 72113
+        }
+      ]
+    }
+  ]
+}
