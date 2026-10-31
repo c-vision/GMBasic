@@ -2330,6 +2330,9 @@ int gmb_plugins_scan(char names[][64], int max);
  * di un plugin noto. Usato da AI AGENT ASK per il tool-loop "solo quando serve". */
 int llmengine_plugin_match_trigger(const char* prompt);
 char* llmengine_plugin_call(const char* name, const char* arg);
+/* Prima procedura dichiarata dal plugin (`PLUGIN.md` → `procedures[0]`), heap, "" se assente.
+ * Usata dal dispatcher generato di C99Native per `AI.PLUGIN.CALL` (non c'è VM nel binario). */
+char* gmb_plugin_procedure(const char* name);
 /* Hook di invocazione reale della procedura del plugin (installato dal VM/C, che ha
  * vm+task e risolve il nome con gmb_vm_proc_addr). NULL = risultato dichiarativo. */
 typedef char* (*llmengine_plugin_call_fn)(const char* name, const char* arg, void* ctx);

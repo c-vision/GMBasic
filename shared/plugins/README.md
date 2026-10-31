@@ -35,10 +35,17 @@ questo `samples/Community/Browser/BrowserPluginTest.bas` e `samples/Community/Ai
 
   Il compilatore copia solo i dichiarati in `<exe>/plugins/<nome>` (vedi
   [ProgramBundle](../../GMBasicSharp/common/CommonLib/ProgramBundle.cs)).
-- **C99Native**: `AI.PLUGIN.CALL` **non** esegue la procedura del programma (nessuna VM BASIC nel
-  binario): risponde con la stringa dichiarativa `"PLUGIN nome(arg) OK"`. Divergenza
-  architetturale nota e tracciata in `samples/Community/Ai/AiPlugins.bas`; su IL/PCode/VM-C la
-  procedura viene invocata davvero.
+- **`AI.PLUGIN.CALL` su tutte le gambe** (2026-10-31): la procedura del programma viene
+  invocata su IL, PCodeVM, VM/C **e C99Native**. Su C99Native non c'è una VM BASIC nel
+  binario, quindi il transpiler emette un **dispatcher generato** (`__gmb_plugin_call`) verso
+  le `gmb_user_*` del programma; il nome della procedura arriva da `PLUGIN.md`
+  (`procedures[0]`, runtime C `gmb_plugin_procedure`). Prima rispondeva la stringa
+  dichiarativa `"PLUGIN nome(arg) OK"` senza eseguire nulla.
+- **Limite noto**: primo parametro **numerico**. C#/C99 convertono l'argomento
+  (`"42"` → `42`); VM/C impila l'argomento come stringa e il parametro numerico riceve `0`.
+  Con primo parametro stringa (il caso di tutti i plugin della cartella: `WebFetch`,
+  `BrowserNavigate`, …) le gambe concordano — verificato 4/4 da
+  `shared/minitests/ai/gen_AI_PluginCallExec.bas`.
 
 ## Cosa NON mettere qui
 

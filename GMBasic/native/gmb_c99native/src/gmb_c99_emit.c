@@ -22626,6 +22626,80 @@ static void emit_mcp_executor(ctx_t* c) {
     sb_put(&c->out, "    return 0;\n}\n\n");
 }
 
+/* AI.PLUGIN.CALL su C99Native: il plugin NON porta codice — `PLUGIN.md` dichiara la PROCEDURA
+ * (`procedures[0]`) che deve esistere NEL PROGRAMMA (parità C# `PluginRegistry.Call` →
+ * `CallHandler` → `_basicProcedures`). Senza VM BASIC nel binario il dispatch è una catena di
+ * confronti su funzioni C reali (stesso schema di `emit_mcp_executor`).
+ * Convenzione argomenti (parità C#): il PRIMO argomento va nel PRIMO parametro (C# costruisce
+ * `{"<param0>": arg}` e `InvokeBasicProcedureGpm` mappa per nome); gli altri parametri restano
+ * al default ("" / 0). Se la procedura non esiste nel programma → "" (C#: CallHandler null).
+ * Ritorni non scalari → errore ESPLICITO, mai un risultato silenzioso. */
+static void emit_plugin_call_dispatcher(ctx_t* c) {
+    sb_put(&c->out,
+        "/* AI.PLUGIN.CALL: dispatcher generato verso le procedure del programma. */\n"
+        "static char* __gmb_plugin_call(const char* __plugin, const char* __arg) {\n"
+        "    char* __proc = gmb_plugin_procedure(__plugin);\n"
+        "    if (!__proc || !*__proc) { free(__proc); return strdup(\"\"); }\n"
+        "    char* __out = NULL;\n");
+    for (int i = 0; i < c->nfn; i++) {
+        fn_info_t* fn = &c->fns[i];
+        gmb_stmt_t* s = fn->stmt;
+        if (!s || !s->func_name) continue;
+        if (fn->is_lambda || fn->is_lambda_cap || fn->cls_owner[0] || s->is_generator) continue;
+        const char* rt = fn_ret_ctype(c, fn);
+        int ret_str = strcmp(rt, "gmb_string_t") == 0;
+        int ret_num = strcmp(rt, "gmb_double_t") == 0;
+        sb_put(&c->out, "    if (!__out && strcmp(__proc, \"");
+        sb_ident(&c->out, s->func_name);
+        sb_put(&c->out, "\") == 0) {\n");
+        int bad = 0;
+        if (s->n_params > 0 && ((s->param_is_array && s->param_is_array[0])
+                                || (s->param_byref && s->param_byref[0])
+                                || (s->param_variadic && s->param_variadic[0]))) bad = 1;
+        if (!ret_str && !ret_num) {
+            sb_put(&c->out, "        __out = strdup(\"PLUGIN: la procedura ritorna un tipo non scalare (non invocabile da AI.PLUGIN.CALL)\");\n");
+        } else if (bad) {
+            sb_put(&c->out, "        __out = strdup(\"PLUGIN: primo parametro non supportato (array/byref/variadic)\");\n");
+        } else {
+            for (int k = 0; k < s->n_params; k++) {
+                var_t* pv = vars_find(&fn->locals, s->func_params[k]);
+                int is_str = pv ? (pv->type == TY_STR) : 0;
+                if (k == 0) {
+                    if (is_str)
+                        sb_put(&c->out, "        gmb_string_t __a0 = gmb_string_alloc(__arg ? __arg : \"\");\n");
+                    else
+                        sb_put(&c->out, "        gmb_double_t __a0 = (__arg && *__arg) ? atof(__arg) : 0.0;\n");
+                } else if (is_str) {
+                    sb_printf(&c->out, "        gmb_string_t __a%d = gmb_string_alloc(\"\");\n", k);
+                } else {
+                    sb_printf(&c->out, "        gmb_double_t __a%d = 0.0;\n", k);
+                }
+            }
+            if (ret_str) sb_put(&c->out, "        gmb_string_t __r = gmb_user_");
+            else sb_put(&c->out, "        gmb_double_t __r = gmb_user_");
+            sb_ident(&c->out, s->func_name);
+            sb_put(&c->out, "(");
+            for (int k = 0; k < s->n_params; k++) {
+                if (k) sb_put(&c->out, ", ");
+                sb_printf(&c->out, "__a%d", k);
+            }
+            sb_put(&c->out, ");\n");
+            if (ret_str) {
+                sb_put(&c->out, "        __out = strdup(__r.data ? __r.data : \"\");\n        gmb_string_free(&__r);\n");
+            } else {
+                sb_put(&c->out, "        { gmb_string_t __rs = gmb_double_to_string(__r); __out = strdup(__rs.data ? __rs.data : \"\"); gmb_string_free(&__rs); }\n");
+            }
+            for (int k = 0; k < s->n_params; k++) {
+                var_t* pv = vars_find(&fn->locals, s->func_params[k]);
+                if (pv && pv->type == TY_STR)
+                    sb_printf(&c->out, "        gmb_string_free(&__a%d);\n", k);
+            }
+        }
+        sb_put(&c->out, "    }\n");
+    }
+    sb_put(&c->out, "    free(__proc);\n    return __out ? __out : strdup(\"\");\n}\n\n");
+}
+
 /* GMB_STMT_MCP: AI MCP REGISTER TOOL|AGENT / UNREGISTER TOOL / SERVER ADD|REMOVE|ENABLE|DISABLE
  * → runtime C gmb_mcp_* (parity Parser.Stmt.Mcp.cs). mutex_action = sottocomando, go_args = args. */
 static void st_mcp(ctx_t* c, gmb_stmt_t* s) {
@@ -31185,6 +31259,9 @@ int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
      * definizione è emessa più avanti (le gmb_user_* che invoca devono già esistere). */
     sb_put(&c->out, "static int __gmb_mcp_exec(void* __ctx, const char* __tool, const char* __proc,\n"
                     "                          const char* __args, char** __out, int* __err);\n\n");
+    /* AI.PLUGIN.CALL: dichiarazione anticipata del dispatcher generato (definizione dopo i
+     * corpi funzione, perché invoca le gmb_user_*). */
+    sb_put(&c->out, "static char* __gmb_plugin_call(const char* __plugin, const char* __arg);\n\n");
 
     /* 5. corpi funzione */
     for (int i = 0; i < c->nfn && !c->error[0]; i++)
@@ -31315,6 +31392,7 @@ int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
     /* Executor MCP (tool → procedura) — emesso solo se il programma registra tool o
      * serve MCP, e DOPO i corpi funzione (le gmb_user_* devono essere dichiarate). */
     if (!c->error[0] && c->uses_mcp) emit_mcp_executor(c);
+    if (!c->error[0] && c->uses_plugincall) emit_plugin_call_dispatcher(c);
 
     if (!c->error[0] && c->lib_mode) emit_library_section(c, prog);
     if (!c->error[0] && !c->lib_mode) {

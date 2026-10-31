@@ -13319,17 +13319,16 @@ static char* llmengine_plugin_call_invoke(const char* name, const char* arg, voi
     gmb_vm_t* vm = c ? c->vm : NULL;
     gmb_task_t* task = c ? c->task : NULL;
     if (!vm || !task || !vm->chunk || !name || !*name) return NULL;
-    /* parità PluginRegistry.Call (C#): il plugin deve essere nel REGISTRO (ENABLE)
-     * — dopo DISABLE la CALL risponde "" anche se la procedura esiste nel chunk. */
-    if (!llmengine_plugin_registered(name)) return NULL;
-    char proc[128]; size_t j = 0; int up = 1;
-    for (const char* p = name; *p && j + 1 < sizeof(proc); p++) {
-        char ch = *p;
-        if (ch == '-' || ch == '_' || ch == ' ' || ch == '.') { up = 1; continue; }
-        proc[j++] = up ? (char)(ch >= 'a' && ch <= 'z' ? ch - 32 : ch) : ch;
-        up = 0;
-    }
-    proc[j] = 0;
+    /* parità PluginRegistry.Call (C#): `Get(name)` = registro in-process OPPURE scansione del
+     * disco (PluginIndex.Scan) → NON serve `AI PLUGINS ENABLE`, e la procedura da invocare è
+     * `procedures[0]` di PLUGIN.md, NON il nome del plugin convertito in CamelCase (per
+     * `report` è `ReportGenerate`, non `Report`; per `web-fetch` coincide, ed è per questo che
+     * la vecchia euristica sembrava corretta). Divergenza chiusa 2026-10-31. */
+    char* procname = gmb_plugin_procedure(name);
+    if (!procname || !*procname) { free(procname); return NULL; }
+    char proc[128];
+    snprintf(proc, sizeof(proc), "%s", procname);
+    free(procname);
     int addr = gmb_vm_proc_addr(vm, proc);
     if (addr < 0) return NULL;   /* procedura assente → fallback dichiarativo */
     /* push argomento stringa (schema mcp_push_str: gmb_str_cstr + push_ref + release) */
