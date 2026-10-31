@@ -1,6 +1,6 @@
 [submodule "GMBasic"]
 	path = GMBasic
-	url = ../GMBasic
+	url = ../GMBasicDeprecated
 [submodule "GMBasicSharp"]
 	path = GMBasicSharp
 	url = ../GMBasicSharp
