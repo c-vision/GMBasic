@@ -76,7 +76,7 @@ MCP server process, driver set beyond SQLite, keyring, themes, chords, `dump`/`r
 | Path | Role |
 |---|---|
 | `src/Masume.bas` | entry point (`SUB Main`), mode dispatch, banner, self-check. **Everything the app needs to compile and run is this file.** |
-| `.masume.toml` | example project file (upstream-compatible layout): `[profile.*]` + `[query.*]`, read by the app from the working directory upward |
+| `.masume.toml` | example project file (upstream-compatible layout): `[profile.*]` + `[query.*]` + `[settings]` + `[llm]`, read by the app from the working directory upward |
 | `README.md` | this file |
 | `TODO.md` | complete port backlog + milestones |
 | `bin/` | runtime output (demo database, exports) — generated, gitignored |
@@ -84,6 +84,23 @@ MCP server process, driver set beyond SQLite, keyring, themes, chords, `dump`/`r
 App-local modules (`*.inc`, `NAMESPACE ...`) are added when the single entry file becomes
 unwieldy (see `TODO.md` §M2 "modularization"). **Reusable** modules go to `<repo>/include/` and
 reusable libraries to `<repo>/libs/` — see [`../README.md`](../README.md).
+
+### LLM: il modello si configura nel project file (non nel codice)
+
+L'app usa un LLM (chat + MCP tools) e **non hardcoda il modello**: lo legge da `.masume.toml`,
+sezione `[llm]`, al boot (`LlmActivate` → `AI SET ACTIVE <capability>, <model>`).
+
+```toml
+[llm]
+model = ""                 # alias/provider della capability (es. "ds4mlx"); "" = provider già attivo
+capability = "completion"  # default
+```
+
+- **`model` vuoto** → resta il provider `%CHAT`/`completion` già attivo (default del linguaggio).
+- **alias non registrato** → l'app **fallisce con errore esplicito** (`Provider 'x' is not
+  registered for role 'completion'`), mai un fallback silenzioso a un altro modello.
+- Il valore è mostrato in `MASUME_MODE_STATUS` (`llm model : ...`), così si verifica senza
+  chiamare il modello.
 
 ## How to build and run
 

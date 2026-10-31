@@ -28,9 +28,13 @@ IMPORT AI
 IMPORT CONTROLS
 
 ' --- Application globals (filled by BootPaths / LoadProjectFile) -------------
-DIM g_work AS STRING            ' APPS/Masume/work — all generated files
+DIM g_outDir AS STRING          ' <app>/bin — output della app (binari + artefatti-dati)
 DIM g_projectFile AS STRING     ' path of the .masume.toml found ("" if none)
 DIM g_dbPath AS STRING          ' path of the demo database (profile "demo")
+' LLM: il modello si LEGGE dai settings dell'app (`.masume.toml`, sezione [llm]).
+' Regola (shared/APPS/README): nessuna app hardcoda il modello.
+DIM g_llmModel AS STRING        ' alias/provider %CHAT da attivare ("" = default)
+DIM g_llmCapability AS STRING   ' capability del modello (default "completion")
 
 ' Profiles: index 1..N (0 is unused, like a Clipper work area)
 DIM g_profName(8) AS STRING     ' profile names, in file order
@@ -72,7 +76,13 @@ END SUB
 
 SUB PrintStatus()
     PRINT "project file : "; g_projectFile
-    PRINT "working dir  : "; g_work
+    PRINT "app dir      : "; g_outDir
+    PRINT "llm model    : ";
+    IF LEN(g_llmModel) = 0 THEN
+        PRINT "(default: provider %CHAT attivo)"
+    ELSE
+        PRINT g_llmModel; "  — [llm] model, capability="; LlmCapability()
+    END IF
     PRINT "profiles     : "; g_profileCount
     DIM i AS INTEGER
     FOR i = 1 TO g_profileCount
@@ -347,6 +357,8 @@ SUB ParseProjectFile(path AS STRING)
                         ApplyQuery(MID$(section, dot + 1), key, val)
                     ELSEIF section = "params" THEN
                         ApplyParam(key, val)
+                    ELSEIF section = "llm" THEN
+                        ApplyLlm(key, val)
                     ELSEIF section = "settings" THEN
                         ApplySetting(key, val)
                     END IF
@@ -434,6 +446,34 @@ END SUB
 SUB ApplySetting(key AS STRING, val AS STRING)
     IF STRINGS.UPPER(key) = "MODE" THEN g_cfgMode = STRINGS.UPPER(val)
 END SUB
+
+' [llm] — modello LLM dell'app. REGOLA (shared/APPS/README): un'app che usa un
+' modello LLM lo LEGGE dai propri settings, mai hardcoded. `model` = alias/provider
+' della capability (es. "ds4mlx", "glm45air4bit"); vuoto = si usa il provider già
+' attivo (default del linguaggio). `capability` = nome della capability (default
+' "completion").
+SUB ApplyLlm(key AS STRING, val AS STRING)
+    DIM k AS STRING
+    k = STRINGS.UPPER(key)
+    IF k = "MODEL" THEN g_llmModel = val
+    IF k = "CAPABILITY" THEN g_llmCapability = val
+END SUB
+
+FUNCTION LlmCapability() AS STRING
+    IF LEN(g_llmCapability) > 0 THEN
+        LlmCapability = g_llmCapability
+    ELSE
+        LlmCapability = "completion"
+    END IF
+END FUNCTION
+
+' Applica il modello configurato: `AI SET ACTIVE <capability>, <alias>`.
+' Se [llm] model è vuoto non fa nulla (resta il default). Se l'alias NON è
+' registrato l'errore è ESPLICITO (mai un fallback silenzioso a un altro modello).
+SUB LlmActivate()
+    IF LEN(g_llmModel) = 0 THEN EXIT SUB
+    AI SET ACTIVE LlmCapability(), g_llmModel
+END SUB
 ' ============================================================================
 ' Boot: paths, active connection
 ' ============================================================================
@@ -446,9 +486,9 @@ SUB BootPaths()
     IF LEN(srcDir) = 0 THEN srcDir = IO.CWD()
     appDir = IO.PARENTDIR(RTrimSlash(srcDir))
     IF LEN(appDir) = 0 THEN appDir = srcDir
-    g_work = RTrimSlash(appDir) + "/work"
-    IF NOT IO.DIREXISTS(g_work) THEN MKDIR g_work
-    g_dbPath = g_work + "/masume_demo.sqlite"
+    g_outDir = RTrimSlash(appDir) + "/bin"
+    IF NOT IO.DIREXISTS(g_outDir) THEN MKDIR g_outDir
+    g_dbPath = g_outDir + "/masume_demo.sqlite"
 END SUB
 
 ' Opens the active profile. M1: profile "demo" (SQLite, self-contained). Its
@@ -659,6 +699,7 @@ SUB Main()
     BootPaths()
     PrintBanner()
     LoadProjectFile()
+    LlmActivate()          ' modello LLM dai settings dell'app ([llm] model)
     ResolveActive()
 
     ' No symbol passed? Then the project file decides ([settings] mode).
