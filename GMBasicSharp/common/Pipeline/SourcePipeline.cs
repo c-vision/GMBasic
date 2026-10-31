@@ -61,13 +61,20 @@ public static class SourcePipeline
         var root = string.IsNullOrWhiteSpace(rootDirectory)
             ? Directory.GetCurrentDirectory()
             : Path.GetFullPath(rootDirectory);
-        var entryPath = Path.Combine(root, fileName);
+        // `fileName` può essere un PERCORSO ASSOLUTO (runner/harness passano il file così):
+        // Path.Combine(root, abs) restituisce abs, e la discovery deve partire dalla cartella
+        // della ENTRY, non dalla CWD — altrimenti con CWD = repo si scandisce TUTTO il monorepo
+        // e si caricano .inc omonimi di altre cartelle (bug: due Mezzi.inc → simbolo duplicato).
+        var entryPath = Path.IsPathRooted(fileName)
+            ? Path.GetFullPath(fileName)
+            : Path.Combine(root, fileName);
+        var discoveryRoot = Path.GetDirectoryName(entryPath) ?? root;
 
         settings ??= CommonLib.SettingsLoader.Load(entryPath);
         if (settings.DefaultNamespaces.Count == 0)
             settings = settings with { DefaultNamespaces = defaultNamespaces.ToList() };
 
-        var program = new BasicProgram(settings, null, root);
+        var program = new BasicProgram(settings, null, discoveryRoot);
         var preprocessed = TokenizeFile(entryPath, sourceText, program);
         program.SourceMap = preprocessed.SourceMap;
         program.PreprocessedFiles[entryPath] = preprocessed;
@@ -77,7 +84,7 @@ public static class SourcePipeline
 
         // Grafo degli IMPORT: aggiunge al programma i moduli delle librerie BASIC raggiungibili
         // (stessa discovery dell'Orchestrator — Pipeline/ModuleDiscovery.cs).
-        ExpandImportedModules(entryPath, root, settings, program);
+        ExpandImportedModules(entryPath, discoveryRoot, settings, program);
 
         program.FileIdToPathMap = program.GetFileIdMap().ToImmutableDictionary(kvp => kvp.Value, kvp => kvp.Key);
 
