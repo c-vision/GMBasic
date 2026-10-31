@@ -345,7 +345,7 @@ gmb_stmt_t* gmb_p_parse_domain_stmt_ov(gmb_parser_t* p, int line, const char* ov
          * `DBF CREATE dir + "/x.dbf"`), non una lista di termini: si riavvolge e si parsa
          * l'espressione intera. Senza questo, go_args diventava [dir, "/x.dbf"] e l'emitter
          * usava solo il PRIMO termine → `gmb_db_dbf_create(<cartella>, …)` (misurato su
-         * samples/Commercial/Databases/DbDbfUncoveredCoverage.bas: create/open sulla cartella
+         * samples/Community/Databases/DbDbfUncoveredCoverage.bas: create/open sulla cartella
          * → lastrec=0 e DBF.LOOKUP vuoto sulla gamba C99Native, mentre IL dava 3 e 'N2').
          * Il riavvolgimento scatta SOLO con un operatore davanti, quindi le clausole
          * (ALIAS/FROM TYPE/INTO/…) restano termini singoli come prima. */

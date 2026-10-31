@@ -438,7 +438,7 @@ int gmb_db_dbf_flush_durability(int64_t h)
 #endif
 
 /* DBF SET EXCLUSIVE: flock esclusivo (LOCK_EX) sul file quando on, rilascio quando off.
- * Parita' del SEMANTICO Clipper 'EXCLUSIVE' (la C# Commercial e' un no-op commentato). */
+ * Parita' del SEMANTICO Clipper 'EXCLUSIVE' (la variante C# e' un no-op commentato). */
 int gmb_db_dbf_set_exclusive(int64_t h, int on)
 {
     gmb_handle_t* hh = gmb_db_get(h, GMB_H_DBF);

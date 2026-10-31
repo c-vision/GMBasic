@@ -1,7 +1,7 @@
 /* FILE: native/gmb_runtime_c/src/gmb_sql.c
  * SQL community: wrapper sqlite3 (SQL OPEN/EXEC/QUERY). Spec: common/Databases/Rdd/SqlDriver.cs */
 #include "gmb_runtime.h"
-#include "gmb_community_db.h"
+#include "gmb_rdd_db.h"
 #include <sqlite3.h>
 #include <stdio.h>
 #include <stdlib.h>

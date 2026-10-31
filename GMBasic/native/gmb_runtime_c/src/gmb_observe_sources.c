@@ -11,7 +11,7 @@
  */
 #include "gmb_runtime.h"
 #include "gmb_observation.h"
-#include "gmb_community_db.h"
+#include "gmb_rdd_db.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -24581,7 +24581,7 @@ static void emit_sql_params_array(ctx_t* c, gmb_expr_t** a, int from, int n) {
     sb_printf(&c->out, " }, %d", n - from);
 }
 /* ── dominio SQL: statement `SQL OPEN/CLOSE/EXEC/BEGIN/COMMIT/ROLLBACK` → gmb_sql_* (sqlite,
- * runtime gmb_community_db.h, condiviso con VM/C). go_args dal domain-parser; OPEN è
+ * runtime gmb_rdd_db.h, condiviso con VM/C). go_args dal domain-parser; OPEN è
  * `SQL OPEN <path> [ALIAS|AS] <alias>` → go_args=[path, (ALIAS/AS var), alias]. */
 static void emit_sql_domain(ctx_t* c, gmb_stmt_t* s) {
     gmb_expr_t** a = s->go_args; int n = s->n_go_args;
@@ -26148,7 +26148,7 @@ static void emit_dbf_domain(ctx_t* c, gmb_stmt_t* s) {
             }
         /* APPEND RECORD <var>: oltre al blank, i VALORI dei campi del record devono finire nella
          * tabella. Prima si emetteva SOLO append_blank: i record restavano con i campi vuoti, e
-         * `DBF.LOOKUP` non trovava nulla (misurato su samples/Commercial/Databases/
+         * `DBF.LOOKUP` non trovava nulla (misurato su samples/Community/Databases/
          * DbDbfUncoveredCoverage.bas: IL 'N2', C99Native ''). */
         for (i = 0; i < na; i++)
         {

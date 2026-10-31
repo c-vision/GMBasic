@@ -416,7 +416,7 @@ int gmb_db_ledger_import(int64_t h, const char* csv_path, const char* mapping_ru
     int imported = 0;
     int rc;
     /* Parità col servizio C#: LedgerImport ritorna il NUMERO di righe importate e 0 su errore
-     * (DatabaseService.Commercial.LedgerImport: `try { ... } catch { return 0; }`). Un mapping
+     * (DatabaseService.LedgerImport: `try { ... } catch { return 0; }`). Un mapping
      * senza date/account/amount è un ArgumentException in C#, cioè 0 — non un codice d'errore.
      * La diagnostica resta disponibile via gmb_db_set_err (§0bis: mai un silenzio senza traccia). */
     if (!hh || !hh->u.ledger.ctx) { gmb_db_set_err("ledger: handle non valido"); return 0; }

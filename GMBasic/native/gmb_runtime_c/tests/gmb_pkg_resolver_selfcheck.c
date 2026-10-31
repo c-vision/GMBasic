@@ -39,7 +39,7 @@ int main(void)
 
     /* transitivo ^1.0.0 → p2 1.1.0 */
     gmb_pkg_resolve_ctx_t* c = gmb_pkg_resolve_ctx_new();
-    gmb_pkg_resolve_ctx_set(c, cache, "", "il", "osx-arm64", "Community", 0);
+    gmb_pkg_resolve_ctx_set(c, cache, "", "il", "osx-arm64", 0);
     gmb_pkg_resolve_ctx_add_req(c, "p1", "^1.0.0");
     gmb_pkg_resolve_result_t* r = gmb_pkg_resolve(c);
     CHECK(gmb_pkg_result_error(r) == NULL);
@@ -52,7 +52,7 @@ int main(void)
 
     /* override p2 → 2.0.0 */
     c = gmb_pkg_resolve_ctx_new();
-    gmb_pkg_resolve_ctx_set(c, cache, "", "il", "osx-arm64", "Community", 0);
+    gmb_pkg_resolve_ctx_set(c, cache, "", "il", "osx-arm64", 0);
     gmb_pkg_resolve_ctx_add_req(c, "p1", "^1.0.0");
     gmb_pkg_resolve_ctx_add_override(c, "p2", "2.0.0");
     r = gmb_pkg_resolve(c);
@@ -63,7 +63,7 @@ int main(void)
 
     /* locked p2 = 1.0.0 (vince sul vincolo) */
     c = gmb_pkg_resolve_ctx_new();
-    gmb_pkg_resolve_ctx_set(c, cache, "", "il", "osx-arm64", "Community", 0);
+    gmb_pkg_resolve_ctx_set(c, cache, "", "il", "osx-arm64", 0);
     gmb_pkg_resolve_ctx_add_req(c, "p1", "^1.0.0");
     gmb_pkg_resolve_ctx_add_locked(c, "p2", "1.0.0");
     r = gmb_pkg_resolve(c);
@@ -74,7 +74,7 @@ int main(void)
 
     /* locale: liba dalla dir */
     c = gmb_pkg_resolve_ctx_new();
-    gmb_pkg_resolve_ctx_set(c, cache, "", "il", "osx-arm64", "Community", 0);
+    gmb_pkg_resolve_ctx_set(c, cache, "", "il", "osx-arm64", 0);
     gmb_pkg_resolve_ctx_add_req(c, "liba", "^1.0.0");
     gmb_pkg_resolve_ctx_add_local(c, "liba", "/tmp/gmb_res/local/liba");
     r = gmb_pkg_resolve(c);
@@ -87,7 +87,7 @@ int main(void)
 
     /* vincolo impossibile → errore */
     c = gmb_pkg_resolve_ctx_new();
-    gmb_pkg_resolve_ctx_set(c, cache, "", "il", "osx-arm64", "Community", 0);
+    gmb_pkg_resolve_ctx_set(c, cache, "", "il", "osx-arm64", 0);
     gmb_pkg_resolve_ctx_add_req(c, "p1", "^9.0.0");
     r = gmb_pkg_resolve(c);
     CHECK(gmb_pkg_result_error(r) != NULL);

@@ -24,7 +24,7 @@
 #ifndef GMB_RDD_ROWBUF_H
 #define GMB_RDD_ROWBUF_H
 
-#include "gmb_community_db.h"
+#include "gmb_rdd_db.h"
 
 #ifdef __cplusplus
 extern "C" {

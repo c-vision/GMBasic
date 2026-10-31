@@ -19,7 +19,7 @@
 #include "gmb_ai_server.h"
 #include "gmb_finetune.h"
 #include "gmb_distill.h"   /* Stream D: AI DISTILL (BUILD) */
-#include "gmb_community_db.h"
+#include "gmb_rdd_db.h"
 #include "gmb_matrix.h"
 #include "gmb_compress.h"
 

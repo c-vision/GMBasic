@@ -1,13 +1,13 @@
 /* ============================================================================
- * gmb_community_db.h — RDD / SQL / VectorDB (edizione Community)
- * File: native/gmb_runtime_c/include/gmb_community_db.h
+ * gmb_rdd_db.h — RDD / SQL / VectorDB
+ * File: native/gmb_runtime_c/include/gmb_rdd_db.h
  *
- * NON è gmb_db.h (Commercial: DBF/ISAM/SPEED/LEDGER). Questi moduli vivono in
+ * NON e' gmb_db.h (database su file: DBF/ISAM/SPEED/LEDGER). Questi moduli vivono in
  * libgmb_runtime e sono sempre linkati da C99 e VM/C. SQL e VectorDB usano
  * SQLite3 di sistema; RDD ARRAY/CSV sono in-process.
  * ============================================================================ */
-#ifndef GMB_COMMUNITY_DB_H
-#define GMB_COMMUNITY_DB_H
+#ifndef GMB_RDD_DB_H
+#define GMB_RDD_DB_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -120,13 +120,13 @@ char*    gmb_vecdb_list_collections(int64_t h); /* malloc JSON array di nomi */
 int      gmb_vecdb_selfcheck(void);
 int      gmb_rdd_selfcheck(void);
 int      gmb_sql_selfcheck(void);
-int      gmb_community_db_selfcheck(void);
+int      gmb_rdd_db_selfcheck(void);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* GMB_COMMUNITY_DB_H */
+#endif /* GMB_RDD_DB_H */
 
 /* RDD campo-livello aggiuntive (parità IlRuntime.Rdd*): oggi/ctod/dtoc, fieldstate,
  * revert/update, lock. */

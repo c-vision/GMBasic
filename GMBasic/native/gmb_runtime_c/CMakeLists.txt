@@ -868,9 +868,9 @@ target_link_libraries(gmb_fixtures_cli PRIVATE gmb_runtime)
 target_include_directories(gmb_fixtures_cli PRIVATE include)
 set_target_properties(gmb_fixtures_cli PROPERTIES OUTPUT_NAME gmb_fixtures)
 
-add_executable(gmb_community_db_selfcheck tests/community_db_selfcheck.c)
-target_link_libraries(gmb_community_db_selfcheck PRIVATE gmb_runtime)
-target_include_directories(gmb_community_db_selfcheck PRIVATE include)
+add_executable(gmb_rdd_db_selfcheck tests/rdd_db_selfcheck.c)
+target_link_libraries(gmb_rdd_db_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_rdd_db_selfcheck PRIVATE include)
 
 add_executable(gmb_grep_selfcheck tests/gmb_grep_selfcheck.c)
 target_link_libraries(gmb_grep_selfcheck PRIVATE gmb_runtime)
