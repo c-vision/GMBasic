@@ -1,7 +1,8 @@
 #!/bin/zsh
-# test_minitests_parity — esecuzione MIRATA della parity MiniTests (4 gambe: IL, PCode, VM-C,
-# C99Native) nel monorepo. Le gambe sono SEMPRE 4: il backend C# C99 non esiste piu'.
-# Le prime 3 girano nell'harness xUnit, la 4a nel runner nativo (tools/sh/test_minitests_c99native).
+# test_minitests_parity — esecuzione MIRATA dei MiniTest su 4 gambe (IL, PCode, VM-C, C99Native).
+# ORDINE E RUOLI: prima la gamba NATIVA (C99Native, runner nativo) = RIFERIMENTO — il
+# compilatore principale del monorepo è quello nativo; poi le tre gambe gestite (IL, PCode,
+# VM-C, harness xUnit) = verifica di PARITÀ. Il backend C# C99 non esiste più.
 # Uso: tools/sh/test_minitests_parity.sh <sottostringa> [<altra> ...] | --all | --interactive [filtri]
 # I filtri sono una LISTA (match ANY) su TUTTE e 4 le gambe: gli argomenti vengono uniti con
 # virgola in GMB_MINI_ONLY e sia l'xUnit sia il runner nativo la leggono come lista. Un filtro
@@ -78,16 +79,18 @@ else
   echo "attenzione: $BROKER_SH assente — i MiniTest tcp non hanno il loro broker" >&2
 fi
 
+# --- gamba NATIVA (C99Native): è il RIFERIMENTO — il compilatore principale del monorepo è
+# --- quello nativo. Le gambe IL/PCode/VM-C girano dopo, come verifica di PARITÀ.
+if [ -n "${GMB_MINI_ONLY:-}" ]; then
+  echo "gamba NATIVA (riferimento): C99Native — poi parità su IL + PCode + VM-C (xUnit)"
+  "$WS/tools/sh/test_minitests_c99native"
+else
+  echo "gamba NATIVA (riferimento): C99Native (suite intera) — poi parità su IL + PCode + VM-C"
+  ( unset GMB_MINI_ONLY; "$WS/tools/sh/test_minitests_c99native" )
+fi
+
+# --- parità: le tre gambe gestite (IL, PCode, VM-C) sullo stesso filtro ---
 dotnet test "$ROOT/tests/GMBASIC.IlBackend.Tests" \
   -p:GmbEdition=Commercial \
   --filter "FullyQualifiedName~MiniTests_IL_PCode_Parity" \
   $flags
-
-# --- 4a gamba: C99Native (runner nativo) — SEMPRE, stesso filtro (o suite intera con --all) --
-if [ -n "${GMB_MINI_ONLY:-}" ]; then
-  echo "gambe: IL + PCode + VM-C (xUnit) + C99Native (runner nativo)  [4/4]"
-  "$WS/tools/sh/test_minitests_c99native"
-else
-  echo "gambe: IL + PCode + VM-C (xUnit) + C99Native (runner nativo, suite intera)  [4/4]"
-  ( unset GMB_MINI_ONLY; "$WS/tools/sh/test_minitests_c99native" )
-fi
