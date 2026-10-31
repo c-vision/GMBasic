@@ -72,3 +72,17 @@ GMBasic/config/*PROMPT.md
 GMBasic/config/ai.json
 GMBasic/config/brains.json
 GMBasic/config/skills-index.json
+
+# ALTRO STATO UTENTE in <configDir> (2026-10-31): registrazioni fatte a runtime, non default.
+# `mcp.json` (server MCP) ha i suoi default nel codice (`McpMarketplace.cs` = 6 server noti):
+# il file e' solo cio' che l'utente ha registrato. `ide.settings.json` sono le preferenze
+# dell'IDE. `support.agent.json` e le squadre in `recursivemas/` sono artefatti di sample/test
+# (AgentBasic.bas, RecursiveMasExtensionsTests). Nessuno di questi deve stare in git:
+# contenevano residui di test (un server MCP che puntava a
+# /var/folders/.../gmb_mcp_pool_test.py) e rendevano il comportamento dipendente dalla
+# macchina. ECCEZIONI versionate (seed deterministici, nessun percorso assoluto):
+# `connectors.json` e `providers.json` — vedi GMBasic/config/README.md.
+GMBasic/config/mcp.json
+GMBasic/config/ide.settings.json
+GMBasic/config/support.agent.json
+GMBasic/config/recursivemas/
