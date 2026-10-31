@@ -11,11 +11,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../common/StdLib/StdLib.csproj" />
-    <ProjectReference Include="../../common/Compiler/Compiler.csproj" />
-    <ProjectReference Include="../../common/IlBackendRuntime/IlBackendRuntime.csproj" />
-    <ProjectReference Include="../...csproj" />
-    <ProjectReference Include="../../common/BackendSupport/BackendSupport.csproj" />
+    <ProjectReference Include="../../GMBasicSharp/common/StdLib/StdLib.csproj" />
+    <ProjectReference Include="../../GMBasicSharp/common/Compiler/Compiler.csproj" />
+    <ProjectReference Include="../../GMBasicSharp/common/IlBackendRuntime/IlBackendRuntime.csproj" />
+    <ProjectReference Include="../../GMBasicSharp/common/BackendSupport/BackendSupport.csproj" />
   </ItemGroup>
 
 </Project>
