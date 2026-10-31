@@ -472,6 +472,35 @@ static void mini_tags(const char* path, MiniTags* t) {
 
 /* Copia in `out` fino a `max` righe di `text` che contengono "error:" (solo_errori)
  * oppure non vuote, unite da '\n'. Serve sia a `cc` sia al driver. */
+static char* replace_all(const char* text, const char* from, const char* to);
+
+/* Toglie il prefisso "<root>/" da un testo: i dettagli di DRIVER-FAIL/CC-FAIL citano il path
+ * assoluto del MiniTest, e il baseline e' VERSIONATO (deve essere identico su ogni macchina). */
+static char* strip_root_prefix(const char* text, const char* root) {
+    if (!text) return NULL;
+    char* out = NULL;
+    if (root && *root) {
+        char pat[CLI_PATH + 2];
+        snprintf(pat, sizeof pat, "%s/", root);
+        out = replace_all(text, pat, "");
+    }
+    /* Anche la HOME va normalizzata: i messaggi di REQUIRE citano la cache dei pacchetti
+     * (~/.gmb/packages/...), che su un'altra macchina avrebbe un altro prefisso. Qui HOME serve
+     * solo a RENDERE LEGGIBILE un messaggio, non a decidere un percorso. */
+    {
+        const char* home = getenv("HOME");
+        if (home && *home) {
+            char hp[CLI_PATH + 2];
+            snprintf(hp, sizeof hp, "%s/", home);
+            char* src = out ? out : (char*)text;
+            char* next = replace_all(src, hp, "~/");
+            if (out) free(out);
+            out = next;
+        }
+    }
+    return out;
+}
+
 static void collect_lines(const char* text, int only_errors, int max, char* out, size_t cap) {
     out[0] = 0;
     size_t w = 0;
@@ -644,7 +673,9 @@ static void mini_display_path(const char* abs, const char* root, const char* ins
     }
     size_t lr = strlen(root);
     if (path_under(abs, root) && abs[lr] == '/') {
-        snprintf(out, cap, "%s/%s", root, abs + lr + 1);
+        /* RELATIVO alla radice dei MiniTest: il baseline e' versionato e deve essere identico
+         * su ogni macchina (prima conteneva /Users/<nome>/..., quindi non era portabile). */
+        snprintf(out, cap, "%s", abs + lr + 1);
         return;
     }
     snprintf(out, cap, "%s", abs);
@@ -744,7 +775,11 @@ static int run_minitests(const Options* o) {
             drv_stage = 1;
             int crashed = rc >= 128;
             if (crashed) crash++;
-            collect_lines(log ? log : "", 0, 2, detail, sizeof detail);
+            {
+                char* nolog = strip_root_prefix(log ? log : "", root);
+                collect_lines(nolog ? nolog : (log ? log : ""), 0, 2, detail, sizeof detail);
+                free(nolog);
+            }
             fprintf(stderr, "DRIVER-FAIL %s (rc=%d%s)%s%s\n", disp, rc,
                     crashed ? ", crash" : "", detail[0] ? ": " : "", detail);
         } else {
@@ -763,9 +798,11 @@ static int run_minitests(const Options* o) {
                  * temporanea diversa a ogni run: senza normalizzarlo il baseline cambierebbe
                  * a ogni `--update` e nessuno potrebbe leggere il dettaglio dopo. */
                 char* shown = replace_all(log, cpath, "<out.c>");
-                const char* txt = shown ? shown : (log ? log : "");
+                char* noroot = strip_root_prefix(shown ? shown : (log ? log : ""), root);
+                const char* txt = noroot ? noroot : (shown ? shown : (log ? log : ""));
                 errors = count_errors(txt);
                 collect_lines(txt, 1, 3, detail, sizeof detail);
+                free(noroot);
                 free(shown);
                 fprintf(stderr, "=== CC-FAIL %s (%d error%s) ===\n", disp, errors,
                         errors == 1 ? "e" : "i");
@@ -865,7 +902,7 @@ static int run_minitests(const Options* o) {
 
     if (o->json) {
         printf("{\n  \"command\": \"minitests\",\n  \"root\": ");
-        json_str(stdout, root);
+        json_str(stdout, ".");   /* relativo alla radice: nessun path assoluto nel baseline */
         printf(",\n  \"total\": %d,\n  \"run\": %d,\n  \"skipped_interactive\": %d,"
                "\n  \"skipped_heavy\": %d,\n  \"pass\": %d,\n  \"cc_fail\": %d,"
                "\n  \"driver_fail\": %d,\n  \"driver_crash\": %d,",

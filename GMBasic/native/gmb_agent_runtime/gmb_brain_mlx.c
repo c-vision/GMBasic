@@ -136,10 +136,17 @@ static void* try_load(const char* name) {
     if (env && *env) { snprintf(buf, sizeof(buf), "%s/%s", env, name); h = dlopen(buf, RTLD_NOW | RTLD_LOCAL); if (h) return h; }
     const char* home = getenv("GMBASIC_HOME");
     if (home && *home) { snprintf(buf, sizeof(buf), "%s/Resources/libs/osx-arm64/%s", home, name); h = dlopen(buf, RTLD_NOW | RTLD_LOCAL); if (h) return h; }
-    /* fallback: repo GMBasic accanto (da cwd o env assoluto) */
-    snprintf(buf, sizeof(buf), "/Users/gaetano/Documents/Projects/GMBasic/Resources/libs/osx-arm64/%s", name);
-    h = dlopen(buf, RTLD_NOW | RTLD_LOCAL);
-    if (!h) { snprintf(buf, sizeof(buf), "/Users/gaetano/Documents/Projects/LLMEnv/LLMEngine/mlx/build-gmbasic/%s", name); h = dlopen(buf, RTLD_NOW | RTLD_LOCAL); }
+    /* fallback CANONICO: la CACHE delle librerie (la stessa che usa il loader FFI),
+     * ~/.gmbasic/libs/<rid>/ — nessun path personale, funziona su qualunque macchina. */
+    {
+        char cache[1024], rid[64];
+        gmb_paths_libs_cache_dir(cache, sizeof cache);
+        snprintf(rid, sizeof rid, "%s", gmb_libs_rid());
+        if (cache[0] && rid[0]) {
+            snprintf(buf, sizeof(buf), "%s/%s/%s", cache, rid, name);
+            h = dlopen(buf, RTLD_NOW | RTLD_LOCAL);
+        }
+    }
     return h;
 }
 

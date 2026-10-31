@@ -157,6 +157,27 @@ static int test_graphics_image_put_ops(void){
     gmb_gfx_shutdown();
     return 0;
 }
+/* Font per il test TTF: passato da argv[1] oppure cercato in percorsi RELATIVI al checkout
+ * (nessun path personale). Se non esiste, il test TTF viene saltato. */
+static const char* g_font_path = NULL;
+static char g_font_buf[512];
+
+static int find_font(void) {
+    static const char* cands[] = {
+        "Resources/font.ttf", "../Resources/font.ttf", "../../Resources/font.ttf",
+        "../../../Resources/font.ttf", "../../../../Resources/font.ttf", NULL
+    };
+    if (g_font_path) {
+        FILE* f = fopen(g_font_path, "rb");
+        if (f) { fclose(f); return 1; }
+    }
+    for (int i = 0; cands[i]; i++) {
+        FILE* f = fopen(cands[i], "rb");
+        if (f) { fclose(f); snprintf(g_font_buf, sizeof g_font_buf, "%s", cands[i]); g_font_path = g_font_buf; return 1; }
+    }
+    return 0;
+}
+
 static int test_graphics_ttf(void){
     printf("TEST Graphics TTF... ");
     gmb_gfx_init();
@@ -168,7 +189,9 @@ static int test_graphics_ttf(void){
     for(int y=0;y<20;y++) for(int x=0;x<20;x++) if((gmb_gfx_point(x,y)&0xFFFFFF)!=0) cnt_no_font++;
     if(cnt_no_font!=0){ printf("FAIL no-font should be 0 got %d\n", cnt_no_font); return 1; }
     // Con font TTF valido
-    const char* font="/Users/gaetano/Documents/Projects/GMBasic/Resources/font.ttf";
+    /* Font: percorso relativo (nessun path personale); se assente, salto la parte TTF. */
+    if (!find_font()) { printf("SKIP (font.ttf non trovato in percorsi relativi)\n"); gmb_gfx_shutdown(); return 0; }
+    const char* font = g_font_path;
     gmb_gfx_font(font, 12);
     int w = gmb_gfx_text_width("ABC");
     int h = gmb_gfx_text_height();
@@ -1228,7 +1251,8 @@ static int test_file_extra(void){
     gmb_list_free(&all); gmb_list_free(&txt);
     return 0;
 }
-int main(void){
+int main(int argc, char** argv){
+    if (argc > 1 && argv[1] && *argv[1]) g_font_path = argv[1];
     int fails=0;
     fails+=test_array_chunk();
     fails+=test_array_zip();

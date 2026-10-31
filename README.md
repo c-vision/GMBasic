@@ -564,3 +564,20 @@ released under **Apache-2.0**, and so is the engine code GMBasic consumes from i
 MLX↔GGUF conversion) lives in [`GMBasic/gmbllm/`](GMBasic/gmbllm/README.md) under the **PUL**
 license — the dependency is one-way (`gmbllm` → LLMEnv), see
 [LLM engine](#llm-engine--the-llmenv-sibling-repository).
+
+### What publishing this repository means
+
+- **It is not open source, by design.** PUL grants personal/educational use and **public forks**, but
+  **commercial use is forbidden**: the community will not treat this as open source, and GitHub shows
+  *License: other*. The source is public and readable — that is the point of the license, not a
+  claim of OSI openness.
+- **Forks are not retractable.** Whoever clones or forks keeps their copy: switching the repository
+  back to private does **not** recall forks, mirrors, package caches or clones already taken.
+- **Every copy/fork/derivative must keep `LICENSE`, `NOTICE` and the repository URL** (PUL §5-§6).
+- **The ecosystem is coherent by design:** the engine
+  [`LLMEnv`](https://github.com/c-vision/LLMEnv) is already **public under Apache-2.0**;
+  [`GMBasicModules`](https://github.com/c-vision/GMBasicModules) is **public** and publishes its
+  binaries in the **releases**, with the README describing what each asset is (the same pattern used
+  by the public [`GMBasicCommunity`](https://github.com/c-vision/GMBasicCommunity) repository);
+  [`GMBasicBrains`](https://github.com/c-vision/GMBasicBrains) stays **private** — brains are
+  installed with a token (`gmb brain login --github`).
