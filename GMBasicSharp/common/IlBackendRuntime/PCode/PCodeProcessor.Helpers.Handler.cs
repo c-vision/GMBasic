@@ -185,6 +185,8 @@ internal sealed partial class PCodeProcessor
             ["RateLimitRequestsPerMinute"] = 60.0,
             ["RateLimitBurstSize"] = 120.0,
             ["BspCacheMs"] = 0.0,   // memoizzazione resa BSP (ms); 0 = disattivata
+            ["BspEngine"] = "managed",   // "managed" | "c" (VM C, opt-in)
+            ["BspEnginePages"] = "",     // pagine da servire con il motore C (es. "canvas.bsp,wasm.bsp")
             ["EnableKeepAlive"] = true,
         };
 

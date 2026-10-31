@@ -166,7 +166,11 @@ public sealed partial class StdLib
             { "Sessions", new BitType() },
             { "SessionFile", new StringType() },
             // Memoizzazione della resa BSP (ms; 0 = disattivata)
-            { "BspCacheMs", new IntegerType() }
+            { "BspCacheMs", new IntegerType() },
+            // Motore BSP: "managed" (default) | "c" (VM C, opt-in)
+            { "BspEngine", new StringType() },
+            // Pagine servite dalla VM C anche con BspEngine="managed" (es. "canvas.bsp,wasm.bsp")
+            { "BspEnginePages", new StringType() }
         });
 
         RegisterTypeSchema(typeof(CookieJarType),

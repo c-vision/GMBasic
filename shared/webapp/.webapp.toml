@@ -29,6 +29,15 @@ rateLimitBurst     = 0
 # questa finestra (e servita con ETag/304). Con refreshMs 2500, 1000 ms è un buon compromesso.
 bspCacheMs = 1000
 
+# Motore BSP: "managed" (default) oppure "c" (tutte le pagine sulla VM C).
+#   managed = VM managed in-process: ha lo stato del runtime (agenti, team, workflow, memoria AI)
+#   c       = VM C via P/Invoke (libgmb_bsp): più veloce MA senza stato managed
+# Default managed: questa dashboard mostra dati del runtime AI.
+bspEngine = "managed"
+# Pagine servite dalla VM C anche con bspEngine="managed": quelle SENZA stato del runtime.
+# `index.bsp` resta su managed (usa AI.AGENTLIST/TEAMLIST/WorkflowList, MEMORY.LIST).
+bspEnginePages = "canvas.bsp,wasm.bsp"
+
 [app]
 # Crea Demo/Analyst/Support se il registry degli agenti è vuoto.
 seedDemo  = true

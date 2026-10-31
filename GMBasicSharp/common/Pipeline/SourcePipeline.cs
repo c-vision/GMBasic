@@ -143,6 +143,47 @@ public static class SourcePipeline
         return (new global::Compiler.Compiler(), program);
     }
 
+    /// <summary>
+    /// Garantisce il sidecar A1 `&lt;pagina&gt;.bsp.chunk` (lo esegue il renderer BSP in C,
+    /// nativo/gmb_vm_c): lo rigenera se manca o se la pagina / un `.inc` importato è più
+    /// recente. Unica implementazione: la usano sia la precompilazione `-bsp` del REPL sia il
+    /// server quando serve una pagina con il motore C (`HTTPCONFIG.BspEnginePages`).
+    /// </summary>
+    /// <summary>Serializzatore del sidecar A1 (chunk completo → byte). Lo imposta l'host
+    /// (REPL / dispatcher PCode / dispatcher IL): il serializzatore vive in BRT, che Pipeline
+    /// non può referenziare (dipendenza circolare). Se è null il server resta sul motore managed.</summary>
+    public static Func<global::Compiler.CompiledChunk, byte[]>? SidecarWriter { get; set; }
+
+    public static bool EnsureBspSidecar(string bspFilePath, bool force = false)
+    {
+        var sidecar = bspFilePath + ".chunk";
+        try
+        {
+            if (!force && File.Exists(sidecar))
+            {
+                var cached = BspRuntime.CacheGet(bspFilePath);
+                if (cached != null)
+                {
+                    var sc = File.GetLastWriteTimeUtc(sidecar);
+                    var fresh = true;
+                    foreach (var dep in cached.Dependencies ?? [bspFilePath])
+                        if (File.Exists(dep) && File.GetLastWriteTimeUtc(dep) > sc) { fresh = false; break; }
+                    if (fresh) return true;
+                }
+            }
+            if (!CompileBspPage(bspFilePath, out var fullChunk) || fullChunk is null) return false;
+            var writer = SidecarWriter;
+            if (writer is null) return false;   // nessun host che sappia serializzare A1
+            File.WriteAllBytes(sidecar, writer(fullChunk));
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[BSP] sidecar failed for {bspFilePath}: {ex.Message}");
+            return false;
+        }
+    }
+
     public static bool CompileBspPage(string bspFilePath) => CompileBspPage(bspFilePath, out _);
 
     /// <summary>

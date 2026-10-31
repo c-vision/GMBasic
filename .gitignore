@@ -105,3 +105,8 @@ CLAUDE.md
 
 # artefatti dei runner di test (xUnit): generati a ogni run, mai versionati
 TestResults/
+
+# Sidecar BSP: `<pagina>.bsp.chunk` è l'artefatto della precompilazione (`-bsp`) che la VM/C
+# esegue (motore BSP in C). Si rigenera — anche al volo alla prima richiesta (motore C) — quindi
+# non si versiona, come il resto degli artefatti di build.
+*.bsp.chunk

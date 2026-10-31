@@ -42,6 +42,15 @@ public sealed class HttpConfig
     /// Vale solo per le gambe managed (le gambe C non servono BSP).</summary>
     public int BspCacheMs { get; set; }
 
+    /// <summary>Motore BSP: "managed" (default: VM managed, con lo stato del runtime AI/DB) oppure
+    /// "c" (VM C, ≈4,7× più veloce ma senza stato managed; richiede il sidecar `.bsp.chunk`).
+    /// Vale solo per le gambe managed.</summary>
+    public string BspEngine { get; set; } = "managed";
+
+    /// <summary>Pagine (nome file, separatore `,`/`;`) da servire con il motore C anche quando
+    /// `BspEngine` è "managed": tipicamente pagine leggere senza stato del runtime (canvas, wasm).</summary>
+    public string BspEnginePages { get; set; } = "";
+
     /// <summary>Dimensione massima consentita per il body di una richiesta in byte. Default: 10 MB.</summary>
     public long MaxRequestBodySize { get; set; } = 10 * 1024 * 1024;
 

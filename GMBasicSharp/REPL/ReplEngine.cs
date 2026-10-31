@@ -1787,13 +1787,16 @@ public class ReplEngine
                 // SESSION/FORM/QUERY/PAGE), quindi qualunque pagina che li referenzia falliva con
                 // "Simbolo non definito", e le pagine che compilavano comunque finivano in cache
                 // con GlobalCount=0 — TryServeBspPage le avrebbe servite SENZA popolare i globali.
-                var succeeded = global::Basic.Pipeline.SourcePipeline.CompileBspPage(file, out var fullChunk);
-                if (!succeeded || fullChunk is null) { Out.WriteLine($"  FAIL {Path.GetFileName(file)}: compilation error"); err++; continue; }
                 // Sidecar A1 per la VM/C: il renderer nativo esegue <file>.bsp.chunk in una VM
                 // indipendente per richiesta (vedi native/gmb_vm_c/gmb_vm_bsp.c). Chunk COMPLETO
                 // (non la CachedPage parziale: mancano Data/Procs/Arities/TryRegions/LocalCount).
+                // Scrittura unica in SourcePipeline.EnsureBspSidecar (la usa anche il server
+                // quando serve una pagina con il motore C).
+                global::Basic.Pipeline.SourcePipeline.SidecarWriter ??=
+                    static chunk => global::Basic.Runtime.ChunkA1Serializer.Serialize(chunk);
+                var succeeded = global::Basic.Pipeline.SourcePipeline.EnsureBspSidecar(file, force: true);
+                if (!succeeded) { Out.WriteLine($"  FAIL {Path.GetFileName(file)}: compilation error"); err++; continue; }
                 var chunkPath = file + ".chunk";
-                File.WriteAllBytes(chunkPath, global::Basic.Runtime.ChunkA1Serializer.Serialize(fullChunk));
                 var cached = global::CommonLib.Http.BspRuntime.CacheGet(file);
                 Out.WriteLine($"  OK   {Path.GetFileName(file)} ({cached?.PCode.Length ?? 0} opcodes, sidecar {Path.GetFileName(chunkPath)})");
                 ok++;

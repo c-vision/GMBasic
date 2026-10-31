@@ -1,0 +1,56 @@
+/* ============================================================================
+ * gmb_bsp_pinvoke.c — ABI P/Invoke del motore BSP in C (render con la VM/C).
+ *
+ * Direzione UNICA C# → C (AGENTS §Regola primaria): il runtime C non conosce né
+ * referenzia il managed; questo file espone solo entry point `extern "C"` che un
+ * client C# (host REPL, server BSP) può chiamare in-process. Nessuna callback
+ * verso il C#.
+ *
+ * Cosa fa: registra il renderer VM/C (gmb_vm_bsp.c) in gmb_bsp e serve una pagina
+ * `.bsp` precompilata (sidecar A1 "<pagina>.bsp.chunk", prodotto dalla
+ * precompilazione managed `-bsp`) eseguendola in una VM indipendente per
+ * richiesta. Il body è l'output dei PRINT (semantica ASP-classic).
+ *
+ * Memoria: `*out_html` è malloc → liberarla con gmb_bsp_shared_free().
+ * Il chiamante NON deve trattenere il puntatore dopo la free.
+ * ============================================================================ */
+#include "gmb_bsp.h"
+#include "gmb_vm_bsp.h"
+
+#include <stdlib.h>
+#include <stddef.h>
+
+/* Versione dell'ABI (cresce solo con cambi incompatibili). */
+int gmb_bsp_shared_abi(void) { return 1; }
+
+/* Registra il renderer VM. Idempotente: si può chiamare a ogni richiesta. */
+void gmb_bsp_shared_init(void) { gmb_vm_bsp_register(); }
+
+/* Serve un URL `.bsp` sotto `dir` (stessa logica di gmb_bsp_try_serve):
+ *   1 = gestita (*out_html malloc, *out_status = codice HTTP)
+ *   0 = non è una .bsp / file assente (il chiamante fa fallback statico/404)
+ *  -1 = errore interno (out_html NULL) */
+int gmb_bsp_shared_serve(const char* dir, const char* url_path, const char* query,
+                         const char* host, char** out_html, int* out_status)
+{
+    if (out_html) *out_html = NULL;
+    if (out_status) *out_status = 0;
+    if (!dir || !url_path) return -1;
+    gmb_vm_bsp_register();   /* sicuro anche se già registrato */
+    return gmb_bsp_try_serve(dir, url_path, query, host, out_html, out_status);
+}
+
+/* Render diretto di una pagina già nota (nessun fallback gmb_expr): utile per
+ * benchmark e per chi ha già risolto il path. Stessa semantica di ritorno. */
+int gmb_bsp_shared_render(const char* page_path, const char* url_path, const char* query,
+                          const char* host, char** out_html, int* out_status)
+{
+    if (out_html) *out_html = NULL;
+    if (out_status) *out_status = 0;
+    if (!page_path) return -1;
+    gmb_vm_bsp_register();
+    return gmb_vm_bsp_render(page_path, url_path, query, host, out_html, out_status);
+}
+
+/* Libera un buffer restituito da questa ABI (malloc dello stesso runtime C). */
+void gmb_bsp_shared_free(char* p) { free(p); }

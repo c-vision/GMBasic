@@ -444,6 +444,8 @@ internal sealed partial class PCodeProcessor
         var rateLimitPerMin = (int)GetNum("RateLimitRequestsPerMinute", defaults.RateLimitRequestsPerMinute);
         var rateLimitBurst = (int)GetNum("RateLimitBurstSize", defaults.RateLimitBurstSize);
         var bspCacheMs = (int)GetNum("BspCacheMs", defaults.BspCacheMs);
+        var bspEngine = GetStr("BspEngine") ?? defaults.BspEngine;
+        var bspEnginePages = GetStr("BspEnginePages") ?? defaults.BspEnginePages;
         var enableKeepAlive = GetBool("EnableKeepAlive", defaults.EnableKeepAlive);
         var securityHeaders = GetBool("SecurityHeaders", defaults.SecurityHeaders);
         var allowedIPs = GetStr("AllowedIPs") ?? defaults.AllowedIPs;
@@ -461,6 +463,8 @@ internal sealed partial class PCodeProcessor
             RateLimitRequestsPerMinute = rateLimitPerMin,
             RateLimitBurstSize = rateLimitBurst,
             BspCacheMs = bspCacheMs,
+            BspEngine = bspEngine ?? "managed",
+            BspEnginePages = bspEnginePages ?? "",
             EnableKeepAlive = enableKeepAlive,
             SecurityHeaders = securityHeaders,
             AllowedIPs = allowedIPs,
@@ -479,6 +483,10 @@ internal sealed partial class PCodeProcessor
             _httpConfig = newConfig;
             // Memoizzazione della resa BSP (statica: il server è per-processo).
             CommonLib.Http.BspRuntime.RenderCacheTtlMs = bspCacheMs;
+            CommonLib.Http.BspRuntime.EnginePreference =
+                string.Equals(bspEngine, "c", StringComparison.OrdinalIgnoreCase)
+                    ? CommonLib.Http.BspEngine.C : CommonLib.Http.BspEngine.Managed;
+            CommonLib.Http.BspRuntime.SetEngineCPages(bspEnginePages);
             // "0 = nessun limite" è il contratto documentato di RateLimitRequestsPerMinute
             // (HttpServerSettings) e il backend IL lo rispetta (`if (... > 0)`) . Qui invece il
             // limiter veniva SEMPRE creato e configurato: con 0 il token-bucket partiva con 0
@@ -622,7 +630,51 @@ internal sealed partial class PCodeProcessor
 
         try
         {
-            // Serve solo pagine pre-compilate (BSP <dir> da REPL/CLI)
+            // PRIVACY: la resa memoizzata è globale, quindi NON si applica a richieste con
+            // cookie di sessione (una pagina autenticata/personalizzata non deve mai servire il
+            // corpo di un altro utente). Le pagine anonime (cruscotti locali) sì.
+            var canCache = !request.Headers.ContainsKey("Cookie");
+            var renderKey = filePath + "?" + (request.QueryString ?? "");
+
+            // Resa memoizzata: se c'è, si serve subito (vale per entrambi i motori).
+            var cachedBody = canCache ? CommonLib.Http.BspRuntime.RenderGet(renderKey) : null;
+            if (cachedBody != null)
+            {
+                SendBspBody(response, request, cachedBody);
+                return true;
+            }
+
+            // Motore C (opt-in): stessa pagina, sidecar A1, VM C in-process via P/Invoke.
+            // ~4,7× più veloce del motore managed, ma senza lo stato managed (agenti/team/
+            // workflow/memoria del server AI): chi ha bisogno di quei dati resta su "managed".
+            if (CommonLib.Http.BspRuntime.UseCEngine(filePath))
+            {
+                // Il renderer C esegue il sidecar A1: se manca (o è più vecchio della pagina /
+                // di un .inc) lo si genera qui, così il motore C non richiede una
+                // precompilazione manuale. Se il sidecar non si può produrre si resta su managed.
+                Basic.Pipeline.SourcePipeline.SidecarWriter ??=
+                    static chunk => Basic.Runtime.ChunkA1Serializer.Serialize(chunk);
+                Basic.Pipeline.SourcePipeline.EnsureBspSidecar(filePath);
+
+                request.Headers.TryGetPropertyValue("Host", out var hostNode);
+                if (CommonLib.Http.BspC.TryServe(bspDir, request.Path, request.QueryString,
+                        hostNode?.ToString(), out var cbody, out var cstatus))
+                {
+                    var cbytes = System.Text.Encoding.UTF8.GetBytes(cbody);
+                    if (cstatus == 200)
+                    {
+                        CommonLib.Http.BspRuntime.RenderPut(renderKey, cbytes);
+                        SendBspBody(response, request, cbytes);
+                    }
+                    else
+                    {
+                        response.SetStatus(cstatus);
+                        response.SendBytes(cbytes, "text/plain; charset=utf-8");
+                    }
+                    return true;
+                }
+            }
+
             var cached = CommonLib.Http.BspRuntime.CacheGet(filePath);
             if (cached == null)
             {
@@ -642,23 +694,6 @@ internal sealed partial class PCodeProcessor
             // task eseguiva __global_init DIRETTAMENTE (mai via OP_CALL) e al RETURN di
             // chiusura (Frame ancora null) finiva subito, senza mai raggiungere __main.
             compiledChunk.EntryPoint = cached.EntryPoint;
-
-            // ── Resa memoizzata (opt-in, HTTPCONFIG.BspCacheMs > 0) ──────────────
-            // Il costo per richiesta è l'ESECUZIONE della pagina (~2 ms per una pagina da 47 KB),
-            // non host/VM (~0,07 ms misurati): con decine di client in polling la stessa pagina
-            // viene rieseguita identica. Qui si riusa il corpo per la finestra TTL e si serve con
-            // ETag/304. Chiave = path + query (una pagina può dipendere da QUERY).
-            // PRIVACY: la resa memoizzata è globale, quindi NON si applica a richieste con
-            // cookie di sessione (una pagina autenticata/personalizzata non deve mai servire il
-            // corpo di un altro utente). Le pagine anonime (cruscotti locali) sì.
-            var canCache = !request.Headers.ContainsKey("Cookie");
-            var renderKey = filePath + "?" + (request.QueryString ?? "");
-            var cachedBody = canCache ? CommonLib.Http.BspRuntime.RenderGet(renderKey) : null;
-            if (cachedBody != null)
-            {
-                SendBspBody(response, request, cachedBody);
-                return true;
-            }
 
             using var outputWriter = new StringWriter();
             var runtime = new Basic.Runtime.HeadlessRuntimeHost(outputWriter);
