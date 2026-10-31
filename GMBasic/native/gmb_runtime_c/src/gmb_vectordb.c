@@ -3,7 +3,7 @@
  * le superfici legacy gmb_vecdb_* e gmb_aiv_* SONO FACADE sulle gmb_rag_* (schema esteso
  * vec_documents + vec_chunks + vec_embeddings per chunk + fts_chunks, §0bis UNA sola
  * implementazione). Include GenTest (R3) — generazione testset sintetici. */
-#include "gmb_community_db.h"
+#include "gmb_rdd_db.h"
 #include "gmb_runtime.h"
 #include "gmb_rag_internal.h"   /* rag_embed (fonte unica §0bis — P0e: reale o errore) */
 #include "gmb_commonlib.h"      /* gmb_sha256 (R3 GenTest) */
@@ -582,7 +582,7 @@ char* gmb_vecdb_list_collections(int64_t h)
     return out;
 }
 
-int gmb_community_db_selfcheck(void)
+int gmb_rdd_db_selfcheck(void)
 {
     int a = gmb_rdd_selfcheck();
     int b = gmb_sql_iface.selfcheck ? gmb_sql_iface.selfcheck() : 0;

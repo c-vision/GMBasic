@@ -6068,8 +6068,8 @@ void gmb_vm_exec_syscall(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
      * disallinea piu' la tabella. */
     /* DBF_GO (128) / DBF_SKIP (129): spostamento sull'area RDD corrente (l'unico motore
      * disponibile in Community — RDD USE apre l'area reale). Il destinatario di GO è un
-     * numero (GO n) o "TOP"/"BOTTOM". In Commercial il blocco sotto prende il precedente
-     * per le tabelle DBF commerciali; qui copre l'area RDD. */
+     * numero (GO n) o "TOP"/"BOTTOM". Il blocco sotto prende il precedente dall'area RDD
+     * (l'unico motore disponibile su questa gamba); per le tabelle DBF su file vedi gmb_db. */
 }
 
 /* Builtin base (CINT/VAL/...). Completamento: conversioni + comuni. */

@@ -420,7 +420,7 @@ gmb_sql_iface_t gmb_sql_iface;
 #endif
 
 #if !defined(_WIN32) && !defined(_WIN64)
-#include "gmb_community_db.h"
+#include "gmb_rdd_db.h"
 #include "gmb_sql_iface.h"
 
 /* Definizione nel CORE (zero = nessun modulo SQL): il modulo SQL la riempie al load. */

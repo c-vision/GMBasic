@@ -1,6 +1,6 @@
 /* gmb_sql_iface.c — installa l'interfaccia del modulo SQL (core -> SQL). */
 #include "gmb_sql_iface.h"
-#include "gmb_community_db.h"
+#include "gmb_rdd_db.h"
 
 __attribute__((constructor))
 static void gmb_sql_iface_install(void)

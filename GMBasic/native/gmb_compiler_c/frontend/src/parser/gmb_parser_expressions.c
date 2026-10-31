@@ -1263,7 +1263,7 @@ gmb_expr_t* gmb_p_parse_primary(gmb_parser_t* p)
              * ritorna la lista vuota tipizzata. Con contenuto NON consuma → errore a valle
              * (stesso esito esplicito del C#). Senza questo, il '{}' restava orfano e
              * `x = NEW LIST OF T {}` (assegnazione, non DIM) dava "statement non
-             * riconosciuto" — bug SPEED.SETMANY, colpiva anche i sample Commercial. */
+             * riconosciuto" — bug SPEED.SETMANY, colpiva anche i campioni di database. */
             if (gmb_p_check(p, GMB_TOK_LeftBrace) && gmb_p_peek(p, 1)
                 && gmb_p_peek(p, 1)->kind == GMB_TOK_RightBrace) {
                 gmb_p_adv(p);   /* '{' */

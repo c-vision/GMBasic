@@ -1,6 +1,6 @@
 /* FILE: native/gmb_runtime_c/src/gmb_rdd.c
  * DataSession + driver ARRAY/CSV/SQL (community). Spec: common/Databases/Rdd. */
-#include "gmb_community_db.h"
+#include "gmb_rdd_db.h"
 #include "gmb_runtime.h"
 #include "gmb_rdd_rowbuf.h"
 #include <stdio.h>
