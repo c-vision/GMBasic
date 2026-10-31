@@ -86,24 +86,15 @@ public static class BrainRegistry
         return Directory.Exists(import) ? import : null;
     }
 
-    /// <summary>True se il brain è utilizzabile come RAG: esiste un db vettoriale.
-    /// Cerca nella root risolta (vendor/exe/cache), poi il legacy
-    /// AiConfig.RagDefaultDir/&lt;name&gt;.db (generato da RAG BUILD).</summary>
-    public static bool IsAvailableAsRag(string name)
-    {
-        if (RagDbPath(name) is not null) return true;
-        var legacy = Path.Combine(AiConfig.RagDefaultDir, name + ".db");
-        return File.Exists(legacy);
-    }
+    /// <summary>True se il brain è utilizzabile come RAG: esiste un db vettoriale risolto.
+    /// NIENTE fallback su <c>shared/rag/&lt;name&gt;.db</c>: un cervello o si risolve
+    /// (vendor/exe/brainsDir/cache) o è registrato con un file che esiste, altrimenti NON è
+    /// disponibile e il chiamante deve dare un errore esplicito (decisione 2026-10-31).</summary>
+    public static bool IsAvailableAsRag(string name) => RagDbPath(name) is not null;
 
-    /// <summary>True se il brain è utilizzabile come graph: esiste l'export JSON del grafo.
-    /// Cerca nella root risolta, poi il legacy AiConfig.GraphsDefaultDir/&lt;name&gt;.json.</summary>
-    public static bool IsAvailableAsGraph(string name)
-    {
-        if (GraphJsonPath(name) is not null) return true;
-        var legacy = Path.Combine(AiConfig.GraphsDefaultDir, name + ".json");
-        return File.Exists(legacy);
-    }
+    /// <summary>True se il brain è utilizzabile come graph: esiste l'export JSON risolto
+    /// (nessun fallback su una cartella condivisa: vale la stessa regola del RAG).</summary>
+    public static bool IsAvailableAsGraph(string name) => GraphJsonPath(name) is not null;
 
     /// <summary>Le forme disponibili del brain: ["rag"]|["graph"]|["both"]|[]. Ordine
     /// stabile rag,graph.</summary>
@@ -136,8 +127,16 @@ public static class BrainRegistry
             }
             catch { /* permessi: si prova il legacy */ }
         }
-        var legacy = Path.Combine(AiConfig.RagDefaultDir, name + ".db");
-        return File.Exists(legacy) ? legacy : null;
+        // 2) cervello REGISTRATO con un file che esiste (source/vaultPath nel registry):
+        //    copre i cervelli COSTRUITI localmente (RAG BUILD → source = il db appena scritto).
+        var rec = Load().Brains.FirstOrDefault(b => string.Equals(b.Name, name, StringComparison.OrdinalIgnoreCase));
+        if (rec?.Source is string src && File.Exists(src)) return src;
+        if (rec?.VaultPath is string vp)
+        {
+            var p = Path.Combine(vp, "rag", name + ".db");
+            if (File.Exists(p)) return p;
+        }
+        return null;   // NIENTE fallback su shared/rag: chi non c'è non c'è
     }
 
     /// <summary>Il path effettivo dell'export JSON del graph di un brain (root risolta o
@@ -159,8 +158,14 @@ public static class BrainRegistry
             }
             catch { /* permessi: si prova il legacy */ }
         }
-        var legacy = Path.Combine(AiConfig.GraphsDefaultDir, name + ".json");
-        return File.Exists(legacy) ? legacy : null;
+        var rec = Load().Brains.FirstOrDefault(b => string.Equals(b.Name, name, StringComparison.OrdinalIgnoreCase));
+        if (rec?.Source is string src && File.Exists(src)) return src;
+        if (rec?.VaultPath is string vp)
+        {
+            var p = Path.Combine(vp, "graphs", name + ".json");
+            if (File.Exists(p)) return p;
+        }
+        return null;
     }
 
     /// <summary>La root del brain: quella risolta dal runtime C, altrimenti il primo path

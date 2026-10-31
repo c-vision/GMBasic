@@ -72,10 +72,20 @@ public static class NativeBrains
     [DllImport(Lib, EntryPoint = "gmb_pkg_brain_has_graph", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
     private static extern int brain_has_graph(string dir, string name);
 
+    // TEST-ONLY: limita la ricerca a una radice, per isolare i test dai cervelli REALMENTE
+    // installati sulla macchina (~/.gmbasic/brains). AsyncLocal: non inquina altri test in
+    // parallelo. null = comportamento normale (risoluzione C: vendor → exe → brainsDir → cache).
+    private static readonly System.Threading.AsyncLocal<string?> _rootsOverride = new();
+
+    /// <summary>TEST-ONLY: vedi <see cref="_rootsOverride"/>.</summary>
+    public static void OverrideRootsForTests(string? root) => _rootsOverride.Value = root;
+
     /// <summary>Directory del cervello installato (vendor → exe → brainsDir → cache).
     /// <paramref name="version"/> null/vuoto = la più alta. null se non trovato o lib assente.</summary>
     public static string? Lookup(string name, string? version = null)
     {
+        var roots = _rootsOverride.Value;
+        if (roots is not null) return LookupIn(roots, name, version);
         try
         {
             var buf = new byte[4096];
@@ -83,6 +93,29 @@ public static class NativeBrains
         }
         catch { return null; }   // dylib non disponibile: il chiamante ricade sul comportamento storico
     }
+
+    private static string? LookupIn(string roots, string name, string? version)
+    {
+        try
+        {
+            var baseDir = Path.Combine(roots, name);
+            if (!string.IsNullOrEmpty(version))
+            {
+                var d = Path.Combine(baseDir, version);
+                return IsBrainDir(d) ? d : null;
+            }
+            if (IsBrainDir(baseDir)) return baseDir;                 // non versionato
+            if (!Directory.Exists(baseDir)) return null;
+            foreach (var d in Directory.GetDirectories(baseDir).OrderByDescending(x => x, StringComparer.Ordinal))
+                if (IsBrainDir(d)) return d;
+            return null;
+        }
+        catch { return null; }
+    }
+
+    private static bool IsBrainDir(string dir)
+        => Directory.Exists(Path.Combine(dir, "rag")) || Directory.Exists(Path.Combine(dir, "graphs"))
+           || File.Exists(Path.Combine(dir, "brain.manifest.json"));
 
     /// <summary>Versioni installate, crescenti ("1.0.0;1.2.0").</summary>
     public static string[] Versions(string name)

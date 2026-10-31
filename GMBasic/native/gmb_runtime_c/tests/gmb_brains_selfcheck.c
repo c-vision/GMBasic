@@ -275,6 +275,14 @@ int main(void)
         CHECK(stat(parent, &st) != 0);   /* ...e non esiste nemmeno come cartella */
     }
 
+    /* 11ter) NESSUN fallback su shared/rag: un cervello che non è in nessuna radice NON ha un
+     * DB, e il chiamante deve poter dire che manca (prima si "risolveva" un path inesistente). */
+    {
+        char nope[1400];
+        CHECK(gmb_brain_rag_db("cervello_mai_installato", nope, sizeof nope) == 0);
+        CHECK(nope[0] == '\0');
+    }
+
     /* 11bis) le cartelle CONDIVISE del monorepo (rag/, graphs/) si risolvono in shared/ ANCHE se
      * la sottocartella non esiste ancora: dopo lo spostamento dei cervelli nella cache,
      * `shared/rag/` e' vuota/assente e la vecchia regola ricadeva su <root>/rag (sporcizia in

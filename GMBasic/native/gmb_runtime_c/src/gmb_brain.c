@@ -59,13 +59,10 @@ int gmb_brain_rag_db(const char* name, char* out, size_t cap)
             closedir(d);
         }
     }
-    char bd[1024], rd[1024];
-    gmb_paths_brains_dir(bd, sizeof(bd));
-    gmb_paths_rag_dir(rd, sizeof(rd));
-    snprintf(out, cap, "%s/%s/rag/%s.db", bd, name, name);
-    if (access(out, F_OK) == 0) return 1;
-    snprintf(out, cap, "%s/%s.db", rd, name);
-    if (access(out, F_OK) == 0) return 1;
+    /* NESSUN fallback su <ragDir>/<nome>.db: un cervello o e' in una radice di ricerca
+     * (vendor/exe/brainsDir/cache) o NON ESISTE — e il chiamante produce un errore esplicito.
+     * Il vecchio path legacy rendeva "disponibile" un file lasciato in shared/rag, scavalcando
+     * la regola (decisione utente, 2026-10-31). */
     out[0] = 0;
     return 0;
 }
@@ -599,6 +596,10 @@ char* gmb_ai_sbm_json_multi(const char* query, int topK, const char* collection,
     if (topK <= 0) topK = 5;
     char* save = NULL;
     char* out = NULL;
+    /* Un cervello chiesto e NON disponibile non si salta in silenzio: si annota e, se non
+     * resta niente da interrogare, l'errore lo dice (prima: "nessun brain interrogabile", senza
+     * dire quale mancasse). */
+    char missing[512] = "";
     for (char* nm = strtok_r(names, ",", &save); nm; nm = strtok_r(NULL, ",", &save))
     {
         while (*nm == ' ' || *nm == '\t') nm++;
@@ -607,7 +608,11 @@ char* gmb_ai_sbm_json_multi(const char* query, int topK, const char* collection,
         if (!*nm) continue;
         char dbp[1024];
         if (!brain_rag_db_path(nm, dbp, sizeof(dbp)))
+        {
+            size_t ml = strlen(missing);
+            snprintf(missing + ml, sizeof missing - ml, "%s%s", ml ? ", " : "", nm);
             continue;
+        }
         /* Senza provider embedding il motore vettoriale ABORTISCE (gmb_raise_error, exit 6)
          * invece di ritornare: per il merge multi-brain (parità MultiBrainSearch che fa
          * try/catch per brain) il brain va SALTATO, non fatto abortire il processo. */
@@ -627,6 +632,15 @@ char* gmb_ai_sbm_json_multi(const char* query, int topK, const char* collection,
         free(r);
     }
     free(names);
+    if (missing[0])
+    {
+        char msg[1024];
+        snprintf(msg, sizeof msg,
+                 "{\"status\":\"InsufficientEvidence\",\"hits\":[],\"error\":\"cervelli non disponibili: %s"
+                 " (non installati e non trovati in vendor/exe/brainsDir/cache: usare AI BRAIN INSTALL \\\"%s\\\")\"}",
+                 missing, missing);
+        return strdup(msg);
+    }
     return strdup("{\"status\":\"InsufficientEvidence\",\"hits\":[],\"error\":\"nessun brain interrogabile\"}");
 }
 
