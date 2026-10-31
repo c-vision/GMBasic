@@ -26,8 +26,11 @@ fi
 # Uso:
 #   tools/sh/parity4 <sample.bas> [--timeout N] [--legs il,pcode,vmc,c99n] [--keep]
 #
-# Exit 0 se TUTTE le gambe richieste concordano con IL. Le gambe non disponibili
-# (build mancante) sono riportate SKIP, non come errore.
+# Exit 0 se TUTTE le gambe richieste concordano col RIFERIMENTO, che e' la gamba NATIVA
+# (C99Native): il compilatore principale del monorepo e' quello nativo, quindi i test girano
+# su C99Native e le gambe IL/PCode/VM-C servono a verificare la PARITA'. Se la gamba nativa
+# non e' disponibile (driver/build mancante) il riferimento ricade sulla prima gamba eseguita.
+# Le gambe non disponibili sono riportate SKIP, non come errore.
 set -u
 # Locale C: l'output dei programmi può contenere byte non-UTF-8 (record non inizializzati
 # documentati come bug). Sotto un locale UTF-8 grep/sed si FERMANO al byte illegale ("Illegal
@@ -41,6 +44,7 @@ if [ ! -d "$HARNESS_DIR/test_ilrun" ] || [ ! -d "$HARNESS_DIR/test_vmrun" ]; the
   echo "parity4 gira sul MONOREPO: GMBasic/ e GMBasicSharp/ devono essere sibling."
   exit 2
 fi
+CALLER_PWD="$PWD"   # per risolvere un path RELATIVO del sample prima del `cd "$ROOT"`
 cd "$ROOT"
 
 FILE=""
@@ -72,6 +76,7 @@ fi
 # HEAVY (marker header `' TAG: heavy`): richiede modello reale + training; salta salvo GMB_RUN_HEAVY=1.
 if [ "${GMB_RUN_HEAVY:-0}" != "1" ] && grep -q "^' TAG: heavy" "$FILE" 2>/dev/null; then
   echo "SKIP (heavy): $FILE — usa GMB_RUN_HEAVY=1"; exit 0; fi
+if [ ! -f "$FILE" ] && [ -f "$CALLER_PWD/$FILE" ]; then FILE="$CALLER_PWD/$FILE"; fi
 [ -f "$FILE" ] || { echo "sample non trovato: $FILE"; exit 2; }
 # PATH ASSOLUTO: `dotnet run` lancia l'harness con CWD = directory del progetto .NET, quindi un
 # percorso relativo (risolto dalla shell di parity4) si romperebbe DENTRO la gamba.
@@ -202,7 +207,7 @@ errpayload() {  # stdin: output normalizzato di una gamba in errore -> solo payl
 }
 REF=""; fail=0; nok=0; nerr=0; nskip=0; nempty=0
 # 4 gambe: non esiste piu' la gamba c99 (emitter C# deprecato nel monorepo).
-for l in il pcode vmc c99n; do
+for l in c99n il pcode vmc; do
   has_leg "$l" || continue
   # SKIP dichiarato (driver/build mancante): non è un fallimento del test, ma va contato.
   if [ -f "$OUT/$BASE.$l.skip" ]; then nskip=$((nskip+1)); continue; fi
@@ -252,7 +257,8 @@ elif [ "$nok" = "0" ] && [ "$nerr" -ge 2 ]; then
   if [ "$nuniq" -gt 1 ]; then
     echo "  FAIL: exit code d'errore NON uniformi:${codes} (atteso 6 su tutte le gambe)"; fail=1
   fi
-  REFE="$OUT/$BASE.il.err.txt"; [ -s "$REFE" ] || REFE=$(ls "$OUT/$BASE".*.err.txt 2>/dev/null | head -1)
+  REFE="$OUT/$BASE.c99n.err.txt"; [ -s "$REFE" ] || REFE="$OUT/$BASE.il.err.txt"
+  [ -s "$REFE" ] || REFE=$(ls "$OUT/$BASE".*.err.txt 2>/dev/null | head -1)
   REFL=$(basename "$REFE" .err.txt); REFL=${REFL#"$BASE."}
   echo "riferimento errore: $REFL"
   for l in il pcode vmc c99n; do

@@ -27,6 +27,19 @@ fi
 # NESSUNA variabile d'ambiente: i parametri passano da settings o da argomento.
 set -euo pipefail
 
+# ── ARGOMENTI DEL PROGRAMMA (dopo `--`) ─────────────────────────────────────────────────────
+# Il compilatore principale è quello NATIVO, quindi i tool BASIC (che hanno flag come --check)
+# devono poter girare qui: `gmb_c99native_run.sh file.bas out "" -- --check`.
+# Si separano PRIMA di leggere $1/$2/$3 (suffisso/cflags), altrimenti `--` finirebbe in SUFF.
+PROG_ARGS=()
+_ARGS=()
+_seen_sep=0
+for _a in "$@"; do
+  if [ "$_seen_sep" = "0" ] && [ "$_a" = "--" ]; then _seen_sep=1; continue; fi
+  if [ "$_seen_sep" = "1" ]; then PROG_ARGS+=("$_a"); else _ARGS+=("$_a"); fi
+done
+if [ ${#_ARGS[@]} -gt 0 ]; then set -- "${_ARGS[@]}"; else set --; fi
+
 ROOT=$(cd "$(dirname "$0")/../../GMBasic" && pwd)
 TOOLS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"   # tools/ (script ausiliari)
 # Cache ON-DEMAND delle librerie native (CommonLib.LibsResolver / `gmb libs ensure`): il link usa
@@ -274,7 +287,7 @@ fi
 # che i simboli esportati siano presenti.
 if grep -q "int main" "$DIR/$CASE.c"; then
   GMB_TORCH_PATH="${GMB_TORCH_PATH:-$HOME/.gmbasic/libs/ml/osx-arm64}"
-  (cd "$DIR" && GMB_TORCH_PATH="$GMB_TORCH_PATH" ./work/"$(basename "$CASE")")
+  (cd "$DIR" && GMB_TORCH_PATH="$GMB_TORCH_PATH" ./work/"$(basename "$CASE")" ${PROG_ARGS[@]+"${PROG_ARGS[@]}"})
 else
   # Verifica gli export della libreria (evita pipe con head: con `set -o pipefail` un lettore che
   # chiude presto manda SIGPIPE e farebbe fallire lo script).
