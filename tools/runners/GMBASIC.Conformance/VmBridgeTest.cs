@@ -62,8 +62,8 @@ class VmBridgeTest
                 UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true,
                 // AGENTS.md §9.1: CWD = cartella del SAMPLE (come la riga 24). Prima
                 // WorkingDirectory = FindRepoRoot() faceva risolvere i path relativi del .bas
-                // (PROJECTFOLDER(), "work/...", OPEN relativi) contro la ROOT del repo →
-                // sporcizia in root (cartelle work/, :memory:/, .db, ecc.). Niente più root.
+                // (PROJECTFOLDER(), "bin/...", OPEN relativi) contro la ROOT del repo →
+                // sporcizia in root (cartelle bin/, :memory:/, .db, ecc.). Niente più root.
                 WorkingDirectory = Path.GetDirectoryName(file)!,
             };
             using var proc = Process.Start(psi);

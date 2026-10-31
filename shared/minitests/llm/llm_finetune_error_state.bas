@@ -5,7 +5,7 @@
 IMPORT LLM
 SUB Main()
   TRY
-    TRAIN FINETUNE "work/no_model"
+    TRAIN FINETUNE "bin/no_model"
     PRINT "ft_caught=0"
   CATCH
     PRINT "ft_caught=1"

@@ -4,7 +4,7 @@
 IMPORT AI
 SUB Main()
   ON ERROR GOTO H
-  TRAIN DPO "work/no_model", { "chosen": "work/no_c.bin", "rejected": "work/no_r.bin" }
+  TRAIN DPO "bin/no_model", { "chosen": "bin/no_c.bin", "rejected": "bin/no_r.bin" }
   PRINT "no_err"
   GOTO D
 H:

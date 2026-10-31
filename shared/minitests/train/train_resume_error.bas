@@ -5,7 +5,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  TRAIN RESUME "work/no_model"
+  TRAIN RESUME "bin/no_model"
   PRINT "no_err"
   GOTO D
 H:

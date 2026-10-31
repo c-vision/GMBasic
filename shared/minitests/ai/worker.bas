@@ -5,7 +5,7 @@ IMPORT STRINGS
 
 SUB Main()
     ' AI WORKER NEW name, {opts}
-    AI WORKER NEW "w1", "{""workspace"":""work/w1"",""budget"":16000}"
+    AI WORKER NEW "w1", "{""workspace"":""bin/w1"",""budget"":16000}"
     IF AI.WORKERROUNDS() >= 0 THEN
         PRINT "new= ok"
     ELSE

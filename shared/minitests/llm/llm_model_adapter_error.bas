@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM MODEL ADAPTER "work/no_base.gguf", "work/no_lora.safetensors", "work/out.gguf", "1"
+  LLM MODEL ADAPTER "bin/no_base.gguf", "bin/no_lora.safetensors", "bin/out.gguf", "1"
   PRINT "no_err"
   GOTO D
 H:

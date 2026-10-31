@@ -105,7 +105,7 @@ Note sul provider:
 Scrive `eval_report.json` con le 4 famiglie di metriche confrontabili tra backend/sessioni:
 
 ```bash
-dotnet run --project tests/AI.Eval -- --report work/eval_report.json
+dotnet run --project tests/AI.Eval -- --report tools/out/eval_report.json
 # fixture deterministico (mai rete) di default; con modello reale usa il provider attivo
 # → eval_report.json { total:{cases,passed,failed}, suites:[
 #     llm.tokps/rag.ndcg@2/team.acc/credit.blocked ] }

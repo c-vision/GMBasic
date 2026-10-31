@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM TENSOR SCHEDULE "work/no.gguf"
+  LLM TENSOR SCHEDULE "bin/no.gguf"
   PRINT "no_err"
   GOTO D
 H:

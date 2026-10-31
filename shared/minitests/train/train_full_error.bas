@@ -2,9 +2,9 @@
 ' EXPECT: caught
 IMPORT AI
 SUB Main()
-  MKDIR "work"
+  MKDIR "bin"
   ON ERROR GOTO H
-  TRAIN FINETUNE "work/no_model", "{""full"":1,""dataset"":""work/no.bin"",""ckpt"":""work/k"",""steps"":2}"
+  TRAIN FINETUNE "bin/no_model", "{""full"":1,""dataset"":""bin/no.bin"",""ckpt"":""bin/k"",""steps"":2}"
   PRINT "no_err"
   GOTO D
 H:

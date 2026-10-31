@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM TENSOR KV "work/no.gguf", "PAGED"
+  LLM TENSOR KV "bin/no.gguf", "PAGED"
   PRINT "no_err"
   GOTO D
 H:

@@ -4,16 +4,16 @@ IMPORT SQL
 IMPORT IO
 
 SUB Main()
-    MKDIR "work"
+    MKDIR "bin"
     ON ERROR RESUME NEXT
-    IF IO.FILEEXISTS("work/p.csv") THEN KILL "work/p.csv"
+    IF IO.FILEEXISTS("bin/p.csv") THEN KILL "bin/p.csv"
     ON ERROR GOTO 0
-    OPEN "work/p.csv" FOR OUTPUT AS #1
+    OPEN "bin/p.csv" FOR OUTPUT AS #1
     PRINT #1, "id;name;note"
     PRINT #1, "1;alice;ok"
     CLOSE #1
     SQL OPEN ":memory:" ALIAS M
-    SQL EXEC M, "CREATE VIRTUAL TABLE t USING csv(name='work/p.csv', delim=';')"
+    SQL EXEC M, "CREATE VIRTUAL TABLE t USING csv(name='bin/p.csv', delim=';')"
     ' valore con virgola e con punto-e-virgola (delim) → deve essere quotato in scrittura e riletto intero
     SQL EXEC M, "INSERT INTO t VALUES (2,'a,b','x;y')"
     DIM rs AS SQLRESULTSET

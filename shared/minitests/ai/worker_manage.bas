@@ -15,7 +15,7 @@ IMPORT AI
 
 SUB Main()
     ' ── A) nessun task nel grafo → niente da fare (esito 1, nessuna invocazione) ────────────
-    AI WORKER NEW "m0", "{""workspace"":""work/wm0"",""budget"":4000}"
+    AI WORKER NEW "m0", "{""workspace"":""bin/wm0"",""budget"":4000}"
     AI WORKER MANAGE , 2
     PRINT "notasks= "; AI.STATELOAD("m0", "manage_exit")
 
@@ -23,7 +23,7 @@ SUB Main()
     DIM t1 AS DOUBLE
     DIM t2 AS DOUBLE
     t1 = AI.TASKDEFINE("t1", "risolvi il problema")
-    AI WORKER NEW "m1", "{""workspace"":""work/wm1"",""budget"":4000}"
+    AI WORKER NEW "m1", "{""workspace"":""bin/wm1"",""budget"":4000}"
     AI WORKER MANAGE , 2 REQUIRE "LEN(RESULT$) > 5"
     DIM s1 AS STRING
     s1 = AI.TASKSTATUS("t1")
@@ -34,7 +34,7 @@ SUB Main()
     t2 = AI.TASKDEFINE("t2", "sintetizza il risultato")
     DIM dep AS DOUBLE
     dep = AI.TASKDEPENDS("t2", "t1")
-    AI WORKER NEW "m2", "{""workspace"":""work/wm2"",""budget"":4000}"
+    AI WORKER NEW "m2", "{""workspace"":""bin/wm2"",""budget"":4000}"
     AI WORKER MANAGE , 3 REQUIRE "LEN(RESULT$) > 5"
     DIM s2 AS STRING
     s2 = AI.TASKSTATUS("t2")
@@ -43,7 +43,7 @@ SUB Main()
     ' ── D) DISSENSO: l'audit rifiuta → l'esito scartato è loggato, poi stop -2 (provider) ──
     DIM t3 AS DOUBLE
     t3 = AI.TASKDEFINE("t3", "task con audit severo")
-    AI WORKER NEW "m3", "{""workspace"":""work/wm3"",""budget"":4000}"
+    AI WORKER NEW "m3", "{""workspace"":""bin/wm3"",""budget"":4000}"
     AI WORKER MANAGE , 2 REQUIRE "LEN(RESULT$) > 500"
     PRINT "dissents= "; AI.STATELOAD("m3", "dissents")
     DIM s3 AS STRING
@@ -59,13 +59,13 @@ SUB Main()
     DIM pt AS DOUBLE
     pt = AI.TASKDEFINE("pt1", "task del piano")
     pa = AI.PLANADD("p1", "pt1")
-    AI WORKER NEW "mp1", "{""workspace"":""work/wmp1"",""budget"":4000}"
+    AI WORKER NEW "mp1", "{""workspace"":""bin/wmp1"",""budget"":4000}"
     AI WORKER MANAGE "p1", 2
     PRINT "nonappr= "; AI.STATELOAD("mp1", "manage_exit")
     pa = AI.PLANAPPROVE("p1")
     DIM out1 AS DOUBLE
     out1 = AI.TASKDEFINE("fuori", "task fuori dal piano")
-    AI WORKER NEW "mp2", "{""workspace"":""work/wmp2"",""budget"":4000}"
+    AI WORKER NEW "mp2", "{""workspace"":""bin/wmp2"",""budget"":4000}"
     AI WORKER MANAGE "p1", 3 REQUIRE "LEN(RESULT$) > 5"
     DIM sp AS STRING
     sp = AI.TASKSTATUS("pt1")
@@ -84,7 +84,7 @@ SUB Main()
     db = AI.TASKDEFINE("db", "task B")
     da = AI.TASKDEPENDS("da", "db")
     db = AI.TASKDEPENDS("db", "da")
-    AI WORKER NEW "m4", "{""workspace"":""work/wm4"",""budget"":4000}"
+    AI WORKER NEW "m4", "{""workspace"":""bin/wm4"",""budget"":4000}"
     AI WORKER MANAGE , 3
     PRINT "deadlock= "; AI.STATELOAD("m4", "manage_exit")
 END SUB

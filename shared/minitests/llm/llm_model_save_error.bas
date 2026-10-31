@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM MODEL SAVE "work/no.gguf", "work/out.gguf"
+  LLM MODEL SAVE "bin/no.gguf", "bin/out.gguf"
   PRINT "no_err"
   GOTO D
 H:

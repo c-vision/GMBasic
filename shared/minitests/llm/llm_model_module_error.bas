@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM MODEL MODULE "work/no_base.gguf", "work/no.gmmod", "work/no_mod.gguf", "work/out.gguf"
+  LLM MODEL MODULE "bin/no_base.gguf", "bin/no.gmmod", "bin/no_mod.gguf", "bin/out.gguf"
   PRINT "no_err"
   GOTO D
 H:

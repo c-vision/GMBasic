@@ -109,7 +109,7 @@ try
     using var cts = new CancellationTokenSource(cancelAfter);
     // AGENTS.md §9.1: CWD = cartella del SAMPLE (mai la root del repo). Prima il sample
     // veniva eseguito con la CWD del processo (root quando lanciato con dotnet run dalla
-    // root) → i path relativi del .bas (OPEN/SPEED/work/) creavano cartelle in root.
+    // root) → i path relativi del .bas (OPEN/SPEED/bin/) creavano cartelle in root.
     Directory.SetCurrentDirectory(Path.GetDirectoryName(Path.GetFullPath(sample))!);
     // Test-only: iniezione input nel motore C (GMB_TEST_KEYS="x", GMB_TEST_MOUSE="x,y[,btn]").
     var testKeys = Environment.GetEnvironmentVariable("GMB_TEST_KEYS");

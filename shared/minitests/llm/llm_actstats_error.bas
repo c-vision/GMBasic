@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM ACTIVATIONSTATS "work/no_model", "work/no_tokens.bin"
+  LLM ACTIVATIONSTATS "bin/no_model", "bin/no_tokens.bin"
   PRINT "no_err"
   GOTO D
 H:

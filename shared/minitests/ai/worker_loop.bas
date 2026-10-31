@@ -9,7 +9,7 @@ IMPORT AI
 
 SUB Main()
     ' ── 1) loop con provider assente: si ferma al PRIMO round con errore esplicito ────
-    AI WORKER NEW "wl1", "{""workspace"":""work/wl1"",""budget"":4000}"
+    AI WORKER NEW "wl1", "{""workspace"":""bin/wl1"",""budget"":4000}"
     AI STATE SAVE "wl1", "notes", "greedy algorithm: scambio locale ottimo"
     AI WORKER LOOP "ANALYZE", 3
     PRINT "r1="; AI.WORKERROUNDS()
@@ -20,7 +20,7 @@ SUB Main()
     IF AI.STATELOAD("wl1", "best") = "" THEN PRINT "best1= no" ELSE PRINT "best1= si"
 
     ' ── 2) budget CUMULATIVO del run esaurito → stop esplicito (policy error) ────────
-    AI WORKER NEW "wl2", "{""workspace"":""work/wl2"",""budget"":8}"
+    AI WORKER NEW "wl2", "{""workspace"":""bin/wl2"",""budget"":8}"
     AI CONTEXT SET POLICY "worker:wl2", "error"
     AI STATE SAVE "wl2", "notes", "una nota abbastanza lunga da superare il budget del run"
     AI WORKER LOOP "VERIFY", 5

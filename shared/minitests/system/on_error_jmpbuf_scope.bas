@@ -9,25 +9,25 @@ IMPORT LLM
 SUB Main()
   step = 0
   ON ERROR GOTO H1
-  TRAIN FINETUNE "work/no_model"
+  TRAIN FINETUNE "bin/no_model"
   PRINT "no1"
 H1:
   step = step + 1
   PRINT "a="; step
   ON ERROR GOTO H2
-  TRAIN LORA APPLY "work/no_ckpt"
+  TRAIN LORA APPLY "bin/no_ckpt"
   PRINT "no2"
 H2:
   step = step + 1
   PRINT "b="; step
   ON ERROR GOTO H3
-  TRAIN LORA APPLY "work/no_ckpt", "{""model"":""work/no_model"",""dataset"":""work/no_ds.bin""}"
+  TRAIN LORA APPLY "bin/no_ckpt", "{""model"":""bin/no_model"",""dataset"":""bin/no_ds.bin""}"
   PRINT "no3"
 H3:
   step = step + 1
   PRINT "c="; step
   ON ERROR GOTO H4
-  TRAIN FINETUNE "work/no_model", "{""dataset"":""work/no_ds.bin"", ""holdout"":""work/no_hold.bin""}"
+  TRAIN FINETUNE "bin/no_model", "{""dataset"":""bin/no_ds.bin"", ""holdout"":""bin/no_hold.bin""}"
   PRINT "no4"
 H4:
   step = step + 1

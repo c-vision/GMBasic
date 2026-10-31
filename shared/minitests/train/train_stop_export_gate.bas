@@ -3,10 +3,10 @@
 IMPORT AI
 IMPORT LLM
 SUB Main()
-  PRINT LLM.TRAINEXPORT("work/exp")
+  PRINT LLM.TRAINEXPORT("bin/exp")
   PRINT LLM.RUNSTOP("99")
-  TRAIN EXPORT "work/exp"
+  TRAIN EXPORT "bin/exp"
   TRAIN STOP "1"
-  TRAIN EVAL GATE "work/no_model", "work/no_cand"
-  PRINT IIF(INSTR(LLM.EVALGATE("work/a", "work/b"), "ERROR") > 0, "gate", "no")
+  TRAIN EVAL GATE "bin/no_model", "bin/no_cand"
+  PRINT IIF(INSTR(LLM.EVALGATE("bin/a", "bin/b"), "ERROR") > 0, "gate", "no")
 END SUB

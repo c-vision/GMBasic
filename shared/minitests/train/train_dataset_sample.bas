@@ -4,7 +4,7 @@
 IMPORT AI
 SUB Main()
   ON ERROR GOTO H
-  TRAIN DATASET SAMPLE "work/no.jsonl", { "model": "work/no_model", "out": "work/no_smp" }
+  TRAIN DATASET SAMPLE "bin/no.jsonl", { "model": "bin/no_model", "out": "bin/no_smp" }
   PRINT "no_err"
   GOTO D
 H:

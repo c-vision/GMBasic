@@ -1,6 +1,6 @@
 ' MiniTest ISAM — replicazione (SET/APPLY/FOLLOWREPLICATION), APPENDMANY, INTEGRITY.
 ' Portato da samples/Commercial/Databases/IsamReplication.bas + QueryPhaseD.bas (INTEGRITY),
-' con path assoluti in /tmp (i sample lì scrivono nel loro work/).
+' con path assoluti in /tmp (i sample lì scrivono nel loro bin/).
 ' EXPECT: setrepl: si|integrity: {"valid":true,"message":"Validazione completata con successo. Nessun errore trovato."}|appendmany:  1
 IMPORT ISAM
 IMPORT DBF

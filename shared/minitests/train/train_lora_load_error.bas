@@ -4,7 +4,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  TRAIN LORA LOAD "no_model", "work/no_path"
+  TRAIN LORA LOAD "no_model", "bin/no_path"
   PRINT "no_err"
   GOTO D
 H:

@@ -5,7 +5,7 @@
 IMPORT LLM
 SUB Main()
   TRY
-    TRAIN LORA APPLY "work/no_ckpt"
+    TRAIN LORA APPLY "bin/no_ckpt"
     PRINT "la_caught=0"
   CATCH
     PRINT "la_caught=1"

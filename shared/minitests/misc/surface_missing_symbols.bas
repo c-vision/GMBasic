@@ -12,8 +12,8 @@ SUB Main()
     DIM s AS STRING
     d = CTRLGETPROP("x", "prop")
     s = CTRLGETPROPS("x", "prop")
-    d = LLM.LORASAVE("work/a", "work/b")
-    d = LLM.LORALOAD("work/a", "work/b")
+    d = LLM.LORASAVE("bin/a", "bin/b")
+    d = LLM.LORALOAD("bin/a", "bin/b")
     d = WINDOWCLOSED()
     WEB2MD "http://localhost/" INTO s
   END IF

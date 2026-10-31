@@ -2,9 +2,9 @@
 ' EXPECT: caught
 IMPORT LLM
 SUB Main()
-  MKDIR "work"
+  MKDIR "bin"
   ON ERROR GOTO H
-  LLM TENSOR SENSITIVITY "work/no_model.gguf", "work/no.txt"
+  LLM TENSOR SENSITIVITY "bin/no_model.gguf", "bin/no.txt"
   PRINT "no_err"
   GOTO D
 H:

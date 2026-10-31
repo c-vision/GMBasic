@@ -31,7 +31,7 @@ var procArgs = "";   /* argomenti del PROGRAMMA: dopo il file, inoltrati a `vmte
 var timeoutSec = args.Length > 1 && int.TryParse(args[1], out var t) ? t : 20;
 if (!File.Exists(file)) { Console.Error.WriteLine($"file non trovato: {file}"); return 1; }
 var fileFull = Path.GetFullPath(file);   /* il child gira con CWD=root: path assoluto */
-// CWD = cartella del sample (come test_ilrun): gli output/input relativi ("work/...") risolvono.
+// CWD = cartella del sample (come test_ilrun): gli output/input relativi ("bin/...") risolvono.
 {
     var dir = Path.GetDirectoryName(Path.GetFullPath(file));
     if (!string.IsNullOrEmpty(dir)) Directory.SetCurrentDirectory(dir);

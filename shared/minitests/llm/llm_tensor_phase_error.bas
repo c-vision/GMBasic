@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM TENSOR PHASE "work/no.gguf", "1024"
+  LLM TENSOR PHASE "bin/no.gguf", "1024"
   PRINT "no_err"
   GOTO D
 H:

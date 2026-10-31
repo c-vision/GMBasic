@@ -3,7 +3,7 @@
 ' EXPECT: quant-auto-ok
 IMPORT LLM
 SUB Main()
-  MKDIR "work"
-  LLM QUANT "../../samples/Fixtures/models/tiny_big_moe.gguf", "work/auto.gguf", 4.5
+  MKDIR "bin"
+  LLM QUANT "../../samples/Fixtures/models/tiny_big_moe.gguf", "bin/auto.gguf", 4.5
   PRINT "quant-auto-ok"
 END SUB
