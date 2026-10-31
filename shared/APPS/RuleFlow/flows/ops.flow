@@ -1,0 +1,15 @@
+# Tutti e quattro gli operatori FlowLang M1 su un unico universo:
+#   AX -> Y    sostituzione (3 celle -> 1)
+#   Y  >  W     inserimento (cella nuova prima del selettore)
+#   W  ><       cancellazione (le W inserite spariscono)
+#   B  --> Z    overwrite (stessa lunghezza: la cella viene distrutta e ricreata)
+# Dopo il primo tick resta "YZXC": l'inserimento (Y > W) e la cancellazione (W ><)
+# si alternano a ogni tick — non è un loop infinito, è il comportamento deterministico
+# del sistema, limitato da @evolve. Il grafo causale cresce di 2 eventi per tick.
+@init("AXBXC");
+@evolve(4);
+
+AX -> Y;
+Y  >  W;
+W  ><;
+B  --> Z;

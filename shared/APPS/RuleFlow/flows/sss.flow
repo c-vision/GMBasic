@@ -1,0 +1,7 @@
+# SSS — Sequential Substitution System (esempio del README upstream)
+# Un alfabeto di 2 lettere, due regole di sostituzione: il sistema cresce a ogni tick.
+@init("ABA");
+@evolve(12);
+
+ABA -> AAB;
+A   -> ABA;

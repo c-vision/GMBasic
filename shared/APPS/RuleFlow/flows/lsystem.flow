@@ -1,0 +1,10 @@
+# L-system di Lindenmayer (alghe). ATTENZIONE alla semantica M1: una regola si
+# applica UNA volta per tick (primo match da sinistra), quindi NON si ottiene la
+# successione di Fibonacci del L-system parallelo: qui il sistema converge in una
+# catena di A che cresce di una cella per tick (11 celle dopo 10 tick).
+# Per il L-system parallelo servono le flag di FlowLang (-pl[inf]) = M2.
+@init("A");
+@evolve(10);
+
+A -> AB;
+B -> A;
