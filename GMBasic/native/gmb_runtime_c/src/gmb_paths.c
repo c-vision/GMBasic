@@ -490,10 +490,12 @@ static void pr_user_root(const char* name, char* out, size_t cap)
 /* Manifest dei cervelli distribuiti (schema di ml-manifest.json). Ordine di ricerca:
  *   1. `paths.brainsManifest` (esplicito)
  *   2. <exe>/settings/brains-manifest.json        (client/bundle)
- *   3. <root>/shared/settings/brains-manifest.json (monorepo)
- *   4. <exe>/Resources/brains-manifest.json       (bundle legacy, dove sta ml-manifest)
- *   5. <root>/Resources/brains-manifest.json
- *   6. <root>/settings/brains-manifest.json
+ *   3. <root>/../shared/settings/brains-manifest.json  (MONOREPO: la copia unica sta in shared/)
+ *   4. <root>/shared/settings/brains-manifest.json
+ *   5. <exe>/Resources/brains-manifest.json       (bundle legacy, dove sta ml-manifest)
+ *   6. <root>/../shared/resources/brains-manifest.json
+ *   7. <root>/Resources/brains-manifest.json
+ *   8. <root>/settings/brains-manifest.json
  * Ritorna 1 se il file esiste; altrimenti 0 lasciando in `out` il percorso canonico (per un
  * messaggio d'errore utile). */
 int gmb_paths_brains_manifest(char* out, size_t cap)
@@ -508,16 +510,20 @@ int gmb_paths_brains_manifest(char* out, size_t cap)
         pr_expand(v, ex, sizeof(ex));
         if (ex[0] == '/') { snprintf(out, cap, "%s", ex); return access(ex, F_OK) == 0; }
     }
-    char cand[5][4096];
+    char cand[8][4096];
     char exe[2048] = "";
     (void)gmb_paths_exe_dir(exe, sizeof exe);
     snprintf(cand[0], sizeof cand[0], "%s/settings/brains-manifest.json", exe);
-    snprintf(cand[1], sizeof cand[1], "%s/shared/settings/brains-manifest.json", g_pr_root);
-    snprintf(cand[2], sizeof cand[2], "%s/Resources/brains-manifest.json", exe);
-    snprintf(cand[3], sizeof cand[3], "%s/Resources/brains-manifest.json", g_pr_root);
-    snprintf(cand[4], sizeof cand[4], "%s/settings/brains-manifest.json", g_pr_root);
-    for (int i = 0; i < 5; i++)
-        if (cand[i][0] == '/' && access(cand[i], F_OK) == 0) { snprintf(out, cap, "%s", cand[i]); return 1; }
+    snprintf(cand[1], sizeof cand[1], "%s/../shared/settings/brains-manifest.json", g_pr_root);
+    snprintf(cand[2], sizeof cand[2], "%s/shared/settings/brains-manifest.json", g_pr_root);
+    snprintf(cand[3], sizeof cand[3], "%s/Resources/brains-manifest.json", exe);
+    snprintf(cand[4], sizeof cand[4], "%s/../shared/resources/brains-manifest.json", g_pr_root);
+    snprintf(cand[5], sizeof cand[5], "%s/Resources/brains-manifest.json", g_pr_root);
+    snprintf(cand[6], sizeof cand[6], "%s/settings/brains-manifest.json", g_pr_root);
+    for (int i = 0; i < 7; i++) {
+        if (cand[i][0] != '/') continue;
+        if (access(cand[i], F_OK) == 0) { snprintf(out, cap, "%s", cand[i]); return 1; }
+    }
     snprintf(out, cap, "%s", cand[1]);
     return 0;
 }

@@ -37,6 +37,7 @@ public static class CliPackages
             case "cache": Run(Cache, rest); return true;
             case "admin": Run(Admin, rest); return true;
             case "pkg": Run(Pkg, rest); return true;
+            case "brain": Run(Brain, rest); return true;
             case "publish": Run(Publish, rest); return true;
             case "restore": Run(Restore, rest); return true;
             case "update": Run(Update, rest); return true;
@@ -70,6 +71,11 @@ public static class CliPackages
         Console.WriteLine("  pkg list | remove <name> | info <name> | search <term> | tree [--lock f] | outdated | update | vendor <progetto> [--lock f]");
         Console.WriteLine("  pkg why <name> | prune [--lock f] | dedupe [--lock f]   (grafo / pulizia cache)");
         Console.WriteLine("  pkg audit [fix] [--advisories f] | sbom [--out f]      (vulnerabilità / fix / SBOM CycloneDX)");
+        Console.WriteLine("  brain login --github [--token T|--token-file F] | logout");
+        Console.WriteLine("                                   token per gli asset dei cervelli PRIVATI (~/.gmbasic/github.token, chmod 600)");
+        Console.WriteLine("  brain install <nome[@ver]> [--source url|zip|dir] | list | remove <nome[@ver]>");
+        Console.WriteLine("                                   cervelli: download on demand dal manifest (resume+sha256), cache");
+        Console.WriteLine("                                   ~/.gmbasic/brains; senza token un asset privato è RIFIUTATO");
         Console.WriteLine("  pkg deprecate <name@ver> [msg] | undeprecate <name@ver> (owner-only)");
         Console.WriteLine("  restore/update: --frozen (CI) · --offline · --production (no dev) · --verify · --require-signed");
         Console.WriteLine("  rollback [dir] [--list] [--to <timestamp>]   ripristina uno storico gmb-package.lock");
@@ -104,6 +110,158 @@ public static class CliPackages
         cfg.Token = null;
         cfg.Save();
         Console.WriteLine("Token rimosso.");
+    }
+
+    // ── CERVELLI (`gmb brain …`) ─────────────────────────────────────────────────────────────
+    //  gmb brain login --github [--token T | --token-file F]   salva il token in ~/.gmbasic/github.token (0600)
+    //  gmb brain logout                                        rimuove il token
+    //  gmb brain install <nome[@versione]>                     installa dal manifest dei cervelli (download on demand)
+    //  gmb brain install <nome> --source <url|zip|dir>          installa da una sorgente esplicita
+    //  gmb brain list                                          cervelli trovati (vendor/exe/brainsDir/cache) con versioni
+    //  gmb brain remove <nome[@versione]>                      rimuove dalla CACHE (mai da vendor/exe)
+    private static void Brain(string[] args)
+    {
+        if (args.Length == 0) { BrainHelp(); return; }
+        var sub = args[0].ToLowerInvariant();
+        var rest = args.Skip(1).ToArray();
+        var flags = Flags(rest, out var pos);
+        switch (sub)
+        {
+            case "login": BrainLogin(flags); break;
+            case "logout": BrainLogout(); break;
+            case "install": BrainInstall(pos, flags); break;
+            case "list": BrainList(); break;
+            case "remove": case "uninstall": BrainRemove(pos); break;
+            default: BrainHelp(); break;
+        }
+    }
+
+    private static void BrainHelp()
+    {
+        Console.WriteLine("gmb brain — cervelli (Second Brain) come dati distribuibili");
+        Console.WriteLine();
+        Console.WriteLine("  login --github [--token T | --token-file F]  salva il token GitHub in ~/.gmbasic/github.token (chmod 600)");
+        Console.WriteLine("  logout                                        rimuove il token");
+        Console.WriteLine("  install <nome[@versione]> [--source url|zip|dir]");
+        Console.WriteLine("                                                installa dal manifest dei cervelli (download on demand),");
+        Console.WriteLine("                                                oppure da una sorgente esplicita");
+        Console.WriteLine("  list                                          cervelli trovati (vendor → exe → brainsDir → cache)");
+        Console.WriteLine("  remove <nome[@versione]>                      rimuove dalla CACHE (mai da vendor/ o accanto all'eseguibile)");
+    }
+
+    /// <summary>Token GitHub per gli asset PRIVATI. Mai da argv in produzione: `--token-file` o stdin.</summary>
+    private static void BrainLogin(Dictionary<string, string> flags)
+    {
+        if (!flags.ContainsKey("github") && !flags.ContainsKey("token") && !flags.ContainsKey("token-file"))
+            throw new ArgumentException("Uso: gmb brain login --github [--token T | --token-file F]");
+        string? token = null;
+        if (flags.TryGetValue("token-file", out var tf) && !string.IsNullOrWhiteSpace(tf) && File.Exists(tf))
+            token = File.ReadAllText(tf).Trim();
+        else if (flags.TryGetValue("token", out var t) && !string.IsNullOrWhiteSpace(t))
+            token = t.Trim();
+        else if (Console.IsInputRedirected)
+            token = Console.In.ReadToEnd().Trim();
+        if (string.IsNullOrWhiteSpace(token))
+            throw new ArgumentException("token GitHub mancante (--token, --token-file o stdin)");
+
+        var who = GitHubWhoAmI(token!);
+        if (who is null) throw new ArgumentException("token GitHub non valido (GET /user non autorizzato)");
+
+        var path = GitHubTokenPath;
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, token!.Trim() + "\n");
+        if (!OperatingSystem.IsWindows())
+            try { File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite); } catch { }
+        Console.WriteLine($"Token GitHub di '{who}' salvato in {path} (chmod 600).");
+        Console.WriteLine("Gli asset privati (`source: \"github-asset\"`) ora si possono scaricare; senza token l'installazione è rifiutata.");
+    }
+
+    private static void BrainLogout()
+    {
+        try
+        {
+            if (File.Exists(GitHubTokenPath)) File.Delete(GitHubTokenPath);
+            Console.WriteLine($"Token GitHub rimosso ({GitHubTokenPath}).");
+        }
+        catch (Exception ex) { Console.Error.WriteLine($"?logout: {ex.Message}"); }
+    }
+
+    private static void BrainInstall(List<string> pos, Dictionary<string, string> flags)
+    {
+        if (pos.Count < 1) throw new ArgumentException("Uso: gmb brain install <nome[@versione]> [--source url|zip|dir]");
+        SplitNameVersion(pos[0], out var name, out var version);
+        bool ok; string root; string error;
+        if (flags.TryGetValue("source", out var src) && !string.IsNullOrWhiteSpace(src))
+            (ok, root, error) = NativeBrains.InstallSource(name, src);
+        else
+            (ok, root, error) = NativeBrains.Install(name, version);
+        if (!ok)
+        {
+            Console.Error.WriteLine($"?brain install {name}: {error}");
+            throw new InvalidOperationException(error);
+        }
+        Console.WriteLine($"installato: {name}{(string.IsNullOrEmpty(version) ? "" : "@" + version)} → {root}");
+        var modes = NativeBrains.Modes(root, name);
+        if (!string.IsNullOrEmpty(modes)) Console.WriteLine($"  disponibile come: {modes}");
+        var used = BrainRegistryAttach(name);
+        if (used) Console.WriteLine($"  collegato: AI BRAIN USED() contiene '{name}'");
+    }
+
+    private static void BrainList()
+    {
+        var names = NativeBrains.List();
+        if (names.Length == 0) { Console.WriteLine("(nessun cervello: `gmb brain install <nome>`)"); return; }
+        foreach (var n in names)
+        {
+            var dir = NativeBrains.Lookup(n);
+            var vers = NativeBrains.Versions(n);
+            var modes = dir is null ? "" : NativeBrains.Modes(dir, n);
+            Console.WriteLine($"{n}{(vers.Length > 0 ? "@" + string.Join(",", vers) : "")}" +
+                              $"{(string.IsNullOrEmpty(modes) ? "" : "  [" + modes + "]")}  {dir}");
+        }
+    }
+
+    private static void BrainRemove(List<string> pos)
+    {
+        if (pos.Count < 1) throw new ArgumentException("Uso: gmb brain remove <nome[@versione]>");
+        SplitNameVersion(pos[0], out var name, out var version);
+        Console.WriteLine(NativeBrains.Remove(name, version)
+            ? $"rimosso dalla cache: {name}{(string.IsNullOrEmpty(version) ? "" : "@" + version)}"
+            : $"non rimosso (non è nella cache, o è in vendor/exe): {name}");
+    }
+
+    private static string GitHubTokenPath =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".gmbasic", "github.token");
+
+    private static void SplitNameVersion(string arg, out string name, out string? version)
+    {
+        var at = arg.IndexOf('@');
+        if (at > 0 && at < arg.Length - 1) { name = arg[..at]; version = arg[(at + 1)..]; }
+        else { name = arg; version = null; }
+    }
+
+    /// <summary>GET /user con Bearer: ritorna il login, o null se il token non è valido.</summary>
+    private static string? GitHubWhoAmI(string token)
+    {
+        try
+        {
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
+            var req = new HttpRequestMessage(HttpMethod.Get, "https://api.github.com/user");
+            req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            req.Headers.Add("User-Agent", "gmbasic-brain/1");
+            req.Headers.Add("Accept", "application/vnd.github+json");
+            using var resp = http.Send(req);
+            if (!resp.IsSuccessStatusCode) return null;
+            using var doc = System.Text.Json.JsonDocument.Parse(resp.Content.ReadAsStringAsync().GetAwaiter().GetResult());
+            return doc.RootElement.TryGetProperty("login", out var l) ? l.GetString() : "(utente)";
+        }
+        catch { return null; }
+    }
+
+    /// <summary>Collega il cervello appena installato (stessa semantica di `AI BRAIN INSTALL`).</summary>
+    private static bool BrainRegistryAttach(string name)
+    {
+        try { return Basic.AI.Knowledge.BrainRegistry.Use(name); } catch { return false; }
     }
 
     private static void Register(string[] args)
