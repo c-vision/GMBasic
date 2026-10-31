@@ -1,5 +1,5 @@
 ' TAG: interactive
-' FILE: APPS/GMBasicIde/src/GMBasicIde.bas
+' FILE: GMBasicTuiIde/src/GMBasicTuiIde.bas
 ' ============================================================================
 ' GMBasic IDE (TUI) — IDE completo in BASIC, standalone (C99Native: .bas -> C -> binario).
 ' La LOGICA (analisi) e' in C (gmb_ide); i controlli TUI sono in C (registry gmb_tui_*).
@@ -14,7 +14,9 @@
 ' Tasti: F1 aiuto  F2 apri  F3 salva  F4 outline  F5 completion  F6 lint
 '        F7 goto-def  F8 refs  F9 make  F10 nuovo tab  ESC esci.
 '
-' Compila/esegui:  tools/gmb_c99native_run.sh APPS/GMBasicIde/src/GMBasicIde.bas
+' Compila/esegui (dalla ROOT del monorepo):
+'   bash tools/sh/gmb_c99native_run.sh GMBasicTuiIde/src/GMBasicTuiIde.bas
+'   tools/sh/harness.sh il GMBasicTuiIde/src/GMBasicTuiIde.bas
 ' ============================================================================
 IMPORT CONTROLS
 

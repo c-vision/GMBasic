@@ -83,7 +83,7 @@ equivalent — confirmed against `samples/Community/Lexer/LexerPreProcessing.bas
 | Mode | Command basis | Result |
 |---|---|---|
 | `STATUS` (default) | `--engine=pcode APPS/Masume/src/Masume.bas` | banner; `project file`, `working dir`, 2 profiles (`demo`, `shop`), 3 named queries, `connection: not open — run with -DMASUME_MODE_SEED...`, mode list. Matches "working". |
-| `SEED` | `#DEF MASUME_MODE_SEED` + run | `seeding demo database: .../work/masume_demo.sqlite` / `customers= 3  orders= 5` / `done — now run -DMASUME_MODE_OBJECTS or -DMASUME_MODE_RUN`. Matches "working". |
+| `SEED` | `#DEF MASUME_MODE_SEED` + run | `seeding demo database: .../bin/masume_demo.sqlite` / `customers= 3  orders= 5` / `done — now run -DMASUME_MODE_OBJECTS or -DMASUME_MODE_RUN`. Matches "working". |
 | `OBJECTS` | `#DEF MASUME_MODE_OBJECTS` + run (after SEED) | `schema: 2 tables, 0 views`, `TABLES` list (`customers`, `orders` with row counts), `columns of orders` (id/customer_id/total/created_at, `id` flagged `PK`). Matches "working". |
 | `RUN` | `#DEF MASUME_MODE_RUN` + run (after SEED) | `# query=objects (from .../.masume.toml)` then TSV `type\tname` / `table\tcustomers` / `table\torders`. Required the `QueryToText` fix (gap #3) — before the fix this printed a header with zero data rows. Matches "working" after the fix. |
 | `CHECK` | `#DEF MASUME_MODE_CHECK` + run (after SEED) | `check: project file: OK ...`, `check: profiles: 2` (both listed), `check: demo database: OK ...`, `check: connection: OK 2 tables, 0 views`, `check: mcp tool set: read-only [...]` (JSON schema for `masume_objects`/`masume_query`). Matches "working". |

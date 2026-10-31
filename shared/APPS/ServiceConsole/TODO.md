@@ -3,7 +3,7 @@
 ## v0.2 — daemon lifecycle (dopo il daemon manager)
 - [ ] Entry point riconosciuto come daemon (SUB Main + loop cooperativo) e validazione "no interattivi" in modalità servizio.
 - [ ] **Segnali**: SIGTERM/SIGINT → stop ordinato (`HTTP SERVER STOP`, flush, exit 0) con timeout; oggi il loop è a tempo.
-- [ ] **State/health su disco**: `work/state.json` (pid, status, uptime, last_error) con heartbeat; `/healthz` legge lo stato reale.
+- [ ] **State/health su disco**: `bin/state.json` (pid, status, uptime, last_error) con heartbeat; `/healthz` legge lo stato reale.
 - [ ] **Log JSON** su stdout (livello/timestamp) + rotazione lato supervisore.
 - [ ] **Config**: secrets fuori dal file (keychain), override da env; validazione schema.
 - [ ] Integrazione `gmb daemon create|install|register|start|stop|status|logs|delete` (launchd LaunchAgent macOS / systemd --user Linux).

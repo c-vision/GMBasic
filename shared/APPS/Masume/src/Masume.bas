@@ -14,7 +14,7 @@
 '
 ' MODES (compile-time symbol, see APPS/README.md — BASIC has no runtime argv):
 '   (default)                    status: banner + project file + connectivity
-'   -DMASUME_MODE_SEED           create the demo database in work/
+'   -DMASUME_MODE_SEED           create the demo database in bin/
 '   -DMASUME_MODE_OBJECTS        object tree (tables/views + columns)
 '   -DMASUME_MODE_RUN            headless "masume run": named query -> TSV
 '   -DMASUME_MODE_CHECK          "masume --mcp --check" style diagnostics
@@ -453,7 +453,7 @@ END SUB
 
 ' Opens the active profile. M1: profile "demo" (SQLite, self-contained). Its
 ' `path` key from .masume.toml is honoured when present, resolved against the
-' project-file folder; otherwise the app default under work/ is used.
+' project-file folder; otherwise the app default under bin/ is used.
 ' Other engines (postgres, mysql, ...) and profile selection from the command line
 ' are TODO (upstream: `masume TARGET`, `-p NAME`; BASIC has no argv yet).
 SUB ResolveActive()
@@ -574,16 +574,16 @@ END FUNCTION
 ' with a key legend at the bottom). Esc cancels, "Quit" exits.
 SUB RunTui()
     DIM choice AS INTEGER
-    DIM items(4) AS STRING
-    items(0) = "Browse objects"
-    items(1) = "Table: orders (data)"
-    items(2) = "Columns of orders"
-    items(3) = "Named query"
-    items(4) = "Quit"
+    DIM menuItems(4) AS STRING
+    menuItems(0) = "Browse objects"
+    menuItems(1) = "Table: orders (data)"
+    menuItems(2) = "Columns of orders"
+    menuItems(3) = "Named query"
+    menuItems(4) = "Quit"
     choice = 0
     WHILE choice <> 4
         DrawShell()
-        MENU 2, 3, items INTO choice
+        MENU 2, 3, menuItems INTO choice
         IF choice = 0 THEN TuiGoObjects()
         IF choice = 1 THEN TuiGoData()
         IF choice = 2 THEN TuiGoColumns()
@@ -623,11 +623,12 @@ END SUB
 ' Mode selection. BASIC has no runtime argv (see APPS/README.md), so the mode is
 ' chosen EITHER with a compile-time symbol or with the project file ([settings]).
 '
-'   dotnet run --project REPL -- -DMASUME_MODE_OBJECTS APPS/Masume/src/Masume.bas
-'   (REPL/Arguments.cs: -D<SYMBOL>[=value]; the preprocessor honors #IFDEF/#ENDIF)
+'   tools/sh/harness.sh pcode shared/APPS/Masume/src/Masume.bas      (dalla ROOT)
+'   modo esplicito: #DEF MASUME_MODE_OBJECTS in testa al file (i runner non passano -D;
+'   `REPL -D` vale per le direttive della REPL, non per l'esecuzione di un file)
 '
 ' If NO symbol is passed, the mode falls back to `[settings] mode` in the
-' .masume.toml project file, so every runner works — Executor, test_ilrun,
+' .masume.toml project file, so every runner works — test_ilrun, test_pcode, test_vmrun,
 ' vmtest, C99 tests and NativeAOT — without flags.
 ' ============================================================================
 FUNCTION ComputeMode() AS STRING
