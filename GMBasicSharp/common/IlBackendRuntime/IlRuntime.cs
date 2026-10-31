@@ -244,7 +244,7 @@ public static partial class IlRuntime
         // questo lasciava SDL "vivo" senza che nessuno pompasse mai gli eventi (l'host headless
         // non ha un loop finestra) — un programma con ON KEY/ON MOUSE GOSUB (che richiede la
         // rientranza dell'evento) restava in attesa per sempre, CPU al 900%+ (visto dal vivo:
-        // test_ilrun su samples/Community/Mouse/MouseGraphicState.bas, 29 minuti prima del kill).
+        // test_ilrun su samples/Mouse/MouseGraphicState.bas, 29 minuti prima del kill).
         // ATTENZIONE: leggere `host.Graphics` CREA il servizio (proprietà pigra → factory →
         // dlopen di libgmb_gfx + SDL, ~8 MB) solo per controllarne il tipo: era questo a
         // caricare il motore grafico all'avvio di OGNI programma, anche un `PRINT`.

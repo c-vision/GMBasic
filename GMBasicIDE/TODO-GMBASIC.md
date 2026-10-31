@@ -27,7 +27,7 @@ Sources read (repo `~/Documents/Projects/GMBasic`):
 `native/gmb_compiler_c/frontend/`, `native/gmb_c99native/driver/`,
 `native/gmb_c99native/src/gmb_c99_emit_controls.c`,
 `native/gmb_runtime_c/include/gmb_ide.h`, `native/gmb_runtime_c/include/gmb_form.h`,
-`common/Registry/canonical.registry.json`, `samples/Community/graphics/ControlsFullDemo.bas`,
+`common/Registry/canonical.registry.json`, `samples/graphics/ControlsFullDemo.bas`,
 `tools/gmb_c99native_run.sh`.
 
 Sources read (this repo): `src/core/vb_parse.c`, `src/core/vb_model.h`,
@@ -944,7 +944,7 @@ second save is identical.
   `_main`. The negative verdict is real: a probe with a `PUBLIC SUB` with an array argument
   (legitimately not exportable in v1) gives `ABI: simboli non esportati: _probe_Run`.
   Verified end-to-end: MiniTest **PASS** (`minilib_Add/Mul/Greet`), sample
-  `samples/Community/C99/GmbLibMath.bas` → `gmbmath.dylib` with `gmbmath_Add/Mul/Greet/init/fini`
+  `samples/C99/GmbLibMath.bas` → `gmbmath.dylib` with `gmbmath_Add/Mul/Greet/init/fini`
   and no `main`, gate `tools/check_minitests.sh` → `RISOLTO`, baseline regenerated at 83 known
   FAIL, 0 regressions, `constructs` 40/41 (the known `types_operator` gap remains).
   (c) **`gmb build` compiled a library as an executable** (2026-10-25, solved): the project CLI

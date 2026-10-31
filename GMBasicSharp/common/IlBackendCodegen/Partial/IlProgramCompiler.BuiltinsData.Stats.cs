@@ -158,7 +158,7 @@ public sealed partial class IlProgramCompiler
         // appiattiscono ricorsivamente gli ArrayLiteral per estrarre le singole opzioni. Se
         // EmitChooseCall emettesse l'ArrayLiteral così com'è finirebbe un array-typed dentro
         // object[] (Choose lo ritornerebbe intero → ToDouble(double[]) lancia InvalidCast —
-        // caso di samples/Community/Graphics/GraphicsDrawTextures.bas: Color = CHOOSE(..., -1, ...)).
+        // caso di samples/Graphics/GraphicsDrawTextures.bas: Color = CHOOSE(..., -1, ...)).
         var flat = new List<Expr>();
         void CollectOptions(Expr e)
         {

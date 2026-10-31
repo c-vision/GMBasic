@@ -1158,7 +1158,7 @@ public sealed partial class IlProgramCompiler
                         // returnSymbolId = method.SymbolId (prima mancante, default -1): senza
                         // questo, EmitEndProcedureStatement non trova mai un return-slot condiviso
                         // col nome del metodo e la bare-assignment `NomeMetodo = espr` (convenzione
-                        // "classica" per il valore di ritorno, oracolo samples/Community/Types/
+                        // "classica" per il valore di ritorno, oracolo samples/Types/
                         // TypesImplementsInterface.bas) non veniva MAI letta prima del ret — bug
                         // "UDT-Interface-Dispatch-Default-Su-Gambe-CSharp" (nulla a che vedere con
                         // INTERFACE: riproducibile su un TYPE con metodi e ZERO interfacce).

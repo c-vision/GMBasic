@@ -463,7 +463,7 @@ int gmb_db_apply_syscall(int code, const char* sarg, int64_t iarg, int64_t* resu
              * del driver RDD (RDD USE … VIA "CSV"). I comandi DBF GO/SKIP navigano già l'area
              * RDD quando non c'è un handle gmb_db; senza questo fallback RECNO restava 0 e i
              * cicli `DO WHILE NOT EOF()` su un'area RDD non terminavano (misurato:
-             * samples/Community/Databases/RDD_ReplaceRealData.bas → 1.048.579 righe).
+             * samples/Databases/RDD_ReplaceRealData.bas → 1.048.579 righe).
              * Punto unico del runtime condiviso (§0bis): vale per VM/C e C99Native. */
             if (gmb_db_current_dbf() > 0)       /* handle VIVO (un DBF CLOSE lascia g_last_dbf impostato ma libera lo slot) */
                 *result = (code == GMB_SYS_DBF_RECNO) ? gmb_db_dbf_recno(g_last_dbf)

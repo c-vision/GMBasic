@@ -28,7 +28,7 @@ public class PackageServerCompileTest
             if (File.Exists(Path.Combine(dir.FullName, "GMBasicSharp", "GMBasicSharp.slnx")))
             {
                 // MONOREPO: i sample stanno in <repo>/shared/samples (accanto a GMBasic/).
-                // Si restituisce la base che CONTIENE davvero samples/Community/PackageRegistry.
+                // Si restituisce la base che CONTIENE davvero samples/PackageRegistry.
                 var sharedBase = Path.Combine(dir.FullName, "shared");
                 if (Directory.Exists(Path.Combine(sharedBase, "samples", "Community", "PackageRegistry")))
                     return sharedBase;

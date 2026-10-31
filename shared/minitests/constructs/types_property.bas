@@ -1,6 +1,6 @@
 ' EXPECT: c|r1= 10|r2= 10
 ' Oracle = golden: PROPERTY GET/SET su classe (campo privato + validazione).
-' Sintassi canone: samples/Community/Classes/ClassesHierarchy.bas
+' Sintassi canone: samples/Classes/ClassesHierarchy.bas
 Public Class Cerchio
     Public Dim _raggio As Double
     Public Property Raggio As Double

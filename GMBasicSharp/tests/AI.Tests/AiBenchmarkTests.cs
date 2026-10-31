@@ -10,7 +10,7 @@ namespace AI.Tests;
 /// richiedono un modello locale: gli errori espliciti (mai crash, mai risultato
 /// silenzioso — regola anti-stub). I percorsi di successo richiedono un modello locale
 /// session-aware+cache-manager (llamacpp/MLX) e sono verificati end-to-end dal sample
-/// samples/Community/Ai/AiBenchmark.bas e dai test env-gated.</summary>
+/// samples/Ai/AiBenchmark.bas e dai test env-gated.</summary>
 [Trait("Category", "Fast")]
 public sealed class AiBenchmarkTests : IDisposable
 {

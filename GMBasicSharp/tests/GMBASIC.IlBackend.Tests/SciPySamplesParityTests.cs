@@ -1,4 +1,4 @@
-// Esegue i sample BASIC SciPy (samples/Community/Math/*SciPyParity.bas) sul P-Code
+// Esegue i sample BASIC SciPy (samples/Math/*SciPyParity.bas) sul P-Code
 // managed e verifica che l'output coincida con gli oracoli SciPy 1.18 (scipy.special,
 // scipy.spatial.distance) entro 1e-9. Non interattivo (solo filtro mirato).
 using System.IO;

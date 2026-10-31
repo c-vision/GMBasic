@@ -1,5 +1,5 @@
 ' EXPECT: m1= 42|m2= 10|m3= 5|m4= 15|m5= 5|m6= 15
-' Sintassi canone: samples/Community/Clipper/ClipperMacroCanary.bas (macro espressione
+' Sintassi canone: samples/Clipper/ClipperMacroCanary.bas (macro espressione
 ' &("...") e EVAL; la macro di COMANDO + interleaving PRINT ha ordine di uscita
 ' storico divergente IL/PCode — non esercitata qui).
 GLOBAL X AS INTEGER

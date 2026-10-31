@@ -253,7 +253,7 @@ static void gmb_put_le32(unsigned char* p, unsigned long v) { p[0]=v&0xFF; p[1]=
  * corto fra le entry), con '/' come separatore; scrittura STORE.
  *
  * Storico dei difetti corretti qui (2026-10-06, scoperti lanciando il registry
- * reale samples/Community/PackageRegistry/PackageServer.bas, che gira su VM/C):
+ * reale samples/PackageRegistry/PackageServer.bas, che gira su VM/C):
  *   1) le cartelle venivano IGNORATE (si usava il solo basename, e una sorgente non
  *      apribile veniva saltata) -> archivio vuoto ma RITORNO 0, cioe' successo. Il
  *      client che scaricava il pacchetto riceveva 0 byte e moriva con

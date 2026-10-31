@@ -664,7 +664,7 @@ public class MiniTestsParityTests
     /// processo (uno `dotnet test`), così lo sweep dei domini è rapido.
     ///
     /// Uso:
-    ///   GMB_SAMPLE_DIR=samples/Community/Databases [GMB_SAMPLE_ONLY=rdd] dotnet test --filter Sample_Parity_Sweep
+    ///   GMB_SAMPLE_DIR=samples/Databases [GMB_SAMPLE_ONLY=rdd] dotnet test --filter Sample_Parity_Sweep
     /// Esclude di default i sample non deterministici/che richiedono risorse esterne
     /// (browser, rete, postgres): vedi `IsExcluded`.</summary>
     [Fact]

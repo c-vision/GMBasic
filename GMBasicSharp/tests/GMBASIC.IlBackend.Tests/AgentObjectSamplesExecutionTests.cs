@@ -1,6 +1,6 @@
 // AI Agents A1 (2026-09-02): CLASSE AGENT wrapper (include/Agent.inc) — property access
 // write-through su un agente (gap UDT property access). Compila ed ESEGUE il sample
-// samples/Community/Ai/AgentObject.bas sul backend IL e verifica i marker in output:
+// samples/Ai/AgentObject.bas sul backend IL e verifica i marker in output:
 // SET via property scrive sul record reale (riletto con AI.AGENTGET = Cross*) e GET rilegge.
 using System.Reflection;
 using System.Text;

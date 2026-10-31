@@ -509,7 +509,7 @@ public static class BspCompiler
     /// della riga vanno emesse come <c>CHR$(34)</c>: un frammento HTML come <c>&lt;a href="</c>
     /// (tipico prima di <c>&lt;%= valore %&gt;</c>) diventava <c>PRINT "&lt;a href="""</c> →
     /// il lexer rispondeva "Raw string non chiusa" e la pagina non compilava
-    /// (bug reale: <c>samples/Community/Security/pages/oauth-login.bsp</c>).
+    /// (bug reale: <c>samples/Security/pages/oauth-login.bsp</c>).
     /// </summary>
     private static string ToBasicStringExpr(string line)
     {

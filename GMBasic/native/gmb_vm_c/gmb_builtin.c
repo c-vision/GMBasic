@@ -14205,7 +14205,7 @@ void gmb_bf_dbf_recno_c1361(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int
     /* RECNO dell'AREA ATTIVA: DBF se aperto, altrimenti l'area RDD (RDD USE … VIA "CSV").
      * Senza il fallback, `DBF GO TOP`/`SKIP` muovevano l'area RDD (vedi vm_sys_goskip_*) ma
      * RECNO leggeva il layer gmb_db (handle 0) → sempre 0, e i cicli `DO WHILE NOT EOF()`
-     * non terminavano (misurato su samples/Community/Databases/RDD_ReplaceRealData.bas). */
+     * non terminavano (misurato su samples/Databases/RDD_ReplaceRealData.bas). */
     {
         int64_t dh = gmb_db_current_dbf();
         /* Se l'area corrente e' ISAM (B+Tree), RECNO va letto dal motore ISAM: senza questo

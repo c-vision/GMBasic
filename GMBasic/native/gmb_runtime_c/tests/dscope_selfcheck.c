@@ -1,5 +1,5 @@
 /* Selfcheck dello scope dinamico BASIC (DYNAMIC) — mirror di
- * samples/Community/Clipper/ClipperDynamicScope.bas (cascata, shadowing, ripristino).
+ * samples/Clipper/ClipperDynamicScope.bas (cascata, shadowing, ripristino).
  * Linka il runtime vero (gmb_runtime), quindi usa gmb_make_val_string/gmb_string_free reali. */
 #include "gmb_dscope.h"
 #include <stdio.h>

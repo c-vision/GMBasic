@@ -434,7 +434,7 @@ public sealed partial class Compiler
         // OP_PUSH_NIL prima di OP_RETURN invece di OP_LOAD_LOCAL(return-slot) → ogni FUNCTION
         // di un UDT restituiva sempre NIL. _currentProcedureName serve anche a ResolveLocal per
         // trovare il return-slot: la bare-assignment `NomeMetodo = ...` (convenzione oracolo
-        // samples/Community/Types/TypesImplementsInterface.bas) crea il local implicito col
+        // samples/Types/TypesImplementsInterface.bas) crea il local implicito col
         // nome del metodo dopo SELF+parametri — senza il nome giusto in contesto, quel local
         // non viene mai trovato in lettura. Bug "UDT-Interface-Dispatch-Default-Su-Gambe-
         // CSharp" (nulla a che vedere con INTERFACE — riproducibile su un TYPE senza alcuna

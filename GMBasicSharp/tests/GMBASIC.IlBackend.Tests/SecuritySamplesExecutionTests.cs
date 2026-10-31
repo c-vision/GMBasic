@@ -1,4 +1,4 @@
-// Security (2026-09-02): compila ED ESEGUE i nuovi sample BASIC samples/Community/Security/*
+// Security (2026-09-02): compila ED ESEGUE i nuovi sample BASIC samples/Security/*
 // sul backend IL e verifica i marker d'esito in output (test a fondo delle nuove funzionalità).
 using System.Reflection;
 using System.Net.Http;

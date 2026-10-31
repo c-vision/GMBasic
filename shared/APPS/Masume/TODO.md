@@ -78,7 +78,7 @@ introduced by this port:
 All runs below use `dotnet run --project test_ilrun -c Debug -- --engine=pcode <file>` (see gap
 #4 above) with the `-D` symbol applied via a `#DEF MASUME_MODE_<X>` line temporarily prepended to
 a copy of `src/Masume.bas` (`test_ilrun` has no `-D` flag; `#DEF`/`#IFDEF` is the in-source
-equivalent — confirmed against `samples/Community/Lexer/LexerPreProcessing.bas`). Run 2026-09-18.
+equivalent — confirmed against `samples/Lexer/LexerPreProcessing.bas`). Run 2026-09-18.
 
 | Mode | Command basis | Result |
 |---|---|---|

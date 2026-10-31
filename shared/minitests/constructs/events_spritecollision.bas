@@ -3,7 +3,7 @@
 ' rilevata dal motore al SYNC (GraphicsManager.DetectCollisions, dispatch software).
 ' Due sprite sovrapposti alla stessa posizione -> 1 collisione al SYNC.
 ' Ambiente: harness grafico headless (test_graphics_headless, SDL_VIDEODRIVER=dummy).
-' Sintassi canone: samples/Community/Sprites/SpritesExamples.bas
+' Sintassi canone: samples/Sprites/SpritesExamples.bas
 ' ENV-GATED (nessun EXPECT, aggiornato 2026-09-21 notte):
 '  - L'harness grafico headless ESISTE: test_graphics_headless (SDL_VIDEODRIVER=dummy,
 '    pump reale su main thread). Non è il modo GMBASIC_HEADLESS=1 (che droppa le op

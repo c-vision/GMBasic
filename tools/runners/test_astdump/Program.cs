@@ -3,7 +3,7 @@
 using System;
 using System.Linq;
 
-var file = args.Length > 0 ? args[0] : "samples/Community/Functions/FunctionsAdvanced.bas";
+var file = args.Length > 0 ? args[0] : "samples/Functions/FunctionsAdvanced.bas";
 var program = Basic.Orchestrator.Compile(Path.GetFullPath(file), null, false);
 if (program?.MainModule != null)
     Basic.Parser.DumpASTHierarchical(program, showAllModules: false, useConsole: true);

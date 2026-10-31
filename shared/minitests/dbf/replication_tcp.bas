@@ -6,7 +6,7 @@
 ' qui non esiste un builtin che apra un listener NON bloccante (nessun SERVER/LISTEN), quindi
 ' `REPLICATIONRECV` in un task ASYNC blocca l'unico worker e il mittente non parte mai
 ' (verificato: timeout a 40s). Per la stessa ragione i sample ufficiali
-' (samples/Community/Databases/IsamReplicationTcp.bas) sono solo compile-check.
+' (samples/Databases/IsamReplicationTcp.bas) sono solo compile-check.
 '
 ' Qui si esercita quindi il percorso DETERMINISTICO e veloce: argomenti non validi
 ' (porta 0 = fuori range, host vuoto) → 0 = errore, senza tentare connect/accept.

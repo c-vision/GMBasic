@@ -19,7 +19,7 @@ plugins/<nome>/
 | **compiler** | **nothing.** No include in the linker/emitter: a `.bas` inside a plugin never enters the compilation |
 
 **The `<nome>.bas` is not executed.** It is the reference contract (the expected signatures): that
-is why `samples/Community/Browser/BrowserPluginTest.bas` and `samples/Community/Ai/AiPlugins.bas`
+is why `samples/Browser/BrowserPluginTest.bas` and `samples/Ai/AiPlugins.bas`
 **re-implement** the procedures inside themselves (`BrowserNavigate`, `WebFetch`, …).
 
 ## Consequences for a compiled program

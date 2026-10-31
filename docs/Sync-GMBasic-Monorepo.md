@@ -128,7 +128,7 @@ SYNC GMBasic → GMBasicMonoRepo
 ## Sync of new commits + closing SPEED/MOUSE gaps (2026-10-24)
 - **New commits** in the original GMBasic: `6fe9765af` (@GET TYPE MiniTest/sample/guide) and
   `7a474842d` (C# emitter parity for typed fields). Copied into `shared/`:
-  `minitests/controls/get_types_parity.bas`, `samples/Community/Clipper/ClipperTypedGets.bas`.
+  `minitests/controls/get_types_parity.bas`, `samples/Clipper/ClipperTypedGets.bas`.
   The C# emitter changes do not concern the monorepo (retired backend).
 - **Gaps closed on the 4 backends** (not only C99Native): SPEED.SETDURABILITY/FLUSHDURABILITY/
   BEGINGROUPCOMMIT/ENDGROUPCOMMIT/INFO and MOUSE.CLICK (0 arg + area).

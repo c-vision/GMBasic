@@ -29,6 +29,8 @@ per-package `edition`/`requiresCommercial` gate, and two sample roots
 edition. It has been **removed at every level** — build matrix, runtime service, native option,
 package manifests, samples, scripts and docs: **one build, one set of samples, one license**, and
 every function (including the file databases: DBF, ISAM, SPEED, Ledger) is available to everybody.
+The samples now live directly under `shared/samples/<Category>/` (the old `Community/` level is
+gone too, so no folder name refers to an edition).
 
 The folder [`GMBasic/gmbllm/`](GMBasic/gmbllm/README.md) (model compiler: quantization encode,
 training, converter) stays **separate for technical reasons** — it is the part that produces or

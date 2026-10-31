@@ -1,4 +1,4 @@
-' FILE: samples/Community/FFI/FfiNamespaceLib.inc — libreria FFI namespace
+' FILE: samples/FFI/FfiNamespaceLib.inc — libreria FFI namespace
 ' Contiene le dichiarazioni DECLARE ... LIB dentro NAMESPACE.
 ' Include via IMPORT FfiNamespaceLib  oppure  IMPORT FfiNamespaceLib AS FFL.
 

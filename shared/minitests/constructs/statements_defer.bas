@@ -1,5 +1,5 @@
 ' Oracle = golden: DEFER <statement> — eseguito a FINE scope della procedura, LIFO.
-' Sintassi canone: samples/Community/Concurrency/PCodeGpmMutexDefer.bas (DEFER MUTEX UNLOCK).
+' Sintassi canone: samples/Concurrency/PCodeGpmMutexDefer.bas (DEFER MUTEX UNLOCK).
 ' 2026-09-21: PCode fix (loop infinito, resume errato dopo l'ultimo DEFER); emitter C#
 ' verificato già corretto (il "placeholder" del doc bug era stale); IL fix (supporto DEFER
 ' sul path lineare, prima GPM-v2-only — nuovo meccanismo EmitDeferredBodiesIfAny/

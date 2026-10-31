@@ -1,6 +1,6 @@
 ' FILE sequenziali Clipper — catena completa OPEN/USING/PRINT#/WRITE#/INPUT#/LINE INPUT#/EOF/CLOSE
 ' EXPECT: r1= 101 |Mario, Rossi| 123.45 |-1|raw=raw line|r2= 202 |Luigi|-50 | 0|eof=-1|eof2= 0|done
-' Sintassi canone: samples/Community/Files/SequentialFilesFull.bas
+' Sintassi canone: samples/Files/SequentialFilesFull.bas
 SUB Main()
     USING F = OPEN("work_seqfull.txt", OUTPUT)
         WRITE #F, 101, "Mario, Rossi", 123.45, TRUE

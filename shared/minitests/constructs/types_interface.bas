@@ -1,5 +1,5 @@
 ' Oracle = golden: INTERFACE + UDT IMPLEMENTS (chiamata di metodo via interfaccia).
-' Sintassi canone: samples/Community/Types/TypesImplementsInterface.bas
+' Sintassi canone: samples/Types/TypesImplementsInterface.bas
 ' 2026-09-21: FIX IL/PCode(+VM-C, stesso bytecode condiviso) — root cause reale: NON era
 ' dispatch via interfaccia (riproducibile anche su un TYPE senza alcuna INTERFACE), ma la
 ' convenzione di ritorno "bare-assignment NomeMetodo = espr" mai wired per i metodi di TYPE

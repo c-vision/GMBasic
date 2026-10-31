@@ -42,7 +42,7 @@ SUB Main()
     PRINT "reshape_rows: "; MATRIX.ROWCOUNT(r)
     PRINT "reshape_cols: "; MATRIX.COLUMNCOUNT(r)
 
-    ' SLICE con bound INCLUSIVI (come samples/Community/Matrix/MatrixCommonLibSimd.bas):
+    ' SLICE con bound INCLUSIVI (come samples/Matrix/MatrixCommonLibSimd.bas):
     ' SLICE(m, 0, 2, 0, 2) su una 3x3 prende tutto.
     sl = MATRIX.SLICE(s, 0, 1, 0, 1)
     PRINT "slice: "; MATRIX.GETVALUE(sl, 0, 0)

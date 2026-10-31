@@ -824,7 +824,7 @@ public sealed partial class Compiler
         // semplicemente IGNORATO dall'opcode fuso. Prima di questo controllo il ramo accettava
         // anche `acc + I + I` (sotto-terminale non builtin) e perdeva il termine interno:
         // PCodeVM/VM-C davano 6 dove IL/C99 davano 12 (divergenza tra backend, 2026-09-29,
-        // vedi samples/Community/Loops/LoopsAccumulatorPatterns.bas sezione 4).
+        // vedi samples/Loops/LoopsAccumulatorPatterns.bas sezione 4).
         Expr outerLeft = outer.Left;
         if (outer.Op.Kind == TokenKind.Plus
             && outerLeft is BinaryExpr innerAcc && innerAcc.Op.Kind == TokenKind.Plus

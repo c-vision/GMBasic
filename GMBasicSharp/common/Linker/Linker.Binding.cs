@@ -2512,7 +2512,7 @@ public static partial class Linker
         // Se 'i' e' già una variabile dichiarata esplicitamente (DIM i AS ...) in uno scope
         // accessibile, il FOR NON riusa quel simbolo: crea un'ombra block-scoped che eredita
         // il TIPO dichiarato esterno (canone shadowing 2026-09-30: dopo il ciclo la DIM esterna
-        // conserva il suo valore — `samples/Community/Loops/LoopsForNextOptimized.bas` TEST 4).
+        // conserva il suo valore — `samples/Loops/LoopsForNextOptimized.bas` TEST 4).
         // Il riuso diretto (pre-2026-09-30) condivideva lo slot e il contatore scriveva sopra
         // la variabile utente su IL (in SUB), PCode e VM/C. Ereditare il tipo (invece di un
         // InferredType vergine) conserva il fix anti-narrowing originale: un'ombra InferredType

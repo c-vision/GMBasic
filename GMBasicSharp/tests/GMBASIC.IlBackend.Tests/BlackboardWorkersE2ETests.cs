@@ -1,4 +1,4 @@
-// BlackboardWorkersE2E — esegue samples/Community/Ai/BlackboardWorkersE2E.bas sul backend
+// BlackboardWorkersE2E — esegue samples/Ai/BlackboardWorkersE2E.bas sul backend
 // IL e verifica che la concorrenza (GO SUB ... IN wg) scriva al Blackboard senza perdite e
 // che il synth (leggendo le chiavi dopo WAIT) ottenga la somma dei quadrati 1..4 = 30.
 // Chiude il criterio di Fase 2 del TODO GMBasic-Agent-Runtime: N scrittori concorrenti +

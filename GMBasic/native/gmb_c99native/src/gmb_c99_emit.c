@@ -2365,7 +2365,7 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                      * Count, ContainsKey. Il ramo COLLECTIONS di emit_call produce double/int
                      * (e stringa per elem_str), non un gmb_val_t: marcarli TY_VAL faceva
                      * avvolgere il risultato in gmb_val_to_double(<double>/<int>) → C invalido
-                     * (samples/Community/Json/JsonApiComplete.bas). Si lascia decidere al caso
+                     * (samples/Json/JsonApiComplete.bas). Si lascia decidere al caso
                      * GMB_EXPR_CALL piu' sotto. */
                     int _erx_dict_scalar = 0;
                     if (_erxv->gkind && gk_is_dict(_erxv->gkind) && !strchr(_erxdot + 1, '.')) {
@@ -2689,7 +2689,7 @@ int etype(ctx_t* c, gmb_expr_t* e) {
          * Il ramo COLLECTIONS di emit_call emette un valore NON boxed (double/int/stringa),
          * ma senza questo caso etype restava TY_VAL → i contesti numerici lo avvolgevano in
          * gmb_val_to_double(<double>)/gmb_val_to_double(<int>) e il C non compilava
-         * (samples/Community/Json/JsonApiComplete.bas). Deve combaciare con l'emissione:
+         * (samples/Json/JsonApiComplete.bas). Deve combaciare con l'emissione:
          * Get → boxed ? gmb_val_t : (elem_str ? stringa : .v_double).
          * DEVE precedere gmb_ns_type_is_str: Get è un TokenKind CONDIVISO (CLIP.GET è
          * stringa, DICT.Get è il tipo VALORE) → la tabella ns_types direbbe TY_STR e il
@@ -8062,7 +8062,7 @@ static void emit_dict_key(ctx_t* c, gmb_expr_t* e);   /* definita più sotto in 
  * gmb_double_t con il valore corrente. Ritorna il numero di graffe '{' aperte da
  * richiudere al termine (il chiamante deve chiuderle in ordine INVERSO). Sorgenti
  * supportate: variabile-array nativa, variabile-lista (gkind), letterale inline
- * `{e1,e2,...}` — coprono tutti gli usi in samples/Community/Arrays/
+ * `{e1,e2,...}` — coprono tutti gli usi in samples/Arrays/
  * ArraysComprehensionFull.bas (variabili preesistenti e letterali annidati diretti,
  * es. `FOR x IN {1, 2, 3, 4}`). */
 /* La sorgente di una clausola FOR produce STRINGHE? (variabile array STRING, lista con elem_str, letterale `{"a","b"}`).
@@ -10285,7 +10285,7 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                  * gmb_dict_set/gmb_dict_get/...). Prima questo ramo vinceva e con base dict emetteva
                  * `gmb_val_dict_get(gmb_val_index(d, k), "Set")`: scartava il valore e passava un
                  * gmb_dict_t dove serve un gmb_val_t → il C non compilava
-                 * (samples/Community/Json/JsonApiComplete.bas: 10 errori). */
+                 * (samples/Json/JsonApiComplete.bas: 10 errori). */
                 if (bvv && !bvv->vclass[0] && bvv->gkind && bvv->gkind != GK_HTTPREQ && bvv->gkind != GK_HTTPRESP
                     && (nargs >= 2
                         || gmb_tk_in(gmb_member_tok(bdot + 1), gmb_tk_coll_methods_any,
@@ -24158,7 +24158,7 @@ static void emit_ai_domain(ctx_t* c, gmb_stmt_t* s) {
      * `AI BRAIN USE "a", "b"` arriva come PIU' operandi stringa: una chiamata per nome (il runtime
      * accetta una CSV; qui si evita di costruirla a runtime). Prima questo statement cadeva in
      * "statement di dominio 'AI' verb 'BRAIN' non supportato" → parità C99Native mancante
-     * (trovato dal sample samples/Community/Ai/BrainMultiBrain.bas, 2026-09-16). */
+     * (trovato dal sample samples/Ai/BrainMultiBrain.bas, 2026-09-16). */
     if (gmb_keyword_tok(verb) == GMB_TOK_Brain || (verb && strcasecmp(verb, "BRAIN") == 0)) {
         if (n < 1 || !a[0]) { c99_fail(c, s->line, "AI BRAIN: atteso sotto-comando (USE|DETACH)"); return; }
         int bstk = a[0]->tk;
@@ -26148,7 +26148,7 @@ static void emit_dbf_domain(ctx_t* c, gmb_stmt_t* s) {
             }
         /* APPEND RECORD <var>: oltre al blank, i VALORI dei campi del record devono finire nella
          * tabella. Prima si emetteva SOLO append_blank: i record restavano con i campi vuoti, e
-         * `DBF.LOOKUP` non trovava nulla (misurato su samples/Community/Databases/
+         * `DBF.LOOKUP` non trovava nulla (misurato su samples/Databases/
          * DbDbfUncoveredCoverage.bas: IL 'N2', C99Native ''). */
         for (i = 0; i < na; i++)
         {
