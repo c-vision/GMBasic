@@ -2651,6 +2651,8 @@ void  gmb_paths_brains_dir(char* out, size_t cap);             /* default <root>
 void  gmb_paths_brains_exports_dir(char* out, size_t cap);     /* default <root>/brains-exports */
 void  gmb_paths_brains_cache_dir(char* out, size_t cap);       /* cache cervelli on-demand: ~/.gmbasic/brains */
 int   gmb_paths_brains_manifest(char* out, size_t cap);        /* brains-manifest.json: 1 se esiste */
+/* File condiviso del compilatore: `shared/settings/<name>` (seed di provider, manifest). */
+int   gmb_paths_shared_settings_file(const char* name, char* out, size_t cap);
 void  gmb_paths_libs_dir(char* out, size_t cap);               /* default <root>/build/libs/<rid> */
 void  gmb_paths_libs_cache_dir(char* out, size_t cap);          /* cache librerie on-demand: ~/.gmbasic/libs (paths.libsCacheDir) */
 

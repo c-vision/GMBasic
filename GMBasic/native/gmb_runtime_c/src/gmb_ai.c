@@ -999,11 +999,17 @@ int gmb_provider_v2_load(const char* path) {
 
 
 /* AI.PROVIDERS(): parità C# IlRuntime.AiProviders = File.ReadAllText(config/providers.json).
- * Ritorna il contenuto del file (heap, malloc). Se assente, fallback al registry serializzato. */
+ * Il file LOCALE (stato utente) vince; se manca si usa il SEED condiviso del compilatore
+ * (`shared/settings/providers.json`, che il bundle copia accanto all'eseguibile in
+ * `config/providers.json`). Se non c'è nemmeno quello, fallback al registry serializzato. */
 char* gmb_ai_providers_json(void) {
     char path[1024];
     gmb_paths_providers_json(path, sizeof(path));
     FILE* f = fopen(path, "rb");
+    if (!f) {
+        char seed[1200];
+        if (gmb_paths_shared_settings_file("providers.json", seed, sizeof seed)) f = fopen(seed, "rb");
+    }
     if (!f) return gmb_provider_v2_info();
     if (fseek(f, 0, SEEK_END) != 0) { fclose(f); return gmb_provider_v2_info(); }
     long n = ftell(f);

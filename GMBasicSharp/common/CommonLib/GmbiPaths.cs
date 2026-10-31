@@ -518,6 +518,14 @@ public static class GmbiPaths
             // Checkout C-only del monorepo (nessuna .sln): marker stabile del runtime condiviso
             // (stessa regola di ir_walk_sln nel frontend C).
             if (File.Exists(Path.Combine(dir, "native", "gmb_runtime_c", "include", "gmb_runtime.h"))) return dir;
+            // MONOREPO dalla RADICE: `native/gmb_runtime_c` sta in `GMBasic/`, quindi salendo da
+            // `tools/runners/...` il marker C non si incontra mai e la root cadeva su
+            // CoreAppPath() (`shared/skills`, `shared/settings` e `config/` invisibili).
+            // Il marker è quello del monorepo (`GMBasic/native/...`), NON "esiste una cartella
+            // GMBasic accanto": su questa macchina un vecchio clone in `../GMBasic` faceva
+            // risolvere la root sul clone SBAGLIATO.
+            if (File.Exists(Path.Combine(dir, "GMBasic", "native", "gmb_runtime_c", "include", "gmb_runtime.h")))
+                return Path.Combine(dir, "GMBasic");
         }
         return FileSystemUtils.CoreAppPath();
     }

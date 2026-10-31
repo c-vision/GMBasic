@@ -557,6 +557,30 @@ int gmb_paths_brains_manifest(char* out, size_t cap)
     return 0;
 }
 
+/* File di CONFIGURAZIONE CONDIVISA del compilatore: `shared/settings/<name>` (manifest, seed
+ * di provider, ...). Stesso spirito di gmb_paths_brains_manifest: nel monorepo la copia unica
+ * sta in `shared/settings`; un programma distribuito non ce l'ha e usa il proprio
+ * `<configDir>/<name>` (copiato dal bundle) oppure i default del codice.
+ * Ritorna 1 se il file esiste (percorso in `out`); 0 lasciando il candidato canonico. */
+int gmb_paths_shared_settings_file(const char* name, char* out, size_t cap)
+{
+    if (!out || !cap || !name || !*name) return 0;
+    out[0] = '\0';
+    if (!g_pr_loaded) pr_load();
+    char exe[2048] = "";
+    (void)gmb_paths_exe_dir(exe, sizeof exe);
+    char cand[3][4096];
+    snprintf(cand[0], sizeof cand[0], "%s/../shared/settings/%s", g_pr_root, name);
+    snprintf(cand[1], sizeof cand[1], "%s/shared/settings/%s", g_pr_root, name);
+    snprintf(cand[2], sizeof cand[2], "%s/../shared/settings/%s", exe, name);
+    for (int i = 0; i < 3; i++) {
+        if (cand[i][0] != '/') continue;
+        if (access(cand[i], F_OK) == 0) { snprintf(out, cap, "%s", cand[i]); return 1; }
+    }
+    snprintf(out, cap, "%s", cand[0]);
+    return 0;
+}
+
 void gmb_paths_libs_dir(char* out, size_t cap)
 {
     if (!g_pr_loaded) pr_load();
