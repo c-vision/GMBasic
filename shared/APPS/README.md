@@ -150,7 +150,7 @@ la CLI del tool). Apps therefore select their behaviour through `#IFDEF` compile
 
 > **Non è più qui**: l'IDE TUI (`GMBasicTuiIde`, prima `APPS/GMBasicIde`) è stato promosso a
 > **progetto autonomo del monorepo** il 2026-10-31 → `GMBasicTuiIde/` alla root (accanto al
-> submodule grafico `GMBasicIDE/`). Motivo: serve da banco di misura del footprint di un programma
+> IDE `GMBasicIDE/`, ora cartella del monorepo). Motivo: serve da banco di misura del footprint di un programma
 > BASIC complesso e compilato.
 
 A port starts only when its folder has `README.md` + `TODO.md` and an entry `.bas` that compiles
