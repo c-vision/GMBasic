@@ -61,3 +61,26 @@ Working (multi-tab, file I/O, outline, completion, lint, goto, refs, make), thes
 
 - [ ] `shared/APPS/DigUp/fixtures/{lease.md,zebra.txt,podcast.txt}` — demo **data** paired with
       Italian queries inside `DigUp.bas`; translating one side alone breaks the demo.
+
+## 5. Before publishing the repository (still open)
+
+Paths are already relative for code, tests, samples and descriptors (no `/Users/<name>/...` in
+tracked files). These remain:
+
+- [ ] **Local model paths in `TAG: heavy` MiniTests**: files such as
+      `shared/minitests/llm/llm_logits_*.bas` point at a local model directory
+      (`~/ai/Models/<model>`). The C leg does **not** expand `~` for model paths, so they cannot
+      be made portable with a simple string change: they need a model-root option
+      (options registry, not env), then the tests can use `<root>/<model>`.
+- [ ] **Third-party skills license audit**: `shared/skills/` holds 161 skills, 121 with **no
+      license mention**; they must be checked (or excluded) before the repo goes public.
+- [ ] **Fonts**: `Resources/SFMono-Semibold.otf` is **not redistributable** (replace with an OFL
+      font); the `C64 Pro` font needs its terms documented in `NOTICE`.
+- [ ] **`pdf_oxide` C header** (`GMBasic/native/deps/`) — upstream license not declared in the
+      header: verify and record it in `NOTICE`.
+- [ ] **History cleanup (optional)**: `AGENTS.md` and `GMBasic/config/*.json` were removed from
+      the tree but are still in older commits; `git filter-repo` would scrub them (the `.git`
+      directory is ~98 MB).
+- [ ] **Revoke the leaked Hugging Face token**: a real `hf_...` token sat in an **untracked**
+      build log (`packages/video/1.0.0/.build/ffmpeg/ffbuild/config.log`, never committed or
+      pushed) — the log is now scrubbed, but the token must be **revoked** on the HF account.
