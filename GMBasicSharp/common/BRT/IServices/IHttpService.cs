@@ -62,6 +62,9 @@ public sealed class HttpServerSettings
     public int RateLimitRequestsPerMinute { get; set; }
     /// <summary>Rate-limit: dimensione del burst (token bucket). 0 = default 1.</summary>
     public int RateLimitBurstSize { get; set; }
+
+    /// <summary>Memoizzazione della resa delle pagine BSP in ms (0 = disattivata).</summary>
+    public int BspCacheMs { get; set; }
     /// <summary>Keep-Alive della connessione (header Connection: keep-alive). Default true.</summary>
     public bool EnableKeepAlive { get; set; } = true;
     /// <summary>Header di sicurezza automatici (HSTS/CSP/X-Frame-Options/X-Content-Type-Options/

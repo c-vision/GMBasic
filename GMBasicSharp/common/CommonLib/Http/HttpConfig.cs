@@ -35,6 +35,13 @@ public sealed class HttpConfig
     /// <summary>Dimensione massima del burst permesso dal rate limiter (token bucket). Default: 120.</summary>
     public int RateLimitBurstSize { get; set; } = 120;
 
+    /// <summary>Memoizzazione della RESA delle pagine BSP, in millisecondi (0 = disattivata).
+    /// Il costo per richiesta di una pagina è l'esecuzione (~ms), non l'HTTP: con molti client in
+    /// polling la stessa pagina viene rieseguita identica. Impostando &gt; 0 il corpo viene riusato
+    /// per quella finestra e servito con ETag/304. Valore consigliato per una dashboard: 500-1500.
+    /// Vale solo per le gambe managed (le gambe C non servono BSP).</summary>
+    public int BspCacheMs { get; set; }
+
     /// <summary>Dimensione massima consentita per il body di una richiesta in byte. Default: 10 MB.</summary>
     public long MaxRequestBodySize { get; set; } = 10 * 1024 * 1024;
 

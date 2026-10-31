@@ -164,7 +164,9 @@ public sealed partial class StdLib
             { "AllowedIPs", new StringType() },
             { "BlockedIPs", new StringType() },
             { "Sessions", new BitType() },
-            { "SessionFile", new StringType() }
+            { "SessionFile", new StringType() },
+            // Memoizzazione della resa BSP (ms; 0 = disattivata)
+            { "BspCacheMs", new IntegerType() }
         });
 
         RegisterTypeSchema(typeof(CookieJarType),

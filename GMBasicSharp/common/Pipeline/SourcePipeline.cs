@@ -23,6 +23,18 @@ public static class SourcePipeline
         return (compiler.Compile(program), compiler);
     }
 
+    /// <summary>Come <see cref="CompileFromStringWithCompiler"/>, ma espone anche il
+    /// <see cref="BasicProgram"/>: serve a chi deve conoscere i FILE caricati (dipendenze della
+    /// cache BSP — la pagina + gli `.inc` importati).</summary>
+    public static (global::Compiler.CompiledChunk Chunk, global::Compiler.Compiler Compiler, BasicProgram Program)
+        CompileFromStringWithProgram(string sourceText, string fileName, CommonLib.EffectiveSettings? settings = null,
+            string? rootDirectory = null)
+    {
+        var (compiler, program) = CompileFromStringCore(sourceText, fileName, settings,
+            global::Basic.StdLib.Instance, DefaultNamespacesStandard, rootDirectory);
+        return (compiler.Compile(program), compiler, program);
+    }
+
     public static readonly string[] DefaultNamespacesStandard =
         ["SYSTEM", "CONSOLE", "GRAPHICS", "MATH", "STRINGS", "DATETIME", "CONVERSIONS", "IO", "CONCURRENCY", "ARRAYS"];
 
@@ -147,7 +159,7 @@ public static class SourcePipeline
             var basicCode = BspCompiler.Compile(bspSource, bspFilePath);
             // ROOT = cartella della pagina (non la CWD): le impostazioni del progetto (app.settings)
             // e la discovery degli `include/` devono essere quelli della pagina, chiunque la serva.
-            var (compiledChunk, compiler) = CompileFromStringWithCompiler(
+            var (compiledChunk, compiler, bspProgram) = CompileFromStringWithProgram(
                 basicCode, Path.GetFileName(bspFilePath),
                 rootDirectory: Path.GetDirectoryName(Path.GetFullPath(bspFilePath)));
             chunk = compiledChunk;
@@ -164,8 +176,11 @@ public static class SourcePipeline
             // __global_init stesso: il task lo eseguiva DIRETTAMENTE (mai via OP_CALL dal
             // prologo) e al RETURN di chiusura (task.Frame ancora null) finiva subito, senza
             // mai raggiungere __main — bug: qualunque pagina BSP restava vuota.
+            // Dipendenze = la pagina + TUTTI i file caricati (gli `.inc` importati): la cache
+            // si invalida se uno qualsiasi cambia (hot reload degli helper senza riavviare).
+            var __deps = bspProgram.PreprocessedFiles.Keys.ToArray();
             BspRuntime.CacheStore(bspFilePath, [.. compiledChunk.Code!], [.. compiledChunk.Constants!], [.. compiledChunk.Lines!],
-                compiledChunk.GlobalCount, globalNameSlots, compiledChunk.EntryPoint);
+                compiledChunk.GlobalCount, globalNameSlots, compiledChunk.EntryPoint, __deps);
             return true;
         }
         catch (Exception ex)

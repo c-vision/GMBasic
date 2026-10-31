@@ -24,6 +24,10 @@ sessions      = true
 # alzalo se esponi la dashboard in LAN.
 rateLimitPerMinute = 0
 rateLimitBurst     = 0
+# Memoizzazione della resa delle pagine BSP (ms; 0 = disattivata). Il costo per richiesta è
+# l'ESECUZIONE della pagina: con più tab/client in polling la stessa resa viene riusata per
+# questa finestra (e servita con ETag/304). Con refreshMs 2500, 1000 ms è un buon compromesso.
+bspCacheMs = 1000
 
 [app]
 # Crea Demo/Analyst/Support se il registry degli agenti è vuoto.

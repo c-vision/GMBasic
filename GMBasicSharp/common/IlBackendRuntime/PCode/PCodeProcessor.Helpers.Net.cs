@@ -443,6 +443,7 @@ internal sealed partial class PCodeProcessor
         var maxRequestBodySize = (long)GetNum("MaxRequestBodySize", defaults.MaxRequestBodySize);
         var rateLimitPerMin = (int)GetNum("RateLimitRequestsPerMinute", defaults.RateLimitRequestsPerMinute);
         var rateLimitBurst = (int)GetNum("RateLimitBurstSize", defaults.RateLimitBurstSize);
+        var bspCacheMs = (int)GetNum("BspCacheMs", defaults.BspCacheMs);
         var enableKeepAlive = GetBool("EnableKeepAlive", defaults.EnableKeepAlive);
         var securityHeaders = GetBool("SecurityHeaders", defaults.SecurityHeaders);
         var allowedIPs = GetStr("AllowedIPs") ?? defaults.AllowedIPs;
@@ -459,6 +460,7 @@ internal sealed partial class PCodeProcessor
             MaxRequestBodySize = maxRequestBodySize,
             RateLimitRequestsPerMinute = rateLimitPerMin,
             RateLimitBurstSize = rateLimitBurst,
+            BspCacheMs = bspCacheMs,
             EnableKeepAlive = enableKeepAlive,
             SecurityHeaders = securityHeaders,
             AllowedIPs = allowedIPs,
@@ -475,6 +477,8 @@ internal sealed partial class PCodeProcessor
         lock (_httpLock)
         {
             _httpConfig = newConfig;
+            // Memoizzazione della resa BSP (statica: il server è per-processo).
+            CommonLib.Http.BspRuntime.RenderCacheTtlMs = bspCacheMs;
             // "0 = nessun limite" è il contratto documentato di RateLimitRequestsPerMinute
             // (HttpServerSettings) e il backend IL lo rispetta (`if (... > 0)`) . Qui invece il
             // limiter veniva SEMPRE creato e configurato: con 0 il token-bucket partiva con 0
@@ -567,6 +571,43 @@ internal sealed partial class PCodeProcessor
     };
 
     /// <summary>
+    /// Invia il corpo di una pagina BSP: Content-Type HTML (se la pagina non ne ha già uno),
+    /// ETag debole + 304 su If-None-Match, gzip se il client lo accetta e il corpo è &gt; 1 KB.
+    /// Il costo dell'hash (~47 KB) è trascurabile rispetto all'esecuzione della pagina.
+    /// </summary>
+    private static void SendBspBody(PCodeHttpResponse response, CommonLib.Http.HttpRequest request, byte[] body)
+    {
+        if (!response.Headers.ContainsKey("Content-Type"))
+            response.SetHeader("Content-Type", "text/html; charset=utf-8");
+
+        var etag = CommonLib.Http.BspRuntime.ComputeETag(body);
+        response.SetHeader("ETag", etag);
+        if (!response.Headers.ContainsKey("Cache-Control"))
+            response.SetHeader("Cache-Control", CommonLib.Http.BspRuntime.RenderCacheTtlMs > 0
+                ? "public, max-age=" + (CommonLib.Http.BspRuntime.RenderCacheTtlMs / 1000)
+                : "no-cache");
+
+        string? HeaderOf(string name) =>
+            request.Headers.TryGetPropertyValue(name, out var node) ? node?.ToString() : null;
+
+        if (CommonLib.Http.BspRuntime.ETagMatches(HeaderOf("If-None-Match"), etag))
+        {
+            response.SetStatus(304);
+            response.SendBytes([], "text/html; charset=utf-8");
+            return;
+        }
+
+        if (body.Length >= 1024 && CommonLib.Http.BspRuntime.AcceptsGzip(HeaderOf("Accept-Encoding")))
+        {
+            response.SetHeader("Content-Encoding", "gzip");
+            response.SetHeader("Vary", "Accept-Encoding");
+            response.SendBytes(CommonLib.Http.BspRuntime.Gzip(body), "text/html; charset=utf-8");
+            return;
+        }
+        response.SendBytes(body, "text/html; charset=utf-8");
+    }
+
+    /// <summary>
     /// Tenta di servire un file statico per il path richiesto. Stessa logica dell'AST
     /// (ETag debole lunghezza+timestamp, Last-Modified RFC1123, Cache-Control 1h) MA con una
     /// guardia path-traversal che l'AST non ha (deviazione intenzionale, vedi piano Obsidian):
@@ -601,6 +642,23 @@ internal sealed partial class PCodeProcessor
             // task eseguiva __global_init DIRETTAMENTE (mai via OP_CALL) e al RETURN di
             // chiusura (Frame ancora null) finiva subito, senza mai raggiungere __main.
             compiledChunk.EntryPoint = cached.EntryPoint;
+
+            // ── Resa memoizzata (opt-in, HTTPCONFIG.BspCacheMs > 0) ──────────────
+            // Il costo per richiesta è l'ESECUZIONE della pagina (~2 ms per una pagina da 47 KB),
+            // non host/VM (~0,07 ms misurati): con decine di client in polling la stessa pagina
+            // viene rieseguita identica. Qui si riusa il corpo per la finestra TTL e si serve con
+            // ETag/304. Chiave = path + query (una pagina può dipendere da QUERY).
+            // PRIVACY: la resa memoizzata è globale, quindi NON si applica a richieste con
+            // cookie di sessione (una pagina autenticata/personalizzata non deve mai servire il
+            // corpo di un altro utente). Le pagine anonime (cruscotti locali) sì.
+            var canCache = !request.Headers.ContainsKey("Cookie");
+            var renderKey = filePath + "?" + (request.QueryString ?? "");
+            var cachedBody = canCache ? CommonLib.Http.BspRuntime.RenderGet(renderKey) : null;
+            if (cachedBody != null)
+            {
+                SendBspBody(response, request, cachedBody);
+                return true;
+            }
 
             using var outputWriter = new StringWriter();
             var runtime = new Basic.Runtime.HeadlessRuntimeHost(outputWriter);
@@ -670,13 +728,12 @@ internal sealed partial class PCodeProcessor
             await pageDone.Task.ConfigureAwait(false);
             if (!response.Sent)
             {
-                // Una pagina .bsp è HTML: senza Content-Type esplicito `Send(string)` manda
-                // "text/plain" e il browser mostra il SORGENTE invece di renderizzare (bug reale
-                // segnalato: index.bsp si vedeva come codice). Se la pagina ha già impostato un
-                // Content-Type (es. RES.ContentType = "text/plain") si rispetta.
-                if (!response.Headers.ContainsKey("Content-Type"))
-                    response.SetHeader("Content-Type", "text/html; charset=utf-8");
-                response.Send(outputWriter.ToString());
+                var body = System.Text.Encoding.UTF8.GetBytes(outputWriter.ToString());
+                // Non memoizzare se la pagina ha creato una sessione (Set-Cookie) o se la
+                // richiesta portava cookie: sarebbe una fuga di contenuto fra utenti.
+                if (canCache && !response.Headers.ContainsKey("Set-Cookie"))
+                    CommonLib.Http.BspRuntime.RenderPut(renderKey, body);
+                SendBspBody(response, request, body);
             }
             return true;
         }
