@@ -20,15 +20,35 @@ namespace Basic.Audit;
 
 internal static class Program
 {
+    /// <summary>Radice dei SORGENTI C# del motore: &lt;monorepo&gt;/GMBasicSharp (contiene `common/`).
+    /// Prima del monorepo era la root del repo GMBasic (`common/` + `native/` insieme); oggi i
+    /// sorgenti sono divisi fra `GMBasicSharp/` (C#), `GMBasic/native/` (C), `shared/` (BASIC,
+    /// minitest, settings) e `docs/` — quindi ogni dominio ha la sua radice (vedi sotto).</summary>
     private static readonly string Root = ResolveRoot();
+    private static readonly string RepoRoot = Path.GetFullPath(Path.Combine(Root, ".."));
+    private static readonly string NativeRoot = Path.Combine(RepoRoot, "GMBasic", "native");
+    private static readonly string SharedRoot = Path.Combine(RepoRoot, "shared");
 
     private static string ResolveRoot()
     {
-        // se lanciato dalla root del repo (dotnet run da tools/audit), CWD = .../GMBasic
-        var cwd = Directory.GetCurrentDirectory();
-        if (File.Exists(Path.Combine(cwd, "GMBASIC.sln"))) return cwd;
-        // altrimenti risali da bin/Debug/net10.0
-        return Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", ".."));
+        // Si cerca `GMBasicSharp/common/Ast/TokenKind.cs` risalendo da CWD e dalla cartella
+        // dell'assembly: il tool funziona da qualunque directory (root del monorepo,
+        // tools/audit, bin/Debug/net10.0).
+        foreach (var start in new[] { Directory.GetCurrentDirectory(), AppContext.BaseDirectory })
+        {
+            var dir = new DirectoryInfo(Path.GetFullPath(start));
+            while (dir is not null)
+            {
+                if (File.Exists(Path.Combine(dir.FullName, "GMBasicSharp", "common", "Ast", "TokenKind.cs")))
+                    return Path.Combine(dir.FullName, "GMBasicSharp");
+                if (File.Exists(Path.Combine(dir.FullName, "common", "Ast", "TokenKind.cs")))
+                    return dir.FullName;   // lanciato da dentro GMBasicSharp
+                dir = dir.Parent;
+            }
+        }
+        throw new DirectoryNotFoundException(
+            "gmb_audit: non trovo GMBasicSharp/common/Ast/TokenKind.cs risalendo da CWD ("
+            + Directory.GetCurrentDirectory() + ") né da " + AppContext.BaseDirectory);
     }
 
     private static readonly string BuiltInEnumPath = Path.Combine(Root, "common", "Compiler", "BuiltInFunction.cs");
@@ -104,7 +124,7 @@ internal static class Program
             var onlyNs = ArgValue(args, "--ns");
             var dry = args.Contains("--dry");
             var std4 = new Basic.StdLib();
-            var outRoot = Path.Combine(Root, "minitests");
+            var outRoot = Path.Combine(SharedRoot, "minitests");
             int made = 0, skipped = 0;
             var skipReasons = new SortedDictionary<string, int>(StringComparer.Ordinal);
             var skipByNs = new SortedDictionary<string, int>(StringComparer.Ordinal);
@@ -502,7 +522,7 @@ internal static class Program
     // ─────────────────────────────────────────────────────────────────────────
     private static int AuditAll(string[] args)
     {
-        var outDir = ArgValue(args, "--out-dir") ?? Path.Combine(Root, "docs", "comparison", "manifests");
+        var outDir = ArgValue(args, "--out-dir") ?? Path.Combine(RepoRoot, "docs", "comparison", "manifests");
         Directory.CreateDirectory(outDir);
         var manifests = new List<(string Backend, int Impl, int Tot, double Pct)>();
 
@@ -560,7 +580,7 @@ internal static class Program
         Console.WriteLine();
 
         // report su file — colonna canonica per tutti e 4
-        var reportPath = Path.Combine(Root, "docs", "comparison", "audit-backends.md");
+        var reportPath = Path.Combine(RepoRoot, "docs", "comparison", "audit-backends.md");
         var sb = new System.Text.StringBuilder();
         sb.AppendLine("# GMBasic — Copertura backend (audit automatico)");
         sb.AppendLine();
@@ -876,7 +896,7 @@ internal static class Program
     private static int AuditVmc(string[] args)
     {
         var jsonOut = ArgValue(args, "--json");
-        var vmcPath = Path.Combine(Root, "native", "gmb_vm_c", "gmb_vm_core.c");
+        var vmcPath = Path.Combine(NativeRoot, "gmb_vm_c", "gmb_vm_core.c");
         var src = File.ReadAllText(vmcPath);
 
         // enum BuiltInFunction: nome → valore
@@ -911,7 +931,7 @@ internal static class Program
         // handler con corpo VUOTO `{ }` (MATRIX/RDD/HTTP/MEMORY/TIMESERIES/AI PLUGINS/...) e 40
         // con la SOLA guardia `GML_VM_REQUIRE();` (TORCH: quando la lib ML è caricata il corpo
         // non fa nulla → risultato silenzioso, vietato). Contarli gonfiava la copertura.
-        var builtinPath = Path.Combine(Root, "native", "gmb_vm_c", "gmb_builtin.c");
+        var builtinPath = Path.Combine(NativeRoot, "gmb_vm_c", "gmb_builtin.c");
         var stubVals = new HashSet<long>();
         if (File.Exists(builtinPath))
         {
@@ -929,7 +949,7 @@ internal static class Program
              * `gmb_bf_*`/`vmc_*` → non estratto → corpo "" → falso STUB (8 MOUSE.* VMC).
              * Aggiungi i corpi di TUTTE le funzioni del runtime condiviso: delegare al
              * runtime è una implementazione valida. */
-            var rtDir = Path.Combine(Root, "native", "gmb_runtime_c", "src");
+            var rtDir = Path.Combine(NativeRoot, "gmb_runtime_c", "src");
             if (Directory.Exists(rtDir))
                 foreach (var extra in Directory.GetFiles(rtDir, "*.c"))
                     foreach (var kv in ExtractAllFunctionBodies(File.ReadAllText(extra)))
@@ -937,7 +957,7 @@ internal static class Program
             /* Engine ASR (LLMEnv/LLMEngine/asr): dopo il refactor ASR le funzioni gmb_asr_* vivono
              * LÌ, non più in gmb_runtime_c/src — ma restano runtime condiviso (§0bis) e i loro corpi
              * vanno noti all'audit (un handler che delega a gmb_asr_* non deve risultare stub). */
-            foreach (var asrBase in new[] { Path.Combine(Root, "..", "LLMEnv"),
+            foreach (var asrBase in new[] { Path.Combine(RepoRoot, "..", "LLMEnv"),
                                             Path.Combine(Root, "LLMEnv"),
                                             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Documents", "Projects", "LLMEnv") })
             {
@@ -1219,7 +1239,7 @@ internal static class Program
                 // lasciati vuoti — MATRIX/RDD/HTTP/MEMORY/TIMESERIES/AI PLUGINS/TORCH).
                 var codes = new HashSet<int>();
                 var vmAll = new System.Text.StringBuilder();
-                var dir = Path.Combine(Root, "native", "gmb_vm_c");
+                var dir = Path.Combine(NativeRoot, "gmb_vm_c");
                 Dictionary<string, string>? handlerBodies = null;
                 foreach (var f in Directory.GetFiles(dir, "*.c"))
                 {
@@ -1308,7 +1328,7 @@ internal static class Program
         var tok = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         // L'emitter C99Native vive in native/gmb_c99native/src (il vecchio path
         // native/gmb_compiler_c/src non contiene piu' i sorgenti → scansione a vuoto).
-        var dir = Path.Combine(Root, "native", "gmb_c99native", "src");
+        var dir = Path.Combine(NativeRoot, "gmb_c99native", "src");
         if (!Directory.Exists(dir)) return tok;
         foreach (var f in Directory.GetFiles(dir, "*.c", SearchOption.AllDirectories))
         {
@@ -1443,7 +1463,7 @@ internal static class Program
 
         // C99Native — gmb_c99_emit_builtin.c: stringhe nel dispatch builtin che
         // corrispondono a TokenKind di dispatch
-        var c99nBuiltinPath = Path.Combine(Root, "native", "gmb_c99native", "src", "gmb_c99_emit_builtin.c");
+        var c99nBuiltinPath = Path.Combine(NativeRoot, "gmb_c99native", "src", "gmb_c99_emit_builtin.c");
         if (File.Exists(c99nBuiltinPath))
         {
             var c99nBuiltin = File.ReadAllText(c99nBuiltinPath);
@@ -1468,7 +1488,7 @@ internal static class Program
                 }
         }
         // C99Native — gmb_c99_emit.c: bi_is(name,"X") / strcasecmp(name,"X")
-        var c99nPath = Path.Combine(Root, "native", "gmb_c99native", "src", "gmb_c99_emit.c");
+        var c99nPath = Path.Combine(NativeRoot, "gmb_c99native", "src", "gmb_c99_emit.c");
         if (File.Exists(c99nPath))
         {
             var c99n = File.ReadAllText(c99nPath);
