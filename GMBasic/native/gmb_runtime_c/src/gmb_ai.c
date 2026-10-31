@@ -2393,6 +2393,31 @@ int llmengine_plugin_remove(const char* name) {
     llmengine_plugin_refresh();
     return 1;
 }
+/* ── AI.PLUGIN.CALL: procedura BASIC dichiarata dal plugin ────────────────────────────────
+ * `PLUGIN.md` → `procedures: [Prima, Seconda]`. Ritorna la PRIMA (heap, "" se assente),
+ * cioè ciò che C# usa in `PluginRegistry.Call` (`record.Procedures.First()`).
+ * Serve a C99Native: non c'è una VM BASIC nel binario, quindi il transpiler genera un
+ * dispatcher verso le `gmb_user_*` del programma e ha bisogno del NOME della procedura a
+ * runtime (il descrittore del plugin è dato, non compilato). */
+char* gmb_plugin_procedure(const char* name) {
+    if (!name || !*name) return strdup("");
+    char dir[1024], pj[1200], raw[512];
+    plugin_dir_of(name, dir, sizeof(dir));
+    snprintf(pj, sizeof(pj), "%s/PLUGIN.md", dir);
+    if (!plugin_read_field(pj, "procedures", raw, sizeof(raw))) return strdup("");
+    /* formato frontmatter: "[A, B]" (o "A, B" senza parentesi) → primo identificatore. */
+    char* p = raw;
+    while (*p == ' ' || *p == '\t' || *p == '[') p++;
+    char* e = p;
+    while (*e && *e != ',' && *e != ']' && *e != ' ' && *e != '\t' && *e != '\n' && *e != '\r') e++;
+    size_t n = (size_t)(e - p);
+    if (!n) return strdup("");
+    char* out = (char*)malloc(n + 1);
+    if (!out) return strdup("");
+    memcpy(out, p, n); out[n] = 0;
+    return out;
+}
+
 /* AI PLUGINS REFRESH(): rigenera PLUGINS_PROMPT.md come PluginIndex.Refresh (C#) —
  * stesso header, stesso formato riga, BOM UTF-8. Ritorna 1 se scritto, 0 altrimenti. */
 int llmengine_plugin_refresh(void) {

@@ -7666,7 +7666,13 @@ static int aip_pluginsinfo(ctx_t* c, gmb_expr_t** a, int n, int line) {
 }
 static int aip_plugincall(ctx_t* c, gmb_expr_t** a, int n, int line) {
     if (n < 2) { c99_fail(c, line, "AI.PLUGINCALL: attesi (plugin, arg)"); return 1; }
-    sb_put(&c->out, "gmb_string_alloc(llmengine_plugin_call(");
+    /* Il plugin non porta codice: `PLUGIN.md` dichiara la procedura, che deve esistere NEL
+     * PROGRAMMA (parità C# PluginRegistry.Call → CallHandler → _basicProcedures). Il runtime C
+     * non ha una VM BASIC, quindi il transpiler emette un dispatcher generato
+     * (`__gmb_plugin_call`) verso le gmb_user_* — prima rispondeva la stringa dichiarativa
+     * "PLUGIN nome(arg) OK" e la procedura non veniva MAI eseguita (divergenza chiusa). */
+    c->uses_plugincall = 1;
+    sb_put(&c->out, "gmb_string_alloc(__gmb_plugin_call(");
     emit_str_operand(c, a[0]); sb_put(&c->out, ".data, ");
     emit_str_operand(c, a[1]); sb_put(&c->out, ".data))"); return 1;
 }

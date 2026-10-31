@@ -30,10 +30,11 @@ SUB Main()
   s$ = AI.PLUGINSINFO("web-fetch")
   PRINT "PLUGINSINFO="; s$
 
-  ' Proprietà verificata (non il testo esatto): le gambe gestite/VM eseguono davvero la
-  ' procedura BASIC del plugin (via InvokeBasicProcedure/hook VM), i backend C99 — senza VM
-  ' BASIC nel binario compilato — ritornano il risultato dichiarativo "PLUGIN nome(arg) OK".
-  ' Entrambi non-vuoti: la chiamata riesce su tutte le gambe (divergenza architetturale tracciata).
+  ' Proprietà verificata (non il testo esatto): TUTTE le gambe eseguono davvero la procedura
+  ' BASIC del programma — C#/PCode via InvokeBasicProcedure, VM/C via hook, C99Native via
+  ' dispatcher generato (`__gmb_plugin_call`, 2026-10-31: prima rispondeva la stringa
+  ' dichiarativa "PLUGIN nome(arg) OK"). Il nome della procedura viene da PLUGIN.md
+  ' (`procedures[0]`). Oracle esatto: shared/minitests/ai/gen_AI_PluginCallExec.bas.
   s$ = AI.PLUGINCALL("web-fetch", "https://example.com")
   PRINT "PLUGINCALL_LEN="; LEN(s$) > 0
 
