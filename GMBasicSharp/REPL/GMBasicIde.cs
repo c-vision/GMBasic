@@ -1273,7 +1273,7 @@ public class GMBasicIde : IApp
         Output($"Build {Path.GetFileName(_fileName)}...");
         try
         {
-            // Compila il programma in memoria senza toccare il licensing gate.
+            // Compiles the program in memory (no license gate exists: the software runs as-is, PUL).
             var tmp = Path.Combine(Path.GetTempPath(), "gmb_ide_" + Guid.NewGuid().ToString("N") + ".bas");
             File.WriteAllText(tmp, BuildFileText());
             try

@@ -159,9 +159,6 @@ bash tools/sh/gmb_c99native_run.sh ../shared/samples/Community/Network/WebSocket
 zsh tools/sh/parity4 ../shared/samples/Community/Ai/AiPlugins.bas
 ```
 
-Development mode (skips the license gate): set `GMBASIC_DEV_MODE=1` before any of the commands
-above.
-
 ## Architecture
 
 Front-end (shared by three of the four engines, all C#):
@@ -471,7 +468,12 @@ See [COMMANDS.TXT](./COMMANDS.TXT) for the complete list of supported commands a
 
 ## License
 
-Proprietary. A license key is required for full execution (runtime); compilation and bytecode
-disassembly work without one.
+**PERSONAL USE LICENSE (PUL) v1.1** — see [LICENSE](./LICENSE). No activation key, no online
+check, no trial: PUL is a personal-use license and the software runs as-is.
 
-Development mode: `GMBASIC_DEV_MODE=1` bypasses the licensing gate.
+The **LLM engine** in the [`LLMEnv`](https://github.com/c-vision/LLMEnv) sibling repository is
+released under **Apache-2.0**, and so is the engine code GMBasic consumes from it. Everything that
+**produces or transforms model weights** (training, LoRA, quantization encode, model compiler,
+MLX↔GGUF conversion) lives in [`GMBasic/gmbllm/`](GMBasic/gmbllm/README.md) under the **PUL**
+license — the dependency is one-way (`gmbllm` → LLMEnv), see
+[LLM engine](#llm-engine--the-llmenv-sibling-repository).
