@@ -1,0 +1,1663 @@
+[
+  {
+    "skill": "accessibility-and-inclusive-visualization",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "account-research",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "agile-product-owner",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "ai-security",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "analytics",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "2.0.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "analytics-tracking",
+    "status": "DECLARED-PERMISSIVE",
+    "license": "MIT",
+    "author": "Alireza Rezvani",
+    "version": "1.0.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "artifact-template-investment-committee-memo",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "artifact-template-three-statement-forecast",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "audit-website",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "squirrelscan",
+    "version": "1.24",
+    "vendor": "",
+    "homepage": "",
+    "urls": [
+      "https://docs.squirrelscan.com",
+      "https://docs.squirrelscan.com/rules/links/external-links",
+      "https://docs.squirrelscan.com/rules/{rule_category}/{rule_id}"
+    ]
+  },
+  {
+    "skill": "autoresearch-agent",
+    "status": "DECLARED-PERMISSIVE",
+    "license": "MIT",
+    "author": "Alireza Rezvani",
+    "version": "2.0.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": [
+      "https://github.com/karpathy/autoresearch"
+    ]
+  },
+  {
+    "skill": "batch-draft-writer",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "board",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "board-deck-builder",
+    "status": "DECLARED-PERMISSIVE",
+    "license": "MIT",
+    "author": "Alireza Rezvani",
+    "version": "1.0.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "board-meeting",
+    "status": "DECLARED-PERMISSIVE",
+    "license": "MIT",
+    "author": "Alireza Rezvani",
+    "version": "1.0.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "board-prep",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "boardroom",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "brand-guidelines",
+    "status": "DECLARED-PERMISSIVE",
+    "license": "MIT",
+    "author": "Alireza Rezvani",
+    "version": "1.0.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "brand-review",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "browser-automation",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "browser-skill",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": [
+      "https://example.com",
+      "https://github.com/Tencent/BrowserSkill/blob/main/docs/remote-extension-connection.md",
+      "https://github.com/Tencent/BrowserSkill/blob/main/docs/sandboxed-agents.md"
+    ]
+  },
+  {
+    "skill": "business-investment-advisor",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": [
+      "https://github.com/chad848"
+    ]
+  },
+  {
+    "skill": "campaign-analytics",
+    "status": "DECLARED-PERMISSIVE",
+    "license": "MIT",
+    "author": "Alireza Rezvani",
+    "version": "1.0.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "campaign-plan",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "capacity-planner",
+    "status": "DECLARED-PERMISSIVE",
+    "license": "MIT",
+    "author": "claude-code-skills",
+    "version": "2.8.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "capital-allocation",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "capture-tasks-from-meeting-notes",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": [
+      "https://[site"
+    ]
+  },
+  {
+    "skill": "chronograph-cashflow-forecast",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "claude-automation-recommender",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "cloud-security",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "co-marketing",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "2.0.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "codebase-design",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "codebase-onboarding",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "cold-email",
+    "status": "DECLARED-PERMISSIVE",
+    "license": "MIT",
+    "author": "Alireza Rezvani",
+    "version": "1.0.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "commercial-forecaster",
+    "status": "DECLARED-PERMISSIVE",
+    "license": "MIT",
+    "author": "claude-code-skills",
+    "version": "2.8.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "community-marketing",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "2.0.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "compliance-readiness",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "consolidate-memory",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "content-brief",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": [
+      "https://searchfit.ai"
+    ]
+  },
+  {
+    "skill": "content-creation",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "content-creator",
+    "status": "DECLARED-PERMISSIVE",
+    "license": "MIT",
+    "author": "Alireza Rezvani",
+    "version": "2.0.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "content-humanizer",
+    "status": "DECLARED-PERMISSIVE",
+    "license": "MIT",
+    "author": "Alireza Rezvani",
+    "version": "1.0.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "content-production",
+    "status": "DECLARED-PERMISSIVE",
+    "license": "MIT",
+    "author": "Alireza Rezvani",
+    "version": "1.0.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "content-strategist",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "content-strategy",
+    "status": "DECLARED-PERMISSIVE",
+    "license": "MIT",
+    "author": "Alireza Rezvani",
+    "version": "1.0.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "content-translation",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": [
+      "https://example.com/es/page",
+      "https://example.com/fr/page",
+      "https://example.com/page"
+    ]
+  },
+  {
+    "skill": "contract-and-proposal-writer",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "contract-review",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "control-in-app-browser",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "crm-cleanup",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "crm-maintenance",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "cs-content-creator",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "cs-financial-analyst",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "cs-growth-strategist",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "cs-product-manager",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "cs-webinar-marketer",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "customer-pulse",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "0.2.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "customer-pulse-check",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "customer-research",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "2.0.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "customer-success-manager",
+    "status": "DECLARED-PERMISSIVE",
+    "license": "MIT",
+    "author": "Alireza Rezvani",
+    "version": "1.0.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "dashboard-expert",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "dashboards-and-real-time-visualization",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "data-quality-auditor",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "data-visualization",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "demo-video",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "dependency-auditor",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "diagnosing-bugs",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "doc-coauthoring",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "document-quality-check",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "Blueflame AI",
+    "version": "1.0.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "documents",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "docx",
+    "status": "DECLARED-PROPRIETARY",
+    "license": "Proprietary. LICENSE.txt has complete terms",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "domain-modeling",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "draft-brief",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "midpage",
+    "version": "0.2.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "draft-long-form-memo",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "midpage",
+    "version": "0.2.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "draft-outreach",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "email",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": [
+      "https://react.email/docs/introduction",
+      "https://resend.com/docs",
+      "https://resend.com/sitemap.xml"
+    ]
+  },
+  {
+    "skill": "email-sequence",
+    "status": "DECLARED-PERMISSIVE",
+    "license": "MIT",
+    "author": "Alireza Rezvani",
+    "version": "1.0.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "email-template-builder",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": [
+      "https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfAZ9hiJ-Ek-_EeA.woff2",
+      "https://yourapp.com/logo.png"
+    ]
+  },
+  {
+    "skill": "emails",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "2.0.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "excel-live-control",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "finance-lead",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "finance-skills",
+    "status": "DECLARED-PERMISSIVE",
+    "license": "MIT",
+    "author": "Alireza Rezvani",
+    "version": "2.9.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "financial-analyst",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "financial-health",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "financial-statements",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "forecast",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "frontend-design",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "fund-comparison",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "fund-screener",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "fund-summarizer",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "gap-analysis",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "Blueflame AI",
+    "version": "1.0.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "gdpr-audit-prep",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "generate-status-report",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "gmail",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "gmail-inbox-triage",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "goose-ads",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "GooseWorks",
+    "version": "2.1.0",
+    "vendor": "GooseWorks",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "goose-video",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "GooseWorks",
+    "version": "0.1.0",
+    "vendor": "GooseWorks",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "gooseworks",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "GooseWorks",
+    "version": "1.0.0",
+    "vendor": "GooseWorks",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "graphify",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": [
+      "https://github.com/"
+    ]
+  },
+  {
+    "skill": "grill-me",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "grill-with-docs",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "grilling",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "gsd-capture",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "GSD (~/.agents/skills)",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "gsd-debug",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "GSD (~/.agents/skills)",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "gsd-fast",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "GSD (~/.agents/skills)",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "gsd-quick",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "GSD (~/.agents/skills)",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "gsd-spike",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "GSD (~/.agents/skills)",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "gsd-thread",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "GSD (~/.agents/skills)",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "hallmark",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "1.1.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "image",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "2.0.1",
+    "vendor": "",
+    "homepage": "",
+    "urls": [
+      "https://about.ideogram.ai/api-pricing",
+      "https://ai.google.dev/gemini-api/docs/image-generation",
+      "https://ai.google.dev/gemini-api/docs/pricing"
+    ]
+  },
+  {
+    "skill": "impeccable",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "3.9.1",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "inbox-setup",
+    "status": "DECLARED-PERMISSIVE",
+    "license": "MIT",
+    "author": "",
+    "version": "1.0.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "inbox-triage",
+    "status": "DECLARED-PERMISSIVE",
+    "license": "MIT",
+    "author": "",
+    "version": "1.0.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "internal-narrative",
+    "status": "DECLARED-PERMISSIVE",
+    "license": "MIT",
+    "author": "Alireza Rezvani",
+    "version": "1.0.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "investigation-mode",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": [
+      "https://openai.com/index/introducing-codex/"
+    ]
+  },
+  {
+    "skill": "invoice-chase",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "0.2.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "iso27001-audit-prep",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "json-render",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": [
+      "https://nextjs.org/docs/app/api-reference/file-conventions/route",
+      "https://nextjs.org/sitemap.xml"
+    ]
+  },
+  {
+    "skill": "market-research",
+    "status": "DECLARED-PERMISSIVE",
+    "license": "MIT",
+    "author": "claude-code-skills",
+    "version": "2.9.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "mcp-integration",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": [
+      "https://chromeuxreport.googleapis.com/v1/records:queryRecord",
+      "https://console.cloud.google.com/",
+      "https://github.com/ahonn/mcp-server-gsc"
+    ]
+  },
+  {
+    "skill": "md-document",
+    "status": "DECLARED-PERMISSIVE",
+    "license": "MIT",
+    "author": "Alireza Rezvani",
+    "version": "2.10.1",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "modern-web-guidance",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "openai-api-troubleshooting",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": [
+      "https://platform.openai.com/settings/organization/billing",
+      "https://platform.openai.com/settings/organization/limits"
+    ]
+  },
+  {
+    "skill": "outlook-email",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "outlook-email-inbox-triage",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "outlook-email-reply-drafting",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "pdf",
+    "status": "DECLARED-PROPRIETARY",
+    "license": "Proprietary. LICENSE.txt has complete terms",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "performance-report",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "plugin-audit",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "pricing",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "2.0.1",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "pricing-strategist",
+    "status": "DECLARED-PERMISSIVE",
+    "license": "MIT",
+    "author": "claude-code-skills",
+    "version": "2.8.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "pricing-strategy",
+    "status": "DECLARED-PERMISSIVE",
+    "license": "MIT",
+    "author": "Alireza Rezvani",
+    "version": "1.0.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "product-research",
+    "status": "DECLARED-PERMISSIVE",
+    "license": "MIT",
+    "author": "claude-code-skills",
+    "version": "2.9.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "report",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "research-finance",
+    "status": "DECLARED-PERMISSIVE",
+    "license": "MIT",
+    "author": "claude-code-skills",
+    "version": "2.9.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "research-summarizer",
+    "status": "DECLARED-PERMISSIVE",
+    "license": "MIT",
+    "author": "Alireza Rezvani",
+    "version": "1.0.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "resolving-merge-conflicts",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "revenue-operations",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "review-contract",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "risk-management-specialist",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "sharepoint-spreadsheets",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "skill-security-auditor",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": [
+      "https://github.com/user/repo"
+    ]
+  },
+  {
+    "skill": "slack-channel-summarization",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "soc2-audit-prep",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "social-media-analyzer",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "social-media-manager",
+    "status": "DECLARED-PERMISSIVE",
+    "license": "MIT",
+    "author": "Alireza Rezvani",
+    "version": "1.0.0",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "spreadsheets",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "statistical-analyst",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "stem-notes",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "tailwind-design-system",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": [
+      "https://tailwindcss.com/docs/upgrade-guide"
+    ]
+  },
+  {
+    "skill": "tax-prep",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "tax-season-organizer",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "tdd",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "teams-channel-summarization",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "ui-ux-pro-max",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "video",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "2.0.1",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "video-content-strategist",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": [
+      "https://github.com/chad848"
+    ]
+  },
+  {
+    "skill": "wait-what",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "wayfinder",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "web-performance-audit",
+    "status": "DECLARED-PERMISSIVE",
+    "license": "MIT",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "wizard",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  },
+  {
+    "skill": "working-capital",
+    "status": "UNDECLARED",
+    "license": "",
+    "author": "",
+    "version": "",
+    "vendor": "",
+    "homepage": "",
+    "urls": []
+  }
+]

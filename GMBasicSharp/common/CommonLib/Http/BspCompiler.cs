@@ -490,14 +490,39 @@ public static class BspCompiler
     {
         if (string.IsNullOrEmpty(html) || html.Trim().Length == 0) return;
 
-        // Escape double quotes for BASIC string
-        var escaped = html.Replace("\"", "\"\"");
-        // Split long lines
-        foreach (var line in escaped.Split('\n'))
+        // Una riga di markup = una riga di output. Prima si emetteva `PRINT "...";` (il `;`
+        // sopprime il newline) e quindi TUTTE le righe della pagina finivano concatenate: nel
+        // browser il JS con commenti `//` veniva troncato alla prima occorrenza ("Unexpected
+        // end of input") e il markup perdeva le righe. `PRINT "..."` (senza `;`) ripristina
+        // i newline; le righe vuote sono irrilevanti per HTML/JS (il contenuto di <pre> torna
+        // comunque corretto, prima veniva appiattito).
+        foreach (var line in html.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n'))
         {
-            var l = line.TrimEnd('\r');
-            if (l.Length > 0)
-                sb.AppendLine($"PRINT \"{l}\";");
+            if (line.Length == 0) continue;
+            sb.AppendLine($"PRINT {ToBasicStringExpr(line)}");
         }
+    }
+
+    /// <summary>
+    /// Converte una riga in una ESPRESSIONE BASIC che la stampa, senza mai produrre la sequenza
+    /// `"""` (raw string) o un letterale che inizia con tre virgolette. Le virgolette ai BORDI
+    /// della riga vanno emesse come <c>CHR$(34)</c>: un frammento HTML come <c>&lt;a href="</c>
+    /// (tipico prima di <c>&lt;%= valore %&gt;</c>) diventava <c>PRINT "&lt;a href="""</c> →
+    /// il lexer rispondeva "Raw string non chiusa" e la pagina non compilava
+    /// (bug reale: <c>samples/Community/Security/pages/oauth-login.bsp</c>).
+    /// </summary>
+    private static string ToBasicStringExpr(string line)
+    {
+        var lead = 0;
+        while (lead < line.Length && line[lead] == '"') lead++;
+        var trail = 0;
+        while (trail < line.Length - lead && line[line.Length - 1 - trail] == '"') trail++;
+
+        var core = line.Substring(lead, line.Length - lead - trail);
+        var sb = new StringBuilder();
+        for (var i = 0; i < lead; i++) sb.Append("CHR$(34) + ");
+        sb.Append('"').Append(core.Replace("\"", "\"\"")).Append('"');
+        for (var i = 0; i < trail; i++) sb.Append(" + CHR$(34)");
+        return sb.ToString();
     }
 }
