@@ -11,7 +11,7 @@
 SUB Work()
     DEFER PRINT "defer-2"
     DEFER PRINT "defer-1"
-    PRINT "bin"
+    PRINT "work"
 END SUB
 
 SUB Main()
