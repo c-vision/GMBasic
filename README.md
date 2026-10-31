@@ -1,4 +1,4 @@
-# GMBasic (GM-Basic)
+# GMBasic
 
 > **AI-powered BASIC — three independent backends, SDL2 graphics, six database engines, full TUI, AI agents.**
 >
