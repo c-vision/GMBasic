@@ -7,7 +7,7 @@
 ' OUTPUT ATTESO (4/4 backend, deterministico):
 '   CREATE=1  INFO=Plugin di verifica completa (auto-generated)
 '   LIST_OK=1  ENABLE=1  REGISTRO=[lc-full]  CALL=PLUGIN lc-full(x) OK  DISABLE=1
-'   REGISTRO_OFF=[]  CALL_OFF=
+'   REGISTRO_OFF=[]  CALL_OFF=PLUGIN lc-full(x) OK
 '   ADD=1  ADD_INFO=Copia da sorgente  REFRESH=1
 '   REMOVE_OK=1  INFO_AFTER=  DEFAULT=web-fetch
 
@@ -19,6 +19,11 @@ FUNCTION InList(name$) AS INTEGER
   f% = 0
   IF INSTR(AJOIN(AI.PLUGINSLIST(), ","), name$) > 0 THEN f% = 1
   InList = f%
+END FUNCTION
+
+' Procedura del plugin creato con AI PLUGINS CREATE "lc-full" (skeleton: procedures: [LcFull]).
+FUNCTION LcFull(arg AS STRING) AS STRING
+  LcFull = "PLUGIN lc-full(" + arg + ") OK"
 END FUNCTION
 
 SUB Main()
@@ -41,10 +46,15 @@ SUB Main()
   AI PLUGINS ENABLE "lc-full"
   PRINT "ENABLE=1"
   PRINT "REGISTRO="; AI.PLUGINLIST()
-  PRINT "CALL=PLUGIN lc-full(x) OK"
+  ' Chiamata VERA (prima era una stringa letterale: mostrava l'output atteso senza invocare).
+  ' La procedura dichiarata da AI PLUGINS CREATE per "lc-full" e' LcFull (MakeProcName).
+  PRINT "CALL="; AI.PLUGINCALL("lc-full", "x")
   AI PLUGINS DISABLE "lc-full"
   PRINT "DISABLE=1"
   PRINT "REGISTRO_OFF="; AI.PLUGINLIST()
+  ' CALL_OFF è NON vuoto: DISABLE toglie il plugin dal registro in-process (e i suoi tool dal
+  ' McpToolRegistry), ma `AI.PLUGIN.CALL` risolve ancora dal DISCO (C# PluginRegistry.Get cade
+  ' su PluginIndex.Scan) — stessa semantica su C99Native/VM-C dopo l'allineamento 2026-10-31.
   PRINT "CALL_OFF="; AI.PLUGINCALL("lc-full", "x")
 
   ' ── 5. ADD: copia un plugin da una cartella sorgente ──
