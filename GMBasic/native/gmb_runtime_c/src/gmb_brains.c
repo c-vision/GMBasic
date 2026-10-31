@@ -432,6 +432,148 @@ static int br_find_version(gmb_pkg_manifest_t* m, int bi, const char* want)
     return -1;
 }
 
+/* ── token GitHub (asset privati) ───────────────────────────────────────────────────────── */
+
+int gmb_brains_github_token(char* out, size_t cap)
+{
+    if (!out || !cap) return 0;
+    out[0] = '\0';
+    char path[BR_PATH] = "";
+    char cfg[BR_PATH];
+    gmb_paths_config_dir(cfg, sizeof cfg);
+    if (cfg[0]) {
+        snprintf(path, sizeof path, "%s/github.token", cfg);
+        if (!br_isfile(path)) path[0] = '\0';
+    }
+    if (!path[0]) {
+        const char* home = getenv("HOME");
+        if (!home || !*home) return 0;
+        snprintf(path, sizeof path, "%s/.gmbasic/github.token", home);
+        if (!br_isfile(path)) return 0;
+    }
+    /* Un token leggibile da gruppo/altri è un token compromesso: si rifiuta (fail-closed). */
+    struct stat st;
+    if (stat(path, &st) == 0 && (st.st_mode & (S_IRGRP | S_IROTH))) {
+        fprintf(stderr, "?github.token leggibile da altri utenti (%s): esegui chmod 600\n", path);
+        return 0;
+    }
+    FILE* f = fopen(path, "rb");
+    if (!f) return 0;
+    char buf[1024];
+    size_t n = fread(buf, 1, sizeof buf - 1, f);
+    fclose(f);
+    while (n > 0 && (buf[n - 1] == '\n' || buf[n - 1] == '\r' || buf[n - 1] == ' ' || buf[n - 1] == '\t')) n--;
+    size_t s = 0;
+    while (s < n && (buf[s] == ' ' || buf[s] == '\t')) s++;
+    if (n <= s) return 0;
+    buf[n] = '\0';
+    snprintf(out, cap, "%s", buf + s);
+    return out[0] ? 1 : 0;
+}
+
+/* ── risoluzione di un asset di release PRIVATO ────────────────────────────────────────────
+ * `GET /repos/<repo>/releases/tags/<tag>` con Bearer → si cerca l'asset per NOME e si usa
+ * `https://api.github.com/repos/<repo>/releases/assets/<id>` (con Accept octet-stream GitHub
+ * risponde 302 verso un URL CDN firmato a scadenza). L'id NON si mette nel manifest: l'asset
+ * può essere ricaricato e l'id cambia; il nome no. */
+typedef struct {
+    const char* repo;
+    const char* tag;
+    const char* asset;
+    const char* token;
+} br_gh_ctx;
+
+static int br_gh_resolve(void* user, char* url, size_t cap, char* err, size_t errcap)
+{
+    br_gh_ctx* g = (br_gh_ctx*)user;
+    if (!g || !g->repo || !g->tag || !g->asset) return -1;
+    char api[2048];
+    snprintf(api, sizeof api, "https://api.github.com/repos/%s/releases/tags/%s", g->repo, g->tag);
+    const char* hn[4] = { "Accept", "X-GitHub-Api-Version", "User-Agent", "Accept-Encoding" };
+    const char* hv[4] = { "application/vnd.github+json", "2022-11-28", "gmbasic-brain/1", "identity" };
+    gmb_net_http_options_t op;
+    memset(&op, 0, sizeof op);
+    op.method = "GET";
+    op.header_names = hn;
+    op.header_values = hv;
+    op.header_count = 4;
+    op.timeout_ms = 30000;
+    op.allow_redirects = 1;
+    op.max_redirects = 5;
+    op.bearer_token = g->token;
+    int status = 0;
+    char* body = NULL;
+    size_t blen = 0;
+    char* e = NULL;
+    if (gmb_net_http_request(api, &op, &status, &body, &blen, &e, NULL) != 0 || !body) {
+        if (err && errcap) snprintf(err, errcap, "GitHub API non raggiungibile%s%s", e ? ": " : "", e ? e : "");
+        free(body); free(e);
+        return -1;
+    }
+    if (status != 200) {
+        if (err && errcap) {
+            char detail[220] = "";
+            if (body && blen > 0) {
+                /* il corpo d'errore di GitHub dice PERCHÉ (rate limit, scope mancante, ...) */
+                size_t n = blen < sizeof detail - 1 ? blen : sizeof detail - 1;
+                memcpy(detail, body, n);
+                detail[n] = '\0';
+                for (char* q = detail; *q; q++) if (*q == '\n' || *q == '\r') *q = ' ';
+            }
+            if (status == 401 || status == 403)
+                snprintf(err, errcap, "GitHub %d: token assente/non valido o senza accesso a %s%s%s",
+                         status, g->repo, detail[0] ? " — " : "", detail);
+            else if (status == 404)
+                snprintf(err, errcap, "GitHub 404: release '%s' o repo '%s' inesistente", g->tag, g->repo);
+            else
+                snprintf(err, errcap, "GitHub %d nella risoluzione di %s/%s", status, g->repo, g->tag);
+        }
+        free(body); free(e);
+        return -1;
+    }
+    /* JSON: {"assets":[{"id":123,"name":"x.zip",...}, …]} — l'ordine delle chiavi NON è
+     * garantito (`id` può precedere o seguire `name`): si parsa, non si cerca per testo. */
+    long long id = -1;
+    {
+        char* js = (char*)malloc(blen + 1);
+        if (js) {
+            memcpy(js, body, blen);
+            js[blen] = '\0';
+            gmb_val_t root = gmb_json_parse(js);
+            if (root.kind == GMB_TYPE_OBJECT) {
+                gmb_val_t assets = gmb_val_dict_get(root, "assets");
+                if (assets.kind == GMB_TYPE_OBJECT && gmb_obj_type(assets) != NULL &&
+                    strstr(gmb_obj_type(assets), "dict") == NULL) {
+                    gmb_list_t l = gmb_val_as_list(assets);
+                    int n = (int)gmb_list_count(l);
+                    for (int i = 0; i < n; i++) {
+                        gmb_val_t a = gmb_list_get(l, i);
+                        if (a.kind != GMB_TYPE_OBJECT) continue;
+                        gmb_val_t nm = gmb_val_dict_get(a, "name");
+                        if (nm.kind != GMB_TYPE_STRING || !nm.v_string.data) continue;
+                        if (strcmp(nm.v_string.data, g->asset) != 0) continue;
+                        gmb_val_t idv = gmb_val_dict_get(a, "id");
+                        if (idv.kind == GMB_TYPE_DOUBLE) id = (long long)idv.v_double;
+                        else if (idv.kind == GMB_TYPE_INT) id = (long long)idv.v_int;
+                        else if (idv.kind == GMB_TYPE_STRING && idv.v_string.data) id = strtoll(idv.v_string.data, NULL, 10);
+                        break;
+                    }
+                }
+            }
+            gmb_val_release(root);
+            free(js);
+        }
+    }
+    free(body);
+    free(e);
+    if (id <= 0) {
+        if (err && errcap) snprintf(err, errcap, "asset '%s' non trovato nella release '%s'", g->asset, g->tag);
+        return -1;
+    }
+    snprintf(url, cap, "https://api.github.com/repos/%s/releases/assets/%lld", g->repo, id);
+    return 0;
+}
+
 /* ── installazione ──────────────────────────────────────────────────────────────────────── */
 
 /* Validazione di un cervello estratto: deve contenere qualcosa di utile, e se c'è
@@ -502,7 +644,26 @@ int gmb_brain_remove(const char* name, const char* version)
     if (strncmp(dir, cache, strlen(cache)) != 0) return 0;
     if (!br_isdir(dir)) return 0;
     br_rmtree(dir);
-    return br_isdir(dir) ? 0 : 1;
+    if (br_isdir(dir)) return 0;
+    /* se il cervello non ha altre versioni, si toglie anche la cartella <nome>/ (vuota):
+     * altrimenti resterebbe un guscio che `AI BRAIN LIST` continua a mostrare. */
+    {
+        char parent[BR_PATH];
+        snprintf(parent, sizeof parent, "%s/%s", cache, name);
+        DIR* d = opendir(parent);
+        if (d) {
+            int empty = 1;
+            struct dirent* e;
+            while ((e = readdir(d)) != NULL) {
+                if (strcmp(e->d_name, ".") == 0 || strcmp(e->d_name, "..") == 0) continue;
+                empty = 0;
+                break;
+            }
+            closedir(d);
+            if (empty) rmdir(parent);
+        }
+    }
+    return 1;
 }
 
 /* Estrae `zip` in `<cache>/<nome>/<versione>` passando da una staging (niente cervelli a metà). */
@@ -700,6 +861,7 @@ int gmb_brains_install_from_manifest(const char* manifest_path, const char* name
     }
 
     char p[192], url[2048] = "", sha[128] = "", src[64] = "", ver[128] = "";
+    char repo[256] = "", tag[128] = "", asset[512] = "";
     double size = 0;
     snprintf(p, sizeof p, "brains.%d.versions.%d.url", bi, vi);
     gmb_pkg_manifest_get(m, p, url, sizeof url);
@@ -713,15 +875,23 @@ int gmb_brains_install_from_manifest(const char* manifest_path, const char* name
     gmb_pkg_manifest_get_num(m, p, &size);
     if (!src[0]) snprintf(src, sizeof src, "url");
     if (!ver[0]) snprintf(ver, sizeof ver, "%s", version && *version ? version : "latest");
+    snprintf(p, sizeof p, "brains.%d.versions.%d.repo", bi, vi);
+    gmb_pkg_manifest_get(m, p, repo, sizeof repo);
+    snprintf(p, sizeof p, "brains.%d.versions.%d.tag", bi, vi);
+    gmb_pkg_manifest_get(m, p, tag, sizeof tag);
+    snprintf(p, sizeof p, "brains.%d.versions.%d.asset", bi, vi);
+    gmb_pkg_manifest_get(m, p, asset, sizeof asset);
     gmb_pkg_manifest_free(m);
 
-    if (!url[0]) {
-        if (err && errcap) snprintf(err, errcap, "voce senza url per \"%s@%s\"", name, ver);
-        return GMB_BRAIN_E_INVALID;
-    }
+    int gh = br_ieq(src, "github-asset") || br_ieq(src, "github");
+
+    /* Il token si legge dal file dell'utente (`gmb brain login --github`) quando il chiamante
+     * non ne passa uno: così il comando BASIC, il CLI e il C# funzionano senza cablaggi. */
+    char tokbuf[1024];
+    if (gh && (!token || !*token) && gmb_brains_github_token(tokbuf, sizeof tokbuf)) token = tokbuf;
 
     /* FAIL-CLOSED: una sorgente protetta senza token NON si finge installata. */
-    if (br_ieq(src, "github-asset") || br_ieq(src, "github")) {
+    if (gh) {
         if (!token || !*token) {
             if (err && errcap)
                 snprintf(err, errcap,
@@ -729,7 +899,18 @@ int gmb_brains_install_from_manifest(const char* manifest_path, const char* name
                          "Installazione rifiutata.", name, ver);
             return GMB_BRAIN_E_UNAUTHORIZED;
         }
-    } else if (!br_ieq(src, "url")) {
+        if (!url[0] && !(repo[0] && tag[0] && asset[0])) {
+            if (err && errcap)
+                snprintf(err, errcap,
+                         "voce \"%s@%s\" incompleta: serve `url` oppure `repo`+`tag`+`asset`", name, ver);
+            return GMB_BRAIN_E_INVALID;
+        }
+    } else if (br_ieq(src, "url")) {
+        if (!url[0]) {
+            if (err && errcap) snprintf(err, errcap, "voce senza url per \"%s@%s\"", name, ver);
+            return GMB_BRAIN_E_INVALID;
+        }
+    } else {
         if (err && errcap) snprintf(err, errcap, "sorgente \"%s\" non supportata", src);
         return GMB_BRAIN_E_INVALID;
     }
@@ -754,7 +935,20 @@ int gmb_brains_install_from_manifest(const char* manifest_path, const char* name
 
     gmb_fetch_request rq;
     memset(&rq, 0, sizeof rq);
+    /* Asset privato descritto per NOME (`repo`+`tag`+`asset`): l'URL si risolve a OGNI tentativo,
+     * perché il 302 di GitHub punta a un CDN firmato che scade. L'id numerico non va nel manifest:
+     * ricaricando l'asset cambia, il nome no. */
+    br_gh_ctx ghc;
+    memset(&ghc, 0, sizeof ghc);
+    ghc.repo = repo[0] ? repo : NULL;
+    ghc.tag = tag[0] ? tag : NULL;
+    ghc.asset = asset[0] ? asset : NULL;
+    ghc.token = token;
     rq.url = url;
+    if (gh && repo[0] && tag[0] && asset[0]) {
+        rq.resolve = br_gh_resolve;
+        rq.resolve_user = &ghc;
+    }
     rq.dest_path = zip;
     rq.sha256 = sha[0] ? sha : NULL;
     rq.token = token;

@@ -91,6 +91,12 @@ int gmb_brain_remove(const char* name, const char* version);
 /* Messaggio leggibile per un codice GMB_BRAIN_E_*. */
 const char* gmb_brain_strerror(int code);
 
+/* Token GitHub per gli asset PRIVATI (`gmb brain login --github`).
+ * Sorgenti, nell'ordine: `<configDir>/github.token`, `~/.gmbasic/github.token`.
+ * Ritorna 1 se trovato e leggibile. Un file leggibile da gruppo/altri è RIFIUTATO
+ * (fail-closed): un token con permessi larghi è un token compromesso. */
+int gmb_brains_github_token(char* out, size_t cap);
+
 #ifdef __cplusplus
 }
 #endif

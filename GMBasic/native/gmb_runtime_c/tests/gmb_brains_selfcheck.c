@@ -255,9 +255,33 @@ int main(void)
     rc = gmb_brains_install_source("altro-nome", zip, &g_fake, &op, out_dir, sizeof out_dir, err, sizeof err);
     CHECK(rc == GMB_BRAIN_E_INVALID);
 
-    /* 11) rimozione dalla cache */
+    /* 11) rimozione dalla cache (e anche della cartella <nome>/ se resta vuota) */
     CHECK(gmb_brain_remove(brain, "1.2.0") == 1);
     CHECK(gmb_brain_lookup(brain, NULL, dir, sizeof dir) == 0);
+    {
+        char parent[1300];
+        snprintf(parent, sizeof parent, "%s/.gmbasic/brains/%s", g_home, brain);
+        CHECK(fsize(parent) == -1);   /* non è un file... */
+        struct stat st;
+        CHECK(stat(parent, &st) != 0);   /* ...e non esiste nemmeno come cartella */
+    }
+
+    /* 12) token GitHub: 0600 si legge, permessi larghi si RIFIUTANO (fail-closed) */
+    {
+        char tdir[1200], tpath[1300], tok[256];
+        snprintf(tdir, sizeof tdir, "%s/.gmbasic", g_home);
+        mkdir_p(tdir);
+        snprintf(tpath, sizeof tpath, "%s/github.token", tdir);
+        CHECK(write_file(tpath, "ghp_selftest\n", 13));
+        if (chmod(tpath, 0600) == 0) {
+            CHECK(gmb_brains_github_token(tok, sizeof tok) == 1);
+            CHECK(strcmp(tok, "ghp_selftest") == 0);
+        }
+        if (chmod(tpath, 0644) == 0) {
+            CHECK(gmb_brains_github_token(tok, sizeof tok) == 0);   /* token leggibile da altri: rifiutato */
+        }
+        remove(tpath);
+    }
 
     printf("gmb_brains_selfcheck: %d check, %d fail\n", checks, fails);
     return fails ? 1 : 0;

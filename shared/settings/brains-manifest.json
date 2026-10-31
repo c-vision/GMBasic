@@ -1,16 +1,36 @@
 {
   "version": "1.0.0",
-  "comment": "Cervelli ('Second Brain') distribuiti come asset di release. Un cervello NON sta in git: si scarica on demand con `AI BRAIN INSTALL` / `gmb brain install` (motore gmb_fetch: streaming + resume + sha256) e si installa in ~/.gmbasic/brains/<nome>/<versione>/. Ordine di ricerca a runtime: <progetto>/vendor/brains -> <exe>/vendor/brains -> <exe>/brains (brainsDir) -> ~/.gmbasic/brains. source: 'url' = download anonimo (asset pubblico); 'github-asset' = asset di release PRIVATO: richiede un token (gmb brain login --github) e SENZA token l'installazione e' RIFIUTATA (fail-closed). Chiunque puo' distribuire un cervello: basta pubblicare lo zip .gmbrain su una release e dichiararlo qui (o in un manifest proprio, vedi paths.brainsManifest).",
+  "comment": "Cervelli ('Second Brain') distribuiti come asset di release. Un cervello NON sta in git: si scarica on demand con `AI BRAIN INSTALL` / `gmb brain install` (motore gmb_fetch: streaming + resume + sha256) e si installa in ~/.gmbasic/brains/<nome>/<versione>/. Ordine di ricerca a runtime: <progetto>/vendor/brains -> <exe>/vendor/brains -> <exe>/brains (brainsDir) -> ~/.gmbasic/brains. source: 'url' = download anonimo (asset pubblico); 'github-asset' = asset di release PRIVATO: richiede un token (gmb brain login --github) e SENZA token l'installazione e' RIFIUTATA (fail-closed). Per un asset privato si dichiarano repo+tag+asset (nome del file): l'URL API si risolve a ogni tentativo, perche' l'id dell'asset cambia se lo si ricarica. Chiunque puo' distribuire un cervello: basta pubblicare lo zip .gmbrain su una release e dichiararlo qui (o in un manifest proprio, vedi paths.brainsManifest).",
   "schema": {
     "brains[].name": "nome del cervello (directory di installazione)",
     "brains[].description": "testo libero",
     "brains[].latest": "versione usata quando non se ne chiede una precisa",
     "brains[].versions[].version": "versione (semver)",
     "brains[].versions[].source": "url | github-asset",
-    "brains[].versions[].url": "URL dell'asset .gmbrain.zip (per github-asset: URL api.github.com/repos/<org>/<repo>/releases/assets/<id>)",
-    "brains[].versions[].sha256": "sha256 dell'asset (verificato dal motore, obbligatorio in pratica)",
+    "brains[].versions[].url": "URL diretto dell'asset .gmbrain.zip (per source=url; per github-asset è accettato anche l'URL API esplicito)",
+    "brains[].versions[].repo": "github-asset: owner/repo della release",
+    "brains[].versions[].tag": "github-asset: tag della release (es. brains-v1)",
+    "brains[].versions[].asset": "github-asset: nome del file dell'asset nella release",
+    "brains[].versions[].sha256": "sha256 dell'asset (verificato dal motore PRIMA di estrarre)",
     "brains[].versions[].size": "dimensione in byte (consente il controllo dello spazio prima del download)",
-    "brains[].versions[].files[]": "facoltativo: elenco {path, sha256} dei file interni, per la verifica per-file"
+    "brains[].versions[].files[]": "facoltativo: elenco {path, sha256} dei file interni (verifica per-file all'installazione)"
   },
-  "brains": []
+  "brains": [
+    {
+      "name": "brainvault",
+      "description": "RAG del vault del progetto: documentazione, note e decisioni. Repo PRIVATO (c-vision/GMBasicBrains): serve un token con accesso.",
+      "latest": "1.0.0",
+      "versions": [
+        {
+          "version": "1.0.0",
+          "source": "github-asset",
+          "repo": "c-vision/GMBasicBrains",
+          "tag": "brains-v1",
+          "asset": "brainvault-1.0.0.gmbrain.zip",
+          "sha256": "e4bf7e1717dc5768cfc2e644ee685c1c8bc52c53b89eb85cba37f5ddf87262cc",
+          "size": 573998
+        }
+      ]
+    }
+  ]
 }
