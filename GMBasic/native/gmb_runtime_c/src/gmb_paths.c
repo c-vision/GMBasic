@@ -424,10 +424,16 @@ static void pr_dir(const char* key, const char* defrel, char* out, size_t cap)
     snprintf(out, cap, "%s/%s", g_pr_root, defrel);
 }
 
-/* skills/ e plugins/ sono CONDIVISI dai due mondi (C# e C li leggono): nel monorepo vivono in
- * `<root>/../shared/<nome>`, ed è lì la copia UNICA. Un checkout del solo GMBasic — o un'app
- * installata — non ha `shared/`: in quel caso si ricade su `<root>/<nome>` (comportamento di
- * prima). L'eventuale `paths.skillsDir`/`pluginsDir` esplicito vince sempre. */
+/* skills/, plugins/, rag/ e graphs/ sono CONDIVISI dai due mondi (C# e C li leggono): nel monorepo
+ * vivono in `<root>/../shared/<nome>`, ed è lì la copia UNICA. Un checkout del solo GMBasic — o
+ * un'app installata — non ha `shared/`: in quel caso si ricade su `<root>/<nome>` (comportamento
+ * di prima). L'eventuale chiave `paths.*Dir` esplicita vince sempre.
+ *
+ * ATTENZIONE ALLA CONDIZIONE: si testa l'esistenza di `<root>/../shared` (il PADRE), non di
+ * `<root>/../shared/<nome>`. Prima si testava la sottocartella: cancellando `shared/rag/` (i
+ * cervelli ora vivono nella cache, 2026-10-31) la risoluzione ricadeva su `<root>/rag` e il
+ * primo RAG BUILD avrebbe ricreato `GMBasic/rag/` — esattamente la sporcizia che §9 vieta. Ora
+ * la cartella si ricrea **dove deve stare**, sotto `shared/`. */
 static void pr_shared_or_root(const char* key, const char* defrel, char* out, size_t cap)
 {
     if (!g_pr_loaded) pr_load();
@@ -441,10 +447,10 @@ static void pr_shared_or_root(const char* key, const char* defrel, char* out, si
         return;
     }
     {
-        char shared[2048], rl[4096];
-        snprintf(shared, sizeof(shared), "%s/../shared/%s", g_pr_root, defrel);
-        if (access(shared, F_OK) == 0) {
-            snprintf(out, cap, "%s", realpath(shared, rl) ? rl : shared);
+        char shared_parent[2048];
+        snprintf(shared_parent, sizeof(shared_parent), "%s/../shared", g_pr_root);
+        if (access(shared_parent, F_OK) == 0) {
+            snprintf(out, cap, "%s/%s", shared_parent, defrel);
             return;
         }
     }
