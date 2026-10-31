@@ -92,3 +92,10 @@ GMBasic/config/recursivemas/
 # gambe e copiato dal bundle in `<exe>/config/`). Qui sono solo copie di lavoro.
 GMBasic/config/connectors.json
 GMBasic/config/providers.json
+
+# ISTRUZIONI PER GLI AGENTI — locali, NON tracciate (2026-10-31). `AGENTS.md` e `CLAUDE.md` sono
+# il contratto operativo della macchina/sessione che lavora sul repo, non contenuto del progetto:
+# restano su disco e si forniscono a chi ne ha bisogno. Nessun link di codice li richiede
+# (`tools/basic/make_lora_dataset.bas` li legge se ci sono e li salta se mancano).
+AGENTS.md
+CLAUDE.md

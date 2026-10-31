@@ -41,7 +41,7 @@ public static class BrainVaultBuilder
     public static (int written, int indexed) BuildFromCommands(string commandsPath, string outputDir)
     {
         if (!File.Exists(commandsPath))
-            throw new FileNotFoundException($"COMMANDS.txt non trovato: {commandsPath}");
+            throw new FileNotFoundException($"COMMANDS.TXT not found: {commandsPath}");
         return BuildBrainVault(outputDir);
     }
 }
