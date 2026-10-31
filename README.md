@@ -93,32 +93,32 @@ config:
 ## Build & Run
 
 ```sh
-dotnet build GMBASIC.sln
+dotnet build GMBasicSharp/GMBasicSharp.slnx
 ```
 
-This is a monorepo unifying the deprecated GM-Basic and GMBasicAI repos: no single "run the
-interpreter" entry point exists, because there are three independent backends. Each has its own
-entry point:
+Il monorepo unifica i vecchi repo GM-Basic e GMBasicAI: **non c'è un unico "esegui l'interprete"**,
+perché ci sono tre backend indipendenti. Ognuno ha il suo punto d'ingresso:
 
 ```sh
-# IL Backend (pure C#, framework-dependent JIT by default; -n = NativeAOT)
-dotnet run --project Executor -- <file.bas>            # IL compilato, JIT (Executor managed, solo IL; richiede .NET 10)
-dotnet run --project REPL -- -n <file.bas>             # -n/--native: eseguibile NativeAOT (publish AOT, host REPL)
+# Backend IL (C# puro, JIT per default; -n = NativeAOT)
+dotnet run --project GMBasicSharp/Executor -- <file.bas>   # IL compilato, JIT (solo IL; richiede .NET 10)
+dotnet run --project GMBasicSharp/REPL -- -n <file.bas>    # -n/--native: eseguibile NativeAOT
 
-# VM in C (external process gmb_vm_host, for quick verification)
-# richiede il binario Community: cmake -S native/gmb_vm_c -B native/gmb_vm_c/build && cmake --build native/gmb_vm_c/build
-# (poi GMBASIC_VM_HOST=native/gmb_vm_c/build/gmb_vm_host, o copialo accanto all'eseguibile del test)
-dotnet run --project tests/GMBASIC.Conformance -- vmtest <file.bas>
+# VM in C (processo esterno gmb_vm_host)
+cmake -S GMBasic/native/gmb_vm_c -B GMBasic/native/gmb_vm_c/build && cmake --build GMBasic/native/gmb_vm_c/build
+dotnet run --project tools/runners/GMBASIC.Conformance -- vmtest <file.bas>
+# (oppure GMBASIC_VM_HOST=GMBasic/native/gmb_vm_c/build/gmb_vm_host, o il binario accanto all'eseguibile)
 
-# C99Native backend (C frontend + emitter generate .c, `cc` against the shared C runtime, run it).
-# The old C# C99 transpiler gate (tests/GMBASIC.Backend.C99.Tests) is retired.
-# CWD must be GMBasic/ (the script resolves the repo from its own path); sample paths are
-# relative to it, hence ../shared/...
-(cd GMBasic && bash tools/sh/gmb_c99native_run.sh ../shared/samples/Community/Network/WebSocketEcho.bas)
+# Backend C99Native (frontend C + emitter .c, `cc` contro il runtime C condiviso).
+# Lo script entra da sé in GMBasic/, quindi i sample si passano relativi a GMBasic/ (../shared/...)
+bash tools/sh/gmb_c99native_run.sh ../shared/samples/Community/Network/WebSocketEcho.bas
+
+# 4 gambe sullo stesso sample (IL · PCode · VM/C · C99Native), confronto dell'output
+zsh tools/sh/parity4 ../shared/samples/Community/Ai/AiPlugins.bas
 ```
 
-Development mode (bypasses the licensing gate) — set `GMBASIC_DEV_MODE=1` before any of the
-commands above.
+Modalità sviluppo (salta il gate di licenza): `GMBASIC_DEV_MODE=1` prima di uno dei comandi
+qui sopra.
 
 ## Architecture
 
