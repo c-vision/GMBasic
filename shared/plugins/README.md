@@ -1,56 +1,53 @@
-# `shared/plugins/` — a cosa servono i plugin (e a chi NON servono)
+# `shared/plugins/` — what plugins are for (and who does NOT need them)
 
-Un plugin è un **descrittore di capacità per l'agente LLM**, non codice che il runtime carica.
+A plugin is a **capability descriptor for the LLM agent**, not code the runtime loads.
 
 ```
 plugins/<nome>/
 ├── PLUGIN.md   frontmatter: name, description, trigger, enabled, tools, requires, procedures
-├── tool.json   schemi dei tool MCP (name, description, procedure, inputSchema)
-└── <nome>.bas  RIFERIMENTO: le procedure qui dentro NON vengono caricate da nessun backend
+├── tool.json   MCP tool schemas (name, description, procedure, inputSchema)
+└── <nome>.bas  REFERENCE: the procedures inside are NOT loaded by any backend
 ```
 
-## Chi li usa davvero
+## Who actually uses them
 
-| consumatore | cosa fa |
+| consumer | what it does |
 |---|---|
-| **agente LLM** (`AI AGENT ...`) | inietta nel system prompt descrizione + `trigger` dei plugin attivi (`AgentRecord`, `AgentServer`) e, con `AI PLUGINS ENABLE`, registra gli **schemi** di `tool.json` nel `McpToolRegistry` (`PluginRegistry.Enable`) |
-| `AI PLUGINS LIST / INFO / REFRESH` | scansione della cartella (`PluginIndex.Scan`) |
-| `AI.PLUGIN.CALL("nome", arg)` | legge `procedures` da `PLUGIN.md` e invoca **la prima procedura del PROGRAMMA** con quel nome: C# `CallHandler` → `_basicProcedures`; VM/C → hook in `gmb_builtin.c` |
-| **compilatore** | **niente.** Nessun include nel linker/emitter: un `.bas` dentro un plugin non entra mai nella compilazione |
+| **LLM agent** (`AI AGENT ...`) | injects into the system prompt the description + `trigger` of the enabled plugins (`AgentRecord`, `AgentServer`) and, with `AI PLUGINS ENABLE`, registers the **schemas** of `tool.json` in the `McpToolRegistry` (`PluginRegistry.Enable`) |
+| `AI PLUGINS LIST / INFO / REFRESH` | folder scan (`PluginIndex.Scan`) |
+| `AI.PLUGIN.CALL("name", arg)` | reads `procedures` from `PLUGIN.md` and invokes **the PROGRAM's first procedure** with that name: C# `CallHandler` → `_basicProcedures`; VM/C → hook in `gmb_builtin.c`; C99Native → generated dispatcher |
+| **compiler** | **nothing.** No include in the linker/emitter: a `.bas` inside a plugin never enters the compilation |
 
-**Il `<nome>.bas` non viene eseguito.** È il contratto di riferimento (le firme attese): per
-questo `samples/Community/Browser/BrowserPluginTest.bas` e `samples/Community/Ai/AiPlugins.bas`
-**re-implementano** le procedure al loro interno (`BrowserNavigate`, `WebFetch`, …).
+**The `<name>.bas` is not executed.** It is the reference contract (the expected signatures): that
+is why `samples/Community/Browser/BrowserPluginTest.bas` and `samples/Community/Ai/AiPlugins.bas`
+**re-implement** the procedures inside themselves (`BrowserNavigate`, `WebFetch`, …).
 
-## Conseguenze per un programma compilato
+## Consequences for a compiled program
 
-- **Non usa l'agente** → non gli serve **nessun** plugin: zero file da distribuire.
-- **Usa l'agente** → servono i **descrittori** (`PLUGIN.md` + `tool.json`) accanto all'eseguibile
-  e le **procedure nel programma** (o i tool di un server MCP esterno). Si dichiarano nel suo
-  `app.settings.json`:
+- **Does not use the agent** → it needs **no** plugin: zero files to ship.
+- **Uses the agent** → it needs the **descriptors** (`PLUGIN.md` + `tool.json`) next to the
+  executable and the **procedures in the program** (or the tools of an external MCP server). They
+  are declared in the program's `app.settings.json`:
 
   ```json
   { "plugins": ["web-fetch", "browser"] }
   ```
 
-  Il compilatore copia solo i dichiarati in `<exe>/plugins/<nome>` (vedi
+  The compiler copies only the declared ones into `<exe>/plugins/<name>` (see
   [ProgramBundle](../../GMBasicSharp/common/CommonLib/ProgramBundle.cs)).
-- **`AI.PLUGIN.CALL` su tutte le gambe** (2026-10-31): la procedura del programma viene
-  invocata su IL, PCodeVM, VM/C **e C99Native**. Su C99Native non c'è una VM BASIC nel
-  binario, quindi il transpiler emette un **dispatcher generato** (`__gmb_plugin_call`) verso
-  le `gmb_user_*` del programma; il nome della procedura arriva da `PLUGIN.md`
-  (`procedures[0]`, runtime C `gmb_plugin_procedure`). Prima rispondeva la stringa
-  dichiarativa `"PLUGIN nome(arg) OK"` senza eseguire nulla.
-- **Argomenti**: il primo argomento va nel primo parametro con la stessa regola di
-  `mcp_push_args` — testo numerico → numero, altrimenti stringa (la VM converte
-  numero→stringa se il parametro è `STRING`); i parametri restanti restano al default (`""`,
-  che un parametro numerico converte in `0`). Su VM/C l'**arità** viene dal chunk
-  (`arity_addrs`/`arity_vals`), senza la quale un secondo parametro scalzava il primo.
-  Verificato 4/4 da `shared/minitests/ai/gen_AI_PluginCallExec.bas` (caso stringa, caso
-  numerico e plugin senza procedura).
+- **C99Native**: `AI.PLUGIN.CALL` **does** execute the program procedure: the transpiler emits a
+  generated dispatcher (`__gmb_plugin_call`) toward the `gmb_user_*` functions, and the procedure
+  name comes from `PLUGIN.md` (`procedures[0]`, runtime function `gmb_plugin_procedure`).
+- **Arguments**: the first argument goes into the first parameter with the same rule as
+  `mcp_push_args` — numeric text → number, otherwise string (the VM converts number→string when the
+  parameter is `STRING`); the remaining parameters stay at their default (`""`, which a numeric
+  parameter converts to `0`). On VM/C the **arity** comes from the chunk
+  (`arity_addrs`/`arity_vals`), without which a second parameter would displace the first.
+  Verified 4/4 by `shared/minitests/ai/gen_AI_PluginCallExec.bas` (string case, numeric case and
+  plugin without procedure).
 
-## Cosa NON mettere qui
+## What NOT to put here
 
-- Implementazioni che il programma deve avere comunque (quelle vivono nel `.bas` dell'app).
-- `PLUGINS_PROMPT.md`: è un **output** rigenerato da `AI PLUGINS REFRESH` in
-  `<configDir>/PLUGINS_PROMPT.md` (accanto ad `ai.json`), non contenuto dell'archivio.
+- Implementations the program must have anyway (those live in the app's `.bas`).
+- `PLUGINS_PROMPT.md`: it is an **output** regenerated by `AI PLUGINS REFRESH` into
+  `<configDir>/PLUGINS_PROMPT.md` (next to `ai.json`), not archive content.

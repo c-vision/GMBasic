@@ -1,122 +1,122 @@
-# GMBasicTuiIde — IDE TUI standalone in BASIC (progetto autonomo)
+# GMBasicTuiIde — standalone TUI IDE in BASIC (autonomous project)
 
-App **completa** scritta in **BASIC** (`.bas`): è la *versione TUI* dell'IDE la cui logica è in C
-(`GMBasic/native/gmb_runtime_c/src/gmb_ide.c`). Si compila in un **eseguibile nativo** (percorso
-C99Native: `.bas` → C → binario) e **non** gira dentro la REPL.
+A **complete** app written in **BASIC** (`.bas`): it is the *TUI version* of the IDE whose logic is in C
+(`GMBasic/native/gmb_runtime_c/src/gmb_ide.c`). It compiles into a **native executable** (C99Native
+path: `.bas` → C → binary) and does **not** run inside the REPL.
 
-**Gemella di `GMBasicIDE/`** (submodule, versione **grafica** nativa macOS): stessa logica in C,
-due host diversi — TUI qui (BASIC compilato), GUI là (app nativa). La logica **non** è duplicata.
+**Twin of `GMBasicIDE/`** (submodule, native macOS **graphical** version): same logic in C,
+two different hosts — TUI here (compiled BASIC), GUI there (native app). The logic is **not** duplicated.
 
-- **Origine:** app originale di questo progetto (nessun upstream da portare).
-- **Licenza:** quella del progetto GMBasic.
-- **Stato:** promossa a **progetto autonomo del monorepo** il 2026-10-31 (prima era
-  `shared/APPS/GMBasicIde`, rinominata perché il nome collideva con il submodule grafico).
+- **Origin:** original app of this project (no upstream to port).
+- **License:** that of the GMBasic project.
+- **Status:** promoted to **autonomous project of the monorepo** on 2026-10-31 (it was previously
+  `shared/APPS/GMBasicIde`, renamed because the name collided with the graphical submodule).
 
-## Perché è un progetto autonomo (e non un sample)
+## Why it is an autonomous project (and not a sample)
 
-Questo IDE è il **banco di misura del footprint**: serve a capire **cosa si porta dietro un
-programma BASIC complesso e compilato** — quali librerie native tocca (FFI `gmb_gfx`), quante
-risorse usa, quanto pesa il binario e quali dipendenze dinamiche porta con sé. È il caso d'uso più
-"carico" che abbiamo: 20+ `DECLARE … LIB "gmb_gfx"`, controlli TUI, I/O file, chiamate FFI a ogni
-frame. Per questo vive alla root come progetto, non dentro `shared/APPS/`.
+This IDE is the **footprint measuring bench**: it helps to understand **what a complex, compiled
+BASIC program carries with it** — which native libraries it touches (FFI `gmb_gfx`), how many
+resources it uses, how heavy the binary is and which dynamic dependencies it brings along. It is the
+"heaviest" use case we have: 20+ `DECLARE … LIB "gmb_gfx"`, TUI controls, file I/O, FFI calls at every
+frame. That is why it lives at the root as a project, not inside `shared/APPS/`.
 
-### Come si misura (comandi, non impressioni)
+### How it is measured (commands, not impressions)
 
-Il runner C99Native emette tutto accanto all'entry file (`GMBasicTuiIde/src/bin/`):
-`<base>_<suff>.c` (C generato), `<base>_<suff>` (binario), `<base>_<suff>.libs.txt`
-(manifest delle librerie richieste), `libs.txt`, `Resources/`, `settings/`.
+The C99Native runner emits everything next to the entry file (`GMBasicTuiIde/src/bin/`):
+`<base>_<suff>.c` (generated C), `<base>_<suff>` (binary), `<base>_<suff>.libs.txt`
+(manifest of the required libraries), `libs.txt`, `Resources/`, `settings/`.
 
 ```sh
-# 1) compilazione nativa (CWD = root del monorepo; il runner entra in GMBasic/)
-#    NB: il percorso è relativo a GMBasic/ → `../GMBasicTuiIde/...`
+# 1) native compilation (CWD = monorepo root; the runner enters GMBasic/)
+#    NB: the path is relative to GMBasic/ → `../GMBasicTuiIde/...`
 GMB_TUI_SCRIPT=$'\e' bash tools/sh/gmb_c99native_run.sh ../GMBasicTuiIde/src/GMBasicTuiIde.bas
 
-# 2) peso del binario e del C generato
+# 2) weight of the binary and of the generated C
 ls -lh GMBasicTuiIde/src/bin/GMBasicTuiIde_out{,.c}
 
-# 3) dipendenze dinamiche reali (macOS; su Linux `ldd`)
+# 3) real dynamic dependencies (macOS; on Linux `ldd`)
 otool -L GMBasicTuiIde/src/bin/GMBasicTuiIde_out
 
-# 4) librerie che il runtime carica a RUN time (FFI/`dlopen`), con URL+sha256+size
+# 4) libraries that the runtime loads at RUN time (FFI/`dlopen`), with URL+sha256+size
 cat GMBasicTuiIde/src/bin/GMBasicTuiIde_out.libs.txt
 ```
 
-**Misura del 2026-10-31** (osx-arm64, `-O1`, `C99Native`): binario **1,2 MB**, C generato **81 KB**,
-dipendenze dinamiche del binario `libSystem`/`libcurl`/`libz` + `@rpath/libSDL2{,_ttf}`; **10**
-librerie caricate a runtime per **≈ 6,0 MB** (la più pesante `libgmb_gfx` 1,4 MB, poi `libglib`
-1,3 MB, `libharfbuzz` 1,2 MB, `libSDL2` 0,5 MB, …). Aggiornare questa riga quando si rimisura.
+**Measurement of 2026-10-31** (osx-arm64, `-O1`, `C99Native`): binary **1,2 MB**, generated C **81 KB**,
+binary dynamic dependencies `libSystem`/`libcurl`/`libz` + `@rpath/libSDL2{,_ttf}`; **10**
+libraries loaded at runtime for **≈ 6,0 MB** (the heaviest `libgmb_gfx` 1,4 MB, then `libglib`
+1,3 MB, `libharfbuzz` 1,2 MB, `libSDL2` 0,5 MB, …). Update this line when measuring again.
 
-## Layout del progetto
+## Project layout
 
 ```
 GMBasicTuiIde/
-  README.md                    <- questo file
-  TODO.md                      <- lavoro residuo
+  README.md                    <- this file
+  TODO.md                      <- remaining work
   src/GMBasicTuiIde.bas        <- entry point (SUB Main)
-  work/                        <- output runtime (C generato + binario), gitignored
+  work/                        <- runtime output (generated C + binary), gitignored
 ```
 
-## Come funziona (una sola logica, tanti host)
+## How it works (a single logic, many hosts)
 
-- La **logica** (outline, completion, go-to-def, find-refs, lint, rename, snippet, make) è **in C**
-  (`gmb_ide`), esposta a BASIC da wrapper **FFI-friendly** `gmb_idef_*`
+- The **logic** (outline, completion, go-to-def, find-refs, lint, rename, snippet, make) is **in C**
+  (`gmb_ide`), exposed to BASIC by **FFI-friendly** wrappers `gmb_idef_*`
   (`GMBasic/native/gmb_runtime_c/src/gmb_ide.c`).
-- Questo `.bas` la pilota via **FFI** (`DECLARE … LIB "gmb_gfx"`) e la mostra con i **controlli TUI**
-  (registry `gmb_tui_*` + frame **non bloccante** `gmb_ui_frame`). **Nessun nuovo builtin/TokenKind.**
-- `gmb_gfx` è una lib **nostra interna**: si compila in **`GMBasic/build/libs/<rid>/`** e si
-  pubblica in **`~/.gmbasic/libs/<rid>/`** (vault: `Knowledge/Librerie-e-Pacchetti.md`). L'FFI la
-  trova in automatico: il loader cerca `libs` → `shared/libs` → `build/libs/<rid>` e poi la cache.
+- This `.bas` drives it via **FFI** (`DECLARE … LIB "gmb_gfx"`) and displays it with the **TUI controls**
+  (registry `gmb_tui_*` + **non-blocking** frame `gmb_ui_frame`). **No new builtin/TokenKind.**
+- `gmb_gfx` is **our internal** lib: it compiles into **`GMBasic/build/libs/<rid>/`** and is
+  published to **`~/.gmbasic/libs/<rid>/`** (vault: `Knowledge/Librerie-e-Pacchetti.md`). The FFI
+  finds it automatically: the loader looks in `libs` → `shared/libs` → `build/libs/<rid>` and then the cache.
 
-## Layout della UI e tasti
+## UI layout and keys
 
 ```
 +----------------------------------------------------------+
-| File: [percorso]                                         |
+| File: [path]                                             |
 | [ tab1 | tab2 | ... ]                                    |
-| CodeArea (sorgente)                 | ListBox (outline)   |
+| CodeArea (source)                  | ListBox (outline)   |
 |                                     |                     |
 +----------------------------------------------------------+
-| StatusBar: messaggi / risultato comando                  |
+| StatusBar: messages / command result                     |
 +----------------------------------------------------------+
 ```
 
-| Tasto | Azione |
+| Key | Action |
 |---|---|
-| `F1`  | Aiuto |
-| `F2`  | Apri il file indicato nel campo "File:" |
-| `F3`  | Salva il buffer corrente nel percorso |
-| `F4`  | Outline (analisi simboli) |
-| `F5`  | Completion (prefisso "PR") |
-| `F6`  | Lint (squiggle nel gutter) |
-| `F7`  | Go-to-definition (simbolo selezionato nell'outline) |
-| `F8`  | Find-references (simbolo selezionato) |
-| `F9`  | Make (scrive il documento normalizzato in `<file>.build.bas`) |
-| `F10` | Nuovo tab |
-| `ESC` | Esci |
+| `F1`  | Help |
+| `F2`  | Open the file indicated in the "File:" field |
+| `F3`  | Save the current buffer to the path |
+| `F4`  | Outline (symbol analysis) |
+| `F5`  | Completion (prefix "PR") |
+| `F6`  | Lint (squiggle in the gutter) |
+| `F7`  | Go-to-definition (symbol selected in the outline) |
+| `F8`  | Find-references (selected symbol) |
+| `F9`  | Make (writes the normalized document to `<file>.build.bas`) |
+| `F10` | New tab |
+| `ESC` | Quit |
 
-## Come eseguire
+## How to run
 
-Dalla **root del monorepo** (`GMBasicMonoRepo/`). L'app è **interattiva**
-(`' TAG: interactive`): senza un TTY si usa `GMB_TUI_SCRIPT` per scriptare i tasti, altrimenti
-chiude subito.
+From the **monorepo root** (`GMBasicMonoRepo/`). The app is **interactive**
+(`' TAG: interactive`): without a TTY one uses `GMB_TUI_SCRIPT` to script the keys, otherwise
+it closes immediately.
 
 ```sh
-# compilazione + esecuzione standalone (C99Native)
-#   il percorso del .bas è relativo a GMBasic/ (il runner entra lì dentro)
+# standalone compilation + execution (C99Native)
+#   the .bas path is relative to GMBasic/ (the runner enters there)
 GMB_TUI_SCRIPT=$'\e' bash tools/sh/gmb_c99native_run.sh ../GMBasicTuiIde/src/GMBasicTuiIde.bas
 
-# dev loop su IL (JIT)
+# dev loop on IL (JIT)
 tools/sh/harness.sh il GMBasicTuiIde/src/GMBasicTuiIde.bas
 
-# esecuzione scriptata (ESC per uscire)
+# scripted execution (ESC to quit)
 GMB_TUI_SCRIPT=$'\e' tools/sh/harness.sh il GMBasicTuiIde/src/GMBasicTuiIde.bas
 ```
 
-Prerequisiti: build nativo presente (`GMBasic/native/gmb_vm_c/build`) e librerie native in cache
-(`~/.gmbasic/libs/<rid>/`, da `gmb install --runtime-only`).
+Prerequisites: native build present (`GMBasic/native/gmb_vm_c/build`) and native libraries in the cache
+(`~/.gmbasic/libs/<rid>/`, from `gmb install --runtime-only`).
 
-## Documentazione
+## Documentation
 
-Manuali e note nel vault del monorepo (`01-Projects/GMBasicMonoRepo/`), non qui:
-`Todo/(open) - IDE-TUI-BASIC-e-standalone-e-VSCode-LSP.md` (piano A/B/C: IDE in BASIC, IDE in C,
-LSP per VS Code).
+Manuals and notes in the monorepo vault (`01-Projects/GMBasicMonoRepo/`), not here:
+`Todo/(open) - IDE-TUI-BASIC-e-standalone-e-VSCode-LSP.md` (A/B/C plan: IDE in BASIC, IDE in C,
+LSP for VS Code).

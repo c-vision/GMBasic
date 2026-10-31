@@ -1,7 +1,7 @@
 ---
 name: report
-description: Genera un report testuale strutturato da dati (template).
-trigger: report, generare report, riepilogo dati, tabella
+description: Generates a structured text report from data (template).
+trigger: report, generate report, data summary, table
 version: 1.0.0
 enabled: true
 tools: [report_generate]
@@ -10,6 +10,5 @@ procedures: [ReportGenerate]
 ---
 # Plugin report
 
-Istruzioni operative per l'agente: usa `AI.PLUGIN.CALL("report", args)` per generare un
-report testuale. La procedura `ReportGenerate` compone titolo, sezioni e righe in un
-documento ordinato.
+Operating instructions for the agent: use `AI.PLUGIN.CALL("report", args)` to generate a text report.
+The `ReportGenerate` procedure composes title, sections and rows into a single document.

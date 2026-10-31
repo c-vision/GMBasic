@@ -1,30 +1,31 @@
-# Controls — libreria di controlli BASIC
+# Controls — BASIC control library
 
-Controlli scritti in **BASIC** come classi `CLASS <Nome> INHERITS Control` (UserControl),
-usando solo la base `CONTROLS` + le primitive del `GraphicsContext`. Nessun verbo/TokenKind
-nuovo: parità **4 backend** per costruzione (IL / PCode / VM-C / C99Native).
+Controls written in **BASIC** as classes `CLASS <Name> INHERITS Control` (UserControl), using only
+the `CONTROLS` base plus the `GraphicsContext` primitives. No new verb/TokenKind: **4-backend**
+parity by construction (IL / PCode / VM-C / C99Native).
 
-## Contenuto
-Controlli (`*.bas`), **solo classi** `NAMESPACE CustomControls` (distinto dal namespace
-built-in `CONTROLS`):
+## Contents
+Controls (`*.bas`), **classes only** in `NAMESPACE CustomControls` (distinct from the built-in
+`CONTROLS` namespace):
 - `CandleChart`, `Depth` (MarketDepth/DOM), `OrderTicket`, `Watchlist`, `Splitter`,
-  `ContextMenu`, `Segmented`, `DataGrid`, `TradingMinors` (Ticker / TreeGroup /
-  EconCalendar / Toolbar).
+  `ContextMenu`, `Segmented`, `DataGrid`, `TradingMinors` (Ticker / TreeGroup / EconCalendar /
+  Toolbar).
 
-Gli **esempi/demo** NON stanno qui: sono in `samples/Community/Controls/` (importano
-`CustomControls`). I controlli **built-in** (AlertBox, ListBox, TBROWSE, …) sono il namespace
-`CONTROLS` (runtime C condiviso, `native/gmb_runtime_c`).
+The **examples/demos** are NOT here: they live in `samples/Community/Controls/` (they import
+`CustomControls`). The **built-in** controls (AlertBox, ListBox, TBROWSE, …) are the `CONTROLS`
+namespace (shared C runtime, `native/gmb_runtime_c`).
 
-## Uso
+## Usage
 ```
-IMPORT CONTROLS         ' base Control + primitive GraphicsContext
-IMPORT CustomControls   ' i controlli di questa cartella
+IMPORT CONTROLS         ' Control base + GraphicsContext primitives
+IMPORT CustomControls   ' the controls of this folder
 DIM s AS Segmented = NEW Segmented()
 ```
 
-## Convenzioni
-- Ogni file-libreria è **solo classi** (`NAMESPACE CustomControls`, `PUBLIC CLASS`); gli esempi sono in `samples/Community/Controls/`.
-- Guida utente: `Guide/utente/*-Controllo-Guida-Utente.md`.
-- Test: `minitests/controls/`, `minitests/tui/` (`IMPORT CustomControls`).
+## Conventions
+- Every library file is **classes only** (`NAMESPACE CustomControls`, `PUBLIC CLASS`); the examples
+  are in `samples/Community/Controls/`.
+- User guide: `Guide/utente/*-Controllo-Guida-Utente.md`.
+- Tests: `minitests/controls/`, `minitests/tui/` (`IMPORT CustomControls`).
 
-> Vedi `Todo/(open) - CONTROLS-Port-Clipper-Passo-Passo.md` §12.
+> See `Todo/(open) - CONTROLS-Port-Clipper-Passo-Passo.md` §12.

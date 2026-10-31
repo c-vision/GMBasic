@@ -1,30 +1,30 @@
 # Licensing / ownership (F3)
 
-Confine deciso (vedi ADR `ADR-Confine-Licenza-Engine-Apache-Training-Quant-PUL`):
+Decided boundary (see ADR `ADR-Confine-Licenza-Engine-Apache-Training-Quant-PUL`):
 
-| Area | Licenza | Note |
+| Area | License | Notes |
 |---|---|---|
-| `GMBasic/native/gmb_runtime_c`, `gmb_compiler_c`, `gmb_vm_c`, `gmb_db_c`, `gmb_c99native`, `gmb_chart`, `gmb_doc_c`, `gmb_graph`, `gmb_gfx` | **Apache-2.0** | runtime, VM, compiler, DB: solo esecuzione |
-| `GMBasic/gmbllm/` | **PUL v1.1** | produce/trasforma pesi: model compiler, quant encode, training, LoRA |
-| `GMBasicSharp/` (frontend, IL, PCode, Executor, REPL, BRT, CommonLib) | **Apache-2.0** (proposta) | nessun codice che produce pesi |
-| `shared/` (samples, minitests, include, settings, fixtures) | **Apache-2.0** (codice) / **CC-BY-4.0** (doc) | corpus e asset |
-| `shared/spec/`, `shared/conformance/`, `shared/runtime-abi/` | **Apache-2.0** | contratto, runner, ABI |
+| `GMBasic/native/gmb_runtime_c`, `gmb_compiler_c`, `gmb_vm_c`, `gmb_db_c`, `gmb_c99native`, `gmb_chart`, `gmb_doc_c`, `gmb_graph`, `gmb_gfx` | **Apache-2.0** | runtime, VM, compiler, DB: execution only |
+| `GMBasic/gmbllm/` | **PUL v1.1** | produces/transforms weights: model compiler, quant encode, training, LoRA |
+| `GMBasicSharp/` (frontend, IL, PCode, Executor, REPL, BRT, CommonLib) | **Apache-2.0** (proposal) | no code that produces weights |
+| `shared/` (samples, minitests, include, settings, fixtures) | **Apache-2.0** (code) / **CC-BY-4.0** (docs) | corpus and assets |
+| `shared/spec/`, `shared/conformance/`, `shared/runtime-abi/` | **Apache-2.0** | contract, runner, ABI |
 
-Regole:
-- Dipendenze **monodirezionali**: `gmbllm` (PUL) linka le lib Apache; **mai** Apache → PUL.
-- `LLMEnv`/`FastLLM` sono Apache e restano inference-complete (load/run); tutto ciò che
-  produce/trasforma pesi vive in `gmbllm` (PUL).
-- `gmbasic-c` resta **privato** finché `gmbllm` (PUL) non è separato in un repo dedicato.
-- `runtime-abi/ABI_VERSION` è il riferimento semver dell'ABI C→Sharp; la CI pinna questo valore.
+Rules:
+- **One-way** dependencies: `gmbllm` (PUL) links the Apache libs; **never** Apache → PUL.
+- `LLMEnv`/`FastLLM` are Apache and stay inference-complete (load/run); everything that
+  produces/transforms weights lives in `gmbllm` (PUL).
+- `gmbasic-c` stays **private** until `gmbllm` (PUL) is split into a dedicated repo.
+- `runtime-abi/ABI_VERSION` is the semver reference of the C→Sharp ABI; CI pins this value.
 
-## Nota F5 (2026-10-25)
+## Note F5 (2026-10-25)
 
-Decisione: **GMBasicSharp resta un frontend C# che usa le dylib C via P/Invoke**; nessuna
-reimplementazione C# dei moduli runtime/UI. Conseguenze:
+Decision: **GMBasicSharp stays a C# frontend that uses the C dylibs via P/Invoke**; no C#
+reimplementation of the runtime/UI modules. Consequences:
 
-- `gmbasic-sharp` può essere pubblico come **sorgente Apache**, ma per eseguire le funzioni
-  native serve il runtime C (repo `gmbasic-c`, privato finché `gmbllm` è PUL).
-- `libgmb_ai_llm` include codice `gmbllm` (**PUL**): le funzioni di model-compiler/quant/training
-  richiedono licenza PUL anche se invocate da C#. Le funzioni di sola inferenza restano Apache.
-- Il contratto `runtime-abi/` è la garanzia di compatibilità Sharp↔C; ogni nuovo P/Invoke va
-  aggiunto ai symbols e a `check_all.sh`.
+- `gmbasic-sharp` can be public as **Apache source**, but running the native functions requires
+  the C runtime (repo `gmbasic-c`, private as long as `gmbllm` is PUL).
+- `libgmb_ai_llm` includes `gmbllm` code (**PUL**): the model-compiler/quant/training functions
+  require the PUL license even when invoked from C#. Inference-only functions stay Apache.
+- The `runtime-abi/` contract is the Sharp↔C compatibility guarantee; every new P/Invoke must be
+  added to the symbols and to `check_all.sh`.

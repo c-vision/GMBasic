@@ -1,40 +1,46 @@
-# NativeVec — esempio FFI `gmb_ffi.h`
+# NativeVec — FFI example using `gmb_ffi.h`
 
-Esempio self-contained del modulo nativo **GMBasic** (`contentType: c-ffi`, `ffi.api: gmb-native`).
+Self-contained example of a **GMBasic** native module (`contentType: c-ffi`, `ffi.api: gmb-native`).
 
-## Contenuto
+## Contents
 
-| File | Ruolo |
+| File | Role |
 |---|---|
-| `gmb_ffi.h` | Header ABI (`GMB_FFI_VERSION=1`, copia da `native/gmb_runtime_c/include/`) |
-| `vec_module.c` | Modulo C: livello 1 (c-abi) + livello 2 (gmb-native `gmb_ffi_module_entry`) |
-| `Makefile` | Compila `libvec_module.dylib`/`.so` |
-| `NativeVec.bas` | Programma BASIC (usa `DECLARE`, livello 1) |
-| `vec_module_rust.rs` | Valutazione modulo Rust equivalente (`#[no_mangle] extern "C"`) |
-| `vec_module_go.go` | Valutazione modulo Go equivalente (cgo `//export`) |
+| `gmb_ffi.h` | ABI header (`GMB_FFI_VERSION=1`, copied from `native/gmb_runtime_c/include/`) |
+| `vec_module.c` | C module: level 1 (c-abi) + level 2 (gmb-native `gmb_ffi_module_entry`) |
+| `Makefile` | Builds `libvec_module.dylib`/`.so` |
+| `NativeVec.bas` | BASIC program (uses `DECLARE`, level 1) |
+| `vec_module_rust.rs` | Evaluation of the equivalent Rust module (`#[no_mangle] extern "C"`) |
+| `vec_module_go.go` | Evaluation of the equivalent Go module (cgo `//export`) |
 
 ## Build & run
 
 ```bash
-cd samples/Community/FFI/NativeVec
-make                 # → libvec_module.dylib (macOS) / libvec_module.so (Linux)
-# poi esegui NativeVec.bas (runtime risolve ./NativeVec/vec_module)
+cd shared/samples/Community/FFI/NativeVec
+make                 # -> libvec_module.dylib (macOS) / libvec_module.so (Linux)
+# then run NativeVec.bas (the runtime resolves ./NativeVec/vec_module)
 ```
 
-## I due livelli
+## The two levels
 
-1. **c-abi** (`DECLARE`, usato oggi): funzioni C piatte (`vec_add`, `vec_label`, `vec_split`) come simboli normali. Il BASIC dichiara e chiama.
-2. **gmb-native** (futuro dispatcher): `gmb_ffi_module_entry()` restituisce la tabella `gmb_ffi_fn_descr_t` (nome/firma `L,L` ecc.). Il PackageManager/backend la userà per route per nome e type-checking, con marshalling `gmb_ffi_make_*`/`gmb_ffi_get_*` (copy-in/copy-out, liste `gmb_list_t`, callback `gmb_ffi_closure_t`, errori→`ON ERROR`).
+1. **c-abi** (`DECLARE`, used today): flat C functions (`vec_add`, `vec_label`, `vec_split`) as
+   normal symbols. BASIC declares and calls them.
+2. **gmb-native** (future dispatcher): `gmb_ffi_module_entry()` returns the
+   `gmb_ffi_fn_descr_t` table (name/signature `L,L` etc.). The PackageManager/backend will use it to
+   route by name and type-check, with `gmb_ffi_make_*`/`gmb_ffi_get_*` marshalling (copy-in/copy-out,
+   `gmb_list_t` lists, `gmb_ffi_closure_t` callbacks, errors → `ON ERROR`).
 
-## Contratto memoria
+## Memory contract
 
-- **Input**: stringhe/lista valide solo durante la chiamata (copia se servono).
-- **Output**: `gmb_ffi_make_string[_len]` copia → il valore BASIC resta valido anche se il modulo libera (niente UAF). `vec_label` riusa un buffer statico: è legale perché il runtime copia subito.
-- **BYREF**: `args[i].v_ptr` punta alla variabile BASIC; `gmb_ffi_set_*_out` scrive.
+- **Input**: strings/lists are valid only during the call (copy them if you need them later).
+- **Output**: `gmb_ffi_make_string[_len]` copies → the BASIC value stays valid even if the module
+  frees its own buffer (no UAF). `vec_label` reuses a static buffer: that is legal because the
+  runtime copies immediately.
+- **BYREF**: `args[i].v_ptr` points to the BASIC variable; `gmb_ffi_set_*_out` writes it.
 
-## Verifica con `ctest`
+## Verification with `ctest`
 
 ```bash
 cd native/gmb_runtime_c && cmake --build build -j4 && cd build && ctest -R gmb_ffi_selfcheck
-# 11/11 gruppi PASS (stringhe \0/UTF-8/>64K, UAF copy-out, BYREF, errori, liste, callback)
+# 11/11 groups PASS (strings \0/UTF-8/>64K, UAF copy-out, BYREF, errors, lists, callbacks)
 ```

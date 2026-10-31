@@ -1,13 +1,14 @@
-# conformance — corpus `.bas` + oracolo `EXPECT`
+# conformance — `.bas` corpus + `EXPECT` oracle
 
-`run_conformance.c` esegue un MiniTest/sample con la gamba **C99Native**
-(`GMBasic/tools/gmb_c99native_run.sh`) e confronta l'output con la riga
-`' EXPECT:` del file (righe unite con `|`).
+`run_conformance.c` runs a MiniTest/sample on the **C99Native** leg
+(`GMBasic/tools/gmb_c99native_run.sh`) and compares the output with the file's `' EXPECT:` line
+(lines joined with `|`).
 
 ```
 cmake -S conformance -B conformance/build && cmake --build conformance/build
 shared/conformance/build/run_conformance GMBasic shared/minitests/bits/bitclear.bas shared/minitests/bits/bitcount.bas
 ```
 
-Exit: 0 PASS/SKIP (senza EXPECT), 1 FAIL, 2 setup. Non modifica il file; il runner C99Native
-scrive l'artefatto in `bin/` accanto al file (output di default del compilatore; `work/` è solo per i sample).
+Exit: 0 PASS/SKIP (no EXPECT), 1 FAIL, 2 setup. It does not modify the file; the C99Native runner
+writes the artifact into `bin/` next to the file (the compiler's default output; `work/` is only
+for samples).

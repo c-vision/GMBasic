@@ -85,59 +85,59 @@ App-local modules (`*.inc`, `NAMESPACE ...`) are added when the single entry fil
 unwieldy (see `TODO.md` §M2 "modularization"). **Reusable** modules go to `<repo>/include/` and
 reusable libraries to `<repo>/libs/` — see [`../README.md`](../README.md).
 
-### LLM: il modello si configura nel project file (non nel codice)
+### LLM: the model is configured in the project file (not in the code)
 
-L'app usa un LLM (chat + MCP tools) e **non hardcoda il modello**: lo legge da `.masume.toml`,
-sezione `[llm]`, al boot (`LlmActivate` → `AI SET ACTIVE <capability>, <model>`).
+The app uses an LLM (chat + MCP tools) and **does not hardcode the model**: it reads it from `.masume.toml`,
+section `[llm]`, at boot (`LlmActivate` → `AI SET ACTIVE <capability>, <model>`).
 
 ```toml
 [llm]
-model = ""                 # alias/provider della capability (es. "ds4mlx"); "" = provider già attivo
+model = ""                 # capability alias/provider (e.g. "ds4mlx"); "" = provider already active
 capability = "completion"  # default
 ```
 
-- **`model` vuoto** → resta il provider `%CHAT`/`completion` già attivo (default del linguaggio).
-- **alias non registrato** → l'app **fallisce con errore esplicito** (`Provider 'x' is not
-  registered for role 'completion'`), mai un fallback silenzioso a un altro modello.
-- Il valore è mostrato in `MASUME_MODE_STATUS` (`llm model : ...`), così si verifica senza
-  chiamare il modello.
+- **empty `model`** → the `%CHAT`/`completion` provider already active stays (language default).
+- **unregistered alias** → the app **fails with an explicit error** (`Provider 'x' is not
+  registered for role 'completion'`), never a silent fallback to another model.
+- The value is shown in `MASUME_MODE_STATUS` (`llm model : ...`), so it can be verified without
+  calling the model.
 
 ## How to build and run
 
-Dalla **ROOT del monorepo** (`GMBasicMonoRepo/`):
+From the **monorepo ROOT** (`GMBasicMonoRepo/`):
 
 ```sh
-# dev loop — un file, una gamba (PCode = motore verificato di questo port; vedi caveat IL sotto)
+# dev loop — one file, one leg (PCode = verified engine of this port; see IL caveat below)
 tools/sh/harness.sh pcode shared/APPS/Masume/src/Masume.bas
 tools/sh/harness.sh il    shared/APPS/Masume/src/Masume.bas
 tools/sh/harness.sh vmc   shared/APPS/Masume/src/Masume.bas
 
-# release: eseguibile NativeAOT
+# release: NativeAOT executable
 dotnet run --project GMBasicSharp/REPL -- -n shared/APPS/Masume/src/Masume.bas
 
-# C99Native (frontend C + emitter → cc → esecuzione)
-bash tools/sh/gmb_c99native_run.sh ../shared/APPS/Masume/src/Masume.bas   # relativo a GMBasic/
+# C99Native (C frontend + emitter → cc → execution)
+bash tools/sh/gmb_c99native_run.sh ../shared/APPS/Masume/src/Masume.bas   # relative to GMBasic/
 ```
 
-I **modi** (`_SEED`, `_OBJECTS`, `_RUN`, `_CHECK`, `_TUI`) sono simboli **compile-time** (`-D` +
-`#IFDEF`): oggi **nessun runner del monorepo passa `-D`** (`test_ilrun`/`test_pcode`/`test_vmrun`
-non hanno l'opzione; `REPL -D` vale per le direttive della REPL, non per l'esecuzione di un file).
-Il modo si prova aggiungendo in testa al file **`#DEF MASUME_MODE_<X>`** (equivalente in-sorgente di
-`-D`, come documentato in `TODO.md` §Verification). Il supporto CLI è tracciato nel gap
-`Todo/(open) - CLI-Args-e-Env-per-Applicazioni-BASIC` del vault del monorepo.
+The **modes** (`_SEED`, `_OBJECTS`, `_RUN`, `_CHECK`, `_TUI`) are **compile-time** symbols (`-D` +
+`#IFDEF`): today **no monorepo runner passes `-D`** (`test_ilrun`/`test_pcode`/`test_vmrun`
+have no such option; `REPL -D` applies to REPL directives, not to the execution of a file).
+The mode is tried by adding **`#DEF MASUME_MODE_<X>`** at the top of the file (in-source
+equivalent of `-D`, as documented in `TODO.md` §Verification). CLI support is tracked in the gap
+`Todo/(open) - CLI-Args-e-Env-per-Applicazioni-BASIC` of the monorepo vault.
 
-Un nome di variabile che è una keyword BASIC (`ITEMS`, `INTO`, `AT`, `NAME`, `TEXT`, …) va
-rinominato: `items` colliderebbe con la clausola `ITEMS` dei comandi di controllo — vedi
-`Hard-Lessons/ITEMS-Keyword-Collision-Variabile` nel vault del monorepo (in `RunTui` l'array si
-chiama `menuItems`).
+A variable name that is a BASIC keyword (`ITEMS`, `INTO`, `AT`, `NAME`, `TEXT`, …) must be
+renamed: `items` would collide with the `ITEMS` clause of the control commands — see
+`Hard-Lessons/ITEMS-Keyword-Collision-Variabile` in the monorepo vault (in `RunTui` the array is
+called `menuItems`).
 
-Eseguire da `shared/APPS/Masume/` (o da una sua sottocartella), così il project file `.masume.toml`
-viene trovato: l'app cerca nella working directory e nei suoi antenati.
+Run from `shared/APPS/Masume/` (or from one of its subfolders), so the `.masume.toml` project file
+is found: the app searches in the working directory and its ancestors.
 
-**Nota ambiente:** `GMBasicSharp/Executor` è una **Library** (`OutputType` non `Exe`), quindi
-`dotnet run --project Executor` non è un percorso valido — usare i runner qui sopra. Il **PCode**
-engine è questo port's verified engine; l'**IL** ha un bug pre-esistente e generale: un array a
-dimensione fissa dichiarato a livello modulo/GLOBAL non condivide lo stato tra SUB (confermato con
+**Environment note:** `GMBasicSharp/Executor` is a **Library** (`OutputType` not `Exe`), so
+`dotnet run --project Executor` is not a valid path — use the runners above. The **PCode**
+engine is this port's verified engine; **IL** has a pre-existing and general bug: a fixed-size
+array declared at module/GLOBAL level does not share state across SUBs (confirmed with
 a minimal repro unrelated to this app — every SUB sees its own stale/default copy) — this port's
 `g_prof*`/`g_query*`/`g_param*` global arrays hit it directly, so **IL is not currently usable for
 this app**. Tracked as a new AiWiki bug (see `TODO.md`).

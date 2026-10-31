@@ -6,4 +6,4 @@ author: gmb
 strategy: trend
 asset: equity
 ---
-Strategy che segue il trend. Linka [[trading/momentum]].
+Strategy that follows the trend. Links to [[trading/momentum]].

@@ -1,7 +1,7 @@
 ---
 name: markdown
-description: Converte ed elabora Markdown (via CONVERT / WEB2MD).
-trigger: markdown, convertire markdown, html da markdown, web to markdown
+description: Converts and processes Markdown (via CONVERT / WEB2MD).
+trigger: markdown, convert markdown, html from markdown, web to markdown
 version: 1.0.0
 enabled: true
 tools: [markdown_convert]
@@ -10,6 +10,5 @@ procedures: [MarkdownConvert]
 ---
 # Plugin markdown
 
-Istruzioni operative per l'agente: usa `AI.PLUGIN.CALL("markdown", src)` per convertire
-Markdown (o un URL in Markdown) in HTML/testo. La procedura `MarkdownConvert` usa
-`CONVERT`/`WEB2MD`.
+Operating instructions for the agent: use `AI.PLUGIN.CALL("markdown", src)` to convert Markdown
+(or a URL into Markdown) to HTML/text. The `MarkdownConvert` procedure uses `CONVERT`/`WEB2MD`.

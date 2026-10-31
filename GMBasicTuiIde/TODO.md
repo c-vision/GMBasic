@@ -1,37 +1,38 @@
-# TODO — GMBasicTuiIde (IDE TUI in BASIC)
+# TODO — GMBasicTuiIde (TUI IDE written in BASIC)
 
-Stato: **v1.0** — IDE funzionante (multi-tab, I/O file, outline/completion/lint/goto/refs/make),
-verificato su IL e in compilazione standalone (C99Native). Vedi `README.md`.
+Status: **v1.0** — working IDE (multi-tab, file I/O, outline/completion/lint/goto/refs/make),
+verified on IL and as a standalone build (C99Native). See `README.md`.
 
-Progetto **autonomo del monorepo** dal 2026-10-31 (prima `shared/APPS/GMBasicIde`): serve anche da
-**banco di misura del footprint** di un programma BASIC compilato (vedi README §"Perché è un
-progetto autonomo").
+A **standalone project of the monorepo** since 2026-10-31 (previously `shared/APPS/GMBasicIde`); it
+also serves as a **footprint benchmark** for a compiled BASIC program (see README §"Why it is a
+standalone project").
 
-## Funzionalità residue
+## Remaining features
 
-- [ ] **Popup completion inline** con inserimento: aprire un ListBox popup coi candidati
-      (`gmb_idef_complete`) e inserire la scelta nel CodeArea alla riga/colonna del cursore.
-- [ ] **goto per interazione** sull'outline (oggi: F7 legge la voce selezionata). Serve leggere
-      l'evento di selezione del ListBox (in TEXT `gmb_form_poll_event` è vuoto → usare i callback o
-      un TBROWSE con `gmb_tui_control_selrow`).
-- [ ] **Ricerca/find nel buffer** (in avanti/indietro), replace, con evidenziazione.
-- [ ] **Rename/snippet** esposti come tasti (le wrapper `gmb_idef_rename`/`snippet` esistono già).
-- [ ] **Colonne/caret nella StatusBar** (riga/colonna del cursore) — serve un getter
-      `gmb_code_area_cursor_line`/`_col` per indice (oggi c'è solo su puntatore) o esporlo.
-- [ ] **Dimensione schermo reale** (oggi `gW=100,gH=30` fissi) — usare la dimensione del terminale.
-- [ ] **Verifica su display** reale (headless non copre GRAPHICS); provare il loop interattivo.
-- [ ] **Guida utente** in vault (`Guide/utente/`).
+- [ ] **Inline completion popup** with insertion: open a popup ListBox with the candidates
+      (`gmb_idef_complete`) and insert the choice into the CodeArea at the cursor line/column.
+- [ ] **Interaction-driven goto** on the outline (today: F7 reads the selected item). It needs the
+      ListBox selection event (in TEXT `gmb_form_poll_event` is empty → use the callbacks or a
+      TBROWSE with `gmb_tui_control_selrow`).
+- [ ] **Search/find in the buffer** (forward/backward), replace, with highlighting.
+- [ ] **Rename/snippet** exposed as keys (the `gmb_idef_rename`/`snippet` wrappers already exist).
+- [ ] **Columns/caret in the StatusBar** (cursor line/column) — needs a getter
+      `gmb_code_area_cursor_line`/`_col` by index (today only by pointer) or expose it.
+- [ ] **Real screen size** (today `gW=100,gH=30` are fixed) — use the terminal size.
+- [ ] **Verification on a real display** (headless does not cover GRAPHICS); exercise the
+      interactive loop.
+- [ ] **User guide** in the vault (`Guide/utente/`).
 
-## Debito tecnico / migliorie C
+## Technical debt / C improvements
 
-- [ ] `gmb_tui_control_text_ptr`/`set_text` usano un buffer statico condiviso: documentato, ma
-      attenzione a chiamate annidate.
-- [ ] `gmb_tui_control_set_text` per ListBox usa '\n'; le factory (`gmb_tui_add_*`) usano '|'
-      (`tui_split`). Armonizzare il separatore (o wrappare) per ridurre l'asimmetria.
-- [ ] Nessun setter per nome di `items`/`tabs` in TUI (solo il setter per indice aggiunto qui).
+- [ ] `gmb_tui_control_text_ptr`/`set_text` use a shared static buffer: documented, but beware of
+      nested calls.
+- [ ] `gmb_tui_control_set_text` for ListBox uses '\n'; the factories (`gmb_tui_add_*`) use '|'
+      (`tui_split`). Harmonize the separator (or wrap) to reduce the asymmetry.
+- [ ] No name-based setter for `items`/`tabs` in TUI (only the index-based setter added here).
 
-## Collegamenti
+## Links
 
-- Piano: vault `Todo/(open) - IDE-TUI-BASIC-e-standalone-e-VSCode-LSP.md`.
-- Logica C + wrapper: `native/gmb_runtime_c/{include/gmb_ide.h,src/gmb_ide.c}`.
-- Controlli TUI: `native/gmb_runtime_c/{include/gmb_tui_app.h,src/gmb_tui_controls_add.c}`.
+- Plan: vault `Todo/(open) - IDE-TUI-BASIC-e-standalone-e-VSCode-LSP.md`.
+- C logic + wrappers: `native/gmb_runtime_c/{include/gmb_ide.h,src/gmb_ide.c}`.
+- TUI controls: `native/gmb_runtime_c/{include/gmb_tui_app.h,src/gmb_tui_controls_add.c}`.

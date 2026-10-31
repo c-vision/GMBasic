@@ -1,8 +1,8 @@
-# runtime-abi — contratto ABI C → Sharp
+# runtime-abi — C → Sharp ABI contract
 
-Versione ABI: **`ABI_VERSION` = 1.0.0**. Gate: `./runtime-abi/check_all.sh`.
+ABI version: **`ABI_VERSION` = 1.0.0**. Gate: `./runtime-abi/check_all.sh`.
 
-| `*.symbols` | Dylib | Verifica |
+| `*.symbols` | Dylib | Verified |
 |---|---|---|
 | `gmb_db` | `libgmb_db.dylib` | **51/51** |
 | `gmb_gfx` | `libgmb_gfx.dylib` | **385/385** |
@@ -18,24 +18,26 @@ Versione ABI: **`ABI_VERSION` = 1.0.0**. Gate: `./runtime-abi/check_all.sh`.
 | `gmb_pkg` | `libgmb_pkg.dylib` | **128/128** |
 | `llmengine_moe_stream` | `libllmengine_moe_stream.dylib` | **20/20** |
 
-`check_abi.c` fa `dlopen` + `dlsym`; exit 1 se manca un simbolo, 2 se la dylib non si apre.
+`check_abi.c` does `dlopen` + `dlsym`; exit 1 if a symbol is missing, 2 if the dylib cannot be
+opened.
 
-`check_all.sh` **cerca le dylib dove il loader le cerca davvero** (2026-10-31):
+`check_all.sh` **looks for the dylibs where the loader actually looks** (2026-10-31):
 
-1. `<monorepo>/GMBasic/build/libs/<rid>/` — build locale del checkout (vince in sviluppo);
-2. `~/.gmbasic/libs/<rid>/` — cache utente (bundle pubblicati);
-3. `~/.gmbasic/libs/ml/<rid>/` — componenti ML (torch loader);
+1. `<monorepo>/GMBasic/build/libs/<rid>/` — local build of the checkout (wins in development);
+2. `~/.gmbasic/libs/<rid>/` — user cache (published bundles);
+3. `~/.gmbasic/libs/ml/<rid>/` — ML components (torch loader);
 4. `<monorepo>/GMBasic/native/gmb_db_c/build/` — `gmb_db`.
 
-Una lib **attesa e assente** è un **errore** (`--allow-missing` la declassa a `SKIP`). Prima lo
-script cercava in `GMBasic/Resources/libs` e `GMBasic/libs-runtime` (cartelle soppresse): 12 lib
-su 13 risultavano SKIP e stampava comunque «ABI: OK», quindi non controllava nulla — ed è così
-che il drift dei simboli (cervelli e fixture non elencati) è passato inosservato.
+A library that is **expected and missing** is an **error** (`--allow-missing` downgrades it to
+`SKIP`). Previously the script looked in `GMBasic/Resources/libs` and `GMBasic/libs-runtime`
+(folders that no longer exist): 12 of 13 libs came out as SKIP and it still printed «ABI: OK», so
+it verified nothing — which is how the symbol drift (brains and fixtures not listed) went
+unnoticed.
 
-**Regola invariata** (`LICENSING.md`): ogni nuovo `P/Invoke` va aggiunto al `<lib>.symbols`
-corrispondente (e il gate va eseguito quando si tocca il confine C ↔ C#).
+**Unchanged rule** (`LICENSING.md`): every new `P/Invoke` must be added to the matching
+`<lib>.symbols` (and the gate must be run when the C ↔ C# boundary is touched).
 
-## Aperto
+## Open
 
-- `gmb_tray` / `llm_vision_apple` sono x64-only su host arm: gate su runner x64.
-- Le dylib private/PUL (`gmb_ai_llm`) restano nel repo C privato; Sharp pubblico = sorgente.
+- `gmb_tray` / `llm_vision_apple` are x64-only on arm hosts: gate on an x64 runner.
+- The private/PUL dylibs (`gmb_ai_llm`) stay in the private C repo; public Sharp = source only.

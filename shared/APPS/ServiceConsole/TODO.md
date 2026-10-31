@@ -26,7 +26,7 @@
 - [ ] La finestra di stato usa i **widget TUI** (`Control`) resi su GUI nativa via `IControlSurface`/`GfxSurface`.
 - [ ] Semafori di stato (badge), bottoni grafici start/stop/restart (widget), log scrollabile con scrollbar.
 - [ ] Chart di uptime/latenza (widget Candlestick/LineChart).
-- [ ] Screenshot BMP come gate (`test_graphics_*`) per la verifica automatica della GUI.
+- [ ] BMP screenshot as a gate (`test_graphics_*`) for the automatic verification of the GUI.
 
 ## v0.4 — piattaforma
 - [x] Poll dei servizi (`HTTP.GET /healthz`), aggregato, dashboard HTML su `/`.

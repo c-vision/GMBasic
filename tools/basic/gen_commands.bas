@@ -238,10 +238,10 @@ SUB LoadRecon(p AS STRING)
   sec = 0
   FOR i = 0 TO UBOUND(ls$)
     s = TRIM(ls$(i))
-    IF INSTR(s, "## 5. Elenco funzioni") > 0 THEN sec = 5
-    IF INSTR(s, "## 6. Elenco comandi") > 0 THEN sec = 6
-    IF INSTR(s, "## 7. Elenco tipi") > 0 THEN sec = 7
-    IF INSTR(s, "## 8. Elenco costanti") > 0 THEN sec = 8
+    IF INSTR(s, "## 5. Function list") > 0 THEN sec = 5
+    IF INSTR(s, "## 6. Command list") > 0 THEN sec = 6
+    IF INSTR(s, "## 7. Type list") > 0 THEN sec = 7
+    IF INSTR(s, "## 8. Constant list") > 0 THEN sec = 8
     IF LEFT$(s, 3) = "```" OR LEN(s) = 0 OR LEFT$(s, 1) = "#" THEN
       ' righe di struttura: niente
     ELSEIF sec = 5 THEN

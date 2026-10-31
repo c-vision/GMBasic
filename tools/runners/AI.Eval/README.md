@@ -1,119 +1,119 @@
-# AI.Eval — Quality gates per l'implementazione AI
+# AI.Eval — Quality gates for the AI implementation
 
-L'harness esegue scenari reali contro il provider attivo e produce un report `PASS`/`FAIL`.
-È il quality gate end-to-end del second brain: non testa le singole unità (lo fa `AI.Tests`),
-ma la **catena completa** (modello → agente → tool → memoria) contro un LLM vero.
+The harness runs real scenarios against the active provider and produces a `PASS`/`FAIL` report.
+It is the end-to-end quality gate of the second brain: it does not test the single units (that is what `AI.Tests` does),
+but the **whole chain** (model → agent → tool → memory) against a real LLM.
 
-## Casi coperti
+## Covered cases
 
-| Id | Cosa verifica | Con fixture (senza ollama) | Con modello reale |
+| Id | What it verifies | With fixture (without ollama) | With a real model |
 |----|---------------|----------------------------|-------------------|
-| `agent-tool-calling` | l'agente sceglie il tool `add_numbers` e usa il risultato | dispatch del tool avvenuto | dispatch + risposta contiene il risultato |
-| `agent-facts` | l'agente risponde in modo non vuoto | risposta non vuota | idem |
-| `agent-streaming` | lo streaming concatena i chunk | concatenazione non vuota | idem |
-| `team-orchestration` | il team esegue i membri e registra la conversazione | esecuzione + conversazione | idem |
-| `agent-memory-recall` | recall: la risposta contiene un fatto salvato nel brain | retrieval del fatto trovato | retrieval + risposta contiene il fatto |
-| `agent-no-loop` | loop detection: l'agente termina entro il budget senza ripetere | termine entro budget | idem (loop detection attivo) |
+| `agent-tool-calling` | the agent picks the `add_numbers` tool and uses the result | tool dispatch happened | dispatch + answer contains the result |
+| `agent-facts` | the agent answers in a non-empty way | non-empty answer | idem |
+| `agent-streaming` | streaming concatenates the chunks | non-empty concatenation | idem |
+| `team-orchestration` | the team runs the members and records the conversation | execution + conversation | idem |
+| `agent-memory-recall` | recall: the answer contains a fact saved in the brain | retrieval of the fact found | retrieval + answer contains the fact |
+| `agent-no-loop` | loop detection: the agent terminates within the budget without repeating | termination within budget | idem (loop detection active) |
 
-In modalità fixture (default, senza ollama) i casi verificano **solo la pipeline deterministica**
-(dispatcher chiamato / retrieval che trova il fatto). La qualità end-to-end della risposta
-viene verificata solo con un modello reale.
+In fixture mode (default, without ollama) the cases verify **only the deterministic pipeline**
+(dispatcher called / retrieval that finds the fact). The end-to-end quality of the answer
+is verified only with a real model.
 
-## Modalità
+## Modes
 
-### 1. Fixture (default, sicuro — nessuna rete)
+### 1. Fixture (default, safe — no network)
 
 ```bash
 dotnet run --project tests/AI.Eval
-# oppure esplicitamente:
+# or explicitly:
 dotnet run --project tests/AI.Eval -- --fixture
 ```
 
-Usa `FixtureLlmCompleter`/`FixtureToolCallingCompleter`: deterministico, nessun errore,
-nessun download. Il comando di default non dipende da ollama.
+Uses `FixtureLlmCompleter`/`FixtureToolCallingCompleter`: deterministic, no errors,
+no download. The default command does not depend on ollama.
 
-### 2. Modello reale via OpenRouter (API key in env)
+### 2. Real model via OpenRouter (API key in env)
 
-Attivo per default (nessun commento da rimuovere). Richiede la key nell'ambiente:
+Active by default (no comment to remove). It requires the key in the environment:
 
 ```bash
 export OPENROUTER_API_KEY="sk-or-v1-..."
 dotnet run --project tests/AI.Eval -- --openrouter <modello>
 ```
 
-Modelli free verificati verdi (6/6 PASS):
+Free models verified green (6/6 PASS):
 
 ```bash
 dotnet run --project tests/AI.Eval -- --openrouter openai/gpt-oss-20b:free
 dotnet run --project tests/AI.Eval -- --openrouter nvidia/nemotron-3-super-120b-a12b:free
 ```
 
-Nota: i modelli `:free` di OpenRouter cambiano disponibilità nel tempo — alcuni diventano
-a pagamento (HTTP 404 con slug suggerito) o rate-limited upstream (HTTP 429). Se
-`OPENROUTER_API_KEY` non è impostata, l'eval cade sul fixture senza errori.
+Note: the `:free` models of OpenRouter change availability over time — some become
+paid (HTTP 404 with a suggested slug) or rate-limited upstream (HTTP 429). If
+`OPENROUTER_API_KEY` is not set, the eval falls back to the fixture with no errors.
 
-### 3. Modello reale via Ollama (da attivare manualmente)
+### 3. Real model via Ollama (to be enabled manually)
 
-Il path `--ollama` è **commentato** in `Program.cs`: senza ollama in esecuzione i casi
-fallirebbero (provider `Unavailable` → fallback fixture → attese violate).
+The `--ollama` path is **commented out** in `Program.cs`: without ollama running the cases
+would fail (provider `Unavailable` → fixture fallback → violated expectations).
 
-Per attivarla:
+To enable it:
 
-1. Avviare ollama: `ollama serve`
-2. In `tests/AI.Eval/Program.cs`, rimuovere i commenti dal blocco `── MODALITA' OLLAMA (REALE) ──`
-3. Lanciare:
+1. Start ollama: `ollama serve`
+2. In `tests/AI.Eval/Program.cs`, remove the comments from the `── MODALITA' OLLAMA (REALE) ──` block
+3. Run:
 
 ```bash
 dotnet run --project tests/AI.Eval -- --ollama http://localhost:11434/v1 <modello>
 ```
 
-Esempi verificati verdi (6/6 PASS):
+Examples verified green (6/6 PASS):
 
 ```bash
 dotnet run --project tests/AI.Eval -- --ollama http://localhost:11434/v1 gemma4:31b-mlx
 dotnet run --project tests/AI.Eval -- --ollama http://localhost:11434/v1 qwen2.5-coder:32b
 ```
 
-Note sul provider:
-- Ollama espone `/v1/chat/completions` (formato OpenAI, tool-calling nativo) → kind `openai`.
-  Per il protocollo nativo `/api/chat` usare baseUrl **senza** `/v1` con kind `ollama`.
-- Il provider viene registrato con `timeout = 300000` (5 min): i modelli 32B non-MLX
-  possono superare i 60 secondi di default sul caso `team-orchestration`.
+Notes on the provider:
+- Ollama exposes `/v1/chat/completions` (OpenAI format, native tool-calling) → kind `openai`.
+  For the native `/api/chat` protocol use baseUrl **without** `/v1` with kind `ollama`.
+- The provider is registered with `timeout = 300000` (5 min): non-MLX 32B models
+  can exceed the 60 second default on the `team-orchestration` case.
 
-## Come attivare il second brain (per i casi di memoria)
+## How to enable the second brain (for the memory cases)
 
-- `agent-memory-recall` salva un fatto nel brain (`~/.gmbasic/brain.db`) e interroga
-  un agente con `memory ON`. Il retrieval inietta il fatto nel system prompt.
-- Senza un provider di embedding attivo il retrieval usa il fallback lessicale
-  (`Text.Contains(query)`); con un embedding provider usa la similarità coseno.
-- Per abilitare la memoria su un agente: `AI AGENT SET <nome>, memory, ON`.
+- `agent-memory-recall` saves a fact in the brain (`~/.gmbasic/brain.db`) and queries
+  an agent with `memory ON`. The retrieval injects the fact into the system prompt.
+- Without an active embedding provider the retrieval uses the lexical fallback
+  (`Text.Contains(query)`); with an embedding provider it uses cosine similarity.
+- To enable memory on an agent: `AI AGENT SET <nome>, memory, ON`.
 
 ## Exit code
 
-- `0` = tutti i casi passano
-- `1` = almeno un caso fallisce (o lancia un'eccezione)
+- `0` = all cases pass
+- `1` = at least one case fails (or throws an exception)
 
-## Struttura
+## Structure
 
-- `Program.cs` — runner: setup provider (fixture/ollama/config), esegue i casi, report.
-- `EvalCases.cs` — definizione dei casi (setup + prompt + attese).
-- `EvalCase.cs` — tipo `EvalCase`/`EvalResult`.
-- `EvalToolDispatcher.cs` — dispatcher deterministico (registra le chiamate, risultati noti).
+- `Program.cs` — runner: provider setup (fixture/ollama/config), runs the cases, report.
+- `EvalCases.cs` — case definition (setup + prompt + expectations).
+- `EvalCase.cs` — `EvalCase`/`EvalResult` type.
+- `EvalToolDispatcher.cs` — deterministic dispatcher (records the calls, known results).
 
-### M6 — Eval Harness unificato (metriche)
+### M6 — Unified Eval Harness (metrics)
 
-Scrive `eval_report.json` con le 4 famiglie di metriche confrontabili tra backend/sessioni:
+Writes `eval_report.json` with the 4 families of metrics comparable across backends/sessions:
 
 ```bash
 dotnet run --project tests/AI.Eval -- --report tools/out/eval_report.json
-# fixture deterministico (mai rete) di default; con modello reale usa il provider attivo
+# deterministic fixture (never network) by default; with a real model it uses the active provider
 # → eval_report.json { total:{cases,passed,failed}, suites:[
 #     llm.tokps/rag.ndcg@2/team.acc/credit.blocked ] }
 ```
 
-- `llm.tokps`: throughput (stima ~1 tok/4 char, cronometrato)
-- `rag.ndcg@2`: ranking del retrieval (query → doc ideali, NDCG binario)
-- `team.acc`: accuracy del team (risposta contiene il token atteso)
-- `credit.blocked`: il credit tracker porta il provider a 0 crediti → Blocked
+- `llm.tokps`: throughput (estimate ~1 tok/4 char, timed)
+- `rag.ndcg@2`: retrieval ranking (query → ideal docs, binary NDCG)
+- `team.acc`: team accuracy (answer contains the expected token)
+- `credit.blocked`: the credit tracker brings the provider to 0 credits → Blocked
 
-Implementazione: `common/AI/Eval/EvalHarness.cs` + `tests/AI.Tests/Eval/EvalHarnessTests.cs` (2/2).
+Implementation: `common/AI/Eval/EvalHarness.cs` + `tests/AI.Tests/Eval/EvalHarnessTests.cs` (2/2).

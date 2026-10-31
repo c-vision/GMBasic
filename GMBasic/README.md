@@ -1,7 +1,7 @@
 # GMBasic (C)
 
-Progetto **solo C** del monorepo: compilatore nativo, VM/C, runtime condiviso, codec/LLM nativi.
-Nessun file `.cs` e nessuna dipendenza .NET per la build.
+The **C-only** project of the monorepo: native compiler, VM/C, shared runtime, native codecs/LLM.
+No `.cs` file and no .NET dependency in the build.
 
 ## Build
 
@@ -19,16 +19,16 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --target gmb_cli
 ```
 
-Dipendenze locali (non versionate): `Resources/libs`, `libs-runtime`, `gmbllm`/`LLMEnv`
-sorgenti accanto al repo. Tool di build: `tools/` (solo shell; niente Python).
+Local dependencies (not versioned): `Resources/libs`, `libs-runtime`, `gmbllm`/`LLMEnv` sources
+next to the repo. Build tools: `tools/` (shell only; no Python).
 
-## Verifica
+## Verification
 
-- `conformance/run_conformance` (workspace) sul corpus `shared/minitests`.
-- `runtime-abi/check_abi` per l'ABI P/Invoke.
-- `tools/sh/check_file_size.sh --quiet` (gate dimensioni; oggi rosso per file monolitici storici).
+- `conformance/run_conformance` (workspace) over the `shared/minitests` corpus.
+- `runtime-abi/check_abi` for the P/Invoke ABI.
+- `tools/sh/check_file_size.sh --quiet` (size gate; currently red for historical monolithic files).
 
-## Licenza
+## License
 
-Runtime C: Apache-2.0. `gmbllm/` (produzione/quantizzazione pesi): **PUL** — vedere
-`gmbllm/LICENSE`. Il repo `gmbasic-c` resta privato finché `gmbllm` non è separato.
+C runtime: Apache-2.0. `gmbllm/` (weight production/quantization): **PUL** — see
+`gmbllm/LICENSE`. The `gmbasic-c` repo stays private until `gmbllm` is split out.

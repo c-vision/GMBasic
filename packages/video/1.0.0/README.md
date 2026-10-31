@@ -1,24 +1,26 @@
-# video — lettura video (shim FFI self-contained)
+# video — video reading (self-contained FFI shim)
 
-Pacchetto gmbsuite (Prefisso C: `gmbvideo`). Lettura video (probe + estrazione frame) esposta a
-GMBasic via FFI (namespace **VIDEO**).
+gmbsuite package (C prefix: `gmbvideo`). Video reading (probe + frame extraction) exposed to GMBasic
+via FFI (namespace **VIDEO**).
 
-## Design (perché è self-contained)
-Lo shim `libgmbvideo.dylib` è costruito dal **package manager** (`build.sh`): **compila ffmpeg
-dai sorgenti** (build minimale: demuxer mov/matroska/avi/mpegts…, decoder h264/hevc/vp8/vp9/av1…,
-swscale) e lo **linka staticamente** dentro lo shim. Dipende solo da framework **di sistema Apple**
-(CoreFoundation/CoreVideo/CoreMedia/VideoToolbox) e libs OS (zlib/bz2/iconv) — nessuna lib terza-party.
+## Design (why it is self-contained)
+The `libgmbvideo.dylib` shim is built by the **package manager** (`build.sh`): it **compiles ffmpeg
+from source** (minimal build: mov/matroska/avi/mpegts demuxers…, h264/hevc/vp8/vp9/av1 decoders…,
+swscale) and **links it statically** inside the shim. It depends only on **Apple system frameworks**
+(CoreFoundation/CoreVideo/CoreMedia/VideoToolbox) and OS libs (zlib/bz2/iconv) — no third-party
+library.
 
-## API (BASIC, namespace `VIDEO`)
-| Membro | Firma | Semantica |
+## API (BASIC, `VIDEO` namespace)
+| Member | Signature | Semantics |
 |---|---|---|
-| `VIDEO.AVAILABLE()` | `() AS LONG` | 1 = shim disponibile |
-| `VIDEO.INFO(path, w, h, dur)` | `(STRING, BYREF LONG, BYREF LONG, BYREF LONG) AS LONG` | dims + durata ms; 0 ok |
-| `VIDEO.FRAME(path, t_ms, ppm)` | `(STRING, LONG, STRING) AS LONG` | frame al tempo t → PPM; 0 ok |
-| `VIDEO.FIRSTFRAMEPPM(path, ppm)` | `(STRING, STRING) AS LONG` | primo frame → PPM; 0 ok |
+| `VIDEO.AVAILABLE()` | `() AS LONG` | 1 = shim available |
+| `VIDEO.INFO(path, w, h, dur)` | `(STRING, BYREF LONG, BYREF LONG, BYREF LONG) AS LONG` | dims + duration ms; 0 ok |
+| `VIDEO.FRAME(path, t_ms, ppm)` | `(STRING, LONG, STRING) AS LONG` | frame at time t → PPM; 0 ok |
+| `VIDEO.FIRSTFRAMEPPM(path, ppm)` | `(STRING, STRING) AS LONG` | first frame → PPM; 0 ok |
 
 ## Build
-Il PM esegue `build.sh` (richiede: `git`, `make`, compilatore). Compila ffmpeg dai sorgenti (minimale).
+The package manager runs `build.sh` (requires: `git`, `make`, a C compiler). It compiles a minimal
+ffmpeg from source.
 
-## Riferimenti
+## References
 - `video.inc`, `include/gmbvideo.h`, `src/gmbvideo.c`, `build.sh`. Sample: `samples/video_demo.bas`.

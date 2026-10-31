@@ -1,26 +1,26 @@
 # shared
 
-Materiale **comune ai due mondi** (`GMBasic/` in C, `GMBasicSharp/` in C#), versionato.
+Material **shared by the two worlds** (`GMBasic/` in C, `GMBasicSharp/` in C#), versioned.
 
-| cartella | contenuto |
+| folder | contents |
 |---|---|
-| `samples/` | programmi BASIC di esempio (`Community/`, `Commercial/`, `Native/`) + `Fixtures/` |
-| `samples/Fixtures/` | **fixture**: i 4 feed di mercato (`markets`, `option_chains`, `rates`, `darkpool`) + le fixture piccole. I feed si scaricano con `gmb fixtures ensure` **sempre qui** — niente symlink, nessun disco esterno (decisione 2026-10-31) |
-| `minitests/` | corpus con oracolo `' EXPECT:` (la gamba nativa è il riferimento) |
-| `APPS/` | applicazioni complete che usano il compilatore |
-| `include/`, `Controls/` | export `.inc` delle librerie e esempi di controlli |
-| `libs/` | sorgenti delle **nostre** librerie FFI (`src/`, `include/`, `build.sh`) |
-| **`settings/`** | **seed condivisi del compilatore**: `system.settings.json` e i manifest (fixtures, brains, libs, ml, chromium, obscura) + `providers.json`. Vedi `settings/README.md` |
-| `skills/` | archivio skill (markdown) — vedi `skills/README.md` |
-| `plugins/` | descrittori dei plugin per l'agente (`PLUGIN.md` + `tool.json`) — vedi `plugins/README.md` |
-| `spec/`, `conformance/`, `runtime-abi/` | contratto: registry canonico/TokenKind, runner `.bas` con `EXPECT`, elenco dei simboli ABI C→C# (`check_all.sh`, ABI 1.0.0) |
-| `webapp/` | frontend condiviso delle app |
+| `samples/` | sample BASIC programs (`Community/`, `Commercial/`, `Native/`) + `Fixtures/` |
+| `samples/Fixtures/` | **fixtures**: the 4 market feeds (`markets`, `option_chains`, `rates`, `darkpool`) + the small fixtures. The feeds are downloaded with `gmb fixtures ensure` **always here** — no symlinks, no external disk (decision 2026-10-31) |
+| `minitests/` | corpus with `' EXPECT:` oracle (the native leg is the reference) |
+| `APPS/` | complete applications that use the compiler |
+| `include/`, `Controls/` | `.inc` exports of the libraries and control examples |
+| `libs/` | sources of **our** FFI libraries (`src/`, `include/`, `build.sh`) |
+| **`settings/`** | **shared compiler seeds**: `system.settings.json` and the manifests (fixtures, brains, libs, ml, chromium, obscura) + `providers.json`. See `settings/README.md` |
+| `skills/` | skill archive (markdown) — see `skills/README.md` |
+| `plugins/` | plugin descriptors for the agent (`PLUGIN.md` + `tool.json`) — see `plugins/README.md` |
+| `spec/`, `conformance/`, `runtime-abi/` | contract: canonical registry/TokenKind, `.bas` runner with `EXPECT`, list of the C→C# ABI symbols (`check_all.sh`, ABI 1.0.0) |
+| `webapp/` | shared frontend of the apps |
 
-## Regola: seed vs stato
+## Rule: seed vs state
 
-- **Seed** (versionati, identici su ogni macchina) → `settings/`. Es. `providers.json`, che il
-  runtime legge in fallback quando manca il file locale.
-- **Stato** dell'installazione (provider attivi, server MCP, cervelli, indici) → `<configDir>`
-  (`GMBasic/config`, o `<exe>/config` in un programma distribuito). **Non va in git**: contiene
-  percorsi della macchina.
-- La documentazione del monorepo sta in **`docs/`** alla radice (non c'è più `shared/docs`).
+- **Seed** (versioned, identical on every machine) → `settings/`. E.g. `providers.json`, which the
+  runtime reads as a fallback when the local file is missing.
+- **State** of the installation (active providers, MCP servers, brains, indexes) → `<configDir>`
+  (`GMBasic/config`, or `<exe>/config` in a distributed program). **It does not go into git**: it
+  contains machine paths.
+- The monorepo documentation lives in **`docs/`** at the root (`shared/docs` no longer exists).

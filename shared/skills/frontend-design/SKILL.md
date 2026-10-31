@@ -54,4 +54,4 @@ Treat failure and emptiness as moments for direction, not mood. Explain what wen
 
 Keep the register conversational and tuned: plain verbs, sentence case, no filler, with tone matched to the brand and the audience. Let each element do exactly one job. A label labels, an example demonstrates, and nothing quietly does double duty.
 
-> **Alias:** AI Hero `prototype` (throwaway HTML) ≈ questo; non importato per duplicazione
+> **Alias:** AI Hero `prototype` (throwaway HTML) ≈ this one; not imported to avoid duplication

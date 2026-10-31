@@ -1,73 +1,73 @@
-# samples/modules — risoluzione dei moduli (O7)
+# samples/modules — module resolution (O7)
 
-Esempio unico per **ogni** posto in cui il compilatore cerca un modulo BASIC
-(`*.bas`/`*.inc`). Vale per l'Orchestrator C# e per i driver nativi: entrambi leggono la stessa
-configurazione, quindi il sample compila e gira allo stesso modo.
+Single example for **every** place where the compiler looks for a BASIC module
+(`*.bas`/`*.inc`). It applies to the C# Orchestrator and to the native drivers: both read the same
+configuration, so the sample compiles and runs in the same way.
 
 Entry: [`FolderResolution/AllFolders.bas`](FolderResolution/AllFolders.bas).
 
 ```
 samples/modules/
-  FolderResolution/                 <- radice del PROGRAMMA (dove sta la entry)
-    AllFolders.bas                  IMPORT di un namespace per ogni cartella
+  FolderResolution/                 <- PROGRAM root (where the entry lives)
+    AllFolders.bas                  IMPORT of one namespace per folder
     app.settings.json               importFolders + importFiles + compiler.searchFolders
     include/LocalInclude.bas        searchFolders "include"
     Controls/LocalControl.bas       searchFolders "Controls"
-    deep/nested/Nested.bas          scansione RICORSIVA della radice
-    chain/Chain.bas                 IMPORT DEMO_DEEP (grafo transitivo)
+    deep/nested/Nested.bas          RECURSIVE scan of the root
+    chain/Chain.bas                 IMPORT DEMO_DEEP (transitive graph)
     libs/widgets/Widget.bas         searchFolders "{project}/libs/*" (glob)
-    libs/helpers/Deep.bas           caricato solo perché lo importa Chain.bas
-  shared/SharedModule.bas           importFolders "../shared" (FUORI dalla radice)
-  pinned/PinnedOnly.bas             importFiles "../pinned/PinnedOnly.bas" (FUORI dalla radice)
+    libs/helpers/Deep.bas           loaded only because Chain.bas imports it
+  shared/SharedModule.bas           importFolders "../shared" (OUTSIDE the root)
+  pinned/PinnedOnly.bas             importFiles "../pinned/PinnedOnly.bas" (OUTSIDE the root)
 ```
 
-## Regole (le stesse nei due percorsi)
+## Rules (the same in the two paths)
 
-1. **Radice del programma, ricorsiva**: ogni `.bas`/`.inc` sotto la cartella della entry è un
-   candidato, a qualunque profondità.
-2. **`importFolders`** (system + app settings): relative al progetto **e** alla root
-   dell'install. Raggiungono anche cartelle fuori dall'albero del programma.
-3. **`importFiles`**: file caricati sempre, relativi al progetto (poi all'install).
-4. **`compiler.searchFolders`**: la lista storica `include` · `Controls` · `controls` ·
-   `{install}/include` · `{install}/Controls` · `{install}/libs/*` è solo il **default**; un
-   progetto la sostituisce da `app.settings.json`. Placeholder `{project}`/`{install}`, `*`
-   finale = ogni sottocartella, percorsi assoluti ammessi. La scansione di ogni voce è
-   ricorsiva. Una lista presente **sostituisce** quella globale; `[]` le disattiva tutte.
-5. **Shadowing**: un file del progetto/degli import vince, per NOME, su quello di una cartella
-   globale.
-6. **`IMPORT`-driven**: essere un candidato non basta; entra nel build solo ciò che è
-   raggiungibile dagli `IMPORT` della entry, seguito anche dentro i moduli caricati
+1. **Program root, recursive**: every `.bas`/`.inc` under the entry folder is a
+   candidate, at any depth.
+2. **`importFolders`** (system + app settings): relative to the project **and** to the
+   install root. They also reach folders outside the program tree.
+3. **`importFiles`**: files always loaded, relative to the project (then to the install).
+4. **`compiler.searchFolders`**: the historical list `include` · `Controls` · `controls` ·
+   `{install}/include` · `{install}/Controls` · `{install}/libs/*` is only the **default**; a
+   project replaces it from `app.settings.json`. Placeholders `{project}`/`{install}`, trailing
+   `*` = every subfolder, absolute paths allowed. The scan of every entry is
+   recursive. A list present **replaces** the global one; `[]` disables them all.
+5. **Shadowing**: a file of the project/of the imports wins, by NAME, over the one of a global
+   folder.
+6. **`IMPORT`-driven**: being a candidate is not enough; only what is
+   reachable from the entry's `IMPORT`s enters the build, followed also inside the loaded modules
    (`DEMO_CHAIN` → `DEMO_DEEP`).
 
-## Esecuzione
+## Execution
 
 ```bash
-# CLI di progetto (O7): discovery + check + build + run
+# project CLI (O7): discovery + check + build + run
 native/gmb_compiler_c/build/gmb check --project samples/modules/FolderResolution
 native/gmb_compiler_c/build/gmb run --project samples/modules/FolderResolution
 
-# C99Native diretto (ricetta completa del runtime, anche per chart/db/AI)
+# direct C99Native (complete runtime recipe, also for chart/db/AI)
 tools/gmb_c99native_run.sh samples/modules/FolderResolution/AllFolders.bas o7
 ```
 
-`check` stampa `7 sorgenti del progetto, 8 moduli` (le due cartelle fuori dalla radice entrano
-da `importFolders`/`importFiles`). Output atteso di `run`: una riga per cartella, con la
-provenienza del modulo. Gate: `native/gmb_c99native/tests/c99_module_resolve_test.sh` (risoluzione)
-e `native/gmb_compiler_c/tests/gmb_cli_project_test.sh` (CLI).
+`check` prints `7 sorgenti del progetto, 8 moduli` (the two folders outside the root enter
+from `importFolders`/`importFiles`). Expected output of `run`: one line per folder, with the
+provenance of the module. Gate: `native/gmb_c99native/tests/c99_module_resolve_test.sh` (resolution)
+and `native/gmb_compiler_c/tests/gmb_cli_project_test.sh` (CLI).
 
-## Verifica della suite
+## Suite verification
 
 ```bash
-# TUTTI i MiniTests: driver → C → cc -fsyntax-only (nessun link, nessuna finestra)
-native/gmb_compiler_c/build/gmb minitests            # riepilogo leggibile, exit 0/2
+# ALL the MiniTests: driver → C → cc -fsyntax-only (no link, no window)
+native/gmb_compiler_c/build/gmb minitests            # readable summary, exit 0/2
 
-# GATE: confronto col baseline versionato, rosso solo sulle regressioni
-tools/check_minitests.sh            # exit 0 ok · 2 regressione · 1 setup rotto
-tools/check_minitests.sh --update   # rigenera il baseline (dopo un fix o un nuovo MiniTest)
+# GATE: comparison with the versioned baseline, red only on regressions
+tools/check_minitests.sh            # exit 0 ok · 2 regression · 1 broken setup
+tools/check_minitests.sh --update   # regenerates the baseline (after a fix or a new MiniTest)
 ```
 
-È il punto unico: `tools/c99_compile_errors.sh` ora è solo un alias che delega qui. Gate del
-comando: `native/gmb_compiler_c/tests/gmb_cli_minitests_test.sh`; baseline:
-`native/gmb_compiler_c/tests/minitests_baseline.json` (35 KB, 84 FAIL noti al 2026-10-24).
-Il pavimento che scende non fa fallire il gate: appare come `RISOLTO <file>`, dopodiché si
-rigenera il baseline con `--update`.
+It is the single point: `tools/c99_compile_errors.sh` is now only an alias that delegates here. Gate of the
+command: `native/gmb_compiler_c/tests/gmb_cli_minitests_test.sh`; baseline:
+`native/gmb_compiler_c/tests/minitests_baseline.json` (35 KB, 84 known FAIL as of 2026-10-24).
+A floor that goes down does not make the gate fail: it appears as `RISOLTO <file>`, after which
+you regenerate the baseline with `--update`.
