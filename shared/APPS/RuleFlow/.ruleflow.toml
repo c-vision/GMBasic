@@ -1,0 +1,23 @@
+# .ruleflow.toml — RuleFlow (GMBasic port) — configurazione della app
+# ============================================================================
+# Tutto si configura QUI (nessun parametro nel codice):
+#   [settings] mode: status | run | graph | check
+#   [flow]     file, steps
+#   [run]      verbose
+# Nota: un `@evolve(n)` DENTRO il flow vince su `[flow] steps` (semantica upstream:
+# lo script dichiara la propria evoluzione).
+# ============================================================================
+
+[settings]
+# fallback quando il run non porta un simbolo -DRULEFLOW_MODE_* (BASIC non ha argv)
+mode = "status"
+
+[flow]
+# script FlowLang-like, relativo alla cartella della app
+file = "flows/sss.flow"
+# tick di evoluzione quando il flow NON dichiara @evolve(n)
+steps = 12
+
+[run]
+# "true" = stampa l'avanzamento (tick conclusi) durante l'evoluzione
+verbose = "true"
