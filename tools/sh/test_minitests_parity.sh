@@ -90,7 +90,16 @@ else
 fi
 
 # --- parità: le tre gambe gestite (IL, PCode, VM-C) sullo stesso filtro ---
+# ANTI-STALE: BUILD esplicito prima del run. Le gambe IL/PCode/VM-C usano le DLL del
+# compilatore copiate nel bin del test project: se il test project non viene ricostruito
+# dopo una modifica al frontend/backend, il gate misura codice VECCHIO (falso verde/rosso).
+# `dotnet test` da solo non sempre ricostruisce le dipendenze qui; con build esplicito
+# + `--no-build` il run è deterministico. La guardia runtime è in
+# `tests/GMBASIC.IlBackend.Tests/BuildFreshness.cs` (fallisce se una DLL resta stale).
+echo "build del test project (anti-stale)..."
+dotnet build "$ROOT/tests/GMBASIC.IlBackend.Tests" \
+  -p:GmbEdition=Commercial -v q --nologo || exit 1
 dotnet test "$ROOT/tests/GMBASIC.IlBackend.Tests" \
-  -p:GmbEdition=Commercial \
+  -p:GmbEdition=Commercial --no-build \
   --filter "FullyQualifiedName~MiniTests_IL_PCode_Parity" \
   $flags
