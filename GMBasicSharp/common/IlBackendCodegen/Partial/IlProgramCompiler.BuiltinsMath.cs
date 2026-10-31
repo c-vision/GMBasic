@@ -443,7 +443,7 @@ public sealed partial class IlProgramCompiler
             var falseL = _il.DefineLabel();
             var endL = _il.DefineLabel();
             EmitExpression(expr.Left); _il.Emit(OpCodes.Conv_I8); _il.Emit(OpCodes.Brfalse, falseL);
-            EmitBoolNormalized(expr.Right);
+            EmitDoubleArgument(expr.Right);   /* VALORE destro (double), non normalizzato a -1/0 */
             _il.Emit(OpCodes.Br, endL);
             _il.MarkLabel(falseL); _il.Emit(OpCodes.Ldc_I4_0); _il.Emit(OpCodes.Conv_R8);
             _il.MarkLabel(endL);
@@ -454,7 +454,7 @@ public sealed partial class IlProgramCompiler
             var trueL = _il.DefineLabel();
             var endL = _il.DefineLabel();
             EmitExpression(expr.Left); _il.Emit(OpCodes.Conv_I8); _il.Emit(OpCodes.Brtrue, trueL);
-            EmitBoolNormalized(expr.Right);
+            EmitDoubleArgument(expr.Right);   /* VALORE destro (double), non normalizzato a -1/0 */
             _il.Emit(OpCodes.Br, endL);
             _il.MarkLabel(trueL); _il.Emit(OpCodes.Ldc_I4_M1); _il.Emit(OpCodes.Conv_R8);
             _il.MarkLabel(endL);
@@ -462,8 +462,9 @@ public sealed partial class IlProgramCompiler
         }
         if (expr.Op.Kind == TokenKind.Xor)
         {
-            EmitBoolNormalized(expr.Left); _il.Emit(OpCodes.Conv_I8);
-            EmitBoolNormalized(expr.Right); _il.Emit(OpCodes.Conv_I8);
+            /* BITWISE sui valori (canone: `6 XOR 3` = 5, `255 XOR 15` = 240). */
+            EmitDoubleArgument(expr.Left); _il.Emit(OpCodes.Conv_I8);
+            EmitDoubleArgument(expr.Right); _il.Emit(OpCodes.Conv_I8);
             _il.Emit(OpCodes.Xor); _il.Emit(OpCodes.Conv_R8);
             return;
         }
@@ -755,9 +756,25 @@ public sealed partial class IlProgramCompiler
         {
             case TokenKind.Minus: _il.Emit(OpCodes.Neg); break;
             case TokenKind.Not:
-                /* NOT logico: (x == 0) ? -1 : 0. Scarta il valore gia' emesso per il ramo Minus. */
+                /* NOT logico: (x == 0) ? -1 : 0. L'operando va ri-emesso con la
+                 * conversione a double: una variabile BIT vive in un local OBJECT
+                 * (boxed) e `conv.i8` su un riferimento dava l'indirizzo, non il valore
+                 * (`NOT f` con f = 0 stampava 0 invece di -1: divergenza IL vs
+                 * PCode/VM-C/C99). */
                 _il.Emit(OpCodes.Pop);
-                EmitBoolNormalized(expr.Right); _il.Emit(OpCodes.Conv_I8); _il.Emit(OpCodes.Not); _il.Emit(OpCodes.Conv_R8); break;
+                if (expr.Right is VariableExpr notVar && EmittedValueIsObject(notVar.SymbolId))
+                {
+                    // local/param OBJECT (BIT boxato): il valore va risolto a runtime
+                    EmitExpression(expr.Right);
+                    _il.Emit(OpCodes.Call, _types.IlRuntimeToDoubleMethod);
+                }
+                else EmitDoubleArgument(expr.Right);
+                _il.Emit(OpCodes.Conv_I8);
+                _il.Emit(OpCodes.Ldc_I4_0);
+                _il.Emit(OpCodes.Ceq);
+                _il.Emit(OpCodes.Neg);      /* 1 (x==0) -> -1 ; 0 -> 0 */
+                _il.Emit(OpCodes.Conv_R8);
+                break;
             case TokenKind.BitNot:
                 /* ! bitwise: ~(long)x */
                 _il.Emit(OpCodes.Conv_I8); _il.Emit(OpCodes.Not); _il.Emit(OpCodes.Conv_R8); break;

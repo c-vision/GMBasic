@@ -242,11 +242,11 @@ public sealed partial class Compiler
         // OR logico (keyword): short-circuit e risultato NORMALIZZATO -1/0.
         if (expr.Op.Kind == TokenKind.Or)
         {
+            /* OR (keyword) short-circuit con il canone condiviso:
+             * sinistra VERA -> -1, altrimenti il VALORE destro (`0 OR 5` = 5). */
             VisitExpression(expr.Left);
             var jumpToEndIfTrue = EmitJump((byte)OpCode.OP_JUMP_IF_TRUE);
             VisitExpression(expr.Right);
-            EmitConstant(0.0);
-            EmitByte((byte)OpCode.OP_CMP_NE);   // -1/0
             var skipShortcut = EmitJump((byte)OpCode.OP_JUMP_FORWARD);
             PatchJump(jumpToEndIfTrue);
             EmitByte((byte)OpCode.OP_PUSH_TRUE);
@@ -256,9 +256,10 @@ public sealed partial class Compiler
 
         if (expr.Op.Kind == TokenKind.Xor)
         {
-            /* XOR logico (keyword): (a!=0) XOR (b!=0) → -1/0 (niente short-circuit). */
-            VisitExpression(expr.Left); EmitConstant(0.0); EmitByte((byte)OpCode.OP_CMP_NE);
-            VisitExpression(expr.Right); EmitConstant(0.0); EmitByte((byte)OpCode.OP_CMP_NE);
+            /* XOR (keyword) = BITWISE sui valori (cast long), come `^^`/BitXor:
+             * `6 XOR 3` = 5, `255 XOR 15` = 240, `5 XOR -1` = -6 (minitest expr_operators_xor). */
+            VisitExpression(expr.Left);
+            VisitExpression(expr.Right);
             EmitByte((byte)OpCode.OP_XOR);
             return;
         }
@@ -286,11 +287,12 @@ public sealed partial class Compiler
 
         if (expr.Op.Kind == TokenKind.And)
         {
+            /* AND (keyword) short-circuit con il canone condiviso:
+             * sinistra FALSA -> 0, altrimenti il VALORE destro (mai normalizzato a -1/0:
+             * `6 AND 3` = 3, `(2<>0) AND 5` = 5 — vedi minitest constructs/expr_operators_*). */
             VisitExpression(expr.Left);
             var jumpToEndIfFalse = EmitJump((byte)OpCode.OP_JUMP_IF_FALSE);
             VisitExpression(expr.Right);
-            EmitConstant(0.0);
-            EmitByte((byte)OpCode.OP_CMP_NE);   // -1/0
             var skipShortcut = EmitJump((byte)OpCode.OP_JUMP_FORWARD);
             PatchJump(jumpToEndIfFalse);
             EmitByte((byte)OpCode.OP_PUSH_FALSE);
