@@ -61,7 +61,7 @@ milestones: [`TODO.md`](TODO.md).
 | M1 mode (`-D` symbol) | Ported surface | State |
 |---|---|---|
 | `MASUME_MODE_STATUS` (default) | banner + startup self-check: project file, profiles, named queries, database connectivity | working |
-| `MASUME_MODE_SEED` | demo database (SQLite via `SQL OPEN`) into `work/` — customers/orders with a FK | working |
+| `MASUME_MODE_SEED` | demo database (SQLite via `SQL OPEN`) into `bin/` — customers/orders with a FK | working |
 | `MASUME_MODE_OBJECTS` | object tree: tables + views with row counts, columns of a table | working |
 | `MASUME_MODE_RUN` | `masume run` equivalent: named/default query → TSV on stdout, `--param`-style substitution | working |
 | `MASUME_MODE_CHECK` | `masume --mcp --check`-style diagnostics: allowed profiles, read-only enforcement of the MCP tool set | working |
@@ -79,7 +79,7 @@ MCP server process, driver set beyond SQLite, keyring, themes, chords, `dump`/`r
 | `.masume.toml` | example project file (upstream-compatible layout): `[profile.*]` + `[query.*]`, read by the app from the working directory upward |
 | `README.md` | this file |
 | `TODO.md` | complete port backlog + milestones |
-| `work/` | runtime output (demo database, exports) — generated, gitignored |
+| `bin/` | runtime output (demo database, exports) — generated, gitignored |
 
 App-local modules (`*.inc`, `NAMESPACE ...`) are added when the single entry file becomes
 unwieldy (see `TODO.md` §M2 "modularization"). **Reusable** modules go to `<repo>/include/` and
@@ -87,37 +87,40 @@ reusable libraries to `<repo>/libs/` — see [`../README.md`](../README.md).
 
 ## How to build and run
 
+Dalla **ROOT del monorepo** (`GMBasicMonoRepo/`):
+
 ```sh
-# fast dev loop (IL backend, JIT)
-dotnet run --project Executor -- APPS/Masume/src/Masume.bas
+# dev loop — un file, una gamba (PCode = motore verificato di questo port; vedi caveat IL sotto)
+tools/sh/harness.sh pcode shared/APPS/Masume/src/Masume.bas
+tools/sh/harness.sh il    shared/APPS/Masume/src/Masume.bas
+tools/sh/harness.sh vmc   shared/APPS/Masume/src/Masume.bas
 
-# the demo database must exist before objects/run (once, or after deleting work/)
-dotnet run --project Executor -- -DMASUME_MODE_SEED APPS/Masume/src/Masume.bas
+# release: eseguibile NativeAOT
+dotnet run --project GMBasicSharp/REPL -- -n shared/APPS/Masume/src/Masume.bas
 
-# object tree, named query, diagnostics
-dotnet run --project Executor -- -DMASUME_MODE_OBJECTS APPS/Masume/src/Masume.bas
-dotnet run --project Executor -- -DMASUME_MODE_RUN APPS/Masume/src/Masume.bas
-dotnet run --project Executor -- -DMASUME_MODE_CHECK APPS/Masume/src/Masume.bas
-
-# interactive TUI
-dotnet run --project Executor -- -DMASUME_MODE_TUI APPS/Masume/src/Masume.bas
-
-# other backends (parity / release verification)
-dotnet run --project REPL -- -n APPS/Masume/src/Masume.bas
-dotnet run --project tests/GMBASIC.Conformance -- vmtest APPS/Masume/src/Masume.bas
-(cd GMBasic && bash tools/gmb_c99native_run.sh ../shared/APPS/Masume/src/Masume.bas)
+# C99Native (frontend C + emitter → cc → esecuzione)
+bash tools/sh/gmb_c99native_run.sh ../shared/APPS/Masume/src/Masume.bas   # relativo a GMBasic/
 ```
 
-Run it from `APPS/Masume/` (or any directory below it) so the project file `.masume.toml` is
-found: the app searches the working directory and its ancestors.
+I **modi** (`_SEED`, `_OBJECTS`, `_RUN`, `_CHECK`, `_TUI`) sono simboli **compile-time** (`-D` +
+`#IFDEF`): oggi **nessun runner del monorepo passa `-D`** (`test_ilrun`/`test_pcode`/`test_vmrun`
+non hanno l'opzione; `REPL -D` vale per le direttive della REPL, non per l'esecuzione di un file).
+Il modo si prova aggiungendo in testa al file **`#DEF MASUME_MODE_<X>`** (equivalente in-sorgente di
+`-D`, come documentato in `TODO.md` §Verification). Il supporto CLI è tracciato nel gap
+`Todo/(open) - CLI-Args-e-Env-per-Applicazioni-BASIC` del vault del monorepo.
 
-**Known environment gaps (2026-09-18, see `TODO.md` §M1 "Verification"):**
-`dotnet run --project Executor` currently fails in this checkout (`Executor.csproj` has no
-`<OutputType>Exe</OutputType>` — unrelated to this port, affects every `.bas` file). Until that is
-fixed, use `dotnet run --project test_ilrun -c Debug -- --engine=pcode APPS/Masume/src/Masume.bas`
-(`--engine=il` also compiles/runs, but see the IL-backend caveat below). The **PCode** engine is
-this port's verified engine; the **IL** engine has a pre-existing, general codegen bug where a
-fixed-size array declared at module/GLOBAL scope does not share state across SUBs (confirmed with
+Un nome di variabile che è una keyword BASIC (`ITEMS`, `INTO`, `AT`, `NAME`, `TEXT`, …) va
+rinominato: `items` colliderebbe con la clausola `ITEMS` dei comandi di controllo — vedi
+`Hard-Lessons/ITEMS-Keyword-Collision-Variabile` nel vault del monorepo (in `RunTui` l'array si
+chiama `menuItems`).
+
+Eseguire da `shared/APPS/Masume/` (o da una sua sottocartella), così il project file `.masume.toml`
+viene trovato: l'app cerca nella working directory e nei suoi antenati.
+
+**Nota ambiente:** `GMBasicSharp/Executor` è una **Library** (`OutputType` non `Exe`), quindi
+`dotnet run --project Executor` non è un percorso valido — usare i runner qui sopra. Il **PCode**
+engine è questo port's verified engine; l'**IL** ha un bug pre-esistente e generale: un array a
+dimensione fissa dichiarato a livello modulo/GLOBAL non condivide lo stato tra SUB (confermato con
 a minimal repro unrelated to this app — every SUB sees its own stale/default copy) — this port's
 `g_prof*`/`g_query*`/`g_param*` global arrays hit it directly, so **IL is not currently usable for
 this app**. Tracked as a new AiWiki bug (see `TODO.md`).

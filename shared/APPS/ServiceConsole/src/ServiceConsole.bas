@@ -12,10 +12,10 @@
 '   -DSERVICECONSOLE_MODE_GUI       GUI: finestra TUI con refresh
 '
 ' CONFIG: serviceconsole.cfg (key=value) nella cartella dell'app.
-' RUN:
-'   dotnet run --project Executor -- APPS/ServiceConsole/src/ServiceConsole.bas
-'   dotnet run --project Executor -- -DSERVICECONSOLE_MODE_DAEMON APPS/ServiceConsole/src/ServiceConsole.bas
-'   dotnet run --project Executor -- -DSERVICECONSOLE_MODE_GUI    APPS/ServiceConsole/src/ServiceConsole.bas
+' RUN (dalla ROOT del monorepo):
+'   tools/sh/harness.sh il shared/APPS/ServiceConsole/src/ServiceConsole.bas
+'   (modo) aggiungere in testa al file: #DEF SERVICECONSOLE_MODE_DAEMON  (o _GUI)
+'          i runner di tools/runners/ non passano -D
 ' ============================================================================
 
 IMPORT IO
@@ -25,6 +25,15 @@ IMPORT JSON
 IMPORT WINDOWS
 IMPORT TRAY
 IMPORT GRAPHICS
+
+' ---- FFI: loop/form dei controlli TUI (modello GMBasicIde: NON sono builtin BASIC) ----
+' Il registry dei controlli, il frame e lo stato di chiusura vivono in `libgmb_gfx`
+' (`gmb_tui_controls_reset`, `gmb_ui_frame`, `gmb_form_closed`, `gmb_form_request_close`);
+' il linguaggio NON ha `FORM_RESET/FORM_FRAME/FORM_CLOSED/FORM_CLOSE`.
+DECLARE SUB      gmb_tui_controls_reset LIB "gmb_gfx" ()
+DECLARE SUB      gmb_ui_frame           LIB "gmb_gfx" (ms AS LONG)
+DECLARE FUNCTION gmb_form_closed        LIB "gmb_gfx" () AS LONG
+DECLARE SUB      gmb_form_request_close LIB "gmb_gfx" ()
 
 DIM g_name AS STRING
 DIM g_port AS INTEGER
@@ -511,7 +520,8 @@ END SUB
 ' Costruisce (o RICOSTRUISCE) i controlli del form: usata per aggiornare i colori
 ' della lista (UP verde / DOWN rosso) quando cambia lo stato dei servizi.
 SUB GuiBuildForm()
-  FORM_RESET()
+  ' Il registry dei controlli si azzera via FFI (`gmb_tui_controls_reset`, vedi DECLARE in testa):
+  ' NON è un builtin BASIC. Ricostruire la lista a ogni refresh è il pattern di GMBasicIde.
   DIM svcList AS STRING
   svcList = ""
   DIM si AS INTEGER
@@ -553,8 +563,8 @@ SUB OpenConsoleWindow()
   GuiBuildForm()
   DIM tGui AS LONG
   tGui = 0
-  DO WHILE FORM_CLOSED() = 0 AND g_stop = 0
-    FORM_FRAME(16)
+  DO WHILE gmb_form_closed() = 0 AND g_stop = 0
+    gmb_ui_frame(16)
     tGui = tGui + 1
     IF g_rebuild = 1 THEN
       g_rebuild = 0
@@ -621,7 +631,7 @@ SUB GuiExit()
   DIM c AS LONG
   c = CONFIRM("Chiudere la ServiceConsole?")
   IF c = 1 THEN
-    FORM_CLOSE()
+    gmb_form_request_close()
   END IF
 END SUB
 

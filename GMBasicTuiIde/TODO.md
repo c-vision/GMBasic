@@ -1,7 +1,11 @@
-# TODO — GMBasicIde (IDE TUI in BASIC)
+# TODO — GMBasicTuiIde (IDE TUI in BASIC)
 
 Stato: **v1.0** — IDE funzionante (multi-tab, I/O file, outline/completion/lint/goto/refs/make),
 verificato su IL e in compilazione standalone (C99Native). Vedi `README.md`.
+
+Progetto **autonomo del monorepo** dal 2026-10-31 (prima `shared/APPS/GMBasicIde`): serve anche da
+**banco di misura del footprint** di un programma BASIC compilato (vedi README §"Perché è un
+progetto autonomo").
 
 ## Funzionalità residue
 
