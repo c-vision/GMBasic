@@ -291,9 +291,11 @@ int main(void)
         char rag[4096], graphs[4096];
         gmb_paths_rag_dir(rag, sizeof rag);
         gmb_paths_graphs_dir(graphs, sizeof graphs);
-        CHECK(strstr(rag, "/shared/rag") != NULL);
+        /* default = CACHE utente (dati PRODOTTI dal compilatore), mai il checkout */
+        CHECK(strstr(rag, ".gmbasic/rag") != NULL);
         CHECK(strstr(rag, "/GMBasic/rag") == NULL);
-        CHECK(strstr(graphs, "/shared/graphs") != NULL);
+        CHECK(strstr(rag, "/shared/rag") == NULL);
+        CHECK(strstr(graphs, ".gmbasic/graphs") != NULL);
     }
 
     /* 12) token GitHub: 0600 si legge, permessi larghi si RIFIUTANO (fail-closed) */

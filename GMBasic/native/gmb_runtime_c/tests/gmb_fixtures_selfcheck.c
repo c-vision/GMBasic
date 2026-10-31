@@ -159,6 +159,43 @@ int main(void)
     rc = gmb_fixtures_pull_from(mpath, "demo", "9.9.9", destroot, 0, &g_fake, &op, out, sizeof out, err, sizeof err);
     CHECK(rc == GMB_FIX_E_NOT_FOUND);
 
+    /* 7) `ensure` (il compilatore/REPL la usa prima di eseguire): scarica SOLO ciò che manca,
+     *    dalla fixture dichiarata dal programma (`"fixtures": [...]` in app.settings.json). */
+    {
+        char app[1200], appdir[1200], fdir[1300];
+        snprintf(appdir, sizeof appdir, "%s/Fixtures2", g_dir);
+        gmb_fs_mkdir_p(appdir);
+        snprintf(app, sizeof app, "%s/app.settings.json", g_dir);
+        char ajs[512];
+        int al = snprintf(ajs, sizeof ajs, "{\"fixtures\": [\"demo\"]}");
+        CHECK(write_file(app, ajs, (size_t)al));
+
+        /* destinazione: una radice nuova (gmb_fixtures_root non e' sovrascrivibile → si usa la
+         * pull diretta con dest_root; l'ensure e' coperto dal caso "già presente" qui sotto) */
+        char out2[1200], e2[512];
+        /* manifest e destinazione ESPLICITI: il test non tocca shared/samples/Fixtures reale */
+        char dest2[1200];
+        snprintf(dest2, sizeof dest2, "%s/FxEnsure", g_dir);
+        gmb_fs_mkdir_p(dest2);
+        int n1 = gmb_fixtures_ensure_declared_from(mpath, dest2, app, &g_fake, &op, e2, sizeof e2);
+        CHECK(n1 == 1);                                     /* "demo" mancava → scaricata */
+        char got[1400];
+        snprintf(got, sizeof got, "%s/demo/a.csv", dest2);
+        CHECK(fsize(got) == 13);
+        /* seconda chiamata: già presente → 0 */
+        CHECK(gmb_fixtures_ensure_declared_from(mpath, dest2, app, &g_fake, &op, e2, sizeof e2) == 0);
+
+        /* "ensure" su un app.settings.json SENZA fixtures: nessun download */
+        char ajs2[128];
+        int al2 = snprintf(ajs2, sizeof ajs2, "{\"paths\": {\"x\": 1}}");
+        CHECK(write_file(app, ajs2, (size_t)al2));
+        int before3 = g_fake_state.calls;
+        CHECK(gmb_fixtures_ensure_declared_from(mpath, dest2, app, &g_fake, &op, e2, sizeof e2) == 0);
+        CHECK(g_fake_state.calls == before3);
+        gmb_fs_rmtree(appdir);
+        gmb_fs_rmtree(dest2);
+    }
+
     printf("gmb_fixtures_selfcheck: %d check, %d fail\n", checks, fails);
     gmb_fs_rmtree(g_dir);
     return fails ? 1 : 0;

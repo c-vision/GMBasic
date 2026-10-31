@@ -48,6 +48,24 @@ int gmb_fixtures_pull(const char* name, const char* version, const char* dest_ro
                       const gmb_fetch_transport* tr, const gmb_fetch_opts* opts,
                       char* out_dir, size_t cap, char* err, size_t errcap);
 
+/* Scarica le fixture MANCANTI dichiarate nel manifest (tutte, o `only_csv`), sempre in
+ * `samples/Fixtures/<nome>/`. Ritorna il numero scaricate (0 = niente da fare), <0 = errori. */
+int gmb_fixtures_ensure_all(const char* only_csv, const gmb_fetch_transport* tr,
+                            const gmb_fetch_opts* opts, char* err, size_t errcap);
+
+/* Fixture dichiarate dal PROGRAMMA (`"fixtures": ["markets"]` nel suo app.settings.json):
+ * il compilatore/REPL le assicura prima di eseguire. 0 = nessuna dichiarazione. */
+int gmb_fixtures_ensure_declared(const char* app_settings, const gmb_fetch_transport* tr,
+                                 const gmb_fetch_opts* opts, char* err, size_t errcap);
+
+/* Varianti con manifest e DESTINAZIONE espliciti (test, manifest di terze parti). */
+int gmb_fixtures_ensure_all_from(const char* manifest_path, const char* dest_root, const char* only_csv,
+                                 const gmb_fetch_transport* tr, const gmb_fetch_opts* opts,
+                                 char* err, size_t errcap);
+int gmb_fixtures_ensure_declared_from(const char* manifest_path, const char* dest_root,
+                                      const char* app_settings, const gmb_fetch_transport* tr,
+                                      const gmb_fetch_opts* opts, char* err, size_t errcap);
+
 /* Come sopra con un manifest ESPLICITO (test, manifest di terze parti). */
 int gmb_fixtures_pull_from(const char* manifest_path, const char* name, const char* version,
                            const char* dest_root, int force, const gmb_fetch_transport* tr,

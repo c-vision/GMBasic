@@ -423,6 +423,17 @@ public static class GmbiPaths
             return Directory.Exists(shared) ? shared : Resolve(value, defaultRel);
         }
 
+        /* DATI PRODOTTI DAL COMPILATORE (rag/, graphs/): il default è la CACHE utente
+         * `~/.gmbasic/<nome>`, non una cartella del checkout. Prima finivano in
+         * `shared/rag` e lo stesso cervello esisteva DUE volte (shared/ + cache), con il
+         * checkout che si riempiva di output (1,5 GB). `paths.ragDir`/`paths.graphsDir`
+         * restano l'override esplicito (assoluto o relativo alla root). */
+        string ResolveUser(string? value, string defaultRel)
+        {
+            if (!string.IsNullOrWhiteSpace(Expand(value ?? ""))) return Resolve(value, defaultRel);
+            return Path.Combine(HomeRoot, defaultRel);
+        }
+
         var configDir = _configDirOverride ?? Resolve(paths.ConfigDir, "config");
         var tempDir = string.IsNullOrWhiteSpace(Expand(paths.TempDir ?? ""))
             ? Path.GetTempPath()
@@ -450,8 +461,8 @@ public static class GmbiPaths
             SkillsDir: ResolveShared(paths.SkillsDir, "skills"),
             PluginsDir: ResolveShared(paths.PluginsDir, "plugins"),
             LogsDir: Resolve(paths.LogsDir, "ai-logs"),
-            RagDir: ResolveShared(paths.RagDir, "rag"),
-            GraphsDir: ResolveShared(paths.GraphsDir, "graphs"),
+            RagDir: ResolveUser(paths.RagDir, "rag"),
+            GraphsDir: ResolveUser(paths.GraphsDir, "graphs"),
             BrainsDir: Resolve(paths.BrainsDir, "brains"),
             BrainsExportsDir: Resolve(paths.BrainsExportsDir, "brains-exports"),
             // Componenti (torch/chromium/obscura/ocr) nella CACHE UTENTE, accanto alle librerie:

@@ -136,7 +136,11 @@ public static class BrainRegistry
             var p = Path.Combine(vp, "rag", name + ".db");
             if (File.Exists(p)) return p;
         }
-        return null;   // NIENTE fallback su shared/rag: chi non c'è non c'è
+        // 3) la cartella di BUILD configurata (`paths.ragDir`; default ~/.gmbasic/rag): è dove
+        //    scrivono i builder, quindi un cervello costruito in locale si trova. NON è
+        //    `shared/rag` (non è più il default): niente fallback su una cartella del checkout.
+        var built = Path.Combine(AiConfig.RagDefaultDir, name + ".db");
+        return File.Exists(built) ? built : null;
     }
 
     /// <summary>Il path effettivo dell'export JSON del graph di un brain (root risolta o
@@ -165,7 +169,8 @@ public static class BrainRegistry
             var p = Path.Combine(vp, "graphs", name + ".json");
             if (File.Exists(p)) return p;
         }
-        return null;
+        var built = Path.Combine(AiConfig.GraphsDefaultDir, name + ".json");
+        return File.Exists(built) ? built : null;
     }
 
     /// <summary>La root del brain: quella risolta dal runtime C, altrimenti il primo path

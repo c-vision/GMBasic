@@ -6,6 +6,7 @@
  * rende i simboli visibili e stabili per il P/Invoke. Nessuna logica duplicata (AGENTS §0bis).
  */
 #include "gmb_brains.h"
+#include "gmb_fixtures.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -79,4 +80,22 @@ int gmb_pkg_brain_has_graph(const char* dir, const char* name) { return gmb_brai
 int gmb_pkg_brain_emit_index(const char* app_settings, const char* manifest_path, const char* out_path)
 {
     return gmb_brains_emit_index(app_settings, manifest_path, out_path);
+}
+
+/* Fixture dichiarate dal programma: il compilatore/REPL le assicura prima di eseguire.
+ * Logica in gmb_fixtures.c; qui solo il ponte per il C#. */
+int gmb_pkg_fixtures_ensure_declared(const char* app_settings, char* err, size_t err_cap)
+{
+    gmb_fetch_opts op;
+    gmb_fetch_opts_default(&op);
+    op.quiet = 1;
+    return gmb_fixtures_ensure_declared(app_settings, NULL, &op, err, err_cap);
+}
+
+int gmb_pkg_fixtures_ensure_all(char* err, size_t err_cap)
+{
+    gmb_fetch_opts op;
+    gmb_fetch_opts_default(&op);
+    op.quiet = 1;
+    return gmb_fixtures_ensure_all(NULL, NULL, &op, err, err_cap);
 }

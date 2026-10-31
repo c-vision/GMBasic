@@ -131,6 +131,20 @@ public static class ProgramBundle
         }
         catch (Exception ex) { log?.Invoke($"[bundle] cervelli non indicizzati: {ex.Message}"); }
 
+        // 4) FIXTURE dichiarate dal programma (`"fixtures": ["markets"]`): il COMPILATORE le
+        //    assicura PRIMA di eseguire, sempre in `shared/samples/Fixtures/<nome>/` (manifest in
+        //    shared/settings). Best-effort: senza rete il programma fallirà sulla fixture
+        //    mancante, non qui.
+        try
+        {
+            if (appPath is not null && File.Exists(appPath))
+            {
+                var n = NativeFixtures.EnsureDeclared(appPath);
+                if (n > 0) log?.Invoke($"[bundle] fixture scaricate: {n}");
+            }
+        }
+        catch (Exception ex) { log?.Invoke($"[bundle] fixture non scaricate: {ex.Message}"); }
+
         return written;
     }
 

@@ -20,6 +20,8 @@ int main(int argc, char** argv)
     const char* cmd = argc > 1 ? argv[1] : "list";
     const char* dest = NULL;
     const char* version = NULL;
+    const char* app_settings = NULL;
+    const char* only_csv = NULL;
     int force = 0, quiet = 0, all = 0;
     const char* names[32];
     int nnames = 0;
@@ -27,7 +29,8 @@ int main(int argc, char** argv)
     if (strcmp(cmd, "--help") == 0 || strcmp(cmd, "-h") == 0) {
         fprintf(stderr,
             "uso: gmb_fixtures list\n"
-            "     gmb_fixtures pull [nome...] [--all] [--dest dir] [--version v] [--force] [--quiet]\n");
+            "     gmb_fixtures pull [nome...] [--all] [--dest dir] [--version v] [--force] [--quiet]\n"
+            "     gmb_fixtures ensure [--all] [--app app.settings.json] [--only a,b] [--quiet]\n");
         return 0;
     }
     for (int i = 2; i < argc; i++) {
@@ -36,6 +39,8 @@ int main(int argc, char** argv)
         else if (strcmp(argv[i], "--force") == 0) force = 1;
         else if (strcmp(argv[i], "--quiet") == 0) quiet = 1;
         else if (strcmp(argv[i], "--all") == 0) all = 1;
+        else if (strcmp(argv[i], "--app") == 0 && i + 1 < argc) app_settings = argv[++i];
+        else if (strcmp(argv[i], "--only") == 0 && i + 1 < argc) only_csv = argv[++i];
         else if (argv[i][0] == '-') { fprintf(stderr, "opzione sconosciuta: %s\n", argv[i]); return 1; }
         else if (nnames < 32) names[nnames++] = argv[i];
     }
@@ -66,8 +71,28 @@ int main(int argc, char** argv)
         return 0;
     }
 
+    if (strcmp(cmd, "ensure") == 0) {
+        // Scarica SOLO ciò che manca, sempre in samples/Fixtures. Con --app limita alle fixture
+        // dichiarate dal programma (`"fixtures": [...]` nel suo app.settings.json).
+        const gmb_fetch_transport* tr2 = gmb_fetch_transport_curl();
+        if (!tr2) { fprintf(stderr, "runtime compilato senza libcurl\n"); return 1; }
+        gmb_fetch_opts op2;
+        gmb_fetch_opts_default(&op2);
+        op2.quiet = quiet;
+        char e2[512];
+        int n2;
+        if (app_settings) n2 = gmb_fixtures_ensure_declared(app_settings, tr2, &op2, e2, sizeof e2);
+        else n2 = gmb_fixtures_ensure_all(only_csv, tr2, &op2, e2, sizeof e2);
+        if (n2 < 0) {
+            fprintf(stderr, "gmb_fixtures ensure: %d voci fallite%s%s\n", -n2, e2[0] ? " — " : "", e2);
+            return 1;
+        }
+        if (!quiet && n2 > 0) printf("gmb_fixtures ensure: %d fixture scaricate\n", n2);
+        return 0;
+    }
+
     if (strcmp(cmd, "pull") != 0) {
-        fprintf(stderr, "comando sconosciuto: %s (usa list|pull)\n", cmd);
+        fprintf(stderr, "comando sconosciuto: %s (usa list|pull|ensure)\n", cmd);
         return 1;
     }
 

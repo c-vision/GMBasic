@@ -330,3 +330,155 @@ int gmb_fixtures_pull_from(const char* manifest_path, const char* name, const ch
 {
     return fx_pull(manifest_path, name, version, dest_root, force, tr, opts, out_dir, cap, err, errcap);
 }
+
+/* ── ensure: le fixture che MANCANO si scaricano, sempre e solo in samples/Fixtures ───────── */
+
+/* Scarica le fixture dichiarate nel manifest che non sono presenti. `only_csv` (opzionale)
+ * limita a quei nomi. Ritorna il numero scaricate (0 = niente da fare), negativo = voci fallite. */
+static int fx_ensure_all(const char* manifest_path, const char* dest_root, const char* only_csv,
+                         const gmb_fetch_transport* tr, const gmb_fetch_opts* opts,
+                         char* err, size_t errcap)
+{
+    if (err && errcap) err[0] = '\0';
+    char avail[4096];
+    int n;
+    {
+        /* elenco dal manifest (esplicito o di sistema) */
+        gmb_pkg_manifest_t* m = fx_manifest(manifest_path, err, errcap);
+        if (!m) return -1;
+        int cnt = gmb_pkg_manifest_count(m, "fixtures");
+        size_t used = 0;
+        avail[0] = '\0';
+        for (int i = 0; i < cnt; i++) {
+            char p2[128], nm[256] = "", lt[128] = "";
+            snprintf(p2, sizeof p2, "fixtures.%d.name", i);
+            gmb_pkg_manifest_get(m, p2, nm, sizeof nm);
+            snprintf(p2, sizeof p2, "fixtures.%d.latest", i);
+            gmb_pkg_manifest_get(m, p2, lt, sizeof lt);
+            if (!nm[0]) continue;
+            int w = snprintf(avail + used, sizeof avail - used, "%s%s@%s", used ? ";" : "", nm, lt);
+            if (w <= 0 || used + (size_t)w >= sizeof avail) break;
+            used += (size_t)w;
+        }
+        gmb_pkg_manifest_free(m);
+        n = (int)used;
+    }
+    if (n < 0) {
+        if (err && errcap) snprintf(err, errcap, "%s", gmb_fixtures_strerror(GMB_FIX_E_NO_MANIFEST));
+        return -1;
+    }
+    char root[FX_PATH];
+    if (dest_root && *dest_root) snprintf(root, sizeof root, "%s", dest_root);
+    else gmb_fixtures_root(root, sizeof root);
+    int done = 0, failed = 0;
+    char buf[4096];
+    snprintf(buf, sizeof buf, "%s", avail);
+    char* save = NULL;
+    for (char* tok = strtok_r(buf, ";", &save); tok; tok = strtok_r(NULL, ";", &save)) {
+        char name[256];
+        snprintf(name, sizeof name, "%s", tok);
+        char* at = strchr(name, '@');
+        if (at) *at = '\0';
+        if (!name[0]) continue;
+        if (only_csv && *only_csv) {
+            char needle[300];
+            snprintf(needle, sizeof needle, ",%s,", name);
+            char hay[1024];
+            snprintf(hay, sizeof hay, ",%s,", only_csv);
+            if (strstr(hay, needle) == NULL) continue;
+        }
+        char path[FX_PATH * 2];
+        snprintf(path, sizeof path, "%s/%s", root, name);
+        if (gmb_fs_isdir(path)) continue;            /* già presente: nessun download */
+        char out[FX_PATH * 2], lerr[512] = "";
+        int rc = fx_pull(manifest_path, name, NULL, dest_root, 0, tr, opts, out, sizeof out, lerr, sizeof lerr);
+        if (rc == GMB_FIX_OK) done++;
+        else {
+            failed++;
+            if (err && errcap && !err[0])
+                snprintf(err, errcap, "%s: %s%s%s", name, gmb_fixtures_strerror(rc),
+                         lerr[0] ? " — " : "", lerr);
+        }
+    }
+    if (failed) return -failed;
+    return done;
+}
+
+/* Fixture DICHIARATE dal programma (`"fixtures": ["markets", ...]` nel suo app.settings.json):
+ * è il contratto con cui il compilatore/REPL sa cosa gli serve prima di eseguire. */
+static int fx_ensure_declared(const char* manifest_path, const char* dest_root,
+                             const char* app_settings, const gmb_fetch_transport* tr,
+                             const gmb_fetch_opts* opts, char* err, size_t errcap)
+{
+    if (err && errcap) err[0] = '\0';
+    if (!app_settings || !*app_settings || !gmb_fs_isfile(app_settings)) return 0;   /* niente da fare */
+    FILE* f = fopen(app_settings, "rb");
+    if (!f) return 0;
+    fseek(f, 0, SEEK_END);
+    long n = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    if (n <= 0) { fclose(f); return 0; }
+    char* js = (char*)malloc((size_t)n + 1);
+    if (!js) { fclose(f); return GMB_FIX_E_IO; }
+    size_t rd = fread(js, 1, (size_t)n, f);
+    fclose(f);
+    js[rd] = '\0';
+    gmb_val_t root = gmb_json_parse(js);
+    free(js);
+    if (root.kind != GMB_TYPE_OBJECT) { gmb_val_release(root); return 0; }
+    gmb_val_t arr = gmb_val_dict_get(root, "fixtures");
+    int is_list = (arr.kind == GMB_TYPE_OBJECT && gmb_obj_type(arr) != NULL &&
+                   strstr(gmb_obj_type(arr), "dict") == NULL);
+    if (!is_list) { gmb_val_release(root); return 0; }   /* nessuna dichiarazione */
+    gmb_list_t l = gmb_val_as_list(arr);
+    int cnt = (int)gmb_list_count(l);
+    int done = 0, failed = 0;
+    for (int i = 0; i < cnt; i++) {
+        gmb_val_t v = gmb_list_get(l, i);
+        if (v.kind != GMB_TYPE_STRING || !v.v_string.data) continue;
+        const char* name = v.v_string.data;
+        char rootdir[FX_PATH], path[FX_PATH * 2];
+        if (dest_root && *dest_root) snprintf(rootdir, sizeof rootdir, "%s", dest_root);
+        else gmb_fixtures_root(rootdir, sizeof rootdir);
+        snprintf(path, sizeof path, "%s/%s", rootdir, name);
+        if (gmb_fs_isdir(path)) continue;
+        char out[FX_PATH * 2], lerr[512] = "";
+        int rc = fx_pull(manifest_path, name, NULL, dest_root, 0, tr, opts, out, sizeof out, lerr, sizeof lerr);
+        if (rc == GMB_FIX_OK) done++;
+        else {
+            failed++;
+            if (err && errcap && !err[0])
+                snprintf(err, errcap, "%s: %s%s%s", name, gmb_fixtures_strerror(rc),
+                         lerr[0] ? " — " : "", lerr);
+        }
+    }
+    gmb_val_release(root);
+    if (failed) return -failed;
+    return done;
+}
+
+int gmb_fixtures_ensure_all(const char* only_csv, const gmb_fetch_transport* tr,
+                            const gmb_fetch_opts* opts, char* err, size_t errcap)
+{
+    return fx_ensure_all(NULL, NULL, only_csv, tr, opts, err, errcap);
+}
+
+int gmb_fixtures_ensure_declared(const char* app_settings, const gmb_fetch_transport* tr,
+                                 const gmb_fetch_opts* opts, char* err, size_t errcap)
+{
+    return fx_ensure_declared(NULL, NULL, app_settings, tr, opts, err, errcap);
+}
+
+int gmb_fixtures_ensure_all_from(const char* manifest_path, const char* dest_root, const char* only_csv,
+                                 const gmb_fetch_transport* tr, const gmb_fetch_opts* opts,
+                                 char* err, size_t errcap)
+{
+    return fx_ensure_all(manifest_path, dest_root, only_csv, tr, opts, err, errcap);
+}
+
+int gmb_fixtures_ensure_declared_from(const char* manifest_path, const char* dest_root,
+                                      const char* app_settings, const gmb_fetch_transport* tr,
+                                      const gmb_fetch_opts* opts, char* err, size_t errcap)
+{
+    return fx_ensure_declared(manifest_path, dest_root, app_settings, tr, opts, err, errcap);
+}
