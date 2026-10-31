@@ -1482,8 +1482,10 @@ void gmb_console_select(int n)
         if (!fp[0])
     {
         char rd[2048];
-        if (gmb_paths_resources_dir(rd, sizeof rd) && rd[0]) snprintf(fp, sizeof fp, "%s/C64_Pro_Mono-STYLE.otf", rd);
-        else snprintf(fp, sizeof fp, "Resources/C64_Pro_Mono-STYLE.otf");
+        /* C64 Pro Mono (style64) non e' ridistribuibile: la modalita' C64 usa Sixtyfour
+         * (SIL OFL 1.1, "fonts based on the Commodore 64"). */
+        if (gmb_paths_resources_dir(rd, sizeof rd) && rd[0]) snprintf(fp, sizeof fp, "%s/Sixtyfour.ttf", rd);
+        else snprintf(fp, sizeof fp, "Resources/Sixtyfour.ttf");
     }
         if (fs <= 0) fs = 16;
     }
@@ -1494,10 +1496,20 @@ void gmb_console_select(int n)
     if (GMB_GFX_SCREEN_ON()) gmb_console_redraw();
 }
 
-/* ===== C64 PETSCII (porting ScreenConfig.GetC64PetsciiRemapping) =====
- * Mappa i box-drawing Unicode -> codici PETSCII del font C64_Pro_Mono-STYLE.otf.
+/* ===== C64 PETSCII — NEUTRALIZZATO =====
+ * Questa mappa esisteva per portare i box-drawing Unicode sui codici PETSCII che il font
+ * C64_Pro_Mono-STYLE.otf esponeva ai codepoint Latin-1. Quel font (licenza style64) e' stato
+ * rimosso: con un font Unicode e con le cornici disegnate PROCEDURALMENTE dalla geometria
+ * della cella (cf_box/cf_box_mask in gmb_gfx_cellfont.c) non c'e' piu' nulla da rimappare.
+ * La funzione resta come identita' per non toccare i chiamanti.
  * Usata dal renderer celle quando gmb_console_mode_get()==1 (%C64). */
 int gmb_c64_remap(int cp)
+{
+    return cp;
+}
+
+#if 0   /* mappa storica (font C64 Pro Mono), tenuta come riferimento */
+int gmb_c64_remap_legacy(int cp)
 {
     switch (cp)
     {
@@ -1514,6 +1526,7 @@ int gmb_c64_remap(int cp)
     default: return cp;
     }
 }
+#endif
 
 /* VerticalFillChars (porting Atlas.cs): glifi da stirare in verticale per connettere
  * le cornici. Match sul carattere LOGICO (pre-remap), come in C#. */

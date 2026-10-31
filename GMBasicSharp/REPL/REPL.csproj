@@ -50,7 +50,7 @@
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
             <Link>Helps\%(RecursiveDir)%(Filename)%(Extension)</Link>
         </Content>
-        <!-- Font locali (C64_Pro_Mono-STYLE.otf, ecc.): la FontManager cerca i .otf/.ttf
+        <!-- Font locali (Sixtyfour.ttf, font.ttf, ecc.): la FontManager cerca i .otf/.ttf
              nella dir dell'eseguibile (ScanAndCacheLocalFonts) — senza, il C64 usa un fallback. -->
         <!-- Font locali: la FontManager li cerca nella dir dell'eseguibile
              (ScanAndCacheLocalFonts) — senza, il C64 usa un fallback. -->

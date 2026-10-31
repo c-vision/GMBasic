@@ -337,10 +337,11 @@ static int sdlcon_resolve_font(const char* name, char* out, int cap)
         if (sdlcon_file_exists(alt)) { snprintf(out, cap, "%s", alt); return 1; }
         return 0;
     }
-    if (strcasestr(name, "c64"))
+    if (strcasestr(name, "c64") || strcasestr(name, "sixtyfour"))
     {
-        if (sdlcon_shared_asset("C64_Pro_Mono-STYLE.otf", out, cap)) return 1;
-        snprintf(out, cap, "Resources/C64_Pro_Mono-STYLE.otf"); return sdlcon_file_exists(out);
+        /* C64 Pro Mono rimosso (licenza): la modalita' C64 usa Sixtyfour (OFL 1.1). */
+        if (sdlcon_shared_asset("Sixtyfour.ttf", out, cap)) return 1;
+        snprintf(out, cap, "Resources/Sixtyfour.ttf"); return sdlcon_file_exists(out);
     }
     if (strcasestr(name, "fira")) { const char* p[] = { "Resources/FiraCode-Regular.ttf", "Resources/FiraCode.ttf", "/Library/Fonts/FiraCode-Regular.ttf", NULL };
         for (int i = 0; p[i]; i++) if (sdlcon_file_exists(p[i])) { snprintf(out, cap, "%s", p[i]); return 1; } return 0; }

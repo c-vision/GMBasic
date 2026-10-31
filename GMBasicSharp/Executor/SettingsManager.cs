@@ -103,7 +103,7 @@ Questo sistema permette di configurare il comportamento dell'interprete tramite 
       // Console 0: Usa la palette built-in C64
       "charGridWidth": 40,
       "charGridHeight": 25,
-      "fontPath": "C64_Pro_Mono-STYLE.otf",
+      "fontPath": "Sixtyfour.ttf",
       "fontSize": 16,
       "palette": "C64Classic"
     },

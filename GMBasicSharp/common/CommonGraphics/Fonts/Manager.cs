@@ -472,8 +472,8 @@ public sealed class FontManager
         if (_runtimeFonts.TryGetValue(fontName, out var runtimeEntry))
             return (runtimeEntry.Path, runtimeEntry);
 
-        // 2b. Alias senza estensione: la config usa "C64_Pro_Mono-STYLE.otf", i font locali
-        //     sono registrati col nome-file senza estensione ("C64_Pro_Mono-STYLE").
+        // 2b. Alias senza estensione: la config usa "Sixtyfour.ttf", i font locali sono
+        //     registrati col nome-file senza estensione ("Sixtyfour").
         var stem = Path.GetFileNameWithoutExtension(fontName);
         if (stem.Length > 0 && _runtimeFonts.TryGetValue(stem, out var stemEntry))
             return (stemEntry.Path, stemEntry);

@@ -191,7 +191,7 @@ gmb_screen_config_t gmb_screen_config_get_default(gmb_screen_mode_t mode)
             c.char_grid_width = 80; c.char_grid_height = 50;
             gmb_screen_palette_c64_classic((void*)c.resolved_palette); c.palette_size = 16;
             c.default_fg_color = 14; c.default_bg_color = 6;
-            c.font_path = "C64_Pro_Mono-STYLE.otf"; c.font_size = 12;
+            c.font_path = "Sixtyfour.ttf"; c.font_size = 16;   /* C64: Sixtyfour (OFL), non piu' C64 Pro Mono */
             c.font_hinting = GMB_FH_MONOSPACE; c.use_logical_size_scaling = false;
             c.use_native_resolution_rendering = false;
             break;
