@@ -1782,8 +1782,18 @@ public static partial class Linker
             or TokenKind.LlmArch or TokenKind.LlmModule or TokenKind.LlmKernel or TokenKind.LlmKv;
         List<NativeProcedureDefinition> candidates = program.GetProceduresForNamespace(bce.Namespace.Lexeme)
             .OfType<NativeProcedureDefinition>()
+            // IDENTITÀ PER TOKENKIND (AGENTS §12, regola d'oro): il nodo di chiamata porta
+            // SEMPRE il Kind REGISTRATO della procedura (il parser usa DedicatedBuiltinToken),
+            // quindi rispondono solo le definizioni con lo stesso `BuiltinKind`. Il NOME resta
+            // necessario in un solo caso: nodo con Kind `Identifier` (moduli IL esterni, che
+            // registrano tutti i metodi con BuiltinKind=Identifier, e i fallback del parser
+            // senza Kind canonico). Prima la clausola per nome era SEMPRE attiva e poteva
+            // selezionare una funzione diversa con lo stesso nome (es. comando `AI SET ACTIVE`
+            // — kind AiSetActive — che trovava la funzione `PROVIDER.SETACTIVE`, kind
+            // ProviderSetActive): il dispatch non deve mai partire dal lexeme.
             .Where(p => (p.BuiltinKind == bce.Name.Kind && p.BuiltinKind != TokenKind.Identifier) ||
-                        (!IsLlmFamilyVerbKind(bce.Name.Kind) &&
+                        (bce.Name.Kind == TokenKind.Identifier &&
+                         !IsLlmFamilyVerbKind(bce.Name.Kind) &&
                          p.OriginalName.Lexeme.Equals(bce.Name.Lexeme, StringComparison.OrdinalIgnoreCase)))
             .ToList();
 
@@ -3188,11 +3198,38 @@ public static partial class Linker
         // --- CASO 2: L'ID non è risolto. Dobbiamo cercare cosa sia. ---
         if (symbolId < 0)
         {
-            var candidates = FindSymbolInImportedNamespaces(symbolName, context, program);
+            // SHADOWING PER SCOPE, PRIMA del dispatch ai nomi importati: uno STORAGE
+            // dichiarato nello scope (variabile/array/parametro) rende `nome(...)` un
+            // ACCESSO ALL'ELEMENTO e vince su una procedura omonima visibile via IMPORT.
+            // Il lookup è position-aware e preferisce i simboli-valore (regola "dichiarato
+            // prima"): `DIM voci` seguito da `voci(0)` è l'elemento 0 della variabile, non
+            // una chiamata alla procedura omonima importata (bug scoperto scrivendo l'app
+            // DigUp: `list(0)` restituiva AI.List(0)). Senza questo ordine la procedura
+            // importata rispondeva sempre, perché cercata per prima.
+            var storageId = FindSymbolIdInScopeChain(symbolName, aae.ScopeId, aae.Position, program);
+            if (storageId != -1 &&
+                program.Symbols.GetSymbol(storageId).DeclarationNode is not ProcedureDefinition)
+            {
+                symbolId = storageId;
+                Log($"[RewriteArrayAccess] Shadowing: '{symbolName}' è lo storage ID {storageId}.", log);
+            }
+
+            var candidates = symbolId < 0
+                ? FindSymbolInImportedNamespaces(symbolName, context, program)
+                : [];
             var compatibleProcCandidates = candidates
                 .Select(s => s.DeclarationNode)
                 .OfType<ProcedureDefinition>()
                 .Where(p => SymbolTable.IsProcedureSignatureCompatible(p, aae.Indices.Length))
+                // IDENTITÀ PER TOKENKIND (§12, regola d'oro): il lexeme è solo la grafia.
+                // Se il nome nel sorgente ha un Kind specifico (keyword, es. `LIST` →
+                // TokenKind.List) risponde SOLO la procedura registrata con lo stesso Kind:
+                // `AI.List` ha BuiltinKind `AiList`, quindi non è `LIST` e non si chiama in
+                // forma nuda (serve `AI.LIST(...)`). Per i nomi con Kind Identifier il nome
+                // resta l'unica chiave possibile (comportamento invariato).
+                .Where(p => aae.NameCleaned.Kind == TokenKind.Identifier
+                            || (p is NativeProcedureDefinition npd ? npd.BuiltinKind : p.OriginalName.Kind)
+                            == aae.NameCleaned.Kind)
                 .ToList();
 
             if (compatibleProcCandidates.Count > 0)
