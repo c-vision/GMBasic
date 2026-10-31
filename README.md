@@ -16,14 +16,20 @@ and networking. See the Architecture section below for the full picture.
 
 ## Repository layout
 
-Quattro submodule, ognuno con la propria storia:
+**Un solo repository, nessun submodule** (dal 2026-10-31): `git clone` basta, non serve
+`--recurse-submodules`. Le cartelle sono domini, non repo separati:
 
-| Submodule | Contenuto |
+| Cartella | Contenuto |
 |---|---|
 | `GMBasic/` | compilatore e runtime **C**: frontend, C99Native, VM/C, runtime, librerie native |
 | `GMBasicSharp/` | compilatore e runtime **C#**: lexer/parser/linker, backend IL, StdLib, REPL |
 | `shared/` | materiale comune ai due: MiniTest, sample, spec/registry, settings, docs |
 | `GMBasicIDE/` | IDE nativo macOS in stile VB6 (form designer, code window, debug, DataGrid) che usa il compilatore |
+| `tools/` | tooling (BASIC/C/shell) alla radice, condiviso dai due mondi |
+
+La storia **pre-appiattimento** (i vecchi repo `GMBasic`, `GMBasicSharp`, `shared`, `GMBasicIDE`)
+non è importata qui: i repo storici sono **archiviati** su GitHub (`GMBasicDeprecated`,
+`GMBasicIDE`) e le copie complete sono nei backup locali (`~/ai/backup/gmbasic-*`).
 
 ## Build & Run
 
