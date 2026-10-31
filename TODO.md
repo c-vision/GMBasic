@@ -76,10 +76,10 @@ tracked files). These remain:
       license mention**; they must be checked (or excluded) before the repo goes public.
 - [x] **SF Mono removed** (Apple license forbids embedding in non-Apple software) → replaced by
       **Sixtyfour** (SIL OFL 1.1); credits in `Resources/FONTS.md` + `NOTICE`.
-- [ ] **`C64 Pro Mono`** (`C64_Pro_Mono-STYLE.otf`) is **not redistributable** either (style64
-      license) and is still in the tree: it must be replaced (Sixtyfour is the candidate) together
-      with the 8x16 ASCII bitmap in `gmb_gfx_cellfont.c`, which was **generated from that font**.
-      Box-drawing no longer depends on the font (it is drawn procedurally now).
+- [x] **`C64 Pro Mono` removed** (style64 license forbids redistribution) → C64 console mode now
+      uses **Sixtyfour**; the 8x16 ASCII bitmap inside the console was **regenerated from
+      Terminus 8x16** (`tools/py/cellfont_from_bdf.py`), so no font-derived data of a
+      non-redistributable font remains. Box-drawing is drawn procedurally.
 - [ ] **`pdf_oxide` C header** (`GMBasic/native/deps/`) — upstream license not declared in the
       header: verify and record it in `NOTICE`.
 - [ ] **History cleanup (optional)**: `AGENTS.md` and `GMBasic/config/*.json` were removed from

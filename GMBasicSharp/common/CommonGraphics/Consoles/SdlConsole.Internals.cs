@@ -276,7 +276,13 @@ public sealed partial class SdlConsole
         if (_font == IntPtr.Zero)
             throw new InvalidOperationException($"Impossibile caricare font scalato: {SDL.SDL_GetError()}");
         
-        var isC64Mode = _activeFontPath != null && Path.GetFileName(_activeFontPath).Equals("C64_Pro_Mono-STYLE.otf", StringComparison.OrdinalIgnoreCase);
+        // Modalita' C64: il font dedicato e' ora Sixtyfour (OFL 1.1) — C64 Pro Mono, che qui
+        // era riconosciuto per nome, e' stato rimosso perche' non ridistribuibile. Il remap
+        // PETSCII che trasformava i box-drawing in codici C64 non serve piu': le cornici sono
+        // disegnate proceduralmente dal renderer, e il font e' Unicode.
+        var isC64Mode = _activeFontPath != null &&
+            (Path.GetFileName(_activeFontPath).Equals("Sixtyfour.ttf", StringComparison.OrdinalIgnoreCase) ||
+             Path.GetFileName(_activeFontPath).Equals("C64_Pro_Mono-STYLE.otf", StringComparison.OrdinalIgnoreCase));
 
         if (isC64Mode)
         {
@@ -300,7 +306,7 @@ public sealed partial class SdlConsole
             _fontAtlas = new FontAtlas(renderer: _context.RendererHandle, fontPtr: _font,
                 hinting: isC64Mode ? SdlFontHinting.Monospace : SdlFontHinting.Normal, initialColor: white,
                 firstChar: (char)32, lastChar: (char)(isC64Mode ? 255 : 0x25FF),
-                characterRemapping: isC64Mode ? ScreenConfig.GetC64PetsciiRemapping() : null);
+                characterRemapping: null);   /* nessun remap: font Unicode + cornici procedurali */
         }
         catch (Exception ex)
         {

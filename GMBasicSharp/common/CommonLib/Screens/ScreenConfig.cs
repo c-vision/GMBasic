@@ -272,9 +272,11 @@ public sealed record ScreenConfig
         };
     }
 
-    /// <summary>Fornisce la mappa di conversione dai caratteri Unicode per box drawing
-    /// ai codici PETSCII del Commodore 64. Usata dal FontAtlas per renderizzare
-    /// correttamente i font C64 che usano il set di caratteri PETSCII.</summary>
+    /// <summary>Mappa box drawing Unicode -> codici PETSCII del Commodore 64.
+    /// <para><b>Legacy, non piu applicata.</b> Serviva ai font C64 che esponevano i glifi
+    /// PETSCII ai codepoint Latin-1 (C64 Pro Mono, rimosso per licenza). La console usa ora un
+    /// font Unicode e disegna le cornici proceduralmente; il metodo resta per compatibilita'
+    /// con chi lo chiama esplicitamente.</para></summary>
     public static Dictionary<char, char> GetC64PetsciiRemapping() => new()
     {
         { '╔', (char)218 }, { '═', (char)196 }, { '╗', (char)191 },

@@ -49,9 +49,11 @@
     {
       // Console 1: Una console in stile retro Commodore 64.
       // Usa le impostazioni predefinite della ScreenMode.C64.
+      // Font: Sixtyfour (SIL OFL 1.1, "fonts based on the Commodore 64"). Il vecchio
+      // C64 Pro Mono e' stato rimosso perche' la sua licenza ne vieta la ridistribuzione.
       "charGridWidth": 40,
       "charGridHeight": 25,
-      "fontPath": "C64_Pro_Mono-STYLE.otf",
+      "fontPath": "Sixtyfour.ttf",
       "fontSize": 16, // La dimensione del font viene scalata correttamente
       "fontHinting": "monospace",
       "useLogicalSizeScaling": false,

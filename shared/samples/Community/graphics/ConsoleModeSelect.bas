@@ -36,7 +36,7 @@ SUB Main()
             CASE %SDL
                 PRINT "  -> SDL    : console grafica TUI (default)"
             CASE %C64
-                PRINT "  -> C64    : PETSCII, palette VICE, font C64_Pro_Mono"
+                PRINT "  -> C64    : palette VICE, griglia 40x25, font Sixtyfour (OFL)"
             CASE %ANSI
                 PRINT "  -> ANSI   : terminale standard (escape ANSI)"
             CASE %SYSTEM

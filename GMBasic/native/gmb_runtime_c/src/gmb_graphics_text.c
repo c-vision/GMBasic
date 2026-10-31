@@ -354,10 +354,10 @@ static int gfx_resolve_font_path(const char* name, char* out, int cap)
         /* 3) AGGIUNTA: Resources della root del repo (fallback, non sostituzione). */
         char rr[1400]; if (gfx_repo_resources_path(name, rr, sizeof(rr))) { snprintf(out, cap, "%s", rr); return 1; }
     }
-    if (strcasestr(name, "c64"))
+    if (strcasestr(name, "c64") || strcasestr(name, "sixtyfour"))
     {
-        if (gfx_repo_resources_path("C64_Pro_Mono-STYLE.otf", out, cap)) return 1;
-        snprintf(out, cap, "Resources/C64_Pro_Mono-STYLE.otf"); return 1;
+        if (gfx_repo_resources_path("Sixtyfour.ttf", out, cap)) return 1;
+        snprintf(out, cap, "Resources/Sixtyfour.ttf"); return 1;
     }
     /* SF Mono (Apple) rimosso (licenza: non ridistribuibile) -> Sixtyfour (OFL 1.1). */
     if (strcasestr(name, "sfmono") || strcasestr(name, "sf mono") || strcasestr(name, "sixtyfour"))
@@ -390,7 +390,7 @@ int gmb_gfx_font_default(int size)
                             "/System/Library/Fonts/Supplemental/Helvetica.ttf",
                             "/System/Library/Fonts/Geneva.ttf",
                             "/System/Library/Fonts/Monaco.ttf", "/System/Library/Fonts/SFNSMono.ttf",
-                            "Resources/Sixtyfour.ttf", "Resources/C64_Pro_Mono-STYLE.otf", "Resources/font.ttf", NULL };
+                            "Resources/Sixtyfour.ttf", "Resources/font.ttf", NULL };
     for (int i = 0; cands[i]; i++) { gmb_gfx_font(cands[i], fsize); if (g_font_loaded) return 1; }
     return 0;
 }
