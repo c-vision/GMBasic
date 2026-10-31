@@ -2554,6 +2554,9 @@ char* gmb_memory_rank(const char* query, int topK);
 int   gmb_memory_consolidate(void);
 int   gmb_vault_watch(const char* name, const char* policy);
 char* gmb_vault_policy(const char* name);
+/* DB RAG di un cervello: risoluzione (vendor → exe → brainsDir → cache) poi i fallback
+ * storici (<brains>/<nome>/rag/<nome>.db, <ragDir>/<nome>.db). 1 se esiste. */
+int   gmb_brain_rag_db(const char* name, char* out, size_t cap);
 int   gmb_brain_use(const char* names);
 int   gmb_brain_detach(const char* name);
 char* gmb_brain_used_csv(void);

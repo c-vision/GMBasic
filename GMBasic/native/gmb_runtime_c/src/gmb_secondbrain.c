@@ -1481,6 +1481,9 @@ char* gmb_enrich(const char* text, const char* mode) {
 static int sb_brain_rag_db_path(const char* brain, char* out, size_t cap) {
     out[0] = 0;
     if (!brain || !*brain) return 0;
+    /* PRIMA la risoluzione dei cervelli (cache ~/.gmbasic/brains, vendor, exe): è dove
+     * `AI BRAIN INSTALL` mette il cervello. I path sotto sono i fallback storici. */
+    if (gmb_brain_rag_db(brain, out, cap)) return 1;
     char json[1024]; gmb_paths_brains_json(json, sizeof(json));
     FILE* f = fopen(json, "r");
     if (f) {
@@ -1498,7 +1501,12 @@ static int sb_brain_rag_db_path(const char* brain, char* out, size_t cap) {
                 char* a1 = strchr(c1, '"'); if (!a1 || a1 > end) continue;
                 char* b1 = strchr(a1 + 1, '"'); if (!b1 || b1 > end) continue;
                 size_t l = (size_t)(b1 - a1 - 1);
-                if (l && l < cap - 1) { memcpy(out, a1 + 1, l); out[l] = 0; }
+                if (l && l < cap - 1) {
+                    memcpy(out, a1 + 1, l); out[l] = 0;
+                    /* un `source` stantio (il db non è più lì) non deve bloccare i fallback */
+                    struct stat st0;
+                    if (stat(out, &st0) != 0 || !S_ISREG(st0.st_mode)) out[0] = 0;
+                }
             }
             free(buf);
         }
