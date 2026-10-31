@@ -52,7 +52,12 @@ class VmBridgeTest
         {
             File.WriteAllBytes(chunkPath, ChunkA1Serializer.Serialize(chunk));
 
-            var psi = new ProcessStartInfo(exePath, $"\"{chunkPath}\" --entry-source \"{file}\"")
+            /* Argomenti del PROGRAMMA: tutto ciò che segue il file (`vmtest file.bas A B`) —
+             * parità con la gamba IL, dove COMMAND(1) è il primo argomento dopo il file e non
+             * i flag dell'harness. Prima non venivano inoltrati: COMMANDCOUNT() valeva 0 anche
+             * con argomenti e nessun test poteva coprire COMMAND$ sulla gamba VM/C. */
+            var progArgs = args.Length > 2 ? string.Join(" ", args.Skip(2).Select(a => "\"" + a.Replace("\"", "\\\"") + "\"")) : "";
+            var psi = new ProcessStartInfo(exePath, $"\"{chunkPath}\" --entry-source \"{file}\"" + (progArgs.Length > 0 ? " " + progArgs : ""))
             {
                 UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true,
                 // AGENTS.md §9.1: CWD = cartella del SAMPLE (come la riga 24). Prima

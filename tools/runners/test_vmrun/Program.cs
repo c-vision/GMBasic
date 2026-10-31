@@ -8,6 +8,7 @@
 // (Chromium, gmb_vm_host) in giro quando il sample usa browser/WS/FETCH. Questo wrapper
 // avvia il browser CDP, kill il processo dopo il timeout e ripulisce tutto.
 using System.Diagnostics;
+using System.Linq;
 using System.Net.Http;
 
 var file = args.Length > 0 ? args[0] : null;
@@ -15,6 +16,17 @@ if (file is null)
 {
     Console.Error.WriteLine("uso: test_vmrun <file.bas> [timeout_secondi]");
     return 1;
+}
+var procArgs = "";   /* argomenti del PROGRAMMA: dopo il file, inoltrati a `vmtest` → gmb_vm_host */
+{
+    /* Convenzione: `<file.bas> [timeout_secondi] [argomenti del programma...]`.
+     * Se il 2° argomento non è un numero, TUTTI gli argomenti dopo il file sono del programma
+     * (così `test_vmrun x.bas --out y` passa --out al programma, non lo scarta).
+     * Parità con la gamba IL: COMMAND(1) = primo argomento dopo il file. */
+    var startIdx = 0;
+    if (args.Length > 1 && int.TryParse(args[1], out _)) startIdx = 2; else startIdx = 1;
+    if (args.Length > startIdx)
+        procArgs = " " + string.Join(" ", args.Skip(startIdx).Select(a => "\"" + a.Replace("\"", "\\\"") + "\""));
 }
 var timeoutSec = args.Length > 1 && int.TryParse(args[1], out var t) ? t : 20;
 if (!File.Exists(file)) { Console.Error.WriteLine($"file non trovato: {file}"); return 1; }
@@ -101,7 +113,7 @@ var confDll = Directory.GetFiles(Path.Combine(projDir, "bin"), "GMBASIC.Conforma
                       .FirstOrDefault();
 if (confDll is null) { Console.Error.WriteLine("GMBASIC.Conformance.dll non trovata dopo la build"); return 1; }
 
-var psi = new ProcessStartInfo("dotnet", $"\"{confDll}\" vmtest \"{fileFull}\"")
+var psi = new ProcessStartInfo("dotnet", $"\"{confDll}\" vmtest \"{fileFull}\"" + procArgs)
 {
     WorkingDirectory = root,
     RedirectStandardOutput = true,
