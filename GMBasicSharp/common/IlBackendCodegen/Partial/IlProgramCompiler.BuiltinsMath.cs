@@ -442,7 +442,10 @@ public sealed partial class IlProgramCompiler
         {
             var falseL = _il.DefineLabel();
             var endL = _il.DefineLabel();
-            EmitExpression(expr.Left); _il.Emit(OpCodes.Conv_I8); _il.Emit(OpCodes.Brfalse, falseL);
+            /* Sinitra convertita a double (gestisce anche i local OBJECT boxed: un BIT
+             * ri-tipato dal Linker vive in un object e `conv.i8` su un riferimento testava
+             * l'INDIRIZZO → `FALSO(0) OR 5` dava -1). */
+            EmitDoubleArgument(expr.Left); _il.Emit(OpCodes.Conv_I8); _il.Emit(OpCodes.Brfalse, falseL);
             EmitDoubleArgument(expr.Right);   /* VALORE destro (double), non normalizzato a -1/0 */
             _il.Emit(OpCodes.Br, endL);
             _il.MarkLabel(falseL); _il.Emit(OpCodes.Ldc_I4_0); _il.Emit(OpCodes.Conv_R8);
@@ -453,7 +456,7 @@ public sealed partial class IlProgramCompiler
         {
             var trueL = _il.DefineLabel();
             var endL = _il.DefineLabel();
-            EmitExpression(expr.Left); _il.Emit(OpCodes.Conv_I8); _il.Emit(OpCodes.Brtrue, trueL);
+            EmitDoubleArgument(expr.Left); _il.Emit(OpCodes.Conv_I8); _il.Emit(OpCodes.Brtrue, trueL);
             EmitDoubleArgument(expr.Right);   /* VALORE destro (double), non normalizzato a -1/0 */
             _il.Emit(OpCodes.Br, endL);
             _il.MarkLabel(trueL); _il.Emit(OpCodes.Ldc_I4_M1); _il.Emit(OpCodes.Conv_R8);
@@ -470,8 +473,10 @@ public sealed partial class IlProgramCompiler
         }
         if (expr.Op.Kind is TokenKind.BitAnd or TokenKind.BitOr or TokenKind.BitXor)
         {
-            EmitExpression(expr.Left); _il.Emit(OpCodes.Conv_I8);
-            EmitExpression(expr.Right); _il.Emit(OpCodes.Conv_I8);
+            /* Veri/valori numerici: EmitDoubleArgument (gestisce anche i local OBJECT
+             * boxed), poi cast a int64 per l'operazione bit a bit. */
+            EmitDoubleArgument(expr.Left); _il.Emit(OpCodes.Conv_I8);
+            EmitDoubleArgument(expr.Right); _il.Emit(OpCodes.Conv_I8);
             _il.Emit(expr.Op.Kind == TokenKind.BitAnd ? OpCodes.And
                    : expr.Op.Kind == TokenKind.BitOr ? OpCodes.Or : OpCodes.Xor);
             _il.Emit(OpCodes.Conv_R8);
@@ -496,7 +501,11 @@ public sealed partial class IlProgramCompiler
             return;
         }
 
-        if (IlConversion.IsNumeric(leftType) && IlConversion.IsNumeric(rightType))
+        // BIT si comporta da numero (-1/0): va trattato nel ramo numerico, altrimenti gli
+        // operandi finiscono grezzi sullo stack (un local object boxed + `add` = InvalidProgram:
+        // `PRINT v + 0` con `DIM v AS BIT`).
+        if ((IlConversion.IsNumeric(leftType) || leftType is BitType)
+            && (IlConversion.IsNumeric(rightType) || rightType is BitType))
         {
             EmitDoubleArgument(expr.Left);
             EmitDoubleArgument(expr.Right);

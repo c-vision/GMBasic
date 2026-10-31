@@ -668,7 +668,15 @@ public sealed partial class IlProgramCompiler
             // bag usa Int32 (parità VM: i logici sono 1/0/-1), mentre DataTypeMapper mappa BIT
             // a bool: lo store boxava bool e la lettura (LoadGlobal→GlobalClrType=Int32)
             // falliva con InvalidCastException Boolean→Int32 (bug BIT globale, 2026-09-30).
-            var declaredClr = GlobalClrType(declaration.SymbolId);
+            // Tipo del BOX dal tipo DICHIARATO (non dal simbolo): il Linker può aver
+            // ri-tipato il simbolo (es. `DIM V AS BIT` + `V = -1` → symbol ANY, che
+            // GlobalClrType mappa a object) e allora il box non veniva emesso su un default
+            // che è un VALUE TYPE → `StoreGlobal(int, object)` con un int32 = IL invalido
+            // (InvalidProgram alla prima esecuzione: MiniTest/sample con BIT globale).
+            // BIT resta Int32 nel bag (convenzione GlobalClrType, parità VM).
+            var declaredClr = declaredType is BitType
+                ? _types.Int32
+                : DataTypeMapper.Map(declaredType, _types, _classTypes);
             if (declaredClr.IsValueType) _il.Emit(OpCodes.Box, declaredClr);
             _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.StoreGlobal), typeof(int), typeof(object)));
             _il.MarkLabel(skipDefaultStore);
