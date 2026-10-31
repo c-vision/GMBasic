@@ -1184,7 +1184,19 @@ public sealed partial class Parser
                             {
                                 // Strip $ suffix for the BuiltinFunctionCallExpr token (e.g., CONSISTENCYDETAIL$ -> CONSISTENCYDETAIL)
                                 // The linker matches against OriginalName.Lexeme which doesn't have $.
-                                var tokenForCall = new Token(memberToken.Kind, funcNameForLookup, funcNameForLookup, memberToken.Position);
+                                // Kind REGISTRATO quando il namespace dichiara davvero quel nome
+                                // (anche se non importato): il nodo di chiamata non deve mai portare
+                                // il Kind GENERICO del lexer (es. `CONVERT.SEARCH` → DocSearch, non
+                                // Search) — a valle il dispatch è per TokenKind.
+                                NativeProcedureDefinition? registeredCall = null;
+                                if (_registry.BuiltinProcedures.TryGetValue(resolvedNs, out var registeredProcs))
+                                    registeredCall = registeredProcs.OfType<NativeProcedureDefinition>()
+                                        .FirstOrDefault(p =>
+                                            p.OriginalName.Lexeme.Equals(funcNameForLookup, StringComparison.OrdinalIgnoreCase) &&
+                                            SymbolTable.IsProcedureSignatureCompatible(p, args.Length));
+                                var tokenForCall = registeredCall is not null
+                                    ? DedicatedBuiltinToken(registeredCall, memberToken)
+                                    : new Token(memberToken.Kind, funcNameForLookup, funcNameForLookup, memberToken.Position);
                                 // Il membro ha già una TokenKind SPECIFICA (keyword globale, es. MMAPPEEK
                                 // chiamato come IO.MMAPPEEK): risolvi il tipo di ritorno canonicamente
                                 // per TokenKind dal registro (la qualifica non deve perdere la firma
@@ -1314,8 +1326,14 @@ public sealed partial class Parser
                         // nuda (es. DIM amax() vs AMAX, DIM argmax() vs MATRIX.ARGMAX):
                         // amax(0) è accesso all'elemento, non chiamata al builtin — senza,
                         // la variabile è illeggibile (bug MATRIX.ARGMAX/ARGMIN).
-                        if ((varExpr.NameSuffixed.Lexeme.EndsWith('$')
-                            && _declaredVariableNames.Contains(varExpr.NameSuffixed.Lexeme))
+                        // 2026-11-01 — OGNI variabile dichiarata (anche scalare/variante, es.
+                        // `DIM voci` riempita da STRINGS.SPLIT) shadowa una procedura omonima:
+                        // `voci(0)` è accesso all'elemento, non una chiamata. Prima la regola
+                        // valeva solo per i nomi con `$` e per gli array dichiarati; il nome
+                        // senza suffisso cadeva sulla procedura importata (bug scoperto
+                        // scrivendo l'app DigUp). È la regola di shadowing per SCOPE, decisa
+                        // dal nome dichiarato, non dal Kind del token.
+                        if (_declaredVariableNames.Contains(varExpr.NameSuffixed.Lexeme)
                             || _declaredArrayNames.Contains(varExpr.NameSuffixed.Lexeme))
                         {
                             expr = new ArrayAccessExpr(varExpr.SymbolId, varExpr.NameSuffixed, varExpr.NameCleaned, args);
@@ -1478,33 +1496,77 @@ public sealed partial class Parser
             ? new Token(npd.BuiltinKind, npd.OriginalName.Lexeme, null, npd.OriginalName.Position)
             : fallback;
 
+    /// <summary>Visibilità dei namespace built-in per una chiamata NON qualificata: il
+    /// namespace deve essere caricato (IMPORT o default dei settings) perché la funzione sia
+    /// richiamabile senza prefisso (parità con la risoluzione del Linker).</summary>
+    private bool IsNamespaceLoaded(string namespaceName)
+        => _program.Namespaces.Contains(namespaceName)
+           || namespaceName.Equals("GUI", StringComparison.OrdinalIgnoreCase)
+           || _program.Settings.DefaultNamespaces.Contains(namespaceName, StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Nome usato per la risoluzione PER NOME dei builtin: serve SOLO quando il token
+    /// è un Identifier (nessun Kind canonico) o per una chiamata qualificata. TIME$/TI$ e DATE$
+    /// sono alias di nome DOCUMENTATI (il lexer li lascia identificatori di proposito, così una
+    /// variabile utente `date$` continua a funzionare) — non sono un dispatch per lexeme.</summary>
+    private static string BuiltinNameLookupKey(Token nameToken)
+    {
+        var funcName = nameToken.Lexeme;
+        if (!funcName.EndsWith('$')) return funcName;
+        return funcName.ToUpperInvariant() switch
+        {
+            "TIME$" or "TI$" => "STRTIME",
+            "DATE$" => "STRDATE",
+            _ => funcName[..^1]
+        };
+    }
+
     private Expr? ResolveBuiltinFunctionCall(Token nameToken, ImmutableArray<Expr> args,
         string? namespaceName = null)
     {
-        var funcName = nameToken.Lexeme;
-        // Strip $ suffix (e.g., CHR$ -> CHR) for built-in lookup
-        // Canone data/ora: TIME$/TI$ = STRTIME, DATE$ = STRDATE (il '$' qui NON e' un semplice
-        // suffisso di tipo: TIME$ non e' TIME ma la sua versione stringa).
-        if (funcName.EndsWith('$'))
-            funcName = funcName.ToUpperInvariant() switch
-            {
-                "TIME$" or "TI$" => "STRTIME",
-                "DATE$" => "STRDATE",
-                _ => funcName[..^1]
-            };
-
         IEnumerable<ProcedureDefinition> candidates;
 
         if (namespaceName != null)
         {
+            var funcName = BuiltinNameLookupKey(nameToken);
             // --- CASO QUALIFICATO (Es. JSON.PARSE) ---
             // Ricerca diretta e non ambigua nel namespace specificato.
             candidates = _program.Symbols.GetProceduresForNamespace(namespaceName)
                 .Where(p => p.OriginalName.Lexeme.Equals(funcName, StringComparison.OrdinalIgnoreCase));
         }
+        else if (nameToken.Kind != TokenKind.Identifier)
+        {
+            // --- CASO NON QUALIFICATO: DISPATCH PER TOKENKIND (AGENTS §12, regola d'oro) ---
+            // La chiave canonica è (namespace, TokenKind REGISTRATO): niente confronto per
+            // lexeme. `BuiltinFunctionProvidersMap` dice quali namespace forniscono quel Kind;
+            // ogni candidato deve avere `BuiltinKind == nameToken.Kind` (una NativeProcedure
+            // può avere un Kind dedicato diverso dalla keyword scritta, es. AI.Search =
+            // AiVectorSearch). Se il Kind non ha provider il nome NON è una chiamata builtin:
+            // `LIST` (TokenKind.List) non è `AI.List` (AiList) → `list(0)` resta un accesso e
+            // lo decide il linker (variabile/array o UDF).
+            var kindNamespaces = _registry.BuiltinFunctionProvidersMap.TryGetValue(nameToken.Kind, out var kindNs)
+                ? kindNs.Where(IsNamespaceLoaded).ToList()
+                : [];
+
+            if (kindNamespaces.Count == 0) return null;
+
+            var kindCandidates = new List<ProcedureDefinition>();
+            foreach (var nsName in kindNamespaces)
+            {
+                var nsProcs = _program.Symbols.GetProceduresForNamespace(nsName);
+                if (!nsProcs.Any() && _registry.BuiltinProcedures.TryGetValue(nsName, out var regProcs))
+                    nsProcs = regProcs;
+                kindCandidates.AddRange(nsProcs.Where(p =>
+                    (p is NativeProcedureDefinition npd ? npd.BuiltinKind : p.OriginalName.Kind) == nameToken.Kind));
+            }
+
+            candidates = kindCandidates;
+        }
         else
         {
-            // --- CASO NON QUALIFICATO (Es. SIN) ---
+            // --- CASO NON QUALIFICATO con NOME-IDENTIFICATORE: nessun Kind canonico ---
+            // Un Identifier non porta identità (es. `FORMATS`, `EMAPT`): il nome è l'unica
+            // chiave possibile — è il caso in cui il lexeme è strettamente necessario.
+            var funcName = BuiltinNameLookupKey(nameToken);
             if (!_registry.AllBuiltinFunctionNames.Contains(funcName))
             {
                 return null;
@@ -1518,11 +1580,7 @@ public sealed partial class Parser
             // resta vuoto nei programmi "nuovi" come i filtri DB/le chiavi di sort composte):
             // parità con la risoluzione del Linker (Linker.Rewrites.Variables.cs).
             var providerNamespaces = _registry.FunctionNameToNamespacesMap.TryGetValue(funcName, out var allNs)
-                ? allNs.Where(ns =>
-                        _program.Namespaces.Contains(ns) ||
-                        ns.Equals("GUI", StringComparison.OrdinalIgnoreCase) ||
-                        _program.Settings.DefaultNamespaces.Contains(ns, StringComparer.OrdinalIgnoreCase))
-                    .ToList()
+                ? allNs.Where(IsNamespaceLoaded).ToList()
                 : [];
 
             if (providerNamespaces.Count == 0)
@@ -1564,7 +1622,6 @@ public sealed partial class Parser
             var totalParams = proc.Parameters.Length;
             return args.Length >= requiredParamsNormal && args.Length <= totalParams;
         }).ToList();
-
 
         switch (compatibleCandidates.Count)
         {

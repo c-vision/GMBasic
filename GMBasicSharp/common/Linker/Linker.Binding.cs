@@ -3845,24 +3845,33 @@ public static partial class Linker
                     .Select(s => s.DeclarationNode)
                     .OfType<ProcedureDefinition>()
                     .Where(p => SymbolTable.IsProcedureSignatureCompatible(p, aae.Indices.Length))
+                    // IDENTITÀ PER TOKENKIND (§12, regola d'oro): il lexeme è solo la grafia.
+                    // Se il nome nel sorgente ha un Kind specifico (keyword, es. `LIST` →
+                    // TokenKind.List), risponde SOLO la procedura registrata con lo stesso
+                    // Kind: `AI.List` (BuiltinKind AiList) non è `LIST`. Per i nomi con Kind
+                    // Identifier il nome resta l'unica chiave possibile.
+                    .Where(p => aae.NameCleaned.Kind == TokenKind.Identifier
+                                || (p is NativeProcedureDefinition npd ? npd.BuiltinKind : p.OriginalName.Kind)
+                                == aae.NameCleaned.Kind)
                     .ToList();
 
                 var targetProc = candidates.Count == 1 ? candidates[0] : null;
 
-                // Una variabile visibile omonima di un BUILTIN ha la priorità sul builtin
+                // Una variabile visibile omonima di un builtin ha la priorità sul builtin
                 // stesso (es. DIM amax() vs AMAX, DIM argmax() vs MATRIX.ARGMAX): senza,
                 // il nodo verrebbe timbrato con l'ID della procedura builtin e la variabile
-                // diventerebbe illeggibile (bug MATRIX.ARGMAX/ARGMIN). Vale SOLO per i
-                // builtin (Native/ExternalProcedureDefinition) e SOLO per variabili ARRAY
-                // (uno scalare omonimo non devia le chiamate al builtin): una FUNCTION/SUB
-                // utente omonima conserva la priorità attuale (niente shadowing delle UDF).
+                // diventerebbe illeggibile (bug MATRIX.ARGMAX/ARGMIN). Vale per OGNI storage
+                // dichiarato — array E scalare/variante (es. `DIM voci` riempita da
+                // STRINGS.SPLIT): `voci(0)` è l'elemento 0 della variabile, non una chiamata
+                // alla procedura omonima (bug scoperto scrivendo l'app DigUp). Resta valido
+                // per i soli builtin (Native/ExternalProcedureDefinition): una FUNCTION/SUB
+                // utente omonima conserva la priorità attuale.
                 if (targetProc is NativeProcedureDefinition or ExternalProcedureDefinition)
                 {
                     var lookupScope = aae.ScopeId >= 0 ? aae.ScopeId : currentScopeId;
                     var shadowId = FindSymbolIdInScopeChain(aae.NameCleaned.Lexeme, lookupScope, aae.Position, program);
                     if (shadowId >= 0
-                        && program.Symbols.GetSymbol(shadowId).DeclarationNode is VariableDeclaration vd
-                        && vd.DataType is ArrayType)
+                        && program.Symbols.GetSymbol(shadowId).DeclarationNode is VariableDeclaration)
                         targetProc = null;
                 }
 
