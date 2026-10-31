@@ -31,6 +31,65 @@ La storia **pre-appiattimento** (i vecchi repo `GMBasic`, `GMBasicSharp`, `share
 non è importata qui: i repo storici sono **archiviati** su GitHub (`GMBasicDeprecated`,
 `GMBasicIDE`) e le copie complete sono nei backup locali (`~/ai/backup/gmbasic-*`).
 
+## Download: cosa serve, con quale comando, dove finisce
+
+I dati grossi **non stanno in git**. Il codice è qui; librerie native, feed di mercato e
+cervelli vivono nelle **release** di altri due repo e si scaricano **solo quando servono**
+(con ripresa del download e **sha256 verificato** prima di estrarre).
+
+| repo | visibilità | cosa ci trovi |
+|---|---|---|
+| **`c-vision/GMBasic`** | privato | questo monorepo: compilatori, runtime, sample, tools |
+| **`c-vision/GMBasicModules`** | pubblico | **binari e dati**: librerie native (release per gruppo), feed di mercato (`fixtures-v1`), componenti ML/Chromium/OCR |
+| **`c-vision/GMBasicBrains`** | privato | **cervelli** (Second Brain): RAG e knowledge graph, come asset di release |
+
+Non serve clonare gli altri due: ci pensano i comandi qui sotto. Dal checkout si usa
+`dotnet run --project GMBasicSharp/REPL -- …`; se hai il binario distribuito è semplicemente
+`gmb …`.
+
+### Prima volta — le quattro cose che servono davvero
+
+```sh
+dotnet run --project GMBasicSharp/REPL -- libs ensure      # librerie native mancanti
+dotnet run --project GMBasicSharp/REPL -- fixtures ensure  # feed di mercato per i sample
+dotnet run --project GMBasicSharp/REPL -- brain login --github   # una volta: token (repo privato)
+dotnet run --project GMBasicSharp/REPL -- brain install brainvault
+```
+
+`ensure` scarica **solo ciò che manca**: puoi rilanciarlo quando vuoi.
+
+### Cosa scarica, con quale comando, dove lo mette
+
+| cosa | comando | dove finisce |
+|---|---|---|
+| **librerie native** | `gmb libs ensure` (`status`, `check`, `prune`) — e in automatico al primo uso di una funzione che le richiede | `~/.gmbasic/libs/<rid>/` (in sviluppo, se presenti, vincono quelle appena compilate in `GMBasic/build/libs/<rid>/`) |
+| **componenti esterni** (torch/ML, Chromium, Obscura, OCR) | `gmb setup TORCH` · `BROWSER` · `OCR` · `ALL` (o automatico al primo uso) | `~/.gmbasic/libs/<componente>/<rid>/` |
+| **feed di mercato** (`markets`, `option_chains`, `rates`, `darkpool`) | `gmb fixtures list` · `ensure` · `pull markets` | `shared/samples/Fixtures/<nome>/` — **unico** posto, niente symlink |
+| **cervelli** (RAG e/o grafo) | `gmb brain install <nome[@ver]>` · `list` · `remove` (da BASIC: `AI BRAIN INSTALL "nome"`) | `~/.gmbasic/brains/<nome>/<versione>/{rag,graphs}` |
+| **pacchetti** con dipendenze esterne | `gmb pkg install <nome[@ver]>` · `gmb restore` · `gmb update` | `~/.gmbasic/packages` (client) · `<checkout>/packages` (sviluppo) · `<exe>/packages` con `--local` · `vendor/` per i pin |
+| **marketplace di skill/plugin** | `AI SKILLS MARKETPLACE "url"` · `AI PLUGINS MARKETPLACE "url"` | `~/.gmbasic/{skills,plugins}-marketplaces` |
+
+**Cosa NON si scarica**: skill, plugin e settings vivono nel repo (`shared/skills`,
+`shared/plugins`, `shared/settings`). Quando compili un programma, il **bundle** accanto
+all'eseguibile porta solo ciò che serve: settings minimi, `Resources/`, i cervelli dichiarati
+(`<exe>.brains.txt`), le librerie usate (`<exe>.libs.txt`), i **provider** (`config/providers.json`,
+sempre) e — **solo se dichiarati** nel `app.settings.json` — `skills`, `plugins` e altri file di
+config:
+
+```json
+{ "brains": ["brainvault"], "fixtures": ["markets"], "skills": ["board"], "plugins": ["web-fetch"], "config": ["mcp.json"] }
+```
+
+### Dove vive lo stato (e cosa non finisce mai in git)
+
+- **`~/.gmbasic/`** — la radice dei dati utente: `libs/`, `brains/`, `packages/`,
+  `skills-marketplaces/`, `plugins-marketplaces/`, `github.token` (`chmod 600`).
+- **`GMBasic/config/`** (o `<exe>/config` in un programma distribuito) — lo **stato locale**:
+  provider attivi, server MCP, cervelli installati, indici delle skill/plugin. **Mai in git**:
+  contiene percorsi della macchina. Se manca un file, il runtime usa il **seed** in
+  `shared/settings/` o i default del codice.
+- **`shared/samples/Fixtures/`** — i feed, e nient'altro.
+
 ## Build & Run
 
 ```sh

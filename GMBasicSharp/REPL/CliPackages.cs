@@ -73,6 +73,9 @@ public static class CliPackages
         Console.WriteLine("  pkg why <name> | prune [--lock f] | dedupe [--lock f]   (grafo / pulizia cache)");
         Console.WriteLine("  pkg audit [fix] [--advisories f] | sbom [--out f]      (vulnerabilità / fix / SBOM CycloneDX)");
         Console.WriteLine("  fixtures list|ensure|pull <nome…>                fixture del compilatore in shared/samples/Fixtures");
+        Console.WriteLine("  libs status|check|ensure|prune|index [--rid RID] [--group G]");
+        Console.WriteLine("                                   librerie native (c-vision/GMBasicModules): stato, sha256, download in ~/.gmbasic/libs");
+        Console.WriteLine("  setup TORCH|BROWSER|OCR|ALL|status|rm            componenti runtime on-demand (ml, chromium, obscura)");
         Console.WriteLine("  brain login --github [--token T|--token-file F] | logout");
         Console.WriteLine("                                   token per gli asset dei cervelli PRIVATI (~/.gmbasic/github.token, chmod 600)");
         Console.WriteLine("  brain install <nome[@ver]> [--source url|zip|dir] | list | remove <nome[@ver]>");
