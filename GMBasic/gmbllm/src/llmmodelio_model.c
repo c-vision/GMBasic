@@ -1524,6 +1524,23 @@ static int pol_define(const char* name, const char* text) {
 #define POL_PLAN_MAX 8192
 typedef struct { char name[96]; char role[24]; char dflt[16]; char use[16]; } pol_plan_item_t;
 static pol_plan_item_t s_plan[POL_PLAN_MAX]; static int s_plan_n = 0; static int s_plan_changed = 0;
+
+/* RESET COMPLETO dello stato di policy (2026-10-30).
+ * `llmmodelio_model_policy_reset` azzera SOLO le rule-coppie role->fmt: le policy NOMINATE
+ * (DSL, `s_pols[]`), la policy attiva (`s_pol_active`) e gli override per-tensore (`s_items[]`,
+ * `s_plan[]`) restavano. Questo stato vive in GLOBALI di processo nella dylib, quindi trapelava
+ * da un file all'altro e da una gamba all'altra (IL e PCode girano nello stesso processo):
+ * `LLM POLICY SAVE/SHOW/ITEMS` riportavano la policy di test precedenti e gli EXPECT dei
+ * MiniTest `llm/*` erano stati registrati su stato sporco.
+ * `LLM POLICY RESET|CLEAR` usa questa: dopo il reset lo stato è quello di un processo fresco. */
+void llmmodelio_model_policy_reset_all(void) {
+    s_pol_n = 0;
+    s_pols_n = 0;
+    s_pol_active = -1;
+    s_item_n = 0;
+    s_plan_n = 0;
+    s_plan_changed = 0;
+}
 int llmmodelio_policy_plan_to(const char* in_path, char* out, size_t cap) {
     if (!in_path || !out || !cap) return -1;
     LlmCodecGgufFileInfo fi;
@@ -2570,7 +2587,7 @@ int llmmodelio_policy_cmd(const char* sub, const char* a, const char* b, const c
         if (!a || !b || !*a || !*b) return -1;
         llmmodelio_model_policy_set(a, b); return 0;
     }
-    if (strcasecmp(s, "RESET") == 0 || strcasecmp(s, "CLEAR") == 0) { llmmodelio_model_policy_reset(); return 0; }
+    if (strcasecmp(s, "RESET") == 0 || strcasecmp(s, "CLEAR") == 0) { llmmodelio_model_policy_reset_all(); return 0; }
     /* Livello B: override PER-TENSORE (il codice BASIC/GPM decide name->fmt). */
     if (strcasecmp(s, "SETITEM") == 0) { if (llmmodelio_policy_set_item(a, b) != 0) { fprintf(stderr, "LLM POLICY SETITEM: attesi (name-glob, fmt)\n"); return -1; } return 0; }
     if (strcasecmp(s, "CLEARITEM") == 0 || strcasecmp(s, "CLEARITEMS") == 0) { llmmodelio_policy_clear_items(); return 0; }
@@ -2601,7 +2618,7 @@ int llmmodelio_policy_cmd(const char* sub, const char* a, const char* b, const c
         if (n <= 0 || n > (1<<20)) { fclose(f); return -1; }
         char* j=(char*)malloc((size_t)n+1); if(!j||fread(j,1,(size_t)n,f)!=(size_t)n){free(j);fclose(f);return -1;} j[n]=0; fclose(f);
         if (strstr(j, "\"gmbpolicy\"") == NULL) { free(j); fprintf(stderr,"LLM POLICY LOAD: non e' un artefatto gmbpolicy\n"); return -1; }
-        llmmodelio_model_policy_reset();
+        llmmodelio_model_policy_reset_all();   /* LOAD parte da stato pulito (DSL + item compresi) */
         int loaded = 0;
         for (const char* p = j; (p = strstr(p, "\"role\"")) != NULL; p++) {
             char role[24]="", fmt[512]="";

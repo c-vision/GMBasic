@@ -23242,7 +23242,7 @@ static void emit_ai_domain(ctx_t* c, gmb_stmt_t* s) {
             return;
         }
         if (strcasecmp(sub, "RESET") == 0 || strcasecmp(sub, "CLEAR") == 0) {
-            ind(c); sb_put(&c->out, "(void)llmmodelio_model_policy_reset();\n"); return;
+            ind(c); sb_put(&c->out, "(void)llmmodelio_model_policy_reset_all();\n"); return;
         }
         if (strcasecmp(sub, "SHOW") == 0) { ind(c); sb_put(&c->out, "(void)llmmodelio_model_policy_show();\n"); return; }
         /* §4.3: SAVE/LOAD (.gmbpolicy) + DRYRUN + DEFINE/APPLY (Policy DSL) — via il dispatcher

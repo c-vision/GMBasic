@@ -6,6 +6,10 @@
 uint16_t llmmodelio_fp32_to_fp16(float f);
 void llmmodelio_model_policy_set(const char* role, const char* fmt);
 void llmmodelio_model_policy_reset(void);
+/* RESET COMPLETO (2026-10-30): azzera rule-coppie, policy NOMINATE (DSL), policy attiva e
+ * override/piano per-tensore. È ciò che serve per rendere ermetico un test o una gamba: lo
+ * stato vive in globali di processo. `LLM POLICY RESET|CLEAR` usa questa. */
+void llmmodelio_model_policy_reset_all(void);
 const char* llmmodelio_model_policy_get(const char* role);
 int llmmodelio_model_quantize_auto(const char* in_path, const char* out_path, double target_bpw);
 int llmmodelio_model_extract(const char* in_path, const char* out_path, int64_t layer, int64_t expert);

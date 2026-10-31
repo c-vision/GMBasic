@@ -28,6 +28,14 @@ public class MiniTestsParityTests
     /// del primo (transcript accumulato) e divergerebbe da VMC (processo fresco). B4/gap agent.</summary>
     private static void ResetAgents()
     {
+        // Policy LLM: lo stato (rule-coppie role->fmt, policy NOMINATE DSL, policy attiva,
+        // override per-tensore e piano) vive in GLOBALI C della dylib `gmb_ai_llm` → senza reset
+        // trapela da un file all'altro e da una gamba all'altra (IL e PCode girano nello stesso
+        // processo): `LLM POLICY SAVE/SHOW/ITEMS` vedevano la policy dei test precedenti e gli
+        // EXPECT di `llm/*` erano registrati su stato sporco. Stesso punto d'ingresso del BASIC:
+        // `LLM POLICY RESET` (dopo il fix azzera TUTTO lo stato).
+        try { Basic.Providers.LlmModelNative.llmmodelio_policy_cmd("RESET", "", "", ""); }
+        catch { /* dylib non caricabile: si prosegue (le gambe C usano processi freschi) */ }
         // Scheduler/poller v2 e motore grafico sono STATICI di processo: tra una gamba e
         // l'altra si torna a TEXT (SCREEN n di un MiniTest lasciava la grafica ON e i
         // successivi PRINT/UserControl finivano sul buffer grafico non pompato → output vuoto).
