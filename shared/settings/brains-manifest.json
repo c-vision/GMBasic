@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "comment": "Cervelli ('Second Brain') distribuiti come asset di release. Un cervello NON sta in git: si scarica on demand con `AI BRAIN INSTALL` / `gmb brain install` (motore gmb_fetch: streaming + resume + sha256) e si installa in ~/.gmbasic/brains/<nome>/<versione>/. Ordine di ricerca a runtime: <progetto>/vendor/brains -> <exe>/vendor/brains -> <exe>/brains (brainsDir) -> ~/.gmbasic/brains. source: 'url' = download anonimo (asset pubblico); 'github-asset' = asset di release PRIVATO: richiede un token (gmb brain login --github) e SENZA token l'installazione e' RIFIUTATA (fail-closed). Per un asset privato si dichiarano repo+tag+asset (nome del file): l'URL API si risolve a ogni tentativo, perche' l'id dell'asset cambia se lo si ricarica. Chiunque puo' distribuire un cervello: basta pubblicare lo zip .gmbrain su una release e dichiararlo qui (o in un manifest proprio, vedi paths.brainsManifest).",
+  "comment": "Cervelli ('Second Brain') distribuiti come DATI. Ogni cervello è disponibile in una o due forme — rag/ (database vettoriale) e/o graphs/ (export JSON del knowledge graph) — e il pacchetto .gmbrain porta TUTTE le forme dichiarate in `modes`. Installazione: `AI BRAIN INSTALL` / `gmb brain install` → ~/.gmbasic/brains/<nome>/<versione>/{rag,graphs}/. Ordine di ricerca: <progetto>/vendor/brains -> <exe>/vendor/brains -> <exe>/brains -> cache; per i soli export costruiti in locale vale paths.graphsDir (~/.gmbasic/graphs). source 'url' = asset pubblico; 'github-asset' = release PRIVATA (c-vision/GMBasicBrains): serve un token (gmb brain login --github) e senza token l'installazione è RIFIUTATA (fail-closed). repo+tag+asset: l'URL API si risolve a ogni tentativo (l'id dell'asset cambia se lo si ricarica).",
   "schema": {
     "brains[].name": "nome del cervello (directory di installazione)",
     "brains[].description": "testo libero",
@@ -18,7 +18,7 @@
   "brains": [
     {
       "name": "brainvault",
-      "description": "RAG del vault del progetto: documentazione, note e decisioni. Repo PRIVATO (c-vision/GMBasicBrains): serve un token con accesso.",
+      "description": "RAG del vault del progetto: documentazione, note e decisioni (1,2 MB).",
       "latest": "1.0.0",
       "versions": [
         {
@@ -28,14 +28,17 @@
           "tag": "brains-v1",
           "asset": "brainvault-1.0.0.gmbrain.zip",
           "sha256": "e4bf7e1717dc5768cfc2e644ee685c1c8bc52c53b89eb85cba37f5ddf87262cc",
-          "size": 573998
+          "size": 573998,
+          "modes": [
+            "rag"
+          ]
         }
       ]
     },
     {
       "name": "airline",
-      "description": "RAG del dominio compagnie aeree (108 MB, db SQLite). Repo PRIVATO: serve un token.",
-      "latest": "1.0.0",
+      "description": "Dominio compagnie aeree: RAG (108 MB) + knowledge graph (83 MB).",
+      "latest": "1.1.0",
       "versions": [
         {
           "version": "1.0.0",
@@ -44,14 +47,30 @@
           "tag": "brains-v1",
           "asset": "airline-1.0.0.gmbrain.zip",
           "sha256": "fa88d9fb2fa3b643ceba4e60d3edac20d8bb12588e3ced156a9d82a4d4dc9b2c",
-          "size": 27744844
+          "size": 27744844,
+          "modes": [
+            "rag"
+          ]
+        },
+        {
+          "version": "1.1.0",
+          "source": "github-asset",
+          "repo": "c-vision/GMBasicBrains",
+          "tag": "brains-v2",
+          "asset": "airline-1.1.0.gmbrain.zip",
+          "sha256": "eb4e62bc72957c41718824b6d0c1f81a94ad63acd1b0714533210bb4c10931bd",
+          "size": 31385985,
+          "modes": [
+            "rag",
+            "graph"
+          ]
         }
       ]
     },
     {
       "name": "trading",
-      "description": "RAG del dominio trading (1,4 GB, db SQLite). Repo PRIVATO: serve un token. Download con streaming+resume (gmb_fetch).",
-      "latest": "1.0.0",
+      "description": "Dominio trading: RAG (1,4 GB) + knowledge graph (40 MB).",
+      "latest": "1.1.0",
       "versions": [
         {
           "version": "1.0.0",
@@ -60,7 +79,42 @@
           "tag": "brains-v1",
           "asset": "trading-1.0.0.gmbrain.zip",
           "sha256": "54154f3ce0dff4a2ca7140e8566fd2ff4891756dc8ea442bc4fcada0d5cf83df",
-          "size": 607497002
+          "size": 607497002,
+          "modes": [
+            "rag"
+          ]
+        },
+        {
+          "version": "1.1.0",
+          "source": "github-asset",
+          "repo": "c-vision/GMBasicBrains",
+          "tag": "brains-v2",
+          "asset": "trading-1.1.0.gmbrain.zip",
+          "sha256": "305981e3c60c7abc9fb51eca19f146bfc55ed324fa24fa638a56ae22769c4eaa",
+          "size": 611048838,
+          "modes": [
+            "rag",
+            "graph"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "finance",
+      "description": "Dominio finanza: knowledge graph (40 MB), senza RAG.",
+      "latest": "1.0.0",
+      "versions": [
+        {
+          "version": "1.0.0",
+          "source": "github-asset",
+          "repo": "c-vision/GMBasicBrains",
+          "tag": "brains-v2",
+          "asset": "finance-1.0.0.gmbrain.zip",
+          "sha256": "df49a784b76266458ecef3042dc025db74143466beb9d8fc24951922b94ca283",
+          "size": 3526319,
+          "modes": [
+            "graph"
+          ]
         }
       ]
     }
