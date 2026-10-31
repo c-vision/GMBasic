@@ -1,6 +1,6 @@
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │GMBASIC — Inventario comandi, funzioni, tipi e costanti                                                                                   │
-│Generato da gen_commands.py, fonte: recon-stdlib.json                                                                                     │
+│Generato da tools/basic/gen_commands.bas, fonte: recon-stdlib.md + command_desc.tsv                                                       │
 │Ordine per namespace: COMANDI → FUNZIONI → TIPI → COSTANTI (alfabetico).                                                                  │
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
@@ -60,17 +60,6 @@
 │BRAINVAULTBUILD             │x = AI.BRAINVAULTBUILD(outputDir)                                 │BrainVault (§2): AI.BRAINVAULTBUILD(output│
 │BRAINVAULTQUERY             │x = AI.BRAINVAULTQUERY(query [, topK])                            │-> STRING · arg query, topK:DOUBLE?       │
 │BRAINVAULTWRITE             │x = AI.BRAINVAULTWRITE(request [, topK])                          │-> STRING · arg request, topK:DOUBLE?     │
-│CONNECTORCALL               │x = AI.CONNECTORCALL(connector, tool, args)                       │-> STRING · arg connector:STRING          │
-│CONNECTORLIST               │x = AI.CONNECTORLIST()                                            │-> STRING                                 │
-│CONNECTORMARKETPLACEGET     │x = AI.CONNECTORMARKETPLACEGET(name)                              │-> STRING · arg name:STRING               │
-│CONNECTORMARKETPLACELIST    │x = AI.CONNECTORMARKETPLACELIST()                                 │-> STRING                                 │
-│CONNECTORPOLICYGET          │x = AI.CONNECTORPOLICYGET(connector, tool)                        │-> STRING · arg connector:STRING          │
-│CONNECTORPROMPTS            │x = AI.CONNECTORPROMPTS(name)                                     │-> STRING · arg name:STRING               │
-│CONNECTORRESOURCES          │x = AI.CONNECTORRESOURCES(name)                                   │-> STRING · arg name:STRING               │
-│CONNECTORSEARCH             │x = AI.CONNECTORSEARCH(capability)                                │-> STRING · arg capability:STRING         │
-│CONNECTORSECRETGET          │x = AI.CONNECTORSECRETGET(connector, key)                         │-> STRING · arg connector:STRING          │
-│CONNECTORSTATUS             │x = AI.CONNECTORSTATUS(name)                                      │-> STRING · arg name:STRING               │
-│CONNECTORTOOLS              │x = AI.CONNECTORTOOLS(name)                                       │-> STRING · arg name:STRING               │
 │CATEGORYAUTO                │x = AI.CATEGORYAUTO(flag)                                         │-> DOUBLE · arg flag:DOUBLE               │
 │CATEGORYFALLBACK            │x = AI.CATEGORYFALLBACK(category, provider)                       │-> DOUBLE · arg category, provider        │
 │CATEGORYLIST                │x = AI.CATEGORYLIST()                                             │-> STRING                                 │
@@ -84,6 +73,17 @@
 │CHECKPOINTCLEAR             │x = AI.CHECKPOINTCLEAR()                                          │-> DOUBLE                                 │
 │CHECKPOINTLIST              │x = AI.CHECKPOINTLIST()                                           │-> STRING                                 │
 │CONFIGURE                   │x = AI.CONFIGURE(name, key, value)                                │Configura un parametro di un provider.    │
+│CONNECTORCALL               │x = AI.CONNECTORCALL(connector, tool, args)                       │-> STRING · arg connector:STRING          │
+│CONNECTORLIST               │x = AI.CONNECTORLIST()                                            │-> STRING                                 │
+│CONNECTORMARKETPLACEGET     │x = AI.CONNECTORMARKETPLACEGET(name)                              │-> STRING · arg name:STRING               │
+│CONNECTORMARKETPLACELIST    │x = AI.CONNECTORMARKETPLACELIST()                                 │-> STRING                                 │
+│CONNECTORPOLICYGET          │x = AI.CONNECTORPOLICYGET(connector, tool)                        │-> STRING · arg connector:STRING          │
+│CONNECTORPROMPTS            │x = AI.CONNECTORPROMPTS(name)                                     │-> STRING · arg name:STRING               │
+│CONNECTORRESOURCES          │x = AI.CONNECTORRESOURCES(name)                                   │-> STRING · arg name:STRING               │
+│CONNECTORSEARCH             │x = AI.CONNECTORSEARCH(capability)                                │-> STRING · arg capability:STRING         │
+│CONNECTORSECRETGET          │x = AI.CONNECTORSECRETGET(connector, key)                         │-> STRING · arg connector:STRING          │
+│CONNECTORSTATUS             │x = AI.CONNECTORSTATUS(name)                                      │-> STRING · arg name:STRING               │
+│CONNECTORTOOLS              │x = AI.CONNECTORTOOLS(name)                                       │-> STRING · arg name:STRING               │
 │CONSISTENCY                 │x = AI.CONSISTENCY(prompt [, options])                            │AI.CONSISTENCY(prompt, opts) → risk 0..1  │
 │CONSISTENCYDETAIL           │x = AI.CONSISTENCYDETAIL()                                        │AI.CONSISTENCYDETAIL$() → JSON detail     │
 │CONTEXTBUDGET               │x = AI.CONTEXTBUDGET(agent)                                       │-> DOUBLE · arg agent                     │
@@ -144,7 +144,7 @@
 │INGESTWEB                   │x = AI.INGESTWEB(vault, url [, relPath])                          │-> STRING · arg vault, url, relPath?      │
 │KGADDEDGE                   │x = AI.KGADDEDGE(a, b)                                            │Arco a->b; crea i nodi se mancano (1).    │
 │KGADDNODE                   │x = AI.KGADDNODE(nome)                                            │Crea un nodo del grafo (idempotente; 1).  │
-│KGQUERY                     │q$ = AI.KGQUERY(nodo o "path a->b")                               │JSON: vicini/incidenti o cammino (no LLM).│
+│KGQUERY                     │q$ = AI.KGQUERY(nodo o ...)                                       │JSON: vicini/incidenti o cammino (no LLM).│
 │LEXICALENTROPY              │x = AI.LEXICALENTROPY(responses)                                  │AI.LEXICALENTROPY(responses$) → entropy   │
 │LINKDANGLING                │x = AI.LINKDANGLING(vault)                                        │-> LONG · arg vault                       │
 │LINKJSON                    │x = AI.LINKJSON(vault)                                            │-> STRING · arg vault                     │
@@ -177,13 +177,13 @@
 │NOTETITLE                   │x = AI.NOTETITLE(vault, path)                                     │-> STRING · arg vault, path               │
 │NOTEUNLINK                  │x = AI.NOTEUNLINK(vault, from, to)                                │-> LONG · arg vault, from, to             │
 │NOTEWORDCOUNT               │x = AI.NOTEWORDCOUNT(vault, path)                                 │-> LONG · arg vault, path                 │
-│OCR                         │x = AI.OCR(path [, model, redact])                                │OCR su immagine -> testo.                 │
 │OBSERVATION                 │x = AI.OBSERVATION(id)                                            │-> STRING · arg id                        │
 │OBSERVATIONCOUNT            │x = AI.OBSERVATIONCOUNT()                                         │-> DOUBLE                                 │
 │OBSERVATIONFILE             │x = AI.OBSERVATIONFILE(id)                                        │-> STRING · arg id                        │
 │OBSERVATIONHASH             │x = AI.OBSERVATIONHASH(id)                                        │-> STRING · arg id                        │
 │OBSERVATIONLATEST           │x = AI.OBSERVATIONLATEST()                                        │AI OBSERVE (P1 todo AI-Runtime            │
 │OBSERVATIONLIST             │x = AI.OBSERVATIONLIST()                                          │-> STRING                                 │
+│OCR                         │x = AI.OCR(path [, model, redact])                                │OCR su immagine -> testo.                 │
 │OPTION                      │x = AI.OPTION(name)                                               │-> STRING · arg name                      │
 │ORCHLOAD                    │x = AI.ORCHLOAD([, path])                                         │-> DOUBLE · arg path?                     │
 │ORCHSAVE                    │x = AI.ORCHSAVE([, path])                                         │Persistenza orchestrazione su disco       │
@@ -264,8 +264,8 @@
 │TEAMONSTREAM                │x = AI.TEAMONSTREAM(sub)                                          │-> DOUBLE · arg sub                       │
 │TEAMRECURSION               │x = AI.TEAMRECURSION(name)                                        │Round ricorsivi del team (r) -> LONG.     │
 │TEAMRUNSTART                │x = AI.TEAMRUNSTART(team, task)                                   │-> STRING · arg team, task                │
-│TEAMRUNWAIT                 │x = AI.TEAMRUNWAIT(handle)                                        │-> STRING · arg handle                    │
 │TEAMRUNTIMESTATS            │x = AI.TEAMRUNTIMESTATS(name)                                     │Metriche run per round -> STRING (JSON).  │
+│TEAMRUNWAIT                 │x = AI.TEAMRUNWAIT(handle)                                        │-> STRING · arg handle                    │
 │TEAMTRAINSTATUS             │x = AI.TEAMTRAINSTATUS(name)                                      │Restituisce STRING.                       │
 │TEST                        │x = AI.TEST(role, name)                                           │Testa la connessione a un provider.       │
 │TRANSCRIBE                  │x = AI.TRANSCRIBE(path)                                           │Trascrive l'audio -> STRING.              │
@@ -530,24 +530,29 @@
 │NOME                        │SINTASSI / ESEMPIO                                                │DESCRIZIONE                               │
 ├────────────────────────────┼──────────────────────────────────────────────────────────────────┼──────────────────────────────────────────┤
 │TYPE:AVLTREETYPE            │TYPE AVLTreeType                                                  │Campi: Count; metodi: Add, Clear, Min, Max│
-│TYPE:BPLUSTREETYPE          │TYPE BPlusTreeType                                                │Campi: Count; metodi: Add, Clear, Min, Max│
 │TYPE:BAGTYPE                │TYPE BagType                                                      │Campi: Count, UniqueCount, UniqueItems    │
 │TYPE:BINARYHEAPTYPE         │TYPE BinaryHeapType                                               │Campi: Count; metodi: Add, Clear, Extract │
 │TYPE:BINARYINDEXEDTREETYPE  │TYPE BinaryIndexedTreeType                                        │metodi: Update, Query, QueryRange         │
+│TYPE:BITREE                 │TYPE BITREE                                                       │Tipo BITREE.                              │
+│TYPE:BPLUSTREETYPE          │TYPE BPlusTreeType                                                │Campi: Count; metodi: Add, Clear, Min, Max│
 │TYPE:CACHETYPE              │TYPE CacheType                                                    │Campi: Count, Keys, Values; metodi: Set   │
+│TYPE:CIRCULAR               │TYPE CIRCULAR                                                     │Tipo CIRCULAR.                            │
 │TYPE:CIRCULARLINKEDLISTTYPE │TYPE CircularLinkedListType                                       │Campi: Count, Current; metodi: Add        │
 │TYPE:DICTTYPE               │TYPE DictType                                                     │Campi: Count, Keys, Values; metodi: Add   │
 │TYPE:DOUBLYLINKEDLISTTYPE   │TYPE DoublyLinkedListType                                         │Campi: Count, First, Last; metodi         │
 │TYPE:GRAPHTYPE              │TYPE GraphType                                                    │Campi: NodeCount, Count; metodi: AddNode  │
 │TYPE:HASHRINGTYPE           │TYPE HashRingType                                                 │Campi: Count; metodi: AddNode, RemoveNode │
 │TYPE:HASHSETTYPE            │TYPE HashSetType                                                  │Campi: Count; metodi: Union, Intersect    │
+│TYPE:HEAP                   │TYPE HEAP                                                         │Tipo HEAP.                                │
 │TYPE:KEYVALUEPAIRTYPE       │TYPE KeyValuePairType                                             │Campi: Key, Value                         │
-│TYPE:LIST                   │TYPE LIST                                                         │Campi: Count; metodi: Add, Insert         │
 │TYPE:LINKEDLISTTYPE         │TYPE LinkedListType                                               │Campi: Count, First, Last; metodi         │
 │TYPE:LISTTYPE               │TYPE ListType                                                     │Campi: Count; metodi: Add, Insert         │
+│TYPE:MAXHEAP                │TYPE MAXHEAP                                                      │Tipo MAXHEAP.                             │
 │TYPE:QUEUETYPE              │TYPE QueueType                                                    │Campi: Count; metodi: Enqueue, Clear      │
+│TYPE:REDBLACK               │TYPE REDBLACK                                                     │Tipo REDBLACK.                            │
 │TYPE:REDBLACKTREETYPE       │TYPE RedBlackTreeType                                             │Campi: Count; metodi: Add, Clear, Min, Max│
 │TYPE:RINGBUFFERTYPE         │TYPE RingBufferType                                               │Campi: Count, Capacity; metodi: Enqueue   │
+│TYPE:SORTED                 │TYPE SORTED                                                       │Tipo SORTED.                              │
 │TYPE:SORTEDDICTTYPE         │TYPE SortedDictType                                               │Campi: Count, Keys, Values; metodi: Add   │
 │TYPE:SPARSESETTYPE          │TYPE SparseSetType                                                │Campi: Count, Capacity; metodi: Add       │
 │TYPE:STACKTYPE              │TYPE StackType                                                    │Campi: Count; metodi: Push, Clear, Pop    │
@@ -622,8 +627,10 @@
 │SLEEP                       │SLEEP 100                                                         │Sospende esecuzione (ms).                 │
 │WAIT                        │WAIT wg                                                           │Attende WaitGroup.                        │
 │SLEEPASYNC                  │x = CONCURRENCY.SLEEPASYNC(a1)                                    │Pausa asincrona.                          │
-│TRYLOCK                     │x = CONCURRENCY.TRYLOCK(mu)                                       │MUTEX.TRYLOCK(mu) → BIT (parità Go        │
 │TASKYIELD                   │x = CONCURRENCY.TASKYIELD()                                       │Cede l'esecuzione.                        │
+│TRYLOCK                     │x = CONCURRENCY.TRYLOCK(mu)                                       │MUTEX.TRYLOCK(mu) → BIT (parità Go        │
+│TYPE:CHANNEL                │TYPE CHANNEL                                                      │Tipo CHANNEL.                             │
+│TYPE:ONCE                   │TYPE ONCE                                                         │Tipo ONCE.                                │
 │TYPE:WAITGROUP              │TYPE WAITGROUP                                                    │Handle di attesa multipla (GO SUB/FUNCTION│
 └────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
 
@@ -1098,6 +1105,7 @@
 │CDOW                        │x = DATETIME.CDOW(date)                                           │Nome giorno della settimana -> STRING.    │
 │CMONTH                      │x = DATETIME.CMONTH(date)                                         │Nome del mese -> STRING.                  │
 │CTOD                        │x = DATETIME.CTOD(dateString)                                     │Stringa in data -> DATE.                  │
+│DATE                        │x = DATETIME.DATE()                                               │Data corrente -> DATE.                    │
 │DATEADD                     │x = DATETIME.DATEADD(interval, number, dateValue)                 │Aggiunge giorni a una data -> DATE.       │
 │DATEDIFF                    │x = DATETIME.DATEDIFF(interval, date1, date2)                     │Differenza tra date -> LONG.              │
 │DATEFROMUNIX                │x = DATETIME.DATEFROMUNIX(unixTimestamp)                          │Data da timestamp unix -> DATE.           │
@@ -1108,7 +1116,6 @@
 │DOW                         │x = DATETIME.DOW(date)                                            │Giorno della settimana (1-7) -> LONG.     │
 │DTOC                        │x = DATETIME.DTOC(date)                                           │Data in stringa -> STRING.                │
 │DTOS                        │x = DATETIME.DTOS(dateValue)                                      │Data in formato AAAAMMGG -> STRING.       │
-│DATE                        │x = DATETIME.DATE()                                               │Data corrente -> DATE.                    │
 │EOMONTH                     │x = DATETIME.EOMONTH(startDate [, monthsToAdd])                   │Ultimo giorno del mese -> DATE.           │
 │FIRSTDAYOFMONTH             │x = DATETIME.FIRSTDAYOFMONTH(dateValue)                           │Primo giorno del mese -> DATE.            │
 │HOUR                        │x = DATETIME.HOUR(timeValue)                                      │Ora -> LONG.                              │
@@ -1125,9 +1132,9 @@
 │STRTI                       │x = DATETIME.STRTI()                                              │Tick in stringa -> STRING.                │
 │STRTIME                     │x = DATETIME.STRTIME()                                            │Ora formattata -> STRING.                 │
 │TI                          │x = DATETIME.TI()                                                 │Tick del timer -> LONG.                   │
+│TIME                        │x = DATETIME.TIME()                                               │Ora corrente -> TIME.                     │
 │TIMESERIAL                  │x = DATETIME.TIMESERIAL(hour, minute, second)                     │Ora da h/m/s -> TIME.                     │
 │TODAY                       │x = DATETIME.TODAY()                                              │Data odierna.                             │
-│TIME                        │x = DATETIME.TIME()                                               │Ora corrente -> TIME.                     │
 │UNIXTIMESTAMP               │x = DATETIME.UNIXTIMESTAMP(dateValue)                             │Timestamp unix -> LONG.                   │
 │WEEKDAY                     │x = DATETIME.WEEKDAY(dateValue)                                   │Giorno della settimana -> LONG.           │
 │YEAR                        │x = DATETIME.YEAR(dateValue)                                      │Anno -> LONG.                             │
@@ -1292,9 +1299,10 @@
 │SCREENS                     │x = GRAPHICS.SCREENS()                                            │Schermi disponibili -> ARRAY.             │
 │TEXTHEIGHT                  │x = GRAPHICS.TEXTHEIGHT()                                         │Altezza del testo -> LONG.                │
 │TEXTWIDTH                   │x = GRAPHICS.TEXTWIDTH(text)                                      │Larghezza del testo -> LONG.              │
-│TYPE:DISPLAYMODE            │TYPE DISPLAYMODE                                                  │Campi: ModeID, Width, Height, Bpp (+3)    │
 │TYPE:DISPLAYMODETYPE        │TYPE DisplayModeType                                              │Campi: ModeID, Width, Height, Bpp (+3)    │
+│TYPE:RGBA                   │TYPE RGBA                                                         │Tipo RGBA.                                │
 │TYPE:RGBACOLORTYPE          │TYPE RgbaColorType                                                │Campi: Red, Green, Blue, Alpha            │
+│TYPE:SPRITEINFO             │TYPE SPRITEINFO                                                   │Tipo SPRITEINFO.                          │
 └────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -1315,9 +1323,9 @@
 │CONFIG                      │HTTP CONFIG myConfigObject                                        │Applica una config al server HTTP.        │
 │FETCH                       │x = HTTP.FETCH(url, options)                                      │Esegue una richiesta HTTP -> STRING.      │
 │ROUTE                       │HTTP ROUTE "GET", "/api/users", GetUsersHandler()                 │Registra un endpoint su metodo e percorso.│
-│SERVER                      │HTTP SERVER 8080, MainHandler() | HTTP SERVER STOP                │Avvia o ferma il server HTTP (handler     │
+│SERVER                      │HTTP SERVER 8080, MainHandler() | HTTP SERVER STOP                │Avvia o ferma il server HTTP (handler fall│
 │STATIC                      │HTTP STATIC "/static", "./public"                                 │Serve file statici da una cartella su un  │
-│USE                         │HTTP USE ["/api",] MiddlewareHandler()                            │Registra un middleware (opzionale su un   │
+│USE                         │HTTP USE ["/api",] MiddlewareHandler()                            │Registra un middleware (opzionale su un pe│
 │DELETE                      │x = HTTP.DELETE(url)                                              │Richiesta DELETE HTTP -> STRING.          │
 │DETECTCONTENTTYPE           │x = HTTP.DETECTCONTENTTYPE(data)                                  │-> STRING · arg data:INFERRED             │
 │FETCH                       │x = HTTP.FETCH(url, options)                                      │Esegue una richiesta HTTP -> STRING.      │
@@ -1336,6 +1344,7 @@
 │TYPE:HTTPPOSTEDDATATYPE     │TYPE HttpPostedDataType                                           │Campi: FormFields, FileFields             │
 │TYPE:HTTPREQUESTTYPE        │TYPE HttpRequestType                                              │Campi: Method, Path, QueryString, Body    │
 │TYPE:HTTPRESPONSETYPE       │TYPE HttpResponseType                                             │Campi: StatusCode, ContentType, Headers   │
+│TYPE:NEXTHANDLER            │TYPE NextHandler                                                  │Tipo NextHandler.                         │
 │TYPE:WEBSOCKETTYPE          │TYPE WebSocketType                                                │Campi: OnMessage, OnClose, OnError        │
 └────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
 
@@ -1379,15 +1388,17 @@
 │FCLOSE                      │x = IO.FCLOSE(handle)                                             │Chiude un file.                           │
 │FCREATE                     │x = IO.FCREATE(fileName)                                          │Crea un file -> LONG.                     │
 │FERROR                      │x = IO.FERROR()                                                   │Errore del file -> LONG.                  │
+│FILEEXISTS                  │x = IO.FILEEXISTS(path)                                           │Il file esiste? -> BIT.                   │
 │FINPUT                      │x = IO.FINPUT(charCount, fileNumber)                              │Legge una riga dal file -> STRING.        │
+│FOLDERSIZE                  │x = IO.FOLDERSIZE(path)                                           │Dimensione della cartella -> LONG.        │
 │FOPEN                       │x = IO.FOPEN(fileName)                                            │Apre un file -> LONG.                     │
 │FREAD                       │x = IO.FREAD(handle, count)                                       │Legge byte dal file -> ARRAY.             │
+│FREEFILE                    │x = IO.FREEFILE()                                                 │Prossimo numero di file libero -> LONG.   │
 │FSEEK                       │x = IO.FSEEK(handle, position)                                    │Posiziona il puntatore del file.          │
 │FWRITE                      │x = IO.FWRITE(handle, data)                                       │Scrive nel file -> LONG.                  │
-│FILEEXISTS                  │x = IO.FILEEXISTS(path)                                           │Il file esiste? -> BIT.                   │
-│FOLDERSIZE                  │x = IO.FOLDERSIZE(path)                                           │Dimensione della cartella -> LONG.        │
-│FREEFILE                    │x = IO.FREEFILE()                                                 │Prossimo numero di file libero -> LONG.   │
 │GETFOLDERPATH               │x = IO.GETFOLDERPATH(folder [, maxDepth])                         │Cerca cartella per nome (su/giu) -> STRING│
+│GETTEMPDIR                  │x = IO.GETTEMPDIR()                                               │Funzione IO.GETTEMPDIR.                   │
+│GETTEMPFILE                 │x = IO.GETTEMPFILE()                                              │Funzione IO.GETTEMPFILE.                  │
 │LOF                         │x = IO.LOF(fileNumber)                                            │Lunghezza del file -> LONG.               │
 │MEMORYMAP                   │IO MEMORYMAP                                                      │Mappa un file in memoria -> LONG.         │
 │MMAPPEEK                    │x = MEMORYMAP.MMAPPEEK(handle, offset)                            │Legge un byte mappato; nome reale         │
@@ -1507,6 +1518,7 @@
 ├────────────────────────────┬──────────────────────────────────────────────────────────────────┬──────────────────────────────────────────┤
 │NOME                        │SINTASSI / ESEMPIO                                                │DESCRIZIONE                               │
 ├────────────────────────────┼──────────────────────────────────────────────────────────────────┼──────────────────────────────────────────┤
+│ARCH                        │x = LLM.ARCH()                                                    │Funzione LLM.ARCH.                        │
 │BENCHRESULT                 │x = LLM.BENCHRESULT(agent)                                        │-> STRING · arg agent                     │
 │CACHESTATS                  │x = LLM.CACHESTATS(agent)                                         │Statistiche motore/serving                │
 │CALLMAP                     │x = LLM.CALLMAP(name)                                             │-> STRING · arg name                      │
@@ -1515,6 +1527,7 @@
 │CONTEXT                     │x = LLM.CONTEXT(name [, depth])                                   │-> STRING · arg name, depth?              │
 │DATASETSTATS                │x = LLM.DATASETSTATS(path)                                        │-> STRING · arg path                      │
 │DECODESTATS                 │x = LLM.DECODESTATS(agent)                                        │-> STRING · arg agent                     │
+│DETOKENIZE                  │x = LLM.DETOKENIZE()                                              │Funzione LLM.DETOKENIZE.                  │
 │DISTILLCKPT                 │x = LLM.DISTILLCKPT()                                             │-> STRING                                 │
 │DISTILLDONE                 │x = LLM.DISTILLDONE()                                             │-> DOUBLE                                 │
 │DISTILLEVALACCEPT           │x = LLM.DISTILLEVALACCEPT(idx)                                    │-> DOUBLE · arg idx                       │
@@ -1541,21 +1554,27 @@
 │FINETUNESTATUS              │x = LLM.FINETUNESTATUS()                                          │-> STRING                                 │
 │IMPACT                      │x = LLM.IMPACT(name [, depth])                                    │-> STRING · arg name, depth?              │
 │INSPECT                     │x = LLM.INSPECT(name)                                             │-> STRING · arg name                      │
+│KERNEL                      │x = LLM.KERNEL()                                                  │Funzione LLM.KERNEL.                      │
+│KV                          │x = LLM.KV()                                                      │Funzione LLM.KV.                          │
 │LORALIST                    │x = LLM.LORALIST()                                                │-> STRING                                 │
 │LORALOAD                    │x = LLM.LORALOAD(adapter, out)                                    │-> LONG · arg adapter, out                │
 │LORASAVE                    │x = LLM.LORASAVE(ckpt, out)                                       │-> LONG · arg ckpt, out                   │
+│MODULE                      │x = LLM.MODULE()                                                  │Funzione LLM.MODULE.                      │
 │PATCH                       │x = LLM.PATCH(target)                                             │-> STRING · arg target                    │
+│POLICY                      │x = LLM.POLICY()                                                  │Funzione LLM.POLICY.                      │
 │PREFILLSTATS                │x = LLM.PREFILLSTATS(agent)                                       │-> STRING · arg agent                     │
 │REPOMAP                     │x = LLM.REPOMAP()                                                 │-> STRING                                 │
 │REVISION                    │x = LLM.REVISION()                                                │-> STRING                                 │
-│RUNSTOP                     │x = LLM.RUNSTOP(id)                                               │-> LONG · arg id                          │
 │RUNSCLEAR                   │x = LLM.RUNSCLEAR()                                               │-> LONG                                   │
 │RUNSCOUNT                   │x = LLM.RUNSCOUNT()                                               │-> LONG                                   │
 │RUNSITEM                    │x = LLM.RUNSITEM(id)                                              │-> STRING · arg id                        │
 │RUNSJSON                    │x = LLM.RUNSJSON()                                                │Registro run training/apply (superficie   │
+│RUNSTOP                     │x = LLM.RUNSTOP(id)                                               │-> LONG · arg id                          │
 │STREAMSTATS                 │x = LLM.STREAMSTATS(model)                                        │-> STRING · arg model                     │
 │SYMBOL                      │x = LLM.SYMBOL(name)                                              │(C# common/SemanticGraph; C gmb_semgraph) │
+│TENSOR                      │x = LLM.TENSOR()                                                  │Funzione LLM.TENSOR.                      │
 │TOKENCOUNT                  │x = LLM.TOKENCOUNT(model, text)                                   │B2 — LLM.TOKENCOUNT(model, testo): numero │
+│TOKENS                      │x = LLM.TOKENS()                                                  │Funzione LLM.TOKENS.                      │
 │TRAINCONFIG                 │x = LLM.TRAINCONFIG()                                             │-> STRING                                 │
 │TRAINCONFIGSET              │x = LLM.TRAINCONFIGSET(key, value)                                │-> STRING · arg key, value                │
 │TRAINEXPORT                 │x = LLM.TRAINEXPORT(out [, run])                                  │-> LONG · arg out, run?                   │
@@ -1573,11 +1592,11 @@
 │ASIN                        │x = MATH.ASIN(value)                                              │Arcoseno -> DOUBLE.                       │
 │ATN                         │x = MATH.ATN(value, x)                                            │Arcotangente -> DOUBLE.                   │
 │AVG                         │x = MATH.AVG()                                                    │Media -> DOUBLE.                          │
-│COSH                        │x = MATH.COSH(value)                                              │Coseno iperbolico -> DOUBLE.              │
 │CEILING                     │x = MATH.CEILING(value)                                           │Arrotonda per eccesso -> DOUBLE.          │
 │CLAMP                       │x = MATH.CLAMP(value, min, max)                                   │Limita il valore in [min,max] -> DOUBLE.  │
 │COMB                        │x = MATH.COMB(n, k)                                               │Combinazioni -> LONG.                     │
 │COS                         │x = MATH.COS(angleRadians)                                        │Coseno -> DOUBLE.                         │
+│COSH                        │x = MATH.COSH(value)                                              │Coseno iperbolico -> DOUBLE.              │
 │DEG2RAD                     │x = MATH.DEG2RAD(degrees)                                         │Converte gradi in radianti -> DOUBLE.     │
 │DIST2D                      │x = MATH.DIST2D(x1, y1, x2, y2)                                   │Distanza 2D -> DOUBLE.                    │
 │DIST3D                      │x = MATH.DIST3D(x1, y1, z1, x2, y2, z2)                           │Distanza 3D -> DOUBLE.                    │
@@ -1592,22 +1611,22 @@
 │LOG10                       │x = MATH.LOG10(value)                                             │Logaritmo in base 10 -> DOUBLE.           │
 │MAX                         │x = MATH.MAX()                                                    │Massimo -> DOUBLE.                        │
 │MIN                         │x = MATH.MIN()                                                    │Minimo -> DOUBLE.                         │
-│POLAR_X                     │x = MATH.POLAR_X(angleRadians, radius)                            │Coordinata X polare -> DOUBLE.            │
-│POLAR_Y                     │x = MATH.POLAR_Y(angleRadians, radius)                            │Coordinata Y polare -> DOUBLE.            │
 │PERM                        │x = MATH.PERM(n, k)                                               │Permutazioni -> LONG.                     │
 │PI                          │x = MATH.PI()                                                     │Costante pi greco -> DOUBLE.              │
+│POLAR_X                     │x = MATH.POLAR_X(angleRadians, radius)                            │Coordinata X polare -> DOUBLE.            │
+│POLAR_Y                     │x = MATH.POLAR_Y(angleRadians, radius)                            │Coordinata Y polare -> DOUBLE.            │
 │PYTHAGORAS                  │x = MATH.PYTHAGORAS(a, b)                                         │Teorema di Pitagora -> DOUBLE.            │
 │RAD2DEG                     │x = MATH.RAD2DEG(radians)                                         │Converte radianti in gradi -> DOUBLE.     │
 │RANGE                       │x = MATH.RANGE()                                                  │Intervallo (max-min) -> DOUBLE.           │
 │RND                         │x = MATH.RND(range)                                               │Numero casuale in [0,1) -> DOUBLE.        │
 │ROUND                       │x = MATH.ROUND(value, decimals)                                   │Arrotonda -> DOUBLE.                      │
-│SINH                        │x = MATH.SINH(value)                                              │Seno iperbolico -> DOUBLE.                │
 │SGN                         │x = MATH.SGN(value)                                               │Segno (-1/0/1) -> LONG.                   │
 │SIN                         │x = MATH.SIN(angleRadians)                                        │Seno -> DOUBLE.                           │
+│SINH                        │x = MATH.SINH(value)                                              │Seno iperbolico -> DOUBLE.                │
 │SQR                         │x = MATH.SQR(value)                                               │Radice quadrata -> DOUBLE.                │
 │SUM                         │x = MATH.SUM()                                                    │Somma degli elementi -> DOUBLE.           │
-│TANH                        │x = MATH.TANH(value)                                              │Tangente iperbolica -> DOUBLE.            │
 │TAN                         │x = MATH.TAN(angleRadians)                                        │Tangente -> DOUBLE.                       │
+│TANH                        │x = MATH.TANH(value)                                              │Tangente iperbolica -> DOUBLE.            │
 │TRUNC                       │x = MATH.TRUNC(value, decimals)                                   │Tronca i decimali -> DOUBLE.              │
 └────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
 
@@ -1701,6 +1720,11 @@
 │TOEPLITZ                    │x = MATRIX.TOEPLITZ(a1, a2)                                       │Matrice di Toeplitz                       │
 │TRACE                       │x = MATRIX.TRACE(handle)                                          │Traccia -> DOUBLE.                        │
 │TRANSPOSE                   │x = MATRIX.TRANSPOSE(handle)                                      │Trasposta -> LONG.                        │
+│TYPE:CHOLESKYDECOMPOSITION  │TYPE CholeskyDecomposition                                        │Tipo CholeskyDecomposition.               │
+│TYPE:EVDDECOMPOSITION       │TYPE EvdDecomposition                                             │Tipo EvdDecomposition.                    │
+│TYPE:LUDECOMPOSITION        │TYPE LuDecomposition                                              │Tipo LuDecomposition.                     │
+│TYPE:QRDECOMPOSITION        │TYPE QrDecomposition                                              │Tipo QrDecomposition.                     │
+│TYPE:SVDDECOMPOSITION       │TYPE SvdDecomposition                                             │Tipo SvdDecomposition.                    │
 └────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -1721,6 +1745,7 @@
 │NOME                        │SINTASSI / ESEMPIO                                                │DESCRIZIONE                               │
 ├────────────────────────────┼──────────────────────────────────────────────────────────────────┼──────────────────────────────────────────┤
 │MESSAGE                     │MESSAGE MESSAGE                                                   │messaging generico (bus) + evento ON      │
+│DELIVERY                    │x = MESSAGE.DELIVERY()                                            │Funzione MESSAGE.DELIVERY.                │
 └────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -1776,8 +1801,8 @@
 │BFGS                        │x = OPTIMIZE.BFGS(a1, a2)                                         │Ottimizzazione BFGS -> ARRAY.             │
 │BISECTION                   │x = OPTIMIZE.BISECTION(a1, a2, a3)                                │Radice con bisezione -> DOUBLE.           │
 │BRENT                       │x = OPTIMIZE.BRENT(a1, a2, a3)                                    │Minimo/radice con Brent -> DOUBLE.        │
-│BRENTMIN                    │x = OPTIMIZE.BRENTMIN(a1, a2, a3)                                 │Minimo con Brent -> DOUBLE.               │
 │BRENTH                      │x = OPTIMIZE.BRENTH(a1, a2, a3)                                   │Radice con Brent (hyperbolic) -> DOUBLE.  │
+│BRENTMIN                    │x = OPTIMIZE.BRENTMIN(a1, a2, a3)                                 │Minimo con Brent -> DOUBLE.               │
 │BRENTQ                      │x = OPTIMIZE.BRENTQ(a1, a2, a3)                                   │Radice con Brent (bracket) -> DOUBLE.     │
 │BROYDEN                     │x = OPTIMIZE.BROYDEN(a1, a2)                                      │Radice con Broyden -> ARRAY.              │
 │BRUTE                       │x = OPTIMIZE.BRUTE(a1, a2, ...)                                   │Ricerca a forza bruta -> ARRAY.           │
@@ -1969,9 +1994,9 @@
 │EXPONENTIALPPF              │x = STATS.EXPONENTIALPPF(a1, a2)                                  │Quantile esponenziale -> DOUBLE.          │
 │FCDF                        │x = STATS.FCDF(a1, a2, a3)                                        │CDF F -> DOUBLE.                          │
 │FISF                        │x = STATS.FISF(a1, a2, a3)                                        │Survival function F -> DOUBLE.            │
+│FISHER                      │x = STATS.FISHER(a, b, c, d)                                      │Test esatto di Fisher.                    │
 │FPDF                        │x = STATS.FPDF(a1, a2, a3)                                        │Densita' F -> DOUBLE.                     │
 │FPPF                        │x = STATS.FPPF(a1, a2, a3)                                        │Quantile F -> DOUBLE.                     │
-│FISHER                      │x = STATS.FISHER(a, b, c, d)                                      │Test esatto di Fisher.                    │
 │GAMMACDF                    │x = STATS.GAMMACDF(shape, scale, x)                               │CDF gamma -> DOUBLE.                      │
 │GAMMAISF                    │x = STATS.GAMMAISF(shape, scale, p)                               │Survival function gamma -> DOUBLE.        │
 │GAMMAPDF                    │x = STATS.GAMMAPDF(shape, scale, x)                               │Densita' gamma -> DOUBLE.                 │
@@ -2007,20 +2032,20 @@
 │PERCENTILE                  │x = STATS.PERCENTILE(a1, a2)                                      │Percentile -> DOUBLE.                     │
 │POISSONPMF                  │x = STATS.POISSONPMF(a1, a2)                                      │PMF Poisson -> DOUBLE.                    │
 │SHAPIRO                     │x = STATS.SHAPIRO(a1)                                             │Test di normalita' di Shapiro-Wilk.       │
-│SKEWTEST                    │x = STATS.SKEWTEST(a1)                                            │Test di asimmetria.                       │
 │SKEWEDNORMALPDF             │x = STATS.SKEWEDNORMALPDF(a1, ...)                                │Densita' normale asimmetrica -> DOUBLE.   │
 │SKEWNESS                    │x = STATS.SKEWNESS(a1)                                            │Asimmetria -> DOUBLE.                     │
+│SKEWTEST                    │x = STATS.SKEWTEST(a1)                                            │Test di asimmetria.                       │
 │SPEARMANR                   │x = STATS.SPEARMANR(a1, a2)                                       │Correlazione di Spearman.                 │
 │STDDEV                      │x = STATS.STDDEV(a1)                                              │Deviazione standard -> DOUBLE.            │
 │STUDENTTCDF                 │x = STATS.STUDENTTCDF(a1, a2)                                     │CDF t di Student -> DOUBLE.               │
 │STUDENTTISF                 │x = STATS.STUDENTTISF(a1, a2)                                     │Survival function t di Student -> DOUBLE. │
 │STUDENTTPDF                 │x = STATS.STUDENTTPDF(a1, a2)                                     │Densita' t di Student -> DOUBLE.          │
 │STUDENTTPPF                 │x = STATS.STUDENTTPPF(a1, a2)                                     │Quantile t di Student -> DOUBLE.          │
+│TRIANGULARPDF               │x = STATS.TRIANGULARPDF(a1, ...)                                  │Densita' triangolare -> DOUBLE.           │
+│TRIANGULARPPF               │x = STATS.TRIANGULARPPF(a1, ...)                                  │Quantile triangolare -> DOUBLE.           │
 │TTEST                       │x = STATS.TTEST(a1, a2)                                           │T-test su due campioni.                   │
 │TTESTONESAMPLE              │x = STATS.TTESTONESAMPLE(a1, a2)                                  │T-test a un campione.                     │
 │TTESTPAIRED                 │x = STATS.TTESTPAIRED(a1, a2)                                     │T-test appaiato.                          │
-│TRIANGULARPDF               │x = STATS.TRIANGULARPDF(a1, ...)                                  │Densita' triangolare -> DOUBLE.           │
-│TRIANGULARPPF               │x = STATS.TRIANGULARPPF(a1, ...)                                  │Quantile triangolare -> DOUBLE.           │
 │UNIFORMPDF                  │x = STATS.UNIFORMPDF(a1, ...)                                     │Densita' uniforme -> DOUBLE.              │
 │UNIFORMPPF                  │x = STATS.UNIFORMPPF(a1, ...)                                     │Quantile uniforme -> DOUBLE.              │
 │VARIANCE                    │x = STATS.VARIANCE(a1)                                            │Varianza -> DOUBLE.                       │
@@ -2044,31 +2069,32 @@
 │ENDSWITH                    │x = STRINGS.ENDSWITH(source, suffix)                              │Finisce con? -> BIT.                      │
 │FORMAT                      │x = STRINGS.FORMAT(source, formatString)                          │Formatta secondo uno schema -> STRING.    │
 │HTMLENCODE                  │x = STRINGS.HTMLENCODE(source)                                    │--- Security encoding (2026-09-02, ADR    │
+│INSTR                       │x = STRINGS.INSTR(haystack, needle, start)                        │Posizione di una sottostringa -> LONG.    │
 │ISCREDITCARD                │x = STRINGS.ISCREDITCARD(value)                                   │-> BIT · arg value:STRING                 │
 │ISEMAIL                     │x = STRINGS.ISEMAIL(value)                                        │-> BIT · arg value:STRING                 │
 │ISLENGTH                    │x = STRINGS.ISLENGTH(value, minLength, maxLength)                 │-> BIT · arg value:STRING, minLength:LONG │
 │ISREQUIRED                  │x = STRINGS.ISREQUIRED(value)                                     │--- Validation (2026-09-02): core         │
 │ISURL                       │x = STRINGS.ISURL(value)                                          │-> BIT · arg value:STRING                 │
-│INSTR                       │x = STRINGS.INSTR(haystack, needle, start)                        │Posizione di una sottostringa -> LONG.    │
-│JSENCODE                    │x = STRINGS.JSENCODE(source)                                      │-> STRING · arg source:STRING             │
 │JOIN                        │x = STRINGS.JOIN(a1, a2)                                          │Unisce un array -> STRING.                │
+│JSENCODE                    │x = STRINGS.JSENCODE(source)                                      │-> STRING · arg source:STRING             │
 │KEBAB                       │x = STRINGS.KEBAB(source)                                         │Converte in kebab-case -> STRING.         │
-│LTRIM                       │x = STRINGS.LTRIM(source)                                         │Rimuove spazi a sinistra -> STRING.       │
+│LCASE                       │x = STRINGS.LCASE()                                               │Funzione STRINGS.LCASE.                   │
 │LEFT                        │x = STRINGS.LEFT(source, length)                                  │Primi n caratteri -> STRING.              │
 │LEN                         │x = STRINGS.LEN(source)                                           │Lunghezza -> LONG.                        │
 │LOWER                       │x = STRINGS.LOWER(source)                                         │Minuscole -> STRING.                      │
+│LTRIM                       │x = STRINGS.LTRIM(source)                                         │Rimuove spazi a sinistra -> STRING.       │
 │MID                         │x = STRINGS.MID(source, start, length)                            │Sottostringa da posizione -> STRING.      │
 │PADC                        │x = STRINGS.PADC(source, length, padChar)                         │Centra -> STRING.                         │
 │PADL                        │x = STRINGS.PADL(source, length, padChar)                         │Allinea a sinistra -> STRING.             │
 │PADR                        │x = STRINGS.PADR(source, length, padChar)                         │Allinea a destra -> STRING.               │
 │PASCAL                      │x = STRINGS.PASCAL(source)                                        │Converte in PascalCase -> STRING.         │
 │PETSCII                     │x = STRINGS.PETSCII(source)                                       │Converte in PETSCII -> STRING.            │
-│RTRIM                       │x = STRINGS.RTRIM(source)                                         │Rimuove spazi a destra -> STRING.         │
 │REMOVE                      │x = STRINGS.REMOVE(source, substringToRemove)                     │Rimuove una sottostringa -> STRING.       │
 │REPEAT                      │x = STRINGS.REPEAT(source, count, separator)                      │Ripete la stringa -> STRING.              │
 │REPLACE                     │x = STRINGS.REPLACE(source, oldValue, newValue)                   │Sostituisce occorrenze -> STRING.         │
 │REVERSE                     │x = STRINGS.REVERSE(source)                                       │Inverte la stringa -> STRING.             │
 │RIGHT                       │x = STRINGS.RIGHT(source, length)                                 │Ultimi n caratteri -> STRING.             │
+│RTRIM                       │x = STRINGS.RTRIM(source)                                         │Rimuove spazi a destra -> STRING.         │
 │SEARCH                      │x = STRINGS.SEARCH(source, pattern)                               │Cerca una sottostringa -> LONG.           │
 │SENTENCE                    │x = STRINGS.SENTENCE(source)                                      │Prima lettera maiuscola -> STRING.        │
 │SNAKE                       │x = STRINGS.SNAKE(source)                                         │Converte in snake_case -> STRING.         │
@@ -2078,12 +2104,12 @@
 │STR                         │x = STRINGS.STR(number)                                           │Converte numero in stringa -> STRING.     │
 │TITLE                       │x = STRINGS.TITLE(source)                                         │Prima lettera maiuscola per parola -> STRI│
 │TRIM                        │x = STRINGS.TRIM(source)                                          │Rimuove spazi ai lati -> STRING.          │
-│URLENCODE                   │x = STRINGS.URLENCODE(source)                                     │-> STRING · arg source:STRING             │
+│UCASE                       │x = STRINGS.UCASE()                                               │Funzione STRINGS.UCASE.                   │
 │UPPER                       │x = STRINGS.UPPER(source)                                         │Maiuscole -> STRING.                      │
+│URLENCODE                   │x = STRINGS.URLENCODE(source)                                     │-> STRING · arg source:STRING             │
 │WRAP                        │x = STRINGS.WRAP(source, lineLength, alignment)                   │Spezza su larghezza -> ARRAY.             │
 │TYPE:REGEXMATCHTYPE         │TYPE RegexMatchType                                               │Campi: Value, Index, Length, Success      │
 │TYPE:REGEXTYPE              │TYPE RegexType                                                    │Campi: Pattern; metodi: IsMatch, Match    │
-│TYPE:STRINGBUILDER          │TYPE STRINGBUILDER                                                │Campi: Length, Capacity; metodi: Append   │
 │TYPE:STRINGBUILDERTYPE      │TYPE StringBuilderType                                            │Campi: Length, Capacity; metodi: Append   │
 └────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
 
@@ -2109,15 +2135,15 @@
 │CHOOSE                      │x = SYSTEM.CHOOSE(a1, ...)                                        │Seleziona da una lista.                   │
 │COMMAND                     │x = SYSTEM.COMMAND(index)                                         │Argomento riga comando.                   │
 │COMMANDCOUNT                │x = SYSTEM.COMMANDCOUNT()                                         │Numero di argomenti.                      │
-│CTYPE                       │x = SYSTEM.CTYPE(value, typeName)                                 │Conversione di tipo.                      │
 │COUNT                       │x = SYSTEM.COUNT(source, substring)                               │Conta -> LONG.                            │
+│CTYPE                       │x = SYSTEM.CTYPE(value, typeName)                                 │Conversione di tipo.                      │
 │EMPTY                       │x = SYSTEM.EMPTY(value)                                           │È vuoto?                                  │
 │GOMAXPROCS                  │x = SYSTEM.GOMAXPROCS(n)                                          │Numero di processori -> LONG.             │
 │IIF                         │x = SYSTEM.IIF(condition, true_part, false_part)                  │If inline.                                │
 │LBOUND                      │x = SYSTEM.LBOUND(array, dimension)                               │Limite inferiore.                         │
+│NEXT                        │x = SYSTEM.NEXT(a1)                                               │Successivo -> LONG.                       │
 │NUMCPU                      │x = SYSTEM.NUMCPU()                                               │CPU logiche (Go runtime.NumCPU).          │
 │NUMGOROUTINE                │x = SYSTEM.NUMGOROUTINE()                                         │Task attivi (Go runtime.NumGoroutine).    │
-│NEXT                        │x = SYSTEM.NEXT(a1)                                               │Successivo -> LONG.                       │
 │SHELLCODE                   │x = SYSTEM.SHELLCODE(command)                                     │Esegue e ritorna l'exit code del comando. │
 │SHELLOUT                    │x = SYSTEM.SHELLOUT(command)                                      │Esegue e ritorna stdout+stderr del comando│
 │SIZEOF                      │x = SYSTEM.SIZEOF(variable_or_type)                               │Dimensione in byte.                       │
@@ -2272,8 +2298,8 @@
 │NOME                        │SINTASSI / ESEMPIO                                                │DESCRIZIONE                               │
 ├────────────────────────────┼──────────────────────────────────────────────────────────────────┼──────────────────────────────────────────┤
 │BIDASKSPREAD                │x = TRADING.BIDASKSPREAD(bid, ask)                                │Spread denaro-lettera -> DOUBLE.          │
-│CAPM                        │x = TRADING.CAPM(riskFreeRate, beta, marketReturn)                │Capital Asset Pricing Model -> DOUBLE.    │
 │CAPITALGAINSYIELD           │x = TRADING.CAPITALGAINSYIELD(initialPrice, endPrice)             │Rendimento da plusvalenze -> DOUBLE.      │
+│CAPM                        │x = TRADING.CAPM(riskFreeRate, beta, marketReturn)                │Capital Asset Pricing Model -> DOUBLE.    │
 │GEOMETRICMEANRETURN         │x = TRADING.GEOMETRICMEANRETURN(returns)                          │Rendimento medio geometrico -> DOUBLE.    │
 │GROWTHRATE                  │x = TRADING.GROWTHRATE(retentionRate, roe)                        │Tasso di crescita -> DOUBLE.              │
 │HOLDINGPERIODRETURN         │x = TRADING.HOLDINGPERIODRETURN(returns)                          │Rendimento del periodo di detenzione -> DO│
@@ -2325,11 +2351,11 @@
 │BOOKVALUEPERSHARE           │x = TRADING.METRICS.BOOKVALUEPERSHARE(totalEquity, commonShares)  │Valore contabile per azione -> DOUBLE.    │
 │CALMARRATIO                 │x = TRADING.METRICS.CALMARRATIO(a1, a2)                           │Rapporto di Calmar -> DOUBLE.             │
 │CONDITIONALVALUEATRISK      │x = TRADING.METRICS.CONDITIONALVALUEATRISK(a1, a2)                │CVaR -> DOUBLE.                           │
-│DPS                         │x = TRADING.METRICS.DPS(dividends, shares)                        │Dividendi per azione -> DOUBLE.           │
 │DILUTEDEPS                  │x = TRADING.METRICS.DILUTEDEPS(netIncome, avgShares, instruments) │Utile per azione diluito -> DOUBLE.       │
 │DIVIDENDPAYOUTRATIO         │x = TRADING.METRICS.DIVIDENDPAYOUTRATIO(dividends, netIncome)     │Rapporto di distribuzione dei dividendi ->│
 │DIVIDENDYIELD               │x = TRADING.METRICS.DIVIDENDYIELD(dividend, price)                │Rendimento da dividendi -> DOUBLE.        │
 │DOWNSIDEDEVIATION           │x = TRADING.METRICS.DOWNSIDEDEVIATION(a1, a2)                     │Deviazione downside -> DOUBLE.            │
+│DPS                         │x = TRADING.METRICS.DPS(dividends, shares)                        │Dividendi per azione -> DOUBLE.           │
 │EPS                         │x = TRADING.METRICS.EPS(netIncome, avgShares)                     │Utile per azione -> DOUBLE.               │
 │EQUITYMULTIPLIER            │x = TRADING.METRICS.EQUITYMULTIPLIER(assets, equity)              │Moltiplicatore del capitale -> DOUBLE.    │
 │INFORMATIONRATIO            │x = TRADING.METRICS.INFORMATIONRATIO(a1, a2, a3)                  │Information ratio -> DOUBLE.              │
@@ -3006,9 +3032,9 @@
 │NOME                        │SINTASSI / ESEMPIO                                                │DESCRIZIONE                               │
 ├────────────────────────────┼──────────────────────────────────────────────────────────────────┼──────────────────────────────────────────┤
 │COMANDI                     │174                                                               │Comandi del linguaggio                    │
-│FUNZIONI                    │1517                                                              │Funzioni del linguaggio                   │
-│TIPI                        │65                                                                │Tipi del linguaggio                       │
+│FUNZIONI                    │1530                                                              │Funzioni del linguaggio                   │
+│TIPI                        │78                                                                │Tipi del linguaggio                       │
 │COSTANTI                    │284                                                               │Costanti del linguaggio                   │
 ├────────────────────────────┬──────────────────────────────────────────────────────────────────┬──────────────────────────────────────────┤
-│TOTALE                      │2040                                                              │Voci complessive                          │
+│TOTALE                      │2066                                                              │Voci complessive                          │
 └────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘
