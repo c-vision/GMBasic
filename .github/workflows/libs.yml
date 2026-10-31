@@ -62,16 +62,35 @@ permissions:
   contents: write          # upload release + push dell'indice (repo GMBasicModules, via PAT)
 
 jobs:
+  # L'input `rids` (es. "linux-x64" per provare una sola gamba) filtra la matrice: prima era
+  # dichiarato e IGNORATO. `jq` è sui runner ubuntu.
+  plan:
+    name: plan (RID)
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.pick.outputs.matrix }}
+    steps:
+      - id: pick
+        shell: bash
+        run: |
+          ALL='[{"rid":"osx-arm64","os":"macos-14"},{"rid":"osx-x64","os":"macos-13"},{"rid":"linux-x64","os":"ubuntu-24.04"},{"rid":"linux-arm64","os":"ubuntu-24.04-arm"}]'
+          WANT="${{ github.event.inputs.rids }}"
+          if [ -z "$WANT" ]; then
+            SEL="$ALL"
+          else
+            SEL=$(printf '%s' "$ALL" | jq -c --arg want "$WANT" \
+              '[.[] | select(.rid as $r | ($want | split(",") | map(gsub("^\\s+|\\s+$"; "")) | index($r)))]')
+          fi
+          [ "$SEL" = "[]" ] && { echo "nessun RID corrisponde a '$WANT'" >&2; exit 1; }
+          echo "matrix={\"include\":$SEL}" >> "$GITHUB_OUTPUT"
+          echo "RID selezionati: $SEL"
+
   build:
     name: build ${{ matrix.rid }}
+    needs: plan
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - { rid: osx-arm64,   os: macos-14 }
-          - { rid: osx-x64,     os: macos-13 }
-          - { rid: linux-x64,   os: ubuntu-24.04 }
-          - { rid: linux-arm64, os: ubuntu-24.04-arm }
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     runs-on: ${{ matrix.os }}
     env:
       GROUP: ${{ github.event.inputs.group || 'core' }}
@@ -101,10 +120,10 @@ jobs:
             libbrotli-dev liblz4-dev libsdl2-dev libsdl2-ttf-dev libjpeg-dev \
             libpng-dev libtiff-dev libwebp-dev libsqlite3-dev libopenblas-dev
 
-      # engine/llmmotor sono prodotte da LLMEnv: se il checkout non c'è, il gruppo si salta
-      # con un messaggio esplicito (mai un bundle a metà).
-      - name: checkout LLMEnv (solo engine/llmmotor)
-        if: ${{ contains(fromJSON('["engine","llmmotor"]'), github.event.inputs.group) && vars.LLMENV_REPO != '' }}
+      # LLMEnv serve a TUTTI i gruppi: `gmb_runtime_c` include LLMEnv/LLMEngine e `add_subdirectory`
+      # dei suoi progetti (tokenizer, plugin, desc). engine/llmmotor in più PUBBLICANO da LLMEnv.
+      - name: checkout LLMEnv
+        if: ${{ vars.LLMENV_REPO != '' }}
         uses: actions/checkout@v4
         with:
           repository: ${{ vars.LLMENV_REPO }}
@@ -113,6 +132,13 @@ jobs:
       - name: compute LLMENV
         run: |
           if [ -d "$GITHUB_WORKSPACE/LLMEnv" ]; then echo "LLMENV=$GITHUB_WORKSPACE/LLMEnv" >> "$GITHUB_ENV"; fi
+
+      - name: LLMEnv presente? (errore chiaro, non un configure di CMake illeggibile)
+        run: |
+          if [ -z "${LLMENV:-}" ] || [ ! -d "$LLMENV" ]; then
+            echo "::error::LLMEnv non trovato. Serve per compilare QUALSIASI gruppo: imposta la variable LLMENV_REPO (es. c-vision/LLMEnv) o LLMENV_DIR (checkout precompilato)." >&2
+            exit 1
+          fi
 
       - name: build + gate di caricabilità
         run: |
