@@ -1,5 +1,5 @@
 ' EXPECT: area= 12|scambio= 1   2|-----|default= -----
-' Sintassi canone: samples/Community/Functions/FunctionsRecursionAndByRef.bas
+' Sintassi canone: samples/Functions/FunctionsRecursionAndByRef.bas
 FUNCTION CalcolaArea(Larghezza, Altezza) AS DOUBLE
     RETURN Larghezza * Altezza
 END FUNCTION

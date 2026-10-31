@@ -1,6 +1,6 @@
 ' EXPECT: main|connesso db|fine-main|disconnesso db
 ' Oracle = golden: la SUB DESTRUCTOR (SENZA parentesi) viene invocata a fine programma.
-' Sintassi canone: samples/Community/Classes/ClassesDestructor.bas
+' Sintassi canone: samples/Classes/ClassesDestructor.bas
 Public Class Connessione
     Public Dim Nome As String
     Public Sub New(n As String)

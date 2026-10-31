@@ -1,6 +1,6 @@
 ' EXPECT: back_end_x_y_z_w|dotted..|plain|abc_def
 ' Contratto del sanificatore dei nomi file (AssetFileName in
-' samples/Community/PackageRegistry/PackageServer.bas): neutralizza / spazio,
+' samples/PackageRegistry/PackageServer.bas): neutralizza / spazio,
 ' backslash, ':' e '@' perche' la chiave di un asset ("backend/platform") diventi
 ' un nome file valido anche su Windows.
 '

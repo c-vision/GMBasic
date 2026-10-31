@@ -11,7 +11,7 @@ Controls (`*.bas`), **classes only** in `NAMESPACE CustomControls` (distinct fro
   `ContextMenu`, `Segmented`, `DataGrid`, `TradingMinors` (Ticker / TreeGroup / EconCalendar /
   Toolbar).
 
-The **examples/demos** are NOT here: they live in `samples/Community/Controls/` (they import
+The **examples/demos** are NOT here: they live in `samples/Controls/` (they import
 `CustomControls`). The **built-in** controls (AlertBox, ListBox, TBROWSE, …) are the `CONTROLS`
 namespace (shared C runtime, `native/gmb_runtime_c`).
 
@@ -24,7 +24,7 @@ DIM s AS Segmented = NEW Segmented()
 
 ## Conventions
 - Every library file is **classes only** (`NAMESPACE CustomControls`, `PUBLIC CLASS`); the examples
-  are in `samples/Community/Controls/`.
+  are in `samples/Controls/`.
 - User guide: `Guide/utente/*-Controllo-Guida-Utente.md`.
 - Tests: `minitests/controls/`, `minitests/tui/` (`IMPORT CustomControls`).
 

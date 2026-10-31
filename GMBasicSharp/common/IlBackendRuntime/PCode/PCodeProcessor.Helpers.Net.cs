@@ -540,7 +540,7 @@ internal sealed partial class PCodeProcessor
             {
                 var pagesDir = Path.GetFullPath(Path.Combine(fullBase, "..", "pages"));
                 if (Directory.Exists(pagesDir)) _httpBspDir = pagesDir;
-                // Layout più comune (es. samples/Community/Web/RegistryBsp): le pagine .bsp
+                // Layout più comune (es. samples/Web/RegistryBsp): le pagine .bsp
                 // vivono NELLA STESSA directory servita come statica, senza una sotto-cartella
                 // "pages" dedicata — senza questo fallback, _httpBspDir restava null per
                 // sempre e DispatchHttpRequestAsync non tentava mai TryServeBspPage: ogni

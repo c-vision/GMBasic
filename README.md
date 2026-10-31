@@ -156,10 +156,10 @@ dotnet run --project tools/runners/GMBASIC.Conformance -- vmtest <file.bas>
 
 # C99Native — C frontend + C emitter, `cc` against the shared C runtime, no VM
 # The script cds into GMBasic/ itself, so sample paths are relative to GMBasic/ (../shared/...)
-bash tools/sh/gmb_c99native_run.sh ../shared/samples/Community/Network/WebSocketEcho.bas
+bash tools/sh/gmb_c99native_run.sh ../shared/samples/Network/WebSocketEcho.bas
 
 # All four engines on the same sample, comparing the normalized output
-zsh tools/sh/parity4 ../shared/samples/Community/Ai/AiPlugins.bas
+zsh tools/sh/parity4 ../shared/samples/Ai/AiPlugins.bas
 ```
 
 ## Architecture
@@ -187,56 +187,56 @@ all. The VM in C and C99Native share the same C runtime library
 ## Sample catalog
 
 All samples are runnable BASIC programs. Paths are relative to the repo root; each folder is a
-category, and `Community/` is the main one.
+category (`shared/samples/<Category>/`), and every sample runs on the single build.
 
 ### Language and core semantics
 
 | Category | What the samples show |
 |---|---|
-| [Arrays](shared/samples/Community/Arrays/) | array literals, sorting with comparators, slices and multi-dimensional processing |
-| [Bits](shared/samples/Community/Bits/) | bitwise operators and shifts, full coverage |
-| [Branches](shared/samples/Community/Branches/) | every `IF` form (block, single-line, nested, `ELSEIF`) |
-| [Classes](shared/samples/Community/Classes/) | classes, inheritance, abstract members, array fields, bare method calls |
-| [Commands](shared/samples/Community/Commands/) | classic commands: `RUN` chains, line numbers, `DIRECT CAST` |
-| [Comprehensive](shared/samples/Community/Comprehensive/) | one big showcase of the feature set (`FeaturesShowcase.bas`) |
-| [ControlFlow](shared/samples/Community/ControlFlow/) | `GOSUB`/`RETURN`, `ON ERROR`, interactions between control flow and exceptions |
-| [Exceptions](shared/samples/Community/Exceptions/) | `TRY/CATCH`, rethrow, `ON ERROR RESUME` |
-| [Functions](shared/samples/Community/Functions/) | `SUB`/`FUNCTION`, parameters, closures, recursion |
-| [Lexer](shared/samples/Community/Lexer/) | pre-processing directives, list literals, lexical edge cases |
-| [Loops](shared/samples/Community/Loops/) | `FOR`, `DO/LOOP`, `WHILE`, `FOR EACH`, matrix destruction, thread flags |
-| [Modules](shared/samples/Community/Modules/) | `IMPORT`/`REQUIRE`, aliases, import priority, structural canaries |
-| [Namespaces](shared/samples/Community/Namespaces/) | namespace declaration and qualified access |
-| [Operators](shared/samples/Community/Operators/) | short-circuit evaluation, XOR swap, operator precedence |
-| [Optimization](shared/samples/Community/Optimization/) | constant folding and optimizer behaviour |
-| [Preprocessor](shared/samples/Community/Preprocessor/) | multi-target preprocessing (`#IF`-style directives) |
-| [Scopes](shared/samples/Community/Scopes/) | block scopes, `BYREF`, variable lifetime |
-| [Stricts](shared/samples/Community/Stricts/) | `STRICT` mode: implicit creation, incompatible comparisons, array initializers |
-| [Strings](shared/samples/Community/Strings/) | formatting, interpolation, search and replace |
-| [Types](shared/samples/Community/Types/) | `ANY`, UDTs, nullable types, logical/bitwise operators |
+| [Arrays](shared/samples/Arrays/) | array literals, sorting with comparators, slices and multi-dimensional processing |
+| [Bits](shared/samples/Bits/) | bitwise operators and shifts, full coverage |
+| [Branches](shared/samples/Branches/) | every `IF` form (block, single-line, nested, `ELSEIF`) |
+| [Classes](shared/samples/Classes/) | classes, inheritance, abstract members, array fields, bare method calls |
+| [Commands](shared/samples/Commands/) | classic commands: `RUN` chains, line numbers, `DIRECT CAST` |
+| [Comprehensive](shared/samples/Comprehensive/) | one big showcase of the feature set (`FeaturesShowcase.bas`) |
+| [ControlFlow](shared/samples/ControlFlow/) | `GOSUB`/`RETURN`, `ON ERROR`, interactions between control flow and exceptions |
+| [Exceptions](shared/samples/Exceptions/) | `TRY/CATCH`, rethrow, `ON ERROR RESUME` |
+| [Functions](shared/samples/Functions/) | `SUB`/`FUNCTION`, parameters, closures, recursion |
+| [Lexer](shared/samples/Lexer/) | pre-processing directives, list literals, lexical edge cases |
+| [Loops](shared/samples/Loops/) | `FOR`, `DO/LOOP`, `WHILE`, `FOR EACH`, matrix destruction, thread flags |
+| [Modules](shared/samples/Modules/) | `IMPORT`/`REQUIRE`, aliases, import priority, structural canaries |
+| [Namespaces](shared/samples/Namespaces/) | namespace declaration and qualified access |
+| [Operators](shared/samples/Operators/) | short-circuit evaluation, XOR swap, operator precedence |
+| [Optimization](shared/samples/Optimization/) | constant folding and optimizer behaviour |
+| [Preprocessor](shared/samples/Preprocessor/) | multi-target preprocessing (`#IF`-style directives) |
+| [Scopes](shared/samples/Scopes/) | block scopes, `BYREF`, variable lifetime |
+| [Stricts](shared/samples/Stricts/) | `STRICT` mode: implicit creation, incompatible comparisons, array initializers |
+| [Strings](shared/samples/Strings/) | formatting, interpolation, search and replace |
+| [Types](shared/samples/Types/) | `ANY`, UDTs, nullable types, logical/bitwise operators |
 
 ### Data, files and storage
 
 | Category | What the samples show |
 |---|---|
-| [Collections](shared/samples/Community/Collections/) | lists, dictionaries, nested collections |
-| [Data](shared/samples/Community/Data/) | `DATA`/`READ`/`RESTORE` |
-| [Databases](shared/samples/Community/Databases/) | DBF/xBase, ISAM, joins, indexes, loading documents for RAG |
-| [Datetime](shared/samples/Community/Datetime/) | dates, times, arithmetic between dates |
-| [Files](shared/samples/Community/Files/) | file and directory I/O, error handling on missing paths |
-| [Json](shared/samples/Community/Json/) | parsing, building, iterating JSON |
-| [SQL](shared/samples/Community/SQL/) | embedded SQL execution and DataFrame-style results |
-| [TimeSeries](shared/samples/Community/TimeSeries/) | rolling windows, resampling, numeric helpers |
-| [VectorDB](shared/samples/Community/VectorDB/) | vector collections, similarity search, RAG evaluation |
+| [Collections](shared/samples/Collections/) | lists, dictionaries, nested collections |
+| [Data](shared/samples/Data/) | `DATA`/`READ`/`RESTORE` |
+| [Databases](shared/samples/Databases/) | DBF/xBase, ISAM, joins, indexes, loading documents for RAG |
+| [Datetime](shared/samples/Datetime/) | dates, times, arithmetic between dates |
+| [Files](shared/samples/Files/) | file and directory I/O, error handling on missing paths |
+| [Json](shared/samples/Json/) | parsing, building, iterating JSON |
+| [SQL](shared/samples/SQL/) | embedded SQL execution and DataFrame-style results |
+| [TimeSeries](shared/samples/TimeSeries/) | rolling windows, resampling, numeric helpers |
+| [VectorDB](shared/samples/VectorDB/) | vector collections, similarity search, RAG evaluation |
 
 ### AI, agents and knowledge
 
 | Category | What the samples show |
 |---|---|
-| [Ai](shared/samples/Community/Ai/) | agents, plugins, skills, MCP, permissions, memory, RAG, full AI surface coverage |
-| [AiLLM](shared/samples/Community/AiLLM/) | LLM engines: routing (MLX/llama), tool calling, structured output, CUA |
-| [Connectors](shared/samples/Community/Connectors/) | the 52-connector marketplace: discovery, auth, policies, auto-registration |
-| [Browser](shared/samples/Community/Browser/) | headless Chromium via CDP: navigate, extract, screenshot, human-like input |
-| [Torch](shared/samples/Community/Torch/) | tensor runtime: arithmetic, models, MiniLM embeddings |
+| [Ai](shared/samples/Ai/) | agents, plugins, skills, MCP, permissions, memory, RAG, full AI surface coverage |
+| [AiLLM](shared/samples/AiLLM/) | LLM engines: routing (MLX/llama), tool calling, structured output, CUA |
+| [Connectors](shared/samples/Connectors/) | the 52-connector marketplace: discovery, auth, policies, auto-registration |
+| [Browser](shared/samples/Browser/) | headless Chromium via CDP: navigate, extract, screenshot, human-like input |
+| [Torch](shared/samples/Torch/) | tensor runtime: arithmetic, models, MiniLM embeddings |
 | [graph](shared/samples/graph/) | knowledge graph: build, query, Louvain/max-flow, brain-backed Q&A |
 | [cua](shared/samples/cua/) | computer-use agents and their diagnostics |
 
@@ -244,59 +244,59 @@ category, and `Community/` is the main one.
 
 | Category | What the samples show |
 |---|---|
-| [Algebra](shared/samples/Community/Algebra/) | vectors and matrices through the algebra library |
-| [Analysis](shared/samples/Community/Analysis/) | numerical analysis: real interpolation, shared-library advanced helpers |
-| [Finance](shared/samples/Community/Finance/) | financial functions: loans, APR, TVM, full coverage |
-| [Math](shared/samples/Community/Math/) | SciPy-parity numerics: curve fitting, differential evolution, FFT integration |
-| [Matrix](shared/samples/Community/Matrix/) | SIMD matrix operations and decompositions |
-| [Signal](shared/samples/Community/Signal/) / [Signals](shared/samples/Community/Signals/) | digital filters and signal generation |
-| [Spatial](shared/samples/Community/Spatial/) | distances and spatial queries |
-| [Trading](shared/samples/Community/Trading/) | backtesting, indicators, extended finance functions |
+| [Algebra](shared/samples/Algebra/) | vectors and matrices through the algebra library |
+| [Analysis](shared/samples/Analysis/) | numerical analysis: real interpolation, shared-library advanced helpers |
+| [Finance](shared/samples/Finance/) | financial functions: loans, APR, TVM, full coverage |
+| [Math](shared/samples/Math/) | SciPy-parity numerics: curve fitting, differential evolution, FFT integration |
+| [Matrix](shared/samples/Matrix/) | SIMD matrix operations and decompositions |
+| [Signal](shared/samples/Signal/) / [Signals](shared/samples/Signals/) | digital filters and signal generation |
+| [Spatial](shared/samples/Spatial/) | distances and spatial queries |
+| [Trading](shared/samples/Trading/) | backtesting, indicators, extended finance functions |
 
 ### Graphics, UI and input
 
 | Category | What the samples show |
 |---|---|
-| [graphics](shared/samples/Community/graphics/) | SDL2 drawing, controls and widgets, fonts, palettes |
-| [Sprites](shared/samples/Community/Sprites/) | sprite loading, movement and collision |
-| [Controls](shared/samples/Community/Controls/) | the 20+ TUI/GUI controls (alerts, splitters, grids, forms) |
-| [Console](shared/samples/Community/Console/) | colors, cursor control, clipboard, advanced console output |
-| [windows](shared/samples/Community/windows/) | window creation, colors, Clipper-style windows |
-| [UI](shared/samples/Community/UI/) | UI automation and UI types |
-| [Events](shared/samples/Community/Events/) | event handlers, control events, `ON` dispatch |
-| [Mouse](shared/samples/Community/Mouse/) | mouse state, graphic painting, input tests |
-| [GameDev](shared/samples/Community/GameDev/) | joystick, Pac-Man style game loop |
-| [Audio](shared/samples/Community/Audio/) | audio playback and audio controls |
-| [Computer](shared/samples/Community/Computer/) | screen recording and computer-control primitives |
-| [Tray](shared/samples/Community/Tray/) | system tray integration |
+| [graphics](shared/samples/graphics/) | SDL2 drawing, controls and widgets, fonts, palettes |
+| [Sprites](shared/samples/Sprites/) | sprite loading, movement and collision |
+| [Controls](shared/samples/Controls/) | the 20+ TUI/GUI controls (alerts, splitters, grids, forms) |
+| [Console](shared/samples/Console/) | colors, cursor control, clipboard, advanced console output |
+| [windows](shared/samples/windows/) | window creation, colors, Clipper-style windows |
+| [UI](shared/samples/UI/) | UI automation and UI types |
+| [Events](shared/samples/Events/) | event handlers, control events, `ON` dispatch |
+| [Mouse](shared/samples/Mouse/) | mouse state, graphic painting, input tests |
+| [GameDev](shared/samples/GameDev/) | joystick, Pac-Man style game loop |
+| [Audio](shared/samples/Audio/) | audio playback and audio controls |
+| [Computer](shared/samples/Computer/) | screen recording and computer-control primitives |
+| [Tray](shared/samples/Tray/) | system tray integration |
 
 ### Network, web and distributed
 
 | Category | What the samples show |
 |---|---|
-| [Network](shared/samples/Community/Network/) | TCP/UDP, TLS, WebSocket, HTTP handlers on the GPM |
-| [Http](shared/samples/Community/Http/) | HTTP client, JSON bodies, configuration, auth demos |
-| [Web](shared/samples/Community/Web/) | registry server, HTML-to-Markdown conversion |
-| [Concurrency](shared/samples/Community/Concurrency/) | green threads: channels, atomics, async helpers, cancellation |
-| [Messaging](shared/samples/Community/Messaging/) | pub/sub and delivery monitoring |
-| [Team](shared/samples/Community/Team/) | multi-agent teams: broadcast, extensions, strategies |
-| [Workflow](shared/samples/Community/Workflow/) | DAG workflows, steps, retries |
-| [Security](shared/samples/Community/Security/) | authentication flows, MVC auth, encodings |
-| [Crypto](shared/samples/Community/Crypto/) | symmetric/asymmetric crypto, hashing, a blockchain sample |
+| [Network](shared/samples/Network/) | TCP/UDP, TLS, WebSocket, HTTP handlers on the GPM |
+| [Http](shared/samples/Http/) | HTTP client, JSON bodies, configuration, auth demos |
+| [Web](shared/samples/Web/) | registry server, HTML-to-Markdown conversion |
+| [Concurrency](shared/samples/Concurrency/) | green threads: channels, atomics, async helpers, cancellation |
+| [Messaging](shared/samples/Messaging/) | pub/sub and delivery monitoring |
+| [Team](shared/samples/Team/) | multi-agent teams: broadcast, extensions, strategies |
+| [Workflow](shared/samples/Workflow/) | DAG workflows, steps, retries |
+| [Security](shared/samples/Security/) | authentication flows, MVC auth, encodings |
+| [Crypto](shared/samples/Crypto/) | symmetric/asymmetric crypto, hashing, a blockchain sample |
 
 ### Text, tooling and interop
 
 | Category | What the samples show |
 |---|---|
-| [Clipper](shared/samples/Community/Clipper/) | Clipper/xBase compatibility: code blocks, arrays, windows, database commands |
-| [compression](shared/samples/Community/compression/) | gzip/zstd/brotli-style compression APIs |
-| [Documents](shared/samples/Community/Documents/) | `CONVERT` and document conversion (PDF, Markdown, Office) |
-| [FFI](shared/samples/Community/FFI/) | calling C/C++/Go libraries, drop-in library loading |
-| [Grep](shared/samples/Community/Grep/) | file search engine, output formats |
-| [PackageRegistry](shared/samples/Community/PackageRegistry/) | a package registry server in BASIC |
-| [Process](shared/samples/Community/Process/) | spawning and driving external processes |
-| [System](shared/samples/Community/System/) | settings/paths, command-line arguments, system info |
-| [C99](shared/samples/Community/C99/) | modules and library calls specific to the C99Native backend |
+| [Clipper](shared/samples/Clipper/) | Clipper/xBase compatibility: code blocks, arrays, windows, database commands |
+| [compression](shared/samples/compression/) | gzip/zstd/brotli-style compression APIs |
+| [Documents](shared/samples/Documents/) | `CONVERT` and document conversion (PDF, Markdown, Office) |
+| [FFI](shared/samples/FFI/) | calling C/C++/Go libraries, drop-in library loading |
+| [Grep](shared/samples/Grep/) | file search engine, output formats |
+| [PackageRegistry](shared/samples/PackageRegistry/) | a package registry server in BASIC |
+| [Process](shared/samples/Process/) | spawning and driving external processes |
+| [System](shared/samples/System/) | settings/paths, command-line arguments, system info |
+| [C99](shared/samples/C99/) | modules and library calls specific to the C99Native backend |
 
 ### Other sample roots
 

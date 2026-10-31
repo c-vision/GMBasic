@@ -1,5 +1,5 @@
 ' Oracle = golden: OPERATOR CTYPE — conversione utente definita (CLASS -> STRING).
-' Sintassi canone: samples/Community/Types/TypesConversionOperators.bas
+' Sintassi canone: samples/Types/TypesConversionOperators.bas
 ' Verificato: IL/PCode/VM-C/C99 gate identici. Gap C99Native: `Dim s$ = p` non emesso
 ' (type mismatch in emissione — conversione implicita via CTYPE non inferita, esplicito).
 ' EXPECT: s=( 5, 3)

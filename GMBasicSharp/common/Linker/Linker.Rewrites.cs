@@ -101,7 +101,7 @@ public static partial class Linker
                     // Senza, SELF resta irrisolto (SymbolId -1) e il fallback generico
                     // (FindSymbolInScope, sotto) trova il SELF di una CLASSE precedente nel file:
                     // `SELF.<campo>` veniva risolto contro quella classe → bug "campo non trovato"
-                    // in un TYPE preceduto da una CLASS (es. samples/Community/Classes/ClassesDestructor.bas).
+                    // in un TYPE preceduto da una CLASS (es. samples/Classes/ClassesDestructor.bas).
                     if (context.CurrentUdtScopeId.HasValue &&
                         program.Symbols.GetSymbol(context.CurrentUdtScopeId.Value).DeclarationNode is UserDefinedType udtSelfType)
                     {

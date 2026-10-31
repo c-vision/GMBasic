@@ -27,7 +27,7 @@ public class PackageRegistryBspFrontendTests
             if (File.Exists(Path.Combine(dir.FullName, "GMBasicSharp", "GMBasicSharp.slnx")))
             {
                 // MONOREPO: i sample stanno in <repo>/shared/samples (accanto a GMBasic/).
-                // Si restituisce la base che CONTIENE davvero samples/Community/PackageRegistry.
+                // Si restituisce la base che CONTIENE davvero samples/PackageRegistry.
                 var sharedBase = Path.Combine(dir.FullName, "shared");
                 if (Directory.Exists(Path.Combine(sharedBase, "samples", "Community", "PackageRegistry")))
                     return sharedBase;
@@ -391,7 +391,7 @@ public class PackageRegistryBspFrontendTests
         Assert.NotNull(a4Program);
         Assert.NotNull(a4Program.MainModule);
 
-        // Esempi MVC aggiuntivi in samples/Community/Http/Mvc (auth + CRUD persistente)
+        // Esempi MVC aggiuntivi in samples/Http/Mvc (auth + CRUD persistente)
         foreach (var rel in new[] { "AuthDemo", "CrudDemo" })
         {
             var dir = Path.Combine(root, "samples", "Community", "Http", "Mvc", rel);

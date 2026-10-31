@@ -29,7 +29,7 @@
 '     dichiarazione gmb_val_t, e JSON.STRINGIFY delega allo stesso dispatch.
 '   CACHE.Keys()/Values()       NON asseriti: l'oracolo è un `ConcurrentDictionary` → ordine NON
 '                               deterministico fra processi (4 run: si alterna).
-' Riproduzione: la gamba C con `tools/parity4 samples/Community/Collections/CollectionsModern.bas`
+' Riproduzione: la gamba C con `tools/parity4 samples/Collections/CollectionsModern.bas`
 ' (o il gate `--file=`) e le altre con
 '   dotnet tools/runners/test_ilrun/bin/Debug/net10.0/test_ilrun.dll --engine=il   minitests/collections/typed_containers_parity.bas
 '   dotnet tools/runners/test_ilrun/bin/Debug/net10.0/test_ilrun.dll --engine=pcode minitests/collections/typed_containers_parity.bas

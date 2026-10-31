@@ -1439,7 +1439,7 @@ public static class IlGpmRuntime
         // non consumiamo subito qui, l'op resta "parcheggiata" in attesa di un wake che
         // task.Scheduler potrebbe non inviare mai (Scheduler nullo per un Main() semplice,
         // senza GOROUTINE) — SCREEN restava bloccato per sempre (visto dal vivo:
-        // samples/Community/Mouse/MouseGraphicState.bas, CPU al 900%+ con ON KEY/ON MOUSE
+        // samples/Mouse/MouseGraphicState.bas, CPU al 900%+ con ON KEY/ON MOUSE
         // che forza un retry loop che ripolla lo stesso park mai risolto).
         if (newOp.TryConsume(out var vSync, out var errSync))
         {

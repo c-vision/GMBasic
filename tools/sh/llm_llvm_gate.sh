@@ -79,12 +79,12 @@ FULL_FILTERS=("ai/")     # --full: tutto il dominio ai/
 
 # ── Sample AiLLM rappresentativi (default) — il resto con --full ───────────────────────────────
 SAMPLE_CORE=(
-  samples/Community/AiLLM/ModelSurgeryPrune.bas
-  samples/Community/AiLLM/ModelCompilerCompress.bas
-  samples/Community/AiLLM/ModelCompilerQuantAuto.bas
-  samples/Community/AiLLM/TrainCommandsTour.bas
-  samples/Community/AiLLM/DistillPipeline.bas
-  samples/Community/AiLLM/ModelSurgeryQualityGate.bas
+  samples/AiLLM/ModelSurgeryPrune.bas
+  samples/AiLLM/ModelCompilerCompress.bas
+  samples/AiLLM/ModelCompilerQuantAuto.bas
+  samples/AiLLM/TrainCommandsTour.bas
+  samples/AiLLM/DistillPipeline.bas
+  samples/AiLLM/ModelSurgeryQualityGate.bas
 )
 SAMPLES=()          # valorizzato solo con --samples/--full
 
@@ -144,7 +144,7 @@ if [ -n "$ONLY" ]; then FILTERS=("$ONLY"); RUN_SAMPLES=0; ALL_SAMPLES=0; fi
 if [ "$RUN_SAMPLES" = 1 ]; then
   if [ "$ALL_SAMPLES" = 1 ]; then
     SAMPLES=()
-    while IFS= read -r s; do SAMPLES+=("$s"); done < <(ls samples/Community/AiLLM/*.bas 2>/dev/null | sort)
+    while IFS= read -r s; do SAMPLES+=("$s"); done < <(ls samples/AiLLM/*.bas 2>/dev/null | sort)
   else
     SAMPLES=("${SAMPLE_CORE[@]}")
   fi

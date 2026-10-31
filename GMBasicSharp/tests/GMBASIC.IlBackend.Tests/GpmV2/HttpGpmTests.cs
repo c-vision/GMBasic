@@ -1,7 +1,7 @@
 // HTTP + GPM su ILBackend: il server HTTP esegue gli handler come task GPM (parità PCodeVM §11.5).
 // Un handler may-park (SLEEP + GO SUB + canale) deve rispondere correttamente. Il listener non
 // esegue BASIC inline: l'handler parcheggia sul suo scheduler e la risposta arriva al resume.
-// Sample: samples/Community/Network/HttpGpmHandler.bas (porta 8156, risposta "GPM-OK").
+// Sample: samples/Network/HttpGpmHandler.bas (porta 8156, risposta "GPM-OK").
 
 using System.Reflection;
 using Xunit;

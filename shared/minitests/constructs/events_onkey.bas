@@ -1,6 +1,6 @@
 ' Oracle = golden: ON KEY(90) GOSUB — l'handler parte alla LETTURA del tasto (INKEY).
 ' Tasto 'Z' (90) iniettato in typeahead con SENDKEY (deterministico, headless).
-' Sintassi canone: samples/Community/Mouse/MouseGraphicState.bas (ON KEY(27) GOSUB).
+' Sintassi canone: samples/Mouse/MouseGraphicState.bas (ON KEY(27) GOSUB).
 ' 2026-09-22: FIX emitter C# (bug "ONKEY-Dispatch-Mancante-VMC-C99", ultima gamba —
 ' IL/PCode/VM-C/C99Native gia' risolti). NON era un bug di emissione/dispatch (verificato
 ' corretto riga per riga sul C generato): il gate C99 preiniettava GMB_TUI_SCRIPT (256x ESC)

@@ -6641,7 +6641,7 @@ gmb_obj_t* md_to_vm(gmb_val_t v)
      * gmb_dict_t, e il ramo "dict" qui sotto lo camminerebbe con il layout sbagliato — le
      * chiavi verrebbero lette dai dati degli elementi, restando spazzatura, e il gmb_dict_get
      * su una chiave assurta faceva SEGV. Caso reale (2026-10-07): in
-     * samples/Community/PackageRegistry/PackageServer.bas la lettura di `m.backends` (array)
+     * samples/PackageRegistry/PackageServer.bas la lettura di `m.backends` (array)
      * da un JSON parsato mandava in crash il registry su VM/C, e la risposta HTTP usciva con il
      * campo corrotto (byte non validi dentro la stringa JSON) invece che con l'array. */
     if (o->kind == GMB_OBJ_LIST || o->kind == GMB_OBJ_DICT)

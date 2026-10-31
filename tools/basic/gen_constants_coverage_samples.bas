@@ -51,7 +51,7 @@ FUNCTION Main() AS INTEGER
     IF COMMAND$(i) = "--guide-dir" AND i < COMMANDCOUNT() THEN i = i + 1 : guide = COMMAND$(i)
     i = i + 1
   LOOP
-  IF LEN(out) = 0 THEN out = root + "/samples/Community"
+  IF LEN(out) = 0 THEN out = root + "/samples"
   cf = root + "/common/StdLib/StdLib.Constants.cs"
   IF NOT FILEEXISTS(cf) THEN cf = root + "/GMBasicSharp/common/StdLib/StdLib.Constants.cs"
   IF NOT FILEEXISTS(cf) THEN PRINT "non trovato: StdLib.Constants.cs" : RETURN 2

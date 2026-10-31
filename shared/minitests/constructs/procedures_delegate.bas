@@ -1,5 +1,5 @@
 ' EXPECT: res= 7|sub= 10
-' Sintassi canone: samples/Community/Functions/FunctionsDelegates.bas
+' Sintassi canone: samples/Functions/FunctionsDelegates.bas
 DELEGATE FUNCTION OperationDelegate(a AS DOUBLE, b AS DOUBLE) AS DOUBLE
 FUNCTION AddNumbers(a AS DOUBLE, b AS DOUBLE) AS DOUBLE
     RETURN a + b

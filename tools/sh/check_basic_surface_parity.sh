@@ -30,7 +30,7 @@ parity "doevents_parity" "$GB/../shared/minitests/graphics/doevents_parity.bas"
 parity "exit_proc_semantics" "$GB/../shared/minitests/constructs/exit_proc_semantics.bas"
 parity "print_paren_expr_sep" "$GB/../shared/minitests/constructs/print_paren_expr_sep.bas"
 parity "named_tuple_field_access" "$GB/../shared/minitests/types/named_tuple_field_access.bas"
-parity "OperatorsDoEventsDemo" "$GB/../shared/samples/Community/Types/OperatorsDoEventsDemo.bas"
+parity "OperatorsDoEventsDemo" "$GB/../shared/samples/Types/OperatorsDoEventsDemo.bas"
 # Exit code: FUNCTION Main() AS INTEGER -> 7 su tutte le gambe.
 F="$MONO/tools/fixtures/exitcode_main.bas"
 chk() { local n="$1" got="$2"; [ "$got" = 7 ] && echo "  PASS $n exit=7" || { echo "  FAIL $n exit=$got"; FAIL=1; }; }
