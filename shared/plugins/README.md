@@ -41,11 +41,13 @@ questo `samples/Community/Browser/BrowserPluginTest.bas` e `samples/Community/Ai
   le `gmb_user_*` del programma; il nome della procedura arriva da `PLUGIN.md`
   (`procedures[0]`, runtime C `gmb_plugin_procedure`). Prima rispondeva la stringa
   dichiarativa `"PLUGIN nome(arg) OK"` senza eseguire nulla.
-- **Limite noto**: primo parametro **numerico**. C#/C99 convertono l'argomento
-  (`"42"` → `42`); VM/C impila l'argomento come stringa e il parametro numerico riceve `0`.
-  Con primo parametro stringa (il caso di tutti i plugin della cartella: `WebFetch`,
-  `BrowserNavigate`, …) le gambe concordano — verificato 4/4 da
-  `shared/minitests/ai/gen_AI_PluginCallExec.bas`.
+- **Argomenti**: il primo argomento va nel primo parametro con la stessa regola di
+  `mcp_push_args` — testo numerico → numero, altrimenti stringa (la VM converte
+  numero→stringa se il parametro è `STRING`); i parametri restanti restano al default (`""`,
+  che un parametro numerico converte in `0`). Su VM/C l'**arità** viene dal chunk
+  (`arity_addrs`/`arity_vals`), senza la quale un secondo parametro scalzava il primo.
+  Verificato 4/4 da `shared/minitests/ai/gen_AI_PluginCallExec.bas` (caso stringa, caso
+  numerico e plugin senza procedura).
 
 ## Cosa NON mettere qui
 
