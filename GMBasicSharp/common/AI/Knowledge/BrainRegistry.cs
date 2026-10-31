@@ -71,24 +71,36 @@ public static class BrainRegistry
 
     // ── Disponibilità (BrainAvailability) ──────────────────────────────────
 
+    /// <summary>Root EFFETTIVA del cervello. La risolve il runtime C (`NativeBrains.Lookup`):
+    /// <c>&lt;progetto&gt;/vendor/brains</c> → <c>&lt;exe&gt;/vendor/brains</c> → <c>&lt;exe&gt;/brains</c>
+    /// (brainsDir) → <c>~/.gmbasic/brains</c> (cache dei download). Così un cervello installato
+    /// da `AI BRAIN INSTALL`/package manager è visibile agli agenti anche se non sta in
+    /// <c>brains/</c>. Se la dylib non è disponibile si ricade su
+    /// <c>AiConfig.BrainsDefaultDir/&lt;name&gt;</c> (comportamento storico).</summary>
+    public static string? ResolveRoot(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return null;
+        var resolved = NativeBrains.Lookup(name);
+        if (!string.IsNullOrEmpty(resolved) && Directory.Exists(resolved)) return resolved;
+        var import = Path.Combine(AiConfig.BrainsDefaultDir, name);
+        return Directory.Exists(import) ? import : null;
+    }
+
     /// <summary>True se il brain è utilizzabile come RAG: esiste un db vettoriale.
-    /// Cerca prima <brains>/&lt;name&gt;/rag/&lt;name&gt;.db (import), poi il legacy
+    /// Cerca nella root risolta (vendor/exe/cache), poi il legacy
     /// AiConfig.RagDefaultDir/&lt;name&gt;.db (generato da RAG BUILD).</summary>
     public static bool IsAvailableAsRag(string name)
     {
-        var import = Path.Combine(AiConfig.BrainsDefaultDir, name, "rag", name + ".db");
-        if (File.Exists(import)) return true;
+        if (RagDbPath(name) is not null) return true;
         var legacy = Path.Combine(AiConfig.RagDefaultDir, name + ".db");
         return File.Exists(legacy);
     }
 
     /// <summary>True se il brain è utilizzabile come graph: esiste l'export JSON del grafo.
-    /// Cerca prima <brains>/&lt;name&gt;/graphs/&lt;name&gt;.json, poi il legacy
-    /// AiConfig.GraphsDefaultDir/&lt;name&gt;.json (generato da GRAPH BUILD).</summary>
+    /// Cerca nella root risolta, poi il legacy AiConfig.GraphsDefaultDir/&lt;name&gt;.json.</summary>
     public static bool IsAvailableAsGraph(string name)
     {
-        var import = Path.Combine(AiConfig.BrainsDefaultDir, name, "graphs", name + ".json");
-        if (File.Exists(import)) return true;
+        if (GraphJsonPath(name) is not null) return true;
         var legacy = Path.Combine(AiConfig.GraphsDefaultDir, name + ".json");
         return File.Exists(legacy);
     }
@@ -105,31 +117,58 @@ public static class BrainRegistry
         return [];
     }
 
-    /// <summary>Il path effettivo del db RAG di un brain (import o legacy), o null.</summary>
+    /// <summary>Il path effettivo del db RAG di un brain (root risolta o legacy), o null.</summary>
     public static string? RagDbPath(string name)
     {
-        var import = Path.Combine(AiConfig.BrainsDefaultDir, name, "rag", name + ".db");
-        if (File.Exists(import)) return import;
+        var root = ResolveRoot(name);
+        if (root is not null)
+        {
+            var import = Path.Combine(root, "rag", name + ".db");
+            if (File.Exists(import)) return import;
+            // cervello con un solo .db dentro rag/ (nome interno diverso dal nome logico)
+            try
+            {
+                if (Directory.Exists(Path.Combine(root, "rag")))
+                {
+                    var any = Directory.GetFiles(Path.Combine(root, "rag"), "*.db").FirstOrDefault();
+                    if (any is not null) return any;
+                }
+            }
+            catch { /* permessi: si prova il legacy */ }
+        }
         var legacy = Path.Combine(AiConfig.RagDefaultDir, name + ".db");
         return File.Exists(legacy) ? legacy : null;
     }
 
-    /// <summary>Il path effettivo dell'export JSON del graph di un brain (import o legacy),
-    /// o null.</summary>
+    /// <summary>Il path effettivo dell'export JSON del graph di un brain (root risolta o
+    /// legacy), o null.</summary>
     public static string? GraphJsonPath(string name)
     {
-        var import = Path.Combine(AiConfig.BrainsDefaultDir, name, "graphs", name + ".json");
-        if (File.Exists(import)) return import;
+        var root = ResolveRoot(name);
+        if (root is not null)
+        {
+            var import = Path.Combine(root, "graphs", name + ".json");
+            if (File.Exists(import)) return import;
+            try
+            {
+                if (Directory.Exists(Path.Combine(root, "graphs")))
+                {
+                    var any = Directory.GetFiles(Path.Combine(root, "graphs"), "*.json").FirstOrDefault();
+                    if (any is not null) return any;
+                }
+            }
+            catch { /* permessi: si prova il legacy */ }
+        }
         var legacy = Path.Combine(AiConfig.GraphsDefaultDir, name + ".json");
         return File.Exists(legacy) ? legacy : null;
     }
 
-    /// <summary>La root del brain importato: <brains>/&lt;name&gt;/ se esiste, altrimenti il
-    /// primo path legacy che lo contiene (rag o graphs), altrimenti null.</summary>
+    /// <summary>La root del brain: quella risolta dal runtime C, altrimenti il primo path
+    /// legacy che lo contiene (rag o graphs), altrimenti null.</summary>
     public static string? BrainRoot(string name)
     {
-        var import = Path.Combine(AiConfig.BrainsDefaultDir, name);
-        if (Directory.Exists(import)) return import;
+        var root = ResolveRoot(name);
+        if (root is not null) return root;
         if (RagDbPath(name) is string rag) return Path.GetDirectoryName(Path.GetDirectoryName(rag));
         if (GraphJsonPath(name) is string graph) return Path.GetDirectoryName(Path.GetDirectoryName(graph));
         return null;
@@ -161,13 +200,18 @@ public static class BrainRegistry
     /// <summary>Nomi dei brain collegati (attached).</summary>
     public static string[] Used() => [.. Load().Attached];
 
-    /// <summary>Nomi di tutti i brain registrati (attached o no).</summary>
+    /// <summary>Nomi di tutti i brain: quelli registrati (attached o no) PIÙ quelli trovati dal
+    /// resolver C su disco (vendor → exe → brainsDir → cache <c>~/.gmbasic/brains</c>). Il
+    /// secondo insieme serve perché un cervello installato da <c>AI BRAIN INSTALL</c> vive sul
+    /// filesystem: senza l'unione, IL/PCodeVM non lo elencherebbero mentre C99Native/VM-C sì.</summary>
     public static string[] List()
     {
         var p = Load();
         var names = p.Brains.Select(b => b.Name).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         foreach (var n in p.Attached)
             if (!names.Contains(n, StringComparer.OrdinalIgnoreCase)) names.Add(n);
+        foreach (var n in NativeBrains.List())
+            if (!string.IsNullOrWhiteSpace(n) && !names.Contains(n, StringComparer.OrdinalIgnoreCase)) names.Add(n);
         return [.. names.OrderBy(x => x, StringComparer.OrdinalIgnoreCase)];
     }
 

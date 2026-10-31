@@ -1,0 +1,16 @@
+{
+  "version": "1.0.0",
+  "comment": "Cervelli ('Second Brain') distribuiti come asset di release. Un cervello NON sta in git: si scarica on demand con `AI BRAIN INSTALL` / `gmb brain install` (motore gmb_fetch: streaming + resume + sha256) e si installa in ~/.gmbasic/brains/<nome>/<versione>/. Ordine di ricerca a runtime: <progetto>/vendor/brains -> <exe>/vendor/brains -> <exe>/brains (brainsDir) -> ~/.gmbasic/brains. source: 'url' = download anonimo (asset pubblico); 'github-asset' = asset di release PRIVATO: richiede un token (gmb brain login --github) e SENZA token l'installazione e' RIFIUTATA (fail-closed). Chiunque puo' distribuire un cervello: basta pubblicare lo zip .gmbrain su una release e dichiararlo qui (o in un manifest proprio, vedi paths.brainsManifest).",
+  "schema": {
+    "brains[].name": "nome del cervello (directory di installazione)",
+    "brains[].description": "testo libero",
+    "brains[].latest": "versione usata quando non se ne chiede una precisa",
+    "brains[].versions[].version": "versione (semver)",
+    "brains[].versions[].source": "url | github-asset",
+    "brains[].versions[].url": "URL dell'asset .gmbrain.zip (per github-asset: URL api.github.com/repos/<org>/<repo>/releases/assets/<id>)",
+    "brains[].versions[].sha256": "sha256 dell'asset (verificato dal motore, obbligatorio in pratica)",
+    "brains[].versions[].size": "dimensione in byte (consente il controllo dello spazio prima del download)",
+    "brains[].versions[].files[]": "facoltativo: elenco {path, sha256} dei file interni, per la verifica per-file"
+  },
+  "brains": []
+}

@@ -408,6 +408,12 @@ public sealed partial class StdLib
             new NativeProcedureDefinition(-1, pub, T(TokenKind.AiBrainUsed, "BrainUsed"), [], new StringType(), TokenKind.AiBrainUsed, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, pub, T(TokenKind.AiBrainUse, "BrainUse"), [P("names", false)], new LongType(), TokenKind.AiBrainUse, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, pub, T(TokenKind.AiBrainDetach, "BrainDetach"), [P("name", false)], new DoubleType(), TokenKind.AiBrainDetach, ExecutionKind: NativeExecutionKind.Pure),
+            /* Installazione di un cervello: `AI BRAIN INSTALL nome[, sorgente]` (comando) e la
+             * forma funzione `AI.BRAININSTALL(nome[, sorgente])`. Sorgente assente/vuota =
+             * installazione dal manifest `brains-manifest.json` con download on demand
+             * (gmb_fetch: resume + sha256); altrimenti URL/zip/directory. */
+            new NativeProcedureDefinition(-1, pub, T(TokenKind.AiBrainInstall, "BrainInstall"), [P("name", false), P("source", true)], new LongType(), TokenKind.AiBrainInstall, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, pub, T(TokenKind.AiBrainUninstall, "BrainUninstall"), [P("name", false)], new LongType(), TokenKind.AiBrainUninstall, ExecutionKind: NativeExecutionKind.Pure),
             // Note (Second Brain L2: le azioni sono comandi AI NOTE CREATE/UPDATE/APPEND/DELETE/MOVE).
             new NativeProcedureDefinition(-1, pub, T(TokenKind.NoteGet, "NoteGet"), [P("vault", false), P("path", false)], new StringType(), TokenKind.NoteGet, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, pub, T(TokenKind.NoteTitle, "NoteTitle"), [P("vault", false), P("path", false)], new StringType(), TokenKind.NoteTitle, ExecutionKind: NativeExecutionKind.Pure),

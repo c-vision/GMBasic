@@ -888,6 +888,11 @@ int gmb_unzip_files(const char* zip, const char* outdir)
         char name[1024]; if (nlen >= sizeof(name)) { fseek(f, (long)(csize + elen), SEEK_CUR); continue; }
         if (fread(name, 1, nlen, f) != nlen) { break; }
         name[nlen] = 0;
+        /* ENTRY DI DIRECTORY (nome che finisce con '/'): è un mkdir, NON un file vuoto. Senza
+         * questo, `rag/` veniva creato come FILE e la entry successiva `rag/<nome>.db` non
+         * poteva più essere scritta (fopen falliva e il file spariva in silenzio): un cervello
+         * installato risultava "senza rag/". */
+        int dir_entry = (nlen > 0 && (name[nlen - 1] == '/' || name[nlen - 1] == '\\')) ? 1 : 0;
         fseek(f, (long)elen, SEEK_CUR);
         /* ZIP-SLIP: il nome dell'entry arriva dall'archivio e NON è fidato. Un pacchetto
          * confezionato male (o ostile) con `../../una/cosa` scriverebbe FUORI dalla cartella
@@ -899,6 +904,15 @@ int gmb_unzip_files(const char* zip, const char* outdir)
                 continue;
             }
             snprintf(name, sizeof(name), "%s", safe);
+        }
+        if (dir_entry)
+        {
+            char path[2048];
+            snprintf(path, sizeof(path), "%s/%s", outdir ? outdir : ".", name);
+            gmb_file_mkdir(gmb_string_alloc(path));   /* mkdir -p */
+            fseek(f, (long)csize, SEEK_CUR);
+            ok = 1;
+            continue;
         }
         if (method == 0 && csize == usize && name[0] != 0)
         {
@@ -918,35 +932,53 @@ int gmb_unzip_files(const char* zip, const char* outdir)
         }
         else if (method == 8 && name[0] != 0)
         {
-            /* DEFLATE (zlib raw, windowBits -15): leggi csize byte, inflate, scrivi usize byte.
-             * I .gmbpkg di `gmb pack` sono STORED; qui si accettano anche zip DEFLATE esterni. */
-            unsigned char* cbuf = (unsigned char*)malloc(csize ? csize : 1);
-            if (cbuf && (csize == 0 || fread(cbuf, 1, csize, f) == csize))
+            /* DEFLATE (zlib raw, windowBits -15) IN STREAMING: si scrive a blocchi da 64 KiB.
+             * Prima caricava in RAM l'entry compressa E quella decompressa (malloc(csize) +
+             * malloc(usize)): per un cervello da 1,4 GB erano ~2,8 GB di heap. I .gmbpkg di
+             * `gmb pack` sono STORED; qui si accettano anche zip DEFLATE esterni. */
+            char path[2048];
+            snprintf(path, sizeof(path), "%s/%s", outdir ? outdir : ".", name);
+            char* slash = strrchr(path, '/');
+            if (slash) { *slash = 0; gmb_file_mkdir(gmb_string_alloc(path)); *slash = '/'; }
+            FILE* out = fopen(path, "wb");
+            if (!out) { fseek(f, (long)csize, SEEK_CUR); continue; }
+            z_stream zs; memset(&zs, 0, sizeof(zs));
+            int inited = (inflateInit2(&zs, -15) == Z_OK);
+            int rc = inited ? Z_OK : Z_STREAM_ERROR;
+            unsigned long remaining = csize;
+            size_t wtotal = 0;
+            unsigned char inbuf[65536], outbuf[65536];
+            while (rc == Z_OK && remaining > 0)
             {
-                unsigned char* ubuf = (unsigned char*)malloc(usize ? usize : 1);
-                if (ubuf)
+                size_t chunk = remaining > sizeof(inbuf) ? sizeof(inbuf) : remaining;
+                size_t r = fread(inbuf, 1, chunk, f);
+                if (r == 0) { rc = Z_DATA_ERROR; break; }
+                remaining -= r;
+                zs.next_in = inbuf; zs.avail_in = (uInt)r;
+                while (zs.avail_in > 0 && rc == Z_OK)
                 {
-                    z_stream zs; memset(&zs, 0, sizeof(zs));
-                    zs.next_in = cbuf; zs.avail_in = csize;
-                    zs.next_out = ubuf; zs.avail_out = usize;
-                    if (inflateInit2(&zs, -15) == Z_OK)
-                    {
-                        int rc = inflate(&zs, Z_FINISH);
-                        inflateEnd(&zs);
-                        if ((rc == Z_STREAM_END || rc == Z_OK) && zs.total_out == (uLong)usize)
-                        {
-                            char path[2048];
-                            snprintf(path, sizeof(path), "%s/%s", outdir ? outdir : ".", name);
-                            char* slash = strrchr(path, '/');
-                            if (slash) { *slash = 0; gmb_file_mkdir(gmb_string_alloc(path)); *slash = '/'; }
-                            FILE* out = fopen(path, "wb");
-                            if (out) { if (usize) fwrite(ubuf, 1, usize, out); fclose(out); ok = 1; }
-                        }
-                    }
-                    free(ubuf);
+                    zs.next_out = outbuf; zs.avail_out = (uInt)sizeof(outbuf);
+                    rc = inflate(&zs, Z_NO_FLUSH);
+                    if (rc != Z_OK && rc != Z_STREAM_END) break;
+                    size_t have = sizeof(outbuf) - zs.avail_out;
+                    if (have && fwrite(outbuf, 1, have, out) != have) { rc = Z_ERRNO; break; }
+                    wtotal += have;
+                    if (rc == Z_STREAM_END) break;
                 }
             }
-            free(cbuf);
+            if (rc == Z_OK && remaining == 0)
+            {
+                /* il flusso deve chiudersi con Z_STREAM_END: un troncamento non è un successo */
+                zs.next_out = outbuf; zs.avail_out = (uInt)sizeof(outbuf);
+                rc = inflate(&zs, Z_FINISH);
+                size_t have = sizeof(outbuf) - zs.avail_out;
+                if (have && fwrite(outbuf, 1, have, out) != have) rc = Z_ERRNO;
+                else wtotal += have;
+            }
+            if (inited) inflateEnd(&zs);
+            fclose(out);
+            if (rc == Z_STREAM_END && (usize == 0 || wtotal == (size_t)usize)) ok = 1;
+            else remove(path);   /* archivio corrotto: niente file a metà in giro */
         }
         else fseek(f, (long)csize, SEEK_CUR);
     }

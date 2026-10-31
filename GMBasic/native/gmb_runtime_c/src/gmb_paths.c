@@ -462,6 +462,66 @@ void gmb_paths_graphs_dir(char* out, size_t cap) { pr_shared_or_root("graphsDir"
 void gmb_paths_brains_dir(char* out, size_t cap) { pr_dir("brainsDir", "brains", out, cap); }
 void gmb_paths_brains_exports_dir(char* out, size_t cap) { pr_dir("brainsExportsDir", "brains-exports", out, cap); }
 
+/* CACHE dei cervelli scaricati (on demand): `~/.gmbasic/brains` — la stessa radice utente dei
+ * pacchetti e delle librerie. Chiave `paths.brainsCacheDir` per spostarla. */
+static void pr_user_root(const char* name, char* out, size_t cap);
+void gmb_paths_brains_cache_dir(char* out, size_t cap)
+{
+    if (!g_pr_loaded) pr_load();
+    char v[1024];
+    if (pr_paths_value("brainsCacheDir", v, sizeof(v)))
+    {
+        char ex[2048];
+        pr_expand(v, ex, sizeof(ex));
+        if (ex[0] == '/') { snprintf(out, cap, "%s", ex); return; }
+    }
+    pr_user_root("brains", out, cap);
+}
+
+/* Radice UTENTE dei dati di un sottosistema: ~/.gmbasic/<nome> (HOME può mancare: stringa vuota). */
+static void pr_user_root(const char* name, char* out, size_t cap)
+{
+    if (!out || cap == 0) return;
+    const char* home = getenv("HOME");
+    if (home && *home) snprintf(out, cap, "%s/.gmbasic/%s", home, name);
+    else snprintf(out, cap, "%s", "");
+}
+
+/* Manifest dei cervelli distribuiti (schema di ml-manifest.json). Ordine di ricerca:
+ *   1. `paths.brainsManifest` (esplicito)
+ *   2. <exe>/settings/brains-manifest.json        (client/bundle)
+ *   3. <root>/shared/settings/brains-manifest.json (monorepo)
+ *   4. <exe>/Resources/brains-manifest.json       (bundle legacy, dove sta ml-manifest)
+ *   5. <root>/Resources/brains-manifest.json
+ *   6. <root>/settings/brains-manifest.json
+ * Ritorna 1 se il file esiste; altrimenti 0 lasciando in `out` il percorso canonico (per un
+ * messaggio d'errore utile). */
+int gmb_paths_brains_manifest(char* out, size_t cap)
+{
+    if (!out || !cap) return 0;
+    out[0] = '\0';
+    if (!g_pr_loaded) pr_load();
+    char v[1024];
+    if (pr_paths_value("brainsManifest", v, sizeof(v)))
+    {
+        char ex[2048];
+        pr_expand(v, ex, sizeof(ex));
+        if (ex[0] == '/') { snprintf(out, cap, "%s", ex); return access(ex, F_OK) == 0; }
+    }
+    char cand[5][4096];
+    char exe[2048] = "";
+    (void)gmb_paths_exe_dir(exe, sizeof exe);
+    snprintf(cand[0], sizeof cand[0], "%s/settings/brains-manifest.json", exe);
+    snprintf(cand[1], sizeof cand[1], "%s/shared/settings/brains-manifest.json", g_pr_root);
+    snprintf(cand[2], sizeof cand[2], "%s/Resources/brains-manifest.json", exe);
+    snprintf(cand[3], sizeof cand[3], "%s/Resources/brains-manifest.json", g_pr_root);
+    snprintf(cand[4], sizeof cand[4], "%s/settings/brains-manifest.json", g_pr_root);
+    for (int i = 0; i < 5; i++)
+        if (cand[i][0] == '/' && access(cand[i], F_OK) == 0) { snprintf(out, cap, "%s", cand[i]); return 1; }
+    snprintf(out, cap, "%s", cand[1]);
+    return 0;
+}
+
 void gmb_paths_libs_dir(char* out, size_t cap)
 {
     if (!g_pr_loaded) pr_load();

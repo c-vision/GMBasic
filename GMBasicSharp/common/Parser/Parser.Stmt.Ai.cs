@@ -841,8 +841,12 @@ if (parser.Match(TokenKind.Set))
                 parser.Advance(); // INSTALL
                 var args = ImmutableArray.CreateBuilder<Expr>();
                 args.Add(ParseNameAsString(parser));
-                parser.Consume(TokenKind.Comma, "Expected ',' after brain name in AI BRAIN INSTALL.");
-                args.Add(ParseNameAsString(parser));
+                /* `AI BRAIN INSTALL "nome"` = installa dal MANIFEST (brains-manifest.json, con
+                 * download on demand); la forma `"nome", "sorgente"` installa da URL/zip/path. */
+                if (parser.Match(TokenKind.Comma))
+                    args.Add(ParseNameAsString(parser));
+                else
+                    args.Add(new StringExpr("", parser.Previous()));
                 var tok = parser.Previous();
                 return new ExpressionStmt(MakeAiCommand(tok, TokenKind.AiBrainInstall, args.ToArray()));
             }

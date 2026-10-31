@@ -171,6 +171,8 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "TRADING.BONDS.BondYield");
         r.Register(Backend.IL, "TRADING.METRICS.BookValuePerShare");
         r.Register(Backend.IL, "AI.BrainDetach");
+        r.Register(Backend.IL, "AI.BrainInstall");
+        r.Register(Backend.IL, "AI.BrainUninstall");
         r.Register(Backend.IL, "AI.BrainInfo");
         r.Register(Backend.IL, "AI.BrainList");
         r.Register(Backend.IL, "AI.BrainUse");

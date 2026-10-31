@@ -2557,6 +2557,10 @@ char* gmb_vault_policy(const char* name);
 int   gmb_brain_use(const char* names);
 int   gmb_brain_detach(const char* name);
 char* gmb_brain_used_csv(void);
+/* AI BRAIN INSTALL nome, sorgente / AI BRAIN UNINSTALL nome (1 = ok, 0 = errore esplicito su
+ * stderr). La logica vive in gmb_brains.c: manifest + gmb_fetch, condivisa dai 4 backend. */
+gmb_double_t gmb_brain_install(const char* name, const char* source);
+gmb_double_t gmb_brain_uninstall(const char* name);
 /* ── INGEST (AI INGEST FILE/FOLDER, porting Ingestor — §0bis) ──
  * Importa un file esterno nel vault come nota .md (estensioni testo copiate, immagini OCR,
  * audio trascrizione, binari via converter registrato). Il vault "" risolve al brain attivo
@@ -2639,6 +2643,8 @@ void  gmb_paths_rag_dir(char* out, size_t cap);               /* shared/rag nel 
 void  gmb_paths_graphs_dir(char* out, size_t cap);            /* shared/graphs nel monorepo, altrimenti <root>/graphs */
 void  gmb_paths_brains_dir(char* out, size_t cap);             /* default <root>/brains */
 void  gmb_paths_brains_exports_dir(char* out, size_t cap);     /* default <root>/brains-exports */
+void  gmb_paths_brains_cache_dir(char* out, size_t cap);       /* cache cervelli on-demand: ~/.gmbasic/brains */
+int   gmb_paths_brains_manifest(char* out, size_t cap);        /* brains-manifest.json: 1 se esiste */
 void  gmb_paths_libs_dir(char* out, size_t cap);               /* default <root>/build/libs/<rid> */
 void  gmb_paths_libs_cache_dir(char* out, size_t cap);          /* cache librerie on-demand: ~/.gmbasic/libs (paths.libsCacheDir) */
 
