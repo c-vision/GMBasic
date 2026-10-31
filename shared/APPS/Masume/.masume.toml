@@ -17,10 +17,20 @@
 [settings]
 mode = "status"
 
+# --- LLM: il modello si configura QUI, nei settings dell'app --------------------
+# REGOLA (shared/APPS/README): un'app che usa un modello LLM non lo hardcoda.
+# `model` = alias/provider della capability (lo stesso nome passato a AI REGISTER,
+# es. "ds4mlx", "glm45air4bit"); vuoto = si usa il provider già attivo (default
+# del linguaggio). `capability` = nome della capability (default "completion").
+# Se l'alias non è registrato l'app fallisce con errore ESPLICITO (nessun fallback).
+[llm]
+model = ""
+capability = "completion"
+
 # --- Profile 1: the self-contained demo database created by MASUME_MODE_SEED ---
 [profile.demo]
 engine = "sqlite"
-path = "work/masume_demo.sqlite"
+path = "bin/masume_demo.sqlite"
 env = "dev"
 mode = "read"
 

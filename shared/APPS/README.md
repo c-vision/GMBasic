@@ -132,6 +132,14 @@ la CLI del tool). Apps therefore select their behaviour through `#IFDEF` compile
 5. **Verified, not assumed.** Say how the app was executed and what output was observed. Run the
    narrowest command that exercises the change (no massive test sweeps without permission,
    `AGENTS.md` §0).
+6. **LLM: il modello si configura nei settings dell'app** (regola, 2026-11-01). Ogni app che
+   **esiste o esisterà** e usa un modello LLM **deve** permettere di specificarlo nei **propri**
+   settings (project file/`.cfg`/`app.settings.json` della app), **mai hardcoded** nel `.bas`.
+   Convenzione: sezione `[llm]` con `model = "<alias/provider>"` (+ `capability` opzionale);
+   `model` vuoto = provider già attivo (default del linguaggio); alias non registrato = **errore
+   esplicito** (nessun fallback silenzioso). Riferimento vivo: `Masume` (`.masume.toml` §`[llm]`,
+   `LlmActivate`). Motivo: cambiare modello (locale/remoto, quantizzato, altro) senza ricompilare
+   e senza toccare il codice dell'app.
 
 ## App index
 
