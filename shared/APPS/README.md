@@ -146,6 +146,7 @@ la CLI del tool). Apps therefore select their behaviour through `#IFDEF` compile
 | App | Upstream | Language | Licence | Status |
 |---|---|---|---|---|
 | [`Masume`](Masume/README.md) | [turanmahmudov/masume](https://github.com/turanmahmudov/masume) — terminal database client with AI chat and an MCP server | Go | Apache-2.0 | M1 headless core (status / seed / objects / run / check) — in progress; **PCode verificato**; C99Native non compila (bug aperto nel vault: `Bugs/(open) - Masume-C99Native-Emissione-DoubleToString`) |
+| [`DigUp`](DigUp/README.md) | [ARahim3/DigUp](https://github.com/ARahim3/DigUp) — semantic file search (EmbeddingGemma 2 via llama.cpp) | Swift/Tauri | MIT | M1 headless: indice SQLite (AI RAG) + ricerca ibrida su testo/documenti/codice; **verificato su IL/PCode/VM/C/C99Native**; media in TODO |
 | [`ServiceConsole`](ServiceConsole/README.md) | — (originale) | BASIC | GMBasic | banco di prova **daemon + GUI polimorfica** (HTTP in-language, tray, console TUI; script `console_tui.sh`/`console_gui.sh`) |
 
 > **Non è più qui**: l'IDE TUI (`GMBasicTuiIde`, prima `APPS/GMBasicIde`) è stato promosso a

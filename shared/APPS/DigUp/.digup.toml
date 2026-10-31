@@ -1,0 +1,43 @@
+# .digup.toml — DigUp (GMBasic port) — configurazione della app
+# ============================================================================
+# Tutto si configura QUI (nessun parametro nel codice):
+#   [settings]   mode: status | index | search | check
+#   [index]      roots, db, extensions, chunk
+#   [search]     top, query
+#   [llm]        modello di embedding (registola ADR: mai hardcoded)
+# ============================================================================
+
+[settings]
+# fallback quando il run non porta un simbolo -DDIGUP_MODE_* (BASIC non ha argv)
+mode = "status"
+
+[index]
+# cartelle da indicizzare, relative alla cartella della app (separate da virgola)
+roots = "fixtures"
+# indice: SQLite nella cartella bin/ della app (output, gitignored)
+db = "bin/digup.sqlite"
+# estensioni lette come TESTO (M1: testo/documenti; media in TODO)
+extensions = ".txt,.md,.csv,.bas,.json,.toml"
+# dimensione del chunk in caratteri
+chunk = 300
+# "true" = ricrea l'indice da zero a ogni `index`
+reindex = "true"
+
+[search]
+top = 5
+# query usata dal modo `search` quando non la si scrive a mano (INPUT)
+query = "zebra nella savana"
+
+[llm]
+# REGOLA (shared/APPS/README, ADR-App-LLM-Modello-nei-Settings): il modello si
+# legge da qui, mai dal codice.
+#   model = alias/provider della capability "embedding" (default: fixture
+#           deterministico, utile per test e per l'out-of-the-box)
+#   dir   = se valorizzato, la app registra il modello locale con
+#           AI REGISTER "digup-embed", %EMBEDDING, dir  e poi lo attiva
+#           (es. una dir MLX/GGUF di embedding supportata da LLMEnv)
+#   dims  = dimensione dei vettori (fixture=8; modelli reali 384/768/1024)
+model = "fixture-embedding"
+capability = "embedding"
+dir = ""
+dims = 8
