@@ -475,7 +475,15 @@ internal sealed partial class PCodeProcessor
         lock (_httpLock)
         {
             _httpConfig = newConfig;
-            (_httpRateLimiter ??= new Basic.IlBackend.PCode.Http.PCodeHttpRateLimiter()).Configure(rateLimitPerMin, rateLimitBurst);
+            // "0 = nessun limite" è il contratto documentato di RateLimitRequestsPerMinute
+            // (HttpServerSettings) e il backend IL lo rispetta (`if (... > 0)`) . Qui invece il
+            // limiter veniva SEMPRE creato e configurato: con 0 il token-bucket partiva con 0
+            // token → OGNI richiesta 429 (divergenza PCode/IL, trovata con `HTTPCONFIG` a 0).
+            if (rateLimitPerMin > 0)
+                (_httpRateLimiter ??= new Basic.IlBackend.PCode.Http.PCodeHttpRateLimiter())
+                    .Configure(rateLimitPerMin, rateLimitBurst > 0 ? rateLimitBurst : 1);
+            else
+                _httpRateLimiter = null;
             oldServer = _httpServer;
             if (oldServer != null) _httpServer = null;
         }

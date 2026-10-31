@@ -50,6 +50,8 @@ DIM g_sessions AS INTEGER
 DIM g_seedDemo AS INTEGER
 DIM g_autoTrace AS INTEGER
 DIM g_refreshMs AS INTEGER
+DIM g_rateLimitPerMin AS INTEGER
+DIM g_rateLimitBurst AS INTEGER
 
 ' --- Stato del processo -----------------------------------------------------
 DIM g_appDir AS STRING
@@ -108,6 +110,8 @@ SUB SetDefaults()
     g_seedDemo = 1
     g_autoTrace = 1
     g_refreshMs = 2500
+    g_rateLimitPerMin = 0
+    g_rateLimitBurst = 0
     g_proxied = 0
 END SUB
 
@@ -159,6 +163,8 @@ SUB ParseConfig(path AS STRING)
                         IF key = "SEEDDEMO" THEN g_seedDemo = BoolVal(val)
                         IF key = "AUTOTRACE" THEN g_autoTrace = BoolVal(val)
                         IF key = "REFRESHMS" THEN g_refreshMs = CINT(VAL(val))
+                        IF key = "RATELIMITPERMINUTE" THEN g_rateLimitPerMin = CINT(VAL(val))
+                        IF key = "RATELIMITBURST" THEN g_rateLimitBurst = CINT(VAL(val))
                     END IF
                 END IF
             END IF
@@ -349,6 +355,11 @@ SUB PrintBanner()
     PRINT "static     : "; g_staticDir
     PRINT "network    : "; AllowedText()
     PRINT "refresh    : "; g_refreshMs; " ms"
+    IF g_rateLimitPerMin > 0 THEN
+        PRINT "rate limit : "; g_rateLimitPerMin; "/min (burst "; g_rateLimitBurst; ")"
+    ELSE
+        PRINT "rate limit : none"
+    END IF
 END SUB
 
 FUNCTION ApiUrl() AS STRING
@@ -425,6 +436,11 @@ SUB StartDashboard()
     cfg.Port = g_dashPort
     IF g_sessions = 1 THEN cfg.Sessions = TRUE
     IF LEN(g_allowedIPs) > 0 THEN cfg.AllowedIPs = g_allowedIPs
+    ' Rate limit: il DEFAULT del runtime è 60/min (burst 120) — una console locale con
+    ' polling lo esaurisce e riceve 429. Qui si parte da 0 (nessun limite) e si può
+    ' alzare da .webapp.toml per un'esposizione in LAN.
+    cfg.RateLimitRequestsPerMinute = g_rateLimitPerMin
+    cfg.RateLimitBurstSize = g_rateLimitBurst
     HTTP CONFIG cfg
 
     ' Più mount statici sono legittimi: vince il prefisso più lungo.
