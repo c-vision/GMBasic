@@ -181,7 +181,9 @@ public static class ProgramBundle
         var n = 0;
         foreach (var item in arr)
         {
-            var name = item?.GetValue<string>();
+            // Solo stringhe: un valore di tipo diverso (numero/oggetto) è ignorato invece di
+            // far esplodere la conversione (la dichiarazione è dell'utente, non nostra).
+            if (item is not JsonValue v || !v.TryGetValue<string>(out var name)) continue;
             if (string.IsNullOrWhiteSpace(name)) continue;
             var src = Path.Combine(srcRoot, name);
             if (!Directory.Exists(src))
