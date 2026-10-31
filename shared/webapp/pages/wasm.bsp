@@ -1,6 +1,6 @@
 <%@ IMPORT WASMBRIDGE %>
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -25,7 +25,7 @@
 </head>
 <body>
 <header>
-  <h1>WASM — Esegui BASIC nel browser</h1>
+  <h1>WASM — Run BASIC in the browser</h1>
   <p>Target <code>.bas → .wasm</code> via <code>clang --target=wasm32</code> + <code>include/WasmBridge.inc</code></p>
 </header>
 <main>
@@ -39,10 +39,10 @@
       <a class="muted" href="/index.bsp">← Dashboard</a>
     </div>
     <div class="hint">
-      POC oggi (zero C#):<br>
-      <code>dotnet run --project REPL/REPL.csproj -- -c99 prog.bas -o /tmp/prog.c</code><br>
-      <code>clang --target=wasm32 -o webapp/static/prog.wasm /tmp/prog.c native/gmb_runtime_c/src/*.c</code><br>
-      Futuro: <code>gmb prog.bas -target wasm -o webapp/static/prog.wasm</code>
+      POC today (zero C#):<br>
+      <code>dotnet GMBasicSharp/REPL/bin/Debug/net10.0/REPL.dll --pcode --c99 prog.bas -o /tmp/prog.c</code><br>
+      <code>clang --target=wasm32 -o shared/webapp/static/prog.wasm /tmp/prog.c GMBasic/native/gmb_runtime_c/src/*.c</code><br>
+      Future: <code>gmb prog.bas -target wasm -o shared/webapp/static/prog.wasm</code>
     </div>
     <pre id="wasm-log" class="json"><%= WASMBRIDGE.Info() %></pre>
   </div>

@@ -76,7 +76,7 @@ SUB Main()
     SeedDemo()
     IF g_autoTrace = 1 THEN
         AI AGENT TRACE VERBOSE
-        PRINT "trace      : VERBOSE (eventi nel Log)"
+        PRINT "trace      : VERBOSE (events in the Log)"
     END IF
 
     StartAgentApi()
@@ -86,14 +86,14 @@ SUB Main()
     g_startSec = DATETIME.SECONDS()
     g_startTime = STRTIME
     PRINT ""
-    PRINT "pronto. CTRL+C per fermare, oppure: tools/sh/webapp_up.sh stop"
+    PRINT "ready. CTRL+C to stop, or: tools/sh/webapp_up.sh stop"
     PRINT ""
 
     SLEEP 3600000
 
     HTTP SERVER STOP
     AI AGENT STOP SERVER
-    PRINT "server fermati."
+    PRINT "servers stopped."
 END SUB
 
 ' ============================================================================
@@ -271,7 +271,7 @@ SUB LoadPersistedAgents()
     DIM fs() = IO.DIR(g_agentsDir + "/*.agent.json")
     DIM i AS INTEGER
     IF UBOUND(fs) < 0 THEN
-        PRINT "agenti     : nessuno su disco ("; g_agentsDir; ")"
+        PRINT "agents     : none on disk ("; g_agentsDir; ")"
         EXIT SUB
     END IF
     FOR i = 0 TO UBOUND(fs)
@@ -281,7 +281,7 @@ SUB LoadPersistedAgents()
         nm = FileStem(fn, ".agent.json")
         AI AGENT LOAD (nm), (g_agentsDir + "/" + fn)
     NEXT i
-    PRINT "agenti     : "; UBOUND(fs) + 1; " caricati da bin/agents"
+    PRINT "agents     : "; UBOUND(fs) + 1; " loaded from bin/agents"
 END SUB
 
 SUB SaveAgent(name AS STRING)
@@ -317,7 +317,7 @@ SUB LoadPersistedTeams()
         r = ApiCall("POST", "/api/teams/load", body)
         IF INSTR(r, "loaded") > 0 THEN ok = ok + 1
     NEXT i
-    PRINT "team       : "; ok; " caricati da bin/teams"
+    PRINT "teams      : "; ok; " loaded from bin/teams"
 END SUB
 
 SUB SavePersistedTeam(name AS STRING)
@@ -345,9 +345,9 @@ SUB PrintBanner()
     PRINT "└────────────────────────────────────────────────────────────┘"
     PRINT "config     : "; cfg
     PRINT "app dir    : "; g_appDir
-    PRINT "pagine     : "; g_pagesDir
-    PRINT "statici    : "; g_staticDir
-    PRINT "rete       : "; AllowedText()
+    PRINT "pages      : "; g_pagesDir
+    PRINT "static     : "; g_staticDir
+    PRINT "network    : "; AllowedText()
     PRINT "refresh    : "; g_refreshMs; " ms"
 END SUB
 
@@ -357,9 +357,9 @@ END FUNCTION
 
 FUNCTION AllowedText() AS STRING
     IF LEN(g_allowedIPs) = 0 THEN
-        AllowedText = "nessun filtro (tutte le interfacce)"
+        AllowedText = "no filter (all interfaces)"
     ELSE
-        AllowedText = "solo " + g_allowedIPs
+        AllowedText = "loopback only: " + g_allowedIPs
     END IF
 END FUNCTION
 
@@ -369,14 +369,13 @@ END FUNCTION
 SUB SeedDemo()
     DIM names() = AI.AGENTLIST()
     IF UBOUND(names) >= 0 THEN
-        PRINT "agenti     : "; UBOUND(names) + 1; " (già presenti, seed saltato)"
-        EXIT SUB
+        EXIT SUB   ' già caricati (il messaggio l'ha dato LoadPersistedAgents)
     END IF
     IF g_seedDemo = 0 THEN
-        PRINT "agenti     : 0 (seed disattivato in .webapp.toml)"
+        PRINT "agents     : 0 (seed disabled in .webapp.toml)"
         EXIT SUB
     END IF
-    PRINT "agenti     : 0 → creo Demo, Analyst, Support"
+    PRINT "agents     : 0 → creating Demo, Analyst, Support"
     AI AGENT CREATE "Demo"
     AI AGENT SET "Demo" systemPrompt "You are a helpful demo agent."
     AI AGENT SET "Demo" permission YOLO
@@ -398,7 +397,7 @@ END SUB
 SUB StartAgentApi()
     DIM r AS FETCHRESULT
     IF g_apiPort <= 0 THEN
-        PRINT "api agenti : disattivata (apiPort = 0 in .webapp.toml)"
+        PRINT "agent api  : disabled (apiPort = 0 in .webapp.toml)"
         EXIT SUB
     END IF
     ' Porta dinamica: la parentesi evita che il parser la prenda per un NOME
@@ -407,20 +406,20 @@ SUB StartAgentApi()
     SLEEP 300
     r = FETCH("http://127.0.0.1:" + LTRIM$(STR$(g_apiPort)) + "/api/agents")
     IF r.StatusCode = 200 THEN
-        PRINT "api agenti : " + ApiUrl()
+        PRINT "agent api  : " + ApiUrl()
     ELSE
-        PRINT "api agenti : AVVIATA ma non risponde su :" + LTRIM$(STR$(g_apiPort)) + " (porta occupata? vedi .webapp.toml)"
+        PRINT "agent api  : STARTED but not answering on :" + LTRIM$(STR$(g_apiPort)) + " (port busy? see .webapp.toml)"
     END IF
 END SUB
 
 SUB StartDashboard()
     DIM cfg AS HTTPCONFIG = NEW HTTPCONFIG
     IF g_dashPort <= 0 THEN
-        PRINT "dashboard  : porta non valida ("; g_dashPort; ")"
+        PRINT "dashboard  : invalid port ("; g_dashPort; ")"
         EXIT SUB
     END IF
     IF NOT IO.DIREXISTS(g_pagesDir) THEN
-        PRINT "errore: cartella pagine non trovata: "; g_pagesDir
+        PRINT "error: pages folder not found: "; g_pagesDir
         ERROR 2
     END IF
     cfg.Port = g_dashPort
@@ -570,7 +569,7 @@ SUB ApiAgentCreate(req AS HTTPREQUEST, res AS HTTPRESPONSE)
     name = JsonField(body, "name")
     IF LEN(STRINGS.TRIM(name)) = 0 THEN
         res.StatusCode = 400
-        res.Send(ErrorJson("missing_name", "serve {""name"":""<agente>""}"))
+        res.Send(ErrorJson("missing_name", "expected {""name"":""<agent>""}"))
         EXIT SUB
     END IF
     name = STRINGS.TRIM(name)
@@ -582,7 +581,7 @@ SUB ApiAgentCreate(req AS HTTPREQUEST, res AS HTTPRESPONSE)
     NEXT i
     IF exists = 1 THEN
         res.StatusCode = 409
-        res.Send(ErrorJson("already_exists", "agente già presente: " + name))
+        res.Send(ErrorJson("already_exists", "agent already exists: " + name))
         EXIT SUB
     END IF
 
@@ -597,7 +596,7 @@ SUB ApiAgentCreate(req AS HTTPREQUEST, res AS HTTPRESPONSE)
     IF LEN(v) > 0 THEN AI AGENT SET (name) model (v)
 
     SavePersistedAgent(name)
-    PRINT "[api] agente creato: "; name; " (da "; req.RemoteIp; ")"
+    PRINT "[api] agent created: "; name; " (from "; req.RemoteIp; ")"
     res.StatusCode = 201
     res.Send("{" + JQ("created") + ":" + JStr(name) + "}")
 END SUB
@@ -611,7 +610,7 @@ SUB ApiAgentUpdate(req AS HTTPREQUEST, res AS HTTPRESPONSE)
     name = req.Params["name"]
     IF LEN(STRINGS.TRIM(name)) = 0 THEN
         res.StatusCode = 400
-        res.Send(ErrorJson("missing_name", "nome agente assente nel path"))
+        res.Send(ErrorJson("missing_name", "missing agent name in path"))
         EXIT SUB
     END IF
     changed = 0
@@ -636,7 +635,7 @@ SUB ApiAgentUpdate(req AS HTTPREQUEST, res AS HTTPRESPONSE)
         changed = changed + 1
     END IF
     IF changed > 0 THEN SavePersistedAgent(name)
-    PRINT "[api] agente aggiornato: "; name; " ("; changed; " campi)"
+    PRINT "[api] agent updated: "; name; " ("; changed; " fields)"
     res.Send("{" + JQ("updated") + ":" + JStr(name) + "," + JQ("fields") + ":" + LTRIM$(STR$(changed)) + "}")
 END SUB
 
@@ -646,12 +645,12 @@ SUB ApiAgentDelete(req AS HTTPREQUEST, res AS HTTPRESPONSE)
     name = req.Params["name"]
     IF LEN(STRINGS.TRIM(name)) = 0 THEN
         res.StatusCode = 400
-        res.Send(ErrorJson("missing_name", "nome agente assente nel path"))
+        res.Send(ErrorJson("missing_name", "missing agent name in path"))
         EXIT SUB
     END IF
     AI AGENT DELETE (name)
     DeletePersistedAgent(name)
-    PRINT "[api] agente eliminato: "; name; " (da "; req.RemoteIp; ")"
+    PRINT "[api] agent deleted: "; name; " (from "; req.RemoteIp; ")"
     res.Send("{" + JQ("deleted") + ":" + JStr(name) + "}")
 END SUB
 
@@ -664,7 +663,7 @@ SUB ApiAgentAsk(req AS HTTPREQUEST, res AS HTTPRESPONSE)
     prompt = JsonField(req.Body, "prompt")
     IF LEN(STRINGS.TRIM(prompt)) = 0 THEN
         res.StatusCode = 400
-        res.Send(ErrorJson("missing_prompt", "serve {""prompt"":""<testo>""}"))
+        res.Send(ErrorJson("missing_prompt", "expected {""prompt"":""<text>""}"))
         EXIT SUB
     END IF
     answer = AI.AGENTASKSYNC(name, prompt)
@@ -683,7 +682,7 @@ SUB ApiTeamCreate(req AS HTTPREQUEST, res AS HTTPRESPONSE)
     name = STRINGS.TRIM(JsonField(req.Body, "name"))
     IF LEN(name) = 0 THEN
         res.StatusCode = 400
-        res.Send(ErrorJson("missing_name", "serve {""name"":""<team>""}"))
+        res.Send(ErrorJson("missing_name", "expected {""name"":""<team>""}"))
         EXIT SUB
     END IF
     errTag = CHR$(34) + "error" + CHR$(34)
@@ -694,7 +693,7 @@ SUB ApiTeamCreate(req AS HTTPREQUEST, res AS HTTPRESPONSE)
         EXIT SUB
     END IF
     SavePersistedTeam(name)
-    PRINT "[api] team creato: "; name
+    PRINT "[api] team created: "; name
     res.StatusCode = 201
     res.Send(out)
 END SUB
@@ -707,7 +706,7 @@ SUB ApiTeamAddAgent(req AS HTTPREQUEST, res AS HTTPRESPONSE)
     errTag = CHR$(34) + "error" + CHR$(34)
     IF LEN(name) = 0 THEN
         res.StatusCode = 400
-        res.Send(ErrorJson("missing_name", "nome team assente nel path"))
+        res.Send(ErrorJson("missing_name", "missing team name in path"))
         EXIT SUB
     END IF
     out = ApiCall("POST", "/api/teams/" + name + "/agents", req.Body)
@@ -717,7 +716,7 @@ SUB ApiTeamAddAgent(req AS HTTPREQUEST, res AS HTTPRESPONSE)
         EXIT SUB
     END IF
     SavePersistedTeam(name)
-    PRINT "[api] team "; name; ": membro aggiunto"
+    PRINT "[api] team "; name; ": member added"
     res.Send(out)
 END SUB
 
@@ -729,7 +728,7 @@ SUB ApiTeamDelete(req AS HTTPREQUEST, res AS HTTPRESPONSE)
     errTag = CHR$(34) + "error" + CHR$(34)
     IF LEN(name) = 0 THEN
         res.StatusCode = 400
-        res.Send(ErrorJson("missing_name", "nome team assente nel path"))
+        res.Send(ErrorJson("missing_name", "missing team name in path"))
         EXIT SUB
     END IF
     out = ApiCall("DELETE", "/api/teams/" + name, "")
@@ -739,7 +738,7 @@ SUB ApiTeamDelete(req AS HTTPREQUEST, res AS HTTPRESPONSE)
         EXIT SUB
     END IF
     DeletePersistedTeam(name)
-    PRINT "[api] team eliminato: "; name
+    PRINT "[api] team deleted: "; name
     res.Send(out)
 END SUB
 
@@ -780,7 +779,7 @@ FUNCTION ApiCall(method AS STRING, pathQuery AS STRING, body AS STRING) AS STRIN
     opts.Headers.Add("Content-Type", "application/json")
     r = FETCH(url, opts)
     IF r.StatusCode = 0 THEN
-        ApiCall = ErrorJson("agent_api_unreachable", "il server agenti (:" + LTRIM$(STR$(g_apiPort)) + ") non risponde")
+        ApiCall = ErrorJson("agent_api_unreachable", "the agent server (:" + LTRIM$(STR$(g_apiPort)) + ") is not responding")
     ELSE
         ApiCall = r.Body
     END IF
