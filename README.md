@@ -1,14 +1,17 @@
 # GMBasic
 
-> **AI-powered BASIC — four independent backends, SDL2 graphics, six database engines, full TUI, AI agents.**
+> **AI-powered BASIC — four independent backends, native database engines, a built-in LLM model compiler (quantization + training), SDL2 graphics, full TUI.**
 >
 > BASIC with 500+ built-in functions, executed by four independent backends (a P-Code VM in C#,
-> IL/NativeAOT, a C virtual machine, a C99 transpiler), SDL2 GPU-accelerated graphics (sprites, TTF
-> fonts, joystick), six embedded database engines (ISAM B-Tree, DBF/xBase, SPEED LSM, LEDGER,
-> SQLite, VectorDB),
-> AI agents with tool-calling, MCP server, RAG pipeline, true-color Clipper-compatible TUI (20+
-> controls), HTTP/WebSocket server, linear algebra, statistical analysis, trading/finance, and a
-> full networking stack.
+> IL/NativeAOT, a C virtual machine, a C99 transpiler), SDL2 GPU-accelerated graphics, **six
+> embedded database engines — ISAM, DBF/xBase, SPEED, LEDGER, SQLite, VectorDB — with native C
+> implementations for the C backends**, and a complete **local-AI stack**: agents with tool-calling,
+> MCP server and 52 connectors, RAG and knowledge graphs (installable *brains*), a **model compiler
+> with per-tensor quantization** (`q2_k…q6_k`, `q4_0`/`q8_0`, `iq1_s`/`iq2_*`/`iq3_*`, `mxfp4`,
+> `nvfp4`, `f16`/`bf16`, activation quantization, imatrix, QuantIR, MLX↔GGUF conversion) and
+> **training** (fine-tune, LoRA, distillation, DPO/GRPO, eval gates) — plus a true-color
+> Clipper-compatible TUI (20+ controls), HTTP/WebSocket server, linear algebra, statistical
+> analysis, trading/finance, and a full networking stack.
 
 **Repository:** [github.com/c-vision/GMBasic](https://github.com/c-vision/GMBasic)
 
@@ -304,17 +307,71 @@ category, and `Community/` is the main one.
 | [packages](shared/samples/packages/) | samples materialized by `gmb pkg install` for installed packages |
 | [Fixtures](shared/samples/Fixtures/) | input data (not programs): small fixtures in git, the four market feeds downloaded on demand |
 
-## AI & Agents
+## AI & LLM
 
-| Subsystem | Description | Location |
+Four namespaces, one axis each (`AGENTS.md` §6.4): **`AI`** serving/agents/RAG (274 functions),
+**`LLM`** model compiler (61), **`TRAIN`** weight production, **`TORCH`** tensor runtime (76).
+
+| Subsystem | What it does | Where |
 |---|---|---|
-| **Agents** | agent memory store (ISAM-backed), tool loop, agent server | `GMBasicSharp/common/AI/Agents/` |
-| **MCP** | Model Context Protocol server (stdio/http), audit sink | `GMBasicSharp/common/AI/Mcp/` |
-| **Providers** | LLM provider abstraction (OpenAI-compatible, Ollama, ONNX) with auto-failover | `GMBasicSharp/common/AI/Providers/` |
-| **RAG** | retrieval-augmented generation pipeline, vector runtime | `GMBasicSharp/common/AI/` |
-| **Graph** | knowledge graph store, PageRank/Louvain, provenance | `GMBasicSharp/common/AI/Graph/` |
-| **Brains** | installable RAG + graph bundles | `~/.gmbasic/brains` (see [Download](#download-what-which-command-where-it-lands)) |
+| **Providers** | MLX, llama.cpp/GGUF and MoE streaming engines, OpenAI-compatible/Ollama/ONNX, auto-failover, credits and quotas | `GMBasicSharp/common/AI/Providers/` + engine in [`LLMEnv`](https://github.com/c-vision/LLMEnv) |
+| **Agents** | agent records, tool loop, permissions, memory (ISAM-backed), multi-agent teams, structured output | `GMBasicSharp/common/AI/Agents/` |
+| **MCP** | MCP server (stdio/http) and client, audit sink, 52 connectors | `GMBasicSharp/common/AI/Mcp/`, `.../Connectors/` |
+| **RAG** | ingestion, chunking, embeddings, retrieval, eval harness | `GMBasicSharp/common/AI/`, `common/Databases/VectorDB/` |
+| **Knowledge graph** | graph store, PageRank/Louvain/max-flow, provenance, graph-backed Q&A | `GMBasicSharp/common/AI/Graph/` |
+| **Brains** | installable RAG + graph bundles (`rag`, `graph`) | `~/.gmbasic/brains` — see [Download](#download-what-which-command-where-it-lands) |
 | **Skills / Plugins** | prompt archives and agent capability descriptors | `shared/skills/`, `shared/plugins/` |
+| **Model compiler — quantization** | format policies, per-tensor planning, QuantIR, imatrix, activation quantization, dequant, MLX↔GGUF converter | `GMBasic/gmbllm/` (**PUL**) |
+| **Training** | fine-tune, LoRA, distillation, DPO/GRPO, eval gates, merge, prune | `GMBasic/gmbllm/` (**PUL**) |
+| **Tensor runtime** | tensors/ops/devices, metrics, datasets, MiniLM embeddings | `GMBasic/native/gmb_torch/` + `TORCH` bindings |
+
+### Quantization — the `LLM` namespace
+
+Post-training quantization (PTQ) with **per-role and per-tensor precision**, driven from BASIC:
+
+```basic
+' per-role policies (the same names the compressor pipeline uses)
+LLM POLICY SET "ROUTED_EXPERT", "iq2xxs"   ' MoE experts: ~2 bit
+LLM POLICY SET "ATTENTION",     "q8_0"     ' attention projections
+LLM POLICY SET "EMBEDDING",     "q4_k"     ' the biggest tensor
+LLM POLICY SET "DEFAULT",       "q4_k"
+
+' inspect what the policy actually resolves to, per operation and per tensor
+LLM TENSOR QUANTIR   "model.gguf"          ' effective precision: w / activation / accum / output
+LLM TENSOR AUTOPOLICY "model.gguf"         ' a policy proposed from the architecture
+```
+
+| surface | what it gives you |
+|---|---|
+| `LLM POLICY SET` / `DEFINE` / `ITEM(S)` / `APPLY` / `DIFF` / `GATE` | named policies and per-role entries: conditions (`ROLE=`, `ARCH=`, `LAYER<op><n>`, `IMP<op><value>` on the **imatrix**), action = a format or **4-axis** `w=…,a=fp8,acc=f16,o=f16`, `DEFAULT:` fallback; `DIFF`/`GATE` compare and vet two policies |
+| `LLM QUANTIR` | the **QuantIR**: effective precision per operation and per tensor, resolved from the `.gmbarch` + the policy (`SETITEM` > DSL > role), overrides marked `*`; it is an editable IR |
+| `LLM TENSOR` / `ACTIVATIONSTATS` / `QUANTERROR` / `IMATRIX` | tensor inspection (dense/compare), activation statistics (actquant), quantization error, importance matrix |
+| **formats** | `q2_k … q6_k`, `q4_0`, `q8_0`, `iq1_s`, `iq2_xxs`/`iq2_xs`/`iq2_s`, `iq3_xxs`/`iq3_s`, `mxfp4`, `nvfp4`, `f16`/`f32`/`bf16`, `NOQUANT` |
+
+**Where the code lives** — and why it matters for the license: the **encode** side
+(quantization/training/conversion that *produces* weights) is in
+[`GMBasic/gmbllm/`](GMBasic/gmbllm/README.md) under **PUL**; the **dequant** and the forward used to
+*run* a quantized model stay in the Apache engine ([`LLMEnv`](https://github.com/c-vision/LLMEnv)).
+The native C build links `libgmbllm.a`, so a compiled program can carry the compiler with it.
+
+### Training — the `TRAIN` namespace
+
+Weights production from BASIC, same engine abstraction (`engine: "mlx"|"torch"`):
+
+| verb | what it does |
+|---|---|
+| `TRAIN DATASET BUILD` / `SAMPLE` · `DATASETSTATS` | dataset preparation and statistics |
+| `TRAIN FINETUNE` · `TRAIN RESUME` | fine-tune (LoRA SFT) with checkpoints and resume |
+| `TRAIN LORA APPLY` / `MERGE` / `SAVE` / `LOAD` · `LORALIST` | LoRA adapters: apply, merge, persist, list |
+| `TRAIN DISTILL BUILD` / `SAMPLE` (`DISTILLCKPT`, `DISTILLEVAL*`) | self-distillation with acceptance/token gates |
+| `TRAIN DPO` · `TRAIN GRPO` | preference and reinforcement-style objectives |
+| `TRAIN EVAL` · `EVALGATE` / `GATE` · `QUALITY` | perplexity/NLL evaluation, gates, quality metrics |
+| `TRAIN MERGE` · `PRUNE` · `EXPORT` | merge/prune/export the produced weights |
+| `RUNS`, `RUNSJSON`, `RUNSITEM`, `RUNSCLEAR` | training-run registry (resume/inspection) |
+
+Dylib: `gmb_ai_finetune` (ABI listed in [`shared/runtime-abi`](shared/runtime-abi/README.md)).
+`TRAIN` is the **PUL boundary** in the language: everything here produces or alters weights, and its
+implementation lives in `gmbllm`.
 
 ## Graphics
 
@@ -342,24 +399,42 @@ Dependencies: `libSDL2.dylib`, `libSDL2_ttf.dylib`, `libfreetype.6.dylib`, `libh
 | `CONCURRENCY` | `SleepAsync`, `TaskYield` |
 | `JOYSTICK` | `Joy`, `JoyCount`, `JoyName`, `JoyPresent` |
 
-## Databases
+## Databases — six engines, native on both worlds
 
-Six embedded database engines, all reachable from BASIC. C# implementation:
-`GMBasicSharp/common/Databases/` (plus `GMBasicSharp/modules/Database/`):
+**Five native engines plus vector search**, all reachable from BASIC, all usable without a server:
 
-| Engine | Type |
-|--------|------|
-| **ISAM** | key-value B-tree, WAL, concurrent readers |
-| **DBF** | dBASE file format (read/write, NTX/NDX indexes, compound, memo) |
-| **SPEED** | LSM-tree, high throughput, crash recovery |
-| **LEDGER** | append-only ledger with PACK compaction |
-| **SQLite** | embedded SQL via Microsoft.Data.Sqlite |
-| **VectorDB** | vector database with cosine similarity, IVF index |
+| Engine | Type | Native implementation |
+|--------|------|-----------------------|
+| **ISAM** | key-value B-tree, WAL, concurrent readers, relations and joins | **C** (`GMBasic/native/gmb_db_c/`) + C# |
+| **DBF** | dBASE/xBase files (read/write, NTX/NDX indexes, compound, memo, RDD layer) | **C** (`gmb_db_c/dbf`) + C# |
+| **SPEED** | LSM-tree, high throughput, crash recovery, group commit | **C** (`gmb_db_c/speed`) + C# |
+| **LEDGER** | append-only ledger with PACK compaction | **C** (`gmb_db_c/ledger`) + C# |
+| **SQLite** | embedded SQL | embedded **SQLite C** library (both worlds) |
+| **VectorDB** | cosine/dot similarity, IVF index, embeddings, chunking — the RAG/brains store | C# (`common/Databases/VectorDB/`) |
 
-A parallel **pure-C implementation** of ISAM/DBF/SPEED/LEDGER lives in
-`GMBasic/native/gmb_db_c/` for the VM/C and C99Native backends — advanced but **not linked by
-default** (`GMB_HAS_COMMERCIAL_DB` CMake option, off by default). It is tested against the C#
-implementation as oracle in `GMBasicSharp/tests/GMBASIC.Database.Native.Tests/`.
+```basic
+DBF USE "data/customers.dbf" ALIAS C
+DBF GO TOP
+DO WHILE NOT DBF.EOF()
+  PRINT C.NOME, C.CITTA
+  DBF SKIP
+END DO
+
+ISAM OPEN "data/items.isdb" OF Item ALIAS I INDEXED BY ID   ' B-tree + WAL, crash-safe
+```
+
+**How they run on each backend.** The C engines are a *parallel implementation of the same
+semantics*, exposed through `gmb_db.h` (DBF / ISAM / SPEED / LEDGER, syscalls `GMB_SYS_ISAM_*`,
+`GMB_SYS_DBF_*`, …):
+
+- **C99Native** links `libgmb_db.a` + SQLite **by default**: a compiled native program gets the
+  database engines without the C# runtime.
+- **VM/C** dispatches the DB syscalls when built with `-DGMB_HAS_COMMERCIAL_DB=ON` (off by default).
+- **IL / PCodeVM** use the C# implementation in `GMBasicSharp/common/Databases/`.
+
+The two implementations are cross-checked with the C# one as **oracle**
+(`GMBasicSharp/tests/GMBASIC.Database.Native.Tests/`), so a program sees the same behaviour on every
+backend.
 
 ## HTTP & Networking
 
@@ -431,6 +506,18 @@ CALL SleepAsync(1000)
 | `FOR EACH` (on arrays, lists) | 🔶 |
 
 ✅ = working, 🔶 = partial/known issue
+
+## TODO
+
+The main open work items are tracked in **[TODO.md](./TODO.md)**:
+
+- **complete the two IDEs** — GUI [`GMBasicIDE`](GMBasicIDE/TODO-GMBASIC.md) (plan groups G0–G7,
+  ~51 open items) and TUI [`GMBasicTuiIde`](GMBasicTuiIde/TODO.md) (completion popup, find/replace,
+  caret in the status bar, real screen size, real-display verification, user guide);
+- **`COMMANDS.TXT` in English** (the generator still emits Italian labels) and the removal of the
+  stale duplicate under `docs/implemented/audit/`;
+- **the `libs` CI workflow is red** at the macOS system-dependencies step (so releases and
+  `libs-manifest.json` have never been published from CI).
 
 ## Tests
 
