@@ -2557,6 +2557,9 @@ char* gmb_vault_policy(const char* name);
 /* DB RAG di un cervello: risoluzione (vendor → exe → brainsDir → cache) poi i fallback
  * storici (<brains>/<nome>/rag/<nome>.db, <ragDir>/<nome>.db). 1 se esiste. */
 int   gmb_brain_rag_db(const char* name, char* out, size_t cap);
+/* Export JSON del grafo di un cervello: risoluzione (vendor → exe → brainsDir → cache) poi la
+ * cartella di BUILD configurata (paths.graphsDir, default ~/.gmbasic/graphs). 1 se esiste. */
+int   gmb_brain_graph_json(const char* name, char* out, size_t cap);
 int   gmb_brain_use(const char* names);
 int   gmb_brain_detach(const char* name);
 char* gmb_brain_used_csv(void);

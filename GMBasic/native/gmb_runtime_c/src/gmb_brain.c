@@ -74,6 +74,49 @@ int gmb_brain_rag_db(const char* name, char* out, size_t cap)
     return 0;
 }
 
+/* Export JSON del grafo di un cervello (parità BrainRegistry.GraphJsonPath C#). Stesso ordine
+ * del RAG: risoluzione (vendor → exe → brainsDir → cache <nome>/<versione>), poi la cartella di
+ * BUILD configurata (`paths.graphsDir`, default ~/.gmbasic/graphs). 1 se esiste.
+ *
+ * PERCHÉ ESISTE: prima `sb_graph_path` cercava solo `<brainsDir piatto>/<nome>/graphs/` e
+ * `<graphsDir>/<nome>.json` → un cervello INSTALLATO nella cache versionata non era
+ * interrogabile come grafo dalle gambe C (stesso buco già corretto per il RAG). */
+int gmb_brain_graph_json(const char* name, char* out, size_t cap)
+{
+    if (out && cap) out[0] = 0;
+    if (!name || !*name || !out || !cap) return 0;
+    char dir[4096];
+    if (gmb_brain_lookup(name, NULL, dir, sizeof dir)) {
+        snprintf(out, cap, "%s/graphs/%s.json", dir, name);
+        if (access(out, F_OK) == 0) return 1;
+        /* cervello con un solo .json dentro graphs/ (nome interno diverso dal nome logico) */
+        char gd[4200];
+        snprintf(gd, sizeof gd, "%s/graphs", dir);
+        DIR* d = opendir(gd);
+        if (d) {
+            struct dirent* e;
+            while ((e = readdir(d)) != NULL) {
+                size_t l = strlen(e->d_name);
+                if (l > 5 && strcmp(e->d_name + l - 5, ".json") == 0 &&
+                    strstr(e->d_name, ".stats.") == NULL && strstr(e->d_name, ".state.") == NULL) {
+                    snprintf(out, cap, "%s/%s", gd, e->d_name);
+                    closedir(d);
+                    return 1;
+                }
+            }
+            closedir(d);
+        }
+    }
+    char gdir[2048];
+    gmb_paths_graphs_dir(gdir, sizeof gdir);
+    if (gdir[0]) {
+        snprintf(out, cap, "%s/%s.json", gdir, name);
+        if (access(out, F_OK) == 0) return 1;
+    }
+    out[0] = 0;
+    return 0;
+}
+
 static int brain_rag_db_path(const char* name, char* out, size_t cap)
 {
     return gmb_brain_rag_db(name, out, cap);

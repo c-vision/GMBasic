@@ -2046,16 +2046,17 @@ static int64_t sb_unit_graph(int64_t src) {
 }
 
 static void sb_graph_path(const char* name, char* out, size_t cap) {
+    /* Una cartella "attiva" scelta da un comando GRAPH ha la precedenza. */
     if (g_graph_active_dir[0]) {
         snprintf(out, cap, "%s/%s.json", g_graph_active_dir, name);
         if (access(out, F_OK) == 0) return;
     }
-    char brains[1024], graphs[1024];
-    gmb_paths_brains_dir(brains, sizeof(brains));
-    gmb_paths_graphs_dir(graphs, sizeof(graphs));
-    snprintf(out, cap, "%s/%s/graphs/%s.json", brains, name, name);
-    if (access(out, F_OK) == 0) return;
-    snprintf(out, cap, "%s/%s.json", graphs, name);
+    /* Poi la RISOLUZIONE dei cervelli (vendor → exe → brainsDir → cache <nome>/<versione>) e la
+     * cartella di BUILD (paths.graphsDir, default ~/.gmbasic/graphs): una sola implementazione,
+     * `gmb_brain_graph_json`, condivisa con il resto del runtime. Prima qui si cercava solo il
+     * `<brainsDir>` piatto e un cervello INSTALLATO non era interrogabile come grafo. */
+    if (gmb_brain_graph_json(name, out, cap)) return;
+    out[0] = '\0';
 }
 
 static char* sb_json_str_array(char** arr, int n) {

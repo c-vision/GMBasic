@@ -128,6 +128,12 @@ int main(void)
     char db[1300];
     snprintf(db, sizeof db, "%s/rag/%s.db", src, brain);
     CHECK(write_file(db, blob, sizeof blob));
+    /* un cervello può essere disponibile come RAG **e** come GRAPH: il pacchetto porta entrambi */
+    char gdir[1300], gfile[1350];
+    snprintf(gdir, sizeof gdir, "%s/graphs", src);
+    mkdir_p(gdir);
+    snprintf(gfile, sizeof gfile, "%s/graphs/%s.json", src, brain);
+    CHECK(write_file(gfile, "{\"nodes\":[{\"id\":\"a\"}],\"edges\":[]}", 34));
     snprintf(srcman, sizeof srcman, "%s/brain.manifest.json", src);
     char man[512];
     int mn = snprintf(man, sizeof man, "{\"format\":\"gmbrain/1\",\"name\":\"%s\",\"version\":\"1.2.0\"}", brain);
@@ -233,6 +239,16 @@ int main(void)
         CHECK(strstr(ragp, ".gmbasic/brains/") != NULL);
         CHECK(strstr(ragp, "rag/") != NULL);
     }
+    /* 6ter) e il GRAFO si risolve allo stesso modo (stesso cervello, cartella graphs/) */
+    {
+        char grp[1400];
+        CHECK(gmb_brain_graph_json(brain, grp, sizeof grp) == 1);
+        CHECK(strstr(grp, ".gmbasic/brains/") != NULL);
+        CHECK(strstr(grp, "graphs/") != NULL);
+        /* un cervello inesistente non ha né RAG né grafo */
+        char none[1400];
+        CHECK(gmb_brain_graph_json("cervello_mai_installato", none, sizeof none) == 0);
+    }
 
     /* 7) risoluzione: lookup, versioni, modalità, lista */
     char dir[1200], vers[512], modes[64], list[2048];
@@ -242,7 +258,7 @@ int main(void)
     CHECK(gmb_brain_lookup(brain, "1.2.0", dir, sizeof dir) == 1);
     CHECK(gmb_brain_lookup(brain, "9.9.9", dir, sizeof dir) == 0);
     CHECK(gmb_brain_versions(brain, vers, sizeof vers) == 1 && strcmp(vers, "1.2.0") == 0);
-    CHECK(gmb_brain_modes(out_dir, brain, modes, sizeof modes) == 1 && strcmp(modes, "rag") == 0);
+    CHECK(gmb_brain_modes(out_dir, brain, modes, sizeof modes) == 1 && strcmp(modes, "rag,graph") == 0);
     CHECK(gmb_brain_list(list, sizeof list, &cnt) == 1 && cnt >= 1);
     CHECK(strstr(list, brain) != NULL);
     char sp[2048];
@@ -339,6 +355,8 @@ int main(void)
         CHECK(n == 1);
         snprintf(want, sizeof want, "%s/brains/%s/1.2.0/rag/%s.db", exedir, brain, brain);
         CHECK(fsize(want) == (long long)sizeof blob);
+        snprintf(want, sizeof want, "%s/brains/%s/1.2.0/graphs/%s.json", exedir, brain, brain);
+        CHECK(fsize(want) == 34);
         /* seconda passata: niente da scaricare */
         int before2 = g_fake_state.calls;
         int n2 = gmb_brains_fetch_index(index, exedir, NULL, NULL, &g_fake, &op, errb, sizeof errb);
