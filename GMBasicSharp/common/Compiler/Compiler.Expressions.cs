@@ -2290,6 +2290,33 @@ public sealed partial class Compiler
     /// </summary>
     private void VisitFunctionReferenceExpression(FunctionReferenceExpr expr)
     {
+        // Riferimento NUDO (senza parentesi) a una procedura a 0 argomenti: è una CHIAMATA,
+        // non una referenza di prima classe (parità con il Linker — `BareProcedureReference` —
+        // e con IL `EmitFunctionReferenceAsCall`). Prima il P-Code spingeva una code-ref/closure
+        // e `PRINT STRTIME` / `x = STRDATE` valevano 0 mentre IL e VM/C davano ora/data.
+        {
+            ProcedureDefinition? bareDef = null;
+            foreach (var candidate in _procedureMap.Values)
+                if (candidate.SymbolId == expr.SymbolId) { bareDef = candidate; break; }
+            if (bareDef is NativeProcedureDefinition { Parameters.Length: 0, IsFunction: true } bareNpd)
+            {
+                // Namespace vuoto come in IL: il dispatch è per TokenKind (`bareNpd.BuiltinKind`,
+                // già portato da expr.OriginalToken per le keyword come STRTIME/STRDATE).
+                VisitBuiltinFunctionCallExpression(new BuiltinFunctionCallExpr(
+                    new Token(TokenKind.Identifier, "", null, expr.OriginalToken.Position),
+                    expr.OriginalToken,
+                    ImmutableArray<Expr>.Empty,
+                    bareNpd.ReturnType));
+                return;
+            }
+            if (bareDef is FunctionDefinition { Parameters.Length: 0 } bareFd)
+            {
+                VisitFunctionExpression(new FunctionExpr(expr.SymbolId, expr.OriginalToken,
+                    ImmutableArray<Expr>.Empty, bareFd.ReturnType));
+                return;
+            }
+        }
+
         // Una FUNCTION LOCALE (nidificata dentro un'altra procedura, es. `Incrementa`
         // dentro `CreaIncrementatore`) è già stata compilata a un OP_CLOSURE nel punto
         // di dichiarazione (Compiler.Statements.cs, VisitLocalFunctionDeclaration —
