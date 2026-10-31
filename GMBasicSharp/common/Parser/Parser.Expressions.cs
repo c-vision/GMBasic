@@ -823,6 +823,23 @@ public sealed partial class Parser
             // Crea il nodo passando ENTRAMBI i token.
             var expr = new VariableExpr(-1, originalToken, cleanToken);
 
+            // Una keyword che è una FUNZIONE builtin a 0 ARGOMENTI usata SENZA parentesi
+            // (`PRINT STRTIME`, `x = STRDATE`, `t = TIMER`) è una CHIAMATA, non una variabile:
+            // il dispatch è per TokenKind (0 argomenti compatibili), esattamente come per la
+            // forma con parentesi. Prima il nodo restava un VariableExpr e solo IL/VM-C lo
+            // recuperavano a valle: su PCode `PRINT STRTIME` stampava 0 (bug 2026-11-01).
+            // Esclusi i nomi con una VARIABILE dichiarata omonima (shadowing per scope).
+            if (originalToken.Kind != TokenKind.Identifier
+                && Peek().Kind != TokenKind.LeftParen     // `STRTIME()` lo gestisce il postfix
+                && !_declaredVariableNames.Contains(originalToken.Lexeme))
+            {
+                if (ResolveBuiltinFunctionCall(originalToken, ImmutableArray<Expr>.Empty) is { } zeroArgCall)
+                {
+                    Log($"[ParsePrimaryAtom] EXIT. Keyword a 0 argomenti risolta come chiamata: '{zeroArgCall}'.", log);
+                    return zeroArgCall;
+                }
+            }
+
             Log($"[ParsePrimaryAtom] EXIT. Parsed Identifier as VariableExpr ('{expr}'). Next: {Peek()}", log);
             return expr;
         }
@@ -1525,6 +1542,22 @@ public sealed partial class Parser
     {
         IEnumerable<ProcedureDefinition> candidates;
 
+        // Namespace di PROVENIENZA di ogni candidato raccolto qui. Serve perché le definizioni
+        // prese dal registro (`_registry.BuiltinProcedures`) NON sono materializzate nella
+        // symbol table del programma: hanno `SymbolId = -1` e `GetNamespaceNameForSymbol(-1)`
+        // non le risolve → il nodo di chiamata finiva con namespace VUOTO ("STRTIME()" su
+        // namespace ""), che PCode/VM-C non sanno dispatchare (`STRTIME` senza parentesi
+        // stampava 0 mentre IL/VM/C davano l'ora — bug scoperto il 2026-11-01).
+        var candidateNamespaceOf = new List<(ProcedureDefinition Proc, string Ns)>();
+
+        string ResolveNamespaceOf(ProcedureDefinition proc)
+        {
+            foreach (var (p, ns) in candidateNamespaceOf)
+                if (ReferenceEquals(p, proc)) return ns;
+            var fromSymbol = _program.Symbols.GetNamespaceNameForSymbol(proc.SymbolId);
+            return string.IsNullOrEmpty(fromSymbol) ? "" : fromSymbol;
+        }
+
         if (namespaceName != null)
         {
             var funcName = BuiltinNameLookupKey(nameToken);
@@ -1555,8 +1588,12 @@ public sealed partial class Parser
                 var nsProcs = _program.Symbols.GetProceduresForNamespace(nsName);
                 if (!nsProcs.Any() && _registry.BuiltinProcedures.TryGetValue(nsName, out var regProcs))
                     nsProcs = regProcs;
-                kindCandidates.AddRange(nsProcs.Where(p =>
-                    (p is NativeProcedureDefinition npd ? npd.BuiltinKind : p.OriginalName.Kind) == nameToken.Kind));
+                foreach (var p in nsProcs.Where(p =>
+                             (p is NativeProcedureDefinition npd ? npd.BuiltinKind : p.OriginalName.Kind) == nameToken.Kind))
+                {
+                    kindCandidates.Add(p);
+                    candidateNamespaceOf.Add((p, nsName));
+                }
             }
 
             candidates = kindCandidates;
@@ -1599,8 +1636,12 @@ public sealed partial class Parser
                 var nsProcs = _program.Symbols.GetProceduresForNamespace(nsName);
                 if (!nsProcs.Any() && _registry.BuiltinProcedures.TryGetValue(nsName, out var regProcs))
                     nsProcs = regProcs;
-                globalCandidates.AddRange(
-                    nsProcs.Where(p => p.OriginalName.Lexeme.Equals(funcName, StringComparison.OrdinalIgnoreCase)));
+                foreach (var p in nsProcs.Where(p =>
+                             p.OriginalName.Lexeme.Equals(funcName, StringComparison.OrdinalIgnoreCase)))
+                {
+                    globalCandidates.Add(p);
+                    candidateNamespaceOf.Add((p, nsName));
+                }
             }
 
             candidates = globalCandidates;
@@ -1630,7 +1671,7 @@ public sealed partial class Parser
             case 1:
             {
                 var procDef = compatibleCandidates[0];
-                var resolvedNsName = namespaceName ?? _program.Symbols.GetNamespaceNameForSymbol(procDef.SymbolId);
+                var resolvedNsName = namespaceName ?? ResolveNamespaceOf(procDef);
                 var nsToken = new Token(TokenKind.Identifier, resolvedNsName, null, nameToken.Position);
 
                 var returnType = procDef switch
@@ -1661,7 +1702,7 @@ public sealed partial class Parser
 
             if (allEquivalent)
             {
-                var nsName = _program.Symbols.GetNamespaceNameForSymbol(firstCandidate.SymbolId);
+                var nsName = ResolveNamespaceOf(firstCandidate);
                 var nsToken = new Token(TokenKind.Identifier, nsName, null, nameToken.Position);
                 return new BuiltinFunctionCallExpr(nsToken,
                     DedicatedBuiltinToken(firstCandidate, firstCandidate.OriginalName), args,

@@ -355,7 +355,17 @@ public static partial class Linker
     {
         if (program.Symbols.GetSymbol(symbolId).DeclarationNode is NativeProcedureDefinition { Parameters.Length: 0, IsFunction: true } npd)
         {
-            var nsToken = new Token(TokenKind.Identifier, "", null, ve.NameCleaned.Position);
+            // Il namespace della chiamata DEVE essere quello vero della funzione: prima era
+            // la stringa VUOTA ("." + nome), e PCode/VM-C dispatchano anche per namespace →
+            // `PRINT STRTIME` (senza parentesi) stampava 0 mentre IL dava l'ora. Si risolve
+            // dal simbolo; se il simbolo non è materializzato nella symbol table (definizione
+            // del registro) si usa il namespace del registro per quel BuiltinKind.
+            var nsName = program.Symbols.GetNamespaceNameForSymbol(symbolId);
+            if (string.IsNullOrEmpty(nsName)
+                && global::Basic.StdLib.Instance.BuiltinFunctionProvidersMap.TryGetValue(npd.BuiltinKind, out var nsProviders)
+                && nsProviders.Count > 0)
+                nsName = nsProviders[0];
+            var nsToken = new Token(TokenKind.Identifier, nsName ?? "", null, ve.NameCleaned.Position);
             var nameToken = new Token(npd.BuiltinKind, npd.OriginalName.Lexeme, null, npd.OriginalName.Position);
             return new BuiltinFunctionCallExpr(nsToken, nameToken, System.Collections.Immutable.ImmutableArray<Expr>.Empty, npd.ReturnType);
         }
