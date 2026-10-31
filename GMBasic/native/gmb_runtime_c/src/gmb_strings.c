@@ -490,50 +490,136 @@ gmb_string_t gmb_str_title(gmb_string_t s) {
     return r;
 }
 
-/* WRAP(text, width, alignment): avvolge il testo alle parole (semplice). */
+/* Numero di CODEPOINT UTF-8 in un buffer (i byte di continuazione 0b10xxxxxx non contano). */
+static size_t gmb_utf8_len_cp(const char* s, size_t n) {
+    size_t k = 0;
+    for (size_t i = 0; i < n; i++) if (((unsigned char)s[i] & 0xC0) != 0x80) k++;
+    return k;
+}
+
+/* Offset in BYTE che copre i primi `cp` codepoint (o `n` se la stringa è più corta). Consuma
+ * sempre le sequenze UTF-8 intere: nessun taglio a metà carattere. */
+static size_t gmb_utf8_bytes_for_cp(const char* s, size_t n, size_t cp) {
+    size_t i = 0, k = 0;
+    while (i < n && k < cp) {
+        i++;
+        while (i < n && ((unsigned char)s[i] & 0xC0) == 0x80) i++;
+        k++;
+    }
+    return i;
+}
+
+/* WRAP(text, width, alignment): avvolge il testo alle parole e applica l'allineamento.
+ * Parità con `CommonLib.StringUtils.Wrap` (riferimento di IL/PCode):
+ *   - larghezza contata in CODEPOINT (UTF-8), non in byte: `è` è 1 carattere e non 2
+ *     (prima il C contava i byte e andava a capo prima di IL/PCode: diff su StringsExamples);
+ *   - alignment: 0 = sinistra (PadRight), 1 = destra (PadLeft), 2 = giustificata (solo
+ *     righe NON finali con almeno uno spazio);
+ *   - righe più larghe di `width` troncate a `width` codepoint; parole più lunghe spezzate. */
 gmb_string_t gmb_str_wrap(gmb_string_t text, gmb_int_t width, gmb_int_t alignment) {
-    /* Word-wrap: parita' CommonLib.StringUtils.Wrap — righe per PAROLE (spazio),
-     * spezza solo le parole piu' lunghe di width; separatore righe "\n". */
-    (void)alignment;
     if (width <= 0 || !text.data) return gmb_string_alloc("");
-    size_t cap = text.length * 2 + (size_t)width + 16;
-    char* buf = (char*)malloc(cap);
-    if (!buf) return gmb_string_alloc("");
-    size_t o = 0;
-    size_t line_len = 0;
+    const size_t w = (size_t)width;
+
+    /* 1) righe come coppie (offset, lunghezza) in BYTE, senza padding */
+    size_t capL = 64, nL = 0;
+    size_t* lo = (size_t*)malloc(capL * sizeof(size_t));
+    size_t* ll = (size_t*)malloc(capL * sizeof(size_t));
+    if (!lo || !ll) { free(lo); free(ll); return gmb_string_alloc(""); }
+#define WRAP_PUSH_LINE(off, len)                                                    \
+    do {                                                                            \
+        if (nL == capL) {                                                           \
+            capL *= 2;                                                              \
+            lo = (size_t*)realloc(lo, capL * sizeof(size_t));                        \
+            ll = (size_t*)realloc(ll, capL * sizeof(size_t));                        \
+            if (!lo || !ll) { free(lo); free(ll); return gmb_string_alloc(""); }     \
+        }                                                                           \
+        lo[nL] = (off); ll[nL] = (len); nL++;                                       \
+    } while (0)
+
+    size_t cur_off = 0, cur_len = 0;   /* riga corrente: offset byte + lunghezza byte */
+    size_t cur_cp = 0;                 /* codepoint nella riga corrente */
     size_t i = 0;
+    int have = 0;
     while (i < text.length) {
         while (i < text.length && text.data[i] == ' ') i++;
         if (i >= text.length) break;
-        size_t wstart = i;
+        size_t ws = i;
         while (i < text.length && text.data[i] != ' ') i++;
-        size_t wlen = i - wstart;
-        if (wlen > (size_t)width) {
-            size_t p = 0;
-            while (wlen - p >= (size_t)width) {
-                if (line_len > 0) { buf[o++] = '\n'; line_len = 0; }
-                memcpy(buf + o, text.data + wstart + p, (size_t)width); o += (size_t)width; p += (size_t)width;
-                buf[o++] = '\n';
-            }
-            if (wlen - p > 0) {
-                if (line_len > 0) { buf[o++] = '\n'; line_len = 0; }
-                memcpy(buf + o, text.data + wstart + p, wlen - p); o += wlen - p;
-                line_len = wlen - p;
+        size_t wb = i - ws;                                  /* byte della parola */
+        size_t wcp = gmb_utf8_len_cp(text.data + ws, wb);     /* codepoint della parola */
+
+        if (wcp > w) {
+            /* parola più lunga della riga: chiudi la corrente e spezza la parola */
+            if (have) { WRAP_PUSH_LINE(cur_off, cur_len); have = 0; cur_cp = 0; }
+            size_t p = 0;   /* byte consumati della parola */
+            size_t k = 0;   /* codepoint consumati */
+            while (k < wcp) {
+                size_t take_cp = (wcp - k > w) ? w : (wcp - k);
+                size_t take_b = gmb_utf8_bytes_for_cp(text.data + ws + p, wb - p, take_cp);
+                WRAP_PUSH_LINE(ws + p, take_b);
+                p += take_b; k += take_cp;
             }
             continue;
         }
-        size_t need = line_len > 0 ? 1 + wlen : wlen;
-        if (line_len > 0 && line_len + need > (size_t)width) {
-            buf[o++] = '\n'; line_len = 0; need = wlen;
-        }
-        if (line_len > 0) buf[o++] = ' ';
-        memcpy(buf + o, text.data + wstart, wlen); o += wlen;
-        line_len += need;
+
+        if (have && cur_cp + 1 + wcp > w) { WRAP_PUSH_LINE(cur_off, cur_len); have = 0; cur_cp = 0; }
+        if (!have) { cur_off = ws; cur_len = wb; cur_cp = wcp; have = 1; }
+        else { cur_len = (ws + wb) - cur_off; cur_cp += 1 + wcp; }   /* +1 = lo spazio */
     }
-    buf[o] = 0;
-    gmb_string_t r = gmb_string_alloc(buf);
-    free(buf);
+    if (have) WRAP_PUSH_LINE(cur_off, cur_len);
+
+    /* 2) formattazione (padding / allineamento) in codepoint */
+    size_t cap = nL * (w + 1) + 1;
+    char* out = (char*)malloc(cap);
+    if (!out) { free(lo); free(ll); return gmb_string_alloc(""); }
+    size_t o = 0;
+    for (size_t li = 0; li < nL; li++) {
+        const char* line = text.data + lo[li];
+        size_t lb = ll[li];
+        size_t lcp = gmb_utf8_len_cp(line, lb);
+        if (lcp > w) { lb = gmb_utf8_bytes_for_cp(line, lb, w); lcp = w; }
+        int is_last = (li + 1 == nL);
+        if (lcp >= w) {
+            memcpy(out + o, line, lb); o += lb;
+        } else if (alignment == 1) {
+            size_t pad = w - lcp;
+            memset(out + o, ' ', pad); o += pad;
+            memcpy(out + o, line, lb); o += lb;
+        } else if (alignment == 2 && !is_last && memchr(line, ' ', lb)) {
+            /* Giustificata (parità JustifyLine): width - somma(parole) spazi distribuiti
+             * nei gap, +1 ai primi (resto) gap. */
+            size_t wcount = 1;
+            for (size_t t = 0; t < lb; t++) if (line[t] == ' ') wcount++;
+            size_t gaps = wcount - 1;
+            size_t wordLen = lcp - gaps;
+            size_t extra = (w > wordLen) ? (w - wordLen) : 0;
+            size_t base = gaps ? extra / gaps : 0;
+            size_t rem = gaps ? extra % gaps : 0;
+            size_t t = 0;
+            while (t < lb) {
+                size_t ws2 = t;
+                while (t < lb && line[t] != ' ') t++;
+                size_t wl = t - ws2;
+                memcpy(out + o, line + ws2, wl); o += wl;
+                if (t < lb) {
+                    size_t sp = base + (rem > 0 ? 1 : 0);
+                    if (rem > 0) rem--;
+                    memset(out + o, ' ', sp); o += sp;
+                    t++;
+                }
+            }
+        } else {
+            memcpy(out + o, line, lb); o += lb;
+            size_t pad = w - lcp;
+            memset(out + o, ' ', pad); o += pad;
+        }
+        if (!is_last) out[o++] = '\n';
+    }
+    out[o] = 0;
+    gmb_string_t r = gmb_string_alloc(out);
+    free(out); free(lo); free(ll);
     return r;
+#undef WRAP_PUSH_LINE
 }
 
 /* SEARCH(haystack, needle): booleano (1 trovato / 0 no), case-insensitive,
