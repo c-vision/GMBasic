@@ -108,3 +108,23 @@ gmb_semver_find_best
 gmb_semver_parse
 gmb_semver_satisfies
 gmb_unzip_files
+# Cervelli e fixture (bridges P/Invoke aggiunti con il package manager, 2026-10-31)
+gmb_pkg_brain_lookup
+gmb_pkg_brain_versions
+gmb_pkg_brain_list
+gmb_pkg_brain_modes
+gmb_pkg_brain_search_path
+gmb_pkg_brain_manifest_path
+gmb_pkg_brain_available
+gmb_pkg_brain_install
+gmb_pkg_brain_install_source
+gmb_pkg_brain_remove
+gmb_pkg_brain_has_rag
+gmb_pkg_brain_has_graph
+gmb_pkg_brain_emit_index
+gmb_pkg_fixtures_status
+gmb_pkg_fixtures_ensure_declared
+gmb_pkg_fixtures_ensure_all
+gmb_pkg_fixtures_pull
+# Drift pre-esistente: usato da NativePkg (resolve_ctx_add_cache_root) ma mai elencato
+gmb_pkg_resolve_ctx_add_cache_root
