@@ -203,10 +203,38 @@ public sealed partial class IlProgramCompiler
     /// ritornano double -1/0; Proc_601 di DbIsamFullTests esplodeva proprio qui).
     /// Una condizione numerica viene normalizzata a int32: 0 → false, != 0 → true.
     /// </summary>
+    /// <summary>`IlGpmRuntime.IsTruthy(object)`: verità BASIC su un valore riferimento
+    /// (null→falso, stringa vuota→falso, bool → -1/0, altrimenti numero ≠ 0).</summary>
+    private static readonly MethodInfo TruthyMethod =
+        typeof(IlGpmRuntime).GetMethod(nameof(IlGpmRuntime.IsTruthy))!;
+
+    /// <summary>True se il valore emesso per il simbolo è un RIFERIMENTO (local/param object
+    /// boxato) e non un value type grezzo: decide se una condizione va normalizzata via
+    /// <c>IlRuntime.ToDouble</c> invece di essere testata con <c>brtrue/brfalse</c>.</summary>
+    private bool EmittedValueIsObject(int symbolId)
+        => (_locals.TryGetValue(symbolId, out var local) && local.LocalType == _types.Object)
+           || (_parameters.TryGetValue(symbolId, out var param) && param.IsBox);
+
     private void EmitConditionBool(Expr condition)
     {
         EmitExpression(condition);
         var condType = NormalizeInferredType(InferType(condition));
+
+        // Condizioni su un valore RIFERIMENTO: la verità va decisa dal VALORE, mai dalla
+        // presenza del riferimento. Vale per stringhe (`IF s$ THEN`: "" è FALSO), per i valori
+        // DINAMICI (ANY/JSON) e per un BIT finito in uno storage OBJECT (variabile con tipo
+        // "ridefinito": `DIM d AS INTEGER` poi assegnata da un builtin BIT come
+        // IO.DIREXISTS/FILEEXISTS → bool boxato). Prima `brfalse` testava il riferimento —
+        // sempre non-null, quindi sempre VERO: `IF s$ THEN` con "" entrava nel ramo THEN e
+        // `IF d THEN` con d = 0 pure (bug app DigUp: indice a 0 file su IL). Semantica
+        // allineata a PCode/C99Native via `IlGpmRuntime.IsTruthy` (null→falso, stringa vuota
+        // →falso, bool → -1/0, altrimenti numero ≠ 0).
+        if (condType is StringType or AnyType or Basic.JsonType
+            || (condType is BitType && condition is VariableExpr bitVar && EmittedValueIsObject(bitVar.SymbolId)))
+        {
+            _il.Emit(OpCodes.Call, TruthyMethod);
+            return;
+        }
         if (condType is not StringType and not Basic.JsonType and not AnyType
             and not BitType
             and not UnresolvedQualifiedType)
