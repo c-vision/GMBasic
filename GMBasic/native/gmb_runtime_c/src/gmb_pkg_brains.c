@@ -99,3 +99,43 @@ int gmb_pkg_fixtures_ensure_all(char* err, size_t err_cap)
     op.quiet = 1;
     return gmb_fixtures_ensure_all(NULL, NULL, &op, err, err_cap);
 }
+
+/* Stato delle fixture in UNA riga: "nome@ver:presente;nome@ver:mancante;…" (REPL/CLI). */
+int gmb_pkg_fixtures_status(char* out, size_t cap)
+{
+    if (!out || !cap) return 0;
+    out[0] = '\0';
+    char avail[4096], present[4096], root[4096];
+    int n = gmb_fixtures_available(avail, sizeof avail);
+    if (n < 0) return -1;
+    gmb_fixtures_present(present, sizeof present);
+    gmb_fixtures_root(root, sizeof root);
+    size_t used = 0;
+    char tmp[4096];
+    snprintf(tmp, sizeof tmp, "%s", avail);
+    char* save = NULL;
+    for (char* tok = strtok_r(tmp, ";", &save); tok; tok = strtok_r(NULL, ";", &save)) {
+        char name[256];
+        snprintf(name, sizeof name, "%s", tok);
+        char* at = strchr(name, '@');
+        if (at) *at = '\0';
+        if (!name[0]) continue;
+        char needle[300], hay[4200];
+        snprintf(needle, sizeof needle, ";%s;", name);
+        snprintf(hay, sizeof hay, ";%s;", present);
+        int has = strstr(hay, needle) != NULL;
+        int w = snprintf(out + used, cap - used, "%s%s@%s:%s", used ? ";" : "", name,
+                         at ? at + 1 : "", has ? "presente" : "mancante");
+        if (w <= 0 || used + (size_t)w >= cap) break;
+        used += (size_t)w;
+    }
+    return (int)used;
+}
+
+/* Scarica UNA fixture (esplicito). 0 = ok. */
+int gmb_pkg_fixtures_pull(const char* name, char* out, size_t cap, char* err, size_t errcap)
+{
+    gmb_fetch_opts op;
+    gmb_fetch_opts_default(&op);
+    return gmb_fixtures_pull(name, NULL, NULL, 0, NULL, &op, out, cap, err, errcap);
+}

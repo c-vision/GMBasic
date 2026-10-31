@@ -34,6 +34,37 @@ public static class NativeFixtures
     [DllImport(Lib, EntryPoint = "gmb_pkg_fixtures_ensure_all", CallingConvention = CallingConvention.Cdecl)]
     private static extern int fixtures_ensure_all([In, Out] byte[] errbuf, UIntPtr ecap);
 
+    [DllImport(Lib, EntryPoint = "gmb_pkg_fixtures_status", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int fixtures_status([In, Out] byte[] outbuf, UIntPtr cap);
+
+    [DllImport(Lib, EntryPoint = "gmb_pkg_fixtures_pull", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+    private static extern int fixtures_pull(string name, [In, Out] byte[] outbuf, UIntPtr cap,
+                                            [In, Out] byte[] errbuf, UIntPtr ecap);
+
+    /// <summary>Stato in una riga: <c>nome@ver:presente|mancante;…</c> (vuoto = manifest assente).</summary>
+    public static string Status()
+    {
+        try
+        {
+            var buf = new byte[8192];
+            return fixtures_status(buf, (UIntPtr)buf.Length) > 0 ? CStr(buf) : "";
+        }
+        catch { return ""; }
+    }
+
+    /// <summary>Scarica UNA fixture (esplicito). Ritorna (ok, dir, errore).</summary>
+    public static (bool Ok, string Dir, string Error) Pull(string name)
+    {
+        try
+        {
+            var outb = new byte[4096];
+            var errb = new byte[512];
+            var rc = fixtures_pull(name, outb, (UIntPtr)outb.Length, errb, (UIntPtr)errb.Length);
+            return (rc == 0, rc == 0 ? CStr(outb) : "", rc == 0 ? "" : CStr(errb));
+        }
+        catch (Exception ex) { return (false, "", ex.Message); }
+    }
+
     /// <summary>Scarica le fixture dichiarate dal programma che MANCANO (sempre in
     /// <c>samples/Fixtures</c>). Ritorna il numero scaricate (0 = niente da fare), negativo = errori.</summary>
     public static int EnsureDeclared(string? appSettingsPath)
