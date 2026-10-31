@@ -62,3 +62,13 @@ shared/skills/SKILLS_PROMPT.md
 shared/plugins/PLUGINS_PROMPT.md
 # ...e nemmeno nella CONFIG (nuova posizione di default: <configDir>/<X>_PROMPT.md).
 GMBasic/config/*PROMPT.md
+
+# STATO UTENTE in <configDir>: NON va in git. `ai.json` (percorsi di modelli/skill, indice
+# skills, provider default), `brains.json` (cervelli installati, con percorsi assoluti) e
+# `skills-index.json` (override dell'indice, scritto da `AI SKILLS SET INDEX`) sono la
+# configurazione LOCALE di chi usa il compilatore: contenevano `/Users/<nome>/...` e
+# cambiavano macchina per macchina. Il codice li tratta come opzionali (file assente =
+# default), quindi un checkout pulito funziona senza. Decisione 2026-10-31.
+GMBasic/config/ai.json
+GMBasic/config/brains.json
+GMBasic/config/skills-index.json
