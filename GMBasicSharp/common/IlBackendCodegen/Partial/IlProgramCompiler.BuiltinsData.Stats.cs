@@ -517,6 +517,14 @@ public sealed partial class IlProgramCompiler
     private void EmitDoubleArgument(Expr argument)
     {
         EmitExpression(argument);
+        // STORAGE OBJECT (local/param boxato — variabile con tipo "ridefinito", es. `DIM v AS BIT`
+        // poi assegnata con un numero): sullo stack c'è un RIFERIMENTO, non un numero. Conv_i8/
+        // conv.r8 su un riferimento = InvalidProgram (`PRINT v + 0` con v BIT). Risolvi a runtime.
+        if (argument is VariableExpr boxedVar && EmittedValueIsObject(boxedVar.SymbolId))
+        {
+            _il.Emit(OpCodes.Call, _types.IlRuntimeToDoubleMethod);
+            return;
+        }
         var sourceType = NormalizeInferredType(InferType(argument));
         var sourceClr = DataTypeMapper.Map(sourceType, _types, _classTypes);
         // Il tipo INFERITO può divergere dal tipo REALE del valore emesso (es. variabile
