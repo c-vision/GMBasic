@@ -335,7 +335,7 @@ SUB RunIndex()
             KILL g_dbPath
         END IF
     END IF
-    OpenIndex(g_dbPath)
+    OpenIndex()
     AI RAG ENSURE COLLECTION "DigDb", g_coll, EmbedDims()
     g_nFiles = 0
     g_nChunks = 0
@@ -363,9 +363,7 @@ SUB WalkDir(path AS STRING)
             nm = e
             p = path + "/" + nm
             isDir = IO.DIREXISTS(p)
-            ' Confronto ESPLICITO: IO.DIREXISTS è BIT e sulla gamba IL `IF <variabile> THEN`
-            ' con un valore BIT assegnato non è ancora corretto (vedi Bugs/ nel vault).
-            IF isDir <> 0 THEN
+            IF isDir THEN
                 WalkDir(p)
             ELSE
                 ok = AllowedFile(nm)
@@ -401,11 +399,8 @@ FUNCTION AllowedFile(name AS STRING) AS INTEGER
     AllowedFile = 0
 END FUNCTION
 
-SUB OpenIndex(p AS STRING)
-    ' Il path arriva come PARAMETRO e non letto dal globale: sulla gamba IL
-    ' `SQL OPEN <globale>` seguito da `SQL EXEC` nella stessa procedura fa fallire
-    ' l'emissione ("Label N has not been marked"); con un parametro/locale è corretto.
-    SQL OPEN p ALIAS DigDb
+SUB OpenIndex()
+    SQL OPEN g_dbPath ALIAS DigDb
     SQL EXEC DigDb, "CREATE TABLE IF NOT EXISTS chunks (id TEXT PRIMARY KEY, path TEXT, seq INTEGER, text TEXT)"
 END SUB
 
