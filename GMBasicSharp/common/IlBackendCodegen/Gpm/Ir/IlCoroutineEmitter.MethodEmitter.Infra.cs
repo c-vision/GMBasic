@@ -178,6 +178,20 @@ internal sealed partial class MethodEmitter
                     if (gp.Call is FunctionExpr gfe) foreach (var a in gfe.Args) WalkExpr(a, use);
                     break;
                 case ConditionalJumpStmt cj: WalkExpr(cj.Condition, use); break;
+                // SQL: il path/la query e i parametri possono riferire simboli (anche GLOBALI,
+                // che non hanno un DIM nel corpo) — senza questi case il builder degli slot non
+                // li vede e `SlotOf` lancia "variabile senza slot" a metà emissione, lasciando
+                // il metodo con etichette non marcate (l'errore esplodeva al Save: "Label N has
+                // not been marked"). L'alias NON va raccolto: è emesso come NOME (Ldstr).
+                case SqlOpenStmt so0: WalkExpr(so0.FilePath, use); break;
+                case SqlExecStmt se0:
+                    WalkExpr(se0.Sql, use);
+                    foreach (var seArg in se0.Parameters) WalkExpr(seArg, use);
+                    break;
+                case SqlQueryStmt sq0:
+                    WalkExpr(sq0.Sql, use);
+                    foreach (var sqArg in sq0.Parameters) WalkExpr(sqArg, use);
+                    break;
             }
         }
 
@@ -259,10 +273,31 @@ internal sealed partial class MethodEmitter
             _il.Emit(OpCodes.Switch, labels);
             _il.Emit(OpCodes.Br, invalid);
 
-            foreach (var b in blocks)
+            var emittedBlocks = 0;
+            try
             {
-                _il.MarkLabel(labels[b.Pc]);
-                EmitBlock(b);
+                foreach (var b in blocks)
+                {
+                    _il.MarkLabel(labels[b.Pc]);
+                    EmitBlock(b);
+                    emittedBlocks++;
+                }
+            }
+            catch
+            {
+                // Un fallimento a metà emissione lascia il metodo GIÀ registrato nel TypeBuilder:
+                // le etichette dei block non emessi resterebbero non marcate e romperebbero il
+                // Save() dell'intera assembly (l'eccezione arriva FUORI dal try/catch del
+                // chiamante). Si marcano le etichette residue e si chiude con un THROW esplicito
+                // (mai un corpo silenziosamente "completato"): se invocato, il percorso fallisce
+                // forte invece di restituire un risultato sbagliato.
+                for (var i = emittedBlocks + 1; i < blocks.Count; i++) _il.MarkLabel(labels[blocks[i].Pc]);
+                _il.MarkLabel(_exitLabel);
+                _il.Emit(OpCodes.Ldstr, "StepV2 non emesso (errore di codegen): percorso GPM v2 non disponibile");
+                _il.Emit(OpCodes.Newobj,
+                    typeof(InvalidOperationException).GetConstructor([typeof(string)])!);
+                _il.Emit(OpCodes.Throw);
+                throw;
             }
 
             _il.MarkLabel(invalid);
