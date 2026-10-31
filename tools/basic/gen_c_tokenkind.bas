@@ -267,10 +267,13 @@ FUNCTION Main() AS INTEGER
   DIM i AS INTEGER
   DIM arg AS STRING
 
-  ' l'harness imposta la CWD sulla cartella dello script (tools/): root = ..
-  ' Due prefissi (stessa convenzione di tools/basic/check_enum_ids.bas): nel MONOREPO il C# vive in
-  ' ../GMBasicSharp/ e il C/native in ../; nel repo separato coincidono.
-  g_croot = "../"
+  ' l'harness imposta la CWD sulla cartella dello script (tools/basic/): monorepo root = ../../
+  ' (il tool nasceva in tools/ e usava ../: nel monorepo i path cadevano fuori e il tool
+  ' usciva con "TokenKind.cs o gmb_tokenkind.h illeggibili").
+  g_croot = "../../"
+  IF FILEEXISTS(g_croot + "GMBasic/native/gmb_compiler_c/frontend/include/gmb_tokenkind.h") THEN
+    g_croot = g_croot + "GMBasic/"
+  END IF
   IF FILEEXISTS(g_croot + "common/Ast/TokenKind.cs") THEN
     g_pref = g_croot
   ELSE

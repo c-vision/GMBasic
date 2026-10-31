@@ -2,8 +2,8 @@
  "fonte": "common/StdLib/StdLib.*.cs",
  "chiave": "(NAMESPACE, NOME)",
  "funzioni": {
-  "occorrenze": 1574,
-  "uniche": 1530,
+  "occorrenze": 1575,
+  "uniche": 1531,
   "per_namespace": {
    "AGENT": 1,
    "AI": 272,
@@ -54,7 +54,7 @@
    "SPEED": 9,
    "SQL": 8,
    "STATS": 83,
-   "STRINGS": 47,
+   "STRINGS": 48,
    "SYNCMAP": 4,
    "SYSTEM": 26,
    "TIMESERIES": 32,
@@ -1463,6 +1463,7 @@
   "STRINGS.LCASE",
   "STRINGS.Left",
   "STRINGS.Len",
+  "STRINGS.LenB",
   "STRINGS.Lower",
   "STRINGS.LTrim",
   "STRINGS.Mid",

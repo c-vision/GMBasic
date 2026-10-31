@@ -7,11 +7,11 @@ _Generato da `tools/basic/recon_stdlib.bas` (dal codice `common/StdLib/StdLib.*.
 
 | Superficie | Occorrenze | Uniche (ns, nome) |
 |---|---|---|
-| Funzioni | 1574 | 1530 |
+| Funzioni | 1575 | 1531 |
 | Comandi | 174 | 174 |
 | Tipi | 78 | 78 |
 | Costanti | 284 | 284 |
-| **Totale** | 2110 | 2066 |
+| **Totale** | 2111 | 2067 |
 
 Namespaces: 69
 
@@ -70,7 +70,7 @@ Namespaces: 69
 | SPEED | 9 | 0 | 0 | 0 | 9 |
 | SQL | 8 | 0 | 1 | 0 | 9 |
 | STATS | 83 | 0 | 0 | 0 | 83 |
-| STRINGS | 47 | 0 | 3 | 0 | 50 |
+| STRINGS | 48 | 0 | 3 | 0 | 51 |
 | SYNCMAP | 4 | 0 | 1 | 0 | 5 |
 | SYSTEM | 26 | 2 | 1 | 0 | 29 |
 | TIMESERIES | 32 | 0 | 0 | 0 | 32 |
@@ -1433,6 +1433,7 @@ STRINGS.Kebab
 STRINGS.LCASE
 STRINGS.Left
 STRINGS.Len
+STRINGS.LenB
 STRINGS.Lower
 STRINGS.LTrim
 STRINGS.Mid

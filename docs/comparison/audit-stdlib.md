@@ -2827,7 +2827,7 @@ _Generato da `tools/basic/recon_stdlib.bas` dal codice `common/StdLib/StdLib.*.c
 | Comando |
 |---|---|
 
-### Funzioni (47)
+### Funzioni (48)
 
 | Funzione | Ritorno |
 |---|---|
@@ -2852,6 +2852,7 @@ _Generato da `tools/basic/recon_stdlib.bas` dal codice `common/StdLib/StdLib.*.c
 | `LTrim` | StringType |
 | `Left` | StringType |
 | `Len` | LongType |
+| `LenB` | LongType |
 | `Lower` | StringType |
 | `Mid` | StringType |
 | `PadC` | StringType |

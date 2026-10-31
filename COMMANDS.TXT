@@ -2081,6 +2081,7 @@
 │LCASE                       │x = STRINGS.LCASE()                                               │-> STRING · arg :STRING                   │
 │LEFT                        │x = STRINGS.LEFT(source, length)                                  │Primi n caratteri -> STRING.              │
 │LEN                         │x = STRINGS.LEN(source)                                           │Lunghezza -> LONG.                        │
+│LENB                        │x = STRINGS.LENB(source)                                          │BYTE UTF-8 della stringa. LEN conta i     │
 │LOWER                       │x = STRINGS.LOWER(source)                                         │Minuscole -> STRING.                      │
 │LTRIM                       │x = STRINGS.LTRIM(source)                                         │Rimuove spazi a sinistra -> STRING.       │
 │MID                         │x = STRINGS.MID(source, start, length)                            │Sottostringa da posizione -> STRING.      │
@@ -3032,9 +3033,9 @@
 │NOME                        │SINTASSI / ESEMPIO                                                │DESCRIZIONE                               │
 ├────────────────────────────┼──────────────────────────────────────────────────────────────────┼──────────────────────────────────────────┤
 │COMANDI                     │174                                                               │Comandi del linguaggio                    │
-│FUNZIONI                    │1530                                                              │Funzioni del linguaggio                   │
+│FUNZIONI                    │1531                                                              │Funzioni del linguaggio                   │
 │TIPI                        │78                                                                │Tipi del linguaggio                       │
 │COSTANTI                    │284                                                               │Costanti del linguaggio                   │
 ├────────────────────────────┬──────────────────────────────────────────────────────────────────┬──────────────────────────────────────────┤
-│TOTALE                      │2066                                                              │Voci complessive                          │
+│TOTALE                      │2067                                                              │Voci complessive                          │
 └────────────────────────────┴──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────┘

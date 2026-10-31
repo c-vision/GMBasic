@@ -2659,3 +2659,4 @@ MATRIX	TYPE:LuDecomposition	tipo	TYPE LuDecomposition	Tipo definito dal runtime.
 MATRIX	TYPE:QrDecomposition	tipo	TYPE QrDecomposition	Tipo definito dal runtime.	derivato:tipo	
 MATRIX	TYPE:SvdDecomposition	tipo	TYPE SvdDecomposition	Tipo definito dal runtime.	derivato:tipo	
 MESSAGE	DELIVERY	funzione	x = MESSAGE.DELIVERY(bus)	contatori di consegna del bus (sent/recv/ack/nack/dup/last).	commento	
+STRINGS	LenB	funzione	x = STRINGS.LENB(source)	BYTE UTF-8 della stringa. LEN conta i CARATTERI (code point: "😀"=1),	commento	
