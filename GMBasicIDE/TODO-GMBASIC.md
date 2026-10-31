@@ -401,8 +401,8 @@ build/gmb minitests --json > oggi.json     # per il diff fra due run
 build/gmb minitests --baseline ieri.json   # rosso SOLO per le regressioni
 build/gmb minitests --filter trading/ --cc clang   # sottoinsieme / A-B del compilatore
 
-tools/check_minitests.sh                   # GATE: usa il baseline versionato
-tools/check_minitests.sh --update          # rigenera il baseline dopo un fix
+tools/check_minitests.sh                   # GATE: uses the versioned baseline
+tools/check_minitests.sh --update          # regenerates the baseline after a fix
 ```
 
 It replaces the ad hoc sweep of `tools/c99_compile_errors.sh` (which is now an alias delegating

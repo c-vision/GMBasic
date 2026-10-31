@@ -1,10 +1,11 @@
 # GMBasic
 
-> **AI-powered BASIC — three independent backends, SDL2 graphics, six database engines, full TUI, AI agents.**
+> **AI-powered BASIC — four independent backends, SDL2 graphics, six database engines, full TUI, AI agents.**
 >
-> BASIC with 500+ built-in functions, compiled by three independent backends (IL/NativeAOT, a C
-> virtual machine, a C99 transpiler), SDL2 GPU-accelerated graphics (sprites, TTF fonts, joystick),
-> six embedded database engines (ISAM B-Tree, DBF/xBase, SPEED LSM, LEDGER, SQLite, VectorDB),
+> BASIC with 500+ built-in functions, executed by four independent backends (a P-Code VM in C#,
+> IL/NativeAOT, a C virtual machine, a C99 transpiler), SDL2 GPU-accelerated graphics (sprites, TTF
+> fonts, joystick), six embedded database engines (ISAM B-Tree, DBF/xBase, SPEED LSM, LEDGER,
+> SQLite, VectorDB),
 > AI agents with tool-calling, MCP server, RAG pipeline, true-color Clipper-compatible TUI (20+
 > controls), HTTP/WebSocket server, linear algebra, statistical analysis, trading/finance, and a
 > full networking stack.
@@ -89,24 +90,28 @@ executable carries only what is needed: minimal settings, `Resources/`, the decl
 dotnet build GMBasicSharp/GMBasicSharp.slnx
 ```
 
-There is **no single "run the interpreter"** entry point, because there are three independent
-backends. Each has its own:
+The CLI is `GMBasicSharp/REPL` (assembly `REPL`; the installed binary is `gmb`). One entry point,
+**four engines** selected by flag:
 
 ```sh
-# IL backend (pure C#, JIT by default; -n = NativeAOT)
-dotnet run --project GMBasicSharp/Executor -- <file.bas>   # compiled IL, JIT (IL only; needs .NET 10)
-dotnet run --project GMBasicSharp/REPL -- -n <file.bas>    # -n/--native: NativeAOT executable
+# PCodeVM — P-Code virtual machine written in C# (in-process, no native code)
+dotnet run --project GMBasicSharp/REPL -- --pcode <file.bas>
 
-# C VM (external process gmb_vm_host)
+# IL backend — .NET IL: managed JIT (-m) or NativeAOT executable (-n)
+dotnet run --project GMBasicSharp/REPL -- -m <file.bas>    # -m/--managed: IL + JIT
+dotnet run --project GMBasicSharp/REPL -- -n <file.bas>    # -n/--native: NativeAOT build
+
+# VM/C — the DEFAULT engine: P-Code executed by the external gmb_vm_host
 cmake -S GMBasic/native/gmb_vm_c -B GMBasic/native/gmb_vm_c/build && cmake --build GMBasic/native/gmb_vm_c/build
+export GMBASIC_VM_HOST="$PWD/GMBasic/native/gmb_vm_c/build/gmb_vm_host"   # or copy it next to the CLI
+dotnet run --project GMBasicSharp/REPL -- <file.bas>
 dotnet run --project tools/runners/GMBASIC.Conformance -- vmtest <file.bas>
-# (or set GMBASIC_VM_HOST=GMBasic/native/gmb_vm_c/build/gmb_vm_host, or copy it next to the test executable)
 
-# C99Native backend (C frontend + emitter .c, `cc` against the shared C runtime).
+# C99Native — C frontend + C emitter, `cc` against the shared C runtime, no VM
 # The script cds into GMBasic/ itself, so sample paths are relative to GMBasic/ (../shared/...)
 bash tools/sh/gmb_c99native_run.sh ../shared/samples/Community/Network/WebSocketEcho.bas
 
-# All four legs on the same sample (IL · PCode · VM/C · C99Native), comparing normalized output
+# All four engines on the same sample, comparing the normalized output
 zsh tools/sh/parity4 ../shared/samples/Community/Ai/AiPlugins.bas
 ```
 
@@ -115,21 +120,24 @@ above.
 
 ## Architecture
 
-Front-end (shared by all backends, all C#):
+Front-end (shared by three of the four engines, all C#):
 
 ```
 Lexer → Parser → Linker → Compiler (AST/P-Code)
 ```
 
-From there, compilation forks into **three independent backends**:
+From there, execution forks into **four independent backends**:
 
 | Backend | Language | Output |
 |---|---|---|
-| **IL Backend** | pure C#, no bridge to C | IL compiled in-process, JIT (framework-dependent) by default; NativeAOT executable with `-n` |
-| **VM in C** | pure C | executes the P-Code with a C virtual machine (Clipper-style: the bytecode ships with the executable) |
-| **C99Native** | pure C output (a C frontend + C emitter produce it) | direct C99 source, no VM, no bytecode at runtime |
+| **PCodeVM** | pure C# | executes the P-Code in-process with a C# VM (`--pcode`): no C VM and no external process (native builtins still go through P/Invoke) |
+| **IL Backend** | pure C#, no bridge to C | .NET IL: managed JIT (`-m`) by default on that path, or a NativeAOT executable with `-n` |
+| **VM in C** | pure C | executes the **same P-Code** with a C virtual machine (`gmb_vm_host`, external process; Clipper-style: the bytecode ships with the executable). This is the CLI's default engine |
+| **C99Native** | pure C (own C frontend) | transpiles `.bas` → C99 source, compiles with `cc`, no VM and no bytecode at runtime |
 
-The VM in C and the C99Native backend share the same C runtime library
+PCodeVM and VM/C execute **the same P-Code**: that is the semantic contract the parity suite
+checks. C99Native has its own C frontend and emitter, so it does not go through the C# frontend at
+all. The VM in C and C99Native share the same C runtime library
 (`GMBasic/native/gmb_runtime_c/`): no duplicated built-in implementations between them.
 
 ## Sample catalog
@@ -389,8 +397,10 @@ CALL SleepAsync(1000)
 |------|---------|
 | Compile + P-Code codegen, all samples | `dotnet run --project tools/runners/GMBASIC.Conformance` |
 | VM/C (compile → P-Code → run as external `gmb_vm_host`) | `dotnet run --project tools/runners/GMBASIC.Conformance -- vmtest <file.bas>` |
+| PCodeVM (P-Code VM in C#) | `dotnet run --project tools/runners/test_pcode -- <file.bas>` |
 | IL backend execution (xUnit, incl. Clipper/Loops samples) | `dotnet test GMBasicSharp/tests/GMBASIC.IlBackend.Tests` |
 | C99Native backend (C frontend + emitter → `cc` → run) | `bash tools/sh/gmb_c99native_run.sh ../shared/samples/<file>.bas` |
+| One engine at a time (IL / PCode / VMC) | `dotnet run --project tools/runners/test_ilrun -- --engine=il\|pcode\|vmc <file.bas>` |
 | All four legs on one MiniTest | `zsh tools/sh/test_minitests_parity.sh "<domain>/<file>.bas"` |
 | Native C database module (oracle vs. C# implementation) | `dotnet test GMBasicSharp/tests/GMBASIC.Database.Native.Tests` |
 | Native C runtime/VM unit tests | CMake build of `GMBasic/native/gmb_runtime_c` (`--target test`) |

@@ -37,4 +37,4 @@ When the shape of that interface is itself in question (how deep the module is, 
 - **One slice at a time.** One seam, one test, one minimal implementation per cycle.
 - **Refactoring is not part of the loop.** It belongs to the review stage (see the `code-review` skill), not the red → green implementation cycle.
 
-> **Alias:** GMBasic `gsd-debug` fa debug persistente ma senza red-green-refactor; `tdd` aggiunge il loop
+> **Alias:** GMBasic `gsd-debug` does persistent debugging without the red-green-refactor cycle; `tdd` adds that loop
