@@ -1,0 +1,6 @@
+Icons and VB6 graphics are from AvaloniaVisualBasic6:
+https://github.com/BAndysc/AvaloniaVisualBasic6
+
+MIT License — Copyright (c) 2024 Bartosz Korczyński.
+The upstream README states: "All rights to the Visual Basic name, icons, and graphics
+belong to Microsoft Corporation." This notice is retained with the original license.
