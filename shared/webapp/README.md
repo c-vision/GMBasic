@@ -51,6 +51,23 @@ All'avvio l'app ricarica tutto: `AI AGENT LOAD` per gli agenti, `POST /api/teams
 per i team. **Il seed demo scatta solo se non c'è nessun agente persistito.**
 `bin/` è gitignorato (artefatti-dati della app: mai nel sorgente).
 
+## Engine BSP (motore) — cosa c'è sotto
+
+Le pagine non sono template: sono **compilate ed eseguite**. Il motore BSP ha ora (2026-10-31):
+
+| funzione | effetto | come si attiva |
+|---|---|---|
+| **ETag + 304** | il browser che ricarica riceve `304 Not Modified` (niente corpo) | **sempre** |
+| **gzip** | HTML compresso quando il client lo accetta e il corpo è > 1 KB (~46 KB → ~16 KB) | **sempre** |
+| **Hot reload delle dipendenze** | modificare un `.inc` importato (o la pagina) la ricompila alla richiesta successiva, **senza riavviare** | **sempre** |
+| **Memoizzazione della resa** | per N ms la pagina non viene rieseguita: si riusa il corpo (ETag incluso) | `bspCacheMs` (0 = off) |
+| **Guardia privacy** | la memoizzazione è **disattivata** per le richieste con cookie (contenuto per-utente) | automatica |
+
+Misure (loopback, keep-alive, c=10, PCode): `/index.bsp` da ~190 rps a **~21.000 rps** con
+`bspCacheMs = 1000`; `/canvas.bsp` **~56.000 rps**; revalidation `304` ~25.000 rps. Il costo
+"a freddo" di una pagina resta ~2 ms: host+VM costano ~0,07 ms, il resto è l'esecuzione della
+pagina (query + costruzione dell'HTML).
+
 ## Configurazione (`.webapp.toml`)
 
 ```toml

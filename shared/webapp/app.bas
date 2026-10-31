@@ -52,6 +52,7 @@ DIM g_autoTrace AS INTEGER
 DIM g_refreshMs AS INTEGER
 DIM g_rateLimitPerMin AS INTEGER
 DIM g_rateLimitBurst AS INTEGER
+DIM g_bspCacheMs AS INTEGER
 
 ' --- Stato del processo -----------------------------------------------------
 DIM g_appDir AS STRING
@@ -112,6 +113,7 @@ SUB SetDefaults()
     g_refreshMs = 2500
     g_rateLimitPerMin = 0
     g_rateLimitBurst = 0
+    g_bspCacheMs = 0
     g_proxied = 0
 END SUB
 
@@ -159,12 +161,13 @@ SUB ParseConfig(path AS STRING)
                         IF key = "APIPORT" THEN g_apiPort = CINT(VAL(val))
                         IF key = "ALLOWEDIPS" THEN g_allowedIPs = val
                         IF key = "SESSIONS" THEN g_sessions = BoolVal(val)
+                        IF key = "RATELIMITPERMINUTE" THEN g_rateLimitPerMin = CINT(VAL(val))
+                        IF key = "RATELIMITBURST" THEN g_rateLimitBurst = CINT(VAL(val))
+                        IF key = "BSPCACHEMS" THEN g_bspCacheMs = CINT(VAL(val))
                     ELSEIF section = "APP" THEN
                         IF key = "SEEDDEMO" THEN g_seedDemo = BoolVal(val)
                         IF key = "AUTOTRACE" THEN g_autoTrace = BoolVal(val)
                         IF key = "REFRESHMS" THEN g_refreshMs = CINT(VAL(val))
-                        IF key = "RATELIMITPERMINUTE" THEN g_rateLimitPerMin = CINT(VAL(val))
-                        IF key = "RATELIMITBURST" THEN g_rateLimitBurst = CINT(VAL(val))
                     END IF
                 END IF
             END IF
@@ -360,6 +363,11 @@ SUB PrintBanner()
     ELSE
         PRINT "rate limit : none"
     END IF
+    IF g_bspCacheMs > 0 THEN
+        PRINT "bsp cache  : "; g_bspCacheMs; " ms (ETag/304 + gzip)"
+    ELSE
+        PRINT "bsp cache  : off (ETag/304 + gzip sempre attivi)"
+    END IF
 END SUB
 
 FUNCTION ApiUrl() AS STRING
@@ -441,6 +449,9 @@ SUB StartDashboard()
     ' alzare da .webapp.toml per un'esposizione in LAN.
     cfg.RateLimitRequestsPerMinute = g_rateLimitPerMin
     cfg.RateLimitBurstSize = g_rateLimitBurst
+    ' Memoizzazione della resa BSP: riusa il corpo per N ms (ETag/304 inclusi). 0 = sempre
+    ' eseguita. Vedi .webapp.toml.
+    cfg.BspCacheMs = g_bspCacheMs
     HTTP CONFIG cfg
 
     ' Più mount statici sono legittimi: vince il prefisso più lungo.

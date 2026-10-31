@@ -184,6 +184,7 @@ internal sealed partial class PCodeProcessor
             ["MaxRequestBodySize"] = 10485760.0,
             ["RateLimitRequestsPerMinute"] = 60.0,
             ["RateLimitBurstSize"] = 120.0,
+            ["BspCacheMs"] = 0.0,   // memoizzazione resa BSP (ms); 0 = disattivata
             ["EnableKeepAlive"] = true,
         };
 

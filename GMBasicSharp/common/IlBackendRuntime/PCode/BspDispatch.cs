@@ -54,6 +54,50 @@ internal static class BspDispatch
     /// <see cref="CommonLib.Http.BspRuntime.CachedPage.GlobalNameSlots"/> (mai un numero di slot
     /// fisso assunto — vedi SourcePipeline.CompileFromStringWithCompiler per il perché).
     /// </summary>
+    /// <summary>
+    /// Rifinisce una risposta BSP come HTML: Content-Type (se la pagina non l'ha già impostato),
+    /// ETag debole, 304 su If-None-Match, gzip se il client lo accetta e il corpo è &gt; 1 KB.
+    /// Stessa semantica del percorso P-Code (PCodeProcessor.SendBspBody), unica implementazione
+    /// per entrambe le gambe lato IL.
+    /// </summary>
+    private static HttpResponse FinishBsp(HttpResponse result, HttpRequest req)
+    {
+        var body = result.BodyBytes ?? System.Text.Encoding.UTF8.GetBytes(result.Body ?? "");
+        if (string.IsNullOrEmpty(result.ContentType)) result.ContentType = "text/html; charset=utf-8";
+
+        var etag = CommonLib.Http.BspRuntime.ComputeETag(body);
+        result.Headers["ETag"] = etag;
+        if (!result.Headers.ContainsKey("Cache-Control"))
+            result.Headers["Cache-Control"] = CommonLib.Http.BspRuntime.RenderCacheTtlMs > 0
+                ? "public, max-age=" + (CommonLib.Http.BspRuntime.RenderCacheTtlMs / 1000)
+                : "no-cache";
+
+        // BspDispatch lavora sul HttpRequest del BRT: Headers è Dictionary<string,string>
+        // (il percorso P-Code usa CommonLib.Http.HttpRequest con JsonObject → helper separato).
+        string? HeaderOf(string name) =>
+            req.Headers.TryGetValue(name, out var value) ? value : null;
+
+        if (CommonLib.Http.BspRuntime.ETagMatches(HeaderOf("If-None-Match"), etag))
+        {
+            result.StatusCode = 304;
+            result.Body = "";
+            result.BodyBytes = [];
+            return result;
+        }
+
+        if (body.Length >= 1024 && CommonLib.Http.BspRuntime.AcceptsGzip(HeaderOf("Accept-Encoding")))
+        {
+            result.BodyBytes = CommonLib.Http.BspRuntime.Gzip(body);
+            result.Headers["Content-Encoding"] = "gzip";
+            result.Headers["Vary"] = "Accept-Encoding";
+        }
+        else
+        {
+            result.BodyBytes = body;
+        }
+        return result;
+    }
+
     private static HttpResponse? ServeBspPage(string filePath, HttpRequest req)
     {
         if (!File.Exists(filePath)) return null;
@@ -68,6 +112,14 @@ internal static class BspDispatch
             var backend = Basic.Providers.GmbEnv.Get("GMB_BSP_BACKEND");
             if (backend != null && backend.Equals("il", StringComparison.OrdinalIgnoreCase))
                 return ServeBspPageIlBackend(filePath, req, setCookie, sessionData);
+
+            // Come nel percorso P-Code: niente resa memoizzata per richieste con cookie
+            // (contenuto potenzialmente per-utente).
+            var canCache = !req.Headers.ContainsKey("Cookie");
+            var renderKey = filePath + "?" + (req.QueryString ?? "");
+            var rendered = canCache ? CommonLib.Http.BspRuntime.RenderGet(renderKey) : null;
+            if (rendered != null)
+                return FinishBsp(new HttpResponse { BodyBytes = rendered }, req);
 
             var cached = CommonLib.Http.BspRuntime.CacheGet(filePath);
             if (cached == null)
@@ -164,7 +216,10 @@ internal static class BspDispatch
                 // Nessun RES.Send*/Redirect esplicito nella pagina: l'output e' quello scritto
                 // dai PRINT generati da BspCompiler dall'HTML/`<%= expr %>` — semantica
                 // ASP-classic, la pagina "e'" l'output.
-                result = new HttpResponse { Body = outputWriter.ToString(), ContentType = "text/html; charset=utf-8" };
+                var body = System.Text.Encoding.UTF8.GetBytes(outputWriter.ToString());
+                if (canCache && !pcodeResponse.Headers.ContainsKey("Set-Cookie"))
+                    CommonLib.Http.BspRuntime.RenderPut(renderKey, body);
+                result = new HttpResponse { BodyBytes = body, ContentType = "text/html; charset=utf-8" };
             }
 
             // setCookie e' non-null SOLO alla creazione di una sessione nuova (nessun cookie
@@ -172,7 +227,7 @@ internal static class BspDispatch
             // reinviare lo stesso cookie a ogni richiesta.
             if (setCookie != null)
                 result.Headers["Set-Cookie"] = setCookie;
-            return result;
+            return FinishBsp(result, req);
         }
         catch (Exception ex)
         {
@@ -199,6 +254,13 @@ internal static class BspDispatch
                 StatusCode = 501, ContentType = "text/plain",
                 Body = "501 GMB_BSP_BACKEND=il richiede l'host IL (Executor/REPL) che registra il compilatore BSP→IL.",
             };
+
+        // Resa memoizzata (opt-in) anche su questo percorso: evita la ricompilazione+esecuzione
+        // della pagina identica per ogni client in polling.
+        var renderKey = filePath + "?" + (req.QueryString ?? "");
+        var rendered = CommonLib.Http.BspRuntime.RenderGet(renderKey);
+        if (rendered != null)
+            return FinishBsp(new HttpResponse { BodyBytes = rendered }, req);
 
         var bspSource = File.ReadAllText(filePath);
         var basicCode = CommonLib.Http.BspCompiler.Compile(bspSource, filePath);
@@ -306,12 +368,14 @@ internal static class BspDispatch
             {
                 // Nessun RES.Send*/Redirect esplicito: l'output è quello dei PRINT (stessa
                 // semantica ASP-classic del path P-Code).
-                result = new HttpResponse { Body = outputWriter.ToString(), ContentType = "text/html; charset=utf-8" };
+                var body = System.Text.Encoding.UTF8.GetBytes(outputWriter.ToString());
+                CommonLib.Http.BspRuntime.RenderPut(renderKey, body);
+                result = new HttpResponse { BodyBytes = body, ContentType = "text/html; charset=utf-8" };
             }
 
             if (setCookie != null)
                 result.Headers["Set-Cookie"] = setCookie;
-            return result;
+            return FinishBsp(result, req);
         }
         finally
         {
