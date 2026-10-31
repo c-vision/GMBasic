@@ -25,6 +25,13 @@ The folders are domains, not separate repos:
 | `GMBasicIDE/`, `GMBasicTuiIde/` | native macOS IDE (VB6-style form designer, code window, debug, DataGrid) and the TUI IDE |
 | `tools/` | tooling (BASIC/C/shell) at the repo root, shared by both worlds |
 
+Two things are deliberately **outside** this repository and are never cloned as submodules:
+the LLM engine [`c-vision/LLMEnv`](https://github.com/c-vision/LLMEnv) (built and cached as native
+libraries — see [LLM engine](#llm-engine--the-llmenv-sibling-repository)) and the **data** repos
+[`GMBasicModules`](https://github.com/c-vision/GMBasicModules) /
+[`GMBasicBrains`](https://github.com/c-vision/GMBasicBrains) (release assets downloaded on demand —
+see [Download](#download-what-which-command-where-it-lands)).
+
 ## Download: what, which command, where it lands
 
 Large data is **not in git**. The code lives here; native libraries, market feeds and brains live
@@ -83,6 +90,43 @@ executable carries only what is needed: minimal settings, `Resources/`, the decl
   machine-specific paths. If a file is missing, the runtime falls back to the **seed** in
   `shared/settings/` or to the defaults in the code.
 - **`shared/samples/Fixtures/`** — the feeds, and nothing else.
+
+## LLM engine — the LLMEnv sibling repository
+
+The local-LLM engine is **not** in this repository. It lives in the **public** repo
+**`c-vision/LLMEnv`** — *"Inference engine for local LLMs on Apple Silicon: MLX and GGUF back ends,
+model codecs, tokenizers and chat templates. The engine behind FastLLM."*
+
+GMBasic consumes it as a **sibling checkout**, not as a submodule and not as a copy:
+
+```
+../LLMEnv/            ← $LLMENV (default: ~/Documents/Projects/LLMEnv)
+  LLMEngine/          MLX and llama.cpp/GGUF back ends, MoE streaming, plugin ABI (llmengine.h)
+  LLMCodec/           dequant + shared quantize helpers, GGUF/safetensors containers
+  LLMToken/ LLMDesc/  tokenizers, chat templates (jinja), model descriptors/arch tables
+```
+
+How the pieces connect:
+
+| step | what happens |
+|---|---|
+| **build** | `LLMEnv/tools/build_ai_libs.sh` builds the engine (`cmake -DLLMENV_BUILD_ENGINE=ON`, artifacts in `LLMEnv/build/dist/<rid>/`); GMBasic's packaging step then installs them into the user cache as `libgmb_ai_mlx`, `libllm_ai_llamacpp`, `libllmtoken`, `libllmengine_moe_stream`, … |
+| **use** | the C runtime and the C# backends load them from `~/.gmbasic/libs/<rid>/` (C# via **P/Invoke**; the C side links them). The ABI contract is verified by [`shared/runtime-abi`](shared/runtime-abi/README.md): `gmb_ai_mlx`, `llm_ai_llamacpp`, `llmtoken`, `llmengine_moe_stream`, `gmb_ai_llm`, `gmb_ai_modelio` |
+| **CI** | `.github/workflows/libs.yml` clones it through the `LLMENV_REPO` variable (`c-vision/LLMEnv`) or uses a prebuilt `LLMENV_DIR` |
+
+**License boundary (do not break it).** LLMEnv is **Apache-2.0** and must stay
+*inference-complete*: it loads and runs models. Everything that **produces or alters weights**
+(training, LoRA, quantization encode, model compiler/surgery, MLX↔GGUF conversion) lives in
+[`GMBasic/gmbllm/`](GMBasic/gmbllm/README.md) under the **PUL** license. The dependency is
+one-way — **`gmbllm` → LLMEnv**, never the reverse — and `LLMEnv/tools/gmb_license_gate.py` must
+exit 0 after touching LLM code.
+
+Get it next to this checkout:
+
+```sh
+git clone https://github.com/c-vision/LLMEnv ../LLMEnv
+bash ../LLMEnv/tools/build_ai_libs.sh          # engine → ~/.gmbasic/libs/<rid>/ (via GMBasic packaging)
+```
 
 ## Build & run
 
@@ -410,7 +454,7 @@ CALL SleepAsync(1000)
 
 ## Commands reference
 
-See [COMMANDS.txt](./COMMANDS.txt) for the complete list of supported commands and functions.
+See [COMMANDS.TXT](./COMMANDS.TXT) for the complete list of supported commands and functions.
 
 ## REPL commands
 

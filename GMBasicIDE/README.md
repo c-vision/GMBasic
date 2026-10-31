@@ -65,4 +65,5 @@ make check
 
 ## Agent instructions
 
-See [AGENTS.md](AGENTS.md).
+The IDE has its own `AGENTS.md` with agent instructions; it is a local, untracked file
+(not part of the repository), so it is not linked from here.
