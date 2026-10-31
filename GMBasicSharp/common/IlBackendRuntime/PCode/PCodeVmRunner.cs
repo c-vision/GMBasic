@@ -42,6 +42,15 @@ public static class PCodeVmRunner
     /// grafico solo quando serve davvero (terminale interattivo), ed evitare l'hang da park
     /// non pompato.</summary>
     public static PCodeVmResult Run(CompiledChunk chunk, CancellationToken cancellationToken, bool prepareGraphicsHost)
+        => Run(chunk, cancellationToken, prepareGraphicsHost, liveOut: null);
+
+    /// <summary>Come <see cref="Run(CompiledChunk, CancellationToken, bool)"/>, ma con output
+    /// LIVE: <paramref name="liveOut"/> (di norma la console) riceve le righe mentre il programma
+    /// gira, mentre la cattura per <see cref="PCodeVmResult.Output"/> resta identica (tee).
+    /// Serve ai processi lunghi (server/daemon): senza, l'utente non vede nulla fino all'uscita
+    /// e la memoria cresce senza limite (bug reale: log vuoto della webapp).</summary>
+    public static PCodeVmResult Run(CompiledChunk chunk, CancellationToken cancellationToken,
+        bool prepareGraphicsHost, TextWriter? liveOut)
     {
         ArgumentNullException.ThrowIfNull(chunk);
 
@@ -52,7 +61,8 @@ public static class PCodeVmRunner
         if (prepareGraphicsHost) IlRuntime.PrepareGraphicsHost();
 
         var sw = new StringWriter();
-        var host = new HeadlessRuntimeHost(sw, null);
+        var sink = liveOut is null ? (TextWriter)sw : new CommonLib.TeeTextWriter(sw, liveOut);
+        var host = new HeadlessRuntimeHost(sink, null);
         try
         {
             IlRuntime.SetCurrent(host);

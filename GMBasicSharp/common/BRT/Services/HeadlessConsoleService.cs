@@ -48,6 +48,12 @@ public class HeadlessConsoleService : IConsoleService
     {
         Print(text);
         PrintNewLine();
+        // Flush a fine riga: senza, un processo LUNGO (daemon, server) con stdout
+        // rediretto su file non mostra NULLA finché non esce (il TextWriter sottostante
+        // bufferizza). Bug reale: `tools/sh/webapp_up.sh logs` restava vuoto mentre la
+        // dashboard rispondeva. Chi stampa molto può usare PRINT con `;` (flush alla riga
+        // successiva) o il flush esplicito del writer.
+        try { _writer.Flush(); } catch { /* writer chiuso */ }
     }
 
     public void PrintNewLine()
