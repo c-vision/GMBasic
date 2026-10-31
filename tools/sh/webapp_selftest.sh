@@ -58,6 +58,8 @@ json_get() { # json_get <json> <python-expr su d>
 cleanup() {
   # ripulisce SOLO ciò che ha creato questo test
   curl -s -m 5 -X DELETE "$B/api/agents/ST_Agent" >/dev/null 2>&1
+  curl -s -m 5 -X DELETE "$B/api/agents/ST_Persist" >/dev/null 2>&1
+  curl -s -m 5 -X DELETE "$B/api/teams/ST_Team" >/dev/null 2>&1
   curl -s -m 5 -X DELETE "$B/api/workflows/ST_Wf" >/dev/null 2>&1
   curl -s -m 5 -X DELETE "$B/api/memory?key=st_key" >/dev/null 2>&1
 }
@@ -96,6 +98,7 @@ ST="$(body "$B/api/status")"
 if [ -n "$ST" ]; then ok "GET /api/status ($(json_get "$ST" 'd.get("version")'))"; else bad "GET /api/status"; fi
 [ "$(json_get "$ST" 'd.get("dashboardPort")')" = "$DASH_PORT" ] && ok "status: dashboardPort=$DASH_PORT" || bad "status: dashboardPort errato"
 [ "$(json_get "$ST" 'd.get("apiReachable")')" = "True" ] && ok "status: apiReachable" || bad "status: api non raggiungibile"
+[ -n "$(json_get "$ST" 'd.get("teams")')" ] && ok "status: teams=$(json_get "$ST" 'd.get("teams")')" || bad "status: manca teams"
 
 echo ""
 echo "== agenti (CRUD) =="
@@ -116,6 +119,26 @@ EXEC="$(curl -s -m 15 -X POST -H 'Content-Type: application/json' -d '{}' "$B/ap
 case "$EXEC" in *'"ok":true'*) ok "POST execute (ok:true)";; *) bad "execute non ok" "$EXEC";; esac
 case "$(body "$B/api/workflows")" in *'"name":"ST_Wf"'*) ok "workflow elencato";; *) bad "workflow non elencato";; esac
 expect_code 200 "$(code DELETE "$B/api/workflows/ST_Wf")" "DELETE /api/workflows/ST_Wf"
+
+echo ""
+echo "== persistenza agenti (bin/agents) =="
+DATA="$ROOT/shared/webapp/bin"
+expect_code 201 "$(code POST "$B/api/agents" '{"name":"ST_Persist","systemPrompt":"persist","permission":"Sandbox"}')" "POST /api/agents ST_Persist"
+if [ -f "$DATA/agents/ST_Persist.agent.json" ]; then ok "file agente creato in bin/agents"; else bad "file agente non creato" "$DATA/agents/ST_Persist.agent.json"; fi
+expect_code 200 "$(code DELETE "$B/api/agents/ST_Persist")" "DELETE /api/agents/ST_Persist"
+if [ ! -f "$DATA/agents/ST_Persist.agent.json" ]; then ok "file agente rimosso"; else bad "file agente ancora presente"; fi
+
+echo ""
+echo "== team (CRUD + persistenza bin/teams) =="
+expect_code 201 "$(code POST "$B/api/teams" '{"name":"ST_Team","strategy":"RoundRobin"}')" "POST /api/teams"
+case "$(body "$B/api/teams")" in *'"name":"ST_Team"'*) ok "team elencato";; *) bad "team non elencato";; esac
+expect_code 409 "$(code POST "$B/api/teams" '{"name":"ST_Team"}')" "POST team duplicato → 409"
+expect_code 200 "$(code POST "$B/api/teams/ST_Team/agents" '{"agent":"Demo","role":"Worker"}')" "POST team/{n}/agents"
+TEAMJ="$(body "$B/api/teams/ST_Team")"
+case "$TEAMJ" in *Demo*) ok "membro Demo presente nel team";; *) bad "membro non presente" "$TEAMJ";; esac
+if [ -f "$DATA/teams/ST_Team.team.json" ]; then ok "file team creato in bin/teams"; else bad "file team non creato"; fi
+expect_code 200 "$(code DELETE "$B/api/teams/ST_Team")" "DELETE /api/teams/ST_Team"
+if [ ! -f "$DATA/teams/ST_Team.team.json" ]; then ok "file team rimosso"; else bad "file team ancora presente"; fi
 
 echo ""
 echo "== memory =="

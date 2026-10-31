@@ -10632,8 +10632,12 @@ public static double TextWidth(string s)
                         await WriteJsonResponse(response, 200, $"{{\"agent\":\"{EscapeJson(agentName)}\",\"status\":\"{EscapeJson(status)}\",\"history\":{historyJson},\"memory\":{memJson}}}");
                         break;
                     }
-                    case "api/agents":
-                    case "api/teams":
+                    // SOLO GET: un POST /api/teams è la CREAZIONE (branch più sotto, dopo lo
+                    // switch). Senza il guard il case catturava anche POST/DELETE e restituiva
+                    // la lista, quindi creare un team "funzionava" senza crearlo (bug reale
+                    // visto col selftest: POST duplicato rispondeva 200/201 con la lista).
+                    case "api/agents" when method == "GET":
+                    case "api/teams" when method == "GET":
                     {
                         // C1/B5.4 — GET /api/agents|teams → JSON array (AgentStatusManager)
                         var payload = path == "api/agents"
@@ -10869,6 +10873,119 @@ public static double TextWidth(string s)
                             var payload = System.Text.Json.JsonSerializer.Serialize(new { name = wfName, status = wf2?.Status ?? "ready", steps = wf2?.Steps.Select(s=>new{ s.Name, s.Action, s.RetryCount, s.TimeoutMs }).ToArray() ?? Array.Empty<object>() });
                             await WriteJsonResponse(response, 201, payload);
                         }
+                    }
+                }
+                // V2 — TEAM CRUD + persistenza (i comandi BASIC `AI TEAM CREATE/ADD AGENT` vogliono
+                // un nome STATICO; da HTTP il nome è dinamico). La persistenza la guida il
+                // chiamante: `save`/`load` ricevono il PATH, così l'app decide dove stanno i file
+                // (niente path cablati qui).
+                else if (path.Equals("api/teams", StringComparison.OrdinalIgnoreCase) && method == "POST")
+                {
+                    var tname = hasJson && root.TryGetProperty("name", out var tn2) ? tn2.GetString() ?? "" : GetQueryParam("name");
+                    var strat = hasJson && root.TryGetProperty("strategy", out var ts2) ? ts2.GetString() ?? "" : GetQueryParam("strategy");
+                    if (string.IsNullOrWhiteSpace(tname))
+                        await WriteJsonResponse(response, 400, "{\"error\":\"Missing 'name'\"}");
+                    else if (!Basic.Agents.TeamServer.Instance.Create(tname!))
+                        await WriteJsonResponse(response, 409, $"{{\"error\":\"Team '{EscapeJson(tname!)}' già esistente\"}}");
+                    else
+                    {
+                        if (!string.IsNullOrWhiteSpace(strat) &&
+                            Enum.TryParse<Basic.Agents.TeamStrategy>(strat, ignoreCase: true, out var strategy))
+                            Basic.Agents.TeamServer.Instance.SetStrategy(tname!, strategy);
+                        var t = Basic.Agents.TeamServer.Instance.Get(tname!);
+                        var payload = System.Text.Json.JsonSerializer.Serialize(new
+                        {
+                            name = t?.Name ?? tname,
+                            strategy = (t?.Strategy ?? Basic.Agents.TeamStrategy.Sequential).ToString(),
+                            members = t?.Members.Select(m => m.AgentName).ToArray() ?? Array.Empty<string>()
+                        });
+                        await WriteJsonResponse(response, 201, payload);
+                    }
+                }
+                else if (path.StartsWith("api/teams/", StringComparison.OrdinalIgnoreCase) && method == "DELETE")
+                {
+                    var tdel = path.Substring("api/teams/".Length);
+                    if (string.IsNullOrWhiteSpace(tdel))
+                        await WriteJsonResponse(response, 400, "{\"error\":\"Missing team name\"}");
+                    else if (!Basic.Agents.TeamServer.Instance.Delete(tdel))
+                        await WriteJsonResponse(response, 404, $"{{\"error\":\"Team '{EscapeJson(tdel)}' non trovato\"}}");
+                    else
+                        await WriteJsonResponse(response, 200, $"{{\"deleted\":\"{EscapeJson(tdel)}\"}}");
+                }
+                // POST /api/teams/{name}/agents {"agent":"X","role":"Worker"} → aggiunge un membro
+                else if (path.StartsWith("api/teams/", StringComparison.OrdinalIgnoreCase)
+                         && path.EndsWith("/agents", StringComparison.OrdinalIgnoreCase) && method == "POST")
+                {
+                    var inner2 = path.Substring("api/teams/".Length);
+                    var tname = inner2[..(inner2.Length - "/agents".Length)];
+                    var agentName = hasJson && root.TryGetProperty("agent", out var an2) ? an2.GetString() ?? "" : GetQueryParam("agent");
+                    var roleStr = hasJson && root.TryGetProperty("role", out var rl2) ? rl2.GetString() ?? "" : GetQueryParam("role");
+                    if (string.IsNullOrWhiteSpace(tname) || string.IsNullOrWhiteSpace(agentName))
+                        await WriteJsonResponse(response, 400, "{\"error\":\"Missing team or agent\"}");
+                    else
+                    {
+                        var role = Basic.Agents.TeamRole.Worker;
+                        if (!string.IsNullOrWhiteSpace(roleStr))
+                            Enum.TryParse<Basic.Agents.TeamRole>(roleStr, ignoreCase: true, out role);
+                        if (!Basic.Agents.TeamServer.Instance.AddAgent(tname, agentName!, role))
+                            await WriteJsonResponse(response, 404, $"{{\"error\":\"Team '{EscapeJson(tname)}' o agente '{EscapeJson(agentName!)}' non valido (già membro?)\"}}");
+                        else
+                        {
+                            var t3 = Basic.Agents.TeamServer.Instance.Get(tname);
+                            var payload = System.Text.Json.JsonSerializer.Serialize(new
+                            {
+                                team = tname,
+                                agent = agentName,
+                                role = role.ToString(),
+                                members = t3?.Members.Select(m => m.AgentName).ToArray() ?? Array.Empty<string>()
+                            });
+                            await WriteJsonResponse(response, 200, payload);
+                        }
+                    }
+                }
+                // DELETE /api/teams/{name}/agents/{agent}
+                else if (path.StartsWith("api/teams/", StringComparison.OrdinalIgnoreCase)
+                         && path.Contains("/agents/", StringComparison.OrdinalIgnoreCase) && method == "DELETE")
+                {
+                    var rest = path.Substring("api/teams/".Length);
+                    var sep = rest.IndexOf("/agents/", StringComparison.OrdinalIgnoreCase);
+                    var tname = sep > 0 ? rest[..sep] : "";
+                    var agentName = sep > 0 ? rest[(sep + "/agents/".Length)..] : "";
+                    if (string.IsNullOrWhiteSpace(tname) || string.IsNullOrWhiteSpace(agentName))
+                        await WriteJsonResponse(response, 400, "{\"error\":\"Missing team or agent\"}");
+                    else if (!Basic.Agents.TeamServer.Instance.RemoveAgent(tname, agentName))
+                        await WriteJsonResponse(response, 404, $"{{\"error\":\"'{EscapeJson(agentName)}' non è membro di '{EscapeJson(tname)}'\"}}");
+                    else
+                        await WriteJsonResponse(response, 200, $"{{\"team\":\"{EscapeJson(tname)}\",\"removed\":\"{EscapeJson(agentName)}\"}}");
+                }
+                // POST /api/teams/{name}/save {"path": "..."} → persiste il team su file (path dal chiamante)
+                else if (path.StartsWith("api/teams/", StringComparison.OrdinalIgnoreCase)
+                         && path.EndsWith("/save", StringComparison.OrdinalIgnoreCase) && method == "POST")
+                {
+                    var inner3 = path.Substring("api/teams/".Length);
+                    var tname = inner3[..(inner3.Length - "/save".Length)];
+                    var p = hasJson && root.TryGetProperty("path", out var pj) ? pj.GetString() ?? "" : GetQueryParam("path");
+                    if (string.IsNullOrWhiteSpace(tname) || string.IsNullOrWhiteSpace(p))
+                        await WriteJsonResponse(response, 400, "{\"error\":\"Missing team or path\"}");
+                    else
+                    {
+                        try { Basic.Agents.TeamServer.Instance.Save(tname, p!); await WriteJsonResponse(response, 200, "{\"saved\":true}"); }
+                        catch (Exception ex) { await WriteJsonResponse(response, 500, $"{{\"error\":\"{EscapeJson(ex.Message)}\"}}"); }
+                    }
+                }
+                // POST /api/teams/load {"name":"X","path":"..."} → carica un team da file
+                else if (path.Equals("api/teams/load", StringComparison.OrdinalIgnoreCase) && method == "POST")
+                {
+                    var lname = hasJson && root.TryGetProperty("name", out var ln2) ? ln2.GetString() ?? "" : GetQueryParam("name");
+                    var lp = hasJson && root.TryGetProperty("path", out var lp2) ? lp2.GetString() ?? "" : GetQueryParam("path");
+                    if (string.IsNullOrWhiteSpace(lname) || string.IsNullOrWhiteSpace(lp))
+                        await WriteJsonResponse(response, 400, "{\"error\":\"Missing name or path\"}");
+                    else if (!File.Exists(lp))
+                        await WriteJsonResponse(response, 404, $"{{\"error\":\"File non trovato: {EscapeJson(lp!)}\"}}");
+                    else
+                    {
+                        try { Basic.Agents.TeamServer.Instance.Load(lname!, lp!); await WriteJsonResponse(response, 200, $"{{\"loaded\":\"{EscapeJson(lname!)}\"}}"); }
+                        catch (Exception ex) { await WriteJsonResponse(response, 500, $"{{\"error\":\"{EscapeJson(ex.Message)}\"}}"); }
                     }
                 }
                 else if (path.StartsWith("api/teams/", StringComparison.OrdinalIgnoreCase) && method == "GET")
