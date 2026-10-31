@@ -23,10 +23,13 @@ public sealed class BrainRegistryTests : IDisposable
         AiConfig.RagDefaultDir = Path.Combine(_brainsRoot, "rag-legacy");
         AiConfig.GraphsDefaultDir = Path.Combine(_brainsRoot, "graphs-legacy");
         BrainRegistry.OverridePathForTests(_registryPath);
+        // Isola dal resolver C (cache ~/.gmbasic/brains della macchina).
+        CommonLib.NativeBrains.OverrideRootsForTests(_brainsRoot);
     }
 
     public void Dispose()
     {
+        CommonLib.NativeBrains.OverrideRootsForTests(null);
         AiConfig.ResetForTests();
         BrainRegistry.ResetForTests();
         try { Directory.Delete(_brainsRoot, recursive: true); } catch { }

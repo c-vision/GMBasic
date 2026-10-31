@@ -1512,9 +1512,11 @@ static int sb_brain_rag_db_path(const char* brain, char* out, size_t cap) {
         }
         fclose(f);
     }
-    if (!out[0]) { char dir[1024]; gmb_paths_rag_dir(dir, sizeof(dir)); snprintf(out, cap, "%s/%s.db", dir, brain); }
+    /* NIENTE fallback su <ragDir>/<brain>.db: o il cervello si risolve (cache/vendor/exe/brainsDir)
+     * o e' registrato con un `source` CHE ESISTE, altrimenti non e' disponibile e si genera un
+     * errore esplicito (decisione utente, 2026-10-31). */
     struct stat st;
-    if (stat(out, &st) != 0 || !S_ISREG(st.st_mode)) { out[0] = 0; return 0; }
+    if (!out[0] || stat(out, &st) != 0 || !S_ISREG(st.st_mode)) { out[0] = 0; return 0; }
     return 1;
 }
 
@@ -2987,13 +2989,10 @@ static int sb_brain_available_on_disk(const char* name) {
         char dir[4096];
         if (gmb_brain_lookup(name, NULL, dir, sizeof dir)) return 1;
     }
-    char brains[1024], rag[1024], graphs[1024], p[2048];
+    char brains[1024], graphs[1024], p[2048];
     gmb_paths_brains_dir(brains, sizeof(brains));
-    gmb_paths_rag_dir(rag, sizeof(rag));
     gmb_paths_graphs_dir(graphs, sizeof(graphs));
     snprintf(p, sizeof(p), "%s/%s/rag/%s.db", brains, name, name);
-    if (sb_file_is_reg(p)) return 1;
-    snprintf(p, sizeof(p), "%s/%s.db", rag, name);
     if (sb_file_is_reg(p)) return 1;
     snprintf(p, sizeof(p), "%s/%s/graphs/%s.json", brains, name, name);
     if (sb_file_is_reg(p)) return 1;

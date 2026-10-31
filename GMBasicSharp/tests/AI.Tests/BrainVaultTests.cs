@@ -34,10 +34,14 @@ public sealed class BrainVaultTests : IDisposable
         _prevSqlSession = AiVectorRuntime.SqlDataSession;
         Basic.SQLite.Vector.EmbeddingProviderResolver.Default = new Basic.SQLite.Vector.FixtureEmbeddingProvider();
         Basic.SQLite.Vector.EmbeddingProviderResolver.ActiveDimensions = 8;
+        // Isola dal resolver C: sulla macchina possono esserci cervelli VERI in ~/.gmbasic/brains
+        // (es. "brainvault") che scavalcherebbero quello costruito dal test.
+        CommonLib.NativeBrains.OverrideRootsForTests(_ragDir);
     }
 
     public void Dispose()
     {
+        CommonLib.NativeBrains.OverrideRootsForTests(null);
         // Ripristina il singleton al valore PRECEDENTE (chi lo aveva prima, lo ritrova). Non
         // chiamare CloseAll sul nostro DataSession (chiuderebbe aree condivise con altri test).
         AiVectorRuntime.SqlDataSession = _prevSqlSession;
