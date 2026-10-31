@@ -100,7 +100,7 @@ UI model that lives in the code. The target is C99Native, so the truth about the
 | Multi-file | **Already solved via `IMPORT`**: a `.bas`/`.inc` module declaring `NAMESPACE X` enters the build if the source writes `IMPORT X`; the driver prepends its text (measured: `Main.bas` + `Ui.bas` → `gmb_user_frmShow()` in the emitted C). It searches the program dir, `include/`, `Controls/` and `<root>/libs/*`: **it is not recursive**, and a file without `NAMESPACE` or not imported is not compiled. | No concatenation bridge: the codegen emits `NAMESPACE`/`IMPORT` and the project stays on a flat dir (or `include/`). The CLI needs the file list/exclusions and the entry (O7). |
 | Diagnostics | Front-end: `parse error: <msg>` with the line, rc=3. Emitter: `emissione: <file>:<riga>: <msg>`, rc=4 (it used to be `riga N` of the merged text). `cc` errors: **cite the `.bas`** thanks to the `#line` (O8, done on 2026-10-24). | The IDE directly uses `file:riga`; `--line-map <json>` gives the anchors for those who compile the C on their own. |
 | Driver | `tools/gmb_c99native_driver` may be **stale** compared with `native/gmb_compiler_c/build/gmb_c99native_driver`; `tools/gmb_c99native_run.sh` prefers the most recent build. | The CLI must build/verify the driver and declare the version; do not use the binary in `tools/` blindly. |
-| Toolchain | On this machine: .NET **10.0.301**, Apple clang **21.0.0**, cmake **4.4.3**, C99Native driver compiled. `GMBASIC_DEV_MODE=1` is needed for licensing in development. | First-run check of `cc`, `cmake`, driver, GMBasic root and runtime libraries. |
+| Toolchain | On this machine: .NET **10.0.301**, Apple clang **21.0.0**, cmake **4.4.3**, C99Native driver compiled. No license gate and no dev-mode switch: the software runs as-is (PUL). | First-run check of `cc`, `cmake`, driver, GMBasic root and runtime libraries. |
 
 ### 1.1 What C99Native really does (measured on 2026-10-22)
 
@@ -228,8 +228,8 @@ Rules:
 ```
 
 - The paths are relative to the project folder.
-- The manifest contains no absolute paths nor credentials; the toolchain root and
-  `GMBASIC_DEV_MODE` live in the app settings.
+- The manifest contains no absolute paths nor credentials; the toolchain root lives in the app
+  settings.
 - If the manifest is missing, the IDE can infer the entry (`Main.bas` or the first `.bas`) and show
   a warning; it must not guess the forms.
 - The commands are not in the manifest: the IDE uses `gmb` from the settings, with a configurable fallback.
@@ -627,8 +627,8 @@ colored by mistake; GMBasic handler inserted from the combo.
       Win98 dialog with the exact missing command; no crash.
 - [ ] **G3.6** (P1) Log in `~/Library/Logs/GMBasicIDE/gmbasic.log`: command line, cwd, exit code,
       first/last lines; no secrets.
-- [ ] **G3.7** Run environment: `GMBASIC_HEADLESS=0`, `SDL_VIDEODRIVER=cocoa` (default),
-      `GMBASIC_DEV_MODE` only if enabled; headless test with `SDL_VIDEODRIVER=dummy`.
+- [ ] **G3.7** Run environment: `GMBASIC_HEADLESS=0`, `SDL_VIDEODRIVER=cocoa` (default);
+      headless test with `SDL_VIDEODRIVER=dummy`.
 
 **Acceptance:** a file with an error shows file/line and the click jumps there; Run opens the
 SDL window and Stop closes it without orphans; Build produces a binary or a clear error; the IDE stays
@@ -676,14 +676,14 @@ error and **not** invalid code; the second save is byte-identical.
 
 - [ ] **G6.1** "GMBASIC — C99Native" indicator in the title/status; contextual Project/Run
       menus; no meaningless VB6 items (Menu Editor, Components, Data).
-- [ ] **G6.2** Settings dialog: GMBasic root, `gmb` path, fixed `c99native` backend,
-      dev mode; persistence in Application Support, not in the project.
+- [ ] **G6.2** Settings dialog: GMBasic root, `gmb` path, fixed `c99native` backend;
+      persistence in Application Support, not in the project.
 - [ ] **G6.3** Open folder / recent projects / drag&drop of a folder or of a `.bas`;
       (P2) document types in `Info.plist`.
 - [ ] **G6.4** Documentation: "GMBasic mode" section in `AGENTS.md`, README with known limits,
       user guide with the mapping table and the `.frm`→`.ui.bas` flow.
-- [ ] **G6.5** License/distribution: do not embed GMBasic; `GMBASIC_DEV_MODE` only in
-      development; respect the compiler editions.
+- [ ] **G6.5** Distribution: do not embed GMBasic; respect the compiler editions (PUL, no
+      activation keys).
 
 ### G7 — Verification (P0)
 
@@ -722,8 +722,8 @@ error and **not** invalid code; the second save is byte-identical.
 | **Doctor** | `gmb doctor --json` | driver, cc, cmake, runtime, SDL, license | does not install dependencies. |
 | **Debug** | — | — | no verified DAP. |
 
-Run environment: cwd = project folder, `GMBASIC_HEADLESS=0`, `SDL_VIDEODRIVER=cocoa` (default),
-`GMBASIC_DEV_MODE=1` only in development. For Check/Build: same cwd, explicit `GMBASIC_ROOT`,
+Run environment: cwd = project folder, `GMBASIC_HEADLESS=0`, `SDL_VIDEODRIVER=cocoa` (default).
+For Check/Build: same cwd, explicit `GMBASIC_ROOT`,
 no `GMBASIC_HEADLESS=1`. Output: stdout data, stderr progress/diagnostics.
 
 For **Run** the JSON must not mix with the app output: the CLI emits a single
@@ -749,7 +749,7 @@ dirtying the project. The project CLI must do the same.
 | R7 | Huge and evolving language surface | medium | Table generated from the C99Native lexer + registry; hash and synchronization test; pinned commit. |
 | R8 | Recursive discovery of all `.bas` files | medium | Manifest + exclusions; warn about foreign files; no generated file in the root. |
 | R9 | `app.settings.json`/runtime resolved against the cwd | medium | cwd = project, explicit `GMBASIC_ROOT`, command line log. |
-| R10 | Licensing/dev mode | medium | Never `GMBASIC_DEV_MODE` by default; document it; no bypass. |
+| R10 | Licensing | low | PUL, no activation key and no dev-mode switch: nothing to bypass. |
 | R11 | Global handler names in GMBasic | medium | `frmX_` prefix; collision test between two forms. |
 | R12 | Timer/debug promised and not available | medium | Disable with a message; O6/DAP only when real. |
 | R13 | Twip/DPI and different sizes | low | Fixed conversion 15; test on real VB6 forms; no drift. |

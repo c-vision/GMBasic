@@ -1,5 +1,13 @@
 # Licensing / ownership (F3)
 
+> **The repository is distributed under the PERSONAL USE LICENSE (PUL) v1.1** — see
+> [`LICENSE`](LICENSE). **No activation key, no online check, no trial, no dev-mode switch**:
+> the software runs as-is.
+>
+> The table below describes the **planned split** of the code base that has to keep the
+> `LLMEnv` engine reusable under **Apache-2.0** (the engine is a separate, public repository);
+> entries marked *(proposal)* are not the current distribution license of this repository.
+
 Decided boundary (see ADR `ADR-Confine-Licenza-Engine-Apache-Training-Quant-PUL`):
 
 | Area | License | Notes |
