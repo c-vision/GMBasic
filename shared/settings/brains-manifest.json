@@ -31,6 +31,38 @@
           "size": 573998
         }
       ]
+    },
+    {
+      "name": "airline",
+      "description": "RAG del dominio compagnie aeree (108 MB, db SQLite). Repo PRIVATO: serve un token.",
+      "latest": "1.0.0",
+      "versions": [
+        {
+          "version": "1.0.0",
+          "source": "github-asset",
+          "repo": "c-vision/GMBasicBrains",
+          "tag": "brains-v1",
+          "asset": "airline-1.0.0.gmbrain.zip",
+          "sha256": "fa88d9fb2fa3b643ceba4e60d3edac20d8bb12588e3ced156a9d82a4d4dc9b2c",
+          "size": 27744844
+        }
+      ]
+    },
+    {
+      "name": "trading",
+      "description": "RAG del dominio trading (1,4 GB, db SQLite). Repo PRIVATO: serve un token. Download con streaming+resume (gmb_fetch).",
+      "latest": "1.0.0",
+      "versions": [
+        {
+          "version": "1.0.0",
+          "source": "github-asset",
+          "repo": "c-vision/GMBasicBrains",
+          "tag": "brains-v1",
+          "asset": "trading-1.0.0.gmbrain.zip",
+          "sha256": "54154f3ce0dff4a2ca7140e8566fd2ff4891756dc8ea442bc4fcada0d5cf83df",
+          "size": 607497002
+        }
+      ]
     }
   ]
 }

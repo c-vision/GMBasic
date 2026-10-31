@@ -98,10 +98,18 @@ int gmb_pkg_manifest_get(gmb_pkg_manifest_t* m, const char* path, char* out, siz
 
 int gmb_pkg_manifest_get_num(gmb_pkg_manifest_t* m, const char* path, double* out)
 {
-    char buf[128];
-    if (!gmb_pkg_manifest_get(m, path, buf, sizeof(buf))) { if (out) *out = 0; return 0; }
-    if (out) *out = atof(buf);
-    return 1;
+    if (!m) { if (out) *out = 0; return 0; }
+    /* Si legge il VALORE, non la sua resa testuale: `get` formatta i numeri con "%g" (6 cifre
+     * significative), quindi una dimensione come 27744844 diventava 2.77448e+07 = 27744800 —
+     * e il motore di download rifiutava l'asset ("più byte del dichiarato"). Bug reale, trovato
+     * pubblicando i cervelli da 27 MB e 607 MB. */
+    gmb_val_t v = nav_path(m->root, path);
+    switch (v.kind) {
+        case GMB_TYPE_DOUBLE: if (out) *out = v.v_double; return 1;
+        case GMB_TYPE_INT:    if (out) *out = (double)v.v_int; return 1;
+        case GMB_TYPE_STRING: if (out) *out = v.v_string.data ? atof(v.v_string.data) : 0; return 1;
+        default:              if (out) *out = 0; return 0;
+    }
 }
 
 int gmb_pkg_manifest_count(gmb_pkg_manifest_t* m, const char* path)
