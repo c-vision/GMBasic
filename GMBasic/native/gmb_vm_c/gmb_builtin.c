@@ -13331,18 +13331,43 @@ static char* llmengine_plugin_call_invoke(const char* name, const char* arg, voi
     free(procname);
     int addr = gmb_vm_proc_addr(vm, proc);
     if (addr < 0) return NULL;   /* procedura assente → fallback dichiarativo */
-    /* push argomento stringa (schema mcp_push_str: gmb_str_cstr + push_ref + release) */
+    /* Quanti parametri ha la procedura? Il chunk ha `arity_addrs`/`arity_vals` in lockstep con
+     * `proc_addrs` (gmb_compiler.c `cc_proc`): senza ARITY i parametri successivi al primo non
+     * vengono riempiti e finiscono su quello sbagliato (osservato: param2 = argomento, param1 = 0
+     * per `FUNCTION ReportGenerate(rows, title)`). */
+    int nargs = 1;
+    for (uint32_t i = 0; i < vm->chunk->arity_count; i++)
+        if ((int)vm->chunk->arity_addrs[i] == addr) { nargs = (int)vm->chunk->arity_vals[i]; break; }
+    if (nargs < 1) nargs = 1;
+    /* Argomento: stessa regola di `mcp_push_args` per un tipo NON dichiarato — se il testo è un
+     * numero lo si impila come NUMERO, altrimenti come STRINGA (la VM converte numero→stringa
+     * quando il parametro è STRING: `F(s AS STRING)` con "42" riceve "42"). Gli altri parametri
+     * restano al default: STRINGA VUOTA (un parametro numerico la converte in 0, come C#). */
     {
-        gmb_obj_string_t* o = (arg && *arg) ? gmb_str_cstr(arg) : NULL;
-        if (o) { gmb_task_push_ref(task, (gmb_obj_t*)o, GMB_BT_STRING); gmb_str_release(o); }
-        else gmb_task_push_num(task, 0, GMB_BT_NUMBER);
+        if (arg && *arg) {
+            char* endp = NULL;
+            double d = strtod(arg, &endp);
+            if (endp && endp != arg && *endp == '\0') gmb_task_push_num(task, d, GMB_BT_NUMBER);
+            else {
+                gmb_obj_string_t* o = gmb_str_cstr(arg);
+                if (o) { gmb_task_push_ref(task, (gmb_obj_t*)o, GMB_BT_STRING); gmb_str_release(o); }
+                else gmb_task_push_num(task, 0, GMB_BT_NUMBER);
+            }
+        } else {
+            gmb_task_push_num(task, 0, GMB_BT_NUMBER);
+        }
+        for (int k = 1; k < nargs; k++) {
+            gmb_obj_string_t* e = gmb_str_cstr("");
+            if (e) { gmb_task_push_ref(task, (gmb_obj_t*)e, GMB_BT_STRING); gmb_str_release(e); }
+            else gmb_task_push_num(task, 0, GMB_BT_NUMBER);
+        }
     }
     /* frame sync + tick (schema gmb_mcp_exec.c stdio) */
     int saved_ip = task->ip, saved_sync = task->sync_active, saved_sip = task->sync_saved_ip;
     double saved_sr = task->sync_result;
     gmb_obj_t* saved_sref = task->sync_result_ref;
     uint8_t saved_st = task->sync_result_type;
-    if (gmb_vm_push_sync_frame(task, 1) != 0) return NULL;
+    if (gmb_vm_push_sync_frame(task, nargs) != 0) return NULL;
     task->sync_saved_ip = saved_ip; task->sync_active = 1; task->sync_result = 0;
     task->sync_result_ref = NULL; task->sync_result_type = 0;
     task->ip = addr;

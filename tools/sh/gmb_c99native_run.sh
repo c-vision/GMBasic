@@ -84,6 +84,15 @@ BUILD_DIR="$ROOT/native/gmb_compiler_c/build"
 if [ -d "$BUILD_DIR" ]; then
   cmake --build "$BUILD_DIR" --target gmb_c99native_driver -j4 >/dev/null 2>&1 || true
 fi
+# RUNTIME C: ricostruzione INCREMENTALE prima del link. Le sorgenti del runtime compaiono in DUE
+# build tree (`gmb_runtime_c/build` e `gmb_vm_c/build/gmb_runtime_c_build`) e il link poteva
+# prendere la copia del tree VM/C: dopo una modifica al runtime si linkava una lib VECCHIA e il
+# sintomo era un `undefined symbol` (classe "librerie native stale"). Qui si ricostruisce il tree
+# CANONICO (CMake non fa nulla se è aggiornato, ~0.2s) e il link usa quello.
+RT_DIR="$ROOT/native/gmb_runtime_c/build"
+if [ -d "$RT_DIR" ]; then
+  cmake --build "$RT_DIR" --target gmb_runtime gmb_runtime_min -j4 >/dev/null 2>&1 || true
+fi
 BIN="tools/gmb_c99native_driver"
 BUILT="native/gmb_compiler_c/build/gmb_c99native_driver"
 if [ -x "$BUILT" ] && { [ ! -x "$BIN" ] || [ "$BUILT" -nt "$BIN" ]; }; then
@@ -160,10 +169,15 @@ LLMTOKEN_DIR="$LIBS_CACHE"
 # TESTUALE → gmb_runtime_min (core + stub UI no-op): l'eseguibile NON dipende da SDL/Vulkan.
 # FORM/READ/grafica → runtime COMPLETO (UI vera).
 MIN_LIB="$ROOT/native/gmb_runtime_c/build/libgmb_runtime_min.a"
+# Runtime COMPLETO: prima la copia canonica (`gmb_runtime_c/build`, ricostruita sopra), poi —
+# solo se manca — quella del tree VM/C. Prima era SEMPRE quella del tree VM/C: dopo una modifica
+# al runtime si linkava una lib vecchia ("undefined symbol").
+FULL_LIB="$ROOT/native/gmb_runtime_c/build/libgmb_runtime.a"
+[ -f "$FULL_LIB" ] || FULL_LIB="$L/gmb_runtime_c_build/libgmb_runtime.a"
 RUNTIME_LIB="$MIN_LIB"; MIN_LINK=1
-if [ ! -f "$RUNTIME_LIB" ]; then RUNTIME_LIB="$L/gmb_runtime_c_build/libgmb_runtime.a"; MIN_LINK=0; fi
+if [ ! -f "$RUNTIME_LIB" ]; then RUNTIME_LIB="$FULL_LIB"; MIN_LINK=0; fi
 if grep -qiE '^[[:space:]]*(FORM|READ|TORCH|TRAIN|JINJA|SCREEN|GRAPHICS|SPRITE|SPRITESET|PSET|PRESET|CIRCLE|PAINT|DRAW|POLYGON|PCOPY|SCREENSET|PALETTE|MOUSE|WINDOW|IMAGE|BITMAP|TILE|FONT|PLOT|CHART|VIDEO)[[:space:](]' "$B" 2>/dev/null; then
-  RUNTIME_LIB="$L/gmb_runtime_c_build/libgmb_runtime.a"; MIN_LINK=0
+  RUNTIME_LIB="$FULL_LIB"; MIN_LINK=0
   echo "[c99native] programma con UI/grafica → runtime completo (SDL/Vulkan)" >&2
 else
   echo "[c99native] programma testuale → runtime minimo (0 librerie esterne)" >&2
@@ -192,8 +206,9 @@ if [ "$MIN_LINK" = "1" ]; then
       # il "lib-set completo" linkava il runtime minimo e falliva con "Undefined symbols"
       # (caso reale 2026-10-30: `_gmb_msg_delivery_stats` mancante nella min stale) — un
       # messaggio che accusa il programma invece della lib.
-      RUNTIME_LIB="$L/gmb_runtime_c_build/libgmb_runtime.a"
-      [ -f "$RUNTIME_LIB" ] || RUNTIME_LIB="$ROOT/native/gmb_runtime_c/build/libgmb_runtime.a"
+      # Il runtime COMPLETO è quello canonico (`gmb_runtime_c/build`, ricostruito sopra):
+      # la copia nel tree VM/C resta solo come fallback.
+      RUNTIME_LIB="$FULL_LIB"
       MIN_LINK=0
     }
 fi
