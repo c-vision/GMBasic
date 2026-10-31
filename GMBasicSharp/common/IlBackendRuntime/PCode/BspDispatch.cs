@@ -155,7 +155,7 @@ internal static class BspDispatch
                 {
                     StatusCode = pcodeResponse.StatusCode,
                     Body = System.Text.Encoding.UTF8.GetString(pcodeResponse.Body),
-                    ContentType = pcodeResponse.Headers.TryGetValue("Content-Type", out var ct) ? ct : "text/html",
+                    ContentType = pcodeResponse.Headers.TryGetValue("Content-Type", out var ct) ? ct : "text/html; charset=utf-8",
                     Headers = pcodeResponse.Headers,
                 };
             }
@@ -164,7 +164,7 @@ internal static class BspDispatch
                 // Nessun RES.Send*/Redirect esplicito nella pagina: l'output e' quello scritto
                 // dai PRINT generati da BspCompiler dall'HTML/`<%= expr %>` — semantica
                 // ASP-classic, la pagina "e'" l'output.
-                result = new HttpResponse { Body = outputWriter.ToString(), ContentType = "text/html" };
+                result = new HttpResponse { Body = outputWriter.ToString(), ContentType = "text/html; charset=utf-8" };
             }
 
             // setCookie e' non-null SOLO alla creazione di una sessione nuova (nessun cookie
@@ -298,7 +298,7 @@ internal static class BspDispatch
                 {
                     StatusCode = pcodeResponse.StatusCode,
                     Body = System.Text.Encoding.UTF8.GetString(pcodeResponse.Body),
-                    ContentType = pcodeResponse.Headers.TryGetValue("Content-Type", out var ct) ? ct : "text/html",
+                    ContentType = pcodeResponse.Headers.TryGetValue("Content-Type", out var ct) ? ct : "text/html; charset=utf-8",
                     Headers = pcodeResponse.Headers,
                 };
             }
@@ -306,7 +306,7 @@ internal static class BspDispatch
             {
                 // Nessun RES.Send*/Redirect esplicito: l'output è quello dei PRINT (stessa
                 // semantica ASP-classic del path P-Code).
-                result = new HttpResponse { Body = outputWriter.ToString(), ContentType = "text/html" };
+                result = new HttpResponse { Body = outputWriter.ToString(), ContentType = "text/html; charset=utf-8" };
             }
 
             if (setCookie != null)
