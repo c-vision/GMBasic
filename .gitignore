@@ -47,3 +47,6 @@ shared/samples/Fixtures/markets/
 shared/samples/Fixtures/option_chains/
 shared/samples/Fixtures/rates/
 shared/samples/Fixtures/darkpool/
+
+# Lock del motore di download (gmb_fetch) accanto ai file scaricati: stato transitorio.
+**/.locks/
