@@ -147,16 +147,10 @@ FUNCTION RTrimSlash(p AS STRING) AS STRING
 END FUNCTION
 
 SUB ParseProjectFile(path AS STRING)
-    DIM lines() AS STRING
+    DIM lines
     DIM raw AS STRING, section AS STRING, key AS STRING, val AS STRING
-    DIM fileText AS STRING
     DIM eq AS INTEGER, i AS LONG
-    ' IO.READLINES + UBOUND non è ancora supportato dalla gamba IL ("array non
-    ' DIMensionato"): leggiamo il testo intero e separiamo sulle righe con CHR$(10),
-    ' così il sample gira identico sulle 4 gambe. Il CRLF resta a fine riga e lo
-    ' toglie lo STRINGS.TRIM già applicato sotto.
-    fileText = IO.READFILE(path)
-    lines = STRINGS.SPLIT(fileText, CHR$(10))
+    lines = IO.READLINES(path)
     section = ""
     FOR i = 0 TO UBOUND(lines)
         raw = STRINGS.TRIM(lines(i))

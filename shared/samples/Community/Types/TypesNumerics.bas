@@ -23,7 +23,9 @@
 ' 3. OPERATORI SPECIFICI
 '    - `\`: Divisione intera. Restituisce la parte intera della divisione. Esempio: `10 \ 3` = `3`.
 '    - `MOD`: Operatore modulo. Restituisce il resto della divisione. Esempio: `10 MOD 3` = `1`.
-'    - `AND`, `OR`, `NOT`: Operatori bitwise. Eseguono operazioni logiche sui singoli bit dei numeri.
+'    - `NOT`: negazione LOGICA (`NOT 0` = -1, `NOT 5` = 0; il bitwise puro è `!`).
+'      `AND`/`OR`: LOGICI con short-circuit e risultato "valore" (`6 AND 3` = 3,
+'      `6 OR 0` = -1, `0 OR 5` = 5) — canone in Guide/utente/XOR-AND-OR-SWAP-Guida-Utente.md.
 '
 ' 4. PROMOZIONE DEI TIPI
 '    - Quando un'operazione coinvolge tipi interi di dimensioni diverse, il risultato viene promosso al tipo
@@ -52,23 +54,25 @@ IMPORT MATH
 70 PRINT "Default BIT:"; FLAG; "(Atteso False/0)"
 80 PRINT
 
-90 PRINT "--- 2. Assegnazioni e Controllo Overflow ---"
+90 PRINT "--- 2. Assegnazioni e Gestione Errori (ON ERROR) ---"
 100 B = 255
 110 PRINT "BYTE assegnato a 255: OK. Valore:"; B
 120 I = 32767
 130 PRINT "INTEGER assegnato a 32767: OK. Valore:"; I
-140 PRINT "Ora provoco un overflow (verrà gestito da ON ERROR)..."
+140 PRINT "Ora sollevo un errore a RUNTIME (verrà gestito da ON ERROR)..."
 ' Imposta un gestore di errori
 150 ON ERROR GOTO 1000
-' Questa assegnazione causerà un errore di overflow perché il massimo per BYTE è 255.
-160 B = 256
+' `ERROR n` solleva l'errore n a RUNTIME (canone condiviso dalle 4 gambe). NOTA: un
+' overflow di narrowing su un LITERALE (es. `B = 256` con BYTE) è diagnosticato in
+' COMPILAZIONE (ErrorCode.Overflow), non a runtime; qui serve un errore eseguibile.
+160 ERROR 7
 ' Se l'errore non viene gestito, questa riga viene stampata
 170 PRINT "ERRORE: Questa riga non doveva essere eseguita."
 ' Salta il gestore di errori se non si verifica l'errore
 180 GOTO 200
 
 ' Blocco del gestore di errori
-1000 PRINT "OK: Errore di overflow (ERR="; ERR.Number; ") intercettato correttamente." : RESUME 200
+1000 PRINT "OK: Errore 7 sollevato e intercettato (ERR="; ERR.Number; ")." : RESUME 200
 
 ' Riprende l'esecuzione qui dopo l'errore
 200 ON ERROR GOTO 0 ' Disattiva il gestore di errori
@@ -117,12 +121,12 @@ IMPORT MATH
 505 PRINT "TRUNC(123.7) ="; TRUNC(123.7); "(Atteso 123, troncamento)"
 510 PRINT
 
-520 PRINT "--- 6. Test Operazioni Bitwise ---"
+520 PRINT "--- 6. Test Operatori (NOT logico; AND/OR logici con short-circuit; ! bitwise) ---"
 ' Operazioni logiche sui bit dei numeri
-530 PRINT "6 (0110) AND 3 (0011) ="; 6 AND 3; "(Atteso 2, 0010)"
-540 PRINT "6 (0110) OR 3 (0011) ="; 6 OR 3; "(Atteso 7, 0111)"
+530 PRINT "6 (0110) AND 3 (0011) ="; 6 AND 3; "(Atteso 3: sinistra vera -> valore destro)"
+540 PRINT "6 (0110) OR 3 (0011) ="; 6 OR 3; "(Atteso -1: sinistra vera -> TRUE)"
 ' NOT è un'inversione bit a bit (complemento a due)
-550 PRINT "NOT 5 ="; NOT 5; "(Atteso -6)"
+550 PRINT "NOT 5 ="; NOT 5; "(Atteso 0: NOT logico; il bitwise e'' !)"
 560 PRINT "VERO (-1) AND 3 ="; VERO AND 3; "(Atteso 3)"
 570 PRINT "FALSO (0) OR 5 ="; FALSO OR 5; "(Atteso 5)"
 580 PRINT
