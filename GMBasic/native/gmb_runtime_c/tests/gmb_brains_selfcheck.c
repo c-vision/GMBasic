@@ -275,6 +275,19 @@ int main(void)
         CHECK(stat(parent, &st) != 0);   /* ...e non esiste nemmeno come cartella */
     }
 
+    /* 11bis) le cartelle CONDIVISE del monorepo (rag/, graphs/) si risolvono in shared/ ANCHE se
+     * la sottocartella non esiste ancora: dopo lo spostamento dei cervelli nella cache,
+     * `shared/rag/` e' vuota/assente e la vecchia regola ricadeva su <root>/rag (sporcizia in
+     * GMBasic/). La condizione ora e' sull'esistenza di <root>/../shared. */
+    {
+        char rag[4096], graphs[4096];
+        gmb_paths_rag_dir(rag, sizeof rag);
+        gmb_paths_graphs_dir(graphs, sizeof graphs);
+        CHECK(strstr(rag, "/shared/rag") != NULL);
+        CHECK(strstr(rag, "/GMBasic/rag") == NULL);
+        CHECK(strstr(graphs, "/shared/graphs") != NULL);
+    }
+
     /* 12) token GitHub: 0600 si legge, permessi larghi si RIFIUTANO (fail-closed) */
     {
         char tdir[1200], tpath[1300], tok[256];
