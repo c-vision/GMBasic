@@ -1,21 +1,19 @@
-// FILE: Basic.Runtime.Services.DatabaseService.Commercial.cs
-// Implementazione COMMERCIALE di IDatabaseService — motori C# nativi in modules/Database
-// (Basic.DBF.DbfEngine, Basic.ISAM.Engine, Basic.Databases.Speed.Database,
-// Basic.Ledger.LedgerManager). Compilata SOLO in edizione Commercial (vedi
-// modules/Database/Database.csproj, esclusa in Community).
+// FILE: Basic.Runtime.Services.DatabaseService.Native.cs
+// Partial NATIVA di DatabaseService: driver su file DBF / ISAM / SPEED / Ledger, sopra i
+// motori C# di modules/Database (Basic.Databases.Rdd.*, Basic.Ledger.LedgerManager).
+// Stessa classe della parte SQL/VectorDB: NON esiste piu' un servizio "commerciale" separato
+// (la matrice Edition, l'eccezione dedicata e i gate di build sono stati rimossi).
 //
-// Pattern: come la PCodeVM (GM-Basic PCodeProcessor.Syscalls.cs) — DataSession Rdd +
-// driver (DbfDriver/IsamDriver/SpeedDriver) incapsulano i motori. Ogni handle long
-// restituito da IDatabaseService mappa a un'area del DataSession.
-
+// Pattern: DataSession Rdd + driver (DbfDriver/IsamDriver/SpeedDriver). Ogni handle long
+// restituito da IDatabaseService mappa a un'area della DataSession.
 using System.Collections.Concurrent;
 using Basic.Databases.Rdd;
 
 namespace Basic.Runtime;
 
-public class CommercialDatabaseService : DatabaseService
+public sealed partial class DatabaseService
 {
-    static CommercialDatabaseService()
+    static DatabaseService()
     {
         // I driver commerciali (DBF/ISAM/SPEED) vivono in modules/Database (assembly
         // separato da common/Databases): registrali esplicitamente nel DriverRegistry.
@@ -28,12 +26,12 @@ public class CommercialDatabaseService : DatabaseService
     private readonly ConcurrentDictionary<long, int> _handleToArea = new();
     private long _isamHandle = -1;
 
-    public CommercialDatabaseService() : this(new DataSession()) { }
+    public DatabaseService() : this(new DataSession()) { }
 
     /// <summary>Condivide la DataSession del runtime host: RDD USE registra i driver nella
     /// STESSA session che il layer RDD di IlBackend legge (Current.SqlDataSession) — senza,
     /// USE e GETFIELD/REPLACE/DELETE vedono due sessioni diverse e i driver non si trovano.</summary>
-    public CommercialDatabaseService(DataSession session)
+    public DatabaseService(DataSession session)
     {
         _session = session;
     }
@@ -93,7 +91,7 @@ public class CommercialDatabaseService : DatabaseService
     {
         var driver = DriverRegistry.Create(driverKind);
         if (driver is null)
-            throw new CommercialEditionRequiredException($"Driver '{driverKind}' non disponibile.");
+            throw new NotSupportedException($"Driver '{driverKind}' non disponibile (registrati: DBF, ISAM, SPEED).");
         driver.Open(new DbOpenInfo { FileName = path, Alias = alias });
         return driver;
     }
@@ -101,14 +99,14 @@ public class CommercialDatabaseService : DatabaseService
     // ================================================================
     // ISAM
     // ================================================================
-    public override long IsamOpen(string path)
+    public long IsamOpen(string path)
     {
         var driver = OpenDriver(path, "ISAM", "ISAM");
         var handle = NextHandle;
         AllocateAreaFor(handle, driver, "ISAM");
         return handle;
     }
-    public override long IsamOpenSchema(string path, string alias, string schemaJson)
+    public long IsamOpenSchema(string path, string alias, string schemaJson)
     {
         // Costruisce l'engine ISAM dallo schema (typeName, campi, chiave primaria,
         // indici) serializzato dal dispatcher — pattern PCodeVM ISAM_USE.
@@ -208,11 +206,11 @@ public class CommercialDatabaseService : DatabaseService
         "JSON" => new Basic.JsonType(),
         _ => new Basic.StringType(),
     };
-    public override void IsamClose(long handle)
+    public void IsamClose(long handle)
     {
         if (_handleToArea.TryRemove(handle, out var area)) _session.Unregister(area);
     }
-    public override void IsamInsert(long handle, object[] values)
+    public void IsamInsert(long handle, object[] values)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         var fields = new Dictionary<int, object?>();
@@ -224,7 +222,7 @@ public class CommercialDatabaseService : DatabaseService
         }
         drv.Append(fields);
     }
-    public override void IsamUpdate(long handle, long recno, object[] values)
+    public void IsamUpdate(long handle, long recno, object[] values)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         drv.GoTo(recno);
@@ -236,7 +234,7 @@ public class CommercialDatabaseService : DatabaseService
         }
         drv.PutCurrentRecord(fields);
     }
-    public override void IsamPut(long handle, object[] values)
+    public void IsamPut(long handle, object[] values)
     {
         // ISAM PUT alias [, udtVar] — modifica il record CORRENTE (dopo SEEK/GO), non per
         // recno: come IsamUpdate ma SENZA GoTo. Pattern PCodeVM ISAM_PUT (Engine.Put).
@@ -249,7 +247,7 @@ public class CommercialDatabaseService : DatabaseService
         }
         drv.PutCurrentRecord(fields);
     }
-    public override void IsamDelete(long handle, long recno)
+    public void IsamDelete(long handle, long recno)
     {
         // Bug ISAM-Comandi-Parita-5-Backend (BUG 2): ISAM DELETE X (nessuno scope esplicito)
         // arriva qui con recno=0 — GoTo(0) lo tratta come "vai a TOP" (IsamDriver.GoTo: n<=1
@@ -260,7 +258,7 @@ public class CommercialDatabaseService : DatabaseService
         if (recno > 0) drv.GoTo(recno);
         drv.Delete();
     }
-    public override object?[] IsamRead(long handle, long recno)
+    public object?[] IsamRead(long handle, long recno)
     {
         var drv = DriverFor(handle); if (drv is null) return Array.Empty<object?>();
         if (recno > 0) drv.GoTo(recno);
@@ -269,7 +267,7 @@ public class CommercialDatabaseService : DatabaseService
         while (drv.GetFieldValue(idx) is { } v) { result.Add(v); idx++; }
         return [.. result];
     }
-    public override object?[] IsamReadCurrent(long handle)
+    public object?[] IsamReadCurrent(long handle)
     {
         var drv = DriverFor(handle); if (drv is null) return Array.Empty<object?>();
         var result = new List<object?>();
@@ -277,17 +275,17 @@ public class CommercialDatabaseService : DatabaseService
         while (drv.GetFieldValue(idx) is { } v) { result.Add(v); idx++; }
         return [.. result];
     }
-    public override string[] IsamFieldNames(long handle)
+    public string[] IsamFieldNames(long handle)
     {
         var drv = DriverFor(handle);
         if (drv is null) return [];
         return drv.Fields.Select(f => f.Name).ToArray();
     }
-    public override long IsamGetRecordCount(long handle)
+    public long IsamGetRecordCount(long handle)
     {
         var drv = DriverFor(handle); return drv is null ? 0 : drv.RecCount;
     }
-    public override long IsamRecordSize(long handle)
+    public long IsamRecordSize(long handle)
     {
         // RECSIZE([area]) → lunghezza del record in BYTE. L'engine ISAM la conosce
         // (`Engine.RecordLength` = Header.RecordSize): la usiamo come fonte unica.
@@ -298,7 +296,7 @@ public class CommercialDatabaseService : DatabaseService
             return idrv.Engine.RecordLength;
         return drv is null ? 0 : drv.Fields.Sum(f => Math.Max(1, f.Length));
     }
-    public override void IsamUse(long handle, string alias, object? type)
+    public void IsamUse(long handle, string alias, object? type)
     {
         if (_handleToArea.TryGetValue(handle, out var area)) { /* alias già registrato */ }
     }
@@ -312,12 +310,12 @@ public class CommercialDatabaseService : DatabaseService
     // FLOCK e la successiva "ISAM UNLOCK -1" agivano su DUE DRIVER DIVERSI, lasciando il
     // lock di Clienti orfano per sempre → SynchronizationLockException al Dispose
     // (DbIsamFullTests.bas sez. 11, DbfCloseAll). Ora tiene sincronizzati entrambi.
-    public override void IsamSelect(long workArea)
+    public void IsamSelect(long workArea)
     {
         _isamHandle = workArea;
         if (_handleToArea.TryGetValue(workArea, out var area)) _session.CurrentArea = area;
     }
-    public override void IsamGo(long handle, long recno)
+    public void IsamGo(long handle, long recno)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         // -2 = sentinella BOTTOM (come SpeedGo); <=0 e diverso da -2 resta TOP.
@@ -325,42 +323,42 @@ public class CommercialDatabaseService : DatabaseService
         else if (recno <= 0) drv.GoTop();
         else drv.GoTo(recno);
     }
-    public override void IsamSkip(long handle, int count)
+    public void IsamSkip(long handle, int count)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         drv.Skip(count);
     }
-    public override void IsamSeek(long handle, object key)
+    public void IsamSeek(long handle, object key)
     {
         var drv = DriverFor(handle);
         if (drv is null) return;
         drv.Seek(new DbSeekInfo { Key = key });
     }
-    public override void IsamSetOrder(long handle, int indexNum) { }
-    public override void IsamSetFilter(long handle, string? filterExpr)
+    public void IsamSetOrder(long handle, int indexNum) { }
+    public void IsamSetFilter(long handle, string? filterExpr)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         drv.SetFilter(filterExpr);
     }
-    public override void IsamPack(long handle)
+    public void IsamPack(long handle)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         drv.Pack();
     }
-    public override void IsamReindex(long handle)
+    public void IsamReindex(long handle)
     {
         var engine = IsamEngineFor(handle); if (engine is null) return;
         try { engine.Reindex(engine.Evaluator); } catch { }
     }
-    public override bool IsamFound(long handle)
+    public bool IsamFound(long handle)
     {
         var drv = DriverFor(handle); return drv is not null && drv.Found;
     }
-    public override bool IsamEof(long handle)
+    public bool IsamEof(long handle)
     {
         var drv = DriverFor(handle); return drv is not null && drv.Eof;
     }
-    public override bool IsamBof(long handle)
+    public bool IsamBof(long handle)
     {
         var drv = DriverFor(handle); return drv is not null && drv.Bof;
     }
@@ -374,18 +372,18 @@ public class CommercialDatabaseService : DatabaseService
         System.Func<System.Collections.Generic.IReadOnlyDictionary<string, object?>, bool>? evaluator) =>
         (_, dict) => evaluator?.Invoke(dict) ?? true;
 
-    public override void IsamRecall(long handle)
+    public void IsamRecall(long handle)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         drv.Recall();
     }
-    public override void IsamSetFilterExpr(long handle, Basic.Expr? filterExpr,
+    public void IsamSetFilterExpr(long handle, Basic.Expr? filterExpr,
         System.Func<System.Collections.Generic.IReadOnlyDictionary<string, object?>, bool>? evaluator)
     {
         var engine = IsamEngineFor(handle); if (engine is null) return;
         engine.SetFilter(IsamEval(evaluator), filterExpr);
     }
-    public override void IsamCreateIndex(long handle, string indexName, string keyExpression, long keyLength)
+    public void IsamCreateIndex(long handle, string indexName, string keyExpression, long keyLength)
     {
         var engine = IsamEngineFor(handle); if (engine is null) return;
         // Bug ISAM-RecallCurrent-Dopo-Delete-Offset-Invalido: se lo schema cresce oltre lo slot
@@ -398,7 +396,7 @@ public class CommercialDatabaseService : DatabaseService
         catch { }
         finally { engine.InvalidateCursor(); }
     }
-    public override void IsamDropIndex(long handle, string indexName)
+    public void IsamDropIndex(long handle, string indexName)
     {
         var engine = IsamEngineFor(handle); if (engine is null) return;
         // Vedi commento in IsamCreateIndex — DropIndexAsync passa anch'esso da
@@ -408,22 +406,22 @@ public class CommercialDatabaseService : DatabaseService
         catch { }
         finally { engine.InvalidateCursor(); }
     }
-    public override void IsamRepair(long handle)
+    public void IsamRepair(long handle)
     {
         var engine = IsamEngineFor(handle); if (engine is null) return;
         try { engine.Repair(engine.Evaluator); } catch { }
     }
-    public override void IsamBackup(long handle, string destPath)
+    public void IsamBackup(long handle, string destPath)
     {
         var engine = IsamEngineFor(handle); if (engine is null) return;
         try { engine.Backup(destPath); } catch { }
     }
-    public override bool IsamValidate(long handle)
+    public bool IsamValidate(long handle)
     {
         var engine = IsamEngineFor(handle); if (engine is null) return true;
         try { return engine.ValidateIntegrity().IsValid; } catch { return false; }
     }
-    public override string IsamValidateJson(long handle)
+    public string IsamValidateJson(long handle)
     {
         // ISAM.INTEGRITY(alias) → JSON, pattern PCodeVM SysCall.ISAM_INTEGRITY
         // ({"valid":...,"message":...}); il runtime IL DEVE tornare lo stesso JSON, non un
@@ -437,13 +435,13 @@ public class CommercialDatabaseService : DatabaseService
         }
         catch { return "{\"valid\":false,\"message\":\"\"}"; }
     }
-    public override void IsamCopyTo(long handle, string destPath, Basic.Expr? condition,
+    public void IsamCopyTo(long handle, string destPath, Basic.Expr? condition,
         System.Func<System.Collections.Generic.IReadOnlyDictionary<string, object?>, bool>? evaluator)
     {
         var engine = IsamEngineFor(handle); if (engine is null) return;
         try { engine.CopyTo(destPath, condition, IsamEval(evaluator), engine.Evaluator); } catch { }
     }
-    public override void IsamSortTo(long handle, string destPath, string[] fields, bool[] descending, Basic.Expr? condition,
+    public void IsamSortTo(long handle, string destPath, string[] fields, bool[] descending, Basic.Expr? condition,
         System.Func<System.Collections.Generic.IReadOnlyDictionary<string, object?>, bool>? evaluator)
     {
         var engine = IsamEngineFor(handle); if (engine is null) return;
@@ -454,25 +452,25 @@ public class CommercialDatabaseService : DatabaseService
         }
         catch { }
     }
-    public override void IsamJoin(long handle, long secondaryHandle, string destPath, Basic.Expr condition,
+    public void IsamJoin(long handle, long secondaryHandle, string destPath, Basic.Expr condition,
         System.Func<System.Collections.Generic.IReadOnlyDictionary<string, object?>, bool>? evaluator)
     {
         var engine = IsamEngineFor(handle); var secondary = IsamEngineFor(secondaryHandle);
         if (engine is null || secondary is null) return;
         try { engine.JoinWith(secondary, destPath, condition, IsamEval(evaluator), engine.Evaluator); } catch { }
     }
-    public override void IsamSetRelation(long handle, long parentHandle, string keyExpression)
+    public void IsamSetRelation(long handle, long parentHandle, string keyExpression)
     {
         var drv = DriverFor(handle); var parent = DriverFor(parentHandle);
         if (drv is null || parent is null) return;
         try { drv.SetRelation(parent, keyExpression); } catch { }
     }
-    public override void IsamLock(long handle, bool isRecordLock)
+    public void IsamLock(long handle, bool isRecordLock)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         try { if (isRecordLock) drv.Lock(drv.RecNo); else drv.FileLock(); } catch { }
     }
-    public override void IsamUnlock(long handle, bool isRecordLock)
+    public void IsamUnlock(long handle, bool isRecordLock)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         try { if (isRecordLock) drv.Unlock(drv.RecNo); else drv.FileUnlock(); } catch { }
@@ -481,8 +479,8 @@ public class CommercialDatabaseService : DatabaseService
     // ================================================================
     // DBF
     // ================================================================
-    public override long DbfOpen(string path) => DbfUse(path, [], 0, false, null, null, null);
-    public override long DbfUse(string path, object?[] indexPaths, int locking, bool unsafeFlag, string? alias, object? typeId, string? typeName)
+    public long DbfOpen(string path) => DbfUse(path, [], 0, false, null, null, null);
+    public long DbfUse(string path, object?[] indexPaths, int locking, bool unsafeFlag, string? alias, object? typeId, string? typeName)
     {
         // typeName è overloaded fra due chiamanti: per `DBF USE ... AS Type` è il TIPO BASIC
         // (es. "Row") e NON va mai trattato come nome driver ("Driver 'Row' non trovato");
@@ -503,7 +501,7 @@ public class CommercialDatabaseService : DatabaseService
         AllocateAreaFor(handle, drv, alias ?? driverKind);
         return handle;
     }
-    public override object?[] DbfGetRecord(long handle)
+    public object?[] DbfGetRecord(long handle)
     {
 
         var drv = DriverFor(handle); if (drv is null) return Array.Empty<object?>();
@@ -512,7 +510,16 @@ public class CommercialDatabaseService : DatabaseService
         while (drv.GetFieldValue(idx) is { } v) { result.Add(v); idx++; }
         return [.. result];
     }
-    public override System.Collections.Generic.Dictionary<string, object?> DbfGetRecordNamed(long handle)
+    /// <summary>Lettura CASUALE per numero di record: posiziona il cursore sul record e
+    /// restituisce i campi (semantica GOTO n + READ). Prima era uno stub che lanciava
+    /// era uno stub; nessun backend la implementava.</summary>
+    public object?[] DbfRead(long handle, long recno)
+    {
+        var drv = DriverFor(handle); if (drv is null) return Array.Empty<object?>();
+        try { if (recno <= 0) drv.GoTop(); else drv.GoTo(recno); } catch { return Array.Empty<object?>(); }
+        return DbfGetRecord(handle);
+    }
+    public System.Collections.Generic.Dictionary<string, object?> DbfGetRecordNamed(long handle)
     {
         var dict = new System.Collections.Generic.Dictionary<string, object?>(System.StringComparer.OrdinalIgnoreCase);
         var drv = DriverFor(handle); if (drv is null) return dict;
@@ -523,7 +530,7 @@ public class CommercialDatabaseService : DatabaseService
         }
         return dict;
     }
-    public override void DbfReplace(long handle, int fieldIndex, object value)
+    public void DbfReplace(long handle, int fieldIndex, object value)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         drv.SetFieldValue(fieldIndex, value);
@@ -531,59 +538,59 @@ public class CommercialDatabaseService : DatabaseService
     /// <summary>REPLACE per NOME campo (vedi IDatabaseService.DbfReplaceByName): risolve
     /// l'indice posizionale dal nome, stesso plumbing GetFieldIndex già usato da
     /// DbfFieldByName per le letture late-binding.</summary>
-    public override void DbfReplaceByName(long handle, string fieldName, object? value)
+    public void DbfReplaceByName(long handle, string fieldName, object? value)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         var idx = drv.GetFieldIndex(fieldName);
         if (idx >= 0) drv.SetFieldValue(idx, value);
     }
-    public override void DbfGo(long handle, long recno)
+    public void DbfGo(long handle, long recno)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         if (recno <= 0) drv.GoTop(); else drv.GoTo(recno);
         SyncChildRelations(drv);
     }
-    public override void DbfGoBottom(long handle)
+    public void DbfGoBottom(long handle)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         drv.GoBottom();
         SyncChildRelations(drv);
     }
-    public override void DbfSkip(long handle, int count)
+    public void DbfSkip(long handle, int count)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         drv.Skip(count);
         SyncChildRelations(drv);
     }
-    public override bool DbfSeek(long handle, object key)
+    public bool DbfSeek(long handle, object key)
     {
         var drv = DriverFor(handle); if (drv is null) return false;
         var found = drv.Seek(new DbSeekInfo { Key = key });
         SyncChildRelations(drv);
         return found;
     }
-    public override void DbfDelete(long handle, long recno)
+    public void DbfDelete(long handle, long recno)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         drv.GoTo(recno);
         drv.Delete();
     }
-    public override void DbfRecall(long handle)
+    public void DbfRecall(long handle)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         drv.Recall();
     }
-    public override void DbfPack(long handle)
+    public void DbfPack(long handle)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         drv.Pack();
     }
-    public override void DbfZap(long handle)
+    public void DbfZap(long handle)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         drv.Zap();
     }
-    public override void DbfAppend(long handle, object[] values)
+    public void DbfAppend(long handle, object[] values)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         var fields = new Dictionary<int, object?>();
@@ -594,7 +601,7 @@ public class CommercialDatabaseService : DatabaseService
     /// drv.Fields (stesso fix/motivo di SpeedInsertByName — un DictionaryLiteralExpr non
     /// garantisce l'ordine di schema, e prima non c'era ALCUN percorso per un dict-literal,
     /// EmitObjectArrayArg produceva un object[0] sempre vuoto).</summary>
-    public override void DbfAppendByName(long handle, Dictionary<string, object> fields)
+    public void DbfAppendByName(long handle, Dictionary<string, object> fields)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         var byIndex = new Dictionary<int, object?>();
@@ -606,18 +613,18 @@ public class CommercialDatabaseService : DatabaseService
     /// il campo per NOME dal record corrente. Il plumbing (GetFieldIndex/GetFieldValue)
     /// esiste già su IDatabaseDriver/BaseDriver — mancava solo l'esposizione verso il
     /// backend IL (vedi IlRuntime.DbfLateBindField).</summary>
-    public override object? DbfFieldByName(long handle, string fieldName)
+    public object? DbfFieldByName(long handle, string fieldName)
     {
         var drv = DriverFor(handle); if (drv is null) return null;
         var idx = drv.GetFieldIndex(fieldName);
         return idx < 0 ? null : drv.GetFieldValue(idx);
     }
-    public override int DbfFieldIndex(long handle, string fieldName)
+    public int DbfFieldIndex(long handle, string fieldName)
     {
         var drv = DriverFor(handle); if (drv is null) return -1;
         return drv.GetFieldIndex(fieldName);
     }
-    public override void DbfUpdate(long handle, long recno, object[] values)
+    public void DbfUpdate(long handle, long recno, object[] values)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         drv.GoTo(recno);
@@ -625,28 +632,28 @@ public class CommercialDatabaseService : DatabaseService
         for (var i = 0; i < values.Length; i++) fields[i] = values[i];
         drv.PutCurrentRecord(fields);
     }
-    public override long DbfGetRecordCount(long handle)
+    public long DbfGetRecordCount(long handle)
     {
         var drv = DriverFor(handle); return drv is null ? 0 : drv.RecCount;
     }
-    public override bool DbfEof(long handle)
+    public bool DbfEof(long handle)
     {
         var drv = DriverFor(handle);
         return drv is null || drv.Eof;
     }
-    public override bool DbfBof(long handle)
+    public bool DbfBof(long handle)
     {
         var drv = DriverFor(handle); return drv is null || drv.Bof;
     }
-    public override long DbfRecno(long handle)
+    public long DbfRecno(long handle)
     {
         var drv = DriverFor(handle); return drv is null ? 0 : drv.RecNo;
     }
-    public override bool DbfFound(long handle)
+    public bool DbfFound(long handle)
     {
         var drv = DriverFor(handle); return drv is not null && drv.Found;
     }
-    public override bool DbfIsDeleted(long handle)
+    public bool DbfIsDeleted(long handle)
     {
         // DBF.DELETED() era SEMPRE false: l'engine DbfEngine espone IsCurrentRecordDeleted()
         // pubblicamente (già usato da ConvertFromDbf per saltare i record cancellati), ma
@@ -656,18 +663,18 @@ public class CommercialDatabaseService : DatabaseService
         var engine = DbfDriverFor(handle)?.Engine;
         return engine?.IsCurrentRecordDeleted() ?? false;
     }
-    public override void DbfSetDeleted(long handle, bool on)
+    public void DbfSetDeleted(long handle, bool on)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         drv.SetDeleted(on);
     }
-    public override void DbfSetOrder(long handle, int indexOrder)
+    public void DbfSetOrder(long handle, int indexOrder)
     {
         var engine = DbfDriverFor(handle)?.Engine;
         if (engine is null) return;
         try { engine.SetActiveOrder(indexOrder); DbfDriverFor(handle)?.SyncCursorState(); } catch { }
     }
-    public override void DbfSetOrderByName(long handle, string name)
+    public void DbfSetOrderByName(long handle, string name)
     {
         var drv = DbfDriverFor(handle);
         var engine = drv?.Engine;
@@ -695,12 +702,12 @@ public class CommercialDatabaseService : DatabaseService
                 yield return baseName + ext;
         yield return noExt;
     }
-    public override void DbfReindex(long handle, long unused)
+    public void DbfReindex(long handle, long unused)
     {
         var engine = DbfDriverFor(handle)?.Engine; if (engine is null) return;
         try { engine.Reindex(); } catch { }
     }
-    public override void DbfIndexOn(long handle, string keyExpr, string file, int unique)
+    public void DbfIndexOn(long handle, string keyExpr, string file, int unique)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         try
@@ -715,7 +722,7 @@ public class CommercialDatabaseService : DatabaseService
         }
         catch { }
     }
-    public override void DbfCreateFile(string path, string fieldDefs)
+    public void DbfCreateFile(string path, string fieldDefs)
     {
         // CREATE path FIELD_DEFS: crea il file DBF con i campi (formato "Nome=Tipo=Len,...").
         try
@@ -745,49 +752,49 @@ public class CommercialDatabaseService : DatabaseService
         }
         catch { }
     }
-    public override void DbfSetFilter(long handle, string? filterExpr)
+    public void DbfSetFilter(long handle, string? filterExpr)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         drv.SetFilter(filterExpr);
     }
-    public override void DbfSetExact(long handle, bool on)
+    public void DbfSetExact(long handle, bool on)
     {
         var engine = DbfDriverFor(handle)?.Engine;
         if (engine is null) return;
         try { engine.SetExact(on); } catch { }
     }
-    public override void DbfAppendBlank(long handle)
+    public void DbfAppendBlank(long handle)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         drv.Append(new Dictionary<int, object?>());
     }
-    public override long DbfActiveOrder(long handle) =>
+    public long DbfActiveOrder(long handle) =>
         DbfDriverFor(handle)?.Engine?.ActiveIndexOrder ?? 0;
     // `DBF SELECT n` (numero di area diretto, semantica Clipper): prima un no-op — le
     // funzioni RDD generiche RLOCK()/FLOCK() (RddRLock/RddFLock in IlRuntime.cs) leggono
     // session.CurrentArea, mai aggiornato da qui, quindi restavano ancorate all'ultima area
     // aperta (AllocateAreaFor) invece di seguire la SELECT (stesso bug/causa risolto per
     // ISAM in IsamSelect — vedi lì per i dettagli del crash che ha reso visibile il gap).
-    public override void DbfSelectWorkArea(long workArea)
+    public void DbfSelectWorkArea(long workArea)
     {
         if (workArea >= 1 && workArea <= DataSession.MaxWorkareas) _session.CurrentArea = (int)workArea;
     }
     /// <summary>`DBF SELECT alias`: come DbfSelectWorkArea ma per handle (risolto da
     /// IlRuntime tramite _dbfHandles) invece di numero di area diretto.</summary>
-    public override void DbfSelectHandle(long handle)
+    public void DbfSelectHandle(long handle)
     {
         if (_handleToArea.TryGetValue(handle, out var area)) _session.CurrentArea = area;
     }
-    public override void DbfCloseAll() { _session.CloseAll(); _handleToArea.Clear(); }
+    public void DbfCloseAll() { _session.CloseAll(); _handleToArea.Clear(); }
 
     /// <summary>Chiude UNA area: libera anche lo slot nella DataSession, così il successivo
     /// DBF USE riusa il numero d'area più basso (parità Clipper/altri backend:
     /// `DBF.SELECTED()` torna 1 dopo CLOSE+USE). Prima DisposeHandle non liberava l'area e
     /// il nuovo USE prendeva 2.</summary>
-    public override void DbfClose(long handle)
+    public void DbfClose(long handle)
     {
         if (_handleToArea.TryRemove(handle, out var area)) _session.Unregister(area);
-        base.DbfClose(handle);
+        DisposeHandle(handle);
     }
 
     // ── DBF avanzate (motore Basic.DBF.DbfEngine via driver) ──
@@ -795,7 +802,7 @@ public class CommercialDatabaseService : DatabaseService
     private Basic.Databases.Rdd.DbfDriver? DbfDriverFor(long handle) =>
         DriverFor(handle) as Basic.Databases.Rdd.DbfDriver;
 
-    public override bool DbfValidate(long handle)
+    public bool DbfValidate(long handle)
     {
         var drv = DbfDriverFor(handle); return drv is null || drv.Validate();
     }
@@ -807,10 +814,10 @@ public class CommercialDatabaseService : DatabaseService
         Basic.DateType or Basic.DateTimeType => Basic.DBF.DbfFieldType.Date,
         _ => Basic.DBF.DbfFieldType.Numeric,
     };
-    public override void DbfList(long handle, string fieldsCsv, string destination, bool toPrint)
+    public void DbfList(long handle, string fieldsCsv, string destination, bool toPrint)
         => DbfListCond(handle, fieldsCsv, destination, toPrint, null);
 
-    public override void DbfListCond(long handle, string fieldsCsv, string destination, bool toPrint,
+    public void DbfListCond(long handle, string fieldsCsv, string destination, bool toPrint,
         System.Func<System.Collections.Generic.IReadOnlyDictionary<string, object?>, bool>? condition)
     {
         var drv = DbfDriverFor(handle); if (drv is null) return;
@@ -839,7 +846,7 @@ public class CommercialDatabaseService : DatabaseService
         }
         catch { }
     }
-    public override void DbfReport(long handle, string formFile, string destination, bool toPrint)
+    public void DbfReport(long handle, string formFile, string destination, bool toPrint)
     {
         var drv = DbfDriverFor(handle); if (drv is null) return;
         try
@@ -858,7 +865,7 @@ public class CommercialDatabaseService : DatabaseService
         }
         catch { }
     }
-    public override void DbfAggregate(long handle, string keyField, string destPath, string aggregations)
+    public void DbfAggregate(long handle, string keyField, string destPath, string aggregations)
     {
         var drv = DbfDriverFor(handle); if (drv is null) return;
         try
@@ -926,20 +933,20 @@ public class CommercialDatabaseService : DatabaseService
         catch { }
     }
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, long> _dbfViews = new();
-    public override void DbfCreateView(string viewName)
+    public void DbfCreateView(string viewName)
     {
         if (!string.IsNullOrEmpty(viewName)) _dbfViews[viewName] = DateTime.UtcNow.Ticks;
     }
-    public override void DbfDropView(string viewName)
+    public void DbfDropView(string viewName)
     {
         if (!string.IsNullOrEmpty(viewName)) _dbfViews.TryRemove(viewName, out _);
     }
-    public override void DbfSortTo(long handle, string destPath, string[] fields, bool[] descending)
+    public void DbfSortTo(long handle, string destPath, string[] fields, bool[] descending)
     {
         var drv = DbfDriverFor(handle); if (drv is null) return;
         try { drv.SortTo(destPath, fields, descending); } catch { }
     }
-    public override void DbfTotalOn(long handle, string destPath, Basic.Expr keyExpr, Basic.Expr[] sumFieldExprs,
+    public void DbfTotalOn(long handle, string destPath, Basic.Expr keyExpr, Basic.Expr[] sumFieldExprs,
         System.Func<System.Collections.Generic.IReadOnlyDictionary<string, object?>, bool>? evaluator)
     {
         var engine = DbfDriverFor(handle)?.Engine; if (engine is null) return;
@@ -953,24 +960,24 @@ public class CommercialDatabaseService : DatabaseService
         }
         catch { }
     }
-    public override void DbfCopyTo(long handle, string destPath,
+    public void DbfCopyTo(long handle, string destPath,
         System.Func<System.Collections.Generic.IReadOnlyDictionary<string, object?>, bool>? evaluator)
     {
         var drv = DbfDriverFor(handle); if (drv is null) return;
         try { drv.CopyTo(destPath, evaluator is null ? null : d => evaluator(d)); } catch { }
     }
-    public override void DbfAppendFrom(long handle, string sourcePath,
+    public void DbfAppendFrom(long handle, string sourcePath,
         System.Func<System.Collections.Generic.IReadOnlyDictionary<string, object?>, bool>? evaluator)
     {
         var drv = DbfDriverFor(handle); if (drv is null) return;
         try { drv.AppendFrom(sourcePath, evaluator is null ? null : d => evaluator(d)); } catch { }
     }
-    public override void DbfCopyStructure(long handle, string destPath)
+    public void DbfCopyStructure(long handle, string destPath)
     {
         var drv = DbfDriverFor(handle); if (drv is null) return;
         try { drv.CloneStructure(destPath); } catch { }
     }
-    public override void DbfSetRelation(long handle, long parentHandle, string keyExpression)
+    public void DbfSetRelation(long handle, long parentHandle, string keyExpression)
     {
         // handle = figlio (chi riceve SetRelation), parentHandle = padre — Clipper / CoreDb.
         if (string.IsNullOrEmpty(keyExpression))
@@ -990,7 +997,7 @@ public class CommercialDatabaseService : DatabaseService
         }
         catch { }
     }
-    public override void DbfJoin(long handle, long secondaryHandle, string destPath,
+    public void DbfJoin(long handle, long secondaryHandle, string destPath,
         System.Func<System.Collections.Generic.IReadOnlyDictionary<string, object?>, bool>? evaluator)
     {
         var src = DbfDriverFor(handle);
@@ -998,7 +1005,7 @@ public class CommercialDatabaseService : DatabaseService
         if (src is null || sec is null) return;
         try { Basic.Databases.Rdd.DbfDriver.NestedLoopJoin(src, sec, destPath, evaluator); } catch { }
     }
-    public override void DbfUpdate(long handle, string keyField, string[] fieldNames,
+    public void DbfUpdate(long handle, string keyField, string[] fieldNames,
         System.Func<System.Collections.Generic.IReadOnlyDictionary<string, object?>, object?>[] valueEvaluators)
     {
         var drv = DriverFor(handle); if (drv is null) return;
@@ -1026,7 +1033,7 @@ public class CommercialDatabaseService : DatabaseService
         }
         catch { }
     }
-    public override void DbfUpdateOn(long destHandle, long srcHandle, string srcAlias, string keyField,
+    public void DbfUpdateOn(long destHandle, long srcHandle, string srcAlias, string keyField,
         string[] fieldNames,
         System.Func<System.Collections.Generic.IReadOnlyDictionary<string, object?>,
                     System.Collections.Generic.IReadOnlyDictionary<string, object?>, object?>[] valueEvaluators)
@@ -1037,13 +1044,19 @@ public class CommercialDatabaseService : DatabaseService
         try { Basic.Databases.Rdd.DbfDriver.UpdateOn(dest, src, srcAlias, keyField, fieldNames, valueEvaluators); }
         catch { }
     }
-    public override void DbfSetExclusive(long handle, bool on) { /* modalità esclusiva: lock del file quando aperto */ }
-    public override void DbfSetSchema(long handle, bool on) { /* validazione schema strict in apertura */ }
+    public void DbfSetExclusive(long handle, bool on) { /* modalità esclusiva: lock del file quando aperto */ }
+    public void DbfSetSchema(long handle, bool on) { /* validazione schema strict in apertura */ }
 
     // ================================================================
     // SPEED
     // ================================================================
-    public override long SpeedOpen(string path)
+    public void SpeedClose(long handle)
+    {
+        if (_handleToArea.TryRemove(handle, out var area)) _session.Unregister(area);
+        DisposeHandle(handle);
+    }
+
+    public long SpeedOpen(string path)
     {
         var drv = OpenDriver(path, "SPEED", "SPEED");
         var handle = NextHandle;
@@ -1068,7 +1081,7 @@ public class CommercialDatabaseService : DatabaseService
     /// costruttore `SpeedDriver(Database, alias)` + <see cref="SpeedDriver.UseTable"/>) a
     /// quella tabella specifica, registrato sotto un handle proprio per l'alias della tabella.
     /// </summary>
-    public override long SpeedOpenSchema(string tableName, long dbHandle, string tableAlias, string schemaJson)
+    public long SpeedOpenSchema(string tableName, long dbHandle, string tableAlias, string schemaJson)
     {
         try
         {
@@ -1110,7 +1123,7 @@ public class CommercialDatabaseService : DatabaseService
         }
         catch { return -1; }
     }
-    public override void SpeedInsert(long handle, string key, object[] values)
+    public void SpeedInsert(long handle, string key, object[] values)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         var fields = new Dictionary<int, object?>();
@@ -1122,7 +1135,7 @@ public class CommercialDatabaseService : DatabaseService
     /// posizionale, coincide con l'indice) prima di Append. Senza, un dict-literal con
     /// l'ordine dei campi diverso dallo schema (o con l'unico consumer generico
     /// EmitObjectArrayArg che non lo gestiva affatto) produceva un record vuoto/troncato.</summary>
-    public override void SpeedInsertByName(long handle, Dictionary<string, object> fields)
+    public void SpeedInsertByName(long handle, Dictionary<string, object> fields)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         var byIndex = new Dictionary<int, object?>();
@@ -1130,7 +1143,7 @@ public class CommercialDatabaseService : DatabaseService
             if (fields.TryGetValue(drv.Fields[i].Name, out var v)) byIndex[drv.Fields[i].SymbolId] = v;
         drv.Append(byIndex);
     }
-    public override object?[] SpeedGet(long handle, string key)
+    public object?[] SpeedGet(long handle, string key)
     {
         var drv = DriverFor(handle); if (drv is null) return Array.Empty<object?>();
         drv.Seek(new DbSeekInfo { Key = key });
@@ -1148,7 +1161,7 @@ public class CommercialDatabaseService : DatabaseService
     /// "Clienti" — mai trovato, `GetFieldValue(0)` tornava subito null, array vuoto. Questo
     /// metodo NON fa mai un Seek: legge solo lo stato corrente del cursore.
     /// </summary>
-    public override object?[] SpeedGetCurrent(long handle)
+    public object?[] SpeedGetCurrent(long handle)
     {
         var drv = DriverFor(handle); if (drv is null) return Array.Empty<object?>();
         var result = new List<object?>();
@@ -1156,13 +1169,13 @@ public class CommercialDatabaseService : DatabaseService
         while (drv.GetFieldValue(idx) is { } v) { result.Add(v); idx++; }
         return [.. result];
     }
-    public override void SpeedDelete(long handle, string key)
+    public void SpeedDelete(long handle, string key)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         drv.Seek(new DbSeekInfo { Key = key });
         drv.Delete();
     }
-    public override void SpeedSeek(long handle, string key)
+    public void SpeedSeek(long handle, string key)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         drv.Seek(new DbSeekInfo { Key = key });
@@ -1177,7 +1190,7 @@ public class CommercialDatabaseService : DatabaseService
     /// disponibile nell'interfaccia esistente, per non toccare la firma condivisa con altri
     /// chiamanti): position&lt;=0 e diverso da -2 resta TOP, invariato.
     /// </summary>
-    public override void SpeedGo(long handle, long position)
+    public void SpeedGo(long handle, long position)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         if (position == -2) drv.GoBottom();
@@ -1185,22 +1198,22 @@ public class CommercialDatabaseService : DatabaseService
         else drv.GoTo(position);
         SyncChildRelations(drv);
     }
-    public override void SpeedSkip(long handle, int count)
+    public void SpeedSkip(long handle, int count)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         drv.Skip(count);
         SyncChildRelations(drv);
     }
-    public override bool SpeedEof(long handle)
+    public bool SpeedEof(long handle)
     {
         var drv = DriverFor(handle); return drv is null || drv.Eof;
     }
-    public override void SpeedSetOrder(long handle, string indexName)
+    public void SpeedSetOrder(long handle, string indexName)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         drv.SetOrder(indexName);
     }
-    public override void SpeedSetFilter(long handle, string? filterExpr)
+    public void SpeedSetFilter(long handle, string? filterExpr)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         drv.SetFilter(filterExpr);
@@ -1208,7 +1221,7 @@ public class CommercialDatabaseService : DatabaseService
     /// <summary>`handle` = figlio, `parentHandle` = padre — stesso contratto di
     /// <see cref="DbfSetRelation"/>. `keyExpression` vuota → rimuove la relazione uscente da
     /// `handle` (usato anche come padre in quel caso, vedi IlRuntime.SpeedSetRelation).</summary>
-    public override void SpeedSetRelation(long handle, long parentHandle, string keyExpression)
+    public void SpeedSetRelation(long handle, long parentHandle, string keyExpression)
     {
         if (string.IsNullOrEmpty(keyExpression))
         {
@@ -1230,24 +1243,24 @@ public class CommercialDatabaseService : DatabaseService
     /// <summary>`SPEED CREATE INDEX indexName ON alias KEY (keyExpression)`: il driver
     /// (SpeedDriver.CreateIndex) delega già a Database.CreateSecondaryIndex — mancava solo
     /// questo collegamento da IDatabaseService.</summary>
-    public override void SpeedCreateIndex(long handle, string indexName, string keyExpression)
+    public void SpeedCreateIndex(long handle, string indexName, string keyExpression)
     {
         var drv = DriverFor(handle); if (drv is null) return;
         try { drv.CreateIndex(new DbOrderInfo { Name = indexName, KeyExpression = keyExpression, KeyLength = 32 }); } catch { }
     }
-    public override void SpeedDropIndex(long handle, string indexName)
+    public void SpeedDropIndex(long handle, string indexName)
     {
         if (DriverFor(handle) is not SpeedDriver drv) return;
         try { drv.DropIndex(indexName); } catch { }
     }
-    public override Basic.Databases.Speed.Database? SpeedGetDatabaseFor(long handle) =>
+    public Basic.Databases.Speed.Database? SpeedGetDatabaseFor(long handle) =>
         (DriverFor(handle) as SpeedDriver)?.Db;
-    public override string? SpeedGetTableNameFor(long handle)
+    public string? SpeedGetTableNameFor(long handle)
     {
         if (DriverFor(handle) is not SpeedDriver drv || drv.Db is null) return null;
         return drv.Db.Manifest.TryGetTable(drv.TableId, out var meta) ? meta?.Name : null;
     }
-    public override bool SpeedCreateViewTable(long dbHandle, string viewName, string schemaJson)
+    public bool SpeedCreateViewTable(long dbHandle, string viewName, string schemaJson)
     {
         try
         {
@@ -1282,7 +1295,7 @@ public class CommercialDatabaseService : DatabaseService
     private readonly ConcurrentDictionary<long, Basic.Ledger.LedgerContext> _ledgerContexts = new();
     private long _ledgerTxId = 1;
 
-    public override long LedgerOpen(string path)
+    public long LedgerOpen(string path)
     {
         // PERSISTENZA: all'apertura va CARICATO l'indice (.idx) o, se assente, RICOSTRUITO dal
         // journal (.dat). Senza, l'indice restava vuoto dopo la riapertura → (1) BALANCE/REGISTER/
@@ -1306,7 +1319,7 @@ public class CommercialDatabaseService : DatabaseService
         _ledgerContexts[handle] = ctx;
         return handle;
     }
-    public override void LedgerClose(long handle)
+    public void LedgerClose(long handle)
     {
         if (_ledgerContexts.TryRemove(handle, out var ctx))
         {
@@ -1314,7 +1327,7 @@ public class CommercialDatabaseService : DatabaseService
         }
         _ledgerCursorIndex.Remove(handle);
     }
-    public override long LedgerAppend(long handle, string category, object[] values)
+    public long LedgerAppend(long handle, string category, object[] values)
     {
         if (!_ledgerContexts.TryGetValue(handle, out var ctx)) return 0;
         // values = [dateYMD, desc, accountsCsv, amountsCsv].
@@ -1358,7 +1371,7 @@ public class CommercialDatabaseService : DatabaseService
         }
         return Basic.Ledger.LedgerManager.AddTransaction(ctx, date, desc, entries);
     }
-    public override long LedgerGetCount(long handle)
+    public long LedgerGetCount(long handle)
         => _ledgerContexts.TryGetValue(handle, out var ctx) ? ctx.TransactionIndex.Count : 0;
 
     // ── Cursore LEDGER (pattern DBF/ISAM) ──
@@ -1370,19 +1383,19 @@ public class CommercialDatabaseService : DatabaseService
     private static long[] LedgerSortedIds(Basic.Ledger.LedgerContext ctx) =>
         ctx.TransactionIndex.Keys.OrderBy(k => k).ToArray();
 
-    public override void LedgerGoTop(long handle)
+    public void LedgerGoTop(long handle)
     {
         if (!TryLedgerContext(handle, out var ctx)) return;
         var ids = LedgerSortedIds(ctx);
         _ledgerCursorIndex[handle] = ids.Length > 0 ? 0 : -1;
     }
-    public override void LedgerGoBottom(long handle)
+    public void LedgerGoBottom(long handle)
     {
         if (!TryLedgerContext(handle, out var ctx)) return;
         var ids = LedgerSortedIds(ctx);
         _ledgerCursorIndex[handle] = ids.Length > 0 ? ids.Length - 1 : -1;
     }
-    public override void LedgerGo(long handle, long recno)
+    public void LedgerGo(long handle, long recno)
     {
         // GO <transactionId>: posiziona sulla transazione con quell'ID (FOUND riflette l'esito).
         if (!TryLedgerContext(handle, out var ctx)) return;
@@ -1391,33 +1404,33 @@ public class CommercialDatabaseService : DatabaseService
         if (idx >= 0) _ledgerCursorIndex[handle] = idx;
         else if (!_ledgerCursorIndex.ContainsKey(handle)) _ledgerCursorIndex[handle] = -1;
     }
-    public override void LedgerSkip(long handle, int count)
+    public void LedgerSkip(long handle, int count)
     {
         if (!TryLedgerContext(handle, out var ctx)) return;
         var ids = LedgerSortedIds(ctx);
         var cur = _ledgerCursorIndex.TryGetValue(handle, out var c) ? c : -1;
         _ledgerCursorIndex[handle] = Math.Clamp(cur + count, -1, ids.Length);
     }
-    public override bool LedgerBof(long handle) => LedgerCursorValidIndex(handle) is < 0;
-    public override bool LedgerEof(long handle)
+    public bool LedgerBof(long handle) => LedgerCursorValidIndex(handle) is < 0;
+    public bool LedgerEof(long handle)
     {
         if (!TryLedgerContext(handle, out var ctx)) return true;
         var idx = _ledgerCursorIndex.TryGetValue(handle, out var c) ? c : -1;
         return idx < 0 || idx >= ctx.TransactionIndex.Count;
     }
-    public override long LedgerRecno(long handle)
+    public long LedgerRecno(long handle)
     {
         if (!TryLedgerContext(handle, out var ctx)) return 0;
         var idx = _ledgerCursorIndex.TryGetValue(handle, out var c) ? c : -1;
         var ids = LedgerSortedIds(ctx);
         return idx >= 0 && idx < ids.Length ? ids[idx] : 0;
     }
-    public override bool LedgerFound(long handle) => LedgerCursorValidIndex(handle) >= 0;
+    public bool LedgerFound(long handle) => LedgerCursorValidIndex(handle) >= 0;
 
     private int LedgerCursorValidIndex(long handle)
         => _ledgerCursorIndex.TryGetValue(handle, out var c) ? c : -1;
 
-    public override object?[] LedgerRead(long handle, long recno)
+    public object?[] LedgerRead(long handle, long recno)
     {
         // GET senza ID (cursore): legge la transazione corrente. GET con ID passa da LedgerGet.
         if (!TryLedgerContext(handle, out var ctx)) return [];
@@ -1436,7 +1449,7 @@ public class CommercialDatabaseService : DatabaseService
     }
     private static string ToJson(object value) => System.Text.Json.JsonSerializer.Serialize(value);
 
-    public override bool LedgerValidate(long handle)
+    public bool LedgerValidate(long handle)
     {
         if (!TryLedgerContext(handle, out var ctx)) return false;
         try
@@ -1450,17 +1463,17 @@ public class CommercialDatabaseService : DatabaseService
         }
         catch { return false; }
     }
-    public override void LedgerDelete(long handle, long id)
+    public void LedgerDelete(long handle, long id)
     {
         if (TryLedgerContext(handle, out var ctx))
             Basic.Ledger.LedgerManager.DeleteTransaction(ctx, id);
     }
-    public override void LedgerPack(long handle)
+    public void LedgerPack(long handle)
     {
         if (TryLedgerContext(handle, out var ctx))
             Basic.Ledger.LedgerManager.PackJournal(ctx);
     }
-    public override void LedgerSave(long handle)
+    public void LedgerSave(long handle)
     {
         // SAVE: persiste indice e budget (era EmitDatabaseNoop — non salvava nulla).
         if (!TryLedgerContext(handle, out var ctx)) return;
@@ -1472,7 +1485,7 @@ public class CommercialDatabaseService : DatabaseService
         }
         catch { }
     }
-    public override long LedgerUpdate(long handle, long id, object[] values)
+    public long LedgerUpdate(long handle, long id, object[] values)
     {
         // EDIT: sostituisce la transazione preservando la semantica del motore
         // (UpdateTransaction = delete + re-add bilanciato). Prima era delete+append
@@ -1540,35 +1553,35 @@ public class CommercialDatabaseService : DatabaseService
         ["Comment"] = e.Comment,
         ["AmountIsExplicit"] = e.AmountIsExplicit
     };
-    public override object?[] LedgerRegister(long handle, string query)
+    public object?[] LedgerRegister(long handle, string query)
     {
         if (!TryLedgerContext(handle, out var ctx)) return [];
         var entries = Basic.Ledger.LedgerManager.GetFilteredEntries(ctx, query);
         return [.. entries.Select(e => (object?)LedgerEntryJson(e))];
     }
-    public override object?[] LedgerBalance(long handle, string query)
+    public object?[] LedgerBalance(long handle, string query)
     {
         if (!TryLedgerContext(handle, out var ctx)) return [];
         var (labels, amounts) = Basic.Ledger.LedgerManager.GetBalancePlotData(ctx, query);
         return [.. labels.Zip(amounts, (l, a) => (object?)new Dictionary<string, object?> { ["Account"] = l, ["TotalAmount"] = (double)a })];
     }
-    public override object?[] LedgerGet(long handle, long id)
+    public object?[] LedgerGet(long handle, long id)
     {
         if (!TryLedgerContext(handle, out var ctx)) return [];
         var entries = Basic.Ledger.LedgerManager.GetTransaction(ctx, id);
         return [.. entries.Select(e => (object?)LedgerEntryJson(e))];
     }
-    public override string[] LedgerAccounts(long handle, string? root)
+    public string[] LedgerAccounts(long handle, string? root)
     {
         if (!TryLedgerContext(handle, out var ctx)) return [];
         return Basic.Ledger.LedgerManager.GetAccounts(ctx, root);
     }
-    public override void LedgerBudget(long handle, string account, decimal amount, string period)
+    public void LedgerBudget(long handle, string account, decimal amount, string period)
     {
         if (!TryLedgerContext(handle, out var ctx)) return;
         try { Basic.Ledger.LedgerManager.SetBudget(ctx, account, amount, period); } catch { }
     }
-    public override object? LedgerVariance(long handle, string account, string period)
+    public object? LedgerVariance(long handle, string account, string period)
     {
         if (!TryLedgerContext(handle, out var ctx)) return 0.0;
         try
@@ -1578,7 +1591,7 @@ public class CommercialDatabaseService : DatabaseService
         }
         catch { return 0.0; }
     }
-    public override object? LedgerPlot(long handle, string query, string chartType)
+    public object? LedgerPlot(long handle, string query, string chartType)
     {
         if (!TryLedgerContext(handle, out var ctx)) return null;
         try
@@ -1592,63 +1605,63 @@ public class CommercialDatabaseService : DatabaseService
         }
         catch { return null; }
     }
-    public override double LedgerImport(long handle, string csvPath, string mappingRules)
+    public double LedgerImport(long handle, string csvPath, string mappingRules)
     {
         if (!TryLedgerContext(handle, out var ctx)) return 0;
         try { return Basic.Ledger.LedgerManager.ImportCsv(ctx, csvPath, mappingRules); } catch { return 0; }
     }
     // ── Configurazione (durabilità / replica) ──
 
-    public override void DbfSetDurability(long handle, string mode)
+    public void DbfSetDurability(long handle, string mode)
     {
         var engine = DbfDriverFor(handle)?.Engine; if (engine is null) return;
         try { engine.DurabilityMode = Enum.TryParse<Basic.DBF.DbfDurabilityMode>(mode, true, out var m) ? m : Basic.DBF.DbfDurabilityMode.Full; } catch { }
     }
-    public override void DbfFlushDurability(long handle)
+    public void DbfFlushDurability(long handle)
     {
         var engine = DbfDriverFor(handle)?.Engine; if (engine is null) return;
         try { engine.FlushDurability(); } catch { }
     }
-    public override void IsamSetReplication(long handle, string logPath)
+    public void IsamSetReplication(long handle, string logPath)
     {
         var engine = IsamEngineFor(handle); if (engine is null) return;
         try { engine.SetReplication(logPath); } catch { }
     }
-    public override void SpeedSetDurability(long handle, string mode)
+    public void SpeedSetDurability(long handle, string mode)
     {
         var drv = DriverFor(handle) as Basic.Databases.Rdd.SpeedDriver; var db = drv?.Db;
         if (db is null) return;
         try { db.DurabilityMode = Enum.TryParse<Basic.SPEED.SpeedDurabilityMode>(mode, true, out var m) ? m : Basic.SPEED.SpeedDurabilityMode.Full; } catch { }
     }
-    public override void SpeedFlushDurability(long handle)
+    public void SpeedFlushDurability(long handle)
     {
         var drv = DriverFor(handle) as Basic.Databases.Rdd.SpeedDriver; var db = drv?.Db;
         if (db is null) return;
         try { db.FlushDurability(); } catch { }
     }
-    public override void SpeedBeginGroupCommit(long handle)
+    public void SpeedBeginGroupCommit(long handle)
     {
         var drv = DriverFor(handle) as Basic.Databases.Rdd.SpeedDriver; var db = drv?.Db;
         if (db is null) return;
         try { db.BeginGroupCommit(); } catch { }
     }
-    public override void SpeedEndGroupCommit(long handle)
+    public void SpeedEndGroupCommit(long handle)
     {
         var drv = DriverFor(handle) as Basic.Databases.Rdd.SpeedDriver; var db = drv?.Db;
         if (db is null) return;
         try { db.EndGroupCommit(); } catch { }
     }
-    public override string DbfSetReplication(long handle, string logPath)
+    public string DbfSetReplication(long handle, string logPath)
     {
         var engine = DbfDriverFor(handle)?.Engine; if (engine is null) return "";
         try { return engine.SetReplication(logPath) ?? ""; } catch { return ""; }
     }
-    public override void DbfBeginGroupCommit(long handle)
+    public void DbfBeginGroupCommit(long handle)
     {
         var engine = DbfDriverFor(handle)?.Engine; if (engine is null) return;
         try { engine.BeginGroupCommit(); } catch { }
     }
-    public override long DbfAppendMany(long handle, System.Collections.Generic.List<System.Collections.Generic.Dictionary<string, object?>> records)
+    public long DbfAppendMany(long handle, System.Collections.Generic.List<System.Collections.Generic.Dictionary<string, object?>> records)
     {
         var drv = DbfDriverFor(handle);
         var engine = drv?.Engine; if (engine is null) return 0;
@@ -1664,21 +1677,21 @@ public class CommercialDatabaseService : DatabaseService
         }
         catch { return 0; }
     }
-    public override int DbfFollowReplication(long handle, string replLogPath)
+    public int DbfFollowReplication(long handle, string replLogPath)
     {
         var engine = DbfDriverFor(handle)?.Engine; if (engine is null) return 0;
         try { return engine.FollowReplication(replLogPath); } catch { return 0; }
     }
-    public override int DbfApplyReplication(long handle, string replLogPath)
+    public int DbfApplyReplication(long handle, string replLogPath)
     {
         var engine = DbfDriverFor(handle)?.Engine; if (engine is null) return 0;
         try { return engine.ApplyReplication(replLogPath); } catch { return 0; }
     }
-    public override void DbfEndGroupCommit(long handle)
+    public void DbfEndGroupCommit(long handle)
     {
         var engine = DbfDriverFor(handle)?.Engine; if (engine is null) return;
         try { engine.EndGroupCommit(); } catch { }
-    }    public override long IsamAppendMany(long handle, System.Collections.Generic.List<System.Collections.Generic.Dictionary<string, object?>> records)
+    }    public long IsamAppendMany(long handle, System.Collections.Generic.List<System.Collections.Generic.Dictionary<string, object?>> records)
     {
         var drv = DriverFor(handle) as Basic.Databases.Rdd.IsamDriver;
         var engine = drv?.Engine; var udt = drv?.UdtDef;
@@ -1698,11 +1711,11 @@ public class CommercialDatabaseService : DatabaseService
         }
         catch { return 0; }
     }
-    public override int IsamApplyReplication(long handle, string replLogPath)
+    public int IsamApplyReplication(long handle, string replLogPath)
     {
         var engine = IsamEngineFor(handle); if (engine is null) return 0;
         try { return engine.ApplyReplication(replLogPath); } catch { return 0; }
-    }    public override long SpeedSetMany(long handle, System.Collections.Generic.List<System.Collections.Generic.Dictionary<string, object?>> records)
+    }    public long SpeedSetMany(long handle, System.Collections.Generic.List<System.Collections.Generic.Dictionary<string, object?>> records)
     {
         var drv = DriverFor(handle) as Basic.Databases.Rdd.SpeedDriver; var db = drv?.Db;
         if (db is null) return 0;

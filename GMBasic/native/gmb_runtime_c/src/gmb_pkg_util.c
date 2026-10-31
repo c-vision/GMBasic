@@ -5,19 +5,17 @@
 #include <stdio.h>
 #include <string.h>
 
-int gmb_pkg_compat_check(const char* json, const char* edition, char* out_err, size_t cap)
+int gmb_pkg_compat_check(const char* json, char* out_err, size_t cap)
 {
     if (out_err && cap) out_err[0] = 0;
     if (!json) return 1;
     gmb_pkg_manifest_t* m = gmb_pkg_manifest_parse(json);
     if (!m) return 1; /* non-oggetto: nessun gate (il resolver lo rifiuta altrove) */
 
-    char name[256] = "", ver[64] = "", ed[32] = "", minv[32] = "", rc[16] = "";
+    char name[256] = "", ver[64] = "", minv[32] = "";
     gmb_pkg_manifest_get(m, "name", name, sizeof(name));
     gmb_pkg_manifest_get(m, "version", ver, sizeof(ver));
-    gmb_pkg_manifest_get(m, "edition", ed, sizeof(ed));
     int has_min = gmb_pkg_manifest_get(m, "settings.minGmbVersion", minv, sizeof(minv)) && minv[0];
-    int has_rc = gmb_pkg_manifest_get(m, "settings.requiresCommercial", rc, sizeof(rc)) && rc[0] && strcmp(rc, "0") != 0;
     gmb_pkg_manifest_free(m);
 
     int ok = 1;
@@ -28,14 +26,8 @@ int gmb_pkg_compat_check(const char* json, const char* edition, char* out_err, s
             ok = 0;
         }
     }
-    if (ok && has_rc && edition && strcasecmp(edition, "Commercial") != 0) {
-        if (out_err) snprintf(out_err, cap, "'%s@%s' richiede l'edizione Commercial (corrente: %s).", name, ver, edition);
-        ok = 0;
-    }
-    if (ok && ed[0] && strcasecmp(ed, "any") != 0 && edition && strcasecmp(ed, edition) != 0) {
-        if (out_err) snprintf(out_err, cap, "'%s@%s' e' per l'edizione '%s', non '%s'.", name, ver, ed, edition);
-        ok = 0;
-    }
+    /* Nessun gate di edizione: non esiste piu' una matrice Edition. Resta solo il controllo
+     * della versione minima dell'engine (settings.minGmbVersion). */
     return ok;
 }
 

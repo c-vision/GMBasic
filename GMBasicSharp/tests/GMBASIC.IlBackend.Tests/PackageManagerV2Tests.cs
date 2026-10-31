@@ -82,17 +82,16 @@ public class PackageManagerV2Tests
     {
         var doc = JsonDocument.Parse("""
         { "name":"gmb-vec","version":"1.2.0","contentType":"mixed","backends":["il","c99"],
-          "edition":"Community","exports":["src/"],
+          "exports":["src/"],
           "binaries":{ "il":{"any-any":"bin/il/GmbVec.dll"}, "c99":{"linux-x64":"bin/c99/libvec.so"} },
           "ffi":{"api":"c-abi","headers":["include/vec.h"],"libs":{"linux-x64":"lib/libvec.a"},"link":"-lvec",
                  "declareExample":"DECLARE FUNCTION VecAdd LIB \"vec\" (a AS LONG) AS LONG"},
-          "settings":{"requiresCommercial":false,"minGmbVersion":"1.0.0"},
+          "settings":{"minGmbVersion":"1.0.0"},
           "dependencies":{"gmb-collections":"^1.0"} }
         """);
         var m = Parser.PackageManager.ParseManifest(doc.RootElement);
         Assert.Equal(PackageContentType.Mixed, m.ContentType);
         Assert.Equal(new[] { "il", "c99" }, m.Backends);
-        Assert.Equal("Community", m.Edition);
         Assert.NotNull(m.Ffi);
         Assert.Equal("c-abi", m.Ffi!.Api);
         Assert.Equal("-lvec", m.Ffi.Link);
@@ -100,7 +99,6 @@ public class PackageManagerV2Tests
         Assert.Equal("bin/il/GmbVec.dll", m.Binaries["il"].Platforms!["any-any"]);
         Assert.Equal("bin/c99/libvec.so", m.Binaries["c99"].Platforms!["linux-x64"]);
         Assert.True(m.Dependencies.ContainsKey("gmb-collections"));
-        Assert.False(m.Settings!.RequiresCommercial);
     }
 
     // ── 3. SemVer v2: ^ ~ * — risoluzione della versione migliore dai vincoli ──
@@ -924,24 +922,19 @@ public class PackageManagerV2Tests
         }
     }
 
-    // ── 8r. Gate di compatibilità (minGmbVersion / requiresCommercial / edition) ──
+    // ── 8r. Gate di compatibilità (solo minGmbVersion: la matrice Edition non esiste più) ──
     [Fact]
     public void Compatibility_Gates()
     {
-        var comm = new PackageBuildContext { Backend = "il", Edition = "Community" };
-        Parser.PackageManager.CheckCompatibility(new PackageManifest { Name = "a", Version = "1.0.0", Edition = "any" }, comm);
+        var ctx = new PackageBuildContext { Backend = "il" };
+        Parser.PackageManager.CheckCompatibility(new PackageManifest { Name = "a", Version = "1.0.0" }, ctx);
 
         Assert.Throws<PackageException>(() => Parser.PackageManager.CheckCompatibility(
-            new PackageManifest { Name = "a", Version = "1.0.0", Settings = new PackageSettings { MinGmbVersion = "999.0.0" } }, comm));
-        Assert.Throws<PackageException>(() => Parser.PackageManager.CheckCompatibility(
-            new PackageManifest { Name = "a", Version = "1.0.0", Settings = new PackageSettings { RequiresCommercial = true } }, comm));
-        Assert.Throws<PackageException>(() => Parser.PackageManager.CheckCompatibility(
-            new PackageManifest { Name = "a", Version = "1.0.0", Edition = "Commercial" }, comm));
+            new PackageManifest { Name = "a", Version = "1.0.0", Settings = new PackageSettings { MinGmbVersion = "999.0.0" } }, ctx));
 
-        // edizione Commercial combacia
-        Parser.PackageManager.CheckCompatibility(
-            new PackageManifest { Name = "a", Version = "1.0.0", Edition = "Commercial" },
-            new PackageBuildContext { Backend = "il", Edition = "Commercial" });
+        // Un manifest che dichiara ancora la vecchia chiave "edition" resta compatibile:
+        // non c'è più nessun gate legato all'edizione.
+        Parser.PackageManager.CheckCompatibility(new PackageManifest { Name = "a", Version = "1.0.0" }, ctx);
     }
 
     // ── 8s. Trust anchor: TOFU (prima registrazione), chiave fidata, cambio chiave, strict non firmato ──

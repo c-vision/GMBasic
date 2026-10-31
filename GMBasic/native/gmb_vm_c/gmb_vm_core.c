@@ -24,7 +24,7 @@
 #include "gmb_compress.h"
 #include "gmb_finance.h"
 #include "gmb_finetune.h"
-#ifdef GMB_HAS_COMMERCIAL_DB
+#ifdef GMB_NATIVE_DB
 #include "gmb_db.h"
 /* REGEX (impl. in gmb_regex_extra.c via PCRE2): forward-decl per non tirare pcre2.h qui. */
 int  gmb_regex_is_match(const char* pattern, const char* text);
@@ -3884,10 +3884,10 @@ void gmb_vm_free(gmb_vm_t* vm)
 }
 
 
-/* Il blocco DB avanzato e' SOLO edizione Commercial: usa l'ABI gmb_db_* e
- * gmb_db.h (inclusa sotto #ifdef GMB_HAS_COMMERCIAL_DB in testa al file).
+/* Il blocco DB avanzato usa l'ABI gmb_db_* (sempre presente nel build unico) e
+ * gmb_db.h (inclusa sotto #ifdef GMB_NATIVE_DB in testa al file).
  * La VM/C di default e' Community (flag CMake OFF) e non lo compila. */
-#ifdef GMB_HAS_COMMERCIAL_DB
+#ifdef GMB_NATIVE_DB
 /* ---------------------------------------------------------------------------
  * DB avanzato (VM/C): marshalling p-code -> ABI gmb_db_*.
  * TUTTO dentro il processo C (gmb_vm_host): i valori arrivano dallo stack del
@@ -4045,7 +4045,7 @@ int vm_csv_split(const char* s, char out[][128], int maxn)
     return n;
 }
 
-#endif /* GMB_HAS_COMMERCIAL_DB */
+#endif /* GMB_NATIVE_DB */
 
 /* ── TEAM (AI TEAM ...) — SysCalls.cs 92-101 + 363-366 (in coda) ──────────────
  * Pop LIFO: il compiler spinge i parametri specifici PRIMA, il TeamName per ultimo,
@@ -5176,7 +5176,7 @@ static void vm_sys_goskip_128(gmb_vm_t* vm, gmb_task_t* task, int code, int argc
      * Prima di questo fix GO/SKIP muovevano solo gmb_rdd: su un DBF aperto con DBF USE
      * risultavano no-op (DBF.RECNO() restava 1 per sempre). */
     int navigated = 0;
-#if defined(GMB_HAS_COMMERCIAL_DB) && !defined(GMB_VM_SPECIALIZED)
+#if defined(GMB_NATIVE_DB) && !defined(GMB_VM_SPECIALIZED)
     int64_t dh = gmb_db_current_dbf();
     if (dh > 0)
     {
@@ -5208,7 +5208,7 @@ static void vm_sys_goskip_129(gmb_vm_t* vm, gmb_task_t* task, int code, int argc
     gmb_stack_entry_t de = gmb_task_pop(task);
     /* SKIP n — stessa regola di GO sopra: layer gmb_db se un DBF è aperto, altrimenti gmb_rdd. */
     int skipped = 0;
-#if defined(GMB_HAS_COMMERCIAL_DB) && !defined(GMB_VM_SPECIALIZED)
+#if defined(GMB_NATIVE_DB) && !defined(GMB_VM_SPECIALIZED)
     int64_t dh = gmb_db_current_dbf();
     if (dh > 0)
     {
@@ -5344,7 +5344,7 @@ push_num_entry(task, 0.0, GMB_BT_NUMBER);
 return;
 }
 
-#if defined(GMB_HAS_COMMERCIAL_DB) && !defined(GMB_VM_SPECIALIZED)
+#if defined(GMB_NATIVE_DB) && !defined(GMB_VM_SPECIALIZED)
 /* DB commerciale (ISAM/DBF/SPEED/LEDGER + CONVERT + DBF_LIST/CREATE_VIEW/AGGREGATE/REPORT):
  * il dispatch interno è già a tabelle (gmb_db_apply_syscall_known + gmb_sys_impl[] in
  * gmb_syscall_db.c). Questo handler replica il vecchio gate a range: prova prima la "known"
@@ -5738,7 +5738,7 @@ static const vm_sys_row VM_SYS_TBL[] = {
     { GMB_SC_TORCH_SET_LIB_PATH, vm_sys_torch_357 },      /* TORCH_SET_LIB_PATH */
     { GMB_SC_TORCH_INFO, vm_sys_torch_358 },      /* TORCH_INFO */
     { GMB_SC_TEAM_DISTILL_THINKING, vm_sys_team_distill },
-#if defined(GMB_HAS_COMMERCIAL_DB) && !defined(GMB_VM_SPECIALIZED)
+#if defined(GMB_NATIVE_DB) && !defined(GMB_VM_SPECIALIZED)
     /* DB commerciale (voci = macro GMB_SYS_*, range espansi con offset; escluse 133/134/144/145 = path_default) */
     { GMB_SYS_ISAM_USE + 0, vm_sys_db },
     { GMB_SYS_ISAM_USE + 1, vm_sys_db },

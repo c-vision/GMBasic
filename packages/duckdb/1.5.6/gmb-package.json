@@ -3,7 +3,6 @@
   "version": "1.5.6",
   "description": "DuckDB (OLAP colonnare embedded) via shim FFI GMTrading libgmbduckdb (self-contained).",
   "contentType": "c-ffi",
-  "edition": "any",
   "exports": ["duckdb.inc"],
   "samples": ["samples"],
   "build": { "command": "bash build.sh", "cwd": ".", "tool": "cc", "outputs": ["lib/{platform}/libgmbduckdb.dylib"] },

@@ -252,7 +252,7 @@ public static class NativePkg
     [DllImport(Lib, EntryPoint = "gmb_pkg_resolve_ctx_new", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr resolve_ctx_new();
     [DllImport(Lib, EntryPoint = "gmb_pkg_resolve_ctx_set", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-    private static extern void resolve_ctx_set(IntPtr c, string cacheRoot, string vendorDir, string backend, string platform, string edition, int offline);
+    private static extern void resolve_ctx_set(IntPtr c, string cacheRoot, string vendorDir, string backend, string platform, int offline);
     [DllImport(Lib, EntryPoint = "gmb_pkg_resolve_ctx_set_registry", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
     private static extern void resolve_ctx_set_registry(IntPtr c, string url);
     [DllImport(Lib, EntryPoint = "gmb_pkg_resolve_ctx_add_cache_root", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
@@ -593,17 +593,17 @@ public static class NativePkg
 
     // ── Util (gmb_pkg_util) ──────────────────────────────────────────────────
     [DllImport(Lib, EntryPoint = "gmb_pkg_compat_check", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-    private static extern int compat_check(string json, string edition, [In, Out] byte[] outv, UIntPtr cap);
+    private static extern int compat_check(string json, [In, Out] byte[] outv, UIntPtr cap);
     [DllImport(Lib, EntryPoint = "gmb_pkg_safe_dir", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
     private static extern int safe_dir(string name, [In, Out] byte[] outv, UIntPtr cap);
     [DllImport(Lib, EntryPoint = "gmb_pkg_platform_key", CallingConvention = CallingConvention.Cdecl)]
     private static extern int platform_key([In, Out] byte[] outv, UIntPtr cap);
 
     /// <summary>Gate di compatibilità: "" se ok, altrimenti il messaggio di errore (dal C).</summary>
-    public static string CompatCheck(string json, string edition)
+    public static string CompatCheck(string json)
     {
         var b = new byte[512];
-        return compat_check(json, edition, b, (UIntPtr)b.Length) == 1 ? "" : CStr(b);
+        return compat_check(json, b, (UIntPtr)b.Length) == 1 ? "" : CStr(b);
     }
     public static string SafeDir(string name)
     {
@@ -678,7 +678,7 @@ public static class NativePkg
     public sealed record ResolveItem(string Name, string Version, string InstallDir, string LockEntry);
 
     public static (List<ResolveItem> Items, string? Error) Resolve(
-        string cacheRoot, string? vendorDir, string backend, string platform, string edition, bool offline, string? registryUrl,
+        string cacheRoot, string? vendorDir, string backend, string platform, bool offline, string? registryUrl,
         IEnumerable<(string Name, string Range)> reqs,
         IEnumerable<(string Name, string Range)> overrides,
         IEnumerable<string> features,
@@ -690,7 +690,7 @@ public static class NativePkg
         var c = resolve_ctx_new();
         try
         {
-            resolve_ctx_set(c, cacheRoot, vendorDir ?? "", backend, platform, edition, offline ? 1 : 0);
+            resolve_ctx_set(c, cacheRoot, vendorDir ?? "", backend, platform, offline ? 1 : 0);
             // INSTALLAZIONE LOCALE dell'app (<dir dell'eseguibile>/packages): ha la PRECEDENZA
             // sulla cache (come node_modules), ma i download nuovi vanno sempre in cacheRoot.
             if (!string.IsNullOrWhiteSpace(localPackagesDir))

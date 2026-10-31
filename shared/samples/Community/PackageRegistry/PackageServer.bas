@@ -204,7 +204,6 @@ FOR EACH pkgName IN entries
       pkgData["author"] = m.author
       pkgData["license"] = m.license
       pkgData["contentType"] = m.contentType
-      pkgData["edition"] = m.edition
       pkgData["backends"] = m.backends
     END IF
     IF m.version <> "" THEN lastVer = m.version

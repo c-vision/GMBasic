@@ -3517,6 +3517,11 @@ public static partial class IlRuntime
             settings.CertificatePassword = GetString(cd, "CertificatePassword");
             settings.Sessions = GetBool("Sessions", false);
             settings.SessionFile = GetString(cd, "SessionFile");
+            // Memoizzazione della resa BSP (0 = disattivata): stessa chiave del backend P-Code
+            // (HTTPCONFIG), così una app può configurarla senza cambiare codice.
+            var bspTtl = GetInt("BspCacheMs");
+            if (bspTtl > 0) settings.BspCacheMs = bspTtl;
+            CommonLib.Http.BspRuntime.RenderCacheTtlMs = bspTtl;
         }
         _pendingHttpSettings = settings;
         if (_httpServerHandle >= 0)
@@ -5563,7 +5568,7 @@ public static partial class IlRuntime
     }
 
     // ================================================================
-    // ISAM — delega a IDatabaseService (NativeCommercialDb / gmb_db)
+    // ISAM — delega a IDatabaseService (NativeDb / gmb_db)
     // ================================================================
     private static readonly System.Collections.Generic.Dictionary<string, long> _isamHandles = new(System.StringComparer.OrdinalIgnoreCase);
     private static string _isamCurrentAlias = "";
@@ -11753,14 +11758,14 @@ public static double TextWidth(string s)
     }
 
     /// <summary>GRAPH RDD &lt;backend&gt; — seleziona il backend di storage
-    /// (MEMORY|JSON|SQLITE). ISAM/DBF richiedono driver proprietari (Commercial Edition) →
+    /// (MEMORY|JSON|SQLITE). ISAM/DBF non sono supportati da questo percorso →
     /// errore esplicito, mai stub silenzioso.</summary>
     public static double GraphRdd(string backend)
     {
         var b = Basic.AI.Knowledge.GraphManager.ParseBackend(backend ?? "");
         if (b is Basic.AI.Knowledge.GraphRddBackend.Isam or Basic.AI.Knowledge.GraphRddBackend.Dbf)
             throw new NotSupportedException(
-                $"GRAPH RDD backend {b} richiede driver proprietari (Commercial Edition) — usa MEMORY, JSON o SQLITE");
+                $"GRAPH RDD backend {b} non e' supportato da questo percorso — usa MEMORY, JSON o SQLITE");
         if (b != Basic.AI.Knowledge.GraphRddBackend.Memory
             && b != Basic.AI.Knowledge.GraphRddBackend.Json
             && b != Basic.AI.Knowledge.GraphRddBackend.Sqlite)

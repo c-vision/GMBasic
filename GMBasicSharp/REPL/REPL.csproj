@@ -37,7 +37,7 @@
         <ProjectReference Include="..\common\ClipperLib\ClipperLib.csproj" />
     </ItemGroup>
 
-    <ItemGroup Condition="'$(GmbEdition)' == 'Commercial'">
+    <ItemGroup>
         <ProjectReference Include="..\modules\Database\Database.csproj" />
     </ItemGroup>
 

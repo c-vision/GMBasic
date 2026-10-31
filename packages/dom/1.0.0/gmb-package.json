@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "DOM/HTML (shim FFI su libxml2): PARSE di HTML in memoria, TEXT/SELECT via XPath, NUMNODES/NODEATTR, FREE. Deterministico, nessuna rete.",
   "contentType": "c-ffi-source",
-  "edition": "any",
   "exports": ["dom.inc"],
   "build": { "command": "bash build.sh", "cwd": ".", "tool": "cc", "outputs": ["lib/{platform}/libgmbdom.dylib"] },
   "ffi": {

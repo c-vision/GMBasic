@@ -17,7 +17,7 @@
 static char* dupstr(const char* s) { return strdup(s ? s : ""); }
 
 struct gmb_pkg_resolve_ctx {
-    char* cache_root; char* vendor_dir; char* backend; char* platform; char* edition; int offline;
+    char* cache_root; char* vendor_dir; char* backend; char* platform; int offline;
     char* registry_url;
     char** extra_roots; int n_extra; int cap_extra;   /* root locali (app), PRIMA della cache */
     char** req_names; char** req_ranges; int n_req; int cap_req;
@@ -55,12 +55,12 @@ gmb_pkg_resolve_ctx_t* gmb_pkg_resolve_ctx_new(void)
     return (gmb_pkg_resolve_ctx_t*)calloc(1, sizeof(gmb_pkg_resolve_ctx_t));
 }
 void gmb_pkg_resolve_ctx_set(gmb_pkg_resolve_ctx_t* c, const char* cache_root, const char* vendor_dir,
-                             const char* backend, const char* platform, const char* edition, int offline)
+                             const char* backend, const char* platform, int offline)
 {
     if (!c) return;
-    free(c->cache_root); free(c->vendor_dir); free(c->backend); free(c->platform); free(c->edition);
+    free(c->cache_root); free(c->vendor_dir); free(c->backend); free(c->platform);
     c->cache_root = dupstr(cache_root); c->vendor_dir = dupstr(vendor_dir); c->backend = dupstr(backend);
-    c->platform = dupstr(platform); c->edition = dupstr(edition); c->offline = offline;
+    c->platform = dupstr(platform); c->offline = offline;
 }
 void gmb_pkg_resolve_ctx_set_registry(gmb_pkg_resolve_ctx_t* c, const char* registry_url)
 {
@@ -98,7 +98,7 @@ void gmb_pkg_resolve_ctx_add_registry_scope(gmb_pkg_resolve_ctx_t* c, const char
 void gmb_pkg_resolve_ctx_free(gmb_pkg_resolve_ctx_t* c)
 {
     if (!c) return;
-    free(c->cache_root); free(c->vendor_dir); free(c->backend); free(c->platform); free(c->edition); free(c->registry_url);
+    free(c->cache_root); free(c->vendor_dir); free(c->backend); free(c->platform); free(c->registry_url);
     for (int i = 0; i < c->n_extra; i++) free(c->extra_roots[i]);
     free(c->extra_roots);
     for (int i = 0; i < c->n_req; i++) { free(c->req_names[i]); free(c->req_ranges[i]); }
@@ -317,10 +317,9 @@ static int ensure_cached(const gmb_pkg_resolve_ctx_t* ctx, const char* name, str
     free(vers);
     if (!ok) return 0;
     char qs[320];
-    snprintf(qs, sizeof(qs), "?backend=%s&platform=%s&edition=%s",
+    snprintf(qs, sizeof(qs), "?backend=%s&platform=%s",
              (ctx->backend && ctx->backend[0]) ? ctx->backend : "il",
-             (ctx->platform && ctx->platform[0]) ? ctx->platform : "any",
-             (ctx->edition && ctx->edition[0]) ? ctx->edition : "Community");
+             (ctx->platform && ctx->platform[0]) ? ctx->platform : "any");
     char tmp[2200];
     snprintf(tmp, sizeof(tmp), "%s.tmp.zip", base);
     /* crea cache_root/base PRIMA del download: gmb_net_http_download apre il file e la sua
@@ -411,7 +410,7 @@ gmb_pkg_resolve_result_t* gmb_pkg_resolve(gmb_pkg_resolve_ctx_t* ctx)
             char* js = read_file(mpath);
             if (js) {
                 char cerr[512];
-                if (!gmb_pkg_compat_check(js, ctx->edition, cerr, sizeof(cerr))) { R->error = dupstr(cerr); free(js); goto done; }
+                if (!gmb_pkg_compat_check(js, cerr, sizeof(cerr))) { R->error = dupstr(cerr); free(js); goto done; }
                 enqueue_manifest(js, ctx, &Q, &opt, &nopt, &copt, name);
                 free(js);
             }
@@ -430,7 +429,7 @@ gmb_pkg_resolve_result_t* gmb_pkg_resolve(gmb_pkg_resolve_ctx_t* ctx)
             char* js = read_file(mpath);
             if (js) {
                 char cerr[512];
-                if (!gmb_pkg_compat_check(js, ctx->edition, cerr, sizeof(cerr))) { R->error = dupstr(cerr); free(js); goto done; }
+                if (!gmb_pkg_compat_check(js, cerr, sizeof(cerr))) { R->error = dupstr(cerr); free(js); goto done; }
                 enqueue_manifest(js, ctx, &Q, &opt, &nopt, &copt, e->name);
                 free(js);
             }

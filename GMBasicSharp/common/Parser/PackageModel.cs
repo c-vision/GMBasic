@@ -7,7 +7,7 @@
 //   edition   : Community | Commercial | any
 //   binaries  : backend -> platform -> path  (v1: platform -> path, normalizzato)
 //   ffi       : { api, headers, libs, link, declareExample }  (c-abi | gmb-native)
-//   settings  : { requiresCommercial, minGmbVersion }
+//   settings  : { minGmbVersion }
 //
 // Il resolver SCEGLIE l'artefatto in base al contesto di build corrente
 // (backend + platform + edition), NON scarica sempre e ricompila. Retrocompatibile
@@ -37,11 +37,10 @@ public enum PackageContentType
     Brain       // CERVELLO: dati (rag/graphs) installati da `AI BRAIN INSTALL`, non codice
 }
 
-/// <summary>Contesto di build corrente (backend + edizione + piattaforma).</summary>
+/// <summary>Contesto di build corrente (backend + piattaforma).</summary>
 public sealed class PackageBuildContext
 {
     public string Backend { get; init; } = "il";       // il | c99 | vm
-    public string Edition { get; init; } = "Community"; // Community | Commercial
     public string PlatformKey { get; init; } = "";      // os-arch (vuoto → autodetect)
     public string? RegistryUrl { get; init; }           // registry per la negoziazione
     public IReadOnlyCollection<string> Features { get; set; } = Array.Empty<string>(); // feature attivate (dal manifest di progetto)
@@ -79,7 +78,6 @@ public sealed class PackageTestSection
 /// <summary>Impostazioni/requisiti di un pacchetto.</summary>
 public sealed record PackageSettings
 {
-    [JsonPropertyName("requiresCommercial")] public bool RequiresCommercial { get; init; }
     [JsonPropertyName("minGmbVersion")] public string? MinGmbVersion { get; init; }
 }
 
@@ -146,7 +144,6 @@ public sealed class PackageManifest
     public string Description { get; set; } = string.Empty;
     public PackageContentType ContentType { get; set; } = PackageContentType.Source;
     public ImmutableArray<string> Backends { get; set; } = [];
-    public string Edition { get; set; } = "any";
     public ImmutableArray<string> Exports { get; set; } = [];
     /// <summary>Cartelle di esempi inclusi nel pacchetto (default "samples" se presente nella dir del pacchetto).
     /// All'install vengono copiati in &lt;root&gt;/samples/packages/&lt;nome&gt;@&lt;versione&gt;/.</summary>

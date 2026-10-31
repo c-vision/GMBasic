@@ -23,9 +23,12 @@ What that means in practice:
 ## Why the old split is gone
 
 Until 2026-10-31 the tree carried an `Edition` axis: a `Commercial`/`Community` MSBuild property, a
-`CommercialEditionRequiredException` for the database drivers, a `GMB_HAS_COMMERCIAL_DB` option, and
-two sample roots (`shared/samples/Commercial`, `shared/samples/Community`). That axis existed to
-sell a separate edition. It has been **removed**: one build, one set of samples, one license.
+`CommercialEditionRequiredException` for the database drivers, a `GMB_HAS_COMMERCIAL_DB` option, a
+per-package `edition`/`requiresCommercial` gate, and two sample roots
+(`shared/samples/Commercial`, `shared/samples/Community`). That axis existed to sell a separate
+edition. It has been **removed at every level** — build matrix, runtime service, native option,
+package manifests, samples, scripts and docs: **one build, one set of samples, one license**, and
+every function (including the file databases: DBF, ISAM, SPEED, Ledger) is available to everybody.
 
 The folder [`GMBasic/gmbllm/`](GMBasic/gmbllm/README.md) (model compiler: quantization encode,
 training, converter) stays **separate for technical reasons** — it is the part that produces or

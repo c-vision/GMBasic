@@ -133,11 +133,9 @@ public sealed class HeadlessRuntimeHost : IRuntimeHost
         Workflow = new NullWorkflowService();
         _graphics = graphics;   // lazy: se null, la proprietà usa GraphicsFactory/Null
         _audio = null;          // lazy: la proprietà usa AudioFactory/Null
-#if GMBASIC_COMMERCIAL
-        Database = new CommercialDatabaseService(SqlDataSession);
-#else
-        Database = new DatabaseService();
-#endif
+        // Un solo servizio: la partial nativa implementa anche DBF/ISAM/SPEED/Ledger,
+        // quindi non c'e' piu' una scelta legata all'edizione.
+        Database = new DatabaseService(SqlDataSession);
         Crypto = new CryptoService();
         Memory = new MemoryService();
         Ffi = new FfiService();

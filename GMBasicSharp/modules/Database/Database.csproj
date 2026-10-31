@@ -1,11 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- D11: il modulo Database (driver commerciali) NON è compilato in Community.
-       Viene incluso solo quando GmbHdition=Commercial. -->
-  <PropertyGroup Condition="'$(GmbEdition)' == 'Community'">
-    <GmbModuleDatabaseExcluded>true</GmbModuleDatabaseExcluded>
-  </PropertyGroup>
-
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <LangVersion>preview</LangVersion>
@@ -16,9 +10,8 @@
   </PropertyGroup>
 
   <!--
-    Database — driver commerciali (D11).
-    Contiene SOLO i driver proprietari: ISAM, DBF, SPEED, Ledger + Replication/Locks.
-    MAI referenziato/compilato nella Community Edition.
+    Database — driver su file: ISAM, DBF, SPEED, Ledger + Replication/Locks.
+    Sempre compilato e sempre referenziato: non esiste piu' una "edizione".
   -->
 
   <ItemGroup>

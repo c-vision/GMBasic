@@ -1,17 +1,17 @@
-// FILE: Basic.Runtime.NativeCommercialDb
+// FILE: Basic.Runtime.NativeDb
 using System.Runtime.InteropServices;
 
 namespace Basic.Runtime;
 
 /// <summary>
-/// P/Invoke verso <c>gmb_db</c> (edizione Commercial). Se la SHARED non è nel
-/// search path, i metodi di <see cref="DatabaseService"/> restano <c>CommercialNotAvailable</c>.
+/// P/Invoke verso <c>gmb_db</c> (database su file, sempre disponibile). Se la SHARED non è nel
+/// search path, i driver su file restano indisponibili (errore esplicito, nessuno stub).
 /// </summary>
-internal static class NativeCommercialDb
+internal static class NativeDb
 {
-    static NativeCommercialDb()
+    static NativeDb()
     {
-        try { NativeLibrary.SetDllImportResolver(typeof(NativeCommercialDb).Assembly, Resolve); }
+        try { NativeLibrary.SetDllImportResolver(typeof(NativeDb).Assembly, Resolve); }
         catch (InvalidOperationException) { /* resolver già installato (ModuleInitializer) */ }
     }
 

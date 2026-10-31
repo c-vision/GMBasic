@@ -98,8 +98,8 @@ fi
 # `tests/GMBASIC.IlBackend.Tests/BuildFreshness.cs` (fallisce se una DLL resta stale).
 echo "build del test project (anti-stale)..."
 dotnet build "$ROOT/tests/GMBASIC.IlBackend.Tests" \
-  -p:GmbEdition=Commercial -v q --nologo || exit 1
+  -v q --nologo || exit 1
 dotnet test "$ROOT/tests/GMBASIC.IlBackend.Tests" \
-  -p:GmbEdition=Commercial --no-build \
+  --no-build \
   --filter "FullyQualifiedName~MiniTests_IL_PCode_Parity" \
   $flags

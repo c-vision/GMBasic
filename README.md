@@ -302,7 +302,6 @@ category, and `Community/` is the main one.
 
 | Folder | Contents |
 |---|---|
-| [Commercial](shared/samples/Commercial/) | samples that require the commercial edition (AI, databases, Clipper, parser stress) |
 | [Native](shared/samples/Native/) | native interop entry points (`HelloNative.bas`) |
 | [packages](shared/samples/packages/) | samples materialized by `gmb pkg install` for installed packages |
 | [Fixtures](shared/samples/Fixtures/) | input data (not programs): small fixtures in git, the four market feeds downloaded on demand |

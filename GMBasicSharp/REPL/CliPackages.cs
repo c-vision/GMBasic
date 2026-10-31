@@ -524,10 +524,9 @@ public static class CliPackages
             "mixed" => PackageContentType.Mixed,
             _ => PackageContentType.Source
         };
-        var edition = flags.GetValueOrDefault("edition", "Community");
         var api = flags.GetValueOrDefault("api");
-        var path = PackageBuilder.Init(dir, name, version, type, edition, api);
-        Console.WriteLine($"Init: {path} (type={type}, edition={edition})");
+        var path = PackageBuilder.Init(dir, name, version, type, api);
+        Console.WriteLine($"Init: {path} (type={type})");
     }
 
     private static void Pack(string[] args)

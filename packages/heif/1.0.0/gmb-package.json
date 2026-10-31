@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "HEIC/HEIF (decode/encode) via shim FFI gmbsuite libgmbheif: libheif + libde265 + x265 sono COMPILATE DAI SORGENTI e linkate staticamente dentro lo shim -> self-contained, nessuna lib di sistema.",
   "contentType": "c-ffi-source",
-  "edition": "any",
   "exports": ["heif.inc"],
   "samples": ["samples"],
   "build": { "command": "bash build.sh", "cwd": ".", "tool": "cc", "outputs": ["lib/{platform}/libgmbheif.dylib"] },

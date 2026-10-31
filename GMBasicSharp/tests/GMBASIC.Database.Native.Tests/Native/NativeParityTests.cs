@@ -312,10 +312,10 @@ public sealed class NativeParityTests
         Assert.Contains("gmb_db.h", emitterText);
         Assert.Contains("gmb_db_dbf_open", emitterText);
         var vm = File.ReadAllText(Path.Combine(root, "native", "gmb_vm_c", "gmb_vm_core.c"));
-        Assert.Contains("GMB_HAS_COMMERCIAL_DB", vm);
+        Assert.Contains("GMB_NATIVE_DB", vm);
         Assert.Contains("gmb_db_apply_syscall", vm);
-        var svc = File.ReadAllText(Path.Combine(root, "common", "BRT", "Services", "NativeCommercialDb.cs"));
-        Assert.Contains("class NativeCommercialDb", svc);
+        var svc = File.ReadAllText(Path.Combine(root, "common", "BRT", "Services", "NativeDb.cs"));
+        Assert.Contains("class NativeDb", svc);
         Assert.Contains("gmb_db", svc);
     }
 

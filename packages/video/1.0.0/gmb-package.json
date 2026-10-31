@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "Video (probe + estrazione frame) via shim FFI gmbsuite libgmbvideo: ffmpeg (libav*) e' COMPILATO DAI SORGENTI e linkato staticamente dentro lo shim -> self-contained, nessuna lib di sistema.",
   "contentType": "c-ffi-source",
-  "edition": "any",
   "exports": ["video.inc"],
   "samples": ["samples"],
   "build": { "command": "bash build.sh", "cwd": ".", "tool": "cc", "outputs": ["lib/{platform}/libgmbvideo.dylib"] },

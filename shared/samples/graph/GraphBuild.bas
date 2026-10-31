@@ -31,7 +31,7 @@ GRAPH RDD JSON
 GRAPH BUILD FIXTURE$, WORK$
 
 ' GRAPH RDD SQLITE — persiste il grafo arricchito in un database SQLite (work/vault.graph.db,
-' tabelle graph_nodes/graph_edges). ISAM/DBF richiedono driver proprietari (Commercial Edition)
+' tabelle graph_nodes/graph_edges). ISAM/DBF non sono supportati da questo percorso RDD
 ' → errore esplicito.
 GRAPH RDD SQLITE
 GRAPH BUILD FIXTURE$, WORK$

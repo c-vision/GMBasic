@@ -4,7 +4,7 @@ Material **shared by the two worlds** (`GMBasic/` in C, `GMBasicSharp/` in C#), 
 
 | folder | contents |
 |---|---|
-| `samples/` | sample BASIC programs (`Community/`, `Commercial/`, `Native/`) + `Fixtures/` |
+| `samples/` | sample BASIC programs (`Community/`, `Native/`) + `Fixtures/` |
 | `samples/Fixtures/` | **fixtures**: the 4 market feeds (`markets`, `option_chains`, `rates`, `darkpool`) + the small fixtures. The feeds are downloaded with `gmb fixtures ensure` **always here** — no symlinks, no external disk (decision 2026-10-31) |
 | `minitests/` | corpus with `' EXPECT:` oracle (the native leg is the reference) |
 | `APPS/` | complete applications that use the compiler |

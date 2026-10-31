@@ -117,13 +117,13 @@ add_library(gmb_vm STATIC
 target_link_libraries(gmb_vm PUBLIC pthread gmb_runtime gmb_doc gmb_agent_runtime ${CMAKE_DL_LIBS})
 target_include_directories(gmb_vm PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c/include ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c/src ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_doc_c/include ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_torch/include ${LLMENV}/LLMEngine/include ${LLMENV}/LLMEngine/mlx ${LLMENV}/LLMEngine/Options ${LLMENV}/LLMEngine/plugin ${LLMENV}/LLMEngine/moe/include ${CMAKE_CURRENT_SOURCE_DIR}/../gmbllm/include ${LLMENV}/LLMToken/include ${LLMENV}/LLMCodec/include ${LLMENV}/LLMDesc)
 
-option(GMB_HAS_COMMERCIAL_DB "Dispatch commercial DB syscalls via gmb_db" OFF)
-if(GMB_HAS_COMMERCIAL_DB)
-    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../gmb_db_c gmb_db_c_build)
-    target_compile_definitions(gmb_vm PRIVATE GMB_HAS_COMMERCIAL_DB)
-    target_include_directories(gmb_vm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_db_c/include)
-    target_link_libraries(gmb_vm PRIVATE gmb_db)
-endif()
+# Database su file (DBF/ISAM/SPEED/Ledger/Clipper RDD) via gmb_db: SEMPRE presente.
+# Prima era un option(GMB_HAS_COMMERCIAL_DB ... OFF) legato all'"edizione": con la rimozione
+# della matrice Edition il supporto e' parte del build unico (nessun flag da attivare).
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../gmb_db_c gmb_db_c_build)
+target_compile_definitions(gmb_vm PRIVATE GMB_NATIVE_DB)
+target_include_directories(gmb_vm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_db_c/include)
+target_link_libraries(gmb_vm PRIVATE gmb_db)
 
 # Host CLI: legge un chunk A1 e lo esegue con la VM.
 add_executable(gmb_vm_host
