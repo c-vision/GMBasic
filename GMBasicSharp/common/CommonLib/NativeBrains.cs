@@ -1,4 +1,4 @@
-// FILE: Interpreter.Parser.NativeBrains.cs
+// FILE: CommonLib/NativeBrains.cs
 // Binding P/Invoke dei CERVELLI (native/gmb_runtime_c/src/gmb_brains.c, esportato da libgmb_pkg).
 // Direzione unica C#→C: la RISOLUZIONE di un cervello e il suo DOWNLOAD vivono in C (una sola
 // implementazione per i 4 backend); qui non c'è una copia della logica.
@@ -9,7 +9,7 @@
 // visto dagli agenti.
 using System.Runtime.InteropServices;
 
-namespace Basic;
+namespace CommonLib;
 
 public static class NativeBrains
 {
@@ -22,7 +22,7 @@ public static class NativeBrains
     }
 
     private static IntPtr Resolve(string name, System.Reflection.Assembly asm, DllImportSearchPath? sp)
-        => CommonLib.GmbBoot.ResolveDllImport(name);
+        => GmbBoot.ResolveDllImport(name);
 
     private static string CStr(byte[] buf)
     {
@@ -62,6 +62,9 @@ public static class NativeBrains
 
     [DllImport(Lib, EntryPoint = "gmb_pkg_brain_remove", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
     private static extern int brain_remove(string name, string? version);
+
+    [DllImport(Lib, EntryPoint = "gmb_pkg_brain_emit_index", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+    private static extern int brain_emit_index(string appSettings, string manifestPath, string outPath);
 
     [DllImport(Lib, EntryPoint = "gmb_pkg_brain_has_rag", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
     private static extern int brain_has_rag(string dir, string name);
@@ -182,6 +185,20 @@ public static class NativeBrains
     public static bool Remove(string name, string? version = null)
     {
         try { return brain_remove(name, version) == 1; } catch { return false; }
+    }
+
+    /// <summary>Scrive l'indice `<exe>.brains.txt` dai cervelli dichiarati dal programma
+    /// (`"brains": ["nome[@ver]"]` nel suo app.settings.json). Nessuna dichiarazione → nessun file.
+    /// Ritorna true se il file è stato creato.</summary>
+    public static bool EmitIndex(string appSettings, string? manifestPath, string outPath)
+    {
+        try
+        {
+            if (File.Exists(outPath)) File.Delete(outPath);
+            var rc = brain_emit_index(appSettings, manifestPath ?? "", outPath);
+            return rc > 0 && File.Exists(outPath);
+        }
+        catch { return false; }
     }
 
     public static bool HasRag(string dir, string name)

@@ -270,7 +270,25 @@ emit_program_bundle() { # $1 = eseguibile
       cmp -s "$_f" "$out/Resources/$(basename "$_f")" || { cp -f "$_f" "$out/Resources/"; n=$((n+1)); }
     done
   fi
-  [ "$n" -gt 0 ] && echo "[c99native] bundle -> $out ($n file: settings + app.settings + Resources)" >&2
+  # CERVELLI: (a) snapshot del manifest in <out>/settings — il runtime C lo legge PRIMA di
+  # quello del checkout, quindi il programma distribuito sa cosa può scaricare; (b) indice
+  # `<exe>.brains.txt` con i cervelli DICHIARATI dal programma (`"brains": [...]` nel suo
+  # app.settings.json): `gmb_brain_fetch` li porta in <exe>/brains, dove la risoluzione li trova.
+  local sharedcfg="$ROOT/../shared/settings"
+  local brainbin="$ROOT/native/gmb_runtime_c/build/gmb_brain_fetch"
+  if [ -f "$sharedcfg/brains-manifest.json" ]; then
+    mkdir -p "$out/settings"
+    cmp -s "$sharedcfg/brains-manifest.json" "$out/settings/brains-manifest.json" || {
+      cp -f "$sharedcfg/brains-manifest.json" "$out/settings/" && n=$((n+1)); }
+  fi
+  if [ -f "$DIR/app.settings.json" ] && [ -x "$brainbin" ]; then
+    if "$brainbin" --emit-index "$DIR/app.settings.json" "$sharedcfg/brains-manifest.json" "$out/brains.txt" >/dev/null 2>&1 \
+       && [ -f "$out/brains.txt" ]; then
+      cp -f "$out/brains.txt" "$exe.brains.txt" 2>/dev/null || true
+      n=$((n+1))
+    fi
+  fi
+  [ "$n" -gt 0 ] && echo "[c99native] bundle -> $out ($n file: settings + app.settings + Resources + cervelli)" >&2
   return 0
 }
 

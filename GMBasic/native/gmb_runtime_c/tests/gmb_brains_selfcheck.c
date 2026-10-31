@@ -283,6 +283,41 @@ int main(void)
         remove(tpath);
     }
 
+    /* 13) INDICE di un programma distribuito: `<exe>/brains.txt` + snapshot del manifest in
+     *     `<exe>/settings/` → installazione in `<exe>/brains/<nome>/<versione>` (prima della
+     *     cache nell'ordine di ricerca). È ciò che fa `gmb_brain_fetch`. */
+    {
+        char exedir[1200], settdir[1300], mpath2[1400], index[1400], want[1500], outb[1200], errb[512];
+        snprintf(exedir, sizeof exedir, "%s/exe", g_dir);
+        snprintf(settdir, sizeof settdir, "%s/settings", exedir);
+        mkdir_p(exedir);
+        mkdir_p(settdir);
+        snprintf(mpath2, sizeof mpath2, "%s/brains-manifest.json", settdir);
+        CHECK(write_file(mpath2, mjs, strlen(mjs)));
+        snprintf(index, sizeof index, "%s/brains.txt", exedir);
+        char idx[512];
+        int il = snprintf(idx, sizeof idx, "# cervelli del programma\n%s\t1.2.0\n", brain);
+        CHECK(write_file(index, idx, (size_t)il));
+
+        memset(&g_fake_state, 0, sizeof g_fake_state);
+        g_fake_state.path = zip;
+        g_fake.ctx = &g_fake_state;
+        int n = gmb_brains_fetch_index(index, exedir, NULL, NULL, &g_fake, &op, errb, sizeof errb);
+        if (n != 1) printf("  [index] n=%d err=%s\n", n, errb);
+        CHECK(n == 1);
+        snprintf(want, sizeof want, "%s/brains/%s/1.2.0/rag/%s.db", exedir, brain, brain);
+        CHECK(fsize(want) == (long long)sizeof blob);
+        /* seconda passata: niente da scaricare */
+        int before2 = g_fake_state.calls;
+        int n2 = gmb_brains_fetch_index(index, exedir, NULL, NULL, &g_fake, &op, errb, sizeof errb);
+        CHECK(n2 == 0);
+        CHECK(g_fake_state.calls == before2);
+        /* `--only` con un altro nome: non installa nulla */
+        int n3 = gmb_brains_fetch_index(index, exedir, "altro", NULL, &g_fake, &op, errb, sizeof errb);
+        CHECK(n3 == 0);
+        (void)outb;
+    }
+
     printf("gmb_brains_selfcheck: %d check, %d fail\n", checks, fails);
     return fails ? 1 : 0;
 }

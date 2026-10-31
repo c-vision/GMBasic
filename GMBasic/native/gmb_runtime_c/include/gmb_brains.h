@@ -79,6 +79,27 @@ int gmb_brains_install_from_manifest(const char* manifest_path, const char* name
                                      const gmb_fetch_opts* opts, char* out_dir, size_t cap,
                                      char* err, size_t errcap);
 
+/* Installazione in una radice ESPLICITA: `<dest_root>/<nome>/<versione>` (es. `<exe>/brains` per
+ * un programma distribuito, che la risoluzione consulta PRIMA della cache). `dest_root` NULL =
+ * cache utente. */
+int gmb_brains_install_to(const char* manifest_path, const char* name, const char* version,
+                          const char* dest_root, const char* token,
+                          const gmb_fetch_transport* tr, const gmb_fetch_opts* opts,
+                          char* out_dir, size_t cap, char* err, size_t errcap);
+
+/* Indice `<exe>.brains.txt` (TSV `nome<TAB>versione`, # = commento): installa ogni voce in
+ * `<dest_root>/brains/<nome>/<versione>`. `only` limita a un nome. Ritorna il numero installate
+ * (0 = niente da fare), negativo = voci fallite. */
+int gmb_brains_fetch_index(const char* index_path, const char* dest_root, const char* only,
+                           const char* token, const gmb_fetch_transport* tr,
+                           const gmb_fetch_opts* opts, char* err, size_t errcap);
+
+/* Scrive l'indice leggendo i cervelli DICHIARATI dal programma (`"brains": ["nome"|"nome@ver"]`
+ * nel suo app.settings.json); la versione, se assente, è `latest` del manifest. Nessuna
+ * dichiarazione → nessun file (ritorna 0). Usata dal bundle (shell C99 e C#) e da
+ * `gmb_brain_fetch --emit-index`. */
+int gmb_brains_emit_index(const char* app_settings, const char* manifest_path, const char* out_path);
+
 /* Installazione da una SORGENTE esplicita — semantica di `AI BRAIN INSTALL nome, sorgente`:
  * URL http(s) di uno zip `.gmbrain`, percorso di uno zip, oppure una directory già pronta. */
 int gmb_brains_install_source(const char* name, const char* source,
