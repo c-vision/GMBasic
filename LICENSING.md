@@ -40,9 +40,10 @@ Third-party material keeps **its own license**, and is listed in [`NOTICE`](NOTI
 - **stb_truetype** (`gmb_runtime_c/include/stb_truetype.h`) — MIT / public domain;
 - **pdf_oxide** C header (`GMBasic/native/deps/`) — generated header of an external project;
 - the **fonts** in `Resources/` — origin and license of each file in
-  [`Resources/FONTS.md`](Resources/FONTS.md): only **Cascadia Code** (`font.ttf`, SIL OFL 1.1) is
-  redistributable; **SF Mono** (Apple) and **C64 Pro Mono** (style64) are **not** and must be
-  removed before publishing;
+  [`Resources/FONTS.md`](Resources/FONTS.md): **Cascadia Code** (`font.ttf`) and **Sixtyfour**
+  (`Sixtyfour.ttf`) are SIL OFL 1.1 and redistributable; **SF Mono** (Apple) has been removed
+  (its license forbids embedding in non-Apple software) and **C64 Pro Mono** (style64) is
+  **not** redistributable and is still to be removed;
 - the **skills** in `shared/skills/` — [`shared/skills/ATTRIBUTION.md`](shared/skills/ATTRIBUTION.md)
   lists, per skill, the license its own file declares: only the ones with a declared permissive
   license are redistributable, the others are **not**;

@@ -314,7 +314,7 @@ int gmb_paths_repo_root(char* out, size_t cap)
 }
 
 /* ── Cartella `Resources/` CONDIVISA dei due mondi ────────────────────────────────────────────
- * UNA sola, alla radice del monorepo: font (`font.ttf`, SFMono, C64), sprite/PNG e manifest dei
+ * UNA sola, alla radice del monorepo: font (`font.ttf` Cascadia, `Sixtyfour.ttf`), sprite/PNG e manifest dei
  * componenti. Prima il mondo C# aveva la sua copia in `GMBasicSharp/Resources/` e il mondo C
  * cercava `<repo>/Resources` (che nel monorepo è la cartella del solo GMBasic).
  *
