@@ -230,11 +230,6 @@ public static class Orchestrator
         var buildCtx = new PackageBuildContext
         {
             PlatformKey = Parser.PackageManager.GetCurrentPlatformKey(),
-#if GMBASIC_COMMERCIAL
-            Edition = "Commercial",
-#else
-            Edition = "Community",
-#endif
             Backend = backend
         };
 
