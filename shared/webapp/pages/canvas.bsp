@@ -1,10 +1,10 @@
 <%@ IMPORT JSON %>
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GMBasic — Canvas Remoto</title>
+<title>GMBasic — Remote Canvas</title>
 <style>
   :root { color-scheme: light dark; }
   *{box-sizing:border-box;margin:0}
@@ -24,12 +24,12 @@
 </head>
 <body>
 <header>
-  <h1>Canvas Remoto — WebSocket</h1>
-  <p>Draw commands da <code>include/WebCanvas.inc</code> → WS → <code>webapp/static/canvas.js:CanvasReplay</code></p>
+  <h1>Remote Canvas — WebSocket</h1>
+  <p>Draw commands from <code>include/WebCanvas.inc</code> → WS → <code>shared/webapp/static/canvas.js:CanvasReplay</code></p>
 </header>
 <main>
   <div class="card">
-    <p class="muted">Protocollo V1 JSON <code>{op:"pset",x:10,y:10,c:4,v:1}</code> — editabile in <code>WebCanvas.inc</code> + <code>canvas.js</code> (palette 0-15).</p>
+    <p class="muted">V1 JSON protocol <code>{op:"pset",x:10,y:10,c:4,v:1}</code> — editable in <code>WebCanvas.inc</code> + <code>canvas.js</code> (palette 0-15).</p>
     <canvas id="gmb-canvas" class="gmb-canvas" width="800" height="480"></canvas>
     <div class="toolbar">
       <button class="btn btn-primary" onclick="demo()">Demo draw</button>
@@ -37,7 +37,7 @@
       <span class="muted">WS: <code id="ws-status">disconnected</code></span>
       <a class="muted" href="/index.bsp">← Dashboard</a>
     </div>
-    <div class="hint">Server: <code>webapp/app.bas</code> registra <code>GET /ws/canvas</code> → <code>WEBCANVAS.Init(ws)</code> + demo. Questa pagina è standalone; la stessa canvas è anche 4ª tab in <code>/index.bsp</code>.</div>
+    <div class="hint">Server: <code>app.bas</code> registers <code>GET /ws/canvas</code> and pushes a demo frame. This page is standalone; the same canvas is also available in the <b>Canvas</b> tab of <code>/index.bsp</code>.</div>
     <pre id="log" class="json" style="display:none"></pre>
   </div>
 </main>

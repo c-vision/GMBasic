@@ -10664,7 +10664,7 @@ public static double TextWidth(string s)
                             if (string.IsNullOrWhiteSpace(name))
                                 await WriteJsonResponse(response, 400, "{\"error\":\"Missing 'name'\"}");
                             else if (!Basic.Workflow.WorkflowServer.Instance.BeginDefinition(name))
-                                await WriteJsonResponse(response, 409, $"{{\"error\":\"Workflow '{EscapeJson(name)}' già in definizione o esistente\"}}");
+                                await WriteJsonResponse(response, 409, $"{{\"error\":\"Workflow '{EscapeJson(name)}' already in definition or existing\"}}");
                             else
                             {
                                 Basic.Workflow.WorkflowServer.Instance.EndDefinition();
@@ -10866,7 +10866,7 @@ public static double TextWidth(string s)
                         if (string.IsNullOrWhiteSpace(stepName))
                             await WriteJsonResponse(response, 400, "{\"error\":\"Missing 'name' for step\"}");
                         else if (!Basic.Workflow.WorkflowServer.Instance.AddStepToWorkflow(wfName, stepName, action, retry, timeout))
-                            await WriteJsonResponse(response, 404, $"{{\"error\":\"Workflow '{EscapeJson(wfName)}' not found o in costruzione\"}}");
+                            await WriteJsonResponse(response, 404, $"{{\"error\":\"Workflow '{EscapeJson(wfName)}' not found or under construction\"}}");
                         else
                         {
                             var wf2 = Basic.Workflow.WorkflowServer.Instance.Get(wfName);
@@ -10886,7 +10886,7 @@ public static double TextWidth(string s)
                     if (string.IsNullOrWhiteSpace(tname))
                         await WriteJsonResponse(response, 400, "{\"error\":\"Missing 'name'\"}");
                     else if (!Basic.Agents.TeamServer.Instance.Create(tname!))
-                        await WriteJsonResponse(response, 409, $"{{\"error\":\"Team '{EscapeJson(tname!)}' già esistente\"}}");
+                        await WriteJsonResponse(response, 409, $"{{\"error\":\"Team '{EscapeJson(tname!)}' already exists\"}}");
                     else
                     {
                         if (!string.IsNullOrWhiteSpace(strat) &&
@@ -10908,7 +10908,7 @@ public static double TextWidth(string s)
                     if (string.IsNullOrWhiteSpace(tdel))
                         await WriteJsonResponse(response, 400, "{\"error\":\"Missing team name\"}");
                     else if (!Basic.Agents.TeamServer.Instance.Delete(tdel))
-                        await WriteJsonResponse(response, 404, $"{{\"error\":\"Team '{EscapeJson(tdel)}' non trovato\"}}");
+                        await WriteJsonResponse(response, 404, $"{{\"error\":\"Team '{EscapeJson(tdel)}' not found\"}}");
                     else
                         await WriteJsonResponse(response, 200, $"{{\"deleted\":\"{EscapeJson(tdel)}\"}}");
                 }
@@ -10928,7 +10928,7 @@ public static double TextWidth(string s)
                         if (!string.IsNullOrWhiteSpace(roleStr))
                             Enum.TryParse<Basic.Agents.TeamRole>(roleStr, ignoreCase: true, out role);
                         if (!Basic.Agents.TeamServer.Instance.AddAgent(tname, agentName!, role))
-                            await WriteJsonResponse(response, 404, $"{{\"error\":\"Team '{EscapeJson(tname)}' o agente '{EscapeJson(agentName!)}' non valido (già membro?)\"}}");
+                            await WriteJsonResponse(response, 404, $"{{\"error\":\"Team '{EscapeJson(tname)}' or agent '{EscapeJson(agentName!)}' not valid (already a member?)\"}}");
                         else
                         {
                             var t3 = Basic.Agents.TeamServer.Instance.Get(tname);
@@ -10954,7 +10954,7 @@ public static double TextWidth(string s)
                     if (string.IsNullOrWhiteSpace(tname) || string.IsNullOrWhiteSpace(agentName))
                         await WriteJsonResponse(response, 400, "{\"error\":\"Missing team or agent\"}");
                     else if (!Basic.Agents.TeamServer.Instance.RemoveAgent(tname, agentName))
-                        await WriteJsonResponse(response, 404, $"{{\"error\":\"'{EscapeJson(agentName)}' non è membro di '{EscapeJson(tname)}'\"}}");
+                        await WriteJsonResponse(response, 404, $"{{\"error\":\"'{EscapeJson(agentName)}' is not a member of '{EscapeJson(tname)}'\"}}");
                     else
                         await WriteJsonResponse(response, 200, $"{{\"team\":\"{EscapeJson(tname)}\",\"removed\":\"{EscapeJson(agentName)}\"}}");
                 }
@@ -10981,7 +10981,7 @@ public static double TextWidth(string s)
                     if (string.IsNullOrWhiteSpace(lname) || string.IsNullOrWhiteSpace(lp))
                         await WriteJsonResponse(response, 400, "{\"error\":\"Missing name or path\"}");
                     else if (!File.Exists(lp))
-                        await WriteJsonResponse(response, 404, $"{{\"error\":\"File non trovato: {EscapeJson(lp!)}\"}}");
+                        await WriteJsonResponse(response, 404, $"{{\"error\":\"File not found: {EscapeJson(lp!)}\"}}");
                     else
                     {
                         try { Basic.Agents.TeamServer.Instance.Load(lname!, lp!); await WriteJsonResponse(response, 200, $"{{\"loaded\":\"{EscapeJson(lname!)}\"}}"); }
@@ -11046,7 +11046,7 @@ public static double TextWidth(string s)
                     if (string.IsNullOrWhiteSpace(wfDel))
                         await WriteJsonResponse(response, 400, "{\"error\":\"Missing workflow name\"}");
                     else if (!Basic.Workflow.WorkflowServer.Instance.Delete(wfDel))
-                        await WriteJsonResponse(response, 404, $"{{\"error\":\"Workflow '{EscapeJson(wfDel)}' not found o in costruzione\"}}");
+                        await WriteJsonResponse(response, 404, $"{{\"error\":\"Workflow '{EscapeJson(wfDel)}' not found or under construction\"}}");
                     else
                         await WriteJsonResponse(response, 200, $"{{\"deleted\":\"{EscapeJson(wfDel)}\"}}");
                 }

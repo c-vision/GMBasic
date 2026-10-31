@@ -27,7 +27,7 @@ NAMESPACE DASHBOARD
 ' --- Costanti editabili (tema + timing) ---
 
 PUBLIC CONST TITLE$ = "GMBasic — Agents Operating Center"
-PUBLIC CONST SUBTITLE$ = "3 tab: Agents · Teams · Log · Canvas · WASM"
+PUBLIC CONST SUBTITLE$ = "8 tabs: Agents · Teams · Log · Workflows · Memory · Brain · Canvas · WASM"
 PUBLIC CONST REFRESH_MS% = 2000
 PUBLIC CONST API_BASE$ = "/api"
 PUBLIC CONST PROTOCOL_VERSION% = 1

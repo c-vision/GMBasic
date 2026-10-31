@@ -18,7 +18,7 @@
   ' Tutti gli altri /api/* sono inoltrati al server agenti.
 %>
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -104,16 +104,16 @@
   <div class="row">
     <div>
       <h1><%= DASHBOARD.TITLE$ %></h1>
-      <div class="sub">Agents · Teams · Log · Workflows · Memory · Canvas · WASM — tutto in BASIC</div>
+      <div class="sub">Agents · Teams · Log · Workflows · Memory · Canvas · WASM — all in BASIC</div>
     </div>
     <div class="chips">
       <span class="chip" id="chip-api">API: <b>…</b></span>
       <span class="chip" id="chip-provider">provider: <b>…</b></span>
       <span class="chip" id="chip-model">model: <b>…</b></span>
-      <span class="chip" id="chip-agents">agenti: <b>0</b></span>
-      <span class="chip" id="chip-teams">team: <b>0</b></span>
+      <span class="chip" id="chip-agents">agents: <b>0</b></span>
+      <span class="chip" id="chip-teams">teams: <b>0</b></span>
       <span class="chip" id="chip-uptime">uptime: <b>…</b></span>
-      <span class="chip chip-btn" id="btn-pause" title="Ferma/riprendi il polling">⏸ pausa</span>
+      <span class="chip chip-btn" id="btn-pause" title="Pause/resume polling">⏸ pause</span>
     </div>
   </div>
 </header>
@@ -136,16 +136,16 @@
 <!-- ===================== AGENTS ===================== -->
 <section id="panel-agents" class="panel active">
   <h2>Agents</h2>
-  <p class="muted">Gestione completa: crea, aggiorna (prompt/permessi/modello), elimina, chat sincrona.
-     I dati arrivano da <code>/api/agents</code> (proxy) e <code>POST/PATCH/DELETE /api/agents*</code> (implementati in <code>app.bas</code>).</p>
+  <p class="muted">Full lifecycle: create, update (prompt/permissions/model), delete, synchronous chat.
+     Data comes from <code>/api/agents</code> (proxy) and <code>POST/PATCH/DELETE /api/agents*</code> (implemented in <code>app.bas</code>).</p>
   <div class="card">
     <table>
-      <thead><tr><th>Nome</th><th>Stato</th><th>Permessi</th><th>Modello</th><th>Azioni</th></tr></thead>
+      <thead><tr><th>Name</th><th>Status</th><th>Permissions</th><th>Model</th><th>Actions</th></tr></thead>
       <tbody id="agents-body">
         <%
           DIM anames() = AI.AGENTLIST()
           IF UBOUND(anames) < 0 THEN
-            PRINT DASHBOARD.EmptyRowHtml(5, "Nessun agente — creane uno con il form sotto")
+            PRINT DASHBOARD.EmptyRowHtml(5, "No agents — create one with the form below")
           ELSE
             FOR i = 0 TO UBOUND(anames)
               DIM nm$ = anames(i)
@@ -163,54 +163,54 @@
 
   <div class="split">
     <div class="card">
-      <h3 style="margin-top:0">Nuovo agente</h3>
+      <h3 style="margin-top:0">New agent</h3>
       <div class="grid cols2">
-        <label>Nome <input id="new-name" placeholder="Es. Reviewer"></label>
-        <label>Permessi
+        <label>Name <input id="new-name" placeholder="e.g. Reviewer"></label>
+        <label>Permissions
           <select id="new-perm">
             <option value="YOLO">YOLO</option>
             <option value="Supervised" selected>Supervised</option>
             <option value="Sandbox">Sandbox</option>
           </select>
         </label>
-        <label>Modello <input id="new-model" placeholder="(default del provider)"></label>
-        <label>Temperature <input id="new-temp" placeholder="es. 0.3" inputmode="decimal"></label>
+        <label>Model <input id="new-model" placeholder="(provider default)"></label>
+        <label>Temperature <input id="new-temp" placeholder="e.g. 0.3" inputmode="decimal"></label>
       </div>
       <label style="display:flex;flex-direction:column;gap:.2rem;font-size:.75rem;color:var(--muted);margin-top:.5rem">
         System prompt
-        <textarea id="new-prompt" placeholder="Sei un assistente conciso e preciso."></textarea>
+        <textarea id="new-prompt" placeholder="You are a concise, precise assistant."></textarea>
       </label>
-      <div class="toolbar"><button class="btn btn-primary" id="btn-create">Crea agente</button></div>
+      <div class="toolbar"><button class="btn btn-primary" id="btn-create">Create agent</button></div>
     </div>
 
     <div class="card">
-      <h3 style="margin-top:0">Chat / aggiorna</h3>
+      <h3 style="margin-top:0">Chat / update</h3>
       <div class="grid cols2">
-        <label>Agente <input id="sel-agent" placeholder="nome agente" list="agent-names"><datalist id="agent-names"></datalist></label>
-        <label>Nuovo modello <input id="set-model" placeholder="(lascia vuoto = invariato)"></label>
-        <label>Nuovi permessi
+        <label>Agent <input id="sel-agent" placeholder="agent name" list="agent-names"><datalist id="agent-names"></datalist></label>
+        <label>New model <input id="set-model" placeholder="(leave empty = unchanged)"></label>
+        <label>New permissions
           <select id="set-perm">
-            <option value="">(invariato)</option>
+            <option value="">(unchanged)</option>
             <option value="YOLO">YOLO</option>
             <option value="Supervised">Supervised</option>
             <option value="Sandbox">Sandbox</option>
           </select>
         </label>
-        <label>Temperature <input id="set-temp" placeholder="(invariata)" inputmode="decimal"></label>
+        <label>Temperature <input id="set-temp" placeholder="(unchanged)" inputmode="decimal"></label>
       </div>
       <label style="display:flex;flex-direction:column;gap:.2rem;font-size:.75rem;color:var(--muted);margin-top:.5rem">
-        Nuovo system prompt <input id="set-prompt" placeholder="(invariato)">
+        New system prompt <input id="set-prompt" placeholder="(unchanged)">
       </label>
       <div class="toolbar">
-        <button class="btn" id="btn-update">Aggiorna</button>
-        <button class="btn btn-danger" id="btn-delete">Elimina</button>
+        <button class="btn" id="btn-update">Update</button>
+        <button class="btn btn-danger" id="btn-delete">Delete</button>
       </div>
       <label style="display:flex;flex-direction:column;gap:.2rem;font-size:.75rem;color:var(--muted)">
-        Prompt di chat
-        <input id="chat-prompt" placeholder="Scrivi un prompt e premi Invia">
+        Chat prompt
+        <input id="chat-prompt" placeholder="Type a prompt and press Send">
       </label>
       <div class="toolbar">
-        <button class="btn btn-primary" id="btn-ask">Invia</button>
+        <button class="btn btn-primary" id="btn-ask">Send</button>
         <span class="muted" id="ask-state"></span>
       </div>
       <pre class="out" id="chat-out"></pre>
@@ -221,16 +221,16 @@
 <!-- ===================== TEAMS ===================== -->
 <section id="panel-teams" class="panel">
   <h2>Teams</h2>
-  <p class="muted">Team del runtime (creazione/aggiunta membri: comandi <code>AI TEAM …</code> da BASIC).
-     Broadcast via <code>POST /api/team/{name}/broadcast</code>.</p>
+  <p class="muted">Runtime teams. Creation and member changes go through the API (the BASIC
+     commands <code>AI TEAM …</code> need static names). Broadcast via <code>POST /api/team/{name}/broadcast</code>.</p>
   <div class="card">
     <table>
-      <thead><tr><th>Nome</th><th>Strategia</th><th>Membri</th><th>Azioni</th></tr></thead>
+      <thead><tr><th>Name</th><th>Strategy</th><th>Members</th><th>Actions</th></tr></thead>
       <tbody id="teams-body">
         <%
           DIM tl$ = AI.TEAMLIST()
           IF LEN(tl$) = 0 THEN
-            PRINT DASHBOARD.EmptyRowHtml(4, "Nessun team — crea con AI TEAM CREATE MyTeam")
+            PRINT DASHBOARD.EmptyRowHtml(4, "No teams — create one below")
           ELSE
             DIM tnames() AS STRING = SPLIT(tl$, CHR$(10))
             FOR i = 0 TO UBOUND(tnames)
@@ -243,10 +243,10 @@
   </div>
   <div class="split">
     <div class="card">
-      <h3 style="margin-top:0">Nuovo team</h3>
+      <h3 style="margin-top:0">New team</h3>
       <div class="grid cols2">
-        <label>Nome <input id="team-name" placeholder="Es. Review"></label>
-        <label>Strategia
+        <label>Name <input id="team-name" placeholder="e.g. Review"></label>
+        <label>Strategy
           <select id="team-strategy">
             <option value="Sequential">Sequential</option>
             <option value="RoundRobin">RoundRobin</option>
@@ -257,12 +257,12 @@
           </select>
         </label>
       </div>
-      <div class="toolbar"><button class="btn btn-primary" id="btn-team-create">Crea team</button></div>
-      <h3>Aggiungi membro</h3>
+      <div class="toolbar"><button class="btn btn-primary" id="btn-team-create">Create team</button></div>
+      <h3>Add member</h3>
       <div class="grid cols3">
-        <label>Team <input id="team-add-team" placeholder="nome team" list="team-names"><datalist id="team-names"></datalist></label>
-        <label>Agente <input id="team-add-agent" placeholder="nome agente" list="agent-names-2"><datalist id="agent-names-2"></datalist></label>
-        <label>Ruolo
+        <label>Team <input id="team-add-team" placeholder="team name" list="team-names"><datalist id="team-names"></datalist></label>
+        <label>Agent <input id="team-add-agent" placeholder="agent name" list="agent-names-2"><datalist id="agent-names-2"></datalist></label>
+        <label>Role
           <select id="team-add-role">
             <option value="Worker">Worker</option>
             <option value="Coordinator">Coordinator</option>
@@ -270,17 +270,17 @@
           </select>
         </label>
       </div>
-      <div class="toolbar"><button class="btn" id="btn-team-add">Aggiungi</button></div>
+      <div class="toolbar"><button class="btn" id="btn-team-add">Add</button></div>
     </div>
     <div class="card">
       <h3 style="margin-top:0">Broadcast</h3>
       <div class="grid cols2">
-        <label>Team <input id="bc-team" placeholder="nome team"></label>
-        <label>Messaggio <input id="bc-msg" placeholder="messaggio"></label>
+        <label>Team <input id="bc-team" placeholder="team name"></label>
+        <label>Message <input id="bc-msg" placeholder="message"></label>
       </div>
-      <div class="toolbar"><button class="btn btn-primary" id="btn-broadcast">Invia</button></div>
+      <div class="toolbar"><button class="btn btn-primary" id="btn-broadcast">Send</button></div>
       <pre class="out" id="bc-out"></pre>
-      <p class="muted" style="margin-top:.6rem">I team sono <b>persistiti</b> in <code>bin/teams/&lt;nome&gt;.team.json</code> e ricaricati all'avvio.</p>
+      <p class="muted" style="margin-top:.6rem">Teams are <b>persisted</b> in <code>bin/teams/&lt;name&gt;.team.json</code> and reloaded on startup.</p>
     </div>
   </div>
 </section>
@@ -288,21 +288,21 @@
 <!-- ===================== LOG ===================== -->
 <section id="panel-log" class="panel">
   <h2>Log / Events</h2>
-  <p class="muted">Ring buffer di <code>AI.AGENTEVENTS()</code> (si popola con <code>AI AGENT TRACE VERBOSE</code>, attivo all'avvio).
-     Live su <code>GET /api/events</code>.</p>
+  <p class="muted">Ring buffer of <code>AI.AGENTEVENTS()</code> (filled by <code>AI AGENT TRACE VERBOSE</code>, enabled at startup).
+     Live from <code>GET /api/events</code>.</p>
   <div class="toolbar">
-    <input id="log-filter" placeholder="filtra (testo)" style="min-width:220px">
-    <button class="btn btn-ghost" id="btn-log-refresh">Aggiorna</button>
+    <input id="log-filter" placeholder="filter (text)" style="min-width:220px">
+    <button class="btn btn-ghost" id="btn-log-refresh">Refresh</button>
     <label class="kv muted" style="font-size:.8rem"><input type="checkbox" id="log-autoscroll" checked> autoscroll</label>
     <span class="muted" id="log-count"></span>
   </div>
   <div class="card">
-    <table><thead><tr><th>Evento</th></tr></thead>
+    <table><thead><tr><th>Event</th></tr></thead>
       <tbody id="log-body">
         <%
           DIM evs() = AI.AGENTEVENTS()
           IF UBOUND(evs) < 0 THEN
-            PRINT "<tr><td class='empty muted'>Nessun evento — attiva TRACE e usa un agente</td></tr>"
+            PRINT "<tr><td class='empty muted'>No events — enable TRACE and use an agent</td></tr>"
           ELSE
             FOR i = 0 TO UBOUND(evs)
               PRINT "<tr><td class='detail'>" + DASHBOARD.EscapeHtml(evs(i)) + "</td></tr>"
@@ -317,16 +317,16 @@
 <!-- ===================== WORKFLOWS ===================== -->
 <section id="panel-workflows" class="panel">
   <h2>Workflows</h2>
-  <p class="muted">Crea, aggiungi step, esegui, ispeziona, elimina.
+  <p class="muted">Create, add steps, run, inspect, delete.
      API: <code>POST /api/workflows</code>, <code>POST /api/workflows/{n}/steps|execute</code>, <code>GET/DELETE /api/workflows/{n}</code>.</p>
   <div class="card">
     <table>
-      <thead><tr><th>Nome</th><th>Stato</th><th>Step</th><th>Azioni</th></tr></thead>
+      <thead><tr><th>Name</th><th>Status</th><th>Steps</th><th>Actions</th></tr></thead>
       <tbody id="wf-body">
         <%
           DIM wl$ = AI.WorkflowList()
           IF LEN(wl$) = 0 THEN
-            PRINT "<tr><td colspan='4' class='muted'>Nessun workflow — creane uno qui sotto</td></tr>"
+            PRINT "<tr><td colspan='4' class='muted'>No workflows — create one below</td></tr>"
           ELSE
             DIM wfs() AS STRING = SPLIT(wl$, CHR$(10))
             FOR i = 0 TO UBOUND(wfs)
@@ -342,28 +342,28 @@
   </div>
   <div class="split">
     <div class="card">
-      <h3 style="margin-top:0">Nuovo workflow</h3>
+      <h3 style="margin-top:0">New workflow</h3>
       <div class="grid cols2">
-        <label>Nome <input id="wf-name" placeholder="Es. Smoke"></label>
-        <label>&nbsp;<button class="btn btn-primary" id="btn-wf-create">Crea</button></label>
+        <label>Name <input id="wf-name" placeholder="e.g. Smoke"></label>
+        <label>&nbsp;<button class="btn btn-primary" id="btn-wf-create">Create</button></label>
       </div>
       <h3>Step</h3>
       <div class="grid cols4">
-        <label>Workflow <input id="wf-step-wf" placeholder="nome"></label>
+        <label>Workflow <input id="wf-step-wf" placeholder="name"></label>
         <label>Step <input id="wf-step-name" placeholder="s1"></label>
-        <label>Azione <input id="wf-step-action" placeholder="PRINT 42"></label>
+        <label>Action <input id="wf-step-action" placeholder="PRINT 42"></label>
         <label>Retry <input id="wf-step-retry" placeholder="0" inputmode="numeric"></label>
       </div>
-      <div class="toolbar"><button class="btn" id="btn-wf-step">Aggiungi step</button></div>
+      <div class="toolbar"><button class="btn" id="btn-wf-step">Add step</button></div>
     </div>
     <div class="card">
-      <h3 style="margin-top:0">Esegui / ispeziona / elimina</h3>
+      <h3 style="margin-top:0">Run / inspect / delete</h3>
       <div class="grid cols3">
-        <label>Workflow <input id="wf-target" placeholder="nome"></label>
-        <label>&nbsp;<button class="btn btn-primary" id="btn-wf-run">Esegui</button></label>
-        <label>&nbsp;<button class="btn btn-ghost" id="btn-wf-detail">Dettaglio</button></label>
+        <label>Workflow <input id="wf-target" placeholder="name"></label>
+        <label>&nbsp;<button class="btn btn-primary" id="btn-wf-run">Run</button></label>
+        <label>&nbsp;<button class="btn btn-ghost" id="btn-wf-detail">Detail</button></label>
       </div>
-      <div class="toolbar"><button class="btn btn-danger" id="btn-wf-delete">Elimina workflow</button></div>
+      <div class="toolbar"><button class="btn btn-danger" id="btn-wf-delete">Delete workflow</button></div>
       <pre class="out" id="wf-out"></pre>
     </div>
   </div>
@@ -372,19 +372,19 @@
 <!-- ===================== MEMORY ===================== -->
 <section id="panel-memory" class="panel">
   <h2>Memory</h2>
-  <p class="muted">Key-value del runtime (<code>MEMORY.STORE/LOAD/DELETE/LIST</code>) via <code>/api/memory*</code>.</p>
+  <p class="muted">Runtime key-value store (<code>MEMORY.STORE/LOAD/DELETE/LIST</code>) via <code>/api/memory*</code>.</p>
   <div class="card">
     <div class="toolbar">
-      <input id="mem-search" placeholder="cerca chiave (pattern)" style="min-width:220px">
-      <button class="btn btn-ghost" id="btn-mem-refresh">Aggiorna</button>
+      <input id="mem-search" placeholder="search key (pattern)" style="min-width:220px">
+      <button class="btn btn-ghost" id="btn-mem-refresh">Refresh</button>
       <span class="muted" id="mem-count"></span>
     </div>
-    <table><thead><tr><th>Chiave</th><th>Valore</th><th>Azioni</th></tr></thead>
+    <table><thead><tr><th>Key</th><th>Value</th><th>Actions</th></tr></thead>
       <tbody id="mem-body">
         <%
           DIM mlist$ = MEMORY.LIST()
           IF LEN(mlist$) = 0 THEN
-            PRINT "<tr><td colspan='3' class='muted'>Nessuna chiave — usa il form sotto</td></tr>"
+            PRINT "<tr><td colspan='3' class='muted'>No keys — use the form below</td></tr>"
           ELSE
             DIM mkeys() AS STRING = SPLIT(mlist$, CHR$(10))
             FOR i = 0 TO UBOUND(mkeys)
@@ -398,16 +398,16 @@
   </div>
   <div class="card">
     <div class="grid cols3">
-      <label>Chiave <input id="mem-key" placeholder="chiave"></label>
-      <label>Valore <input id="mem-value" placeholder="valore"></label>
+      <label>Key <input id="mem-key" placeholder="key"></label>
+      <label>Value <input id="mem-value" placeholder="value"></label>
       <label class="kv" style="flex-direction:row;align-items:center;gap:.35rem;font-size:.8rem;color:var(--muted)">
-        <input type="checkbox" id="mem-long"> lungo termine
+        <input type="checkbox" id="mem-long"> long term
       </label>
     </div>
     <div class="toolbar">
-      <button class="btn btn-primary" id="btn-mem-store">Salva</button>
-      <button class="btn btn-ghost" id="btn-mem-load">Carica</button>
-      <button class="btn btn-danger" id="btn-mem-delete">Elimina</button>
+      <button class="btn btn-primary" id="btn-mem-store">Save</button>
+      <button class="btn btn-ghost" id="btn-mem-load">Load</button>
+      <button class="btn btn-danger" id="btn-mem-delete">Delete</button>
     </div>
     <pre class="out" id="mem-out"></pre>
   </div>
@@ -416,30 +416,30 @@
 <!-- ===================== BRAIN ===================== -->
 <section id="panel-brain" class="panel">
   <h2>Second Brain</h2>
-  <p class="muted">Note/fatti + ricerca semantica (<code>AI.MEMORYASK</code>) via <code>/api/brain/*</code>.</p>
+  <p class="muted">Notes/facts + semantic search (<code>AI.MEMORYASK</code>) via <code>/api/brain/*</code>.</p>
   <div class="card">
     <div class="grid cols3">
-      <label>Ricerca <input id="brain-q" placeholder="domanda o parole chiave"></label>
+      <label>Search <input id="brain-q" placeholder="question or keywords"></label>
       <label>topK <input id="brain-k" placeholder="5" inputmode="numeric"></label>
-      <label>&nbsp;<button class="btn btn-primary" id="btn-brain-search">Cerca</button></label>
+      <label>&nbsp;<button class="btn btn-primary" id="btn-brain-search">Search</button></label>
     </div>
     <pre class="out" id="brain-out"></pre>
   </div>
   <div class="split">
     <div class="card">
-      <h3 style="margin-top:0">Aggiungi</h3>
+      <h3 style="margin-top:0">Add</h3>
       <label style="display:flex;flex-direction:column;gap:.2rem;font-size:.75rem;color:var(--muted)">
-        Testo <textarea id="brain-text" placeholder="Nota, fatto o osservazione…"></textarea>
+        Text <textarea id="brain-text" placeholder="Note, fact or observation…"></textarea>
       </label>
       <div class="toolbar">
-        <button class="btn" id="btn-brain-note">Nota</button>
-        <button class="btn" id="btn-brain-fact">Fatto</button>
-        <button class="btn btn-ghost" id="btn-brain-consolidate">Consolida</button>
+        <button class="btn" id="btn-brain-note">Note</button>
+        <button class="btn" id="btn-brain-fact">Fact</button>
+        <button class="btn btn-ghost" id="btn-brain-consolidate">Consolidate</button>
       </div>
     </div>
     <div class="card">
-      <h3 style="margin-top:0">Ultime voci</h3>
-      <div class="toolbar"><button class="btn btn-ghost" id="btn-brain-list">Aggiorna</button></div>
+      <h3 style="margin-top:0">Latest entries</h3>
+      <div class="toolbar"><button class="btn btn-ghost" id="btn-brain-list">Refresh</button></div>
       <pre class="out" id="brain-list"></pre>
     </div>
   </div>
@@ -447,14 +447,14 @@
 
 <!-- ===================== CANVAS ===================== -->
 <section id="panel-canvas" class="panel">
-  <h2>Canvas remoto</h2>
-  <p class="muted">Comandi di disegno generati in BASIC (<code>WEBCANVAS</code>) → JSON sul WebSocket <code>/ws/canvas</code> → questo <code>&lt;canvas&gt;</code>.</p>
+  <h2>Remote canvas</h2>
+  <p class="muted">Draw commands generated in BASIC (<code>WEBCANVAS</code>) → JSON on the <code>/ws/canvas</code> WebSocket → this <code>&lt;canvas&gt;</code>.</p>
   <div class="card">
     <div class="toolbar">
-      <button class="btn btn-primary" id="btn-canvas-connect">Connetti WS</button>
-      <button class="btn" id="btn-canvas-demo">Chiedi demo</button>
-      <button class="btn btn-ghost" id="btn-canvas-clear">Pulisci (locale)</button>
-      <span class="muted" id="canvas-state">non connesso</span>
+      <button class="btn btn-primary" id="btn-canvas-connect">Connect WS</button>
+      <button class="btn" id="btn-canvas-demo">Request demo</button>
+      <button class="btn btn-ghost" id="btn-canvas-clear">Clear (local)</button>
+      <span class="muted" id="canvas-state">not connected</span>
     </div>
     <canvas id="gmb-canvas" class="gmb-canvas" width="800" height="480"></canvas>
     <pre class="out" id="canvas-log"></pre>
@@ -464,18 +464,18 @@
 <!-- ===================== WASM ===================== -->
 <section id="panel-wasm" class="panel">
   <h2>WASM</h2>
-  <p class="muted">Target <code>.bas → .wasm</code> (clang wasm32 + <code>WasmBridge.inc</code>). Questa tab è una <b>shell</b>:
-     se <code>static/prog.wasm</code> non esiste, lo dichiara invece di fingere.</p>
+  <p class="muted">Target <code>.bas → .wasm</code> (clang wasm32 + <code>WasmBridge.inc</code>). This tab is a <b>shell</b>:
+     if <code>static/prog.wasm</code> is missing it says so instead of pretending.</p>
   <div class="card">
     <div class="toolbar">
-      <button class="btn btn-ghost" id="btn-wasm-check">Verifica prog.wasm</button>
+      <button class="btn btn-ghost" id="btn-wasm-check">Check prog.wasm</button>
       <button class="btn" id="btn-wasm-demo">Demo draw (JS)</button>
-      <span class="muted" id="wasm-state">non verificato</span>
+      <span class="muted" id="wasm-state">not checked</span>
     </div>
     <canvas id="wasm-canvas" class="gmb-canvas" width="800" height="320"></canvas>
     <div class="hint" id="wasm-hint">
-      Per produrre un modulo: <code>dotnet GMBasicSharp/REPL/bin/Debug/net10.0/REPL.dll --pcode --c99 prog.bas -o /tmp/prog.c</code>
-      poi <code>clang --target=wasm32 -o shared/webapp/static/prog.wasm /tmp/prog.c GMBasic/native/gmb_runtime_c/src/*.c</code>.
+      To build a module: <code>dotnet GMBasicSharp/REPL/bin/Debug/net10.0/REPL.dll --pcode --c99 prog.bas -o /tmp/prog.c</code>
+      then <code>clang --target=wasm32 -o shared/webapp/static/prog.wasm /tmp/prog.c GMBasic/native/gmb_runtime_c/src/*.c</code>.
     </div>
     <pre class="out" id="wasm-log"></pre>
   </div>
@@ -539,18 +539,18 @@
       var chip=el('chip-api');
       var reach = st.apiReachable===true;
       chip.className='chip '+(reach?'ok':'bad');
-      chip.innerHTML='API: <b>'+(reach?'ok':'giù')+'</b>';
+      chip.innerHTML='API: <b>'+(reach?'ok':'down')+'</b>';
       el('chip-provider').innerHTML='provider: <b>'+esc(st.activeProvider||'—')+'</b>';
       el('chip-model').innerHTML='model: <b>'+esc(st.model||'—')+'</b>';
-      el('chip-agents').innerHTML='agenti: <b>'+esc(st.agents)+'</b>';
-      var ct=el('chip-teams'); if(ct) ct.innerHTML='team: <b>'+esc(st.teams==null?0:st.teams)+'</b>';
+      el('chip-agents').innerHTML='agents: <b>'+esc(st.agents)+'</b>';
+      var ct=el('chip-teams'); if(ct) ct.innerHTML='teams: <b>'+esc(st.teams==null?0:st.teams)+'</b>';
       el('chip-uptime').innerHTML='uptime: <b>'+esc(fmtUp(st.uptimeSec))+'</b>';
-      if(!reach) banner('Il server agenti (porta '+st.apiPort+') non risponde: i dati live sono fermi. '+
-                        'Controlla che `AI AGENT SERVE` sia partito (log del processo).');
+      if(!reach) banner('The agent server (port '+st.apiPort+') is not responding: live data is stalled. '+
+                        'Check that `AI AGENT SERVE` started (process log).');
       else banner('');
       return st;
     }).catch(function(e){
-      banner('Dashboard raggiungibile ma /api/status fallisce: '+e.message);
+      banner('Dashboard reachable but /api/status failed: '+e.message);
       return null;
     });
   }
@@ -573,7 +573,7 @@
       S.agents=list||[];
       var tb=el('agents-body');
       tb.innerHTML = S.agents.length ? S.agents.map(agentRow).join('')
-        : '<tr><td colspan="5" class="muted">Nessun agente — creane uno con il form sotto</td></tr>';
+        : '<tr><td colspan="5" class="muted">No agents — create one with the form below</td></tr>';
       var dl=el('agent-names');
       dl.innerHTML = S.agents.map(function(a){return '<option value="'+esc(a.name)+'">';}).join('');
       var dl2=el('agent-names-2');
@@ -584,45 +584,45 @@
   function wireAgents(){
     el('btn-create').addEventListener('click',function(){
       var name=el('new-name').value.trim();
-      if(!name){ toast('serve un nome',true); return; }
+      if(!name){ toast('a name is required',true); return; }
       var body={name:name, permission:el('new-perm').value,
                 systemPrompt:el('new-prompt').value.trim()};
       var model=el('new-model').value.trim(); if(model) body.model=model;
       var t=el('new-temp').value.trim(); if(t) body.temperature=t;
       postJson('/api/agents',body).then(function(r){
-        toast('agente creato: '+r.created); el('new-name').value=''; el('new-prompt').value='';
+        toast('agent created: '+r.created); el('new-name').value=''; el('new-prompt').value='';
         refreshAgents();
       }).catch(function(e){ toast('create: '+e.message,true); });
     });
     el('btn-update').addEventListener('click',function(){
       var name=el('sel-agent').value.trim();
-      if(!name){ toast('seleziona un agente',true); return; }
+      if(!name){ toast('select an agent',true); return; }
       var body={};
       var m=el('set-model').value.trim(); if(m) body.model=m;
       var p=el('set-perm').value; if(p) body.permission=p;
       var t=el('set-temp').value.trim(); if(t) body.temperature=t;
       var sp=el('set-prompt').value.trim(); if(sp) body.systemPrompt=sp;
-      if(!Object.keys(body).length){ toast('nessun campo da aggiornare',true); return; }
+      if(!Object.keys(body).length){ toast('no fields to update',true); return; }
       api('/api/agents/'+encodeURIComponent(name),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
-        .then(function(r){ toast('aggiornato ('+r.fields+' campi)'); refreshAgents(); })
+        .then(function(r){ toast('updated ('+r.fields+' fields)'); refreshAgents(); })
         .catch(function(e){ toast('update: '+e.message,true); });
     });
     el('btn-delete').addEventListener('click',function(){
       var name=el('sel-agent').value.trim();
-      if(!name){ toast('seleziona un agente',true); return; }
-      if(!confirm('Eliminare l\'agente "'+name+'"?')) return;
+      if(!name){ toast('select an agent',true); return; }
+      if(!confirm('Delete agent "'+name+'"?')) return;
       api('/api/agents/'+encodeURIComponent(name),{method:'DELETE'})
-        .then(function(r){ toast('eliminato: '+r.deleted); refreshAgents(); })
+        .then(function(r){ toast('deleted: '+r.deleted); refreshAgents(); })
         .catch(function(e){ toast('delete: '+e.message,true); });
     });
     el('btn-ask').addEventListener('click',function(){
       var name=el('sel-agent').value.trim();
       var prompt=el('chat-prompt').value.trim();
-      if(!name||!prompt){ toast('servono agente e prompt',true); return; }
-      el('ask-state').textContent='invio…';
+      if(!name||!prompt){ toast('agent and prompt are required',true); return; }
+      el('ask-state').textContent='sending…';
       postJson('/api/agents/'+encodeURIComponent(name)+'/ask',{prompt:prompt})
         .then(function(r){ out('chat-out',r); el('ask-state').textContent=''; refreshAgents(); })
-        .catch(function(e){ out('chat-out','errore: '+e.message); el('ask-state').textContent=''; });
+        .catch(function(e){ out('chat-out','error: '+e.message); el('ask-state').textContent=''; });
     });
     el('agents-body').addEventListener('click',function(ev){
       var b=ev.target.closest('button[data-act]'); if(!b) return;
@@ -640,9 +640,9 @@
         return '<tr><td class="name">'+esc(t.name)+'</td><td><span class="badge strategy">'+esc(t.strategy||'-')+
                '</span></td><td>'+esc(t.memberCount||0)+'</td>'
              + '<td><button class="btn btn-ghost" data-team="'+esc(t.name)+'">Seleziona</button> '
-             + '<button class="btn btn-ghost" data-team-add="'+esc(t.name)+'">+ Agente</button> '
-             + '<button class="btn btn-danger" data-team-del="'+esc(t.name)+'">Elimina</button></td></tr>';
-      }).join('') : '<tr><td colspan="4" class="muted">Nessun team — creane uno qui sotto</td></tr>';
+             + '<button class="btn btn-ghost" data-team-add="'+esc(t.name)+'">+ Agent</button> '
+             + '<button class="btn btn-danger" data-team-del="'+esc(t.name)+'">Delete</button></td></tr>';
+      }).join('') : '<tr><td colspan="4" class="muted">No teams — create one below</td></tr>';
       var dl=el('team-names');
       if(dl) dl.innerHTML = list.map(function(t){return '<option value="'+esc(t.name)+'">';}).join('');
       return list;
@@ -657,32 +657,32 @@
       var d=ev.target.closest('button[data-team-del]');
       if(d){
         var name=d.getAttribute('data-team-del');
-        if(!confirm('Eliminare il team "'+name+'"?')) return;
+        if(!confirm('Delete team "'+name+'"?')) return;
         api('/api/teams/'+encodeURIComponent(name),{method:'DELETE'})
-          .then(function(r){ toast('team eliminato: '+(r.deleted||name)); refreshTeams(); })
+          .then(function(r){ toast('team deleted: '+(r.deleted||name)); refreshTeams(); })
           .catch(function(e){ toast('delete team: '+e.message,true); });
       }
     });
     el('btn-team-create').addEventListener('click',function(){
       var n=el('team-name').value.trim();
-      if(!n){ toast('nome team?',true); return; }
+      if(!n){ toast('team name?',true); return; }
       postJson('/api/teams',{name:n, strategy:el('team-strategy').value})
-        .then(function(r){ toast('team creato: '+(r.name||n)); el('team-name').value=''; refreshTeams(); })
+        .then(function(r){ toast('team created: '+(r.name||n)); el('team-name').value=''; refreshTeams(); })
         .catch(function(e){ toast('create team: '+e.message,true); });
     });
     el('btn-team-add').addEventListener('click',function(){
       var t=el('team-add-team').value.trim(), a=el('team-add-agent').value.trim();
-      if(!t||!a){ toast('servono team e agente',true); return; }
+      if(!t||!a){ toast('team and agent are required',true); return; }
       postJson('/api/teams/'+encodeURIComponent(t)+'/agents',{agent:a, role:el('team-add-role').value})
-        .then(function(r){ toast('membro aggiunto a '+t); refreshTeams(); refreshAgents(); })
+        .then(function(r){ toast('member added to '+t); refreshTeams(); refreshAgents(); })
         .catch(function(e){ toast('add member: '+e.message,true); });
     });
     el('btn-broadcast').addEventListener('click',function(){
       var t=el('bc-team').value.trim(), m=el('bc-msg').value.trim();
-      if(!t||!m){ toast('servono team e messaggio',true); return; }
+      if(!t||!m){ toast('team and message are required',true); return; }
       postJson('/api/team/'+encodeURIComponent(t)+'/broadcast',{message:m})
         .then(function(r){ out('bc-out',r); })
-        .catch(function(e){ out('bc-out','errore: '+e.message); });
+        .catch(function(e){ out('bc-out','error: '+e.message); });
     });
   }
 
@@ -700,11 +700,11 @@
         var ts=e.timestamp? String(e.timestamp).replace('T',' ').slice(0,19):'';
         return '<tr><td><span class="muted">'+esc(ts)+'</span> <span class="badge">'+esc(e.kind||'')+'</span> '+
                '<b>'+esc(e.agent||'')+'</b> — '+esc(e.detail||'')+'</td></tr>';
-      }).join('') : '<tr><td class="muted">Nessun evento'+(f?' per il filtro':'')+'</td></tr>';
-      el('log-count').textContent=list.length+' eventi';
+      }).join('') : '<tr><td class="muted">No events'+(f?' matching the filter':'')+'</td></tr>';
+      el('log-count').textContent=list.length+' events';
       if(el('log-autoscroll').checked) tb.scrollTop=0;
       return rows;
-    }).catch(function(e){ el('log-count').textContent='errore: '+e.message; return []; });
+    }).catch(function(e){ el('log-count').textContent='error: '+e.message; return []; });
   }
   function wireLog(){
     el('btn-log-refresh').addEventListener('click',refreshEvents);
@@ -721,41 +721,41 @@
         return '<tr><td class="name">'+esc(w.name)+'</td><td><span class="badge">'+esc(w.status||'')+'</span></td>'+
                '<td class="muted">'+esc(steps)+'</td>'+
                '<td><button class="btn btn-ghost" data-wf-pick="'+esc(w.name)+'">Seleziona</button> '+
-               '<button class="btn btn-ghost" data-wf-run="'+esc(w.name)+'">Esegui</button></td></tr>';
-      }).join('') : '<tr><td colspan="4" class="muted">Nessun workflow</td></tr>';
+               '<button class="btn btn-ghost" data-wf-run="'+esc(w.name)+'">Run</button></td></tr>';
+      }).join('') : '<tr><td colspan="4" class="muted">No workflows</td></tr>';
       return list;
     }).catch(function(e){ toast('workflows: '+e.message,true); return []; });
   }
   function wireWorkflows(){
     el('btn-wf-create').addEventListener('click',function(){
-      var n=el('wf-name').value.trim(); if(!n){ toast('nome workflow?',true); return; }
-      postJson('/api/workflows',{name:n}).then(function(r){ toast('workflow creato'); el('wf-target').value=n; refreshWorkflows(); })
+      var n=el('wf-name').value.trim(); if(!n){ toast('workflow name?',true); return; }
+      postJson('/api/workflows',{name:n}).then(function(r){ toast('workflow created'); el('wf-target').value=n; refreshWorkflows(); })
         .catch(function(e){ toast('create: '+e.message,true); });
     });
     el('btn-wf-step').addEventListener('click',function(){
       var wf=el('wf-step-wf').value.trim()||el('wf-target').value.trim();
       var st=el('wf-step-name').value.trim(), ac=el('wf-step-action').value;
-      if(!wf||!st){ toast('servono workflow e nome step',true); return; }
+      if(!wf||!st){ toast('workflow and step name are required',true); return; }
       var body={name:st,action:ac};
       var rt=el('wf-step-retry').value.trim(); if(rt) body.retryCount=parseInt(rt,10)||0;
       postJson('/api/workflows/'+encodeURIComponent(wf)+'/steps',body)
         .then(function(r){ out('wf-out',r); refreshWorkflows(); })
-        .catch(function(e){ out('wf-out','errore: '+e.message); });
+        .catch(function(e){ out('wf-out','error: '+e.message); });
     });
     el('btn-wf-run').addEventListener('click',function(){
       runWf(el('wf-target').value.trim());
     });
     el('btn-wf-detail').addEventListener('click',function(){
-      var wf=el('wf-target').value.trim(); if(!wf){ toast('nome workflow?',true); return; }
+      var wf=el('wf-target').value.trim(); if(!wf){ toast('workflow name?',true); return; }
       api('/api/workflows/'+encodeURIComponent(wf)).then(function(r){ out('wf-out',r); })
-        .catch(function(e){ out('wf-out','errore: '+e.message); });
+        .catch(function(e){ out('wf-out','error: '+e.message); });
     });
     el('btn-wf-delete').addEventListener('click',function(){
-      var wf=el('wf-target').value.trim(); if(!wf){ toast('nome workflow?',true); return; }
-      if(!confirm('Eliminare il workflow "'+wf+'"?')) return;
+      var wf=el('wf-target').value.trim(); if(!wf){ toast('workflow name?',true); return; }
+      if(!confirm('Delete workflow "'+wf+'"?')) return;
       api('/api/workflows/'+encodeURIComponent(wf),{method:'DELETE'})
         .then(function(r){ out('wf-out',r); refreshWorkflows(); })
-        .catch(function(e){ out('wf-out','errore: '+e.message); });
+        .catch(function(e){ out('wf-out','error: '+e.message); });
     });
     el('wf-body').addEventListener('click',function(ev){
       var pick=ev.target.closest('button[data-wf-pick]');
@@ -765,24 +765,24 @@
     });
   }
   function runWf(wf){
-    if(!wf){ toast('nome workflow?',true); return; }
+    if(!wf){ toast('workflow name?',true); return; }
     el('wf-target').value=wf;
     postJson('/api/workflows/'+encodeURIComponent(wf)+'/execute',{})
       .then(function(r){ out('wf-out',r); refreshWorkflows(); refreshEvents(); })
-      .catch(function(e){ out('wf-out','errore: '+e.message); });
+      .catch(function(e){ out('wf-out','error: '+e.message); });
   }
 
   // ---------- memory ----------
   function refreshMemory(){
     return api('/api/memory').then(function(r){
       var keys=(r&&r.keys)||[];
-      el('mem-count').textContent=keys.length+' chiavi';
+      el('mem-count').textContent=keys.length+' keys';
       var tb=el('mem-body');
       tb.innerHTML = keys.length ? keys.map(function(k){
         return '<tr><td class="name">'+esc(k)+'</td><td class="muted">…</td>'+
-               '<td><button class="btn btn-ghost" data-mem-load="'+esc(k)+'">Carica</button> '+
-               '<button class="btn btn-ghost" data-mem-del="'+esc(k)+'">Elimina</button></td></tr>';
-      }).join('') : '<tr><td colspan="3" class="muted">Nessuna chiave</td></tr>';
+               '<td><button class="btn btn-ghost" data-mem-load="'+esc(k)+'">Load</button> '+
+               '<button class="btn btn-ghost" data-mem-del="'+esc(k)+'">Delete</button></td></tr>';
+      }).join('') : '<tr><td colspan="3" class="muted">No keys</td></tr>';
       return keys;
     }).catch(function(e){ toast('memory: '+e.message,true); return []; });
   }
@@ -790,22 +790,22 @@
     el('btn-mem-refresh').addEventListener('click',refreshMemory);
     el('btn-mem-store').addEventListener('click',function(){
       var k=el('mem-key').value.trim(), v=el('mem-value').value;
-      if(!k){ toast('chiave?',true); return; }
+      if(!k){ toast('key?',true); return; }
       postJson('/api/memory',{key:k,value:v,longTerm:el('mem-long').checked?1:0})
         .then(function(r){ out('mem-out',r); refreshMemory(); })
-        .catch(function(e){ out('mem-out','errore: '+e.message); });
+        .catch(function(e){ out('mem-out','error: '+e.message); });
     });
     el('btn-mem-load').addEventListener('click',function(){
-      var k=el('mem-key').value.trim(); if(!k){ toast('chiave?',true); return; }
+      var k=el('mem-key').value.trim(); if(!k){ toast('key?',true); return; }
       api('/api/memory?key='+encodeURIComponent(k)).then(function(r){
         out('mem-out',r); if(r && r.value!==undefined) el('mem-value').value=r.value;
-      }).catch(function(e){ out('mem-out','errore: '+e.message); });
+      }).catch(function(e){ out('mem-out','error: '+e.message); });
     });
     el('btn-mem-delete').addEventListener('click',function(){
-      var k=el('mem-key').value.trim(); if(!k){ toast('chiave?',true); return; }
+      var k=el('mem-key').value.trim(); if(!k){ toast('key?',true); return; }
       api('/api/memory?key='+encodeURIComponent(k),{method:'DELETE'})
         .then(function(r){ out('mem-out',r); refreshMemory(); })
-        .catch(function(e){ out('mem-out','errore: '+e.message); });
+        .catch(function(e){ out('mem-out','error: '+e.message); });
     });
     el('mem-search').addEventListener('input',function(){
       var p=el('mem-search').value.trim();
@@ -814,10 +814,10 @@
         var tb=el('mem-body');
         tb.innerHTML = keys.length ? keys.map(function(k){
           return '<tr><td class="name">'+esc(k)+'</td><td class="muted">…</td>'+
-                 '<td><button class="btn btn-ghost" data-mem-load="'+esc(k)+'">Carica</button> '+
-                 '<button class="btn btn-ghost" data-mem-del="'+esc(k)+'">Elimina</button></td></tr>';
-        }).join('') : '<tr><td colspan="3" class="muted">Nessun match</td></tr>';
-        el('mem-count').textContent=keys.length+' match';
+                 '<td><button class="btn btn-ghost" data-mem-load="'+esc(k)+'">Load</button> '+
+                 '<button class="btn btn-ghost" data-mem-del="'+esc(k)+'">Delete</button></td></tr>';
+        }).join('') : '<tr><td colspan="3" class="muted">No matches</td></tr>';
+        el('mem-count').textContent=keys.length+' matches';
       }).catch(function(){});
     });
     el('mem-body').addEventListener('click',function(ev){
@@ -825,13 +825,13 @@
       if(l){ var k=l.getAttribute('data-mem-load'); el('mem-key').value=k;
         api('/api/memory?key='+encodeURIComponent(k)).then(function(r){
           out('mem-out',r); if(r && r.value!==undefined) el('mem-value').value=r.value;
-        }).catch(function(e){ out('mem-out','errore: '+e.message); });
+        }).catch(function(e){ out('mem-out','error: '+e.message); });
         return; }
       var d=ev.target.closest('button[data-mem-del]');
       if(d){ var kd=d.getAttribute('data-mem-del');
         api('/api/memory?key='+encodeURIComponent(kd),{method:'DELETE'})
           .then(function(r){ out('mem-out',r); refreshMemory(); })
-          .catch(function(e){ out('mem-out','errore: '+e.message); });
+          .catch(function(e){ out('mem-out','error: '+e.message); });
       }
     });
   }
@@ -842,27 +842,27 @@
       var q=el('brain-q').value.trim(), k=el('brain-k').value.trim()||'5';
       api('/api/brain/search?query='+encodeURIComponent(q)+'&topK='+encodeURIComponent(k))
         .then(function(r){ out('brain-out',r); })
-        .catch(function(e){ out('brain-out','errore: '+e.message); });
+        .catch(function(e){ out('brain-out','error: '+e.message); });
     });
     el('btn-brain-note').addEventListener('click',function(){
-      var t=el('brain-text').value.trim(); if(!t){ toast('testo?',true); return; }
+      var t=el('brain-text').value.trim(); if(!t){ toast('text?',true); return; }
       postJson('/api/brain/note',{text:t}).then(function(r){ out('brain-out',r); brainList(); })
-        .catch(function(e){ out('brain-out','errore: '+e.message); });
+        .catch(function(e){ out('brain-out','error: '+e.message); });
     });
     el('btn-brain-fact').addEventListener('click',function(){
-      var t=el('brain-text').value.trim(); if(!t){ toast('testo?',true); return; }
+      var t=el('brain-text').value.trim(); if(!t){ toast('text?',true); return; }
       postJson('/api/brain/save',{fact:t}).then(function(r){ out('brain-out',r); brainList(); })
-        .catch(function(e){ out('brain-out','errore: '+e.message); });
+        .catch(function(e){ out('brain-out','error: '+e.message); });
     });
     el('btn-brain-consolidate').addEventListener('click',function(){
       postJson('/api/brain/consolidate',{}).then(function(r){ out('brain-out',r); brainList(); })
-        .catch(function(e){ out('brain-out','errore: '+e.message); });
+        .catch(function(e){ out('brain-out','error: '+e.message); });
     });
     el('btn-brain-list').addEventListener('click',brainList);
   }
   function brainList(){
     api('/api/brain/list?limit=20').then(function(r){ out('brain-list',r); })
-      .catch(function(e){ out('brain-list','errore: '+e.message); });
+      .catch(function(e){ out('brain-list','error: '+e.message); });
   }
 
   // ---------- canvas ----------
@@ -888,10 +888,10 @@
       var proto = location.protocol==='https:'?'wss':'ws';
       var ws = new WebSocket(proto+'://'+location.host+'/ws/canvas');
       S.ws=ws;
-      el('canvas-state').textContent='connessione…';
-      ws.onopen=function(){ el('canvas-state').textContent='connesso'; toast('WS connesso'); };
-      ws.onclose=function(){ el('canvas-state').textContent='chiuso'; S.ws=null; };
-      ws.onerror=function(){ el('canvas-state').textContent='errore'; };
+      el('canvas-state').textContent='connecting…';
+      ws.onopen=function(){ el('canvas-state').textContent='connected'; toast('WS connected'); };
+      ws.onclose=function(){ el('canvas-state').textContent='closed'; S.ws=null; };
+      ws.onerror=function(){ el('canvas-state').textContent='error'; };
       ws.onmessage=function(ev){
         var lines=String(ev.data).split('\n'); var log=[];
         lines.forEach(function(line){
@@ -904,7 +904,7 @@
     });
     el('btn-canvas-demo').addEventListener('click',function(){
       if(S.ws && S.ws.readyState===1){ S.ws.send(JSON.stringify({op:'demo'})); }
-      else toast('prima connetti il WebSocket',true);
+      else toast('connect the WebSocket first',true);
     });
     el('btn-canvas-clear').addEventListener('click',function(){ canvasReplay({op:'clear',c:0}, c); });
   }
@@ -914,13 +914,13 @@
     el('btn-wasm-check').addEventListener('click',function(){
       fetch('/static/prog.wasm',{method:'HEAD'}).then(function(r){
         if(r.ok){
-          el('wasm-state').textContent='prog.wasm presente';
-          out('wasm-log','prog.wasm trovato ('+r.headers.get('content-length')+' byte).\nCaricalo con WebAssembly.instantiate(fetch(...)).');
+          el('wasm-state').textContent='prog.wasm present';
+          out('wasm-log','prog.wasm found ('+r.headers.get('content-length')+' bytes).\nLoad it with WebAssembly.instantiate(fetch(...)).');
         }else{
-          el('wasm-state').textContent='prog.wasm assente (404)';
-          out('wasm-log','Nessun modulo in static/prog.wasm.\nLa shell è pronta: compila un .bas verso wasm32 e copialo qui.\nUsa "Demo draw (JS)" per verificare il canvas.');
+          el('wasm-state').textContent='prog.wasm missing (404)';
+          out('wasm-log','No module at static/prog.wasm.\nThe shell is ready: build a .bas for wasm32 and copy it here.\nUse "Demo draw (JS)" to verify the canvas.');
         }
-      }).catch(function(e){ el('wasm-state').textContent='errore'; out('wasm-log',String(e)); });
+      }).catch(function(e){ el('wasm-state').textContent='error'; out('wasm-log',String(e)); });
     });
     el('btn-wasm-demo').addEventListener('click',function(){
       var c=el('wasm-canvas'), ctx=c.getContext('2d');
@@ -974,8 +974,8 @@
   function wirePause(){
     el('btn-pause').addEventListener('click',function(){
       S.paused=!S.paused;
-      el('btn-pause').textContent = S.paused ? '▶ riprendi' : '⏸ pausa';
-      toast(S.paused?'polling in pausa':'polling attivo');
+      el('btn-pause').textContent = S.paused ? '▶ resume' : '⏸ pause';
+      toast(S.paused?'polling paused':'polling active');
       if(!S.paused) tick();
     });
   }
