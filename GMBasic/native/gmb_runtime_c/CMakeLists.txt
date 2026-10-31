@@ -852,6 +852,14 @@ target_link_libraries(gmb_fetch_cli PRIVATE gmb_runtime)
 target_include_directories(gmb_fetch_cli PRIVATE include)
 set_target_properties(gmb_fetch_cli PROPERTIES OUTPUT_NAME gmb_fetch)
 
+# Cervelli di un programma DISTRIBUITO: legge `<exe>.brains.txt` (+ lo snapshot di
+# brains-manifest.json accanto all'eseguibile) e li installa in `<exe>/brains`, che la
+# risoluzione consulta prima della cache. Così l'app parte senza rete.
+add_executable(gmb_brain_fetch_cli tools/gmb_brain_fetch_cli.c)
+target_link_libraries(gmb_brain_fetch_cli PRIVATE gmb_runtime)
+target_include_directories(gmb_brain_fetch_cli PRIVATE include)
+set_target_properties(gmb_brain_fetch_cli PROPERTIES OUTPUT_NAME gmb_brain_fetch)
+
 add_executable(gmb_community_db_selfcheck tests/community_db_selfcheck.c)
 target_link_libraries(gmb_community_db_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_community_db_selfcheck PRIVATE include)

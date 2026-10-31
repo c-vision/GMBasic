@@ -75,3 +75,8 @@ int gmb_pkg_brain_remove(const char* name, const char* version)
 
 int gmb_pkg_brain_has_rag(const char* dir, const char* name)   { return gmb_brain_has_rag(dir, name); }
 int gmb_pkg_brain_has_graph(const char* dir, const char* name) { return gmb_brain_has_graph(dir, name); }
+
+int gmb_pkg_brain_emit_index(const char* app_settings, const char* manifest_path, const char* out_path)
+{
+    return gmb_brains_emit_index(app_settings, manifest_path, out_path);
+}

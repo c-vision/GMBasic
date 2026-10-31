@@ -46,25 +46,27 @@ public static class ProgramBundle
 
     /// <summary>Scrive accanto all'eseguibile i settings minimi uniti e gli asset.
     /// Ritorna l'elenco dei file scritti/aggiornati (per il log del compilatore).</summary>
-    public static IReadOnlyList<string> CopyNextTo(string outputDir, string basFile, Action<string>? log = null)
+    public static IReadOnlyList<string> CopyNextTo(string outputDir, string basFile, Action<string>? log = null,
+                                                   string? exePath = null)
     {
         var written = new List<string>();
         if (string.IsNullOrWhiteSpace(outputDir)) return written;
         Directory.CreateDirectory(outputDir);
+
+        // app.settings.json DEL PROGRAMMA (serve ai settings minimi e ai cervelli dichiarati)
+        string? appPath = null;
+        try
+        {
+            var srcDir = Path.GetDirectoryName(Path.GetFullPath(basFile));
+            if (!string.IsNullOrEmpty(srcDir)) appPath = Path.Combine(srcDir, "app.settings.json");
+        }
+        catch { /* percorso virtuale */ }
 
         // 1) Settings: shared/settings/system.settings.json ∩ (override) app.settings.json del
         //    programma → SOLO le sezioni di runtime, in un unico `app.settings.json`.
         try
         {
             var sysPath = Path.Combine(GmbiPaths.SharedConfigDir, "system.settings.json");
-            string? appPath = null;
-            try
-            {
-                var srcDir = Path.GetDirectoryName(Path.GetFullPath(basFile));
-                if (!string.IsNullOrEmpty(srcDir)) appPath = Path.Combine(srcDir, "app.settings.json");
-            }
-            catch { /* percorso virtuale */ }
-
             var merged = BuildRuntimeSettings(sysPath, appPath);
             var dest = Path.Combine(outputDir, "app.settings.json");
             // Mai sovrascrivere l'ORIGINE (quando la cartella di output è quella del sorgente).
@@ -93,6 +95,41 @@ public static class ProgramBundle
             }
         }
         catch { /* niente asset condivisi: si compila comunque */ }
+
+        // 3) CERVELLI. Il manifest (metadati, pochi KB) va accanto all'eseguibile in
+        //    `settings/brains-manifest.json`: `gmb_paths_brains_manifest` lo legge PRIMA di
+        //    quello del checkout, quindi il programma distribuito sa cosa può scaricare.
+        //    L'indice `<exe>.brains.txt` elenca i cervelli DICHIARATI dal programma
+        //    (`"brains": ["nome[@versione]"]` nel suo app.settings.json): `gmb_brain_fetch`
+        //    li porta in `<exe>/brains`, dove la risoluzione li trova senza rete.
+        try
+        {
+            var manifestSrc = Path.Combine(GmbiPaths.SharedConfigDir, "brains-manifest.json");
+            string? manifestDst = null;
+            if (File.Exists(manifestSrc))
+            {
+                var settingsDst = Path.Combine(outputDir, "settings");
+                Directory.CreateDirectory(settingsDst);
+                manifestDst = Path.Combine(settingsDst, "brains-manifest.json");
+                CopyIfNewer(manifestSrc, manifestDst, written, log);
+            }
+            if (appPath is not null && File.Exists(appPath))
+            {
+                var index = Path.Combine(outputDir, "brains.txt");
+                if (NativeBrains.EmitIndex(appPath, manifestDst, index))
+                {
+                    written.Add(index);
+                    log?.Invoke($"[bundle] indice cervelli -> {index}");
+                    if (!string.IsNullOrEmpty(exePath))
+                    {
+                        var beside = exePath + ".brains.txt";
+                        try { File.Copy(index, beside, overwrite: true); written.Add(beside); }
+                        catch { /* eseguibile in sola lettura: resta <dir>/brains.txt */ }
+                    }
+                }
+            }
+        }
+        catch (Exception ex) { log?.Invoke($"[bundle] cervelli non indicizzati: {ex.Message}"); }
 
         return written;
     }

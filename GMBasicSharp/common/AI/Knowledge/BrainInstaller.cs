@@ -186,8 +186,8 @@ public static class BrainInstaller
         try
         {
             (ok, root, error) = string.IsNullOrWhiteSpace(source)
-                ? NativeBrains.Install(name)
-                : NativeBrains.InstallSource(name, source);
+                ? CommonLib.NativeBrains.Install(name)
+                : CommonLib.NativeBrains.InstallSource(name, source);
         }
         catch (Exception ex)
         {
@@ -249,7 +249,7 @@ public static class BrainInstaller
 
         if (invalid is not null)
         {
-            NativeBrains.Remove(name);   // un cervello non valido non resta installato
+            CommonLib.NativeBrains.Remove(name);   // un cervello non valido non resta installato
             Console.Error.WriteLine($"?AI BRAIN INSTALL {name}: {invalid}");
             return new BrainInstallResult(name, "", [], false, invalid);
         }

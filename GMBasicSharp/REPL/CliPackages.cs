@@ -192,16 +192,16 @@ public static class CliPackages
         SplitNameVersion(pos[0], out var name, out var version);
         bool ok; string root; string error;
         if (flags.TryGetValue("source", out var src) && !string.IsNullOrWhiteSpace(src))
-            (ok, root, error) = NativeBrains.InstallSource(name, src);
+            (ok, root, error) = CommonLib.NativeBrains.InstallSource(name, src);
         else
-            (ok, root, error) = NativeBrains.Install(name, version);
+            (ok, root, error) = CommonLib.NativeBrains.Install(name, version);
         if (!ok)
         {
             Console.Error.WriteLine($"?brain install {name}: {error}");
             throw new InvalidOperationException(error);
         }
         Console.WriteLine($"installato: {name}{(string.IsNullOrEmpty(version) ? "" : "@" + version)} → {root}");
-        var modes = NativeBrains.Modes(root, name);
+        var modes = CommonLib.NativeBrains.Modes(root, name);
         if (!string.IsNullOrEmpty(modes)) Console.WriteLine($"  disponibile come: {modes}");
         var used = BrainRegistryAttach(name);
         if (used) Console.WriteLine($"  collegato: AI BRAIN USED() contiene '{name}'");
@@ -209,13 +209,13 @@ public static class CliPackages
 
     private static void BrainList()
     {
-        var names = NativeBrains.List();
+        var names = CommonLib.NativeBrains.List();
         if (names.Length == 0) { Console.WriteLine("(nessun cervello: `gmb brain install <nome>`)"); return; }
         foreach (var n in names)
         {
-            var dir = NativeBrains.Lookup(n);
-            var vers = NativeBrains.Versions(n);
-            var modes = dir is null ? "" : NativeBrains.Modes(dir, n);
+            var dir = CommonLib.NativeBrains.Lookup(n);
+            var vers = CommonLib.NativeBrains.Versions(n);
+            var modes = dir is null ? "" : CommonLib.NativeBrains.Modes(dir, n);
             Console.WriteLine($"{n}{(vers.Length > 0 ? "@" + string.Join(",", vers) : "")}" +
                               $"{(string.IsNullOrEmpty(modes) ? "" : "  [" + modes + "]")}  {dir}");
         }
@@ -225,7 +225,7 @@ public static class CliPackages
     {
         if (pos.Count < 1) throw new ArgumentException("Uso: gmb brain remove <nome[@versione]>");
         SplitNameVersion(pos[0], out var name, out var version);
-        Console.WriteLine(NativeBrains.Remove(name, version)
+        Console.WriteLine(CommonLib.NativeBrains.Remove(name, version)
             ? $"rimosso dalla cache: {name}{(string.IsNullOrEmpty(version) ? "" : "@" + version)}"
             : $"non rimosso (non è nella cache, o è in vendor/exe): {name}");
     }

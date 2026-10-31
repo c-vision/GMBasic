@@ -667,11 +667,15 @@ int gmb_brain_remove(const char* name, const char* version)
 }
 
 /* Estrae `zip` in `<cache>/<nome>/<versione>` passando da una staging (niente cervelli a metà). */
-static int br_install_from_zip(const char* name, const char* version, const char* zip,
-                               char* out_dir, size_t cap, char* err, size_t errcap)
+/* `dest_root` NULL = cache utente (~/.gmbasic/brains); altrimenti <dest_root>/<nome>/<versione>
+ * (es. <exe>/brains per un programma distribuito, che la risoluzione consulta prima della cache). */
+static int br_install_from_zip_in(const char* dest_root, const char* name, const char* version,
+                                  const char* zip, char* out_dir, size_t cap,
+                                  char* err, size_t errcap)
 {
     char cache[BR_PATH];
-    gmb_paths_brains_cache_dir(cache, sizeof cache);
+    if (dest_root && *dest_root) snprintf(cache, sizeof cache, "%s", dest_root);
+    else gmb_paths_brains_cache_dir(cache, sizeof cache);
     if (!cache[0]) {
         if (err && errcap) snprintf(err, errcap, "cache dei cervelli non risolvibile (HOME?)");
         return GMB_BRAIN_E_IO;
@@ -827,15 +831,15 @@ int gmb_brains_install_source(const char* name, const char* source,
     }
     if (!version[0]) snprintf(version, sizeof version, "local");
 
-    int rc = br_install_from_zip(name, version, zip, out_dir, cap, err, errcap);
+    int rc = br_install_from_zip_in(NULL, name, version, zip, out_dir, cap, err, errcap);
     if (rc == GMB_BRAIN_OK && is_remote) remove(zip);
     return rc;
 }
 
-int gmb_brains_install_from_manifest(const char* manifest_path, const char* name, const char* version,
-                                     const char* token, const gmb_fetch_transport* tr,
-                                     const gmb_fetch_opts* opts, char* out_dir, size_t cap,
-                                     char* err, size_t errcap)
+static int br_install_manifest(const char* manifest_path, const char* name, const char* version,
+                               const char* dest_root, const char* token,
+                               const gmb_fetch_transport* tr, const gmb_fetch_opts* opts,
+                               char* out_dir, size_t cap, char* err, size_t errcap)
 {
     if (out_dir && cap) out_dir[0] = '\0';
     if (err && errcap) err[0] = '\0';
@@ -959,7 +963,7 @@ int gmb_brains_install_from_manifest(const char* manifest_path, const char* name
         return GMB_BRAIN_E_FETCH;
     }
 
-    rc = br_install_from_zip(name, ver, zip, out_dir, cap, err, errcap);
+    rc = br_install_from_zip_in(dest_root, name, ver, zip, out_dir, cap, err, errcap);
     if (rc == GMB_BRAIN_OK) remove(zip);
     return rc;
 }
@@ -971,6 +975,179 @@ int gmb_brains_install(const char* name, const char* version, const char* token,
     /* manifest "di sistema": `gmb_paths_brains_manifest` (client: <exe>/settings/…). */
     return gmb_brains_install_from_manifest(NULL, name, version, token, tr, opts,
                                             out_dir, cap, err, errcap);
+}
+
+int gmb_brains_install_from_manifest(const char* manifest_path, const char* name, const char* version,
+                                     const char* token, const gmb_fetch_transport* tr,
+                                     const gmb_fetch_opts* opts, char* out_dir, size_t cap,
+                                     char* err, size_t errcap)
+{
+    return br_install_manifest(manifest_path, name, version, NULL, token, tr, opts,
+                               out_dir, cap, err, errcap);
+}
+
+int gmb_brains_install_to(const char* manifest_path, const char* name, const char* version,
+                          const char* dest_root, const char* token,
+                          const gmb_fetch_transport* tr, const gmb_fetch_opts* opts,
+                          char* out_dir, size_t cap, char* err, size_t errcap)
+{
+    return br_install_manifest(manifest_path, name, version, dest_root, token, tr, opts,
+                               out_dir, cap, err, errcap);
+}
+
+/* ── indice accanto all'eseguibile (`<exe>.brains.txt`) ────────────────────────────────────
+ * Formato TSV, una voce per riga: `<nome>	<versione>` (# = commento, versione vuota = latest).
+ * `gmb brain fetch <dir>` (binario `gmb_brain_fetch`) installa ogni voce in
+ * `<dir>/brains/<nome>/<versione>`, che la risoluzione consulta PRIMA della cache: il programma
+ * distribuito trova i suoi cervelli senza rete. Il manifest usato è quello accanto all'eseguibile
+ * (`<dir>/settings/brains-manifest.json`, copiato dal bundle) e, se manca, quello di sistema. */
+int gmb_brains_fetch_index(const char* index_path, const char* dest_root, const char* only,
+                           const char* token, const gmb_fetch_transport* tr,
+                           const gmb_fetch_opts* opts, char* err, size_t errcap)
+{
+    if (err && errcap) err[0] = '\0';
+    if (!index_path || !*index_path || !dest_root || !*dest_root) return GMB_BRAIN_E_ARG;
+    FILE* f = fopen(index_path, "rb");
+    if (!f) {
+        if (err && errcap) snprintf(err, errcap, "indice dei cervelli non trovato (%s)", index_path);
+        return GMB_BRAIN_E_NOT_FOUND;
+    }
+    /* manifest: accanto alla destinazione (snapshot del bundle), altrimenti quello di sistema. */
+    char manifest[BR_PATH];
+    snprintf(manifest, sizeof manifest, "%s/settings/brains-manifest.json", dest_root);
+    if (!br_isfile(manifest)) manifest[0] = '\0';
+
+    /* i cervelli vanno in <dest_root>/brains/ (è la radice che la risoluzione consulta prima
+     * della cache: `br_roots` usa `<exe>/brains`). */
+    char broot[BR_PATH];
+    snprintf(broot, sizeof broot, "%s/brains", dest_root);
+    br_mkdir_p(broot);
+
+    int done = 0, failed = 0;
+    char line[1024];
+    while (fgets(line, sizeof line, f)) {
+        char* nl = strchr(line, '\n'); if (nl) *nl = '\0';
+        char* cr = strchr(line, '\r'); if (cr) *cr = '\0';
+        if (line[0] == '#' || line[0] == '\0') continue;
+        char* tab = strchr(line, '\t');
+        char name[256], ver[128] = "";
+        if (tab) {
+            size_t l = (size_t)(tab - line);
+            if (l >= sizeof name) continue;
+            memcpy(name, line, l); name[l] = '\0';
+            snprintf(ver, sizeof ver, "%s", tab + 1);
+        } else {
+            snprintf(name, sizeof name, "%s", line);
+        }
+        while (*name == ' ' || *name == '\t') memmove(name, name + 1, strlen(name));
+        if (!name[0]) continue;
+        if (only && *only && !br_ieq(only, name)) continue;
+        /* già presente e integro? */
+        char target[BR_PATH];
+        snprintf(target, sizeof target, "%s/brains/%s/%s", dest_root, name, ver[0] ? ver : "latest");
+        if (!ver[0]) {
+            char base[BR_PATH], picked[128];
+            snprintf(base, sizeof base, "%s/brains/%s", dest_root, name);
+            DIR* d = opendir(base);
+            int found = 0;
+            if (d) {
+                struct dirent* e;
+                while ((e = readdir(d)) != NULL) {
+                    if (e->d_name[0] == '.') continue;
+                    char sub[BR_PATH];
+                    snprintf(sub, sizeof sub, "%s/%s", base, e->d_name);
+                    if (br_isdir(sub) && br_is_brain_dir(sub, name)) { found = 1; break; }
+                }
+                closedir(d);
+            }
+            if (found) continue;   /* già lì */
+            (void)picked;
+        } else if (br_isdir(target) && br_is_brain_dir(target, name)) {
+            continue;
+        }
+        char out_dir[BR_PATH], lerr[512] = "";
+        int rc = br_install_manifest(manifest[0] ? manifest : NULL, name, ver[0] ? ver : NULL,
+                                     broot, token, tr, opts, out_dir, sizeof out_dir,
+                                     lerr, sizeof lerr);
+        if (rc == GMB_BRAIN_OK) done++;
+        else {
+            failed++;
+            if (err && errcap && !err[0])
+                snprintf(err, errcap, "%s@%s: %s%s%s", name, ver[0] ? ver : "latest",
+                         gmb_brain_strerror(rc), lerr[0] ? " — " : "", lerr);
+        }
+    }
+    fclose(f);
+    if (failed) return -failed;
+    return done;
+}
+
+/* ── indice: generazione (`--emit-index`) ───────────────────────────────────────────────── */
+/* Legge i cervelli DICHIARATI dal programma (`"brains": ["nome"|"nome@ver"]` nel suo
+ * app.settings.json) e scrive l'indice TSV. La versione, se non dichiarata, è `latest` del
+ * manifest. Nessuna dichiarazione → nessun file (ritorna 0). */
+int gmb_brains_emit_index(const char* app_settings, const char* manifest_path, const char* out_path)
+{
+    if (!app_settings || !*app_settings || !out_path || !*out_path) return GMB_BRAIN_E_ARG;
+    if (!br_isfile(app_settings)) return GMB_BRAIN_E_ARG;
+
+    char* js = NULL;
+    {
+        FILE* f = fopen(app_settings, "rb");
+        if (!f) return GMB_BRAIN_E_IO;
+        fseek(f, 0, SEEK_END);
+        long n = ftell(f);
+        fseek(f, 0, SEEK_SET);
+        if (n <= 0) { fclose(f); return GMB_BRAIN_E_ARG; }
+        js = (char*)malloc((size_t)n + 1);
+        if (!js) { fclose(f); return GMB_BRAIN_E_IO; }
+        size_t rd = fread(js, 1, (size_t)n, f);
+        fclose(f);
+        js[rd] = '\0';
+    }
+    gmb_val_t root = gmb_json_parse(js);
+    free(js);
+    if (root.kind != GMB_TYPE_OBJECT) { gmb_val_release(root); return GMB_BRAIN_E_ARG; }
+
+    gmb_val_t arr = gmb_val_dict_get(root, "brains");
+    int is_list = (arr.kind == GMB_TYPE_OBJECT && gmb_obj_type(arr) != NULL &&
+                   strstr(gmb_obj_type(arr), "dict") == NULL);
+    if (!is_list) { gmb_val_release(root); return 0; }   /* nessuna dichiarazione: nessun indice */
+
+    /* manifest (opzionale) per risolvere `latest` */
+    gmb_pkg_manifest_t* m = NULL;
+    if (manifest_path && *manifest_path) m = br_load_manifest_at(manifest_path, NULL, 0);
+
+    gmb_list_t l = gmb_val_as_list(arr);
+    int cnt = (int)gmb_list_count(l);
+    FILE* out = fopen(out_path, "wb");
+    if (!out) { gmb_val_release(root); if (m) gmb_pkg_manifest_free(m); return GMB_BRAIN_E_IO; }
+    fprintf(out, "# cervelli del programma (nome<TAB>versione) — `gmb_brain_fetch <exe|dir>`\n");
+    int written = 0;
+    for (int i = 0; i < cnt; i++) {
+        gmb_val_t v = gmb_list_get(l, i);
+        if (v.kind != GMB_TYPE_STRING || !v.v_string.data) continue;
+        char name[256], ver[128] = "";
+        snprintf(name, sizeof name, "%s", v.v_string.data);
+        char* at = strchr(name, '@');
+        if (at) { *at = '\0'; snprintf(ver, sizeof ver, "%s", at + 1); }
+        if (!name[0]) continue;
+        if (!ver[0] && m) {
+            int bi = br_find_entry(m, name);
+            if (bi >= 0) {
+                char p[160];
+                snprintf(p, sizeof p, "brains.%d.latest", bi);
+                gmb_pkg_manifest_get(m, p, ver, sizeof ver);
+            }
+        }
+        fprintf(out, "%s\t%s\n", name, ver);
+        written++;
+    }
+    fclose(out);
+    gmb_val_release(root);
+    if (m) gmb_pkg_manifest_free(m);
+    if (written == 0) { remove(out_path); return 0; }
+    return written;
 }
 
 /* ── superficie BASIC (AI BRAIN INSTALL / AI BRAIN UNINSTALL) ───────────────────────────────

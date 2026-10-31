@@ -71,7 +71,7 @@ public static class BrainRegistry
 
     // ── Disponibilità (BrainAvailability) ──────────────────────────────────
 
-    /// <summary>Root EFFETTIVA del cervello. La risolve il runtime C (`NativeBrains.Lookup`):
+    /// <summary>Root EFFETTIVA del cervello. La risolve il runtime C (`CommonLib.NativeBrains.Lookup`):
     /// <c>&lt;progetto&gt;/vendor/brains</c> → <c>&lt;exe&gt;/vendor/brains</c> → <c>&lt;exe&gt;/brains</c>
     /// (brainsDir) → <c>~/.gmbasic/brains</c> (cache dei download). Così un cervello installato
     /// da `AI BRAIN INSTALL`/package manager è visibile agli agenti anche se non sta in
@@ -80,7 +80,7 @@ public static class BrainRegistry
     public static string? ResolveRoot(string name)
     {
         if (string.IsNullOrWhiteSpace(name)) return null;
-        var resolved = NativeBrains.Lookup(name);
+        var resolved = CommonLib.NativeBrains.Lookup(name);
         if (!string.IsNullOrEmpty(resolved) && Directory.Exists(resolved)) return resolved;
         var import = Path.Combine(AiConfig.BrainsDefaultDir, name);
         return Directory.Exists(import) ? import : null;
@@ -210,7 +210,7 @@ public static class BrainRegistry
         var names = p.Brains.Select(b => b.Name).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         foreach (var n in p.Attached)
             if (!names.Contains(n, StringComparer.OrdinalIgnoreCase)) names.Add(n);
-        foreach (var n in NativeBrains.List())
+        foreach (var n in CommonLib.NativeBrains.List())
             if (!string.IsNullOrWhiteSpace(n) && !names.Contains(n, StringComparer.OrdinalIgnoreCase)) names.Add(n);
         return [.. names.OrderBy(x => x, StringComparer.OrdinalIgnoreCase)];
     }
