@@ -128,6 +128,8 @@ endif()
 
 set(GMB_ALL_SRCS
     src/gmb_libs_fetch.c   # download on-demand di UNA libreria (asset per-file)
+    src/gmb_fetch.c        # motore download: streaming + resume + lock + sha (brains/pacchetti/libs)
+    src/gmb_fetch_curl.c   # trasporto HTTP del motore (libcurl); senza curl = NULL, non stub
     src/gmb_ui_stub.c   # debole, PRIMO membro: risolve i riferimenti UI del core in headless
     src/gmb_px_renderer.c   # registry renderer pixel (core); i renderer si registrano dal target UI
     src/gmb_ui_gfx.c   # interfaccia verso la pagina grafica (core; tabella installata dal target UI)
@@ -841,6 +843,13 @@ add_executable(gmb_libs_fetch tools/gmb_libs_fetch_cli.c)
 target_link_libraries(gmb_libs_fetch PRIVATE gmb_runtime)
 target_include_directories(gmb_libs_fetch PRIVATE include)
 
+# Motore di download da riga di comando (`gmb_fetch <url> <file>`): utile per provare la
+# ripresa a mano su un asset grosso (Ctrl-C + rilancio) e per gli script di distribuzione.
+add_executable(gmb_fetch_cli tools/gmb_fetch_cli.c)
+target_link_libraries(gmb_fetch_cli PRIVATE gmb_runtime)
+target_include_directories(gmb_fetch_cli PRIVATE include)
+set_target_properties(gmb_fetch_cli PROPERTIES OUTPUT_NAME gmb_fetch)
+
 add_executable(gmb_community_db_selfcheck tests/community_db_selfcheck.c)
 target_link_libraries(gmb_community_db_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_community_db_selfcheck PRIVATE include)
@@ -857,6 +866,21 @@ add_executable(gmb_compress_selfcheck tests/gmb_compress_selfcheck.c)
 target_link_libraries(gmb_compress_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_compress_selfcheck PRIVATE include)
 add_test(NAME gmb_compress_selfcheck COMMAND gmb_compress_selfcheck)
+
+# Motore di download (streaming/resume/lock/sha): provato OFFLINE con un trasporto finto.
+# Nessuna rete: quello che con la rete sarebbe casuale (ripresa, Range ignorato, lock, sha)
+# qui è deterministico.
+add_executable(gmb_fetch_selfcheck tests/gmb_fetch_selfcheck.c)
+target_link_libraries(gmb_fetch_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_fetch_selfcheck PRIVATE include)
+add_test(NAME gmb_fetch_selfcheck COMMAND gmb_fetch_selfcheck)
+
+# END-TO-END del trasporto libcurl VERO, contro un server HTTP LOCALE (Range, Range ignorato,
+# Bearer, 404). Nessuna rete esterna: si prova il pezzo che il trasporto finto non copre.
+add_executable(gmb_fetch_http_selfcheck tests/gmb_fetch_http_selfcheck.c)
+target_link_libraries(gmb_fetch_http_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_fetch_http_selfcheck PRIVATE include)
+add_test(NAME gmb_fetch_http_selfcheck COMMAND gmb_fetch_http_selfcheck)
 
 add_executable(gmb_expr_selfcheck tests/expr_selfcheck.c)
 target_link_libraries(gmb_expr_selfcheck PRIVATE gmb_runtime)

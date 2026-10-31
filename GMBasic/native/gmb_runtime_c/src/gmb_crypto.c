@@ -4,6 +4,7 @@
 #include "gmb_commonlib.h"
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 #if defined(__APPLE__)
@@ -12,12 +13,9 @@
 
 /* ============================ SHA-256 ============================ */
 
-typedef struct {
-    uint32_t h[8];
-    uint64_t total_len;
-    uint8_t block[64];
-    size_t block_len;
-} sha256_ctx;
+/* Il contesto è dichiarato in gmb_commonlib.h (gmb_sha256_stream): UNA sola definizione, così
+ * chi calcola l'hash di un file a blocchi non duplica l'algoritmo. */
+typedef gmb_sha256_stream sha256_ctx;
 
 static const uint32_t K256[64] = {
     0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
@@ -96,6 +94,46 @@ void gmb_sha256(const uint8_t* data, size_t len, uint8_t out[32]) {
     sha256_init(&ctx);
     sha256_update(&ctx, data, len);
     sha256_final(&ctx, out);
+}
+
+/* --- SHA-256 incrementale (API pubblica: gmb_commonlib.h) -------------------------------- */
+void gmb_sha256_stream_init(gmb_sha256_stream* s) {
+    if (!s) return;
+    sha256_init(s);
+}
+
+void gmb_sha256_stream_update(gmb_sha256_stream* s, const void* data, size_t len) {
+    if (!s || (!data && len)) return;
+    sha256_update(s, (const uint8_t*)data, len);
+}
+
+void gmb_sha256_stream_final(gmb_sha256_stream* s, uint8_t out[32]) {
+    if (!s || !out) return;
+    sha256_final(s, out);
+}
+
+/* Hash di un FILE letto a blocchi (64 KiB): nessuna allocazione proporzionale alla dimensione. */
+int gmb_sha256_file_hex(const char* path, char* out, size_t cap) {
+    if (out && cap) out[0] = 0;
+    if (!path || !*path) return 0;
+    FILE* f = fopen(path, "rb");
+    if (!f) return 0;
+    gmb_sha256_stream s;
+    gmb_sha256_stream_init(&s);
+    uint8_t buf[64 * 1024];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof buf, f)) > 0) gmb_sha256_stream_update(&s, buf, n);
+    int bad = ferror(f);
+    fclose(f);
+    if (bad) return 0;
+    uint8_t d[32];
+    gmb_sha256_stream_final(&s, d);
+    static const char* hx = "0123456789abcdef";
+    char hex[65];
+    for (int i = 0; i < 32; i++) { hex[i * 2] = hx[d[i] >> 4]; hex[i * 2 + 1] = hx[d[i] & 15]; }
+    hex[64] = '\0';
+    if (out && cap) snprintf(out, cap, "%s", hex);
+    return 1;
 }
 
 /* ============================ HMAC-SHA256 / SHA512 ============================ */
