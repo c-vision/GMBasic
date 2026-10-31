@@ -103,6 +103,32 @@ public static class BspRuntime
     /// <summary>TTL della resa memoizzata in ms (0 = nessuna cache: si esegue sempre la pagina).</summary>
     public static int RenderCacheTtlMs { get; set; }
 
+    /// <summary>Motore di esecuzione delle pagine: managed (default, ha lo stato del runtime AI/DB)
+    /// oppure C (≈4,7× più veloce ma senza stato managed; richiede il sidecar `.bsp.chunk`).
+    /// Impostato da `HTTPCONFIG.BspEngine`.</summary>
+    public static BspEngine EnginePreference { get; set; } = BspEngine.Managed;
+
+    /// <summary>Pagine (nome file, es. "canvas.bsp") che usano il motore C anche quando la
+    /// preferenza globale è `managed`. Il motore C non ha lo stato del runtime managed: una
+    /// pagina che interroga agenti/team/workflow/memoria deve restare su `managed`.</summary>
+    public static HashSet<string> EngineCPages { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Imposta l'elenco delle pagine da servire con il motore C (separatori `,` `;`).</summary>
+    public static void SetEngineCPages(string? list)
+    {
+        EngineCPages.Clear();
+        if (string.IsNullOrWhiteSpace(list)) return;
+        foreach (var part in list.Split([',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            EngineCPages.Add(Path.GetFileName(part));
+    }
+
+    /// <summary>True se la pagina va servita dal motore C (preferenza globale o elenco per pagina).</summary>
+    public static bool UseCEngine(string pageFilePath)
+    {
+        if (EnginePreference == BspEngine.C) return true;
+        return EngineCPages.Count > 0 && EngineCPages.Contains(Path.GetFileName(pageFilePath));
+    }
+
     public static byte[]? RenderGet(string key)
     {
         if (RenderCacheTtlMs <= 0) return null;

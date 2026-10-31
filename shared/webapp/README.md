@@ -68,6 +68,42 @@ Misure (loopback, keep-alive, c=10, PCode): `/index.bsp` da ~190 rps a **~21.000
 "a freddo" di una pagina resta ~2 ms: host+VM costano ~0,07 ms, il resto è l'esecuzione della
 pagina (query + costruzione dell'HTML).
 
+### Due motori: managed (default) e C (opzionale)
+
+La pagina è precompilata in un chunk A1; lo stesso chunk può essere eseguito da **due motori**:
+
+| motore | dove esegue | velocità (pagina da ~47 KB) | cosa vede |
+|---|---|---|---|
+| **managed** (default) | VM P-Code/IL nel processo .NET | ~5,8 ms (`canvas.bsp`), ~6,9 ms (`index.bsp`) | **tutto**: agenti, team, workflow, memoria AI, DB |
+| **C** (`libgmb_bsp`, P/Invoke) | VM/C in `native/gmb_vm_c` | **~0,45 ms** (`canvas.bsp`), ~2,3 ms (`index.bsp`) — **12× / 3×** | solo il file system e la rete: **nessuno stato managed** |
+
+Il motore C non può quindi servire `index.bsp` (usa `AI.AGENTLIST`/`TEAMLIST`/`WorkflowList`,
+`MEMORY.LIST`: renderebbe le tabelle vuote). Per questo il default è `managed` e il motore C si
+attiva **per pagina**, dove è sicuro:
+
+```toml
+bspEngine      = "managed"                  # "c" = tutte le pagine sulla VM C
+bspEnginePages = "canvas.bsp,wasm.bsp"      # pagine SENZA stato managed → motore C
+```
+
+Il sidecar `<pagina>.bsp.chunk` (ciò che esegue la VM C) viene generato **automaticamente** alla
+prima richiesta; `REPL -noconsole -bsp <dir>` lo rigenera per tutte le pagine.
+
+**Verifica prima di spostare una pagina sul motore C** (confronta le due rese e normalizza i
+campi dinamici):
+
+```sh
+python3 tools/py/bsp_engine_parity.py canvas.bsp wasm.bsp index.bsp
+# canvas.bsp     OK   (200, 3714 byte, identiche)
+# wasm.bsp       OK   (200, 3768 byte, identiche)
+# index.bsp      DIFF (… la pagina legge stato del runtime managed?)   ← resta su managed
+```
+
+Misura del guadagno (PCode, loopback, **cache della resa spenta**, c=1): `canvas.bsp`
+5,84 ms → **0,455 ms** (171 → 2.197 rps); a c=10, 207 → 2.933 rps (**14×**). Con la cache della
+resa accesa i due motori sono indistinguibili (dominano hash/gzip): il motore C serve per le
+pagine dinamiche (query diverse a ogni richiesta) e per i casi in cui la cache non si può usare.
+
 ## Configurazione (`.webapp.toml`)
 
 ```toml

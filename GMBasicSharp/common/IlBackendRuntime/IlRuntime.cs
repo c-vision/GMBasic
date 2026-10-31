@@ -3522,6 +3522,10 @@ public static partial class IlRuntime
             var bspTtl = GetInt("BspCacheMs");
             if (bspTtl > 0) settings.BspCacheMs = bspTtl;
             CommonLib.Http.BspRuntime.RenderCacheTtlMs = bspTtl;
+            CommonLib.Http.BspRuntime.EnginePreference =
+                string.Equals(GetString(cd, "BspEngine"), "c", StringComparison.OrdinalIgnoreCase)
+                    ? CommonLib.Http.BspEngine.C : CommonLib.Http.BspEngine.Managed;
+            CommonLib.Http.BspRuntime.SetEngineCPages(GetString(cd, "BspEnginePages"));
         }
         _pendingHttpSettings = settings;
         if (_httpServerHandle >= 0)

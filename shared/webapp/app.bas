@@ -53,6 +53,8 @@ DIM g_refreshMs AS INTEGER
 DIM g_rateLimitPerMin AS INTEGER
 DIM g_rateLimitBurst AS INTEGER
 DIM g_bspCacheMs AS INTEGER
+DIM g_bspEngine AS STRING
+DIM g_bspEnginePages AS STRING
 
 ' --- Stato del processo -----------------------------------------------------
 DIM g_appDir AS STRING
@@ -114,6 +116,8 @@ SUB SetDefaults()
     g_rateLimitPerMin = 0
     g_rateLimitBurst = 0
     g_bspCacheMs = 0
+    g_bspEngine = "managed"
+    g_bspEnginePages = ""
     g_proxied = 0
 END SUB
 
@@ -164,6 +168,8 @@ SUB ParseConfig(path AS STRING)
                         IF key = "RATELIMITPERMINUTE" THEN g_rateLimitPerMin = CINT(VAL(val))
                         IF key = "RATELIMITBURST" THEN g_rateLimitBurst = CINT(VAL(val))
                         IF key = "BSPCACHEMS" THEN g_bspCacheMs = CINT(VAL(val))
+                        IF key = "BSPENGINE" THEN g_bspEngine = STRINGS.LOWER(val)
+                        IF key = "BSPENGINEPAGES" THEN g_bspEnginePages = val
                     ELSEIF section = "APP" THEN
                         IF key = "SEEDDEMO" THEN g_seedDemo = BoolVal(val)
                         IF key = "AUTOTRACE" THEN g_autoTrace = BoolVal(val)
@@ -368,6 +374,8 @@ SUB PrintBanner()
     ELSE
         PRINT "bsp cache  : off (ETag/304 + gzip sempre attivi)"
     END IF
+    PRINT "bsp engine : "; g_bspEngine
+    IF LEN(g_bspEnginePages) > 0 THEN PRINT "bsp c pages: "; g_bspEnginePages
 END SUB
 
 FUNCTION ApiUrl() AS STRING
@@ -452,6 +460,8 @@ SUB StartDashboard()
     ' Memoizzazione della resa BSP: riusa il corpo per N ms (ETag/304 inclusi). 0 = sempre
     ' eseguita. Vedi .webapp.toml.
     cfg.BspCacheMs = g_bspCacheMs
+    cfg.BspEngine = g_bspEngine
+    cfg.BspEnginePages = g_bspEnginePages
     HTTP CONFIG cfg
 
     ' Più mount statici sono legittimi: vince il prefisso più lungo.

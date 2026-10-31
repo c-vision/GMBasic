@@ -121,6 +121,24 @@ internal static class BspDispatch
             if (rendered != null)
                 return FinishBsp(new HttpResponse { BodyBytes = rendered }, req);
 
+            // Motore C (opt-in): stessa semantica del percorso P-Code.
+            if (CommonLib.Http.BspRuntime.UseCEngine(filePath))
+            {
+                Basic.Pipeline.SourcePipeline.SidecarWriter ??=
+                    static chunk => Basic.Runtime.ChunkA1Serializer.Serialize(chunk);
+                Basic.Pipeline.SourcePipeline.EnsureBspSidecar(filePath);
+
+                req.Headers.TryGetValue("Host", out var cHost);
+                if (CommonLib.Http.BspC.TryServe(Path.GetDirectoryName(filePath) ?? "", "/" + Path.GetFileName(filePath),
+                        req.QueryString, cHost, out var cBody, out var cStatus))
+                    return FinishBsp(new HttpResponse
+                    {
+                        StatusCode = cStatus == 0 ? 200 : cStatus,
+                        BodyBytes = System.Text.Encoding.UTF8.GetBytes(cBody),
+                        ContentType = cStatus == 200 ? "text/html; charset=utf-8" : "text/plain; charset=utf-8"
+                    }, req);
+            }
+
             var cached = CommonLib.Http.BspRuntime.CacheGet(filePath);
             if (cached == null)
             {

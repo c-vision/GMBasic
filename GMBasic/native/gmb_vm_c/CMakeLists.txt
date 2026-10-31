@@ -125,6 +125,34 @@ target_compile_definitions(gmb_vm PRIVATE GMB_NATIVE_DB)
 target_include_directories(gmb_vm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_db_c/include)
 target_link_libraries(gmb_vm PRIVATE gmb_db)
 
+# ── BSP engine come libreria CONDIVISA per P/Invoke (C#) ─────────────────────
+# Espone il renderer VM/C (gmb_vm_bsp.c) senza passare dal processo gmb_vm_host:
+# un host C# può servire le pagine .bsp eseguendole nella VM C in-process.
+# Direzione unica C# → C: il C non conosce il managed.
+# Il renderer consuma il sidecar A1 "<pagina>.bsp.chunk" (precompilazione managed).
+add_library(gmb_bsp SHARED
+    gmb_bsp_pinvoke.c
+)
+target_include_directories(gmb_bsp PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c/include)
+target_link_libraries(gmb_bsp PRIVATE gmb_vm gmb_runtime pthread ${CMAKE_DL_LIBS})
+# Il runtime (gmb_verify.c/gmb_observe_test.c) referenzia il compilatore C
+# (gmb_compile_bas_file): come per gmb_vm_host, va linkato anche qui.
+if(GMB_VM_LINK_COMPILER)
+    target_link_libraries(gmb_bsp PRIVATE gmb_compiler_c)
+endif()
+set_target_properties(gmb_bsp PROPERTIES
+    OUTPUT_NAME gmb_bsp
+    C_VISIBILITY_PRESET default)
+# Il registro dei builtin di dominio si registra via constructor in una static lib:
+# con -dead_strip serve un riferimento esplicito (stesso ancoraggio di gmb_vm_host).
+if(APPLE)
+    target_link_options(gmb_bsp PRIVATE "LINKER:-u,_gmb_builtin_ext_anchor")
+else()
+    target_link_options(gmb_bsp PRIVATE "LINKER:--undefined=gmb_builtin_ext_anchor")
+endif()
+
 # Host CLI: legge un chunk A1 e lo esegue con la VM.
 add_executable(gmb_vm_host
     gmb_vm_host.c
