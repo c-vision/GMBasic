@@ -60,7 +60,11 @@ public static class SkillIndex
         foreach (var s in skills)
             sb.AppendLine($"- **`{s.Item1}`** — {s.Item3}");
 
-        File.WriteAllText(indexPath, sb.ToString(), Encoding.UTF8);
+        // Best effort: l'indice è un OUTPUT (il valore di ritorno è la fonte per l'agente: il
+        // chiamante lo passa al SystemPrompt). Una cartella non scrivibile non deve far fallire
+        // AI.SKILLSPROMPT — parità con il C, dove `fopen` che fallisce lascia comunque il testo.
+        try { File.WriteAllText(indexPath, sb.ToString(), Encoding.UTF8); }
+        catch { /* cartella non scrivibile (app installata): si prosegue col testo in memoria */ }
         return sb.ToString();
     }
 

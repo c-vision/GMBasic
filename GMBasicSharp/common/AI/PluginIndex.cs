@@ -87,7 +87,10 @@ public static class PluginIndex
             sb.AppendLine($"- **`{p.Name}`** — {p.Description} · stato: {state}{trigger}");
         }
 
-        File.WriteAllText(indexPath, sb.ToString(), Encoding.UTF8);
+        // Best effort (parità SkillIndex.Refresh): il testo è il valore di ritorno, la scrittura
+        // è solo una cache su disco.
+        try { File.WriteAllText(indexPath, sb.ToString(), Encoding.UTF8); }
+        catch { /* cartella non scrivibile: si prosegue col testo in memoria */ }
         return sb.ToString();
     }
 

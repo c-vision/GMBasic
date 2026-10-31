@@ -359,14 +359,23 @@ public static class GmbiPaths
     public static string RecursiveMasDir => Path.Combine(ConfigDir, "recursivemas");
 
     // ========================================================================
-    // Cache (dentro TempDir — il SO la pulisce, niente file definitivi qui)
+    // Marketplace di skills/plugins — CACHE UTENTE, non temporanea
     // ========================================================================
 
-    /// <summary>Clone dei marketplace skills (ex ~/.gmbasic/skills-marketplaces).</summary>
-    public static string SkillsMarketplacesDir => Path.Combine(TempDir, "gmbasic-skills-marketplaces");
+    /// <summary>Clone dei marketplace skills: <c>~/.gmbasic/skills-marketplaces</c>.
+    /// NON in <see cref="TempDir"/>: `AI SKILLS MARKETPLACE "url"` AGGIUNGE il clone ai
+    /// percorsi di ricerca (<see cref="SkillsDir"/>), quindi è un'installazione, non uno
+    /// staging: in TempDir il sistema operativo la cancellava e i percorsi configurati
+    /// puntavano a cartelle sparite (`AI.SKILLSLIST()` tornava vuota senza motivo).</summary>
+    public static string SkillsMarketplacesDir => Path.Combine(HomeRoot, "skills-marketplaces");
 
-    /// <summary>Clone dei marketplace plugins (ex ~/.gmbasic/plugins-marketplaces).</summary>
-    public static string PluginsMarketplacesDir => Path.Combine(TempDir, "gmbasic-plugins-marketplaces");
+    /// <summary>Clone dei marketplace plugins: <c>~/.gmbasic/plugins-marketplaces</c>
+    /// (stessa ragione di <see cref="SkillsMarketplacesDir"/>).</summary>
+    public static string PluginsMarketplacesDir => Path.Combine(HomeRoot, "plugins-marketplaces");
+
+    // ========================================================================
+    // Cache (dentro TempDir — il SO la pulisce, niente file definitivi qui)
+    // ========================================================================
 
     /// <summary>kv-swap dei provider (ex ~/.gmbasic/kv-swap). Cache temporanea: il SO la pulisce.</summary>
     public static string KvSwapDir => Path.Combine(TempDir, "gmbasic-kv-swap");

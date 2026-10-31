@@ -806,16 +806,17 @@ void gmb_paths_obscura_dir(const char* rid, char* out, size_t cap)
     snprintf(out, cap, "%s/obscura/%s", d, rid && *rid ? rid : "osx-arm64");
 }
 
-/* Cache temporanee. */
+/* Marketplace di skills/plugins: CACHE UTENTE (~/.gmbasic/<nome>-marketplaces), non la
+ * cartella temporanea. `AI SKILLS|PLUGINS MARKETPLACE "url"` AGGIUNGE il clone ai percorsi di
+ * ricerca: è un'installazione, non uno staging; in temp il SO la cancellava lasciando percorsi
+ * configurati verso cartelle sparite. Parità: GmbiPaths.SkillsMarketplacesDir (C#). */
 void gmb_paths_skills_marketplaces_dir(char* out, size_t cap)
 {
-    char d[1024]; gmb_paths_temp_dir(d, sizeof(d));
-    snprintf(out, cap, "%s/gmbasic-skills-marketplaces", d);
+    pr_user_root("skills-marketplaces", out, cap);
 }
 void gmb_paths_plugins_marketplaces_dir(char* out, size_t cap)
 {
-    char d[1024]; gmb_paths_temp_dir(d, sizeof(d));
-    snprintf(out, cap, "%s/gmbasic-plugins-marketplaces", d);
+    pr_user_root("plugins-marketplaces", out, cap);
 }
 void gmb_paths_kvswap_dir(char* out, size_t cap)
 {

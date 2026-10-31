@@ -220,7 +220,12 @@ public static class AiConfig
         {
             var s = Load();
             if (!string.IsNullOrWhiteSpace(s.SkillsIndexPath)) return PathExpansionExpand(s.SkillsIndexPath!);
-            return Path.Combine(SkillsDefaultPath, "SKILLS_PROMPT.md");
+            // L'indice è un OUTPUT rigenerabile (lo riscrive SkillIndex.Refresh): sta nella
+            // CONFIG (<GmbiPaths.ConfigDir>, accanto ad ai.json), non dentro l'archivio delle
+            // skill. Due ragioni: (a) l'archivio può essere in sola lettura (app installata) e
+            // la scrittura falliva; (b) il file generato dentro `shared/skills` portava i PATH
+            // ASSOLUTI della macchina che lo aveva generato, sporcando il repository.
+            return Path.Combine(GmbiPaths.ConfigDir, "SKILLS_PROMPT.md");
         }
         set
         {
@@ -251,12 +256,10 @@ public static class AiConfig
 
     public static string PluginsPromptPath
     {
-        get
-        {
-            var s = Load();
-            if (!string.IsNullOrWhiteSpace(s.PluginsDefaultPath)) return Path.Combine(PluginsDefaultPath, "PLUGINS_PROMPT.md");
-            return Path.Combine(PluginsDefaultPath, "PLUGINS_PROMPT.md");
-        }
+        // OUTPUT rigenerabile (PluginIndex.Refresh lo riscrive) nella CONFIG (GmbiPaths.ConfigDir,
+        // accanto ad ai.json) come SkillsIndexPath: un archivio in sola lettura (app installata)
+        // non deve impedire il refresh, e il file generato non deve finire dentro `shared/plugins`.
+        get => Path.Combine(GmbiPaths.ConfigDir, "PLUGINS_PROMPT.md");
     }
 
     /// <summary>Prompt di sistema di base per gli agenti (modificabile da config).</summary>
