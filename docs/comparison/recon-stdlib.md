@@ -1,17 +1,17 @@
 # GMBASIC — Ricognizione completa della StdLib
 
-_Generato da `scripts/recon_stdlib.py` (dal codice `common/StdLib/StdLib.*.cs`)._
+_Generato da `tools/basic/recon_stdlib.bas` (dal codice `common/StdLib/StdLib.*.cs`)._
 **Chiave canonica:** (NAMESPACE, NOME). Nomi uguali in namespace diversi = registrazioni distinte.
 
 ## 1. Sintesi
 
 | Superficie | Occorrenze | Uniche (ns, nome) |
 |---|---|---|
-| Funzioni | 1561 | 1517 |
+| Funzioni | 1574 | 1530 |
 | Comandi | 174 | 174 |
-| Tipi | 65 | 65 |
+| Tipi | 78 | 78 |
 | Costanti | 284 | 284 |
-| **Totale** | 2084 | 2040 |
+| **Totale** | 2110 | 2066 |
 
 Namespaces: 69
 
@@ -30,10 +30,10 @@ Namespaces: 69
 | BLOCKCHAIN | 24 | 0 | 1 | 0 | 25 |
 | BROWSER | 21 | 0 | 0 | 0 | 21 |
 | CHART | 1 | 6 | 0 | 0 | 7 |
-| COLLECTIONS | 0 | 0 | 25 | 0 | 25 |
+| COLLECTIONS | 0 | 0 | 30 | 0 | 30 |
 | COMPRESSION | 21 | 2 | 0 | 0 | 23 |
 | COMPUTER | 12 | 0 | 0 | 0 | 12 |
-| CONCURRENCY | 3 | 11 | 1 | 0 | 15 |
+| CONCURRENCY | 3 | 11 | 3 | 0 | 17 |
 | CONSOLE | 14 | 18 | 1 | 0 | 33 |
 | CONSTANTS | 0 | 0 | 0 | 284 | 284 |
 | CONTEXT | 5 | 0 | 1 | 0 | 6 |
@@ -45,20 +45,20 @@ Namespaces: 69
 | DBF | 30 | 0 | 0 | 0 | 30 |
 | FINANCE | 23 | 0 | 0 | 0 | 23 |
 | GRAPH | 25 | 0 | 0 | 0 | 25 |
-| GRAPHICS | 15 | 40 | 3 | 0 | 58 |
+| GRAPHICS | 15 | 40 | 4 | 0 | 59 |
 | GREP | 3 | 0 | 0 | 0 | 3 |
-| HTTP | 8 | 6 | 11 | 0 | 25 |
-| IO | 33 | 25 | 0 | 0 | 58 |
+| HTTP | 8 | 6 | 12 | 0 | 26 |
+| IO | 35 | 25 | 0 | 0 | 60 |
 | ISAM | 24 | 0 | 0 | 0 | 24 |
 | JOY | 4 | 0 | 0 | 0 | 4 |
 | JSON | 9 | 4 | 0 | 0 | 13 |
 | KDTREE | 4 | 0 | 0 | 0 | 4 |
 | LEDGER | 17 | 0 | 1 | 0 | 18 |
-| LLM | 53 | 0 | 0 | 0 | 53 |
+| LLM | 61 | 0 | 0 | 0 | 61 |
 | MATH | 42 | 0 | 0 | 0 | 42 |
-| MATRIX | 75 | 10 | 0 | 0 | 85 |
+| MATRIX | 75 | 10 | 5 | 0 | 90 |
 | MEMORY | 5 | 0 | 0 | 0 | 5 |
-| MESSAGE | 0 | 1 | 0 | 0 | 1 |
+| MESSAGE | 1 | 1 | 0 | 0 | 2 |
 | MOUSE | 11 | 9 | 0 | 0 | 20 |
 | NET | 8 | 2 | 0 | 0 | 10 |
 | OPTIMIZE | 34 | 0 | 0 | 0 | 34 |
@@ -70,7 +70,7 @@ Namespaces: 69
 | SPEED | 9 | 0 | 0 | 0 | 9 |
 | SQL | 8 | 0 | 1 | 0 | 9 |
 | STATS | 83 | 0 | 0 | 0 | 83 |
-| STRINGS | 45 | 0 | 4 | 0 | 49 |
+| STRINGS | 47 | 0 | 3 | 0 | 50 |
 | SYNCMAP | 4 | 0 | 1 | 0 | 5 |
 | SYSTEM | 26 | 2 | 1 | 0 | 29 |
 | TIMESERIES | 32 | 0 | 0 | 0 | 32 |
@@ -937,6 +937,8 @@ IO.FreeFile
 IO.FSeek
 IO.FWrite
 IO.GetFolderPath
+IO.GETTEMPDIR
+IO.GETTEMPFILE
 IO.LOF
 IO.MEMORYMAP
 IO.MMAPPEEK
@@ -1009,6 +1011,7 @@ LEDGER.RECNO
 LEDGER.REGISTER
 LEDGER.VALIDATE
 LEDGER.VARIANCE
+LLM.Arch
 LLM.BenchResult
 LLM.CacheStats
 LLM.Callmap
@@ -1017,6 +1020,7 @@ LLM.Commit
 LLM.Context
 LLM.DatasetStats
 LLM.DecodeStats
+LLM.Detokenize
 LLM.DistillCkpt
 LLM.DistillDone
 LLM.DistillEvalAccept
@@ -1043,10 +1047,14 @@ LLM.FinetuneLoss
 LLM.FinetuneStatus
 LLM.Impact
 LLM.Inspect
+LLM.Kernel
+LLM.Kv
 LLM.LoraList
 LLM.LoraLoad
 LLM.LoraSave
+LLM.Module
 LLM.Patch
+LLM.Policy
 LLM.PrefillStats
 LLM.RepoMap
 LLM.Revision
@@ -1057,7 +1065,9 @@ LLM.RunsJson
 LLM.RunStop
 LLM.StreamStats
 LLM.Symbol
+LLM.Tensor
 LLM.TokenCount
+LLM.Tokens
 LLM.TrainConfig
 LLM.TrainConfigSet
 LLM.TrainExport
@@ -1184,6 +1194,7 @@ MEMORY.LIST
 MEMORY.LOAD
 MEMORY.SEARCH
 MEMORY.STORE
+MESSAGE.DELIVERY
 MOUSE.BUTTON
 MOUSE.CLICK
 MOUSE.DBLCLICK
@@ -1419,6 +1430,7 @@ STRINGS.ISURL
 STRINGS.Join
 STRINGS.JSENCODE
 STRINGS.Kebab
+STRINGS.LCASE
 STRINGS.Left
 STRINGS.Len
 STRINGS.Lower
@@ -1444,6 +1456,7 @@ STRINGS.StartsWith
 STRINGS.Str
 STRINGS.Title
 STRINGS.Trim
+STRINGS.UCASE
 STRINGS.Upper
 STRINGS.URLENCODE
 STRINGS.WRAP
@@ -1933,33 +1946,41 @@ COLLECTIONS.AVLTreeType
 COLLECTIONS.BagType
 COLLECTIONS.BinaryHeapType
 COLLECTIONS.BinaryIndexedTreeType
+COLLECTIONS.BITREE
 COLLECTIONS.BPlusTreeType
 COLLECTIONS.CacheType
+COLLECTIONS.CIRCULAR
 COLLECTIONS.CircularLinkedListType
 COLLECTIONS.DictType
 COLLECTIONS.DoublyLinkedListType
 COLLECTIONS.GraphType
 COLLECTIONS.HashRingType
 COLLECTIONS.HashSetType
+COLLECTIONS.HEAP
 COLLECTIONS.KeyValuePairType
 COLLECTIONS.LinkedListType
-COLLECTIONS.LIST
 COLLECTIONS.ListType
+COLLECTIONS.MAXHEAP
 COLLECTIONS.QueueType
+COLLECTIONS.REDBLACK
 COLLECTIONS.RedBlackTreeType
 COLLECTIONS.RingBufferType
+COLLECTIONS.SORTED
 COLLECTIONS.SortedDictType
 COLLECTIONS.SparseSetType
 COLLECTIONS.StackType
 COLLECTIONS.TimelineType
 COLLECTIONS.TreeType
 COLLECTIONS.TrieType
+CONCURRENCY.CHANNEL
+CONCURRENCY.ONCE
 CONCURRENCY.WAITGROUP
 CONSOLE.KEY
 CONTEXT.CONTEXT
-GRAPHICS.DISPLAYMODE
 GRAPHICS.DisplayModeType
+GRAPHICS.RGBA
 GRAPHICS.RgbaColorType
+GRAPHICS.SPRITEINFO
 HTTP.CookieJarType
 HTTP.FetchResultType
 HTTP.FileFieldType
@@ -1970,13 +1991,18 @@ HTTP.HttpOptionsType
 HTTP.HttpPostedDataType
 HTTP.HttpRequestType
 HTTP.HttpResponseType
+HTTP.NextHandler
 HTTP.WebSocketType
 LEDGER.LEDGERENTRY
+MATRIX.CholeskyDecomposition
+MATRIX.EvdDecomposition
+MATRIX.LuDecomposition
+MATRIX.QrDecomposition
+MATRIX.SvdDecomposition
 POOL.POOL
 SQL.SqlResultSetType
 STRINGS.RegexMatchType
 STRINGS.RegexType
-STRINGS.STRINGBUILDER
 STRINGS.StringBuilderType
 SYNCMAP.CONCURRENTMAP
 SYSTEM.ErrType

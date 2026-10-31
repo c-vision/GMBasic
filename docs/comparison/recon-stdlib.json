@@ -2,8 +2,8 @@
  "fonte": "common/StdLib/StdLib.*.cs",
  "chiave": "(NAMESPACE, NOME)",
  "funzioni": {
-  "occorrenze": 1561,
-  "uniche": 1517,
+  "occorrenze": 1574,
+  "uniche": 1530,
   "per_namespace": {
    "AGENT": 1,
    "AI": 272,
@@ -32,16 +32,17 @@
    "GRAPHICS": 15,
    "GREP": 3,
    "HTTP": 8,
-   "IO": 33,
+   "IO": 35,
    "ISAM": 24,
    "JOY": 4,
    "JSON": 9,
    "KDTREE": 4,
    "LEDGER": 17,
-   "LLM": 53,
+   "LLM": 61,
    "MATH": 42,
    "MATRIX": 75,
    "MEMORY": 5,
+   "MESSAGE": 1,
    "MOUSE": 11,
    "NET": 8,
    "OPTIMIZE": 34,
@@ -53,7 +54,7 @@
    "SPEED": 9,
    "SQL": 8,
    "STATS": 83,
-   "STRINGS": 45,
+   "STRINGS": 47,
    "SYNCMAP": 4,
    "SYSTEM": 26,
    "TIMESERIES": 32,
@@ -99,22 +100,23 @@
   }
  },
  "tipi": {
-  "occorrenze": 65,
-  "uniche": 65,
+  "occorrenze": 78,
+  "uniche": 78,
   "per_namespace": {
    "ANALYSIS": 7,
    "ATOMIC": 1,
    "BLOCKCHAIN": 1,
-   "COLLECTIONS": 25,
-   "CONCURRENCY": 1,
+   "COLLECTIONS": 30,
+   "CONCURRENCY": 3,
    "CONSOLE": 1,
    "CONTEXT": 1,
-   "GRAPHICS": 3,
-   "HTTP": 11,
+   "GRAPHICS": 4,
+   "HTTP": 12,
    "LEDGER": 1,
+   "MATRIX": 5,
    "POOL": 1,
    "SQL": 1,
-   "STRINGS": 4,
+   "STRINGS": 3,
    "SYNCMAP": 1,
    "SYSTEM": 1,
    "TRADING.BACKTESTS": 2,
@@ -126,521 +128,125 @@
   "uniche": 284
  },
  "polimorfiche_funzioni": {
-  "ABS": [
-   "MATH",
-   "TORCH"
-  ],
-  "ADD": [
-   "LEDGER",
-   "TORCH"
-  ],
-  "ANOVA": [
-   "ANALYSIS",
-   "STATS"
-  ],
-  "APPENDMANY": [
-   "DBF",
-   "ISAM"
-  ],
-  "APPLYREPLICATION": [
-   "DBF",
-   "ISAM"
-  ],
-  "ARGMAX": [
-   "MATRIX",
-   "TORCH"
-  ],
-  "AVAILABLE": [
-   "JOY",
-   "TORCH"
-  ],
-  "BEGINGROUPCOMMIT": [
-   "DBF",
-   "SPEED"
-  ],
-  "BETA": [
-   "SPECIAL",
-   "TRADING.METRICS"
-  ],
-  "BOF": [
-   "DBF",
-   "ISAM",
-   "LEDGER",
-   "RDD"
-  ],
-  "CELL": [
-   "CONSOLE",
-   "GRAPHICS"
-  ],
-  "CELLSTR": [
-   "CONSOLE",
-   "GRAPHICS"
-  ],
-  "CLICK": [
-   "BROWSER",
-   "COMPUTER",
-   "MOUSE",
-   "UI"
-  ],
-  "CORRELATION": [
-   "ANALYSIS",
-   "STATS"
-  ],
-  "COUNT": [
-   "AI",
-   "GREP",
-   "LEDGER",
-   "SYSTEM",
-   "VECTORDB"
-  ],
-  "CREATE": [
-   "CHART",
-   "KDTREE",
-   "MATRIX",
-   "TORCH",
-   "VECTOR"
-  ],
-  "CTOD": [
-   "DATETIME",
-   "RDD"
-  ],
-  "DBFILTER": [
-   "DBF",
-   "ISAM"
-  ],
-  "DBRELATION": [
-   "DBF",
-   "ISAM"
-  ],
-  "DELETE": [
-   "HTTP",
-   "MEMORY",
-   "RDD",
-   "SYNCMAP"
-  ],
-  "DELETED": [
-   "DBF",
-   "ISAM"
-  ],
-  "DTOC": [
-   "DATETIME",
-   "RDD"
-  ],
-  "EMBED": [
-   "AI",
-   "VECTORDB"
-  ],
-  "ENDGROUPCOMMIT": [
-   "DBF",
-   "SPEED"
-  ],
-  "ENSURECOLLECTION": [
-   "AI",
-   "VECTORDB"
-  ],
-  "EOF": [
-   "DBF",
-   "IO",
-   "ISAM",
-   "LEDGER",
-   "RDD",
-   "SPEED"
-  ],
-  "EVALGATE": [
-   "LLM",
-   "VECTORDB"
-  ],
-  "EXP": [
-   "MATH",
-   "TORCH"
-  ],
-  "EXTRACT": [
-   "CONVERT",
-   "JSON"
-  ],
-  "FETCH": [
-   "HTTP",
-   "SQL"
-  ],
-  "FIND": [
-   "BROWSER",
-   "UI"
-  ],
-  "FLOCK": [
-   "DBF",
-   "ISAM",
-   "RDD"
-  ],
-  "FLUSHDURABILITY": [
-   "DBF",
-   "SPEED"
-  ],
-  "FOLLOWREPLICATION": [
-   "DBF",
-   "ISAM"
-  ],
-  "FORMAT": [
-   "CONVERT",
-   "STRINGS"
-  ],
-  "FOUND": [
-   "DBF",
-   "ISAM",
-   "LEDGER",
-   "RDD"
-  ],
-  "GAMMA": [
-   "SPECIAL",
-   "TRADING.OPTIONS"
-  ],
-  "GENTEST": [
-   "AI",
-   "VECTORDB"
-  ],
-  "GET": [
-   "CONSOLE",
-   "HTTP",
-   "LEDGER",
-   "POOL",
-   "TORCH"
-  ],
-  "INDEXKEY": [
-   "DBF",
-   "ISAM"
-  ],
-  "INDEXMETA": [
-   "AI",
-   "VECTORDB"
-  ],
-  "INDEXORD": [
-   "DBF",
-   "ISAM"
-  ],
-  "INDEXTEXT": [
-   "AI",
-   "VECTORDB"
-  ],
-  "INFO": [
-   "AI",
-   "ISAM",
-   "SPEED"
-  ],
-  "KURTOSIS": [
-   "ANALYSIS",
-   "STATS"
-  ],
-  "LASTREC": [
-   "DBF",
-   "ISAM",
-   "LEDGER"
-  ],
-  "LEFT": [
-   "MOUSE",
-   "STRINGS"
-  ],
-  "LIST": [
-   "AI",
-   "MEMORY"
-  ],
-  "LISTCOLLECTIONS": [
-   "AI",
-   "VECTORDB"
-  ],
-  "LOAD": [
-   "AI",
-   "JSON",
-   "MEMORY",
-   "SYNCMAP"
-  ],
-  "LOADDOCUMENTS": [
-   "AI",
-   "VECTORDB"
-  ],
-  "LOG": [
-   "ISAM",
-   "MATH",
-   "TORCH"
-  ],
-  "MAD": [
-   "ANALYSIS",
-   "STATS"
-  ],
-  "MAX": [
-   "MATH",
-   "TORCH"
-  ],
-  "MEAN": [
-   "ANALYSIS",
-   "STATS",
-   "TORCH"
-  ],
-  "MEDIAN": [
-   "ANALYSIS",
-   "STATS"
-  ],
-  "MIN": [
-   "MATH",
-   "TORCH"
-  ],
-  "MOVE": [
-   "COMPUTER",
-   "MOUSE"
-  ],
-  "OPEN": [
-   "CONVERT",
-   "LEDGER"
-  ],
-  "PARSE": [
-   "CONVERT",
-   "JSON"
-  ],
-  "POINT": [
-   "CONSOLE",
-   "GRAPHICS"
-  ],
-  "PURGEDEPRECATED": [
-   "AI",
-   "VECTORDB"
-  ],
-  "PUT": [
-   "HTTP",
-   "POOL"
-  ],
-  "QUERY": [
-   "CONVERT",
-   "KDTREE"
-  ],
-  "RECNO": [
-   "DBF",
-   "ISAM",
-   "LEDGER",
-   "RDD"
-  ],
-  "RECSIZE": [
-   "DBF",
-   "ISAM"
-  ],
-  "REGISTER": [
-   "AI",
-   "LEDGER",
-   "TOOL"
-  ],
-  "REMOVESOURCE": [
-   "AI",
-   "VECTORDB"
-  ],
-  "REPLACE": [
-   "RDD",
-   "STRINGS"
-  ],
-  "REPLICATIONRECV": [
-   "DBF",
-   "ISAM"
-  ],
-  "REPLICATIONSHIP": [
-   "DBF",
-   "ISAM"
-  ],
-  "RESHAPE": [
-   "MATRIX",
-   "TORCH"
-  ],
-  "RIGHT": [
-   "MOUSE",
-   "STRINGS"
-  ],
-  "RLOCK": [
-   "DBF",
-   "ISAM",
-   "RDD"
-  ],
-  "RUN": [
-   "AGENT",
-   "TRADING.BACKTESTS"
-  ],
-  "SCREENSHOT": [
-   "BROWSER",
-   "COMPUTER"
-  ],
-  "SEARCH": [
-   "AI",
-   "CONVERT",
-   "MEMORY",
-   "STRINGS",
-   "TOOL",
-   "VECTORDB"
-  ],
-  "SELECTED": [
-   "DBF",
-   "ISAM",
-   "SPEED"
-  ],
-  "SETDURABILITY": [
-   "DBF",
-   "SPEED"
-  ],
-  "SETREPLICATION": [
-   "DBF",
-   "ISAM"
-  ],
-  "SHARPERATIO": [
-   "TRADING.METRICS",
-   "TRADING.PORTFOLIO"
-  ],
-  "SKEWNESS": [
-   "ANALYSIS",
-   "STATS"
-  ],
-  "SLICE": [
-   "MATRIX",
-   "TORCH"
-  ],
-  "SPLIT": [
-   "STRINGS",
-   "TORCH"
-  ],
-  "STDDEV": [
-   "ANALYSIS",
-   "STATS"
-  ],
-  "STORE": [
-   "ATOMIC",
-   "MEMORY",
-   "SYNCMAP"
-  ],
-  "STRTI": [
-   "DATETIME",
-   "SYSTEM"
-  ],
-  "SUM": [
-   "MATH",
-   "TORCH"
-  ],
-  "TANH": [
-   "MATH",
-   "TORCH"
-  ],
-  "TI": [
-   "DATETIME",
-   "SYSTEM"
-  ],
-  "TODAY": [
-   "DATETIME",
-   "RDD"
-  ],
-  "TRANSPOSE": [
-   "MATRIX",
-   "TORCH"
-  ],
-  "TYPE": [
-   "COMPUTER",
-   "UI"
-  ],
-  "USED": [
-   "DBF",
-   "ISAM"
-  ],
-  "VALIDATE": [
-   "CONVERT",
-   "LEDGER",
-   "SPEED"
-  ],
-  "VALTYPE": [
-   "RDD",
-   "SYSTEM"
-  ],
-  "VARIANCE": [
-   "ANALYSIS",
-   "LEDGER",
-   "STATS"
-  ],
-  "VERIFY": [
-   "CRYPTOGRAPHY",
-   "LLM"
-  ],
-  "X": [
-   "MOUSE",
-   "WINDOWS"
-  ],
-  "Y": [
-   "MOUSE",
-   "WINDOWS"
-  ]
+  "ABS": ["MATH", "TORCH"],
+  "ADD": ["LEDGER", "TORCH"],
+  "ANOVA": ["ANALYSIS", "STATS"],
+  "APPENDMANY": ["DBF", "ISAM"],
+  "APPLYREPLICATION": ["DBF", "ISAM"],
+  "ARGMAX": ["MATRIX", "TORCH"],
+  "AVAILABLE": ["JOY", "TORCH"],
+  "BEGINGROUPCOMMIT": ["DBF", "SPEED"],
+  "BETA": ["SPECIAL", "TRADING.METRICS"],
+  "BOF": ["DBF", "ISAM", "LEDGER", "RDD"],
+  "CELL": ["CONSOLE", "GRAPHICS"],
+  "CELLSTR": ["CONSOLE", "GRAPHICS"],
+  "CLICK": ["BROWSER", "COMPUTER", "MOUSE", "UI"],
+  "CORRELATION": ["ANALYSIS", "STATS"],
+  "COUNT": ["AI", "GREP", "LEDGER", "SYSTEM", "VECTORDB"],
+  "CREATE": ["CHART", "KDTREE", "MATRIX", "TORCH", "VECTOR"],
+  "CTOD": ["DATETIME", "RDD"],
+  "DBFILTER": ["DBF", "ISAM"],
+  "DBRELATION": ["DBF", "ISAM"],
+  "DELETE": ["HTTP", "MEMORY", "RDD", "SYNCMAP"],
+  "DELETED": ["DBF", "ISAM"],
+  "DTOC": ["DATETIME", "RDD"],
+  "EMBED": ["AI", "VECTORDB"],
+  "ENDGROUPCOMMIT": ["DBF", "SPEED"],
+  "ENSURECOLLECTION": ["AI", "VECTORDB"],
+  "EOF": ["DBF", "IO", "ISAM", "LEDGER", "RDD", "SPEED"],
+  "EVALGATE": ["LLM", "VECTORDB"],
+  "EXP": ["MATH", "TORCH"],
+  "EXTRACT": ["CONVERT", "JSON"],
+  "FETCH": ["HTTP", "SQL"],
+  "FIND": ["BROWSER", "UI"],
+  "FLOCK": ["DBF", "ISAM", "RDD"],
+  "FLUSHDURABILITY": ["DBF", "SPEED"],
+  "FOLLOWREPLICATION": ["DBF", "ISAM"],
+  "FORMAT": ["CONVERT", "STRINGS"],
+  "FOUND": ["DBF", "ISAM", "LEDGER", "RDD"],
+  "GAMMA": ["SPECIAL", "TRADING.OPTIONS"],
+  "GENTEST": ["AI", "VECTORDB"],
+  "GET": ["CONSOLE", "HTTP", "LEDGER", "POOL", "TORCH"],
+  "INDEXKEY": ["DBF", "ISAM"],
+  "INDEXMETA": ["AI", "VECTORDB"],
+  "INDEXORD": ["DBF", "ISAM"],
+  "INDEXTEXT": ["AI", "VECTORDB"],
+  "INFO": ["AI", "ISAM", "SPEED"],
+  "KURTOSIS": ["ANALYSIS", "STATS"],
+  "LASTREC": ["DBF", "ISAM", "LEDGER"],
+  "LEFT": ["MOUSE", "STRINGS"],
+  "LIST": ["AI", "MEMORY"],
+  "LISTCOLLECTIONS": ["AI", "VECTORDB"],
+  "LOAD": ["AI", "JSON", "MEMORY", "SYNCMAP"],
+  "LOADDOCUMENTS": ["AI", "VECTORDB"],
+  "LOG": ["ISAM", "MATH", "TORCH"],
+  "MAD": ["ANALYSIS", "STATS"],
+  "MAX": ["MATH", "TORCH"],
+  "MEAN": ["ANALYSIS", "STATS", "TORCH"],
+  "MEDIAN": ["ANALYSIS", "STATS"],
+  "MIN": ["MATH", "TORCH"],
+  "MOVE": ["COMPUTER", "MOUSE"],
+  "OPEN": ["CONVERT", "LEDGER"],
+  "PARSE": ["CONVERT", "JSON"],
+  "POINT": ["CONSOLE", "GRAPHICS"],
+  "PURGEDEPRECATED": ["AI", "VECTORDB"],
+  "PUT": ["HTTP", "POOL"],
+  "QUERY": ["CONVERT", "KDTREE"],
+  "RECNO": ["DBF", "ISAM", "LEDGER", "RDD"],
+  "RECSIZE": ["DBF", "ISAM"],
+  "REGISTER": ["AI", "LEDGER", "TOOL"],
+  "REMOVESOURCE": ["AI", "VECTORDB"],
+  "REPLACE": ["RDD", "STRINGS"],
+  "REPLICATIONRECV": ["DBF", "ISAM"],
+  "REPLICATIONSHIP": ["DBF", "ISAM"],
+  "RESHAPE": ["MATRIX", "TORCH"],
+  "RIGHT": ["MOUSE", "STRINGS"],
+  "RLOCK": ["DBF", "ISAM", "RDD"],
+  "RUN": ["AGENT", "TRADING.BACKTESTS"],
+  "SCREENSHOT": ["BROWSER", "COMPUTER"],
+  "SEARCH": ["AI", "CONVERT", "MEMORY", "STRINGS", "TOOL", "VECTORDB"],
+  "SELECTED": ["DBF", "ISAM", "SPEED"],
+  "SETDURABILITY": ["DBF", "SPEED"],
+  "SETREPLICATION": ["DBF", "ISAM"],
+  "SHARPERATIO": ["TRADING.METRICS", "TRADING.PORTFOLIO"],
+  "SKEWNESS": ["ANALYSIS", "STATS"],
+  "SLICE": ["MATRIX", "TORCH"],
+  "SPLIT": ["STRINGS", "TORCH"],
+  "STDDEV": ["ANALYSIS", "STATS"],
+  "STORE": ["ATOMIC", "MEMORY", "SYNCMAP"],
+  "STRTI": ["DATETIME", "SYSTEM"],
+  "SUM": ["MATH", "TORCH"],
+  "TANH": ["MATH", "TORCH"],
+  "TI": ["DATETIME", "SYSTEM"],
+  "TODAY": ["DATETIME", "RDD"],
+  "TRANSPOSE": ["MATRIX", "TORCH"],
+  "TYPE": ["COMPUTER", "UI"],
+  "USED": ["DBF", "ISAM"],
+  "VALIDATE": ["CONVERT", "LEDGER", "SPEED"],
+  "VALTYPE": ["RDD", "SYSTEM"],
+  "VARIANCE": ["ANALYSIS", "LEDGER", "STATS"],
+  "VERIFY": ["CRYPTOGRAPHY", "LLM"],
+  "X": ["MOUSE", "WINDOWS"],
+  "Y": ["MOUSE", "WINDOWS"]
  },
  "polimorfici_comandi": {
-  "CLEAR": [
-   "CHART",
-   "GRAPHICS",
-   "WINDOWS"
-  ],
-  "CLOSE": [
-   "CHART",
-   "IO"
-  ],
-  "CLS": [
-   "CONSOLE",
-   "GRAPHICS"
-  ],
-  "COLOR": [
-   "CONSOLE",
-   "GRAPHICS"
-  ],
-  "CURSOR": [
-   "CONSOLE",
-   "MOUSE"
-  ],
-  "DOEVENTS": [
-   "CONSOLE",
-   "GRAPHICS"
-  ],
-  "GET": [
-   "CONSOLE",
-   "IO"
-  ],
-  "INPUT": [
-   "CONSOLE",
-   "IO"
-  ],
-  "LINE INPUT": [
-   "CONSOLE",
-   "IO"
-  ],
-  "LOCATE": [
-   "CONSOLE",
-   "GRAPHICS"
-  ],
-  "OPEN": [
-   "IO",
-   "JSON"
-  ],
-  "PRINT": [
-   "CONSOLE",
-   "GRAPHICS",
-   "WINDOWS"
-  ],
-  "SAVE": [
-   "CHART",
-   "JSON"
-  ],
-  "SET": [
-   "CONSOLE",
-   "MOUSE",
-   "VECTOR",
-   "WINDOWS"
-  ],
-  "SHOW": [
-   "CHART",
-   "MOUSE",
-   "WINDOWS"
-  ],
-  "VIEW": [
-   "GRAPHICS",
-   "MATRIX"
-  ],
-  "WAIT": [
-   "CONCURRENCY",
-   "MOUSE"
-  ]
+  "CLEAR": ["CHART", "GRAPHICS", "WINDOWS"],
+  "CLOSE": ["CHART", "IO"],
+  "CLS": ["CONSOLE", "GRAPHICS"],
+  "COLOR": ["CONSOLE", "GRAPHICS"],
+  "CURSOR": ["CONSOLE", "MOUSE"],
+  "DOEVENTS": ["CONSOLE", "GRAPHICS"],
+  "GET": ["CONSOLE", "IO"],
+  "INPUT": ["CONSOLE", "IO"],
+  "LINE INPUT": ["CONSOLE", "IO"],
+  "LOCATE": ["CONSOLE", "GRAPHICS"],
+  "OPEN": ["IO", "JSON"],
+  "PRINT": ["CONSOLE", "GRAPHICS", "WINDOWS"],
+  "SAVE": ["CHART", "JSON"],
+  "SET": ["CONSOLE", "MOUSE", "VECTOR", "WINDOWS"],
+  "SHOW": ["CHART", "MOUSE", "WINDOWS"],
+  "VIEW": ["GRAPHICS", "MATRIX"],
+  "WAIT": ["CONCURRENCY", "MOUSE"]
  },
  "elenco_funzioni": [
   "AGENT.Run",
@@ -1361,6 +967,8 @@
   "IO.FSeek",
   "IO.FWrite",
   "IO.GetFolderPath",
+  "IO.GETTEMPDIR",
+  "IO.GETTEMPFILE",
   "IO.LOF",
   "IO.MEMORYMAP",
   "IO.MMAPPEEK",
@@ -1433,6 +1041,7 @@
   "LEDGER.REGISTER",
   "LEDGER.VALIDATE",
   "LEDGER.VARIANCE",
+  "LLM.Arch",
   "LLM.BenchResult",
   "LLM.CacheStats",
   "LLM.Callmap",
@@ -1441,6 +1050,7 @@
   "LLM.Context",
   "LLM.DatasetStats",
   "LLM.DecodeStats",
+  "LLM.Detokenize",
   "LLM.DistillCkpt",
   "LLM.DistillDone",
   "LLM.DistillEvalAccept",
@@ -1467,10 +1077,14 @@
   "LLM.FinetuneStatus",
   "LLM.Impact",
   "LLM.Inspect",
+  "LLM.Kernel",
+  "LLM.Kv",
   "LLM.LoraList",
   "LLM.LoraLoad",
   "LLM.LoraSave",
+  "LLM.Module",
   "LLM.Patch",
+  "LLM.Policy",
   "LLM.PrefillStats",
   "LLM.RepoMap",
   "LLM.Revision",
@@ -1481,7 +1095,9 @@
   "LLM.RunStop",
   "LLM.StreamStats",
   "LLM.Symbol",
+  "LLM.Tensor",
   "LLM.TokenCount",
+  "LLM.Tokens",
   "LLM.TrainConfig",
   "LLM.TrainConfigSet",
   "LLM.TrainExport",
@@ -1608,6 +1224,7 @@
   "MEMORY.LOAD",
   "MEMORY.SEARCH",
   "MEMORY.STORE",
+  "MESSAGE.DELIVERY",
   "MOUSE.BUTTON",
   "MOUSE.CLICK",
   "MOUSE.DBLCLICK",
@@ -1843,6 +1460,7 @@
   "STRINGS.Join",
   "STRINGS.JSENCODE",
   "STRINGS.Kebab",
+  "STRINGS.LCASE",
   "STRINGS.Left",
   "STRINGS.Len",
   "STRINGS.Lower",
@@ -1868,6 +1486,7 @@
   "STRINGS.Str",
   "STRINGS.Title",
   "STRINGS.Trim",
+  "STRINGS.UCASE",
   "STRINGS.Upper",
   "STRINGS.URLENCODE",
   "STRINGS.WRAP",
@@ -2351,33 +1970,41 @@
   "COLLECTIONS.BagType",
   "COLLECTIONS.BinaryHeapType",
   "COLLECTIONS.BinaryIndexedTreeType",
+  "COLLECTIONS.BITREE",
   "COLLECTIONS.BPlusTreeType",
   "COLLECTIONS.CacheType",
+  "COLLECTIONS.CIRCULAR",
   "COLLECTIONS.CircularLinkedListType",
   "COLLECTIONS.DictType",
   "COLLECTIONS.DoublyLinkedListType",
   "COLLECTIONS.GraphType",
   "COLLECTIONS.HashRingType",
   "COLLECTIONS.HashSetType",
+  "COLLECTIONS.HEAP",
   "COLLECTIONS.KeyValuePairType",
   "COLLECTIONS.LinkedListType",
-  "COLLECTIONS.LIST",
   "COLLECTIONS.ListType",
+  "COLLECTIONS.MAXHEAP",
   "COLLECTIONS.QueueType",
+  "COLLECTIONS.REDBLACK",
   "COLLECTIONS.RedBlackTreeType",
   "COLLECTIONS.RingBufferType",
+  "COLLECTIONS.SORTED",
   "COLLECTIONS.SortedDictType",
   "COLLECTIONS.SparseSetType",
   "COLLECTIONS.StackType",
   "COLLECTIONS.TimelineType",
   "COLLECTIONS.TreeType",
   "COLLECTIONS.TrieType",
+  "CONCURRENCY.CHANNEL",
+  "CONCURRENCY.ONCE",
   "CONCURRENCY.WAITGROUP",
   "CONSOLE.KEY",
   "CONTEXT.CONTEXT",
-  "GRAPHICS.DISPLAYMODE",
   "GRAPHICS.DisplayModeType",
+  "GRAPHICS.RGBA",
   "GRAPHICS.RgbaColorType",
+  "GRAPHICS.SPRITEINFO",
   "HTTP.CookieJarType",
   "HTTP.FetchResultType",
   "HTTP.FileFieldType",
@@ -2388,13 +2015,18 @@
   "HTTP.HttpPostedDataType",
   "HTTP.HttpRequestType",
   "HTTP.HttpResponseType",
+  "HTTP.NextHandler",
   "HTTP.WebSocketType",
   "LEDGER.LEDGERENTRY",
+  "MATRIX.CholeskyDecomposition",
+  "MATRIX.EvdDecomposition",
+  "MATRIX.LuDecomposition",
+  "MATRIX.QrDecomposition",
+  "MATRIX.SvdDecomposition",
   "POOL.POOL",
   "SQL.SqlResultSetType",
   "STRINGS.RegexMatchType",
   "STRINGS.RegexType",
-  "STRINGS.STRINGBUILDER",
   "STRINGS.StringBuilderType",
   "SYNCMAP.CONCURRENTMAP",
   "SYSTEM.ErrType",

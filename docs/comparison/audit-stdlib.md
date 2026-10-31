@@ -1,6 +1,6 @@
 # GMBASIC — Audit StdLib per namespace (comandi, funzioni, costanti, tipi)
 
-_Generato da `scripts/recon_stdlib.py` dal codice `common/StdLib/StdLib.*.cs`._
+_Generato da `tools/basic/recon_stdlib.bas` dal codice `common/StdLib/StdLib.*.cs`._
 **Chiave:** (NAMESPACE, NOME). I nomi polimorfici sono elencati in OGNI namespace che li espone.
 
 ## Namespace AGENT
@@ -700,29 +700,34 @@ _Generato da `scripts/recon_stdlib.py` dal codice `common/StdLib/StdLib.*.cs`._
 | Funzione | Ritorno |
 |---|---|
 
-### Tipi (25)
+### Tipi (30)
 
 | Tipo |
 |---|---|
 | `AVLTreeType` |
+| `BITREE` |
 | `BPlusTreeType` |
 | `BagType` |
 | `BinaryHeapType` |
 | `BinaryIndexedTreeType` |
+| `CIRCULAR` |
 | `CacheType` |
 | `CircularLinkedListType` |
 | `DictType` |
 | `DoublyLinkedListType` |
 | `GraphType` |
+| `HEAP` |
 | `HashRingType` |
 | `HashSetType` |
 | `KeyValuePairType` |
-| `LIST` |
 | `LinkedListType` |
 | `ListType` |
+| `MAXHEAP` |
 | `QueueType` |
+| `REDBLACK` |
 | `RedBlackTreeType` |
 | `RingBufferType` |
+| `SORTED` |
 | `SortedDictType` |
 | `SparseSetType` |
 | `StackType` |
@@ -840,10 +845,12 @@ _Generato da `scripts/recon_stdlib.py` dal codice `common/StdLib/StdLib.*.cs`._
 | `TRYLOCK` | BitType |
 | `TaskYield` | ? |
 
-### Tipi (1)
+### Tipi (3)
 
 | Tipo |
 |---|---|
+| `CHANNEL` |
+| `ONCE` |
 | `WAITGROUP` |
 
 ### Costanti (0)
@@ -927,290 +934,290 @@ _Generato da `scripts/recon_stdlib.py` dal codice `common/StdLib/StdLib.*.cs`._
 
 | Costante |
 |---|---|
-| `%ABORT` |
-| `%ABORTRETRYIGNORE` |
-| `%ANSI` |
-| `%AQUA` |
-| `%AQUAMARINE1` |
-| `%AQUAMARINE1_2` |
-| `%AQUAMARINE3` |
-| `%AUDIO` |
-| `%AUTO` |
-| `%BLACK` |
-| `%BLUE` |
-| `%BLUE1` |
-| `%BLUE3` |
-| `%BLUE3_2` |
-| `%BLUE_VIOLET` |
-| `%C64` |
-| `%CADET_BLUE` |
-| `%CADET_BLUE_2` |
-| `%CANCEL` |
-| `%CENTER` |
-| `%CHARTREUSE1` |
-| `%CHARTREUSE2` |
-| `%CHARTREUSE2_2` |
-| `%CHARTREUSE3` |
-| `%CHARTREUSE3_2` |
-| `%CHARTREUSE4` |
-| `%CHAT` |
-| `%CHCLOSED` |
-| `%CHROMIUM` |
-| `%CLOSED` |
-| `%CORNFLOWER_BLUE` |
-| `%CYAN1` |
-| `%CYAN2` |
-| `%CYAN3` |
-| `%DARK_BLUE` |
-| `%DARK_CYAN` |
-| `%DARK_GREEN` |
-| `%DARK_MAGENTA` |
-| `%DARK_MAGENTA_2` |
-| `%DARK_OLIVE_GREEN3` |
-| `%DARK_OLIVE_GREEN3_2` |
-| `%DARK_RED` |
-| `%DARK_RED_2` |
-| `%DARK_SEA_GREEN` |
-| `%DARK_SEA_GREEN3` |
-| `%DARK_SEA_GREEN4` |
-| `%DARK_SEA_GREEN4_2` |
-| `%DARK_SLATE_GRAY1` |
-| `%DARK_SLATE_GRAY2` |
-| `%DARK_SLATE_GRAY3` |
-| `%DARK_TURQUOISE` |
-| `%DARK_VIOLET` |
-| `%DEEP_PINK4` |
-| `%DEEP_PINK4_2` |
-| `%DEEP_SKY_BLUE1` |
-| `%DEEP_SKY_BLUE2` |
-| `%DEEP_SKY_BLUE3` |
-| `%DEEP_SKY_BLUE3_2` |
-| `%DEEP_SKY_BLUE4` |
-| `%DEEP_SKY_BLUE4_2` |
-| `%DEEP_SKY_BLUE4_3` |
-| `%DODGER_BLUE1` |
-| `%DODGER_BLUE2` |
-| `%DODGER_BLUE3` |
-| `%DOUBLE` |
-| `%EMBEDDING` |
-| `%FAST` |
-| `%FILE_CHANGED` |
-| `%FILE_CREATED` |
-| `%FILE_DELETED` |
-| `%FILE_RENAMED` |
-| `%FUCHSIA` |
-| `%GOVERNED` |
-| `%GRAY` |
-| `%GRAY0` |
-| `%GRAY11` |
-| `%GRAY15` |
-| `%GRAY19` |
-| `%GRAY2` |
-| `%GRAY23` |
-| `%GRAY27` |
-| `%GRAY3` |
-| `%GRAY30` |
-| `%GRAY35` |
-| `%GRAY37` |
-| `%GRAY39` |
-| `%GRAY42` |
-| `%GRAY46` |
-| `%GRAY50` |
-| `%GRAY53` |
-| `%GRAY54` |
-| `%GRAY58` |
-| `%GRAY62` |
-| `%GRAY66` |
-| `%GRAY7` |
-| `%GRAY70` |
-| `%GRAY74` |
-| `%GRAY78` |
-| `%GRAY82` |
-| `%GRAY85` |
-| `%GRAY89` |
-| `%GREEN` |
-| `%GREEN1` |
-| `%GREEN3` |
-| `%GREEN3_2` |
-| `%GREEN4` |
-| `%IGNORE` |
-| `%JOYBUTTON2` |
-| `%JOYDOWN` |
-| `%JOYFIRE` |
-| `%JOYLEFT` |
-| `%JOYRIGHT` |
-| `%JOYUP` |
-| `%K_0` |
-| `%K_1` |
-| `%K_2` |
-| `%K_3` |
-| `%K_4` |
-| `%K_5` |
-| `%K_6` |
-| `%K_7` |
-| `%K_8` |
-| `%K_9` |
-| `%K_A` |
-| `%K_ALT` |
-| `%K_B` |
-| `%K_BS` |
-| `%K_C` |
-| `%K_CTRL` |
-| `%K_CTRL_BRK` |
-| `%K_CTRL_C` |
-| `%K_D` |
-| `%K_DEL` |
-| `%K_DOWN` |
-| `%K_E` |
-| `%K_END` |
-| `%K_ENTER` |
-| `%K_ESC` |
-| `%K_F` |
-| `%K_F1` |
-| `%K_F10` |
-| `%K_F11` |
-| `%K_F12` |
-| `%K_F2` |
-| `%K_F3` |
-| `%K_F4` |
-| `%K_F5` |
-| `%K_F6` |
-| `%K_F7` |
-| `%K_F8` |
-| `%K_F9` |
-| `%K_G` |
-| `%K_H` |
-| `%K_HOME` |
-| `%K_I` |
-| `%K_INS` |
-| `%K_J` |
-| `%K_K` |
-| `%K_L` |
-| `%K_LEFT` |
-| `%K_M` |
-| `%K_N` |
-| `%K_N0` |
-| `%K_N1` |
-| `%K_N2` |
-| `%K_N3` |
-| `%K_N4` |
-| `%K_N5` |
-| `%K_N6` |
-| `%K_N7` |
-| `%K_N8` |
-| `%K_N9` |
-| `%K_NADD` |
-| `%K_NDEC` |
-| `%K_NDIV` |
-| `%K_NMUL` |
-| `%K_NSUB` |
-| `%K_O` |
-| `%K_P` |
-| `%K_PAUSE` |
-| `%K_PGDN` |
-| `%K_PGUP` |
-| `%K_PRTSC` |
-| `%K_Q` |
-| `%K_R` |
-| `%K_RIGHT` |
-| `%K_S` |
-| `%K_SHIFT` |
-| `%K_SHIFT_TAB` |
-| `%K_SPC` |
-| `%K_T` |
-| `%K_TAB` |
-| `%K_U` |
-| `%K_UP` |
-| `%K_V` |
-| `%K_W` |
-| `%K_X` |
-| `%K_Y` |
-| `%K_Z` |
-| `%LEFT` |
-| `%LIGHT_GREEN` |
-| `%LIGHT_GREEN_2` |
-| `%LIGHT_PINK4` |
-| `%LIGHT_SEA_GREEN` |
-| `%LIGHT_SKY_BLUE3` |
-| `%LIGHT_SKY_BLUE3_2` |
-| `%LIGHT_SLATE_BLUE` |
-| `%LIGHT_SLATE_GRAY` |
-| `%LIME` |
-| `%MAROON` |
-| `%MEDIUM_PURPLE` |
-| `%MEDIUM_PURPLE3` |
-| `%MEDIUM_PURPLE3_2` |
-| `%MEDIUM_PURPLE4` |
-| `%MEDIUM_SPRING_GREEN` |
-| `%MEDIUM_TURQUOISE` |
-| `%NAVY` |
-| `%NAVY_BLUE` |
-| `%NO` |
-| `%NONE` |
-| `%OBSCURA` |
-| `%OCR` |
-| `%OK` |
-| `%OKCANCEL` |
-| `%OLIVE` |
-| `%ORANGE4` |
-| `%ORANGE4_2` |
-| `%PALE_GREEN1` |
-| `%PALE_GREEN3` |
-| `%PALE_GREEN3_2` |
-| `%PALE_TURQUOISE4` |
-| `%PLUM4` |
-| `%PURPLE` |
-| `%PURPLE1` |
-| `%PURPLE3` |
-| `%PURPLE4` |
-| `%PURPLE4_2` |
-| `%RECEIVED` |
-| `%RED` |
-| `%RERANKER` |
-| `%RERANK_KEYWORD` |
-| `%RERANK_OFF` |
-| `%RERANK_ONNX` |
-| `%RETRY` |
-| `%RETRYCANCEL` |
-| `%RIGHT` |
-| `%ROUNDED` |
-| `%ROYAL_BLUE1` |
-| `%SDL` |
-| `%SEA_GREEN1` |
-| `%SEA_GREEN1_2` |
-| `%SEA_GREEN2` |
-| `%SEA_GREEN3` |
-| `%SILVER` |
-| `%SINGLE` |
-| `%SKY_BLUE1` |
-| `%SKY_BLUE2` |
-| `%SKY_BLUE3` |
-| `%SLATE_BLUE1` |
-| `%SLATE_BLUE3` |
-| `%SLATE_BLUE3_2` |
-| `%SPRING_GREEN1` |
-| `%SPRING_GREEN2` |
-| `%SPRING_GREEN2_2` |
-| `%SPRING_GREEN3` |
-| `%SPRING_GREEN3_2` |
-| `%SPRING_GREEN4` |
-| `%STEEL_BLUE` |
-| `%STEEL_BLUE1` |
-| `%STEEL_BLUE1_2` |
-| `%STEEL_BLUE3` |
-| `%SYSTEM` |
-| `%TEAL` |
-| `%TTS` |
-| `%TURQUOISE2` |
-| `%TURQUOISE4` |
-| `%WHEAT4` |
-| `%WHITE` |
-| `%YELLOW` |
-| `%YELLOW4` |
-| `%YELLOW4_2` |
-| `%YES` |
-| `%YESNO` |
-| `%YESNOCANCEL` |
+| `ABORT` |
+| `ABORTRETRYIGNORE` |
+| `ANSI` |
+| `AQUA` |
+| `AQUAMARINE1` |
+| `AQUAMARINE1_2` |
+| `AQUAMARINE3` |
+| `AUDIO` |
+| `AUTO` |
+| `BLACK` |
+| `BLUE` |
+| `BLUE1` |
+| `BLUE3` |
+| `BLUE3_2` |
+| `BLUE_VIOLET` |
+| `C64` |
+| `CADET_BLUE` |
+| `CADET_BLUE_2` |
+| `CANCEL` |
+| `CENTER` |
+| `CHARTREUSE1` |
+| `CHARTREUSE2` |
+| `CHARTREUSE2_2` |
+| `CHARTREUSE3` |
+| `CHARTREUSE3_2` |
+| `CHARTREUSE4` |
+| `CHAT` |
+| `CHCLOSED` |
+| `CHROMIUM` |
+| `CLOSED` |
+| `CORNFLOWER_BLUE` |
+| `CYAN1` |
+| `CYAN2` |
+| `CYAN3` |
+| `DARK_BLUE` |
+| `DARK_CYAN` |
+| `DARK_GREEN` |
+| `DARK_MAGENTA` |
+| `DARK_MAGENTA_2` |
+| `DARK_OLIVE_GREEN3` |
+| `DARK_OLIVE_GREEN3_2` |
+| `DARK_RED` |
+| `DARK_RED_2` |
+| `DARK_SEA_GREEN` |
+| `DARK_SEA_GREEN3` |
+| `DARK_SEA_GREEN4` |
+| `DARK_SEA_GREEN4_2` |
+| `DARK_SLATE_GRAY1` |
+| `DARK_SLATE_GRAY2` |
+| `DARK_SLATE_GRAY3` |
+| `DARK_TURQUOISE` |
+| `DARK_VIOLET` |
+| `DEEP_PINK4` |
+| `DEEP_PINK4_2` |
+| `DEEP_SKY_BLUE1` |
+| `DEEP_SKY_BLUE2` |
+| `DEEP_SKY_BLUE3` |
+| `DEEP_SKY_BLUE3_2` |
+| `DEEP_SKY_BLUE4` |
+| `DEEP_SKY_BLUE4_2` |
+| `DEEP_SKY_BLUE4_3` |
+| `DODGER_BLUE1` |
+| `DODGER_BLUE2` |
+| `DODGER_BLUE3` |
+| `DOUBLE` |
+| `EMBEDDING` |
+| `FAST` |
+| `FILE_CHANGED` |
+| `FILE_CREATED` |
+| `FILE_DELETED` |
+| `FILE_RENAMED` |
+| `FUCHSIA` |
+| `GOVERNED` |
+| `GRAY` |
+| `GRAY0` |
+| `GRAY11` |
+| `GRAY15` |
+| `GRAY19` |
+| `GRAY2` |
+| `GRAY23` |
+| `GRAY27` |
+| `GRAY3` |
+| `GRAY30` |
+| `GRAY35` |
+| `GRAY37` |
+| `GRAY39` |
+| `GRAY42` |
+| `GRAY46` |
+| `GRAY50` |
+| `GRAY53` |
+| `GRAY54` |
+| `GRAY58` |
+| `GRAY62` |
+| `GRAY66` |
+| `GRAY7` |
+| `GRAY70` |
+| `GRAY74` |
+| `GRAY78` |
+| `GRAY82` |
+| `GRAY85` |
+| `GRAY89` |
+| `GREEN` |
+| `GREEN1` |
+| `GREEN3` |
+| `GREEN3_2` |
+| `GREEN4` |
+| `IGNORE` |
+| `JOYBUTTON2` |
+| `JOYDOWN` |
+| `JOYFIRE` |
+| `JOYLEFT` |
+| `JOYRIGHT` |
+| `JOYUP` |
+| `K_0` |
+| `K_1` |
+| `K_2` |
+| `K_3` |
+| `K_4` |
+| `K_5` |
+| `K_6` |
+| `K_7` |
+| `K_8` |
+| `K_9` |
+| `K_A` |
+| `K_ALT` |
+| `K_B` |
+| `K_BS` |
+| `K_C` |
+| `K_CTRL` |
+| `K_CTRL_BRK` |
+| `K_CTRL_C` |
+| `K_D` |
+| `K_DEL` |
+| `K_DOWN` |
+| `K_E` |
+| `K_END` |
+| `K_ENTER` |
+| `K_ESC` |
+| `K_F` |
+| `K_F1` |
+| `K_F10` |
+| `K_F11` |
+| `K_F12` |
+| `K_F2` |
+| `K_F3` |
+| `K_F4` |
+| `K_F5` |
+| `K_F6` |
+| `K_F7` |
+| `K_F8` |
+| `K_F9` |
+| `K_G` |
+| `K_H` |
+| `K_HOME` |
+| `K_I` |
+| `K_INS` |
+| `K_J` |
+| `K_K` |
+| `K_L` |
+| `K_LEFT` |
+| `K_M` |
+| `K_N` |
+| `K_N0` |
+| `K_N1` |
+| `K_N2` |
+| `K_N3` |
+| `K_N4` |
+| `K_N5` |
+| `K_N6` |
+| `K_N7` |
+| `K_N8` |
+| `K_N9` |
+| `K_NADD` |
+| `K_NDEC` |
+| `K_NDIV` |
+| `K_NMUL` |
+| `K_NSUB` |
+| `K_O` |
+| `K_P` |
+| `K_PAUSE` |
+| `K_PGDN` |
+| `K_PGUP` |
+| `K_PRTSC` |
+| `K_Q` |
+| `K_R` |
+| `K_RIGHT` |
+| `K_S` |
+| `K_SHIFT` |
+| `K_SHIFT_TAB` |
+| `K_SPC` |
+| `K_T` |
+| `K_TAB` |
+| `K_U` |
+| `K_UP` |
+| `K_V` |
+| `K_W` |
+| `K_X` |
+| `K_Y` |
+| `K_Z` |
+| `LEFT` |
+| `LIGHT_GREEN` |
+| `LIGHT_GREEN_2` |
+| `LIGHT_PINK4` |
+| `LIGHT_SEA_GREEN` |
+| `LIGHT_SKY_BLUE3` |
+| `LIGHT_SKY_BLUE3_2` |
+| `LIGHT_SLATE_BLUE` |
+| `LIGHT_SLATE_GRAY` |
+| `LIME` |
+| `MAROON` |
+| `MEDIUM_PURPLE` |
+| `MEDIUM_PURPLE3` |
+| `MEDIUM_PURPLE3_2` |
+| `MEDIUM_PURPLE4` |
+| `MEDIUM_SPRING_GREEN` |
+| `MEDIUM_TURQUOISE` |
+| `NAVY` |
+| `NAVY_BLUE` |
+| `NO` |
+| `NONE` |
+| `OBSCURA` |
+| `OCR` |
+| `OK` |
+| `OKCANCEL` |
+| `OLIVE` |
+| `ORANGE4` |
+| `ORANGE4_2` |
+| `PALE_GREEN1` |
+| `PALE_GREEN3` |
+| `PALE_GREEN3_2` |
+| `PALE_TURQUOISE4` |
+| `PLUM4` |
+| `PURPLE` |
+| `PURPLE1` |
+| `PURPLE3` |
+| `PURPLE4` |
+| `PURPLE4_2` |
+| `RECEIVED` |
+| `RED` |
+| `RERANKER` |
+| `RERANK_KEYWORD` |
+| `RERANK_OFF` |
+| `RERANK_ONNX` |
+| `RETRY` |
+| `RETRYCANCEL` |
+| `RIGHT` |
+| `ROUNDED` |
+| `ROYAL_BLUE1` |
+| `SDL` |
+| `SEA_GREEN1` |
+| `SEA_GREEN1_2` |
+| `SEA_GREEN2` |
+| `SEA_GREEN3` |
+| `SILVER` |
+| `SINGLE` |
+| `SKY_BLUE1` |
+| `SKY_BLUE2` |
+| `SKY_BLUE3` |
+| `SLATE_BLUE1` |
+| `SLATE_BLUE3` |
+| `SLATE_BLUE3_2` |
+| `SPRING_GREEN1` |
+| `SPRING_GREEN2` |
+| `SPRING_GREEN2_2` |
+| `SPRING_GREEN3` |
+| `SPRING_GREEN3_2` |
+| `SPRING_GREEN4` |
+| `STEEL_BLUE` |
+| `STEEL_BLUE1` |
+| `STEEL_BLUE1_2` |
+| `STEEL_BLUE3` |
+| `SYSTEM` |
+| `TEAL` |
+| `TTS` |
+| `TURQUOISE2` |
+| `TURQUOISE4` |
+| `WHEAT4` |
+| `WHITE` |
+| `YELLOW` |
+| `YELLOW4` |
+| `YELLOW4_2` |
+| `YES` |
+| `YESNO` |
+| `YESNOCANCEL` |
 
 ## Namespace CONTEXT
 
@@ -1253,7 +1260,7 @@ _Generato da `scripts/recon_stdlib.py` dal codice `common/StdLib/StdLib.*.cs`._
 |---|---|
 | `CTRLGETPROP` | DoubleType |
 | `CTRLGETPROPS` | StringType |
-| `handle` | ? |
+| `handle` | DoubleType |
 
 ### Tipi (0)
 
@@ -1688,13 +1695,14 @@ _Generato da `scripts/recon_stdlib.py` dal codice `common/StdLib/StdLib.*.cs`._
 | `TextHeight` | DoubleType |
 | `TextWidth` | DoubleType |
 
-### Tipi (3)
+### Tipi (4)
 
 | Tipo |
 |---|---|
-| `DISPLAYMODE` |
 | `DisplayModeType` |
+| `RGBA` |
 | `RgbaColorType` |
+| `SPRITEINFO` |
 
 ### Costanti (0)
 
@@ -1752,7 +1760,7 @@ _Generato da `scripts/recon_stdlib.py` dal codice `common/StdLib/StdLib.*.cs`._
 | `SAFEFILENAME` | StringType |
 | `SESSIONCREATE` | StringType |
 
-### Tipi (11)
+### Tipi (12)
 
 | Tipo |
 |---|---|
@@ -1766,6 +1774,7 @@ _Generato da `scripts/recon_stdlib.py` dal codice `common/StdLib/StdLib.*.cs`._
 | `HttpPostedDataType` |
 | `HttpRequestType` |
 | `HttpResponseType` |
+| `NextHandler` |
 | `WebSocketType` |
 
 ### Costanti (0)
@@ -1805,7 +1814,7 @@ _Generato da `scripts/recon_stdlib.py` dal codice `common/StdLib/StdLib.*.cs`._
 | `WRITE` |
 | `XCOPY` |
 
-### Funzioni (33)
+### Funzioni (35)
 
 | Funzione | Ritorno |
 |---|---|
@@ -1827,6 +1836,8 @@ _Generato da `scripts/recon_stdlib.py` dal codice `common/StdLib/StdLib.*.cs`._
 | `FileExists` | BitType |
 | `FolderSize` | QuadType |
 | `FreeFile` | LongType |
+| `GETTEMPDIR` | ? |
+| `GETTEMPFILE` | ? |
 | `GetFolderPath` | StringType |
 | `LOF` | LongType |
 | `MEMORYMAP` | LongType |
@@ -2033,10 +2044,11 @@ _Generato da `scripts/recon_stdlib.py` dal codice `common/StdLib/StdLib.*.cs`._
 | Comando |
 |---|---|
 
-### Funzioni (53)
+### Funzioni (61)
 
 | Funzione | Ritorno |
 |---|---|
+| `Arch` | StringType |
 | `BenchResult` | StringType |
 | `CacheStats` | StringType |
 | `Callmap` | StringType |
@@ -2045,6 +2057,7 @@ _Generato da `scripts/recon_stdlib.py` dal codice `common/StdLib/StdLib.*.cs`._
 | `Context` | StringType |
 | `DatasetStats` | StringType |
 | `DecodeStats` | StringType |
+| `Detokenize` | StringType |
 | `DistillCkpt` | StringType |
 | `DistillDone` | DoubleType |
 | `DistillEvalAccept` | DoubleType |
@@ -2071,10 +2084,14 @@ _Generato da `scripts/recon_stdlib.py` dal codice `common/StdLib/StdLib.*.cs`._
 | `FinetuneStatus` | StringType |
 | `Impact` | StringType |
 | `Inspect` | StringType |
+| `Kernel` | StringType |
+| `Kv` | StringType |
 | `LoraList` | StringType |
 | `LoraLoad` | LongType |
 | `LoraSave` | LongType |
+| `Module` | StringType |
 | `Patch` | StringType |
+| `Policy` | StringType |
 | `PrefillStats` | StringType |
 | `RepoMap` | StringType |
 | `Revision` | StringType |
@@ -2085,7 +2102,9 @@ _Generato da `scripts/recon_stdlib.py` dal codice `common/StdLib/StdLib.*.cs`._
 | `RunsJson` | StringType |
 | `StreamStats` | StringType |
 | `Symbol` | StringType |
+| `Tensor` | StringType |
 | `TokenCount` | DoubleType |
+| `Tokens` | StringType |
 | `TrainConfig` | StringType |
 | `TrainConfigSet` | StringType |
 | `TrainExport` | LongType |
@@ -2262,10 +2281,15 @@ _Generato da `scripts/recon_stdlib.py` dal codice `common/StdLib/StdLib.*.cs`._
 | `TRACE` | DoubleType |
 | `TRANSPOSE` | LongType |
 
-### Tipi (0)
+### Tipi (5)
 
 | Tipo |
 |---|---|
+| `CholeskyDecomposition` |
+| `EvdDecomposition` |
+| `LuDecomposition` |
+| `QrDecomposition` |
+| `SvdDecomposition` |
 
 ### Costanti (0)
 
@@ -2307,10 +2331,11 @@ _Generato da `scripts/recon_stdlib.py` dal codice `common/StdLib/StdLib.*.cs`._
 |---|---|
 | `MESSAGE` |
 
-### Funzioni (0)
+### Funzioni (1)
 
 | Funzione | Ritorno |
 |---|---|
+| `DELIVERY` | ? |
 
 ### Tipi (0)
 
@@ -2802,7 +2827,7 @@ _Generato da `scripts/recon_stdlib.py` dal codice `common/StdLib/StdLib.*.cs`._
 | Comando |
 |---|---|
 
-### Funzioni (45)
+### Funzioni (47)
 
 | Funzione | Ritorno |
 |---|---|
@@ -2823,6 +2848,7 @@ _Generato da `scripts/recon_stdlib.py` dal codice `common/StdLib/StdLib.*.cs`._
 | `JSENCODE` | StringType |
 | `Join` | StringType |
 | `Kebab` | StringType |
+| `LCASE` | ? |
 | `LTrim` | StringType |
 | `Left` | StringType |
 | `Len` | LongType |
@@ -2848,17 +2874,17 @@ _Generato da `scripts/recon_stdlib.py` dal codice `common/StdLib/StdLib.*.cs`._
 | `Str` | StringType |
 | `Title` | StringType |
 | `Trim` | StringType |
+| `UCASE` | ? |
 | `URLENCODE` | StringType |
 | `Upper` | StringType |
 | `WRAP` | StringType |
 
-### Tipi (4)
+### Tipi (3)
 
 | Tipo |
 |---|---|
 | `RegexMatchType` |
 | `RegexType` |
-| `STRINGBUILDER` |
 | `StringBuilderType` |
 
 ### Costanti (0)
@@ -3489,7 +3515,7 @@ _Generato da `scripts/recon_stdlib.py` dal codice `common/StdLib/StdLib.*.cs`._
 | `DiagnoseReport` | StringType |
 | `Drift` | DoubleType |
 | `Embed` | ArrayType |
-| `EnsureCollection` | LongType |
+| `EnsureCollection` | DoubleType |
 | `EvalDiff` | StringType |
 | `EvalGate` | StringType |
 | `Faithfulness` | DoubleType |
@@ -3505,7 +3531,7 @@ _Generato da `scripts/recon_stdlib.py` dal codice `common/StdLib/StdLib.*.cs`._
 | `PurgeDeprecated` | DoubleType |
 | `RecallAt` | DoubleType |
 | `Relevance` | DoubleType |
-| `RemoveSource` | IntegerType |
+| `RemoveSource` | DoubleType |
 | `Search` | StringType |
 
 ### Tipi (0)
