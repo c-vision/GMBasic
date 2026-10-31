@@ -2132,7 +2132,7 @@ int gmb_ai_skill_refresh(void) {
     {
         char idx[1200];
         if (g_ai_skill_index_path[0]) snprintf(idx, sizeof(idx), "%s", g_ai_skill_index_path);
-        else { char d[1024]; gmb_paths_skills_dir(d, sizeof(d)); snprintf(idx, sizeof(idx), "%s/SKILLS_PROMPT.md", d); }
+        else { char d[1024]; gmb_paths_config_dir(d, sizeof(d)); snprintf(idx, sizeof(idx), "%s/SKILLS_PROMPT.md", d); }
         char pdir[1200]; snprintf(pdir, sizeof(pdir), "%s", idx);
         char* slash = strrchr(pdir, '/');
         if (slash) { *slash = 0; plugin_mkdirs(pdir); }
@@ -2391,7 +2391,11 @@ int llmengine_plugin_remove(const char* name) {
  * stesso header, stesso formato riga, BOM UTF-8. Ritorna 1 se scritto, 0 altrimenti. */
 int llmengine_plugin_refresh(void) {
     char dir[1024]; plugin_base_dir(dir, sizeof(dir));
-    char idx[1400]; snprintf(idx, sizeof(idx), "%s/PLUGINS_PROMPT.md", dir);
+    /* Indice = OUTPUT rigenerabile nella CACHE utente (<configDir>), NON dentro l'archivio
+     * (può essere in sola lettura) — parità AiConfig.PluginsPromptPath (C#). */
+    char cdir[1024]; gmb_paths_config_dir(cdir, sizeof(cdir));
+    plugin_mkdirs(cdir);
+    char idx[1400]; snprintf(idx, sizeof(idx), "%s/PLUGINS_PROMPT.md", cdir);
     char names[256][64];
     int n = gmb_plugins_scan(names, 256);
     FILE* f = fopen(idx, "wb");
@@ -2473,7 +2477,12 @@ static void plugin_load_persisted_index(void) {
 char* gmb_ai_skills_prompt(void) {
     ai_skill_ensure_default();
     ai_skill_scan();
-    char idx[1024]; gmb_paths_skills_dir(idx, sizeof(idx));
+    /* Percorso dell'INDICE (file riscritto da gmb_ai_skill_refresh): override `SET INDEX`,
+     * altrimenti <configDir>/SKILLS_PROMPT.md — NON dentro l'archivio skills (vedi
+     * gmb_ai_skill_refresh: l'archivio può essere in sola lettura). */
+    char idx[1200];
+    if (g_ai_skill_index_path[0]) snprintf(idx, sizeof(idx), "%s", g_ai_skill_index_path);
+    else { char cd[1024]; gmb_paths_config_dir(cd, sizeof(cd)); snprintf(idx, sizeof(idx), "%s/SKILLS_PROMPT.md", cd); }
     char paths[4096]; paths[0] = 0;
     for (int i = 0; i < g_ai_skill_path_count; i++) {
         if (i) strncat(paths, "; ", sizeof(paths) - strlen(paths) - 1);
@@ -2483,7 +2492,7 @@ char* gmb_ai_skills_prompt(void) {
     len += (size_t)snprintf(out + len, sizeof(out) - len,
         "# GMBASIC \xe2\x80\x94 Archivio Skills Agente\n\n"
         "> **Percorsi configurati**: %s\n"
-        "> **Percorso indice**: `%s/SKILLS_PROMPT.md`\n"
+        "> **Percorso indice**: `%s`\n"
         "> %d skill rilevate.\n\n"
         "## Istruzioni per l'agente\n"
         "Quando ricevi una richiesta che corrisponde a una delle skill sotto, leggi il file\n"

@@ -2697,9 +2697,10 @@ void  gmb_paths_recursivemas_dir(char* out, size_t cap);       /* <configDir>/re
 void  gmb_paths_ml_dir(const char* rid, char* out, size_t cap);          /* libsDir/ml/<rid> */
 void  gmb_paths_chromium_dir(const char* rid, char* out, size_t cap);    /* libsDir/chromium/<rid> */
 void  gmb_paths_obscura_dir(const char* rid, char* out, size_t cap);     /* libsDir/obscura/<rid> — Obscura headless per agenti (CUA §10) */
+/* Marketplace di skills/plugins: CACHE UTENTE (installazione, non staging). */
+void  gmb_paths_skills_marketplaces_dir(char* out, size_t cap);  /* ~/.gmbasic/skills-marketplaces */
+void  gmb_paths_plugins_marketplaces_dir(char* out, size_t cap); /* ~/.gmbasic/plugins-marketplaces */
 /* Cache temporanee (in tempDir). */
-void  gmb_paths_skills_marketplaces_dir(char* out, size_t cap);  /* temp/gmbasic-skills-marketplaces */
-void  gmb_paths_plugins_marketplaces_dir(char* out, size_t cap); /* temp/gmbasic-plugins-marketplaces */
 void  gmb_paths_kvswap_dir(char* out, size_t cap);               /* temp/gmbasic-kv-swap */
 /* Legge una chiave "paths" (es. "ragDir") da system.settings.json → path risolto.
  * Ritorna 1 se la chiave era presente e valorizzata, 0 se assente/null (default). */

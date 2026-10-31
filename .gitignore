@@ -50,3 +50,15 @@ shared/samples/Fixtures/darkpool/
 
 # Lock del motore di download (gmb_fetch) accanto ai file scaricati: stato transitorio.
 **/.locks/
+
+# INDICI GENERATI di skills/plugins: OUTPUT rigenerabili (`AI SKILLS REFRESH` /
+# `AI PLUGINS REFRESH`), mai sorgente. Contenevano i PATH ASSOLUTI della macchina che li
+# aveva generati (`/Users/<nome>/...`): in git erano "sporchi per natura" a ogni
+# rigenerazione e divergevano fra macchine. Dal 2026-10-31 il default e' la CONFIG
+# (`<root>/config/SKILLS_PROMPT.md`, accanto ad ai.json: GmbiPaths.ConfigDir /
+# gmb_paths_config_dir); queste voci restano perche' i checkouts piu' vecchi hanno ancora i
+# file nella posizione storica.
+shared/skills/SKILLS_PROMPT.md
+shared/plugins/PLUGINS_PROMPT.md
+# ...e nemmeno nella CONFIG (nuova posizione di default: <configDir>/<X>_PROMPT.md).
+GMBasic/config/*PROMPT.md

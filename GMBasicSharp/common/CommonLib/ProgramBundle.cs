@@ -145,7 +145,60 @@ public static class ProgramBundle
         }
         catch (Exception ex) { log?.Invoke($"[bundle] fixture non scaricate: {ex.Message}"); }
 
+        // 5) SKILLS + PLUGINS dichiarati dal programma (`"skills": ["board"], "plugins":
+        //    ["web-fetch"]` nel suo app.settings.json). Sono CONTENUTO (markdown + eventuale
+        //    .bas del plugin): un eseguibile spedito senza di essi si avvia con l'agente privo
+        //    di capacità — `AI.SKILLSLIST()` vuota, nessun tool. Si copiano dall'archivio
+        //    configurato (`GmbiPaths.SkillsDir` / `PluginsDir`, nel monorepo `shared/skills`,
+        //    `shared/plugins`) in `<outputDir>/skills` e `<outputDir>/plugins`, che è
+        //    esattamente dove il runtime li cerca (`<root>/skills`, `pr_shared_or_root`).
+        //    NIENTE copia implicita dell'archivio INTERO: 161 skill sono prompt, non servono
+        //    tutte e dichiararle è una scelta del programma (stesso schema di `"fixtures"`).
+        try
+        {
+            var app = appPath is not null && File.Exists(appPath) ? ReadObject(appPath) : null;
+            if (app is not null)
+            {
+                var n = 0;
+                n += CopyDeclared(app, "skills", GmbiPaths.SkillsDir, outputDir, "skills", written, log);
+                n += CopyDeclared(app, "plugins", GmbiPaths.PluginsDir, outputDir, "plugins", written, log);
+                if (n > 0) log?.Invoke($"[bundle] skills/plugins dichiarati: {n} file");
+            }
+        }
+        catch (Exception ex) { log?.Invoke($"[bundle] skills/plugins non copiati: {ex.Message}"); }
+
         return written;
+    }
+
+    /// <summary>Copia in <c>&lt;outputDir&gt;/&lt;kind&gt;/&lt;nome&gt;</c> le cartelle elencate
+    /// dalla chiave <paramref name="key"/> dell'<c>app.settings.json</c> (<c>"skills": ["board"]</c>).
+    /// Solo i DICHIARATI: l'archivio intero non si distribuisce. Ritorna i file copiati; una voce
+    /// assente dall'archivio è un warning, non un errore (il programma gira lo stesso).</summary>
+    private static int CopyDeclared(JsonObject app, string key, string srcRoot, string outputDir,
+                                    string kind, List<string> written, Action<string>? log)
+    {
+        if (app[key] is not JsonArray arr) return 0;
+        var n = 0;
+        foreach (var item in arr)
+        {
+            var name = item?.GetValue<string>();
+            if (string.IsNullOrWhiteSpace(name)) continue;
+            var src = Path.Combine(srcRoot, name);
+            if (!Directory.Exists(src))
+            {
+                log?.Invoke($"[bundle] {kind} '{name}' non trovato in {srcRoot}: non copiato");
+                continue;
+            }
+            foreach (var f in Directory.EnumerateFiles(src, "*", SearchOption.AllDirectories))
+            {
+                var rel = Path.GetRelativePath(src, f);
+                var dst = Path.Combine(outputDir, kind, name, rel);
+                var before = written.Count;
+                CopyIfNewer(f, dst, written, null);
+                if (written.Count > before) n++;
+            }
+        }
+        return n;
     }
 
     /// <summary>Unisce le sezioni di RUNTIME di `system` e `app` (l'app vince chiave per chiave).

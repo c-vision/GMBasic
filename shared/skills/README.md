@@ -4,8 +4,12 @@ Cartella di default con le **skills** disponibili all'agente AI di GMBASIC.
 
 - **161 skill** in formato markdown, ognuna in `skills/<nome>/SKILL.md` (+ 20 skill dal
   marketplace configurato in `config/ai.json` → **181** in `SKILLS_PROMPT.md`)
-- **`SKILLS_PROMPT.md`** — il prompt di riepilogo (indice + istruzioni all'agente): va letto
-  e, se serve, passato al SystemPrompt dell'agente per fargli conoscere le skill disponibili.
+- **`SKILLS_PROMPT.md`** — l'**indice** (istruzioni all'agente + elenco delle skill con la
+  descrizione). È un **output generato**: `AI SKILLS REFRESH` / `AI.SKILLSPROMPT()` lo
+  riscrivono in `<configDir>/SKILLS_PROMPT.md` (accanto ad `ai.json`), **non** qui dentro —
+  l'archivio resta contenuto puro e può essere in sola lettura (programma installato).
+  Il testo che l'agente deve leggere è comunque il **valore di ritorno** di
+  `AI.SKILLSPROMPT()`, non il file.
 
 ## Origine
 
