@@ -1,0 +1,33 @@
+# .webapp.toml — configurazione della WEBAPP (Agents Operating Center)
+# ============================================================================
+# Tutto si configura QUI (nessun parametro nel codice). Il file è cercato nella
+# cartella della app e poi risalendo fino a 4 livelli; se manca valgono i default.
+#
+# Chiavi riconosciute:
+#   [server] dashboardPort, apiPort, allowedIPs, sessions
+#   [app]    seedDemo, autoTrace, refreshMs
+#   [paths]  pages, static            (relativi alla cartella della app)
+# ============================================================================
+
+[server]
+# Pagine BSP + statici + proxy /api/* + WebSocket /ws/canvas
+dashboardPort = 8090
+# AI AGENT SERVE (API JSON degli agenti)
+apiPort       = 8765
+# Console locale: solo loopback. "" = nessun filtro (NON consigliato).
+allowedIPs    = "127.0.0.1"
+# Sessioni HTTP (cookie GMBSESSION) — servono a eventuali middleware/CSRF futuri.
+sessions      = true
+
+[app]
+# Crea Demo/Analyst/Support se il registry degli agenti è vuoto.
+seedDemo  = true
+# AI AGENT TRACE VERBOSE all'avvio: popola la tab Log.
+autoTrace = true
+# Polling delle tab (millisecondi; 0 = solo refresh manuale).
+refreshMs = 2500
+
+[paths]
+# Relativi alla cartella della app (PROJECTFOLDER), non alla CWD.
+pages  = "pages"
+static = "static"

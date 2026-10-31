@@ -38,6 +38,32 @@ PUBLIC CONST COLOR_BG$ = "#f4f6fb"
 PUBLIC CONST COLOR_CARD$ = "#ffffff"
 PUBLIC CONST COLOR_BORDER$ = "#e2e8f0"
 
+' --- Escape (SSR sicuro: i dati arrivano dal runtime, non fidarsi) ---
+
+' Testo per un nodo HTML: & < > " ' diventano entità.
+PUBLIC FUNCTION EscapeHtml(s AS STRING) AS STRING
+    DIM t AS STRING
+    t = s
+    t = REPLACE$(t, "&", "&amp;")
+    t = REPLACE$(t, "<", "&lt;")
+    t = REPLACE$(t, ">", "&gt;")
+    t = REPLACE$(t, CHR$(34), "&quot;")
+    t = REPLACE$(t, "'", "&#39;")
+    EscapeHtml = t
+END FUNCTION
+
+' Testo per una stringa JS tra apici singoli dentro un attributo onclick.
+PUBLIC FUNCTION EscapeJs(s AS STRING) AS STRING
+    DIM t AS STRING
+    t = s
+    t = REPLACE$(t, "\", "\\")
+    t = REPLACE$(t, "'", "\'")
+    t = REPLACE$(t, CHR$(34), "\" + CHR$(34))
+    t = REPLACE$(t, CHR$(10), " ")
+    t = REPLACE$(t, CHR$(13), " ")
+    EscapeJs = t
+END FUNCTION
+
 ' --- Rendering helper: badge ---
 
 PUBLIC FUNCTION StatusBadgeHtml(status AS STRING) AS STRING
@@ -46,39 +72,39 @@ PUBLIC FUNCTION StatusBadgeHtml(status AS STRING) AS STRING
     IF status = "Planning" OR status = "planning" THEN RETURN "<span class='badge planning'>Planning</span>"
     IF status = "Waiting" OR status = "waiting" THEN RETURN "<span class='badge waiting'>Waiting</span>"
     IF status = "Executing" OR status = "executing" THEN RETURN "<span class='badge working'>Executing</span>"
-    RETURN "<span class='badge'>" + status + "</span>"
+    RETURN "<span class='badge'>" + EscapeHtml(status) + "</span>"
 END FUNCTION
 
 PUBLIC FUNCTION PermissionBadgeHtml(perm AS STRING) AS STRING
     IF perm = "YOLO" OR perm = "yolo" THEN RETURN "<span class='badge perm-yolo'>YOLO</span>"
     IF perm = "Supervised" OR perm = "supervised" OR perm = "SUPERVISED" THEN RETURN "<span class='badge perm-supervised'>Supervised</span>"
     IF perm = "Sandbox" OR perm = "sandbox" OR perm = "SANDBOX" THEN RETURN "<span class='badge perm-sandbox'>Sandbox</span>"
-    RETURN "<span class='badge'>" + perm + "</span>"
+    RETURN "<span class='badge'>" + EscapeHtml(perm) + "</span>"
 END FUNCTION
 
 PUBLIC FUNCTION StrategyBadgeHtml(strat AS STRING) AS STRING
-    RETURN "<span class='badge strategy'>" + strat + "</span>"
+    RETURN "<span class='badge strategy'>" + EscapeHtml(strat) + "</span>"
 END FUNCTION
 
 ' --- Rendering helper: righe tabella ---
 
 PUBLIC FUNCTION AgentRowHtml(name AS STRING, status AS STRING, permission AS STRING, teams AS STRING) AS STRING
     IF teams = "" THEN teams = "-"
-    RETURN "<tr><td class='name'>" + name + "</td><td>" + StatusBadgeHtml(status) + "</td><td>" + PermissionBadgeHtml(permission) + "</td><td class='teams'>" + teams + "</td><td><button class='btn btn-ghost' onclick=""chat('" + name + "')"">Chat</button></td></tr>"
+    RETURN "<tr><td class='name'>" + EscapeHtml(name) + "</td><td>" + StatusBadgeHtml(status) + "</td><td>" + PermissionBadgeHtml(permission) + "</td><td class='teams'>" + EscapeHtml(teams) + "</td><td><button class='btn btn-ghost' onclick=""chat('" + EscapeJs(name) + "')"">Chat</button></td></tr>"
 END FUNCTION
 
 PUBLIC FUNCTION AgentRowRichHtml(name AS STRING, status AS STRING, permission AS STRING, teams AS STRING, model AS STRING) AS STRING
     IF teams = "" THEN teams = "-"
     IF model = "" THEN model = "-"
-    RETURN "<tr><td class='name'>" + name + "</td><td>" + StatusBadgeHtml(status) + "</td><td>" + PermissionBadgeHtml(permission) + "</td><td class='teams'>" + teams + "</td><td class='model ver'>" + model + "</td><td><button class='btn btn-ghost' onclick=""chat('" + name + "')"">Chat</button></td></tr>"
+    RETURN "<tr><td class='name'>" + EscapeHtml(name) + "</td><td>" + StatusBadgeHtml(status) + "</td><td>" + PermissionBadgeHtml(permission) + "</td><td class='teams'>" + EscapeHtml(teams) + "</td><td class='model ver'>" + EscapeHtml(model) + "</td><td><button class='btn btn-ghost' onclick=""chat('" + EscapeJs(name) + "')"">Chat</button></td></tr>"
 END FUNCTION
 
 PUBLIC FUNCTION TeamRowHtml(name AS STRING, strategy AS STRING, memberCount AS LONG) AS STRING
-    RETURN "<tr><td class='name'>" + name + "</td><td>" + StrategyBadgeHtml(strategy) + "</td><td class='count'>" + LTRIM$(STR$(memberCount)) + "</td><td><button class='btn btn-ghost' onclick=""teamChat('" + name + "')"">Broadcast</button></td></tr>"
+    RETURN "<tr><td class='name'>" + EscapeHtml(name) + "</td><td>" + StrategyBadgeHtml(strategy) + "</td><td class='count'>" + LTRIM$(STR$(memberCount)) + "</td><td><button class='btn btn-ghost' onclick=""teamChat('" + EscapeJs(name) + "')"">Broadcast</button></td></tr>"
 END FUNCTION
 
 PUBLIC FUNCTION EventRowHtml(ts AS STRING, kind AS STRING, agent AS STRING, detail AS STRING) AS STRING
-    RETURN "<tr><td class='ts'>" + ts + "</td><td><span class='badge'>" + kind + "</span></td><td>" + agent + "</td><td class='detail'>" + detail + "</td></tr>"
+    RETURN "<tr><td class='ts'>" + EscapeHtml(ts) + "</td><td><span class='badge'>" + EscapeHtml(kind) + "</span></td><td>" + EscapeHtml(agent) + "</td><td class='detail'>" + EscapeHtml(detail) + "</td></tr>"
 END FUNCTION
 
 ' --- Helper: celle singole ---
@@ -109,5 +135,5 @@ END FUNCTION
 ' --- Helper: empty state ---
 
 PUBLIC FUNCTION EmptyRowHtml(colspan AS LONG, msg AS STRING) AS STRING
-    RETURN "<tr><td colspan='" + LTRIM$(STR$(colspan)) + "' class='empty'>" + msg + "</td></tr>"
+    RETURN "<tr><td colspan='" + LTRIM$(STR$(colspan)) + "' class='empty muted'>" + EscapeHtml(msg) + "</td></tr>"
 END FUNCTION

@@ -39,9 +39,13 @@ Third-party material keeps **its own license**, and is listed in [`NOTICE`](NOTI
 - **SQLite** (`GMBasic/native/gmb_sql_ext/sqlite346/`) — public domain;
 - **stb_truetype** (`gmb_runtime_c/include/stb_truetype.h`) — MIT / public domain;
 - **pdf_oxide** C header (`GMBasic/native/deps/`) — generated header of an external project;
-- the **fonts** in `Resources/` and the **skills** in `shared/skills/` — see the notice files and
-  each skill's own header; several have no explicit license and **must not be redistributed**
-  without checking the upstream;
+- the **fonts** in `Resources/` — origin and license of each file in
+  [`Resources/FONTS.md`](Resources/FONTS.md): only **Cascadia Code** (`font.ttf`, SIL OFL 1.1) is
+  redistributable; **SF Mono** (Apple) and **C64 Pro Mono** (style64) are **not** and must be
+  removed before publishing;
+- the **skills** in `shared/skills/` — [`shared/skills/ATTRIBUTION.md`](shared/skills/ATTRIBUTION.md)
+  lists, per skill, the license its own file declares: only the ones with a declared permissive
+  license are redistributable, the others are **not**;
 - the **FFI packages** under `packages/` build third-party libraries from source at install time
   (their sources are **not** in this repository).
 

@@ -1,121 +1,196 @@
-' FILE: webapp/app.bas — Launcher unificato WEBAPP GMBasic (C1b + Canvas + WASM)
-' =============================================================================
-' Avvia la WEBAPP Agents Dashboard (C1b, 5 tab) + Canvas WS + WASM shell.
-' Tutto in BASIC: seed agenti/team demo, HTTP SERVER + BSP, proxy /api same-origin,
-' WebSocket /ws/canvas con WEBCANVAS.
+' FILE: shared/webapp/app.bas — WEBAPP "Agents Operating Center" (tutto in BASIC)
+' ============================================================================
+' Cruscotto web dello stack AI Agents di GMBasic. Nulla è cablato in C#: questo
+' file avvia i server, espone i dati e orchestra il frontend BSP.
 '
-' Porte (editabili in Main):
-'   API agents: 8765 (AI AGENT SERVE — /api/agents|teams|events|workflows|memory|brain|enrich)
-'   Dashboard:  8090 (HTTP SERVER — serve pages/*.bsp renderizzate + static/*,
-'                e fa da PROXY same-origin di TUTTO /api/* verso 8765)
+'   ┌──────────────────────────── 8090 ─────────────────────────────┐
+'   │ pages/*.bsp (SSR)  ·  static/*  ·  proxy /api/*  ·  WS canvas │
+'   └───────────────────────────────┬───────────────────────────────┘
+'                                   │ FETCH (same-origin proxy, no CORS)
+'   ┌──────────────────────────── 8765 ─────────────────────────────┐
+'   │ AI AGENT SERVE: agents · teams · events · workflows · memory   │
+'   │                 brain · enrich · agent prompt                  │
+'   └───────────────────────────────────────────────────────────────┘
 '
-' Avvio (dalla ROOT del monorepo):
-'   dotnet GMBasicSharp/REPL/bin/Debug/net10.0/REPL.dll -noconsole shared/webapp/app.bas
-'   poi apri http://localhost:8090/index.bsp  (o /canvas.bsp, /wasm.bsp)
-'   API diretta: curl http://localhost:8765/api/agents
-'   API via proxy: curl http://localhost:8090/api/agents
+' Avvio (dalla root del monorepo, in-process PCode — nessun host esterno):
+'   dotnet GMBasicSharp/REPL/bin/Debug/net10.0/REPL.dll -noconsole --pcode shared/webapp/app.bas
+' oppure, con gestione start/stop/log:
+'   tools/sh/webapp_up.sh start
 '
-' Percorsi: pagine e statici sono risolti dalla CARTELLA DELLA APP (PROJECTFOLDER),
-' non dalla working directory → l'app funziona da qualunque CWD.
+' Configurazione: .webapp.toml accanto a questo file (porte, seed, refresh,
+' restrizione di rete, percorsi). Nessun parametro hardcoded.
 '
-' Editabilità: l'utente modifica qui porte, seed, route proxy, handler WS, senza toccare C#.
-' Il file è il launcher di riferimento; i sample in samples/Community/AI/* sono copie minimali.
-' =============================================================================
+' Endpoint propri (oltre al proxy completo di /api/*):
+'   GET    /api/health               → {"ok":true}
+'   GET    /api/status               → stato app/runtime (provider, conteggi, uptime)
+'   POST   /api/agents               → crea agente {name, systemPrompt?, permission?,
+'                                       temperature?, model?}   (409 se esiste)
+'   DELETE /api/agents/{name}        → elimina agente
+'   POST   /api/agents/{name}/ask    → {prompt} → risposta SINCRONA (AI.AGENTASKSYNC)
+'   GET    /api/agents|teams|events|workflows|memory|brain/*|enrich  → proxy al 8765
+'   POST/DELETE idem (proxy trasparente, path e query invariati)
+'   GET    /ws/canvas                → WebSocket con i frame di WEBCANVAS
+' ============================================================================
 
 IMPORT HTTP
 IMPORT JSON
+IMPORT STRINGS
+IMPORT IO
+IMPORT DATETIME
 IMPORT AI
 IMPORT DASHBOARD
 IMPORT WEBCANVAS
 
-' Porta del server agenti (usata anche dal proxy /api/*)
+' --- Configurazione (default; .webapp.toml li sovrascrive) ------------------
+DIM g_version AS STRING
+DIM g_dashPort AS INTEGER
 DIM g_apiPort AS INTEGER
+DIM g_allowedIPs AS STRING
+DIM g_sessions AS INTEGER
+DIM g_seedDemo AS INTEGER
+DIM g_autoTrace AS INTEGER
+DIM g_refreshMs AS INTEGER
 
-' --- Seed demo (se registry vuoto) ---
-SUB SeedDemo()
-    DIM names() = AI.AGENTLIST()
-    IF UBOUND(names) < 0 THEN
-        PRINT "Seed: creo agenti demo..."
-        AI AGENT CREATE "Demo"
-        AI AGENT SET "Demo" systemPrompt "You are a helpful demo agent."
-        AI AGENT SET "Demo" permission YOLO
-        AI AGENT CREATE "Analyst"
-        AI AGENT SET "Analyst" systemPrompt "You are a concise analyst."
-        AI AGENT SET "Analyst" temperature 0.3
-        AI AGENT CREATE "Support"
-        AI AGENT SET "Support" systemPrompt "You are support."
-        PRINT "Seed: 3 agenti creati (Demo, Analyst, Support)"
-    END IF
-END SUB
+' --- Stato del processo -----------------------------------------------------
+DIM g_appDir AS STRING
+DIM g_cfgPath AS STRING
+DIM g_pagesDir AS STRING
+DIM g_staticDir AS STRING
+DIM g_startSec AS DOUBLE
+DIM g_startTime AS STRING
+DIM g_proxied AS LONG
 
+' ============================================================================
 SUB Main()
-    PRINT "=== GMBasic WEBAPP — Agents + Canvas + WASM ==="
-    PRINT
+    SetDefaults()
+    g_appDir = FindAppRoot()
+    LoadConfig()
+    ResolvePaths()
+    PrintBanner()
 
     SeedDemo()
-    AI AGENT TRACE VERBOSE
-    PRINT "TRACE VERBOSE attivato (eventi nel Log)"
-
-    ' --- 1. Avvia Agent API server (C1, route JSON) ---
-    DIM apiPort% = 8765
-    g_apiPort = apiPort%
-    AI AGENT SERVE apiPort%
-    PRINT "Agent API: http://localhost:" + LTRIM$(STR$(apiPort%)) + "/api/agents  (GET)"
-    PRINT "           http://localhost:" + LTRIM$(STR$(apiPort%)) + "/api/teams   (GET)"
-    PRINT "           http://localhost:" + LTRIM$(STR$(apiPort%)) + "/api/agent/Demo/prompt  (POST {prompt})"
-    PRINT
-
-    ' --- 2. Avvia Dashboard server (BSP + static) ---
-    DIM cfg AS HTTPCONFIG = NEW HTTPCONFIG
-    cfg.Port = 8090
-    cfg.Sessions = TRUE
-    HTTP CONFIG cfg
-
-    ' Serve BSP e statici. Path ASSOLUTI calcolati dalla cartella della app: il server
-    ' deve funzionare da qualunque working directory (prima erano "./webapp/pages",
-    ' validi solo con CWD = shared/).
-    DIM rootDir AS STRING
-    DIM pagesDir AS STRING
-    DIM staticDir AS STRING
-    rootDir = FindAppRoot()
-    pagesDir = rootDir + "/pages"
-    staticDir = rootDir + "/static"
-    IF NOT IO.DIREXISTS(pagesDir) THEN
-        PRINT "errore: cartella pagine non trovata: "; pagesDir
-        PRINT "  root=["; rootDir; "] PROJECTFOLDER=["; PROJECTFOLDER(); "] CWD=["; IO.CWD(); "]"
-        ERROR 2
+    IF g_autoTrace = 1 THEN
+        AI AGENT TRACE VERBOSE
+        PRINT "trace      : VERBOSE (eventi nel Log)"
     END IF
-    HTTP STATIC "/", pagesDir
-    HTTP STATIC "/static", staticDir
 
-    ' --- 3. Proxy same-origin /api/* → 8765 (evita CORS per JS fetch("/api/agents")) ---
-    RegisterApiRoutes()
+    StartAgentApi()
+    StartDashboard()
 
-    ' --- 4. WebSocket Canvas (Vision-Ext §1) ---
-    HTTP ROUTE "GET", "/ws/canvas", CanvasWsHandler()
+    g_startSec = DATETIME.SECONDS()
+    g_startTime = STRTIME
+    PRINT ""
+    PRINT "pronto. CTRL+C per fermare, oppure: tools/sh/webapp_up.sh stop"
+    PRINT ""
 
-    PRINT "pagine    : "; pagesDir
-    PRINT "statici   : "; staticDir
-    PRINT "Dashboard: http://localhost:" + LTRIM$(STR$(cfg.Port)) + "/index.bsp  (5 tab: Agents/Teams/Log/Canvas/WASM)"
-    PRINT "Canvas:    http://localhost:" + LTRIM$(STR$(cfg.Port)) + "/canvas.bsp"
-    PRINT "WASM:      http://localhost:" + LTRIM$(STR$(cfg.Port)) + "/wasm.bsp"
-    PRINT "API proxy: http://localhost:" + LTRIM$(STR$(cfg.Port)) + "/api/agents  (proxato → :" + LTRIM$(STR$(apiPort%)) + ")"
-    PRINT
-    PRINT "CTRL+C per fermare"
-    PRINT
-
-    HTTP SERVER cfg.Port
-
-    ' Tieni vivo (il server gira in background, GPM park-based)
     SLEEP 3600000
 
     HTTP SERVER STOP
     AI AGENT STOP SERVER
-    PRINT "Server fermati."
+    PRINT "server fermati."
 END SUB
 
-' --- Percorsi ---------------------------------------------------------------
+' ============================================================================
+' Configurazione
+' ============================================================================
+SUB SetDefaults()
+    g_version = "2.0"
+    g_dashPort = 8090
+    g_apiPort = 8765
+    g_allowedIPs = "127.0.0.1"
+    g_sessions = 1
+    g_seedDemo = 1
+    g_autoTrace = 1
+    g_refreshMs = 2500
+    g_proxied = 0
+END SUB
 
+' Cerca `.webapp.toml` nella cartella della app e risalendo (max 4 livelli).
+SUB LoadConfig()
+    DIM dir AS STRING
+    DIM cand AS STRING
+    DIM found AS INTEGER
+    DIM i AS INTEGER
+    dir = g_appDir
+    found = 0
+    FOR i = 1 TO 4
+        cand = RTrimSlash(dir) + "/.webapp.toml"
+        IF found = 0 AND IO.FILEEXISTS(cand) THEN
+            g_cfgPath = cand
+            ParseConfig(cand)
+            found = 1
+        END IF
+        dir = IO.PARENTDIR(dir)
+        IF LEN(dir) = 0 THEN i = 4
+    NEXT i
+END SUB
+
+' Parser TOML minimale: [sezione], chiave = valore, commenti '#', stringhe
+' quotate, interi, booleani. Stesso sottoinsieme delle altre app del monorepo.
+SUB ParseConfig(path AS STRING)
+    DIM lines
+    DIM raw AS STRING, section AS STRING, key AS STRING, val AS STRING
+    DIM eq AS INTEGER
+    DIM i AS LONG
+    lines = IO.READLINES(path)
+    section = ""
+    FOR i = 0 TO UBOUND(lines)
+        raw = STRINGS.TRIM(lines(i))
+        IF LEN(raw) > 0 AND NOT STRINGS.STARTSWITH(raw, "#") THEN
+            IF STRINGS.STARTSWITH(raw, "[") THEN
+                section = STRINGS.UPPER(BracketInner(raw))
+            ELSE
+                eq = INSTR(raw, "=")
+                IF eq > 1 THEN
+                    key = STRINGS.UPPER(STRINGS.TRIM(LEFT$(raw, eq - 1)))
+                    val = Unquote(STRINGS.TRIM(MID$(raw, eq + 1, LEN(raw) - eq)))
+                    IF section = "SERVER" THEN
+                        IF key = "DASHBOARDPORT" THEN g_dashPort = CINT(VAL(val))
+                        IF key = "APIPORT" THEN g_apiPort = CINT(VAL(val))
+                        IF key = "ALLOWEDIPS" THEN g_allowedIPs = val
+                        IF key = "SESSIONS" THEN g_sessions = BoolVal(val)
+                    ELSEIF section = "APP" THEN
+                        IF key = "SEEDDEMO" THEN g_seedDemo = BoolVal(val)
+                        IF key = "AUTOTRACE" THEN g_autoTrace = BoolVal(val)
+                        IF key = "REFRESHMS" THEN g_refreshMs = CINT(VAL(val))
+                    END IF
+                END IF
+            END IF
+        END IF
+    NEXT i
+END SUB
+
+FUNCTION BracketInner(s AS STRING) AS STRING
+    BracketInner = STRINGS.TRIM(MID$(s, 2, LEN(s) - 2))
+END FUNCTION
+
+FUNCTION BoolVal(s AS STRING) AS INTEGER
+    DIM t AS STRING
+    t = STRINGS.UPPER(STRINGS.TRIM(s))
+    IF t = "1" OR t = "TRUE" OR t = "ON" OR t = "YES" THEN
+        BoolVal = 1
+    ELSE
+        BoolVal = 0
+    END IF
+END FUNCTION
+
+' Rimuove le virgolette di una stringa TOML e i commenti finali fuori stringa.
+FUNCTION Unquote(s AS STRING) AS STRING
+    DIM t AS STRING
+    t = s
+    IF LEN(t) >= 2 THEN
+        IF LEFT$(t, 1) = CHR$(34) THEN
+            DIM closeAt AS INTEGER
+            closeAt = INSTR(MID$(t, 2, LEN(t) - 1), CHR$(34))
+            IF closeAt > 0 THEN t = MID$(t, 2, closeAt - 1)
+        END IF
+    END IF
+    Unquote = STRINGS.TRIM(t)
+END FUNCTION
+
+' ============================================================================
+' Percorsi (sempre relativi alla CARTELLA DELLA APP, mai alla CWD)
+' ============================================================================
 FUNCTION RTrimSlash(p AS STRING) AS STRING
     DIM s AS STRING
     s = p
@@ -125,30 +200,149 @@ FUNCTION RTrimSlash(p AS STRING) AS STRING
     RTrimSlash = s
 END FUNCTION
 
-' Cartella della app (contiene pages/ e static/). Accetta sia il layout attuale
-' (app.bas accanto a pages/) sia quello con un livello src/ (app.bas in src/).
 FUNCTION FindAppRoot() AS STRING
     DIM p AS STRING
     p = PROJECTFOLDER()
     IF LEN(p) = 0 THEN p = IO.CWD()
+    IF LEN(p) = 0 THEN p = "."
     p = RTrimSlash(p)
     IF IO.DIREXISTS(p + "/pages") THEN
         FindAppRoot = p
     ELSEIF IO.DIREXISTS(IO.PARENTDIR(p) + "/pages") THEN
         FindAppRoot = IO.PARENTDIR(p)
+    ELSEIF IO.DIREXISTS("./pages") THEN
+        FindAppRoot = "."
     ELSE
         FindAppRoot = p
     END IF
 END FUNCTION
 
-' --- Proxy handlers (BASIC, editabili) -------------------------------------
-' Tutta la superficie /api/* è inoltrata a `AI AGENT SERVE` (127.0.0.1:8765):
-' il server agenti implementa agents/teams/events/workflow(+step/execute/delete)/
-' team broadcast/memory/brain/enrich. Un solo helper per metodo, il path viaggia
-' così com'è (compresi i segmenti dinamici di HTTP ROUTE).
+SUB ResolvePaths()
+    g_pagesDir = RelativeTo(g_appDir, "pages")
+    g_staticDir = RelativeTo(g_appDir, "static")
+END SUB
 
+FUNCTION RelativeTo(rootDir AS STRING, child AS STRING) AS STRING
+    ' NB: niente parametri chiamati `base`/`sub`: sono KEYWORD del linguaggio e il
+    ' legame dei nomi si rompe (risultato: path vuoto → "/pages").
+    IF STRINGS.STARTSWITH(child, "/") THEN
+        RelativeTo = child
+    ELSE
+        RelativeTo = RTrimSlash(rootDir) + "/" + child
+    END IF
+END FUNCTION
+
+SUB PrintBanner()
+    DIM cfg AS STRING
+    cfg = "(default interni)"
+    IF LEN(g_cfgPath) > 0 THEN cfg = g_cfgPath
+    PRINT "┌────────────────────────────────────────────────────────────┐"
+    PRINT "│  GMBasic WEBAPP — Agents Operating Center  v"; g_version; "             │"
+    PRINT "└────────────────────────────────────────────────────────────┘"
+    PRINT "config     : "; cfg
+    PRINT "app dir    : "; g_appDir
+    PRINT "pagine     : "; g_pagesDir
+    PRINT "statici    : "; g_staticDir
+    PRINT "rete       : "; AllowedText()
+    PRINT "refresh    : "; g_refreshMs; " ms"
+END SUB
+
+FUNCTION ApiUrl() AS STRING
+    ApiUrl = "http://127.0.0.1:" + LTRIM$(STR$(g_apiPort)) + "/api/agents"
+END FUNCTION
+
+FUNCTION AllowedText() AS STRING
+    IF LEN(g_allowedIPs) = 0 THEN
+        AllowedText = "nessun filtro (tutte le interfacce)"
+    ELSE
+        AllowedText = "solo " + g_allowedIPs
+    END IF
+END FUNCTION
+
+' ============================================================================
+' Seed demo (solo se il registry è vuoto e seedDemo = 1)
+' ============================================================================
+SUB SeedDemo()
+    DIM names() = AI.AGENTLIST()
+    IF UBOUND(names) >= 0 THEN
+        PRINT "agenti     : "; UBOUND(names) + 1; " (già presenti, seed saltato)"
+        EXIT SUB
+    END IF
+    IF g_seedDemo = 0 THEN
+        PRINT "agenti     : 0 (seed disattivato in .webapp.toml)"
+        EXIT SUB
+    END IF
+    PRINT "agenti     : 0 → creo Demo, Analyst, Support"
+    AI AGENT CREATE "Demo"
+    AI AGENT SET "Demo" systemPrompt "You are a helpful demo agent."
+    AI AGENT SET "Demo" permission YOLO
+    AI AGENT CREATE "Analyst"
+    AI AGENT SET "Analyst" systemPrompt "You are a concise analyst."
+    AI AGENT SET "Analyst" temperature 0.3
+    AI AGENT CREATE "Support"
+    AI AGENT SET "Support" systemPrompt "You are support."
+END SUB
+
+' ============================================================================
+' Server
+' ============================================================================
+SUB StartAgentApi()
+    DIM r AS FETCHRESULT
+    IF g_apiPort <= 0 THEN
+        PRINT "api agenti : disattivata (apiPort = 0 in .webapp.toml)"
+        EXIT SUB
+    END IF
+    ' Porta dinamica: la parentesi evita che il parser la prenda per un NOME
+    ' (AI AGENT SERVE accetta espressioni, ma un identificatore nudo diventa stringa).
+    AI AGENT SERVE (g_apiPort)
+    SLEEP 300
+    r = FETCH("http://127.0.0.1:" + LTRIM$(STR$(g_apiPort)) + "/api/agents")
+    IF r.StatusCode = 200 THEN
+        PRINT "api agenti : " + ApiUrl()
+    ELSE
+        PRINT "api agenti : AVVIATA ma non risponde su :" + LTRIM$(STR$(g_apiPort)) + " (porta occupata? vedi .webapp.toml)"
+    END IF
+END SUB
+
+SUB StartDashboard()
+    DIM cfg AS HTTPCONFIG = NEW HTTPCONFIG
+    IF g_dashPort <= 0 THEN
+        PRINT "dashboard  : porta non valida ("; g_dashPort; ")"
+        EXIT SUB
+    END IF
+    IF NOT IO.DIREXISTS(g_pagesDir) THEN
+        PRINT "errore: cartella pagine non trovata: "; g_pagesDir
+        ERROR 2
+    END IF
+    cfg.Port = g_dashPort
+    IF g_sessions = 1 THEN cfg.Sessions = TRUE
+    IF LEN(g_allowedIPs) > 0 THEN cfg.AllowedIPs = g_allowedIPs
+    HTTP CONFIG cfg
+
+    ' Più mount statici sono legittimi: vince il prefisso più lungo.
+    HTTP STATIC "/", g_pagesDir
+    HTTP STATIC "/static", g_staticDir
+
+    RegisterApiRoutes()
+    HTTP ROUTE "GET", "/ws/canvas", CanvasWsHandler()
+
+    HTTP SERVER cfg.Port
+    PRINT "dashboard  : http://127.0.0.1:" + LTRIM$(STR$(g_dashPort)) + "/index.bsp"
+END SUB
+
+' ============================================================================
+' Rotte: endpoint PROPRI (BASIC) + proxy trasparente verso l'API agenti
+' ============================================================================
 SUB RegisterApiRoutes()
-    ' GET
+    ' --- endpoint implementati qui in BASIC ---
+    HTTP ROUTE "GET", "/api/health", ApiHealth()
+    HTTP ROUTE "GET", "/api/status", ApiStatus()
+    HTTP ROUTE "POST", "/api/agents", ApiAgentCreate()
+    HTTP ROUTE "PATCH", "/api/agents/{name}", ApiAgentUpdate()
+    HTTP ROUTE "DELETE", "/api/agents/{name}", ApiAgentDelete()
+    HTTP ROUTE "POST", "/api/agents/{name}/ask", ApiAgentAsk()
+
+    ' --- proxy GET ---
     HTTP ROUTE "GET", "/api/agents", PxGet()
     HTTP ROUTE "GET", "/api/teams", PxGet()
     HTTP ROUTE "GET", "/api/teams/{name}", PxGet()
@@ -159,7 +353,8 @@ SUB RegisterApiRoutes()
     HTTP ROUTE "GET", "/api/memory/search", PxGet()
     HTTP ROUTE "GET", "/api/brain/search", PxGet()
     HTTP ROUTE "GET", "/api/brain/list", PxGet()
-    ' POST
+
+    ' --- proxy POST ---
     HTTP ROUTE "POST", "/api/agent/{name}/prompt", PxPost()
     HTTP ROUTE "POST", "/api/workflows", PxPost()
     HTTP ROUTE "POST", "/api/workflows/{name}/steps", PxPost()
@@ -174,10 +369,183 @@ SUB RegisterApiRoutes()
     HTTP ROUTE "POST", "/api/brain/watch", PxPost()
     HTTP ROUTE "POST", "/api/brain/refresh", PxPost()
     HTTP ROUTE "POST", "/api/brain/consolidate", PxPost()
-    ' DELETE
+
+    ' --- proxy DELETE ---
     HTTP ROUTE "DELETE", "/api/memory", PxDelete()
     HTTP ROUTE "DELETE", "/api/workflows/{name}", PxDelete()
 END SUB
+
+' --- Endpoint propri -------------------------------------------------------
+
+SUB ApiHealth(req AS HTTPREQUEST, res AS HTTPRESPONSE)
+    res.Send("{" + JQ("ok") + ":true," + JQ("app") + ":" + JStr("webapp") + "}")
+END SUB
+
+' Stato della app + del runtime: la UI lo interroga per le "chip" in testa e per
+' il polling. Tutto costruito qui, nessuna dipendenza dal server agenti tranne
+' l'eventuale reachability (una GET leggera).
+SUB ApiStatus(req AS HTTPREQUEST, res AS HTTPRESPONSE)
+    DIM up AS LONG
+    DIM nAgents AS INTEGER
+    DIM nEvents AS INTEGER
+    DIM active AS STRING
+    DIM model AS STRING
+    DIM reach AS INTEGER
+    DIM sb AS STRING
+    DIM r AS FETCHRESULT
+
+    up = CLNG(DATETIME.SECONDS() - g_startSec)
+    IF g_startSec = 0 THEN up = 0
+    IF up < 0 THEN up = up + 86400
+
+    DIM names() = AI.AGENTLIST()
+    nAgents = UBOUND(names) + 1
+    DIM evs() = AI.AGENTEVENTS()
+    nEvents = UBOUND(evs) + 1
+    active = AI.ACTIVE(%CHAT)
+    model = ""
+    IF LEN(active) > 0 THEN model = AI.GETMODEL(active)
+
+    reach = 0
+    IF g_apiPort > 0 THEN
+        r = FETCH("http://127.0.0.1:" + LTRIM$(STR$(g_apiPort)) + "/api/agents")
+        IF r.StatusCode = 200 THEN reach = 1
+    END IF
+
+    sb = "{"
+    sb = sb + JQ("app") + ":" + JStr("webapp")
+    sb = sb + "," + JQ("version") + ":" + JStr(g_version)
+    sb = sb + "," + JQ("dashboardPort") + ":" + LTRIM$(STR$(g_dashPort))
+    sb = sb + "," + JQ("apiPort") + ":" + LTRIM$(STR$(g_apiPort))
+    sb = sb + "," + JQ("apiReachable") + ":" + BoolJson(reach)
+    sb = sb + "," + JQ("agents") + ":" + LTRIM$(STR$(nAgents))
+    sb = sb + "," + JQ("events") + ":" + LTRIM$(STR$(nEvents))
+    sb = sb + "," + JQ("activeProvider") + ":" + JStr(active)
+    sb = sb + "," + JQ("model") + ":" + JStr(model)
+    sb = sb + "," + JQ("refreshMs") + ":" + LTRIM$(STR$(g_refreshMs))
+    sb = sb + "," + JQ("startedAt") + ":" + JStr(g_startTime)
+    sb = sb + "," + JQ("uptimeSec") + ":" + LTRIM$(STR$(up))
+    sb = sb + "," + JQ("proxied") + ":" + LTRIM$(STR$(g_proxied))
+    sb = sb + "," + JQ("pages") + ":" + JStr(g_pagesDir)
+    sb = sb + "," + JQ("static") + ":" + JStr(g_staticDir)
+    sb = sb + "," + JQ("allowedIPs") + ":" + JStr(g_allowedIPs)
+    sb = sb + "}"
+    g_proxied = g_proxied + 1
+    res.Send(sb)
+END SUB
+
+' POST /api/agents {name, systemPrompt?, permission?, temperature?, model?}
+SUB ApiAgentCreate(req AS HTTPREQUEST, res AS HTTPRESPONSE)
+    DIM body AS STRING
+    DIM name AS STRING
+    DIM v AS STRING
+    DIM names() AS STRING
+    DIM i AS INTEGER
+    DIM exists AS INTEGER
+
+    body = req.Body
+    name = JsonField(body, "name")
+    IF LEN(STRINGS.TRIM(name)) = 0 THEN
+        res.StatusCode = 400
+        res.Send(ErrorJson("missing_name", "serve {""name"":""<agente>""}"))
+        EXIT SUB
+    END IF
+    name = STRINGS.TRIM(name)
+
+    exists = 0
+    names = AI.AGENTLIST()
+    FOR i = 0 TO UBOUND(names)
+        IF STRINGS.UPPER(STRINGS.TRIM(names(i))) = STRINGS.UPPER(name) THEN exists = 1
+    NEXT i
+    IF exists = 1 THEN
+        res.StatusCode = 409
+        res.Send(ErrorJson("already_exists", "agente già presente: " + name))
+        EXIT SUB
+    END IF
+
+    AI AGENT CREATE (name)
+    v = JsonField(body, "systemPrompt")
+    IF LEN(v) > 0 THEN AI AGENT SET (name) systemPrompt (v)
+    v = JsonField(body, "permission")
+    IF LEN(v) > 0 THEN AI AGENT SET (name) permission (v)
+    v = JsonField(body, "temperature")
+    IF LEN(v) > 0 THEN AI AGENT SET (name) temperature (VAL(v))
+    v = JsonField(body, "model")
+    IF LEN(v) > 0 THEN AI AGENT SET (name) model (v)
+
+    PRINT "[api] agente creato: "; name; " (da "; req.RemoteIp; ")"
+    res.StatusCode = 201
+    res.Send("{" + JQ("created") + ":" + JStr(name) + "}")
+END SUB
+
+' PATCH /api/agents/{name} {systemPrompt?, permission?, temperature?, model?}
+' Aggiorna SOLO i campi presenti nel body (vuoto = lascia invariato).
+SUB ApiAgentUpdate(req AS HTTPREQUEST, res AS HTTPRESPONSE)
+    DIM name AS STRING
+    DIM v AS STRING
+    DIM changed AS INTEGER
+    name = req.Params["name"]
+    IF LEN(STRINGS.TRIM(name)) = 0 THEN
+        res.StatusCode = 400
+        res.Send(ErrorJson("missing_name", "nome agente assente nel path"))
+        EXIT SUB
+    END IF
+    changed = 0
+    v = JsonField(req.Body, "systemPrompt")
+    IF LEN(v) > 0 THEN
+        AI AGENT SET (name) systemPrompt (v)
+        changed = changed + 1
+    END IF
+    v = JsonField(req.Body, "permission")
+    IF LEN(v) > 0 THEN
+        AI AGENT SET (name) permission (v)
+        changed = changed + 1
+    END IF
+    v = JsonField(req.Body, "temperature")
+    IF LEN(v) > 0 THEN
+        AI AGENT SET (name) temperature (VAL(v))
+        changed = changed + 1
+    END IF
+    v = JsonField(req.Body, "model")
+    IF LEN(v) > 0 THEN
+        AI AGENT SET (name) model (v)
+        changed = changed + 1
+    END IF
+    PRINT "[api] agente aggiornato: "; name; " ("; changed; " campi)"
+    res.Send("{" + JQ("updated") + ":" + JStr(name) + "," + JQ("fields") + ":" + LTRIM$(STR$(changed)) + "}")
+END SUB
+
+' DELETE /api/agents/{name}
+SUB ApiAgentDelete(req AS HTTPREQUEST, res AS HTTPRESPONSE)
+    DIM name AS STRING
+    name = req.Params["name"]
+    IF LEN(STRINGS.TRIM(name)) = 0 THEN
+        res.StatusCode = 400
+        res.Send(ErrorJson("missing_name", "nome agente assente nel path"))
+        EXIT SUB
+    END IF
+    AI AGENT DELETE (name)
+    PRINT "[api] agente eliminato: "; name; " (da "; req.RemoteIp; ")"
+    res.Send("{" + JQ("deleted") + ":" + JStr(name) + "}")
+END SUB
+
+' POST /api/agents/{name}/ask {prompt} → risposta SINCRONA (nessun server di streaming)
+SUB ApiAgentAsk(req AS HTTPREQUEST, res AS HTTPRESPONSE)
+    DIM name AS STRING
+    DIM prompt AS STRING
+    DIM answer AS STRING
+    name = req.Params["name"]
+    prompt = JsonField(req.Body, "prompt")
+    IF LEN(STRINGS.TRIM(prompt)) = 0 THEN
+        res.StatusCode = 400
+        res.Send(ErrorJson("missing_prompt", "serve {""prompt"":""<testo>""}"))
+        EXIT SUB
+    END IF
+    answer = AI.AGENTASKSYNC(name, prompt)
+    res.Send("{" + JQ("agent") + ":" + JStr(name) + "," + JQ("answer") + ":" + JStr(answer) + "}")
+END SUB
+
+' --- Proxy trasparente -----------------------------------------------------
 
 SUB PxGet(req AS HTTPREQUEST, res AS HTTPRESPONSE)
     res.Send(Forward(req, "GET", ""))
@@ -191,14 +559,14 @@ SUB PxDelete(req AS HTTPREQUEST, res AS HTTPRESPONSE)
     res.Send(Forward(req, "DELETE", ""))
 END SUB
 
-' Inoltra la richiesta al server agenti mantenendo path e query string; il corpo
-' è quello del client (già JSON). Risposta = corpo della risposta, così il JS fa
-' `r.json()` senza CORS. Se il server agenti non è raggiungibile si restituisce
-' un JSON esplicito (mai un errore HTML che farebbe fallire il parsing).
+' Inoltra metodo+path+query (+body) al server agenti; la risposta è il corpo
+' JSON così il JS fa `r.json()` senza CORS. Se l'API è giù si restituisce un
+' JSON esplicito (mai HTML), così la UI mostra un errore leggibile.
 FUNCTION Forward(req AS HTTPREQUEST, method AS STRING, body AS STRING) AS STRING
     DIM url AS STRING
     DIM opts AS HTTPOPTIONS = NEW HTTPOPTIONS
     DIM r AS FETCHRESULT
+    g_proxied = g_proxied + 1
     url = "http://127.0.0.1:" + LTRIM$(STR$(g_apiPort)) + req.Path
     IF LEN(req.QueryString) > 0 THEN url = url + "?" + req.QueryString
     opts.Method = method
@@ -206,17 +574,19 @@ FUNCTION Forward(req AS HTTPREQUEST, method AS STRING, body AS STRING) AS STRING
     opts.Headers.Add("Content-Type", "application/json")
     r = FETCH(url, opts)
     IF r.StatusCode = 0 THEN
-        ' JSON costruito con CHR$(34): la forma con "" ripetuti dopo un + è ambigua
-        ' per il lexer (`"""` viene letta come stringa vuota + inizio stringa).
-        DIM q AS STRING
-        q = CHR$(34)
-        Forward = "{" + q + "error" + q + ":" + q + "agent-api-unreachable" + q + "," + q + "url" + q + ":" + q + EscapeJson(url) + q + "}"
+        Forward = ErrorJson("agent_api_unreachable", "il server agenti (:" + LTRIM$(STR$(g_apiPort)) + ") non risponde")
     ELSE
         Forward = r.Body
     END IF
 END FUNCTION
 
-FUNCTION EscapeJson(s AS STRING) AS STRING
+' --- Helper JSON -----------------------------------------------------------
+
+FUNCTION JQ(k AS STRING) AS STRING
+    JQ = CHR$(34) + k + CHR$(34)
+END FUNCTION
+
+FUNCTION JStr(s AS STRING) AS STRING
     DIM t AS STRING
     t = s
     t = REPLACE$(t, "\", "\\")
@@ -224,16 +594,42 @@ FUNCTION EscapeJson(s AS STRING) AS STRING
     t = REPLACE$(t, CHR$(10), "\n")
     t = REPLACE$(t, CHR$(13), "")
     t = REPLACE$(t, CHR$(9), " ")
-    EscapeJson = t
+    JStr = CHR$(34) + t + CHR$(34)
 END FUNCTION
 
-' --- WebSocket Canvas handler (Vision-Ext §1) ---
+FUNCTION BoolJson(b AS INTEGER) AS STRING
+    IF b = 1 THEN
+        BoolJson = "true"
+    ELSE
+        BoolJson = "false"
+    END IF
+END FUNCTION
 
+FUNCTION ErrorJson(code AS STRING, msg AS STRING) AS STRING
+    ErrorJson = "{" + JQ("error") + ":" + JStr(code) + "," + JQ("message") + ":" + JStr(msg) + "}"
+END FUNCTION
+
+' Campo stringa da un body JSON ("" se assente/vuoto/JSON invalido).
+FUNCTION JsonField(body AS STRING, key AS STRING) AS STRING
+    DIM v AS STRING
+    DIM j AS JSON
+    JsonField = ""
+    IF LEN(STRINGS.TRIM(body)) = 0 THEN EXIT FUNCTION
+    j = JSON.PARSE(body)
+    v = JSON.EXTRACT(j, key)
+    JsonField = v
+END FUNCTION
+
+' ============================================================================
+' WebSocket canvas (WEBCANVAS: frame JSON → static/canvas.js)
+' ============================================================================
 SUB CanvasWsHandler(req AS HTTPREQUEST, res AS HTTPRESPONSE, ws AS WEBSOCKET)
     ws.OnMessage = "CanvasOnMessage"
     ws.OnClose = "CanvasOnClose"
-    ' WEBCANVAS.Init(ws) removed (stateless)
-    ' demo frame iniziale
+    DrawDemoFrame(ws)
+END SUB
+
+SUB DrawDemoFrame(ws AS WEBSOCKET)
     WEBCANVAS.Clear(ws, 0)
     WEBCANVAS.PSet(ws, 10, 10, 4)
     WEBCANVAS.Line(ws, 0, 0, 120, 120, 7)
@@ -244,17 +640,10 @@ SUB CanvasWsHandler(req AS HTTPREQUEST, res AS HTTPRESPONSE, ws AS WEBSOCKET)
 END SUB
 
 SUB CanvasOnMessage(ws AS WEBSOCKET, msg AS STRING)
-    ' echo o comando dal browser — per ora logga
-    PRINT "[canvas ws] msg: " + msg
-    ' se il browser invia {"op":"demo"}, re-invia il frame
-    IF INSTR(msg, "demo") > 0 THEN
-        WEBCANVAS.Clear(ws, 0)
-        WEBCANVAS.PSet(ws, 10, 10, 4)
-        WEBCANVAS.Flush(ws)
-    END IF
+    PRINT "[canvas] msg: "; msg
+    IF INSTR(STRINGS.UPPER(msg), "DEMO") > 0 THEN DrawDemoFrame(ws)
 END SUB
 
 SUB CanvasOnClose(ws AS WEBSOCKET)
-    PRINT "[canvas ws] closed"
+    PRINT "[canvas] closed"
 END SUB
-

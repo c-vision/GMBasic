@@ -1,12 +1,21 @@
 <%@ IMPORT JSON, AI, MEMORY %>
 <%@ IMPORT DASHBOARD %>
 <%
-  ' FILE: webapp/pages/index.bsp — WEBAPP Agents Dashboard (C1b) + Canvas/WASM tabs
-  ' 5 tab: Agents · Teams · Log · Canvas · WASM
-  ' Sorgente di verità del markup: l'utente modifica qui HTML/CSS/JS senza toccare C#.
-  ' Dati: SSR via AI.AGENTLIST/TEAMLIST/AGENTEVENTS (zero JS, zero CORS) + JS fetch live
-  ' su /api/* (same-origin via proxy BASIC in webapp/app.bas quando serve).
-  ' Include: WebCanvas/WasmBridge inclusi solo nella tab dedicata per non appesantire le 3 C1b.
+  ' FILE: shared/webapp/pages/index.bsp — Agents Operating Center (UI)
+  ' =====================================================================
+  ' Pagina unica, 5 tab. Il markup e questo file sono il "sorgente di verità":
+  ' si modifica qui (HTML/CSS/JS) e negli helper BASIC di include/AgentsDashboard.inc,
+  ' senza toccare C#.
+  '
+  ' Dati:
+  '   - SSR (funziona anche senza JavaScript) via AI.AGENTLIST/TEAMLIST/AGENTEVENTS,
+  '     AI.WorkflowList, MEMORY.LIST;
+  '   - live via /api/* (proxy same-origin di app.bas verso il server agenti 8765).
+  '
+  ' Endpoint propri della app (implementati in app.bas):
+  '   GET /api/status · POST /api/agents · PATCH|DELETE /api/agents/{name}
+  '   POST /api/agents/{name}/ask
+  ' Tutti gli altri /api/* sono inoltrati al server agenti.
 %>
 <!DOCTYPE html>
 <html lang="it">
@@ -15,108 +24,134 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GMBasic — Agents Operating Center</title>
 <style>
-  :root { color-scheme: light dark; }
-  * { box-sizing: border-box; margin: 0; }
-  body {
-    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
-    background: #f4f6fb; color: #1c2430; line-height: 1.5; padding: 0;
+  :root{
+    color-scheme: light dark;
+    --bg:#f4f6fb; --card:#fff; --ink:#1c2430; --muted:#64748b;
+    --line:#e2e8f0; --brand:#2563eb; --brand-ink:#1d4ed8;
+    --ok:#059669; --warn:#d97706; --bad:#dc2626;
+    --head1:#0f172a; --head2:#1e293b;
   }
-  header {
-    background: linear-gradient(135deg, #1e293b, #334155);
-    color: #fff; padding: 1.6rem 2rem;
-  }
-  header h1 { font-size: 1.5rem; letter-spacing: .3px; }
-  header p { color: #cbd5e1; margin-top: .3rem; font-size: .9rem; }
-  header .hint { color: #93c5fd; font-size: .82rem; margin-top: .4rem; }
-  .tabs {
-    display: flex; gap: .45rem; padding: .9rem 2rem; background: #fff;
-    border-bottom: 1px solid #e2e8f0; flex-wrap: wrap;
-  }
-  .tab {
-    padding: .5rem .95rem; border-radius: 8px; cursor: pointer; font-weight: 600;
-    border: 1px solid #e2e8f0; background: #f8fafc; color: #334155; font-size: .86rem;
-  }
-  .tab.active { background: #2563eb; color: #fff; border-color: #2563eb; }
-  .panel { display: none; max-width: 1020px; margin: 1.4rem auto; padding: 0 1.5rem; }
-  .panel.active { display: block; }
-  .card {
-    background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(15,23,42,.06); overflow: hidden;
-  }
-  table { width: 100%; border-collapse: collapse; }
-  th {
-    text-align: left; font-size: .72rem; text-transform: uppercase;
-    letter-spacing: .5px; color: #64748b; background: #f8fafc;
-    padding: .6rem .9rem; border-bottom: 1px solid #e2e8f0;
-  }
-  td { padding: .75rem .9rem; border-bottom: 1px solid #f1f5f9; font-size: .9rem; }
-  tr:last-child td { border-bottom: 0; }
-  tr:hover td { background: #f8fafc; }
-  .name { font-weight: 600; color: #2563eb; }
-  .ver { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .82rem; color: #334155; }
-  .muted { color: #94a3b8; }
-  .empty { text-align: center; color: #94a3b8; padding: 1.2rem !important; }
-  .badge {
-    display: inline-block; font-size: .68rem; font-weight: 600;
-    padding: .15rem .5rem; border-radius: 999px; background: #e2e8f0; color: #334155;
-  }
-  .badge.idle { background: #e0e7ff; color: #3730a3; }
-  .badge.working, .badge.executing { background: #fef3c7; color: #92400e; }
-  .badge.planning { background: #d1fae5; color: #065f46; }
-  .badge.waiting { background: #fce7f3; color: #9d174d; }
-  .badge.perm-yolo { background: #fee2e2; color: #991b1b; }
-  .badge.perm-supervised { background: #fef9c3; color: #854d0e; }
-  .badge.perm-sandbox { background: #dcfce7; color: #166534; }
-  .badge.strategy { background: #e0f2fe; color: #0c4a6e; }
-  .btn {
-    display: inline-block; padding: .4rem .75rem; border-radius: 8px;
-    font-size: .82rem; font-weight: 600; cursor: pointer; border: none;
-  }
-  .btn-ghost { background: #eef2ff; color: #3730a3; }
-  .btn-primary { background: #2563eb; color: #fff; }
-  .btn:active { transform: scale(.98); }
-  .toolbar { display: flex; gap: .6rem; align-items: center; margin: 1rem 0 .8rem; flex-wrap: wrap; }
-  .toolbar input { padding: .5rem .7rem; border: 1px solid #e2e8f0; border-radius: 8px; font-size: .9rem; }
-  .toolbar input:focus { outline: 2px solid #93c5fd; border-color: #93c5fd; }
-  pre.json { background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: .8rem 1rem; font-size: .82rem; overflow-x: auto; }
-  .hint-box { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: .7rem .9rem; font-size: .84rem; color: #92400e; margin: .8rem 0; }
-  canvas.gmb-canvas { border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; display: block; margin: .8rem 0; }
+  *{box-sizing:border-box;margin:0}
+  body{font-family:-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);line-height:1.45}
+  header{background:linear-gradient(135deg,var(--head1),var(--head2));color:#fff;padding:1.1rem 1.6rem}
+  header .row{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+  header h1{font-size:1.25rem;font-weight:650;letter-spacing:.2px}
+  header .sub{color:#cbd5e1;font-size:.8rem}
+  .chips{display:flex;gap:.45rem;flex-wrap:wrap;margin-left:auto}
+  .chip{background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.16);color:#e2e8f0;
+        border-radius:999px;padding:.28rem .65rem;font-size:.75rem;white-space:nowrap}
+  .chip b{color:#fff;font-weight:600}
+  .chip.ok{border-color:rgba(16,185,129,.55)} .chip.bad{border-color:rgba(248,113,113,.65)}
+  .chip-btn{cursor:pointer}
+  .banner{display:none;margin:0;padding:.7rem 1.6rem;background:#fef2f2;color:#991b1b;border-bottom:1px solid #fecaca;font-size:.85rem}
+  .banner.show{display:block}
+  nav.tabs{display:flex;gap:.25rem;padding:.6rem 1.6rem 0;border-bottom:1px solid var(--line);background:var(--card);flex-wrap:wrap}
+  nav.tabs button{background:none;border:none;border-bottom:2px solid transparent;padding:.55rem .85rem;font:inherit;font-size:.88rem;
+        color:var(--muted);cursor:pointer;border-radius:6px 6px 0 0}
+  nav.tabs button:hover{background:#eef2ff;color:var(--brand-ink)}
+  nav.tabs button.active{color:var(--brand-ink);border-bottom-color:var(--brand);font-weight:600}
+  main{padding:1.2rem 1.6rem 3rem;max-width:1280px;margin:0 auto}
+  section.panel{display:none} section.panel.active{display:block}
+  h2{font-size:1.02rem;margin:.2rem 0 .5rem}
+  h3{font-size:.92rem;margin:1.2rem 0 .5rem}
+  p.muted,.muted{color:var(--muted);font-size:.82rem}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 1px 2px rgba(15,23,42,.05);padding:1rem;margin:.6rem 0}
+  table{width:100%;border-collapse:collapse;font-size:.86rem}
+  th{text-align:left;color:var(--muted);font-weight:600;font-size:.74rem;text-transform:uppercase;letter-spacing:.04em;
+     padding:.45rem .5rem;border-bottom:1px solid var(--line)}
+  td{padding:.5rem;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  td.name{font-weight:600}
+  .badge{display:inline-block;border-radius:999px;padding:.12rem .5rem;font-size:.72rem;background:#eef2ff;color:#3730a3}
+  .badge.idle{background:#f1f5f9;color:#475569}.badge.working{background:#dcfce7;color:#166534}
+  .badge.planning{background:#fef9c3;color:#854d0e}.badge.waiting{background:#fef3c7;color:#92400e}
+  .badge.perm-yolo{background:#fee2e2;color:#991b1b}.badge.perm-supervised{background:#e0f2fe;color:#075985}
+  .badge.perm-sandbox{background:#f3e8ff;color:#6b21a8}.badge.strategy{background:#ecfeff;color:#155e75}
+  .badge-empty{background:#fef2f2;color:#b91c1c}
+  .toolbar{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin:.7rem 0}
+  .btn{background:#eef2ff;color:#3730a3;border:none;border-radius:8px;padding:.42rem .8rem;font:inherit;font-size:.82rem;
+       font-weight:600;cursor:pointer}
+  .btn:hover{background:#e0e7ff}
+  .btn-primary{background:var(--brand);color:#fff}.btn-primary:hover{background:var(--brand-ink)}
+  .btn-danger{background:#fee2e2;color:#991b1b}.btn-danger:hover{background:#fecaca}
+  .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--line)}
+  .btn-ghost:hover{background:#f8fafc;color:var(--ink)}
+  input,select,textarea{font:inherit;font-size:.85rem;padding:.42rem .55rem;border:1px solid var(--line);border-radius:8px;background:var(--card);color:inherit}
+  input:focus,select:focus,textarea:focus{outline:2px solid #bfdbfe;border-color:#93c5fd}
+  textarea{width:100%;min-height:80px;resize:vertical}
+  .grid{display:grid;gap:.55rem}
+  .grid.cols4{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .grid.cols3{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .grid.cols2{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .grid label{display:flex;flex-direction:column;gap:.2rem;font-size:.75rem;color:var(--muted)}
+  .out{background:#0f172a;color:#e2e8f0;border-radius:10px;padding:.7rem .9rem;font-size:.78rem;overflow:auto;max-height:320px;
+       white-space:pre-wrap;word-break:break-word;display:none}
+  .out.show{display:block}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+  .toast{position:fixed;right:1rem;bottom:1rem;background:#0f172a;color:#fff;padding:.65rem 1rem;border-radius:10px;
+         font-size:.84rem;opacity:0;transform:translateY(8px);transition:.18s;pointer-events:none;max-width:420px}
+  .toast.show{opacity:1;transform:none}
+  .toast.bad{background:#991b1b}
+  canvas.gmb-canvas{width:100%;max-width:820px;border:1px solid var(--line);border-radius:12px;background:#fff;display:block}
+  code{background:#f1f5f9;padding:.08rem .34rem;border-radius:4px;font-size:.8rem}
+  .hint{background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:10px;padding:.6rem .8rem;font-size:.8rem;margin:.6rem 0}
+  .kv{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+  @media (max-width:900px){.grid.cols4{grid-template-columns:1fr 1fr}.split{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <header>
-  <h1>GMBasic — Agents Operating Center</h1>
-  <p>5 tab: Agents · Teams · Log · Canvas · WASM — SSR via AI.* + live fetch su /api/*</p>
-  <p class="hint">Editabile in BASIC: <code>webapp/pages/index.bsp</code> + <code>include/AgentsDashboard.inc</code> + <code>WebCanvas.inc</code> + <code>WasmBridge.inc</code></p>
+  <div class="row">
+    <div>
+      <h1><%= DASHBOARD.TITLE$ %></h1>
+      <div class="sub">Agents · Teams · Log · Workflows · Memory · Canvas · WASM — tutto in BASIC</div>
+    </div>
+    <div class="chips">
+      <span class="chip" id="chip-api">API: <b>…</b></span>
+      <span class="chip" id="chip-provider">provider: <b>…</b></span>
+      <span class="chip" id="chip-model">model: <b>…</b></span>
+      <span class="chip" id="chip-agents">agenti: <b>0</b></span>
+      <span class="chip" id="chip-uptime">uptime: <b>…</b></span>
+      <span class="chip chip-btn" id="btn-pause" title="Ferma/riprendi il polling">⏸ pausa</span>
+    </div>
+  </div>
 </header>
 
-<nav class="tabs" role="tablist">
-  <button class="tab active" data-tab="agents">Agents</button>
-  <button class="tab" data-tab="teams">Teams</button>
-  <button class="tab" data-tab="log">Log</button>
-  <button class="tab" data-tab="canvas">Canvas</button>
-  <button class="tab" data-tab="wasm">WASM</button>
+<div class="banner" id="banner"></div>
+
+<nav class="tabs" id="tabs">
+  <button data-tab="agents" class="active">Agents</button>
+  <button data-tab="teams">Teams</button>
+  <button data-tab="log">Log</button>
+  <button data-tab="workflows">Workflows</button>
+  <button data-tab="memory">Memory</button>
+  <button data-tab="brain">Brain</button>
+  <button data-tab="canvas">Canvas</button>
+  <button data-tab="wasm">WASM</button>
 </nav>
 
-<!-- ===================== TAB: AGENTS ===================== -->
+<main>
+
+<!-- ===================== AGENTS ===================== -->
 <section id="panel-agents" class="panel active">
   <h2>Agents</h2>
-  <p class="muted" style="font-size:.84rem;margin:.3rem 0 .8rem">Lista da <code>AI.AGENTLIST()</code> (SSR) + live <code>GET /api/agents</code>. Chat via <code>POST /api/agent/{n}/prompt</code>.</p>
+  <p class="muted">Gestione completa: crea, aggiorna (prompt/permessi/modello), elimina, chat sincrona.
+     I dati arrivano da <code>/api/agents</code> (proxy) e <code>POST/PATCH/DELETE /api/agents*</code> (implementati in <code>app.bas</code>).</p>
   <div class="card">
     <table>
-      <thead><tr><th>Name</th><th>Status</th><th>Permission</th><th>Teams</th><th>Model</th><th>Actions</th></tr></thead>
+      <thead><tr><th>Nome</th><th>Stato</th><th>Permessi</th><th>Modello</th><th>Azioni</th></tr></thead>
       <tbody id="agents-body">
         <%
           DIM anames() = AI.AGENTLIST()
           IF UBOUND(anames) < 0 THEN
-            PRINT DASHBOARD.EmptyRowHtml(6, "Nessun agente — crea con AI AGENT CREATE Demo")
+            PRINT DASHBOARD.EmptyRowHtml(5, "Nessun agente — creane uno con il form sotto")
           ELSE
             FOR i = 0 TO UBOUND(anames)
               DIM nm$ = anames(i)
               DIM perm$ = AI.AGENTGET(nm$, "permission")
               IF perm$ = "" THEN perm$ = "YOLO"
               DIM model$ = AI.AGENTGET(nm$, "model")
-              ' teams via helper: se GetTeamsJson non espone teams per agent, placeholder "-"
+              IF model$ = "" THEN model$ = "-"
               PRINT DASHBOARD.AgentRowRichHtml(nm$, "Idle", perm$, "-", model$)
             NEXT i
           END IF
@@ -124,26 +159,74 @@
       </tbody>
     </table>
   </div>
-  <div class="toolbar">
-    <input id="chat-agent" placeholder="agent name" style="width:160px">
-    <input id="chat-prompt" placeholder="prompt" style="flex:1;min-width:220px">
-    <button class="btn btn-primary" onclick="sendPrompt()">Send</button>
+
+  <div class="split">
+    <div class="card">
+      <h3 style="margin-top:0">Nuovo agente</h3>
+      <div class="grid cols2">
+        <label>Nome <input id="new-name" placeholder="Es. Reviewer"></label>
+        <label>Permessi
+          <select id="new-perm">
+            <option value="YOLO">YOLO</option>
+            <option value="Supervised" selected>Supervised</option>
+            <option value="Sandbox">Sandbox</option>
+          </select>
+        </label>
+        <label>Modello <input id="new-model" placeholder="(default del provider)"></label>
+        <label>Temperature <input id="new-temp" placeholder="es. 0.3" inputmode="decimal"></label>
+      </div>
+      <label style="display:flex;flex-direction:column;gap:.2rem;font-size:.75rem;color:var(--muted);margin-top:.5rem">
+        System prompt
+        <textarea id="new-prompt" placeholder="Sei un assistente conciso e preciso."></textarea>
+      </label>
+      <div class="toolbar"><button class="btn btn-primary" id="btn-create">Crea agente</button></div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">Chat / aggiorna</h3>
+      <div class="grid cols2">
+        <label>Agente <input id="sel-agent" placeholder="nome agente" list="agent-names"><datalist id="agent-names"></datalist></label>
+        <label>Nuovo modello <input id="set-model" placeholder="(lascia vuoto = invariato)"></label>
+        <label>Nuovi permessi
+          <select id="set-perm">
+            <option value="">(invariato)</option>
+            <option value="YOLO">YOLO</option>
+            <option value="Supervised">Supervised</option>
+            <option value="Sandbox">Sandbox</option>
+          </select>
+        </label>
+        <label>Temperature <input id="set-temp" placeholder="(invariata)" inputmode="decimal"></label>
+      </div>
+      <label style="display:flex;flex-direction:column;gap:.2rem;font-size:.75rem;color:var(--muted);margin-top:.5rem">
+        Nuovo system prompt <input id="set-prompt" placeholder="(invariato)">
+      </label>
+      <div class="toolbar">
+        <button class="btn" id="btn-update">Aggiorna</button>
+        <button class="btn btn-danger" id="btn-delete">Elimina</button>
+      </div>
+      <label style="display:flex;flex-direction:column;gap:.2rem;font-size:.75rem;color:var(--muted)">
+        Prompt di chat
+        <input id="chat-prompt" placeholder="Scrivi un prompt e premi Invia">
+      </label>
+      <div class="toolbar">
+        <button class="btn btn-primary" id="btn-ask">Invia</button>
+        <span class="muted" id="ask-state"></span>
+      </div>
+      <pre class="out" id="chat-out"></pre>
+    </div>
   </div>
-  <pre id="chat-answer" class="json" style="display:none"></pre>
-  <div class="hint-box">Suggerimento: <code>AI AGENT TRACE VERBOSE</code> prima di chattare per popolare il Log.</div>
 </section>
 
-<!-- ===================== TAB: TEAMS ===================== -->
+<!-- ===================== TEAMS ===================== -->
 <section id="panel-teams" class="panel">
   <h2>Teams</h2>
-  <p class="muted" style="font-size:.84rem;margin:.3rem 0 .8rem">Lista da <code>AI.TEAMLIST()</code> (SSR) + live <code>GET /api/teams</code>.</p>
+  <p class="muted">Team del runtime (creazione/aggiunta membri: comandi <code>AI TEAM …</code> da BASIC).
+     Broadcast via <code>POST /api/team/{name}/broadcast</code>.</p>
   <div class="card">
     <table>
-      <thead><tr><th>Name</th><th>Strategy</th><th>Members</th><th>Actions</th></tr></thead>
+      <thead><tr><th>Nome</th><th>Strategia</th><th>Membri</th><th>Azioni</th></tr></thead>
       <tbody id="teams-body">
         <%
-          ' AI.TEAMLIST() ritorna i NOMI separati da CHR$(10) (non un array, non JSON):
-          ' si normalizza con SPLIT, come MEMORY.LIST().
           DIM tl$ = AI.TEAMLIST()
           IF LEN(tl$) = 0 THEN
             PRINT DASHBOARD.EmptyRowHtml(4, "Nessun team — crea con AI TEAM CREATE MyTeam")
@@ -157,58 +240,64 @@
       </tbody>
     </table>
   </div>
-  <div class="toolbar">
-    <input id="team-name" placeholder="team name" style="width:180px">
-    <input id="team-msg" placeholder="broadcast message" style="flex:1;min-width:220px">
-    <button class="btn btn-ghost" onclick="teamBroadcast()">Broadcast</button>
+  <div class="card">
+    <div class="grid cols3">
+      <label>Team <input id="bc-team" placeholder="nome team"></label>
+      <label>Messaggio <input id="bc-msg" placeholder="messaggio broadcast"></label>
+      <label>&nbsp;<button class="btn btn-primary" id="btn-broadcast">Broadcast</button></label>
+    </div>
+    <pre class="out" id="bc-out"></pre>
   </div>
-  <pre id="team-answer" class="json" style="display:none"></pre>
 </section>
 
-<!-- ===================== TAB: LOG ===================== -->
+<!-- ===================== LOG ===================== -->
 <section id="panel-log" class="panel">
   <h2>Log / Events</h2>
-  <p class="muted" style="font-size:.84rem;margin:.3rem 0 .8rem">Ring buffer <code>AI.AGENTEVENTS()</code> (500, solo se <code>TRACE ON|VERBOSE</code>) + live <code>GET /api/events</code> (V1.1, fallback SSR).</p>
+  <p class="muted">Ring buffer di <code>AI.AGENTEVENTS()</code> (si popola con <code>AI AGENT TRACE VERBOSE</code>, attivo all'avvio).
+     Live su <code>GET /api/events</code>.</p>
+  <div class="toolbar">
+    <input id="log-filter" placeholder="filtra (testo)" style="min-width:220px">
+    <button class="btn btn-ghost" id="btn-log-refresh">Aggiorna</button>
+    <label class="kv muted" style="font-size:.8rem"><input type="checkbox" id="log-autoscroll" checked> autoscroll</label>
+    <span class="muted" id="log-count"></span>
+  </div>
   <div class="card">
-    <table>
-      <thead><tr><th>Event</th></tr></thead>
+    <table><thead><tr><th>Evento</th></tr></thead>
       <tbody id="log-body">
         <%
           DIM evs() = AI.AGENTEVENTS()
           IF UBOUND(evs) < 0 THEN
-            PRINT "<tr><td class='empty'>Nessun evento — attiva con AI AGENT TRACE VERBOSE e fai una ASK</td></tr>"
+            PRINT "<tr><td class='empty muted'>Nessun evento — attiva TRACE e usa un agente</td></tr>"
           ELSE
             FOR i = 0 TO UBOUND(evs)
-              PRINT "<tr><td class='detail'>" + evs(i) + "</td></tr>"
+              PRINT "<tr><td class='detail'>" + DASHBOARD.EscapeHtml(evs(i)) + "</td></tr>"
             NEXT i
           END IF
         %>
       </tbody>
     </table>
   </div>
-  <div class="toolbar">
-    <button class="btn btn-ghost" onclick="refreshLog()">Refresh</button>
-    <span class="muted" style="font-size:.82rem">Polling <code>DASHBOARD.REFRESH_MS%</code> = <%= DASHBOARD.REFRESH_MS% %> ms</span>
-  </div>
-  <h3 style="margin:1.2rem 0 .6rem">Workflows</h3>
-  <p class="muted" style="font-size:.82rem;margin:.2rem 0 .6rem">CRUD via <code>POST /api/workflows</code> / <code>POST /api/workflows/{n}/steps</code> / <code>POST /api/workflows/{n}/execute</code> — senza toccare C#, solo BASIC + JS.</p>
+</section>
+
+<!-- ===================== WORKFLOWS ===================== -->
+<section id="panel-workflows" class="panel">
+  <h2>Workflows</h2>
+  <p class="muted">Crea, aggiungi step, esegui, ispeziona, elimina.
+     API: <code>POST /api/workflows</code>, <code>POST /api/workflows/{n}/steps|execute</code>, <code>GET/DELETE /api/workflows/{n}</code>.</p>
   <div class="card">
     <table>
-      <thead><tr><th>Name</th><th>Status</th><th>Steps</th><th>Actions</th></tr></thead>
-      <tbody id="workflows-body">
+      <thead><tr><th>Nome</th><th>Stato</th><th>Step</th><th>Azioni</th></tr></thead>
+      <tbody id="wf-body">
         <%
-          ' AI.WorkflowList() ritorna i NOMI separati da CHR$(10) (stringa, non array).
           DIM wl$ = AI.WorkflowList()
           IF LEN(wl$) = 0 THEN
-            PRINT "<tr><td colspan='4' class='empty'>Nessun workflow — crea con AI WORKFLOW name + STEP o col form sotto</td></tr>"
+            PRINT "<tr><td colspan='4' class='muted'>Nessun workflow — creane uno qui sotto</td></tr>"
           ELSE
             DIM wfs() AS STRING = SPLIT(wl$, CHR$(10))
             FOR i = 0 TO UBOUND(wfs)
               DIM wname AS STRING = TRIM$(wfs(i))
               IF LEN(wname) > 0 THEN
-                DIM wstatus AS STRING = AI.WorkflowStatus(wname)
-                DIM wsteps AS STRING = AI.WorkflowSteps(wname)
-                PRINT "<tr><td class='name'>" + wname + "</td><td><span class='badge'>" + wstatus + "</span></td><td class='muted'>" + wsteps + "</td><td><button class='btn btn-ghost' onclick=""wfPick('" + wname + "')"">Pick</button> <button class='btn btn-ghost' onclick=""wfExecPick('" + wname + "')"">Run</button></td></tr>"
+                PRINT "<tr><td class='name'>" + DASHBOARD.EscapeHtml(wname) + "</td><td><span class='badge'>" + DASHBOARD.EscapeHtml(AI.WorkflowStatus(wname)) + "</span></td><td class='muted'>" + DASHBOARD.EscapeHtml(AI.WorkflowSteps(wname)) + "</td><td></td></tr>"
               END IF
             NEXT i
           END IF
@@ -216,392 +305,619 @@
       </tbody>
     </table>
   </div>
-  <div class="toolbar">
-    <input id="wf-name" placeholder="workflow name" style="width:150px">
-    <button class="btn btn-ghost" onclick="wfCreate()">Create</button>
-    <input id="wf-step-name" placeholder="step name" style="width:120px">
-    <input id="wf-step-action" placeholder="action" style="flex:1;min-width:130px">
-    <button class="btn btn-ghost" onclick="wfAddStep()">Add Step</button>
-    <button class="btn btn-primary" onclick="wfExecute()">Execute</button>
-    <button class="btn btn-ghost" onclick="wfDelete()" style="background:#fee2e2;color:#991b1b">Delete</button>
+  <div class="split">
+    <div class="card">
+      <h3 style="margin-top:0">Nuovo workflow</h3>
+      <div class="grid cols2">
+        <label>Nome <input id="wf-name" placeholder="Es. Smoke"></label>
+        <label>&nbsp;<button class="btn btn-primary" id="btn-wf-create">Crea</button></label>
+      </div>
+      <h3>Step</h3>
+      <div class="grid cols4">
+        <label>Workflow <input id="wf-step-wf" placeholder="nome"></label>
+        <label>Step <input id="wf-step-name" placeholder="s1"></label>
+        <label>Azione <input id="wf-step-action" placeholder="PRINT 42"></label>
+        <label>Retry <input id="wf-step-retry" placeholder="0" inputmode="numeric"></label>
+      </div>
+      <div class="toolbar"><button class="btn" id="btn-wf-step">Aggiungi step</button></div>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">Esegui / ispeziona / elimina</h3>
+      <div class="grid cols3">
+        <label>Workflow <input id="wf-target" placeholder="nome"></label>
+        <label>&nbsp;<button class="btn btn-primary" id="btn-wf-run">Esegui</button></label>
+        <label>&nbsp;<button class="btn btn-ghost" id="btn-wf-detail">Dettaglio</button></label>
+      </div>
+      <div class="toolbar"><button class="btn btn-danger" id="btn-wf-delete">Elimina workflow</button></div>
+      <pre class="out" id="wf-out"></pre>
+    </div>
   </div>
-  <pre id="wf-answer" class="json" style="display:none"></pre>
+</section>
 
-  <h3 style="margin:1.4rem 0 .6rem">Memory — <span class="muted" style="font-weight:400">MEMORY.STORE/LOAD + Brain</span></h3>
-  <p class="muted" style="font-size:.82rem;margin:.2rem 0 .6rem">Key-value <code>MEMORY.*</code> via <code>/api/memory</code> + Second Brain <code>AI.MEMORYASK</code> via <code>/api/brain/search</code>. Editabile senza C#.</p>
+<!-- ===================== MEMORY ===================== -->
+<section id="panel-memory" class="panel">
+  <h2>Memory</h2>
+  <p class="muted">Key-value del runtime (<code>MEMORY.STORE/LOAD/DELETE/LIST</code>) via <code>/api/memory*</code>.</p>
   <div class="card">
-    <table>
-      <thead><tr><th>Key</th><th>Actions</th></tr></thead>
-      <tbody id="memory-body">
+    <div class="toolbar">
+      <input id="mem-search" placeholder="cerca chiave (pattern)" style="min-width:220px">
+      <button class="btn btn-ghost" id="btn-mem-refresh">Aggiorna</button>
+      <span class="muted" id="mem-count"></span>
+    </div>
+    <table><thead><tr><th>Chiave</th><th>Valore</th><th>Azioni</th></tr></thead>
+      <tbody id="mem-body">
         <%
           DIM mlist$ = MEMORY.LIST()
-          IF mlist$ = "" THEN
-            PRINT "<tr><td colspan='2' class='empty'>Nessuna chiave — usa MEMORY.STORE o il form sotto</td></tr>"
+          IF LEN(mlist$) = 0 THEN
+            PRINT "<tr><td colspan='3' class='muted'>Nessuna chiave — usa il form sotto</td></tr>"
           ELSE
             DIM mkeys() AS STRING = SPLIT(mlist$, CHR$(10))
             FOR i = 0 TO UBOUND(mkeys)
               DIM mk$ = TRIM$(mkeys(i))
-              IF mk$ <> "" THEN PRINT "<tr><td class='name'>" + mk$ + "</td><td><button class='btn btn-ghost' onclick=""memPick('" + mk$ + "')"">Pick</button> <button class='btn btn-ghost' onclick=""memLoadKey('" + mk$ + "')"">Load</button></td></tr>"
+              IF LEN(mk$) > 0 THEN PRINT "<tr><td class='name'>" + DASHBOARD.EscapeHtml(mk$) + "</td><td class='muted'>…</td><td></td></tr>"
             NEXT i
           END IF
         %>
       </tbody>
     </table>
   </div>
-  <div class="toolbar">
-    <input id="mem-key" placeholder="key" style="width:160px">
-    <input id="mem-value" placeholder="value" style="flex:1;min-width:160px">
-    <button class="btn btn-ghost" onclick="memStore()">Store</button>
-    <button class="btn btn-ghost" onclick="memLoad()">Load</button>
-    <button class="btn btn-ghost" onclick="memDelete()" style="background:#fee2e2;color:#991b1b">Delete</button>
+  <div class="card">
+    <div class="grid cols3">
+      <label>Chiave <input id="mem-key" placeholder="chiave"></label>
+      <label>Valore <input id="mem-value" placeholder="valore"></label>
+      <label class="kv" style="flex-direction:row;align-items:center;gap:.35rem;font-size:.8rem;color:var(--muted)">
+        <input type="checkbox" id="mem-long"> lungo termine
+      </label>
+    </div>
+    <div class="toolbar">
+      <button class="btn btn-primary" id="btn-mem-store">Salva</button>
+      <button class="btn btn-ghost" id="btn-mem-load">Carica</button>
+      <button class="btn btn-danger" id="btn-mem-delete">Elimina</button>
+    </div>
+    <pre class="out" id="mem-out"></pre>
   </div>
-  <div class="toolbar">
-    <input id="mem-search" placeholder="pattern (es. test)" style="flex:1;min-width:160px">
-    <button class="btn btn-ghost" onclick="memSearch()">Search</button>
-    <input id="brain-query" placeholder="brain query" style="flex:1;min-width:160px">
-    <button class="btn btn-ghost" onclick="brainSearch()">Brain Ask</button>
-  </div>
-  <div class="toolbar">
-    <input id="brain-note" placeholder="nuova nota Second Brain…" style="flex:1;min-width:220px">
-    <button class="btn btn-ghost" onclick="brainNote()">Add Note</button>
-    <input id="brain-fact" placeholder="fatto durevole…" style="flex:1;min-width:160px">
-    <button class="btn btn-ghost" onclick="brainSave()">Save Fact</button>
-  </div>
-  <div class="toolbar">
-    <input id="brain-watch" placeholder="watch path (es. /tmp/note.md)" style="flex:1;min-width:180px">
-    <button class="btn btn-ghost" onclick="brainWatch()">Watch</button>
-    <input id="brain-import" placeholder="import file path" style="flex:1;min-width:160px">
-    <button class="btn btn-ghost" onclick="brainImport()">Import</button>
-    <button class="btn btn-ghost" onclick="brainRefresh()">Refresh</button>
-    <button class="btn btn-ghost" onclick="brainConsolidate()">Consolidate</button>
-    <button class="btn btn-ghost" onclick="brainList()">List</button>
-  </div>
-  <pre id="memory-answer" class="json" style="display:none"></pre>
+</section>
 
-  <h3 style="margin:1.4rem 0 .6rem">Summary — <span class="muted" style="font-weight:400">AI.ENRICH SUMMARIZATION</span></h3>
-  <p class="muted" style="font-size:.82rem;margin:.2rem 0 .6rem">Sintesi via <code>POST /api/enrich {"text","mode":"SUMMARIZATION"}</code> (richiede <code>AI SET ACTIVE %CHAT</code>). Fallback: errore 200 con hint se nessun LLM.</p>
-  <div class="card" style="padding:.9rem">
-    <textarea id="summary-text" placeholder="Incolla qui il testo da riassumere…" style="width:100%;min-height:90px;padding:.6rem;border:1px solid #e2e8f0;border-radius:8px;font-family:inherit;font-size:.9rem"></textarea>
-    <div class="toolbar" style="margin:.7rem 0 0">
-      <select id="summary-mode" style="padding:.5rem .6rem;border:1px solid #e2e8f0;border-radius:8px;font-size:.9rem">
-        <option value="SUMMARIZATION">SUMMARIZATION</option>
-        <option value="TAGGING">TAGGING</option>
-        <option value="ENTITY_EXTRACTION">ENTITY_EXTRACTION</option>
-      </select>
-      <button class="btn btn-primary" onclick="doEnrich()">Summarize</button>
-      <span class="muted" style="font-size:.82rem" id="summary-hint"></span>
+<!-- ===================== BRAIN ===================== -->
+<section id="panel-brain" class="panel">
+  <h2>Second Brain</h2>
+  <p class="muted">Note/fatti + ricerca semantica (<code>AI.MEMORYASK</code>) via <code>/api/brain/*</code>.</p>
+  <div class="card">
+    <div class="grid cols3">
+      <label>Ricerca <input id="brain-q" placeholder="domanda o parole chiave"></label>
+      <label>topK <input id="brain-k" placeholder="5" inputmode="numeric"></label>
+      <label>&nbsp;<button class="btn btn-primary" id="btn-brain-search">Cerca</button></label>
+    </div>
+    <pre class="out" id="brain-out"></pre>
+  </div>
+  <div class="split">
+    <div class="card">
+      <h3 style="margin-top:0">Aggiungi</h3>
+      <label style="display:flex;flex-direction:column;gap:.2rem;font-size:.75rem;color:var(--muted)">
+        Testo <textarea id="brain-text" placeholder="Nota, fatto o osservazione…"></textarea>
+      </label>
+      <div class="toolbar">
+        <button class="btn" id="btn-brain-note">Nota</button>
+        <button class="btn" id="btn-brain-fact">Fatto</button>
+        <button class="btn btn-ghost" id="btn-brain-consolidate">Consolida</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">Ultime voci</h3>
+      <div class="toolbar"><button class="btn btn-ghost" id="btn-brain-list">Aggiorna</button></div>
+      <pre class="out" id="brain-list"></pre>
     </div>
   </div>
-  <pre id="summary-answer" class="json" style="display:none"></pre>
 </section>
 
-<!-- ===================== TAB: CANVAS ===================== -->
+<!-- ===================== CANVAS ===================== -->
 <section id="panel-canvas" class="panel">
-  <h2>Canvas Remoto (WebSocket)</h2>
-  <p class="muted" style="font-size:.84rem;margin:.3rem 0 .8rem">Grafica remota: <code>WEBCANVAS.PSet/Line/Rect/Circle/Sprite</code> in BASIC → WS <code>{op:"pset"}</code> → <code>canvas.js:CanvasReplay</code> su <code>&lt;canvas&gt;</code>. Editabile in <code>include/WebCanvas.inc</code> + <code>webapp/static/canvas.js</code>.</p>
-  <canvas id="gmb-canvas" class="gmb-canvas" width="800" height="480"></canvas>
-  <div class="toolbar">
-    <button class="btn btn-primary" onclick="canvasDemo()">Demo draw</button>
-    <button class="btn btn-ghost" onclick="canvasClear()">Clear</button>
-    <span class="muted" style="font-size:.82rem">WS: <code id="canvas-ws-status">disconnected</code></span>
+  <h2>Canvas remoto</h2>
+  <p class="muted">Comandi di disegno generati in BASIC (<code>WEBCANVAS</code>) → JSON sul WebSocket <code>/ws/canvas</code> → questo <code>&lt;canvas&gt;</code>.</p>
+  <div class="card">
+    <div class="toolbar">
+      <button class="btn btn-primary" id="btn-canvas-connect">Connetti WS</button>
+      <button class="btn" id="btn-canvas-demo">Chiedi demo</button>
+      <button class="btn btn-ghost" id="btn-canvas-clear">Pulisci (locale)</button>
+      <span class="muted" id="canvas-state">non connesso</span>
+    </div>
+    <canvas id="gmb-canvas" class="gmb-canvas" width="800" height="480"></canvas>
+    <pre class="out" id="canvas-log"></pre>
   </div>
-  <div class="hint-box">Avvio: <code>webapp/app.bas</code> registra <code>GET /ws/canvas</code> → <code>WEBCANVAS.Init(ws)</code> + demo. Oppure apri <a href="/canvas.bsp"><code>/canvas.bsp</code></a> standalone.</div>
-  <pre id="canvas-log" class="json" style="display:none"></pre>
 </section>
 
-<!-- ===================== TAB: WASM ===================== -->
+<!-- ===================== WASM ===================== -->
 <section id="panel-wasm" class="panel">
-  <h2>WASM — Esegui BASIC nel browser</h2>
-  <p class="muted" style="font-size:.84rem;margin:.3rem 0 .8rem">Target <code>.bas → .wasm</code> via <code>clang --target=wasm32</code>. Import JS dichiarati in <code>include/WasmBridge.inc</code> (<code>DECLARE LIB "env"</code>), glue in <code>webapp/static/wasm.js</code>.</p>
-  <canvas id="wasm-canvas" class="gmb-canvas" width="800" height="480"></canvas>
-  <div class="toolbar">
-    <button class="btn btn-primary" onclick="wasmLoad()">Load prog.wasm</button>
-    <button class="btn btn-ghost" onclick="wasmDemo()">Demo draw (JS)</button>
-    <span class="muted" style="font-size:.82rem" id="wasm-status">idle</span>
+  <h2>WASM</h2>
+  <p class="muted">Target <code>.bas → .wasm</code> (clang wasm32 + <code>WasmBridge.inc</code>). Questa tab è una <b>shell</b>:
+     se <code>static/prog.wasm</code> non esiste, lo dichiara invece di fingere.</p>
+  <div class="card">
+    <div class="toolbar">
+      <button class="btn btn-ghost" id="btn-wasm-check">Verifica prog.wasm</button>
+      <button class="btn" id="btn-wasm-demo">Demo draw (JS)</button>
+      <span class="muted" id="wasm-state">non verificato</span>
+    </div>
+    <canvas id="wasm-canvas" class="gmb-canvas" width="800" height="320"></canvas>
+    <div class="hint" id="wasm-hint">
+      Per produrre un modulo: <code>dotnet GMBasicSharp/REPL/bin/Debug/net10.0/REPL.dll --pcode --c99 prog.bas -o /tmp/prog.c</code>
+      poi <code>clang --target=wasm32 -o shared/webapp/static/prog.wasm /tmp/prog.c GMBasic/native/gmb_runtime_c/src/*.c</code>.
+    </div>
+    <pre class="out" id="wasm-log"></pre>
   </div>
-  <div class="hint-box">
-    Compilazione oggi (POC, zero C#):<br>
-    <code>dotnet run --project REPL/REPL.csproj -- -c99 prog.bas -o /tmp/prog.c</code><br>
-    <code>clang --target=wasm32 -o webapp/static/prog.wasm /tmp/prog.c native/gmb_runtime_c/src/*.c</code><br>
-    Futuro: <code>gmb prog.bas -target wasm -o webapp/static/prog.wasm</code> + <a href="/wasm.bsp"><code>/wasm.bsp</code> standalone</a>
-  </div>
-  <pre id="wasm-log" class="json">WasmBridge: <%= WASMBRIDGE.Info() %></pre>
 </section>
 
-<script src="/static/canvas.js"></script>
-<script src="/static/wasm.js"></script>
+</main>
+<div class="toast" id="toast"></div>
+
 <script>
-  // --- Tab switch (vanilla, editabile) ---
-  document.querySelectorAll('.tab').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
-      document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
-    });
-  });
+(function(){
+  "use strict";
+  var S = { refreshMs: 2500, paused:false, status:null, agents:[], ws:null };
+  var el = function(id){ return document.getElementById(id); };
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 
-  // --- Agents live refresh (same-origin /api via proxy BASIC se cross-port) ---
-  async function refreshAgents(){
-    try{
-      const r = await fetch('/api/agents');
-      if(!r.ok) return;
-      const j = await r.json();
-      const tb = document.getElementById('agents-body');
-      if(!Array.isArray(j) || j.length===0) return;
-      tb.innerHTML = j.map(a=>`<tr><td class="name">${esc(a.name)}</td><td>${badge(a.status)}</td><td>${permBadge(a.permission)}</td><td class="teams">${esc((a.teams||[]).join(', ')||'-')}</td><td class="ver">${esc(a.model||'-')}</td><td><button class="btn btn-ghost" onclick="chat('${esc(a.name)}')">Chat</button></td></tr>`).join('');
-    }catch(e){}
+  var toastTimer=null;
+  function toast(msg,bad){
+    var t=el('toast'); t.textContent=msg; t.className='toast show'+(bad?' bad':'');
+    clearTimeout(toastTimer); toastTimer=setTimeout(function(){t.className='toast';},2600);
   }
-  async function refreshTeams(){
-    try{
-      const r = await fetch('/api/teams');
-      if(!r.ok) return;
-      const j = await r.json();
-      const tb = document.getElementById('teams-body');
-      if(!Array.isArray(j) || j.length===0) return;
-      tb.innerHTML = j.map(t=>`<tr><td class="name">${esc(t.name)}</td><td><span class="badge strategy">${esc(t.strategy)}</span></td><td class="count">${t.memberCount||0}</td><td><button class="btn btn-ghost" onclick="teamChat('${esc(t.name)}')">Broadcast</button></td></tr>`).join('');
-    }catch(e){}
+  function banner(msg){
+    var b=el('banner');
+    if(!msg){ b.className='banner'; b.textContent=''; return; }
+    b.textContent=msg; b.className='banner show';
   }
-  async function refreshLog(){
-    try{
-      const r = await fetch('/api/events');
-      if(r.ok){
-        const j = await r.json();
-        const tb = document.getElementById('log-body');
-        if(Array.isArray(j) && j.length>0){
-          tb.innerHTML = j.map(e=>`<tr><td class="detail"><span class="badge">${esc(e.kind||'')}</span> <b>${esc(e.agent||'')}</b> ${esc(e.detail||e.text||JSON.stringify(e))} <span class="muted">${esc(e.timestamp||'')}</span></td></tr>`).join('');
-          return;
+
+  function api(path, opts){
+    opts = opts || {};
+    return fetch(path, opts).then(function(r){
+      return r.text().then(function(txt){
+        var data=null;
+        try{ data = txt ? JSON.parse(txt) : null; }catch(e){ data = { error:'bad_json', message: txt.slice(0,300) }; }
+        if(!r.ok){
+          var msg = (data && (data.message||data.error)) || ('HTTP '+r.status);
+          throw new Error(msg);
         }
+        return data;
+      });
+    });
+  }
+  function postJson(path, obj){
+    return api(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(obj||{})});
+  }
+  function out(id, obj){
+    var e=el(id); if(!e) return;
+    e.textContent = typeof obj === 'string' ? obj : JSON.stringify(obj,null,2);
+    e.className='out show';
+  }
+
+  // ---------- stato ----------
+  function fmtUp(s){
+    s = Math.max(0, s|0);
+    var h=Math.floor(s/3600), m=Math.floor((s%3600)/60), x=s%60;
+    return (h?h+'h ':'') + m + 'm ' + x + 's';
+  }
+  function refreshStatus(){
+    return api('/api/status').then(function(st){
+      S.status=st;
+      if(st.refreshMs && st.refreshMs>0) S.refreshMs=st.refreshMs;
+      var chip=el('chip-api');
+      var reach = st.apiReachable===true;
+      chip.className='chip '+(reach?'ok':'bad');
+      chip.innerHTML='API: <b>'+(reach?'ok':'giù')+'</b>';
+      el('chip-provider').innerHTML='provider: <b>'+esc(st.activeProvider||'—')+'</b>';
+      el('chip-model').innerHTML='model: <b>'+esc(st.model||'—')+'</b>';
+      el('chip-agents').innerHTML='agenti: <b>'+esc(st.agents)+'</b>';
+      el('chip-uptime').innerHTML='uptime: <b>'+esc(fmtUp(st.uptimeSec))+'</b>';
+      if(!reach) banner('Il server agenti (porta '+st.apiPort+') non risponde: i dati live sono fermi. '+
+                        'Controlla che `AI AGENT SERVE` sia partito (log del processo).');
+      else banner('');
+      return st;
+    }).catch(function(e){
+      banner('Dashboard raggiungibile ma /api/status fallisce: '+e.message);
+      return null;
+    });
+  }
+
+  // ---------- agents ----------
+  function agentRow(a){
+    return '<tr><td class="name">'+esc(a.name)+'</td>'
+      + '<td><span class="badge '+(a.status?'idle':'')+'">'+esc(a.status||'—')+'</span></td>'
+      + '<td>'+badgePerm(a.permission)+'</td>'
+      + '<td class="muted">'+esc(a.model||'-')+'</td>'
+      + '<td><button class="btn btn-ghost" data-act="chat" data-name="'+esc(a.name)+'">Chat</button> '
+      + '<button class="btn btn-ghost" data-act="pick" data-name="'+esc(a.name)+'">Seleziona</button></td></tr>';
+  }
+  function badgePerm(p){
+    var k=(p||'').toLowerCase();
+    return '<span class="badge perm-'+esc(k)+'">'+esc(p||'—')+'</span>';
+  }
+  function refreshAgents(){
+    return api('/api/agents').then(function(list){
+      S.agents=list||[];
+      var tb=el('agents-body');
+      tb.innerHTML = S.agents.length ? S.agents.map(agentRow).join('')
+        : '<tr><td colspan="5" class="muted">Nessun agente — creane uno con il form sotto</td></tr>';
+      var dl=el('agent-names');
+      dl.innerHTML = S.agents.map(function(a){return '<option value="'+esc(a.name)+'">';}).join('');
+      return S.agents;
+    }).catch(function(e){ toast('agents: '+e.message,true); return []; });
+  }
+  function wireAgents(){
+    el('btn-create').addEventListener('click',function(){
+      var name=el('new-name').value.trim();
+      if(!name){ toast('serve un nome',true); return; }
+      var body={name:name, permission:el('new-perm').value,
+                systemPrompt:el('new-prompt').value.trim()};
+      var model=el('new-model').value.trim(); if(model) body.model=model;
+      var t=el('new-temp').value.trim(); if(t) body.temperature=t;
+      postJson('/api/agents',body).then(function(r){
+        toast('agente creato: '+r.created); el('new-name').value=''; el('new-prompt').value='';
+        refreshAgents();
+      }).catch(function(e){ toast('create: '+e.message,true); });
+    });
+    el('btn-update').addEventListener('click',function(){
+      var name=el('sel-agent').value.trim();
+      if(!name){ toast('seleziona un agente',true); return; }
+      var body={};
+      var m=el('set-model').value.trim(); if(m) body.model=m;
+      var p=el('set-perm').value; if(p) body.permission=p;
+      var t=el('set-temp').value.trim(); if(t) body.temperature=t;
+      var sp=el('set-prompt').value.trim(); if(sp) body.systemPrompt=sp;
+      if(!Object.keys(body).length){ toast('nessun campo da aggiornare',true); return; }
+      api('/api/agents/'+encodeURIComponent(name),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+        .then(function(r){ toast('aggiornato ('+r.fields+' campi)'); refreshAgents(); })
+        .catch(function(e){ toast('update: '+e.message,true); });
+    });
+    el('btn-delete').addEventListener('click',function(){
+      var name=el('sel-agent').value.trim();
+      if(!name){ toast('seleziona un agente',true); return; }
+      if(!confirm('Eliminare l\'agente "'+name+'"?')) return;
+      api('/api/agents/'+encodeURIComponent(name),{method:'DELETE'})
+        .then(function(r){ toast('eliminato: '+r.deleted); refreshAgents(); })
+        .catch(function(e){ toast('delete: '+e.message,true); });
+    });
+    el('btn-ask').addEventListener('click',function(){
+      var name=el('sel-agent').value.trim();
+      var prompt=el('chat-prompt').value.trim();
+      if(!name||!prompt){ toast('servono agente e prompt',true); return; }
+      el('ask-state').textContent='invio…';
+      postJson('/api/agents/'+encodeURIComponent(name)+'/ask',{prompt:prompt})
+        .then(function(r){ out('chat-out',r); el('ask-state').textContent=''; refreshAgents(); })
+        .catch(function(e){ out('chat-out','errore: '+e.message); el('ask-state').textContent=''; });
+    });
+    el('agents-body').addEventListener('click',function(ev){
+      var b=ev.target.closest('button[data-act]'); if(!b) return;
+      el('sel-agent').value=b.getAttribute('data-name');
+      if(b.getAttribute('data-act')==='chat') el('chat-prompt').focus();
+    });
+  }
+
+  // ---------- teams ----------
+  function refreshTeams(){
+    return api('/api/teams').then(function(list){
+      var tb=el('teams-body');
+      list=list||[];
+      tb.innerHTML = list.length ? list.map(function(t){
+        return '<tr><td class="name">'+esc(t.name)+'</td><td><span class="badge strategy">'+esc(t.strategy||'-')+
+               '</span></td><td>'+esc(t.memberCount||0)+'</td><td><button class="btn btn-ghost" data-team="'+esc(t.name)+'">Seleziona</button></td></tr>';
+      }).join('') : '<tr><td colspan="4" class="muted">Nessun team</td></tr>';
+      return list;
+    }).catch(function(e){ toast('teams: '+e.message,true); return []; });
+  }
+  function wireTeams(){
+    el('teams-body').addEventListener('click',function(ev){
+      var b=ev.target.closest('button[data-team]'); if(b) el('bc-team').value=b.getAttribute('data-team');
+    });
+    el('btn-broadcast').addEventListener('click',function(){
+      var t=el('bc-team').value.trim(), m=el('bc-msg').value.trim();
+      if(!t||!m){ toast('servono team e messaggio',true); return; }
+      postJson('/api/team/'+encodeURIComponent(t)+'/broadcast',{message:m})
+        .then(function(r){ out('bc-out',r); })
+        .catch(function(e){ out('bc-out','errore: '+e.message); });
+    });
+  }
+
+  // ---------- log ----------
+  function refreshEvents(){
+    return api('/api/events').then(function(list){
+      list=list||[];
+      var f=(el('log-filter').value||'').toLowerCase();
+      var rows=list.filter(function(e){
+        if(!f) return true;
+        return JSON.stringify(e).toLowerCase().indexOf(f)>=0;
+      });
+      var tb=el('log-body');
+      tb.innerHTML = rows.length ? rows.slice().reverse().map(function(e){
+        var ts=e.timestamp? String(e.timestamp).replace('T',' ').slice(0,19):'';
+        return '<tr><td><span class="muted">'+esc(ts)+'</span> <span class="badge">'+esc(e.kind||'')+'</span> '+
+               '<b>'+esc(e.agent||'')+'</b> — '+esc(e.detail||'')+'</td></tr>';
+      }).join('') : '<tr><td class="muted">Nessun evento'+(f?' per il filtro':'')+'</td></tr>';
+      el('log-count').textContent=list.length+' eventi';
+      if(el('log-autoscroll').checked) tb.scrollTop=0;
+      return rows;
+    }).catch(function(e){ el('log-count').textContent='errore: '+e.message; return []; });
+  }
+  function wireLog(){
+    el('btn-log-refresh').addEventListener('click',refreshEvents);
+    el('log-filter').addEventListener('input',refreshEvents);
+  }
+
+  // ---------- workflows ----------
+  function refreshWorkflows(){
+    return api('/api/workflows').then(function(list){
+      list=list||[];
+      var tb=el('wf-body');
+      tb.innerHTML = list.length ? list.map(function(w){
+        var steps=(w.steps||[]).join(', ');
+        return '<tr><td class="name">'+esc(w.name)+'</td><td><span class="badge">'+esc(w.status||'')+'</span></td>'+
+               '<td class="muted">'+esc(steps)+'</td>'+
+               '<td><button class="btn btn-ghost" data-wf-pick="'+esc(w.name)+'">Seleziona</button> '+
+               '<button class="btn btn-ghost" data-wf-run="'+esc(w.name)+'">Esegui</button></td></tr>';
+      }).join('') : '<tr><td colspan="4" class="muted">Nessun workflow</td></tr>';
+      return list;
+    }).catch(function(e){ toast('workflows: '+e.message,true); return []; });
+  }
+  function wireWorkflows(){
+    el('btn-wf-create').addEventListener('click',function(){
+      var n=el('wf-name').value.trim(); if(!n){ toast('nome workflow?',true); return; }
+      postJson('/api/workflows',{name:n}).then(function(r){ toast('workflow creato'); el('wf-target').value=n; refreshWorkflows(); })
+        .catch(function(e){ toast('create: '+e.message,true); });
+    });
+    el('btn-wf-step').addEventListener('click',function(){
+      var wf=el('wf-step-wf').value.trim()||el('wf-target').value.trim();
+      var st=el('wf-step-name').value.trim(), ac=el('wf-step-action').value;
+      if(!wf||!st){ toast('servono workflow e nome step',true); return; }
+      var body={name:st,action:ac};
+      var rt=el('wf-step-retry').value.trim(); if(rt) body.retryCount=parseInt(rt,10)||0;
+      postJson('/api/workflows/'+encodeURIComponent(wf)+'/steps',body)
+        .then(function(r){ out('wf-out',r); refreshWorkflows(); })
+        .catch(function(e){ out('wf-out','errore: '+e.message); });
+    });
+    el('btn-wf-run').addEventListener('click',function(){
+      runWf(el('wf-target').value.trim());
+    });
+    el('btn-wf-detail').addEventListener('click',function(){
+      var wf=el('wf-target').value.trim(); if(!wf){ toast('nome workflow?',true); return; }
+      api('/api/workflows/'+encodeURIComponent(wf)).then(function(r){ out('wf-out',r); })
+        .catch(function(e){ out('wf-out','errore: '+e.message); });
+    });
+    el('btn-wf-delete').addEventListener('click',function(){
+      var wf=el('wf-target').value.trim(); if(!wf){ toast('nome workflow?',true); return; }
+      if(!confirm('Eliminare il workflow "'+wf+'"?')) return;
+      api('/api/workflows/'+encodeURIComponent(wf),{method:'DELETE'})
+        .then(function(r){ out('wf-out',r); refreshWorkflows(); })
+        .catch(function(e){ out('wf-out','errore: '+e.message); });
+    });
+    el('wf-body').addEventListener('click',function(ev){
+      var pick=ev.target.closest('button[data-wf-pick]');
+      if(pick){ el('wf-target').value=pick.getAttribute('data-wf-pick'); el('wf-step-wf').value=el('wf-target').value; return; }
+      var run=ev.target.closest('button[data-wf-run]');
+      if(run) runWf(run.getAttribute('data-wf-run'));
+    });
+  }
+  function runWf(wf){
+    if(!wf){ toast('nome workflow?',true); return; }
+    el('wf-target').value=wf;
+    postJson('/api/workflows/'+encodeURIComponent(wf)+'/execute',{})
+      .then(function(r){ out('wf-out',r); refreshWorkflows(); refreshEvents(); })
+      .catch(function(e){ out('wf-out','errore: '+e.message); });
+  }
+
+  // ---------- memory ----------
+  function refreshMemory(){
+    return api('/api/memory').then(function(r){
+      var keys=(r&&r.keys)||[];
+      el('mem-count').textContent=keys.length+' chiavi';
+      var tb=el('mem-body');
+      tb.innerHTML = keys.length ? keys.map(function(k){
+        return '<tr><td class="name">'+esc(k)+'</td><td class="muted">…</td>'+
+               '<td><button class="btn btn-ghost" data-mem-load="'+esc(k)+'">Carica</button> '+
+               '<button class="btn btn-ghost" data-mem-del="'+esc(k)+'">Elimina</button></td></tr>';
+      }).join('') : '<tr><td colspan="3" class="muted">Nessuna chiave</td></tr>';
+      return keys;
+    }).catch(function(e){ toast('memory: '+e.message,true); return []; });
+  }
+  function wireMemory(){
+    el('btn-mem-refresh').addEventListener('click',refreshMemory);
+    el('btn-mem-store').addEventListener('click',function(){
+      var k=el('mem-key').value.trim(), v=el('mem-value').value;
+      if(!k){ toast('chiave?',true); return; }
+      postJson('/api/memory',{key:k,value:v,longTerm:el('mem-long').checked?1:0})
+        .then(function(r){ out('mem-out',r); refreshMemory(); })
+        .catch(function(e){ out('mem-out','errore: '+e.message); });
+    });
+    el('btn-mem-load').addEventListener('click',function(){
+      var k=el('mem-key').value.trim(); if(!k){ toast('chiave?',true); return; }
+      api('/api/memory?key='+encodeURIComponent(k)).then(function(r){
+        out('mem-out',r); if(r && r.value!==undefined) el('mem-value').value=r.value;
+      }).catch(function(e){ out('mem-out','errore: '+e.message); });
+    });
+    el('btn-mem-delete').addEventListener('click',function(){
+      var k=el('mem-key').value.trim(); if(!k){ toast('chiave?',true); return; }
+      api('/api/memory?key='+encodeURIComponent(k),{method:'DELETE'})
+        .then(function(r){ out('mem-out',r); refreshMemory(); })
+        .catch(function(e){ out('mem-out','errore: '+e.message); });
+    });
+    el('mem-search').addEventListener('input',function(){
+      var p=el('mem-search').value.trim();
+      api('/api/memory/search?pattern='+encodeURIComponent(p)).then(function(r){
+        var keys=(r&&r.keys)||[];
+        var tb=el('mem-body');
+        tb.innerHTML = keys.length ? keys.map(function(k){
+          return '<tr><td class="name">'+esc(k)+'</td><td class="muted">…</td>'+
+                 '<td><button class="btn btn-ghost" data-mem-load="'+esc(k)+'">Carica</button> '+
+                 '<button class="btn btn-ghost" data-mem-del="'+esc(k)+'">Elimina</button></td></tr>';
+        }).join('') : '<tr><td colspan="3" class="muted">Nessun match</td></tr>';
+        el('mem-count').textContent=keys.length+' match';
+      }).catch(function(){});
+    });
+    el('mem-body').addEventListener('click',function(ev){
+      var l=ev.target.closest('button[data-mem-load]');
+      if(l){ var k=l.getAttribute('data-mem-load'); el('mem-key').value=k;
+        api('/api/memory?key='+encodeURIComponent(k)).then(function(r){
+          out('mem-out',r); if(r && r.value!==undefined) el('mem-value').value=r.value;
+        }).catch(function(e){ out('mem-out','errore: '+e.message); });
+        return; }
+      var d=ev.target.closest('button[data-mem-del]');
+      if(d){ var kd=d.getAttribute('data-mem-del');
+        api('/api/memory?key='+encodeURIComponent(kd),{method:'DELETE'})
+          .then(function(r){ out('mem-out',r); refreshMemory(); })
+          .catch(function(e){ out('mem-out','errore: '+e.message); });
       }
-    }catch(e){}
-    // fallback: resta SSR
-  }
-  async function refreshWorkflows(){
-    try{
-      const r=await fetch('/api/workflows');
-      if(!r.ok) return;
-      const j=await r.json();
-      const tb=document.getElementById('workflows-body');
-      if(!Array.isArray(j) || j.length===0) return;
-      tb.innerHTML=j.map(w=>`<tr><td class="name">${esc(w.name)}</td><td><span class="badge">${esc(w.status)}</span></td><td class="muted">${esc((w.steps||[]).join(', ')||'-')}</td><td><button class="btn btn-ghost" onclick="wfPick('${esc(w.name)}')">Pick</button> <button class="btn btn-ghost" onclick="wfExecPick('${esc(w.name)}')">Run</button> <button class="btn btn-ghost" onclick="wfPick('${esc(w.name)}');wfDelete()" style="color:#991b1b">Del</button></td></tr>`).join('');
-    }catch(e){}
-  }
-  function badge(s){ s=s||'Idle'; const k=s.toLowerCase(); if(k==='idle') return `<span class="badge idle">${esc(s)}</span>`; if(k==='working'||k==='executing') return `<span class="badge working">${esc(s)}</span>`; return `<span class="badge">${esc(s)}</span>`; }
-  function permBadge(p){ p=p||'YOLO'; const k=p.toLowerCase(); if(k==='yolo') return `<span class="badge perm-yolo">YOLO</span>`; if(k==='supervised') return `<span class="badge perm-supervised">Supervised</span>`; if(k==='sandbox') return `<span class="badge perm-sandbox">Sandbox</span>`; return `<span class="badge">${esc(p)}</span>`; }
-  function esc(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-  function chat(name){ document.getElementById('chat-agent').value=name; document.querySelector('[data-tab=agents]').click(); }
-  function teamChat(name){ document.getElementById('team-name').value=name; document.querySelector('[data-tab=teams]').click(); }
-
-  async function sendPrompt(){
-    const agent=document.getElementById('chat-agent').value.trim();
-    const prompt=document.getElementById('chat-prompt').value.trim();
-    const out=document.getElementById('chat-answer');
-    if(!agent||!prompt){ out.style.display='block'; out.textContent='{"error":"agent and prompt required"}'; return; }
-    out.style.display='block'; out.textContent='…';
-    try{
-      const r=await fetch(`/api/agent/${encodeURIComponent(agent)}/prompt`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt})});
-      const j=await r.json(); out.textContent=JSON.stringify(j,null,2);
-      refreshLog();
-    }catch(e){ out.textContent='{"error":"'+esc(e.message)+'"}'; }
-  }
-  async function teamBroadcast(){
-    const team=document.getElementById('team-name').value.trim();
-    const msg=document.getElementById('team-msg').value.trim();
-    const out=document.getElementById('team-answer');
-    if(!team||!msg){ out.style.display='block'; out.textContent='{"error":"team and message required"}'; return; }
-    out.style.display='block'; out.textContent='…';
-    try{
-      // V1: via WS o HTTP custom; fallback: POST su /api/teams/{team}/broadcast se implementata, altrimenti hint
-      const r=await fetch(`/api/team/${encodeURIComponent(team)}/broadcast`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})});
-      const j=await r.json().catch(()=>({status:r.status}));
-      out.textContent=JSON.stringify(j,null,2);
-    }catch(e){ out.textContent='{"error":"'+esc(e.message)+'","hint":"Implementa POST /api/team/{name}/broadcast in IlRuntime.cs o via AI TEAM BROADCAST in app.bas"}'; }
+    });
   }
 
-  // --- Workflows (V1.2e) ---
-  function wfPick(n){ document.getElementById('wf-name').value=n; }
-  async function wfExecPick(n){ document.getElementById('wf-name').value=n; await wfExecute(); }
-  async function wfCreate(){
-    const name=document.getElementById('wf-name').value.trim();
-    const out=document.getElementById('wf-answer');
-    if(!name){ out.style.display='block'; out.textContent='{"error":"workflow name required"}'; return; }
-    out.style.display='block'; out.textContent='…';
-    try{ const r=await fetch('/api/workflows',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})}); const j=await r.json(); out.textContent=JSON.stringify(j,null,2); refreshWorkflows(); }catch(e){ out.textContent='{"error":"'+esc(e.message)+'"}'; }
+  // ---------- brain ----------
+  function wireBrain(){
+    el('btn-brain-search').addEventListener('click',function(){
+      var q=el('brain-q').value.trim(), k=el('brain-k').value.trim()||'5';
+      api('/api/brain/search?query='+encodeURIComponent(q)+'&topK='+encodeURIComponent(k))
+        .then(function(r){ out('brain-out',r); })
+        .catch(function(e){ out('brain-out','errore: '+e.message); });
+    });
+    el('btn-brain-note').addEventListener('click',function(){
+      var t=el('brain-text').value.trim(); if(!t){ toast('testo?',true); return; }
+      postJson('/api/brain/note',{text:t}).then(function(r){ out('brain-out',r); brainList(); })
+        .catch(function(e){ out('brain-out','errore: '+e.message); });
+    });
+    el('btn-brain-fact').addEventListener('click',function(){
+      var t=el('brain-text').value.trim(); if(!t){ toast('testo?',true); return; }
+      postJson('/api/brain/save',{fact:t}).then(function(r){ out('brain-out',r); brainList(); })
+        .catch(function(e){ out('brain-out','errore: '+e.message); });
+    });
+    el('btn-brain-consolidate').addEventListener('click',function(){
+      postJson('/api/brain/consolidate',{}).then(function(r){ out('brain-out',r); brainList(); })
+        .catch(function(e){ out('brain-out','errore: '+e.message); });
+    });
+    el('btn-brain-list').addEventListener('click',brainList);
   }
-  async function wfAddStep(){
-    const wf=document.getElementById('wf-name').value.trim();
-    const step=document.getElementById('wf-step-name').value.trim();
-    const action=document.getElementById('wf-step-action').value.trim();
-    const out=document.getElementById('wf-answer');
-    if(!wf||!step){ out.style.display='block'; out.textContent='{"error":"workflow and step required"}'; return; }
-    out.style.display='block'; out.textContent='…';
-    try{ const r=await fetch(`/api/workflows/${encodeURIComponent(wf)}/steps`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:step,action})}); const j=await r.json(); out.textContent=JSON.stringify(j,null,2); refreshWorkflows(); }catch(e){ out.textContent='{"error":"'+esc(e.message)+'"}'; }
-  }
-  async function wfExecute(){
-    const wf=document.getElementById('wf-name').value.trim();
-    const out=document.getElementById('wf-answer');
-    if(!wf){ out.style.display='block'; out.textContent='{"error":"workflow name required"}'; return; }
-    out.style.display='block'; out.textContent='…';
-    try{ const r=await fetch(`/api/workflows/${encodeURIComponent(wf)}/execute`,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}); const j=await r.json(); out.textContent=JSON.stringify(j,null,2); refreshWorkflows(); refreshLog(); }catch(e){ out.textContent='{"error":"'+esc(e.message)+'"}'; }
-  }
-  async function wfDelete(){
-    const wf=document.getElementById('wf-name').value.trim();
-    const out=document.getElementById('wf-answer');
-    if(!wf){ out.style.display='block'; out.textContent='{"error":"workflow name required"}'; return; }
-    if(!confirm('Delete workflow '+wf+'?')) return;
-    out.style.display='block'; out.textContent='…';
-    try{ const r=await fetch(`/api/workflows/${encodeURIComponent(wf)}`,{method:'DELETE'}); const j=await r.json(); out.textContent=JSON.stringify(j,null,2); refreshWorkflows(); }catch(e){ out.textContent='{"error":"'+esc(e.message)+'"}'; }
+  function brainList(){
+    api('/api/brain/list?limit=20').then(function(r){ out('brain-list',r); })
+      .catch(function(e){ out('brain-list','errore: '+e.message); });
   }
 
-  // --- Memory / Brain / Summary (V1.2g) ---
-  async function refreshMemory(){
-    try{
-      const r=await fetch('/api/memory');
-      if(!r.ok) return;
-      const j=await r.json();
-      const tb=document.getElementById('memory-body');
-      if(!j.keys || j.keys.length===0){ tb.innerHTML=`<tr><td colspan='2' class='empty'>Nessuna chiave</td></tr>`; return; }
-      tb.innerHTML=j.keys.map(k=>`<tr><td class="name">${esc(k)}</td><td><button class="btn btn-ghost" onclick="memPick('${esc(k)}')">Pick</button> <button class="btn btn-ghost" onclick="memLoadKey('${esc(k)}')">Load</button></td></tr>`).join('');
-    }catch(e){}
+  // ---------- canvas ----------
+  function canvasReplay(cmd, c){
+    if(!cmd||!c) return;
+    var ctx=c.getContext('2d');
+    var color=function(n){ return 'hsl('+((n*37)%360)+' 70% 45%)'; };
+    switch(cmd.op){
+      case 'clear': ctx.fillStyle=color(cmd.c||0); ctx.fillRect(0,0,c.width,c.height); break;
+      case 'pset': ctx.fillStyle=color(cmd.c||0); ctx.fillRect(cmd.x|0,cmd.y|0,2,2); break;
+      case 'line': ctx.strokeStyle=color(cmd.c||0); ctx.beginPath(); ctx.moveTo(cmd.x1|0,cmd.y1|0); ctx.lineTo(cmd.x2|0,cmd.y2|0); ctx.stroke(); break;
+      case 'rect': ctx.strokeStyle=color(cmd.c||0); ctx.strokeRect(cmd.x|0,cmd.y|0,cmd.w|0,cmd.h|0); break;
+      case 'circle': ctx.strokeStyle=color(cmd.c||0); ctx.beginPath(); ctx.arc(cmd.x|0,cmd.y|0,cmd.r|0,0,Math.PI*2); ctx.stroke(); break;
+      case 'text': ctx.fillStyle=color(cmd.c||0); ctx.font='14px monospace'; ctx.fillText(cmd.txt||'',cmd.x|0,cmd.y|0); break;
+      case 'frame': ctx.strokeStyle=color(cmd.c||0); ctx.strokeRect(cmd.x|0,cmd.y|0,cmd.w|0,cmd.h|0); break;
+      default: break;
+    }
   }
-  function memPick(k){ document.getElementById('mem-key').value=k; }
-  async function memLoadKey(k){ document.getElementById('mem-key').value=k; await memLoad(); }
-  async function memStore(){
-    const key=document.getElementById('mem-key').value.trim();
-    const value=document.getElementById('mem-value').value;
-    const out=document.getElementById('memory-answer');
-    if(!key){ out.style.display='block'; out.textContent='{"error":"key required"}'; return; }
-    out.style.display='block'; out.textContent='…';
-    try{ const r=await fetch('/api/memory',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key,value})}); const j=await r.json(); out.textContent=JSON.stringify(j,null,2); refreshMemory(); }catch(e){ out.textContent='{"error":"'+esc(e.message)+'"}'; }
-  }
-  async function memLoad(){
-    const key=document.getElementById('mem-key').value.trim();
-    const out=document.getElementById('memory-answer');
-    if(!key){ out.style.display='block'; out.textContent='{"error":"key required"}'; return; }
-    out.style.display='block'; out.textContent='…';
-    try{ const r=await fetch(`/api/memory?key=${encodeURIComponent(key)}`); const j=await r.json(); out.textContent=JSON.stringify(j,null,2); if(j.value!==undefined) document.getElementById('mem-value').value=j.value; }catch(e){ out.textContent='{"error":"'+esc(e.message)+'"}'; }
-  }
-  async function memDelete(){
-    const key=document.getElementById('mem-key').value.trim();
-    const out=document.getElementById('memory-answer');
-    if(!key){ out.style.display='block'; out.textContent='{"error":"key required"}'; return; }
-    out.style.display='block'; out.textContent='…';
-    try{ const r=await fetch(`/api/memory?key=${encodeURIComponent(key)}`,{method:'DELETE'}); const j=await r.json(); out.textContent=JSON.stringify(j,null,2); refreshMemory(); }catch(e){ out.textContent='{"error":"'+esc(e.message)+'"}'; }
-  }
-  async function memSearch(){
-    const pat=document.getElementById('mem-search').value.trim();
-    const out=document.getElementById('memory-answer');
-    out.style.display='block'; out.textContent='…';
-    try{ const r=await fetch(`/api/memory/search?pattern=${encodeURIComponent(pat||'')}`); const j=await r.json(); out.textContent=JSON.stringify(j,null,2); const tb=document.getElementById('memory-body'); if(j.keys) tb.innerHTML=j.keys.map(k=>`<tr><td class="name">${esc(k)}</td><td><button class="btn btn-ghost" onclick="memLoadKey('${esc(k)}')">Load</button></td></tr>`).join('')||`<tr><td colspan='2' class='empty'>Nessun match</td></tr>`; }catch(e){ out.textContent='{"error":"'+esc(e.message)+'"}'; }
-  }
-  async function brainSearch(){
-    const q=document.getElementById('brain-query').value.trim();
-    const out=document.getElementById('memory-answer');
-    if(!q){ out.style.display='block'; out.textContent='{"error":"query required"}'; return; }
-    out.style.display='block'; out.textContent='…';
-    try{ const r=await fetch(`/api/brain/search?query=${encodeURIComponent(q)}&topK=5`); const j=await r.json(); out.textContent=JSON.stringify(j,null,2); }catch(e){ out.textContent='{"error":"'+esc(e.message)+'"}'; }
-  }
-  async function brainNote(){
-    const txt=document.getElementById('brain-note').value.trim();
-    const out=document.getElementById('memory-answer');
-    if(!txt){ out.style.display='block'; out.textContent='{"error":"text required"}'; return; }
-    out.style.display='block'; out.textContent='…';
-    try{ const r=await fetch('/api/brain/note',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:txt})}); const j=await r.json(); out.textContent=JSON.stringify(j,null,2); }catch(e){ out.textContent='{"error":"'+esc(e.message)+'"}'; }
-  }
-  async function brainSave(){
-    const txt=document.getElementById('brain-fact').value.trim();
-    const out=document.getElementById('memory-answer');
-    if(!txt){ out.style.display='block'; out.textContent='{"error":"fact required"}'; return; }
-    out.style.display='block'; out.textContent='…';
-    try{ const r=await fetch('/api/brain/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fact:txt})}); const j=await r.json(); out.textContent=JSON.stringify(j,null,2); }catch(e){ out.textContent='{"error":"'+esc(e.message)+'"}'; }
-  }
-  async function brainWatch(){
-    const p=document.getElementById('brain-watch').value.trim();
-    const out=document.getElementById('memory-answer');
-    if(!p){ out.style.display='block'; out.textContent='{"error":"watch path required"}'; return; }
-    out.style.display='block'; out.textContent='…';
-    try{ const r=await fetch('/api/brain/watch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:p})}); const j=await r.json(); out.textContent=JSON.stringify(j,null,2); }catch(e){ out.textContent='{"error":"'+esc(e.message)+'"}'; }
-  }
-  async function brainImport(){
-    const p=document.getElementById('brain-import').value.trim();
-    const out=document.getElementById('memory-answer');
-    if(!p){ out.style.display='block'; out.textContent='{"error":"import path required"}'; return; }
-    out.style.display='block'; out.textContent='…';
-    try{ const r=await fetch('/api/brain/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:p})}); const j=await r.json(); out.textContent=JSON.stringify(j,null,2); }catch(e){ out.textContent='{"error":"'+esc(e.message)+'"}'; }
-  }
-  async function brainRefresh(){
-    const out=document.getElementById('memory-answer');
-    out.style.display='block'; out.textContent='…';
-    try{ const r=await fetch('/api/brain/refresh',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}); const j=await r.json(); out.textContent=JSON.stringify(j,null,2); }catch(e){ out.textContent='{"error":"'+esc(e.message)+'"}'; }
-  }
-  async function brainConsolidate(){
-    const out=document.getElementById('memory-answer');
-    out.style.display='block'; out.textContent='…';
-    try{ const r=await fetch('/api/brain/consolidate',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}); const j=await r.json(); out.textContent=JSON.stringify(j,null,2); }catch(e){ out.textContent='{"error":"'+esc(e.message)+'"}'; }
-  }
-  async function brainList(){
-    const out=document.getElementById('memory-answer');
-    out.style.display='block'; out.textContent='…';
-    try{ const r=await fetch('/api/brain/list?limit=20'); const j=await r.json(); out.textContent=JSON.stringify(j,null,2); }catch(e){ out.textContent='{"error":"'+esc(e.message)+'"}'; }
-  }
-  async function doEnrich(){
-    const text=document.getElementById('summary-text').value.trim();
-    const mode=document.getElementById('summary-mode').value;
-    const out=document.getElementById('summary-answer');
-    const hint=document.getElementById('summary-hint');
-    if(!text){ out.style.display='block'; out.textContent='{"error":"text required"}'; return; }
-    out.style.display='block'; out.textContent='…'; hint.textContent='…';
-    try{ const r=await fetch('/api/enrich',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,mode})}); const j=await r.json(); out.textContent=JSON.stringify(j,null,2); hint.textContent=j.summary? j.summary.slice(0,120)+'…' : (j.error||''); }catch(e){ out.textContent='{"error":"'+esc(e.message)+'"}'; hint.textContent='error'; }
+  function wireCanvas(){
+    var c=el('gmb-canvas');
+    el('btn-canvas-connect').addEventListener('click',function(){
+      if(S.ws){ try{S.ws.close();}catch(e){} S.ws=null; }
+      var proto = location.protocol==='https:'?'wss':'ws';
+      var ws = new WebSocket(proto+'://'+location.host+'/ws/canvas');
+      S.ws=ws;
+      el('canvas-state').textContent='connessione…';
+      ws.onopen=function(){ el('canvas-state').textContent='connesso'; toast('WS connesso'); };
+      ws.onclose=function(){ el('canvas-state').textContent='chiuso'; S.ws=null; };
+      ws.onerror=function(){ el('canvas-state').textContent='errore'; };
+      ws.onmessage=function(ev){
+        var lines=String(ev.data).split('\n'); var log=[];
+        lines.forEach(function(line){
+          if(!line) return;
+          log.push(line);
+          try{ canvasReplay(JSON.parse(line), c); }catch(e){ log.push('parse: '+e.message); }
+        });
+        var o=el('canvas-log'); o.textContent=(log.join('\n')+'\n'+o.textContent).slice(0,4000); o.className='out show';
+      };
+    });
+    el('btn-canvas-demo').addEventListener('click',function(){
+      if(S.ws && S.ws.readyState===1){ S.ws.send(JSON.stringify({op:'demo'})); }
+      else toast('prima connetti il WebSocket',true);
+    });
+    el('btn-canvas-clear').addEventListener('click',function(){ canvasReplay({op:'clear',c:0}, c); });
   }
 
-  // --- Canvas remoto ---
-  let canvasWs = null;
-  function canvasConnect(){
-    const proto = location.protocol==='https:'?'wss://':'ws://';
-    canvasWs = new WebSocket(proto+location.host+'/ws/canvas');
-    canvasWs.onopen = ()=>{ document.getElementById('canvas-ws-status').textContent='connected'; };
-    canvasWs.onclose = ()=>{ document.getElementById('canvas-ws-status').textContent='disconnected'; };
-    canvasWs.onmessage = e=>{
-      try{ const cmd=JSON.parse(e.data); CanvasReplay(cmd, document.getElementById('gmb-canvas')); }catch(err){}
-    };
-  }
-  function canvasDemo(){
-    const c=document.getElementById('gmb-canvas');
-    // fallback locale (senza WS): disegna direttamente col JS del canvas
-    CanvasReplay({op:'clear',c:0,v:1}, c);
-    CanvasReplay({op:'pset',x:10,y:10,c:4,v:1}, c);
-    CanvasReplay({op:'line',x1:0,y1:0,x2:120,y2:120,c:7,v:1}, c);
-    CanvasReplay({op:'rect',x:20,y:20,w:60,h:40,c:2,v:1}, c);
-    CanvasReplay({op:'circle',x:80,y:80,r:20,c:14,v:1}, c);
-    CanvasReplay({op:'text',x:10,y:150,txt:'Hello Canvas',c:7,v:1}, c);
-    CanvasReplay({op:'flush',v:1}, c);
-    if(canvasWs && canvasWs.readyState===1) canvasWs.send(JSON.stringify({op:'demo'}));
-  }
-  function canvasClear(){
-    CanvasReplay({op:'clear',c:0,v:1}, document.getElementById('gmb-canvas'));
+  // ---------- wasm ----------
+  function wireWasm(){
+    el('btn-wasm-check').addEventListener('click',function(){
+      fetch('/static/prog.wasm',{method:'HEAD'}).then(function(r){
+        if(r.ok){
+          el('wasm-state').textContent='prog.wasm presente';
+          out('wasm-log','prog.wasm trovato ('+r.headers.get('content-length')+' byte).\nCaricalo con WebAssembly.instantiate(fetch(...)).');
+        }else{
+          el('wasm-state').textContent='prog.wasm assente (404)';
+          out('wasm-log','Nessun modulo in static/prog.wasm.\nLa shell è pronta: compila un .bas verso wasm32 e copialo qui.\nUsa "Demo draw (JS)" per verificare il canvas.');
+        }
+      }).catch(function(e){ el('wasm-state').textContent='errore'; out('wasm-log',String(e)); });
+    });
+    el('btn-wasm-demo').addEventListener('click',function(){
+      var c=el('wasm-canvas'), ctx=c.getContext('2d');
+      ctx.fillStyle='#fff'; ctx.fillRect(0,0,c.width,c.height);
+      ctx.fillStyle='#2563eb'; ctx.fillRect(20,20,60,40);
+      ctx.strokeStyle='#0c4a6e'; ctx.beginPath(); ctx.arc(90,90,20,0,Math.PI*2); ctx.stroke();
+      ctx.fillStyle='#1c2430'; ctx.font='13px monospace'; ctx.fillText('WASM demo (JS fallback)',10,150);
+    });
   }
 
-  // --- WASM ---
-  async function wasmLoad(){
-    const st=document.getElementById('wasm-status');
-    st.textContent='loading…';
-    try{
-      await WasmLoad('/static/prog.wasm', document.getElementById('wasm-canvas'));
-      st.textContent='loaded';
-    }catch(e){ st.textContent='error: '+e.message; document.getElementById('wasm-log').textContent=String(e); }
+  // ---------- tabs ----------
+  var TABS=['agents','teams','log','workflows','memory','brain','canvas','wasm'];
+  function showTab(name){
+    if(TABS.indexOf(name)<0) name='agents';
+    TABS.forEach(function(t){
+      var p=el('panel-'+t); if(p) p.className='panel'+(t===name?' active':'');
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('#tabs button'),function(b){
+      b.className = b.getAttribute('data-tab')===name ? 'active' : '';
+    });
+    try{ localStorage.setItem('gmb-webapp-tab',name); }catch(e){}
+    if(location.hash!=='#'+name) history.replaceState(null,'','#'+name);
+    if(name==='agents') refreshAgents();
+    if(name==='teams') refreshTeams();
+    if(name==='log') refreshEvents();
+    if(name==='workflows') refreshWorkflows();
+    if(name==='memory') refreshMemory();
+    if(name==='brain') brainList();
   }
-  function wasmDemo(){
-    const c=document.getElementById('wasm-canvas');
-    const ctx=c.getContext('2d');
-    ctx.fillStyle='#fff'; ctx.fillRect(0,0,c.width,c.height);
-    ctx.fillStyle='#2563eb'; ctx.fillRect(20,20,60,40);
-    ctx.beginPath(); ctx.arc(80,80,20,0,Math.PI*2); ctx.strokeStyle='#0c4a6e'; ctx.stroke();
-    document.getElementById('wasm-log').textContent='WASM demo (JS fallback, senza .wasm)';
+  function wireTabs(){
+    el('tabs').addEventListener('click',function(ev){
+      var b=ev.target.closest('button[data-tab]'); if(b) showTab(b.getAttribute('data-tab'));
+    });
+    window.addEventListener('hashchange',function(){ showTab((location.hash||'#agents').slice(1)); });
   }
 
-  setInterval(()=>{refreshAgents();refreshTeams();refreshLog();refreshWorkflows();refreshMemory();}, 3000);
-  refreshAgents(); refreshTeams(); refreshLog(); refreshWorkflows(); refreshMemory();
-  canvasConnect();
+  // ---------- polling ----------
+  function tick(){
+    if(S.paused) return;
+    refreshStatus().then(function(st){
+      if(!st) return;
+      var tab=(location.hash||'#agents').slice(1);
+      if(tab==='agents') refreshAgents();
+      else if(tab==='teams') refreshTeams();
+      else if(tab==='log') refreshEvents();
+    });
+  }
+  function startPolling(){
+    setInterval(tick, S.refreshMs>0?S.refreshMs:2500);
+  }
+  function wirePause(){
+    el('btn-pause').addEventListener('click',function(){
+      S.paused=!S.paused;
+      el('btn-pause').textContent = S.paused ? '▶ riprendi' : '⏸ pausa';
+      toast(S.paused?'polling in pausa':'polling attivo');
+      if(!S.paused) tick();
+    });
+  }
+
+  // ---------- init ----------
+  wireTabs(); wireAgents(); wireTeams(); wireLog(); wireWorkflows(); wireMemory(); wireBrain(); wireCanvas(); wireWasm(); wirePause();
+  var initial=(location.hash||'').slice(1);
+  if(!initial){ try{ initial=localStorage.getItem('gmb-webapp-tab')||'agents'; }catch(e){ initial='agents'; } }
+  refreshStatus().then(function(){ showTab(initial); startPolling(); });
+})();
 </script>
 </body>
 </html>
