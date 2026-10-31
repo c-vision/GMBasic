@@ -132,6 +132,8 @@ set(GMB_ALL_SRCS
     src/gmb_fetch.c        # motore download: streaming + resume + lock + sha (brains/pacchetti/libs)
     src/gmb_fetch_curl.c   # trasporto HTTP del motore (libcurl); senza curl = NULL, non stub
     src/gmb_brains.c       # cervelli come dati: risoluzione (vendor/exe/cache) + install da manifest
+    src/gmb_fixtures.c     # fixture di mercato on demand (manifest pubblico + gmb_fetch)
+    src/gmb_fsutil.c       # mkdir -p / rmtree / isdir / spazio: una sola implementazione
     src/gmb_ui_stub.c   # debole, PRIMO membro: risolve i riferimenti UI del core in headless
     src/gmb_px_renderer.c   # registry renderer pixel (core); i renderer si registrano dal target UI
     src/gmb_ui_gfx.c   # interfaccia verso la pagina grafica (core; tabella installata dal target UI)
@@ -860,6 +862,12 @@ target_link_libraries(gmb_brain_fetch_cli PRIVATE gmb_runtime)
 target_include_directories(gmb_brain_fetch_cli PRIVATE include)
 set_target_properties(gmb_brain_fetch_cli PROPERTIES OUTPUT_NAME gmb_brain_fetch)
 
+# Fixture di mercato on demand (`gmb_fixtures list|pull`): prima erano ~182 MB nel repo.
+add_executable(gmb_fixtures_cli tools/gmb_fixtures_cli.c)
+target_link_libraries(gmb_fixtures_cli PRIVATE gmb_runtime)
+target_include_directories(gmb_fixtures_cli PRIVATE include)
+set_target_properties(gmb_fixtures_cli PROPERTIES OUTPUT_NAME gmb_fixtures)
+
 add_executable(gmb_community_db_selfcheck tests/community_db_selfcheck.c)
 target_link_libraries(gmb_community_db_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_community_db_selfcheck PRIVATE include)
@@ -898,6 +906,12 @@ add_executable(gmb_brains_selfcheck tests/gmb_brains_selfcheck.c)
 target_link_libraries(gmb_brains_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_brains_selfcheck PRIVATE include)
 add_test(NAME gmb_brains_selfcheck COMMAND gmb_brains_selfcheck)
+
+# Fixture on demand: risoluzione, download+estrazione, idempotenza, sha sbagliato (offline).
+add_executable(gmb_fixtures_selfcheck tests/gmb_fixtures_selfcheck.c)
+target_link_libraries(gmb_fixtures_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_fixtures_selfcheck PRIVATE include)
+add_test(NAME gmb_fixtures_selfcheck COMMAND gmb_fixtures_selfcheck)
 
 add_executable(gmb_expr_selfcheck tests/expr_selfcheck.c)
 target_link_libraries(gmb_expr_selfcheck PRIVATE gmb_runtime)
