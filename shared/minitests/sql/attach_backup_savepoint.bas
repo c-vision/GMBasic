@@ -5,13 +5,13 @@
 IMPORT SQL
 SUB Main()
   ON ERROR RESUME NEXT
-  MKDIR "work"
+  MKDIR "bin"
   ON ERROR GOTO 0
   ' nomi univoci per esecuzione: le tre engine condividono il processo e il pool SQLite tiene aperti i file
   DIM u AS STRING = TRIM(STR(INT(RND() * 100000000)))
-  DIM pMain AS STRING = "work/ab_main_" + u + ".db"
-  DIM pAux AS STRING = "work/ab_aux_" + u + ".db"
-  DIM pBk AS STRING = "work/ab_bk_" + u + ".db"
+  DIM pMain AS STRING = "bin/ab_main_" + u + ".db"
+  DIM pAux AS STRING = "bin/ab_aux_" + u + ".db"
+  DIM pBk AS STRING = "bin/ab_bk_" + u + ".db"
   ' RND e' deterministico nei backend C: ripulisce gli eventuali residui di run precedenti con lo stesso nome
   ON ERROR RESUME NEXT
   IF IO.FILEEXISTS(pMain) THEN KILL pMain

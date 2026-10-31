@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM CALIBRATE "work/no_model", "work/no_tokens.bin", "work/out.imatrix.gguf"
+  LLM CALIBRATE "bin/no_model", "bin/no_tokens.bin", "bin/out.imatrix.gguf"
   PRINT "no_err"
   GOTO D
 H:

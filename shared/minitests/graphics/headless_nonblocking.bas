@@ -9,7 +9,7 @@ SUB Main()
   PIXEL BUFFER 4, 4, buf
   BLOAD (0, 0), buf
   PALETTE 1, 255, 0, 0
-  SAVE SCREEN "work/scr.prg"
+  SAVE SCREEN "bin/scr.prg"
   PSET (1, 1), 4
   PRINT "commands-ok"
 END SUB

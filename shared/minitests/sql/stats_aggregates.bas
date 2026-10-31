@@ -6,11 +6,11 @@ IMPORT IO
 
 SUB Main()
     ON ERROR RESUME NEXT
-    IF IO.FILEEXISTS("work/st.db") THEN KILL "work/st.db"
-    RMDIR "work", TRUE
+    IF IO.FILEEXISTS("bin/st.db") THEN KILL "bin/st.db"
+    RMDIR "bin", TRUE
     ON ERROR GOTO 0
-    MKDIR "work"
-    SQL OPEN "work/st.db" ALIAS S
+    MKDIR "bin"
+    SQL OPEN "bin/st.db" ALIAS S
     SQL EXEC S, "CREATE TABLE sv(x REAL)"
     SQL EXEC S, "INSERT INTO sv VALUES (2),(4),(4),(4),(5),(5),(7),(9)"
     DIM rs AS SQLRESULTSET

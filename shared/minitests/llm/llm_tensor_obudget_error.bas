@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM TENSOR OBUDGET "work/no.gguf", "O2"
+  LLM TENSOR OBUDGET "bin/no.gguf", "O2"
   PRINT "no_err"
   GOTO D
 H:

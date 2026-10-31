@@ -2,5 +2,5 @@
 ' EXPECT: rc=-1
 IMPORT LLM
 SUB Main()
-  PRINT "rc="; LLM.TOKENCOUNT("work/no_model", "ciao")
+  PRINT "rc="; LLM.TOKENCOUNT("bin/no_model", "ciao")
 END SUB

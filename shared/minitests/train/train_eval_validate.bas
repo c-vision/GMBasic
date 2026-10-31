@@ -3,7 +3,7 @@
 IMPORT AI
 SUB Main()
   ON ERROR GOTO H
-  TRAIN EVAL VALIDATE "risultato" AGAINST "work/no_vault"
+  TRAIN EVAL VALIDATE "risultato" AGAINST "bin/no_vault"
   PRINT "no_err"
   GOTO D
 H:

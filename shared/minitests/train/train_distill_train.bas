@@ -4,7 +4,7 @@
 IMPORT AI
 SUB Main()
   ON ERROR GOTO H
-  TRAIN DISTILL TRAIN "work/no_ds.bin", { "model": "work/no_model", "out": "work/no_dt" }
+  TRAIN DISTILL TRAIN "bin/no_ds.bin", { "model": "bin/no_model", "out": "bin/no_dt" }
   PRINT "no_err"
   GOTO D
 H:

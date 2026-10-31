@@ -6,7 +6,7 @@
 IMPORT LLM
 SUB Main()
   TRY
-    TRAIN LORA APPLY "work/no_ckpt", "{""model"":""work/no_model"",""dataset"":""work/no_ds.bin""}"
+    TRAIN LORA APPLY "bin/no_ckpt", "{""model"":""bin/no_model"",""dataset"":""bin/no_ds.bin""}"
     PRINT "la2_caught=0"
   CATCH
     PRINT "la2_caught=1"

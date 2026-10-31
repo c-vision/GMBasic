@@ -12,7 +12,8 @@ fi
 
 # tools/sh/gmb_c99native_run.sh — compila+linka+esegue l'output del driver C99Native.
 # Uso: gmb_c99native_run.sh <sample.bas> [suffisso] [cflags]
-#   CWD = root del repo. Emette in <dir>/work/<base>_<suff>.c e lo esegue.
+#   CWD = root del repo. Emette in <dir>/bin/<base>_<suff>.c (output di default del
+#   compilatore) e lo esegue; `work/` NON si usa qui (e` per gli artefatti-dati dei sample).
 # Serve per la verifica END-TO-END del C99Native (EVAL/&, locali S_eval, ...): il driver
 # produce C; qui lo si linka col lib-set completo di gmb_vm_host (runtime+db+agent+doc +
 # SDL/OpenSSL/curl della cache utente) e lo si esegue. Prerequisiti: build nativo esistente
@@ -96,8 +97,8 @@ CC_BIN="cc"
 
 ABS=$(cd "$(dirname "$B")" && pwd)/$(basename "$B")
 DIR=$(cd "$(dirname "$B")" && pwd)
-mkdir -p "$DIR/work"
-CASE=work/$(basename "$B" .bas)_${SUFF}
+mkdir -p "$DIR/bin"
+CASE=bin/$(basename "$B" .bas)_${SUFF}
 
 
 # --no-exe: il driver ora COMPILA E LINKA per default; qui si vuole il SOLO C, perché il
@@ -106,7 +107,7 @@ CASE=work/$(basename "$B" .bas)_${SUFF}
 # proprio il sintomo che rendeva il driver inutilmente difficile da diagnosticare.
 if ! "$BIN" "$ABS" "$DIR/$CASE.c" --no-exe >/dev/null 2>"$DIR/$CASE.drivererr.txt"; then
   # In caso di fallimento il file resta (post-mortem); in caso di successo sparisce:
-  # work/ è già pieno di artefatti, non aggiungiamo rumore a ogni run che va a buon fine.
+  # bin/ è già pieno di artefatti, non aggiungiamo rumore a ogni run che va a buon fine.
   { echo "driver fallito:"; sed -n '1,5p' "$DIR/$CASE.drivererr.txt"; } >&2; exit 2
 fi
 rm -f "$DIR/$CASE.drivererr.txt"
@@ -202,9 +203,9 @@ if [ "$MIN_LINK" = "0" ]; then
 # e la mette in ~/.gmbasic/libs/<rid>/. Prima del 2026-10-29 il link falliva e basta.
 FETCH="$ROOT/native/gmb_runtime_c/build/gmb_libs_fetch"
 if [ -x "$FETCH" ]; then
-  emit_libs_index "$DIR/work/libs.txt"
-  if [ -s "$DIR/work/libs.txt" ]; then
-    "$FETCH" "$DIR/work/libs.txt" \
+  emit_libs_index "$DIR/bin/libs.txt"
+  if [ -s "$DIR/bin/libs.txt" ]; then
+    "$FETCH" "$DIR/bin/libs.txt" \
       libcrypto.3.dylib libssl.3.dylib libzstd.1.5.7.dylib libbrotlienc.1.dylib libbrotlidec.1.dylib \
       libpcre2-8.0.dylib libSDL2_mixer.dylib libSDL2_ttf.dylib libSDL2.dylib liblzma.5.dylib \
       liblz4.1.10.0.dylib libMoltenVK.dylib >/dev/null 2>&1 || true
@@ -305,7 +306,7 @@ fi
 # che i simboli esportati siano presenti.
 if grep -q "int main" "$DIR/$CASE.c"; then
   GMB_TORCH_PATH="${GMB_TORCH_PATH:-$HOME/.gmbasic/libs/ml/osx-arm64}"
-  (cd "$DIR" && GMB_TORCH_PATH="$GMB_TORCH_PATH" ./work/"$(basename "$CASE")" ${PROG_ARGS[@]+"${PROG_ARGS[@]}"})
+  (cd "$DIR" && GMB_TORCH_PATH="$GMB_TORCH_PATH" ./bin/"$(basename "$CASE")" ${PROG_ARGS[@]+"${PROG_ARGS[@]}"})
 else
   # Verifica gli export della libreria (evita pipe con head: con `set -o pipefail` un lettore che
   # chiude presto manda SIGPIPE e farebbe fallire lo script).

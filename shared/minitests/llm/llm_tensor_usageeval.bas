@@ -2,9 +2,9 @@
 ' EXPECT: caught
 IMPORT LLM
 SUB Main()
-  MKDIR "work"
+  MKDIR "bin"
   ON ERROR GOTO H
-  LLM TENSOR USAGEEVAL "work/no_model.gguf", "work/no.tsv"
+  LLM TENSOR USAGEEVAL "bin/no_model.gguf", "bin/no.tsv"
   PRINT "no_err"
   GOTO D
 H:

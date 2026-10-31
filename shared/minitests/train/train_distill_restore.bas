@@ -3,7 +3,7 @@
 IMPORT AI
 SUB Main()
   ON ERROR GOTO H
-  TRAIN DISTILL RESTORE "work/no_backup"
+  TRAIN DISTILL RESTORE "bin/no_backup"
   PRINT "no_err"
   GOTO D
 H:

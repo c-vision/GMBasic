@@ -20,7 +20,7 @@ data/     dati letti dai tool                          hf_causal_lm_models.txt, 
 
 1. **Un tool nuovo va qui**, nella sottocartella del suo linguaggio. Mai in un submodule.
 2. **`basic/` e `c/` non si mescolano** (era il difetto della vecchia `GMBasic/tools`: 26 `.bas` e 5 `.c` nella stessa dir).
-3. **Niente output in `tools/`**: nessun `work/`, `out/`, `build/`, nessun `.o` o eseguibile. Lo scratch va in una dir `work/` accanto a chi lo genera, o in `/tmp`.
+3. **Niente output in `tools/`**: nessun `work/`, `out/`, `build/`, nessun `.o` o eseguibile. Lo scratch va in **`/tmp`**; un output persistente di un tool va in **`tools/out/`**. `work/` non si usa nel tooling (è riservata agli artefatti-dati dei sample).
 4. **Gli script shell calcolano la radice da soli**: `$(dirname "$0")/../../GMBasic` (tool che parlano col compilatore) o `../../GMBasicSharp` (kit di test). Non usare `$(dirname "$0")/..`, che ora punta alla radice del monorepo.
 5. **ABI**: i descrittori `.gmbarch` stanno in `LLMEnv/ABI` (sibling del monorepo), puntati dai settings. Nessuna copia locale.
 

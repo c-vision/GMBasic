@@ -1,6 +1,6 @@
 ' MiniTest IO/MEMORYMAP — COMANDI di scrittura (MMAPPOKE, MMAPWRITEBYTES)
 ' (le funzioni MEMORYMAP/MMAPPEEK/MMAPREADBYTES sono in minitests/io/mmap.bas).
-' Path relativi sotto work/ (creato dal test): la CWD e' la cartella del file su
+' Path relativi sotto bin/ (creato dal test): la CWD e' la cartella del file su
 ' tutte le gambe. Asserzioni booleane (si/no), mai valori dipendenti dall'ambiente
 ' (l'handle grezzo differisce per design fra i backend).
 ' EXPECT: poke=ok|write=ok|partial=ok|close=ok
@@ -8,11 +8,11 @@ IMPORT IO
 IMPORT MEMORYMAP
 
 SUB Main()
-    MKDIR "work"
-    DIM f = IO.FCREATE("work/mmap_rw.dat")
+    MKDIR "bin"
+    DIM f = IO.FCREATE("bin/mmap_rw.dat")
     IO.FWRITE(f, "hello")
     IO.FCLOSE(f)
-    DIM mm = IO.MEMORYMAP("work/mmap_rw.dat")
+    DIM mm = IO.MEMORYMAP("bin/mmap_rw.dat")
 
     ' --- MMAPPOKE: scrittura di un singolo byte ---
     MMAPPOKE mm, 0, 65

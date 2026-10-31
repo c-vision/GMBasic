@@ -24,9 +24,9 @@ END TYPE
 SUB Main()
   DIM c AS Cliente, d AS Cliente, x AS Cliente, y AS Cliente
   DIM m AS Misto, n AS Misto
-  DIM path AS STRING = "work/random_udt_record.dat"
+  DIM path AS STRING = "bin/random_udt_record.dat"
   ON ERROR RESUME NEXT
-  MKDIR "work"
+  MKDIR "bin"
   KILL path
   ON ERROR GOTO 0
 
@@ -56,7 +56,7 @@ SUB Main()
 
   ' tipi misti
   m.B = 200 : m.I = -1234 : m.S = 1.5 : m.D = 3.14159265358979 : m.Q = 123456789012 : m.T = "abcdef"
-  OPEN "work/random_udt_misto.dat" FOR RANDOM AS #4 LEN = 32
+  OPEN "bin/random_udt_misto.dat" FOR RANDOM AS #4 LEN = 32
   PUT #4, 1, m
   GET #4, 1, n
   PRINT "misto="; n.B; n.I; n.S; n.D; n.Q; "["; n.T; "]"
@@ -75,5 +75,5 @@ SUB Main()
   PRINT "rec1="; bytes(60)
   ON ERROR RESUME NEXT
   KILL path
-  KILL "work/random_udt_misto.dat"
+  KILL "bin/random_udt_misto.dat"
 END SUB

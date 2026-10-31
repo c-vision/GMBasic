@@ -8,14 +8,14 @@ TYPE Riga
 END TYPE
 
 SUB Main()
-  ' Stato di test IDEMPOTENTE: senza `MKDIR "work"` l'apertura "work/gaps_db" fallisce sul
+  ' Stato di test IDEMPOTENTE: senza `MKDIR "bin"` l'apertura "bin/gaps_db" fallisce sul
   ' lato C (il C# crea la cartella da sé) e i 4 controlli di durability non stampano nulla
-  ' → il gate dava VMC rosso solo quando work/ era assente. Stessa forma di set_filter.bas.
+  ' → il gate dava VMC rosso solo quando bin/ era assente. Stessa forma di set_filter.bas.
   ON ERROR RESUME NEXT
-  RMDIR "work/gaps_db", TRUE
+  RMDIR "bin/gaps_db", TRUE
   ON ERROR GOTO 0
-  MKDIR "work"
-  SPEED OPEN "work/gaps_db" ALIAS G
+  MKDIR "bin"
+  SPEED OPEN "bin/gaps_db" ALIAS G
   SPEED USE "T" FROM G OF Riga ALIAS T INDEXED BY ID
   IF UPPER(SPEED.SETDURABILITY("FULL")) = "FULL" THEN PRINT "setdur: si"
   IF SPEED.FLUSHDURABILITY() THEN PRINT "flush: si"

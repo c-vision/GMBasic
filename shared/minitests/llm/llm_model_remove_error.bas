@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM MODEL REMOVE "work/no.gguf", "work/no_out.gguf", 1
+  LLM MODEL REMOVE "bin/no.gguf", "bin/no_out.gguf", 1
   PRINT "no_err"
   GOTO D
 H:

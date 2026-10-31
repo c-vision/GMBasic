@@ -11,7 +11,7 @@ SUB Main()
   IO.FWRITE(h, "the cat sat" + CHR(10) + "two plus two" + CHR(10))
   IO.FCLOSE(h)
   ON ERROR GOTO H
-  TRAIN EVAL "work/no_model", "/tmp/gmb_eval_ds.jsonl"
+  TRAIN EVAL "bin/no_model", "/tmp/gmb_eval_ds.jsonl"
   PRINT "no_err"
   GOTO D
 H:

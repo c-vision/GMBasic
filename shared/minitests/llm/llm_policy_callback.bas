@@ -2,7 +2,7 @@
 ' OnDecide(name, role, default) ritorna il formato scelto; il runtime applica gli override.
 IMPORT LLM
 SUB Main()
-  MKDIR "work"
+  MKDIR "bin"
   LLM POLICY CLEARITEM
   LLM POLICY DIFF "../../samples/Fixtures/models/tiny_moe.gguf"
   LLM POLICY CALLBACK OnDecide

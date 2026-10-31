@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM TENSOR DIST "work/no.gguf"
+  LLM TENSOR DIST "bin/no.gguf"
   PRINT "no_err"
   GOTO D
 H:

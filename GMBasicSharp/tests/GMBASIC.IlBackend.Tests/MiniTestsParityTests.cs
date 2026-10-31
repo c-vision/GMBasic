@@ -97,24 +97,23 @@ public class MiniTestsParityTests
         catch { }
     }
 
-    /// <summary>Rimuove la cartella `work/` accanto al MiniTest PRIMA di ogni gamba.
-    /// I MiniTest DB (SPEED/DBF/ISAM) scrivono in `work/&lt;db&gt;`; il loro RMDIR è non
-    /// ricorsivo e fallisce silenziosamente su una dir non vuota, quindi una gamba
-    /// ritrovava il database della precedente. Per SPEED questo lasciava il `.speed.lock`
-    /// /WAL di un motore (C#) e faceva fallire la gamba C (VMC/C99) che apriva lo stesso
-    /// path — vedi Bugs/(open) - SPEED-Parity-Runner-WAL-Lock. Ogni gamba parte pulita.</summary>
-    private static void CleanupWorkDir(string file)
+    /// <summary>Rimuove la cartella `bin/` accanto al MiniTest PRIMA di ogni gamba.
+    /// I MiniTest DB (SPEED/DBF/ISAM) e gli altri output scrivono in `bin/&lt;file&gt;`: è la
+    /// cartella di output di default del compilatore (AGENTS §9.6) e `work/` NON si usa fuori da
+    /// `shared/samples/` (AGENTS §11.1 cat.4: solo artefatti-dati dei sample). Il RMDIR dei DB è
+    /// non ricorsivo e fallisce silenziosamente su una dir non vuota, quindi una gamba ritrovava
+    /// il database della precedente (e per SPEED il `.speed.lock`/WAL faceva fallire la gamba C —
+    /// vedi Bugs/(open) - SPEED-Parity-Runner-WAL-Lock). Ogni gamba parte pulita.</summary>
+    private static void CleanupBinDir(string file)
     {
         try
         {
             var dir = Path.GetDirectoryName(Path.GetFullPath(file))!;
-            var work = Path.Combine(dir, "work");
-            if (Directory.Exists(work)) Directory.Delete(work, true);
-            // La cartella si RICREA: la convenzione (AGENTS §11) è che l'output del MiniTest
-            // vada in `work/` accanto al generatore, e diversi test scrivono lì senza crearla.
-            // Cancellarla e basta faceva fallire quei test al primo I/O (es.
-            // llm/llm_dense.bas → "ERR": `LLM TENSOR DENSE … "work/dense.gguf"`).
-            Directory.CreateDirectory(work);
+            var bin = Path.Combine(dir, "bin");
+            if (Directory.Exists(bin)) Directory.Delete(bin, true);
+            // La cartella si RICREA: diversi test scrivono in `bin/` senza crearla
+            // (es. llm/llm_dense.bas → `LLM TENSOR DENSE … "bin/dense.gguf"`).
+            Directory.CreateDirectory(bin);
         }
         catch { }
     }
@@ -161,7 +160,7 @@ public class MiniTestsParityTests
             // §9.1: il percorso iniziale e' la dir del file BASIC (entry point), NON la CWD di processo.
             Directory.SetCurrentDirectory(Path.GetDirectoryName(Path.GetFullPath(file))!);
             CleanupArtifacts(file);
-            CleanupWorkDir(file);
+            CleanupBinDir(file);
             var program = Basic.Orchestrator.Compile(file, null, false, "il");
             // Macro &/EVAL: compilazione ed esecuzione nello STESSO processo → registra il
             // BasicProgram vivo (la cattura dei GLOBALI per nome non deve dipendere dalla
@@ -198,7 +197,7 @@ public class MiniTestsParityTests
         {
             CleanupDbfTempFiles();
             Directory.SetCurrentDirectory(Path.GetDirectoryName(Path.GetFullPath(file))!);
-            CleanupWorkDir(file);
+            CleanupBinDir(file);
             var program = Basic.Orchestrator.Compile(file, null, false, "il");
             // Macro &/EVAL in-process: registra il BasicProgram vivo (stesso motivo di RunPCode).
             Basic.IlBackend.IlRuntime.SetMacroContext(program);
@@ -403,7 +402,7 @@ public class MiniTestsParityTests
     private static string RunVmc(string file)
     {
         CleanupArtifacts(file);
-        CleanupWorkDir(file);
+        CleanupBinDir(file);
         var exePath = ResolveVmcHost();
         Assert.True(File.Exists(exePath), $"gmb_vm_host non trovato ({exePath}). Build: cmake --build native/gmb_vm_c/build");
         var program = Basic.Orchestrator.Compile(file, null, false, "il");

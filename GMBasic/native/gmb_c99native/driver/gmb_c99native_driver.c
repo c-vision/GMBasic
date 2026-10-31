@@ -73,11 +73,11 @@ static int build_exe(const char* cc, const char* csrc, const char* bin,
 
 /* Percorsi di default dell'output, derivati dal sorgente.
  *
- * DOVE: <cartella-del-sorgente>/work/ — la convenzione di progetto per l'output GENERATO
- * (AGENTS.md §11.1 cat.4: "work/ minuscolo, accanto a chi la genera"), ed e' gia' gitignored:
- * l'utente trova l'output dove lo cerca, i sorgenti non si sporcano e in root non finisce
- * nulla. Non accanto al sorgente (stile javac): dentro samples/ getterebbe artefatti non
- * tracciati, contro §11.1.
+ * DOVE: <cartella-del-sorgente>/bin/ — è la **cartella di output di default del compilatore**
+ * (AGENTS.md §9.6): qui vanno il C generato e il binario. `work/` NON è la destinazione giusta:
+ * `work/` è riservata agli **artefatti-dati** (file) prodotti da un programma BASIC per
+ * verificare che abbia funzionato, e vive **solo** sotto `shared/samples/` (AGENTS.md §11.1
+ * cat.4). Mettere sorgente/C generato/binari in `work/` è l'errore da non ripetere.
  *
  * Il chiamante che vuole altrove passa `out.c` esplicito e/o `--exe <bin>`.
  * Ritorna 0 se la cartella non e' creabile (il default non deve bloccare: chi chiama decide).
@@ -97,9 +97,9 @@ static int default_out_path(const char* in, const char* ext, char* buf, size_t n
     } else {
         snprintf(dir, sizeof dir, ".");
     }
-    /* work/ puo' non esistere: si crea, e' la destinazione standard degli output generati. */
+    /* bin/ puo' non esistere: si crea, e' la destinazione standard degli artefatti compilati. */
     char wd[sizeof dir + 8];
-    snprintf(wd, sizeof wd, "%s/work", dir);
+    snprintf(wd, sizeof wd, "%s/bin", dir);
 #ifdef _WIN32
     (void)_mkdir(wd);
 #else

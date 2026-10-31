@@ -4,7 +4,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  TRAIN EVAL "work/no_model.gguf", "work/no_ds.txt"
+  TRAIN EVAL "bin/no_model.gguf", "bin/no_ds.txt"
   PRINT "no_err"
   GOTO D
 H:

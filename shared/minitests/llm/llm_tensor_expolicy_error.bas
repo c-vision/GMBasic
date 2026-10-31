@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM TENSOR EXPOLICY "work/no.gguf", "5"
+  LLM TENSOR EXPOLICY "bin/no.gguf", "5"
   PRINT "no_err"
   GOTO D
 H:

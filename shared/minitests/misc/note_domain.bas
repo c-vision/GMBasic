@@ -4,7 +4,7 @@
 IMPORT AI
 
 SUB Main()
-  DIM v AS STRING = "work/note-vault"
+  DIM v AS STRING = "bin/note-vault"
   IF IO.DirExists(v) = 0 THEN MKDIR v
   AI VAULT CREATE "nv", v
   AI VAULT INDEX "nv"

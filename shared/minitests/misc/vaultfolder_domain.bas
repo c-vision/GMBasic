@@ -4,7 +4,7 @@
 IMPORT AI
 
 SUB Main()
-  DIM v AS STRING = "work/vaultfolder"
+  DIM v AS STRING = "bin/vaultfolder"
   IF IO.DirExists(v) = 0 THEN MKDIR v
   DIM d AS STRING = v + "/docs"
   IF IO.DirExists(d) = 0 THEN MKDIR d

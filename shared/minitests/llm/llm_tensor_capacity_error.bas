@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM TENSOR CAPACITY "work/no.gguf", "8192"
+  LLM TENSOR CAPACITY "bin/no.gguf", "8192"
   PRINT "no_err"
   GOTO D
 H:

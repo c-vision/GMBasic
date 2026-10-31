@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM TENSOR DECODEPROFILE "work/no.gguf", "4096:450"
+  LLM TENSOR DECODEPROFILE "bin/no.gguf", "4096:450"
   PRINT "no_err"
   GOTO D
 H:

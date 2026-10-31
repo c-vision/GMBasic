@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM MODEL CHECKPOINT "work/no.gguf", "work/ckpt", "c1"
+  LLM MODEL CHECKPOINT "bin/no.gguf", "bin/ckpt", "c1"
   PRINT "no_err"
   GOTO D
 H:

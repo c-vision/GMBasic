@@ -5,9 +5,9 @@
 IMPORT IO
 
 DIM F$
-F$ = "work/input_file_string_implicit.txt"
+F$ = "bin/input_file_string_implicit.txt"
 ON ERROR RESUME NEXT
-MKDIR "work"
+MKDIR "bin"
 ON ERROR GOTO 0
 OPEN F$ FOR OUTPUT AS #1
 WRITE #1, 101, "Mario Rossi", 123.45, TRUE
