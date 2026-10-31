@@ -1,10 +1,15 @@
 # .github/workflows/libs.yml — bundle delle librerie native per OGNI RID (core/engine/llmmotor)
 #
-# PERCHÉ ESISTE. I bundle di `c-vision/GMBasicModules` esistevano solo per `osx-arm64` perché
-# `tools/libs_publish_gh.sh` pubblica ciò che è compilato sulla macchina di turno. Questo
-# workflow rende il passo RIPETIBILE: compila il gruppo su ogni runner, passa il gate di
-# caricabilità (`tools/libs_verify_load.sh`), pubblica e solo alla fine aggiorna l'indice
+# PERCHÉ ESISTE. I bundle di `c-vision/GMBasicModules` esistevano solo per il RID della macchina
+# di turno perché `tools/sh/libs_publish_gh.sh` pubblica ciò che è compilato lì. Questo workflow
+# rende il passo RIPETIBILE: compila il gruppo su ogni runner, passa il gate di caricabilità
+# (`tools/sh/libs_verify_load.sh`), pubblica e solo alla fine aggiorna l'indice
 # `libs-manifest.json` (un job unico: N RID in parallelo si sovrascriverebbero lo stesso file).
+#
+# ⚠️ POSIZIONE. Dal 2026-10-31 il monorepo è UN SOLO repo: GitHub legge solo `/.github/workflows`
+# alla radice. Il workflow era in `GMBasic/.github/workflows/` (dove era inerte). I comandi sono
+# stati ripuntati a `tools/sh/…`: `libs_build_release.sh` calcola già da sé
+# `ROOT=<monorepo>/GMBasic` da `tools/sh/`.
 #
 # STATO DI VALIDAZIONE (onestà, da aggiornare al primo run verde)
 #   - macOS: pipeline provata a mano su osx-arm64 (core: 10/10 file, gate dlopen 10/10 OK).
@@ -13,6 +18,14 @@
 #     di sistema mancanti (elencate sotto, da completare).
 #   - Windows: NON abilitato. La build usa API POSIX (dlopen, fork/exec, `m`) e i target
 #     CMake non hanno un percorso MSVC; va prima fatto il port (issue dedicata).
+#
+# SEGRETI/VARIABILI RICHIESTI (Settings → Secrets and variables → Actions)
+#   - `GMB_MODULES_TOKEN` (secret, PAT con `repo` su c-vision/GMBasicModules):
+#     serve SOLO per `publish: true` e per il job `index` (il `GITHUB_TOKEN` di un workflow è
+#     limitato al repo corrente e non può scrivere su un altro repo). Senza il secret il workflow
+#     compila e verifica, ma la pubblicazione fallisce con un errore esplicito.
+#   - `LLMENV_REPO` (variable, es. `c-vision/LLMEnv`): solo per i gruppi `engine`/`llmmotor`.
+#   - `LLMENV_DIR` (variable): percorso precompilato di LLMEnv, se non lo si vuole checkare.
 #
 # USO
 #   - manuale: Actions → "libs" → Run workflow (gruppo, RID, publish)
@@ -46,7 +59,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write          # upload release + push dell'indice (repo GMBasicModules)
+  contents: write          # upload release + push dell'indice (repo GMBasicModules, via PAT)
 
 jobs:
   build:
@@ -64,7 +77,9 @@ jobs:
       GROUP: ${{ github.event.inputs.group || 'core' }}
       TAG: ${{ github.event.inputs.tag || '' }}
       DO_PUBLISH: ${{ github.event.inputs.publish || (github.event_name == 'push') }}
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Il PAT serve per pubblicare su GMBasicModules; in sua assenza si usa il token del repo
+      # (build + verifica funzionano, la pubblicazione fallisce con 403).
+      GH_TOKEN: ${{ secrets.GMB_MODULES_TOKEN || secrets.GITHUB_TOKEN }}
       # Il runner deve sapere che l'RID è quello della matrice (il default dello script è
       # ricavato da uname, ma osx-x64 su macos-13 e linux-arm64 su runner arm sono espliciti).
       LLMENV: ${{ vars.LLMENV_DIR || '' }}
@@ -104,7 +119,7 @@ jobs:
           args=( "$GROUP" --rid "${{ matrix.rid }}" )
           [ "$DO_PUBLISH" = "true" ] && args+=( --publish --yes --no-index )   # indice: job dedicato
           [ -n "$TAG" ] && args+=( --tag "$TAG" )
-          bash tools/libs_build_release.sh "${args[@]}"
+          bash tools/sh/libs_build_release.sh "${args[@]}"
 
   index:
     name: indice (libs-manifest.json)
@@ -112,7 +127,7 @@ jobs:
     if: ${{ github.event_name == 'push' || github.event.inputs.publish == 'true' }}
     runs-on: ubuntu-24.04
     env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.GMB_MODULES_TOKEN || secrets.GITHUB_TOKEN }}
       GROUP: ${{ github.event.inputs.group || 'core' }}
     steps:
       - uses: actions/checkout@v4
@@ -122,8 +137,8 @@ jobs:
           # `libs_manifest_gh.sh build` FONDE il RID nel manifest esistente (nel checkout), `push`
           # lo pubblica su main. In sequenza i push sono cumulativi: nessuna corsa fra RID.
           for rid in osx-arm64 osx-x64 linux-x64 linux-arm64; do
-            if bash tools/libs_manifest_gh.sh build --rid "$rid"; then
-              bash tools/libs_manifest_gh.sh push || exit 1
+            if bash tools/sh/libs_manifest_gh.sh build --rid "$rid"; then
+              bash tools/sh/libs_manifest_gh.sh push || exit 1
             else
               echo "RID $rid: nessuna release pubblicata (salto)"
             fi
