@@ -53,7 +53,7 @@ PUBLIC CONST DEFAULT_HEIGHT% = 600
 
 ' --- Primitive (stateless: ws passato ogni volta) ---
 
-PUBLIC SUB PSet(ws AS ANY, x AS LONG, y AS LONG, col AS LONG)
+PUBLIC SUB PSet(ws AS WEBSOCKET, x AS LONG, y AS LONG, col AS LONG)
     DIM j AS JSON = NEW JSON
     j["op"] = "pset"
     j["v"] = PROTOCOL_VERSION%
@@ -63,7 +63,7 @@ PUBLIC SUB PSet(ws AS ANY, x AS LONG, y AS LONG, col AS LONG)
     ws.Send(JSON.STRINGIFY(j))
 END SUB
 
-PUBLIC SUB Line(ws AS ANY, x1 AS LONG, y1 AS LONG, x2 AS LONG, y2 AS LONG, col AS LONG)
+PUBLIC SUB Line(ws AS WEBSOCKET, x1 AS LONG, y1 AS LONG, x2 AS LONG, y2 AS LONG, col AS LONG)
     DIM j AS JSON = NEW JSON
     j["op"] = "line"
     j["v"] = PROTOCOL_VERSION%
@@ -75,7 +75,7 @@ PUBLIC SUB Line(ws AS ANY, x1 AS LONG, y1 AS LONG, x2 AS LONG, y2 AS LONG, col A
     ws.Send(JSON.STRINGIFY(j))
 END SUB
 
-PUBLIC SUB Rect(ws AS ANY, x AS LONG, y AS LONG, w AS LONG, h AS LONG, col AS LONG)
+PUBLIC SUB Rect(ws AS WEBSOCKET, x AS LONG, y AS LONG, w AS LONG, h AS LONG, col AS LONG)
     DIM j AS JSON = NEW JSON
     j["op"] = "rect"
     j["v"] = PROTOCOL_VERSION%
@@ -87,7 +87,7 @@ PUBLIC SUB Rect(ws AS ANY, x AS LONG, y AS LONG, w AS LONG, h AS LONG, col AS LO
     ws.Send(JSON.STRINGIFY(j))
 END SUB
 
-PUBLIC SUB Circle(ws AS ANY, x AS LONG, y AS LONG, r AS LONG, col AS LONG)
+PUBLIC SUB Circle(ws AS WEBSOCKET, x AS LONG, y AS LONG, r AS LONG, col AS LONG)
     DIM j AS JSON = NEW JSON
     j["op"] = "circle"
     j["v"] = PROTOCOL_VERSION%
@@ -98,7 +98,7 @@ PUBLIC SUB Circle(ws AS ANY, x AS LONG, y AS LONG, r AS LONG, col AS LONG)
     ws.Send(JSON.STRINGIFY(j))
 END SUB
 
-PUBLIC SUB Sprite(ws AS ANY, id AS LONG, x AS LONG, y AS LONG)
+PUBLIC SUB Sprite(ws AS WEBSOCKET, id AS LONG, x AS LONG, y AS LONG)
     DIM j AS JSON = NEW JSON
     j["op"] = "sprite"
     j["v"] = PROTOCOL_VERSION%
@@ -108,7 +108,7 @@ PUBLIC SUB Sprite(ws AS ANY, id AS LONG, x AS LONG, y AS LONG)
     ws.Send(JSON.STRINGIFY(j))
 END SUB
 
-PUBLIC SUB TextOut(ws AS ANY, x AS LONG, y AS LONG, txt AS STRING, col AS LONG)
+PUBLIC SUB TextOut(ws AS WEBSOCKET, x AS LONG, y AS LONG, txt AS STRING, col AS LONG)
     DIM j AS JSON = NEW JSON
     j["op"] = "text"
     j["v"] = PROTOCOL_VERSION%
@@ -119,7 +119,7 @@ PUBLIC SUB TextOut(ws AS ANY, x AS LONG, y AS LONG, txt AS STRING, col AS LONG)
     ws.Send(JSON.STRINGIFY(j))
 END SUB
 
-PUBLIC SUB Paint(ws AS ANY, x AS LONG, y AS LONG, fillCol AS LONG, borderCol AS LONG)
+PUBLIC SUB Paint(ws AS WEBSOCKET, x AS LONG, y AS LONG, fillCol AS LONG, borderCol AS LONG)
     DIM j AS JSON = NEW JSON
     j["op"] = "paint"
     j["v"] = PROTOCOL_VERSION%
@@ -130,7 +130,7 @@ PUBLIC SUB Paint(ws AS ANY, x AS LONG, y AS LONG, fillCol AS LONG, borderCol AS 
     ws.Send(JSON.STRINGIFY(j))
 END SUB
 
-PUBLIC SUB Clear(ws AS ANY, col AS LONG)
+PUBLIC SUB Clear(ws AS WEBSOCKET, col AS LONG)
     DIM j AS JSON = NEW JSON
     j["op"] = "clear"
     j["v"] = PROTOCOL_VERSION%
@@ -138,14 +138,14 @@ PUBLIC SUB Clear(ws AS ANY, col AS LONG)
     ws.Send(JSON.STRINGIFY(j))
 END SUB
 
-PUBLIC SUB Flush(ws AS ANY)
+PUBLIC SUB Flush(ws AS WEBSOCKET)
     DIM j AS JSON = NEW JSON
     j["op"] = "flush"
     j["v"] = PROTOCOL_VERSION%
     ws.Send(JSON.STRINGIFY(j))
 END SUB
 
-PUBLIC SUB PutImage(ws AS ANY, x AS LONG, y AS LONG, w AS LONG, h AS LONG, pixels AS ANY, mode AS STRING)
+PUBLIC SUB PutImage(ws AS WEBSOCKET, x AS LONG, y AS LONG, w AS LONG, h AS LONG, pixels AS ANY, mode AS STRING)
     DIM j AS JSON = NEW JSON
     j["op"] = "putimage"
     j["v"] = PROTOCOL_VERSION%
@@ -158,7 +158,7 @@ PUBLIC SUB PutImage(ws AS ANY, x AS LONG, y AS LONG, w AS LONG, h AS LONG, pixel
     ws.Send(JSON.STRINGIFY(j))
 END SUB
 
-PUBLIC SUB GetImage(ws AS ANY, x AS LONG, y AS LONG, w AS LONG, h AS LONG)
+PUBLIC SUB GetImage(ws AS WEBSOCKET, x AS LONG, y AS LONG, w AS LONG, h AS LONG)
     DIM j AS JSON = NEW JSON
     j["op"] = "getimage"
     j["v"] = PROTOCOL_VERSION%
@@ -169,6 +169,6 @@ PUBLIC SUB GetImage(ws AS ANY, x AS LONG, y AS LONG, w AS LONG, h AS LONG)
     ws.Send(JSON.STRINGIFY(j))
 END SUB
 
-PUBLIC SUB Frame(ws AS ANY, x AS LONG, y AS LONG, w AS LONG, h AS LONG, col AS LONG)
+PUBLIC SUB Frame(ws AS WEBSOCKET, x AS LONG, y AS LONG, w AS LONG, h AS LONG, col AS LONG)
     Rect(ws, x, y, w, h, col)
 END SUB

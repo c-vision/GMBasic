@@ -142,13 +142,15 @@
       <thead><tr><th>Name</th><th>Strategy</th><th>Members</th><th>Actions</th></tr></thead>
       <tbody id="teams-body">
         <%
-          DIM tnames() = AI.TEAMLIST()
-          IF UBOUND(tnames) < 0 THEN
+          ' AI.TEAMLIST() ritorna i NOMI separati da CHR$(10) (non un array, non JSON):
+          ' si normalizza con SPLIT, come MEMORY.LIST().
+          DIM tl$ = AI.TEAMLIST()
+          IF LEN(tl$) = 0 THEN
             PRINT DASHBOARD.EmptyRowHtml(4, "Nessun team — crea con AI TEAM CREATE MyTeam")
           ELSE
+            DIM tnames() AS STRING = SPLIT(tl$, CHR$(10))
             FOR i = 0 TO UBOUND(tnames)
-              DIM tn$ = tnames(i)
-              PRINT DASHBOARD.TeamRowHtml(tn$, "-", 0)
+              IF LEN(TRIM$(tnames(i))) > 0 THEN PRINT DASHBOARD.TeamRowHtml(TRIM$(tnames(i)), "-", 0)
             NEXT i
           END IF
         %>
@@ -195,15 +197,19 @@
       <thead><tr><th>Name</th><th>Status</th><th>Steps</th><th>Actions</th></tr></thead>
       <tbody id="workflows-body">
         <%
-          DIM wfs() = AI.WorkflowList()
-          IF UBOUND(wfs) < 0 THEN
+          ' AI.WorkflowList() ritorna i NOMI separati da CHR$(10) (stringa, non array).
+          DIM wl$ = AI.WorkflowList()
+          IF LEN(wl$) = 0 THEN
             PRINT "<tr><td colspan='4' class='empty'>Nessun workflow — crea con AI WORKFLOW name + STEP o col form sotto</td></tr>"
           ELSE
+            DIM wfs() AS STRING = SPLIT(wl$, CHR$(10))
             FOR i = 0 TO UBOUND(wfs)
-              DIM wname AS STRING = wfs(i)
-              DIM wstatus AS STRING = AI.WorkflowStatus(wname)
-              DIM wsteps AS STRING = AI.WorkflowSteps(wname)
-              PRINT "<tr><td class='name'>" + wname + "</td><td><span class='badge'>" + wstatus + "</span></td><td class='muted'>" + wsteps + "</td><td><button class='btn btn-ghost' onclick=""wfPick('" + wname + "')"">Pick</button> <button class='btn btn-ghost' onclick=""wfExecPick('" + wname + "')"">Run</button></td></tr>"
+              DIM wname AS STRING = TRIM$(wfs(i))
+              IF LEN(wname) > 0 THEN
+                DIM wstatus AS STRING = AI.WorkflowStatus(wname)
+                DIM wsteps AS STRING = AI.WorkflowSteps(wname)
+                PRINT "<tr><td class='name'>" + wname + "</td><td><span class='badge'>" + wstatus + "</span></td><td class='muted'>" + wsteps + "</td><td><button class='btn btn-ghost' onclick=""wfPick('" + wname + "')"">Pick</button> <button class='btn btn-ghost' onclick=""wfExecPick('" + wname + "')"">Run</button></td></tr>"
+              END IF
             NEXT i
           END IF
         %>
@@ -319,7 +325,7 @@
     <code>clang --target=wasm32 -o webapp/static/prog.wasm /tmp/prog.c native/gmb_runtime_c/src/*.c</code><br>
     Futuro: <code>gmb prog.bas -target wasm -o webapp/static/prog.wasm</code> + <a href="/wasm.bsp"><code>/wasm.bsp</code> standalone</a>
   </div>
-  <pre id="wasm-log" class="json">WasmBridge: <%= WASMBRIDGE.Info$() %></pre>
+  <pre id="wasm-log" class="json">WasmBridge: <%= WASMBRIDGE.Info() %></pre>
 </section>
 
 <script src="/static/canvas.js"></script>

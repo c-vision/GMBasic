@@ -3200,8 +3200,7 @@ public static partial class IlRuntime
     private static readonly Dictionary<string, (string Method, string Path, int HandlerSymbolId)> _httpRoutes = new(StringComparer.OrdinalIgnoreCase);
     private static readonly List<(string? Path, int HandlerSymbolId)> _httpMiddleware = [];
     private static readonly List<(string Path, int HandlerSymbolId)> _httpWsRoutes = new();
-    private static string? _httpStaticPrefix;
-    private static string? _httpStaticDir;
+    private static readonly List<(string Prefix, string Directory)> _httpStatics = new();
     /// <summary>Servizio HTTP che possiede <see cref="_httpServerHandle"/>. Ogni programma creato
     /// dal harness in-process ha un HeadlessRuntimeHost NUOVO (quindi un HttpService nuovo):
     /// fermare l'handle su `Current.Http` dopo un cambio di run è un no-op e lascia il listener
@@ -3210,7 +3209,7 @@ public static partial class IlRuntime
     private static IHttpService? _httpServerService;
 
     /// <summary>
-    /// Prima azzerava sempre <see cref="_httpStaticPrefix"/>/<see cref="_httpStaticDir"/> e
+    /// Prima azzerava sempre i mount STATIC e
     /// <see cref="_httpRoutes"/> all'avvio — ma in TUTTI i sample reali (`HttpStatic.bas`,
     /// `PackageServer.bas`, ecc.) `HTTP STATIC`/`HTTP ROUTE` vengono scritti PRIMA di
     /// `HTTP SERVER` (ordine naturale: prima si dichiara cosa servire, poi si avvia il server) —
@@ -3237,8 +3236,8 @@ public static partial class IlRuntime
         {
             if (_pendingHttpSettings is not null)
                 Current.Http.HttpConfigure(_httpServerHandle, _pendingHttpSettings);
-            if (_httpStaticPrefix != null && _httpStaticDir != null)
-                Current.Http.HttpAddStatic(_httpServerHandle, _httpStaticPrefix, _httpStaticDir);
+            foreach (var (prefix, directory) in _httpStatics)
+                Current.Http.HttpAddStatic(_httpServerHandle, prefix, directory);
             foreach (var (method, path, handlerSymbolId) in _httpRoutes.Values)
                 RegisterRouteWithHost(_httpServerHandle, method, path, handlerSymbolId);
             foreach (var (path, handlerSymbolId) in _httpMiddleware)
@@ -3277,8 +3276,7 @@ public static partial class IlRuntime
         _httpRoutes.Clear();
         _httpMiddleware.Clear();
         _httpWsRoutes.Clear();
-        _httpStaticPrefix = null;
-        _httpStaticDir = null;
+        _httpStatics.Clear();
         _httpScheduler = null;
         // `HTTP CONFIG` (porta/TLS/middleware): impostazioni statiche che HttpServerStart
         // applica al PRIMO server avviato. Senza reset, il programma successivo nello stesso
@@ -3443,8 +3441,7 @@ public static partial class IlRuntime
 
     /// <summary>
     /// Prima non chiamava MAI <see cref="IHttpService.HttpAddStatic"/> — si limitava a salvare
-    /// `urlPath`/`physicalPath` in due campi statici (<see cref="_httpStaticPrefix"/>/
-    /// <see cref="_httpStaticDir"/>) mai letti da nessun altro punto del codice. `HTTP STATIC`
+    /// `urlPath`/`physicalPath` in campi statici mai letti da nessun altro punto del codice. `HTTP STATIC`
     /// era quindi un no-op silenzioso: nessuna directory veniva mai registrata in
     /// <c>HttpService._staticDirs</c>, quindi nessuna richiesta HTTP reale poteva mai raggiungere
     /// un file statico né, di conseguenza, una pagina <c>.bsp</c> (il dispatcher BSP dipende
@@ -3454,10 +3451,13 @@ public static partial class IlRuntime
     /// </summary>
     public static void HttpAddStatic(string urlPath, string physicalPath)
     {
-        _httpStaticPrefix = urlPath;
-        _httpStaticDir = physicalPath;
+        // Più mount STATIC nello stesso programma sono legittimi e necessari (tipico: le pagine
+        // BSP su "/" e gli asset su "/static"). Prima si teneva UN SOLO (prefisso, cartella):
+        // il secondo `HTTP STATIC` sovrascriveva il primo in silenzio, quindi il servizio
+        // esponeva le pagine e non gli asset (o viceversa) — la dashboard si apriva senza JS.
+        _httpStatics.Add((urlPath, physicalPath));
         // Se il server è già avviato (STATIC dopo SERVER, meno comune ma valido) applica subito;
-        // altrimenti HttpServerStart la applica non appena ottiene un handle valido (vedi sopra).
+        // altrimenti HttpServerStart li applica tutti non appena ottiene un handle valido.
         if (_httpServerHandle >= 0)
             Current.Http.HttpAddStatic(_httpServerHandle, urlPath, physicalPath);
     }
@@ -3623,6 +3623,10 @@ public static partial class IlRuntime
             ["Body"] = req.Body,
             ["Headers"] = headersDict,
             ["Query"] = req.Query.ToDictionary(kv => kv.Key, kv => (object?)kv.Value),
+            // Parità PCode (BuildRequestDict): senza questa chiave `req.QueryString` rendeva ""
+            // sull'IL e un handler che ricostruisce un URL perdeva i parametri (bug reale sul
+            // proxy /api/* della webapp: /api/memory?key=k arrivava senza query).
+            ["QueryString"] = req.QueryString,
             ["Params"] = req.Params.ToDictionary(kv => kv.Key, kv => (object?)kv.Value),
             // req.RemoteIp (TokenKind RemoteIp, NON Ip): il dict request NON aveva la chiave →
             // il membro rendeva null su IL (divergenza HttpSession vs PCode, che la popola).

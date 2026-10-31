@@ -138,16 +138,20 @@ internal sealed class PCodeHttpRouter
         lock (_lock) _staticPaths.Add((urlPrefix, physicalPath));
     }
 
-    /// <summary>Primo prefisso registrato che combacia (stesso criterio "primo che matcha",
-    /// nessun ordinamento per specificita' — stessa semantica dell'AST).</summary>
+    /// <summary>Mount statico vincente: il prefisso PIÙ LUNGO che combacia (a parità, il primo
+    /// registrato). Con la sola regola "primo che matcha" un mount generico come "/" oscurava
+    /// sempre quelli specifici tipo "/static" — l'app serviva le pagine ma non i suoi asset.</summary>
     public (string UrlPrefix, string PhysicalPath)? ResolveStaticPath(string path)
     {
         List<(string, string)> snapshot;
         lock (_lock) snapshot = new List<(string, string)>(_staticPaths);
+        (string, string)? best = null;
         foreach (var sp in snapshot)
-            if (path.StartsWith(sp.Item1, StringComparison.OrdinalIgnoreCase))
-                return sp;
-        return null;
+        {
+            if (!path.StartsWith(sp.Item1, StringComparison.OrdinalIgnoreCase)) continue;
+            if (best is null || sp.Item1.Length > best.Value.Item1.Length) best = sp;
+        }
+        return best;
     }
 
     public void Clear()

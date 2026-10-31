@@ -145,6 +145,10 @@ public static class IlCoroutineEmitter
         // (variabili globali). Se il corpo accede a un campo di una variabile UDT, la
         // procedura NON è nel subset v2 → fallback al percorso flat (corretto).
         if (symbolType is not null && BodyAccessesUdtField(def, symbolType)) return false;
+        // Il v2 stepper NON sa emettere lo store di un campo/proprietà su un oggetto runtime
+        // (ws.OnMessage, res.StatusCode, cfg.Port): l'emissione parziale lascia label non
+        // marcati → "Label N has not been marked" al Save dell'assembly. Fallback al flat.
+        if (symbolType is not null && BodyAssignsRuntimeField(def, symbolType)) return false;
         // Il v2 stepper NON sa emettere l'accesso a elementi di un array GLOBALE/STATIC
         // (il global-init piatto lo crea short[]/double[], la lettura v2 userebbe ldelem del
         // tipo sbagliato; l'emissione parziale lascia label non marcati — bug 2026-10-01:
@@ -154,6 +158,25 @@ public static class IlCoroutineEmitter
         foreach (var s in def.Body)
             if (!StatementIsV2(s, mayPark, nameToId, symbolType)) return false;
         return true;
+    }
+
+    /// <summary>Vero se il corpo SCRIVE un campo/proprietà di un oggetto runtime (non UDT/closure):
+    /// `ws.OnMessage = "..."`, `res.StatusCode = 404`, `cfg.Port = 8090`. L'emitter v2 sa fare solo
+    /// store su variabili e su campi di una CLASSE (closure); un FieldTarget su un oggetto runtime
+    /// lo faceva fallire a metà emissione — e un metodo già registrato nel TypeBuilder con label
+    /// non marcati rompe il Save dell'INTERA assembly ("Label N has not been marked"). Questo
+    /// predicato è quindi obbligatorio: la procedura gira sul percorso flat, che li emette.
+    /// Bug reale: `webapp/app.bas` (handler WebSocket) non compilava su IL.</summary>
+    private static bool BodyAssignsRuntimeField(FunctionDefinition def, Func<int, Basic.DataType?> symbolType)
+    {
+        foreach (var stmt in def.Body)
+            foreach (var node in WalkNodes(stmt))
+            {
+                if (node is FieldTarget ft && ft.Structure is VariableTarget fvt
+                    && symbolType(fvt.SymbolId) is not ClassType)
+                    return true;
+            }
+        return false;
     }
 
     /// <summary>Vero se il corpo legge/scrive un elemento di un array GLOBALE/STATIC

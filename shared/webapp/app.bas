@@ -4,14 +4,19 @@
 ' Tutto in BASIC: seed agenti/team demo, HTTP SERVER + BSP, proxy /api same-origin,
 ' WebSocket /ws/canvas con WEBCANVAS.
 '
-' Porte (editabili):
-'   API agents: 8765 (AI AGENT SERVE, route C1 /api/agents|teams|/agent/{n}/prompt)
-'   Dashboard:  8090 (HTTP SERVER, serve webapp/pages/*.bsp + webapp/static/*)
+' Porte (editabili in Main):
+'   API agents: 8765 (AI AGENT SERVE — /api/agents|teams|events|workflows|memory|brain|enrich)
+'   Dashboard:  8090 (HTTP SERVER — serve pages/*.bsp renderizzate + static/*,
+'                e fa da PROXY same-origin di TUTTO /api/* verso 8765)
 '
-' Avvio:
-'   dotnet run --project REPL/REPL.csproj -- webapp/app.bas
+' Avvio (dalla ROOT del monorepo):
+'   dotnet GMBasicSharp/REPL/bin/Debug/net10.0/REPL.dll -noconsole shared/webapp/app.bas
 '   poi apri http://localhost:8090/index.bsp  (o /canvas.bsp, /wasm.bsp)
 '   API diretta: curl http://localhost:8765/api/agents
+'   API via proxy: curl http://localhost:8090/api/agents
+'
+' Percorsi: pagine e statici sono risolti dalla CARTELLA DELLA APP (PROJECTFOLDER),
+' non dalla working directory → l'app funziona da qualunque CWD.
 '
 ' Editabilità: l'utente modifica qui porte, seed, route proxy, handler WS, senza toccare C#.
 ' Il file è il launcher di riferimento; i sample in samples/Community/AI/* sono copie minimali.
@@ -19,9 +24,12 @@
 
 IMPORT HTTP
 IMPORT JSON
-IMPORT AI WITH ALIAS
+IMPORT AI
 IMPORT DASHBOARD
 IMPORT WEBCANVAS
+
+' Porta del server agenti (usata anche dal proxy /api/*)
+DIM g_apiPort AS INTEGER
 
 ' --- Seed demo (se registry vuoto) ---
 SUB SeedDemo()
@@ -50,6 +58,7 @@ SUB Main()
 
     ' --- 1. Avvia Agent API server (C1, route JSON) ---
     DIM apiPort% = 8765
+    g_apiPort = apiPort%
     AI AGENT SERVE apiPort%
     PRINT "Agent API: http://localhost:" + LTRIM$(STR$(apiPort%)) + "/api/agents  (GET)"
     PRINT "           http://localhost:" + LTRIM$(STR$(apiPort%)) + "/api/teams   (GET)"
@@ -62,20 +71,31 @@ SUB Main()
     cfg.Sessions = TRUE
     HTTP CONFIG cfg
 
-    ' Serve BSP e statici: webapp/pages/*.bsp → renderizzate, webapp/static/* → static
-    HTTP STATIC "/", "./webapp/pages"
-    HTTP STATIC "/static", "./webapp/static"
+    ' Serve BSP e statici. Path ASSOLUTI calcolati dalla cartella della app: il server
+    ' deve funzionare da qualunque working directory (prima erano "./webapp/pages",
+    ' validi solo con CWD = shared/).
+    DIM rootDir AS STRING
+    DIM pagesDir AS STRING
+    DIM staticDir AS STRING
+    rootDir = FindAppRoot()
+    pagesDir = rootDir + "/pages"
+    staticDir = rootDir + "/static"
+    IF NOT IO.DIREXISTS(pagesDir) THEN
+        PRINT "errore: cartella pagine non trovata: "; pagesDir
+        PRINT "  root=["; rootDir; "] PROJECTFOLDER=["; PROJECTFOLDER(); "] CWD=["; IO.CWD(); "]"
+        ERROR 2
+    END IF
+    HTTP STATIC "/", pagesDir
+    HTTP STATIC "/static", staticDir
 
     ' --- 3. Proxy same-origin /api/* → 8765 (evita CORS per JS fetch("/api/agents")) ---
-    ' Il JS di index.bsp fa fetch("/api/agents") same-origin; il BASIC lo proxya alla API.
-    HTTP ROUTE "GET", "/api/agents", ProxyAgents()
-    HTTP ROUTE "GET", "/api/teams", ProxyTeams()
-    HTTP ROUTE "POST", "/api/agent/{name}/prompt", ProxyPrompt()
-    HTTP ROUTE "GET", "/api/events", ProxyEvents()
+    RegisterApiRoutes()
 
     ' --- 4. WebSocket Canvas (Vision-Ext §1) ---
     HTTP ROUTE "GET", "/ws/canvas", CanvasWsHandler()
 
+    PRINT "pagine    : "; pagesDir
+    PRINT "statici   : "; staticDir
     PRINT "Dashboard: http://localhost:" + LTRIM$(STR$(cfg.Port)) + "/index.bsp  (5 tab: Agents/Teams/Log/Canvas/WASM)"
     PRINT "Canvas:    http://localhost:" + LTRIM$(STR$(cfg.Port)) + "/canvas.bsp"
     PRINT "WASM:      http://localhost:" + LTRIM$(STR$(cfg.Port)) + "/wasm.bsp"
@@ -94,51 +114,118 @@ SUB Main()
     PRINT "Server fermati."
 END SUB
 
-' --- Proxy handlers (BASIC, editabili) ---
+' --- Percorsi ---------------------------------------------------------------
 
-SUB ProxyAgents(req AS HTTPREQUEST, res AS HTTPRESPONSE)
-    DIM r AS FETCHRESULT = FETCH("http://127.0.0.1:8765/api/agents")
-    res.Send(r.Body)
-END SUB
-
-SUB ProxyTeams(req AS HTTPREQUEST, res AS HTTPRESPONSE)
-    DIM r AS FETCHRESULT = FETCH("http://127.0.0.1:8765/api/teams")
-    res.Send(r.Body)
-END SUB
-
-SUB ProxyEvents(req AS HTTPREQUEST, res AS HTTPRESPONSE)
-    DIM r AS FETCHRESULT = FETCH("http://127.0.0.1:8765/api/events")
-    IF r.StatusCode = 200 THEN
-        res.Send(r.Body)
-    ELSE
-        DIM evs() = AI.AGENTEVENTS()
-        DIM sb$ = "["
-        FOR idx = 0 TO UBOUND(evs)
-            IF idx > 0 THEN sb$ = sb$ + ","
-            DIM d$ = evs(idx)
-            d$ = REPLACE$(d$, "\", "\\")
-            d$ = REPLACE$(d$, CHR$(34), "\" + CHR$(34))
-            d$ = REPLACE$(d$, CHR$(10), "\n")
-            sb$ = sb$ + "{" + CHR$(34) + "detail" + CHR$(34) + ":" + CHR$(34) + d$ + CHR$(34) + "}"
-        NEXT idx
-        sb$ = sb$ + "]"
-        res.Send(sb$)
+FUNCTION RTrimSlash(p AS STRING) AS STRING
+    DIM s AS STRING
+    s = p
+    IF LEN(s) > 1 THEN
+        IF RIGHT$(s, 1) = "/" THEN s = LEFT$(s, LEN(s) - 1)
     END IF
+    RTrimSlash = s
+END FUNCTION
+
+' Cartella della app (contiene pages/ e static/). Accetta sia il layout attuale
+' (app.bas accanto a pages/) sia quello con un livello src/ (app.bas in src/).
+FUNCTION FindAppRoot() AS STRING
+    DIM p AS STRING
+    p = PROJECTFOLDER()
+    IF LEN(p) = 0 THEN p = IO.CWD()
+    p = RTrimSlash(p)
+    IF IO.DIREXISTS(p + "/pages") THEN
+        FindAppRoot = p
+    ELSEIF IO.DIREXISTS(IO.PARENTDIR(p) + "/pages") THEN
+        FindAppRoot = IO.PARENTDIR(p)
+    ELSE
+        FindAppRoot = p
+    END IF
+END FUNCTION
+
+' --- Proxy handlers (BASIC, editabili) -------------------------------------
+' Tutta la superficie /api/* è inoltrata a `AI AGENT SERVE` (127.0.0.1:8765):
+' il server agenti implementa agents/teams/events/workflow(+step/execute/delete)/
+' team broadcast/memory/brain/enrich. Un solo helper per metodo, il path viaggia
+' così com'è (compresi i segmenti dinamici di HTTP ROUTE).
+
+SUB RegisterApiRoutes()
+    ' GET
+    HTTP ROUTE "GET", "/api/agents", PxGet()
+    HTTP ROUTE "GET", "/api/teams", PxGet()
+    HTTP ROUTE "GET", "/api/teams/{name}", PxGet()
+    HTTP ROUTE "GET", "/api/events", PxGet()
+    HTTP ROUTE "GET", "/api/workflows", PxGet()
+    HTTP ROUTE "GET", "/api/workflows/{name}", PxGet()
+    HTTP ROUTE "GET", "/api/memory", PxGet()
+    HTTP ROUTE "GET", "/api/memory/search", PxGet()
+    HTTP ROUTE "GET", "/api/brain/search", PxGet()
+    HTTP ROUTE "GET", "/api/brain/list", PxGet()
+    ' POST
+    HTTP ROUTE "POST", "/api/agent/{name}/prompt", PxPost()
+    HTTP ROUTE "POST", "/api/workflows", PxPost()
+    HTTP ROUTE "POST", "/api/workflows/{name}/steps", PxPost()
+    HTTP ROUTE "POST", "/api/workflows/{name}/execute", PxPost()
+    HTTP ROUTE "POST", "/api/team/{name}/broadcast", PxPost()
+    HTTP ROUTE "POST", "/api/memory", PxPost()
+    HTTP ROUTE "POST", "/api/enrich", PxPost()
+    HTTP ROUTE "POST", "/api/brain/note", PxPost()
+    HTTP ROUTE "POST", "/api/brain/save", PxPost()
+    HTTP ROUTE "POST", "/api/brain/forget", PxPost()
+    HTTP ROUTE "POST", "/api/brain/import", PxPost()
+    HTTP ROUTE "POST", "/api/brain/watch", PxPost()
+    HTTP ROUTE "POST", "/api/brain/refresh", PxPost()
+    HTTP ROUTE "POST", "/api/brain/consolidate", PxPost()
+    ' DELETE
+    HTTP ROUTE "DELETE", "/api/memory", PxDelete()
+    HTTP ROUTE "DELETE", "/api/workflows/{name}", PxDelete()
 END SUB
 
-SUB ProxyPrompt(req AS HTTPREQUEST, res AS HTTPRESPONSE)
-    DIM name$ = req.Params["name"]
-    DIM body$ = req.Body
-    DIM r AS FETCHRESULT = FETCH("http://127.0.0.1:8765/api/agent/" + name$ + "/prompt", NEW HTTPOPTIONS)
-    ' FETCH con POST richiede HTTPOPTIONS — fallback: usa POST helper se body già JSON
-    ' Per semplicità, re-invia con POST
-    DIM opts AS HTTPOPTIONS = NEW HTTPOPTIONS
-    opts.Method = "POST"
-    opts.Body = body$
-    opts.Headers.Add("Content-Type", "application/json")
-    DIM r2 AS FETCHRESULT = FETCH("http://127.0.0.1:8765/api/agent/" + name$ + "/prompt", opts)
-    res.Send(r2.Body)
+SUB PxGet(req AS HTTPREQUEST, res AS HTTPRESPONSE)
+    res.Send(Forward(req, "GET", ""))
 END SUB
+
+SUB PxPost(req AS HTTPREQUEST, res AS HTTPRESPONSE)
+    res.Send(Forward(req, "POST", req.Body))
+END SUB
+
+SUB PxDelete(req AS HTTPREQUEST, res AS HTTPRESPONSE)
+    res.Send(Forward(req, "DELETE", ""))
+END SUB
+
+' Inoltra la richiesta al server agenti mantenendo path e query string; il corpo
+' è quello del client (già JSON). Risposta = corpo della risposta, così il JS fa
+' `r.json()` senza CORS. Se il server agenti non è raggiungibile si restituisce
+' un JSON esplicito (mai un errore HTML che farebbe fallire il parsing).
+FUNCTION Forward(req AS HTTPREQUEST, method AS STRING, body AS STRING) AS STRING
+    DIM url AS STRING
+    DIM opts AS HTTPOPTIONS = NEW HTTPOPTIONS
+    DIM r AS FETCHRESULT
+    url = "http://127.0.0.1:" + LTRIM$(STR$(g_apiPort)) + req.Path
+    IF LEN(req.QueryString) > 0 THEN url = url + "?" + req.QueryString
+    opts.Method = method
+    IF LEN(body) > 0 THEN opts.Body = body
+    opts.Headers.Add("Content-Type", "application/json")
+    r = FETCH(url, opts)
+    IF r.StatusCode = 0 THEN
+        ' JSON costruito con CHR$(34): la forma con "" ripetuti dopo un + è ambigua
+        ' per il lexer (`"""` viene letta come stringa vuota + inizio stringa).
+        DIM q AS STRING
+        q = CHR$(34)
+        Forward = "{" + q + "error" + q + ":" + q + "agent-api-unreachable" + q + "," + q + "url" + q + ":" + q + EscapeJson(url) + q + "}"
+    ELSE
+        Forward = r.Body
+    END IF
+END FUNCTION
+
+FUNCTION EscapeJson(s AS STRING) AS STRING
+    DIM t AS STRING
+    t = s
+    t = REPLACE$(t, "\", "\\")
+    t = REPLACE$(t, CHR$(34), "\" + CHR$(34))
+    t = REPLACE$(t, CHR$(10), "\n")
+    t = REPLACE$(t, CHR$(13), "")
+    t = REPLACE$(t, CHR$(9), " ")
+    EscapeJson = t
+END FUNCTION
 
 ' --- WebSocket Canvas handler (Vision-Ext §1) ---
 
