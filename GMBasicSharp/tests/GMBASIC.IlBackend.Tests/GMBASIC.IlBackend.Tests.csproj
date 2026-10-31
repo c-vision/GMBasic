@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>preview</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Basic.IlBackend.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.0.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\common\Ast\Ast.csproj" />
+    <ProjectReference Include="..\..\common\Lexer\Lexer.csproj" />
+    <ProjectReference Include="..\..\common\Parser\Parser.csproj" />
+    <ProjectReference Include="..\..\common\Compilation\Compilation.csproj" />
+    <ProjectReference Include="..\..\common\Linker\Linker.csproj" />
+    <ProjectReference Include="..\..\common\Compiler\Compiler.csproj" />
+    <ProjectReference Include="..\..\common\CommonLib\CommonLib.csproj" />
+    <ProjectReference Include="..\..\common\StdLib\StdLib.csproj" />
+    <ProjectReference Include="..\..\common\BRT\BRT.csproj" />
+    <ProjectReference Include="..\..\common\IlBackendCodegen\IlBackendCodegen.csproj" />
+    <ProjectReference Include="..\..\common\Pipeline\Pipeline.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\Executor\Orchestrator.cs" Link="Orchestrator.cs" />
+    <Compile Include="..\..\Executor\Opt.cs" Link="Opt.cs" />
+    <Compile Include="..\..\Executor\SettingsManager.cs" Link="SettingsManager.cs" />
+    <!-- Anti-stale gmb_vm_host: stessa implementazione usata da test_vmrun (una sola copia,
+         non possono divergere). Senza, la gamba VMC lanciava un binario by-path senza
+         dipendenza di build dai sorgenti C: una modifica a gmb_vm_c/** non arrivava al test. -->
+    <Compile Include="..\Shared\VmHostFreshness.cs" Link="VmHostFreshness.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\common\Databases.AdoProviders\Databases.AdoProviders.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,3 @@
+SUB Main()
+  PRINT SQR(9)
+END SUB

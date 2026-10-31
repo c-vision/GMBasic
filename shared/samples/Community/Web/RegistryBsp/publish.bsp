@@ -1,0 +1,55 @@
+<%@ IMPORT HTTP, JSON %>
+<%@ ROUTE "/publish.bsp" %>
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pubblica — GMBasic Registry</title>
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; background: #f4f6fb; color: #1c2430; line-height: 1.5; padding: 0; }
+  header { background: linear-gradient(135deg, #1e293b, #334155); color: #fff; padding: 2rem 2.5rem; }
+  header h1 { font-size: 1.5rem; }
+  header a { color: #93c5fd; text-decoration: none; font-size: .9rem; }
+  main { max-width: 720px; margin: 2rem auto; padding: 0 1.5rem; }
+  .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.2rem; box-shadow: 0 1px 3px rgba(15,23,42,.06); }
+  h2 { font-size: 1.05rem; margin-bottom: .4rem; }
+  p { color: #475569; font-size: .9rem; margin-bottom: .8rem; }
+  code { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 6px; padding: .15rem .4rem; font-size: .85rem; color: #0f172a; }
+  pre { background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: 1rem; overflow-x: auto; font-size: .83rem; line-height: 1.6; margin-top: .6rem; }
+  .tag { display: inline-block; font-size: .7rem; font-weight: 600; padding: .15rem .5rem; border-radius: 999px; margin-bottom: .6rem; }
+  .official { background: #dbeafe; color: #1e40af; }
+  .contrib { background: #fef3c7; color: #92400e; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Pubblica un pacchetto</h1>
+  <p><a href="/index.bsp">&larr; Torna al registry</a></p>
+</header>
+<main>
+  <div class="card">
+    <span class="tag official">UFFICIALI — upload .gmbpkg</span>
+    <h2>Maintainer del progetto</h2>
+    <p>Compila il pacchetto localmente e caricalo con il client. Richiede un account e il
+       token (vedi <a href="/register.bsp">registrazione</a>).</p>
+    <pre>gmb register &lt;username&gt; --email tu@esempio.it
+gmb pack ./mio-pkg --out mio-pkg-1.0.0.gmbpkg
+gmb publish mio-pkg-1.0.0.gmbpkg</pre>
+  </div>
+  <div class="card">
+    <span class="tag contrib">CONTRIBUTOR — da repo git</span>
+    <h2>Modello GO</h2>
+    <p>Il pacchetto vive in un repo git con <code>gmb-package.json</code> in root. La verifica
+       (struttura → git → compilazione → self-test) gira sul tuo PC e il registry lo registra
+       come proxy. I binari dichiarati come URL vengono materializzati in cache.</p>
+    <pre>gmb register &lt;username&gt;
+gmb publish --repo https://github.com/tu/mio-repo @tu/mio-pkg@v1.0.0</pre>
+    <p style="font-size:.82rem;color:#64748b">Il nome con <code>@utente/</code> è riservato al
+       tuo account (anti-squatting). Il primo che pubblica un nome senza scope lo reclama.</p>
+  </div>
+</main>
+</body>
+</html>

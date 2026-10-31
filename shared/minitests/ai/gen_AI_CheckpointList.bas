@@ -1,0 +1,6 @@
+' EXPECT: {"checkpoints":[]}
+IMPORT AI
+
+SUB Main()
+    PRINT AI.CHECKPOINTLIST()
+END SUB

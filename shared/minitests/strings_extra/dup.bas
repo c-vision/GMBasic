@@ -1,0 +1,4 @@
+IMPORT STRINGS
+SUB Main()
+  PRINT DUP(3, "a")
+END SUB

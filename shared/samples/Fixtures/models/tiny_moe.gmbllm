@@ -1,0 +1,18 @@
+{
+  "artifact": "gmbllm",
+  "version": 1,
+  "format": "GGUF",
+  "arch": "-",
+  "layers": 2,
+  "attention": "-",
+  "moe": "-",
+  "modality": "-",
+  "speculation": "NONE",
+  "memory_plan": { "weights_bytes": 656, "kv_per_token_bytes": 32 },
+  "exact_capacity": { "rope": 0, "kv_bound": 3154116587 },
+  "kernels": { "attention": "gqa", "moe": "moe_sorted_gather", "norm": "rmsnorm", "matmul": "affine_qmm" },
+  "layer_ops": [
+    { "layer": 0, "ops": ["moe"] },
+    { "layer": 1, "ops": ["moe"] }
+  ]
+}

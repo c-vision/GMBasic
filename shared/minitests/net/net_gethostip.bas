@@ -1,0 +1,5 @@
+' EXPECT: ip=127.0.0.1
+IMPORT NET
+SUB Main()
+  PRINT "ip="; NET.GETHOSTIP("127.0.0.1")
+END SUB

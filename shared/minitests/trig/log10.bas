@@ -1,0 +1,3 @@
+SUB Main()
+  PRINT LOG10(100)
+END SUB

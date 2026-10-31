@@ -1,0 +1,7 @@
+' MiniTest: SPECIAL.ERFINV — parita' 4 backend bit-esatta (port MathNet).
+' EXPECT: 0.47693627620447
+IMPORT SPECIAL
+
+SUB Main
+  PRINT SPECIAL.ERFINV(0.5)
+END SUB

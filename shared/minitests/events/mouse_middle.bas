@@ -1,0 +1,5 @@
+' EXPECT: mid= 0
+IMPORT MOUSE
+SUB Main()
+  PRINT "mid="; MOUSE.MIDDLE()
+END SUB

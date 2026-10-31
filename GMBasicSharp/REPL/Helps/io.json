@@ -1,0 +1,784 @@
+[
+  {
+    "name": "OPEN",
+    "namespace": "IO",
+    "category": "File Management",
+    "description": "Apre un file assegnandogli un handle numerico. La sintassi OPEN #handle, filename definisce il canale da usare per le successive operazioni di lettura/scrittura. Supporta modalita' di accesso: INPUT (lettura), OUTPUT (scrittura), APPEND (accoda), BINARY (binario), RANDOM (accesso casuale a record). Il file viene creato se non esiste in modalita' OUTPUT.",
+    "syntax": [
+      "OPEN #handle, \"filename\" [FOR mode] [ACCESS access_type] [AS #base_handle]",
+      "OPEN handle, \"filename\" [FOR mode] [ACCESS access_type]"
+    ],
+    "returnType": "",
+    "parameters": [
+      { "name": "handle", "type": "INTEGER", "description": "Numero del canale (1-255). Usare FREEFILE per il prossimo disponibile." },
+      { "name": "filename", "type": "STRING", "description": "Percorso del file da aprire." },
+      { "name": "mode", "type": "STRING", "description": "INPUT (lettura), OUTPUT (scrittura, crea se non esiste), APPEND (accoda), BINARY (byte-level), RANDOM (record-level)." },
+      { "name": "access_type", "type": "STRING", "description": "READ (sola lettura), WRITE (sola scrittura), READ WRITE (entrambi)." }
+    ],
+    "examples": [
+      { "description": "Scrive dati in un file CSV e lo rilegge.", "code": "h = FREEFILE\nOPEN #h, \"report.csv\" FOR OUTPUT\nWRITE #h, \"Nome,Eta'\"\nWRITE #h, \"Mario,42\"\nWRITE #h, \"Anna,35\"\nCLOSE #h\n\nOPEN #h, \"report.csv\" FOR INPUT\nWHILE NOT EOF(h)\n  LINE INPUT #h, Riga$\n  PRINT Riga$\nWEND\nCLOSE #h", "expectedOutput": "Nome,Eta'\nMario,42\nAnna,35" },
+      { "description": "Accesso binario per leggere i primi 16 byte di un file.", "code": "OPEN #1, \"data.bin\" FOR BINARY\nBuffer$ = STRING(16, \" \")\nGET #1, , Buffer$\nPRINT \"Primi 16 byte hex: \"; CRYPTOGRAPHY.TOHEX(Buffer$)\nCLOSE #1", "expectedOutput": "Primi 16 byte hex: <hex dump>" }
+    ],
+    "seeAlso": ["CLOSE", "FREEFILE", "WRITE", "GET", "PUT", "FOPEN", "FCREATE"],
+    "isCommand": true
+  },
+  {
+    "name": "CLOSE",
+    "namespace": "IO",
+    "category": "File Management",
+    "description": "Chiude uno o piu' file aperti, liberando l'handle e scrivendo eventuali dati rimasti nel buffer. CLOSE senza argomenti chiude tutti i file aperti. E' buona pratica chiudere sempre i file dopo l'uso per evitare perdita di dati.",
+    "syntax": [
+      "CLOSE #handle",
+      "CLOSE #handle1, #handle2, ...",
+      "CLOSE",
+      "IO.CLOSE #handle"
+    ],
+    "returnType": "",
+    "parameters": [
+      { "name": "handle", "type": "INTEGER", "description": "Numero del canale da chiudere. Se omesso, chiude tutti i canali aperti." }
+    ],
+    "examples": [
+      { "description": "Chiude tutti i file aperti al termine del programma.", "code": "SUB Cleanup()\n  CLOSE  ' Chiude TUTTI i file\n  PRINT \"Tutti i file sono stati chiusi.\"\nEND SUB", "expectedOutput": "Tutti i file sono stati chiusi." }
+    ],
+    "seeAlso": ["OPEN", "WRITE", "GET", "PUT"],
+    "isCommand": true
+  },
+  {
+    "name": "FREEFILE",
+    "namespace": "IO",
+    "category": "File Management",
+    "description": "Restituisce il prossimo numero di handle file disponibile. Essenziale per aprire file senza conflitti quando non si conoscono a priori gli handle gia' in uso da altri moduli o librerie.",
+    "syntax": ["FREEFILE", "IO.FREEFILE", "IO.FREEFILE()"],
+    "returnType": "LONG",
+    "parameters": [],
+    "examples": [
+      { "description": "Apertura sicura con handle dinamico.", "code": "h1 = FREEFILE: OPEN #h1, \"input.txt\" FOR INPUT\nh2 = FREEFILE: OPEN #h2, \"output.txt\" FOR OUTPUT\nPRINT \"Handle input: \"; h1; \", output: \"; h2\nCLOSE #h1, #h2", "expectedOutput": "Handle input: 1, output: 2" }
+    ],
+    "seeAlso": ["OPEN", "CLOSE", "FOPEN", "FCREATE"],
+    "isCommand": false
+  },
+  {
+    "name": "EOF",
+    "namespace": "IO",
+    "category": "File State",
+    "description": "Restituisce TRUE (BIT=1) se il puntatore del file ha raggiunto la fine del file, FALSE (0) altrimenti. Fondamentale per iterare su tutti i record/linee di un file in modalita' INPUT senza causare errori di lettura oltre la fine.",
+    "syntax": ["EOF(handle)", "IO.EOF(handle)"],
+    "returnType": "BIT",
+    "parameters": [
+      { "name": "handle", "type": "INTEGER/LONG", "description": "Handle del file aperto." }
+    ],
+    "examples": [
+      { "description": "Legge un intero file riga per riga.", "code": "DIM Righe$()\nOPEN #1, \"dati.txt\" FOR INPUT\nWHILE NOT IO.EOF(1)\n  LINE INPUT #1, R$\n  AADD(Righe$, R$)\nWEND\nCLOSE #1\nPRINT \"Lette \"; UBOUND(Righe$) + 1; \" righe.\"", "expectedOutput": "Lette 5 righe." }
+    ],
+    "seeAlso": ["LOF", "OPEN", "CLOSE", "SEEK"],
+    "isCommand": false
+  },
+  {
+    "name": "LOF",
+    "namespace": "IO",
+    "category": "File State",
+    "description": "Restituisce la lunghezza in byte del file aperto associato all'handle specificato. Utile per allocare buffer della dimensione esatta o per verificare che un file non sia vuoto prima di leggerlo.",
+    "syntax": ["LOF(handle)", "IO.LOF(handle)"],
+    "returnType": "LONG",
+    "parameters": [
+      { "name": "handle", "type": "INTEGER/LONG", "description": "Handle del file aperto." }
+    ],
+    "examples": [
+      { "description": "Controlla se un file e' vuoto.", "code": "OPEN #1, \"log.txt\" FOR INPUT\nIF IO.LOF(1) = 0 THEN\n  PRINT \"File vuoto.\"\nELSE\n  PRINT \"File di \"; LOF(1); \" byte.\"\nEND IF\nCLOSE #1", "expectedOutput": "File di 2048 byte." }
+    ],
+    "seeAlso": ["EOF", "OPEN", "SEEK", "CLOSE"],
+    "isCommand": false
+  },
+  {
+    "name": "SEEK",
+    "namespace": "IO",
+    "category": "File State",
+    "description": "Restituisce la posizione corrente del puntatore all'interno del file (in byte o record, a seconda della modalita' di apertura). In modalita' RANDOM, la posizione e' espressa in numero di record. Utile per salvare e ripristinare la posizione di lettura.",
+    "syntax": ["SEEK(handle)", "IO.SEEK(handle)"],
+    "returnType": "LONG",
+    "parameters": [
+      { "name": "handle", "type": "INTEGER/LONG", "description": "Handle del file aperto." }
+    ],
+    "examples": [
+      { "description": "Salva la posizione, legge, poi torna indietro.", "code": "OPEN #1, \"data.bin\" FOR BINARY\nPos = SEEK(1)\n' ... leggi alcuni byte ...\nSEEK #1, Pos  ' Torna alla posizione salvata\nCLOSE #1", "expectedOutput": "" }
+    ],
+    "seeAlso": ["LOF", "EOF", "OPEN"],
+    "isCommand": false
+  },
+  {
+    "name": "WRITE",
+    "namespace": "IO",
+    "category": "File I/O",
+    "description": "Scrive dati in un file aperto. In modalita' OUTPUT/APPEND, scrive valori separati da virgole con delimitatori stringa automatici (adatto a CSV). In modalita' BINARY, scrive byte raw. In modalita' RANDOM, scrive un record intero.",
+    "syntax": [
+      "WRITE #handle, expression1 [, expression2, ...]",
+      "IO.WRITE #handle, expression1 [, expression2, ...]"
+    ],
+    "returnType": "",
+    "parameters": [
+      { "name": "handle", "type": "INTEGER/LONG", "description": "Handle del file aperto." },
+      { "name": "expression", "type": "ANY", "description": "Uno o piu' valori da scrivere." }
+    ],
+    "examples": [
+      { "description": "Scrive un file CSV con WRITE.", "code": "OPEN #1, \"prodotti.csv\" FOR OUTPUT\nWRITE #1, \"Codice\", \"Nome\", \"Prezzo\"\nWRITE #1, \"A001\", \"Monitor\", 299.99\nWRITE #1, \"A002\", \"Tastiera\", 89.50\nCLOSE #1\nPRINT \"CSV creato.\"", "expectedOutput": "CSV creato.\n(File contiene: \"Codice\",\"Nome\",\"Prezzo\";\"A001\",\"Monitor\",299.99;...)" }
+    ],
+    "seeAlso": ["PUT", "GET", "OPEN", "CLOSE"],
+    "isCommand": true
+  },
+  {
+    "name": "PUT",
+    "namespace": "IO",
+    "category": "File I/O",
+    "description": "Scrive dati in un file aperto in modalita' RANDOM (record) o OUTPUT (dati grezzi). In RANDOM, scrive l'intero record buffer alla posizione corrente. Utile per database flat-file con record a lunghezza fissa.",
+    "syntax": [
+      "PUT #handle [, record_number] [, variable]",
+      "IO.PUT #handle [, record_number] [, variable]"
+    ],
+    "returnType": "",
+    "parameters": [
+      { "name": "handle", "type": "INTEGER/LONG", "description": "Handle del file aperto in modalita' RANDOM." },
+      { "name": "record_number", "type": "INTEGER", "description": "Numero record opzionale dove scrivere (parte da 1)." },
+      { "name": "variable", "type": "UDT/STRING", "description": "Variabile UDT da scrivere come record." }
+    ],
+    "examples": [
+      { "description": "Scrive record con UDT in un file RANDOM.", "code": "TYPE Cliente\n  Nome AS STRING * 20\n  Eta AS INTEGER\nEND TYPE\nDIM C AS Cliente\nC.Nome = \"Mario Rossi\"\nC.Eta = 42\nOPEN #1, \"clienti.dat\" FOR RANDOM LEN = LEN(C)\nPUT #1, 1, C\nCLOSE #1", "expectedOutput": "" }
+    ],
+    "seeAlso": ["GET", "WRITE", "OPEN", "CLOSE"],
+    "isCommand": true
+  },
+  {
+    "name": "GET",
+    "namespace": "IO",
+    "category": "File I/O",
+    "description": "Legge dati da un file. In modalita' RANDOM, legge un record intero nell'UDT specificato. In modalita' BINARY, legge un numero specificato di byte in una variabile stringa. In modalita' INPUT, legge il prossimo valore (stop al primo delimitatore).",
+    "syntax": [
+      "GET #handle [, record_number] [, variable]",
+      "IO.GET #handle [, record_number] [, variable]"
+    ],
+    "returnType": "",
+    "parameters": [
+      { "name": "handle", "type": "INTEGER/LONG", "description": "Handle del file aperto." },
+      { "name": "record_number", "type": "INTEGER", "description": "(RANDOM) Numero record da leggere (1-based)." },
+      { "name": "variable", "type": "UDT/STRING", "description": "(RANDOM/BINARY) Variabile UDT o stringa in cui leggere." }
+    ],
+    "examples": [
+      { "description": "Legge un record UDT da file RANDOM.", "code": "TYPE Cliente\n  Nome AS STRING * 20\n  Eta AS INTEGER\nEND TYPE\nDIM C AS Cliente\nOPEN #1, \"clienti.dat\" FOR RANDOM LEN = LEN(C)\nGET #1, 1, C\nCLOSE #1\nPRINT \"Nome: \"; C.Nome; \", Eta': \"; C.Eta", "expectedOutput": "Nome: Mario Rossi, Eta': 42" }
+    ],
+    "seeAlso": ["PUT", "WRITE", "OPEN", "CLOSE"],
+    "isCommand": true
+  },
+  {
+    "name": "LINEINPUT",
+    "namespace": "IO",
+    "category": "File I/O",
+    "description": "Legge un'intera riga da un file di testo, includendo tutti i caratteri fino al newline. A differenza di INPUT #, non si ferma alle virgole e preserva gli spazi. Ideale per leggere file di testo riga per riga.",
+    "syntax": [
+      "LINE INPUT #handle, string_variable$",
+      "IO.LINEINPUT #handle, string_variable$"
+    ],
+    "returnType": "",
+    "parameters": [
+      { "name": "handle", "type": "INTEGER/LONG", "description": "Handle del file aperto per INPUT." },
+      { "name": "string_variable$", "type": "STRING", "description": "Variabile che riceve la riga letta." }
+    ],
+    "examples": [
+      { "description": "Conta le righe di un file di log.", "code": "Contatore = 0\nOPEN #1, \"server.log\" FOR INPUT\nWHILE NOT EOF(1)\n  LINE INPUT #1, Riga$\n  IF SEARCH(Riga$, \"ERROR\") THEN Contatore = Contatore + 1\nWEND\nCLOSE #1\nPRINT \"Errori trovati: \"; Contatore", "expectedOutput": "Errori trovati: 12" }
+    ],
+    "seeAlso": ["EOF", "OPEN", "CLOSE", "WRITE"],
+    "isCommand": true
+  },
+  {
+    "name": "COPY",
+    "namespace": "IO",
+    "category": "File Operations",
+    "description": "Copia un file da un percorso sorgente a uno di destinazione. Supporta sia la sintassi legacy (COPY sorgente TO destinazione) che quella qualificata. Il file viene copiato a livello binario, preservandone l'integrita'.",
+    "syntax": [
+      "COPY \"source\" TO \"destination\"",
+      "IO.COPY \"source\", \"destination\""
+    ],
+    "returnType": "BIT",
+    "parameters": [
+      { "name": "source", "type": "STRING", "description": "Percorso del file sorgente." },
+      { "name": "destination", "type": "STRING", "description": "Percorso del file di destinazione." }
+    ],
+    "examples": [
+      { "description": "Backup di un file di configurazione.", "code": "IF IO.COPY(\"config.ini\", \"config.bak\") THEN\n  PRINT \"Backup creato con successo.\"\nELSE\n  PRINT \"Errore nel backup.\"\nEND IF", "expectedOutput": "Backup creato con successo." }
+    ],
+    "seeAlso": ["MOVE", "RENAME", "KILL", "XCOPY"],
+    "isCommand": true
+  },
+  {
+    "name": "MOVE",
+    "namespace": "IO",
+    "category": "File Operations",
+    "description": "Sposta un file o directory da un percorso sorgente a uno di destinazione. A differenza di COPY, il file originale viene rimosso dopo lo spostamento. Funziona sia su file singoli che su directory (rinomina).",
+    "syntax": [
+      "IO.MOVE \"source\", \"destination\""
+    ],
+    "returnType": "BIT",
+    "parameters": [
+      { "name": "source", "type": "STRING", "description": "Percorso sorgente del file o directory." },
+      { "name": "destination", "type": "STRING", "description": "Percorso di destinazione." }
+    ],
+    "examples": [
+      { "description": "Sposta un file processato in una cartella archivio.", "code": "IF IO.MOVE(\"incoming/ordine.csv\", \"archive/2024/ordine.csv\") THEN\n  PRINT \"File archiviato.\"\nELSE\n  PRINT \"Errore: archivio non accessibile.\"\nEND IF", "expectedOutput": "File archiviato." }
+    ],
+    "seeAlso": ["COPY", "RENAME", "KILL"],
+    "isCommand": false
+  },
+  {
+    "name": "KILL",
+    "namespace": "IO",
+    "category": "File Operations",
+    "description": "Elimina permanentemente un file dal filesystem. Usare con cautela: il file non viene spostato nel cestino ma rimosso definitivamente. Verificare l'esistenza del file con FILEEXISTS prima di chiamare KILL.",
+    "syntax": [
+      "KILL \"filename\"",
+      "IO.KILL \"filename\""
+    ],
+    "returnType": "",
+    "parameters": [
+      { "name": "filename", "type": "STRING", "description": "Percorso del file da eliminare." }
+    ],
+    "examples": [
+      { "description": "Elimina file temporanei in modo sicuro.", "code": "DIM Temp$() = IO.DIR(\"*.tmp\")\nFOR I = 0 TO UBOUND(Temp$())\n  PRINT \"Elimino: \"; Temp$(I)\n  IO.KILL Temp$(I)\nNEXT I\nPRINT \"Pulizia completata.\"", "expectedOutput": "Elimino: cache.tmp\nElimino: temp123.tmp\nPulizia completata." }
+    ],
+    "seeAlso": ["ERASE", "FILEEXISTS", "DIR", "RMDIR"],
+    "isCommand": true
+  },
+  {
+    "name": "RENAME",
+    "namespace": "IO",
+    "category": "File Operations",
+    "description": "Rinomina un file o directory. Equivalente a MOVE ma semanticamente piu' chiaro quando lo scopo e' solo cambiare il nome mantenendo la stessa directory.",
+    "syntax": [
+      "IO.RENAME \"old_name\", \"new_name\""
+    ],
+    "returnType": "BIT",
+    "parameters": [
+      { "name": "old_name", "type": "STRING", "description": "Nome attuale del file/directory." },
+      { "name": "new_name", "type": "STRING", "description": "Nuovo nome da assegnare." }
+    ],
+    "examples": [
+      { "description": "Rinomina un file di log con timestamp.", "code": "Vecchio$ = \"app.log\"\nNuovo$ = \"app_\" + REPLACE(DTOS(TODAY()), \"-\", \"\") + \".log\"\nIF IO.RENAME(Vecchio$, Nuovo$) THEN\n  PRINT \"Log rinominato in: \"; Nuovo$\nEND IF", "expectedOutput": "Log rinominato in: app_20260808.log" }
+    ],
+    "seeAlso": ["MOVE", "COPY", "KILL"],
+    "isCommand": false
+  },
+  {
+    "name": "XCOPY",
+    "namespace": "IO",
+    "category": "File Operations",
+    "description": "Copia ricorsivamente file e directory da una sorgente a una destinazione. Supporta la copia ricorsiva di intere strutture di directory. Il parametro ricorsivo e' opzionale (default FALSE). La sintassi legacy usa XCOPY sorgente TO destinazione.",
+    "syntax": [
+      "XCOPY \"source\" TO \"destination\" [, recursive]",
+      "IO.XCOPY \"source\", \"destination\" [, recursive]"
+    ],
+    "returnType": "BIT",
+    "parameters": [
+      { "name": "source", "type": "STRING", "description": "Percorso sorgente (file o directory)." },
+      { "name": "destination", "type": "STRING", "description": "Percorso destinazione." },
+      { "name": "recursive", "type": "BIT", "description": "TRUE per copiare ricorsivamente le sottodirectory." }
+    ],
+    "examples": [
+      { "description": "Copia ricorsiva di un intero progetto.", "code": "IF IO.XCOPY(\"progetto/\", \"backup/progetto/\", TRUE) THEN\n  PRINT \"Progetto copiato con tutte le sottocartelle.\"\nEND IF", "expectedOutput": "Progetto copiato con tutte le sottocartelle." }
+    ],
+    "seeAlso": ["COPY", "MKDIR", "RMDIR", "DIR"],
+    "isCommand": true
+  },
+  {
+    "name": "MKDIR",
+    "namespace": "IO",
+    "category": "File Operations",
+    "description": "Crea una nuova directory. Se il percorso contiene directory intermedie inesistenti, le crea tutte (comportamento mkdir -p). Restituisce TRUE se la creazione ha successo.",
+    "syntax": [
+      "IO.MKDIR \"path\""
+    ],
+    "returnType": "BIT",
+    "parameters": [
+      { "name": "path", "type": "STRING", "description": "Percorso della directory da creare." }
+    ],
+    "examples": [
+      { "description": "Crea struttura di directory per un progetto.", "code": "Base$ = \"progetto\"\nIO.MKDIR Base$\nIO.MKDIR Base$ + \"/data\"\nIO.MKDIR Base$ + \"/output\"\nIO.MKDIR Base$ + \"/logs\"\nPRINT \"Struttura creata.\"", "expectedOutput": "Struttura creata." }
+    ],
+    "seeAlso": ["RMDIR", "CHDIR", "DIREXISTS"],
+    "isCommand": false
+  },
+  {
+    "name": "RMDIR",
+    "namespace": "IO",
+    "category": "File Operations",
+    "description": "Rimuove una directory. Il parametro ricorsivo (TRUE) permette di eliminare directory non vuote, cancellando ricorsivamente tutto il contenuto. Senza il flag ricorsivo, fallisce se la directory contiene file.",
+    "syntax": [
+      "IO.RMDIR \"path\" [, recursive]"
+    ],
+    "returnType": "BIT",
+    "parameters": [
+      { "name": "path", "type": "STRING", "description": "Percorso della directory da rimuovere." },
+      { "name": "recursive", "type": "BIT", "description": "TRUE per eliminazione ricorsiva di tutto il contenuto." }
+    ],
+    "examples": [
+      { "description": "Pulizia directory temporanea con contenuto.", "code": "IF IO.RMDIR(\"temp\", TRUE) THEN\n  PRINT \"Directory temp rimossa.\"\nELSE\n  PRINT \"Impossibile rimuovere temp.\"\nEND IF", "expectedOutput": "Directory temp rimossa." }
+    ],
+    "seeAlso": ["MKDIR", "KILL", "DIREXISTS", "CHDIR"],
+    "isCommand": false
+  },
+  {
+    "name": "CHDIR",
+    "namespace": "IO",
+    "category": "File Operations",
+    "description": "Cambia la directory corrente di lavoro del processo. Equivalente al comando cd del terminale. La nuova directory corrente influisce su tutti i successivi percorsi relativi.",
+    "syntax": [
+      "IO.CHDIR \"path\""
+    ],
+    "returnType": "BIT",
+    "parameters": [
+      { "name": "path", "type": "STRING", "description": "Percorso della nuova directory corrente." }
+    ],
+    "examples": [
+      { "description": "Naviga in una directory di progetto e lista il contenuto.", "code": "IO.CHDIR(\"/utenti/progetto\")\nPRINT \"Directory corrente: \"; CWD\nDIM Files$() = IO.DIR(\"*.bas\")\nPRINT \"File .bas trovati: \"; UBOUND(Files$) + 1", "expectedOutput": "Directory corrente: /utenti/progetto\nFile .bas trovati: 5" }
+    ],
+    "seeAlso": ["CWD", "DIR", "MKDIR", "RMDIR"],
+    "isCommand": false
+  },
+  {
+    "name": "CWD",
+    "namespace": "IO",
+    "category": "File State",
+    "description": "Restituisce il percorso assoluto della directory corrente di lavoro. Utile per costruire percorsi relativi o per mostrare all'utente la posizione attuale nel filesystem.",
+    "syntax": ["CWD", "IO.CWD", "IO.CWD()"],
+    "returnType": "STRING",
+    "parameters": [],
+    "examples": [
+      { "description": "Mostra la directory corrente nel prompt.", "code": "PRINT \"[\"; CWD; \"] >\";\nINPUT \"\", Cmd$\nPRINT \"Eseguiro' \"; Cmd$; \" in \"; CWD", "expectedOutput": "[/Users/mario/projects] >\nEseguiro' RUN in /Users/mario/projects" }
+    ],
+    "seeAlso": ["CHDIR", "DIR", "FILEEXISTS"],
+    "isCommand": false
+  },
+  {
+    "name": "DIR",
+    "namespace": "IO",
+    "category": "File Operations",
+    "description": "Elenca i file e le directory che corrispondono a un pattern di ricerca (glob). Restituisce un array di stringhe con i percorsi completi dei file trovati. Supporta wildcard * e ?. Senza argomenti, elenca tutto il contenuto della directory corrente.",
+    "syntax": [
+      "DIR [$pattern]",
+      "IO.DIR[$pattern]"
+    ],
+    "returnType": "ARRAY OF STRING",
+    "parameters": [
+      { "name": "pattern", "type": "STRING", "description": "Pattern glob opzionale: *.bas, data??.csv, ecc. Se omesso, elenca tutto." }
+    ],
+    "examples": [
+      { "description": "Elenca tutti i file .bas ricorsivamente in sottocartelle.", "code": "IO.CHDIR(\"src/\")\nDIM Sources$() = DIR(\"*.bas\")\nPRINT \"Trovati \"; UBOUND(Sources$) + 1; \" file .bas:\"\nFOR I = 0 TO UBOUND(Sources$())\n  PRINT \"  \"; Sources$(I)\nNEXT I", "expectedOutput": "Trovati 3 file .bas:\n  src/main.bas\n  src/utils.bas\n  src/network.bas" },
+      { "description": "Elenca tutte le sottodirectory.", "code": "DIM Cartelle$() = DIR(\"*\")\nFOR I = 0 TO UBOUND(Cartelle$())\n  IF DIREXISTS(Cartelle$(I)) THEN PRINT \"[DIR]  \"; Cartelle$(I)\nNEXT I", "expectedOutput": "[DIR]  src\n[DIR]  data\n[DIR]  output" }
+    ],
+    "seeAlso": ["CWD", "CHDIR", "FILEEXISTS", "DIREXISTS", "FOLDERSIZE"],
+    "isCommand": false
+  },
+  {
+    "name": "FILEEXISTS",
+    "namespace": "IO",
+    "category": "File State",
+    "description": "Verifica se un file esiste nel filesystem. Restituisce TRUE (BIT=1) se il percorso punta a un file esistente, FALSE (0) altrimenti. Non segue i symlink rotti. Utile per controlli di sicurezza prima di aprire o eliminare file.",
+    "syntax": ["FILEEXISTS(path)", "IO.FILEEXISTS(path)"],
+    "returnType": "BIT",
+    "parameters": [
+      { "name": "path", "type": "STRING", "description": "Percorso del file da verificare." }
+    ],
+    "examples": [
+      { "description": "Controlla l'esistenza di un file di configurazione e lo crea se assente.", "code": "Cfg$ = \"config.json\"\nIF NOT IO.FILEEXISTS(Cfg$) THEN\n  PRINT \"Configurazione non trovata. Creazione default...\"\n  OPEN #1, Cfg$ FOR OUTPUT\n  WRITE #1, \"{}\"\n  CLOSE #1\nELSE\n  PRINT \"Configurazione caricata da \"; Cfg$\nEND IF", "expectedOutput": "Configurazione caricata da config.json" }
+    ],
+    "seeAlso": ["DIREXISTS", "DIR", "CWD", "KILL"],
+    "isCommand": false
+  },
+  {
+    "name": "DIREXISTS",
+    "namespace": "IO",
+    "category": "File State",
+    "description": "Verifica se una directory esiste nel filesystem. Restituisce TRUE se il percorso e' una directory esistente. Utile per validare percorsi prima di operazioni di creazione o navigazione.",
+    "syntax": ["DIREXISTS(path)", "IO.DIREXISTS(path)"],
+    "returnType": "BIT",
+    "parameters": [
+      { "name": "path", "type": "STRING", "description": "Percorso da verificare." }
+    ],
+    "examples": [
+      { "description": "Assicura che la directory di output esista.", "code": "OutDir$ = \"reports/2024\"\nIF NOT DIREXISTS(OutDir$) THEN\n  IO.MKDIR OutDir$\n  PRINT \"Directory \"; OutDir$; \" creata.\"\nEND IF", "expectedOutput": "Directory reports/2024 creata." }
+    ],
+    "seeAlso": ["FILEEXISTS", "DIR", "MKDIR", "RMDIR"],
+    "isCommand": false
+  },
+  {
+    "name": "WATCH",
+    "namespace": "IO",
+    "category": "File Events",
+    "description": "Monitora un file o una directory per cambiamenti (creazione, modifica, eliminazione, rinomina). Quando viene rilevato un evento, chiama la subroutine specificata. Utile per hot-reload, sincronizzazione automatica o monitoraggio di cartelle condivise.",
+    "syntax": [
+      "WATCH \"path\", \"mask\", \"SubName\"",
+      "IO.WATCH \"path\", \"mask\", \"SubName\""
+    ],
+    "returnType": "",
+    "parameters": [
+      { "name": "path", "type": "STRING", "description": "Percorso del file o directory da monitorare." },
+      { "name": "mask", "type": "STRING", "description": "Filtro per tipo di evento (es. 'FILE_CREATED,FILE_CHANGED')." },
+      { "name": "SubName", "type": "STRING", "description": "Nome della subroutine da chiamare quando si verifica l'evento." }
+    ],
+    "examples": [
+      { "description": "Monitora una cartella per nuovi file e li processa automaticamente.", "code": "SUB OnNewFile(Evento, Percorso$)\n  PRINT \"Evento: \"; Evento; \" - File: \"; Percorso$\n  IF Evento = IO.FILE_CREATED THEN\n    PRINT \"Nuovo file da processare: \"; Percorso$\n  END IF\nEND SUB\n\nIO.WATCH \"incoming\", \"*\", \"OnNewFile\"\nPRINT \"Monitoraggio attivo. Premere un tasto per fermare.\"", "expectedOutput": "Monitoraggio attivo. Premere un tasto per fermare.\nEvento: 1 - File: incoming/ordine123.csv\nNuovo file da processare: incoming/ordine123.csv" }
+    ],
+    "seeAlso": ["UNWATCH", "DIR", "FILEEXISTS"],
+    "isCommand": true
+  },
+  {
+    "name": "UNWATCH",
+    "namespace": "IO",
+    "category": "File Events",
+    "description": "Ferma il monitoraggio di file/directory precedentemente avviato con WATCH. L'handle passato identifica il watcher specifico da fermare.",
+    "syntax": ["IO.UNWATCH handle"],
+    "returnType": "",
+    "parameters": [
+      { "name": "handle", "type": "INTEGER/LONG", "description": "Handle del watcher da fermare." }
+    ],
+    "examples": [
+      { "description": "Avvia e ferma un watcher dopo 10 secondi.", "code": "h = IO.WATCH(\"uploads\", \"*\", \"ProcessFile\")\nPRINT \"Monitoraggio avviato...\"\nSLEEP 10\nIO.UNWATCH h\nPRINT \"Monitoraggio fermato.\"", "expectedOutput": "Monitoraggio avviato...\nMonitoraggio fermato." }
+    ],
+    "seeAlso": ["WATCH"],
+    "isCommand": false
+  },
+  {
+    "name": "FOPEN",
+    "namespace": "IO",
+    "category": "File Streams",
+    "description": "Apre un file e restituisce un handle di basso livello (LONG) per operazioni di I/O stream-oriented. A differenza di OPEN #, usa handle nativi del sistema operativo e permette un controllo piu' fine sulle operazioni di lettura/scrittura con FREAD/FWRITE.",
+    "syntax": ["IO.FOPEN(\"fileName\")"],
+    "returnType": "LONG",
+    "parameters": [
+      { "name": "fileName", "type": "STRING", "description": "Percorso del file da aprire." }
+    ],
+    "examples": [
+      { "description": "Lettura stream con FOPEN/FREAD.", "code": "h = IO.FOPEN(\"data.bin\")\nIF h >= 0 THEN\n  DIM Buf(1023) AS BYTE\n  Letto = IO.FREAD(h, Buf())\n  PRINT \"Letti \"; Letto; \" byte.\"\n  IO.FCLOSE(h)\nEND IF", "expectedOutput": "Letti 1024 byte." }
+    ],
+    "seeAlso": ["FCREATE", "FCLOSE", "FREAD", "FWRITE", "FSEEK", "OPEN"],
+    "isCommand": false
+  },
+  {
+    "name": "FCREATE",
+    "namespace": "IO",
+    "category": "File Streams",
+    "description": "Crea un nuovo file (o sovrascrive se esiste) e restituisce un handle di basso livello per scrittura stream. Usare FWRITE per scrivere dati e FCLOSE per chiudere.",
+    "syntax": ["IO.FCREATE(\"fileName\")"],
+    "returnType": "LONG",
+    "parameters": [
+      { "name": "fileName", "type": "STRING", "description": "Percorso del file da creare." }
+    ],
+    "examples": [
+      { "description": "Crea e scrive un file binario con dati strutturati.", "code": "h = IO.FCREATE(\"output.bin\")\nIF h >= 0 THEN\n  DIM Data() AS BYTE = { 0x48, 0x65, 0x6C, 0x6C, 0x6F }\n  Scritto = IO.FWRITE(h, Data())\n  PRINT \"Scritti \"; Scritto; \" byte.\"\n  IO.FCLOSE(h)\nEND IF", "expectedOutput": "Scritti 5 byte." }
+    ],
+    "seeAlso": ["FOPEN", "FCLOSE", "FWRITE", "FREAD", "OPEN"],
+    "isCommand": false
+  },
+  {
+    "name": "FREAD",
+    "namespace": "IO",
+    "category": "File Streams",
+    "description": "Legge dati da un handle file aperto con FOPEN in un buffer array di byte. Restituisce il numero effettivo di byte letti.",
+    "syntax": ["IO.FREAD(handle, buffer_array)"],
+    "returnType": "LONG",
+    "parameters": [
+      { "name": "handle", "type": "LONG", "description": "Handle file restituito da FOPEN." },
+      { "name": "buffer_array", "type": "ARRAY OF BYTE", "description": "Array di byte in cui leggere i dati." }
+    ],
+    "examples": [
+      { "description": "Legge un intero file in un buffer.", "code": "h = IO.FOPEN(\"documento.pdf\")\nIF h >= 0 THEN\n  DIM Buf(LOF(h) - 1) AS BYTE\n  IO.FREAD h, Buf()\n  PRINT \"File caricato: \"; UBOUND(Buf) + 1; \" byte\"\n  IO.FCLOSE h\nEND IF", "expectedOutput": "File caricato: 245760 byte" }
+    ],
+    "seeAlso": ["FWRITE", "FOPEN", "FCLOSE", "FSEEK"],
+    "isCommand": false
+  },
+  {
+    "name": "FWRITE",
+    "namespace": "IO",
+    "category": "File Streams",
+    "description": "Scrive un array di byte su un handle file aperto con FOPEN o FCREATE. Restituisce il numero effettivo di byte scritti. Usare FSEEK per posizionarsi prima di scrivere.",
+    "syntax": ["IO.FWRITE(handle, data)"],
+    "returnType": "LONG",
+    "parameters": [
+      { "name": "handle", "type": "LONG", "description": "Handle file." },
+      { "name": "data", "type": "ARRAY OF BYTE", "description": "Array di byte da scrivere." }
+    ],
+    "examples": [
+      { "description": "Appende dati binari a un file esistente.", "code": "h = IO.FOPEN(\"log.bin\")\nIF h >= 0 THEN\n  IO.FSEEK h, IO.LOF(h) ' Vai alla fine\n  DIM Entry() AS BYTE = STRINGTOBYTE(\"Nuova voce di log\" + CHR(10))\n  Scritto = IO.FWRITE(h, Entry())\n  PRINT \"Appesi \"; Scritto; \" byte al log.\"\n  IO.FCLOSE h\nEND IF", "expectedOutput": "Appesi 18 byte al log." }
+    ],
+    "seeAlso": ["FREAD", "FOPEN", "FCREATE", "FSEEK", "FCLOSE"],
+    "isCommand": false
+  },
+  {
+    "name": "FCLOSE",
+    "namespace": "IO",
+    "category": "File Streams",
+    "description": "Chiude un handle file aperto con FOPEN o FCREATE. E' essenziale chiamare FCLOSE per rilasciare le risorse del sistema operativo.",
+    "syntax": ["IO.FCLOSE(handle)"],
+    "returnType": "LONG",
+    "parameters": [
+      { "name": "handle", "type": "LONG", "description": "Handle file da chiudere." }
+    ],
+    "examples": [
+      { "description": "Apertura, scrittura e chiusura sicura con controllo errori.", "code": "h = IO.FCREATE(\"test.txt\")\nIF h < 0 THEN\n  PRINT \"Errore creazione file.\"\n  STOP\nEND IF\nIO.FWRITE h, STRINGTOBYTE(\"Hello World\")\nIO.FCLOSE h\nPRINT \"File scritto correttamente.\"", "expectedOutput": "File scritto correttamente." }
+    ],
+    "seeAlso": ["FOPEN", "FCREATE", "FREAD", "FWRITE"],
+    "isCommand": false
+  },
+  {
+    "name": "FSEEK",
+    "namespace": "IO",
+    "category": "File Streams",
+    "description": "Posiziona il puntatore di un handle file a una posizione specifica (in byte dall'inizio). Utile per accesso casuale a file binari. Restituisce la nuova posizione.",
+    "syntax": ["IO.FSEEK(handle, position)"],
+    "returnType": "LONG",
+    "parameters": [
+      { "name": "handle", "type": "LONG", "description": "Handle file." },
+      { "name": "position", "type": "LONG", "description": "Nuova posizione in byte dall'inizio del file." }
+    ],
+    "examples": [
+      { "description": "Legge un record a posizione fissa in un file binario.", "code": "RecordSize = 128\nRecNum = 5\nh = IO.FOPEN(\"database.bin\")\nIF h >= 0 THEN\n  IO.FSEEK h, RecNum * RecordSize\n  DIM Rec(RecordSize - 1) AS BYTE\n  IO.FREAD h, Rec()\n  PRINT \"Record \"; RecNum; \" letto.\"\n  IO.FCLOSE h\nEND IF", "expectedOutput": "Record 5 letto." }
+    ],
+    "seeAlso": ["FOPEN", "FREAD", "FWRITE", "SEEK"],
+    "isCommand": false
+  },
+  {
+    "name": "GETFOLDERPATH",
+    "namespace": "IO",
+    "category": "File State",
+    "description": "Restituisce il percorso di una cartella speciale del sistema operativo. I percorsi supportati includono: DESKTOP, DOCUMENTS, DOWNLOADS, MUSIC, PICTURES, VIDEOS, APPDATA, TEMP, PROGRAMFILES.",
+    "syntax": ["IO.GETFOLDERPATH(\"folder_name\")"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "folder_name", "type": "STRING", "description": "Nome della cartella speciale: DESKTOP, DOCUMENTS, DOWNLOADS, APPDATA, TEMP, ecc." }
+    ],
+    "examples": [
+      { "description": "Crea un file di configurazione nella cartella AppData.", "code": "CfgPath$ = IO.GETFOLDERPATH(\"APPDATA\") + \"/miaapp/config.json\"\nIF NOT IO.FILEEXISTS(CfgPath$) THEN\n  IO.MKDIR IO.GETFOLDERPATH(\"APPDATA\") + \"/miaapp\"\n  OPEN #1, CfgPath$ FOR OUTPUT\n  WRITE #1, \"{}\"\n  CLOSE #1\nEND IF\nPRINT \"Config: \"; CfgPath$", "expectedOutput": "Config: C:\\Users\\mario\\AppData\\Roaming\\miaapp\\config.json" }
+    ],
+    "seeAlso": ["CWD", "CHDIR", "DIR", "FILEEXISTS"],
+    "isCommand": false
+  },
+  {
+    "name": "NORMALIZEPATH",
+    "namespace": "IO",
+    "category": "File State",
+    "description": "Normalizza un percorso filesystem risolvendo . e .. e restituendo un percorso canonico assoluto. Utile per confrontare percorsi o per generare path puliti.",
+    "syntax": ["IO.NORMALIZEPATH(\"path\")"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "path", "type": "STRING", "description": "Percorso da normalizzare." }
+    ],
+    "examples": [
+      { "description": "Confronta due percorsi equivalenti.", "code": "P1$ = \"./data/../config/settings.ini\"\nP2$ = \"./config/settings.ini\"\nIF IO.NORMALIZEPATH(P1$) = IO.NORMALIZEPATH(P2$) THEN\n  PRINT \"I percorsi puntano allo stesso file.\"\nEND IF", "expectedOutput": "I percorsi puntano allo stesso file." }
+    ],
+    "seeAlso": ["CWD", "FILEEXISTS"],
+    "isCommand": false
+  },
+  {
+    "name": "FOLDERSIZE",
+    "namespace": "IO",
+    "category": "File State",
+    "description": "Calcola la dimensione totale in byte di una directory e di tutto il suo contenuto ricorsivo. Restituisce un QUAD (intero a 64 bit) per supportare directory molto grandi.",
+    "syntax": ["IO.FOLDERSIZE(\"path\")"],
+    "returnType": "QUAD",
+    "parameters": [
+      { "name": "path", "type": "STRING", "description": "Percorso della directory." }
+    ],
+    "examples": [
+      { "description": "Stima lo spazio occupato da un progetto.", "code": "DimBytes = IO.FOLDERSIZE(\"src\")\nIF DimBytes > 1048576 THEN\n  PRINT \"Il progetto occupa \"; FORMAT(DimBytes / 1048576, \"#.0\"); \" MB\"\nELSE\n  PRINT \"Il progetto occupa \"; FORMAT(DimBytes / 1024, \"#.0\"); \" KB\"\nEND IF", "expectedOutput": "Il progetto occupa 2.4 MB" }
+    ],
+    "seeAlso": ["DIR", "DIREXISTS", "LOF"],
+    "isCommand": false
+  },
+  {
+    "name": "FERROR",
+    "namespace": "IO",
+    "category": "File State",
+    "description": "Restituisce il codice dell'ultimo errore di I/O file verificatosi. Il codice 0 indica nessun errore. Diverso da zero indica un errore specifico della piattaforma. Utile per diagnostica dopo operazioni su file fallite.",
+    "syntax": ["IO.FERROR", "IO.FERROR()"],
+    "returnType": "LONG",
+    "parameters": [],
+    "examples": [
+      { "description": "Diagnostica un errore di apertura file.", "code": "h = IO.FOPEN(\"file_inesistente.txt\")\nIF h < 0 THEN\n  ErrCode = IO.FERROR()\n  PRINT \"Errore apertura file. Codice: \"; ErrCode\nEND IF", "expectedOutput": "Errore apertura file. Codice: 2" }
+    ],
+    "seeAlso": ["FOPEN", "FILEEXISTS", "ERR"],
+    "isCommand": false
+  },
+  {
+    "name": "FINPUT",
+    "namespace": "IO",
+    "category": "File I/O",
+    "description": "Legge un numero specificato di caratteri da un file aperto per INPUT. A differenza di LINE INPUT che legge fino al newline, FINPUT legge esattamente N caratteri indipendentemente dal contenuto. Utile per parsing di formati a larghezza fissa.",
+    "syntax": ["FINPUT(n, handle)", "IO.FINPUT(n, handle)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "n", "type": "INTEGER", "description": "Numero di caratteri da leggere." },
+      { "name": "handle", "type": "INTEGER/LONG", "description": "Handle del file aperto per INPUT." }
+    ],
+    "examples": [
+      { "description": "Legge un file a record di larghezza fissa.", "code": "OPEN #1, \"anagrafica.fix\" FOR INPUT\nWHILE NOT EOF(1)\n  Codice$ = IO.FINPUT(6, 1)    ' Prime 6 colonne: codice\n  Nome$ = IO.FINPUT(20, 1)     ' 20 colonne: nome\n  Eta$ = IO.FINPUT(3, 1)       ' 3 colonne: eta'\n  ' Salta il resto della riga con LINE INPUT per avanzare\n  LINE INPUT #1, Scarto$\n  PRINT Codice$; \" | \"; TRIM(Nome$); \" | \"; Eta$\nWEND\nCLOSE #1", "expectedOutput": "A00123 | Mario Rossi | 42 \nB00456 | Anna Bianchi | 35 " }
+    ],
+    "seeAlso": ["INPUT", "LINEINPUT", "EOF", "OPEN"],
+    "isCommand": false
+  },
+  {
+    "name": "LOCK",
+    "namespace": "IO",
+    "category": "File Operations",
+    "description": "Blocca una porzione di un file per accesso esclusivo in ambienti multi-utente. Previene che altri processi leggano o scrivano la regione bloccata. Il range di byte e' specificato da offset e lunghezza.",
+    "syntax": ["IO.LOCK(handle, mode [, offset, length])"],
+    "returnType": "BIT",
+    "parameters": [
+      { "name": "handle", "type": "INTEGER/LONG", "description": "Handle del file." },
+      { "name": "mode", "type": "INTEGER", "description": "1=READ lock, 2=WRITE lock." },
+      { "name": "offset", "type": "LONG", "description": "Offset in byte da cui iniziare il lock." },
+      { "name": "length", "type": "LONG", "description": "Numero di byte da bloccare." }
+    ],
+    "examples": [
+      { "description": "Blocca un intero file per scrittura esclusiva.", "code": "OPEN #1, \"shared.dat\" FOR RANDOM\nIF IO.LOCK(1, 2) THEN\n  PRINT \"File bloccato per scrittura.\"\n  ' ... operazioni critiche ...\n  IO.UNLOCK 1\nELSE\n  PRINT \"File gia' in uso da altro processo.\"\nEND IF\nCLOSE #1", "expectedOutput": "File bloccato per scrittura." }
+    ],
+    "seeAlso": ["UNLOCK", "OPEN", "CLOSE"],
+    "isCommand": false
+  },
+  {
+    "name": "UNLOCK",
+    "namespace": "IO",
+    "category": "File Operations",
+    "description": "Rimuove un blocco precedentemente impostato con LOCK su un file. L'handle identifica il file da sbloccare.",
+    "syntax": ["IO.UNLOCK(handle [, offset, length])"],
+    "returnType": "BIT",
+    "parameters": [
+      { "name": "handle", "type": "INTEGER/LONG", "description": "Handle del file." },
+      { "name": "offset", "type": "LONG", "description": "Offset della regione da sbloccare." },
+      { "name": "length", "type": "LONG", "description": "Lunghezza della regione da sbloccare." }
+    ],
+    "examples": [
+      { "description": "Lock e unlock di una sezione critica.", "code": "OPEN #1, \"counter.dat\" FOR BINARY\nIO.LOCK 1, 2\n' Legge, incrementa, riscrive il contatore\nIO.UNLOCK 1\nCLOSE #1", "expectedOutput": "" }
+    ],
+    "seeAlso": ["LOCK", "OPEN", "FLOCK"],
+    "isCommand": false
+  },
+  {
+    "name": "STRTOFILE",
+    "namespace": "IO",
+    "category": "File I/O",
+    "description": "Versione semplificata per salvare una stringa (o array di byte) direttamente su file, aprendo, scrivendo e chiudendo in un'unica operazione. Comodo per salvataggi rapidi senza gestire esplicitamente OPEN/CLOSE.",
+    "syntax": ["IO.STRTOFILE(content, filename$)"],
+    "returnType": "",
+    "parameters": [
+      { "name": "content", "type": "STRING/ARRAY", "description": "Contenuto da salvare." },
+      { "name": "filename", "type": "STRING", "description": "Percorso del file di destinazione." }
+    ],
+    "examples": [
+      { "description": "Salva il risultato di un'elaborazione JSON su file.", "code": "JsonRisultato$ = \"{ \"\"status\"\": \"\"OK\"\", \"\"items\"\": \" + STR(Conteggio) + \" }\"\nIO.STRTOFILE JsonRisultato$, \"risultato.json\"\nPRINT \"File JSON salvato.\"", "expectedOutput": "File JSON salvato." }
+    ],
+    "seeAlso": ["FWRITE", "OPEN", "CLOSE"],
+    "isCommand": false
+  },
+  {
+    "name": "FILETOSTR",
+    "namespace": "IO",
+    "category": "File I/O",
+    "description": "Versione semplificata per caricare l'intero contenuto di un file in una stringa, aprendo, leggendo e chiudendo in un'unica operazione. Comodo per leggere rapidamente file di testo o JSON senza gestire esplicitamente OPEN/CLOSE.",
+    "syntax": ["IO.FILETOSTR(filename$)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "filename", "type": "STRING", "description": "Percorso del file da caricare." }
+    ],
+    "examples": [
+      { "description": "Carica un file JSON e lo stampa.", "code": "Testo$ = IO.FILETOSTR(\"config.json\")\nPRINT \"Contenuto (\"; LEN(Testo$); \" byte):\"\nPRINT LEFT(Testo$, 200)", "expectedOutput": "Contenuto (512 byte):\n{ \"app\": \"GMBasicAI\", \"version\": \"2.0\" ..." }
+    ],
+    "seeAlso": ["FREAD", "STRTOFILE", "OPEN", "CLOSE"],
+    "isCommand": false
+  },
+  {
+    "name": "MEMORYMAP",
+    "namespace": "IO",
+    "category": "Memory Mapping",
+    "description": "Mappa un file in memoria per accesso diretto ad alte prestazioni. Invece di leggere/scrivere con chiamate di sistema, il file viene mappato direttamente nello spazio di indirizzamento del processo. Restituisce un handle LONG. Le modifiche alla memoria vengono automaticamente riflesse sul file. Ideale per file di grandi dimensioni (database, file binari, dataset).",
+    "syntax": [
+      "MEMORYMAP \"filename\" AS handle_var",
+      "MEMORYMAP(\"filename\")"
+    ],
+    "returnType": "LONG",
+    "parameters": [
+      { "name": "filename", "type": "STRING", "description": "Percorso del file da mappare in memoria." }
+    ],
+    "examples": [
+      { "description": "Mappa un file binario e legge/scive byte direttamente.", "code": "hMap = MEMORYMAP(\"large_dataset.bin\")\nIF hMap >= 0 THEN\n  ' Legge byte a offset specifico\n  Valore = MMAPPEEK(hMap, 1024)\n  PRINT \"Byte a offset 1024: \"; Valore\n  \n  ' Scrive un array di byte\n  DIM NuoviDati() AS BYTE = { 0xFF, 0x00, 0xAA }\n  MMAPWRITEBYTES hMap, 0, NuoviDati()\n  PRINT \"Dati scritti all'inizio del file.\"\nEND IF", "expectedOutput": "Byte a offset 1024: 72\nDati scritti all'inizio del file." }
+    ],
+    "seeAlso": ["MMAPPEEK", "MMAPPOKE", "MMAPREADBYTES", "MMAPWRITEBYTES"],
+    "isCommand": true
+  },
+  {
+    "name": "MMAPPEEK",
+    "namespace": "IO",
+    "category": "Memory Mapping",
+    "description": "Legge un singolo byte da un file mappato in memoria all'offset specificato. Restituisce il valore del byte (0-255).",
+    "syntax": ["MMAPPEEK(handle, offset)"],
+    "returnType": "BYTE",
+    "parameters": [
+      { "name": "handle", "type": "LONG", "description": "Handle restituito da MEMORYMAP." },
+      { "name": "offset", "type": "LONG", "description": "Offset in byte dall'inizio del file mappato." }
+    ],
+    "examples": [
+      { "description": "Scansiona un file mappato alla ricerca di un pattern.", "code": "hMap = MEMORYMAP(\"firmware.bin\")\nFirmaTrovata = FALSE\nFOR I = 0 TO 255\n  IF MMAPPEEK(hMap, I) = &H55 AND MMAPPEEK(hMap, I + 1) = &HAA THEN\n    PRINT \"Firma trovata all'offset: \"; I\n    FirmaTrovata = TRUE\n    EXIT FOR\n  END IF\nNEXT I", "expectedOutput": "Firma trovata all'offset: 64" }
+    ],
+    "seeAlso": ["MEMORYMAP", "MMAPPOKE", "MMAPREADBYTES", "MMAPWRITEBYTES"],
+    "isCommand": false
+  },
+  {
+    "name": "MMAPPOKE",
+    "namespace": "IO",
+    "category": "Memory Mapping",
+    "description": "Scrive un singolo byte in un file mappato in memoria all'offset specificato. La modifica e' immediatamente visibile nel file su disco (a seconda delle policy di flush del sistema operativo).",
+    "syntax": ["MMAPPOKE handle, offset, value"],
+    "returnType": "",
+    "parameters": [
+      { "name": "handle", "type": "LONG", "description": "Handle restituito da MEMORYMAP." },
+      { "name": "offset", "type": "LONG", "description": "Offset in byte dove scrivere." },
+      { "name": "value", "type": "BYTE/INTEGER", "description": "Valore del byte da scrivere (0-255)." }
+    ],
+    "examples": [
+      { "description": "Patcha un byte in un file binario.", "code": "hMap = MEMORYMAP(\"program.exe\")\n' Sostituisce 0x90 (NOP) con 0xCC (INT3) per debugging\nMMAPPOKE hMap, 0x1000, &HCC\nPRINT \"Byte patchato.\"", "expectedOutput": "Byte patchato." }
+    ],
+    "seeAlso": ["MEMORYMAP", "MMAPPEEK", "MMAPWRITEBYTES"],
+    "isCommand": true
+  },
+  {
+    "name": "MMAPREADBYTES",
+    "namespace": "IO",
+    "category": "Memory Mapping",
+    "description": "Legge un numero specificato di byte consecutivi da un file mappato in memoria, a partire dall'offset dato. Restituisce un ARRAY OF BYTE con i dati letti.",
+    "syntax": ["MMAPREADBYTES(handle, offset, count)"],
+    "returnType": "ARRAY OF BYTE",
+    "parameters": [
+      { "name": "handle", "type": "LONG", "description": "Handle restituito da MEMORYMAP." },
+      { "name": "offset", "type": "LONG", "description": "Offset in byte da cui iniziare la lettura." },
+      { "name": "count", "type": "LONG", "description": "Numero di byte da leggere." }
+    ],
+    "examples": [
+      { "description": "Estrae un header da un file binario.", "code": "hMap = MEMORYMAP(\"immagine.raw\")\nDIM Header() AS BYTE = MMAPREADBYTES(hMap, 0, 16)\nPRINT \"Magic number: \"; CRYPTOGRAPHY.TOHEX(Header())", "expectedOutput": "Magic number: 89 50 4E 47 0D 0A 1A 0A 00 00 00 0D 49 48 44 52" }
+    ],
+    "seeAlso": ["MEMORYMAP", "MMAPPEEK", "MMAPWRITEBYTES"],
+    "isCommand": false
+  },
+  {
+    "name": "MMAPWRITEBYTES",
+    "namespace": "IO",
+    "category": "Memory Mapping",
+    "description": "Scrive un array di byte in un file mappato in memoria a partire dall'offset specificato. I dati vengono scritti direttamente nella memoria mappata e saranno sincronizzati sul disco.",
+    "syntax": ["MMAPWRITEBYTES handle, offset, byte_array"],
+    "returnType": "",
+    "parameters": [
+      { "name": "handle", "type": "LONG", "description": "Handle restituito da MEMORYMAP." },
+      { "name": "offset", "type": "LONG", "description": "Offset in byte da cui iniziare la scrittura." },
+      { "name": "byte_array", "type": "ARRAY OF BYTE", "description": "Array di byte da scrivere." }
+    ],
+    "examples": [
+      { "description": "Sovrascrive un header in un file mappato.", "code": "hMap = MEMORYMAP(\"documento.dat\")\nDIM NuovoHeader() AS BYTE = { &HDE, &HAD, &HBE, &HEF }\nMMAPWRITEBYTES hMap, 0, NuovoHeader()\nPRINT \"Header aggiornato.\"", "expectedOutput": "Header aggiornato." }
+    ],
+    "seeAlso": ["MEMORYMAP", "MMAPPOKE", "MMAPREADBYTES"],
+    "isCommand": true
+  }
+]

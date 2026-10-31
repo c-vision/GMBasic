@@ -1,0 +1,18 @@
+' MiniTest: TUTTE le funzioni di polling di stato (nessun evento headless -> 0).
+' EXPECT: 0|0|0|0|0|0|0|0|0
+IMPORT CONTROLS
+SCREEN 0
+DIM v = 0
+DIM h = -1
+SUB Main()
+    CHECKBOX 10, 10, "A" INTO v ID h
+    PRINT CLICKED(h)
+    PRINT DOUBLECLICKED(h)
+    PRINT CHANGED(h)
+    PRINT GOTFOCUSED(h)
+    PRINT LOSTFOCUSED(h)
+    PRINT MOUSECLICKED()
+    PRINT MOUSEDBLCLICKED()
+    PRINT MOUSEPRESSED()
+    PRINT KEYPRESSED()
+END SUB

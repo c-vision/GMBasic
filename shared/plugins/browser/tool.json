@@ -1,0 +1,274 @@
+[
+  {
+    "name": "browser_navigate",
+    "description": "Apre una pagina web nel browser Chromium.",
+    "procedure": "BrowserNavigate",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        }
+      }
+    }
+  },
+  {
+    "name": "browser_text",
+    "description": "Estrae il testo visibile della pagina corrente.",
+    "procedure": "BrowserText",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "port": {
+          "type": "integer"
+        }
+      }
+    }
+  },
+  {
+    "name": "browser_title",
+    "description": "Ritorna il titolo della pagina corrente.",
+    "procedure": "BrowserTitle",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "port": {
+          "type": "integer"
+        }
+      }
+    }
+  },
+  {
+    "name": "browser_evaluate",
+    "description": "Esegue JavaScript nella pagina (click, fill, scroll).",
+    "procedure": "BrowserEvaluate",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "js": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        }
+      }
+    }
+  },
+  {
+    "name": "browser_screenshot",
+    "description": "Cattura uno screenshot della pagina in un file PNG.",
+    "procedure": "BrowserScreenshot",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "out": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        }
+      }
+    }
+  },
+{
+    "name": "browser_set_headers",
+    "description": "Imposta header HTTP extra per TUTTE le richieste (Network.setExtraHTTPHeaders). headersJson = oggetto JSON {nome:valore}.",
+    "procedure": "BrowserSetHeaders",
+    "inputSchema": { "type": "object", "properties": { "headersJson": { "type": "string" }, "port": { "type": "integer" } } }
+  },
+  {
+    "name": "browser_set_fetch_headers",
+    "description": "Imposta header custom in modo affidabile via intercettazione richieste (Fetch.enable + continueRequest — Network.setExtraHTTPHeaders non li applica su Chrome 149 headless). headersList = ARRAY [{name,value}]. Anche per basic auth (Authorization: Basic ...).",
+    "procedure": "BrowserSetFetchHeaders",
+    "inputSchema": { "type": "object", "properties": { "headersList": { "type": "string" }, "port": { "type": "integer" } } }
+  },
+  {
+    "name": "browser_set_cookie",
+    "description": "Imposta un cookie (Network.setCookie).",
+    "procedure": "BrowserSetCookie",
+    "inputSchema": { "type": "object", "properties": { "name": { "type": "string" }, "value": { "type": "string" }, "url": { "type": "string" }, "port": { "type": "integer" } } }
+  },
+  {
+    "name": "browser_set_user_agent",
+    "description": "Override dello User-Agent (Network.setUserAgentOverride).",
+    "procedure": "BrowserSetUserAgent",
+    "inputSchema": { "type": "object", "properties": { "ua": { "type": "string" }, "port": { "type": "integer" } } }
+  },
+  {
+    "name": "browser_auth",
+    "description": "Basic Auth: imposta l'header Authorization Basic base64(user:pass) via intercettazione richieste.",
+    "procedure": "BrowserAuth",
+    "inputSchema": { "type": "object", "properties": { "user": { "type": "string" }, "pass": { "type": "string" }, "port": { "type": "integer" } } }
+  },
+  {
+    "name": "browser_get_cookies",
+    "description": "Legge tutti i cookie (Network.getAllCookies) — JSON raw.",
+    "procedure": "BrowserGetCookies",
+    "inputSchema": { "type": "object", "properties": { "port": { "type": "integer" } } }
+  },
+  {
+    "name": "browser_connect",
+    "description": "Seleziona una pagina/tab dal /json: vuoto=prima, '0','1',..=per indice, oppure un frammento di URL o titolo. Ritorna il path WebSocket della pagina scelta.",
+    "procedure": "BrowserConnect",
+    "inputSchema": { "type": "object", "properties": { "port": { "type": "integer" }, "pageIndexOrUrl": { "type": "string" } } }
+  },
+  {
+    "name": "browser_set_timeout",
+    "description": "Configura il timeout dei comandi CDP (millisecondi, default 10000).",
+    "procedure": "BrowserSetTimeout",
+    "inputSchema": { "type": "object", "properties": { "port": { "type": "integer" }, "commandTimeoutMs": { "type": "integer" } } }
+  },
+  {
+    "name": "browser_wait_for",
+    "description": "Attende finché un selettore esiste o un testo appare nella pagina (polling Runtime.evaluate). Ritorna 'found' o '' al timeout.",
+    "procedure": "BrowserWaitFor",
+    "inputSchema": { "type": "object", "properties": { "port": { "type": "integer" }, "selectorOrText": { "type": "string" }, "timeoutMs": { "type": "integer" } } }
+  },
+  {
+    "name": "browser_click",
+    "description": "Click su un elemento tramite selettore CSS.",
+    "procedure": "BrowserClick",
+    "inputSchema": { "type": "object", "properties": { "port": { "type": "integer" }, "selector": { "type": "string" } } }
+  },
+  {
+    "name": "browser_fill",
+    "description": "Compila un campo input tramite selettore CSS (con evento input).",
+    "procedure": "BrowserFill",
+    "inputSchema": { "type": "object", "properties": { "port": { "type": "integer" }, "selector": { "type": "string" }, "value": { "type": "string" } } }
+  },
+  {
+    "name": "browser_scroll",
+    "description": "Scorre la pagina (window.scrollBy). Ritorna la nuova scrollY come JSON CDP.",
+    "procedure": "BrowserScroll",
+    "inputSchema": { "type": "object", "properties": { "port": { "type": "integer" }, "dx": { "type": "integer" }, "dy": { "type": "integer" } } }
+  },
+  {
+    "name": "browser_cdp_error",
+    "description": "Estrae l'errore da un risultato CDP: error del protocollo o exceptionDetails di Runtime.evaluate. Ritorna la descrizione o stringa vuota.",
+    "procedure": "BrowserCdpError",
+    "inputSchema": { "type": "object", "properties": { "raw": { "type": "string" } } }
+  },
+  {
+    "name": "browser_download",
+    "description": "Scarica un file (Browser.setDownloadBehavior verso destDir + naviga alla URL). destDir deve esistere.",
+    "procedure": "BrowserDownload",
+    "inputSchema": { "type": "object", "properties": { "port": { "type": "integer" }, "url": { "type": "string" }, "destDir": { "type": "string" } } }
+  },
+  {
+    "name": "browser_analyze",
+    "description": "Loop computer-use (D1): cattura uno screenshot in outPath e chiede al modello VISION di decidere il prossimo step (prompt 'NEXT STEP'). Ritorna la decisione (es. 'click #btn').",
+    "procedure": "BrowserAnalyze",
+    "inputSchema": { "type": "object", "properties": { "port": { "type": "integer" }, "prompt": { "type": "string" }, "outPath": { "type": "string" } } }
+  },
+  {
+    "name": "browser_download_pdf",
+    "description": "Scarica un PDF (da un endpoint base64) + ne estrae il testo via CONVERT.ToText (gmb_doc_pdf.c) per ingestion RAG. url = endpoint base64 del PDF. Ritorna il testo estratto.",
+    "procedure": "BrowserDownloadPdf",
+    "inputSchema": { "type": "object", "properties": { "port": { "type": "integer" }, "url": { "type": "string" }, "destDir": { "type": "string" }, "fileName": { "type": "string" } } }
+  },
+  {
+    "name": "browser_set_cookie_persistent",
+    "description": "Imposta un cookie PERSISTENTE (expiry 2036) nel profilo stabile — sopravvive alla chiusura del browser e alle run successive (sessione/login riusata).",
+    "procedure": "BrowserSetCookiePersistent",
+    "inputSchema": { "type": "object", "properties": { "name": { "type": "string" }, "value": { "type": "string" }, "url": { "type": "string" }, "port": { "type": "integer" } } }
+  },
+  {
+    "name": "browser_to_rag",
+    "description": "Web→RAG diretta: naviga la pagina live, spezza il testo visibile in chunk col pattern (SPLIT) e indicizza OGNI chunk nel vector DB (AiVectorRuntime, id docId-N). Richiede db+collection pronti. Ritorna 'ok <n> chunk'.",
+    "procedure": "BrowserToRag",
+    "inputSchema": { "type": "object", "properties": { "url": { "type": "string" }, "db": { "type": "string" }, "coll": { "type": "string" }, "docId": { "type": "string" }, "pattern": { "type": "string" }, "port": { "type": "integer" } } }
+  },
+  {
+    "name": "browser_ping",
+    "description": "Warm start (E11): verifica se il CDP è già attivo (processo riusato). Ritorna 'ok' o ''.",
+    "procedure": "BrowserPing",
+    "inputSchema": { "type": "object", "properties": { "port": { "type": "integer" } } }
+  },
+  {
+    "name": "browser_assert",
+    "description": "Visual QA (E8): screenshot + AI.ANALYZEIMAGE per ASSERIRE uno stato visivo (es. 'il pulsante è visibile?'). Ritorna 'true'/'false' (verdetto).",
+    "procedure": "BrowserAssert",
+    "inputSchema": { "type": "object", "properties": { "port": { "type": "integer" }, "assertion": { "type": "string" }, "outPath": { "type": "string" } } }
+  },
+  {
+    "name": "browser_human_click",
+    "description": "Human-like click: mouse a curve (passi interpolati su Input.dispatchMouseEvent) verso il centro del selettore + click, con delay 200-800ms (mai teletrasporto).",
+    "procedure": "HumanClick",
+    "inputSchema": { "type": "object", "properties": { "port": { "type": "integer" }, "selector": { "type": "string" } } }
+  },
+  {
+    "name": "browser_human_type",
+    "description": "Human-like typing: focus il campo e digita carattere per carattere (Input.insertText) con pause variabili.",
+    "procedure": "HumanType",
+    "inputSchema": { "type": "object", "properties": { "port": { "type": "integer" }, "selector": { "type": "string" }, "text": { "type": "string" } } }
+  },
+  {
+    "name": "browser_human_scroll",
+    "description": "Human-like scroll: incrementale in N passi con pause variabili (mai un salto unico).",
+    "procedure": "HumanScroll",
+    "inputSchema": { "type": "object", "properties": { "port": { "type": "integer" }, "dy": { "type": "integer" }, "steps": { "type": "integer" } } }
+  },
+  {
+    "name": "browser_profile",
+    "description": "Profilo coerente + anti-fingerprint (E10): UA con sec-ch-ua allineati, viewport/device, lingua; navigator.webdriver rimosso (marker headless). Fingerprint stabile nella sessione.",
+    "procedure": "BrowserProfile",
+    "inputSchema": { "type": "object", "properties": { "port": { "type": "integer" }, "ua": { "type": "string" }, "width": { "type": "integer" }, "height": { "type": "integer" } } }
+  },
+  {
+    "name": "browser_block_urls",
+    "description": "Intercettazione richieste (E13): Network.setBlockedURLs — blocca le richieste che matchano i pattern (ads/analytics). patternsJson = array JSON es. '[\"*://*/ad.js\"]'.",
+    "procedure": "BrowserBlockUrls",
+    "inputSchema": { "type": "object", "properties": { "port": { "type": "integer" }, "patternsJson": { "type": "string" } } }
+  },
+  {
+    "name": "browser_robots_allowed",
+    "description": "Etica/cortesia (E16): recupera il robots.txt del sito e verifica se la URL e' consentita (Disallow). Ritorna 'allowed' o 'blocked: <path>'.",
+    "procedure": "BrowserRobotsAllowed",
+    "inputSchema": { "type": "object", "properties": { "url": { "type": "string" } } }
+  },
+  {
+    "name": "browser_rate_limit",
+    "description": "Etica/cortesia (E16): pausa minima tra le richieste (ms).",
+    "procedure": "BrowserRateLimit",
+    "inputSchema": { "type": "object", "properties": { "minMs": { "type": "integer" } } }
+  },
+  {
+    "name": "browser_check_captcha",
+    "description": "Etica/cortesia (E16): cerca i marker CAPTCHA nella pagina ('captcha'/'recaptcha'/'verify you are human'). Ritorna 'captcha' o '' (l'agente si ferma e chiede).",
+    "procedure": "BrowserCheckCaptcha",
+    "inputSchema": { "type": "object", "properties": { "port": { "type": "integer" } } }
+  },
+  {
+    "name": "browser_replay",
+    "description": "Deterministic replay (E17): riproduce le azioni registrate (una per riga 'action|detail': nav|url, click|sel, type|sel|text). Base per i test E2E degli agenti.",
+    "procedure": "BrowserReplay",
+    "inputSchema": { "type": "object", "properties": { "port": { "type": "integer" }, "log": { "type": "string" } } }
+  },
+  {
+    "name": "browser_task_save",
+    "description": "Memoria del piano (E14): salva URL corrente + session log (pagine visitate, prossimi passi) su file. BrowserTaskResume riprende da dove si era fermato.",
+    "procedure": "BrowserTaskSave",
+    "inputSchema": { "type": "object", "properties": { "port": { "type": "integer" }, "filePath": { "type": "string" } } }
+  },
+  {
+    "name": "browser_task_resume",
+    "description": "Memoria del piano (E14): legge lo stato salvato e rinaviga alla pagina + restituisce il session log.",
+    "procedure": "BrowserTaskResume",
+    "inputSchema": { "type": "object", "properties": { "port": { "type": "integer" }, "filePath": { "type": "string" } } }
+  },
+  {
+    "name": "browser_audit_step",
+    "description": "Osservabilità (E12): registra un passo NEL session log CON lo screenshot come prova visiva (salvato in shotDir/step-N.png). Ritorna il path dello screenshot.",
+    "procedure": "BrowserAuditStep",
+    "inputSchema": { "type": "object", "properties": { "port": { "type": "integer" }, "action": { "type": "string" }, "detail": { "type": "string" }, "shotDir": { "type": "string" } } }
+  },
+  {
+    "name": "browser_audit_export",
+    "description": "Osservabilità (E12): esporta il session log (passi in ordine con le prove visive) in outDir/audit.log.",
+    "procedure": "BrowserAuditExport",
+    "inputSchema": { "type": "object", "properties": { "port": { "type": "integer" }, "outDir": { "type": "string" } } }
+  }
+]

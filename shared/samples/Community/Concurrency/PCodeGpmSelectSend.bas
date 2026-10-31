@@ -1,0 +1,22 @@
+' GO SELECT con CASE SEND (parita' Go select { case ch <- v: }).
+IMPORT CONCURRENCY
+
+SUB Receiver(ch AS CHANNEL OF INTEGER)
+  DIM v AS INTEGER
+  RECEIVE v FROM ch
+  IF v = 42 THEN PRINT "RECEIVER-GOT-42"
+END SUB
+
+SUB Main()
+  DIM ch AS CHANNEL OF INTEGER
+  DIM scelto AS INTEGER = 0
+  GO SUB Receiver(ch)
+  GO SELECT
+    CASE SEND 42 TO ch:
+      PRINT "SELECT-SEND-OK"
+      scelto = scelto + 1
+    CASE TIMEOUT 1000:
+      PRINT "FAIL:TIMEOUT"
+    END SELECT
+  IF scelto = 1 THEN PRINT "SELECT-SEND-DONE" ELSE PRINT "FAIL:scelto="; scelto END IF
+END SUB

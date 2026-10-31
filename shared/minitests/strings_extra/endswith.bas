@@ -1,0 +1,5 @@
+IMPORT STRINGS
+SUB Main()
+  PRINT ENDSWITH("GMBasic", "sic")
+  PRINT ENDSWITH("GMBasic", "xy")
+END SUB

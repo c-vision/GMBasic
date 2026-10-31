@@ -1,0 +1,4 @@
+STATIC best=214 w=[np.float64(0.187821), np.float64(0.148077), np.float64(0.026682), np.float64(0.01133), np.float64(0.62609)]
+STATIC Return=143.6933 Sharpe=1.441148 DD=33.9939
+MONTHLY best=979 nrb=36 w=[np.float64(0.052795), np.float64(0.096418), np.float64(0.195228), np.float64(0.058808), np.float64(0.596752)]
+MONTHLY Return=159.8266 Sharpe=1.506870 DD=34.3020

@@ -1,0 +1,31 @@
+IMPORT CONTROLS
+IMPORT GRAPHICS
+SCREEN 12, 900, 520, 32
+WINDOW THEME "glass"
+FONT "font.ttf", 16
+
+CLS 7
+DIM n AS INTEGER, s AS STRING
+DIM voci(2) AS STRING
+voci(0) = "Alfa" : voci(1) = "Beta" : voci(2) = "Gamma"
+BUTTON 40, 30, 220, 52, "HOME"
+BUTTON 40, 100, 220, 52, "ACCEPT" STYLE "bg=#F6A800 fg=white"
+TOGGLE 40, 180, 20, "Wi-Fi" INTO n
+CHECKBOX 40, 230, 20, "Ricordami" INTO n
+RADIO 40, 275, 200, voci INTO n
+SLIDER 320, 45, 240, 0, 100, 35 INTO n
+PROGRESS 320, 110, 240, 65
+TAB 320, 170, 330, "Uno|Due|Tre" INTO n
+COMBOBOX 320, 230, 240, voci INTO s
+LISTBOX 320, 290, 240, 130, voci INTO n
+TEXTBOX 40, 380, 220, 34, 12 INTO s
+STATUSBAR 40, 440, 500, "status ok"
+GRID 600, 40, 260, 140, "Nome|Qta", "a|1;b|2;c|3" INTO n
+TREEVIEW 600, 200, 260, 120, "root/a|root/b|root/c" INTO n
+SPINNER 74, 21, 6, "line"
+MENU 600, 380, 260, "File|Modifica|Aiuto"
+DIM f AS INTEGER
+FOR f = 1 TO 40 : WINDOW PUMP 16 : NEXT
+SAVE SCREEN "/tmp/f5_glass.png"
+SCREEN 0
+PRINT "ok"

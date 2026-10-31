@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <LangVersion>preview</LangVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>Basic</RootNamespace>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="Databases.Isam.Tests" />
+        <InternalsVisibleTo Include="Databases.Dbf.Tests" />
+        <InternalsVisibleTo Include="Databases.Speed.Tests" />
+        <InternalsVisibleTo Include="Databases.Ledger.Tests" />
+        <InternalsVisibleTo Include="GMBasic.IlBackend" />
+        <InternalsVisibleTo Include="GMBasic.Runtime.IL" />
+        <InternalsVisibleTo Include="isam" />
+        <InternalsVisibleTo Include="Database" />
+        <InternalsVisibleTo Include="dbf" />
+        <InternalsVisibleTo Include="speed" />
+        <InternalsVisibleTo Include="sqlite" />
+        <InternalsVisibleTo Include="Databases.Sqlite.Tests" />
+        <InternalsVisibleTo Include="GMBASIC.IlBackend.Tests" />
+        <InternalsVisibleTo Include="Databases.Mcp.Tests" />
+        <InternalsVisibleTo Include="Databases.VectorDB.Tests" />
+        <InternalsVisibleTo Include="AI" />
+        <InternalsVisibleTo Include="AI.Tests" />
+        <InternalsVisibleTo Include="Databases.Onnx" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Remove="VectorDB/OnnxEmbeddingProvider.cs" />
+        <Compile Remove="VectorDB/OnnxCrossEncoderReranker.cs" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- SQLite + bundle: core (usato da tutto, ~1MB) → restano qui. I driver RDBMS esterni
+             (Oracle/Npgsql/Firebird/MySql/SqlClient) sono in Databases.AdoProviders (opzionale,
+             lazy per nome in SqlDriver.LoadProviderFactory) — vedi NativeAOT §9.7: Databases non
+             deve trascinarli nel grafo statico. -->
+        <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
+        <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Ast\Ast.csproj" />
+    </ItemGroup>
+
+</Project>

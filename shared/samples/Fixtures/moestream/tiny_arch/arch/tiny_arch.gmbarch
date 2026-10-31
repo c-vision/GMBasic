@@ -1,0 +1,22 @@
+{
+  "arch": "tiny_arch",
+  "config_map": { "hidden": "hidden_size", "n_layers": "num_hidden_layers" },
+  "roles": [
+    { "match": "embed",        "role": "EMBEDDING" },
+    { "match": "attn.wkv",     "role": "ATTN_KV" },
+    { "match": "experts.",     "role": "ROUTED_EXPERT" },
+    { "match": "norm",         "role": "NORM" }
+  ],
+  "scale_suffix": ".scale",
+  "codecs": { "f16": "f16" },
+
+  "structures": { "norm": { "type": "rmsnorm", "prim": "rmsnorm" } },
+
+  "quant": { "EMBEDDING": "f16", "ATTN_KV": "q4_k", "ROUTED_EXPERT": "iq2_xxs", "NORM": "f32", "recipe": "_M" },
+
+  "runtime": {
+    "state": "attention_kv",
+    "kv": { "dtype": "bf16" },
+    "activation": { "dtype": "f16" }
+  }
+}

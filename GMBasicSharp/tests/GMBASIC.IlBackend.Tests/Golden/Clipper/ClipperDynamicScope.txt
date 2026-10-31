@@ -1,0 +1,24 @@
+Conformance: edition=Commercial
+  code=1209 bytes, consts=28, entry=1141
+  A1 chunk: /var/folders/b_/gsctxq2x5sq9gh7zpqpgrd0m0000gn/T/gmb_vmtest_8f732097.chunk (13256 bytes)
+  ---- VM/C OUTPUT ----
+[Main] Variabile 'messaggio' dichiarata.
+Valore iniziale: ''
+
+ -> [LivelloIntermedio] Entrato. 'messaggio' è visibile da Main:
+    Valore ricevuto: ''
+ -> [LivelloIntermedio] Dichiarata una nuova DYNAMIC 'messaggio' (shadowing).
+    Valore attuale: ''
+  -> [LivelloProfondo] La variabile 'messaggio' è visibile qui:
+     Valore ricevuto: ''
+ -> [LivelloIntermedio] Ritorno da LivelloProfondo. 'messaggio' ora vale:
+    Valore attuale: ''
+ -> [LivelloIntermedio] Uscita. La nostra 'messaggio' sta per essere distrutta.
+
+[Main] Ritorno da LivelloIntermedio.
+La variabile 'messaggio' di LivelloIntermedio è stata distrutta.
+Il valore della 'messaggio' originale di Main è stato preservato e non è stato modificato.
+Valore finale: ''
+
+--- Test completato ---
+  exit=0

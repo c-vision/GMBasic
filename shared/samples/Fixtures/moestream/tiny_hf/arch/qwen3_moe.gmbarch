@@ -1,0 +1,40 @@
+{
+  "arch": "qwen3_moe",
+  "roles": [
+    {
+      "match": "norm",
+      "role": "NORM"
+    }
+  ],
+  "structures": {
+    "norm": {
+      "type": "rmsnorm",
+      "prim": "rmsnorm"
+    },
+    "attention": {
+      "type": "gqa",
+      "steps": [
+        {
+          "op": "q_norm",
+          "prim": "rmsnorm"
+        },
+        {
+          "op": "k_norm",
+          "prim": "rmsnorm"
+        },
+        {
+          "op": "rope",
+          "prim": "yarn"
+        },
+        {
+          "op": "sdpa",
+          "prim": ""
+        }
+      ]
+    }
+  },
+  "quant": {
+    "NORM": "f32",
+    "recipe": "_M"
+  }
+}

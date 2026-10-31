@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>preview</LangVersion>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AssemblyName>Executor</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\IlBackendCodegen\IlBackendCodegen.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="..\..\..\Executor\Orchestrator.cs" Link="Orchestrator.cs" />
+    <Compile Include="..\..\..\Executor\SettingsManager.cs" Link="SettingsManager.cs" />
+    <Compile Include="..\..\..\Executor\Opt.cs" Link="Opt.cs" />
+  </ItemGroup>
+</Project>

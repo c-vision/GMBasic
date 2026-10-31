@@ -1,0 +1,14 @@
+bin/
+obj/
+Resources/bin/
+Resources/libs/
+
+# artefatti locali (mai tracciati): oggetti compilati e output dei tool
+*.o
+tools/fixtures/work/
+
+# artefatti del sistema operativo (mai in git)
+.DS_Store
+
+# scratch degli harness (convert_parity): output generato
+tests/convert-parity-work/

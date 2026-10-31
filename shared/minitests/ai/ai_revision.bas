@@ -1,0 +1,11 @@
+' EXPECT: r=rev=77e54090e3c27d5e
+IMPORT LLM
+SUB A()
+  B()
+END SUB
+SUB B()
+END SUB
+SUB Main()
+  A()
+  PRINT "r="; LLM.REVISION()
+END SUB

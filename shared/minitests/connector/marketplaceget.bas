@@ -1,0 +1,5 @@
+' EXPECT: getlen= 343
+IMPORT AI
+SUB Main()
+  PRINT "getlen="; LEN(AI.CONNECTORMARKETPLACEGET("gmail"))
+END SUB

@@ -1,0 +1,4 @@
+IMPORT STRINGS
+SUB Main()
+  PRINT SNAKE("CiaoMondo")
+END SUB

@@ -1,0 +1,596 @@
+[
+  {
+    "name": "FORMAT",
+    "namespace": "STRINGS",
+    "category": "Formattazione",
+    "description": "Restituisce una stringa formattata secondo un pattern di formato specifico. Supporta la formattazione di numeri (decimali, migliaia, padding, segno), date (giorni, mesi, anni in vari formati), orari (ore, minuti, secondi, AM/PM), percentuali, notazione scientifica e valori booleani. I caratteri di formato principali: 0=cifra obbligatoria, #=cifra opzionale, .=separatore decimale, ,=separatore migliaia, %=percentuale, E=notazione scientifica. Per le date: d=giorno, m=mese, y=anno, h=ora, n=minuto, s=secondo.",
+    "syntax": [
+      "FORMAT(expression, format_string$)"
+    ],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "expression", "type": "DOUBLE/DATE/BOOLEAN", "description": "Il valore da formattare (numero, data o booleano)." },
+      { "name": "format_string$", "type": "STRING", "description": "Stringa di formato che definisce l'aspetto dell'output." }
+    ],
+    "examples": [
+      { "description": "Formattazione valuta con migliaia e due decimali.", "code": "Importo = 1234567.89\nPRINT \"EUR \"; FORMAT(Importo, \"#,###.00\")\nPRINT \"USD \"; FORMAT(Importo * 1.1, \"#,###.00\")", "expectedOutput": "EUR 1,234,567.89\nUSD 1,358,024.68" },
+      { "description": "Report finanziario con padding, percentuali e date.", "code": "Fatturato = 2580000\nCosti = 1950000\nMargine = (Fatturato - Costi) / Fatturato\nPRINT \"REPORT Q1 2024\"\nPRINT STRING(40, \"=\")\nPRINT \"Fatturato:   EUR \"; FORMAT(Fatturato, \"#,###.00\")\nPRINT \"Costi:       EUR \"; FORMAT(Costi, \"#,###.00\")\nPRINT \"Margine:     \"; FORMAT(Margine, \"#.0%\")\nPRINT \"Data rep.:   \"; FORMAT(NOW, \"dd/mm/yyyy hh:nn\")", "expectedOutput": "REPORT Q1 2024\n========================================\nFatturato:   EUR 2,580,000.00\nCosti:       EUR 1,950,000.00\nMargine:     24.4%\nData rep.:   08/08/2026 14:30" },
+      { "description": "Allineamento a destra con zeri iniziali per codici.", "code": "PRINT \"Codice cliente: CUST\" + FORMAT(42, \"00000\")\nPRINT \"Num. fattura:   INV-\" + FORMAT(7, \"000000\")", "expectedOutput": "Codice cliente: CUST00042\nNum. fattura:   INV-000007" },
+      { "description": "Formattazione booleana personalizzata.", "code": "Attivo = TRUE\nPRINT \"Stato: \"; FORMAT(Attivo, \"Attivo;Inattivo\")\nPRINT \"Flag:  \"; FORMAT(FALSE, \"Si';No\")", "expectedOutput": "Stato: Attivo\nFlag:  No" }
+    ],
+    "seeAlso": ["STR", "PADL", "PADR", "PADC", "CSTR"],
+    "isCommand": false
+  },
+  {
+    "name": "LEFT",
+    "namespace": "STRINGS",
+    "category": "Estrazione",
+    "description": "Estrae i primi N caratteri dall'inizio di una stringa. Se la lunghezza richiesta supera la lunghezza della stringa, restituisce l'intera stringa. Restituisce stringa vuota se length <= 0.",
+    "syntax": ["LEFT(text$, length)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "text$", "type": "STRING", "description": "La stringa sorgente." },
+      { "name": "length", "type": "INTEGER", "description": "Numero di caratteri da estrarre dall'inizio." }
+    ],
+    "examples": [
+      { "description": "Estrae prefisso e codice da una stringa strutturata.", "code": "Codice$ = \"IT-2024-00156\"\nNazione$ = LEFT(Codice$, 2)\nAnno$ = MID(Codice$, 4, 4)\nPRINT \"Nazione: \"; Nazione$; \" | Anno: \"; Anno$", "expectedOutput": "Nazione: IT | Anno: 2024" }
+    ],
+    "seeAlso": ["RIGHT", "MID", "LEN", "INSTR"],
+    "isCommand": false
+  },
+  {
+    "name": "RIGHT",
+    "namespace": "STRINGS",
+    "category": "Estrazione",
+    "description": "Estrae gli ultimi N caratteri dalla fine di una stringa. Utile per estrarre estensioni di file, suffissi o codici di controllo. Se length supera la lunghezza della stringa, restituisce l'intera stringa.",
+    "syntax": ["RIGHT(text$, length)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "text$", "type": "STRING", "description": "La stringa sorgente." },
+      { "name": "length", "type": "INTEGER", "description": "Numero di caratteri da estrarre dalla fine." }
+    ],
+    "examples": [
+      { "description": "Estrae l'estensione di un file.", "code": "Filename$ = \"report_finale_2024.pdf\"\nIF INSTR(Filename$, \".\") > 0 THEN\n  Estensione$ = RIGHT(Filename$, LEN(Filename$) - INSTR(Filename$, \".\"))\nELSE\n  Estensione$ = RIGHT(Filename$, 3)\nEND IF\nPRINT \"Estensione: \"; Estensione$", "expectedOutput": "Estensione: pdf" }
+    ],
+    "seeAlso": ["LEFT", "MID", "LEN", "INSTR"],
+    "isCommand": false
+  },
+  {
+    "name": "MID",
+    "namespace": "STRINGS",
+    "category": "Estrazione",
+    "description": "Estrae una sottostringa da una posizione specifica (1-based). Se la lunghezza e' omessa, estrae fino alla fine della stringa. Se start e' oltre la lunghezza, restituisce stringa vuota. Se start e' <= 0, lo forza a 1.",
+    "syntax": ["MID(text$, start [, length])"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "text$", "type": "STRING", "description": "La stringa sorgente." },
+      { "name": "start", "type": "INTEGER", "description": "Posizione iniziale (1-based)." },
+      { "name": "length", "type": "INTEGER", "description": "Numero di caratteri da estrarre. Se omesso, fino a fine stringa." }
+    ],
+    "examples": [
+      { "description": "Parsing di una riga CSV manuale.", "code": "Riga$ = \"Mario Rossi,42,Milano,ITALIA\"\nVirg1 = INSTR(Riga$, \",\")\nNome$ = LEFT(Riga$, Virg1 - 1)\nResto$ = MID(Riga$, Virg1 + 1)\nVirg2 = INSTR(Resto$, \",\")\nEta$ = LEFT(Resto$, Virg2 - 1)\nPRINT Nome$; \" ha \"; Eta$; \" anni.\"", "expectedOutput": "Mario Rossi ha 42 anni." }
+    ],
+    "seeAlso": ["LEFT", "RIGHT", "LEN", "INSTR", "SPLIT"],
+    "isCommand": false
+  },
+  {
+    "name": "LEN",
+    "namespace": "STRINGS",
+    "category": "Informazione",
+    "description": "Restituisce il numero di caratteri in una stringa. Include spazi, newline e qualsiasi carattere Unicode. Per stringhe vuote restituisce 0. Essenziale per validazione input e controllo lunghezze.",
+    "syntax": ["LEN(text$)"],
+    "returnType": "LONG",
+    "parameters": [
+      { "name": "text$", "type": "STRING", "description": "La stringa di cui misurare la lunghezza." }
+    ],
+    "examples": [
+      { "description": "Validazione lunghezza minima e massima.", "code": "INPUT \"Password: \", Pwd$\nL = LEN(Pwd$)\nIF L < 8 THEN\n  PRINT \"Password troppo corta (min 8 caratteri).\"\nELSEIF L > 64 THEN\n  PRINT \"Password troppo lunga (max 64 caratteri).\"\nELSE\n  PRINT \"Password accettata (\"; L; \" caratteri).\"\nEND IF", "expectedOutput": "Password: ****\nPassword troppo corta (min 8 caratteri)." }
+    ],
+    "seeAlso": ["LEFT", "RIGHT", "MID", "TRIM"],
+    "isCommand": false
+  },
+  {
+    "name": "ASC",
+    "namespace": "STRINGS",
+    "category": "Conversione",
+    "description": "Restituisce il codice numerico (Unicode/ASCII) del primo carattere di una stringa. Utile per confronti di caratteri, validazione di input (es. verificare se e' una cifra o una lettera) e protocolli binari.",
+    "syntax": ["ASC(text$)"],
+    "returnType": "INTEGER",
+    "parameters": [
+      { "name": "text$", "type": "STRING", "description": "Stringa di cui ottenere il codice del primo carattere." }
+    ],
+    "examples": [
+      { "description": "Classifica il primo carattere dell'input.", "code": "INPUT \"Inserisci un carattere: \", C$\nCodice = ASC(C$)\nIF Codice >= 48 AND Codice <= 57 THEN\n  PRINT \"E' una cifra.\"\nELSEIF (Codice >= 65 AND Codice <= 90) THEN\n  PRINT \"E' una lettera maiuscola.\"\nELSEIF (Codice >= 97 AND Codice <= 122) THEN\n  PRINT \"E' una lettera minuscola.\"\nELSE\n  PRINT \"E' un carattere speciale (codice: \"; Codice; \")\"\nEND IF", "expectedOutput": "Inserisci un carattere: A\nE' una lettera maiuscola." }
+    ],
+    "seeAlso": ["CHR", "VAL", "CSTR"],
+    "isCommand": false
+  },
+  {
+    "name": "CHR",
+    "namespace": "STRINGS",
+    "category": "Conversione",
+    "description": "Restituisce il carattere corrispondente a un codice numerico Unicode/ASCII. Il complemento di ASC. Utile per generare caratteri di controllo (newline, tab), caratteri speciali o per costruire stringhe da codici numerici.",
+    "syntax": ["CHR(code)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "code", "type": "INTEGER", "description": "Codice numerico del carattere (tipicamente 0-255 per ASCII, fino a 65535 per Unicode)." }
+    ],
+    "examples": [
+      { "description": "Costruisce una tabella ASCII.", "code": "PRINT \"Codice  Carattere\"\nPRINT \"------  ---------\"\nFOR I = 65 TO 90\n  PRINT STR(I); SPC(6); CHR(I)\nNEXT I", "expectedOutput": "Codice  Carattere\n------  ---------\n65      A\n66      B\n...\n90      Z" },
+      { "description": "Genera un separatore visivo con caratteri speciali.", "code": "Sep$ = CHR(196)  ' Trattino orizzontale ASCII\nPRINT REPEAT(Sep$, 40)\nPRINT \"TITOLO\"\nPRINT REPEAT(Sep$, 40)", "expectedOutput": "────────────────────────────────────────\nTITOLO\n────────────────────────────────────────" }
+    ],
+    "seeAlso": ["ASC", "VAL", "HEX", "STR"],
+    "isCommand": false
+  },
+  {
+    "name": "INSTR",
+    "namespace": "STRINGS",
+    "category": "Ricerca",
+    "description": "Cerca la posizione (1-based) della prima occorrenza di una sottostringa all'interno di una stringa. La ricerca puo' partire da una posizione opzionale. Restituisce 0 se la sottostringa non viene trovata. Case-insensitive per default.",
+    "syntax": ["INSTR([start,] text_to_search$, text_to_find$)"],
+    "returnType": "LONG",
+    "parameters": [
+      { "name": "start", "type": "INTEGER", "description": "Posizione da cui iniziare la ricerca (1-based, opzionale)." },
+      { "name": "text_to_search$", "type": "STRING", "description": "La stringa in cui cercare." },
+      { "name": "text_to_find$", "type": "STRING", "description": "La sottostringa da trovare." }
+    ],
+    "examples": [
+      { "description": "Parsing di un URL per estrarre protocollo, host e path.", "code": "URL$ = \"https://api.example.com/v1/users/123\"\nPos1 = INSTR(URL$, \"://\")\nProtocollo$ = LEFT(URL$, Pos1 - 1)\nResto$ = MID(URL$, Pos1 + 3)\nPos2 = INSTR(Resto$, \"/\")\nHost$ = LEFT(Resto$, Pos2 - 1)\nPath$ = MID(Resto$, Pos2)\nPRINT \"Protocollo: \"; Protocollo$\nPRINT \"Host:       \"; Host$\nPRINT \"Path:       \"; Path$", "expectedOutput": "Protocollo: https\nHost:       api.example.com\nPath:       /v1/users/123" }
+    ],
+    "seeAlso": ["SEARCH", "COUNT", "REPLACE", "MID"],
+    "isCommand": false
+  },
+  {
+    "name": "STR",
+    "namespace": "STRINGS",
+    "category": "Conversione",
+    "description": "Converte un numero nella sua rappresentazione stringa. Per i numeri positivi, aggiunge uno spazio iniziale (convenzione BASIC). Per i numeri negativi, il primo carattere e' il segno meno. Per una conversione senza spazio, usare CSTR o FORMAT.",
+    "syntax": ["STR(number)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "number", "type": "DOUBLE/LONG/INTEGER", "description": "Il numero da convertire in stringa." }
+    ],
+    "examples": [
+      { "description": "Allineamento colonnare con STR.", "code": "PRINT \"Valore   Positivo   Negativo\"\nFOR V = -5 TO 5\n  PRINT STR(V); SPC(8); STR(ABS(V)); SPC(8); STR(-ABS(V))\nNEXT V", "expectedOutput": "Valore   Positivo   Negativo\n-5       5         -5\n-4       4         -4\n..." }
+    ],
+    "seeAlso": ["CSTR", "FORMAT", "VAL", "HEX"],
+    "isCommand": false
+  },
+  {
+    "name": "SPACE",
+    "namespace": "STRINGS",
+    "category": "Generazione",
+    "description": "Crea una stringa composta da un numero specificato di spazi. Utile per indentazione, padding e costruzione di layout testuali.",
+    "syntax": ["SPACE(count)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "count", "type": "INTEGER", "description": "Numero di spazi da generare." }
+    ],
+    "examples": [
+      { "description": "Costruzione di un menu indentato.", "code": "PRINT \"Menu Principale\"\nPRINT SPACE(2); \"1. File\"\nPRINT SPACE(4); \"1.1 Nuovo\"\nPRINT SPACE(4); \"1.2 Apri\"\nPRINT SPACE(2); \"2. Modifica\"\nPRINT SPACE(4); \"2.1 Copia\"\nPRINT SPACE(4); \"2.2 Incolla\"", "expectedOutput": "Menu Principale\n  1. File\n    1.1 Nuovo\n    1.2 Apri\n  2. Modifica\n    2.1 Copia\n    2.2 Incolla" }
+    ],
+    "seeAlso": ["TAB", "SPC", "PADL", "PADR", "STRING"],
+    "isCommand": false
+  },
+  {
+    "name": "LOWER",
+    "namespace": "STRINGS",
+    "category": "Trasformazione",
+    "description": "Converte tutti i caratteri alfabetici di una stringa in minuscolo. I caratteri non alfabetici rimangono invariati. Utile per normalizzare input prima di confronti case-insensitive.",
+    "syntax": ["LOWER(text$)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "text$", "type": "STRING", "description": "La stringa da convertire in minuscolo." }
+    ],
+    "examples": [
+      { "description": "Confronto case-insensitive di comandi.", "code": "INPUT \"Comando: \", Cmd$\nCmd$ = LOWER(TRIM(Cmd$))\nIF Cmd$ = \"esci\" OR Cmd$ = \"quit\" THEN\n  PRINT \"Arrivederci.\"\n  END\nELSEIF Cmd$ = \"aiuto\" THEN\n  PRINT \"Comandi disponibili: esci, aiuto, esegui\"\nEND IF", "expectedOutput": "Comando: AIUTO\nComandi disponibili: esci, aiuto, esegui" }
+    ],
+    "seeAlso": ["UPPER", "TITLE", "SENTENCE", "PASCAL", "CAMEL"],
+    "isCommand": false
+  },
+  {
+    "name": "UPPER",
+    "namespace": "STRINGS",
+    "category": "Trasformazione",
+    "description": "Converte tutti i caratteri alfabetici di una stringa in maiuscolo. I caratteri non alfabetici rimangono invariati. Utile per normalizzare codici, sigle o per output che richiedono maiuscolo.",
+    "syntax": ["UPPER(text$)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "text$", "type": "STRING", "description": "La stringa da convertire in maiuscolo." }
+    ],
+    "examples": [
+      { "description": "Normalizza codici prodotto per lookup in dizionario.", "code": "INPUT \"Codice prodotto: \", Codice$\nCodice$ = UPPER(TRIM(Codice$))\nPRINT \"Ricerca codice: \"; Codice$", "expectedOutput": "Codice prodotto: ab-123\nRicerca codice: AB-123" }
+    ],
+    "seeAlso": ["LOWER", "TITLE", "SENTENCE", "PASCAL", "CAMEL"],
+    "isCommand": false
+  },
+  {
+    "name": "TRIM",
+    "namespace": "STRINGS",
+    "category": "Pulizia",
+    "description": "Rimuove tutti gli spazi bianchi all'inizio e alla fine di una stringa. Non modifica gli spazi interni. Essenziale per pulire input utente, dati da file CSV e risultati di parsing.",
+    "syntax": ["TRIM(text$)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "text$", "type": "STRING", "description": "La stringa da cui rimuovere gli spazi iniziali e finali." }
+    ],
+    "examples": [
+      { "description": "Pulizia campi da CSV con spazi.", "code": "RigaCSV$ = \"  Mario Rossi  , 42 ,  Milano  \"\nDIM Campi$() = SPLIT(RigaCSV$, \",\")\nFOR I = 0 TO UBOUND(Campi$())\n  Campi$(I) = TRIM(Campi$(I))\nNEXT I\nPRINT \"Nome: \"; Campi$(0)\nPRINT \"Eta': \"; Campi$(1)\nPRINT \"Citta': \"; Campi$(2)", "expectedOutput": "Nome: Mario Rossi\nEta': 42\nCitta': Milano" }
+    ],
+    "seeAlso": ["LTRIM", "RTRIM", "REPLACE", "REMOVE"],
+    "isCommand": false
+  },
+  {
+    "name": "LTRIM",
+    "namespace": "STRINGS",
+    "category": "Pulizia",
+    "description": "Rimuove gli spazi bianchi solo dall'inizio di una stringa. Mantiene gli spazi finali e interni. Utile quando si vuole preservare la formattazione a destra mentre si pulisce l'inizio.",
+    "syntax": ["LTRIM(text$)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "text$", "type": "STRING", "description": "La stringa da cui rimuovere gli spazi iniziali." }
+    ],
+    "examples": [
+      { "description": "Allineamento a sinistra di un testo.", "code": "Linea$ = \"    Contenuto indentato\"\nPRINT \"[\"; LTRIM(Linea$); \"]\"", "expectedOutput": "[Contenuto indentato]" }
+    ],
+    "seeAlso": ["RTRIM", "TRIM", "PADL", "PADR"],
+    "isCommand": false
+  },
+  {
+    "name": "RTRIM",
+    "namespace": "STRINGS",
+    "category": "Pulizia",
+    "description": "Rimuove gli spazi bianchi solo dalla fine di una stringa. Mantiene gli spazi iniziali e interni. Utile per preservare indentazione rimuovendo trailing whitespace.",
+    "syntax": ["RTRIM(text$)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "text$", "type": "STRING", "description": "La stringa da cui rimuovere gli spazi finali." }
+    ],
+    "examples": [
+      { "description": "Pulizia fine riga preservando indentazione.", "code": "Testo$ = \"    Livello annidato    \"\nPRINT \"[\"; RTRIM(Testo$); \"]\"", "expectedOutput": "[    Livello annidato]" }
+    ],
+    "seeAlso": ["LTRIM", "TRIM", "PADL", "PADR"],
+    "isCommand": false
+  },
+  {
+    "name": "REPLACE",
+    "namespace": "STRINGS",
+    "category": "Modifica",
+    "description": "Sostituisce tutte le occorrenze di una sottostringa con un'altra all'interno di una stringa. Esegue la sostituzione in modo case-sensitive. La stringa originale non viene modificata: viene restituita una nuova stringa.",
+    "syntax": ["REPLACE(text$, old_value$, new_value$)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "text$", "type": "STRING", "description": "La stringa sorgente." },
+      { "name": "old_value$", "type": "STRING", "description": "La sottostringa da sostituire." },
+      { "name": "new_value$", "type": "STRING", "description": "La nuova sottostringa con cui rimpiazzare." }
+    ],
+    "examples": [
+      { "description": "Sanitizzazione di input per prevenire SQL injection semplificata.", "code": "Input$ = \"O'Brien\"\nSicuro$ = REPLACE(Input$, \"'\", \"''\")\nPRINT \"Input originale: \"; Input$\nPRINT \"Input sicuro:    \"; Sicuro$", "expectedOutput": "Input originale: O'Brien\nInput sicuro:    O''Brien" },
+      { "description": "Template email con placeholder.", "code": "Template$ = \"Gentile {NOME}, il tuo ordine {ID} e' stato spedito il {DATA}.\"\nMsg$ = REPLACE(Template$, \"{NOME}\", \"Mario Rossi\")\nMsg$ = REPLACE(Msg$, \"{ID}\", \"ORD-12345\")\nMsg$ = REPLACE(Msg$, \"{DATA}\", DTOC(TODAY()))\nPRINT Msg$", "expectedOutput": "Gentile Mario Rossi, il tuo ordine ORD-12345 e' stato spedito il 08/08/2026." }
+    ],
+    "seeAlso": ["REMOVE", "INSTR", "SEARCH", "SPLIT"],
+    "isCommand": false
+  },
+  {
+    "name": "SPLIT",
+    "namespace": "STRINGS",
+    "category": "Parsing",
+    "description": "Divide una stringa in un array di sottostringhe usando un delimitatore. Ogni elemento dell'array corrisponde a un segmento della stringa originale separato dal delimitatore. Essenziale per il parsing di CSV, log, e dati strutturati.",
+    "syntax": ["SPLIT(text$, delimiter$)"],
+    "returnType": "ARRAY OF STRING",
+    "parameters": [
+      { "name": "text$", "type": "STRING", "description": "La stringa da dividere." },
+      { "name": "delimiter$", "type": "STRING", "description": "Il delimitatore (puo' essere di piu' caratteri)." }
+    ],
+    "examples": [
+      { "description": "Parsing di un file CSV con elaborazione di ogni riga.", "code": "Riga$ = \"A001,Monitor 27\\\"\",299.99,15,Elettronica\"\nDIM Campi$() = SPLIT(Riga$, \",\")\nCodice$ = Campi$(0)\nDesc$ = Campi$(1)\nPrezzo = VAL(Campi$(2))\nQta = VAL(Campi$(3))\nRep$ = Campi$(4)\nTotale = Prezzo * Qta\nPRINT \"Articolo: \"; Codice$; \" - \"; Desc$\nPRINT \"Valore magazzino: EUR \"; FORMAT(Totale, \"#,###.00\")", "expectedOutput": "Articolo: A001 - Monitor 27\"\nValore magazzino: EUR 4,499.85" },
+      { "description": "Estrazione di valori da una stringa di configurazione.", "code": "Config$ = \"host=localhost;port=5432;db=mydb;user=admin\"\nDIM Coppie$() = SPLIT(Config$, \";\")\nFOR I = 0 TO UBOUND(Coppie$())\n  Pos = INSTR(Coppie$(I), \"=\")\n  IF Pos > 0 THEN\n    Chiave$ = LEFT(Coppie$(I), Pos - 1)\n    Valore$ = MID(Coppie$(I), Pos + 1)\n    PRINT Chiave$; \" = \"; Valore$\n  END IF\nNEXT I", "expectedOutput": "host = localhost\nport = 5432\ndb = mydb\nuser = admin" }
+    ],
+    "seeAlso": ["JOIN", "ATOKENS", "INSTR", "REPLACE"],
+    "isCommand": false
+  },
+  {
+    "name": "JOIN",
+    "namespace": "STRINGS",
+    "category": "Costruzione",
+    "description": "Unisce gli elementi di un array di stringhe in un'unica stringa, separandoli con un delimitatore specificato. Complementare a SPLIT. Il delimitatore e' opzionale: se omesso, gli elementi vengono concatenati senza separatore.",
+    "syntax": ["JOIN(string_array$, [delimiter$])"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "string_array$", "type": "ARRAY OF STRING", "description": "Array di stringhe da unire." },
+      { "name": "delimiter$", "type": "STRING", "description": "Separatore opzionale tra gli elementi." }
+    ],
+    "examples": [
+      { "description": "Costruzione di una query SQL da un array di condizioni.", "code": "DIM Condizioni$() = {\"stato='attivo'\", \"prezzo>100\", \"qta>0\"}\nWhere$ = JOIN(Condizioni$(), \" AND \")\nSQL$ = \"SELECT * FROM prodotti WHERE \" + Where$ + \" ORDER BY nome\"\nPRINT SQL$", "expectedOutput": "SELECT * FROM prodotti WHERE stato='attivo' AND prezzo>100 AND qta>0 ORDER BY nome" }
+    ],
+    "seeAlso": ["SPLIT", "AJOIN", "REPEAT", "REPLACE"],
+    "isCommand": false
+  },
+  {
+    "name": "PADL",
+    "namespace": "STRINGS",
+    "category": "Padding",
+    "description": "Aggiunge caratteri di riempimento a sinistra di una stringa fino a raggiungere la larghezza desiderata. Se la stringa e' gia' piu' lunga di width, viene restituita invariata. Utile per allineare numeri o codici a destra.",
+    "syntax": ["PADL(text$, width, pad_char$)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "text$", "type": "STRING", "description": "La stringa da riempire." },
+      { "name": "width", "type": "INTEGER", "description": "Larghezza totale desiderata." },
+      { "name": "pad_char$", "type": "STRING", "description": "Carattere di riempimento (tipicamente '0' o ' ')." }
+    ],
+    "examples": [
+      { "description": "Report con colonne allineate a destra.", "code": "PRINT \" Articolo    Prezzo\"\nPRINT \" --------    ------\"\nPRINT \" \"; PADR(\"Monitor\", 8); \" \"; PADL(FORMAT(299.99, \"#.00\"), 8)\nPRINT \" \"; PADR(\"Mouse\", 8); \" \"; PADL(FORMAT(49.99, \"#.00\"), 8)\nPRINT \" \"; PADR(\"Tastiera\", 8); \" \"; PADL(FORMAT(89.50, \"#.00\"), 8)", "expectedOutput": " Articolo    Prezzo\n --------    ------\n Monitor     299.99\n Mouse        49.99\n Tastiera      89.50" }
+    ],
+    "seeAlso": ["PADR", "PADC", "FORMAT", "SPACE", "TAB"],
+    "isCommand": false
+  },
+  {
+    "name": "PADR",
+    "namespace": "STRINGS",
+    "category": "Padding",
+    "description": "Aggiunge caratteri di riempimento a destra di una stringa fino a raggiungere la larghezza desiderata. Utile per giustificare a sinistra o per creare separatori visivi.",
+    "syntax": ["PADR(text$, width, pad_char$)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "text$", "type": "STRING", "description": "La stringa da riempire." },
+      { "name": "width", "type": "INTEGER", "description": "Larghezza totale desiderata." },
+      { "name": "pad_char$", "type": "STRING", "description": "Carattere di riempimento." }
+    ],
+    "examples": [
+      { "description": "Intestazioni di sezione con riempimento.", "code": "PRINT PADR(\"== REPORT FINANZIARIO \", 60, \"=\")\nPRINT \"\"\nPRINT PADR(\"== DETTAGLIO ORDINI \", 60, \"-\")", "expectedOutput": "== REPORT FINANZIARIO ================================\n\n== DETTAGLIO ORDINI ----------------------------------" }
+    ],
+    "seeAlso": ["PADL", "PADC", "SPACE", "STRING"],
+    "isCommand": false
+  },
+  {
+    "name": "PADC",
+    "namespace": "STRINGS",
+    "category": "Padding",
+    "description": "Centra una stringa aggiungendo caratteri di riempimento su entrambi i lati fino a raggiungere la larghezza desiderata. I caratteri sono distribuiti equamente (o quasi) a sinistra e a destra.",
+    "syntax": ["PADC(text$, width, pad_char$)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "text$", "type": "STRING", "description": "La stringa da centrare." },
+      { "name": "width", "type": "INTEGER", "description": "Larghezza totale desiderata." },
+      { "name": "pad_char$", "type": "STRING", "description": "Carattere di riempimento su entrambi i lati." }
+    ],
+    "examples": [
+      { "description": "Titolo centrato per un report.", "code": "PRINT PADC(\" QUICKMART SPA \", 50, \"=\")\nPRINT \"\"\nPRINT PADC(\" BILANCIO Q4 2024 \", 50, \"-\")\nPRINT \"\"\nPRINT \"Ricavi:       EUR 8,500,000\"\nPRINT \"Costi:        EUR 6,200,000\"\nPRINT PADC(\"\", 50, \"=\")\nPRINT PADC(\" UTILE: EUR 2,300,000 \", 50, \" \")", "expectedOutput": "============= QUICKMART SPA ==============\n\n------------ BILANCIO Q4 2024 ------------\n\nRicavi:       EUR 8,500,000\nCosti:        EUR 6,200,000\n=============== ================\n           UTILE: EUR 2,300,000" }
+    ],
+    "seeAlso": ["PADL", "PADR", "TAB", "SPACE"],
+    "isCommand": false
+  },
+  {
+    "name": "DUP",
+    "namespace": "STRINGS",
+    "category": "Generazione",
+    "description": "Genera una stringa ripetendo un singolo carattere un numero specificato di volte. E' una versione specializzata di REPEAT per singoli caratteri. Utile per creare separatori, linee e bordi.",
+    "syntax": ["DUP(count, character$)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "count", "type": "INTEGER", "description": "Numero di ripetizioni." },
+      { "name": "character$", "type": "STRING", "description": "Carattere da ripetere (solo il primo carattere viene usato)." }
+    ],
+    "examples": [
+      { "description": "Box ASCII per messaggi importanti.", "code": "Larg = 46\nPRINT CHR(218) + DUP(Larg - 2, CHR(196)) + CHR(191)\nPRINT CHR(179) + PADC(\" ATTENZIONE: DATI NON SALVATI \", Larg - 2, \" \") + CHR(179)\nPRINT CHR(179) + PADC(\" Salvare prima di uscire? \", Larg - 2, \" \") + CHR(179)\nPRINT CHR(192) + DUP(Larg - 2, CHR(196)) + CHR(217)", "expectedOutput": "┌────────────────────────────────────────────┐\n│    ATTENZIONE: DATI NON SALVATI          │\n│    Salvare prima di uscire?              │\n└────────────────────────────────────────────┘" }
+    ],
+    "seeAlso": ["REPEAT", "SPACE", "STRING"],
+    "isCommand": false
+  },
+  {
+    "name": "REPEAT",
+    "namespace": "STRINGS",
+    "category": "Generazione",
+    "description": "Ripete una stringa un numero specificato di volte, con un separatore opzionale tra le ripetizioni. A differenza di DUP, puo' ripetere stringhe di lunghezza arbitraria.",
+    "syntax": ["REPEAT(text$, count [, separator$])"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "text$", "type": "STRING", "description": "La stringa da ripetere." },
+      { "name": "count", "type": "INTEGER", "description": "Numero di ripetizioni." },
+      { "name": "separator$", "type": "STRING", "description": "Separatore opzionale tra le ripetizioni." }
+    ],
+    "examples": [
+      { "description": "Generazione di placeholder SQL per query parametriche.", "code": "NParam = 5\nPlaceholder$ = REPEAT(\"?\", NParam, \", \")\nSQL$ = \"INSERT INTO utenti VALUES (\" + Placeholder$ + \")\"\nPRINT SQL$", "expectedOutput": "INSERT INTO utenti VALUES (?, ?, ?, ?, ?)" }
+    ],
+    "seeAlso": ["DUP", "SPACE", "JOIN"],
+    "isCommand": false
+  },
+  {
+    "name": "REVERSE",
+    "namespace": "STRINGS",
+    "category": "Trasformazione",
+    "description": "Inverte l'ordine dei caratteri in una stringa. Il primo carattere diventa l'ultimo e viceversa.",
+    "syntax": ["REVERSE(text$)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "text$", "type": "STRING", "description": "La stringa da invertire." }
+    ],
+    "examples": [
+      { "description": "Verifica se una stringa e' palindroma.", "code": "INPUT \"Parola: \", P$\nIF UPPER(P$) = UPPER(REVERSE(P$)) THEN\n  PRINT \"'\"; P$; \"' e' un palindromo!\"\nELSE\n  PRINT \"'\"; P$; \"' non e' palindromo.\"\nEND IF", "expectedOutput": "Parola: anna\n'anna' e' un palindromo!" }
+    ],
+    "seeAlso": ["LEFT", "RIGHT", "MID"],
+    "isCommand": false
+  },
+  {
+    "name": "TITLE",
+    "namespace": "STRINGS",
+    "category": "Trasformazione",
+    "description": "Converte una stringa in Title Case: la prima lettera di ogni parola diventa maiuscola, il resto minuscolo. Le parole sono delimitate da spazi, trattini e underscore.",
+    "syntax": ["TITLE(text$)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "text$", "type": "STRING", "description": "La stringa da convertire in Title Case." }
+    ],
+    "examples": [
+      { "description": "Formattazione nomi propri da database.", "code": "NomiRaw$() = {\"mario rossi\", \"ANNA BIANCHI\", \"luca de maria\"}\nFOR I = 0 TO 2\n  Nomi$(I) = TITLE(NomiRaw$(I))\n  PRINT Nomi$(I)\nNEXT I", "expectedOutput": "Mario Rossi\nAnna Bianchi\nLuca De Maria" }
+    ],
+    "seeAlso": ["UPPER", "LOWER", "SENTENCE", "PASCAL", "CAMEL"],
+    "isCommand": false
+  },
+  {
+    "name": "SENTENCE",
+    "namespace": "STRINGS",
+    "category": "Trasformazione",
+    "description": "Converte una stringa in Sentence case: solo la prima lettera di ogni frase diventa maiuscola. Le frasi sono identificate da punti, punti esclamativi e punti interrogativi seguiti da spazio.",
+    "syntax": ["SENTENCE(text$)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "text$", "type": "STRING", "description": "La stringa da formattare come frase." }
+    ],
+    "examples": [
+      { "description": "Formattazione di un paragrafo.", "code": "Testo$ = \"ciao mondo. come stai? tutto bene.\"\nPRINT SENTENCE(Testo$)", "expectedOutput": "Ciao mondo. Come stai? Tutto bene." }
+    ],
+    "seeAlso": ["TITLE", "UPPER", "LOWER"],
+    "isCommand": false
+  },
+  {
+    "name": "PASCAL",
+    "namespace": "STRINGS",
+    "category": "Trasformazione",
+    "description": "Converte una stringa in PascalCase: rimuove spazi e separatori, mettendo in maiuscolo la prima lettera di ogni parola. Le parole sono identificate da spazi, trattini e underscore.",
+    "syntax": ["PASCAL(text$)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "text$", "type": "STRING", "description": "La stringa da convertire in PascalCase." }
+    ],
+    "examples": [
+      { "description": "Generazione di nomi di funzione da descrizioni.", "code": "Descrizioni$() = {\"calcola totale ordini\", \"genera-report\", \"VALIDAZIONE_EMAIL\"}\nFOR I = 0 TO UBOUND(Descrizioni$())\n  PRINT Descrizioni$(I); \" -> \"; PASCAL(Descrizioni$(I))\nNEXT I", "expectedOutput": "calcola totale ordini -> CalcolaTotaleOrdini\ngenera-report -> GeneraReport\nVALIDAZIONE_EMAIL -> ValidazioneEmail" }
+    ],
+    "seeAlso": ["CAMEL", "SNAKE", "KEBAB", "TITLE"],
+    "isCommand": false
+  },
+  {
+    "name": "CAMEL",
+    "namespace": "STRINGS",
+    "category": "Trasformazione",
+    "description": "Converte una stringa in camelCase: la prima parola in minuscolo, le successive con iniziale maiuscola. Rimuove separatori. Usato per nomi di variabili in stile JavaScript/Java.",
+    "syntax": ["CAMEL(text$)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "text$", "type": "STRING", "description": "La stringa da convertire in camelCase." }
+    ],
+    "examples": [
+      { "description": "Conversione nome colonna DB in nome variabile.", "code": "ColonneDB$() = {\"first_name\", \"LAST_NAME\", \"Date_of_Birth\"}\nFOR I = 0 TO UBOUND(ColonneDB$())\n  PRINT ColonneDB$(I); \" -> \"; CAMEL(ColonneDB$(I))\nNEXT I", "expectedOutput": "first_name -> firstName\nLAST_NAME -> lastName\nDate_of_Birth -> dateOfBirth" }
+    ],
+    "seeAlso": ["PASCAL", "SNAKE", "KEBAB", "LOWER"],
+    "isCommand": false
+  },
+  {
+    "name": "SNAKE",
+    "namespace": "STRINGS",
+    "category": "Trasformazione",
+    "description": "Converte una stringa in snake_case: tutto minuscolo con parole separate da underscore. Spazi, trattini e transizioni CamelCase vengono convertiti in underscore.",
+    "syntax": ["SNAKE(text$)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "text$", "type": "STRING", "description": "La stringa da convertire in snake_case." }
+    ],
+    "examples": [
+      { "description": "Normalizzazione nomi per database SQL.", "code": "Campi$() = {\"orderTotal\", \"CUSTOMER-ID\", \"shipping address\"}\nFOR I = 0 TO UBOUND(Campi$())\n  PRINT Campi$(I); \" -> \"; SNAKE(Campi$(I))\nNEXT I", "expectedOutput": "orderTotal -> order_total\nCUSTOMER-ID -> customer_id\nshipping address -> shipping_address" }
+    ],
+    "seeAlso": ["KEBAB", "PASCAL", "CAMEL", "LOWER"],
+    "isCommand": false
+  },
+  {
+    "name": "KEBAB",
+    "namespace": "STRINGS",
+    "category": "Trasformazione",
+    "description": "Converte una stringa in kebab-case: tutto minuscolo con parole separate da trattini. Usato per URL slug, classi CSS e identificatori REST.",
+    "syntax": ["KEBAB(text$)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "text$", "type": "STRING", "description": "La stringa da convertire in kebab-case." }
+    ],
+    "examples": [
+      { "description": "Generazione di slug URL da titoli.", "code": "Titoli$() = {\"Come Installare GM-Basic 2.0\", \"Guida: Funzioni Finanziarie\", \"FAQ - Domande Frequenti\"}\nFOR I = 0 TO UBOUND(Titoli$())\n  PRINT \"/docs/\"; KEBAB(Titoli$(I))\nNEXT I", "expectedOutput": "/docs/come-installare-gm-basic-2-0\n/docs/guida-funzioni-finanziarie\n/docs/faq-domande-frequenti" }
+    ],
+    "seeAlso": ["SNAKE", "PASCAL", "CAMEL", "LOWER"],
+    "isCommand": false
+  },
+  {
+    "name": "WRAP",
+    "namespace": "STRINGS",
+    "category": "Formattazione",
+    "description": "Divide una stringa lunga in piu' righe, andando a capo per non superare una larghezza massima specificata. Cerca di spezzare alle parole (word boundary) per mantenere la leggibilita'. Supporta allineamento opzionale (L=sinistra, R=destra, C=centro).",
+    "syntax": ["WRAP(text$, width [, alignment])"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "text$", "type": "STRING", "description": "Il testo da formattare su piu' righe." },
+      { "name": "width", "type": "INTEGER", "description": "Larghezza massima di ogni riga in caratteri." },
+      { "name": "alignment", "type": "STRING", "description": "'L' per sinistra (default), 'R' per destra, 'C' per centro." }
+    ],
+    "examples": [
+      { "description": "Formattazione di un paragrafo per report a larghezza fissa.", "code": "Testo$ = \"Il presente documento certifica che il prodotto e' stato realizzato in conformita' con gli standard di qualita' ISO 9001:2015 e ha superato tutti i test di controllo previsti dal piano qualita' aziendale.\"\nPRINT WRAP(Testo$, 40)\nPRINT STRING(40, \"-\")", "expectedOutput": "Il presente documento certifica che\nil prodotto e' stato realizzato in\nconformita' con gli standard di\nqualita' ISO 9001:2015 e ha superato\ntutti i test di controllo previsti\ndal piano qualita' aziendale.\n----------------------------------------" }
+    ],
+    "seeAlso": ["LEFT", "PADR", "PADL", "REPLACE"],
+    "isCommand": false
+  },
+  {
+    "name": "SEARCH",
+    "namespace": "STRINGS",
+    "category": "Ricerca",
+    "description": "Verifica se una stringa contiene una determinata sottostringa. Restituisce TRUE (1) se trovata, FALSE (0) altrimenti. Case-insensitive. Piu' semplice di INSTR quando serve solo sapere se esiste, non la posizione.",
+    "syntax": ["SEARCH(text_to_search$, text_to_find$)"],
+    "returnType": "BIT",
+    "parameters": [
+      { "name": "text_to_search$", "type": "STRING", "description": "La stringa in cui cercare." },
+      { "name": "text_to_find$", "type": "STRING", "description": "La sottostringa da trovare." }
+    ],
+    "examples": [
+      { "description": "Ricerca in archivio file di testo.", "code": "Termine$ = \"errore\"\nContatore = 0\nDIM Files$() = IO.DIR(\"*.log\")\nFOR I = 0 TO UBOUND(Files$())\n  Contenuto$ = IO.FILETOSTR(Files$(I))\n  IF SEARCH(Contenuto$, Termine$) THEN\n    Contatore = Contatore + 1\n    PRINT \"Trovato '\"; Termine$; \"' in \"; Files$(I)\n  END IF\nNEXT I\nPRINT \"Totale file con '\"; Termine$; \"': \"; Contatore", "expectedOutput": "Trovato 'errore' in app.log\nTrovato 'errore' in server.log\nTotale file con 'errore': 2" }
+    ],
+    "seeAlso": ["INSTR", "COUNT", "REPLACE"],
+    "isCommand": false
+  },
+  {
+    "name": "COUNT",
+    "namespace": "STRINGS",
+    "category": "Ricerca",
+    "description": "Conta quante volte una sottostringa appare all'interno di una stringa. Le occorrenze non si sovrappongono. Case-insensitive.",
+    "syntax": ["COUNT(text_to_search$, text_to_find$)"],
+    "returnType": "LONG",
+    "parameters": [
+      { "name": "text_to_search$", "type": "STRING", "description": "La stringa in cui contare." },
+      { "name": "text_to_find$", "type": "STRING", "description": "La sottostringa da contare." }
+    ],
+    "examples": [
+      { "description": "Analisi frequenza parole in un testo.", "code": "Testo$ = IO.FILETOSTR(\"articolo.txt\")\nParola$ = \"cliente\"\nOcc = COUNT(UPPER(Testo$), UPPER(Parola$))\nPRINT \"La parola '\"; Parola$; \"' appare \"; Occ; \" volte.\"", "expectedOutput": "La parola 'cliente' appare 23 volte." }
+    ],
+    "seeAlso": ["INSTR", "SEARCH", "REPLACE"],
+    "isCommand": false
+  },
+  {
+    "name": "REMOVE",
+    "namespace": "STRINGS",
+    "category": "Modifica",
+    "description": "Rimuove tutte le occorrenze di una sottostringa da una stringa. Equivalente a REPLACE(text, substr, \"\") ma semanticamente piu' espressivo.",
+    "syntax": ["REMOVE(text$, text_to_remove$)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "text$", "type": "STRING", "description": "La stringa da cui rimuovere." },
+      { "name": "text_to_remove$", "type": "STRING", "description": "La sottostringa da rimuovere." }
+    ],
+    "examples": [
+      { "description": "Pulizia di un numero di telefono per normalizzazione.", "code": "Tel$ = \"+39 (02) 1234-5678\"\nPulito$ = REMOVE(Tel$, \" \")\nPulito$ = REMOVE(Pulito$, \"(\")\nPulito$ = REMOVE(Pulito$, \")\")\nPulito$ = REMOVE(Pulito$, \"-\")\nPRINT \"Numero normalizzato: \"; Pulito$", "expectedOutput": "Numero normalizzato: +390212345678" }
+    ],
+    "seeAlso": ["REPLACE", "TRIM", "LTRIM", "RTRIM"],
+    "isCommand": false
+  },
+  {
+    "name": "STRING",
+    "namespace": "STRINGS",
+    "category": "Generazione",
+    "description": "Genera una stringa di una data lunghezza composta da un carattere ripetuto. Simile a DUP ma con sintassi rovesciata (prima il conteggio, poi il carattere).",
+    "syntax": ["STRING(count, char_code_or_string$)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "count", "type": "INTEGER", "description": "Lunghezza della stringa da generare." },
+      { "name": "char_code_or_string$", "type": "INTEGER/STRING", "description": "Codice ASCII del carattere, o stringa di cui usare il primo carattere." }
+    ],
+    "examples": [
+      { "description": "Creazione di una barra di progresso testuale.", "code": "Percentuale = 73\nBarra = STRING(Percentuale \\ 5, 219) + STRING(20 - Percentuale \\ 5, 176)\nPRINT \"Progresso: [\"; Barra; \"] \"; Percentuale; \"%\"", "expectedOutput": "Progresso: [██████████████░░░░░░] 73%" }
+    ],
+    "seeAlso": ["DUP", "REPEAT", "SPACE"],
+    "isCommand": false
+  }
+]

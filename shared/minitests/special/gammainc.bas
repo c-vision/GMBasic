@@ -1,0 +1,7 @@
+' MiniTest: SPECIAL.GAMMAINC — parita' 4 backend bit-esatta (port MathNet).
+' EXPECT: 0.800851726528544
+IMPORT SPECIAL
+
+SUB Main
+  PRINT SPECIAL.GAMMAINC(2.0, 3.0)
+END SUB

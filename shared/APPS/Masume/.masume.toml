@@ -1,0 +1,49 @@
+# .masume.toml — masume project file (GMBasic port)
+# ============================================================================
+# Same layout as the upstream project file (masume reads the nearest
+# `.masume.toml` in or above the working directory):
+#
+#   [profile.<name>]  connection profiles
+#   [query.<name>]    named, shareable queries
+#
+# The GMBasic port reads this file with a TOML *subset* parser (section headers,
+# `key = value`, quoted or bare values, `#` comments, one key per line).
+# Upstream reference: docs/configuration.md + config.example.toml
+# ============================================================================
+
+# --- App settings -------------------------------------------------------------
+# `mode` is the fallback used when the run carries no -DMASUME_MODE_* symbol
+# (BASIC has no runtime argv yet): status | seed | objects | run | check | tui.
+[settings]
+mode = "status"
+
+# --- Profile 1: the self-contained demo database created by MASUME_MODE_SEED ---
+[profile.demo]
+engine = "sqlite"
+path = "work/masume_demo.sqlite"
+env = "dev"
+mode = "read"
+
+# --- Profile 2: a PostgreSQL server (same shape as upstream [profile.shop]) ----
+[profile.shop]
+engine = "postgres"
+host = "127.0.0.1"
+port = 5432
+database = "shop"
+user = "ada"
+auth = "prompt"
+env = "dev"
+mode = "read"
+
+# --- Named queries (upstream: [query.<name>] with sql + description) ----------
+[query.objects]
+sql = "SELECT type, name FROM sqlite_master WHERE type IN ('table','view') ORDER BY type, name"
+description = "the database objects of the engine"
+
+[query.recent-orders]
+sql = "SELECT o.id, c.name AS customer, o.total, o.created_at FROM orders o JOIN customers c ON c.id = o.customer_id ORDER BY o.created_at DESC LIMIT 5"
+description = "the newest 5 orders"
+
+[query.order-stats]
+sql = "SELECT c.name AS customer, COUNT(*) AS orders, SUM(o.total) AS total FROM customers c JOIN orders o ON o.customer_id = c.id GROUP BY c.name ORDER BY total DESC"
+description = "orders per customer with totals"

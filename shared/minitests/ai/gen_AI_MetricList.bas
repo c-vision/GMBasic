@@ -1,0 +1,6 @@
+' EXPECT: {"metrics":{}}
+IMPORT AI
+
+SUB Main()
+    PRINT AI.METRICLIST()
+END SUB

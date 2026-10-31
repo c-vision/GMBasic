@@ -1,0 +1,3 @@
+Conformance: edition=Commercial
+  code=1483 bytes, consts=97, entry=1064
+  A1 chunk: /var/folders/b_/gsctxq2x5sq9gh7zpqpgrd0m0000gn/T/gmb_vmtest_b828ffde.chunk (14490 bytes)

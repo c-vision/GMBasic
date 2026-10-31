@@ -1,0 +1,11 @@
+gmb_tray_available
+gmb_tray_backend
+gmb_tray_create
+gmb_tray_item
+gmb_tray_last
+gmb_tray_poll
+gmb_tray_remove
+gmb_tray_selftest
+gmb_tray_sep
+gmb_tray_set_callback
+gmb_tray_tooltip

@@ -1,0 +1,2 @@
+# server HTTP che resta attivo 30s di default (SLEEP 30000) prima di SERVER-DONE
+@timeout 40000

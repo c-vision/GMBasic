@@ -1,0 +1,6 @@
+IMPORT STRINGS
+SUB Main()
+  PRINT REPEAT("ab", 3)
+  PRINT REPEAT("x", 1)
+  PRINT REPEAT("xy", 0)
+END SUB

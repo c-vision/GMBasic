@@ -1,0 +1,44 @@
+{
+  "model": "Qwen3-Coder-30B-A3B-Instruct-8bit",
+  "config": "/Users/gaetano/ai/Models/Qwen3-Coder-30B-A3B-Instruct-8bit/config.json",
+  "spec": {
+    "model_type": "qwen3_moe",
+    "hidden_size": 2048,
+    "num_hidden_layers": 48,
+    "num_attention_heads": 32,
+    "num_key_value_heads": 4,
+    "head_dim": 128,
+    "intermediate_size": 5472,
+    "num_experts": 128,
+    "experts_per_token": 8,
+    "rope_theta": 10000000,
+    "rms_norm_eps": 1e-06,
+    "tie_word_embeddings": false,
+    "sliding_window": null,
+    "vocab_size": 151936,
+    "rope_scaling": null,
+    "quant": {
+      "bits": 8,
+      "group_size": 64
+    },
+    "architectures": [
+      "Qwen3MoeForCausalLM"
+    ]
+  },
+  "contract": {
+    "_source": "convenzione dell'architettura (best-effort; verificare per-modello se critico)",
+    "rope_convention": "neox",
+    "attention": "GQA",
+    "kv_heads": 4,
+    "q_heads": 32,
+    "head_dim": 128,
+    "eps": 1e-06,
+    "tie_word_embeddings": false,
+    "kv_layout": "perlayer",
+    "position_semantics": "absolute-0based",
+    "residual_order": "pre",
+    "attention_scale": "1/sqrt(head_dim)",
+    "mask": null,
+    "recurrent_state": "none"
+  }
+}

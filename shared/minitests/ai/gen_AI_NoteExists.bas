@@ -1,0 +1,6 @@
+' EXPECT: 0
+IMPORT AI
+
+SUB Main()
+    PRINT AI.NOTEEXISTS("x", "x")
+END SUB

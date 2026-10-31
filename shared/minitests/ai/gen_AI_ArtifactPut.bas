@@ -1,0 +1,6 @@
+' EXPECT: 1
+IMPORT AI
+
+SUB Main()
+    PRINT AI.ARTIFACTPUT("x", "x")
+END SUB

@@ -1,0 +1,7 @@
+' MiniTest: SPECIAL.BETAINCINV — parita' 4 backend bit-esatta (port MathNet).
+' EXPECT: 0.385727568132389
+IMPORT SPECIAL
+
+SUB Main
+  PRINT SPECIAL.BETAINCINV(2.0, 3.0, 0.5)
+END SUB

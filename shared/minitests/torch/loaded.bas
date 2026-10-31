@@ -1,0 +1,8 @@
+' MiniTest: TORCH.LOADED (parita' 4 backend).
+' EXPECT: ok
+IMPORT TORCH
+SUB Main()
+  t = TORCH.ONES(1, 1)
+  IF TORCH.LOADED() THEN PRINT "ok" ELSE PRINT "no"
+  TORCH.FREE(t)
+END SUB

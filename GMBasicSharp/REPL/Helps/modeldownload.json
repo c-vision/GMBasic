@@ -1,0 +1,106 @@
+[
+  {
+    "name": "HF",
+    "namespace": "REPL",
+    "category": "AI Model Download",
+    "description": "Scarica uno o piu' file da un repo HuggingFace (tipicamente un repo multi-quant GGUF). Se il repo contiene piu' di un file .gguf e non viene specificato --file, il comando si rifiuta di scaricare e mostra l'elenco dei file disponibili (mai un download accidentale dell'intero repo). Trasporto: curl con resume automatico (-C -), retry interno e watchdog di stallo (uccide e riavvia il download se il file smette di crescere), la stessa logica dimostrata stabile in Rapid-MLX-NextGen. Dopo ogni file scaricato verifica dimensione e sha256 (se il repo e' LFS-tracked) contro il manifest HuggingFace, cancellando e riprovando in caso di mismatch. Comando REPL, non utilizzabile dentro un programma BASIC.",
+    "syntax": [
+      "HF <org/repo>",
+      "HF <org/repo> --file <nome-o-pattern>",
+      "HF <org/repo> [--file <nome|pattern>] [--dest <path>] [--stall-timeout <min>] [--stall-retries <n>] [--workers <n>] [--no-xet] [--no-token] [--no-curl] [--quiet]",
+      "HF --help"
+    ],
+    "returnType": "",
+    "parameters": [
+      { "name": "org/repo", "type": "STRING", "description": "Identificativo del repo HuggingFace, es. 'bartowski/Llama-3.2-1B-Instruct-GGUF'." },
+      { "name": "--file", "type": "STRING", "description": "Nome esatto oppure pattern con wildcard '*' del file da scaricare. Obbligatorio se il repo ha piu' di un file .gguf. Se il pattern seleziona piu' file (es. GGUF shardato in piu' parti) vengono scaricati tutti." },
+      { "name": "--dest", "type": "STRING", "description": "Cartella di destinazione. Default: primo percorso configurato con AIPATH, altrimenti samples/ai/models/gguf/." },
+      { "name": "--stall-timeout", "type": "INTEGER", "description": "Minuti senza crescita del file prima di uccidere e riavviare il download (resume automatico via curl -C -). Default 5." },
+      { "name": "--stall-retries", "type": "INTEGER", "description": "Numero di riavvii per stallo prima di arrendersi. Default 1." },
+      { "name": "--workers", "type": "INTEGER", "description": "Numero massimo di download paralleli quando --file seleziona piu' file. Default 8." },
+      { "name": "--no-xet", "type": "FLAG", "description": "Accettato per compatibilita' con la sintassi di Rapid-MLX-NextGen; e' un no-op perche' curl scarica sempre via HTTP classico e non usa mai il protocollo Xet." },
+      { "name": "--no-token", "type": "FLAG", "description": "Non invia il token HuggingFace (variabile HF_TOKEN o file ~/.cache/huggingface/token) anche se disponibile." },
+      { "name": "--no-curl", "type": "FLAG", "description": "Non supportato in questa porta nativa (solo curl e' implementato come trasporto): termina subito con errore esplicito invece di simulare un fallback." },
+      { "name": "--quiet", "type": "FLAG", "description": "Sopprime i messaggi di progresso, mostra solo l'esito finale." }
+    ],
+    "examples": [
+      {
+        "description": "Repo con un solo file .gguf: selezione automatica, nessuna opzione necessaria.",
+        "code": "HF TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF",
+        "expectedOutput": "[HF] Download 'TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF'...\n[dest] .../samples/ai/models/gguf\n[ok] 1 file scaricati in .../samples/ai/models/gguf\n[OK] 1 file salvati in .../samples/ai/models/gguf\n  .../samples/ai/models/gguf/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
+      },
+      {
+        "description": "Esempio esaustivo: tutti i parametri disponibili in un solo comando.",
+        "code": "HF bartowski/Llama-3.2-1B-Instruct-GGUF --file Llama-3.2-1B-Instruct-Q4_K_M.gguf --dest ~/ai/models --stall-timeout 5 --stall-retries 2 --workers 4 --no-xet --no-token --quiet",
+        "expectedOutput": "[OK] 1 file salvati in /Users/utente/ai/models\n  /Users/utente/ai/models/Llama-3.2-1B-Instruct-Q4_K_M.gguf"
+      }
+    ],
+    "seeAlso": ["MLX", "AIPATH"],
+    "isCommand": true
+  },
+  {
+    "name": "MLX",
+    "namespace": "REPL",
+    "category": "AI Model Download",
+    "description": "Scarica un repo MLX completo da HuggingFace in una sottocartella dedicata (stessa semantica di 'rapid-mlx pull ...': tutti i file del repo, nessuna selezione). Usa lo stesso trasporto curl con resume, retry e watchdog di stallo del comando HF. --file non e' supportato (usare HF per scaricare un singolo file). Comando REPL, non utilizzabile dentro un programma BASIC.",
+    "syntax": [
+      "MLX <org/repo>",
+      "MLX <org/repo> [--dest <path>] [--stall-timeout <min>] [--stall-retries <n>] [--workers <n>] [--no-xet] [--no-token] [--no-curl] [--quiet]",
+      "MLX --help"
+    ],
+    "returnType": "",
+    "parameters": [
+      { "name": "org/repo", "type": "STRING", "description": "Identificativo del repo HuggingFace MLX, es. 'mlx-community/Qwen2.5-0.5B-Instruct-4bit'." },
+      { "name": "--dest", "type": "STRING", "description": "Cartella base di destinazione (il repo viene scaricato in <dest>/<nome-repo>/). Default: primo percorso AIPATH, altrimenti samples/ai/models/mlx/." },
+      { "name": "--stall-timeout", "type": "INTEGER", "description": "Minuti senza crescita del file prima di uccidere e riavviare il download. Default 5." },
+      { "name": "--stall-retries", "type": "INTEGER", "description": "Numero di riavvii per stallo prima di arrendersi. Default 1." },
+      { "name": "--workers", "type": "INTEGER", "description": "Numero massimo di file scaricati in parallelo (un repo MLX ha tipicamente piu' file: config.json, tokenizer, *.safetensors). Default 8." },
+      { "name": "--no-xet", "type": "FLAG", "description": "Accettato per compatibilita'; e' un no-op perche' curl non usa mai Xet." },
+      { "name": "--no-token", "type": "FLAG", "description": "Non invia il token HuggingFace anche se disponibile." },
+      { "name": "--no-curl", "type": "FLAG", "description": "Non supportato: termina subito con errore esplicito." },
+      { "name": "--quiet", "type": "FLAG", "description": "Sopprime i messaggi di progresso." }
+    ],
+    "examples": [
+      {
+        "description": "Download minimo di un repo MLX di test (modello piccolo).",
+        "code": "MLX mlx-community/Qwen2.5-0.5B-Instruct-4bit",
+        "expectedOutput": "[MLX] Download 'mlx-community/Qwen2.5-0.5B-Instruct-4bit'...\n[dest] .../samples/ai/models/mlx/Qwen2.5-0.5B-Instruct-4bit\n[ok] 6 file scaricati in .../samples/ai/models/mlx/Qwen2.5-0.5B-Instruct-4bit"
+      },
+      {
+        "description": "Esempio esaustivo: tutti i parametri disponibili in un solo comando.",
+        "code": "MLX mlx-community/Qwen2.5-0.5B-Instruct-4bit --dest ~/ai/models --stall-timeout 5 --stall-retries 2 --workers 4 --no-xet --no-token --quiet",
+        "expectedOutput": "[OK] 6 file salvati in /Users/utente/ai/models/Qwen2.5-0.5B-Instruct-4bit"
+      }
+    ],
+    "seeAlso": ["HF", "AIPATH"],
+    "isCommand": true
+  },
+  {
+    "name": "AIPATH",
+    "namespace": "REPL",
+    "category": "AI Model Download",
+    "description": "Elenco dei percorsi in cui HF/MLX salvano i download per default e in cui un futuro comando LLM cerchera' i modelli locali (GGUF/MLX/Ollama). Sintassi a variabile d'ambiente: digitato da solo mostra il valore corrente; con '=' sovrascrive l'elenco (separato da ';') e mostra il nuovo valore. Persistito in ~/.gmbasic/aipath.txt, stessa cartella di providers.json. Comando REPL, non utilizzabile dentro un programma BASIC.",
+    "syntax": [
+      "AIPATH",
+      "AIPATH=<path1>;<path2>;..."
+    ],
+    "returnType": "",
+    "parameters": [
+      { "name": "path1;path2;...", "type": "STRING", "description": "Elenco di cartelle separate da ';' da usare come default per --dest in HF/MLX. Sostituisce sempre l'elenco precedente (non lo estende)." }
+    ],
+    "examples": [
+      {
+        "description": "Legge il valore corrente (nessun percorso ancora configurato).",
+        "code": "AIPATH",
+        "expectedOutput": "AIPATH= (non impostato; HF/MLX useranno samples/ai/models/<tipo>/ come default)"
+      },
+      {
+        "description": "Imposta due percorsi di ricerca/download e mostra il nuovo valore.",
+        "code": "AIPATH=~/ai/models;/Volumes/Data/llm-models;",
+        "expectedOutput": "AIPATH=~/ai/models;/Volumes/Data/llm-models"
+      }
+    ],
+    "seeAlso": ["HF", "MLX"],
+    "isCommand": true
+  }
+]

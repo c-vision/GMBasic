@@ -1,0 +1,10 @@
+' MiniTest: TORCH.TRANSPOSE (parita' 4 backend).
+' EXPECT: 1  2
+IMPORT TORCH
+SUB Main()
+  a = TORCH.ZEROS(2, 3)
+  TORCH.SET(a, 0, 0, 1.0) : TORCH.SET(a, 0, 1, 2.0)
+  t = TORCH.TRANSPOSE(a)
+  PRINT TORCH.GET(t, 0, 0); TORCH.GET(t, 1, 0)
+  TORCH.FREE(a) : TORCH.FREE(t)
+END SUB

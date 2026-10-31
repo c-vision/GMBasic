@@ -1,0 +1,131 @@
+# .github/workflows/libs.yml — bundle delle librerie native per OGNI RID (core/engine/llmmotor)
+#
+# PERCHÉ ESISTE. I bundle di `c-vision/GMBasicModules` esistevano solo per `osx-arm64` perché
+# `tools/libs_publish_gh.sh` pubblica ciò che è compilato sulla macchina di turno. Questo
+# workflow rende il passo RIPETIBILE: compila il gruppo su ogni runner, passa il gate di
+# caricabilità (`tools/libs_verify_load.sh`), pubblica e solo alla fine aggiorna l'indice
+# `libs-manifest.json` (un job unico: N RID in parallelo si sovrascriverebbero lo stesso file).
+#
+# STATO DI VALIDAZIONE (onestà, da aggiornare al primo run verde)
+#   - macOS: pipeline provata a mano su osx-arm64 (core: 10/10 file, gate dlopen 10/10 OK).
+#   - Linux: CMake reso portabile (RID, `$ORIGIN`, `--as-needed` invece di `-dead_strip_dylibs`)
+#     ma la build NON è mai stata eseguita su Linux → il primo run serve a scoprire le dipendenze
+#     di sistema mancanti (elencate sotto, da completare).
+#   - Windows: NON abilitato. La build usa API POSIX (dlopen, fork/exec, `m`) e i target
+#     CMake non hanno un percorso MSVC; va prima fatto il port (issue dedicata).
+#
+# USO
+#   - manuale: Actions → "libs" → Run workflow (gruppo, RID, publish)
+#   - da tag: `git tag libs-2026.11.01 && git push --tags` (pubblica tutti i RID del gruppo core)
+name: libs
+
+on:
+  workflow_dispatch:
+    inputs:
+      group:
+        description: "Gruppo da produrre: core | engine | llmmotor"
+        default: "core"
+        required: true
+      rids:
+        description: "RID separati da virgola (vuoto = tutti quelli abilitati)"
+        default: ""
+      publish:
+        description: "Pubblica su c-vision/GMBasicModules + aggiorna l'indice"
+        type: boolean
+        default: false
+      tag:
+        description: "Tag release (vuoto = gmb-<gruppo>-<data>)"
+        default: ""
+  push:
+    tags:
+      - "libs-*"
+
+# niente due pubblicazioni in parallelo (l'indice verrebbe sovrascritto)
+concurrency:
+  group: gmb-libs-publish
+  cancel-in-progress: false
+
+permissions:
+  contents: write          # upload release + push dell'indice (repo GMBasicModules)
+
+jobs:
+  build:
+    name: build ${{ matrix.rid }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { rid: osx-arm64,   os: macos-14 }
+          - { rid: osx-x64,     os: macos-13 }
+          - { rid: linux-x64,   os: ubuntu-24.04 }
+          - { rid: linux-arm64, os: ubuntu-24.04-arm }
+    runs-on: ${{ matrix.os }}
+    env:
+      GROUP: ${{ github.event.inputs.group || 'core' }}
+      TAG: ${{ github.event.inputs.tag || '' }}
+      DO_PUBLISH: ${{ github.event.inputs.publish || (github.event_name == 'push') }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Il runner deve sapere che l'RID è quello della matrice (il default dello script è
+      # ricavato da uname, ma osx-x64 su macos-13 e linux-arm64 su runner arm sono espliciti).
+      LLMENV: ${{ vars.LLMENV_DIR || '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: dipendenze di sistema (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew update >/dev/null
+          brew install cmake openssl@3 zstd curl brotli lz4 sdl2 sdl2_ttf jpeg-turbo libpng libtiff webp sqlite
+
+      - name: dipendenze di sistema (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake build-essential libssl-dev libzstd-dev libcurl4-openssl-dev \
+            libbrotli-dev liblz4-dev libsdl2-dev libsdl2-ttf-dev libjpeg-dev \
+            libpng-dev libtiff-dev libwebp-dev libsqlite3-dev libopenblas-dev
+
+      # engine/llmmotor sono prodotte da LLMEnv: se il checkout non c'è, il gruppo si salta
+      # con un messaggio esplicito (mai un bundle a metà).
+      - name: checkout LLMEnv (solo engine/llmmotor)
+        if: ${{ contains(fromJSON('["engine","llmmotor"]'), github.event.inputs.group) && vars.LLMENV_REPO != '' }}
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.LLMENV_REPO }}
+          path: LLMEnv
+
+      - name: compute LLMENV
+        run: |
+          if [ -d "$GITHUB_WORKSPACE/LLMEnv" ]; then echo "LLMENV=$GITHUB_WORKSPACE/LLMEnv" >> "$GITHUB_ENV"; fi
+
+      - name: build + gate di caricabilità
+        run: |
+          args=( "$GROUP" --rid "${{ matrix.rid }}" )
+          [ "$DO_PUBLISH" = "true" ] && args+=( --publish --yes --no-index )   # indice: job dedicato
+          [ -n "$TAG" ] && args+=( --tag "$TAG" )
+          bash tools/libs_build_release.sh "${args[@]}"
+
+  index:
+    name: indice (libs-manifest.json)
+    needs: build
+    if: ${{ github.event_name == 'push' || github.event.inputs.publish == 'true' }}
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GROUP: ${{ github.event.inputs.group || 'core' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "rigenera l'indice per ogni RID (sequenziale: un solo flusso di push)"
+        run: |
+          # `libs_manifest_gh.sh build` FONDE il RID nel manifest esistente (nel checkout), `push`
+          # lo pubblica su main. In sequenza i push sono cumulativi: nessuna corsa fra RID.
+          for rid in osx-arm64 osx-x64 linux-x64 linux-arm64; do
+            if bash tools/libs_manifest_gh.sh build --rid "$rid"; then
+              bash tools/libs_manifest_gh.sh push || exit 1
+            else
+              echo "RID $rid: nessuna release pubblicata (salto)"
+            fi
+          done
+          echo "indice: https://github.com/c-vision/GMBasicModules/blob/main/libs-manifest.json"

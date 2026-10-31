@@ -1,0 +1,6 @@
+' EXPECT: {"artifacts":[]}
+IMPORT AI
+
+SUB Main()
+    PRINT AI.ARTIFACTLIST()
+END SUB

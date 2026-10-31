@@ -1,0 +1,5 @@
+IMPORT AI
+
+SUB Main()
+    PRINT AI.NOTETITLE("x", "x")
+END SUB

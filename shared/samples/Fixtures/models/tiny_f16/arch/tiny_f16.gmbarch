@@ -1,0 +1,4 @@
+{
+  "arch": "tiny_f16",
+  "geometry": {"hidden":256,"n_layers":1,"n_heads":0,"n_kv_heads":0,"head_dim":0,"n_experts":0,"topk":0,"inter":0,"vocab":0,"ctx":0,"rope_variant":0,"router_kind":0,"norm_kind":0,"flags":0,"eps":1e-05,"rope_theta":10000}
+}

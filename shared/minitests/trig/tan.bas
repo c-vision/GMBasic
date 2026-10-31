@@ -1,0 +1,3 @@
+SUB Main()
+  PRINT TAN(0)
+END SUB

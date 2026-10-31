@@ -1,0 +1,3 @@
+SUB Main()
+  PRINT ROUND(2.3456, 2)
+END SUB

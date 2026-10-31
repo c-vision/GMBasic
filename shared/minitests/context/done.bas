@@ -1,0 +1,8 @@
+' EXPECT: done-ok
+IMPORT CONCURRENCY
+IMPORT CONTEXT
+SUB Main()
+  DIM root = CONTEXT.BACKGROUND()
+  DIM ch = CONTEXT.DONE(root)
+  IF ch <> 0 THEN PRINT "done-ok"
+END SUB

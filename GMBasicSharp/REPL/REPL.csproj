@@ -1,0 +1,105 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <LangVersion>preview</LangVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>Basic</RootNamespace>
+        <!-- AssemblyName 'Executor': Compilation.csproj:17 fa InternalsVisibleTo("Executor")
+             (serve per program.SourceMap/FileIdToPathMap internal set). -->
+        <AssemblyName>REPL</AssemblyName>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
+    <!-- REPL (C#): frontend C# — TUTTI i
+         parametri, settings, Helps/ e libs native preservati (niente perso). Refefeziona
+         SOLO la pipeline C# (managed executor). Le path vmc/c99 appartengono a ReplNative (C). -->
+    <ItemGroup>
+        <ProjectReference Include="..\Executor\Executor.csproj" />
+        <ProjectReference Include="..\common\Ast\Ast.csproj" />
+        <ProjectReference Include="..\common\StdLib\StdLib.csproj" />
+        <ProjectReference Include="..\common\Compiler\Compiler.csproj" />
+        <ProjectReference Include="..\common\CommonLib\CommonLib.csproj" />
+        <ProjectReference Include="..\common\Compilation\Compilation.csproj" />
+        <ProjectReference Include="..\common\SemanticGraph\SemanticGraph.csproj" />
+        <ProjectReference Include="..\common\Linker\Linker.csproj" />
+        <ProjectReference Include="..\common\Lexer\Lexer.csproj" />
+        <ProjectReference Include="..\common\Parser\Parser.csproj" />
+        <ProjectReference Include="..\common\BRT\BRT.csproj" />
+        <ProjectReference Include="..\common\IlBackendCodegen\IlBackendCodegen.csproj" />
+        <ProjectReference Include="..\common\Databases\Databases.csproj" />
+            <ProjectReference Include="..\common\Databases.AdoProviders\Databases.AdoProviders.csproj" />
+        <ProjectReference Include="..\common\AI\AI.csproj" />
+        <ProjectReference Include="..\common\CommonGraphics\CommonGraphics.csproj" />
+        <ProjectReference Include="..\common\ConversionLib\ConversionLib.csproj" />
+        <ProjectReference Include="..\common\ClipperLib\ClipperLib.csproj" />
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(GmbEdition)' == 'Commercial'">
+        <ProjectReference Include="..\modules\Database\Database.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="TextCopy" Version="6.2.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Content Include="Helps\**\*">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+            <Link>Helps\%(RecursiveDir)%(Filename)%(Extension)</Link>
+        </Content>
+        <!-- Font locali (C64_Pro_Mono-STYLE.otf, ecc.): la FontManager cerca i .otf/.ttf
+             nella dir dell'eseguibile (ScanAndCacheLocalFonts) — senza, il C64 usa un fallback. -->
+        <!-- Font locali: la FontManager li cerca nella dir dell'eseguibile
+             (ScanAndCacheLocalFonts) — senza, il C64 usa un fallback. -->
+        <Content Include="..\..\Resources\*.otf;..\..\Resources\*.ttf" Condition="Exists('..\..\Resources')">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <Link>%(Filename)%(Extension)</Link>
+        </Content>
+        <!-- Resources CONDIVISA (una sola, alla radice del monorepo): manifest dei componenti,
+             sprite/PNG. Finiscono in <exe>/Resources/ — dove li cercano i resolver. -->
+        <Content Include="..\..\Resources\*" Condition="Exists('..\..\Resources')">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <Link>Resources\%(Filename)%(Extension)</Link>
+        </Content>
+        <!-- CONFIG CONDIVISA (una sola, in `shared/settings/`): system.settings.json e gli indici
+             (libs + manifest dei componenti). Finiscono in <exe>/config/ — la cartella che
+             l'app installata (senza checkout) cerca accanto all'eseguibile. -->
+        <Content Include="..\..\shared\settings\*.json" Condition="Exists('..\..\shared\settings')">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <Link>config\%(Filename)%(Extension)</Link>
+        </Content>
+    </ItemGroup>
+
+    <PropertyGroup>
+        <!-- Le librerie native NON si copiano più nell'output: vivono nella cache on-demand
+             ~/.gmbasic/libs/<rid>/ (CommonLib.LibsResolver) e i resolver le trovano lì. Copiarle
+             nell'output significava riempire bin/ di centinaia di MB (e tenere copie STALLE che
+             facevano ombra alla cache: bug reale, la libgmb_gfx vecchia continuava a caricare
+             SDL2_mixer). Restano copiati SOLO gli alias SDL: il wrapper C# fa DllImport("SDL2")
+             e il loader di sistema cerca il file accanto all'eseguibile. -->
+        <LibsCacheDir Condition="$([MSBuild]::IsOSPlatform('OSX')) AND $([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture) == 'Arm64'">$(UserProfile)/.gmbasic/libs/osx-arm64</LibsCacheDir>
+        <LibsCacheDir Condition="$([MSBuild]::IsOSPlatform('OSX')) AND $([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture) == 'X64'">$(UserProfile)/.gmbasic/libs/osx-x64</LibsCacheDir>
+        <LibsCacheDir Condition="$([MSBuild]::IsOSPlatform('WINDOWS')) AND $([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture) == 'Arm64'">$(UserProfile)/.gmbasic/libs/win-arm64</LibsCacheDir>
+        <LibsCacheDir Condition="$([MSBuild]::IsOSPlatform('WINDOWS')) AND $([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture) == 'X64'">$(UserProfile)/.gmbasic/libs/win-x64</LibsCacheDir>
+        <LibsCacheDir Condition="'$(LibsCacheDir)' == ''">$(UserProfile)/.gmbasic/libs/linux-x64</LibsCacheDir>
+    </PropertyGroup>
+    <!-- Le libs native (esterne in Resources/libs; nostre in libs-runtime) vengono copiate
+         nell'output con un TARGET di build, NON come item <None>: così non compaiono nel progetto
+         nell'IDE. Il runtime TORCH (libtorch_cpu/libtorch/libc10/libomp) è escluso da ENTRAMBE: è
+         gestito dal componente TORCH nella cache utente (FetchTorchLib). -->
+    <!-- SOLO gli alias SDL accanto all'eseguibile (il wrapper C# fa DllImport("SDL2")).
+         Tutto il resto (libgmb_*, MLX, codec) si carica dalla CACHE on-demand. -->
+    <Target Name="CopySdlAliases" AfterTargets="AfterBuild" Condition="Exists('$(LibsCacheDir)/libSDL2.dylib')">
+        <Copy SourceFiles="$(LibsCacheDir)/libSDL2.dylib" DestinationFiles="$(OutDir)SDL2.dll" SkipUnchangedFiles="true" />
+        <Copy SourceFiles="$(LibsCacheDir)/libSDL2_ttf.dylib" DestinationFiles="$(OutDir)SDL2_ttf.dll" SkipUnchangedFiles="true" Condition="Exists('$(LibsCacheDir)/libSDL2_ttf.dylib')" />
+        <Copy SourceFiles="$(LibsCacheDir)/libSDL2_image.dylib" DestinationFiles="$(OutDir)SDL2_image.dll" SkipUnchangedFiles="true" Condition="Exists('$(LibsCacheDir)/libSDL2_image.dylib')" />
+        <Copy SourceFiles="$(LibsCacheDir)/libSDL2_mixer.dylib" DestinationFiles="$(OutDir)SDL2_mixer.dll" SkipUnchangedFiles="true" Condition="Exists('$(LibsCacheDir)/libSDL2_mixer.dylib')" />
+    </Target>
+
+  <ItemGroup>
+    <ProjectReference Include="..\common\Databases.Onnx\Databases.Onnx.csproj" />
+  </ItemGroup>
+</Project>

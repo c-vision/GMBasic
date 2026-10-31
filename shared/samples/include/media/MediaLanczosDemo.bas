@@ -1,0 +1,8 @@
+IMPORT MEDIA WITH ALIAS
+SUB Main()
+  h = MEDIA.IMGREAD("big.jpg")
+  r = MEDIA.IMGRESIZE(h, 400, 400, 2)
+  PRINT "lanczos 400x400 = " + STR(MEDIA.IMGW(r)) + "x" + STR(MEDIA.IMGH(r))
+  MEDIA.IMGWRITE(r, "work/lanczos.png")
+  MEDIA.IMGFREE(h) : MEDIA.IMGFREE(r)
+END SUB

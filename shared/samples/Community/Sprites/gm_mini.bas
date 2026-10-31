@@ -1,0 +1,16 @@
+SUB Main()
+  SCREEN 12
+  DIM id AS LONG
+  SPRITE LOAD "player.png", id
+  IF id = 0 THEN
+    PRINT "LOAD FALLITO"
+    END
+  END IF
+  DIM i AS INTEGER
+  FOR i = 0 TO 120
+    SPRITE SET POSITION id, i * 5, 240
+    SYNC
+    SLEEP 50
+  NEXT i
+  SLEEP 2000
+END SUB

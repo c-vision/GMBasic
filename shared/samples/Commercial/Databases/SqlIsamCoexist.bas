@@ -1,0 +1,36 @@
+IMPORT ISAM WITH ALIAS
+IMPORT SQL WITH ALIAS
+IMPORT IO WITH ALIAS
+DIM g_work AS STRING
+g_work = PROJECTFOLDER() + "/work"
+IF NOT IO.DIREXISTS(g_work) THEN MKDIR g_work
+
+10 TYPE Item
+20   ID AS STRING * 10
+30   Qty AS INTEGER
+40 END TYPE
+50 MKDIR g_work : ON ERROR RESUME NEXT
+55 KILL g_work + "/coexist.isdb" : ON ERROR RESUME NEXT
+60 KILL g_work + "/coexist_sql.db" : ON ERROR RESUME NEXT
+70 DIM rec AS Item
+80 ISAM OPEN g_work + "/coexist.isdb" OF Item ALIAS IsamDb INDEXED BY ID
+90 rec.ID = "SKU-001"
+100 rec.Qty = 5
+110 ISAM APPEND IsamDb, rec
+120 SQL OPEN g_work + "/coexist_sql.db" ALIAS SqlDb
+130 SQL EXEC SqlDb, "CREATE TABLE mirror (code TEXT, qty INTEGER)"
+140 SQL EXEC SqlDb, "INSERT INTO mirror VALUES ('SKU-001', 5)"
+150 PRINT "SQL rows inserted"
+160 DIM rs AS SQLRESULTSET
+170 SQL QUERY SqlDb, rs, "SELECT code, qty FROM mirror"
+180 IF SQL.FETCH(rs) THEN
+190   PRINT "SQL mirror:", rs("code"), rs("qty")
+200 END IF
+210 SQL CLOSE RESULTSET rs
+220 SQL CLOSE SqlDb
+230 ISAM SEEK IsamDb, "SKU-001"
+240 IF ISAM.FOUND(IsamDb) THEN
+250   ISAM GET IsamDb, rec
+260   PRINT "ISAM qty:", rec.Qty
+270 END IF
+280 ISAM CLOSE IsamDb

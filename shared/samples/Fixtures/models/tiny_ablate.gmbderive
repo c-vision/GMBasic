@@ -1,0 +1,4 @@
+# .gmbderive — derivazione per il test del DELTA (B5): azzera i tensori ffn_down.
+BASE tiny_moe.gguf
+ABLATE ffn_down
+OUT work/target.gguf

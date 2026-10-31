@@ -1,0 +1,5 @@
+SUB Main()
+  RANDOMIZE 42
+  PRINT RND()
+  PRINT RND()
+END SUB

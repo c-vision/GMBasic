@@ -1,0 +1,219 @@
+[
+  {
+    "name": "BookValuePerShare",
+    "category": "TRADING.METRICS",
+    "description": "Calcola il valore contabile per azione.",
+    "syntax": [ "TRADING.METRICS.BookValuePerShare()" ],
+    "examples": [{ "description": "Book value per share.", "code": "bvps = TRADING.METRICS.BookValuePerShare()" }]
+  },
+  {
+    "name": "EPS",
+    "category": "TRADING.METRICS",
+    "description": "Earnings Per Share (utile per azione) base.",
+    "syntax": [ "TRADING.METRICS.EPS()" ],
+    "examples": [{ "description": "Utile per azione.", "code": "eps = TRADING.METRICS.EPS()" }]
+  },
+  {
+    "name": "DilutedEPS",
+    "category": "TRADING.METRICS",
+    "description": "Utile per azione diluito (considera opzioni, convertibili).",
+    "syntax": [ "TRADING.METRICS.DilutedEPS()" ],
+    "examples": [{ "description": "EPS diluito.", "code": "deps = TRADING.METRICS.DilutedEPS()" }]
+  },
+  {
+    "name": "DPS",
+    "category": "TRADING.METRICS",
+    "description": "Dividend Per Share (dividendo per azione).",
+    "syntax": [ "TRADING.METRICS.DPS()" ],
+    "examples": [{ "description": "Dividendo per azione.", "code": "dps = TRADING.METRICS.DPS()" }]
+  },
+  {
+    "name": "EquityMultiplier",
+    "category": "TRADING.METRICS",
+    "description": "Moltiplicatore del capitale: TotaleAttivo / PatrimonioNetto.",
+    "syntax": [ "TRADING.METRICS.EquityMultiplier()" ],
+    "examples": [{ "description": "Leva finanziaria.", "code": "em = TRADING.METRICS.EquityMultiplier()" }]
+  },
+  {
+    "name": "NAV",
+    "category": "TRADING.METRICS",
+    "description": "Net Asset Value (valore patrimoniale netto).",
+    "syntax": [ "TRADING.METRICS.NAV()" ],
+    "examples": [{ "description": "NAV.", "code": "nav = TRADING.METRICS.NAV()" }]
+  },
+  {
+    "name": "PERatio",
+    "category": "TRADING.METRICS",
+    "description": "Price-to-Earnings ratio (P/E).",
+    "syntax": [ "TRADING.METRICS.PERatio()" ],
+    "examples": [{ "description": "Rapporto P/E.", "code": "pe = TRADING.METRICS.PERatio()" }]
+  },
+  {
+    "name": "PSRatio",
+    "category": "TRADING.METRICS",
+    "description": "Price-to-Sales ratio (P/S).",
+    "syntax": [ "TRADING.METRICS.PSRatio()" ],
+    "examples": [{ "description": "Price/Sales.", "code": "ps = TRADING.METRICS.PSRatio()" }]
+  },
+  {
+    "name": "PBRatio",
+    "category": "TRADING.METRICS",
+    "description": "Price-to-Book ratio (P/B).",
+    "syntax": [ "TRADING.METRICS.PBRatio()" ],
+    "examples": [{ "description": "Price/Book.", "code": "pb = TRADING.METRICS.PBRatio()" }]
+  },
+  {
+    "name": "DividendPayoutRatio",
+    "category": "TRADING.METRICS",
+    "description": "Dividend payout ratio: DPS / EPS.",
+    "syntax": [ "TRADING.METRICS.DividendPayoutRatio()" ],
+    "examples": [{ "description": "Payout ratio.", "code": "dpr = TRADING.METRICS.DividendPayoutRatio()" }]
+  },
+  {
+    "name": "DividendYield",
+    "category": "TRADING.METRICS",
+    "description": "Dividend yield: DPS / PrezzoAzione.",
+    "syntax": [ "TRADING.METRICS.DividendYield()" ],
+    "examples": [{ "description": "Dividend yield.", "code": "dy = TRADING.METRICS.DividendYield()" }]
+  },
+  {
+    "name": "TotalReturn",
+    "category": "TRADING.METRICS",
+    "description": "Rendimento totale cumulato di una serie di rendimenti.",
+    "syntax": [ "TRADING.METRICS.TotalReturn(rendimenti())" ],
+    "examples": [{ "description": "Rendimento totale.", "code": "tr = TRADING.METRICS.TotalReturn(Returns())" }]
+  },
+  {
+    "name": "AnnualizedReturn",
+    "category": "TRADING.METRICS",
+    "description": "Rendimento annualizzato compounding.",
+    "syntax": [ "TRADING.METRICS.AnnualizedReturn(rendimenti(), periodiAnno)" ],
+    "examples": [{ "description": "Rendimento annualizzato.", "code": "ar = TRADING.METRICS.AnnualizedReturn(Returns(), 252)" }]
+  },
+  {
+    "name": "SortinoRatio",
+    "category": "TRADING.METRICS",
+    "description": "Sortino ratio (Sharpe modificato per downside risk).",
+    "syntax": [ "TRADING.METRICS.SortinoRatio(rendimenti(), riskFree, periodiAnno)" ],
+    "examples": [{ "description": "Sortino ratio.", "code": "sr = TRADING.METRICS.SortinoRatio(Returns(), 0.03, 252)" }]
+  },
+  {
+    "name": "MaxDrawdown",
+    "category": "TRADING.METRICS",
+    "description": "Massimo drawdown della serie di rendimenti (peak-to-trough).",
+    "syntax": [ "TRADING.METRICS.MaxDrawdown(rendimenti())" ],
+    "examples": [{ "description": "Max drawdown.", "code": "mdd = TRADING.METRICS.MaxDrawdown(Returns())" }]
+  },
+  {
+    "name": "CalmarRatio",
+    "category": "TRADING.METRICS",
+    "description": "Calmar ratio: rendimento annualizzato / max drawdown.",
+    "syntax": [ "TRADING.METRICS.CalmarRatio(rendimenti(), periodiAnno)" ],
+    "examples": [{ "description": "Calmar ratio.", "code": "cr = TRADING.METRICS.CalmarRatio(Returns(), 252)" }]
+  },
+  {
+    "name": "InformationRatio",
+    "category": "TRADING.METRICS",
+    "description": "Information ratio: excess return / tracking error.",
+    "syntax": [ "TRADING.METRICS.InformationRatio(rendimentiAsset(), rendimentiBenchmark(), periodiAnno)" ],
+    "examples": [{ "description": "Information ratio.", "code": "ir = TRADING.METRICS.InformationRatio(Asset(), BM(), 252)" }]
+  },
+  {
+    "name": "Alpha",
+    "category": "TRADING.METRICS",
+    "description": "Alpha di Jensen (excess return adjusted per beta).",
+    "syntax": [ "TRADING.METRICS.Alpha(rendimentiAsset(), rendimentiBenchmark(), riskFree, periodiAnno)" ],
+    "examples": [{ "description": "Alpha.", "code": "alpha = TRADING.METRICS.Alpha(Asset(), BM(), 0.03, 252)" }]
+  },
+  {
+    "name": "Beta",
+    "category": "TRADING.METRICS",
+    "description": "Beta (sensibilità ai movimenti del benchmark).",
+    "syntax": [ "TRADING.METRICS.Beta(rendimentiAsset(), rendimentiBenchmark())" ],
+    "examples": [{ "description": "Beta.", "code": "beta = TRADING.METRICS.Beta(Asset(), BM())" }]
+  },
+  {
+    "name": "TreynorRatio",
+    "category": "TRADING.METRICS",
+    "description": "Treynor ratio: excess return / beta.",
+    "syntax": [ "TRADING.METRICS.TreynorRatio(rendimentiAsset(), rendimentiBenchmark(), riskFree, periodiAnno)" ],
+    "examples": [{ "description": "Treynor ratio.", "code": "tr = TRADING.METRICS.TreynorRatio(Asset(), BM(), 0.03, 252)" }]
+  },
+  {
+    "name": "ValueAtRisk",
+    "category": "TRADING.METRICS",
+    "description": "Value at Risk (VaR) storico di una serie di rendimenti.",
+    "syntax": [ "TRADING.METRICS.ValueAtRisk(rendimenti(), livelloConfidenza)" ],
+    "examples": [{ "description": "VaR 95%.", "code": "var95 = TRADING.METRICS.ValueAtRisk(Returns(), 0.95)" }]
+  },
+  {
+    "name": "ConditionalValueAtRisk",
+    "category": "TRADING.METRICS",
+    "description": "Conditional VaR (Expected Shortfall) di una serie di rendimenti.",
+    "syntax": [ "TRADING.METRICS.ConditionalValueAtRisk(rendimenti(), livelloConfidenza)" ],
+    "examples": [{ "description": "CVaR 95%.", "code": "cvar95 = TRADING.METRICS.ConditionalValueAtRisk(Returns(), 0.95)" }]
+  },
+  {
+    "name": "DownsideDeviation",
+    "category": "TRADING.METRICS",
+    "description": "Deviazione standard dei soli rendimenti negativi (sotto la soglia).",
+    "syntax": [ "TRADING.METRICS.DownsideDeviation(rendimenti(), soglia)" ],
+    "examples": [{ "description": "Downside deviation.", "code": "dd = TRADING.METRICS.DownsideDeviation(Returns(), 0)" }]
+  },
+  {
+    "name": "ReturnsSkewness",
+    "category": "TRADING.METRICS",
+    "description": "Asimmetria (skewness) della distribuzione dei rendimenti.",
+    "syntax": [ "TRADING.METRICS.ReturnsSkewness(rendimenti())" ],
+    "examples": [{ "description": "Skewness dei rendimenti.", "code": "skew = TRADING.METRICS.ReturnsSkewness(Returns())" }]
+  },
+  {
+    "name": "ReturnsKurtosis",
+    "category": "TRADING.METRICS",
+    "description": "Curtosi della distribuzione dei rendimenti.",
+    "syntax": [ "TRADING.METRICS.ReturnsKurtosis(rendimenti())" ],
+    "examples": [{ "description": "Curtosi dei rendimenti.", "code": "kurt = TRADING.METRICS.ReturnsKurtosis(Returns())" }]
+  },
+  {
+    "name": "JarqueBeraTest",
+    "category": "TRADING.METRICS",
+    "description": "Test di normalità di Jarque-Bera sui rendimenti.",
+    "syntax": [ "TRADING.METRICS.JarqueBeraTest(rendimenti())" ],
+    "examples": [{ "description": "Test normalità JB.", "code": "result = TRADING.METRICS.JarqueBeraTest(Returns())" }]
+  },
+  {
+    "name": "AnnualizedVolatility",
+    "category": "TRADING.METRICS",
+    "description": "Volatilità annualizzata (dev std * sqrt(periodi)).",
+    "syntax": [ "TRADING.METRICS.AnnualizedVolatility(rendimenti(), periodiAnno)" ],
+    "examples": [{ "description": "Volatilità annualizzata.", "code": "vol = TRADING.METRICS.AnnualizedVolatility(Returns(), 252)" }]
+  },
+  {
+    "name": "AnnualizedTrackingError",
+    "category": "TRADING.METRICS",
+    "description": "Tracking error annualizzato (dev std excess return).",
+    "syntax": [ "TRADING.METRICS.AnnualizedTrackingError(rendimenti(), benchmark(), periodiAnno)" ],
+    "examples": [{ "description": "Tracking error.", "code": "te = TRADING.METRICS.AnnualizedTrackingError(Asset(), BM(), 252)" }]
+  },
+  {
+    "name": "AnnualizedDownsideDeviation",
+    "category": "TRADING.METRICS",
+    "description": "Downside deviation annualizzato.",
+    "syntax": [ "TRADING.METRICS.AnnualizedDownsideDeviation(rendimenti(), soglia, periodiAnno)" ],
+    "examples": [{ "description": "Downside deviation annuo.", "code": "add = TRADING.METRICS.AnnualizedDownsideDeviation(Returns(), 0, 252)" }]
+  },
+  {
+    "name": "OmegaRatio",
+    "category": "TRADING.METRICS",
+    "description": "Omega ratio: rapporto tra rendimenti sopra soglia e sotto soglia.",
+    "syntax": [ "TRADING.METRICS.OmegaRatio(rendimenti(), soglia)" ],
+    "examples": [{ "description": "Omega ratio.", "code": "omega = TRADING.METRICS.OmegaRatio(Returns(), 0)" }]
+  },
+  {
+    "name": "UlcerIndex",
+    "category": "TRADING.METRICS",
+    "description": "Ulcer Index: profondità media dei drawdown.",
+    "syntax": [ "TRADING.METRICS.UlcerIndex(rendimenti())" ],
+    "examples": [{ "description": "Ulcer index.", "code": "ui = TRADING.METRICS.UlcerIndex(Returns())" }]
+  }
+]

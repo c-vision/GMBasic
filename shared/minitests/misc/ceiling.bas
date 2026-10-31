@@ -1,0 +1,3 @@
+SUB Main()
+  PRINT CEILING(3.2)
+END SUB

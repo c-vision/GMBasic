@@ -1,0 +1,11 @@
+' MiniTest: SYSTEM.UDTALIGNED(udt) = 1 — parita' 4 backend.
+' EXPECT: 1
+IMPORT SYSTEM
+TYPE TestUDT
+  a AS INTEGER
+  b AS DOUBLE
+END TYPE
+SUB Main()
+  DIM u AS TestUDT
+  PRINT SYSTEM.UDTALIGNED(u)
+END SUB

@@ -1,0 +1,6 @@
+' EXPECT: {"hooks":{}}
+IMPORT AI
+
+SUB Main()
+    PRINT AI.HOOKLIST()
+END SUB

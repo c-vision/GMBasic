@@ -1,0 +1,3 @@
+SUB Main()
+  PRINT CHR(65)
+END SUB

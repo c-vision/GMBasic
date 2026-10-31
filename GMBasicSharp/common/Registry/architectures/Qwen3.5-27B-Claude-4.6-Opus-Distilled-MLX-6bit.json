@@ -1,0 +1,44 @@
+{
+  "model": "Qwen3.5-27B-Claude-4.6-Opus-Distilled-MLX-6bit",
+  "config": "/Users/gaetano/ai/Models/Qwen3.5-27B-Claude-4.6-Opus-Distilled-MLX-6bit/config.json",
+  "spec": {
+    "model_type": "qwen3_5_text",
+    "hidden_size": 5120,
+    "num_hidden_layers": 64,
+    "num_attention_heads": 24,
+    "num_key_value_heads": 4,
+    "head_dim": 256,
+    "intermediate_size": 17408,
+    "num_experts": null,
+    "experts_per_token": null,
+    "rope_theta": null,
+    "rms_norm_eps": 1e-06,
+    "tie_word_embeddings": false,
+    "sliding_window": null,
+    "vocab_size": 248320,
+    "rope_scaling": null,
+    "quant": {
+      "bits": 6,
+      "group_size": 64
+    },
+    "architectures": [
+      "Qwen3_5ForConditionalGeneration"
+    ]
+  },
+  "contract": {
+    "_source": "convenzione dell'architettura (best-effort; verificare per-modello se critico)",
+    "rope_convention": "neox",
+    "attention": "GQA",
+    "kv_heads": 4,
+    "q_heads": 24,
+    "head_dim": 256,
+    "eps": 1e-06,
+    "tie_word_embeddings": false,
+    "kv_layout": "perlayer",
+    "position_semantics": "absolute-0based",
+    "residual_order": "pre",
+    "attention_scale": "1/sqrt(head_dim)",
+    "mask": null,
+    "recurrent_state": "none"
+  }
+}

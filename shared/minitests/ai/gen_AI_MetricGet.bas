@@ -1,0 +1,6 @@
+' EXPECT: 0
+IMPORT AI
+
+SUB Main()
+    PRINT AI.METRICGET("x", "x")
+END SUB

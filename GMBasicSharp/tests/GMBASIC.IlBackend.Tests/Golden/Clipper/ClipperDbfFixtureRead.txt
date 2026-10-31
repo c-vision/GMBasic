@@ -1,0 +1,7 @@
+Conformance: edition=Commercial
+  code=1110 bytes, consts=4, entry=1064
+  A1 chunk: /var/folders/b_/gsctxq2x5sq9gh7zpqpgrd0m0000gn/T/gmb_vmtest_437b5200.chunk (11828 bytes)
+  ---- VM/C OUTPUT ----
+ClipperDbfFixtureRead — dbase_03 fixture path check
+SKIP: Samples/Fixtures/Dbf/working/dbase3/dbase_03.dbf
+  exit=0

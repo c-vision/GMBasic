@@ -1,0 +1,3 @@
+SUB Main()
+  PRINT EXP(0)
+END SUB

@@ -1,0 +1,2 @@
+# RegistryServer: server HTTP demo 120s (FOR 1..120 × SLEEP 1000), poi STOP.
+@timeout 130000

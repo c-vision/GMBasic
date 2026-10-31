@@ -1,0 +1,70 @@
+Conformance: edition=Commercial
+  code=2737 bytes, consts=225, entry=1293
+  A1 chunk: /var/folders/b_/gsctxq2x5sq9gh7zpqpgrd0m0000gn/T/gmb_vmtest_d8314a74.chunk (25048 bytes)
+  ---- VM/C OUTPUT ----
+╔═════════════════════════════════════════════════════════════════════════════╗
+║ ClipperArrays - Manipolazione Array (Legacy & Moderna)                      ║
+╚═════════════════════════════════════════════════════════════════════════════╝
+
+--- 1. Test AADD (Aggiunta) ---
+  [Legacy] AADD 'Mario'. Count:  1 
+  [Modern] ARRAYS.AADD 'Luigi'. Count:  2 
+  Elemento Nomi$(2): Anna (Atteso: Anna)
+  Array: Mario, Luigi, Anna
+
+--- 2. Test AINS / ADEL (Inserimento/Cancellazione) ---
+  [Legacy] AINS 1 -> A, , C, D
+  [Modern] ARRAYS.AINS 2 -> A, , , C, D
+  [Legacy] ADEL 1 -> A, , C, D
+  [Modern] ARRAYS.ADEL 2 -> A, , D
+
+--- 3. Test AFILL (Riempimento) ---
+  [Legacy] AFILL 9 -> 
+  [Modern] ARRAYS.AFILL 5 (idx 1, cnt 3) ->  5  5  5 
+
+--- 4. Test ACOPY (Copia) ---
+  [Legacy] ACOPY Full -> 
+  [Modern] ARRAYS.ACOPY (Partiale) ->  20  30 
+
+--- 5. Test ACLONE (Copia profonda) ---
+  Originale(0):  10  (Atteso: 10)
+  Copia(0):  99  (Atteso: 99)
+
+--- 6. Test ASORT (Ordinamento) ---
+  [Legacy] ASORT Asc -> 10, 20, 30, 40, 50
+  [Modern] ARRAYS.ASORT Desc -> 50, 40, 30, 20, 10
+  [Legacy] ASORT UDT: , 
+
+--- 7. Test AEVAL (Iterazione) ---
+  [Legacy] AEVAL:  1   2   3  
+  [Modern] ARRAYS.AEVAL:  10   20   30  
+
+--- 8. Test ASCAN (Ricerca) ---
+  ASCAN per valore 160:  2  (Atteso: 2)
+  ASCAN per prodotto costoso: -1  (Atteso: 1)
+
+--- 9. Test AMAP (Trasformazione) ---
+  Prezzo scontato del primo prodotto:  (Atteso: 160.5)
+
+--- 10. Test AFILTER (Filtro) ---
+  Prodotti filtrati in scorta:  0  (Atteso: 3)
+
+--- 11. Test AREDUCE (Aggregazione) ---
+  Valore totale del magazzino in scorta:  (Atteso: 250)
+
+--- 12. Test AUNIQUE (Valori Unici) ---
+  Codici unici: 101, 205, 300 (Atteso: 101, 205, 300)
+
+--- 13. Test ACOUNT (Conteggio condizionale) ---
+  Numero di punteggi sufficienti (>= 6):  (Atteso: 4)
+
+--- 14. Test AREVERSE e ASHUFFLE (Ordinamento inverso e casuale) ---
+  Array rovesciato: D, C, B, A (Atteso: D, C, B, A)
+  Array mescolato (esempio): A, D, B, C (L'ordine sarà casuale)
+
+--- 15. Test ABINARYSEARCH (Ricerca binaria) ---
+  ABINARYSEARCH per 50:  4  (Atteso: 4)
+  ABINARYSEARCH per 35: -1  (Atteso: -1)
+
+--- Test completo manipolazione array terminato. ---
+  exit=0

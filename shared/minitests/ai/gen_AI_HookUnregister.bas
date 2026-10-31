@@ -1,0 +1,6 @@
+' EXPECT: 0
+IMPORT AI
+
+SUB Main()
+    PRINT AI.HOOKUNREGISTER("x", "x")
+END SUB

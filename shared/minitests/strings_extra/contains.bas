@@ -1,0 +1,5 @@
+IMPORT STRINGS
+SUB Main()
+  PRINT CONTAINS("GMBasic", "Bas")
+  PRINT CONTAINS("GMBasic", "xyz")
+END SUB

@@ -1,0 +1,74 @@
+<%@ IMPORT WASMBRIDGE %>
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GMBasic — WASM</title>
+<style>
+  :root { color-scheme: light dark; }
+  *{box-sizing:border-box;margin:0}
+  body{font-family:-apple-system,"Segoe UI",Roboto,sans-serif;background:#f4f6fb;color:#1c2430;line-height:1.5}
+  header{background:linear-gradient(135deg,#1e293b,#334155);color:#fff;padding:1.4rem 2rem}
+  header h1{font-size:1.4rem} header p{color:#cbd5e1;font-size:.88rem;margin-top:.2rem}
+  main{max-width:900px;margin:1.5rem auto;padding:0 1.5rem}
+  .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(15,23,42,.06);padding:1.2rem}
+  canvas.gmb-canvas{border:1px solid #e2e8f0;border-radius:12px;background:#fff;display:block;margin:.8rem 0}
+  .toolbar{display:flex;gap:.6rem;align-items:center;margin:.8rem 0;flex-wrap:wrap}
+  .btn{padding:.5rem .9rem;border-radius:8px;font-weight:600;cursor:pointer;border:none;font-size:.86rem}
+  .btn-primary{background:#2563eb;color:#fff} .btn-ghost{background:#eef2ff;color:#3730a3}
+  .muted{color:#94a3b8;font-size:.82rem}
+  .hint{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:.7rem .9rem;font-size:.84rem;color:#92400e;margin:.8rem 0}
+  pre.json{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:.8rem 1rem;font-size:.82rem;overflow-x:auto}
+  code{background:#f1f5f9;padding:.15rem .4rem;border-radius:4px;font-size:.82rem}
+</style>
+</head>
+<body>
+<header>
+  <h1>WASM — Esegui BASIC nel browser</h1>
+  <p>Target <code>.bas → .wasm</code> via <code>clang --target=wasm32</code> + <code>include/WasmBridge.inc</code></p>
+</header>
+<main>
+  <div class="card">
+    <p class="muted">Import JS: <code>DECLARE LIB "env" ALIAS "wasm_pset"</code> in <code>WasmBridge.inc</code> → <code>wasm.js:importObject.env</code> → <code>&lt;canvas&gt;</code>. Info: <code><%= WASMBRIDGE.Info() %></code></p>
+    <canvas id="wasm-canvas" class="gmb-canvas" width="800" height="480"></canvas>
+    <div class="toolbar">
+      <button class="btn btn-primary" onclick="loadWasm()">Load prog.wasm</button>
+      <button class="btn btn-ghost" onclick="demo()">Demo draw (JS fallback)</button>
+      <span class="muted" id="wasm-status">idle</span>
+      <a class="muted" href="/index.bsp">← Dashboard</a>
+    </div>
+    <div class="hint">
+      POC oggi (zero C#):<br>
+      <code>dotnet run --project REPL/REPL.csproj -- -c99 prog.bas -o /tmp/prog.c</code><br>
+      <code>clang --target=wasm32 -o webapp/static/prog.wasm /tmp/prog.c native/gmb_runtime_c/src/*.c</code><br>
+      Futuro: <code>gmb prog.bas -target wasm -o webapp/static/prog.wasm</code>
+    </div>
+    <pre id="wasm-log" class="json"><%= WASMBRIDGE.Info() %></pre>
+  </div>
+</main>
+<script src="/static/wasm.js"></script>
+<script>
+  async function loadWasm(){
+    const st=document.getElementById('wasm-status');
+    st.textContent='loading…';
+    try{
+      await WasmLoad('/static/prog.wasm', document.getElementById('wasm-canvas'));
+      st.textContent='loaded';
+    }catch(e){
+      st.textContent='error: '+e.message;
+      document.getElementById('wasm-log').textContent=String(e);
+    }
+  }
+  function demo(){
+    const c=document.getElementById('wasm-canvas');
+    const ctx=c.getContext('2d');
+    ctx.fillStyle='#fff'; ctx.fillRect(0,0,c.width,c.height);
+    ctx.fillStyle='#2563eb'; ctx.fillRect(20,20,60,40);
+    ctx.beginPath(); ctx.arc(80,80,20,0,Math.PI*2); ctx.strokeStyle='#0c4a6e'; ctx.stroke();
+    ctx.fillStyle='#1c2430'; ctx.font='13px monospace'; ctx.fillText('WASM demo (JS fallback)',10,150);
+    document.getElementById('wasm-log').textContent='WASM demo (JS fallback, senza .wasm)';
+  }
+</script>
+</body>
+</html>

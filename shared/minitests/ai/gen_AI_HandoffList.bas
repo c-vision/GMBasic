@@ -1,0 +1,6 @@
+' EXPECT: {"handoffs":[]}
+IMPORT AI
+
+SUB Main()
+    PRINT AI.HANDOFFLIST()
+END SUB

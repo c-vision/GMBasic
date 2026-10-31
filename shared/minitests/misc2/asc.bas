@@ -1,0 +1,3 @@
+SUB Main()
+  PRINT ASC("A")
+END SUB

@@ -1,0 +1,6 @@
+' EXPECT: AGENT.RUN: goal mancante
+IMPORT AGENT
+
+SUB Main()
+    PRINT AGENT.RUN("", 0)
+END SUB

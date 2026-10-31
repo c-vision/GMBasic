@@ -1,0 +1,3 @@
+' EXPECT: available= 1
+IMPORT MQTT WITH ALIAS
+PRINT "available="; MQTT.AVAILABLE()

@@ -1,0 +1,6 @@
+' EXPECT: {"plans":[]}
+IMPORT AI
+
+SUB Main()
+    PRINT AI.PLANLIST()
+END SUB

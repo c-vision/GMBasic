@@ -1,0 +1,10 @@
+' MiniTest: SIGNAL.BUTTER + FILTFILT (parita' 4 backend).
+' EXPECT: 0.998435  2.003274  2.997565  3.992798  5.002446  6.039977
+IMPORT SIGNAL
+SUB Main()
+  DIM wn(0) AS DOUBLE = {0.3}
+  DIM h = SIGNAL.BUTTER(2, wn, "low")
+  DIM x(5) AS DOUBLE = {1, 2, 3, 4, 5, 6}
+  DIM y() = SIGNAL.FILTFILT(h, x)
+  PRINT ROUND(y(0), 6); ROUND(y(1), 6); ROUND(y(2), 6); ROUND(y(3), 6); ROUND(y(4), 6); ROUND(y(5), 6)
+END SUB

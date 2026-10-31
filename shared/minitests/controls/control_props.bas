@@ -1,0 +1,9 @@
+' EXPECT: props-ok
+IMPORT CONTROLS
+SCREEN 0
+DIM v = 0
+DIM h = -1
+SUB Main()
+    CHECKBOX 1, 1, "A" INTO v ID h NAME "k1" VISIBLE 1 ENABLED 1 TABINDEX 2 TABSTOP 1 TAG "g" TOOLTIP "t"
+    IF h >= 0 THEN PRINT "props-ok" ELSE PRINT "props-no"
+END SUB

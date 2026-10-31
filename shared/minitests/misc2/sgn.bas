@@ -1,0 +1,3 @@
+SUB Main()
+  PRINT SGN(-5)
+END SUB

@@ -1,0 +1,7 @@
+' MiniTest: SPECIAL.GAMMAINCC — parita' 4 backend bit-esatta (port MathNet).
+' EXPECT: 0.199148273471456
+IMPORT SPECIAL
+
+SUB Main
+  PRINT SPECIAL.GAMMAINCC(2.0, 3.0)
+END SUB

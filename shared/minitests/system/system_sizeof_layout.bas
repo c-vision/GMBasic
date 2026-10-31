@@ -1,0 +1,94 @@
+' MiniTest: MATRICE DI LAYOUT — SIZEOF / SYSTEM.UDTPACKED / SYSTEM.UDTALIGNED / SYSTEM.SIZEOF
+'  qualificato su scalari, suffissi, STRING * n, collezioni, CLASS, UDT packed e non, UDT con
+'  campo array, Ricordo con CURRENCY. Canone in common/Ast/TypeLayout.cs, parità 4 backend
+'  (IL, PCodeVM, VM/C, C99Native).
+'  Campi che contano: campo array = 8 (riferimento, gli elementi NON sono inline); STRING * n =
+'  n + 1 (terminatore); collezione/CLASS/oggetto = -1; UDTPACKED/UDTALIGNED = numero di CAMPI.
+' EXPECT: 1|1|1|2|2|4|8|8|8|8|8|8|8|8|8|16|2|11|-1|-1|-1|-1|-1|4|4|16|16|10|33|27|16|16|33|2|0|2|1|2|1|2|3|1
+IMPORT SYSTEM
+
+PACKED TYPE P2
+  a AS INTEGER
+  b AS INTEGER
+END TYPE
+
+TYPE N2
+  a AS INTEGER
+  b AS INTEGER
+END TYPE
+
+TYPE NestPacked
+  p AS P2
+  d AS DOUBLE
+END TYPE
+
+TYPE WithArray
+  arr(4) AS LONG
+  n AS INTEGER
+END TYPE
+
+PACKED TYPE WithArrayPacked
+  arr(4) AS LONG
+  n AS INTEGER
+END TYPE
+
+TYPE Rec
+  id AS LONG
+  name AS STRING * 10
+  v AS DOUBLE
+END TYPE
+
+PACKED TYPE RecPacked
+  id AS LONG
+  name AS STRING * 10
+  v AS DOUBLE
+END TYPE
+
+CLASS Cx
+  DIM k AS INTEGER
+END CLASS
+
+SUB Main()
+  DIM b AS BIT : PRINT SIZEOF(b)
+  DIM y AS BYTE : PRINT SIZEOF(y)
+  DIM sb AS SBYTE : PRINT SIZEOF(sb)
+  DIM i AS INTEGER : PRINT SIZEOF(i)
+  DIM u AS UINT : PRINT SIZEOF(u)
+  DIM sng AS SINGLE : PRINT SIZEOF(sng)
+  DIM l AS LONG : PRINT SIZEOF(l)
+  DIM q AS QUAD : PRINT SIZEOF(q)
+  DIM ul AS ULONG : PRINT SIZEOF(ul)
+  DIM uq AS UQUAD : PRINT SIZEOF(uq)
+  DIM d AS DOUBLE : PRINT SIZEOF(d)
+  DIM dt AS DATE : PRINT SIZEOF(dt)
+  DIM tm AS TIME : PRINT SIZEOF(tm)
+  DIM dtt AS DATETIME : PRINT SIZEOF(dtt)
+  DIM ts AS TIMESPAN : PRINT SIZEOF(ts)
+  DIM cur AS CURRENCY : PRINT SIZEOF(cur)
+  DIM f1 AS STRING * 1 : PRINT SIZEOF(f1)
+  DIM f10 AS STRING * 10 : PRINT SIZEOF(f10)
+  DIM dyn AS STRING : PRINT SIZEOF(dyn)
+  DIM arr(5) AS LONG : PRINT SIZEOF(arr)
+  DIM lst AS LIST : PRINT SIZEOF(lst)
+  DIM dic AS DICT : PRINT SIZEOF(dic)
+  DIM cx AS Cx : PRINT SIZEOF(cx)
+  PRINT SIZEOF(N2)
+  PRINT SIZEOF(P2)
+  PRINT SIZEOF(NestPacked)
+  PRINT SIZEOF(WithArray)
+  PRINT SIZEOF(WithArrayPacked)
+  PRINT SIZEOF(Rec)
+  PRINT SIZEOF(RecPacked)
+  DIM np AS NestPacked : PRINT SIZEOF(np)
+  DIM wa AS WithArray : PRINT SIZEOF(wa)
+  DIM rc AS Rec : PRINT SIZEOF(rc)
+  DIM qi AS INTEGER : PRINT SYSTEM.SIZEOF(qi)
+  PRINT SYSTEM.UDTPACKED(qi)
+  DIM p2 AS P2 : PRINT SYSTEM.UDTPACKED(p2)
+  PRINT SYSTEM.UDTALIGNED(p2)
+  DIM np2 AS NestPacked : PRINT SYSTEM.UDTPACKED(np2)
+  PRINT SYSTEM.UDTALIGNED(np2)
+  DIM wa2 AS WithArray : PRINT SYSTEM.UDTPACKED(wa2)
+  DIM rc2 AS Rec : PRINT SYSTEM.UDTPACKED(rc2)
+  PRINT SYSTEM.UDTALIGNED(rc2)
+END SUB

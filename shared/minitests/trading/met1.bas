@@ -1,0 +1,12 @@
+IMPORT TRADING.METRICS AS M
+SUB Main()
+  PRINT M.BookValuePerShare(500, 100)
+  PRINT M.EPS(50, 100)
+  PRINT ROUND(M.DilutedEPS(50, 100, 10), 4)
+  PRINT M.DPS(20, 100)
+  PRINT M.EquityMultiplier(500, 250)
+  PRINT M.NAV(1000, 200, 100)
+  PRINT M.PSRatio(10, 2)
+  PRINT M.PBRatio(10, 4)
+  PRINT M.DividendPayoutRatio(20, 50)
+END SUB

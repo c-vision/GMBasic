@@ -1,0 +1,5 @@
+' EXPECT: strti-ok
+IMPORT DATETIME
+SUB Main()
+  IF LEN(DATETIME.STRTI()) > 0 THEN PRINT "strti-ok"
+END SUB

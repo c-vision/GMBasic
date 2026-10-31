@@ -1,0 +1,8 @@
+' MiniTest: TRADING.METRICS.PERATIO — parita' 4 backend.
+' EXPECT: 5
+IMPORT TRADING.METRICS AS TM
+
+SUB Main
+  
+  PRINT ROUND(TM.PERatio(10, 2), 8)
+END SUB

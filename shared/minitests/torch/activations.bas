@@ -1,0 +1,18 @@
+' MiniTest: TORCH attivazioni RELU/SIGMOID/TANH/EXP/SQRT/ABS (parita' 4 backend).
+' EXPECT: 0  1|0.5|0|1|1
+IMPORT TORCH
+SUB Main()
+  a = TORCH.ZEROS(1, 3)
+  TORCH.SET(a, 0, 0, -1.0) : TORCH.SET(a, 0, 1, 0.0) : TORCH.SET(a, 0, 2, 1.0)
+  r = TORCH.RELU(a)
+  PRINT ROUND(TORCH.GET(r, 0, 0), 6); ROUND(TORCH.GET(r, 0, 2), 6)
+  s = TORCH.SIGMOID(a)
+  PRINT ROUND(TORCH.GET(s, 0, 1), 6)
+  t = TORCH.TANH(a)
+  PRINT ROUND(TORCH.GET(t, 0, 1), 6)
+  e = TORCH.EXP(a)
+  PRINT ROUND(TORCH.GET(e, 0, 1), 6)
+  q = TORCH.SQRT(TORCH.ABS(a))
+  PRINT ROUND(TORCH.GET(q, 0, 2), 6)
+  TORCH.FREE(a) : TORCH.FREE(r) : TORCH.FREE(s) : TORCH.FREE(t) : TORCH.FREE(e) : TORCH.FREE(q)
+END SUB

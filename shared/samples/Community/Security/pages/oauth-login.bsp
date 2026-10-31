@@ -1,0 +1,21 @@
+<%@ IMPORT OAUTH %>
+<%@ IMPORT HTTP %>
+<%@ IMPORT CRYPTOGRAPHY %>
+<%@ IMPORT STRINGS %>
+<%
+  ' OAuth /login: genera verifier+state, li salva in SESSIONE e mostra l'URL di autorizzazione.
+  DIM verifier$ = OAUTH.CreateVerifier(64)
+  SESSION("oauth_verifier") = verifier$
+  SESSION("oauth_state") = "csrf-state-42"
+  DIM url$ = OAUTH.AuthUrl("https://accounts.google.com/o/oauth2/v2/auth",
+      "google-client-id", "http://localhost:8096/callback.bsp", "openid profile email",
+      SESSION("oauth_state"), verifier$)
+%>
+<!DOCTYPE html>
+<html>
+<body>
+  <h1>OAuth login</h1>
+  <p><a href="<%= url$ %>">Accedi con Google</a></p>
+  <p>Stato (debug): <%= SESSION("oauth_state") %></p>
+</body>
+</html>

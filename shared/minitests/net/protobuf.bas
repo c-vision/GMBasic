@@ -1,0 +1,12 @@
+' EXPECT: hex=089601120774657374696e67|f1= 150|f2=testing
+' Lib INTERNA gmbsuite/net/protobuf (auto-inclusa): round-trip wire-format (esempio canonico).
+IMPORT PROTOBUF WITH ALIAS
+w = PROTOBUF.NEWMSG()
+PROTOBUF.ADDINT(w, 1, 150)
+PROTOBUF.ADDSTRING(w, 2, "testing")
+hx$ = PROTOBUF.SERIALIZE(w)
+PRINT "hex="; hx$
+r = PROTOBUF.PARSEHEX(hx$)
+PRINT "f1="; PROTOBUF.GETINT(r, 1)
+PRINT "f2="; PROTOBUF.GETSTRING(r, 2)
+PROTOBUF.FREEMSG(w) : PROTOBUF.FREEMSG(r)

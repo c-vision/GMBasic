@@ -1,0 +1,192 @@
+// FILE: system.settings.json
+{
+  // --------------------------------------------------------------------
+  // --- Sezione Namespace e Moduli
+  // --------------------------------------------------------------------
+
+  // Lista dei namespace che vengono importati implicitamente in ogni
+  // programma BASIC. Permette di usare comandi come CLS, PRINT, LEN, etc.
+  // senza dover scrivere "IMPORT CONSOLE" o "IMPORT STRINGS".
+    "defaultNamespaces": [
+        "SYSTEM",
+        "CONSOLE",
+        "GRAPHICS",
+        "MATH",
+        "STRINGS",
+        "DATETIME",
+        "CONVERSIONS",
+        "IO",
+        "CONCURRENCY",
+        "ARRAYS"
+    ],
+
+  // Lista di cartelle in cui l'interprete cercherà i file .bas
+  // quando viene usata un'istruzione IMPORT. Utile per librerie condivise.
+  // Risoluzione: <progetto>/<voce>, poi <install>/<voce>. Nel monorepo gli asset
+  // condivisi stanno in <monorepo>/shared e l'install è <monorepo>/GMBasic, quindi la
+  // libreria dei controlli si raggiunge con `../shared/Controls/` (2026-10-29).
+  "importFolders": [
+    "modules/",
+    "../shared/Controls/"
+  ],
+
+  // --------------------------------------------------------------------
+  // --- Sezione Console
+  // --------------------------------------------------------------------
+
+  // Configurazione per le 4 console di default (da 0 a 3).
+  // Ogni elemento è un oggetto ScreenConfig completo.
+  "consoleConfiguration": [
+    {
+      // Console 0: Una console di testo moderna, ad alta risoluzione.
+      "charGridWidth": 100,
+      "charGridHeight": 40,
+      "fontPath": "Cascadia Code",
+      "fontSize": 16,
+      "useNativeResolutionRendering": true,
+      "fontHinting": "normal"
+    },
+    {
+      // Console 1: Una console in stile retro Commodore 64.
+      // Usa le impostazioni predefinite della ScreenMode.C64.
+      "charGridWidth": 40,
+      "charGridHeight": 25,
+      "fontPath": "C64_Pro_Mono-STYLE.otf",
+      "fontSize": 16, // La dimensione del font viene scalata correttamente
+      "fontHinting": "monospace",
+      "useLogicalSizeScaling": false,
+      "palette": "c64Classic" // Esempio di come si potrebbe specificare una palette per nome
+    },
+    {
+      // Console 2 e 3 non sono configurate, useranno un default interno.
+    }
+  ],
+
+  // --------------------------------------------------------------------
+  // --- Sezioni Future
+  // --------------------------------------------------------------------
+
+  // Cartelle in cui cercare le librerie dinamiche (.dll, .so) per le
+  // future istruzioni DECLARE SUB / DECLARE FUNCTION.
+  "libraryFolders": [
+    "bin/",
+    "lib/"
+  ],
+
+  // Cartella di default in cui l'IDE o l'interprete creerà nuovi progetti
+  // se l'utente non specifica un percorso.
+  "defaultProjectsFolder": "PROJECTS",
+
+  // --------------------------------------------------------------------
+  // --- Sezione paths: posizione delle cartelle dati di GMBASIC ---
+  // --------------------------------------------------------------------
+  //
+  // Ogni chiave accetta un percorso ASSOLUTO o RELATIVO alla root del progetto
+  // (la cartella che contiene GMBASIC.sln). Supporta ~ e variabili d'ambiente.
+  // Se assente/null → default mostrati qui sotto (le cartelle definitive stanno
+  // nella root del progetto, come skills/plugins/rag; le cache in /tmp del SO).
+  //
+  // Per tornare alle vecchie posizioni (~/.gmbasic/...) BASTA copiare questo file
+  // in <root>/config/system.settings.json ed editare le chiavi — nessuna
+  // ricompilazione. Il loader cerca: 1) <root>/config/system.settings.json
+  // (copia locale editabile, git-ignorata), 2) <root>/Resources/system.settings.json
+  // (questo template), 3) la cartella dell'eseguibile.
+  //
+  // NB: i file di stato/config del layer AI (ai.json, providers.json, mcp.json,
+  // vaults.db, brain.db, brains.json, ide.settings.json) vivono in configDir.
+  "paths": {
+    // File di stato/config AI. Default: config/        (ex ~/.gmbasic)
+    "configDir": null,
+    // Archivio skills. Default: <monorepo>/shared/skills (copia UNICA condivisa dai due mondi);
+    // in un checkout del solo GMBasic o in un'app installata: <root>/skills
+    "skillsDir": null,
+    // Archivio plugin operativi. Default: <monorepo>/shared/plugins (copia UNICA); fallback <root>/plugins
+    "pluginsDir": null,
+    // Log agenti AI. Default: ai-logs/
+    "logsDir": null,
+    // Database RAG (RAG BUILD). Default: rag/
+    "ragDir": null,
+    // Export GRAPH BUILD. Default: graphs/
+    "graphsDir": null,
+    // Cervelli installati (BRAIN INSTALL). Default: brains/
+    "brainsDir": null,
+    // Export BRAIN EXPORT. Default: brains-exports/
+    "brainsExportsDir": null,
+    // Componenti runtime scaricati on-demand (torch/ml, chromium, ocr): il loader
+    // cerca in <libsDir>/<componente>/<rid>/. Default: libs-runtime/ (NON versionata;
+    // Resources/libs/<rid> resta per le libs definitive LIBS)
+    "libsDir": null,
+    // Cache temporanee (kv-swap, marketplaces clone, staging download). Default: null
+    // → System.IO.Path.GetTempPath() (il SO la pulisce)
+    "tempDir": null
+  },
+
+  // --------------------------------------------------------------------
+  // --- Sezione compiler: toolchain C e flag (default GLOBALE condiviso) ---
+  // --------------------------------------------------------------------
+  //
+  // Valgono per TUTTI i backend che invocano il toolchain C: C99Native (driver nativo,
+  // .bas -> C -> cc) (transpiler C#, .bas -> C -> cc). Sono i soli posti
+  // dove la command line di cc viene costruita a mano: qui la si dichiara una volta.
+  //
+  // SOVRASCRITTO DA app.settings.json (impostazioni dell'applicazione BASIC), che sta
+  // nella cartella del .bas principale. Semantica: sostituzione PER CHIAVE, non unione —
+  // accodare "-O2" e "-O3" darebbe un comando ambiguo. Quindi:
+  //   - lista presente in app.settings.json  -> rimpiazza la lista globale;
+  //   - lista ASSENTE                         -> la lista globale vale;
+  //   - lista VUOTA ([])                      -> disattiva (es. togliere "-w" per vedere i warning).
+  // Esempio (app.settings.json) — build veloce con LTO e ISA estesa:
+  //   "compiler": {
+  //     "cflags":  [ "-std=c99", "-O3", "-march=armv8.2-a+fp16", "-flto" ],
+  //     "ldflags": [ "-flto" ]
+  //   }
+  //
+  // "cc": il compilatore da usare. "cc" = quello di sistema (clang/gcc).
+  // NON scrivere "cc": null — sovrascriverebbe il default del record con null e la command
+  // line partirebbe da una stringa vuota ("/bin/sh: -c: command not found"): un default si
+  // dichiara per ESPLICITAZIONE o non si dichiara. Per un toolchain preciso:
+  //   "cc": "/opt/llvm/bin/clang"
+  //
+  // NB: i flag CRITICI DI PARITÀ non stanno qui (es. -ffp-contract=off, che il gate C99
+  // accoda DOPO questi per il golden bit-exact vs IL/PCode/VM-C): sono costanti del codice
+  // che le richiede, non preferenze dell'utente, e non devono poter sparire.
+  "compiler": {
+    "cc": "cc",
+    "cflags": [
+      "-std=c99",   // C stretto: niente estensioni GNU (unaestensione = errore, non warning)
+      "-O2",        // ottimizzazioni SEMPRE attive (nessuna build "lenta" per default)
+      "-ffunction-sections", "-fdata-sections",  // una sezione per funzione/dato: il linker
+                    // puo' scartare il codice morto a livello di singola funzione
+      "-w"          // i warning del C generato inquinerebbero lo stdout catturato dagli harness
+                    // (falso DIFF di parità). Gli ERRORI restano fatali (exit != 0).
+    ],
+    "ldflags": [
+      "-Wl,-dead_strip"   // macOS/ld64: scarta le sezioni non raggiungibili. Su Linux usare
+                          // "-Wl,--gc-sections" (ld.gold/lld).
+    ],
+    "defines": [],
+
+    // Cartelle in cui il compilatore cerca i moduli BASIC (*.bas/*.inc). Le usano SIA
+    // l'Orchestrator C# (DiscoverSourceFiles) SIA i backend C: una sola dichiarazione,
+    // stesso risultato. Sintassi di una voce:
+    //   {project} = cartella della entry, {install} = root di GMBasic;
+    //   una voce relativa SENZA placeholder è cercata nel progetto, poi risalendo le
+    //   cartelle (include/, Controls/ della root), poi nella root dell'install;
+    //   "*" finale = ogni sottocartella (una di livello).
+    // La scansione di ogni voce è ricorsiva. Questi sono i DEFAULT storici: un progetto
+    // può sostituirli in app.settings.json (lista presente = rimpiazza, lista vuota =
+    // nessuna cartella globale).
+    // Nel MONOREPO gli asset condivisi (include/, Controls/) vivono in <monorepo>/shared e
+    // `{install}` è <monorepo>/GMBasic: per questo le voci d'install sono `{install}/../shared/…`
+    // (2026-10-29, dopo il consolidamento di GMBasic/Controls in shared/Controls).
+    "searchFolders": [
+      "include",
+      "Controls",
+      "controls",
+      "{install}/../shared/include",
+      "{install}/../shared/Controls",
+      "{install}/../shared/libs/*",
+      "{install}/libs/*"
+    ]
+  }
+}

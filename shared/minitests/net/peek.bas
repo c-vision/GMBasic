@@ -1,0 +1,5 @@
+' EXPECT: peek=
+IMPORT NET
+SUB Main()
+  PRINT "peek="; NET.PEEK(0, 10)
+END SUB

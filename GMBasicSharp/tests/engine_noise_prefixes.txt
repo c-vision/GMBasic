@@ -1,0 +1,21 @@
+# tests/engine_noise_prefixes.txt — prefissi di riga del RUMORE DIAGNOSTICO del motore MLX
+# (caricamento modello) che NON fanno parte dell'output del programma: dipendono a runtime da
+# RAM/cache/hash macchina (p.es. `[p4-plan] limit=..GB`), quindi inquinerebbero l'oracolo EXPECT.
+# FONTE UNICA: letta sia da tools/test_minitests_c99native (bash/grep) sia da
+# tests/GMBASIC.IlBackend.Tests/MiniTestsParityTests.cs (C#). Aggiungere qui un prefisso nuovo.
+#
+# Una riga per prefisso; le righe vuote e quelle che iniziano con '#' sono ignorate.
+# NB: NON usare un filtro generico "^[" — ci sono output LEGITTIMI che iniziano con '[' (es.
+# "[-7]", "[ 3.5]", "[user: Ciao]"); il match e' per prefisso SPECIFICO.
+[arch]
+[kvquant]
+[scales-hoist]
+[bf16
+[packed-qkv]
+[p4-plan]
+[kvdisk]
+[prefix]
+[gmb
+[GMB
+[mlx
+[MLX

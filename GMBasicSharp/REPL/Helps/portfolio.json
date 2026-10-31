@@ -1,0 +1,121 @@
+[
+  {
+    "name": "EXPECTEDRETURN",
+    "category": "TRADING.PORTFOLIO",
+    "description": "Calcola il rendimento atteso di un portafoglio: somma(pesi * rendimentiAttesi).",
+    "syntax": [ "TRADING.PORTFOLIO.EXPECTEDRETURN(pesi(), rendimentiAttesi())" ],
+    "examples": [{ "description": "Rendimento atteso portafoglio.", "code": "er = TRADING.PORTFOLIO.EXPECTEDRETURN(W(), R())" }]
+  },
+  {
+    "name": "STDEV",
+    "category": "TRADING.PORTFOLIO",
+    "description": "Calcola la deviazione standard del portafoglio data la matrice di covarianza.",
+    "syntax": [ "TRADING.PORTFOLIO.STDEV(pesi(), matriceCovarianza())" ],
+    "examples": [{ "description": "Rischio portafoglio.", "code": "risk = TRADING.PORTFOLIO.STDEV(W(), Cov())" }]
+  },
+  {
+    "name": "SHARPERATIO",
+    "category": "TRADING.PORTFOLIO",
+    "description": "Calcola l'indice di Sharpe: (Rp - Rf) / sigma_p.",
+    "syntax": [ "TRADING.PORTFOLIO.SHARPERATIO(rendimentoPF, rischioPF, tassoRF)" ],
+    "examples": [{ "description": "Sharpe ratio.", "code": "sr = TRADING.PORTFOLIO.SHARPERATIO(0.12, 0.15, 0.03)" }]
+  },
+  {
+    "name": "MEANVARIANCE",
+    "category": "TRADING.PORTFOLIO",
+    "description": "Ottimizzazione media-varianza (frontiera efficiente di Markowitz).",
+    "syntax": [ "TRADING.PORTFOLIO.MEANVARIANCE(rendimentiAttesi(), covarianza(), vincoli())" ],
+    "examples": [{ "description": "Frontiera efficiente.", "code": "result = TRADING.PORTFOLIO.MEANVARIANCE(R(), Cov(), constraints)" }]
+  },
+  {
+    "name": "MINVOLATILITY",
+    "category": "TRADING.PORTFOLIO",
+    "description": "Trova il portafoglio a volatilità minima globale.",
+    "syntax": [ "TRADING.PORTFOLIO.MINVOLATILITY(matriceCovarianza())" ],
+    "examples": [{ "description": "Portafoglio min varianza.", "code": "result = TRADING.PORTFOLIO.MINVOLATILITY(Cov())" }]
+  },
+  {
+    "name": "MAXSHARPE",
+    "category": "TRADING.PORTFOLIO",
+    "description": "Trova il portafoglio con il massimo Sharpe ratio.",
+    "syntax": [ "TRADING.PORTFOLIO.MAXSHARPE(rendimentiAttesi(), covarianza(), riskFree)" ],
+    "examples": [{ "description": "Portafoglio max Sharpe.", "code": "result = TRADING.PORTFOLIO.MAXSHARPE(R(), Cov(), 0.03)" }]
+  },
+  {
+    "name": "BLACKLITTERMAN",
+    "category": "TRADING.PORTFOLIO",
+    "description": "Modello Black-Litterman per incorporare viste di mercato nell'ottimizzazione.",
+    "syntax": [ "TRADING.PORTFOLIO.BLACKLITTERMAN(marketCaps(), cov(), riskAversion, tau, P, Q, omega, rf)" ],
+    "examples": [{ "description": "Black-Litterman con viste.", "code": "result = TRADING.PORTFOLIO.BLACKLITTERMAN(MC(), Cov(), 2.5, 0.05, P, Q, Omega, 0.03)" }]
+  },
+  {
+    "name": "MINCVAR",
+    "category": "TRADING.PORTFOLIO",
+    "description": "Ottimizzazione con minimizzazione del Conditional Value at Risk (CVaR).",
+    "syntax": [ "TRADING.PORTFOLIO.MINCVAR(rendimenti_storici(), livello_confidenza, riskFree)" ],
+    "examples": [{ "description": "Minimizza CVaR.", "code": "result = TRADING.PORTFOLIO.MINCVAR(Returns(), 0.95, 0.03)" }]
+  },
+  {
+    "name": "MINCDAR",
+    "category": "TRADING.PORTFOLIO",
+    "description": "Ottimizzazione con minimizzazione del Conditional Drawdown at Risk (CDaR).",
+    "syntax": [ "TRADING.PORTFOLIO.MINCDAR(rendimenti_storici(), livello_confidenza, riskFree)" ],
+    "examples": [{ "description": "Minimizza CDaR.", "code": "result = TRADING.PORTFOLIO.MINCDAR(Returns(), 0.95, 0.03)" }]
+  },
+  {
+    "name": "KELLYCRITERION",
+    "category": "TRADING.PORTFOLIO",
+    "description": "Criterio di Kelly per sizing ottimale delle scommesse/investimenti.",
+    "syntax": [ "TRADING.PORTFOLIO.KELLYCRITERION(rendimenti_storici(), riskFree)" ],
+    "examples": [{ "description": "Kelly criterion.", "code": "result = TRADING.PORTFOLIO.KELLYCRITERION(Returns(), 0.03)" }]
+  },
+  {
+    "name": "RISKPARITY",
+    "category": "TRADING.PORTFOLIO",
+    "description": "Portafoglio a parità di rischio contributivo (Risk Parity).",
+    "syntax": [ "TRADING.PORTFOLIO.RISKPARITY(matriceCovarianza())" ],
+    "examples": [{ "description": "Risk parity.", "code": "result = TRADING.PORTFOLIO.RISKPARITY(Cov())" }]
+  },
+  {
+    "name": "EVOLVE",
+    "category": "TRADING.PORTFOLIO",
+    "description": "Ottimizzazione tramite algoritmo genetico per portafogli complessi.",
+    "syntax": [ "TRADING.PORTFOLIO.EVOLVE(rendimentiAttesi(), cov(), GAparams)" ],
+    "examples": [{ "description": "GA portfolio optimization.", "code": "result = TRADING.PORTFOLIO.EVOLVE(R(), Cov(), gaParams)" }]
+  },
+  {
+    "name": "EQUALLYWEIGHTED",
+    "category": "TRADING.PORTFOLIO",
+    "description": "Portafoglio con pesi uguali per tutti gli asset (1/N).",
+    "syntax": [ "TRADING.PORTFOLIO.EQUALLYWEIGHTED(numeroAsset)" ],
+    "examples": [{ "description": "Portafoglio 1/N.", "code": "result = TRADING.PORTFOLIO.EQUALLYWEIGHTED(5)" }]
+  },
+  {
+    "name": "MAXRETURN",
+    "category": "TRADING.PORTFOLIO",
+    "description": "Portafoglio che massimizza il rendimento atteso (tutto sull'asset con rendimento maggiore).",
+    "syntax": [ "TRADING.PORTFOLIO.MAXRETURN(rendimentiAttesi())" ],
+    "examples": [{ "description": "Max return portfolio.", "code": "result = TRADING.PORTFOLIO.MAXRETURN(R())" }]
+  },
+  {
+    "name": "PVAR",
+    "category": "TRADING.PORTFOLIO",
+    "description": "Calcola il Value at Risk (VaR) parametrico del portafoglio.",
+    "syntax": [ "TRADING.PORTFOLIO.PVAR(rendimenti_storici(), pesi(), livello_confidenza)" ],
+    "examples": [{ "description": "VaR 95%.", "code": "var95 = TRADING.PORTFOLIO.PVAR(Returns(), W(), 0.95)" }]
+  },
+  {
+    "name": "CVAR",
+    "category": "TRADING.PORTFOLIO",
+    "description": "Calcola il Conditional Value at Risk (CVaR/Expected Shortfall) del portafoglio.",
+    "syntax": [ "TRADING.PORTFOLIO.CVAR(rendimenti_storici(), pesi(), livello_confidenza)" ],
+    "examples": [{ "description": "CVaR 95%.", "code": "cvar95 = TRADING.PORTFOLIO.CVAR(Returns(), W(), 0.95)" }]
+  },
+  {
+    "name": "ISLONGONLY",
+    "category": "TRADING.PORTFOLIO",
+    "description": "Verifica se un vettore di pesi è long-only (tutti >= 0).",
+    "syntax": [ "TRADING.PORTFOLIO.ISLONGONLY(pesi())" ],
+    "examples": [{ "description": "Controlla long only.", "code": "IF TRADING.PORTFOLIO.ISLONGONLY(W()) THEN PRINT \"OK\"" }]
+  }
+]

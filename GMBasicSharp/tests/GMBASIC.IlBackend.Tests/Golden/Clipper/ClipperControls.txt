@@ -1,0 +1,13 @@
+Conformance: edition=Commercial
+  code=1404 bytes, consts=58, entry=1064
+  A1 chunk: /var/folders/b_/gsctxq2x5sq9gh7zpqpgrd0m0000gn/T/gmb_vmtest_aa3b5bf1.chunk (13807 bytes)
+[3;3HScegli colore:[3;25HNome:[7;3HEta (18-99):[7;25HAttivo:[11;3HSeleziona:  ---- VM/C OUTPUT ----
+=== Clipper Controls Test ===
+
+=== RISULTATI ===
+Nome: Default
+Eta:  25 
+Attivo: -1 
+Colore: Rosso
+Scelta: 
+  exit=0

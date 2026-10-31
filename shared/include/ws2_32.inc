@@ -1,0 +1,15 @@
+' FILE: include/ws2_32.inc
+'   WS2_32 — shim Win32 (socket). Libreria libs/libws2_32.dylib (§9).
+'   STUB deterministico: nessuna rete (socket/connect/send/recv ritornano -1).
+'   Uso: IMPORT WS2_32
+NAMESPACE WS2_32
+PUBLIC DECLARE FUNCTION WSAStartup LIB "ws2_32" (ver AS LONG, data() AS LONG) AS LONG
+PUBLIC DECLARE FUNCTION WSACleanup LIB "ws2_32" () AS LONG
+PUBLIC DECLARE FUNCTION WSAGetLastError LIB "ws2_32" () AS LONG
+PUBLIC DECLARE FUNCTION socket LIB "ws2_32" (af AS LONG, socktype AS LONG, proto AS LONG) AS LONG
+PUBLIC DECLARE FUNCTION connect LIB "ws2_32" (s AS LONG, name() AS LONG, namelen AS LONG) AS LONG
+PUBLIC DECLARE FUNCTION send LIB "ws2_32" (s AS LONG, buf AS STRING, blen AS LONG, flags AS LONG) AS LONG
+PUBLIC DECLARE FUNCTION recv LIB "ws2_32" (s AS LONG, buf() AS LONG, blen AS LONG, flags AS LONG) AS LONG
+PUBLIC DECLARE FUNCTION closesocket LIB "ws2_32" (s AS LONG) AS LONG
+PUBLIC DECLARE FUNCTION htons LIB "ws2_32" (v AS LONG) AS LONG
+PUBLIC DECLARE FUNCTION ntohs LIB "ws2_32" (v AS LONG) AS LONG

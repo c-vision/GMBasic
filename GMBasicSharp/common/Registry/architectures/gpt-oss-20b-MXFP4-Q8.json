@@ -1,0 +1,51 @@
+{
+  "model": "gpt-oss-20b-MXFP4-Q8",
+  "config": "/Users/gaetano/ai/Models/gpt-oss-20b-MXFP4-Q8/config.json",
+  "spec": {
+    "model_type": "gpt_oss",
+    "hidden_size": 2880,
+    "num_hidden_layers": 24,
+    "num_attention_heads": 64,
+    "num_key_value_heads": 8,
+    "head_dim": 64,
+    "intermediate_size": 2880,
+    "num_experts": 32,
+    "experts_per_token": 4,
+    "rope_theta": 150000,
+    "rms_norm_eps": 1e-05,
+    "tie_word_embeddings": false,
+    "sliding_window": 128,
+    "vocab_size": 201088,
+    "rope_scaling": {
+      "beta_fast": 32.0,
+      "beta_slow": 1.0,
+      "factor": 32.0,
+      "original_max_position_embeddings": 4096,
+      "rope_type": "yarn",
+      "truncate": false
+    },
+    "quant": {
+      "bits": 4,
+      "group_size": 32
+    },
+    "architectures": [
+      "GptOssForCausalLM"
+    ]
+  },
+  "contract": {
+    "_source": "convenzione dell'architettura (best-effort; verificare per-modello se critico)",
+    "rope_convention": "neox",
+    "attention": "GQA",
+    "kv_heads": 8,
+    "q_heads": 64,
+    "head_dim": 64,
+    "eps": 1e-05,
+    "tie_word_embeddings": false,
+    "kv_layout": "perlayer",
+    "position_semantics": "absolute-0based",
+    "residual_order": "pre",
+    "attention_scale": "1/sqrt(head_dim)",
+    "mask": "sliding_window",
+    "recurrent_state": "none"
+  }
+}

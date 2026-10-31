@@ -1,0 +1,209 @@
+Conformance: edition=Commercial
+  code=2554 bytes, consts=117, entry=1428
+  A1 chunk: /var/folders/b_/gsctxq2x5sq9gh7zpqpgrd0m0000gn/T/gmb_vmtest_542a5c35.chunk (23444 bytes)
+  ---- VM/C OUTPUT ----
+╔══════════════════════════════════════════════════════╗
+║   TEST COMPLETO CODE BLOCKS (Lambda Expressions)     ║
+╚══════════════════════════════════════════════════════╝
+
+--- 1. Test Iterazione (AEVAL) ---
+1.1: AEVAL con 1 parametro (valore)
+  -> Valore:  10 
+  -> Valore:  20 
+  -> Valore:  30 
+
+1.2: AEVAL con 2 parametri (valore, indice)
+  -> Indice:  10 , Valore: 
+  -> Indice:  20 , Valore: 
+  -> Indice:  30 , Valore: 
+
+1.3: AEVAL su UDT
+  -> Cliente: , Fatturato: 
+  -> Cliente: , Fatturato: 
+  -> Cliente: , Fatturato: 
+  -> Cliente: , Fatturato: 
+  -> Cliente: , Fatturato: 
+  -> Cliente: , Fatturato: 
+  -> Cliente: , Fatturato: 
+  -> Cliente: , Fatturato: 
+  -> Cliente: , Fatturato: 
+  -> Cliente: , Fatturato: 
+  -> Cliente: , Fatturato: 
+  -> Cliente: , Fatturato: 
+  -> Cliente: , Fatturato: 
+  -> Cliente: , Fatturato: 
+  -> Cliente: , Fatturato: 
+
+--- 2. Test Trasformazione (AMAP) e Filtro (AFILTER) ---
+Array sorgente: {1, 2, 3, 4, 5, 6}
+Quadrati (via AMAP):
+  ->  1 
+  ->  2 
+  ->  3 
+  ->  4 
+  ->  5 
+  ->  6 
+
+Numeri Pari (via AFILTER):
+  ->  2 
+  ->  4 
+  ->  6 
+
+--- 3. Test Aggregazione e Ricerca ---
+Array: {1, 5, 2, 8, 3}
+Somma (via AREDUCE):  19  (Atteso: 19)
+Elementi > 3 (via ACOUNT):  (Atteso: 2)
+Posizione del valore 8 (via ASCAN):  3  (Atteso: 4)
+
+--- 4. Test ASORT con Comparatore Custom ---
+Clienti non ordinati:
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+Ordinati per Fatturato (Decrescente):
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+  ->  (		)
+
+--- 5. Test Callback Fortemente Tipizzate ---
+Integrale di x^2 da 0 a 1:  0.333333333333334  (Atteso: ~0.333)
+Derivata di x^3 per x=2:  12.0000000002118  (Atteso: 12)
+Radice di x^2 - 4 (via Newton):  2  (Atteso: ~2.0)
+
+--- 6. Test Tipi Espliciti e Chiamata Indiretta ---
+Ipotenusa di (3, 4) calcolata tramite variabile:  5  (Atteso: 5)
+
+Test Completo dei Code Block terminato con successo.
+  exit=0

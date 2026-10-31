@@ -1,0 +1,6 @@
+' EXPECT: 0
+IMPORT AI
+
+SUB Main()
+    PRINT AI.VIDEOSNAPSHOT("x", "x")
+END SUB

@@ -1,0 +1,9 @@
+gmb_ml_dataset_load_text
+gmb_ml_imatrix_layer_energy
+gmb_ml_imatrix_rank_map
+gmb_ml_model_dpo_step
+gmb_ml_model_export
+gmb_ml_model_train_step
+gmb_ml_model_train_step_ex
+gmb_ml_text_decode
+gmb_ml_text_encode

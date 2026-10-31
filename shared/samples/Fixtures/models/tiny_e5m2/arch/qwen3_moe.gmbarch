@@ -1,0 +1,16 @@
+{
+ "arch": "qwen3_moe",
+ "codecs": {
+  "F8_E5M2": "e5m2"
+ },
+ "roles": [
+  {
+   "match": "norm",
+   "role": "NORM"
+  }
+ ],
+ "quant": {
+  "NORM": "f32",
+  "recipe": "_M"
+ }
+}

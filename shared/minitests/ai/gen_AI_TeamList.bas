@@ -1,0 +1,5 @@
+IMPORT AI
+
+SUB Main()
+    PRINT AI.TEAMLIST()
+END SUB

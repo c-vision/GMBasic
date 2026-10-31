@@ -1,0 +1,6 @@
+' EXPECT: 0
+IMPORT UI
+
+SUB Main()
+    PRINT UI.CLICK("")
+END SUB

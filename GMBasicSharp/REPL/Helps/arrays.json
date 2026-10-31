@@ -1,0 +1,474 @@
+[
+  {
+    "name": "DIM",
+    "namespace": "ARRAYS",
+    "category": "Declaration",
+    "description": "Dichiara una variabile di tipo array. Puo' essere un array a dimensione fissa (DIM A(10) = 11 elementi da 0 a 10) o dinamico (DIM A() = array vuoto ridimensionabile). Supporta l'inizializzazione inline con letterali array usando le parentesi graffe. Gli array sono 0-based: l'indice 0 e' il primo elemento. L'upper bound specifica il numero massimo di elementi meno uno.",
+    "syntax": [
+      "DIM array_name(upper_bound1 [, upper_bound2, ...]) [AS Type]",
+      "DIM array_name() [AS Type]",
+      "DIM array_name() = { val1, val2, ... }",
+      "DIM array_name(upper) = { val1, val2, ... }"
+    ],
+    "returnType": "",
+    "parameters": [
+      { "name": "array_name", "type": "IDENTIFIER", "description": "Nome della variabile array. Aggiungere $ per array di stringhe (es. Nomi$)." },
+      { "name": "upper_bound", "type": "INTEGER", "description": "Indice massimo dell'array. L'array avra' upper_bound + 1 elementi (da 0 a upper_bound)." },
+      { "name": "AS Type", "type": "TYPE", "description": "Tipo degli elementi: INTEGER, LONG, DOUBLE, STRING, CURRENCY o un UDT definito con TYPE." },
+      { "name": "{val1, ...}", "type": "LITERAL", "description": "Inizializzatore inline: lista di valori tra parentesi graffe." }
+    ],
+    "examples": [
+      { "description": "Array fisso, dinamico e inizializzato.", "code": "DIM Temperature(6) AS DOUBLE\nTemperature(0) = 22.5: Temperature(1) = 23.1\n\nDIM Clienti()\nAADD(Clienti(), \"Mario Rossi\")\nAADD(Clienti(), \"Anna Bianchi\")\n\nDIM Valori() = { 10, 20, 30, 40, 50 }\nDIM Nomi$(2) = { \"Alice\", \"Bob\", \"Charlie\" }\n\nPRINT \"Temp[0]: \"; Temperature(0)\nPRINT \"Clienti: \"; UBOUND(Clienti) + 1\nPRINT \"Valori: \"; AJOIN(Valori(), \", \")", "expectedOutput": "Temp[0]: 22.5\nClienti: 2\nValori: 10, 20, 30, 40, 50" },
+      { "description": "Array multidimensionale e UDT array.", "code": "TYPE Prodotto\n  Nome AS STRING\n  Prezzo AS CURRENCY\n  Qta AS INTEGER\nEND TYPE\n\nDIM Magazzino(2) AS Prodotto\nMagazzino(0).Nome = \"Monitor\": Magazzino(0).Prezzo = 299.99: Magazzino(0).Qta = 15\nMagazzino(1).Nome = \"Tastiera\": Magazzino(1).Prezzo = 89.50: Magazzino(1).Qta = 42\n\nDIM Matrice(2, 3) AS DOUBLE\nMatrice(0, 0) = 1: Matrice(0, 1) = 2\nPRINT \"Prodotto 1: \"; Magazzino(0).Nome; \" EUR \"; Magazzino(0).Prezzo", "expectedOutput": "Prodotto 1: Monitor EUR 299.99" }
+    ],
+    "seeAlso": ["REDIM", "UBOUND", "LBOUND", "AADD", "ADEL", "AINS"],
+    "isCommand": true
+  },
+  {
+    "name": "REDIM",
+    "namespace": "ARRAYS",
+    "category": "Resize",
+    "description": "Ridimensiona un array dinamico. L'opzione PRESERVE mantiene i dati esistenti fino alla nuova dimensione (o fino alla vecchia se piu' piccola). Senza PRESERVE, tutti gli elementi vengono reimpostati al valore di default del tipo. Funziona solo su array dichiarati con DIM array().",
+    "syntax": [
+      "REDIM array(dim1 [, dim2, ...])",
+      "REDIM PRESERVE array(dim1 [, dim2, ...])"
+    ],
+    "returnType": "",
+    "parameters": [
+      { "name": "array", "type": "ARRAY", "description": "Array dinamico da ridimensionare (dichiarato con parentesi vuote)." },
+      { "name": "PRESERVE", "type": "KEYWORD", "description": "Opzionale: mantiene i valori esistenti durante il ridimensionamento." },
+      { "name": "dim", "type": "INTEGER", "description": "Nuova dimensione superiore (upper bound) per ciascuna dimensione." }
+    ],
+    "examples": [
+      { "description": "Ridimensionamento con e senza PRESERVE.", "code": "DIM Dati() = { 10, 20, 30 }\nPRINT \"Prima:  \"; AJOIN(Dati(), \", \")\n\nREDIM PRESERVE Dati(5)  ' Estende a 6 elementi (0..5)\nPRINT \"PRESERVE: \"; AJOIN(Dati(), \", \")\n\nREDIM Dati(2)  ' Restringe a 3 elementi, dati persi\nPRINT \"Senza:   \"; AJOIN(Dati(), \", \")", "expectedOutput": "Prima:  10, 20, 30\nPRESERVE: 10, 20, 30, 0, 0, 0\nSenza:   0, 0, 0" },
+      { "description": "Crescita dinamica durante elaborazione.", "code": "DIM Risultati()\nFOR I = 1 TO 100\n  REDIM PRESERVE Risultati(I - 1)\n  Risultati(I - 1) = I * I\nNEXT I\nPRINT \"Ultimo: \"; Risultati(99); \" elementi: \"; UBOUND(Risultati) + 1", "expectedOutput": "Ultimo: 10000 elementi: 100" }
+    ],
+    "seeAlso": ["DIM", "UBOUND", "LBOUND", "AADD", "ADEL"],
+    "isCommand": true
+  },
+  {
+    "name": "UBOUND",
+    "namespace": "ARRAYS",
+    "category": "Introspection",
+    "description": "Restituisce l'indice piu' alto (upper bound) di una dimensione di un array. Per array 0-based, UBOUND + 1 = numero di elementi. Se la dimensione non e' specificata, restituisce l'upper bound della prima dimensione. Per array vuoti restituisce -1.",
+    "syntax": ["UBOUND(array [, dimension])"],
+    "returnType": "LONG",
+    "parameters": [
+      { "name": "array", "type": "ARRAY", "description": "L'array da ispezionare." },
+      { "name": "dimension", "type": "INTEGER", "description": "Numero della dimensione (1 = prima, 2 = seconda, ecc.). Default: 1." }
+    ],
+    "examples": [
+      { "description": "Iterazione sicura su array con UBOUND.", "code": "DIM Valori() = { 10, 20, 30, 40, 50 }\nFOR I = 0 TO UBOUND(Valori())\n  PRINT \"Valori(\"; I; \") = \"; Valori(I)\nNEXT I\n\nDIM Matrice(4, 9) AS DOUBLE\nPRINT \"Righe: \"; UBOUND(Matrice(), 1) + 1\nPRINT \"Colonne: \"; UBOUND(Matrice(), 2) + 1", "expectedOutput": "Valori(0) = 10\nValori(1) = 20\nValori(2) = 30\nValori(3) = 40\nValori(4) = 50\nRighe: 5\nColonne: 10" },
+      { "description": "Controllo array vuoto.", "code": "DIM Vuoto()\nIF UBOUND(Vuoto()) = -1 THEN\n  PRINT \"Array vuoto.\"\nELSE\n  PRINT \"Array con \"; UBOUND(Vuoto()) + 1; \" elementi.\"\nEND IF", "expectedOutput": "Array vuoto." }
+    ],
+    "seeAlso": ["LBOUND", "DIM", "REDIM", "ACOUNT"],
+    "isCommand": false
+  },
+  {
+    "name": "LBOUND",
+    "namespace": "ARRAYS",
+    "category": "Introspection",
+    "description": "Restituisce l'indice piu' basso (lower bound) di una dimensione di un array. In GM-Basic gli array sono sempre 0-based, quindi LBOUND restituisce sempre 0 (a meno che l'array non sia vuoto). Incluso per compatibilita' con codice legacy.",
+    "syntax": ["LBOUND(array [, dimension])"],
+    "returnType": "LONG",
+    "parameters": [
+      { "name": "array", "type": "ARRAY", "description": "L'array da ispezionare." },
+      { "name": "dimension", "type": "INTEGER", "description": "Dimensione (1-based). Default: 1." }
+    ],
+    "examples": [
+      { "description": "Verifica dei bound di un array.", "code": "DIM A(5)\nPRINT \"Lower bound: \"; LBOUND(A())\nPRINT \"Upper bound: \"; UBOUND(A())\nPRINT \"Elementi: \"; UBOUND(A()) - LBOUND(A()) + 1", "expectedOutput": "Lower bound: 0\nUpper bound: 5\nElementi: 6" }
+    ],
+    "seeAlso": ["UBOUND", "DIM", "REDIM"],
+    "isCommand": false
+  },
+  {
+    "name": "AADD",
+    "namespace": "ARRAYS",
+    "category": "Modification",
+    "description": "Aggiunge un nuovo elemento alla fine di un array dinamico, incrementandone automaticamente la dimensione di 1. E' il modo piu' comune per costruire array incrementalmente. L'elemento viene aggiunto all'indice UBOUND+1.",
+    "syntax": ["AADD(array, value)", "ARRAYS.AADD(array, value)"],
+    "returnType": "",
+    "parameters": [
+      { "name": "array", "type": "ARRAY", "description": "Array dinamico a cui aggiungere l'elemento." },
+      { "name": "value", "type": "ANY", "description": "Valore da aggiungere. Deve essere compatibile con il tipo dell'array." }
+    ],
+    "examples": [
+      { "description": "Costruzione incrementale di un array da input.", "code": "DIM Transazioni() AS CURRENCY\nDO\n  INPUT \"Importo (0 per finire): \", Imp\n  IF Imp = 0 THEN EXIT DO\n  AADD(Transazioni(), CCUR(Imp))\nLOOP\nPRINT \"Registrate \"; UBOUND(Transazioni()) + 1; \" transazioni.\"\nPRINT \"Totale: EUR \"; FORMAT(AREDUCE(Transazioni(), FN(acc, x) => acc + x, 0), \"#,###.00\")", "expectedOutput": "Importo (0 per finire): 150\nImporto (0 per finire): 320\nImporto (0 per finire): 0\nRegistrate 2 transazioni.\nTotale: EUR 470.00" }
+    ],
+    "seeAlso": ["AINS", "ADEL", "ACOPY", "REDIM", "DIM"],
+    "isCommand": false
+  },
+  {
+    "name": "AINS",
+    "namespace": "ARRAYS",
+    "category": "Modification",
+    "description": "Inserisce un nuovo elemento (inizializzato al valore di default del tipo) in una posizione specifica dell'array (0-based), spostando in avanti tutti gli elementi successivi. L'array viene ridimensionato di +1.",
+    "syntax": ["AINS(array, position)", "ARRAYS.AINS(array, position)"],
+    "returnType": "",
+    "parameters": [
+      { "name": "array", "type": "ARRAY", "description": "Array dinamico in cui inserire." },
+      { "name": "position", "type": "INTEGER", "description": "Indice (0-based) dove inserire il nuovo elemento." }
+    ],
+    "examples": [
+      { "description": "Inserimento ordinato in un array.", "code": "DIM Classifica() = { 100, 80, 60, 40 }\nNuovoPunteggio = 75\nPos = 0\nWHILE Pos <= UBOUND(Classifica()) AND Classifica(Pos) > NuovoPunteggio\n  Pos = Pos + 1\nWEND\nAINS(Classifica(), Pos)\nClassifica(Pos) = NuovoPunteggio\nPRINT \"Classifica aggiornata: \"; AJOIN(Classifica(), \", \")", "expectedOutput": "Classifica aggiornata: 100, 80, 75, 60, 40" }
+    ],
+    "seeAlso": ["ADEL", "AADD", "ASORT", "ACOPY"],
+    "isCommand": false
+  },
+  {
+    "name": "ADEL",
+    "namespace": "ARRAYS",
+    "category": "Modification",
+    "description": "Elimina l'elemento alla posizione specificata (0-based) da un array dinamico, compattando gli elementi successivi e riducendo la dimensione di 1. L'elemento viene rimosso definitivamente.",
+    "syntax": ["ADEL(array, position)", "ARRAYS.ADEL(array, position)"],
+    "returnType": "",
+    "parameters": [
+      { "name": "array", "type": "ARRAY", "description": "Array dinamico da cui eliminare." },
+      { "name": "position", "type": "INTEGER", "description": "Indice (0-based) dell'elemento da eliminare." }
+    ],
+    "examples": [
+      { "description": "Rimozione di elementi che soddisfano una condizione.", "code": "DIM Valori() = { 10, -5, 20, -3, 30, -1 }\nI = 0\nWHILE I <= UBOUND(Valori())\n  IF Valori(I) < 0 THEN\n    ADEL(Valori(), I)  ' Rimuovi negativo\n  ELSE\n    I = I + 1\n  END IF\nWEND\nPRINT \"Positivi: \"; AJOIN(Valori(), \", \")", "expectedOutput": "Positivi: 10, 20, 30" }
+    ],
+    "seeAlso": ["AADD", "AINS", "AFILTER", "REDIM"],
+    "isCommand": false
+  },
+  {
+    "name": "ASORT",
+    "namespace": "ARRAYS",
+    "category": "Sorting",
+    "description": "Ordina un array in-place (modificando l'array originale). Supporta tipi scalari (numeri, stringhe) e UDT (User-Defined Types) con funzione di confronto o lambda. L'ordinamento puo' essere ascendente (default) o discendente ('D'). Per UDT, la funzione di confronto deve accettare due parametri del tipo e restituire -1, 0 o 1.",
+    "syntax": [
+      "ASORT(array [, compare_func | lambda] [, order$])"
+    ],
+    "returnType": "",
+    "parameters": [
+      { "name": "array", "type": "ARRAY", "description": "Array da ordinare (modificato in-place)." },
+      { "name": "compare_func", "type": "STRING/LAMBDA", "description": "Nome funzione o lambda per confronto personalizzato (necessario per UDT)." },
+      { "name": "order$", "type": "STRING", "description": "'A' per ascendente (default), 'D' per discendente." }
+    ],
+    "examples": [
+      { "description": "Ordinamento UDT per data e importo con lambda.", "code": "TYPE Ordine\n  Data AS DATE\n  Importo AS CURRENCY\n  Cliente AS STRING\nEND TYPE\n\nDIM Ordini(2) AS Ordine\nOrdini(0).Data = DATESERIAL(2024, 3, 15): Ordini(0).Importo = 1500: Ordini(0).Cliente = \"Rossi\"\nOrdini(1).Data = DATESERIAL(2024, 1, 10): Ordini(1).Importo = 2300: Ordini(1).Cliente = \"Bianchi\"\nOrdini(2).Data = DATESERIAL(2024, 3, 15): Ordini(2).Importo = 900: Ordini(2).Cliente = \"Verdi\"\n\n' Ordina per data, poi per importo decrescente\nASORT(Ordini(), FN(a AS Ordine, b AS Ordine) => IIF(a.Data <> b.Data, SGN(a.Data > b.Data), SGN(b.Importo - a.Importo)))\n\nPRINT \"Ordini ordinati:\"\nFOR I = 0 TO UBOUND(Ordini())\n  PRINT FORMAT(Ordini(I).Data, \"dd/mm/yyyy\"); \" | EUR \"; FORMAT(Ordini(I).Importo, \"#,###.00\"); \" | \"; Ordini(I).Cliente\nNEXT I", "expectedOutput": "Ordini ordinati:\n10/01/2024 | EUR 2,300.00 | Bianchi\n15/03/2024 | EUR 1,500.00 | Rossi\n15/03/2024 | EUR 900.00 | Verdi" },
+      { "description": "Ordinamento discendente semplice.", "code": "DIM Punteggi() = { 45, 78, 12, 95, 33 }\nASORT(Punteggi(), , \"D\")\nPRINT \"Migliori punteggi: \"; AJOIN(Punteggi(), \", \")", "expectedOutput": "Migliori punteggi: 95, 78, 45, 33, 12" }
+    ],
+    "seeAlso": ["ASCAN", "AREVERSE", "ASHUFFLE", "ABINARYSEARCH"],
+    "isCommand": false
+  },
+  {
+    "name": "ASCAN",
+    "namespace": "ARRAYS",
+    "category": "Search",
+    "description": "Cerca un valore o il primo elemento che soddisfa una condizione in un array. Restituisce l'indice (0-based) del primo elemento trovato, o -1 se nessun elemento corrisponde. Puo' cercare un valore esatto (scalari) o usare una funzione/lambda per condizioni complesse (UTD).",
+    "syntax": [
+      "ASCAN(array, value)",
+      "ASCAN(array, condition_func | lambda)"
+    ],
+    "returnType": "LONG",
+    "parameters": [
+      { "name": "array", "type": "ARRAY", "description": "Array in cui cercare." },
+      { "name": "value", "type": "ANY", "description": "Valore esatto da cercare (per tipi scalari)." },
+      { "name": "condition_func", "type": "STRING/LAMBDA", "description": "Funzione o lambda che restituisce TRUE per l'elemento cercato." }
+    ],
+    "examples": [
+      { "description": "Ricerca in array di UDT con lambda.", "code": "TYPE Prodotto\n  Codice AS STRING\n  Nome AS STRING\n  Prezzo AS CURRENCY\n  Giacenza AS INTEGER\nEND TYPE\n\nDIM Catalogo(3) AS Prodotto\nCatalogo(0).Codice = \"A001\": Catalogo(0).Nome = \"Monitor\": Catalogo(0).Prezzo = 299.99: Catalogo(0).Giacenza = 5\nCatalogo(1).Codice = \"A002\": Catalogo(1).Nome = \"Tastiera\": Catalogo(1).Prezzo = 89.50: Catalogo(1).Giacenza = 0\nCatalogo(2).Codice = \"A003\": Catalogo(2).Nome = \"Mouse\": Catalogo(2).Prezzo = 49.99: Catalogo(2).Giacenza = 3\nCatalogo(3).Codice = \"A004\": Catalogo(3).Nome = \"Cavo HDMI\": Catalogo(3).Prezzo = 12.00: Catalogo(3).Giacenza = 0\n\n' Trova il primo prodotto esaurito con prezzo > 10\nIdx = ASCAN(Catalogo(), FN(p AS Prodotto) => p.Giacenza = 0 AND p.Prezzo > 10)\nIF Idx >= 0 THEN\n  PRINT \"Prodotto esaurito: \"; Catalogo(Idx).Codice; \" - \"; Catalogo(Idx).Nome\n  PRINT \"Prezzo: EUR \"; FORMAT(Catalogo(Idx).Prezzo, \"#.00\")\nEND IF", "expectedOutput": "Prodotto esaurito: A002 - Tastiera\nPrezzo: EUR 89.50" },
+      { "description": "Ricerca esatta in array di stringhe.", "code": "DIM Citta$() = { \"Milano\", \"Roma\", \"Napoli\", \"Torino\" }\nPos = ASCAN(Citta$(), \"Roma\")\nIF Pos >= 0 THEN PRINT \"Roma trovata all'indice \"; Pos", "expectedOutput": "Roma trovata all'indice 1" }
+    ],
+    "seeAlso": ["AFILTER", "ACOUNT", "ABINARYSEARCH", "ASORT"],
+    "isCommand": false
+  },
+  {
+    "name": "AFILTER",
+    "namespace": "ARRAYS",
+    "category": "Transform",
+    "description": "Crea un nuovo array contenente solo gli elementi dell'array sorgente che soddisfano una funzione predicato (restituisce TRUE/FALSE). Non modifica l'array originale. Essenziale per query funzionali su dati.",
+    "syntax": ["AFILTER(array, predicate_func | lambda)"],
+    "returnType": "ARRAY",
+    "parameters": [
+      { "name": "array", "type": "ARRAY", "description": "Array sorgente da filtrare." },
+      { "name": "predicate_func", "type": "STRING/LAMBDA", "description": "Funzione o lambda che accetta un elemento e restituisce TRUE (includi) o FALSE (escludi)." }
+    ],
+    "examples": [
+      { "description": "Pipeline di filtro e mappa su dati finanziari.", "code": "TYPE Transazione\n  Descrizione AS STRING\n  Importo AS CURRENCY\n  Data AS DATE\n  Categoria AS STRING\nEND TYPE\n\nDIM Tx(4) AS Transazione\nTx(0).Descrizione = \"Stipendio\": Tx(0).Importo = 3500: Tx(0).Categoria = \"Entrate\"\nTx(1).Descrizione = \"Affitto\": Tx(1).Importo = -1200: Tx(1).Categoria = \"Casa\"\nTx(2).Descrizione = \"Supermercato\": Tx(2).Importo = -85.50: Tx(2).Categoria = \"Cibo\"\nTx(3).Descrizione = \"Freelance\": Tx(3).Importo = 800: Tx(3).Categoria = \"Entrate\"\nTx(4).Descrizione = \"Ristorante\": Tx(4).Importo = -45: Tx(4).Categoria = \"Cibo\"\n\n' Filtra solo uscite > 50 EUR\nUscite = AFILTER(Tx(), FN(t AS Transazione) => t.Importo < -50)\nPRINT \"Uscite > 50 EUR:\"\nFOR I = 0 TO UBOUND(Uscite())\n  PRINT \"  \"; Uscite(I).Descrizione; \": EUR \"; FORMAT(ABS(Uscite(I).Importo), \"#.00\")\nNEXT I\n\n' Calcola totale per categoria\nPRINT \"\"\nTotaleCibo = AREDUCE(AFILTER(Tx(), FN(t) => t.Categoria = \"Cibo\"), FN(acc, t) => acc + t.Importo, 0)\nPRINT \"Totale spesa Cibo: EUR \"; FORMAT(ABS(TotaleCibo), \"#.00\")", "expectedOutput": "Uscite > 50 EUR:\n  Affitto: EUR 1200.00\n  Supermercato: EUR 85.50\n\nTotale spesa Cibo: EUR 130.50" }
+    ],
+    "seeAlso": ["AMAP", "AREDUCE", "ASCAN", "ACOUNT", "Comprehension"],
+    "isCommand": false
+  },
+  {
+    "name": "AMAP",
+    "namespace": "ARRAYS",
+    "category": "Transform",
+    "description": "Crea un nuovo array applicando una funzione di trasformazione a ogni elemento dell'array sorgente. La funzione riceve un elemento e restituisce il valore trasformato. Non modifica l'array originale. Equivalente funzionale di map() in altri linguaggi.",
+    "syntax": ["AMAP(array, transform_func | lambda)"],
+    "returnType": "ARRAY",
+    "parameters": [
+      { "name": "array", "type": "ARRAY", "description": "Array sorgente." },
+      { "name": "transform_func", "type": "STRING/LAMBDA", "description": "Funzione o lambda che accetta un elemento e restituisce il valore trasformato." }
+    ],
+    "examples": [
+      { "description": "Estrazione e trasformazione dati per report.", "code": "TYPE Dipendente\n  Nome AS STRING\n  Stipendio AS CURRENCY\n  Dipartimento AS STRING\nEND TYPE\n\nDIM Staff(2) AS Dipendente\nStaff(0).Nome = \"Mario Rossi\": Staff(0).Stipendio = 45000: Staff(0).Dipartimento = \"IT\"\nStaff(1).Nome = \"Anna Bianchi\": Staff(1).Stipendio = 52000: Staff(1).Dipartimento = \"HR\"\nStaff(2).Nome = \"Luca Verdi\": Staff(2).Stipendio = 48000: Staff(2).Dipartimento = \"IT\"\n\n' Bonus 10% per il dipartimento IT\nDIM StipendiConBonus() = AMAP(Staff(), FN(e AS Dipendente) => IIF(e.Dipartimento = \"IT\", e.Stipendio * 1.10, e.Stipendio))\n\n' Estrai solo nomi per lista\nDIM Nomi$() = AMAP(Staff(), FN(e AS Dipendente) => e.Nome)\n\nPRINT \"Lista dipendenti: \"; AJOIN(Nomi$(), \", \")\nPRINT \"\"\nFOR I = 0 TO UBOUND(Staff())\n  PRINT Staff(I).Nome; \" (\"; Staff(I).Dipartimento; \"): EUR \"; FORMAT(Staff(I).Stipendio, \"#,###\"); \" -> EUR \"; FORMAT(StipendiConBonus(I), \"#,###\")\nNEXT I", "expectedOutput": "Lista dipendenti: Mario Rossi, Anna Bianchi, Luca Verdi\n\nMario Rossi (IT): EUR 45,000 -> EUR 49,500\nAnna Bianchi (HR): EUR 52,000 -> EUR 52,000\nLuca Verdi (IT): EUR 48,000 -> EUR 52,800" }
+    ],
+    "seeAlso": ["AFILTER", "AREDUCE", "AFLAT", "Comprehension"],
+    "isCommand": false
+  },
+  {
+    "name": "AREDUCE",
+    "namespace": "ARRAYS",
+    "category": "Transform",
+    "description": "Applica una funzione accumulatrice a tutti gli elementi di un array, riducendoli a un singolo valore. La funzione riceve l'accumulatore corrente e l'elemento, e restituisce il nuovo accumulatore. Il valore iniziale dell'accumulatore e' specificato come terzo parametro.",
+    "syntax": ["AREDUCE(array, accumulator_func | lambda, initial_value)"],
+    "returnType": "ANY",
+    "parameters": [
+      { "name": "array", "type": "ARRAY", "description": "Array da ridurre." },
+      { "name": "accumulator_func", "type": "STRING/LAMBDA", "description": "Funzione(acc, element) => nuovo_acc." },
+      { "name": "initial_value", "type": "ANY", "description": "Valore iniziale dell'accumulatore." }
+    ],
+    "examples": [
+      { "description": "Calcoli aggregati su dati di vendita.", "code": "TYPE Vendita\n  Prodotto AS STRING\n  Quantita AS INTEGER\n  Prezzo AS CURRENCY\nEND TYPE\n\nDIM Vendite(3) AS Vendita\nVendite(0).Prodotto = \"A\": Vendite(0).Quantita = 10: Vendite(0).Prezzo = 29.99\nVendite(1).Prodotto = \"B\": Vendite(1).Quantita = 5: Vendite(1).Prezzo = 149.50\nVendite(2).Prodotto = \"C\": Vendite(2).Quantita = 20: Vendite(2).Prezzo = 9.99\nVendite(3).Prodotto = \"A\": Vendite(3).Quantita = 7: Vendite(3).Prezzo = 29.99\n\nFatturato = AREDUCE(Vendite(), FN(tot, v AS Vendita) => tot + v.Quantita * v.Prezzo, 0)\nTotalePezzi = AREDUCE(Vendite(), FN(tot, v AS Vendita) => tot + v.Quantita, 0)\nPrezzoMedio = Fatturato / TotalePezzi\n\nPRINT \"Fatturato totale: EUR \"; FORMAT(Fatturato, \"#,###.00\")\nPRINT \"Pezzi venduti:    \"; TotalePezzi\nPRINT \"Prezzo medio:     EUR \"; FORMAT(PrezzoMedio, \"#.00\")", "expectedOutput": "Fatturato totale: EUR 1,337.25\nPezzi venduti:    42\nPrezzo medio:     EUR 31.84" }
+    ],
+    "seeAlso": ["AFILTER", "AMAP", "ACOUNT", "AJOIN"],
+    "isCommand": false
+  },
+  {
+    "name": "ACOPY",
+    "namespace": "ARRAYS",
+    "category": "Modification",
+    "description": "Copia una sequenza di elementi da un array sorgente a un array destinazione. I parametri opzionali specificano: indice di partenza nel sorgente, numero di elementi da copiare, e indice di partenza nel destinatario. Utile per clonare, splittare o riorganizzare array.",
+    "syntax": [
+      "ACOPY(source_array, dest_array [, start_source] [, count] [, start_dest])",
+      "ARRAYS.ACOPY(source_array, dest_array, ...)"
+    ],
+    "returnType": "",
+    "parameters": [
+      { "name": "source_array", "type": "ARRAY", "description": "Array da cui copiare." },
+      { "name": "dest_array", "type": "ARRAY", "description": "Array in cui copiare (deve essere dello stesso tipo)." },
+      { "name": "start_source", "type": "INTEGER", "description": "Indice di partenza nel sorgente (default: 0)." },
+      { "name": "count", "type": "INTEGER", "description": "Numero di elementi da copiare (default: tutti dal punto di partenza)." },
+      { "name": "start_dest", "type": "INTEGER", "description": "Indice di partenza nel destinatario (default: 0)." }
+    ],
+    "examples": [
+      { "description": "Split array in due meta'.", "code": "DIM Completo() = { 1, 2, 3, 4, 5, 6, 7, 8 }\nMeta = (UBOUND(Completo()) + 1) \\ 2\nDIM PrimaMeta(Meta - 1), SecondaMeta(Meta - 1)\nACOPY(Completo(), PrimaMeta(), 0, Meta, 0)\nACOPY(Completo(), SecondaMeta(), Meta, Meta, 0)\nPRINT \"Prima meta': \"; AJOIN(PrimaMeta(), \", \")\nPRINT \"Seconda meta': \"; AJOIN(SecondaMeta(), \", \")", "expectedOutput": "Prima meta': 1, 2, 3, 4\nSeconda meta': 5, 6, 7, 8" }
+    ],
+    "seeAlso": ["ACLONE", "AADD", "ADEL", "AINS"],
+    "isCommand": false
+  },
+  {
+    "name": "Comprehension",
+    "namespace": "ARRAYS",
+    "category": "Transform",
+    "description": "Sintassi concisa per creare un nuovo array applicando un'espressione a ogni elemento di una sequenza (array o collezione), con la possibilita' di filtrare con una clausola IF. Equivalente funzionale di map + filter in una singola espressione. La sintassi e': [espressione FOR elemento IN sequenza IF condizione].",
+    "syntax": [
+      "[expression FOR element IN sequence]",
+      "[expression FOR element IN sequence IF condition]"
+    ],
+    "returnType": "ARRAY",
+    "parameters": [
+      { "name": "expression", "type": "EXPR", "description": "Espressione per trasformare ogni elemento (es. elemento * 2)." },
+      { "name": "element", "type": "IDENTIFIER", "description": "Nome della variabile che rappresenta l'elemento corrente." },
+      { "name": "sequence", "type": "ARRAY", "description": "Array o collezione su cui iterare." },
+      { "name": "condition", "type": "EXPR", "description": "Condizione opzionale per filtrare gli elementi." }
+    ],
+    "examples": [
+      { "description": "Analisi vendite con comprehension: filtra, trasforma e aggrega.", "code": "TYPE Vendita\n  Prodotto AS STRING\n  Quantita AS INTEGER\n  Prezzo AS CURRENCY\n  Mese AS INTEGER\nEND TYPE\n\nDIM Vendite(4) AS Vendita\nVendite(0).Prodotto = \"A\": Vendite(0).Quantita = 10: Vendite(0).Prezzo = 29.99: Vendite(0).Mese = 1\nVendite(1).Prodotto = \"B\": Vendite(1).Quantita = 5: Vendite(1).Prezzo = 149.50: Vendite(1).Mese = 1\nVendite(2).Prodotto = \"A\": Vendite(2).Quantita = 15: Vendite(2).Prezzo = 29.99: Vendite(2).Mese = 2\nVendite(3).Prodotto = \"C\": Vendite(3).Quantita = 8: Vendite(3).Prezzo = 49.99: Vendite(3).Mese = 2\nVendite(4).Prodotto = \"B\": Vendite(4).Quantita = 3: Vendite(4).Prezzo = 149.50: Vendite(4).Mese = 3\n\n' Fatturato solo prodotto A\nFatturatoA = [v.Quantita * v.Prezzo FOR v IN Vendite() IF v.Prodotto = \"A\"]\nPRINT \"Fatturati prodotto A: \"; AJOIN(FatturatoA, \", \")\n\n' Nomi prodotti unici venduti nel mese 1\nProdottiMese1$ = [v.Prodotto FOR v IN Vendite() IF v.Mese = 1]\nDIM Unici$() = AUNIQUE(ProdottiMese1$)\nPRINT \"Prodotti mese 1: \"; AJOIN(Unici$(), \", \")\n\n' Totale quantita' per prodotto con AREDUCE\nPRINT \"\"\nProdottiUnici$() = AUNIQUE([v.Prodotto FOR v IN Vendite()])\nFOR I = 0 TO UBOUND(ProdottiUnici$())\n  P$ = ProdottiUnici$(I)\n  Qta = AREDUCE([v.Quantita FOR v IN Vendite() IF v.Prodotto = P$], FN(acc, q) => acc + q, 0)\n  PRINT P$; \": \"; Qta; \" pezzi\"\nNEXT I", "expectedOutput": "Fatturati prodotto A: 299.9, 449.85\nProdotti mese 1: A, B\n\nA: 25 pezzi\nB: 8 pezzi\nC: 8 pezzi" }
+    ],
+    "seeAlso": ["AMAP", "AFILTER", "AREDUCE", "AUNIQUE"],
+    "isCommand": false
+  },
+  {
+    "name": "AJOIN",
+    "namespace": "ARRAYS",
+    "category": "Convert",
+    "description": "Concatena tutti gli elementi di un array in una stringa, separandoli con un delimitatore opzionale. Ogni elemento viene convertito in stringa con CSTR. Il delimitatore predefinito e' stringa vuota (elementi concatenati senza separatore).",
+    "syntax": ["AJOIN(array [, separator$])"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "array", "type": "ARRAY", "description": "Array i cui elementi unire in stringa." },
+      { "name": "separator$", "type": "STRING", "description": "Separatore opzionale tra gli elementi (default: '')." }
+    ],
+    "examples": [
+      { "description": "Costruzione query SQL con valori da array.", "code": "DIM IDClienti() = { 101, 205, 387, 492 }\nListaID$ = AJOIN(IDClienti(), \", \")\nSQL$ = \"SELECT * FROM ordini WHERE cliente_id IN (\" + ListaID$ + \")\"\nPRINT SQL$", "expectedOutput": "SELECT * FROM ordini WHERE cliente_id IN (101, 205, 387, 492)" }
+    ],
+    "seeAlso": ["ATOKENS", "SPLIT", "JOIN"],
+    "isCommand": false
+  },
+  {
+    "name": "ATOKENS",
+    "namespace": "ARRAYS",
+    "category": "Convert",
+    "description": "Divide una stringa in un array di token (sottostringhe) usando i caratteri di delimitazione specificati. Ogni carattere nel delimitatore e' considerato un separatore individuale. Simile a SPLIT ma con delimitatori a singolo carattere multipli.",
+    "syntax": ["ATOKENS(string$ [, delimiters$])", "ARRAYS.ATOKENS(string$, delimiters$)"],
+    "returnType": "ARRAY OF STRING",
+    "parameters": [
+      { "name": "string$", "type": "STRING", "description": "La stringa da dividere in token." },
+      { "name": "delimiters$", "type": "STRING", "description": "Stringa di caratteri delimitatore (default: spazio e tab)." }
+    ],
+    "examples": [
+      { "description": "Parsing di un file di log con delimitatori multipli.", "code": "Log$ = \"2024-01-15 14:30:22|ERROR|Database connection failed\"\nDIM Campi$() = ATOKENS(Log$, \"|\")\nDataOra$ = Campi$(0)\nLivello$ = Campi$(1)\nMessaggio$ = Campi$(2)\nPRINT \"[\"; TRIM(DataOra$); \"] \"; Livello$; \": \"; Messaggio$", "expectedOutput": "[2024-01-15 14:30:22] ERROR: Database connection failed" }
+    ],
+    "seeAlso": ["AJOIN", "SPLIT", "JOIN"],
+    "isCommand": false
+  },
+  {
+    "name": "ACLONE",
+    "namespace": "ARRAYS",
+    "category": "Copy",
+    "description": "Crea una copia esatta di un array (shallow copy). La copia e' indipendente: modifiche alla copia non influenzano l'originale e viceversa, tranne per elementi che sono reference type (oggetti, altri array).",
+    "syntax": ["ACLONE(array)", "ARRAYS.ACLONE(array)"],
+    "returnType": "ARRAY",
+    "parameters": [
+      { "name": "array", "type": "ARRAY", "description": "L'array da clonare." }
+    ],
+    "examples": [
+      { "description": "Copia e modifica indipendente.", "code": "DIM Originale() = { 10, 20, 30 }\nDIM Copia() = ACLONE(Originale())\nCopia(0) = 999\nPRINT \"Originale[0]: \"; Originale(0)\nPRINT \"Copia[0]:     \"; Copia(0)", "expectedOutput": "Originale[0]: 10\nCopia[0]:     999" }
+    ],
+    "seeAlso": ["ACOPY", "DIM", "AADD"],
+    "isCommand": false
+  },
+  {
+    "name": "ACOUNT",
+    "namespace": "ARRAYS",
+    "category": "Aggregate",
+    "description": "Conta il numero di elementi in un array che corrispondono a un valore esatto o soddisfano una condizione (predicato). Per i valori scalari, cerca il valore esatto. Per UDT o condizioni complesse, usa una funzione o lambda predicato.",
+    "syntax": ["ACOUNT(array, value_or_predicate)"],
+    "returnType": "LONG",
+    "parameters": [
+      { "name": "array", "type": "ARRAY", "description": "Array in cui contare." },
+      { "name": "value_or_predicate", "type": "ANY", "description": "Valore da cercare, o funzione/lambda che restituisce TRUE per gli elementi da contare." }
+    ],
+    "examples": [
+      { "description": "Conteggio condizionale su array di transazioni.", "code": "TYPE Tx\n  Importo AS CURRENCY\n  Tipo AS STRING\nEND TYPE\nDIM TxList(3) AS Tx\nTxList(0).Importo = 100: TxList(0).Tipo = \"accredito\"\nTxList(1).Importo = -50: TxList(1).Tipo = \"addebito\"\nTxList(2).Importo = 200: TxList(2).Tipo = \"accredito\"\nTxList(3).Importo = -30: TxList(3).Tipo = \"addebito\"\n\nAccrediti = ACOUNT(TxList(), FN(t AS Tx) => t.Tipo = \"accredito\")\nAddebiti = ACOUNT(TxList(), FN(t AS Tx) => t.Tipo = \"addebito\" AND t.Importo < -25)\nPRINT \"Accrediti: \"; Accrediti\nPRINT \"Addebiti > 25: \"; Addebiti", "expectedOutput": "Accrediti: 2\nAddebiti > 25: 1" }
+    ],
+    "seeAlso": ["ASCAN", "AFILTER", "AREDUCE"],
+    "isCommand": false
+  },
+  {
+    "name": "AUNIQUE",
+    "namespace": "ARRAYS",
+    "category": "Transform",
+    "description": "Crea un nuovo array contenente solo i valori unici dell'array sorgente, eliminando i duplicati. L'ordine degli elementi viene preservato (prima occorrenza). Per UDT, l'unicita' e' determinata dal confronto di tutti i campi.",
+    "syntax": ["AUNIQUE(array)", "ARRAYS.AUNIQUE(array)"],
+    "returnType": "ARRAY",
+    "parameters": [
+      { "name": "array", "type": "ARRAY", "description": "Array da cui estrarre i valori unici." }
+    ],
+    "examples": [
+      { "description": "Elenco categorie uniche da dati.", "code": "Categorie$() = { \"Elettronica\", \"Casa\", \"Elettronica\", \"Cibo\", \"Casa\", \"Sport\" }\nDIM Uniche$() = AUNIQUE(Categorie$())\nPRINT \"Categorie (\"; UBOUND(Uniche$()) + 1; \"): \"; AJOIN(Uniche$(), \", \")", "expectedOutput": "Categorie (4): Elettronica, Casa, Cibo, Sport" }
+    ],
+    "seeAlso": ["ASORT", "AFILTER", "ACOUNT", "Comprehension"],
+    "isCommand": false
+  },
+  {
+    "name": "ASHUFFLE",
+    "namespace": "ARRAYS",
+    "category": "Modification",
+    "description": "Mescola casualmente gli elementi di un array in-place (modifica l'array originale). Usa l'algoritmo Fisher-Yates per una distribuzione uniforme. Utile per randomizzare liste, creare quiz o selezioni casuali.",
+    "syntax": ["ASHUFFLE(array)", "ARRAYS.ASHUFFLE(array)"],
+    "returnType": "",
+    "parameters": [
+      { "name": "array", "type": "ARRAY", "description": "Array da mescolare (modificato in-place)." }
+    ],
+    "examples": [
+      { "description": "Selezione casuale senza ripetizione.", "code": "DIM Candidati$() = { \"Alice\", \"Bob\", \"Charlie\", \"Diana\", \"Eve\", \"Frank\" }\nASHUFFLE(Candidati$())\nPRINT \"Estratti (ordine casuale):\"\nFOR I = 0 TO 2\n  PRINT \"  \"; I + 1; \". \"; Candidati$(I)\nNEXT I", "expectedOutput": "Estratti (ordine casuale):\n  1. Diana\n  2. Alice\n  3. Frank" }
+    ],
+    "seeAlso": ["AREVERSE", "ASORT", "RANDOMINT"],
+    "isCommand": false
+  },
+  {
+    "name": "AREVERSE",
+    "namespace": "ARRAYS",
+    "category": "Modification",
+    "description": "Inverte l'ordine degli elementi di un array in-place. Il primo elemento diventa l'ultimo e viceversa. Non crea un nuovo array: modifica quello esistente.",
+    "syntax": ["AREVERSE(array)", "ARRAYS.AREVERSE(array)"],
+    "returnType": "",
+    "parameters": [
+      { "name": "array", "type": "ARRAY", "description": "Array da invertire (modificato in-place)." }
+    ],
+    "examples": [
+      { "description": "Visualizzazione classifica dal primo all'ultimo.", "code": "DIM Classifica$() = { \"1° Rossi\", \"2° Bianchi\", \"3° Verdi\" }\nAREVERSE(Classifica$())\nPRINT \"Dal basso della classifica:\"\nFOR I = 0 TO UBOUND(Classifica$())\n  PRINT Classifica$(I)\nNEXT I", "expectedOutput": "Dal basso della classifica:\n3° Verdi\n2° Bianchi\n1° Rossi" }
+    ],
+    "seeAlso": ["ASORT", "ASHUFFLE", "ACOPY"],
+    "isCommand": false
+  },
+  {
+    "name": "ABINARYSEARCH",
+    "namespace": "ARRAYS",
+    "category": "Search",
+    "description": "Esegue una ricerca binaria su un array ORDINATO (ascendente). Richiede O(log n) confronti, molto piu' veloce di ASCAN per array grandi. Restituisce l'indice dell'elemento trovato, o -1 se non presente. L'array deve essere ordinato prima della ricerca.",
+    "syntax": ["ABINARYSEARCH(array, value)", "ARRAYS.ABINARYSEARCH(array, value)"],
+    "returnType": "LONG",
+    "parameters": [
+      { "name": "array", "type": "ARRAY", "description": "Array ORDINATO in modo ascendente in cui cercare." },
+      { "name": "value", "type": "ANY", "description": "Valore esatto da cercare." }
+    ],
+    "examples": [
+      { "description": "Ricerca efficiente in dizionario ordinato.", "code": "DIM Dizionario$()\n' Carica dizionario da file (simulato)\nDizionario$() = { \"abete\", \"banana\", \"casa\", \"dado\", \"elefante\", \"faro\", \"gatto\", \"hotel\" }\n\nINPUT \"Cerca parola: \", Parola$\nIdx = ABINARYSEARCH(Dizionario$(), Parola$)\nIF Idx >= 0 THEN\n  PRINT \"'\"; Parola$; \"' trovata all'indice \"; Idx\nELSE\n  PRINT \"'\"; Parola$; \"' non trovata nel dizionario.\"\nEND IF", "expectedOutput": "Cerca parola: gatto\n'gatto' trovata all'indice 6" }
+    ],
+    "seeAlso": ["ASCAN", "ASORT", "AFILTER"],
+    "isCommand": false
+  },
+  {
+    "name": "ACHUNK",
+    "namespace": "ARRAYS",
+    "category": "Transform",
+    "description": "Suddivide un array in blocchi (chunk) di dimensione fissa. Restituisce un array di array, dove ogni sotto-array contiene al massimo chunkSize elementi. L'ultimo chunk puo' essere piu' piccolo. Utile per paginazione e batch processing.",
+    "syntax": ["ACHUNK(array, chunkSize)", "ARRAYS.ACHUNK(array, chunkSize)"],
+    "returnType": "ARRAY OF ARRAY",
+    "parameters": [
+      { "name": "array", "type": "ARRAY", "description": "Array da suddividere in blocchi." },
+      { "name": "chunkSize", "type": "INTEGER", "description": "Dimensione massima di ogni blocco." }
+    ],
+    "examples": [
+      { "description": "Paginazione di risultati per display.", "code": "DIM TuttiDati() = { 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15 }\nDIM Pagine = ACHUNK(TuttiDati(), 5)\nINPUT \"Numero pagina (1-\" + CSTR(UBOUND(Pagine)+1) + \"): \", Pg\nIF Pg >= 1 AND Pg <= UBOUND(Pagine) + 1 THEN\n  DIM PaginaCorrente = Pagine(Pg - 1)\n  PRINT \"Pagina \"; Pg; \": \"; AJOIN(PaginaCorrente, \", \")\nELSE\n  PRINT \"Pagina non valida.\"\nEND IF", "expectedOutput": "Numero pagina (1-3): 2\nPagina 2: 6, 7, 8, 9, 10" }
+    ],
+    "seeAlso": ["AFLAT", "ACOPY", "AFILTER"],
+    "isCommand": false
+  },
+  {
+    "name": "AFLAT",
+    "namespace": "ARRAYS",
+    "category": "Transform",
+    "description": "Appiattisce un array annidato di qualsiasi profondita' in un array monodimensionale. Tutti gli elementi, indipendentemente dal livello di annidamento, vengono portati allo stesso livello.",
+    "syntax": ["AFLAT(array)", "ARRAYS.AFLAT(array)"],
+    "returnType": "ARRAY",
+    "parameters": [
+      { "name": "array", "type": "ARRAY", "description": "Array potenzialmente annidato da appiattire." }
+    ],
+    "examples": [
+      { "description": "Appiattimento di struttura dati complessa.", "code": "DIM Annidato = { 1, { 2, 3, {4, 5} }, 6, {7, 8} }\nPiatto = AFLAT(Annidato)\nPRINT \"Array piatto: \"; AJOIN(Piatto, \", \")\nPRINT \"Elementi totali: \"; UBOUND(Piatto) + 1", "expectedOutput": "Array piatto: 1, 2, 3, 4, 5, 6, 7, 8\nElementi totali: 8" }
+    ],
+    "seeAlso": ["ACHUNK", "AMAP", "AREDUCE"],
+    "isCommand": false
+  },
+  {
+    "name": "APAD",
+    "namespace": "ARRAYS",
+    "category": "Transform",
+    "description": "Restituisce un nuovo array con la lunghezza desiderata. Se l'array originale e' piu' corto, gli elementi mancanti vengono riempiti con padValue. Se l'array originale e' piu' lungo, viene troncato.",
+    "syntax": ["APAD(array, newLength [, padValue])", "ARRAYS.APAD(array, newLength, padValue)"],
+    "returnType": "ARRAY",
+    "parameters": [
+      { "name": "array", "type": "ARRAY", "description": "Array sorgente." },
+      { "name": "newLength", "type": "INTEGER", "description": "Lunghezza desiderata del nuovo array." },
+      { "name": "padValue", "type": "ANY", "description": "Valore di riempimento per gli elementi aggiuntivi (default: valore di default del tipo)." }
+    ],
+    "examples": [
+      { "description": "Normalizzazione batch a dimensione fissa.", "code": "DIM Batch() = { 3.5, 7.2, 1.8 }\nDIM Normalizzato = APAD(Batch(), 5, 0.0)\nPRINT \"Batch normalizzato: \"; AJOIN(Normalizzato, \", \")", "expectedOutput": "Batch normalizzato: 3.5, 7.2, 1.8, 0, 0" }
+    ],
+    "seeAlso": ["ACHUNK", "AFLAT", "ACOPY", "REDIM"],
+    "isCommand": false
+  },
+  {
+    "name": "AZIP",
+    "namespace": "ARRAYS",
+    "category": "Transform",
+    "description": "Combina due o piu' array in un array di tuple (array di array). Ogni tupla contiene gli elementi nella stessa posizione degli array originali. La lunghezza del risultato e' determinata dall'array piu' corto.",
+    "syntax": ["AZIP(array1, array2, ...)", "ARRAYS.AZIP(array1, array2)"],
+    "returnType": "ARRAY OF ARRAY",
+    "parameters": [
+      { "name": "array1, array2, ...", "type": "ARRAY", "description": "Due o piu' array da combinare." }
+    ],
+    "examples": [
+      { "description": "Associazione chiave-valore per costruzione DICT.", "code": "DIM Chiavi$() = { \"nome\", \"eta\", \"citta\" }\nDIM Valori = { \"Mario Rossi\", 42, \"Milano\" }\nDIM Coppie = AZIP(Chiavi$(), Valori)\nFOR I = 0 TO UBOUND(Coppie)\n  PRINT Coppie(I)(0); \" = \"; Coppie(I)(1)\nNEXT I", "expectedOutput": "nome = Mario Rossi\neta = 42\ncitta = Milano" }
+    ],
+    "seeAlso": ["ACHUNK", "AJOIN", "ATOKENS"],
+    "isCommand": false
+  }
+]

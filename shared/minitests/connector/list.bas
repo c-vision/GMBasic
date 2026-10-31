@@ -1,0 +1,5 @@
+' EXPECT: list= 13527
+IMPORT AI
+SUB Main()
+  PRINT "list="; LEN(AI.CONNECTORLIST())
+END SUB

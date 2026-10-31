@@ -1,0 +1,5 @@
+IMPORT AI
+
+SUB Main()
+    PRINT AI.NOTETAGS("x", "x")
+END SUB

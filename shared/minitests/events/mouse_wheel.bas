@@ -1,0 +1,5 @@
+' EXPECT: wheel= 0
+IMPORT MOUSE
+SUB Main()
+  PRINT "wheel="; MOUSE.WHEEL()
+END SUB

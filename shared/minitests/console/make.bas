@@ -1,0 +1,5 @@
+' EXPECT: make= 65
+IMPORT ONKEY
+SUB Main()
+  PRINT "make="; KEY.MAKE(65, 0)
+END SUB

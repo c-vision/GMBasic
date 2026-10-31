@@ -1,0 +1,10 @@
+DIM x = 5
+CALL T()
+PRINT x
+
+SUB T()
+ON ERROR RESUME NEXT
+PRINT "prima"
+ERROR 1000, "x"
+PRINT "dopo"
+END SUB

@@ -1,0 +1,7 @@
+' MiniTest: SPECIAL.DIGAMMA — parita' 4 backend bit-esatta (port MathNet).
+' EXPECT: 1.5061176684318
+IMPORT SPECIAL
+
+SUB Main
+  PRINT SPECIAL.DIGAMMA(5.0)
+END SUB

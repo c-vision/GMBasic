@@ -1,0 +1,6 @@
+' EXPECT: work/screenshot.png
+IMPORT COMPUTER
+
+SUB Main()
+    PRINT COMPUTER.SCREENSHOT("")
+END SUB

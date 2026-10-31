@@ -1,0 +1,2 @@
+# UDP in FINALLY: park di rete, lento ma corretto (passa singolo)
+@timeout 25000

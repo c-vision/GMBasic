@@ -1,0 +1,5 @@
+' EXPECT: port= 0
+IMPORT NET
+SUB Main()
+  PRINT "port="; NET.LOCALPORT(0)
+END SUB

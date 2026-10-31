@@ -1,0 +1,44 @@
+[
+  {
+    "name": "fs_read",
+    "description": "Legge un file dentro work/.",
+    "procedure": "FsRead",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "file": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  {
+    "name": "fs_write",
+    "description": "Scrive un file dentro work/.",
+    "procedure": "FsWrite",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "file": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  {
+    "name": "fs_list",
+    "description": "Elenca i file dentro work/.",
+    "procedure": "FsList",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "dir": {
+          "type": "string"
+        }
+      }
+    }
+  }
+]

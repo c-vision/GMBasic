@@ -1,0 +1,2 @@
+# sample di rete: ownership TCP con timeout generazionali, lento ma corretto
+@timeout 20000

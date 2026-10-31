@@ -1,0 +1,14 @@
+' MiniTest: rappresentazione UDT (SYSTEM.VALTYPE/TYPENAME) — parita' 4 backend.
+' EXPECT: O|TestUDT
+IMPORT SYSTEM
+
+TYPE TestUDT
+  a AS INTEGER
+  b AS DOUBLE
+END TYPE
+
+SUB Main()
+  DIM u AS TestUDT
+  PRINT SYSTEM.VALTYPE(u)
+  PRINT SYSTEM.TYPENAME(u)
+END SUB

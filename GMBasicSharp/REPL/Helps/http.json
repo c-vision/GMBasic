@@ -1,0 +1,120 @@
+[
+  {
+    "name": "FETCH",
+    "namespace": "HTTP",
+    "category": "HTTP Client",
+    "description": "Esegue una richiesta HTTP/HTTPS verso un URL specificato. Supporta i metodi GET (predefinito), POST, PUT, DELETE, PATCH. Restituisce un oggetto FetchResult con i campi Status (codice HTTP), Headers (dizionario chiave-valore), Body (corpo della risposta come stringa) e Elapsed (tempo di risposta in millisecondi). Supporta timeout, headers personalizzati, body JSON/form e autenticazione base.",
+    "syntax": [
+      "HTTP.FETCH(url$ [, options])",
+      "FETCH url$, result_var"
+    ],
+    "returnType": "FetchResult",
+    "parameters": [
+      { "name": "url$", "type": "STRING", "description": "URL completo della richiesta HTTP (es. 'https://api.example.com/data')." },
+      { "name": "options", "type": "DICT/UDT", "description": "Opzioni opzionali: {method:'POST', headers:{...}, body:'...', timeout:5000}." }
+    ],
+    "examples": [
+      { "description": "GET semplice per recuperare dati JSON da un'API.", "code": "res = HTTP.FETCH(\"https://api.github.com/repos/microsoft/typescript\")\nIF res.Status = 200 THEN\n  PRINT \"Repo: \"; res.Body\nELSE\n  PRINT \"Errore HTTP: \"; res.Status\nEND IF", "expectedOutput": "Repo: {\"id\":2876039,\"name\":\"TypeScript\",\"full_name\":\"microsoft/TypeScript\"...}" },
+      { "description": "POST con body JSON e autenticazione Bearer token.", "code": "Token$ = \"ghp_xxxxxxxxxxxxxxxxxxxx\"\nPayload = \"{ \"\"title\"\": \"\"Nuovo bug\"\", \"\"body\"\": \"\"Descrizione...\"\" }\"\nOpts = {\"method\": \"POST\", \"headers\": {\"Authorization\": \"Bearer \" + Token$, \"Content-Type\": \"application/json\"}, \"body\": Payload}\nres = HTTP.FETCH(\"https://api.github.com/repos/user/repo/issues\", Opts)\nPRINT \"Risposta: \"; res.Status; \" - \"; LEFT(res.Body, 100)", "expectedOutput": "Risposta: 201 - {\"id\":12345,\"title\":\"Nuovo bug\",...}" },
+      { "description": "Chiamata API con timeout, verifica errori e parsing JSON.", "code": "DIM opts AS DICT\nopts.Set(\"method\", \"GET\")\nopts.Set(\"timeout\", 5000)\nopts.Set(\"headers\", {\"Accept\": \"application/json\"})\n\nres = HTTP.FETCH(\"https://api.open-meteo.com/v1/forecast?latitude=45.46&longitude=9.19&current_weather=true\", opts)\n\nIF res.Status >= 200 AND res.Status < 300 THEN\n  DIM Dati AS DICT\n  JSON.DECODE res.Body, Dati\n  Current = Dati.Get(\"current_weather\")\n  Temp = Current.Get(\"temperature\")\n  WCode = Current.Get(\"weathercode\")\n  PRINT \"Milano: \"; Temp; \" C (codice meteo: \"; WCode; \")\"\nELSE\n  PRINT \"API non disponibile (HTTP \"; res.Status; \")\"\nEND IF", "expectedOutput": "Milano: 22.5 C (codice meteo: 1)" }
+    ],
+    "seeAlso": ["HTTP.SERVER", "HTTP.ROUTE", "JSON.DECODE", "HTTP.CONFIG"],
+    "isCommand": false
+  },
+  {
+    "name": "SERVER",
+    "namespace": "HTTP",
+    "category": "HTTP Server",
+    "description": "Avvia un server HTTP sulla porta specificata e assegna l'handle a una variabile. Il server rimane in ascolto in background (non bloccante) e puo' essere configurato con ROUTE, CONFIG e USE. Supporta routing, middleware, file statici e CORS.",
+    "syntax": [
+      "HTTP.SERVER handleVar, port",
+      "HTTP SERVER handleVar, port"
+    ],
+    "returnType": "",
+    "parameters": [
+      { "name": "handleVar", "type": "VARIANT", "description": "Variabile che riceve l'handle del server." },
+      { "name": "port", "type": "INTEGER", "description": "Porta TCP su cui ascoltare (es. 8080)." }
+    ],
+    "examples": [
+      { "description": "Server HTTP minimale con una route API e file statici.", "code": "HTTP SERVER hSrv, 8080\nHTTP ROUTE hSrv, \"GET\", \"/api/status\", \"HandleStatus\"\nHTTP CONFIG hSrv, \"WWWRoot\", \"./public\"\nPRINT \"Server avviato su http://localhost:8080\"\nPRINT \"Premi un tasto per fermare...\"\nWAIT\nSTOP\n\nSUB HandleStatus(req, res)\n  res.Status = 200\n  res.Body = \"{ \"\"status\"\": \"\"OK\"\", \"\"uptime\"\": \" + STRTI + \" }\"\n  res.ContentType = \"application/json\"\nEND SUB", "expectedOutput": "Server avviato su http://localhost:8080\nPremi un tasto per fermare..." }
+    ],
+    "seeAlso": ["HTTP.ROUTE", "HTTP.CONFIG", "HTTP.USE", "HTTP.FETCH"],
+    "isCommand": true
+  },
+  {
+    "name": "ROUTE",
+    "namespace": "HTTP",
+    "category": "HTTP Server",
+    "description": "Registra una route (metodo HTTP + percorso) su un server HTTP, associandola a una subroutine o funzione che gestira' le richieste. Supporta parametri dinamici nel path con la sintassi :param e wildcard *.",
+    "syntax": [
+      "HTTP.ROUTE handle, method$, path$, callback$"
+    ],
+    "returnType": "",
+    "parameters": [
+      { "name": "handle", "type": "VARIANT", "description": "Handle del server restituito da HTTP.SERVER." },
+      { "name": "method$", "type": "STRING", "description": "Metodo HTTP: 'GET', 'POST', 'PUT', 'DELETE', 'PATCH' o '*' per tutti." },
+      { "name": "path$", "type": "STRING", "description": "Pattern del percorso: '/api/users', '/user/:id', '/files/*'." },
+      { "name": "callback$", "type": "STRING", "description": "Nome della subroutine che gestira' la richiesta." }
+    ],
+    "examples": [
+      { "description": "API REST completa con parametri dinamici.", "code": "HTTP SERVER hSrv, 8080\n\nHTTP ROUTE hSrv, \"GET\", \"/api/users\", \"GetUsers\"\nHTTP ROUTE hSrv, \"GET\", \"/api/users/:id\", \"GetUserById\"\nHTTP ROUTE hSrv, \"POST\", \"/api/users\", \"CreateUser\"\nHTTP ROUTE hSrv, \"DELETE\", \"/api/users/:id\", \"DeleteUser\"\n\nPRINT \"API REST avviata su porta 8080\"\n\nSUB GetUsers(req, res)\n  res.Status = 200\n  res.Body = \"[{\"\"id\"\":1,\"\"name\"\":\"\"Mario\"\"},{\"\"id\"\":2,\"\"name\"\":\"\"Anna\"\"}]\"\n  res.ContentType = \"application/json\"\nEND SUB\n\nSUB GetUserById(req, res)\n  Id$ = req.Params[\"id\"]\n  res.Body = \"{\"\"id\"\":\" + Id$ + \",\"\"name\"\":\"\"Utente \"\" + Id$ + \"\"\"}\"\n  res.ContentType = \"application/json\"\nEND SUB", "expectedOutput": "API REST avviata su porta 8080\n[GET /api/users/123 risponde con: {id:123,name:Utente 123}]" }
+    ],
+    "seeAlso": ["HTTP.SERVER", "HTTP.CONFIG", "HTTP.USE"],
+    "isCommand": true
+  },
+  {
+    "name": "CONFIG",
+    "namespace": "HTTP",
+    "category": "HTTP Server",
+    "description": "Configura opzioni del server HTTP come timeout, dimensione massima del body, directory root per file statici, CORS e altre impostazioni. Chiamare prima o dopo aver aggiunto le route.",
+    "syntax": [
+      "HTTP.CONFIG handle, setting$, value$"
+    ],
+    "returnType": "",
+    "parameters": [
+      { "name": "handle", "type": "VARIANT", "description": "Handle del server." },
+      { "name": "setting$", "type": "STRING", "description": "Nome dell'impostazione: 'WWWRoot', 'MaxBodySize', 'Timeout', 'CORSOrigin', 'CORSMethods', 'CORSHeaders'." },
+      { "name": "value$", "type": "STRING", "description": "Valore dell'impostazione." }
+    ],
+    "examples": [
+      { "description": "Configurazione completa di un server di produzione.", "code": "HTTP SERVER hSrv, 8080\nHTTP CONFIG hSrv, \"WWWRoot\", \"./public\"\nHTTP CONFIG hSrv, \"MaxBodySize\", \"10485760\"\nHTTP CONFIG hSrv, \"Timeout\", \"30000\"\nHTTP CONFIG hSrv, \"CORSOrigin\", \"*\"\nHTTP CONFIG hSrv, \"CORSMethods\", \"GET,POST,PUT,DELETE\"\nHTTP ROUTE hSrv, \"*\", \"*\", \"LogRequest\"\nPRINT \"Server configurato.\"\n\nSUB LogRequest(req, res)\n  PRINT req.Method; \" \"; req.Path\nEND SUB", "expectedOutput": "Server configurato.\nGET /index.html\nPOST /api/data" }
+    ],
+    "seeAlso": ["HTTP.SERVER", "HTTP.ROUTE", "HTTP.USE"],
+    "isCommand": true
+  },
+  {
+    "name": "USE",
+    "namespace": "HTTP",
+    "category": "HTTP Server",
+    "description": "Aggiunge un middleware alla catena di elaborazione delle richieste HTTP. Il middleware specificato viene eseguito per ogni richiesta prima di raggiungere le route. Utile per autenticazione, logging, compressione e altre elaborazioni trasversali.",
+    "syntax": [
+      "HTTP.USE handle, middleware$"
+    ],
+    "returnType": "",
+    "parameters": [
+      { "name": "handle", "type": "VARIANT", "description": "Handle del server." },
+      { "name": "middleware$", "type": "STRING", "description": "Nome della subroutine middleware." }
+    ],
+    "examples": [
+      { "description": "Middleware di autenticazione e logging.", "code": "HTTP SERVER hSrv, 8080\nHTTP USE hSrv, \"AuthMiddleware\"\nHTTP USE hSrv, \"LoggerMiddleware\"\nHTTP ROUTE hSrv, \"GET\", \"/secure\", \"SecureHandler\"\nPRINT \"Server con middleware avviato.\"\n\nSUB AuthMiddleware(req, res, next)\n  Token$ = req.Headers[\"Authorization\"]\n  IF LEFT(Token$, 7) <> \"Bearer \" THEN\n    res.Status = 401\n    res.Body = \"{\"\"error\"\":\"\"Unauthorized\"\"}\"\n  ELSE\n    next()\n  END IF\nEND SUB\n\nSUB LoggerMiddleware(req, res, next)\n  PRINT \"[\"; STRTIME; \"] \"; req.Method; \" \"; req.Path\n  next()\nEND SUB", "expectedOutput": "Server con middleware avviato.\n[14:30:15] GET /secure\n[14:30:16] GET /secure  (con token valido)" }
+    ],
+    "seeAlso": ["HTTP.SERVER", "HTTP.ROUTE", "HTTP.CONFIG"],
+    "isCommand": true
+  },
+  {
+    "name": "USENEXT",
+    "namespace": "HTTP",
+    "category": "HTTP Server",
+    "description": "All'interno di un middleware, passa il controllo al prossimo middleware nella catena o al gestore della route. Deve essere chiamato esplicitamente per non interrompere la catena. Se non chiamato, la richiesta si ferma al middleware corrente.",
+    "syntax": [
+      "HTTP.USENEXT"
+    ],
+    "returnType": "",
+    "parameters": [],
+    "examples": [
+      { "description": "Middleware che misura il tempo di risposta.", "code": "SUB PerformanceMiddleware(req, res, next)\n  Inizio = NOW()\n  next()\n  Durata = DATEDIFF(\"ms\", Inizio, NOW())\n  PRINT \"[\"; req.Method; \" \"; req.Path; \"] \"; Durata; \" ms\"\nEND SUB", "expectedOutput": "[GET /api/users] 45 ms" }
+    ],
+    "seeAlso": ["HTTP.USE", "HTTP.ROUTE", "HTTP.SERVER"],
+    "isCommand": false
+  }
+]

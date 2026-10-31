@@ -1,0 +1,10 @@
+Conformance: edition=Commercial
+  code=1371 bytes, consts=48, entry=1064
+  A1 chunk: /var/folders/b_/gsctxq2x5sq9gh7zpqpgrd0m0000gn/T/gmb_vmtest_812e8ec3.chunk (13505 bytes)
+[2;2HEta (18-100):[3;2HQta (0-99, step 5):[4;2HAccetto:[5;2HColore:  ---- VM/C OUTPUT ----
+VALID_CONTROLS_OK
+ETA= 0 
+QTA= 0 
+OK=
+COLORE=
+  exit=0

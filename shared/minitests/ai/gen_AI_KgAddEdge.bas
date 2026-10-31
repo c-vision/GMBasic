@@ -1,0 +1,6 @@
+' EXPECT: 1
+IMPORT AI
+
+SUB Main()
+    PRINT AI.KGADDEDGE("x", "x")
+END SUB

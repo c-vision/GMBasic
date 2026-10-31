@@ -1,0 +1,3 @@
+SUB Main()
+  PRINT PYTHAGORAS(3, 4)
+END SUB

@@ -1,0 +1,6 @@
+' EXPECT: {"error":"not recording"}
+IMPORT COMPUTER
+
+SUB Main()
+    PRINT COMPUTER.SCREENRECORDSTOP()
+END SUB

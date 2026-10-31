@@ -1,0 +1,6 @@
+' EXPECT: NaN
+IMPORT AI
+
+SUB Main()
+    PRINT AI.CONSISTENCY("x", "x")
+END SUB

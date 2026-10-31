@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <LangVersion>preview</LangVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>Basic.AI</RootNamespace>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
+        <PackageReference Include="Npgsql" Version="9.0.3" />
+        <PackageReference Include="MySqlConnector" Version="2.4.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="Databases.Mcp.Tests" />
+        <InternalsVisibleTo Include="Databases.Sqlite.Tests" />
+        <InternalsVisibleTo Include="Databases.VectorDB.Tests" />
+        <InternalsVisibleTo Include="AI.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Ast\Ast.csproj" />
+        <ProjectReference Include="..\Databases\Databases.csproj" />
+        <ProjectReference Include="..\CommonLib\CommonLib.csproj" />
+        <ProjectReference Include="..\StdLib\StdLib.csproj" />
+        <ProjectReference Include="..\Jinja\GmBasic.Jinja.csproj" />
+        <!-- §4.10 esposizione agenti: tool-loop code.* sul Semantic Graph (implementazione C#
+         * indipendente; il gemello C usa gmb_semgraph — nessun P/Invoke). -->
+        <ProjectReference Include="..\SemanticGraph\SemanticGraph.csproj" />
+    </ItemGroup>
+
+</Project>

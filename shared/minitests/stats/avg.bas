@@ -1,0 +1,7 @@
+' EXPECT: 4.8|2|3
+SUB Main()
+  DIM d(4) AS DOUBLE = {5, 2, 9, 1, 7}
+  PRINT AVG(d)
+  PRINT AVG(1, 2, 3)
+  PRINT AVG(2, 4)
+END SUB

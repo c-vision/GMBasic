@@ -1,13 +1,3 @@
-[submodule "GMBasic"]
-	path = GMBasic
-	url = ../GMBasicDeprecated
-[submodule "GMBasicSharp"]
-	path = GMBasicSharp
-	url = ../GMBasicSharp
-[submodule "shared"]
-	path = shared
-	url = ../shared
-
 [submodule "GMBasicIDE"]
 	path = GMBasicIDE
 	url = https://github.com/c-vision/GMBasicIDE.git

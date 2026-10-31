@@ -1,0 +1,15 @@
+<%@ LAYOUT "EscapingLayout.bsp" %>
+<%
+  ' Auto-escaping BSP: <%= %> e @Model sono escaped di default (anti-XSS).
+  DIM userInput$ = "<script>alert('x')</script>"
+  DIM trustedHtml$ = "<b>ok</b>"
+%>
+<!DOCTYPE html>
+<html>
+<body>
+  <h1>Demo anti-XSS</h1>
+  <p>Utente (escaped): <%= userInput$ %></p>
+  <p>HTML fidato (raw): <%= trustedHtml$ | raw %></p>
+  <p>@Html.Encode(userInput$)</p>
+</body>
+</html>

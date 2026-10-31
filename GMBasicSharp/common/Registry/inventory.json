@@ -1,0 +1,29 @@
+{
+  "count": 1582,
+  "namespaces": 73,
+  "distinctTokenKinds": 1470,
+  "namesInMultipleNamespaces": 100,
+  "namesInMultipleNamespacesSample": [
+    "Run",
+    "Count",
+    "Embed",
+    "EnsureCollection",
+    "GenTest",
+    "IndexMeta",
+    "IndexText",
+    "Info",
+    "List",
+    "ListCollections",
+    "Load",
+    "LoadDocuments",
+    "PurgeDeprecated",
+    "Register",
+    "RemoveSource",
+    "Search",
+    "Anova",
+    "Correlation",
+    "Kurtosis",
+    "Mad"
+  ],
+  "sameNsNameDifferentKinds": []
+}

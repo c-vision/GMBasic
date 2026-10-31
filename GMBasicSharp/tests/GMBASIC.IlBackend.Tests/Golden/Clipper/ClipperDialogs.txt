@@ -1,0 +1,9 @@
+Conformance: edition=Commercial
+  code=1122 bytes, consts=9, entry=1064
+  A1 chunk: /var/folders/b_/gsctxq2x5sq9gh7zpqpgrd0m0000gn/T/gmb_vmtest_b9c118c6.chunk (11934 bytes)
+  ---- VM/C OUTPUT ----
+=== Dialog Test ===
+Alert mostrato
+Hai scelto SI
+Test completato
+  exit=0

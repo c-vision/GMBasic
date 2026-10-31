@@ -1,0 +1,18 @@
+' SYSTEM.NUMGOROUTINE / NUMCPU (parita' Go runtime.NumGoroutine/NumCPU).
+IMPORT CONCURRENCY
+
+SUB Lavoratore(W AS WAITGROUP)
+  SLEEP 10
+END SUB
+
+SUB Main()
+  DIM W AS WAITGROUP
+  DIM ng AS LONG
+  DIM nc AS LONG
+  GO SUB Lavoratore(W) IN W
+  GO SUB Lavoratore(W) IN W
+  ng = SYSTEM.NUMGOROUTINE()
+  nc = SYSTEM.NUMCPU()
+  WAIT W
+  IF ng >= 3 AND nc >= 1 THEN PRINT "NUMGOROUTINE-OK" ELSE PRINT "FAIL:ng="; ng; " nc="; nc END IF
+END SUB

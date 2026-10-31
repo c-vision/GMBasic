@@ -1,0 +1,6 @@
+{
+  "name": "mcp_invoke",
+  "description": "Invoca un tool di un server MCP (server.tool + argomenti).",
+  "procedure": "McpInvoke",
+  "inputSchema": { "type": "object", "properties": { "args": { "type": "string" } } }
+}

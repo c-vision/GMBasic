@@ -1,0 +1,23 @@
+IMPORT CONTROLS
+IMPORT GRAPHICS
+SCREEN 12, 900, 560, 32
+WINDOW THEME "glass"
+FONT "font.ttf", 14
+DIM n AS INTEGER, s AS STRING
+DIM voci(2) AS STRING
+voci(0) = "Alfa" : voci(1) = "Beta" : voci(2) = "Gamma"
+DATALIST 3, 3, 20, 5, voci INTO n
+LOGVIEW 3, 10, 24, 5, "riga1|riga2|riga3" INTO n
+HEXVIEW 3, 17, 22, 5, "41424344" INTO n
+CODEAREA 32, 3, 26, 6, "x = 1|y = 2" INTO s
+BIGTEXT 32, 11, "BIG"
+REORDERLISTBOX 32, 16, 24, 5, voci INTO n
+
+
+
+
+DIM f AS INTEGER
+FOR f = 1 TO 40 : WINDOW PUMP 16 : NEXT
+SAVE SCREEN "/tmp/more_glass.png"
+SCREEN 0
+PRINT "ok"

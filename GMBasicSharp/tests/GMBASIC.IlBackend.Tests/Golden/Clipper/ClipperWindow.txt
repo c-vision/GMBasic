@@ -1,0 +1,12 @@
+Conformance: edition=Commercial
+  code=1163 bytes, consts=23, entry=1064
+  A1 chunk: /var/folders/b_/gsctxq2x5sq9gh7zpqpgrd0m0000gn/T/gmb_vmtest_3427e8b2.chunk (12274 bytes)
+  ---- VM/C OUTPUT ----
+=== Window Management Test ===
+Main defined
+Help defined
+Main activated
+Main deactivated
+Help closed
+=== Test completato ===
+  exit=0

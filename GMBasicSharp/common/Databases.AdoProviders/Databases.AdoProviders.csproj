@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!-- Databases.AdoProviders — driver ADO.NET esterni opzionali (NativeAOT §9.7).
+         NESSUN codice: contiene SOLO i PackageReference dei driver RDBMS remoti che Databases
+         (core) carica LAZY per nome (SqlDriver.LoadProviderFactory). Databases NON li referenzia
+         più staticamente → illink/NativeAOT li esclude dal binario di un programma che non apre
+         un RDBMS esterno. Referenziato dai SOLI host che devono servire RDBMS remoti a runtime
+         (Executor/REPL per i .bas che fanno SQL OPEN verso Oracle/Postgres/MySQL/SQL Server/
+         Firebird); chi usa solo DBF/ISAM/SPEED/Ledger/SQLite non lo referenzia.
+         Driver assente → SQL OPEN errore esplicito (mai Sqlite silenzioso). -->
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <!-- Packages-only: NESSUN file sorgente Databases va compilato qui -->
+        <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Remove="**/*.cs" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="FirebirdSql.Data.FirebirdClient" Version="10.3.0" />
+        <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.2" />
+        <PackageReference Include="MySqlConnector" Version="2.4.0" />
+        <PackageReference Include="Npgsql" Version="10.0.3" />
+        <PackageReference Include="Oracle.ManagedDataAccess.Core" Version="23.7.0" />
+    </ItemGroup>
+
+</Project>

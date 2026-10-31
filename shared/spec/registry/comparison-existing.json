@@ -1,0 +1,20 @@
+{
+  "canonical": {
+    "count": 1567,
+    "namespaces": 69
+  },
+  "enum_cs": {
+    "tokenkind_members": 2502,
+    "builtinfunction_members": 1732,
+    "builtinfunction_explicit_values": 1241,
+    "builtinfunction_dup_code_groups": 0,
+    "builtinfunction_dup_members": 0
+  },
+  "builtinfunction_dup_codes_sample": [],
+  "enum_c": {
+    "tokenkind_header_members": 2655
+  },
+  "c_from_name_uses_excl_impl": 4,
+  "canonical_kindNames_not_in_cs_tokenkind": 0,
+  "kindNames_missing_sample": []
+}

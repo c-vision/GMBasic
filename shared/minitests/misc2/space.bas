@@ -1,0 +1,3 @@
+SUB Main()
+  PRINT LEN(SPACE(3))
+END SUB

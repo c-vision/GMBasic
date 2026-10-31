@@ -1,0 +1,1369 @@
+[
+ {
+  "name": "SAY",
+  "namespace": "TUI",
+  "category": "Screen Output",
+  "description": "Scrive testo o espressioni a una posizione specifica dello schermo. Supporta formattazione PICTURE stile Clipper. Sintassi con @ obbligatorio. La posizione e' in coordinate riga,colonna (0-based).",
+  "syntax": [
+   "@ row, col SAY expression [PICTURE picture$]",
+   "TUI.SAY row, col, expression [, picture$]"
+  ],
+  "returnType": "",
+  "parameters": [
+   {
+    "name": "row",
+    "type": "INTEGER",
+    "description": "Riga (0-based)."
+   },
+   {
+    "name": "col",
+    "type": "INTEGER",
+    "description": "Colonna (0-based)."
+   },
+   {
+    "name": "expression",
+    "type": "ANY",
+    "description": "Valore da visualizzare (STRING, NUMBER, DATE, etc)."
+   },
+   {
+    "name": "picture$",
+    "type": "STRING",
+    "description": "Template di formattazione PICTURE opzionale (es. '@! 999,999.99')."
+   }
+  ],
+  "examples": [
+   {
+    "description": "Report allineato con PICTURE.",
+    "code": "CLS\n@ 1, 10 SAY \"FATTURA N. 2024-0156\"\n@ 3, 2 SAY \"Cliente: Mario Rossi\"\n@ 4, 2 SAY \"Data:   15/03/2024\"\n@ 6, 2 SAY \"Descrizione\"\n@ 6, 30 SAY \"Qta\"\n@ 6, 40 SAY \"Prezzo\"\n@ 6, 50 SAY \"Totale\"\n@ 7, 2 SAY REPLICATE(\"-\", 60)\n@ 8, 2 SAY \"Mouse Ottico\"\n@ 8, 30 SAY 2 PICTURE \"999\"\n@ 8, 38 SAY \"$\"; 25.50 PICTURE \"999.99\"\n@ 8, 50 SAY 51.00 PICTURE \"9999.99\"\n@ 9, 2 SAY \"Tastiera Meccanica\"\n@ 9, 30 SAY 1 PICTURE \"999\"\n@ 9, 38 SAY \"$\"; 89.90 PICTURE \"999.99\"\n@ 9, 50 SAY 89.90 PICTURE \"9999.99\"",
+    "expectedOutput": "\n  FATTURA N. 2024-0156\n\n  Cliente: Mario Rossi\n  Data:   15/03/2024\n\n  Descrizione           Qta     Prezzo      Totale\n  ------------------------------------------------------------\n  Mouse Ottico           2     $25.50      51.00\n  Tastiera Meccanica     1     $89.90      89.90"
+   }
+  ],
+  "seeAlso": [
+   "GET",
+   "BOX",
+   "SAVESCREEN",
+   "RESTSCREEN",
+   "TCOLOR",
+   "DEVOUT"
+  ],
+  "isCommand": true
+ },
+ {
+  "name": "GET",
+  "namespace": "TUI",
+  "category": "Input",
+  "description": "Definisce un campo di input a una posizione specifica dello schermo per essere processato da READ. Supporta vari tipi: TextBox, Spinner, ComboBox, ListBox, CheckBox, DatePicker, Memo. Piu' GET possono essere concatenati tra loro e processati da un unico READ.",
+  "syntax": [
+   "@ row, col GET variable [PICTURE pic$] [TYPE type$] [ITEMS array] [SIZE w [, h]] [RANGE lo, hi] [VALID condition] [COLOR fg/bg] [CAPTION text$]"
+  ],
+  "returnType": "",
+  "parameters": [
+   {
+    "name": "row",
+    "type": "INTEGER",
+    "description": "Riga (0-based)."
+   },
+   {
+    "name": "col",
+    "type": "INTEGER",
+    "description": "Colonna (0-based)."
+   },
+   {
+    "name": "variable",
+    "type": "ANY",
+    "description": "Variabile BASIC da modificare."
+   },
+   {
+    "name": "pic$",
+    "type": "STRING",
+    "description": "PICTURE template per formattazione input."
+   },
+   {
+    "name": "type$",
+    "type": "STRING",
+    "description": "Tipo controllo: 'TextBox'/'C', 'Spinner'/'N', 'ComboBox', 'ListBox', 'CheckBox'/'K', 'DatePicker'/'D', 'Memo'."
+   },
+   {
+    "name": "items",
+    "type": "ARRAY",
+    "description": "Array di opzioni per ComboBox/ListBox."
+   },
+   {
+    "name": "size",
+    "type": "INTEGER",
+    "description": "Larghezza e opzionalmente altezza del controllo."
+   },
+   {
+    "name": "range",
+    "type": "ANY",
+    "description": "Valori minimo e massimo (per Spinner)."
+   },
+   {
+    "name": "valid",
+    "type": "FUNCTION",
+    "description": "Condizione di validazione (funzione o espressione)."
+   },
+   {
+    "name": "caption$",
+    "type": "STRING",
+    "description": "Testo etichetta per CheckBox/DatePicker."
+   }
+  ],
+  "examples": [
+   {
+    "description": "Form input dati cliente con vari tipi di GET.",
+    "code": "CLS\nNome$ = SPACE(30): Eta = 0: Sesso$ = \"\"\nAbbonato = FALSE: Categoria$ = \"\"\n@ 2, 5 SAY \"NOME CLIENTE:\"\n@ 2, 20 GET Nome$ PICTURE \"@!\"\n@ 4, 5 SAY \"ETA':\"\n@ 4, 20 GET Eta PICTURE \"999\" RANGE 18, 99\n@ 6, 5 SAY \"SESSO (M/F):\"\n@ 6, 20 GET Sesso$ PICTURE \"!\"\n@ 8, 5 SAY \"ABBONATO:\"\n@ 8, 20 GET Abbonato TYPE \"CheckBox\"\n@ 10, 5 SAY \"CATEGORIA:\"\n@ 10, 20 GET Categoria$ TYPE \"ComboBox\" ITEMS {\"Standard\", \"Premium\", \"VIP\"}\nREAD\nPRINT \"Dati inseriti:\"\nPRINT \"  Nome: \"; TRIM(Nome$)\nPRINT \"  Eta: \"; Eta\nPRINT \"  Sesso: \"; Sesso$\nPRINT \"  Abbonato: \"; IIF(Abbonato, \"SI\", \"NO\")\nPRINT \"  Categoria: \"; Categoria$",
+    "expectedOutput": "  NOME CLIENTE: [input field 30 char]\n  ETA': [numeric field 3 digit]\n  SESSO (M/F): [1 char]\n  ABBONATO: [checkbox]\n  CATEGORIA: [dropdown Standard|Premium|VIP]\nDati inseriti:\n  Nome: MARIO ROSSI\n  Eta: 35\n  Sesso: M\n  Abbonato: SI\n  Categoria: Premium"
+   }
+  ],
+  "seeAlso": [
+   "SAY",
+   "READ",
+   "UPDATED",
+   "READEXIT",
+   "SET CONFIRM",
+   "SET WRAP"
+  ],
+  "isCommand": true
+ },
+ {
+  "name": "READ",
+  "namespace": "TUI",
+  "category": "Input",
+  "description": "Attiva la sequenza di input per tutti i GET precedentemente definiti. READ processa i campi in ordine di definizione, gestendo navigazione con Tab/Enter/Shift-Tab, validazione, e eventi chiave registrati con SET KEY. Termina quando l'ultimo campo e' confermato o ESC premuto (se SET ESCAPE ON).",
+  "syntax": [
+   "READ [SAVE]"
+  ],
+  "returnType": "",
+  "parameters": [
+   {
+    "name": "SAVE",
+    "type": "KEYWORD",
+    "description": "Mantiene i GET per un successivo READ senza ridefinirli."
+   }
+  ],
+  "examples": [
+   {
+    "description": "Form con validazione e navigazione.",
+    "code": "CLS\nDO WHILE TRUE\n  Codice$ = SPACE(10): Desc$ = SPACE(30): Prezzo = 0\n  @ 2, 10 SAY \"CODICE:\"\n  @ 2, 20 GET Codice$ PICTURE \"@! AAAAAA\"\n  @ 4, 10 SAY \"DESCRIZIONE:\"\n  @ 4, 20 GET Desc$ PICTURE \"@!\"\n  @ 6, 10 SAY \"PREZZO:\"\n  @ 6, 20 GET Prezzo PICTURE \"9999.99\" RANGE 0.01, 9999.99\n  READ\n  IF READEXIT() = 27 THEN EXIT DO  ' ESC per uscire\n  PRINT \"Inserito: \"; TRIM(Codice$); \" - \"; TRIM(Desc$); \" - EUR \"; FORMAT(Prezzo, \"#,###.00\")\nLOOP",
+    "expectedOutput": "  CODICE: [input 6 char uppercase]\n  DESCRIZIONE: [input 30 char uppercase]\n  PREZZO: [numeric 9999.99 range 0.01-9999.99]\n  Inserito: A001 - MOUSE OTTICO - EUR 25.50"
+   }
+  ],
+  "seeAlso": [
+   "GET",
+   "UPDATED",
+   "READEXIT",
+   "SET KEY",
+   "SET CONFIRM"
+  ],
+  "isCommand": true
+ },
+ {
+  "name": "UPDATED",
+  "namespace": "TUI",
+  "category": "Input",
+  "description": "Restituisce TRUE se durante l'ultimo READ almeno un campo GET e' stato modificato dall'utente. Utile per determinare se ci sono cambiamenti da salvare alla fine di un form.",
+  "syntax": [
+   "UPDATED()",
+   "TUI.UPDATED()"
+  ],
+  "returnType": "BIT",
+  "parameters": [],
+  "examples": [
+   {
+    "description": "Salvataggio condizionale dopo modifica.",
+    "code": "CLS\nNome$ = \"Mario Rossi\": Telefono$ = \"1234567890\"\n@ 2, 5 SAY \"NOME:\" GET Nome$\n@ 4, 5 SAY \"TEL.:\"  GET Telefono$ PICTURE \"(999) 999-9999\"\nREAD\nIF UPDATED() THEN\n  PRINT \"Modifiche rilevate. Salvataggio...\"\n  SAVE \"contatti.dat\"\n  PRINT \"Salvato.\"\nELSE\n  PRINT \"Nessuna modifica. Operazione annullata.\"\nEND IF",
+    "expectedOutput": "Se l'utente modifica almeno un campo:\n  Modifiche rilevate. Salvataggio...\n  Salvato.\nSe l'utente non modifica nulla:\n  Nessuna modifica. Operazione annullata."
+   }
+  ],
+  "seeAlso": [
+   "READ",
+   "READEXIT",
+   "GET"
+  ],
+  "isCommand": false
+ },
+ {
+  "name": "READEXIT",
+  "namespace": "TUI",
+  "category": "Input",
+  "description": "Restituisce il codice tasto che ha terminato l'ultimo READ: 13 = Enter/Conferma, 27 = ESC/Annulla, altri codici se gestiti da SET KEY. Utile per distinguere tra conferma e annullamento di un form.",
+  "syntax": [
+   "READEXIT()",
+   "TUI.READEXIT()"
+  ],
+  "returnType": "INTEGER",
+  "parameters": [],
+  "examples": [
+   {
+    "description": "Distinzione conferma/annulla in form modale.",
+    "code": "DO WHILE TRUE\n  CLS\n  Nome$ = SPACE(30): Stipendio = 0\n  @ 2, 5 SAY \"NOME DIPENDENTE:\" GET Nome$\n  @ 4, 5 SAY \"STIPENDIO:\" GET Stipendio PICTURE \"99999.99\"\n  READ\n  IF READEXIT() = 27\n    PRINT \"Operazione annullata.\"\n    EXIT DO\n  END IF\n  PRINT \"Dipendente: \"; TRIM(Nome$); \" - EUR \"; FORMAT(Stipendio, \"#,###.00\")\n  INPUT \"Continua? (S/N): \", Ris$\n  IF UPPER(Ris$) = \"N\" THEN EXIT DO\nLOOP",
+    "expectedOutput": "  NOME DIPENDENTE: [input field]\n  STIPENDIO: [numeric field]\n  Dipendente: MARIO ROSSI - EUR 2,500.00\n  ..."
+   }
+  ],
+  "seeAlso": [
+   "READ",
+   "UPDATED",
+   "LASTKEY",
+   "READKEY"
+  ],
+  "isCommand": false
+ },
+ {
+  "name": "BOX",
+  "namespace": "TUI",
+  "category": "Screen Output",
+  "description": "Disegna un riquadro con bordi sullo schermo. Il bordo e' un singolo carattere specificato (default: doppia linea '█▓▒░'). La cornice usa i caratteri semigrafici estesi per angoli e lati.",
+  "syntax": [
+   "BOX top, left, bottom, right [, border_char$]"
+  ],
+  "returnType": "",
+  "parameters": [
+   {
+    "name": "top",
+    "type": "INTEGER",
+    "description": "Riga superiore."
+   },
+   {
+    "name": "left",
+    "type": "INTEGER",
+    "description": "Colonna sinistra."
+   },
+   {
+    "name": "bottom",
+    "type": "INTEGER",
+    "description": "Riga inferiore."
+   },
+   {
+    "name": "right",
+    "type": "INTEGER",
+    "description": "Colonna destra."
+   },
+   {
+    "name": "border_char$",
+    "type": "STRING",
+    "description": "Carattere bordo (default: doppia linea). Puo' essere un singolo carattere o una stringa di 8 caratteri per angoli/lati."
+   }
+  ],
+  "examples": [
+   {
+    "description": "Menu con BOX e @...SAY.",
+    "code": "CLS\nCOLOR 7, 1\nBOX 2, 5, 18, 70, CHR(219)\n@ 3, 10 SAY \"MENU PRINCIPALE\"\n@ 5, 10 SAY \"1. INSERIMENTO\"\n@ 7, 10 SAY \"2. MODIFICA\"\n@ 9, 10 SAY \"3. RICERCA\"\n@ 11, 10 SAY \"4. STAMPA\"\n@ 13, 10 SAY \"5. ESCI\"\n@ 16, 10 SAY \"Scegliere opzione (1-5): \";\nCOLOR 7, 0",
+    "expectedOutput": "[Riquadro con bordi e menu a 5 voci]"
+   }
+  ],
+  "seeAlso": [
+   "SAY",
+   "SCROLL",
+   "SAVESCREEN",
+   "RESTSCREEN",
+   "DISPBOX"
+  ],
+  "isCommand": true
+ },
+ {
+  "name": "SCROLL",
+  "namespace": "TUI",
+  "category": "Screen Output",
+  "description": "Scorre verticalmente una regione rettangolare dello schermo. Il numero di righe puo' essere positivo (scroll giu') o negativo (scroll su). Le righe che escono dalla regione vengono perse, le nuove righe sono vuote.",
+  "syntax": [
+   "SCROLL top, left, bottom, right, rows"
+  ],
+  "returnType": "",
+  "parameters": [
+   {
+    "name": "top",
+    "type": "INTEGER",
+    "description": "Riga superiore della regione."
+   },
+   {
+    "name": "left",
+    "type": "INTEGER",
+    "description": "Colonna sinistra della regione."
+   },
+   {
+    "name": "bottom",
+    "type": "INTEGER",
+    "description": "Riga inferiore della regione."
+   },
+   {
+    "name": "right",
+    "type": "INTEGER",
+    "description": "Colonna destra della regione."
+   },
+   {
+    "name": "rows",
+    "type": "INTEGER",
+    "description": "Numero di righe da scorrere (positivo = giu', negativo = su)."
+   }
+  ],
+  "examples": [
+   {
+    "description": "Log a scorrimento in area delimitata.",
+    "code": "CLS\nBOX 1, 1, 10, 78\nFOR I = 1 TO 20\n  @ 2 + I, 3 SAY \"LOG ENTRY #\"; I\n  IF I >= 8 THEN SCROLL 2, 2, 9, 77, 1\n  SLEEP 0.1\nNEXT",
+    "expectedOutput": "[Le righe di log scorrono dentro l'area delimitata dal BOX]"
+   }
+  ],
+  "seeAlso": [
+   "BOX",
+   "SAVESCREEN",
+   "SAY"
+  ],
+  "isCommand": true
+ },
+ {
+  "name": "SAVESCREEN",
+  "namespace": "TUI",
+  "category": "Screen Output",
+  "description": "Salva una regione rettangolare dello schermo in una stringa. Puo' essere successivamente ripristinata con RESTSCREEN. Usato per overlay temporanei, menu popup, e undo di disegni. Se chiamato senza argomenti, salva l'intero schermo.",
+  "syntax": [
+   "SAVESCREEN [top, left, bottom, right]",
+   "TUI.SAVESCREEN([top, left, bottom, right])"
+  ],
+  "returnType": "STRING",
+  "parameters": [
+   {
+    "name": "top",
+    "type": "INTEGER",
+    "description": "Riga superiore (default: 0)."
+   },
+   {
+    "name": "left",
+    "type": "INTEGER",
+    "description": "Colonna sinistra (default: 0)."
+   },
+   {
+    "name": "bottom",
+    "type": "INTEGER",
+    "description": "Riga inferiore (default: MAXROW)."
+   },
+   {
+    "name": "right",
+    "type": "INTEGER",
+    "description": "Colonna destra (default: MAXCOL)."
+   }
+  ],
+  "examples": [
+   {
+    "description": "Popup informativo con ripristino schermo.",
+    "code": "CLS\n@ 5, 5 SAY \"Schermo principale con dati...\"\n' Salva area per popup\nSaved$ = SAVESCREEN(3, 10, 12, 60)\nBOX 3, 10, 12, 60\n@ 4, 15 SAY \"INFORMAZIONE\"\n@ 6, 15 SAY \"Operazione completata con successo.\"\n@ 8, 15 SAY \"Premere un tasto per continuare...\"\nWAITKEY\n' Ripristina area\nRESTSCREEN Saved$, 3, 10\nPRINT \"Popup chiuso, schermo ripristinato.\"",
+    "expectedOutput": "[Popup overlay con messaggio, dopo WAITKEY lo schermo torna allo stato originale]"
+   }
+  ],
+  "seeAlso": [
+   "RESTSCREEN",
+   "BOX",
+   "SAY",
+   "SCROLL"
+  ],
+  "isCommand": false
+ },
+ {
+  "name": "RESTSCREEN",
+  "namespace": "TUI",
+  "category": "Screen Output",
+  "description": "Ripristina una regione dello schermo precedentemente salvata con SAVESCREEN. La posizione di ripristino puo' essere diversa da quella originale. I dati salvati includono sia i caratteri che gli attributi colore.",
+  "syntax": [
+   "RESTSCREEN string$ [, top, left]"
+  ],
+  "returnType": "",
+  "parameters": [
+   {
+    "name": "string$",
+    "type": "STRING",
+    "description": "Stringa salvata con SAVESCREEN contenente caratteri e attributi."
+   },
+   {
+    "name": "top",
+    "type": "INTEGER",
+    "description": "Riga superiore di destinazione (default: stessa della salvata)."
+   },
+   {
+    "name": "left",
+    "type": "INTEGER",
+    "description": "Colonna sinistra di destinazione (default: stessa della salvata)."
+   }
+  ],
+  "examples": [
+   {
+    "description": "Drag and drop di area rettangolare.",
+    "code": "Saved$ = SAVESCREEN(5, 10, 10, 30)\nFOR Col = 10 TO 50 STEP 2\n  RESTSCREEN Saved$, 5, Col\n  SLEEP 0.1\n  SAVESCREEN(5, 10, 10, 30)\nNEXT",
+    "expectedOutput": "[L'area salvata si muove orizzontalmente sullo schermo]"
+   }
+  ],
+  "seeAlso": [
+   "SAVESCREEN",
+   "BOX",
+   "SCROLL"
+  ],
+  "isCommand": true
+ },
+ {
+  "name": "MAXCOL",
+  "namespace": "TUI",
+  "category": "Screen Query",
+  "description": "Restituisce l'indice dell'ultima colonna dello schermo (larghezza - 1). Utile per calcoli di layout responsive indipendenti dalla risoluzione del terminale.",
+  "syntax": [
+   "MAXCOL()",
+   "TUI.MAXCOL()"
+  ],
+  "returnType": "INTEGER",
+  "parameters": [],
+  "examples": [
+   {
+    "description": "Linea orizzontale che copre tutta la larghezza.",
+    "code": "CLS\n@ 0, 0 SAY REPLICATE(CHR(205), MAXCOL() + 1)\n@ 1, (MAXCOL() - 20) / 2 SAY \"TESTO CENTRATO\"\n@ 2, 0 SAY REPLICATE(CHR(205), MAXCOL() + 1)",
+    "expectedOutput": "[Linea doppia orizzontale, testo centrato, altra linea]"
+   }
+  ],
+  "seeAlso": [
+   "MAXROW",
+   "ROW",
+   "COL",
+   "SETPOS"
+  ],
+  "isCommand": false
+ },
+ {
+  "name": "MAXROW",
+  "namespace": "TUI",
+  "category": "Screen Query",
+  "description": "Restituisce l'indice dell'ultima riga dello schermo (altezza - 1). Utile per calcoli di layout responsivi e posizionamento a fondo schermo.",
+  "syntax": [
+   "MAXROW()",
+   "TUI.MAXROW()"
+  ],
+  "returnType": "INTEGER",
+  "parameters": [],
+  "examples": [
+   {
+    "description": "Barra di stato a fondo schermo.",
+    "code": "CLS\n@ MAXROW(), 0 SAY \" Status: Pronto                                                          F1=Help \"",
+    "expectedOutput": "[Barra di stato all'ultima riga dello schermo]"
+   }
+  ],
+  "seeAlso": [
+   "MAXCOL",
+   "ROW",
+   "COL",
+   "STATUSBAR"
+  ],
+  "isCommand": false
+ },
+ {
+  "name": "ROW",
+  "namespace": "TUI",
+  "category": "Cursor",
+  "description": "Restituisce la riga corrente del cursore (0-based). Utile per posizionamento relativo senza dover tracciare manualmente la posizione.",
+  "syntax": [
+   "ROW()",
+   "TUI.ROW()"
+  ],
+  "returnType": "INTEGER",
+  "parameters": [],
+  "examples": [
+   {
+    "description": "Output con posizionamento relativo progressivo.",
+    "code": "@ 5, 5 SAY \"Riga 1\"\n@ ROW() + 1, COL() SAY \"Riga 2\"\n@ ROW() + 1, COL() SAY \"Riga 3\"",
+    "expectedOutput": "  Riga 1\n  Riga 2\n  Riga 3"
+   }
+  ],
+  "seeAlso": [
+   "COL",
+   "SETPOS",
+   "SAY",
+   "MAXROW"
+  ],
+  "isCommand": false
+ },
+ {
+  "name": "COL",
+  "namespace": "TUI",
+  "category": "Cursor",
+  "description": "Restituisce la colonna corrente del cursore (0-based). Utile per posizionamento relativo orizzontale come tabulazioni.",
+  "syntax": [
+   "COL()",
+   "TUI.COL()"
+  ],
+  "returnType": "INTEGER",
+  "parameters": [],
+  "examples": [
+   {
+    "description": "Tabulazione fissa dopo output.",
+    "code": "@ 1, 2 SAY \"Nome:\"\n@ ROW(), COL() + 2 SAY \"Mario Rossi\"",
+    "expectedOutput": "  Nome:  Mario Rossi"
+   }
+  ],
+  "seeAlso": [
+   "ROW",
+   "SETPOS",
+   "SAY",
+   "MAXCOL"
+  ],
+  "isCommand": false
+ },
+ {
+  "name": "SETPOS",
+  "namespace": "TUI",
+  "category": "Cursor",
+  "description": "Posiziona il cursore alle coordinate specificate. Alternativa numerica a LOCATE. Le coordinate sono 0-based (riga 0 = prima riga, colonna 0 = prima colonna).",
+  "syntax": [
+   "SETPOS row, col"
+  ],
+  "returnType": "",
+  "parameters": [
+   {
+    "name": "row",
+    "type": "INTEGER",
+    "description": "Riga (0-based)."
+   },
+   {
+    "name": "col",
+    "type": "INTEGER",
+    "description": "Colonna (0-based)."
+   }
+  ],
+  "examples": [
+   {
+    "description": "Disegno con posizionamento assoluto.",
+    "code": "CLS\nSETPOS 2, 10: PRINT \"Testo a riga 2, col 10\"\nSETPOS 5, 30: PRINT \"Testo a riga 5, col 30\"",
+    "expectedOutput": "          Testo a riga 2, col 10\n                              Testo a riga 5, col 30"
+   }
+  ],
+  "seeAlso": [
+   "ROW",
+   "COL",
+   "LOCATE",
+   "DEVPOS",
+   "SAY"
+  ],
+  "isCommand": true
+ },
+ {
+  "name": "DEVOUT",
+  "namespace": "TUI",
+  "category": "Output",
+  "description": "Invia testo al dispositivo di output corrente (impostato con SET DEVICE TO SCREEN/PRINTER). Senza newline. Rispetta la posizione corrente del cursore.",
+  "syntax": [
+   "DEVOUT expression"
+  ],
+  "returnType": "",
+  "parameters": [
+   {
+    "name": "expression",
+    "type": "ANY",
+    "description": "Valore da inviare al dispositivo di output (STRING, NUMBER, etc)."
+   }
+  ],
+  "examples": [
+   {
+    "description": "Output condizionale stampante/schermo.",
+    "code": "SET DEVICE TO SCREEN\nDEVOUT \"Questo va sullo schermo\"\nSET DEVICE TO PRINTER\nDEVOUT \"Questo va sulla stampante\"\nSET DEVICE TO SCREEN",
+    "expectedOutput": "Questo va sullo schermo"
+   }
+  ],
+  "seeAlso": [
+   "DEVPOS",
+   "SET DEVICE",
+   "SAY",
+   "QOUT",
+   "QQOUT"
+  ],
+  "isCommand": true
+ },
+ {
+  "name": "DEVPOS",
+  "namespace": "TUI",
+  "category": "Output",
+  "description": "Posiziona il cursore per il prossimo DEVOUT/S sul dispositivo di output corrente. Simile a SETPOS ma rispetta l'impostazione SET DEVICE.",
+  "syntax": [
+   "DEVPOS row, col"
+  ],
+  "returnType": "",
+  "parameters": [
+   {
+    "name": "row",
+    "type": "INTEGER",
+    "description": "Riga (0-based)."
+   },
+   {
+    "name": "col",
+    "type": "INTEGER",
+    "description": "Colonna (0-based)."
+   }
+  ],
+  "examples": [
+   {
+    "description": "Report con output dispositivo.",
+    "code": "SET DEVICE TO SCREEN\nDEVPOS 1, 1\nDEVOUT \"REPORT VENDITE\"\nDEVPOS 3, 1\nDEVOUT \"Gennaio: EUR 1,250\"\nDEVPOS 4, 1\nDEVOUT \"Febbraio: EUR 890\""
+   }
+  ],
+  "seeAlso": [
+   "DEVOUT",
+   "SETPOS",
+   "SET DEVICE",
+   "SAY"
+  ],
+  "isCommand": true
+ },
+ {
+  "name": "QOUT",
+  "namespace": "TUI",
+  "category": "Output",
+  "description": "Output testo con newline sul dispositivo di output corrente (impostato con SET DEVICE). A differenza di PRINT, rispetta la modalita' SET PRINTER e SET DEVICE.",
+  "syntax": [
+   "QOUT [expression]",
+   "QQOUT [expression]"
+  ],
+  "returnType": "",
+  "parameters": [
+   {
+    "name": "expression",
+    "type": "ANY",
+    "description": "Valore da emettere (opzionale). Senza argomenti produce una riga vuota."
+   }
+  ],
+  "examples": [
+   {
+    "description": "Alternanza stampante/schermo con QOUT.",
+    "code": "SET DEVICE TO SCREEN\nQOUT \"Intestazione report\"\nQOUT\nQOUT \"Sezione 1: Dati anagrafici\"\nSET DEVICE TO PRINTER\nQOUT \"Dettaglio su carta\"\nSET DEVICE TO SCREEN\nQOUT \"Fine report\""
+   }
+  ],
+  "seeAlso": [
+   "QQOUT",
+   "DEVOUT",
+   "SET DEVICE",
+   "SET PRINTER"
+  ],
+  "isCommand": true
+ },
+ {
+  "name": "QQOUT",
+  "namespace": "TUI",
+  "category": "Output",
+  "description": "Output testo senza newline sul dispositivo corrente. Identico a QOUT ma senza avanzamento riga. Utile per output progressivi sulla stessa riga.",
+  "syntax": [
+   "QQOUT [expression]"
+  ],
+  "returnType": "",
+  "parameters": [
+   {
+    "name": "expression",
+    "type": "ANY",
+    "description": "Valore da emettere (opzionale). Senza argomenti non produce output."
+   }
+  ],
+  "examples": [
+   {
+    "description": "Progresso su stessa riga.",
+    "code": "FOR I = 1 TO 10\n  QQOUT CHR(219)  ' Blocco progresso\n  SLEEP 0.2\nNEXT\nQOUT \" Fine\""
+   }
+  ],
+  "seeAlso": [
+   "QOUT",
+   "DEVOUT",
+   "SET DEVICE"
+  ],
+  "isCommand": true
+ },
+ {
+  "name": "TCOLOR",
+  "namespace": "TUI",
+  "category": "Screen Query",
+  "description": "Restituisce la stringa di specifica colore corrente nel formato Clipper (es. 'W/N' = White on Navy, 'GR+/B' = Bright Gray on Blue). Usata per salvare/ripristinare impostazioni colore e per formattazione condizionale.",
+  "syntax": [
+   "TCOLOR()",
+   "TUI.TCOLOR()"
+  ],
+  "returnType": "STRING",
+  "parameters": [],
+  "examples": [
+   {
+    "description": "Salva/ripristina colore per elemento evidenziato.",
+    "code": "OldColor$ = TCOLOR()\nSETCOLOR(\"GR+/R\")  ' Bright Gray on Red\n@ 5, 10 SAY \"ATTENZIONE: ERRORE CRITICO\"\nSETCOLOR(OldColor$)\n@ 7, 10 SAY \"Messaggio normale\"",
+    "expectedOutput": "[La prima riga e' in grigio su rosso, la seconda nei colori normali]"
+   }
+  ],
+  "seeAlso": [
+   "SETCOLOR",
+   "SETBLINK",
+   "COLOR"
+  ],
+  "isCommand": false
+ },
+ {
+  "name": "SETBLINK",
+  "namespace": "TUI",
+  "category": "Screen",
+  "description": "Abilita o disabilita il lampeggio del cursore e dei colori ad alta intensita' su terminali che supportano blink. Imposta il bit di blink nei colori ANSI.",
+  "syntax": [
+   "SETBLINK [ON/OFF]",
+   "TUI.SETBLINK [ON/OFF]"
+  ],
+  "returnType": "",
+  "parameters": [
+   {
+    "name": "state",
+    "type": "KEYWORD",
+    "description": "ON = abilita blink, OFF = disabilita blink (default: toggle)."
+   }
+  ],
+  "examples": [
+   {
+    "description": "Test blink su messaggio di errore.",
+    "code": "CLS\nSETBLINK ON\n@ 5, 10 SAY \"ERRORE: operazione non consentita\"\nSETBLINK OFF\n@ 7, 10 SAY \"Continuare con invio...\""
+   }
+  ],
+  "seeAlso": [
+   "TCOLOR",
+   "SETCOLOR",
+   "COLOR"
+  ],
+  "isCommand": true
+ },
+ {
+  "name": "PROW",
+  "namespace": "TUI",
+  "category": "Printer",
+  "description": "Restituisce la riga corrente della stampante (0-based). Utile per generare report posizionati su carta. La posizione viene azzerata da EJECT e incrementata da ogni output a stampante.",
+  "syntax": [
+   "PROW()",
+   "TUI.PROW()"
+  ],
+  "returnType": "INTEGER",
+  "parameters": [],
+  "examples": [
+   {
+    "description": "Stampa report con controllo posizione carta.",
+    "code": "SET DEVICE TO PRINTER\nDEVPOS 0, 0\nDEVOUT \"REPORT MENSILE\"\nDEVPOS 2, 0\nDEVOUT \"------------------------\"\nFOR I = 1 TO 50\n  DEVPOS PROW() + 1, 0\n  DEVOUT \"Riga report \"; I\n  IF PROW() > 60 THEN EJECT()\nNEXT\nDEVPOS PROW() + 1, 0\nDEVOUT \"FINE REPORT\"\nSET DEVICE TO SCREEN\nPRINT \"Report stampato.\""
+   }
+  ],
+  "seeAlso": [
+   "PCOL",
+   "EJECT",
+   "SET DEVICE",
+   "SET PRINTER"
+  ],
+  "isCommand": false
+ },
+ {
+  "name": "PCOL",
+  "namespace": "TUI",
+  "category": "Printer",
+  "description": "Restituisce la colonna corrente della stampante (0-based). Utile per allineare colonne nei report stampati.",
+  "syntax": [
+   "PCOL()",
+   "TUI.PCOL()"
+  ],
+  "returnType": "INTEGER",
+  "parameters": [],
+  "examples": [
+   {
+    "description": "Colonne allineate su stampante.",
+    "code": "SET DEVICE TO PRINTER\nDEVPOS 0, 0\nDEVOUT PADR(\"Articolo\", 20)\nDEVOUT PADL(\"Qta\", 6)\nDEVOUT PADL(\"Prezzo\", 10)\nDEVOUT PADL(\"Totale\", 12)\nFOR I = 1 TO 10\n  DEVPOS PROW() + 1, 0\n  DEVOUT PADR(\"Articolo \" + CSTR(I), 20)\n  DEVOUT PADL(CSTR(I * 2), 6)\n  DEVOUT PADL(FORMAT(I * 10.50, \"#,###.00\"), 10)\n  DEVOUT PADL(FORMAT(I * 21.00, \"#,###.00\"), 12)\nNEXT\nSET DEVICE TO SCREEN\nPRINT \"Report stampato.\""
+   }
+  ],
+  "seeAlso": [
+   "PROW",
+   "EJECT",
+   "SET DEVICE"
+  ],
+  "isCommand": false
+ },
+ {
+  "name": "EJECT",
+  "namespace": "TUI",
+  "category": "Printer",
+  "description": "Invia un comando di avanzamento pagina (form feed) alla stampante. Azzera il contatore PROW e forza lo svuotamento del buffer di stampa. La pagina corrente viene espulsa prima di iniziare la successiva.",
+  "syntax": [
+   "EJECT()",
+   "TUI.EJECT()"
+  ],
+  "returnType": "",
+  "parameters": [],
+  "examples": [
+   {
+    "description": "Report multi-pagina con salto pagina automatico.",
+    "code": "SET DEVICE TO PRINTER\nFOR Pag = 1 TO 5\n  DEVPOS 0, 30\n  DEVOUT \"Pagina \"; Pag\n  DEVPOS 2, 0\n  FOR Riga = 1 TO 40\n    DEVPOS PROW() + 1, 0\n    DEVOUT \"Riga \"; Riga; \" di pagina \"; Pag\n  NEXT\n  IF Pag < 5 THEN EJECT()\nNEXT\nSET DEVICE TO SCREEN",
+    "expectedOutput": "[5 pagine stampate con 40 righe ciascuna]"
+   }
+  ],
+  "seeAlso": [
+   "PROW",
+   "PCOL",
+   "SET DEVICE",
+   "SET PRINTER"
+  ],
+  "isCommand": true
+ },
+ {
+  "name": "SET KEY",
+  "namespace": "TUI",
+  "category": "Input",
+  "description": "Registra un gestore di tasto per l'elaborazione READ. Quando il tasto specificato viene premuto durante un READ, la procedura associata viene eseguita. Permette di aggiungere tasti funzione (F1=Help, F2=Save) ai form di input.",
+  "syntax": [
+   "SET KEY keycode TO procedure_name"
+  ],
+  "returnType": "",
+  "parameters": [
+   {
+    "name": "keycode",
+    "type": "INTEGER",
+    "description": "Codice tasto da intercettare (es. -1=F1, -2=F2, ... -40=F10)."
+   },
+   {
+    "name": "procedure_name",
+    "type": "STRING",
+    "description": "Nome della procedura/sub da chiamare quando il tasto e' premuto."
+   }
+  ],
+  "examples": [
+   {
+    "description": "Form con tasto F1=Help e F2=Salva.",
+    "code": "SET KEY -1 TO HelpProc\nSET KEY -2 TO SaveProc\nDO WHILE TRUE\n  CLS\n  Nome$ = SPACE(30): Eta = 0\n  @ 2, 5 SAY \"NOME: \" GET Nome$\n  @ 4, 5 SAY \"ETA':  \" GET Eta PICTURE \"999\"\n  READ\n  IF READEXIT() = 27 THEN EXIT DO\nLOOP\n\nSUB HelpProc\n  @ 10, 5 SAY \"F1=Help  F2=Salva  ESC=Esci\"\nRETURN\n\nSUB SaveProc\n  SAVE \"dati.dat\"\n  @ 10, 5 SAY \"Dati salvati.\"\nRETURN"
+   }
+  ],
+  "seeAlso": [
+   "READ",
+   "READEXIT",
+   "LASTKEY",
+   "INKEY"
+  ],
+  "isCommand": true
+ },
+ {
+  "name": "SET CONFIRM",
+  "namespace": "TUI",
+  "category": "Configuration",
+  "description": "Controlla il comportamento di READ sull'ultimo campo: ON = il READ non termina automaticamente sull'ultimo campo (l'utente deve premere Enter per confermare); OFF = il READ termina sull'ultimo campo automaticamente quando riempito.",
+  "syntax": [
+   "SET CONFIRM ON/OFF",
+   "TUI.SETCONFIRM state"
+  ],
+  "returnType": "",
+  "parameters": [
+   {
+    "name": "state",
+    "type": "KEYWORD",
+    "description": "ON = richiede Enter esplicito, OFF = auto-conferma (default: OFF)."
+   }
+  ],
+  "examples": [
+   {
+    "description": "Form con SET CONFIRM ON per conferma esplicita.",
+    "code": "SET CONFIRM ON\n@ 2, 5 SAY \"NOME:\" GET Nome$ PICTURE \"@!\"\n@ 4, 5 SAY \"CODICE:\" GET Codice$\nREAD\nSET CONFIRM OFF\nPRINT \"Confermato: \"; TRIM(Nome$); \" - \"; TRIM(Codice$)"
+   }
+  ],
+  "seeAlso": [
+   "READ",
+   "GET",
+   "SET WRAP",
+   "SET ESCAPE"
+  ],
+  "isCommand": true
+ },
+ {
+  "name": "SET WRAP",
+  "namespace": "TUI",
+  "category": "Configuration",
+  "description": "ON = la navigazione con frecce Su/Giu nel READ passa dall'ultimo al primo campo (wrap around); OFF = le frecce si fermano al primo/ultimo campo. Utile per form con molti campi dove la navigazione rapida e' desiderata.",
+  "syntax": [
+   "SET WRAP ON/OFF",
+   "TUI.SETWRAP state"
+  ],
+  "returnType": "",
+  "parameters": [
+   {
+    "name": "state",
+    "type": "KEYWORD",
+    "description": "ON = wrap navigazione, OFF = stop agli estremi (default: OFF)."
+   }
+  ],
+  "examples": [
+   {
+    "description": "Form con wrap per navigazione rapida.",
+    "code": "SET WRAP ON\n@ 2, 5 SAY \"CAMPO 1:\" GET Var1$\n@ 4, 5 SAY \"CAMPO 2:\" GET Var2$\n@ 6, 5 SAY \"CAMPO 3:\" GET Var3$\nREAD\nSET WRAP OFF"
+   }
+  ],
+  "seeAlso": [
+   "READ",
+   "GET",
+   "SET CONFIRM",
+   "SET ESCAPE"
+  ],
+  "isCommand": true
+ },
+ {
+  "name": "SET ESCAPE",
+  "namespace": "TUI",
+  "category": "Configuration",
+  "description": "Controlla se il tasto ESC termina il READ: ON = ESC termina READ e READEXIT restituisce 27; OFF = ESC viene ignorato e non termina READ. Disabilitare ESC utile in form obbligatori da completare.",
+  "syntax": [
+   "SET ESCAPE ON/OFF",
+   "TUI.SETESCAPE state"
+  ],
+  "returnType": "",
+  "parameters": [
+   {
+    "name": "state",
+    "type": "KEYWORD",
+    "description": "ON = ESC termina READ, OFF = ESC ignorato (default: ON)."
+   }
+  ],
+  "examples": [
+   {
+    "description": "Form obbligatorio senza possibilita' di uscita con ESC.",
+    "code": "SET ESCAPE OFF\n@ 2, 5 SAY \"INSERIRE PASSWORD:\" GET Pwd$ PICTURE \"@!\"\nREAD\nSET ESCAPE ON\nIF TRIM(Pwd$) = \"SEGRETA\" THEN\n  PRINT \"Accesso consentito.\"\nELSE\n  PRINT \"Password errata.\"\nEND IF"
+   }
+  ],
+  "seeAlso": [
+   "READ",
+   "READEXIT",
+   "SET KEY",
+   "SET CONFIRM"
+  ],
+  "isCommand": true
+ },
+ {
+  "name": "SET BELL",
+  "namespace": "TUI",
+  "category": "Configuration",
+  "description": "Abilita o disabilita il beep acustico quando l'utente tenta di inserire caratteri non validi in un campo GET (es. lettere in un campo numerico, o superamento del range). ON = beep attivo, OFF = silenzioso.",
+  "syntax": [
+   "SET BELL ON/OFF",
+   "TUI.SETBELL state"
+  ],
+  "returnType": "",
+  "parameters": [
+   {
+    "name": "state",
+    "type": "KEYWORD",
+    "description": "ON = beep su errore input, OFF = silenzioso (default: ON)."
+   }
+  ],
+  "examples": [
+   {
+    "description": "Form silenzioso per ambienti di lavoro.",
+    "code": "SET BELL OFF\n@ 2, 5 SAY \"QUANTITA':\" GET Qta PICTURE \"999\"\n@ 4, 5 SAY \"PREZZO:\" GET Prezzo PICTURE \"9999.99\"\nREAD\nSET BELL ON"
+   }
+  ],
+  "seeAlso": [
+   "GET",
+   "READ",
+   "SET CONFIRM"
+  ],
+  "isCommand": true
+ },
+ {
+  "name": "SET INTENSITY",
+  "namespace": "TUI",
+  "category": "Configuration",
+  "description": "ON = i campi GET non attivi vengono visualizzati con colori normali (standard); OFF = tutti i campi GET appaiono con la stessa intensita' (nessun dimming dei campi non focali). Utile per form dove si vuole vedere tutto con la stessa visibilita'.",
+  "syntax": [
+   "SET INTENSITY ON/OFF",
+   "TUI.SETINTENSITY state"
+  ],
+  "returnType": "",
+  "parameters": [
+   {
+    "name": "state",
+    "type": "KEYWORD",
+    "description": "ON = campi non focali dimmed, OFF = stessa intensita' (default: ON)."
+   }
+  ],
+  "examples": [
+   {
+    "description": "Form con tutti i campi visibili allo stesso modo.",
+    "code": "SET INTENSITY OFF\n@ 2, 5 SAY \"NOME:\" GET Nome$\n@ 4, 5 SAY \"ETA':\" GET Eta$\n@ 6, 5 SAY \"TEL.:\" GET Telefono$\nREAD\nSET INTENSITY ON"
+   }
+  ],
+  "seeAlso": [
+   "GET",
+   "READ",
+   "SETCOLOR",
+   "TCOLOR"
+  ],
+  "isCommand": true
+ },
+ {
+  "name": "SET DELIMITERS",
+  "namespace": "TUI",
+  "category": "Configuration",
+  "description": "Imposta i caratteri delimitatore per i campi GET attivi. I delimitatori vengono visualizzati all'inizio e alla fine del campo quando e' attivo (focalizzato). Utile per identificare visivamente il campo corrente durante READ.",
+  "syntax": [
+   "SET DELIMITERS TO delimiters$",
+   "SET DELIMITERS ON/OFF"
+  ],
+  "returnType": "",
+  "parameters": [
+   {
+    "name": "delimiters$",
+    "type": "STRING",
+    "description": "Caratteri delimitatore: 1 carattere (stesso prima e dopo) o 2 caratteri (es. '[]' per parentesi)."
+   }
+  ],
+  "examples": [
+   {
+    "description": "Campi con delimitatori a parentesi.",
+    "code": "SET DELIMITERS TO \"[]\"\nSET DELIMITERS ON\n@ 2, 5 SAY \"NOME:\" GET Nome$\n@ 4, 5 SAY \"CODICE:\" GET Codice$\nREAD\nSET DELIMITERS OFF"
+   }
+  ],
+  "seeAlso": [
+   "GET",
+   "READ",
+   "SET INTENSITY"
+  ],
+  "isCommand": true
+ },
+ {
+  "name": "SET DATE FORMAT",
+  "namespace": "TUI",
+  "category": "Configuration",
+  "description": "Imposta il formato di visualizzazione delle date. Il formato usa i placeholder: dd=giorno, mm=mese, yy=anno2, yyyy=anno4. Il formato influisce su DTOC(), CTOD(), e sulla visualizzazione delle date nei campi GET.",
+  "syntax": [
+   "SET DATE FORMAT TO format$",
+   "TUI.SETDATEFORMAT format$"
+  ],
+  "returnType": "",
+  "parameters": [
+   {
+    "name": "format$",
+    "type": "STRING",
+    "description": "Formato data (es. 'dd/mm/yyyy', 'mm/dd/yy', 'yyyy-mm-dd'). Default: 'dd/mm/yyyy'."
+   }
+  ],
+  "examples": [
+   {
+    "description": "Report con date in formato ISO.",
+    "code": "SET DATE FORMAT TO \"yyyy-mm-dd\"\nPRINT \"Oggi: \"; DTOC(DATE())\nSET DATE FORMAT TO \"dd/mm/yyyy\"\nPRINT \"Oggi: \"; DTOC(DATE())",
+    "expectedOutput": "Oggi: 2024-03-15\nOggi: 15/03/2024"
+   }
+  ],
+  "seeAlso": [
+   "SET CENTURY",
+   "SET EPOCH",
+   "DTOC",
+   "CTOD"
+  ],
+  "isCommand": true
+ },
+ {
+  "name": "SET CENTURY",
+  "namespace": "TUI",
+  "category": "Configuration",
+  "description": "ON = le date vengono visualizzate con anno a 4 cifre (yyyy); OFF = anno a 2 cifre (yy). Utile per passare da formato breve a formato esteso nei report e form.",
+  "syntax": [
+   "SET CENTURY ON/OFF",
+   "TUI.SETCENTURY state"
+  ],
+  "returnType": "",
+  "parameters": [
+   {
+    "name": "state",
+    "type": "KEYWORD",
+    "description": "ON = 4 cifre, OFF = 2 cifre (default: OFF)."
+   }
+  ],
+  "examples": [
+   {
+    "description": "Report con date in formato esteso.",
+    "code": "SET CENTURY ON\nPRINT \"Data completa: \"; DTOC(DATE())\nSET CENTURY OFF\nPRINT \"Data breve: \"; DTOC(DATE())",
+    "expectedOutput": "Data completa: 15/03/2024\nData breve: 15/03/24"
+   }
+  ],
+  "seeAlso": [
+   "SET DATE FORMAT",
+   "SET EPOCH",
+   "DTOC"
+  ],
+  "isCommand": true
+ },
+ {
+  "name": "SET EPOCH",
+  "namespace": "TUI",
+  "category": "Configuration",
+  "description": "Imposta l'anno di riferimento per la conversione di date a 2 cifre (CTOD). Gli anni a 2 cifre vengono interpretati come: se >= epoch%100, anno = 1900 + n; se < epoch%100, anno = 2000 + n. Default: 1950.",
+  "syntax": [
+   "SET EPOCH TO year",
+   "TUI.SETEPOCH year"
+  ],
+  "returnType": "",
+  "parameters": [
+   {
+    "name": "year",
+    "type": "INTEGER",
+    "description": "Anno di riferimento (es. 1950, 2000). Default: 1950."
+   }
+  ],
+  "examples": [
+   {
+    "description": "Conversione date con diverso epoch.",
+    "code": "SET EPOCH TO 1950\nPRINT CTOD(\"01/01/30\")\nPRINT CTOD(\"01/01/70\")\nSET EPOCH TO 2000\nPRINT CTOD(\"01/01/30\")\nPRINT CTOD(\"01/01/70\")",
+    "expectedOutput": "01/01/1930\n01/01/1970\n01/01/2030\n01/01/1970"
+   }
+  ],
+  "seeAlso": [
+   "SET DATE FORMAT",
+   "SET CENTURY",
+   "CTOD"
+  ],
+  "isCommand": true
+ },
+ {
+  "name": "SET PRINTER",
+  "namespace": "TUI",
+  "category": "Configuration",
+  "description": "ON = tutto l'output inviato con QOUT, QQOUT, DEVOUT viene anche copiato sulla stampante; OFF = output solo su schermo. Utile per generare report cartacei senza modificare il codice di output.",
+  "syntax": [
+   "SET PRINTER ON/OFF",
+   "TUI.SETPRINTER state"
+  ],
+  "returnType": "",
+  "parameters": [
+   {
+    "name": "state",
+    "type": "KEYWORD",
+    "description": "ON = abilita output su stampante, OFF = solo schermo (default: OFF)."
+   }
+  ],
+  "examples": [
+   {
+    "description": "Report con copia stampante.",
+    "code": "SET PRINTER ON\nQOUT \"REPORT VENDITE MENSILI\"\nQOUT \"------------------------\"\nQOUT \"Totale: EUR 15,820.75\"\nSET PRINTER OFF\nQOUT \"Fine report.\"",
+    "expectedOutput": "[Output su schermo E su stampante]"
+   }
+  ],
+  "seeAlso": [
+   "SET DEVICE",
+   "EJECT",
+   "PROW",
+   "PCOL"
+  ],
+  "isCommand": true
+ },
+ {
+  "name": "SET DEVICE",
+  "namespace": "TUI",
+  "category": "Configuration",
+  "description": "Imposta il dispositivo di output per i comandi @...SAY, DEVOUT, DEVPOS, QOUT, QQOUT. SCREEN = output sullo schermo; PRINTER = output sulla stampante. Utile per generare entrambi senza cambiare codice.",
+  "syntax": [
+   "SET DEVICE TO SCREEN/PRINTER",
+   "TUI.SETDEVICE device$"
+  ],
+  "returnType": "",
+  "parameters": [
+   {
+    "name": "device",
+    "type": "KEYWORD",
+    "description": "Dispositivo: SCREEN o PRINTER (default: SCREEN)."
+   }
+  ],
+  "examples": [
+   {
+    "description": "Stampa report con DEVOUT e SET DEVICE.",
+    "code": "SET DEVICE TO PRINTER\nDEVPOS 0, 0\nDEVOUT \"REPORT VENDITE\"\nDEVPOS 2, 0\nFOR I = 1 TO 5\n  DEVPOS PROW() + 1, 0\n  DEVOUT \"Articolo \"; I; \" - EUR \"; I * 100\nNEXT\nSET DEVICE TO SCREEN",
+    "expectedOutput": "[Report stampato con 5 articoli]"
+   }
+  ],
+  "seeAlso": [
+   "SET PRINTER",
+   "DEVOUT",
+   "DEVPOS",
+   "PROW",
+   "PCOL"
+  ],
+  "isCommand": true
+ },
+ {
+  "name": "SET MESSAGE",
+  "namespace": "TUI",
+  "category": "Configuration",
+  "description": "Imposta la riga dove viene visualizzato il testo del messaggio (impostato con @...PROMPT). La riga e' tipicamente l'ultima dello schermo (MAXROW). Utile per barra di stato o prompt contestuali.",
+  "syntax": [
+   "SET MESSAGE TO row",
+   "TUI.SETMESSAGE row"
+  ],
+  "returnType": "",
+  "parameters": [
+   {
+    "name": "row",
+    "type": "INTEGER",
+    "description": "Riga per i messaggi di prompt (default: MAXROW)."
+   }
+  ],
+  "examples": [
+   {
+    "description": "Prompt su riga messaggio.",
+    "code": "SET MESSAGE TO MAXROW()\n@ 1, 5 PROMPT \"Inserire il nome del cliente\"\n@ 2, 5 SAY \"NOME:\" GET Nome$\nREAD"
+   }
+  ],
+  "seeAlso": [
+   "PROMPT",
+   "SAY",
+   "GET"
+  ],
+  "isCommand": true
+ },
+ {
+  "name": "PROMPT",
+  "namespace": "TUI",
+  "category": "Screen Output",
+  "description": "Imposta il testo del messaggio sulla riga definita da SET MESSAGE. La sintassi @...PROMPT scrive il testo sulla riga messaggio senza spostare il cursore dal campo GET attivo. Utile per fornire contesto all'utente durante l'inserimento.",
+  "syntax": [
+   "@ row, col PROMPT text$"
+  ],
+  "returnType": "",
+  "parameters": [
+   {
+    "name": "row",
+    "type": "INTEGER",
+    "description": "Riga di destinazione del prompt (tipicamente MAXROW)."
+   },
+   {
+    "name": "col",
+    "type": "INTEGER",
+    "description": "Colonna di partenza."
+   },
+   {
+    "name": "text$",
+    "type": "STRING",
+    "description": "Testo del messaggio/prompt da visualizzare."
+   }
+  ],
+  "examples": [
+   {
+    "description": "Form con prompt contestuali per ogni campo.",
+    "code": "@ 2, 5 PROMPT \"Inserire il nome completo del cliente\"\n@ 2, 5 SAY \"NOME:\" GET Nome$\n@ 4, 5 PROMPT \"Specificare il codice numerico\"\n@ 4, 5 SAY \"CODICE:\" GET Codice$\n@ 6, 5 PROMPT \"Premere F1 per la lista categorie\"\n@ 6, 5 SAY \"CATEGORIA:\" GET Categoria$\nREAD"
+   }
+  ],
+  "seeAlso": [
+   "SET MESSAGE",
+   "SAY",
+   "GET"
+  ],
+  "isCommand": true
+ },
+ {
+  "name": "ALERT",
+  "namespace": "TUI",
+  "category": "Dialog",
+  "description": "Mostra una finestra di avviso modale con un solo pulsante OK. Restituisce %OK (1) se premuto, 0 se chiusa con X o ESC. Parametri opzionali: larghezza, allineamento (%LEFT/%CENTER/%RIGHT), colore testo/sfondo (%BLACK..%WHITE), bordo (%NONE/%SINGLE/%DOUBLE/%ROUNDED).",
+  "syntax": [
+   "ALERT('msg'[, width[, align[, fg[, bg[, border]]]]])",
+   "TUI.ALERT('msg'[, width[, align[, fg[, bg[, border]]]]])"
+  ],
+  "returnType": "LONG",
+  "parameters": [
+   {
+    "name": "msg",
+    "type": "STRING",
+    "description": "Messaggio da mostrare."
+   },
+   {
+    "name": "width",
+    "type": "INTEGER",
+    "description": "Larghezza box (opzionale, auto)."
+   },
+   {
+    "name": "align",
+    "type": "INTEGER",
+    "description": "%LEFT(0)/%CENTER(1)/%RIGHT(2). Default CENTER."
+   },
+   {
+    "name": "fg",
+    "type": "INTEGER",
+    "description": "Colore testo, indice VGA256 (%BLACK..%WHITE)."
+   },
+   {
+    "name": "bg",
+    "type": "INTEGER",
+    "description": "Colore sfondo, indice VGA256."
+   },
+   {
+    "name": "border",
+    "type": "INTEGER",
+    "description": "%NONE(0)/%SINGLE(1)/%DOUBLE(2)/%ROUNDED(3). Default SINGLE."
+   }
+  ],
+  "examples": [
+   {
+    "description": "Avviso semplice e avviso con colori.",
+    "code": "r = ALERT(\"File salvato\", 40, %CENTER, %YELLOW, %BLUE, %DOUBLE)\nIF r = %OK THEN PRINT \"OK confermato\""
+   }
+  ]
+ },
+ {
+  "name": "CONFIRM",
+  "namespace": "TUI",
+  "category": "Dialog",
+  "description": "Mostra una finestra di conferma modale con pulsanti configurabili. Restituisce l'indice 1-based del pulsante premuto (%OK=1, %CANCEL=2, %YES=6, %NO=7...) o 0 se chiusa con X o ESC. Combinazioni: %OKCANCEL, %YESNO, %YESNOCANCEL, %ABORTRETRYIGNORE, %RETRYCANCEL.",
+  "syntax": [
+   "CONFIRM('msg?'[, width[, align[, fg[, bg[, border[, buttons]]]]]])",
+   "TUI.CONFIRM('msg?'[, width[, align[, fg[, bg[, border[, buttons]]]]]])"
+  ],
+  "returnType": "LONG",
+  "parameters": [
+   {
+    "name": "msg",
+    "type": "STRING",
+    "description": "Domanda da mostrare."
+   },
+   {
+    "name": "width",
+    "type": "INTEGER",
+    "description": "Larghezza box (opzionale, auto)."
+   },
+   {
+    "name": "align",
+    "type": "INTEGER",
+    "description": "%LEFT(0)/%CENTER(1)/%RIGHT(2). Default CENTER."
+   },
+   {
+    "name": "fg",
+    "type": "INTEGER",
+    "description": "Colore testo, indice VGA256."
+   },
+   {
+    "name": "bg",
+    "type": "INTEGER",
+    "description": "Colore sfondo, indice VGA256."
+   },
+   {
+    "name": "border",
+    "type": "INTEGER",
+    "description": "%NONE(0)/%SINGLE(1)/%DOUBLE(2)/%ROUNDED(3). Default SINGLE."
+   },
+   {
+    "name": "buttons",
+    "type": "INTEGER",
+    "description": "Combinazione pulsanti: %OKCANCEL(101)/%YESNO(102)/%YESNOCANCEL(103)/%ABORTRETRYIGNORE(104)/%RETRYCANCEL(105). Default %OKCANCEL."
+   }
+  ],
+  "examples": [
+   {
+    "description": "Conferma con Yes/No e verifica del risultato.",
+    "code": "scelta = CONFIRM(\"Salvare?\", 40, %CENTER, %YELLOW, %BLUE, %SINGLE, %YESNO)\nIF scelta = %YES THEN SAVE ELSE IF scelta = %NO THEN SKIP"
+   }
+  ]
+ },
+ {
+  "name": "COSTANTI DIALOG %",
+  "namespace": "TUI",
+  "category": "Dialog",
+  "description": "Costanti globali PowerBASIC (senza IMPORT) per ALERT/CONFIRM: pulsanti (%OK..%NO, %OKCANCEL..%RETRYCANCEL), allineamento (%LEFT/CENTER/RIGHT), bordo (%NONE/%SINGLE/%DOUBLE/%ROUNDED) e colori (%BLACK..%WHITE, 148 nomi VGA256).",
+  "syntax": [
+   "%OK, %CANCEL, %ABORT, %RETRY, %IGNORE, %YES, %NO",
+   "%OKCANCEL, %YESNO, %YESNOCANCEL, %ABORTRETRYIGNORE, %RETRYCANCEL",
+   "%LEFT, %CENTER, %RIGHT",
+   "%NONE, %SINGLE, %DOUBLE, %ROUNDED"
+  ],
+  "returnType": "",
+  "parameters": [],
+  "examples": [
+   {
+    "description": "Uso tipico con CONFIRM.",
+    "code": "IF CONFIRM(\"Riprova?\", 40, %CENTER, %WHITE, %BLUE, %SINGLE, %RETRYCANCEL) = %RETRY THEN Retry()"
+   }
+  ]
+ }
+]

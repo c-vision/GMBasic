@@ -1,0 +1,7 @@
+<!DOCTYPE html>
+<html>
+<head><title>EscapingDemo</title></head>
+<body>
+  <main><% RENDERBODY %></main>
+</body>
+</html>

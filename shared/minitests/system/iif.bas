@@ -1,0 +1,6 @@
+SUB Main()
+  PRINT SYSTEM.IIF(2 > 1, 10, 20)
+  PRINT SYSTEM.IIF(1 > 2, 30, 40)
+  PRINT SYSTEM.IIF(3 > 2, "si", "no")
+  PRINT SYSTEM.IIF(3 > 4, "a", "b")
+END SUB

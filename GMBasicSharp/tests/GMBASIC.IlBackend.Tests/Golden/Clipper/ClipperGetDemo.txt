@@ -1,0 +1,18 @@
+Conformance: edition=Commercial
+  code=1731 bytes, consts=111, entry=1064
+  A1 chunk: /var/folders/b_/gsctxq2x5sq9gh7zpqpgrd0m0000gn/T/gmb_vmtest_2969aad5.chunk (16569 bytes)
+[1;5H═══════════════════════════════════════════[2;5H  REGISTRAZIONE NUOVO UTENTE               [3;5H═══════════════════════════════════════════[5;5HNome........:[7;5HCognome.....:[9;5HData nascita:[11;5HCitta'......:[13;5HColore pref.:[15;5HAttivo......:[17;5HNote........:[19;5H═══════════════════════════════════════════[21;5H  TAB=prossimo campo  ENTER=conferma  ESC=annulla  ---- VM/C OUTPUT ----
+=== CLIPPER @...GET + READ DEMO ===
+Compila i campi e premi ENTER per confermare, ESC per annullare.
+
+
+=== DATI INSERITI ===
+Nome:        
+Cognome:     
+Nascita:     01/01/2000
+Citta':      Milano
+Colore:      
+Attivo:       1 
+Note:        Nessuna nota
+====================
+  exit=0

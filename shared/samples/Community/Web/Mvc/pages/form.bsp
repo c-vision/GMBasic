@@ -1,0 +1,27 @@
+<%@ LAYOUT "_Layout.bsp" %>
+@section Title { Registrazione utente }
+<h1>Registrati</h1>
+<p>Compila il form: la validazione (Fase C) gira lato server e gli errori tornano come JSON via AJAX.</p>
+<form id="regForm">
+  <label>Nome
+    <input name="nome" id="nome">
+  </label>
+  <label>Email
+    <input name="email" id="email">
+  </label>
+  <button type="submit">Invia</button>
+</form>
+<pre id="out"></pre>
+<script>
+document.getElementById('regForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const body = new URLSearchParams(new FormData(e.target));
+  const r = await fetch('/api/utenti', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body
+  });
+  const data = await r.json();
+  document.getElementById('out').textContent = r.status + ' ' + JSON.stringify(data, null, 2);
+});
+</script>

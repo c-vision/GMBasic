@@ -1,0 +1,36 @@
+' KMEANS oltre la soglia CPU: il PCB deve parcheggiarsi senza occupare l'unico worker P.
+IMPORT ANALYSIS
+
+SUB HeavyAnalysis(WG AS WAITGROUP)
+  DIM data(99999) AS DOUBLE
+  DIM i AS LONG
+  FOR i = 0 TO 99999
+    IF i < 50000 THEN
+      data(i) = 1
+    ELSE
+      data(i) = 10
+    END IF
+  NEXT
+
+  DIM result = ANALYSIS.KMEANS(data, 2)
+  IF result.Centroids(0) > 0 THEN
+    PRINT "ANALYSIS-RESULT-OK"
+  ELSE
+    PRINT "FAIL: KMEANS result"
+  END IF
+  PRINT "ANALYSIS-HEAVY-DONE"
+  DONE WG
+END SUB
+
+SUB Ticker(WG AS WAITGROUP)
+  PRINT "ANALYSIS-TICK"
+  DONE WG
+END SUB
+
+SUB Main()
+  DIM WG AS WAITGROUP
+  GO SUB HeavyAnalysis(WG) IN WG
+  GO SUB Ticker(WG) IN WG
+  WAIT WG
+  PRINT "PCODE-GPM-ANALYSIS-SAFEPOINT-DONE"
+END SUB

@@ -1,0 +1,5 @@
+IMPORT GRAPH
+
+SUB Main()
+    PRINT GRAPH.SUBGRAPH("", "", 0)
+END SUB

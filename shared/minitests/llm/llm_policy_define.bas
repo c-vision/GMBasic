@@ -1,0 +1,8 @@
+' MiniTest: LLM POLICY DEFINE/APPLY — Policy DSL Livello A (regole WHEN/THEN), 4 backend.
+' EXPECT: LLM POLICY DEFINE 'ricetta1': 2 regole (+DEFAULT)|LLM POLICY APPLY 'ricetta1' DRYRUN: 2 regole, default=q4k|WHEN ROLE=ROUTED_EXPERT&LAYER>=12 THEN q6k|WHEN LIKE=*_down_exps THEN q6k|LLM POLICY APPLY 'ricetta1': ATTIVA (2 regole +DEFAULT)
+IMPORT LLM
+SUB Main()
+  LLM POLICY DEFINE "ricetta1", "ROLE=ROUTED_EXPERT&LAYER>=12:q6k;LIKE=*_down_exps:q6k;DEFAULT:q4k"
+  LLM POLICY APPLY "ricetta1" DRYRUN
+  LLM POLICY APPLY "ricetta1"
+END SUB

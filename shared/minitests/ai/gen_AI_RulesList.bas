@@ -1,0 +1,6 @@
+' EXPECT: {"rules":[]}
+IMPORT AI
+
+SUB Main()
+    PRINT AI.RULESLIST()
+END SUB

@@ -1,0 +1,250 @@
+[
+  {
+    "name": "INPUT",
+    "namespace": "CONSOLE",
+    "category": "Console Input",
+    "description": "Legge un valore dalla console e lo assegna a una variabile. Puo' mostrare un prompt opzionale. Accetta espressioni numeriche, stringhe, date e valori booleani. Converte automaticamente al tipo della variabile di destinazione.",
+    "syntax": [
+      "INPUT [\"prompt\";] variable",
+      "INPUT [\"prompt\",] variable1, variable2, ..."
+    ],
+    "returnType": "",
+    "examples": [
+      {
+        "description": "Input con prompt e conversione automatica.",
+        "code": "INPUT \"Importo EUR: \", Importo\nINPUT \"Descrizione: \", Desc$\nIVA = Importo * 0.22\nPRINT Desc$; \": EUR \"; FORMAT(Importo + IVA, \"#,###.00\")",
+        "expectedOutput": "Importo EUR: 1000\nDescrizione: Consulenza\nConsulenza: EUR 1,220.00"
+      },
+      {
+        "description": "Input multiplo separato da virgole.",
+        "code": "INPUT \"Nome, Eta', Citta': \", N$, E, C$\nPRINT N$; \", \"; E; \" anni, \"; C$",
+        "expectedOutput": "Nome, Eta', Citta': Mario, 42, Milano\nMario, 42 anni, Milano"
+      }
+    ],
+    "seeAlso": [
+      "LINEINPUT",
+      "PRINT"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "LINEINPUT",
+    "namespace": "CONSOLE",
+    "category": "Console Input",
+    "description": "Legge un'intera riga di testo come stringa letterale, senza interpretare il contenuto. Virgole, operatori matematici e caratteri speciali vengono tutti preservati cosi' come sono.",
+    "syntax": [
+      "LINEINPUT [\"prompt\";] var$"
+    ],
+    "returnType": "",
+    "examples": [
+      {
+        "description": "Lettura di una riga con caratteri speciali preservati.",
+        "code": "LINEINPUT \"Comando: \", Cmd$\nPRINT \"Eseguiro': \"; Cmd$",
+        "expectedOutput": "Comando: PRINT 2 + 2 * 5\nEseguiro': PRINT 2 + 2 * 5"
+      }
+    ],
+    "seeAlso": [
+      "INPUT"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "RESTORE",
+    "namespace": "PACKAGE",
+    "category": "Package Manager",
+    "description": "Installa le dipendenze del progetto: scansiona i REQUIRE nei sorgenti .bas/.inc e scarica i pacchetti mancanti nella cache ~/.gmbasic/packages, poi scrive gmb-package.lock. Con --locked usa le versioni pinnate nel lock (riproducibile/offline) senza ri-scansionare.",
+    "syntax": [
+      "RESTORE [dir] [--locked] [FROM <url>]",
+      "PACKAGE RESTORE [dir] [--locked] [FROM <url>]"
+    ],
+    "returnType": "",
+    "examples": [
+      {
+        "description": "Installa le dipendenze scoperte nel progetto corrente.",
+        "code": "RESTORE",
+        "expectedOutput": "REQUIRE trovati (2): duckdb, gmb-sqlite3\nInstalled: duckdb\nrestore completato. Lock: ./gmb-package.lock"
+      },
+      {
+        "description": "Restore riproducibile dalle versioni del lock.",
+        "code": "RESTORE --locked",
+        "expectedOutput": "Lock (2): duckdb@1.5.6, gmb-sqlite3@1.0.0\nrestore completato. Lock: ./gmb-package.lock"
+      }
+    ],
+    "seeAlso": [
+      "PACKAGE"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "UPDATE",
+    "namespace": "PACKAGE",
+    "category": "Package Manager",
+    "description": "Aggiorna TUTTI i pacchetti del progetto (dai REQUIRE .bas/.inc e dalle dependencies di gmb-package.json) all'ultima versione che SODDISFA i vincoli: scarica le nuove, rimuove le vecchie dalla cache e riscrive gmb-package.lock. Con --check mostra solo il piano (dry-run); con --yes non chiede conferma.",
+    "syntax": [
+      "UPDATE [dir] [--check] [--yes] [FROM <url>]",
+      "PACKAGE UPDATE [dir] [--check] [--yes] [FROM <url>]"
+    ],
+    "returnType": "",
+    "examples": [
+      {
+        "description": "Mostra cosa verrebbe aggiornato, senza modificare nulla (dry-run).",
+        "code": "UPDATE --check",
+        "expectedOutput": "Aggiornamenti disponibili (1):\n  duckdb: 1.5.6 -> 1.5.9\n(--check: nessuna modifica applicata)"
+      },
+      {
+        "description": "Aggiorna tutti i pacchetti del progetto senza chiedere conferma.",
+        "code": "UPDATE --yes",
+        "expectedOutput": "Aggiornamenti disponibili (1):\n  duckdb: 1.5.6 -> 1.5.9\n  aggiornato: duckdb\nupdate completato. Lock: ./gmb-package.lock"
+      }
+    ],
+    "seeAlso": [
+      "RESTORE",
+      "PACKAGE"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "TRUST",
+    "namespace": "PACKAGE",
+    "category": "Package Manager",
+    "description": "Keyring locale delle chiavi pubbliche fidate (~/.gmbasic/trusted-keys.json): trust anchor delle firme dei pacchetti. install/restore/update verificano la firma contro il keyring (default TOFU: prima chiave registrata, cambio chiave segnalato; --require-signed = strict).",
+    "syntax": [
+      "TRUST ADD <name> <publicKey|file>",
+      "TRUST REMOVE <name>",
+      "TRUST LIST",
+      "TRUST FINGERPRINT <publicKey|file>"
+    ],
+    "returnType": "",
+    "examples": [
+      {
+        "description": "Fida la chiave pubblica di un pacchetto.",
+        "code": "TRUST ADD mypkg ./keys/public.key",
+        "expectedOutput": "Fidato: mypkg (c37a99fb54105229)"
+      },
+      {
+        "description": "Elenca le chiavi fidate.",
+        "code": "TRUST LIST",
+        "expectedOutput": "mypkg: c37a99fb54105229"
+      }
+    ],
+    "seeAlso": [
+      "RESTORE",
+      "UPDATE"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "PACKAGE",
+    "namespace": "PACKAGE",
+    "category": "Package Manager",
+    "description": "Package manager. INSTALL/RUN/RESTORE/UPDATE hanno comportamento REPL; gli altri sottocomandi (INFO/LIST/REMOVE/SEARCH/TREE/OUTDATED/VENDOR/WHY/PRUNE/DEDUPE/AUDIT/SBOM/DEPRECATE/UNDEPRECATE/BUILD/OWNERS/YANK/TAG/TAGS/SYNC) sono inoltrati alla stessa implementazione della CLI (CliPackages.Pkg).",
+    "syntax": [
+      "PACKAGE INSTALL <name> [@ <version>] [FROM <url>]",
+      "PACKAGE RUN <name>",
+      "PACKAGE <sottocomando> [...]"
+    ],
+    "returnType": "",
+    "examples": [
+      {
+        "description": "Audit dei pacchetti del progetto (advisory).",
+        "code": "PACKAGE AUDIT",
+        "expectedOutput": "audit: nessuna vulnerabilita' nota in 3 pacchetti."
+      },
+      {
+        "description": "Perché un pacchetto è nel grafo.",
+        "code": "PACKAGE WHY mongo",
+        "expectedOutput": "mongo@2.5.5\n  <- app 1.0.0"
+      }
+    ],
+    "seeAlso": ["RESTORE", "UPDATE", "TRUST", "ROLLBACK", "CACHE"],
+    "isCommand": true
+  },
+  {
+    "name": "ROLLBACK",
+    "namespace": "PACKAGE",
+    "category": "Package Manager",
+    "description": "Ripristina uno storico di gmb-package.lock (salvato in <progetto>/.gmb/lock-history/ ad ogni cambio) e re-installa quelle versioni (restore --locked). LIST mostra gli storici; --to <timestamp> sceglie un preciso.",
+    "syntax": [
+      "ROLLBACK [dir] [--list] [--to <timestamp>]"
+    ],
+    "returnType": "",
+    "examples": [
+      {
+        "description": "Elenca gli storici del lock.",
+        "code": "ROLLBACK --list",
+        "expectedOutput": "20261008-134100-123.lock"
+      }
+    ],
+    "seeAlso": ["RESTORE", "UPDATE"],
+    "isCommand": true
+  },
+  {
+    "name": "BUMP",
+    "namespace": "PACKAGE",
+    "category": "Package Manager",
+    "description": "Aggiorna la versione (SemVer) nel gmb-package.json di un pacchetto.",
+    "syntax": [
+      "BUMP <dir> <major|minor|patch|prerelease|X.Y.Z>"
+    ],
+    "returnType": "",
+    "examples": [
+      {
+        "description": "Incrementa la patch.",
+        "code": "BUMP . patch",
+        "expectedOutput": "bump: 1.2.3 -> 1.2.4  (./gmb-package.json)"
+      }
+    ],
+    "seeAlso": ["PACKAGE"],
+    "isCommand": true
+  },
+  {
+    "name": "CACHE",
+    "namespace": "PACKAGE",
+    "category": "Package Manager",
+    "description": "Gestione cache pacchetti: LIST (pacchetti/versioni), VERIFY (integrità sha256 vs lock), DEDUP (content-addressable: interna i file come blob+hardlink), GC (rimuove i blob non referenziati), CLEAN (svuota).",
+    "syntax": [
+      "CACHE list | verify | dedup | gc | clean [--cache dir]"
+    ],
+    "returnType": "",
+    "examples": [
+      {
+        "description": "Dedup content-addressable della cache.",
+        "code": "CACHE dedup",
+        "expectedOutput": "dedup: 42 file internati in /Users/me/.gmb/packages/.content."
+      }
+    ],
+    "seeAlso": ["PACKAGE"],
+    "isCommand": true
+  },
+  {
+    "name": "LIBS",
+    "namespace": "REPL",
+    "category": "Librerie native",
+    "description": "Gestisce i bundle delle librerie native di supporto (gruppo B: SDL, freetype, harfbuzz, pdf_oxide, tesseract/leptonica, png/jpeg/tiff/webp, crypto/ssl, hdf5) destinati a c-vision/GMBasicModules. UPDATE rigenera i .zip + Resources/libs-manifest.json (tool tools/gmb_libs_update.bas); CHECK verifica l'allineamento del manifest; PUBLISH carica i .zip su GMBasicModules (gh).",
+    "syntax": [
+      "LIBS UPDATE [<rid>|ALL]",
+      "LIBS CHECK",
+      "LIBS PUBLISH [<date>]",
+      "LIBS HELP"
+    ],
+    "returnType": "",
+    "parameters": [],
+    "examples": [
+      {
+        "description": "Rigenera i bundle di supporto e aggiorna il manifest.",
+        "code": "LIBS UPDATE",
+        "expectedOutput": "[libs] genero i bundle (rid: ALL)...\n[libs] manifest aggiornato: Resources/libs-manifest.json"
+      },
+      {
+        "description": "Verifica che il manifest sia allineato ai bundle correnti.",
+        "code": "LIBS CHECK",
+        "expectedOutput": "   ok     osx-arm64\n[libs] manifest allineato ai bundle correnti."
+      }
+    ],
+    "seeAlso": [
+      "SETUP",
+      "RESTORE"
+    ],
+    "isCommand": true
+  }
+]

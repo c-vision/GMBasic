@@ -1,0 +1,3 @@
+SUB Main()
+  PRINT VAL("12.5")
+END SUB

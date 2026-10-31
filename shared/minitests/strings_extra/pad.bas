@@ -1,0 +1,6 @@
+IMPORT STRINGS
+SUB Main()
+  PRINT PADL("1", 5, "0")
+  PRINT PADR("1", 5, "0")
+  PRINT PADC("ab", 6, "*")
+END SUB
