@@ -1,0 +1,6 @@
+IMPORT STATS AS S
+SUB Main()
+  DIM d(4) AS DOUBLE = {5, 2, 9, 1, 7}
+  PRINT S.KURTOSIS(d)
+  PRINT S.MAD(d)
+END SUB

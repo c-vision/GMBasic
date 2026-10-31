@@ -1,0 +1,5 @@
+IMPORT FINANCE
+
+SUB Main()
+    PRINT FINANCE.DB(0, 0, 0, 0, 0)
+END SUB

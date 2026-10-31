@@ -1,0 +1,6 @@
+' EXPECT: 0
+IMPORT AI
+
+SUB Main()
+    PRINT AI.IMAGERESIZE("x", "x", 1, 1)
+END SUB

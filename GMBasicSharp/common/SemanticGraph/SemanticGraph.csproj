@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!-- GMB Semantic Graph (§4.10) — libreria del grafo semantico del CODICE BASIC:
+         simboli + espressioni/statement + edge (calls/uses/defines/…) + revision-bound diff.
+         Consumatori: LSP del Notebook (primario), agenti (secondario), superficie BASIC. -->
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <LangVersion>preview</LangVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>GMBasic.SemanticGraph</RootNamespace>
+        <NoWarn>$(NoWarn);CS8602</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Ast\Ast.csproj" />
+        <ProjectReference Include="..\Compilation\Compilation.csproj" />
+        <ProjectReference Include="..\StdLib\StdLib.csproj" />
+        <ProjectReference Include="..\Pipeline\Pipeline.csproj" />
+    </ItemGroup>
+
+</Project>

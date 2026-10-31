@@ -1,0 +1,6 @@
+' EXPECT: text
+IMPORT AI
+
+SUB Main()
+    PRINT AI.TEAMLATENT("x")
+END SUB

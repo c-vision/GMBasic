@@ -1,0 +1,6 @@
+{
+  "name": "report_generate",
+  "description": "Genera un report testuale strutturato.",
+  "procedure": "ReportGenerate",
+  "inputSchema": { "type": "object", "properties": { "args": { "type": "string" } } }
+}

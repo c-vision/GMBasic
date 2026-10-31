@@ -1,0 +1,19 @@
+' MiniTest §4.1 — CLOSE DATABASES chiude TUTTE le aree (riapertura esclusiva dello stesso file)
+' EXPECT: rec= 1
+IMPORT DBF
+TYPE TZ
+    ID AS INTEGER
+END TYPE
+SUB Main()
+    DIM p AS STRING
+    p = "/tmp/gmb_mt41_cc.dbf"
+    KILL p
+    DBF CREATE p FROM TYPE TZ
+    DBF USE p ALIAS A EXCLUSIVE NEW
+    DBF APPEND RECORD {ID: 1}
+    DBF USE p ALIAS B EXCLUSIVE NEW
+    DBF CLOSE DATABASES
+    DBF USE p ALIAS C EXCLUSIVE NEW
+    PRINT "rec="; STR(DBF.LASTREC())
+    DBF CLOSE DATABASES
+END SUB

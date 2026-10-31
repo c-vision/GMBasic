@@ -1,0 +1,1 @@
+PRINT LTRIM(STR(42))

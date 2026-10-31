@@ -1,0 +1,7 @@
+' MiniTest: SPECIAL.BESSELK — parita' 4 backend bit-esatta (port AMOS f2c).
+' EXPECT: 0.421024438240708
+IMPORT SPECIAL
+
+SUB Main
+  PRINT SPECIAL.BESSELK(0, 1.0)
+END SUB

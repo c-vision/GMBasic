@@ -1,0 +1,6 @@
+{
+  "name": "markdown_convert",
+  "description": "Converte Markdown (o URL) in formato elaborato.",
+  "procedure": "MarkdownConvert",
+  "inputSchema": { "type": "object", "properties": { "src": { "type": "string" } } }
+}

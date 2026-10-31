@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>GMBasic.Runtime</AssemblyName>
+    <RootNamespace>Basic.Runtime</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>preview</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <Description>BASIC Runtime — runtime services for compiled BASIC programs</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CommonLib\CommonLib.csproj" />
+    <ProjectReference Include="..\Databases\Databases.csproj" />
+    <!-- CompiledChunk per il serializzatore A1 (VM/C bridge) -->
+    <ProjectReference Include="..\Compiler\Compiler.csproj" />
+  </ItemGroup>
+
+  <!-- D11: in Commercial, i motori database C# (DBF/ISAM/SPEED/Ledger) sono in
+       modules/Database. DatabaseService.Commercial.cs (in Services/) li usa.
+       In Community il file commerciale NON deve compilare (nessuna dll commerciale). -->
+  <ItemGroup Condition="'$(GmbEdition)' != 'Commercial'">
+    <Compile Remove="Services/DatabaseService.Commercial.cs" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(GmbEdition)' != 'Community'">
+    <ProjectReference Include="..\..\modules\Database\Database.csproj" />
+  </ItemGroup>
+
+</Project>

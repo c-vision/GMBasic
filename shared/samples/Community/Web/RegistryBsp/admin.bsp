@@ -1,0 +1,180 @@
+<%@ IMPORT HTTP, JSON %>
+<%@ ROUTE "/admin.bsp" %>
+<%
+  DIM registry$ = "http://127.0.0.1:8087"
+  DIM opts AS HTTPOPTIONS = NEW HTTPOPTIONS
+  DIM r AS FETCHRESULT
+  r = FETCH(registry$ + "/api/stats", opts)
+  DIM s = NEW JSON
+  IF r.StatusCode = 200 THEN s = JSON.PARSE(r.Body)
+
+  ' Pannello admin: le azioni (reserve/assign/revoke/utenti) girano SOLO lato server (endpoint
+  ' /api/admin/*). La pagina raccoglie il token admin + i campi via GET e chiama l'API con FETCH
+  ' (Authorization: Bearer). Il token NON viene mai salvato dalla pagina.
+  DIM action$ = QUERY["action"]
+  DIM adminTok$ = QUERY["token"]
+  DIM esito$ = ""
+  DIM esitoErr$ = ""
+  IF action$ <> "" AND adminTok$ <> "" THEN
+    DIM hdrOpts AS HTTPOPTIONS = NEW HTTPOPTIONS
+    DIM body AS JSON
+    body = NEW JSON
+    DIM url$ = registry$ + "/api/admin/"
+    IF action$ = "reserve" THEN
+      url$ = url$ + "reserve"
+      body["name"] = QUERY["pkg"]
+    ELSEIF action$ = "assign" THEN
+      url$ = url$ + "assign"
+      body["name"] = QUERY["pkg"]
+      body["owner"] = QUERY["user"]
+    ELSEIF action$ = "revoke" THEN
+      url$ = url$ + "revoke"
+      body["name"] = QUERY["pkg"]
+      body["reserve"] = "1"
+    ELSEIF action$ = "usercreate" THEN
+      url$ = url$ + "users/create"
+      body["name"] = QUERY["user"]
+    ELSEIF action$ = "userstatus" THEN
+      url$ = url$ + "users/status"
+      body["name"] = QUERY["user"]
+      body["status"] = QUERY["status"]
+    ELSE
+      esitoErr$ = "Azione sconosciuta: " + action$
+    END IF
+    IF esitoErr$ = "" THEN
+      hdrOpts.Method = "POST"
+      hdrOpts.Body = JSON.STRINGIFY(body)
+      hdrOpts.BearerToken = adminTok$
+      DIM rr AS FETCHRESULT
+      rr = FETCH(url$, hdrOpts)
+      IF rr.StatusCode >= 200 AND rr.StatusCode < 300 THEN
+        esito$ = "OK: " + rr.Body
+      ELSE
+        esitoErr$ = "Errore " + STR(rr.StatusCode) + ": " + rr.Body
+      END IF
+    END IF
+  END IF
+
+  ' elenco utenti (se token admin valido)
+  DIM usersJson$ = ""
+  IF adminTok$ <> "" THEN
+    DIM lo AS HTTPOPTIONS = NEW HTTPOPTIONS
+    lo.BearerToken = adminTok$
+    DIM lr AS FETCHRESULT
+    lr = FETCH(registry$ + "/api/admin/users/list", lo)
+    IF lr.StatusCode = 200 THEN usersJson$ = lr.Body
+  END IF
+%>
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin — GMBasic Registry</title>
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; background: #f4f6fb; color: #1c2430; line-height: 1.5; padding: 0; }
+  header { background: linear-gradient(135deg, #1e293b, #334155); color: #fff; padding: 2rem 2.5rem; }
+  header h1 { font-size: 1.5rem; }
+  header a { color: #93c5fd; text-decoration: none; font-size: .9rem; }
+  main { max-width: 720px; margin: 2rem auto; padding: 0 1.5rem; }
+  .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.2rem; box-shadow: 0 1px 3px rgba(15,23,42,.06); }
+  h2 { font-size: 1.02rem; margin-bottom: .6rem; }
+  input, button { padding: .5rem .7rem; border-radius: 6px; font-size: .9rem; margin: .2rem .2rem .2rem 0; }
+  input { border: 1px solid #cbd5e1; }
+  button { border: 0; background: #2563eb; color: #fff; font-weight: 600; cursor: pointer; }
+  button:hover { background: #1d4ed8; }
+  .tok { width: 100%; box-sizing: border-box; }
+  .stats td { padding: .4rem .6rem; border-bottom: 1px solid #f1f5f9; font-size: .9rem; }
+  .stats td:first-child { color: #64748b; }
+  .ok { padding: .7rem; border-radius: 8px; background: #ecfdf5; color: #065f46; font-size: .85rem; margin-top: .8rem; word-break: break-all; }
+  .err { padding: .7rem; border-radius: 8px; background: #fef2f2; color: #991b1b; font-size: .85rem; margin-top: .8rem; word-break: break-all; }
+  .row { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; }
+  .lbl { font-size: .8rem; color: #64748b; display: block; margin: .5rem 0 .1rem; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Admin — Pannello registry</h1>
+  <p><a href="/index.bsp">&larr; Torna al registry</a></p>
+</header>
+<main>
+  <div class="card">
+    <h2>Statistiche</h2>
+    <table class="stats">
+      <tr><td>Pacchetti totali</td><td><%= s["totalPackages"] %></td></tr>
+      <tr><td>Versioni totali</td><td><%= s["totalVersions"] %></td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Token admin (obbligatorio per le azioni sotto)</h2>
+    <input class="tok" name="token" form="adm" placeholder="Incolla qui il token admin (non viene salvato)">
+    <p style="font-size:.78rem;color:#64748b;margin-top:.4rem">Il token default <code>gmb_admin</code> è
+       bloccato: cambialo con <code>gmb admin password &lt;nuovo&gt;</code> dalla CLI prima di agire.</p>
+  </div>
+
+  <div class="card">
+    <h2>Nomi (ownership)</h2>
+    <form id="adm" method="GET" action="/admin.bsp">
+      <span class="lbl">Riserva un nome (blocca il claim automatico)</span>
+      <div class="row">
+        <input name="action" type="hidden" value="reserve">
+        <input name="pkg" placeholder="nome pacchetto" required>
+        <button type="submit">Riserva</button>
+      </div>
+    </form>
+    <form method="GET" action="/admin.bsp">
+      <span class="lbl">Assegna owner a un nome (anche orfano/riservato)</span>
+      <div class="row">
+        <input name="action" type="hidden" value="assign">
+        <input name="pkg" placeholder="nome pacchetto" required>
+        <input name="user" placeholder="utente owner" required>
+        <button type="submit">Assegna</button>
+      </div>
+    </form>
+    <form method="GET" action="/admin.bsp">
+      <span class="lbl">Revoca ownership (ri-riserva)</span>
+      <div class="row">
+        <input name="action" type="hidden" value="revoke">
+        <input name="pkg" placeholder="nome pacchetto" required>
+        <button type="submit">Revoca</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Utenti</h2>
+    <form method="GET" action="/admin.bsp">
+      <span class="lbl">Crea utente (nasce blocked, mostra il token una volta)</span>
+      <div class="row">
+        <input name="action" type="hidden" value="usercreate">
+        <input name="user" placeholder="username" required>
+        <button type="submit">Crea</button>
+      </div>
+    </form>
+    <form method="GET" action="/admin.bsp">
+      <span class="lbl">Attiva / blocca utente</span>
+      <div class="row">
+        <input name="action" type="hidden" value="userstatus">
+        <input name="user" placeholder="username" required>
+        <select name="status">
+          <option value="active">active</option>
+          <option value="blocked">blocked</option>
+        </select>
+        <button type="submit">Applica</button>
+      </div>
+    </form>
+    <% IF usersJson$ <> "" THEN %>
+      <div style="margin-top:.8rem;font-size:.82rem;color:#475569">
+        <strong>Utenti:</strong> <code><%= usersJson$ %></code>
+      </div>
+    <% END IF %>
+  </div>
+
+  <% IF esito$ <> "" THEN %><div class="ok"><%= esito$ %></div><% END IF %>
+  <% IF esitoErr$ <> "" THEN %><div class="err"><%= esitoErr$ %></div><% END IF %>
+</main>
+</body>
+</html>

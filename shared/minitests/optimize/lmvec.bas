@@ -1,0 +1,13 @@
+' EXPECT: LMV= 1.0016 , 0.9996
+IMPORT OPTIMIZE
+IMPORT MATH
+SUB Main()
+  DIM DataX(4) AS DOUBLE = {0, 1, 2, 3, 4}
+  DIM DataY(4) AS DOUBLE = {1.0, 2.7, 7.4, 20.1, 54.6}
+  DIM P0(1) AS DOUBLE = {0.5, 0.5}
+  DIM Model = FN(p() AS DOUBLE, x() AS DOUBLE) AS ARRAY OF DOUBLE:
+    RETURN {p(0) * EXP(p(1) * x(0)), p(0) * EXP(p(1) * x(1)), p(0) * EXP(p(1) * x(2)), p(0) * EXP(p(1) * x(3)), p(0) * EXP(p(1) * x(4))}
+  END FN
+  DIM LM() = OPTIMIZE.LEVENBERGMARQUARDTVEC(Model, P0, DataX, DataY)
+  PRINT "LMV="; MATH.ROUND(LM(0), 4); ","; MATH.ROUND(LM(1), 4)
+END SUB

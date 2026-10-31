@@ -1,0 +1,555 @@
+[
+  {
+    "name": "NOW",
+    "namespace": "DATETIME",
+    "category": "Date/Time Current",
+    "description": "Restituisce la data e l'ora corrente del sistema come valore DATETIME. Include anno, mese, giorno, ora, minuti, secondi e millisecondi. Si aggiorna ad ogni chiamata. Usato per timestamp, log e calcoli temporali.",
+    "syntax": ["NOW", "NOW()"],
+    "returnType": "DATETIME",
+    "parameters": [],
+    "examples": [
+      { "description": "Timestamp di inizio e fine operazione con calcolo durata.", "code": "Inizio = NOW\nPRINT \"Elaborazione iniziata: \"; FORMAT(Inizio, \"hh:nn:ss\")\n' Simulazione elaborazione\nSLEEP 2\nFine = NOW\nDurata = DATEDIFF(\"s\", Inizio, Fine)\nPRINT \"Elaborazione finita:   \"; FORMAT(Fine, \"hh:nn:ss\")\nPRINT \"Durata: \"; Durata; \" secondi\"", "expectedOutput": "Elaborazione iniziata: 14:30:15\nElaborazione finita:   14:30:17\nDurata: 2 secondi" }
+    ],
+    "seeAlso": ["TODAY", "DATE", "TIME", "STRTIME", "SECONDS"],
+    "isCommand": false
+  },
+  {
+    "name": "TODAY",
+    "namespace": "DATETIME",
+    "category": "Date/Time Current",
+    "description": "Restituisce la data odierna (senza componente oraria) come valore DATE. L'ora e' impostata a 00:00:00. Utile per confronti di date senza dover gestire l'orario.",
+    "syntax": ["TODAY", "TODAY()"],
+    "returnType": "DATE",
+    "parameters": [],
+    "examples": [
+      { "description": "Calcolo eta' da data di nascita.", "code": "INPUT \"Data di nascita (gg/mm/aaaa): \", DataNascita$\nDataNascita = DATEVALUE(DataNascita$)\nOggi = TODAY()\nEta = YEAR(Oggi) - YEAR(DataNascita)\n' Aggiusta se non ha ancora compiuto gli anni quest'anno\nIF MONTH(Oggi) < MONTH(DataNascita) OR (MONTH(Oggi) = MONTH(DataNascita) AND DAY(Oggi) < DAY(DataNascita)) THEN\n  Eta = Eta - 1\nEND IF\nPRINT \"Hai \"; Eta; \" anni.\"", "expectedOutput": "Data di nascita (gg/mm/aaaa): 15/03/1985\nHai 41 anni." }
+    ],
+    "seeAlso": ["NOW", "DATE", "TIME", "DATESERIAL", "DATEVALUE"],
+    "isCommand": false
+  },
+  {
+    "name": "DATE",
+    "namespace": "DATETIME",
+    "category": "Date/Time Current",
+    "description": "Restituisce la data corrente del sistema come valore DATE. Equivalente a TODAY. Incluso per compatibilita' con diverse convenzioni di denominazione.",
+    "syntax": ["DATE", "DATE()"],
+    "returnType": "DATE",
+    "parameters": [],
+    "examples": [
+      { "description": "Intestazione report con data corrente.", "code": "PRINT \"REPORT GIORNALIERO\"\nPRINT \"Data: \"; FORMAT(DATE(), \"dddd, d mmmm yyyy\")\nPRINT STRING(40, \"=\")", "expectedOutput": "REPORT GIORNALIERO\nData: sabato, 8 agosto 2026\n========================================" }
+    ],
+    "seeAlso": ["TODAY", "NOW", "TIME", "DATESERIAL"],
+    "isCommand": false
+  },
+  {
+    "name": "TIME",
+    "namespace": "DATETIME",
+    "category": "Date/Time Current",
+    "description": "Restituisce l'ora corrente del sistema come valore TIME. Include ore, minuti, secondi e millisecondi. La componente data e' assente (o impostata a una data di default).",
+    "syntax": ["TIME", "TIME()"],
+    "returnType": "TIME",
+    "parameters": [],
+    "examples": [
+      { "description": "Orario di sistema formattato.", "code": "PRINT \"Orario sistema: \"; FORMAT(TIME(), \"hh:nn:ss AM/PM\")\nIF HOUR(TIME()) < 12 THEN\n  PRINT \"Buongiorno!\"\nELSEIF HOUR(TIME()) < 18 THEN\n  PRINT \"Buon pomeriggio!\"\nELSE\n  PRINT \"Buonasera!\"\nEND IF", "expectedOutput": "Orario sistema: 02:30:45 PM\nBuon pomeriggio!" }
+    ],
+    "seeAlso": ["NOW", "STRTIME", "HOUR", "MINUTE", "SECOND"],
+    "isCommand": false
+  },
+  {
+    "name": "STRTIME",
+    "namespace": "DATETIME",
+    "category": "Date/Time Current",
+    "description": "Restituisce l'ora corrente del sistema come stringa nel formato predefinito (tipicamente 'hh:mm:ss'). Comodo quando serve una stringa immediatamente senza usare FORMAT.",
+    "syntax": ["STRTIME", "STRTIME()"],
+    "returnType": "STRING",
+    "parameters": [],
+    "examples": [
+      { "description": "Log con orario semplice.", "code": "PRINT \"[\"; STRTIME; \"] Server avviato.\"\nSLEEP 1\nPRINT \"[\"; STRTIME; \"] Connessione al database...\"\nSLEEP 1\nPRINT \"[\"; STRTIME; \"] Pronto.\"", "expectedOutput": "[14:30:15] Server avviato.\n[14:30:16] Connessione al database...\n[14:30:17] Pronto." }
+    ],
+    "seeAlso": ["TIME", "NOW", "FORMAT"],
+    "isCommand": false
+  },
+  {
+    "name": "DATEVALUE",
+    "namespace": "DATETIME",
+    "category": "Parsing",
+    "description": "Converte una stringa contenente una data in un valore DATE. Riconosce vari formati comuni: 'dd/mm/yyyy', 'yyyy-mm-dd', 'mm/dd/yyyy', e formati testuali come '15 Marzo 2024'. Se la stringa non e' una data valida, genera un errore.",
+    "syntax": ["DATEVALUE(date_string$)"],
+    "returnType": "DATE",
+    "parameters": [
+      { "name": "date_string$", "type": "STRING", "description": "Stringa rappresentante una data in formato riconoscibile." }
+    ],
+    "examples": [
+      { "description": "Conversione date da file CSV.", "code": "DIM DateRaw$() = {\"2024-01-15\", \"15/03/2024\", \"31 dicembre 2024\"}\nFOR I = 0 TO UBOUND(DateRaw$())\n  Dt = DATEVALUE(DateRaw$(I))\n  PRINT DateRaw$(I); \" => \"; FORMAT(Dt, \"dd mmmm yyyy\")\nNEXT I", "expectedOutput": "2024-01-15 => 15 gennaio 2024\n15/03/2024 => 15 marzo 2024\n31 dicembre 2024 => 31 dicembre 2024" }
+    ],
+    "seeAlso": ["DATESERIAL", "STOD", "CTOD", "ISDATE"],
+    "isCommand": false
+  },
+  {
+    "name": "DATESERIAL",
+    "namespace": "DATETIME",
+    "category": "Construction",
+    "description": "Costruisce un valore DATE a partire da componenti numeriche separate: anno, mese e giorno. Accetta valori fuori range (es. mese 13 = gennaio anno successivo) e li normalizza automaticamente.",
+    "syntax": ["DATESERIAL(year, month, day)"],
+    "returnType": "DATE",
+    "parameters": [
+      { "name": "year", "type": "INTEGER", "description": "Anno (es. 2024). Valori 0-29 sono interpretati come 2000-2029, 30-99 come 1930-1999." },
+      { "name": "month", "type": "INTEGER", "description": "Mese (1-12). Valori fuori range causano il rollover dell'anno." },
+      { "name": "day", "type": "INTEGER", "description": "Giorno (1-31). Valori fuori range causano il rollover del mese." }
+    ],
+    "examples": [
+      { "description": "Calcolo di date future e passate per scadenze.", "code": "INPUT \"Data ordine (gg/mm/aaaa): \", D$\nDataOrdine = DATEVALUE(D$)\n' Scadenza pagamento: 30 giorni\nScadenza = DATEADD(\"d\", 30, DataOrdine)\n' Sollecito: 15 giorni dopo scadenza\nSollecito = DATEADD(\"d\", 15, Scadenza)\nOggi = TODAY()\nIF Oggi > Sollecito THEN\n  PRINT \"ATTENZIONE: pagamento in forte ritardo!\"\n  PRINT \"Scaduto il: \"; FORMAT(Scadenza, \"dd/mm/yyyy\")\nELSEIF Oggi > Scadenza THEN\n  PRINT \"Pagamento in ritardo di \"; DATEDIFF(\"d\", Scadenza, Oggi); \" giorni.\"\nELSE\n  GiorniRimanenti = DATEDIFF(\"d\", Oggi, Scadenza)\n  PRINT \"Scadenza tra \"; GiorniRimanenti; \" giorni (\"; FORMAT(Scadenza, \"dd/mm/yyyy\"); \")\"\nEND IF", "expectedOutput": "Data ordine (gg/mm/aaaa): 01/08/2026\nScadenza tra 23 giorni (31/08/2026)" }
+    ],
+    "seeAlso": ["TIMESERIAL", "DATEVALUE", "DATEADD", "DATEDIFF"],
+    "isCommand": false
+  },
+  {
+    "name": "TIMESERIAL",
+    "namespace": "DATETIME",
+    "category": "Construction",
+    "description": "Costruisce un valore TIME a partire da ore, minuti e secondi. I valori fuori range vengono normalizzati (es. 90 minuti = 1 ora e 30 minuti).",
+    "syntax": ["TIMESERIAL(hour, minute, second)"],
+    "returnType": "TIME",
+    "parameters": [
+      { "name": "hour", "type": "INTEGER", "description": "Ore (0-23, valori superiori causano rollover)." },
+      { "name": "minute", "type": "INTEGER", "description": "Minuti (0-59)." },
+      { "name": "second", "type": "INTEGER", "description": "Secondi (0-59)." }
+    ],
+    "examples": [
+      { "description": "Calcolo orario di fine turno con straordinari.", "code": "InizioH = 9: InizioM = 0\nOreStandard = 8\nStraordinarioMin = 45\nFineStandard = TIMESERIAL(InizioH + OreStandard, InizioM, 0)\nFineEffettivo = TIMESERIAL(InizioH + OreStandard, InizioM + StraordinarioMin, 0)\nPRINT \"Inizio turno:     \"; FORMAT(TIMESERIAL(InizioH, 0, 0), \"hh:nn\")\nPRINT \"Fine standard:    \"; FORMAT(FineStandard, \"hh:nn\")\nPRINT \"Fine effettivo:   \"; FORMAT(FineEffettivo, \"hh:nn\")", "expectedOutput": "Inizio turno:     09:00\nFine standard:    17:00\nFine effettivo:   17:45" }
+    ],
+    "seeAlso": ["DATESERIAL", "HOUR", "MINUTE", "SECOND"],
+    "isCommand": false
+  },
+  {
+    "name": "CDOW",
+    "namespace": "DATETIME",
+    "category": "Formatting",
+    "description": "Restituisce il nome del giorno della settimana corrispondente a una data, nella lingua del sistema. Restituisce 'Lunedi'', 'Martedi'', ecc.",
+    "syntax": ["CDOW(date)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "date", "type": "DATE", "description": "La data di cui ottenere il nome del giorno." }
+    ],
+    "examples": [
+      { "description": "Mostra il giorno della settimana per date importanti.", "code": "PRINT \"Natale 2026 cade di: \"; CDOW(DATESERIAL(2026, 12, 25))\nPRINT \"Capodanno 2027 cade di: \"; CDOW(DATESERIAL(2027, 1, 1))", "expectedOutput": "Natale 2026 cade di: venerdi'\nCapodanno 2027 cade di: venerdi'" }
+    ],
+    "seeAlso": ["CMONTH", "DOW", "WEEKDAY"],
+    "isCommand": false
+  },
+  {
+    "name": "CMONTH",
+    "namespace": "DATETIME",
+    "category": "Formatting",
+    "description": "Restituisce il nome del mese corrispondente a una data, nella lingua del sistema. Restituisce 'Gennaio', 'Febbraio', ecc.",
+    "syntax": ["CMONTH(date)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "date", "type": "DATE", "description": "La data di cui ottenere il nome del mese." }
+    ],
+    "examples": [
+      { "description": "Intestazione report mensile dinamica.", "code": "Oggi = TODAY()\nMeseCorrente = CMONTH(Oggi)\nAnnoCorrente = YEAR(Oggi)\nPRINT \"REPORT \"; UPPER(MeseCorrente); \" \"; AnnoCorrente\nPRINT STRING(30, \"=\")", "expectedOutput": "REPORT AGOSTO 2026\n==============================" }
+    ],
+    "seeAlso": ["CDOW", "MONTH", "YEAR"],
+    "isCommand": false
+  },
+  {
+    "name": "CTOD",
+    "namespace": "DATETIME",
+    "category": "Parsing",
+    "description": "Converte una stringa in data, restituendo un DOUBLE (numero seriale della data). Per compatibilita' legacy Clipper. Preferire DATEVALUE per nuovo codice.",
+    "syntax": ["CTOD(date_string$)"],
+    "returnType": "DOUBLE",
+    "parameters": [
+      { "name": "date_string$", "type": "STRING", "description": "Stringa data in formato 'dd/mm/yyyy' o riconoscibile." }
+    ],
+    "examples": [
+      { "description": "Compatibilita' legacy per codice Clipper migrato.", "code": "DataVecchia = CTOD(\"15/08/2024\")\nPRINT \"Data (DOUBLE): \"; DataVecchia\nPRINT \"Data (DATE):   \"; FORMAT(DATEVALUE(\"15/08/2024\"), \"dd/mm/yyyy\")", "expectedOutput": "Data (DOUBLE): 45524\nData (DATE):   15/08/2024" }
+    ],
+    "seeAlso": ["DTOC", "DATEVALUE", "STOD"],
+    "isCommand": false
+  },
+  {
+    "name": "DTOC",
+    "namespace": "DATETIME",
+    "category": "Formatting",
+    "description": "Converte una data in stringa usando il formato breve predefinito (tipicamente 'dd/mm/yyyy'). Per formati personalizzati, usare FORMAT. Per compatibilita' legacy Clipper.",
+    "syntax": ["DTOC(date)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "date", "type": "DATE", "description": "La data da convertire in stringa." }
+    ],
+    "examples": [
+      { "description": "Generazione nome file con data.", "code": "Oggi = TODAY()\nNomeFile$ = \"backup_\" + REPLACE(DTOC(Oggi), \"/\", \"-\") + \".zip\"\nPRINT \"File backup: \"; NomeFile$", "expectedOutput": "File backup: backup_08-08-2026.zip" }
+    ],
+    "seeAlso": ["CTOD", "DTOS", "FORMAT", "STOD"],
+    "isCommand": false
+  },
+  {
+    "name": "DTOS",
+    "namespace": "DATETIME",
+    "category": "Formatting",
+    "description": "Converte una data in stringa ISO compatto: 'YYYYMMDD'. Utile per ordinamento lessicografico di date (l'ordine alfabetico corrisponde all'ordine cronologico) e per costruire chiavi di indici.",
+    "syntax": ["DTOS(date)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "date", "type": "DATE", "description": "La data da formattare in ISO compatto." }
+    ],
+    "examples": [
+      { "description": "Indicizzazione per data con chiave ordinabile.", "code": "DIM DateImportanti(2) AS DATE\nDateImportanti(0) = DATESERIAL(2024, 12, 31)\nDateImportanti(1) = DATESERIAL(2024, 1, 15)\nDateImportanti(2) = DATESERIAL(2024, 6, 1)\nPRINT \"Date in ordine cronologico (via DTOS):\"\nASORT(DateImportanti(), FN(a AS DATE, b AS DATE) => SGN(DTOS(a) < DTOS(b)))\nFOR I = 0 TO UBOUND(DateImportanti())\n  PRINT DTOS(DateImportanti(I)); \" = \"; FORMAT(DateImportanti(I), \"dd/mm/yyyy\")\nNEXT I", "expectedOutput": "Date in ordine cronologico (via DTOS):\n20240115 = 15/01/2024\n20240601 = 01/06/2024\n20241231 = 31/12/2024" }
+    ],
+    "seeAlso": ["DTOC", "CTOD", "STOD", "FORMAT"],
+    "isCommand": false
+  },
+  {
+    "name": "DOW",
+    "namespace": "DATETIME",
+    "category": "Extraction",
+    "description": "Restituisce il giorno della settimana come numero (1 = Domenica, 2 = Lunedi', ..., 7 = Sabato). Per il nome del giorno, usare CDOW o FORMAT.",
+    "syntax": ["DOW(date)"],
+    "returnType": "INTEGER",
+    "parameters": [
+      { "name": "date", "type": "DATE", "description": "La data di cui ottenere il giorno della settimana." }
+    ],
+    "examples": [
+      { "description": "Verifica se una data cade nel weekend.", "code": "INPUT \"Data (gg/mm/aaaa): \", D$\nDt = DATEVALUE(D$)\nGiorno = DOW(Dt)\nIF Giorno = 1 OR Giorno = 7 THEN\n  PRINT FORMAT(Dt, \"dddd\"); \" e' weekend!\"\nELSE\n  PRINT FORMAT(Dt, \"dddd\"); \" e' un giorno feriale.\"\nEND IF", "expectedOutput": "Data (gg/mm/aaaa): 10/08/2026\nlunedi' e' un giorno feriale." }
+    ],
+    "seeAlso": ["CDOW", "WEEKDAY", "DAY", "MONTH", "YEAR"],
+    "isCommand": false
+  },
+  {
+    "name": "SECONDS",
+    "namespace": "DATETIME",
+    "category": "Timestamp",
+    "description": "Restituisce il numero di secondi trascorsi dalla mezzanotte. Utile per misurare intervalli di tempo brevi o per generare seed per RANDOMIZE.",
+    "syntax": ["SECONDS", "SECONDS()"],
+    "returnType": "LONG",
+    "parameters": [],
+    "examples": [
+      { "description": "Benchmark di un'operazione.", "code": "Inizio = SECONDS\n' Simula operazione complessa\nFOR I = 1 TO 1000000\n  X = SQR(I)\nNEXT I\nFine = SECONDS\nPRINT \"Tempo trascorso: \"; Fine - Inizio; \" secondi\"", "expectedOutput": "Tempo trascorso: 0 secondi" }
+    ],
+    "seeAlso": ["NOW", "TI", "UNIXTIMESTAMP", "DATEFROMUNIX"],
+    "isCommand": false
+  },
+  {
+    "name": "STOD",
+    "namespace": "DATETIME",
+    "category": "Parsing",
+    "description": "Converte una stringa in formato ISO 'YYYYMMDD' in un valore DATE. Il complemento di DTOS. La stringa deve essere esattamente di 8 caratteri numerici.",
+    "syntax": ["STOD(iso_date_string$)"],
+    "returnType": "DATE",
+    "parameters": [
+      { "name": "iso_date_string$", "type": "STRING", "description": "Stringa data in formato 'YYYYMMDD' (esattamente 8 caratteri)." }
+    ],
+    "examples": [
+      { "description": "Importazione date da formato database.", "code": "DateISO$() = {\"20240115\", \"20240601\", \"20241231\"}\nFOR I = 0 TO UBOUND(DateISO$())\n  Dt = STOD(DateISO$(I))\n  PRINT DateISO$(I); \" -> \"; FORMAT(Dt, \"dd mmmm yyyy\")\nNEXT I", "expectedOutput": "20240115 -> 15 gennaio 2024\n20240601 -> 01 giugno 2024\n20241231 -> 31 dicembre 2024" }
+    ],
+    "seeAlso": ["DTOS", "DATEVALUE", "CTOD"],
+    "isCommand": false
+  },
+  {
+    "name": "DATEADD",
+    "namespace": "DATETIME",
+    "category": "Arithmetic",
+    "description": "Aggiunge (o sottrae) un intervallo di tempo a una data. L'intervallo e' specificato da una stringa: 'yyyy' (anni), 'q' (trimestri), 'm' (mesi), 'd' (giorni), 'w' (settimane), 'h' (ore), 'n' (minuti), 's' (secondi). Valori negativi sottraggono.",
+    "syntax": ["DATEADD(interval$, number, date)"],
+    "returnType": "DATE",
+    "parameters": [
+      { "name": "interval$", "type": "STRING", "description": "Unita' di tempo: 'yyyy'=anni, 'q'=trimestri, 'm'=mesi, 'd'=giorni, 'w'=settimane, 'h'=ore, 'n'=minuti, 's'=secondi." },
+      { "name": "number", "type": "DOUBLE", "description": "Numero di unita' da aggiungere (negativo per sottrarre)." },
+      { "name": "date", "type": "DATE/DATETIME", "description": "La data base a cui aggiungere l'intervallo." }
+    ],
+    "examples": [
+      { "description": "Calcolo date di un piano di ammortamento.", "code": "DataInizio = DATESERIAL(2024, 1, 15)\nNumRate = 12\nPRINT \"Piano ammortamento - Rata mensile\"\nPRINT \"Data        Rata N.\"\nPRINT \"----------  -------\"\nFOR I = 0 TO NumRate - 1\n  DataRata = DATEADD(\"m\", I, DataInizio)\n  PRINT FORMAT(DataRata, \"dd/mm/yyyy\"); \"  \"; I + 1; \"/\"; NumRate\nNEXT I", "expectedOutput": "Piano ammortamento - Rata mensile\nData        Rata N.\n----------  -------\n15/01/2024  1/12\n15/02/2024  2/12\n...\n15/12/2024  12/12" }
+    ],
+    "seeAlso": ["DATEDIFF", "DATESERIAL", "EOMONTH", "FIRSTDAYOFMONTH"],
+    "isCommand": false
+  },
+  {
+    "name": "DATEDIFF",
+    "namespace": "DATETIME",
+    "category": "Arithmetic",
+    "description": "Calcola la differenza tra due date nell'unita' di tempo specificata. Restituisce un LONG. L'intervallo e' dato dalla stringa: 'yyyy', 'm', 'd', 'w', 'h', 'n', 's'. L'ordine e': DATEDIFF(intervallo, data1, data2) = data2 - data1.",
+    "syntax": ["DATEDIFF(interval$, date1, date2)"],
+    "returnType": "LONG",
+    "parameters": [
+      { "name": "interval$", "type": "STRING", "description": "Unita' di misura: 'yyyy'=anni, 'm'=mesi, 'd'=giorni, 'w'=settimane, 'h'=ore, 'n'=minuti, 's'=secondi." },
+      { "name": "date1", "type": "DATE/DATETIME", "description": "Data iniziale." },
+      { "name": "date2", "type": "DATE/DATETIME", "description": "Data finale." }
+    ],
+    "examples": [
+      { "description": "Calcolo anzianita' lavorativa.", "code": "DataAssunzione = DATEVALUE(\"15/03/2010\")\nOggi = TODAY()\nAnni = DATEDIFF(\"yyyy\", DataAssunzione, Oggi)\nMesi = DATEDIFF(\"m\", DataAssunzione, Oggi) MOD 12\nGiorni = DATEDIFF(\"d\", DATEADD(\"m\", DATEDIFF(\"m\", DataAssunzione, Oggi), DataAssunzione), Oggi)\nPRINT \"Anzianita' di servizio:\"\nPRINT Anni; \" anni, \"; Mesi; \" mesi, \"; Giorni; \" giorni.\"", "expectedOutput": "Anzianita' di servizio:\n16 anni, 4 mesi, 24 giorni." }
+    ],
+    "seeAlso": ["DATEADD", "DATESERIAL", "NOW"],
+    "isCommand": false
+  },
+  {
+    "name": "EOMONTH",
+    "namespace": "DATETIME",
+    "category": "Arithmetic",
+    "description": "Restituisce l'ultimo giorno del mese, spostato di un numero specificato di mesi rispetto alla data fornita. EOMONTH(data, 0) restituisce l'ultimo giorno del mese corrente. EOMONTH(data, -1) il mese precedente, +1 il successivo.",
+    "syntax": ["EOMONTH(start_date, months)"],
+    "returnType": "DATE",
+    "parameters": [
+      { "name": "start_date", "type": "DATE", "description": "Data di riferimento." },
+      { "name": "months", "type": "INTEGER", "description": "Numero di mesi di scostamento (0 = mese corrente, -1 = precedente, +1 = successivo)." }
+    ],
+    "examples": [
+      { "description": "Calcolo date di chiusura trimestrali.", "code": "Anno = 2024\nPRINT \"Chiusure trimestrali \"; Anno\nPRINT \"-----------------------------\"\nFOR Q = 1 TO 4\n  ' Mese iniziale del trimestre: Q*3-2 = 1,4,7,10\n  MeseInizio = (Q - 1) * 3 + 1\n  DataChiusura = EOMONTH(DATESERIAL(Anno, MeseInizio, 1), 2)\n  PRINT \"Q\"; Q; \" chiude il: \"; FORMAT(DataChiusura, \"dd mmmm yyyy\")\nNEXT Q", "expectedOutput": "Chiusure trimestrali 2024\n-----------------------------\nQ1 chiude il: 31 marzo 2024\nQ2 chiude il: 30 giugno 2024\nQ3 chiude il: 30 settembre 2024\nQ4 chiude il: 31 dicembre 2024" }
+    ],
+    "seeAlso": ["FIRSTDAYOFMONTH", "DATEADD", "DATESERIAL"],
+    "isCommand": false
+  },
+  {
+    "name": "WEEKDAY",
+    "namespace": "DATETIME",
+    "category": "Extraction",
+    "description": "Restituisce il giorno della settimana come LONG. Il comportamento predefinito e' 1=Domenica, 2=Lunedi'...7=Sabato. Diverso da DOW per il tipo di ritorno (LONG vs INTEGER).",
+    "syntax": ["WEEKDAY(date)"],
+    "returnType": "LONG",
+    "parameters": [
+      { "name": "date", "type": "DATE", "description": "La data di cui ottenere il giorno della settimana." }
+    ],
+    "examples": [
+      { "description": "Calcolo del prossimo lunedi'.", "code": "Oggi = TODAY()\nWd = WEEKDAY(Oggi)\n' Calcola giorni fino a lunedi' (2)\nIF Wd = 1 THEN\n  GiorniALunedi = 1\nELSEIF Wd = 2 THEN\n  GiorniALunedi = 0\nELSE\n  GiorniALunedi = 9 - Wd\nEND IF\nProssimoLunedi = DATEADD(\"d\", GiorniALunedi, Oggi)\nPRINT \"Oggi: \"; FORMAT(Oggi, \"dddd d mmmm\")\nPRINT \"Prossimo lunedi': \"; FORMAT(ProssimoLunedi, \"dddd d mmmm yyyy\")", "expectedOutput": "Oggi: sabato 8 agosto\nProssimo lunedi': lunedi' 10 agosto 2026" }
+    ],
+    "seeAlso": ["DOW", "CDOW", "DAY", "MONTH", "YEAR"],
+    "isCommand": false
+  },
+  {
+    "name": "YEAR",
+    "namespace": "DATETIME",
+    "category": "Extraction",
+    "description": "Restituisce l'anno di una data come INTEGER.",
+    "syntax": ["YEAR(date)"],
+    "returnType": "INTEGER",
+    "parameters": [
+      { "name": "date", "type": "DATE/DATETIME", "description": "La data da cui estrarre l'anno." }
+    ],
+    "examples": [
+      { "description": "Raggruppamento dati per anno.", "code": "DataOrdine = DATEVALUE(\"15/03/2024\")\nPRINT \"Anno fiscale: \"; YEAR(DataOrdine)", "expectedOutput": "Anno fiscale: 2024" }
+    ],
+    "seeAlso": ["MONTH", "DAY", "HOUR", "MINUTE", "SECOND"],
+    "isCommand": false
+  },
+  {
+    "name": "MONTH",
+    "namespace": "DATETIME",
+    "category": "Extraction",
+    "description": "Restituisce il mese di una data come INTEGER (1-12).",
+    "syntax": ["MONTH(date)"],
+    "returnType": "INTEGER",
+    "parameters": [
+      { "name": "date", "type": "DATE/DATETIME", "description": "La data da cui estrarre il mese." }
+    ],
+    "examples": [
+      { "description": "Filtro vendite per trimestre.", "code": "DataVendita = DATEVALUE(\"22/07/2024\")\nM = MONTH(DataVendita)\nPRINT \"Mese: \"; M; \" (\"; CMONTH(DataVendita); \")\"\nTrimestre = (M - 1) \\ 3 + 1\nPRINT \"Trimestre: Q\"; Trimestre", "expectedOutput": "Mese: 7 (luglio)\nTrimestre: Q3" }
+    ],
+    "seeAlso": ["YEAR", "DAY", "CMONTH", "HOUR"],
+    "isCommand": false
+  },
+  {
+    "name": "DAY",
+    "namespace": "DATETIME",
+    "category": "Extraction",
+    "description": "Restituisce il giorno del mese di una data come INTEGER (1-31).",
+    "syntax": ["DAY(date)"],
+    "returnType": "INTEGER",
+    "parameters": [
+      { "name": "date", "type": "DATE/DATETIME", "description": "La data da cui estrarre il giorno." }
+    ],
+    "examples": [
+      { "description": "Notifica per scadenze a fine mese.", "code": "Oggi = TODAY()\nUltimoGiorno = DAY(EOMONTH(Oggi, 0))\nGiornoOggi = DAY(Oggi)\nGiorniRimanenti = UltimoGiorno - GiornoOggi\nIF GiorniRimanenti <= 5 THEN\n  PRINT \"ATTENZIONE: solo \"; GiorniRimanenti; \" giorni alla fine del mese!\"\nELSE\n  PRINT \"Ancora \"; GiorniRimanenti; \" giorni alla chiusura mensile.\"\nEND IF", "expectedOutput": "ATTENZIONE: solo 2 giorni alla fine del mese!" }
+    ],
+    "seeAlso": ["YEAR", "MONTH", "HOUR", "EOMONTH"],
+    "isCommand": false
+  },
+  {
+    "name": "HOUR",
+    "namespace": "DATETIME",
+    "category": "Extraction",
+    "description": "Restituisce l'ora di un valore temporale come INTEGER (0-23).",
+    "syntax": ["HOUR(time_value)"],
+    "returnType": "INTEGER",
+    "parameters": [
+      { "name": "time_value", "type": "TIME/DATETIME", "description": "Il valore da cui estrarre l'ora." }
+    ],
+    "examples": [
+      { "description": "Classificazione turni in base all'orario.", "code": "Orario = NOW()\nH = HOUR(Orario)\nIF H >= 6 AND H < 14 THEN\n  Turno$ = \"Mattino\"\nELSEIF H >= 14 AND H < 22 THEN\n  Turno$ = \"Pomeriggio\"\nELSE\n  Turno$ = \"Notte\"\nEND IF\nPRINT \"Sono le \"; FORMAT(Orario, \"hh:nn\"); \" - Turno: \"; Turno$", "expectedOutput": "Sono le 14:30 - Turno: Pomeriggio" }
+    ],
+    "seeAlso": ["MINUTE", "SECOND", "NOW", "TIME"],
+    "isCommand": false
+  },
+  {
+    "name": "MINUTE",
+    "namespace": "DATETIME",
+    "category": "Extraction",
+    "description": "Restituisce i minuti di un valore temporale come INTEGER (0-59).",
+    "syntax": ["MINUTE(time_value)"],
+    "returnType": "INTEGER",
+    "parameters": [
+      { "name": "time_value", "type": "TIME/DATETIME", "description": "Il valore da cui estrarre i minuti." }
+    ],
+    "examples": [
+      { "description": "Arrotondamento orario al quarto d'ora.", "code": "Adesso = NOW()\nM = MINUTE(Adesso)\nQuarto = (M \\ 15) * 15\nOrarioArr = TIMESERIAL(HOUR(Adesso), Quarto, 0)\nPRINT \"Orario esatto: \"; FORMAT(Adesso, \"hh:nn\")\nPRINT \"Arrotondato:   \"; FORMAT(OrarioArr, \"hh:nn\")", "expectedOutput": "Orario esatto: 14:37\nArrotondato:   14:30" }
+    ],
+    "seeAlso": ["HOUR", "SECOND", "NOW", "TIME"],
+    "isCommand": false
+  },
+  {
+    "name": "SECOND",
+    "namespace": "DATETIME",
+    "category": "Extraction",
+    "description": "Restituisce i secondi di un valore temporale come INTEGER (0-59).",
+    "syntax": ["SECOND(time_value)"],
+    "returnType": "INTEGER",
+    "parameters": [
+      { "name": "time_value", "type": "TIME/DATETIME", "description": "Il valore da cui estrarre i secondi." }
+    ],
+    "examples": [
+      { "description": "Timer di precisione con feedback visivo.", "code": "Inizio = NOW()\nDO\n  Trascorso = DATEDIFF(\"s\", Inizio, NOW())\n  PRINT \"Tempo: \"; Trascorso; \"s  \";\n  LOCATE CSRLIN(), 1\nLOOP UNTIL Trascorso >= 10\nPRINT \"Timer completato.\"", "expectedOutput": "Tempo: 0s\n...[si aggiorna]...\nTempo: 10s\nTimer completato." }
+    ],
+    "seeAlso": ["HOUR", "MINUTE", "NOW", "SECONDS"],
+    "isCommand": false
+  },
+  {
+    "name": "ISDATE",
+    "namespace": "DATETIME",
+    "category": "Validation",
+    "description": "Verifica se un'espressione puo' essere interpretata come una data valida. Restituisce TRUE (BIT=1) se l'espressione e' una data valida o una stringa convertibile in data, FALSE (0) altrimenti.",
+    "syntax": ["ISDATE(expression)"],
+    "returnType": "BIT",
+    "parameters": [
+      { "name": "expression", "type": "ANY", "description": "Espressione da verificare." }
+    ],
+    "examples": [
+      { "description": "Validazione input data utente.", "code": "DO\n  INPUT \"Inserisci una data: \", DataInput$\n  IF ISDATE(DataInput$) THEN\n    Dt = DATEVALUE(DataInput$)\n    PRINT \"Data valida: \"; FORMAT(Dt, \"dd mmmm yyyy\")\n    EXIT DO\n  ELSE\n    PRINT \"'\"; DataInput$; \"' non e' una data valida. Riprova.\"\n  END IF\nLOOP", "expectedOutput": "Inserisci una data: 32/13/2024\n'32/13/2024' non e' una data valida. Riprova.\nInserisci una data: 15/08/2024\nData valida: 15 agosto 2024" }
+    ],
+    "seeAlso": ["DATEVALUE", "DATESERIAL", "STOD"],
+    "isCommand": false
+  },
+  {
+    "name": "TI",
+    "namespace": "DATETIME",
+    "category": "Timestamp",
+    "description": "Restituisce il timestamp UNIX corrente (secondi dal 1° gennaio 1970) come LONG. Utile per sincronizzazione, logging e confronti cronologici semplici.",
+    "syntax": ["TI", "TI()"],
+    "returnType": "LONG",
+    "parameters": [],
+    "examples": [
+      { "description": "Log con timestamp UNIX.", "code": "PRINT \"Avvio sistema: \"; TI()\nSLEEP 2\nPRINT \"Operazione A:  \"; TI()\nSLEEP 1\nPRINT \"Operazione B:  \"; TI()", "expectedOutput": "Avvio sistema: 1723128000\nOperazione A:  1723128002\nOperazione B:  1723128003" }
+    ],
+    "seeAlso": ["STRTI", "SECONDS", "UNIXTIMESTAMP", "DATEFROMUNIX"],
+    "isCommand": false
+  },
+  {
+    "name": "STRTI",
+    "namespace": "DATETIME",
+    "category": "Timestamp",
+    "description": "Restituisce il timestamp UNIX corrente come stringa. Equivalente a CSTR(TI()).",
+    "syntax": ["STRTI", "STRTI()"],
+    "returnType": "STRING",
+    "parameters": [],
+    "examples": [
+      { "description": "Costruzione nome file univoco con timestamp.", "code": "NomeFile$ = \"export_\" + STRTI() + \".csv\"\nPRINT \"Esportazione in: \"; NomeFile$", "expectedOutput": "Esportazione in: export_1723128000.csv" }
+    ],
+    "seeAlso": ["TI", "SECONDS", "NOW"],
+    "isCommand": false
+  },
+  {
+    "name": "DAYSINMONTH",
+    "namespace": "DATETIME",
+    "category": "Calculation",
+    "description": "Restituisce il numero di giorni in un determinato mese, tenendo conto degli anni bisestili. Equivalente a DAY(EOMONTH(data, 0)).",
+    "syntax": ["DAYSINMONTH(date)"],
+    "returnType": "INTEGER",
+    "parameters": [
+      { "name": "date", "type": "DATE", "description": "Una data qualsiasi nel mese desiderato." }
+    ],
+    "examples": [
+      { "description": "Calcolo pro-rata giornaliero per affitto mensile.", "code": "AffittoMensile = 1500\nDataRiferimento = DATEVALUE(\"15/02/2024\")\nGiorniNelMese = DAYSINMONTH(DataRiferimento)\nCostoGiornaliero = AffittoMensile / GiorniNelMese\nPRINT \"Mese: \"; CMONTH(DataRiferimento); \" \"; YEAR(DataRiferimento)\nPRINT \"Giorni nel mese: \"; GiorniNelMese\nPRINT \"Affitto mensile:  EUR \"; FORMAT(AffittoMensile, \"#,###.00\")\nPRINT \"Costo/giorno:    EUR \"; FORMAT(CostoGiornaliero, \"#,###.00\")", "expectedOutput": "Mese: febbraio 2024\nGiorni nel mese: 29\nAffitto mensile:  EUR 1,500.00\nCosto/giorno:    EUR 51.72" }
+    ],
+    "seeAlso": ["EOMONTH", "ISLEAPYEAR", "MONTH"],
+    "isCommand": false
+  },
+  {
+    "name": "ISLEAPYEAR",
+    "namespace": "DATETIME",
+    "category": "Calculation",
+    "description": "Verifica se l'anno di una data e' bisestile (366 giorni). Restituisce TRUE per anni divisibili per 4, eccetto quelli divisibili per 100 ma non per 400.",
+    "syntax": ["ISLEAPYEAR(date)"],
+    "returnType": "BIT",
+    "parameters": [
+      { "name": "date", "type": "DATE", "description": "Una data qualsiasi nell'anno da verificare." }
+    ],
+    "examples": [
+      { "description": "Verifica anni bisestili in un range.", "code": "PRINT \"Anni bisestili 2020-2040:\"\nFOR A = 2020 TO 2040\n  IF ISLEAPYEAR(DATESERIAL(A, 1, 1)) THEN\n    PRINT \"  \"; A;\n  END IF\nNEXT A", "expectedOutput": "Anni bisestili 2020-2040:\n  2020 2024 2028 2032 2036 2040" }
+    ],
+    "seeAlso": ["DAYSINMONTH", "YEAR", "EOMONTH"],
+    "isCommand": false
+  },
+  {
+    "name": "FIRSTDAYOFMONTH",
+    "namespace": "DATETIME",
+    "category": "Calculation",
+    "description": "Restituisce il primo giorno del mese per una data specificata. Equivalente a DATEADD('d', -DAY(date)+1, date).",
+    "syntax": ["FIRSTDAYOFMONTH(date)"],
+    "returnType": "DATE",
+    "parameters": [
+      { "name": "date", "type": "DATE", "description": "Una data qualsiasi nel mese desiderato." }
+    ],
+    "examples": [
+      { "description": "Generazione di tutte le date di un mese.", "code": "Oggi = TODAY()\nInizioMese = FIRSTDAYOFMONTH(Oggi)\nFineMese = EOMONTH(Oggi, 0)\nNumGiorni = DAY(FineMese)\nPRINT \"Calendario \"; CMONTH(Oggi); \" \"; YEAR(Oggi)\nPRINT \"Lun Mar Mer Gio Ven Sab Dom\"\n' Stampa il calendario... (semplificato per brevita')\nPRINT \"Dal \"; FORMAT(InizioMese, \"dd/mm\"); \" al \"; FORMAT(FineMese, \"dd/mm/yyyy\")", "expectedOutput": "Calendario agosto 2026\nLun Mar Mer Gio Ven Sab Dom\nDal 01/08 al 31/08/2026" }
+    ],
+    "seeAlso": ["EOMONTH", "DATEADD", "DAY"],
+    "isCommand": false
+  },
+  {
+    "name": "ISOWEEKOFYEAR",
+    "namespace": "DATETIME",
+    "category": "Calculation",
+    "description": "Restituisce il numero della settimana ISO 8601 (1-53) per una data. La settimana 1 e' quella che contiene il primo giovedi' dell'anno.",
+    "syntax": ["ISOWEEKOFYEAR(date)"],
+    "returnType": "INTEGER",
+    "parameters": [
+      { "name": "date", "type": "DATE", "description": "La data di cui calcolare la settimana ISO." }
+    ],
+    "examples": [
+      { "description": "Report settimanale con numero settimana ISO.", "code": "Oggi = TODAY()\nSettimana = ISOWEEKOFYEAR(Oggi)\nPRINT \"Report Settimana \"; Settimana; \" - \"; YEAR(Oggi)", "expectedOutput": "Report Settimana 32 - 2026" }
+    ],
+    "seeAlso": ["WEEKDAY", "DOW", "YEAR"],
+    "isCommand": false
+  },
+  {
+    "name": "DATEFROMUNIX",
+    "namespace": "DATETIME",
+    "category": "Conversion",
+    "description": "Converte un timestamp UNIX (secondi dal 1° gennaio 1970) in un valore DATE. Il complemento di UNIXTIMESTAMP.",
+    "syntax": ["DATEFROMUNIX(unix_timestamp)"],
+    "returnType": "DATE",
+    "parameters": [
+      { "name": "unix_timestamp", "type": "LONG", "description": "Timestamp UNIX in secondi." }
+    ],
+    "examples": [
+      { "description": "Decodifica timestamp da API JSON.", "code": "TimestampAPI = 1723128000\nDt = DATEFROMUNIX(TimestampAPI)\nPRINT \"Timestamp: \"; TimestampAPI\nPRINT \"Data:      \"; FORMAT(Dt, \"dd/mm/yyyy hh:nn:ss\")", "expectedOutput": "Timestamp: 1723128000\nData:      08/08/2024 14:00:00" }
+    ],
+    "seeAlso": ["UNIXTIMESTAMP", "TI", "NOW"],
+    "isCommand": false
+  },
+  {
+    "name": "UNIXTIMESTAMP",
+    "namespace": "DATETIME",
+    "category": "Conversion",
+    "description": "Converte un valore DATE/DATETIME nel corrispondente timestamp UNIX (secondi dal 1° gennaio 1970). Il complemento di DATEFROMUNIX.",
+    "syntax": ["UNIXTIMESTAMP(date)"],
+    "returnType": "LONG",
+    "parameters": [
+      { "name": "date", "type": "DATE/DATETIME", "description": "La data da convertire in timestamp UNIX." }
+    ],
+    "examples": [
+      { "description": "Confronto tra due date via timestamp.", "code": "D1 = DATEVALUE(\"01/01/2024\")\nD2 = DATEVALUE(\"01/01/2025\")\nDiff = UNIXTIMESTAMP(D2) - UNIXTIMESTAMP(D1)\nGiorni = Diff / 86400\nPRINT \"Giorni tra le due date: \"; Giorni", "expectedOutput": "Giorni tra le due date: 366" }
+    ],
+    "seeAlso": ["DATEFROMUNIX", "TI", "SECONDS"],
+    "isCommand": false
+  }
+]

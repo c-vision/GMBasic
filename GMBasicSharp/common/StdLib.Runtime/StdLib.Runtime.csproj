@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>GMBasic.StdLib.Runtime</AssemblyName>
+    <RootNamespace>Basic.StdLib.Runtime</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>preview</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <!--
+      Solo CommonLib (codice C# puro, senza tipi BASIC-specifici, gia' pensato per essere
+      referenziato da qualunque progetto C# — vedi CommonGraphics per lo stesso
+      principio). Nessun riferimento a Ast/Parser/Compiler/PCodeVm/IlBackend: questo progetto
+      deve restare eseguibile da un motore BASIC futuro che non condivide nessuno di quei tipi.
+      Vedi docs/StdLib-Runtime-Plan.md.
+    -->
+    <ProjectReference Include="..\CommonLib\CommonLib.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,5 @@
+IMPORT AI
+
+SUB Main()
+    PRINT AI.CONTEXTVIEW("x")
+END SUB

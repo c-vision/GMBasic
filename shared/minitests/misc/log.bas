@@ -1,0 +1,3 @@
+SUB Main()
+  PRINT LOG(1)
+END SUB

@@ -1,0 +1,7 @@
+' MiniTest: SPECIAL.LGAMMA — parita' 4 backend bit-esatta (port MathNet).
+' EXPECT: 12.8018274800815
+IMPORT SPECIAL
+
+SUB Main
+  PRINT SPECIAL.LGAMMA(10.0)
+END SUB

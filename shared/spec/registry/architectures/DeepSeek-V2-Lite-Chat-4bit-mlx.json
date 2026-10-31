@@ -1,0 +1,52 @@
+{
+  "model": "DeepSeek-V2-Lite-Chat-4bit-mlx",
+  "config": "/Users/gaetano/ai/Models/DeepSeek-V2-Lite-Chat-4bit-mlx/config.json",
+  "spec": {
+    "model_type": "deepseek_v2",
+    "hidden_size": 2048,
+    "num_hidden_layers": 27,
+    "num_attention_heads": 16,
+    "num_key_value_heads": 16,
+    "head_dim": null,
+    "intermediate_size": 10944,
+    "num_experts": 64,
+    "experts_per_token": 6,
+    "rope_theta": 10000,
+    "rms_norm_eps": 1e-06,
+    "tie_word_embeddings": false,
+    "sliding_window": null,
+    "vocab_size": 102400,
+    "rope_scaling": {
+      "beta_fast": 32,
+      "beta_slow": 1,
+      "factor": 40,
+      "mscale": 0.707,
+      "mscale_all_dim": 0.707,
+      "original_max_position_embeddings": 4096,
+      "type": "yarn"
+    },
+    "quant": {
+      "bits": 4,
+      "group_size": 64
+    },
+    "architectures": [
+      "DeepseekV2ForCausalLM"
+    ]
+  },
+  "contract": {
+    "_source": "convenzione dell'architettura (best-effort; verificare per-modello se critico)",
+    "rope_convention": "neox",
+    "attention": "MHA",
+    "kv_heads": 16,
+    "q_heads": 16,
+    "head_dim": null,
+    "eps": 1e-06,
+    "tie_word_embeddings": false,
+    "kv_layout": "mla",
+    "position_semantics": "absolute-0based",
+    "residual_order": "pre",
+    "attention_scale": "1/sqrt(head_dim)",
+    "mask": null,
+    "recurrent_state": "none"
+  }
+}

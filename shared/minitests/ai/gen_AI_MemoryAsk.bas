@@ -1,0 +1,5 @@
+IMPORT AI
+
+SUB Main()
+    PRINT AI.MEMORYASK("x", 1)
+END SUB

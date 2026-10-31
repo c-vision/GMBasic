@@ -1,0 +1,15 @@
+IMPORT WINDOWS
+ON KEY(65) GOSUB KeyHandler
+ON MOUSE CLICK GOSUB MouseHandler
+ON WINDOW CLOSE GOSUB WinClosed
+PRINT "eventi registrati"
+END
+KeyHandler:
+PRINT "K!"
+RETURN
+MouseHandler:
+PRINT "M!"
+RETURN
+WinClosed:
+PRINT "W!"
+RETURN

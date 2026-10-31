@@ -1,0 +1,67 @@
+[
+  {
+    "name": "JSONENCODE",
+    "namespace": "JSON",
+    "category": "Serialization",
+    "description": "Serializza un valore BASIC (DICT, array, UDT, scalare) in una stringa JSON. Gestisce automaticamente la conversione dei tipi: DICT e array diventano oggetti/array JSON, le stringhe vengono escapate, i numeri mantenuti, i booleani convertiti in true/false, le date in formato ISO 8601.",
+    "syntax": ["JSON.ENCODE(value) | JSONENCODE(value)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "value", "type": "ANY", "description": "Qualsiasi valore BASIC da serializzare in JSON." }
+    ],
+    "examples": [
+      { "description": "Serializzazione di strutture dati complesse.", "code": "TYPE Indirizzo\n  Via AS STRING, Citta AS STRING, CAP AS STRING\nEND TYPE\nDIM Cliente AS DICT\nCliente.Set(\"nome\", \"Mario Rossi\")\nCliente.Set(\"eta\", 42)\nCliente.Set(\"attivo\", TRUE)\nCliente.Set(\"ordini\", {1001, 1002, 1003})\nJson$ = JSON.ENCODE(Cliente)\nPRINT LEFT(Json$, 120)", "expectedOutput": "{\"nome\":\"Mario Rossi\",\"eta\":42,\"attivo\":true,\"ordini\":[1001,1002,1003]}" }
+    ],
+    "seeAlso": ["JSON.DECODE", "JSON.PARSE", "CSTR"],
+    "isCommand": false
+  },
+  {
+    "name": "JSONDECODE",
+    "namespace": "JSON",
+    "category": "Serialization",
+    "description": "Deserializza una stringa JSON in un DICT o valore BASIC. Il parsing e' robusto e tollerante. I tipi JSON vengono mappati: oggetto → DICT, array → ARRAY, stringa → STRING, numero → DOUBLE/INTEGER, booleano → BIT, null → NULL. Il risultato puo' essere assegnato a un DICT per accesso tramite chiavi.",
+    "syntax": ["JSON.DECODE(json_string$, target_dict) | JSONDECODE(json$, target)"],
+    "returnType": "",
+    "parameters": [
+      { "name": "json_string$", "type": "STRING", "description": "Stringa JSON da decodificare." },
+      { "name": "target_dict", "type": "DICT", "description": "DICT di destinazione che ricevera' i dati deserializzati." }
+    ],
+    "examples": [
+      { "description": "Decodifica risposta API e navigazione struttura.", "code": "RispostaApi$ = \"{\"\"status\"\":\"\"success\"\",\"\"data\"\":{\"\"users\"\":[{\"\"id\"\":1,\"\"name\"\":\"\"Mario\"\"},{\"\"id\"\":2,\"\"name\"\":\"\"Anna\"\"}],\"\"total\"\":2}}\"\nDIM Risultato AS DICT\nJSON.DECODE RispostaApi$, Risultato\nPRINT \"Status: \"; Risultato.Get(\"status\")\nDIM Data AS DICT\nData = Risultato.Get(\"data\")\nPRINT \"Totale utenti: \"; Data.Get(\"total\")\nDIM Utenti = Data.Get(\"users\")\nFOR I = 0 TO UBOUND(Utenti)\n  PRINT \"  \"; Utenti(I).Get(\"id\"); \" - \"; Utenti(I).Get(\"name\")\nNEXT I", "expectedOutput": "Status: success\nTotale utenti: 2\n  1 - Mario\n  2 - Anna" }
+    ],
+    "seeAlso": ["JSON.ENCODE", "JSON.PARSE", "JSON.STRINGIFY"],
+    "isCommand": false
+  },
+  {
+    "name": "JSONPARSE",
+    "namespace": "JSON",
+    "category": "Serialization",
+    "description": "Decodifica un JSON e restituisce il valore risultante come funzione. Alternativa a JSON.DECODE quando non si vuole pre-dichiarare un DICT. Equivalente funzionale di JSON.parse() in JavaScript.",
+    "syntax": ["JSON.PARSE(json_string$)"],
+    "returnType": "DICT/ARRAY/ANY",
+    "parameters": [
+      { "name": "json_string$", "type": "STRING", "description": "Stringa JSON da parsare." }
+    ],
+    "examples": [
+      { "description": "Parsing diretto e accesso immediato.", "code": "Config$ = \"{\"\"database\"\":{\"\"host\"\":\"\"localhost\"\",\"\"port\"\":5432}}\"\nCfg = JSON.PARSE(Config$)\nDb = Cfg[\"database\"]\nPRINT \"DB Host: \"; Db[\"host\"]; \":\"; Db[\"port\"]", "expectedOutput": "DB Host: localhost:5432" }
+    ],
+    "seeAlso": ["JSON.ENCODE", "JSON.DECODE", "JSON.STRINGIFY"],
+    "isCommand": false
+  },
+  {
+    "name": "JSONVALIDATE",
+    "namespace": "JSON",
+    "category": "Validation",
+    "description": "Verifica se una stringa e' un JSON sintatticamente valido. Restituisce TRUE se la stringa puo' essere parsata come JSON, FALSE altrimenti. Non esegue la deserializzazione completa, solo la validazione sintattica.",
+    "syntax": ["JSON.VALIDATE(json_string$)"],
+    "returnType": "BIT",
+    "parameters": [
+      { "name": "json_string$", "type": "STRING", "description": "Stringa da validare come JSON." }
+    ],
+    "examples": [
+      { "description": "Validazione input JSON utente.", "code": "INPUT \"Inserisci JSON: \", Input$\nIF JSON.VALIDATE(Input$) THEN\n  PRINT \"JSON valido.\"\n  DIM D AS DICT\n  JSON.DECODE Input$, D\n  PRINT \"Chiavi trovate: \"; AJOIN(D.Keys(), \", \")\nELSE\n  PRINT \"JSON non valido. Correggi e riprova.\"\nEND IF", "expectedOutput": "Inserisci JSON: {\"nome\":\"Mario\"}\nJSON valido.\nChiavi trovate: nome" }
+    ],
+    "seeAlso": ["JSON.DECODE", "JSON.PARSE"],
+    "isCommand": false
+  }
+]

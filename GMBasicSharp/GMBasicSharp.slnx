@@ -1,0 +1,38 @@
+<Solution>
+  <Folder Name="/common/">
+    <Project Path="common/AI/AI.csproj" />
+    <Project Path="common/Ast/Ast.csproj" />
+    <Project Path="common/BackendSupport/BackendSupport.csproj" />
+    <Project Path="common/BRT/BRT.csproj" />
+    <Project Path="common/ClipperLib/ClipperLib.csproj" />
+    <Project Path="common/CommonGraphics/CommonGraphics.csproj" />
+    <Project Path="common/CommonLib/CommonLib.csproj" />
+    <Project Path="common/Compilation/Compilation.csproj" />
+    <Project Path="common/Compiler/Compiler.csproj" />
+    <Project Path="common/ConversionLib/ConversionLib.csproj" />
+    <Project Path="common/Databases.AdoProviders/Databases.AdoProviders.csproj" />
+    <Project Path="common/Databases.Onnx/Databases.Onnx.csproj" />
+    <Project Path="common/Databases/Databases.csproj" />
+    <Project Path="common/IlBackendCodegen/IlBackendCodegen.csproj" />
+    <Project Path="common/IlBackendRuntime/IlBackendRuntime.csproj" />
+    <Project Path="common/ILOptim/ILOptim.csproj" />
+    <Project Path="common/Lexer/Lexer.csproj" />
+    <Project Path="common/Linker/Linker.csproj" />
+    <Project Path="common/Parser/Parser.csproj" />
+    <Project Path="common/Pipeline/Pipeline.csproj" />
+    <Project Path="common/SemanticGraph/SemanticGraph.csproj" />
+    <Project Path="common/StdLib.Runtime/StdLib.Runtime.csproj" />
+    <Project Path="common/StdLib/StdLib.csproj" />
+  </Folder>
+  <Folder Name="/common/IlBackendCodegen/">
+    <Project Path="common/IlBackendCodegen/genrunner/genrunner.csproj" />
+  </Folder>
+  <Folder Name="/common/Jinja/">
+    <Project Path="common/Jinja/GmBasic.Jinja.csproj" />
+  </Folder>
+  <Folder Name="/modules/">
+    <Project Path="modules/Database/Database.csproj" />
+  </Folder>
+  <Project Path="Executor/Executor.csproj" />
+  <Project Path="REPL/REPL.csproj" />
+</Solution>

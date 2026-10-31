@@ -1,0 +1,141 @@
+{
+  "NextFileNumber": 3,
+  "NextTableId": 3,
+  "Tables": {
+    "KV": {
+      "Id": 1,
+      "Name": "KV",
+      "Schema": {
+        "TypeName": "KV",
+        "Fields": [
+          {
+            "Name": "Key",
+            "DataType": {
+              "$type": "StringType",
+              "FixedLength": null,
+              "SourceToken": null,
+              "Position": {
+                "FileId": 0,
+                "Line": 0,
+                "Column": 0
+              },
+              "SourceLineIndex": -1,
+              "ScopeId": -1
+            },
+            "Length": 32
+          },
+          {
+            "Name": "Value",
+            "DataType": {
+              "$type": "StringType",
+              "FixedLength": null,
+              "SourceToken": null,
+              "Position": {
+                "FileId": 0,
+                "Line": 0,
+                "Column": 0
+              },
+              "SourceLineIndex": -1,
+              "ScopeId": -1
+            },
+            "Length": 32
+          }
+        ],
+        "PrimaryKey": {
+          "Name": "PK",
+          "KeyExpression": "Key",
+          "DataType": {
+            "$type": "StringType",
+            "FixedLength": null,
+            "SourceToken": null,
+            "Position": {
+              "FileId": 0,
+              "Line": 0,
+              "Column": 0
+            },
+            "SourceLineIndex": -1,
+            "ScopeId": -1
+          },
+          "KeyLength": 32,
+          "IsUnique": true,
+          "IsUnsafe": false
+        },
+        "SecondaryKeys": [
+          {
+            "Name": "IX_VAL",
+            "KeyExpression": "Value",
+            "DataType": {
+              "$type": "StringType",
+              "FixedLength": null,
+              "SourceToken": null,
+              "Position": {
+                "FileId": -1,
+                "Line": 0,
+                "Column": 0
+              },
+              "SourceLineIndex": -1,
+              "ScopeId": -1
+            },
+            "KeyLength": 32,
+            "IsUnique": false,
+            "IsUnsafe": false
+          }
+        ],
+        "ViewDefinitionQuery": null
+      },
+      "SstFilesByLevel": {},
+      "RowCount": 1,
+      "RowCountTrusted": true
+    },
+    "_idx_KV_IX_VAL": {
+      "Id": 2,
+      "Name": "_idx_KV_IX_VAL",
+      "Schema": {
+        "TypeName": "_idx_KV_IX_VAL",
+        "Fields": [
+          {
+            "Name": "PK",
+            "DataType": {
+              "$type": "StringType",
+              "FixedLength": null,
+              "SourceToken": null,
+              "Position": {
+                "FileId": -1,
+                "Line": 0,
+                "Column": 0
+              },
+              "SourceLineIndex": -1,
+              "ScopeId": -1
+            },
+            "Length": 32
+          }
+        ],
+        "PrimaryKey": {
+          "Name": "IX_VAL",
+          "KeyExpression": "Value",
+          "DataType": {
+            "$type": "StringType",
+            "FixedLength": null,
+            "SourceToken": null,
+            "Position": {
+              "FileId": -1,
+              "Line": 0,
+              "Column": 0
+            },
+            "SourceLineIndex": -1,
+            "ScopeId": -1
+          },
+          "KeyLength": 32,
+          "IsUnique": true,
+          "IsUnsafe": false
+        },
+        "SecondaryKeys": [],
+        "ViewDefinitionQuery": null
+      },
+      "SstFilesByLevel": {},
+      "RowCount": 2,
+      "RowCountTrusted": true
+    }
+  },
+  "FilesToDelete": []
+}

@@ -1,0 +1,3 @@
+SUB Main()
+  PRINT INT(3.9)
+END SUB

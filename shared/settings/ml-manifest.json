@@ -1,0 +1,198 @@
+{
+  "version": "0.1.0",
+  "cacheDir": "~/.gmbasic/ml",
+  "comment": "Librerie runtime ML per RID. source: 'build'=host libgmb_torch (da Resources/libs/<rid> o cache ~/.gmbasic/libs/<rid>), 'local'=libtorch da un torch locale (GMB_TORCH_LOCAL o venv ~/ai), 'url'=nostro binario (wrapper libgmb_torch / loader) dal release torch-v1 di GMBasicModules, 'archive'=libtorch ufficiale da download.pytorch.org. SHA256 verificato per ogni file.",
+  "runtimes": {
+    "osx-arm64": {
+      "torchVersion": "2.13.0",
+      "device": "cpu",
+      "archive": {
+        "url": "https://download.pytorch.org/libtorch/cpu/libtorch-macos-arm64-2.13.0.zip",
+        "libDir": "libtorch/lib"
+      },
+      "files": [
+        {
+          "name": "libgmb_torch.dylib",
+          "sha256": "2489d6a4ca45d0fa82ee2e5edf7a1ec7a962fe5ffebeea2407efe07bb89c8959",
+          "size": 421280,
+          "source": "url",
+          "url": "https://github.com/c-vision/GMBasicModules/releases/download/torch-v1/libgmb_torch-osx-arm64.dylib"
+        },
+        {
+          "name": "libgmb_torch_loader.dylib",
+          "sha256": "3b1caf0638e9e611ce55014f692d0c2c175f66996d20fe60620f4e7d2558827d",
+          "size": 72808,
+          "source": "url",
+          "url": "https://github.com/c-vision/GMBasicModules/releases/download/torch-v1/libgmb_torch_loader-osx-arm64.dylib"
+        },
+        {
+          "name": "libtorch_cpu.dylib",
+          "sha256": "f1584a65a2a09b5ddbe90a4e195ba824087b430a9f21cb1df9b8894177b99987",
+          "size": 337911904,
+          "source": "archive"
+        },
+        {
+          "name": "libc10.dylib",
+          "sha256": "5db5749503cd842562a666510a72fa127dedd3a0046784760fdaeee9c562f23b",
+          "size": 1102704,
+          "source": "archive"
+        },
+        {
+          "name": "libomp.dylib",
+          "sha256": "6256bee09e93c28d71c65711cc69224d69994c6965648b628b70a22772fe98d4",
+          "size": 856096,
+          "source": "archive"
+        },
+        {
+          "name": "libtorch.dylib",
+          "sha256": "c9d126afd218772f9cd17387f79eaf117cdf15d89d5a0b6231c03c9a43ace910",
+          "size": 16752,
+          "source": "archive"
+        }
+      ]
+    },
+    "osx-x64": {
+      "torchVersion": "2.13.0",
+      "device": "cpu",
+      "files": [
+        {
+          "name": "libgmb_torch.dylib",
+          "sha256": "",
+          "size": 0,
+          "source": "build"
+        }
+      ]
+    },
+    "linux-x64": {
+      "torchVersion": "2.13.0",
+      "device": "cpu",
+      "archive": {
+        "url": "https://download.pytorch.org/libtorch/cpu/libtorch-shared-with-deps-2.13.0+cpu.zip",
+        "libDir": "libtorch/lib",
+        "extractAll": true
+      },
+      "files": [
+        {
+          "name": "libgmb_torch.so",
+          "sha256": "562d49d51ce8d4546a2c713c24df17fa6f68cde68354f1c7c16b05b928870127",
+          "size": 531968,
+          "source": "url",
+          "url": "https://github.com/c-vision/GMBasicModules/releases/download/torch-v1/libgmb_torch-linux-x64.so"
+        },
+        {
+          "name": "libgmb_torch_loader.so",
+          "sha256": "aeebb26eaf84ffdbbfcee0282985f0b60e5b03e47780d58407de101113dfc9e8",
+          "size": 41672,
+          "source": "url",
+          "url": "https://github.com/c-vision/GMBasicModules/releases/download/torch-v1/libgmb_torch_loader-linux-x64.so"
+        },
+        {
+          "name": "libtorch.so",
+          "sha256": "28b3d3926e0674eda7dcdf26c27dfd05cb455d681d11cb84fdbf7e0df72f3f7b",
+          "size": 8032,
+          "source": "archive"
+        },
+        {
+          "name": "libtorch_cpu.so",
+          "sha256": "55de3057c8866e30d3fe56e4c4554860d5bf85c37b8ae6e2c81eea5c00d0ec3c",
+          "size": 433796632,
+          "source": "archive"
+        },
+        {
+          "name": "libc10.so",
+          "sha256": "52d951ec184bf4ead929cfa5a24daa14cc617bf9e2180b6e551434b6f11d0b3f",
+          "size": 1525128,
+          "source": "archive"
+        },
+        {
+          "name": "libgomp.so.1",
+          "sha256": "78511033caddec6ccae8f4d62b94d56135f377c4cee33120e6d7df2ef499f69f",
+          "size": 253849,
+          "source": "archive"
+        },
+        {
+          "name": "libshm.so",
+          "sha256": "d3539f0adf29d40515d063bac49a09dbb8619d405059e7a6d61da40cc7f5dc45",
+          "size": 41336,
+          "source": "archive"
+        }
+      ]
+    },
+    "linux-arm64": {
+      "torchVersion": "2.13.0",
+      "device": "cpu",
+      "files": [
+        {
+          "name": "libgmb_torch.so",
+          "sha256": "",
+          "size": 0,
+          "source": "build"
+        }
+      ]
+    },
+    "win-x64": {
+      "torchVersion": "2.13.0",
+      "device": "cpu",
+      "archive": {
+        "url": "https://download.pytorch.org/libtorch/cpu/libtorch-win-shared-with-deps-2.13.0%2Bcpu.zip",
+        "libDir": "libtorch/lib",
+        "extractAll": true
+      },
+      "files": [
+        {
+          "name": "gmb_torch.dll",
+          "sha256": "",
+          "size": 0,
+          "source": "build"
+        }
+      ]
+    },
+    "win-arm64": {
+      "torchVersion": "2.13.0",
+      "device": "cpu",
+      "archive": {
+        "url": "https://download.pytorch.org/libtorch/cpu/libtorch-win-arm64-shared-with-deps-2.13.0+cpu.zip",
+        "libDir": "libtorch/lib",
+        "extractAll": true
+      },
+      "files": [
+        {
+          "name": "gmb_torch.dll",
+          "sha256": "",
+          "size": 0,
+          "source": "build"
+        },
+        {
+          "name": "torch.dll",
+          "sha256": "d26d23622354b3cef452b1e268d9c9c14a27bf6d72117207e7d1c78fb32c8c84",
+          "size": 9728,
+          "source": "archive"
+        },
+        {
+          "name": "torch_cpu.dll",
+          "sha256": "03d94ae60025781512b13403a8a65ee6301b6812da2c68dd911971aaa3e4813b",
+          "size": 112476160,
+          "source": "archive"
+        },
+        {
+          "name": "c10.dll",
+          "sha256": "0848bf63fc5cc36d7f87e60013a3aa35f7d3840de192c56872daf104bc4b43e8",
+          "size": 1159168,
+          "source": "archive"
+        },
+        {
+          "name": "armpl_lp64.dll",
+          "sha256": "2913a6f3b11d43695f4a4cfe501e67e3d67ce14f652e0b99bdbe38d0564ba665",
+          "size": 37806080,
+          "source": "archive"
+        },
+        {
+          "name": "shm.dll",
+          "sha256": "80caea5b80382e3645d5c3aac93b0e88d3fcd7433d2bc8262ee161ec8a8bf714",
+          "size": 14336,
+          "source": "archive"
+        }
+      ]
+    }
+  }
+}

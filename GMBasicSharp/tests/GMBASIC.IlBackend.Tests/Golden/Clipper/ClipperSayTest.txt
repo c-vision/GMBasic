@@ -1,0 +1,12 @@
+Conformance: edition=Commercial
+  code=1274 bytes, consts=38, entry=1064
+  A1 chunk: /var/folders/b_/gsctxq2x5sq9gh7zpqpgrd0m0000gn/T/gmb_vmtest_76ced68f.chunk (12881 bytes)
+[1;1HHello World[2;1HPrezzo:[3;1HBenvenuto Mario[5;1HRiga 1[6;1HRiga 2[7;1HRiga 3[8;1HABC123[9;1HData:  46253.9166666667   ---- VM/C OUTPUT ----
+T1_OK
+T2_OK
+T3_OK
+T4_OK
+T5_OK
+T6_OK
+ALL_SAY_TESTS_PASSED
+  exit=0

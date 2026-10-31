@@ -1,0 +1,2 @@
+# sample lento by design: goroutine detached con SLEEP 5000 attesa dal driver (come il PCodeVM)
+@timeout 12000

@@ -1,0 +1,9 @@
+<%@ AUTHORIZE admin %>
+<!DOCTYPE html>
+<html>
+<body>
+  <h1>Pannello admin</h1>
+  <p>Utente autenticato: <%= SESSION("user") %></p>
+  <p>Ruolo: <%= SESSION("role") %></p>
+</body>
+</html>

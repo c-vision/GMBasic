@@ -1,0 +1,5 @@
+' EXPECT: rip=
+IMPORT NET
+SUB Main()
+  PRINT "rip="; NET.REMOTEIP(0)
+END SUB

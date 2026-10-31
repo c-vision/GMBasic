@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "name": "BookingAgent",
+  "id": "72f94cf8576548dd8816d6860753879a",
+  "model": "fixture-llm-v1",
+  "temperature": 0.7,
+  "maxTokens": 2048,
+  "systemPrompt": "You remember booking context.",
+  "toolNames": [],
+  "history": [
+    {
+      "role": "user",
+      "content": "Reserve table for two at 8pm."
+    },
+    {
+      "role": "assistant",
+      "content": "[user: Reserve table for two at 8pm.] (insufficient context)"
+    }
+  ],
+  "skillsEnabled": false,
+  "sessionStreamingEnabled": false,
+  "clientToolsEnabled": false,
+  "memoryEnabled": false,
+  "pluginsEnabled": false,
+  "permissionLevel": 2,
+  "toolPolicies": {},
+  "brains": ""
+}

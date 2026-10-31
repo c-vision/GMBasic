@@ -1,0 +1,14 @@
+' EXPECT: ok
+IMPORT ISAM
+TYPE R
+    ID AS STRING * 10
+    V AS STRING * 20
+END TYPE
+SUB Main()
+    ON ERROR RESUME NEXT
+    KILL "/tmp/isam_c.isdb"
+    ON ERROR GOTO 0
+    ISAM OPEN "/tmp/isam_c.isdb" OF R ALIAS X INDEXED BY ID
+    ISAM CLOSE X
+    PRINT "ok"
+END SUB

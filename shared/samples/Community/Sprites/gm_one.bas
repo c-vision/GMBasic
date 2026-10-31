@@ -1,0 +1,8 @@
+SUB Main()
+  SCREEN 12
+  DIM id AS LONG
+  SPRITE LOAD "player.png", id
+  SPRITE SET POSITION id, 320, 240
+  SYNC
+  SLEEP 3000
+END SUB

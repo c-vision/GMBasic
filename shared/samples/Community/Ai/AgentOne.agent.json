@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "name": "AgentOne",
+  "id": "b46c2c41c7144fbda8ec3fbb65bf4d77",
+  "model": "gpt4",
+  "temperature": 0.7,
+  "maxTokens": 2048,
+  "systemPrompt": "Assistente dati.",
+  "toolNames": [],
+  "history": [
+    {
+      "role": "user",
+      "content": "Capitale Francia?"
+    },
+    {
+      "role": "assistant",
+      "content": "[user: Capitale Francia?] (insufficient context)"
+    }
+  ],
+  "skillsEnabled": false,
+  "sessionStreamingEnabled": false,
+  "clientToolsEnabled": false,
+  "memoryEnabled": false,
+  "pluginsEnabled": false,
+  "permissionLevel": 2,
+  "toolPolicies": {},
+  "brains": ""
+}

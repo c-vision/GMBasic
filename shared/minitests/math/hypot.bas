@@ -1,0 +1,3 @@
+SUB Main()
+  PRINT HYPOT(3, 4)
+END SUB

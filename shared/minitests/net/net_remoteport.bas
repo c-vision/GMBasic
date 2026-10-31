@@ -1,0 +1,5 @@
+' EXPECT: rport= 0
+IMPORT NET
+SUB Main()
+  PRINT "rport="; NET.REMOTEPORT(0)
+END SUB

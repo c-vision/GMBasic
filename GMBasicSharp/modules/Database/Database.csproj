@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- D11: il modulo Database (driver commerciali) NON è compilato in Community.
+       Viene incluso solo quando GmbHdition=Commercial. -->
+  <PropertyGroup Condition="'$(GmbEdition)' == 'Community'">
+    <GmbModuleDatabaseExcluded>true</GmbModuleDatabaseExcluded>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>preview</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Basic</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <!--
+    Database — driver commerciali (D11).
+    Contiene SOLO i driver proprietari: ISAM, DBF, SPEED, Ledger + Replication/Locks.
+    MAI referenziato/compilato nella Community Edition.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\common\Databases\Databases.csproj" />
+        <ProjectReference Include="..\..\common\Databases.AdoProviders\Databases.AdoProviders.csproj" />
+    <ProjectReference Include="..\..\common\CommonLib\CommonLib.csproj" />
+    <ProjectReference Include="..\..\common\Ast\Ast.csproj" />
+    <ProjectReference Include="..\..\common\Compilation\Compilation.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,54 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>GMBasic.Runtime.IL</AssemblyName>
+    <RootNamespace>Basic.IlBackend</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>preview</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ILGPU" Version="1.5.3" />
+    <PackageReference Include="ILGPU.Algorithms" Version="1.5.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- IlRuntime è public static class: il codegen (IlProgramCompiler, NativeBackend) usa i suoi
+         metodi public e internals (es. BuildHttpOptions). Esponiamo gli internals al codegen. -->
+    <InternalsVisibleTo Include="GMBasic.IlBackend" />
+    <!-- Host C# (Executor/REPL): registrano in BspDispatch il compilatore BSP→IL
+         (Orchestrator.CompileFromString), che IlBackendRuntime non può referenziare per layering. -->
+    <InternalsVisibleTo Include="Executor" />
+    <InternalsVisibleTo Include="REPL" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ast\Ast.csproj" />
+    <ProjectReference Include="..\Compilation\Compilation.csproj" />
+    <ProjectReference Include="..\BRT\BRT.csproj" />
+    <ProjectReference Include="..\CommonLib\CommonLib.csproj" />
+    <ProjectReference Include="..\ClipperLib\ClipperLib.csproj" />
+    <ProjectReference Include="..\CommonGraphics\CommonGraphics.csproj" />
+    <ProjectReference Include="..\Parser\Parser.csproj" />
+    <ProjectReference Include="..\Lexer\Lexer.csproj" />
+    <ProjectReference Include="..\StdLib\StdLib.csproj" />
+    <ProjectReference Include="..\StdLib.Runtime\StdLib.Runtime.csproj" />
+    <ProjectReference Include="..\Linker\Linker.csproj" />
+    <ProjectReference Include="..\Compiler\Compiler.csproj" />
+    <ProjectReference Include="..\AI\AI.csproj" />
+    <ProjectReference Include="..\Databases\Databases.csproj" />
+    <ProjectReference Include="..\Pipeline\Pipeline.csproj" />
+  </ItemGroup>
+
+  <!--
+    RUNTIME IL: solo i file di esecuzione (IlRuntime + PCodeVM + helper). Il CODEGEN
+    (IlProgramCompiler + supporti) resta in GMBasic.IlBackend.
+    I file sono LINKATI (non spostati) per evitare conflitti con altre sessioni sul working tree.
+  -->
+  <ItemGroup>
+  </ItemGroup>
+
+</Project>

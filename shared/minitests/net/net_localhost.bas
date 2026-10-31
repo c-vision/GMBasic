@@ -1,0 +1,5 @@
+' EXPECT: host-ok
+IMPORT NET
+SUB Main()
+  IF LEN(NET.LOCALHOST()) > 0 THEN PRINT "host-ok"
+END SUB

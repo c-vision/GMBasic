@@ -1,0 +1,107 @@
+[
+  {
+    "name": "IDENTIFIERS",
+    "category": "GRAMMAR",
+    "description": "Definisce le regole per i nomi di variabili, costanti, procedure e tipi.\n- Case-Insensitive: 'Nome' è uguale a 'nome'.\n- Caratteri: Devono iniziare con una lettera, seguiti da lettere, numeri o underscore (_).\n- Suffissi di Tipo: Un suffisso speciale alla fine del nome ne dichiara implicitamente il tipo:\n  $: String\n  %: Integer (16-bit)\n  &: Long (32-bit)\n  !: Single\n  #: Double",
+    "syntax": [
+      "Mia_Variabile",
+      "Nome$",
+      "Contatore%"
+    ],
+    "examples": [
+      {
+        "description": "Dichiarazione di variabili con e senza suffisso di tipo.",
+        "code": "DIM MioValore\nDIM NomeCliente$, Anni&"
+      }
+    ]
+  },
+  {
+    "name": "LITERALS",
+    "category": "GRAMMAR",
+    "description": "Definisce i formati per i valori costanti nel codice.\n- Stringhe Standard: Racchiuse tra doppi apici (\"). Per inserire un apice, raddoppiarlo (\"\").\n- Raw Strings: Racchiuse tra tripli apici (\"\"\"). Possono estendersi su più righe e il testo viene unito in una singola linea.\n- Numeri Decimali: Es. 123, 99.99\n- Numeri Esadecimali: Prefisso '0x' (es. 0xFF).\n- Numeri Ottali: Prefisso '0o' (es. 0o17).\n- Numeri Binari: Prefisso '0b' (es. 0b1010).",
+    "syntax": [
+      "\"Questa è una stringa.\"",
+      "\"\"\"Questa è una\n   raw string.\"\"\"",
+      "123.45",
+      "0xFF"
+    ],
+    "examples": [
+      {
+        "description": "Uso di diversi tipi di letterali.",
+        "code": "Messaggio$ = \"Ha detto: \"\"Ciao!\"\"\"\nValore = 0b1101 + 10"
+      }
+    ]
+  },
+  {
+    "name": "COMMENTS",
+    "category": "GRAMMAR",
+    "description": "Modi per inserire commenti nel codice, che vengono ignorati dall'interprete.\n- REM: Commenta fino alla fine della riga logica (fino a ':' o a capo).\n- ': Commenta fino alla fine della riga fisica (fino a capo).\n- //: Come l'apostrofo, commenta fino alla fine della riga fisica.\n- /* ... */: Commento a blocco che può estendersi su più righe.",
+    "syntax": [
+      "REM commento",
+      "' commento",
+      "// commento",
+      "/* commento su\n   più righe */"
+    ],
+    "examples": [
+      {
+        "description": "Esempi di diversi stili di commento.",
+        "code": "REM Calcola il totale\nTotal = A + B ' Aggiunge B ad A\n// Altra nota: C non viene usato : REM questo commento viene ignorato\n/*\n  Questo è un blocco\n  di commento.\n*/"
+      }
+    ]
+  },
+  {
+    "name": "OPERATORS",
+    "category": "GRAMMAR",
+    "description": "Elenco degli operatori in ordine di precedenza (dal più alto al più basso).\n1. () [] {}  (Raggruppamento, Accesso ad array/indici, Letterali)\n2. .         (Accesso a campi)\n3. ^         (Esponenziazione)\n4. - NOT    (Unari)\n5. * / \\ MOD (Moltiplicativi)\n6. + -      (Additivi)\n7. = <> < > <= >= (Comparazione)\n8. AND      (Logico)\n9. OR       (Logico)\nAlias di comparazione: '!=' e '><' per '<>'; '=>' per '>='; '=<' per '<='.",
+    "syntax": [
+      "A + B * C",
+      "NOT Flag OR AltraCondizione",
+      "MioArray(Indice).Campo"
+    ],
+    "examples": [
+      {
+        "description": "Esempio di precedenza degli operatori.",
+        "code": "Risultato = 2 + 3 * 4 ' Stampa 14 (3*4 viene eseguito prima)\nRisultato = (2 + 3) * 4 ' Stampa 20 (le parentesi forzano l'ordine)"
+      },
+      {
+        "description": "Esempio di utilizzo degli alias per gli operatori di confronto.",
+        "code": "A = 10 : B = 20\nIF A <> B THEN PRINT \"<> OK\"\nIF A != B THEN PRINT \"!= OK\"\nIF A >< B THEN PRINT \"'><' OK\"\n\nIF A <= B THEN PRINT \"<= OK\"\nIF A =< B THEN PRINT \"=< OK\"\n\nIF B >= A THEN PRINT \">= OK\"\nIF B => A THEN PRINT \"=> OK\""
+      }
+    ]
+  },
+  {
+    "name": "CONTINUATION",
+    "category": "GRAMMAR",
+    "description": "Regole per separare e continuare le istruzioni.\n- Separatore (:): Permette di scrivere più istruzioni sulla stessa riga.\n- Continuazione Esplicita (_): Un underscore alla fine di una riga fisica unisce quella riga con la successiva.\n- Continuazione Implicita: Un a-capo viene ignorato dopo operatori binari (+, =, AND, etc.), virgole (,) e punti (.).",
+    "syntax": [
+      "istruzione1 : istruzione2",
+      "PRINT \"Testo\" _\n      \" continuato\"",
+      "X = 1 + _\n    2"
+    ],
+    "examples": [
+      {
+        "description": "Uso del separatore e della continuazione di riga.",
+        "code": "A = 10 : B = 20 : PRINT A + B\nLungaStringa$ = \"Prima parte \" _\n                \"e seconda parte.\""
+      }
+    ]
+  },
+  {
+    "name": "PREPROCESSOR",
+    "category": "GRAMMAR",
+    "description": "Direttive di compilazione condizionale che permettono di includere o escludere blocchi di codice in base a simboli definiti.",
+    "syntax": [
+      "#DEF simbolo [valore]",
+      "#UNDEF simbolo",
+      "#IFDEF simbolo",
+      "#IFUNDEF simbolo",
+      "#ELSE",
+      "#ENDIF"
+    ],
+    "examples": [
+      {
+        "description": "Compila un blocco di codice solo se il simbolo 'DEBUG' è definito.",
+        "code": "#DEF DEBUG\n\n#IFDEF DEBUG\n  PRINT \"Modalità debug attiva.\"\n#ELSE\n  PRINT \"Modalità release.\"\n#ENDIF"
+      }
+    ]
+  }
+]

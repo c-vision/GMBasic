@@ -1,0 +1,14 @@
+' Minitest MOUSE — parità 4 backend (tutti gli statement mouse, headless).
+IMPORT MOUSE
+SUB Main()
+  MOUSE ON
+  MOUSE SHOW
+  MOUSE SET 10, 5
+  MOUSE LIMIT 0, 0, 80, 24
+  MOUSE CURSOR 1
+  MOUSE UNLIMIT
+  MOUSE HIDE
+  MOUSE OFF
+  MOUSE WAIT
+  PRINT "MOUSE-OK"
+END SUB

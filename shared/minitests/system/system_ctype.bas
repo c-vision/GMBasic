@@ -1,0 +1,8 @@
+' EXPECT: str-ok|int-ok
+IMPORT SYSTEM
+SUB Main()
+  DIM s$ = SYSTEM.CTYPE(42, "STRING")
+  IF LEN(s$) > 0 THEN PRINT "str-ok"
+  DIM n = SYSTEM.CTYPE("123", "INTEGER")
+  IF n = 123 THEN PRINT "int-ok"
+END SUB

@@ -1,0 +1,7 @@
+' MiniTest: LLM TENSOR CED (§4.8) prova BOUNDED — con eps, elimina anche i tensori NON nulli
+' con max|w| < eps (errore limitato: ||W||inf < eps). Fixture tiny_big_moe (pesi ~0.5-1.75).
+' EXPECT: BOUNDED (maxw=5.000e-01 < 2.0e+00, candidato ELIMINA): token_embd.weight (131072 byte)|BOUNDED (maxw=5.000e-01 < 2.0e+00, candidato ELIMINA): output.weight (131072 byte)|BOUNDED (maxw=1.750e+00 < 2.0e+00, candidato ELIMINA): output_norm.weight (1024 byte)|BOUNDED (maxw=1.750e+00 < 2.0e+00, candidato ELIMINA): blk.0.attn_norm.weight (1024 byte)|BOUNDED (maxw=1.750e+00 < 2.0e+00, candidato ELIMINA): blk.0.ffn_norm.weight (1024 byte)|BOUNDED (maxw=5.000e-01 < 2.0e+00, candidato ELIMINA): blk.0.attn_q.weight (131072 byte)|BOUNDED (maxw=5.000e-01 < 2.0e+00, candidato ELIMINA): blk.0.attn_k.weight (131072 byte)|BOUNDED (maxw=5.000e-01 < 2.0e+00, candidato ELIMINA): blk.0.attn_v.weight (131072 byte)|# LLM TENSOR CED '../../samples/Fixtures/models/tiny_big_moe.gguf' arch=qwen3_moe: tensori=23 (scan campionato) all-zero=0|elimination plan (ESATTA): 0 tensori / 0 layer, 0 byte su 3941376 = 0.00% del modello|elimination plan (BOUNDED, maxw<2.0e+00): 23 tensori, 3941376 byte (prova: norma_inf < eps -> errore limitato)|GATE/kill-switch: ON — eliminazione ATTIVA (applica al .gmbllm/prune) (default OFF = report-only; ON abilita l'applicazione a compile/prune)
+IMPORT LLM
+SUB Main()
+  LLM TENSOR CED "../../samples/Fixtures/models/tiny_big_moe.gguf", "on:2.0"
+END SUB

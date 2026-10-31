@@ -1,0 +1,3 @@
+SUB Main()
+  PRINT STR(12)
+END SUB

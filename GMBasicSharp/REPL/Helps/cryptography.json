@@ -1,0 +1,562 @@
+[
+  {
+    "name": "MD5",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "Hashing",
+    "description": "Calcola l'hash MD5 dei dati forniti e restituisce un array di 16 byte. MD5 non e' considerato crittograficamente sicuro per nuove applicazioni: usare SHA256 o SHA512 per sicurezza. Utile per checksum, fingerprint non crittici e compatibilita' legacy.",
+    "syntax": ["CRYPTOGRAPHY.MD5(data)"],
+    "returnType": "ARRAY OF BYTE",
+    "parameters": [
+      { "name": "data", "type": "STRING/ARRAY OF BYTE", "description": "Dati di cui calcolare l'hash. Puo' essere una stringa o un array di byte." }
+    ],
+    "examples": [
+      { "description": "Calcola MD5 di una stringa e lo converte in esadecimale.", "code": "Testo$ = \"Hello World\"\nHashBytes = CRYPTOGRAPHY.MD5(Testo$)\nHashHex$ = CRYPTOGRAPHY.TOHEX(HashBytes)\nPRINT \"MD5('Hello World') = \"; HashHex$", "expectedOutput": "MD5('Hello World') = B10A8DB164E0754105B7A99BE72E3FE5" }
+    ],
+    "seeAlso": ["STRMD5", "SHA1", "SHA256", "SHA512", "TOHEX"],
+    "isCommand": false
+  },
+  {
+    "name": "SHA1",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "Hashing",
+    "description": "Calcola l'hash SHA-1 dei dati e restituisce un array di 20 byte. SHA-1 non e' piu' considerato sicuro contro attacchi di collisione. Preferire SHA256 o SHA512 per applicazioni critiche.",
+    "syntax": ["CRYPTOGRAPHY.SHA1(data)"],
+    "returnType": "ARRAY OF BYTE",
+    "parameters": [
+      { "name": "data", "type": "STRING/ARRAY OF BYTE", "description": "Dati di cui calcolare l'hash SHA-1." }
+    ],
+    "examples": [
+      { "description": "Verifica integrita' file con SHA-1.", "code": "Contenuto$ = IO.FILETOSTR(\"documento.pdf\")\nHash = CRYPTOGRAPHY.SHA1(Contenuto$)\nPRINT \"SHA-1 del file: \"; CRYPTOGRAPHY.TOHEX(Hash)", "expectedOutput": "SHA-1 del file: A7190B1F6C4C8D8E5A3F2B1C0D9E8F7A6B5C4D3E2" }
+    ],
+    "seeAlso": ["STRSHA1", "MD5", "SHA256", "SHA512", "HASHFILE"],
+    "isCommand": false
+  },
+  {
+    "name": "SHA256",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "Hashing",
+    "description": "Calcola l'hash SHA-256 dei dati e restituisce un array di 32 byte. SHA-256 e' considerato crittograficamente sicuro ed e' l'algoritmo di hashing raccomandato per la maggior parte delle applicazioni: verifica integrita', firme digitali, blockchain.",
+    "syntax": ["CRYPTOGRAPHY.SHA256(data)"],
+    "returnType": "ARRAY OF BYTE",
+    "parameters": [
+      { "name": "data", "type": "STRING/ARRAY OF BYTE", "description": "Dati di cui calcolare l'hash SHA-256." }
+    ],
+    "examples": [
+      { "description": "Calcola SHA-256 di una password (da usare con salt in produzione).", "code": "Password$ = \"S3cur3P@ss!\"\nHash = CRYPTOGRAPHY.SHA256(Password$)\nHashHex$ = CRYPTOGRAPHY.TOHEX(Hash)\nPRINT \"Hash password: \"; HashHex$", "expectedOutput": "Hash password: E3B0C44298FC1C14... (64 caratteri hex)" },
+      { "description": "Verifica che un download non sia stato alterato.", "code": "FileBin = IO.FILETOSTR(\"download.zip\")\nHashCalcolato$ = CRYPTOGRAPHY.STRSHA256(FileBin)\nHashAtteso$ = \"ABC123...\"\nIF HashCalcolato$ = HashAtteso$ THEN\n  PRINT \"File integro: checksum verificato.\"\nELSE\n  PRINT \"ATTENZIONE: il file e' stato alterato!\"\nEND IF", "expectedOutput": "File integro: checksum verificato." }
+    ],
+    "seeAlso": ["STRSHA256", "SHA512", "MD5", "HASHFILE", "STRHASHFILE"],
+    "isCommand": false
+  },
+  {
+    "name": "SHA512",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "Hashing",
+    "description": "Calcola l'hash SHA-512 dei dati e restituisce un array di 64 byte. Offre la massima sicurezza tra gli algoritmi SHA della famiglia. Utile per applicazioni che richiedono il massimo livello di protezione crittografica.",
+    "syntax": ["CRYPTOGRAPHY.SHA512(data)"],
+    "returnType": "ARRAY OF BYTE",
+    "parameters": [
+      { "name": "data", "type": "STRING/ARRAY OF BYTE", "description": "Dati di cui calcolare l'hash SHA-512." }
+    ],
+    "examples": [
+      { "description": "Genera un identificatore univoco basato su SHA-512.", "code": "DatiUnici$ = \"user_\" + STRTI() + \"_\" + CSTR(RND)\nHash = CRYPTOGRAPHY.SHA512(DatiUnici$)\nID$ = LEFT(CRYPTOGRAPHY.TOHEX(Hash), 32)\nPRINT \"ID univoco: \"; ID$", "expectedOutput": "ID univoco: A1B2C3D4E5F6A7B8C9D0E1F2A3B4C5D6" }
+    ],
+    "seeAlso": ["STRSHA512", "SHA256", "HASHFILE", "STRHASHFILE"],
+    "isCommand": false
+  },
+  {
+    "name": "STRMD5",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "Hashing",
+    "description": "Calcola l'hash MD5 e restituisce direttamente la stringa esadecimale (32 caratteri). Versione semplificata che combina MD5 + TOHEX in una singola chiamata.",
+    "syntax": ["CRYPTOGRAPHY.STRMD5(data)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "data", "type": "STRING/ARRAY OF BYTE", "description": "Dati di cui calcolare l'hash MD5." }
+    ],
+    "examples": [
+      { "description": "Fingerprint rapido di una stringa.", "code": "PRINT \"Fingerprint: \"; CRYPTOGRAPHY.STRMD5(\"GM-Basic 2.0\")", "expectedOutput": "Fingerprint: D41D8CD98F00B204E9800998ECF8427E" }
+    ],
+    "seeAlso": ["MD5", "STRSHA1", "STRSHA256", "STRSHA512", "TOHEX"],
+    "isCommand": false
+  },
+  {
+    "name": "STRSHA1",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "Hashing",
+    "description": "Calcola l'hash SHA-1 e restituisce direttamente la stringa esadecimale (40 caratteri). Combinazione di SHA1 + TOHEX.",
+    "syntax": ["CRYPTOGRAPHY.STRSHA1(data)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "data", "type": "STRING/ARRAY OF BYTE", "description": "Dati di cui calcolare l'hash SHA-1." }
+    ],
+    "examples": [
+      { "description": "Verifica rapida di integrita'.", "code": "Dati$ = \"documento importante\"\nPRINT \"SHA-1: \"; CRYPTOGRAPHY.STRSHA1(Dati$)", "expectedOutput": "SHA-1: A7190B1F6C4C8D8E5A3F2B1C0D9E8F7A6B5C4D3" }
+    ],
+    "seeAlso": ["SHA1", "STRMD5", "STRSHA256", "STRSHA512"],
+    "isCommand": false
+  },
+  {
+    "name": "STRSHA256",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "Hashing",
+    "description": "Calcola l'hash SHA-256 e restituisce direttamente la stringa esadecimale (64 caratteri). La scelta piu' comune per hash in formato stringa.",
+    "syntax": ["CRYPTOGRAPHY.STRSHA256(data)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "data", "type": "STRING/ARRAY OF BYTE", "description": "Dati di cui calcolare l'hash SHA-256." }
+    ],
+    "examples": [
+      { "description": "API key hashing per storage sicuro.", "code": "ApiKey$ = \"sk_live_4a8b9c0d1e2f3a4b5c6d7e8f\"\nHashChiave$ = CRYPTOGRAPHY.STRSHA256(ApiKey$)\nPRINT \"Chiave hash: \"; LEFT(HashChiave$, 16); \"...\"", "expectedOutput": "Chiave hash: E3B0C44298FC1C14..." }
+    ],
+    "seeAlso": ["SHA256", "STRMD5", "STRSHA1", "STRSHA512", "STRHASHFILE"],
+    "isCommand": false
+  },
+  {
+    "name": "STRSHA512",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "Hashing",
+    "description": "Calcola l'hash SHA-512 e restituisce direttamente la stringa esadecimale (128 caratteri). Hash piu' lungo, massima unicita'.",
+    "syntax": ["CRYPTOGRAPHY.STRSHA512(data)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "data", "type": "STRING/ARRAY OF BYTE", "description": "Dati di cui calcolare l'hash SHA-512." }
+    ],
+    "examples": [
+      { "description": "Impronta digitale di un documento legale.", "code": "Contratto$ = IO.FILETOSTR(\"contratto.pdf\")\nImpronta$ = CRYPTOGRAPHY.STRSHA512(Contratto$)\nPRINT \"Impronta contratto: \"; LEFT(Impronta$, 32); \"...\"", "expectedOutput": "Impronta contratto: 0FDBBF0FC1A2B3C4D5E6F7A8B9C0D1E2..." }
+    ],
+    "seeAlso": ["SHA512", "STRSHA256", "STRHASHFILE"],
+    "isCommand": false
+  },
+  {
+    "name": "HASHFILE",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "Hashing",
+    "description": "Calcola l'hash crittografico del contenuto di un file su disco. L'algoritmo e' specificato dal parametro: 'MD5', 'SHA1', 'SHA256', 'SHA512'. Non e' necessario caricare il file in memoria: la funzione legge il file a blocchi.",
+    "syntax": ["CRYPTOGRAPHY.HASHFILE(file_path$, algorithm$)"],
+    "returnType": "ARRAY OF BYTE",
+    "parameters": [
+      { "name": "file_path$", "type": "STRING", "description": "Percorso del file di cui calcolare l'hash." },
+      { "name": "algorithm$", "type": "STRING", "description": "Algoritmo da usare: 'MD5', 'SHA1', 'SHA256', 'SHA512'." }
+    ],
+    "examples": [
+      { "description": "Calcola SHA256 di un file binario grande senza caricarlo in memoria.", "code": "File$ = \"database_backup.sql\"\nHash = CRYPTOGRAPHY.HASHFILE(File$, \"SHA256\")\nPRINT \"SHA256 di \"; File$; \": \"; CRYPTOGRAPHY.TOHEX(Hash)", "expectedOutput": "SHA256 di database_backup.sql: 1A2B3C4D5E6F..." }
+    ],
+    "seeAlso": ["STRHASHFILE", "SHA256", "SHA512", "MD5", "TOHEX"],
+    "isCommand": false
+  },
+  {
+    "name": "STRHASHFILE",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "Hashing",
+    "description": "Calcola l'hash di un file e restituisce direttamente la stringa esadecimale. Combinazione di HASHFILE + TOHEX. L'algoritmo e' specificato dal secondo parametro.",
+    "syntax": ["CRYPTOGRAPHY.STRHASHFILE(file_path$, algorithm$)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "file_path$", "type": "STRING", "description": "Percorso del file." },
+      { "name": "algorithm$", "type": "STRING", "description": "Algoritmo: 'MD5', 'SHA1', 'SHA256', 'SHA512'." }
+    ],
+    "examples": [
+      { "description": "Confronto checksum tra due file.", "code": "Hash1$ = CRYPTOGRAPHY.STRHASHFILE(\"file1.bin\", \"SHA256\")\nHash2$ = CRYPTOGRAPHY.STRHASHFILE(\"file2.bin\", \"SHA256\")\nIF Hash1$ = Hash2$ THEN\n  PRINT \"I file sono identici.\"\nELSE\n  PRINT \"I file sono diversi.\"\nEND IF", "expectedOutput": "I file sono identici." }
+    ],
+    "seeAlso": ["HASHFILE", "STRSHA256", "STRSHA512", "STRMD5"],
+    "isCommand": false
+  },
+  {
+    "name": "AESENCRYPT",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "Symmetric Encryption",
+    "description": "Cifra i dati usando AES (Advanced Encryption Standard) in modalita' CBC con padding PKCS7. Richiede una chiave (16, 24 o 32 byte per AES-128, AES-192, AES-256) e un vettore di inizializzazione (IV, 16 byte). I dati cifrati includono l'IV nel risultato.",
+    "syntax": ["CRYPTOGRAPHY.AESENCRYPT(data, key, iv)"],
+    "returnType": "ARRAY OF BYTE",
+    "parameters": [
+      { "name": "data", "type": "STRING/ARRAY OF BYTE", "description": "Dati in chiaro da cifrare." },
+      { "name": "key", "type": "ARRAY OF BYTE", "description": "Chiave AES (16=128bit, 24=192bit, 32=256bit byte)." },
+      { "name": "iv", "type": "ARRAY OF BYTE", "description": "Vettore di inizializzazione (16 byte). Deve essere unico per ogni cifratura con la stessa chiave." }
+    ],
+    "examples": [
+      { "description": "Cifratura e decifratura simmetrica di un messaggio.", "code": "DIM Chiave() AS BYTE = CRYPTOGRAPHY.RANDOMCRYPTOBYTES(32)\nDIM IV() AS BYTE = CRYPTOGRAPHY.RANDOMCRYPTOBYTES(16)\nMessaggio$ = \"Dati finanziari riservati Q4 2024\"\nCifrato = CRYPTOGRAPHY.AESENCRYPT(Messaggio$, Chiave, IV)\nPRINT \"Cifrato (\"; UBOUND(Cifrato) + 1; \" byte)\"\nDecifrato = CRYPTOGRAPHY.AESDECRYPT(Cifrato, Chiave, IV)\nPRINT \"Decifrato: \"; STRINGTOSTRING(Decifrato)", "expectedOutput": "Cifrato (48 byte)\nDecifrato: Dati finanziari riservati Q4 2024" }
+    ],
+    "seeAlso": ["AESDECRYPT", "CHACHA20ENCRYPT", "RANDOMCRYPTOBYTES", "TOBASE64"],
+    "isCommand": false
+  },
+  {
+    "name": "AESDECRYPT",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "Symmetric Encryption",
+    "description": "Decifra dati precedentemente cifrati con AESENCRYPT. Richiede la stessa chiave e lo stesso IV usati per la cifratura. Restituisce i dati originali in chiaro.",
+    "syntax": ["CRYPTOGRAPHY.AESDECRYPT(encrypted_data, key, iv)"],
+    "returnType": "ARRAY OF BYTE",
+    "parameters": [
+      { "name": "encrypted_data", "type": "ARRAY OF BYTE", "description": "Dati cifrati (output di AESENCRYPT)." },
+      { "name": "key", "type": "ARRAY OF BYTE", "description": "La stessa chiave usata per cifrare." },
+      { "name": "iv", "type": "ARRAY OF BYTE", "description": "Lo stesso IV usato per cifrare." }
+    ],
+    "examples": [
+      { "description": "Salva dati cifrati su file e li recupera.", "code": "DIM Key() AS BYTE = CRYPTOGRAPHY.STRSHA256(\"password123\")\nDIM Iv() AS BYTE = CRYPTOGRAPHY.RANDOMCRYPTOBYTES(16)\nPlain$ = \"Configurazione segreta\"\nEnc = CRYPTOGRAPHY.AESENCRYPT(Plain$, Key, Iv)\n' Salva su file\nIO.STRTOFILE Enc, \"config.enc\"\n' ... piu' tardi ...\nEnc = IO.FILETOSTR(\"config.enc\")\nDec = CRYPTOGRAPHY.AESDECRYPT(Enc, Key, Iv)\nPRINT \"Config: \"; STRINGTOSTRING(Dec)", "expectedOutput": "Config: Configurazione segreta" }
+    ],
+    "seeAlso": ["AESENCRYPT", "CHACHA20DECRYPT", "TOBASE64", "FROMBASE64"],
+    "isCommand": false
+  },
+  {
+    "name": "CHACHA20ENCRYPT",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "Symmetric Encryption",
+    "description": "Cifra i dati usando l'algoritmo ChaCha20, un cifrario a flusso moderno e performante. Richiede una chiave da 32 byte e un nonce da 12 byte. ChaCha20 e' preferito rispetto ad AES su piattaforme senza accelerazione hardware AES.",
+    "syntax": ["CRYPTOGRAPHY.CHACHA20ENCRYPT(data, key, nonce)"],
+    "returnType": "ARRAY OF BYTE",
+    "parameters": [
+      { "name": "data", "type": "STRING/ARRAY OF BYTE", "description": "Dati in chiaro da cifrare." },
+      { "name": "key", "type": "ARRAY OF BYTE", "description": "Chiave ChaCha20 (32 byte)." },
+      { "name": "nonce", "type": "ARRAY OF BYTE", "description": "Nonce (12 byte). Deve essere unico per ogni cifratura con la stessa chiave." }
+    ],
+    "examples": [
+      { "description": "Cifratura high-speed con ChaCha20.", "code": "DIM Key() AS BYTE = CRYPTOGRAPHY.RANDOMCRYPTOBYTES(32)\nDIM Nonce() AS BYTE = CRYPTOGRAPHY.RANDOMCRYPTOBYTES(12)\nDati$ = \"Streaming data packet\"\nCifrato = CRYPTOGRAPHY.CHACHA20ENCRYPT(Dati$, Key, Nonce)\nPRINT \"Pacchetto cifrato: \"; UBOUND(Cifrato) + 1; \" byte\"", "expectedOutput": "Pacchetto cifrato: 32 byte" }
+    ],
+    "seeAlso": ["CHACHA20DECRYPT", "AESENCRYPT", "TOBASE64", "FROMBASE64"],
+    "isCommand": false
+  },
+  {
+    "name": "CHACHA20DECRYPT",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "Symmetric Encryption",
+    "description": "Decifra dati precedentemente cifrati con CHACHA20ENCRYPT. Richiede la stessa chiave e lo stesso nonce usati in cifratura.",
+    "syntax": ["CRYPTOGRAPHY.CHACHA20DECRYPT(encrypted_data, key, nonce)"],
+    "returnType": "ARRAY OF BYTE",
+    "parameters": [
+      { "name": "encrypted_data", "type": "ARRAY OF BYTE", "description": "Dati cifrati." },
+      { "name": "key", "type": "ARRAY OF BYTE", "description": "Stessa chiave (32 byte)." },
+      { "name": "nonce", "type": "ARRAY OF BYTE", "description": "Stesso nonce (12 byte)." }
+    ],
+    "examples": [
+      { "description": "Decifratura messaggio ChaCha20.", "code": "Dec = CRYPTOGRAPHY.CHACHA20DECRYPT(Cifrato, Key, Nonce)\nPRINT \"Decifrato: \"; STRINGTOSTRING(Dec)", "expectedOutput": "Decifrato: Streaming data packet" }
+    ],
+    "seeAlso": ["CHACHA20ENCRYPT", "AESDECRYPT", "FROMBASE64"],
+    "isCommand": false
+  },
+  {
+    "name": "CHACHA20POLY1305ENCRYPT",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "AEAD Encryption",
+    "description": "Cifratura autenticata AEAD con ChaCha20-Poly1305. Oltre a cifrare, produce un tag di autenticazione che garantisce l'integrita' e l'autenticita' dei dati. Supporta dati aggiuntivi autenticati (AAD). Restituisce un DICT con 'ciphertext' e 'tag'.",
+    "syntax": ["CHACHA20POLY1305ENCRYPT(plaintext, key, nonce [, aad])"],
+    "returnType": "DICT",
+    "parameters": [
+      { "name": "plaintext", "type": "STRING/ARRAY OF BYTE", "description": "Dati in chiaro da cifrare." },
+      { "name": "key", "type": "ARRAY OF BYTE", "description": "Chiave (32 byte)." },
+      { "name": "nonce", "type": "ARRAY OF BYTE", "description": "Nonce (12 byte)." },
+      { "name": "aad", "type": "ARRAY OF BYTE", "description": "Additional Authenticated Data opzionale (non cifrato ma autenticato)." }
+    ],
+    "examples": [
+      { "description": "Cifratura autenticata di un messaggio di rete.", "code": "DIM Key() AS BYTE = CRYPTOGRAPHY.RANDOMCRYPTOBYTES(32)\nDIM Nonce() AS BYTE = CRYPTOGRAPHY.RANDOMCRYPTOBYTES(12)\nPayload$ = \"{\"\"amount\"\":1500,\"\"currency\"\":\"\"EUR\"\"}\"\nResult = CHACHA20POLY1305ENCRYPT(Payload$, Key, Nonce)\nPRINT \"Ciphertext: \"; LEFT(CRYPTOGRAPHY.TOBASE64(Result[\"ciphertext\"]), 20); \"...\"\nPRINT \"Tag:        \"; LEFT(CRYPTOGRAPHY.TOBASE64(Result[\"tag\"]), 20); \"...\"", "expectedOutput": "Ciphertext: QkJCQkJCQkJCQkJC...\nTag:        AQEBAQEBAQEBAQEBA..." }
+    ],
+    "seeAlso": ["CHACHA20POLY1305DECRYPT", "CHACHA20ENCRYPT", "AESENCRYPT"],
+    "isCommand": false
+  },
+  {
+    "name": "CHACHA20POLY1305DECRYPT",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "AEAD Encryption",
+    "description": "Decifra e verifica l'autenticazione di dati cifrati con CHACHA20POLY1305ENCRYPT. Se il tag non corrisponde (dati alterati), genera un errore. Restituisce l'array di byte originale.",
+    "syntax": ["CHACHA20POLY1305DECRYPT(ciphertext, tag, key, nonce [, aad])"],
+    "returnType": "ARRAY OF BYTE",
+    "parameters": [
+      { "name": "ciphertext", "type": "ARRAY OF BYTE", "description": "Dati cifrati." },
+      { "name": "tag", "type": "ARRAY OF BYTE", "description": "Tag di autenticazione (16 byte) prodotto dalla cifratura." },
+      { "name": "key", "type": "ARRAY OF BYTE", "description": "Stessa chiave (32 byte)." },
+      { "name": "nonce", "type": "ARRAY OF BYTE", "description": "Stesso nonce (12 byte)." },
+      { "name": "aad", "type": "ARRAY OF BYTE", "description": "Stessi AAD opzionali usati in cifratura." }
+    ],
+    "examples": [
+      { "description": "Ricezione e verifica messaggio autenticato.", "code": "Dec = CHACHA20POLY1305DECRYPT(Result[\"ciphertext\"], Result[\"tag\"], Key, Nonce)\nPRINT \"Messaggio verificato: \"; STRINGTOSTRING(Dec)", "expectedOutput": "Messaggio verificato: {\"amount\":1500,\"currency\":\"EUR\"}" }
+    ],
+    "seeAlso": ["CHACHA20POLY1305ENCRYPT", "CHACHA20DECRYPT", "AESDECRYPT"],
+    "isCommand": false
+  },
+  {
+    "name": "SIGN",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "Asymmetric",
+    "description": "Firma digitalmente dei dati usando una chiave privata. Tipicamente usato con RSA o ECDSA. La firma garantisce l'autenticita' e l'integrita' dei dati: chiunque possieda la chiave pubblica puo' verificare la firma.",
+    "syntax": ["CRYPTOGRAPHY.SIGN(data, private_key_handle)"],
+    "returnType": "ARRAY OF BYTE",
+    "parameters": [
+      { "name": "data", "type": "STRING/ARRAY OF BYTE", "description": "Dati da firmare." },
+      { "name": "private_key_handle", "type": "LONG", "description": "Handle della chiave privata (da KEYGEN o KEYIMPORT)." }
+    ],
+    "examples": [
+      { "description": "Firma di un documento e verifica.", "code": "hKey = CRYPTOGRAPHY.KEYGEN(\"RSA\", 2048)\nDocumento$ = \"Contratto di fornitura\"\nFirma = CRYPTOGRAPHY.SIGN(Documento$, hKey)\nVerifica = CRYPTOGRAPHY.VERIFY(Firma, Documento$, hKey)\nIF Verifica THEN\n  PRINT \"Firma valida: il documento e' autentico.\"\nELSE\n  PRINT \"Firma NON valida!\"\nEND IF\nCRYPTOGRAPHY.KEYCLOSE hKey", "expectedOutput": "Firma valida: il documento e' autentico." }
+    ],
+    "seeAlso": ["VERIFY", "KEYGEN", "KEYIMPORT", "KEYEXPORT", "KEYCLOSE"],
+    "isCommand": false
+  },
+  {
+    "name": "VERIFY",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "Asymmetric",
+    "description": "Verifica una firma digitale usando la chiave pubblica corrispondente alla chiave privata che ha firmato. Restituisce TRUE se la firma e' valida, FALSE se i dati sono stati alterati o la firma non corrisponde.",
+    "syntax": ["CRYPTOGRAPHY.VERIFY(signature, data, key_handle)"],
+    "returnType": "BIT",
+    "parameters": [
+      { "name": "signature", "type": "ARRAY OF BYTE", "description": "La firma da verificare." },
+      { "name": "data", "type": "STRING/ARRAY OF BYTE", "description": "I dati originali." },
+      { "name": "key_handle", "type": "LONG", "description": "Handle della chiave (pubblica o privata)." }
+    ],
+    "examples": [
+      { "description": "Verifica di un file firmato.", "code": "Firma = IO.FILETOSTR(\"documento.sig\")\nOriginale$ = IO.FILETOSTR(\"documento.pdf\")\nhPubKey = CRYPTOGRAPHY.KEYIMPORT(IO.FILETOSTR(\"public.pem\"), 0)\nIF CRYPTOGRAPHY.VERIFY(Firma, Originale$, hPubKey) THEN\n  PRINT \"Documento autentico e integro.\"\nELSE\n  PRINT \"ATTENZIONE: Documento manomesso!\"\nEND IF\nCRYPTOGRAPHY.KEYCLOSE hPubKey", "expectedOutput": "Documento autentico e integro." }
+    ],
+    "seeAlso": ["SIGN", "KEYGEN", "KEYIMPORT", "KEYEXPORT"],
+    "isCommand": false
+  },
+  {
+    "name": "ENCRYPTASYM",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "Asymmetric",
+    "description": "Cifra dati usando una chiave pubblica (cifratura asimmetrica). Solo il possessore della chiave privata corrispondente puo' decifrare. Tipicamente usato con RSA. Limite: puo' cifrare solo dati piu' piccoli della chiave.",
+    "syntax": ["CRYPTOGRAPHY.ENCRYPTASYM(data, public_key_handle)"],
+    "returnType": "ARRAY OF BYTE",
+    "parameters": [
+      { "name": "data", "type": "STRING/ARRAY OF BYTE", "description": "Dati da cifrare (dimensione limitata dalla chiave)." },
+      { "name": "public_key_handle", "type": "LONG", "description": "Handle della chiave pubblica." }
+    ],
+    "examples": [
+      { "description": "Scambio sicuro di una chiave simmetrica.", "code": "hMioKey = CRYPTOGRAPHY.KEYGEN(\"RSA\", 2048)\nhSuoKey = CRYPTOGRAPHY.KEYIMPORT(IO.FILETOSTR(\"destinatario_pub.pem\"), 0)\n' Genero una chiave AES e la cifro con la sua chiave pubblica\nChiaveAES = CRYPTOGRAPHY.RANDOMCRYPTOBYTES(32)\nChiaveCifrata = CRYPTOGRAPHY.ENCRYPTASYM(ChiaveAES, hSuoKey)\nPRINT \"Chiave AES cifrata inviata al destinatario.\"", "expectedOutput": "Chiave AES cifrata inviata al destinatario." }
+    ],
+    "seeAlso": ["DECRYPTASYM", "KEYGEN", "KEYIMPORT", "AESENCRYPT"],
+    "isCommand": false
+  },
+  {
+    "name": "DECRYPTASYM",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "Asymmetric",
+    "description": "Decifra dati che sono stati cifrati con la chiave pubblica corrispondente. Richiede la chiave privata. Usato per ricevere messaggi sicuri o chiavi simmetriche.",
+    "syntax": ["CRYPTOGRAPHY.DECRYPTASYM(encrypted_data, private_key_handle)"],
+    "returnType": "ARRAY OF BYTE",
+    "parameters": [
+      { "name": "encrypted_data", "type": "ARRAY OF BYTE", "description": "Dati cifrati con la chiave pubblica." },
+      { "name": "private_key_handle", "type": "LONG", "description": "Handle della chiave privata corrispondente." }
+    ],
+    "examples": [
+      { "description": "Ricezione e decifratura chiave AES.", "code": "ChiaveRicevuta = IO.FILETOSTR(\"chiave.enc\")\nhMiaChiave = CRYPTOGRAPHY.KEYIMPORT(IO.FILETOSTR(\"mia_privata.pem\"), 0)\nChiaveAES = CRYPTOGRAPHY.DECRYPTASYM(ChiaveRicevuta, hMiaChiave)\nPRINT \"Chiave AES ricevuta e decifrata: \"; CRYPTOGRAPHY.TOHEX(ChiaveAES)", "expectedOutput": "Chiave AES ricevuta e decifrata: 1A2B3C4D..." }
+    ],
+    "seeAlso": ["ENCRYPTASYM", "KEYGEN", "KEYIMPORT", "AESDECRYPT"],
+    "isCommand": false
+  },
+  {
+    "name": "KEYGEN",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "Key Management",
+    "description": "Genera una nuova coppia di chiavi crittografiche (pubblica/privata) e restituisce un handle. L'algoritmo puo' essere 'RSA' (con dimensione 2048/4096) o 'ECDSA' (con curva 'P-256', 'P-384', 'P-521'). Comando legacy: KEYGEN alg, size.",
+    "syntax": [
+      "CRYPTOGRAPHY.KEYGEN algorithm$, size_or_curve$",
+      "KEYGEN alg, size"
+    ],
+    "returnType": "LONG",
+    "parameters": [
+      { "name": "algorithm$", "type": "STRING", "description": "'RSA' o 'ECDSA' (o 'EC')." },
+      { "name": "size_or_curve$", "type": "STRING/INTEGER", "description": "Per RSA: dimensione in bit (2048, 4096). Per ECDSA: nome curva ('P-256', 'P-384', 'P-521')." }
+    ],
+    "examples": [
+      { "description": "Genera chiavi RSA e ECDSA per uso diverso.", "code": "hRsaKey = CRYPTOGRAPHY.KEYGEN(\"RSA\", 4096)\nPRINT \"Chiave RSA-4096 generata (handle: \"; hRsaKey; \")\"\nhEcKey = CRYPTOGRAPHY.KEYGEN(\"ECDSA\", \"P-256\")\nPRINT \"Chiave ECDSA P-256 generata (handle: \"; hEcKey; \")\"\nCRYPTOGRAPHY.KEYCLOSE hRsaKey\nCRYPTOGRAPHY.KEYCLOSE hEcKey", "expectedOutput": "Chiave RSA-4096 generata (handle: 1)\nChiave ECDSA P-256 generata (handle: 2)" }
+    ],
+    "seeAlso": ["KEYCLOSE", "KEYEXPORT", "KEYIMPORT", "SIGN", "VERIFY"],
+    "isCommand": true
+  },
+  {
+    "name": "KEYCLOSE",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "Key Management",
+    "description": "Chiude una chiave crittografica e libera le risorse associate. Ogni chiave generata con KEYGEN o importata con KEYIMPORT deve essere chiusa quando non piu' necessaria.",
+    "syntax": ["CRYPTOGRAPHY.KEYCLOSE handle", "KEYCLOSE handle"],
+    "returnType": "",
+    "parameters": [
+      { "name": "handle", "type": "LONG", "description": "Handle della chiave da chiudere." }
+    ],
+    "examples": [
+      { "description": "Apertura, uso e chiusura di una chiave.", "code": "hKey = CRYPTOGRAPHY.KEYGEN(\"RSA\", 2048)\nFirma = CRYPTOGRAPHY.SIGN(\"dati\", hKey)\nCRYPTOGRAPHY.KEYCLOSE hKey\nPRINT \"Chiave usata e chiusa.\"", "expectedOutput": "Chiave usata e chiusa." }
+    ],
+    "seeAlso": ["KEYGEN", "KEYEXPORT", "KEYIMPORT"],
+    "isCommand": true
+  },
+  {
+    "name": "KEYEXPORT",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "Key Management",
+    "description": "Esporta una chiave crittografica in formato PEM (Privacy Enhanced Mail) come stringa. La chiave esportata puo' essere salvata su file e reimportata con KEYIMPORT. Per le chiavi private, il formato include l'intestazione '-----BEGIN PRIVATE KEY-----'.",
+    "syntax": ["CRYPTOGRAPHY.KEYEXPORT(handle)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "handle", "type": "LONG", "description": "Handle della chiave da esportare." }
+    ],
+    "examples": [
+      { "description": "Genera e salva una coppia di chiavi su file.", "code": "hKey = CRYPTOGRAPHY.KEYGEN(\"RSA\", 2048)\nPemPrivata$ = CRYPTOGRAPHY.KEYEXPORT(hKey)\nIO.STRTOFILE PemPrivata$, \"chiave_privata.pem\"\nPRINT \"Chiave privata salvata.\"\nCRYPTOGRAPHY.KEYCLOSE hKey", "expectedOutput": "Chiave privata salvata.\n(File chiave_privata.pem creato con -----BEGIN PRIVATE KEY-----...)" }
+    ],
+    "seeAlso": ["KEYIMPORT", "KEYGEN", "KEYCLOSE"],
+    "isCommand": false
+  },
+  {
+    "name": "KEYIMPORT",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "Key Management",
+    "description": "Importa una chiave crittografica da formato PEM (stringa o file) e restituisce un handle. Usato per caricare chiavi pubbliche di altri utenti o chiavi private precedentemente esportate.",
+    "syntax": ["CRYPTOGRAPHY.KEYIMPORT(pem_string$, handle_or_flags)"],
+    "returnType": "LONG",
+    "parameters": [
+      { "name": "pem_string$", "type": "STRING", "description": "Chiave in formato PEM da importare." },
+      { "name": "handle_or_flags", "type": "LONG", "description": "0 per default, o flags per modalita' di importazione." }
+    ],
+    "examples": [
+      { "description": "Carica una chiave pubblica da file per verificare una firma.", "code": "PemPub = IO.FILETOSTR(\"mittente_pub.pem\")\nhPubKey = CRYPTOGRAPHY.KEYIMPORT(PemPub, 0)\nFirma = IO.FILETOSTR(\"documento.sig\")\nDoc = IO.FILETOSTR(\"documento.pdf\")\nIF CRYPTOGRAPHY.VERIFY(Firma, Doc, hPubKey) THEN\n  PRINT \"Firma verificata: mittente autentico.\"\nEND IF\nCRYPTOGRAPHY.KEYCLOSE hPubKey", "expectedOutput": "Firma verificata: mittente autentico." }
+    ],
+    "seeAlso": ["KEYEXPORT", "KEYGEN", "KEYCLOSE", "VERIFY"],
+    "isCommand": false
+  },
+  {
+    "name": "RANDOMBYTES",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "Random Generation",
+    "description": "Genera un array di byte casuali non crittografici usando il generatore pseudo-casuale standard. Per numeri casuali crittograficamente sicuri, usare RANDOMCRYPTOBYTES. Restituisce un array di BYTE della lunghezza richiesta.",
+    "syntax": ["CRYPTOGRAPHY.RANDOMBYTES(count)"],
+    "returnType": "ARRAY OF BYTE",
+    "parameters": [
+      { "name": "count", "type": "INTEGER", "description": "Numero di byte casuali da generare." }
+    ],
+    "examples": [
+      { "description": "Genera un ID sessione pseudo-casuale.", "code": "SessionBytes = CRYPTOGRAPHY.RANDOMBYTES(16)\nSessionID$ = CRYPTOGRAPHY.TOHEX(SessionBytes)\nPRINT \"Session ID: \"; SessionID$", "expectedOutput": "Session ID: A1B2C3D4E5F6A7B8C9D0E1F2A3B4C5D6" }
+    ],
+    "seeAlso": ["RANDOMCRYPTOBYTES", "RANDOMINT", "RANDOMDOUBLE", "RANDOMNORMAL"],
+    "isCommand": false
+  },
+  {
+    "name": "RANDOMCRYPTOBYTES",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "Random Generation",
+    "description": "Genera un array di byte casuali crittograficamente sicuri usando il generatore del sistema operativo (/dev/urandom su Unix, CryptGenRandom su Windows). Da usare per chiavi, IV, nonce, token e qualsiasi dato che richieda sicurezza crittografica.",
+    "syntax": ["CRYPTOGRAPHY.RANDOMCRYPTOBYTES(count)"],
+    "returnType": "ARRAY OF BYTE",
+    "parameters": [
+      { "name": "count", "type": "INTEGER", "description": "Numero di byte casuali crittografici da generare." }
+    ],
+    "examples": [
+      { "description": "Generazione sicura di chiave AES e IV.", "code": "DIM ChiaveAES() AS BYTE = CRYPTOGRAPHY.RANDOMCRYPTOBYTES(32)\nDIM IV() AS BYTE = CRYPTOGRAPHY.RANDOMCRYPTOBYTES(16)\nPRINT \"Chiave: \"; CRYPTOGRAPHY.TOHEX(ChiaveAES)\nPRINT \"IV:     \"; CRYPTOGRAPHY.TOHEX(IV)", "expectedOutput": "Chiave: 7A8B9C0D1E2F3A4B5C6D7E8F9A0B1C2D3E4F5A6B7C8D9E0F1A2B3C4D5E6F\nIV:     A1B2C3D4E5F6A7B8C9D0E1F2A3B4C5D6" },
+      { "description": "Token di sicurezza per API.", "code": "TokenBytes = CRYPTOGRAPHY.RANDOMCRYPTOBYTES(32)\nToken$ = CRYPTOGRAPHY.TOBASE64(TokenBytes)\nPRINT \"Bearer token: \"; Token$", "expectedOutput": "Bearer token: q7z8x9c0v1b2n3m4Q5W6E7R8T9Y0U1I2O3P4A5S6D7F8G9H0J1K2L3Z4X5C6V7B8==" }
+    ],
+    "seeAlso": ["RANDOMBYTES", "RANDOMINT", "AESENCRYPT", "CHACHA20ENCRYPT"],
+    "isCommand": false
+  },
+  {
+    "name": "TOBASE64",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "Encoding",
+    "description": "Codifica un array di byte in formato Base64. Il Base64 usa 64 caratteri stampabili (A-Z, a-z, 0-9, +, /) per rappresentare dati binari come testo. Usato diffusamente in email (MIME), JSON, XML, URL e storage di dati binari in formato testo.",
+    "syntax": ["CRYPTOGRAPHY.TOBASE64(data)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "data", "type": "STRING/ARRAY OF BYTE", "description": "Dati binari da codificare in Base64." }
+    ],
+    "examples": [
+      { "description": "Codifica un'immagine in Base64 per embedding HTML.", "code": "ImgBytes = IO.FILETOSTR(\"logo.png\")\nImgBase64$ = CRYPTOGRAPHY.TOBASE64(ImgBytes)\nHtmlImg$ = \"<img src='data:image/png;base64,\" + ImgBase64$ + \"' />\"\nPRINT \"HTML img tag generato (\"; LEN(HtmlImg$); \" caratteri)\"", "expectedOutput": "HTML img tag generato (2846 caratteri)" }
+    ],
+    "seeAlso": ["FROMBASE64", "TOHEX", "FROMHEX"],
+    "isCommand": false
+  },
+  {
+    "name": "FROMBASE64",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "Encoding",
+    "description": "Decodifica una stringa Base64 nell'array di byte originale. Gestisce automaticamente il padding e le varianti Base64 URL-safe.",
+    "syntax": ["CRYPTOGRAPHY.FROMBASE64(base64_string)"],
+    "returnType": "ARRAY OF BYTE",
+    "parameters": [
+      { "name": "base64_string", "type": "STRING", "description": "Stringa in formato Base64 da decodificare." }
+    ],
+    "examples": [
+      { "description": "Decodifica un JSON contenente dati Base64.", "code": "Json$ = \"{\"\"file\"\":\"\"SGVsbG8gV29ybGQ=\"\"}\"\nDIM Dict AS DICT\nJSON.DECODE Json$, Dict\nDataBase64$ = Dict.Get(\"file\")\nData = CRYPTOGRAPHY.FROMBASE64(DataBase64$)\nPRINT \"Dati decodificati: \"; STRINGTOSTRING(Data)", "expectedOutput": "Dati decodificati: Hello World" }
+    ],
+    "seeAlso": ["TOBASE64", "TOHEX", "FROMHEX"],
+    "isCommand": false
+  },
+  {
+    "name": "TOHEX",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "Encoding",
+    "description": "Codifica un array di byte in stringa esadecimale (hex). Ogni byte viene rappresentato da due caratteri esadecimali (00-FF). I caratteri sono minuscoli. Usato per visualizzare hash, chiavi e dati binari in formato leggibile.",
+    "syntax": ["CRYPTOGRAPHY.TOHEX(data)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "data", "type": "STRING/ARRAY OF BYTE", "description": "Dati binari da convertire in esadecimale." }
+    ],
+    "examples": [
+      { "description": "Dump esadecimale di un pacchetto di rete.", "code": "Pacchetto = CRYPTOGRAPHY.FROMBASE64(\"AQIDBAUG\")\nHex$ = CRYPTOGRAPHY.TOHEX(Pacchetto)\nPRINT \"Pacchetto hex: \"; Hex$", "expectedOutput": "Pacchetto hex: 010203040506" }
+    ],
+    "seeAlso": ["FROMHEX", "TOBASE64", "FROMBASE64"],
+    "isCommand": false
+  },
+  {
+    "name": "FROMHEX",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "Encoding",
+    "description": "Decodifica una stringa esadecimale nell'array di byte corrispondente. Accetta sia maiuscole che minuscole. Utile per importare chiavi, hash o dati binari rappresentati in formato hex.",
+    "syntax": ["CRYPTOGRAPHY.FROMHEX(hex_string)"],
+    "returnType": "ARRAY OF BYTE",
+    "parameters": [
+      { "name": "hex_string", "type": "STRING", "description": "Stringa esadecimale da decodificare (es. '1A2B3C')." }
+    ],
+    "examples": [
+      { "description": "Carica una chiave da configurazione in formato hex.", "code": "HexKey$ = \"A1B2C3D4E5F6A7B8C9D0E1F2A3B4C5D6\"\nKeyBytes = CRYPTOGRAPHY.FROMHEX(HexKey$)\nPRINT \"Chiave caricata: \"; UBOUND(KeyBytes) + 1; \" byte\"", "expectedOutput": "Chiave caricata: 16 byte" }
+    ],
+    "seeAlso": ["TOHEX", "TOBASE64", "FROMBASE64"],
+    "isCommand": false
+  },
+  {
+    "name": "RANDOMINT",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "Random Generation",
+    "description": "Genera un numero intero casuale (non crittografico) nell'intervallo specificato [min, max]. Entrambi gli estremi sono inclusi. Per numeri crittograficamente sicuri, usare RANDOMCRYPTOBYTES e convertire.",
+    "syntax": ["CRYPTOGRAPHY.RANDOMINT(min, max)"],
+    "returnType": "INTEGER",
+    "parameters": [
+      { "name": "min", "type": "INTEGER", "description": "Valore minimo (incluso)." },
+      { "name": "max", "type": "INTEGER", "description": "Valore massimo (incluso)." }
+    ],
+    "examples": [
+      { "description": "Simulazione lancio di dado.", "code": "PRINT \"Lanci del dado:\"\nFOR I = 1 TO 10\n  Lancio = CRYPTOGRAPHY.RANDOMINT(1, 6)\n  PRINT Lancio; \" \";\nNEXT I\nPRINT", "expectedOutput": "Lanci del dado:\n3 6 1 4 2 5 6 1 3 4" }
+    ],
+    "seeAlso": ["RANDOMDOUBLE", "RANDOMNORMAL", "RANDOMBYTES", "RANDOMCRYPTOBYTES"],
+    "isCommand": false
+  },
+  {
+    "name": "RANDOMDOUBLE",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "Random Generation",
+    "description": "Genera un numero a virgola mobile casuale nell'intervallo [min, max). Il valore massimo e' escluso (distribuzione uniforme).",
+    "syntax": ["CRYPTOGRAPHY.RANDOMDOUBLE(min, max)"],
+    "returnType": "DOUBLE",
+    "parameters": [
+      { "name": "min", "type": "DOUBLE", "description": "Valore minimo (incluso)." },
+      { "name": "max", "type": "DOUBLE", "description": "Valore massimo (escluso)." }
+    ],
+    "examples": [
+      { "description": "Simulazione prezzo azionario con random walk.", "code": "Prezzo = 100.0\nPRINT \"Simulazione prezzo (random walk):\"\nFOR Giorno = 1 TO 10\n  Variazione = CRYPTOGRAPHY.RANDOMDOUBLE(-2.0, 2.0)\n  Prezzo = Prezzo + Variazione\n  PRINT \"Giorno \"; Giorno; \": EUR \"; FORMAT(Prezzo, \"#.00\")\nNEXT Giorno", "expectedOutput": "Simulazione prezzo (random walk):\nGiorno 1: EUR 99.12\nGiorno 2: EUR 100.45\nGiorno 3: EUR 98.90\n..." }
+    ],
+    "seeAlso": ["RANDOMINT", "RANDOMNORMAL", "RANDOMBYTES"],
+    "isCommand": false
+  },
+  {
+    "name": "RANDOMNORMAL",
+    "namespace": "CRYPTOGRAPHY",
+    "category": "Random Generation",
+    "description": "Genera un numero casuale con distribuzione normale (gaussiana) dati media (mu) e deviazione standard (sigma). Utile per simulazioni Monte Carlo, modelli finanziari e applicazioni statistiche.",
+    "syntax": ["CRYPTOGRAPHY.RANDOMNORMAL(mu, sigma)"],
+    "returnType": "DOUBLE",
+    "parameters": [
+      { "name": "mu", "type": "DOUBLE", "description": "Media della distribuzione normale." },
+      { "name": "sigma", "type": "DOUBLE", "description": "Deviazione standard." }
+    ],
+    "examples": [
+      { "description": "Simulazione Monte Carlo per rendimenti di portafoglio.", "code": "RendimentoMedio = 0.08\nVolatilita = 0.15\nCapitale = 100000\nPRINT \"Simulazione Monte Carlo (1000 scenari):\"\nPRINT \"Capitale iniziale: EUR \"; FORMAT(Capitale, \"#,###.00\")\nDIM Finali()\nFOR S = 1 TO 1000\n  R = CRYPTOGRAPHY.RANDOMNORMAL(RendimentoMedio, Volatilita)\n  AADD(Finali(), Capitale * (1 + R))\nNEXT S\nPRINT \"Media finale: EUR \"; FORMAT(STATS.MEAN(Finali()), \"#,###.00\")\nPRINT \"95% CI: [EUR \"; FORMAT(STATS.PERCENTILE(Finali(), 2.5), \"#,###.00\"); \" - EUR \"; FORMAT(STATS.PERCENTILE(Finali(), 97.5), \"#,###.00\"); \"]\"", "expectedOutput": "Simulazione Monte Carlo (1000 scenari):\nCapitale iniziale: EUR 100,000.00\nMedia finale: EUR 108,250.00\n95% CI: [EUR 82,000.00 - EUR 138,500.00]" }
+    ],
+    "seeAlso": ["RANDOMDOUBLE", "RANDOMINT", "RANDOMBYTES", "STATS.NORMALPDF"],
+    "isCommand": false
+  }
+]

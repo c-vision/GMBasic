@@ -1,0 +1,3 @@
+SUB Main()
+  PRINT SIN(0)
+END SUB

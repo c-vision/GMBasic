@@ -1,0 +1,9 @@
+' EXPECT: cv= 1
+IMPORT TIMESERIES AS TS
+SUB Main()
+  DIM d(1) AS ARRAY OF DOUBLE
+  d(0) = {1.0, 2.0, 3.0, 4.0}
+  d(1) = {2.0, 4.0, 5.0, 8.0}
+  DIM cv() AS ARRAY OF DOUBLE = TS.TSCOVARIANCEMATRIX(d)
+  PRINT "cv="; MATH.ROUND(cv(0)(1), 4)
+END SUB

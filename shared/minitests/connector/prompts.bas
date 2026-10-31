@@ -1,0 +1,5 @@
+' EXPECT: p=[]
+IMPORT AI
+SUB Main()
+  PRINT "p="; AI.CONNECTORPROMPTS("gmail")
+END SUB

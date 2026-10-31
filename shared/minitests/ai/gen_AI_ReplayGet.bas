@@ -1,0 +1,6 @@
+' EXPECT: {}
+IMPORT AI
+
+SUB Main()
+    PRINT AI.REPLAYGET("x")
+END SUB

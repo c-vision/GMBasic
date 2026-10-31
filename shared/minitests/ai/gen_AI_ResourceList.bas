@@ -1,0 +1,6 @@
+' EXPECT: {"resources":{}}
+IMPORT AI
+
+SUB Main()
+    PRINT AI.RESOURCELIST()
+END SUB

@@ -1,0 +1,7 @@
+' EXPECT: dot= 40
+IMPORT VECTOR
+SUB Main()
+  h1 = VECTOR.CREATE(1, 2, 3)
+  h2 = VECTOR.CREATE(4, 6, 8)
+  PRINT "dot="; VECTOR.PRODUCT(h1, h2)
+END SUB

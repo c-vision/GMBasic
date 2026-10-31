@@ -1,0 +1,22 @@
+{
+    // File di progetto del sample O7: dimostra le due sorgenti di moduli che NON stanno
+    // nella radice del programma. Le cartelle di ricerca del compilatore stanno qui sotto
+    // in `compiler.searchFolders`: una lista presente SOSTITUISCE quella globale.
+    "importFolders": [
+        "../shared"
+    ],
+    "importFiles": [
+        "../pinned/PinnedOnly.bas"
+    ],
+    "compiler": {
+        "searchFolders": [
+            "include",
+            "Controls",
+            "{project}/libs/*",
+            // Nel monorepo gli asset condivisi stanno in <monorepo>/shared e {install} è
+            // <monorepo>/GMBasic: GMBasic/Controls non esiste più (consolidata 2026-10-29).
+            "{install}/../shared/include",
+            "{install}/../shared/Controls"
+        ]
+    }
+}

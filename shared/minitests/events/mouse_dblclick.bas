@@ -1,0 +1,5 @@
+' EXPECT: dbl= 0
+IMPORT MOUSE
+SUB Main()
+  PRINT "dbl="; MOUSE.DBLCLICK()
+END SUB

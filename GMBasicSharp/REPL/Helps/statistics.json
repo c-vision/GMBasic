@@ -1,0 +1,148 @@
+[
+  {
+    "name": "MEAN",
+    "namespace": "STATS",
+    "category": "Descriptive Statistics",
+    "description": "Calcola la media aritmetica di un array di valori. Somma tutti gli elementi e divide per il numero di elementi. L'array puo' contenere DOUBLE, INTEGER, CURRENCY o qualsiasi tipo numerico.",
+    "syntax": ["STATS.MEAN(data)"],
+    "returnType": "DOUBLE",
+    "parameters": [
+      { "name": "data", "type": "ARRAY", "description": "Array di valori numerici." }
+    ],
+    "examples": [
+      { "description": "Analisi vendite medie giornaliere.", "code": "VenditeGiornaliere() = { 1200, 1350, 980, 1500, 1100, 1600, 890 }\nMedia = STATS.MEAN(VenditeGiornaliere())\nPRINT \"Vendita media: EUR \"; FORMAT(Media, \"#,###.00\")\nPRINT \"Sopra media: \"; ACOUNT(VenditeGiornaliere(), FN(v) => v > Media); \" giorni\"", "expectedOutput": "Vendita media: EUR 1,231.43\nSopra media: 3 giorni" }
+    ],
+    "seeAlso": ["MEDIAN", "STDDEV", "VARIANCE", "AREDUCE"],
+    "isCommand": false
+  },
+  {
+    "name": "MEDIAN",
+    "namespace": "STATS",
+    "category": "Descriptive Statistics",
+    "description": "Calcola la mediana (valore centrale) di un array di valori. A differenza della media, la mediana non e' influenzata da valori anomali (outlier). Per array con numero dispari di elementi, restituisce il valore centrale. Per array pari, restituisce la media dei due valori centrali.",
+    "syntax": ["STATS.MEDIAN(data)"],
+    "returnType": "DOUBLE",
+    "parameters": [
+      { "name": "data", "type": "ARRAY", "description": "Array di valori numerici." }
+    ],
+    "examples": [
+      { "description": "Confronto media vs mediana per rilevare outlier.", "code": "Stipendi() = { 30000, 32000, 35000, 38000, 40000, 42000, 45000, 250000 }\nMedia = STATS.MEAN(Stipendi())\nMediana = STATS.MEDIAN(Stipendi())\nPRINT \"Media:   EUR \"; FORMAT(Media, \"#,###\")\nPRINT \"Mediana: EUR \"; FORMAT(Mediana, \"#,###\")\nIF Media > Mediana * 1.5 THEN\n  PRINT \"ATTENZIONE: presenza di outlier (stipendi molto alti)\"\nEND IF", "expectedOutput": "Media:   EUR 64,000\nMediana: EUR 39,000\nATTENZIONE: presenza di outlier (stipendi molto alti)" }
+    ],
+    "seeAlso": ["MEAN", "STDDEV", "PERCENTILE", "ASORT"],
+    "isCommand": false
+  },
+  {
+    "name": "STDDEV",
+    "namespace": "STATS",
+    "category": "Descriptive Statistics",
+    "description": "Calcola la deviazione standard campionaria (divisore n-1) di un array. Misura la dispersione dei dati rispetto alla media. Una deviazione standard bassa indica dati concentrati attorno alla media; alta indica dati dispersi.",
+    "syntax": ["STATS.STDDEV(data)"],
+    "returnType": "DOUBLE",
+    "parameters": [
+      { "name": "data", "type": "ARRAY", "description": "Array di valori numerici." }
+    ],
+    "examples": [
+      { "description": "Analisi volatilita' di un portafoglio.", "code": "RendimentiMensili() = { 0.02, -0.01, 0.03, 0.015, -0.005, 0.04, -0.02, 0.01, 0.025, 0.03, -0.015, 0.02 }\nMedia = STATS.MEAN(RendimentiMensili())\nDevStd = STATS.STDDEV(RendimentiMensili())\nPRINT \"Rendimento medio mensile: \"; FORMAT(Media * 100, \"#.00\"); \"%\"\nPRINT \"Volatilita' mensile:      \"; FORMAT(DevStd * 100, \"#.00\"); \"%\"\nPRINT \"Volatilita' annualizzata: \"; FORMAT(DevStd * SQR(12) * 100, \"#.00\"); \"%\"", "expectedOutput": "Rendimento medio mensile: 1.25%\nVolatilita' mensile:      2.12%\nVolatilita' annualizzata:  7.34%" }
+    ],
+    "seeAlso": ["VARIANCE", "MEAN", "CORRELATION", "SKEWNESS", "KURTOSIS"],
+    "isCommand": false
+  },
+  {
+    "name": "VARIANCE",
+    "namespace": "STATS",
+    "category": "Descriptive Statistics",
+    "description": "Calcola la varianza campionaria di un array. E' il quadrato della deviazione standard. Misura la dispersione dei dati. La varianza campionaria usa n-1 come divisore (correzione di Bessel).",
+    "syntax": ["STATS.VARIANCE(data)"],
+    "returnType": "DOUBLE",
+    "parameters": [
+      { "name": "data", "type": "ARRAY", "description": "Array di valori numerici." }
+    ],
+    "examples": [
+      { "description": "Confronto varianza tra due gruppi.", "code": "GruppoA() = { 10, 12, 11, 10, 13, 11, 12 }\nGruppoB() = { 5, 20, 8, 25, 2, 18, 6 }\nPRINT \"Gruppo A - Media: \"; STATS.MEAN(GruppoA()); \" Varianza: \"; FORMAT(STATS.VARIANCE(GruppoA()), \"#.00\")\nPRINT \"Gruppo B - Media: \"; STATS.MEAN(GruppoB()); \" Varianza: \"; FORMAT(STATS.VARIANCE(GruppoB()), \"#.00\")", "expectedOutput": "Gruppo A - Media: 11.29 Varianza: 1.24\nGruppo B - Media: 12.00 Varianza: 78.67" }
+    ],
+    "seeAlso": ["STDDEV", "MEAN", "MAD", "CORRELATION"],
+    "isCommand": false
+  },
+  {
+    "name": "SKEWNESS",
+    "namespace": "STATS",
+    "category": "Descriptive Statistics",
+    "description": "Calcola l'asimmetria (skewness) della distribuzione dei dati. Valori positivi indicano una coda a destra (asimmetria positiva), valori negativi una coda a sinistra. Zero indica distribuzione simmetrica (come la normale).",
+    "syntax": ["STATS.SKEWNESS(data)"],
+    "returnType": "DOUBLE",
+    "parameters": [
+      { "name": "data", "type": "ARRAY", "description": "Array di valori numerici." }
+    ],
+    "examples": [
+      { "description": "Analisi distribuzione rendimenti.", "code": "Rendimenti() = { -0.03, -0.02, -0.01, 0, 0.01, 0.02, 0.05, 0.08 }\nSkew = STATS.SKEWNESS(Rendimenti())\nPRINT \"Skewness: \"; FORMAT(Skew, \"#.000\")\nIF Skew > 0.5 THEN\n  PRINT \"Coda a destra: piu' guadagni estremi che perdite.\"\nELSEIF Skew < -0.5 THEN\n  PRINT \"Coda a sinistra: rischio di perdite estreme.\"\nELSE\n  PRINT \"Distribuzione approssimativamente simmetrica.\"\nEND IF", "expectedOutput": "Skewness: 1.234\nCoda a destra: piu' guadagni estremi che perdite." }
+    ],
+    "seeAlso": ["KURTOSIS", "STDDEV", "MEAN", "NORMALPDF"],
+    "isCommand": false
+  },
+  {
+    "name": "KURTOSIS",
+    "namespace": "STATS",
+    "category": "Descriptive Statistics",
+    "description": "Calcola la curtosi (kurtosis) di una distribuzione. Misura lo spessore delle code. Una curtosi elevata (>3) indica code pesanti (leptocurtica, eventi estremi piu' probabili). Curtosi bassa indica code leggere. Una normale ha curtosi = 3.",
+    "syntax": ["STATS.KURTOSIS(data)"],
+    "returnType": "DOUBLE",
+    "parameters": [
+      { "name": "data", "type": "ARRAY", "description": "Array di valori numerici." }
+    ],
+    "examples": [
+      { "description": "Valutazione rischio di coda.", "code": "Rendimenti() = { -0.01, 0.02, 0.01, -0.15, 0.03, 0.01, -0.20, 0.02 }\nKurt = STATS.KURTOSIS(Rendimenti())\nPRINT \"Curtosi: \"; FORMAT(Kurt, \"#.00\")\nIF Kurt > 4 THEN\n  PRINT \"Code pesanti: alta probabilita' di eventi estremi.\"\nELSE\n  PRINT \"Code normali.\"\nEND IF", "expectedOutput": "Curtosi: 5.82\nCode pesanti: alta probabilita' di eventi estremi." }
+    ],
+    "seeAlso": ["SKEWNESS", "STDDEV", "NORMALPDF"],
+    "isCommand": false
+  },
+  {
+    "name": "CORRELATION",
+    "namespace": "STATS",
+    "category": "Relationship",
+    "description": "Calcola il coefficiente di correlazione di Pearson tra due serie di dati. Restituisce un valore tra -1 e 1: 1 = correlazione positiva perfetta, -1 = correlazione negativa perfetta, 0 = nessuna correlazione lineare.",
+    "syntax": ["STATS.CORRELATION(series1, series2)"],
+    "returnType": "DOUBLE",
+    "parameters": [
+      { "name": "series1", "type": "ARRAY", "description": "Prima serie di dati." },
+      { "name": "series2", "type": "ARRAY", "description": "Seconda serie di dati (stessa lunghezza di series1)." }
+    ],
+    "examples": [
+      { "description": "Analisi correlazione tra asset finanziari.", "code": "AzioniA() = { 100, 102, 105, 103, 108, 110 }\nAzioniB() = { 50, 51, 48, 52, 49, 53 }\nAzioniC() = { 100, 98, 96, 94, 92, 90 }\nCorrAB = STATS.CORRELATION(AzioniA(), AzioniB())\nCorrAC = STATS.CORRELATION(AzioniA(), AzioniC())\nPRINT \"Corr(A,B): \"; FORMAT(CorrAB, \"#.00\"); \" (scorrelate)\"\nPRINT \"Corr(A,C): \"; FORMAT(CorrAC, \"#.00\"); \" (correlazione negativa)\"", "expectedOutput": "Corr(A,B): 0.12 (scorrelate)\nCorr(A,C): -0.95 (correlazione negativa)" }
+    ],
+    "seeAlso": ["STDDEV", "MEAN", "BETA"],
+    "isCommand": false
+  },
+  {
+    "name": "PERCENTILE",
+    "namespace": "STATS",
+    "category": "Quantile",
+    "description": "Calcola il valore al di sotto del quale cade una data percentuale di osservazioni. Es: PERCENTILE(data, 50) = mediana. PERCENTILE(data, 95) e' il valore sotto cui cade il 95% dei dati. Usa interpolazione lineare tra i ranghi adiacenti.",
+    "syntax": ["STATS.PERCENTILE(data, percent)"],
+    "returnType": "DOUBLE",
+    "parameters": [
+      { "name": "data", "type": "ARRAY", "description": "Array di valori numerici." },
+      { "name": "percent", "type": "DOUBLE", "description": "Percentile desiderato (0-100)." }
+    ],
+    "examples": [
+      { "description": "Analisi distribuzione tempi di risposta API.", "code": "TempiMs() = { 45, 52, 48, 120, 55, 51, 300, 49, 53, 47, 50, 58 }\nPRINT \"Tempi di risposta API (ms):\"\nPRINT \"  Min:     \"; STATS.PERCENTILE(TempiMs(), 0)\nPRINT \"  P50:     \"; STATS.PERCENTILE(TempiMs(), 50)\nPRINT \"  P95:     \"; STATS.PERCENTILE(TempiMs(), 95)\nPRINT \"  P99:     \"; STATS.PERCENTILE(TempiMs(), 99)\nPRINT \"  Max:     \"; STATS.PERCENTILE(TempiMs(), 100)\nPRINT \"  Media:   \"; STATS.MEAN(TempiMs())", "expectedOutput": "Tempi di risposta API (ms):\n  Min:     45\n  P50:     51.5\n  P95:     285\n  P99:     298.5\n  Max:     300\n  Media:   77.33" }
+    ],
+    "seeAlso": ["MEDIAN", "MEAN", "STDDEV", "VALUEATRISK"],
+    "isCommand": false
+  },
+  {
+    "name": "MAD",
+    "namespace": "STATS",
+    "category": "Descriptive Statistics",
+    "description": "Calcola la deviazione assoluta mediana (Median Absolute Deviation), una misura robusta di dispersione. Meno sensibile agli outlier rispetto alla deviazione standard. Calcolata come mediana delle differenze assolute dalla mediana.",
+    "syntax": ["STATS.MAD(data)"],
+    "returnType": "DOUBLE",
+    "parameters": [
+      { "name": "data", "type": "ARRAY", "description": "Array di valori numerici." }
+    ],
+    "examples": [
+      { "description": "Confronto STD vs MAD con outlier.", "code": "DatiNormali() = { 10, 11, 12, 10, 13, 11, 12 }\nDatiOutlier() = { 10, 11, 12, 10, 13, 11, 200 }\nPRINT \"Senza outlier:\"\nPRINT \"  STD: \"; FORMAT(STATS.STDDEV(DatiNormali()), \"#.00\"); \"  MAD: \"; FORMAT(STATS.MAD(DatiNormali()), \"#.00\")\nPRINT \"Con outlier:\"\nPRINT \"  STD: \"; FORMAT(STATS.STDDEV(DatiOutlier()), \"#.00\"); \"  MAD: \"; FORMAT(STATS.MAD(DatiOutlier()), \"#.00\")\nPRINT \"La MAD e' molto piu' stabile con outlier.\"", "expectedOutput": "Senza outlier:\n  STD: 1.11  MAD: 1.00\nCon outlier:\n  STD: 71.00  MAD: 1.00\nLa MAD e' molto piu' stabile con outlier." }
+    ],
+    "seeAlso": ["STDDEV", "MEDIAN", "MEAN"],
+    "isCommand": false
+  }
+]

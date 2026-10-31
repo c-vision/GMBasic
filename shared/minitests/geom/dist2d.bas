@@ -1,0 +1,3 @@
+SUB Main()
+  PRINT DIST2D(0, 0, 3, 4)
+END SUB

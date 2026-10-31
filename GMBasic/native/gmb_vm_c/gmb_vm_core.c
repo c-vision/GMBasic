@@ -1,0 +1,16557 @@
+/* ============================================================================
+ * gmb_vm_core.c — Core VM C: dispatcher opcode su gmb_task_t
+ * File: native/gmb_vm_c/gmb_vm_core.c
+ * Fase A2 + A2-GPM-MT: il dispatcher opera su gmb_task_t (stack/frame/ip/globals
+ * per-task). gmb_vm_t è il runner (chunk + scheduler + hooks).
+ * ============================================================================ */
+
+#include "gmb_vm_core.h"
+#include "gmb_vm_tui.h"
+#include "gmb_vm_events.h"
+#include "gmb_adapter.h"
+#include "gmb_syscall_codes.h"   /* GMB_SC_<NOME> = valore dell'enum SysCall (generato) */
+#include "gmb_expr.h"
+#include "gmb_vm_expr_compile.h"
+#include "gmb_vm_value.h"
+#include "gmb_commonlib.h"
+#include "gmb_graphics.h"
+#include "gmb_network.h"
+#include "gmb_matrix.h"
+#include "gmb_ml.h"
+#include "gmb_torch.h"
+#include "gmb_graph.h"
+#include "gmb_collections.h"
+#include "gmb_compress.h"
+#include "gmb_finance.h"
+#include "gmb_finetune.h"
+#ifdef GMB_HAS_COMMERCIAL_DB
+#include "gmb_db.h"
+/* REGEX (impl. in gmb_regex_extra.c via PCRE2): forward-decl per non tirare pcre2.h qui. */
+int  gmb_regex_is_match(const char* pattern, const char* text);
+int  gmb_regex_match(const char* pattern, const char* text, char* out_value, int out_cap, int* index_out, int* length_out);
+int  gmb_regex_matches_values(const char* pattern, const char* text, char out[][256], int cap);
+int  gmb_regex_replace(const char* pattern, const char* text, const char* replacement, char* out, int out_cap);
+int  gmb_regex_split(const char* pattern, const char* text, char out[][256], int cap);
+#endif
+#include "gmb_doc.h"
+#include "gmb_strbuf.h"
+#include "gmb_md.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
+#include <math.h>
+#include <time.h>
+#include <unistd.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <poll.h>
+#include <sys/stat.h>
+#include <dirent.h>
+#if defined(__APPLE__)
+#include <sys/sysctl.h>
+#elif !defined(_WIN32)
+#include <unistd.h>
+#endif
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
+/* forward: callback HTTP (definita sotto), esposta a NET_CMD */
+int gmb_vm_http_handler(void* ctx, const gmb_http_request_t* req_c,
+                        char** out_body, int* out_status, char** out_headers);
+void gmb_vm_set_http_vm(gmb_vm_t* vm);
+
+/* numero di argomenti CLI oltre il programma (definito in gmb_vm_host.c) — COMMANDCOUNT */
+int g_vm_host_argc = 0;
+const char** g_vm_host_argv = NULL;
+
+/* ---- Opcode (specchio di Compiler/OpCode.cs — valori reali) ---- */
+enum {
+    OP_PUSH_CONST = 0,
+    OP_PUSH_NIL = 1,
+    OP_PUSH_TRUE = 2,
+    OP_PUSH_FALSE = 3,
+    OP_POP = 4,
+    OP_DUP = 5,
+    OP_ADD = 6,
+    OP_SUBTRACT = 7,
+    OP_MULTIPLY = 8,
+    OP_DIVIDE = 9,
+    OP_INT_DIVIDE = 10,
+    OP_POWER = 11,
+    OP_NEGATE = 12,
+    OP_NOT = 13,
+    OP_MOD = 14,
+    OP_CMP_EQ = 18,
+    OP_CMP_NE = 19,
+    OP_CMP_GT = 20,
+    OP_CMP_GTE = 21,
+    OP_CMP_LT = 22,
+    OP_CMP_LTE = 23,
+    OP_DEFINE_GLOBAL = 24,
+    OP_LOAD_GLOBAL = 25,
+    OP_STORE_GLOBAL = 26,
+    OP_LOAD_LOCAL = 27,
+    OP_STORE_LOCAL = 28,
+    OP_ADJUST_STRING = 29,
+    OP_MAKE_BYREF = 30,
+    OP_MAKE_BYREF_GLOBAL = 31,
+    OP_IS_TYPE = 32,
+    OP_CALL_INDIRECT = 33,
+    OP_CALL_N = 34,
+    OP_PUSH_REF_LOCAL = 36,
+    OP_PUSH_REF_GLOBAL = 37,
+    OP_LOAD_ELEMENT = 38,
+    OP_ARRAY_LEN = 39,
+    OP_STORE_ELEMENT = 40,
+    OP_LOAD_FIELD = 41,
+    OP_STORE_FIELD = 42,
+    OP_REDIM = 43,
+    OP_REDIM_PRESERVE = 44,
+    OP_MK_ARRAY = 45,
+    OP_INIT_ARRAY = 46,
+    OP_MK_DICT = 48,
+    OP_MK_LIST = 49,
+    OP_JUMP_FORWARD = 51,
+    OP_JUMP_BACKWARD = 52,
+    OP_JUMP_IF_TRUE = 53,
+    OP_JUMP_IF_FALSE = 54,
+    OP_CALL = 55,
+    OP_CALL_CTOR = 56,
+    OP_CALL_BUILTIN = 57,
+    OP_CALL_FFI = 58,
+    OP_GOTO = 59,
+    OP_GOSUB = 60,
+    OP_CLEAR_RETURN = 61,
+    OP_RETURN = 62,
+    OP_HALT = 63,
+    OP_GO = 66,
+    OP_SEND = 67,
+    OP_RECV = 68,
+    OP_WG_WAIT = 69,
+    OP_WG_DONE = 70,
+    OP_SLEEP = 71,
+    OP_GO_SELECT_SETUP = 72,
+    OP_NEXT_GENERATOR = 73,
+    OP_RESOLVE_FUTURE = 74,
+    OP_READ = 75,
+    OP_RESTORE = 76,
+    OP_THROW = 77,
+    OP_SET_ERR_HANDLER_GOTO = 78,
+    OP_SET_ERR_HANDLER_GOSUB = 79,
+    OP_RESUME = 80,
+    OP_SET_ERR_HANDLER_RESUME = 84,
+    OP_ON_KEY = 81,
+    OP_PUSH_TRY = 82,
+    OP_POP_TRY = 83,
+    OP_SYSCALL = 86,
+    OP_FILE_CMD = 87,
+    OP_NET_CMD = 88,
+    OP_AUDIO_CMD = 89,
+    OP_CLIP_CMD = 90,
+    OP_MATRIX_CMD = 92,
+    OP_VECTOR_CMD = 93,
+    OP_NEW = 94,
+    OP_NEW_UDT_INSTANCE = 95,
+    OP_FETCH = 96,
+    OP_PUSH_CODE_REF = 97,
+    OP_NEW_CLASS_INSTANCE = 98,
+    OP_LOAD_MEMBER = 99,
+    OP_STORE_MEMBER = 100,
+    OP_CALL_MEMBER = 101,
+    OP_FINALIZE_SCOPE = 102,
+    OP_FINALIZE_GLOBAL = 103,
+    OP_ON_JUMP = 104,
+    OP_EVAL_MACRO_STMT = 105,
+    OP_EVAL_MACRO_EXPR = 106,
+    OP_CLOSURE = 107,
+    OP_LOAD_UPVALUE = 108,
+    OP_STORE_UPVALUE = 109,
+    OP_FOR_PREPARE = 110,
+    OP_FOR_LOOP = 111,
+    OP_PRINT_VALUE = 113,
+    OP_PRINT_LINE = 114,
+    OP_PRINT_TAB_ZONE = 115,
+    OP_PRINT_NEWLINE = 116,
+    OP_YIELD = 117,
+    OP_NEW_WAITGROUP = 118,
+    OP_NEW_CHANNEL = 119,
+    OP_CLONE_UDT = 120,
+    OP_LOAD_STATIC_FIELD = 121,
+    OP_STORE_STATIC_FIELD = 122,
+    OP_NEW_GENERATOR_EXPR = 123,
+    OP_NEW_GENERATOR_CALL = 124,
+    OP_GO_FUNCTION = 125,
+    OP_LOAD_ELEMENT_POSITIONAL = 126,
+    OP_ON_MOUSE = 127,
+    OP_END_VALID = 128,
+    OP_BREAKPOINT = 129,
+    OP_FE_DESTRUCT = 130,
+    OP_NATIVE_LOOP_ACC = 131,
+    OP_NATIVE_BUILTIN_ASSIGN = 132,
+    OP_GO_EXIT = 133,
+    OP_NATIVE_STRING_APPEND_LOOP = 134,
+    OP_CHANNEL_CLOSE = 135,
+    OP_RECV_OK = 136,
+    OP_NEW_MUTEX = 137,
+    OP_LOCK = 138,
+    OP_UNLOCK = 139,
+    OP_DEFER = 140,
+    OP_DEFER_RET = 141,
+    OP_NEW_RWMUTEX = 142,
+    OP_RLOCK = 143,
+    OP_RUNLOCK = 144,
+    OP_NEW_ONCE = 145,
+    OP_ONCE_BEGIN = 146,
+    OP_ONCE_END = 147,
+    OP_NEW_ATOMIC = 148,
+    OP_NEW_POOL = 149,
+    OP_NEW_COND = 150,
+    OP_COND_WAIT = 151,
+    OP_COND_SIGNAL = 152,
+    OP_COND_BROADCAST = 153,
+    OP_NEW_CONCURRENTMAP = 154,
+    OP_LOAD_DYNAMIC_SCOPE = 155,
+    OP_FE_NEXT = 156,
+    /* Variante "by-reference" di OP_LOAD_ELEMENT (Compiler.UserTypes.cs::AssignField,
+     * `Arr(i).Campo = valore`) — evita la copia superficiale che gmb_adapter_val_to_stack
+     * applica di norma a un elemento GMB_OBJ_DICT/GMB_OBJ_LIST letto da un array. Vedi
+     * OpCode.cs (C#) per i dettagli — 157, non 156: quel valore è già OP_FE_NEXT qui, un
+     * opcode interno di questa VM mai emesso dal compilatore C#. */
+    OP_LOAD_ELEMENT_REF = 157,
+    /* Costruisce un box BYREF su un elemento di array mono-dimensionale (`Arr(i)` come
+     * argomento BYREF) — vedi gmb_byref_new_array_elem (gmb_gpm.c/.h) e OpCode.cs (C#) per i
+     * dettagli. Stack in ingresso: [array][indice] (stesso ordine di OP_LOAD_ELEMENT con
+     * numIndices=1). */
+    OP_MAKE_BYREF_ELEMENT = 158,
+    OP_FE_MATRIX_D = 159,
+    /* OP_ATTACH_UDT_DESC = 210: vedi OpCode.cs — allega il descrittore UDT del tipo target
+     * a un'istanza dict (JSON.TOOBJECT con target UDT). */
+    OP_ATTACH_UDT_DESC = 210,
+    /* OP_CALL_FFI_T = 211: FFI tipizzata (kind omogeneo 0=double, 1=int64) — vedi OpCode.cs */
+    OP_CALL_FFI_T = 211,
+    /* OP_XOR = 212: XOR bitwise — vedi OpCode.cs */
+    OP_XOR = 212,
+    OP_BITAND = 220,
+    OP_BITOR = 221,
+    /* SCOPE DINAMICO (DYNAMIC, spec Variables-Scope §2.5) — vedi OpCode.cs OP_DYN_*.
+     * La catena dei frame di chiamata È la catena dello scope dinamico: le dichiarazioni
+     * vivono su gmb_frame_t.dyn, quindi alla pop del frame spariscono (ripristino automatico),
+     * senza push/pop espliciti nel bytecode. Nome normalizzato (case-insensitive). */
+    OP_DYN_DECLARE = 213,
+    OP_DYN_LOAD = 214,
+    OP_DYN_STORE = 215,
+    OP_LIST_DEDUP = 200,
+    OP_DICT_SORTED = 201,
+    OP_FE_DICT = 202,
+    OP_FE_MATRIX_ROW = 203,
+    OP_JFILE_OPEN = 204,
+    OP_JFILE_WRITE = 205,
+    OP_JFILE_READ = 206,
+    OP_JFILE_CLOSE = 207,
+    OP_JFILE_SAVE = 208,
+    OP_REC_COPY = 209,
+};
+
+/* ---- Utilities ---- */
+void vm_error(gmb_task_t* task, const char* msg)
+{
+    task->state = GMB_TS_FINISHED;
+    free(task->pending_exception);
+    task->pending_exception = strdup(msg);
+}
+
+/* V2: quantum di istruzioni per tick (parità con PCodeVm.ResolveInstructionQuantum:
+ * default 4096, env GMBASIC_PCODE_QUANTUM, cap 1.000.000). Gli opcode fusi
+ * (OP_NATIVE_LOOP_ACC/OP_NATIVE_STRING_APPEND_LOOP) restano un singolo dispatch e
+ * NON sono preemptabili a metà — come in PCodeProcessor (commento riga ~1501). */
+static int gmb_vm_instruction_quantum(void)
+{
+    static int cached = 0;
+    if (cached <= 0)
+    {
+        const char* e = getenv("GMBASIC_PCODE_QUANTUM");
+        long v = e ? atol(e) : 0;
+        cached = (v > 0) ? (int)(v > 1000000L ? 1000000L : v) : 4096;
+    }
+    return cached;
+}
+
+/* Struct/UDT per valore (2026-09-28): "forme" di ritorno pre-dichiarate PER campo-count
+ * (1-8) e kind (I=int64, D=double) — VM/C non può generare tipi a runtime come .NET
+ * (PCodeVM/IL usano un value type CLR dinamico), ma gmb_vm_core.c È ESSA STESSA C vera:
+ * dichiarando qui un vero struct C e castando il function-pointer a un prototipo che lo
+ * ritorna PER VALORE, è il COMPILATORE che compila QUESTO file a gestire la ABI reale
+ * (SysV eightbyte classification, AAPCS64, hidden-pointer-return per struct grandi, ecc.)
+ * — stessa filosofia "il compilatore C gestisce l'ABI" già usata per C99Native
+ * (che emettono C), applicata qui al codice SORGENTE dell'interprete invece che a codice
+ * generato. Nessuna classificazione manuale dei registri, nessuna libffi — vedi AiWiki
+ * Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §2. I parametri UDT
+ * (in ingresso) NON hanno bisogno di forme pre-dichiarate: una firma tutta-dello-stesso-
+ * kind permette di "appiattire" i campi di uno UDT in altrettanti argomenti scalari
+ * consecutivi (stessa classe di registri, nessuna differenza ABI osservabile rispetto a N
+ * argomenti scalari separati) — vedi il calcolo di nativeArgs[] sotto OP_CALL_FFI_T. */
+#define GMB_FFI_UDT_SHAPE(SUFFIX, CT, N) typedef struct { CT f[N]; } gmb_ffi_udt##SUFFIX##N##_t;
+/* SOLO 1-2 campi (2026-09-28, ristretto da 1-8 dopo un crash reale): oltre i 2 campi (16
+ * byte totali a 8 byte/campo) uno struct non è più passabile in registri sulla ABI reale —
+ * "appiattire" i campi in argomenti scalari consecutivi (vedi il calcolo di nativeArgs[]
+ * sotto OP_CALL_FFI_T) smette di essere equivalente a un vero passaggio per valore oltre
+ * questa soglia. La guardia compile-time (Compiler.Expressions.cs) impone lo stesso limite
+ * su tutti e 5 i backend — vedi AiWiki Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-
+ * Callback.md §2. */
+GMB_FFI_UDT_SHAPE(d, double, 1) GMB_FFI_UDT_SHAPE(d, double, 2)
+GMB_FFI_UDT_SHAPE(i, int64_t, 1) GMB_FFI_UDT_SHAPE(i, int64_t, 2)
+#undef GMB_FFI_UDT_SHAPE
+/* Kind misto (2026-09-29): un UDT-RITORNO a 2 campi può avere kind DIVERSO tra loro (double
+ * poi intero, o viceversa) — non un limite ABI reale (SysV/AAPCS64 classificano ogni
+ * eightbyte dello struct indipendentemente), ammesso solo come ritorno perché il dispatch
+ * del ritorno sceglie la propria forma senza ambiguità di posizione (a differenza di un
+ * PARAMETRO a kind misto, che resta vietato — vedi ValidateUdtForFfi in
+ * Compiler.Expressions.cs). "di2" = (double, intero); "id2" = (intero, double). */
+typedef struct { double f0; int64_t f1; } gmb_ffi_udtdi2_t;
+typedef struct { int64_t f0; double f1; } gmb_ffi_udtid2_t;
+
+/* Dispatch generico "N argomenti scalari dello stesso tipo -> RET_T per valore", per
+ * qualunque combinazione (SCALAR_T, RET_T): una singola definizione macro invece di 18
+ * switch scritti a mano (2 kind x (1 scalare + 8 forme struct)) — vedi l'uso sotto
+ * OP_CALL_FFI_T. nativeArgs è SEMPRE double[8] (stessa convenzione di args[]/GMB_FFI_A
+ * già in uso per il kind int64: valore NUMERICO attraverso un double, non bit reinterpretati
+ * — cast esplicito a SCALAR_T al punto di chiamata). */
+#define GMB_FFI_DISPATCH(SCALAR_T, RET_T, N_SLOTS, NATIVE_ARGS, FN_PTR, DEST) do { \
+    switch (N_SLOTS) { \
+    case 0: { RET_T (*__f)(void) = (RET_T (*)(void))(FN_PTR); DEST = __f(); break; } \
+    case 1: { RET_T (*__f)(SCALAR_T) = (RET_T (*)(SCALAR_T))(FN_PTR); \
+        DEST = __f((SCALAR_T)(NATIVE_ARGS)[0]); break; } \
+    case 2: { RET_T (*__f)(SCALAR_T, SCALAR_T) = (RET_T (*)(SCALAR_T, SCALAR_T))(FN_PTR); \
+        DEST = __f((SCALAR_T)(NATIVE_ARGS)[0], (SCALAR_T)(NATIVE_ARGS)[1]); break; } \
+    case 3: { RET_T (*__f)(SCALAR_T, SCALAR_T, SCALAR_T) = (RET_T (*)(SCALAR_T, SCALAR_T, SCALAR_T))(FN_PTR); \
+        DEST = __f((SCALAR_T)(NATIVE_ARGS)[0], (SCALAR_T)(NATIVE_ARGS)[1], (SCALAR_T)(NATIVE_ARGS)[2]); break; } \
+    case 4: { RET_T (*__f)(SCALAR_T, SCALAR_T, SCALAR_T, SCALAR_T) = (RET_T (*)(SCALAR_T, SCALAR_T, SCALAR_T, SCALAR_T))(FN_PTR); \
+        DEST = __f((SCALAR_T)(NATIVE_ARGS)[0], (SCALAR_T)(NATIVE_ARGS)[1], (SCALAR_T)(NATIVE_ARGS)[2], (SCALAR_T)(NATIVE_ARGS)[3]); break; } \
+    case 5: { RET_T (*__f)(SCALAR_T, SCALAR_T, SCALAR_T, SCALAR_T, SCALAR_T) = (RET_T (*)(SCALAR_T, SCALAR_T, SCALAR_T, SCALAR_T, SCALAR_T))(FN_PTR); \
+        DEST = __f((SCALAR_T)(NATIVE_ARGS)[0], (SCALAR_T)(NATIVE_ARGS)[1], (SCALAR_T)(NATIVE_ARGS)[2], (SCALAR_T)(NATIVE_ARGS)[3], (SCALAR_T)(NATIVE_ARGS)[4]); break; } \
+    case 6: { RET_T (*__f)(SCALAR_T, SCALAR_T, SCALAR_T, SCALAR_T, SCALAR_T, SCALAR_T) = (RET_T (*)(SCALAR_T, SCALAR_T, SCALAR_T, SCALAR_T, SCALAR_T, SCALAR_T))(FN_PTR); \
+        DEST = __f((SCALAR_T)(NATIVE_ARGS)[0], (SCALAR_T)(NATIVE_ARGS)[1], (SCALAR_T)(NATIVE_ARGS)[2], (SCALAR_T)(NATIVE_ARGS)[3], (SCALAR_T)(NATIVE_ARGS)[4], (SCALAR_T)(NATIVE_ARGS)[5]); break; } \
+    case 7: { RET_T (*__f)(SCALAR_T, SCALAR_T, SCALAR_T, SCALAR_T, SCALAR_T, SCALAR_T, SCALAR_T) = (RET_T (*)(SCALAR_T, SCALAR_T, SCALAR_T, SCALAR_T, SCALAR_T, SCALAR_T, SCALAR_T))(FN_PTR); \
+        DEST = __f((SCALAR_T)(NATIVE_ARGS)[0], (SCALAR_T)(NATIVE_ARGS)[1], (SCALAR_T)(NATIVE_ARGS)[2], (SCALAR_T)(NATIVE_ARGS)[3], (SCALAR_T)(NATIVE_ARGS)[4], (SCALAR_T)(NATIVE_ARGS)[5], (SCALAR_T)(NATIVE_ARGS)[6]); break; } \
+    case 8: { RET_T (*__f)(SCALAR_T, SCALAR_T, SCALAR_T, SCALAR_T, SCALAR_T, SCALAR_T, SCALAR_T, SCALAR_T) = (RET_T (*)(SCALAR_T, SCALAR_T, SCALAR_T, SCALAR_T, SCALAR_T, SCALAR_T, SCALAR_T, SCALAR_T))(FN_PTR); \
+        DEST = __f((SCALAR_T)(NATIVE_ARGS)[0], (SCALAR_T)(NATIVE_ARGS)[1], (SCALAR_T)(NATIVE_ARGS)[2], (SCALAR_T)(NATIVE_ARGS)[3], (SCALAR_T)(NATIVE_ARGS)[4], (SCALAR_T)(NATIVE_ARGS)[5], (SCALAR_T)(NATIVE_ARGS)[6], (SCALAR_T)(NATIVE_ARGS)[7]); break; } \
+    } \
+} while (0)
+
+/* Kind misto come PARAMETRO (2026-09-29): un UDT a kind misto (un campo DOUBLE e uno intero
+ * nello stesso TYPE) passato per VALORE come argomento — al massimo UNO per dichiarazione
+ * (guard compile-time, Compiler.Expressions.cs). A differenza degli altri parametri (che si
+ * "appiattiscono" in slot SCALAR_T omogenei, GMB_FFI_DISPATCH sopra), questo NON può essere
+ * appiattito: i suoi 2 campi hanno tipi nativi DIVERSI. Soluzione: passarlo come VERO
+ * argomento struct (UDT_T, uno dei 6 shape pre-dichiarati) alla sua posizione REALE nel
+ * prototipo — NB argomenti SCALAR_T prima, poi lo struct, poi NA argomenti SCALAR_T dopo —
+ * lasciando classificare l'ABI al VERO compilatore C che compila questo file (stessa
+ * filosofia di GMB_FFI_UDT_SHAPE/GMB_FFI_DISPATCH per il ritorno, qui estesa ai parametri).
+ * NB/NA vanno 0-6 (il parametro misto occupa sempre 2 degli 8 slot totali) — enumerati come
+ * 28 casi (NB×NA con NB+NA<=6), nessuna assembly, nessuna libffi. Vedi AiWiki Bugs/(open) -
+ * FFI-VMC-Dispatch-Non-Generico-Struct-Kind-Misto-Parametro.md per l'analisi delle
+ * alternative scartate (bitmask generico, posizione fissa, libffi). */
+#define GMB_FFI_MIXED_DISPATCH(SCALAR_T, RET_T, UDT_T, NB, NA, PRE, U, POST, FN_PTR, DEST) do { \
+    switch ((NB) * 8 + (NA)) { \
+    case 0*8+0: { RET_T (*__f)(UDT_T) = (RET_T(*)(UDT_T))(FN_PTR); DEST = __f(U); break; } \
+    case 0*8+1: { RET_T (*__f)(UDT_T,SCALAR_T) = (RET_T(*)(UDT_T,SCALAR_T))(FN_PTR); DEST = __f(U,(SCALAR_T)(POST)[0]); break; } \
+    case 0*8+2: { RET_T (*__f)(UDT_T,SCALAR_T,SCALAR_T) = (RET_T(*)(UDT_T,SCALAR_T,SCALAR_T))(FN_PTR); DEST = __f(U,(SCALAR_T)(POST)[0],(SCALAR_T)(POST)[1]); break; } \
+    case 0*8+3: { RET_T (*__f)(UDT_T,SCALAR_T,SCALAR_T,SCALAR_T) = (RET_T(*)(UDT_T,SCALAR_T,SCALAR_T,SCALAR_T))(FN_PTR); DEST = __f(U,(SCALAR_T)(POST)[0],(SCALAR_T)(POST)[1],(SCALAR_T)(POST)[2]); break; } \
+    case 0*8+4: { RET_T (*__f)(UDT_T,SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T) = (RET_T(*)(UDT_T,SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T))(FN_PTR); DEST = __f(U,(SCALAR_T)(POST)[0],(SCALAR_T)(POST)[1],(SCALAR_T)(POST)[2],(SCALAR_T)(POST)[3]); break; } \
+    case 0*8+5: { RET_T (*__f)(UDT_T,SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T) = (RET_T(*)(UDT_T,SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T))(FN_PTR); DEST = __f(U,(SCALAR_T)(POST)[0],(SCALAR_T)(POST)[1],(SCALAR_T)(POST)[2],(SCALAR_T)(POST)[3],(SCALAR_T)(POST)[4]); break; } \
+    case 0*8+6: { RET_T (*__f)(UDT_T,SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T) = (RET_T(*)(UDT_T,SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T))(FN_PTR); DEST = __f(U,(SCALAR_T)(POST)[0],(SCALAR_T)(POST)[1],(SCALAR_T)(POST)[2],(SCALAR_T)(POST)[3],(SCALAR_T)(POST)[4],(SCALAR_T)(POST)[5]); break; } \
+    case 1*8+0: { RET_T (*__f)(SCALAR_T,UDT_T) = (RET_T(*)(SCALAR_T,UDT_T))(FN_PTR); DEST = __f((SCALAR_T)(PRE)[0],U); break; } \
+    case 1*8+1: { RET_T (*__f)(SCALAR_T,UDT_T,SCALAR_T) = (RET_T(*)(SCALAR_T,UDT_T,SCALAR_T))(FN_PTR); DEST = __f((SCALAR_T)(PRE)[0],U,(SCALAR_T)(POST)[0]); break; } \
+    case 1*8+2: { RET_T (*__f)(SCALAR_T,UDT_T,SCALAR_T,SCALAR_T) = (RET_T(*)(SCALAR_T,UDT_T,SCALAR_T,SCALAR_T))(FN_PTR); DEST = __f((SCALAR_T)(PRE)[0],U,(SCALAR_T)(POST)[0],(SCALAR_T)(POST)[1]); break; } \
+    case 1*8+3: { RET_T (*__f)(SCALAR_T,UDT_T,SCALAR_T,SCALAR_T,SCALAR_T) = (RET_T(*)(SCALAR_T,UDT_T,SCALAR_T,SCALAR_T,SCALAR_T))(FN_PTR); DEST = __f((SCALAR_T)(PRE)[0],U,(SCALAR_T)(POST)[0],(SCALAR_T)(POST)[1],(SCALAR_T)(POST)[2]); break; } \
+    case 1*8+4: { RET_T (*__f)(SCALAR_T,UDT_T,SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T) = (RET_T(*)(SCALAR_T,UDT_T,SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T))(FN_PTR); DEST = __f((SCALAR_T)(PRE)[0],U,(SCALAR_T)(POST)[0],(SCALAR_T)(POST)[1],(SCALAR_T)(POST)[2],(SCALAR_T)(POST)[3]); break; } \
+    case 1*8+5: { RET_T (*__f)(SCALAR_T,UDT_T,SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T) = (RET_T(*)(SCALAR_T,UDT_T,SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T))(FN_PTR); DEST = __f((SCALAR_T)(PRE)[0],U,(SCALAR_T)(POST)[0],(SCALAR_T)(POST)[1],(SCALAR_T)(POST)[2],(SCALAR_T)(POST)[3],(SCALAR_T)(POST)[4]); break; } \
+    case 2*8+0: { RET_T (*__f)(SCALAR_T,SCALAR_T,UDT_T) = (RET_T(*)(SCALAR_T,SCALAR_T,UDT_T))(FN_PTR); DEST = __f((SCALAR_T)(PRE)[0],(SCALAR_T)(PRE)[1],U); break; } \
+    case 2*8+1: { RET_T (*__f)(SCALAR_T,SCALAR_T,UDT_T,SCALAR_T) = (RET_T(*)(SCALAR_T,SCALAR_T,UDT_T,SCALAR_T))(FN_PTR); DEST = __f((SCALAR_T)(PRE)[0],(SCALAR_T)(PRE)[1],U,(SCALAR_T)(POST)[0]); break; } \
+    case 2*8+2: { RET_T (*__f)(SCALAR_T,SCALAR_T,UDT_T,SCALAR_T,SCALAR_T) = (RET_T(*)(SCALAR_T,SCALAR_T,UDT_T,SCALAR_T,SCALAR_T))(FN_PTR); DEST = __f((SCALAR_T)(PRE)[0],(SCALAR_T)(PRE)[1],U,(SCALAR_T)(POST)[0],(SCALAR_T)(POST)[1]); break; } \
+    case 2*8+3: { RET_T (*__f)(SCALAR_T,SCALAR_T,UDT_T,SCALAR_T,SCALAR_T,SCALAR_T) = (RET_T(*)(SCALAR_T,SCALAR_T,UDT_T,SCALAR_T,SCALAR_T,SCALAR_T))(FN_PTR); DEST = __f((SCALAR_T)(PRE)[0],(SCALAR_T)(PRE)[1],U,(SCALAR_T)(POST)[0],(SCALAR_T)(POST)[1],(SCALAR_T)(POST)[2]); break; } \
+    case 2*8+4: { RET_T (*__f)(SCALAR_T,SCALAR_T,UDT_T,SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T) = (RET_T(*)(SCALAR_T,SCALAR_T,UDT_T,SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T))(FN_PTR); DEST = __f((SCALAR_T)(PRE)[0],(SCALAR_T)(PRE)[1],U,(SCALAR_T)(POST)[0],(SCALAR_T)(POST)[1],(SCALAR_T)(POST)[2],(SCALAR_T)(POST)[3]); break; } \
+    case 3*8+0: { RET_T (*__f)(SCALAR_T,SCALAR_T,SCALAR_T,UDT_T) = (RET_T(*)(SCALAR_T,SCALAR_T,SCALAR_T,UDT_T))(FN_PTR); DEST = __f((SCALAR_T)(PRE)[0],(SCALAR_T)(PRE)[1],(SCALAR_T)(PRE)[2],U); break; } \
+    case 3*8+1: { RET_T (*__f)(SCALAR_T,SCALAR_T,SCALAR_T,UDT_T,SCALAR_T) = (RET_T(*)(SCALAR_T,SCALAR_T,SCALAR_T,UDT_T,SCALAR_T))(FN_PTR); DEST = __f((SCALAR_T)(PRE)[0],(SCALAR_T)(PRE)[1],(SCALAR_T)(PRE)[2],U,(SCALAR_T)(POST)[0]); break; } \
+    case 3*8+2: { RET_T (*__f)(SCALAR_T,SCALAR_T,SCALAR_T,UDT_T,SCALAR_T,SCALAR_T) = (RET_T(*)(SCALAR_T,SCALAR_T,SCALAR_T,UDT_T,SCALAR_T,SCALAR_T))(FN_PTR); DEST = __f((SCALAR_T)(PRE)[0],(SCALAR_T)(PRE)[1],(SCALAR_T)(PRE)[2],U,(SCALAR_T)(POST)[0],(SCALAR_T)(POST)[1]); break; } \
+    case 3*8+3: { RET_T (*__f)(SCALAR_T,SCALAR_T,SCALAR_T,UDT_T,SCALAR_T,SCALAR_T,SCALAR_T) = (RET_T(*)(SCALAR_T,SCALAR_T,SCALAR_T,UDT_T,SCALAR_T,SCALAR_T,SCALAR_T))(FN_PTR); DEST = __f((SCALAR_T)(PRE)[0],(SCALAR_T)(PRE)[1],(SCALAR_T)(PRE)[2],U,(SCALAR_T)(POST)[0],(SCALAR_T)(POST)[1],(SCALAR_T)(POST)[2]); break; } \
+    case 4*8+0: { RET_T (*__f)(SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T,UDT_T) = (RET_T(*)(SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T,UDT_T))(FN_PTR); DEST = __f((SCALAR_T)(PRE)[0],(SCALAR_T)(PRE)[1],(SCALAR_T)(PRE)[2],(SCALAR_T)(PRE)[3],U); break; } \
+    case 4*8+1: { RET_T (*__f)(SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T,UDT_T,SCALAR_T) = (RET_T(*)(SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T,UDT_T,SCALAR_T))(FN_PTR); DEST = __f((SCALAR_T)(PRE)[0],(SCALAR_T)(PRE)[1],(SCALAR_T)(PRE)[2],(SCALAR_T)(PRE)[3],U,(SCALAR_T)(POST)[0]); break; } \
+    case 4*8+2: { RET_T (*__f)(SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T,UDT_T,SCALAR_T,SCALAR_T) = (RET_T(*)(SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T,UDT_T,SCALAR_T,SCALAR_T))(FN_PTR); DEST = __f((SCALAR_T)(PRE)[0],(SCALAR_T)(PRE)[1],(SCALAR_T)(PRE)[2],(SCALAR_T)(PRE)[3],U,(SCALAR_T)(POST)[0],(SCALAR_T)(POST)[1]); break; } \
+    case 5*8+0: { RET_T (*__f)(SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T,UDT_T) = (RET_T(*)(SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T,UDT_T))(FN_PTR); DEST = __f((SCALAR_T)(PRE)[0],(SCALAR_T)(PRE)[1],(SCALAR_T)(PRE)[2],(SCALAR_T)(PRE)[3],(SCALAR_T)(PRE)[4],U); break; } \
+    case 5*8+1: { RET_T (*__f)(SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T,UDT_T,SCALAR_T) = (RET_T(*)(SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T,UDT_T,SCALAR_T))(FN_PTR); DEST = __f((SCALAR_T)(PRE)[0],(SCALAR_T)(PRE)[1],(SCALAR_T)(PRE)[2],(SCALAR_T)(PRE)[3],(SCALAR_T)(PRE)[4],U,(SCALAR_T)(POST)[0]); break; } \
+    case 6*8+0: { RET_T (*__f)(SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T,UDT_T) = (RET_T(*)(SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T,SCALAR_T,UDT_T))(FN_PTR); DEST = __f((SCALAR_T)(PRE)[0],(SCALAR_T)(PRE)[1],(SCALAR_T)(PRE)[2],(SCALAR_T)(PRE)[3],(SCALAR_T)(PRE)[4],(SCALAR_T)(PRE)[5],U); break; } \
+    } \
+} while (0)
+
+/* Punto di chiamata UNICO per OP_CALL_FFI_T (2026-09-29): sceglie fra il dispatch
+ * "classico" (GMB_FFI_DISPATCH, nessun parametro a kind misto) e quello nuovo
+ * (GMB_FFI_MIXED_DISPATCH, un parametro UDT a kind misto alla posizione mixedParamIdx) —
+ * usato ovunque il codice esistente chiamava GMB_FFI_DISPATCH dentro OP_CALL_FFI_T, senza
+ * duplicare gli 7 rami "quale forma di ritorno" (scalare o uno dei 6 shape). Le variabili
+ * libere (mixedParamIdx/mixedNB/mixedNA/mixedIsIdOrder/p) sono locali del case
+ * OP_CALL_FFI_T — questa macro va usata SOLO lì. ARR è nativeArgs (kind=1) o nativeArgsD
+ * (kind=0): mixedVal0/mixedVal1 (i 2 campi del parametro misto) sono già stati scritti lì
+ * dal loop di costruzione argomenti esistente (converte per VALORE, mai bit
+ * reinterpretati) — li si rilegge e ricasta al tipo nativo giusto per campo. */
+#define GMB_FFI_CALL_T(SCALAR_T, RET_T, ARR, DEST) do { \
+    if (mixedParamIdx < 0) { \
+        GMB_FFI_DISPATCH(SCALAR_T, RET_T, nativeSlotCount, ARR, p, DEST); \
+    } else if (mixedIsIdOrder) { \
+        gmb_ffi_udtid2_t __mu; __mu.f0 = (int64_t)(ARR)[mixedNB]; __mu.f1 = (ARR)[mixedNB + 1]; \
+        GMB_FFI_MIXED_DISPATCH(SCALAR_T, RET_T, gmb_ffi_udtid2_t, mixedNB, mixedNA, ARR, __mu, ((ARR) + mixedNB + 2), p, DEST); \
+    } else { \
+        gmb_ffi_udtdi2_t __mu; __mu.f0 = (ARR)[mixedNB]; __mu.f1 = (int64_t)(ARR)[mixedNB + 1]; \
+        GMB_FFI_MIXED_DISPATCH(SCALAR_T, RET_T, gmb_ffi_udtdi2_t, mixedNB, mixedNA, ARR, __mu, ((ARR) + mixedNB + 2), p, DEST); \
+    } \
+} while (0)
+
+/* GMB_FFI_MIXn (2026-10, firma mista scalari semplici): come GMB_FFI_DISPATCH ma con
+ * un tipo INDIVIDUALE per ogni posizione invece di un SCALAR_T condiviso — generate una
+ * tantum (script Python, poi testo statico, nessuna dipendenza di build) per evitare di
+ * scrivere a mano le 9 arita'. Stessa filosofia di GMB_FFI_DISPATCH/GMB_FFI_MIXED_DISPATCH:
+ * un cast di funzione letterale per ogni combinazione di tipo per posizione, il VERO
+ * compilatore C che compila questo file classifica l'ABI (SysV eightbyte/AAPCS64) —
+ * nessuna libffi, nessuna classificazione manuale dei registri. */
+#define GMB_FFI_MIX0(RET,FN,A,DEST) do { RET (*__f)(void) = (RET(*)(void))(FN); DEST = __f(); } while (0)
+#define GMB_FFI_MIX1(RET,T0,FN,A,DEST) do { RET (*__f)(T0) = (RET(*)(T0))(FN); DEST = __f((T0)(A)[0]); } while (0)
+#define GMB_FFI_MIX2(RET,T0,T1,FN,A,DEST) do { RET (*__f)(T0,T1) = (RET(*)(T0,T1))(FN); DEST = __f((T0)(A)[0],(T1)(A)[1]); } while (0)
+#define GMB_FFI_MIX3(RET,T0,T1,T2,FN,A,DEST) do { RET (*__f)(T0,T1,T2) = (RET(*)(T0,T1,T2))(FN); DEST = __f((T0)(A)[0],(T1)(A)[1],(T2)(A)[2]); } while (0)
+#define GMB_FFI_MIX4(RET,T0,T1,T2,T3,FN,A,DEST) do { RET (*__f)(T0,T1,T2,T3) = (RET(*)(T0,T1,T2,T3))(FN); DEST = __f((T0)(A)[0],(T1)(A)[1],(T2)(A)[2],(T3)(A)[3]); } while (0)
+#define GMB_FFI_MIX5(RET,T0,T1,T2,T3,T4,FN,A,DEST) do { RET (*__f)(T0,T1,T2,T3,T4) = (RET(*)(T0,T1,T2,T3,T4))(FN); DEST = __f((T0)(A)[0],(T1)(A)[1],(T2)(A)[2],(T3)(A)[3],(T4)(A)[4]); } while (0)
+#define GMB_FFI_MIX6(RET,T0,T1,T2,T3,T4,T5,FN,A,DEST) do { RET (*__f)(T0,T1,T2,T3,T4,T5) = (RET(*)(T0,T1,T2,T3,T4,T5))(FN); DEST = __f((T0)(A)[0],(T1)(A)[1],(T2)(A)[2],(T3)(A)[3],(T4)(A)[4],(T5)(A)[5]); } while (0)
+#define GMB_FFI_MIX7(RET,T0,T1,T2,T3,T4,T5,T6,FN,A,DEST) do { RET (*__f)(T0,T1,T2,T3,T4,T5,T6) = (RET(*)(T0,T1,T2,T3,T4,T5,T6))(FN); DEST = __f((T0)(A)[0],(T1)(A)[1],(T2)(A)[2],(T3)(A)[3],(T4)(A)[4],(T5)(A)[5],(T6)(A)[6]); } while (0)
+#define GMB_FFI_MIX8(RET,T0,T1,T2,T3,T4,T5,T6,T7,FN,A,DEST) do { RET (*__f)(T0,T1,T2,T3,T4,T5,T6,T7) = (RET(*)(T0,T1,T2,T3,T4,T5,T6,T7))(FN); DEST = __f((T0)(A)[0],(T1)(A)[1],(T2)(A)[2],(T3)(A)[3],(T4)(A)[4],(T5)(A)[5],(T6)(A)[6],(T7)(A)[7]); } while (0)
+
+/* Dispatcher generato (2026-10, firma mista scalari semplici, v1 — fino a 8 parametri,
+ * nessun array/STRING/BYREF/callback/UDT, guard a compile-time in Compiler.Expressions.cs):
+ * chiave composita argc(4bit)<<9 | retIsInt(1bit)<<8 | shapeBits(8bit, bit i = parametro i
+ * e' Int64) -> invoca GMB_FFI_MIXn coi letterali di tipo giusti per ogni posizione.
+ * sum(2^n, n=0..8) * 2 = 1022 case, generati una tantum (script Python, mai a mano) — stesso
+ * principio di GMB_FFI_MIXED_DISPATCH scalato alla combinatoria completa. 'a' e' SEMPRE
+ * double[8] col valore NUMERICO (stessa convenzione di nativeArgs/GMB_FFI_A altrove in
+ * questo file: mai bit reinterpretati, cast esplicito al punto di chiamata). */
+static double gmb_vm_ffi_call_mixed(void* fn, int argc, unsigned shapeBits, int retIsInt, const double* a)
+{
+    switch (((unsigned)argc << 9) | ((unsigned)retIsInt << 8) | shapeBits)
+    {
+    case 0: { double __r = 0.0; GMB_FFI_MIX0(double,fn,a,__r); return __r; }
+    case 256: { int64_t __r = 0; GMB_FFI_MIX0(int64_t,fn,a,__r); return (double)__r; }
+    case 512: { double __r = 0.0; GMB_FFI_MIX1(double,double,fn,a,__r); return __r; }
+    case 768: { int64_t __r = 0; GMB_FFI_MIX1(int64_t,double,fn,a,__r); return (double)__r; }
+    case 513: { double __r = 0.0; GMB_FFI_MIX1(double,int64_t,fn,a,__r); return __r; }
+    case 769: { int64_t __r = 0; GMB_FFI_MIX1(int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 1024: { double __r = 0.0; GMB_FFI_MIX2(double,double,double,fn,a,__r); return __r; }
+    case 1280: { int64_t __r = 0; GMB_FFI_MIX2(int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 1025: { double __r = 0.0; GMB_FFI_MIX2(double,int64_t,double,fn,a,__r); return __r; }
+    case 1281: { int64_t __r = 0; GMB_FFI_MIX2(int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 1026: { double __r = 0.0; GMB_FFI_MIX2(double,double,int64_t,fn,a,__r); return __r; }
+    case 1282: { int64_t __r = 0; GMB_FFI_MIX2(int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 1027: { double __r = 0.0; GMB_FFI_MIX2(double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 1283: { int64_t __r = 0; GMB_FFI_MIX2(int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 1536: { double __r = 0.0; GMB_FFI_MIX3(double,double,double,double,fn,a,__r); return __r; }
+    case 1792: { int64_t __r = 0; GMB_FFI_MIX3(int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 1537: { double __r = 0.0; GMB_FFI_MIX3(double,int64_t,double,double,fn,a,__r); return __r; }
+    case 1793: { int64_t __r = 0; GMB_FFI_MIX3(int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 1538: { double __r = 0.0; GMB_FFI_MIX3(double,double,int64_t,double,fn,a,__r); return __r; }
+    case 1794: { int64_t __r = 0; GMB_FFI_MIX3(int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 1539: { double __r = 0.0; GMB_FFI_MIX3(double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 1795: { int64_t __r = 0; GMB_FFI_MIX3(int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 1540: { double __r = 0.0; GMB_FFI_MIX3(double,double,double,int64_t,fn,a,__r); return __r; }
+    case 1796: { int64_t __r = 0; GMB_FFI_MIX3(int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 1541: { double __r = 0.0; GMB_FFI_MIX3(double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 1797: { int64_t __r = 0; GMB_FFI_MIX3(int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 1542: { double __r = 0.0; GMB_FFI_MIX3(double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 1798: { int64_t __r = 0; GMB_FFI_MIX3(int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 1543: { double __r = 0.0; GMB_FFI_MIX3(double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 1799: { int64_t __r = 0; GMB_FFI_MIX3(int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 2048: { double __r = 0.0; GMB_FFI_MIX4(double,double,double,double,double,fn,a,__r); return __r; }
+    case 2304: { int64_t __r = 0; GMB_FFI_MIX4(int64_t,double,double,double,double,fn,a,__r); return (double)__r; }
+    case 2049: { double __r = 0.0; GMB_FFI_MIX4(double,int64_t,double,double,double,fn,a,__r); return __r; }
+    case 2305: { int64_t __r = 0; GMB_FFI_MIX4(int64_t,int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 2050: { double __r = 0.0; GMB_FFI_MIX4(double,double,int64_t,double,double,fn,a,__r); return __r; }
+    case 2306: { int64_t __r = 0; GMB_FFI_MIX4(int64_t,double,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 2051: { double __r = 0.0; GMB_FFI_MIX4(double,int64_t,int64_t,double,double,fn,a,__r); return __r; }
+    case 2307: { int64_t __r = 0; GMB_FFI_MIX4(int64_t,int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 2052: { double __r = 0.0; GMB_FFI_MIX4(double,double,double,int64_t,double,fn,a,__r); return __r; }
+    case 2308: { int64_t __r = 0; GMB_FFI_MIX4(int64_t,double,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 2053: { double __r = 0.0; GMB_FFI_MIX4(double,int64_t,double,int64_t,double,fn,a,__r); return __r; }
+    case 2309: { int64_t __r = 0; GMB_FFI_MIX4(int64_t,int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 2054: { double __r = 0.0; GMB_FFI_MIX4(double,double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 2310: { int64_t __r = 0; GMB_FFI_MIX4(int64_t,double,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 2055: { double __r = 0.0; GMB_FFI_MIX4(double,int64_t,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 2311: { int64_t __r = 0; GMB_FFI_MIX4(int64_t,int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 2056: { double __r = 0.0; GMB_FFI_MIX4(double,double,double,double,int64_t,fn,a,__r); return __r; }
+    case 2312: { int64_t __r = 0; GMB_FFI_MIX4(int64_t,double,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 2057: { double __r = 0.0; GMB_FFI_MIX4(double,int64_t,double,double,int64_t,fn,a,__r); return __r; }
+    case 2313: { int64_t __r = 0; GMB_FFI_MIX4(int64_t,int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 2058: { double __r = 0.0; GMB_FFI_MIX4(double,double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 2314: { int64_t __r = 0; GMB_FFI_MIX4(int64_t,double,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 2059: { double __r = 0.0; GMB_FFI_MIX4(double,int64_t,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 2315: { int64_t __r = 0; GMB_FFI_MIX4(int64_t,int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 2060: { double __r = 0.0; GMB_FFI_MIX4(double,double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 2316: { int64_t __r = 0; GMB_FFI_MIX4(int64_t,double,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 2061: { double __r = 0.0; GMB_FFI_MIX4(double,int64_t,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 2317: { int64_t __r = 0; GMB_FFI_MIX4(int64_t,int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 2062: { double __r = 0.0; GMB_FFI_MIX4(double,double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 2318: { int64_t __r = 0; GMB_FFI_MIX4(int64_t,double,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 2063: { double __r = 0.0; GMB_FFI_MIX4(double,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 2319: { int64_t __r = 0; GMB_FFI_MIX4(int64_t,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 2560: { double __r = 0.0; GMB_FFI_MIX5(double,double,double,double,double,double,fn,a,__r); return __r; }
+    case 2816: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,double,double,double,double,double,fn,a,__r); return (double)__r; }
+    case 2561: { double __r = 0.0; GMB_FFI_MIX5(double,int64_t,double,double,double,double,fn,a,__r); return __r; }
+    case 2817: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,int64_t,double,double,double,double,fn,a,__r); return (double)__r; }
+    case 2562: { double __r = 0.0; GMB_FFI_MIX5(double,double,int64_t,double,double,double,fn,a,__r); return __r; }
+    case 2818: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,double,int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 2563: { double __r = 0.0; GMB_FFI_MIX5(double,int64_t,int64_t,double,double,double,fn,a,__r); return __r; }
+    case 2819: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,int64_t,int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 2564: { double __r = 0.0; GMB_FFI_MIX5(double,double,double,int64_t,double,double,fn,a,__r); return __r; }
+    case 2820: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,double,double,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 2565: { double __r = 0.0; GMB_FFI_MIX5(double,int64_t,double,int64_t,double,double,fn,a,__r); return __r; }
+    case 2821: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,int64_t,double,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 2566: { double __r = 0.0; GMB_FFI_MIX5(double,double,int64_t,int64_t,double,double,fn,a,__r); return __r; }
+    case 2822: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,double,int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 2567: { double __r = 0.0; GMB_FFI_MIX5(double,int64_t,int64_t,int64_t,double,double,fn,a,__r); return __r; }
+    case 2823: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,int64_t,int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 2568: { double __r = 0.0; GMB_FFI_MIX5(double,double,double,double,int64_t,double,fn,a,__r); return __r; }
+    case 2824: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,double,double,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 2569: { double __r = 0.0; GMB_FFI_MIX5(double,int64_t,double,double,int64_t,double,fn,a,__r); return __r; }
+    case 2825: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,int64_t,double,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 2570: { double __r = 0.0; GMB_FFI_MIX5(double,double,int64_t,double,int64_t,double,fn,a,__r); return __r; }
+    case 2826: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,double,int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 2571: { double __r = 0.0; GMB_FFI_MIX5(double,int64_t,int64_t,double,int64_t,double,fn,a,__r); return __r; }
+    case 2827: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,int64_t,int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 2572: { double __r = 0.0; GMB_FFI_MIX5(double,double,double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 2828: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,double,double,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 2573: { double __r = 0.0; GMB_FFI_MIX5(double,int64_t,double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 2829: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,int64_t,double,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 2574: { double __r = 0.0; GMB_FFI_MIX5(double,double,int64_t,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 2830: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,double,int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 2575: { double __r = 0.0; GMB_FFI_MIX5(double,int64_t,int64_t,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 2831: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,int64_t,int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 2576: { double __r = 0.0; GMB_FFI_MIX5(double,double,double,double,double,int64_t,fn,a,__r); return __r; }
+    case 2832: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,double,double,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 2577: { double __r = 0.0; GMB_FFI_MIX5(double,int64_t,double,double,double,int64_t,fn,a,__r); return __r; }
+    case 2833: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,int64_t,double,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 2578: { double __r = 0.0; GMB_FFI_MIX5(double,double,int64_t,double,double,int64_t,fn,a,__r); return __r; }
+    case 2834: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,double,int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 2579: { double __r = 0.0; GMB_FFI_MIX5(double,int64_t,int64_t,double,double,int64_t,fn,a,__r); return __r; }
+    case 2835: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,int64_t,int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 2580: { double __r = 0.0; GMB_FFI_MIX5(double,double,double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 2836: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,double,double,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 2581: { double __r = 0.0; GMB_FFI_MIX5(double,int64_t,double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 2837: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,int64_t,double,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 2582: { double __r = 0.0; GMB_FFI_MIX5(double,double,int64_t,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 2838: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,double,int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 2583: { double __r = 0.0; GMB_FFI_MIX5(double,int64_t,int64_t,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 2839: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,int64_t,int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 2584: { double __r = 0.0; GMB_FFI_MIX5(double,double,double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 2840: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,double,double,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 2585: { double __r = 0.0; GMB_FFI_MIX5(double,int64_t,double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 2841: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,int64_t,double,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 2586: { double __r = 0.0; GMB_FFI_MIX5(double,double,int64_t,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 2842: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,double,int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 2587: { double __r = 0.0; GMB_FFI_MIX5(double,int64_t,int64_t,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 2843: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,int64_t,int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 2588: { double __r = 0.0; GMB_FFI_MIX5(double,double,double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 2844: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,double,double,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 2589: { double __r = 0.0; GMB_FFI_MIX5(double,int64_t,double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 2845: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,int64_t,double,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 2590: { double __r = 0.0; GMB_FFI_MIX5(double,double,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 2846: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,double,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 2591: { double __r = 0.0; GMB_FFI_MIX5(double,int64_t,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 2847: { int64_t __r = 0; GMB_FFI_MIX5(int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3072: { double __r = 0.0; GMB_FFI_MIX6(double,double,double,double,double,double,double,fn,a,__r); return __r; }
+    case 3328: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,double,double,double,double,double,fn,a,__r); return (double)__r; }
+    case 3073: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,double,double,double,double,double,fn,a,__r); return __r; }
+    case 3329: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,double,double,double,double,double,fn,a,__r); return (double)__r; }
+    case 3074: { double __r = 0.0; GMB_FFI_MIX6(double,double,int64_t,double,double,double,double,fn,a,__r); return __r; }
+    case 3330: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,int64_t,double,double,double,double,fn,a,__r); return (double)__r; }
+    case 3075: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,int64_t,double,double,double,double,fn,a,__r); return __r; }
+    case 3331: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,int64_t,double,double,double,double,fn,a,__r); return (double)__r; }
+    case 3076: { double __r = 0.0; GMB_FFI_MIX6(double,double,double,int64_t,double,double,double,fn,a,__r); return __r; }
+    case 3332: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,double,int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 3077: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,double,int64_t,double,double,double,fn,a,__r); return __r; }
+    case 3333: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,double,int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 3078: { double __r = 0.0; GMB_FFI_MIX6(double,double,int64_t,int64_t,double,double,double,fn,a,__r); return __r; }
+    case 3334: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,int64_t,int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 3079: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,int64_t,int64_t,double,double,double,fn,a,__r); return __r; }
+    case 3335: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,int64_t,int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 3080: { double __r = 0.0; GMB_FFI_MIX6(double,double,double,double,int64_t,double,double,fn,a,__r); return __r; }
+    case 3336: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,double,double,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 3081: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,double,double,int64_t,double,double,fn,a,__r); return __r; }
+    case 3337: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,double,double,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 3082: { double __r = 0.0; GMB_FFI_MIX6(double,double,int64_t,double,int64_t,double,double,fn,a,__r); return __r; }
+    case 3338: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,int64_t,double,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 3083: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,int64_t,double,int64_t,double,double,fn,a,__r); return __r; }
+    case 3339: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,int64_t,double,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 3084: { double __r = 0.0; GMB_FFI_MIX6(double,double,double,int64_t,int64_t,double,double,fn,a,__r); return __r; }
+    case 3340: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,double,int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 3085: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,double,int64_t,int64_t,double,double,fn,a,__r); return __r; }
+    case 3341: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,double,int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 3086: { double __r = 0.0; GMB_FFI_MIX6(double,double,int64_t,int64_t,int64_t,double,double,fn,a,__r); return __r; }
+    case 3342: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,int64_t,int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 3087: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,int64_t,int64_t,int64_t,double,double,fn,a,__r); return __r; }
+    case 3343: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,int64_t,int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 3088: { double __r = 0.0; GMB_FFI_MIX6(double,double,double,double,double,int64_t,double,fn,a,__r); return __r; }
+    case 3344: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,double,double,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3089: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,double,double,double,int64_t,double,fn,a,__r); return __r; }
+    case 3345: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,double,double,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3090: { double __r = 0.0; GMB_FFI_MIX6(double,double,int64_t,double,double,int64_t,double,fn,a,__r); return __r; }
+    case 3346: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,int64_t,double,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3091: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,int64_t,double,double,int64_t,double,fn,a,__r); return __r; }
+    case 3347: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,int64_t,double,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3092: { double __r = 0.0; GMB_FFI_MIX6(double,double,double,int64_t,double,int64_t,double,fn,a,__r); return __r; }
+    case 3348: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,double,int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3093: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,double,int64_t,double,int64_t,double,fn,a,__r); return __r; }
+    case 3349: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,double,int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3094: { double __r = 0.0; GMB_FFI_MIX6(double,double,int64_t,int64_t,double,int64_t,double,fn,a,__r); return __r; }
+    case 3350: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,int64_t,int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3095: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,int64_t,int64_t,double,int64_t,double,fn,a,__r); return __r; }
+    case 3351: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,int64_t,int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3096: { double __r = 0.0; GMB_FFI_MIX6(double,double,double,double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 3352: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,double,double,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3097: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,double,double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 3353: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,double,double,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3098: { double __r = 0.0; GMB_FFI_MIX6(double,double,int64_t,double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 3354: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,int64_t,double,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3099: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,int64_t,double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 3355: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,int64_t,double,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3100: { double __r = 0.0; GMB_FFI_MIX6(double,double,double,int64_t,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 3356: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,double,int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3101: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,double,int64_t,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 3357: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,double,int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3102: { double __r = 0.0; GMB_FFI_MIX6(double,double,int64_t,int64_t,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 3358: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,int64_t,int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3103: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,int64_t,int64_t,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 3359: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3104: { double __r = 0.0; GMB_FFI_MIX6(double,double,double,double,double,double,int64_t,fn,a,__r); return __r; }
+    case 3360: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,double,double,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3105: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,double,double,double,double,int64_t,fn,a,__r); return __r; }
+    case 3361: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,double,double,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3106: { double __r = 0.0; GMB_FFI_MIX6(double,double,int64_t,double,double,double,int64_t,fn,a,__r); return __r; }
+    case 3362: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,int64_t,double,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3107: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,int64_t,double,double,double,int64_t,fn,a,__r); return __r; }
+    case 3363: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,int64_t,double,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3108: { double __r = 0.0; GMB_FFI_MIX6(double,double,double,int64_t,double,double,int64_t,fn,a,__r); return __r; }
+    case 3364: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,double,int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3109: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,double,int64_t,double,double,int64_t,fn,a,__r); return __r; }
+    case 3365: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,double,int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3110: { double __r = 0.0; GMB_FFI_MIX6(double,double,int64_t,int64_t,double,double,int64_t,fn,a,__r); return __r; }
+    case 3366: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,int64_t,int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3111: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,int64_t,int64_t,double,double,int64_t,fn,a,__r); return __r; }
+    case 3367: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,int64_t,int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3112: { double __r = 0.0; GMB_FFI_MIX6(double,double,double,double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 3368: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,double,double,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3113: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,double,double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 3369: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,double,double,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3114: { double __r = 0.0; GMB_FFI_MIX6(double,double,int64_t,double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 3370: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,int64_t,double,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3115: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,int64_t,double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 3371: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,int64_t,double,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3116: { double __r = 0.0; GMB_FFI_MIX6(double,double,double,int64_t,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 3372: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,double,int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3117: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,double,int64_t,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 3373: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,double,int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3118: { double __r = 0.0; GMB_FFI_MIX6(double,double,int64_t,int64_t,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 3374: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,int64_t,int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3119: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,int64_t,int64_t,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 3375: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,int64_t,int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3120: { double __r = 0.0; GMB_FFI_MIX6(double,double,double,double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3376: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,double,double,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3121: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,double,double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3377: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,double,double,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3122: { double __r = 0.0; GMB_FFI_MIX6(double,double,int64_t,double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3378: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,int64_t,double,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3123: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,int64_t,double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3379: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,int64_t,double,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3124: { double __r = 0.0; GMB_FFI_MIX6(double,double,double,int64_t,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3380: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,double,int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3125: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,double,int64_t,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3381: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,double,int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3126: { double __r = 0.0; GMB_FFI_MIX6(double,double,int64_t,int64_t,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3382: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,int64_t,int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3127: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,int64_t,int64_t,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3383: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,int64_t,int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3128: { double __r = 0.0; GMB_FFI_MIX6(double,double,double,double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3384: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,double,double,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3129: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,double,double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3385: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,double,double,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3130: { double __r = 0.0; GMB_FFI_MIX6(double,double,int64_t,double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3386: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,int64_t,double,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3131: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,int64_t,double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3387: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,int64_t,double,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3132: { double __r = 0.0; GMB_FFI_MIX6(double,double,double,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3388: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,double,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3133: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,double,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3389: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,double,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3134: { double __r = 0.0; GMB_FFI_MIX6(double,double,int64_t,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3390: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,double,int64_t,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3135: { double __r = 0.0; GMB_FFI_MIX6(double,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3391: { int64_t __r = 0; GMB_FFI_MIX6(int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3584: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,double,double,double,double,double,fn,a,__r); return __r; }
+    case 3840: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,double,double,double,double,double,fn,a,__r); return (double)__r; }
+    case 3585: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,double,double,double,double,double,fn,a,__r); return __r; }
+    case 3841: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,double,double,double,double,double,fn,a,__r); return (double)__r; }
+    case 3586: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,double,double,double,double,double,fn,a,__r); return __r; }
+    case 3842: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,double,double,double,double,double,fn,a,__r); return (double)__r; }
+    case 3587: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,double,double,double,double,double,fn,a,__r); return __r; }
+    case 3843: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,double,double,double,double,double,fn,a,__r); return (double)__r; }
+    case 3588: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,int64_t,double,double,double,double,fn,a,__r); return __r; }
+    case 3844: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,int64_t,double,double,double,double,fn,a,__r); return (double)__r; }
+    case 3589: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,int64_t,double,double,double,double,fn,a,__r); return __r; }
+    case 3845: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,int64_t,double,double,double,double,fn,a,__r); return (double)__r; }
+    case 3590: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,int64_t,double,double,double,double,fn,a,__r); return __r; }
+    case 3846: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,int64_t,double,double,double,double,fn,a,__r); return (double)__r; }
+    case 3591: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,int64_t,double,double,double,double,fn,a,__r); return __r; }
+    case 3847: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,int64_t,double,double,double,double,fn,a,__r); return (double)__r; }
+    case 3592: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,double,int64_t,double,double,double,fn,a,__r); return __r; }
+    case 3848: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,double,int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 3593: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,double,int64_t,double,double,double,fn,a,__r); return __r; }
+    case 3849: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,double,int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 3594: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,double,int64_t,double,double,double,fn,a,__r); return __r; }
+    case 3850: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,double,int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 3595: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,double,int64_t,double,double,double,fn,a,__r); return __r; }
+    case 3851: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,double,int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 3596: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,int64_t,int64_t,double,double,double,fn,a,__r); return __r; }
+    case 3852: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,int64_t,int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 3597: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,int64_t,int64_t,double,double,double,fn,a,__r); return __r; }
+    case 3853: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,int64_t,int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 3598: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,int64_t,int64_t,double,double,double,fn,a,__r); return __r; }
+    case 3854: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,int64_t,int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 3599: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,int64_t,int64_t,double,double,double,fn,a,__r); return __r; }
+    case 3855: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,int64_t,int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 3600: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,double,double,int64_t,double,double,fn,a,__r); return __r; }
+    case 3856: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,double,double,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 3601: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,double,double,int64_t,double,double,fn,a,__r); return __r; }
+    case 3857: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,double,double,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 3602: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,double,double,int64_t,double,double,fn,a,__r); return __r; }
+    case 3858: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,double,double,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 3603: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,double,double,int64_t,double,double,fn,a,__r); return __r; }
+    case 3859: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,double,double,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 3604: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,int64_t,double,int64_t,double,double,fn,a,__r); return __r; }
+    case 3860: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,int64_t,double,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 3605: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,int64_t,double,int64_t,double,double,fn,a,__r); return __r; }
+    case 3861: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,int64_t,double,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 3606: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,int64_t,double,int64_t,double,double,fn,a,__r); return __r; }
+    case 3862: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,int64_t,double,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 3607: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,int64_t,double,int64_t,double,double,fn,a,__r); return __r; }
+    case 3863: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,int64_t,double,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 3608: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,double,int64_t,int64_t,double,double,fn,a,__r); return __r; }
+    case 3864: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,double,int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 3609: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,double,int64_t,int64_t,double,double,fn,a,__r); return __r; }
+    case 3865: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,double,int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 3610: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,double,int64_t,int64_t,double,double,fn,a,__r); return __r; }
+    case 3866: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,double,int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 3611: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,double,int64_t,int64_t,double,double,fn,a,__r); return __r; }
+    case 3867: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,double,int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 3612: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,int64_t,int64_t,int64_t,double,double,fn,a,__r); return __r; }
+    case 3868: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,int64_t,int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 3613: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,int64_t,int64_t,int64_t,double,double,fn,a,__r); return __r; }
+    case 3869: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,int64_t,int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 3614: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,int64_t,int64_t,int64_t,double,double,fn,a,__r); return __r; }
+    case 3870: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,int64_t,int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 3615: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,int64_t,int64_t,int64_t,double,double,fn,a,__r); return __r; }
+    case 3871: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 3616: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,double,double,double,int64_t,double,fn,a,__r); return __r; }
+    case 3872: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,double,double,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3617: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,double,double,double,int64_t,double,fn,a,__r); return __r; }
+    case 3873: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,double,double,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3618: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,double,double,double,int64_t,double,fn,a,__r); return __r; }
+    case 3874: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,double,double,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3619: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,double,double,double,int64_t,double,fn,a,__r); return __r; }
+    case 3875: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,double,double,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3620: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,int64_t,double,double,int64_t,double,fn,a,__r); return __r; }
+    case 3876: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,int64_t,double,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3621: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,int64_t,double,double,int64_t,double,fn,a,__r); return __r; }
+    case 3877: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,int64_t,double,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3622: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,int64_t,double,double,int64_t,double,fn,a,__r); return __r; }
+    case 3878: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,int64_t,double,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3623: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,int64_t,double,double,int64_t,double,fn,a,__r); return __r; }
+    case 3879: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,int64_t,double,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3624: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,double,int64_t,double,int64_t,double,fn,a,__r); return __r; }
+    case 3880: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,double,int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3625: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,double,int64_t,double,int64_t,double,fn,a,__r); return __r; }
+    case 3881: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,double,int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3626: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,double,int64_t,double,int64_t,double,fn,a,__r); return __r; }
+    case 3882: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,double,int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3627: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,double,int64_t,double,int64_t,double,fn,a,__r); return __r; }
+    case 3883: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,double,int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3628: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,int64_t,int64_t,double,int64_t,double,fn,a,__r); return __r; }
+    case 3884: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,int64_t,int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3629: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,int64_t,int64_t,double,int64_t,double,fn,a,__r); return __r; }
+    case 3885: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,int64_t,int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3630: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,int64_t,int64_t,double,int64_t,double,fn,a,__r); return __r; }
+    case 3886: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,int64_t,int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3631: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,int64_t,int64_t,double,int64_t,double,fn,a,__r); return __r; }
+    case 3887: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,int64_t,int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3632: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,double,double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 3888: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,double,double,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3633: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,double,double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 3889: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,double,double,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3634: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,double,double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 3890: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,double,double,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3635: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,double,double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 3891: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,double,double,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3636: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,int64_t,double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 3892: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,int64_t,double,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3637: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,int64_t,double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 3893: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,int64_t,double,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3638: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,int64_t,double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 3894: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,int64_t,double,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3639: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,int64_t,double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 3895: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,int64_t,double,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3640: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,double,int64_t,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 3896: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,double,int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3641: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,double,int64_t,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 3897: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,double,int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3642: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,double,int64_t,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 3898: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,double,int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3643: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,double,int64_t,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 3899: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,double,int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3644: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,int64_t,int64_t,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 3900: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,int64_t,int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3645: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,int64_t,int64_t,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 3901: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,int64_t,int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3646: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,int64_t,int64_t,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 3902: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,int64_t,int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3647: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 3903: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 3648: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,double,double,double,double,int64_t,fn,a,__r); return __r; }
+    case 3904: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,double,double,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3649: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,double,double,double,double,int64_t,fn,a,__r); return __r; }
+    case 3905: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,double,double,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3650: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,double,double,double,double,int64_t,fn,a,__r); return __r; }
+    case 3906: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,double,double,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3651: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,double,double,double,double,int64_t,fn,a,__r); return __r; }
+    case 3907: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,double,double,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3652: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,int64_t,double,double,double,int64_t,fn,a,__r); return __r; }
+    case 3908: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,int64_t,double,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3653: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,int64_t,double,double,double,int64_t,fn,a,__r); return __r; }
+    case 3909: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,int64_t,double,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3654: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,int64_t,double,double,double,int64_t,fn,a,__r); return __r; }
+    case 3910: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,int64_t,double,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3655: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,int64_t,double,double,double,int64_t,fn,a,__r); return __r; }
+    case 3911: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,int64_t,double,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3656: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,double,int64_t,double,double,int64_t,fn,a,__r); return __r; }
+    case 3912: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,double,int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3657: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,double,int64_t,double,double,int64_t,fn,a,__r); return __r; }
+    case 3913: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,double,int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3658: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,double,int64_t,double,double,int64_t,fn,a,__r); return __r; }
+    case 3914: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,double,int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3659: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,double,int64_t,double,double,int64_t,fn,a,__r); return __r; }
+    case 3915: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,double,int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3660: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,int64_t,int64_t,double,double,int64_t,fn,a,__r); return __r; }
+    case 3916: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,int64_t,int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3661: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,int64_t,int64_t,double,double,int64_t,fn,a,__r); return __r; }
+    case 3917: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,int64_t,int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3662: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,int64_t,int64_t,double,double,int64_t,fn,a,__r); return __r; }
+    case 3918: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,int64_t,int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3663: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,int64_t,int64_t,double,double,int64_t,fn,a,__r); return __r; }
+    case 3919: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,int64_t,int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3664: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,double,double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 3920: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,double,double,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3665: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,double,double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 3921: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,double,double,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3666: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,double,double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 3922: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,double,double,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3667: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,double,double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 3923: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,double,double,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3668: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,int64_t,double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 3924: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,int64_t,double,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3669: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,int64_t,double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 3925: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,int64_t,double,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3670: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,int64_t,double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 3926: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,int64_t,double,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3671: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,int64_t,double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 3927: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,int64_t,double,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3672: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,double,int64_t,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 3928: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,double,int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3673: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,double,int64_t,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 3929: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,double,int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3674: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,double,int64_t,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 3930: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,double,int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3675: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,double,int64_t,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 3931: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,double,int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3676: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,int64_t,int64_t,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 3932: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,int64_t,int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3677: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,int64_t,int64_t,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 3933: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,int64_t,int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3678: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,int64_t,int64_t,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 3934: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,int64_t,int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3679: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,int64_t,int64_t,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 3935: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 3680: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,double,double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3936: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,double,double,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3681: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,double,double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3937: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,double,double,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3682: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,double,double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3938: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,double,double,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3683: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,double,double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3939: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,double,double,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3684: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,int64_t,double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3940: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,int64_t,double,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3685: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,int64_t,double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3941: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,int64_t,double,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3686: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,int64_t,double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3942: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,int64_t,double,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3687: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,int64_t,double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3943: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,int64_t,double,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3688: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,double,int64_t,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3944: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,double,int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3689: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,double,int64_t,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3945: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,double,int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3690: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,double,int64_t,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3946: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,double,int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3691: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,double,int64_t,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3947: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,double,int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3692: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,int64_t,int64_t,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3948: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,int64_t,int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3693: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,int64_t,int64_t,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3949: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,int64_t,int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3694: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,int64_t,int64_t,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3950: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,int64_t,int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3695: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,int64_t,int64_t,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3951: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,int64_t,int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3696: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,double,double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3952: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,double,double,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3697: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,double,double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3953: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,double,double,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3698: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,double,double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3954: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,double,double,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3699: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,double,double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3955: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,double,double,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3700: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,int64_t,double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3956: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,int64_t,double,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3701: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,int64_t,double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3957: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,int64_t,double,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3702: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,int64_t,double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3958: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,int64_t,double,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3703: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,int64_t,double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3959: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,int64_t,double,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3704: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,double,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3960: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,double,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3705: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,double,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3961: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,double,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3706: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,double,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3962: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,double,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3707: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,double,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3963: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,double,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3708: { double __r = 0.0; GMB_FFI_MIX7(double,double,double,int64_t,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3964: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,double,int64_t,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3709: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,double,int64_t,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3965: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,double,int64_t,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3710: { double __r = 0.0; GMB_FFI_MIX7(double,double,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3966: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,double,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 3711: { double __r = 0.0; GMB_FFI_MIX7(double,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 3967: { int64_t __r = 0; GMB_FFI_MIX7(int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4096: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,double,double,double,double,double,fn,a,__r); return __r; }
+    case 4352: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,double,double,double,double,double,fn,a,__r); return (double)__r; }
+    case 4097: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,double,double,double,double,double,fn,a,__r); return __r; }
+    case 4353: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,double,double,double,double,double,fn,a,__r); return (double)__r; }
+    case 4098: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,double,double,double,double,double,fn,a,__r); return __r; }
+    case 4354: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,double,double,double,double,double,fn,a,__r); return (double)__r; }
+    case 4099: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,double,double,double,double,double,fn,a,__r); return __r; }
+    case 4355: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,double,double,double,double,double,fn,a,__r); return (double)__r; }
+    case 4100: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,double,double,double,double,double,fn,a,__r); return __r; }
+    case 4356: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,double,double,double,double,double,fn,a,__r); return (double)__r; }
+    case 4101: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,double,double,double,double,double,fn,a,__r); return __r; }
+    case 4357: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,double,double,double,double,double,fn,a,__r); return (double)__r; }
+    case 4102: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,double,double,double,double,double,fn,a,__r); return __r; }
+    case 4358: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,double,double,double,double,double,fn,a,__r); return (double)__r; }
+    case 4103: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,double,double,double,double,double,fn,a,__r); return __r; }
+    case 4359: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,double,double,double,double,double,fn,a,__r); return (double)__r; }
+    case 4104: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,int64_t,double,double,double,double,fn,a,__r); return __r; }
+    case 4360: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,int64_t,double,double,double,double,fn,a,__r); return (double)__r; }
+    case 4105: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,int64_t,double,double,double,double,fn,a,__r); return __r; }
+    case 4361: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,int64_t,double,double,double,double,fn,a,__r); return (double)__r; }
+    case 4106: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,int64_t,double,double,double,double,fn,a,__r); return __r; }
+    case 4362: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,int64_t,double,double,double,double,fn,a,__r); return (double)__r; }
+    case 4107: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,int64_t,double,double,double,double,fn,a,__r); return __r; }
+    case 4363: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,int64_t,double,double,double,double,fn,a,__r); return (double)__r; }
+    case 4108: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,int64_t,double,double,double,double,fn,a,__r); return __r; }
+    case 4364: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,int64_t,double,double,double,double,fn,a,__r); return (double)__r; }
+    case 4109: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,int64_t,double,double,double,double,fn,a,__r); return __r; }
+    case 4365: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,int64_t,double,double,double,double,fn,a,__r); return (double)__r; }
+    case 4110: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,int64_t,double,double,double,double,fn,a,__r); return __r; }
+    case 4366: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,int64_t,double,double,double,double,fn,a,__r); return (double)__r; }
+    case 4111: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,int64_t,double,double,double,double,fn,a,__r); return __r; }
+    case 4367: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,int64_t,double,double,double,double,fn,a,__r); return (double)__r; }
+    case 4112: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,double,int64_t,double,double,double,fn,a,__r); return __r; }
+    case 4368: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,double,int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 4113: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,double,int64_t,double,double,double,fn,a,__r); return __r; }
+    case 4369: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,double,int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 4114: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,double,int64_t,double,double,double,fn,a,__r); return __r; }
+    case 4370: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,double,int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 4115: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,double,int64_t,double,double,double,fn,a,__r); return __r; }
+    case 4371: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,double,int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 4116: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,double,int64_t,double,double,double,fn,a,__r); return __r; }
+    case 4372: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,double,int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 4117: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,double,int64_t,double,double,double,fn,a,__r); return __r; }
+    case 4373: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,double,int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 4118: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,double,int64_t,double,double,double,fn,a,__r); return __r; }
+    case 4374: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,double,int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 4119: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,double,int64_t,double,double,double,fn,a,__r); return __r; }
+    case 4375: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,double,int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 4120: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,int64_t,int64_t,double,double,double,fn,a,__r); return __r; }
+    case 4376: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,int64_t,int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 4121: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,int64_t,int64_t,double,double,double,fn,a,__r); return __r; }
+    case 4377: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,int64_t,int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 4122: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,int64_t,int64_t,double,double,double,fn,a,__r); return __r; }
+    case 4378: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,int64_t,int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 4123: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,int64_t,int64_t,double,double,double,fn,a,__r); return __r; }
+    case 4379: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,int64_t,int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 4124: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,int64_t,int64_t,double,double,double,fn,a,__r); return __r; }
+    case 4380: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,int64_t,int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 4125: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,int64_t,int64_t,double,double,double,fn,a,__r); return __r; }
+    case 4381: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,int64_t,int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 4126: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,int64_t,int64_t,double,double,double,fn,a,__r); return __r; }
+    case 4382: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,int64_t,int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 4127: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,int64_t,int64_t,double,double,double,fn,a,__r); return __r; }
+    case 4383: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,double,double,double,fn,a,__r); return (double)__r; }
+    case 4128: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,double,double,int64_t,double,double,fn,a,__r); return __r; }
+    case 4384: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,double,double,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4129: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,double,double,int64_t,double,double,fn,a,__r); return __r; }
+    case 4385: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,double,double,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4130: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,double,double,int64_t,double,double,fn,a,__r); return __r; }
+    case 4386: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,double,double,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4131: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,double,double,int64_t,double,double,fn,a,__r); return __r; }
+    case 4387: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,double,double,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4132: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,double,double,int64_t,double,double,fn,a,__r); return __r; }
+    case 4388: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,double,double,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4133: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,double,double,int64_t,double,double,fn,a,__r); return __r; }
+    case 4389: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,double,double,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4134: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,double,double,int64_t,double,double,fn,a,__r); return __r; }
+    case 4390: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,double,double,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4135: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,double,double,int64_t,double,double,fn,a,__r); return __r; }
+    case 4391: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,double,double,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4136: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,int64_t,double,int64_t,double,double,fn,a,__r); return __r; }
+    case 4392: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,int64_t,double,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4137: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,int64_t,double,int64_t,double,double,fn,a,__r); return __r; }
+    case 4393: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,int64_t,double,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4138: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,int64_t,double,int64_t,double,double,fn,a,__r); return __r; }
+    case 4394: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,int64_t,double,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4139: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,int64_t,double,int64_t,double,double,fn,a,__r); return __r; }
+    case 4395: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,int64_t,double,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4140: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,int64_t,double,int64_t,double,double,fn,a,__r); return __r; }
+    case 4396: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,int64_t,double,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4141: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,int64_t,double,int64_t,double,double,fn,a,__r); return __r; }
+    case 4397: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,int64_t,double,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4142: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,int64_t,double,int64_t,double,double,fn,a,__r); return __r; }
+    case 4398: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,int64_t,double,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4143: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,int64_t,double,int64_t,double,double,fn,a,__r); return __r; }
+    case 4399: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,int64_t,double,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4144: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,double,int64_t,int64_t,double,double,fn,a,__r); return __r; }
+    case 4400: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,double,int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4145: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,double,int64_t,int64_t,double,double,fn,a,__r); return __r; }
+    case 4401: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,double,int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4146: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,double,int64_t,int64_t,double,double,fn,a,__r); return __r; }
+    case 4402: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,double,int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4147: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,double,int64_t,int64_t,double,double,fn,a,__r); return __r; }
+    case 4403: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,double,int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4148: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,double,int64_t,int64_t,double,double,fn,a,__r); return __r; }
+    case 4404: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,double,int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4149: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,double,int64_t,int64_t,double,double,fn,a,__r); return __r; }
+    case 4405: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,double,int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4150: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,double,int64_t,int64_t,double,double,fn,a,__r); return __r; }
+    case 4406: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,double,int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4151: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,double,int64_t,int64_t,double,double,fn,a,__r); return __r; }
+    case 4407: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,double,int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4152: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,int64_t,int64_t,int64_t,double,double,fn,a,__r); return __r; }
+    case 4408: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,int64_t,int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4153: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,int64_t,int64_t,int64_t,double,double,fn,a,__r); return __r; }
+    case 4409: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,int64_t,int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4154: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,int64_t,int64_t,int64_t,double,double,fn,a,__r); return __r; }
+    case 4410: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,int64_t,int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4155: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,int64_t,int64_t,int64_t,double,double,fn,a,__r); return __r; }
+    case 4411: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,int64_t,int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4156: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,int64_t,int64_t,int64_t,double,double,fn,a,__r); return __r; }
+    case 4412: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,int64_t,int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4157: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,int64_t,int64_t,int64_t,double,double,fn,a,__r); return __r; }
+    case 4413: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,int64_t,int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4158: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,int64_t,int64_t,int64_t,double,double,fn,a,__r); return __r; }
+    case 4414: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,int64_t,int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4159: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,double,double,fn,a,__r); return __r; }
+    case 4415: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,double,double,fn,a,__r); return (double)__r; }
+    case 4160: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,double,double,double,int64_t,double,fn,a,__r); return __r; }
+    case 4416: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,double,double,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4161: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,double,double,double,int64_t,double,fn,a,__r); return __r; }
+    case 4417: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,double,double,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4162: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,double,double,double,int64_t,double,fn,a,__r); return __r; }
+    case 4418: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,double,double,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4163: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,double,double,double,int64_t,double,fn,a,__r); return __r; }
+    case 4419: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,double,double,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4164: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,double,double,double,int64_t,double,fn,a,__r); return __r; }
+    case 4420: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,double,double,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4165: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,double,double,double,int64_t,double,fn,a,__r); return __r; }
+    case 4421: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,double,double,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4166: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,double,double,double,int64_t,double,fn,a,__r); return __r; }
+    case 4422: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,double,double,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4167: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,double,double,double,int64_t,double,fn,a,__r); return __r; }
+    case 4423: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,double,double,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4168: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,int64_t,double,double,int64_t,double,fn,a,__r); return __r; }
+    case 4424: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,int64_t,double,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4169: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,int64_t,double,double,int64_t,double,fn,a,__r); return __r; }
+    case 4425: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,int64_t,double,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4170: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,int64_t,double,double,int64_t,double,fn,a,__r); return __r; }
+    case 4426: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,int64_t,double,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4171: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,int64_t,double,double,int64_t,double,fn,a,__r); return __r; }
+    case 4427: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,int64_t,double,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4172: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,int64_t,double,double,int64_t,double,fn,a,__r); return __r; }
+    case 4428: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,int64_t,double,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4173: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,int64_t,double,double,int64_t,double,fn,a,__r); return __r; }
+    case 4429: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,int64_t,double,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4174: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,int64_t,double,double,int64_t,double,fn,a,__r); return __r; }
+    case 4430: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,int64_t,double,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4175: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,int64_t,double,double,int64_t,double,fn,a,__r); return __r; }
+    case 4431: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,int64_t,double,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4176: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,double,int64_t,double,int64_t,double,fn,a,__r); return __r; }
+    case 4432: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,double,int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4177: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,double,int64_t,double,int64_t,double,fn,a,__r); return __r; }
+    case 4433: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,double,int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4178: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,double,int64_t,double,int64_t,double,fn,a,__r); return __r; }
+    case 4434: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,double,int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4179: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,double,int64_t,double,int64_t,double,fn,a,__r); return __r; }
+    case 4435: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,double,int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4180: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,double,int64_t,double,int64_t,double,fn,a,__r); return __r; }
+    case 4436: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,double,int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4181: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,double,int64_t,double,int64_t,double,fn,a,__r); return __r; }
+    case 4437: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,double,int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4182: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,double,int64_t,double,int64_t,double,fn,a,__r); return __r; }
+    case 4438: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,double,int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4183: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,double,int64_t,double,int64_t,double,fn,a,__r); return __r; }
+    case 4439: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,double,int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4184: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,int64_t,int64_t,double,int64_t,double,fn,a,__r); return __r; }
+    case 4440: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,int64_t,int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4185: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,int64_t,int64_t,double,int64_t,double,fn,a,__r); return __r; }
+    case 4441: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,int64_t,int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4186: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,int64_t,int64_t,double,int64_t,double,fn,a,__r); return __r; }
+    case 4442: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,int64_t,int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4187: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,int64_t,int64_t,double,int64_t,double,fn,a,__r); return __r; }
+    case 4443: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,int64_t,int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4188: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,int64_t,int64_t,double,int64_t,double,fn,a,__r); return __r; }
+    case 4444: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,int64_t,int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4189: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,int64_t,int64_t,double,int64_t,double,fn,a,__r); return __r; }
+    case 4445: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,int64_t,int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4190: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,int64_t,int64_t,double,int64_t,double,fn,a,__r); return __r; }
+    case 4446: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,int64_t,int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4191: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,int64_t,int64_t,double,int64_t,double,fn,a,__r); return __r; }
+    case 4447: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,double,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4192: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,double,double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4448: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,double,double,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4193: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,double,double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4449: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,double,double,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4194: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,double,double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4450: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,double,double,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4195: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,double,double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4451: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,double,double,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4196: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,double,double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4452: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,double,double,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4197: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,double,double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4453: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,double,double,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4198: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,double,double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4454: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,double,double,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4199: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,double,double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4455: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,double,double,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4200: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,int64_t,double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4456: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,int64_t,double,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4201: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,int64_t,double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4457: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,int64_t,double,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4202: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,int64_t,double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4458: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,int64_t,double,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4203: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,int64_t,double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4459: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,int64_t,double,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4204: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,int64_t,double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4460: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,int64_t,double,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4205: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,int64_t,double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4461: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,int64_t,double,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4206: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,int64_t,double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4462: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,int64_t,double,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4207: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,int64_t,double,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4463: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,int64_t,double,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4208: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,double,int64_t,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4464: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,double,int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4209: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,double,int64_t,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4465: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,double,int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4210: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,double,int64_t,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4466: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,double,int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4211: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,double,int64_t,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4467: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,double,int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4212: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,double,int64_t,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4468: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,double,int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4213: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,double,int64_t,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4469: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,double,int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4214: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,double,int64_t,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4470: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,double,int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4215: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,double,int64_t,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4471: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,double,int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4216: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,int64_t,int64_t,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4472: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,int64_t,int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4217: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,int64_t,int64_t,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4473: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,int64_t,int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4218: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,int64_t,int64_t,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4474: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,int64_t,int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4219: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,int64_t,int64_t,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4475: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,int64_t,int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4220: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,int64_t,int64_t,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4476: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,int64_t,int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4221: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,int64_t,int64_t,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4477: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,int64_t,int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4222: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4478: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4223: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,double,fn,a,__r); return __r; }
+    case 4479: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,double,fn,a,__r); return (double)__r; }
+    case 4224: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,double,double,double,double,int64_t,fn,a,__r); return __r; }
+    case 4480: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,double,double,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4225: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,double,double,double,double,int64_t,fn,a,__r); return __r; }
+    case 4481: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,double,double,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4226: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,double,double,double,double,int64_t,fn,a,__r); return __r; }
+    case 4482: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,double,double,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4227: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,double,double,double,double,int64_t,fn,a,__r); return __r; }
+    case 4483: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,double,double,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4228: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,double,double,double,double,int64_t,fn,a,__r); return __r; }
+    case 4484: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,double,double,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4229: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,double,double,double,double,int64_t,fn,a,__r); return __r; }
+    case 4485: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,double,double,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4230: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,double,double,double,double,int64_t,fn,a,__r); return __r; }
+    case 4486: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,double,double,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4231: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,double,double,double,double,int64_t,fn,a,__r); return __r; }
+    case 4487: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,double,double,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4232: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,int64_t,double,double,double,int64_t,fn,a,__r); return __r; }
+    case 4488: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,int64_t,double,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4233: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,int64_t,double,double,double,int64_t,fn,a,__r); return __r; }
+    case 4489: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,int64_t,double,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4234: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,int64_t,double,double,double,int64_t,fn,a,__r); return __r; }
+    case 4490: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,int64_t,double,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4235: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,int64_t,double,double,double,int64_t,fn,a,__r); return __r; }
+    case 4491: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,int64_t,double,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4236: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,int64_t,double,double,double,int64_t,fn,a,__r); return __r; }
+    case 4492: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,int64_t,double,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4237: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,int64_t,double,double,double,int64_t,fn,a,__r); return __r; }
+    case 4493: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,int64_t,double,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4238: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,int64_t,double,double,double,int64_t,fn,a,__r); return __r; }
+    case 4494: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,int64_t,double,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4239: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,int64_t,double,double,double,int64_t,fn,a,__r); return __r; }
+    case 4495: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,int64_t,double,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4240: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,double,int64_t,double,double,int64_t,fn,a,__r); return __r; }
+    case 4496: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,double,int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4241: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,double,int64_t,double,double,int64_t,fn,a,__r); return __r; }
+    case 4497: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,double,int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4242: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,double,int64_t,double,double,int64_t,fn,a,__r); return __r; }
+    case 4498: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,double,int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4243: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,double,int64_t,double,double,int64_t,fn,a,__r); return __r; }
+    case 4499: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,double,int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4244: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,double,int64_t,double,double,int64_t,fn,a,__r); return __r; }
+    case 4500: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,double,int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4245: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,double,int64_t,double,double,int64_t,fn,a,__r); return __r; }
+    case 4501: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,double,int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4246: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,double,int64_t,double,double,int64_t,fn,a,__r); return __r; }
+    case 4502: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,double,int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4247: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,double,int64_t,double,double,int64_t,fn,a,__r); return __r; }
+    case 4503: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,double,int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4248: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,int64_t,int64_t,double,double,int64_t,fn,a,__r); return __r; }
+    case 4504: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,int64_t,int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4249: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,int64_t,int64_t,double,double,int64_t,fn,a,__r); return __r; }
+    case 4505: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,int64_t,int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4250: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,int64_t,int64_t,double,double,int64_t,fn,a,__r); return __r; }
+    case 4506: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,int64_t,int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4251: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,int64_t,int64_t,double,double,int64_t,fn,a,__r); return __r; }
+    case 4507: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,int64_t,int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4252: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,int64_t,int64_t,double,double,int64_t,fn,a,__r); return __r; }
+    case 4508: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,int64_t,int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4253: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,int64_t,int64_t,double,double,int64_t,fn,a,__r); return __r; }
+    case 4509: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,int64_t,int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4254: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,int64_t,int64_t,double,double,int64_t,fn,a,__r); return __r; }
+    case 4510: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,int64_t,int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4255: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,int64_t,int64_t,double,double,int64_t,fn,a,__r); return __r; }
+    case 4511: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,double,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4256: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,double,double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4512: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,double,double,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4257: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,double,double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4513: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,double,double,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4258: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,double,double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4514: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,double,double,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4259: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,double,double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4515: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,double,double,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4260: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,double,double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4516: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,double,double,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4261: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,double,double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4517: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,double,double,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4262: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,double,double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4518: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,double,double,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4263: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,double,double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4519: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,double,double,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4264: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,int64_t,double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4520: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,int64_t,double,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4265: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,int64_t,double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4521: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,int64_t,double,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4266: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,int64_t,double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4522: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,int64_t,double,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4267: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,int64_t,double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4523: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,int64_t,double,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4268: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,int64_t,double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4524: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,int64_t,double,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4269: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,int64_t,double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4525: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,int64_t,double,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4270: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,int64_t,double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4526: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,int64_t,double,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4271: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,int64_t,double,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4527: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,int64_t,double,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4272: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,double,int64_t,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4528: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,double,int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4273: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,double,int64_t,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4529: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,double,int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4274: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,double,int64_t,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4530: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,double,int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4275: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,double,int64_t,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4531: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,double,int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4276: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,double,int64_t,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4532: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,double,int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4277: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,double,int64_t,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4533: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,double,int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4278: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,double,int64_t,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4534: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,double,int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4279: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,double,int64_t,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4535: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,double,int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4280: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,int64_t,int64_t,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4536: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,int64_t,int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4281: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,int64_t,int64_t,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4537: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,int64_t,int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4282: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,int64_t,int64_t,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4538: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,int64_t,int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4283: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,int64_t,int64_t,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4539: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,int64_t,int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4284: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,int64_t,int64_t,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4540: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,int64_t,int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4285: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,int64_t,int64_t,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4541: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,int64_t,int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4286: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,int64_t,int64_t,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4542: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,int64_t,int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4287: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,double,int64_t,fn,a,__r); return __r; }
+    case 4543: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,double,int64_t,fn,a,__r); return (double)__r; }
+    case 4288: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,double,double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4544: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,double,double,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4289: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,double,double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4545: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,double,double,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4290: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,double,double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4546: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,double,double,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4291: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,double,double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4547: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,double,double,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4292: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,double,double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4548: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,double,double,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4293: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,double,double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4549: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,double,double,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4294: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,double,double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4550: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,double,double,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4295: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,double,double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4551: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,double,double,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4296: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,int64_t,double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4552: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,int64_t,double,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4297: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,int64_t,double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4553: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,int64_t,double,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4298: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,int64_t,double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4554: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,int64_t,double,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4299: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,int64_t,double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4555: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,int64_t,double,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4300: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,int64_t,double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4556: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,int64_t,double,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4301: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,int64_t,double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4557: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,int64_t,double,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4302: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,int64_t,double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4558: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,int64_t,double,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4303: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,int64_t,double,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4559: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,int64_t,double,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4304: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,double,int64_t,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4560: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,double,int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4305: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,double,int64_t,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4561: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,double,int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4306: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,double,int64_t,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4562: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,double,int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4307: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,double,int64_t,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4563: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,double,int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4308: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,double,int64_t,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4564: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,double,int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4309: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,double,int64_t,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4565: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,double,int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4310: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,double,int64_t,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4566: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,double,int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4311: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,double,int64_t,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4567: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,double,int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4312: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,int64_t,int64_t,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4568: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,int64_t,int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4313: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,int64_t,int64_t,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4569: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,int64_t,int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4314: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,int64_t,int64_t,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4570: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,int64_t,int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4315: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,int64_t,int64_t,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4571: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,int64_t,int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4316: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,int64_t,int64_t,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4572: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,int64_t,int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4317: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,int64_t,int64_t,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4573: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,int64_t,int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4318: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,int64_t,int64_t,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4574: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,int64_t,int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4319: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,int64_t,int64_t,double,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4575: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,double,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4320: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,double,double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4576: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,double,double,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4321: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,double,double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4577: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,double,double,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4322: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,double,double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4578: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,double,double,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4323: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,double,double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4579: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,double,double,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4324: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,double,double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4580: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,double,double,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4325: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,double,double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4581: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,double,double,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4326: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,double,double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4582: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,double,double,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4327: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,double,double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4583: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,double,double,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4328: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,int64_t,double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4584: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,int64_t,double,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4329: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,int64_t,double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4585: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,int64_t,double,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4330: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,int64_t,double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4586: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,int64_t,double,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4331: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,int64_t,double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4587: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,int64_t,double,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4332: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,int64_t,double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4588: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,int64_t,double,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4333: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,int64_t,double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4589: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,int64_t,double,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4334: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,int64_t,double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4590: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,int64_t,double,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4335: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,int64_t,double,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4591: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,int64_t,double,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4336: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,double,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4592: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,double,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4337: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,double,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4593: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,double,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4338: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,double,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4594: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,double,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4339: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,double,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4595: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,double,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4340: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,double,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4596: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,double,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4341: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,double,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4597: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,double,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4342: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,double,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4598: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,double,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4343: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,double,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4599: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,double,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4344: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,double,int64_t,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4600: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,double,int64_t,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4345: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,double,int64_t,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4601: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,double,int64_t,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4346: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,double,int64_t,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4602: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,double,int64_t,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4347: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,double,int64_t,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4603: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,double,int64_t,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4348: { double __r = 0.0; GMB_FFI_MIX8(double,double,double,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4604: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,double,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4349: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,double,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4605: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,double,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4350: { double __r = 0.0; GMB_FFI_MIX8(double,double,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4606: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,double,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    case 4351: { double __r = 0.0; GMB_FFI_MIX8(double,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return __r; }
+    case 4607: { int64_t __r = 0; GMB_FFI_MIX8(int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,int64_t,fn,a,__r); return (double)__r; }
+    }
+    return 0.0;
+}
+
+
+/* FFI: chiamata a una funzione NON-variadic con firma ESATTA per argc. MAI il typedef
+ * variadico `double (*)(double, ...)`: su ARM64 invocare una funzione non-variadic
+ * attraverso un puntatore variadic porta argomenti in registri sbagliati (con 4 argomenti
+ * `vec_avg4` dava 7.2e+213 invece di 5). Stesso fix già applicato al path int64 di
+ * OP_CALL_FFI_T (2026-09-22, parità 4 backend). */
+static double gmb_vm_ffi_call_double(void* p, int argc, const double* a)
+{
+    switch (argc)
+    {
+        case 1: { double (*f)(double) = (double (*)(double))p; return f(a[0]); }
+        case 2: { double (*f)(double, double) = (double (*)(double, double))p; return f(a[0], a[1]); }
+        case 3: { double (*f)(double, double, double) = (double (*)(double, double, double))p; return f(a[0], a[1], a[2]); }
+        case 4: { double (*f)(double, double, double, double) = (double (*)(double, double, double, double))p; return f(a[0], a[1], a[2], a[3]); }
+        case 5: { double (*f)(double, double, double, double, double) = (double (*)(double, double, double, double, double))p; return f(a[0], a[1], a[2], a[3], a[4]); }
+        case 6: { double (*f)(double, double, double, double, double, double) = (double (*)(double, double, double, double, double, double))p; return f(a[0], a[1], a[2], a[3], a[4], a[5]); }
+        case 7: { double (*f)(double, double, double, double, double, double, double) = (double (*)(double, double, double, double, double, double, double))p; return f(a[0], a[1], a[2], a[3], a[4], a[5], a[6]); }
+        case 8: { double (*f)(double, double, double, double, double, double, double, double) = (double (*)(double, double, double, double, double, double, double, double))p; return f(a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7]); }
+        default: return 0.0;
+    }
+}
+
+/* Rilascio differito a fine istruzione (vedi gmb_task_t.defer_rel). */
+void gmb_task_defer_release(gmb_task_t* t, gmb_obj_t* o)
+{
+    if (!o) return;
+    if (t->n_defer_rel < 8) t->defer_rel[t->n_defer_rel++] = o;
+    else gmb_obj_release(o);
+}
+static void vm_defer_release(gmb_task_t* t, gmb_obj_t* o) { gmb_task_defer_release(t, o); }
+static inline void vm_flush_deferred(gmb_task_t* t)
+{
+    while (t->n_defer_rel > 0) gmb_obj_release(t->defer_rel[--t->n_defer_rel]);
+}
+
+void push_num_entry(gmb_task_t* t, double v, uint8_t bt) { gmb_task_push_num(t, v, bt); }
+void push_ref_entry(gmb_task_t* t, gmb_obj_t* o, uint8_t bt) { gmb_task_push_ref(t, o, bt); }
+void push_ref_new(gmb_task_t* t, gmb_obj_t* o, uint8_t bt)
+{
+    gmb_stack_entry_t e = { 0 };
+    e.type = 2; e.ref = o; e.basic_type = bt;
+    if (gmb_task_push_move(t, e) != 0 && o) gmb_obj_release(o);
+}
+void push_nil(gmb_task_t* t) { gmb_task_push_nil(t); }
+void push_str_entry(gmb_task_t* t, const char* s)
+{
+    /* F1: MaxPair/MinPair restituiscono la CHIAVE (stringa) del dict. */
+    push_val_entry(t, gmb_make_val_string_counted(s ? s : ""));
+}
+void push_val_entry(gmb_task_t* t, gmb_val_t v)
+{
+    gmb_stack_entry_t e = gmb_adapter_val_to_stack(v);
+    gmb_val_discard(v);   /* temporaneo del creatore (stringa contata a rc 0): val_to_stack ne ha fatto una copia VM */
+    if (e.type == 2 && e.ref) push_ref_new(t, e.ref, e.basic_type);   /* val_to_stack restituisce un'entry POSSEDUTA */
+    /* gmb_task_push_move copia l'entry INTERA (basic_type E scale): con gmb_task_push_num la
+     * SCALA di un CURRENCY (campo DBF N/F) andava persa → PRINT/CSTR "100" invece di "100.00". */
+    else gmb_task_push_move(t, e);
+}
+
+/* ---- SCOPE DINAMICO (DYNAMIC, spec Variables-Scope §2.5) — vedi OpCode.cs OP_DYN_* ----
+ * La catena dei frame di chiamata È la catena dello scope dinamico: le dichiarazioni vivono
+ * su gmb_frame_t.dyn (e, per il top-level senza frame, su task->dyn_base). La lettura risale
+ * la catena; la scrittura colpisce lo scope più interno che definisce il nome, altrimenti
+ * quello corrente. Alla pop del frame le dichiarazioni spariscono (ripristino automatico). */
+static int gmb_dyn_scope_find(const gmb_dyn_scope_t* s, const char* name)
+{
+    if (!s || !name) return -1;
+    for (int i = 0; i < s->count; i++)
+        if (s->names[i] && strcasecmp(s->names[i], name) == 0) return i;
+    return -1;
+}
+
+static void gmb_dyn_scope_put(gmb_dyn_scope_t* s, const char* name, gmb_stack_entry_t v)
+{
+    if (!s || !name || !name[0]) return;
+    int i = gmb_dyn_scope_find(s, name);
+    if (i >= 0)
+    {
+        if (s->vals[i].type == 2 && s->vals[i].ref) gmb_obj_release(s->vals[i].ref);
+    }
+    else
+    {
+        if (s->count >= s->cap)
+        {
+            int nc = s->cap ? s->cap * 2 : 8;
+            char** nn = (char**)realloc(s->names, sizeof(char*) * (size_t)nc);
+            if (!nn) return;
+            s->names = nn;
+            gmb_stack_entry_t* nv = (gmb_stack_entry_t*)realloc(s->vals, sizeof(gmb_stack_entry_t) * (size_t)nc);
+            if (!nv) return;
+            s->vals = nv;
+            s->cap = nc;
+        }
+        size_t ln = strlen(name) + 1;
+        s->names[s->count] = (char*)malloc(ln);
+        if (!s->names[s->count]) return;
+        memcpy(s->names[s->count], name, ln);
+        s->vals[s->count].type = 0;
+        s->vals[s->count].num = 0;
+        s->vals[s->count].ref = NULL;
+        s->vals[s->count].basic_type = 0;
+        i = s->count++;
+    }
+    s->vals[i] = v;                          /* copia POSSEDUTA */
+    if (v.type == 2 && v.ref) gmb_obj_retain(v.ref);
+}
+
+static gmb_dyn_scope_t* gmb_dyn_task_base(gmb_task_t* t)
+{
+    if (!t->dyn_base) t->dyn_base = (gmb_dyn_scope_t*)calloc(1, sizeof(gmb_dyn_scope_t));
+    return t->dyn_base;
+}
+
+/* SCRITTURA per NOME nella catena dinamica del task — usata fuori dal dispatch opcode
+ * (write-through di @GET/READ, che riceve il nome della variabile). Stessa regola di
+ * OP_DYN_STORE: lo scope più interno che definisce il nome, altrimenti quello corrente.
+ * Ritorna 1 se ha scritto. Thread-safe rispetto al task (i frame sono per-task, non TLS). */
+int gmb_vm_dyn_store_name(gmb_task_t* t, const char* name, gmb_stack_entry_t v)
+{
+    if (!t || !name || !name[0]) return 0;
+    gmb_dyn_scope_t* target = NULL;
+    for (gmb_frame_t* f = t->frame; f; f = f->prev)
+        if (gmb_dyn_scope_find(&f->dyn, name) >= 0) { target = &f->dyn; break; }
+    if (!target && t->dyn_base && gmb_dyn_scope_find(t->dyn_base, name) >= 0) target = t->dyn_base;
+    if (!target) target = t->frame ? &t->frame->dyn : gmb_dyn_task_base(t);
+    if (!target) return 0;
+    gmb_dyn_scope_put(target, name, v);
+    return 1;
+}
+
+/* Tipo corrente dello slot dinamico: 1 = numero, 2 = ref, -1 = assente. */
+int gmb_vm_dyn_kind(gmb_task_t* t, const char* name)
+{
+    gmb_stack_entry_t e;
+    return gmb_vm_dyn_get(t, name, &e) ? e.type : -1;
+}
+
+/* Valore corrente dello slot dinamico (prestito: il ref NON va rilasciato dal chiamante).
+ * 1 = trovato. */
+int gmb_vm_dyn_get(gmb_task_t* t, const char* name, gmb_stack_entry_t* out)
+{
+    if (!t || !name || !name[0]) return 0;
+    for (gmb_frame_t* f = t->frame; f; f = f->prev) {
+        int i = gmb_dyn_scope_find(&f->dyn, name);
+        if (i >= 0) { if (out) *out = f->dyn.vals[i]; return 1; }
+    }
+    if (t->dyn_base) {
+        int i = gmb_dyn_scope_find(t->dyn_base, name);
+        if (i >= 0) { if (out) *out = t->dyn_base->vals[i]; return 1; }
+    }
+    return 0;
+}
+
+static int gmb_dyn_task_find(gmb_task_t* t, const char* name, gmb_stack_entry_t* out)
+{
+    for (gmb_frame_t* f = t->frame; f; f = f->prev)
+    {
+        int i = gmb_dyn_scope_find(&f->dyn, name);
+        if (i >= 0) { if (out) *out = f->dyn.vals[i]; return 1; }
+    }
+    if (t->dyn_base)
+    {
+        int i = gmb_dyn_scope_find(t->dyn_base, name);
+        if (i >= 0) { if (out) *out = t->dyn_base->vals[i]; return 1; }
+    }
+    return 0;
+}
+
+static gmb_frame_t* push_frame(gmb_task_t* t, int saved_sp, int return_ip);
+
+typedef struct {
+    gmb_task_t* task;
+    const gmb_chunk_t* chunk;
+} vm_expr_env_t;
+
+/* S_eval record-scope DBF (parità PCodeVM/IL): EVAL/& risolve i nomi come CAMPI del record
+ * corrente dell'area DBF nativa attiva (dopo locali+globali). gmb_db è già una dipendenza
+ * di gmb_vm_core (vm_sys_db → gmb_db_apply_syscall) e di gmb_vm_host. */
+static int vm_expr_dbf_field_index(const char* name, int* type_out)
+{
+#ifdef GMB_VM_SPECIALIZED
+    (void)name; (void)type_out; return -1;   /* DBF assente nella VM specializzata */
+#else
+    int64_t h = gmb_db_current_dbf();
+    if (!name) return -1;
+    if (h <= 0)
+    {
+        /* Nessun handle DBF: l'area attiva può essere un'area del driver RDD (RDD USE … VIA
+         * "CSV"/"ARRAY"/…). I campi si risolvono per nome con lo stesso runtime condiviso che
+         * usano i comandi RDD; senza questo una variabile implicita di campo (`Nome`) restava
+         * vuota su un'area RDD (misurato: RDD_ReplaceRealData.bas stampava `Nome=[]` per sempre). */
+        int ri = gmb_rdd_field_index(name);
+        if (ri < 0) return -1;
+        if (type_out) *type_out = 'C';
+        return ri;
+    }
+    int n = gmb_db_dbf_field_count(h);
+    char fn[64];
+    size_t nl = strlen(name);
+    /* match anche senza il suffisso tipo ($ % # ! & @) se il testo lo porta */
+    char key[96];
+    snprintf(key, sizeof(key), "%s", name);
+    if (nl && (key[nl-1]=='$'||key[nl-1]=='%'||key[nl-1]=='#'||key[nl-1]=='!'||key[nl-1]=='&'||key[nl-1]=='@'))
+        key[nl-1] = 0;
+    for (int i = 0; i < n; i++) {
+        if (gmb_db_dbf_field_name(h, i, fn, (int)sizeof(fn)) != 0) continue;
+        if (strcasecmp(fn, key) == 0) {
+            if (type_out) *type_out = gmb_db_dbf_field_type(h, i);
+            return i;
+        }
+    }
+    return -1;
+#endif
+}
+
+/* Cifre decimali di un campo numerico DBF dal suo TESTO ("100.00" → 2): la scala del
+ * CURRENCY, per la resa identica al decimal PCode/IL (PRINT "100.00", CSTR " 100.00"). */
+static int vm_dbf_scale(const char* s)
+{
+    const char* p = s ? strchr(s, '.') : NULL;
+    if (!p) return 0;
+    int n = 0;
+    for (p++; *p >= '0' && *p <= '9'; p++) n++;
+    return n;
+}
+
+static int vm_expr_dbf_record_get(const char* name, gmb_val_t* out)
+{
+#ifdef GMB_VM_SPECIALIZED
+    return -1;   /* DBF assente nella VM specializzata */
+#else
+
+    int t = 0;
+    int idx = vm_expr_dbf_field_index(name, &t);
+    if (idx < 0) return -1;
+    char buf[512];
+    if (gmb_db_current_dbf() <= 0)
+    {
+        /* Area RDD: campo dal driver RDD condiviso (stessa fonte della scrittura). */
+        if (gmb_rdd_get_field(idx, buf, (int)sizeof(buf)) != 0) buf[0] = 0;
+        *out = gmb_make_val_string(buf);
+        return 0;
+    }
+    if (gmb_db_dbf_get_field(gmb_db_current_dbf(), idx, buf, (int)sizeof(buf)) != 0) return -1;
+    /* N/F/Y: CURRENCY (numerico + scala del campo) → PRINT "100.00", CSTR " 100.00", aritmetica
+     * numerica. Prima una DOUBLE: perdeva i decimali nella resa ("100"). Il campo Y (Currency,
+     * 8 byte) cadeva sul ramo STRINGA → VALTYPE/TYPENAME "C"/"STRING", STR$ 0, confronti
+     * non numerici (mentre IL/PCode lo leggevano come currency). */
+    if (t == 'N' || t == 'F' || t == 'Y') { *out = gmb_make_val_currency(strtod(buf, NULL), vm_dbf_scale(buf)); return 0; }
+    if (t == 'L') { *out = gmb_make_val_bool(buf[0] == 'T' || buf[0] == 't' || buf[0] == 'Y' || buf[0] == 'y' || buf[0] == '1'); return 0; }
+    *out = gmb_make_val_string(buf[0] ? buf : "");
+    return 0;
+
+#endif
+}
+
+static int vm_expr_dbf_record_set(const char* name, gmb_val_t in)
+{
+#ifdef GMB_VM_SPECIALIZED
+    return -1;   /* DBF assente nella VM specializzata */
+#else
+
+    int t = 0;
+    int idx = vm_expr_dbf_field_index(name, &t);
+    if (idx < 0) return -1;
+    char val[256];
+    if (t == 'N' || t == 'F') snprintf(val, sizeof(val), "%.14g", gmb_val_to_double(in));
+    else {
+        const char* s = (in.kind == GMB_TYPE_STRING && in.v_string.data) ? in.v_string.data : "";
+        snprintf(val, sizeof(val), "%s", s);
+    }
+    if (gmb_db_current_dbf() <= 0)
+    {
+        /* Area RDD: scrittura del campo con l'UNICA implementazione condivisa (§0bis).
+         * È il percorso di `RDD REPLACE campo WITH valore`. */
+        return gmb_rdd_replace_field(idx, val) == 0 ? 0 : -1;
+    }
+    char fn[64];
+    if (gmb_db_dbf_field_name(gmb_db_current_dbf(), idx, fn, (int)sizeof(fn)) != 0) return -1;
+    return gmb_db_dbf_replace_field_name(gmb_db_current_dbf(), fn, val);
+
+#endif
+}
+
+static int vm_expr_get(void* env, const char* name, gmb_val_t* out)
+{
+    vm_expr_env_t* e = (vm_expr_env_t*)env;
+    if (!e || !name || !out || !e->chunk || !e->task) return -1;
+    /* S_eval: le LOCALI della procedura chiamante vengono PRIMA dei globali
+     * (specchio PCodeVM EvalMacroInPCode; BYREF unwrappato in lettura da
+     * gmb_task_load_local come OP_LOAD_LOCAL). */
+    if (e->chunk->ploc_count > 0) {
+        int slot = gmb_chunk_local_slot(e->chunk, e->task->ip, name);
+        if (slot >= 0) {
+            *out = gmb_adapter_stack_to_val(gmb_task_load_local(e->task, slot));
+            return 0;
+        }
+    }
+    for (uint32_t i = 0; i < e->chunk->global_name_count; i++) {
+        const char* n = e->chunk->global_names ? e->chunk->global_names[i] : NULL;
+        if (n && n[0] && strcasecmp(n, name) == 0) {
+            *out = gmb_adapter_stack_to_val(gmb_task_load_global(e->task, (int)i));
+            return 0;
+        }
+    }
+    /* S_eval record-scope: campo del record corrente dell'area DBF attiva (dopo locali+globali). */
+    if (vm_expr_dbf_record_get(name, out) == 0) return 0;
+    return -1;
+}
+
+static int vm_expr_set(void* env, const char* name, gmb_val_t in)
+{
+    vm_expr_env_t* e = (vm_expr_env_t*)env;
+    if (!e || !name || !e->chunk || !e->task) return -1;
+    /* S_eval: write-back in place sulla locale del chiamante (write-through BYREF
+     * dentro gmb_task_store_local come OP_STORE_LOCAL, ReturnValue incluso). */
+    if (e->chunk->ploc_count > 0) {
+        int slot = gmb_chunk_local_slot(e->chunk, e->task->ip, name);
+        if (slot >= 0) {
+            gmb_task_store_local(e->task, slot, gmb_adapter_val_to_stack(in));
+            return 0;
+        }
+    }
+    for (uint32_t i = 0; i < e->chunk->global_name_count; i++) {
+        const char* n = e->chunk->global_names ? e->chunk->global_names[i] : NULL;
+        if (n && n[0] && strcasecmp(n, name) == 0) {
+            gmb_task_store_global(e->task, (int)i, gmb_adapter_val_to_stack(in));
+            return 0;
+        }
+    }
+    /* S_eval record-scope: scrittura sul campo del record corrente (parità Clipper). */
+    if (vm_expr_dbf_record_set(name, in) == 0) return 0;
+    return -1;
+}
+
+static int vm_expr_call(void* env, const char* name, const gmb_val_t* args, int nargs, gmb_val_t* out)
+{
+    vm_expr_env_t* e = (vm_expr_env_t*)env;
+    if (!e || !name || !out || !e->task || !e->chunk) return -1;
+    gmb_vm_t* vm = (gmb_vm_t*)e->task->vm_ctx;
+    if (!vm) return -1;
+    int addr = -1;
+    for (uint32_t i = 0; i < e->chunk->proc_count; i++) {
+        const char* n = e->chunk->proc_names ? e->chunk->proc_names[i] : NULL;
+        if (n && strcasecmp(n, name) == 0) {
+            addr = (int)e->chunk->proc_addrs[i];
+            break;
+        }
+    }
+    if (addr < 0) return -1;
+
+    gmb_task_t* task = e->task;
+    int saved_ip = task->ip;
+    int saved_sync = task->sync_active;
+    int saved_sip = task->sync_saved_ip;
+    double saved_sr = task->sync_result;
+    gmb_obj_t* saved_sref = task->sync_result_ref;
+    uint8_t saved_st = task->sync_result_type;
+
+    for (int i = 0; i < nargs; i++) {
+        gmb_stack_entry_t s = gmb_adapter_val_to_stack(args[i]);
+        if (s.type == 2 && s.ref) gmb_task_push_ref(task, s.ref, s.basic_type);
+        else gmb_task_push_num(task, s.num, s.basic_type);
+    }
+    int argc = nargs > 0 ? nargs : 0;
+    if (!push_frame(task, task->sp - argc, -2)) return -1;
+    task->sync_saved_ip = saved_ip;
+    task->sync_active = 1;
+    task->sync_result = 0;
+    task->sync_result_ref = NULL;
+    task->sync_result_type = 0;
+    task->ip = addr;
+    int guard = 0;
+    while (task->sync_active && guard++ < 1000000)
+        gmb_vm_tick(vm, task);
+    if (task->ip == -2) task->ip = saved_ip;
+    else task->ip = saved_ip;
+
+    gmb_stack_entry_t rv;
+    memset(&rv, 0, sizeof(rv));
+    rv.type = task->sync_result_type;
+    rv.num = task->sync_result;
+    rv.ref = task->sync_result_ref;
+    *out = gmb_adapter_stack_to_val(rv);
+
+    task->sync_active = saved_sync;
+    task->sync_saved_ip = saved_sip;
+    task->sync_result = saved_sr;
+    task->sync_result_ref = saved_sref;
+    task->sync_result_type = saved_st;
+    return 0;
+}
+
+/* & / EVAL: la stringa in cima allo stack è il sorgente. Env = globali del chunk. */
+static void vm_emit_captured_print(gmb_vm_t* vm, gmb_task_t* task, const char* s);
+
+static void vm_eval_macro(gmb_task_t* task, int as_stmt)
+{
+    if (task->sp <= 0) {
+        vm_error(task, "MACRO (&): stack vuoto");
+        return;
+    }
+    gmb_stack_entry_t src = gmb_task_pop(task);
+    gmb_val_t keep = gmb_adapter_stack_to_val(src);
+    if (src.ref) gmb_obj_release(src.ref);
+    char nbuf[64];
+    const char* text = "";
+    if (keep.kind == GMB_TYPE_STRING && keep.v_string.data)
+        text = keep.v_string.data;
+    else {
+        snprintf(nbuf, sizeof nbuf, "%.14g", gmb_val_to_double(keep));
+        text = nbuf;
+    }
+    gmb_vm_t* vm = (gmb_vm_t*)task->vm_ctx;
+    vm_expr_env_t env = { task, vm ? vm->chunk : NULL };
+    gmb_val_t result = gmb_val_nil();
+    int crc = gmb_vm_expr_try_compiled(task, vm ? vm->chunk : NULL, text, as_stmt, NULL);
+    if (crc < 0) {
+        vm_error(task, "MACRO (&) eval failed");
+        return;
+    }
+    if (crc == 0) return; /* snippet: expr lascia il valore sullo stack */
+    int rc;
+    if (as_stmt) {
+        /* Macro-comando: output CATTURATO e riversato nello staging del task ospite,
+         * così l'ordine con i PRINT del chiamante è preservato (bug ClipperMacroCanary). */
+        char* cap = NULL;
+        rc = gmb_expr_exec_capture(text, &env, vm_expr_get, vm_expr_set, vm_expr_call, &cap);
+        if (cap) { vm_emit_captured_print(vm, task, cap); free(cap); }
+    } else {
+        rc = gmb_expr_eval_ex(text, &env, vm_expr_get, vm_expr_set, vm_expr_call, &result);
+    }
+    if (rc == GMB_EXPR_ERR_UNDEF) {
+        /* S_eval: nome ignoto ovunque (fuori scope, fuori host) → NIL come il C#
+         * (nested-VM spinge NIL), non errore fatale. Expr: NIL sullo stack. */
+        if (!as_stmt)
+            push_val_entry(task, gmb_val_nil());
+        return;
+    }
+    if (rc != GMB_EXPR_OK) {
+        /* Contratto C# (MacroEvalExpr): l'errore è reso come STRINGA "MACRO ERROR: <msg>",
+         * MAI abort del processo (bug ClipperMacroStaticError: VM/C usciva con exit 6).
+         * Gli statement lo ingoiano (il C# ritorna null per asExpr=false). */
+        if (!as_stmt) {
+            char ebuf[320];
+            snprintf(ebuf, sizeof ebuf, "MACRO ERROR: %s", gmb_expr_last_error());
+            push_val_entry(task, gmb_make_val_string_counted(ebuf));
+        }
+        return;
+    }
+    if (!as_stmt)
+        push_val_entry(task, result);
+}
+
+/* Emette l'output catturato di una macro-comando (&(\"PRINT ...\")) attraverso lo STESSO
+ * staging/flush del task ospite: il testo completo (con '\n') viene spezzato in righe e
+ * scritto con la semantica di OP_PRINT_VALUE/OP_PRINT_LINE/OP_PRINT_NEWLINE. Senza, il
+ * PRINT diretto di gmb_expr scavalcava lo staging → l'output della macro precedeva le
+ * etichette PRINT del chiamante (bug ClipperMacroCanary, ordine interleaving). */
+static void vm_emit_captured_print(gmb_vm_t* vm, gmb_task_t* task, const char* s)
+{
+    if (!s || !*s) return;
+    pthread_mutex_lock(&vm->print_lock);
+    const char* p = s;
+    while (*p) {
+        const char* nl = strchr(p, '\n');
+        size_t seg = nl ? (size_t)(nl - p) : strlen(p);
+        if (task->print_staging_len > 0)
+        {
+            task->print_staging[task->print_staging_len] = '\0';
+            if (vm->print_str) vm->print_str(task->print_staging, (uint32_t)task->print_staging_len);
+            else fputs(task->print_staging, stdout);
+            task->print_staging_len = 0;
+        }
+        if (seg > 0)
+        {
+            if (vm->print_str) vm->print_str(p, (uint32_t)seg);
+            else fwrite(p, 1, seg, stdout);
+        }
+        if (nl)
+        {
+            if (vm->print_newline) vm->print_newline(); else fputc('\n', stdout);
+            p = nl + 1;
+        }
+        else
+        {
+            /* Riga senza newline finale (PRINT ...;): resta nello staging per il
+             * proseguimento della stessa riga da parte del chiamante. */
+            if (seg < sizeof(task->print_staging))
+            {
+                memcpy(task->print_staging, p, seg);
+                task->print_staging_len = (int)seg;
+            }
+            break;
+        }
+    }
+    pthread_mutex_unlock(&vm->print_lock);
+}
+
+static void push_const(gmb_vm_t* vm, gmb_task_t* t, int idx)
+{
+    const gmb_value_t* c = gmb_chunk_const(vm->chunk, (uint32_t)idx);
+    if (!c) { push_nil(t); return; }
+    switch (c->type)
+    {
+        case GMB_CONST_DOUBLE:
+        case GMB_CONST_INT:
+            push_num_entry(t, c->d, GMB_BT_NUMBER);
+            break;
+        case GMB_CONST_STRING:
+        {
+            gmb_obj_string_t* s = gmb_str_alloc(c->s, c->s ? (uint32_t)strlen(c->s) : 0);
+            push_ref_new(t, (gmb_obj_t*)s, GMB_BT_STRING);
+            break;
+        }
+        default:
+            push_nil(t);
+            break;
+    }
+}
+
+/* Materializza una costante dict del chunk (descrittore UDT/class, ecc.) in un
+ * gmb_obj_shared_val_t runtime. Ricorsivo per valori annidati (dict/list). */
+static gmb_obj_shared_val_t* gmb_vm_materialize_dict(const gmb_chunk_dict_t* d)
+{
+    gmb_obj_shared_val_t* out = gmb_shared_dict_new();
+    if (!out) return NULL;
+    if (!d) return out;
+    for (uint32_t i = 0; i < d->count; i++)
+    {
+        const gmb_chunk_dict_entry_t* e = &d->entries[i];
+        char key[64];
+        if (e->key_is_int) snprintf(key, sizeof(key), "%lld", (long long)e->key_int);
+        else snprintf(key, sizeof(key), "%s", e->key_str ? e->key_str : "");
+        gmb_val_t v;
+        switch (e->val_type)
+        {
+            case GMB_CONST_DOUBLE: v = gmb_make_val_double(e->val_double); break;
+            case GMB_CONST_INT: v = gmb_make_val_double(e->val_double); break;
+            case GMB_CONST_STRING: v = gmb_make_val_string(e->val_str ? e->val_str : ""); break;
+            case GMB_CONST_DICT:
+            {
+                gmb_obj_shared_val_t* sub = gmb_vm_materialize_dict(e->val_dict);
+                v = sub ? gmb_make_val_obj((gmb_obj_t*)sub) : gmb_val_nil();
+                break;
+            }
+            case GMB_CONST_LIST:
+            {
+                gmb_obj_shared_val_t* l = gmb_shared_list_new();
+                if (l && e->val_list)
+                {
+                    for (uint32_t j = 0; j < e->val_list->count; j++)
+                    {
+                        const gmb_chunk_dict_entry_t* le = &e->val_list->items[j];
+                        gmb_val_t lv;
+                        if (le->val_type == GMB_CONST_DOUBLE || le->val_type == GMB_CONST_INT) lv = gmb_make_val_double(le->val_double);
+                        else if (le->val_type == GMB_CONST_STRING) lv = gmb_make_val_string(le->val_str ? le->val_str : "");
+                        else lv = gmb_val_nil();
+                        gmb_list_add(l->list, lv);
+                    }
+                }
+                v = l ? gmb_make_val_obj((gmb_obj_t*)l) : gmb_val_nil();
+                break;
+            }
+            default: v = gmb_val_nil(); break;
+        }
+        gmb_dict_set(out->dict, key, v);
+        /* sub-dict/lista appena creati (rc 1 del creatore): il dict ne ha preso uno suo → si cede il nostro */
+        if ((e->val_type == GMB_CONST_DICT || e->val_type == GMB_CONST_LIST) && v.kind == GMB_TYPE_OBJECT && v.v_ptr)
+            gmb_obj_release((gmb_obj_t*)v.v_ptr);
+    }
+    return out;
+}
+
+/* Descrittore materializzato, CONDIVISO per costante (cache per-VM). Ritorna un riferimento POSSEDUTO (+1):
+ * il chiamante lo rilascia dopo averlo inserito in __class__ (che ne trattiene uno suo). */
+static gmb_obj_shared_val_t* gmb_vm_desc_cached(gmb_vm_t* vm, const gmb_chunk_dict_t* d)
+{
+    if (!d) return gmb_vm_materialize_dict(NULL);
+    pthread_mutex_lock(&vm->desc_lock);
+    for (int i = 0; i < vm->desc_n; i++)
+        if (vm->desc_key[i] == (const void*)d)
+        {
+            gmb_obj_t* o = vm->desc_obj[i];
+            gmb_obj_retain(o);
+            pthread_mutex_unlock(&vm->desc_lock);
+            return (gmb_obj_shared_val_t*)o;
+        }
+    pthread_mutex_unlock(&vm->desc_lock);
+    gmb_obj_shared_val_t* fresh = gmb_vm_materialize_dict(d);   /* fuori dal lock (ricorsivo, alloca) */
+    if (!fresh) return NULL;
+    pthread_mutex_lock(&vm->desc_lock);
+    for (int i = 0; i < vm->desc_n; i++)   /* un altro worker puo' averlo inserito nel frattempo */
+        if (vm->desc_key[i] == (const void*)d)
+        {
+            gmb_obj_t* o = vm->desc_obj[i];
+            gmb_obj_retain(o);
+            pthread_mutex_unlock(&vm->desc_lock);
+            gmb_obj_release((gmb_obj_t*)fresh);
+            return (gmb_obj_shared_val_t*)o;
+        }
+    if (vm->desc_n == vm->desc_cap)
+    {
+        int nc = vm->desc_cap ? vm->desc_cap * 2 : 16;
+        const void** nk = (const void**)realloc(vm->desc_key, (size_t)nc * sizeof(*nk));
+        struct gmb_obj** no = (struct gmb_obj**)realloc(vm->desc_obj, (size_t)nc * sizeof(*no));
+        if (nk) vm->desc_key = nk;
+        if (no) vm->desc_obj = no;
+        if (!nk || !no) { pthread_mutex_unlock(&vm->desc_lock); return fresh; }   /* niente cache: istanza con copia propria */
+        vm->desc_cap = nc;
+    }
+    vm->desc_key[vm->desc_n] = d;
+    vm->desc_obj[vm->desc_n] = (gmb_obj_t*)fresh;
+    vm->desc_n++;
+    gmb_obj_retain((gmb_obj_t*)fresh);   /* 1 per la cache, 1 per il chiamante */
+    pthread_mutex_unlock(&vm->desc_lock);
+    return fresh;
+}
+
+static void gmb_vm_materialize_const(gmb_vm_t* vm, gmb_task_t* t, const gmb_value_t* c)
+{
+    gmb_obj_shared_val_t* obj = NULL;
+    if (c->type == GMB_CONST_DICT) obj = gmb_vm_materialize_dict(c->dict);
+    else if (c->type == GMB_CONST_LIST)
+    {
+        gmb_obj_shared_val_t* l = gmb_shared_list_new();
+        if (l && c->list)
+        {
+            for (uint32_t j = 0; j < c->list->count; j++)
+            {
+                const gmb_chunk_dict_entry_t* le = &c->list->items[j];
+                gmb_val_t lv;
+                if (le->val_type == GMB_CONST_DOUBLE || le->val_type == GMB_CONST_INT) lv = gmb_make_val_double(le->val_double);
+                else if (le->val_type == GMB_CONST_STRING) lv = gmb_make_val_string(le->val_str ? le->val_str : "");
+                else lv = gmb_val_nil();
+                gmb_list_add(l->list, lv);
+            }
+        }
+        obj = l;
+    }
+    if (obj) push_ref_new(t, (gmb_obj_t*)obj, GMB_BT_OBJECT);   /* oggetto fresco: lo stack adotta il riferimento */
+    else push_nil(t);
+}
+
+/* ---- V4f: classi utente (specchio dispatch PCodeProcessor) ---- */
+
+/* Lookup case-insensitive: i dict descriptor C# sono OrdinalIgnoreCase. */
+gmb_val_t vm_dict_get_ci(const gmb_dict_t* d, const char* key)
+{
+    if (!d || !key) return gmb_val_nil();
+    for (size_t i = 0; i < d->count; i++)
+        if (d->items[i].key && strcasecmp(d->items[i].key, key) == 0)
+            return d->items[i].value;
+    return gmb_val_nil();
+}
+
+/* Indirizzo codice da un valore del descriptor (VTable/PropertyGetters/Constructors). */
+static int vm_val_addr(gmb_val_t v)
+{
+    if (v.kind == GMB_TYPE_DOUBLE) return (int)v.v_double;
+    if (v.kind == GMB_TYPE_INT) return (int)v.v_int;
+    return -1;
+}
+
+/* Il dict del descriptor di classe di un'istanza (inst["__class__"] se è un dict).
+ * I vecchi marker stringa ("class"/"udt") NON sono descriptori → NULL. */
+static gmb_obj_shared_val_t* vm_class_desc_of(gmb_obj_t* inst)
+{
+    if (!inst || inst->kind != GMB_OBJ_DICT) return NULL;
+    gmb_obj_shared_val_t* sv = (gmb_obj_shared_val_t*)inst;
+    if (!sv->dict) return NULL;
+    gmb_val_t c = gmb_dict_get(*sv->dict, "__class__");
+    if (c.kind == GMB_TYPE_OBJECT && c.v_ptr)
+    {
+        gmb_obj_t* o = (gmb_obj_t*)c.v_ptr;
+        if (o->kind == GMB_OBJ_DICT && ((gmb_obj_shared_val_t*)o)->dict)
+            return (gmb_obj_shared_val_t*)o;
+    }
+    return NULL;
+}
+
+/* Lookup in un sotto-dict del descriptor (VTable/PropertyGetters/PropertySetters). */
+static int vm_desc_table_addr(gmb_obj_shared_val_t* cd, const char* table, const char* name)
+{
+    gmb_val_t tv = vm_dict_get_ci(cd->dict, table);
+    if (tv.kind == GMB_TYPE_OBJECT && tv.v_ptr &&
+        ((gmb_obj_t*)tv.v_ptr)->kind == GMB_OBJ_DICT &&
+        ((gmb_obj_shared_val_t*)tv.v_ptr)->dict)
+        return vm_val_addr(vm_dict_get_ci(((gmb_obj_shared_val_t*)tv.v_ptr)->dict, name));
+    return -1;
+}
+
+/* Indirizzo del DESTRUCTOR di un'istanza (descriptor["Destructor"], un valore diretto — non
+ * annidato in una sotto-tabella come VTable/PropertyGetters — patchato da un indirizzo reale
+ * dal compilatore C#, vedi PatchAllConstants/_classDescriptorsToPatch). -1 se la classe non ha
+ * un DESTRUCTOR o cd è NULL. Usato da OP_FINALIZE_SCOPE/OP_FINALIZE_GLOBAL sotto. */
+static int vm_desc_destructor_addr(gmb_obj_shared_val_t* cd)
+{
+    if (!cd) return -1;
+    return vm_val_addr(vm_dict_get_ci(cd->dict, "Destructor"));
+}
+
+/* Nome campo dal descriptor["FieldNames"][offset] (specchio C# PCodeProcessor OP_LOAD_MEMBER/
+ * OP_STORE_MEMBER: classDesc["FieldNames"][offset] è il nome REALE del campo, e SIA la lettura
+ * SIA la scrittura avvengono per NOME — mai per una chiave sintetica derivata dall'offset).
+ * OP_STORE_FIELD/OP_LOAD_FIELD (case sopra/sotto, by-nome) già scrivono/leggono
+ * dict[fieldName] direttamente: senza questa traduzione offset->nome, OP_LOAD_MEMBER/
+ * OP_STORE_MEMBER leggevano/scrivevano una chiave "__m<offset>" mai usata da nessun'altra
+ * parte del runtime per le istanze di CLASSE, quindi ogni `SELF.Campo`/`ist.Campo` restava
+ * vuoto (bug scoperto 2026-09-02, vedi Classi-Distruttore-Ereditarieta-CrossFile-Bugs). Il
+ * fallback "__m<offset>" resta disponibile al chiamante per i pochi consumer che lo usano
+ * DAVVERO (es. ISAM/SPEED, vm_dict_to_csv) o per un'istanza senza descriptor risolvibile.
+ */
+static const char* vm_field_name_from_offset(gmb_obj_shared_val_t* cd, int offset)
+{
+    if (!cd) return NULL;
+    char offKey[16];
+    snprintf(offKey, sizeof(offKey), "%d", offset);
+    gmb_val_t fnv = vm_dict_get_ci(cd->dict, "FieldNames");
+    if (fnv.kind == GMB_TYPE_OBJECT && fnv.v_ptr &&
+        ((gmb_obj_t*)fnv.v_ptr)->kind == GMB_OBJ_DICT &&
+        ((gmb_obj_shared_val_t*)fnv.v_ptr)->dict)
+    {
+        gmb_val_t nameV = vm_dict_get_ci(((gmb_obj_shared_val_t*)fnv.v_ptr)->dict, offKey);
+        if (nameV.kind == GMB_TYPE_STRING && nameV.v_string.data) return nameV.v_string.data;
+    }
+    return NULL;
+}
+
+/* Truthiness di un operando (usata da OP_JUMP_IF_* / fast path): per una STRINGA si applica
+ * la semantica Convert.ToBoolean ("True"→vero, "False"→falso, numerica→valore, ""→falso),
+ * NON la conversione a numero (che dava sempre 0 → ogni `IF <stringa>` era falso). */
+static bool vm_truthy_entry(gmb_stack_entry_t e)
+{
+    if (e.type == 2 && e.ref && e.ref->kind == GMB_OBJ_STRING)
+    {
+        const char* d = ((gmb_obj_string_t*)e.ref)->data;
+        bool r;
+        if (!d || !d[0]) r = false;
+        else if (strcasecmp(d, "False") == 0) r = false;
+        else if (strcasecmp(d, "True") == 0) r = true;
+        else { char* endp = NULL; double dv = strtod(d, &endp); r = (endp != d && *endp == 0) ? (dv != 0.0) : true; }
+        gmb_obj_release(e.ref);
+        return r;
+    }
+    if (e.type == 1) return e.num != 0.0;
+    { bool r = e.type == 2 && e.ref != NULL; if (e.ref) gmb_obj_release(e.ref); return r; }
+}
+
+/* Istanza CLASS/UDT "di default" (nessun costruttore chiamato): __class__ = descriptor
+ * materializzato, campi inizializzati per NOME via FieldNames/FieldTypes (0.0 numerici, ""
+ * stringhe — stesso schema di OP_NEW_CLASS_INSTANCE/OP_NEW_UDT_INSTANCE sotto, estratto qui
+ * per essere riusato anche da OP_REDIM/OP_REDIM_PRESERVE: gli slot NUOVI di un `DIM Arr(n) AS
+ * Udt` erano riempiti con `gmb_val_nil()` incondizionato da gmb_list_resize — mai un'istanza
+ * vera, quindi `Arr(i).Campo` restava sempre vuoto per un array di UDT/CLASS, anche dopo il
+ * fix del 2026-09-02 per le istanze scalari). Ritorna NULL se il descrittore non è
+ * risolvibile (chiamante: fallback al vecchio nil). */
+/* Popola i campi di 'inst' con i valori di default, leggendo FieldNames/FieldTypes da
+ * descObj->dict (2026-09-29, bug UDT-Campo-Annidato — vedi AiWiki Bugs/(solved) - UDT-Campo-
+ * Annidato-Scrittura-Encadenata-Non-Persiste.md). Un campo il cui FieldTypes[i] è un DICT
+ * nidificato (non una stringa) è un UDT ANNIDATO — ChunkA1Serializer.cs (WriteValue, case
+ * UserDefinedType) lo serializza come {FieldNames,FieldTypes} invece che come stringa (il
+ * ToString() di UserDefinedType produce un formato debug "TYPE Nome [...]" inutilizzabile
+ * qui, a differenza degli scalari che hanno un override pulito: "DOUBLE"/"STRING"/...).
+ * RICORSIVA: costruisce un'istanza REALE per il campo annidato invece del vecchio default
+ * 0.0 (che rendeva o.I un double, mai un gmb_obj_shared_val_t* dict → ogni scrittura
+ * o.I.X = ... veniva silenziosamente ignorata, dato che OP_STORE_MEMBER richiede un dict). */
+/* Alloca l'array per un campo-array di CLASS (PUBLIC DIM arr(N)) dalle dimensioni
+ * registrate dal Compiler in FieldArrayDimensions (double[] serializzato come LIST di
+ * coppie [lower0,upper0,...]). Rappresentazione identica a CREATE_ARRAY (gmb_shared_list_new
+ * con ndims/dim_upper/dim_lower, elementi a 0.0) così l'indicizzazione `arr(i)`/`SELF.arr(i)`
+ * la trova invece di un default scalare 0.0 ("indexing a numeric scalar"). Ritorna NULL se
+ * non risolvibile (fallback: campo lasciato al default). */
+static void vm_populate_udt_default_fields(gmb_obj_shared_val_t* inst, gmb_obj_shared_val_t* descObj);
+static gmb_obj_shared_val_t* vm_make_field_array(gmb_val_t dimsListVal, gmb_val_t fieldTypeVal,
+                                                 gmb_obj_shared_val_t* elemDescObj)
+{
+    if (!((dimsListVal.kind == GMB_TYPE_ARRAY) ||
+          (dimsListVal.kind == GMB_TYPE_OBJECT && dimsListVal.v_ptr && ((gmb_obj_t*)dimsListVal.v_ptr)->kind == GMB_OBJ_LIST)))
+        return NULL;
+    gmb_obj_shared_val_t* dl = (gmb_obj_shared_val_t*)dimsListVal.v_ptr;
+    if (!dl || !dl->list || dl->list->count < 2) return NULL;
+    int nd = (int)(dl->list->count / 2);
+    if (nd < 1) return NULL;
+    if (nd > 8) nd = 8;
+    int sizes[8] = {0}, lowers[8] = {0};
+    long total = 1;
+    for (int d = 0; d < nd; d++)
+    {
+        gmb_val_t lov = dl->list->items[d * 2];
+        gmb_val_t upv = dl->list->items[d * 2 + 1];
+        int lo = (lov.kind == GMB_TYPE_DOUBLE) ? (int)lov.v_double : 0;
+        int hi = (upv.kind == GMB_TYPE_DOUBLE) ? (int)upv.v_double : 0;
+        lowers[d] = lo;
+        sizes[d] = hi - lo + 1;
+        if (sizes[d] < 0) sizes[d] = 0;
+        total *= sizes[d];
+    }
+    gmb_obj_shared_val_t* arr = gmb_shared_list_new();
+    if (!arr) return NULL;
+    arr->ndims = nd;
+    for (int d = 0; d < nd; d++)
+    {
+        arr->dim_lower[d] = lowers[d];
+        arr->dim_upper[d] = lowers[d] + sizes[d] - 1;
+    }
+    int alloc = (nd == 1) ? (lowers[0] + sizes[0]) : (int)total;
+    /* Tipo ELEMENTO dal tipo del campo (ArrayType.ToString() = "ARRAY OF <elem>"):
+     * UDT -> un DICT per elemento (così `arr(i).campo` scrive/legge il campo per nome);
+     * STRING -> nil (= ""); scalare -> 0.0. Prima: SEMPRE 0.0 → un array di UDT aveva
+     * elementi double e `arr(i).campo` falliva (output 0). */
+    int elem_udt = 0, elem_str = 0;
+    if (fieldTypeVal.kind == GMB_TYPE_STRING && fieldTypeVal.v_string.data)
+    {
+        const char* t = fieldTypeVal.v_string.data;
+        if (strncmp(t, "ARRAY OF ", 9) == 0)
+        {
+            const char* el = t + 9;
+            if (strncasecmp(el, "STRING", 6) == 0) elem_str = 1;
+            else if (strncasecmp(el, "DOUBLE", 6) && strncasecmp(el, "INTEGER", 7)
+                     && strncasecmp(el, "LONG", 4) && strncasecmp(el, "SINGLE", 6)
+                     && strncasecmp(el, "CURRENCY", 8) && strncasecmp(el, "DATE", 4)
+                     && strncasecmp(el, "BIT", 3) && strncasecmp(el, "QUAD", 4)
+                     && strncasecmp(el, "ANY", 3))
+                elem_udt = 1;
+        }
+    }
+    for (int i = 0; i < alloc; i++)
+    {
+        if (elem_udt)
+        {
+            gmb_obj_shared_val_t* e = gmb_shared_dict_new();
+            if (e && elemDescObj)
+            {
+                /* Istanza UDT reale per elemento (con __class__ + campi di default): è ciò
+                 * che rende `arr(i).campo` risolvibile per nome/offset (parity PCode). */
+                gmb_dict_set(e->dict, "__class__", gmb_make_val_obj((gmb_obj_t*)elemDescObj));
+                vm_populate_udt_default_fields(e, elemDescObj);
+            }
+            gmb_list_add(arr->list, e ? gmb_make_val_obj((gmb_obj_t*)e) : gmb_val_nil());
+            if (e) gmb_obj_release((gmb_obj_t*)e);   /* la lista ha il suo riferimento */
+        }
+        else if (elem_str) gmb_list_add(arr->list, gmb_val_nil());
+        else gmb_list_add(arr->list, gmb_make_val_double(0.0));
+    }
+    return arr;
+}
+
+static void vm_populate_udt_default_fields(gmb_obj_shared_val_t* inst, gmb_obj_shared_val_t* descObj)
+{
+    gmb_val_t fnv = vm_dict_get_ci(descObj->dict, "FieldNames");
+    if (fnv.kind != GMB_TYPE_OBJECT || !fnv.v_ptr || ((gmb_obj_t*)fnv.v_ptr)->kind != GMB_OBJ_DICT
+        || !((gmb_obj_shared_val_t*)fnv.v_ptr)->dict) return;
+    gmb_dict_t* fn = ((gmb_obj_shared_val_t*)fnv.v_ptr)->dict;
+    gmb_val_t ftv = vm_dict_get_ci(descObj->dict, "FieldTypes");
+    gmb_dict_t* ft = (ftv.kind == GMB_TYPE_OBJECT && ftv.v_ptr && ((gmb_obj_t*)ftv.v_ptr)->kind == GMB_OBJ_DICT
+                      && ((gmb_obj_shared_val_t*)ftv.v_ptr)->dict) ? ((gmb_obj_shared_val_t*)ftv.v_ptr)->dict : NULL;
+    /* Dimensioni degli array-campo (SymbolId -> LIST di coppie lower/upper): alloca l'array
+     * per-istanza invece del default scalare (PUBLIC DIM arr(N)). */
+    gmb_val_t fadv = vm_dict_get_ci(descObj->dict, "FieldArrayDimensions");
+    gmb_dict_t* fad = (fadv.kind == GMB_TYPE_OBJECT && fadv.v_ptr && ((gmb_obj_t*)fadv.v_ptr)->kind == GMB_OBJ_DICT
+                       && ((gmb_obj_shared_val_t*)fadv.v_ptr)->dict) ? ((gmb_obj_shared_val_t*)fadv.v_ptr)->dict : NULL;
+    /* Descriptor dell'elemento per gli array-campo di UDT (arr(i).campo): vedi Compiler
+     * FieldArrayElemDesc. */
+    gmb_val_t fadev = vm_dict_get_ci(descObj->dict, "FieldArrayElemDesc");
+    gmb_dict_t* fade = (fadev.kind == GMB_TYPE_OBJECT && fadev.v_ptr && ((gmb_obj_t*)fadev.v_ptr)->kind == GMB_OBJ_DICT
+                        && ((gmb_obj_shared_val_t*)fadev.v_ptr)->dict) ? ((gmb_obj_shared_val_t*)fadev.v_ptr)->dict : NULL;
+    for (size_t i = 0; i < fn->count; i++)
+    {
+        gmb_val_t nmv = fn->items[i].value;
+        if (nmv.kind != GMB_TYPE_STRING || !nmv.v_string.data) continue;
+        if (fad)
+        {
+            gmb_val_t dimsv = vm_dict_get_ci(fad, fn->items[i].key ? fn->items[i].key : "");
+            if (dimsv.kind == GMB_TYPE_ARRAY ||
+                (dimsv.kind == GMB_TYPE_OBJECT && dimsv.v_ptr && ((gmb_obj_t*)dimsv.v_ptr)->kind == GMB_OBJ_LIST))
+            {
+                gmb_val_t ftval = ft ? vm_dict_get_ci(ft, fn->items[i].key ? fn->items[i].key : "") : (gmb_val_t){0};
+                gmb_obj_shared_val_t* edesc = NULL;
+                if (fade)
+                {
+                    gmb_val_t edv = vm_dict_get_ci(fade, fn->items[i].key ? fn->items[i].key : "");
+                    if (edv.kind == GMB_TYPE_OBJECT && edv.v_ptr && ((gmb_obj_t*)edv.v_ptr)->kind == GMB_OBJ_DICT)
+                        edesc = (gmb_obj_shared_val_t*)edv.v_ptr;
+                }
+                gmb_obj_shared_val_t* fa = vm_make_field_array(dimsv, ftval, edesc);
+                if (fa) { gmb_dict_set(inst->dict, nmv.v_string.data, gmb_make_val_obj((gmb_obj_t*)fa)); gmb_obj_release((gmb_obj_t*)fa); continue; }
+            }
+        }
+        gmb_val_t tv = ft ? vm_dict_get_ci(ft, fn->items[i].key ? fn->items[i].key : "") : (gmb_val_t){0};
+        if (tv.kind == GMB_TYPE_OBJECT && tv.v_ptr && ((gmb_obj_t*)tv.v_ptr)->kind == GMB_OBJ_DICT)
+        {
+            /* Campo UDT annidato: tv.v_ptr E' il sotto-descriptor {FieldNames,FieldTypes}. */
+            gmb_obj_shared_val_t* nestedDesc = (gmb_obj_shared_val_t*)tv.v_ptr;
+            gmb_obj_shared_val_t* nestedInst = gmb_shared_dict_new();
+            if (nestedInst)
+            {
+                // gmb_dict_set trattiene gli OBJECT contati: nestedDesc e' tenuto vivo anche dal descriptor padre,
+                // nestedInst nasce con rc 1 (creatore) e dopo l'inserimento nel padre si cede quel riferimento.
+                gmb_dict_set(nestedInst->dict, "__class__", gmb_make_val_obj((gmb_obj_t*)nestedDesc));
+                vm_populate_udt_default_fields(nestedInst, nestedDesc);   /* ricorsione */
+                gmb_dict_set(inst->dict, nmv.v_string.data, gmb_make_val_obj((gmb_obj_t*)nestedInst));
+                gmb_obj_release((gmb_obj_t*)nestedInst);
+            }
+            else gmb_dict_set(inst->dict, nmv.v_string.data, gmb_make_val_double(0.0));
+        }
+        else
+        {
+            int is_str = (tv.kind == GMB_TYPE_STRING && tv.v_string.data && strstr(tv.v_string.data, "STRING")) ? 1 : 0;
+            gmb_dict_set(inst->dict, nmv.v_string.data, is_str ? gmb_make_val_string_counted("") : gmb_make_val_double(0.0));
+        }
+    }
+}
+
+/* Aggancia i descriptor degli ELEMENTI (FieldArrayElemDesc) ai campi LIST OF <ElemUDT>
+ * dell'istanza: gli elementi arrivano da JSON.TOOBJECT come dict SENZA __class__ → senza
+ * questo `u.legs(i).campo` non risolve per nome. Da chiamare dopo l'attach del descriptor
+ * top-level. Idempotente (sovrascrive __class__). */
+static void vm_attach_list_elem_descs(gmb_obj_shared_val_t* inst, gmb_obj_shared_val_t* descObj)
+{
+    if (!inst || !descObj) return;
+    gmb_val_t fadev = vm_dict_get_ci(descObj->dict, "FieldArrayElemDesc");
+    if (!(fadev.kind == GMB_TYPE_OBJECT && fadev.v_ptr && ((gmb_obj_t*)fadev.v_ptr)->kind == GMB_OBJ_DICT)) return;
+    gmb_dict_t* fade = ((gmb_obj_shared_val_t*)fadev.v_ptr)->dict;
+    gmb_val_t fnv = vm_dict_get_ci(descObj->dict, "FieldNames");
+    gmb_dict_t* fn = (fnv.kind == GMB_TYPE_OBJECT && fnv.v_ptr && ((gmb_obj_t*)fnv.v_ptr)->kind == GMB_OBJ_DICT)
+                     ? ((gmb_obj_shared_val_t*)fnv.v_ptr)->dict : NULL;
+    if (!fade || !fn) return;
+    for (size_t i = 0; i < fade->count; i++)
+    {
+        const char* sym = fade->items[i].key;
+        gmb_val_t edv = fade->items[i].value;
+        if (!sym || !(edv.kind == GMB_TYPE_OBJECT && edv.v_ptr && ((gmb_obj_t*)edv.v_ptr)->kind == GMB_OBJ_DICT)) continue;
+        gmb_val_t nmv = vm_dict_get_ci(fn, sym);
+        if (nmv.kind != GMB_TYPE_STRING || !nmv.v_string.data) continue;
+        gmb_val_t lv = vm_dict_get_ci(inst->dict, nmv.v_string.data);
+        if (lv.kind != GMB_TYPE_OBJECT) continue;
+        /* La lista può essere un box "transpiler" (kind 0, type_name 'gmb_list') o un
+         * shared list: usa l'accessor runtime. Gli elementi sono dict JSON privi di
+         * __class__ → aggancia il descriptor dell'elemento per nome. */
+        gmb_list_t list = gmb_val_as_list(lv);
+        for (size_t e = 0; e < list.count; e++)
+        {
+            gmb_val_t ev = list.items[e];
+            if (ev.kind == GMB_TYPE_OBJECT) gmb_val_dict_set(ev, "__class__", edv);
+        }
+        gmb_list_free(&list);   /* gmb_val_as_list e' una COPIA (trattiene gli elementi): va liberata */
+    }
+}
+
+gmb_obj_shared_val_t* vm_make_default_instance(gmb_vm_t* vm, int typeIdx)
+{
+    if (typeIdx < 0 || typeIdx >= (int)vm->chunk->consts_len) return NULL;
+    const gmb_value_t* desc = &vm->chunk->constants[typeIdx];
+    if (desc->type != GMB_CONST_DICT || !desc->dict) return NULL;
+    gmb_obj_shared_val_t* inst = gmb_shared_dict_new();
+    if (!inst) return NULL;
+    gmb_obj_shared_val_t* descObj = gmb_vm_desc_cached(vm, desc->dict);
+    if (!descObj) { gmb_obj_release((gmb_obj_t*)inst); return NULL; }
+    gmb_dict_set(inst->dict, "__class__", gmb_make_val_obj((gmb_obj_t*)descObj));
+    vm_populate_udt_default_fields(inst, descObj);
+    gmb_obj_release((gmb_obj_t*)descObj);   /* l'istanza tiene il descriptor in __class__ */
+    return inst;
+}
+
+/* Struct annidate FFI (2026-09-29): parsa un CSV di interi ("5,9") in out[], fino a maxOut
+ * elementi — vedi Compiler.Expressions.cs CollectFfiLeaves (SymbolIdPath, un SymbolId per
+ * segmento del path di una foglia annidata, non solo la foglia finale). Ritorna il conteggio. */
+static int vm_parse_symbolid_csv(const char* csv, int* out, int maxOut)
+{
+    int n = 0;
+    const char* p = csv;
+    while (p && *p && n < maxOut)
+    {
+        out[n++] = atoi(p);
+        p = strchr(p, ',');
+        if (p) p++;
+    }
+    return n;
+}
+
+/* Struct annidate FFI (2026-09-29): legge la FOGLIA scalare indicata da un path punteggiato
+ * ("I.X") navigando ricorsivamente un'istanza UDT VM/C in ingresso (gmb_dict_t chiavato per
+ * nome, con campi UDT-annidati che sono essi stessi tali dict — vedi
+ * vm_populate_udt_default_fields sopra). 0.0 se un segmento intermedio manca. */
+static double vm_ffi_get_leaf(gmb_dict_t* d, const char* namePath)
+{
+    const char* p = namePath;
+    gmb_dict_t* cur = d;
+    for (;;)
+    {
+        const char* dot = strchr(p, '.');
+        size_t seglen = dot ? (size_t)(dot - p) : strlen(p);
+        char seg[64];
+        if (seglen >= sizeof(seg)) seglen = sizeof(seg) - 1;
+        memcpy(seg, p, seglen); seg[seglen] = 0;
+        if (!cur) return 0.0;
+        gmb_val_t v = vm_dict_get_ci(cur, seg);
+        if (!dot) return v.kind == GMB_TYPE_DOUBLE ? v.v_double : (v.kind == GMB_TYPE_INT ? (double)v.v_int : 0.0);
+        if (v.kind != GMB_TYPE_OBJECT || !v.v_ptr || ((gmb_obj_t*)v.v_ptr)->kind != GMB_OBJ_DICT) return 0.0;
+        cur = ((gmb_obj_shared_val_t*)v.v_ptr)->dict;
+        p = dot + 1;
+    }
+}
+
+/* Struct annidate FFI (2026-09-29): scrive la FOGLIA scalare indicata da un path punteggiato
+ * dentro un'istanza UDT VM/C in costruzione (il ritorno di una FFI a UDT annidato), creando i
+ * sotto-dict intermedi mancanti man mano che scende. Ad ogni livello scrive SIA il nome-piano
+ * SIA "__m<SymbolId>" (fallback che OP_LOAD_MEMBER usa quando __class__/FieldNames non risolve
+ * l'offset — un livello intermedio ricostruito qui non ha un vero descriptor di classe, vedi
+ * il commento gemello sopra al ritorno UDT piatto). symbolIdPath/depth = SymbolId di OGNI
+ * segmento del path, stesso ordine/lunghezza dei segmenti di namePath. */
+static void vm_ffi_set_leaf(gmb_obj_shared_val_t* root, const char* namePath, const int* symbolIdPath, int depth, double value)
+{
+    gmb_obj_shared_val_t* cur = root;
+    const char* p = namePath;
+    int li = 0;
+    for (;;)
+    {
+        const char* dot = strchr(p, '.');
+        size_t seglen = dot ? (size_t)(dot - p) : strlen(p);
+        char seg[64];
+        if (seglen >= sizeof(seg)) seglen = sizeof(seg) - 1;
+        memcpy(seg, p, seglen); seg[seglen] = 0;
+        if (!dot)
+        {
+            gmb_dict_set(cur->dict, seg, gmb_make_val_double(value));
+            if (li < depth)
+            {
+                char mkey[32];
+                snprintf(mkey, sizeof(mkey), "__m%d", symbolIdPath[li]);
+                gmb_dict_set(cur->dict, mkey, gmb_make_val_double(value));
+            }
+            return;
+        }
+        gmb_val_t sub = vm_dict_get_ci(cur->dict, seg);
+        gmb_obj_shared_val_t* next;
+        if (sub.kind == GMB_TYPE_OBJECT && sub.v_ptr && ((gmb_obj_t*)sub.v_ptr)->kind == GMB_OBJ_DICT)
+            next = (gmb_obj_shared_val_t*)sub.v_ptr;
+        else
+        {
+            next = gmb_shared_dict_new();
+            gmb_dict_set(cur->dict, seg, gmb_make_val_obj((gmb_obj_t*)next));
+            if (li < depth)
+            {
+                char mkey[32];
+                snprintf(mkey, sizeof(mkey), "__m%d", symbolIdPath[li]);
+                gmb_dict_set(cur->dict, mkey, gmb_make_val_obj((gmb_obj_t*)next));
+            }
+        }
+        cur = next;
+        p = dot + 1;
+        li++;
+    }
+}
+
+/* Frame per metodo/costruttore/getter/setter di classe utente: istanza e argomenti
+ * vanno DIRETTAMENTE nei locals del frame (il corpo non li poppa dallo stack —
+ * specchio degli array fl[] di OP_CALL_MEMBER/OP_CALL_CTOR/OP_STORE_FIELD).
+ * Le entry passate sono già state poppate: i loro ref vengono TRASFERITI ai locals.
+ * ctor_inst (già retained dal chiamante) → frame->constructor_instance. */
+static gmb_frame_t* push_class_frame(gmb_task_t* t, gmb_stack_entry_t* slots, int nslots, gmb_obj_t* ctor_inst)
+{
+    gmb_frame_t* f = push_frame(t, t->sp, t->ip);
+    if (!f) return NULL;
+    for (int i = 0; i < nslots && i < GMB_FRAME_LOCALS_CAP; i++)
+    {
+        f->local_types[i] = slots[i].type;
+        f->local_basic[i] = slots[i].basic_type;
+        f->local_nums[i] = slots[i].num;
+        f->local_refs[i] = (slots[i].type == 2) ? slots[i].ref : NULL;
+    }
+    f->constructor_instance = ctor_inst;
+    return f;
+}
+
+/* UserControl: invoca il metodo Paint dell'istanza (handle GraphicsContext) run-to-completion. */
+int gmb_vm_invoke_paint(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_t* inst, double handle)
+{
+    if (!vm || !task || !inst) return 0;
+    gmb_obj_shared_val_t* cd = vm_class_desc_of(inst);
+    if (!cd) return 0;
+    int addr = vm_desc_table_addr(cd, "VTable", "Paint");
+    if (addr < 0) return 0;
+    int saved_ip = task->ip;
+    gmb_frame_t* base = task->frame;
+    gmb_stack_entry_t slots[2];
+    slots[0].type = 2; slots[0].basic_type = GMB_BT_OBJECT; slots[0].num = 0; slots[0].ref = inst;
+    slots[1].type = 1; slots[1].basic_type = GMB_BT_NUMBER; slots[1].num = handle; slots[1].ref = NULL;
+    gmb_obj_retain(inst);
+    if (!push_class_frame(task, slots, 2, NULL)) { gmb_obj_release(inst); return 0; }
+    task->ip = addr;
+    int guard = 0;
+    while (guard++ < 1000000 && task->frame != base) { if (gmb_vm_tick(vm, task) < 0) break; }
+    task->ip = saved_ip;
+    return 1;
+}
+
+/* §11.7-3: invoca il metodo-evento `method` dell'istanza UserControl (SELF=istanza), nel contesto
+ * del task GPM corrente (run-to-completion, come Paint). Mai su un thread esterno / thread .NET. */
+int gmb_vm_invoke_uc_event(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_t* inst, const char* method)
+{
+    if (!vm || !task || !inst || !method || !*method) return 0;
+    gmb_obj_shared_val_t* cd = vm_class_desc_of(inst);
+    if (!cd) return 0;
+    int addr = vm_desc_table_addr(cd, "VTable", method);
+    if (addr < 0) return 0;
+    int saved_ip = task->ip;
+    gmb_frame_t* base = task->frame;
+    gmb_stack_entry_t slots[1];
+    slots[0].type = 2; slots[0].basic_type = GMB_BT_OBJECT; slots[0].num = 0; slots[0].ref = inst;
+    gmb_obj_retain(inst);
+    if (!push_class_frame(task, slots, 1, NULL)) { gmb_obj_release(inst); return 0; }
+    task->ip = addr;
+    int guard = 0;
+    while (guard++ < 1000000 && task->frame != base) { if (gmb_vm_tick(vm, task) < 0) break; }
+    task->ip = saved_ip;
+    return 1;
+}
+
+/* ---- Frame ---- */
+static gmb_frame_t* push_frame(gmb_task_t* t, int saved_sp, int return_ip)
+{
+    gmb_frame_t* f = (gmb_frame_t*)calloc(1, sizeof(gmb_frame_t));
+    if (!f) { vm_error(t, "out of memory: frame"); return NULL; }
+    f->refcount = 1;
+    f->prev = t->frame;
+    f->saved_sp = saved_sp;
+    f->return_ip = return_ip;
+    f->frame_sp = 0;
+    /* V4e: EnterProcedureErrorScope — ogni chiamata è un boundary: salva lo stato
+     * ON ERROR del chiamante e lo resetta (l'handler NON attraversa le chiamate). */
+    f->is_error_scope_boundary = 1;
+    f->saved_error_handler_ip = t->error_handler_ip;
+    f->saved_error_handler_is_gosub = t->error_handler_is_gosub;
+    f->saved_error_mode = t->error_mode;
+    f->saved_error_line_ip = t->error_line_ip;
+    f->saved_error_resume_next_ip = t->error_resume_next_ip;
+    t->error_handler_ip = 0;
+    t->error_handler_is_gosub = 0;
+    t->error_mode = 0;
+    t->error_line_ip = -1;
+    t->error_resume_next_ip = -1;
+    t->frame = f;
+    return f;
+}
+
+static void pop_frame(gmb_task_t* t)
+{
+    gmb_frame_t* f = t->frame;
+    if (!f) return;
+    t->frame = f->prev;
+    gmb_frame_release(f);   /* resta vivo se un box BYREF lo trattiene */
+}
+
+/* ---- Stato FOR (specchio PCodeProcessor.ForStateOf) ----
+ * Lo stato di un ciclo FOR appartiene al FRAME che lo esegue: il callee riusa gli stessi
+ * numeri di slot, quindi indicizzarlo per solo slot sul task fa sovrascrivere al
+ * FOR_PREPARE annidato end/step del chiamante, e il FOR_LOOP del callee azzera active →
+ * il FOR esterno termina e si perdono le iterazioni. Senza frame (top-level/__main e
+ * goroutine radice GO SUB) si usa lo stato del task. */
+static gmb_for_state_t* for_state_of(gmb_task_t* t)
+{
+    return t->frame ? &t->frame->for_state : &t->for_state;
+}
+
+/* ---- Formatting (fedele a FormatPrintValue/FormatDoubleValue) ---- */
+void gmb_format_double(char* buf, size_t cap, double d)
+{
+    char tmp[64];
+    /* NaN/Infinity: formato .NET G15 invariante (parità IL PrintFormatValueCore). */
+    if (isnan(d)) { snprintf(buf, cap, "NaN "); return; }
+    if (isinf(d)) { snprintf(buf, cap, d > 0 ? " Infinity " : "-Infinity "); return; }
+    if (d == 0.0) d = 0.0;   /* normalizza -0.0 → +0.0 (parità di stampa IL/VMC) */
+    if (d >= 0.0) snprintf(tmp, sizeof(tmp), " %.15g ", d);
+    else snprintf(tmp, sizeof(tmp), "%.15g ", d);
+    /* G15 .NET: esponente E maiuscolo */
+    char* e = strchr(tmp, 'e');
+    if (e) {
+        *e = 'E';
+        if (e[1] != '-' && e[1] != '+') { memmove(e + 2, e + 1, strlen(e + 1) + 1); e[1] = '+'; }
+    }
+    snprintf(buf, cap, "%s", tmp);
+}
+
+/* Formattazione COMPATTA di un valore per la concatenazione di stringhe (`&`/`+`):
+ * i numeri NON hanno il padding di colonna del PRINT ("%.15g" nudo, G15 come IL
+ * StringHelpers.DoubleToInvariantString e PCode FormatPrintValueCompact); stringhe e
+ * collezioni restano identiche a gmb_format_value (che è il formatter di PRINT). */
+void gmb_format_value_compact(char* buf, size_t cap, gmb_stack_entry_t e)
+{
+    if (e.type == 1)
+    {
+        if (e.basic_type == GMB_BT_BOOL) { snprintf(buf, cap, e.num != 0 ? "-1" : "0"); return; }
+        if (e.basic_type == GMB_BT_CURRENCY) { snprintf(buf, cap, "%.*f", (int)e.scale, e.num); return; }
+        double d = e.num;
+        if (isnan(d)) { snprintf(buf, cap, "NaN"); return; }
+        if (isinf(d)) { snprintf(buf, cap, d > 0 ? "Infinity" : "-Infinity"); return; }
+        if (d == 0.0) d = 0.0;   /* normalizza -0.0 → +0.0 */
+        snprintf(buf, cap, "%.15g", d);
+        char* ex = strchr(buf, 'e');   /* G15 .NET: esponente E maiuscolo */
+        if (ex) {
+            *ex = 'E';
+            if (ex[1] != '-' && ex[1] != '+') { memmove(ex + 2, ex + 1, strlen(ex + 1) + 1); ex[1] = '+'; }
+        }
+        return;
+    }
+    gmb_format_value(buf, cap, e);
+}
+
+void gmb_format_value(char* buf, size_t cap, gmb_stack_entry_t e)
+{
+    if (e.type == 1)
+    {
+        if (e.basic_type == GMB_BT_BOOL)
+            snprintf(buf, cap, e.num != 0 ? "-1 " : " 0 ");
+        else if (e.basic_type == GMB_BT_CURRENCY)
+            /* CURRENCY (campo DBF N/F): resa con `scale` decimali E spazio-segno per i
+             * valori ≥ 0 (la colonna del segno), come gmb_format_double e il canone
+             * gmb_currency_string(lead=1)/IL/PCode — prima mancava lo spazio → "100.00"
+             * invece di " 100.00" (divergenza VM/C vs IL/PCode/C99). */
+            snprintf(buf, cap, "%s%.*f", e.num >= 0 ? " " : "", (int)e.scale, e.num);
+        else
+            gmb_format_double(buf, cap, e.num);
+    }
+    else if (e.type == 2)
+    {
+        if (e.ref == NULL) { buf[0] = '\0'; return; }
+        /* Il tipo AUTORITATIVO non e' `basic_type`, e nemmeno da solo `ref->kind`:
+         * GMB_OBJ_STRING vale 0, lo STESSO valore di default di un oggetto runtime-wrapped, quindi
+         * un array JSON (kind 0 + type_name "gmb_list") sembrava una stringa e PRINT leggeva
+         * `length`/`data` da una gmb_obj_shared_val_t (spazzatura) -> uscita VUOTA. Caso reale:
+         * `PRINT json.backends` su VM/C stampava vuoto mentre IL/P-Code stampano [any].
+         * Discriminante sicuro = `type_name` NULL (le vere stringhe non lo impostano mai), con
+         * `basic_type` come conferma — stesso schema usato in gmb_adapter_val_to_stack. */
+        int ref_is_string = (e.ref->kind == GMB_OBJ_STRING) && !e.ref->type_name;
+        int ref_is_list = (e.ref->kind == GMB_OBJ_LIST)
+            || (e.ref->type_name && strcmp(e.ref->type_name, "gmb_list") == 0);
+        if (e.basic_type == GMB_BT_STRING && ref_is_string)
+        {
+            gmb_obj_string_t* s = (gmb_obj_string_t*)e.ref;
+            size_t n = s->length < cap - 1 ? s->length : cap - 1;
+            memcpy(buf, s->data, n);
+            buf[n] = '\0';
+        }
+        else if (ref_is_list && cap > 2)
+        {
+            /* PRINT di una LISTA/array dinamico → `[e1, e2, ...]` compatti (canone
+             * gmb_bytes_dump / IL JsonValueToString: niente padding di colonna).
+             * Due forme: shared val di VM (kind GMB_OBJ_LIST, campo `list`) oppure lista del
+             * runtime wrappata (kind 0 + type_name "gmb_list", dentro `data`). */
+            gmb_list_t* items = NULL;
+            gmb_list_t tmp;
+            gmb_obj_shared_val_t* sv = (gmb_obj_shared_val_t*)e.ref;
+            if (e.ref->kind == GMB_OBJ_LIST) items = sv->list;
+            else { tmp = gmb_val_as_list(gmb_make_val_obj(e.ref)); items = &tmp; }
+            size_t n = items ? items->count : 0;
+            size_t o = 0;
+            buf[o++] = '[';
+            for (size_t i = 0; i < n && o < cap - 2; i++)
+            {
+                if (i > 0) { if (o + 2 >= cap) break; buf[o++] = ','; buf[o++] = ' '; }
+                gmb_val_t v = items->items[i];
+                /* STRINGHE: NIENTE buffer fisso da 64 byte. Con `char tmpb[64]` + snprintf un
+                 * elemento di 64 caratteri veniva troncato a 63: `PRINT AI.SKILLSPATHS()` su
+                 * VM/C stampava `.../skill` mentre l'elemento dell'array era `.../skills`
+                 * (bug trovato dal MiniTest di parità, 2026-10-28). Si copia direttamente. */
+                if (v.kind == GMB_TYPE_STRING && v.v_string.data) {
+                    size_t sl = strlen(v.v_string.data);
+                    size_t room = (o + 2 < cap) ? (cap - 2 - o) : 0;
+                    if (sl > room) sl = room;
+                    memcpy(buf + o, v.v_string.data, sl); o += sl;
+                    continue;
+                }
+                char tmpb[64];
+                if (v.kind == GMB_TYPE_DOUBLE) {
+                    double d = v.v_double;
+                    if (d == (double)(long long)d) snprintf(tmpb, sizeof(tmpb), "%lld", (long long)d);
+                    else snprintf(tmpb, sizeof(tmpb), "%.15g", d);
+                } else if (v.kind == GMB_TYPE_INT) snprintf(tmpb, sizeof(tmpb), "%lld", (long long)v.v_int);
+                else if (v.kind == GMB_TYPE_BOOL) snprintf(tmpb, sizeof(tmpb), v.v_bool ? "-1" : "0");
+                else snprintf(tmpb, sizeof(tmpb), "0");
+                size_t tl = strlen(tmpb);
+                if (o + tl >= cap - 2) break;
+                memcpy(buf + o, tmpb, tl); o += tl;
+            }
+            if (o < cap) { buf[o++] = ']'; buf[o] = '\0'; }
+            if (items == &tmp) gmb_list_free(&tmp);   /* gmb_val_as_list e' una COPIA: va liberata */
+        }
+        else if (e.ref->kind == GMB_OBJ_DICT && cap > 2)
+        {
+            /* PRINT di un DICT/UDT → `[[k1, v1], [k2, v2]]` (parità IL PrintFormatValueCore,
+             * che enumera un dict come sequenza di coppie KeyValuePair). */
+            gmb_obj_shared_val_t* sv = (gmb_obj_shared_val_t*)e.ref;
+            gmb_list_t keys = gmb_dict_keys(*sv->dict);
+            size_t n = keys.count;
+            size_t o = 0;
+            buf[o++] = '[';
+            for (size_t i = 0; i < n && o < cap - 2; i++)
+            {
+                if (i > 0) { if (o + 2 >= cap) break; buf[o++] = ','; buf[o++] = ' '; }
+                if (o + 1 >= cap) break;
+                buf[o++] = '[';
+                gmb_val_t kv = keys.items[i];
+                const char* kd = (kv.kind == GMB_TYPE_STRING && kv.v_string.data) ? kv.v_string.data : "";
+                size_t kl = strlen(kd);
+                if (o + kl >= cap - 3) kl = (cap - 3) > o ? (cap - 3 - o) : 0;
+                memcpy(buf + o, kd, kl); o += kl;
+                if (o + 2 >= cap) break;
+                buf[o++] = ','; buf[o++] = ' ';
+                gmb_val_t v = gmb_dict_get(*sv->dict, kd);
+                char tmp[256];
+                if (v.kind == GMB_TYPE_DOUBLE) {
+                    double d = v.v_double;
+                    if (d == (double)(long long)d) snprintf(tmp, sizeof(tmp), "%lld", (long long)d);
+                    else snprintf(tmp, sizeof(tmp), "%.15g", d);
+                } else if (v.kind == GMB_TYPE_INT) snprintf(tmp, sizeof(tmp), "%lld", (long long)v.v_int);
+                else if (v.kind == GMB_TYPE_BOOL) snprintf(tmp, sizeof(tmp), v.v_bool ? "-1" : "0");
+                else if (v.kind == GMB_TYPE_STRING && v.v_string.data) {
+                    /* Stessa classe: niente buffer da 256 per le stringhe (troncamento). */
+                    size_t sl = strlen(v.v_string.data);
+                    size_t room = (o + 2 < cap) ? (cap - 2 - o) : 0;
+                    if (sl > room) sl = room;
+                    memcpy(buf + o, v.v_string.data, sl); o += sl;
+                    if (o + 1 >= cap) break;
+                    buf[o++] = ']';
+                    continue;
+                }
+                else snprintf(tmp, sizeof(tmp), "");
+                size_t tl = strlen(tmp);
+                if (o + tl >= cap - 2) tl = (cap - 2) > o ? (cap - 2 - o) : 0;
+                memcpy(buf + o, tmp, tl); o += tl;
+                if (o + 1 >= cap) break;
+                buf[o++] = ']';
+            }
+            if (o < cap) { buf[o++] = ']'; buf[o] = '\0'; }
+            gmb_list_free(&keys);
+        }
+        else if (e.ref->kind == GMB_OBJ_COLLECTION && cap > 2)
+        {
+            /* PRINT di una collezione (HASHSET/STACK/QUEUE/TRIE/...): enumera head→tail
+             * via gmb_coll_to_array → `[e1, e2, ...]` (parità IL PrintFormatValueCore).
+             * Prima: nessun caso → PRINT stampava vuoto per ogni collezione. */
+            gmb_obj_collection_t* col = (gmb_obj_collection_t*)e.ref;
+            int n = 0;
+            gmb_val_t* arr = gmb_coll_to_array(col->handle, &n);
+            size_t o = 0;
+            buf[o++] = '[';
+            for (int i = 0; i < n && o < cap - 2; i++)
+            {
+                if (i > 0) { if (o + 2 >= cap) break; buf[o++] = ','; buf[o++] = ' '; }
+                gmb_val_t v = arr[i];
+                char tmp[64];
+                if (v.kind == GMB_TYPE_DOUBLE) {
+                    double d = v.v_double;
+                    if (d == (double)(long long)d) snprintf(tmp, sizeof(tmp), "%lld", (long long)d);
+                    else snprintf(tmp, sizeof(tmp), "%.15g", d);
+                } else if (v.kind == GMB_TYPE_INT) snprintf(tmp, sizeof(tmp), "%lld", (long long)v.v_int);
+                else if (v.kind == GMB_TYPE_BOOL) snprintf(tmp, sizeof(tmp), v.v_bool ? "-1" : "0");
+                else if (v.kind == GMB_TYPE_STRING && v.v_string.data) {
+                    /* Niente buffer da 64: troncherebbe gli elementi lunghi (stessa classe del
+                     * bug AI.SKILLSPATHS su lista, 2026-10-28). */
+                    size_t sl = strlen(v.v_string.data);
+                    size_t room = (o + 2 < cap) ? (cap - 2 - o) : 0;
+                    if (sl > room) sl = room;
+                    memcpy(buf + o, v.v_string.data, sl); o += sl;
+                    continue;
+                }
+                else snprintf(tmp, sizeof(tmp), "0");
+                size_t tl = strlen(tmp);
+                if (o + tl >= cap - 2) break;
+                memcpy(buf + o, tmp, tl); o += tl;
+            }
+            if (o < cap) { buf[o++] = ']'; buf[o] = '\0'; }
+            if (arr) free(arr);
+        }
+        else buf[0] = '\0';
+    }
+    else buf[0] = '\0';
+}
+
+/* ---- API runner ---- */
+void gmb_vm_init(gmb_vm_t* vm, const gmb_chunk_t* chunk)
+{
+    memset(vm, 0, sizeof(*vm));
+    vm->chunk = chunk;
+    vm->scheduler = gmb_sched_create();
+    vm->static_fields = (gmb_stack_entry_t*)calloc(GMB_STATIC_FIELDS_CAP, sizeof(gmb_stack_entry_t));
+    vm->static_fields_init = (uint8_t*)calloc(GMB_STATIC_FIELDS_CAP, sizeof(uint8_t));
+    pthread_mutex_init(&vm->static_lock, NULL);
+    pthread_mutex_init(&vm->print_lock, NULL);
+    pthread_mutex_init(&vm->desc_lock, NULL);
+    pthread_mutex_init(&vm->worker_lock, NULL);   /* V5: resize pool GOMAXPROCS */
+}
+
+/* ---- BSP: semi di globali nominati (pagine .bsp) ----
+   gmb_vm_seed_global converte SUBITO il valore runtime in entry stack (l'entry
+   possiede un retain); l'applicazione avviene alla creazione del task main
+   (vm_apply_bsp_seeds) scrivendo gli slot per NOME (parità seeding C#
+   BspDispatch: REQ/RES/SESSION/FORM/QUERY). */
+int gmb_vm_seed_global(gmb_vm_t* vm, const char* name, gmb_val_t value)
+{
+    if (!vm || !name || !*name || vm->bsp_seed_count >= GMB_VM_MAX_BSP_SEEDS) return -1;
+    int i = vm->bsp_seed_count;
+    vm->bsp_seed_names[i] = strdup(name);
+    vm->bsp_seed_values[i] = gmb_adapter_val_to_stack(value);
+    vm->bsp_seed_count++;
+    return 0;
+}
+
+/* ---- Dynamic scope per NOME (FORM/QUERY: keyword riservate, mai una vera DIM) ----
+ * A differenza di gmb_vm_seed_global/vm_apply_bsp_seeds sopra (un seme applicato UNA
+ * VOLTA allo slot globale del task main alla creazione, poi mai più consultato),
+ * questo bag resta vivo e viene riletto per nome a OGNI esecuzione di
+ * OP_LOAD_DYNAMIC_SCOPE — perché FORM/QUERY non hanno MAI un vero slot globale
+ * (il compilatore .NET non le registra in chunk->global_names: sono keyword
+ * TokenKind.Form/SqlQuery, non identificatori DIM-abili), quindi vm_apply_bsp_seeds
+ * non troverebbe mai uno slot per loro. Parità con PCodeProcessor._dynamicScope/
+ * SetDynamicScope/GetDynamicScope (C#). */
+int gmb_vm_set_dynamic_scope(gmb_vm_t* vm, const char* name, gmb_val_t value)
+{
+    if (!vm || !name || !*name) return -1;
+    for (int i = 0; i < vm->dynamic_scope_count; i++)
+        if (vm->dynamic_scope_names[i] && strcasecmp(vm->dynamic_scope_names[i], name) == 0)
+        {
+            gmb_stack_entry_t old = vm->dynamic_scope_values[i];
+            if (old.type == 2 && old.ref) gmb_obj_release(old.ref);
+            vm->dynamic_scope_values[i] = gmb_adapter_val_to_stack(value);
+            return 0;
+        }
+    if (vm->dynamic_scope_count >= GMB_VM_MAX_DYNAMIC_SCOPE) return -1;
+    int i = vm->dynamic_scope_count++;
+    vm->dynamic_scope_names[i] = strdup(name);
+    vm->dynamic_scope_values[i] = gmb_adapter_val_to_stack(value);
+    return 0;
+}
+
+gmb_stack_entry_t gmb_vm_get_dynamic_scope(gmb_vm_t* vm, const char* name)
+{
+    if (vm && name && *name)
+        for (int i = 0; i < vm->dynamic_scope_count; i++)
+            if (vm->dynamic_scope_names[i] && strcasecmp(vm->dynamic_scope_names[i], name) == 0)
+                return vm->dynamic_scope_values[i];
+    return (gmb_stack_entry_t){0};
+}
+
+static void vm_release_dynamic_scope(gmb_vm_t* vm)
+{
+    for (int i = 0; i < vm->dynamic_scope_count; i++)
+    {
+        free(vm->dynamic_scope_names[i]);
+        vm->dynamic_scope_names[i] = NULL;
+        gmb_stack_entry_t e = vm->dynamic_scope_values[i];
+        if (e.type == 2 && e.ref) gmb_obj_release(e.ref);
+        vm->dynamic_scope_values[i] = (gmb_stack_entry_t){ 0 };
+    }
+    vm->dynamic_scope_count = 0;
+}
+
+static void vm_release_bsp_seeds(gmb_vm_t* vm)
+{
+    for (int i = 0; i < vm->bsp_seed_count; i++)
+    {
+        free(vm->bsp_seed_names[i]);
+        vm->bsp_seed_names[i] = NULL;
+        gmb_stack_entry_t e = vm->bsp_seed_values[i];
+        if (e.type == 2 && e.ref) gmb_obj_release(e.ref);
+        vm->bsp_seed_values[i] = (gmb_stack_entry_t){ 0 };
+    }
+    vm->bsp_seed_count = 0;
+}
+
+static void vm_apply_bsp_seeds(gmb_vm_t* vm, gmb_task_t* main)
+{
+    if (!vm || !main) return;
+    if (vm->bsp_seed_count == 0) return;
+    const gmb_chunk_t* chunk = vm->chunk;
+    for (int s = 0; s < vm->bsp_seed_count; s++)
+    {
+        const char* name = vm->bsp_seed_names[s];
+        gmb_stack_entry_t e = vm->bsp_seed_values[s];
+        int slot = -1;
+        if (chunk && chunk->global_names)
+            for (uint32_t i = 0; i < chunk->global_name_count; i++)
+            {
+                const char* n = chunk->global_names[i];
+                if (n && n[0] && strcasecmp(n, name) == 0) { slot = (int)i; break; }
+            }
+        if (slot >= 0)
+        {
+            /* Scrittura diretta dello slot: lo slot ADOTTA il retain dell'entry
+             * del seme (nessun retain extra creato qui). Un rilascio post-scrittura
+             * portava il refcount a 0 → use-after-free (QUERY/REQ letti come garbage). */
+            gmb_task_ensure_globals(main, (uint32_t)(slot + 1));
+            if (slot < (int)main->globals_count)
+            {
+                if (main->globals_types[slot] == 2 && main->globals_refs[slot])
+                    gmb_obj_release(main->globals_refs[slot]);
+                main->globals_nums[slot] = e.num;
+                main->globals_refs[slot] = (e.type == 2) ? (gmb_obj_t*)e.ref : NULL;
+                main->globals_types[slot] = e.type;
+                main->globals_basic[slot] = e.basic_type;
+            }
+        }
+        else if (e.type == 2 && e.ref)
+        {
+            gmb_obj_release(e.ref);  /* globale assente nel chunk: valore scartato */
+        }
+        free(vm->bsp_seed_names[s]);
+        vm->bsp_seed_names[s] = NULL;
+        vm->bsp_seed_values[s] = (gmb_stack_entry_t){ 0 };
+    }
+    vm->bsp_seed_count = 0;
+}
+
+/* ---- Chiamata sincrona di una closure BASIC dai builtin (es. OPTIMIZE.*) ----
+   Esegue la closure con un argomento double e restituisce il risultato. */
+int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task);
+double gmb_vm_call_closure_sync(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure, double arg)
+{
+    if (!closure) return 0;
+    /* push argomento */
+    gmb_task_push_num(task, arg, GMB_BT_NUMBER);
+    /* push frame per la closure con return_ip = -2 (marker sync) */
+    if (!push_frame(task, task->sp - 1, -2)) return 0;
+    if (closure->num_upvalues > 0 && closure->upvalues)
+        for (int i = 0; i < closure->num_upvalues && i < 16; i++)
+            task->frame->upvalues[i] = closure->upvalues[i];
+    task->sync_saved_ip = task->ip;
+    task->sync_active = 1;
+    task->sync_result = 0;
+    task->ip = closure->address;
+    /* esegui fino al ritorno della closure (sync_active=0 impostato nel RETURN) */
+    int guard = 0;
+    while (task->sync_active && guard++ < 1000000)
+    {
+        gmb_vm_tick(vm, task);
+    }
+    if (task->ip == -2) task->ip = task->sync_saved_ip;
+    return task->sync_result;
+}
+
+/* Marker di chiamata sincrona: frame con return_ip = -2 (vedi gmb_vm_core.h). */
+int gmb_vm_push_sync_frame(gmb_task_t* t, int nargs)
+{
+    if (!t) return -1;
+    if (nargs < 0) nargs = 0;
+    return push_frame(t, t->sp - nargs, -2) ? 0 : -1;
+}
+
+/* Nome procedura → indirizzo di ingresso nel chunk della vm (-1 se ignota). */
+int gmb_vm_proc_addr(gmb_vm_t* vm, const char* name)
+{
+    if (!vm || !vm->chunk || !name || !*name) return -1;
+    for (uint32_t i = 0; i < vm->chunk->proc_count; i++)
+        if (vm->chunk->proc_names[i] && strcasecmp(vm->chunk->proc_names[i], name) == 0)
+            return (int)vm->chunk->proc_addrs[i];
+    return -1;
+}
+
+/* Variante con lista di double come argomento (per minimizzatori multivariati). */
+double gmb_vm_call_closure_sync_list(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure, const double* vals, int n)
+{
+    if (!closure) return 0;
+    gmb_obj_shared_val_t* lst = gmb_shared_list_new();
+    if (lst)
+    {
+        for (int i = 0; i < n; i++) gmb_list_add(lst->list, gmb_make_val_double(vals[i]));
+        gmb_task_push_ref(task, (gmb_obj_t*)lst, GMB_BT_OBJECT);
+    }
+    else
+        gmb_task_push_num(task, 0, GMB_BT_NUMBER);
+    if (!push_frame(task, task->sp - 1, -2)) return 0;
+    if (closure->num_upvalues > 0 && closure->upvalues)
+        for (int i = 0; i < closure->num_upvalues && i < 16; i++)
+            task->frame->upvalues[i] = closure->upvalues[i];
+    task->sync_saved_ip = task->ip;
+    task->sync_active = 1;
+    task->sync_result = 0;
+    task->ip = closure->address;
+    int guard = 0;
+    while (task->sync_active && guard++ < 1000000)
+    {
+        gmb_vm_tick(vm, task);
+    }
+    if (task->ip == -2) task->ip = task->sync_saved_ip;
+    return task->sync_result;
+}
+
+/* Chiamata sincrona (lista array + scalare) — stesso marshalling di sync_list per l'array,
+ * poi un double. Usata dal modello LM f(p[], x). */
+/* Chiamata sincrona (lista array params + lista array inputs) → riempie out (lista result).
+ * Marshalling come sync_list (push_ref con GMB_BT_OBJECT). Modello LM vettoriale f(p[], x[]). */
+void gmb_vm_call_closure_sync_list2_vec(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure,
+                                        const double* p, int np, const double* xs, int nx, double* out)
+{
+    if (!closure) { for (int i = 0; i < nx; i++) out[i] = 0; return; }
+    gmb_obj_shared_val_t* pl = gmb_shared_list_new();
+    if (pl) { for (int i = 0; i < np; i++) gmb_list_add(pl->list, gmb_make_val_double(p[i])); gmb_task_push_ref(task, (gmb_obj_t*)pl, GMB_BT_OBJECT); }
+    else gmb_task_push_num(task, 0, GMB_BT_NUMBER);
+    gmb_obj_shared_val_t* xl = gmb_shared_list_new();
+    if (xl) { for (int i = 0; i < nx; i++) gmb_list_add(xl->list, gmb_make_val_double(xs[i])); gmb_task_push_ref(task, (gmb_obj_t*)xl, GMB_BT_OBJECT); }
+    else gmb_task_push_num(task, 0, GMB_BT_NUMBER);
+    if (!push_frame(task, task->sp - 2, -2)) return;
+    if (closure->num_upvalues > 0 && closure->upvalues)
+        for (int i = 0; i < closure->num_upvalues && i < 16; i++)
+            task->frame->upvalues[i] = closure->upvalues[i];
+    task->sync_saved_ip = task->ip;
+    task->sync_active = 1;
+    task->sync_result = 0;
+    task->sync_result_ref = NULL;
+    task->sync_result_type = 0;
+    task->ip = closure->address;
+    int guard = 0;
+    while (task->sync_active && guard++ < 1000000) gmb_vm_tick(vm, task);
+    if (task->ip == -2) task->ip = task->sync_saved_ip;
+    /* risultato: lista (sync_result_ref di tipo GMB_OBJ_LIST) → out[] */
+    if (task->sync_result_ref && task->sync_result_ref->kind == GMB_OBJ_LIST)
+    {
+        gmb_obj_shared_val_t* rl = (gmb_obj_shared_val_t*)task->sync_result_ref;
+        for (int i = 0; i < nx && i < (int)rl->list->count; i++)
+        { gmb_val_t v = rl->list->items[i]; out[i] = v.kind == GMB_TYPE_DOUBLE ? v.v_double : (double)v.v_int; }
+    }
+    else if (task->sync_result_ref) { for (int i = 0; i < nx; i++) out[i] = 0; }
+}
+
+double gmb_vm_call_closure_sync_list2(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure, const double* vals, int n, double x)
+{    if (!closure) return 0;
+    gmb_obj_shared_val_t* lst = gmb_shared_list_new();
+    if (lst)
+    {
+        for (int i = 0; i < n; i++) gmb_list_add(lst->list, gmb_make_val_double(vals[i]));
+        gmb_task_push_ref(task, (gmb_obj_t*)lst, GMB_BT_OBJECT);
+    }
+    else gmb_task_push_num(task, 0, GMB_BT_NUMBER);
+    gmb_task_push_num(task, x, GMB_BT_NUMBER);
+    if (!push_frame(task, task->sp - 2, -2)) return 0;
+    if (closure->num_upvalues > 0 && closure->upvalues)
+        for (int i = 0; i < closure->num_upvalues && i < 16; i++)
+            task->frame->upvalues[i] = closure->upvalues[i];
+    task->sync_saved_ip = task->ip;
+    task->sync_active = 1;
+    task->sync_result = 0;
+    task->ip = closure->address;
+    int guard = 0;
+    while (task->sync_active && guard++ < 1000000) gmb_vm_tick(vm, task);
+    if (task->ip == -2) task->ip = task->sync_saved_ip;
+    return task->sync_result;
+}
+
+/* Chiamata sincrona con 2 argomenti double (per ASORT compare). */
+double gmb_vm_call_closure_sync2(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure, double a, double b)
+{
+    if (!closure) return 0;
+    gmb_task_push_num(task, b, GMB_BT_NUMBER);
+    gmb_task_push_num(task, a, GMB_BT_NUMBER);
+    if (!push_frame(task, task->sp - 2, -2)) return 0;
+    if (closure->num_upvalues > 0 && closure->upvalues)
+        for (int i = 0; i < closure->num_upvalues && i < 16; i++)
+            task->frame->upvalues[i] = closure->upvalues[i];
+    task->sync_saved_ip = task->ip;
+    task->sync_active = 1;
+    task->sync_result = 0;
+    task->ip = closure->address;
+    int guard = 0;
+    while (task->sync_active && guard++ < 1000000)
+    {
+        gmb_vm_tick(vm, task);
+    }
+    if (task->ip == -2) task->ip = task->sync_saved_ip;
+    return task->sync_result;
+}
+
+/* Chiamata sincrona con N argomenti double SEPARATI (non una lista/array) — generalizzazione
+ * di gmb_vm_call_closure_sync/sync2 per arita' arbitraria 0-4, usata dal trampolino nativo
+ * Callback FFI (vedi il pool gmb_ffi_cb_alloc/gmb_ffi_cb_free subito sotto). args[0] e' il
+ * PRIMO parametro BASIC formale del callback (pushato per primo -> slot locale 0), in ordine
+ * naturale fino a args[n-1] (pushato per ultimo — stessa convenzione dedotta da
+ * gmb_vm_call_closure_sync2: "push b poi a" per push-FIRST-diventa-slot0). closure NULL =>
+ * addr e' un indirizzo grezzo (funzione top-level senza catture, stesso caso gia' gestito da
+ * OP_CALL_INDIRECT, vedi gmb_vm_core.c:6094-6102 per il pattern di riconoscimento gemello). */
+/* Livello B (Policy CALLBACK): come sync2_val ma a 3 argomenti, e il ritorno STRINGA/oggetto
+ * resta in task->sync_result_ref/type (il chiamante lo legge; borrowed, come agli altri siti). */
+double gmb_vm_call_closure_sync3_val(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure, gmb_val_t a, gmb_val_t b, gmb_val_t c)
+{
+    if (!closure) return 0;
+    gmb_stack_entry_t sa = gmb_adapter_val_to_stack(a);
+    gmb_stack_entry_t sb = gmb_adapter_val_to_stack(b);
+    gmb_stack_entry_t sc = gmb_adapter_val_to_stack(c);
+    /* Il PROLOGO di FUNCTION fa OP_STORE_LOCAL in REVERSE (pop top -> local[N-1]): gli argomenti
+     * vanno pushati in ORDINE NATURALE p0..pN-1 (l'ULTIMO in cima). */
+    if (sa.type == 2 && sa.ref) gmb_task_push_ref(task, sa.ref, sa.basic_type); else gmb_task_push_num(task, sa.num, sa.basic_type);
+    if (sb.type == 2 && sb.ref) gmb_task_push_ref(task, sb.ref, sb.basic_type); else gmb_task_push_num(task, sb.num, sb.basic_type);
+    if (sc.type == 2 && sc.ref) gmb_task_push_ref(task, sc.ref, sc.basic_type); else gmb_task_push_num(task, sc.num, sc.basic_type);
+    if (!push_frame(task, task->sp - 3, -2)) return 0;
+    if (closure->num_upvalues > 0 && closure->upvalues)
+        for (int i = 0; i < closure->num_upvalues && i < 16; i++)
+            task->frame->upvalues[i] = closure->upvalues[i];
+    task->sync_saved_ip = task->ip;
+    task->sync_active = 1;
+    task->sync_result = 0;
+    task->sync_result_ref = NULL;
+    task->sync_result_type = 0;
+    task->ip = closure->address;
+    int guard = 0;
+    while (task->sync_active && guard++ < 1000000) gmb_vm_tick(vm, task);
+    if (task->ip == -2) task->ip = task->sync_saved_ip;
+    return task->sync_result;
+}
+
+double gmb_vm_call_closure_sync_n(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure, int addr, const double* args, int n)
+{
+    int entry = closure ? closure->address : addr;
+    if (entry < 0) return 0;
+    for (int i = 0; i < n; i++) gmb_task_push_num(task, args[i], GMB_BT_NUMBER);
+    if (!push_frame(task, task->sp - n, -2)) return 0;
+    if (closure)
+    {
+        for (int i = 0; i < closure->num_upvalues && i < 16; i++)
+            task->frame->upvalues[i] = closure->upvalues[i];
+        /* Contesto di cattura (__ClosureCtx) come SELF in slot 0 — stessa regola di
+         * OP_CALL_INDIRECT (gmb_vm_core.c:6094-6102), necessaria per una closure con catture
+         * REALI (non solo parametri), non solo lambda stateless. */
+        if (closure->num_upvalues > 0
+            && closure->upvalues[0].type == 2
+            && closure->upvalues[0].ref
+            && closure->upvalues[0].ref->kind == GMB_OBJ_DICT)
+        {
+            gmb_obj_retain(closure->upvalues[0].ref);
+            task->frame->local_nums[0] = 0;
+            task->frame->local_refs[0] = closure->upvalues[0].ref;
+            task->frame->local_types[0] = 2;
+            task->frame->local_basic[0] = GMB_BT_OBJECT;
+        }
+    }
+    task->sync_saved_ip = task->ip;
+    task->sync_active = 1;
+    task->sync_result = 0;
+    task->ip = entry;
+    int guard = 0;
+    while (task->sync_active && guard++ < 1000000)
+        gmb_vm_tick(vm, task);
+    if (task->ip == -2) task->ip = task->sync_saved_ip;
+    return task->sync_result;
+}
+
+/* Pool di trampolini nativi per Callback come PARAMETRO FFI (2026-09-29): VM/C e' un
+ * interprete puro senza generazione di codice a runtime (a differenza di PCodeVM, che usa
+ * Marshal.GetFunctionPointerForDelegate per generare un vero thunk nativo per OGNI istanza —
+ * vedi PCodeProcessor.FfiCallback.cs) — qui serve un pool di funzioni C REALI PRE-DICHIARATE,
+ * una per ogni combinazione (kind, arita', slot). Limite v1: 2 slot CONCORRENTI per (kind,
+ * arita') — sufficiente per callback SINCRONI (qsort-style, richiamati DURANTE la chiamata
+ * FFI, mai dopo); un callback salvato dal nativo per un richiamo POSTERIORE alla chiamata FFI
+ * romperebbe questo schema (slot liberato troppo presto) — fuori scope v1, vedi AiWiki
+ * Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §3bis. */
+typedef struct {
+    gmb_vm_t* vm;
+    gmb_task_t* task;
+    gmb_obj_closure_t* closure; /* NULL se il callback e' un address grezzo (vedi addr) */
+    int addr;                   /* usato solo se closure == NULL */
+    int in_use;
+} gmb_ffi_cb_slot_t;
+
+static gmb_ffi_cb_slot_t g_ffi_cb_slots_d[5][2]; /* kind DOUBLE, arita' 0-4, 2 slot */
+static gmb_ffi_cb_slot_t g_ffi_cb_slots_i[5][2]; /* kind INT64 */
+
+static double gmb_ffi_cb_d0_0(void) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_d[0][0]; return gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, NULL, 0); }
+static double gmb_ffi_cb_d0_1(void) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_d[0][1]; return gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, NULL, 0); }
+static double gmb_ffi_cb_d1_0(double a0) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_d[1][0]; double a[1] = {a0}; return gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 1); }
+static double gmb_ffi_cb_d1_1(double a0) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_d[1][1]; double a[1] = {a0}; return gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 1); }
+static double gmb_ffi_cb_d2_0(double a0, double a1) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_d[2][0]; double a[2] = {a0, a1}; return gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 2); }
+static double gmb_ffi_cb_d2_1(double a0, double a1) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_d[2][1]; double a[2] = {a0, a1}; return gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 2); }
+static double gmb_ffi_cb_d3_0(double a0, double a1, double a2) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_d[3][0]; double a[3] = {a0, a1, a2}; return gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 3); }
+static double gmb_ffi_cb_d3_1(double a0, double a1, double a2) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_d[3][1]; double a[3] = {a0, a1, a2}; return gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 3); }
+static double gmb_ffi_cb_d4_0(double a0, double a1, double a2, double a3) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_d[4][0]; double a[4] = {a0, a1, a2, a3}; return gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 4); }
+static double gmb_ffi_cb_d4_1(double a0, double a1, double a2, double a3) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_d[4][1]; double a[4] = {a0, a1, a2, a3}; return gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 4); }
+
+static int64_t gmb_ffi_cb_i0_0(void) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_i[0][0]; return (int64_t)gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, NULL, 0); }
+static int64_t gmb_ffi_cb_i0_1(void) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_i[0][1]; return (int64_t)gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, NULL, 0); }
+static int64_t gmb_ffi_cb_i1_0(int64_t a0) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_i[1][0]; double a[1] = {(double)a0}; return (int64_t)gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 1); }
+static int64_t gmb_ffi_cb_i1_1(int64_t a0) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_i[1][1]; double a[1] = {(double)a0}; return (int64_t)gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 1); }
+static int64_t gmb_ffi_cb_i2_0(int64_t a0, int64_t a1) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_i[2][0]; double a[2] = {(double)a0, (double)a1}; return (int64_t)gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 2); }
+static int64_t gmb_ffi_cb_i2_1(int64_t a0, int64_t a1) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_i[2][1]; double a[2] = {(double)a0, (double)a1}; return (int64_t)gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 2); }
+static int64_t gmb_ffi_cb_i3_0(int64_t a0, int64_t a1, int64_t a2) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_i[3][0]; double a[3] = {(double)a0, (double)a1, (double)a2}; return (int64_t)gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 3); }
+static int64_t gmb_ffi_cb_i3_1(int64_t a0, int64_t a1, int64_t a2) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_i[3][1]; double a[3] = {(double)a0, (double)a1, (double)a2}; return (int64_t)gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 3); }
+static int64_t gmb_ffi_cb_i4_0(int64_t a0, int64_t a1, int64_t a2, int64_t a3) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_i[4][0]; double a[4] = {(double)a0, (double)a1, (double)a2, (double)a3}; return (int64_t)gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 4); }
+static int64_t gmb_ffi_cb_i4_1(int64_t a0, int64_t a1, int64_t a2, int64_t a3) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_i[4][1]; double a[4] = {(double)a0, (double)a1, (double)a2, (double)a3}; return (int64_t)gmb_vm_call_closure_sync_n(s->vm, s->task, s->closure, s->addr, a, 4); }
+
+static void* g_ffi_cb_trampolines_d[5][2] = {
+    { (void*)gmb_ffi_cb_d0_0, (void*)gmb_ffi_cb_d0_1 },
+    { (void*)gmb_ffi_cb_d1_0, (void*)gmb_ffi_cb_d1_1 },
+    { (void*)gmb_ffi_cb_d2_0, (void*)gmb_ffi_cb_d2_1 },
+    { (void*)gmb_ffi_cb_d3_0, (void*)gmb_ffi_cb_d3_1 },
+    { (void*)gmb_ffi_cb_d4_0, (void*)gmb_ffi_cb_d4_1 },
+};
+static void* g_ffi_cb_trampolines_i[5][2] = {
+    { (void*)gmb_ffi_cb_i0_0, (void*)gmb_ffi_cb_i0_1 },
+    { (void*)gmb_ffi_cb_i1_0, (void*)gmb_ffi_cb_i1_1 },
+    { (void*)gmb_ffi_cb_i2_0, (void*)gmb_ffi_cb_i2_1 },
+    { (void*)gmb_ffi_cb_i3_0, (void*)gmb_ffi_cb_i3_1 },
+    { (void*)gmb_ffi_cb_i4_0, (void*)gmb_ffi_cb_i4_1 },
+};
+
+/* Trova il primo slot libero per (kind,arita'), lo popola con vm/task/closure(o addr), e
+ * ritorna l'indirizzo del trampolino pre-dichiarato corrispondente (NULL se pool esaurito —
+ * >2 callback CONCORRENTI dello stesso kind/arita' nella stessa chiamata FFI, limite v1). */
+static void* gmb_ffi_cb_alloc(int kind, int arity, gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure, int addr, int* out_slot)
+{
+    if (arity < 0 || arity > 4) return NULL;
+    gmb_ffi_cb_slot_t (*arr)[2] = kind == 1 ? g_ffi_cb_slots_i : g_ffi_cb_slots_d;
+    for (int s = 0; s < 2; s++)
+    {
+        if (!arr[arity][s].in_use)
+        {
+            arr[arity][s].vm = vm;
+            arr[arity][s].task = task;
+            arr[arity][s].closure = closure;
+            arr[arity][s].addr = addr;
+            arr[arity][s].in_use = 1;
+            *out_slot = s;
+            return kind == 1 ? g_ffi_cb_trampolines_i[arity][s] : g_ffi_cb_trampolines_d[arity][s];
+        }
+    }
+    return NULL;
+}
+
+static void gmb_ffi_cb_free(int kind, int arity, int slot)
+{
+    if (arity < 0 || arity > 4 || slot < 0 || slot > 1) return;
+    gmb_ffi_cb_slot_t* s = kind == 1 ? &g_ffi_cb_slots_i[arity][slot] : &g_ffi_cb_slots_d[arity][slot];
+    s->in_use = 0;
+    s->closure = NULL;
+}
+
+/* Chiamata sincrona con 1 argomento gmb_val_t reale (numero/stringa/oggetto UDT). */
+double gmb_vm_call_closure_sync_val(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure, gmb_val_t a)
+{
+    if (!closure) return 0;
+    gmb_stack_entry_t sa = gmb_adapter_val_to_stack(a);
+    if (sa.type == 2 && sa.ref) gmb_task_push_ref(task, sa.ref, sa.basic_type);
+    else gmb_task_push_num(task, sa.num, sa.basic_type);
+    if (!push_frame(task, task->sp - 1, -2)) return 0;
+    if (closure->num_upvalues > 0 && closure->upvalues)
+        for (int i = 0; i < closure->num_upvalues && i < 16; i++)
+            task->frame->upvalues[i] = closure->upvalues[i];
+    task->sync_saved_ip = task->ip;
+    task->sync_active = 1;
+    task->sync_result = 0;
+    task->ip = closure->address;
+    int guard = 0;
+    while (task->sync_active && guard++ < 1000000)
+    {
+        gmb_vm_tick(vm, task);
+    }
+    if (task->ip == -2) task->ip = task->sync_saved_ip;
+    return task->sync_result;
+}
+
+/* Chiamata sincrona con 2 argomenti gmb_val_t reali (numeri/stringhe/oggetti UDT). */
+double gmb_vm_call_closure_sync2_val(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure, gmb_val_t a, gmb_val_t b)
+{
+    if (!closure) return 0;
+    gmb_stack_entry_t sa = gmb_adapter_val_to_stack(a);
+    gmb_stack_entry_t sb = gmb_adapter_val_to_stack(b);
+    if (sa.type == 2 && sa.ref) gmb_task_push_ref(task, sa.ref, sa.basic_type);
+    else gmb_task_push_num(task, sa.num, sa.basic_type);
+    if (sb.type == 2 && sb.ref) gmb_task_push_ref(task, sb.ref, sb.basic_type);
+    else gmb_task_push_num(task, sb.num, sb.basic_type);
+    if (!push_frame(task, task->sp - 2, -2)) return 0;
+    if (closure->num_upvalues > 0 && closure->upvalues)
+        for (int i = 0; i < closure->num_upvalues && i < 16; i++)
+            task->frame->upvalues[i] = closure->upvalues[i];
+    task->sync_saved_ip = task->ip;
+    task->sync_active = 1;
+    task->sync_result = 0;
+    task->ip = closure->address;
+    int guard = 0;
+    while (task->sync_active && guard++ < 1000000)
+    {
+        gmb_vm_tick(vm, task);
+    }
+    if (task->ip == -2) task->ip = task->sync_saved_ip;
+    return task->sync_result;
+}
+
+/* Chiamata sincrona che ritorna anche oggetti (list/dict/string): carica lo stack entry
+ * completo nel task (sync_result + sync_result_ref/type). */
+void gmb_vm_call_closure_sync_entry(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure, gmb_val_t a)
+{
+    if (!closure) { task->sync_result = 0; task->sync_result_ref = NULL; task->sync_result_type = 0; return; }
+    gmb_stack_entry_t sa = gmb_adapter_val_to_stack(a);
+    if (sa.type == 2 && sa.ref) gmb_task_push_ref(task, sa.ref, sa.basic_type);
+    else gmb_task_push_num(task, sa.num, sa.basic_type);
+    if (!push_frame(task, task->sp - 1, -2)) return;
+    if (closure->num_upvalues > 0 && closure->upvalues)
+        for (int i = 0; i < closure->num_upvalues && i < 16; i++)
+            task->frame->upvalues[i] = closure->upvalues[i];
+    task->sync_saved_ip = task->ip;
+    task->sync_active = 1;
+    task->sync_result = 0;
+    task->sync_result_ref = NULL;
+    task->sync_result_type = 0;
+    task->ip = closure->address;
+    int guard = 0;
+    while (task->sync_active && guard++ < 1000000)
+    {
+        gmb_vm_tick(vm, task);
+    }
+    if (task->ip == -2) task->ip = task->sync_saved_ip;
+}
+
+/* Chiamata sincrona a 2 argomenti gmb_val_t reali, ritorna stack entry completo (come
+ * gmb_vm_call_closure_sync_entry ma a 2 argomenti, come gmb_vm_call_closure_sync2_val ma
+ * senza troncare il risultato a double) — serve ad AREDUCE per accumulare oggetti/UDT,
+ * non solo numeri (parità IL ArrayHelpers.AReduce<T,TAcc>, generico su entrambi i tipi). */
+void gmb_vm_call_closure_sync2_entry(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure, gmb_val_t a, gmb_val_t b)
+{
+    if (!closure) { task->sync_result = 0; task->sync_result_ref = NULL; task->sync_result_type = 0; return; }
+    gmb_stack_entry_t sa = gmb_adapter_val_to_stack(a);
+    gmb_stack_entry_t sb = gmb_adapter_val_to_stack(b);
+    if (sa.type == 2 && sa.ref) gmb_task_push_ref(task, sa.ref, sa.basic_type);
+    else gmb_task_push_num(task, sa.num, sa.basic_type);
+    if (sb.type == 2 && sb.ref) gmb_task_push_ref(task, sb.ref, sb.basic_type);
+    else gmb_task_push_num(task, sb.num, sb.basic_type);
+    if (!push_frame(task, task->sp - 2, -2)) return;
+    if (closure->num_upvalues > 0 && closure->upvalues)
+        for (int i = 0; i < closure->num_upvalues && i < 16; i++)
+            task->frame->upvalues[i] = closure->upvalues[i];
+    task->sync_saved_ip = task->ip;
+    task->sync_active = 1;
+    task->sync_result = 0;
+    task->sync_result_ref = NULL;
+    task->sync_result_type = 0;
+    task->ip = closure->address;
+    int guard = 0;
+    while (task->sync_active && guard++ < 1000000)
+    {
+        gmb_vm_tick(vm, task);
+    }
+    if (task->ip == -2) task->ip = task->sync_saved_ip;
+}
+
+/* Chiamata sincrona a 0 argomenti (closure 0-aria), ritorna stack entry completo. */
+void gmb_vm_call_closure_sync_entry0(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure)
+{
+    if (!closure) { task->sync_result = 0; task->sync_result_ref = NULL; task->sync_result_type = 0; return; }
+    if (!push_frame(task, task->sp, -2)) return;
+    if (closure->num_upvalues > 0 && closure->upvalues)
+        for (int i = 0; i < closure->num_upvalues && i < 16; i++)
+            task->frame->upvalues[i] = closure->upvalues[i];
+    task->sync_saved_ip = task->ip;
+    task->sync_active = 1;
+    task->sync_result = 0;
+    task->sync_result_ref = NULL;
+    task->sync_result_type = 0;
+    task->ip = closure->address;
+    int guard = 0;
+    while (task->sync_active && guard++ < 1000000)
+    {
+        gmb_vm_tick(vm, task);
+    }
+    if (task->ip == -2) task->ip = task->sync_saved_ip;
+}
+
+/* Chiamata sincrona a un INDIRIZZO (non una closure) con N argomenti già pronti come
+ * stack entry — usata da RAISE EVENT (syscall path): gli handler sono risolti per NOME a
+ * un indirizzo di procedura (ws_resolve_callback-style), non a un oggetto closure, e il
+ * numero di argomenti dipende dalla firma dell'EVENT (variabile). Stesso schema
+ * sync_active/sync_result delle varianti sopra: esegue finché la procedura non fa RETURN. */
+static double vm_call_addr_sync_args(gmb_vm_t* vm, gmb_task_t* task, int addr, const gmb_stack_entry_t* args, int n)
+{
+    if (addr <= 0) return 0;
+    for (int i = 0; i < n; i++)
+    {
+        if (args[i].type == 2 && args[i].ref) gmb_task_push_ref(task, args[i].ref, args[i].basic_type);
+        else gmb_task_push_num(task, args[i].num, args[i].basic_type);
+    }
+    if (!push_frame(task, task->sp - n, -2)) return 0;
+    task->sync_saved_ip = task->ip;
+    task->sync_active = 1;
+    task->sync_result = 0;
+    task->ip = addr;
+    int guard = 0;
+    while (task->sync_active && guard++ < 1000000)
+    {
+        gmb_vm_tick(vm, task);
+    }
+    if (task->ip == -2) task->ip = task->sync_saved_ip;
+    return task->sync_result;
+}
+
+
+/* Wrapper pubblico: chiama una procedura del chunk per NOME con UN argomento STRINGA,
+ * in modo sincrono (stesso schema di vm_call_addr_sync_args usato da RAISE EVENT).
+ * Usato dagli handler che devono invocare una SUB callback (es. AI AGENT ASK STREAM). */
+double gmb_vm_call_proc_sync_str(gmb_vm_t* vm, gmb_task_t* task, const char* name, const char* s)
+{
+    int addr = gmb_vm_proc_addr(vm, name);
+    if (addr <= 0) return 0;
+    gmb_stack_entry_t a;
+    memset(&a, 0, sizeof(a));
+    a.type = 2;
+    a.ref = (gmb_obj_t*)gmb_str_cstr(s ? s : "");
+    a.basic_type = GMB_BT_STRING;
+    double r = vm_call_addr_sync_args(vm, task, addr, &a, 1);
+    if (a.ref) gmb_obj_release(a.ref);
+    return r;
+}
+
+/* Wrapper pubblico: chiama una procedura del chunk per NOME con N argomenti NUMERICI,
+ * in modo sincrono (stesso schema di gmb_vm_call_proc_sync_str). Usato dagli host che
+ * guidano una procedura per-passo (es. il backtester: per-barra `ONBAR(i,n)`). */
+double gmb_vm_call_proc_sync_num(gmb_vm_t* vm, gmb_task_t* task, const char* name,
+                                 const double* vals, int n)
+{
+    int addr = gmb_vm_proc_addr(vm, name);
+    if (addr <= 0) return 0;
+    /* Host-driven: il task main (gmb_vm_run) e' FINISHED e non verrebbe eseguito da
+     * gmb_vm_tick; lo si riporta RUNNABLE per la chiamata sincrona (globals conservati). */
+    if (task->state == GMB_TS_FINISHED) task->state = GMB_TS_RUNNABLE;
+    gmb_stack_entry_t args[16];
+    if (n < 0) n = 0;
+    if (n > 16) n = 16;
+    for (int i = 0; i < n; i++)
+    {
+        memset(&args[i], 0, sizeof(args[i]));
+        args[i].type = 1;
+        args[i].num = vals ? vals[i] : 0.0;
+        args[i].basic_type = GMB_BT_NUMBER;
+    }
+    return vm_call_addr_sync_args(vm, task, addr, args, n);
+}
+
+static double gmb_opt_f_scalar(double x, void* ctx) {    gmb_opt_ctx_t* c = (gmb_opt_ctx_t*)ctx;
+    return gmb_vm_call_closure_sync(c->vm, c->task, c->closure, x);
+}
+static double gmb_opt_f_vec(const double* v, int n, void* ctx) {
+    gmb_opt_ctx_t* c = (gmb_opt_ctx_t*)ctx;
+    return gmb_vm_call_closure_sync_list(c->vm, c->task, c->closure, v, n);
+}
+
+double gmb_opt_newton_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double guess, double tol, int max_iter)
+{ gmb_opt_ctx_t ctx = { vm, task, c }; return gmb_opt_newton(gmb_opt_f_scalar, guess, tol, max_iter, &ctx); }
+double gmb_opt_bisect_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double lo, double hi, double tol, int max_iter)
+{ gmb_opt_ctx_t ctx = { vm, task, c }; return gmb_opt_bisection(gmb_opt_f_scalar, lo, hi, tol, max_iter, &ctx); }
+double gmb_opt_brent_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double lo, double hi, double tol, int max_iter)
+{ gmb_opt_ctx_t ctx = { vm, task, c }; return gmb_opt_brent(gmb_opt_f_scalar, lo, hi, tol, max_iter, &ctx); }
+double gmb_opt_golden_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double lo, double hi, double tol, int max_iter)
+{ gmb_opt_ctx_t ctx = { vm, task, c }; return gmb_opt_golden(gmb_opt_f_scalar, lo, hi, tol, max_iter, &ctx); }
+double gmb_opt_secant_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double x0, double x1, double tol, int max_iter)
+{ gmb_opt_ctx_t ctx = { vm, task, c }; return gmb_opt_secant(gmb_opt_f_scalar, x0, x1, tol, max_iter, &ctx); }
+void gmb_opt_nm_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double* start, int n, double tol, int max_iter, double* out)
+{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_opt_nelder_mead(gmb_opt_f_vec, start, n, tol, max_iter, &ctx, out); }
+void gmb_opt_bfgs_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double* start, int n, double tol, int max_iter, double* out)
+{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_opt_bfgs(gmb_opt_f_vec, start, n, tol, max_iter, &ctx, out); }
+void gmb_opt_cg_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double* start, int n, double tol, int max_iter, double* out)
+{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_opt_cg(gmb_opt_f_vec, start, n, tol, max_iter, &ctx, out); }
+void gmb_opt_lbfgs_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double* start, int n, double tol, int max_iter, double* out)
+{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_opt_lbfgs(gmb_opt_f_vec, start, n, tol, max_iter, 1000, &ctx, out); }
+
+/* Bridge modello curve_fit: closure (params, x) → y — params come LISTA (stesso
+ * marshalling di sync_list), x scalare. */
+static double gmb_opt_lm_model(const double* p, int np, double x, void* ctx)
+{
+    gmb_opt_ctx_t* c = (gmb_opt_ctx_t*)ctx;
+    return gmb_vm_call_closure_sync_list2(c->vm, c->task, c->closure, p, np, x);
+}
+/* Bridge modello vettoriale curve_fit: closure (params[], inputs[]) → vector<previsioni>. */
+static void gmb_opt_lm_model_vec(const double* p, int np, const double* x, int nx, double* out, void* ctx)
+{
+    gmb_opt_ctx_t* c = (gmb_opt_ctx_t*)ctx;
+    gmb_vm_call_closure_sync_list2_vec(c->vm, c->task, c->closure, p, np, x, nx, out);
+}
+void gmb_opt_lmfit_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c,
+                       const double* x, const double* y, int nx, const double* p0, int np, double* out)
+{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_lm_fit(gmb_opt_lm_model, &ctx, x, y, nx, p0, np, 200, 1e-8, out); }
+void gmb_opt_lmfit_vec_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c,
+                           const double* x, const double* y, int nx, const double* p0, int np, double* out)
+{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_lm_fit_vec(gmb_opt_lm_model_vec, &ctx, x, y, nx, p0, np, 200, 1e-8, out); }
+void gmb_opt_de_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c,
+                    const double* lo, const double* hi, int n, double* out)
+{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_de_minimize(gmb_opt_f_vec, &ctx, lo, hi, n, 0, 1000, 1e-6, out); }
+
+double* gmb_vm_groups_to_flat(const gmb_stack_entry_t* a, int* k, int** sizes)
+{
+    *k = 0; *sizes = NULL;
+    if (!a || a->type != 2 || !a->ref || a->ref->kind != GMB_OBJ_LIST) return NULL;
+    gmb_obj_shared_val_t* sv = (gmb_obj_shared_val_t*)a->ref;
+    if (!sv->list) return NULL;
+    *k = (int)sv->list->count;
+    if (*k <= 0) return NULL;
+    int* sz = (int*)calloc((size_t)*k, sizeof(int));
+    int total = 0;
+    for (int i = 0; i < *k; i++)
+    {
+        gmb_val_t gv = sv->list->items[i];
+        gmb_obj_shared_val_t* gl = NULL;
+        if ((gv.kind == GMB_TYPE_OBJECT || gv.kind == GMB_TYPE_ARRAY) && gv.v_ptr)
+            gl = (gmb_obj_shared_val_t*)gv.v_ptr;
+        sz[i] = (int)(gl && gl->list ? gl->list->count : 0);
+        total += sz[i];
+    }
+    if (!sz || total <= 0) { free(sz); *k = 0; return NULL; }
+    double* flat = (double*)malloc(sizeof(double) * (size_t)total);
+    if (!flat) { free(sz); *k = 0; return NULL; }
+    int off = 0;
+    for (int i = 0; i < *k; i++)
+    {
+        gmb_val_t gv = sv->list->items[i];
+        gmb_obj_shared_val_t* gl = NULL;
+        if ((gv.kind == GMB_TYPE_OBJECT || gv.kind == GMB_TYPE_ARRAY) && gv.v_ptr)
+            gl = (gmb_obj_shared_val_t*)gv.v_ptr;
+        if (gl && gl->list)
+            for (int j = 0; j < sz[i]; j++)
+            {
+                gmb_val_t it = gl->list->items[j];
+                flat[off + j] = it.kind == GMB_TYPE_DOUBLE ? it.v_double : it.kind == GMB_TYPE_INT ? (double)it.v_int : 0;
+            }
+        off += sz[i];
+    }
+    *sizes = sz;
+    return flat;
+}
+
+double* gmb_vm_jagged_to_flat(const gmb_stack_entry_t* a, int* nrows, int* ncols)
+{
+    *nrows = 0; *ncols = 0;
+    if (!a || a->type != 2 || !a->ref || a->ref->kind != GMB_OBJ_LIST) return NULL;
+    gmb_obj_shared_val_t* sv = (gmb_obj_shared_val_t*)a->ref;
+    if (!sv->list) return NULL;
+    *nrows = (int)sv->list->count;
+    if (*nrows <= 0) return NULL;
+    gmb_val_t r0 = sv->list->items[0];
+    gmb_obj_shared_val_t* rl = NULL;
+    if ((r0.kind == GMB_TYPE_OBJECT || r0.kind == GMB_TYPE_ARRAY) && r0.v_ptr)
+        rl = (gmb_obj_shared_val_t*)r0.v_ptr;
+    *ncols = (int)(rl && rl->list ? rl->list->count : 0);
+    if (*ncols <= 0) return NULL;
+    double* flat = (double*)malloc(sizeof(double) * (size_t)(*nrows) * (size_t)(*ncols));
+    if (!flat) return NULL;
+    for (int i = 0; i < *nrows; i++)
+    {
+        gmb_val_t rowv = sv->list->items[i];
+        gmb_obj_shared_val_t* rr = NULL;
+        if ((rowv.kind == GMB_TYPE_OBJECT || rowv.kind == GMB_TYPE_ARRAY) && rowv.v_ptr)
+            rr = (gmb_obj_shared_val_t*)rowv.v_ptr;
+        if (rr && rr->list)
+            for (int j = 0; j < *ncols && j < (int)rr->list->count; j++)
+            {
+                gmb_val_t it = rr->list->items[j];
+                flat[i * (*ncols) + j] = it.kind == GMB_TYPE_DOUBLE ? it.v_double : it.kind == GMB_TYPE_INT ? (double)it.v_int : 0;
+            }
+    }
+    return flat;
+}
+
+/* Adapter vettore→vettore: chiama la closure con lista e rilegge la lista risultato. */
+static void gmb_opt_f_vec_vec(const double* v, int n, double* out, void* ctx)
+{
+    gmb_opt_ctx_t* c = (gmb_opt_ctx_t*)ctx;
+    (void)gmb_vm_call_closure_sync_list(c->vm, c->task, c->closure, v, n);
+    gmb_obj_t* ref = c->task->sync_result_ref;
+    c->last_vec_count = 0;
+    if (ref && ref->kind == GMB_OBJ_LIST)
+    {
+        gmb_obj_shared_val_t* rl = (gmb_obj_shared_val_t*)ref;
+        int cnt = (int)(rl->list ? rl->list->count : 0);
+        c->last_vec_count = cnt;
+        for (int i = 0; i < cnt && i < 128; i++)
+        {
+            gmb_val_t it = rl->list->items[i];
+            out[i] = it.kind == GMB_TYPE_DOUBLE ? it.v_double : it.kind == GMB_TYPE_INT ? (double)it.v_int : 0;
+        }
+    }
+    else
+        for (int i = 0; i < n && i < 128; i++) out[i] = 0;
+}
+
+void gmb_vm_ode_fn(double t, const double* y, int yd, double* dydt, void* c)
+{
+    gmb_opt_ctx_t* o = (gmb_opt_ctx_t*)c;
+    gmb_obj_shared_val_t* lst = gmb_shared_list_new();
+    if (lst) for (int i = 0; i < yd; i++) gmb_list_add(lst->list, gmb_make_val_double(y[i]));
+    gmb_val_t yv = lst ? gmb_make_val_list(*lst->list) : gmb_make_val_double(0);
+    (void)gmb_vm_call_closure_sync2_val(o->vm, o->task, o->closure, gmb_make_val_double(t), yv);
+    gmb_obj_t* ref = o->task->sync_result_ref;
+    if (ref && ref->kind == GMB_OBJ_LIST)
+    {
+        gmb_obj_shared_val_t* rl = (gmb_obj_shared_val_t*)ref;
+        int cnt = (int)(rl->list ? rl->list->count : 0);
+        for (int i = 0; i < yd && i < cnt; i++)
+        {
+            gmb_val_t it = rl->list->items[i];
+            dydt[i] = it.kind == GMB_TYPE_DOUBLE ? it.v_double : it.kind == GMB_TYPE_INT ? (double)it.v_int : 0;
+        }
+    }
+    else
+    {
+        /* λ che ritorna uno SCALARE (es. `{|t, y| RETURN -y(0)}`, nessuna annotazione di
+         * tipo/arità esplicita — un ODE a una sola componente): sync_result_ref resta NULL
+         * (nessun oggetto LISTA), il valore vero è in task->sync_result (double). Prima:
+         * questo ramo azzerava SEMPRE dydt qualunque fosse il ritorno della λ — con
+         * dydt≡0 l'integratore RK45 non fa mai avanzare lo stato, fermando di fatto
+         * l'integrazione al primo passo (bug Lambda-Param-Array-Indicizzato-Cross-Backend,
+         * AiWiki: sintomo osservato "rows=2, yend=1" invece di rows=6/yend≈0.36788 per
+         * dy/dt=-y, y(0)=1). Un ODE con più di una componente (yd>1) e una λ scalare resta
+         * un caso ambiguo (quale componente rappresenta lo scalare?) — fuori scope, si
+         * azzerano le componenti oltre la prima come prima. */
+        if (yd >= 1) dydt[0] = o->task->sync_result;
+        for (int i = 1; i < yd; i++) dydt[i] = 0;
+    }
+}
+
+/* Estrae lo/hi da un argomento bounds (lista di [lo,hi]). Ritorna n (0 se assente). */
+int gmb_opt_extract_bounds(const gmb_stack_entry_t* arg, double* lo, double* hi, int max)
+{
+    if (!arg || arg->type != 2 || !arg->ref || arg->ref->kind != GMB_OBJ_LIST) return 0;
+    gmb_obj_shared_val_t* bl = (gmb_obj_shared_val_t*)arg->ref;
+    if (!bl->list) return 0;
+    int n = (int)bl->list->count;
+    if (n > max) n = max;
+    for (int i = 0; i < n; i++)
+    {
+        lo[i] = 0; hi[i] = 1;
+        gmb_val_t rowv = bl->list->items[i];
+        gmb_obj_shared_val_t* rl = NULL;
+        if ((rowv.kind == GMB_TYPE_OBJECT || rowv.kind == GMB_TYPE_ARRAY) && rowv.v_ptr)
+            rl = (gmb_obj_shared_val_t*)rowv.v_ptr;
+        if (rl && rl->list && rl->list->count >= 2)
+        {
+            gmb_val_t a = rl->list->items[0], b = rl->list->items[1];
+            lo[i] = a.kind == GMB_TYPE_DOUBLE ? a.v_double : a.kind == GMB_TYPE_INT ? (double)a.v_int : 0;
+            hi[i] = b.kind == GMB_TYPE_DOUBLE ? b.v_double : b.kind == GMB_TYPE_INT ? (double)b.v_int : 0;
+        }
+    }
+    return n;
+}
+
+gmb_val_t gmb_vm_arg_list(const gmb_stack_entry_t* a)
+{
+    gmb_val_t v;
+    memset(&v, 0, sizeof(v));
+    if (!a) return v;
+    if (a->type == 2 && a->ref && a->ref->kind == GMB_OBJ_LIST)
+    {
+        gmb_obj_shared_val_t* sv = (gmb_obj_shared_val_t*)a->ref;
+        if (sv->list) return gmb_make_val_list(*sv->list);
+    }
+    return v;
+}
+
+void gmb_vm_set_dict_result(gmb_val_t r, int* is_num, gmb_obj_t** result_ref, uint8_t* result_ref_bt)
+{
+    if (r.kind == GMB_TYPE_OBJECT && r.v_ptr)
+    {
+        /* Il dict runtime (gmb_val_t con gmb_obj typed "gmb_dict") non è leggibile
+         * dall'accessor proprietà della VM, che richiede gmb_obj_shared_val_t con
+         * kind GMB_OBJ_DICT e campo dict popolato. Copia in un dict VM. */
+        gmb_obj_t* o = (gmb_obj_t*)r.v_ptr;
+        gmb_dict_t* d = o->data ? (gmb_dict_t*)o->data : NULL;
+        gmb_obj_shared_val_t* out = gmb_shared_dict_new();
+        if (out && d)
+            for (size_t i = 0; i < d->count; i++)
+                gmb_dict_set(out->dict, d->items[i].key, d->items[i].value);
+        *is_num = 0;
+        *result_ref = (gmb_obj_t*)out;
+        *result_ref_bt = GMB_BT_OBJECT;
+    }
+    else
+    {
+        *is_num = 0;
+        *result_ref = NULL;
+    }
+}
+
+static void vm_json_free_runtime_val(gmb_val_t v);
+static gmb_val_t vm_json_full_val_from_runtime(gmb_val_t rv);
+
+void vm_list_add_fresh(gmb_list_t* l, gmb_val_t fresh)
+{
+    if (fresh.kind == GMB_TYPE_STRING && fresh.v_string.ref_count != 0x6D737472 /* contata: gia' gestita */)
+    {
+        gmb_list_add(l, gmb_make_val_string_counted_n(fresh.v_string.data, fresh.v_string.length));
+        gmb_string_free(&fresh.v_string);
+        return;
+    }
+    gmb_list_add(l, fresh);
+}
+
+/* Vero se l'albero del box runtime contiene SOLO scalari, stringhe e box lista/dict (convertibili senza perdite). */
+static int vm_box_tree_plain(gmb_val_t v)
+{
+    if (v.kind != GMB_TYPE_OBJECT) return 1;
+    gmb_obj_t* o = (gmb_obj_t*)v.v_ptr;
+    if (!o || o->release_fn || !o->type_name) return 0;   /* oggetto VM contato / sconosciuto: non toccare */
+    if (strcmp(o->type_name, "gmb_list") == 0)
+    {
+        gmb_list_t* l = (gmb_list_t*)o->data;
+        if (l) for (size_t i = 0; i < l->count; i++) if (!vm_box_tree_plain(l->items[i])) return 0;
+        return 1;
+    }
+    if (strstr(o->type_name, "dict"))
+    {
+        gmb_dict_t* d = (gmb_dict_t*)o->data;
+        if (d) for (size_t i = 0; i < d->count; i++) if (!vm_box_tree_plain(d->items[i].value)) return 0;
+        return 1;
+    }
+    return 0;
+}
+
+/* Variante PROPRIETARIA di gmb_vm_set_dict_result per risultati FRESCHI delle funzioni statistiche (box creato
+ * da gmb_make_dict e non condiviso con nessuno): lo converte in un dict VM (stringhe contate, sotto-box
+ * convertiti in oggetti VM) e LIBERA l'intero box runtime. Se l'albero contiene altro (oggetti VM, bytes...) ricade
+ * nella copia superficiale storica (il box resta, con il suo leak). NON usare per risultati riusati dal chiamante
+ * (es. il parse Markdown, che si aspetta i valori annidati in forma runtime grezza). */
+void gmb_vm_set_dict_result_owned(gmb_val_t r, int* is_num, gmb_obj_t** result_ref, uint8_t* result_ref_bt)
+{
+    gmb_obj_t* o = (r.kind == GMB_TYPE_OBJECT) ? (gmb_obj_t*)r.v_ptr : NULL;
+    if (!o || !o->type_name || !strstr(o->type_name, "dict") || !o->data || !vm_box_tree_plain(r))
+    {
+        gmb_vm_set_dict_result(r, is_num, result_ref, result_ref_bt);
+        return;
+    }
+    gmb_dict_t* d = (gmb_dict_t*)o->data;
+    gmb_obj_shared_val_t* out = gmb_shared_dict_new();
+    if (out)
+        for (size_t i = 0; i < d->count; i++)
+        {
+            gmb_val_t v = d->items[i].value;
+            if (v.kind == GMB_TYPE_OBJECT)
+            {
+                gmb_val_t conv = vm_json_full_val_from_runtime(v);   /* oggetto VM fresco (rc 1) */
+                gmb_dict_set(out->dict, d->items[i].key, conv);
+                if (conv.kind == GMB_TYPE_OBJECT && conv.v_ptr) gmb_obj_release((gmb_obj_t*)conv.v_ptr);
+            }
+            else if (v.kind == GMB_TYPE_STRING)
+                gmb_dict_set(out->dict, d->items[i].key, gmb_make_val_string_counted(v.v_string.data ? v.v_string.data : ""));
+            else
+                gmb_dict_set(out->dict, d->items[i].key, v);
+        }
+    vm_json_free_runtime_val(r);   /* il box (e le sue stringhe/sotto-box) e' ora spazzatura */
+    *is_num = 0;
+    *result_ref = (gmb_obj_t*)out;
+    *result_ref_bt = GMB_BT_OBJECT;
+}
+
+
+/* ---- scipy.optimize completato (957-973): wrapper _ctx ---- */
+double gmb_opt_brentq_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double a, double b)
+{ gmb_opt_ctx_t ctx = { vm, task, c }; return gmb_opt_brentq(gmb_opt_f_scalar, &ctx, a, b); }
+double gmb_opt_brenth_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double a, double b)
+{ gmb_opt_ctx_t ctx = { vm, task, c }; return gmb_opt_brenth(gmb_opt_f_scalar, &ctx, a, b); }
+double gmb_opt_ridder_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double a, double b)
+{ gmb_opt_ctx_t ctx = { vm, task, c }; return gmb_opt_ridder(gmb_opt_f_scalar, &ctx, a, b); }
+double gmb_opt_toms748_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double a, double b)
+{ gmb_opt_ctx_t ctx = { vm, task, c }; return gmb_opt_toms748(gmb_opt_f_scalar, &ctx, a, b); }
+double gmb_opt_brentmin_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double a, double b)
+{ gmb_opt_ctx_t ctx = { vm, task, c }; return gmb_opt_brentmin(gmb_opt_f_scalar, &ctx, a, b); }
+double gmb_opt_minscalar_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double a, double b, const char* method)
+{
+    gmb_opt_ctx_t ctx = { vm, task, c };
+    if (method && strcasecmp(method, "golden") == 0) return gmb_opt_golden(gmb_opt_f_scalar, a, b, 1e-9, 200, &ctx);
+    return gmb_opt_brentmin(gmb_opt_f_scalar, &ctx, a, b);
+}
+void gmb_opt_powell_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* x0, int n, double* out)
+{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_opt_powell(gmb_opt_f_vec, &ctx, x0, n, out); }
+void gmb_opt_tnc_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* x0, int n, const double* lo, const double* hi, double* out)
+{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_opt_tnc(gmb_opt_f_vec, &ctx, x0, n, lo, hi, out); }
+void gmb_opt_cobyla_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* x0, int n, const double* lo, const double* hi, double* out)
+{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_opt_cobyla(gmb_opt_f_vec, &ctx, x0, n, lo, hi, out); }
+void gmb_opt_slsqp_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* x0, int n, const double* lo, const double* hi, double* out)
+{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_opt_slsqp(gmb_opt_f_vec, &ctx, x0, n, lo, hi, out); }
+void gmb_opt_minimize_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* x0, int n, const char* method, const double* lo, const double* hi, double* out)
+{
+    gmb_opt_ctx_t ctx = { vm, task, c };
+    if (method && strcasecmp(method, "powell") == 0) { gmb_opt_powell(gmb_opt_f_vec, &ctx, x0, n, out); return; }
+    if (method && strcasecmp(method, "tnc") == 0) { gmb_opt_tnc(gmb_opt_f_vec, &ctx, x0, n, lo, hi, out); return; }
+    if (method && strcasecmp(method, "cobyla") == 0) { gmb_opt_cobyla(gmb_opt_f_vec, &ctx, x0, n, lo, hi, out); return; }
+    if (method && strcasecmp(method, "slsqp") == 0) { gmb_opt_slsqp(gmb_opt_f_vec, &ctx, x0, n, lo, hi, out); return; }
+    if (method && strcasecmp(method, "bfgs") == 0) { gmb_opt_bfgs(gmb_opt_f_vec, (double*)x0, n, 1e-7, 500, &ctx, out); return; }
+    if (method && strcasecmp(method, "cg") == 0) { gmb_opt_bfgs(gmb_opt_f_vec, (double*)x0, n, 1e-7, 500, &ctx, out); return; }
+    if (method && (strcasecmp(method, "lbfgs") == 0 || strcasecmp(method, "l-bfgs") == 0)) { gmb_opt_bfgs(gmb_opt_f_vec, (double*)x0, n, 1e-7, 500, &ctx, out); return; }
+    gmb_opt_nelder_mead(gmb_opt_f_vec, (double*)x0, n, 1e-7, 500, &ctx, out);
+}
+void gmb_opt_fsolve_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* x0, int n, double* out)
+{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_opt_fsolve(gmb_opt_f_vec_vec, &ctx, x0, n, out); }
+void gmb_opt_broyden_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* x0, int n, double* out)
+{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_opt_broyden(gmb_opt_f_vec_vec, &ctx, x0, n, out); }
+void gmb_opt_lstsq_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* x0, int n, const double* lo, const double* hi, double* out)
+{
+    gmb_opt_ctx_t ctx = { vm, task, c, 0 };
+    double probe[128];
+    gmb_opt_f_vec_vec(x0, n, probe, &ctx);
+    int m = ctx.last_vec_count;
+    if (m <= 0) m = n;
+    gmb_opt_least_squares(gmb_opt_f_vec_vec, &ctx, x0, n, m, lo, hi, out);
+}
+void gmb_opt_brute_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* lo, const double* hi, int n, int N, double* out)
+{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_opt_brute(gmb_opt_f_vec, &ctx, lo, hi, n, N, out); }
+void gmb_opt_basin_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* x0, int n, int niter, double* out)
+{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_opt_basin_hopping(gmb_opt_f_vec, &ctx, x0, n, niter, out); }
+void gmb_opt_dual_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* lo, const double* hi, int n, int maxiter, double* out)
+{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_opt_dual_annealing(gmb_opt_f_vec, &ctx, lo, hi, n, maxiter, out); }
+
+void gmb_vm_free(gmb_vm_t* vm)
+{
+    vm_release_bsp_seeds(vm);   /* BSP: semi mai applicati (run non eseguita) */
+    vm_release_dynamic_scope(vm);
+    if (vm->scheduler) { gmb_sched_destroy(vm->scheduler); vm->scheduler = NULL; }
+    gmb_vm_tui_free(vm);
+    free(vm->static_fields); vm->static_fields = NULL;
+    free(vm->static_fields_init); vm->static_fields_init = NULL;
+    pthread_mutex_destroy(&vm->static_lock);
+    pthread_mutex_destroy(&vm->print_lock);
+    for (int i = 0; i < vm->desc_n; i++) gmb_obj_release(vm->desc_obj[i]);
+    free(vm->desc_key); free(vm->desc_obj); vm->desc_key = NULL; vm->desc_obj = NULL; vm->desc_n = vm->desc_cap = 0;
+    pthread_mutex_destroy(&vm->desc_lock);
+}
+
+
+/* Il blocco DB avanzato e' SOLO edizione Commercial: usa l'ABI gmb_db_* e
+ * gmb_db.h (inclusa sotto #ifdef GMB_HAS_COMMERCIAL_DB in testa al file).
+ * La VM/C di default e' Community (flag CMake OFF) e non lo compila. */
+#ifdef GMB_HAS_COMMERCIAL_DB
+/* ---------------------------------------------------------------------------
+ * DB avanzato (VM/C): marshalling p-code -> ABI gmb_db_*.
+ * TUTTO dentro il processo C (gmb_vm_host): i valori arrivano dallo stack del
+ * p-code (oggetti gmb_obj_t nativi), nessun ponte con C#. I syscall qui coperti
+ * richiedono argomenti multi-valore/dict/list/stringhe che il dispatcher
+ * (code, sarg, iarg) di gmb_db_apply_syscall non puo' trasportare.
+ * ------------------------------------------------------------------------- */
+/* Cache field-symbolId dell'area ISAM corrente (ISAM_USE popa i sid; APPEND/PUT/APPENDMANY
+ * li usano per leggere i campi "__m<sid>" dell'istanza UDT). */
+#define VM_ISAM_SID_CACHE 8
+/* Stato su gmb_vm_t (refactor 6.5.2) */
+int vm_isam_sid_slot(gmb_vm_t* vm, int64_t h)
+{
+    int i;
+    for (i = 0; i < VM_ISAM_SID_CACHE; i++)
+        if (vm->vm_isam_sid_handle[i] == h) return i;
+    for (i = 0; i < VM_ISAM_SID_CACHE; i++)
+        if (vm->vm_isam_sid_handle[i] == 0) { vm->vm_isam_sid_handle[i] = h; vm->vm_isam_sid_count[i] = 0; return i; }
+    return -1;
+}
+
+/* Cache field-symbolId + NOME dell'area SPEED corrente (SPEED_USE la popola dai (nome,
+ * symbolId) spinti dal compilatore, vedi Compiler.Speed.cs VisitSpeedUseStatement).
+ * Serve in ENTRAMBE le direzioni: PUT normalizza le chiavi "__m<sid>" dell'istanza UDT nei
+ * NOMI reali (JSON on-disk leggibile, parità PCodeVM SpeedRecordToBytes — dict per-nome);
+ * GET fa l'inverso, ricostruendo "__m<sid>" dai nomi nel JSON perché OP_LOAD_MEMBER legge
+ * l'istanza per offset/symbolId (vedi case OP_LOAD_MEMBER: snprintf("__m%d", offset)), non
+ * per nome. Vedi DB-Parity-1-1-TODO.md §3 "SPEED data round-trip". */
+#define VM_SPEED_FIELD_CACHE 8
+/* Nome del campo dichiarato via INDEXED BY (es. "ID_Ordine" per Ordini) — senza questo,
+ * PUT/DELETE cadono sempre sul fallback hardcoded "ID", che per una tabella la cui chiave
+ * NON si chiama "ID" fa collidere ogni record sulla stessa chiave (parità con il fix
+ * equivalente in PCodeProcessor.Syscalls.cs case SPEED_USE, campo pkFieldName). */
+int vm_speed_field_slot(gmb_vm_t* vm, int64_t h)
+{
+    int i;
+    for (i = 0; i < VM_SPEED_FIELD_CACHE; i++)
+        if (vm->vm_speed_field_handle[i] == h) return i;
+    for (i = 0; i < VM_SPEED_FIELD_CACHE; i++)
+        if (vm->vm_speed_field_handle[i] == 0) { vm->vm_speed_field_handle[i] = h; vm->vm_speed_field_count[i] = 0; return i; }
+    return -1;
+}
+
+int vm_entry_str(gmb_stack_entry_t e, char* buf, int cap)
+{
+    if (e.type != 2 || !e.ref || e.ref->kind != GMB_OBJ_STRING) { if (cap > 0) buf[0] = 0; return -1; }
+    gmb_obj_string_t* s = (gmb_obj_string_t*)e.ref;
+    int n = (int)s->length < cap - 1 ? (int)s->length : cap - 1;
+    if (n < 0) n = 0;
+    if (n > 0 && s->data) memcpy(buf, s->data, (size_t)n);
+    buf[n] = 0;
+    return 0;
+}
+
+void vm_val_csv(gmb_val_t v, char* out, int cap)
+{
+    if (!out || cap <= 0) return;
+    switch (v.kind) {
+        case GMB_TYPE_STRING: {
+            const char* s = v.v_string.data ? v.v_string.data : "";
+            size_t len = v.v_string.length;
+            int n = 0; out[n++] = '"';
+            for (size_t i = 0; i < len && n < cap - 2; i++) {
+                if (s[i] == '"') { if (n < cap - 2) out[n++] = '"'; }
+                out[n++] = s[i];
+            }
+            out[n++] = '"'; out[n] = 0;
+            break;
+        }
+        case GMB_TYPE_INT: snprintf(out, cap, "%lld", (long long)v.v_int); break;
+        case GMB_TYPE_DOUBLE: snprintf(out, cap, "%g", v.v_double); break;
+        case GMB_TYPE_BOOL: out[0] = v.v_bool ? '1' : '0'; out[1] = 0; break;
+        default: out[0] = 0; break;
+    }
+}
+
+/* Costruisce un CSV in ordine di schema (nomi campo da gmb_db_*_fields) dai
+ * valori di un dict p-code. I valori stringa sono quotati stile CSV ("" doppio). */
+int vm_dict_to_csv(gmb_vm_t* vm, gmb_obj_t* ref, const char* fields, char* out, int cap)
+{
+    gmb_dict_t* d;
+    int pos = 0, nf = 0;
+    char tmp[1024];
+    if (!ref || ref->kind != GMB_OBJ_DICT) return -1;
+    d = ((gmb_obj_shared_val_t*)ref)->dict;
+    if (!d || !fields || !out || cap <= 0) return -1;
+    out[0] = 0;
+    int fidx = 0;
+    while (*fields && pos < cap - 1) {
+        char fname[64]; int fi = 0;
+        while (*fields && *fields != ',' && fi < 63) fname[fi++] = *fields++;
+        fname[fi] = 0;
+        if (*fields == ',') fields++;
+        /* Le istanze UDT tengono i campi con chiave "__m<symbolId>" (OP_STORE_MEMBER),
+         * NON col nome campo: il symbolId per l'i-esimo campo arriva dal pop di ISAM_USE. */
+        char mkey[32];
+        {
+            int slot = vm_isam_sid_slot(vm, gmb_db_current_isam());
+            int sid = (slot >= 0 && fidx < vm->vm_isam_sid_count[slot]) ? vm->vm_isam_sids[slot][fidx] : -1;
+            if (sid >= 0) snprintf(mkey, sizeof(mkey), "__m%d", sid);
+            else snprintf(mkey, sizeof(mkey), "__m%d", fidx);
+        }
+        gmb_val_t v = vm_dict_get_ci(d, mkey);
+        if (v.kind == GMB_TYPE_NIL) v = vm_dict_get_ci(d, fname); /* fallback per dict per-nome */
+        vm_val_csv(v, tmp, (int)sizeof(tmp));
+        if (nf++) { if (pos < cap - 1) out[pos++] = ','; }
+        for (int i = 0; tmp[i] && pos < cap - 1; i++) out[pos++] = tmp[i];
+        fidx++;
+    }
+    out[pos] = 0;
+    return 0;
+}
+
+/* Nome campo -> indice (DBF): risolve il nome (troncato/maiuscole, come il C#). */
+int vm_dbf_field_index(const char* fieldsCsv, const char* name)
+{
+    const char* p = fieldsCsv;
+    int idx = 0;
+    if (!fieldsCsv || !name) return -1;
+    while (*p) {
+        char fname[64]; int fi = 0;
+        while (*p && *p != ',' && fi < 63) fname[fi++] = *p++;
+        fname[fi] = 0;
+        if (*p == ',') p++;
+        if (strcasecmp(fname, name) == 0) return idx;
+        /* DBF: i nomi campo sono troncati a 10 char ("DESCRIZION" per "Descrizione") →
+         * confronto prefix sui nomi a 10 char, altrimenti REPLACE/GETFIELD sul nome lungo
+         * non trovavano il campo (§11 "Desc: " vuoto). */
+        if (strlen(fname) == 10 && strncasecmp(fname, name, 10) == 0) return idx;
+        idx++;
+    }
+    return -1;
+}
+
+/* Splitter CSV locale (i valori sono gia' quotati in modo standard). */
+int vm_csv_split(const char* s, char out[][128], int maxn)
+{
+    int n = 0;
+    if (!s) return 0;
+    while (*s && n < maxn) {
+        int i = 0;
+        if (*s == '"') {
+            s++;
+            while (*s && i < 127) {
+                if (*s == '"') { if (s[1] == '"') { out[n][i++] = '"'; s += 2; continue; } s++; break; }
+                out[n][i++] = *s++;
+            }
+        } else {
+            while (*s && *s != ',' && i < 127) out[n][i++] = *s++;
+        }
+        out[n][i] = 0;
+        if (*s == ',') s++;
+        n++;
+    }
+    return n;
+}
+
+#endif /* GMB_HAS_COMMERCIAL_DB */
+
+/* ── TEAM (AI TEAM ...) — SysCalls.cs 92-101 + 363-366 (in coda) ──────────────
+ * Pop LIFO: il compiler spinge i parametri specifici PRIMA, il TeamName per ultimo,
+ * quindi qui si popa il TeamName per primo (stessa convenzione di gmb_vm_exec_db_syscall). */
+void team_pop_str(gmb_stack_entry_t e, char* buf, int cap)
+{
+    if (buf && cap > 0)
+    {
+        buf[0] = '\0';
+        if (e.type == 2 && e.ref && ((gmb_obj_string_t*)e.ref)->data)
+        {
+            strncpy(buf, ((gmb_obj_string_t*)e.ref)->data, (size_t)cap - 1);
+            buf[cap - 1] = '\0';
+        }
+    }
+}
+
+static void gmb_vm_exec_team_syscall_c92(gmb_vm_t* vm, gmb_task_t* task, int argc)
+{
+    (void)vm; (void)argc;
+    char team[128] = "", a1[256] = "", a2[256] = "";
+    int i1 = 0;
+
+    if (task->sp > 0) { gmb_stack_entry_t e = gmb_task_pop(task); team_pop_str(e, team, sizeof(team)); gmb_obj_release(e.ref); }
+            push_num_entry(task, gmb_team_create(team) ? -1.0 : 0.0, GMB_BT_NUMBER);
+            return;
+}
+
+static void gmb_vm_exec_team_syscall_c93(gmb_vm_t* vm, gmb_task_t* task, int argc)
+{
+    (void)vm; (void)argc;
+    char team[128] = "", a1[256] = "", a2[256] = "";
+    int i1 = 0;
+
+    gmb_stack_entry_t e = gmb_task_pop(task); team_pop_str(e, team, sizeof(team)); gmb_obj_release(e.ref);
+            e = gmb_task_pop(task); team_pop_str(e, a1, sizeof(a1)); gmb_obj_release(e.ref);
+            push_num_entry(task, (93 == 93 ? gmb_team_add_agent(team, a1) : gmb_team_remove_agent(team, a1)) ? -1.0 : 0.0, GMB_BT_NUMBER);
+            return;
+}
+
+static void gmb_vm_exec_team_syscall_c94(gmb_vm_t* vm, gmb_task_t* task, int argc)
+{
+    (void)vm; (void)argc;
+    char team[128] = "", a1[256] = "", a2[256] = "";
+    int i1 = 0;
+
+    gmb_stack_entry_t e = gmb_task_pop(task); team_pop_str(e, team, sizeof(team)); gmb_obj_release(e.ref);
+            e = gmb_task_pop(task); team_pop_str(e, a1, sizeof(a1)); gmb_obj_release(e.ref);
+            push_num_entry(task, gmb_team_remove_agent(team, a1) ? -1.0 : 0.0, GMB_BT_NUMBER);
+            return;
+}
+
+static void gmb_vm_exec_team_syscall_c95(gmb_vm_t* vm, gmb_task_t* task, int argc)
+{
+    (void)vm; (void)argc;
+    char team[128] = "", a1[256] = "", a2[256] = "";
+    int i1 = 0;
+
+    gmb_stack_entry_t e = gmb_task_pop(task); team_pop_str(e, team, sizeof(team)); gmb_obj_release(e.ref);
+            e = gmb_task_pop(task); team_pop_str(e, a1, sizeof(a1)); gmb_obj_release(e.ref);
+            push_num_entry(task, gmb_team_message(team, a1) ? -1.0 : 0.0, GMB_BT_NUMBER);
+            return;
+}
+
+static void gmb_vm_exec_team_syscall_c96(gmb_vm_t* vm, gmb_task_t* task, int argc)
+{
+    (void)vm; (void)argc;
+    char team[128] = "", a1[256] = "", a2[256] = "";
+    int i1 = 0;
+
+    gmb_stack_entry_t e = gmb_task_pop(task); team_pop_str(e, team, sizeof(team)); gmb_obj_release(e.ref);
+            e = gmb_task_pop(task); team_pop_str(e, a1, sizeof(a1)); gmb_obj_release(e.ref);
+            char* out = gmb_team_run(team, a1);
+            if (out) { gmb_obj_string_t* s = gmb_str_cstr(out); free(out); push_ref_new(task, (gmb_obj_t*)s, GMB_BT_STRING); }
+            else { gmb_obj_string_t* s = gmb_str_cstr(""); push_ref_new(task, (gmb_obj_t*)s, GMB_BT_STRING); }
+            return;
+}
+
+static void gmb_vm_exec_team_syscall_c97(gmb_vm_t* vm, gmb_task_t* task, int argc)
+{
+    (void)vm; (void)argc;
+    char team[128] = "", a1[256] = "", a2[256] = "";
+    int i1 = 0;
+
+    gmb_stack_entry_t e = gmb_task_pop(task); team_pop_str(e, team, sizeof(team)); gmb_obj_release(e.ref);
+            e = gmb_task_pop(task); team_pop_str(e, a1, sizeof(a1)); gmb_obj_release(e.ref);
+            e = gmb_task_pop(task); team_pop_str(e, a2, sizeof(a2)); gmb_obj_release(e.ref);
+            push_num_entry(task, gmb_team_set_role(team, a1, a2) ? -1.0 : 0.0, GMB_BT_NUMBER);
+            return;
+}
+
+static void gmb_vm_exec_team_syscall_c98(gmb_vm_t* vm, gmb_task_t* task, int argc)
+{
+    (void)vm; (void)argc;
+    char team[128] = "", a1[256] = "", a2[256] = "";
+    int i1 = 0;
+
+    gmb_stack_entry_t e = gmb_task_pop(task); team_pop_str(e, team, sizeof(team)); gmb_obj_release(e.ref);
+            e = gmb_task_pop(task); team_pop_str(e, a1, sizeof(a1)); gmb_obj_release(e.ref);
+            push_num_entry(task, gmb_team_set_strategy(team, a1) ? -1.0 : 0.0, GMB_BT_NUMBER);
+            return;
+}
+
+static void gmb_vm_exec_team_syscall_c99(gmb_vm_t* vm, gmb_task_t* task, int argc)
+{
+    (void)vm; (void)argc;
+    char team[128] = "", a1[256] = "", a2[256] = "";
+    int i1 = 0;
+
+    gmb_stack_entry_t e = gmb_task_pop(task); team_pop_str(e, team, sizeof(team)); gmb_obj_release(e.ref);
+            e = gmb_task_pop(task); team_pop_str(e, a1, sizeof(a1)); gmb_obj_release(e.ref);
+            push_num_entry(task, gmb_team_set_coordinator(team, a1) ? -1.0 : 0.0, GMB_BT_NUMBER);
+            return;
+}
+
+static void gmb_vm_exec_team_syscall_c100(gmb_vm_t* vm, gmb_task_t* task, int argc)
+{
+    (void)vm; (void)argc;
+    char team[128] = "", a1[256] = "", a2[256] = "";
+    int i1 = 0;
+
+    gmb_stack_entry_t e = gmb_task_pop(task); team_pop_str(e, team, sizeof(team)); gmb_obj_release(e.ref);
+            char path[512];
+            snprintf(path, sizeof(path), "%s.team.json", team);
+            push_num_entry(task, gmb_team_save(team, path) ? -1.0 : 0.0, GMB_BT_NUMBER);
+            return;
+}
+
+static void gmb_vm_exec_team_syscall_c101(gmb_vm_t* vm, gmb_task_t* task, int argc)
+{
+    (void)vm; (void)argc;
+    char team[128] = "", a1[256] = "", a2[256] = "";
+    int i1 = 0;
+
+    gmb_stack_entry_t e = gmb_task_pop(task); team_pop_str(e, team, sizeof(team)); gmb_obj_release(e.ref);
+            char path[512];
+            snprintf(path, sizeof(path), "%s.team.json", team);
+            push_num_entry(task, gmb_team_load(team, path) ? -1.0 : 0.0, GMB_BT_NUMBER);
+            return;
+}
+
+static void gmb_vm_exec_team_syscall_c363(gmb_vm_t* vm, gmb_task_t* task, int argc)
+{
+    (void)vm; (void)argc;
+    char team[128] = "", a1[256] = "", a2[256] = "";
+    int i1 = 0;
+
+    gmb_stack_entry_t e = gmb_task_pop(task); team_pop_str(e, team, sizeof(team)); gmb_obj_release(e.ref);
+            e = gmb_task_pop(task); i1 = e.type == 1 ? (int)e.num : (int)(e.num + 0.5); gmb_obj_release(e.ref);
+            push_num_entry(task, gmb_team_set_recursion(team, i1) ? -1.0 : 0.0, GMB_BT_NUMBER);
+            return;
+}
+
+static void gmb_vm_exec_team_syscall_c364(gmb_vm_t* vm, gmb_task_t* task, int argc)
+{
+    (void)vm; (void)argc;
+    char team[128] = "", a1[256] = "", a2[256] = "";
+    int i1 = 0;
+
+    gmb_stack_entry_t e = gmb_task_pop(task); team_pop_str(e, team, sizeof(team)); gmb_obj_release(e.ref);
+            e = gmb_task_pop(task); team_pop_str(e, a1, sizeof(a1)); gmb_obj_release(e.ref);
+            push_num_entry(task, gmb_team_set_latent(team, a1) ? -1.0 : 0.0, GMB_BT_NUMBER);
+            return;
+}
+
+static void gmb_vm_exec_team_syscall_c365(gmb_vm_t* vm, gmb_task_t* task, int argc)
+{
+    (void)vm; (void)argc;
+    char team[128] = "", a1[256] = "", a2[256] = "";
+    int i1 = 0;
+
+    gmb_stack_entry_t e = gmb_task_pop(task); team_pop_str(e, team, sizeof(team)); gmb_obj_release(e.ref);
+            e = gmb_task_pop(task); team_pop_str(e, a1, sizeof(a1)); gmb_obj_release(e.ref);
+            e = gmb_task_pop(task); team_pop_str(e, a2, sizeof(a2)); gmb_obj_release(e.ref);
+            push_num_entry(task, gmb_team_set_link(team, a1, a2) ? -1.0 : 0.0, GMB_BT_NUMBER);
+            return;
+}
+
+static void gmb_vm_exec_team_syscall_c366(gmb_vm_t* vm, gmb_task_t* task, int argc)
+{
+    (void)vm; (void)argc;
+    char team[128] = "", a1[256] = "", a2[256] = "";
+    int i1 = 0;
+
+    gmb_stack_entry_t e = gmb_task_pop(task); team_pop_str(e, team, sizeof(team)); gmb_obj_release(e.ref);
+            e = gmb_task_pop(task); i1 = e.type == 1 ? (int)e.num : (int)(e.num + 0.5); gmb_obj_release(e.ref);
+            push_num_entry(task, gmb_team_set_thoughts(team, i1) ? -1.0 : 0.0, GMB_BT_NUMBER);
+            return;
+}
+
+static void gmb_vm_exec_team_syscall_c367(gmb_vm_t* vm, gmb_task_t* task, int argc)
+{
+    (void)vm; (void)argc;
+    char team[128] = "", a1[256] = "", a2[256] = "";
+    int i1 = 0;
+
+    gmb_stack_entry_t e = gmb_task_pop(task); team_pop_str(e, team, sizeof(team)); gmb_obj_release(e.ref);
+            e = gmb_task_pop(task); team_pop_str(e, a2, sizeof(a2)); gmb_obj_release(e.ref); /* dataset */
+            e = gmb_task_pop(task); team_pop_str(e, a1, sizeof(a1)); gmb_obj_release(e.ref); /* agent */
+            push_num_entry(task, gmb_team_train_inner(team, a1, a2) ? -1.0 : 0.0, GMB_BT_NUMBER);
+            return;
+}
+
+static void gmb_vm_exec_team_syscall_c368(gmb_vm_t* vm, gmb_task_t* task, int argc)
+{
+    (void)vm; (void)argc;
+    char team[128] = "", a1[256] = "", a2[256] = "";
+    int i1 = 0;
+
+    gmb_stack_entry_t e = gmb_task_pop(task); team_pop_str(e, team, sizeof(team)); gmb_obj_release(e.ref);
+            e = gmb_task_pop(task); team_pop_str(e, a1, sizeof(a1)); gmb_obj_release(e.ref); /* dataset */
+            push_num_entry(task, gmb_team_train_outer(team, a1) ? -1.0 : 0.0, GMB_BT_NUMBER);
+            return;
+}
+
+static void gmb_vm_exec_team_syscall_c369(gmb_vm_t* vm, gmb_task_t* task, int argc)
+{
+    (void)vm; (void)argc;
+    char team[128] = "", a1[256] = "", a2[256] = "";
+    int i1 = 0;
+
+    gmb_stack_entry_t e = gmb_task_pop(task); team_pop_str(e, team, sizeof(team)); gmb_obj_release(e.ref);
+            e = gmb_task_pop(task); int dd = (int)(e.type == 1 ? e.num : e.num + 0.5); gmb_obj_release(e.ref);
+            e = gmb_task_pop(task); int dl = (int)(e.type == 1 ? e.num : e.num + 0.5); gmb_obj_release(e.ref);
+            e = gmb_task_pop(task); int dn = (int)(e.type == 1 ? e.num : e.num + 0.5); gmb_obj_release(e.ref);
+            push_num_entry(task, gmb_team_set_dag(team, dd, dl, dn) ? -1.0 : 0.0, GMB_BT_NUMBER);
+            return;
+}
+
+static void gmb_vm_exec_team_syscall_c370(gmb_vm_t* vm, gmb_task_t* task, int argc)
+{
+    (void)vm; (void)argc;
+    char team[128] = "", a1[256] = "", a2[256] = "";
+    int i1 = 0;
+
+    gmb_stack_entry_t e = gmb_task_pop(task); team_pop_str(e, team, sizeof(team)); gmb_obj_release(e.ref);
+            e = gmb_task_pop(task); double th = e.type == 1 ? e.num : 0.5; gmb_obj_release(e.ref);
+            push_num_entry(task, gmb_team_set_complexity(team, th) ? -1.0 : 0.0, GMB_BT_NUMBER);
+            return;
+}
+
+static void gmb_vm_exec_team_syscall_c371(gmb_vm_t* vm, gmb_task_t* task, int argc)
+{
+    (void)vm; (void)argc;
+    char team[128] = "", a1[256] = "", a2[256] = "";
+    int i1 = 0;
+
+    gmb_stack_entry_t e = gmb_task_pop(task); team_pop_str(e, team, sizeof(team)); gmb_obj_release(e.ref);
+            e = gmb_task_pop(task); team_pop_str(e, a1, sizeof(a1)); gmb_obj_release(e.ref);
+            push_num_entry(task, gmb_team_set_reflection(team, a1) ? -1.0 : 0.0, GMB_BT_NUMBER);
+            return;
+}
+
+static void gmb_vm_exec_team_syscall_c372(gmb_vm_t* vm, gmb_task_t* task, int argc)
+{
+    (void)vm; (void)argc;
+    char team[128] = "", a1[256] = "", a2[256] = "";
+    int i1 = 0;
+
+    gmb_stack_entry_t e = gmb_task_pop(task); team_pop_str(e, team, sizeof(team)); gmb_obj_release(e.ref);
+            e = gmb_task_pop(task); team_pop_str(e, a1, sizeof(a1)); gmb_obj_release(e.ref); /* personas */
+            e = gmb_task_pop(task); team_pop_str(e, a2, sizeof(a2)); gmb_obj_release(e.ref); /* judge */
+            push_num_entry(task, gmb_team_set_critic(team, a1, a2) ? -1.0 : 0.0, GMB_BT_NUMBER);
+            return;
+}
+
+static void gmb_vm_exec_team_syscall_c373(gmb_vm_t* vm, gmb_task_t* task, int argc)
+{
+    (void)vm; (void)argc;
+    char team[128] = "", a1[256] = "", a2[256] = "";
+    int i1 = 0;
+
+    gmb_stack_entry_t e = gmb_task_pop(task); team_pop_str(e, team, sizeof(team)); gmb_obj_release(e.ref);
+            e = gmb_task_pop(task); int kk = (int)(e.type == 1 ? e.num : e.num + 0.5); gmb_obj_release(e.ref);
+            push_num_entry(task, gmb_team_set_prune(team, kk) ? -1.0 : 0.0, GMB_BT_NUMBER);
+            return;
+}
+
+static void gmb_vm_exec_team_syscall_c374(gmb_vm_t* vm, gmb_task_t* task, int argc)
+{
+    (void)vm; (void)argc;
+    char team[128] = "", a1[256] = "", a2[256] = "";
+    int i1 = 0;
+
+    gmb_stack_entry_t e = gmb_task_pop(task); team_pop_str(e, team, sizeof(team)); gmb_obj_release(e.ref);
+            e = gmb_task_pop(task); team_pop_str(e, a1, sizeof(a1)); gmb_obj_release(e.ref);
+            push_num_entry(task, gmb_team_train_thinking(team, a1) ? -1.0 : 0.0, GMB_BT_NUMBER);
+            return;
+}
+
+static void gmb_vm_exec_team_syscall_c375(gmb_vm_t* vm, gmb_task_t* task, int argc)
+{
+    (void)vm; (void)argc;
+    char team[128] = "", a1[256] = "", a2[256] = "";
+    int i1 = 0;
+
+    gmb_stack_entry_t e = gmb_task_pop(task); team_pop_str(e, team, sizeof(team)); gmb_obj_release(e.ref);
+            e = gmb_task_pop(task); team_pop_str(e, a1, sizeof(a1)); gmb_obj_release(e.ref);
+            push_num_entry(task, gmb_team_train_actor_critic(team, a1) ? -1.0 : 0.0, GMB_BT_NUMBER);
+            return;
+}
+
+static void gmb_vm_exec_team_syscall_c376(gmb_vm_t* vm, gmb_task_t* task, int argc)
+{
+    (void)vm; (void)argc;
+    char team[128] = "", a1[256] = "", a2[256] = "";
+    int i1 = 0;
+
+    gmb_stack_entry_t e = gmb_task_pop(task); team_pop_str(e, team, sizeof(team)); gmb_obj_release(e.ref);
+            e = gmb_task_pop(task); team_pop_str(e, a1, sizeof(a1)); gmb_obj_release(e.ref);
+            push_num_entry(task, gmb_team_distill_thinking(team, a1) ? -1.0 : 0.0, GMB_BT_NUMBER);
+            return;
+}
+
+static void gmb_vm_exec_team_syscall_c377(gmb_vm_t* vm, gmb_task_t* task, int argc)
+{
+    (void)vm; (void)argc;
+    char team[128] = "", a1[256] = "";
+    gmb_stack_entry_t e = gmb_task_pop(task); team_pop_str(e, team, sizeof(team)); gmb_obj_release(e.ref);
+            e = gmb_task_pop(task); team_pop_str(e, a1, sizeof(a1)); gmb_obj_release(e.ref);
+            push_num_entry(task, (double)gmb_team_broadcast(team, a1), GMB_BT_NUMBER);
+            return;
+}
+
+static void gmb_vm_exec_team_syscall_c378(gmb_vm_t* vm, gmb_task_t* task, int argc)
+{
+    (void)vm; (void)argc;
+    char team[128] = "", a1[256] = "";
+    gmb_stack_entry_t e = gmb_task_pop(task); team_pop_str(e, team, sizeof(team)); gmb_obj_release(e.ref);
+            e = gmb_task_pop(task); team_pop_str(e, a1, sizeof(a1)); gmb_obj_release(e.ref);
+            push_num_entry(task, (double)gmb_team_redefine(team, a1), GMB_BT_NUMBER);
+            return;
+}
+
+static const struct { int code; void (*fn)(gmb_vm_t*, gmb_task_t*, int); } gmb_vm_exec_team_syscall_tbl[] = {
+    { 92, gmb_vm_exec_team_syscall_c92 },
+    { 93, gmb_vm_exec_team_syscall_c93 },
+    { 94, gmb_vm_exec_team_syscall_c94 },
+    { 95, gmb_vm_exec_team_syscall_c95 },
+    { 96, gmb_vm_exec_team_syscall_c96 },
+    { 97, gmb_vm_exec_team_syscall_c97 },
+    { 98, gmb_vm_exec_team_syscall_c98 },
+    { 99, gmb_vm_exec_team_syscall_c99 },
+    { 100, gmb_vm_exec_team_syscall_c100 },
+    { 101, gmb_vm_exec_team_syscall_c101 },
+    /* Righe TEAM per NOME (GMB_SC_TEAM_*, header generato da SysCalls.cs): il numero lo decide l'enum.
+     * I corpi sono nominati con una numerazione STORICA (`cN`): il corpo c363 implementa SET RECURSION,
+     * c364 SET LATENT, ... fino a c378 = REDEFINE (stesso ordine dei membri TEAM_SET_RECURSION..TEAM_REDEFINE).
+     * Storia: registrato -1 → ogni SET eseguiva quello PRECEDENTE (fix 2026-09-17); poi i numeri a mano sono
+     * slittati con l'enum (2026-10) → ora per nome. */
+    { GMB_SC_TEAM_SET_RECURSION, gmb_vm_exec_team_syscall_c363 },
+    { GMB_SC_TEAM_SET_LATENT, gmb_vm_exec_team_syscall_c364 },
+    { GMB_SC_TEAM_SET_LINK, gmb_vm_exec_team_syscall_c365 },
+    { GMB_SC_TEAM_SET_THOUGHTS, gmb_vm_exec_team_syscall_c366 },
+    { GMB_SC_TEAM_TRAIN_INNER, gmb_vm_exec_team_syscall_c367 },
+    { GMB_SC_TEAM_TRAIN_OUTER, gmb_vm_exec_team_syscall_c368 },
+    { GMB_SC_TEAM_SET_DAG, gmb_vm_exec_team_syscall_c369 },
+    { GMB_SC_TEAM_SET_COMPLEXITY, gmb_vm_exec_team_syscall_c370 },
+    { GMB_SC_TEAM_SET_REFLECTION, gmb_vm_exec_team_syscall_c371 },
+    { GMB_SC_TEAM_SET_CRITIC, gmb_vm_exec_team_syscall_c372 },
+    { GMB_SC_TEAM_SET_PRUNE, gmb_vm_exec_team_syscall_c373 },
+    { GMB_SC_TEAM_TRAIN_THINKING, gmb_vm_exec_team_syscall_c374 },
+    { GMB_SC_TEAM_TRAIN_ACTOR_CRITIC, gmb_vm_exec_team_syscall_c375 },
+    { GMB_SC_TEAM_DISTILL_THINKING, gmb_vm_exec_team_syscall_c376 },
+    { GMB_SC_TEAM_BROADCAST, gmb_vm_exec_team_syscall_c377 },
+    { GMB_SC_TEAM_REDEFINE, gmb_vm_exec_team_syscall_c378 },
+};
+
+static void gmb_vm_exec_team_syscall(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
+{
+    for (size_t i = 0; i < sizeof(gmb_vm_exec_team_syscall_tbl)/sizeof(gmb_vm_exec_team_syscall_tbl[0]); i++)
+        if (gmb_vm_exec_team_syscall_tbl[i].code == code) { gmb_vm_exec_team_syscall_tbl[i].fn(vm, task, argc); return; }
+}
+
+
+/* Syscall: print base via stdout. Completamento in A3. */
+/* Tabella file non-ISAM (parità PCodeVM FileHandles): fileNumber -> handle runtime. */
+gmb_int_t g_vm_file_handles[64];
+int g_vm_file_content_types[64];
+
+void vm_pop_args_ordered(gmb_task_t* task, gmb_stack_entry_t* out, int argc);
+void vm_pop_str(gmb_task_t* task, char* buf, size_t cap);
+static void vm_pop_num(gmb_task_t* task, double* out);
+static gmb_stack_entry_t vm_unwrap_byref_chain(gmb_stack_entry_t s);
+static int vm_write_through_byref_chain(gmb_stack_entry_t current, gmb_stack_entry_t val);
+
+/* ── syscall core: handler estratti da gmb_vm_exec_syscall (refactor §18.5: if-per-code → tabella {code,handler}).
+ * I blocchi estratti erano TERMINALI (return esplicito). I blocchi NON-terminali (fall-through, es. fileio 15-30,
+ * debug 236/251, DB commerciale) restano inline nella funzione sotto. Ogni handler è VERBATIM dal blocco originale. ── */
+static void vm_sys_path_default(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)argc;
+    gmb_stack_entry_t pe = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){ 0 };
+    char pb[1024];
+    pb[0] = 0;
+    if (pe.type == 2 && pe.ref && pe.ref->kind == GMB_OBJ_STRING)
+    {
+        gmb_obj_string_t* ms = (gmb_obj_string_t*)pe.ref;
+        size_t n = ms->length < sizeof(pb) - 1 ? ms->length : sizeof(pb) - 1;
+        memcpy(pb, ms->data, n);
+        pb[n] = 0;
+    }
+    if (pe.type == 2 && pe.ref) gmb_obj_release(pe.ref);
+    /* SET DEFAULT = 143, SET PATH = 144 (enum SysCall C#); il vecchio 133 (oggi
+     * DBF_COPY_TO) faceva settare il PATH come DEFAULT. */
+    if (code == 144 || code == 133) gmb_path_set_default(pb);
+    else gmb_path_set_search(pb);
+    push_num_entry(task, 0.0, GMB_BT_NUMBER);
+}
+static void vm_sys_key_gen(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+#ifdef GMB_VM_SPECIALIZED
+    (void)vm; (void)code; (void)argc; vm_error(task, "KEY assente (VM specializzata)"); return;
+#else
+
+    (void)vm; (void)code;
+    if (task->sp > 0) { gmb_stack_entry_t d = task->stack[task->sp-1]; fprintf(stderr, "[KEY_GEN top type=%d]\n", d.type); }
+    int has_size = (argc >= 2);
+    double keySize = has_size ? gmb_task_pop_num(task) : 0;
+    gmb_stack_entry_t algo_e = gmb_task_pop(task);
+    const char* algo = "RSA";
+    if (algo_e.type == 2 && algo_e.ref) algo = ((gmb_obj_string_t*)algo_e.ref)->data;
+    int pvt = 0, pub = 0;
+    if (gmb_keys_generate(algo ? algo : "RSA", (int)keySize, &pvt, &pub) == 0)
+    {
+        push_num_entry(task, (double)pub, GMB_BT_NUMBER);
+        push_num_entry(task, (double)pvt, GMB_BT_NUMBER);
+    }
+    else
+    {
+        push_nil(task);
+        push_nil(task);
+    }
+
+#endif
+}
+static void vm_sys_key_close(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+#ifdef GMB_VM_SPECIALIZED
+    (void)vm; (void)code; (void)argc; vm_error(task, "KEY assente (VM specializzata)"); return;
+#else
+
+    (void)vm; (void)code; (void)argc;
+    double h = gmb_task_pop_num(task);
+    gmb_keys_close((int)h);
+
+#endif
+}
+static void vm_sys_headless_zero(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[4]; int n = argc > 4 ? 4 : argc;
+    vm_pop_args_ordered(task, a, n);
+    push_num_entry(task, 0.0, GMB_BT_NUMBER);
+}
+static void vm_sys_rdd_set_default(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code; (void)argc;
+    char drv[16]; vm_pop_str(task, drv, sizeof(drv));
+    push_num_entry(task, (double)gmb_rdd_set_default(drv), GMB_BT_NUMBER);
+}
+static void vm_sys_export_114(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code; (void)argc;
+    gmb_stack_entry_t a[4];
+    vm_pop_args_ordered(task, a, 4);
+    char path[1024];
+    if (a[2].type == 2 && a[2].ref) { gmb_obj_string_t* ms = (gmb_obj_string_t*)a[2].ref; size_t nn = ms->length < 1023 ? ms->length : 1023; memcpy(path, ms->data, nn); path[nn] = 0; } else path[0] = 0;
+    double fmt = a[3].type == 1 ? a[3].num : 0;
+    int rc = gmb_rdd_copy_to(path, fmt == 1 ? "CSV" : "SDF");
+    push_num_entry(task, (double)(rc == 0), GMB_BT_NUMBER);
+}
+static void vm_sys_export_115(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code; (void)argc;
+    gmb_stack_entry_t a[4];
+    vm_pop_args_ordered(task, a, 4);
+    char path[1024];
+    if (a[2].type == 2 && a[2].ref) { gmb_obj_string_t* ms = (gmb_obj_string_t*)a[2].ref; size_t nn = ms->length < 1023 ? ms->length : 1023; memcpy(path, ms->data, nn); path[nn] = 0; } else path[0] = 0;
+    double fmt = a[3].type == 1 ? a[3].num : 0;
+    int rc = gmb_rdd_use(path, "A", fmt == 1 ? "CSV" : "SDF");
+    push_num_entry(task, (double)(rc == 0), GMB_BT_NUMBER);
+}
+static void vm_sys_set_clipper(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    double sub = 0, vnum = 0;
+    const char* sval = "";
+    if (argc > 0 && task->sp > 0) sub = gmb_task_pop_num(task);
+    if (argc > 1 && task->sp > 0)
+    {
+        if ((int)sub == 4 || (int)sub == 5 || (int)sub == 8 || (int)sub == 9 || (int)sub == 11
+            || (int)sub == 14 || (int)sub == 15 || (int)sub == 16)
+        {
+            gmb_stack_entry_t se = gmb_task_pop(task);
+            sval = (se.type == 2 && se.ref && se.ref->kind == GMB_OBJ_STRING) ? ((gmb_obj_string_t*)se.ref)->data : "";
+            gmb_obj_release(se.ref);
+        }
+        else vnum = gmb_task_pop_num(task);
+    }
+    gmb_console_set_clipper((int)sub, vnum, sval);
+}
+/* MESSAGE (namespace MESSAGE) lato VM/C: la VM tiene solo la mappa NOME-handle → bus del runtime
+ * C condiviso; trasporto, consegna (locale e tcp), conferme e contatori vivono in gmb_msg.c.
+ * Ricezione tcp su THREAD dedicato che ENQUEUA un task GPM per l'handler (pattern WS). */
+#include "gmb_msg.h"
+#include <pthread.h>
+static void ws_task_share_main_globals(gmb_task_t* t, gmb_vm_t* vm);
+static char vmsg_id[64][40];
+static char vmsg_handler[64][128];
+/* Bus su cui è nata la sottoscrizione: identifica l'HANDLE (il NOME della variabile) per la
+ * pulizia in CLOSE. NON è un percorso di consegna: la consegna la fa SOLO il runtime C
+ * condiviso (gmb_msg_publish), unica implementazione della regola (§0bis). */
+static char vmsg_busname[64][40];
+static int vmsg_n = 0;
+static gmb_vm_t* g_msg_vm = NULL;
+typedef struct { int used; char handle[40]; int64_t gmb; int is_tcp; pthread_t th; volatile int stop; } vmsgbus_t;
+static vmsgbus_t vmsg_bus[64];
+static void* vmsg_pump_thread(void* arg)
+{
+    vmsgbus_t* b = (vmsgbus_t*)arg; struct timespec ts; ts.tv_sec = 0; ts.tv_nsec = 20000000;
+    while (!b->stop) { gmb_msg_pump(b->gmb); nanosleep(&ts, NULL); }
+    return NULL;
+}
+static vmsgbus_t* vmsg_find_bus(const char* h)
+{
+    int i; for (i = 0; i < 64; i++) if (vmsg_bus[i].used && strcmp(vmsg_bus[i].handle, h) == 0) return &vmsg_bus[i];
+    return NULL;
+}
+/* MESSAGE.DELIVERY: handle (NOME della variabile) → id numerico del runtime C gmb_msg_*.
+ * Esposto in gmb_vm_core.h perché il builtin (gmb_builtin.c, tabella gmb_bf_impl) non vede
+ * questa tabella statica. -1 = bus inesistente (i contatori restano a zero). */
+int64_t gmb_vm_msg_bus_id(const char* handle)
+{
+    vmsgbus_t* bs = vmsg_find_bus(handle ? handle : "");
+    return bs ? bs->gmb : -1;
+}
+/* callback gmb_msg: risolve l'handler per nome e lo ENQUEUA come task GPM con (id,topic,data). */
+static void vm_msg_cb(const char* sub, const char* topic, const char* data)
+{
+    int i, addr = -1;
+    if (!g_msg_vm) return;
+    for (i = 0; i < vmsg_n; i++) if (vmsg_id[i][0] && strcmp(vmsg_id[i], sub) == 0) break;
+    if (i >= vmsg_n || !vmsg_handler[i][0]) return;
+    for (uint32_t p = 0; p < g_msg_vm->chunk->proc_count; p++)
+        if (g_msg_vm->chunk->proc_names[p] && strcasecmp(g_msg_vm->chunk->proc_names[p], vmsg_handler[i]) == 0) { addr = (int)g_msg_vm->chunk->proc_addrs[p]; break; }
+    if (addr < 0) return;
+    {
+        gmb_task_t* t = gmb_task_create(g_msg_vm->scheduler, addr);
+        if (!t) return;
+        t->vm_ctx = g_msg_vm;
+        ws_task_share_main_globals(t, g_msg_vm);
+        gmb_task_push_ref(t, (gmb_obj_t*)gmb_str_cstr(sub), GMB_BT_STRING);
+        gmb_task_push_ref(t, (gmb_obj_t*)gmb_str_cstr(topic ? topic : ""), GMB_BT_STRING);
+        gmb_task_push_ref(t, (gmb_obj_t*)gmb_str_cstr(data ? data : ""), GMB_BT_STRING);
+        gmb_sched_enqueue(g_msg_vm->scheduler, t);
+    }
+}
+static void vm_msg_op(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
+{
+    int subop; char a[128], b[256], c[512];
+    (void)code; (void)argc;
+    subop = (int)gmb_task_pop_num(task);
+    vm_pop_str(task, a, sizeof(a)); vm_pop_str(task, b, sizeof(b)); vm_pop_str(task, c, sizeof(c));
+    g_msg_vm = vm;
+    if (subop == 0) { /* CONNECT handle, uri */
+        int i; vmsgbus_t* bs = vmsg_find_bus(a);
+        if (bs) {
+            /* Re-CONNECT sullo stesso handle: si chiude il bus precedente (trasporto,
+             * sottoscrizioni nel runtime, mappa handler) e si riusa lo slot. Senza questo, ogni
+             * CONNECT con lo stesso nome allocava un SECONDO bus runtime irraggiungibile
+             * (vmsg_find_bus restituisce sempre il primo) → slot esauriti e consegne mute. */
+            if (bs->is_tcp) { bs->stop = 1; pthread_join(bs->th, NULL); }
+            if (bs->gmb > 0) gmb_msg_close(bs->gmb);
+            for (i = 0; i < vmsg_n; i++)
+                if (vmsg_busname[i][0] && strcmp(vmsg_busname[i], a) == 0) { vmsg_id[i][0] = 0; vmsg_handler[i][0] = 0; }
+        } else {
+            for (i = 0; i < 64; i++) if (!vmsg_bus[i].used) { bs = &vmsg_bus[i]; break; }
+        }
+        if (!bs) return;
+        memset(bs, 0, sizeof(*bs)); bs->used = 1; snprintf(bs->handle, sizeof(bs->handle), "%s", a);
+        /* OGNI bus vive nel runtime C condiviso, anche quello locale (`MESSAGE CONNECT "local"`
+         * o CONNECT tcp fallita): qui resta solo la mappa NOME handle -> id del runtime.
+         * Prima i bus locali esistevano SOLO nella VM, con un secondo fan-out locale duplicato
+         * (due implementazioni della stessa regola, §0bis).
+         * Vedi Bugs/(solved) - VM-C-Message-Publish-Consegna-Locale-Su-Bus-Assente. */
+        bs->gmb = gmb_msg_connect(b);
+        /* is_tcp = trasporto REMOTO realmente connesso, mai forzato: una CONNECT tcp fallita
+         * ripiega su un bus locale con identità propria (niente goroutine di ricezione). */
+        bs->is_tcp = gmb_msg_bus_is_tcp(bs->gmb);
+        if (bs->is_tcp) pthread_create(&bs->th, NULL, vmsg_pump_thread, bs);
+    } else if (subop == 1) { /* SUBSCRIBE handle, topic, alias */
+        vmsgbus_t* bs = vmsg_find_bus(a);
+        if (vmsg_n < 64) { snprintf(vmsg_id[vmsg_n], 40, "%s", c); snprintf(vmsg_busname[vmsg_n], 40, "%s", a); vmsg_handler[vmsg_n][0] = 0; vmsg_n++; }
+        /* L'handler gmb_msg (che decide ACK/NACK in gmb_msg_pump) si registra in ON MESSAGE, NON
+         * qui: con la registrazione incondizionata ogni consegna risultava "consumata" anche
+         * senza alcuna SUB che la prendesse in carico, quindi il client mandava ACK a un messaggio
+         * orfano e il broker non lo ri-consegnava MAI. Su IL/PCode/C99Native hits=0 ⇒ NACK ⇒ il
+         * broker ritenta (at-least-once): questa è la parità. Vedi minitest
+         * messaging/message_delivery_parity.bas (nack>0 && dup>0 = ri-consegna osservata). */
+        if (bs && bs->gmb > 0) gmb_msg_subscribe(bs->gmb, b, c);
+    } else if (subop == 2) { /* UNSUBSCRIBE alias */
+        int i; for (i = 0; i < vmsg_n; i++)
+            if (strcmp(vmsg_id[i], a) == 0) { vmsg_id[i][0] = 0; vmsg_handler[i][0] = 0; }
+        /* Anche nel runtime: senza, la PUBLISH locale continuerebbe a consegnare alla
+         * sottoscrizione rimossa (IL/PCode/C99 la tolgono: IlRuntime.MessageUnsubscribe,
+         * PCode subop 2, gmb_msg_unsubscribe). Vedi messaging/message_cycle_parity.bas. */
+        if (a[0]) gmb_msg_unsubscribe(a);
+    }
+    else if (subop == 3) { /* PUBLISH handle, topic, data */
+        vmsgbus_t* bs = vmsg_find_bus(a);
+        /* Consegna SEMPRE dal runtime condiviso, remota o LOCALE: qui non c'è più un fan-out
+         * locale duplicato. Handle sconosciuto ⇒ nessun bus ⇒ nessuna consegna. */
+        if (bs && bs->gmb > 0) gmb_msg_publish(bs->gmb, b, c);
+    } else if (subop == 4) { /* PING handle */
+        vmsgbus_t* bs = vmsg_find_bus(a);
+        /* No-op sul bus locale (nessuna conferma da chiedere), come IlRuntime.MessagePing. */
+        if (bs && bs->gmb > 0) gmb_msg_ping(bs->gmb);
+    } else if (subop == 5) { /* CLOSE handle */
+        /* Chiude il trasporto E le sottoscrizioni di QUEL bus. Due registri da pulire: le
+         * sottoscrizioni del runtime (gmb_msg_close, che filtra per id del bus) e la mappa
+         * id-sub → nome-handler della VM (vmsg_*), usata dal dispatch GPM. Senza il secondo,
+         * un handler resterebbe risolvibile dopo la chiusura.
+         * Vedi minitest messaging/message_close_local_parity.bas. */
+        vmsgbus_t* bs = vmsg_find_bus(a);
+        int i;
+        for (i = 0; i < vmsg_n; i++)
+            if (vmsg_busname[i][0] && strcmp(vmsg_busname[i], a) == 0) {
+                vmsg_id[i][0] = 0; vmsg_handler[i][0] = 0;
+            }
+        if (bs) {
+            if (bs->is_tcp) { bs->stop = 1; pthread_join(bs->th, NULL); }
+            /* Il bus del runtime va chiuso per OGNI trasporto: gmb_msg_close rimuove le
+             * sottoscrizioni di quel bus e libera lo slot (prima i bus locali non erano nel
+             * runtime, ora lo sono). */
+            if (bs->gmb > 0) gmb_msg_close(bs->gmb);
+            bs->used = 0;
+        }
+    }
+}
+static void vm_msg_on(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
+{
+    char sub[40], handler[128]; int i;
+    (void)vm; (void)code; (void)argc;
+    vm_pop_str(task, sub, sizeof(sub)); vm_pop_str(task, handler, sizeof(handler));
+    for (i = 0; i < vmsg_n; i++) if (strcmp(vmsg_id[i], sub) == 0) {
+        vmsgbus_t* bs;
+        snprintf(vmsg_handler[i], 128, "%s", handler);
+        /* Da qui la SUB ha un consumatore: si registra l'handler gmb_msg (ACK se consegnato).
+         * Prima si registrava in SUBSCRIBE, anche senza handler → ACK a un messaggio che nessuno
+         * consumava (nessun retry del broker, divergenza da IL/PCode/C99Native). */
+        bs = vmsg_find_bus(vmsg_busname[i]);
+        /* Sempre, locale o tcp: l'handler è ciò che rende la sottoscrizione "consumabile"
+         * (sul tcp decide anche ACK/NACK). */
+        if (bs && bs->gmb > 0) gmb_msg_reg_handler(vmsg_id[i], vm_msg_cb);
+        return;
+    }
+}
+
+/* deleghe a range (domini con handler dedicati già a tabella) — handler che inoltrano con code */
+static void vm_sys_delegate_tui(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+#ifdef GMB_VM_SPECIALIZED
+    (void)vm; (void)code; (void)argc; vm_error(task, "TUI non disponibile (VM specializzata)") ;
+#else
+    gmb_vm_exec_tui_syscall(vm, task, code, argc);
+#endif
+}
+static void vm_sys_delegate_rdd(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+#ifdef GMB_VM_SPECIALIZED
+    (void)vm; (void)code; (void)argc; vm_error(task, "RDD non disponibile (VM specializzata)");
+#else
+    gmb_syscall_rdd(vm, task, code, argc);
+#endif
+}
+static void vm_sys_delegate_sql(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+#ifdef GMB_VM_SPECIALIZED
+    (void)vm; (void)code; (void)argc; vm_error(task, "SQL non disponibile (VM specializzata)");
+#else
+    gmb_syscall_sql(vm, task, code, argc);
+#endif
+}
+static void vm_sys_delegate_team(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+#ifdef GMB_VM_SPECIALIZED
+    (void)vm; (void)code; (void)argc; vm_error(task, "TEAM non disponibile (VM specializzata)");
+#else
+    gmb_vm_exec_team_syscall(vm, task, code, argc);
+#endif
+}
+/* fileio (15-30): fall-through storico — se il dominio non gestisce (return !=0) nessun altro
+ * blocco lo intercetta sotto → no-op esplicito (identico al vecchio flusso). */
+static void vm_sys_fileio(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+#ifdef GMB_VM_SPECIALIZED
+    (void)vm; (void)code; (void)argc; vm_error(task, "FILEIO non disponibile (VM specializzata)");
+#else
+    if (gmb_syscall_fileio(vm, task, code, argc) != 0) { /* non gestito: no-op storico */ }
+#endif
+}
+static void vm_sys_delegate_vectordb(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+#ifdef GMB_VM_SPECIALIZED
+    (void)vm; (void)code; (void)argc; vm_error(task, "VECTORDB non disponibile (VM specializzata)");
+#else
+    gmb_syscall_vectordb(vm, task, code, argc);
+#endif
+}
+static void vm_sys_delegate_console(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+#ifdef GMB_VM_SPECIALIZED
+    (void)vm; (void)code; (void)argc; vm_error(task, "CONSOLE non disponibile (VM specializzata)");
+#else
+    gmb_vm_exec_console_syscall(vm, task, code, argc);
+#endif
+}
+/* headless grande (finestre/audio/grafica/palette): pop args e push 0.0 (-1 per posizioni) */
+/* PALETTE idx, r, g, b (SysCall 339, parity PCode PALETTE_SET): imposta la entry
+ * di palette nel runtime grafico condiviso (gmb_gfx_palette, headless-safe).
+ * Layout stack: index, r, g, b (argc 4). Statement: nessun push.
+ * Prima: headless_big (push 0.0 orfano). Le sottoforme USE/DEFINE/REPLACE/SAVE/LOAD
+ * (340-342/351-352) restano headless (PaletteManager solo C#): residuo tracciato. */
+static void vm_sys_palette_339(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[4];
+    int n = argc > 4 ? 4 : argc;
+    vm_pop_args_ordered(task, a, n);
+    {
+        double v[4] = { 0, 0, 0, 0 };
+        for (int i = 0; i < n; i++)
+            v[i] = (a[i].type == 1) ? a[i].num : 0.0;
+        for (int i = 0; i < n; i++) gmb_obj_release(a[i].ref);
+        if (n == 4) gmb_gfx_palette((int)v[0], (int)v[1], (int)v[2], (int)v[3]);
+    }
+}
+static void vm_sys_headless_big(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm;
+    gmb_stack_entry_t a[4];
+    int n = argc > 4 ? 4 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (code == GMB_SC_SYNC_PROCESS || code == GMB_SC_ON_WINDOW_EVENT || code == GMB_SC_WINDOW_SHADOW) push_num_entry(task, -1.0, GMB_BT_NUMBER);
+    else push_num_entry(task, 0.0, GMB_BT_NUMBER);
+}
+
+/* TEXTMODE n (SysCall 381, parity PCode TEXTMODE → PCodeGraphics/NullGraphicsService):
+ * seleziona la modalita' console. Statement void: pop dell'argomento, nessun push.
+ * La VM/C headless non ha console/finestre → no-op (come NullGraphicsService). */
+static void vm_sys_textmode(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[1];
+    int n = argc > 1 ? 1 : argc;
+    vm_pop_args_ordered(task, a, n);
+    for (int i = 0; i < n; i++) gmb_obj_release(a[i].ref);
+}
+
+/* RUN "comando" (GMB_SC_RUN = 252): esecuzione esterna / chain-load via shell. Prima il codice
+ * 252 era mappato per errore sul delegate vectordb → "[VM ERROR] syscall 252 non implementato"
+ * e il comando non veniva eseguito (MiniTests/system/run.bas). Sorgente UNICA = runtime C
+ * condiviso (gmb_shell_run, gmb_shell.c — §0bis), la stessa che IL/P-Code ottengono da
+ * IlRuntime.RunCommand: nessuna copia inline. Statement void: pop dell'argomento, nessun push,
+ * il task attende l'uscita del processo come sulle altre gambe. */
+static void vm_sys_run(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code; (void)argc;
+    char cmd[4096];
+    vm_pop_str(task, cmd, sizeof(cmd));
+    if (cmd[0]) (void)gmb_shell_run(cmd);
+}
+
+/* SWAP a, b (SysCall 247): argomenti pushati (leftIsLocal, leftIdx, rightIsLocal, rightIdx).
+ * Parity IL/PCode: scambia due slot (locali o globali). */
+static void vm_sys_swap(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    if (argc < 4) return;
+    gmb_stack_entry_t a[4];
+    vm_pop_args_ordered(task, a, 4);
+    int leftIsLocal  = (a[0].num != 0.0);
+    int leftIdx      = (int)a[1].num;
+    int rightIsLocal = (a[2].num != 0.0);
+    int rightIdx     = (int)a[3].num;
+    gmb_stack_entry_t lv = leftIsLocal  ? gmb_task_load_local(task, leftIdx)  : gmb_task_load_global(task, leftIdx);
+    gmb_stack_entry_t rv = rightIsLocal ? gmb_task_load_local(task, rightIdx) : gmb_task_load_global(task, rightIdx);
+    /* load_* restituisce entry IN PRESTITO e store_* PRENDE il riferimento (e rilascia il vecchio valore dello
+     * slot): senza un retain per ciascun lato, il primo store rilascia l'oggetto che il secondo sta per
+     * scrivere → use-after-free per stringhe/oggetti (era nascosto dal rc +1 che ogni costante stringa
+     * perdeva per sempre). */
+    if (lv.type == 2 && lv.ref) gmb_obj_retain(lv.ref);
+    if (rv.type == 2 && rv.ref) gmb_obj_retain(rv.ref);
+    if (leftIsLocal)  gmb_task_store_local(task, leftIdx, rv);  else gmb_task_store_global(task, leftIdx, rv);
+    if (rightIsLocal) gmb_task_store_local(task, rightIdx, lv); else gmb_task_store_global(task, rightIdx, lv);
+}
+/* Registro eventi globale (RAISE_EVENT/ADD_HANDLER/REMOVE_HANDLER): condiviso tra i
+ * handler per-code vm_sys_event_344/345/346 (static a file-scope, NON locali). */
+static char ev_names[32][80];
+static char ev_handlers[32][16][128];
+static int ev_handler_count[32];
+static int ev_count = 0;
+static void vm_sys_event_344(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)code; (void)argc;
+    /* RAISE_EVENT: (eventName, args...) — eventName è il PRIMO pushato */
+    gmb_stack_entry_t a[16]; int n = argc > 16 ? 16 : argc;
+    vm_pop_args_ordered(task, a, n);
+    char evName[80]; vm_entry_str(a[0], evName, sizeof(evName));
+    int slot = -1;
+    for (int i = 0; i < ev_count; i++) if (strcasecmp(ev_names[i], evName) == 0) { slot = i; break; }
+    int called = 0;
+    if (slot >= 0)
+    {
+        for (int h = 0; h < ev_handler_count[slot]; h++)
+        {
+            int addr = -1;
+            for (uint32_t p = 0; p < vm->chunk->proc_count; p++)
+                if (vm->chunk->proc_names[p] && strcasecmp(vm->chunk->proc_names[p], ev_handlers[slot][h]) == 0)
+                { addr = (int)vm->chunk->proc_addrs[p]; break; }
+            if (addr >= 0) { vm_call_addr_sync_args(vm, task, addr, a + 1, n - 1); called++; }
+        }
+    }
+    for (int i = 0; i < n; i++) if (a[i].type == 2 && a[i].ref) gmb_obj_release(a[i].ref);
+    push_num_entry(task, (double)called, GMB_BT_NUMBER);
+}
+static void vm_sys_event_345(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code; (void)argc;
+    /* ADD_HANDLER: (eventName, handlerName) — handlerName pushato per ULTIMO, popato PRIMA */
+    char hName[128]; vm_pop_str(task, hName, sizeof(hName));
+    char evName[80]; vm_pop_str(task, evName, sizeof(evName));
+    int slot = -1;
+    for (int i = 0; i < ev_count; i++) if (strcasecmp(ev_names[i], evName) == 0) { slot = i; break; }
+    if (slot < 0 && ev_count < 32) { slot = ev_count++; snprintf(ev_names[slot], sizeof(ev_names[slot]), "%s", evName); ev_handler_count[slot] = 0; }
+    int rc = 0;
+    if (slot >= 0)
+    {
+        int found = 0;
+        for (int h = 0; h < ev_handler_count[slot]; h++) if (strcasecmp(ev_handlers[slot][h], hName) == 0) { found = 1; break; }
+        if (!found && ev_handler_count[slot] < 16) { snprintf(ev_handlers[slot][ev_handler_count[slot]], sizeof(ev_handlers[slot][0]), "%s", hName); ev_handler_count[slot]++; rc = 1; }
+    }
+    push_num_entry(task, (double)rc, GMB_BT_NUMBER);
+}
+static void vm_sys_event_346(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code; (void)argc;
+    /* REMOVE_HANDLER */
+    char hName[128]; vm_pop_str(task, hName, sizeof(hName));
+    char evName[80]; vm_pop_str(task, evName, sizeof(evName));
+    int slot = -1;
+    for (int i = 0; i < ev_count; i++) if (strcasecmp(ev_names[i], evName) == 0) { slot = i; break; }
+    int rc = 0;
+    if (slot >= 0)
+    {
+        for (int h = 0; h < ev_handler_count[slot]; h++)
+            if (strcasecmp(ev_handlers[slot][h], hName) == 0)
+            {
+                for (int j = h; j < ev_handler_count[slot] - 1; j++) memcpy(ev_handlers[slot][j], ev_handlers[slot][j + 1], sizeof(ev_handlers[slot][0]));
+                ev_handler_count[slot]--; rc = 1; break;
+            }
+    }
+    push_num_entry(task, (double)rc, GMB_BT_NUMBER);
+}
+
+static void vm_sys_memmap_open(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code; (void)argc;
+char mp[1024]; vm_pop_str(task, mp, sizeof(mp));
+push_num_entry(task, (double)gmb_mmap_open(mp), GMB_BT_NUMBER);
+return;
+}
+static void vm_sys_memmap_peek(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code; (void)argc;
+double off; gmb_stack_entry_t h;
+vm_pop_num(task, &off); h = gmb_task_pop(task);
+double hv = h.type == 1 ? h.num : 0; if (h.ref) gmb_obj_release(h.ref);
+push_num_entry(task, gmb_mmap_peek((long)hv, (long)off), GMB_BT_NUMBER);
+return;
+}
+static void vm_sys_memmap_poke(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code; (void)argc;
+double v, off; gmb_stack_entry_t h;
+vm_pop_num(task, &v); vm_pop_num(task, &off); h = gmb_task_pop(task);
+double hv = h.type == 1 ? h.num : 0; if (h.ref) gmb_obj_release(h.ref);
+push_num_entry(task, (double)gmb_mmap_poke((long)hv, (long)off, v), GMB_BT_NUMBER);
+return;
+}
+static void vm_sys_memmap_readbytes(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code; (void)argc;
+double cnt, off; gmb_stack_entry_t h;
+vm_pop_num(task, &cnt); vm_pop_num(task, &off); h = gmb_task_pop(task);
+double hv = h.type == 1 ? h.num : 0; if (h.ref) gmb_obj_release(h.ref);
+int n = (int)cnt; if (n < 0) n = 0; if (n > 65536) n = 65536;
+unsigned char* buf = (unsigned char*)malloc((size_t)n ? (size_t)n : 1);
+int rc = buf ? gmb_mmap_read_bytes((long)hv, (long)off, buf, n) : 0;
+gmb_obj_shared_val_t* l = gmb_shared_list_new();
+if (l && rc) for (int i = 0; i < n; i++) gmb_list_add(l->list, gmb_make_val_double(buf[i]));
+free(buf);
+push_ref_new(task, (gmb_obj_t*)l, GMB_BT_OBJECT);
+return;
+}
+static void vm_sys_memmap_writebytes(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code; (void)argc;
+double cnt, off; gmb_stack_entry_t h, src;
+vm_pop_num(task, &cnt); src = gmb_task_pop(task); vm_pop_num(task, &off); h = gmb_task_pop(task);
+double hv = h.type == 1 ? h.num : 0; if (h.ref) gmb_obj_release(h.ref);
+unsigned char* data = NULL; int dn = 0;
+if (src.type == 2 && src.ref && src.ref->kind == GMB_OBJ_LIST)
+{
+    gmb_obj_shared_val_t* sv = (gmb_obj_shared_val_t*)src.ref;
+    dn = (int)sv->list->count;
+    if (dn > 0) { data = (unsigned char*)malloc((size_t)dn); if (data) for (int i = 0; i < dn; i++) data[i] = (unsigned char)(sv->list->items[i].kind == GMB_TYPE_DOUBLE ? sv->list->items[i].v_double : sv->list->items[i].kind == GMB_TYPE_INT ? sv->list->items[i].v_int : 0); }
+}
+int len = (cnt >= 0 && cnt < dn) ? (int)cnt : dn;
+push_num_entry(task, (double)gmb_mmap_write_bytes((long)hv, (long)off, data, len), GMB_BT_NUMBER);
+free(data); if (src.ref) gmb_obj_release(src.ref);
+return;
+}
+
+static void vm_sys_lock_342(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code; (void)argc;
+    double rec; gmb_stack_entry_t fh;
+    vm_pop_num(task, &rec); fh = gmb_task_pop(task);
+    long hh = fh.type == 1 ? (long)fh.num : 0; if (fh.ref) gmb_obj_release(fh.ref);
+    int rc = gmb_file_lock(hh, rec, 1);
+    push_num_entry(task, (double)rc, GMB_BT_NUMBER);
+}
+static void vm_sys_lock_343(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code; (void)argc;
+    double rec; gmb_stack_entry_t fh;
+    vm_pop_num(task, &rec); fh = gmb_task_pop(task);
+    long hh = fh.type == 1 ? (long)fh.num : 0; if (fh.ref) gmb_obj_release(fh.ref);
+    int rc = gmb_file_unlock(hh, rec, 1);
+    push_num_entry(task, (double)rc, GMB_BT_NUMBER);
+}
+
+static void vm_sys_iowatch_347(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code; (void)argc;
+    /* push order [Path, Mask, Callback] (Callback in cima) */
+    char cb[128]; vm_pop_str(task, cb, sizeof(cb));
+    gmb_stack_entry_t m = gmb_task_pop(task); if (m.ref) gmb_obj_release(m.ref);
+    char pw[1024]; vm_pop_str(task, pw, sizeof(pw));
+    int rc = gmb_iowatch_add_cb(pw, cb);
+    push_num_entry(task, (double)rc, GMB_BT_NUMBER);
+}
+static void vm_sys_iowatch_348(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code; (void)argc;
+    char wp[1024]; vm_pop_str(task, wp, sizeof(wp));
+    int rc = gmb_iowatch_remove(wp);
+    push_num_entry(task, (double)rc, GMB_BT_NUMBER);
+}
+
+/* Stack entry -> gmb_val_t (per i syscall JSON che passano al runtime condiviso).
+ * Le val boxate VM (dict/lista) hanno v_ptr = dict/list grezza, stessa convenzione di
+ * gmb_make_val_dict/gmb_make_val_list (§0bis). */
+static gmb_val_t vm_entry_to_val(const gmb_stack_entry_t* e) {
+    if (!e) return gmb_val_nil();
+    if (e->type == 1)
+        return e->basic_type == GMB_BT_DATE ? gmb_make_val_datetime(e->num) : gmb_make_val_double(e->num);
+    if (e->type == 2 && e->ref) {
+        if (e->ref->kind == GMB_OBJ_STRING) {
+            const char* d = ((gmb_obj_string_t*)e->ref)->data;
+            return gmb_make_val_string(d ? d : "");
+        }
+        if (e->ref->kind == GMB_OBJ_DICT || e->ref->kind == GMB_OBJ_LIST)
+            return ((gmb_obj_shared_val_t*)e->ref)->val;
+        return gmb_make_val_obj(e->ref);
+    }
+    return gmb_val_nil();
+}
+
+/* JSON_SAVE (249, SysCall.JSON_SAVE): stack [source, path] (path in cima).
+ * Canone PCodeVM: serializza la sorgente e la scrive nel file (gmb_json_save_val). */
+static void vm_sys_json_save(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[2];
+    int n = argc > 2 ? 2 : argc;
+    if (n < 2) return;
+    vm_pop_args_ordered(task, a, n);
+    char path[2048]; path[0] = 0;
+    if (a[1].type == 2 && a[1].ref && a[1].ref->kind == GMB_OBJ_STRING) {
+        const char* d = ((gmb_obj_string_t*)a[1].ref)->data;
+        if (d) snprintf(path, sizeof(path), "%s", d);
+    }
+    if (!path[0]) return;
+    /* Serializzazione della sorgente VM: le val VM di dict/lista puntano alla struttura
+     * GREZZA (sv->dict/sv->list), mentre gmb_val_to_json si aspetta il wrapper gmb_obj_t
+     * con .data (gmb_make_val_dict/List) -> su una val VM andava in SIGSEGV. Qui:
+     * dict -> gmb_dict_to_json (serializer del dict grezzo), lista -> wrapper sul posto,
+     * scalari -> val diretto. */
+    FILE* fp = fopen(path, "wb");
+    if (!fp) return;
+    gmb_string_t js;
+    if (a[0].type == 2 && a[0].ref && a[0].ref->kind == GMB_OBJ_DICT) {
+        js = gmb_dict_to_json(((gmb_obj_shared_val_t*)a[0].ref)->dict);
+    } else if (a[0].type == 2 && a[0].ref && a[0].ref->kind == GMB_OBJ_LIST) {
+        gmb_val_t lv = gmb_make_val_obj(gmb_obj_new_typed(((gmb_obj_shared_val_t*)a[0].ref)->list, "gmb_list"));
+        js = gmb_val_to_json(lv);   /* il runtime riconosce il type_name "gmb_list" */
+    } else {
+        js = gmb_val_to_json(vm_entry_to_val(&a[0]));
+    }
+    if (js.data) fputs(js.data, fp);
+    fclose(fp);
+}
+
+/* JSON_WRITE_VALUE (250, SysCall.JSON_WRITE_VALUE): stack [key, value, section]
+ * (section in cima, NIL se assente). Canone PCodeVM: scrive nel file di settings
+ * CWD/app.settings.json (runtime condiviso gmb_ini_write_value). */
+static void vm_sys_json_write_value(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[3];
+    int n = argc > 3 ? 3 : argc;
+    if (n < 2) return;
+    vm_pop_args_ordered(task, a, n);
+    char key[512]; key[0] = 0;
+    char sec[512]; sec[0] = 0;
+    if (a[0].type == 2 && a[0].ref && a[0].ref->kind == GMB_OBJ_STRING) {
+        const char* d = ((gmb_obj_string_t*)a[0].ref)->data;
+        if (d) snprintf(key, sizeof(key), "%s", d);
+    }
+    if (n >= 3 && a[2].type == 2 && a[2].ref && a[2].ref->kind == GMB_OBJ_STRING) {
+        const char* d = ((gmb_obj_string_t*)a[2].ref)->data;
+        if (d) snprintf(sec, sizeof(sec), "%s", d);
+    }
+    if (!key[0]) return;
+    gmb_val_t v = vm_entry_to_val(&a[1]);
+    gmb_string_t txt = (v.kind == GMB_TYPE_STRING) ? gmb_val_json_text(v) : gmb_val_to_json(v);
+    gmb_ini_write_value("app.settings.json", sec, key, txt.data ? txt.data : "");
+}
+
+/* JSON_WRITE_SECTION (251, SysCall.JSON_WRITE_SECTION): stack [source, section]
+ * (section in cima, NIL se assente). Canone PCodeVM: la sorgente (UDT/dict) viene
+ * serializzata e le sue CHIAVI CAMPO scritte come sezione (gmb_ini_write_section).
+ * Per una UDT VM (dict con chiavi `__m<sid>`) si passa dal JSON (gmb_val_to_json
+ * risolve i nomi campo dal descrittore) e si ri-parsa in un dict di nomi reali. */
+static void vm_sys_json_write_section(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[2];
+    int n = argc > 2 ? 2 : argc;
+    if (n < 1) return;
+    vm_pop_args_ordered(task, a, n);
+    char sec[512]; sec[0] = 0;
+    if (n >= 2 && a[1].type == 2 && a[1].ref && a[1].ref->kind == GMB_OBJ_STRING) {
+        const char* d = ((gmb_obj_string_t*)a[1].ref)->data;
+        if (d) snprintf(sec, sizeof(sec), "%s", d);
+    }
+    /* UDT/dict VM -> dict "pulito" (vm_json_plain_obj risolve i nomi campo dal
+     * descrittore `__class__`). La serializzazione JSON diretta di una UDT VM
+     * (gmb_val_to_json) andava in SIGSEGV: la val VM punta a un dict con chiavi
+     * interne `__m<sid>`, non a un oggetto con layout registrato. */
+    if (a[0].type != 2 || !a[0].ref) return;
+    gmb_obj_t* plain = vm_json_plain_obj(a[0].ref);
+    if (!plain || plain->kind != GMB_OBJ_DICT) return;
+    gmb_ini_write_section("app.settings.json", sec, ((gmb_obj_shared_val_t*)plain)->dict);
+}
+
+/* IO_CHDIR (268) / IO_KILL (269): operazioni di FILE-SYSTEM, non console (prima erano
+ * instradate a vm_sys_delegate_console: il modulo console stampava escape per CHDIR e non
+ * cancellava per KILL). Canone PCode: Directory.SetCurrentDirectory / File.Delete. */
+static void vm_sys_io_chdir_kill(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)argc;
+    char p[2048]; p[0] = 0;
+    vm_pop_str(task, p, sizeof(p));
+    if (!p[0]) return;
+    gmb_string_t sp = gmb_string_alloc(p);
+    if (code == 268) gmb_fs_chdir(sp);
+    else gmb_file_kill(sp);
+}
+
+static void vm_sys_json_to_object(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+(void)vm; (void)code; (void)argc;
+/* La sorgente puo' essere una STRINGA (JSON testuale) O un valore boxed (una var
+ * `AS JSON`, es. `DIM j AS JSON = JSON.ToJson(u)`): vm_pop_str/vm_entry_str gestiscono
+ * solo le stringhe, quindi un boxed va serializzato via gmb_vm_json_stringify — altrimenti
+ * il parse riceveva "" e JSON.ToObject(...) restituiva sempre vuoto. Parita' col C#. */
+char js[65536]; js[0] = 0;
+gmb_stack_entry_t se = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+if (se.type == 2 && se.ref && se.ref->kind == GMB_OBJ_STRING) {
+    gmb_obj_string_t* s = (gmb_obj_string_t*)se.ref;
+    size_t n = s->length < sizeof(js) - 1 ? (size_t)s->length : sizeof(js) - 1;
+    if (s->data && n) memcpy(js, s->data, n);
+    js[n] = 0;
+} else if (se.type == 2 && se.ref) {
+    gmb_obj_string_t* r = gmb_vm_json_stringify(se.ref);
+    if (r) { size_t n = r->length < sizeof(js) - 1 ? (size_t)r->length : sizeof(js) - 1; if (r->data && n) memcpy(js, r->data, n); js[n] = 0; gmb_obj_release((gmb_obj_t*)r); }
+}
+if (se.ref) gmb_obj_release(se.ref);
+/* JSON_TO_OBJECT (272): parse GENERICO (root oggetto O array) -> valore nativo, come
+ * JsonElementToObject del PCodeVM. La vecchia variante dict-only (gmb_json_parse_to_dict)
+ * lasciava vuoto il caso array (es. LIST OF INTEGER -> count 0): bug reale. */
+push_val_entry(task, gmb_json_parse(js));
+return;
+}
+
+/* ARRAY_SLICE (271, SysCall.ARRAY_SLICE): stack [array, start, end] (end in cima).
+ * Parita' PCodeVM/IL: se la sorgente e' una lista e 0 <= start <= end -> NUOVA lista con gli
+ * elementi [start, min(end,count)); altrimenti la sorgente invariata.
+ * PRIMA: la tabella instradava 271 a vm_sys_json (pop di UNA stringa + push di un dict):
+ * silent-wrong E stack sbilanciato (3 argomenti consumati come 1). */
+static void vm_sys_array_slice(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code; (void)argc;
+    double dend = 0.0, dstart = 0.0;
+    vm_pop_num(task, &dend);
+    vm_pop_num(task, &dstart);
+    gmb_stack_entry_t a = gmb_task_pop(task);
+    int start = (int)dstart, end = (int)dend;
+    gmb_obj_shared_val_t* src = (a.type == 2 && a.ref != NULL && a.ref->kind == GMB_OBJ_LIST)
+                                ? (gmb_obj_shared_val_t*)a.ref : NULL;
+    if (src != NULL && src->list != NULL && start >= 0 && end >= start) {
+        gmb_obj_shared_val_t* out = gmb_shared_list_new();
+        if (out != NULL) {
+            gmb_int_t cnt = gmb_list_count(*src->list);
+            for (int i = start; i < end && i < (int)cnt; i++)
+                gmb_list_add(out->list, gmb_list_get(*src->list, i));
+            if (a.ref) gmb_obj_release(a.ref);
+            push_ref_new(task, (gmb_obj_t*)out, GMB_BT_OBJECT);
+            return;
+        }
+    }
+    /* sorgente non-lista o range invalido: push dell'originale (parita' PCodeVM) */
+    if (a.type == 2 && a.ref) gmb_task_push_ref(task, a.ref, a.basic_type);
+    else push_num_entry(task, a.type == 1 ? a.num : 0.0, a.basic_type ? a.basic_type : GMB_BT_NUMBER);
+}
+
+/* KEY_CLOSE (270, SysCall.KEY_CLOSE — statement KEYCLOSE): chiude l'handle di chiave crypto
+ * (gmb_keys_close, lo stesso registro di KEYGEN). PRIMA: la tabella delegava 270 al console e
+ * vm_console_270 LEGGEVA UN TASTO (azione sbagliata, possibile blocco, handle mai chiuso). */
+static void vm_sys_keyclose(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    if (argc > 0 && task->sp > 0) {
+        double h = 0.0;
+        vm_pop_num(task, &h);
+        if (h != 0.0) gmb_keys_close((int)h);
+    }
+}
+
+static void vm_sys_team_distill(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+char ds[4096], tm[128]; vm_pop_str(task, ds, sizeof(ds)); vm_pop_str(task, tm, sizeof(tm));
+push_num_entry(task, (double)gmb_team_distill_thinking(tm, ds), GMB_BT_NUMBER);
+return;
+}
+
+static void vm_sys_goskip_128(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code; (void)argc;
+    gmb_stack_entry_t de = gmb_task_pop(task);
+    /* GO — SysCall.DBF_GO (128). La navigazione deve muovere il cursore del layer ATTIVO:
+     * se DBF USE (117) ha aperto un handle nel layer gmb_db (quello che leggono
+     * DBF.RECNO()/gmb_db_dbf_get_field/record-scope EVAL), va mosso QUELLO; il percorso
+     * gmb_rdd resta per i programmi che aprono via RDD USE (che non tocca gmb_db).
+     * Prima di questo fix GO/SKIP muovevano solo gmb_rdd: su un DBF aperto con DBF USE
+     * risultavano no-op (DBF.RECNO() restava 1 per sempre). */
+    int navigated = 0;
+#if defined(GMB_HAS_COMMERCIAL_DB) && !defined(GMB_VM_SPECIALIZED)
+    int64_t dh = gmb_db_current_dbf();
+    if (dh > 0)
+    {
+        if (de.type == 1) gmb_db_dbf_go(dh, (int)de.num);
+        else
+        {
+            char gt[8]; vm_entry_str(de, gt, sizeof(gt));
+            if (strcasecmp(gt, "TOP") == 0) gmb_db_dbf_gotop(dh);
+            else if (strcasecmp(gt, "BOTTOM") == 0) gmb_db_dbf_gobottom(dh);
+        }
+        navigated = 1;
+    }
+#endif
+    if (!navigated)
+    {
+        if (de.type == 1) gmb_rdd_go((int)de.num);
+        else
+        {
+            char gt[8]; vm_entry_str(de, gt, sizeof(gt));
+            if (strcasecmp(gt, "TOP") == 0) gmb_rdd_gotop();
+            else if (strcasecmp(gt, "BOTTOM") == 0) gmb_rdd_gobottom();
+        }
+    }
+    if (de.ref) gmb_obj_release(de.ref);
+    push_num_entry(task, 0.0, GMB_BT_NUMBER);
+}
+static void vm_sys_goskip_129(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code; (void)argc;
+    gmb_stack_entry_t de = gmb_task_pop(task);
+    /* SKIP n — stessa regola di GO sopra: layer gmb_db se un DBF è aperto, altrimenti gmb_rdd. */
+    int skipped = 0;
+#if defined(GMB_HAS_COMMERCIAL_DB) && !defined(GMB_VM_SPECIALIZED)
+    int64_t dh = gmb_db_current_dbf();
+    if (dh > 0)
+    {
+        int n = (de.type == 1) ? (int)de.num : 1;
+        if (n == 0) n = 1; /* SKIP senza argomento / NIL = 1 (parity IL/PCode) */
+        gmb_db_dbf_skip(dh, n);
+        skipped = 1;
+    }
+#endif
+    if (!skipped)
+    {
+        /* Stessa regola del ramo DBF: SKIP senza argomento (NIL) o con 0 vale 1 (parity
+         * IL/PCode). Prima il fallback RDD passava `(int)de.num` grezzo: con l'argomento
+         * non numerico diventava SKIP 0 = nessun avanzamento → `DO WHILE NOT EOF()` infinito
+         * su un'area RDD (misurato su RDD_ReplaceRealData.bas). */
+        int n = (de.type == 1) ? (int)de.num : 1;
+        if (n == 0) n = 1;
+        gmb_rdd_skip(n);
+    }
+    if (de.ref) gmb_obj_release(de.ref);
+    push_num_entry(task, 0.0, GMB_BT_NUMBER);
+}
+
+static void vm_sys_workflow_102(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code; (void)argc;
+    char nm[256] = "";
+    if (task->sp > 0) { gmb_stack_entry_t e = gmb_task_pop(task); team_pop_str(e, nm, sizeof(nm)); gmb_obj_release(e.ref); }
+    gmb_workflow_begin(nm);
+    push_num_entry(task, -1.0, GMB_BT_NUMBER);
+}
+static void vm_sys_workflow_103(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code; (void)argc;
+    char nm[256] = "", act[256] = "";
+    int retry = 0, timeout = 0;
+    /* Compiler pusha [timeout, retry, action, name] (name in cima): pop name, action, retry, timeout. */
+    gmb_stack_entry_t e = gmb_task_pop(task); team_pop_str(e, nm, sizeof(nm)); gmb_obj_release(e.ref);
+    e = gmb_task_pop(task); team_pop_str(e, act, sizeof(act)); gmb_obj_release(e.ref);
+    if (argc >= 4) {
+        e = gmb_task_pop(task);
+        if (e.type == 1) retry = (int)e.num; else if (e.type == 2 && e.ref) { /* fallback: string numeric */ char tmp[32]; team_pop_str(e, tmp, sizeof(tmp)); retry = atoi(tmp); } else retry = 0;
+        if (e.ref) gmb_obj_release(e.ref);
+        e = gmb_task_pop(task);
+        if (e.type == 1) timeout = (int)e.num; else if (e.type == 2 && e.ref) { char tmp[32]; team_pop_str(e, tmp, sizeof(tmp)); timeout = atoi(tmp); } else timeout = 0;
+        if (e.ref) gmb_obj_release(e.ref);
+        gmb_workflow_step_ex(nm, act, retry, timeout);
+    } else {
+        gmb_workflow_step(nm, act);
+    }
+    push_num_entry(task, -1.0, GMB_BT_NUMBER);
+}
+static void vm_sys_workflow_104(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code; (void)argc;
+    gmb_workflow_end();
+    push_num_entry(task, -1.0, GMB_BT_NUMBER);
+}
+static void vm_sys_workflow_105(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code; (void)argc;
+    char nm[256] = "";
+    if (task->sp > 0) { gmb_stack_entry_t e = gmb_task_pop(task); team_pop_str(e, nm, sizeof(nm)); gmb_obj_release(e.ref); }
+    gmb_workflow_execute(nm);
+    push_num_entry(task, -1.0, GMB_BT_NUMBER);
+}
+
+static void vm_sys_torch_354(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code; (void)argc;
+char dev[128] = "auto";
+if (task->sp > 0)
+{
+    gmb_stack_entry_t e = gmb_task_pop(task);
+    if (e.type == 2 && e.ref && ((gmb_obj_string_t*)e.ref)->data)
+        snprintf(dev, sizeof(dev), "%s", ((gmb_obj_string_t*)e.ref)->data);
+    gmb_obj_release(e.ref);
+}
+if (gmb_ml_set_active_device_name(dev) != 0)
+{
+    char em[512];
+    snprintf(em, sizeof(em), "TORCH SET DEVICE: device '%s' non disponibile o sconosciuto (auto|cpu|cuda|rocm|mlx)", dev);
+    vm_error(task, em);
+    push_num_entry(task, -1.0, GMB_BT_NUMBER);
+}
+else push_num_entry(task, 0.0, GMB_BT_NUMBER);
+return;
+}
+static void vm_sys_torch_355(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code; (void)argc;
+if (gmb_ml_load_lib() != 0)
+{
+    vm_error(task, "TORCH non caricato: esegui 'gmb ml setup' o 'ML SETUP'");
+    push_num_entry(task, -1.0, GMB_BT_NUMBER);
+}
+else push_num_entry(task, 0.0, GMB_BT_NUMBER);
+return;
+}
+static void vm_sys_torch_356(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code; (void)argc;
+gmb_ml_unload_lib();
+push_num_entry(task, 0.0, GMB_BT_NUMBER);
+return;
+}
+static void vm_sys_torch_357(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code; (void)argc;
+char dir[1024] = "";
+if (task->sp > 0)
+{
+    gmb_stack_entry_t e = gmb_task_pop(task);
+    if (e.type == 2 && e.ref && ((gmb_obj_string_t*)e.ref)->data)
+        snprintf(dir, sizeof(dir), "%s", ((gmb_obj_string_t*)e.ref)->data);
+    gmb_obj_release(e.ref);
+}
+if (gmb_ml_set_lib_dir(dir) != 0)
+{
+    char em[512];
+    snprintf(em, sizeof(em), "TORCH SET LIB PATH: impossibile impostare '%s'", dir);
+    vm_error(task, em);
+    push_num_entry(task, -1.0, GMB_BT_NUMBER);
+}
+else push_num_entry(task, 0.0, GMB_BT_NUMBER);
+return;
+}
+static void vm_sys_torch_358(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code; (void)argc;
+char av[256] = "";
+char lp[1024] = "";
+gmb_ml_available(av, (int)sizeof(av));
+gmb_ml_lib_path(lp, (int)sizeof(lp));
+printf("TORCH INFO\n");
+printf("  device attivo : %d\n", gmb_ml_active_device());
+printf("  disponibili   : %s\n", av);
+printf("  lib path      : %s\n", lp);
+printf("  caricata      : %s\n", gmb_ml_loaded() ? "si" : "no");
+fflush(stdout);
+push_num_entry(task, 0.0, GMB_BT_NUMBER);
+return;
+}
+
+#if defined(GMB_HAS_COMMERCIAL_DB) && !defined(GMB_VM_SPECIALIZED)
+/* DB commerciale (ISAM/DBF/SPEED/LEDGER + CONVERT + DBF_LIST/CREATE_VIEW/AGGREGATE/REPORT):
+ * il dispatch interno è già a tabelle (gmb_db_apply_syscall_known + gmb_sys_impl[] in
+ * gmb_syscall_db.c). Questo handler replica il vecchio gate a range: prova prima la "known"
+ * generica, poi gmb_vm_exec_db_syscall; se nessuno gestisce → no-op (fall-through storico).
+ * Le voci DB della tabella (sotto, #ifdef) smistano ogni code di dominio a questo handler. */
+void gmb_vm_dbf_set_alias_n(const char* s, int n);
+
+static void vm_sys_db(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    char useAlias[128] = "";
+    char copyCond[1024] = "";   /* DBF COPY TO … FOR: condizione (testo) */
+    if (code == GMB_SYS_DBF_USE && task->sp >= 1) {
+        /* ALIAS(): l'alias sta nella pila (LIFO) dopo fieldCount, le coppie campo/sid e
+         * typeName/typeId. Il path condiviso (gmb_db_apply_syscall) apre l'area ma SCARTA
+         * l'alias → ALIAS() restava vuoto. Qui lo si legge SENZA consumare la pila: il pop
+         * qui sotto deve riceverla intatta. § MiniTests/dbf/dbf_state.bas. */
+        int fc = (task->stack[task->sp - 1].type == 1) ? (int)task->stack[task->sp - 1].num : 0;
+        int depth = 1 + 2 * fc + 2;
+        if (task->sp - 1 - depth >= 0) {
+            gmb_stack_entry_t* ae = &task->stack[task->sp - 1 - depth];
+            if (ae->type == 2 && ae->ref && ae->ref->kind == GMB_OBJ_STRING) {
+                gmb_obj_string_t* as = (gmb_obj_string_t*)ae->ref;
+                gmb_vm_dbf_set_alias_n(as->data, (int)as->length);
+                snprintf(useAlias, sizeof(useAlias), "%s", as->data ? as->data : "");
+            }
+        }
+    }
+    if (gmb_db_apply_syscall_known(code))
+    {
+        const char* sarg = "";
+        int64_t iarg = 0;
+        int64_t result = 0;
+        int i;
+        char isamSeekKey[128]; isamSeekKey[0] = 0;     /* chiave SEEK numerica formattata */
+        char isamNavAlias[128]; isamNavAlias[0] = 0;   /* area esplicita di ISAM SEEK/SKIP/RECORD */
+        for (i = 0; i < argc; i++)
+        {
+            gmb_stack_entry_t e = gmb_task_pop(task);
+            if (e.type == 2 && e.ref)
+            {
+                const char* sv = ((gmb_obj_string_t*)e.ref)->data ? ((gmb_obj_string_t*)e.ref)->data : "";
+                /* ISAM SEEK <area>, <key>: push order = area poi key → key e' in cima allo stack
+                 * = PRIMO pop. Il loop generico teneva l'ULTIMO pop (l'area/alias) e il SEEK
+                 * cercava la chiave sbagliata (misurato: key=[X] invece di [T2]). */
+                if (code == GMB_SYS_ISAM_SEEK) { if (i == 0) sarg = sv; else if (i == 1) snprintf(isamNavAlias, sizeof isamNavAlias, "%s", sv); }
+                else if (code == GMB_SYS_ISAM_SKIP || code == GMB_SYS_ISAM_RECORD) { if (i == 1) snprintf(isamNavAlias, sizeof isamNavAlias, "%s", sv); }
+                else if (code == GMB_SYS_ISAM_SET_FILTER) {
+                    /* push order = alias, hasCondition, condition → pop i: 0=condition,
+                     * 1=hasCondition(num), 2=alias. Il dispatch generico teneva l'ULTIMO
+                     * stringa (l'alias!) e il filtro riceveva l'alias come espressione. */
+                    if (i == 0) sarg = sv; else if (i == 2) snprintf(isamNavAlias, sizeof isamNavAlias, "%s", sv);
+                }
+                else if (code == GMB_SYS_ISAM_SET_ORDER) {
+                    /* push order = alias, indexName → pop i: 0=indexName, 1=alias. Il dispatch
+                     * generico teneva l'ULTIMO stringa (l'alias) → SET ORDER TO "SaldoIdx" ON
+                     * Clienti cercava un indice chiamato "Clienti" → fallback al primario →
+                     * l'ordine restava quello di inserimento (§4 vmc). */
+                    if (i == 0) sarg = sv; else if (i == 1) snprintf(isamNavAlias, sizeof isamNavAlias, "%s", sv);
+                }
+                else if (code == GMB_SYS_DBF_COPY_TO && i == 0) {
+                    /* push order = dest, hasScope, cond (testo) → i==0 è la condizione. */
+                    snprintf(copyCond, sizeof copyCond, "%s", sv);
+                }
+                else sarg = sv;
+            }
+            else if (e.type == 1)
+            {
+                /* ISAM SKIP/RECORD: i==0 = contatore/loc (iarg), i==1 = area (num, es. -1): ignora l'area. */
+                if ((code == GMB_SYS_ISAM_SKIP || code == GMB_SYS_ISAM_RECORD) && i == 1) { }
+                else if (code == GMB_SYS_ISAM_SEEK && i == 0) {
+                    /* Chiave SEEK NUMERICA (`ISAM SEEK Clienti, 3`): il motore vuole una STRINGA
+                     * (gmb_db_isam_seek), ma il valore arriva come numero → prima sarg restava ""
+                     * → seek di "" → mai trovato (divergenza §3 vmc vs il). */
+                    double dv = e.num;
+                    if (dv == (double)(long long)dv) snprintf(isamSeekKey, sizeof isamSeekKey, "%lld", (long long)dv);
+                    else snprintf(isamSeekKey, sizeof isamSeekKey, "%g", dv);
+                    sarg = isamSeekKey;
+                }
+                else iarg = (int64_t)e.num;
+            }
+        }
+        /* ISAM SEEK/SKIP/RECORD usano g_last_isam (area corrente): se l'area e' un ALIAS esplicito,
+         * risolvila e impostala come corrente, altrimenti la navigazione posiziona l'area SBAGLIATA
+         * (l'ultima aperta) → GET vuoto → EOF mai vero → loop (bug DbIsamFullTests gamba VM/C). */
+        if (isamNavAlias[0])
+        {
+            int64_t ah = 0; int jj;
+            for (jj = 0; jj < vm->vm_isam_alias_count; jj++)
+                if (strcasecmp(vm->vm_isam_alias[jj], isamNavAlias) == 0) { ah = vm->vm_isam_alias_handle[jj]; break; }
+            if (ah <= 0) ah = gmb_db_isam_select(isamNavAlias);
+            if (ah > 0) gmb_db_set_current_isam(ah);
+        }
+        /* DBF COPY TO … FOR: filtro temporaneo sul sorgente durante la copia (parità con
+         * l'emitter C99, che fa lo stesso con get/set_filter attorno a copy_to). Il
+         * dispatcher generico non riceve lo scope: lo si cattura qui dal testo. */
+        if (code == GMB_SYS_DBF_COPY_TO && copyCond[0])
+            gmb_db_dbf_set_filter(gmb_db_current_dbf(), copyCond);
+        gmb_db_apply_syscall(code, sarg, iarg, &result);
+        if (code == GMB_SYS_DBF_COPY_TO && copyCond[0])
+            gmb_db_dbf_set_filter(gmb_db_current_dbf(), "");
+        /* ISAM.EOF/BOF: il motore C ritorna 1/0 (bool), mentre la convenzione VMBASIC (e
+         * l'IL/c99n, che emettono `? -1 : 0`) usa -1 per VERO. Normalizza qui (§3 vmc:
+         * BOF/EOF stampavano 1 invece di -1). */
+        if ((code == GMB_SYS_ISAM_EOF || code == GMB_SYS_ISAM_BOF) && result) result = -1;
+        /* Registro aree per ALIAS (parità IL `_dbfHandles`): dopo l'apertura di un
+         * `DBF USE ... ALIAS X`, associa X all'handle dell'area appena aperta. Senza questo
+         * registro `DBF SELECT X` non poteva commutare l'area corrente (il suo handler
+         * registrava l'handle CORRENTE sotto l'alias) → l'area restava l'ultima aperta e le
+         * scritture finivano nel file sbagliato (bug replicazione DBF su VM/C). */
+        if (code == GMB_SYS_DBF_USE && useAlias[0]) {
+            int64_t hUse = gmb_db_current_dbf();
+            if (hUse > 0) {
+                (void)gmb_db_dbf_set_alias(hUse, useAlias);
+                int j, found = 0;
+                for (j = 0; j < vm->vm_dbf_alias_count; j++)
+                    if (strcasecmp(vm->vm_dbf_alias[j], useAlias) == 0) { vm->vm_dbf_alias_handle[j] = hUse; found = 1; break; }
+                if (!found && vm->vm_dbf_alias_count < 32) {
+                    snprintf(vm->vm_dbf_alias[vm->vm_dbf_alias_count], 64, "%s", useAlias);
+                    vm->vm_dbf_alias_handle[vm->vm_dbf_alias_count] = hUse;
+                    vm->vm_dbf_alias_count++;
+                }
+            }
+        }
+        /* LEDGER VALIDATE è un BOOL (C#/IL): CONVERSIONS.CSTR deve rendere "True"/"False",
+         * non "-1"/"0" (divergenza § DbLedgerFullTests vmc). */
+        push_num_entry(task, (double)result,
+                       (code == GMB_SYS_LEDGER_VALIDATE) ? GMB_BT_BOOL : GMB_BT_NUMBER);
+        return;
+    }
+    if (gmb_vm_exec_db_syscall(vm, task, code, argc) == 0)
+        return;
+    /* non gestito nemmeno dalla tabella DB: no-op (come il vecchio fall-through) */
+}
+#endif
+
+typedef struct { int code; void (*fn)(gmb_vm_t*, gmb_task_t*, int, int); } vm_sys_row;
+/* Precedenza = ordine dei blocchi originali. 294 → SET_CLIPPER (prima); i restanti di
+ * {291-296,332-337,349} (catturati dal vecchio headless_2 DOPO SET_CLIPPER) → headless_zero.
+ * 15-30 (fileio, fall-through) e 236/251 (debug non-terminale) NON sono qui. */
+static const vm_sys_row VM_SYS_TBL[] = {
+    { 1, vm_sys_headless_zero }, { 2, vm_sys_headless_zero },
+    { 31, vm_sys_rdd_set_default },
+    { 114, vm_sys_export_114 }, { 115, vm_sys_export_115 },
+    /* 133/134 erano SBAGLIATI: 133 = GMB_SYS_DBF_SET_FILTER e 134 = GMB_SYS_DBF_COPY_TO
+     * (i codici di SET DEFAULT/PATH sono 144/145). La tabella è a primo-match: 133 finiva su
+     * "path default" → `DBF SET FILTER TO` non arrivava mai al runtime (e COPY TO nemmeno). */
+    { 144, vm_sys_path_default }, { 145, vm_sys_path_default },
+    { 144, vm_sys_path_default }, { 145, vm_sys_path_default },
+    { 250, vm_sys_json_write_value }, { 265, vm_sys_key_close },
+    /* 291-293 erano headless_zero e 294 set_clipper: oggi sono COLORPICKER/TREEVIEW/
+     * SPINNER/TBROWSE (shift enum) → delegate_tui come il resto del blocco. */
+    { 291, vm_sys_delegate_tui }, { 292, vm_sys_delegate_tui }, { 293, vm_sys_delegate_tui },
+    { 294, vm_sys_delegate_tui },
+    { GMB_SC_TUI_LAST_HANDLE, vm_sys_delegate_tui }, { GMB_SC_CONTROL_APPLY_PROPS, vm_sys_delegate_tui }, { GMB_SC_SET_CLIPPER, vm_sys_delegate_tui },
+    { GMB_SC_SPRITE_DEF, vm_sys_headless_zero },   /* era la riga {296, headless_zero} sostituita dal delegate TUI quando 295/296 sono slittati */
+    { 332, vm_sys_headless_zero }, { 333, vm_sys_headless_zero }, { 334, vm_sys_headless_zero },
+    { GMB_SC_CHART_CREATE, vm_sys_delegate_tui }, { GMB_SC_CHART_PLOT, vm_sys_delegate_tui }, { GMB_SC_CHART_FINANCIAL, vm_sys_delegate_tui },   /* 335/336/337 = stato reale (create/plot/financial) */
+    /* passo 2: deleghe a domini con handler dedicato (TUI/RDD/SQL/TEAM) */
+    { 32, vm_sys_delegate_rdd }, { 33, vm_sys_delegate_rdd }, { 34, vm_sys_delegate_rdd },
+    { 35, vm_sys_delegate_rdd }, { 36, vm_sys_delegate_rdd }, { 37, vm_sys_delegate_rdd },
+    { 38, vm_sys_delegate_rdd }, { 39, vm_sys_delegate_rdd }, { 40, vm_sys_delegate_rdd },
+    { 41, vm_sys_delegate_rdd }, { 42, vm_sys_delegate_rdd }, { 43, vm_sys_delegate_rdd },
+    { 44, vm_sys_delegate_rdd }, { 45, vm_sys_delegate_rdd }, { 46, vm_sys_delegate_rdd },
+    { 47, vm_sys_delegate_rdd }, { 48, vm_sys_delegate_rdd }, { 49, vm_sys_delegate_rdd },
+    { 50, vm_sys_delegate_rdd }, { 51, vm_sys_delegate_rdd }, { 52, vm_sys_delegate_rdd },
+    { 53, vm_sys_delegate_rdd }, { 54, vm_sys_delegate_rdd }, { 55, vm_sys_delegate_rdd },
+    { 56, vm_sys_delegate_rdd }, { 57, vm_sys_delegate_rdd }, { 58, vm_sys_delegate_rdd },
+    { 41, vm_sys_delegate_rdd },   /* SET REPROCESS (codice del bytecode) */
+    { 59, vm_sys_delegate_rdd }, { 60, vm_sys_delegate_rdd },
+    /* 62/63/64 = RDD DELETE/RECALL/REPLACE con SCOPE (All/Next/Rest/Record/For/While).
+     * Mancavano dal range 32-60 e quindi non arrivavano mai alla tabella RDD: i comandi
+     * `RDD REPLACE … ALL` non scrivevano nulla (misurato su RDD_ReplaceRealData.bas). */
+    { 62, vm_sys_delegate_rdd }, { 63, vm_sys_delegate_rdd }, { 64, vm_sys_delegate_rdd },
+    { 92, vm_sys_delegate_team }, { 93, vm_sys_delegate_team }, { 94, vm_sys_delegate_team },
+    { 95, vm_sys_delegate_team }, { 96, vm_sys_delegate_team }, { 97, vm_sys_delegate_team },
+    { 98, vm_sys_delegate_team }, { 99, vm_sys_delegate_team }, { 100, vm_sys_delegate_team },
+    { 101, vm_sys_delegate_team },
+    { 197, vm_sys_delegate_sql }, { 198, vm_sys_delegate_sql }, { 199, vm_sys_delegate_sql },
+    { 200, vm_sys_delegate_sql }, { 201, vm_sys_delegate_sql }, { 202, vm_sys_delegate_sql },
+    { 203, vm_sys_delegate_sql }, { 204, vm_sys_delegate_sql }, { 205, vm_sys_delegate_sql },
+    { 206, vm_sys_delegate_sql }, { 207, vm_sys_delegate_sql }, { 208, vm_sys_delegate_sql },
+    { 209, vm_sys_delegate_sql }, { 210, vm_sys_delegate_sql }, { 211, vm_sys_delegate_sql },
+    /* 273..275 (AT_SAY/AT_GET/CLIPPER_READ) vivono nel delegate CONSOLE: instradarli
+     * al TUI li faceva cadere nel default "consuma argomenti" -> READ no-op. */
+    { 273, vm_sys_delegate_console }, { 274, vm_sys_delegate_console }, { 275, vm_sys_delegate_console },
+    { 470, vm_sys_delegate_console }, { 471, vm_sys_delegate_console }, { 472, vm_sys_delegate_console },
+    { 473, vm_sys_delegate_console }, { 474, vm_sys_delegate_console }, { 475, vm_sys_delegate_console },
+    { 276, vm_sys_delegate_tui }, { 277, vm_sys_delegate_tui }, { 278, vm_sys_delegate_tui },
+    { 279, vm_sys_delegate_tui }, { 280, vm_sys_delegate_tui }, { 281, vm_sys_delegate_tui },
+    { 282, vm_sys_delegate_tui }, { 283, vm_sys_delegate_tui }, { 284, vm_sys_delegate_tui },
+    { 285, vm_sys_delegate_tui }, { 286, vm_sys_delegate_tui }, { 287, vm_sys_delegate_tui },
+    { 288, vm_sys_delegate_tui }, { 289, vm_sys_delegate_tui },
+    /* 400-409: controlli pixel + form (SysCalls.cs append-only) -> delegate TUI. */
+    { 400, vm_sys_delegate_tui },
+    { 401, vm_sys_delegate_tui },
+    { 402, vm_sys_delegate_tui },
+    { 403, vm_sys_delegate_tui },
+    { 404, vm_sys_delegate_tui },
+    { 405, vm_sys_delegate_tui },
+    { 406, vm_sys_delegate_tui },
+    { 407, vm_sys_delegate_tui },
+    { 408, vm_sys_delegate_tui },
+    { 409, vm_sys_delegate_tui }, { 410, vm_sys_delegate_tui },
+    { 441, vm_sys_delegate_tui }, { 442, vm_sys_delegate_tui }, { 443, vm_sys_delegate_tui },
+    { 444, vm_sys_delegate_tui }, { 445, vm_sys_delegate_tui }, { 446, vm_sys_delegate_tui },
+    { 447, vm_sys_delegate_tui },
+    { 448, vm_sys_delegate_tui }, { 449, vm_sys_delegate_tui },
+    { 450, vm_sys_delegate_tui },
+    { GMB_SC_TUI_SPLITTER, vm_sys_delegate_tui },
+    { GMB_SC_TUI_CONTEXTMENU, vm_sys_delegate_tui },
+    { 411, vm_sys_delegate_tui }, { 412, vm_sys_delegate_tui }, { 413, vm_sys_delegate_tui },
+    { 414, vm_sys_delegate_tui }, { 415, vm_sys_delegate_tui }, { 416, vm_sys_delegate_tui },
+    { 417, vm_sys_delegate_tui }, { 418, vm_sys_delegate_tui }, { 419, vm_sys_delegate_tui }, { 420, vm_sys_delegate_tui }, { 421, vm_sys_delegate_tui },
+
+    { GMB_SC_TEAM_SET_RECURSION, vm_sys_delegate_team }, { GMB_SC_TEAM_SET_LATENT, vm_sys_delegate_team },
+    { GMB_SC_TEAM_SET_LINK, vm_sys_delegate_team }, { GMB_SC_TEAM_SET_THOUGHTS, vm_sys_delegate_team }, { GMB_SC_TEAM_TRAIN_INNER, vm_sys_delegate_team },
+    { GMB_SC_TEAM_TRAIN_OUTER, vm_sys_delegate_team }, { GMB_SC_TEAM_SET_DAG, vm_sys_delegate_team }, { GMB_SC_TEAM_SET_COMPLEXITY, vm_sys_delegate_team },
+    { GMB_SC_TEAM_SET_REFLECTION, vm_sys_delegate_team }, { GMB_SC_TEAM_SET_CRITIC, vm_sys_delegate_team }, { GMB_SC_TEAM_SET_PRUNE, vm_sys_delegate_team },
+    { GMB_SC_TEAM_TRAIN_THINKING, vm_sys_delegate_team }, { GMB_SC_TEAM_TRAIN_ACTOR_CRITIC, vm_sys_delegate_team }, { GMB_SC_TEAM_DISTILL_THINKING, vm_sys_delegate_team },
+    { GMB_SC_TEAM_BROADCAST, vm_sys_delegate_team },
+    /* 380 = TEAM_REDEFINE: la riga MANCAVA (la coda si fermava a 379) → il comando non era
+     * mai dispatchato (membri mai ri-definiti: `AI.TEAMAGENTS` vuoto dopo REDEFINE). */
+    { GMB_SC_TEAM_REDEFINE, vm_sys_delegate_team },
+    /* passo 3: fileio/vectordb/console/headless-grande */
+    { 4, vm_sys_delegate_console },
+    { 5, vm_sys_delegate_console },
+    { 6, vm_sys_delegate_console },
+    { 7, vm_sys_delegate_console },
+    { 8, vm_sys_delegate_console },
+    { 9, vm_sys_delegate_console },
+    { 10, vm_sys_delegate_console },
+    { 11, vm_sys_delegate_console },
+    { 12, vm_sys_delegate_console },
+    { 13, vm_sys_delegate_console },
+    { 14, vm_sys_delegate_console },
+    { 15, vm_sys_fileio },
+    { 16, vm_sys_fileio },
+    { 17, vm_sys_fileio },
+    { 18, vm_sys_fileio },
+    { 19, vm_sys_fileio },
+    { 20, vm_sys_fileio },
+    { 21, vm_sys_fileio },
+    { 22, vm_sys_fileio },
+    { 23, vm_sys_fileio },
+    { 24, vm_sys_fileio },
+    { 25, vm_sys_fileio },
+    { 26, vm_sys_fileio },
+    { 27, vm_sys_fileio },
+    { 28, vm_sys_fileio },
+    { 29, vm_sys_fileio },
+    { 30, vm_sys_fileio },
+    { 210, vm_sys_delegate_console },
+    { 211, vm_sys_delegate_console },
+    { 212, vm_sys_delegate_console },
+    { 213, vm_sys_delegate_console },
+    { 214, vm_sys_delegate_console },
+    { 215, vm_sys_delegate_console },
+    { 216, vm_sys_delegate_console },
+    { 217, vm_sys_delegate_console },
+    { 218, vm_sys_delegate_console },
+    { 219, vm_sys_delegate_console },
+    { 220, vm_sys_delegate_console },
+    { 221, vm_sys_delegate_console },
+    { 222, vm_sys_delegate_console },
+    { 223, vm_sys_delegate_console },
+    { 224, vm_sys_delegate_console },
+    { 225, vm_sys_delegate_console },
+    { 226, vm_sys_delegate_console },
+    { 227, vm_sys_delegate_console },
+    { 228, vm_sys_delegate_console },
+    { 229, vm_sys_delegate_console },
+    /* SAVE/RESTORE SCREEN = 230/231 reali (non headless): snapshot nominati. */
+    { 230, vm_sys_delegate_console },
+    { 231, vm_sys_delegate_console },
+    { 232, vm_sys_headless_big },
+    { 233, vm_sys_headless_big },
+    { GMB_SC_TEXTMODE, vm_sys_textmode }, /* TEXTMODE n (SysCalls.cs, append-only): console mode */
+    { 234, vm_sys_headless_big },
+    { 235, vm_sys_headless_big },
+    { 236, vm_sys_headless_big },
+    { 237, vm_sys_headless_big },
+    { 238, vm_sys_headless_big },
+    { 239, vm_sys_headless_big },
+    { 240, vm_sys_headless_big },
+    { 241, vm_sys_headless_big },
+    { 242, vm_sys_headless_big },
+    { 243, vm_sys_headless_big },
+    { 244, vm_sys_headless_big },
+    { 245, vm_sys_headless_big },
+    { 246, vm_sys_headless_big },
+    { 247, vm_sys_swap },
+    { 248, vm_sys_delegate_vectordb },
+    { 249, vm_sys_json_save },
+    { 251, vm_sys_json_write_section },
+    { GMB_SC_RUN, vm_sys_run }, /* RUN "cmd" — 252 non è un VectorDB */
+    { 253, vm_sys_delegate_vectordb },
+    { 254, vm_sys_delegate_vectordb },
+    { 255, vm_sys_delegate_vectordb },
+    { 256, vm_sys_delegate_vectordb },
+    { 257, vm_sys_delegate_vectordb },
+    { 258, vm_sys_delegate_vectordb },
+    { 259, vm_sys_delegate_vectordb },
+    { 260, vm_sys_delegate_vectordb },
+    { 261, vm_sys_delegate_vectordb },
+    { 262, vm_sys_delegate_vectordb },
+    { 263, vm_sys_delegate_vectordb },
+    { 268, vm_sys_io_chdir_kill },
+    { 269, vm_sys_io_chdir_kill },
+    { 270, vm_sys_keyclose },
+    { 272, vm_sys_json_to_object },
+    /* 290 era delegate_console (stale: oggi DATEPICKER, tabella console senza riga 290
+     * → consume_all). Ora delegate_tui come il resto del blocco. */
+    { 290, vm_sys_delegate_tui },
+    /* SPRITE_CMD (297) / TILEMAP_CMD (298): sono codici GRAFICA (come 240-247) — prima
+     * erano instradati a vm_sys_delegate_console (misroute: la grafica finiva nel modulo
+     * console). Headless come gli altri codici grafica (il runtime grafico non è nel VM/C). */
+    { GMB_SC_SPRITE_CMD, vm_sys_headless_big },
+    { GMB_SC_TILEMAP_CMD, vm_sys_headless_big },
+    { GMB_SC_TICK_PROCESS, vm_sys_headless_big },
+    { GMB_SC_SYNC_PROCESS, vm_sys_headless_big },
+    { GMB_SC_ON_WINDOW_EVENT, vm_sys_headless_big },
+    /* WINDOW 302-314 (WINDOW_ACTION..WINDOW_SHADOW, enum C#): al delegate TUI che
+     * dispatcha i vm_winstmt_* (modello gmb_winstmt: stato+render). Caption/Sendkey
+     * veri sono 321/322 (sotto). */
+    { GMB_SC_WINDOW_ACTION, vm_sys_delegate_tui },
+    { GMB_SC_WINDOW_DEFINE, vm_sys_delegate_tui },
+    { GMB_SC_WINDOW_APPEND, vm_sys_delegate_tui },
+    { GMB_SC_WINDOW_SET_CONTENT, vm_sys_delegate_tui },
+    { GMB_SC_WINDOW_CLEAR, vm_sys_delegate_tui },
+    { GMB_SC_WINDOW_SCROLL, vm_sys_delegate_tui },
+    { GMB_SC_WINDOW_EDIT, vm_sys_delegate_tui },
+    { GMB_SC_WINDOW_SELECT, vm_sys_delegate_tui },
+    { GMB_SC_WINDOW_THEME, vm_sys_delegate_tui },
+    { GMB_SC_WINDOW_DESKTOP, vm_sys_delegate_tui },
+    { GMB_SC_WINDOW_MOVE_DESKTOP, vm_sys_delegate_tui },
+    { GMB_SC_WINDOW_FRAME, vm_sys_delegate_tui },
+    { GMB_SC_WINDOW_SHADOW, vm_sys_delegate_tui },
+    /* CONSOLE_CAPTION=323 / CONSOLE_SENDKEY=324 / CONSOLE_SCROLLMODE=325
+     * (valori enum C# REALI; prima 321/322/323 — drift +2). */
+    { GMB_SC_CONSOLE_CAPTION, vm_sys_delegate_console },
+    { GMB_SC_CONSOLE_SENDKEY, vm_sys_delegate_console },
+    { GMB_SC_CONSOLE_SCROLLMODE, vm_sys_delegate_console },
+    { 326, vm_sys_headless_big },
+    { 327, vm_sys_headless_big },
+    { 328, vm_sys_headless_big },
+    { 329, vm_sys_headless_big },
+    { 330, vm_sys_headless_big },
+    { 331, vm_sys_headless_big },
+    { 335, vm_sys_delegate_console },
+    { GMB_SC_CHART_CLEAR, vm_sys_delegate_tui },
+    { GMB_SC_CHART_CLOSE, vm_sys_delegate_tui },   /* prima 339 finiva su palette_339 (shadow) */
+    { GMB_SC_CHART_RENDER, vm_sys_headless_big },   /* CHART_CLEAR (stato reale) */
+    { GMB_SC_PALETTE_SET, vm_sys_palette_339 },
+    { GMB_SC_PALETTE_USE, vm_sys_headless_big },
+    { GMB_SC_PALETTE_DEFINE, vm_sys_headless_big },
+    { GMB_SC_PALETTE_REPLACE, vm_sys_headless_big },
+    { GMB_SC_WINDOW_VIEWPORT, vm_sys_headless_big },
+    { GMB_SC_PALETTE_SAVE, vm_sys_headless_big },
+    { GMB_SC_PALETTE_LOAD, vm_sys_headless_big },
+    { GMB_SC_DRAW_TEXT, vm_sys_headless_big },
+
+    /* passo 4: event/memmap/lock/iowatch/json/team_distill/goskip/workflow/torch */
+    { 102, vm_sys_workflow_102 },
+    { 103, vm_sys_workflow_103 },
+    { 104, vm_sys_workflow_104 },
+    { 105, vm_sys_workflow_105 },
+    { 128, vm_sys_goskip_128 },
+    { 129, vm_sys_goskip_129 },
+    { 271, vm_sys_array_slice },
+    /* MEMORYMAP: i codici DEVONO combaciare con l'enum C# SysCall
+     * (MEMORYMAP_OPEN=318, PEEK=319, POKE=320, READBYTES=321, WRITEBYTES=322 — drift +2). */
+    { GMB_SC_MEMORYMAP_OPEN, vm_sys_memmap_open },
+    { GMB_SC_MEMORYMAP_PEEK, vm_sys_memmap_peek },
+    { GMB_SC_MEMORYMAP_POKE, vm_sys_memmap_poke },
+    { GMB_SC_MEMORYMAP_READBYTES, vm_sys_memmap_readbytes },
+    { GMB_SC_MEMORYMAP_WRITEBYTES, vm_sys_memmap_writebytes },
+    { GMB_SC_FILE_LOCK, vm_sys_lock_342 },       /* FILE_LOCK */
+    { 422, vm_msg_op },             /* MESSAGE_OP */
+    { 423, vm_msg_on },             /* ON_MESSAGE */
+    { GMB_SC_FILE_UNLOCK, vm_sys_lock_343 },       /* FILE_UNLOCK */
+    { GMB_SC_RAISE_EVENT, vm_sys_event_344 },      /* RAISE_EVENT */
+    { GMB_SC_ADD_HANDLER, vm_sys_event_345 },      /* ADD_HANDLER */
+    { GMB_SC_REMOVE_HANDLER, vm_sys_event_346 },      /* REMOVE_HANDLER */
+    { GMB_SC_IO_WATCH, vm_sys_iowatch_347 },    /* IO_WATCH */
+    { GMB_SC_IO_UNWATCH, vm_sys_iowatch_348 },    /* IO_UNWATCH */
+    /* TORCH_* : i codici nell'enum C# SysCall sono 358..362 (erano fissati 356..360, stale di
+     * +2 come ISAM_RECNO). Il vecchio 357 collideva con ISAM_RECNO (357) e lo shadowava →
+     * ISAM.RECNO = 0 sulla gamba VMC. */
+    { GMB_SC_TORCH_SET_DEVICE, vm_sys_torch_354 },      /* TORCH_SET_DEVICE */
+    { GMB_SC_TORCH_LOAD_LIB, vm_sys_torch_355 },      /* TORCH_LOAD_LIB */
+    { GMB_SC_TORCH_UNLOAD_LIB, vm_sys_torch_356 },      /* TORCH_UNLOAD_LIB */
+    { GMB_SC_TORCH_SET_LIB_PATH, vm_sys_torch_357 },      /* TORCH_SET_LIB_PATH */
+    { GMB_SC_TORCH_INFO, vm_sys_torch_358 },      /* TORCH_INFO */
+    { GMB_SC_TEAM_DISTILL_THINKING, vm_sys_team_distill },
+#if defined(GMB_HAS_COMMERCIAL_DB) && !defined(GMB_VM_SPECIALIZED)
+    /* DB commerciale (voci = macro GMB_SYS_*, range espansi con offset; escluse 133/134/144/145 = path_default) */
+    { GMB_SYS_ISAM_USE + 0, vm_sys_db },
+    { GMB_SYS_ISAM_USE + 1, vm_sys_db },
+    { GMB_SYS_ISAM_USE + 2, vm_sys_db },
+    { GMB_SYS_ISAM_USE + 3, vm_sys_db },
+    { GMB_SYS_ISAM_USE + 4, vm_sys_db },
+    { GMB_SYS_ISAM_USE + 5, vm_sys_db },
+    { GMB_SYS_ISAM_USE + 6, vm_sys_db },
+    { GMB_SYS_ISAM_USE + 7, vm_sys_db },
+    { GMB_SYS_ISAM_USE + 8, vm_sys_db },
+    { GMB_SYS_ISAM_USE + 9, vm_sys_db },
+    { GMB_SYS_ISAM_USE + 10, vm_sys_db },
+    { GMB_SYS_ISAM_USE + 11, vm_sys_db },
+    { GMB_SYS_ISAM_USE + 12, vm_sys_db },
+    { GMB_SYS_ISAM_USE + 13, vm_sys_db },
+    { GMB_SYS_ISAM_USE + 14, vm_sys_db },
+    { GMB_SYS_ISAM_USE + 15, vm_sys_db },
+    { GMB_SYS_ISAM_USE + 16, vm_sys_db },
+    { GMB_SYS_ISAM_USE + 17, vm_sys_db },
+    { GMB_SYS_ISAM_USE + 18, vm_sys_db },
+    { GMB_SYS_ISAM_USE + 19, vm_sys_db },
+    { GMB_SYS_ISAM_USE + 20, vm_sys_db },
+    { GMB_SYS_ISAM_USE + 21, vm_sys_db },
+    { GMB_SYS_ISAM_USE + 22, vm_sys_db },
+    { GMB_SYS_ISAM_USE + 23, vm_sys_db },
+    { GMB_SYS_ISAM_USE + 24, vm_sys_db },
+    { GMB_SYS_ISAM_USE + 25, vm_sys_db },
+    { GMB_SYS_ISAM_USE + 26, vm_sys_db },
+    /* ISAM.RECNO(alias) = SysCall 355: FUORI dal range ISAM_USE+0..26 (65-91) → non era
+     * instradato a vm_sys_db → RECNO sempre 0 (§3 vmc). */
+    { GMB_SYS_ISAM_RECNO, vm_sys_db },
+    /* ISAM CLOSE [alias] = SysCall 440 (valore esplicito, fuori dai range sopra). */
+    { GMB_SYS_ISAM_CLOSE, vm_sys_db },
+    /* Restanti comandi DBF: instradati a vm_sys_db (tabella gmb_sys_impl + path condiviso
+     * gmb_db_apply_syscall). PRIMA non erano instradati a NIENTE: il range sopra copre solo
+     * GMB_SYS_ISAM_USE+0..26 (65..91) e i codici DBF (116..162) restavano senza handler →
+     * SETDURABILITY/BEGIN/ENDGROUPCOMMIT/… rispondevano 0 (fallback generico). Trovato
+     * loggando i codici in arrivo (§ MiniTests/dbf/dbf_lock_filter.bas). */
+    { GMB_SYS_DBF_USE, vm_sys_db },
+    { GMB_SYS_DBF_COPY_TO, vm_sys_db },
+    { GMB_SYS_DBF_SELECT, vm_sys_db },
+    { GMB_SYS_DBF_GET_RECORD, vm_sys_db },
+    { GMB_SYS_DBF_REPLACE, vm_sys_db },
+    { GMB_SYS_DBF_DELETE, vm_sys_db },
+    { GMB_SYS_DBF_RECALL, vm_sys_db },
+    { GMB_SYS_DBF_SORT, vm_sys_db },
+    { GMB_SYS_DBF_UPDATE, vm_sys_db },
+    { GMB_SYS_DBF_TOTAL_ON, vm_sys_db },
+    { GMB_SYS_DBF_PACK, vm_sys_db },
+    { GMB_SYS_DBF_ZAP, vm_sys_db },
+    { GMB_SYS_DBF_SEEK, vm_sys_db },
+    { GMB_SYS_DBF_CLOSE_DATABASES, vm_sys_db },
+    { GMB_SYS_DBF_SET_FILTER, vm_sys_db },   /* 133: senza questa riga DBF SET FILTER TO finiva nel vuoto */
+    { GMB_SYS_DBF_SET_DELETED, vm_sys_db },
+    { GMB_SYS_DBF_REINDEX, vm_sys_db },
+    { GMB_SYS_DBF_APPEND_RECORD, vm_sys_db },
+    { GMB_SYS_DBF_APPEND_FROM, vm_sys_db },
+    { GMB_SYS_DBF_JOIN_WITH, vm_sys_db },
+    { GMB_SYS_DBF_COPY_STRUCTURE, vm_sys_db },
+    { GMB_SYS_DBF_SET_ORDER, vm_sys_db },
+    { GMB_SYS_DBF_SET_RELATION, vm_sys_db },
+    { GMB_SYS_DBF_INDEX_ON, vm_sys_db },
+    { GMB_SYS_DBF_SET_EXACT, vm_sys_db },
+    { GMB_SYS_DBF_SET_EXCLUSIVE, vm_sys_db },
+    { GMB_SYS_DBF_SET_SCHEMA, vm_sys_db },
+    { GMB_SYS_DBF_APPEND_BLANK, vm_sys_db },
+    { GMB_SYS_DBF_VALIDATE, vm_sys_db },
+    { GMB_SYS_DBF_CONVERT_TO_ISAM, vm_sys_db },
+    { GMB_SYS_DBF_RECNO, vm_sys_db },
+    { GMB_SYS_DBF_LASTREC, vm_sys_db },
+    { GMB_SYS_DBF_CREATE_TABLE, vm_sys_db },
+    { GMB_SYS_DBF_APPENDMANY, vm_sys_db },
+    { GMB_SYS_DBF_SET_DURABILITY, vm_sys_db },
+    { GMB_SYS_DBF_BEGIN_GROUP_COMMIT, vm_sys_db },
+    { GMB_SYS_DBF_END_GROUP_COMMIT, vm_sys_db },
+    { GMB_SYS_DBF_CLOSE_CURRENT, vm_sys_db },
+    /* ISAM: replicazione (107/108/109). Erano fuori dal range GMB_SYS_ISAM_USE..+N e non
+     * registrate → la chiamata cadeva nel dispatch generico (numero dove serve una stringa):
+     * § MiniTests/dbf/isam_replication.bas: VMC "setrepl: no". */
+    { GMB_SYS_ISAM_SET_REPLICATION, vm_sys_db },
+    { GMB_SYS_ISAM_APPLY_REPLICATION, vm_sys_db },
+    { GMB_SYS_ISAM_FOLLOW_REPLICATION, vm_sys_db },
+    { GMB_SYS_DBF_SET_REPLICATION, vm_sys_db },
+    { GMB_SYS_DBF_APPLY_REPLICATION, vm_sys_db },
+    { GMB_SYS_DBF_FOLLOW_REPLICATION, vm_sys_db },
+    { GMB_SYS_DBF_LUPDATE, vm_sys_db },
+    { GMB_SYS_DBF_LIST, vm_sys_db },
+    { GMB_SYS_DBF_CREATE_VIEW, vm_sys_db },
+    { GMB_SYS_DBF_AGGREGATE, vm_sys_db },
+    { GMB_SYS_DBF_REPORT, vm_sys_db },
+    { GMB_SYS_ISAM_PUT + 0, vm_sys_db },
+    { GMB_SYS_ISAM_PUT + 1, vm_sys_db },
+    { GMB_SYS_ISAM_PUT + 2, vm_sys_db },
+    { GMB_SYS_ISAM_PUT + 3, vm_sys_db },
+    { GMB_SYS_ISAM_PUT + 4, vm_sys_db },
+    { GMB_SYS_ISAM_PUT + 5, vm_sys_db },
+    { GMB_SYS_ISAM_PUT + 6, vm_sys_db },
+    { GMB_SYS_ISAM_PUT + 7, vm_sys_db },
+    { GMB_SYS_CONVERT_DBF_TO_ISAM, vm_sys_db },
+    { GMB_SYS_DBF_USE + 0, vm_sys_db },
+    { GMB_SYS_DBF_USE + 1, vm_sys_db },
+    { GMB_SYS_DBF_USE + 2, vm_sys_db },
+    { GMB_SYS_DBF_USE + 3, vm_sys_db },
+    { GMB_SYS_DBF_USE + 4, vm_sys_db },
+    { GMB_SYS_DBF_USE + 5, vm_sys_db },
+    { GMB_SYS_DBF_USE + 6, vm_sys_db },
+    { GMB_SYS_DBF_USE + 7, vm_sys_db },
+    { GMB_SYS_DBF_USE + 8, vm_sys_db },
+    { GMB_SYS_DBF_USE + 9, vm_sys_db },
+    { GMB_SYS_DBF_USE + 10, vm_sys_db },
+    { GMB_SYS_DBF_USE + 11, vm_sys_db },
+    { GMB_SYS_DBF_USE + 12, vm_sys_db },
+    { GMB_SYS_DBF_USE + 13, vm_sys_db },
+    { GMB_SYS_DBF_USE + 14, vm_sys_db },
+    { GMB_SYS_DBF_USE + 15, vm_sys_db },
+    { GMB_SYS_DBF_USE + 18, vm_sys_db },
+    { GMB_SYS_DBF_USE + 19, vm_sys_db },
+    { GMB_SYS_DBF_USE + 20, vm_sys_db },
+    { GMB_SYS_DBF_USE + 21, vm_sys_db },
+    { GMB_SYS_DBF_USE + 22, vm_sys_db },
+    { GMB_SYS_DBF_USE + 23, vm_sys_db },
+    { GMB_SYS_DBF_USE + 24, vm_sys_db },
+    { GMB_SYS_DBF_USE + 25, vm_sys_db },
+    { GMB_SYS_DBF_USE + 26, vm_sys_db },
+    { GMB_SYS_DBF_USE + 29, vm_sys_db },
+    { GMB_SYS_DBF_USE + 30, vm_sys_db },
+    { GMB_SYS_DBF_USE + 31, vm_sys_db },
+    { GMB_SYS_DBF_USE + 32, vm_sys_db },
+    { GMB_SYS_DBF_USE + 33, vm_sys_db },
+    { GMB_SYS_DBF_USE + 34, vm_sys_db },
+    { GMB_SYS_DBF_USE + 35, vm_sys_db },
+    { GMB_SYS_DBF_USE + 36, vm_sys_db },
+    { GMB_SYS_DBF_USE + 37, vm_sys_db },
+    { GMB_SYS_DBF_USE + 38, vm_sys_db },
+    { GMB_SYS_DBF_USE + 39, vm_sys_db },
+    { GMB_SYS_DBF_USE + 40, vm_sys_db },
+    { GMB_SYS_DBF_USE + 41, vm_sys_db },
+    { GMB_SYS_DBF_USE + 42, vm_sys_db },
+    { GMB_SYS_DBF_USE + 43, vm_sys_db },
+    { GMB_SYS_DBF_USE + 44, vm_sys_db },
+    { GMB_SYS_DBF_USE + 45, vm_sys_db },
+    { GMB_SYS_SPEED_OPEN + 0, vm_sys_db },
+    { GMB_SYS_SPEED_OPEN + 1, vm_sys_db },
+    { GMB_SYS_SPEED_OPEN + 2, vm_sys_db },
+    { GMB_SYS_SPEED_OPEN + 3, vm_sys_db },
+    { GMB_SYS_SPEED_OPEN + 4, vm_sys_db },
+    { GMB_SYS_SPEED_OPEN + 5, vm_sys_db },
+    { GMB_SYS_SPEED_OPEN + 6, vm_sys_db },
+    { GMB_SYS_SPEED_OPEN + 7, vm_sys_db },
+    { GMB_SYS_SPEED_OPEN + 8, vm_sys_db },
+    { GMB_SYS_SPEED_OPEN + 9, vm_sys_db },
+    { GMB_SYS_SPEED_OPEN + 10, vm_sys_db },
+    { GMB_SYS_SPEED_OPEN + 11, vm_sys_db },
+    { GMB_SYS_SPEED_OPEN + 12, vm_sys_db },
+    { GMB_SYS_SPEED_OPEN + 13, vm_sys_db },
+    { GMB_SYS_SPEED_OPEN + 14, vm_sys_db },
+    { GMB_SYS_SPEED_OPEN + 15, vm_sys_db },
+    { GMB_SYS_SPEED_OPEN + 16, vm_sys_db },
+    { GMB_SYS_SPEED_OPEN + 17, vm_sys_db },
+    { GMB_SYS_SPEED_CLOSE, vm_sys_db },
+    { GMB_SYS_LEDGER_OPEN + 0, vm_sys_db },
+    { GMB_SYS_LEDGER_OPEN + 1, vm_sys_db },
+    { GMB_SYS_LEDGER_OPEN + 2, vm_sys_db },
+    { GMB_SYS_LEDGER_OPEN + 3, vm_sys_db },
+    { GMB_SYS_LEDGER_OPEN + 4, vm_sys_db },
+    { GMB_SYS_LEDGER_OPEN + 5, vm_sys_db },
+    { GMB_SYS_LEDGER_OPEN + 6, vm_sys_db },
+    { GMB_SYS_LEDGER_OPEN + 7, vm_sys_db },
+    { GMB_SYS_LEDGER_OPEN + 8, vm_sys_db },
+    { GMB_SYS_LEDGER_OPEN + 9, vm_sys_db },
+    { GMB_SYS_LEDGER_OPEN + 10, vm_sys_db },
+    { GMB_SYS_LEDGER_OPEN + 11, vm_sys_db },
+    { GMB_SYS_LEDGER_OPEN + 12, vm_sys_db },
+    { GMB_SYS_LEDGER_OPEN + 13, vm_sys_db },
+    { GMB_SYS_LEDGER_OPEN + 14, vm_sys_db },
+    { GMB_SYS_LEDGER_OPEN + 15, vm_sys_db },
+    { GMB_SYS_DBF_LIST, vm_sys_db },
+    { GMB_SYS_DBF_CREATE_VIEW, vm_sys_db },
+    { GMB_SYS_DBF_AGGREGATE, vm_sys_db },
+    { GMB_SYS_DBF_REPORT, vm_sys_db },
+#endif
+};
+
+/* ── Primitive grafiche nel VM/C ──────────────────────────────────────────────
+ * Il VM non aveva handler per CLS/PSET/PRESET/LINE/CIRCLE/PAINT/SCREEN: i sample
+ * grafici restavano vuoti (POINT=-1) e la parity pixel con le gambe C era rotta.
+ * Qui si delega al runtime C condiviso (stessa implementazione di C99/Native). */
+static double vm_gfx_pop(gmb_task_t* t, double defv)
+{
+    if (t->sp <= 0) return defv;
+    gmb_stack_entry_t e = gmb_task_pop(t);
+    double v = (e.type == 1) ? e.num : defv;
+    if (e.type == 2 && e.ref) gmb_obj_release(e.ref);
+    return v;
+}
+static void vm_gfx_syscall(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
+{
+    (void)vm;
+    switch (code)
+    {
+    case GMB_SC_SCREEN: {
+        /* Stack legacy: mode, active, visible, closeRepl, windowMode (5, NIL compresi). */
+        double mode = 0;
+        for (int i = 0; i < argc && task->sp > 0; i++) mode = vm_gfx_pop(task, 0);
+        gmb_gfx_screen((int)mode, 0, 0, 0);
+        return;
+    }
+    case GMB_SC_CLS: {
+        double c = vm_gfx_pop(task, -1);
+        if (c < 0) gmb_cls(); else gmb_cls_color((int)c);
+        return;
+    }
+#ifndef GMB_VM_SPECIALIZED
+    case GMB_SC_PSET: {
+        int color = (int)vm_gfx_pop(task, -1);
+        int y = (int)vm_gfx_pop(task, 0), x = (int)vm_gfx_pop(task, 0);
+        gmb_gfx_pset(x, y, color);
+        return;
+    }
+#endif
+#ifndef GMB_VM_SPECIALIZED
+    case GMB_SC_PRESET: {
+        int y = (int)vm_gfx_pop(task, 0), x = (int)vm_gfx_pop(task, 0);
+        gmb_gfx_preset(x, y);
+        return;
+    }
+#endif
+    case GMB_SC_LINE: {
+        char style[8] = { 0 };
+        if (task->sp > 0) {
+            gmb_stack_entry_t e = gmb_task_pop(task);
+            if (e.type == 2 && e.ref && e.ref->kind == GMB_OBJ_STRING) {
+                gmb_obj_string_t* s = (gmb_obj_string_t*)e.ref;
+                snprintf(style, sizeof(style), "%s", s->data ? s->data : "");
+            }
+            if (e.type == 2 && e.ref) gmb_obj_release(e.ref);
+        }
+        int color = (int)vm_gfx_pop(task, -1);
+        double y2 = vm_gfx_pop(task, 0), x2 = vm_gfx_pop(task, 0);
+        double y1 = vm_gfx_pop(task, -1), x1 = vm_gfx_pop(task, -1);
+        /* Coordinate DOUBLE (WINDOW frazionario): gmb_gfx_line_f applica lround come
+         * C99Native (gmb_gfx_line_f) — prima (int) troncava e i pixel divergevano. */
+        gmb_gfx_line_f(x1, y1, x2, y2, color, style[0] ? style : "");
+        return;
+    }
+#ifndef GMB_VM_SPECIALIZED
+    case GMB_SC_CIRCLE: {
+        double aspect = vm_gfx_pop(task, 1.0), end = vm_gfx_pop(task, 0.0), start = vm_gfx_pop(task, 0.0);
+        int color = (int)vm_gfx_pop(task, -1);
+        int r = (int)vm_gfx_pop(task, 0);
+        int y = (int)vm_gfx_pop(task, 0), x = (int)vm_gfx_pop(task, 0);
+        gmb_gfx_circle(x, y, r, color, 0, start, end, aspect);
+        return;
+    }
+#endif
+#ifndef GMB_VM_SPECIALIZED
+    case GMB_SC_PAINT: {
+        int border = (int)vm_gfx_pop(task, -1), fill = (int)vm_gfx_pop(task, -1);
+        int y = (int)vm_gfx_pop(task, 0), x = (int)vm_gfx_pop(task, 0);
+        gmb_gfx_paint(x, y, fill, border);
+        return;
+    }
+#endif
+    case GMB_SC_PALETTE: {
+        int b = (int)vm_gfx_pop(task, 0), g = (int)vm_gfx_pop(task, 0), r = (int)vm_gfx_pop(task, 0);
+        int idx = (int)vm_gfx_pop(task, 0);
+        gmb_gfx_palette(idx, r, g, b);
+        return;
+    }
+    case GMB_SC_PROGRAM_EXIT:
+    {
+        double v = 0.0;
+        if (argc > 0 && task->sp > 0) { gmb_stack_entry_t e = gmb_task_pop(task); v = e.num; gmb_obj_release(e.ref); }
+        vm->exit_code = (int)v;
+        gmb_task_push_num(task, 0, GMB_BT_NUMBER);
+        return;
+    }
+    default: break;
+    }
+}
+
+void gmb_vm_exec_syscall(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
+{
+    switch (code) {
+    case GMB_SC_SCREEN: case GMB_SC_CLS: case GMB_SC_PSET: case GMB_SC_PRESET:
+    case GMB_SC_LINE: case GMB_SC_CIRCLE: case GMB_SC_PAINT: case GMB_SC_PALETTE:
+    case GMB_SC_PROGRAM_EXIT:
+        vm_gfx_syscall(vm, task, code, argc);
+        return;
+    default: break;
+    }
+    /* debug side-effect (non-terminale, eseguito anche quando il code è poi gestito sotto):
+     * stampa per 236 e 251, PRIMA del lookup (251 è gestito da vectordb in tabella). */
+    /* Dispatch a tabella (refactor §18.5): blocchi terminali estratti come handler. I code
+     * non in tabella proseguono con i blocchi inline sotto (fall-through e deleghe). */
+    for (size_t _t = 0; _t < sizeof(VM_SYS_TBL) / sizeof(VM_SYS_TBL[0]); _t++)
+        if (VM_SYS_TBL[_t].code == code) { VM_SYS_TBL[_t].fn(vm, task, code, argc); return; }
+
+    (void)vm;
+    /* ── File I/O non-ISAM (parità PCodeVM FileHandles). Codici = enum SysCall C#:
+     * CLOSE_FILE=15 PRINT_FILE=16 INPUT_FILE=17 LINE_INPUT_FILE=18 WRITE_FILE=19
+     * GET_FILE=20 PUT_FILE=21 SEEK_FILE=22 KILL_FILE=23 RENAME_FILE=24 MKDIR=25
+     * RMDIR=26 CHDIR=27 COPY_FILE=28 MOVE_FILE=29 XCOPY_DIR=30 ── */
+    /* File I/O (15-30): handler in gmb_syscall_fileio.c (refactor 6.5.2). */
+    if (code == 236 || code == 251) fprintf(stderr, "[SYSCALL-KEY code=%d argc=%d]\n", code, argc);
+    /* syscall RDD (SysCalls.cs 32-60): comandi RDD USE / SET FIELD / SETDELETED / lock.
+     * Le FUNZIONI RDD (GETFIELD/TODAY/CTOD/...) passano dai builtin 740-757. Driver:
+     * gmb_rdd.c (ARRAY/CSV/SDF/SQL/DBF). Il range 32-60 non collide con file I/O
+     * (15-30) né console/Clipper (4-14, 210+). */
+    /* RDD (32-60): handler in gmb_syscall_rdd.c (refactor 6.5.2). */
+    /* VECTORDB/RANDOMIZE/JSON (248-263): handler in gmb_syscall_vectordb.c. */
+    /* LOCATE(1)/PRINT grafico(2): headless → 0. RDD_SET_DEFAULT(31): default driver.
+     * EXPORT/IMPORT_TO_FILE (114-115): snapshot CSV/SDF dell'area RDD corrente.
+     * TUI widget (291-292), SPRITE (294-295), CHART (332-334), VIEWPORT (348):
+     * headless-safe → 0. Eventi (343-345) → gmb_event_*.
+     * MEMORYMAP (316-320: gestiti dalla tabella VM_SYS_TBL sopra), FILE_LOCK (341-342), IO_WATCH (346-347): vm_error esplicito. */
+    /* SQL (197-209) → motore runtime gmb_sql.c (sqlite3): open/close/exec/query/
+     * transazioni/savepoint/attach. SQL_QUERY ritorna l'handle rs (letto da SQLFETCH). */
+    /* SQL (197-209): handler in gmb_syscall_sql.c (refactor 6.5.2). */
+
+
+    /* headless-safe: finestre, console (CAPTION/SENDKEY), suoni, mouse, palette, grafica, AT_SAY/GET.
+     * SET_CLIPPER e' gestito prima. La VM/C headless non ha finestre/audio/grafica: i valori
+     * restituiti rispecchiano il comportamento C# headless (posizione -1, comandi "OK").
+     * I codici NON vanno piu' scritti a mano: righe e confronti usano GMB_SC_<NOME> (gmb_syscall_codes.h,
+     * generato da SysCalls.cs con tools/check_enum_ids --gen) — un inserimento a meta' dell'enum non
+     * disallinea piu' la tabella. */
+    /* DBF_GO (128) / DBF_SKIP (129): spostamento sull'area RDD corrente (l'unico motore
+     * disponibile in Community — RDD USE apre l'area reale). Il destinatario di GO è un
+     * numero (GO n) o "TOP"/"BOTTOM". In Commercial il blocco sotto prende il precedente
+     * per le tabelle DBF commerciali; qui copre l'area RDD. */
+}
+
+/* Builtin base (CINT/VAL/...). Completamento: conversioni + comuni. */
+/* Estrae un double[] da un argomento lista BASIC (per SIGNAL.CONVOLVE/CORRELATE). */
+double* gmb_vm_list_to_dbl(const gmb_stack_entry_t* a, int* cnt)
+{
+    double* d = NULL;
+    *cnt = 0;
+    if (a->type == 2 && a->ref && a->ref->kind == GMB_OBJ_LIST)
+    {
+        gmb_obj_shared_val_t* sv = (gmb_obj_shared_val_t*)a->ref;
+        *cnt = (int)sv->list->count;
+        d = (double*)malloc(sizeof(double) * (size_t)(*cnt ? *cnt : 1));
+        if (d) for (int i = 0; i < *cnt; i++)
+        {
+            gmb_val_t v = sv->list->items[i];
+            d[i] = v.kind == GMB_TYPE_DOUBLE ? v.v_double : v.kind == GMB_TYPE_INT ? (double)v.v_int : 0;
+        }
+    }
+    else if (a->type == 1)
+    {
+        /* SCALARE dove la StdLib attende un array (es. TIMESERIES.TSROLLMEAN(0,0)):
+         * coercizione a [scalare], identica alla ToDoubleArray del PCode — così i builtin
+         * timeseries/stats ricevono lo stesso input del C# e sollevano lo stesso errore. */
+        d = (double*)malloc(sizeof(double));
+        if (d) { d[0] = a->num; *cnt = 1; }
+    }
+    return d;
+}
+double* gmb_vm_val_list_to_dbl(const gmb_val_t* v, int* cnt)
+{
+    double* d = NULL;
+    *cnt = 0;
+    gmb_obj_shared_val_t* rl = NULL;
+    if ((v->kind == GMB_TYPE_OBJECT || v->kind == GMB_TYPE_ARRAY) && v->v_ptr)
+        rl = (gmb_obj_shared_val_t*)v->v_ptr;
+    if (rl && rl->list)
+    {
+        *cnt = (int)rl->list->count;
+        d = (double*)malloc(sizeof(double) * (size_t)(*cnt ? *cnt : 1));
+        for (int i = 0; i < *cnt; i++)
+        {
+            gmb_val_t it = rl->list->items[i];
+            d[i] = it.kind == GMB_TYPE_DOUBLE ? it.v_double : it.kind == GMB_TYPE_INT ? (double)it.v_int : 0;
+        }
+    }
+    return d;
+}
+
+/* Appiattisce ricorsivamente un valore in un array di double: una lista annidata
+   (es. il wrapper sintetico del ParamArray `{{3,1,4,1,5,9}}` prodotto dal linker per
+   MIN/MAX/AVG/MEAN/...) viene sbrogliata come fa il P-Code managed (ToDoubleArr);
+   uno scalare numerico diventa un array di 1 elemento. Ritorna malloc'd (caller
+   free) con *cnt = conteggio (0 se input non numerico). */
+static double* gmb_vm_val_flatten_dbl(const gmb_val_t* v, int* cnt)
+{
+    *cnt = 0;
+    if (!v) return NULL;
+    gmb_obj_shared_val_t* rl = NULL;
+    if ((v->kind == GMB_TYPE_OBJECT || v->kind == GMB_TYPE_ARRAY) && v->v_ptr)
+        rl = (gmb_obj_shared_val_t*)v->v_ptr;
+    if (!rl || !rl->list)
+    {
+        double* one = (double*)malloc(sizeof(double));
+        if (!one) return NULL;
+        one[0] = v->kind == GMB_TYPE_DOUBLE ? v->v_double
+            : v->kind == GMB_TYPE_INT ? (double)v->v_int : 0;
+        *cnt = 1;
+        return one;
+    }
+    double* d = NULL;
+    int n = 0;
+    for (int i = 0; i < (int)rl->list->count; i++)
+    {
+        int sub_n = 0;
+        double* sub = gmb_vm_val_flatten_dbl(&rl->list->items[i], &sub_n);
+        if (sub && sub_n > 0)
+        {
+            double* nd = (double*)realloc(d, sizeof(double) * (size_t)(n + sub_n));
+            if (nd) { d = nd; memcpy(d + n, sub, sizeof(double) * (size_t)sub_n); n += sub_n; }
+            free(sub);
+        }
+    }
+    *cnt = n;
+    return d;
+}
+
+/* Wrapper stack-entry (argomento della VM) → gmb_vm_val_flatten_dbl. */
+double* gmb_vm_flatten_dbl(const gmb_stack_entry_t* a, int* cnt)
+{
+    *cnt = 0;
+    if (!a) return NULL;
+    if (a->type == 1)
+    {
+        double* one = (double*)malloc(sizeof(double));
+        if (!one) return NULL;
+        one[0] = a->num;
+        *cnt = 1;
+        return one;
+    }
+    if (a->type == 2 && a->ref && a->ref->kind == GMB_OBJ_LIST)
+    {
+        gmb_val_t lv;
+        memset(&lv, 0, sizeof(lv));
+        lv.kind = GMB_TYPE_OBJECT;
+        lv.v_ptr = a->ref;
+        return gmb_vm_val_flatten_dbl(&lv, cnt);
+    }
+    return NULL;
+}
+
+/* Costruisce una lista BASIC da un double[] e la restituisce via result_ref. */
+void gmb_vm_set_result_list(double* r, int n, int* is_num, gmb_obj_t** result_ref)
+{
+    *is_num = 0;
+    if (!r) { *result_ref = NULL; return; }
+    gmb_obj_shared_val_t* l = gmb_shared_list_new();
+    if (l) for (int i = 0; i < n; i++) gmb_list_add(l->list, gmb_make_val_double(r[i]));
+    free(r);
+    *result_ref = (gmb_obj_t*)l;
+}
+
+/* V5b: safepoint CPU (specchio ParkCpuBuiltin/ParkAsync di PCodeProcessor.CpuScheduling):
+ * i kernel numerici oltre soglia non occupano il worker — il task si parcheggia e il
+ * calcolo corre su un thread dedicato; al completamento il risultato viene pushato sullo
+ * stack del task (parcheggiato, nessun altro lo esegue) e il task riaccodato. Gli input
+ * sono SEMPRE copie (double*) fatte PRIMA del park: il thread non tocca stack/frame BASIC. */
+
+static gmb_stack_entry_t vm_cpu_job_result_entry(gmb_cpu_job_t* j)
+{
+    gmb_stack_entry_t e; e.type = 2; e.basic_type = GMB_BT_OBJECT; e.num = 0; e.ref = NULL;
+    switch (j->kind)
+    {
+        case 0: case 1:
+        {
+            gmb_int_t outn = 0;
+            double* r = (j->kind == 0)
+                ? gmb_signal_convolve(j->a, j->na, j->b, j->nb, &outn)
+                : gmb_signal_correlate(j->a, j->na, j->b, j->nb, &outn);
+            gmb_obj_shared_val_t* l = gmb_shared_list_new();
+            if (l && r) for (int i = 0; i < (int)outn; i++) gmb_list_add(l->list, gmb_make_val_double(r[i]));
+            free(r);
+            e.ref = (gmb_obj_t*)l;
+            break;
+        }
+        case 2: case 3:
+        {
+            int n = j->na;
+            gmb_obj_shared_val_t* out = NULL;
+            if (j->kind == 3 && n >= 2 && n % 2 == 0)
+            {
+                /* IFFT di coppie (output flat di FFT): round-trip. ×sqrt(half) MathNet. */
+                int half = n / 2;
+                double* re = (double*)malloc(half * sizeof(double));
+                double* im = (double*)malloc(half * sizeof(double));
+                if (re && im)
+                {
+                    for (int i = 0; i < half; i++) { re[i] = j->a[2*i]; im[i] = j->a[2*i + 1]; }
+                    gmb_fft(re, im, half, 1);
+                    if (half > 1) { double sh = sqrt((double)half); for (int i = 0; i < half; i++) { re[i] *= sh; im[i] *= sh; } }
+                    out = gmb_shared_list_new();
+                    if (out) for (int i = 0; i < half; i++) { gmb_list_add(out->list, gmb_make_val_double(re[i])); gmb_list_add(out->list, gmb_make_val_double(im[i])); }
+                }
+                free(re); free(im);
+                e.ref = (gmb_obj_t*)out;
+                break;
+            }
+            else
+            {
+                int sz = 1;
+                while (sz < (n > 0 ? n : 1)) sz <<= 1;
+                double* re = (double*)calloc(sz, sizeof(double));
+                double* im = (double*)calloc(sz, sizeof(double));
+                if (re && im)
+                {
+                    for (int i = 0; i < n; i++) re[i] = j->a[i];
+                    gmb_fft(re, im, sz, (j->kind == 3) ? 1 : 0);
+                    /* Scala MathNet simmetrica 1/sqrt(N) (canone IL/PCode) — forward
+                     * ×1/sqrt(sz), inverse (generico, input reale) ×sqrt(sz). */
+                    if (sz > 1) {
+                        double sf = (j->kind == 3) ? sqrt((double)sz) : 1.0 / sqrt((double)sz);
+                        for (int i = 0; i < sz; i++) { re[i] *= sf; im[i] *= sf; }
+                    }
+                    out = gmb_shared_list_new();
+                    if (out) for (int i = 0; i < sz; i++) { gmb_list_add(out->list, gmb_make_val_double(re[i])); gmb_list_add(out->list, gmb_make_val_double(im[i])); }
+                }
+                free(re); free(im);
+            }
+            e.ref = (gmb_obj_t*)out;
+            break;
+        }
+        case 4:
+        {
+            gmb_int_t outn = 0;
+            double* r = gmb_signal_window(j->na, j->p1, &outn);
+            gmb_obj_shared_val_t* l = gmb_shared_list_new();
+            if (l && r) for (int i = 0; i < (int)outn; i++) gmb_list_add(l->list, gmb_make_val_double(r[i]));
+            free(r);
+            e.ref = (gmb_obj_t*)l;
+            break;
+        }
+        default: /* 5: kmeans */
+        {
+            int k = j->p1 > 0 ? j->p1 : 1;
+            double* cent = (double*)calloc(k, sizeof(double));
+            if (cent) gmb_kmeans(j->a, j->na, k, cent);
+            gmb_obj_shared_val_t* out = gmb_shared_dict_new();
+            if (out && cent)
+            {
+                gmb_obj_shared_val_t* cl = gmb_shared_list_new();
+                if (cl) { for (int i = 0; i < k; i++) gmb_list_add(cl->list, gmb_make_val_double(cent[i])); gmb_dict_set(out->dict, "Centroids", gmb_make_val_obj((gmb_obj_t*)cl)); }
+            }
+            free(cent);
+            e.ref = (gmb_obj_t*)out;
+            break;
+        }
+    }
+    return e;
+}
+
+static void* vm_cpu_job_thread(void* arg)
+{
+    gmb_cpu_job_t* j = (gmb_cpu_job_t*)arg;
+    gmb_task_t* task = j->task;
+    gmb_scheduler_t* s = j->vm->scheduler;
+    gmb_stack_entry_t e = vm_cpu_job_result_entry(j);
+    free(j->a); free(j->b); free(j);
+    /* Il task è BLOCKED e non in esecuzione: push sicuro, poi riaccoda (wake).
+     * e.ref è un oggetto FRESCO creato dal job (ref 1) e j è già stato liberato →
+     * push_ref_new (STEAL): push_ref_entry (RETAIN) lascerebbe il ref del creatore. */
+    if (e.ref) push_ref_new(task, e.ref, GMB_BT_OBJECT);
+    else push_nil(task);
+    gmb_sched_enqueue(s, task);
+    return NULL;
+}
+
+/* Parcheggia il task sul job e avvia il thread di calcolo. 1 = parcheggiato (il chiamante
+ * NON deve pushare alcun risultato); 0 = fallito spawn, eseguire il calcolo sincrono. */
+int vm_try_park_cpu(gmb_vm_t* vm, gmb_task_t* task, gmb_cpu_job_t* j)
+{
+    j->vm = vm;
+    j->task = task;
+    pthread_t th;
+    if (pthread_create(&th, NULL, vm_cpu_job_thread, j) != 0) return 0;
+    pthread_detach(th);
+    task->state = GMB_TS_BLOCKED;
+    return 1;
+}
+
+/* Bookkeeping di fine-task (specchio di HandlePostTick in worker_loop, definita lì):
+ * flush dei PRINT accodati, resolve/fail del future associato, Done del WaitGroup
+ * implicito, decremento di active_count. Un task portato a GMB_TS_FINISHED da un
+ * thread ASINCRONO (non da un worker che lo stava eseguendo in tick) deve chiamarla
+ * esplicitamente — altrimenti nessun worker la invoca mai per lui (nessuna tick in
+ * corso su quel task), active_count resta >0 per sempre, e il watchdog anti-deadlock
+ * (gmb_sched_is_stuck) dichiara un deadlock FALSO (coda vuota, nessun async-job,
+ * nessun task "executing" — ma active_count ancora >0) seguito da un hang: il
+ * `gmb_sched_request_cancellation` del watchdog non ha più nulla da cancellare (il
+ * task è già FINISHED) e il main resta bloccato in attesa di active_count==0 — bug
+ * AiWiki GPM-Park-Error-Non-Catturabile-PCode-VMC, parte VM/C. */
+static void vm_finish_task_bookkeeping(gmb_vm_t* vm, gmb_task_t* task);
+
+/* F1 (parita' IL/PCodeVM, Strada C): AI.BLACKBOARDWAIT/AI.AGENTSWARM sono bloccanti
+ * (pthread_cond_timedwait / pthread_join interni) — chiamarle diretto dal worker GPM
+ * congelerebbe l'intero worker (con GOMAXPROCS=1, TUTTE le goroutine). Stesso schema
+ * vm_try_park_cpu ma per job che ricevono/producono char* invece di double[]. Usa
+ * gmb_sched_async_job_begin/end: il task e' BLOCKED (non executing, non in coda)
+ * mentre il thread dedicato lavora — senza il marcatore, il watchdog anti-deadlock
+ * (gmb_sched_is_stuck, ~500ms di coda vuota + nessun executing) lo scambierebbe per un
+ * vero deadlock e cancellerebbe il programma PRIMA che il job finisca. */
+static void* vm_str_job_thread(void* arg)
+{
+    gmb_str_job_t* j = (gmb_str_job_t*)arg;
+    gmb_task_t* task = j->task;
+    gmb_vm_t* vm = j->vm;
+    gmb_scheduler_t* s = vm->scheduler;
+    char* res = NULL;
+    char errbuf[4096];
+    int rc = 0;
+    if (j->kind == 0) {
+        res = gmb_blackboard_wait(j->key ? j->key : "", j->timeout_ms);
+    } else if (j->kind == 1) {
+        res = gmb_agent_swarm(j->n, j->prefix ? j->prefix : "", j->task_str ? j->task_str : "", j->cc);
+    } else if (j->kind == 2) {
+        rc = gmb_ai_finetune_run_opts(j->model ? j->model : "", j->json, errbuf, sizeof errbuf);
+        if (rc == 0) res = strdup(errbuf);
+    } else { /* kind 3: AI LORA APPLY */
+        rc = gmb_ai_lora_apply_run_opts(j->model ? j->model : "", j->json, errbuf, sizeof errbuf);
+        if (rc == 0) res = strdup(errbuf);
+    }
+    free(j->key); free(j->prefix); free(j->task_str);
+    free(j->model); free(j->json); free(j);
+    if (rc != 0) {
+        /* Errore del processo nativo (kind 2/3): propagalo come errore BASIC CATTURABILE
+         * (TRY/CATCH -> ON ERROR GOTO/GOSUB -> fatale), come il path sincrono di
+         * gmb_bf_1993/1994 — mai vm_error diretto, che renderebbe l'errore sempre fatale
+         * E (qui, path asincrono) lascerebbe il task FINISHED senza che nessun worker
+         * faccia mai la bookkeeping di fine-task (bug GPM-Park-Error-Non-Catturabile-
+         * PCode-VMC, parte VM/C: watchdog deadlock falso + hang). */
+        gmb_raise_basic_error(task, 0, errbuf);
+        if (task->state == GMB_TS_FINISHED)
+            vm_finish_task_bookkeeping(vm, task);
+        else
+            gmb_sched_enqueue(s, task);
+        gmb_sched_async_job_end(s);
+        return NULL;
+    }
+    /* Il task e' BLOCKED e non in esecuzione: push sicuro, poi riaccoda (wake). */
+    gmb_obj_string_t* s_obj = gmb_str_cstr(res ? res : "");
+    free(res);
+    if (s_obj) push_ref_new(task, (gmb_obj_t*)s_obj, GMB_BT_STRING);
+    else push_nil(task);
+    gmb_sched_enqueue(s, task);
+    gmb_sched_async_job_end(s);
+    return NULL;
+}
+
+/* Parcheggia il task sul job stringa e avvia il thread. 1 = parcheggiato (il chiamante
+ * NON deve pushare alcun risultato); 0 = fallito spawn, eseguire il calcolo sincrono. */
+int vm_try_park_str(gmb_vm_t* vm, gmb_task_t* task, gmb_str_job_t* j)
+{
+    j->vm = vm;
+    j->task = task;
+    gmb_sched_async_job_begin(vm->scheduler);
+    pthread_t th;
+    if (pthread_create(&th, NULL, vm_str_job_thread, j) != 0) { gmb_sched_async_job_end(vm->scheduler); return 0; }
+    pthread_detach(th);
+    task->state = GMB_TS_BLOCKED;
+    return 1;
+}
+
+/* Coarse-park SQL (op PESANTI): esegue una scrittura SQL che riscrive un file (vtab
+ * csv/parquet) su un thread dedicato, così il worker GPM non resta bloccato per tutta
+ * l'operazione. Stesso schema di vm_try_park_str: async_job_begin/end + push del
+ * risultato + re-enqueue del task. Le letture e le scritture leggere restano sincrone. */
+typedef struct { gmb_vm_t* vm; gmb_task_t* task; char* alias; char* sql; char** params; int nparams; } gmb_sql_job_t;
+
+static void* vm_sql_job_thread(void* arg)
+{
+    gmb_sql_job_t* j = (gmb_sql_job_t*)arg;
+    gmb_task_t* task = j->task;
+    gmb_scheduler_t* s = j->vm->scheduler;
+    int i, rc;
+    rc = gmb_sql_exec_params(j->alias, j->sql, j->nparams > 0 ? (const char* const*)j->params : NULL, j->nparams);
+    free(j->alias); free(j->sql);
+    if (j->params) { for (i = 0; i < j->nparams; i++) free(j->params[i]); free(j->params); }
+    free(j);
+    push_num_entry(task, (double)rc, GMB_BT_NUMBER);
+    gmb_sched_enqueue(s, task);
+    gmb_sched_async_job_end(s);
+    return NULL;
+}
+
+/* 1 = parcheggiato (il chiamante NON deve pushare il risultato); 0 = spawn fallito. */
+int vm_try_park_sql_exec(gmb_vm_t* vm, gmb_task_t* task, const char* alias, const char* sql, const char* const* params, int n)
+{
+    gmb_sql_job_t* j = (gmb_sql_job_t*)calloc(1, sizeof(gmb_sql_job_t));
+    pthread_t th;
+    int i;
+    if (!j) return 0;
+    j->vm = vm; j->task = task;
+    j->alias = strdup(alias ? alias : "");
+    j->sql = strdup(sql ? sql : "");
+    if (n > 0 && params) {
+        j->params = (char**)calloc((size_t)n, sizeof(char*));
+        if (!j->params) { free(j->alias); free(j->sql); free(j); return 0; }
+        j->nparams = n;
+        for (i = 0; i < n; i++) j->params[i] = strdup(params[i] ? params[i] : "");
+    }
+    gmb_sched_async_job_begin(vm->scheduler);
+    if (pthread_create(&th, NULL, vm_sql_job_thread, j) != 0) {
+        gmb_sched_async_job_end(vm->scheduler);
+        free(j->alias); free(j->sql);
+        if (j->params) { for (i = 0; i < j->nparams; i++) free(j->params[i]); free(j->params); }
+        free(j);
+        return 0;
+    }
+    pthread_detach(th);
+    task->state = GMB_TS_BLOCKED;
+    return 1;
+}
+
+/* ---- Contesto per quadrature/ODE: adatta una closure BASIC al callback context-aware
+   del runtime (gmb_quad_gk/gmb_simpson_ctx/gmb_solve_ode_ctx). ---- */
+
+double gmb_vm_closure_f(double x, void* c)
+{
+    gmb_closure_ctx_t* cc = (gmb_closure_ctx_t*)c;
+    return gmb_vm_call_closure_sync(cc->vm, cc->task, cc->cl, x);
+}
+
+double gmb_vm_closure_f2(double t, double y, void* c)
+{
+    /* gmb_vm_call_closure_sync2 pusha b poi a → param1=b, param2=a: per f(t, y)
+       dobbiamo passare (a=y, b=t) così param1=t e param2=y. */
+    gmb_closure_ctx_t* cc = (gmb_closure_ctx_t*)c;
+    return gmb_vm_call_closure_sync2(cc->vm, cc->task, cc->cl, y, t);
+}
+
+/* TORCH: se la lib ML non e' caricabile, errore BASIC chiaro (mai -1/0 muti).
+ * NB: il 'break' rompe lo switch del builtin (skippa il risultato). */
+#define GML_VM_REQUIRE() if (gmb_ml_load_lib() != 0) { vm_error(task, "TORCH non caricato: esegui 'gmb ml setup' o 'ML SETUP'"); break; }
+
+/* ---- JSON.PARSE completo: array/oggetti annidati (parità JSON managed).
+ * F2 (§0bis, runtime unificato): l'UNICA implementazione del parse JSON è nel
+ * runtime condiviso (gmb_json_parse, gmb_dict.c — string branch escape-aware);
+ * qui si converte il box runtime (transpiler style-1: kind=0, type_name
+ * "gmb_list"/"gmb_dict", data grezzo) in oggetto VM (gmb_obj_shared_val_t — la
+ * VM dispatcha su kind GMB_OBJ_*), liberando il box runtime durante la copia.
+ * md_to_vm è il convertitore; il walk ricorsivo libera il resto. */
+static void vm_json_free_runtime_val(gmb_val_t v)
+{
+    if (v.kind == GMB_TYPE_STRING) { if (v.v_string.data) free(v.v_string.data); return; }
+    if (v.kind != GMB_TYPE_OBJECT || !v.v_ptr) return;
+    gmb_obj_t* o = (gmb_obj_t*)v.v_ptr;
+    if (o->type_name && strcmp(o->type_name, "gmb_list") == 0)
+    {
+        gmb_list_t* l = (gmb_list_t*)o->data;
+        if (l)
+        {
+            for (size_t i = 0; i < l->count; i++) vm_json_free_runtime_val(l->items[i]);
+            /* NON gmb_list_free(l): rilascia gli elementi, gia' liberati sopra (leggerli = use-after-free).
+             * Si libera solo l'array. */
+            free(l->items);
+            free(l);   /* la struct gmb_list_t del box (malloc di gmb_make_val_list_take) */
+            o->data = NULL;
+        }
+    }
+    else if (o->type_name && strstr(o->type_name, "dict"))
+    {
+        gmb_dict_t* d = (gmb_dict_t*)o->data;
+        if (d)
+        {
+            for (size_t i = 0; i < d->count; i++) vm_json_free_runtime_val(d->items[i].value);
+            /* NON gmb_dict_free(d): da quando il dict possiede i valori contati, gmb_dict_free li
+             * rilascia, ma qui sono GIA' stati liberati sopra (leggerli = use-after-free). Si liberano
+             * solo chiavi e array coppie. */
+            for (size_t i = 0; i < d->count; i++) free(d->items[i].key);
+            free(d->items);
+            free(d);   /* la struct gmb_dict_t del box (malloc di gmb_make_val_dict_take) */
+            o->data = NULL;
+        }
+    }
+    free(o);
+}
+
+/* Converte il box runtime (style-1) di un NIDO in oggetto VM condiviso
+ * (gmb_obj_shared_val_t). NON consuma il box runtime: il chiamante libera
+ * l'intero albero una sola volta (vm_json_free_runtime_val sul top). */
+static gmb_val_t vm_json_full_val_from_runtime(gmb_val_t rv)
+{
+    if (rv.kind != GMB_TYPE_OBJECT || !rv.v_ptr) return gmb_val_nil();
+    gmb_obj_t* o = (gmb_obj_t*)rv.v_ptr;
+    if (o->type_name && strcmp(o->type_name, "gmb_list") == 0)
+    {
+        gmb_obj_shared_val_t* s = gmb_shared_list_new();
+        if (!s) return gmb_val_nil();
+        gmb_list_t* src = (gmb_list_t*)o->data;
+        if (src) for (size_t i = 0; i < src->count; i++)
+        {
+            gmb_val_t it = src->items[i];
+            if (it.kind == GMB_TYPE_OBJECT && it.v_ptr)
+            {
+                gmb_val_t conv = vm_json_full_val_from_runtime(it);
+                if (conv.kind == GMB_TYPE_OBJECT && conv.v_ptr) { gmb_list_add(s->list, conv); gmb_obj_release((gmb_obj_t*)conv.v_ptr); }   /* conv e' fresco (rc 1): la lista ne prende uno suo, si cede il ref del creatore */
+            }
+            else if (it.kind == GMB_TYPE_STRING)
+                gmb_list_add(s->list, gmb_make_val_string_counted(it.v_string.data ? it.v_string.data : ""));
+            else gmb_list_add(s->list, it);
+        }
+        return gmb_make_val_obj((gmb_obj_t*)s);
+    }
+    if (o->type_name && strstr(o->type_name, "dict"))
+    {
+        gmb_obj_shared_val_t* s = gmb_shared_dict_new();
+        if (!s) return gmb_val_nil();
+        gmb_dict_t* src = (gmb_dict_t*)o->data;
+        if (src) for (size_t i = 0; i < src->count; i++)
+        {
+            const char* k = src->items[i].key ? src->items[i].key : "";
+            gmb_val_t it = src->items[i].value;
+            if (it.kind == GMB_TYPE_OBJECT && it.v_ptr)
+            {
+                gmb_val_t conv = vm_json_full_val_from_runtime(it);
+                if (conv.kind == GMB_TYPE_OBJECT && conv.v_ptr) { gmb_dict_set(s->dict, k, conv); gmb_obj_release((gmb_obj_t*)conv.v_ptr); }   /* conv e' fresco (rc 1): il dict ne prende uno suo, si cede il ref del creatore */
+            }
+            else if (it.kind == GMB_TYPE_STRING)
+                gmb_dict_set(s->dict, k, gmb_make_val_string_counted(it.v_string.data ? it.v_string.data : ""));
+            else gmb_dict_set(s->dict, k, it);
+        }
+        return gmb_make_val_obj((gmb_obj_t*)s);
+    }
+    return gmb_val_nil();   /* nidi non-list/dict nel parse JSON non esistono */
+}
+
+int vm_json_full_parse(const char* js, gmb_val_t* out)
+{
+    gmb_val_t rv = gmb_json_parse(js);   /* unica implementazione parse (runtime condiviso) */
+    /* box runtime (transpiler style-1) → val VM: SOLO dict/list diventano wrapper
+     * gmb_obj_shared_val_t; gli scalari restano gmb_val_t raw (parità JSON.EXTRACT:
+     * il walk del builtin si aspetta stringhe/doppia NON boxati — md_to_vm li boxa). */
+    if (rv.kind != GMB_TYPE_OBJECT || !rv.v_ptr)
+    {
+        vm_json_free_runtime_val(rv);
+        return 0;
+    }
+    gmb_obj_t* o = (gmb_obj_t*)rv.v_ptr;
+    if (o->type_name && strcmp(o->type_name, "gmb_list") == 0)
+    {
+        gmb_obj_shared_val_t* s = gmb_shared_list_new();
+        if (!s) { vm_json_free_runtime_val(rv); return 0; }
+        gmb_list_t* src = (gmb_list_t*)o->data;
+        if (src) for (size_t i = 0; i < src->count; i++)
+        {
+            gmb_val_t it = src->items[i];
+            if (it.kind == GMB_TYPE_OBJECT && it.v_ptr)
+            {
+                gmb_val_t conv = vm_json_full_val_from_runtime(it);
+                if (conv.kind == GMB_TYPE_OBJECT && conv.v_ptr) { gmb_list_add(s->list, conv); gmb_obj_release((gmb_obj_t*)conv.v_ptr); }   /* conv e' fresco (rc 1): la lista ne prende uno suo, si cede il ref del creatore */
+            }
+            else if (it.kind == GMB_TYPE_STRING)
+                gmb_list_add(s->list, gmb_make_val_string_counted(it.v_string.data ? it.v_string.data : ""));
+            else gmb_list_add(s->list, it);
+        }
+        vm_json_free_runtime_val(rv);
+        *out = gmb_make_val_obj((gmb_obj_t*)s);
+        return 1;
+    }
+    if (o->type_name && strstr(o->type_name, "dict"))
+    {
+        gmb_obj_shared_val_t* s = gmb_shared_dict_new();
+        if (!s) { vm_json_free_runtime_val(rv); return 0; }
+        gmb_dict_t* src = (gmb_dict_t*)o->data;
+        if (src) for (size_t i = 0; i < src->count; i++)
+        {
+            const char* k = src->items[i].key ? src->items[i].key : "";
+            gmb_val_t it = src->items[i].value;
+            if (it.kind == GMB_TYPE_OBJECT && it.v_ptr)
+            {
+                gmb_val_t conv = vm_json_full_val_from_runtime(it);
+                if (conv.kind == GMB_TYPE_OBJECT && conv.v_ptr) { gmb_dict_set(s->dict, k, conv); gmb_obj_release((gmb_obj_t*)conv.v_ptr); }   /* conv e' fresco (rc 1): il dict ne prende uno suo, si cede il ref del creatore */
+            }
+            else if (it.kind == GMB_TYPE_STRING)
+                gmb_dict_set(s->dict, k, gmb_make_val_string_counted(it.v_string.data ? it.v_string.data : ""));
+            else gmb_dict_set(s->dict, k, it);
+        }
+        vm_json_free_runtime_val(rv);
+        *out = gmb_make_val_obj((gmb_obj_t*)s);
+        return 1;
+    }
+    vm_json_free_runtime_val(rv);
+    return 0;
+}
+
+
+/* V5: forward declaration — definita in fondo al file presso gmb_vm_run_mt; usata
+ * dal builtin SYSTEM.GOMAXPROCS (grow del pool worker a runtime). */
+int gmb_vm_spawn_worker(gmb_vm_t* vm);
+
+/* Converte gmb_val_t runtime (dict/list boxed) → oggetto VM (gmb_obj_shared_val_t). */
+gmb_obj_t* md_to_vm(gmb_val_t v)
+{
+    if (v.kind == GMB_TYPE_STRING) return (gmb_obj_t*)gmb_str_cstr(v.v_string.data ? v.v_string.data : "");
+    if (v.kind == GMB_TYPE_DOUBLE || v.kind != GMB_TYPE_OBJECT || !v.v_ptr) return NULL;
+    gmb_obj_t* o = (gmb_obj_t*)v.v_ptr;
+    if (!o || !o->data) return NULL;
+    /* Se il valore e' GIA' un valore VM (shared list/dict: dal parse JSON, da NEW JSON con un
+     * indice, da una LIST) NON lo si riconverte: il suo `data` e' un gmb_list_t, non un
+     * gmb_dict_t, e il ramo "dict" qui sotto lo camminerebbe con il layout sbagliato — le
+     * chiavi verrebbero lette dai dati degli elementi, restando spazzatura, e il gmb_dict_get
+     * su una chiave assurta faceva SEGV. Caso reale (2026-10-07): in
+     * samples/Community/PackageRegistry/PackageServer.bas la lettura di `m.backends` (array)
+     * da un JSON parsato mandava in crash il registry su VM/C, e la risposta HTTP usciva con il
+     * campo corrotto (byte non validi dentro la stringa JSON) invece che con l'array. */
+    if (o->kind == GMB_OBJ_LIST || o->kind == GMB_OBJ_DICT)
+    {
+        gmb_obj_retain(o);   /* il chiamante prende ownership (lo rilascia) */
+        return o;
+    }
+    if (o->type_name && strcmp(o->type_name, "gmb_list") == 0)
+    {
+        gmb_obj_shared_val_t* l = gmb_shared_list_new();
+        if (!l) return NULL;
+        gmb_list_t* rl = (gmb_list_t*)o->data;
+        for (size_t i = 0; i < rl->count; i++)
+        {
+            gmb_obj_t* it = md_to_vm(rl->items[i]);
+            if (it) gmb_list_add(l->list, gmb_make_val_obj(it));
+            else if (rl->items[i].kind == GMB_TYPE_DOUBLE || rl->items[i].kind == GMB_TYPE_STRING)
+                gmb_list_add(l->list, rl->items[i]);
+        }
+        return (gmb_obj_t*)l;
+    }
+    gmb_obj_shared_val_t* d = gmb_shared_dict_new();
+    if (!d) return NULL;
+    gmb_dict_t* rd = (gmb_dict_t*)o->data;
+    for (size_t i = 0; i < rd->count; i++)
+    {
+        gmb_val_t val = gmb_dict_get(*rd, rd->items[i].key);
+        gmb_obj_t* vo = md_to_vm(val);
+        if (vo) gmb_dict_set(d->dict, rd->items[i].key, gmb_make_val_obj(vo));
+        else if (val.kind == GMB_TYPE_DOUBLE || val.kind == GMB_TYPE_STRING)
+            gmb_dict_set(d->dict, rd->items[i].key, val);
+    }
+    return (gmb_obj_t*)d;
+}
+
+/* Helper per il dispatch dei builtin mancanti (audit VM_C.json): argomento stringa e
+ * ritorno stringa da char* heap-allocato (gmb_str_cstr copia, free del buffer). */
+const char* vm_builtin_sarg(const gmb_stack_entry_t* a, int argc, int i)
+{
+    if (i < argc && a[i].type == 2 && a[i].ref && a[i].ref->kind == GMB_OBJ_STRING)
+        return ((gmb_obj_string_t*)a[i].ref)->data;
+    return "";
+}
+
+void rdd_select_area(const gmb_stack_entry_t* args, int argc)
+{
+    if (argc >= 1)
+    {
+        if (args[0].type == 2)
+            gmb_rdd_select_alias(vm_builtin_sarg(args, argc, 0));
+        else
+            gmb_rdd_select((int)args[0].num);
+    }
+}
+
+/* Pops argc args from the syscall stack into out[] with out[0]=first pushed arg.
+ * The Compiler pushes args in order (a1,a2,a3, a3 on top); release refs are NOT freed
+ * here — the caller owns them (use vm_pop_str to copy a string arg). */
+void vm_pop_args_ordered(gmb_task_t* task, gmb_stack_entry_t* out, int argc)
+{
+    for (int i = 0; i < argc && i < 16; i++)
+        out[argc - 1 - i] = gmb_task_pop(task);
+}
+
+/* Box BYREF su campo __ClosureCtx (piano Closure-ByRef-Box-Linker-Definitivo, Fase 2/3): un
+ * campo che contiene un GMB_OBJ_BYREF (posto lì da MakeByRefExpr/OP_MAKE_BYREF lato .NET
+ * Compiler, mai da codice utente) va SEMPRE srotolato in lettura — mai trattato come un
+ * valore/campo normale. gmb_byref_load (=byref_read) srotola GIÀ ricorsivamente un'intera
+ * catena di box in una sola chiamata (OP_MAKE_BYREF su uno slot che contiene già un box ne
+ * crea uno che indirizza a quello stesso slot — un livello di indirezione in più, innocuo
+ * perché byref_read attraversa la catena da solo). "s" arriva da gmb_adapter_val_to_stack,
+ * che per GMB_OBJ_BYREF fa un retain esplicito (v. commento gemello lì) — va rilasciato qui
+ * dopo aver estratto il valore vero (il valore restituito da gmb_byref_load è un riferimento
+ * PRESTATO, la push successiva del chiamante lo retiene). */
+static gmb_stack_entry_t vm_unwrap_byref_chain(gmb_stack_entry_t s)
+{
+    if (s.type == 2 && s.ref && s.ref->kind == GMB_OBJ_BYREF)
+    {
+        gmb_stack_entry_t inner = gmb_byref_load((gmb_obj_byref_t*)s.ref);
+        gmb_obj_release(s.ref);
+        return inner;
+    }
+    return s;
+}
+
+/* Specchio di byref_read ma SENZA la ricorsione — un solo livello, per poter camminare a
+ * mano una catena di box (necessario in scrittura: gmb_byref_store scrive nello slot/cell
+ * ESATTO del box passato, MAI seguendo un'eventuale catena — se scrivessi nel box ESTERNO di
+ * una catena sovrascriverei il box INTERNO invece di scrivere attraverso di esso, perdendo il
+ * collegamento con la variabile originale del chiamante). Nessun retain/release — lettura
+ * pura di uno slot, il chiamante non possiede il risultato. */
+static gmb_stack_entry_t vm_byref_peek_one_level(const gmb_obj_byref_t* b)
+{
+    gmb_stack_entry_t e = { 0 };
+    if (!b) return e;
+    if (b->is_cell) return b->cell;
+    if (!b->owner) return e;
+    gmb_task_t* t = b->owner;
+    if (b->is_global)
+    {
+        if (b->slot >= 0 && b->slot < (int)t->globals_count)
+        {
+            e.type = t->globals_types[b->slot]; e.num = t->globals_nums[b->slot];
+            e.ref = t->globals_refs[b->slot]; e.basic_type = t->globals_basic[b->slot];
+        }
+        return e;
+    }
+    double* nums; gmb_obj_t** refs; uint8_t* types; uint8_t* basic;
+    if (b->frame) { nums = b->frame->local_nums; refs = b->frame->local_refs; types = b->frame->local_types; basic = b->frame->local_basic; }
+    else { nums = t->locals_nums; refs = t->locals_refs; types = t->locals_types; basic = t->locals_basic; }
+    if (b->slot < 0 || b->slot >= GMB_LOCALS_CAP) return e;
+    e.type = types[b->slot]; e.num = nums[b->slot]; e.ref = refs[b->slot]; e.basic_type = basic[b->slot];
+    return e;
+}
+
+/* Se "current" (letto PRIMA della scrittura) è un box (o una catena), cammina fino
+ * all'INNERMOST box e scrive lì — preserva l'identità del box condivisa col chiamante,
+ * invece di sovrascrivere il campo con un valore semplice. Ritorna 1 se ha scritto
+ * attraverso un box (il chiamante non deve più sovrascrivere il campo, "val" è stato
+ * consumato/retenuto da gmb_byref_store), 0 se il campo va scritto normalmente. */
+static int vm_write_through_byref_chain(gmb_stack_entry_t current, gmb_stack_entry_t val)
+{
+    if (!(current.type == 2 && current.ref && current.ref->kind == GMB_OBJ_BYREF)) return 0;
+    gmb_obj_byref_t* box = (gmb_obj_byref_t*)current.ref;
+    int guard = 0;
+    while (guard++ < 64)
+    {
+        gmb_stack_entry_t inner = vm_byref_peek_one_level(box);
+        if (inner.type == 2 && inner.ref && inner.ref->kind == GMB_OBJ_BYREF)
+        {
+            box = (gmb_obj_byref_t*)inner.ref;
+            continue;
+        }
+        break;
+    }
+    gmb_byref_store(box, val);
+    return 1;
+}
+
+void vm_pop_str(gmb_task_t* task, char* buf, size_t cap)
+{
+    gmb_stack_entry_t e = gmb_task_pop(task);
+    vm_entry_str(e, buf, (int)cap);
+    if (e.ref) gmb_obj_release(e.ref);
+}
+
+static void vm_pop_num(gmb_task_t* task, double* out)
+{
+    gmb_stack_entry_t e = gmb_task_pop(task);
+    *out = e.type == 1 ? e.num : 0;
+    if (e.ref) gmb_obj_release(e.ref);
+}
+
+void vm_builtin_rstr(char* heap, int* is_num, gmb_obj_t** result_ref, uint8_t* result_ref_bt)
+{
+    if (!heap) return;
+    *is_num = 0;
+    *result_ref = (gmb_obj_t*)gmb_str_cstr(heap);
+    free(heap);
+    *result_ref_bt = GMB_BT_STRING;
+}
+
+void gmb_vm_exec_builtin(gmb_vm_t* vm, gmb_task_t* task, int func_code, int argc)
+{
+    /* Delegate a gmb_builtin.c (tabella GMB_IMPL, refactor 6.5.2). */
+    gmb_builtin_dispatch(vm, task, func_code, argc);
+}
+
+/* ---- Dispatcher ---- */
+/* Callback HTTP: esegue l'handler BASIC (address nel chunk) con la richiesta.
+   Crea un task VM all'address, spinge req/res (dict condivisi) sullo stack, esegue. */
+static gmb_vm_t* g_http_vm = NULL;
+void gmb_vm_set_http_vm(gmb_vm_t* vm) { g_http_vm = vm; }
+gmb_vm_t* gmb_vm_get_http_vm(void) { return g_http_vm; }
+/* Certificato TLS configurato via HTTP CONFIG (CertificatePath/Password): usato da
+ * HTTP SERVER per avviare il listener HTTPS (gmb_http_server_start_tls). */
+static char g_vmc_cert_path[1024] = { 0 };
+static char g_vmc_cert_pass[256] = { 0 };
+
+/* Argomenti per il thread di FETCH asincrono (variante 1: FETCH ... INTO Callback). */
+typedef struct {
+    gmb_vm_t* vm;
+    int callback_ip;
+    char* url;
+    gmb_net_http_options_t opts;
+    int has_opts;
+    /* globals condivisi del task chiamante (perché la callback veda le variabili del main) */
+    double* globals_nums;
+    gmb_obj_t** globals_refs;
+    uint8_t* globals_types;
+    uint8_t* globals_basic;
+    uint32_t globals_count;
+    /* header custom copiati (per il thread async) */
+    char** hdr_names;
+    char** hdr_values;
+    int hdr_count;
+} gmb_vm_fetch_args_t;
+
+/* Costruisce il dict FETCHRESULT condiviso: chiavi scalari via gmb_http_fetchresult_seed
+   (sorgente unica §0bis) + Headers (parsati da "Nome: Valore\n"). Riusato da
+   vm_fetch_thread e da vm_fetch_expr_thread. */
+static gmb_obj_t* gmb_vm_fetch_make_result(int status, const char* body, size_t body_len,
+                                           const char* url, const char* err, char* hdrs)
+{
+    gmb_obj_shared_val_t* res = gmb_shared_dict_new();
+    if (!res) return NULL;
+    gmb_http_fetchresult_seed(res->dict, status, body, body_len, url, err);
+    /* "Headers": dict SHARED (il member-dispatch .Get del VM legge gmb_obj_shared_val_t),
+       riempito dal parser CONdiviso gmb_http_headers_fill (§0bis). Prima la costruzione
+       (parsing di hdrs) era inline qui; ora è unica con C99Native (bug
+       Headers-Get-Divergenza-Backend). */
+    {
+        gmb_obj_shared_val_t* hd = gmb_shared_dict_new();
+        if (hd)
+        {
+            gmb_http_headers_fill(hd->dict, hdrs);
+            gmb_dict_set(res->dict, "Headers", gmb_make_val_obj((gmb_obj_t*)hd));
+        }
+    }
+    return (gmb_obj_t*)res;
+}
+
+/* Argomenti per il thread di FETCH asincrono (variante 0, forma espressione x = FETCH(...)):
+   il thread esegue la richiesta e risolve il future col dict FETCHRESULT; il task VM,
+   parcheggiato sul future (gmb_future_register_waiter), viene ri-accodato e legge il valore. */
+typedef struct {
+    gmb_vm_t* vm;
+    char* url;
+    gmb_net_http_options_t opts;
+    int has_opts;
+    gmb_future_t* fut;
+    /* dict interno dell'oggetto COOKIEJAR (opts.CookieJar) o NULL: il thread monta i
+       cookie come header "Cookie" e memorizza i Set-Cookie della risposta nel jar
+       (parità managed CookieContainer per-istanza;helper runtime §0bis). */
+    gmb_dict_t* jar;
+} gmb_vm_fetch_expr_args_t;
+
+/* Thread di FETCH asincrono (forma espressione): esegue gmb_net_http_request sul thread
+   dedicato e risolve il future col dict FETCHRESULT — il worker non si blocca (GPM-compliant,
+   stesso modello di vm_fetch_thread/variant==1). */
+static void* vm_fetch_expr_thread(void* arg)
+{
+#ifndef GMB_VM_SPECIALIZED
+    gmb_vm_fetch_expr_args_t* a = (gmb_vm_fetch_expr_args_t*)arg;
+    if (!a || !a->vm || !a->vm->scheduler || !a->fut)
+    {
+        if (a) { free(a->url); free(a); }
+        return NULL;
+    }
+    int status = 0;
+    char* body = NULL; size_t blen = 0;
+    char* err = NULL;
+    char* hdrs = NULL;
+    /* COOKIEJAR (variante 0): i cookie memorizzati nel jar partono come header "Cookie"
+       (montato dal runtime) e ogni "Set-Cookie" della risposta viene salvato nel dict
+       del jar — parità managed (CookieContainer per-istanza; sample HttpFetchAdvanced:
+       jar manteneva, jar isolati, Clear() svuotava solo su IL/PCodeVM). */
+    char* jar_ck = NULL;
+    if (a->jar)
+    {
+        jar_ck = gmb_http_jar_cookie_header(a->jar);
+        if (jar_ck) a->opts.cookie_header = jar_ck;
+    }
+    int rc = gmb_net_http_request(a->url, a->has_opts ? &a->opts : NULL,
+                                  &status, &body, &blen, &err, &hdrs);
+    if (a->jar) gmb_http_jar_capture(a->jar, hdrs);
+    gmb_obj_t* res = gmb_vm_fetch_make_result(status, body, blen, a->url, err, hdrs);
+    if (rc != 0)
+    {
+        /* fallback: dict minimo con ErrorMessage */
+        if (!res) res = gmb_vm_fetch_make_result(status, "", 0, a->url, err ? err : "fetch failed", NULL);
+    }
+    if (res)
+        gmb_future_resolve(a->fut, res, 0.0, 0, a->vm->scheduler);
+    else
+        gmb_future_resolve(a->fut, NULL, 0.0, 1, a->vm->scheduler);
+    /* Marker F1 speculare al begin del dispatcher (vm_try_park_str_job, ~5758): il task
+       parcheggiato sul future NON è executing né in coda — senza contatore async-job il
+       watchdog anti-deadlock scambia la richiesta di rete in corso per "all goroutines
+       are asleep" e cancella il programma (~1s). End DOPO la resolve (task ri-accodato). */
+    gmb_sched_async_job_end(a->vm->scheduler);
+    if (body) free(body);
+    if (err) free(err);
+    if (hdrs) free(hdrs);
+    if (jar_ck) free(jar_ck);
+    free(a->url);
+    free(a);
+    return NULL;
+#else
+    (void)arg; return NULL;   /* HTTP assente nella VM specializzata */
+#endif
+}
+
+/* Thread di FETCH asincrono: esegue la richiesta HTTP e, al completamento, spawna un task
+   VM che invoca la SUB callback con firma SUB Callback(response$, error$). Replica
+   PCodeProcessor.cs OP_FETCH variant==1 (la richiesta NON blocca il worker). */
+static void* vm_fetch_thread(void* arg)
+{
+#ifndef GMB_VM_SPECIALIZED
+    gmb_vm_fetch_args_t* a = (gmb_vm_fetch_args_t*)arg;
+    if (!a || !a->vm || !a->vm->scheduler)
+    {
+        if (a) { free(a->url); free((void*)a->opts.method); free((void*)a->opts.body); free(a); }
+        return NULL;
+    }
+    gmb_vm_t* vm = a->vm;
+    gmb_scheduler_t* sched = vm->scheduler;
+
+    int status = 0;
+    char* respBody = NULL;
+    size_t respLen = 0;
+    char* err = NULL;
+    char* hdrs = NULL;
+    int rc = gmb_net_http_request(a->url, a->has_opts ? &a->opts : NULL,
+                                  &status, &respBody, &respLen, &err, &hdrs);
+
+    /* firma SUB Callback(response$, error$): pusha body poi error (error in cima, pop #1) */
+    gmb_obj_string_t* bodyStr = gmb_str_cstr(rc == 0 && respBody ? respBody : "");
+    gmb_obj_string_t* errStr = gmb_str_cstr(err ? err : "");
+    gmb_task_t* cbTask = gmb_task_create(sched, a->callback_ip);
+    if (cbTask)
+    {
+        cbTask->vm_ctx = vm;
+        /* condivide i globals del chiamante (come PCodeVM: cbTask.Globals = task.Globals) */
+        if (a->globals_count > 0)
+        {
+            cbTask->globals_nums = a->globals_nums;
+            cbTask->globals_refs = a->globals_refs;
+            cbTask->globals_types = a->globals_types;
+            cbTask->globals_basic = a->globals_basic;
+            cbTask->globals_count = a->globals_count;
+            cbTask->owns_globals = 0;
+        }
+        else
+            gmb_task_ensure_globals(cbTask, vm->chunk->global_count);
+        gmb_task_push_ref(cbTask, (gmb_obj_t*)bodyStr, GMB_BT_STRING);
+        gmb_task_push_ref(cbTask, (gmb_obj_t*)errStr, GMB_BT_STRING);
+        gmb_sched_enqueue(sched, cbTask);
+    }
+    else
+    {
+        gmb_obj_release((gmb_obj_t*)bodyStr);
+        gmb_obj_release((gmb_obj_t*)errStr);
+    }
+    if (respBody) free(respBody);
+    if (err) free(err);
+    if (hdrs) free(hdrs);
+    free(a->url);
+    free((void*)a->opts.method);
+    free((void*)a->opts.body);
+    if (a->hdr_count > 0)
+    {
+        for (int hi = 0; hi < a->hdr_count; hi++)
+        {
+            free(a->hdr_names[hi]);
+            free(a->hdr_values[hi]);
+        }
+        free(a->hdr_names);
+        free(a->hdr_values);
+    }
+    free(a);
+    return NULL;
+#else
+    (void)arg; return NULL;   /* HTTP assente nella VM specializzata */
+#endif
+}
+
+/* ---- WebSocket client: receive loop ---- */
+typedef struct {
+    gmb_vm_t* vm;
+    int64_t ws_handle;
+    gmb_obj_shared_val_t* wsd;  /* dict WEBSOCKET (retain) */
+    int owns_socket;            /* 1 lato server: alla fine chiude socket+handle (parità managed) */
+} gmb_ws_recv_args_t;
+
+/* Risolve il nome di una SUB (OnMessage/OnClose) in indirizzo nel chunk. */
+static int ws_resolve_callback(const char* name, gmb_vm_t* vm)
+{
+    if (!name || !*name || !vm->chunk) return 0;
+    for (uint32_t i = 0; i < vm->chunk->proc_count; i++)
+    {
+        if (vm->chunk->proc_names[i] && strcmp(vm->chunk->proc_names[i], name) == 0)
+            return (int)vm->chunk->proc_addrs[i];
+    }
+    return 0;
+}
+
+/* I task callback (OnMessage/OnClose) condividono i globals del task main (parità
+ * globalsTemplate managed): senza, i contatori a livello modulo (es. messageCount)
+ * ripartirebbero da zero a ogni callback. */
+static void ws_task_share_main_globals(gmb_task_t* t, gmb_vm_t* vm)
+{
+    if (vm->http_main_task && vm->http_main_task->globals_nums)
+    {
+        t->globals_nums = vm->http_main_task->globals_nums;
+        t->globals_refs = vm->http_main_task->globals_refs;
+        t->globals_types = vm->http_main_task->globals_types;
+        t->globals_basic = vm->http_main_task->globals_basic;
+        t->globals_count = vm->http_main_task->globals_count;
+    }
+    else
+        gmb_task_ensure_globals(t, vm->chunk->global_count);
+}
+
+static void* ws_receive_loop(void* arg)
+{
+    gmb_ws_recv_args_t* a = (gmb_ws_recv_args_t*)arg;
+    if (!a || !a->vm || !a->vm->scheduler)
+    {
+        if (a)
+        {
+            if (a->owns_socket) gmb_ws_close(a->ws_handle);
+            if (a->wsd) gmb_obj_release((gmb_obj_t*)a->wsd);
+            free(a);
+        }
+        return NULL;
+    }
+    gmb_vm_t* vm = a->vm;
+    gmb_scheduler_t* sched = vm->scheduler;
+    while (1)
+    {
+        int opcode = 0;
+        char* payload = NULL;
+        size_t plen = 0;
+        if (gmb_ws_recv_frame(a->ws_handle, &opcode, &payload, &plen, 0) != 0)
+            break; /* connessione chiusa o errore */
+        if (opcode == GMB_WS_TEXT)
+        {
+            /* OnMessage(ws, msg$) */
+            gmb_val_t cb = gmb_dict_get(*a->wsd->dict, "OnMessage");
+            const char* cbname = (cb.kind == GMB_TYPE_STRING && cb.v_string.data) ? cb.v_string.data : "";
+            int cbip = ws_resolve_callback(cbname, vm);
+            if (cbip > 0)
+            {
+                gmb_obj_string_t* msg = gmb_str_cstr(payload ? payload : "");
+                gmb_obj_retain((gmb_obj_t*)a->wsd);
+                gmb_task_t* t = gmb_task_create(sched, cbip);
+                if (t)
+                {
+                    t->vm_ctx = vm;
+                    ws_task_share_main_globals(t, vm);
+                    gmb_task_push_ref(t, (gmb_obj_t*)a->wsd, GMB_BT_OBJECT);
+                    gmb_task_push_ref(t, (gmb_obj_t*)msg, GMB_BT_STRING);
+                    gmb_sched_enqueue(sched, t);
+                }
+                else
+                    gmb_obj_release((gmb_obj_t*)a->wsd);
+                gmb_obj_release((gmb_obj_t*)msg);
+            }
+        }
+        else if (opcode == GMB_WS_CLOSE)
+        {
+            gmb_val_t cb = gmb_dict_get(*a->wsd->dict, "OnClose");
+            const char* cbname = (cb.kind == GMB_TYPE_STRING && cb.v_string.data) ? cb.v_string.data : "";
+            int cbip = ws_resolve_callback(cbname, vm);
+            if (cbip > 0)
+            {
+                gmb_obj_retain((gmb_obj_t*)a->wsd);
+                gmb_task_t* t = gmb_task_create(sched, cbip);
+                if (t)
+                {
+                    t->vm_ctx = vm;
+                    ws_task_share_main_globals(t, vm);
+                    gmb_task_push_ref(t, (gmb_obj_t*)a->wsd, GMB_BT_OBJECT);
+                    gmb_sched_enqueue(sched, t);
+                }
+                else
+                    gmb_obj_release((gmb_obj_t*)a->wsd);
+            }
+            break;
+        }
+        if (payload) free(payload);
+    }
+    /* Lato server il receive-loop possiede il socket: chiudilo (invia Close frame +
+       rilascia l'handle) quando la sessione finisce, e rilascia il marcatore di
+       attività della sessione (completion condition). Lato client (owns_socket=0) la
+       chiusura resta in carico al codice BASIC (ws.Close) — comportamento invariato. */
+    if (a->owns_socket)
+    {
+        gmb_ws_close(a->ws_handle);
+        gmb_sched_release_active(sched);
+    }
+    gmb_obj_release((gmb_obj_t*)a->wsd);
+    free(a);
+    return NULL;
+}
+
+/* Avvia il receive loop WebSocket (una volta sola per handle). */
+static void gmb_ws_start_recv(gmb_vm_t* vm, int64_t handle, gmb_obj_shared_val_t* wsd)
+{
+    /* evita thread multipli per lo stesso handle: chiave "__ws_thread_started" */
+    gmb_val_t started = gmb_dict_get(*wsd->dict, "__ws_thread_started");
+    if (started.kind == GMB_TYPE_DOUBLE && started.v_double == 1) return;
+    gmb_dict_set(wsd->dict, "__ws_thread_started", gmb_make_val_double(1));
+    gmb_ws_recv_args_t* a = (gmb_ws_recv_args_t*)calloc(1, sizeof(gmb_ws_recv_args_t));
+    if (!a) return;
+    a->vm = vm;
+    a->ws_handle = handle;
+    a->wsd = wsd;
+    /* Lato server il dict ha __ws_server=1 (creato in gmb_vm_http_handler): il loop
+       possiede il socket e lo chiude alla fine. Lato client no. */
+    gmb_val_t srv = gmb_dict_get(*wsd->dict, "__ws_server");
+    a->owns_socket = (srv.kind == GMB_TYPE_DOUBLE && srv.v_double == 1) ? 1 : 0;
+    /* Lato server: la sessione tiene attiva la completion condition finché il loop
+       non esce (rilascia ws_receive_loop) — altrimenti wait_all_done scattava prima
+       dei callback tardivi (OnClose) e il programma terminava senza eseguirli. */
+    if (a->owns_socket) gmb_sched_hold_active(vm->scheduler);
+    gmb_obj_retain((gmb_obj_t*)wsd);
+    pthread_t th;
+    pthread_create(&th, NULL, ws_receive_loop, a);
+    pthread_detach(th);
+}
+
+/* Implementazione unica (runtime condiviso, AGENTS 0bis): i due handler pubblici qui sotto
+ * sono solo involucri sulla stessa logica, perche' il corpo puo' essere binario. */
+static int gmb_vm_http_handler_ex(void* ctx, const gmb_http_request_t* req_c,
+                                  char** out_body, size_t* out_body_len,
+                                  int* out_status, char** out_headers)
+{
+    int callbackAddr = (int)(intptr_t)ctx;
+    gmb_vm_t* vm = g_http_vm;
+    if (!vm || callbackAddr <= 0) { *out_body = strdup("{\"error\":\"no handler\"}"); return 500; }
+
+    /* crea req dict completo: Method, Path, Query, Params, Headers, Body, IP */
+    gmb_obj_shared_val_t* req = gmb_shared_dict_new();
+    if (!req) { *out_body = strdup("{\"error\":\"oom\"}"); return 500; }
+    gmb_dict_set(req->dict, "Method", gmb_make_val_string_counted(req_c->method ? req_c->method : ""));
+    gmb_dict_set(req->dict, "Path", gmb_make_val_string_counted(req_c->path ? req_c->path : ""));
+    /* Query: DICT parsato (parità BuildRequestDict managed), non stringa grezza —
+     * req.Query["name"] nei route handler legge da qui. */
+    {
+        gmb_obj_shared_val_t* qd = gmb_shared_dict_new();
+        if (qd)
+        {
+            const char* qs = req_c->query ? req_c->query : "";
+            if (*qs)
+            {
+                char* buf = strdup(qs);
+                if (buf)
+                {
+                    char* p = buf;
+                    while (p && *p)
+                    {
+                        char* amp = strchr(p, '&');
+                        if (amp) *amp = '\0';
+                        char* eq = strchr(p, '=');
+                        char* val = (char*)"";
+                        if (eq) { *eq = '\0'; val = eq + 1; }
+                        if (*p) gmb_dict_set(qd->dict, p, gmb_make_val_string_counted(val));
+                        p = amp ? amp + 1 : NULL;
+                    }
+                    free(buf);
+                }
+            }
+            gmb_dict_set(req->dict, "Query", gmb_make_val_obj((gmb_obj_t*)qd));
+        }
+        gmb_dict_set(req->dict, "QueryString", gmb_make_val_string_counted(req_c->query ? req_c->query : ""));
+    }
+    gmb_dict_set(req->dict, "Body", gmb_make_val_string_counted(req_c->body ? req_c->body : ""));
+    gmb_dict_set(req->dict, "IP", gmb_make_val_string_counted(req_c->remote_ip ? req_c->remote_ip : ""));
+    gmb_dict_set(req->dict, "RemoteIp", gmb_make_val_string_counted(req_c->remote_ip ? req_c->remote_ip : ""));
+    /* Headers dict (parità managed BuildRequestDict): il dict req della VM/C NON aveva la
+     * chiave "Headers" — req.Headers.Get("User-Agent") rientrava nil (divergenza del sample
+     * HttpFetchAdvanced). Nomi come ricevuti sul wire; il .Get builtin del dict (vedi
+     * OP_CALL_MEMBER "Get") legge per chiave esatta. */
+    {
+        gmb_obj_shared_val_t* hd = gmb_shared_dict_new();
+        const char* cookieHdr = NULL;
+        if (hd)
+        {
+            for (int i = 0; i < req_c->header_count; i++)
+            {
+                if (!req_c->header_names[i]) continue;
+                gmb_dict_set(hd->dict, req_c->header_names[i],
+                             gmb_make_val_string(req_c->header_values[i] ? req_c->header_values[i] : ""));
+                if (strcasecmp(req_c->header_names[i], "Cookie") == 0 && req_c->header_values[i])
+                    cookieHdr = req_c->header_values[i];
+            }
+            gmb_dict_set(req->dict, "Headers", gmb_make_val_obj((gmb_obj_t*)hd));
+        }
+        /* SessionId (parità PCode Handler.cs::ParseSessionIdCookie via helper runtime):
+         * senza questa chiave il server mintava una sessione NUOVA a ogni richiesta e il
+         * round-trip del COOKIEJAR client non poteva essere osservato. */
+        {
+            char* sid = gmb_http_parse_session_id(cookieHdr);
+            gmb_dict_set(req->dict, "SessionId", gmb_make_val_string_counted(sid ? sid : ""));
+            free(sid);
+        }
+    }
+    /* Content-Type (per req.ParseMultipartForm/req.BodyJson): cerca l'header nel runtime */
+    {
+        const char* ct = NULL;
+        for (int i = 0; i < req_c->header_count; i++)
+            if (req_c->header_names[i] && strncasecmp(req_c->header_names[i], "Content-Type", 12) == 0)
+            {
+                ct = req_c->header_values[i];
+                break;
+            }
+        gmb_dict_set(req->dict, "__content_type", gmb_make_val_string_counted(ct ? ct : ""));
+        /* BodyJson canonico (parità PCode BuildRequestDict): helper condiviso §0bis.
+         * Il dict del runtime (host gmb_obj typed) NON è leggibile dal call-index della
+         * VM (serve GMB_OBJ_DICT con campo dict): copia di UN livello in un dict VM
+         * condiviso, come fa JSON.Parse (gmb_json_parse_to_dict su shared_dict) e come
+         * gmb_vm_set_dict_result. */
+        {
+            gmb_val_t bjv = gmb_http_body_json(ct, req_c->body);
+            if (bjv.kind == GMB_TYPE_OBJECT && bjv.v_ptr)
+            {
+                gmb_obj_t* o = (gmb_obj_t*)bjv.v_ptr;
+                gmb_dict_t* hd = o->kind == GMB_OBJ_DICT && ((gmb_obj_shared_val_t*)o)->dict
+                    ? ((gmb_obj_shared_val_t*)o)->dict : (gmb_dict_t*)o->data;
+                gmb_obj_shared_val_t* bd = gmb_shared_dict_new();
+                if (bd)
+                {
+                    if (hd) for (size_t i = 0; i < hd->count; i++)
+                        gmb_dict_set(bd->dict, hd->items[i].key, hd->items[i].value);
+                    gmb_dict_set(req->dict, "BodyJson", gmb_make_val_obj((gmb_obj_t*)bd));
+                }
+                else gmb_dict_set(req->dict, "BodyJson", bjv);
+            }
+            else gmb_dict_set(req->dict, "BodyJson", bjv);
+        }
+    }
+    /* Params: dict nomi→valori dei parametri {x} della route (+ "query.<k>" dalla query
+     * string, parità BuildRequestDict managed). */
+    gmb_obj_shared_val_t* params = gmb_shared_dict_new();
+    if (params)
+    {
+        for (int i = 0; i < req_c->params_count && i < 16; i++)
+        {
+            const char* pname = (i < req_c->param_names_count && req_c->param_names[i][0])
+                ? req_c->param_names[i] : NULL;
+            if (pname) gmb_dict_set(params->dict, pname, gmb_make_val_string_counted(req_c->params[i]));
+            char pos[8];
+            snprintf(pos, sizeof(pos), "%d", i);
+            gmb_dict_set(params->dict, pos, gmb_make_val_string_counted(req_c->params[i]));
+        }
+        gmb_val_t qv = gmb_dict_get(*req->dict, "Query");
+        if (qv.kind == GMB_TYPE_OBJECT && qv.v_ptr &&
+            ((gmb_obj_t*)qv.v_ptr)->kind == GMB_OBJ_DICT &&
+            ((gmb_obj_shared_val_t*)qv.v_ptr)->dict)
+        {
+            gmb_dict_t* qd = ((gmb_obj_shared_val_t*)qv.v_ptr)->dict;
+            for (size_t i = 0; i < qd->count; i++)
+            {
+                char qk[96];
+                snprintf(qk, sizeof(qk), "query.%s", qd->items[i].key ? qd->items[i].key : "");
+                gmb_dict_set(params->dict, qk, qd->items[i].value);
+            }
+        }
+    }
+    gmb_dict_set(req->dict, "Params", gmb_make_val_obj((gmb_obj_t*)params));
+
+    /* crea res dict: Status, Body */
+    gmb_obj_shared_val_t* res = gmb_shared_dict_new();
+    if (!res) { *out_body = strdup("{\"error\":\"oom\"}"); return 500; }
+    gmb_dict_set(res->dict, "Status", gmb_make_val_double(200));
+    gmb_dict_set(res->dict, "Body", gmb_make_val_string_counted(""));
+    gmb_dict_set(res->dict, "__headers", gmb_make_val_string_counted(""));
+
+    /* crea il task handler e accodalo nel GPM (worker thread lo eseguirà).
+       Gli argomenti della SUB (req, res) vanno sullo stack del task. */
+    gmb_task_t* task = gmb_task_create(vm->scheduler, callbackAddr);
+    if (!task) { *out_body = strdup("{\"error\":\"no task\"}"); return 500; }
+    task->vm_ctx = vm;
+    /* Condivide le GLOBALI del task main (per riferimento, come gli altri callback del
+       scheduler): senza, il SUB handler vedrebbe l'array globali vuoto e i global del
+       modulo (es. pkgs) sarebbero NIL → res.SendJSON(pkgs) = {}. */
+    if (vm->http_main_task && vm->http_main_task->globals_nums)
+    {
+        task->globals_nums = vm->http_main_task->globals_nums;
+        task->globals_refs = vm->http_main_task->globals_refs;
+        task->globals_types = vm->http_main_task->globals_types;
+        task->globals_basic = vm->http_main_task->globals_basic;
+        task->globals_count = vm->http_main_task->globals_count;
+    }
+    else
+    {
+        gmb_task_ensure_globals(task, vm->chunk->global_count);
+    }
+    /* Step di catena di QUESTO task (parità _httpTaskNextHandle keyed-by-task): la forma
+     * implicita "HTTP USE NEXT" risolve l'argomento a nil e ripiega qui, perche' il TLS
+     * del server thread non è visibile al worker GPM. 0 = passo finale/fuori catena. */
+    task->http_chain_step = req_c->chain_step_id;
+    /* WebSocket upgrade (parità managed SpawnHttpHandlerTask): il terzo argomento è il
+       dict WEBSOCKET con l'handle del socket server; il BASIC fa ws.OnMessage = "Sub". */
+    gmb_obj_shared_val_t* wsd = NULL;
+    if (req_c->is_websocket_upgrade && req_c->ws_handle > 0)
+    {
+        wsd = gmb_shared_dict_new();
+        if (wsd)
+        {
+            gmb_dict_set(wsd->dict, "__ws_handle", gmb_make_val_double((double)req_c->ws_handle));
+            gmb_dict_set(wsd->dict, "__ws_server", gmb_make_val_double(1));
+            gmb_dict_set(wsd->dict, "OnMessage", gmb_make_val_string_counted(""));
+            gmb_dict_set(wsd->dict, "OnClose", gmb_make_val_string_counted(""));
+            gmb_dict_set(wsd->dict, "OnError", gmb_make_val_string_counted(""));
+            gmb_dict_set(wsd->dict, "State", gmb_make_val_string_counted("Open"));
+        }
+    }
+    gmb_task_push_ref(task, (gmb_obj_t*)req, GMB_BT_OBJECT);
+    gmb_task_push_ref(task, (gmb_obj_t*)res, GMB_BT_OBJECT);
+    if (wsd) gmb_task_push_ref(task, (gmb_obj_t*)wsd, GMB_BT_OBJECT);
+    else if (req_c->chain_step_id > 0)
+    {
+        /* Catena middleware (parità managed: con >1 passo OGNI passo riceve 3 argomenti
+         * (req, res, next)). Il "next" del mondo C è l'id dello step di catena: la forma
+         * esplicita `HTTP USE NEXT myNextHandler` lo ri-passa a case 17 (ordered[0]=num),
+         * quella implicita risolve nil e ripiega su task->http_chain_step. TRONCATO
+         * all'arità dichiarata (vedi SpawnHttpHandlerTask): il prologo VM/C poppa gli args
+         * POSIZIONALMENTE, spingerne più del dichiarato disallineerebbe i parametri. */
+        uint32_t declared = 0;
+        if (vm->chunk)
+            for (uint32_t ai = 0; ai < vm->chunk->arity_count; ai++)
+                if ((int)vm->chunk->arity_addrs[ai] == callbackAddr) { declared = vm->chunk->arity_vals[ai]; break; }
+        if (declared >= 3)
+            gmb_task_push_num(task, (double)req_c->chain_step_id, GMB_BT_NUMBER);
+    }
+    gmb_sched_enqueue(vm->scheduler, task);
+
+    /* attende la fine dell'handler: il task handler può eseguire res.Send / uscire. Il runtime
+       HTTP gira su un thread dedicato (http_server_loop) — l'attesa qui è breve (poll). */
+    int guard = 0;
+    while (guard++ < 300000 && task->state != GMB_TS_FINISHED)
+        nanosleep(&(struct timespec){ 0, 500000 }, NULL);
+
+    /* WebSocket: se il BASIC ha registrato OnMessage/OnClose, avvia il receive loop che
+       dispatcha i frame alle SUB (parità managed) e segnala il takeover (ritorno 1: il
+       layer network NON deve fare echo né chiudere il socket — lo possiede la VM). */
+    if (req_c->is_websocket_upgrade)
+    {
+        int takeover = 0;
+        if (wsd)
+        {
+            gmb_val_t vm_cb = gmb_dict_get(*wsd->dict, "OnMessage");
+            gmb_val_t vc_cb = gmb_dict_get(*wsd->dict, "OnClose");
+            int has_msg = (vm_cb.kind == GMB_TYPE_STRING && vm_cb.v_string.data && *vm_cb.v_string.data);
+            int has_cls = (vc_cb.kind == GMB_TYPE_STRING && vc_cb.v_string.data && *vc_cb.v_string.data);
+            if (has_msg || has_cls)
+            {
+                gmb_ws_start_recv(vm, req_c->ws_handle, wsd);
+                takeover = 1;
+            }
+        }
+        if (wsd) gmb_obj_release((gmb_obj_t*)wsd);
+        gmb_obj_release((gmb_obj_t*)res);
+        gmb_obj_release((gmb_obj_t*)req);
+        gmb_task_free(task);
+        return takeover;
+    }
+
+
+    /* legge la risposta da res */
+    gmb_val_t vb = gmb_dict_get(*res->dict, "Body");
+    const char* respBody = (vb.kind == GMB_TYPE_STRING && vb.v_string.data) ? vb.v_string.data : "";
+    /* Corpo BINARIO: res.SendFile deposita i byte in Body e la lunghezza in "__body_len".
+     * strlen/troncamento al primo NUL qui tagliava uno ZIP a meta'. */
+    gmb_val_t vbl = gmb_dict_get(*res->dict, "__body_len");
+    if (vbl.kind == GMB_TYPE_DOUBLE && vbl.v_double >= 0)
+    {
+        size_t blen = (size_t)vbl.v_double;
+        char* bb = (char*)malloc(blen + 1);
+        if (bb) { if (blen && respBody) memcpy(bb, respBody, blen); bb[blen] = 0; }
+        *out_body = bb;
+        if (out_body_len) *out_body_len = bb ? blen : 0;
+    }
+    else
+    {
+        *out_body = strdup(respBody);
+        if (out_body_len) *out_body_len = *out_body ? strlen(*out_body) : 0;
+    }
+    gmb_val_t vs = gmb_dict_get(*res->dict, "Status");
+    if (vs.kind == GMB_TYPE_DOUBLE) *out_status = (int)vs.v_double;
+    /* res.StatusCode = N scrive la chiave "StatusCode" (property setter generica su dict):
+     * senza questo la 404 del DetailHandler usciva come 200. */
+    gmb_val_t vsc = gmb_dict_get(*res->dict, "StatusCode");
+    if (vsc.kind == GMB_TYPE_DOUBLE && vsc.v_double > 0) *out_status = (int)vsc.v_double;
+    gmb_val_t vh = gmb_dict_get(*res->dict, "__headers");
+    /* res.ContentType = "text/html" (property del tipo HTTPRESPONSE): parità col backend IL.
+     * Il glue VM/C leggeva solo __headers → il Content-Type restava text/plain. */
+    {
+        gmb_val_t vct = gmb_dict_get(*res->dict, "ContentType");
+        const char* cts = (vct.kind == GMB_TYPE_STRING && vct.v_string.data) ? vct.v_string.data : "";
+        if (*cts)
+        {
+            size_t need = strlen(cts) + 32 + (vh.kind == GMB_TYPE_STRING && vh.v_string.data ? strlen(vh.v_string.data) : 0);
+            char* hb = (char*)malloc(need);
+            if (hb) {
+                snprintf(hb, need, "Content-Type: %s\n%s", cts,
+                         (vh.kind == GMB_TYPE_STRING && vh.v_string.data) ? vh.v_string.data : "");
+                *out_headers = hb;
+            }
+        }
+        else if (vh.kind == GMB_TYPE_STRING && vh.v_string.data && *vh.v_string.data)
+            *out_headers = strdup(vh.v_string.data);
+    }
+
+    gmb_obj_release((gmb_obj_t*)res);
+    gmb_obj_release((gmb_obj_t*)req);
+    gmb_task_free(task);
+    return 0;
+}
+
+/* Firma storica (usata dal codice C generato: non cambiare). */
+int gmb_vm_http_handler(void* ctx, const gmb_http_request_t* req_c,
+                        char** out_body, int* out_status, char** out_headers)
+{
+    size_t blen = 0;
+    return gmb_vm_http_handler_ex(ctx, req_c, out_body, &blen, out_status, out_headers);
+}
+
+/* Forma binaria: usata dalle route registrate con gmb_http_server_route_bin, cosi'
+ * res.SendFile può servire un file con NUL (uno ZIP) senza troncamenti. */
+int gmb_vm_http_handler_bin(void* ctx, const gmb_http_request_t* req_c,
+                            char** out_body, size_t* out_body_len,
+                            int* out_status, char** out_headers)
+{
+    return gmb_vm_http_handler_ex(ctx, req_c, out_body, out_body_len, out_status, out_headers);
+}
+
+/* ============================================================================
+ * V4: TRY/CATCH/FINALLY sospendibile — specchio del protocollo PCodeVM
+ * (PCodeProcessor.Helpers.cs): TryStack + CleanupStack + PendingUnwind.
+ * Il FINALLY è bytecode normale: se parcheggia (SLEEP/RECV/...), l'unwind
+ * resta nel PCB e riprende quando Ip raggiunge EndIp (complete_finally).
+ * ============================================================================ */
+
+static int frame_in_chain(gmb_frame_t* current, gmb_frame_t* target)
+{
+    if (!target) return 1;
+    for (gmb_frame_t* f = current; f; f = f->prev)
+        if (f == target) return 1;
+    return 0;
+}
+
+static void pop_cleanup(gmb_task_t* task, gmb_try_entry_t* cleanup)
+{
+    if (task->cleanup_count > 0 && task->cleanup_stack[task->cleanup_count - 1] == cleanup)
+        gmb_try_entry_release(task->cleanup_stack[--task->cleanup_count]);
+    if (task->try_count > 0 && task->try_stack[task->try_count - 1] == cleanup)
+        gmb_try_entry_release(task->try_stack[--task->try_count]);
+}
+
+static int continue_pending_unwind(gmb_task_t* task)
+{
+    if (!task->unwind_active) return 0;
+    gmb_unwind_t* uw = &task->unwind;
+
+    while (task->cleanup_count > 0)
+    {
+        gmb_try_entry_t* cleanup = task->cleanup_stack[task->cleanup_count - 1];
+        if (uw->reason == GMB_UW_RETURN_GOSUB &&
+            task->cleanup_count <= uw->gosub_cleanup_depth) break;
+        if (uw->reason != GMB_UW_EXCEPTION && uw->reason != GMB_UW_CANCEL &&
+            uw->reason != GMB_UW_GO_EXIT && cleanup->frame != uw->frame) break;
+        if (uw->reason == GMB_UW_EXCEPTION && cleanup == uw->target_handler) break;
+        int target_stays_inside = uw->reason == GMB_UW_GOTO &&
+            uw->target_ip >= cleanup->protected_start && uw->target_ip < cleanup->end_ip;
+        if (target_stays_inside) break;
+        /* Un RETURN/GOTO emesso dal FINALLY corrente lo sostituisce: non riesegue lo
+         * stesso cleanup, ma attraversa ancora gli eventuali outer. */
+        if (uw->origin_ip >= cleanup->finally_ip && uw->origin_ip < cleanup->end_ip)
+        {
+            pop_cleanup(task, cleanup);
+            continue;
+        }
+        task->frame = cleanup->frame;
+        task->ip = cleanup->finally_ip;
+        return 1;   /* entra nel FINALLY: bytecode normale, può parcheggiare */
+    }
+
+    /* Parità Go defer (specchio ContinuePendingUnwind C#): prima di completare il RETURN
+     * ordinario, esegue i body DEFER registrati nel frame (LIFO). L'unwind RESTA attivo:
+     * OP_DEFER_RET lo completa quando i deferred sono esauriti. */
+    if (uw->reason == GMB_UW_RETURN && uw->frame && uw->frame->defer_count > 0)
+    {
+        task->pending_defer_return = 1;
+        task->ip = uw->frame->defer_ips[--uw->frame->defer_count];
+        return 1;
+    }
+
+    task->unwind_active = 0;
+    if (uw->reason == GMB_UW_EXCEPTION)
+    {
+        /* EnterSelectedExceptionHandler: pop del TryStack fino al target (incluso). */
+        gmb_try_entry_t* target = uw->target_handler;
+        uw->target_handler = NULL;
+        int found = 0;
+        while (task->try_count > 0)
+        {
+            gmb_try_entry_t* cur = task->try_stack[--task->try_count];
+            if (cur == target)
+            {
+                task->frame = target->frame;
+                gmb_task_truncate(task, target->stack_pointer);
+                if (uw->has_error_value)
+                {
+                    if (uw->error_value.type == 1)
+                        push_num_entry(task, uw->error_value.num, uw->error_value.basic_type);
+                    else if (uw->error_value.type == 2)
+                        push_ref_entry(task, (gmb_obj_t*)uw->error_value.ref, uw->error_value.basic_type);
+                    else push_nil(task);
+                }
+                else push_nil(task);
+                task->ip = target->handler_ip;
+                found = 1;
+                gmb_try_entry_release(cur);
+                break;
+            }
+            gmb_try_entry_release(cur);
+        }
+        gmb_try_entry_release(target);  /* ref trattenuta dall'unwind */
+        if (uw->has_error_value && uw->error_value.type == 2 && uw->error_value.ref)
+            gmb_obj_release(uw->error_value.ref);
+        uw->has_error_value = 0;
+        if (!found) vm_error(task, "BASIC Runtime Error: exception handler disappeared during unwind");
+        return 0;
+    }
+    if (uw->reason == GMB_UW_CANCEL)
+    {
+        /* Specchio C#: PendingException=OperationCanceledException("P-Code task cancelled.")
+         * + State=Finished — la cancellazione non è un fault della VM. */
+        vm_error(task, "P-Code task cancelled.");
+        task->state = GMB_TS_FINISHED;
+        return 0;
+    }
+    if (uw->reason == GMB_UW_GO_EXIT)
+    {
+        task->state = GMB_TS_FINISHED;
+        return 0;
+    }
+    if (uw->reason == GMB_UW_RETURN_GOSUB)
+    {
+        if (task->gosub_count > 0) task->gosub_count--;
+        while (task->try_count > uw->gosub_try_depth)
+            gmb_try_entry_release(task->try_stack[--task->try_count]);
+        while (task->cleanup_count > uw->gosub_cleanup_depth)
+            gmb_try_entry_release(task->cleanup_stack[--task->cleanup_count]);
+        gmb_task_truncate(task, uw->gosub_sp);
+        task->ip = uw->gosub_return_ip;
+        return 0;
+    }
+    task->ip = uw->reason == GMB_UW_GOTO ? uw->target_ip : uw->return_opcode_ip;
+    return 0;
+}
+
+/* Chiamato in testa al loop di dispatch: EndIp non è un opcode, è il confine nella
+ * side-table TryRegions. Ritorna 1 se il loop deve fare `continue` (Ip cambiato). */
+static int complete_finally_if_needed(gmb_task_t* task)
+{
+    if (task->cleanup_count == 0) return 0;
+    gmb_try_entry_t* cleanup = task->cleanup_stack[task->cleanup_count - 1];
+    if (task->ip != cleanup->end_ip) return 0;
+    pop_cleanup(task, cleanup);
+    if (task->unwind_active)
+    {
+        continue_pending_unwind(task);
+        return 1;
+    }
+    return 0;
+}
+
+/* Rimuove i TRY della frame corrente che un GOTO sta abbandonando (specchio
+ * UnwindTryRegionsForJump). */
+static void unwind_try_regions_for_jump(gmb_task_t* task, int target_ip)
+{
+    while (task->try_count > 0)
+    {
+        gmb_try_entry_t* active = task->try_stack[task->try_count - 1];
+        if (active->frame != task->frame) return;
+        if (target_ip >= active->protected_start && target_ip < active->handler_ip) return;
+        gmb_try_entry_release(task->try_stack[--task->try_count]);
+    }
+}
+
+/* Specchio TryEnterExceptionHandler: cerca il CATCH più interno ancora nella frame
+ * chain (un errore nato nel FINALLY non è catturabile dal CATCH della stessa
+ * regione). Ritorna 1 se l'unwind è partito, 0 se nessun handler. */
+static int try_enter_exception_handler(gmb_task_t* task, gmb_stack_entry_t err, int has_err)
+{
+    /* Un'eccezione nata durante un unwind in corso sostituisce il precedente:
+     * semplificazione rispetto ai SuppressedErrors di C# (l'unwind corrente viene
+     * scartato e il cleanup che lo conteneva eliminato se l'errore è lì dentro). */
+    if (task->unwind_active)
+    {
+        gmb_unwind_t* old = &task->unwind;
+        if (old->has_error_value && old->error_value.type == 2 && old->error_value.ref)
+            gmb_obj_release(old->error_value.ref);
+        gmb_try_entry_release(old->target_handler);
+        old->target_handler = NULL;
+        old->has_error_value = 0;
+        /* DiscardSupersededCleanup */
+        if (task->cleanup_count > 0)
+        {
+            gmb_try_entry_t* top = task->cleanup_stack[task->cleanup_count - 1];
+            if (old->origin_ip >= top->finally_ip && old->origin_ip < top->end_ip)
+                pop_cleanup(task, top);
+        }
+        task->unwind_active = 0;
+    }
+
+    int target_idx = -1;
+    for (int i = task->try_count - 1; i >= 0; i--)
+    {
+        gmb_try_entry_t* ti = task->try_stack[i];
+        if (!frame_in_chain(task->frame, ti->frame)) continue;
+        if (!ti->has_catch) continue;
+        if (task->current_ip >= ti->finally_ip && task->current_ip < ti->end_ip) continue;
+        target_idx = i;
+        break;
+    }
+    if (target_idx < 0)
+    {
+        if (has_err && err.type == 2 && err.ref) gmb_obj_release(err.ref);
+        return 0;
+    }
+
+    gmb_unwind_t* uw = &task->unwind;
+    memset(uw, 0, sizeof(*uw));
+    uw->reason = GMB_UW_EXCEPTION;
+    uw->origin_ip = task->current_ip;
+    uw->frame = task->frame;
+    uw->target_handler = task->try_stack[target_idx];
+    uw->target_handler->refcount++;
+    uw->error_value = err;
+    uw->has_error_value = has_err ? 1 : 0;
+    task->unwind_active = 1;
+    continue_pending_unwind(task);
+    return 1;
+}
+
+/* ---- V4e: protocollo ON ERROR (specchio RaiseBasicError/EnterProcedureErrorScope/
+ * UnwindProcedureFramesToErrorHandler di PCodeProcessor.Helpers) ---- */
+
+static void restore_caller_error_scope(gmb_task_t* task, gmb_frame_t* f)
+{
+    if (!f || !f->is_error_scope_boundary) return;
+    task->error_handler_ip = f->saved_error_handler_ip;
+    task->error_handler_is_gosub = f->saved_error_handler_is_gosub;
+    task->error_mode = f->saved_error_mode;
+    task->error_line_ip = f->saved_error_line_ip;
+    task->error_resume_next_ip = f->saved_error_resume_next_ip;
+}
+
+/* Rimuove i frame di procedura finché non riappare un handler ON ERROR salvato in uno
+ * scope chiamante (specchio UnwindProcedureFramesToErrorHandler): per ogni frame poppato
+ * ripristina lo stack operandi, scarta i suoi TRY residui e aggiorna i punti di RESUME
+ * sul RETURN del chiamante. */
+static void unwind_procedure_frames_to_error_handler(gmb_task_t* task)
+{
+    while (task->error_handler_ip == 0 &&
+           task->frame && task->frame->is_error_scope_boundary)
+    {
+        gmb_frame_t* f = task->frame;
+        task->frame = f->prev;
+        gmb_task_truncate(task, f->saved_sp);
+        while (task->try_count > 0 && task->try_stack[task->try_count - 1]->frame == f)
+            gmb_try_entry_release(task->try_stack[--task->try_count]);
+        restore_caller_error_scope(task, f);
+        task->error_line_ip = f->return_ip - 1 > 0 ? f->return_ip - 1 : 0;
+        task->error_resume_next_ip = f->return_ip;
+        gmb_frame_release(f);
+    }
+}
+
+/* Popola la pseudo-variabile globale ERR (StdLib.System.cs: tipo ErrType con
+ * Number/Description/LineNumber/SourceLineText/StackTrace) con il dizionario dell'errore.
+ * Lo slot è risolto per NOME in chunk->global_names ("ERR"); no-op se il programma non ha lo
+ * slot (build ridotte/senza StdLib). Prima `ERR.Number` in un handler ON ERROR restava vuoto:
+ * la VM non scriveva mai il globale (divergenza con IL/C99Native). */
+static void set_err_global(gmb_task_t* task, gmb_obj_shared_val_t* err)
+{
+    if (!task || !err) return;
+    gmb_vm_t* vm = (gmb_vm_t*)task->vm_ctx;
+    if (!vm || !vm->chunk || !vm->chunk->global_names) return;
+    int slot = -1;
+    for (uint32_t i = 0; i < vm->chunk->global_name_count; i++)
+    {
+        const char* gname = vm->chunk->global_names[i];
+        if (gname && strcmp(gname, "ERR") == 0) { slot = (int)i; break; }
+    }
+    if (slot < 0) return;
+    gmb_stack_entry_t e = { 0 };
+    e.type = 2;
+    e.ref = (gmb_obj_t*)err;
+    e.basic_type = GMB_BT_OBJECT;
+    gmb_task_store_global(task, slot, e);   /* fa retain: il dizionario resta vivo nel globale */
+}
+
+/* Schema a 3 livelli per un errore BASIC a runtime (specchio RaiseBasicError):
+ * TRY/CATCH attivo → ON ERROR GOTO/GOSUB → errore fatale del task.
+ * Ritorna 1 SOLO nel caso ON ERROR RESUME NEXT (l'esecuzione riprende dall'istruzione
+ * successiva: l'opcode chiamante deve lasciare un risultato — 0 — al posto dell'espressione
+ * fallita); 0 quando l'errore è stato consegnato a TRY/CATCH o all'handler ON ERROR (l'ip è
+ * già cambiato: NIENTE va pushato, altrimenti il valore finirebbe sopra quello che l'handler
+ * sta per consumare — è il bug per cui `CATCH e AS ERR` legava 0 invece del dizionario). */
+static int raise_basic_error(gmb_task_t* task, double err_code, const char* msg)
+{
+    task->error_line_ip = task->current_ip;
+    task->error_resume_next_ip = task->ip;
+    task->print_staging_len = 0;   /* DiscardIncompletePrintStatement */
+
+    /* Linea sorgente dell'errore: mappa ip → linea del chunk. Le voci sintetiche valgono
+     * 0xFFFFFFFF: si cerca la prima voce valida all'indietro (poi in avanti), così
+     * ERR.LineNumber riporta una riga reale invece di un valore assurdo. */
+    gmb_vm_t* err_vm = (gmb_vm_t*)task->vm_ctx;
+    long err_line = 0;
+    if (err_vm && err_vm->chunk && err_vm->chunk->lines && err_vm->chunk->code_len > 0)
+    {
+        uint32_t n = err_vm->chunk->code_len;
+        int ip0 = task->current_ip;
+        /* Le voci valide della mappa sono l'INDICE 0-based della riga (Chunk.Lines C#,
+         * `SourceLineIndex` = currentTokenLine - 1); -1 = voce sintetica da saltare. La riga
+         * del sorgente e' quindi voce+1, come il `s->line` (1-based) che C99Native passa a
+         * gmb_raise_error. */
+        int raw_line = -1;
+        if (ip0 >= 0 && (uint32_t)ip0 < n && err_vm->chunk->lines[ip0] < 0xFFFFFFF0u)
+            raw_line = (int)err_vm->chunk->lines[ip0];
+        else
+        {
+            for (uint32_t d = 1; d < n && raw_line < 0; d++)
+            {
+                int back = ip0 - (int)d;
+                if (back >= 0 && (uint32_t)back < n && err_vm->chunk->lines[back] < 0xFFFFFFF0u)
+                    raw_line = (int)err_vm->chunk->lines[back];
+                else
+                {
+                    int fwd = ip0 + (int)d;
+                    if (fwd >= 0 && (uint32_t)fwd < n && err_vm->chunk->lines[fwd] < 0xFFFFFFF0u)
+                        raw_line = (int)err_vm->chunk->lines[fwd];
+                }
+            }
+        }
+        if (raw_line >= 0) err_line = (long)(raw_line + 1);
+    }
+
+    /* Descrizione: se il raise non ne porta una (es. `ERROR 11`), usa il catalogo canonico
+     * condiviso con C99Native/IL/PCode — `ERR.Description` non deve restare vuota. */
+    if (msg == NULL || *msg == 0) msg = gmb_err_default_message((int)err_code);
+
+    gmb_stack_entry_t ev = { 0 };
+    gmb_obj_shared_val_t* err = gmb_shared_dict_new();
+    if (err)
+    {
+        gmb_dict_set(err->dict, "Number", gmb_make_val_double(err_code));
+        gmb_dict_set(err->dict, "Description", gmb_make_val_string_counted(msg ? msg : ""));
+        gmb_dict_set(err->dict, "LineNumber", gmb_make_val_double((double)err_line));
+        gmb_dict_set(err->dict, "SourceLineText", gmb_make_val_string_counted(""));
+        gmb_dict_set(err->dict, "StackTrace", gmb_make_val_string_counted(""));
+        ev.type = 2;
+        ev.ref = (gmb_obj_t*)err;
+        ev.basic_type = GMB_BT_OBJECT;
+        /* Pseudo-variabile ERR del linguaggio (StdLib: ERR.Number/Description/LineNumber/…):
+         * va popolata PRIMA del dispatch così ON ERROR e TRY/CATCH la vedono. Prima non
+         * veniva mai scritta → `ERR.Number` restava vuoto (divergenza con IL/C99Native). */
+        set_err_global(task, err);
+    }
+    if (try_enter_exception_handler(task, ev, err != NULL))
+        return 0;   /* TRY/CATCH: l'unwind V4 attraversa i FINALLY (tick loop) */
+
+    if (task->error_mode == 1)
+    {
+        /* ON ERROR RESUME NEXT attivo: riprende dall'istruzione SUCCESSIVA a quella
+         * fallita (error_resume_next_ip fissato sopra = ip dopo l'istruzione). */
+        task->ip = task->error_resume_next_ip;
+        return 1;
+    }
+
+    unwind_procedure_frames_to_error_handler(task);
+    if (task->error_handler_ip > 0)
+    {
+        /* L'handler riceve il messaggio in cima allo stack (PushRef(msg) in C#). */
+        gmb_obj_string_t* s = gmb_str_cstr(msg ? msg : "");
+        if (s)
+        {
+            push_ref_entry(task, (gmb_obj_t*)s, GMB_BT_STRING);
+            gmb_obj_release((gmb_obj_t*)s);   /* push_ref_entry trattiene un ref */
+        }
+        if (task->error_handler_is_gosub && task->ip_stack_count < 64)
+            task->ip_stack[task->ip_stack_count++] = task->ip;
+        task->ip = task->error_handler_ip;
+        return 0;
+    }
+
+    char buf[1024];
+    snprintf(buf, sizeof(buf), "BASIC Runtime Error: %s", msg ? msg : "");
+    vm_error(task, buf);
+    return 0;
+}
+
+/* Wrapper pubblico dello schema a 3 livelli (per gmb_builtin.c): un builtin che fallisce
+ * deve passare da TRY/CATCH -> ON ERROR GOTO/GOSUB -> errore fatale, come THROW_ERROR e
+ * come PCodeVM (RaiseBasicError) / IL (Throw). Prima i builtin chiamavano vm_error, che
+ * rendeva SEMPRE l'errore fatale: ON ERROR non lo catturava mai (bug parità §errsem). */
+void gmb_raise_basic_error(gmb_task_t* task, double err_code, const char* msg)
+{
+    (void)raise_basic_error(task, err_code, msg);
+}
+
+static int begin_return_unwind(gmb_task_t* task, int return_opcode_ip)
+{
+    if (task->unwind_active) return 0;
+    gmb_unwind_t* uw = &task->unwind;
+    memset(uw, 0, sizeof(*uw));
+    uw->reason = GMB_UW_RETURN;
+    uw->return_opcode_ip = return_opcode_ip;
+    uw->origin_ip = return_opcode_ip;
+    uw->frame = task->frame;
+    task->unwind_active = 1;
+    return continue_pending_unwind(task);
+}
+
+static int begin_goto_unwind(gmb_task_t* task, int target_ip)
+{
+    if (task->unwind_active) return 0;
+    gmb_unwind_t* uw = &task->unwind;
+    memset(uw, 0, sizeof(*uw));
+    uw->reason = GMB_UW_GOTO;
+    uw->target_ip = target_ip;
+    uw->origin_ip = task->current_ip;
+    uw->frame = task->frame;
+    task->unwind_active = 1;
+    return continue_pending_unwind(task);
+}
+
+static int begin_gosub_return_unwind(gmb_task_t* task, const gmb_gosub_cont_t* cont)
+{
+    if (task->unwind_active) return 0;
+    gmb_unwind_t* uw = &task->unwind;
+    memset(uw, 0, sizeof(*uw));
+    uw->reason = GMB_UW_RETURN_GOSUB;
+    uw->origin_ip = task->current_ip;
+    uw->frame = task->frame;
+    uw->gosub_return_ip = cont->return_ip;
+    uw->gosub_sp = cont->sp;
+    uw->gosub_try_depth = cont->try_depth;
+    uw->gosub_cleanup_depth = cont->cleanup_depth;
+    task->unwind_active = 1;
+    return continue_pending_unwind(task);
+}
+
+static int begin_go_exit_unwind(gmb_task_t* task)
+{
+    if (task->unwind_active) return 0;
+    gmb_unwind_t* uw = &task->unwind;
+    memset(uw, 0, sizeof(*uw));
+    uw->reason = GMB_UW_GO_EXIT;
+    uw->origin_ip = task->current_ip;
+    uw->frame = task->frame;
+    task->unwind_active = 1;
+    return continue_pending_unwind(task);
+}
+
+/* Specchio BeginCancellationUnwind (PCodeProcessor.Helpers): idempotente — se l'unwind
+ * è già iniziato ritorna lo stato corrente senza ricrearlo. */
+static int begin_cancellation_unwind(gmb_task_t* task)
+{
+    if (task->cancellation_unwind_started) return task->unwind_active;
+    task->cancellation_unwind_started = 1;
+    gmb_unwind_t* uw = &task->unwind;
+    memset(uw, 0, sizeof(*uw));
+    uw->reason = GMB_UW_CANCEL;
+    uw->origin_ip = task->current_ip;
+    uw->frame = task->frame;
+    task->unwind_active = 1;
+    return continue_pending_unwind(task);
+}
+
+/* ============================================================================
+ * V7a-net (§12): adapter netpoll del VM sopra il watcher condiviso del runtime.
+ * I socket del runtime sono nonblocking (listener, accept e — dal fix V7a-net —
+ * anche i client connessi); i syscall di rete parcheggiano il task registrandolo
+ * con gmb_net_waiter_register_ev: il watcher del runtime fa poll() su un suo
+ * thread dedicato e sveglia il task via vm_net_wake. Il task ripete l'OP_NET_CMD
+ * (argomenti respinti, ip -= 3: subCode+argCount+opcode).
+ * V7b: WRITE readiness (TCP SEND con partial-send, CONNECT non-bloccante) e
+ * TLS WANT_READ/WANT_WRITE (park sull'evento indicato da gmb_ssl_last_want).
+ * V7c: generation token anti-ABA (task->net_park_gen catturata al park e
+ * riconfrontata al retry: handle chiuso/riusato → syscall risolta come "chiuso")
+ * e wake-on-close (net_release sveglia i waiter sull'handle chiuso).
+ * §16: DNS asincrono — il getaddrinfo del TCP CONNECT gira nel pool dedicato del
+ * runtime (park sulla pipe del job via vm_net_park_raw_fd).
+ * ============================================================================ */
+
+/* Wake hook del net-watcher: riaccoda il task quando l'fd è pronto o il timeout
+ * del waiter scade. Il waiter può arrivare dopo che il task è stato liberato o
+ * sbloccato dalla cancellazione: la membership in all_tasks (mantenuta sotto
+ * all_lock da gmb_task_free) filtra i wake verso memoria liberata; enqueue
+ * ignora FINISHED/executing/duplicati. */
+static void vm_net_wake(void* ctx, void* waiter)
+{
+    gmb_scheduler_t* s = (gmb_scheduler_t*)ctx;
+    gmb_task_t* t = (gmb_task_t*)waiter;
+    if (!s || !t) return;
+    pthread_mutex_lock(&s->all_lock);
+    int alive = 0;
+    for (int i = 0; i < s->all_count; i++)
+        if (s->all_tasks[i] == t) { alive = 1; break; }
+    pthread_mutex_unlock(&s->all_lock);
+    if (!alive) return;
+    gmb_sched_enqueue(s, t);
+}
+
+/* BSP (§BSP-VM): una run secondaria (gmb_vm_run/run_mt su una VM per-request)
+ * sovrascrive i block hook globali del net-watcher; il chiamante li ripristina
+ * qui sulla VM principale al termine, altrimenti i wake dei task parcheggiati
+ * della VM principale andrebbero persi. */
+void gmb_vm_restore_net_hooks(gmb_vm_t* vm)
+{
+    gmb_net_set_block_hooks(NULL, vm_net_wake, vm ? vm->scheduler : NULL);
+}
+
+/* Parcheggia il task sull'handle e prepara il retry: gli argomenti (poppati dal
+ * dispatcher OP_NET_CMD) vengono respinti sullo stack nello stesso ordine e
+ * l'ip torna PRIMA del byte opcode (subCode+argCount+opcode) perché il tick
+ * successivo ri-esegua il comando (il dispatch legge code[ip++]). timeout_ms:
+ * 0 = attesa indefinita. events: eventi poll (0 = POLLIN; POLLOUT per V7b
+ * WRITE readiness). V7c: cattura il generation token dell'handle in
+ * task->net_park_gen (al retry rileva chiusura/riuso dello slot — anti-ABA).
+ * Ritorna 0 se parcheggiato (il chiamante fa `return 0` dal tick), -1 se la
+ * registrazione non è possibile (registry pieno/handle chiuso: il chiamante
+ * degrada al path sincrono). */
+static int vm_net_park_on_fd(gmb_vm_t* vm, gmb_task_t* task,
+                             gmb_stack_entry_t* args, int argCount,
+                             int64_t handle, int64_t timeout_ms, short events)
+{
+    int fd = gmb_net_handle_fd(handle);
+    uint32_t gen = gmb_net_handle_gen(handle);
+    if (fd < 0 || gen == 0) return -1;   /* handle chiuso/non valido: niente park */
+    int regrc = gmb_net_waiter_register_gen(fd, task, timeout_ms, events, gen);
+    if (regrc != 0) return -1;
+    task->net_park_gen = gen;
+    /* args[0] era in cima allo stack: si respinge per ultimo. */
+    for (int i = argCount - 1; i >= 0; i--)
+    {
+        if (args[i].type == 2 && args[i].ref)
+            gmb_task_push_ref(task, args[i].ref, args[i].basic_type);
+        else
+            push_num_entry(task, args[i].num, GMB_BT_NUMBER);
+    }
+    task->ip -= 3; /* ri-esegue OP_NET_CMD: 2 operandi (subCode+argCount) + il byte
+                    * opcode stesso (il dispatch legge code[ip++]). */
+    pthread_mutex_lock(&task->lock);
+    task->state = GMB_TS_BLOCKED;
+    pthread_mutex_unlock(&task->lock);
+    (void)vm;
+    return 0;
+}
+
+/* §16: park su un fd "raw" (non un handle del registry) — usato per la pipe di
+ * completamento dei job DNS asincroni. Niente generation token: l'id del job è
+ * monotono/mai riusato e il consumatore è singolo. Stessa meccanica di retry di
+ * vm_net_park_on_fd (args respinti, ip -= 3). */
+static int vm_net_park_raw_fd(gmb_vm_t* vm, gmb_task_t* task,
+                              gmb_stack_entry_t* args, int argCount,
+                              int fd, int64_t timeout_ms)
+{
+    if (fd < 0) return -1;
+    if (gmb_net_waiter_register_ev(fd, task, timeout_ms, 0) != 0) return -1;
+    for (int i = argCount - 1; i >= 0; i--)
+    {
+        if (args[i].type == 2 && args[i].ref)
+            gmb_task_push_ref(task, args[i].ref, args[i].basic_type);
+        else
+            push_num_entry(task, args[i].num, GMB_BT_NUMBER);
+    }
+    task->ip -= 3;
+    pthread_mutex_lock(&task->lock);
+    task->state = GMB_TS_BLOCKED;
+    pthread_mutex_unlock(&task->lock);
+    (void)vm;
+    return 0;
+}
+
+/* V7c (ABA): vero se il task è al retry di un park il cui handle è stato chiuso o
+ * lo slot riusato (gen cambiata). net_park_gen è azzerata alla risoluzione della
+ * syscall parcheggiata, quindi una chiamata fresca non entra mai in questo path. */
+static int vm_net_park_dead(gmb_task_t* task, int64_t handle)
+{
+    return task->net_park_gen != 0 && gmb_net_handle_gen(handle) != task->net_park_gen;
+}
+
+static gmb_obj_shared_val_t* vm_wrap_runtime_list(gmb_list_t* src)
+{
+    gmb_obj_shared_val_t* o = gmb_shared_list_new();
+    if (!o) return NULL;
+    for (size_t i = 0; i < src->count; i++) {
+        gmb_val_t v = src->items[i];
+        if (v.kind == GMB_TYPE_STRING)
+            gmb_list_add(o->list, gmb_make_val_string_counted(v.v_string.data ? v.v_string.data : ""));
+        else if (v.kind == GMB_TYPE_OBJECT && v.v_ptr) gmb_list_add(o->list, v);   /* add trattiene da se' */
+        else gmb_list_add(o->list, v);
+    }
+    return o;
+}
+
+/* .Keys() deve ricostruire il tipo originale della chiave (gmb_dict_key_val: numerica
+ * se tutta cifre/decimale, altrimenti stringa) — non forzare sempre stringa: gmb_dict_t
+ * indicizza per stringa internamente, ma le chiavi di un DICT OF DOUBLE,... sono numeri
+ * a livello BASIC. Parità con PCode (task.PushRef(dict.Keys) su un CLR IDictionary
+ * mantiene il tipo nativo delle chiavi). */
+static void vm_list_fill_keys(gmb_obj_shared_val_t* o, gmb_dict_t d)
+{
+    for (size_t i = 0; i < d.count; i++) {
+        vm_list_add_fresh(o->list, gmb_dict_key_val(d.items[i].key ? d.items[i].key : ""));
+    }
+}
+
+static gmb_obj_shared_val_t* vm_new_dict_copy(gmb_dict_t* src)
+{
+    gmb_obj_shared_val_t* o = gmb_shared_dict_new();
+    if (!o) return NULL;
+    for (size_t i = 0; i < src->count; i++) {
+        gmb_val_t v = src->items[i].value;
+        if (v.kind == GMB_TYPE_STRING)
+            gmb_dict_set(o->dict, src->items[i].key, gmb_make_val_string_counted(v.v_string.data ? v.v_string.data : ""));
+        else if (v.kind == GMB_TYPE_OBJECT && v.v_ptr) gmb_dict_set(o->dict, src->items[i].key, v);   /* set trattiene da se' */
+        else gmb_dict_set(o->dict, src->items[i].key, v);
+    }
+    return o;
+}
+
+/* ── JSON file I/O (OP_JFILE_*) — registry handle su FILE*, modi READ/WRITE/APPEND.
+ * Scrittura: serializza l'oggetto VM via gmb_vm_json_stringify. Lettura: legge
+ * l'INTERO file e lo parsa via vm_json_full_parse (stesso path di JSON.Parse). */
+typedef struct { FILE* fp; char mode; } gmb_jfile_t;
+static gmb_jfile_t g_gmb_jfiles[64];
+static int g_gmb_jfiles_n = 0;
+
+static int vm_jfile_open(const char* path, const char* mode)
+{
+    if (!path || !*path) return -1;
+    const char* fm = "r";
+    if (mode) {
+        if (!strcasecmp(mode, "WRITE") || !strcasecmp(mode, "OUTPUT")) fm = "w";
+        else if (!strcasecmp(mode, "APPEND")) fm = "a";
+        else if (!strcasecmp(mode, "READ")) fm = "r";
+    }
+    FILE* fp = fopen(path, fm);
+    if (!fp) return -1;
+    if (g_gmb_jfiles_n < 64) {
+        g_gmb_jfiles[g_gmb_jfiles_n].fp = fp;
+        g_gmb_jfiles[g_gmb_jfiles_n].mode = fm[0];
+        return ++g_gmb_jfiles_n;
+    }
+    fclose(fp);
+    return -1;
+}
+static FILE* vm_jfile_get(int h)
+{
+    if (h >= 1 && h <= g_gmb_jfiles_n && g_gmb_jfiles[h - 1].fp) return g_gmb_jfiles[h - 1].fp;
+    return NULL;
+}
+static void vm_jfile_close(int h)
+{
+    if (h >= 1 && h <= g_gmb_jfiles_n && g_gmb_jfiles[h - 1].fp) { fclose(g_gmb_jfiles[h - 1].fp); g_gmb_jfiles[h - 1].fp = NULL; }
+}
+static void vm_jfile_close_all(void)
+{
+    for (int i = 0; i < g_gmb_jfiles_n; i++)
+        if (g_gmb_jfiles[i].fp) { fclose(g_gmb_jfiles[i].fp); g_gmb_jfiles[i].fp = NULL; }
+}
+
+/* Offset row-major per array multidim su lista piatta (canone 2026-09-30): stride dalle
+ * dimensioni dichiarate (upper+1, con lower per 1-based); fallback isqrt(count) senza
+ * metadati (ndims<2: matrici quadrate legacy / liste). Prima isqrt ovunque — una 2x3
+ * leggeva 3,4,5 invece di 4,5,6. */
+static long gmb_multidim_target(gmb_obj_shared_val_t* sv, const double* indices, int numIndices)
+{
+    if (sv && sv->ndims >= 2) {
+        long off = 0;
+        for (int i = 0; i < numIndices && i < 8; i++) {
+            long stride = 1;
+            for (int j = i + 1; j < sv->ndims && j < 8; j++)
+                stride *= (long)sv->dim_upper[j] + 1;
+            long lo = (i < 8) ? (long)sv->dim_lower[i] : 0;
+            off += ((long)indices[i] - lo) * stride;
+        }
+        return off;
+    }
+    {
+        long total = (sv && sv->list) ? (long)sv->list->count : 0;
+        long cols = total > 0 ? (long)sqrt((double)total) : 1;
+        if (cols < 1) cols = 1;
+        long t = numIndices > 0 ? (long)indices[0] : 0;
+        for (int i = 1; i < numIndices; i++)
+            t = (t * cols) + (long)indices[i];
+        return t;
+    }
+}
+
+int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
+{
+    /* V2: budget di istruzioni per tick (quantum). Esaurito il budget il tick
+     * ritorna GMB_TICK_PREEMPTED senza toccare lo stato del task: lo scheduler
+     * lo riaccoda (fairness con GOMAXPROCS=1, come PCodeTickResult.Preempted). */
+    int executed = 0;
+    const int quantum = gmb_vm_instruction_quantum();
+    while (1)
+    {
+        if (task->n_defer_rel) vm_flush_deferred(task);
+        if (executed >= quantum) return GMB_TICK_PREEMPTED;
+        executed++;
+        /* V4: un GO_EXIT/Cancel completato durante un FINALLY lascia lo stato FINISHED. */
+        if (task->state == GMB_TS_FINISHED) return 0;
+        /* V4: cancellazione cooperativa (specchio righe 429-434 di
+         * PCodeProcessor.ExecuteTaskSlice): inizia l'unwind Cancel che drena i FINALLY. */
+        if (task->cancellation_requested && !task->cancellation_unwind_started)
+        {
+            if (begin_cancellation_unwind(task)) continue;
+            return 0;   /* completato senza FINALLY: stato già FINISHED */
+        }
+        /* V4: confine EndIp di un FINALLY completato: riprende l'eventuale unwind in
+         * corso (specchio CompleteFinallyIfNeeded nel tick loop di PCodeVm). */
+        if (complete_finally_if_needed(task)) continue;
+        /* Il chunk è sentinellato: il compilatore emette SEMPRE OP_HALT come ultimo byte
+         * (Compiler.cs, riga 351). Quindi ip >= code_len non può accadere nel path normale —
+         * qualunque salto oltre il fine colpisce l'OP_HALT che termina il task. Togliere il
+         * bounds-check dal loop caldo è l'ottimizzazione classica dei bytecode VM (Lua/CPython).
+         * Si mantiene solo il guard ip<0 (mai attivato nei salti corretti, costo ~0). */
+        if (task->ip < 0)
+        {
+            task->state = GMB_TS_FINISHED;
+            return 0;
+        }
+        /* Debug di riga: prima di eseguire l'istruzione, se la riga corrente è in
+         * un breakpoint (o single_step è attivo) mettiamo in pausa il task. Il
+         * driver riprende richiamando gmb_vm_run_debug. Nota: il check usa
+         * task->ip PRIMA dell'incremento, così lines[ip] è la riga di questa
+         * istruzione. Le istruzioni sintetiche (riga 0) non fermano mai. */
+        if (vm->debug)
+        {
+            int line = vm->chunk->lines ? (int)vm->chunk->lines[task->ip] : 0;
+            /* al resume, salta la riga del breakpoint appena lasciato: il check
+             * non scatta finché lines[ip] resta uguale a skip_line. */
+            int skipping = vm->debug->skip_line != 0 && line == (int)vm->debug->skip_line;
+            if (!skipping) vm->debug->skip_line = 0;
+            int hit = 0;
+            if (!skipping && line > 0)
+            {
+                hit = vm->debug->single_step || vm->debug->pause_requested;
+                vm->debug->pause_requested = 0;
+                for (int b = 0; b < vm->debug->breakpoint_count && !hit; b++)
+                    hit = vm->debug->breakpoints[b] == (uint32_t)line;
+            }
+            if (hit)
+            {
+                vm->debug->single_step = 0;
+                task->state = GMB_TS_DEBUG_PAUSED;
+                return GMB_TICK_DEBUG_PAUSE;
+            }
+        }
+        /* V1: overflow deterministico dello stack operandi dinamico — i push oltre il cap
+         * non scartano silenziosamente valori. V4e: come in C# (catch
+         * PCodeStackOverflowException → RaiseBasicError) l'overflow è un ERRORE BASIC
+         * instradato dallo schema a 3 livelli (TRY/CATCH → ON ERROR → fatale), non un
+         * crash del worker. Il flag viene azzerato: l'ingresso nel CATCH tronca lo stack
+         * (stack_pointer salvato) e i push di recovery devono poter passare. */
+        if (task->stack_overflow)
+        {
+            task->stack_overflow = 0;
+            raise_basic_error(task, 200.0, "operand stack overflow");
+            if (task->state == GMB_TS_FINISHED) return -1;
+            continue;   /* handler trovato: riprende il dispatch dal nuovo ip */
+        }
+        task->current_ip = task->ip;
+        int op = vm->chunk->code[task->ip++];
+        /* FAST PATH (computed goto): gli opcode del path caldo saltano direttamente alla loro
+         * label (niente jump-table dello switch grande). Gli altri ricadono nello switch sotto. */
+        switch (op)
+        {
+            case OP_PUSH_CONST:  goto L_FAST_PUSH_CONST;
+            case OP_LOAD_LOCAL:  goto L_FAST_LOAD_LOCAL;
+            case OP_STORE_LOCAL: goto L_FAST_STORE_LOCAL;
+            case OP_JUMP_FORWARD: goto L_FAST_JUMP_FORWARD;
+            case OP_JUMP_IF_FALSE: goto L_FAST_JUMP_IF_FALSE;
+            case OP_FOR_LOOP:    goto L_FAST_FOR_LOOP;
+            default: break;
+        }
+        switch (op)
+        {
+            case OP_PUSH_CONST:
+            {
+                int idx = gmb_vm_read_u16(vm, task);
+                const gmb_value_t* c = gmb_chunk_const(vm->chunk, (uint32_t)idx);
+                if (c && (c->type == GMB_CONST_DICT || c->type == GMB_CONST_LIST))
+                    gmb_vm_materialize_const(vm, task, c);
+                else
+                    push_const(vm, task, idx);
+                break;
+            }
+            case OP_PUSH_NIL: push_nil(task); break;
+            case OP_PUSH_TRUE: push_num_entry(task, -1.0, GMB_BT_BOOL); break;
+            case OP_PUSH_FALSE: push_num_entry(task, 0.0, GMB_BT_BOOL); break;
+            case OP_POP:
+                /* Scarta il valore in cima: se è un ref, il pop ne trasferisce qui la
+                 * proprietà (il retain del push originale non è mai stato rilasciato
+                 * dal pop stesso) -- va rilasciato esplicitamente, altrimenti ogni
+                 * espressione-statement (es. una chiamata il cui risultato non è
+                 * usato) perde un refcount per sempre. */
+                if (task->sp > 0)
+                {
+                    gmb_stack_entry_t popped = gmb_task_pop(task);
+                    if (popped.type == 2 && popped.ref) gmb_obj_release(popped.ref);
+                }
+                break;
+            case OP_DUP:
+            {
+                if (task->sp > 0)
+                {
+                    gmb_stack_entry_t e = task->stack[task->sp - 1];
+                    if (e.type == 2) push_ref_entry(task, (gmb_obj_t*)e.ref, e.basic_type);
+                    else push_num_entry(task, e.num, e.basic_type);
+                }
+                break;
+            }
+
+            case OP_ADD:
+            {
+                gmb_stack_entry_t b = gmb_task_pop(task);
+                gmb_stack_entry_t a = gmb_task_pop(task);
+                /* concat stringhe: se uno dei due operandi è una stringa, concatena
+                 * (l'altro convertito a stringa se numero). Fix pre-esistente: prima
+                 * OP_ADD usava solo pop_num → la concat a runtime dava 0. */
+                if ((a.type == 2 && a.ref && a.ref->kind == GMB_OBJ_STRING) ||
+                    (b.type == 2 && b.ref && b.ref->kind == GMB_OBJ_STRING))
+                {
+                    char bufB[64];
+                    const char* sb;
+                    uint32_t sb_len;
+                    if (b.type == 2 && b.ref && b.ref->kind == GMB_OBJ_STRING)
+                    {
+                        gmb_obj_string_t* bs = (gmb_obj_string_t*)b.ref;
+                        sb = bs->data; sb_len = bs->length;
+                    }
+                    else { gmb_format_value_compact(bufB, sizeof(bufB), b); sb = bufB; sb_len = (uint32_t)strlen(sb); }
+
+                    /* Fast path: se l'operando sinistro è una stringa di cui, in questo
+                     * esatto momento, nessun altro alias detiene un riferimento
+                     * (refcount==1), cresciamola in place invece di allocare un nuovo
+                     * buffer e ricopiare tutto il prefisso -- O(1) ammortizzato invece
+                     * di O(n) per questo singolo ADD. Sicuro SOLO perché il refcount è
+                     * ora tenuto correttamente allineato (gmb_task_store_local/
+                     * gmb_task_pop_num/OP_POP non perdono più un retain a testa) --
+                     * NOTA: per un self-append `s$ = s$ & x` lo slot locale di s$ detiene
+                     * ancora il proprio riferimento in questo momento (viene sovrascritto
+                     * SOLO dalla OP_STORE_LOCAL successiva), quindi qui refcount è
+                     * tipicamente 2, non 1: questo fast path non scatta su quel pattern
+                     * finché non si introduce un'opcode/ottimizzazione dedicata a livello
+                     * di codegen. Scatta invece per concatenazioni incatenate in
+                     * un'unica espressione (`a & b & c`), dove il risultato intermedio è
+                     * un temporaneo a owner singolo prima di essere riusato. */
+                    if (a.type == 2 && a.ref && a.ref->kind == GMB_OBJ_STRING && a.ref->refcount == 1)
+                    {
+                        gmb_obj_string_t* as = (gmb_obj_string_t*)a.ref;
+                        gmb_str_append_inplace(as, sb, sb_len);
+                        push_ref_entry(task, (gmb_obj_t*)as, GMB_BT_STRING);
+                        /* La push sopra ritiene as (era 1, ora 2) come se questa fosse
+                         * una copia aggiuntiva -- ma è la STESSA identità che avevamo
+                         * appena poppato (mossa, non copiata): il release che segue
+                         * riporta il conteggio a 1, il numero corretto di owner reali
+                         * (questo stack slot, nessun altro). Senza questa correzione
+                         * `as` resterebbe gonfiato per sempre, e una eventuale ADD
+                         * successiva che lo riusa come operando sinistro non vedrebbe
+                         * mai refcount==1 -- il fast path non scatterebbe mai, nemmeno
+                         * per concatenazioni incatenate nella stessa espressione. */
+                        gmb_obj_release((gmb_obj_t*)as);
+                        /* b invece è stato consumato (letto e scartato): va rilasciato. */
+                        if (b.type == 2 && b.ref) gmb_obj_release(b.ref);
+                        break;
+                    }
+
+                    char bufA[64];
+                    const char* sa;
+                    if (a.type == 2 && a.ref && a.ref->kind == GMB_OBJ_STRING)
+                        sa = ((gmb_obj_string_t*)a.ref)->data;
+                    else { gmb_format_value_compact(bufA, sizeof(bufA), a); sa = bufA; }
+                    gmb_string_t gs = gmb_string_concat((gmb_string_t){ (char*)sa, strlen(sa), 1 },
+                                                        (gmb_string_t){ (char*)sb, sb_len, 1 });
+                    gmb_obj_string_t* s = gmb_str_cstr(gs.data ? gs.data : "");
+                    if (gs.data) free(gs.data);
+                    push_ref_entry(task, (gmb_obj_t*)s, GMB_BT_STRING);
+                    /* s è appena creato (refcount 1) e la push lo ritiene come se fosse
+                     * una seconda proprietà indipendente (refcount 2) -- ma l'unico
+                     * owner reale è questo stack slot: stesso discorso del ramo fast
+                     * path sopra, correggiamo con un release. */
+                    gmb_obj_release((gmb_obj_t*)s);
+                    /* Né a né b sono stati riusati: entrambi consumati e scartati. */
+                    if (a.type == 2 && a.ref) gmb_obj_release(a.ref);
+                    if (b.type == 2 && b.ref) gmb_obj_release(b.ref);
+                    break;
+                }
+                double r = (a.type == 1 ? a.num : 0) + (b.type == 1 ? b.num : 0);
+                /* Nessuno dei due era una stringa: se uno era comunque un ref (es. un
+                 * dict/list usato per errore in un `+` numerico), va scartato con
+                 * release esplicita invece di lasciarlo semplicemente cadere a terra. */
+                if (a.type == 2 && a.ref) gmb_obj_release(a.ref);
+                if (b.type == 2 && b.ref) gmb_obj_release(b.ref);
+                push_num_entry(task, r, GMB_BT_NUMBER);
+                break;
+            }
+            case OP_SUBTRACT: case OP_MULTIPLY: case OP_DIVIDE:
+            case OP_INT_DIVIDE: case OP_MOD: case OP_POWER: case OP_XOR: case OP_BITAND: case OP_BITOR:
+            {
+                double b = gmb_task_pop_num(task);
+                double a = gmb_task_pop_num(task);
+                /* Divisione / divisione intera `\` / MOD con divisore 0 → ERR 11 "Division by zero",
+                 * catturabile con lo schema a 3 livelli (TRY/CATCH → ON ERROR → fatale), come
+                 * IL/PCode/C99Native. Prima qui c'era `b != 0 ? … : 0`: la VM restituiva 0 in
+                 * SILENZIO anche con un handler attivo, mentre le altre gambe sollevavano ERR 11
+                 * → divergenza su `1/0`, `1\0`, `1 MOD 0`
+                 * (Bugs/(solved) - Divisione-Per-Zero-Divergente-4-Gambe). */
+                if (b == 0.0 && (op == OP_DIVIDE || op == OP_INT_DIVIDE || op == OP_MOD))
+                {
+                    /* Solo con ON ERROR RESUME NEXT l'espressione deve lasciare un risultato
+                     * (0); con TRY/CATCH o ON ERROR GOTO l'ip è già al gestore e un push qui
+                     * finirebbe sopra il valore che l'handler consuma (CATCH e AS ERR legava 0). */
+                    if (raise_basic_error(task, 11, "Division by zero"))
+                        push_num_entry(task, 0.0, GMB_BT_NUMBER);
+                    break;
+                }
+                double r = 0;
+                switch (op)
+                {
+                    case OP_SUBTRACT: r = a - b; break;
+                    case OP_MULTIPLY: r = a * b; break;
+                    case OP_DIVIDE: r = a / b; break;
+                    case OP_INT_DIVIDE: r = trunc(a / b); break;
+                    case OP_MOD: r = fmod(a, b); break;
+                    case OP_POWER: r = pow(a, b); break;
+                    case OP_XOR: r = (double)((int64_t)a ^ (int64_t)b); break;
+                    case OP_BITAND: r = (double)((int64_t)a & (int64_t)b); break;
+                    case OP_BITOR:  r = (double)((int64_t)a | (int64_t)b); break;
+                }
+                push_num_entry(task, r, GMB_BT_NUMBER);
+                break;
+            }
+            case OP_NEGATE: { double a = gmb_task_pop_num(task); push_num_entry(task, -a, GMB_BT_NUMBER); break; }
+            case OP_NOT:
+            {
+                double a = gmb_task_pop_num(task);
+                /* OP_NOT è il complemento NUMERICO bitwise. Il compiler abbassa
+                 * NOT su un operando BIT a (x == 0) + NEGATE, perché un BIT può
+                 * contenere 1 o -1. Così NOT 5 resta -6 e NOT BIT è logico. */
+                push_num_entry(task, (double)(~(int64_t)a), GMB_BT_NUMBER);
+                break;
+            }
+            case OP_CMP_EQ: case OP_CMP_NE: case OP_CMP_LT: case OP_CMP_LTE: case OP_CMP_GT: case OP_CMP_GTE:
+            {
+                gmb_stack_entry_t b = gmb_task_pop(task);
+                gmb_stack_entry_t a = gmb_task_pop(task);
+                bool r = false;
+                if (op == OP_CMP_EQ || op == OP_CMP_NE)
+                {
+                    /* Parità PCodeVM managed (OP_CMP_EQ/NE): confronto per TIPO, non solo
+                     * numerico. Prima qui tutto cadeva nel ramo numerico (stringa→0, null→0):
+                     * "a" = "b" era VERO e null = "password" era VERO (bug di sicurezza già
+                     * corretto nel managed, commit 7736047 GMBasicAI). */
+                    const char* sa = (a.type == 2 && a.ref && a.ref->kind == GMB_OBJ_STRING)
+                        ? ((gmb_obj_string_t*)a.ref)->data : NULL;
+                    const char* sb = (b.type == 2 && b.ref && b.ref->kind == GMB_OBJ_STRING)
+                        ? ((gmb_obj_string_t*)b.ref)->data : NULL;
+                    int an = (a.type == 0 || (a.type == 2 && !a.ref) || a.basic_type == GMB_BT_NULL);
+                    int bn = (b.type == 0 || (b.type == 2 && !b.ref) || b.basic_type == GMB_BT_NULL);
+                    int eq;
+                    if (sa && sb) eq = (strcmp(sa, sb) == 0);
+                    else if (an || bn)
+                        /* NullEqualsForCompare: null==null vero; null=="" vero (campo
+                         * SESSION/JSON mai scritto letto come null e testato contro "");
+                         * null contro qualunque altro valore falso. */
+                        eq = (an && bn) || (an && sb && !*sb) || (bn && sa && !*sa);
+                    else if ((a.type == 2 && a.ref && (a.ref->kind == GMB_OBJ_DICT || a.ref->kind == GMB_OBJ_LIST)) ||
+                             (b.type == 2 && b.ref && (b.ref->kind == GMB_OBJ_DICT || b.ref->kind == GMB_OBJ_LIST)))
+                        eq = (a.ref == b.ref);   /* UdtValueEquals: identità (approx) */
+                    else if ((a.type == 2 && a.ref && a.ref->kind != GMB_OBJ_STRING && b.type == 1 && b.num == 0.0) ||
+                             (b.type == 2 && b.ref && b.ref->kind != GMB_OBJ_STRING && a.type == 1 && a.num == 0.0))
+                        /* HANDLE (channel/context/waitgroup/...) vs 0/NIL: il riferimento è
+                         * NON null → eq falso (prima cadeva nel ramo numerico: entrambi 0 →
+                         * "ch <> 0" falso, bug context/done.bas). */
+                        eq = 0;
+                    else
+                    {
+                        /* CoerceNumForCompare: num diretto; stringa numerica parsata; resto 0. */
+                        double da = a.type == 1 ? a.num : 0.0;
+                        double db = b.type == 1 ? b.num : 0.0;
+                        if (a.type == 2 && a.ref && a.ref->kind == GMB_OBJ_STRING)
+                        { char* end = NULL; da = strtod(((gmb_obj_string_t*)a.ref)->data, &end); if (end == ((gmb_obj_string_t*)a.ref)->data) da = 0.0; }
+                        if (b.type == 2 && b.ref && b.ref->kind == GMB_OBJ_STRING)
+                        { char* end = NULL; db = strtod(((gmb_obj_string_t*)b.ref)->data, &end); if (end == ((gmb_obj_string_t*)b.ref)->data) db = 0.0; }
+                        eq = (da == db);
+                    }
+                    r = (op == OP_CMP_EQ) ? eq : !eq;
+                }
+                else
+                {
+                    /* Relazionale su due STRINGHE: ordinale lessicografico via
+                     * runtime condiviso (parity PCodeVM string.CompareOrdinal,
+                     * IL, C99Native — bug 2026-10-01). Prima cadeva
+                     * nel ramo numerico (stringa→0.0): "a"<"b" era falso e
+                     * "b"<="a" era vero. Misto stringa/numero: coercizione
+                     * numerica invariata (status quo). */
+                    gmb_string_t vsa, vsb;
+                    int both_str = 0;
+                    if (a.type == 2 && a.ref && a.ref->kind == GMB_OBJ_STRING &&
+                        b.type == 2 && b.ref && b.ref->kind == GMB_OBJ_STRING &&
+                        ((gmb_obj_string_t*)a.ref)->data && ((gmb_obj_string_t*)b.ref)->data)
+                    {
+                        vsa.data = ((gmb_obj_string_t*)a.ref)->data; vsa.length = 0; vsa.ref_count = 0;
+                        vsb.data = ((gmb_obj_string_t*)b.ref)->data; vsb.length = 0; vsb.ref_count = 0;
+                        both_str = 1;
+                    }
+                    if (both_str)
+                    {
+                        int cmp = gmb_string_compare(vsa, vsb);
+                        switch (op)
+                        {
+                            case OP_CMP_LT: r = cmp < 0; break;
+                            case OP_CMP_LTE: r = cmp <= 0; break;
+                            case OP_CMP_GT: r = cmp > 0; break;
+                            case OP_CMP_GTE: r = cmp >= 0; break;
+                            default: break;
+                        }
+                    }
+                    else
+                    {
+                        double da = a.type == 1 ? a.num : 0.0;
+                        double db = b.type == 1 ? b.num : 0.0;
+                        switch (op)
+                        {
+                            case OP_CMP_LT: r = da < db; break;
+                            case OP_CMP_LTE: r = da <= db; break;
+                            case OP_CMP_GT: r = da > db; break;
+                            case OP_CMP_GTE: r = da >= db; break;
+                            default: break;
+                        }
+                    }
+                }
+                /* Entrambi gli operandi sono consumati (il confronto produce solo un
+                 * bool, nessuno dei due ref viene riusato) -- rilascia se presenti. */
+                if (a.type == 2 && a.ref) gmb_obj_release(a.ref);
+                if (b.type == 2 && b.ref) gmb_obj_release(b.ref);
+                push_num_entry(task, r ? -1.0 : 0.0, GMB_BT_BOOL);
+                break;
+            }
+
+            case OP_JUMP_FORWARD: { int off = gmb_vm_read_u16(vm, task); task->ip += off; break; }
+            case OP_JUMP_BACKWARD: { int off = gmb_vm_read_u16(vm, task); task->ip -= off; break; }
+            case OP_JUMP_IF_TRUE: case OP_JUMP_IF_FALSE:
+            {
+                int off = gmb_vm_read_u16(vm, task);
+                /* Truthiness dell'operando (helper condiviso con la fast path). Prima
+                 * `IF CONVERSIONS.CSTR(<bit>)` ("True"/"False") era SEMPRE falso → §5. */
+                bool cond = vm_truthy_entry(gmb_task_pop(task));
+                bool jump = (op == OP_JUMP_IF_TRUE) ? cond : !cond;
+                if (jump) task->ip += off;
+                break;
+            }
+
+            case OP_LOAD_LOCAL:
+            {
+                int slot = gmb_vm_read_u16(vm, task);
+                gmb_stack_entry_t e = gmb_task_load_local(task, slot);
+                /* future check (GO FUNCTION INTO, §11): se la locale è un future non risolto,
+                 * blocca — implicit await. Rewind -3: opcode(1)+slot(2, u16 §20.3). */
+                if (e.type == 2 && e.ref && e.basic_type == GMB_BT_OBJECT &&
+                    ((gmb_obj_t*)e.ref)->kind == GMB_OBJ_FUTURE)
+                {
+                    gmb_future_t* fut = (gmb_future_t*)e.ref;
+                    if (!gmb_future_is_resolved(fut))
+                    {
+                        task->ip -= 3;
+                        if (gmb_future_register_waiter(fut, task)) return 0;
+                        task->ip += 3;
+                    }
+                    /* V4g: future fallito → propaga l'errore (specchio PropagateFutureFailure). */
+                    if (fut->is_failed)
+                    {
+                        char fmsg[320];
+                        snprintf(fmsg, sizeof(fmsg), "GO FUNCTION error: %s", fut->fail_msg);
+                        raise_basic_error(task, 200.0, fmsg);
+                        if (task->state == GMB_TS_FINISHED) return -1;
+                        break;
+                    }
+                    /* risolto: pusha il valore */
+                    if (fut->result_is_num) push_num_entry(task, fut->result_num, GMB_BT_NUMBER);
+                    else if (fut->result) push_ref_entry(task, fut->result, GMB_BT_STRING);
+                    else push_nil(task);
+                    break;
+                }
+                if (e.type == 0) { e.type = 2; e.ref = NULL; e.basic_type = GMB_BT_NULL; }
+                if (e.type == 2) push_ref_entry(task, (gmb_obj_t*)e.ref, e.basic_type);
+                else push_num_entry(task, e.num, e.basic_type);
+                break;
+            }
+            case OP_STORE_LOCAL:
+            {
+                int slot = gmb_vm_read_u16(vm, task);
+                gmb_stack_entry_t e = gmb_task_pop(task);
+                gmb_task_store_local(task, slot, e);
+                break;
+            }
+            case OP_CLOSURE:
+            {
+                int constIdx = gmb_vm_read_u16(vm, task);
+                int numUpvalues = gmb_vm_read_u8(vm, task);
+                /* l'address è nella costante (double = functionAddress) */
+                int addr = 0;
+                if (constIdx >= 0 && constIdx < (int)vm->chunk->consts_len &&
+                    (vm->chunk->constants[constIdx].type == GMB_CONST_DOUBLE || vm->chunk->constants[constIdx].type == GMB_CONST_INT))
+                    addr = (int)vm->chunk->constants[constIdx].d;
+                gmb_obj_closure_t* closure = gmb_closure_new(addr, numUpvalues);
+                if (!closure) { vm_error(task, "OP_CLOSURE: memoria"); break; }
+                for (int i = 0; i < numUpvalues; i++)
+                {
+                    int isLocal = gmb_vm_read_u8(vm, task);
+                    int index = gmb_vm_read_u8(vm, task);
+                    if (isLocal)
+                        closure->upvalues[i] = gmb_task_capture_local_byref(task, index);
+                    else
+                        closure->upvalues[i] = gmb_task_capture_global_byref(task, index);
+                }
+                push_ref_new(task, (gmb_obj_t*)closure, GMB_BT_OBJECT);
+                break;
+            }
+            case OP_LOAD_UPVALUE:
+            {
+                int index = gmb_vm_read_u8(vm, task);
+                gmb_stack_entry_t e = task->frame ? task->frame->upvalues[index] : (gmb_stack_entry_t){0};
+                if (e.type == 2 && e.ref && e.ref->kind == GMB_OBJ_BYREF)
+                    e = gmb_byref_load((gmb_obj_byref_t*)e.ref);
+                if (e.type == 2 && e.ref) push_ref_entry(task, e.ref, e.basic_type);
+                else if (e.type == 1) push_num_entry(task, e.num, e.basic_type);
+                else push_nil(task);
+                break;
+            }
+            case OP_STORE_UPVALUE:
+            {
+                int index = gmb_vm_read_u8(vm, task);
+                gmb_stack_entry_t e = gmb_task_pop(task);
+                if (task->frame && index < 16)
+                {
+                    gmb_stack_entry_t* up = &task->frame->upvalues[index];
+                    if (up->type == 2 && up->ref && up->ref->kind == GMB_OBJ_BYREF)
+                        gmb_byref_store((gmb_obj_byref_t*)up->ref, e);
+                    else {
+                        if (up->type == 2 && up->ref) gmb_obj_release(up->ref);
+                        *up = e;
+                    }
+                }
+                break;
+            }
+            case OP_ADJUST_STRING:
+            {
+                /* STRING * N (campo/variabile a lunghezza fissa): tronca se più lunga di N,
+                 * altrimenti fa il PAD con spazi a destra fino a N — parità con
+                 * IlRuntime.AdjustFixedString (IL/PCode: value.PadRight(len)). Prima qui si
+                 * troncava ma non si faceva MAI il pad (il ramo "altrimenti" ripassava la
+                 * stringa invariata): un campo TYPE Nome AS STRING*20 con un valore più corto
+                 * (es. "Penna") restava a 5 caratteri invece di 20 — bug reale, misurato con
+                 * ArraysAsortComparer.bas: la stampa "Penna : 1.5" (nessun padding) invece di
+                 * "Penna                : 1.5" (padded a 20, come IL/PCode). */
+                int len = gmb_vm_read_u16(vm, task);
+                gmb_stack_entry_t val = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                if (val.type == 2 && val.ref && val.ref->kind == GMB_OBJ_STRING)
+                {
+                    gmb_obj_string_t* s = (gmb_obj_string_t*)val.ref;
+                    if ((int)s->length > len)
+                    {
+                        gmb_obj_string_t* ns = gmb_str_alloc(s->data, (uint32_t)len);
+                        gmb_obj_release(val.ref);
+                        push_ref_new(task, (gmb_obj_t*)ns, GMB_BT_STRING);
+                    }
+                    else if ((int)s->length < len)
+                    {
+                        char* buf = (char*)malloc((size_t)len);
+                        if (buf)
+                        {
+                            if (s->length > 0) memcpy(buf, s->data, s->length);
+                            memset(buf + s->length, ' ', (size_t)len - s->length);
+                            gmb_obj_string_t* ns = gmb_str_alloc(buf, (uint32_t)len);
+                            free(buf);
+                            gmb_obj_release(val.ref);
+                            push_ref_new(task, (gmb_obj_t*)ns, GMB_BT_STRING);
+                        }
+                        else push_ref_new(task, val.ref, val.basic_type);
+                    }
+                    else push_ref_new(task, val.ref, val.basic_type);
+                }
+                else push_nil(task);
+                break;
+            }
+            case OP_REDIM:
+            case OP_REDIM_PRESERVE:
+            {
+                int numDims = gmb_vm_read_u8(vm, task);
+                int udtDescIdx = gmb_vm_read_u16(vm, task);
+                /* lengths: l'ultima spinta è la prima dimensione */
+                int lengths[8];
+                for (int i = numDims - 1; i >= 0 && i < 8; i--)
+                {
+                    if (task->sp > 0)
+                    {
+                        gmb_stack_entry_t l = gmb_task_pop(task);
+                        lengths[i] = (int)l.num;
+                    }
+                    else lengths[i] = 0;
+                }
+                int total = 1;
+                for (int i = 0; i < numDims; i++) total *= (lengths[i] + 1);
+                /* sostituisce l'oggetto in cima (la variabile array) o crea nuova */
+                gmb_stack_entry_t arrE = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                gmb_obj_shared_val_t* arr = NULL;
+                if (arrE.type == 2 && arrE.ref && arrE.ref->kind == GMB_OBJ_LIST)
+                    arr = (gmb_obj_shared_val_t*)arrE.ref;
+                if (!arr) arr = gmb_shared_list_new();
+                if (arr)
+                {
+                    /* redim: runtime condiviso — preserve copia min(old,new), altrimenti azzera */
+                    int preserve = (op == OP_REDIM_PRESERVE);
+                    size_t oldCount = arr->list->count;
+                    /* Tipo elemento PRIMA del resize (il resize azzera gli slot): un array
+                     * numerico va riempito con 0, non nil — parity IL (newarr tipizzato è
+                     * zero-inizializzato). Senza questo, PRINT di un elemento REDIM stampava
+                     * vuoto dove IL/PCode stampano 0 (ArraysRedim.bas). */
+                    int numeric_elem = 0;
+                    if (oldCount > 0) {
+                        gmb_val_t f0 = arr->list->items[0];
+                        numeric_elem = (f0.kind == GMB_TYPE_INT || f0.kind == GMB_TYPE_DOUBLE);
+                    }
+                    gmb_list_resize(arr->list, total, preserve);
+                    if (numeric_elem) {
+                        for (size_t i = 0; i < arr->list->count; i++)
+                            if (arr->list->items[i].kind == GMB_TYPE_NIL)
+                                arr->list->items[i] = gmb_make_val_double(0.0);
+                    }
+                    /* Aggiorna la cache dei bound (arr->ndims/dim_upper), la stessa che
+                     * CREATE_ARRAY popola (gmb_builtin.c ~2899-2900): UBOUND legge SOLO
+                     * questa cache quando ndims>0 (gmb_bound_of_shared, gmb_builtin.c
+                     * ~2543), mai list->count — senza l'aggiornamento qui, un REDIM su un
+                     * array con ndims>0 (il caso normale, impostato da DIM) ridimensiona
+                     * davvero la lista ma UBOUND continua a riportare il bound VECCHIO per
+                     * sempre. Misurato: REDIM Dati(2) dentro una SUB su un array BYREF
+                     * scriveva correttamente i 3 elementi (0,1,2), ma il FOR i = 0 TO
+                     * UBOUND(...) del chiamante iterava solo i=0 (ArraysPassingLocal.bas). */
+                    arr->ndims = numDims;
+                    for (int i = 0; i < numDims && i < 8; i++) arr->dim_upper[i] = lengths[i];
+                    /* Array di UDT/CLASS (udtDescIdx risolto dal compilatore, sentinel
+                     * ushort.MaxValue se l'elemento non è un UDT — vedi Compiler.Arrays.cs):
+                     * gmb_list_resize riempie i nuovi slot con gmb_val_nil() generico, MAI
+                     * un'istanza vera — `DIM Arr(n) AS Udt` seguito da `Arr(i).Campo` restava
+                     * sempre vuoto anche dopo il fix del 2026-09-02 per le istanze scalari.
+                     * Sostituisce ogni slot NUOVO (quelli preesistenti in PRESERVE restano
+                     * intatti) con un'istanza di default vera (vm_make_default_instance). */
+                    if (udtDescIdx < 65535)
+                    {
+                        size_t newFrom = preserve ? oldCount : 0;
+                        for (size_t i = newFrom; i < (size_t)total; i++)
+                        {
+                            gmb_obj_shared_val_t* inst = vm_make_default_instance(vm, udtDescIdx);
+                            if (inst) { gmb_list_set(arr->list, (gmb_int_t)i, gmb_make_val_obj((gmb_obj_t*)inst)); gmb_obj_release((gmb_obj_t*)inst); }
+                        }
+                    }
+                    /* `arr` è OWNED (arrE poppato o gmb_shared_list_new fresco) → push_ref_new
+                     * (STEAL): push_ref_entry (RETAIN) lascerebbe il ref del creatore. */
+                    push_ref_new(task, (gmb_obj_t*)arr, GMB_BT_OBJECT);
+                }
+                else push_nil(task);
+                /* Se `arr` E' l'oggetto poppato (arrE) il suo riferimento e' stato appena ceduto allo stack da push_ref_new: rilasciarlo
+                 * ANCHE qui era un doppio release → use-after-free dell'array dopo ogni REDIM (crash intermittente dell'host: "memory
+                 * corruption of free block"). Si rilascia solo un arrE DIVERSO (valore non-lista poppato e sostituito da un array nuovo). */
+                if (arrE.ref != (gmb_obj_t*)arr) gmb_obj_release(arrE.ref);
+                break;
+            }
+            case OP_PUSH_REF_LOCAL:
+            {
+                int slot = gmb_vm_read_u16(vm, task);
+                gmb_stack_entry_t v = gmb_task_load_local(task, slot);
+                if (v.type == 2 && v.ref) push_ref_entry(task, v.ref, v.basic_type);
+                else if (v.type == 1) push_num_entry(task, v.num, v.basic_type);
+                else push_nil(task);
+                break;
+            }
+            case OP_PUSH_REF_GLOBAL:
+            {
+                int slot = gmb_vm_read_u16(vm, task);
+                gmb_stack_entry_t v = gmb_task_load_global(task, slot);
+                if (v.type == 2 && v.ref) push_ref_entry(task, v.ref, v.basic_type);
+                else if (v.type == 1) push_num_entry(task, v.num, v.basic_type);
+                else push_nil(task);
+                break;
+            }
+            case OP_MAKE_BYREF:
+            {
+                /* V4: box write-through sullo slot local (specchio ByRefBox C#).
+                 * 2026-09-24: BOX PROMOZIONE (cell) invece di puntatore allo slot del FRAME.
+                 * Il compilatore C# (linker heap-promotion) crea la box al momento della
+                 * closure e la salva nel campo __ClosureCtx: il frame del creatore PUÒ morire
+                 * (closure restituita), quindi un box che punta a (frame, slot) diventa
+                 * dangling → la closure legge/scrive NIL e non propaga (bug FunctionsAdvanced/
+                 * FunctionsLambdaClosures su VM/C-via-chunk-C#). Il compilatore C usa
+                 * gmb_task_capture_local_byref (cell HEAP, possiede il valore) via OP_CLOSURE;
+                 * qui si adotta la STESSA semantica: la cella sopravvive al frame e la
+                 * scrittura-through resta corretta (lo slot del creatore ora contiene la box,
+                 * letture/scritture dello slot la attraversano — OP_LOAD/STORE_LOCAL già
+                 * unwrappano/write-through). Idempotente se lo slot contiene già un byref. */
+                int slot = gmb_vm_read_u16(vm, task);
+                gmb_stack_entry_t b = gmb_task_capture_local_byref(task, slot);
+                if (b.type == 2 && b.ref) { push_ref_entry(task, b.ref, b.basic_type); gmb_obj_release(b.ref); }
+                else push_nil(task);
+                break;
+            }
+            case OP_MAKE_BYREF_GLOBAL:
+            {
+                int slot = gmb_vm_read_u16(vm, task);
+                gmb_obj_byref_t* b = gmb_byref_new_global(task, slot);
+                if (b) { push_ref_entry(task, (gmb_obj_t*)b, GMB_BT_OBJECT); gmb_obj_release((gmb_obj_t*)b); }
+                else push_nil(task);
+                break;
+            }
+            case OP_MAKE_BYREF_ELEMENT:
+            {
+                /* `Arr(i)` come argomento BYREF (mono-dimensionale) — vedi
+                 * gmb_byref_new_array_elem. Stack: [array][indice] (stesso ordine di
+                 * OP_LOAD_ELEMENT/numIndices=1). */
+                gmb_stack_entry_t idxE = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                gmb_stack_entry_t arrE = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                int idx = (idxE.type == 1) ? (int)idxE.num : 0;
+                gmb_obj_byref_t* b = NULL;
+                if (arrE.type == 2 && arrE.ref && arrE.ref->kind == GMB_OBJ_LIST)
+                    b = gmb_byref_new_array_elem(task, (gmb_obj_shared_val_t*)arrE.ref, idx);
+                gmb_obj_release(idxE.ref);
+                gmb_obj_release(arrE.ref);
+                if (b) { push_ref_entry(task, (gmb_obj_t*)b, GMB_BT_OBJECT); gmb_obj_release((gmb_obj_t*)b); }
+                else push_nil(task);
+                break;
+            }
+            case OP_LOAD_GLOBAL:
+            {
+                int idx = gmb_vm_read_u16(vm, task);
+                /* future check (GO FUNCTION INTO): se il global è un future non risolto, blocca */
+                gmb_stack_entry_t e = gmb_task_load_global(task, idx);
+                /* CAMPO dell'area attiva come variabile IMPLICITA (parità IL/PCode: `PRINT Nome`
+                 * legge il campo `Nome` dell'area corrente). Si prova SOLO se il global non è mai
+                 * stato assegnato (type 0 = nil), così locali/globali hanno la precedenza. Il nome
+                 * viene dalla tabella `global_names` del chunk (slot → nome).
+                 * Senza questo la VM/C stampava vuoto per ogni campo (misurato con probe mirato su
+                 * area DBF: IL 'PIPPO', VM/C ''; e sui sample RDD, dove i campi sono `Nome`/`Saldo`). */
+                if (e.type == 0 && vm->chunk && vm->chunk->global_names
+                    && idx >= 0 && idx < (int)vm->chunk->global_name_count)
+                {
+                    const char* gname = vm->chunk->global_names[idx];
+                    if (gname && gname[0])
+                    {
+                        gmb_val_t fv;
+                        if (vm_expr_dbf_record_get(gname, &fv) == 0)
+                        {
+                            push_val_entry(task, fv);
+                            break;
+                        }
+                    }
+                }
+                if (e.type == 2 && e.ref && e.basic_type == GMB_BT_OBJECT &&
+                    ((gmb_obj_t*)e.ref)->kind == GMB_OBJ_FUTURE)
+                {
+                    gmb_future_t* fut = (gmb_future_t*)e.ref;
+                    if (!gmb_future_is_resolved(fut))
+                    {
+                        task->ip -= 3; /* rewind: opcode(1)+idx(2) */
+                        if (gmb_future_register_waiter(fut, task)) return 0;
+                        task->ip += 3;
+                    }
+                    /* V4g: future fallito → propaga l'errore (specchio PropagateFutureFailure). */
+                    if (fut->is_failed)
+                    {
+                        char fmsg[320];
+                        snprintf(fmsg, sizeof(fmsg), "GO FUNCTION error: %s", fut->fail_msg);
+                        raise_basic_error(task, 200.0, fmsg);
+                        if (task->state == GMB_TS_FINISHED) return -1;
+                        break;
+                    }
+                    /* risolto: pusha il valore */
+                    if (fut->result_is_num) push_num_entry(task, fut->result_num, GMB_BT_NUMBER);
+                    else if (fut->result) push_ref_entry(task, fut->result, GMB_BT_STRING);
+                    else push_nil(task);
+                    break;
+                }
+                if (e.type == 0) { e.type = 2; e.ref = NULL; e.basic_type = GMB_BT_NULL; }
+                if (e.type == 2) push_ref_entry(task, (gmb_obj_t*)e.ref, e.basic_type);
+                else push_num_entry(task, e.num, e.basic_type);
+                break;
+            }
+            case OP_STORE_GLOBAL:
+            {
+                int idx = gmb_vm_read_u16(vm, task);
+                gmb_stack_entry_t e = gmb_task_pop(task);
+                gmb_task_store_global(task, idx, e);
+                break;
+            }
+            case OP_DEFINE_GLOBAL:
+            {
+                int idx = gmb_vm_read_u16(vm, task);
+                gmb_task_ensure_globals(task, (uint32_t)(idx + 1));
+                /* DEFINE_GLOBAL prende il valore in cima allo stack e lo salva */
+                if (task->sp > 0)
+                {
+                    gmb_stack_entry_t e = gmb_task_pop(task);
+                    gmb_task_store_global(task, idx, e);
+                }
+                break;
+            }
+
+            case OP_GOTO:
+            {
+                int addr = gmb_vm_read_u16(vm, task);
+                /* V4: un GOTO che esce da TRY attraversa i FINALLY prima del salto. */
+                if (begin_goto_unwind(task, addr)) break;
+                unwind_try_regions_for_jump(task, addr);
+                task->ip = addr;
+                break;
+            }
+            case OP_GOSUB:
+            {
+                int addr = gmb_vm_read_u16(vm, task);
+                /* Specchio PCodeVm: continuation dedicata (niente frame), così il
+                 * RETURN-GOSUB attraversa i FINALLY con BeginGosubReturnUnwind. */
+                if (task->gosub_count < GMB_GOSUB_CAP)
+                {
+                    gmb_gosub_cont_t* c = &task->gosub_stack[task->gosub_count++];
+                    c->return_ip = task->ip;
+                    c->sp = task->sp;
+                    c->try_depth = task->try_count;
+                    c->cleanup_depth = task->cleanup_count;
+                    c->frame = task->frame;
+                }
+                task->ip = addr;
+                break;
+            }
+            case OP_CALL_INDIRECT:
+            {
+                int argc = gmb_vm_read_u8(vm, task);
+                gmb_stack_entry_t fnE = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                int addr = -1;
+                gmb_obj_closure_t* closure = NULL;
+                if (fnE.type == 1) addr = (int)fnE.num;
+                else if (fnE.type == 2 && fnE.ref && fnE.ref->kind == GMB_OBJ_CLOSURE)
+                {
+                    closure = (gmb_obj_closure_t*)fnE.ref;
+                    addr = closure->address;
+                }
+                if (addr >= 0)
+                {
+                    int saved_sp = task->sp - argc;
+                    if (!push_frame(task, saved_sp, task->ip)) return -1;
+                    if (closure)
+                    {
+                        /* passa le upvalue catturate al nuovo frame */
+                        for (int i = 0; i < closure->num_upvalues && i < 16; i++)
+                        {
+                            task->frame->upvalues[i] = closure->upvalues[i];
+                        }
+                        /* 2026-09-24 (parità PCodeVM OP_CALL_INDIRECT): per una closure con
+                         * CONTESTO (__ClosureCtx, upvalue 0 = dict) il corpo accede al
+                         * contesto via OP_LOAD_LOCAL(0)/STORE — non via OP_LOAD_UPVALUE.
+                         * PCodeVM: "if first upvalue is a context Dict, set as SELF (slot 0)".
+                         * VM/C copiava solo in frame->upvalues[] → slot 0 restava nil e
+                         * OP_LOAD_MEMBER/STORE_MEMBER sul contesto davano nil (bug
+                         * FunctionsAdvanced/FunctionsLambdaClosures). Solo se upvalue 0 è
+                         * un DICT (non un box scalare delle lambda semplici). */
+                        if (closure->num_upvalues > 0
+                            && closure->upvalues[0].type == 2
+                            && closure->upvalues[0].ref
+                            && closure->upvalues[0].ref->kind == GMB_OBJ_DICT)
+                        {
+                            gmb_obj_retain(closure->upvalues[0].ref);
+                            task->frame->local_nums[0] = 0;
+                            task->frame->local_refs[0] = closure->upvalues[0].ref;
+                            task->frame->local_types[0] = 2;
+                            task->frame->local_basic[0] = GMB_BT_OBJECT;
+                        }
+                    }
+                    task->ip = addr;
+                }
+                gmb_obj_release(fnE.ref);
+                break;
+            }
+            case OP_CALL:
+            {
+                int addr = gmb_vm_read_u16(vm, task);
+                if (!push_frame(task, task->sp, task->ip)) return -1;
+                task->ip = addr;
+                break;
+            }
+            case OP_CALL_N:
+            {
+                int addr = gmb_vm_read_u16(vm, task);
+                int argc = gmb_vm_read_u8(vm, task);
+                int saved_sp = task->sp - argc;
+                if (!push_frame(task, saved_sp, task->ip)) return -1;
+                task->ip = addr;
+                break;
+            }
+            case OP_CALL_CTOR:
+            {
+                int addr = gmb_vm_read_u16(vm, task);
+                /* Specchio C#: stack = [..., args..., instance, argCount] (argCount include SELF). */
+                gmb_stack_entry_t argcE = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                int argCount = (argcE.type == 1) ? (int)argcE.num : 0;
+                if (argCount > 0 && argCount <= 65)
+                {
+                    gmb_stack_entry_t slots[65];
+                    slots[0] = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                    for (int a = argCount - 2; a >= 0; a--)
+                        slots[a + 1] = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                    if (!push_class_frame(task, slots, argCount, NULL))
+                    {
+                        for (int i = 0; i < argCount; i++) gmb_obj_release(slots[i].ref);
+                        return -1;
+                    }
+                    task->frame->is_direct_call = 1;
+                }
+                else if (!push_frame(task, task->sp, task->ip)) return -1;
+                else task->frame->is_direct_call = 1;
+                task->ip = addr;
+                break;
+            }
+            case OP_CLEAR_RETURN:
+                if (task->frame) task->frame->return_value = (gmb_stack_entry_t){ 0 };
+                break;
+            case OP_RETURN:
+            {
+                /* V4: RETURN-GOSUB attraverso i FINALLY (specchio PCodeVm). */
+                if (task->gosub_count > 0 &&
+                    task->gosub_stack[task->gosub_count - 1].frame == task->frame)
+                {
+                    begin_gosub_return_unwind(task, &task->gosub_stack[task->gosub_count - 1]);
+                    if (task->state == GMB_TS_FINISHED) return 0;
+                    break;   /* completato subito o FINALLY in corso: dispatch continua */
+                }
+                /* V4: RETURN attraverso i FINALLY; se non c'è cleanup riesegue qui. */
+                if (begin_return_unwind(task, task->current_ip)) break;
+                /* ON ERROR GOSUB usa l'IpStack per la continuazione (specchio PCodeVm). */
+                if (task->error_handler_is_gosub && task->ip_stack_count > 0)
+                {
+                    task->ip = task->ip_stack[--task->ip_stack_count];
+                    break;
+                }
+                gmb_frame_t* f = task->frame;
+                if (!f)
+                {
+                    /* Parità Go defer: goroutine radice/top-level senza frame — esegui i
+                     * deferred task-level (LIFO) prima di consumare IpStack/terminare. */
+                    if (task->task_defer_count > 0)
+                    {
+                        task->pending_defer_return = 1;
+                        task->ip = task->task_defer_ips[--task->task_defer_count];
+                        break;
+                    }
+                    if (task->ip_stack_count > 0) { task->ip = task->ip_stack[--task->ip_stack_count]; break; }
+                    task->state = GMB_TS_FINISHED; return 0;
+                }
+                /* Un RETURN che esce da una procedura rimuove i suoi TRY/cleanup residui. */
+                while (task->try_count > 0 && task->try_stack[task->try_count - 1]->frame == f)
+                    gmb_try_entry_release(task->try_stack[--task->try_count]);
+                while (task->cleanup_count > 0 && task->cleanup_stack[task->cleanup_count - 1]->frame == f)
+                    gmb_try_entry_release(task->cleanup_stack[--task->cleanup_count]);
+                gmb_stack_entry_t rv = { 0 };
+                if (f->frame_sp > 0) rv = f->frame_stack[--f->frame_sp];
+                /* V4f: nei frame costruttore il confronto è RELATIVO a saved_sp (specchio
+                 * del fix C#: il controllo assoluto popperebbe residui preesistenti sotto
+                 * il livello di chiamata invece di usare il fallback ConstructorInstance). */
+                else if ((f->constructor_instance || f->is_direct_call) ? (task->sp > f->saved_sp) : (task->sp > 0))
+                    rv = gmb_task_pop(task);
+                else if (f->return_value.type != 0 || f->return_value.ref)
+                {
+                    rv = f->return_value;   /* IN PRESTITO dallo slot locale (il frame lo libera con pop_frame): si rende posseduto */
+                    if (rv.type == 2 && rv.ref) gmb_obj_retain(rv.ref);
+                }
+                else if (f->constructor_instance)
+                {
+                    rv.type = 2; rv.basic_type = GMB_BT_OBJECT;
+                    rv.num = 0; rv.ref = f->constructor_instance;
+                    gmb_obj_retain(f->constructor_instance); /* il ref del frame va via col frame */
+                }
+                int return_ip = f->return_ip;
+                int saved_sp = f->saved_sp;
+                restore_caller_error_scope(task, f);   /* V4e: prima del release (use-after-free) */
+                pop_frame(task);
+                task->ip = return_ip;
+                gmb_task_truncate(task, saved_sp);
+                if (return_ip == -2) {
+                    task->sync_result = (rv.type == 1) ? rv.num : 0;
+                    task->sync_result_ref = (rv.type == 2) ? rv.ref : NULL;
+                    task->sync_result_type = (uint8_t)rv.type;
+                    /* rv e' posseduto: sync_result_ref ADOTTA il riferimento (nessun retain in piu') */
+                    task->sync_active = 0;
+                    task->ip = -2;
+                    return 0;
+                }
+                if (rv.type == 1) push_num_entry(task, rv.num, rv.basic_type);
+                else if (rv.type == 2) push_ref_new(task, (gmb_obj_t*)rv.ref, rv.basic_type);   /* rv e' posseduto: lo stack lo adotta */
+                break;
+            }
+            case OP_HALT:
+                /* Parità Go defer: l'uscita top-level avviene via HALT (non RETURN);
+                 * i deferred task-level vanno comunque eseguiti prima di terminare. */
+                if (!task->frame && task->task_defer_count > 0)
+                {
+                    task->pending_defer_return = 1;
+                    task->ip = task->task_defer_ips[--task->task_defer_count];
+                    break;
+                }
+                task->state = GMB_TS_FINISHED;
+                return 0;
+            case OP_GO_EXIT:
+                /* V4: GO EXIT attraversa i FINALLY prima di terminare il goroutine. */
+                if (begin_go_exit_unwind(task)) break;
+                task->state = GMB_TS_FINISHED;
+                return 0;
+
+            case OP_END_VALID:
+                /* Subroutine VALID: mai raggiunta nel flusso normale (saltata via indirizzo).
+                 * Anomalia → ferma il task (stessa semantica PCodeVm). */
+                task->state = GMB_TS_FINISHED;
+                return 0;
+
+            case OP_READ:
+            {
+                /* Legge il prossimo valore dalla tabella DATA (chunk->data) e lo spinge. */
+                if (task->data_index < 0 || task->data_index >= (int)vm->chunk->data_len)
+                {
+                    vm_error(task, "OP_READ: DATA esaurite");
+                    return -1;
+                }
+                const gmb_value_t* d = &vm->chunk->data[task->data_index++];
+                switch (d->type)
+                {
+                    case GMB_CONST_DOUBLE:
+                    case GMB_CONST_INT:
+                        push_num_entry(task, d->d, GMB_BT_NUMBER);
+                        break;
+                    case GMB_CONST_STRING:
+                    {
+                        gmb_obj_string_t* s = gmb_str_alloc(d->s, d->s ? (uint32_t)strlen(d->s) : 0);
+                        push_ref_new(task, (gmb_obj_t*)s, GMB_BT_STRING);
+                        break;
+                    }
+                    default:
+                        push_nil(task);
+                        break;
+                }
+                break;
+            }
+
+            case OP_NEXT_GENERATOR:
+            {
+                /* Punto di sospensione per YIELD. Il valore da produrre è già sullo stack
+                 * (compilato prima). Salvalo in pending_result e interrompi il loop: il driver
+                 * NEXT del generatore riprenderà da qui (task->ip punta già alla prossima
+                 * istruzione). Stessa semantica PCodeVm. */
+                gmb_stack_entry_t yielded = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                task->pending_result = yielded;
+                task->has_pending_result = 1;
+                return GMB_TICK_GENERATOR_YIELD;
+            }
+
+            case OP_NEW_GENERATOR_EXPR:
+            {
+                /* Stack (dal compilatore): source closure, condition closure (o NIL), output closure.
+                 * Materializza l'espressione generatore in un gmb_obj_generator_t (is_expr) guidato
+                 * da NEXT(). Semantica PCodeVm: source() → sequenza; per ogni elemento, se cond(x)
+                 * è true, output(x) è aggiunto alla lista. */
+                gmb_stack_entry_t oe = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                gmb_stack_entry_t ce = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                gmb_stack_entry_t se = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                gmb_obj_closure_t* output = (oe.type == 2 && oe.ref && oe.ref->kind == GMB_OBJ_CLOSURE) ? (gmb_obj_closure_t*)oe.ref : NULL;
+                gmb_obj_closure_t* cond = (ce.type == 2 && ce.ref && ce.ref->kind == GMB_OBJ_CLOSURE) ? (gmb_obj_closure_t*)ce.ref : NULL;
+                gmb_obj_closure_t* source = (se.type == 2 && se.ref && se.ref->kind == GMB_OBJ_CLOSURE) ? (gmb_obj_closure_t*)se.ref : NULL;
+                if (source && output)
+                {
+                    /* valuta la source: closure 0-aria che ritorna la sequenza (lista o dict) */
+                    gmb_vm_call_closure_sync_entry0(vm, task, source);
+                    gmb_obj_shared_val_t* srcList = NULL;
+                    if (task->sync_result_type == 2 && task->sync_result_ref && task->sync_result_ref->kind == GMB_OBJ_LIST)
+                        srcList = (gmb_obj_shared_val_t*)task->sync_result_ref;
+                    gmb_obj_shared_val_t* result = gmb_shared_list_new();
+                    if (srcList && srcList->list && result)
+                    {
+                        for (size_t i = 0; i < srcList->list->count; i++)
+                        {
+                            gmb_val_t item = srcList->list->items[i];
+                            if (cond)
+                            {
+                                double c = gmb_vm_call_closure_sync_val(vm, task, cond, item);
+                                if (c == 0) continue;
+                            }
+                            /* output: chiamata sync_entry per poter produrre anche oggetti */
+                            gmb_vm_call_closure_sync_entry(vm, task, output, item);
+                            if (task->sync_result_type == 2 && task->sync_result_ref)
+                                gmb_list_add(result->list, gmb_make_val_obj(task->sync_result_ref));
+                            else
+                                gmb_list_add(result->list, gmb_make_val_double(task->sync_result));
+                        }
+                    }
+                    /* L'espressione generatore è materializzata come LISTA (come l'enumerable
+                     * del PCodeVm): FOR EACH/NEXT la consumano come una collezione normale. */
+                    if (result) push_ref_new(task, (gmb_obj_t*)result, GMB_BT_OBJECT);
+                    else push_nil(task);
+                    break;
+                }
+                push_nil(task);
+                break;
+            }
+            case OP_NEW_GENERATOR_CALL:
+            {
+                /* GENERATOR PROCEDURE: crea un task dedicato (ip=corpo generatore, globals
+                 * condivise col chiamante, NESSUN frame — il prologo del corpo popa gli args
+                 * dallo stack), wrappa in gmb_obj_generator_t e pusha. Il task viene guidato
+                 * sincronamente da NEXT (mai schedulato sul GPM). Stessa semantica PCodeVm. */
+                int addr = gmb_vm_read_u16(vm, task);
+                int argCount = gmb_vm_read_u8(vm, task);
+                gmb_stack_entry_t args[16];
+                for (int i = argCount - 1; i >= 0; i--)
+                    args[i] = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                if (vm->scheduler)
+                {
+                    gmb_task_t* gt = gmb_task_create_unregistered(addr);
+                    if (!gt) { push_nil(task); break; }
+                    gt->vm_ctx = vm;
+                    gt->globals_nums = task->globals_nums;
+                    gt->globals_refs = task->globals_refs;
+                    gt->globals_types = task->globals_types;
+                    gt->globals_basic = task->globals_basic;
+                    gt->globals_count = task->globals_count;
+                    gt->owns_globals = 0; /* condivise col chiamante */
+                    gt->data_index = 0;
+                    for (int i = 0; i < argCount; i++)
+                    {
+                        if (args[i].type == 1) gmb_task_push_num(gt, args[i].num, args[i].basic_type);
+                        else if (args[i].type == 2) gmb_task_push_ref(gt, (gmb_obj_t*)args[i].ref, args[i].basic_type);
+                    }
+                    gmb_obj_generator_t* gen = gmb_generator_new(gt);
+                    if (!gen) { gmb_task_free(gt); push_nil(task); break; }
+                    push_ref_new(task, (gmb_obj_t*)gen, GMB_BT_OBJECT);
+                }
+                else push_nil(task);
+                break;
+            }
+
+            case OP_RESTORE:
+            {
+                /* Operando U16 = posizione nel data pool (0 = inizio; RESTORE <riga|etichetta>
+                   risolta a compile-time dal compilatore). Prima non leggeva l'operando
+                   (desync di 2 byte a ogni RESTORE col formato a 3 byte) e azzerava sempre. */
+                task->data_index = (int)gmb_vm_read_u16(vm, task);
+                break;
+            }
+
+            case OP_FINALIZE_SCOPE:
+            {
+                /* Chiama il DESTRUCTOR dell'istanza nello slot local, se la classe ne ha uno —
+                 * specchio di FinalizeInstance (PCodeProcessor.cs): stesso schema di
+                 * OP_NEW_CLASS_INSTANCE (push_class_frame + salto), NON un hook nel
+                 * refcounting (gmb_obj_release/release_fn NON hanno un gmb_task_t/gmb_vm_t a
+                 * disposizione per eseguire codice BASIC — girare qui dentro, nel normale
+                 * dispatch loop dell'opcode, evita quel problema). Bug BUG-6/7/8 (Classi-
+                 * Distruttore-Ereditarieta-CrossFile-Bugs): questo opcode era presente ma
+                 * esplicitamente no-op da sempre su questo backend, mentre il PCodeVM C# lo
+                 * implementa da tempo (dopo il fix del 2026-09-02) — nessun DESTRUCTOR veniva
+                 * mai chiamato per un'istanza locale su VMC. */
+                int slot = gmb_vm_read_u16(vm, task);
+                gmb_stack_entry_t e = gmb_task_load_local(task, slot);
+                if (e.type == 2 && e.ref && e.ref->kind == GMB_OBJ_DICT)
+                {
+                    int dtorAddr = vm_desc_destructor_addr(vm_class_desc_of(e.ref));
+                    if (dtorAddr >= 0)
+                    {
+                        gmb_stack_entry_t slots[1];
+                        slots[0].type = 2; slots[0].basic_type = GMB_BT_OBJECT; slots[0].num = 0; slots[0].ref = e.ref;
+                        gmb_obj_retain(e.ref); /* slots[0] trasferisce un ref indipendente dallo slot originale */
+                        gmb_frame_t* df = push_class_frame(task, slots, 1, NULL);
+                        if (df) { task->ip = dtorAddr; break; }
+                        gmb_obj_release(e.ref);
+                    }
+                }
+                break;
+            }
+
+            case OP_FINALIZE_GLOBAL:
+            {
+                /* Stesso meccanismo di OP_FINALIZE_SCOPE sopra, per una variabile GLOBALE. */
+                int idx = gmb_vm_read_u16(vm, task);
+                gmb_stack_entry_t e = gmb_task_load_global(task, idx);
+                if (e.type == 2 && e.ref && e.ref->kind == GMB_OBJ_DICT)
+                {
+                    int dtorAddr = vm_desc_destructor_addr(vm_class_desc_of(e.ref));
+                    if (dtorAddr >= 0)
+                    {
+                        gmb_stack_entry_t slots[1];
+                        slots[0].type = 2; slots[0].basic_type = GMB_BT_OBJECT; slots[0].num = 0; slots[0].ref = e.ref;
+                        gmb_obj_retain(e.ref);
+                        gmb_frame_t* df = push_class_frame(task, slots, 1, NULL);
+                        if (df) { task->ip = dtorAddr; break; }
+                        gmb_obj_release(e.ref);
+                    }
+                }
+                break;
+            }
+
+            case OP_ON_JUMP:
+            {
+                int jumpType = gmb_vm_read_u8(vm, task);
+                int numTargets = gmb_vm_read_u8(vm, task);
+                uint32_t targets[64];
+                for (int i = 0; i < numTargets && i < 64; i++)
+                    targets[i] = gmb_vm_read_u16(vm, task);
+                gmb_stack_entry_t sel = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                long selector = (long)sel.num;
+                gmb_obj_release(sel.ref);
+                if (selector >= 1 && selector <= numTargets)
+                    task->ip = (int)targets[selector - 1];
+                break;
+            }
+
+            case OP_ON_KEY:
+            {
+                /* ON KEY: stack = [keyCode, actionType, targetAddr]. Registro il keycode
+                 * nell'evento runtime (gmb_vm_events) — parita' PCode/IL: alla LETTURA del
+                 * tasto (INKEY, hook in gmb_builtin) l'handler viene spawmato come task
+                 * indipendente all'indirizzo (FireKeyEvent). action==0 (STOP) deregistra. */
+                gmb_stack_entry_t target = {0}, action = {0}, key = {0};
+                if (task->sp > 0) target = gmb_task_pop(task);
+                if (task->sp > 0) action = gmb_task_pop(task);
+                if (task->sp > 0) key = gmb_task_pop(task);
+                gmb_vm_onkey_register(key.type == 1 ? (int)key.num : 0,
+                                      action.type == 1 ? (int)action.num : 0,
+                                      target.type == 1 ? (int)target.num : -1);
+                break;
+            }
+            case OP_ON_MOUSE:
+            {
+                /* ON MOUSE: stack = [eventKind, actionType, targetAddr]. No-op senza backend. */
+                for (int i = 0; i < 3 && task->sp > 0; i++)
+                {
+                    gmb_stack_entry_t a = gmb_task_pop(task);
+                    gmb_obj_release(a.ref);
+                }
+                break;
+            }
+            case OP_BREAKPOINT:
+            {
+                /* Debug server assente in VM/C headless: no-op. */
+                break;
+            }
+            case OP_EVAL_MACRO_STMT:
+                vm_eval_macro(task, 1);
+                break;
+            case OP_EVAL_MACRO_EXPR:
+                vm_eval_macro(task, 0);
+                break;
+
+            /* ================================================================
+            /* ================================================================
+             * ARRAY / COLLECTION (modello condiviso gmb_val_t / gmb_list_t)
+             * ================================================================ */
+            case OP_MK_ARRAY:
+            case OP_INIT_ARRAY:
+            case OP_MK_LIST:
+            {
+                int count = gmb_vm_read_u16(vm, task);
+                gmb_stack_entry_t elems[256];
+                int n = count > 256 ? 256 : count;
+                for (int i = 0; i < n && task->sp > 0; i++)
+                    elems[i] = gmb_task_pop(task);
+                /* Se sotto gli elementi c'è una collection (OP_NEW typeCode collections),
+                   popola QUELLA collection con gli elementi (es. DIM t AS TRIE = [...]) */
+                if (task->sp > 0 && task->stack[task->sp - 1].type == 2 &&
+                    task->stack[task->sp - 1].ref &&
+                    task->stack[task->sp - 1].ref->kind == GMB_OBJ_COLLECTION)
+                {
+                    gmb_obj_collection_t* col = (gmb_obj_collection_t*)task->stack[task->sp - 1].ref;
+                    int idx = 0;
+                    for (int i = n - 1; i >= 0; i--)
+                    {
+                        gmb_val_t v = gmb_adapter_stack_to_val(elems[i]);
+                        if (col->type_code == 11)
+                        {
+                            gmb_coll_trie_add(col->handle, v.v_string.data ? v.v_string.data : "");
+                        }
+                        else if (col->type_code == 10 && (v.kind == GMB_TYPE_DOUBLE || v.kind == GMB_TYPE_INT))
+                        {
+                            /* BITree: Update(index, val) 0-based (come CommonLib), in ordine di inserimento */
+                            double d = v.kind == GMB_TYPE_DOUBLE ? v.v_double : (double)v.v_int;
+                            gmb_coll_bitree_update(col->handle, idx++, d);
+                        }
+                        else
+                            gmb_coll_add(col->handle, v);
+                        gmb_obj_release(elems[i].ref);
+                    }
+                    /* Il contenitore è GIÀ sullo stack (sotto gli elementi: creato da OP_NEW per
+                     * `DIM x AS <Contenitore> = [...]`): va CONSUMATO e ripushàto UNA volta.
+                     * Prima si faceva solo `push_ref_entry` (RETAIN) lasciando l'entry
+                     * originale → DUE entry per la stessa collezione: lo STORE ne popolava una
+                     * e l'altra restava sullo stack. Effetti misurati (probe `H = [9]` su
+                     * VM/C): (a) una entry accumulata per OGNI letterale di contenitore
+                     * tipizzato (crescita dello stack a ogni riassegnazione); (b) il letterale
+                     * successivo trovava quella collezione sotto i propri elementi e ci faceva
+                     * APPEND invece di costruirne una nuova — `H = [9,5,2]` lasciava la vecchia
+                     * radice e sommava gli elementi (H.Count() = 7 invece di 3). Stessa
+                     * disciplina di P-Code (OP_INIT_ARRAY: PopRef → muta → PushRef) e del ramo
+                     * OP_INIT_ARRAY/OP_LIST qui sopra (sp-- + push_ref_new). */
+                    task->sp--;
+                    push_ref_new(task, (gmb_obj_t*)col, GMB_BT_OBJECT);
+                    break;
+                }
+                gmb_obj_shared_val_t* arr = NULL;
+                /* OP_INIT_ARRAY: se sotto gli elementi c'è GIÀ un array (dimensioni
+                   dichiarate da OP_REDIM/CREATE_ARRAY), popola QUELLO invece di crearne
+                   uno nuovo (parità PCodeVM PCodeProcessor:1905-1946). I valori
+                   inizializzano le prime slot; le restanti (dichiarate ma non
+                   inizializzate) restano 0. Prima VM/C creava una lista con SOLO i
+                   valori → DIM x(3)={0,1,2} produceva 3 elementi invece di 4 (array-size
+                   bug che faceva fallire TORCH.FROM/RESHAPE e innescava il self-deadlock
+                   di MODELTRAINSTEP su g_lock). */
+                /* Riuso limitato a OP_INIT_ARRAY: OP_MK_ARRAY/OP_MK_LIST costruiscono un
+                   literal `{...}` puro (anche annidato, es. {{1,2},{3,4},{5,6}}) e possono
+                   trovare sullo stack, appena sotto i propri elementi, un array/lista
+                   GIÀ COMPLETO — il sibling precedente della stessa espressione annidata
+                   (es. {1,2} già costruito prima di valutare {3,4}), non un placeholder da
+                   riempire. Senza il controllo su `op`, quel sibling veniva scambiato per
+                   l'array pre-dimensionato di OP_INIT_ARRAY e RISCRITTO con i valori del
+                   literal successivo invece di crearne uno nuovo: bug "Arrays-Sweep-
+                   Divergenze-5-Backend" — {{1,2},{3,4},{5,6}} collassava su un unico
+                   oggetto condiviso (mutato 3 volte, sopravviveva solo l'ultimo {5,6}) e
+                   nested(0)/nested(1) restavano vuoti. */
+                if (op == OP_INIT_ARRAY &&
+                    task->sp > 0 && task->stack[task->sp - 1].type == 2 &&
+                    task->stack[task->sp - 1].ref &&
+                    task->stack[task->sp - 1].ref->kind == GMB_OBJ_LIST)
+                {
+                    arr = (gmb_obj_shared_val_t*)task->stack[task->sp - 1].ref;
+                    task->sp--; /* riusa l'array pre-dimensionato */
+                }
+                if (!arr) arr = gmb_shared_list_new();
+                if (!arr) { vm_error(task, "OP_MK_ARRAY: memoria"); break; }
+                int declared = (int)gmb_list_count(*arr->list);
+                if (declared > 0)
+                {
+                    int fill = n < declared ? n : declared;
+                    for (int j = 0; j < n; j++)
+                    {
+                        gmb_val_t v = gmb_adapter_stack_to_val_borrowed(elems[n - 1 - j]);   /* la lista trattiene da se': nessun retain extra */
+                        if (j < fill) gmb_list_set(arr->list, j, v);
+                        gmb_obj_release(elems[n - 1 - j].ref);
+                    }
+                    for (int j = n; j < declared; j++)
+                        gmb_list_set(arr->list, j, gmb_make_val_double(0));
+                }
+                else
+                {
+                    for (int i = n - 1; i >= 0; i--)
+                    {
+                        gmb_val_t v = gmb_adapter_stack_to_val_borrowed(elems[i]);   /* la lista trattiene da se': nessun retain extra */
+                        gmb_list_add(arr->list, v);
+                        gmb_obj_release(elems[i].ref);
+                    }
+                }
+                push_ref_new(task, (gmb_obj_t*)arr, GMB_BT_OBJECT);   /* arr e' posseduto (popped o fresco) */
+                break;
+            }
+
+            case OP_ARRAY_LEN:
+            {
+                gmb_stack_entry_t e = gmb_task_pop(task);
+                double n = 0;
+                if (e.type == 2 && e.ref)
+                {
+                    if (e.ref->kind == GMB_OBJ_LIST && ((gmb_obj_shared_val_t*)e.ref)->list)
+                        n = (double)gmb_list_count(*((gmb_obj_shared_val_t*)e.ref)->list);
+                    else if (e.ref->kind == GMB_OBJ_DICT && ((gmb_obj_shared_val_t*)e.ref)->dict)
+                        n = (double)gmb_dict_count(*((gmb_obj_shared_val_t*)e.ref)->dict);
+                }
+                gmb_obj_release(e.ref);
+                push_num_entry(task, n, GMB_BT_NUMBER);
+                break;
+            }
+
+            case OP_IS_TYPE:
+            {
+                /* Operando: typeCode u8. 0=string,1=num(int/double/float),2=double/float,
+                 * 3=null,4=dict,5=list. Stessa semantica PCodeVm. */
+                int typeCode = gmb_vm_read_u8(vm, task);
+                gmb_stack_entry_t e = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                int result = 0;
+                switch (typeCode)
+                {
+                    case 0: result = e.type == 2 && e.ref && e.ref->kind == GMB_OBJ_STRING; break;
+                    case 1: result = e.type == 1; break;
+                    case 2: result = e.type == 1; break; /* double/float: la VM tiene tutto come num */
+                    case 3: result = e.type == 0 || (e.type == 2 && e.ref == NULL); break;
+                    case 4: result = e.type == 2 && e.ref && e.ref->kind == GMB_OBJ_DICT; break;
+                    case 5: result = e.type == 2 && e.ref && e.ref->kind == GMB_OBJ_LIST; break;
+                    default: result = 0; break;
+                }
+                gmb_obj_release(e.ref);
+                push_num_entry(task, result ? -1.0 : 0.0, GMB_BT_BOOL);
+                break;
+            }
+
+            case OP_FE_DESTRUCT:
+            {
+                /* FOR EACH a,b,c IN m (matrice): destruttura la riga di iterazione (lista)
+                 * in N elementi. Pop valore; se è una lista e N>0 pusha i primi N elementi
+                 * (il primo finisce in cima — il compiler li pop in ordine). Altrimenti
+                 * (iterazione normale) ri-pusha il valore invariato. Stessa semantica PCodeVm. */
+                int feN = gmb_vm_read_u8(vm, task);
+                gmb_stack_entry_t feVal = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                if (feVal.type == 2 && feVal.ref && feVal.ref->kind == GMB_OBJ_LIST && feN > 0)
+                {
+                    gmb_obj_shared_val_t* row = (gmb_obj_shared_val_t*)feVal.ref;
+                    gmb_int_t len = row->list ? gmb_list_count(*row->list) : 0;
+                    gmb_int_t take = len < feN ? len : feN;
+                    /* Pusha in ordine inverso: prima i mancanti (null), poi gli elementi
+                     * dal N-1-esimo al 0-esimo (elemento 0 in cima). */
+                    for (gmb_int_t fi = take; fi < feN; fi++) push_nil(task);
+                    for (gmb_int_t fi = take - 1; fi >= 0; fi--)
+                    {
+                        gmb_val_t v = gmb_list_get(*row->list, fi);
+                        gmb_stack_entry_t s = gmb_adapter_val_to_stack(v);
+                        if (s.type == 1) push_num_entry(task, s.num, s.basic_type);
+                        else if (s.type == 2) push_ref_new(task, (gmb_obj_t*)s.ref, s.basic_type);
+                    }
+                    gmb_obj_release(feVal.ref);
+                }
+                else
+                {
+                    /* Non-matrice: valore singolo invariato. feVal è OWNED (poppato) — il ramo
+                     * matrice lo rilascia esplicitamente → push_ref_new (STEAL): push_ref_entry
+                     * (RETAIN) lascerebbe il ref poppato. */
+                    if (feVal.type == 1) push_num_entry(task, feVal.num, feVal.basic_type);
+                    else if (feVal.type == 2) push_ref_new(task, (gmb_obj_t*)feVal.ref, feVal.basic_type);
+                }
+                break;
+            }
+
+            case OP_LOAD_ELEMENT:
+            case OP_LOAD_ELEMENT_REF:
+            case OP_LOAD_ELEMENT_POSITIONAL:
+            {
+                /* OP_LOAD_ELEMENT_REF (Compiler.UserTypes.cs::AssignField, `Arr(i).Campo =
+                 * valore`): usa la variante by-reference dell'adapter — un elemento
+                 * GMB_OBJ_DICT/GMB_OBJ_LIST già esistente resta lo STESSO oggetto invece di
+                 * una copia, così un successivo OP_STORE_MEMBER/OP_STORE_FIELD scrive
+                 * davvero sull'elemento in lista. Vedi gmb_adapter_val_to_stack_ref. */
+                gmb_stack_entry_t (*valToStack)(gmb_val_t) =
+                    (op == OP_LOAD_ELEMENT_REF) ? gmb_adapter_val_to_stack_ref : gmb_adapter_val_to_stack;
+                int numIndices = gmb_vm_read_u8(vm, task);
+                /* chiavi: l'ultima spinta è la più interna (stringa per dict, num per lista) */
+                double indices[8] = {0};
+                const char* keyStr = "";
+                char keybuf[64];
+                int isKeyStr = 0;
+                for (int i = numIndices - 1; i >= 0 && i < 8; i--)
+                {
+                    if (task->sp > 0)
+                    {
+                        gmb_stack_entry_t k = gmb_task_pop(task);
+                        if (k.type == 2 && k.ref && k.ref->kind == GMB_OBJ_STRING && !k.ref->type_name)   /* kind 0 + type_name = box runtime (lista/dict/bytes), NON stringa */
+                        {
+                            keyStr = ((gmb_obj_string_t*)k.ref)->data;
+                            isKeyStr = 1;
+                        }
+                        else if (k.type == 1)
+                        {
+                            indices[i] = k.num;
+                        }
+                        /* keyStr punta ai dati di k.ref: va tenuto vivo fino a fine istruzione (prima veniva
+                         * rilasciato qui; funzionava solo perche' ogni costante stringa perdeva un rc). */
+                        vm_defer_release(task, k.ref);
+                    }
+                }
+                gmb_stack_entry_t arrE = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                gmb_obj_t* arrO = arrE.ref;
+                if (arrO && arrO->kind == GMB_OBJ_LIST && ((gmb_obj_shared_val_t*)arrO)->list && numIndices >= 1)
+                {
+                    /* Indice SINGOLO su matrice 2D+ (ndims>=2): ritorna la RIGA come lista
+                     * (parità IL: il FOR EACH su matrice riceve una riga-lista — il
+                     * compilatore C# emette LOAD_ELEMENT_POSITIONAL anche per isMatrix).
+                     * Matrice flat row-major: m[r*cols + c], cols = dim_upper[1]+1. */
+                    if (numIndices == 1 && !isKeyStr && ((gmb_obj_shared_val_t*)arrO)->ndims >= 2)
+                    {
+                        gmb_obj_shared_val_t* msv = (gmb_obj_shared_val_t*)arrO;
+                        gmb_int_t mcols = (gmb_int_t)msv->dim_upper[1] + 1;
+                        gmb_int_t mrows = (gmb_int_t)msv->dim_upper[0] + 1;
+                        gmb_int_t mri = (gmb_int_t)indices[0];
+                        if (mri < 0) mri += mrows;
+                        gmb_obj_shared_val_t* mro = gmb_shared_list_new();
+                        if (mro)
+                        {
+                            for (gmb_int_t mci = 0; mci < mcols; mci++)
+                            {
+                                gmb_int_t moff = mri * mcols + mci;
+                                gmb_val_t mv = (moff >= 0 && moff < (gmb_int_t)msv->list->count)
+                                    ? gmb_list_get(*msv->list, moff) : gmb_val_nil();
+                                gmb_list_add(mro->list, mv);
+                            }
+                            push_ref_new(task, (gmb_obj_t*)mro, GMB_BT_OBJECT);
+                        }
+                        else push_nil(task);
+                        gmb_obj_release(arrE.ref);
+                        break;
+                    }
+                    long target = (long)indices[0];
+                    if (numIndices >= 2 && isKeyStr == 0)
+                        target = gmb_multidim_target((gmb_obj_shared_val_t*)arrO, indices, numIndices);
+                    if (target < 0) target += (long)((gmb_obj_shared_val_t*)arrO)->list->count;
+                    if (target >= (long)((gmb_obj_shared_val_t*)arrO)->list->count) { push_nil(task); break; }
+                    gmb_val_t v = gmb_list_get(*((gmb_obj_shared_val_t*)arrO)->list, (gmb_int_t)target);
+                    gmb_stack_entry_t s = valToStack(v);
+                    if (s.type == 2 && s.ref) push_ref_new(task, s.ref, s.basic_type);
+                    else if (s.type == 1) push_num_entry(task, s.num, s.basic_type);
+                    else push_nil(task);
+                }
+                else if (arrO && arrO->kind == GMB_OBJ_DICT && ((gmb_obj_shared_val_t*)arrO)->dict && numIndices >= 1)
+                {
+                    gmb_obj_shared_val_t* dod = (gmb_obj_shared_val_t*)arrO;
+                    /* POSITIONAL su dict (FOR EACH / comprehension): l'indice è un
+                     * CONTATORE di iterazione, NON una chiave — ritorna la N-esima entry
+                     * come KeyValuePair {Key,Value} (parità IL/PCode: DictionaryEntry).
+                     * Prima cadeva nel lookup per chiave "0"/"1"/... → 0 iterazioni utili
+                     * (`ks=0` su FOR EACH k,v IN dict). Solo per OP_LOAD_ELEMENT_POSITIONAL:
+                     * il case è condiviso con OP_LOAD_ELEMENT (d[k] vero). */
+                    if (op == OP_LOAD_ELEMENT_POSITIONAL && !isKeyStr && numIndices == 1)
+                    {
+                        gmb_dict_t* dd = dod->dict;
+                        gmb_int_t di = (gmb_int_t)indices[0];
+                        if (di >= 0 && di < (gmb_int_t)dd->count)
+                        {
+                            gmb_obj_shared_val_t* kvp = gmb_shared_dict_new();
+                            if (kvp)
+                            {
+                                gmb_dict_set(kvp->dict, "Key", gmb_make_val_string_counted(dd->items[di].key ? dd->items[di].key : ""));
+                                gmb_val_t vv = dd->items[di].value;
+                                if (vv.kind == GMB_TYPE_STRING) gmb_dict_set(kvp->dict, "Value", gmb_make_val_string_counted(vv.v_string.data ? vv.v_string.data : ""));
+                                else if (vv.kind == GMB_TYPE_OBJECT && vv.v_ptr) gmb_dict_set(kvp->dict, "Value", vv);   /* set trattiene da se' */
+                                else gmb_dict_set(kvp->dict, "Value", vv);
+                                push_ref_new(task, (gmb_obj_t*)kvp, GMB_BT_OBJECT);
+                            }
+                            else push_nil(task);
+                        }
+                        else push_nil(task);
+                        gmb_obj_release(arrE.ref);
+                        break;
+                    }
+                    if (!isKeyStr) { snprintf(keybuf, sizeof(keybuf), "%.15g", indices[0]); keyStr = keybuf; }
+                    gmb_val_t v = gmb_dict_get(*dod->dict, keyStr);
+                    gmb_stack_entry_t s = valToStack(v);
+                    if (s.type == 2 && s.ref) push_ref_new(task, s.ref, s.basic_type);
+                    else if (s.type == 1) push_num_entry(task, s.num, s.basic_type);
+                    else push_nil(task);
+                }
+                else if (arrO && arrO->kind == GMB_OBJ_COLLECTION && numIndices >= 1)
+                {
+                    /* indexer su collection map-like: coll(key) → valore */
+                    gmb_obj_collection_t* col = (gmb_obj_collection_t*)arrO;
+                    int tce = col->type_code;
+                    gmb_val_t k = isKeyStr ? gmb_make_val_string_counted(keyStr) : gmb_make_val_double(indices[0]);
+                    /* Todo Arrays-Sweep-Residui-Minori #4: stesso typeCode 6 (SortedDict)
+                     * mancante nel percorso di lettura indicizzata — controparte del fix
+                     * di scrittura in OP_STORE_ELEMENT poco sopra. */
+                    gmb_val_t v = (tce == 6 || tce == 7 || tce == 8 || tce == 9 || tce == 26 || tce == 18 || tce == 19)
+                        ? gmb_coll_kv_get(col->handle, k)
+                        : gmb_val_nil();
+                    gmb_val_discard(k);   /* chiave temporanea */
+                    gmb_stack_entry_t s = gmb_adapter_val_to_stack(v);
+                    if (s.type == 2 && s.ref) push_ref_new(task, s.ref, s.basic_type);
+                    else if (s.type == 1) push_num_entry(task, s.num, s.basic_type);
+                    else push_nil(task);
+                }
+                else if (arrO && arrO->kind == GMB_OBJ_STRING && numIndices >= 1)
+                {
+                    /* indexer su STRINGA: s(i) → carattere i-esimo come stringa di 1 char
+                     * (parità PCode/IL: a[0]=="x" con a="xy"). Indice negativo = dal fondo.
+                     * Prima: push_nil silenzioso → il FOR EACH su stringa emesso dal
+                     * compilatore C# (UBOUND + OP_LOAD_ELEMENT_POSITIONAL) leggeva vuoto. */
+                    gmb_obj_string_t* so = (gmb_obj_string_t*)arrO;
+                    long si = (long)indices[0];
+                    if (si < 0) si += (long)so->length;
+                    if (si >= 0 && si < (long)so->length)
+                    {
+                        char scbuf[2]; scbuf[0] = so->data[si]; scbuf[1] = 0;
+                        gmb_obj_string_t* one = gmb_str_alloc(scbuf, 1);
+                        if (one) push_ref_new(task, (gmb_obj_t*)one, GMB_BT_STRING);
+                        else push_nil(task);
+                    }
+                    else push_nil(task);
+                }
+                else if (arrE.type == 1)
+                {
+                    /* `.Value` su uno scalare (nullable/plain): identità del numero.
+                     * Accesso membro a CHIAVE STRINGA su uno scalare (es. `ex.Number`/
+                     * `ex.Description` su un valore eccezione scalar in `CATCH ex AS ERR`, o
+                     * `n.X` su una variabile numerica): PCode lo TOLERA restituendo vuoto
+                     * (membro non presente su uno scalare) — qui restituisce nil (parità
+                     * PCodeVM), NON "indexing a numeric scalar" che crashava il task.
+                     * L'indicizzazione NUMERICA di uno scalare (arr(0) su un numero) resta
+                     * un errore chiaro: la variabile va dichiarata array. */
+                    if (isKeyStr && !strcasecmp(keyStr, "Value"))
+                        push_num_entry(task, arrE.num, arrE.basic_type);
+                    else if (isKeyStr && arrE.num >= 1.0 && arrE.num < 16.0)
+                    {
+#ifndef GMB_VM_SPECIALIZED
+                        /* Result set SQL: `rs("col")`. Il chunk (common/Compiler) emette
+                         * OP_LOAD_ELEMENT con base = handle numerico restituito da SQL QUERY
+                         * e chiave stringa. Parità PCode (dict con __rsid__+campi della riga
+                         * corrente): legge il campo dal runtime condiviso (gmb_sql_current_val,
+                         * gmb_val_t tipizzato) — prima push_nil silenzioso → ogni SQL QUERY su
+                         * VM/C stampava valori vuoti (anche SqlMinimalCrud.bas). */
+                        gmb_val_t ev = gmb_sql_current_val((int64_t)arrE.num, keyStr);
+                        if (ev.kind == GMB_TYPE_STRING)
+                        {
+                            gmb_obj_string_t* ss = gmb_str_cstr(ev.v_string.data ? ev.v_string.data : "");
+                            push_ref_new(task, (gmb_obj_t*)ss, GMB_BT_STRING);
+                        }
+                        else if (ev.kind == GMB_TYPE_INT) push_num_entry(task, (double)ev.v_int, GMB_BT_NUMBER);
+                        else if (ev.kind == GMB_TYPE_BOOL) push_num_entry(task, ev.v_bool ? -1.0 : 0.0, GMB_BT_NUMBER);
+                        else if (ev.kind == GMB_TYPE_DOUBLE) push_num_entry(task, ev.v_double, GMB_BT_NUMBER);
+                        else push_nil(task);
+#else
+                        push_nil(task);   /* SQL assente nella VM specializzata */
+#endif
+                    }
+                    else if (isKeyStr)
+                        push_nil(task);
+                    else
+                        vm_error(task, "indexing a numeric scalar is not allowed (declare an array, e.g. DIM x(1))");
+                }
+                else
+                {
+                    push_nil(task);
+                }
+                gmb_obj_release(arrE.ref);
+                break;
+            }
+
+            case OP_STORE_ELEMENT:
+            {
+                int numIndices = gmb_vm_read_u8(vm, task);
+                double indices[8] = {0};
+                const char* keyStr = "";
+                char keybuf[64];
+                int isKeyStr = 0;
+                for (int i = numIndices - 1; i >= 0 && i < 8; i--)
+                {
+                    if (task->sp > 0)
+                    {
+                        gmb_stack_entry_t k = gmb_task_pop(task);
+                        if (k.type == 2 && k.ref && k.ref->kind == GMB_OBJ_STRING && !k.ref->type_name)   /* kind 0 + type_name = box runtime (lista/dict/bytes), NON stringa */
+                        {
+                            keyStr = ((gmb_obj_string_t*)k.ref)->data;
+                            isKeyStr = 1;
+                        }
+                        else if (k.type == 1)
+                        {
+                            indices[i] = k.num;
+                        }
+                        /* keyStr punta ai dati di k.ref: va tenuto vivo fino a fine istruzione (prima veniva
+                         * rilasciato qui; funzionava solo perche' ogni costante stringa perdeva un rc). */
+                        vm_defer_release(task, k.ref);
+                    }
+                }
+                gmb_stack_entry_t arrE = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                gmb_stack_entry_t valE = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                gmb_obj_t* arrO = arrE.ref;
+                gmb_val_t v;
+                if (valE.type == 2 && valE.ref && valE.ref->kind == GMB_OBJ_STRING
+                    && !valE.ref->type_name)   /* vedi gmb_adapter_obj_is_container: un box
+                       runtime-wrapped ha kind 0 == GMB_OBJ_STRING, e senza questa guardia ne
+                       leggevamo ->data come char* (in un dict finiva una stringa vuota invece
+                       dell'array — il sintomo "backends": "" del registry VM/C) */
+                    /* Stringa salvata in dict/lista: val STRINGA (GMB_TYPE_STRING), NON
+                       gmb_make_val_obj → alla lettura gmb_adapter_val_to_stack la tratterebbe
+                       come dict vuoto (p("Name") leggeva vuoto su VM/C). */
+                    v = gmb_make_val_string_counted_n(((gmb_obj_string_t*)valE.ref)->data, ((gmb_obj_string_t*)valE.ref)->length);
+                else if (valE.type == 2 && valE.ref && gmb_adapter_obj_is_container(valE.ref))
+                    v = gmb_make_val_obj(valE.ref); /* oggetti VM annidati: tenere il riferimento diretto */
+                else
+                    v = gmb_adapter_stack_to_val_borrowed(valE);   /* il contenitore trattiene da se'; valE e' rilasciato in fondo */
+                if (arrO && arrO->kind == GMB_OBJ_LIST && ((gmb_obj_shared_val_t*)arrO)->list && numIndices >= 1)
+                {
+                    gmb_list_t* l = ((gmb_obj_shared_val_t*)arrO)->list;
+                    long target = (long)indices[0];
+                    if (numIndices >= 2 && isKeyStr == 0)
+                    {
+                        /* array multidim su lista piatta (row-major): offset dagli stride
+                         * dichiarati (canone 2026-09-30; prima isqrt(count), valido solo
+                         * per matrici quadrate — una 2x3 leggeva 3,4,5 invece di 4,5,6).
+                         * Senza metadati (ndims<2) resta il fallback storico. */
+                        target = gmb_multidim_target((gmb_obj_shared_val_t*)arrO, indices, numIndices);
+                    }
+                    while (target < 0) target += (long)l->count;
+                    while ((size_t)target >= l->count) gmb_list_add(l, gmb_val_nil());
+                    gmb_list_set(l, (gmb_int_t)target, v);
+                }
+                else if (arrO && arrO->kind == GMB_OBJ_DICT && ((gmb_obj_shared_val_t*)arrO)->dict && numIndices >= 1)
+                {
+                    /* chiavi NUMERICHE (DICT OF DOUBLE/…): il dict nativo è a chiavi stringa;
+                     * l'indice numerico va CANONICALIZZATO a stringa, altrimenti ogni
+                     * d(n)=v salvava/leggeva sotto la chiave vuota "" (count=1). Stessa
+                     * formattazione di LOAD_ELEMENT, così d(1) e d("1") coincidono. */
+                    if (!isKeyStr) { snprintf(keybuf, sizeof(keybuf), "%.15g", indices[0]); keyStr = keybuf; }
+                    gmb_dict_set(((gmb_obj_shared_val_t*)arrO)->dict, keyStr, v);
+                }
+                else if (arrO && arrO->kind == GMB_OBJ_COLLECTION && numIndices >= 1)
+                {
+                    gmb_obj_collection_t* col = (gmb_obj_collection_t*)arrO;
+                    int tce = col->type_code;
+                    /* Todo Arrays-Sweep-Residui-Minori #4: typeCode 6 (SortedDict) mancava
+                     * anche qui — stesso elenco di typeCode "map-like" già completato in
+                     * OP_NEW/OP_MK_DICT/isMap/DICT_KEYS/DICT_VALUES (commit 672e143bf).
+                     * SortedL("Beta") = 2 su un SORTED costruito con NEW SORTED OF...
+                     * (assegnazione indicizzata, non letterale) restava silenziosamente
+                     * un no-op: l'oggetto era già un vero GMB_OBJ_COLLECTION (grazie al
+                     * fix di OP_NEW), ma questo store non lo riconosceva. */
+                    if (tce == 6 || tce == 7 || tce == 8 || tce == 9 || tce == 26 || tce == 18 || tce == 19)
+                    {
+                        gmb_val_t k = isKeyStr ? gmb_make_val_string_counted(keyStr) : gmb_make_val_double(indices[0]);
+                        gmb_coll_kv_set(col->handle, k, v);
+                        gmb_val_discard(k);   /* se la collection non l'ha trattenuta e' un temporaneo */
+                    }
+                }
+                gmb_val_discard(v);   /* se nessun contenitore l'ha trattenuta (rc 0) e' un temporaneo */
+                gmb_obj_release(arrE.ref);
+                gmb_obj_release(valE.ref);
+                break;
+            }
+
+            case OP_DICT_SORTED:
+            {
+                /* SORTED: ordina le coppie del dict in-place per chiave (numeric-aware,
+                 * come gmb_dict_keys_sorted) — emesso dal compilatore per DIM AS SORTED
+                 * con literal, così Keys()/iterazione sono già in ordine. */
+                gmb_stack_entry_t se = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                if (se.ref && se.ref->kind == GMB_OBJ_DICT && ((gmb_obj_shared_val_t*)se.ref)->dict)
+                {
+                    gmb_dict_t* dd = ((gmb_obj_shared_val_t*)se.ref)->dict;
+                    for (size_t i = 1; i < dd->count; i++)
+                    {
+                        gmb_pair_t key = dd->items[i];
+                        size_t j = i;
+                        while (j > 0)
+                        {
+                            const char* a = dd->items[j - 1].key ? dd->items[j - 1].key : "";
+                            const char* b = key.key ? key.key : "";
+                            char* ea = NULL; char* eb = NULL;
+                            double da = strtod(a, &ea), db = strtod(b, &eb);
+                            int asc;
+                            if (ea != a && *ea == 0 && eb != b && *eb == 0) asc = (da > db) - (da < db);
+                            else asc = strcmp(a, b);
+                            if (asc <= 0) break;
+                            dd->items[j] = dd->items[j - 1];
+                            j--;
+                        }
+                        dd->items[j] = key;
+                    }
+                    push_ref_new(task, se.ref, se.basic_type);
+                }
+                else push_ref_new(task, se.ref, se.basic_type);
+                break;
+            }
+            case OP_LIST_DEDUP:
+            {
+                /* HashSet: rimuove i duplicati IN-PLACE (conserva la prima occorrenza).
+                 * Emesso dal compilatore per DIM x AS HASHSET<..> = [literal]. */
+                gmb_stack_entry_t de = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                if (de.ref && de.ref->kind == GMB_OBJ_LIST && ((gmb_obj_shared_val_t*)de.ref)->list)
+                {
+                    gmb_list_t* ls = ((gmb_obj_shared_val_t*)de.ref)->list;
+                    for (size_t i = ls->count; i-- > 1;)
+                    {
+                        for (size_t j = 0; j < i; j++)
+                            if (gmb_val_equals(ls->items[j], ls->items[i])) { gmb_list_remove_at(ls, (gmb_int_t)i); break; }
+                    }
+                    push_ref_new(task, de.ref, de.basic_type);
+                }
+                else { push_ref_new(task, de.ref, de.basic_type); }
+                break;
+            }
+            case OP_MK_DICT:
+            {
+                int count = gmb_vm_read_u16(vm, task);
+                /* lo stack ha le coppie key,value in ordine; pop all'indietro */
+                gmb_stack_entry_t pairs[256];
+                int n = count > 128 ? 128 : count;
+                for (int i = 0; i < n * 2 && task->sp > 0; i++)
+                    pairs[i] = gmb_task_pop(task);
+                /* Se sotto le coppie c'è una collection map-like (OP_NEW typeCode 7/8/9/18/26),
+                   popola QUELLA collection con le coppie K/V (es. DIM MyTree AS TREE = { "a": 1 }) */
+                if (task->sp > 0 && task->stack[task->sp - 1].type == 2 &&
+                    task->stack[task->sp - 1].ref &&
+                    task->stack[task->sp - 1].ref->kind == GMB_OBJ_COLLECTION)
+                {
+                    gmb_obj_collection_t* col = (gmb_obj_collection_t*)task->stack[task->sp - 1].ref;
+                    int tcm = col->type_code;
+                    if (tcm == 6 || tcm == 7 || tcm == 8 || tcm == 9 || tcm == 26 || tcm == 18 || tcm == 19)
+                    {
+                        for (int i = n - 1; i >= 0; i--)
+                        {
+                            gmb_val_t val = gmb_adapter_stack_to_val(pairs[i * 2]);
+                            gmb_val_t key = gmb_adapter_stack_to_val(pairs[i * 2 + 1]);
+                            gmb_coll_kv_set(col->handle, key, val);
+                            gmb_obj_release(pairs[i * 2].ref);
+                            gmb_obj_release(pairs[i * 2 + 1].ref);
+                        }
+                        /* Come il ramo gemello di OP_MK_ARRAY/OP_MK_LIST sopra: la collection
+                         * è già sullo stack (OP_NEW) e va consumata e ripushàta una volta
+                         * sola, altrimenti resta una entry orfana per ogni letterale
+                         * `DIM t AS TREE = {…}` / riassegnazione. */
+                        task->sp--;
+                        push_ref_new(task, (gmb_obj_t*)col, GMB_BT_OBJECT);
+                        break;
+                    }
+                }
+                gmb_obj_shared_val_t* d = gmb_shared_dict_new();
+                if (!d) { vm_error(task, "OP_MK_DICT: memoria"); break; }
+                for (int i = n - 1; i >= 0; i--)
+                {
+                    gmb_stack_entry_t val = pairs[i * 2];
+                    gmb_stack_entry_t key = pairs[i * 2 + 1];
+                    char keybuf[128];
+                    const char* kstr = "";
+                    if (key.type == 2 && key.ref) kstr = ((gmb_obj_string_t*)key.ref)->data;
+                    else if (key.type == 1) { snprintf(keybuf, sizeof(keybuf), "%.15g", key.num); kstr = keybuf; }
+                    gmb_val_t v = gmb_adapter_stack_to_val_borrowed(val);   /* il dict trattiene da se'; val e' rilasciato sotto */
+                    gmb_dict_set(d->dict, kstr, v);
+                    gmb_obj_release(key.ref);
+                    gmb_obj_release(val.ref);
+                }
+                push_ref_new(task, (gmb_obj_t*)d, GMB_BT_OBJECT);
+                break;
+            }
+
+            case OP_STORE_MEMBER:
+            {
+                int offset = gmb_vm_read_u16(vm, task);
+                gmb_stack_entry_t objE = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                gmb_stack_entry_t valE = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                gmb_obj_t* obj = objE.ref;
+                if (obj && obj->kind == GMB_OBJ_DICT && ((gmb_obj_shared_val_t*)obj)->dict)
+                {
+                    gmb_dict_t* dict = ((gmb_obj_shared_val_t*)obj)->dict;
+                    gmb_obj_shared_val_t* cd = vm_class_desc_of(obj);
+                    const char* fieldName = vm_field_name_from_offset(cd, offset);
+                    if (fieldName)
+                    {
+                        int setterAddr = vm_desc_table_addr(cd, "PropertySetters", fieldName);
+                        if (setterAddr >= 0)
+                        {
+                            gmb_stack_entry_t slots[2];
+                            slots[0] = objE;   /* ref trasferiti ai locals */
+                            slots[1] = valE;
+                            if (!push_class_frame(task, slots, 2, NULL))
+                            {
+                                gmb_obj_release(objE.ref);
+                                gmb_obj_release(valE.ref);
+                                return -1;
+                            }
+                            task->ip = setterAddr;
+                            break;
+                        }
+                    }
+                    char mkey[32];
+                    snprintf(mkey, sizeof(mkey), "__m%d", offset);
+                    const char* key = fieldName ? fieldName : mkey;
+                    /* Box BYREF (Closure-ByRef-Box-Linker-Definitivo, Fase 2/3): se il campo
+                     * contiene GIÀ un box (posto lì dal LetStmt sintetico con MakeByRefExpr),
+                     * scrivi ATTRAVERSO di esso invece di sovrascriverlo — preserva
+                     * l'identità/scrittura condivisa col chiamante. gmb_byref_store "ruba"
+                     * valE.ref (nessun retain interno, v. byref_write retain_existing=0):
+                     * azzerare valE dopo, altrimenti il release incondizionato sotto
+                     * decrementerebbe un refcount mai incrementato per questo trasferimento. */
+                    gmb_val_t curV = gmb_dict_get(*dict, key);
+                    gmb_stack_entry_t curS = gmb_adapter_val_to_stack(curV);
+                    int wrote_through = vm_write_through_byref_chain(curS, valE);
+                    if (wrote_through)
+                    {
+                        valE.type = 0; valE.ref = NULL;
+                    }
+                    else
+                    {
+                        gmb_dict_set(dict, key, gmb_adapter_stack_to_val_borrowed(valE));
+                    }
+                    if (curS.type == 2 && curS.ref) gmb_obj_release(curS.ref);
+                }
+                else if (obj && obj->kind == GMB_OBJ_LIST && ((gmb_obj_shared_val_t*)obj)->list && offset >= 0)
+                {
+                    gmb_obj_shared_val_t* sv = (gmb_obj_shared_val_t*)obj;
+                    while ((size_t)offset >= sv->list->count) gmb_list_add(sv->list, gmb_val_nil());
+                    gmb_list_set(sv->list, offset, gmb_adapter_stack_to_val_borrowed(valE));
+                }
+                gmb_obj_release(objE.ref);
+                gmb_obj_release(valE.ref);
+                break;
+            }
+            case OP_LOAD_MEMBER:
+            {
+                int offset = gmb_vm_read_u16(vm, task);
+                gmb_stack_entry_t objE = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                gmb_obj_t* obj = objE.ref;
+                if (obj && obj->kind == GMB_OBJ_DICT && ((gmb_obj_shared_val_t*)obj)->dict)
+                {
+                    gmb_obj_shared_val_t* cd = vm_class_desc_of(obj);
+                    const char* fieldName = vm_field_name_from_offset(cd, offset);
+                    if (fieldName)
+                    {
+                        int getterAddr = vm_desc_table_addr(cd, "PropertyGetters", fieldName);
+                        if (getterAddr >= 0)
+                        {
+                            gmb_stack_entry_t slot = objE;   /* ref trasferito al local[0] */
+                            if (!push_class_frame(task, &slot, 1, NULL))
+                            {
+                                gmb_obj_release(objE.ref);
+                                return -1;
+                            }
+                            task->ip = getterAddr;
+                            break;
+                        }
+                    }
+                    char mkey[32];
+                    snprintf(mkey, sizeof(mkey), "__m%d", offset);
+                    const char* key = fieldName ? fieldName : mkey;
+                    gmb_val_t v = gmb_dict_get(*((gmb_obj_shared_val_t*)obj)->dict, key);
+                    /* REF, non copia: un campo che è un oggetto (LIST/DICT, es. `m.L.Add(1)`)
+                     * deve restituire il RIFERIMENTO all'oggetto del campo — la conversione
+                     * normale fa una copia superficiale, così la mutazione andava su una copia
+                     * scartata (bug: `m.L.Add(1)` poi `m.L.Count()` == 0 su VM/C). Parità con
+                     * OP_LOAD_FIELD, che per i campi oggetto ritorna già il riferimento. */
+                    gmb_stack_entry_t s0 = gmb_adapter_val_to_stack_ref(v);   /* entry POSSEDUTA */
+                    gmb_stack_entry_t s = s0;
+                    if (s0.type == 2 && s0.ref && s0.ref->kind == GMB_OBJ_BYREF)
+                    {
+                        /* byref_read restituisce un'entry in PRESTITO: la si rende posseduta PRIMA di rilasciare il box */
+                        s = gmb_byref_load((gmb_obj_byref_t*)s0.ref);
+                        if (s.type == 2 && s.ref) gmb_obj_retain(s.ref);
+                        gmb_obj_release(s0.ref);
+                    }
+                    gmb_obj_release(objE.ref);
+                    if (s.type == 2 && s.ref) push_ref_new(task, s.ref, s.basic_type);
+                    else if (s.type == 1) push_num_entry(task, s.num, s.basic_type);
+                    else push_nil(task);
+                    break;
+                }
+                else if (obj && obj->kind == GMB_OBJ_LIST && ((gmb_obj_shared_val_t*)obj)->list && offset >= 0)
+                {
+                    gmb_val_t v = gmb_list_get(*((gmb_obj_shared_val_t*)obj)->list, offset);
+                    gmb_stack_entry_t s = gmb_adapter_val_to_stack(v);
+                    gmb_obj_release(objE.ref);
+                    if (s.type == 2 && s.ref) push_ref_new(task, s.ref, s.basic_type);
+                    else if (s.type == 1) push_num_entry(task, s.num, s.basic_type);
+                    else push_nil(task);
+                    break;
+                }
+                gmb_obj_release(objE.ref);
+                push_nil(task);
+                break;
+            }
+            /* Un TYPE...END TYPE (UDT) e una CLASS condividono lo stesso protocollo di stack
+             * emesso dal compilatore (args..., argCount, poi l'opcode+descrittore — vedi
+             * Compiler.Expressions.cs, "Caso 2: Istanziazione di un UDT con costruttore" è
+             * identico a "Caso 1" per le CLASS) e lo stesso schema di descriptor
+             * (Name/BaseClass/FieldNames/FieldTypes/Constructors/Destructor/VTable — vedi
+             * Compiler.UserTypes.cs::VisitUserDefinedType, quasi identico a
+             * VisitClassDefinition). Il vecchio case OP_NEW_UDT_INSTANCE (RIMOSSO) marcava
+             * "__class__" con una stringa "udt" invece del descriptor materializzato — nessun
+             * campo veniva inizializzato per NOME, nessun costruttore veniva mai chiamato, e
+             * (bug più grave, corretto come effetto collaterale) argCount/args non venivano
+             * MAI poppati dallo stack, corrompendolo ad ogni `NEW MioTipo(...)`. Stessa
+             * root-cause/stesso fix di quello per i campi CLASS (2026-09-02, vedi
+             * Classi-Distruttore-Ereditarieta-CrossFile-Bugs): riusa esattamente il codice
+             * OP_NEW_CLASS_INSTANCE sotto, come fa già il PCodeProcessor C#
+             * (`case OpCode.OP_NEW_UDT_INSTANCE: case OpCode.OP_NEW_CLASS_INSTANCE:` — stesso
+             * blocco, mai due implementazioni separate). */
+            case OP_ATTACH_UDT_DESC:
+            {
+                /* Allega il descrittore UDT del tipo TARGET (const) all'istanza dict in cima
+                 * (JSON.TOOBJECT con target UDT): i FieldNames del descrittore della
+                 * DICHIARAZIONE usano gli symbol id del sito d'uso, che possono differire da
+                 * quelli del descrittore serializzato nel JSON. */
+                int typeIdx = gmb_vm_read_u16(vm, task);
+                gmb_stack_entry_t ve = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                const gmb_chunk_dict_t* descChunk = NULL;
+                if (typeIdx >= 0 && typeIdx < (int)vm->chunk->consts_len)
+                {
+                    const gmb_value_t* desc = &vm->chunk->constants[typeIdx];
+                    if (desc->type == GMB_CONST_DICT && desc->dict) descChunk = desc->dict;
+                }
+                if (descChunk && ve.type == 2 && ve.ref && ve.ref->kind == GMB_OBJ_DICT)
+                {
+                    gmb_obj_shared_val_t* attachInst = (gmb_obj_shared_val_t*)ve.ref;
+                    gmb_obj_shared_val_t* descObj = gmb_vm_desc_cached(vm, descChunk);
+                    if (descObj)
+                    {
+                        gmb_dict_set(attachInst->dict, "__class__", gmb_make_val_obj((gmb_obj_t*)descObj));
+                        vm_attach_list_elem_descs(attachInst, descObj);
+                        gmb_obj_release((gmb_obj_t*)descObj);   /* l'istanza tiene il descriptor in __class__ */
+                    }
+                }
+                if (ve.type == 2 && ve.ref) push_ref_new(task, ve.ref, ve.basic_type);   /* ve e' posseduto (popped) */
+                else if (ve.type == 1) push_num_entry(task, ve.num, ve.basic_type);
+                else push_nil(task);
+                break;
+            }
+            case OP_NEW_UDT_INSTANCE:
+            case OP_NEW_CLASS_INSTANCE:
+            {
+                int typeIdx = gmb_vm_read_u16(vm, task);
+                gmb_obj_shared_val_t* inst = gmb_shared_dict_new();
+                if (!inst) { vm_error(task, "OP_NEW_CLASS_INSTANCE: memoria"); break; }
+                const gmb_chunk_dict_t* descChunk = NULL;
+                if (typeIdx >= 0 && typeIdx < (int)vm->chunk->consts_len)
+                {
+                    const gmb_value_t* desc = &vm->chunk->constants[typeIdx];
+                    if (desc->type == GMB_CONST_DICT && desc->dict) descChunk = desc->dict;
+                }
+                /* Stack emesso dal compilatore: args del costruttore..., argCount (cima). */
+                gmb_stack_entry_t argcE = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                int argCount = (argcE.type == 1) ? (int)argcE.num : 0;
+                if (argCount < 0 || argCount > 64) argCount = 0;
+                gmb_stack_entry_t args[64];
+                for (int i = argCount - 1; i >= 0; i--)
+                    args[i] = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                int ctorAddr = -1;
+                if (descChunk)
+                {
+                    /* __class__ = il descriptor MATERIALIZZATO (in C# è proprio il dict
+                     * descriptor, non un marker): da lì VTable/PropertyGetters/Setters. */
+                    gmb_obj_shared_val_t* descObj = gmb_vm_desc_cached(vm, descChunk);
+                    if (descObj)
+                    {
+                        gmb_dict_set(inst->dict, "__class__", gmb_make_val_obj((gmb_obj_t*)descObj));
+                        /* Default campi: 0.0 numerici, "" stringhe, istanza reale (ricorsiva)
+                         * per un campo UDT annidato — vedi vm_populate_udt_default_fields. */
+                        vm_populate_udt_default_fields(inst, descObj);
+                        /* Constructors: lista di indirizzi — il primo è il costruttore. */
+                        gmb_val_t cv = vm_dict_get_ci(descObj->dict, "Constructors");
+                        if (cv.kind == GMB_TYPE_OBJECT && cv.v_ptr &&
+                            ((gmb_obj_t*)cv.v_ptr)->kind == GMB_OBJ_LIST &&
+                            ((gmb_obj_shared_val_t*)cv.v_ptr)->list &&
+                            ((gmb_obj_shared_val_t*)cv.v_ptr)->list->count > 0)
+                            ctorAddr = vm_val_addr(((gmb_obj_shared_val_t*)cv.v_ptr)->list->items[0]);
+                        gmb_obj_release((gmb_obj_t*)descObj);   /* l'istanza tiene il descriptor in __class__ */
+                    }
+                }
+                if (ctorAddr >= 0)
+                {
+                    /* Frame costruttore: locals[0]=SELF=istanza, locals[1..]=args.
+                     * saved_sp = livello corrente (args già poppati, specchio C#). */
+                    gmb_stack_entry_t slots[65];
+                    slots[0].type = 2; slots[0].basic_type = GMB_BT_OBJECT;
+                    slots[0].num = 0; slots[0].ref = (gmb_obj_t*)inst;  /* ref iniziale */
+                    for (int i = 0; i < argCount; i++) slots[i + 1] = args[i];
+                    gmb_obj_retain((gmb_obj_t*)inst);   /* ref per constructor_instance */
+                    gmb_frame_t* cf = push_class_frame(task, slots, argCount + 1, (gmb_obj_t*)inst);
+                    if (!cf)
+                    {
+                        gmb_obj_release((gmb_obj_t*)inst);   /* constructor_instance */
+                        gmb_obj_release((gmb_obj_t*)inst);   /* local[0] */
+                        for (int i = 0; i < argCount; i++) gmb_obj_release(args[i].ref);
+                        push_nil(task);
+                        break;
+                    }
+                    task->ip = ctorAddr;
+                    break;
+                }
+                /* Nessun costruttore: push dell'istanza (ref iniziale trasferito). */
+                for (int i = 0; i < argCount; i++) gmb_obj_release(args[i].ref);
+                push_ref_new(task, (gmb_obj_t*)inst, GMB_BT_OBJECT);   /* ref del creatore trasferito */
+                break;
+            }
+
+            case OP_FETCH:
+            {
+                int variant = gmb_vm_read_u8(vm, task);
+                /* ip dell'opcode OP_FETCH: il resume (dopo il park sul future) deve ripartire da
+                   QUI. All'ingresso del case task->ip = OP_FETCH+1 (dopo il fetch ip++ del tick);
+                   read_u8 ha letto il variant a OP_FETCH+1 e avanzato → task->ip = OP_FETCH+2,
+                   quindi -2 riporta all'opcode OP_FETCH. */
+                int fetchOpIp = task->ip - 2;
+                /* stack: url (fondo), options, callback (cima) — ordine emesso dal compiler */
+                gmb_stack_entry_t cb = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                gmb_stack_entry_t opts = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                gmb_stack_entry_t urlE = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                const char* url = (urlE.type == 2 && urlE.ref) ? ((gmb_obj_string_t*)urlE.ref)->data : "";
+
+                if (!url || !*url)
+                {
+                    gmb_obj_release(cb.ref);
+                    gmb_obj_release(opts.ref);
+                    gmb_obj_release(urlE.ref);
+                    push_ref_entry(task, NULL, GMB_BT_OBJECT);
+                    break;
+                }
+
+                /* converte il dict HTTPOPTIONS (gmb_obj_shared_val_t dict) in opzioni C —
+                   mapping 1:1 con ConvertPCodeHttpOptions (PCodeProcessor.Helpers.cs) */
+                gmb_net_http_options_t o;
+                memset(&o, 0, sizeof(o));
+                o.method = "GET";
+                o.timeout_ms = 30000;
+                o.use_cookies = 1;
+                o.allow_redirects = 1;
+                o.max_redirects = 10;
+                /* COOKIEJAR (opts.CookieJar → dict condiviso dell'oggetto NEW COOKIEJAR):
+                   il thread del future monta i cookie e cattura i Set-Cookie (parità
+                   managed per-istanza). NULL = nessun jar. */
+                gmb_dict_t* jarDict = NULL;
+                gmb_obj_shared_val_t* optDict = (opts.type == 2 && opts.ref && opts.ref->kind == GMB_OBJ_DICT)
+                    ? (gmb_obj_shared_val_t*)opts.ref : NULL;
+                if (optDict && optDict->dict)
+                {
+                    gmb_dict_t* od = optDict->dict;
+                    gmb_val_t vMethod = gmb_dict_get(*od, "Method");
+                    if (vMethod.kind == GMB_TYPE_STRING && vMethod.v_string.data && *vMethod.v_string.data)
+                        o.method = vMethod.v_string.data;
+                    gmb_val_t vBody = gmb_dict_get(*od, "Body");
+                    if (vBody.kind == GMB_TYPE_STRING && vBody.v_string.data)
+                    {
+                        o.body = vBody.v_string.data;
+                        o.body_len = strlen(vBody.v_string.data);
+                    }
+                    gmb_val_t vTimeout = gmb_dict_get(*od, "Timeout");
+                    if (vTimeout.kind == GMB_TYPE_DOUBLE && vTimeout.v_double > 0)
+                        o.timeout_ms = (long)vTimeout.v_double;
+                    gmb_val_t vUseCookies = gmb_dict_get(*od, "UseCookies");
+                    if (vUseCookies.kind == GMB_TYPE_BOOL)
+                        o.use_cookies = vUseCookies.v_bool ? 1 : 0;
+                    gmb_val_t vUser = gmb_dict_get(*od, "Username");
+                    if (vUser.kind == GMB_TYPE_STRING && vUser.v_string.data && *vUser.v_string.data)
+                        o.username = vUser.v_string.data;
+                    gmb_val_t vPass = gmb_dict_get(*od, "Password");
+                    if (vPass.kind == GMB_TYPE_STRING && vPass.v_string.data)
+                        o.password = vPass.v_string.data;
+                    gmb_val_t vBearer = gmb_dict_get(*od, "BearerToken");
+                    if (vBearer.kind == GMB_TYPE_STRING && vBearer.v_string.data && *vBearer.v_string.data)
+                        o.bearer_token = vBearer.v_string.data;
+                    gmb_val_t vProxy = gmb_dict_get(*od, "ProxyUrl");
+                    if (vProxy.kind == GMB_TYPE_STRING && vProxy.v_string.data && *vProxy.v_string.data)
+                        o.proxy_url = vProxy.v_string.data;
+                    gmb_val_t vProxyUser = gmb_dict_get(*od, "ProxyUsername");
+                    if (vProxyUser.kind == GMB_TYPE_STRING && vProxyUser.v_string.data)
+                        o.proxy_username = vProxyUser.v_string.data;
+                    gmb_val_t vProxyPass = gmb_dict_get(*od, "ProxyPassword");
+                    if (vProxyPass.kind == GMB_TYPE_STRING && vProxyPass.v_string.data)
+                        o.proxy_password = vProxyPass.v_string.data;
+                    gmb_val_t vCertPath = gmb_dict_get(*od, "ClientCertificatePath");
+                    if (vCertPath.kind == GMB_TYPE_STRING && vCertPath.v_string.data && *vCertPath.v_string.data)
+                        o.client_cert_path = vCertPath.v_string.data;
+                    gmb_val_t vCertPass = gmb_dict_get(*od, "ClientCertificatePassword");
+                    if (vCertPass.kind == GMB_TYPE_STRING && vCertPass.v_string.data)
+                        o.client_cert_password = vCertPass.v_string.data;
+                    gmb_val_t vAllowRedir = gmb_dict_get(*od, "AllowRedirects");
+                    if (vAllowRedir.kind == GMB_TYPE_BOOL)
+                        o.allow_redirects = vAllowRedir.v_bool ? 1 : 0;
+                    gmb_val_t vMaxRedir = gmb_dict_get(*od, "MaxRedirects");
+                    if (vMaxRedir.kind == GMB_TYPE_DOUBLE && vMaxRedir.v_double > 0)
+                        o.max_redirects = (int)vMaxRedir.v_double;
+                    gmb_val_t vInsecure = gmb_dict_get(*od, "AllowInsecureSSL");
+                    /* TRUE è immagazzinato come DOUBLE -1.0 (convenzione BASIC), non BOOL:
+                       accettare entrambi (insecure era sempre 0 → curl/SecureTransport
+                       rifiutava il self-signed → rc=60; vedi dispatch runtime OpenSSL). */
+                    if (vInsecure.kind == GMB_TYPE_BOOL)
+                        o.allow_insecure_ssl = vInsecure.v_bool ? 1 : 0;
+                    else if (vInsecure.kind == GMB_TYPE_DOUBLE)
+                        o.allow_insecure_ssl = (vInsecure.v_double != 0.0) ? 1 : 0;
+                    gmb_val_t vPreset = gmb_dict_get(*od, "BrowserPreset");
+                    if (vPreset.kind == GMB_TYPE_STRING && vPreset.v_string.data && *vPreset.v_string.data)
+                        o.browser_preset = vPreset.v_string.data;
+                    gmb_val_t vPin = gmb_dict_get(*od, "PinnedCertificateSha256");
+                    if (vPin.kind == GMB_TYPE_STRING && vPin.v_string.data && *vPin.v_string.data)
+                        o.pinned_cert_sha256 = vPin.v_string.data;
+                    /* COOKIEJAR: l'oggetto NEW COOKIEJAR è un dict condiviso (typeCode 25)
+                       { nome-cookie → valore }; il thread del future lo usa per montare
+                       l'header Cookie e per catturare i Set-Cookie della risposta. */
+                    gmb_val_t vJar = gmb_dict_get(*od, "CookieJar");
+                    if (vJar.kind == GMB_TYPE_OBJECT && vJar.v_ptr &&
+                        ((gmb_obj_t*)vJar.v_ptr)->kind == GMB_OBJ_DICT)
+                    {
+                        gmb_obj_shared_val_t* jd = (gmb_obj_shared_val_t*)vJar.v_ptr;
+                        if (jd->dict) jarDict = jd->dict;
+                    }
+                    /* Headers: dict nested { ContentType, UserAgent, ... } → array header */
+                    gmb_val_t vHeaders = gmb_dict_get(*od, "Headers");
+                    if (vHeaders.kind == GMB_TYPE_OBJECT && vHeaders.v_ptr && ((gmb_obj_t*)vHeaders.v_ptr)->kind == GMB_OBJ_DICT)
+                    {
+                        gmb_obj_shared_val_t* hd = (gmb_obj_shared_val_t*)vHeaders.v_ptr;
+                        if (hd->dict)
+                        {
+                            static const char* hn[64];
+                            static const char* hv[64];
+                            /* Sorgente unica (§0bis): la serializzazione del dict Headers → capi
+                             * wire vive nel runtime condiviso (gmb_http_headers_from_dict). Emette
+                             * TUTTI i capi (non solo i 3 noti): opts.Headers.Add("X-Auth-Token", v)
+                             * deve finire sul wire, altrimenti il server non riceve il token →
+                             * req.Headers.Get(...) nil → HttpRoutes rispondeva 401 a ogni richiesta
+                             * autorizzata. Mappa ContentType/UserAgent ai nomi wire, il resto
+                             * verbatim, dedup case-insensitive. */
+                            int hc = gmb_http_headers_from_dict(hd->dict, hn, hv, 64);
+                            o.header_names = hn;
+                            o.header_values = hv;
+                            o.header_count = hc;
+                        }
+                    }
+                }
+
+                /* callback per la variante 1 (comando FETCH INTO) */
+                int callbackIp = -1;
+                if (variant == 1)
+                {
+                    if (cb.type == 1) callbackIp = (int)cb.num;          /* placeholder num */
+                    else if (cb.type == 0) callbackIp = (int)cb.num;      /* placeholder num */
+                    else if (cb.type == 2 && cb.ref && cb.ref->kind == GMB_OBJ_STRING)
+                        callbackIp = (int)cb.num;
+                    else if (cb.type == 2 && cb.ref && cb.ref->kind == GMB_OBJ_CLOSURE)
+                        callbackIp = ((gmb_obj_closure_t*)cb.ref)->address; /* OP_PUSH_CODE_REF (2026-09-06) */
+                }
+
+                if (variant == 1 && callbackIp > 0)
+                {
+                    /* forma comando: fetch in background, al completamento spawna la callback
+                       SUB Callback(response$, error$) — come PCodeVM (variant==1). La richiesta
+                       gira su un thread dedicato; il worker non si blocca (GPM-compliant). */
+                    gmb_vm_fetch_args_t* a = (gmb_vm_fetch_args_t*)calloc(1, sizeof(gmb_vm_fetch_args_t));
+                    if (a)
+                    {
+                        a->vm = vm;
+                        a->callback_ip = callbackIp;
+                        a->url = strdup(url);
+                        a->opts = o;
+                        a->has_opts = 1;
+                        a->globals_nums = task->globals_nums;
+                        a->globals_refs = task->globals_refs;
+                        a->globals_types = task->globals_types;
+                        a->globals_basic = task->globals_basic;
+                        a->globals_count = task->globals_count;
+                        /* copie indipendenti per il thread (i puntatori del dict del task non
+                           sono validi fuori dal suo scope) */
+                        if (o.method) a->opts.method = strdup(o.method);
+                        if (o.body) { a->opts.body = strdup(o.body); a->opts.body_len = o.body_len; }
+                        if (o.username) a->opts.username = strdup(o.username);
+                        if (o.password) a->opts.password = strdup(o.password);
+                        if (o.bearer_token) a->opts.bearer_token = strdup(o.bearer_token);
+                        if (o.proxy_url) a->opts.proxy_url = strdup(o.proxy_url);
+                        if (o.proxy_username) a->opts.proxy_username = strdup(o.proxy_username);
+                        if (o.proxy_password) a->opts.proxy_password = strdup(o.proxy_password);
+                        if (o.client_cert_path) a->opts.client_cert_path = strdup(o.client_cert_path);
+                        if (o.client_cert_password) a->opts.client_cert_password = strdup(o.client_cert_password);
+                        if (o.browser_preset) a->opts.browser_preset = strdup(o.browser_preset);
+                        if (o.pinned_cert_sha256) a->opts.pinned_cert_sha256 = strdup(o.pinned_cert_sha256);
+                        /* copia gli header custom (i puntatori del dict del chiamante non sono
+                           validi fuori dal suo scope) */
+                        if (o.header_count > 0)
+                        {
+                            a->hdr_names = (char**)calloc((size_t)o.header_count, sizeof(char*));
+                            a->hdr_values = (char**)calloc((size_t)o.header_count, sizeof(char*));
+                            a->hdr_count = o.header_count;
+                            for (int hi = 0; hi < o.header_count; hi++)
+                            {
+                                a->hdr_names[hi] = strdup(o.header_names[hi] ? o.header_names[hi] : "");
+                                a->hdr_values[hi] = strdup(o.header_values[hi] ? o.header_values[hi] : "");
+                            }
+                            a->opts.header_names = (const char**)a->hdr_names;
+                            a->opts.header_values = (const char**)a->hdr_values;
+                            a->opts.header_count = a->hdr_count;
+                        }
+                        pthread_t th;
+                        pthread_create(&th, NULL, vm_fetch_thread, a);
+                        pthread_detach(th);
+                    }
+                    gmb_obj_release(cb.ref);
+                    gmb_obj_release(opts.ref);
+                    gmb_obj_release(urlE.ref);
+                    push_ref_entry(task, NULL, GMB_BT_OBJECT); /* placeholder — il risultato va alla callback */
+                    break;
+                }
+
+                /* variante 0 (forma espressione x = FETCH(...)) — ASINCRONO (modello GPM,
+                   come variant 1): la richiesta gira su un thread dedicato, il task si
+                   parcheggia su un future (return 0) e viene risvegliato quando il thread
+                   lo risolve col dict FETCHRESULT. Il worker non si blocca (GOMAXPROCS=1
+                   non congela gli altri task). Al resume, `cb` è il future risolto. */
+                if (cb.type == 2 && cb.ref && cb.ref->kind == GMB_OBJ_FUTURE &&
+                    ((gmb_future_t*)cb.ref)->is_resolved)
+                {
+                    /* RESUME: il thread ha risolto il future. cb (in cima) è il future. */
+                    gmb_future_t* fut = (gmb_future_t*)cb.ref;
+                    gmb_obj_t* resObj = fut->result_is_num ? NULL : fut->result;
+                    gmb_obj_release(cb.ref);
+                    gmb_obj_release(opts.ref);
+                    gmb_obj_release(urlE.ref);
+                    if (resObj)
+                        push_ref_entry(task, resObj, GMB_BT_OBJECT);
+                    else
+                        push_nil(task);
+                    break;
+                }
+                else
+                {
+                    /* Re-run di un fetch GIÀ in corso (driver single-task che ri-esegue un
+                       task BLOCKED): cb è già il future NON risolto — ri-parcheggia sullo
+                       STESSO future, senza rispawnare il thread (altrimenti esplosione di
+                       thread + "libcurl bad argument" per esaurimento risorse). */
+                    if (cb.type == 2 && cb.ref && cb.ref->kind == GMB_OBJ_FUTURE)
+                    {
+                        gmb_future_t* existing = (gmb_future_t*)cb.ref;
+                        /* ricostruisci lo stack [url, opts, future] come lo troverà al wake.
+                         * url/opts/cb sono stati POPPATI (owned) → push_ref_new (STEAL). */
+                        push_ref_new(task, urlE.ref, urlE.type);
+                        push_ref_new(task, opts.ref, opts.type);
+                        push_ref_new(task, cb.ref, GMB_BT_OBJECT);
+                        task->ip = fetchOpIp;
+                        if (gmb_future_register_waiter(existing, task))
+                            return 0;                 /* parcheggiato sullo stesso future */
+                        /* risolto nel frattempo: yield → il driver ri-esegue OP_FETCH (resume) */
+                        return 1;
+                    }
+                    /* PRIMA CHIAMATA: crea il future, parcheggia il task, avvia il thread. */
+                    gmb_future_t* fut = gmb_future_create();
+                    if (!fut)
+                    {
+                        push_ref_entry(task, NULL, GMB_BT_OBJECT);
+                        gmb_obj_release(cb.ref);
+                        gmb_obj_release(opts.ref);
+                        gmb_obj_release(urlE.ref);
+                        break;
+                    }
+                    /* Il future diventa il marker di resume. Per il rewind del task, ricostruiamo
+                       lo stack come lo troverà al wake: [url, opts, future] (url in fondo). */
+                    gmb_obj_release(cb.ref);
+                    /* url/opts POPPATI (owned) → push_ref_new (STEAL). fut resta push_ref_entry
+                     * (RETAIN): il thread del fetch lo usa via a->fut e il ref NON rilasciato del
+                     * creatore lo tiene in vita anche se il task viene cancellato (keeper voluto). */
+                    push_ref_new(task, urlE.ref, urlE.type);
+                    push_ref_new(task, opts.ref, opts.type);
+                    push_ref_entry(task, (gmb_obj_t*)fut, GMB_BT_OBJECT);
+
+                    gmb_vm_fetch_expr_args_t* a = (gmb_vm_fetch_expr_args_t*)calloc(1, sizeof(gmb_vm_fetch_expr_args_t));
+                    if (!a)
+                    {
+                        gmb_future_resolve(fut, NULL, 0.0, 1, task->scheduler);
+                        task->ip = fetchOpIp + 1;
+                        break;
+                    }
+                    a->vm = vm;
+                    a->url = strdup(url);
+                    /* jar esplicito (opts.CookieJar): niente cookie dal jar GLOBALE (parità
+                       managed scoped handler — il jar dedicato sostituisce quello globale). */
+                    if (jarDict) o.use_cookies = 0;
+                    a->opts = o;
+                    a->has_opts = 1;
+                    a->fut = fut;
+                    a->jar = jarDict;
+                    /* copie indipendenti per il thread */
+                    if (o.method) a->opts.method = strdup(o.method);
+                    if (o.body) { a->opts.body = strdup(o.body); a->opts.body_len = o.body_len; }
+                    if (o.username) a->opts.username = strdup(o.username);
+                    if (o.password) a->opts.password = strdup(o.password);
+                    if (o.browser_preset) a->opts.browser_preset = strdup(o.browser_preset);
+                    if (o.pinned_cert_sha256) a->opts.pinned_cert_sha256 = strdup(o.pinned_cert_sha256);
+                    if (o.bearer_token) a->opts.bearer_token = strdup(o.bearer_token);
+                    /* header custom copiati */
+                    if (o.header_count > 0 && o.header_names && o.header_values)
+                    {
+                        char** hn = (char**)calloc((size_t)o.header_count, sizeof(char*));
+                        char** hv = (char**)calloc((size_t)o.header_count, sizeof(char*));
+                        for (int hi = 0; hi < o.header_count; hi++)
+                        {
+                            if (o.header_names[hi]) hn[hi] = strdup(o.header_names[hi]);
+                            if (o.header_values[hi]) hv[hi] = strdup(o.header_values[hi]);
+                        }
+                        a->opts.header_names = (const char**)hn;
+                        a->opts.header_values = (const char**)hv;
+                        a->opts.header_count = o.header_count;
+                    }
+
+                    /* rewind ip all'opcode OP_FETCH: al wake ri-esegue OP_FETCH e legge il
+                       future risolto (il parsing delle options avanza ip — usare fetchOpIp). */
+                    task->ip = fetchOpIp;
+                    if (gmb_future_register_waiter(fut, task))
+                    {
+                        pthread_t th;
+                        /* vedi vm_try_park_str_job (F1): il parcheggio su future con job
+                           esterno in corso NON è deadlock per il watchdog. */
+                        gmb_sched_async_job_begin(task->scheduler);
+                        if (pthread_create(&th, NULL, vm_fetch_expr_thread, a) == 0)
+                        {
+                            pthread_detach(th);
+                            /* url/opts restano nello stack ([url, opts, future]) per il resume:
+                               al wake il task ri-esegue OP_FETCH e li popa/rilascia. */
+                            return 0; /* parcheggiato fino alla risoluzione del future */
+                        }
+                        gmb_sched_async_job_end(task->scheduler);
+                        /* pthread fallita: risolvi subito e pulisci lo stack come il resume. */
+                        gmb_future_resolve(fut, NULL, 0.0, 1, task->scheduler);
+                        task->ip = fetchOpIp + 1;
+                        for (int _ri = 0; _ri < 3 && task->sp > 0; _ri++)
+                        {
+                            gmb_stack_entry_t _pe = gmb_task_pop(task);
+                            gmb_obj_release(_pe.ref);
+                        }
+                        if (a->url) free(a->url);
+                        free(a);
+                        push_nil(task);
+                        break;
+                    }
+                    /* future già risolto (race): risolto subito, nessun parcheggio. Lo stack è
+                       [url, opts, future]: popa tutti e tre e pusha il risultato. */
+                    task->ip = fetchOpIp + 1;
+                    gmb_obj_t* resObj2 = fut->result_is_num ? NULL : fut->result;
+                    for (int _ri = 0; _ri < 3 && task->sp > 0; _ri++)
+                    {
+                        gmb_stack_entry_t _pe = gmb_task_pop(task);
+                        gmb_obj_release(_pe.ref);
+                    }
+                    if (resObj2)
+                        push_ref_entry(task, resObj2, GMB_BT_OBJECT);
+                    else
+                        push_nil(task);
+                    break;
+                }
+            }
+            case OP_NEW:
+            {
+                int typeCode = gmb_vm_read_u16(vm, task);
+                /* Gli argomenti del costruttore (se presenti) sono sullo stack come
+                   [args...][count] PRIMA di OP_NEW (pattern identico alle classi).
+                   Se count>0, li popiamo e li applichiamo alla collection creata. */
+                gmb_stack_entry_t ctorArgs[16];
+                int ctorN = 0;
+                if (task->sp > 0)
+                {
+                    gmb_stack_entry_t cntE = gmb_task_pop(task);
+                    ctorN = (int)cntE.num;
+                    if (ctorN > 16) ctorN = 16;
+                    if (ctorN < 0) ctorN = 0;
+                    for (int i = ctorN - 1; i >= 0 && i < 16; i--)
+                        ctorArgs[i] = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                    gmb_obj_release(cntE.ref);
+                }
+                if (typeCode == 1) /* LIST */
+                {
+                    gmb_obj_shared_val_t* arr = gmb_shared_list_new();
+                    if (!arr) { vm_error(task, "OP_NEW list: memoria"); break; }
+                    push_ref_new(task, (gmb_obj_t*)arr, GMB_BT_OBJECT);
+                }
+                else if (typeCode == 2) /* DICT */
+                {
+                    gmb_obj_shared_val_t* d = gmb_shared_dict_new();
+                    if (!d) { vm_error(task, "OP_NEW dict: memoria"); break; }
+                    push_ref_new(task, (gmb_obj_t*)d, GMB_BT_OBJECT);
+                }
+                else if (typeCode == 28) /* STRINGBUILDER: dict con campo interno __str */
+                {
+                    gmb_obj_shared_val_t* b = gmb_shared_dict_new();
+                    if (!b) { vm_error(task, "OP_NEW stringbuilder: memoria"); break; }
+                    gmb_dict_set(b->dict, "__str", gmb_make_val_string_counted(""));
+                    push_ref_new(task, (gmb_obj_t*)b, GMB_BT_OBJECT);
+                }
+                else if (typeCode == 29) /* REGEX: oggetto con marcatore __type (parità IL/RegexWrapper) */
+                {
+                    gmb_obj_shared_val_t* b = gmb_shared_dict_new();
+                    if (!b) { vm_error(task, "OP_NEW regex: memoria"); break; }
+                    gmb_dict_set(b->dict, "__type", gmb_make_val_string_counted("REGEXWRAPPER"));
+                    push_ref_new(task, (gmb_obj_t*)b, GMB_BT_OBJECT);
+                }
+                else if (typeCode == 22 || typeCode == 23 || typeCode == 24 || typeCode == 25)
+                {
+                    /* HTTPOPTIONS(22)/HTTPCONFIG(23)/JSON(24)/COOKIEJAR(25):
+                       istanze duck-typed come dict BASIC-accessibile (opts.Method = "POST",
+                       cfg.Port = 8080, res.field, ecc.). Il fetch legge le chiavi dal dict. */
+                    gmb_obj_shared_val_t* d = gmb_shared_dict_new();
+                    if (!d) { vm_error(task, "OP_NEW dict: memoria"); break; }
+                    if (typeCode == 22)
+                    {
+                        /* HTTPOPTIONS: pre-inizializza "Headers" come dict nested (opts.Headers
+                           .ContentType = "..." scrive dentro) — mapping 1:1 con HttpHeaders. */
+                        gmb_obj_shared_val_t* h = gmb_shared_dict_new();
+                        if (h) gmb_dict_set(d->dict, "Headers", gmb_make_val_obj((gmb_obj_t*)h));
+                    }
+                    else if (typeCode == 23)
+                    {
+                        /* HTTPCONFIG: default canonici dal helper condiviso (gmb_network.c,
+                           parità con managed NewHttpConfigDefaults e C99). */
+                        gmb_httpconfig_seed(d->dict);
+                    }
+                    push_ref_new(task, (gmb_obj_t*)d, GMB_BT_OBJECT);
+                }
+                else if (typeCode == 17) /* GRAPH<T> — registry C gmb_graph */
+                {
+                    gmb_graph_init();
+                    int64_t h = gmb_graph_create();
+                    if (h < 0) { vm_error(task, "OP_NEW graph: memoria"); break; }
+                    gmb_obj_graph_t* g = gmb_graph_obj_new(h);
+                    if (!g) { gmb_graph_free(h); vm_error(task, "OP_NEW graph: memoria"); break; }
+                    push_ref_new(task, (gmb_obj_t*)g, GMB_BT_OBJECT);
+                }
+                else if (typeCode == 3 || typeCode == 4 || typeCode == 5 ||
+                         typeCode == 6 || (typeCode >= 7 && typeCode <= 16) || typeCode == 18 ||
+                         typeCode == 19 || typeCode == 20 || typeCode == 21 ||
+                         typeCode == 26 || typeCode == 27)
+                {
+                    /* HashSet(3)/Queue(4)/Stack(5): PRIMA cadevano nel ramo "else" come LIST
+                     * generica → il literal DIM hs AS HASHSET = [3,1,4,1,5] non dedupplicava
+                     * e DIM st AS STACK = [a,b,c] non era LIFO (ArraysPrintFormat.bas). Ora
+                     * vere collezioni del registry (gmb_coll_add: dedup per HashSet, push in
+                     * testa per Stack), come già fa il come si aspetta il
+                     * compilatore (EmitCollectionAwareInitializer). */
+                    /* Bug (open) Arrays-Sweep-Residui-Minori #3: typeCode 6 (SortedDict) prima
+                     * cadeva nel ramo "else" sotto (HashSet/Queue/Stack: per ora come LIST) —
+                     * una SORTED<...> costruita con NEW (0 argomenti) diventava una lista
+                     * generica, non un vero registro map-ordinato. gmb_coll_kv_set (sotto,
+                     * generico per QUALSIASI typeCode) mantiene già l'ordine per chiave
+                     * (inserimento ordinato in una linked-list, kv_key_less) — la stessa identica
+                     * logica usata da Tree/AVLTree/RedBlackTree. Aggiunto 6 qui e negli altri
+                     * 4 punti che filtrano su questo stesso elenco di typeCode "map-like"
+                     * (OP_MK_DICT sotto, il dispatch "isMap" di OP_CALL_MEMBER più avanti,
+                     * DICT_KEYS/DICT_VALUES in gmb_builtin.c) fa sì che SORTED usi lo stesso
+                     * registro C ordinato invece di collassare su un dict/lista generica in
+                     * ordine di inserimento (VM/C: `Keys (ordinato): ["Charlie","Alice","Bob"]`
+                     * invece di `["Alice","Bob","Charlie"]`, PCode corretto). */
+                    /* Collections generiche (RedBlack/BITree/Trie/LinkedList/Circular/Heap/
+                       Bag/Cache/Timeline/HashRing/RingBuffer/SparseSet/BPlusTree/SortedDict) —
+                       registry C */
+                    gmb_collections_init();
+                    int64_t h = gmb_collections_create(typeCode);
+                    if (h < 0) { vm_error(task, "OP_NEW collection: memoria"); break; }
+                    gmb_obj_collection_t* c = gmb_collection_obj_new(h, typeCode);
+                    if (!c) { gmb_collections_free(h); vm_error(task, "OP_NEW collection: memoria"); break; }
+                    if (ctorN > 0)
+                    {
+                        gmb_val_t ctorVals[16];
+                        for (int i = 0; i < ctorN; i++) ctorVals[i] = gmb_adapter_stack_to_val(ctorArgs[i]);
+                        gmb_coll_apply_ctor(h, ctorVals, ctorN);
+                        /* HashRing con lista di nodi: la LIST VM non passa dal runtime
+                           (gmb_val OBJECT); la iteriamo qui direttamente. */
+                        if (typeCode == 19 && ctorArgs[0].type == 2 && ctorArgs[0].ref &&
+                            ctorArgs[0].ref->kind == GMB_OBJ_LIST &&
+                            ((gmb_obj_shared_val_t*)ctorArgs[0].ref)->list)
+                        {
+                            gmb_list_t* nl = ((gmb_obj_shared_val_t*)ctorArgs[0].ref)->list;
+                            for (size_t i = 0; i < nl->count; i++)
+                            {
+                                gmb_val_t n = nl->items[i];
+                                if (n.kind == GMB_TYPE_STRING && n.v_string.data)
+                                    gmb_coll_hashring_add_node(h, n.v_string.data);
+                            }
+                        }
+                    }
+                    push_ref_new(task, (gmb_obj_t*)c, GMB_BT_OBJECT);
+                }
+                else
+                {
+                    /* HashSet(3)/Queue(4)/Stack(5): per ora come LIST */
+                    gmb_obj_shared_val_t* arr = gmb_shared_list_new();
+                    if (!arr) { vm_error(task, "OP_NEW collection: memoria"); break; }
+                    push_ref_new(task, (gmb_obj_t*)arr, GMB_BT_OBJECT);
+                }
+                for (int i = 0; i < ctorN && i < 16; i++) gmb_obj_release(ctorArgs[i].ref);
+                break;
+            }
+
+            case OP_LOAD_DYNAMIC_SCOPE:
+            {
+                /* FORM/QUERY nelle pagine BSP: keyword riservate (mai una vera DIM),
+                 * risolte per NOME dal bag dynamic_scope della VM (seminato da
+                 * gmb_vm_bsp.c via gmb_vm_set_dynamic_scope PRIMA della run) — MAI da
+                 * chunk->global_names/OP_LOAD_GLOBAL, perché il compilatore .NET non
+                 * assegna mai un vero slot globale a questi due nomi (parità
+                 * PCodeProcessor.OP_LOAD_DYNAMIC_SCOPE, C#). Nome assente dal bag → NIL
+                 * (nessun errore, stesso contratto "non seminato" del backend gestito). */
+                int nameIdx = gmb_vm_read_u16(vm, task);
+                const char* dsName = "";
+                if (nameIdx >= 0 && nameIdx < (int)vm->chunk->consts_len && vm->chunk->constants[nameIdx].type == GMB_CONST_STRING)
+                    dsName = vm->chunk->constants[nameIdx].s ? vm->chunk->constants[nameIdx].s : "";
+                gmb_stack_entry_t dsVal = gmb_vm_get_dynamic_scope(vm, dsName);
+                /* dsVal è un riferimento IN PRESTITO dal dynamic scope (la VM lo possiede):
+                 * basta push_ref_entry (RETAIN). Il `gmb_obj_retain` manuale in più era un
+                 * doppio-retain → leak di un ref per ogni LOAD_DYNAMIC_SCOPE. */
+                if (dsVal.type == 2 && dsVal.ref) { push_ref_entry(task, dsVal.ref, dsVal.basic_type); }
+                else if (dsVal.type == 1) push_num_entry(task, dsVal.num, dsVal.basic_type);
+                else push_nil(task);
+                break;
+            }
+
+            /* === SCOPE DINAMICO (DYNAMIC) — vedi OpCode.cs OP_DYN_* e gmb_frame_t.dyn === */
+            case OP_DYN_DECLARE:
+            {
+                int nIdx = gmb_vm_read_u16(vm, task);
+                const char* nm = "";
+                if (nIdx >= 0 && nIdx < (int)vm->chunk->consts_len && vm->chunk->constants[nIdx].type == GMB_CONST_STRING)
+                    nm = vm->chunk->constants[nIdx].s ? vm->chunk->constants[nIdx].s : "";
+                gmb_stack_entry_t dv = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                gmb_dyn_scope_t* sc = task->frame ? &task->frame->dyn : gmb_dyn_task_base(task);
+                gmb_dyn_scope_put(sc, nm, dv);
+                if (dv.type == 2 && dv.ref) gmb_obj_release(dv.ref);   /* il put ha fatto retain */
+                break;
+            }
+            case OP_DYN_LOAD:
+            {
+                int nIdx = gmb_vm_read_u16(vm, task);
+                int kind = gmb_vm_read_u8(vm, task);
+                const char* nm = "";
+                if (nIdx >= 0 && nIdx < (int)vm->chunk->consts_len && vm->chunk->constants[nIdx].type == GMB_CONST_STRING)
+                    nm = vm->chunk->constants[nIdx].s ? vm->chunk->constants[nIdx].s : "";
+                gmb_stack_entry_t dv = {0};
+                if (gmb_dyn_task_find(task, nm, &dv))
+                {
+                    if (dv.type == 2 && dv.ref) push_ref_entry(task, dv.ref, dv.basic_type);
+                    else if (dv.type == 1) push_num_entry(task, dv.num, dv.basic_type);
+                    else push_nil(task);
+                }
+                /* Assente → default paritetico a gmb_dscope_get_string/get_double ("" / 0.0). */
+                else if (kind == 1) push_str_entry(task, "");
+                else push_num_entry(task, 0.0, GMB_BT_NUMBER);
+                break;
+            }
+            case OP_DYN_STORE:
+            {
+                int nIdx = gmb_vm_read_u16(vm, task);
+                const char* nm = "";
+                if (nIdx >= 0 && nIdx < (int)vm->chunk->consts_len && vm->chunk->constants[nIdx].type == GMB_CONST_STRING)
+                    nm = vm->chunk->constants[nIdx].s ? vm->chunk->constants[nIdx].s : "";
+                gmb_stack_entry_t dv = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                gmb_dyn_scope_t* target = NULL;
+                for (gmb_frame_t* f = task->frame; f; f = f->prev)
+                    if (gmb_dyn_scope_find(&f->dyn, nm) >= 0) { target = &f->dyn; break; }
+                if (!target && task->dyn_base && gmb_dyn_scope_find(task->dyn_base, nm) >= 0) target = task->dyn_base;
+                if (!target) target = task->frame ? &task->frame->dyn : gmb_dyn_task_base(task);
+                gmb_dyn_scope_put(target, nm, dv);
+                if (dv.type == 2 && dv.ref) gmb_obj_release(dv.ref);
+                break;
+            }
+
+            case OP_LOAD_FIELD:
+            {
+                int fieldIdx = gmb_vm_read_u16(vm, task);
+                const char* fieldName = "";
+                if (fieldIdx >= 0 && fieldIdx < (int)vm->chunk->consts_len && vm->chunk->constants[fieldIdx].type == GMB_CONST_STRING)
+                    fieldName = vm->chunk->constants[fieldIdx].s ? vm->chunk->constants[fieldIdx].s : "";
+                gmb_stack_entry_t objE = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                gmb_obj_t* obj = objE.ref;
+                if (obj && obj->kind == GMB_OBJ_LIST && ((gmb_obj_shared_val_t*)obj)->list)
+                {
+                    /* membri delle liste: Count/Length */
+                    if (strcmp(fieldName, "Count") == 0 || strcmp(fieldName, "Length") == 0)
+                    {
+                        double n = (double)gmb_list_count(*((gmb_obj_shared_val_t*)obj)->list);
+                        gmb_obj_release(objE.ref);
+                        push_num_entry(task, n, GMB_BT_NUMBER);
+                        break;
+                    }
+                    /* List.Add non si implementa qui (è CALL_MEMBER) */
+                    gmb_obj_release(objE.ref);
+                    push_nil(task);
+                    break;
+                }
+                else if (obj && obj->kind == GMB_OBJ_DICT && ((gmb_obj_shared_val_t*)obj)->dict)
+                {
+                    /* membri dei dict: Count/Length (STRINGBUILDER → lunghezza del __str) */
+                    if (strcmp(fieldName, "Count") == 0 || strcmp(fieldName, "Length") == 0
+                        || strcmp(fieldName, "Capacity") == 0)
+                    {
+                        gmb_val_t bcur = gmb_dict_get(*((gmb_obj_shared_val_t*)obj)->dict, "__str");
+                        double n = (bcur.kind == GMB_TYPE_STRING && bcur.v_string.data)
+                                   ? (double)strlen(bcur.v_string.data)
+                                   : (double)gmb_dict_count(*((gmb_obj_shared_val_t*)obj)->dict);
+                        gmb_obj_release(objE.ref);
+                        push_num_entry(task, n, GMB_BT_NUMBER);
+                        break;
+                    }
+                    /* V4f: property getter (specchio OP_LOAD_FIELD C#): se il campo non è
+                     * presente nel dict dell'istanza, dispatch al getter della classe. */
+                    if (!gmb_dict_contains_key_ci(*((gmb_obj_shared_val_t*)obj)->dict, fieldName))
+                    {
+                        gmb_obj_shared_val_t* cd = vm_class_desc_of(obj);
+                        if (cd)
+                        {
+                            int getterAddr = vm_desc_table_addr(cd, "PropertyGetters", fieldName);
+                            if (getterAddr >= 0)
+                            {
+                                gmb_stack_entry_t slot = objE;   /* ref trasferito al local[0] */
+                                if (!push_class_frame(task, &slot, 1, NULL))
+                                {
+                                    gmb_obj_release(objE.ref);
+                                    return -1;
+                                }
+                                task->ip = getterAddr;
+                                break;
+                            }
+                        }
+                    }
+                    gmb_val_t v = gmb_dict_get_ci(*((gmb_obj_shared_val_t*)obj)->dict, fieldName);
+                    if (v.kind == GMB_TYPE_OBJECT && v.v_ptr)
+                    {
+                        /* campo oggetto (es. HTTPOPTIONS.Headers → dict nested): restituisce il
+                           RIFERIMENTO originale (retain), NON una copia — altrimenti una scrittura
+                           annidata (opts.Headers.ContentType = "...") andrebbe sul temporaneo e
+                           andrebbe persa (mapping 1:1 con HttpHeaders del PCodeVM). */
+                        /* Se l'oggetto è una STRINGA (es. campo "text" di un dict markdown AST),
+                           va marcato GMB_BT_STRING: con GMB_BT_OBJECT PRINT non la formatta
+                           (parità IL/PCode). */
+                        gmb_obj_t* vo = (gmb_obj_t*)v.v_ptr;
+                        uint8_t vbt = (vo->kind == GMB_OBJ_STRING) ? GMB_BT_STRING : GMB_BT_OBJECT;
+                        gmb_obj_retain(vo);
+                        gmb_obj_release(objE.ref);
+                        push_ref_entry(task, vo, vbt);
+                        break;
+                    }
+                    gmb_stack_entry_t s = gmb_adapter_val_to_stack(v);
+                    gmb_obj_release(objE.ref);
+                    if (s.type == 2 && s.ref) push_ref_new(task, s.ref, s.basic_type);
+                    else if (s.type == 1) push_num_entry(task, s.num, s.basic_type);
+                    else push_nil(task);
+                    break;
+                }
+                else if (obj && obj->kind == GMB_OBJ_COLLECTION)
+                {
+                    /* membri delle collections: Count/Length/Capacity/IsEmpty */
+                    gmb_obj_collection_t* col = (gmb_obj_collection_t*)obj;
+                    int64_t ch = col->handle;
+                    if (strcmp(fieldName, "Count") == 0 || strcmp(fieldName, "Length") == 0)
+                    {
+                        double n = (double)gmb_coll_count(ch);
+                        gmb_obj_release(objE.ref);
+                        push_num_entry(task, n, GMB_BT_NUMBER);
+                        break;
+                    }
+                    else if (strcmp(fieldName, "Capacity") == 0)
+                    {
+                        double n = (double)gmb_coll_capacity(ch);
+                        gmb_obj_release(objE.ref);
+                        push_num_entry(task, n, GMB_BT_NUMBER);
+                        break;
+                    }
+                    gmb_obj_release(objE.ref);
+                    push_nil(task);
+                    break;
+                }
+                else if (obj && obj->kind == GMB_OBJ_STRING)
+                {
+                    /* Receiver STRINGA JSON (un elemento di un report LEDGER è esposto come
+                     * stringa JSON — vedi ledger_push_json_list, per JSON.Stringify su STRING[]):
+                     * `arr(i).Campo` legge il campo dal dict parsato. Parità IL (JsonFieldGet su
+                     * stringa) / PCode / C99Native. Prima cadeva nel ramo NIL/DBF → campo vuoto
+                     * (bug VM-C: tutti i campi UDT dei report LEDGER vuoti). */
+                    gmb_obj_string_t* so = (gmb_obj_string_t*)obj;
+                    const char* sd = so->data ? so->data : "";
+                    if (sd[0] == '{' || sd[0] == '[')
+                    {
+                        gmb_val_t jv = gmb_json_parse(sd);
+                        gmb_val_t fv = gmb_dict_get(gmb_val_as_dict(jv), fieldName);
+                        gmb_obj_release(objE.ref);
+                        gmb_stack_entry_t se = gmb_adapter_val_to_stack(fv);
+                        if (se.type == 2 && se.ref) push_ref_new(task, se.ref, se.basic_type);
+                        else if (se.type == 1) push_num_entry(task, se.num, se.basic_type);
+                        else push_nil(task);
+                        break;
+                    }
+                    gmb_obj_release(objE.ref);
+                    push_nil(task);
+                    break;
+                }
+                gmb_obj_release(objE.ref);
+                /* Receiver NIL/assente = accesso a un CAMPO IMPLICITO dell'area attiva
+                 * (`PRINT Nome`): il chunk emette OP_LOAD_FIELD col nome del campo e nessuna base
+                 * (misurato con GMB_DUMP_CHUNK=1: `OP_LOAD_FIELD Const 'Nome'`). Parità col PCode,
+                 * che in questo caso chiama TryReadDbfRecordField ("Usato sia dal LOAD_FIELD con
+                 * receiver NIL (bare NAME)").
+                 * Senza: la VM/C stampava VUOTO per ogni campo (probe mirato su area DBF: IL
+                 * 'PIPPO', VM/C ''; e i sample RDD che usano `Nome`/`Saldo`). La lettura passa dal
+                 * runtime condiviso e copre sia l'area DBF sia quella del driver RDD. */
+                if (!obj)
+                {
+                    gmb_val_t fv;
+                    if (vm_expr_dbf_record_get(fieldName, &fv) == 0)
+                    {
+                        push_val_entry(task, fv);
+                        break;
+                    }
+                }
+                push_nil(task);
+                break;
+            }
+
+            case OP_STORE_FIELD:
+            {
+                int fieldIdx = gmb_vm_read_u16(vm, task);
+                const char* fieldName = "";
+                if (fieldIdx >= 0 && fieldIdx < (int)vm->chunk->consts_len && vm->chunk->constants[fieldIdx].type == GMB_CONST_STRING)
+                    fieldName = vm->chunk->constants[fieldIdx].s ? vm->chunk->constants[fieldIdx].s : "";
+                gmb_stack_entry_t objE = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                gmb_stack_entry_t valE = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                gmb_obj_t* obj = objE.ref;
+                if (obj && obj->kind == GMB_OBJ_DICT && ((gmb_obj_shared_val_t*)obj)->dict)
+                {
+                    /* V4f: property setter (specchio OP_STORE_FIELD C#): precede lo store. */
+                    gmb_obj_shared_val_t* cd = vm_class_desc_of(obj);
+                    if (cd)
+                    {
+                        int setterAddr = vm_desc_table_addr(cd, "PropertySetters", fieldName);
+                        if (setterAddr >= 0)
+                        {
+                            gmb_stack_entry_t slots[2];
+                            slots[0] = objE;   /* ref trasferiti ai locals */
+                            slots[1] = valE;
+                            if (!push_class_frame(task, slots, 2, NULL))
+                            {
+                                gmb_obj_release(objE.ref);
+                                gmb_obj_release(valE.ref);
+                                return -1;
+                            }
+                            task->ip = setterAddr;
+                            break;
+                        }
+                    }
+                    gmb_obj_shared_val_t* svd = (gmb_obj_shared_val_t*)obj;
+                    gmb_val_t v = gmb_adapter_stack_to_val_borrowed(valE);
+                    gmb_dict_set(svd->dict, fieldName, v);
+                    /* WEBSOCKET: quando OnMessage/OnClose è registrato, avvia il receive thread */
+                    if ((strcmp(fieldName, "OnMessage") == 0 || strcmp(fieldName, "OnClose") == 0))
+                    {
+                        gmb_val_t wh = gmb_dict_get(*svd->dict, "__ws_handle");
+                        if (wh.kind == GMB_TYPE_DOUBLE && wh.v_double > 0)
+                            gmb_ws_start_recv(vm, (int64_t)wh.v_double, svd);
+                    }
+                }
+                gmb_obj_release(objE.ref);
+                gmb_obj_release(valE.ref);
+                break;
+            }
+
+            case OP_CALL_MEMBER:
+            {
+                int nameIdx = gmb_vm_read_u16(vm, task);
+                const char* methodName = "";
+                if (nameIdx >= 0 && nameIdx < (int)vm->chunk->consts_len && vm->chunk->constants[nameIdx].type == GMB_CONST_STRING)
+                    methodName = vm->chunk->constants[nameIdx].s ? vm->chunk->constants[nameIdx].s : "";
+
+                /* stack: argCount (num) → args → instance */
+                gmb_stack_entry_t argcE = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                int argCount = (int)argcE.num;
+                gmb_stack_entry_t args[16];
+                for (int i = argCount - 1; i >= 0 && i < 16; i--)
+                    args[i] = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                gmb_stack_entry_t instE = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                gmb_obj_t* inst = instE.ref;
+
+                if (inst == NULL) {
+                    /* Dispatch su riferimento nil (`DIM c AS Cls` senza NEW): errore BASIC
+                     * catturabile (parità IL), mai nil silenzioso (bug AiWiki
+                     * CLASS-MethodCall-Su-Nil-Dispatch-Divergente). */
+                    for (int i = 0; i < argCount && i < 16; i++) gmb_obj_release(args[i].ref);
+                    gmb_raise_basic_error(task, 91, "Object reference not set to an instance of an object");
+                    break;
+                }
+
+                if (inst && inst->kind == GMB_OBJ_CLOSURE && strcmp(methodName, "Address") == 0)
+                {
+                    /* EVENT/REMOVE HANDLER (2.9): la generica IndexOf/gmb_val_equals
+                     * confronta gli OBJECT per identità di puntatore C — ma ogni ADD/
+                     * REMOVE HANDLER crea una CLOSURE NUOVA (gmb_closure_new) anche per
+                     * la STESSA procedura, quindi non combacia mai per puntatore (bug
+                     * reale: REMOVE HANDLER non trovava mai l'handler, idx sempre -1).
+                     * Espone l'indirizzo come numero comparabile con CMP_EQ (i numeri SI
+                     * confrontano correttamente, a differenza dei riferimenti) — il
+                     * compilatore fa la scansione manualmente invece di IndexOf. */
+                    gmb_obj_closure_t* cl = (gmb_obj_closure_t*)inst;
+                    push_num_entry(task, (double)cl->address, GMB_BT_NUMBER);
+                    gmb_obj_release(inst);
+                    for (int i = 0; i < argCount; i++) gmb_obj_release(args[i].ref);
+                    break;
+                }
+                gmb_obj_shared_val_t* sv = inst ? (gmb_obj_shared_val_t*)inst : NULL;
+                if (inst && inst->kind == GMB_OBJ_LIST && sv->list)
+                {
+                    if (strcmp(methodName, "Count") == 0 || strcmp(methodName, "Length") == 0)
+                    {
+                        push_num_entry(task, (double)gmb_list_count(*sv->list), GMB_BT_NUMBER);
+                    }
+                    else if ((strcmp(methodName, "Add") == 0 || strcmp(methodName, "AddUnique") == 0) && argCount >= 1)
+                    {
+                        gmb_val_t v = gmb_adapter_stack_to_val_borrowed(args[0]);   /* la lista trattiene da se' */
+                        if (strcmp(methodName, "AddUnique") == 0 && gmb_list_contains(*sv->list, v))
+                        {
+                            /* HashSet: duplicato ignorato silenziosamente */
+                        }
+                        else gmb_list_add(sv->list, v);
+                        push_ref_entry(task, inst, GMB_BT_OBJECT);
+                    }
+                    else if (strcmp(methodName, "AddRange") == 0 && argCount >= 1)
+                    {
+                        gmb_obj_t* src = args[0].ref;
+                        if (src && src->kind == GMB_OBJ_LIST && ((gmb_obj_shared_val_t*)src)->list)
+                        {
+                            gmb_list_t* from = ((gmb_obj_shared_val_t*)src)->list;
+                            for (size_t i = 0; i < from->count; i++)
+                                gmb_list_add(sv->list, from->items[i]);
+                        }
+                        push_ref_entry(task, inst, GMB_BT_OBJECT);
+                    }
+                    else if (strcmp(methodName, "RemoveAt") == 0 && argCount >= 1)
+                    {
+                        int idx = (int)args[0].num;
+                        if (idx >= 0 && (size_t)idx < sv->list->count)
+                            gmb_list_remove_at(sv->list, idx);
+                    }
+                    else if (strcmp(methodName, "Clear") == 0)
+                    {
+                        gmb_list_clear(sv->list);
+                    }
+                    else if (strcmp(methodName, "Contains") == 0 && argCount >= 1)
+                    {
+                        gmb_bool_t c = gmb_list_contains(*sv->list, gmb_adapter_stack_to_val_borrowed(args[0]));
+                        push_num_entry(task, c ? 1 : 0, GMB_BT_BOOL);
+                    }
+                    else if (strcmp(methodName, "IndexOf") == 0 && argCount >= 1)
+                    {
+                        gmb_int_t ix = gmb_list_index_of(*sv->list, gmb_adapter_stack_to_val_borrowed(args[0]));
+                        push_num_entry(task, (double)ix, GMB_BT_NUMBER);
+                    }
+                    else if (strcmp(methodName, "Sort") == 0) { gmb_list_sort(sv->list); }
+                    else if (strcmp(methodName, "Reverse") == 0) { gmb_list_reverse(sv->list); }
+                    else if (strcmp(methodName, "Join") == 0)
+                    {
+                        /* Bug reale: "Join" mancava sia qui sia in kMemberMethods (gmb_compiler.c)
+                         * — la chiamata cadeva nel ramo generico "membro+indice" del compilatore,
+                         * che indicizzava un campo "Join" inesistente (NIL) con l'argomento,
+                         * dando "indexing a numeric scalar" invece di unire gli elementi. */
+                        const char* sep = (argCount >= 1 && args[0].type == 2 && args[0].ref
+                            && args[0].ref->kind == GMB_OBJ_STRING)
+                            ? ((gmb_obj_string_t*)args[0].ref)->data : "";
+                        gmb_string_t joined = gmb_list_join(*sv->list, sep);
+                        gmb_val_t jv = gmb_make_val_string(joined.data ? joined.data : "");
+                        gmb_string_free(&joined);
+                        gmb_stack_entry_t js = gmb_adapter_val_to_stack(jv);
+                        if (js.type == 2 && js.ref) push_ref_new(task, js.ref, js.basic_type);
+                        else push_nil(task);
+                    }
+                    /* Bug reale, stessa classe di Join: gmb_list_max/min/sum esistevano nel
+                     * runtime condiviso ma non erano mai collegati a nessun dispatch — .Max()/
+                     * .Min()/.Sum() cadevano nel ramo generico "membro+indice" (LOAD_ELEMENT con
+                     * chiave stringa "Max" su una lista), che restituiva sempre l'elemento[0]
+                     * (coercizione della chiave stringa a indice 0), mai il vero massimo/minimo/
+                     * somma. */
+                    else if (strcmp(methodName, "Max") == 0) push_num_entry(task, gmb_list_max(*sv->list), GMB_BT_NUMBER);
+                    else if (strcmp(methodName, "Min") == 0) push_num_entry(task, gmb_list_min(*sv->list), GMB_BT_NUMBER);
+                    else if (strcmp(methodName, "Sum") == 0) push_num_entry(task, gmb_list_sum(*sv->list), GMB_BT_NUMBER);
+                    else if (strcmp(methodName, "ToArray") == 0 || strcmp(methodName, "ToList") == 0)
+                    {
+                        gmb_list_t c = gmb_list_deep_copy(*sv->list);
+                        gmb_obj_shared_val_t* oc = vm_wrap_runtime_list(&c);
+                        gmb_list_free(&c);
+                        if (oc) push_ref_new(task, (gmb_obj_t*)oc, GMB_BT_OBJECT);
+                        else { gmb_obj_release(instE.ref); push_nil(task); break; }
+                    }
+                    else if (strcmp(methodName, "Union") == 0 && argCount >= 1)
+                    {
+                        gmb_obj_t* a = args[0].ref;
+                        if (a && a->kind == GMB_OBJ_LIST && ((gmb_obj_shared_val_t*)a)->list)
+                        {
+                            gmb_list_t c = gmb_set_union(*sv->list, *((gmb_obj_shared_val_t*)a)->list);
+                            gmb_obj_shared_val_t* oc = vm_wrap_runtime_list(&c);
+                            gmb_list_free(&c);
+                            if (oc) push_ref_new(task, (gmb_obj_t*)oc, GMB_BT_OBJECT);
+                            else push_nil(task);
+                        }
+                        else push_nil(task);
+                    }
+                    else if (strcmp(methodName, "Intersect") == 0 && argCount >= 1)
+                    {
+                        gmb_obj_t* a = args[0].ref;
+                        if (a && a->kind == GMB_OBJ_LIST && ((gmb_obj_shared_val_t*)a)->list)
+                        {
+                            gmb_list_t c = gmb_set_intersect(*sv->list, *((gmb_obj_shared_val_t*)a)->list);
+                            gmb_obj_shared_val_t* oc = vm_wrap_runtime_list(&c);
+                            gmb_list_free(&c);
+                            if (oc) push_ref_new(task, (gmb_obj_t*)oc, GMB_BT_OBJECT);
+                            else push_nil(task);
+                        }
+                        else push_nil(task);
+                    }
+                    else if (strcmp(methodName, "Except") == 0 && argCount >= 1)
+                    {
+                        gmb_obj_t* a = args[0].ref;
+                        if (a && a->kind == GMB_OBJ_LIST && ((gmb_obj_shared_val_t*)a)->list)
+                        {
+                            gmb_list_t c = gmb_set_except(*sv->list, *((gmb_obj_shared_val_t*)a)->list);
+                            gmb_obj_shared_val_t* oc = vm_wrap_runtime_list(&c);
+                            gmb_list_free(&c);
+                            if (oc) push_ref_new(task, (gmb_obj_t*)oc, GMB_BT_OBJECT);
+                            else push_nil(task);
+                        }
+                        else push_nil(task);
+                    }
+                    else if (strcmp(methodName, "ToJson") == 0 || strcmp(methodName, "ToJSON") == 0)
+                    {
+                        gmb_obj_string_t* js = gmb_vm_json_stringify(inst);
+                        if (js) { push_ref_new(task, (gmb_obj_t*)js, GMB_BT_STRING); }
+                        else push_nil(task);
+                    }
+                    else if (strcmp(methodName, "Push") == 0 && argCount >= 1)
+                    {
+                        gmb_val_t v = gmb_adapter_stack_to_val_borrowed(args[0]);
+                        gmb_list_push(sv->list, v);
+                        push_ref_entry(task, inst, GMB_BT_OBJECT);
+                    }
+                    else if (strcmp(methodName, "Pop") == 0)
+                    {
+                        gmb_val_t r = gmb_list_pop(sv->list);
+                        gmb_stack_entry_t rs = gmb_adapter_val_to_stack(r);
+                        gmb_val_release(r);   /* pop cede il riferimento della lista: rs ne ha preso uno suo */
+                        if (rs.type == 2 && rs.ref) push_ref_new(task, rs.ref, rs.basic_type);
+                        else if (rs.type == 1) push_num_entry(task, rs.num, rs.basic_type);
+                        else push_nil(task);
+                    }
+                    else if (strcmp(methodName, "Peek") == 0)
+                    {
+                        gmb_val_t r = gmb_list_peek(*sv->list);
+                        gmb_stack_entry_t rs = gmb_adapter_val_to_stack(r);
+                        if (rs.type == 2 && rs.ref) push_ref_new(task, rs.ref, rs.basic_type);
+                        else if (rs.type == 1) push_num_entry(task, rs.num, rs.basic_type);
+                        else push_nil(task);
+                    }
+                    else if (strcasecmp(methodName, "Enqueue") == 0 && argCount >= 1)
+                    {
+                        gmb_val_t v = gmb_adapter_stack_to_val_borrowed(args[0]);
+                        gmb_list_enqueue(sv->list, v);
+                        push_ref_entry(task, inst, GMB_BT_OBJECT);
+                    }
+                    else if (strcasecmp(methodName, "Dequeue") == 0)
+                    {
+                        gmb_val_t r = gmb_list_dequeue(sv->list);
+                        gmb_stack_entry_t rs = gmb_adapter_val_to_stack(r);
+                        gmb_val_release(r);   /* dequeue cede il riferimento della lista: rs ne ha preso uno suo */
+                        if (rs.type == 2 && rs.ref) push_ref_new(task, rs.ref, rs.basic_type);
+                        else if (rs.type == 1) push_num_entry(task, rs.num, rs.basic_type);
+                        else push_nil(task);
+                    }
+                    else if (strcmp(methodName, "AddFirst") == 0 && argCount >= 1)
+                    {
+                        gmb_list_insert(sv->list, 0, gmb_adapter_stack_to_val_borrowed(args[0]));
+                        push_ref_entry(task, inst, GMB_BT_OBJECT);
+                    }
+                    else if (strcmp(methodName, "AddLast") == 0 && argCount >= 1)
+                    {
+                        gmb_list_add(sv->list, gmb_adapter_stack_to_val_borrowed(args[0]));
+                        push_ref_entry(task, inst, GMB_BT_OBJECT);
+                    }
+                    else if (strcmp(methodName, "RemoveFirst") == 0)
+                    {
+                        if (sv->list->count > 0) gmb_list_remove_at(sv->list, 0);
+                    }
+                    else if (strcmp(methodName, "RemoveLast") == 0)
+                    {
+                        if (sv->list->count > 0) gmb_list_remove_at(sv->list, (gmb_int_t)(sv->list->count - 1));
+                    }
+                    else if (strcmp(methodName, "First") == 0)
+                    {
+                        gmb_val_t r = sv->list->count > 0 ? gmb_list_first(*sv->list) : gmb_val_nil();
+                        gmb_stack_entry_t rs = gmb_adapter_val_to_stack(r);
+                        if (rs.type == 2 && rs.ref) push_ref_new(task, rs.ref, rs.basic_type);
+                        else if (rs.type == 1) push_num_entry(task, rs.num, rs.basic_type);
+                        else push_nil(task);
+                    }
+                    else if (strcmp(methodName, "Last") == 0)
+                    {
+                        gmb_val_t r = sv->list->count > 0 ? gmb_list_last(*sv->list) : gmb_val_nil();
+                        gmb_stack_entry_t rs = gmb_adapter_val_to_stack(r);
+                        if (rs.type == 2 && rs.ref) push_ref_new(task, rs.ref, rs.basic_type);
+                        else if (rs.type == 1) push_num_entry(task, rs.num, rs.basic_type);
+                        else push_nil(task);
+                    }
+                    else if ((strcmp(methodName, "AddAfter") == 0 || strcmp(methodName, "AddBefore") == 0) && argCount >= 2)
+                    {
+                        long idx = (long)args[0].num;
+                        if (strcmp(methodName, "AddAfter") == 0) idx += 1;
+                        if (idx < 0) idx = 0;
+                        while ((size_t)idx > sv->list->count) gmb_list_add(sv->list, gmb_val_nil());
+                        gmb_list_insert(sv->list, (gmb_int_t)idx, gmb_adapter_stack_to_val_borrowed(args[1]));
+                        push_ref_entry(task, inst, GMB_BT_OBJECT);
+                    }
+                    else if (strcmp(methodName, "AddUnique") == 0 && argCount >= 1)
+                    {
+                        /* F1 (parity IL/PCode): HashSet-like — duplicato ignorato. */
+                        gmb_val_t uq = gmb_adapter_stack_to_val_borrowed(args[0]);
+                        if (!gmb_list_contains(*sv->list, uq)) gmb_list_add(sv->list, uq);
+                        push_ref_entry(task, inst, GMB_BT_OBJECT);
+                    }
+                    else if ((strcasecmp(methodName, "IsEmpty") == 0) && argCount == 0)
+                    {
+                        /* F1 (parity IL/PCode): count==0 → 1/0. */
+                        push_num_entry(task, sv->list->count == 0 ? 1 : 0, GMB_BT_BOOL);
+                    }
+                    else if ((strcasecmp(methodName, "Front") == 0 || strcasecmp(methodName, "Back") == 0) && argCount == 0)
+                    {
+                        /* F1 (parity IL/PCode): Front = testa (prossimo da Dequeue), Back = coda. */
+                        gmb_val_t r = sv->list->count == 0 ? gmb_val_nil()
+                            : (strcasecmp(methodName, "Front") == 0 ? gmb_list_first(*sv->list) : gmb_list_last(*sv->list));
+                        gmb_stack_entry_t rs = gmb_adapter_val_to_stack(r);
+                        if (rs.type == 2 && rs.ref) push_ref_new(task, rs.ref, rs.basic_type);
+                        else if (rs.type == 1) push_num_entry(task, rs.num, rs.basic_type);
+                        else push_nil(task);
+                    }
+                    else if (strcmp(methodName, "Capacity") == 0)
+                    {
+                        push_num_entry(task, (double)gmb_list_count(*sv->list), GMB_BT_NUMBER);
+                    }
+                    else if (strcmp(methodName, "Extract") == 0 || strcmp(methodName, "ExtractMax") == 0
+                        || strcmp(methodName, "ExtractMin") == 0)
+                    {
+                        gmb_val_t r = sv->list->count > 0 ? gmb_list_pop(sv->list) : gmb_val_nil();
+                        gmb_stack_entry_t rs = gmb_adapter_val_to_stack(r);
+                        if (rs.type == 2 && rs.ref) push_ref_new(task, rs.ref, rs.basic_type);
+                        else if (rs.type == 1) push_num_entry(task, rs.num, rs.basic_type);
+                        else push_nil(task);
+                    }
+                    else if (strcmp(methodName, "UniqueCount") == 0)
+                    {
+                        gmb_list_t uq = gmb_list_unique_copy(*sv->list);
+                        push_num_entry(task, (double)uq.count, GMB_BT_NUMBER);
+                        gmb_list_free(&uq);
+                    }
+                    else if (strcmp(methodName, "UniqueItems") == 0)
+                    {
+                        gmb_list_t uq = gmb_list_unique_copy(*sv->list);
+                        gmb_obj_shared_val_t* uo = vm_wrap_runtime_list(&uq);
+                        gmb_list_free(&uq);
+                        if (uo) push_ref_new(task, (gmb_obj_t*)uo, GMB_BT_OBJECT);
+                        else push_nil(task);
+                    }
+                    else if (strcmp(methodName, "HasItem") == 0 && argCount >= 1)
+                    {
+                        gmb_bool_t c2 = gmb_list_contains(*sv->list, gmb_adapter_stack_to_val_borrowed(args[0]));
+                        push_num_entry(task, c2 ? 1 : 0, GMB_BT_BOOL);
+                    }
+                    else if (strcmp(methodName, "StartsWith") == 0 && argCount >= 1 && sv->list->count > 0)
+                    {
+                        const char* pre = (args[0].type == 2 && args[0].ref) ? ((gmb_obj_string_t*)args[0].ref)->data : "";
+                        const char* v0 = (sv->list->items[0].kind == GMB_TYPE_STRING) ? sv->list->items[0].v_string.data : "";
+                        push_num_entry(task, (v0 && pre && !strncmp(v0, pre, strlen(pre))) ? 1 : 0, GMB_BT_BOOL);
+                    }
+                    else
+                    {
+                        gmb_obj_release(instE.ref);
+                        for (int i = 0; i < argCount && i < 16; i++) gmb_obj_release(args[i].ref);
+                        push_nil(task);
+                        break;
+                    }
+                }
+                else if (inst && inst->kind == GMB_OBJ_DICT && sv->dict)
+                {
+                    /* REGEX (dict con __type=REGEXWRAPPER): IsMatch/Match/Matches/Replace/Split. */
+                    {
+                        gmb_val_t rty = gmb_dict_get(*sv->dict, "__type");
+                        if (rty.kind == GMB_TYPE_STRING && rty.v_string.data && strcmp(rty.v_string.data, "REGEXWRAPPER") == 0) {
+                            gmb_val_t rpv = gmb_dict_get(*sv->dict, "Pattern");
+                            const char* rpat = (rpv.kind == GMB_TYPE_STRING && rpv.v_string.data) ? rpv.v_string.data : "";
+                            const char* rin = (argCount >= 1 && args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_STRING) ? ((gmb_obj_string_t*)args[0].ref)->data : "";
+                            if (strcmp(methodName, "IsMatch") == 0) {
+                                push_num_entry(task, gmb_regex_is_match(rpat, rin) ? -1 : 0, GMB_BT_BOOL);
+                                break;
+                            }
+                            if (strcmp(methodName, "Replace") == 0) {
+                                const char* rrep = (argCount >= 2 && args[1].type == 2 && args[1].ref && args[1].ref->kind == GMB_OBJ_STRING) ? ((gmb_obj_string_t*)args[1].ref)->data : "";
+                                static char rbuf[1 << 20];
+                                gmb_regex_replace(rpat, rin, rrep, rbuf, (int)sizeof(rbuf));
+                                push_ref_new(task, (gmb_obj_t*)gmb_str_cstr(rbuf), GMB_BT_STRING);
+                                break;
+                            }
+                            if (strcmp(methodName, "Match") == 0) {
+                                char rval[512]; int ridx = 0, rlen = 0;
+                                int ok = gmb_regex_match(rpat, rin, rval, (int)sizeof(rval), &ridx, &rlen);
+                                gmb_obj_shared_val_t* rd = gmb_shared_dict_new();
+                                if (rd) {
+                                    gmb_dict_set(rd->dict, "Value", gmb_make_val_string_counted(ok ? rval : ""));
+                                    gmb_dict_set(rd->dict, "Index", gmb_make_val_int(ok ? ridx : 0));
+                                    gmb_dict_set(rd->dict, "Length", gmb_make_val_int(ok ? rlen : 0));
+                                    gmb_dict_set(rd->dict, "Success", gmb_make_val_bool(ok ? -1 : 0));
+                                }
+                                push_ref_new(task, (gmb_obj_t*)rd, GMB_BT_OBJECT);
+                                break;
+                            }
+                            if (strcmp(methodName, "Matches") == 0) {
+                                static char mvals[512][256];
+                                int mn = gmb_regex_matches_values(rpat, rin, mvals, 512);
+                                gmb_obj_shared_val_t* ml = gmb_shared_list_new();
+                                if (ml) {
+                                    for (int mi = 0; mi < mn; mi++) {
+                                        gmb_obj_shared_val_t* md = gmb_shared_dict_new();
+                                        if (md) {
+                                            gmb_dict_set(md->dict, "Value", gmb_make_val_string_counted(mvals[mi]));
+                                            gmb_dict_set(md->dict, "Success", gmb_make_val_bool(-1));
+                                            gmb_list_add(ml->list, gmb_make_val_obj((gmb_obj_t*)md));
+                                        }
+                                    }
+                                }
+                                push_ref_new(task, (gmb_obj_t*)ml, GMB_BT_OBJECT);
+                                break;
+                            }
+                            if (strcmp(methodName, "Split") == 0) {
+                                static char svals[512][256];
+                                int sn = gmb_regex_split(rpat, rin, svals, 512);
+                                gmb_obj_shared_val_t* sl = gmb_shared_list_new();
+                                if (sl) for (int si = 0; si < sn; si++) gmb_list_add(sl->list, gmb_make_val_string_counted(svals[si]));
+                                push_ref_new(task, (gmb_obj_t*)sl, GMB_BT_OBJECT);
+                                break;
+                            }
+                            push_nil(task);
+                            break;
+                        }
+                    }
+                    /* V4f: dispatch classe utente — VTable poi PropertyGetters (specchio
+                     * OP_CALL_MEMBER C#: precede le operazioni dict builtin). */
+                    gmb_obj_shared_val_t* cd = vm_class_desc_of(inst);
+                    if (cd)
+                    {
+                        int methodAddr = vm_desc_table_addr(cd, "VTable", methodName);
+                        if (methodAddr < 0)
+                            methodAddr = vm_desc_table_addr(cd, "PropertyGetters", methodName);
+                        if (methodAddr >= 0)
+                        {
+                            int isOp = (methodName[0] == '_' && methodName[1] == '_');
+                            int ao = isOp ? 2 : 1;
+                            gmb_stack_entry_t slots[18];
+                            slots[0].type = 2; slots[0].basic_type = GMB_BT_OBJECT;
+                            slots[0].num = 0; slots[0].ref = inst;   /* trasferisce il ref di instE */
+                            if (isOp) { slots[1] = slots[0]; gmb_obj_retain(inst); } /* local[1]: ref extra */
+                            int n = ao;
+                            for (int a = 0; a < argCount && n < 18; a++, n++) slots[n] = args[a];
+                            gmb_frame_t* mf = push_class_frame(task, slots, n, NULL);
+                            if (!mf)
+                            {
+                                if (isOp) gmb_obj_release(inst);  /* il ref extra di local[1] */
+                                gmb_obj_release(instE.ref);
+                                for (int i = 0; i < argCount && i < 16; i++) gmb_obj_release(args[i].ref);
+                                push_nil(task);
+                                break;
+                            }
+                            task->ip = methodAddr;
+                            break;   /* ref trasferiti al frame: niente release finali */
+                        }
+                        /* Istanza di classe ma metodo non trovato → null (specchio C#). */
+                        gmb_obj_release(instE.ref);
+                        for (int i = 0; i < argCount && i < 16; i++) gmb_obj_release(args[i].ref);
+                        push_nil(task);
+                        break;
+                    }
+                    if (strcmp(methodName, "Count") == 0 || strcmp(methodName, "Length") == 0)
+                    {
+                        gmb_val_t bcur = gmb_dict_get(*sv->dict, "__str");
+                        if (bcur.kind == GMB_TYPE_STRING && bcur.v_string.data)
+                            push_num_entry(task, (double)strlen(bcur.v_string.data), GMB_BT_NUMBER);
+                        else
+                            push_num_entry(task, (double)gmb_dict_count(*sv->dict), GMB_BT_NUMBER);
+                    }
+                    else if ((strcmp(methodName, "Set") == 0 || strcmp(methodName, "SetKeyValue") == 0) && argCount >= 2)
+                    {
+                        const char* k = (args[0].type == 2 && args[0].ref) ? ((gmb_obj_string_t*)args[0].ref)->data : "";
+                        gmb_dict_set(sv->dict, k, gmb_adapter_stack_to_val_borrowed(args[1]));
+                    }
+                    else if (strcasecmp(methodName, "Get") == 0 && argCount >= 1)
+                    {
+                        /* Bug VM/C (probe F1e): il dict path non gestiva Get — `d.get(k)`
+                         * (e la forma canonica) cadde nel fallthrough nil. Parità IL
+                         * CollectionInvoke "GET": lookup per chiave, NIL se assente. */
+                        const char* k = (args[0].type == 2 && args[0].ref) ? ((gmb_obj_string_t*)args[0].ref)->data : "";
+                        gmb_val_t gres = gmb_dict_get(*sv->dict, k);
+                        if (gres.kind != GMB_TYPE_NIL) push_val_entry(task, gres);
+                        else push_nil(task);
+                    }
+                    else if (strcasecmp(methodName, "Clear") == 0)
+                    {
+                        /* DICT.Clear() (e COOKIEJAR.Clear(), stesso oggetto dict): svuota il
+                         * dict — parità managed (CookieJar.Clear rimuove i cookie memorizzati;
+                         * prima cadeva nel fallthrough nil e il jar tratteneva i cookie). */
+                        gmb_dict_clear(sv->dict);
+                        push_nil(task);
+                    }
+                    else if (strcmp(methodName, "ContainsKey") == 0 && argCount >= 1)
+                    {
+                        /* Chiave NUMERICA: il dict nativo è a chiavi stringa, quindi
+                         * args[0] doppio va CANONICALIZZATO con la STESSA formattazione
+                         * (%.15g) di OP_STORE_ELEMENT/LOAD_ELEMENT. Senza questo, dopo
+                         * `Users[1]=v` (chiave "1") un `Users.ContainsKey(1)` cercava ""
+                         * → false → il sample HttpRoutes rispondeva 404 a GET /api/users/1.
+                         * Prima qui si leggeva solo la stringa: args[0].type==1 finiva su k="". */
+                        char kb[64];
+                        const char* k;
+                        if (args[0].type == 1) { snprintf(kb, sizeof(kb), "%.15g", args[0].num); k = kb; }
+                        else if (args[0].type == 2 && args[0].ref) k = ((gmb_obj_string_t*)args[0].ref)->data;
+                        else k = "";
+                        /* Convenzione BASIC: TRUE = -1 (parità IL/PCode: il MiniTest set_get_grafe
+                         * verifica `d.ContainsKey(...) = -1`). Con 1/0 la STAMPA mostrava -1
+                         * (formato bool) ma il CONFRONTO con -1 falliva — divergenza invisibile
+                         * scoperta dal sample JsonApiComplete (catena di AND). */
+                        push_num_entry(task, gmb_dict_contains_key(*sv->dict, k) ? -1 : 0, GMB_BT_BOOL);
+                    }
+                    else if ((strcasecmp(methodName, "MaxPair") == 0 || strcasecmp(methodName, "MinPair") == 0) && argCount == 0
+                             && gmb_dict_count(*sv->dict) > 0)
+                    {
+                        /* F1 (parity IL DictMaxMinPair + PCode): chiave con valore max/min. */
+                        int isMax = strcasecmp(methodName, "MaxPair") == 0;
+                        const char* best_key = NULL;
+                        const char* best_str = NULL;
+                        double best_num = 0;
+                        int numeric_mode = 0;
+                        for (size_t di = 0; di < sv->dict->count; di++)
+                        {
+                            gmb_pair_t* de = &sv->dict->items[di];
+                            if (de->value.kind == GMB_TYPE_DOUBLE || de->value.kind == GMB_TYPE_INT)
+                            {
+                                double dv = de->value.kind == GMB_TYPE_INT ? (double)de->value.v_int : de->value.v_double;
+                                if (!numeric_mode) { numeric_mode = 1; best_key = de->key; best_num = dv; }
+                                else if ((isMax && dv > best_num) || (!isMax && dv < best_num)) { best_num = dv; best_key = de->key; }
+                            }
+                            else if (de->value.kind == GMB_TYPE_STRING && !numeric_mode)
+                            {
+                                if (!best_key) { best_key = de->key; best_str = de->value.v_string.data; }
+                                else if (best_str && ((isMax && strcmp(de->value.v_string.data, best_str) > 0) || (!isMax && strcmp(de->value.v_string.data, best_str) < 0))) { best_key = de->key; best_str = de->value.v_string.data; }
+                            }
+                        }
+                        push_str_entry(task, best_key ? best_key : "");
+                    }
+                    else if (strcmp(methodName, "Remove") == 0 && argCount >= 1)
+                    {
+                        gmb_val_t scur = gmb_dict_get(*sv->dict, "__str");
+                        if (scur.kind == GMB_TYPE_STRING && scur.v_string.data)
+                        {
+                            /* STRINGBUILDER.Remove(pos, len) sul campo __str. */
+                            const char* base = scur.v_string.data;
+                            size_t bl = strlen(base);
+                            long p = (long)args[0].num, n = (argCount >= 2) ? (long)args[1].num : 1;
+                            if (p < 0) p = 0; if ((size_t)p > bl) p = (long)bl;
+                            if (n < 0) n = 0; if ((size_t)(p + n) > bl) n = (long)bl - p;
+                            char* nb4 = (char*)malloc(bl + 1);
+                            if (nb4) { memcpy(nb4, base, (size_t)p); memcpy(nb4 + p, base + p + n, bl - (size_t)p - (size_t)n + 1);
+                                       gmb_dict_set(sv->dict, "__str", gmb_make_val_string_counted(nb4)); free(nb4); }
+                            push_ref_entry(task, inst, GMB_BT_OBJECT);
+                        }
+                        else
+                        {
+                            const char* k = (args[0].type == 2 && args[0].ref) ? ((gmb_obj_string_t*)args[0].ref)->data : "";
+                            gmb_dict_remove(sv->dict, k);
+                        }
+                    }
+                    else if (strcmp(methodName, "Add") == 0 && argCount >= 2)
+                    {
+                        const char* k = (args[0].type == 2 && args[0].ref) ? ((gmb_obj_string_t*)args[0].ref)->data : "";
+                        gmb_dict_set(sv->dict, k, gmb_adapter_stack_to_val_borrowed(args[1]));
+                        push_ref_entry(task, inst, GMB_BT_OBJECT);
+                    }
+                    else if (strcasecmp(methodName, "Append") == 0 && argCount >= 1)
+                    {
+                        gmb_val_t cur = gmb_dict_get(*sv->dict, "__str");
+                        const char* base = (cur.kind == GMB_TYPE_STRING && cur.v_string.data) ? cur.v_string.data : "";
+                        char tmp2[64]; const char* add = "";
+                        if (args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_STRING) add = ((gmb_obj_string_t*)args[0].ref)->data;
+                        else if (args[0].type == 1) { snprintf(tmp2, sizeof(tmp2), "%.17g", args[0].num); add = tmp2; }
+                        if (base && add)
+                        {
+                            size_t n1 = strlen(base), n2 = strlen(add);
+                            char* nb2 = (char*)malloc(n1 + n2 + 1);
+                            if (nb2) { memcpy(nb2, base, n1); memcpy(nb2 + n1, add, n2); nb2[n1 + n2] = 0; gmb_dict_set(sv->dict, "__str", gmb_make_val_string_counted(nb2)); free(nb2); }
+                        }
+                        push_ref_entry(task, inst, GMB_BT_OBJECT);
+                    }
+                    else if (strcasecmp(methodName, "AppendFormat") == 0 && argCount >= 1)
+                    {
+                        gmb_val_t cur = gmb_dict_get(*sv->dict, "__str");
+                        const char* base = (cur.kind == GMB_TYPE_STRING && cur.v_string.data) ? cur.v_string.data : "";
+                        const char* fmt = (args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_STRING) ? ((gmb_obj_string_t*)args[0].ref)->data : "";
+                        size_t bl = strlen(base), cap = bl + strlen(fmt) + 64, ln = bl;
+                        char* out = (char*)malloc(cap);
+                        if (out) {
+                            const char* p = fmt;
+                            memcpy(out, base, bl); out[bl] = 0;
+                            while (*p) {
+                                if (*p == '{' && *(p+1) >= '0' && *(p+1) <= '9') {
+                                    const char* q = p + 1; int idx = 0;
+                                    while (*q >= '0' && *q <= '9') { idx = idx*10 + (*q - '0'); q++; }
+                                    if (*q == '}') {
+                                        const char* av = ""; char tmpv[64];
+                                        if (idx + 1 < argCount) {
+                                            gmb_stack_entry_t ae = args[idx+1];
+                                            if (ae.type == 2 && ae.ref && ae.ref->kind == GMB_OBJ_STRING) av = ((gmb_obj_string_t*)ae.ref)->data;
+                                            else if (ae.type == 1) { snprintf(tmpv, sizeof(tmpv), "%.17g", ae.num); av = tmpv; }
+                                        }
+                                        size_t al = strlen(av);
+                                        if (ln + al + 1 > cap) { cap = (ln + al + 1) * 2; out = (char*)realloc(out, cap); }
+                                        memcpy(out + ln, av, al); ln += al; out[ln] = 0;
+                                        p = q + 1; continue;
+                                    }
+                                }
+                                if (ln + 2 > cap) { cap *= 2; out = (char*)realloc(out, cap); }
+                                out[ln++] = *p++; out[ln] = 0;
+                            }
+                            gmb_dict_set(sv->dict, "__str", gmb_make_val_string_counted(out));
+                            free(out);
+                        }
+                        push_ref_entry(task, inst, GMB_BT_OBJECT);
+                    }
+                    else if (strcasecmp(methodName, "ToString") == 0)
+                    {
+                        gmb_val_t cur = gmb_dict_get(*sv->dict, "__str");
+                        gmb_obj_string_t* st = gmb_str_cstr(cur.kind == GMB_TYPE_STRING && cur.v_string.data ? cur.v_string.data : "");
+                        if (st) { push_ref_new(task, (gmb_obj_t*)st, GMB_BT_STRING); }
+                        else push_nil(task);
+                    }
+                    else if (strcasecmp(methodName, "Length") == 0)
+                    {
+                        gmb_val_t cur = gmb_dict_get(*sv->dict, "__str");
+                        push_num_entry(task, (double)((cur.kind == GMB_TYPE_STRING && cur.v_string.data) ? strlen(cur.v_string.data) : 0), GMB_BT_NUMBER);
+                    }
+                    else if (strcasecmp(methodName, "Clear") == 0)
+                    {
+                        gmb_dict_set(sv->dict, "__str", gmb_make_val_string_counted(""));
+                        push_ref_entry(task, inst, GMB_BT_OBJECT);
+                    }
+                    else if (strcasecmp(methodName, "AppendLine") == 0)
+                    {
+                        gmb_val_t cur = gmb_dict_get(*sv->dict, "__str");
+                        const char* base = (cur.kind == GMB_TYPE_STRING && cur.v_string.data) ? cur.v_string.data : "";
+                        char tmp2[64]; const char* add = "";
+                        if (argCount >= 1) {
+                            if (args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_STRING) add = ((gmb_obj_string_t*)args[0].ref)->data;
+                            else if (args[0].type == 1) { snprintf(tmp2, sizeof(tmp2), "%.17g", args[0].num); add = tmp2; }
+                        }
+                        { size_t n1 = strlen(base), n2 = strlen(add);
+                          char* nb2 = (char*)malloc(n1 + n2 + 2);
+                          if (nb2) { memcpy(nb2, base, n1); memcpy(nb2 + n1, add, n2); nb2[n1+n2]='\n'; nb2[n1+n2+1]=0;
+                                     gmb_dict_set(sv->dict, "__str", gmb_make_val_string_counted(nb2)); free(nb2); } }
+                        push_ref_entry(task, inst, GMB_BT_OBJECT);
+                    }
+                    else if (strcasecmp(methodName, "Capacity") == 0)
+                    {
+                        gmb_val_t cur = gmb_dict_get(*sv->dict, "__str");
+                        push_num_entry(task, (double)((cur.kind == GMB_TYPE_STRING && cur.v_string.data) ? strlen(cur.v_string.data) : 0), GMB_BT_NUMBER);
+                    }
+                    else if (strcasecmp(methodName, "Insert") == 0 && argCount >= 2)
+                    {
+                        gmb_val_t cur = gmb_dict_get(*sv->dict, "__str");
+                        const char* base = (cur.kind == GMB_TYPE_STRING && cur.v_string.data) ? cur.v_string.data : "";
+                        const char* ins = (args[1].type == 2 && args[1].ref && args[1].ref->kind == GMB_OBJ_STRING) ? ((gmb_obj_string_t*)args[1].ref)->data : "";
+                        size_t bl = strlen(base), il = strlen(ins);
+                        long p = (long)args[0].num; if (p < 0) p = 0; if ((size_t)p > bl) p = (long)bl;
+                        char* nb3 = (char*)malloc(bl + il + 1);
+                        if (nb3) { memcpy(nb3, base, (size_t)p); memcpy(nb3 + p, ins, il); memcpy(nb3 + p + il, base + p, bl - (size_t)p + 1);
+                                   gmb_dict_set(sv->dict, "__str", gmb_make_val_string_counted(nb3)); free(nb3); }
+                        push_ref_entry(task, inst, GMB_BT_OBJECT);
+                    }
+                    else if (strcasecmp(methodName, "Replace") == 0 && argCount >= 2)
+                    {
+                        gmb_val_t cur = gmb_dict_get(*sv->dict, "__str");
+                        const char* base = (cur.kind == GMB_TYPE_STRING && cur.v_string.data) ? cur.v_string.data : "";
+                        const char* from = (args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_STRING) ? ((gmb_obj_string_t*)args[0].ref)->data : "";
+                        const char* to = (args[1].type == 2 && args[1].ref && args[1].ref->kind == GMB_OBJ_STRING) ? ((gmb_obj_string_t*)args[1].ref)->data : "";
+                        size_t fl = strlen(from), tl = strlen(to);
+                        if (fl > 0) {
+                            size_t cap = strlen(base) + 1, ln = 0; char* out = (char*)malloc(cap);
+                            const char* q = base;
+                            if (out) {
+                                for (;;) { const char* hit = strstr(q, from); if (!hit) break;
+                                    size_t pre = (size_t)(hit - q);
+                                    if (ln + pre + tl + 1 > cap) { cap = (ln + pre + tl + 1) * 2; out = (char*)realloc(out, cap); if (!out) break; }
+                                    memcpy(out + ln, q, pre); ln += pre; memcpy(out + ln, to, tl); ln += tl; q = hit + fl; }
+                                if (out) { size_t rest = strlen(q); if (ln + rest + 1 > cap) out = (char*)realloc(out, ln + rest + 1);
+                                    if (out) { memcpy(out + ln, q, rest + 1); gmb_dict_set(sv->dict, "__str", gmb_make_val_string_counted(out)); } free(out); }
+                            }
+                        }
+                        push_ref_entry(task, inst, GMB_BT_OBJECT);
+                    }
+                    else if (strcasecmp(methodName, "Remove") == 0 && argCount >= 2)
+                    {
+                        gmb_val_t cur = gmb_dict_get(*sv->dict, "__str");
+                        const char* base = (cur.kind == GMB_TYPE_STRING && cur.v_string.data) ? cur.v_string.data : "";
+                        size_t bl = strlen(base);
+                        long p = (long)args[0].num, n = (long)args[1].num;
+                        if (p < 0) p = 0; if ((size_t)p > bl) p = (long)bl;
+                        if (n < 0) n = 0; if ((size_t)(p + n) > bl) n = (long)bl - p;
+                        { char* nb4 = (char*)malloc(bl + 1);
+                          if (nb4) { memcpy(nb4, base, (size_t)p); memcpy(nb4 + p, base + p + n, bl - (size_t)p - (size_t)n + 1);
+                                     gmb_dict_set(sv->dict, "__str", gmb_make_val_string_counted(nb4)); free(nb4); } }
+                        push_ref_entry(task, inst, GMB_BT_OBJECT);
+                    }
+                    else if (strcmp(methodName, "Keys") == 0)
+                    {
+                        gmb_obj_shared_val_t* ko = gmb_shared_list_new();
+                        if (ko)
+                        {
+                            vm_list_fill_keys(ko, *sv->dict);
+                            push_ref_new(task, (gmb_obj_t*)ko, GMB_BT_OBJECT);
+                        }
+                        else push_nil(task);
+                    }
+                    else if (strcmp(methodName, "Values") == 0)
+                    {
+                        gmb_list_t vv = gmb_dict_values(*sv->dict);
+                        gmb_obj_shared_val_t* vo = vm_wrap_runtime_list(&vv);
+                        gmb_list_free(&vv);
+                        if (vo) push_ref_new(task, (gmb_obj_t*)vo, GMB_BT_OBJECT);
+                        else push_nil(task);
+                    }
+                    else if (strcmp(methodName, "ToDict") == 0)
+                    {
+                        gmb_obj_shared_val_t* od = vm_new_dict_copy(sv->dict);
+                        if (od) push_ref_entry(task, (gmb_obj_t*)od, GMB_BT_OBJECT);
+                        else push_nil(task);
+                    }
+                    else if (strcmp(methodName, "ToJson") == 0 || strcmp(methodName, "ToJSON") == 0)
+                    {
+                        gmb_obj_string_t* js = gmb_vm_json_stringify(inst);
+                        if (js) { push_ref_new(task, (gmb_obj_t*)js, GMB_BT_STRING); }
+                        else push_nil(task);
+                    }
+                    else if (strcmp(methodName, "Send") == 0 && argCount >= 1)
+                    {
+                        /* WEBSOCKET.Send(text) — se il dict ha __ws_handle, invia un frame text */
+                        gmb_val_t wh = gmb_dict_get(*sv->dict, "__ws_handle");
+                        if (wh.kind == GMB_TYPE_DOUBLE && wh.v_double > 0)
+                        {
+                            const char* txt = (args[0].type == 2 && args[0].ref)
+                                ? ((gmb_obj_string_t*)args[0].ref)->data : "";
+                            gmb_ws_send_text((int64_t)wh.v_double, txt);
+                        }
+                        else
+                        {
+                            gmb_val_t v = gmb_adapter_stack_to_val_borrowed(args[0]);
+                            gmb_dict_set(sv->dict, "Body", v);
+                        }
+                    }
+                    else if (strcasecmp(methodName, "SaveToFile") == 0 && argCount >= 1)
+                    {
+                        /* FETCHRESULT.SaveToFile(path$): scrive i byte di Body con la
+                           funzione condivisa del runtime (§0bis), parità IL
+                           FetchResult.SaveToFile. Prima: metodo sconosciuto → nil
+                           silenzioso e nessun file creato. */
+                        gmb_val_t pathv = gmb_adapter_stack_to_val(args[0]);
+                        const char* p = (pathv.kind == GMB_TYPE_STRING && pathv.v_string.data)
+                            ? pathv.v_string.data : "";
+                        gmb_http_fetchresult_save(gmb_make_val_obj(inst), p);
+                        push_nil(task);
+                    }
+                    else if (strcmp(methodName, "SendBytes") == 0 && argCount >= 1)
+                    {
+                        gmb_val_t wh = gmb_dict_get(*sv->dict, "__ws_handle");
+                        if (wh.kind == GMB_TYPE_DOUBLE && wh.v_double > 0)
+                        {
+                            const uint8_t* d = (args[0].type == 2 && args[0].ref)
+                                ? (const uint8_t*)((gmb_obj_string_t*)args[0].ref)->data : (const uint8_t*)"";
+                            size_t dl = (args[0].type == 2 && args[0].ref)
+                                ? (size_t)((gmb_obj_string_t*)args[0].ref)->length : 0;
+                            gmb_ws_send_binary((int64_t)wh.v_double, d, dl);
+                        }
+                    }
+                    else if (strcmp(methodName, "Close") == 0)
+                    {
+                        gmb_val_t wh = gmb_dict_get(*sv->dict, "__ws_handle");
+                        if (wh.kind == GMB_TYPE_DOUBLE && wh.v_double > 0)
+                        {
+                            const char* reason = (argCount >= 1 && args[0].type == 2 && args[0].ref)
+                                ? ((gmb_obj_string_t*)args[0].ref)->data : "";
+                            gmb_ws_send_close((int64_t)wh.v_double, reason);
+                        }
+                    }
+                    else if (strcmp(methodName, "SendFile") == 0 && argCount >= 1)
+                    {
+                        /* res.SendFile(path [, contentType]) — era DICHIARATO nello schema del
+                         * tipo (StdLib.Http.cs) ma non implementato su nessun backend: la
+                         * chiamata era un no-op e la risposta restava 200 a corpo vuoto. Per
+                         * PackageServer.bas HandleDownload questo rendeva impossibile
+                         * scaricare QUALSIASI pacchetto dal registry.
+                         * Il file e' letto SUBITO, non lazy: chi lo cancella subito dopo
+                         * (KILL tmp) non svuota la risposta. Il corpo binario viaggia nella
+                         * stringa del dict (che ha lunghezza esplicita) e la lunghezza in
+                         * "__body_len": la route BINARIA la usa al posto di strlen, altrimenti
+                         * uno ZIP verrebbe troncato al primo NUL (l'header locale ne ha a
+                         * offset 5). */
+                        const char* fp = (args[0].type == 2 && args[0].ref)
+                            ? ((gmb_obj_string_t*)args[0].ref)->data : "";
+                        FILE* ff = (fp && *fp) ? fopen(fp, "rb") : NULL;
+                        if (!ff)
+                        {
+                            gmb_dict_set(sv->dict, "Status", gmb_make_val_double(500.0));
+                            gmb_dict_set(sv->dict, "Body",
+                                gmb_make_val_string("500 SendFile: file non leggibile"));
+                            gmb_dict_set(sv->dict, "__body_len", gmb_make_val_double(0.0));
+                        }
+                        else
+                        {
+                            fseek(ff, 0, SEEK_END);
+                            long fsz = ftell(ff);
+                            fseek(ff, 0, SEEK_SET);
+                            if (fsz < 0) fsz = 0;
+                            /* gmb_dict_set CONSERVA il puntatore (gmb_dict.c: p->value = v):
+                             * il buffer va allocato qui e NON liberato — liberarlo lasciava
+                             * nel dict un puntatore pendente e la risposta mandava 10 byte. */
+                            char* bb = (char*)malloc((size_t)fsz + 1);
+                            if (bb)
+                            {
+                                size_t got = fsz ? fread(bb, 1, (size_t)fsz, ff) : 0;
+                                bb[got] = 0;
+                                gmb_val_t bv;
+                                bv.kind = GMB_TYPE_STRING;
+                                bv.v_string.data = bb;
+                                bv.v_string.length = (uint32_t)got;
+                                gmb_dict_set(sv->dict, "Body", bv);
+                                gmb_dict_set(sv->dict, "__body_len", gmb_make_val_double((double)got));
+                            }
+                            fclose(ff);
+                            if (argCount < 2)
+                            {
+                                /* Mappa estensione->Content-Type condivisa (parità C99/IL/
+                                 * PCode): prima solo .zip/.json → default text/plain. */
+                                gmb_dict_set(sv->dict, "ContentType",
+                                    gmb_make_val_string(gmb_http_guess_content_type(fp)));
+                            }
+                        }
+                        if (argCount >= 2)
+                        {
+                            const char* ct = (args[1].type == 2 && args[1].ref)
+                                ? ((gmb_obj_string_t*)args[1].ref)->data : "";
+                            if (ct && *ct)
+                                gmb_dict_set(sv->dict, "ContentType", gmb_make_val_string_counted(ct));
+                        }
+                    }
+                    else if (strcmp(methodName, "SendJSON") == 0 || strcmp(methodName, "SendJson") == 0)
+                    {
+                        /* serializza l'argomento (dict/json/lista) in stringa. Un caso a
+                         * parte: un argomento STRINGA NUDA — es. il sample HttpRoutes
+                         * GetAllUsers fa res.SendJSON(Users.Values().ToJson()), dove
+                         * .ToJson() ritorna già una stringa ("[]" per dict vuoto).
+                         * gmb_vm_json_stringify(box di stringa) cadeva nel fallback
+                         * "lista" del runtime (GMB_OBJ_STRING senza type_name non è un
+                         * container) → body "null". Il managed SendJSON di una stringa
+                         * la INCAPSULA come JSON string ("[]"), quindi qui si serializza
+                         * il VALORE stringa via gmb_val_to_json (branch GMB_TYPE_STRING:
+                         * escape + virgolette). */
+                        gmb_obj_t* o = argCount >= 1 ? args[0].ref : NULL;
+                        gmb_obj_string_t* js;
+                        if (o && o->kind == GMB_OBJ_STRING && !o->type_name)
+                        {
+                            gmb_val_t strv = gmb_make_val_string_counted_n(
+                                ((gmb_obj_string_t*)o)->data, ((gmb_obj_string_t*)o)->length);
+                            gmb_string_t enc = gmb_val_to_json(strv);
+                            js = gmb_str_cstr(enc.data ? enc.data : "null");
+                            gmb_string_free(&enc);
+                            gmb_val_discard(strv);
+                        }
+                        else
+                            js = o ? gmb_vm_json_stringify(o) : gmb_str_cstr("{}");
+                        if (js)
+                        {
+                            gmb_dict_set(sv->dict, "Body", gmb_make_val_string_counted(js->data));
+                            gmb_obj_release((gmb_obj_t*)js);
+                        }
+                    }
+                    else if (strcmp(methodName, "SetStatus") == 0 && argCount >= 1)
+                    {
+                        gmb_dict_set(sv->dict, "Status", gmb_make_val_double(args[0].num));
+                    }
+                    else if (strcmp(methodName, "ParseMultipartForm") == 0)
+                    {
+                        /* req.ParseMultipartForm() → parser multipart/form-data del runtime;
+                           costruisce il dict HTTPPOSTEDDATA { FormFields, FileFields }. */
+                        gmb_val_t reqBody = gmb_dict_get(*sv->dict, "Body");
+                        gmb_val_t reqCt = gmb_dict_get(*sv->dict, "__content_type");
+                        const char* body = (reqBody.kind == GMB_TYPE_STRING && reqBody.v_string.data) ? reqBody.v_string.data : "";
+                        const char* ct = (reqCt.kind == GMB_TYPE_STRING && reqCt.v_string.data) ? reqCt.v_string.data : "";
+                        char** fn = NULL; char** fv = NULL; int nf = 0;
+                        char** fln = NULL; char** ffn = NULL; char** ft = NULL; char** fd = NULL; int nfl = 0;
+                        if (gmb_net_http_parse_multipart(body, ct, &fn, &fv, &nf, &fln, &ffn, &ft, &fd, &nfl) != 0)
+                        {
+                            push_nil(task);
+                            break;
+                        }
+                        gmb_obj_shared_val_t* fieldsObj = gmb_shared_list_new();
+                        if (fieldsObj)
+                            for (int i = 0; i < nf; i++)
+                            {
+                                gmb_obj_shared_val_t* f = gmb_shared_dict_new();
+                                if (f)
+                                {
+                                    gmb_dict_set(f->dict, "Name", gmb_make_val_string_counted(fn[i]));
+                                    gmb_dict_set(f->dict, "Value", gmb_make_val_string_counted(fv[i]));
+                                    gmb_list_add(fieldsObj->list, gmb_make_val_obj((gmb_obj_t*)f));
+                                }
+                            }
+                        gmb_obj_shared_val_t* filesObj = gmb_shared_list_new();
+                        if (filesObj)
+                            for (int i = 0; i < nfl; i++)
+                            {
+                                gmb_obj_shared_val_t* f = gmb_shared_dict_new();
+                                if (f)
+                                {
+                                    gmb_dict_set(f->dict, "Name", gmb_make_val_string_counted(fln[i]));
+                                    gmb_dict_set(f->dict, "FileName", gmb_make_val_string_counted(ffn[i]));
+                                    gmb_dict_set(f->dict, "ContentType", gmb_make_val_string_counted(ft[i]));
+                                    gmb_dict_set(f->dict, "Data", gmb_make_val_string_counted(fd[i]));
+                                    gmb_list_add(filesObj->list, gmb_make_val_obj((gmb_obj_t*)f));
+                                }
+                            }
+                        gmb_net_multipart_free(fn, fv, NULL, nf);
+                        for (int i = 0; i < nfl; i++) { free(fln[i]); free(ffn[i]); free(ft[i]); free(fd[i]); }
+                        free(fln); free(ffn); free(ft); free(fd);                        gmb_obj_shared_val_t* pd = gmb_shared_dict_new();
+                        if (pd)
+                        {
+                            gmb_dict_set(pd->dict, "FormFields", gmb_make_val_obj((gmb_obj_t*)fieldsObj));
+                            gmb_dict_set(pd->dict, "FileFields", gmb_make_val_obj((gmb_obj_t*)filesObj));
+                            push_ref_new(task, (gmb_obj_t*)pd, GMB_BT_OBJECT);
+                        }
+                        else push_nil(task);
+                    }
+                    else if (strcmp(methodName, "ParseForm") == 0)
+                    {
+                        /* req.ParseForm() — body application/x-www-form-urlencoded → dict dei
+                         * campi (stringhe URL-decodificate). Parser nella SORGENTE UNICA del
+                         * runtime condiviso (§0bis, gmb_http_form_parse); qui si costruisce
+                         * l'oggetto del modello VM/C (gmb_shared_dict), come ParseMultipartForm. */
+                        gmb_val_t reqBody = gmb_dict_get(*sv->dict, "Body");
+                        gmb_val_t reqCt = gmb_dict_get(*sv->dict, "__content_type");
+                        const char* body = (reqBody.kind == GMB_TYPE_STRING && reqBody.v_string.data) ? reqBody.v_string.data : "";
+                        const char* ct = (reqCt.kind == GMB_TYPE_STRING && reqCt.v_string.data) ? reqCt.v_string.data : "";
+                        char** keys = NULL; char** vals = NULL; int n = 0;
+                        if (gmb_http_form_parse(body, ct, &keys, &vals, &n) != 0)
+                        {
+                            push_nil(task);
+                            break;
+                        }
+                        gmb_obj_shared_val_t* fd = gmb_shared_dict_new();
+                        if (fd)
+                        {
+                            for (int i = 0; i < n; i++)
+                                gmb_dict_set(fd->dict, keys[i], gmb_make_val_string_counted(vals[i]));
+                            gmb_http_form_free(keys, vals, n);
+                            push_ref_new(task, (gmb_obj_t*)fd, GMB_BT_OBJECT);
+                        }
+                        else { gmb_http_form_free(keys, vals, n); push_nil(task); }
+                    }
+                    else if (strcmp(methodName, "SetHeader") == 0 && argCount >= 2)
+                    {
+                        const char* k = (args[0].type == 2 && args[0].ref) ? ((gmb_obj_string_t*)args[0].ref)->data : "";
+                        const char* v = (args[1].type == 2 && args[1].ref) ? ((gmb_obj_string_t*)args[1].ref)->data : "";
+                        char* hline = (char*)malloc(strlen(k) + strlen(v) + 20);
+                        if (hline)
+                        {
+                            sprintf(hline, "%s: %s", k, v);
+                            gmb_val_t hv = gmb_dict_get(*sv->dict, "__headers");
+                            char* cur = (hv.kind == GMB_TYPE_STRING && hv.v_string.data) ? hv.v_string.data : "";
+                            char* nb = (char*)malloc(strlen(cur) + strlen(hline) + 2);
+                            if (nb)
+                            {
+                                sprintf(nb, "%s%s\n", cur, hline);
+                                gmb_dict_set(sv->dict, "__headers", gmb_make_val_string_counted(nb));
+                                free(nb);
+                            }
+                            free(hline);
+                        }
+                    }
+                    else if (strcmp(methodName, "SetCookie") == 0 && argCount >= 1)
+                    {
+                        const char* k = (args[0].type == 2 && args[0].ref) ? ((gmb_obj_string_t*)args[0].ref)->data : "";
+                        const char* v = argCount >= 2 && args[1].type == 2 && args[1].ref ? ((gmb_obj_string_t*)args[1].ref)->data : "";
+                        char* hline = (char*)malloc(strlen(k) + strlen(v) + 40);
+                        if (hline)
+                        {
+                            sprintf(hline, "Set-Cookie: %s=%s", k, v);
+                            gmb_val_t hv = gmb_dict_get(*sv->dict, "__headers");
+                            char* cur = (hv.kind == GMB_TYPE_STRING && hv.v_string.data) ? hv.v_string.data : "";
+                            char* nb = (char*)malloc(strlen(cur) + strlen(hline) + 2);
+                            if (nb)
+                            {
+                                sprintf(nb, "%s%s\n", cur, hline);
+                                gmb_dict_set(sv->dict, "__headers", gmb_make_val_string_counted(nb));
+                                free(nb);
+                            }
+                            free(hline);
+                        }
+                    }
+                    else if (strcmp(methodName, "Redirect") == 0 && argCount >= 1)
+                    {
+                        const char* loc = (args[0].type == 2 && args[0].ref) ? ((gmb_obj_string_t*)args[0].ref)->data : "/";
+                        char* hline = (char*)malloc(strlen(loc) + 16);
+                        if (hline)
+                        {
+                            sprintf(hline, "Location: %s", loc);
+                            gmb_val_t hv = gmb_dict_get(*sv->dict, "__headers");
+                            char* cur = (hv.kind == GMB_TYPE_STRING && hv.v_string.data) ? hv.v_string.data : "";
+                            char* nb = (char*)malloc(strlen(cur) + strlen(hline) + 2);
+                            if (nb)
+                            {
+                                sprintf(nb, "%s%s\n", cur, hline);
+                                gmb_dict_set(sv->dict, "__headers", gmb_make_val_string_counted(nb));
+                                gmb_dict_set(sv->dict, "Status", gmb_make_val_double(302));
+                                free(nb);
+                            }
+                            free(hline);
+                        }
+                    }
+                    else
+                    {
+                        gmb_obj_release(instE.ref);
+                        for (int i = 0; i < argCount && i < 16; i++) gmb_obj_release(args[i].ref);
+                         push_nil(task);
+                        break;
+                    }
+                }
+                else if (inst && inst->kind == GMB_OBJ_GRAPH)
+                {
+                    /* ---- GRAPH<T> (Collections) — metodi del grafo ---- */
+                    gmb_obj_graph_t* g = (gmb_obj_graph_t*)inst;
+                    int64_t gh = g->handle;
+                    const char* s0 = (argCount >= 1 && args[0].type == 2 && args[0].ref) ? ((gmb_obj_string_t*)args[0].ref)->data : "";
+                    const char* s1 = (argCount >= 2 && args[1].type == 2 && args[1].ref) ? ((gmb_obj_string_t*)args[1].ref)->data : "";
+
+                    if (strcmp(methodName, "AddNode") == 0)
+                        push_num_entry(task, gmb_graph_add_node(gh, s0) ? 1 : 0, GMB_BT_BOOL);
+                    else if (strcasecmp(methodName, "AddNodeConsistent") == 0)
+                        push_num_entry(task, gmb_graph_add_node_consistent(gh, s0), GMB_BT_BOOL);
+                    else if (strcmp(methodName, "AddEdge") == 0)
+                    {
+                        double w = argCount >= 3 ? args[2].num : 0;
+                        gmb_graph_add_edge(gh, s0, s1, w);
+                    }
+                    else if (strcmp(methodName, "HasNode") == 0)
+                        push_num_entry(task, gmb_graph_has_node(gh, s0) ? 1 : 0, GMB_BT_BOOL);
+                    else if (strcmp(methodName, "HasEdge") == 0)
+                        push_num_entry(task, gmb_graph_has_edge(gh, s0, s1) ? 1 : 0, GMB_BT_BOOL);
+                    else if (strcmp(methodName, "RemoveNode") == 0)
+                        push_num_entry(task, gmb_graph_remove_node(gh, s0) ? 1 : 0, GMB_BT_BOOL);
+                    else if (strcmp(methodName, "RemoveEdge") == 0)
+                        push_num_entry(task, gmb_graph_remove_edge(gh, s0, s1) ? 1 : 0, GMB_BT_BOOL);
+                    else if (strcmp(methodName, "GetEdgeWeight") == 0)
+                    {
+                        double w = 0;
+                        int ok = gmb_graph_get_edge_weight(gh, s0, s1, &w);
+                        push_num_entry(task, ok ? w : 0, GMB_BT_NUMBER);
+                    }
+                    else if (strcmp(methodName, "GetInDegree") == 0)
+                        push_num_entry(task, (double)gmb_graph_get_indegree(gh, s0), GMB_BT_NUMBER);
+                    else if (strcmp(methodName, "NodeCount") == 0)
+                        push_num_entry(task, (double)gmb_graph_node_count(gh), GMB_BT_NUMBER);
+                    else if (strcmp(methodName, "GetNeighbors") == 0)
+                    {
+                        int n = 0;
+                        gmb_graph_edge_t* es = gmb_graph_neighbors(gh, s0, &n);
+                        gmb_obj_shared_val_t* out = gmb_shared_list_new();
+                        if (out)
+                        {
+                            for (int i = 0; i < n; i++)
+                            {
+                                /* ogni vicino come dict {node, weight} */
+                                gmb_obj_shared_val_t* d = gmb_shared_dict_new();
+                                if (d)
+                                {
+                                    gmb_dict_set(d->dict, "node", gmb_make_val_string_counted(es[i].node));
+                                    gmb_dict_set(d->dict, "weight", gmb_make_val_double(es[i].weight));
+                                    gmb_list_add(out->list, gmb_make_val_obj((gmb_obj_t*)d));
+                                }
+                            }
+                            push_ref_new(task, (gmb_obj_t*)out, GMB_BT_OBJECT);
+                        }
+                        else push_nil(task);
+                        free(es);
+                    }
+                    else if (strcmp(methodName, "BFS") == 0 || strcmp(methodName, "DFS") == 0)
+                    {
+                        int n = 0;
+                        char** res = (strcmp(methodName, "BFS") == 0)
+                            ? gmb_graph_bfs(gh, s0, &n) : gmb_graph_dfs(gh, s0, &n);
+                        gmb_obj_shared_val_t* out = gmb_shared_list_new();
+                        if (out)
+                        {
+                            for (int i = 0; i < n; i++)
+                            {
+                                gmb_obj_string_t* s = gmb_str_cstr(res[i]);
+                                gmb_list_add(out->list, gmb_make_val_string_counted(s->data));
+                                gmb_str_release(s);
+                            }
+                            push_ref_new(task, (gmb_obj_t*)out, GMB_BT_OBJECT);
+                        }
+                        else push_nil(task);
+                        free(res);
+                    }
+                    else if (strcmp(methodName, "Dijkstra") == 0)
+                    {
+                        int n = 0;
+                        gmb_graph_dist_t* ds = gmb_graph_dijkstra(gh, s0, &n);
+                        gmb_obj_shared_val_t* out = gmb_shared_list_new();
+                        if (out)
+                        {
+                            for (int i = 0; i < n; i++)
+                            {
+                                gmb_obj_shared_val_t* d = gmb_shared_dict_new();
+                                if (d)
+                                {
+                                    gmb_dict_set(d->dict, "node", gmb_make_val_string_counted(ds[i].node));
+                                    gmb_dict_set(d->dict, "distance", gmb_make_val_double(ds[i].dist));
+                                    gmb_list_add(out->list, gmb_make_val_obj((gmb_obj_t*)d));
+                                }
+                            }
+                            push_ref_new(task, (gmb_obj_t*)out, GMB_BT_OBJECT);
+                        }
+                        else push_nil(task);
+                        free(ds);
+                    }
+                    else if (strcmp(methodName, "Nodes") == 0 || strcmp(methodName, "Keys") == 0)
+                    {
+                        int n = 0;
+                        char** ns = gmb_graph_nodes(gh, &n);
+                        gmb_obj_shared_val_t* out = gmb_shared_list_new();
+                        if (out)
+                        {
+                            for (int i = 0; i < n; i++)
+                            {
+                                gmb_obj_string_t* s = gmb_str_cstr(ns[i]);
+                                gmb_list_add(out->list, gmb_make_val_string_counted(s->data));
+                                gmb_str_release(s);
+                            }
+                            push_ref_new(task, (gmb_obj_t*)out, GMB_BT_OBJECT);
+                        }
+                        else push_nil(task);
+                        free(ns);
+                    }
+                    else
+                    {
+                        gmb_obj_release(instE.ref);
+                        for (int i = 0; i < argCount && i < 16; i++) gmb_obj_release(args[i].ref);
+                        push_nil(task);
+                        break;
+                    }
+                }
+                else if (inst && inst->kind == GMB_OBJ_COLLECTION)
+                {
+                    /* ---- Collections generiche (RedBlack/BITree/Trie/LinkedList/Circular/
+                           Heap/Bag/Cache/Timeline/HashRing/RingBuffer/SparseSet/BPlusTree) ---- */
+                    gmb_obj_collection_t* col = (gmb_obj_collection_t*)inst;
+                    int64_t ch = col->handle;
+                    int tc = col->type_code;
+                    const char* s0 = (argCount >= 1 && args[0].type == 2 && args[0].ref) ? ((gmb_obj_string_t*)args[0].ref)->data : "";
+                    const char* s1 = (argCount >= 2 && args[1].type == 2 && args[1].ref) ? ((gmb_obj_string_t*)args[1].ref)->data : "";
+                    gmb_val_t v0 = argCount >= 1 ? gmb_adapter_stack_to_val(args[0]) : gmb_val_nil();
+                    gmb_val_t v1 = argCount >= 2 ? gmb_adapter_stack_to_val(args[1]) : gmb_val_nil();
+                    int isMap = (tc == 6 || tc == 7 || tc == 8 || tc == 9 || tc == 26 || tc == 18 || tc == 19);
+
+                    if (isMap && (strcasecmp(methodName, "Add") == 0 || strcasecmp(methodName, "Set") == 0 ||
+                                  strcasecmp(methodName, "Update") == 0) && argCount >= 2)
+                    {
+                        /* mappa K/V: Add(k, v) / Set(k, v) / Update(k, v) */
+                        gmb_coll_kv_set(ch, v0, v1);
+                        push_ref_entry(task, inst, GMB_BT_OBJECT);
+                    }
+                    else if (isMap && strcasecmp(methodName, "Get") == 0 && argCount >= 1)
+                        push_val_entry(task, gmb_coll_kv_get(ch, v0));
+                    else if (isMap && (strcasecmp(methodName, "ContainsKey") == 0 || strcasecmp(methodName, "HasItem") == 0 ||
+                                       strcasecmp(methodName, "Contains") == 0) && argCount >= 1)
+                        push_num_entry(task, gmb_coll_kv_contains(ch, v0) ? 1 : 0, GMB_BT_BOOL);
+                    else if (isMap && strcasecmp(methodName, "Remove") == 0 && argCount >= 1)
+                        push_num_entry(task, gmb_coll_kv_remove(ch, v0) ? 1 : 0, GMB_BT_BOOL);
+                    else if (isMap && (strcasecmp(methodName, "Min") == 0 || strcasecmp(methodName, "Max") == 0 ||
+                                       strcasecmp(methodName, "ExtractMin") == 0 || strcasecmp(methodName, "ExtractMax") == 0))
+                    {
+                        /* Min()/Max()/Extract*() delle mappe: COPPIA a 2 ELEMENTI [chiave, valore]
+                         * (parità P-Code, dove sono `List<object?>{k, v}` → JSON ["a",10]). È
+                         * DISTINTA da ToArray(), che è una lista di dict {Key,Value}. Prima qui si
+                         * costruiva un dict {Key,Value} → ["a",10] usciva {"Key":"a","Value":10}.
+                         * Materializzazione dal runtime condiviso (§0bis, gmb_coll_kv_entry_*): il
+                         * Timeline vi converte la chiave in DATETIME come il resto del runtime. */
+                        gmb_val_t kvp;
+                        if (strcasecmp(methodName, "ExtractMin") == 0) kvp = gmb_coll_kv_entry_extract_min(ch);
+                        else if (strcasecmp(methodName, "ExtractMax") == 0) kvp = gmb_coll_kv_entry_extract_max(ch);
+                        else if (strcasecmp(methodName, "Min") == 0) kvp = gmb_coll_kv_entry_min(ch);
+                        else kvp = gmb_coll_kv_entry_max(ch);
+                        push_val_entry(task, kvp);   /* consuma il valore dell'espressione */
+                    }
+                    else if (isMap && strcasecmp(methodName, "Keys") == 0)
+                    {
+                        int n = 0;
+                        gmb_val_t* arr = gmb_coll_kv_keys(ch, &n);
+                        gmb_obj_shared_val_t* out = gmb_shared_list_new();
+                        if (out && arr)
+                        {
+                            for (int i = 0; i < n; i++)
+                                gmb_list_add(out->list, arr[i]);
+                            push_ref_new(task, (gmb_obj_t*)out, GMB_BT_OBJECT);
+                        }
+                        else push_nil(task);
+                        free(arr);
+                    }
+                    else if (isMap && tc == 18 && strcasecmp(methodName, "GetRange") == 0 && argCount >= 2)
+                    {
+                        /* Timeline.GetRange: lista di coppie {Key, Value} (CommonLib ritorna
+                           IEnumerable<KeyValuePair>) */
+                        int n = 0;
+                        gmb_val_t* arr = gmb_coll_timeline_range(ch, args[0].num, args[1].num, &n);
+                        gmb_obj_shared_val_t* out = gmb_shared_list_new();
+                        if (out && arr)
+                        {
+                            for (int i = 0; i + 1 < n; i += 2)
+                            {
+                                gmb_obj_shared_val_t* pair = gmb_shared_dict_new();
+                                if (pair)
+                                {
+                                    gmb_dict_set(pair->dict, "Key", arr[i]);
+                                    gmb_dict_set(pair->dict, "Value", arr[i + 1]);
+                                    gmb_list_add(out->list, gmb_make_val_obj((gmb_obj_t*)pair));
+                                }
+                            }
+                            push_ref_new(task, (gmb_obj_t*)out, GMB_BT_OBJECT);
+                        }
+                        else push_nil(task);
+                        free(arr);
+                    }
+                    else if ((strcasecmp(methodName, "Add") == 0 || strcasecmp(methodName, "Push") == 0) && argCount >= 1)
+                    {
+                        if (tc == 11)
+                            push_num_entry(task, gmb_coll_trie_add(ch, s0) ? 1 : 0, GMB_BT_BOOL);
+                        else
+                            gmb_coll_add(ch, v0);
+                        push_ref_entry(task, inst, GMB_BT_OBJECT);
+                    }
+                    else if (strcasecmp(methodName, "AddFirst") == 0 && argCount >= 1)
+                    {
+                        gmb_coll_add_first(ch, v0);
+                        push_ref_entry(task, inst, GMB_BT_OBJECT);
+                    }
+                    else if (strcasecmp(methodName, "AddLast") == 0 && argCount >= 1)
+                    {
+                        gmb_coll_add_last(ch, v0);
+                        push_ref_entry(task, inst, GMB_BT_OBJECT);
+                    }
+                    else if (strcasecmp(methodName, "Enqueue") == 0 && argCount >= 1)
+                    {
+                        gmb_coll_enqueue(ch, v0);
+                        push_ref_entry(task, inst, GMB_BT_OBJECT);
+                    }
+                    else if (strcasecmp(methodName, "Dequeue") == 0 || strcasecmp(methodName, "Pop") == 0)
+                    {
+                        gmb_val_t r = gmb_coll_dequeue(ch);
+                        push_val_entry(task, r);
+                        gmb_val_release(r);   /* dequeue/pop cedono il riferimento della collection: la VM ne ha preso uno suo */
+                    }
+                    else if (strcasecmp(methodName, "Peek") == 0 || strcasecmp(methodName, "Front") == 0 || strcasecmp(methodName, "Back") == 0)
+                    {
+                        /* Back = coda (gmb_coll_last); Peek/Front = testa. Prima Back
+                         * usava lo stesso peek di Front (front_back.bas: Back errato). */
+                        gmb_val_t r;
+                        if (strcasecmp(methodName, "Back") == 0) r = gmb_coll_last(ch);
+                        else if (tc == 14 || tc == 27) r = gmb_coll_heap_peek(ch);
+                        else r = gmb_coll_peek(ch);
+                        push_val_entry(task, r);
+                    }
+                    else if (strcasecmp(methodName, "Count") == 0 || strcasecmp(methodName, "Length") == 0)
+                    {
+                        /* BAG (15) è un multiset: Count(item) = MOLTEPLICITÀ dell'elemento,
+                         * mentre Count() senza argomenti resta il totale (parità P-Code). Prima
+                         * l'argomento era ignorato e usciva sempre il totale. */
+                        if (tc == 15 && argCount >= 1)
+                            push_num_entry(task, (double)gmb_coll_bag_count_of(ch, v0), GMB_BT_NUMBER);
+                        else
+                            push_num_entry(task, (double)gmb_coll_count(ch), GMB_BT_NUMBER);
+                    }
+                    else if (strcasecmp(methodName, "Capacity") == 0)
+                        push_num_entry(task, (double)gmb_coll_capacity(ch), GMB_BT_NUMBER);
+                    else if (strcasecmp(methodName, "Clear") == 0)
+                        gmb_coll_clear(ch);
+                    else if (strcasecmp(methodName, "Contains") == 0 && argCount >= 1)
+                    {
+                        if (tc == 11)
+                            push_num_entry(task, gmb_coll_trie_contains(ch, s0) ? 1 : 0, GMB_BT_BOOL);
+                        else
+                            push_num_entry(task, gmb_coll_contains(ch, v0) ? 1 : 0, GMB_BT_BOOL);
+                    }
+                    else if (strcasecmp(methodName, "Remove") == 0 && argCount >= 1)
+                    {
+                        if (tc == 11)
+                            push_num_entry(task, gmb_coll_trie_remove(ch, s0) ? 1 : 0, GMB_BT_BOOL);
+                        else if (tc == 15)
+                            /* BAG: rimuove UNA istanza (l'ULTIMA), non tutte e non la prima —
+                             * così l'ordine di prima comparsa (ToJson/UniqueItems) resta quello
+                             * di inserimento, come il Dictionary<object,long> del P-Code. */
+                            push_num_entry(task, gmb_coll_bag_remove(ch, v0) ? 1 : 0, GMB_BT_BOOL);
+                        else
+                            push_num_entry(task, gmb_coll_remove(ch, v0) ? 1 : 0, GMB_BT_BOOL);
+                    }
+                    else if (strcasecmp(methodName, "StartsWith") == 0 && argCount >= 1)
+                        push_num_entry(task, gmb_coll_trie_startswith(ch, s0) ? 1 : 0, GMB_BT_BOOL);
+                    else if (strcasecmp(methodName, "RemoveFirst") == 0)
+                    {
+                        gmb_val_t r = gmb_coll_dequeue(ch);
+                        push_val_entry(task, r);
+                        gmb_val_release(r);   /* dequeue/pop cedono il riferimento della collection: la VM ne ha preso uno suo */
+                    }
+                    else if (strcasecmp(methodName, "RemoveLast") == 0)
+                    {
+                        gmb_val_t rl = gmb_coll_remove_last(ch);
+                        push_val_entry(task, rl);
+                        gmb_val_release(rl);   /* remove_last cede il riferimento della collection */
+                    }
+                    else if (strcasecmp(methodName, "IsEmpty") == 0)
+                        push_num_entry(task, gmb_coll_count(ch) == 0 ? 1 : 0, GMB_BT_BOOL);
+                    else if (strcasecmp(methodName, "ToArray") == 0 || strcasecmp(methodName, "ToList") == 0)
+                    {
+                        /* Contenitore CHIAVE→VALORE: array di dict {Key,Value} (parità P-Code/IL:
+                         * JSON [{"Key":"a","Value":true},…]). Prima usciva solo la lista dei
+                         * VALORI ([true,false,false]). Per gli altri tipi resta gmb_coll_to_array. */
+                        int is_kv = 0;
+                        gmb_list_t kvl = gmb_coll_kv_entries_to_list(ch, &is_kv);
+                        gmb_obj_shared_val_t* out = gmb_shared_list_new();
+                        if (!out)
+                        {
+                            gmb_list_free(&kvl);
+                            push_nil(task);
+                        }
+                        else if (is_kv)
+                        {
+                            for (size_t i = 0; i < kvl.count; i++)
+                                gmb_list_add(out->list, kvl.items[i]);
+                            gmb_list_free(&kvl);   /* gmb_list_add trattiene: si rilasciano gli originali */
+                            push_ref_new(task, (gmb_obj_t*)out, GMB_BT_OBJECT);
+                        }
+                        else
+                        {
+                            gmb_list_free(&kvl);
+                            int n = 0;
+                            gmb_val_t* arr = gmb_coll_to_array(ch, &n);
+                            if (arr)
+                                for (int i = 0; i < n; i++)
+                                    gmb_list_add(out->list, arr[i]);
+                            free(arr);
+                            push_ref_new(task, (gmb_obj_t*)out, GMB_BT_OBJECT);
+                        }
+                    }
+                    else if (strcasecmp(methodName, "First") == 0)
+                    {
+                        if (tc == 18)
+                        {
+                            /* Timeline.First: coppia {Key, Value} (CommonLib KeyValuePair) */
+                            gmb_val_t k = gmb_coll_kv_min_key(ch);
+                            gmb_val_t val = gmb_coll_kv_min_value(ch);
+                            gmb_obj_shared_val_t* pair = gmb_shared_dict_new();
+                            if (pair)
+                            {
+                                gmb_dict_set(pair->dict, "Key", k);
+                                gmb_dict_set(pair->dict, "Value", val);
+                                push_ref_new(task, (gmb_obj_t*)pair, GMB_BT_OBJECT);
+                            }
+                            else push_nil(task);
+                        }
+                        else
+                            push_val_entry(task, gmb_coll_first(ch));
+                    }
+                    else if (strcasecmp(methodName, "Last") == 0)
+                        push_val_entry(task, gmb_coll_last(ch));
+                    else if (strcasecmp(methodName, "IndexOf") == 0 && argCount >= 1)
+                        push_num_entry(task, (double)gmb_coll_index_of(ch, v0), GMB_BT_NUMBER);
+                    else if (strcasecmp(methodName, "Sort") == 0)
+                        gmb_coll_sort(ch);
+                    else if (strcasecmp(methodName, "Reverse") == 0)
+                        gmb_coll_reverse(ch);
+                    else if (strcasecmp(methodName, "Current") == 0)
+                        push_val_entry(task, gmb_coll_current(ch));
+                    else if (strcasecmp(methodName, "Rotate") == 0)
+                        gmb_coll_rotate(ch, (int)args[0].num);
+                    else if (strcasecmp(methodName, "UniqueCount") == 0)
+                        push_num_entry(task, (double)gmb_coll_bag_unique_count(ch), GMB_BT_NUMBER);
+                    else if (strcasecmp(methodName, "UniqueItems") == 0)
+                    {
+                        int n = 0;
+                        gmb_val_t* arr = gmb_coll_bag_unique_items(ch, &n);
+                        gmb_obj_shared_val_t* out = gmb_shared_list_new();
+                        if (out && arr)
+                        {
+                            for (int i = 0; i < n; i++)
+                                gmb_list_add(out->list, arr[i]);
+                            push_ref_new(task, (gmb_obj_t*)out, GMB_BT_OBJECT);
+                        }
+                        else push_nil(task);
+                        free(arr);
+                    }
+                    else if (tc == 10) /* BITree */
+                    {
+                        if (strcasecmp(methodName, "Update") == 0 && argCount >= 2)
+                            gmb_coll_bitree_update(ch, (int)args[0].num, args[1].num);
+                        else if (strcasecmp(methodName, "QueryRange") == 0 && argCount >= 2)
+                            push_num_entry(task, gmb_coll_bitree_query_range(ch, (int)args[0].num, (int)args[1].num), GMB_BT_NUMBER);
+                        else if (strcasecmp(methodName, "Query") == 0 && argCount >= 1)
+                            push_num_entry(task, gmb_coll_bitree_query(ch, (int)args[0].num), GMB_BT_NUMBER);
+                    }
+                    else if (tc == 11) /* Trie */
+                    {
+                    if (tc == 11 && argCount >= 1 &&
+                        (strcasecmp(methodName, "Add") == 0 || strcasecmp(methodName, "Contains") == 0 ||
+                         strcasecmp(methodName, "Remove") == 0 || strcasecmp(methodName, "StartsWith") == 0 ||
+                         strcasecmp(methodName, "FindAll") == 0))
+                    {
+                        /* Trie: Add/Contains/Remove/StartsWith/FindAll operano sulle stringhe */
+                        if (strcasecmp(methodName, "Add") == 0)
+                            push_num_entry(task, gmb_coll_trie_add(ch, s0) ? 1 : 0, GMB_BT_BOOL);
+                        else if (strcasecmp(methodName, "Contains") == 0)
+                            push_num_entry(task, gmb_coll_trie_contains(ch, s0) ? 1 : 0, GMB_BT_BOOL);
+                        else if (strcasecmp(methodName, "Remove") == 0)
+                            push_num_entry(task, gmb_coll_trie_remove(ch, s0) ? 1 : 0, GMB_BT_BOOL);
+                        else if (strcasecmp(methodName, "StartsWith") == 0)
+                            push_num_entry(task, gmb_coll_trie_startswith(ch, s0) ? 1 : 0, GMB_BT_BOOL);
+                        else /* FindAll / FindAllWordsWithPrefix */
+                        {
+                            int n = 0;
+                            char** words = gmb_coll_trie_find_all(ch, s0, &n);
+                            gmb_obj_shared_val_t* out = gmb_shared_list_new();
+                            if (out && words)
+                            {
+                                for (int i = 0; i < n; i++)
+                                {
+                                    gmb_obj_string_t* s = gmb_str_cstr(words[i]);
+                                    gmb_list_add(out->list, gmb_make_val_string_counted(s->data));
+                                    gmb_str_release(s);
+                                    free(words[i]);
+                                }
+                                free(words);
+                                push_ref_new(task, (gmb_obj_t*)out, GMB_BT_OBJECT);
+                            }
+                            else { free(words); push_nil(task); }
+                        }
+                    }
+                    else if (strcasecmp(methodName, "Add") == 0 && argCount >= 1)
+                            push_num_entry(task, gmb_coll_trie_add(ch, s0) ? 1 : 0, GMB_BT_BOOL);
+                        else if (strcasecmp(methodName, "Contains") == 0 && argCount >= 1)
+                            push_num_entry(task, gmb_coll_trie_contains(ch, s0) ? 1 : 0, GMB_BT_BOOL);
+                        else if (strcasecmp(methodName, "Remove") == 0 && argCount >= 1)
+                            push_num_entry(task, gmb_coll_trie_remove(ch, s0) ? 1 : 0, GMB_BT_BOOL);
+                        else if (strcasecmp(methodName, "StartsWith") == 0 && argCount >= 1)
+                            push_num_entry(task, gmb_coll_trie_startswith(ch, s0) ? 1 : 0, GMB_BT_BOOL);
+                    }
+                    else if (tc == 16) /* Cache */
+                    {
+                        if (strcasecmp(methodName, "Set") == 0 && argCount >= 2)
+                            gmb_coll_cache_set(ch, s0, v1, argCount >= 3 ? args[2].num : 0);
+                        else if (strcasecmp(methodName, "Get") == 0 && argCount >= 1)
+                            push_val_entry(task, gmb_coll_cache_get(ch, s0));
+                        else if ((strcasecmp(methodName, "TryGetValue") == 0 || strcasecmp(methodName, "TryGet") == 0) && argCount >= 1)
+                            push_num_entry(task, gmb_coll_cache_contains(ch, s0) ? 1 : 0, GMB_BT_BOOL);
+                        else if (strcasecmp(methodName, "ContainsKey") == 0 && argCount >= 1)
+                            push_num_entry(task, gmb_coll_cache_contains(ch, s0) ? 1 : 0, GMB_BT_BOOL);
+                        else if (strcasecmp(methodName, "Keys") == 0)
+                        {
+                            int n = 0;
+                            char** keys = gmb_coll_cache_keys(ch, &n);
+                            gmb_obj_shared_val_t* out = gmb_shared_list_new();
+                            if (out && keys)
+                            {
+                                for (int i = 0; i < n; i++)
+                                {
+                                    gmb_obj_string_t* s = gmb_str_cstr(keys[i]);
+                                    gmb_list_add(out->list, gmb_make_val_string_counted(s->data));
+                                    gmb_str_release(s);
+                                    free(keys[i]);
+                                }
+                                free(keys);
+                                push_ref_new(task, (gmb_obj_t*)out, GMB_BT_OBJECT);
+                            }
+                            else { free(keys); push_nil(task); }
+                        }
+                        else if (strcasecmp(methodName, "Values") == 0)
+                        {
+                            int n = 0;
+                            gmb_val_t* vals = gmb_coll_cache_values(ch, &n);
+                            gmb_obj_shared_val_t* out = gmb_shared_list_new();
+                            if (out && vals)
+                            {
+                                for (int i = 0; i < n; i++)
+                                    gmb_list_add(out->list, vals[i]);
+                                push_ref_new(task, (gmb_obj_t*)out, GMB_BT_OBJECT);
+                            }
+                            else push_nil(task);
+                            free(vals);
+                        }
+                    }
+                    else if (tc == 19) /* HashRing */
+                    {
+                        if (strcasecmp(methodName, "AddNode") == 0 && argCount >= 1)
+                            push_num_entry(task, gmb_coll_hashring_add_node(ch, s0) ? 1 : 0, GMB_BT_BOOL);
+                        else if (strcasecmp(methodName, "GetNode") == 0 && argCount >= 1)
+                        {
+                            gmb_obj_string_t* s = gmb_str_cstr(gmb_coll_hashring_get_node(ch, s0));
+                            push_ref_entry(task, (gmb_obj_t*)s, GMB_BT_STRING);
+                            gmb_str_release(s);
+                        }
+                    }
+                    else if (tc == 21 && strcasecmp(methodName, "HasItem") == 0 && argCount >= 1)
+                        push_num_entry(task, gmb_coll_has_item(ch, v0) ? 1 : 0, GMB_BT_BOOL);
+                    else if ((tc == 14 || tc == 27) && strcasecmp(methodName, "Peek") == 0)
+                        push_val_entry(task, gmb_coll_heap_peek(ch));
+                    else if ((tc == 14 || tc == 27) && (strcasecmp(methodName, "ExtractMin") == 0 || strcasecmp(methodName, "ExtractMax") == 0 ||
+                                                        strcasecmp(methodName, "Extract") == 0 || strcasecmp(methodName, "Pop") == 0))
+                    {
+                        gmb_val_t hx = gmb_coll_heap_extract(ch);
+                        push_val_entry(task, hx);
+                        gmb_val_release(hx);   /* extract cede il riferimento della collection */
+                    }
+                    else
+                    {
+                        gmb_val_discard(v0); gmb_val_discard(v1);
+                        gmb_obj_release(instE.ref);
+                        for (int i = 0; i < argCount && i < 16; i++) gmb_obj_release(args[i].ref);
+                        push_nil(task);
+                        break;
+                    }
+                    gmb_val_discard(v0); gmb_val_discard(v1);   /* temporanei contati a rc 0 non trattenuti dalla collection */
+                }
+                else
+                {
+                    gmb_obj_release(instE.ref);
+                    for (int i = 0; i < argCount && i < 16; i++) gmb_obj_release(args[i].ref);
+                    push_nil(task);
+                    break;
+                }
+                for (int i = 0; i < argCount && i < 16; i++) gmb_obj_release(args[i].ref);
+                gmb_obj_release(instE.ref);
+                break;
+            }
+
+            case OP_PRINT_VALUE:
+            {
+                gmb_stack_entry_t e = gmb_task_pop(task);
+                char buf[8192];
+                gmb_format_value(buf, sizeof(buf), e);
+                int n = (int)strlen(buf);
+                if (task->print_staging_len + n < 1024)
+                {
+                    memcpy(task->print_staging + task->print_staging_len, buf, n);
+                    task->print_staging_len += n;
+                }
+                else
+                {
+                    /* Riga più lunga dello staging (es. HTML delle pagine BSP):
+                     * flusha il parziale invece di perdere dati silenziosamente. */
+                    pthread_mutex_lock(&vm->print_lock);
+                    if (task->print_staging_len > 0)
+                    {
+                        task->print_staging[task->print_staging_len] = '\0';
+                        if (vm->print_str) vm->print_str(task->print_staging, (uint32_t)task->print_staging_len);
+                        else fputs(task->print_staging, stdout);
+                        task->print_staging_len = 0;
+                    }
+                    if (n > 0)
+                    {
+                        if (vm->print_str) vm->print_str(buf, (uint32_t)n);
+                        else fputs(buf, stdout);
+                    }
+                    pthread_mutex_unlock(&vm->print_lock);
+                }
+                break;
+            }
+            case OP_PRINT_LINE:
+            {
+                gmb_stack_entry_t e = gmb_task_pop(task);
+                char buf[8192];
+                gmb_format_value(buf, sizeof(buf), e);
+                /* completa la riga: staging + valore, emessi direttamente (righe
+                 * lunghe oltre i vecchi buffer fissi non vengono più troncate). */
+                int n = (int)strlen(buf);
+                pthread_mutex_lock(&vm->print_lock);
+                if (task->print_staging_len > 0)
+                {
+                    task->print_staging[task->print_staging_len] = '\0';
+                    if (vm->print_str) vm->print_str(task->print_staging, (uint32_t)task->print_staging_len);
+                    else fputs(task->print_staging, stdout);
+                    task->print_staging_len = 0;
+                }
+                if (n > 0)
+                {
+                    if (vm->print_str) vm->print_str(buf, (uint32_t)n);
+                    else fputs(buf, stdout);
+                }
+                if (vm->print_newline) vm->print_newline(); else fputc('\n', stdout);
+                pthread_mutex_unlock(&vm->print_lock);
+                break;
+            }
+            case OP_PRINT_NEWLINE:
+            {
+                pthread_mutex_lock(&vm->print_lock);
+                if (task->print_staging_len > 0)
+                {
+                    task->print_staging[task->print_staging_len] = '\0';
+                    if (vm->print_str) vm->print_str(task->print_staging, (uint32_t)task->print_staging_len);
+                    else fputs(task->print_staging, stdout);
+                    task->print_staging_len = 0;
+                }
+                if (vm->print_newline) vm->print_newline(); else fputc('\n', stdout);
+                pthread_mutex_unlock(&vm->print_lock);
+                break;
+            }
+            case OP_PRINT_TAB_ZONE:
+                /* Parità con l'oracolo (PCodeProcessor, ramo CONSOLE di OP_PRINT_TAB_ZONE): la
+                 * virgola di PRINT non è un TAB, è il riempimento a SPAZI fino alla zona di 14
+                 * caratteri successiva. Emettere '\t' faceva divergere la stampa rispetto a
+                 * IL/PCode (bug riprodotto il 2026-09-15 con PRINT "etichetta:", valore).
+                 * La colonna corrente è la lunghezza del buffer di riga: viene azzerata al
+                 * flush di OP_PRINT_LINE/OP_PRINT_NEWLINE, come _printColumn nel C#.
+                 * Conta in code-point Unicode (canone 2026-09-30, parità string.Length):
+                 * i byte di continuazione UTF-8 non avanzano (prima i byte di "Età:"
+                 * sfasavano le zone di 1). */
+            {
+                int col = 0;
+                for (size_t _ck = 0; _ck < task->print_staging_len; _ck++)
+                    if (((unsigned char)task->print_staging[_ck] & 0xC0) != 0x80) col++;
+                int padding = 14 - (col % 14);
+                if (padding <= 0) padding = 14;
+                for (int _i = 0; _i < padding && task->print_staging_len + 1 < 1024; _i++)
+                    task->print_staging[task->print_staging_len++] = ' ';
+            }
+                break;
+
+            case OP_FOR_PREPARE:
+            {
+                int slot = gmb_vm_read_u16(vm, task);
+                double step = gmb_task_pop_num(task);
+                double end = gmb_task_pop_num(task);
+                double start = gmb_task_pop_num(task);
+                if (slot >= 0 && slot < 64)
+                {
+                    gmb_for_state_t* fs = for_state_of(task);
+                    fs->counter[slot] = start;
+                    fs->end[slot] = end;
+                    fs->step[slot] = step;
+                    fs->active[slot] = 1;
+                }
+                if (slot >= 0 && slot < GMB_FRAME_LOCALS_CAP)
+                {
+                    gmb_stack_entry_t e = { 0 };
+                    e.num = start; e.type = 1; e.basic_type = GMB_BT_NUMBER;
+                    gmb_task_store_local(task, slot, e);
+                }
+                int should = (step >= 0) ? start <= end : start >= end;
+                push_num_entry(task, should ? 1.0 : 0.0, GMB_BT_BOOL);
+                break;
+            }
+            case OP_FOR_LOOP:
+            {
+                int slot = gmb_vm_read_u16(vm, task);
+                int jump_off = gmb_vm_read_u16(vm, task);
+                gmb_for_state_t* fs = for_state_of(task);
+                if (slot >= 0 && slot < 64 && fs->active[slot])
+                {
+                    double actual = 0;
+                    if (slot < GMB_FRAME_LOCALS_CAP)
+                    {
+                        gmb_stack_entry_t e = gmb_task_load_local(task, slot);
+                        if (e.type == 1) actual = e.num;
+                    }
+                    if (actual == 0) actual = fs->counter[slot];
+                    double step = fs->step[slot];
+                    double end = fs->end[slot];
+                    double nxt = actual + step;
+                    int done = (step >= 0) ? nxt > end : nxt < end;
+                    fs->counter[slot] = nxt;
+                    if (slot < GMB_FRAME_LOCALS_CAP)
+                    {
+                        gmb_stack_entry_t e = { 0 };
+                        e.num = nxt; e.type = 1; e.basic_type = GMB_BT_NUMBER;
+                        gmb_task_store_local(task, slot, e);
+                    }
+                    if (!done) task->ip -= jump_off;
+                    else fs->active[slot] = 0;
+                }
+                break;
+            }
+
+            case OP_NATIVE_LOOP_ACC:
+            {
+                /* Fusion nativo: accumulatore puro in loop C — niente dispatch per iterazione.
+                 * Formato (11 byte):
+                 *   [op] [acc_slot u8] [ctr_slot u8] [acc_op u8] [term_mode u8]
+                 *   [f_code u16] [f_code2 u16] [m_idx u16]
+                 * acc_op: 0=+=, 1=-=, 2=*=, 3=/=.
+                 * term_mode: 0=f(I)*m, 1=f(I), 2=I*I, 3=I*m, 4=I, 5=f(I)+g(I).
+                 * Range [start,end,step] già nei for_counter/end/step del task (FOR_PREPARE). */
+                int acc_slot  = gmb_vm_read_u16(vm, task);
+                int ctr_slot  = gmb_vm_read_u16(vm, task);
+                int acc_op    = gmb_vm_read_u8(vm, task);
+                int term_mode = gmb_vm_read_u8(vm, task);
+                int f_code    = gmb_vm_read_u16(vm, task);
+                int f_code2   = gmb_vm_read_u16(vm, task);
+                int m_idx     = gmb_vm_read_u16(vm, task);
+                double m = 1.0;
+                if (m_idx >= 0 && m_idx < (int)vm->chunk->consts_len)
+                {
+                    gmb_value_t* cv = &vm->chunk->constants[m_idx];
+                    if (cv->type == GMB_CONST_DOUBLE) m = cv->d;
+                    else if (cv->type == GMB_CONST_INT) m = (double)cv->d;
+                }
+                if (ctr_slot >= 0 && ctr_slot < 64 && for_state_of(task)->active[ctr_slot])
+                {
+                    gmb_for_state_t* fs = for_state_of(task);
+                    double acc = 0;
+                    gmb_stack_entry_t ae = gmb_task_load_local(task, acc_slot);
+                    if (ae.type == 1) acc = ae.num;
+                    double step = fs->step[ctr_slot];
+                    double end  = fs->end[ctr_slot];
+                    double i = fs->counter[ctr_slot];
+                    /* loop nativo: nessun dispatch, solo calcolo C */
+                    for (; ; )
+                    {
+                        double term;
+                        switch (term_mode)
+                        {
+                            case 0: /* f(I)*m */
+                            case 1: /* f(I) */
+                            {
+                                double fv = 0;
+                                switch (f_code)
+                                {
+                                    case 30: fv = sqrt(i); break;          /* SQR */
+                                    case 19: fv = fabs(i); break;          /* ABS */
+                                    case 24: fv = exp(i); break;           /* EXP */
+                                    case 26: fv = log(i); break;           /* LOG */
+                                    case 35: fv = log10(i); break;         /* LOG10 */
+                                    case 29: fv = sin(i); break;           /* SIN */
+                                    case 23: fv = cos(i); break;           /* COS */
+                                    case 32: fv = tan(i); break;           /* TAN */
+                                    case 21: fv = atan(i); break;          /* ATN */
+                                    case 10: fv = floor(i); break;         /* INT */
+                                    case 12: fv = round(i); break;         /* ROUND (0 dec.) */
+                                    case 9:  fv = trunc(i); break;         /* FIX */
+                                    default: break;
+                                }
+                                term = (term_mode == 0) ? fv * m : fv;
+                                break;
+                            }
+                            case 2: term = i * i; break;        /* I*I */
+                            case 3: term = i * m; break;        /* I*m */
+                            case 5: /* f(I) + g(I) */
+                            {
+                                double fv1 = 0, fv2 = 0;
+                                switch (f_code)
+                                {
+                                    case 30: fv1 = sqrt(i); break; case 19: fv1 = fabs(i); break;
+                                    case 24: fv1 = exp(i); break; case 26: fv1 = log(i); break;
+                                    case 35: fv1 = log10(i); break; case 29: fv1 = sin(i); break;
+                                    case 23: fv1 = cos(i); break; case 32: fv1 = tan(i); break;
+                                    case 21: fv1 = atan(i); break; case 10: fv1 = floor(i); break;
+                                    case 12: fv1 = round(i); break; case 9: fv1 = trunc(i); break;
+                                    default: break;
+                                }
+                                switch (f_code2)
+                                {
+                                    case 30: fv2 = sqrt(i); break; case 19: fv2 = fabs(i); break;
+                                    case 24: fv2 = exp(i); break; case 26: fv2 = log(i); break;
+                                    case 35: fv2 = log10(i); break; case 29: fv2 = sin(i); break;
+                                    case 23: fv2 = cos(i); break; case 32: fv2 = tan(i); break;
+                                    case 21: fv2 = atan(i); break; case 10: fv2 = floor(i); break;
+                                    case 12: fv2 = round(i); break; case 9: fv2 = trunc(i); break;
+                                    default: break;
+                                }
+                                term = fv1 + fv2;
+                                break;
+                            }
+                            default: term = i; break;           /* I */
+                        }
+                        switch (acc_op)
+                        {
+                            case 0: acc += term; break;
+                            case 1: acc -= term; break;
+                            case 2: acc *= term; break;
+                            case 3: acc = (term != 0.0) ? acc / term : 0.0; break;
+                        }
+                        double nxt = i + step;
+                        int done = (step >= 0) ? nxt > end : nxt < end;
+                        i = nxt;
+                        if (done) break;
+                    }
+                    fs->counter[ctr_slot] = i;
+                    fs->active[ctr_slot] = 0;
+                    /* scrivi l'accumulatore e il contatore finale nelle locals */
+                    if (acc_slot >= 0 && acc_slot < GMB_FRAME_LOCALS_CAP)
+                    {
+                        gmb_stack_entry_t e = { 0 };
+                        e.num = acc; e.type = 1; e.basic_type = GMB_BT_NUMBER;
+                        gmb_task_store_local(task, acc_slot, e);
+                    }
+                    if (ctr_slot >= 0 && ctr_slot < GMB_FRAME_LOCALS_CAP)
+                    {
+                        gmb_stack_entry_t e = { 0 };
+                        e.num = i; e.type = 1; e.basic_type = GMB_BT_NUMBER;
+                        gmb_task_store_local(task, ctr_slot, e);
+                    }
+                }
+                break;
+            }
+
+            case OP_NATIVE_STRING_APPEND_LOOP:
+            {
+                /* Fusion nativo: self-append `s$ = s$ + term` in un FOR — l'intero corpo
+                 * gira in C su un buffer locale con capacità di scorta (crescita geometrica,
+                 * O(1) ammortizzato invece di O(n²) da concat per iterazione). Il risultato
+                 * è scritto nello slot SOLO alla fine via gmb_task_store_local: mai stack/
+                 * push_ref_entry durante il loop (niente retain/release per iterazione).
+                 * Formato (8 byte):
+                 *   [op] [acc_slot u8] [ctr_slot u8] [term_mode u8] [f_code u16] [const_idx u16]
+                 * term_mode: 0=letterale (const_idx nel pool), 1=builtin num→str sul
+                 * contatore (f_code: 31=STR, 8=CSTR — entrambi gmb_val_str qui).
+                 * Range [start,end,step] già nei for_* del task (OP_FOR_PREPARE). */
+                int acc_slot  = gmb_vm_read_u8(vm, task);
+                int ctr_slot  = gmb_vm_read_u8(vm, task);
+                int term_mode = gmb_vm_read_u8(vm, task);
+                int f_code    = gmb_vm_read_u16(vm, task);
+                int const_idx = gmb_vm_read_u16(vm, task);
+                (void)f_code; /* in v1 solo 31/8, entrambi gmb_val_str */
+                if (ctr_slot >= 0 && ctr_slot < 64 && for_state_of(task)->active[ctr_slot])
+                {
+                    gmb_for_state_t* fs = for_state_of(task);
+                    /* Seed: valore CORRENTE dello slot (sola lettura: si copia il contenuto,
+                     * non si trattiene il puntatore — nessun retain necessario). */
+                    char* buf = NULL; size_t len = 0, cap = 0;
+                    const char* seed = NULL;
+                    gmb_stack_entry_t se = gmb_task_load_local(task, acc_slot);
+                    if (se.type == 2 && se.ref && se.ref->kind == GMB_OBJ_STRING)
+                    {
+                        gmb_obj_string_t* ss = (gmb_obj_string_t*)se.ref;
+                        len = ss->length;
+                        seed = ss->data;
+                    }
+                    cap = (len > 32) ? len * 2 : 64;
+                    buf = (char*)malloc(cap + 1);
+                    if (len > 0 && seed) memcpy(buf, seed, len);
+                    /* Termine letterale pre-risolto (term_mode 0). */
+                    const char* lit = ""; size_t lit_len = 0;
+                    if (term_mode == 0 && const_idx >= 0 && const_idx < (int)vm->chunk->consts_len)
+                    {
+                        gmb_value_t* cv = &vm->chunk->constants[const_idx];
+                        if (cv->type == GMB_CONST_STRING && cv->s)
+                        {
+                            lit = cv->s;
+                            lit_len = strlen(cv->s);
+                        }
+                    }
+                    double step = fs->step[ctr_slot];
+                    double end  = fs->end[ctr_slot];
+                    double i = fs->counter[ctr_slot];
+                    /* loop nativo: nessun dispatch, solo append su buffer C */
+                    for (; ; )
+                    {
+                        const char* td = lit; size_t tl = lit_len;
+                        char* tmp = NULL;
+                        if (term_mode == 1)
+                        {
+                            gmb_string_t gs = gmb_val_str(i);
+                            tmp = gs.data;
+                            td = gs.data ? gs.data : "";
+                            tl = gs.data ? gs.length : 0;
+                        }
+                        if (tl > 0)
+                        {
+                            while (len + tl > cap) cap *= 2;
+                            char* nb = (char*)realloc(buf, cap + 1);
+                            if (nb) buf = nb;
+                            memcpy(buf + len, td, tl);
+                            len += tl;
+                        }
+                        if (tmp) free(tmp);
+                        double nxt = i + step;
+                        int done = (step >= 0) ? nxt > end : nxt < end;
+                        i = nxt;
+                        if (done) break;
+                    }
+                    fs->counter[ctr_slot] = i;
+                    fs->active[ctr_slot] = 0;
+                    /* scrivi il risultato (oggetto nuovo) e il contatore finale nelle locals */
+                    if (acc_slot >= 0 && acc_slot < GMB_FRAME_LOCALS_CAP)
+                    {
+                        gmb_obj_string_t* result = gmb_str_alloc(buf, (uint32_t)len);
+                        gmb_stack_entry_t e = { 0 };
+                        e.ref = (gmb_obj_t*)result; e.type = 2; e.basic_type = GMB_BT_STRING;
+                        gmb_task_store_local(task, acc_slot, e);
+                    }
+                    if (ctr_slot >= 0 && ctr_slot < GMB_FRAME_LOCALS_CAP)
+                    {
+                        gmb_stack_entry_t e = { 0 };
+                        e.num = i; e.type = 1; e.basic_type = GMB_BT_NUMBER;
+                        gmb_task_store_local(task, ctr_slot, e);
+                    }
+                    free(buf);
+                }
+                break;
+            }
+
+            case OP_NATIVE_BUILTIN_ASSIGN:
+            {
+                /* Fusion nativo: `x = f(y)` — UN opcode carica y, chiama f e salva x in C.
+                 * Formato: [op] [src_slot u8] [dst_slot u8] [f_code u16]. */
+                int src_slot = gmb_vm_read_u16(vm, task);
+                int dst_slot = gmb_vm_read_u16(vm, task);
+                int f_code   = gmb_vm_read_u16(vm, task);
+                double src = 0;
+                gmb_stack_entry_t se = gmb_task_load_local(task, src_slot);
+                if (se.type == 1) src = se.num;
+                double r = 0;
+                switch (f_code)
+                {
+                    case 30: r = sqrt(src); break;          /* SQR */
+                    case 19: r = fabs(src); break;          /* ABS */
+                    case 24: r = exp(src); break;           /* EXP */
+                    case 26: r = log(src); break;           /* LOG */
+                    case 35: r = log10(src); break;         /* LOG10 */
+                    case 29: r = sin(src); break;           /* SIN */
+                    case 23: r = cos(src); break;           /* COS */
+                    case 32: r = tan(src); break;           /* TAN */
+                    case 21: r = atan(src); break;          /* ATN */
+                    case 10: r = floor(src); break;         /* INT */
+                    case 12: r = round(src); break;         /* ROUND (0 dec.) */
+                    case 9:  r = trunc(src); break;         /* FIX */
+                    default: break;
+                }
+                if (dst_slot >= 0 && dst_slot < GMB_FRAME_LOCALS_CAP)
+                {
+                    gmb_stack_entry_t e = { 0 };
+                    e.num = r; e.type = 1; e.basic_type = GMB_BT_NUMBER;
+                    gmb_task_store_local(task, dst_slot, e);
+                }
+                break;
+            }
+
+            case OP_SYSCALL:
+            {
+                int code = gmb_vm_read_u16(vm, task);
+                int argc = gmb_vm_read_u8(vm, task);
+                if (code == 212) /* SysCall.THROW_ERROR */
+                {
+                    char msg[1024]; msg[0] = 0;
+                    gmb_stack_entry_t me = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){ 0 };
+                    if (me.type == 2 && me.ref && me.ref->kind == GMB_OBJ_STRING)
+                    {
+                        gmb_obj_string_t* ms = (gmb_obj_string_t*)me.ref;
+                        snprintf(msg, sizeof(msg), "%.*s", (int)ms->length, ms->data);
+                    }
+                    if (me.type == 2 && me.ref) gmb_obj_release(me.ref);
+                    double err_code = task->sp > 0 ? gmb_task_pop_num(task) : 0.0;
+                    raise_basic_error(task, err_code, msg);
+                    if (task->state == GMB_TS_FINISHED) return -1;
+                    break;
+                }
+                gmb_vm_exec_syscall(vm, task, code, argc);
+                /* Park cooperativo dal syscall (WAITKEY/INKEY console quando il tasto non è
+                 * pronto): il handler ha settato GMB_TS_BLOCKED + armato un timer — il tick
+                 * DEVE fermarsi qui per liberare il worker (stesso pattern di OP_CALL_BUILTIN
+                 * per i kernel CPU). Senza, il task continuerebbe a eseguire istruzioni da
+                 * BLOCKED. */
+                if (task->state == GMB_TS_BLOCKED) return 0;
+                break;
+            }
+            case OP_AUDIO_CMD:
+            {
+                /* Audio: senza backend audio nativo, consuma subcode+argomenti come no-op
+                   (i test audio compilano ed eseguono senza errore). */
+                int subCode = gmb_vm_read_u8(vm, task);
+                int argCount = gmb_vm_read_u8(vm, task);
+                (void)subCode;
+                for (int i = 0; i < argCount && task->sp > 0; i++)
+                {
+                    gmb_stack_entry_t a = gmb_task_pop(task);
+                    gmb_obj_release(a.ref);
+                }
+                break;
+            }
+            case OP_CLIP_CMD:
+            {
+                int subCode = gmb_vm_read_u8(vm, task);
+                int argCount = gmb_vm_read_u8(vm, task);
+                gmb_stack_entry_t args[8];
+                for (int i = 0; i < argCount && i < 8; i++)
+                    args[i] = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                if (subCode == 0) /* GET — legge clipboard (runtime condiviso) */
+                {
+                    gmb_string_t s = gmb_clipboard_get();
+                    gmb_obj_string_t* o = gmb_str_cstr(s.data ? s.data : "");
+                    push_ref_new(task, (gmb_obj_t*)o, GMB_BT_STRING);
+                }
+                else if (subCode == 1) /* SET — scrive clipboard (runtime condiviso) */
+                {
+                    const char* txt = (argCount >= 1 && args[0].type == 2 && args[0].ref)
+                        ? ((gmb_obj_string_t*)args[0].ref)->data : "";
+                    gmb_clipboard_set(txt);
+                }
+                else if (subCode == 2) /* CLEAR */
+                {
+                    gmb_clipboard_clear();
+                }
+                for (int i = 0; i < argCount && i < 8; i++) gmb_obj_release(args[i].ref);
+                break;
+            }
+            case OP_MATRIX_CMD:
+            {
+                int subCode = gmb_vm_read_u8(vm, task);
+                int argCount = gmb_vm_read_u8(vm, task);
+                gmb_stack_entry_t args[16];
+                for (int i = 0; i < argCount && i < 16; i++)
+                    args[i] = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                /* args: il primo spinto è args[0] in fondo. ordered: ordered[i]=args[n-1-i] */
+                gmb_stack_entry_t ordered[16];
+                for (int i = 0; i < argCount && i < 16; i++)
+                    ordered[i] = args[argCount - 1 - i];
+
+                switch (subCode)
+                {
+                    case 0: /* CREATE rows, cols → handle */
+                    {
+                        int rows = (int)(argCount >= 1 ? ordered[0].num : 4);
+                        int cols = (int)(argCount >= 2 ? ordered[1].num : rows);
+                        int64_t h = gmb_matrix_create(rows, cols);
+                        push_num_entry(task, (double)h, GMB_BT_NUMBER);
+                        break;
+                    }
+                    case 1: /* IDENTITY handle */
+                    {
+                        int64_t h = (int64_t)(argCount >= 1 ? ordered[0].num : -1);
+                        gmb_matrix_identity(h);
+                        break;
+                    }
+                    case 2: /* TRANSLATE handle, x, y, z */
+                    {
+                        int64_t h = (int64_t)(argCount >= 1 ? ordered[0].num : -1);
+                        gmb_matrix_translate(h, ordered[1].num, ordered[2].num, ordered[3].num);
+                        break;
+                    }
+                    case 3: /* ROTATE handle, deg, x, y, z */
+                    {
+                        int64_t h = (int64_t)(argCount >= 1 ? ordered[0].num : -1);
+                        double deg = ordered[1].num;
+                        double x = ordered[2].num, y = ordered[3].num, z = ordered[4].num;
+                        if (x != 0) gmb_matrix_rotate_x(h, deg * x);
+                        if (y != 0) gmb_matrix_rotate_y(h, deg * y);
+                        if (z != 0) gmb_matrix_rotate_z(h, deg * z);
+                        break;
+                    }
+                    case 4: /* SCALE handle, x, y, z */
+                    {
+                        int64_t h = (int64_t)(argCount >= 1 ? ordered[0].num : -1);
+                        gmb_matrix_scale(h, ordered[1].num, ordered[2].num, ordered[3].num);
+                        break;
+                    }
+                    case 5: /* MULTIPLY a, b, out (o a, b → out nuovo) */
+                    {
+                        int64_t a = (int64_t)(argCount >= 1 ? ordered[0].num : -1);
+                        int64_t b = (int64_t)(argCount >= 2 ? ordered[1].num : -1);
+                        if (argCount >= 3)
+                        {
+                            int64_t out = (int64_t)ordered[2].num;
+                            gmb_matrix_multiply_into(out, a, b);
+                        }
+                        else
+                        {
+                            int64_t out = gmb_matrix_multiply(a, b);
+                            push_num_entry(task, (double)out, GMB_BT_NUMBER);
+                        }
+                        break;
+                    }
+                    default:
+                    {
+                        /* PUSH/POP/WORLD/VIEW/PROJECTION: consuma gli args (stack di matrice non ancora) */
+                        break;
+                    }
+                }
+                for (int i = 0; i < argCount && i < 16; i++) gmb_obj_release(args[i].ref);
+                break;
+            }
+            case OP_VECTOR_CMD:
+            {
+                int subCode = gmb_vm_read_u8(vm, task);
+                int argCount = gmb_vm_read_u8(vm, task);
+                gmb_stack_entry_t args[16];
+                for (int i = 0; i < argCount && i < 16; i++)
+                    args[i] = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                gmb_stack_entry_t ordered[16];
+                for (int i = 0; i < argCount && i < 16; i++)
+                    ordered[i] = args[argCount - 1 - i];
+                switch (subCode)
+                {
+                    case 0: /* ADD a, b (in place su a) */
+                    case 1: /* SUB a, b */
+                    {
+                        int64_t a = (int64_t)(argCount >= 1 ? ordered[0].num : -1);
+                        int64_t b = (int64_t)(argCount >= 2 ? ordered[1].num : -1);
+                        if (subCode == 0) gmb_vector_add(a, b); else gmb_vector_sub(a, b);
+                        break;
+                    }
+                    case 2: /* MUL a, s */
+                    case 3: /* DIV a, s */
+                    {
+                        int64_t a = (int64_t)(argCount >= 1 ? ordered[0].num : -1);
+                        double s = (argCount >= 2 ? ordered[1].num : 0);
+                        if (subCode == 2) gmb_vector_mul(a, s); else gmb_vector_div(a, s);
+                        break;
+                    }
+                    case 4: /* SET v, i, val */
+                    {
+                        int64_t v = (int64_t)(argCount >= 1 ? ordered[0].num : -1);
+                        int i = (int)(argCount >= 2 ? ordered[1].num : 0);
+                        gmb_vector_set(v, i, argCount >= 3 ? ordered[2].num : 0);
+                        break;
+                    }
+                    case 5: /* FILLRANDOM v, lo, hi */
+                    {
+                        int64_t v = (int64_t)(argCount >= 1 ? ordered[0].num : -1);
+                        gmb_vector_fill_random(v, argCount >= 2 ? ordered[1].num : 0,
+                                              argCount >= 3 ? ordered[2].num : 1);
+                        break;
+                    }
+                    case 6: /* WRAP v, min, max */
+                    {
+                        int64_t v = (int64_t)(argCount >= 1 ? ordered[0].num : -1);
+                        gmb_vector_wrap(v, argCount >= 2 ? ordered[1].num : 0,
+                                       argCount >= 3 ? ordered[2].num : 1);
+                        break;
+                    }
+                    case 7: /* ADDWRAP v, src, min, max (verbo su due parole) */
+                    {
+                        int64_t v = (int64_t)(argCount >= 1 ? ordered[0].num : -1);
+                        int64_t oth = (int64_t)(argCount >= 2 ? ordered[1].num : -1);
+                        double mn = (argCount >= 3 ? ordered[2].num : 0.0);
+                        double mx = (argCount >= 4 ? ordered[3].num : 0.0);
+                        /* Forma ARRAY (VECTOR ... X, Y): i termini sono array (shared list),
+                         * non handle VECTOR.CREATE. Prima era no-op → divergenza con
+                         * IL/PCode/C99 (minitest gfx_vector_add_wrap). */
+                        gmb_obj_shared_val_t* A = (argCount >= 1 && ordered[0].type == 2)
+                            ? (gmb_obj_shared_val_t*)ordered[0].ref : NULL;
+                        if (A && A->list)
+                        {
+                            gmb_obj_shared_val_t* B = (argCount >= 2 && ordered[1].type == 2)
+                                ? (gmb_obj_shared_val_t*)ordered[1].ref : NULL;
+                            int an = (int)gmb_list_count(*A->list);
+                            for (int i = 0; i < an; i++)
+                            {
+                                double av = gmb_val_to_double(gmb_list_get(*A->list, i));
+                                double bv = (B && B->list) ? gmb_val_to_double(gmb_list_get(*B->list, i))
+                                                           : (double)oth;
+                                gmb_list_set(A->list, i, gmb_make_val_double(gmb_wrap_range(av + bv, mn, mx)));
+                            }
+                            break;
+                        }
+                        if (gmb_vector_valid(oth)) gmb_vector_add_wrap_vec(v, oth, mn, mx);
+                        else gmb_vector_add_wrap_scalar(v, (double)oth, mn, mx);
+                        break;
+                    }
+                    default:
+                        /* BOUNCE2D: consuma args */
+                        break;
+                }
+                for (int i = 0; i < argCount && i < 16; i++) gmb_obj_release(args[i].ref);
+                break;
+            }
+            case OP_NET_CMD:
+            {
+                int subCode = gmb_vm_read_u8(vm, task);
+                int argCount = gmb_vm_read_u8(vm, task);
+                gmb_stack_entry_t args[8];
+                for (int i = 0; i < argCount && i < 8; i++)
+                    args[i] = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                /* args: il primo spinto è args[0] in fondo; in cima c'è l'ultimo.
+                   Convenzione PCodeVM: args[i] per subcode. Ricostruiamo in ordine. */
+                gmb_stack_entry_t ordered[8];
+                for (int i = 0; i < argCount && i < 8; i++)
+                    ordered[i] = args[argCount - 1 - i];
+
+                switch (subCode)
+                {
+                    case 0: /* TCP_OPEN port[, engine] */
+                    {
+                        /* stack: engine (cima), port (sotto). ordered[0]=port, ordered[1]=engine */
+                        int port = (int)(argCount >= 1 ? ordered[0].num : 0);
+                        int64_t h = gmb_net_tcp_listen("", port);
+                        push_num_entry(task, (double)h, GMB_BT_NUMBER);
+                        break;
+                    }
+                    case 1: /* TCP_CONNECT host, port, engine, timeout — V7b: connect
+                             * non-bloccante con park cooperativo su POLLOUT. L'handle in
+                             * volo persiste in task->net_connect_handle fra i retry; il
+                             * timeout (parità C#: ParkAsync + scadenza → -1) lo chiude.
+                             * §16: anche il DNS è asincrono — il job gira nel pool del
+                             * runtime e il task parcheggia sulla pipe di completamento
+                             * (task->net_dns_job); pool pieno → fallback sincrono. */
+                    {
+                        const char* host = (argCount >= 1 && ordered[0].type == 2 && ordered[0].ref)
+                            ? ((gmb_obj_string_t*)ordered[0].ref)->data : "";
+                        int port = (int)(argCount >= 2 ? ordered[1].num : 0);
+                        int64_t timeout_ms = (argCount >= 4 && ordered[3].type == 1) ? (int64_t)ordered[3].num : 0;
+                        if (task->net_deadline_ms == 0 && timeout_ms > 0)
+                            task->net_deadline_ms = gmb_now_ms() + timeout_ms;
+                        if (task->net_deadline_ms > 0 && gmb_now_ms() >= task->net_deadline_ms)
+                        {
+                            if (task->net_dns_job > 0)
+                            {
+                                gmb_net_dns_cancel(task->net_dns_job);
+                                task->net_dns_job = 0;
+                            }
+                            if (task->net_connect_handle > 0)
+                            {
+                                gmb_net_tcp_close(task->net_connect_handle);
+                                task->net_connect_handle = 0;
+                            }
+                            task->net_deadline_ms = 0;
+                            task->net_park_gen = 0;
+                            push_num_entry(task, -1, GMB_BT_NUMBER); /* parità C#: timeout → -1 */
+                            break;
+                        }
+                        int64_t h = task->net_connect_handle;
+                        /* V7c (ABA): handle del park chiuso/riusato → connect fallito */
+                        if (h > 0 && vm_net_park_dead(task, h))
+                        {
+                            task->net_connect_handle = 0;
+                            task->net_deadline_ms = 0;
+                            task->net_park_gen = 0;
+                            push_num_entry(task, -1, GMB_BT_NUMBER);
+                            break;
+                        }
+                        /* §16 fase 1: avvia la risoluzione DNS asincrona e parcheggia
+                         * sulla pipe del job (POLLIN). getaddrinfo non tocca il worker. */
+                        if (task->net_dns_job == 0 && h == 0)
+                        {
+                            int64_t dj = gmb_net_dns_resolve_start(host, port);
+                            if (dj > 0)
+                            {
+                                task->net_dns_job = dj;
+                                int jfd = gmb_net_dns_job_fd(dj);
+                                int64_t dremain = task->net_deadline_ms > 0
+                                    ? task->net_deadline_ms - gmb_now_ms() : 0;
+                                if (jfd >= 0 &&
+                                    vm_net_park_raw_fd(vm, task, args, argCount, jfd, dremain) == 0)
+                                    return 0;
+                                /* registry waiter pieno/fd non valido: abbandona e degrada */
+                                gmb_net_dns_cancel(dj);
+                                task->net_dns_job = 0;
+                            }
+                            /* dj <= 0 (pool pieno/host vuoto): fallback sincrono sotto */
+                        }
+                        if (task->net_dns_job > 0)
+                        {
+                            /* §16 fase 2: pipe pronta → consuma il job e connetti
+                             * dall'indirizzo risolto (connect non-bloccante). */
+                            uint8_t sa[128]; /* >= sizeof(struct sockaddr_storage) */
+                            int sa_len = 0;
+                            int rc = gmb_net_dns_resolve_finish(task->net_dns_job, sa, (int)sizeof(sa), &sa_len);
+                            task->net_dns_job = 0;
+                            if (rc != 0)
+                            {
+                                task->net_deadline_ms = 0;
+                                task->net_park_gen = 0;
+                                push_num_entry(task, -1, GMB_BT_NUMBER); /* DNS fallito */
+                                break;
+                            }
+                            int pending = 0;
+                            h = gmb_net_tcp_connect_addr(sa, sa_len, &pending);
+                            if (h < 0)
+                            {
+                                task->net_deadline_ms = 0;
+                                task->net_park_gen = 0;
+                                push_num_entry(task, -1, GMB_BT_NUMBER);
+                                break;
+                            }
+                            if (!pending)
+                            {
+                                task->net_deadline_ms = 0;
+                                task->net_park_gen = 0;
+                                push_num_entry(task, (double)h, GMB_BT_NUMBER);
+                                break;
+                            }
+                            task->net_connect_handle = h;
+                            /* cade nel park POLLOUT in fondo al case */
+                        }
+                        else if (h == 0)
+                        {
+                            /* Fallback sincrono (pool DNS pieno): path pre-§16, il
+                             * getaddrinfo blocca il worker (raro, solo a pool saturo). */
+                            int pending = 0;
+                            h = gmb_net_tcp_connect_start(host, port, &pending);
+                            if (h < 0)
+                            {
+                                task->net_deadline_ms = 0;
+                                task->net_park_gen = 0;
+                                push_num_entry(task, -1, GMB_BT_NUMBER);
+                                break;
+                            }
+                            if (!pending)
+                            {
+                                task->net_deadline_ms = 0;
+                                task->net_park_gen = 0;
+                                push_num_entry(task, (double)h, GMB_BT_NUMBER);
+                                break;
+                            }
+                            task->net_connect_handle = h;
+                            /* primo park: POLLOUT scatta a connect completato (ok o errore) */
+                        }
+                        else if (gmb_net_connect_finish(h) == 0)
+                        {
+                            task->net_connect_handle = 0;
+                            task->net_deadline_ms = 0;
+                            task->net_park_gen = 0;
+                            push_num_entry(task, (double)h, GMB_BT_NUMBER);
+                            break;
+                        }
+                        else
+                        {
+                            /* POLLOUT arrivato ma SO_ERROR != 0: connect fallito
+                             * (refused ecc.) — definitivo, non riparcheggiare. */
+                            gmb_net_tcp_close(h);
+                            task->net_connect_handle = 0;
+                            task->net_deadline_ms = 0;
+                            task->net_park_gen = 0;
+                            push_num_entry(task, -1, GMB_BT_NUMBER);
+                            break;
+                        }
+                        int64_t remain = task->net_deadline_ms > 0 ? task->net_deadline_ms - gmb_now_ms() : 0;
+                        if (vm_net_park_on_fd(vm, task, args, argCount, h, remain, POLLOUT) == 0) return 0;
+                        /* fallback (registry pieno): attesa sincrona sul worker */
+                        int fd = (int)gmb_net_handle_fd(h);
+                        int ok = 0;
+                        for (;;)
+                        {
+                            if (task->net_deadline_ms > 0 && gmb_now_ms() >= task->net_deadline_ms) break;
+                            int64_t remain2 = task->net_deadline_ms > 0 ? task->net_deadline_ms - gmb_now_ms() : 0;
+                            int w = gmb_net_wait_fd(fd, remain2);
+                            if (w <= 0) break;
+                            ok = gmb_net_connect_finish(h) == 0;
+                            break;  /* SO_ERROR è definitivo dopo POLLOUT */
+                        }
+                        task->net_connect_handle = 0;
+                        task->net_deadline_ms = 0;
+                        task->net_park_gen = 0;
+                        if (!ok) { gmb_net_tcp_close(h); h = -1; }
+                        push_num_entry(task, ok ? (double)h : -1, GMB_BT_NUMBER);
+                        break;
+                    }
+                    case 2: /* TCP_ACCEPT serverHandle, timeout — V7a-net: park cooperativo
+                             * sul listener (READ readiness) invece del loop wait_fd sul worker */
+                    {
+                        int64_t h = (int64_t)(argCount >= 1 ? ordered[0].num : -1);
+                        int64_t timeout_ms = (argCount >= 2 && ordered[1].type == 1) ? (int64_t)ordered[1].num : 0;
+                        /* V7c (ABA): listener chiuso/riusato durante il park → -1 */
+                        if (vm_net_park_dead(task, h))
+                        {
+                            task->net_deadline_ms = 0;
+                            task->net_park_gen = 0;
+                            push_num_entry(task, -1, GMB_BT_NUMBER);
+                            break;
+                        }
+                        if (task->net_deadline_ms == 0 && timeout_ms > 0)
+                            task->net_deadline_ms = gmb_now_ms() + timeout_ms;
+                        if (task->net_deadline_ms > 0 && gmb_now_ms() >= task->net_deadline_ms)
+                        {
+                            task->net_deadline_ms = 0;
+                            task->net_park_gen = 0;
+                            push_num_entry(task, -1, GMB_BT_NUMBER); /* parità C#: timeout → -1 */
+                            break;
+                        }
+                        int64_t client = gmb_ssl_is_active(h) ? gmb_ssl_accept(h) : gmb_net_tcp_accept(h);
+                        if (client >= 0)
+                        {
+                            task->net_deadline_ms = 0;
+                            task->net_park_gen = 0;
+                            push_num_entry(task, (double)client, GMB_BT_NUMBER);
+                            break;
+                        }
+                        /* nessun client: parcheggia sul listener; il wake del net-watcher
+                         * ri-esegue OP_NET_CMD e ritenta. */
+                        int64_t remain = task->net_deadline_ms > 0 ? task->net_deadline_ms - gmb_now_ms() : 0;
+                        if (vm_net_park_on_fd(vm, task, args, argCount, h, remain, 0) == 0) return 0;
+                        /* fallback (registry pieno): attesa sincrona come pre-V7a */
+                        int fd = (int)gmb_net_handle_fd(h);
+                        if (fd >= 0)
+                        {
+                            for (;;)
+                            {
+                                if (task->net_deadline_ms > 0 && gmb_now_ms() >= task->net_deadline_ms) break;
+                                int64_t remain2 = task->net_deadline_ms > 0 ? task->net_deadline_ms - gmb_now_ms() : 0;
+                                int w = gmb_net_wait_fd(fd, remain2);
+                                if (w <= 0) break;
+                                client = gmb_ssl_is_active(h) ? gmb_ssl_accept(h) : gmb_net_tcp_accept(h);
+                                if (client >= 0) break;
+                            }
+                        }
+                        task->net_deadline_ms = 0;
+                        task->net_park_gen = 0;
+                        push_num_entry(task, client >= 0 ? (double)client : -1, GMB_BT_NUMBER);
+                        break;
+                    }
+                    case 3: /* TCP_SEND handle, data (SSL se il canale è cifrato) — V7b:
+                             * WRITE readiness con partial-send: su EAGAIN/scrittura parziale
+                             * il task parcheggia su POLLOUT e prosegue da net_send_offset
+                             * (prima di V7b l'EAGAIN perdeva dati silenziosamente). */
+                    {
+                        int64_t h = (int64_t)(argCount >= 1 ? ordered[0].num : -1);
+                        const char* data = (argCount >= 2 && ordered[1].type == 2 && ordered[1].ref)
+                            ? ((gmb_obj_string_t*)ordered[1].ref)->data : "";
+                        size_t len = strlen(data);
+                        /* V7c (ABA): socket chiuso/riusato durante il park → abbandona il
+                         * partial-send (il residuo va perso: SEND non ritorna nulla). */
+                        if (task->net_park_gen != 0 && vm_net_park_dead(task, h))
+                        {
+                            task->net_send_offset = 0;
+                            task->net_park_gen = 0;
+                            break;
+                        }
+                        size_t off = task->net_send_offset < len ? task->net_send_offset : len;
+                        int harderr = 0;
+                        for (;;)
+                        {
+                            if (off >= len) break;
+                            int n = gmb_ssl_is_active(h)
+                                ? gmb_ssl_send(h, (const uint8_t*)data + off, len - off)
+                                : gmb_net_tcp_send(h, (const uint8_t*)data + off, len - off);
+                            if (n > 0) { off += (size_t)n; continue; }
+                            if (n <= -2) harderr = 1; /* errore hard: non parcheggiare */
+                            break; /* n == -1: EAGAIN/WANT riprovabile */
+                        }
+                        if (off >= len || harderr)
+                        {
+                            task->net_send_offset = 0;
+                            task->net_park_gen = 0;
+                            break;  /* inviato tutto o socket rotto (parità: SEND non spinge nulla) */
+                        }
+                        task->net_send_offset = (uint32_t)off;
+                        /* park: su TLS l'evento segue l'ultimo SSL_WANT, altrimenti POLLOUT */
+                        short ev = POLLOUT;
+                        if (gmb_ssl_is_active(h) && gmb_ssl_last_want(h) == 1) ev = 0; /* WANT_READ → POLLIN */
+                        if (vm_net_park_on_fd(vm, task, args, argCount, h, 0, ev) == 0) return 0;
+                        /* fallback (registry pieno/fd non valido): il resto va perso come
+                         * pre-V7b (SEND non ha timeout né valore di ritorno). */
+                        task->net_send_offset = 0;
+                        task->net_park_gen = 0;
+                        break;
+                    }
+                    case 4: /* TCP_RECV handle, timeout → spinge (buffer, bytes) — V7a-net:
+                             * park su READ readiness. Il secondo argomento è il TIMEOUT
+                             * (parità compiler/PCodeVM: count fisso 4096), non un byte count. */
+                    {
+                        int64_t h = (int64_t)(argCount >= 1 ? ordered[0].num : -1);
+                        int64_t timeout_ms = (argCount >= 2 && ordered[1].type == 1) ? (int64_t)ordered[1].num : 0;
+                        /* V7c (ABA): socket chiuso/riusato durante il park → ("", 0) */
+                        if (vm_net_park_dead(task, h))
+                        {
+                            task->net_deadline_ms = 0;
+                            task->net_park_gen = 0;
+                            gmb_obj_string_t* cs = gmb_str_cstr("");
+                            push_ref_new(task, (gmb_obj_t*)cs, GMB_BT_STRING);
+                            push_num_entry(task, 0, GMB_BT_NUMBER);
+                            break;
+                        }
+                        if (task->net_deadline_ms == 0 && timeout_ms > 0)
+                            task->net_deadline_ms = gmb_now_ms() + timeout_ms;
+                        if (task->net_deadline_ms > 0 && gmb_now_ms() >= task->net_deadline_ms)
+                        {
+                            task->net_deadline_ms = 0;
+                            task->net_park_gen = 0;
+                            gmb_obj_string_t* ts = gmb_str_cstr("");
+                            push_ref_new(task, (gmb_obj_t*)ts, GMB_BT_STRING);
+                            push_num_entry(task, 0, GMB_BT_NUMBER);
+                            break;
+                        }
+                        uint8_t buf[4096];
+                        int n = gmb_ssl_is_active(h)
+                            ? gmb_ssl_recv(h, buf, sizeof(buf))
+                            : gmb_net_tcp_recv(h, buf, sizeof(buf));
+                        if (n >= 0) /* n==0 = connessione chiusa → ("", 0) */
+                        {
+                            task->net_deadline_ms = 0;
+                            task->net_park_gen = 0;
+                            gmb_obj_string_t* s = gmb_str_alloc((const char*)buf, (uint32_t)n);
+                            push_ref_new(task, (gmb_obj_t*)s, GMB_BT_STRING);      /* buffer */
+                            push_num_entry(task, (double)n, GMB_BT_NUMBER);         /* bytes */
+                            break;
+                        }
+                        /* -1 = EAGAIN/errore: parcheggia sull'fd e ritenta al wake. Handle
+                         * non valido (fd<0) → chiusura/errore: ("", 0). V7b: su canale TLS
+                         * l'evento dipende dall'ultimo SSL_WANT (renegotiation → WRITE). */
+                        short ev = 0;
+                        if (gmb_ssl_is_active(h) && gmb_ssl_last_want(h) == 2) ev = POLLOUT;
+                        int64_t remain = task->net_deadline_ms > 0 ? task->net_deadline_ms - gmb_now_ms() : 0;
+                        if (vm_net_park_on_fd(vm, task, args, argCount, h, remain, ev) == 0) return 0;
+                        task->net_deadline_ms = 0;
+                        task->net_park_gen = 0;
+                        gmb_obj_string_t* es = gmb_str_cstr("");
+                        push_ref_new(task, (gmb_obj_t*)es, GMB_BT_STRING);
+                        push_num_entry(task, 0, GMB_BT_NUMBER);
+                        break;
+                    }
+                    case 5: /* TCP_CLOSE handle (chiude anche il canale SSL) */
+                    {
+                        int64_t h = (int64_t)(argCount >= 1 ? ordered[0].num : -1);
+                        if (gmb_ssl_is_active(h)) gmb_ssl_close(h);
+                        else gmb_net_tcp_close(h);
+                        break;
+                    }
+                    case 6: /* UDP_OPEN port[, engine] */
+                    {
+                        int port = (int)(argCount >= 1 ? ordered[0].num : 0);
+                        int64_t h = gmb_net_udp_open(port);
+                        push_num_entry(task, (double)h, GMB_BT_NUMBER);
+                        break;
+                    }
+                    case 7: /* UDP_SEND handle, host, port, data */
+                    {
+                        int64_t h = (int64_t)(argCount >= 1 ? ordered[0].num : -1);
+                        const char* host = (argCount >= 2 && ordered[1].type == 2 && ordered[1].ref)
+                            ? ((gmb_obj_string_t*)ordered[1].ref)->data : "";
+                        int port = (int)(argCount >= 3 ? ordered[2].num : 0);
+                        const char* data = (argCount >= 4 && ordered[3].type == 2 && ordered[3].ref)
+                            ? ((gmb_obj_string_t*)ordered[3].ref)->data : "";
+                        gmb_net_udp_send(h, host, port, (const uint8_t*)data, strlen(data));
+                        break;
+                    }
+                    case 8: /* UDP_RECV handle, timeout → (data, fromHost, fromPort) — V7a-net:
+                             * park su READ readiness finché arriva un datagramma o scade il timeout */
+                    {
+                        int64_t h = (int64_t)(argCount >= 1 ? ordered[0].num : -1);
+                        int64_t timeout_ms = (argCount >= 2 && ordered[1].type == 1) ? (int64_t)ordered[1].num : 0;
+                        /* V7c (ABA): socket chiuso/riusato durante il park → ("","",0) */
+                        if (vm_net_park_dead(task, h))
+                        {
+                            task->net_deadline_ms = 0;
+                            task->net_park_gen = 0;
+                            gmb_obj_string_t* cs = gmb_str_cstr("");
+                            push_ref_new(task, (gmb_obj_t*)cs, GMB_BT_STRING);
+                            gmb_obj_string_t* ch = gmb_str_cstr("");
+                            push_ref_new(task, (gmb_obj_t*)ch, GMB_BT_STRING);
+                            push_num_entry(task, 0, GMB_BT_NUMBER);
+                            break;
+                        }
+                        if (task->net_deadline_ms == 0 && timeout_ms > 0)
+                            task->net_deadline_ms = gmb_now_ms() + timeout_ms;
+                        if (task->net_deadline_ms > 0 && gmb_now_ms() >= task->net_deadline_ms)
+                        {
+                            task->net_deadline_ms = 0;
+                            task->net_park_gen = 0;
+                            gmb_obj_string_t* ts = gmb_str_cstr("");
+                            push_ref_new(task, (gmb_obj_t*)ts, GMB_BT_STRING);
+                            gmb_obj_string_t* th = gmb_str_cstr("");
+                            push_ref_new(task, (gmb_obj_t*)th, GMB_BT_STRING);
+                            push_num_entry(task, 0, GMB_BT_NUMBER);
+                            break;
+                        }
+                        uint8_t buf[8192];
+                        char from[64]; int fromport = 0;
+                        int n = gmb_net_udp_recv(h, buf, sizeof(buf), from, sizeof(from), &fromport);
+                        if (n >= 0)
+                        {
+                            task->net_deadline_ms = 0;
+                            task->net_park_gen = 0;
+                            gmb_obj_string_t* s = gmb_str_alloc((const char*)buf, (uint32_t)n);
+                            push_ref_new(task, (gmb_obj_t*)s, GMB_BT_STRING);       /* data */
+                            gmb_obj_string_t* h2 = gmb_str_cstr(from);
+                            push_ref_new(task, (gmb_obj_t*)h2, GMB_BT_STRING);      /* fromHost */
+                            push_num_entry(task, (double)fromport, GMB_BT_NUMBER);    /* fromPort */
+                            break;
+                        }
+                        int64_t remain = task->net_deadline_ms > 0 ? task->net_deadline_ms - gmb_now_ms() : 0;
+                        if (vm_net_park_on_fd(vm, task, args, argCount, h, remain, 0) == 0) return 0;
+                        task->net_deadline_ms = 0;
+                        task->net_park_gen = 0;
+                        gmb_obj_string_t* es = gmb_str_cstr("");
+                        push_ref_new(task, (gmb_obj_t*)es, GMB_BT_STRING);
+                        gmb_obj_string_t* eh = gmb_str_cstr("");
+                        push_ref_new(task, (gmb_obj_t*)eh, GMB_BT_STRING);
+                        push_num_entry(task, 0, GMB_BT_NUMBER);
+                        break;
+                    }
+                    case 9: /* UDP_CLOSE handle */
+                    {
+                        int64_t h = (int64_t)(argCount >= 1 ? ordered[0].num : -1);
+                        gmb_net_udp_close(h);
+                        break;
+                    }
+                    case 10: /* SSL_OPEN porta, certPath, certPass → listener TLS (handle) */
+                    {
+                        int port = (int)(argCount >= 1 ? ordered[0].num : 0);
+                        const char* certPath = (argCount >= 2 && ordered[1].type == 2 && ordered[1].ref)
+                            ? ((gmb_obj_string_t*)ordered[1].ref)->data : "";
+                        const char* certPass = (argCount >= 3 && ordered[2].type == 2 && ordered[2].ref)
+                            ? ((gmb_obj_string_t*)ordered[2].ref)->data : "";
+                        int64_t h = gmb_ssl_listen(port, certPath, certPass);
+                        push_num_entry(task, (double)h, GMB_BT_NUMBER);
+                        break;
+                    }
+                    case 11: /* SSL_CONNECT host, porta, timeout → client TLS (handle) */
+                    {
+                        const char* host = (argCount >= 1 && ordered[0].type == 2 && ordered[0].ref)
+                            ? ((gmb_obj_string_t*)ordered[0].ref)->data : "";
+                        /* Porta/timeout OMESSI: il compiler emette sempre 3 operandi con
+                         * OP_PUSH_NIL (type=2, basic_type=NULL, num=0) — il default "argCount<2"
+                         * qui sotto NON scatta mai e num=0 → connessione su PORTA 0 sempre
+                         * fallita (esposto da "SSL CONNECT host, h" in NetSslConcurrency).
+                         * Canone: nil → 443 come PCode (PCodeProcessor.Helpers.Net.cs:189),
+                         * IL (Network.cs Ldc_I4 443), C99Native (emit_dflt "443"). */
+                        int portNil = (argCount >= 2 && ordered[1].type == 2 && ordered[1].basic_type == GMB_BT_NULL);
+                        int port = (argCount < 2 || portNil) ? 443 : (int)ordered[1].num;
+                        int64_t timeout = (argCount >= 3 && !(ordered[2].type == 2 && ordered[2].basic_type == GMB_BT_NULL))
+                            ? (int64_t)ordered[2].num : 0;
+                        int64_t h = gmb_ssl_connect(host, port, timeout);
+                        push_num_entry(task, (double)h, GMB_BT_NUMBER);
+                        break;
+                    }
+                    case 14: /* HTTP_SERVER — push: false, Port, Callback, CertPath, CertPass (cima) */
+                    {
+                        /* args[0]=CertPass(cima), args[4]=false. ordered: ordered[0]=false, ordered[1]=Port */
+                        int isStop = (int)(argCount >= 1 ? ordered[0].num : 0);
+                        if (isStop)
+                        {
+                            gmb_http_server_stop(1); /* ferma il listener corrente (parità managed) */
+                            push_num_entry(task, 1, GMB_BT_NUMBER);
+                            break;
+                        }
+                        int port = (int)(argCount >= 2 ? ordered[1].num : 0);
+                        int64_t h;
+                        if (g_vmc_cert_path[0])
+                            h = gmb_http_server_start_tls(port, g_vmc_cert_path, g_vmc_cert_pass);
+                        else
+                            h = gmb_http_server_start(port);
+                        push_num_entry(task, (double)h, GMB_BT_NUMBER);
+                        break;
+                    }
+                    case 15: /* HTTP_ROUTE — push: method, path, codeRef (cima) */
+                    {
+                        /* ordered[0]=method, ordered[1]=path, ordered[2]=codeRef */
+                        const char* method = (argCount >= 1 && ordered[0].type == 2 && ordered[0].ref)
+                            ? ((gmb_obj_string_t*)ordered[0].ref)->data : "*";
+                        const char* path = (argCount >= 2 && ordered[1].type == 2 && ordered[1].ref)
+                            ? ((gmb_obj_string_t*)ordered[1].ref)->data : "*";
+                        int64_t server = 1; /* il server corrente (per ora 1) */
+                        int callbackAddr = 0;
+                        if (argCount >= 3) {
+                            /* OP_PUSH_CODE_REF (2026-09-06) produce una closure a 0 upvalue,
+                             * non più un numero grezzo: cfr. commento su OP_PUSH_CODE_REF. */
+                            if (ordered[2].type == 2 && ordered[2].ref && ordered[2].ref->kind == GMB_OBJ_CLOSURE)
+                                callbackAddr = ((gmb_obj_closure_t*)ordered[2].ref)->address;
+                            else
+                                callbackAddr = (int)ordered[2].num;
+                        }
+                        /* Forma BINARIA: le route BASIC possono rispondere con res.SendFile
+                         * (body con NUL, es. lo ZIP di /download/{name}/{version}). La firma
+                         * storica resta a gmb_vm_http_handler per il codice C generato. */
+                        gmb_http_server_route_bin(server, method, path, gmb_vm_http_handler_bin, (void*)(intptr_t)callbackAddr);
+                        break;
+                    }
+                    case 16: /* HTTP_USE [path,] handler — registra un middleware nella catena
+                             * (parità ExecuteHttpUse: metodo "*", path nil → "/", prefisso). */
+                    {
+                        const char* path = "/";
+                        if (argCount >= 1 && ordered[0].type == 2 && ordered[0].ref
+                            && ordered[0].basic_type != GMB_BT_NULL)
+                        {
+                            const char* p = ((gmb_obj_string_t*)ordered[0].ref)->data;
+                            if (p && *p) path = p;
+                        }
+                        int mwAddr = 0;
+                        if (argCount >= 2)
+                        {
+                            /* OP_PUSH_CODE_REF produce una closure a 0 upvalue (cfr. case 15). */
+                            if (ordered[1].type == 2 && ordered[1].ref && ordered[1].ref->kind == GMB_OBJ_CLOSURE)
+                                mwAddr = ((gmb_obj_closure_t*)ordered[1].ref)->address;
+                            else
+                                mwAddr = (int)ordered[1].num;
+                        }
+                        if (mwAddr > 0)
+                            gmb_http_server_use_bin(1, "*", path, gmb_vm_http_handler_bin, (void*)(intptr_t)mwAddr);
+                        break;
+                    }
+                    case 17: /* HTTP_USE NEXT [handle] — avanza la catena middleware.
+                             * Forma esplicita `HTTP USE NEXT h`: ordered[0] = id dello step
+                             * (il numero spinto dal wrapper come 3° arg). Forma implicita
+                             * (nessun handle, o nil): ripiega su task->http_chain_step (il
+                             * TLS del server non è visibile al worker GPM). 0/id non valido
+                             * = fuori catena (passo finale): no-op, come managed. */
+                    {
+                        int64_t step = 0;
+                        if (argCount >= 1 && ordered[0].type == 2 && ordered[0].basic_type == GMB_BT_NULL)
+                            step = 0; /* NIL esplicito → sotto, fallback task */
+                        else if (argCount >= 1 && ordered[0].type == 1)
+                            step = (int64_t)ordered[0].num;
+                        if (step <= 0) step = task->http_chain_step;
+                        if (step > 0) gmb_http_chain_step_advance(step);
+                        break;
+                    }
+                    case 18: /* HTTP_CONFIG — stack: [ConfigObject] (dict HTTPCONFIG) */
+                    {
+                        gmb_obj_t* cfg = (argCount >= 1 && ordered[0].type == 2 && ordered[0].ref) ? ordered[0].ref : NULL;
+                        if (cfg && cfg->kind == GMB_OBJ_DICT && ((gmb_obj_shared_val_t*)cfg)->dict)
+                        {
+                            gmb_dict_t* cd = ((gmb_obj_shared_val_t*)cfg)->dict;
+                            gmb_val_t vPort = gmb_dict_get(*cd, "Port");
+                            gmb_val_t vTimeout = gmb_dict_get(*cd, "RequestTimeoutMs");
+                            int server = 1;
+                            if (vTimeout.kind == GMB_TYPE_DOUBLE && vTimeout.v_double > 0)
+                                gmb_http_server_set_timeout(server, (int)vTimeout.v_double);
+                            (void)vPort;
+                            /* TLS: CertificatePath/Password → globali usate da HTTP SERVER
+                               (gmb_http_server_start_tls) — senza, il server partiva plain e
+                               una fetch https:// verso di esso si bloccava sull'handshake. */
+                            gmb_val_t vCert = gmb_dict_get(*cd, "CertificatePath");
+                            if (vCert.kind == GMB_TYPE_STRING && vCert.v_string.data && *vCert.v_string.data)
+                            {
+                                strncpy(g_vmc_cert_path, vCert.v_string.data, sizeof(g_vmc_cert_path) - 1);
+                                g_vmc_cert_path[sizeof(g_vmc_cert_path) - 1] = '\0';
+                                gmb_val_t vCertPass = gmb_dict_get(*cd, "CertificatePassword");
+                                if (vCertPass.kind == GMB_TYPE_STRING && vCertPass.v_string.data)
+                                {
+                                    strncpy(g_vmc_cert_pass, vCertPass.v_string.data, sizeof(g_vmc_cert_pass) - 1);
+                                    g_vmc_cert_pass[sizeof(g_vmc_cert_pass) - 1] = '\0';
+                                }
+                            }
+                            /* Security (2026-09-02): SecurityHeaders + AllowedIPs/BlockedIPs —
+                               applicate al server corrente (gmb_http_server_set_security). */
+                            {
+                                gmb_val_t vSec = gmb_dict_get(*cd, "SecurityHeaders");
+                                int sec = ((vSec.kind == GMB_TYPE_DOUBLE && vSec.v_double != 0)
+                                        || (vSec.kind == GMB_TYPE_INT && vSec.v_int != 0)) ? 1 : 0;
+                                const char* allowed = "";
+                                const char* blocked = "";
+                                gmb_val_t vA = gmb_dict_get(*cd, "AllowedIPs");
+                                if (vA.kind == GMB_TYPE_STRING && vA.v_string.data) allowed = vA.v_string.data;
+                                gmb_val_t vB = gmb_dict_get(*cd, "BlockedIPs");
+                                if (vB.kind == GMB_TYPE_STRING && vB.v_string.data) blocked = vB.v_string.data;
+                                gmb_http_server_set_security(server, sec, allowed, blocked);
+                            }
+                            /* MaxRequestBodySize → 413 sul server C (parità IL/PCode) */
+                            {
+                                gmb_val_t vMax = gmb_dict_get(*cd, "MaxRequestBodySize");
+                                long maxBody = 0;
+                                if (vMax.kind == GMB_TYPE_DOUBLE && vMax.v_double > 0) maxBody = (long)vMax.v_double;
+                                else if (vMax.kind == GMB_TYPE_INT && vMax.v_int > 0) maxBody = (long)vMax.v_int;
+                                if (maxBody > 0) gmb_http_server_set_max_body(server, maxBody);
+                            }
+                            /* Rate limit → 429 sul server C (parità IL/PCode) */
+                            {
+                                gmb_val_t vRp = gmb_dict_get(*cd, "RateLimitRequestsPerMinute");
+                                int perMin = 0;
+                                if (vRp.kind == GMB_TYPE_DOUBLE && vRp.v_double > 0) perMin = (int)vRp.v_double;
+                                else if (vRp.kind == GMB_TYPE_INT && vRp.v_int > 0) perMin = (int)vRp.v_int;
+                                int burst = 0;
+                                gmb_val_t vRb = gmb_dict_get(*cd, "RateLimitBurstSize");
+                                if (vRb.kind == GMB_TYPE_DOUBLE && vRb.v_double > 0) burst = (int)vRb.v_double;
+                                else if (vRb.kind == GMB_TYPE_INT && vRb.v_int > 0) burst = (int)vRb.v_int;
+                                if (perMin > 0) gmb_http_server_set_rate_limit(server, perMin, burst);
+                            }
+                        }
+                        break;
+                    }
+                    case 19: /* HTTP_STATIC — stack: [UrlPath, PhysicalPath] */
+                    {
+                        const char* urlPrefix = (argCount >= 1 && ordered[0].type == 2 && ordered[0].ref)
+                            ? ((gmb_obj_string_t*)ordered[0].ref)->data : "";
+                        const char* physDir = (argCount >= 2 && ordered[1].type == 2 && ordered[1].ref)
+                            ? ((gmb_obj_string_t*)ordered[1].ref)->data : "";
+                        gmb_http_server_static(1, urlPrefix, physDir);
+                        break;
+                    }
+                    case 21: /* HTTP_BSP — stack: [UrlPattern, PhysicalDir] */
+                    {
+                        const char* bspDir = (argCount >= 2 && ordered[1].type == 2 && ordered[1].ref)
+                            ? ((gmb_obj_string_t*)ordered[1].ref)->data : "";
+                        if (bspDir && *bspDir) gmb_http_server_bsp(1, bspDir);
+                        break;
+                    }
+                    case 12: /* SHUTDOWN handle, mode (0=both,1=send,2=receive / "both","send","receive") */
+                    {
+                        int64_t sh = (int64_t)(argCount >= 1 ? ordered[0].num : -1);
+                        const char* mode = (argCount >= 2 && ordered[1].type == 2 && ordered[1].ref)
+                            ? ((gmb_obj_string_t*)ordered[1].ref)->data : "both";
+                        gmb_net_tcp_shutdown(sh, mode);
+                        break;
+                    }
+                    case 13: /* SETOPTION handle, name, value */
+                    {
+                        int64_t so = (int64_t)(argCount >= 1 ? ordered[0].num : -1);
+                        const char* name = (argCount >= 2 && ordered[1].type == 2 && ordered[1].ref)
+                            ? ((gmb_obj_string_t*)ordered[1].ref)->data : "";
+                        const char* val = (argCount >= 3 && ordered[2].type == 2 && ordered[2].ref)
+                            ? ((gmb_obj_string_t*)ordered[2].ref)->data : "";
+                        gmb_net_tcp_setopt(so, name, val);
+                        break;
+                    }
+                    case 20: /* WS_CONNECT host, port, path, timeout → dict WEBSOCKET (handle) */
+                    {
+                        const char* host = (argCount >= 1 && ordered[0].type == 2 && ordered[0].ref)
+                            ? ((gmb_obj_string_t*)ordered[0].ref)->data : "";
+                        int port = (int)(argCount >= 2 ? ordered[1].num : 80);
+                        const char* path = (argCount >= 3 && ordered[2].type == 2 && ordered[2].ref)
+                            ? ((gmb_obj_string_t*)ordered[2].ref)->data : "/";
+                        int64_t timeout = (int64_t)(argCount >= 4 ? ordered[3].num : 30000);
+                        int64_t wsh = gmb_ws_connect(host, port, path, timeout);
+                        if (wsh <= 0)
+                        {
+                            push_nil(task);
+                            break;
+                        }
+                        /* crea il dict WEBSOCKET: handle interno + callbacks (OnMessage/OnClose/OnError) */
+                        gmb_obj_shared_val_t* wsd = gmb_shared_dict_new();
+                        if (!wsd) { gmb_ws_close(wsh); push_num_entry(task, 0, GMB_BT_NUMBER); break; }
+                        gmb_dict_set(wsd->dict, "__ws_handle", gmb_make_val_double((double)wsh));
+                        gmb_dict_set(wsd->dict, "__ws_vm", gmb_make_val_string_counted("vm"));
+                        gmb_dict_set(wsd->dict, "OnMessage", gmb_make_val_string_counted(""));
+                        gmb_dict_set(wsd->dict, "OnClose", gmb_make_val_string_counted(""));
+                        gmb_dict_set(wsd->dict, "OnError", gmb_make_val_string_counted(""));
+                        gmb_dict_set(wsd->dict, "State", gmb_make_val_string_counted("Open"));
+                        push_ref_new(task, (gmb_obj_t*)wsd, GMB_BT_OBJECT);
+                        /* il loop receive è avviato dal thread del VM/C quando i callbacks sono
+                           registrati (ws.OnMessage = "...") — per semplicità qui no-op; l'evento
+                           OnMessage è gestito dal receive thread a ogni messaggio (vedi sotto). */
+                        break;
+                    }
+                    case 22: /* TCP_PEEK handle, count → stringa (MSG_PEEK, non consuma i byte).
+                              * Parità PCode (ExecuteNetCmd/TCP_PEEK park-based) + IL (TcpPeek) +
+                              * C99Native (nt_peek → gmb_net_tcp_peek). Park su READ come TCP_RECV
+                              * (GPM §0ter: mai recv bloccante sul worker). Gap C#→C introdotto dal
+                              * fix TcpPeek 2026-09-13 (subcode nuovo senza case VMC). */
+                    {
+                        int64_t h = (int64_t)(argCount >= 1 ? ordered[0].num : -1);
+                        int n = (int)(argCount >= 2 && ordered[1].type == 1 ? ordered[1].num : 0);
+                        if (n < 0) n = 0;
+                        if (n > 4096) n = 4096;
+                        /* V7c (ABA): socket chiuso/riusato durante il park → "" */
+                        if (vm_net_park_dead(task, h))
+                        {
+                            task->net_deadline_ms = 0;
+                            task->net_park_gen = 0;
+                            gmb_obj_string_t* cs = gmb_str_cstr("");
+                            push_ref_new(task, (gmb_obj_t*)cs, GMB_BT_STRING);
+                            break;
+                        }
+                        uint8_t pbuf[4096];
+                        int r = n > 0 ? gmb_net_tcp_peek(h, pbuf, (size_t)n) : 0;
+                        if (r >= 0) /* r==0 = nessun dato o count 0 → "" */
+                        {
+                            task->net_deadline_ms = 0;
+                            task->net_park_gen = 0;
+                            gmb_obj_string_t* s = gmb_str_alloc(n > 0 ? (const char*)pbuf : "", (uint32_t)(n > 0 ? r : 0));
+                            push_ref_new(task, (gmb_obj_t*)s, GMB_BT_STRING);
+                            break;
+                        }
+                        /* -1 = EAGAIN (socket non-blocking) o handle invalido: parcheggia
+                         * come TCP_RECV; handle invalido (fd<0) → (""). */
+                        if (vm_net_park_on_fd(vm, task, args, argCount, h, 0, 0) == 0) return 0;
+                        task->net_deadline_ms = 0;
+                        task->net_park_gen = 0;
+                        gmb_obj_string_t* es = gmb_str_cstr("");
+                        push_ref_new(task, (gmb_obj_t*)es, GMB_BT_STRING);
+                        break;
+                    }
+                    default:
+                    {
+                        char msg[64];
+                        snprintf(msg, sizeof(msg), "NET_CMD subcode %d non implementato", subCode);
+                        vm_error(task, msg);
+                        return -1;
+                    }
+                }
+                for (int i = 0; i < argCount && i < 8; i++) gmb_obj_release(args[i].ref);
+                break;
+            }
+            case OP_FILE_CMD:
+            {
+                int subCode = gmb_vm_read_u8(vm, task);
+                int argCount = gmb_vm_read_u8(vm, task);
+                if (subCode == 0) /* OPEN */
+                {
+                    gmb_stack_entry_t args[16];
+                    for (int i = 0; i < argCount && i < 16; i++)
+                        args[i] = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                    const char* fname = (argCount >= 1 && args[argCount-1].type == 2 && args[argCount-1].ref)
+                        ? ((gmb_obj_string_t*)args[argCount-1].ref)->data : "";
+                    /* push order (VisitOpenStatement): FileName, Mode, LockMode, FileNumber,
+                     * RecordLength, ContentTypeCode, KeyCount, IndexCount, Unsafe → pop:
+                     * args[0]=Unsafe, args[1]=IndexCount, args[2]=KeyCount, args[3]=ContentType,
+                     * args[4]=RecordLength, args[5]=FileNumber, args[6]=LockMode, args[7]=Mode,
+                     * args[8]=FileName. */
+                    double mode = (argCount >= 8 && args[argCount-2].type == 1) ? args[argCount-2].num : 1.0;
+                    double fileNum = (argCount >= 6 && args[argCount-4].type == 1) ? args[argCount-4].num : 0.0;
+                    const char* cmode = mode == 0 ? "r" : mode == 2 ? "a" : (mode == 3 || mode == 4) ? "w+" : "w";
+                    /* VM/C ha una PROPRIA mappa g_vm_file_handles[fileNum] → il runtime handle
+                     * è un token opaco: ALLOCA (≥1, gmb_file_open_auto). Onorare fileNum=0 qui
+                     * darebbe handle 0 e, per il file number 1 di `PRINT #1`, slot 0 vs 1
+                     * scollegati (bug printfile_string_padding). Il file number resta la
+                     * variabile utente (invariata, parità IL). */
+                    gmb_int_t handle = 0;
+                    gmb_string_t fstr = { (char*)fname, fname ? strlen(fname) : 0, 1 };
+                    gmb_int_t rc = gmb_file_open_auto(fstr, cmode, &handle);
+                    if (rc != 0 && mode == 0) /* Input fallback su file esistente */
+                        rc = gmb_file_open_auto(fstr, "r", &handle);
+                    /* OPEN … FOR RANDOM [LEN = n] (args[4] = RecordLength, num o NIL): abilita il record I/O. */
+                    if (rc == 0 && mode == 3)
+                        gmb_file_set_random(handle, (argCount >= 9 && args[argCount-5].type == 1) ? (gmb_int_t)args[argCount-5].num : 0);
+                    for (int i = 0; i < argCount && i < 16; i++) gmb_obj_release(args[i].ref);
+                    if (rc == 0)
+                    {
+                        int idx = (int)fileNum;
+                        if (idx >= 0 && idx < 64)
+                        {
+                            g_vm_file_handles[idx] = handle;
+                            /* ContentTypeCode (args[3]): 0=Default, 1=Json. Parità PCodeVM
+                             * FileContentTypes — INPUT_FILE lo usa per decidere se parsare il
+                             * file come JSON (JSON OPEN ... FOR "READ" AS #ch + INPUT #ch, cfg). */
+                            double contentType = (argCount >= 4 && args[argCount-6].type == 1) ? args[argCount-6].num : 0.0;
+                            g_vm_file_content_types[idx] = (int)contentType;
+                        }
+                        push_num_entry(task, (double)handle, GMB_BT_NUMBER);
+                    }
+                    else push_nil(task);
+                }
+                else
+                {
+                    char msg[64];
+                    snprintf(msg, sizeof(msg), "FILE_CMD subcode %d non implementato", subCode);
+                    vm_error(task, msg);
+                    return -1;
+                }
+                break;
+            }
+            case OP_CALL_FFI:
+            {
+                /* FFI (DECLARE ... LIB): usa gli helper dl del runtime C condiviso
+                 * (gmb_ffi_dl_open/gmb_ffi_dl_sym in gmb_ffi_dl.c — stessa implementazione
+                 * del C99). Marshalling numerico a-double come il FfiService C#: ogni
+                 * argomento diventa double, il simbolo viene invocato come
+                 * `double (*)(double, ...)` e il risultato spinto come numero. Le librerie
+                 * dei pacchetti REQUIRE risolti vengono pre-caricate dall'host
+                 * (gmb_ffi_dl_preload) → il match per basename di gmb_ffi_dl_open rende
+                 * `DECLARE ... LIB "nome"` risolvibile anche su path assoluti di pacchetto. */
+                int libIdx = gmb_vm_read_u16(vm, task);
+                int nameIdx = gmb_vm_read_u16(vm, task);
+                int argc = gmb_vm_read_u8(vm, task);
+                double args[16];
+                for (int i = argc - 1; i >= 0 && task->sp > 0; i--)
+                {
+                    gmb_stack_entry_t a = gmb_task_pop(task);
+                    args[i] = (a.type == 1) ? a.num : 0.0;
+                    if (a.type == 2 && a.ref) gmb_obj_release(a.ref);
+                }
+                const char* lib = NULL;
+                if (libIdx >= 0 && libIdx < (int)vm->chunk->consts_len
+                    && vm->chunk->constants[libIdx].type == GMB_CONST_STRING)
+                    lib = vm->chunk->constants[libIdx].s;
+                const char* fn = NULL;
+                if (nameIdx >= 0 && nameIdx < (int)vm->chunk->consts_len
+                    && vm->chunk->constants[nameIdx].type == GMB_CONST_STRING)
+                    fn = vm->chunk->constants[nameIdx].s;
+
+                double result = 0.0;
+                if (lib != NULL && fn != NULL && argc <= 8)
+                {
+                    void* h = gmb_ffi_dl_open(lib);
+                    if (h != NULL)
+                    {
+                        void* p = gmb_ffi_dl_sym(h, fn);
+                        if (p != NULL)
+                        {
+                            if (argc == 0)
+                            {
+                                double (*f0)(void) = (double (*)(void))p;
+                                result = f0();
+                            }
+                            else
+                            {
+                                /* Firma ESATTA per argc (mai il variadico): vedi helper. */
+                                result = gmb_vm_ffi_call_double(p, argc, args);
+                            }
+                        }
+                    }
+                }
+                gmb_task_push_num(task, result, GMB_BT_NUMBER);
+                break;
+            }
+            case OP_CALL_FFI_T:
+            {
+                /* FFI tipizzata (kind omogeneo 0=double, 1=int64): il function-pointer C
+                 * usa la firma reale del simbolo exportato (int64) — il contratto all-double
+                 * di OP_CALL_FFI leggeva registri sbagliati su `long vec_add(long,long)`
+                 * (vec_add(21,21)→21 su ARM64). Firma mista long/double = errore esplicito. */
+                int libIdx = gmb_vm_read_u16(vm, task);
+                int nameIdx = gmb_vm_read_u16(vm, task);
+                int argc = gmb_vm_read_u8(vm, task);
+                int kind = gmb_vm_read_u8(vm, task);
+                /* scalar_kind_mask (2026-10, firma mista LONG/DOUBLE fra scalari semplici):
+                 * bit i = il parametro SCALARE SEMPLICE alla posizione i e' Int64 (0=Double) —
+                 * significativo solo per le posizioni non-array/STRING/BYREF/callback/UDT (per
+                 * quelle il bit e' ignorato, restano classificate dalle rispettive maschere
+                 * sotto). Nel caso omogeneo legacy coincide con 'kind' per ogni bit. Vedi
+                 * OpCode.cs OP_CALL_FFI_T e Compiler.Expressions.cs. */
+                int scalarKindMask = gmb_vm_read_u8(vm, task);
+                /* array_mask (2026-09-28): bit i settato se l'argomento logico i e' un array
+                 * BYREF — il ref va tenuto vivo (NON released qui) fino al marshalling sotto,
+                 * che lo trasforma in un puntatore nativo scratch invece che leggerlo come
+                 * scalare double. Vedi OpCode.cs OP_CALL_FFI_T e Compiler.Expressions.cs. */
+                int arrayMask = gmb_vm_read_u8(vm, task);
+                /* array_elem_int_mask (2026-09-28, fix parita'): bit i settato se l'array al
+                 * parametro i ha elementi INTERI (AS LONG/...) invece di DOUBLE — dichiarato a
+                 * compile-time, NON dedotto dal tag a runtime: un `DIM v() AS LONG` in VM/C
+                 * risultava comunque taggato GMB_TYPE_DOUBLE per i suoi elementi (stesso bug
+                 * osservato in FfiService.cs/PCodeVM), quindi il peek su
+                 * sv->list->items[0].kind sceglieva sistematicamente lo scratch del tipo
+                 * sbagliato. Vedi OpCode.cs OP_CALL_FFI_T. */
+                int arrayElemIntMask = gmb_vm_read_u8(vm, task);
+                /* string_mask/ret_is_string (2026-09-28, supporto STRING): un parametro STRING
+                 * e' un gmb_obj_string_t* (gmb_vm_value.h, DIVERSO dal gmb_obj_shared_val_t
+                 * degli array) — il ref va tenuto vivo come per gli array, ma il puntatore
+                 * nativo si legge direttamente da ->data (gia' NUL-terminated, nessuno scratch
+                 * buffer necessario, a differenza degli array taggati). ret_is_string: il
+                 * ritorno e' un puntatore nativo (spesso un buffer statico/riusato) da copiare
+                 * IMMEDIATAMENTE in una nuova stringa BASIC invece di trattarlo come numero. */
+                int stringMask = gmb_vm_read_u8(vm, task);
+                int retIsString = gmb_vm_read_u8(vm, task);
+                /* byref_scalar_mask/byref_scalar_elem_int_mask (2026-09-28, BYREF scalare): il
+                 * compilatore ha emesso OP_MAKE_BYREF/_GLOBAL/_ELEMENT per questi argomenti
+                 * (Compiler.Expressions.cs) — lo stack contiene una gmb_obj_byref_t* (stesso
+                 * meccanismo del BYREF ordinario). Il ref va tenuto vivo (riusa arrRefs[])
+                 * finché non si ri-scrive il valore OUT dopo la chiamata via gmb_byref_store. */
+                int byrefScalarMask = gmb_vm_read_u8(vm, task);
+                int byrefScalarElemIntMask = gmb_vm_read_u8(vm, task);
+                /* udt_param_field_count[8]/ret_udt_field_count + coda nomi/SymbolId
+                 * (2026-09-28, struct/UDT per valore): vedi OpCode.cs/Disassembler.cs
+                 * OP_CALL_FFI_T e Compiler.Expressions.cs. Un parametro UDT non è un bit
+                 * (sempre puntatore) come array/STRING/BYREF: si "espande" in N argomenti
+                 * nativi (uno per campo, PER VALORE) — un byte per posizione col conteggio
+                 * campi. I nomi servono a leggere un'istanza UDT VM/C in ingresso
+                 * (gmb_dict_t chiavato per nome, come OP_NEW_UDT_INSTANCE la popola); i
+                 * SymbolId servono a costruire un'istanza in uscita leggibile da
+                 * OP_LOAD_MEMBER (fallback "__m<SymbolId>", vedi vm_field_name_from_offset). */
+                int udtParamFieldCount[8] = {0};
+                for (int pi = 0; pi < 8; pi++) udtParamFieldCount[pi] = gmb_vm_read_u8(vm, task);
+                /* udtParamFieldKindMask[8] (2026-09-29, kind misto come parametro): bit i =
+                 * campo i del parametro UDT alla posizione pi è INTERO (0=DOUBLE) — vedi
+                 * Compiler.Expressions.cs/Disassembler.cs. Un parametro UDT uniforme ha tutti i
+                 * bit uguali (0 o 3 per 2 campi); mask 1 o 2 = kind misto (vedi mixedParamIdx). */
+                int udtParamFieldKindMask[8] = {0};
+                for (int pi = 0; pi < 8; pi++) udtParamFieldKindMask[pi] = gmb_vm_read_u8(vm, task);
+                int retUdtFieldCount = gmb_vm_read_u8(vm, task);
+                /* retUdtFieldKindMask (2026-09-29, kind misto sul ritorno): bit i = campo i del
+                 * ritorno UDT è INTERO (0=DOUBLE) — a differenza dei parametri (kind uniforme,
+                 * garantito dal guard di compilazione: 'kind' basta), il RITORNO può avere campi
+                 * di kind diverso tra loro. Vedi Compiler.Expressions.cs/Disassembler.cs. */
+                int retUdtFieldKindMask = gmb_vm_read_u8(vm, task);
+                /* callbackParamArity[8]/callbackParamKindMask/callbackParamHasRetMask
+                 * (2026-09-29, callback come parametro FFI): un byte PER POSIZIONE parametro
+                 * (255 = non e' un callback, altrimenti l'arita' 0-4), poi kind-mask/has-ret-
+                 * mask del trampolino nativo — usati sotto da gmb_ffi_cb_alloc per scegliere il
+                 * trampolino pre-dichiarato giusto (vedi il pool subito dopo
+                 * gmb_vm_call_closure_sync_n, piu' in alto nel file). */
+                int callbackParamArity[8] = {0};
+                for (int pi = 0; pi < 8; pi++)
+                    callbackParamArity[pi] = gmb_vm_read_u8(vm, task);
+                int callbackParamKindMask = gmb_vm_read_u8(vm, task);
+                int callbackParamHasRetMask = gmb_vm_read_u8(vm, task);
+                // Struct annidate (2026-09-29): la seconda costante per foglia è un CSV di
+                // SymbolId (uno PER SEGMENTO del path, non solo la foglia finale — vedi
+                // Compiler.Expressions.cs CollectFfiLeaves/SymbolIdPath), parsato in un path di
+                // interi. Per i PARAMETRI (lettura IN) serve solo il path-nomi (si legge il
+                // dict per nome, mai per offset) — il path-SymbolId è comunque consumato dal
+                // bytecode per restare allineati, anche se qui non viene usato. Per il RITORNO
+                // (ricostruzione istanza OUT) serve invece entrambi — vedi vm_ffi_set_leaf.
+                const char* udtFieldNames[8][8] = {{0}};
+                const char* retUdtFieldNames[8] = {0};
+                int retUdtFieldSymbolIdPath[8][4] = {{0}};
+                int retUdtFieldSymbolIdDepth[8] = {0};
+                for (int pi = 0; pi < 8; pi++)
+                    for (int fi = 0; fi < udtParamFieldCount[pi]; fi++)
+                    {
+                        int nameIdxF = gmb_vm_read_u16(vm, task);
+                        (void)gmb_vm_read_u16(vm, task);   /* symIdxF: non usato per la lettura IN */
+                        udtFieldNames[pi][fi] = (nameIdxF >= 0 && nameIdxF < (int)vm->chunk->consts_len
+                            && vm->chunk->constants[nameIdxF].type == GMB_CONST_STRING) ? vm->chunk->constants[nameIdxF].s : "";
+                    }
+                for (int fi = 0; fi < retUdtFieldCount; fi++)
+                {
+                    int nameIdxF = gmb_vm_read_u16(vm, task);
+                    int symIdxF = gmb_vm_read_u16(vm, task);
+                    retUdtFieldNames[fi] = (nameIdxF >= 0 && nameIdxF < (int)vm->chunk->consts_len
+                        && vm->chunk->constants[nameIdxF].type == GMB_CONST_STRING) ? vm->chunk->constants[nameIdxF].s : "";
+                    const char* symCsv = (symIdxF >= 0 && symIdxF < (int)vm->chunk->consts_len
+                        && vm->chunk->constants[symIdxF].type == GMB_CONST_STRING) ? vm->chunk->constants[symIdxF].s : "";
+                    retUdtFieldSymbolIdDepth[fi] = vm_parse_symbolid_csv(symCsv, retUdtFieldSymbolIdPath[fi], 4);
+                }
+                double args[16];
+                gmb_obj_t* arrRefs[16] = {0};
+                for (int i = argc - 1; i >= 0 && task->sp > 0; i--)
+                {
+                    gmb_stack_entry_t a = gmb_task_pop(task);
+                    /* Callback (2026-09-29): come array/STRING/BYREF/UDT, il ref (una
+                     * gmb_obj_closure_t*) va tenuto vivo fino al termine della chiamata FFI —
+                     * senza questo bit il gmb_obj_release nel ramo else sotto la libererebbe
+                     * SUBITO, prima ancora di poterla usare per costruire il trampolino. Un
+                     * callback verso una funzione top-level SENZA catture arriva invece come
+                     * a.type==1 (address grezzo) — nessun ref da trattenere, cade nel ramo else
+                     * come un normale scalare (stesso pattern di OP_CALL_INDIRECT). */
+                    if (((arrayMask & (1 << i)) != 0 || (stringMask & (1 << i)) != 0 || (byrefScalarMask & (1 << i)) != 0
+                         || (i < 8 && udtParamFieldCount[i] > 0) || (i < 8 && callbackParamArity[i] != 255)) && a.type == 2 && a.ref)
+                    {
+                        arrRefs[i] = a.ref;
+                        /* args[i]: per BYREF il valore; per STRING l'INDIRIZZO dei dati (il
+                         * path "mixed" scalari passa args[] diretto → una STRING in firma
+                         * mista viaggia come puntatore int64, stessa classe di array/BYREF);
+                         * per array/UDT/callback resta 0.0 (usano arrRefs). */
+                        args[i] = (byrefScalarMask & (1 << i)) != 0
+                            ? gmb_byref_load((gmb_obj_byref_t*)a.ref).num
+                            : ((stringMask & (1 << i)) != 0)
+                                ? (double)(intptr_t)((gmb_obj_string_t*)a.ref)->data
+                                : 0.0;
+                    }
+                    else
+                    {
+                        args[i] = (a.type == 1) ? a.num : 0.0;
+                        if (a.type == 2 && a.ref) gmb_obj_release(a.ref);
+                    }
+                }
+                /* Slot nativi TOTALI dopo l'espansione UDT (2026-09-28): un parametro UDT
+                 * occupa N slot consecutivi (uno per campo) invece di uno solo — la mappa
+                 * nativeSlotOf[i] dice a quale slot nativo INIZIA il parametro logico i.
+                 * Il compilatore garantisce nativeSlotCount <= 8 (guardia "troppi slot
+                 * nativi", Compiler.Expressions.cs). */
+                int nativeSlotOf[8] = {0};
+                int nativeSlotCount = 0;
+                for (int i = 0; i < argc && i < 8; i++)
+                {
+                    nativeSlotOf[i] = nativeSlotCount;
+                    nativeSlotCount += udtParamFieldCount[i] > 0 ? udtParamFieldCount[i] : 1;
+                }
+                /* Kind misto come PARAMETRO (2026-09-29): individua l'UNICO parametro UDT a 2
+                 * campi di kind diverso tra loro (mask 1 o 2 — mai 0 "tutto double" né 3 "tutto
+                 * intero", entrambi kind uniforme, gestiti già dal path esistente sotto). Al
+                 * massimo uno per dichiarazione, garantito dal guard compile-time
+                 * (Compiler.Expressions.cs). mixedNB/mixedNA = quanti slot SCALAR_T PRIMA/DOPO
+                 * la sua posizione — usati da GMB_FFI_MIXED_DISPATCH (vedi sopra). */
+                int mixedParamIdx = -1, mixedNB = 0, mixedNA = 0, mixedIsIdOrder = 0;
+                for (int i = 0; i < 8; i++)
+                    if (udtParamFieldCount[i] == 2 && (udtParamFieldKindMask[i] == 1 || udtParamFieldKindMask[i] == 2))
+                    {
+                        mixedParamIdx = i;
+                        mixedNB = nativeSlotOf[i];
+                        mixedNA = nativeSlotCount - mixedNB - 2;
+                        mixedIsIdOrder = (udtParamFieldKindMask[i] & 1) != 0;
+                        break;
+                    }
+                const char* lib = NULL;
+                if (libIdx >= 0 && libIdx < (int)vm->chunk->consts_len
+                    && vm->chunk->constants[libIdx].type == GMB_CONST_STRING)
+                    lib = vm->chunk->constants[libIdx].s;
+                const char* fn = NULL;
+                if (nameIdx >= 0 && nameIdx < (int)vm->chunk->consts_len
+                    && vm->chunk->constants[nameIdx].type == GMB_CONST_STRING)
+                    fn = vm->chunk->constants[nameIdx].s;
+
+                /* Callback come PARAMETRO (2026-09-29): risolve ogni slot con arita'!=255 in un
+                 * vero puntatore nativo (l'indirizzo di un trampolino pre-dichiarato, vedi il
+                 * pool gmb_ffi_cb_alloc/gmb_vm_call_closure_sync_n piu' in alto nel file) PRIMA
+                 * della dispatch generica sotto — da quel momento lo slot e' indistinguibile da
+                 * un normale argomento puntatore Int64 gia' risolto (array/STRING/BYREF),
+                 * NESSUNA modifica a GMB_FFI_DISPATCH/GMB_FFI_MIXED_DISPATCH e' stata
+                 * necessaria. arrRefs[i] (gia' tenuto vivo dal loop di pop sopra) e' una
+                 * gmb_obj_closure_t* per una lambda/closure, oppure NULL con args[i] gia'
+                 * contenente un address grezzo per una funzione top-level SENZA catture (stesso
+                 * riconoscimento di OP_CALL_INDIRECT, gmb_vm_core.c:6094-6102). Gli slot
+                 * allocati vengono liberati subito dopo la chiamata nativa (vedi sotto, insieme
+                 * al rilascio di arrRefs[]). */
+                int cbAllocKind[8], cbAllocArity[8], cbAllocSlot[8], cbAllocCount = 0;
+                int callbackError = 0;
+                for (int i = 0; i < argc && i < 8; i++)
+                {
+                    if (callbackParamArity[i] == 255) continue;
+                    gmb_obj_closure_t* cl = NULL;
+                    int addr = -1;
+                    if (arrRefs[i] != NULL)
+                    {
+                        if (arrRefs[i]->kind != GMB_OBJ_CLOSURE) { callbackError = 1; break; }
+                        cl = (gmb_obj_closure_t*)arrRefs[i];
+                    }
+                    else
+                    {
+                        addr = (int)args[i];
+                    }
+                    int cbKind = (callbackParamKindMask & (1 << i)) != 0 ? 1 : 0;
+                    int slot = -1;
+                    void* tramp = gmb_ffi_cb_alloc(cbKind, callbackParamArity[i], vm, task, cl, addr, &slot);
+                    if (!tramp) { callbackError = 1; break; } /* pool esaurito: >2 callback concorrenti per (kind,arita'), limite v1 */
+                    cbAllocKind[cbAllocCount] = cbKind;
+                    cbAllocArity[cbAllocCount] = callbackParamArity[i];
+                    cbAllocSlot[cbAllocCount] = slot;
+                    cbAllocCount++;
+                    args[i] = (double)(intptr_t)tramp;
+                }
+
+                double result = 0.0;
+                gmb_obj_string_t* retStr = NULL; /* ret_is_string: copy-out del ritorno nativo */
+                gmb_obj_shared_val_t* retUdtInst = NULL; /* struct/UDT: istanza VM/C in uscita */
+                if (lib != NULL && fn != NULL && argc <= 8 && !callbackError)
+                {
+                    void* h = gmb_ffi_dl_open(lib);
+                    if (h != NULL)
+                    {
+                        void* p = gmb_ffi_dl_sym(h, fn);
+                        unsigned fullMaskForArgc = argc >= 8 ? 0xFFu : (unsigned)((1 << argc) - 1);
+                        if (p != NULL && (unsigned)scalarKindMask != (unsigned)(kind == 1 ? fullMaskForArgc : 0))
+                        {
+                            /* Firma mista LONG/DOUBLE fra SCALARI SEMPLICI (2026-10, v1):
+                             * scalarKindMask non-uniforme con 'kind' — possibile SOLO quando
+                             * non c'e' nessun array/STRING/BYREF/callback/UDT nella firma
+                             * (garantito dal guard di compilazione, Compiler.Expressions.cs) —
+                             * args[] e' gia' il valore numerico grezzo per posizione (nessuna
+                             * espansione UDT, nessuno scratch array/BYREF/STRING), passato
+                             * diretto al dispatcher generato (gmb_vm_ffi_call_mixed, sopra). */
+                            result = gmb_vm_ffi_call_mixed(p, argc, scalarKindMask & fullMaskForArgc, kind == 1 ? 1 : 0, args);
+                        }
+                        else if (p != NULL && kind == 1)
+                        {
+                            /* Array BYREF (2026-09-28): gli array BASIC qui sono gmb_val_t*
+                             * TAGGATI (gmb_obj_shared_val_t->list), non un buffer nativo
+                             * contiguo — a differenza di C99Native (che emettono C
+                             * e riusano il puntatore vero). Serve un marshalling copy-in/
+                             * copy-out via scratch buffer: si materializza un buffer double
+                             * oppure int64_t temporaneo (tipo dedotto dal tag del PRIMO
+                             * elemento, array vuoto -> double), lo si passa alla funzione
+                             * nativa, e al ritorno si
+                             * ricopiano i valori (eventualmente scritti dalla funzione) dentro
+                             * gli item della lista — copre sia input (letti) che output
+                             * (scritti, es. CopyBuffer-style) senza distinguere i due casi. */
+                            void* scratch[8] = {0};
+                            gmb_int_t scratchLen[8] = {0};
+                            int scratchIsInt[8] = {0};
+                            for (int i = 0; i < argc && i < 8; i++)
+                            {
+                                if (!(arrayMask & (1 << i)) || !arrRefs[i]) continue;
+                                gmb_obj_shared_val_t* sv = (gmb_obj_shared_val_t*)arrRefs[i];
+                                gmb_int_t n = sv->list ? (gmb_int_t)sv->list->count : 0;
+                                int isInt = (arrayElemIntMask & (1 << i)) != 0;
+                                scratchIsInt[i] = isInt;
+                                scratchLen[i] = n;
+                                size_t elemSz = isInt ? sizeof(int64_t) : sizeof(double);
+                                void* buf = malloc(n > 0 ? (size_t)n * elemSz : elemSz);
+                                for (gmb_int_t j = 0; j < n; j++)
+                                {
+                                    gmb_val_t v = sv->list->items[j];
+                                    if (isInt)
+                                        ((int64_t*)buf)[j] = v.kind == GMB_TYPE_DOUBLE ? (int64_t)v.v_double : (int64_t)v.v_int;
+                                    else
+                                        ((double*)buf)[j] = v.kind == GMB_TYPE_DOUBLE ? v.v_double : (double)v.v_int;
+                                }
+                                scratch[i] = buf;
+                            }
+                            /* BYREF scalare (2026-09-28): "array di lunghezza 1" — stesso schema
+                             * copy-in/copy-out dello scratch sopra, ma una singola cella a 8
+                             * byte (il tipo ammesso per un parametro BYREF scalare è ristretto a
+                             * DOUBLE/LONG/QUAD/ULONG/UQUAD, sempre 8 byte — vedi
+                             * Compiler.Expressions.cs IsFfiArrayElemType). Riusa lo stesso array
+                             * scratch[]/scratchIsInt[] delle array (slot disgiunti: un bit è
+                             * settato in arrayMask O in byrefScalarMask, mai entrambi). */
+                            for (int i = 0; i < argc && i < 8; i++)
+                            {
+                                if (!(byrefScalarMask & (1 << i)) || !arrRefs[i]) continue;
+                                int isInt = (byrefScalarElemIntMask & (1 << i)) != 0;
+                                scratchIsInt[i] = isInt;
+                                void* cell = malloc(sizeof(int64_t));
+                                if (isInt) *(int64_t*)cell = (int64_t)args[i];
+                                else *(double*)cell = args[i];
+                                scratch[i] = cell;
+                            }
+                            /* Firma ESATTA per argc (mai il typedef variadico: su ARM64 la
+                             * chiamata a una funzione non-variadic attraverso un puntatore
+                             * variadic porta argomenti in registri sbagliati — 520618017
+                             * invece di 42 su vec_add(21,21)). Gli slot array usano
+                             * l'indirizzo dello scratch invece di args[i] (sempre 0.0 per loro). */
+                            /* STRING (2026-09-28): slot con string_mask -> puntatore diretto a
+                             * ->data (gmb_obj_string_t), nessuno scratch — il buffer BASIC e'
+                             * gia' NUL-terminata e non serve copiarlo per la durata della sola
+                             * chiamata (il nativo lo tratta come const char*). */
+                            #define GMB_FFI_A(i) \
+                                ((arrayMask & (1 << (i))) ? (int64_t)(intptr_t)scratch[i] : \
+                                 (byrefScalarMask & (1 << (i))) ? (int64_t)(intptr_t)scratch[i] : \
+                                 (stringMask & (1 << (i))) ? (arrRefs[i] ? (int64_t)(intptr_t)((gmb_obj_string_t*)arrRefs[i])->data : 0) : \
+                                 (int64_t)args[i])
+                            /* Struct/UDT per valore (2026-09-28): espande ogni parametro UDT nei
+                             * suoi campi (letti per NOME dal dict dell'istanza, gmb_dict_get) —
+                             * "un array di lunghezza 1 per campo" — dentro nativeArgs, nello
+                             * slot calcolato da nativeSlotOf[]. Gli altri slot (scalare/array/
+                             * STRING/BYREF) restano GMB_FFI_A(i) invariato, solo spostato nello
+                             * slot nativo giusto (== i se nessun UDT precede). */
+                            double nativeArgs[8] = {0};
+                            for (int i = 0; i < argc && i < 8; i++)
+                            {
+                                if (udtParamFieldCount[i] > 0)
+                                {
+                                    gmb_obj_shared_val_t* ud = (gmb_obj_shared_val_t*)arrRefs[i];
+                                    for (int fi = 0; fi < udtParamFieldCount[i]; fi++)
+                                    {
+                                        // Struct annidate (2026-09-29): path punteggiato ("I.X")
+                                        // navigato ricorsivamente — vedi vm_ffi_get_leaf.
+                                        nativeArgs[nativeSlotOf[i] + fi] = (ud && ud->dict) ? vm_ffi_get_leaf(ud->dict, udtFieldNames[i][fi]) : 0.0;
+                                    }
+                                }
+                                else nativeArgs[nativeSlotOf[i]] = (double)GMB_FFI_A(i);
+                            }
+                            #undef GMB_FFI_A
+                            int64_t r = 0;
+                            if (retUdtFieldCount == 0)
+                                GMB_FFI_CALL_T(int64_t, int64_t, nativeArgs, r);
+                            /* Struct/UDT per valore, RITORNO (2026-09-28): switch su
+                             * retUdtFieldCount per selezionare la "forma" pre-dichiarata
+                             * giusta (gmb_ffi_udti<N>_t) — il tipo di ritorno del cast deve
+                             * combaciare ESATTAMENTE col prototipo nativo reale perché il
+                             * COMPILATORE (che compila QUESTO file) generi la sequenza di
+                             * chiamata ABI corretta (registri vs hidden-pointer-return) — vedi
+                             * il commento sopra GMB_FFI_UDT_SHAPE/GMB_FFI_DISPATCH. I campi
+                             * vengono ricopiati SUBITO in retFieldsD[] (rappresentazione
+                             * comune, indipendente dalla forma) per il resto della gestione.
+                             */
+                            double retFieldsD[8] = {0};
+                            /* Kind misto (2026-09-29): retUdtFieldKindMask sceglie la forma
+                             * ESATTA indipendentemente dal ramo kind=1/kind=0 in cui ci troviamo
+                             * (il ritorno non è vincolato al kind "esterno" della firma — vedi
+                             * commento su ValidateUdtForFfi/kindList in Compiler.Expressions.cs). */
+                            if (retUdtFieldCount == 1) {
+                                if (retUdtFieldKindMask & 1) { gmb_ffi_udti1_t rv = {0}; GMB_FFI_CALL_T(int64_t, gmb_ffi_udti1_t, nativeArgs, rv); retFieldsD[0] = (double)rv.f[0]; }
+                                else { gmb_ffi_udtd1_t rv = {0}; GMB_FFI_CALL_T(int64_t, gmb_ffi_udtd1_t, nativeArgs, rv); retFieldsD[0] = rv.f[0]; }
+                            } else if (retUdtFieldCount == 2) {
+                                switch (retUdtFieldKindMask & 3) {
+                                case 0: { gmb_ffi_udtd2_t rv = {0}; GMB_FFI_CALL_T(int64_t, gmb_ffi_udtd2_t, nativeArgs, rv); retFieldsD[0] = rv.f[0]; retFieldsD[1] = rv.f[1]; break; }
+                                case 1: { gmb_ffi_udtid2_t rv = {0}; GMB_FFI_CALL_T(int64_t, gmb_ffi_udtid2_t, nativeArgs, rv); retFieldsD[0] = (double)rv.f0; retFieldsD[1] = rv.f1; break; }
+                                case 2: { gmb_ffi_udtdi2_t rv = {0}; GMB_FFI_CALL_T(int64_t, gmb_ffi_udtdi2_t, nativeArgs, rv); retFieldsD[0] = rv.f0; retFieldsD[1] = (double)rv.f1; break; }
+                                default: { gmb_ffi_udti2_t rv = {0}; GMB_FFI_CALL_T(int64_t, gmb_ffi_udti2_t, nativeArgs, rv); retFieldsD[0] = (double)rv.f[0]; retFieldsD[1] = (double)rv.f[1]; break; }
+                                }
+                            }
+                            result = (double)r;
+                            /* Struct/UDT per valore, RITORNO: costruisce una NUOVA istanza VM/C
+                             * (gmb_obj_shared_val_t GMB_OBJ_DICT) dai campi ricopiati sopra —
+                             * chiave "__m<SymbolId>" (fallback che OP_LOAD_MEMBER usa quando la
+                             * risoluzione __class__/FieldNames non c'è, vedi case OP_LOAD_MEMBER
+                             * sopra) così un successivo `pt.X` funziona come su qualunque altra
+                             * istanza UDT. */
+                            if (retUdtFieldCount > 0)
+                            {
+                                retUdtInst = gmb_shared_dict_new();
+                                if (retUdtInst)
+                                    for (int fi = 0; fi < retUdtFieldCount; fi++)
+                                        // Struct annidate (2026-09-29): scrive SIA il nome-piano
+                                        // SIA "__m<SymbolId>" ad OGNI livello del path (non solo
+                                        // sulla foglia finale) — vedi vm_ffi_set_leaf.
+                                        vm_ffi_set_leaf(retUdtInst, retUdtFieldNames[fi], retUdtFieldSymbolIdPath[fi], retUdtFieldSymbolIdDepth[fi], retFieldsD[fi]);
+                            }
+                            if (retIsString)
+                            {
+                                /* Il ritorno e' un puntatore nativo (spesso un buffer statico/
+                                 * riusato, es. vec_label) -> copia IMMEDIATA in una nuova
+                                 * stringa BASIC via gmb_str_cstr (malloc+memcpy+NUL), mai
+                                 * tenuto vivo oltre questo punto. */
+                                retStr = gmb_str_cstr((const char*)(intptr_t)r);
+                            }
+                            /* copy-out: ricopia lo scratch (eventualmente scritto dalla
+                             * funzione nativa) dentro gli item della lista, poi libera. Per i
+                             * parametri BYREF scalare (2026-09-28) la stessa scratch cell va
+                             * invece scritta-through nel box via gmb_byref_store (write-through,
+                             * stesso schema del BYREF ordinario) — slot disgiunti da arrayMask,
+                             * quindi arrRefs[i] qui è una gmb_obj_byref_t*, non una lista. */
+                            for (int i = 0; i < argc && i < 8; i++)
+                            {
+                                if (!scratch[i]) continue;
+                                if (byrefScalarMask & (1 << i))
+                                {
+                                    gmb_stack_entry_t outv = {0};
+                                    outv.type = 1;
+                                    outv.basic_type = GMB_BT_NUMBER;
+                                    outv.num = scratchIsInt[i] ? (double)*(int64_t*)scratch[i] : *(double*)scratch[i];
+                                    gmb_byref_store((gmb_obj_byref_t*)arrRefs[i], outv);
+                                    free(scratch[i]);
+                                    continue;
+                                }
+                                gmb_obj_shared_val_t* sv = (gmb_obj_shared_val_t*)arrRefs[i];
+                                gmb_int_t n = scratchLen[i];
+                                for (gmb_int_t j = 0; j < n && sv->list && j < (gmb_int_t)sv->list->count; j++)
+                                {
+                                    sv->list->items[j] = scratchIsInt[i]
+                                        ? gmb_make_val_int(((int64_t*)scratch[i])[j])
+                                        : gmb_make_val_double(((double*)scratch[i])[j]);
+                                }
+                                free(scratch[i]);
+                            }
+                        }
+                        else if (p != NULL)
+                        {
+                            /* kind 0 = double: firma ESATTA per argc (mai il variadico). Nessun
+                             * array/STRING/BYREF possibile qui (forzano sempre kind=1) — solo
+                             * eventuali parametri/ritorno UDT tutto-DOUBLE (2026-09-28). */
+                            double nativeArgsD[8] = {0};
+                            for (int i = 0; i < argc && i < 8; i++)
+                            {
+                                if (udtParamFieldCount[i] > 0)
+                                {
+                                    gmb_obj_shared_val_t* ud = (gmb_obj_shared_val_t*)arrRefs[i];
+                                    for (int fi = 0; fi < udtParamFieldCount[i]; fi++)
+                                    {
+                                        gmb_val_t fv = (ud && ud->dict) ? gmb_dict_get(*ud->dict, udtFieldNames[i][fi]) : (gmb_val_t){0};
+                                        nativeArgsD[nativeSlotOf[i] + fi] = fv.kind == GMB_TYPE_DOUBLE ? fv.v_double : (double)fv.v_int;
+                                    }
+                                }
+                                else nativeArgsD[nativeSlotOf[i]] = args[i];
+                            }
+                            if (retUdtFieldCount == 0)
+                            {
+                                if (mixedParamIdx < 0)
+                                    result = gmb_vm_ffi_call_double(p, nativeSlotCount, nativeArgsD);
+                                else
+                                    GMB_FFI_CALL_T(double, double, nativeArgsD, result);
+                            }
+                            else
+                            {
+                                /* Struct/UDT per valore, RITORNO, kind DOUBLE — stesso principio
+                                 * del ramo kind=1 sopra ma con le forme gmb_ffi_udtd<N>_t. */
+                                double retFieldsD2[8] = {0};
+                                /* Kind misto (2026-09-29): stessa selezione via
+                                 * retUdtFieldKindMask del ramo kind=1 — vedi commento gemello. */
+                                if (retUdtFieldCount == 1) {
+                                    if (retUdtFieldKindMask & 1) { gmb_ffi_udti1_t rv = {0}; GMB_FFI_CALL_T(double, gmb_ffi_udti1_t, nativeArgsD, rv); retFieldsD2[0] = (double)rv.f[0]; }
+                                    else { gmb_ffi_udtd1_t rv = {0}; GMB_FFI_CALL_T(double, gmb_ffi_udtd1_t, nativeArgsD, rv); retFieldsD2[0] = rv.f[0]; }
+                                } else if (retUdtFieldCount == 2) {
+                                    switch (retUdtFieldKindMask & 3) {
+                                    case 0: { gmb_ffi_udtd2_t rv = {0}; GMB_FFI_CALL_T(double, gmb_ffi_udtd2_t, nativeArgsD, rv); retFieldsD2[0] = rv.f[0]; retFieldsD2[1] = rv.f[1]; break; }
+                                    case 1: { gmb_ffi_udtid2_t rv = {0}; GMB_FFI_CALL_T(double, gmb_ffi_udtid2_t, nativeArgsD, rv); retFieldsD2[0] = (double)rv.f0; retFieldsD2[1] = rv.f1; break; }
+                                    case 2: { gmb_ffi_udtdi2_t rv = {0}; GMB_FFI_CALL_T(double, gmb_ffi_udtdi2_t, nativeArgsD, rv); retFieldsD2[0] = rv.f0; retFieldsD2[1] = (double)rv.f1; break; }
+                                    default: { gmb_ffi_udti2_t rv = {0}; GMB_FFI_CALL_T(double, gmb_ffi_udti2_t, nativeArgsD, rv); retFieldsD2[0] = (double)rv.f[0]; retFieldsD2[1] = (double)rv.f[1]; break; }
+                                    }
+                                }
+                                retUdtInst = gmb_shared_dict_new();
+                                if (retUdtInst)
+                                    for (int fi = 0; fi < retUdtFieldCount; fi++)
+                                        // Struct annidate (2026-09-29) — vedi vm_ffi_set_leaf e
+                                        // il commento gemello nel ramo kind=1 sopra.
+                                        vm_ffi_set_leaf(retUdtInst, retUdtFieldNames[fi], retUdtFieldSymbolIdPath[fi], retUdtFieldSymbolIdDepth[fi], retFieldsD2[fi]);
+                            }
+                        }
+                    }
+                }
+                /* Rilascia i ref array/stringa tenuti vivi per il marshalling sopra (anche se
+                 * lib/fn non sono stati risolti — non devono fuoriuscire dal refcount). */
+                for (int i = 0; i < argc && i < 16; i++)
+                    if (arrRefs[i]) gmb_obj_release(arrRefs[i]);
+                /* Libera i trampolini callback allocati sopra — schema SOLO SINCRONO (v1): il
+                 * nativo deve richiamare il callback DURANTE questa chiamata, mai dopo (un
+                 * callback salvato per un richiamo posteriore troverebbe lo slot gia'
+                 * liberato/riassegnato) — vedi AiWiki Bugs/(open) - FFI-Estensioni-Possibili-
+                 * BYREF-Struct-Callback.md §3bis. */
+                for (int ci = 0; ci < cbAllocCount; ci++)
+                    gmb_ffi_cb_free(cbAllocKind[ci], cbAllocArity[ci], cbAllocSlot[ci]);
+                if (callbackError)
+                {
+                    vm_error(task, "[FFI] parametro callback (AS FUNCTION/AS SUB) non valido: il valore passato non e' una closure invocabile, oppure troppi callback concorrenti dello stesso kind/arita' (limite v1: 2).");
+                    return -1;
+                }
+                /* retIsString sul path "mixed" scalari (scalarKindMask non uniforme): il ramo
+                 * kind==1 (sotto) copre solo la firma a puntatore; una STRING di ritorno con
+                 * un parametro DOUBLE (che forza il mixed) restava un numero (pointer). Copia
+                 * qui il puntatore dal risultato (pointer < 2^52 → esatto in double). */
+                if (retIsString && !retStr) retStr = gmb_str_cstr((const char*)(intptr_t)result);
+                if (retStr) gmb_task_push_ref(task, (gmb_obj_t*)retStr, GMB_BT_STRING);
+                else if (retUdtInst) gmb_task_push_ref(task, (gmb_obj_t*)retUdtInst, GMB_BT_OBJECT);
+                else gmb_task_push_num(task, result, GMB_BT_NUMBER);
+                break;
+            }
+            case OP_CALL_BUILTIN:
+            {
+                int func_code = gmb_vm_read_u16(vm, task);
+                int argc = gmb_vm_read_u8(vm, task);
+                task->stop_iteration = 0;
+                gmb_vm_exec_builtin(vm, task, func_code, argc);
+                /* V5b safepoint CPU: il builtin ha parcheggiato il task su un kernel
+                 * lungo (thread dedicato); il tick si ferma — il thread del job pusha
+                 * il risultato e riaccoda il task (specchio ParkCpuBuiltin/ParkAsync). */
+                if (task->state == GMB_TS_BLOCKED) return 0;
+                /* NEXT() su generatore esaurito segnala StopIteration (ERR.Number=144):
+                 * unwind V4 verso il CATCH più interno (attraversa i FINALLY). */
+                if (task->stop_iteration)
+                {
+                    task->stop_iteration = 0;
+                    gmb_stack_entry_t ev = { 0 };
+                    gmb_obj_shared_val_t* err = gmb_shared_dict_new();
+                    if (err)
+                    {
+                        gmb_dict_set(err->dict, "Number", gmb_make_val_double(144.0));
+                        gmb_dict_set(err->dict, "Description", gmb_make_val_string_counted("Stop iteration"));
+                        ev.type = 2;
+                        ev.ref = (gmb_obj_t*)err;
+                        ev.basic_type = GMB_BT_OBJECT;
+                    }
+                    if (try_enter_exception_handler(task, ev, err != NULL))
+                    {
+                        if (task->state == GMB_TS_FINISHED) return -1;
+                        break;
+                    }
+                    vm_error(task, "BASIC Runtime Error: Stop iteration (nessun blocco TRY attivo)");
+                    return -1;
+                }
+                /* Gosched esplicito (TaskYield): termina il tick SUBITO (cede al worker), come
+                 * runtime.Gosched() in Go. Il worker_loop vede force_yield e riaccoda il task. */
+                if (task->force_yield)
+                    return 1;
+                break;
+            }
+
+            /* ---- Concorrenza (§16 GPM) ---- */
+            case OP_PUSH_TRY:
+            {
+                int opcode_ip = task->ip - 1;
+                int handlerOffset = gmb_vm_read_u16(vm, task);
+                if (task->try_count < GMB_TRY_STACK_CAP)
+                {
+                    gmb_try_entry_t* e = (gmb_try_entry_t*)calloc(1, sizeof(gmb_try_entry_t));
+                    if (!e) return -1;
+                    e->refcount = 1;
+                    e->protected_start = task->ip;
+                    e->handler_ip = task->ip + handlerOffset;
+                    e->stack_pointer = task->sp;
+                    e->frame = task->frame;
+                    /* Side-table TryRegions del chunk (Compiler.Exceptions.cs): senza
+                     * metadata niente CleanupStack e niente FINALLY sospendibile; i
+                     * default conservano la semantica catch-only storica. */
+                    e->finally_ip = e->handler_ip;
+                    e->end_ip = e->handler_ip;
+                    e->has_catch = 1;
+                    uint32_t fip = 0, eip = 0;
+                    int hc = 1;
+                    if (gmb_chunk_try_region(vm->chunk, opcode_ip, &fip, &eip, &hc))
+                    {
+                        e->finally_ip = (int)fip;
+                        e->end_ip = (int)eip;
+                        e->has_catch = hc ? 1 : 0;
+                        if (task->cleanup_count < GMB_TRY_STACK_CAP)
+                        {
+                            e->refcount++;
+                            task->cleanup_stack[task->cleanup_count++] = e;
+                        }
+                    }
+                    task->try_stack[task->try_count++] = e;
+                }
+                break;
+            }
+            case OP_POP_TRY:
+            {
+                if (task->try_count > 0)
+                    gmb_try_entry_release(task->try_stack[--task->try_count]);
+                break;
+            }
+            case OP_THROW:
+            {
+                /* V4: unwind sospendibile — attraversa i FINALLY prima del CATCH.
+                 * THROW di un CODICE NUMERICO = errore BASIC: passa dallo schema a 3 livelli
+                 * (TRY/CATCH → ON ERROR GOTO → fatale) come `ERROR n`, così anche ERR.Number
+                 * viene popolata e `ON ERROR` lo cattura. Prima, senza TRY, il THROW era
+                 * SEMPRE fatale ("unhandled exception") anche con un handler installato:
+                 * `THROW 42` + ON ERROR divergeva da IL/C99 (che lo catturano). */
+                gmb_stack_entry_t val = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                if (val.type == 1)   /* numero = codice d'errore */
+                {
+                    double code = val.num;
+                    if (raise_basic_error(task, code, gmb_err_default_message((int)code)))
+                        push_num_entry(task, 0.0, GMB_BT_NUMBER);   /* RESUME NEXT */
+                    if (task->state == GMB_TS_FINISHED) return 0;
+                    break;
+                }
+                if (try_enter_exception_handler(task, val, 1))
+                {
+                    if (task->state == GMB_TS_FINISHED) return 0;
+                    break;
+                }
+                /* Nessun TRY: prova l'handler ON ERROR (stessa semantica del raise a 3 livelli).
+                 * Il valore lanciato resta il valore (per CATCH e AS <tipo>), mentre ERR porta
+                 * il dettaglio in forma di dizionario. */
+                if (task->error_mode == 1)
+                {
+                    task->ip = task->error_resume_next_ip;
+                    push_ref_entry(task, val.type == 2 ? val.ref : NULL, val.basic_type);
+                    break;
+                }
+                unwind_procedure_frames_to_error_handler(task);
+                if (task->error_handler_ip > 0)
+                {
+                    if (val.type == 2 && val.ref) gmb_obj_retain(val.ref);
+                    push_ref_entry(task, val.type == 2 ? val.ref : NULL, val.basic_type);
+                    if (task->error_handler_is_gosub && task->ip_stack_count < 64)
+                        task->ip_stack[task->ip_stack_count++] = task->ip;
+                    task->ip = task->error_handler_ip;
+                    break;
+                }
+                vm_error(task, "unhandled exception (THROW senza CATCH)");
+                return -1;
+            }
+            case OP_SET_ERR_HANDLER_GOTO:
+            {
+                int addr = gmb_vm_read_u16(vm, task);
+                task->error_handler_ip = addr;
+                task->error_handler_is_gosub = 0;
+                if (addr == 0) task->error_mode = 0;   /* ON ERROR GOTO 0: disabilita anche resume-next */
+                break;
+            }
+            case OP_SET_ERR_HANDLER_RESUME:
+            {
+                /* ON ERROR RESUME NEXT: imposta l'handler resume-next (nessun label). */
+                task->error_mode = 1;
+                task->error_handler_ip = 0;
+                task->error_handler_is_gosub = 0;
+                break;
+            }
+            case OP_SET_ERR_HANDLER_GOSUB:
+            {
+                int addr = gmb_vm_read_u16(vm, task);
+                task->error_handler_ip = addr;
+                task->error_handler_is_gosub = addr != 0;
+                break;
+            }
+            case OP_RESUME:
+            {
+                /* Specchio OP_RESUME di PCodeProcessor: l'operando è la MODALITÀ
+                 * (0=RESUME NEXT, 1=RESUME retry, altro=indirizzo label), non la
+                 * destinazione secca. */
+                int mode = gmb_vm_read_u16(vm, task);
+                if (task->error_handler_ip > 0)
+                {
+                    if (mode == 0)   /* RESUME NEXT */
+                    {
+                        if (task->error_handler_is_gosub && task->ip_stack_count > 0)
+                            task->ip = task->ip_stack[--task->ip_stack_count];
+                        else if (task->error_resume_next_ip >= 0)
+                            task->ip = task->error_resume_next_ip;
+                    }
+                    else if (mode == 1)   /* RESUME (retry dell'istruzione in errore) */
+                    {
+                        if (task->error_handler_is_gosub && task->ip_stack_count > 0)
+                            task->ip_stack_count--;
+                        if (task->error_line_ip >= 0)
+                            task->ip = task->error_line_ip;
+                    }
+                    else   /* RESUME <label/linea> */
+                    {
+                        if (task->error_handler_is_gosub && task->ip_stack_count > 0)
+                            task->ip_stack_count--;
+                        task->ip = mode;
+                    }
+                }
+                else if (mode == 0)
+                    task->error_mode = 1;   /* PCodeErrorMode.ResumeNext */
+                break;
+            }
+            case OP_GO:
+            {
+                int addr = gmb_vm_read_u16(vm, task);
+                if (vm->scheduler)
+                {
+                    gmb_task_t* go = gmb_task_create(vm->scheduler, addr);
+                    go->vm_ctx = vm;
+                    go->globals_nums = task->globals_nums;
+                    go->globals_refs = task->globals_refs;
+                    go->globals_types = task->globals_types;
+                    go->globals_basic = task->globals_basic;
+                    go->globals_count = task->globals_count;
+                    /* Specchio GpmCore: un figlio creato in una nursery già cancellata
+                     * (es. GO dentro un FINALLY durante l'unwind Cancel) nasce già marcado. */
+                    go->cancellation_requested = task->cancellation_requested;
+                    /* estrai wg (in cima) + args e ripushali sul nuovo task */
+                    gmb_stack_entry_t wg = { 0 };
+                    if (task->sp > 0) wg = gmb_task_pop(task);
+                    /* args (dal basso verso l'alto) — raccogli in ordine */
+                    gmb_stack_entry_t args[16];
+                    int nargs = 0;
+                    while (task->sp > 0 && nargs < 16)
+                        args[nargs++] = gmb_task_pop(task);
+                    for (int i = nargs - 1; i >= 0; i--)
+                    {
+                        if (args[i].type == 1) gmb_task_push_num(go, args[i].num, args[i].basic_type);
+                        else gmb_task_push_ref(go, (gmb_obj_t*)args[i].ref, args[i].basic_type);
+                    }
+                    if (wg.type == 2 && wg.ref && wg.basic_type == GMB_BT_OBJECT)
+                    {
+                        gmb_waitgroup_t* pwg = (gmb_waitgroup_t*)wg.ref;
+                        gmb_wg_add(pwg, 1);
+                        go->waitgroup = pwg;   /* Done implicito al finish */
+                        gmb_obj_retain(wg.ref);
+                    }
+                    else
+                    {
+                        /* GO SUB senza IN: registra sul gruppo implicito del genitore
+                         * (WAIT nuda; bug 2026-10-01). Stessa disciplina refcount del
+                         * gruppo esplicito: un retain per figlio, Done+release al finish,
+                         * ref del genitore rilasciato in gmb_task_free. */
+                        if (!task->implicit_waitgroup)
+                            task->implicit_waitgroup = gmb_wg_create();
+                        if (task->implicit_waitgroup)
+                        {
+                            gmb_wg_add(task->implicit_waitgroup, 1);
+                            go->waitgroup = task->implicit_waitgroup;
+                            gmb_obj_retain((gmb_obj_t*)task->implicit_waitgroup);
+                        }
+                    }
+                    gmb_sched_enqueue(vm->scheduler, go);
+                }
+                break;
+            }
+            case OP_GO_FUNCTION:
+            {
+                int addr = gmb_vm_read_u16(vm, task);
+                if (vm->scheduler)
+                {
+                    gmb_task_t* go = gmb_task_create(vm->scheduler, addr);
+                    go->vm_ctx = vm;
+                    go->globals_nums = task->globals_nums;
+                    go->globals_refs = task->globals_refs;
+                    go->globals_types = task->globals_types;
+                    go->globals_basic = task->globals_basic;
+                    go->globals_count = task->globals_count;
+                    go->cancellation_requested = task->cancellation_requested;
+                    /* estrai wg (in cima) + args e ripushali sul nuovo task (stesso schema
+                     * OP_GO_SUB): senza questo i parametri della FUNCTION risultavano vuoti
+                     * (NumRisultati=0, canale NULL) → il corpo non girava e il future era 0. */
+                    gmb_stack_entry_t wg = { 0 };
+                    if (task->sp > 0) wg = gmb_task_pop(task);
+                    gmb_stack_entry_t args[16];
+                    int nargs = 0;
+                    while (task->sp > 0 && nargs < 16)
+                        args[nargs++] = gmb_task_pop(task);
+                    for (int i = nargs - 1; i >= 0; i--)
+                    {
+                        if (args[i].type == 1) gmb_task_push_num(go, args[i].num, args[i].basic_type);
+                        else gmb_task_push_ref(go, (gmb_obj_t*)args[i].ref, args[i].basic_type);
+                    }
+                    if (wg.type == 2 && wg.ref && wg.basic_type == GMB_BT_OBJECT)
+                    {
+                        gmb_waitgroup_t* pwg = (gmb_waitgroup_t*)wg.ref;
+                        gmb_wg_add(pwg, 1);
+                        go->waitgroup = pwg;   /* Done implicito al finish */
+                        gmb_obj_retain(wg.ref);
+                    }
+                    else
+                    {
+                        /* GO FUNCTION senza IN: come OP_GO (gruppo implicito, WAIT nuda). */
+                        if (!task->implicit_waitgroup)
+                            task->implicit_waitgroup = gmb_wg_create();
+                        if (task->implicit_waitgroup)
+                        {
+                            gmb_wg_add(task->implicit_waitgroup, 1);
+                            go->waitgroup = task->implicit_waitgroup;
+                            gmb_obj_retain((gmb_obj_t*)task->implicit_waitgroup);
+                        }
+                    }
+                    gmb_future_t* fut = gmb_future_create();
+                    go->future_to_resolve = fut;
+                    /* future come valore pushato sul chiamante (basic_type OBJECT) */
+                    gmb_task_push_ref(task, (gmb_obj_t*)fut, GMB_BT_OBJECT);
+                    gmb_sched_enqueue(vm->scheduler, go);
+                }
+                else push_nil(task);
+                break;
+            }
+            case OP_RESOLVE_FUTURE:
+            {
+                /* Il future è in cima allo stack (peek, non pop). Se non risolto: registra
+                 * waiter e sospendi (return 0) — al risveglio si ri-esegue QUESTO opcode
+                 * (ip rewindato). Se già risolto: consuma e spinge il valore. */
+                gmb_stack_entry_t top = task->sp > 0 ? task->stack[task->sp - 1] : (gmb_stack_entry_t){0};
+                if (top.type == 2 && top.ref && top.ref->kind == GMB_OBJ_FUTURE)
+                {
+                    gmb_future_t* fut = (gmb_future_t*)top.ref;
+                    task->ip -= 1;
+                    if (gmb_future_register_waiter(fut, task))
+                        return 0; /* parcheggiato fino alla risoluzione */
+                    task->ip += 1;
+                    gmb_stack_entry_t popped = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                    gmb_obj_release(popped.ref);
+                    /* V4g: future fallito → propaga l'errore (specchio PropagateFutureFailure). */
+                    if (fut->is_failed)
+                    {
+                        char fmsg[320];
+                        snprintf(fmsg, sizeof(fmsg), "GO FUNCTION error: %s", fut->fail_msg);
+                        raise_basic_error(task, 200.0, fmsg);
+                        if (task->state == GMB_TS_FINISHED) return -1;
+                        break;
+                    }
+                    if (fut->result_is_num) push_num_entry(task, fut->result_num, GMB_BT_NUMBER);
+                    else if (fut->result) push_ref_entry(task, fut->result, GMB_BT_OBJECT);
+                    else push_nil(task);
+                }
+                /* non è un future: RESOLVE è l'identità, lascia il valore sullo stack */
+                break;
+            }
+            case OP_SEND:
+            {
+                if (task->sp < 2) break;
+                gmb_stack_entry_t ce = gmb_task_pop(task);   /* canale in cima */
+                gmb_stack_entry_t ve = gmb_task_pop(task);   /* valore */
+                if (ce.type == 2 && ce.ref && ce.basic_type == GMB_BT_OBJECT)
+                {
+                    gmb_channel_t* ch = (gmb_channel_t*)ce.ref;
+                    /* prepara retry PRIMA della visibilità: il valore numerico va ripushato
+                     * come entry numerica (push_ref con ref NULL perderebbe ve.num → il retry
+                     * del sender parcheggiato invierebbe null). */
+                    if (ve.type == 1) push_num_entry(task, ve.num, ve.basic_type);
+                    else gmb_task_push_ref(task, (gmb_obj_t*)ve.ref, ve.basic_type);
+                    gmb_task_push_ref(task, (gmb_obj_t*)ce.ref, GMB_BT_OBJECT);
+                    task->ip--;
+                    gmb_task_t* woken = NULL;
+                    int is_num = ve.type == 1;
+                    int sr = gmb_channel_send_or_park(ch, (gmb_obj_t*)ve.ref, ve.num, is_num, task, NULL, 0, &woken);
+                    if (sr > 0)
+                    {
+                        /* Il buffer ora RITIENE il ref inviato: consuma le entry di retry
+                         * con truncate (rilascia i loro retain) e rilascia i retain presi
+                         * dal pop. Il vecchio `sp -= 2` lasciava i retain orfani (leak). */
+                        gmb_task_truncate(task, task->sp - 2);
+                        task->ip++;
+                        if (ve.type == 2 && ve.ref) gmb_obj_release(ve.ref);
+                        if (ce.type == 2 && ce.ref) gmb_obj_release(ce.ref);
+                        if (woken) gmb_sched_enqueue(vm->scheduler, woken);
+                        break;
+                    }
+                    if (sr < 0)
+                    {
+                        /* V5: send su canale chiuso — panic Go → errore BASIC deterministico.
+                         * Consuma gli operandi di retry come nel path di successo. */
+                        gmb_task_truncate(task, task->sp - 2);
+                        task->ip++;
+                        if (ve.type == 2 && ve.ref) gmb_obj_release(ve.ref);
+                        if (ce.type == 2 && ce.ref) gmb_obj_release(ce.ref);
+                        vm_error(task, "BASIC Runtime Error: send su canale chiuso");
+                        return -1;
+                    }
+                    /* parcheggiato: le entry di retry restano sullo stack (hanno i propri
+                     * retain presi con push_ref); rilascia solo i retain del pop. */
+                    if (ve.type == 2 && ve.ref) gmb_obj_release(ve.ref);
+                    if (ce.type == 2 && ce.ref) gmb_obj_release(ce.ref);
+                    return 0; /* parcheggiato */
+                }
+                break;
+            }
+            case OP_RECV:
+            {
+                if (task->sp <= 0) break;
+                gmb_stack_entry_t ce = gmb_task_pop(task);
+                if (ce.type == 2 && ce.ref && ce.basic_type == GMB_BT_OBJECT)
+                {
+                    gmb_channel_t* ch = (gmb_channel_t*)ce.ref;
+                    gmb_task_push_ref(task, (gmb_obj_t*)ce.ref, GMB_BT_OBJECT);
+                    task->ip--;
+                    gmb_obj_t* value = NULL; double num = 0; int is_num = 0;
+                    gmb_task_t* woken = NULL;
+                    int recv_closed = 0;
+                    if (gmb_channel_recv_or_park(ch, task, &value, &num, &is_num, &recv_closed, NULL, 0, &woken))
+                    {
+                        gmb_task_truncate(task, task->sp - 1);
+                        task->ip++;
+                        if (ce.type == 2 && ce.ref) gmb_obj_release(ce.ref);
+                        if (woken) gmb_sched_enqueue(vm->scheduler, woken);
+                        if (is_num) push_num_entry(task, num, GMB_BT_NUMBER);
+                        else if (value)
+                        {
+                            /* Il retain del buffer passa al chiamante: push_ref_entry ne
+                             * prende uno nuovo, poi rilascia quello ricevuto. */
+                            push_ref_entry(task, value,
+                                value->kind == GMB_OBJ_STRING ? GMB_BT_STRING : GMB_BT_OBJECT);
+                            gmb_obj_release(value);
+                        }
+                        else push_nil(task);
+                        break;
+                    }
+                    if (ce.type == 2 && ce.ref) gmb_obj_release(ce.ref);
+                    return 0; /* parcheggiato */
+                }
+                break;
+            }
+            case OP_FE_NEXT:
+            {
+                /* FOR EACH v IN <coll>: dispatch a runtime sul kind REALE dell'oggetto in
+                 * cima allo stack — CANALE (stesso protocollo retry/park di OP_RECV_OK
+                 * sotto, copiato qui perché OP_RECV_OK da solo trattava QUALSIASI valore
+                 * come canale, type confusion su liste/dict — vedi GMB_OP_FE_NEXT in
+                 * gmb_compiler.h) oppure LISTA/DICT (indice esplicito nello slot idxSlot,
+                 * incrementato qui, mai un vero iteratore: ok finché idx < conteggio).
+                 * Operando: idxSlot (u16) — letto/scritto con gmb_task_load_local/
+                 * gmb_task_store_local, NON un local "fisso" come per OP_LOAD_LOCAL. */
+                int idxSlot = gmb_vm_read_u16(vm, task);
+                gmb_stack_entry_t ce = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                if (ce.type == 2 && ce.ref && ce.basic_type == GMB_BT_OBJECT &&
+                    ((gmb_obj_t*)ce.ref)->kind == GMB_OBJ_CHANNEL)
+                {
+                    gmb_channel_t* ch = (gmb_channel_t*)ce.ref;
+                    gmb_task_push_ref(task, (gmb_obj_t*)ce.ref, GMB_BT_OBJECT);
+                    task->ip -= 3; /* rewind: opcode(1)+idxSlot(2 u16) — ri-pop lo stesso canale al retry */
+                    gmb_obj_t* value = NULL; double num = 0; int is_num = 0;
+                    gmb_task_t* woken = NULL;
+                    int recv_closed = 0;
+                    if (gmb_channel_recv_or_park(ch, task, &value, &num, &is_num, &recv_closed, NULL, 0, &woken))
+                    {
+                        gmb_task_truncate(task, task->sp - 1);
+                        task->ip += 3;
+                        if (ce.type == 2 && ce.ref) gmb_obj_release(ce.ref);
+                        if (woken) gmb_sched_enqueue(vm->scheduler, woken);
+                        int have_val = (value != NULL || is_num);
+                        if (is_num) push_num_entry(task, num, GMB_BT_NUMBER);
+                        else if (value)
+                        {
+                            push_ref_entry(task, value, value->kind == GMB_OBJ_STRING ? GMB_BT_STRING : GMB_BT_OBJECT);
+                            gmb_obj_release(value);
+                        }
+                        else push_nil(task);
+                        int ok = (recv_closed == 0 && have_val) ? 1 : 0;
+                        push_num_entry(task, ok ? 1.0 : 0.0, GMB_BT_NUMBER);
+                        break;
+                    }
+                    if (ce.type == 2 && ce.ref) gmb_obj_release(ce.ref);
+                    return 0; /* parcheggiato */
+                }
+                if (ce.type == 2 && ce.ref &&
+                    (((gmb_obj_t*)ce.ref)->kind == GMB_OBJ_LIST || ((gmb_obj_t*)ce.ref)->kind == GMB_OBJ_DICT))
+                {
+                    gmb_obj_shared_val_t* sv = (gmb_obj_shared_val_t*)ce.ref;
+                    gmb_stack_entry_t idxE = gmb_task_load_local(task, idxSlot);
+                    gmb_int_t idx = idxE.type == 1 ? (gmb_int_t)idxE.num : 0;
+                    gmb_int_t count = ((gmb_obj_t*)ce.ref)->kind == GMB_OBJ_LIST
+                        ? gmb_list_count(*sv->list) : gmb_dict_count(*sv->dict);
+                    if (idx >= 0 && idx < count)
+                    {
+                        gmb_val_t v = ((gmb_obj_t*)ce.ref)->kind == GMB_OBJ_LIST
+                            ? gmb_list_get(*sv->list, idx) : sv->dict->items[idx].value;
+                        gmb_stack_entry_t se = gmb_adapter_val_to_stack(v);
+                        if (se.type == 2 && se.ref) push_ref_new(task, se.ref, se.basic_type);
+                        else if (se.type == 1) push_num_entry(task, se.num, se.basic_type);
+                        else push_nil(task);
+                        push_num_entry(task, 1.0, GMB_BT_NUMBER);
+                        gmb_stack_entry_t nextIdx = { 0 };
+                        nextIdx.type = 1; nextIdx.num = (double)(idx + 1); nextIdx.basic_type = GMB_BT_NUMBER;
+                        gmb_task_store_local(task, idxSlot, nextIdx);
+                    }
+                    else
+                    {
+                        push_nil(task);
+                        push_num_entry(task, 0.0, GMB_BT_NUMBER);
+                    }
+                    gmb_obj_release(ce.ref);
+                    break;
+                }
+                if (ce.type == 2 && ce.ref && ((gmb_obj_t*)ce.ref)->kind == GMB_OBJ_STRING)
+                {
+                    /* FOR EACH ch IN <stringa>: itera i CARATTERI — ogni iterazione produce
+                     * una stringa di 1 carattere (parità IL/PCodeVM). Prima la
+                     * stringa cadeva nel fallback "kind non supportato" → iterazione vuota
+                     * SILENZIOSA (0 giri, nessun errore: sample ForEachJsonEdgeCases.bas
+                     * dava `string FAIL` sul VM/C con `string OK` su IL). */
+                    gmb_obj_string_t* fs = (gmb_obj_string_t*)ce.ref;
+                    gmb_stack_entry_t idxE = gmb_task_load_local(task, idxSlot);
+                    gmb_int_t idx = idxE.type == 1 ? (gmb_int_t)idxE.num : 0;
+                    gmb_int_t count = (gmb_int_t)fs->length;
+                    if (idx >= 0 && idx < count)
+                    {
+                        gmb_obj_string_t* one = gmb_str_alloc(fs->data + idx, 1);
+                        if (one) push_ref_new(task, (gmb_obj_t*)one, GMB_BT_STRING);
+                        else push_nil(task);
+                        push_num_entry(task, 1.0, GMB_BT_NUMBER);
+                        gmb_stack_entry_t nextIdx = { 0 };
+                        nextIdx.type = 1; nextIdx.num = (double)(idx + 1); nextIdx.basic_type = GMB_BT_NUMBER;
+                        gmb_task_store_local(task, idxSlot, nextIdx);
+                    }
+                    else
+                    {
+                        push_nil(task);
+                        push_num_entry(task, 0.0, GMB_BT_NUMBER);
+                    }
+                    gmb_obj_release(ce.ref);
+                    break;
+                }
+                /* kind non ancora supportato qui (es. COLLECTION handle-based: stack/queue/
+                 * hashset/...) — iterazione vuota sicura (ok=0 subito), MAI il bug precedente
+                 * (type confusion su RECV_OK): nessun hang, nessuna lettura fuori dai bordi. */
+                if (ce.type == 2 && ce.ref) gmb_obj_release(ce.ref);
+                push_nil(task);
+                push_num_entry(task, 0.0, GMB_BT_NUMBER);
+                break;
+            }
+                        case OP_FE_MATRIX_ROW:
+            {
+                /* FOR EACH row IN matrice2D: ogni iterazione pusha una RIGA come lista
+                 * (slice) + ok. Cols = isqrt(total) come OP_FE_MATRIX_D (lista piatta
+                 * row-major). idxSlot u16 + mode u8 (sempre 1). */
+                int mrs = gmb_vm_read_u16(vm, task);
+                gmb_vm_read_u8(vm, task);
+                gmb_stack_entry_t mrc = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                gmb_stack_entry_t mre = gmb_task_load_local(task, mrs);
+                gmb_int_t mri = mre.type == 1 ? (gmb_int_t)mre.num : 0;
+                if (mrc.type == 2 && mrc.ref && mrc.ref->kind == GMB_OBJ_LIST && ((gmb_obj_shared_val_t*)mrc.ref)->list)
+                {
+                    gmb_obj_shared_val_t* mo = (gmb_obj_shared_val_t*)mrc.ref;
+                    gmb_int_t total = (gmb_int_t)mo->list->count;
+                    gmb_int_t cols = total > 1 ? (gmb_int_t)sqrt((double)total) : 1;
+                    if (cols < 1) cols = 1;
+                    gmb_int_t rows = total / cols;
+                    if (mri >= 0 && mri < rows)
+                    {
+                        gmb_obj_shared_val_t* ro = gmb_shared_list_new();
+                        if (ro)
+                        {
+                            for (gmb_int_t ci = 0; ci < cols; ci++)
+                            {
+                                gmb_int_t off = mri * cols + ci;
+                                gmb_val_t v = gmb_val_nil();
+                                if (off >= 0 && off < total) v = gmb_list_get(*mo->list, off);
+                                if (v.kind == GMB_TYPE_STRING) gmb_list_add(ro->list, gmb_make_val_string_counted(v.v_string.data ? v.v_string.data : ""));
+                                else if (v.kind == GMB_TYPE_OBJECT && v.v_ptr) gmb_list_add(ro->list, v);   /* add trattiene da se' */
+                                else gmb_list_add(ro->list, v);
+                            }
+                            push_ref_new(task, (gmb_obj_t*)ro, GMB_BT_OBJECT);
+                        }
+                        else push_nil(task);
+                        push_num_entry(task, 1.0, GMB_BT_NUMBER);
+                        gmb_stack_entry_t nm2 = { 0 };
+                        nm2.type = 1; nm2.num = (double)(mri + 1); nm2.basic_type = GMB_BT_NUMBER;
+                        gmb_task_store_local(task, mrs, nm2);
+                    }
+                    else
+                    {
+                        push_nil(task);
+                        push_num_entry(task, 0.0, GMB_BT_NUMBER);
+                    }
+                }
+                else
+                {
+                    push_nil(task);
+                    push_num_entry(task, 0.0, GMB_BT_NUMBER);
+                }
+                if (mrc.type == 2 && mrc.ref) gmb_obj_release(mrc.ref);
+                break;
+            }
+            case OP_FE_DICT:
+            {
+                /* FOR EACH su DICT (dispatch esplicito, mai FE_NEXT generico):
+                 * idxSlot u16 + mode u8. mode 2 = coppia (chiave, valore) → pusha
+                 * [key][value][ok]; mode 1 = singola variabile → pusha un KEYVALUEPAIR
+                 * (dict {Key,Value} così entry.Key/entry.Value funzionano via LOAD_ELEMENT)
+                 * e poi [ok]. Le liste in mode 1 restano come FE_NEXT (elemento singolo). */
+                int fidx = gmb_vm_read_u16(vm, task);
+                int fmode = gmb_vm_read_u8(vm, task);
+                gmb_stack_entry_t fec = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                gmb_stack_entry_t fiE = gmb_task_load_local(task, fidx);
+                gmb_int_t fi = fiE.type == 1 ? (gmb_int_t)fiE.num : 0;
+                int isdict = fec.type == 2 && fec.ref && fec.ref->kind == GMB_OBJ_DICT
+                    && ((gmb_obj_shared_val_t*)fec.ref)->dict;
+                int islist = fec.type == 2 && fec.ref && fec.ref->kind == GMB_OBJ_LIST
+                    && ((gmb_obj_shared_val_t*)fec.ref)->list;
+                int isstr = fec.type == 2 && fec.ref && fec.ref->kind == GMB_OBJ_STRING;
+                gmb_obj_shared_val_t* fsv = (gmb_obj_shared_val_t*)(fec.type == 2 ? fec.ref : NULL);
+                gmb_int_t fcount = isdict ? gmb_dict_count(*fsv->dict)
+                    : (islist ? gmb_list_count(*fsv->list)
+                       : (isstr && fmode == 1 ? (gmb_int_t)((gmb_obj_string_t*)fec.ref)->length : 0));
+                if ((isdict || (islist && fmode == 1) || (isstr && fmode == 1)) && fi >= 0 && fi < fcount)
+                {
+                    if (isstr && fmode == 1)
+                    {
+                        gmb_obj_string_t* sobj = (gmb_obj_string_t*)fec.ref;
+                        char cbuf[2]; cbuf[0] = sobj->data[fi]; cbuf[1] = 0;
+                        gmb_val_t svv = gmb_make_val_string_counted(cbuf);
+                        gmb_stack_entry_t sev = gmb_adapter_val_to_stack(svv);
+                        gmb_val_discard(svv);
+                        if (sev.type == 2 && sev.ref) push_ref_new(task, sev.ref, sev.basic_type);
+                        else push_nil(task);
+                        push_num_entry(task, 1.0, GMB_BT_NUMBER);
+                    }
+                    else if (isdict && fmode == 2)
+                    {
+                        gmb_dict_t* dd = fsv->dict;
+                        gmb_val_t kv_tmp = gmb_make_val_string_counted(dd->items[fi].key ? dd->items[fi].key : "");
+                        gmb_stack_entry_t ke = gmb_adapter_val_to_stack(kv_tmp);
+                        gmb_val_discard(kv_tmp);
+                        if (ke.type == 2 && ke.ref) push_ref_new(task, ke.ref, ke.basic_type);
+                        else push_nil(task);
+                        gmb_val_t vv = dd->items[fi].value;
+                        gmb_stack_entry_t ve = gmb_adapter_val_to_stack(vv);
+                        if (ve.type == 2 && ve.ref) push_ref_new(task, ve.ref, ve.basic_type);
+                        else if (ve.type == 1) push_num_entry(task, ve.num, ve.basic_type);
+                        else push_nil(task);
+                        push_num_entry(task, 1.0, GMB_BT_NUMBER);
+                    }
+                    else if (isdict && fmode == 1)
+                    {
+                        gmb_obj_shared_val_t* kvp = gmb_shared_dict_new();
+                        if (kvp)
+                        {
+                            gmb_dict_set(kvp->dict, "Key", gmb_make_val_string_counted(fsv->dict->items[fi].key ? fsv->dict->items[fi].key : ""));
+                            gmb_val_t vv = fsv->dict->items[fi].value;
+                            if (vv.kind == GMB_TYPE_STRING) gmb_dict_set(kvp->dict, "Value", gmb_make_val_string_counted(vv.v_string.data ? vv.v_string.data : ""));
+                            else if (vv.kind == GMB_TYPE_OBJECT && vv.v_ptr) gmb_dict_set(kvp->dict, "Value", vv);   /* set trattiene da se' */
+                            else gmb_dict_set(kvp->dict, "Value", vv);
+                            push_ref_new(task, (gmb_obj_t*)kvp, GMB_BT_OBJECT);
+                        }
+                        else push_nil(task);
+                        push_num_entry(task, 1.0, GMB_BT_NUMBER);
+                    }
+                    else
+                    {
+                        gmb_val_t v = gmb_list_get(*fsv->list, fi);
+                        gmb_stack_entry_t se = gmb_adapter_val_to_stack(v);
+                        if (se.type == 2 && se.ref) push_ref_new(task, se.ref, se.basic_type);
+                        else if (se.type == 1) push_num_entry(task, se.num, se.basic_type);
+                        else push_nil(task);
+                        push_num_entry(task, 1.0, GMB_BT_NUMBER);
+                    }
+                    gmb_stack_entry_t ni2 = { 0 };
+                    ni2.type = 1; ni2.num = (double)(fi + 1); ni2.basic_type = GMB_BT_NUMBER;
+                    gmb_task_store_local(task, fidx, ni2);
+                }
+                else
+                {
+                    if (fmode == 2) { push_nil(task); push_nil(task); push_num_entry(task, 0.0, GMB_BT_NUMBER); }
+                    else { push_nil(task); push_num_entry(task, 0.0, GMB_BT_NUMBER); }
+                }
+                if (fec.type == 2 && fec.ref) gmb_obj_release(fec.ref);
+                break;
+            }
+            case OP_FE_MATRIX_D:
+            {
+                int mxIdx = gmb_vm_read_u16(vm, task);
+                int mn = gmb_vm_read_u8(vm, task);
+                int mslots[8];
+                for (int mi = 0; mi < mn && mi < 8; mi++) mslots[mi] = gmb_vm_read_u16(vm, task);
+                gmb_stack_entry_t mce = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                if (mce.type == 2 && mce.ref && mce.ref->kind == GMB_OBJ_LIST
+                    && ((gmb_obj_shared_val_t*)mce.ref)->list)
+                {
+                    gmb_obj_shared_val_t* mo = (gmb_obj_shared_val_t*)mce.ref;
+                    gmb_int_t total = (gmb_int_t)mo->list->count;
+                    gmb_int_t cols = 1;
+                    if (total > 1) { gmb_int_t c = (gmb_int_t)sqrt((double)total); cols = c > 0 ? c : 1; }
+                    gmb_stack_entry_t mIdxE = gmb_task_load_local(task, mxIdx);
+                    gmb_int_t ridx = mIdxE.type == 1 ? (gmb_int_t)mIdxE.num : 0;
+                    gmb_int_t rows = total / cols;
+                    if (ridx >= 0 && ridx < rows)
+                    {
+                        for (int mi2 = 0; mi2 < mn; mi2++)
+                        {
+                            gmb_int_t off = ridx * cols + mi2;
+                            double val = 0;
+                            if (off >= 0 && off < total)
+                            {
+                                gmb_val_t v = gmb_list_get(*mo->list, off);
+                                if (v.kind == GMB_TYPE_DOUBLE) val = v.v_double;
+                                else if (v.kind == GMB_TYPE_INT) val = (double)v.v_int;
+                            }
+                            gmb_stack_entry_t se2 = { 0 };
+                            se2.type = 1; se2.num = val; se2.basic_type = GMB_BT_NUMBER;
+                            gmb_task_store_local(task, mslots[mi2], se2);
+                        }
+                        gmb_stack_entry_t nm = { 0 };
+                        nm.type = 1; nm.num = (double)(ridx + 1); nm.basic_type = GMB_BT_NUMBER;
+                        gmb_task_store_local(task, mxIdx, nm);
+                        push_num_entry(task, 1.0, GMB_BT_NUMBER);
+                    }
+                    else push_num_entry(task, 0.0, GMB_BT_NUMBER);
+                }
+                else push_num_entry(task, 0.0, GMB_BT_NUMBER);
+                if (mce.type == 2 && mce.ref) gmb_obj_release(mce.ref);
+                break;
+            }
+            case OP_REC_COPY:
+            {
+                /* Copia wholesale di un record UDT (src → dst già allocato): copia TUTTE le
+                 * coppie non-'__' (compresi i membri-array, che il clone per-campo ignora).
+                 * Pop: dst(top), src. Stringhe duplicate; oggetti condivisi (retain). */
+                gmb_stack_entry_t dE = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                gmb_stack_entry_t sE = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                if (dE.ref && dE.ref->kind == GMB_OBJ_DICT && sE.ref && sE.ref->kind == GMB_OBJ_DICT)
+                {
+                    gmb_dict_t* dD = ((gmb_obj_shared_val_t*)dE.ref)->dict;
+                    gmb_dict_t* sD = ((gmb_obj_shared_val_t*)sE.ref)->dict;
+                    for (size_t i = 0; i < sD->count; i++)
+                    {
+                        const char* k = sD->items[i].key;
+                        if (!k || !strncmp(k, "__", 2)) continue;
+                        gmb_val_t v = sD->items[i].value;
+                        if (v.kind == GMB_TYPE_STRING)
+                            gmb_dict_set(dD, k, gmb_make_val_string(v.v_string.data ? v.v_string.data : ""));
+                        else if (v.kind == GMB_TYPE_OBJECT && v.v_ptr) { gmb_obj_retain((gmb_obj_t*)v.v_ptr); gmb_dict_set(dD, k, v); }
+                        else gmb_dict_set(dD, k, v);
+                    }
+                }
+                gmb_obj_release(dE.ref);
+                gmb_obj_release(sE.ref);
+                break;
+            }
+            case OP_JFILE_OPEN:
+            {
+                gmb_stack_entry_t me = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                const char* mm = (me.type == 2 && me.ref && me.ref->kind == GMB_OBJ_STRING) ? ((gmb_obj_string_t*)me.ref)->data : "";
+                if (me.ref) gmb_obj_release(me.ref);
+                gmb_stack_entry_t fe = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                const char* fp = (fe.type == 2 && fe.ref && fe.ref->kind == GMB_OBJ_STRING) ? ((gmb_obj_string_t*)fe.ref)->data : "";
+                int h = vm_jfile_open(fp, mm);
+                if (fe.ref) gmb_obj_release(fe.ref);
+                push_num_entry(task, (double)h, GMB_BT_NUMBER);
+                break;
+            }
+            case OP_JFILE_WRITE:
+            {
+                gmb_stack_entry_t he = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                int hh = (int)he.num;
+                if (he.ref) gmb_obj_release(he.ref);
+                gmb_stack_entry_t ve = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                FILE* jf = vm_jfile_get(hh);
+                if (jf)
+                {
+                    if (ve.type == 2 && ve.ref)
+                    {
+                        gmb_obj_string_t* out = gmb_vm_json_stringify(ve.ref);
+                        if (out) { fwrite(out->data, 1, out->length, jf); fputc('\n', jf); gmb_obj_release((gmb_obj_t*)out); }
+                    }
+                    else
+                    {
+                        char nb[64]; snprintf(nb, sizeof(nb), "%.17g", ve.num);
+                        fputs(nb, jf); fputc('\n', jf);
+                    }
+                }
+                if (ve.ref) gmb_obj_release(ve.ref);
+                break;
+            }
+            case OP_JFILE_READ:
+            {
+                gmb_stack_entry_t he2 = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                int hh2 = (int)he2.num;
+                if (he2.ref) gmb_obj_release(he2.ref);
+                FILE* jf2 = vm_jfile_get(hh2);
+                if (jf2)
+                {
+                    fseek(jf2, 0, SEEK_END);
+                    long sz = ftell(jf2);
+                    fseek(jf2, 0, SEEK_SET);
+                    char* buf = (char*)malloc((size_t)sz + 1);
+                    if (buf && sz >= 0)
+                    {
+                        size_t got = fread(buf, 1, (size_t)sz, jf2);
+                        buf[got] = 0;
+                        gmb_val_t full;
+                        if (vm_json_full_parse(buf, &full) && full.kind == GMB_TYPE_OBJECT)
+                        {
+                            gmb_obj_t* o = (gmb_obj_t*)full.v_ptr;
+                            if (o) push_ref_entry(task, o, GMB_BT_OBJECT);
+                            else push_nil(task);
+                        }
+                        else
+                        {
+                            gmb_obj_shared_val_t* od = gmb_shared_dict_new();
+                            if (od) { gmb_json_parse_to_dict(buf, od->dict); push_ref_new(task, (gmb_obj_t*)od, GMB_BT_OBJECT); }
+                            else push_nil(task);
+                        }
+                        free(buf);
+                        break;
+                    }
+                    free(buf);
+                }
+                push_nil(task);
+                break;
+            }
+            case OP_JFILE_SAVE:
+            {
+                /* JSON SAVE obj, path: serializza e scrive su file (chiude da sé) */
+                gmb_stack_entry_t pe2 = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                const char* path2 = (pe2.type == 2 && pe2.ref && pe2.ref->kind == GMB_OBJ_STRING) ? ((gmb_obj_string_t*)pe2.ref)->data : "";
+                if (pe2.ref) gmb_obj_release(pe2.ref);
+                gmb_stack_entry_t oe2 = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                if (path2 && *path2 && oe2.type == 2 && oe2.ref)
+                {
+                    gmb_obj_string_t* out2 = gmb_vm_json_stringify(oe2.ref);
+                    if (out2)
+                    {
+                        FILE* f2 = fopen(path2, "w");
+                        if (f2) { fwrite(out2->data, 1, out2->length, f2); fputc('\n', f2); fclose(f2); }
+                        gmb_obj_release((gmb_obj_t*)out2);
+                    }
+                }
+                if (oe2.ref) gmb_obj_release(oe2.ref);
+                break;
+            }
+            case OP_JFILE_CLOSE:
+            {
+                gmb_stack_entry_t he3 = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                int hh3 = (int)he3.num;
+                if (he3.ref) gmb_obj_release(he3.ref);
+                if (hh3 < 0) vm_jfile_close_all();
+                else vm_jfile_close(hh3);
+                break;
+            }
+            case OP_RECV_OK:
+            {
+                /* RECEIVE v FROM ch OK ok (parità Go v, ok := <-ch): stesso protocollo
+                 * retry/park di OP_RECV, ma pusha DUE valori: il valore ricevuto e il
+                 * flag ok (1 valore reale, 0 canale chiuso+svuotato → valore null). */
+                if (task->sp <= 0) break;
+                gmb_stack_entry_t ce = gmb_task_pop(task);
+                if (ce.type == 2 && ce.ref && ce.basic_type == GMB_BT_OBJECT)
+                {
+                    gmb_channel_t* ch = (gmb_channel_t*)ce.ref;
+                    gmb_task_push_ref(task, (gmb_obj_t*)ce.ref, GMB_BT_OBJECT);
+                    task->ip--;
+                    gmb_obj_t* value = NULL; double num = 0; int is_num = 0;
+                    gmb_task_t* woken = NULL;
+                    int recv_closed = 0;
+                    if (gmb_channel_recv_or_park(ch, task, &value, &num, &is_num, &recv_closed, NULL, 0, &woken))
+                    {
+                        gmb_task_truncate(task, task->sp - 1);
+                        task->ip++;
+                        if (ce.type == 2 && ce.ref) gmb_obj_release(ce.ref);
+                        if (woken) gmb_sched_enqueue(vm->scheduler, woken);
+                        int have_val = (value != NULL || is_num); /* prima del release */
+                        if (is_num) push_num_entry(task, num, GMB_BT_NUMBER);
+                        else if (value)
+                        {
+                            push_ref_entry(task, value,
+                                value->kind == GMB_OBJ_STRING ? GMB_BT_STRING : GMB_BT_OBJECT);
+                            gmb_obj_release(value);
+                        }
+                        else push_nil(task);
+                        int ok = (recv_closed == 0 && have_val) ? 1 : 0;
+                        push_num_entry(task, ok ? 1.0 : 0.0, GMB_BT_NUMBER);
+                        break;
+                    }
+                    if (ce.type == 2 && ce.ref) gmb_obj_release(ce.ref);
+                    return 0; /* parcheggiato */
+                }
+                break;
+            }
+            case OP_WG_WAIT:
+            {
+                gmb_stack_entry_t wg = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){ 0 };
+                if (wg.type == 2 && wg.ref && wg.basic_type == GMB_BT_OBJECT)
+                {
+                    gmb_waitgroup_t* w = (gmb_waitgroup_t*)wg.ref;
+                    if (gmb_wg_should_wait(w, task)) return 0;
+                }
+                else if ((wg.type == 0 || wg.type == 1 || (wg.type == 2 && wg.ref == NULL)) && task->implicit_waitgroup)
+                {
+                    /* WAIT nuda (nil: type 0 o ref NULL — push_nil emette type 2 con ref NULL — oppure il NUMERO segnaposto che
+                     * il compilatore spinge quando manca il gruppo): attende i figli senza IN; senza figli mai lanciati resta
+                     * no-op (bug 2026-10-01). Prima i numerici (type 1) restavano no-op → la WAIT nuda non attendeva piu'. */
+                    if (gmb_wg_should_wait(task->implicit_waitgroup, task)) return 0;
+                }
+                break;
+            }
+            case OP_WG_DONE:
+            {
+                gmb_stack_entry_t wg = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){ 0 };
+                if (wg.type == 2 && wg.ref && wg.basic_type == GMB_BT_OBJECT)
+                    gmb_wg_done((gmb_waitgroup_t*)wg.ref, vm->scheduler);
+                break;
+            }
+            case OP_CHANNEL_CLOSE:
+            {
+                /* Parità Go close(ch) / ChannelInfo.Close: chiusura atomica. Receiver
+                 * parcheggiati → riaccodati (ri-eseguiranno OP_RECV/OP_RECV_OK e troveranno
+                 * chiuso+vuoto → valore null, ok=0). Sender parcheggiati → errore
+                 * send-su-chiuso. Doppio close = errore BASIC catturabile.
+                 * V6: le entry di GO SELECT passano dal claim CAS del SelectContext. */
+                if (task->sp <= 0) break;
+                gmb_stack_entry_t ce = gmb_task_pop(task);
+                if (ce.type == 2 && ce.ref && ce.basic_type == GMB_BT_OBJECT)
+                {
+                    gmb_channel_t* ch = (gmb_channel_t*)ce.ref;
+                    gmb_wait_entry_t* wake_recv = NULL; gmb_wait_entry_t* wake_send = NULL;
+                    int n_recv = 0, n_send = 0;
+                    if (gmb_channel_close(ch, &wake_recv, &n_recv, &wake_send, &n_send))
+                    {
+                        for (int i = 0; i < n_recv; i++)
+                        {
+                            gmb_wait_entry_t e = wake_recv[i];
+                            if (!e.sel) gmb_sched_enqueue(vm->scheduler, e.task);
+                            else
+                            {
+                                if (gmb_select_claim(e.sel, e.case_idx))
+                                    gmb_sched_enqueue(vm->scheduler, e.task);
+                                gmb_select_release(e.sel);
+                            }
+                        }
+                        for (int i = 0; i < n_send; i++)
+                        {
+                            gmb_wait_entry_t e = wake_send[i];
+                            if (!e.sel)
+                                vm_error(e.task, "BASIC Runtime Error: send su canale chiuso");
+                            else
+                            {
+                                /* Go: send su chiuso in un SELECT → il case vince e la
+                                 * ri-esecuzione del SETUP produce l'errore deterministico. */
+                                if (gmb_select_claim(e.sel, e.case_idx))
+                                    gmb_sched_enqueue(vm->scheduler, e.task);
+                                gmb_select_release(e.sel);
+                            }
+                        }
+                        free(wake_recv);
+                        free(wake_send);
+                    }
+                    else
+                    {
+                        vm_error(task, "BASIC Runtime Error: close su canale già chiuso");
+                        return -1;
+                    }
+                }
+                break;
+            }
+            case OP_NEW_WAITGROUP:
+            {
+                gmb_waitgroup_t* w = gmb_wg_create();
+                gmb_task_push_ref(task, (gmb_obj_t*)w, GMB_BT_OBJECT);
+                break;
+            }
+            case OP_NEW_CHANNEL:
+            {
+                /* parità C# ChannelInfo: ReadU8 → capacity; 0 = unbuffered (handshake Go
+                 * make(chan T)), implementato in gmb_channel_create come 1 slot fisico in transito. */
+                int capacity = gmb_vm_read_u8(vm, task);
+                gmb_channel_t* ch = gmb_channel_create(capacity);
+                gmb_task_push_ref(task, (gmb_obj_t*)ch, GMB_BT_OBJECT);
+                break;
+            }
+            case OP_NEW_MUTEX:
+            {
+                /* Parità Go sync.Mutex: pusha un nuovo mutex non detenuto. */
+                gmb_mutex_t* mu = gmb_mutex_create();
+                gmb_task_push_ref(task, (gmb_obj_t*)mu, GMB_BT_OBJECT);
+                break;
+            }
+            case OP_NEW_RWMUTEX:
+            {
+                /* Parità Go sync.RWMutex: pusha un nuovo RWMUTEX non detenuto. */
+                gmb_rwlock_t* rw = gmb_rwlock_create();
+                gmb_task_push_ref(task, (gmb_obj_t*)rw, GMB_BT_OBJECT);
+                break;
+            }
+            case OP_LOCK:
+            {
+                /* Parità Go mu.Lock(): acquisisce o parcheggia (State=Blocked dentro il
+                 * lock del mutex, §16). Al risveglio ri-esegue OP_LOCK (ip--) e l'handoff
+                 * di gmb_mutex_unlock gli concede il lock senza ri-parcheggiarlo. */
+                if (task->sp <= 0) break;
+                gmb_stack_entry_t me = gmb_task_pop(task);
+                if (me.type == 2 && me.ref)
+                {
+                    int lk = ((gmb_obj_t*)me.ref)->kind;
+                    if (lk == GMB_OBJ_MUTEX || lk == GMB_OBJ_RWMUTEX)
+                    {
+                        gmb_task_push_ref(task, (gmb_obj_t*)me.ref, GMB_BT_OBJECT);
+                        task->ip--;
+                        int acquired = (lk == GMB_OBJ_MUTEX)
+                            ? gmb_mutex_try_lock((gmb_mutex_t*)me.ref, task)
+                            : gmb_rwlock_try_lock((gmb_rwlock_t*)me.ref, task);
+                        if (acquired)
+                        {
+                            task->sp -= 1;
+                            task->ip++;
+                            break;
+                        }
+                        return 0; /* parcheggiato */
+                    }
+                }
+                break;
+            }
+            case OP_UNLOCK:
+            {
+                /* Parità Go mu.Unlock()/rw.Unlock(): rilascia e sveglia al più un waiter
+                 * (handoff mutex; writer-preference per l'rwlock). */
+                if (task->sp <= 0) break;
+                gmb_stack_entry_t me = gmb_task_pop(task);
+                if (me.type == 2 && me.ref)
+                {
+                    int lk = ((gmb_obj_t*)me.ref)->kind;
+                    if (lk == GMB_OBJ_MUTEX)
+                        gmb_mutex_unlock((gmb_mutex_t*)me.ref, vm->scheduler);
+                    else if (lk == GMB_OBJ_RWMUTEX)
+                        gmb_rwlock_unlock((gmb_rwlock_t*)me.ref, vm->scheduler);
+                }
+                break;
+            }
+            case OP_RLOCK:
+            {
+                /* Parità Go rw.RLock(): lock in LETTURA condiviso; parcheggia se uno
+                 * scrittore è attivo o in attesa (writer-preference). Al risveglio
+                 * ri-esegue OP_RLOCK (ip--). */
+                if (task->sp <= 0) break;
+                gmb_stack_entry_t me = gmb_task_pop(task);
+                if (me.type == 2 && me.ref && ((gmb_obj_t*)me.ref)->kind == GMB_OBJ_RWMUTEX)
+                {
+                    gmb_task_push_ref(task, (gmb_obj_t*)me.ref, GMB_BT_OBJECT);
+                    task->ip--;
+                    if (gmb_rwlock_try_rlock((gmb_rwlock_t*)me.ref, task))
+                    {
+                        task->sp -= 1;
+                        task->ip++;
+                        break;
+                    }
+                    return 0; /* parcheggiato */
+                }
+                break;
+            }
+            case OP_RUNLOCK:
+            {
+                /* Parità Go rw.RUnlock(): rilascia il lock in lettura; se i lettori
+                 * scendono a zero sveglia il primo scrittore in attesa. */
+                if (task->sp <= 0) break;
+                gmb_stack_entry_t me = gmb_task_pop(task);
+                if (me.type == 2 && me.ref && ((gmb_obj_t*)me.ref)->kind == GMB_OBJ_RWMUTEX)
+                    gmb_rwlock_runlock((gmb_rwlock_t*)me.ref, vm->scheduler);
+                break;
+            }
+            case OP_NEW_ONCE:
+            {
+                /* Parità Go sync.Once: pusha un nuovo Once non eseguito. */
+                gmb_once_t* on = gmb_once_create();
+                gmb_task_push_ref(task, (gmb_obj_t*)on, GMB_BT_OBJECT);
+                break;
+            }
+            case OP_ONCE_BEGIN:
+            {
+                /* Parità Go once.Do(): il primo chiamante esegue il body (fino a
+                 * OP_ONCE_END); i concorrenti parcheggiano; i successivi saltano a skip. */
+                int skip = gmb_vm_read_u16(vm, task);
+                if (task->sp <= 0) break;
+                gmb_stack_entry_t me = gmb_task_pop(task);
+                if (!(me.type == 2 && me.ref && ((gmb_obj_t*)me.ref)->kind == GMB_OBJ_ONCE))
+                    break;
+                gmb_once_t* on = (gmb_once_t*)me.ref;
+                switch (gmb_once_try_begin(on, task))
+                {
+                    case GMB_ONCE_RUNNING: /* primo: esegue il body */
+                        task->pending_once = on; /* ownership dal pop */
+                        break;
+                    case GMB_ONCE_DONE:    /* già eseguito: salta il body */
+                        gmb_obj_release((gmb_obj_t*)on);
+                        task->ip = skip;
+                        break;
+                    default:               /* parcheggiato: ri-esegue OP_ONCE_BEGIN al wake */
+                        gmb_task_push_ref(task, (gmb_obj_t*)on, GMB_BT_OBJECT);
+                        gmb_obj_release((gmb_obj_t*)on);
+                        task->ip -= 3;
+                        return 0;
+                }
+                break;
+            }
+            case OP_ONCE_END:
+            {
+                /* Completa il Once (Done) e sveglia tutti i waiter parcheggiati. */
+                if (task->pending_once)
+                {
+                    gmb_once_complete(task->pending_once, vm->scheduler);
+                    gmb_obj_release((gmb_obj_t*)task->pending_once);
+                    task->pending_once = NULL;
+                }
+                break;
+            }
+            case OP_NEW_ATOMIC:
+            {
+                /* §25 parità Go sync/atomic: pusha un nuovo box ATOMIC a 0. */
+                gmb_atomic_t* a = gmb_atomic_create();
+                gmb_stack_entry_t e = { 0 };
+                e.type = 2; e.ref = (gmb_obj_t*)a; e.basic_type = GMB_BT_OBJECT;
+                if (gmb_task_push_move(task, e) != 0 && a) gmb_obj_release((gmb_obj_t*)a);
+                break;
+            }
+            case OP_NEW_POOL:
+            {
+                /* §25 parità Go sync.Pool: pusha un nuovo POOL vuoto. */
+                gmb_pool_t* p = gmb_pool_create();
+                gmb_stack_entry_t e = { 0 };
+                e.type = 2; e.ref = (gmb_obj_t*)p; e.basic_type = GMB_BT_OBJECT;
+                if (gmb_task_push_move(task, e) != 0 && p) gmb_obj_release((gmb_obj_t*)p);
+                break;
+            }
+            case OP_NEW_COND:
+            {
+                /* §25 parità Go sync.Cond: pusha una nuova variabile di condizione. */
+                gmb_cond_t* c = gmb_cond_create();
+                gmb_stack_entry_t e = { 0 };
+                e.type = 2; e.ref = (gmb_obj_t*)c; e.basic_type = GMB_BT_OBJECT;
+                if (gmb_task_push_move(task, e) != 0 && c) gmb_obj_release((gmb_obj_t*)c);
+                break;
+            }
+            case OP_COND_WAIT:
+            {
+                /* §25 parità Go c.Wait(): stack [cond, mutex] (cond pushato per primo).
+                 * Rilascia il mutex e parcheggia; NON riavvolge l'IP: il compiler emette
+                 * OP_LOCK subito dopo, che al wake riacquisisce il mutex. */
+                if (task->sp < 2) break;
+                gmb_stack_entry_t mu = gmb_task_pop(task);
+                gmb_stack_entry_t ce = gmb_task_pop(task);
+                if (ce.type == 2 && ce.ref && ce.ref->kind == GMB_OBJ_COND)
+                {
+                    gmb_cond_wait((gmb_cond_t*)ce.ref,
+                                  (mu.type == 2 && mu.ref) ? mu.ref : NULL,
+                                  task, vm->scheduler);
+                    gmb_obj_release((gmb_obj_t*)ce.ref);
+                    if (mu.type == 2 && mu.ref) gmb_obj_release(mu.ref);
+                    return 0; /* parcheggiato */
+                }
+                if (ce.type == 2 && ce.ref) gmb_obj_release(ce.ref);
+                if (mu.type == 2 && mu.ref) gmb_obj_release(mu.ref);
+                break;
+            }
+            case OP_COND_SIGNAL:
+            {
+                /* §25 parità Go c.Signal(): sveglia UN waiter (FIFO). */
+                if (task->sp <= 0) break;
+                gmb_stack_entry_t ce = gmb_task_pop(task);
+                if (ce.type == 2 && ce.ref && ce.ref->kind == GMB_OBJ_COND)
+                    gmb_cond_signal((gmb_cond_t*)ce.ref, vm->scheduler);
+                if (ce.type == 2 && ce.ref) gmb_obj_release(ce.ref);
+                break;
+            }
+            case OP_COND_BROADCAST:
+            {
+                /* §25 parità Go c.Broadcast(): sveglia tutti i waiter. */
+                if (task->sp <= 0) break;
+                gmb_stack_entry_t ce = gmb_task_pop(task);
+                if (ce.type == 2 && ce.ref && ce.ref->kind == GMB_OBJ_COND)
+                    gmb_cond_broadcast((gmb_cond_t*)ce.ref, vm->scheduler);
+                if (ce.type == 2 && ce.ref) gmb_obj_release(ce.ref);
+                break;
+            }
+            case OP_NEW_CONCURRENTMAP:
+            {
+                /* §21 parità Go sync.Map: pusha una nuova mappa concorrente vuota. */
+                gmb_concurrentmap_t* m = gmb_concurrentmap_create();
+                gmb_stack_entry_t e = { 0 };
+                e.type = 2; e.ref = (gmb_obj_t*)m; e.basic_type = GMB_BT_OBJECT;
+                if (gmb_task_push_move(task, e) != 0 && m) gmb_obj_release((gmb_obj_t*)m);
+                break;
+            }
+            case OP_DEFER:
+            {
+                /* Parità Go defer: registra l'indirizzo del body nel frame corrente (LIFO);
+                 * i body vengono eseguiti in ordine inverso all'uscita (OP_RETURN). */
+                int defer_addr = gmb_vm_read_u16(vm, task);
+                gmb_frame_t* df = task->frame;
+                if (df)
+                {
+                    if (df->defer_count < GMB_FRAME_DEFER_CAP)
+                        df->defer_ips[df->defer_count++] = defer_addr;
+                }
+                else if (task->task_defer_count < GMB_FRAME_DEFER_CAP)
+                    task->task_defer_ips[task->task_defer_count++] = defer_addr;
+                break;
+            }
+            case OP_DEFER_RET:
+            {
+                /* Fine di un body DEFER: esegue il prossimo deferred (del frame, o del
+                 * task per i task senza frame) o completa il RETURN. A differenza del C#
+                 * (Ip = ReturnOpcodeIp+1, che salta il frame-pop di OP_RETURN → hang),
+                 * qui si ri-dispatcha OP_RETURN all'ip dell'opcode perché faccia il pop
+                 * del frame normale. */
+                gmb_frame_t* df = task->frame;
+                if (df && df->defer_count > 0)
+                {
+                    task->ip = df->defer_ips[--df->defer_count];
+                    break;
+                }
+                if (!df && task->task_defer_count > 0)
+                {
+                    task->ip = task->task_defer_ips[--task->task_defer_count];
+                    break;
+                }
+                task->pending_defer_return = 0;
+                if (task->unwind_active && task->unwind.reason == GMB_UW_RETURN)
+                {
+                    task->unwind_active = 0;
+                    task->ip = task->unwind.return_opcode_ip;
+                    break;
+                }
+                if (!df && task->ip_stack_count > 0)
+                {
+                    task->ip = task->ip_stack[--task->ip_stack_count];
+                    break;
+                }
+                task->state = GMB_TS_FINISHED;
+                return 0;
+            }
+            case OP_SLEEP:
+            {
+                if (task->sp <= 0) break;
+                double ms = gmb_task_pop_num(task);
+                /* Parità PCodeVM: SLEEP 0/negativo NON è no-op — è uno yield: il task
+                 * parcheggia con deadline "ora" e il timer lo riaccoda subito, lasciando
+                 * passare i task già in coda (con GOMAXPROCS=1 ordine B-prima-di-A). */
+                if (ms < 0) ms = 0;
+                /* §7.1: deadline/stato pubblicati sotto il task lock (stesso lock che
+                 * usa il fire dei timer) e nodo armato nel timer min-heap. */
+                pthread_mutex_lock(&task->lock);
+                task->sleep_until_ms = gmb_now_ms() + (int64_t)ms;
+                task->state = GMB_TS_BLOCKED;
+                pthread_mutex_unlock(&task->lock);
+                gmb_sched_arm_timer(vm->scheduler, task);
+                return 0;
+            }
+            case OP_GO_SELECT_SETUP:
+            {
+                /* Formato: [num_cases u16] [num_sends u16] [default_offset u16] [case_addr u16×N].
+                   Stack: [send_val_0..send_val_{S-1}] [channel_0..channel_{C-1}]
+                   dove i primi num_sends canali corrispondono ai case SEND e i successivi ai
+                   case RECEIVE (stesso layout di PCodeProcessor.cs, handler C#). */
+                int startIp = task->ip - 1;
+                int num_cases = gmb_vm_read_u16(vm, task);
+                int num_sends = gmb_vm_read_u16(vm, task);
+                int def_off = gmb_vm_read_u16(vm, task);
+                /* §25 parità §20.3 PCodeVM: num_cases è u16 (fino a 65535) — array
+                 * dinamico (prima: limite fisso 16). */
+                if (num_cases == 0 || num_sends < 0 || num_sends > num_cases)
+                {
+                    vm_error(task, "GO SELECT: conteggio case/send invalido");
+                    return -1;
+                }
+                int* case_addrs = (int*)malloc((size_t)num_cases * sizeof(int));
+                if (!case_addrs) { vm_error(task, "GO SELECT: memoria esaurita"); return -1; }
+                for (int i = 0; i < num_cases; i++) case_addrs[i] = gmb_vm_read_u16(vm, task);
+                int num_recvs = num_cases - num_sends;
+                int baseSp = task->sp - num_cases - num_sends;
+
+                if (baseSp < 0) { vm_error(task, "GO SELECT: stack invalido"); free(case_addrs); return -1; }
+
+                /* V6: ri-esecuzione dopo un park — un producer/consumer ha già vinto il CAS
+                 * del SelectContext: rispetta quella decisione prima della scansione ordinaria
+                 * (specchio di task.PendingSelect in PCodeProcessor). Il valore/slot resta nel
+                 * canale: se nel frattempo una terza parte lo ha consumato, abbandona la
+                 * preferenza e riprova tutti i case. */
+                if (task->select_ctx)
+                {
+                    gmb_select_ctx_t* rctx = task->select_ctx;
+                    task->select_ctx = NULL;
+                    pthread_mutex_lock(&rctx->lock);
+                    int winCase = rctx->winner;
+                    pthread_mutex_unlock(&rctx->lock);
+                    if (winCase < 0)
+                    {
+                        /* Wake del timer TIMEOUT (nessun canale ha vinto il claim): la
+                         * SELECT è ancora pending; stacca le entry da tutti i canali e
+                         * lascia decidere alla scansione (il timeout scaduto è pronto). */
+                        gmb_select_detach(rctx);
+                        gmb_select_release(rctx);
+                    }
+                    else if (winCase < num_cases)
+                    {
+                        int chIdx = baseSp + num_sends + winCase;
+                        gmb_stack_entry_t chE = (chIdx >= 0 && chIdx < task->sp) ? task->stack[chIdx] : (gmb_stack_entry_t){ 0 };
+                        gmb_channel_t* wch = (chE.type == 2 && chE.ref) ? (gmb_channel_t*)chE.ref : NULL;
+                        if (wch)
+                        {
+                            if (winCase >= num_sends)
+                            {
+                                gmb_obj_t* val = NULL; double num = 0; int is_num = 0;
+                                gmb_task_t* woken = NULL;
+                                if (gmb_channel_try_recv(wch, &val, &num, &is_num, &woken))
+                                {
+                                    if (woken) gmb_sched_enqueue(vm->scheduler, woken);
+                                    task->sleep_until_ms = 0; task->select_timer_armed = 0;
+                                    gmb_task_truncate(task, baseSp);
+                                    if (is_num) push_num_entry(task, num, GMB_BT_NUMBER);
+                                    else if (val)
+                                    {
+                                        push_ref_entry(task, val,
+                                            val->kind == GMB_OBJ_STRING ? GMB_BT_STRING : GMB_BT_OBJECT);
+                                        gmb_obj_release(val); /* retain del buffer → caller */
+                                    }
+                                    else push_nil(task);
+                                    task->ip = case_addrs[winCase];
+                                    gmb_select_release(rctx);
+                                    free(case_addrs);
+                                    return 1;
+                                }
+                            }
+                            else
+                            {
+                                if (gmb_channel_is_closed(wch))
+                                {
+                                    task->sleep_until_ms = 0; task->select_timer_armed = 0;
+                                    gmb_select_release(rctx);
+                                    vm_error(task, "BASIC Runtime Error: send su canale chiuso (GO SELECT)");
+                                    free(case_addrs);
+                                    return -1;
+                                }
+                                int valIdx = baseSp + winCase;
+                                gmb_stack_entry_t vE = (valIdx >= 0 && valIdx < task->sp) ? task->stack[valIdx] : (gmb_stack_entry_t){ 0 };
+                                gmb_task_t* woken = NULL;
+                                if (gmb_channel_try_send(wch, (gmb_obj_t*)vE.ref, vE.num, vE.type == 1, &woken))
+                                {
+                                    if (woken) gmb_sched_enqueue(vm->scheduler, woken);
+                                    task->sleep_until_ms = 0; task->select_timer_armed = 0;
+                                    gmb_task_truncate(task, baseSp);
+                                    task->ip = case_addrs[winCase];
+                                    gmb_select_release(rctx);
+                                    free(case_addrs);
+                                    return 1;
+                                }
+                            }
+                        }
+                        gmb_select_release(rctx); /* preferenza svanita: riprova tutti i case */
+                    }
+                    else
+                    {
+                        gmb_select_release(rctx);
+                    }
+                }
+
+                /* 1. Prova RECV su ogni canale (indice baseSp + num_sends + j). */
+                for (int j = 0; j < num_cases; j++)
+                {
+                    int chIdx = baseSp + num_sends + j;
+                    if (chIdx < 0 || chIdx >= task->sp) continue;
+                    gmb_stack_entry_t chE = task->stack[chIdx];
+                    gmb_channel_t* ch = (chE.type == 2 && chE.ref) ? (gmb_channel_t*)chE.ref : NULL;
+                    if (!ch)
+                    {
+                        /* Case TIMEOUT: dopo il park lo slot contiene la DEADLINE assoluta
+                         * (ms epoch) e il timer è armed; al primo giro contiene la durata e
+                         * non è pronto. Scaduto → vince il case (parità Go <-time.After). */
+                        if (chE.type == 1 && task->select_timer_armed && chE.num > 0 &&
+                            (double)gmb_now_ms() >= chE.num)
+                        {
+                            task->sleep_until_ms = 0; task->select_timer_armed = 0;
+                            if (task->select_ctx)
+                            {
+                                gmb_select_detach(task->select_ctx);
+                                gmb_select_release(task->select_ctx);
+                                task->select_ctx = NULL;
+                            }
+                            gmb_task_truncate(task, baseSp);
+                            push_nil(task);
+                            task->ip = case_addrs[j];
+                            free(case_addrs);
+                            return 1;
+                        }
+                        continue;
+                    }
+                    int is_recv = j >= num_sends;
+                    if (is_recv)
+                    {
+                        gmb_obj_t* val = NULL; double num = 0; int is_num = 0;
+                        gmb_task_t* woken = NULL;
+                        if (gmb_channel_try_recv(ch, &val, &num, &is_num, &woken))
+                        {
+                            if (woken) gmb_sched_enqueue(vm->scheduler, woken);
+                            task->sleep_until_ms = 0; task->select_timer_armed = 0;
+                            gmb_task_truncate(task, baseSp);
+                            if (is_num) push_num_entry(task, num, GMB_BT_NUMBER);
+                            else if (val)
+                            {
+                                push_ref_entry(task, val,
+                                    val->kind == GMB_OBJ_STRING ? GMB_BT_STRING : GMB_BT_OBJECT);
+                                gmb_obj_release(val); /* retain del buffer → caller */
+                            }
+                            else push_nil(task);
+                            task->ip = case_addrs[j];
+                            free(case_addrs);
+                            return 1;
+                        }
+                    }
+                }
+
+                /* 2. Prova SEND su ogni canale send (valore a baseSp + j, canale a baseSp + num_sends + j). */
+                for (int j = 0; j < num_sends; j++)
+                {
+                    int chIdx = baseSp + num_sends + j;
+                    if (chIdx < 0 || chIdx >= task->sp) continue;
+                    gmb_stack_entry_t chE = task->stack[chIdx];
+                    gmb_channel_t* ch = (chE.type == 2 && chE.ref) ? (gmb_channel_t*)chE.ref : NULL;
+                    if (!ch) continue;
+                    int valIdx = baseSp + j;
+                    gmb_stack_entry_t vE = (valIdx >= 0 && valIdx < task->sp) ? task->stack[valIdx] : (gmb_stack_entry_t){ 0 };
+                    int is_num = vE.type == 1;
+                    gmb_task_t* woken = NULL;
+                    if (gmb_channel_try_send(ch, (gmb_obj_t*)vE.ref, vE.num, is_num, &woken))
+                    {
+                        if (woken) gmb_sched_enqueue(vm->scheduler, woken);
+                        task->sleep_until_ms = 0; task->select_timer_armed = 0;
+                        gmb_task_truncate(task, baseSp);
+                        task->ip = case_addrs[j];
+                        free(case_addrs);
+                        return 1;
+                    }
+                }
+
+                /* 3. DEFAULT: eseguilo immediatamente (nessun park). */
+                if (def_off != 0xFFFF && def_off > 0)
+                {
+                    task->sleep_until_ms = 0; task->select_timer_armed = 0;
+                    gmb_task_truncate(task, baseSp);
+                    task->ip = def_off;
+                    free(case_addrs);
+                    return 1;
+                }
+
+                /* 4. Nessun case pronto e no DEFAULT: park atomico su TUTTI i canali.
+                   NON rimuovere gli operandi dallo stack: al risveglio il task ri-esegue il
+                   SETUP (startIp) e ricalcola baseSp = sp - C - S — senza operandi baseSp
+                   sarebbe negativo e il task si ri-parcheggerebbe per sempre (deadlock).
+                   V6: un unico SelectContext possiede l'intera SELECT; il completamento di un
+                   case vince il CAS e stacca i loser da tutti i canali (niente raw task
+                   pointer dangling, criterio di accettazione 8 del piano VMC). */
+                gmb_select_ctx_t* sctx = gmb_select_create(task, num_cases);
+                for (int j = 0; j < num_cases; j++)
+                {
+                    if (sctx && !gmb_select_pending(sctx)) break; /* un claim concorrente ha già vinto */
+                    int chIdx = baseSp + num_sends + j;
+                    if (chIdx < 0 || chIdx >= task->sp) continue;
+                    gmb_stack_entry_t chE = task->stack[chIdx];
+                    gmb_channel_t* ch = (chE.type == 2 && chE.ref) ? (gmb_channel_t*)chE.ref : NULL;
+                    if (!ch)
+                    {
+                        /* Case TIMEOUT: al primo giro lo slot contiene la DURATA in ms —
+                         * sovrascrivilo con la DEADLINE assoluta e arma il timer del task
+                         * (gmb_sched_wake_expired_sleepers lo sveglia; al wake ri-esegue il
+                         * SETUP e trova il timeout scaduto pronto). Al re-park lo slot è già
+                         * la deadline (armed=1): non ricalcolare, tieni la più vicina. */
+                        if (chE.type == 1 && chE.num > 0)
+                        {
+                            int64_t deadline;
+                            if (task->select_timer_armed) deadline = (int64_t)chE.num;
+                            else
+                            {
+                                deadline = gmb_now_ms() + (int64_t)chE.num;
+                                task->stack[chIdx].num = (double)deadline;
+                            }
+                            if (task->sleep_until_ms <= 0 || deadline < task->sleep_until_ms)
+                                task->sleep_until_ms = deadline;
+                            task->select_timer_armed = 1;
+                        }
+                        continue;
+                    }
+                    if (sctx) gmb_select_register(sctx, ch, j);
+                    if (j >= num_sends)
+                    {
+                        /* RECV: try+park atomico — se nel frattempo è arrivato un valore, completa subito.
+                         * V5: chiuso+vuoto completa subito con nil (Go ok=false). */
+                        gmb_obj_t* val = NULL; double num = 0; int is_num = 0;
+                        gmb_task_t* woken = NULL;
+                        int sel_closed = 0;
+                        if (gmb_channel_recv_or_park(ch, task, &val, &num, &is_num, &sel_closed, sctx, j, &woken))
+                        {
+                            if (woken) gmb_sched_enqueue(vm->scheduler, woken);
+                            /* Razza colpita: completa SUBITO e rivendica il case. */
+                            if (sctx) { gmb_select_claim(sctx, j); task->select_ctx = NULL; gmb_select_release(sctx); }
+                            task->sleep_until_ms = 0; task->select_timer_armed = 0;
+                            gmb_task_truncate(task, baseSp);
+                            if (is_num) push_num_entry(task, num, GMB_BT_NUMBER);
+                            else if (val)
+                            {
+                                push_ref_entry(task, val,
+                                    val->kind == GMB_OBJ_STRING ? GMB_BT_STRING : GMB_BT_OBJECT);
+                                gmb_obj_release(val); /* retain del buffer → caller */
+                            }
+                            else push_nil(task);
+                            task->ip = case_addrs[j];
+                            task->state = GMB_TS_RUNNABLE;
+                            free(case_addrs);
+                            return 1;
+                        }
+                    }
+                    else
+                    {
+                        /* SEND: try+park atomico. sr<0 = canale chiuso (Go: panic). */
+                        int valIdx = baseSp + j;
+                        gmb_stack_entry_t vE = (valIdx >= 0 && valIdx < task->sp) ? task->stack[valIdx] : (gmb_stack_entry_t){ 0 };
+                        int is_num = vE.type == 1;
+                        gmb_task_t* woken = NULL;
+                        int sr = gmb_channel_send_or_park(ch, (gmb_obj_t*)vE.ref, vE.num, is_num, task, sctx, j, &woken);
+                        if (sr < 0)
+                        {
+                            if (sctx) { gmb_select_detach(sctx); gmb_select_release(sctx); }
+                            task->sleep_until_ms = 0; task->select_timer_armed = 0;
+                            vm_error(task, "BASIC Runtime Error: send su canale chiuso (GO SELECT)");
+                            free(case_addrs);
+                            return -1;
+                        }
+                        if (sr > 0)
+                        {
+                            if (woken) gmb_sched_enqueue(vm->scheduler, woken);
+                            if (sctx) { gmb_select_claim(sctx, j); task->select_ctx = NULL; gmb_select_release(sctx); }
+                            task->sleep_until_ms = 0; task->select_timer_armed = 0;
+                            gmb_task_truncate(task, baseSp);
+                            task->ip = case_addrs[j];
+                            task->state = GMB_TS_RUNNABLE;
+                            free(case_addrs);
+                            return 1;
+                        }
+                    }
+                }
+                /* Tutti i case parcheggiati (o un claim concorrente ci ha già vinti e
+                 * riaccodati): il ref del task resta in task->select_ctx fino alla
+                 * ri-esecuzione del SETUP. */
+                task->select_ctx = sctx;
+                task->ip = startIp;
+                task->state = GMB_TS_BLOCKED;
+                /* V7a: CASE TIMEOUT armato → nodo nel timer min-heap (il watcher lo
+                 * sveglia alla scadenza senza scansionare tutti i task). */
+                if (task->select_timer_armed && task->sleep_until_ms > 0)
+                    gmb_sched_arm_timer(vm->scheduler, task);
+                free(case_addrs);
+                return 0;
+            }
+            case OP_CLONE_UDT:
+            {
+                /* popa e ripusha lo stesso valore (clone superficiale dict non ancora
+                 * implementato a runtime — i test concorrenza non dipendono dalla copia) */
+                gmb_stack_entry_t top = { 0 };
+                if (task->sp > 0) top = gmb_task_pop(task);
+                if (top.type == 1) push_num_entry(task, top.num, top.basic_type);
+                else push_ref_new(task, (gmb_obj_t*)top.ref, top.basic_type);   /* top e' posseduto (popped): lo stack lo riadotta */
+                break;
+            }
+            case OP_LOAD_STATIC_FIELD:
+            {
+                int sid = gmb_vm_read_u16(vm, task);
+                gmb_stack_entry_t e = { 0 };
+                pthread_mutex_lock(&vm->static_lock);
+                if (sid < GMB_STATIC_FIELDS_CAP && vm->static_fields_init[sid]) e = vm->static_fields[sid];
+                pthread_mutex_unlock(&vm->static_lock);
+                if (e.type == 0) { e.type = 2; e.basic_type = GMB_BT_NULL; }
+                if (e.type == 2) push_ref_entry(task, (gmb_obj_t*)e.ref, e.basic_type);
+                else push_num_entry(task, e.num, e.basic_type);
+                break;
+            }
+            case OP_STORE_STATIC_FIELD:
+            {
+                int sid = gmb_vm_read_u16(vm, task);
+                gmb_stack_entry_t e = gmb_task_pop(task);
+                pthread_mutex_lock(&vm->static_lock);
+                if (sid < GMB_STATIC_FIELDS_CAP)
+                {
+                    /* release del vecchio valore ref */
+                    if (vm->static_fields_init[sid] && vm->static_fields[sid].type == 2 && vm->static_fields[sid].ref)
+                        gmb_obj_release(vm->static_fields[sid].ref);
+                    vm->static_fields[sid] = e;
+                    if (e.type == 2 && e.ref) gmb_obj_retain((gmb_obj_t*)e.ref);
+                    vm->static_fields_init[sid] = 1;
+                }
+                pthread_mutex_unlock(&vm->static_lock);
+                break;
+            }
+
+            case OP_PUSH_CODE_REF:
+            {
+                int constIdx = gmb_vm_read_u16(vm, task);
+                double addr = 0;
+                if (constIdx >= 0 && constIdx < (int)vm->chunk->consts_len &&
+                    (vm->chunk->constants[constIdx].type == GMB_CONST_DOUBLE || vm->chunk->constants[constIdx].type == GMB_CONST_INT))
+                    addr = vm->chunk->constants[constIdx].d;
+                /* Bug corretto (2026-09-06, "bug callable"): un riferimento nudo a una
+                 * procedura (es. AMAP(arr, Doppio), ASORT arr, Confronta) veniva spinto
+                 * come semplice NUMERO (l'indirizzo). Ogni consumer che accetta una
+                 * callback come argomento (AMAP/AFILTER/AREDUCE/ASCAN/ASORT/AEVAL/ACOUNT
+                 * in gmb_builtin.c) verifica invece `ref->kind == GMB_OBJ_CLOSURE`: un
+                 * numero non supera mai quel controllo, quindi il predicato/trasformazione
+                 * veniva silenziosamente ignorato (risultato vuoto/0/-1, mai un errore).
+                 * Non è possibile distinguere "numero letterale" da "indirizzo di codice"
+                 * a valle una volta che entrambi sono tipati come NUMBER: la correzione va
+                 * fatta qui, producendo una vera closure a 0 upvalue (stesso oggetto che
+                 * produce OP_CLOSURE per una lambda letterale, cfr. gmb_closure_new). */
+                gmb_obj_closure_t* closure = gmb_closure_new((int)addr, 0);
+                if (!closure) { vm_error(task, "OP_PUSH_CODE_REF: memoria"); break; }
+                push_ref_new(task, (gmb_obj_t*)closure, GMB_BT_OBJECT);
+                break;
+            }
+            case OP_YIELD:
+                return 1;
+
+            default:
+            {
+                char msg[96];
+                snprintf(msg, sizeof(msg), "opcode %d non implementato a IP=%d", op, task->ip - 1);
+                vm_error(task, msg);
+                return -1;
+            }
+
+        }
+
+        /* I case NON-fast terminano qui (break dallo switch): salta al fetch, NON cadere
+         * nelle label del fast path sotto. */
+        goto fetch_next;
+
+        /* ---- FAST PATH: corpi dedicati per gli opcode del path caldo (computed goto).
+         * Ogni label esegue il suo corpo e poi fa il fetch+dispatch dell'opcode successivo. */
+        L_FAST_PUSH_CONST:
+        {
+            int idx = gmb_vm_read_u16(vm, task);
+            const gmb_value_t* c = gmb_chunk_const(vm->chunk, (uint32_t)idx);
+            if (c && (c->type == GMB_CONST_DICT || c->type == GMB_CONST_LIST))
+                gmb_vm_materialize_const(vm, task, c);
+            else
+                push_const(vm, task, idx);
+            goto fetch_next;
+        }
+        L_FAST_LOAD_LOCAL:
+        {
+            int slot = gmb_vm_read_u16(vm, task);
+            gmb_stack_entry_t e = gmb_task_load_local(task, slot);
+            if (e.type == 2 && e.ref && e.basic_type == GMB_BT_OBJECT &&
+                ((gmb_obj_t*)e.ref)->kind == GMB_OBJ_FUTURE)
+            {
+                gmb_future_t* fut = (gmb_future_t*)e.ref;
+                if (!gmb_future_is_resolved(fut))
+                {
+                    task->ip -= 3;
+                    if (gmb_future_register_waiter(fut, task)) return 0;
+                    task->ip += 3;
+                }
+                /* V4g: future fallito → propaga l'errore (specchio PropagateFutureFailure). */
+                if (fut->is_failed)
+                {
+                    char fmsg[320];
+                    snprintf(fmsg, sizeof(fmsg), "GO FUNCTION error: %s", fut->fail_msg);
+                    raise_basic_error(task, 200.0, fmsg);
+                    if (task->state == GMB_TS_FINISHED) return -1;
+                    goto fetch_next;
+                }
+                if (fut->result_is_num) push_num_entry(task, fut->result_num, GMB_BT_NUMBER);
+                else if (fut->result) push_ref_entry(task, fut->result, GMB_BT_STRING);
+                else push_nil(task);
+                goto fetch_next;
+            }
+            if (e.type == 0) { e.type = 2; e.ref = NULL; e.basic_type = GMB_BT_NULL; }
+            if (e.type == 2) push_ref_entry(task, (gmb_obj_t*)e.ref, e.basic_type);
+            else push_num_entry(task, e.num, e.basic_type);
+            goto fetch_next;
+        }
+        L_FAST_STORE_LOCAL:
+        {
+            int slot = gmb_vm_read_u16(vm, task);
+            gmb_stack_entry_t e = gmb_task_pop(task);
+            gmb_task_store_local(task, slot, e);
+            goto fetch_next;
+        }
+        L_FAST_JUMP_FORWARD:
+        {
+            int off = gmb_vm_read_u16(vm, task);
+            task->ip += off;
+            goto fetch_next;
+        }
+        L_FAST_JUMP_IF_FALSE:
+        {
+            int off = gmb_vm_read_u16(vm, task);
+            /* Truthiness condivisa con il path lento: una stringa "True"/"False" non deve
+             * essere trattata come 0 (bug §5: `IF CONVERSIONS.CSTR(<bit>)` sempre falso). */
+            bool cond = vm_truthy_entry(gmb_task_pop(task));
+            if (!cond) task->ip += off;
+            goto fetch_next;
+        }
+        L_FAST_FOR_LOOP:
+        {
+            int slot = gmb_vm_read_u16(vm, task);
+            int jump_off = gmb_vm_read_u16(vm, task);
+            gmb_for_state_t* fs = for_state_of(task);
+            if (slot >= 0 && slot < 64 && fs->active[slot])
+            {
+                double actual = 0;
+                if (slot < GMB_FRAME_LOCALS_CAP)
+                {
+                    gmb_stack_entry_t e = gmb_task_load_local(task, slot);
+                    if (e.type == 1) actual = e.num;
+                }
+                if (actual == 0) actual = fs->counter[slot];
+                double step = fs->step[slot];
+                double end = fs->end[slot];
+                double nxt = actual + step;
+                int done = (step >= 0) ? nxt > end : nxt < end;
+                fs->counter[slot] = nxt;
+                if (slot < GMB_FRAME_LOCALS_CAP)
+                {
+                    gmb_stack_entry_t e = { 0 };
+                    e.num = nxt; e.type = 1; e.basic_type = GMB_BT_NUMBER;
+                    gmb_task_store_local(task, slot, e);
+                }
+                if (!done) task->ip -= jump_off;
+                else fs->active[slot] = 0;
+            }
+            goto fetch_next;
+        }
+
+        /* fetch + dispatch dell'opcode successivo (usato dalle label fast path) */
+        fetch_next:
+        ;
+    }
+}
+
+/* Flush dello staging PRINT a fine task: le pagine BSP emettono ogni riga con
+ * `PRINT ...;` (BspCompiler), quindi senza flush al termine l'intero output va perso. */
+static void vm_flush_print_staging(gmb_vm_t* vm, gmb_task_t* task)
+{
+    if (!vm || !task || task->print_staging_len <= 0) return;
+    pthread_mutex_lock(&vm->print_lock);
+    task->print_staging[task->print_staging_len] = '\0';
+    if (vm->print_str) vm->print_str(task->print_staging, (uint32_t)task->print_staging_len);
+    else fputs(task->print_staging, stdout);
+    task->print_staging_len = 0;
+    pthread_mutex_unlock(&vm->print_lock);
+}
+
+/* Single-task run (no GPM) — per programmi lineari. */
+int gmb_vm_run(gmb_vm_t* vm)
+{
+    /* V7a-net (§12): wake hook del net-watcher condiviso (block=NULL: wait_fd
+     * conserva il suo path poll per i chiamanti interni del runtime). */
+    gmb_net_set_block_hooks(NULL, vm_net_wake, vm->scheduler);
+    gmb_task_t* main = gmb_task_create(vm->scheduler, vm->chunk->entry_point > 0 ? vm->chunk->entry_point : 0);
+    if (!main) return -1;
+    gmb_task_ensure_globals(main, vm->chunk->global_count);
+    vm_apply_bsp_seeds(vm, main);                /* BSP: REQ/QUERY/FORM/SESSION */
+    vm->http_main_task = main; /* handler HTTP/WS condividono le globali del main */
+    int r;
+    int guard = 0;
+    /* esegue finché il main non è FINISHED, gestendo i blocchi (SLEEP) con riattivazione */
+    do {
+        /* V7a-net: qui non ci sono worker che consumano la run-queue: un wake
+         * (net/future/canale) che ha accodato il task va reclamato prima del tick. */
+        gmb_sched_reclaim_queued(vm->scheduler, main);
+        r = gmb_vm_tick(vm, main);
+        if (r == -1) break;                       /* errore */
+        if (main->state == GMB_TS_BLOCKED && main->sleep_until_ms > 0)
+        {
+            int64_t now = gmb_now_ms();
+            if (now < main->sleep_until_ms)
+            {
+                /* V7a: dorme fino alla deadline invece di pollare a 1ms. */
+                int64_t wait_ms = main->sleep_until_ms - now;
+                struct timespec ts = { wait_ms / 1000, (wait_ms % 1000) * 1000000 };
+                nanosleep(&ts, NULL);
+                continue;                          /* riprova senza avanzare */
+            }
+            main->state = GMB_TS_RUNNABLE;         /* sveglia */
+            main->sleep_until_ms = 0;
+            continue;
+        }
+        if (main->state == GMB_TS_BLOCKED)
+        {
+            /* bloccato su future/canale (non sleep): il wake arriva da un thread dedicato
+               (fetch) o da un altro task — poll breve per non bruciare CPU (il re-run
+               immediato di OP_FETCH rispawnava il thread → "bad argument"). */
+            struct timespec ts = { 0, 500000 };    /* 0.5ms poll */
+            nanosleep(&ts, NULL);
+            continue;
+        }
+    } while (main->state != GMB_TS_FINISHED && ++guard < 100000000);
+    vm_flush_print_staging(vm, main);
+    int ok = main->state == GMB_TS_FINISHED && main->pending_exception == NULL;
+    if (main->pending_exception) { fprintf(stderr, "[VM ERROR] %s\n", main->pending_exception); }
+    return ok ? 0 : -1;
+}
+
+int gmb_vm_run_debug(gmb_vm_t* vm)
+{
+    if (!vm->debug) return gmb_vm_run(vm);
+    /* V7a-net (§12): wake hook del net-watcher condiviso. */
+    gmb_net_set_block_hooks(NULL, vm_net_wake, vm->scheduler);
+    /* crea il task main una sola volta; i resume riusano lo stato (ip, stack,
+     * frames, globals) preservato tra le pause. */
+    if (!vm->debug_main)
+    {
+        vm->debug_main = gmb_task_create(vm->scheduler, vm->chunk->entry_point > 0 ? vm->chunk->entry_point : 0);
+        if (!vm->debug_main) return -1;
+        gmb_task_ensure_globals(vm->debug_main, vm->chunk->global_count);
+    }
+    gmb_task_t* main = vm->debug_main;
+    int guard = 0;
+    for (;;)
+    {
+        if (main->state == GMB_TS_DEBUG_PAUSED)
+        {
+            main->state = GMB_TS_RUNNABLE;
+            /* al resume non ripausare sulla stessa riga del breakpoint: skip
+             * finché la riga corrente è diversa dalla riga di pausa. */
+            int pl = vm->chunk->lines ? (int)vm->chunk->lines[main->ip] : 0;
+            vm->debug->skip_line = pl > 0 ? (uint32_t)pl : 0;
+        }
+        /* V7a-net: runner single-thread → reclama l'eventuale accodamento wake. */
+        gmb_sched_reclaim_queued(vm->scheduler, main);
+        int r = gmb_vm_tick(vm, main);
+        if (r == GMB_TICK_DEBUG_PAUSE) return GMB_TICK_DEBUG_PAUSE;
+        if (r == -1) return -1;
+        if (main->state == GMB_TS_BLOCKED && main->sleep_until_ms > 0)
+        {
+            int64_t now = gmb_now_ms();
+            if (now < main->sleep_until_ms)
+            {
+                /* V7a: dorme fino alla deadline invece di pollare a 1ms. */
+                int64_t wait_ms = main->sleep_until_ms - now;
+                struct timespec ts = { wait_ms / 1000, (wait_ms % 1000) * 1000000 };
+                nanosleep(&ts, NULL);
+                continue;
+            }
+            main->state = GMB_TS_RUNNABLE;
+            main->sleep_until_ms = 0;
+            continue;
+        }
+        if (main->state == GMB_TS_FINISHED)
+        {
+            int ok = main->pending_exception == NULL;
+            if (main->pending_exception) { fprintf(stderr, "[VM ERROR] %s\n", main->pending_exception); }
+            return ok ? 0 : -1;
+        }
+        if (++guard > 100000000) return -1;
+    }
+}
+
+/* --- helper debug esposti al bridge --- */
+
+void gmb_vm_debug_clear(gmb_vm_t* vm)
+{
+    if (vm->debug) { vm->debug->breakpoint_count = 0; vm->debug->single_step = 0; vm->debug->skip_line = 0; vm->debug->pause_requested = 0; }
+}
+
+int gmb_vm_debug_add_breakpoint(gmb_vm_t* vm, uint32_t line)
+{
+    if (!vm->debug || vm->debug->breakpoint_count >= GMB_MAX_BREAKPOINTS) return -1;
+    for (int i = 0; i < vm->debug->breakpoint_count; i++)
+        if (vm->debug->breakpoints[i] == line) return 0; /* già presente */
+    vm->debug->breakpoints[vm->debug->breakpoint_count++] = line;
+    return 0;
+}
+
+/* Riga corrente del task main di debug (0 se non in pausa). */
+int gmb_vm_debug_stack(gmb_vm_t* vm, uint32_t* lines, int max)
+{
+    if (!vm || !lines || max <= 0) return 0;
+    gmb_task_t* main = vm->debug_main;
+    if (!main) return 0;
+    int count = 0;
+    uint32_t current = gmb_vm_debug_current_line(vm);
+    if (current > 0) lines[count++] = current;
+    for (gmb_frame_t* frame = main->frame; frame && count < max; frame = frame->prev) {
+        uint32_t line = 0;
+        if (frame->return_ip > 0 && vm->chunk && vm->chunk->lines)
+            line = vm->chunk->lines[frame->return_ip];
+        if (line > 0) lines[count++] = line;
+    }
+    return count;
+}
+
+int gmb_vm_debug_read(gmb_vm_t* vm, const char* name, char* buf, size_t cap)
+{
+    if (!vm || !name || !*name || !buf || cap == 0) return 0;
+    gmb_task_t* main = vm->debug_main;
+    if (!main) return 0;
+    buf[0] = 0;
+    /* Globali: nomi nella coda del chunk, valori nel task. */
+    if (vm->chunk && vm->chunk->global_names && main->globals_nums) {
+        for (uint32_t i = 0; i < vm->chunk->global_name_count && i < main->globals_count; i++) {
+            const char* gname = vm->chunk->global_names[i];
+            if (!gname || strcasecmp(gname, name) != 0) continue;
+            gmb_stack_entry_t e;
+            e.num = main->globals_nums[i];
+            e.ref = main->globals_refs ? main->globals_refs[i] : NULL;
+            e.type = main->globals_types ? main->globals_types[i] : 0;
+            e.basic_type = main->globals_basic ? main->globals_basic[i] : 0;
+            e.scale = 0;
+            gmb_format_value(buf, cap, e);
+            return 1;
+        }
+    }
+    /* Locali del frame corrente. La mappa nome->slot è nel chunk. */
+    int slot = gmb_chunk_local_slot(vm->chunk, main->ip, name);
+    if (slot >= 0) {
+        gmb_frame_t* frame = main->frame;
+        gmb_stack_entry_t e;
+        if (frame && slot < GMB_FRAME_LOCALS_CAP) {
+            e.num = frame->local_nums[slot];
+            e.ref = frame->local_refs[slot];
+            e.type = frame->local_types[slot];
+            e.basic_type = frame->local_basic[slot];
+            e.scale = 0;
+            gmb_format_value(buf, cap, e);
+            return 1;
+        }
+        if (!frame && slot < GMB_LOCALS_CAP) {
+            e.num = main->locals_nums[slot];
+            e.ref = main->locals_refs[slot];
+            e.type = main->locals_types[slot];
+            e.basic_type = main->locals_basic[slot];
+            e.scale = 0;
+            gmb_format_value(buf, cap, e);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+uint32_t gmb_vm_debug_current_line(gmb_vm_t* vm)
+{
+    gmb_task_t* main = vm->debug_main;
+    if (!main || main->state != GMB_TS_DEBUG_PAUSED) return 0;
+    int line = vm->chunk->lines ? (int)vm->chunk->lines[main->ip] : 0;
+    return line > 0 ? (uint32_t)line : 0;
+}
+
+/* ----------------------------------------------------------------------------
+ * Generatore (GENERATOR PROCEDURE): guida il task dedicato tick-per-tick fino al
+ * prossimo YIELD (OP_NEXT_GENERATOR → GMB_TICK_GENERATOR_YIELD) o al termine.
+ * Ritorna 0 se c'è un valore prodotto (pending_result), 1 se il generatore è finito.
+ * Il task NON è nello scheduler GPM: eseguito sincronamente dal chiamante (NEXT),
+ * come il debug. Stessa semantica di DriveGeneratorTask della PCodeVm.
+ * ---------------------------------------------------------------------------- */
+static int gmb_vm_generator_drive(gmb_vm_t* vm, gmb_obj_generator_t* gen)
+{
+    gmb_task_t* t = gen->task;
+    int guard = 0;
+    for (;;)
+    {
+        if (t->state == GMB_TS_FINISHED || (t->ip < 0 || t->ip >= (int)vm->chunk->code_len))
+        {
+            t->state = GMB_TS_FINISHED;
+            gen->done = 1;
+            return 1;
+        }
+        int r = gmb_vm_tick(vm, t);
+        if (r == GMB_TICK_GENERATOR_YIELD && t->has_pending_result)
+            return 0; /* valore prodotto */
+        if (r == -1)
+        {
+            t->state = GMB_TS_FINISHED;
+            gen->done = 1;
+            return 1;
+        }
+        if (++guard > 100000000) { gen->done = 1; return 1; }
+    }
+}
+/* NEXT(generatore): riprende un generatore sospeso (YIELD) o un'espressione
+ * generatore materializzata. Ritorna 0 e carica `out` col prossimo valore;
+ * ritorna 1 quando il generatore è esaurito (StopIteration). */
+int gmb_vm_next_generator(gmb_vm_t* vm, gmb_obj_generator_t* gen, gmb_stack_entry_t* out)
+{
+    if (!gen) return 1;
+    if (gen->is_expr && gen->expr_list)
+    {
+        if (gen->expr_pos >= (gmb_int_t)gen->expr_list->list->count) { gen->done = 1; return 1; }
+        gmb_val_t v = gen->expr_list->list->items[gen->expr_pos++];
+        *out = gmb_adapter_val_to_stack(v);
+        return 0;
+    }
+    if (gen->done) return 1;
+    if (gen->task) gen->task->state = GMB_TS_RUNNABLE; /* il task non è mai schedulato: solo il driver lo guida */
+    if (gmb_vm_generator_drive(vm, gen) != 0)
+    {
+        gen->done = 1;
+        if (gen->task) gen->task->state = GMB_TS_FINISHED; /* libera lo shutdown dello scheduler */
+        return 1;
+    }
+    *out = gen->task->pending_result;
+    gen->task->has_pending_result = 0;
+    return 0;
+}
+/* ---- GPM multi-core (§16) ---- */
+/* V5: argomento worker per il resize runtime del pool (SYSTEM.GOMAXPROCS). */
+typedef struct {
+    gmb_vm_t* vm;
+} worker_arg_t;
+
+/* IO WATCH: poll dei file osservati e dispatch della callback SUB come task GPM
+ * (pattern GO SUB senza argomenti). Chiamato periodicamente dal worker loop. */
+static void vm_iowatch_poll_dispatch(gmb_vm_t* vm, gmb_task_t* src)
+{
+    char path[1024], cb[128];
+    while (gmb_iowatch_first_changed_cb(path, sizeof(path), cb, sizeof(cb))[0] != '\0')
+    {
+        if (!cb[0]) continue;
+        int addr = -1;
+        for (uint32_t i = 0; i < vm->chunk->proc_count; i++)
+            if (vm->chunk->proc_names[i] && strcasecmp(vm->chunk->proc_names[i], cb) == 0)
+            { addr = (int)vm->chunk->proc_addrs[i]; break; }
+        gmb_task_t* go = addr >= 0 ? gmb_task_create(vm->scheduler, addr) : NULL;
+        if (!go) continue;
+        go->vm_ctx = vm;
+        gmb_task_t* gsrc = src ? src : vm->http_main_task;
+        if (gsrc)
+        {
+            go->globals_nums = gsrc->globals_nums;
+            go->globals_refs = gsrc->globals_refs;
+            go->globals_types = gsrc->globals_types;
+            go->globals_basic = gsrc->globals_basic;
+            go->globals_count = gsrc->globals_count;
+        }
+        gmb_sched_enqueue(vm->scheduler, go);
+    }
+}
+
+/* Vedi la forward declaration (vicino a vm_str_job_thread) per il perché esiste come
+ * funzione a parte invece che inline in worker_loop: un task portato a GMB_TS_FINISHED
+ * da un thread ASINCRONO (vm_str_job_thread, errore di LLM FINETUNE/LORA APPLY parked)
+ * deve ricevere la STESSA bookkeeping, altrimenti resta FINISHED ma mai "reaped". */
+static void vm_finish_task_bookkeeping(gmb_vm_t* vm, gmb_task_t* task)
+{
+    vm_flush_print_staging(vm, task);
+    if (task->future_to_resolve && task->pending_exception == NULL)
+    {
+        gmb_stack_entry_t top = { 0 };
+        if (task->sp > 0) top = task->stack[task->sp - 1];
+        if (top.type == 1) gmb_future_resolve(task->future_to_resolve, NULL, top.num, 1, vm->scheduler);
+        else gmb_future_resolve(task->future_to_resolve, top.type == 2 ? (gmb_obj_t*)top.ref : NULL, 0, 0, vm->scheduler);
+    }
+    else if (task->future_to_resolve)
+        /* V4g: goroutine terminata con errore → Fail (specchio HandlePostTick):
+         * chi legge il future riceve l'errore propagato, non un null silenzioso. */
+        gmb_future_fail(task->future_to_resolve, task->pending_exception, vm->scheduler);
+    /* WaitGroup implicito (GO SUB/FUNCTION ... IN wg): Done al termine del task —
+       senza, WAIT wg bloccava per sempre quando la goroutine non chiama DONE. */
+    if (task->waitgroup)
+    {
+        gmb_wg_done(task->waitgroup, vm->scheduler);
+        gmb_obj_release((gmb_obj_t*)task->waitgroup);
+        task->waitgroup = NULL;
+    }
+    /* V7a: completion condition — decrementa active_count; a zero il main
+     * di gmb_vm_run_mt si sblocca dalla ccond (niente polling 1ms). */
+    gmb_sched_note_task_finished(vm->scheduler);
+}
+
+static void* worker_loop(void* arg)
+{
+    gmb_vm_t* vm = ((worker_arg_t*)arg)->vm;
+    free(arg);
+    while (1)
+    {
+        /* V5: ritiro a runtime (shrink GOMAXPROCS, specchio IsProcessorRetired di
+         * PCodeVm.WorkerLoop): un token di ritiro pende → questo worker esce senza
+         * prendere altri task. I task restano nella coda globale (mai persi). */
+        pthread_mutex_lock(&vm->worker_lock);
+        if (vm->retire_pending > 0)
+        {
+            vm->retire_pending--;
+            vm->worker_live--;
+            pthread_mutex_unlock(&vm->worker_lock);
+            break;
+        }
+        pthread_mutex_unlock(&vm->worker_lock);
+        gmb_task_t* task = gmb_sched_find_runnable(vm->scheduler);
+        if (!task) break; /* shutdown */
+        task->state = GMB_TS_RUNNING;
+        int tick_r = gmb_vm_tick(vm, task);
+        /* IO WATCH: poll throttled (~50ms) e dispatch callback SUB come task GPM.
+         * Solo un worker per volta (throttle condiviso). */
+        {
+            static long long s_iowatch_last_ms = 0;
+            long long now = gmb_now_ms();
+            if (now - s_iowatch_last_ms > 50)
+            {
+                s_iowatch_last_ms = now;
+                vm_iowatch_poll_dispatch(vm, task);
+            }
+        }
+        /* HandlePostTick */
+        if (task->state == GMB_TS_FINISHED)
+        {
+            vm_finish_task_bookkeeping(vm, task);
+        }
+        else if (tick_r == GMB_TICK_YIELD || tick_r == GMB_TICK_PREEMPTED || task->force_yield)
+        {
+            task->force_yield = 0;
+            task->state = GMB_TS_RUNNABLE;
+            gmb_sched_enqueue(vm->scheduler, task);
+        }
+        gmb_sched_release_executing(vm->scheduler, task);
+    }
+    return NULL;
+}
+
+static void* sleep_watcher_loop(void* arg)
+{
+    gmb_vm_t* vm = (gmb_vm_t*)arg;
+    /* Watchdog deadlock (parità Go "fatal error: all goroutines are asleep -
+     * deadlock!"): un programma dove TUTTI i task sono bloccati per sempre (es. SEND
+     * su un canale senza mai un RECEIVE corrispondente) oggi resta appeso all'infinito,
+     * senza nessuna diagnostica — scoperto 2026-09-08 verificando un bug reale con
+     * questo identico sintomo. Richiede la stessa condizione confermata per 2 giri
+     * consecutivi del watcher (≥250ms l'uno, quindi ~500ms totali) prima di dichiarare
+     * deadlock, per escludere una race transitoria (un worker sta per fare un enqueue). */
+    int stuck_streak = 0;
+    /* V7a (§7.1/§11): timer min-heap — il watcher fire i nodi scaduti e attende su
+     * tcond fino alla prossima deadline (cap 250ms). Niente più scansione di tutti
+     * i task a ogni giro; un arm_timer (OP_SLEEP/SELECT TIMEOUT) lo sveglia prima. */
+    while (gmb_sched_active_count(vm->scheduler) > 0 && !vm->scheduler->shutdown)
+    {
+        gmb_sched_fire_expired_timers(vm->scheduler, gmb_now_ms());
+        /* IO WATCH: poll dei file osservati (gira anche quando i task sono bloccati
+         * in SLEEP — i worker escono se non c'e' nulla di runnable). Fast-path O(1):
+         * se nessuna path e' osservata, zero lavoro. */
+        if (gmb_iowatch_count() > 0)
+            vm_iowatch_poll_dispatch(vm, vm->http_main_task);
+        int64_t next_deadline = gmb_sched_next_timer_deadline(vm->scheduler);
+        if (next_deadline < 0 && gmb_iowatch_count() == 0 && gmb_sched_is_stuck(vm->scheduler))
+        {
+            if (++stuck_streak >= 2)
+            {
+                fprintf(stderr, "fatal error: all goroutines are asleep - deadlock!\n"
+                                 "[GMBASIC] nessun task puo' piu' fare progressi (nessun task runnable/in "
+                                 "esecuzione, nessun timer o I/O in attesa) -- probabile SEND senza un "
+                                 "RECEIVE corrispondente, o un WAIT su un WAITGROUP mai completato.\n");
+                gmb_sched_request_cancellation(vm->scheduler);
+                break;
+            }
+        }
+        else stuck_streak = 0;
+        gmb_sched_timer_wait(vm->scheduler, next_deadline);
+    }
+    return NULL;
+}
+
+/* V5: crea un worker e lo registra in vm->worker_threads per la join finale. Usato
+ * sia allo startup (gmb_vm_run_mt) sia dal grow runtime di SYSTEM.GOMAXPROCS. */
+int gmb_vm_spawn_worker(gmb_vm_t* vm)
+{
+    worker_arg_t* wa = (worker_arg_t*)malloc(sizeof(worker_arg_t));
+    if (!wa) return -1;
+    wa->vm = vm;
+    pthread_t th;
+    /* Stack ampio per il worker: il forward DS4/MLX (motore embedded) e le catene di chiamata
+     * del path AI superano lo stack di default (~512 KB su macOS), causando SIGBUS/overflow.
+     * Il worker esegue i task BASIC/GPM, quindi è qui che gira gmb_agent_ask→brain→forward. */
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setstacksize(&attr, 64 * 1024 * 1024);
+    int rc = pthread_create(&th, &attr, worker_loop, wa);
+    pthread_attr_destroy(&attr);
+    if (rc != 0) { free(wa); return -1; }
+    pthread_mutex_lock(&vm->worker_lock);
+    if (vm->worker_threads_count >= vm->worker_threads_cap)
+    {
+        int ncap = vm->worker_threads_cap ? vm->worker_threads_cap * 2 : 8;
+        pthread_t* nt = (pthread_t*)realloc(vm->worker_threads, ncap * sizeof(pthread_t));
+        if (!nt) { pthread_mutex_unlock(&vm->worker_lock); return -1; }
+        vm->worker_threads = nt;
+        vm->worker_threads_cap = ncap;
+    }
+    vm->worker_threads[vm->worker_threads_count++] = th;
+    vm->worker_live++;
+    pthread_mutex_unlock(&vm->worker_lock);
+    return 0;
+}
+
+int gmb_vm_run_mt(gmb_vm_t* vm)
+{
+    /* V7a-net (§12): wake hook del net-watcher condiviso — i syscall di rete
+     * parcheggiati (TCP ACCEPT/RECV, UDP RECV) vengono riaccodati da lì. */
+    gmb_net_set_block_hooks(NULL, vm_net_wake, vm->scheduler);
+    /* Parità PCodeVM ResolveGoMaxProcs: default = numero di CPU online (il managed
+     * usa Environment.ProcessorCount), override GMBASIC_GOMAXPROCS. Prima era 4 fisso
+     * → SYSTEM.GOMAXPROCS(0) divergeva dal managed. */
+    int worker_count = (int)sysconf(_SC_NPROCESSORS_ONLN);
+    if (worker_count < 1) worker_count = 1;
+    const char* env = getenv("GMBASIC_GOMAXPROCS");
+    if (env) { int n = atoi(env); if (n > 0) worker_count = n; }
+
+    gmb_task_t* main = gmb_task_create(vm->scheduler, vm->chunk->entry_point > 0 ? vm->chunk->entry_point : 0);
+    if (!main) return -1;
+    main->vm_ctx = vm;
+    main->owns_globals = 1;   /* il main possiede i globals; i GO li condividono senza free */
+    gmb_task_ensure_globals(main, vm->chunk->global_count);
+    vm_apply_bsp_seeds(vm, main);                /* BSP: REQ/QUERY/FORM/SESSION */
+    vm->http_main_task = main; /* handler HTTP/WS condividono le globali del main */
+    gmb_sched_enqueue(vm->scheduler, main);
+
+    /* V5: pool worker tracciato in vm->worker_threads (resize runtime GOMAXPROCS). */
+    pthread_t watcher;
+    {
+        int nw = worker_count < 32 ? worker_count : 32;
+        pthread_mutex_lock(&vm->worker_lock);
+        vm->worker_target = nw;
+        pthread_mutex_unlock(&vm->worker_lock);
+        for (int i = 0; i < nw; i++) gmb_vm_spawn_worker(vm);
+    }
+    pthread_create(&watcher, NULL, sleep_watcher_loop, vm);
+
+    /* Specchio del CancellationToken esterno di PCodeVmRunner.Run: dopo N ms richiede
+     * la cancellazione cooperativa di tutti i task (unwind Cancel attraverso i FINALLY). */
+    int64_t cancel_at_ms = -1;
+    {
+        const char* cenv = getenv("GMBASIC_VM_CANCEL_MS");
+        if (cenv) { int ms = atoi(cenv); if (ms >= 0) cancel_at_ms = gmb_now_ms() + ms; }
+    }
+
+    /* V7a (§7.1): completion condition — il main attende sulla ccond dello scheduler
+     * (active_count==0) invece di pollare has_active a 1ms. Il timed wait serve solo
+     * quando è configurata la cancellazione esterna (GMBASIC_VM_CANCEL_MS). */
+    for (;;)
+    {
+        int64_t wait_ms = -1;
+        if (cancel_at_ms >= 0)
+        {
+            wait_ms = cancel_at_ms - gmb_now_ms();
+            if (wait_ms < 0) wait_ms = 0;
+        }
+        if (gmb_sched_wait_all_done_ms(vm->scheduler, wait_ms)) break;
+        if (cancel_at_ms >= 0 && gmb_now_ms() >= cancel_at_ms)
+        {
+            cancel_at_ms = -1;   /* poi attende illimitato l'unwind Cancel */
+            gmb_sched_request_cancellation(vm->scheduler);
+        }
+    }
+
+    gmb_sched_signal_shutdown(vm->scheduler);
+    /* V5: join di TUTTI i worker lanciati (anche quelli del grow runtime). */
+    for (int i = 0; i < vm->worker_threads_count; i++)
+        pthread_join(vm->worker_threads[i], NULL);
+    free(vm->worker_threads);
+    vm->worker_threads = NULL;
+    vm->worker_threads_cap = 0;
+    vm->worker_threads_count = 0;
+    vm->worker_live = 0;
+    vm->retire_pending = 0;
+    pthread_join(watcher, NULL);
+
+    int ok = main->pending_exception == NULL;
+    if (main->pending_exception) fprintf(stderr, "[VM ERROR] %s\n", main->pending_exception);
+    return ok ? 0 : -1;
+}

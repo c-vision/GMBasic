@@ -1,0 +1,6 @@
+' EXPECT: error: CDP connect f
+IMPORT BROWSER
+
+SUB Main()
+    PRINT LEFT$(BROWSER.NETLOG(), 20)
+END SUB

@@ -1,0 +1,48 @@
+Conformance: edition=Commercial
+  code=1736 bytes, consts=82, entry=1686
+  A1 chunk: /var/folders/b_/gsctxq2x5sq9gh7zpqpgrd0m0000gn/T/gmb_vmtest_93c96db4.chunk (17668 bytes)
+  ---- VM/C OUTPUT ----
+╔═════════════════════════════════════════════════════════════════════════════╗
+║ ClipperSyntax.bas - Test delle funzionalità di sintassi estesa              ║
+╚═════════════════════════════════════════════════════════════════════════════╝
+
+---[ Test Unificazione Nomi Variabile (Suffisso vs AS) ]---
+Valore dopo ri-dichiarazione con AS: Hello from suffix
+RISULTATO: SUCCESSO - La variabile è la stessa.
+
+---[ Test Valore NIL ]---
+Confronto 'a = NIL', 'b = NIL', 'c = 0'
+RISULTATO: SUCCESSO - 'a == b' è vero.
+RISULTATO: FALLITO - 'a == c' è vero.
+RISULTATO: FALLITO - 'a != c' è falso.
+RISULTATO: SUCCESSO - 'IF NIL' è stato valutato come falso.
+
+---[ Test Operatori e Letterali Logici Clipper ]---
+Test: .T. AND .F.
+RISULTATO: SUCCESSO
+Test: .T. OR .F.
+RISULTATO: SUCCESSO
+Test: .NOT. F
+RISULTATO: SUCCESSO
+Test: !T (operatore di negazione)
+RISULTATO: SUCCESSO
+
+---[ Test Assegnazione Inline (:=) ]---
+Cerco 'blu' in 'La casa blu sulla collina blu'
+Fine ricerca.
+
+Test Assegnazione Multipla (x := y := z := 123)
+Valore di x:  123 
+Valore di y:  123 
+Valore di z:  123 
+RISULTATO: SUCCESSO
+
+---[ Test Operatore di Uguaglianza Esatta (==) ]---
+Confronto 'test' con 'test  '
+Usando '=' (uguaglianza lasca):
+RISULTATO: Le stringhe sono uguali (comportamento atteso con SET EXACT OFF).
+Usando '==' (uguaglianza esatta):
+RISULTATO: FALLITO - '==' ha considerato le stringhe uguali.
+
+Tutti i test sono stati eseguiti.
+  exit=0

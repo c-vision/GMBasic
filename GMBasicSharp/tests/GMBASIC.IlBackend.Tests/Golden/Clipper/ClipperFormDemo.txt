@@ -1,0 +1,20 @@
+Conformance: edition=Commercial
+  code=2004 bytes, consts=153, entry=1064
+  A1 chunk: /var/folders/b_/gsctxq2x5sq9gh7zpqpgrd0m0000gn/T/gmb_vmtest_83d61ded.chunk (18521 bytes)
+[1;3H╔══════════════════════════════════════════════════╗[2;3H║         REGISTRAZIONE DIPENDENTE                  ║[3;3H╚══════════════════════════════════════════════════╝[5;5HNome completo:[6;5HIndirizzo....:[8;5HData nascita.:[10;5HTitolo.......:[12;5HReparto......:[17;5HOpzioni......:[20;5HEta'.........:[22;5HBiografia:[27;5HCompletamento:[30;3H══════════════════════════════════════════════════[31;5HTAB=next  SHIFT+TAB=prev  ENTER=OK  ESC=annulla  ---- VM/C OUTPUT ----
+=== CLIPPER FORM COMPLETO ===
+
+=== DATI REGISTRATI ===
+Nome:         
+Indirizzo:    
+Nascita:      15/06/1985
+Titolo:       Sig.
+Reparto:      Vendite
+Newsletter:    1 
+Privacy:       0 
+Eta':          30 
+Biografia:    Inserisci qui la tua biografia...
+Soddisfaz:     8 
+Completamento: 0 %
+========================
+  exit=0

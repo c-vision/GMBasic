@@ -1,0 +1,6 @@
+' EXPECT: 0
+IMPORT AI
+
+SUB Main()
+    PRINT AI.IMAGECROP("x", "x", 1, 1, 1, 1)
+END SUB

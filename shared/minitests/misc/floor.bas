@@ -1,0 +1,3 @@
+SUB Main()
+  PRINT FLOOR(3.7)
+END SUB

@@ -1,0 +1,36 @@
+build/
+tools/out/
+
+# artefatti locali (mai tracciati): OS, oggetti compilati, output di tool
+.DS_Store
+*.o
+*.tmp.*
+tools/work/
+tools/samples/
+# cartelle `work/` di QUALSIASI test/harness: sono OUTPUT generati a runtime, mai da tracciare
+# (regola utente 2026-10-28: nessuna cartella work va in git). Erano finiti in git 98 file di
+# native/gmb_runtime_c/tests/work (out, .c emessi, png, log).
+native/**/tests/work/
+native/**/work/
+
+# ── libs/: SOLO SORGENTE (.inc/.h), MAI binari (regola 2026-10-29) ────────────────────────────
+# Gli `.inc`/`.h` di `libs/<nome>/` sono SORGENTE per il compilatore (`{install}/libs/*`): restano
+# in git. I BINARI no: le nostre lib FFI (amqp, grpc, kafka, media, mqtt, nats, protobuf) si
+# pubblicano su c-vision/GMBasicModules (release `ffi-v1`, un asset per file) e si scaricano
+# on-demand in `~/.gmbasic/libs/<rid>/`. Un binario lasciato qui avrebbe la PRECEDENZA sulla cache
+# (gmb_ffi_dl cerca prima `<root>/libs`) → una lib stantia verrebbe usata in silenzio.
+libs/*/lib*.dylib
+libs/*/lib*.a
+libs/*/lib*.so
+libs/*/lib*.dll
+# shim Win32: `libwin32shim.dylib` + 12 symlink (libuser32, libwininet, …) — rigenerati da
+# native/win32shim/build.sh, non sono artefatti da versionare.
+libs/*.dylib
+libs/*.so
+libs/*.dll
+
+# ── stato utente in config/ (mai in git): database SQLite di cervello/vault/orchestrazione ──
+# Sono dati locali (brain.db, vaults.db, orchestration.db), non configurazione.
+config/*.db
+config/*.db-wal
+config/*.db-shm

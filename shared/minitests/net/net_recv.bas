@@ -1,0 +1,5 @@
+' EXPECT: recv= 0
+IMPORT NET
+SUB Main()
+  PRINT "recv="; NET.RECV(0)
+END SUB

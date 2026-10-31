@@ -1,0 +1,25 @@
+' MiniTest: TORCH RESHAPE/PERMUTE/SLICE/CONCAT/STACK/SPLIT (parita' 4 backend).
+' EXPECT: 1  6|1  6|1  2|7  12|1  4|1
+IMPORT TORCH
+SUB Main()
+  a = TORCH.ZEROS(2, 3)
+  TORCH.SET(a, 0, 0, 1.0) : TORCH.SET(a, 0, 1, 2.0) : TORCH.SET(a, 0, 2, 3.0)
+  TORCH.SET(a, 1, 0, 4.0) : TORCH.SET(a, 1, 1, 5.0) : TORCH.SET(a, 1, 2, 6.0)
+  r = TORCH.RESHAPE(a, 3, 2)
+  PRINT TORCH.GET(r, 0, 0); TORCH.GET(r, 2, 1)
+  p = TORCH.PERMUTE(a, 1, 0)
+  PRINT TORCH.GET(p, 0, 0); TORCH.GET(p, 2, 1)
+  sl = TORCH.SLICE(a, 0, 0, 2)
+  PRINT TORCH.GET(sl, 0, 0); TORCH.GET(sl, 0, 1)
+  b = TORCH.ZEROS(2, 3)
+  TORCH.SET(b, 0, 0, 7.0) : TORCH.SET(b, 0, 1, 8.0) : TORCH.SET(b, 0, 2, 9.0)
+  TORCH.SET(b, 1, 0, 10.0) : TORCH.SET(b, 1, 1, 11.0) : TORCH.SET(b, 1, 2, 12.0)
+  cc = TORCH.CONCAT(a, b)
+  PRINT TORCH.GET(cc, 2, 0); TORCH.GET(cc, 3, 2)
+  st = TORCH.STACK(a, b)
+  PRINT TORCH.GET(st, 0, 0); TORCH.GET(st, 1, 0)
+  sp = TORCH.SPLIT(a, 0, 2)
+  PRINT TORCH.GET(sp, 0, 0)
+  TORCH.FREE(a) : TORCH.FREE(b) : TORCH.FREE(r) : TORCH.FREE(p) : TORCH.FREE(sl)
+  TORCH.FREE(cc) : TORCH.FREE(st) : TORCH.FREE(sp)
+END SUB

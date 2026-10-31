@@ -1,0 +1,44 @@
+samples/**/work/
+samples/**/bin/
+samples/**/obj/
+minitests/**/work/
+# artefatti di compilazione dei test: MAI tracciati (regola utente 2026-10-28)
+*.o
+minitests/**/bin/
+
+# ── shared/libs/: SOLO SORGENTE (.inc/.h) — MAI binari (2026-10-29) ─────────────────────────
+# Le librerie interne (media + net: amqp/grpc/kafka/mqtt/nats/protobuf) sono distribuite su
+# c-vision/GMBasicModules (release `ffi-v1`, un asset per file) e si scaricano on-demand in
+# ~/.gmbasic/libs/<rid>/. In git restano gli .inc/.h: sono SORGENTE per il compilatore
+# (`{install}/../shared/libs/*`). Un binario qui avrebbe la PRECEDENZA sulla cache
+# (gmb_ffi_dl cerca `shared/libs` prima della cache) → lib stantia usata in silenzio.
+libs/*/lib*.dylib
+libs/*/lib*.a
+libs/*/lib*.so
+libs/*/lib*.dll
+# shim Win32: libwin32shim.dylib + 12 symlink (libuser32, libwininet, …) → native/win32shim/build.sh
+libs/*.dylib
+libs/*.so
+libs/*.dll
+# artefatti del sistema operativo
+.DS_Store
+
+# Binari delle nostre librerie FFI (`libs/<nome>/`): si RICOSTRUISCONO con
+# `tools/sh/gmb_lib.sh build all` e si distribuiscono da c-vision/GMBasicModules (`ffi-v1`).
+# In git restano i SORGENTI (`src/`, `include/`) e gli export (`shared/include/*.inc`, `*.h`).
+libs/*/lib*.dylib
+libs/*/lib*.so
+libs/*/lib*.dll
+libs/*/lib*.a
+libs/*.dylib
+libs/*.so
+libs/*.dll
+
+# ── dati UTENTE (mai in git): collezioni RAG e grafi ─────────────────────────────────────────
+# Importati dal vecchio checkout: sono database (anche >1 GB) e grafi generati, non sorgenti.
+rag/
+graphs/
+
+# sample dei pacchetti MATERIALIZZATI dall'installer (output generato, non sorgente):
+# il PM li copia in <monorepo>/shared/samples/packages/<nome>@<versione>/
+samples/packages/

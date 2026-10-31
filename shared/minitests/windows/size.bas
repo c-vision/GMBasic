@@ -1,0 +1,5 @@
+' EXPECT: w=-1  h=-1
+IMPORT WINDOWS
+SUB Main()
+  PRINT "w="; WINDOWS.WIDTH(); " h="; WINDOWS.HEIGHT()
+END SUB

@@ -1,0 +1,23 @@
+' SQL DO WHILE test
+IMPORT SQL WITH ALIAS
+DIM g_work AS STRING
+g_work = PROJECTFOLDER() + "/work"
+IF NOT IO.DIREXISTS(g_work) THEN MKDIR g_work
+10 KILL g_work + "/sql_dwtest.db" : ON ERROR RESUME NEXT
+20 KILL "sql_dwtest.db-wal" : ON ERROR RESUME NEXT
+30 KILL "sql_dwtest.db-shm" : ON ERROR RESUME NEXT
+40 SQL OPEN g_work + "/sql_dwtest.db" ALIAS D
+50 SQL EXEC D, "CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT)"
+60 SQL EXEC D, "INSERT INTO t (name) VALUES ('a')"
+70 SQL EXEC D, "INSERT INTO t (name) VALUES ('b')"
+80 DIM rs AS SQLRESULTSET
+90 SQL QUERY D, rs, "SELECT id, name FROM t ORDER BY id"
+100 DIM cnt AS LONG = 0
+110 DO WHILE SQL.FETCH(rs)
+120   cnt = cnt + 1
+130   PRINT cnt, rs("id"), rs("name")
+140   IF cnt >= 4 THEN EXIT DO
+150 LOOP
+160 SQL CLOSE RESULTSET rs
+170 SQL CLOSE D
+180 PRINT "Done:", cnt

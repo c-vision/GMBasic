@@ -1,0 +1,71 @@
+<%@ IMPORT JSON %>
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GMBasic — Canvas Remoto</title>
+<style>
+  :root { color-scheme: light dark; }
+  *{box-sizing:border-box;margin:0}
+  body{font-family:-apple-system,"Segoe UI",Roboto,sans-serif;background:#f4f6fb;color:#1c2430;line-height:1.5}
+  header{background:linear-gradient(135deg,#1e293b,#334155);color:#fff;padding:1.4rem 2rem}
+  header h1{font-size:1.4rem} header p{color:#cbd5e1;font-size:.88rem;margin-top:.2rem}
+  main{max-width:900px;margin:1.5rem auto;padding:0 1.5rem}
+  .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(15,23,42,.06);padding:1.2rem}
+  canvas.gmb-canvas{border:1px solid #e2e8f0;border-radius:12px;background:#fff;display:block;margin:.8rem 0}
+  .toolbar{display:flex;gap:.6rem;align-items:center;margin:.8rem 0;flex-wrap:wrap}
+  .btn{padding:.5rem .9rem;border-radius:8px;font-weight:600;cursor:pointer;border:none;font-size:.86rem}
+  .btn-primary{background:#2563eb;color:#fff} .btn-ghost{background:#eef2ff;color:#3730a3}
+  .muted{color:#94a3b8;font-size:.82rem}
+  .hint{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:.7rem .9rem;font-size:.84rem;color:#92400e;margin:.8rem 0}
+  pre.json{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:.8rem 1rem;font-size:.82rem;overflow-x:auto}
+</style>
+</head>
+<body>
+<header>
+  <h1>Canvas Remoto — WebSocket</h1>
+  <p>Draw commands da <code>include/WebCanvas.inc</code> → WS → <code>webapp/static/canvas.js:CanvasReplay</code></p>
+</header>
+<main>
+  <div class="card">
+    <p class="muted">Protocollo V1 JSON <code>{op:"pset",x:10,y:10,c:4,v:1}</code> — editabile in <code>WebCanvas.inc</code> + <code>canvas.js</code> (palette 0-15).</p>
+    <canvas id="gmb-canvas" class="gmb-canvas" width="800" height="480"></canvas>
+    <div class="toolbar">
+      <button class="btn btn-primary" onclick="demo()">Demo draw</button>
+      <button class="btn btn-ghost" onclick="clearCanvas()">Clear</button>
+      <span class="muted">WS: <code id="ws-status">disconnected</code></span>
+      <a class="muted" href="/index.bsp">← Dashboard</a>
+    </div>
+    <div class="hint">Server: <code>webapp/app.bas</code> registra <code>GET /ws/canvas</code> → <code>WEBCANVAS.Init(ws)</code> + demo. Questa pagina è standalone; la stessa canvas è anche 4ª tab in <code>/index.bsp</code>.</div>
+    <pre id="log" class="json" style="display:none"></pre>
+  </div>
+</main>
+<script src="/static/canvas.js"></script>
+<script>
+  let ws=null;
+  function connect(){
+    const proto=location.protocol==='https:'?'wss://':'ws://';
+    ws=new WebSocket(proto+location.host+'/ws/canvas');
+    ws.onopen=()=>document.getElementById('ws-status').textContent='connected';
+    ws.onclose=()=>document.getElementById('ws-status').textContent='disconnected';
+    ws.onmessage=e=>{
+      try{ const cmd=JSON.parse(e.data); CanvasReplay(cmd, document.getElementById('gmb-canvas')); }catch(err){}
+    };
+  }
+  function demo(){
+    const c=document.getElementById('gmb-canvas');
+    CanvasReplay({op:'clear',c:0,v:1},c);
+    CanvasReplay({op:'pset',x:10,y:10,c:4,v:1},c);
+    CanvasReplay({op:'line',x1:0,y1:0,x2:120,y2:120,c:7,v:1},c);
+    CanvasReplay({op:'rect',x:20,y:20,w:60,h:40,c:2,v:1},c);
+    CanvasReplay({op:'circle',x:80,y:80,r:20,c:14,v:1},c);
+    CanvasReplay({op:'text',x:10,y:150,txt:'Hello Canvas',c:7,v:1},c);
+    CanvasReplay({op:'flush',v:1},c);
+    if(ws&&ws.readyState===1) ws.send(JSON.stringify({op:'demo'}));
+  }
+  function clearCanvas(){ CanvasReplay({op:'clear',c:0,v:1}, document.getElementById('gmb-canvas')); }
+  connect();
+</script>
+</body>
+</html>

@@ -1,0 +1,316 @@
+[
+  {
+    "name": "CLS",
+    "namespace": "CONSOLE",
+    "category": "Console Control",
+    "description": "Pulisce lo schermo del terminale, azzerando tutti i caratteri e reimpostando la posizione del cursore a 0,0 (angolo in alto a sinistra). Opzionalmente puo' impostare il colore di sfondo. In ambienti TUI, CLS viene utilizzato per ridisegnare l'interfaccia. Disponibile sia come comando legacy globale che come funzione qualificata CONSOLE.CLS.",
+    "syntax": [
+      "CLS",
+      "CLS background_color",
+      "CONSOLE.CLS [background_color]"
+    ],
+    "returnType": "",
+    "parameters": [
+      { "name": "background_color", "type": "INTEGER", "description": "Colore di sfondo ANSI opzionale (0-15): 0=Nero, 1=Blu scuro, 2=Verde scuro, 3=Cyan scuro, 4=Rosso scuro, 5=Magenta scuro, 6=Giallo scuro, 7=Grigio, 8=Grigio scuro, 9=Blu, 10=Verde, 11=Cyan, 12=Rosso, 13=Magenta, 14=Giallo, 15=Bianco." }
+    ],
+    "examples": [
+      { "description": "Pulisce lo schermo con sfondo nero (default).", "code": "CLS\nPRINT \"Schermo pulito\"", "expectedOutput": "" },
+      { "description": "Pulisce lo schermo con sfondo blu.", "code": "CLS 1\nPRINT \"Sfondo blu\"", "expectedOutput": "" },
+      { "description": "Pulisce con sfondo bianco e testo nero per un'applicazione TUI.", "code": "CLEAR SCREEN 15\nCOLOR 0, 15\nPRINT \"Titolo Applicazione\"", "expectedOutput": "" },
+      { "description": "Qualificato: pulisce schermo con sfondo ciano.", "code": "CONSOLE.CLS 11\nPRINT \"Terminale ciano\"", "expectedOutput": "" }
+    ],
+    "seeAlso": ["CCLS", "LOCATE", "COLOR", "CLEAR"],
+    "isCommand": true
+  },
+  {
+    "name": "CCLS",
+    "namespace": "CONSOLE",
+    "category": "Console Control",
+    "description": "Pulisce una regione rettangolare specifica dello schermo, preservando il resto del contenuto. Utile per aggiornare solo una porzione dell'interfaccia senza ridisegnare tutto. I parametri definiscono l'angolo in alto a sinistra (riga, colonna) e l'angolo in basso a destra (riga2, colonna2) con un colore di sfondo opzionale.",
+    "syntax": [
+      "CCLS top_row, left_col, bottom_row, right_col [, background_color]",
+      "CONSOLE.CCLS top_row, left_col, bottom_row, right_col [, background_color]"
+    ],
+    "returnType": "",
+    "parameters": [
+      { "name": "top_row", "type": "INTEGER", "description": "Riga iniziale dell'area da pulire (0 = prima riga)." },
+      { "name": "left_col", "type": "INTEGER", "description": "Colonna iniziale dell'area da pulire (0 = prima colonna)." },
+      { "name": "bottom_row", "type": "INTEGER", "description": "Riga finale dell'area da pulire." },
+      { "name": "right_col", "type": "INTEGER", "description": "Colonna finale dell'area da pulire." },
+      { "name": "background_color", "type": "INTEGER", "description": "Colore di sfondo ANSI opzionale (0-15)." }
+    ],
+    "examples": [
+      { "description": "Pulisce una finestra 10x30 a partire dalla posizione (5,10).", "code": "CCLS 5, 10, 14, 39\n' Ora l'area da riga 5 a 14, colonna 10 a 39 e' pulita", "expectedOutput": "" },
+      { "description": "Pulisce area con sfondo verde in una TUI.", "code": "CCLS 2, 2, 20, 78, 2\nPRINT \"Finestra verde\"", "expectedOutput": "" }
+    ],
+    "seeAlso": ["CLS", "LOCATE", "COLOR"],
+    "isCommand": true
+  },
+  {
+    "name": "CLEAR",
+    "namespace": "CONSOLE",
+    "category": "Console Control",
+    "description": "Comando polimorfico per la gestione della console. La sintassi CLEAR SCREEN e' un alias di CLS. CLEAR KEYBOARD svuota il buffer di input della tastiera. CLEAR TYPEAHEAD svuota il buffer di type-ahead. CLEAR SCREEN OVERLAY rimuove un overlay trasparente dallo schermo.",
+    "syntax": [
+      "CLEAR SCREEN [background]",
+      "CLEAR KEYBOARD",
+      "CLEAR TYPEAHEAD",
+      "CLEAR SCREEN OVERLAY"
+    ],
+    "returnType": "",
+    "parameters": [],
+    "examples": [
+      { "description": "Pulisce schermo e buffer tastiera prima di un input.", "code": "CLEAR SCREEN\nCLEAR KEYBOARD\nINPUT \"Nome: \", Nome$", "expectedOutput": "" },
+      { "description": "Rimuove overlay e pulisce schermo.", "code": "CLEAR SCREEN OVERLAY\nCLEAR SCREEN 7", "expectedOutput": "" }
+    ],
+    "seeAlso": ["CLS", "CCLS", "COLOR", "LOCATE"],
+    "isCommand": true
+  },
+  {
+    "name": "LOCATE",
+    "namespace": "CONSOLE",
+    "category": "Console Control",
+    "description": "Posiziona il cursore alle coordinate specificate (riga, colonna) sullo schermo. In modalita' TUI, LOCATE e' essenziale per costruire interfacce a caratteri. Le coordinate partono da 0 (angolo in alto a sinistra). Puo' opzionalmente impostare la visibilita' del cursore.",
+    "syntax": [
+      "LOCATE row, col",
+      "LOCATE row, col, cursor_visible",
+      "CONSOLE.LOCATE row, col [, cursor_visible]"
+    ],
+    "returnType": "",
+    "parameters": [
+      { "name": "row", "type": "INTEGER", "description": "Riga (0-based, 0 = prima riga in alto)." },
+      { "name": "col", "type": "INTEGER", "description": "Colonna (0-based, 0 = prima colonna a sinistra)." },
+      { "name": "cursor_visible", "type": "BIT", "description": "TRUE (o 1) per cursore visibile, FALSE (o 0) per nascosto." }
+    ],
+    "examples": [
+      { "description": "Scrive un titolo centrato su una console 80 colonne.", "code": "Titolo$ = \"REPORT MENSILE\"\nLOCATE 0, (80 - LEN(Titolo$)) \\ 2\nPRINT Titolo$", "expectedOutput": "" },
+      { "description": "Posiziona testo e nasconde il cursore.", "code": "LOCATE 5, 10, 0\nPRINT \"Elaborazione in corso...\"", "expectedOutput": "" },
+      { "description": "TUI: menu di navigazione con LOCATE.", "code": "LOCATE 2, 2: PRINT \"1. Nuovo\"\nLOCATE 3, 2: PRINT \"2. Modifica\"\nLOCATE 4, 2: PRINT \"3. Elimina\"\nLOCATE 5, 2: PRINT \"4. Esci\"\nLOCATE 7, 2, 1\nINPUT \"Scelta: \", S", "expectedOutput": "" }
+    ],
+    "seeAlso": ["CLS", "PRINT", "COLOR", "INPUT"],
+    "isCommand": true
+  },
+  {
+    "name": "COLOR",
+    "namespace": "CONSOLE",
+    "category": "Console Control",
+    "description": "Imposta i colori del testo e dello sfondo per i successivi comandi di output (PRINT, LOCATE, etc.). I colori sono codificati con valori ANSI standard. Usato estensivamente per creare interfacce TUI con testo colorato, evidenziare messaggi di errore o creare schemi cromatici per l'applicazione.",
+    "syntax": [
+      "COLOR foreground, background",
+      "CONSOLE.COLOR foreground, background"
+    ],
+    "returnType": "",
+    "parameters": [
+      { "name": "foreground", "type": "INTEGER", "description": "Colore del testo ANSI (0-15). Valori standard: 0=Nero, 1=Blu, 2=Verde, 3=Cyan, 4=Rosso, 5=Magenta, 6=Giallo, 7=Grigio, 8=GrigioScuro, 9=BluChiaro, 10=VerdeChiaro, 11=CyanChiaro, 12=RossoChiaro, 13=MagentaChiaro, 14=GialloChiaro, 15=Bianco." },
+      { "name": "background", "type": "INTEGER", "description": "Colore di sfondo ANSI (0-15). Stessi valori del foreground." }
+    ],
+    "examples": [
+      { "description": "Testo rosso su sfondo nero per un messaggio di errore.", "code": "COLOR 12, 0\nPRINT \"ERRORE: File non trovato!\"\nCOLOR 7, 0 ' Ripristina default", "expectedOutput": "" },
+      { "description": "TUI con schema colori professionale.", "code": "COLOR 15, 1: PRINT \" FINANCIAL DASHBOARD v2.0 \"\nCOLOR 7, 0:  PRINT \"\"\nCOLOR 14, 0: PRINT \"Bilancio: \" + FORMAT(1250000, \"#,###.00\")\nCOLOR 10, 0: PRINT \"Profitto: \" + FORMAT(85000, \"#,###.00\")\nCOLOR 12, 0: PRINT \"Perdita:  \" + FORMAT(3200, \"#,###.00\")", "expectedOutput": "" }
+    ],
+    "seeAlso": ["CLS", "LOCATE", "PRINT"],
+    "isCommand": true
+  },
+  {
+    "name": "SCREENSET",
+    "namespace": "CONSOLE",
+    "category": "Console Configuration",
+    "description": "Configura i parametri della finestra console, come il titolo della finestra del terminale, le dimensioni (righe e colonne) e altre impostazioni di visualizzazione. E' il comando principale per impostare l'ambiente della console prima di eseguire un'applicazione TUI.",
+    "syntax": [
+      "SCREENSET setting, value",
+      "CONSOLE.SCREENSET setting, value"
+    ],
+    "returnType": "",
+    "parameters": [
+      { "name": "setting", "type": "STRING/INTEGER", "description": "Identificatore dell'impostazione da configurare: 'TITLE' per il titolo, 'ROWS' per le righe, 'COLS' per le colonne." },
+      { "name": "value", "type": "STRING/INTEGER", "description": "Valore per l'impostazione (stringa per TITLE, numero per ROWS/COLS)." }
+    ],
+    "examples": [
+      { "description": "Configura il terminale per un'applicazione TUI a schermo intero.", "code": "SCREENSET \"TITLE\", \"GMBasic - Gestione Magazzino\"\nSCREENSET \"ROWS\", 25\nSCREENSET \"COLS\", 80\nCLS\nLOCATE 0, 0: PRINT \"Sistema avviato.\"", "expectedOutput": "" }
+    ],
+    "seeAlso": ["CLS", "LOCATE", "SCREEN", "SCREENINFO"],
+    "isCommand": true
+  },
+  {
+    "name": "SCREEN",
+    "namespace": "CONSOLE",
+    "category": "Console Configuration",
+    "description": "Restituisce informazioni sullo stato corrente dello schermo o della console. Puo' essere usato per interrogare la posizione del cursore, le dimensioni del buffer o altre proprieta' della console in esecuzione.",
+    "syntax": [
+      "SCREEN(function_code)",
+      "CONSOLE.SCREEN(function_code)"
+    ],
+    "returnType": "INTEGER",
+    "parameters": [
+      { "name": "function_code", "type": "INTEGER", "description": "Codice della funzione da eseguire: 0=riga corrente del cursore, 1=colonna corrente del cursore." }
+    ],
+    "examples": [
+      { "description": "Legge la posizione attuale del cursore.", "code": "LOCATE 5, 10\nR = SCREEN(0) ' R sara' 5\nC = CONSOLE.SCREEN(1) ' C sara' 10\nPRINT \"Cursore a: \"; R; \",\"; C", "expectedOutput": "Cursore a: 5, 10" }
+    ],
+    "seeAlso": ["SCREENSET", "LOCATE", "SCREENINFO"],
+    "isCommand": false
+  },
+  {
+    "name": "SCREENINFO",
+    "namespace": "CONSOLE",
+    "category": "Console Configuration",
+    "description": "Restituisce informazioni sulle dimensioni della console: numero di righe, numero di colonne e altre caratteristiche del terminale corrente. Utile per realizzare interfacce TUI che si adattano dinamicamente alle dimensioni della finestra.",
+    "syntax": [
+      "SCREENINFO(info_code)",
+      "CONSOLE.SCREENINFO(info_code)"
+    ],
+    "returnType": "INTEGER",
+    "parameters": [
+      { "name": "info_code", "type": "INTEGER", "description": "Codice dell'informazione richiesta: 0=numero righe, 1=numero colonne." }
+    ],
+    "examples": [
+      { "description": "Centra un messaggio in base alle dimensioni del terminale.", "code": "Righe = SCREENINFO(0)\nColonne = SCREENINFO(1)\nMsg$ = \"Setup Completo\"\nLOCATE Righe \\ 2, (Colonne - LEN(Msg$)) \\ 2\nCOLOR 10, 0\nPRINT Msg$\nCOLOR 7, 0", "expectedOutput": "" },
+      { "description": "Verifica che la console sia almeno 80x25 prima di eseguire una TUI.", "code": "IF SCREENINFO(0) < 25 OR SCREENINFO(1) < 80 THEN\n  PRINT \"Richiesto terminale almeno 80x25\"\n  STOP\nEND IF", "expectedOutput": "" }
+    ],
+    "seeAlso": ["SCREEN", "SCREENSET", "LOCATE"],
+    "isCommand": false
+  },
+  {
+    "name": "PRINT",
+    "namespace": "CONSOLE",
+    "category": "Console Output",
+    "description": "Visualizza testo e valori sullo schermo alla posizione corrente del cursore. Supporta la concatenazione di piu' espressioni con punto e virgola (;) per output compatto o virgola (,) per output tabulato (ogni 14 colonne). Il punto e virgola finale sopprime il newline. PRINT da solo stampa una riga vuota.",
+    "syntax": [
+      "PRINT [expr1][; expr2][, expr3][;] ...",
+      "CONSOLE.PRINT [expr1][; expr2]..."
+    ],
+    "returnType": "",
+    "parameters": [
+      { "name": "expr", "type": "ANY", "description": "Una o piu' espressioni da stampare. Separare con ; per output compatto, con , per output tabulato (zone da 14 colonne)." }
+    ],
+    "examples": [
+      { "description": "Stampa con formattazione mista.", "code": "Nome$ = \"Mario\"\nEta = 42\nSaldo = 1523.75\nPRINT \"Cliente: \"; Nome$; \" | \"; \"Eta': \"; Eta\nPRINT \"Saldo: EUR \"; FORMAT(Saldo, \"#,###.00\")", "expectedOutput": "Cliente: Mario | Eta': 42\nSaldo: EUR 1,523.75" },
+      { "description": "Stampa tabulata con virgola (ogni 14 colonne).", "code": "PRINT \"Col1\", \"Col2\", \"Col3\"\nPRINT 100, 200, 300\nPRINT \"A\", \"B\", \"C\"", "expectedOutput": "Col1          Col2          Col3\n100           200           300\nA             B             C" },
+      { "description": "Soppressione newline con punto e virgola finale.", "code": "FOR I = 1 TO 5\n  PRINT I; \" \";\nNEXT I\nPRINT ' newline finale\nPRINT \"Fine conteggio.\"", "expectedOutput": "1 2 3 4 5\nFine conteggio." }
+    ],
+    "seeAlso": ["LOCATE", "COLOR", "INPUT", "TAB", "SPACE"],
+    "isCommand": true
+  },
+  {
+    "name": "INPUT",
+    "namespace": "CONSOLE",
+    "category": "Console Input",
+    "description": "Legge un valore dalla console e lo assegna a una variabile. Puo' opzionalmente mostrare un prompt prima della richiesta di input. Accetta qualsiasi espressione BASIC valida: numeri, stringhe, date, espressioni matematiche. I tipi vengono convertiti automaticamente al tipo della variabile di destinazione.",
+    "syntax": [
+      "INPUT [prompt$;] variable",
+      "INPUT [prompt$,] variable1, variable2, ...",
+      "CONSOLE.INPUT [prompt$;] variable"
+    ],
+    "returnType": "",
+    "parameters": [
+      { "name": "prompt$", "type": "STRING", "description": "Testo opzionale mostrato prima della richiesta. Usare ; per sopprimere il punto interrogativo, , per includerlo." },
+      { "name": "variable", "type": "ANY", "description": "Variabile in cui memorizzare il valore inserito." }
+    ],
+    "examples": [
+      { "description": "Input semplice con prompt.", "code": "INPUT \"Nome: \", Nome$\nINPUT \"Eta': \", Eta\nPRINT \"Ciao \"; Nome$; \", hai \"; Eta; \" anni.\"", "expectedOutput": "Nome: Mario\nEta': 42\nCiao Mario, hai 42 anni." },
+      { "description": "Input multiplo su una riga (separare con virgole).", "code": "PRINT \"Inserisci codice, quantita' e prezzo:\"\nINPUT Codice$, Qta, Prezzo\nTotale = Qta * Prezzo\nPRINT \"Articolo \"; Codice$; \": EUR \"; FORMAT(Totale, \"#,###.00\")", "expectedOutput": "Inserisci codice, quantita' e prezzo:\n? A001, 10, 25.50\nArticolo A001: EUR 255.00" },
+      { "description": "Input con ; per sopprimere il punto interrogativo.", "code": "INPUT \"Importo EUR \"; Importo\nPRINT \"Importo: \"; Importo", "expectedOutput": "Importo EUR 1500\nImporto: 1500" }
+    ],
+    "seeAlso": ["LINEINPUT", "PRINT", "LOCATE"],
+    "isCommand": true
+  },
+  {
+    "name": "LINEINPUT",
+    "namespace": "CONSOLE",
+    "category": "Console Input",
+    "description": "Legge un'intera riga di testo dalla console e la assegna a una variabile stringa. A differenza di INPUT, LINEINPUT non tenta di interpretare il valore inserito: tutto cio' che viene digitato fino al newline viene trattato come stringa letterale, inclusi spazi, virgole, operatori matematici e qualsiasi altro carattere.",
+    "syntax": [
+      "LINEINPUT [prompt$;] string_variable$",
+      "CONSOLE.LINEINPUT [prompt$;] string_variable$"
+    ],
+    "returnType": "",
+    "parameters": [
+      { "name": "prompt$", "type": "STRING", "description": "Testo opzionale mostrato prima della richiesta." },
+      { "name": "string_variable$", "type": "STRING", "description": "Variabile stringa in cui memorizzare la riga di testo inserita." }
+    ],
+    "examples": [
+      { "description": "Lettura di una riga con caratteri speciali.", "code": "LINEINPUT \"Descrizione: \", Desc$\nPRINT \"Hai inserito: \"; Desc$\nPRINT \"Lunghezza: \"; LEN(Desc$)", "expectedOutput": "Descrizione: Prodotto A, prezzo=10.50; sconto=5%\nHai inserito: Prodotto A, prezzo=10.50; sconto=5%\nLunghezza: 35" }
+    ],
+    "seeAlso": ["INPUT", "LINEINPUT"],
+    "isCommand": true
+  },
+  {
+    "name": "TAB",
+    "namespace": "CONSOLE",
+    "category": "Console Output",
+    "description": "Restituisce una stringa di spazi per avanzare il cursore a una specifica colonna. A differenza di LOCATE, TAB non modifica la riga ma solo la colonna corrente. Molto usato per allineare output tabellare. La colonna e' 1-based.",
+    "syntax": [
+      "TAB(column)",
+      "CONSOLE.TAB(column)"
+    ],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "column", "type": "INTEGER", "description": "Colonna di destinazione (1-based). Se la colonna corrente e' gia' oltre, non ha effetto." }
+    ],
+    "examples": [
+      { "description": "Output tabellare allineato con TAB.", "code": "PRINT \"Nome\"; TAB(20); \"Eta'\"; TAB(30); \"Citta'\"\nPRINT STRING(40, \"-\")\nPRINT \"Mario Rossi\"; TAB(20); 42; TAB(30); \"Milano\"\nPRINT \"Anna Bianchi\"; TAB(20); 35; TAB(30); \"Roma\"", "expectedOutput": "Nome               Eta'         Citta'\n----------------------------------------\nMario Rossi        42           Milano\nAnna Bianchi       35           Roma" }
+    ],
+    "seeAlso": ["LOCATE", "PRINT", "SPACE", "SPC"],
+    "isCommand": false
+  },
+  {
+    "name": "SPC",
+    "namespace": "CONSOLE",
+    "category": "Console Output",
+    "description": "Restituisce una stringa composta da un numero specificato di spazi. Simile a SPACE() ma ottimizzato per l'uso con PRINT. Utile per creare indentazioni e spaziature nell'output.",
+    "syntax": [
+      "SPC(count)",
+      "CONSOLE.SPC(count)"
+    ],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "count", "type": "INTEGER", "description": "Numero di spazi da generare." }
+    ],
+    "examples": [
+      { "description": "Indentazione con SPC.", "code": "PRINT \"Livello 1\"\nPRINT SPC(4); \"Livello 2\"\nPRINT SPC(8); \"Livello 3\"", "expectedOutput": "Livello 1\n    Livello 2\n        Livello 3" }
+    ],
+    "seeAlso": ["TAB", "SPACE", "LOCATE"],
+    "isCommand": false
+  },
+  {
+    "name": "OUTPUT",
+    "namespace": "CONSOLE",
+    "category": "Console Output",
+    "description": "Scrive testo direttamente nel buffer dello schermo senza passare attraverso il normale flusso di PRINT. Utile per aggiornamenti a basso livello del display TUI.",
+    "syntax": [
+      "OUTPUT row, col, text$",
+      "CONSOLE.OUTPUT row, col, text$"
+    ],
+    "returnType": "",
+    "parameters": [
+      { "name": "row", "type": "INTEGER", "description": "Riga di destinazione (0-based)." },
+      { "name": "col", "type": "INTEGER", "description": "Colonna di destinazione (0-based)." },
+      { "name": "text$", "type": "STRING", "description": "Testo da scrivere nel buffer." }
+    ],
+    "examples": [
+      { "description": "Scrittura diretta nel buffer dello schermo.", "code": "CONSOLE.OUTPUT 0, 30, \"SISTEMA AVVIATO\"\nCONSOLE.OUTPUT 24, 0, \"F1=Aiuto  F2=Menu  ESC=Esci\"", "expectedOutput": "" }
+    ],
+    "seeAlso": ["LOCATE", "PRINT", "SCREENSET"],
+    "isCommand": true
+  },
+  {
+    "name": "FONT",
+    "namespace": "CONSOLE",
+    "category": "Console Configuration",
+    "description": "Configura il font del terminale per la console corrente. Permette di cambiare il tipo di carattere e la dimensione del testo visualizzato.",
+    "syntax": [
+      "FONT font_name, font_size",
+      "CONSOLE.FONT font_name, font_size"
+    ],
+    "returnType": "",
+    "parameters": [
+      { "name": "font_name", "type": "STRING", "description": "Nome del font da utilizzare (es. 'Consolas', 'Courier New')." },
+      { "name": "font_size", "type": "INTEGER", "description": "Dimensione del font in punti." }
+    ],
+    "examples": [
+      { "description": "Imposta font Consolas a 14pt per una migliore leggibilita'.", "code": "FONT \"Consolas\", 14\nCLS\nPRINT \"Nuovo font impostato.\"", "expectedOutput": "" }
+    ],
+    "seeAlso": ["SCREENSET", "CLS"],
+    "isCommand": true
+  }
+]

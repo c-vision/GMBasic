@@ -1,0 +1,6 @@
+{
+  "name": "pdf_to_markdown",
+  "description": "Converte un PDF in testo Markdown.",
+  "procedure": "PdfToMarkdown",
+  "inputSchema": { "type": "object", "properties": { "src": { "type": "string" } } }
+}

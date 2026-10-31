@@ -1,0 +1,6 @@
+' EXPECT: x
+IMPORT AI
+
+SUB Main()
+    PRINT AI.RERANK("x", "x", 1)
+END SUB

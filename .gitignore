@@ -32,3 +32,10 @@ packages/*/*/*.gmbpkg
 packages/*/*/.build/
 # Blob store content-addressable del Package Manager: rigenerabile (dedup), NON va in git.
 **/.content/
+
+# CERVELLI (Second Brain) — dati, NON codice: mai in git.
+# Installati: <programma>/vendor/brains, <exe>/brains, ~/.gmbasic/brains (cache).
+# Esportati: brain export (.gmbrain) — si distribuiscono via package manager (contentType brain).
+brains/
+brains-exports/
+

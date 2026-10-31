@@ -1,0 +1,12 @@
+' EXPECT: peek-ok|read-ok
+IMPORT IO
+SUB Main()
+  MKDIR "work"
+  DIM f = IO.FCREATE("work/mmap_test.dat")
+  IO.FWRITE(f, "hello")
+  IO.FCLOSE(f)
+  DIM mm = IO.MEMORYMAP("work/mmap_test.dat")
+  IF IO.MMAPPEEK(mm, 0) >= 0 THEN PRINT "peek-ok"
+  DIM b = IO.MMAPREADBYTES(mm, 0, 3)
+  IF LEN(b) >= 0 THEN PRINT "read-ok"
+END SUB

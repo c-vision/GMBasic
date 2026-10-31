@@ -1,0 +1,9 @@
+' MiniTest: comandi CONSOLE — CLS, COLOR, LOCATE, SCROLLMODE.
+' EXPECT: ok= 1
+SUB Main
+  CLS
+  COLOR 7, 0
+  LOCATE 5, 10
+  SCROLLMODE 0
+  PRINT "ok="; 1
+END SUB

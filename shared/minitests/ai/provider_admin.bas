@@ -1,0 +1,20 @@
+' EXPECT: active= 1|status= 1|credits= 1|priority= 1|weight= 1|start= 1|interval= 5|run= 1|stop= 1|fail= 1|reset= 1|configure= 1|save= 1|test=OK: completion provider 'prov1' (fixture), response=29 chars|unreg= 1
+IMPORT AI
+SUB Main()
+  AI.REGISTER("completion", "prov1", "fixture", "{}")
+  PRINT "active="; AI.SETACTIVE("completion", "prov1")
+  PRINT "status="; AI.SETSTATUS("prov1", "AVAILABLE")
+  PRINT "credits="; AI.SETCREDITS("prov1", 10)
+  PRINT "priority="; AI.SETPRIORITY("prov1", 1)
+  PRINT "weight="; AI.SETWEIGHT("prov1", 0.5)
+  PRINT "start="; AI.STARTHEALTHCHECK(5)
+  PRINT "interval="; AI.HEALTHCHECKINTERVAL()
+  PRINT "run="; AI.RUNHEALTHCHECK()
+  PRINT "stop="; AI.STOPHEALTHCHECK()
+  PRINT "fail="; AI.FAIL("prov1")
+  PRINT "reset="; AI.RESETFAILED("prov1")
+  PRINT "configure="; AI.CONFIGURE("prov1", "k", "v")
+  PRINT "save="; AI.SAVE("/tmp/gmb_ai_prov.json")
+  PRINT "test="; AI.TEST("completion", "prov1")
+  PRINT "unreg="; AI.UNREGISTER("prov1")
+END SUB

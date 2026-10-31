@@ -1,0 +1,7 @@
+{"metadata": {"total_size": 1}, "weight_map": {
+  "model.embed_tokens.weight": "m.safetensors",
+  "layers.0.attn.wkv.weight": "m.safetensors",
+  "layers.0.attn.wkv.scale": "m.safetensors",
+  "layers.0.ffn.experts.0.w1.weight": "m.safetensors",
+  "layers.0.norm.weight": "m.safetensors"
+}}

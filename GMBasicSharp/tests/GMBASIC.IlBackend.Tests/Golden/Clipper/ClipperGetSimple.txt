@@ -1,0 +1,6 @@
+Conformance: edition=Commercial
+  code=1127 bytes, consts=7, entry=1064
+  A1 chunk: /var/folders/b_/gsctxq2x5sq9gh7zpqpgrd0m0000gn/T/gmb_vmtest_8a9b2c4f.chunk (11811 bytes)
+[10;10HNome:  ---- VM/C OUTPUT ----
+GOT:
+  exit=0

@@ -1,0 +1,5 @@
+' EXPECT: pres= 0
+IMPORT MOUSE
+SUB Main()
+  PRINT "pres="; MOUSE.PRESENT()
+END SUB

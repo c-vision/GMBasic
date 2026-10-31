@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.20)
+project(gmb_runtime_abi C)
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+add_executable(check_abi check_abi.c)
+target_link_libraries(check_abi PRIVATE ${CMAKE_DL_LIBS})

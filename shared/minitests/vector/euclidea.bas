@@ -1,0 +1,6 @@
+' EXPECT: eucl= 5
+IMPORT VECTOR
+SUB Main()
+  DIM v(2) AS DOUBLE = {3, 4, 0}
+  PRINT "eucl="; VECTOR.EUCLIDEA(v)
+END SUB

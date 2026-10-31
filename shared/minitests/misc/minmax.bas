@@ -1,0 +1,9 @@
+SUB Main()
+  PRINT MAX(5, 2)
+  PRINT MIN(5, 2)
+  PRINT MAX(-1, -5)
+  PRINT MIN(-1, -5)
+  PRINT MAX(2.5, 2)
+  PRINT MIN(2.5, 3)
+  PRINT MAX(5, 9)
+END SUB

@@ -1,0 +1,179 @@
+[
+  {
+    "name": "CSTR",
+    "namespace": "CONVERSIONS",
+    "category": "Type Casting",
+    "description": "Converte qualsiasi espressione nel suo equivalente stringa. A differenza di STR(), non aggiunge spazi iniziali per i numeri positivi. Per i booleani restituisce 'True' o 'False'. Per le date usa il formato breve predefinito. Per gli array restituisce una rappresentazione JSON-like. La funzione piu' usata per conversioni generiche in stringa.",
+    "syntax": ["CSTR(expression)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "expression", "type": "ANY", "description": "Qualsiasi espressione o variabile da convertire in stringa." }
+    ],
+    "examples": [
+      { "description": "Conversione di vari tipi in stringa.", "code": "PRINT \"Numero: '\"; CSTR(123.45); \"'\"\nPRINT \"Booleano: '\"; CSTR(TRUE); \"'\"\nPRINT \"Data: '\"; CSTR(TODAY()); \"'\"\nPRINT \"Array: '\"; CSTR({1, 2, 3}); \"'\"", "expectedOutput": "Numero: '123.45'\nBooleano: 'True'\nData: '08/08/2026'\nArray: '[1, 2, 3]'" }
+    ],
+    "seeAlso": ["STR", "VAL", "FORMAT", "HEX"],
+    "isCommand": false
+  },
+  {
+    "name": "VAL",
+    "namespace": "CONVERSIONS",
+    "category": "Type Casting",
+    "description": "Converte una stringa nel suo equivalente numerico DOUBLE. L'analisi si ferma al primo carattere non numerico (esclusi segno, punto decimale e notazione scientifica). Se la stringa non inizia con un numero valido, restituisce 0. Utile per estrarre numeri da stringhe miste e per parsing rapido.",
+    "syntax": ["VAL(string_expression)"],
+    "returnType": "DOUBLE",
+    "parameters": [
+      { "name": "string_expression", "type": "STRING", "description": "La stringa da convertire in numero." }
+    ],
+    "examples": [
+      { "description": "Estrazione e calcolo di valori da input testuale.", "code": "Riga$ = \"Prezzo: EUR 1,299.99 + IVA\"\n' Rimuovi tutto tranne numeri e punto\nSoloNum$ = \"\"\nFOR I = 1 TO LEN(Riga$)\n  C$ = MID(Riga$, I, 1)\n  IF (C$ >= \"0\" AND C$ <= \"9\") OR C$ = \".\" THEN SoloNum$ = SoloNum$ + C$\nNEXT I\nPrezzo = VAL(SoloNum$)\nIVA = Prezzo * 0.22\nPRINT \"Prezzo netto: \"; FORMAT(Prezzo, \"#,###.00\")\nPRINT \"IVA (22%):    \"; FORMAT(IVA, \"#,###.00\")\nPRINT \"Totale:       \"; FORMAT(Prezzo + IVA, \"#,###.00\")", "expectedOutput": "Prezzo netto: 1,299.99\nIVA (22%):    286.00\nTotale:       1,585.99" }
+    ],
+    "seeAlso": ["CSTR", "FORMAT", "STR"],
+    "isCommand": false
+  },
+  {
+    "name": "HEX",
+    "namespace": "CONVERSIONS",
+    "category": "Radix Conversion",
+    "description": "Converte un numero intero nella sua rappresentazione esadecimale (base 16) come stringa. Le cifre vanno da 0-9 e A-F. Non include il prefisso '0x' o '&H'. Utile per debug, formattazione di indirizzi di memoria, codici colore e protocolli binari.",
+    "syntax": ["HEX(number)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "number", "type": "INTEGER/LONG", "description": "Il numero da convertire in esadecimale. I decimali vengono troncati." }
+    ],
+    "examples": [
+      { "description": "Tabella di conversione decimale/esadecimale per colori.", "code": "PRINT \"Dec  Hex   Colore\"\nPRINT \"---  ----  ------\"\nColori$() = {\"Nero\", \"Blu\", \"Verde\", \"Rosso\", \"Magenta\", \"Giallo\", \"Bianco\"}\nValori() = {0, 1, 2, 4, 5, 14, 15}\nFOR I = 0 TO UBOUND(Valori())\n  PRINT PADL(CSTR(Valori(I)), 3, \" \"); \"  \"; PADR(HEX(Valori(I)), 4, \" \"); \"  \"; Colori$(I)\nNEXT I", "expectedOutput": "Dec  Hex   Colore\n---  ----  ------\n  0  0     Nero\n  1  1     Blu\n  2  2     Verde\n  4  4     Rosso\n  5  5     Magenta\n 14  E     Giallo\n 15  F     Bianco" },
+      { "description": "Dump esadecimale di un indirizzo di memoria (debug).", "code": "FOR I = 0 TO 255 STEP 16\n  PRINT \"0x\"; PADL(HEX(I), 4, \"0\"); \": \";\n  FOR J = 0 TO 15\n    PRINT PADL(HEX((I + J) MOD 256), 2, \"0\"); \" \";\n  NEXT J\n  PRINT\nNEXT I", "expectedOutput": "0x0000: 00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F \n0x0010: 10 11 12 13 14 15 16 17 ..." }
+    ],
+    "seeAlso": ["OCT", "BIN", "CSTR", "STR"],
+    "isCommand": false
+  },
+  {
+    "name": "OCT",
+    "namespace": "CONVERSIONS",
+    "category": "Radix Conversion",
+    "description": "Converte un numero intero nella sua rappresentazione ottale (base 8) come stringa. Le cifre vanno da 0 a 7. Utile per permessi file Unix (es. chmod) e sistemi legacy.",
+    "syntax": ["OCT(number)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "number", "type": "INTEGER/LONG", "description": "Il numero da convertire in ottale." }
+    ],
+    "examples": [
+      { "description": "Conversione permessi file Unix.", "code": "PRINT \"rwx------  = 0\"; OCT(&O700)\nPRINT \"rwxr-xr-x  = 0\"; OCT(&O755)\nPRINT \"rw-rw-rw-  = 0\"; OCT(&O666)\nPRINT \"rwxrwxrwx  = 0\"; OCT(&O777)", "expectedOutput": "rwx------  = 0700\nrwxr-xr-x  = 0755\nrw-rw-rw-  = 0666\nrwxrwxrwx  = 0777" }
+    ],
+    "seeAlso": ["HEX", "BIN", "CSTR"],
+    "isCommand": false
+  },
+  {
+    "name": "BIN",
+    "namespace": "CONVERSIONS",
+    "category": "Radix Conversion",
+    "description": "Converte un numero intero nella sua rappresentazione binaria (base 2) come stringa. Le cifre sono 0 e 1. Utile per visualizzare maschere di bit, flag e rappresentazioni a basso livello.",
+    "syntax": ["BIN(number)"],
+    "returnType": "STRING",
+    "parameters": [
+      { "name": "number", "type": "INTEGER/LONG", "description": "Il numero da convertire in binario." }
+    ],
+    "examples": [
+      { "description": "Visualizzazione di flag e maschere di bit.", "code": "PRINT \"Analisi flag di sistema:\"\nPRINT \"READ   = 1  -> \"; BIN(1)\nPRINT \"WRITE  = 2  -> \"; BIN(2)\nPRINT \"EXEC   = 4  -> \"; BIN(4)\nPRINT \"RW     = 3  -> \"; BIN(3)\nPRINT \"RWX    = 7  -> \"; BIN(7)\nPRINT \"\"\nFlag = 5  ' READ + EXEC\nPRINT \"Flag \"; Flag; \" = \"; BIN(Flag)\nIF (Flag AND 1) <> 0 THEN PRINT \"  - Lettura abilitata\"\nIF (Flag AND 2) <> 0 THEN PRINT \"  - Scrittura abilitata\"\nIF (Flag AND 4) <> 0 THEN PRINT \"  - Esecuzione abilitata\"", "expectedOutput": "Analisi flag di sistema:\nREAD   = 1  -> 1\nWRITE  = 2  -> 10\nEXEC   = 4  -> 100\nRW     = 3  -> 11\nRWX    = 7  -> 111\n\nFlag 5 = 101\n  - Lettura abilitata\n  - Esecuzione abilitata" }
+    ],
+    "seeAlso": ["HEX", "OCT", "CSTR"],
+    "isCommand": false
+  },
+  {
+    "name": "CSNG",
+    "namespace": "CONVERSIONS",
+    "category": "Type Casting",
+    "description": "Converte un'espressione in un valore a precisione singola (SINGLE, 32-bit IEEE 754). Utile per risparmiare memoria in array grandi o per compatibilita' con API esterne che richiedono float.",
+    "syntax": ["CSNG(expression)"],
+    "returnType": "SINGLE",
+    "parameters": [
+      { "name": "expression", "type": "ANY", "description": "L'espressione da convertire in SINGLE." }
+    ],
+    "examples": [
+      { "description": "Array di float per risparmiare memoria.", "code": "DIM Temperature(999) AS SINGLE\nFOR I = 0 TO 999\n  Temperature(I) = CSNG(20 + RND * 15)\nNEXT I\nPRINT \"Temp[0] = \"; Temperature(0); \" gradi\"", "expectedOutput": "Temp[0] = 27.3 gradi" }
+    ],
+    "seeAlso": ["CDBL", "CCUR", "CLNG", "CINT", "CBYTE"],
+    "isCommand": false
+  },
+  {
+    "name": "CDBL",
+    "namespace": "CONVERSIONS",
+    "category": "Type Casting",
+    "description": "Converte un'espressione in un valore a precisione doppia (DOUBLE, 64-bit IEEE 754). E' il tipo numerico standard per calcoli finanziari e scientifici. Usato implicitamente nella maggior parte delle operazioni matematiche.",
+    "syntax": ["CDBL(expression)"],
+    "returnType": "DOUBLE",
+    "parameters": [
+      { "name": "expression", "type": "ANY", "description": "L'espressione da convertire in DOUBLE." }
+    ],
+    "examples": [
+      { "description": "Calcolo finanziario con precisione double.", "code": "Capitale = 100000\nTasso = 0.035\nAnni = 30\nMontante = CDBL(Capitale) * (1 + Tasso) ^ Anni\nPRINT \"Investimento iniziale: EUR \"; FORMAT(Capitale, \"#,###.00\")\nPRINT \"Rendimento \"; Tasso * 100; \"% per \"; Anni; \" anni\"\nPRINT \"Montante finale:      EUR \"; FORMAT(Montante, \"#,###.00\")\nPRINT \"Interesse composto:   EUR \"; FORMAT(Montante - Capitale, \"#,###.00\")", "expectedOutput": "Investimento iniziale: EUR 100,000.00\nRendimento 3.5% per 30 anni\nMontante finale:      EUR 280,679.47\nInteresse composto:   EUR 180,679.47" }
+    ],
+    "seeAlso": ["CSNG", "CCUR", "CLNG", "CINT"],
+    "isCommand": false
+  },
+  {
+    "name": "CCUR",
+    "namespace": "CONVERSIONS",
+    "category": "Type Casting",
+    "description": "Converte un'espressione in un valore a virgola fissa di tipo CURRENCY (64-bit, 4 decimali fissi). Il tipo CURRENCY evita gli errori di arrotondamento tipici dei floating-point, rendendolo ideale per calcoli finanziari e monetari. Internamente e' un intero a 64 bit scalato di 4 decimali.",
+    "syntax": ["CCUR(expression)"],
+    "returnType": "CURRENCY",
+    "parameters": [
+      { "name": "expression", "type": "ANY", "description": "L'espressione da convertire in CURRENCY." }
+    ],
+    "examples": [
+      { "description": "Calcolo imposte senza errori di arrotondamento.", "code": "Prezzo = CCUR(19.99)\nQta = 3\nIVAAliquota = CCUR(0.22)\nSubtotale = Prezzo * Qta\nIVA = CCUR(Subtotale * IVAAliquota)\nTotale = Subtotale + IVA\nPRINT \"Dettaglio fattura:\"\nPRINT \"  Prezzo unitario: EUR \"; FORMAT(Prezzo, \"#.00\")\nPRINT \"  Quantita':       \"; Qta\nPRINT \"  Subtotale:       EUR \"; FORMAT(Subtotale, \"#.00\")\nPRINT \"  IVA 22%:         EUR \"; FORMAT(IVA, \"#.00\")\nPRINT \"  TOTALE:          EUR \"; FORMAT(Totale, \"#.00\")", "expectedOutput": "Dettaglio fattura:\n  Prezzo unitario: EUR 19.99\n  Quantita':       3\n  Subtotale:       EUR 59.97\n  IVA 22%:         EUR 13.19\n  TOTALE:          EUR 73.16" }
+    ],
+    "seeAlso": ["CDBL", "CSNG", "CINT", "FORMAT"],
+    "isCommand": false
+  },
+  {
+    "name": "CBYTE",
+    "namespace": "CONVERSIONS",
+    "category": "Type Casting",
+    "description": "Converte un'espressione in un valore BYTE (8-bit, 0-255). I valori fuori range vengono troncati modulo 256. Usato per operazioni di I/O binario, protocolli di rete e manipolazione dati a basso livello.",
+    "syntax": ["CBYTE(expression)"],
+    "returnType": "BYTE",
+    "parameters": [
+      { "name": "expression", "type": "ANY", "description": "L'espressione da convertire in BYTE (0-255)." }
+    ],
+    "examples": [
+      { "description": "Generazione di un gradiente di colore ANSI.", "code": "PRINT \"Gradiente RGB:\"\nFOR I = 0 TO 255 STEP 5\n  R = CBYTE(I)\n  G = CBYTE(255 - I)\n  B = CBYTE(128)\n  ' Stampa un blocco colorato (approssimazione testo)\n  PRINT \"R:\"; PADL(CSTR(R),3,\" \"); \" G:\"; PADL(CSTR(G),3,\" \"); \" B:\"; PADL(CSTR(B),3,\" \")\nNEXT I", "expectedOutput": "Gradiente RGB:\nR:  0 G:255 B:128\nR:  5 G:250 B:128\n..." }
+    ],
+    "seeAlso": ["CINT", "CLNG", "ASC", "CHR"],
+    "isCommand": false
+  },
+  {
+    "name": "CLNG",
+    "namespace": "CONVERSIONS",
+    "category": "Type Casting",
+    "description": "Converte un'espressione in un valore LONG (intero a 32-bit con segno, -2.147.483.648 a 2.147.483.647). I decimali vengono arrotondati. Utile per contatori, ID e operazioni che richiedono interi a 32-bit.",
+    "syntax": ["CLNG(expression)"],
+    "returnType": "LONG",
+    "parameters": [
+      { "name": "expression", "type": "ANY", "description": "L'espressione da convertire in LONG." }
+    ],
+    "examples": [
+      { "description": "Arrotondamento e conversione per ID record.", "code": "Valori() = { 3.7, 8.1, 15.5, -2.3 }\nFOR I = 0 TO UBOUND(Valori())\n  L = CLNG(Valori(I))\n  PRINT \"CLNG(\"; Valori(I); \") = \"; L\nNEXT I", "expectedOutput": "CLNG(3.7) = 4\nCLNG(8.1) = 8\nCLNG(15.5) = 16\nCLNG(-2.3) = -2" }
+    ],
+    "seeAlso": ["CINT", "CBYTE", "CDBL", "INT"],
+    "isCommand": false
+  },
+  {
+    "name": "CINT",
+    "namespace": "CONVERSIONS",
+    "category": "Type Casting",
+    "description": "Converte un'espressione in un valore INTEGER (intero a 16-bit con segno, -32.768 a 32.767). I decimali vengono arrotondati. Utile per compatibilita' con API legacy o per risparmiare memoria in array di piccoli interi.",
+    "syntax": ["CINT(expression)"],
+    "returnType": "INTEGER",
+    "parameters": [
+      { "name": "expression", "type": "ANY", "description": "L'espressione da convertire in INTEGER." }
+    ],
+    "examples": [
+      { "description": "Confronto tra tipi interi.", "code": "Valore = 123456\nPRINT \"Valore originale: \"; Valore\nPRINT \"CINT:  \"; CINT(Valore); \" (16-bit, overflow!)\"\nPRINT \"CLNG:  \"; CLNG(Valore); \" (32-bit, OK)\"\nPRINT \"CBYTE: \"; CBYTE(Valore); \" (8-bit, overflow!)\"", "expectedOutput": "Valore originale: 123456\nCINT:  -7616 (16-bit, overflow!)\nCLNG:  123456 (32-bit, OK)\nCBYTE: 64 (8-bit, overflow!)" }
+    ],
+    "seeAlso": ["CLNG", "CBYTE", "CDBL", "CSNG"],
+    "isCommand": false
+  }
+]

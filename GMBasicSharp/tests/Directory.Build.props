@@ -1,0 +1,13 @@
+<Project>
+
+  <!--
+    tests/Directory.Build.props — concatena la matrice di build del root e aggiunge a TUTTI i
+    progetti di test il cleanup temp (TestTempRoot: TMPDIR per-run, cancellata all'uscita).
+  -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
+    <Compile Include="$(MSBuildThisFileDirectory)TestSupport/TestTempRoot.cs" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,4 @@
+IMPORT STRINGS
+SUB Main()
+  PRINT TITLE("ciao mondo")
+END SUB

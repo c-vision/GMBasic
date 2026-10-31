@@ -1,0 +1,61 @@
+' PCodeVM: RETURN e GOTO devono attraversare FINALLY anche se il cleanup parcheggia.
+
+FUNCTION ReturnThroughFinally() AS LONG
+  TRY
+    RETURN 41
+  FINALLY
+    PRINT "RETURN-FINALLY-BEGIN"
+    SLEEP 1
+    PRINT "RETURN-FINALLY-END"
+  END TRY
+END FUNCTION
+
+SUB GotoThroughFinally()
+  TRY
+    GOTO AfterCleanup
+  FINALLY
+    PRINT "GOTO-FINALLY-BEGIN"
+    SLEEP 1
+    PRINT "GOTO-FINALLY-END"
+  END TRY
+
+  PRINT "FAIL:GOTO-FELL-THROUGH"
+AfterCleanup:
+  PRINT "GOTO-AFTER-FINALLY"
+END SUB
+
+SUB ThrowAcrossFinally()
+  TRY
+    THROW 901
+  FINALLY
+    PRINT "THROW-INNER-FINALLY-BEGIN"
+    SLEEP 1
+    PRINT "THROW-INNER-FINALLY-END"
+  END TRY
+END SUB
+
+SUB CatchAcrossFinally()
+  TRY
+    ThrowAcrossFinally()
+    PRINT "FAIL:THROW-CONTINUED"
+  CATCH ex AS ERR
+    PRINT "THROW-CAUGHT-AFTER-FINALLY"
+  FINALLY
+    SLEEP 1
+    PRINT "THROW-OUTER-FINALLY-END"
+  END TRY
+END SUB
+
+SUB Main()
+  DIM value AS LONG
+  value = ReturnThroughFinally()
+  IF value = 41 THEN
+    PRINT "RETURN-VALUE-OK"
+  ELSE
+    PRINT "FAIL:RETURN-VALUE"; value
+  END IF
+
+  GotoThroughFinally()
+  CatchAcrossFinally()
+  PRINT "PCODE-GPM-SUSPENDABLE-FINALLY-DONE"
+END SUB

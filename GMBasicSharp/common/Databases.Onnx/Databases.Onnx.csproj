@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!-- Databases.Onnx — provider ONNX Runtime opzionali (NativeAOT §9.7 passo 2).
+         Contiene i 2 file ONNX (OnnxEmbeddingProvider + OnnxCrossEncoderReranker, LINKATI dalla
+         posizione Databases/VectorDB) + il package OnnxRuntime. Databases (core) NON li compila
+         più e NON referenzia OnnxRuntime → illink/NativeAOT lo esclude da un programma che non
+         usa embedding/rerank ONNX. AI/ProviderFactory li istanzia LAZY per nome (Type.GetType su
+         "..., Databases.Onnx"); referenziato dai SOLI host che devono servire embedding/rerank
+         ONNX a runtime (Executor/REPL + test). Assente a runtime → errore esplicito (mai crash
+         silenzioso né fallback sbagliato). -->
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <LangVersion>preview</LangVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>Basic</RootNamespace>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="..\Databases\VectorDB\OnnxEmbeddingProvider.cs" Link="VectorDB/OnnxEmbeddingProvider.cs" />
+        <Compile Include="..\Databases\VectorDB\OnnxCrossEncoderReranker.cs" Link="VectorDB/OnnxCrossEncoderReranker.cs" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.28.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Databases\Databases.csproj" />
+    </ItemGroup>
+
+</Project>

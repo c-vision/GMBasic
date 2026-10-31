@@ -1,0 +1,16 @@
+Rossi S.r.l.
+Via Roma 1, 20121 Milano
+P. IVA 01234567890
+
+FATTURA N. 2026/001
+Data: 11/09/2026
+
+Cliente: Bianchi S.p.A.
+
+Descrizione          Qta   Prezzo
+Servizio hosting       1   999,99
+Consulenza             2   100,00
+
+Imponibile: 1.199,99
+IVA 22%: 264,00
+Totale documento: € 1.234,56

@@ -1,0 +1,833 @@
+[
+  {
+    "name": "FOR",
+    "namespace": "GLOBAL",
+    "category": "Looping",
+    "description": "Esegue un ciclo per un numero definito di iterazioni. La variabile contatore assume valori da start a end con incremento STEP (default 1). Supporta EXIT FOR (uscita anticipata) e CONTINUE FOR (salta iterazione).",
+    "syntax": [
+      "FOR var = start TO end [STEP inc]\n  [body]\nNEXT [var]"
+    ],
+    "examples": [
+      {
+        "description": "Iterazione su array con FOR NEXT.",
+        "code": "DIM Nomi = {\"Alice\",\"Bob\",\"Charlie\"}\nFOR I = 0 TO UBOUND(Nomi)\n  PRINT Nomi\nNEXT I",
+        "expectedOutput": "Alice\nBob\nCharlie"
+      }
+    ],
+    "seeAlso": [
+      "DO",
+      "WHILE",
+      "NEXT",
+      "EXIT",
+      "CONTINUE"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "DO",
+    "namespace": "GLOBAL",
+    "category": "Looping",
+    "description": "Esegue un blocco finche' una condizione e' vera (WHILE) o fino a quando diventa vera (UNTIL).",
+    "syntax": [
+      "DO [WHILE cond | UNTIL cond]\n  [body]\nLOOP [WHILE cond | UNTIL cond]"
+    ],
+    "examples": [
+      {
+        "description": "Menu con DO/LOOP.",
+        "code": "DO\n  INPUT \"Scelta: \", S$\n  IF S$ = \"Q\" THEN EXIT DO\n  PRINT \"Hai scelto: \"; S$\nLOOP UNTIL S$ = \"Q\"",
+        "expectedOutput": "Scelta: 1\nHai scelto: 1\nScelta: Q"
+      }
+    ],
+    "seeAlso": [
+      "FOR",
+      "WHILE",
+      "EXIT",
+      "LOOP"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "LOOP",
+    "namespace": "GLOBAL",
+    "category": "Looping",
+    "description": "Termina il corpo di DO con condizione opzionale.",
+    "syntax": [
+      "LOOP [WHILE cond | UNTIL cond]"
+    ],
+    "examples": [
+      {
+        "description": "Ciclo infinito con EXIT DO.",
+        "code": "I=1\nDO\n  PRINT I\n  I=I+1\n  IF I>5 THEN EXIT DO\nLOOP",
+        "expectedOutput": "1\n2\n3\n4\n5"
+      }
+    ],
+    "seeAlso": [
+      "DO",
+      "WHILE",
+      "EXIT"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "WHILE",
+    "namespace": "GLOBAL",
+    "category": "Looping",
+    "description": "Ciclo con condizione all'inizio.",
+    "syntax": [
+      "WHILE cond\n  [body]\nWEND"
+    ],
+    "examples": [
+      {
+        "description": "Lettura file con WHILE.",
+        "code": "OPEN \"test.txt\" FOR INPUT AS #1\nWHILE NOT EOF(1)\n  LINE INPUT #1, R$\n  PRINT R$\nWEND\nCLOSE #1",
+        "expectedOutput": "[contenuto di test.txt]"
+      }
+    ],
+    "seeAlso": [
+      "DO",
+      "WEND",
+      "FOR"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "WEND",
+    "namespace": "GLOBAL",
+    "category": "Looping",
+    "description": "Termina un ciclo WHILE.",
+    "syntax": [
+      "WEND"
+    ],
+    "examples": [
+      {
+        "description": "Ciclo WHILE/WEND.",
+        "code": "WHILE INKEY=\"\"\n  PRINT \".\";\nWEND\nPRINT \" done\"",
+        "expectedOutput": "........ done"
+      }
+    ],
+    "seeAlso": [
+      "WHILE",
+      "DO"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "NEXT",
+    "namespace": "GLOBAL",
+    "category": "Looping",
+    "description": "Termina un ciclo FOR e incrementa il contatore.",
+    "syntax": [
+      "NEXT [var1 [, var2...]]"
+    ],
+    "examples": [
+      {
+        "description": "Cicli annidati con NEXT multiplo.",
+        "code": "FOR I=1 TO 2\n  FOR J=1 TO 2\n    PRINT I;\",\";J\n  NEXT J,I",
+        "expectedOutput": "1,1\n1,2\n2,1\n2,2"
+      }
+    ],
+    "seeAlso": [
+      "FOR",
+      "EXIT",
+      "CONTINUE"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "EXIT",
+    "namespace": "GLOBAL",
+    "category": "Loop Control",
+    "description": "Esce anticipatamente da un ciclo FOR/DO/WHILE.",
+    "syntax": [
+      "EXIT [FOR | DO | WHILE | SUB | FUNCTION]"
+    ],
+    "examples": [
+      {
+        "description": "Ricerca con EXIT FOR.",
+        "code": "FOR I=1 TO 100\n  IF I=50 THEN PRINT \"Trovato 50\"; EXIT FOR\nNEXT I",
+        "expectedOutput": "Trovato 50"
+      }
+    ],
+    "seeAlso": [
+      "FOR",
+      "DO",
+      "WHILE",
+      "CONTINUE"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "CONTINUE",
+    "namespace": "GLOBAL",
+    "category": "Loop Control",
+    "description": "Salta l'iterazione corrente del ciclo.",
+    "syntax": [
+      "CONTINUE [FOR | DO | WHILE]"
+    ],
+    "examples": [
+      {
+        "description": "Stampa solo pari con CONTINUE.",
+        "code": "FOR I=1 TO 5\n  IF I MOD 2 <> 0 THEN CONTINUE FOR\n  PRINT I\nNEXT I",
+        "expectedOutput": "2\n4"
+      }
+    ],
+    "seeAlso": [
+      "FOR",
+      "DO",
+      "WHILE",
+      "EXIT"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "LET",
+    "namespace": "GLOBAL",
+    "category": "Assignment",
+    "description": "Assegnazione esplicita di un valore a una variabile. La keyword LET e' opzionale: una riga che inizia con variabile = espressione e' implicitamente un LET.",
+    "syntax": [
+      "[LET] variable = expression"
+    ],
+    "examples": [
+      {
+        "description": "Assegnazione con e senza LET.",
+        "code": "LET X = 42\nY = X * 2\nPRINT X; Y",
+        "expectedOutput": "42 84"
+      }
+    ],
+    "seeAlso": [
+      "DIM",
+      "CONST",
+      "SWAP"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "CONST",
+    "namespace": "GLOBAL",
+    "category": "Declaration",
+    "description": "Dichiara una costante con nome e valore. Il valore non puo' essere modificato a runtime.",
+    "syntax": [
+      "CONST name = expression"
+    ],
+    "examples": [
+      {
+        "description": "Costanti per configurazione.",
+        "code": "CONST MAX_UTENTI = 100\nCONST IVA = 0.22\nPRINT \"IVA: \"; IVA * 100; \"%\"",
+        "expectedOutput": "IVA: 22%"
+      }
+    ],
+    "seeAlso": [
+      "DIM",
+      "LET"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "SWAP",
+    "namespace": "GLOBAL",
+    "category": "Assignment",
+    "description": "Scambia i valori di due variabili. Le variabili devono essere dello stesso tipo.",
+    "syntax": [
+      "SWAP var1, var2"
+    ],
+    "examples": [
+      {
+        "description": "Scambio valori.",
+        "code": "A=10: B=20\nSWAP A, B\nPRINT A; B",
+        "expectedOutput": "20 10"
+      }
+    ],
+    "seeAlso": [
+      "LET"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "RANDOMIZE",
+    "namespace": "GLOBAL",
+    "category": "Math",
+    "description": "Inizializza il generatore di numeri casuali con un seed. Senza argomento usa l'orologio di sistema.",
+    "syntax": [
+      "RANDOMIZE [seed]"
+    ],
+    "examples": [
+      {
+        "description": "Numeri casuali dopo RANDOMIZE.",
+        "code": "RANDOMIZE\nPRINT RND; RND; RND",
+        "expectedOutput": "0.123 0.456 0.789"
+      }
+    ],
+    "seeAlso": [
+      "RND"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "DATA",
+    "namespace": "GLOBAL",
+    "category": "Data",
+    "description": "Dichiara dati costanti leggibili con READ. I valori possono essere numeri, stringhe o costanti separate da virgola.",
+    "syntax": [
+      "DATA value1 [, value2, ...]"
+    ],
+    "examples": [
+      {
+        "description": "Lettura di DATA con READ.",
+        "code": "FOR I=1 TO 3\n  READ X\n  PRINT X\nNEXT I\nDATA 10, 20, 30",
+        "expectedOutput": "10\n20\n30"
+      }
+    ],
+    "seeAlso": [
+      "READ",
+      "RESTORE"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "READ",
+    "namespace": "GLOBAL",
+    "category": "Data",
+    "description": "Legge il prossimo valore da una riga DATA. Ogni READ consuma un valore dalla sequenza DATA.",
+    "syntax": [
+      "READ var1 [, var2, ...]"
+    ],
+    "examples": [
+      {
+        "description": "Lettura multipla da DATA.",
+        "code": "READ Nome$, Eta, Stipendio\nPRINT Nome$; Eta; Stipendio\nDATA \"Mario\", 35, 25000",
+        "expectedOutput": "Mario 35 25000"
+      }
+    ],
+    "seeAlso": [
+      "DATA",
+      "RESTORE"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "RESTORE",
+    "namespace": "GLOBAL",
+    "category": "Data",
+    "description": "Resetta il puntatore di lettura DATA alla prima riga o a una riga etichettata specifica.",
+    "syntax": [
+      "RESTORE [label]"
+    ],
+    "examples": [
+      {
+        "description": "Rilettura degli stessi DATA.",
+        "code": "READ A, B\nPRINT A; B\nRESTORE\nREAD C, D\nPRINT C; D\nDATA 1, 2",
+        "expectedOutput": "1 2\n1 2"
+      }
+    ],
+    "seeAlso": [
+      "READ",
+      "DATA"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "GOTO",
+    "namespace": "GLOBAL",
+    "category": "Branching",
+    "description": "Salto incondizionato a un'etichetta o numero di riga.",
+    "syntax": [
+      "GOTO label"
+    ],
+    "examples": [
+      {
+        "description": "Salto condizionale con GOTO.",
+        "code": "INPUT X\nIF X <= 0 THEN GOTO Fine\nPRINT \"Positivo: \"; X\nEND\nFine:\nPRINT \"Zero o negativo\"",
+        "expectedOutput": "5\nPositivo: 5"
+      }
+    ],
+    "seeAlso": [
+      "GOSUB",
+      "RETURN",
+      "ON GOTO"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "GOSUB",
+    "namespace": "GLOBAL",
+    "category": "Branching",
+    "description": "Chiama una subroutine tramite etichetta. RETURN riporta il controllo all'istruzione successiva al GOSUB.",
+    "syntax": [
+      "GOSUB label"
+    ],
+    "examples": [
+      {
+        "description": "Subroutine con GOSUB/RETURN.",
+        "code": "GOSUB StampaMsg\nPRINT \"Fatto\"\nEND\nStampaMsg:\n  PRINT \"Ciao!\"\nRETURN",
+        "expectedOutput": "Ciao!\nFatto"
+      }
+    ],
+    "seeAlso": [
+      "GOTO",
+      "RETURN",
+      "ON GOSUB"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "RETURN",
+    "namespace": "GLOBAL",
+    "category": "Branching",
+    "description": "Ritorna da una subroutine GOSUB o da una FUNCTION. In una FUNCTION, RETURN valore specifica il valore di ritorno.",
+    "syntax": [
+      "RETURN [expression]"
+    ],
+    "examples": [
+      {
+        "description": "Return con valore in FUNCTION.",
+        "code": "PRINT Doppio(5)\nFUNCTION Doppio(N)\n  RETURN N * 2\nEND FUNCTION",
+        "expectedOutput": "10"
+      }
+    ],
+    "seeAlso": [
+      "GOSUB",
+      "END"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "END",
+    "namespace": "GLOBAL",
+    "category": "Program Control",
+    "description": "Termina l'esecuzione del programma. Chiude tutti i file aperti.",
+    "syntax": [
+      "END"
+    ],
+    "examples": [
+      {
+        "description": "Termine condizionale del programma.",
+        "code": "PRINT \"Avvio...\"\nIF 1=1 THEN END\nPRINT \"Non eseguito\"",
+        "expectedOutput": "Avvio..."
+      }
+    ],
+    "seeAlso": [
+      "STOP",
+      "EXIT"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "STOP",
+    "namespace": "GLOBAL",
+    "category": "Program Control",
+    "description": "Sospende l'esecuzione del programma. In REPL rientra in modalita' comando, in esecuzione standalone termina il programma.",
+    "syntax": [
+      "STOP"
+    ],
+    "examples": [
+      {
+        "description": "Pausa per debug.",
+        "code": "PRINT \"Prima\"\nSTOP\nPRINT \"Dopo\"",
+        "expectedOutput": "Prima\nBreak"
+      }
+    ],
+    "seeAlso": [
+      "END",
+      "EXIT"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "REM",
+    "namespace": "GLOBAL",
+    "category": "Comments",
+    "description": "Commento. Tutto cio' che segue REM fino a fine riga viene ignorato. L'apostrofo (') e' un alias di REM.",
+    "syntax": [
+      "REM commento",
+      "' commento",
+      "// commento"
+    ],
+    "examples": [
+      {
+        "description": "Commenti nel codice.",
+        "code": "REM Questo e' un commento\n' Anche questo\n// E anche questo\nPRINT \"Solo questo viene eseguito\"",
+        "expectedOutput": "Solo questo viene eseguito"
+      }
+    ],
+    "seeAlso": [],
+    "isCommand": true
+  },
+  {
+    "name": "TRY",
+    "namespace": "GLOBAL",
+    "category": "Exception Handling",
+    "description": "Inizia un blocco di gestione eccezioni. Il codice nel blocco TRY viene eseguito; se solleva un'eccezione, il controllo passa al CATCH corrispondente. FINALLY viene sempre eseguito.",
+    "syntax": [
+      "TRY\n  [body]\nCATCH [var AS ERR]\n  [handler]\n[FINALLY\n  [cleanup]]\nEND TRY"
+    ],
+    "examples": [
+      {
+        "description": "Gestione eccezioni con TRY/CATCH.",
+        "code": "TRY\n  X = 1 / 0\nCATCH ex AS ERR\n  PRINT \"Errore: \"; ex.Number; \" \"; ex.Description\nEND TRY\nPRINT \"Continuo...\"",
+        "expectedOutput": "Errore: 11 Division by zero\nContinuo..."
+      }
+    ],
+    "seeAlso": [
+      "CATCH",
+      "FINALLY",
+      "THROW"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "CATCH",
+    "namespace": "GLOBAL",
+    "category": "Exception Handling",
+    "description": "Cattura un'eccezione sollevata nel blocco TRY corrispondente. Opzionalmente lega l'eccezione a una variabile di tipo ERR.",
+    "syntax": [
+      "CATCH [var AS ERR]"
+    ],
+    "examples": [
+      {
+        "description": "Cattura con variabile ERR.",
+        "code": "TRY\n  ERROR 5, \"test\"\nCATCH e AS ERR\n  PRINT \"Num:\"; e.Number; \" Desc:\"; e.Description\nEND TRY",
+        "expectedOutput": "Num: 5 Desc: test"
+      }
+    ],
+    "seeAlso": [
+      "TRY",
+      "FINALLY",
+      "THROW",
+      "ERROR"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "FINALLY",
+    "namespace": "GLOBAL",
+    "category": "Exception Handling",
+    "description": "Blocco di cleanup sempre eseguito, sia in caso di eccezione che di completamento normale del TRY.",
+    "syntax": [
+      "FINALLY\n  [cleanup]"
+    ],
+    "examples": [
+      {
+        "description": "Cleanup con FINALLY.",
+        "code": "OPEN \"test.txt\" FOR OUTPUT AS #1\nTRY\n  PRINT #1, \"test\"\nFINALLY\n  CLOSE #1\n  PRINT \"File chiuso\"\nEND TRY",
+        "expectedOutput": "File chiuso"
+      }
+    ],
+    "seeAlso": [
+      "TRY",
+      "CATCH"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "THROW",
+    "namespace": "GLOBAL",
+    "category": "Exception Handling",
+    "description": "Solleva un'eccezione. Puo' essere un oggetto ERR o una classe personalizzata.",
+    "syntax": [
+      "THROW exception_object",
+      "THROW NEW ClassName(args)"
+    ],
+    "examples": [
+      {
+        "description": "Sollevamento eccezione personalizzata.",
+        "code": "TRY\n  THROW NEW Exception(\"Mio errore\")\nCATCH ex AS ERR\n  PRINT ex.Description\nEND TRY",
+        "expectedOutput": "Mio errore"
+      }
+    ],
+    "seeAlso": [
+      "TRY",
+      "CATCH",
+      "ERROR"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "ERROR",
+    "namespace": "GLOBAL",
+    "category": "Exception Handling",
+    "description": "Solleva un errore BASIC con numero e messaggio. Attiva ON ERROR GOTO/GOSUB o il CATCH piu' vicino.",
+    "syntax": [
+      "ERROR code [, message$]"
+    ],
+    "examples": [
+      {
+        "description": "Errore controllato con ON ERROR.",
+        "code": "ON ERROR GOTO Handler\nERROR 99, \"Errore personalizzato\"\nEND\nHandler:\n  PRINT \"ERRORE:\"; ERR.Number; \":\"; ERR.Description",
+        "expectedOutput": "ERRORE: 99: Errore personalizzato"
+      }
+    ],
+    "seeAlso": [
+      "ON ERROR",
+      "THROW",
+      "CATCH"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "CURSOR",
+    "namespace": "GLOBAL",
+    "category": "Console",
+    "description": "Controlla la visibilita' e la forma del cursore. ON mostra il cursore, OFF lo nasconde. SHAPE imposta dimensione (0=invisibile, 1=normale, 2=spesso).",
+    "syntax": [
+      "CURSOR ON | OFF",
+      "CURSOR SHAPE size"
+    ],
+    "examples": [
+      {
+        "description": "Nascondi cursore durante output.",
+        "code": "CURSOR OFF\nPRINT \"Cursore nascosto...\"\nSLEEP 1\nCURSOR ON",
+        "expectedOutput": "Cursore nascosto..."
+      }
+    ],
+    "seeAlso": [
+      "LOCATE",
+      "CLS"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "SLEEP",
+    "namespace": "GLOBAL",
+    "category": "Timing",
+    "description": "Sospende l'esecuzione per un numero di secondi (decimale, es. 0.5 = 500ms). Utile per animazioni, attese e timing.",
+    "syntax": [
+      "SLEEP seconds"
+    ],
+    "examples": [
+      {
+        "description": "Delay tra output.",
+        "code": "FOR I=1 TO 3\n  PRINT I\n  SLEEP 0.5\nNEXT I",
+        "expectedOutput": "1\n2\n3\n[con delay 0.5s tra ogni numero]"
+      }
+    ],
+    "seeAlso": [
+      "TIMER",
+      "WAIT"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "BELL",
+    "namespace": "GLOBAL",
+    "category": "Audio",
+    "description": "Produce un segnale acustico (beep) di sistema.",
+    "syntax": [
+      "BELL"
+    ],
+    "examples": [
+      {
+        "description": "Segnale acustico su errore.",
+        "code": "INPUT \"OK? \", R$\nIF R$ <> \"S\" THEN BELL,expectedOutput:[beep se risposta diversa da S]"
+      }
+    ],
+    "seeAlso": [
+      "SOUND"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "ON ERROR",
+    "namespace": "GLOBAL",
+    "category": "Exception Handling",
+    "description": "Imposta un gestore per errori runtime. GOTO salta all'etichetta specificata quando si verifica un errore. GOSUB chiama una subroutine e RETURN riprende dall'istruzione successiva. RESUME NEXT riprende dall'istruzione successiva a quella che ha causato l'errore.",
+    "syntax": [
+      "ON ERROR GOTO label",
+      "ON ERROR GOSUB label",
+      "ON ERROR RESUME NEXT"
+    ],
+    "examples": [
+      {
+        "description": "Gestione errori con ON ERROR GOTO.",
+        "code": "ON ERROR GOTO Handler\nOPEN \"inesistente.txt\" FOR INPUT AS #1\nEND\nHandler:\n  PRINT \"ERRORE:\"; ERR.Number; \"-\"; ERR.Description\n  RESUME NEXT",
+        "expectedOutput": "ERRORE: 53 - File not found"
+      }
+    ],
+    "seeAlso": [
+      "RESUME",
+      "ERROR",
+      "ERR",
+      "TRY"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "RESUME",
+    "namespace": "GLOBAL",
+    "category": "Exception Handling",
+    "description": "Dopo un errore gestito da ON ERROR GOTO, RESUME riprende l'esecuzione. RESUME NEXT riprende dall'istruzione successiva a quella che ha causato l'errore.",
+    "syntax": [
+      "RESUME",
+      "RESUME NEXT"
+    ],
+    "examples": [
+      {
+        "description": "Ripresa dopo errore con RESUME NEXT.",
+        "code": "ON ERROR GOTO Handler\nX = 1 / 0\nPRINT \"Ripreso dopo errore\"\nEND\nHandler:\n  PRINT \"Divisione per zero\"\n  RESUME NEXT",
+        "expectedOutput": "Divisione per zero\nRipreso dopo errore"
+      }
+    ],
+    "seeAlso": [
+      "ON ERROR",
+      "ERROR",
+      "ERR"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "YIELD",
+    "namespace": "GLOBAL",
+    "category": "Generators",
+    "description": "All'interno di un GENERATOR, restituisce un valore e sospende l'esecuzione. Alla successiva chiamata, il GENERATOR riprende dall'istruzione successiva a YIELD.",
+    "syntax": [
+      "YIELD expression",
+      "YIELD"
+    ],
+    "examples": [
+      {
+        "description": "Generatore di numeri.",
+        "code": "GENERATOR Conta(N)\n  FOR I = 1 TO N\n    YIELD I\n  NEXT I\nEND GENERATOR\nFOR EACH V IN Conta(3)\n  PRINT V\nNEXT",
+        "expectedOutput": "1\n2\n3"
+      }
+    ],
+    "seeAlso": [
+      "GENERATOR",
+      "FOR EACH"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "GO SUB",
+    "namespace": "GLOBAL",
+    "category": "Concurrency",
+    "description": "Avvia una SUB o FUNCTION in un goroutine (task concorrente). L'esecuzione prosegue immediatamente senza attendere il completamento. Usare WAIT per sincronizzare o SEND/RECEIVE per comunicare.",
+    "syntax": [
+      "GO SUB NomeSub(args)",
+      "GO FUNCTION NomeFunc(args) INTO var"
+    ],
+    "examples": [
+      {
+        "description": "Task in background con GO SUB.",
+        "code": "SUB Lavoro(N)\n  FOR I = 1 TO N\n    PRINT \"Task:\"; I\n    SLEEP 0.2\n  NEXT I\nEND SUB\nGO SUB Lavoro(3)\nPRINT \"Main continua...\"\nSLEEP 1",
+        "expectedOutput": "Main continua...\nTask: 1\nTask: 2\nTask: 3"
+      }
+    ],
+    "seeAlso": [
+      "GO FUNCTION",
+      "SEND",
+      "RECEIVE",
+      "WAIT"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "GO FUNCTION",
+    "namespace": "GLOBAL",
+    "category": "Concurrency",
+    "description": "Avvia una FUNCTION in un goroutine e cattura il risultato in una variabile FUTURE. Usare RECEIVE FROM per ottenere il valore di ritorno quando disponibile.",
+    "syntax": [
+      "GO FUNCTION NomeFunc(args) INTO future_var"
+    ],
+    "examples": [
+      {
+        "description": "Calcolo parallelo con GO FUNCTION.",
+        "code": "FUNCTION Calcola(N)\n  RETURN N * N\nEND FUNCTION\nGO FUNCTION Calcola(5) INTO F\nPRINT \"Attendo risultato...\"\nRECEIVE R FROM F\nPRINT \"Risultato:\"; R",
+        "expectedOutput": "Attendo risultato...\nRisultato: 25"
+      }
+    ],
+    "seeAlso": [
+      "GO SUB",
+      "RECEIVE",
+      "SEND"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "SEND",
+    "namespace": "GLOBAL",
+    "category": "Concurrency",
+    "description": "Invia un valore a un canale (CHAN). Se il canale non ha buffer, la send blocca finche' un altro goroutine non fa RECEIVE. I canali si creano con DIM ch AS CHAN OF tipo.",
+    "syntax": [
+      "SEND value TO channel"
+    ],
+    "examples": [
+      {
+        "description": "Comunicazione tra goroutine con canale.",
+        "code": "DIM ch AS CHAN OF INTEGER\nGO SUB Produttore(ch)\nSLEEP 0.1\nRECEIVE V FROM ch\nPRINT \"Ricevuto:\"; V\nSUB Produttore(C)\n  SEND 42 TO C\nEND SUB",
+        "expectedOutput": "Ricevuto: 42"
+      }
+    ],
+    "seeAlso": [
+      "RECEIVE",
+      "GO SUB",
+      "CHAN",
+      "GO SELECT"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "RECEIVE",
+    "namespace": "GLOBAL",
+    "category": "Concurrency",
+    "description": "Riceve un valore da un canale (CHAN) o da una FUTURE. Se il canale e' vuoto, RECEIVE blocca finche' un altro goroutine non fa SEND.",
+    "syntax": [
+      "RECEIVE variable FROM channel_or_future"
+    ],
+    "examples": [
+      {
+        "description": "Ricezione da canale.",
+        "code": "DIM ch AS CHAN OF STRING\nGO SUB Scrivi(ch)\nRECEIVE Msg$ FROM ch\nPRINT Msg$\nSUB Scrivi(C)\n  SEND \"Ciao!\" TO C\nEND SUB",
+        "expectedOutput": "Ciao!"
+      }
+    ],
+    "seeAlso": [
+      "SEND",
+      "GO FUNCTION",
+      "GO SUB",
+      "CHAN"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "WAIT",
+    "namespace": "GLOBAL",
+    "category": "Concurrency",
+    "description": "Attende il completamento di un gruppo di goroutine (WaitGroup). WAIT blocca finche' tutti i goroutine non chiamano DONE.",
+    "syntax": [
+      "WAIT"
+    ],
+    "examples": [
+      {
+        "description": "Sincronizzazione goroutine con WAIT.",
+        "code": "DIM wg AS WaitGroup\nGO SUB Task(wg, 1)\nGO SUB Task(wg, 2)\nWAIT\nPRINT \"Tutti completati\"\nSUB Task(W, Id)\n  PRINT \"Task\"; Id; \" avviato\"\n  SLEEP 0.2\n  PRINT \"Task\"; Id; \" finito\"\n  DONE\nEND SUB",
+        "expectedOutput": "Task 1 avviato\nTask 2 avviato\nTask 1 finito\nTask 2 finito\nTutti completati"
+      }
+    ],
+    "seeAlso": [
+      "DONE",
+      "GO SUB",
+      "GO FUNCTION"
+    ],
+    "isCommand": true
+  },
+  {
+    "name": "DONE",
+    "namespace": "GLOBAL",
+    "category": "Concurrency",
+    "description": "Segnala il completamento di un goroutine a un WaitGroup. Decrementa il contatore del WaitGroup. Quando tutti i goroutine chiamano DONE, WAIT si sblocca.",
+    "syntax": [
+      "DONE"
+    ],
+    "examples": [
+      {
+        "description": "WaitGroup con DONE.",
+        "code": "DIM wg AS WaitGroup\nGO SUB Lavora(wg)\nWAIT\nPRINT \"Fatto\"\nSUB Lavora(W)\n  PRINT \"Lavoro...\"\n  SLEEP 0.1\n  DONE\nEND SUB",
+        "expectedOutput": "Lavoro...\nFatto"
+      }
+    ],
+    "seeAlso": [
+      "WAIT",
+      "GO SUB"
+    ],
+    "isCommand": true
+  }
+]

@@ -1,0 +1,2 @@
+# stress timer heap: 64 goroutine con WAIT fino a 7 tick — il percorso C99 impiega >15s
+@timeout 60000

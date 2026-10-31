@@ -1,0 +1,6 @@
+' EXPECT: 0
+IMPORT AUTH
+
+SUB Main()
+    PRINT AUTH.JWTVERIFY("", "")
+END SUB

@@ -1,0 +1,16 @@
+' EXPECT: sym=-1|orth=-1|upper=-1|lower=-1|nsym= 0|nupper= 0|nlower= 0
+IMPORT MATRIX
+SUB Main()
+  DIM idn = MATRIX.CREATE(3, 3)
+  idn = MATRIX.SETVALUE(idn, 0, 0, 1) : idn = MATRIX.SETVALUE(idn, 1, 1, 1) : idn = MATRIX.SETVALUE(idn, 2, 2, 1)
+  IF MATRIX.ISSYMMETRIC(idn) <> 0 THEN PRINT "sym=-1"
+  IF MATRIX.ISORTHOGONAL(idn) <> 0 THEN PRINT "orth=-1"
+  IF MATRIX.ISUPPERTRIANGULAR(idn) <> 0 THEN PRINT "upper=-1"
+  IF MATRIX.ISLOWERTRIANGULAR(idn) <> 0 THEN PRINT "lower=-1"
+  DIM g = MATRIX.CREATE(2, 2)
+  g = MATRIX.SETVALUE(g, 0, 0, 1) : g = MATRIX.SETVALUE(g, 0, 1, 2)
+  g = MATRIX.SETVALUE(g, 1, 0, 3) : g = MATRIX.SETVALUE(g, 1, 1, 4)
+  PRINT "nsym="; MATRIX.ISSYMMETRIC(g)
+  PRINT "nupper="; MATRIX.ISUPPERTRIANGULAR(g)
+  PRINT "nlower="; MATRIX.ISLOWERTRIANGULAR(g)
+END SUB

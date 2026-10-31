@@ -1,0 +1,3 @@
+# MvcCrud: server HTTP demo interattivo (KeepAlive SLEEP 3600000 = 1h).
+# Non headless-testabile: il gate C99 lo salta (@timeout > 60s), parity4 via "' TAG: interactive".
+@timeout 3600000

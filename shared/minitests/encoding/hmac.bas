@@ -1,0 +1,7 @@
+IMPORT CRYPTOGRAPHY
+SUB Main()
+  PRINT HMACSHA256("abc", "key")
+  PRINT HMACSHA384("abc", "key")
+  PRINT HMACSHA512("abc", "key")
+  PRINT TOBASE64URL("abc")
+END SUB

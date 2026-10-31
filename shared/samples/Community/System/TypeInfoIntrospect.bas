@@ -1,0 +1,15 @@
+' FILE: System/TypeInfoIntrospect.bas
+' TYPEINFO.HAS, METHODINFO, PROPERTYINFO coverage.
+IMPORT TYPEINFO
+TYPE Person
+    Name AS STRING * 32
+    Age AS INTEGER
+END TYPE
+SUB Main()
+    PRINT "HAS(42):    "; TYPEINFO.HAS(42)
+    PRINT "HAS(NIL):   "; TYPEINFO.HAS(NIL)
+    DIM p AS Person
+    PRINT "METHODINFO: "; TYPEINFO.METHODINFO("Person")
+    PRINT "PROPERTYINFO: "; TYPEINFO.PROPERTYINFO("Person")
+    PRINT "Test Completato."
+END SUB

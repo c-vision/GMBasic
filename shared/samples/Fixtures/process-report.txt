@@ -1,0 +1,5 @@
+Revenue report Q1 (fixture per il comando PROCESS, E0):
+Division A: 120k
+Division B: 80k
+Division C: 45k
+Total: 245k

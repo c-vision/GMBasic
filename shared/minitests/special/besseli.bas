@@ -1,0 +1,7 @@
+' MiniTest: SPECIAL.BESSELI — parita' 4 backend bit-esatta (port MathNet).
+' EXPECT: 1.26606587775201
+IMPORT SPECIAL
+
+SUB Main
+  PRINT SPECIAL.BESSELI(0, 1.0)
+END SUB

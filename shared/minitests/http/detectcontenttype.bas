@@ -1,0 +1,6 @@
+' EXPECT: [image/gif]|[application/pdf]|[]|[]
+IMPORT HTTP
+PRINT "["; HTTP.DETECTCONTENTTYPE("GIF89a"); "]"
+PRINT "["; HTTP.DETECTCONTENTTYPE("%PDF-1.4"); "]"
+PRINT "["; HTTP.DETECTCONTENTTYPE("niente"); "]"
+PRINT "["; HTTP.DETECTCONTENTTYPE(""); "]"

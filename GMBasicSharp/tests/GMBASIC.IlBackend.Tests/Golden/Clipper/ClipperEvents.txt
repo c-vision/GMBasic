@@ -1,0 +1,8 @@
+Conformance: edition=Commercial
+  code=1205 bytes, consts=31, entry=1064
+  A1 chunk: /var/folders/b_/gsctxq2x5sq9gh7zpqpgrd0m0000gn/T/gmb_vmtest_4bfd7036.chunk (12512 bytes)
+  ---- VM/C OUTPUT ----
+=== Event Test ===
+Handler registrati.
+Test completato.
+  exit=0

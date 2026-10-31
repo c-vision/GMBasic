@@ -1,0 +1,19 @@
+SUB Worker(ch AS CHANNEL OF INTEGER, wg AS WAITGROUP)
+  SEND 1 TO ch
+  SLEEP 5
+  SEND 2 TO ch
+  DONE wg
+END SUB
+
+SUB Main()
+  DIM ch AS CHANNEL OF INTEGER
+  DIM wg AS WAITGROUP
+  DIM v AS INTEGER
+  GO SUB Worker(ch, wg) IN wg
+  RECEIVE v FROM ch
+  PRINT "V1-"; v
+  RECEIVE v FROM ch
+  PRINT "V2-"; v
+  WAIT wg
+  PRINT "MAIN-DONE"
+END SUB

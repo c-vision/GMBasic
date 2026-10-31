@@ -1,0 +1,6 @@
+' EXPECT: 0
+IMPORT TOOL
+
+SUB Main()
+    PRINT TOOL.REGISTER("", "")
+END SUB

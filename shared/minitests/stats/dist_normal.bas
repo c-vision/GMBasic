@@ -1,0 +1,7 @@
+' EXPECT: normcdf= 0.5|normpdf= 0.398942
+IMPORT STATS
+IMPORT MATH
+SUB Main()
+  PRINT "normcdf="; MATH.ROUND(STATS.NORMALCDF(0, 0, 1), 6)
+  PRINT "normpdf="; MATH.ROUND(STATS.NORMALPDF(0, 0, 1), 6)
+END SUB

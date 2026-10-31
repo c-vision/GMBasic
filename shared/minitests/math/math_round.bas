@@ -1,0 +1,1 @@
+PRINT ROUND(2.6)

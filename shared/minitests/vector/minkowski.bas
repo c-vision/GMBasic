@@ -1,0 +1,7 @@
+' EXPECT: mink= 6
+IMPORT VECTOR
+SUB Main()
+  h1 = VECTOR.CREATE(1, 2, 3)
+  h2 = VECTOR.CREATE(4, 6, 8)
+  PRINT "mink="; VECTOR.MINKOWSKI(h1, h2, 3)
+END SUB

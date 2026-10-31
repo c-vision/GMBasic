@@ -1,0 +1,3 @@
+SUB Main()
+  PRINT COS(0)
+END SUB

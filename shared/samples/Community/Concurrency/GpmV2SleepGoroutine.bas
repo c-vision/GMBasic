@@ -1,0 +1,12 @@
+SUB Worker(wg AS WAITGROUP)
+  SLEEP 5
+  PRINT "WOKE"
+  DONE wg
+END SUB
+
+SUB Main()
+  DIM wg AS WAITGROUP
+  GO SUB Worker(wg) IN wg
+  WAIT wg
+  PRINT "MAIN-DONE"
+END SUB

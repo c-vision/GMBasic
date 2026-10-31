@@ -1,0 +1,5 @@
+IMPORT UI
+
+SUB Main()
+    PRINT UI.FINDALL("")
+END SUB

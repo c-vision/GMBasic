@@ -1,0 +1,30 @@
+<%@ IMPORT OAUTH %>
+<%@ IMPORT HTTP %>
+<%@ IMPORT CRYPTOGRAPHY %>
+<%@ IMPORT STRINGS %>
+<%
+  ' OAuth /callback: il provider torna con ?code=...&state=...
+  '  1) verifica state anti-CSRF contro la sessione
+  '  2) scambia il code con OAUTH.TokenBody + OAUTH.RequestToken (RETE)
+  DIM state$ = SESSION("oauth_state")
+  DIM verifier$ = SESSION("oauth_verifier")
+  DIM esito$ = ""
+  IF QUERY("state") <> state$ OR LEN(QUERY("code")) = 0 THEN
+      esito$ = "state/code non valido"
+  ELSE
+      DIM body$ = OAUTH.TokenBody("authorization_code", "google-client-id", "",
+          QUERY("code"), "http://localhost:8096/callback.bsp", "openid profile email")
+      ' richiesta di rete reale verso l'IdP (richiede credenziali valide):
+      esito$ = OAUTH.RequestToken("https://oauth2.googleapis.com/token", body$)
+  END IF
+  SESSION("oauth_state") = ""     ' usa-e-getta
+%>
+<!DOCTYPE html>
+<html>
+<body>
+  <h1>OAuth callback</h1>
+  <p>Code: <%= QUERY("code") %></p>
+  <p>Esito token (JSON):</p>
+  <pre><%= esito$ | raw %></pre>
+</body>
+</html>

@@ -1,0 +1,6 @@
+# .gmbderive — ricetta di derivazione RIPRODUCIBILE (B5).
+# BASE è relativa a questa ricetta; OUT è relativo alla CWD (l'artefatto).
+BASE tiny_moe.gguf
+POLICY PRUNE_EXPERT top
+PRUNE 2
+OUT work/derived.gguf

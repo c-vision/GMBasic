@@ -1,0 +1,4 @@
+IMPORT STRINGS
+SUB Main()
+  PRINT PASCAL("ciao mondo")
+END SUB

@@ -1,0 +1,6 @@
+{
+  "name": "web_fetch",
+  "description": "Scarica un URL e restituisce il testo.",
+  "procedure": "WebFetch",
+  "inputSchema": { "type": "object", "properties": { "url": { "type": "string" } } }
+}

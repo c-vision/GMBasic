@@ -1,0 +1,8 @@
+' MiniTest: TRADING.METRICS.DIVIDENDYIELD — parita' 4 backend.
+' EXPECT: 5
+IMPORT TRADING.METRICS AS TM
+
+SUB Main
+  
+  PRINT ROUND(TM.DividendYield(5, 100), 8)
+END SUB

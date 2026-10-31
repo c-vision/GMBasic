@@ -1,0 +1,28 @@
+Conformance: edition=Commercial
+  code=1180 bytes, consts=27, entry=1064
+  A1 chunk: /var/folders/b_/gsctxq2x5sq9gh7zpqpgrd0m0000gn/T/gmb_vmtest_725123e9.chunk (12792 bytes)
+[1;1H[38;2;0;0;0m[48;2;0;0;0m                                                                                [2;1H                                                                                [3;1H                                                                                [4;1H                                                                                [5;1H                                                                                [6;1H                                                                                [7;1H                                                                                [8;1H                                                                                [9;1H                                                                                [10;1H                                                                                [11;1H                                                                                [12;1H                                                                                [13;1H                                                                                [14;1H                                                                                [15;1H                                                                                [16;1H                                                                                [17;1H                                                                                [18;1H                                                                                [19;1H                                                                                [20;1H                                                                                [21;1H                                                                                [22;1H                                                                                [23;1H                                                                                [24;1H                                                                                [25;1H[38;2;200;208;220m[48;2;0;0;255mP-CODE VM Clipper TUI test                                                      [1;1H[38;2;0;0;0m[48;2;0;0;0m                                                                                [2;1H                                                                                [3;1H                                                                                [4;1H                                                                                [5;1H                                                                                [6;1H                                                                                [7;1H                                                                                [8;1H                                                                                [9;1H                                                                                [10;1H                                                                                [11;1H                    [38;2;200;208;220m[48;2;0;0;255m/[38;2;0;0;0m[48;2;0;0;0m                                                           [12;1H                                                                                [13;1H                                                                                [14;1H                                                                                [15;1H                                                                                [16;1H                                                                                [17;1H                                                                                [18;1H                                                                                [19;1H                                                                                [20;1H                                                                                [21;1H                                                                                [22;1H                                                                                [23;1H                                                                                [24;1H                                                                                [25;1H                                                                                  ---- VM/C OUTPUT ----
+[TUI] STATUSBAR test
+  OK - STATUSBAR
+[TUI] SPINNER test
+  OK - SPINNER
+[TUI] ALERT compiled OK
+[TUI] CONFIRM compiled OK
+[TUI] CHECKBOX compiled OK
+[TUI] LISTBOX compiled OK
+[TUI] COMBOBOX compiled OK
+[TUI] TOGGLE compiled OK
+[TUI] RADIOGROUP compiled OK
+[TUI] SLIDER compiled OK
+[TUI] TAB compiled OK
+[TUI] GRID compiled OK
+[TUI] DATEPICKER compiled OK
+[TUI] COLORPICKER compiled OK
+[TUI] TREEVIEW compiled OK
+[TUI] BUTTON compiled OK
+[TUI] MENU compiled OK
+[TUI] FILEDIALOG compiled OK
+[TUI] PRINTERDIALOG compiled OK
+[TUI] TBROWSE compiled OK
+=== ALL 20 TUI CONTROLS COMPILED FOR P-CODE ===
+  exit=0

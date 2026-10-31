@@ -1,0 +1,5 @@
+' EXPECT: btn= 0
+IMPORT MOUSE
+SUB Main()
+  PRINT "btn="; MOUSE.BUTTON()
+END SUB

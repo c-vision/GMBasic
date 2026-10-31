@@ -1,0 +1,7 @@
+SUB Main()
+  PRINT EMPTY(0)
+  PRINT EMPTY(5)
+  PRINT EMPTY("")
+  PRINT EMPTY("abc")
+  PRINT EMPTY("  ")
+END SUB
