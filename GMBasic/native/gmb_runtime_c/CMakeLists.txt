@@ -128,8 +128,10 @@ endif()
 
 set(GMB_ALL_SRCS
     src/gmb_libs_fetch.c   # download on-demand di UNA libreria (asset per-file)
+    src/gmb_pkg_manifest.c # parser manifest (gmb-package.json / brains-manifest.json): runtime E gmb_pkg
     src/gmb_fetch.c        # motore download: streaming + resume + lock + sha (brains/pacchetti/libs)
     src/gmb_fetch_curl.c   # trasporto HTTP del motore (libcurl); senza curl = NULL, non stub
+    src/gmb_brains.c       # cervelli come dati: risoluzione (vendor/exe/cache) + install da manifest
     src/gmb_ui_stub.c   # debole, PRIMO membro: risolve i riferimenti UI del core in headless
     src/gmb_px_renderer.c   # registry renderer pixel (core); i renderer si registrano dal target UI
     src/gmb_ui_gfx.c   # interfaccia verso la pagina grafica (core; tabella installata dal target UI)
@@ -442,7 +444,6 @@ target_link_libraries(gmb_runtime_deps INTERFACE gmb_chart)
 #  direzione unica C#→C, mai C→C#.)
 add_library(gmb_pkg SHARED
     src/gmb_semver.c
-    src/gmb_pkg_manifest.c
     src/gmb_pkg_lock.c
     src/gmb_pkg_trust.c
     src/gmb_pkg_glob.c
@@ -457,6 +458,7 @@ add_library(gmb_pkg SHARED
     src/gmb_pkg_ecdsa.c
     src/gmb_pkg_util.c
     src/gmb_pkg_graph.c
+    src/gmb_pkg_brains.c   # ponte P/Invoke dei cervelli (logica in gmb_brains.c, runtime)
 )
 target_include_directories(gmb_pkg PUBLIC include)
 target_link_libraries(gmb_pkg PRIVATE gmb_runtime)
@@ -882,6 +884,13 @@ target_link_libraries(gmb_fetch_http_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_fetch_http_selfcheck PRIVATE include)
 add_test(NAME gmb_fetch_http_selfcheck COMMAND gmb_fetch_http_selfcheck)
 
+# Cervelli come dati: risoluzione (vendor/exe/cache), manifest, installazione e fail-closed.
+# Offline: HOME sandboxata + trasporto finto (nessuna rete, nessun cervello vero toccato).
+add_executable(gmb_brains_selfcheck tests/gmb_brains_selfcheck.c)
+target_link_libraries(gmb_brains_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_brains_selfcheck PRIVATE include)
+add_test(NAME gmb_brains_selfcheck COMMAND gmb_brains_selfcheck)
+
 add_executable(gmb_expr_selfcheck tests/expr_selfcheck.c)
 target_link_libraries(gmb_expr_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_expr_selfcheck PRIVATE include)
@@ -910,17 +919,17 @@ add_test(NAME gmb_asr_selfcheck COMMAND gmb_asr_selfcheck)
 add_executable(gmb_asr_run tests/gmb_asr_run.c)
 target_link_libraries(gmb_asr_run PRIVATE gmb_runtime)
 target_include_directories(gmb_asr_run PRIVATE include)
-add_executable(gmb_pkg_manifest_selfcheck tests/gmb_pkg_manifest_selfcheck.c src/gmb_pkg_manifest.c)
+add_executable(gmb_pkg_manifest_selfcheck tests/gmb_pkg_manifest_selfcheck.c)
 target_link_libraries(gmb_pkg_manifest_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_pkg_manifest_selfcheck PRIVATE include)
 add_test(NAME gmb_pkg_manifest_selfcheck COMMAND gmb_pkg_manifest_selfcheck)
 
-add_executable(gmb_pkg_lock_selfcheck tests/gmb_pkg_lock_selfcheck.c src/gmb_pkg_lock.c src/gmb_pkg_manifest.c)
+add_executable(gmb_pkg_lock_selfcheck tests/gmb_pkg_lock_selfcheck.c src/gmb_pkg_lock.c)
 target_link_libraries(gmb_pkg_lock_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_pkg_lock_selfcheck PRIVATE include)
 add_test(NAME gmb_pkg_lock_selfcheck COMMAND gmb_pkg_lock_selfcheck)
 
-add_executable(gmb_pkg_trust_selfcheck tests/gmb_pkg_trust_selfcheck.c src/gmb_pkg_trust.c src/gmb_pkg_manifest.c)
+add_executable(gmb_pkg_trust_selfcheck tests/gmb_pkg_trust_selfcheck.c src/gmb_pkg_trust.c)
 target_link_libraries(gmb_pkg_trust_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_pkg_trust_selfcheck PRIVATE include)
 add_test(NAME gmb_pkg_trust_selfcheck COMMAND gmb_pkg_trust_selfcheck)
@@ -929,18 +938,18 @@ add_executable(gmb_pkg_glob_selfcheck tests/gmb_pkg_glob_selfcheck.c src/gmb_pkg
 target_include_directories(gmb_pkg_glob_selfcheck PRIVATE include)
 add_test(NAME gmb_pkg_glob_selfcheck COMMAND gmb_pkg_glob_selfcheck)
 
-add_executable(gmb_pkg_contentaddr_selfcheck tests/gmb_pkg_contentaddr_selfcheck.c src/gmb_pkg_contentaddr.c src/gmb_pkg_lock.c src/gmb_pkg_manifest.c)
+add_executable(gmb_pkg_contentaddr_selfcheck tests/gmb_pkg_contentaddr_selfcheck.c src/gmb_pkg_contentaddr.c src/gmb_pkg_lock.c)
 target_link_libraries(gmb_pkg_contentaddr_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_pkg_contentaddr_selfcheck PRIVATE include)
 add_test(NAME gmb_pkg_contentaddr_selfcheck COMMAND gmb_pkg_contentaddr_selfcheck)
 
 add_executable(gmb_pkg_resolver_selfcheck tests/gmb_pkg_resolver_selfcheck.c
-    src/gmb_pkg_resolver.c src/gmb_pkg_manifest.c src/gmb_pkg_lock.c src/gmb_semver.c src/gmb_pkg_registry.c src/gmb_pkg_util.c)
+    src/gmb_pkg_resolver.c src/gmb_pkg_lock.c src/gmb_semver.c src/gmb_pkg_registry.c src/gmb_pkg_util.c)
 target_link_libraries(gmb_pkg_resolver_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_pkg_resolver_selfcheck PRIVATE include)
 add_test(NAME gmb_pkg_resolver_selfcheck COMMAND gmb_pkg_resolver_selfcheck)
 
-add_executable(gmb_pkg_registry_selfcheck tests/gmb_pkg_registry_selfcheck.c src/gmb_pkg_registry.c src/gmb_pkg_manifest.c)
+add_executable(gmb_pkg_registry_selfcheck tests/gmb_pkg_registry_selfcheck.c src/gmb_pkg_registry.c)
 target_link_libraries(gmb_pkg_registry_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_pkg_registry_selfcheck PRIVATE include)
 add_test(NAME gmb_pkg_registry_selfcheck COMMAND gmb_pkg_registry_selfcheck)
@@ -950,25 +959,25 @@ target_link_libraries(gmb_net_http_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_net_http_selfcheck PRIVATE include)
 add_test(NAME gmb_net_http_selfcheck COMMAND gmb_net_http_selfcheck)
 
-add_executable(gmb_pkg_artifact_selfcheck tests/gmb_pkg_artifact_selfcheck.c src/gmb_pkg_artifact.c src/gmb_pkg_manifest.c)
+add_executable(gmb_pkg_artifact_selfcheck tests/gmb_pkg_artifact_selfcheck.c src/gmb_pkg_artifact.c)
 target_link_libraries(gmb_pkg_artifact_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_pkg_artifact_selfcheck PRIVATE include)
 add_test(NAME gmb_pkg_artifact_selfcheck COMMAND gmb_pkg_artifact_selfcheck)
 
 add_executable(gmb_pkg_install_selfcheck tests/gmb_pkg_install_selfcheck.c
-    src/gmb_pkg_install.c src/gmb_pkg_manifest.c src/gmb_pkg_lock.c)
+    src/gmb_pkg_install.c src/gmb_pkg_lock.c)
 target_link_libraries(gmb_pkg_install_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_pkg_install_selfcheck PRIVATE include)
 add_test(NAME gmb_pkg_install_selfcheck COMMAND gmb_pkg_install_selfcheck)
 
 add_executable(gmb_pkg_pack_selfcheck tests/gmb_pkg_pack_selfcheck.c
-    src/gmb_pkg_pack.c src/gmb_pkg_manifest.c src/gmb_pkg_glob.c)
+    src/gmb_pkg_pack.c src/gmb_pkg_glob.c)
 target_link_libraries(gmb_pkg_pack_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_pkg_pack_selfcheck PRIVATE include)
 add_test(NAME gmb_pkg_pack_selfcheck COMMAND gmb_pkg_pack_selfcheck)
 
 add_executable(gmb_pkg_advisories_selfcheck tests/gmb_pkg_advisories_selfcheck.c
-    src/gmb_pkg_advisories.c src/gmb_semver.c src/gmb_pkg_lock.c src/gmb_pkg_manifest.c)
+    src/gmb_pkg_advisories.c src/gmb_semver.c src/gmb_pkg_lock.c)
 target_link_libraries(gmb_pkg_advisories_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_pkg_advisories_selfcheck PRIVATE include)
 add_test(NAME gmb_pkg_advisories_selfcheck COMMAND gmb_pkg_advisories_selfcheck)
@@ -983,12 +992,12 @@ target_link_libraries(gmb_pkg_ecdsa_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_pkg_ecdsa_selfcheck PRIVATE include)
 add_test(NAME gmb_pkg_ecdsa_selfcheck COMMAND gmb_pkg_ecdsa_selfcheck)
 
-add_executable(gmb_pkg_util_selfcheck tests/gmb_pkg_util_selfcheck.c src/gmb_pkg_util.c src/gmb_pkg_manifest.c src/gmb_semver.c)
+add_executable(gmb_pkg_util_selfcheck tests/gmb_pkg_util_selfcheck.c src/gmb_pkg_util.c src/gmb_semver.c)
 target_link_libraries(gmb_pkg_util_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_pkg_util_selfcheck PRIVATE include)
 add_test(NAME gmb_pkg_util_selfcheck COMMAND gmb_pkg_util_selfcheck)
 
-add_executable(gmb_pkg_graph_selfcheck tests/gmb_pkg_graph_selfcheck.c src/gmb_pkg_graph.c src/gmb_pkg_manifest.c)
+add_executable(gmb_pkg_graph_selfcheck tests/gmb_pkg_graph_selfcheck.c src/gmb_pkg_graph.c)
 target_link_libraries(gmb_pkg_graph_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_pkg_graph_selfcheck PRIVATE include)
 add_test(NAME gmb_pkg_graph_selfcheck COMMAND gmb_pkg_graph_selfcheck)

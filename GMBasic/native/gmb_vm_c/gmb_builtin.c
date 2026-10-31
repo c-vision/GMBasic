@@ -16098,20 +16098,23 @@ void gmb_bf_benchmark_c1257(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int
     free(out);
     bout->is_num = 0; bout->result_ref = (gmb_obj_t*)s; bout->result_ref_bt = GMB_BT_STRING;
 }
-/* AI.BRAININSTALL/AIBRAINUNINSTALL — il BrainInstaller (zip + manifest + registry) e
- * BrainRegistry sono C#: i backend C ritornano un errore ESPLICITO (parità emitter C#
- * EmitNotAvailable "non disponibile nel backend C"), mai un risultato silenzioso. */
+/* AI.BRAININSTALL/AI.BRAINUNINSTALL — il cervello è un DATO: manifest + download on demand
+ * (gmb_fetch) + estrazione, tutto nel runtime C condiviso (gmb_brains.c). Prima qui c'era un
+ * errore esplicito ("richiede BrainInstaller") perché la logica viveva solo nel C#: ora IL,
+ * PCodeVM, VM/C e C99Native installano lo STESSO cervello con lo STESSO codice. */
 static void gmb_bf_brain_install_c1280(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
-    (void)vm; (void)args; (void)argc; (void)func_code;
-    vm_error(task, "AI.BRAININSTALL non disponibile nel backend C (richiede BrainInstaller)");
-    bout->is_num = 1; bout->result = 0.0;
+    (void)vm; (void)func_code; (void)task;
+    const char* name = vm_builtin_sarg(args, argc, 0);
+    const char* source = vm_builtin_sarg(args, argc, 1);
+    bout->is_num = 1;
+    bout->result = (double)gmb_brain_install(name, source);
 }
 static void gmb_bf_brain_uninstall_c1281(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
-    (void)vm; (void)args; (void)argc; (void)func_code;
-    vm_error(task, "AI.BRAINUNINSTALL non disponibile nel backend C (richiede BrainRegistry)");
-    bout->is_num = 1; bout->result = 0.0;
+    (void)vm; (void)func_code; (void)task;
+    bout->is_num = 1;
+    bout->result = (double)gmb_brain_uninstall(vm_builtin_sarg(args, argc, 0));
 }
 static void gmb_bf_searchmulti_c1285(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {

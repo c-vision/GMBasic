@@ -1081,6 +1081,7 @@ public sealed partial class Parser
                     "c-ffi-source" or "cffi-source" => PackageContentType.CFFISource,
                     "mixed" => PackageContentType.Mixed,
                     "docs-only" => PackageContentType.DocsOnly,
+                    "brain" => PackageContentType.Brain,
                     _ => PackageContentType.Source
                 };
                 m.Backends = StrArr(h, "backends");

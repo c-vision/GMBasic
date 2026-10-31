@@ -105,6 +105,8 @@ static const gmb_ns_type_row_t gmb_ns_types[] = {
     { GMB_TOK_AiBrainUsed, 1 },
     { GMB_TOK_AiBrainUse, 0 },
     { GMB_TOK_AiBrainDetach, 0 },
+    { GMB_TOK_AiBrainInstall, 0 },
+    { GMB_TOK_AiBrainUninstall, 0 },
     { GMB_TOK_NoteGet, 1 },
     { GMB_TOK_NoteTitle, 1 },
     { GMB_TOK_NoteTags, 1 },

@@ -39,9 +39,19 @@ public static class BrainInstaller
 
     /// <summary>Importa un cervello da zip (remoto URL o locale path). Valida brain.manifest.json
     /// (format/name/checksum/files sha256) e installa in destDir (default
-    /// AiConfig.BrainsDefaultDir). Rollback completo se la validazione fallisce.</summary>
+    /// AiConfig.BrainsDefaultDir). Rollback completo se la validazione fallisce.
+    ///
+    /// <para>Con <paramref name="destDir"/> nullo (produzione) il TRASFERIMENTO e l'ESTRAZIONE li
+    /// fa il runtime C (<c>gmb_brains_install_source</c>: gmb_fetch con resume+sha, zip-slip
+    /// safe, cache <c>~/.gmbasic/brains/&lt;nome&gt;/&lt;versione&gt;</c>), così VM/C e C99Native
+    /// installano lo stesso cervello con lo stesso codice. Qui restano la VALIDAZIONE forte
+    /// (format, nome, checksum per-file) sui file installati e la registrazione.</para>
+    /// <para><paramref name="destDir"/> esplicito = percorso storico in C#, usato dai test e
+    /// dall'installazione localizzata.</para></summary>
     public static BrainInstallResult Install(string name, string source, string? destDir = null, bool activate = false)
     {
+        if (destDir is null) return InstallViaNative(name, source, activate);
+
         string? localZip = source;
         var isRemote = source.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
             || source.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
@@ -164,6 +174,93 @@ public static class BrainInstaller
         {
             TryRollback(staging);
         }
+    }
+
+    /// <summary>Installazione "di produzione": trasferimento + estrazione nel runtime C
+    /// (<c>gmb_brains_install_source</c>), poi VALIDAZIONE forte e registrazione qui. Un cervello
+    /// che non supera la validazione NON resta installato (viene rimosso dalla cache).
+    /// Sorgente vuota = installazione dal MANIFEST (`brains-manifest.json`).</summary>
+    private static BrainInstallResult InstallViaNative(string name, string source, bool activate)
+    {
+        bool ok; string root; string error;
+        try
+        {
+            (ok, root, error) = string.IsNullOrWhiteSpace(source)
+                ? NativeBrains.Install(name)
+                : NativeBrains.InstallSource(name, source);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"?AI BRAIN INSTALL {name}: {ex.GetBaseException().Message}");
+            return new BrainInstallResult(name, "", [], false, ex.GetBaseException().Message);
+        }
+        if (!ok || string.IsNullOrEmpty(root))
+        {
+            var msg = string.IsNullOrEmpty(error) ? "installazione fallita" : error;
+            Console.Error.WriteLine($"?AI BRAIN INSTALL {name}: {msg}");
+            return new BrainInstallResult(name, "", [], false, msg);
+        }
+
+        BrainManifest? manifest = null;
+        string? invalid = null;
+        var manifestPath = Path.Combine(root, "brain.manifest.json");
+        if (!File.Exists(manifestPath))
+        {
+            invalid = "non è un cervello GMBasic valido: manca brain.manifest.json";
+        }
+        else
+        {
+            try
+            {
+                manifest = JsonSerializer.Deserialize<BrainManifest>(File.ReadAllText(manifestPath),
+                    new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+            }
+            catch (Exception ex) { invalid = $"manifest corrotto: {ex.Message}"; }
+        }
+
+        if (invalid is null && manifest is not null)
+        {
+            if (!string.Equals(manifest.Format, BrainManifest.FormatName, StringComparison.Ordinal))
+                invalid = $"non è un cervello GMBasic valido: format '{manifest.Format}' (atteso '{BrainManifest.FormatName}')";
+            else if (!string.IsNullOrWhiteSpace(manifest.Name) && !string.Equals(manifest.Name, name, StringComparison.OrdinalIgnoreCase))
+                invalid = $"il manifest dichiara il nome '{manifest.Name}', ma è stato richiesto '{name}'";
+            /* checksum e per-file sono OPZIONALI: un cervello artigianale (o di terze parti) ha
+             * spesso solo rag/<nome>.db. La garanzia d'integrità di un cervello DISTRIBUITO è lo
+             * sha256 dell'ASSET nel manifest dei cervelli, verificato da gmb_fetch prima di
+             * estrarre; il manifest interno è una firma in più, e quando è presente si verifica. */
+            else if (manifest.Checksum is not null && !manifest.VerifySelfChecksum())
+                invalid = "checksum del manifest non valido (zip manomesso/corrotto)";
+            else
+            {
+                foreach (var (rel, hash) in manifest.Files)
+                {
+                    var full = Path.GetFullPath(Path.Combine(root, rel.Replace('/', Path.DirectorySeparatorChar)));
+                    if (!full.StartsWith(Path.GetFullPath(root), StringComparison.OrdinalIgnoreCase))
+                    { invalid = $"zip-slip: entry '{rel}' fuori dalla root"; break; }
+                    if (!File.Exists(full)) { invalid = $"file mancante nello zip: {rel}"; break; }
+                    if (!string.Equals(BrainManifest.HashFile(full), hash, StringComparison.Ordinal))
+                    { invalid = $"checksum non valido per {rel} (file corrotto)"; break; }
+                }
+            }
+        }
+
+        if (invalid is null && BrainRegistry.AvailableModes(name).Length == 0)
+            invalid = "il cervello non contiene né rag/ né graphs/ (niente da usare)";
+
+        if (invalid is not null)
+        {
+            NativeBrains.Remove(name);   // un cervello non valido non resta installato
+            Console.Error.WriteLine($"?AI BRAIN INSTALL {name}: {invalid}");
+            return new BrainInstallResult(name, "", [], false, invalid);
+        }
+
+        var m = manifest!;
+        var available = m.Available.Count > 0 ? new List<string>(m.Available) : [.. BrainRegistry.AvailableModes(name)];
+        BrainRegistry.Register(name, source: source, vaultPath: root, mode: m.Mode ?? "",
+            checksum: m.Checksum, version: m.Version, docs: m.Docs,
+            parsers: m.Parsers, probe: m.Probe, signedBy: m.SignedBy);
+        if (activate) BrainRegistry.Use(name);
+        return new BrainInstallResult(name, root, available, true, null);
     }
 
     private static void TryRollback(string dir)

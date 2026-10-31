@@ -613,6 +613,15 @@ static int sb_gap_notavail(ctx_t* c, gmb_expr_t** a, int n) {
     sb_put(&c->out, "(gmb_raise_error(5, \"builtin non disponibile nel backend C99 headless (runtime/engine non portato)\", 0L), gmb_string_alloc(\"\"))");
     return 1;
 }
+/* AI.BRAININSTALL(nome[, sorgente]) — sorgente assente = installazione dal manifest. */
+static int sb_brain_install(ctx_t* c, gmb_expr_t** a, int n) {
+    if (n < 1) return 0;
+    sb_put(&c->out, "(gmb_double_t)gmb_brain_install(");
+    emit_s(c, a, 0); sb_put(&c->out, ".data, ");
+    if (n >= 2) { emit_s(c, a, 1); sb_put(&c->out, ".data)"); }
+    else sb_put(&c->out, "\"\")");
+    return 1;
+}
 static const gb_row GB_AIEXTRA[] = {
     { GMB_TOK_AiHfRepo,       1, 0, 0, "gmb_ai_hf_repo",      NULL },  /* char* -> stringa */
     { GMB_TOK_AiSkillsPrompt, 1, 0, 0, "gmb_ai_skills_prompt",NULL },  /* char* -> stringa */
@@ -622,6 +631,10 @@ static const gb_row GB_AIEXTRA[] = {
     { GMB_TOK_AiSkillsPaths,  1, 0, 0, "gmb_ai_skills_paths_str",NULL },
     { GMB_TOK_AiBrainUse,     0, 1, 1, "gmb_brain_use",       NULL },
     { GMB_TOK_AiBrainDetach,  0, 1, 1, "gmb_brain_detach",    NULL },
+    /* Il cervello è un DATO: install da manifest/URL e rimozione vivono nel runtime condiviso
+     * (gmb_brains.c) → VM/C e C99Native fanno la stessa cosa di IL/PCodeVM, non un errore. */
+    { GMB_TOK_AiBrainInstall,   0, 1, 2, NULL,                 sb_brain_install },
+    { GMB_TOK_AiBrainUninstall, 0, 1, 1, "gmb_brain_uninstall", NULL },
     { GMB_TOK_AiVaultWatch,   0, 1, 2, "gmb_vault_watch",     NULL },
     { GMB_TOK_BrainVaultBuild,0, 0, 0, NULL, sb_brainvaultbuild },
     { GMB_TOK_AiChannelCreate,      0, 1, 1, "gmb_bus_channel_create", NULL },

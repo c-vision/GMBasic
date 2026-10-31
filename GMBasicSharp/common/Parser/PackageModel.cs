@@ -33,7 +33,8 @@ public enum PackageContentType
     CFFI,       // libreria C/FFI (c-abi o gmb-native), anche senza .bas
     CFFISource, // libreria C/FFI di cui il CLIENT compila il sorgente all'install (blocco `build`)
     Mixed,      // exports + binaries + ffi insieme
-    DocsOnly    // solo README/examples
+    DocsOnly,   // solo README/examples
+    Brain       // CERVELLO: dati (rag/graphs) installati da `AI BRAIN INSTALL`, non codice
 }
 
 /// <summary>Contesto di build corrente (backend + edizione + piattaforma).</summary>

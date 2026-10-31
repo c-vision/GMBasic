@@ -167,6 +167,10 @@ gmb_pkg_artifact_t* gmb_pkg_artifact_select(const char* install_dir, const char*
     else if (strcmp(ctstr, "c-ffi-source") == 0 || strcmp(ctstr, "cffi-source") == 0) ct = 4;
     else if (strcmp(ctstr, "mixed") == 0) ct = 5;
     else if (strcmp(ctstr, "docs-only") == 0) ct = 6;
+    /* CERVELLO: dati (rag/graphs), non codice. Non ha binari né sorgenti da selezionare; si
+     * installa con `AI BRAIN INSTALL` / `gmb brain install` (gmb_brains.c). Tenuto distinto da
+     * "generico" (0) perché vuol dire "dati pronti all'uso", non "pacchetto senza artefatti". */
+    else if (strcmp(ctstr, "brain") == 0) ct = 7;
 
     int ne = gmb_pkg_manifest_count(man, "exports");
     for (int i = 0; i < ne; i++) {

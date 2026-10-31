@@ -36,7 +36,9 @@ procedure,AI,BlackboardWait,BlackboardWait
 procedure,AI,BlackboardWrite,BlackboardWrite
 procedure,AI,BrainDetach,AiBrainDetach
 procedure,AI,BrainInfo,AiBrainInfo
+procedure,AI,BrainInstall,AiBrainInstall
 procedure,AI,BrainList,AiBrainList
+procedure,AI,BrainUninstall,AiBrainUninstall
 procedure,AI,BrainUse,AiBrainUse
 procedure,AI,BrainUsed,AiBrainUsed
 procedure,AI,BrainVaultBuild,BrainVaultBuild

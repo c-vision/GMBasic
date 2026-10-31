@@ -5,6 +5,7 @@
  * note_links. Mai stub: se il vault non esiste nel db, ritorna errore esplicito.
  */
 #include "gmb_runtime.h"
+#include "gmb_brains.h"   /* gmb_brain_list: elenco dei cervelli su disco (vendor/exe/cache) */
 #include "gmb_graph.h"
 #include "gmb_commonlib.h"   /* gmb_sha256 (content_hash vault) */
 #include <sqlite3.h>
@@ -1595,7 +1596,58 @@ static char* gmb_brain_names_from_json(int which) {
     for (int i = 0; i < n; i++) if (names[i][0]) { if (!first) strcat(out, ","); strcat(out, names[i]); first = 0; }
     return out;
 }
-char* gmb_brain_registry_list(void) { return gmb_brain_names_from_json(0); }
+/* Elenco dei cervelli: registry (`<configDir>/brains.json`) **PIÙ** quelli presenti su disco
+ * (vendor / exe / brainsDir / cache ~/.gmbasic/brains). Il secondo insieme è indispensabile:
+ * `AI BRAIN INSTALL` (e il package manager) registrano il cervello SU DISCO, non nel JSON del
+ * C#, quindi senza la scansione un cervello appena installato non comparirebbe in AI.BRAINLIST. */
+char* gmb_brain_registry_list(void)
+{
+    char* json = gmb_brain_names_from_json(0);
+    char fs[8192];
+    gmb_brain_list(fs, sizeof fs, NULL);           /* "nome@ver;nome2@ver" (risoluzione in C) */
+    char names[320][128];
+    int n = 0;
+    for (char* p = json; p && *p && n < 320; ) {
+        char* comma = strchr(p, ',');
+        size_t l = comma ? (size_t)(comma - p) : strlen(p);
+        if (l > 0 && l < sizeof names[0]) { memcpy(names[n], p, l); names[n][l] = 0; n++; }
+        if (!comma) break;
+        p = comma + 1;
+    }
+    for (char* p = fs; *p && n < 320; ) {
+        char* semi = strchr(p, ';');
+        size_t l = semi ? (size_t)(semi - p) : strlen(p);
+        char item[128];
+        if (l < sizeof item) {
+            memcpy(item, p, l); item[l] = 0;
+            char* at = strchr(item, '@');
+            if (at) *at = 0;
+            int dup = 0;
+            for (int k = 0; k < n; k++) if (strcasecmp(names[k], item) == 0) { dup = 1; break; }
+            if (!dup && item[0]) snprintf(names[n++], sizeof names[0], "%s", item);
+        }
+        if (!semi) break;
+        p = semi + 1;
+    }
+    free(json);
+    /* ordinamento stabile */
+    for (int i = 0; i < n; i++)
+        for (int j = i + 1; j < n; j++)
+            if (strcasecmp(names[i], names[j]) > 0) {
+                char tmp[128];
+                snprintf(tmp, sizeof tmp, "%s", names[i]);
+                snprintf(names[i], sizeof names[0], "%s", names[j]);
+                snprintf(names[j], sizeof names[0], "%s", tmp);
+            }
+    char* out = (char*)malloc(16384);
+    if (!out) return NULL;
+    out[0] = 0;
+    for (int i = 0; i < n; i++) {
+        if (i) strcat(out, ",");
+        strcat(out, names[i]);
+    }
+    return out;
+}
 char* gmb_brain_used_csv_json(void) { return gmb_brain_names_from_json(1); }
 
 char* gmb_brain_registry_info(const char* name) {
@@ -2919,6 +2971,14 @@ static int sb_file_is_reg(const char* path) {
 }
 static int sb_brain_available_on_disk(const char* name) {
     if (!name || !*name || strchr(name, '/') || strchr(name, '\\') || strstr(name, "..")) return 0;
+    /* Prima il RESOLVER (vendor → exe → brainsDir → cache ~/.gmbasic/brains/<nome>/<versione>):
+     * un cervello installato da `AI BRAIN INSTALL` vive nella cache versionata e con i soli
+     * path fissi qui sotto non veniva riconosciuto ("Use" falliva su un cervello appena
+     * installato). */
+    {
+        char dir[4096];
+        if (gmb_brain_lookup(name, NULL, dir, sizeof dir)) return 1;
+    }
     char brains[1024], rag[1024], graphs[1024], p[2048];
     gmb_paths_brains_dir(brains, sizeof(brains));
     gmb_paths_rag_dir(rag, sizeof(rag));
