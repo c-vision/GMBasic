@@ -265,7 +265,7 @@ public static class GmbiPaths
     });
 
     /// <summary>Cartella `Resources/` CONDIVISA dai due mondi (C e C#): UNA sola, alla radice del
-    /// monorepo. Contiene gli asset che servono a entrambi — font (`font.ttf`, SFMono, C64 per la
+    /// monorepo. Contiene gli asset che servono a entrambi — font (`font.ttf` Cascadia, `Sixtyfour.ttf` per la
     /// console a celle), sprite/PNG, `system.settings.json`, i manifest dei componenti. Prima erano
     /// in `GMBasicSharp/Resources/` (ora rimossa) e il runtime C li cercava a mano con `<repo>/Resources`.
     /// Ordine di ricerca (il primo che esiste vince):

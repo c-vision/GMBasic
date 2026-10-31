@@ -346,10 +346,13 @@ static int sdlcon_resolve_font(const char* name, char* out, int cap)
         for (int i = 0; p[i]; i++) if (sdlcon_file_exists(p[i])) { snprintf(out, cap, "%s", p[i]); return 1; } return 0; }
     if (strcasestr(name, "menlo"))  { snprintf(out, cap, "/System/Library/Fonts/Menlo.ttc"); return sdlcon_file_exists(out); }
     if (strcasestr(name, "monaco")) { snprintf(out, cap, "/System/Library/Fonts/Monaco.ttf"); return sdlcon_file_exists(out); }
-    if (strcasestr(name, "sfmono") || strcasestr(name, "sf mono"))
+    /* SF Mono (Apple) NON e' ridistribuibile: rimosso dal repo. L'alias resta e punta a
+     * Sixtyfour (SIL OFL 1.1, "fonts based on the Commodore 64"), cosi' chi aveva 'sfmono'
+     * nella configurazione continua a funzionare senza il font Apple. */
+    if (strcasestr(name, "sfmono") || strcasestr(name, "sf mono") || strcasestr(name, "sixtyfour"))
     {
-        if (sdlcon_shared_asset("SFMono-Semibold.otf", out, cap)) return 1;
-        snprintf(out, cap, "Resources/SFMono-Semibold.otf"); return sdlcon_file_exists(out);
+        if (sdlcon_shared_asset("Sixtyfour.ttf", out, cap)) return 1;
+        snprintf(out, cap, "Resources/Sixtyfour.ttf"); return sdlcon_file_exists(out);
     }
     if (strcasestr(name, "andale")) { snprintf(out, cap, "/System/Library/Fonts/Supplemental/Andale Mono.ttf"); return sdlcon_file_exists(out); }
     if (strcasestr(name, "dejavu")) { snprintf(out, cap, "/Library/Fonts/DejaVuSansMono.ttf"); return sdlcon_file_exists(out); }

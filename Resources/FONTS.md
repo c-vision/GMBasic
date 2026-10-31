@@ -5,9 +5,26 @@ declares** (name table: copyright, license, license URL), so nothing is guessed.
 
 | file | family | copyright | license | redistributable? |
 |---|---|---|---|---|
-| `font.ttf` | **Cascadia Code** Regular 2407.024 | © 2021 Microsoft Corporation | SIL OFL 1.1 (embedded in the name table; full text in [`licenses/OFL-1.1-CascadiaCode.txt`](licenses/OFL-1.1-CascadiaCode.txt)) | **yes** — keep the copyright notice and the license with every copy |
-| `SFMono-Semibold.otf` | **SF Mono** Semibold 13.1d0e1 | © 2016-2017 Apple Inc. | Apple's own license: use **only in conjunction with Apple-branded applications** | **no** — removal required before publishing |
-| `C64_Pro_Mono-STYLE.otf` | **C64 Pro Mono** 1.21 | © 2010-2019 Style (style64.org) | style64 license: **may not** sell the font, include it in a collection, or offer it for direct download | **no** — removal required before publishing |
+| `font.ttf` | **Cascadia Code** Regular 2407.024 | © 2021 Microsoft Corporation | **SIL OFL 1.1** (embedded in the name table; full text in [`licenses/OFL-1.1-CascadiaCode.txt`](licenses/OFL-1.1-CascadiaCode.txt)) | **yes** |
+| `Sixtyfour.ttf` | **Sixtyfour** (variable: `SCAN`/`BLED` axes) | © 2021 The Sixtyfour Project Authors ([`jenskutilek/homecomputer-fonts`](https://github.com/jenskutilek/homecomputer-fonts), also on Google Fonts) | **SIL OFL 1.1** ([`licenses/OFL-1.1-Sixtyfour.txt`](licenses/OFL-1.1-Sixtyfour.txt)) | **yes** |
+| `C64_Pro_Mono-STYLE.otf` | **C64 Pro Mono** 1.21 | © 2010-2019 Style (style64.org) | style64 license: **may not** sell the font, include it in a collection, or offer it for direct download | **no** — removal still pending |
+
+## Why Sixtyfour replaced SF Mono
+
+`SFMono-Semibold.otf` (**SF Mono**, © Apple) has been **removed**: the license embedded in the
+file allows use *"solely in conjunction with Apple-branded applications"* and **forbids
+embedding** it in other software or using it to create derivative works. Apple's developer
+download license (EA1370) is even narrower — mock-ups only — so a macOS app is not a
+justification either.
+
+It is replaced by **Sixtyfour**, a variable font *based on the Commodore 64 fonts*, released
+under the SIL OFL 1.1: the `sfmono` / `sf mono` font alias in the runtime and in the graphics
+fallback chain now resolve to `Sixtyfour.ttf`, so existing configurations keep working.
+
+`font.ttf` (Cascadia Code) remains the general default: it covers **128/128** box-drawing
+glyphs, while Sixtyfour covers the C64-style set (heavy lines + blocks + ASCII); the console
+frames do not depend on either of them, because `gmb_gfx_cellfont.c` draws box-drawing
+**procedurally** from the cell geometry.
 
 ## How to check a font yourself
 
@@ -15,7 +32,6 @@ The license lives in the `name` table of the font file (IDs 0 copyright, 13 lice
 14 license URL). Without extra tools:
 
 ```sh
-# macOS: Quick Look / Font Book → ⌘I shows the same fields
 python3 - <<'PY'
 import struct
 d = open("Resources/font.ttf","rb").read()
@@ -31,16 +47,11 @@ PY
 
 ## Consequences (still open)
 
-- **`SFMono-Semibold.otf`** is used as the monospace/UI font of the SDL console and of the
-  software graphics (`gmb_sdl_console.c`, `gmb_graphics_text.c`). Apple's license does not
-  allow shipping it in a public repository: it must be **replaced** by an OFL monospace font
-  (Cascadia Code is already here, and `font.ttf` is the documented fallback) and the file
-  removed.
-- **`C64_Pro_Mono-STYLE.otf`** powers the C64 console mode. The style64 license forbids
-  redistribution, so the file cannot stay. Note that
-  `GMBasic/native/gmb_runtime_c/src/gmb_gfx_cellfont.c` is a **bitmap generated from this
-  font** (`8x16`, 1 bit/px): a derived work of the same licensed font, so it is affected too.
-  Either the C64 mode gets a freely licensed alternative, or the author is asked for
-  permission.
+- **`C64_Pro_Mono-STYLE.otf`** powers the C64 console mode and its PETSCII remap
+  (`gmb_console.c`: `gmb_c64_remap`). The style64 license forbids redistribution, so the file
+  cannot stay in a public repository. Note that
+  `GMBasic/native/gmb_runtime_c/src/gmb_gfx_cellfont.c` contains an 8x16 ASCII bitmap
+  **generated from this font**: a derived work of the same licensed font, so it is affected
+  too (it must be regenerated from Sixtyfour or another freely licensed font).
 - Nothing else in the repository bundles fonts: the copies under
   `shared/samples/**/work/Resources/` are **build artifacts** (not tracked).

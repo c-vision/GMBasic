@@ -9,7 +9,7 @@
 //   app.settings.json  ← MERGE fra i settings condivisi e l'`app.settings.json` del programma,
 //                        ridotto alle sole sezioni che il RUNTIME legge (vedi RuntimeSections).
 //                        L'app vince chiave per chiave sulle chiavi comuni.
-//   Resources/*        ← font (font.ttf, SFMono, C64) e sprite
+//   Resources/*        ← font (font.ttf Cascadia, Sixtyfour) e sprite
 //
 // PERCHÉ NON SI DISTRIBUISCE `system.settings.json`. Quel file è il default GLOBALE del
 // COMPILATORE e dell'app: contiene `compiler` (cc/cflags/ldflags), `importFolders`,

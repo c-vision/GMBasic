@@ -74,8 +74,12 @@ tracked files). These remain:
       (options registry, not env), then the tests can use `<root>/<model>`.
 - [ ] **Third-party skills license audit**: `shared/skills/` holds 161 skills, 121 with **no
       license mention**; they must be checked (or excluded) before the repo goes public.
-- [ ] **Fonts**: `Resources/SFMono-Semibold.otf` is **not redistributable** (replace with an OFL
-      font); the `C64 Pro` font needs its terms documented in `NOTICE`.
+- [x] **SF Mono removed** (Apple license forbids embedding in non-Apple software) → replaced by
+      **Sixtyfour** (SIL OFL 1.1); credits in `Resources/FONTS.md` + `NOTICE`.
+- [ ] **`C64 Pro Mono`** (`C64_Pro_Mono-STYLE.otf`) is **not redistributable** either (style64
+      license) and is still in the tree: it must be replaced (Sixtyfour is the candidate) together
+      with the 8x16 ASCII bitmap in `gmb_gfx_cellfont.c`, which was **generated from that font**.
+      Box-drawing no longer depends on the font (it is drawn procedurally now).
 - [ ] **`pdf_oxide` C header** (`GMBasic/native/deps/`) — upstream license not declared in the
       header: verify and record it in `NOTICE`.
 - [ ] **History cleanup (optional)**: `AGENTS.md` and `GMBasic/config/*.json` were removed from
