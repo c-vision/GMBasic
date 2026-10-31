@@ -63,7 +63,7 @@ dotnet run --project GMBasicSharp/REPL -- brain install brainvault
 | cosa | comando | dove finisce |
 |---|---|---|
 | **librerie native** | `gmb libs ensure` (`status`, `check`, `prune`) — e in automatico al primo uso di una funzione che le richiede | `~/.gmbasic/libs/<rid>/` (in sviluppo, se presenti, vincono quelle appena compilate in `GMBasic/build/libs/<rid>/`) |
-| **componenti esterni** (torch/ML, Chromium, Obscura, OCR) | `gmb setup TORCH` · `BROWSER` · `OCR` · `ALL` (o automatico al primo uso) | `~/.gmbasic/libs/<componente>/<rid>/` |
+| **componenti esterni** (torch/ML, Chromium, Obscura, OCR) | `gmb setup TORCH` · `BROWSER` · `OBSCURA` · `OCR` · `ALL` (o automatico al primo uso) | `~/.gmbasic/libs/<componente>/<rid>/` |
 | **feed di mercato** (`markets`, `option_chains`, `rates`, `darkpool`) | `gmb fixtures list` · `ensure` · `pull markets` | `shared/samples/Fixtures/<nome>/` — **unico** posto, niente symlink |
 | **cervelli** (RAG e/o grafo) | `gmb brain install <nome[@ver]>` · `list` · `remove` (da BASIC: `AI BRAIN INSTALL "nome"`) | `~/.gmbasic/brains/<nome>/<versione>/{rag,graphs}` |
 | **pacchetti** con dipendenze esterne | `gmb pkg install <nome[@ver]>` · `gmb restore` · `gmb update` | `~/.gmbasic/packages` (client) · `<checkout>/packages` (sviluppo) · `<exe>/packages` con `--local` · `vendor/` per i pin |
