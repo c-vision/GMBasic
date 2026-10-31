@@ -3179,6 +3179,15 @@ static void reg_let_assign(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
                     if (tk_is_md_list(s->value->tk)) tv->elem_boxed = 1;
                 }
             }
+            /* x = SPLIT(...) → array DINAMICO di stringhe, anche quando x era un DIM fisso
+             * (`DIM L$(5)` + `L$ = SPLIT(...)`): l'assegnazione SOSTITUISCE l'array, quindi
+             * UBOUND deve riflettere i nuovi elementi (semantica PCode/IL — StringsExamples
+             * stampa fino a UBOUND(LIST$) = 2, non al bound dichiarato 5). Prima x restava
+             * "fisso" e l'assegnazione emetteva `L_len` MAI dichiarato (3 errori cc). */
+            if (s->value && s->value->kind == GMB_EXPR_CALL && s->value->tk == GMB_TOK_Split
+                && !tv->coll_handle && !tv->gkind && !tv->boxed_val) {
+                tv->is_array = 1; tv->dyn_len = 1; tv->ndims = 1; tv->type = TY_STR;
+            }
             /* x = <ANALYSIS/SIGNAL array-returning>(...) con x NON dichiarato: array dinamico
              * (`gmb_double_t* x` + `x_len` + `x__b0`), come il DIM `()` — il decl loop lo
              * emette. SciPyP1Parity: `sp = ANALYSIS.SPLREP(xs, ys)`. */
@@ -5911,7 +5920,12 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_Title, emit_bf_strings_extra },
     { NULL, GMB_TOK_Petscii, emit_bf_strings_extra },
     { NULL, GMB_TOK_Empty, emit_bf_strings_extra },
-    { NULL, GMB_TOK_COUNT, emit_bf_strings_extra },
+    /* COUNT(haystack, needle) → STRINGS.Count: il token che il frontend produce davvero è
+     * la KEYWORD GMB_TOK_Count (GMB_TOK_COUNT non è mai emesso da nessuno → la riga era
+     * morta e la chiamata cadeva sul count di collezione, restituendo 0: bug trovato su
+     * StringsExamples.bas `COUNT(SC$, "a")`). Per 0/1 argomenti sx_count ritorna 0 e il
+     * dispatch prosegue (COUNT()/Count(item) dei contenitori restano invariati). */
+    { NULL, GMB_TOK_Count, emit_bf_strings_extra },
     { NULL, GMB_TOK_Replace, emit_bf_strings_extra },
     { NULL, GMB_TOK_Remove, emit_bf_strings_extra },
     { NULL, GMB_TOK_Search, emit_bf_strings_extra },
@@ -10595,7 +10609,16 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
             sb_put(&c->out, "(gmb_double_t)("); emit_arr_len_of(c, cv); sb_put(&c->out, ")");
             return;
         }
-        /* non-collezione (es. COUNT(str,sub) → il C# emette la len dell'array-var = 0) */
+        /* COUNT(haystack, needle): forma STRINGS.Count — conteggio delle occorrenze sul
+         * runtime condiviso (§0bis). Prima si emetteva 0.0 ("non-collezione"): la funzione
+         * restituiva sempre 0 su C99Native (bug StringsExamples.bas `COUNT(SC$, "a")`). */
+        if (nargs >= 2 && etype(c, args[0]) == TY_STR) {
+            sb_put(&c->out, "(gmb_double_t)gmb_str_count(");
+            emit_str_operand(c, args[0]);
+            sb_put(&c->out, ", "); emit_str_operand(c, args[1]); sb_put(&c->out, ")");
+            return;
+        }
+        /* non-collezione con UN argomento: il C# emette la len dell'array-var = 0 */
         sb_put(&c->out, "0.0");
         return;
     }
@@ -13935,17 +13958,21 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
                 c99_fail(c, e->line, "operatore IS non supportato in questo contesto (solo <websocket> IS NOTHING / numerico IS NIL)");
             }
         } else if (op_is(op, "AND")) {
-            /* AND (keyword) = logico short-circuit, NORMALIZZATO -1/0. */
-            sb_put(&c->out, "((("); emit_expr(c, e->left); sb_put(&c->out, ") != 0) ? ((");
-            emit_expr(c, e->right); sb_put(&c->out, ") != 0 ? -1.0 : 0.0) : 0.0)");
+            /* AND (keyword) short-circuit con il canone condiviso: sinistra falsa -> 0,
+             * altrimenti il VALORE destro (`6 AND 3` = 3, `(2<>0) AND 5` = 5). */
+            sb_put(&c->out, "((("); emit_expr(c, e->left); sb_put(&c->out, ") != 0) ? (");
+            emit_expr(c, e->right); sb_put(&c->out, ") : 0.0)");
         } else if (op_is(op, "OR")) {
-            /* OR (keyword) = logico short-circuit, NORMALIZZATO -1/0. */
-            sb_put(&c->out, "((("); emit_expr(c, e->left); sb_put(&c->out, ") != 0) ? -1.0 : ((");
-            emit_expr(c, e->right); sb_put(&c->out, ") != 0 ? -1.0 : 0.0))");
-        } else if (op_is(op, "XOR")) {
-            /* XOR (keyword) = logico: (a!=0) != (b!=0) → -1/0. */
-            sb_put(&c->out, "gmb_logic_xor(("); emit_expr(c, e->left); sb_put(&c->out, "), (");
+            /* OR (keyword) short-circuit: sinistra vera -> -1, altrimenti il VALORE destro. */
+            sb_put(&c->out, "((("); emit_expr(c, e->left); sb_put(&c->out, ") != 0) ? -1.0 : (");
             emit_expr(c, e->right); sb_put(&c->out, "))");
+        } else if (op_is(op, "XOR")) {
+            /* XOR (keyword) = BITWISE sui valori (canone: `6 XOR 3` = 5, `255 XOR 15` = 240). */
+            sb_put(&c->out, "((gmb_double_t)((gmb_int_t)(");
+            emit_expr(c, e->left);
+            sb_put(&c->out, ") ^ (gmb_int_t)(");
+            emit_expr(c, e->right);
+            sb_put(&c->out, ")))");
         } else if (strcmp(op, "&&") == 0 || strcmp(op, "||") == 0 || strcmp(op, "^^") == 0) {
             /* Simboli = BITWISE: && &, || |, ^^ ^ (cast a intero). */
             sb_put(&c->out, "((gmb_double_t)((gmb_int_t)(");
@@ -17419,6 +17446,12 @@ static void emit_dict_literal(ctx_t* c, gmb_expr_t* e) {
              * (indici 0..N), parity BoundValue+1 del backend C#. */
             var_t* v = lookup_var(c, s->dim_var);
             if (!v) v = vars_add(cur_scope(c), s->dim_var ? s->dim_var : "", suffix_type(s->dim_var));
+            /* Variabile RI-CLASSIFICATA dinamica da un'assegnazione `v = SPLIT(...)` (vedi
+             * pre-scan): la dichiarazione è già la forma dinamica (`v` + `v_len`, nessun
+             * `v__b0`) e l'assegnazione SOSTITUISCE l'array — allocare qui il buffer fisso
+             * scriverebbe una compagna `v__b0` mai dichiarata (errore cc, StringsExamples
+             * `DIM LIST$(5)` + `LIST$ = SPLIT(...)`). */
+            if (v->dyn_len) return;
             v->is_array = 1;
             v->ndims = 1 + s->n_dim_extra;
             if (v->ndims > 8) {
@@ -29160,8 +29193,16 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
      * CLASS-MethodCall-Su-Nil-Dispatch-Divergente). _init/_NEW ricevono un oggetto
      * appena allocato → la guardia non scatta. */
     if (fn->cls_owner[0]) {
-        ind(c);
-        sb_printf(&c->out, "gmb_obj_require(self, %d);\n", s->line);
+        /* OPERATOR CTYPE è una conversione STATICA: il chiamante emette NULL come `self`
+         * (`Dim s$ = p` → gmb_user_<Cls>_OP_CTYPE(NULL, p)). La guardia nil-dispatch qui
+         * solleverebbe ERR 91 su un metodo perfettamente valido — bug MiniTest
+         * constructs/types_operator. Gli altri operatori/metodi ricevono l'istanza. */
+        int is_static_conv = fn->stmt && fn->stmt->func_name &&
+                             strcasecmp(fn->stmt->func_name, "OP_CTYPE") == 0;
+        if (!is_static_conv) {
+            ind(c);
+            sb_printf(&c->out, "gmb_obj_require(self, %d);\n", s->line);
+        }
     }
     /* Campi-ARRAY di classe: alloca i loro buffer all'inizio del costruttore `_init`
      * (la struct è calloc'd dal wrapper _NEW, i puntatori sono NULL). */
