@@ -167,21 +167,53 @@ public static class ProgramBundle
         }
         catch (Exception ex) { log?.Invoke($"[bundle] skills/plugins non copiati: {ex.Message}"); }
 
-        // 6) SEED dei PROVIDER (`shared/settings/providers.json` → `<out>/config/providers.json`).
-        //    `AI.PROVIDERS()` legge il file locale e, se manca, il seed: in un programma
-        //    distribuito né l'uno né l'altro esistono, quindi senza questa copia la funzione
-        //    fallirebbe (il C# faceva File.ReadAllText diretto). 1,4 KB.
+        // 6) CONFIG del programma (`<out>/config/`): qui il compilato trova i file che legge a
+        //    RUNTIME e che non può rigenerare da sé. Due sorgenti, in quest'ordine:
+        //      a) `<cartella del programma>/config/<nome>` — config PROPRIA dell'app (vince);
+        //      b) `shared/settings/<nome>` — SEED del compilatore.
+        //    `providers.json` è SEMPRE spedito (1,4 KB): `AI.PROVIDERS()` e le operazioni sui
+        //    provider lo leggono, e senza né file né seed la gamba C# rispondeva con un'eccezione.
+        //    Gli altri si DICHIARANO (`"config": ["mcp.json"]`): un file che il programma non usa
+        //    non si distribuisce — e un `mcp.json`/`ai.json` di sviluppo conterrebbe i percorsi
+        //    della macchina che ha compilato.
         try
         {
-            var seedSrc = Path.Combine(GmbiPaths.SharedConfigDir, "providers.json");
-            if (File.Exists(seedSrc))
+            var cfgDst = Path.Combine(outputDir, "config");
+            var appCfgSrc = appPath is not null ? Path.Combine(Path.GetDirectoryName(appPath) ?? "", "config") : null;
+            var wanted = new List<string> { "providers.json" };
+            var app = appPath is not null && File.Exists(appPath) ? ReadObject(appPath) : null;
+            if (app?["config"] is JsonArray declared)
             {
-                var cfgDst = Path.Combine(outputDir, "config");
+                foreach (var item in declared)
+                {
+                    if (item is JsonValue v && v.TryGetValue<string>(out var name) &&
+                        !string.IsNullOrWhiteSpace(name) && !wanted.Contains(name))
+                        wanted.Add(name);
+                }
+            }
+            foreach (var name in wanted)
+            {
+                string? src = null;
+                if (appCfgSrc is not null)
+                {
+                    var own = Path.Combine(appCfgSrc, name);
+                    if (File.Exists(own)) src = own;
+                }
+                if (src is null)
+                {
+                    var seed = Path.Combine(GmbiPaths.SharedConfigDir, name);
+                    if (File.Exists(seed)) src = seed;
+                }
+                if (src is null)
+                {
+                    if (name != "providers.json") log?.Invoke($"[bundle] config '{name}' non trovato (né in app/config né in shared/settings)");
+                    continue;
+                }
                 Directory.CreateDirectory(cfgDst);
-                CopyIfNewer(seedSrc, Path.Combine(cfgDst, "providers.json"), written, null);
+                CopyIfNewer(src, Path.Combine(cfgDst, name), written, null);
             }
         }
-        catch (Exception ex) { log?.Invoke($"[bundle] seed provider non copiato: {ex.Message}"); }
+        catch (Exception ex) { log?.Invoke($"[bundle] config non copiata: {ex.Message}"); }
 
         return written;
     }

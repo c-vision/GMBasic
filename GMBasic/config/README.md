@@ -34,6 +34,21 @@ git il comportamento dipendeva da **quale macchina** aveva fatto il checkout —
 `ai_envreads.bas` era già escluso dalla parità cross-leg proprio perché «il contenuto varia
 per macchina».
 
+## Cosa finisce accanto al programma compilato
+
+Il compilatore (`ProgramBundle.CopyNextTo`, e il ramo `emit_program_bundle` dell'harness
+C99Native) scrive in `<exe>/config/` i file che il programma legge a runtime e non può
+rigenerare da sé:
+
+| file | come viene scelto |
+|---|---|
+| `providers.json` | **sempre**, dal seed `shared/settings/providers.json` (1,4 KB). `AI.PROVIDERS()` e le operazioni sui provider lo leggono; senza né file né seed la gamba C# lanciava `FileNotFoundException`. |
+| altri (`mcp.json`, `connectors.json`, …) | **solo se dichiarati** dal programma: `"config": ["mcp.json"]` nel suo `app.settings.json`. Sorgente: prima `<cartella del programma>/config/<nome>` (config propria dell'app, vince), poi `shared/settings/<nome>` (seed del compilatore). |
+
+Un file non dichiarato **non si distribuisce**: `ai.json`/`mcp.json` di sviluppo contengono i
+percorsi della macchina che ha compilato, e `connectors.json` il C# lo rigenera dal catalogo in
+codice. Una voce dichiarata e introvabile è un warning, non un errore.
+
 ## Le due eccezioni storiche, risolte
 
 - **`connectors.json`** sembrava una fixture (un MiniTest con oracolo `list= 13527`); in realtà
