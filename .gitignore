@@ -23,6 +23,9 @@ graphs/
 rag/
 docs/graphify/
 .DS_Store
+# Storia/artefatti delle sessioni AI nei campioni (`support.agent.json.hist`, `.hist`):
+# sono output dell'esecuzione, non input versionati.
+*.hist
 
 # PACCHETTI: in git solo manifest (gmb-package.json), export (.inc), header, sorgenti e
 # script di build. Le lib native (*.dylib/*.so, già ignorate sopra), i sorgenti esterni
