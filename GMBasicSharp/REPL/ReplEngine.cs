@@ -585,8 +585,11 @@ public class ReplEngine
                 try { global::Basic.Runtime.Services.FfiService.Preload(lib); } catch { /* best effort */ }
             }
 
-            var result = global::Basic.IlBackend.PCode.PCodeVmRunner.Run(chunk, _runCts.Token, prepareGraphicsHost: !headless);
-            Out.Write(result.Output);
+            // Output LIVE sulla console (tee) + cattura per l'exit code: prima si stampava
+            // tutto alla fine, quindi un daemon (webapp) non scriveva nulla nel log finché
+            // non usciva. `result.Output` NON va ristampato (è già passato dal tee).
+            var result = global::Basic.IlBackend.PCode.PCodeVmRunner.Run(
+                chunk, _runCts.Token, prepareGraphicsHost: !headless, liveOut: Console.Out);
             Out.WriteLine(result.Success ? "\nExecution completed." : $"\n[P-CODE ERROR] exit code {result.ExitCode}");
         }
         finally
@@ -637,9 +640,12 @@ public class ReplEngine
 
                 var originalOut = Console.Out;
                 var sw = new StringWriter();
+                // Tee: l'output del programma va live sulla console E nella cattura
+                // (prima finiva solo in `sw` e si vedeva soltanto alla fine).
+                var tee = new CommonLib.TeeTextWriter(sw, originalOut);
                 try
                 {
-                    Console.SetOut(sw);
+                    Console.SetOut(tee);
                     var task = Task.Run(() => main.Invoke(null, null));
                     if (!task.Wait(TimeSpan.FromSeconds(60)))
                     {
@@ -648,7 +654,6 @@ public class ReplEngine
                     }
                     task.GetAwaiter().GetResult();
                     Console.SetOut(originalOut);
-                    Out.Write(sw.ToString());
                 }
                 finally { Console.SetOut(originalOut); }
             }
