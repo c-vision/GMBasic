@@ -17,6 +17,11 @@ public static class Program
                 Trace.Listeners.Remove(defaultListener);
         }
 
+        // SVILUPPO: nel checkout le librerie appena compilate (`GMBasic/build/libs/<rid>/`) vincono
+        // sulla cache — nessun download, solo copia. Va fatto PRIMA di ogni dispatch: i comandi CLI
+        // usano il P/Invoke (fixtures, brain, pkg) e senza allineamento caricherebbero la cache.
+        try { Basic.AI.ModelDownload.CoreLibsBootstrap.SyncLocalBuildToCache(); } catch { }
+
         // CLI pacchetti (gmb init|pack|pkg ...|publish) — indipendente dal REPL.
         if (CliPackages.TryDispatch(args)) return;
 

@@ -38,6 +38,7 @@ public static class CliPackages
             case "admin": Run(Admin, rest); return true;
             case "pkg": Run(Pkg, rest); return true;
             case "brain": Run(Brain, rest); return true;
+            case "fixtures": Run(Fixtures, rest); return true;
             case "publish": Run(Publish, rest); return true;
             case "restore": Run(Restore, rest); return true;
             case "update": Run(Update, rest); return true;
@@ -71,6 +72,7 @@ public static class CliPackages
         Console.WriteLine("  pkg list | remove <name> | info <name> | search <term> | tree [--lock f] | outdated | update | vendor <progetto> [--lock f]");
         Console.WriteLine("  pkg why <name> | prune [--lock f] | dedupe [--lock f]   (grafo / pulizia cache)");
         Console.WriteLine("  pkg audit [fix] [--advisories f] | sbom [--out f]      (vulnerabilità / fix / SBOM CycloneDX)");
+        Console.WriteLine("  fixtures list|ensure|pull <nome…>                fixture del compilatore in shared/samples/Fixtures");
         Console.WriteLine("  brain login --github [--token T|--token-file F] | logout");
         Console.WriteLine("                                   token per gli asset dei cervelli PRIVATI (~/.gmbasic/github.token, chmod 600)");
         Console.WriteLine("  brain install <nome[@ver]> [--source url|zip|dir] | list | remove <nome[@ver]>");
@@ -133,6 +135,67 @@ public static class CliPackages
             case "list": BrainList(); break;
             case "remove": case "uninstall": BrainRemove(pos); break;
             default: BrainHelp(); break;
+        }
+    }
+
+    // ── FIXTURE (`gmb fixtures …`) ───────────────────────────────────────────────────────────
+    //  Dati del COMPILATORE: vivono SEMPRE e SOLO in shared/samples/Fixtures/<nome>/ (manifest in
+    //  shared/settings/fixtures-manifest.json). Stesso motore della REPL (`FIXTURES …`) e del
+    //  compilatore, che le assicura prima di eseguire un programma.
+    //    list | status            stato (presente/mancante)
+    //    ensure                   scarica SOLO le mancanti
+    //    pull <nome…> | --all     scarica esplicitamente
+    private static void Fixtures(string[] args)
+    {
+        var sub = args.Length > 0 ? args[0].ToLowerInvariant() : "list";
+        var rest = args.Skip(1).Where(a => !a.StartsWith("--")).ToArray();
+        switch (sub)
+        {
+            case "list": case "status":
+            {
+                var status = CommonLib.NativeFixtures.Status();
+                if (string.IsNullOrEmpty(status))
+                {
+                    Console.Error.WriteLine("?manifest delle fixture non trovato (shared/settings/fixtures-manifest.json)");
+                    throw new InvalidOperationException("manifest assente");
+                }
+                foreach (var entry in status.Split(';', StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var colon = entry.LastIndexOf(':');
+                    var name = colon > 0 ? entry[..colon] : entry;
+                    var state = colon > 0 ? entry[(colon + 1)..] : "?";
+                    Console.WriteLine($"  {name,-16} {state}");
+                }
+                break;
+            }
+            case "ensure":
+            {
+                var (n, err) = CommonLib.NativeFixtures.EnsureAllMissingWithError();
+                if (n < 0) { Console.Error.WriteLine($"?fixtures ensure: {err}"); throw new InvalidOperationException(err); }
+                Console.WriteLine(n == 0 ? "fixtures: nessuna mancante" : $"fixtures: {n} scaricate in shared/samples/Fixtures");
+                break;
+            }
+            case "pull":
+            {
+                var names = rest.Length > 0 ? rest : Array.Empty<string>();
+                if (names.Length == 0) { Console.Error.WriteLine("uso: gmb fixtures pull <nome…> | --all"); throw new ArgumentException("nome mancante"); }
+                var failed = 0;
+                foreach (var nm in names)
+                {
+                    var (ok, dir, err) = CommonLib.NativeFixtures.Pull(nm);
+                    if (ok) Console.WriteLine($"  {nm} -> {dir}");
+                    else { failed++; Console.Error.WriteLine($"  {nm}: {err}"); }
+                }
+                if (failed > 0) throw new InvalidOperationException($"{failed} fixture non scaricate");
+                break;
+            }
+            default:
+                Console.WriteLine("gmb fixtures — fixture del compilatore (samples/Fixtures/)");
+                Console.WriteLine("  list | status          stato (presente/mancante)");
+                Console.WriteLine("  ensure                 scarica SOLO le mancanti");
+                Console.WriteLine("  pull <nome…>           scarica esplicitamente (vedi list)");
+                Console.WriteLine("  manifest: shared/settings/fixtures-manifest.json");
+                break;
         }
     }
 

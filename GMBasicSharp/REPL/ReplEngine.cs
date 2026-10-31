@@ -222,6 +222,7 @@ public class ReplEngine
             ["RAG"] = HandleRagAsync,
             ["GRAPH"] = HandleGraphAsync,
             ["BRAIN"] = HandleBrainAsync,
+            ["FIXTURES"] = HandleFixturesAsync,
             ["EVAL"] = HandleEvalAsync,
         };
         InitHelp();
@@ -3724,6 +3725,73 @@ public class ReplEngine
     private static string ResolveNotebookPath(string p)
         => Path.IsPathRooted(p) ? p : Path.Combine(Directory.GetCurrentDirectory(), p);
 
+
+    /// <summary>FIXTURES — le fixture del COMPILATORE (dati di input di sample e test).
+    /// Vivono SEMPRE e SOLO in `shared/samples/Fixtures/<nome>/`; il manifest è in
+    /// `shared/settings/fixtures-manifest.json`. Il download usa `gmb_fetch` (resume + sha256).
+    /// La REPL deve saperle scaricare come la CLI e il compilatore.</summary>
+    private Task HandleFixturesAsync(string args, CancellationToken ct)
+    {
+        var parts = ParseArgs(args);
+        var cmd = parts.Count > 0 ? parts[0].ToUpperInvariant() : "LIST";
+        try
+        {
+            switch (cmd)
+            {
+                case "LIST":
+                case "STATUS":
+                {
+                    var status = CommonLib.NativeFixtures.Status();
+                    if (string.IsNullOrEmpty(status))
+                    {
+                        WriteError("?FIXTURES: manifest non trovato (shared/settings/fixtures-manifest.json)");
+                        break;
+                    }
+                    foreach (var entry in status.Split(';', StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        var colon = entry.LastIndexOf(':');
+                        var name = colon > 0 ? entry[..colon] : entry;
+                        var state = colon > 0 ? entry[(colon + 1)..] : "?";
+                        Out.WriteLine($"  {name,-16} {state}");
+                    }
+                    break;
+                }
+                case "ENSURE":
+                {
+                    var (n, err) = CommonLib.NativeFixtures.EnsureAllMissingWithError();
+                    if (n < 0) WriteError($"?FIXTURES ENSURE: {err}");
+                    else Out.WriteLine(n == 0
+                        ? "FIXTURES: nessuna fixture mancante"
+                        : $"FIXTURES: {n} fixture scaricate in shared/samples/Fixtures");
+                    break;
+                }
+                case "PULL":
+                {
+                    var names = parts.Skip(1).Where(p => !p.StartsWith("--")).ToList();
+                    if (names.Count == 0) { WriteError("?Uso: FIXTURES PULL <nome…> (vedi FIXTURES LIST)"); break; }
+                    var failed = 0;
+                    foreach (var nm in names)
+                    {
+                        var (ok, dir, err) = CommonLib.NativeFixtures.Pull(nm);
+                        if (ok) Out.WriteLine($"  {nm} -> {dir}");
+                        else { failed++; WriteError($"  {nm}: {err}"); }
+                    }
+                    if (failed == 0) Out.WriteLine("FIXTURES: fatto");
+                    break;
+                }
+                case "HELP":
+                default:
+                    Out.WriteLine("FIXTURES — fixture del compilatore (samples/Fixtures/)");
+                    Out.WriteLine("  FIXTURES LIST            stato (presente/mancante) delle fixture del manifest");
+                    Out.WriteLine("  FIXTURES ENSURE          scarica SOLO quelle mancanti (sempre in shared/samples/Fixtures)");
+                    Out.WriteLine("  FIXTURES PULL <nome…>    scarica esplicitamente (es. FIXTURES PULL darkpool)");
+                    Out.WriteLine("  manifest: shared/settings/fixtures-manifest.json — download con resume + sha256");
+                    break;
+            }
+        }
+        catch (Exception ex) { WriteError($"?FIXTURES: {ex.Message}"); }
+        return Task.CompletedTask;
+    }
 
     private async Task HandleBrainAsync(string args, CancellationToken ct)
     {

@@ -27,6 +27,61 @@ namespace Basic.AI.ModelDownload;
 
 public static class CoreLibsBootstrap
 {
+
+    /// <summary>SVILUPPO: se il checkout ha `<monorepo>/GMBasic/build/libs/&lt;rid&gt;/`, quelle sono le
+    /// librerie appena compilate e VINCONO sulla cache (stessa regola di `gmb_boot.c::gmb_lib_path`:
+    /// fra build e cache si sceglie il file più recente). Senza questo allineamento il confronto
+    /// per sha256 con l'indice PUBBLICATO dichiara "stale" ogni build locale e la sovrascrive con
+    /// la versione di GMBasicModules: un simbolo C nuovo (cervelli, fixture) resta invisibile
+    /// ("entry point not found") finché non lo si pubblica. Nessuna rete: solo copia build→cache.
+    /// Ritorna true se una build locale esiste ed è stata usata.</summary>
+    public static bool SyncLocalBuildToCache(Action<string>? log = null)
+    {
+        try
+        {
+            var rid = LibsResolver.Rid();
+            /* Due layout possibili (identici a `gmb_boot.c`): `<root>/build/libs/<rid>` e, nel
+             * monorepo, `<root>/GMBasic/build/libs/<rid>` (la root C# può essere il monorepo). */
+            var candidates = new[]
+            {
+                Path.Combine(GmbiPaths.RepoRoot, "build", "libs", rid),
+                Path.Combine(GmbiPaths.RepoRoot, "GMBasic", "build", "libs", rid),
+            };
+            var buildDir = candidates.FirstOrDefault(Directory.Exists);
+            if (buildDir is null) return false;
+            var files = Directory.GetFiles(buildDir);
+            if (files.Length == 0) return false;
+            var dir = LibsResolver.CacheDir(rid);
+            Directory.CreateDirectory(dir);
+            var copied = 0;
+            foreach (var f in files)
+            {
+                var dst = Path.Combine(dir, Path.GetFileName(f));
+                /* Nel checkout la build locale è AUTOREVOLE. Il confronto per SOLO mtime non
+                 * basta: una cache "riparata" dal download è più recente della build e
+                 * vincerebbe (caso reale: ogni run del REPL riscaricava libgmb_pkg e faceva
+                 * sparire i simboli nuovi). Si copia quando il file manca o è DIVERSO (size);
+                 * a parità di size e cache più recente si salta (niente copie inutili). */
+                try
+                {
+                    var src = new FileInfo(f);
+                    if (File.Exists(dst))
+                    {
+                        var cur = new FileInfo(dst);
+                        if (cur.Length == src.Length && cur.LastWriteTimeUtc >= src.LastWriteTimeUtc)
+                            continue;
+                    }
+                    File.Copy(f, dst, overwrite: true);
+                    copied++;
+                }
+                catch { /* file in uso */ }
+            }
+            log?.Invoke($"[bootstrap] build locale ({buildDir}): {copied} librerie allineate alla cache");
+            return true;
+        }
+        catch (Exception ex) { log?.Invoke($"[bootstrap] build locale non allineato: {ex.Message}"); return false; }
+    }
+
     /// <summary>Gruppi necessari per i componenti abilitati sul RID corrente.</summary>
     public static IReadOnlyList<string> GroupsFor(string rid)
     {
@@ -66,6 +121,8 @@ public static class CoreLibsBootstrap
     {
         var rid = LibsResolver.Rid();
         var dir = LibsResolver.CacheDir(rid);
+
+
         var groups = GroupsFor(rid);
 
         // 1) cache già completa per i gruppi richiesti → niente da fare
