@@ -660,7 +660,16 @@ internal sealed partial class PCodeProcessor
             { IsBackground = true, Name = "bsp-page-worker" };
             pageThread.Start();
             await pageDone.Task.ConfigureAwait(false);
-            if (!response.Sent) response.Send(outputWriter.ToString());
+            if (!response.Sent)
+            {
+                // Una pagina .bsp è HTML: senza Content-Type esplicito `Send(string)` manda
+                // "text/plain" e il browser mostra il SORGENTE invece di renderizzare (bug reale
+                // segnalato: index.bsp si vedeva come codice). Se la pagina ha già impostato un
+                // Content-Type (es. RES.ContentType = "text/plain") si rispetta.
+                if (!response.Headers.ContainsKey("Content-Type"))
+                    response.SetHeader("Content-Type", "text/html; charset=utf-8");
+                response.Send(outputWriter.ToString());
+            }
             return true;
         }
         catch (Exception ex)
