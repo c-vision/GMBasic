@@ -34,8 +34,22 @@ shared/webapp/
 | PATCH | `/api/agents/{name}` | aggiorna i soli campi presenti (prompt/permessi/temperatura/modello) |
 | DELETE | `/api/agents/{name}` | elimina l'agente |
 | POST | `/api/agents/{name}/ask` | `{prompt}` → risposta **sincrona** (`AI.AGENTASKSYNC`), senza server di streaming |
+| POST | `/api/teams` | crea team `{name, strategy?}` → 201, **409** se esiste |
+| POST | `/api/teams/{name}/agents` | aggiunge membro `{agent, role?}` |
+| DELETE | `/api/teams/{name}` | elimina il team |
 
 Tutto il resto di `/api/*` è proxy trasparente (metodo, path e query invariati).
+
+### Persistenza (agenti e team)
+
+| cosa | file | quando |
+|---|---|---|
+| agente | `bin/agents/<nome>.agent.json` | scritto/aggiornato a ogni **create/update**, cancellato al **delete** (`AI AGENT SAVE`) |
+| team | `bin/teams/<nome>.team.json` | scritto dopo **create** e **add member**, cancellato al **delete** (endpoint `save`/`load` dell'API) |
+
+All'avvio l'app ricarica tutto: `AI AGENT LOAD` per gli agenti, `POST /api/teams/load`
+per i team. **Il seed demo scatta solo se non c'è nessun agente persistito.**
+`bin/` è gitignorato (artefatti-dati della app: mai nel sorgente).
 
 ## Configurazione (`.webapp.toml`)
 
@@ -89,9 +103,11 @@ I percorsi di `pages/` e `static/` sono risolti dalla cartella della app
 tools/sh/webapp_selftest.sh
 ```
 
-Avvia la app (se non è già attiva), esercita pagine, statici, CRUD agenti, workflow
-(crea → step → esegui → cancella), memory (store/load/delete), brain, enrich, handshake
-WebSocket, poi ripulisce ciò che ha creato e ferma la app. Oggi: **30 PASS / 0 FAIL**.
+Avvia la app (se non è già attiva), esercita pagine, statici, CRUD agenti, **persistenza
+agenti (file creato/rimosso)**, **team (create/409/aggiungi membro/file/delete)**,
+workflow (crea → step → esegui → cancella), memory (store/load/delete), brain, enrich,
+handshake WebSocket, poi ripulisce ciò che ha creato e ferma la app. Oggi: **43 PASS / 0 FAIL**
+(identico su PCode e IL).
 
 ## Note
 
@@ -107,3 +123,6 @@ WebSocket, poi ripulisce ciò che ha creato e ferma la app. Oggi: **30 PASS / 0 
   provider la chat risponde con il fallback del runtime (`(insufficient context)`).
 - **WASM**: la tab dichiara onestamente se `static/prog.wasm` esiste (404 → istruzioni),
   invece di fingere. Il "Demo draw" verifica il canvas in JS puro.
+- **Team**: la creazione/aggiunta passa dall'API perché i comandi BASIC `AI TEAM CREATE`
+  / `AI TEAM ADD AGENT` vogliono un nome *statico* nel sorgente; l'API accetta nomi dinamici
+  e l'app persiste il file. I team restano comunque entità del runtime (broadcast incluso).

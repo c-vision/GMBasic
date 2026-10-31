@@ -56,6 +56,8 @@ DIM g_appDir AS STRING
 DIM g_cfgPath AS STRING
 DIM g_pagesDir AS STRING
 DIM g_staticDir AS STRING
+DIM g_agentsDir AS STRING
+DIM g_teamsDir AS STRING
 DIM g_startSec AS DOUBLE
 DIM g_startTime AS STRING
 DIM g_proxied AS LONG
@@ -66,8 +68,11 @@ SUB Main()
     g_appDir = FindAppRoot()
     LoadConfig()
     ResolvePaths()
+    PrepareData()
     PrintBanner()
 
+    ' Persistenza (bin/agents, bin/teams): carica PRIMA di decidere il seed.
+    LoadPersistedAgents()
     SeedDemo()
     IF g_autoTrace = 1 THEN
         AI AGENT TRACE VERBOSE
@@ -75,6 +80,7 @@ SUB Main()
     END IF
 
     StartAgentApi()
+    LoadPersistedTeams()
     StartDashboard()
 
     g_startSec = DATETIME.SECONDS()
@@ -232,6 +238,104 @@ FUNCTION RelativeTo(rootDir AS STRING, child AS STRING) AS STRING
     END IF
 END FUNCTION
 
+' Directory dei dati (artefatti della app: mai nel sorgente, sempre in bin/).
+SUB PrepareData()
+    DIM binDir AS STRING
+    binDir = RTrimSlash(g_appDir) + "/bin"
+    g_agentsDir = binDir + "/agents"
+    g_teamsDir = binDir + "/teams"
+    IF NOT IO.DIREXISTS(binDir) THEN MKDIR (binDir)
+    IF NOT IO.DIREXISTS(g_agentsDir) THEN MKDIR (g_agentsDir)
+    IF NOT IO.DIREXISTS(g_teamsDir) THEN MKDIR (g_teamsDir)
+END SUB
+
+FUNCTION AgentPath(name AS STRING) AS STRING
+    AgentPath = g_agentsDir + "/" + name + ".agent.json"
+END FUNCTION
+
+FUNCTION TeamPath(name AS STRING) AS STRING
+    TeamPath = g_teamsDir + "/" + name + ".team.json"
+END FUNCTION
+
+FUNCTION FileStem(f AS STRING, suffix AS STRING) AS STRING
+    DIM s AS STRING
+    s = f
+    IF STRINGS.ENDSWITH(STRINGS.UPPER(s), STRINGS.UPPER(suffix)) THEN
+        s = LEFT$(s, LEN(s) - LEN(suffix))
+    END IF
+    FileStem = s
+END FUNCTION
+
+' Ricarica dal disco gli agenti salvati (AI AGENT SAVE produce <nome>.agent.json).
+SUB LoadPersistedAgents()
+    DIM fs() = IO.DIR(g_agentsDir + "/*.agent.json")
+    DIM i AS INTEGER
+    IF UBOUND(fs) < 0 THEN
+        PRINT "agenti     : nessuno su disco ("; g_agentsDir; ")"
+        EXIT SUB
+    END IF
+    FOR i = 0 TO UBOUND(fs)
+        DIM fn AS STRING
+        DIM nm AS STRING
+        fn = fs(i)
+        nm = FileStem(fn, ".agent.json")
+        AI AGENT LOAD (nm), (g_agentsDir + "/" + fn)
+    NEXT i
+    PRINT "agenti     : "; UBOUND(fs) + 1; " caricati da bin/agents"
+END SUB
+
+SUB SaveAgent(name AS STRING)
+    AI AGENT SAVE (name), (AgentPath(name))
+END SUB
+
+SUB SavePersistedAgent(name AS STRING)
+    IF LEN(name) = 0 THEN EXIT SUB
+    AI AGENT SAVE (name), (AgentPath(name))
+END SUB
+
+SUB DeletePersistedAgent(name AS STRING)
+    DIM p AS STRING
+    p = AgentPath(name)
+    IF IO.FILEEXISTS(p) THEN KILL (p)
+END SUB
+
+' I team si caricano via API agenti (l'API parte prima di questa chiamata).
+SUB LoadPersistedTeams()
+    DIM fs() = IO.DIR(g_teamsDir + "/*.team.json")
+    DIM i AS INTEGER
+    DIM ok AS INTEGER
+    IF UBOUND(fs) < 0 THEN EXIT SUB
+    ok = 0
+    FOR i = 0 TO UBOUND(fs)
+        DIM fn AS STRING
+        DIM nm AS STRING
+        DIM body AS STRING
+        DIM r AS STRING
+        fn = fs(i)
+        nm = FileStem(fn, ".team.json")
+        body = "{" + JQ("name") + ":" + JStr(nm) + "," + JQ("path") + ":" + JStr(g_teamsDir + "/" + fn) + "}"
+        r = ApiCall("POST", "/api/teams/load", body)
+        IF INSTR(r, "loaded") > 0 THEN ok = ok + 1
+    NEXT i
+    PRINT "team       : "; ok; " caricati da bin/teams"
+END SUB
+
+SUB SavePersistedTeam(name AS STRING)
+    DIM p AS STRING
+    DIM body AS STRING
+    IF LEN(name) = 0 THEN EXIT SUB
+    p = TeamPath(name)
+    body = "{" + JQ("path") + ":" + JStr(p) + "}"
+    DIM r AS STRING
+    r = ApiCall("POST", "/api/teams/" + name + "/save", body)
+END SUB
+
+SUB DeletePersistedTeam(name AS STRING)
+    DIM p AS STRING
+    p = TeamPath(name)
+    IF IO.FILEEXISTS(p) THEN KILL (p)
+END SUB
+
 SUB PrintBanner()
     DIM cfg AS STRING
     cfg = "(default interni)"
@@ -281,6 +385,11 @@ SUB SeedDemo()
     AI AGENT SET "Analyst" temperature 0.3
     AI AGENT CREATE "Support"
     AI AGENT SET "Support" systemPrompt "You are support."
+    ' Persisti subito il set dimostrativo: dal prossimo avvio si ricarica dal disco
+    ' (senza, il seed veniva ricreato a ogni run e non sopravviveva ai riavvii).
+    SavePersistedAgent("Demo")
+    SavePersistedAgent("Analyst")
+    SavePersistedAgent("Support")
 END SUB
 
 ' ============================================================================
@@ -341,6 +450,9 @@ SUB RegisterApiRoutes()
     HTTP ROUTE "PATCH", "/api/agents/{name}", ApiAgentUpdate()
     HTTP ROUTE "DELETE", "/api/agents/{name}", ApiAgentDelete()
     HTTP ROUTE "POST", "/api/agents/{name}/ask", ApiAgentAsk()
+    HTTP ROUTE "POST", "/api/teams", ApiTeamCreate()
+    HTTP ROUTE "POST", "/api/teams/{name}/agents", ApiTeamAddAgent()
+    HTTP ROUTE "DELETE", "/api/teams/{name}", ApiTeamDelete()
 
     ' --- proxy GET ---
     HTTP ROUTE "GET", "/api/agents", PxGet()
@@ -400,6 +512,15 @@ SUB ApiStatus(req AS HTTPREQUEST, res AS HTTPRESPONSE)
 
     DIM names() = AI.AGENTLIST()
     nAgents = UBOUND(names) + 1
+    DIM tlist AS STRING
+    DIM nTeams AS INTEGER
+    tlist = AI.TEAMLIST()
+    IF LEN(tlist) = 0 THEN
+        nTeams = 0
+    ELSE
+        DIM ts() AS STRING = SPLIT(tlist, CHR$(10))
+        nTeams = UBOUND(ts) + 1
+    END IF
     DIM evs() = AI.AGENTEVENTS()
     nEvents = UBOUND(evs) + 1
     active = AI.ACTIVE(%CHAT)
@@ -420,6 +541,8 @@ SUB ApiStatus(req AS HTTPREQUEST, res AS HTTPRESPONSE)
     sb = sb + "," + JQ("apiReachable") + ":" + BoolJson(reach)
     sb = sb + "," + JQ("agents") + ":" + LTRIM$(STR$(nAgents))
     sb = sb + "," + JQ("events") + ":" + LTRIM$(STR$(nEvents))
+    sb = sb + "," + JQ("teams") + ":" + LTRIM$(STR$(nTeams))
+    sb = sb + "," + JQ("dataDir") + ":" + JStr(g_agentsDir)
     sb = sb + "," + JQ("activeProvider") + ":" + JStr(active)
     sb = sb + "," + JQ("model") + ":" + JStr(model)
     sb = sb + "," + JQ("refreshMs") + ":" + LTRIM$(STR$(g_refreshMs))
@@ -473,6 +596,7 @@ SUB ApiAgentCreate(req AS HTTPREQUEST, res AS HTTPRESPONSE)
     v = JsonField(body, "model")
     IF LEN(v) > 0 THEN AI AGENT SET (name) model (v)
 
+    SavePersistedAgent(name)
     PRINT "[api] agente creato: "; name; " (da "; req.RemoteIp; ")"
     res.StatusCode = 201
     res.Send("{" + JQ("created") + ":" + JStr(name) + "}")
@@ -511,6 +635,7 @@ SUB ApiAgentUpdate(req AS HTTPREQUEST, res AS HTTPRESPONSE)
         AI AGENT SET (name) model (v)
         changed = changed + 1
     END IF
+    IF changed > 0 THEN SavePersistedAgent(name)
     PRINT "[api] agente aggiornato: "; name; " ("; changed; " campi)"
     res.Send("{" + JQ("updated") + ":" + JStr(name) + "," + JQ("fields") + ":" + LTRIM$(STR$(changed)) + "}")
 END SUB
@@ -525,6 +650,7 @@ SUB ApiAgentDelete(req AS HTTPREQUEST, res AS HTTPRESPONSE)
         EXIT SUB
     END IF
     AI AGENT DELETE (name)
+    DeletePersistedAgent(name)
     PRINT "[api] agente eliminato: "; name; " (da "; req.RemoteIp; ")"
     res.Send("{" + JQ("deleted") + ":" + JStr(name) + "}")
 END SUB
@@ -545,6 +671,78 @@ SUB ApiAgentAsk(req AS HTTPREQUEST, res AS HTTPRESPONSE)
     res.Send("{" + JQ("agent") + ":" + JStr(name) + "," + JQ("answer") + ":" + JStr(answer) + "}")
 END SUB
 
+' --- Team (con persistenza su bin/teams) ------------------------------------
+' Il runtime non accetta nomi dinamici nei comandi (`AI TEAM CREATE Nome` vuole un
+' identificatore statico): la creazione/aggiunta passa dall'API agenti (endpoint V2)
+' e l'app persiste il team nel SUO percorso (bin/teams/<nome>.team.json).
+
+SUB ApiTeamCreate(req AS HTTPREQUEST, res AS HTTPRESPONSE)
+    DIM name AS STRING
+    DIM out AS STRING
+    DIM errTag AS STRING
+    name = STRINGS.TRIM(JsonField(req.Body, "name"))
+    IF LEN(name) = 0 THEN
+        res.StatusCode = 400
+        res.Send(ErrorJson("missing_name", "serve {""name"":""<team>""}"))
+        EXIT SUB
+    END IF
+    errTag = CHR$(34) + "error" + CHR$(34)
+    out = ApiCall("POST", "/api/teams", req.Body)
+    IF INSTR(out, errTag) > 0 THEN
+        res.StatusCode = 409
+        res.Send(out)
+        EXIT SUB
+    END IF
+    SavePersistedTeam(name)
+    PRINT "[api] team creato: "; name
+    res.StatusCode = 201
+    res.Send(out)
+END SUB
+
+SUB ApiTeamAddAgent(req AS HTTPREQUEST, res AS HTTPRESPONSE)
+    DIM name AS STRING
+    DIM out AS STRING
+    DIM errTag AS STRING
+    name = STRINGS.TRIM(req.Params["name"])
+    errTag = CHR$(34) + "error" + CHR$(34)
+    IF LEN(name) = 0 THEN
+        res.StatusCode = 400
+        res.Send(ErrorJson("missing_name", "nome team assente nel path"))
+        EXIT SUB
+    END IF
+    out = ApiCall("POST", "/api/teams/" + name + "/agents", req.Body)
+    IF INSTR(out, errTag) > 0 THEN
+        res.StatusCode = 404
+        res.Send(out)
+        EXIT SUB
+    END IF
+    SavePersistedTeam(name)
+    PRINT "[api] team "; name; ": membro aggiunto"
+    res.Send(out)
+END SUB
+
+SUB ApiTeamDelete(req AS HTTPREQUEST, res AS HTTPRESPONSE)
+    DIM name AS STRING
+    DIM out AS STRING
+    DIM errTag AS STRING
+    name = STRINGS.TRIM(req.Params["name"])
+    errTag = CHR$(34) + "error" + CHR$(34)
+    IF LEN(name) = 0 THEN
+        res.StatusCode = 400
+        res.Send(ErrorJson("missing_name", "nome team assente nel path"))
+        EXIT SUB
+    END IF
+    out = ApiCall("DELETE", "/api/teams/" + name, "")
+    IF INSTR(out, errTag) > 0 THEN
+        res.StatusCode = 404
+        res.Send(out)
+        EXIT SUB
+    END IF
+    DeletePersistedTeam(name)
+    PRINT "[api] team eliminato: "; name
+    res.Send(out)
+END SUB
+
 ' --- Proxy trasparente -----------------------------------------------------
 
 SUB PxGet(req AS HTTPREQUEST, res AS HTTPRESPONSE)
@@ -563,20 +761,28 @@ END SUB
 ' JSON così il JS fa `r.json()` senza CORS. Se l'API è giù si restituisce un
 ' JSON esplicito (mai HTML), così la UI mostra un errore leggibile.
 FUNCTION Forward(req AS HTTPREQUEST, method AS STRING, body AS STRING) AS STRING
+    DIM p AS STRING
+    p = req.Path
+    IF LEN(req.QueryString) > 0 THEN p = p + "?" + req.QueryString
+    Forward = ApiCall(method, p, body)
+END FUNCTION
+
+' Chiamata all'API agenti (path + eventuale query). Usata dal proxy e dagli
+' endpoint propri che devono parlare col runtime (team, persistenza).
+FUNCTION ApiCall(method AS STRING, pathQuery AS STRING, body AS STRING) AS STRING
     DIM url AS STRING
     DIM opts AS HTTPOPTIONS = NEW HTTPOPTIONS
     DIM r AS FETCHRESULT
     g_proxied = g_proxied + 1
-    url = "http://127.0.0.1:" + LTRIM$(STR$(g_apiPort)) + req.Path
-    IF LEN(req.QueryString) > 0 THEN url = url + "?" + req.QueryString
+    url = "http://127.0.0.1:" + LTRIM$(STR$(g_apiPort)) + pathQuery
     opts.Method = method
     IF LEN(body) > 0 THEN opts.Body = body
     opts.Headers.Add("Content-Type", "application/json")
     r = FETCH(url, opts)
     IF r.StatusCode = 0 THEN
-        Forward = ErrorJson("agent_api_unreachable", "il server agenti (:" + LTRIM$(STR$(g_apiPort)) + ") non risponde")
+        ApiCall = ErrorJson("agent_api_unreachable", "il server agenti (:" + LTRIM$(STR$(g_apiPort)) + ") non risponde")
     ELSE
-        Forward = r.Body
+        ApiCall = r.Body
     END IF
 END FUNCTION
 

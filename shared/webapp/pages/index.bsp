@@ -111,6 +111,7 @@
       <span class="chip" id="chip-provider">provider: <b>…</b></span>
       <span class="chip" id="chip-model">model: <b>…</b></span>
       <span class="chip" id="chip-agents">agenti: <b>0</b></span>
+      <span class="chip" id="chip-teams">team: <b>0</b></span>
       <span class="chip" id="chip-uptime">uptime: <b>…</b></span>
       <span class="chip chip-btn" id="btn-pause" title="Ferma/riprendi il polling">⏸ pausa</span>
     </div>
@@ -240,13 +241,47 @@
       </tbody>
     </table>
   </div>
-  <div class="card">
-    <div class="grid cols3">
-      <label>Team <input id="bc-team" placeholder="nome team"></label>
-      <label>Messaggio <input id="bc-msg" placeholder="messaggio broadcast"></label>
-      <label>&nbsp;<button class="btn btn-primary" id="btn-broadcast">Broadcast</button></label>
+  <div class="split">
+    <div class="card">
+      <h3 style="margin-top:0">Nuovo team</h3>
+      <div class="grid cols2">
+        <label>Nome <input id="team-name" placeholder="Es. Review"></label>
+        <label>Strategia
+          <select id="team-strategy">
+            <option value="Sequential">Sequential</option>
+            <option value="RoundRobin">RoundRobin</option>
+            <option value="Coordinator">Coordinator</option>
+            <option value="Mixture">Mixture</option>
+            <option value="Deliberation">Deliberation</option>
+            <option value="Dag">Dag</option>
+          </select>
+        </label>
+      </div>
+      <div class="toolbar"><button class="btn btn-primary" id="btn-team-create">Crea team</button></div>
+      <h3>Aggiungi membro</h3>
+      <div class="grid cols3">
+        <label>Team <input id="team-add-team" placeholder="nome team" list="team-names"><datalist id="team-names"></datalist></label>
+        <label>Agente <input id="team-add-agent" placeholder="nome agente" list="agent-names-2"><datalist id="agent-names-2"></datalist></label>
+        <label>Ruolo
+          <select id="team-add-role">
+            <option value="Worker">Worker</option>
+            <option value="Coordinator">Coordinator</option>
+            <option value="Critic">Critic</option>
+          </select>
+        </label>
+      </div>
+      <div class="toolbar"><button class="btn" id="btn-team-add">Aggiungi</button></div>
     </div>
-    <pre class="out" id="bc-out"></pre>
+    <div class="card">
+      <h3 style="margin-top:0">Broadcast</h3>
+      <div class="grid cols2">
+        <label>Team <input id="bc-team" placeholder="nome team"></label>
+        <label>Messaggio <input id="bc-msg" placeholder="messaggio"></label>
+      </div>
+      <div class="toolbar"><button class="btn btn-primary" id="btn-broadcast">Invia</button></div>
+      <pre class="out" id="bc-out"></pre>
+      <p class="muted" style="margin-top:.6rem">I team sono <b>persistiti</b> in <code>bin/teams/&lt;nome&gt;.team.json</code> e ricaricati all'avvio.</p>
+    </div>
   </div>
 </section>
 
@@ -508,6 +543,7 @@
       el('chip-provider').innerHTML='provider: <b>'+esc(st.activeProvider||'—')+'</b>';
       el('chip-model').innerHTML='model: <b>'+esc(st.model||'—')+'</b>';
       el('chip-agents').innerHTML='agenti: <b>'+esc(st.agents)+'</b>';
+      var ct=el('chip-teams'); if(ct) ct.innerHTML='team: <b>'+esc(st.teams==null?0:st.teams)+'</b>';
       el('chip-uptime').innerHTML='uptime: <b>'+esc(fmtUp(st.uptimeSec))+'</b>';
       if(!reach) banner('Il server agenti (porta '+st.apiPort+') non risponde: i dati live sono fermi. '+
                         'Controlla che `AI AGENT SERVE` sia partito (log del processo).');
@@ -540,6 +576,8 @@
         : '<tr><td colspan="5" class="muted">Nessun agente — creane uno con il form sotto</td></tr>';
       var dl=el('agent-names');
       dl.innerHTML = S.agents.map(function(a){return '<option value="'+esc(a.name)+'">';}).join('');
+      var dl2=el('agent-names-2');
+      if(dl2) dl2.innerHTML = dl.innerHTML;
       return S.agents;
     }).catch(function(e){ toast('agents: '+e.message,true); return []; });
   }
@@ -600,14 +638,44 @@
       list=list||[];
       tb.innerHTML = list.length ? list.map(function(t){
         return '<tr><td class="name">'+esc(t.name)+'</td><td><span class="badge strategy">'+esc(t.strategy||'-')+
-               '</span></td><td>'+esc(t.memberCount||0)+'</td><td><button class="btn btn-ghost" data-team="'+esc(t.name)+'">Seleziona</button></td></tr>';
-      }).join('') : '<tr><td colspan="4" class="muted">Nessun team</td></tr>';
+               '</span></td><td>'+esc(t.memberCount||0)+'</td>'
+             + '<td><button class="btn btn-ghost" data-team="'+esc(t.name)+'">Seleziona</button> '
+             + '<button class="btn btn-ghost" data-team-add="'+esc(t.name)+'">+ Agente</button> '
+             + '<button class="btn btn-danger" data-team-del="'+esc(t.name)+'">Elimina</button></td></tr>';
+      }).join('') : '<tr><td colspan="4" class="muted">Nessun team — creane uno qui sotto</td></tr>';
+      var dl=el('team-names');
+      if(dl) dl.innerHTML = list.map(function(t){return '<option value="'+esc(t.name)+'">';}).join('');
       return list;
     }).catch(function(e){ toast('teams: '+e.message,true); return []; });
   }
   function wireTeams(){
     el('teams-body').addEventListener('click',function(ev){
-      var b=ev.target.closest('button[data-team]'); if(b) el('bc-team').value=b.getAttribute('data-team');
+      var b=ev.target.closest('button[data-team]');
+      if(b){ el('bc-team').value=b.getAttribute('data-team'); el('team-add-team').value=b.getAttribute('data-team'); return; }
+      var a=ev.target.closest('button[data-team-add]');
+      if(a){ el('team-add-team').value=a.getAttribute('data-team-add'); el('team-add-agent').focus(); return; }
+      var d=ev.target.closest('button[data-team-del]');
+      if(d){
+        var name=d.getAttribute('data-team-del');
+        if(!confirm('Eliminare il team "'+name+'"?')) return;
+        api('/api/teams/'+encodeURIComponent(name),{method:'DELETE'})
+          .then(function(r){ toast('team eliminato: '+(r.deleted||name)); refreshTeams(); })
+          .catch(function(e){ toast('delete team: '+e.message,true); });
+      }
+    });
+    el('btn-team-create').addEventListener('click',function(){
+      var n=el('team-name').value.trim();
+      if(!n){ toast('nome team?',true); return; }
+      postJson('/api/teams',{name:n, strategy:el('team-strategy').value})
+        .then(function(r){ toast('team creato: '+(r.name||n)); el('team-name').value=''; refreshTeams(); })
+        .catch(function(e){ toast('create team: '+e.message,true); });
+    });
+    el('btn-team-add').addEventListener('click',function(){
+      var t=el('team-add-team').value.trim(), a=el('team-add-agent').value.trim();
+      if(!t||!a){ toast('servono team e agente',true); return; }
+      postJson('/api/teams/'+encodeURIComponent(t)+'/agents',{agent:a, role:el('team-add-role').value})
+        .then(function(r){ toast('membro aggiunto a '+t); refreshTeams(); refreshAgents(); })
+        .catch(function(e){ toast('add member: '+e.message,true); });
     });
     el('btn-broadcast').addEventListener('click',function(){
       var t=el('bc-team').value.trim(), m=el('bc-msg').value.trim();
