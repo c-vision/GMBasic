@@ -225,33 +225,12 @@ int gmb_pkg_lock_write_with_history(const char* project_dir, const char* lock_pa
     return gmb_pkg_lock_write(lock_path, body);
 }
 
-static void hex32(const uint8_t d[32], char* out) /* out: 65 byte */
-{
-    static const char* H = "0123456789abcdef";
-    for (int i = 0; i < 32; i++) { out[2 * i] = H[d[i] >> 4]; out[2 * i + 1] = H[d[i] & 15]; }
-    out[64] = 0;
-}
-
+/* sha256 di un file: STREAMING (gmb_crypto: gmb_sha256_file_hex). Prima caricava il file intero
+ * in RAM (`malloc(ftell)`): con un pacchetto da centinaia di MB — o un cervello da 1,4 GB — era
+ * un'allocazione che non ha senso. Stessa semantica: 1 = ok, 0 = file assente/illeggibile. */
 int gmb_pkg_sha256_file(const char* path, char* out, size_t cap)
 {
-    if (out && cap) out[0] = 0;
-    FILE* f = fopen(path, "rb");
-    if (!f) return 0;
-    fseek(f, 0, SEEK_END);
-    long len = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    if (len < 0) { fclose(f); return 0; }
-    uint8_t* buf = (uint8_t*)malloc((size_t)len ? (size_t)len : 1);
-    if (!buf) { fclose(f); return 0; }
-    size_t rd = fread(buf, 1, (size_t)len, f);
-    fclose(f);
-    uint8_t d[32];
-    gmb_sha256(buf, rd, d);
-    free(buf);
-    char hex[65];
-    hex32(d, hex);
-    if (out && cap) snprintf(out, cap, "%s", hex);
-    return 1;
+    return gmb_sha256_file_hex(path, out, cap);
 }
 
 /* --- raccolta file relativi di un pacchetto installato --- */

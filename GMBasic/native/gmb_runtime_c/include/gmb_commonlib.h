@@ -24,6 +24,28 @@ extern "C" {
 // SHA-256: digests len byte in out (out >= 32).
 void gmb_sha256(const uint8_t* data, size_t len, uint8_t out[32]);
 
+// SHA-256 INCREMENTALE: per file e stream grandi (un cervello arriva a 1,4 GB: caricarlo in RAM
+// per calcolarne l'hash non è un'opzione). Uso:
+//     gmb_sha256_stream s; gmb_sha256_stream_init(&s);
+//     while ((n = fread(buf, 1, sizeof buf, f)) > 0) gmb_sha256_stream_update(&s, buf, n);
+//     gmb_sha256_stream_final(&s, digest);
+// Il layout è pubblico di proposito (niente malloc, si alloca sullo stack) e vive in UN solo
+// posto: gmb_crypto.c (gmb_sha256() è la stessa macchina, usata in un colpo solo).
+typedef struct gmb_sha256_stream {
+    uint32_t h[8];
+    uint64_t total_len;
+    uint8_t  block[64];
+    size_t   block_len;
+} gmb_sha256_stream;
+
+void gmb_sha256_stream_init(gmb_sha256_stream* s);
+void gmb_sha256_stream_update(gmb_sha256_stream* s, const void* data, size_t len);
+void gmb_sha256_stream_final(gmb_sha256_stream* s, uint8_t out[32]);
+
+// sha256 esadecimale (64 char, lowercase) di un FILE letto a blocchi da 64 KiB.
+// 1 = ok, 0 = il file non esiste o la lettura è fallita.
+int gmb_sha256_file_hex(const char* path, char* out, size_t cap);
+
 // HMAC-SHA256 (RFC 2104): key + msg → 32 byte out.
 void gmb_hmac_sha256(const uint8_t* key, size_t key_len, const uint8_t* msg, size_t msg_len, uint8_t out[32]);
 
