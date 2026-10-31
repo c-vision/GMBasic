@@ -10,7 +10,7 @@ IMPORT AI
 
 SUB Main()
     DIM src AS STRING
-    src = "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/ai/img_4x4.png"
+    src = "../../../samples/Fixtures/ai/img_4x4.png"
 
     DIM ok AS LONG
     ok = AI.IMAGECROP(src, "work/ai_info_crop.png", 1, 1, 2, 2)

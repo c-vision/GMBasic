@@ -45,11 +45,11 @@ SUB Main()
     PRINT
 
     ' 1. DEFAULT: SWAP su disco (streaming degli esperti).
-    LLM MODEL LOAD m1, "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/models/tiny.gmoe"
+    LLM MODEL LOAD m1, "../../../samples/Fixtures/models/tiny.gmoe"
     PRINT "m1 (swap)      : "; LLM.STREAMSTATS("m1")
 
     ' 2. RESIDENT forzato dal BASIC: tutto in RAM, nessuno swap.
-    LLM MODEL LOAD m2, "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/models/tiny.gmoe", RESIDENT
+    LLM MODEL LOAD m2, "../../../samples/Fixtures/models/tiny.gmoe", RESIDENT
     PRINT "m2 (resident)  : "; LLM.STREAMSTATS("m2")
     PRINT
 
@@ -81,12 +81,12 @@ SUB Main()
 
     ' 5. Un modello locale si gestisce SOLO con LLM MODEL: `LLM MODEL LOAD` registra da sé il
     '    provider "moestream" (AI REGISTER è per i provider HTTP/API, non per i modelli).
-    LLM MODEL LOAD mlocal, "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/models/tiny.gmoe"
+    LLM MODEL LOAD mlocal, "../../../samples/Fixtures/models/tiny.gmoe"
     PRINT "mlocal: "; LLM.STREAMSTATS("mlocal")
     LLM MODEL UNLOAD mlocal
 
     ' 6. AI SET ACTIVE: rende un modello caricato il provider attivo per gli agenti.
-    LLM MODEL LOAD mact, "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/models/tiny.gmoe"
+    LLM MODEL LOAD mact, "../../../samples/Fixtures/models/tiny.gmoe"
     AI SET ACTIVE %CHAT, "mact"
     PRINT "attivo         : "; AI.ACTIVE(%CHAT)
     LLM MODEL UNLOAD mact

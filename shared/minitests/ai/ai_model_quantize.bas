@@ -4,6 +4,6 @@
 IMPORT AI WITH ALIAS
 IMPORT LLM
 SUB Main
-  LLM MODEL QUANTIZE "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/models/tiny_f16", "/tmp/gmbasic-quantize-minitest", 4, 64
+  LLM MODEL QUANTIZE "../../samples/Fixtures/models/tiny_f16", "/tmp/gmbasic-quantize-minitest", 4, 64
   PRINT "quantized"
 END SUB

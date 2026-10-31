@@ -10,7 +10,7 @@ IMPORT AI
 
 SUB Main()
     DIM path AS STRING
-    path = "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/ai/img_4x4.png"
+    path = "../../../samples/Fixtures/ai/img_4x4.png"
 
     PRINT "INFO: ", AI.IMAGEINFO(path)
 

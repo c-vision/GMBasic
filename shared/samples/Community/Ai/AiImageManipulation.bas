@@ -12,7 +12,7 @@ IMPORT AI
 
 SUB Main()
     DIM src AS STRING
-    src = "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/ai/img_4x4.png"
+    src = "../../../samples/Fixtures/ai/img_4x4.png"
 
     ' ── INFO: "larghezza,altezza,formato" ─────────────────────────────────────
     PRINT "INFO: ", AI.IMAGEINFO(src)

@@ -11,7 +11,7 @@ IMPORT SYSTEM
 
 SUB Main()
     DIM src AS STRING
-    src = "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/ai/img_4x4.png"
+    src = "../../../samples/Fixtures/ai/img_4x4.png"
 
     DIM e() = AI.IMAGEEMBED(src)
     PRINT "DIM: ", SYSTEM.UBOUND(e) + 1        ' 64

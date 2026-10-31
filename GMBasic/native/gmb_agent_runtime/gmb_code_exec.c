@@ -13,7 +13,14 @@
 static void find_executor(char* buf, size_t cap) {
     const char* e = gmb_opt_env("GMB_EXECUTOR_NATIVE");
     if (e && *e) { snprintf(buf, cap, "%s", e); return; }
-    snprintf(buf, cap, "/Users/gaetano/Documents/Projects/GMBasic/native/executor/build/gmb_executor_native_host");
+    {
+        /* Nessun path personale: il runner vive sotto la root del repo C (GMBasic/). */
+        char root[PATH_MAX];
+        if (gmb_paths_repo_root(root, sizeof root) && root[0])
+            snprintf(buf, cap, "%s/native/executor/build/gmb_executor_native_host", root);
+        else
+            snprintf(buf, cap, "native/executor/build/gmb_executor_native_host");
+    }
 }
 
 int gmb_code_exec(const char* code, char* out, size_t cap) {

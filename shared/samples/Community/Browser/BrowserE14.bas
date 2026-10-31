@@ -160,12 +160,12 @@ BrowserSessionRecord(port, "nav", "pagina-E14")
 BrowserSessionRecord(port, "click", "#b")
 PRINT "E14 steps recorded:"; LEN(BrowserSessionLog(port)) > 0
 
-r = BrowserTaskSave(port, "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Community/Browser/work/taskstate.txt")
+r = BrowserTaskSave(port, "work/taskstate.txt")
 PRINT "E14 save:"; r
 
 nav = BrowserNavigate("about:blank", port)
 SLEEP 300
-log = BrowserTaskResume(port, "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Community/Browser/work/taskstate.txt")
+log = BrowserTaskResume(port, "work/taskstate.txt")
 PRINT "E14 resumed log:"; CHR$(10); log
 IF INSTR(log, "pagina-E14") > 0 THEN
   PRINT "E14: ok (riprende da dove si era fermato)"

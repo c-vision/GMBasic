@@ -308,7 +308,9 @@ FUNCTION Build(model_dir AS STRING, out_dir AS STRING) AS INTEGER
   Extract(cfg)
   g_reg = JSON.PARSE("{}")
   g_reg("model") = name
-  g_reg("config") = cfg_path
+  ' Path RELATIVO alla cartella del modello (il config.json sta lì): il descrittore è
+  ' versionato e non deve contenere il path assoluto della macchina che l'ha generato.
+  g_reg("config") = "config.json"
   g_reg("spec") = g_spec
   g_reg("contract") = g_contract
   IF LEN(out_dir) > 0 THEN

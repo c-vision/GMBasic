@@ -154,13 +154,13 @@ PRINT "BrowserE12: avvio"
 nav = BrowserNavigate("data:text/html,%3Ch1%20id%3D%27t%27%3EE12%3C%2Fh1%3E%3Cbutton%20id%3D%27b%27%3EGo%3C%2Fbutton%3E%3Cdiv%20id%3D%27r%27%3E%3C%2Fdiv%3E", port)
 SLEEP 600
 
-shot = BrowserAuditStep(port, "nav", "pagina-E12", "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Community/Browser/work/audit")
+shot = BrowserAuditStep(port, "nav", "pagina-E12", "work/audit")
 PRINT "E12 shot1:"; LEN(shot) > 0
 r = BrowserEvaluate("document.getElementById('r').innerText='clicked'", port)
-shot = BrowserAuditStep(port, "click", "#b", "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Community/Browser/work/audit")
+shot = BrowserAuditStep(port, "click", "#b", "work/audit")
 PRINT "E12 shot2:"; LEN(shot) > 0
 
-log = BrowserAuditExport(port, "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Community/Browser/work/audit")
+log = BrowserAuditExport(port, "work/audit")
 PRINT "E12 log:"; CHR$(10); log
 IF INSTR(log, "step-1.png") > 0 AND INSTR(log, "step-2.png") > 0 THEN
   PRINT "E12: ok (log con prove visive a ogni step)"

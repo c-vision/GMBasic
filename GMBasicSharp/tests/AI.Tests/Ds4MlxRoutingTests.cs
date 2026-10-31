@@ -9,13 +9,15 @@ namespace AI.Tests;
 [Trait(AITestCategories.Name, AITestCategories.Fast)]
 public sealed class Ds4MlxRoutingTests
 {
-    private const string Ds4Gguf = "/Users/gaetano/ds4/ds4flash.gguf";
+    // Nessun path personale: il modello si indica con GMB_DS4_GGUF, altrimenti i test si saltano.
+    private static string Ds4Gguf =>
+        Environment.GetEnvironmentVariable("GMB_DS4_GGUF") ?? "";
 
     [Fact(DisplayName = "DetectConfig instrada il GGUF DS4 (arch deepseek4) al motore MLX, non a llama.cpp")]
     public void DetectConfig_Ds4Gguf_RoutesToMlx()
     {
         // Skip morbido: il modello (o la lib nativa aggiornata) può non essere presente in CI.
-        if (!File.Exists(Ds4Gguf)) return;
+        if (string.IsNullOrEmpty(Ds4Gguf) || !File.Exists(Ds4Gguf)) return;
         int supported;
         try { supported = MlxEngineNative.llm_ai_mlx_gguf_supported(Ds4Gguf); }
         catch { return; }

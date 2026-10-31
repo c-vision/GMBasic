@@ -10,12 +10,12 @@ IMPORT AI
 SUB Main()
     ' ── 1) TEST: compila una fixture e registra l'esito ─────────────────────────────────
     DIM tid AS DOUBLE
-    AI OBSERVE TEST "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/AIVerifyFixtureOk.bas" INTO tid
+    AI OBSERVE TEST "../../samples/Fixtures/AIVerifyFixtureOk.bas" INTO tid
     IF tid > 0 THEN PRINT "test= si" ELSE PRINT "test= no"
 
     ' ── 2) DATABASE: query su una fixture sqlite, registra il riferimento ───────────────
     DIM did AS DOUBLE
-    AI OBSERVE DATABASE "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/ai/observe_sources.sqlite", "SELECT * FROM note" INTO did
+    AI OBSERVE DATABASE "../../samples/Fixtures/ai/observe_sources.sqlite", "SELECT * FROM note" INTO did
     IF INSTR(AI.OBSERVATIONFILE$(did), "ai_observe_database.json") > 0 THEN PRINT "db_ref= si" ELSE PRINT "db_ref= no"
     IF INSTR(AI.OBSERVATION$(did), "database") > 0 THEN PRINT "db_type= si" ELSE PRINT "db_type= no"
 

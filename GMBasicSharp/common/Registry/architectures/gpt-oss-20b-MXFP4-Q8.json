@@ -1,6 +1,6 @@
 {
   "model": "gpt-oss-20b-MXFP4-Q8",
-  "config": "/Users/gaetano/ai/Models/gpt-oss-20b-MXFP4-Q8/config.json",
+  "config": "gpt-oss-20b-MXFP4-Q8/config.json",
   "spec": {
     "model_type": "gpt_oss",
     "hidden_size": 2880,

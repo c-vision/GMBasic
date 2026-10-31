@@ -66,7 +66,7 @@ cfg = NEW HTTPCONFIG
 cfg.Port = 8099
 HTTP CONFIG cfg
 
-HTTP STATIC "/", "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Community/Web/RegistryBsp"
+HTTP STATIC "/", "RegistryBsp"
 
 PRINT "Server on http://localhost:8099"
 PRINT "  Frontend: /index.bsp  /package.bsp?name=gmb-vec"

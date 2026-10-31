@@ -10,7 +10,7 @@ IMPORT AI
 
 SUB Main()
     DIM a AS STRING
-    a = "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/ai/img_4x4.png"
+    a = "../../../samples/Fixtures/ai/img_4x4.png"
 
     PRINT "COMPARE: ", AI.IMAGECOMPARE(a, a)          ' 100
     PRINT "COMPARE: ", AI.IMAGECOMPARE(a, "inesistente.png")  ' -1

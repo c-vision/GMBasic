@@ -5,6 +5,6 @@ IMPORT AI
 
 SUB Main
   DIM r AS STRING
-  AI VERIFY "COMPILE /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/AIVerifyFixtureOk.bas" REQUIRE "LEN(RESULT$) > 5" INTO r
+  AI VERIFY "COMPILE ../../../samples/Fixtures/AIVerifyFixtureOk.bas" REQUIRE "LEN(RESULT$) > 5" INTO r
   PRINT "result="; r
 END SUB

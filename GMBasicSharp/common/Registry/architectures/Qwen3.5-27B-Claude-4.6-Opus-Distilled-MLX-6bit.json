@@ -1,6 +1,6 @@
 {
   "model": "Qwen3.5-27B-Claude-4.6-Opus-Distilled-MLX-6bit",
-  "config": "/Users/gaetano/ai/Models/Qwen3.5-27B-Claude-4.6-Opus-Distilled-MLX-6bit/config.json",
+  "config": "Qwen3.5-27B-Claude-4.6-Opus-Distilled-MLX-6bit/config.json",
   "spec": {
     "model_type": "qwen3_5_text",
     "hidden_size": 5120,

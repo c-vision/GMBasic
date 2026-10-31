@@ -20,7 +20,7 @@ IMPORT AI
 
 SUB Main()
     DIM fixture AS STRING
-    fixture = "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/ai/fattura_it.txt"
+    fixture = "../../../samples/Fixtures/ai/fattura_it.txt"
 
     ' ══ 1. CONTEXT ENGINE: budget, policy, selector, vista curata ═══════════════════
     PRINT "=== 1. CONTEXT ENGINE ==="

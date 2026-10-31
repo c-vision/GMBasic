@@ -1,6 +1,6 @@
 {
   "model": "GLM-4.5-Air-4bit",
-  "config": "/Users/gaetano/ai/Models/GLM-4.5-Air-4bit/config.json",
+  "config": "GLM-4.5-Air-4bit/config.json",
   "spec": {
     "model_type": "glm4_moe",
     "hidden_size": 4096,

@@ -137,7 +137,7 @@ DIM r$ AS STRING
 PRINT "BrowserE3: avvio (index, DB su file)"
 
 REM DB vettoriale PERSISTENTE (file) + collection
-SQL OPEN "/Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Community/Browser/work/rag.db" ALIAS RagDb
+SQL OPEN "work/rag.db" ALIAS RagDb
 AI RAG ENSURE COLLECTION "RagDb", "web", 8
 
 REM Web->RAG diretta: naviga, chunk, indicizza

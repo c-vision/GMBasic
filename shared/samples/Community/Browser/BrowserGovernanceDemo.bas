@@ -17,7 +17,7 @@ SUB Main()
     BROWSER.START(%AUTO, 9222)
 
     ' fixture locale
-    BROWSER.NAVIGATE("file:///Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/browser-eval/test_basic.html")
+    BROWSER.NAVIGATE("file://../../../samples/Fixtures/browser-eval/test_basic.html")
 
     ' --- G1: OBSERVE (unified) ---
     DIM obs$ = BROWSER.OBSERVE()
@@ -41,7 +41,7 @@ SUB Main()
     ' --- G5: console + network capture ---
     PRINT "=== CAPTURE (console+network) ==="
     ' ricarica per rigenerare eventi console/network
-    BROWSER.NAVIGATE("file:///Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/samples/Fixtures/browser-eval/test_basic.html")
+    BROWSER.NAVIGATE("file://../../../samples/Fixtures/browser-eval/test_basic.html")
     DIM net$ = BROWSER.NETLOG(TRUE)
     PRINT "netlog: "; LEFT$(net$, 200)
     DIM con$ = BROWSER.CONSOLE(TRUE)
