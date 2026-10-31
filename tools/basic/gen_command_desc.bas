@@ -186,6 +186,28 @@ FUNCTION IsGeneric(d AS STRING) AS INTEGER
   RETURN 0
 END FUNCTION
 
+' Un namespace plausibile: solo lettere/cifre/_/. (scarta le righe spazzatura che il vecchio
+' catalogo si trascinava dietro, es. un NS "indow.cs:55" nato dal parsing di un commento).
+FUNCTION PlausibleNs(ns AS STRING) AS INTEGER
+  DIM i AS LONG, c AS STRING
+  ns = TRIM$(ns)
+  IF LEN(ns) = 0 THEN RETURN 0
+  FOR i = 1 TO LEN(ns)
+    c = MID$(ns, i, 1)
+    IF NOT ((c >= "A" AND c <= "Z") OR (c >= "a" AND c <= "z") OR (c >= "0" AND c <= "9") OR c = "_" OR c = ".") THEN RETURN 0
+  NEXT i
+  RETURN 1
+END FUNCTION
+
+' Nomi della tabella RIEPILOGO di COMMANDS.TXT: non sono simboli del linguaggio.
+FUNCTION IsSummaryName(nm AS STRING) AS INTEGER
+  DIM u AS STRING
+  u = UPPER$(TRIM$(nm))
+  IF u = "COMANDI" OR u = "FUNZIONI" OR u = "TIPI" OR u = "COSTANTI" THEN RETURN 1
+  IF u = "RIEPILOGO" OR u = "TOTALE" OR u = "NOME" THEN RETURN 1
+  RETURN 0
+END FUNCTION
+
 SUB LoadCatalog(p AS STRING)
   DIM ls$() AS STRING
   DIM f$() AS STRING
@@ -211,9 +233,13 @@ SUB LoadCatalog(p AS STRING)
           END IF
         END IF
         IF UBOUND(f$) >= 6 THEN
-          AddRow(f$(0), f$(1), f$(2), f$(3), f$(4), f$(5), f$(6))
+          IF PlausibleNs(f$(0)) <> 0 AND IsSummaryName(f$(1)) = 0 THEN
+            AddRow(f$(0), f$(1), f$(2), f$(3), f$(4), f$(5), f$(6))
+          END IF
         ELSE
-          AddRow(f$(0), f$(1), f$(2), f$(3), f$(4), f$(5), "")
+          IF PlausibleNs(f$(0)) <> 0 AND IsSummaryName(f$(1)) = 0 THEN
+            AddRow(f$(0), f$(1), f$(2), f$(3), f$(4), f$(5), "")
+          END IF
         END IF
       END IF
     END IF
@@ -491,19 +517,26 @@ SUB BuildCmdIndex()
   DIM ls$() AS STRING
   DIM f$() AS STRING
   DIM l AS STRING, i AS LONG, nm AS STRING, ds AS STRING
+  DIM in_sum AS INTEGER
   IF g_cx_done <> 0 THEN EXIT SUB
   g_cx_done = 1
   IF LEN(g_cmd) = 0 OR NOT FILEEXISTS(g_cmd) THEN EXIT SUB
   ls$ = IO.READLINES(g_cmd)
   FOR i = 0 TO UBOUND(ls$)
     l = ls$(i)
-    IF INSTR(l, "│") > 0 THEN
+    ' La tabella RIEPILOGO (COMANDI/FUNZIONI/TIPI/COSTANTI/TOTALE) NON è un elenco di comandi:
+    ' prima finiva nell'indice per nome e i suoi numeri diventavano "descrizioni" di comandi
+    ' inesistenti (voci COMANDI/COSTANTI nel catalogo).
+    IF INSTR(l, "RIEPILOGO") > 0 THEN in_sum = 1
+    IF in_sum = 0 AND INSTR(l, "│") > 0 THEN
       f$ = SPLIT(l, "│")
       IF UBOUND(f$) >= 3 THEN
         ds = TRIM$(f$(3))
         IF LEN(ds) > 0 AND IsGeneric(ds) = 0 THEN
           nm = UPPER$(TRIM$(f$(1)))
-          IF NOT (nm IN ix_cmd) THEN ix_cmd(nm) = TRIM$(f$(2)) + CHR$(9) + ds
+          IF IsSummaryName(nm) = 0 THEN
+            IF NOT (nm IN ix_cmd) THEN ix_cmd(nm) = TRIM$(f$(2)) + CHR$(9) + ds
+          END IF
         END IF
       END IF
     END IF
@@ -916,6 +949,11 @@ SUB LoadSurface(p AS STRING)
           ELSEIF LEN(ds) = 0 AND MetaFor(ns, nm) <> 0 THEN
             sx = m_sx : ds = m_ds : ft = "metadati"
           END IF
+          ' SINTASSI e DESCRIZIONE si risolvono INDIPENDENTEMENTE: quando la descrizione arriva
+          ' da un commento, prima la sintassi restava vuota (riga MESSAGE.DELIVERY senza
+          ' parametri nel manuale). Se la sintassi manca si prende dai metadati della
+          ' registrazione (MetaFor), che ha i parametri veri.
+          IF LEN(TRIM$(sx)) = 0 AND MetaFor(ns, nm) <> 0 THEN sx = m_sx
           IF LEN(ds) = 0 AND ns = "CONTROLS" THEN
             ds = "Evento UI generato dal runtime."
             ft = "derivato:evento"

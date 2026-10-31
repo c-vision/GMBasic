@@ -2335,7 +2335,7 @@ _Generato da `tools/basic/recon_stdlib.bas` dal codice `common/StdLib/StdLib.*.c
 
 | Funzione | Ritorno |
 |---|---|
-| `DELIVERY` | ? |
+| `DELIVERY` | StringType |
 
 ### Tipi (0)
 

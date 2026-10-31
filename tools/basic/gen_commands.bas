@@ -154,12 +154,19 @@ FUNCTION IsPlaceholder(d AS STRING, ns AS STRING, nm AS STRING) AS INTEGER
   DIM u AS STRING, p AS STRING
   u = UPPER(TRIM(d))
   IF LEN(u) = 0 THEN RETURN -1
-  IF LEFT$(u, 24) = "COMANDO " + UPPER(ns) + "." THEN RETURN -1
-  IF LEFT$(u, 25) = "FUNZIONE " + UPPER(ns) + "." THEN RETURN -1
-  IF LEFT$(u, 5) = "TIPO " AND RIGHT$(u, 1) = "." THEN RETURN -1
-  IF LEFT$(u, 10) = "COSTANTE %" AND RIGHT$(u, 1) = "." THEN RETURN -1
+  ' prefisso "COMANDO NS." / "FUNZIONE NS." confrontato con la lunghezza VERA del prefisso
+  ' (prima si usava LEFT$ a lunghezza fissa: il confronto non tornava mai e i segnaposto
+  ' generati dalla rigenerazione precedente venivano promossi a descrizioni).
+  p = UPPER("Comando " + ns + ".")
+  IF LEFT$(u, LEN(p)) = p THEN RETURN -1
+  p = UPPER("Funzione " + ns + ".")
+  IF LEFT$(u, LEN(p)) = p THEN RETURN -1
   p = UPPER("Comando " + ns + "." + nm + ".")
   IF u = p THEN RETURN -1
+  p = UPPER("Funzione " + ns + "." + nm + ".")
+  IF u = p THEN RETURN -1
+  IF LEFT$(u, 5) = "TIPO " AND RIGHT$(u, 1) = "." THEN RETURN -1
+  IF LEFT$(u, 10) = "COSTANTE %" AND RIGHT$(u, 1) = "." THEN RETURN -1
   RETURN 0
 END FUNCTION
 

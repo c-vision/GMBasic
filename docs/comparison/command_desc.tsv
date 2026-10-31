@@ -1,5 +1,5 @@
 # GMBASIC — catalogo descrizioni per COMMANDS.TXT
-# Generato da tools/gen_command_desc.bas (fonts: catalogo + superficie).
+# Generato da tools/basic/gen_command_desc.bas (fonts: StdLib + commenti + storico + metadati).
 # Colonne: NS \t NOME \t KIND \t SINTASSI \t DESCRIZIONE \t FONTE \t MEMBRI
 AGENT	RUN	funzione	x = AGENT.RUN(a1, ...)	-> STRING · arg goal	metadati	
 AI	ACTIVE	funzione	x = AI.ACTIVE(cap)	Provider attivo per capability -> STRING.	storico	
@@ -2087,8 +2087,6 @@ WINDOWS	CIRCULAR.TOARRAY	funzione	x = c.ToArray()	Converte in array -> ARRAY.	st
 WINDOWS	CIRCULAR.TOJSON	funzione	x = c.ToJSON()	Serializza in JSON -> STRING.	storico	
 WINDOWS	CIRCULAR.TOLIST	funzione	x = c.ToList()	Converte in lista -> LIST.	storico	
 WINDOWS	CLEAR	comando	WINDOW Main CLEAR	Svuota il buffer della finestra.	storico	
-WINDOWS	COMANDI	comando	174	Comandi del linguaggio	storico	
-WINDOWS	COSTANTI	comando	284	Costanti del linguaggio	storico	
 WINDOWS	DEFINE	comando	WINDOW DEFINE Main FROM 1, 1 TO 60, 20 TITLE "Main" DOUBLE	Definisce una nuova finestra TUI.	storico	
 WINDOWS	DESKTOP	comando	WINDOW DESKTOP 2	Cambia il desktop virtuale attivo.	storico	
 WINDOWS	DICT.ADD	comando	d.Add("k", 1)	Aggiunge un elemento.	storico	
@@ -2120,7 +2118,6 @@ WINDOWS	DOUBLYLINKEDLIST.TOJSON	funzione	x = d.ToJSON()	Serializza in JSON -> ST
 WINDOWS	DOUBLYLINKEDLIST.TOLIST	funzione	x = d.ToList()	Converte in lista -> LIST.	storico	
 WINDOWS	EDIT	comando	WINDOW Main EDIT ON	Abilita/disabilita la modifica della fines	storico	
 WINDOWS	FRAME	comando	WINDOW FRAME DOUBLE	Stile frame globale delle finestre.	storico	
-WINDOWS	FUNZIONI	comando	1517	Funzioni del linguaggio	storico	
 WINDOWS	GRAPH.ADDEDGE	comando	g.AddEdge(1, 2, 1)	Aggiunge un arco pesato.	storico	
 WINDOWS	GRAPH.ADDNODE	funzione	x = g.AddNode(1)	Aggiunge un nodo.	storico	
 WINDOWS	GRAPH.BFS	funzione	x = g.BFS(1)	Visita in ampiezza -> LIST.	storico	
@@ -2284,7 +2281,6 @@ WINDOWS	TIMELINE.TOARRAY	funzione	x = t.ToArray()	Converte in array -> ARRAY.	st
 WINDOWS	TIMELINE.TODICT	funzione	x = t.ToDict()	Converte in dizionario -> DICT.	storico	
 WINDOWS	TIMELINE.TOJSON	funzione	x = t.ToJSON()	Serializza in JSON -> STRING.	storico	
 WINDOWS	TIMELINE.VALUES	funzione	x = t.Values()	Lista valori -> LIST.	storico	
-WINDOWS	TIPI	comando	65	Tipi del linguaggio	storico	
 WINDOWS	TIPO: AVLTREE	comando	DIM a AS AVLTREE	Albero AVL bilanciato.	storico	
 WINDOWS	TIPO: BAG	comando	DIM b AS BAG	Multiset.	storico	
 WINDOWS	TIPO: BITREE	comando	DIM b AS BITREE	Albero indicizzato binario.	storico	
@@ -2309,7 +2305,6 @@ WINDOWS	TIPO: STACK	comando	DIM s AS STACK	Pila LIFO.	storico
 WINDOWS	TIPO: TIMELINE	comando	DIM t AS TIMELINE	Serie temporale.	storico	
 WINDOWS	TIPO: TREE	comando	DIM t AS TREE	Albero binario chiave->val.	storico	
 WINDOWS	TIPO: TRIE	comando	DIM t AS TRIE	Trie per stringhe.	storico	
-WINDOWS	TOTALE	comando	2040	Voci complessive	storico	
 WINDOWS	TREE.ADD	comando	t.Add("k", 1)	Aggiunge un elemento.	storico	
 WINDOWS	TREE.CLEAR	comando	t.Clear()	Svuota la collezione.	storico	
 WINDOWS	TREE.CONTAINSKEY	funzione	x = t.ContainsKey("k")	Contiene la chiave? -> BIT.	storico	
@@ -2341,7 +2336,326 @@ WINDOWS	WINDOW	comando	WINDOWS WINDOW	List<Stmt> (un solo statement per forma).	
 WINDOWS	WINDOWCLOSED	funzione	x = WINDOWS.WINDOWCLOSED()	-> LONG	metadati	
 WINDOWS	X	funzione	x = WINDOWS.X()	Coordinata X della finestra -> LONG.	storico	
 WINDOWS	Y	funzione	x = WINDOWS.Y()	Coordinata Y della finestra -> LONG.	storico	
-indow.cs:55	
-WINDOWS	WINDOWCLOSED	funzione	x = WINDOWS.WINDOWCLOSED()	-> LONG	metadati	
-WINDOWS	X	funzione	x = WINDOWS.X()	Coordinata X della finestra -> LONG.	storico	
-WINDOWS	Y	funzione	x = WINDOWS.Y()	Coordinata Y della finestra -> LONG.	storico	
+CONTROLS	CHANGED	funzione		Evento UI generato dal runtime.	derivato:evento	
+CONTROLS	CLICKED	funzione		Evento UI generato dal runtime.	derivato:evento	
+CONTROLS	DOUBLECLICKED	funzione		Evento UI generato dal runtime.	derivato:evento	
+CONTROLS	GOTFOCUSED	funzione		Evento UI generato dal runtime.	derivato:evento	
+CONTROLS	KEYPRESSED	funzione		Evento UI generato dal runtime.	derivato:evento	
+CONTROLS	LOSTFOCUSED	funzione		Evento UI generato dal runtime.	derivato:evento	
+CONTROLS	MOUSECLICKED	funzione		Evento UI generato dal runtime.	derivato:evento	
+CONTROLS	MOUSEDBLCLICKED	funzione		Evento UI generato dal runtime.	derivato:evento	
+CONTROLS	MOUSEPRESSED	funzione		Evento UI generato dal runtime.	derivato:evento	
+IO	GETTEMPDIR	funzione	x = IO.GETTEMPDIR()	-> STRING	metadati	
+IO	GETTEMPFILE	funzione	x = IO.GETTEMPFILE()	-> STRING	metadati	
+LLM	Arch	funzione	x = LLM.ARCH(sub [, a, b, c])	-> STRING · arg sub, a?, b?, c?	metadati	
+LLM	Detokenize	funzione	x = LLM.DETOKENIZE(model, ids)	`ids$ = LLM.TOKENS(m, t)`, `txt$ = LLM.DETOKENIZE(m, ids)`.	commento	
+LLM	Kernel	funzione	x = LLM.KERNEL(sub [, a, b, c])	-> STRING · arg sub, a?, b?, c?	metadati	
+LLM	Kv	funzione	x = LLM.KV(sub [, a, b, c])	cache/version-hash (context-cache ↔ prefix KV).	commento	
+LLM	Module	funzione	x = LLM.MODULE(sub [, a, b, c])	-> STRING · arg sub, a?, b?, c?	metadati	
+LLM	Policy	funzione	x = LLM.POLICY(sub [, a, b, c])	categorie di task → provider/modello (policy di routing).	commento	
+LLM	Tensor	funzione	x = LLM.TENSOR(sub [, a, b, c])	restituisce l'output.	commento	
+LLM	Tokens	funzione	x = LLM.TOKENS(model, text)	`ids$ = LLM.TOKENS(m, t)`, `txt$ = LLM.DETOKENIZE(m, ids)`.	commento	
+MUTEX	TRYLOCK	funzione	x = MUTEX.TRYLOCK(TRYLOCK)	funzione nel namespace MUTEX.	commento	
+STRINGS	LCASE	funzione	x = STRINGS.LCASE()	-> STRING · arg :STRING	metadati	
+STRINGS	UCASE	funzione	x = STRINGS.UCASE()	-> STRING · arg :STRING	metadati	
+CONSTANTS	ABORT	costante		= 3	metadati:valore	
+CONSTANTS	ABORTRETRYIGNORE	costante		= 104	metadati:valore	
+CONSTANTS	ANSI	costante		= 2	metadati:valore	
+CONSTANTS	AQUA	costante		= 14	metadati:valore	
+CONSTANTS	AQUAMARINE1	costante		= 86	metadati:valore	
+CONSTANTS	AQUAMARINE1_2	costante		= 122	metadati:valore	
+CONSTANTS	AQUAMARINE3	costante		= 79	metadati:valore	
+CONSTANTS	AUDIO	costante		%CHAT=%OCR=%AUDIO + ruoli registry non-LLM %EMBEDDING/%RERANKER	commento	
+CONSTANTS	AUTO	costante		= 0	metadati:valore	
+CONSTANTS	BLACK	costante		= 0	metadati:valore	
+CONSTANTS	BLUE	costante		= 12	metadati:valore	
+CONSTANTS	BLUE1	costante		= 21	metadati:valore	
+CONSTANTS	BLUE3	costante		= 19	metadati:valore	
+CONSTANTS	BLUE3_2	costante		= 20	metadati:valore	
+CONSTANTS	BLUE_VIOLET	costante		= 57	metadati:valore	
+CONSTANTS	C64	costante		= 1	metadati:valore	
+CONSTANTS	CADET_BLUE	costante		= 72	metadati:valore	
+CONSTANTS	CADET_BLUE_2	costante		= 73	metadati:valore	
+CONSTANTS	CANCEL	costante		= 2	metadati:valore	
+CONSTANTS	CENTER	costante		= 1	metadati:valore	
+CONSTANTS	CHARTREUSE1	costante		= 118	metadati:valore	
+CONSTANTS	CHARTREUSE2	costante		= 82	metadati:valore	
+CONSTANTS	CHARTREUSE2_2	costante		= 112	metadati:valore	
+CONSTANTS	CHARTREUSE3	costante		= 70	metadati:valore	
+CONSTANTS	CHARTREUSE3_2	costante		= 76	metadati:valore	
+CONSTANTS	CHARTREUSE4	costante		= 64	metadati:valore	
+CONSTANTS	CHAT	costante		= 0	metadati:valore	
+CONSTANTS	CHCLOSED	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	CHROMIUM	costante		mai stringhe "auto"/"chromium"/"obscura"	commento	
+CONSTANTS	CLOSED	costante		= -1	metadati:valore	
+CONSTANTS	CORNFLOWER_BLUE	costante		= 69	metadati:valore	
+CONSTANTS	CYAN1	costante		= 51	metadati:valore	
+CONSTANTS	CYAN2	costante		= 50	metadati:valore	
+CONSTANTS	CYAN3	costante		= 43	metadati:valore	
+CONSTANTS	DARK_BLUE	costante		= 18	metadati:valore	
+CONSTANTS	DARK_CYAN	costante		= 36	metadati:valore	
+CONSTANTS	DARK_GREEN	costante		= 22	metadati:valore	
+CONSTANTS	DARK_MAGENTA	costante		= 90	metadati:valore	
+CONSTANTS	DARK_MAGENTA_2	costante		= 91	metadati:valore	
+CONSTANTS	DARK_OLIVE_GREEN3	costante		= 107	metadati:valore	
+CONSTANTS	DARK_OLIVE_GREEN3_2	costante		= 113	metadati:valore	
+CONSTANTS	DARK_RED	costante		= 52	metadati:valore	
+CONSTANTS	DARK_RED_2	costante		= 88	metadati:valore	
+CONSTANTS	DARK_SEA_GREEN	costante		= 108	metadati:valore	
+CONSTANTS	DARK_SEA_GREEN3	costante		= 115	metadati:valore	
+CONSTANTS	DARK_SEA_GREEN4	costante		= 65	metadati:valore	
+CONSTANTS	DARK_SEA_GREEN4_2	costante		= 71	metadati:valore	
+CONSTANTS	DARK_SLATE_GRAY1	costante		= 123	metadati:valore	
+CONSTANTS	DARK_SLATE_GRAY2	costante		= 87	metadati:valore	
+CONSTANTS	DARK_SLATE_GRAY3	costante		= 116	metadati:valore	
+CONSTANTS	DARK_TURQUOISE	costante		= 44	metadati:valore	
+CONSTANTS	DARK_VIOLET	costante		= 92	metadati:valore	
+CONSTANTS	DEEP_PINK4	costante		= 53	metadati:valore	
+CONSTANTS	DEEP_PINK4_2	costante		= 89	metadati:valore	
+CONSTANTS	DEEP_SKY_BLUE1	costante		= 39	metadati:valore	
+CONSTANTS	DEEP_SKY_BLUE2	costante		= 38	metadati:valore	
+CONSTANTS	DEEP_SKY_BLUE3	costante		= 31	metadati:valore	
+CONSTANTS	DEEP_SKY_BLUE3_2	costante		= 32	metadati:valore	
+CONSTANTS	DEEP_SKY_BLUE4	costante		= 23	metadati:valore	
+CONSTANTS	DEEP_SKY_BLUE4_2	costante		= 24	metadati:valore	
+CONSTANTS	DEEP_SKY_BLUE4_3	costante		= 25	metadati:valore	
+CONSTANTS	DODGER_BLUE1	costante		= 33	metadati:valore	
+CONSTANTS	DODGER_BLUE2	costante		= 27	metadati:valore	
+CONSTANTS	DODGER_BLUE3	costante		= 26	metadati:valore	
+CONSTANTS	DOUBLE	costante		= 2	metadati:valore	
+CONSTANTS	EMBEDDING	costante		= 3	metadati:valore	
+CONSTANTS	FAST	costante		= 1.0	metadati:valore	
+CONSTANTS	FILE_CHANGED	costante		= 4	metadati:valore	
+CONSTANTS	FILE_CREATED	costante		= 1	metadati:valore	
+CONSTANTS	FILE_DELETED	costante		= 2	metadati:valore	
+CONSTANTS	FILE_RENAMED	costante		= 8	metadati:valore	
+CONSTANTS	FUCHSIA	costante		= 13	metadati:valore	
+CONSTANTS	GOVERNED	costante		= 2.0	metadati:valore	
+CONSTANTS	GRAY	costante		= 8	metadati:valore	
+CONSTANTS	GRAY0	costante		= 16	metadati:valore	
+CONSTANTS	GRAY11	costante		= 235	metadati:valore	
+CONSTANTS	GRAY15	costante		= 236	metadati:valore	
+CONSTANTS	GRAY19	costante		= 237	metadati:valore	
+CONSTANTS	GRAY2	costante		= 232	metadati:valore	
+CONSTANTS	GRAY23	costante		= 238	metadati:valore	
+CONSTANTS	GRAY27	costante		= 239	metadati:valore	
+CONSTANTS	GRAY3	costante		= 233	metadati:valore	
+CONSTANTS	GRAY30	costante		= 240	metadati:valore	
+CONSTANTS	GRAY35	costante		= 241	metadati:valore	
+CONSTANTS	GRAY37	costante		= 59	metadati:valore	
+CONSTANTS	GRAY39	costante		= 242	metadati:valore	
+CONSTANTS	GRAY42	costante		= 243	metadati:valore	
+CONSTANTS	GRAY46	costante		= 244	metadati:valore	
+CONSTANTS	GRAY50	costante		= 245	metadati:valore	
+CONSTANTS	GRAY53	costante		= 102	metadati:valore	
+CONSTANTS	GRAY54	costante		= 246	metadati:valore	
+CONSTANTS	GRAY58	costante		= 247	metadati:valore	
+CONSTANTS	GRAY62	costante		= 248	metadati:valore	
+CONSTANTS	GRAY66	costante		= 249	metadati:valore	
+CONSTANTS	GRAY7	costante		= 234	metadati:valore	
+CONSTANTS	GRAY70	costante		= 250	metadati:valore	
+CONSTANTS	GRAY74	costante		= 251	metadati:valore	
+CONSTANTS	GRAY78	costante		= 252	metadati:valore	
+CONSTANTS	GRAY82	costante		= 253	metadati:valore	
+CONSTANTS	GRAY85	costante		= 254	metadati:valore	
+CONSTANTS	GRAY89	costante		= 255	metadati:valore	
+CONSTANTS	GREEN	costante		= 2	metadati:valore	
+CONSTANTS	GREEN1	costante		= 46	metadati:valore	
+CONSTANTS	GREEN3	costante		= 34	metadati:valore	
+CONSTANTS	GREEN3_2	costante		= 40	metadati:valore	
+CONSTANTS	GREEN4	costante		= 28	metadati:valore	
+CONSTANTS	IGNORE	costante		= 5	metadati:valore	
+CONSTANTS	JOYBUTTON2	costante		= 32	metadati:valore	
+CONSTANTS	JOYDOWN	costante		= 2	metadati:valore	
+CONSTANTS	JOYFIRE	costante		= 16	metadati:valore	
+CONSTANTS	JOYLEFT	costante		= 4	metadati:valore	
+CONSTANTS	JOYRIGHT	costante		= 8	metadati:valore	
+CONSTANTS	JOYUP	costante		= 1	metadati:valore	
+CONSTANTS	K_0	costante		= (double	metadati:valore	
+CONSTANTS	K_1	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_2	costante		= (double	metadati:valore	
+CONSTANTS	K_3	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_4	costante		= (double	metadati:valore	
+CONSTANTS	K_5	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_6	costante		= (double	metadati:valore	
+CONSTANTS	K_7	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_8	costante		= (double	metadati:valore	
+CONSTANTS	K_9	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_A	costante		= (double	metadati:valore	
+CONSTANTS	K_ALT	costante		= (double	metadati:valore	
+CONSTANTS	K_B	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_BS	costante		= (double	metadati:valore	
+CONSTANTS	K_C	costante		= (double	metadati:valore	
+CONSTANTS	K_CTRL	costante		= (double	metadati:valore	
+CONSTANTS	K_CTRL_BRK	costante		= -1.0	metadati:valore	
+CONSTANTS	K_CTRL_C	costante		= -1.0	metadati:valore	
+CONSTANTS	K_D	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_DEL	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_DOWN	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_E	costante		= (double	metadati:valore	
+CONSTANTS	K_END	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_ENTER	costante		= (double	metadati:valore	
+CONSTANTS	K_ESC	costante		= (double	metadati:valore	
+CONSTANTS	K_F	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_F1	costante		= (double	metadati:valore	
+CONSTANTS	K_F10	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_F11	costante		= (double	metadati:valore	
+CONSTANTS	K_F12	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_F2	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_F3	costante		= (double	metadati:valore	
+CONSTANTS	K_F4	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_F5	costante		= (double	metadati:valore	
+CONSTANTS	K_F6	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_F7	costante		= (double	metadati:valore	
+CONSTANTS	K_F8	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_F9	costante		= (double	metadati:valore	
+CONSTANTS	K_G	costante		= (double	metadati:valore	
+CONSTANTS	K_H	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_HOME	costante		= (double	metadati:valore	
+CONSTANTS	K_I	costante		= (double	metadati:valore	
+CONSTANTS	K_INS	costante		= (double	metadati:valore	
+CONSTANTS	K_J	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_K	costante		= (double	metadati:valore	
+CONSTANTS	K_L	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_LEFT	costante		= (double	metadati:valore	
+CONSTANTS	K_M	costante		= (double	metadati:valore	
+CONSTANTS	K_N	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_N0	costante		= (double	metadati:valore	
+CONSTANTS	K_N1	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_N2	costante		= (double	metadati:valore	
+CONSTANTS	K_N3	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_N4	costante		= (double	metadati:valore	
+CONSTANTS	K_N5	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_N6	costante		= (double	metadati:valore	
+CONSTANTS	K_N7	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_N8	costante		= (double	metadati:valore	
+CONSTANTS	K_N9	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_NADD	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_NDEC	costante		= (double	metadati:valore	
+CONSTANTS	K_NDIV	costante		= (double	metadati:valore	
+CONSTANTS	K_NMUL	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_NSUB	costante		= (double	metadati:valore	
+CONSTANTS	K_O	costante		= (double	metadati:valore	
+CONSTANTS	K_P	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_PAUSE	costante		= (double	metadati:valore	
+CONSTANTS	K_PGDN	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_PGUP	costante		= (double	metadati:valore	
+CONSTANTS	K_PRTSC	costante		= (double	metadati:valore	
+CONSTANTS	K_Q	costante		= (double	metadati:valore	
+CONSTANTS	K_R	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_RIGHT	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_S	costante		= (double	metadati:valore	
+CONSTANTS	K_SHIFT	costante		= (double	metadati:valore	
+CONSTANTS	K_SHIFT_TAB	costante		= -1.0	metadati:valore	
+CONSTANTS	K_SPC	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_T	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_TAB	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_U	costante		= (double	metadati:valore	
+CONSTANTS	K_UP	costante		= (double	metadati:valore	
+CONSTANTS	K_V	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_W	costante		= (double	metadati:valore	
+CONSTANTS	K_X	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	K_Y	costante		= (double	metadati:valore	
+CONSTANTS	K_Z	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	LEFT	costante	x = CONSTANTS.LEFT()	= 0	metadati:valore	
+CONSTANTS	LIGHT_GREEN	costante		= 119	metadati:valore	
+CONSTANTS	LIGHT_GREEN_2	costante		= 120	metadati:valore	
+CONSTANTS	LIGHT_PINK4	costante		= 95	metadati:valore	
+CONSTANTS	LIGHT_SEA_GREEN	costante		= 37	metadati:valore	
+CONSTANTS	LIGHT_SKY_BLUE3	costante		= 109	metadati:valore	
+CONSTANTS	LIGHT_SKY_BLUE3_2	costante		= 110	metadati:valore	
+CONSTANTS	LIGHT_SLATE_BLUE	costante		= 105	metadati:valore	
+CONSTANTS	LIGHT_SLATE_GRAY	costante		= 103	metadati:valore	
+CONSTANTS	LIME	costante		= 10	metadati:valore	
+CONSTANTS	MAROON	costante		= 1	metadati:valore	
+CONSTANTS	MEDIUM_PURPLE	costante		= 104	metadati:valore	
+CONSTANTS	MEDIUM_PURPLE3	costante		= 97	metadati:valore	
+CONSTANTS	MEDIUM_PURPLE3_2	costante		= 98	metadati:valore	
+CONSTANTS	MEDIUM_PURPLE4	costante		= 60	metadati:valore	
+CONSTANTS	MEDIUM_SPRING_GREEN	costante		= 49	metadati:valore	
+CONSTANTS	MEDIUM_TURQUOISE	costante		= 80	metadati:valore	
+CONSTANTS	NAVY	costante		= 4	metadati:valore	
+CONSTANTS	NAVY_BLUE	costante		= 17	metadati:valore	
+CONSTANTS	NO	costante		= 7	metadati:valore	
+CONSTANTS	NONE	costante		= 0	metadati:valore	
+CONSTANTS	OBSCURA	costante		mai stringhe "auto"/"chromium"/"obscura"	commento	
+CONSTANTS	OCR	costante	x = CONSTANTS.OCR(path [, model, redact])	%CHAT=%OCR=%AUDIO + ruoli registry non-LLM %EMBEDDING/%RERANKER	commento	
+CONSTANTS	OK	costante		= 1	metadati:valore	
+CONSTANTS	OKCANCEL	costante		= 101	metadati:valore	
+CONSTANTS	OLIVE	costante		= 3	metadati:valore	
+CONSTANTS	ORANGE4	costante		= 58	metadati:valore	
+CONSTANTS	ORANGE4_2	costante		= 94	metadati:valore	
+CONSTANTS	PALE_GREEN1	costante		= 121	metadati:valore	
+CONSTANTS	PALE_GREEN3	costante		= 77	metadati:valore	
+CONSTANTS	PALE_GREEN3_2	costante		= 114	metadati:valore	
+CONSTANTS	PALE_TURQUOISE4	costante		= 66	metadati:valore	
+CONSTANTS	PLUM4	costante		= 96	metadati:valore	
+CONSTANTS	PURPLE	costante		= 5	metadati:valore	
+CONSTANTS	PURPLE1	costante		= 93	metadati:valore	
+CONSTANTS	PURPLE3	costante		= 56	metadati:valore	
+CONSTANTS	PURPLE4	costante		= 54	metadati:valore	
+CONSTANTS	PURPLE4_2	costante		= 55	metadati:valore	
+CONSTANTS	RECEIVED	costante		= 1	metadati:valore	
+CONSTANTS	RED	costante		= 9	metadati:valore	
+CONSTANTS	RERANKER	costante		%CHAT=%OCR=%AUDIO + ruoli registry non-LLM %EMBEDDING/%RERANKER	commento	
+CONSTANTS	RERANK_KEYWORD	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	RERANK_OFF	costante		= 0	metadati:valore	
+CONSTANTS	RERANK_ONNX	costante		Nessun testo: costante senza metadati.	scoperto	
+CONSTANTS	RETRY	costante		= 4	metadati:valore	
+CONSTANTS	RETRYCANCEL	costante		= 105	metadati:valore	
+CONSTANTS	RIGHT	costante	x = CONSTANTS.RIGHT()	= 2	metadati:valore	
+CONSTANTS	ROUNDED	costante		= 3	metadati:valore	
+CONSTANTS	ROYAL_BLUE1	costante		= 63	metadati:valore	
+CONSTANTS	SDL	costante		= 0	metadati:valore	
+CONSTANTS	SEA_GREEN1	costante		= 84	metadati:valore	
+CONSTANTS	SEA_GREEN1_2	costante		= 85	metadati:valore	
+CONSTANTS	SEA_GREEN2	costante		= 83	metadati:valore	
+CONSTANTS	SEA_GREEN3	costante		= 78	metadati:valore	
+CONSTANTS	SILVER	costante		= 7	metadati:valore	
+CONSTANTS	SINGLE	costante		= 1	metadati:valore	
+CONSTANTS	SKY_BLUE1	costante		= 117	metadati:valore	
+CONSTANTS	SKY_BLUE2	costante		= 111	metadati:valore	
+CONSTANTS	SKY_BLUE3	costante		= 74	metadati:valore	
+CONSTANTS	SLATE_BLUE1	costante		= 99	metadati:valore	
+CONSTANTS	SLATE_BLUE3	costante		= 61	metadati:valore	
+CONSTANTS	SLATE_BLUE3_2	costante		= 62	metadati:valore	
+CONSTANTS	SPRING_GREEN1	costante		= 48	metadati:valore	
+CONSTANTS	SPRING_GREEN2	costante		= 42	metadati:valore	
+CONSTANTS	SPRING_GREEN2_2	costante		= 47	metadati:valore	
+CONSTANTS	SPRING_GREEN3	costante		= 35	metadati:valore	
+CONSTANTS	SPRING_GREEN3_2	costante		= 41	metadati:valore	
+CONSTANTS	SPRING_GREEN4	costante		= 29	metadati:valore	
+CONSTANTS	STEEL_BLUE	costante		= 67	metadati:valore	
+CONSTANTS	STEEL_BLUE1	costante		= 75	metadati:valore	
+CONSTANTS	STEEL_BLUE1_2	costante		= 81	metadati:valore	
+CONSTANTS	STEEL_BLUE3	costante		= 68	metadati:valore	
+CONSTANTS	SYSTEM	costante		= 3	metadati:valore	
+CONSTANTS	TEAL	costante		= 6	metadati:valore	
+CONSTANTS	TTS	costante		= 5	metadati:valore	
+CONSTANTS	TURQUOISE2	costante		= 45	metadati:valore	
+CONSTANTS	TURQUOISE4	costante		= 30	metadati:valore	
+CONSTANTS	WHEAT4	costante		= 101	metadati:valore	
+CONSTANTS	WHITE	costante		= 15	metadati:valore	
+CONSTANTS	YELLOW	costante		= 11	metadati:valore	
+CONSTANTS	YELLOW4	costante		= 100	metadati:valore	
+CONSTANTS	YELLOW4_2	costante		= 106	metadati:valore	
+CONSTANTS	YES	costante		= 6	metadati:valore	
+CONSTANTS	YESNO	costante		= 102	metadati:valore	
+CONSTANTS	YESNOCANCEL	costante		= 103	metadati:valore	
+COLLECTIONS	TYPE:BITREE	tipo	TYPE BITREE	Tipo definito dal runtime.	derivato:tipo	
+COLLECTIONS	TYPE:CIRCULAR	tipo	TYPE CIRCULAR	Tipo definito dal runtime.	derivato:tipo	
+COLLECTIONS	TYPE:HEAP	tipo	TYPE HEAP	Tipo definito dal runtime.	derivato:tipo	
+COLLECTIONS	TYPE:MAXHEAP	tipo	TYPE MAXHEAP	Tipo definito dal runtime.	derivato:tipo	
+COLLECTIONS	TYPE:REDBLACK	tipo	TYPE REDBLACK	Tipo definito dal runtime.	derivato:tipo	
+COLLECTIONS	TYPE:SORTED	tipo	TYPE SORTED	Tipo definito dal runtime.	derivato:tipo	
+CONCURRENCY	TYPE:CHANNEL	tipo	TYPE CHANNEL	Tipo definito dal runtime.	derivato:tipo	
+CONCURRENCY	TYPE:ONCE	tipo	TYPE ONCE	Tipo definito dal runtime.	derivato:tipo	
+GRAPHICS	TYPE:RGBA	tipo	TYPE RGBA	Tipo definito dal runtime.	derivato:tipo	
+GRAPHICS	TYPE:SPRITEINFO	tipo	TYPE SPRITEINFO	Tipo definito dal runtime.	derivato:tipo	
+HTTP	TYPE:NextHandler	tipo	TYPE NextHandler	Tipo definito dal runtime.	derivato:tipo	
+MATRIX	TYPE:CholeskyDecomposition	tipo	TYPE CholeskyDecomposition	Tipo definito dal runtime.	derivato:tipo	
+MATRIX	TYPE:EvdDecomposition	tipo	TYPE EvdDecomposition	Tipo definito dal runtime.	derivato:tipo	
+MATRIX	TYPE:LuDecomposition	tipo	TYPE LuDecomposition	Tipo definito dal runtime.	derivato:tipo	
+MATRIX	TYPE:QrDecomposition	tipo	TYPE QrDecomposition	Tipo definito dal runtime.	derivato:tipo	
+MATRIX	TYPE:SvdDecomposition	tipo	TYPE SvdDecomposition	Tipo definito dal runtime.	derivato:tipo	
+MESSAGE	DELIVERY	funzione	x = MESSAGE.DELIVERY(bus)	contatori di consegna del bus (sent/recv/ack/nack/dup/last).	commento	
