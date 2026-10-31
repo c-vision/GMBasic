@@ -289,7 +289,17 @@ emit_program_bundle() { # $1 = eseguibile
       n=$((n+1))
     fi
   fi
-  [ "$n" -gt 0 ] && echo "[c99native] bundle -> $out ($n file: settings + app.settings + Resources + cervelli)" >&2
+  # CONFIG del programma: il SEED `shared/settings/providers.json` va in `<out>/config/`, dove il
+  # runtime lo cerca (`<configDir>` = cartella dell'eseguibile). `AI.PROVIDERS()` lo legge: senza
+  # né file né seed la gamba C# rispondeva con un'eccezione e le gambe divergevano.
+  # I file dichiarati dal programma (`"config": [...]` nell'app.settings.json) li copre
+  # `ProgramBundle` (compilatore C#); qui basta il seed, che è l'unico condiviso.
+  local pseed="$ROOT/../shared/settings/providers.json"
+  if [ -f "$pseed" ]; then
+    mkdir -p "$out/config"
+    cmp -s "$pseed" "$out/config/providers.json" || { cp -f "$pseed" "$out/config/"; n=$((n+1)); }
+  fi
+  [ "$n" -gt 0 ] && echo "[c99native] bundle -> $out ($n file: settings + app.settings + Resources + cervelli + config)" >&2
   return 0
 }
 

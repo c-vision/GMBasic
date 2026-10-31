@@ -19,7 +19,10 @@ Punto unico delle configurazioni che i due mondi (C# e C) leggono allo stesso mo
 - **Default** → qui (o nel codice). **Stato dell'utente** → `<configDir>` (locale, `.gitignore`).
 - Il runtime legge prima il file **locale** e, se manca, questo **seed**. Il bundle copia i
   seed necessari accanto all'eseguibile (`<exe>/config/providers.json`), così un programma
-  distribuito funziona senza il checkout.
+  distribuito funziona senza il checkout:
+  - `providers.json` **sempre** (1,4 KB, serve ad `AI.PROVIDERS()` e alle operazioni sui provider);
+  - gli altri file solo se il programma li dichiara: `"config": ["mcp.json"]` nel suo
+    `app.settings.json` (sorgente: `<programma>/config/<nome>` se esiste, altrimenti questo seed).
 - `providers.json` è l'unico seed di *configurazione runtime* in questa cartella: è qui perché
   `shared/minitests/ai/gen_AI_Providers.bas` ha il suo contenuto come oracolo e le due gambe
   devono rispondere identiche anche su un checkout pulito (prima il C# faceva
