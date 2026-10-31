@@ -33,7 +33,7 @@
 
     <!-- Orchestrator.Compile (pipeline C#) vive qui, nel nuovo Executor. -->
   </ItemGroup>
-  <ItemGroup Condition="'$(GmbEdition)' == 'Commercial'">
+  <ItemGroup>
     <ProjectReference Include="..\modules\Database\Database.csproj" />
   </ItemGroup>
   <ItemGroup>

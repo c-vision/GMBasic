@@ -3,7 +3,6 @@
   "version": "0.1.1",
   "description": "Load balancing (RR/WRR/random/LC/WLC/LRT/P2C+EWMA/consistent-hash+vnodes/HRW/Maglev + health/slow-start/retry/draining) via shim FFI gmbsuite libnetlb (self-contained).",
   "contentType": "c-ffi",
-  "edition": "any",
   "exports": ["netlb.inc"],
   "samples": ["samples"],
   "build": { "system": "make", "target": "packlib", "cwd": "..", "tool": "cc", "outputs": ["lib/{platform}/libnetlb.dylib", "include/netlb.h"] },

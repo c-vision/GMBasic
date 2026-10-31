@@ -425,7 +425,7 @@ public sealed class RichGraph
     // ── Backend SQLITE (F7 P2): persiste nodi/edge in <name>.graph.db ──
     // Tabelle: graph_nodes(id TEXT PRIMARY KEY, title, folder, tags, author, date, strategy,
     // asset, concept, linked, json JSON) e graph_edges(from, to, type, weight). ISAM/DBF
-    // richiedono driver proprietari (Commercial Edition) → errore esplicito, mai stub.
+    // richiedono driver non supportati da questo percorso RDD → errore esplicito, mai stub.
 
     /// <summary>Path del db SQLite del grafo arricchito.</summary>
     public static string SqlitePath(string graphsDir, string name) => Path.Combine(graphsDir, name + ".graph.db");

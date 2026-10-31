@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "description": "Client Redis (RESP/2 su TCP) via shim nativo self-contained (nessun hiredis).",
   "contentType": "c-ffi",
-  "edition": "any",
   "exports": ["redis.inc"],
   "samples": ["samples"],
   "build": { "system": "make", "target": "packlib", "cwd": "..", "tool": "cc", "outputs": ["lib/{platform}/libredis.dylib", "include/redis.h"] },

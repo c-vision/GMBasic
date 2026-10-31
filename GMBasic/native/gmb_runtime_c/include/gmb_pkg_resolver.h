@@ -3,7 +3,7 @@
  * ABI a builder + getter (opaca, scalari/stringhe → P/Invoke semplice).
  *
  * BFS transitivi (+ opzionali + features), vincoli multipli (AND con "||"), overrides,
- * pin (--locked), pacchetti locali (workspace), cache+vendor, gate minGmbVersion/edition.
+ * pin (--locked), pacchetti locali (workspace), cache+vendor, gate minGmbVersion.
  * Il C# lo consuma via P/Invoke.
  * ============================================================================ */
 #ifndef GMB_PKG_RESOLVER_H
@@ -16,7 +16,7 @@ typedef struct gmb_pkg_resolve_result gmb_pkg_resolve_result_t;
 
 gmb_pkg_resolve_ctx_t* gmb_pkg_resolve_ctx_new(void);
 void gmb_pkg_resolve_ctx_set(gmb_pkg_resolve_ctx_t* c, const char* cache_root, const char* vendor_dir,
-                             const char* backend, const char* platform, const char* edition, int offline);
+                             const char* backend, const char* platform, int offline);
 /* Registry HTTP (per dist-tag e per scaricare i pacchetti mancanti in cache). "" = nessuno. */
 void gmb_pkg_resolve_ctx_set_registry(gmb_pkg_resolve_ctx_t* c, const char* registry_url);
 /* Root di ricerca AGGIUNTIVA (installazione locale dell'app, `<dir dell'eseguibile>/packages`):

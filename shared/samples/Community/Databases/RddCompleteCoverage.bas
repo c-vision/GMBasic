@@ -1,4 +1,4 @@
-' FILE: samples/Commercial/Databases/RddCompleteCoverage.bas
+' FILE: samples/Community/Databases/RddCompleteCoverage.bas
 ' Sample COMPLETO RDD — usa tutte e 22 le funzioni del namespace
 ' (BOF BUFFER CTOD CURVAL DELETE DTOC EOF FLOAT FLOCK FOUND GETFIELD GETFLDSTATE
 '  OLDVAL RECALL RECNO REPLACE RLOCK SETDELETED TABLEREVERT TABLEUPDATE TODAY VALTYPE).

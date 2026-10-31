@@ -42,11 +42,10 @@ public static class NativeBackend
     /// <param name="dllPath">Percorso della DLL generata da <see cref="IlProgramCompiler.Compile"/>.</param>
     /// <param name="outputDir">Directory di output per l'eseguibile nativo.</param>
     /// <param name="rid">Runtime Identifier (es. osx-arm64). Null → rilevato dalla piattaforma.</param>
-    /// <param name="edition">Edizione GMBasic ("Commercial" per i moduli DB commerciali).</param>
     /// <param name="descriptorPath">Root descriptor illink per-programma (vedi IlRuntimeProfiler);
     /// null → nessun descriptor (si compila il grafo intero, comportamento legacy).</param>
     /// <returns>Percorso dell'eseguibile nativo prodotto.</returns>
-    public static string Build(string dllPath, string outputDir, string? rid = null, string edition = "",
+    public static string Build(string dllPath, string outputDir, string? rid = null,
         string? descriptorPath = null)
     {
         rid ??= ResolveRid();
@@ -66,7 +65,7 @@ public static class NativeBackend
         Directory.CreateDirectory(workDir);
 
         var csproj = Path.Combine(workDir, baseName + ".csproj");
-        File.WriteAllText(csproj, GenerateCsproj(baseName, dllPath, rid, edition, workDir, descriptorPath));
+        File.WriteAllText(csproj, GenerateCsproj(baseName, dllPath, rid, workDir, descriptorPath));
 
         // Copia il descriptor del linker nella workDir del progetto host (il csproj lo referenzia
         // con path relativo a $(MSBuildProjectDirectory)).
@@ -90,7 +89,7 @@ public static class NativeBackend
             var psi = new ProcessStartInfo
             {
                 FileName = "dotnet",
-                Arguments = $"publish \"{csproj}\" -c Release -r {rid} -p:GmbEdition={EscapeProp(edition)} --self-contained -o \"{publishDir}\"",
+                Arguments = $"publish \"{csproj}\" -c Release -r {rid} --self-contained -o \"{publishDir}\"",
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
@@ -147,7 +146,7 @@ public static class NativeBackend
         return destExe;
     }
 
-    private static string GenerateCsproj(string baseName, string dllPath, string rid, string edition, string workDir,
+    private static string GenerateCsproj(string baseName, string dllPath, string rid, string workDir,
         string? descriptorPath)
     {
         var repoRoot = FindRepoRoot();
@@ -172,8 +171,6 @@ public static class NativeBackend
         // senza, csc lancia CS5001 perché il progetto host non ha un Main proprio.
         sb.AppendLine("    <SkipCompilerExecution>true</SkipCompilerExecution>");
         sb.AppendLine("    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>");
-        if (!string.IsNullOrEmpty(edition))
-            sb.AppendLine($"    <GmbEdition>{edition}</GmbEdition>");
         sb.AppendLine("  </PropertyGroup>");
         sb.AppendLine("  <ItemGroup>");
         // ProjectReference al runtime IL (GMBasic.Runtime.IL): MSBuild risolve il grafo repo e
@@ -192,9 +189,6 @@ public static class NativeBackend
         sb.AppendLine("</Project>");
         return sb.ToString();
     }
-
-    private static string EscapeProp(string edition) =>
-        string.IsNullOrEmpty(edition) ? "Community" : edition.Replace("\"", "");
 
     private static string Truncate(string s, int max = 2000) =>
         s.Length <= max ? s : s[..max] + "\n…(troncato)";

@@ -62,7 +62,7 @@ public class IsamDriver : BaseDriver
         var udt = Basic.Tools.Isam.IsamOfflineToolkit.BuildMinimalUdt(snapshot.Schema);
         var engine = Basic.Tools.Isam.IsamOfflineToolkit.OpenEngine(info.FileName, null);
         // Evaluator chiavi: pipeline Compiler -> P-Code -> PCodeVm (stessa del path
-        // schema-rich in CommercialDatabaseService.IsamOpenSchema), con fallback al
+        // schema-rich in DatabaseService.IsamOpenSchema), con fallback al
         // lookup diretto per nome campo.
         engine.Evaluator = (expr, ctx, tt) =>
         {

@@ -133,10 +133,9 @@ public sealed partial class IlProgramCompiler
     /// <param name="sourcePath">Percorso del file sorgente (per nome base e dir Work).</param>
     /// <param name="outputDir">Directory di output per l'eseguibile nativo.</param>
     /// <param name="rid">Runtime Identifier (es. osx-arm64). Null → rilevato.</param>
-    /// <param name="edition">Edizione ("Commercial" per i moduli DB commerciali).</param>
     /// <returns>Percorso dell'eseguibile nativo prodotto.</returns>
     public static string CompileNative(BasicProgram program, string sourcePath, string outputDir,
-        string? rid = null, string edition = "")
+        string? rid = null)
     {
         // 1. Genera la DLL managed (intermedio del build: la DLL è l'unico input di ilc).
         //    NON accanto all'eseguibile: prima finiva in <out>/il con TUTTA la closure
@@ -148,7 +147,7 @@ public sealed partial class IlProgramCompiler
         var ilDir = Path.Combine(Path.GetTempPath(), $"gmb_aot_{Environment.ProcessId}_{Guid.NewGuid():N}");
         try
         {
-            return CompileNativeCore(program, sourcePath, outputDir, rid, edition, ilDir, baseName);
+            return CompileNativeCore(program, sourcePath, outputDir, rid, ilDir, baseName);
         }
         finally
         {
@@ -157,7 +156,7 @@ public sealed partial class IlProgramCompiler
     }
 
     private static string CompileNativeCore(BasicProgram program, string sourcePath, string outputDir,
-        string? rid, string edition, string ilDir, string baseName)
+        string? rid, string ilDir, string baseName)
     {
         var dllPath = Compile(program, sourcePath, ilDir, baseName, rid, dllOnly: true);
 
@@ -182,7 +181,7 @@ public sealed partial class IlProgramCompiler
             Console.Error.WriteLine($"[NativeAOT] profilo fallito (si compila il grafo intero): {pex.Message}");
         }
 
-        var nativeExe = NativeBackend.Build(dllPath, outputDir, rid, edition, descriptorPath);
+        var nativeExe = NativeBackend.Build(dllPath, outputDir, rid, descriptorPath);
 
         // La tabella nome-globale → SymbolId è un DATO di runtime (IlRuntime la legge accanto
         // all'eseguibile per &/EVAL): esce dalla dir temporanea insieme al binario.

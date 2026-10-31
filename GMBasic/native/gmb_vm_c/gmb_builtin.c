@@ -10608,7 +10608,7 @@ void gmb_bf_sql_col(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_co
 void gmb_bf_446(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
-#ifdef GMB_HAS_COMMERCIAL_DB
+#ifdef GMB_NATIVE_DB
             if (func_code == 445)
             {
                 /* LOOKUP(returnField, searchExpr, searchField [, alias]) = valore di

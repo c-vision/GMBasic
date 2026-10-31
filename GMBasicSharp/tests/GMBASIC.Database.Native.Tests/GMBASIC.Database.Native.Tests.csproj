@@ -1,10 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!-- D8/D11: motori commerciali. Non referenziato dalla Community. -->
-  <PropertyGroup Condition="'$(GmbEdition)' == 'Community'">
-    <GmbModuleDatabaseExcluded>true</GmbModuleDatabaseExcluded>
-  </PropertyGroup>
-
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <LangVersion>preview</LangVersion>
@@ -19,7 +15,7 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(GmbEdition)' != 'Community'">
+  <ItemGroup>
     <ProjectReference Include="..\..\modules\Database\Database.csproj" />
     <ProjectReference Include="..\..\common\Compiler\Compiler.csproj" />
   </ItemGroup>

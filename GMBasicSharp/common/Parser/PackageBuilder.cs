@@ -41,13 +41,11 @@ public static class PackageBuilder
         if (m.ContentType == PackageContentType.DocsOnly) return; // nessun artefatto richiesto
         if (m.Exports.Length == 0 && m.Binaries.Count == 0 && m.Ffi == null)
             throw new PackageValidationException($"Pacchetto '{m.Name}' senza alcun artefatto (exports/binaries/ffi).");
-        if (m.Settings?.RequiresCommercial == true && string.IsNullOrEmpty(m.Edition) == false && m.Edition == "any")
-            throw new PackageValidationException($"Pacchetto commerciale '{m.Name}' deve dichiarare un'edizione.");
     }
 
     /// <summary>Scaffold di un nuovo pacchetto: gmb-package.json v2 + src/.</summary>
     public static string Init(string dir, string name, string version, PackageContentType type = PackageContentType.Source,
-        string edition = "Community", string? api = null)
+        string? api = null)
     {
         if (!IsValidName(name)) throw new PackageValidationException($"Nome non valido: '{name}'.");
         if (!IsValidVersion(version)) throw new PackageValidationException($"Versione non valida: '{version}'.");
@@ -59,7 +57,6 @@ public static class PackageBuilder
             Version = version,
             Description = "",
             ContentType = type,
-            Edition = edition,
             Exports = type is PackageContentType.Source or PackageContentType.Mixed or PackageContentType.DotNet or PackageContentType.VmChunk
                 ? [.. new[] { "src/" }] : [],
             Dependencies = ImmutableDictionary<string, string>.Empty,
@@ -74,12 +71,11 @@ public static class PackageBuilder
             version = manifest.Version,
             description = manifest.Description,
             contentType = manifest.ContentType.ToString().ToLowerInvariant(),
-            edition = manifest.Edition,
             backends = manifest.Backends.Length > 0 ? manifest.Backends.ToArray() : null,
             exports = manifest.Exports.Length > 0 ? manifest.Exports.ToArray() : null,
             binaries = manifest.Binaries.Count > 0 ? manifest.Binaries.ToDictionary(kv => kv.Key, kv => kv.Value.Platforms ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)) : null,
             ffi = manifest.Ffi == null ? null : new { api = manifest.Ffi.Api, headers = manifest.Ffi.Headers, libs = manifest.Ffi.Libs, link = manifest.Ffi.Link, declareExample = manifest.Ffi.DeclareExample },
-            settings = manifest.Settings == null ? null : new { requiresCommercial = manifest.Settings.RequiresCommercial, minGmbVersion = manifest.Settings.MinGmbVersion },
+            settings = manifest.Settings == null ? null : new { minGmbVersion = manifest.Settings.MinGmbVersion },
             dependencies = manifest.Dependencies.Count > 0 ? manifest.Dependencies : null,
         }, new JsonSerializerOptions { WriteIndented = true }));
 

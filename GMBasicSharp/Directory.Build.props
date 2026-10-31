@@ -2,18 +2,10 @@
 
   <!--
     GMBASIC — Directory.Build.props
-    Matrice di build: Edition × Backend × Modules × Deployment.
+    Matrice di build: Backend × Modules × Deployment.
     Definizione unica dei valori ammessi (regola: valori definiti una sola volta).
+    NON esiste alcuna dimensione "Edition": un solo build con tutte le funzioni.
   -->
-
-  <!-- ── EDITION ─────────────────────────────────────────────── -->
-  <PropertyGroup>
-    <!-- DEFAULT GARANTITO: Commercial (sempre, anche da IDE). La Community è SOLO
-         esplicita con -p:GmbEdition=Community (override da CLI/riga di comando). -->
-    <GmbEdition>Commercial</GmbEdition>
-  </PropertyGroup>
-
-  <!-- Valori ammessi: Community | Commercial (gate in targets) -->
 
   <!-- ── BACKENDS ────────────────────────────────────────────── -->
   <!-- Sottoinsieme di {VM,IL}. Default: VM,IL (il backend C99 C# è ritirato: la gamba C è C99Native) -->
@@ -29,7 +21,7 @@
   </PropertyGroup>
 
   <!-- ── MODULES ─────────────────────────────────────────────── -->
-  <!-- Lista esplicita di moduli. I driver commerciali sono aggiunti solo in Commercial (targets). -->
+  <!-- Lista esplicita di moduli (i driver su file sono sempre presenti). -->
   <PropertyGroup>
     <GmbModules Condition="'$(GmbModules)' == ''">Sql,VectorDB</GmbModules>
   </PropertyGroup>
@@ -37,12 +29,6 @@
   <!-- ── DEPLOYMENT ──────────────────────────────────────────── -->
   <PropertyGroup>
     <GmbDeployment Condition="'$(GmbDeployment)' == ''">FrameworkDependent</GmbDeployment>
-  </PropertyGroup>
-
-  <!-- ── SYMBOLS ─────────────────────────────────────────────── -->
-  <PropertyGroup>
-    <DefineConstants Condition="'$(GmbEdition)' == 'Community'">$(DefineConstants);GMBASIC_COMMUNITY</DefineConstants>
-    <DefineConstants Condition="'$(GmbEdition)' == 'Commercial'">$(DefineConstants);GMBASIC_COMMERCIAL</DefineConstants>
   </PropertyGroup>
 
   <!-- ── COMMON C# SETTINGS ──────────────────────────────────── -->

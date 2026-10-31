@@ -54,9 +54,9 @@ public class RddRealFileDriversTests
         {
             if (_fixturesReady) return;
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-            // Il ctor statico di CommercialDatabaseService registra i driver commerciali
+            // Il ctor statico di DatabaseService registra i driver su file
             // (DBF/ISAM/SPEED) nel DriverRegistry: forza la registrazione.
-            _ = new CommercialDatabaseService();
+            _ = new DatabaseService();
             Directory.CreateDirectory(FixturesDir);
             Directory.CreateDirectory(WorkDir);
             var enc = Encoding.GetEncoding(1252);
@@ -88,7 +88,7 @@ public class RddRealFileDriversTests
             var isamPath = Fixture("items.isdb");
             if (!File.Exists(isamPath))
             {
-                var svc = new CommercialDatabaseService();
+                var svc = new DatabaseService();
                 var h = svc.IsamOpenSchema(isamPath, "ITEMS", IsamSchemaJson);
                 svc.IsamInsert(h, [1L, "Widget", 19.99]);
                 svc.IsamInsert(h, [2L, "Gadget", 49.99]);

@@ -1,10 +1,7 @@
-// GMBASIC Conformance runner (D11).
-// Compila i sample in samples/ come metro di misura di ciò che è implementato.
-// samples/ mescola contenuto community e commercial nella stessa cartella per categoria
-// (es. samples/Clipper, samples/Databases, samples/ai contengono entrambi): non c'è più
-// una separazione a livello di path, quindi in edizione Community i sample commercial-only
-// vengono comunque tentati e falliscono con "richiede Commercial Edition" (atteso, D11 — non
-// un vero FAIL, vedi Testing-Guide).
+// GMBASIC Conformance runner.
+// Compila i sample in shared/samples/ come metro di misura di cio' che e' implementato.
+// Non esiste piu' alcuna edizione: ogni sample viene compilato ed eseguito con l'unico
+// build, che contiene tutte le funzioni (database su file inclusi).
 //
 // Uso: dotnet run --project tests/GMBASIC.Conformance [<filtro>]
 
@@ -13,14 +10,9 @@ using System.IO;
 using System.Linq;
 
 var rootDir = FindRoot();
-#if GMBASIC_COMMERCIAL
-var commercial = true;
-#else
-var commercial = false;
-#endif
 var samplesDir = Path.Combine(rootDir, "shared", "samples");
 var sampleDirs = new List<string> { samplesDir };
-Console.WriteLine($"Conformance: edition={(commercial ? "Commercial" : "Community")}");
+Console.WriteLine("Conformance: un solo build, tutte le funzioni disponibili");
 
 if (args.Length > 0 && args[0] == "vmtest")
 {

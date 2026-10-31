@@ -88,7 +88,7 @@ normalize() {
 }
 
 # 5) esegui il golden C# una volta
-(cd "$WORK" && dotnet run --project "$ROOT/REPL" -p:GmbEdition=Commercial -- "$WORK/golden.bas" --managed >/dev/null 2>&1)
+(cd "$WORK" && dotnet run --project "$ROOT/REPL" -- "$WORK/golden.bas" --managed >/dev/null 2>&1)
 
 # 6) per ogni formato: il contenuto C deve contenere le frasi chiave attese;
 #    il golden IL deve contenerle anch'esse (parità di contenuto).

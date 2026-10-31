@@ -10,7 +10,7 @@ namespace Basic.Runtime;
 /// P/Invoke verso <c>libgmb_torch_loader</c> (il loader C del runtime ML: scopre la lib
 /// host in GmbiPaths.MlDir(rid) = &lt;root&gt;/libs-runtime/ml/&lt;rid&gt;/ (configurabile) e carica i simboli gmb_ml_*).
 /// Se la lib host non è disponibile, gmb_ml_* ritorna GMB_ML_NOTLOADED (-2) — mai crash.
-/// Stesso modello di <see cref="NativeCommercialDb"/>.
+/// Stesso modello di <see cref="NativeDb"/>.
 /// </summary>
 public static partial class MlNativeEngine
 {

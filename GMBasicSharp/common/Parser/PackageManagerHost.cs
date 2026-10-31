@@ -7,7 +7,7 @@
 //   edition   : Community | Commercial | any
 //   binaries  : backend -> platform -> path  (v1: platform -> path, normalizzato)
 //   ffi       : { api, headers, libs, link, declareExample }  (c-abi | gmb-native)
-//   settings  : { requiresCommercial, minGmbVersion }
+//   settings  : { minGmbVersion }
 //
 // Il resolver SCEGLIE l'artefatto in base al contesto di build corrente
 // (backend + platform + edition), NON scarica sempre e ricompila. Retrocompatibile
@@ -66,21 +66,20 @@ public sealed partial class Parser
 
         /// <summary>
         /// Gate di compatibilità di un manifest col contesto corrente: `settings.minGmbVersion`
-        /// (engine troppo vecchio), `settings.requiresCommercial`/`edition` (edizione non combacia).
+        /// (engine troppo vecchio). Le vecchie chiavi `requiresCommercial`/`edition` non sono piu' gate.
         /// Lancia <see cref="PackageException"/> se il pacchetto non è utilizzabile qui.
         /// </summary>
         public static void CheckCompatibility(PackageManifest m, PackageBuildContext ctx)
         {
-            // Gate DELEGATO al riferimento C (gmb_pkg_compat_check): minGmbVersion/requiresCommercial/edition.
+            // Gate DELEGATO al riferimento C (gmb_pkg_compat_check): solo minGmbVersion
+            // (nessuna edizione: non esiste piu' la matrice Edition).
             var json = System.Text.Json.JsonSerializer.Serialize(new
             {
                 name = m.Name,
                 version = m.Version,
-                edition = m.Edition,
-                settings = m.Settings == null ? null
-                    : new { minGmbVersion = m.Settings.MinGmbVersion, requiresCommercial = m.Settings.RequiresCommercial },
+                settings = m.Settings == null ? null : new { minGmbVersion = m.Settings.MinGmbVersion },
             });
-            var err = NativePkg.CompatCheck(json, ctx.Edition);
+            var err = NativePkg.CompatCheck(json);
             if (err.Length > 0) throw new PackageException(err);
         }
 
@@ -182,7 +181,7 @@ public sealed partial class Parser
             var platformKey = string.IsNullOrEmpty(buildCtx.PlatformKey) ? GetCurrentPlatformKey() : buildCtx.PlatformKey;
 
             var (items, error) = NativePkg.Resolve(
-                CacheRoot, buildCtx.VendorDir, buildCtx.Backend, platformKey, buildCtx.Edition, buildCtx.Offline, RegistryUrl.TrimEnd('/'),
+                CacheRoot, buildCtx.VendorDir, buildCtx.Backend, platformKey, buildCtx.Offline, RegistryUrl.TrimEnd('/'),
                 reqs, overrides, features, locked, local,
                 buildCtx.Registries.Select(kv => (kv.Key, kv.Value)),
                 CommonLib.GmbiPaths.LocalPackagesDir);   /* locale dell'app PRIMA della cache */
@@ -907,7 +906,6 @@ public sealed partial class Parser
                 q.Add($"backend={Uri.EscapeDataString(ctx.Backend)}");
                 var pk = string.IsNullOrEmpty(ctx.PlatformKey) ? GetCurrentPlatformKey() : ctx.PlatformKey;
                 q.Add($"platform={Uri.EscapeDataString(pk)}");
-                q.Add($"edition={Uri.EscapeDataString(ctx.Edition)}");
             }
             var qs = q.Count > 0 ? "?" + string.Join("&", q) : "";
 
@@ -1071,7 +1069,6 @@ public sealed partial class Parser
                     Name = NativePkg.ManifestGet(h, "name"),
                     Version = NativePkg.ManifestGet(h, "version"),
                     Description = NativePkg.ManifestGet(h, "description"),
-                    Edition = Nz(NativePkg.ManifestGet(h, "edition")) ?? "any",
                 };
                 m.ContentType = Nz(NativePkg.ManifestGet(h, "contentType"))?.ToLowerInvariant() switch
                 {
@@ -1163,7 +1160,6 @@ public sealed partial class Parser
                 if (NativePkg.ManifestHas(h, "settings"))
                     m.Settings = new PackageSettings
                     {
-                        RequiresCommercial = NativePkg.ManifestGetNum(h, "settings.requiresCommercial", out var rc) && rc != 0,
                         MinGmbVersion = Nz(NativePkg.ManifestGet(h, "settings.minGmbVersion")),
                     };
 

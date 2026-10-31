@@ -1,6 +1,6 @@
 ' EXPECT: setrepl: /|appendmany:  2|lastrec:  2|lupdate: -1|applyrepl: si|followrepl: si
 ' MiniTest DBF — replicazione (SET/APPLY/FOLLOWREPLICATION), APPENDMANY, LUPDATE.
-' Portato dal pattern di samples/Commercial/Databases/{DbfReplication,DbDbfAppendMany}.bas,
+' Portato dal pattern di samples/Databases/{DbfReplication,DbDbfAppendMany}.bas,
 ' con path ASSOLUTI in /tmp (i sample lì scrivono nello bin/ del sample; qui serve
 ' CWD-indipendenza perché la CWD differisce fra i backend).
 IMPORT DBF

@@ -845,8 +845,7 @@ public class ReplEngine
             if (program?.MainModule == null) { WriteError("?Compilation failed."); return; }
 
             var outputDir = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(file))!, "bin", "native");
-            var exePath = global::Basic.IlBackend.IlProgramCompiler.CompileNative(program, file, outputDir,
-                edition: "Commercial");
+            var exePath = global::Basic.IlBackend.IlProgramCompiler.CompileNative(program, file, outputDir);
             Out.WriteLine($"[NATIVE] compiled -> {exePath}");
 
             // WorkingDirectory esplicito: senza, il processo erediterebbe la CWD di
@@ -1490,7 +1489,7 @@ public class ReplEngine
                 {
                     var nativeDir = Path.Combine(outputDir, "native");
                     var nativeExe = global::Basic.IlBackend.IlProgramCompiler.CompileNative(
-                        program, file, nativeDir, edition: "Commercial");
+                        program, file, nativeDir);
                     // Accanto al binario nativo, non solo nella cartella del progetto.
                     var nb = CommonLib.ProgramBundle.CopyNextTo(nativeDir, file, Out.WriteLine);
                     if (nb.Count > 0) Out.WriteLine($"[bundle] {nb.Count} file accanto al binario nativo");
@@ -1941,8 +1940,7 @@ public class ReplEngine
             var program = global::Basic.Orchestrator.Compile(file, null, false, "il");
             if (program?.MainModule == null) { WriteError("?Compilation failed."); return; }
             var outputDir = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(file))!, "bin", "native");
-            var exePath = global::Basic.IlBackend.IlProgramCompiler.CompileNative(program, file, outputDir,
-                edition: "Commercial");
+            var exePath = global::Basic.IlBackend.IlProgramCompiler.CompileNative(program, file, outputDir);
             Out.WriteLine($"[NATIVE] compiled -> {exePath}");
             var psi = new System.Diagnostics.ProcessStartInfo(exePath) { UseShellExecute = false };
             using var proc = System.Diagnostics.Process.Start(psi);
@@ -3518,13 +3516,14 @@ public class ReplEngine
     }
 
     /// <summary>GRAPH RDD &lt;backend&gt; — seleziona il backend di storage RDD per i GRAPH BUILD/UPDATE
-    /// legacy (GraphManager 8 campi): MEMORY | JSON | SQLITE (ISAM/DBF riservati, Commercial).</summary>
+    /// legacy (GraphManager 8 campi): MEMORY | JSON | SQLITE. ISAM/DBF oggi non sono supportati
+    /// da questo percorso (non e' una questione di edizione: la matrice Edition non esiste piu').</summary>
     private void RunGraphRdd(string backend)
     {
         var b = Basic.AI.Knowledge.GraphManager.ParseBackend(backend);
         if (b is Basic.AI.Knowledge.GraphRddBackend.Isam or Basic.AI.Knowledge.GraphRddBackend.Dbf)
         {
-            WriteError($"?GRAPH RDD {b} richiede driver proprietari (Commercial Edition) — usa MEMORY, JSON o SQLITE");
+            WriteError($"?GRAPH RDD {b} non e' supportato da questo percorso — usa MEMORY, JSON o SQLITE");
             return;
         }
         if (b is not (Basic.AI.Knowledge.GraphRddBackend.Memory

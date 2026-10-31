@@ -21,7 +21,6 @@ p1("name") = "gmb-vec"
 p1("version") = "1.2.0"
 p1("description") = "Vettori e algebra lineare per GMBasic"
 p1("contentType") = "mixed"
-p1("edition") = "Community"
 p1("backends") = "il, c99"
 pkgs.Add(p1)
 
@@ -31,7 +30,6 @@ p2("name") = "geom"
 p2("version") = "0.9.1"
 p2("description") = "Geometria computazionale (AABB, ray casting, mesh)"
 p2("contentType") = "cffi"
-p2("edition") = "Commercial"
 p2("backends") = "c99"
 pkgs.Add(p2)
 
@@ -41,7 +39,6 @@ p3("name") = "crypto-utils"
 p3("version") = "2.0.3"
 p3("description") = "Hash, firme e cifratura (SHA-256, ECDSA, AES-GCM)"
 p3("contentType") = "source"
-p3("edition") = "Community"
 p3("backends") = "il, c99, vm"
 pkgs.Add(p3)
 
@@ -51,7 +48,6 @@ p4("name") = "tui-dashboard"
 p4("version") = "0.5.0"
 p4("description") = "Widget TUI per cruscotti operativi"
 p4("contentType") = "dotnet"
-p4("edition") = "Commercial"
 p4("backends") = "il"
 pkgs.Add(p4)
 
