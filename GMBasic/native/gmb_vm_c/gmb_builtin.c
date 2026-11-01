@@ -6984,7 +6984,11 @@ static void gmb_bf_271(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
 static void gmb_bf_273(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
-            bout->result = gmb_dt_eomonth(args[0].num, (int)args[1].num);
+            /* EOMONTH(oa [, months]): il secondo argomento è OPZIONALE. Prima si leggeva
+             * args[1] senza guardia: con UNA sola chiamata `gmb_dt_eomonth(46039, <spazzatura>)`
+             * restituiva un mese arbitrario (EOMONTH(2026-01-15) → 46081 = 28/02 invece di
+             * 46053 = 31/01). Divergenza trovata confrontando le 4 gambe. */
+            bout->result = gmb_dt_eomonth(args[0].num, argc >= 2 ? (int)args[1].num : 0);
         }
 }
 static void gmb_bf_154(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)

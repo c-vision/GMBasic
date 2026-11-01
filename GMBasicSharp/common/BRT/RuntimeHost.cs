@@ -78,7 +78,10 @@ public sealed class DefaultRuntimeHost : IRuntimeHost
                 return targetType switch
                 {
                     DoubleType => conv.ToDouble(System.Globalization.CultureInfo.InvariantCulture),
-                    IntegerType => conv.ToInt16(System.Globalization.CultureInfo.InvariantCulture),
+                    // INTEGER = 64 bit (parità gambe native): coercizzare a Int16 troncava
+                    // in silenzio i valori > 32767 (e ToInt16 lanciava su quelli fuori range).
+                    IntegerType => conv.ToInt64(System.Globalization.CultureInfo.InvariantCulture),
+                    UIntegerType => conv.ToUInt64(System.Globalization.CultureInfo.InvariantCulture),
                     LongType => conv.ToInt64(System.Globalization.CultureInfo.InvariantCulture),
                     SingleType => conv.ToSingle(System.Globalization.CultureInfo.InvariantCulture),
                     _ => value

@@ -830,8 +830,7 @@ public sealed partial class IlProgramCompiler
         {
             case DoubleType: _il.Emit(OpCodes.Stelem_R8); return;
             case SingleType: _il.Emit(OpCodes.Stelem_R4); return;
-            case LongType or ULongType: _il.Emit(OpCodes.Stelem_I8); return;
-            case IntegerType or UIntegerType: _il.Emit(OpCodes.Stelem_I2); return;
+            case LongType or ULongType or IntegerType or UIntegerType: _il.Emit(OpCodes.Stelem_I8); return;
             case ByteType or SByteType or BitType: _il.Emit(OpCodes.Stelem_I1); return;
             case StringType or ClassType or InterfaceType: _il.Emit(OpCodes.Stelem_Ref); return;
             default: _il.Emit(OpCodes.Stelem, DataTypeMapper.Map(elementType, _types, _classTypes)); return;
@@ -844,9 +843,7 @@ public sealed partial class IlProgramCompiler
         {
             case DoubleType: _il.Emit(OpCodes.Ldelem_R8); return;
             case SingleType: _il.Emit(OpCodes.Ldelem_R4); return;
-            case LongType or ULongType: _il.Emit(OpCodes.Ldelem_I8); return;
-            case IntegerType: _il.Emit(OpCodes.Ldelem_I2); return;
-            case UIntegerType: _il.Emit(OpCodes.Ldelem_U2); return;
+            case LongType or ULongType or IntegerType or UIntegerType: _il.Emit(OpCodes.Ldelem_I8); return;
             case ByteType: _il.Emit(OpCodes.Ldelem_U1); return;
             case SByteType or BitType: _il.Emit(OpCodes.Ldelem_I1); return;
             case StringType or ClassType or InterfaceType: _il.Emit(OpCodes.Ldelem_Ref); return;

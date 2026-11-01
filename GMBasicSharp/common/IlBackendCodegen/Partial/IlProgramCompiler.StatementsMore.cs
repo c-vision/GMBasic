@@ -311,7 +311,17 @@ public sealed partial class IlProgramCompiler
                 // EmitExpression è GIÀ stato emesso sopra — qui SOLO la conversione/box sul
                 // valore sullo stack (un secondo EmitExpression produceva stack extra).
                 var argTypeN = NormalizeInferredType(argType);
-                if (argTypeN is DoubleType or SingleType or LongType or ULongType or QuadType or UQuadType
+                // Simbolo "tipo ridefinito" (es. `S` numerico e `S$` stringa che condividono lo
+                // STESSO SymbolId, vedi _redefinedTypeSymbols): il local è object e il tipo
+                // statico può risultare STRING anche quando il valore è un Single boxed →
+                // EmitConvertToString(StringType) è un no-op e il boxed finisce dove serve una
+                // stringa: "InvalidCastException: Unable to cast System.Single to System.String"
+                // (sample TypesConversions.bas, `DIM S AS SINGLE` + `DIM S$ AS STRING`).
+                // Stampa TIPIZZATA a runtime, come per i numerici.
+                var redefinedArg = arg.Expression is VariableExpr rvRedef
+                    && _redefinedTypeSymbols.Contains(rvRedef.SymbolId);
+                if (redefinedArg
+                    || argTypeN is DoubleType or SingleType or LongType or ULongType or QuadType or UQuadType
                         or IntegerType or UIntegerType or ByteType or SByteType or BitType or CurrencyType
                     || argType is InferredType or AnyType or Basic.JsonType
                     || !IsDirectToStringType(argTypeN))

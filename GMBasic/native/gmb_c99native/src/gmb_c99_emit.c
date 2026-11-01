@@ -2382,6 +2382,10 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                         gmb_tokenkind_t _erxt = gmb_member_tok(_erxdot + 1);
                         if (_erxt == GMB_TOK_Count || _erxt == GMB_TOK_ContainsKey) _erx_dict_scalar = 1;
                         else if (_erxt == GMB_TOK_Get && !_erxv->elem_boxed) _erx_dict_scalar = 1;
+                        /* Remove(k) è un PREDICATO numerico (bool -1/0) su ogni dict: senza
+                         * questo il ramo generico tornava TY_VAL e `IF d.Remove(k) THEN`
+                         * emetteva gmb_val_to_double(...) — C non compilabile. */
+                        else if (_erxt == GMB_TOK_Remove) _erx_dict_scalar = 1;
                     }
                     else if (_erxv->gkind && gk_is_list(_erxv->gkind) && !strchr(_erxdot + 1, '.')
                              && gmb_member_tok(_erxdot + 1) == GMB_TOK_Count) _erx_dict_scalar = 1;
@@ -2954,9 +2958,12 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                         && (gmb_tk_in(gmb_member_tok(mdot + 1), gmb_tk_dict_mme, (unsigned)(sizeof(gmb_tk_dict_mme)/sizeof(gmb_tk_dict_mme[0])))
                             || gmb_member_tok(mdot + 1) == GMB_TOK_CollMaxPair || gmb_member_tok(mdot + 1) == GMB_TOK_CollMinPair))
                         return TY_STR;
-                    /* DICT<...,JSON>.Remove(k) su dict di val: predicato NUMERICO (bool -1/0),
-                     * non stringa (l'emissione è `(gmb_dict_remove(...) ? -1 : 0)`). */
-                    if (cv && cv->gkind && gk_is_dict(cv->gkind) && cv->elem_boxed
+                    /* DICT<...>.Remove(k): predicato NUMERICO (bool -1/0) su OGNI dict, anche
+                     * con elementi non boxati (DICT OF STRING, STRING). Prima la regola valeva
+                     * solo per elem_boxed: per gli altri dict l'espressione era TY_VAL e il
+                     * contesto IF la avvolgeva in gmb_val_to_double(...) su un void → C non
+                     * compilabile (bug aperto trovato sul sample HttpRoutes). */
+                    if (cv && cv->gkind && gk_is_dict(cv->gkind)
                         && gmb_member_tok(mdot + 1) == GMB_TOK_Remove)
                         return TY_NUM;
                     /* Bug C99Native-Collections (BPTree .Get): l'emissione dict-Get è
@@ -11022,22 +11029,16 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                                 return;
                             }
                             if (mk == GMB_TOK_Remove) {
-                                /* DICT<...,JSON>.Remove(k) usato come predicato (IF): bool
-                                 * gmb_bool_t (-1/0). Il percorso scalare resta col value-void
-                                 * statement-expr (contesto stringa/void). */
-                                if (cv->elem_boxed) {
-                                    sb_put(&c->out, "(gmb_dict_remove(&");
-                                    sb_ident(&c->out, cv->name);
-                                    sb_put(&c->out, ", ");
-                                    emit_dict_key(c, args[0]);
-                                    sb_put(&c->out, ") ? -1 : 0)");
-                                    return;
-                                }
-                                sb_put(&c->out, "({ gmb_dict_remove(&");
+                                /* DICT.Remove(k) → SEMPRE predicato numerico (bool -1/0), per
+                                 * ogni tipo di dict: è ciò che serve in un IF e in qualunque
+                                 * contesto di valore. Il vecchio statement-expr void per i dict
+                                 * non-boxed rendeva `IF d.Remove(k) THEN` non compilabile
+                                 * (gmb_val_to_double su un void). */
+                                sb_put(&c->out, "(gmb_dict_remove(&");
                                 sb_ident(&c->out, cv->name);
                                 sb_put(&c->out, ", ");
                                 emit_dict_key(c, args[0]);
-                                sb_put(&c->out, "); (void)0; })");
+                                sb_put(&c->out, ") ? -1 : 0)");
                                 return;
                             }
                             if (mk == GMB_TOK_Get) {
@@ -16682,6 +16683,14 @@ static int is_json_path_member(ctx_t* c, gmb_expr_t* e, var_t** out_bv, const ch
              if (print_container_kind(c, s->print_args[i])) {
                  sb_put(&c->out, "gmb_print_string(");
                  emit_print_container(c, s->print_args[i]);
+             } else if (gmb_expr_is_datetime(c, s->print_args[i])) {
+                 /* NOW()/TODAY() e variabili DATETIME: il valore nel modello C è un OADate
+                  * (double). Il PRINT deve mostrare "dd/mm/yyyy hh:mm:ss" come IL/PCode/VM-C;
+                  * prima usciva il NUMERO seriale ("46327.7783564815") — divergenza trovata
+                  * sul sample Http/HttpRoutes.bas, che stampa NOW() nel log del middleware. */
+                 sb_put(&c->out, "gmb_print_string(gmb_dt_datetime_to_string((gmb_double_t)(");
+                 emit_expr(c, s->print_args[i]);
+                 sb_put(&c->out, "))");
              } else if (is_byte_expr(c, s->print_args[i])) {
                  emit_print_bytes(c, s->print_args[i]);
              } else if (is_boxed_index(c, s->print_args[i])) {

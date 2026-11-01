@@ -51,12 +51,9 @@ internal sealed class PCodeHttpServerInstance
 internal static class PCodeHttpServer
 {
     public static X509Certificate2? LoadCertificate(string? path, string? password)
-    {
-        if (string.IsNullOrEmpty(path)) return null;
-        return string.IsNullOrEmpty(password)
-            ? X509CertificateLoader.LoadPkcs12FromFile(path, null)
-            : X509CertificateLoader.LoadPkcs12FromFile(path, password);
-    }
+        // Sorgente UNICA (§0bis): PEM (cert+key) o PFX, come le gambe native. Prima SOLO PKCS#12:
+        // con un .pem il server moriva su "ASN1 corrupted data".
+        => CommonLib.Http.HttpServerCertificate.Load(path, password);
 
     public static PCodeHttpServerInstance Start(int port, X509Certificate2? certificate, HttpConfig config,
         Func<HttpRequest, PCodeHttpResponse, Stream, CancellationToken, Task<bool>> dispatch)
@@ -140,7 +137,11 @@ internal static class PCodeHttpServer
                 await ssl.AuthenticateAsServerAsync(new SslServerAuthenticationOptions
                 {
                     ServerCertificate = server.Certificate,
-                    EnabledSslProtocols = SslProtocols.None // negozia la versione piu' recente supportata dal sistema
+                    EnabledSslProtocols = SslProtocols.None, // negozia la versione piu' recente supportata dal sistema
+                    // ALPN esplicito (solo HTTP/1.1 su questa gamba): parità con le gambe C, che
+                    // negoziano la lista e scelgono h2 (opt-in) o http/1.1.
+                    ApplicationProtocols = new List<System.Net.Security.SslApplicationProtocol>
+                        { System.Net.Security.SslApplicationProtocol.Http11 }
                 }, serverToken).ConfigureAwait(false);
                 stream = ssl;
             }

@@ -1992,7 +1992,11 @@ public static partial class Linker
             {
                 case TokenKind.CInt:
                     if (hasFraction) throw CreateError(token, "OPTION STRICT ON: Perdita frazionaria in CINT.");
-                    if (value < Int16.MinValue || value > Int16.MaxValue) throw CreateError(token, "Overflow in CINT.");
+                    // INTEGER è un intero a 64 bit nel dialetto (parità PCode/VM-C/C99Native):
+                    // il limite a 16 bit rifiutava valori legittimi come 70000, che le altre
+                    // gambe accettano e stampano. Il limite dichiarato altrove per INTEGER
+                    // (CheckNarrowingOverflow) è l'intervallo a 32 bit.
+                    if (value < int.MinValue || value > int.MaxValue) throw CreateError(token, "Overflow in CINT.");
                     break;
                 case TokenKind.CByte:
                     if (hasFraction) throw CreateError(token, "OPTION STRICT ON: Perdita frazionaria in CBYTE.");
