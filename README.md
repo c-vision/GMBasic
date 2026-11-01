@@ -29,9 +29,8 @@ The folders are domains, not separate repos:
 
 The two IDEs (`GMBasicIDE/` — native macOS GUI, VB6-style; `GMBasicTuiIde/` — TUI written in BASIC)
 are **in development and are not part of this repository** for now: they are excluded until
-complete. The REPL's own TUI (`IDE` command: `GMBasic/native/repl/ide.c` +
-`GMBasicSharp/REPL/GMBasicIde.cs`, shared logic in `gmb_runtime_c/src/gmb_ide.c`) **is** in the repo,
-because it is part of the REPL.
+complete. The REPL's own TUI (`IDE` command: `REPL/ide.c`, shared logic in `gmb_runtime_c/src/gmb_ide.c`) **is** in the repo,
+because it is part of the canonical C REPL.
 
 Two things are deliberately **outside** this repository and are never cloned as submodules:
 the LLM engine [`c-vision/LLMEnv`](https://github.com/c-vision/LLMEnv) (built and cached as native

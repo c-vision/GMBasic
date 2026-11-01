@@ -26,10 +26,9 @@ continua a funzionare identica per il mondo C.
 - [x] **F5** — prova di eliminabilità: worktree con `GMBasicSharp/` **rimosso** → la REPL,
       `gmb` e `gmb_vm_host` si costruiscono e i comandi C sono verdi; `IL`/`PCODE` dichiarano
       l'assenza. Riproducibile: `tools/sh/repl_no_csharp_proof.sh`.
-- [ ] Sorgenti: saranno spostati da `GMBasic/native/repl` quando la REPL sarà completa
-      e testata (fase F2/F3 del TODO §6). Fino ad allora restano lì e vengono compilati
-      dal loro CMake.
-- [ ] `CMakeLists.txt` — nascerà con lo spostamento dei sorgenti.
+- [x] **Sorgenti qui** (F6, 2026-11-01): tutti i `.c/.h` e il `CMakeLists.txt` vivono in
+      `REPL/`; build `cmake -S REPL -B REPL/build && cmake --build REPL/build --target gmb_repl`.
+      `GMBasic/native/repl/` non esiste più.
 
 ## Contratto con i compilatori
 

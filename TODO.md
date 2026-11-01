@@ -13,7 +13,7 @@ part of this repository** for now: both are incomplete (GUI backlog ~51 items ov
 plus the designer/codegen groups; TUI 11 items: completion popup, find/replace, cursor in the status
 bar, real screen size, real-display verification, user guide, C tech debt). They live locally and
 are in `.gitignore`; they will be published when complete. The REPL's `IDE` command
-(`native/repl/ide.c` + `REPL/GMBasicIde.cs`, shared logic `gmb_runtime_c/src/gmb_ide.c`) stays in
+(`REPL/ide.c`, shared logic `gmb_runtime_c/src/gmb_ide.c`) stays in
 the repo: it is part of the REPL, not of the two IDE projects.
 
 ## 2. Documentation and tooling
@@ -67,7 +67,7 @@ tracked files). These remain:
 
 ## 6. Una sola REPL (in C) che pilota il compilatore C — il C# è opzionale ed eliminabile
 
-**Obiettivo.** Una sola REPL, binario **C** alla root del monorepo (`gmb repl`, oggi `native/repl`),
+**Obiettivo.** Una sola REPL, binario **C** alla root del monorepo (`REPL/`, oggi `gmb_repl`),
 che pilota **il compilatore C** tramite le sue opzioni. Non perde nessuna funzione utile al mondo C.
 
 **Regole non negoziabili**
@@ -197,10 +197,16 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
       richiede l'include di LLMEnv (dipendenza d'ambiente, non del mondo C#).
       Quando `GMBasicSharp/` sarà eliminato davvero, `IL`/`PCODE` si **rimuovono** dal
       dispatcher (non si lasciano a metà).
-- [~] **F6 — La REPL C# esce** (2026-11-01, deprecazione): il banner della REPL C# dichiara che
-      la REPL canonica è `gmb_repl` (C) e che il client resta per engine IL/P-Code (`gmbcs` per i
-      test headless). Resta da fare: spostare i sorgenti `GMBasic/native/repl` → `REPL/` con
-      CMake proprio e aggiornare i riferimenti (build script/IDE/CI).
+- [x] **F6a — sorgenti in `REPL/`** (2026-11-01): i 29 file C (`.c/.h` + `CMakeLists.txt`)
+      sono stati spostati con `git mv` da `GMBasic/native/repl/` a **`REPL/`**, che ora è
+      autoconsistente (`cmake -S REPL -B REPL/build && cmake --build REPL/build --target gmb_repl`).
+      Aggiornati: `tools/sh/repl_engine_parity.sh`, `tools/sh/repl_no_csharp_proof.sh`,
+      `REPL/README.md`, README root, manuale I.2. `GMBasic/native/repl/` non esiste più.
+      Verificato: build OK da `REPL/`, `RUN`/`EVAL` OK, parità engine PASS.
+- [ ] **F6b — eliminare la REPL C# tenendo il CLI**: `GMBasicSharp/REPL` non è solo una REPL, è
+      anche il CLI `gmb` (packages, brain, libs, publish, admin, login, daemon, rag/graph, setup).
+      Prima di cancellarla va deciso/portato quel perimetro (split `GMBasicSharp/Cli` oppure
+      migrazione dei comandi al CLI C/`gmbcs`); il **compilatore C# resta** (non si tocca).
 - [ ] **F4c — residuo di parità**: gli flag IL `-n`/`--native` e `-m`/`--managed` sono ancora
       vietati all'avvio (`rpl_il_forbidden`) anche con `--engine=csharp`. Servono
       `gmbcs build -n|-m` (AOT/managed) per accettarli; oggi il build dell'engine C# produce
