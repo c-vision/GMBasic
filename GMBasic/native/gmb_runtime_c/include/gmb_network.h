@@ -447,6 +447,10 @@ int gmb_http_response_stream_end(gmb_val_t res);
 /* 1 se lo stream di questa risposta è già iniziato (il server non deve bufferizzare). */
 int gmb_http_response_is_streaming(gmb_val_t res);
 
+/* res.Send(testo) — UNICA sorgente (§0bis): con lo stream aperto scrive NEL FLUSSO (nessun
+ * output perso), altrimenti deposita il corpo bufferizzato e imposta Content-Type se assente. */
+void gmb_http_response_send_text(gmb_val_t res, const char* text, const char* content_type);
+
 /* Default NEW HTTPCONFIG: unica sorgente C (AGENTS §0bis) per VM/C (OP_NEW 23) e
  * C99Native. Chiavi = CommonLib.Http.HttpConfig (incluso "DefaultRequestTimeout" come chiave
  * propria, alias sincronizzato solo nell'oggetto C#). seed popola un dict esistente;

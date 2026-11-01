@@ -12005,11 +12005,11 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                                         free(rb.s); return;
                                     }
                                     if (!strcasecmp(meth2, "Send") && nargs >= 1) {
-                                        sb_put(&c->out, "(gmb_val_dict_set(");
+                                        /* Send unico del runtime (stream-aware): con lo stream
+                                         * aperto il testo va nel flusso, altrimenti nel Body. */
+                                        sb_put(&c->out, "(gmb_http_response_send_text(");
                                         sb_put(&c->out, R);
-                                        sb_put(&c->out, ", \"Body\", gmb_make_val_string((");
-                                        emit_str_operand(c, args[0]);
-                                        sb_put(&c->out, ").data)), 0.0)");
+                                        sb_put(&c->out, ", ("); emit_str_operand(c, args[0]); sb_put(&c->out, ").data, NULL), 0.0)");
                                         free(rb.s); return;
                                     }
                                     if (!strcasecmp(meth2, "SetStatus") && nargs >= 1) {
@@ -12355,11 +12355,12 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                     }
                 }
                 if (bv && bv->gkind == GK_HTTPRESP && gmb_member_tok(dot + 1) == GMB_TOK_Send && nargs == 1) {
-                    sb_put(&c->out, "(gmb_val_dict_set(");
+                    /* Sorgente unica del runtime (§0bis): con lo stream aperto scrive NEL flusso,
+                     * altrimenti riempie il Body. Prima era un dict_set diretto: su C99
+                     * `res.Send` dentro uno stream perdeva l'output (parità rotta con VM/C). */
+                    sb_put(&c->out, "(gmb_http_response_send_text(");
                     emit_ident(c, bv->name);
-                    sb_put(&c->out, ", \"Body\", gmb_make_val_string((");
-                    emit_str_operand(c, args[0]);
-                    sb_put(&c->out, ").data)), 0.0)");
+                    sb_put(&c->out, ", ("); emit_str_operand(c, args[0]); sb_put(&c->out, ").data, NULL), 0.0)");
                     return;
                 }
                 /* req.Query("k") → stringa (parity emitter C#: il "Query" del dict req è la
