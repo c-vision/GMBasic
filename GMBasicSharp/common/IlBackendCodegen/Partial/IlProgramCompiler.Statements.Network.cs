@@ -416,6 +416,52 @@ public sealed partial class IlProgramCompiler
         _il.Emit(OpCodes.Call, IlRuntimeMessageHandlerBySymbolMethod);
     }
 
+    // ── SIGNAL (namespace SIGNAL: segnali con filtro strutturato) ──
+    private void EmitSignalSubscribeStatement(SignalSubscribeStmt stmt)
+    {
+        // Il runtime riceve (id, types, asset, market, symbols, timeframe).
+        EmitStringArg(stmt.Id);
+        if (stmt.Types != null) EmitStringArg(stmt.Types); else _il.Emit(OpCodes.Ldstr, "");
+        if (stmt.Asset != null) EmitStringArg(stmt.Asset); else _il.Emit(OpCodes.Ldstr, "");
+        if (stmt.Market != null) EmitStringArg(stmt.Market); else _il.Emit(OpCodes.Ldstr, "");
+        if (stmt.Symbols != null) EmitStringArg(stmt.Symbols); else _il.Emit(OpCodes.Ldstr, "");
+        if (stmt.Timeframe != null) EmitStringArg(stmt.Timeframe); else _il.Emit(OpCodes.Ldstr, "");
+        _il.Emit(OpCodes.Call, IlRuntimeSignalSubscribeMethod);
+    }
+    private void EmitSignalEmitStatement(SignalEmitStmt stmt)
+    {
+        EmitStringArg(stmt.Type);
+        EmitStringArg(stmt.Symbol);
+        EmitDoubleArgument(stmt.Value);
+        if (stmt.Asset != null) EmitStringArg(stmt.Asset); else _il.Emit(OpCodes.Ldstr, "");
+        if (stmt.Market != null) EmitStringArg(stmt.Market); else _il.Emit(OpCodes.Ldstr, "");
+        if (stmt.Timeframe != null) EmitStringArg(stmt.Timeframe); else _il.Emit(OpCodes.Ldstr, "");
+        _il.Emit(OpCodes.Call, IlRuntimeSignalEmitMethod);
+        _il.Emit(OpCodes.Pop);   // conteggio degli handler: SIGNAL EMIT non è una funzione
+    }
+    private void EmitSignalUnsubscribeStatement(SignalUnsubscribeStmt stmt)
+    {
+        if (stmt.Id != null) EmitStringArg(stmt.Id); else _il.Emit(OpCodes.Ldstr, "");
+        _il.Emit(OpCodes.Call, IlRuntimeSignalUnsubscribeMethod);
+    }
+    private void EmitSignalPingStatement(SignalPingStmt stmt) => _il.Emit(OpCodes.Call, IlRuntimeSignalPingMethod);
+    private void EmitOnSignalStatement(OnSignalStmt stmt)
+    {
+        if (stmt.Sub != null) EmitStringArg(stmt.Sub); else _il.Emit(OpCodes.Ldstr, "");
+        if (stmt.Action is MessageStopAction)
+        {
+            _il.Emit(OpCodes.Call, IlRuntimeSignalUnregisterHandlerMethod);
+            return;
+        }
+        int sym = stmt.Action is MessageCallAction mc
+            ? ResolveMessageHandlerSymbolId(mc.Handler)
+            : stmt.Action is MessageGosubAction mg
+                ? ResolveWindowGosubSymbolId(new GosubAction(mg.TargetLabel))
+                : -1;
+        _il.Emit(OpCodes.Ldc_I4, sym);
+        _il.Emit(OpCodes.Call, IlRuntimeSignalHandlerBySymbolMethod);
+    }
+
     private void EmitTcpSendStatement(TcpSendStmt stmt)
     {
         EmitLoadNetworkService();

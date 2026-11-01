@@ -110,6 +110,7 @@ add_library(gmb_vm STATIC
     gmb_vm_events.c
     gmb_gpm.c
     gmb_adapter.c
+    gmb_vm_signal.c
     gmb_vm_bsp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_torch/src/gmb_torch.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_torch/src/gmb_torch_str.c

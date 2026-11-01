@@ -6,6 +6,7 @@
  * ============================================================================ */
 
 #include "gmb_vm_core.h"
+#include "gmb_vm_signal.h"
 #include "gmb_state_hook.h"   /* canale d'errore dell'hook di stato (VM/C ospitata) */
 #include "gmb_vm_tui.h"
 #include "gmb_vm_events.h"
@@ -5724,6 +5725,11 @@ static const vm_sys_row VM_SYS_TBL[] = {
     { GMB_SC_FILE_LOCK, vm_sys_lock_342 },       /* FILE_LOCK */
     { 422, vm_msg_op },             /* MESSAGE_OP */
     { 423, vm_msg_on },             /* ON_MESSAGE */
+    { GMB_SC_SIGNAL_SUBSCRIBE, vm_signal_subscribe },   /* SIGNAL SUBSCRIBE */
+    { GMB_SC_ON_SIGNAL, vm_signal_on },                 /* ON SIGNAL */
+    { GMB_SC_SIGNAL_EMIT, vm_signal_emit },             /* SIGNAL EMIT */
+    { GMB_SC_SIGNAL_UNSUBSCRIBE, vm_signal_unsubscribe }, /* SIGNAL UNSUBSCRIBE */
+    { GMB_SC_SIGNAL_PING, vm_signal_ping },             /* SIGNAL PING */
     { GMB_SC_FILE_UNLOCK, vm_sys_lock_343 },       /* FILE_UNLOCK */
     { GMB_SC_RAISE_EVENT, vm_sys_event_344 },      /* RAISE_EVENT */
     { GMB_SC_ADD_HANDLER, vm_sys_event_345 },      /* ADD_HANDLER */
@@ -7046,6 +7052,14 @@ static int ws_resolve_callback(const char* name, gmb_vm_t* vm)
 /* I task callback (OnMessage/OnClose) condividono i globals del task main (parità
  * globalsTemplate managed): senza, i contatori a livello modulo (es. messageCount)
  * ripartirebbero da zero a ogni callback. */
+/* Wrapper pubblico per i domini in file separati (gmb_vm_signal.c): la logica resta UNA
+ * (qui), i callbacks dei domini la usano senza duplicarla (§0bis). */
+void gmb_vm_task_share_main_globals(gmb_task_t* t, gmb_vm_t* vm);
+void gmb_vm_task_share_main_globals(gmb_task_t* t, gmb_vm_t* vm)
+{
+    ws_task_share_main_globals(t, vm);
+}
+
 static void ws_task_share_main_globals(gmb_task_t* t, gmb_vm_t* vm)
 {
     if (vm->http_main_task && vm->http_main_task->globals_nums)
@@ -10541,7 +10555,15 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                         /* HTTPOPTIONS: pre-inizializza "Headers" come dict nested (opts.Headers
                            .ContentType = "..." scrive dentro) — mapping 1:1 con HttpHeaders. */
                         gmb_obj_shared_val_t* h = gmb_shared_dict_new();
-                        if (h) gmb_dict_set(d->dict, "Headers", gmb_make_val_obj((gmb_obj_t*)h));
+                        if (h)
+                        {
+                            gmb_dict_set(d->dict, "Headers", gmb_make_val_obj((gmb_obj_t*)h));
+                            /* gmb_dict_set TRATTIENE: la referenza di creazione va rilasciata, altrimenti
+                             * il dict "Headers" resta vivo per sempre (LEAK misurato con `leaks`: una
+                             * istanza per OGNI render BSP, perché ogni pagina ha `DIM opts = NEW
+                             * HTTPOPTIONS` nel preambolo). */
+                            gmb_obj_release((gmb_obj_t*)h);
+                        }
                     }
                     else if (typeCode == 23)
                     {
@@ -12415,6 +12437,11 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     }
                     pthread_mutex_unlock(&vm->print_lock);
                 }
+                /* Il pop TRASFERISCE la proprietà del retain fatto dal push: la entry va
+                 * rilasciata dopo l'uso, altrimenti ogni PRINT di una costante stringa lascia
+                 * vivo un gmb_obj_string_t (LEAK misurato: 64+16 B per PRINT, 600.000 blocchi
+                 * vivi dopo 600 render di una pagina con 1000 PRINT; `leaks` con
+                 * MallocStackLogging: `push_const → gmb_str_alloc`). */
                 break;
             }
             case OP_PRINT_LINE:

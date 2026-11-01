@@ -195,6 +195,9 @@ extern gmb_int_t g_vm_file_handles[64];
 extern int g_vm_file_content_types[64];
 void vm_pop_args_ordered(gmb_task_t* task, gmb_stack_entry_t* out, int argc);
 void vm_pop_str(gmb_task_t* task, char* buf, size_t cap);
+/* Condivisione dei globali del task main (wrapper di ws_task_share_main_globals,
+ * usato dai domini VM in file separati: gmb_vm_signal.c). */
+void gmb_vm_task_share_main_globals(gmb_task_t* t, gmb_vm_t* vm);
 /* Helper condivise dei builtin (non-static: usate da gmb_builtin.c, refactor 6.5.2). */
 typedef struct {
     double result;

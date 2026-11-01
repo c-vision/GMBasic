@@ -868,6 +868,11 @@ public sealed partial class IlProgramCompiler
             case MessagePingStmt mpi: EmitMessagePingStatement(mpi); break;
             case MessageCloseStmt mcl: EmitMessageCloseStatement(mcl); break;
             case OnMessageStmt mon: EmitOnMessageStatement(mon); break;
+            case SignalSubscribeStmt ssub: EmitSignalSubscribeStatement(ssub); break;
+            case SignalEmitStmt semit: EmitSignalEmitStatement(semit); break;
+            case SignalUnsubscribeStmt sunsub: EmitSignalUnsubscribeStatement(sunsub); break;
+            case SignalPingStmt sping: EmitSignalPingStatement(sping); break;
+            case OnSignalStmt son: EmitOnSignalStatement(son); break;
             case TcpSendStmt ts: EmitTcpSendStatement(ts); break;
             case TcpCloseStmt tcl: EmitTcpCloseStatement(tcl); break;
             case UdpSendStmt us: EmitUdpSendStatement(us); break;

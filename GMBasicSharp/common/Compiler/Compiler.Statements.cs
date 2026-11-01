@@ -431,6 +431,11 @@ public sealed partial class Compiler
             case MessagePingStmt mpi: EmitMessageOp(4, HandleNameExpr(mpi.Target), null, null); break;
             case MessageCloseStmt mcl: EmitMessageOp(5, HandleNameExpr(mcl.Target), null, null); break;
             case OnMessageStmt mon: VisitOnMessageStatement(mon); break;
+            case SignalSubscribeStmt ssub: VisitSignalSubscribeStatement(ssub); break;
+            case SignalEmitStmt semit: VisitSignalEmitStatement(semit); break;
+            case SignalUnsubscribeStmt sunsub: VisitSignalUnsubscribeStatement(sunsub); break;
+            case SignalPingStmt: EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.SIGNAL_PING); EmitByte((byte)0); break;
+            case OnSignalStmt son: VisitOnSignalStatement(son); break;
             case TeamMessageStmt tms: VisitTeamMessageStatement(tms); break;
             case TeamRunStmt trs: VisitTeamRunStatement(trs); break;
             case TeamBroadcastStmt tbs: VisitTeamBroadcastStatement(tbs); break;
@@ -942,6 +947,54 @@ public sealed partial class Compiler
         EmitConstant(handler);
         EmitConstant(sub);
         EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.ON_MESSAGE); EmitByte((byte)2);
+    }
+
+    // ── SIGNAL (namespace SIGNAL) ──
+    // Push nell'ordine del layout della VM (l'ULTIMO push è il PRIMO pop).
+    private void EmitSignalStrArg(Expr? e)
+    {
+        if (e is StringExpr se) EmitConstant(se.Value);
+        else if (e is null) EmitConstant("");
+        else VisitExpression(e);
+    }
+
+    private void VisitSignalSubscribeStatement(SignalSubscribeStmt stmt)
+    {
+        // push: id, types, asset, market, symbols, timeframe → pop: timeframe, symbols, market, asset, types, id
+        EmitSignalStrArg(stmt.Id);
+        EmitSignalStrArg(stmt.Types);
+        EmitSignalStrArg(stmt.Asset);
+        EmitSignalStrArg(stmt.Market);
+        EmitSignalStrArg(stmt.Symbols);
+        EmitSignalStrArg(stmt.Timeframe);
+        EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.SIGNAL_SUBSCRIBE); EmitByte((byte)6);
+    }
+
+    private void VisitSignalEmitStatement(SignalEmitStmt stmt)
+    {
+        // push: type, symbol, value, asset, market, timeframe
+        EmitSignalStrArg(stmt.Type);
+        EmitSignalStrArg(stmt.Symbol);
+        VisitExpression(stmt.Value);
+        EmitSignalStrArg(stmt.Asset);
+        EmitSignalStrArg(stmt.Market);
+        EmitSignalStrArg(stmt.Timeframe);
+        EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.SIGNAL_EMIT); EmitByte((byte)6);
+    }
+
+    private void VisitSignalUnsubscribeStatement(SignalUnsubscribeStmt stmt)
+    {
+        EmitSignalStrArg(stmt.Id);
+        EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.SIGNAL_UNSUBSCRIBE); EmitByte((byte)1);
+    }
+
+    private void VisitOnSignalStatement(OnSignalStmt stmt)
+    {
+        var id = stmt.Sub is StringExpr se ? se.Value : "";
+        var handler = stmt.Action is MessageCallAction mca ? mca.Handler.Lexeme : "";
+        EmitConstant(handler);
+        EmitConstant(id);
+        EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.ON_SIGNAL); EmitByte((byte)2);
     }
 
     /// <summary>TEAM name RUN task — orchestrazione (syscall TEAM_RUN).</summary>

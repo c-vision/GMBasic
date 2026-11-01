@@ -57,6 +57,13 @@ public sealed partial class Parser
             return [ParseOnMessageStatement(onToken)];
         }
 
+        // 2a-bis. Gestione Eventi: ON SIGNAL (namespace SIGNAL — comando per nome, non keyword)
+        if (At(0).Lexeme != null && At(0).Lexeme.Equals("SIGNAL", StringComparison.OrdinalIgnoreCase))
+        {
+            Advance(); // SIGNAL
+            return [ParseOnSignalStatement(onToken)];
+        }
+
         // 2b. Gestione Eventi: ON SPRITE COLLISION / ON SPRITE COLLISIONS
         if (Match(TokenKind.Sprite))
         {
@@ -310,10 +317,13 @@ public sealed partial class Parser
             return new CallAction(callExpr);
         }
 
-        // Se è una semplice VariableExpr, significa che mancano le parentesi.
-        if (callExpr is VariableExpr)
+        // Nome nudo senza parentesi (`ON MOUSE Click CALL MiaSub`): è una chiamata a
+        // procedura a ZERO argomenti. La leg C la accetta e i campioni la usano; la si
+        // normalizza in una FunctionExpr senza argomenti, che il linker risolve come una
+        // normale chiamata (candidati per nome + compatibilità di firma).
+        if (callExpr is VariableExpr ve)
         {
-            throw CreateError(Peek(), "Le chiamate a procedura negli eventi richiedono le parentesi (es. NomeSub()).");
+            return new CallAction(new FunctionExpr(-1, ve.NameCleaned, ImmutableArray<Expr>.Empty, null));
         }
 
         throw CreateError(Peek(), "Attesa un'istruzione di salto (GOTO, GOSUB), STOP o una chiamata a procedura.");

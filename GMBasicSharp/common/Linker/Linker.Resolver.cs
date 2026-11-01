@@ -2314,6 +2314,28 @@ public static partial class Linker
             case OnMessageStmt mOn:
                 return new OnMessageStmt(mOn.Sub != null ? ResolveExpression(mOn.Sub, program) : null, ResolveMessageAction(mOn.Action, program), mOn.Token) { ScopeId = mOn.ScopeId };
 
+            case SignalSubscribeStmt sigSub:
+                return new SignalSubscribeStmt(ResolveExpression(sigSub.Id, program),
+                    sigSub.Types != null ? ResolveExpression(sigSub.Types, program) : null,
+                    sigSub.Asset != null ? ResolveExpression(sigSub.Asset, program) : null,
+                    sigSub.Market != null ? ResolveExpression(sigSub.Market, program) : null,
+                    sigSub.Symbols != null ? ResolveExpression(sigSub.Symbols, program) : null,
+                    sigSub.Timeframe != null ? ResolveExpression(sigSub.Timeframe, program) : null,
+                    sigSub.Token) { ScopeId = sigSub.ScopeId };
+            case SignalEmitStmt sigEmit:
+                return new SignalEmitStmt(ResolveExpression(sigEmit.Type, program),
+                    ResolveExpression(sigEmit.Symbol, program), ResolveExpression(sigEmit.Value, program),
+                    sigEmit.Asset != null ? ResolveExpression(sigEmit.Asset, program) : null,
+                    sigEmit.Market != null ? ResolveExpression(sigEmit.Market, program) : null,
+                    sigEmit.Timeframe != null ? ResolveExpression(sigEmit.Timeframe, program) : null,
+                    sigEmit.Token) { ScopeId = sigEmit.ScopeId };
+            case SignalUnsubscribeStmt sigUnsub:
+                return new SignalUnsubscribeStmt(sigUnsub.Id != null ? ResolveExpression(sigUnsub.Id, program) : null, sigUnsub.Token) { ScopeId = sigUnsub.ScopeId };
+            case SignalPingStmt sigPing:
+                return new SignalPingStmt(sigPing.Token) { ScopeId = sigPing.ScopeId };
+            case OnSignalStmt sigOn:
+                return new OnSignalStmt(sigOn.Sub != null ? ResolveExpression(sigOn.Sub, program) : null, ResolveMessageAction(sigOn.Action, program), sigOn.Token) { ScopeId = sigOn.ScopeId };
+
             case RddCreateIndexStmt rddCrtIdx:
                 return new RddCreateIndexStmt(ResolveExpression(rddCrtIdx.Area, program),
                     ResolveExpression(rddCrtIdx.Name, program), ResolveExpression(rddCrtIdx.Key, program),
@@ -3086,7 +3108,7 @@ public static partial class Linker
                         case ComboBoxStmt xs:
                 return xs with { Variable = ResolveTarget(xs.Variable, program), Row = ResolveExpression(xs.Row, program), Col = ResolveExpression(xs.Col, program), Width = ResolveExpression(xs.Width, program), Items = ResolveExpression(xs.Items, program), Id = xs.Id != null ? ResolveTarget(xs.Id, program) : null };
             case MenuStmt xs:
-                return xs with { Variable = ResolveTarget(xs.Variable, program), Id = xs.Id != null ? ResolveTarget(xs.Id, program) : null };
+                return xs with { Variable = xs.Variable != null ? ResolveTarget(xs.Variable, program) : null, Id = xs.Id != null ? ResolveTarget(xs.Id, program) : null };
             case StatusBarStmt xs:
                 return xs with { Id = xs.Id != null ? ResolveTarget(xs.Id, program) : null };
             case FileDialogStmt xs:
@@ -3102,7 +3124,7 @@ public static partial class Linker
             case NumericUpDownStmt xs:
                 return xs with { Variable = ResolveTarget(xs.Variable, program), Id = xs.Id != null ? ResolveTarget(xs.Id, program) : null };
             case StarRatingStmt xs:
-                return xs with { Variable = ResolveTarget(xs.Variable, program), Id = xs.Id != null ? ResolveTarget(xs.Id, program) : null };
+                return xs with { Variable = xs.Variable != null ? ResolveTarget(xs.Variable, program) : null, Id = xs.Id != null ? ResolveTarget(xs.Id, program) : null };
             case ScrollBarStmt xs:
                 return xs with { Variable = ResolveTarget(xs.Variable, program), Id = xs.Id != null ? ResolveTarget(xs.Id, program) : null };
             case ScrollViewStmt xs:
@@ -3118,9 +3140,9 @@ public static partial class Linker
             case ContextMenuStmt xs:
                 return xs with { Variable = ResolveTarget(xs.Variable, program), Id = xs.Id != null ? ResolveTarget(xs.Id, program) : null };
             case LogViewStmt xs:
-                return xs with { Variable = ResolveTarget(xs.Variable, program), Id = xs.Id != null ? ResolveTarget(xs.Id, program) : null };
+                return xs with { Variable = xs.Variable != null ? ResolveTarget(xs.Variable, program) : null, Id = xs.Id != null ? ResolveTarget(xs.Id, program) : null };
             case HexViewStmt xs:
-                return xs with { Variable = ResolveTarget(xs.Variable, program), Id = xs.Id != null ? ResolveTarget(xs.Id, program) : null };
+                return xs with { Variable = xs.Variable != null ? ResolveTarget(xs.Variable, program) : null, Id = xs.Id != null ? ResolveTarget(xs.Id, program) : null };
             case BigTextStmt xs:
                 return xs with { Variable = ResolveTarget(xs.Variable, program), Id = xs.Id != null ? ResolveTarget(xs.Id, program) : null };
             case CodeAreaStmt xs:

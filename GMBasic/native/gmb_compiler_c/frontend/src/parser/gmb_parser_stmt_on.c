@@ -69,6 +69,10 @@ gmb_stmt_t* gmb_p_parse_on(gmb_parser_t* p, int line, bool* multiline)
         else if (gmb_p_tok_is_keyword(gmb_p_cur(p), "Stop") || gmb_p_check(p, GMB_TOK_Stop)) { gmb_p_adv(p); s2->flag = 2; }
         return s2;
     }
+    /* ON SIGNAL <id> CALL <handler> — evento del namespace SIGNAL. */
+    if (gmb_p_tok_is_soft_keyword(gmb_p_cur(p), "SIGNAL")) {
+        return gmb_p_parse_on_signal(p, line);
+    }
     gmb_stmt_t* s = gmb_stmt_new(GMB_STMT_ON_ERROR, line);
     if (gmb_p_tok_is_keyword(gmb_p_cur(p), "Error") || gmb_p_check(p, GMB_TOK_Error)) {
         gmb_p_adv(p);
