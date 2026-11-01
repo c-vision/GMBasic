@@ -161,6 +161,7 @@ public class ReplEngine
             ["HELP"] = HandleHelpAsync,
             ["LIST"] = HandleListAsync,
             ["EDIT"] = HandleEditAsync,
+            ["IDE"] = HandleEditAsync,   /* alias: il REPL nativo usa IDE per lo stesso editor */
             ["NEW"] = HandleNewAsync,
             ["AUTO"] = HandleAutoAsync,
             ["SAVE"] = HandleSaveAsync,
@@ -178,7 +179,6 @@ public class ReplEngine
             ["AST"] = HandleAstAsync,
             ["DASM"] = HandleDasmAsync,
             ["IL"] = HandleIlAsync,
-            ["FLATTEN"] = HandleFlattenAsync,
             ["GPM"] = HandleGpmAsync,
             ["LS"] = HandleLsAsync,
             ["CD"] = HandleCdAsync,
@@ -895,9 +895,11 @@ public class ReplEngine
 
     private void PrintWelcome()
     {
-        const string title = "GMBASIC ENTERPRISE EDITION V1.0";
+        // Versione dell'engine: stessa di `GMB_PKG_ENGINE_VERSION` (gate minGmbVersion).
+        const string title = "GMBASIC 1.0.0";
         const string copyright = "(C) 2025 MINARDI GAETANO. ALL RIGHTS RESERVED.";
-        var mode = _useSdl ? "EMULATED CONSOLE MODE"
+        var mode = _cliArgs?.UseC64Mode == true ? "C64 MODE"
+                 : _useSdl ? "SDL CONSOLE MODE"
                  : (_cliArgs?.UseSystemConsole == true ? "SYSTEM CONSOLE MODE" : "STANDARD CONSOLE MODE");
         var w = TermWidth;
         Out.WriteLine();
@@ -2298,12 +2300,6 @@ public class ReplEngine
         }
         catch (Exception ex) { WriteError($"?Error: {ex.Message}"); }
 
-        return Task.CompletedTask;
-    }
-
-    private Task HandleFlattenAsync(string args, CancellationToken __)
-    {
-        Out.WriteLine("FLATTEN: requires migration from Interpreter/Repl.Flatten.cs");
         return Task.CompletedTask;
     }
 

@@ -1573,7 +1573,7 @@ public class GMBasicIde : IApp
     private void DoAbout()
     {
         AlertBox.Show("GMBASIC IDE",
-            "GMBASIC ENTERPRISE EDITION V1.0\nQBasic/QuickVB-style TUI editor\n\nPress Enter or ESC to continue.",
+            "GMBASIC 1.0.0\nQBasic/QuickVB-style TUI editor\n\nPress Enter or ESC to continue.",
             width: 60, align: AlertAlign.Center);
     }
 

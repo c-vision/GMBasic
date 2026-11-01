@@ -366,6 +366,15 @@ static void sdlcon_select_monospace(gmb_sdl_console_t* c)
 {
     if (c->font_path[0]) return;
     if (sdlcon_resolve_font(c->config.font_path, c->font_path, sizeof(c->font_path))) return;
+    /* Stesso ordine della REPL C# (FontManager.SelectMonospaceFont): prima il font del
+     * progetto (Resources/font.ttf = Cascadia, OFL), poi i monospace con path assoluto.
+     * Serve a rendere identico l'aspetto fra SDLConsole C e C#. */
+    { extern int access(const char*, int);
+      const char* direct[] = { "Resources/font.ttf", "/System/Library/Fonts/Monaco.ttf",
+                               "/System/Library/Fonts/Menlo.ttc",
+                               "/System/Library/Fonts/Supplemental/Andale Mono.ttf", NULL };
+      for (int i = 0; direct[i]; i++)
+          if (access(direct[i], 4) == 0) { snprintf(c->font_path, sizeof(c->font_path), "%s", direct[i]); return; } }
     /* Preferisci un font con i glifi box-drawing (Menlo); Monaco non li ha (tofu). */
     const char* fb[] = { "Menlo", "DejaVuSansMono", "Monaco", "Andale Mono", NULL };
     for (int i = 0; fb[i]; i++)

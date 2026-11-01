@@ -285,18 +285,51 @@ public sealed class FontManager
     /// <exception cref="InvalidOperationException">Se nessun font monospace valido può essere trovato.</exception>
     public static string SelectMonospaceFont(string? requestedFontName)
     {
-        // 1. Tenta di risolvere il font richiesto
+        /* ORDINE: prima i file CERTI (nessuna scansione), poi il nome richiesto e i
+         * fallback. La scansione dei font di sistema su macOS usa `system_profiler`
+         * (secondi, e in ambienti sandbox/CI può fallire): farla per prima lasciava la
+         * console una finestra BLU SENZA TESTO (nessun font → nessun glifo). */
+        var exeDir = AppContext.BaseDirectory;
+        var cwdDir = Directory.GetCurrentDirectory();
+        bool wantC64 = !string.IsNullOrWhiteSpace(requestedFontName) &&
+            (requestedFontName.Contains("sixtyfour", StringComparison.OrdinalIgnoreCase) ||
+             requestedFontName.Contains("c64", StringComparison.OrdinalIgnoreCase));
+
+        if (wantC64)
+        {
+            foreach (var f in new[]
+                     {
+                         Path.Combine(exeDir, "Resources", "Sixtyfour.ttf"),
+                         Path.Combine(cwdDir, "Resources", "Sixtyfour.ttf"),
+                     })
+                if (File.Exists(f)) return f;
+        }
+
+        // Percorso esplicito richiesto (es. config con "Resources/X.ttf").
+        if (!string.IsNullOrWhiteSpace(requestedFontName) && File.Exists(requestedFontName))
+            return requestedFontName;
+
+        // Font del progetto + monospace di sistema con percorso assoluto.
+        foreach (var f in new[]
+                 {
+                     Path.Combine(exeDir, "Resources", "font.ttf"),
+                     Path.Combine(cwdDir, "Resources", "font.ttf"),
+                     "/System/Library/Fonts/Monaco.ttf",
+                     "/System/Library/Fonts/Menlo.ttc",
+                     "/System/Library/Fonts/Supplemental/Andale Mono.ttf",
+                     "/System/Library/Fonts/Supplemental/Courier New.ttf",
+                 })
+            if (File.Exists(f)) return f;
+
+        // 1. Tenta di risolvere il font richiesto per NOME (registro runtime + sistema).
         if (!string.IsNullOrWhiteSpace(requestedFontName))
         {
             var (path, entry) = Instance.FindFontEntry(requestedFontName);
-            // 2. Se trovato, verifica che sia effettivamente monospaziato
             if (entry is { IsMonospaced: true } && path != null)
-            {
                 return path;
-            }
         }
 
-        // 3. Se il font richiesto non è valido o non è monospaziato, avvia il fallback
+        // 2. Fallback per nome tra i monospace di sistema.
         string[] fallbackFonts;
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) fallbackFonts = ["Consolas", "Courier New"];
         else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) fallbackFonts = ["DejaVuSansMono", "Monaco", "Andale Mono", "Menlo"];
@@ -306,12 +339,14 @@ public sealed class FontManager
         {
             var (path, entry) = Instance.FindFontEntry(fallbackName);
             if (entry is { IsMonospaced: true } && path != null)
-            {
                 return path;
-            }
         }
-        
-        throw new InvalidOperationException("CRITICO: Nessun font monospace valido trovato nel sistema o localmente.");
+
+        // 3. Ultima risorsa: qualunque font runtime registrato.
+        if (Instance._runtimeFonts.Count != 0) return Instance._runtimeFonts.Values.First().Path;
+
+        throw new InvalidOperationException(
+            "Nessun font monospace valido: mancano Resources/font.ttf e i font di sistema attesi.");
     }
 
     /// <summary>
@@ -387,8 +422,15 @@ public sealed class FontManager
                 StandardOutputEncoding = System.Text.Encoding.UTF8
             };
             process.Start();
-            var output = process.StandardOutput.ReadToEnd();
-            process.WaitForExit();
+            // Lettura asincrona + timeout: `ReadToEnd()` sincrono su system_profiler può
+            // bloccare l'avvio della console per decine di secondi (schermo blu senza testo).
+            var readTask = process.StandardOutput.ReadToEndAsync();
+            if (!process.WaitForExit(5000))
+            {
+                try { process.Kill(entireProcessTree: true); } catch { }
+                return;
+            }
+            var output = readTask.GetAwaiter().GetResult();
 
             using var doc = JsonDocument.Parse(output);
             if (!doc.RootElement.TryGetProperty("SPFontsDataType", out var fontsData)) return;
