@@ -86,7 +86,12 @@ invariato.
 
 Il ponte copre **tutte** le superfici di agenti/team/workflow/memoria, non solo lo stato:
 
-| | superfici |
+I nomi qui sotto (`agent.ask`, `team.run`, …) sono gli **identificatori interni del ponte**
+(`gmb_state_hook.h`), non comandi BASIC: le superfici del linguaggio sono quelle canoniche — per
+esempio `AI.AGENTASKSYNC()` (funzione) / `AI AGENT ASK` (comando), `AI.TEAMLIST()`,
+`AI BRAIN LIST` + `AI.BRAINLIST()`. In GMBasic i nomi di superficie **non usano underscore**.
+
+| | superfici (identificatori del ponte) |
 |---|---|
 | **letture** | `agent.list/get/status/events` · `team.list/agents` · `workflow.list/status/steps` · `memory.list/load/search/ask/rank/consolidate` |
 | **scritture** | `agent.create/delete/set/permission/permission_default/toolpolicy/registertool/save/load/trace` · `team.create/delete/add/remove/set_role/set_strategy/set_coordinator/set_recursion/set_latent/set_link/set_thoughts/set_dag/set_complexity/set_reflection/set_critic/set_prune/save/load/message/broadcast/redefine` · `workflow.begin/step/end/execute/delete` · `memory.store/delete` |
