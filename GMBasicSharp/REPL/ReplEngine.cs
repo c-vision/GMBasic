@@ -897,7 +897,7 @@ public class ReplEngine
     {
         // Versione dell'engine: stessa di `GMB_PKG_ENGINE_VERSION` (gate minGmbVersion).
         const string title = "GMBASIC 1.0.0";
-        const string copyright = "(C) 2025 MINARDI GAETANO. ALL RIGHTS RESERVED.";
+        const string copyright = "(C) 2026 MINARDI GAETANO. ALL RIGHTS RESERVED.";
         var mode = _cliArgs?.UseC64Mode == true ? "C64 MODE"
                  : _useSdl ? "SDL CONSOLE MODE"
                  : (_cliArgs?.UseSystemConsole == true ? "SYSTEM CONSOLE MODE" : "STANDARD CONSOLE MODE");

@@ -52,6 +52,6 @@ int rpl_run_vmc(const char* bas_file, const rpl_options_t* o)
         rc = gmb_native_exec(bas_file, GMB_EXEC_VMC);
     }
     if (o && o->defines_count > 0) gmb_preprocess_reset();
-    printf(rc == 0 ? "[VMC OK]\n" : "[VMC ERROR] exit %d\n", rc);
+    if (rc != 0) printf("[VMC ERROR] exit %d\n", rc);
     return rc;
 }

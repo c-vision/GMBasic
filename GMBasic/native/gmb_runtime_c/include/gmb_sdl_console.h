@@ -18,6 +18,9 @@ typedef struct gmb_sdl_console {
     int cursor_row, cursor_col;           /* 0-based */
     int cursor_visible;
     gmb_cursor_style_t cursor_style;
+    /* lampeggio del cursore (SdlConsole: BLINK_MS = 400) */
+    int blink_on;
+    long long blink_at;
     int view_top, view_left, view_width, view_height;
     int scroll_top, scroll_bottom;        /* -1 = fine */
     /* attributi correnti (ITerminalBuffer) */
@@ -84,7 +87,10 @@ void gmb_console_clear_scrollback(void); /* ANSI/xterm ESC[3J (StandardConsole.c
  * (gmb_sdl_context / gmb_font_atlas / gmb_sdl_render) sono usate SOLO per disegnare. */
 int  gmb_sdl_console_open(gmb_sdl_console_t* c);          /* crea contesto + font + texture (idempotente) */
 void gmb_sdl_console_update_font(gmb_sdl_console_t* c);   /* ricalibra font/griglia/finestra (SetFont) */
-void gmb_sdl_console_render(gmb_sdl_console_t* c);        /* RenderBuffer: clear + celle + present */
+void gmb_sdl_console_render(gmb_sdl_console_t* c);
+/* Risolve gli indici di palette delle celle in RGB (serve al render ANSI:
+ * gmb_render_screen usa solo i campi RGB, la print() scrive solo gli indici). */
+void gmb_sdl_console_resolve_colors(gmb_sdl_console_t* c);        /* RenderBuffer: clear + celle + present */
 void gmb_sdl_console_show(gmb_sdl_console_t* c);          /* Show(): apre e mostra la finestra */
 void gmb_sdl_console_set_visibility(gmb_sdl_console_t* c, int visible);
 void gmb_sdl_console_set_font(gmb_sdl_console_t* c, const char* path, int size);
