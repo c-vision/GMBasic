@@ -81,7 +81,7 @@ void rpl_editor_set_line(int num, const char* body);
 void rpl_editor_remove_line(int num);
 const char* rpl_editor_source(void);
 /* Editor full-screen (speculare a GWBasicEditor.cs). */
-int gmb_editor_run(const char* file);
+
 /* Browser help interattivo (speculare a HelpForm.cs). */
 int gmb_help_browse(void);
 /* IDE full-screen (speculare a GMBasicIde.cs). */

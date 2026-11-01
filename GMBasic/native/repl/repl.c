@@ -14,6 +14,8 @@
 #include "gmb_iconsole.h"
 #include "gmb_sdl_console.h"
 #include "gmb_gfx_input.h"
+#include <sys/ioctl.h>
+#include <termios.h>
 
 /* Layer controlli TUI (via UNICA): dichiarato extern per non includere gmb_tui_widgets.h
  * (che ridefinisce `struct gmb_window`, gia' presente in un header del REPL). La UI usa
@@ -209,7 +211,7 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
             }
             if (!*topic) {
                 printf("Comandi: QUIT EXIT CLS PROMPT HELP LIST EDIT NEW AUTO SAVE LOAD DELETE DEL RENUM\n"
-                       "  SAMPLE COMPILE BSP RUN EXEC LOADPRG PRGINFO AST DASM IL FLATTEN GPM LS CD WHERE WH\n"
+                       "  SAMPLE COMPILE BSP RUN EXEC LOADPRG PRGINFO AST DASM IL GPM LS CD WHERE WH\n"
                        "  GREP (RG) RN RENAME RM DL DELF CP COPY DP DUPLICATE BL BACKUP DEPLOY CONVERT BATCH CONVFMT\n"
                        "  WEB2MD PROVIDERS DEP PACKAGE HF MLX ML AIPATH SET STATUS DEBUG BREAK CLEAR STEP\n"
                        "  CONT TRACE WATCH UNWATCH PALETTE\n"
@@ -329,9 +331,10 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
             goto done;
         }
         if (strcasecmp(cmd, "EDIT") == 0) {
+            /* Parità REPL C#: EDIT apre l'IDE a schermo intero (stessa superficie di comandi). */
             char ef[1024];
             snprintf(ef, sizeof(ef), "%s", *args ? args : (o->file_name ? o->file_name : "untitled.bas"));
-            gmb_editor_run(ef);
+            gmb_ide_run(ef);
             goto done;
         }
         if (strcasecmp(cmd, "SAVE") == 0) { rpl_editor_save(*args ? args : (o->file_name ? o->file_name : "program.bas")); printf("salvato\n"); goto done; }
@@ -764,8 +767,8 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
             }
             gmb_dasm(args); goto done;
         }
-        if (strcasecmp(cmd, "IL") == 0 || strcasecmp(cmd, "FLATTEN") == 0) {
-            printf("(%s: diagnostica IL — appartiene a REPL C#; nel nativo usa DASM sul chunk)\n", cmd);
+        if (strcasecmp(cmd, "IL") == 0) {
+            printf("(IL: diagnostica IL — appartiene a REPL C#; nel nativo usa DASM sul chunk)\n");
             goto done;
         }
         if (strcasecmp(cmd, "WH") == 0) { printf("%s\n", getcwd(line, sizeof(line))); goto done; }
@@ -864,75 +867,188 @@ done:
  * "READY." + loop PollEvents/ProcessReplInput/Present. L'input arriva dai tasti SDL
  * (gmb_sdl_console_pump -> gmb_gfx_input_push_key); l'output dei comandi è catturato
  * (dup di stdout) e scritto nel buffer della console, così la REPL vive nella finestra. */
-/* Esegue UN comando e APPENDE input+output al controllo OUTPUT (nessun rendering proprio:
- * il testo vive nel controllo). Ritorna 1 se il REPL deve uscire. */
-static int rpl_loop_exec(const rpl_options_t* o, int out_idx, int in_idx, const char* cmd0, const char* capfile)
+/* ── Startup REPL: UNA sola esperienza visiva in ogni modalità ──────────────────────────
+ * Riferimento: la REPL C# (`ReplEngine.PrintWelcome` + console). Il layout NON si costruisce
+ * con un form TUI: si scrive nel buffer della console (SdlConsole/Standard), quindi la
+ * finestra SDL mantiene la dimensione della PROPRIA configurazione (grid da settings,
+ * C64 = Sixtyfour) e il contenuto è identico in System/Standard/SDL/C64.
+ * Il vecchio loop a controlli (CodeArea+TextInput+StatusBar) ridimensionava la finestra e
+ * cambiava il layout: rimosso. */
+
+static void con_writeln_centered(gmb_sdl_console_t* c, int width, const char* text)
 {
-    const char* prompt = "READY.\n";
-    char cline[1024]; snprintf(cline, sizeof(cline), "%s", cmd0 ? cmd0 : "");
-    if (!cline[0]) { gmb_tui_control_set_text(in_idx, ""); return 0; }
-    int saved = dup(1), q = 0; fflush(stdout);
-    char capbuf[65536]; capbuf[0] = 0;
+    int len = (int)strlen(text ? text : "");
+    int sp = (width - len) / 2; if (sp < 0) sp = 0;
+    for (int i = 0; i < sp; i++) gmb_sdl_console_write(c, " ");
+    gmb_sdl_console_write(c, text ? text : "");
+    gmb_sdl_console_write(c, "\n");
+}
+
+/* Esegue un comando catturando stdout (i comandi usano printf) e scrivendo il risultato
+ * nel buffer della console. Stesso contratto del vecchio loop. Ritorna 1 se il REPL esce. */
+static int con_exec(const rpl_options_t* o, gmb_sdl_console_t* con, const char* cmd, const char* capfile)
+{
+    if (!cmd || !*cmd) return 0;
+    int saved = dup(1), q = 0;
+    fflush(stdout);
     FILE* f = fopen(capfile, "w+");
     if (f && saved >= 0) {
         dup2(fileno(f), 1);
-        q = rpl_exec_line(cline, o, (char*)prompt);
+        q = rpl_exec_line(cmd, o, (char*)"");
         fflush(stdout);
         dup2(saved, 1); close(saved);
         long sz = ftell(f);
-        if (sz > 0) { fseek(f, 0, SEEK_SET);
-            size_t rd = fread(capbuf, 1, (size_t)((sz < (long)sizeof(capbuf) - 1) ? sz : (long)sizeof(capbuf) - 1), f);
-            capbuf[rd] = 0; }
+        if (sz > 0) {
+            fseek(f, 0, SEEK_SET);
+            char buf[65536];
+            size_t rd = fread(buf, 1, sizeof(buf) - 1, f);
+            buf[rd] = 0;
+            gmb_sdl_console_write(con, buf);
+        }
         fclose(f);
-    } else { q = rpl_exec_line(cline, o, (char*)prompt); }
-    { const char* prev = gmb_tui_control_text_ptr(out_idx);
-      size_t n = strlen(prev) + strlen(cline) + strlen(capbuf) + 8;
-      char* nb = (char*)malloc(n);
-      if (nb) { snprintf(nb, n, "%s> %s\n%s", prev, cline, capbuf); gmb_tui_control_set_text(out_idx, nb); free(nb); } }
-    gmb_tui_control_set_text(in_idx, "");
+    } else {
+        q = rpl_exec_line(cmd, o, (char*)"");
+    }
     return q;
 }
 
-/* Loop UNICO del REPL costruito SOLO dal registry dei controlli (nessun rendering proprio).
- * sdl != NULL → present della SDLConsole; sdl == NULL → present TUI/ANSI (gmb_ui_frame +
- * gmb_tui_screen_flush). Stessa UI (CodeArea output + TextInput comando + StatusBar) su ogni
- * backend. initial_cmd (--run) eseguito come primo comando. */
-static int rpl_loop_controls(const rpl_options_t* o, gmb_sdl_console_t* sdl, const char* initial_cmd)
+/* Loop SDL/C64 sul MODELLO della console attiva: nessun form, nessun resize. */
+static int rpl_loop_sdl_model(const rpl_options_t* o, gmb_sdl_console_t* con,
+                              const char* initial_cmd, const char* mode_line)
 {
     char capfile[128]; snprintf(capfile, sizeof(capfile), "/tmp/gmb_repl_cap_%d.txt", (int)getpid());
-    int W = 80, H = 25;
-    if (sdl) { gmb_sdl_console_show(sdl); W = gmb_screen_width(gmb_sdl_console_screen(sdl)); H = gmb_screen_height(gmb_sdl_console_screen(sdl)); }
+    gmb_sdl_console_show(con);                     /* apre con la SUA config (testo/C64) */
+    int W = gmb_screen_width(gmb_sdl_console_screen(con));
     if (W < 20) W = 80;
-    if (H < 8) H = 25;
-    gmb_tui_controls_reset();
-    gmb_tui_add_codearea(0, 0, W, H - 2, "");         int out_idx = gmb_tui_control_count() - 1;
-    gmb_tui_add_textinput(0, H - 2, W, "");           int in_idx  = gmb_tui_control_count() - 1;
-    gmb_tui_add_statusbar(0, H - 1, W, "READY.");
-    gmb_tui_control_focus(in_idx);
-    { const char* bl[3] = { "GMBASIC ENTERPRISE EDITION V1.0",
-                            "(C) 2025 MINARDI GAETANO. ALL RIGHTS RESERVED.",
-                            "EMULATED CONSOLE MODE" };
-      char obuf[512] = "";
-      for (int li = 0; li < 3; li++) {
-          int sp = (W - (int)strlen(bl[li])) / 2; if (sp < 0) sp = 0;
-          for (int i = 0; i < sp; i++) strncat(obuf, " ", sizeof(obuf) - strlen(obuf) - 1);
-          strncat(obuf, bl[li], sizeof(obuf) - strlen(obuf) - 1);
-          strncat(obuf, "\n", sizeof(obuf) - strlen(obuf) - 1);
-      }
-      gmb_tui_control_set_text(out_idx, obuf);
+    con_writeln_centered(con, W, "GMBASIC 1.0.0");
+    con_writeln_centered(con, W, "(C) 2025 MINARDI GAETANO. ALL RIGHTS RESERVED.");
+    con_writeln_centered(con, W, mode_line);
+    gmb_sdl_console_write(con, "\nREADY.\n");
+    gmb_sdl_console_render(con);
+
+    if (initial_cmd && *initial_cmd) {
+        if (con_exec(o, con, initial_cmd, capfile)) return 0;
+        gmb_sdl_console_write(con, "READY.\n");
+        gmb_sdl_console_render(con);
     }
-    if (initial_cmd && *initial_cmd) { if (rpl_loop_exec(o, out_idx, in_idx, initial_cmd, capfile)) return 0; }
+
+    char line[1024]; int n = 0;
+    int row0 = gmb_sdl_console_cursor_row(con), col0 = gmb_sdl_console_cursor_col(con);
     for (;;) {
-        if (sdl) { if (gmb_tui_sdl_pump()) break; gmb_ui_frame(16); gmb_tui_sdl_present(); }
-        else     { gmb_ui_frame(16); gmb_tui_screen_flush(); }
-        int k = gmb_tui_host_key_pop();
-        if (k == GMB_K_ENTER) {
-            const char* cmd = gmb_tui_control_text_ptr(in_idx);
-            char cbuf[1024]; snprintf(cbuf, sizeof(cbuf), "%s", cmd ? cmd : "");
-            if (rpl_loop_exec(o, out_idx, in_idx, cbuf, capfile)) break;
-        } else if (k == 27) break;   /* ESC: esci */
+        if (gmb_sdl_console_pump(con)) break;
+        int changed = 0;
+        char kb[16];
+        while (gmb_gfx_input_poll_key(kb, (int)sizeof(kb))) {
+            for (const char* p = kb; *p; p++) {
+                unsigned char ch = (unsigned char)*p;
+                if (ch == '\r' || ch == '\n') {
+                    gmb_sdl_console_write(con, "\n");
+                    line[n] = 0;
+                    int quit = con_exec(o, con, line, capfile);
+                    n = 0;
+                    if (quit) { gmb_sdl_console_render(con); return 0; }
+                    gmb_sdl_console_write(con, "READY.\n");
+                    row0 = gmb_sdl_console_cursor_row(con); col0 = gmb_sdl_console_cursor_col(con);
+                } else if (ch == 8 || ch == 127) {
+                    if (n > 0) n--;
+                } else if (ch >= 32) {
+                    if (n < (int)sizeof(line) - 1) line[n++] = (char)ch;
+                } else continue;
+                line[n] = 0;
+                gmb_sdl_console_set_cursor_position(con, row0, col0);
+                gmb_sdl_console_erase_to_eol(con);
+                gmb_sdl_console_write(con, line);
+                changed = 1;
+            }
+        }
+        int hk = gmb_tui_host_key_pop();
+        if (hk == GMB_K_ESC) break;
+        if (hk == GMB_K_ENTER) {
+            gmb_sdl_console_write(con, "\n");
+            line[n] = 0;
+            int quit = con_exec(o, con, line, capfile);
+            n = 0;
+            if (quit) { gmb_sdl_console_render(con); return 0; }
+            gmb_sdl_console_write(con, "READY.\n");
+            row0 = gmb_sdl_console_cursor_row(con); col0 = gmb_sdl_console_cursor_col(con);
+            changed = 1;
+        }
+        if (changed || 1) gmb_sdl_console_render(con);
+        usleep(16000);
     }
     return 0;
+}
+
+/* Loop ANSI/System: stesso testo (banner + READY + input) su stdout, nessun form. */
+static int rpl_loop_ansi(const rpl_options_t* o, const char* initial_cmd, const char* mode_line)
+{
+    int W = 80;
+    struct winsize ws;
+    if (ioctl(1, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 20) W = ws.ws_col;
+    #define CENTERED(t) do { int _l = (int)strlen(t); int _s = (W - _l) / 2; if (_s < 0) _s = 0; \
+        printf("%*s%s\n", _s, "", t); } while (0)
+    printf("\n");
+    CENTERED("GMBASIC 1.0.0");
+    CENTERED("(C) 2025 MINARDI GAETANO. ALL RIGHTS RESERVED.");
+    CENTERED(mode_line);
+    printf("\nREADY.\n");
+    fflush(stdout);
+    #undef CENTERED
+    char line[1024];
+    if (initial_cmd && *initial_cmd) {
+        int q0 = rpl_exec_line(initial_cmd, o, (char*)"READY.\n");
+        if (q0) return 0;
+        printf("READY.\n"); fflush(stdout);
+    }
+    while (fgets(line, sizeof(line), stdin)) {
+        size_t k = strlen(line);
+        while (k && (line[k - 1] == '\n' || line[k - 1] == '\r')) line[--k] = 0;
+        if (!line[0]) { printf("READY.\n"); fflush(stdout); continue; }
+        int q1 = rpl_exec_line(line, o, (char*)"READY.\n");
+        if (q1) break;
+        printf("READY.\n"); fflush(stdout);
+    }
+    return 0;
+}
+
+/* Loop HEADLESS (GMBASIC_HEADLESS=1 / -noconsole): log LINEARE su stdout, nessun rendering
+ * a celle/ANSI. */
+static int rpl_loop_headless(const rpl_options_t* o, const char* initial_cmd)
+{
+    char line[1024];
+    printf("GMBASIC 1.0.0 — HEADLESS MODE\nREADY.\n");
+    fflush(stdout);
+    if (initial_cmd && *initial_cmd) {
+        int q = rpl_exec_line(initial_cmd, o, (char*)"READY.\n");
+        if (q) return 0;
+        printf("READY.\n");
+        fflush(stdout);
+    }
+    while (fgets(line, sizeof(line), stdin)) {
+        size_t n = strlen(line);
+        while (n && (line[n - 1] == '\n' || line[n - 1] == '\r')) line[--n] = 0;
+        if (!line[0]) { printf("READY.\n"); fflush(stdout); continue; }
+        int q = rpl_exec_line(line, o, (char*)"READY.\n");
+        if (q) break;
+        printf("READY.\n");
+        fflush(stdout);
+    }
+    return 0;
+}
+
+static int rpl_loop_controls(const rpl_options_t* o, gmb_sdl_console_t* sdl, const char* initial_cmd)
+{
+    extern int gmb_console_mode_get(void);
+    const char* hl = getenv("GMBASIC_HEADLESS");
+    int headless = (hl && *hl && strcmp(hl, "0") != 0);
+    const char* mode_line;
+    if (headless) mode_line = "HEADLESS MODE";
+    else if (gmb_console_mode_get() == 1) mode_line = "C64 MODE";
+    else if (sdl) mode_line = "SDL CONSOLE MODE";
+    else if (gmb_console_mode_get() == 3) mode_line = "SYSTEM CONSOLE MODE";
+    else mode_line = "STANDARD CONSOLE MODE";
+    if (sdl) return rpl_loop_sdl_model(o, sdl, initial_cmd, mode_line);
+    return rpl_loop_ansi(o, initial_cmd, mode_line);
 }
 
 int rpl_loop(const rpl_options_t* o, const char* initial_dir)
@@ -945,6 +1061,9 @@ int rpl_loop(const rpl_options_t* o, const char* initial_dir)
     else if (g_settings.set_theme[0]) gmb_palette_apply(g_settings.set_theme);
     if (o->verbose) fprintf(stderr, "[settings] import=%d font=%s palette=%s\n", g_settings.import_count,
         g_settings.font_path ? g_settings.font_path : "(default)", g_settings.palette_name ? g_settings.palette_name : (g_settings.set_theme[0] ? g_settings.set_theme : "(default)"));
+    /* HEADLESS: log lineare (niente schermo a celle). */
+    { const char* hl = getenv("GMBASIC_HEADLESS");
+      if (hl && *hl && strcmp(hl, "0") != 0) return rpl_loop_headless(o, o->run_command); }
     /* UN SOLO loop, costruito dal registry dei controlli: si rende su SDLConsole (finestra)
      * o TUI/Terminale secondo il contesto attivo. Nessun rendering proprio. --run è eseguito
      * come primo comando DENTRO il loop (il suo output va nel controllo, non su stdout). */
