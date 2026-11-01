@@ -2665,6 +2665,11 @@ int gmb_net_http_request(const char* url, const gmb_net_http_options_t* opts,
     /* metodo (default GET): per GET con body si usa CUSTOMREQUEST */
     if (strcmp(method, "GET") != 0)
         curl_easy_setopt(c, CURLOPT_CUSTOMREQUEST, method);
+    /* HEAD (FETCH con opts.Method = "HEAD"): CUSTOMREQUEST da solo NON basta — libcurl
+     * aspetterebbe un corpo che non arriva e la richiesta andava in timeout (status 0).
+     * NOBODY dice a libcurl di fermarsi alla testata, come fa curl -I. */
+    if (strcasecmp(method, "HEAD") == 0)
+        curl_easy_setopt(c, CURLOPT_NOBODY, 1L);
 
     /* cookie engine: use_cookies → store cookie GLOBALE e PERSISTENTE tra richieste.
        CURLOPT_SHARE (CURL_LOCK_DATA_COOKIE) fa sì che lo store del cookie engine sia condiviso
@@ -4055,15 +4060,68 @@ static int http_ctype_is_compressible(const char* ct)
         || strstr(ct, "svg") || strstr(ct, "xml");
 }
 
-/* Comprime in gzip se il client lo accetta e il corpo è abbastanza grande da guadagnarci.
+/* NEGOZIAZIONE della codifica: "br" (brotli, migliore sul testo) se il client la offre,
+ * altrimenti "gzip"; NULL = risposta non compressa. Rispetta il rifiuto esplicito (q=0) e il
+ * wildcard "*". Prima si guardava solo "gzip" con strstr: `Accept-Encoding: br` restava senza
+ * compressione e un `gzip;q=0` (rifiuto) veniva comunque compresso. */
+static const char* http_pick_encoding(const char* accept_encoding)
+{
+    const char* p;
+    int br = 0, gzip = 0, star = 0;
+    if (!accept_encoding || !*accept_encoding) return NULL;
+    p = accept_encoding;
+    while (p && *p)
+    {
+        const char* start;
+        size_t len;
+        double q = 1.0;
+        while (*p == ' ' || *p == '\t' || *p == ',') p++;
+        start = p;
+        while (*p && *p != ',' && *p != ';') p++;
+        len = (size_t)(p - start);
+        if (*p == ';')
+        {
+            const char* semi = p;
+            while (*semi && *semi != ',') semi++;
+            {
+                const char* qp = p;
+                while (qp + 2 < semi)
+                {
+                    if ((qp[0] == 'q' || qp[0] == 'Q') && qp[1] == '=')
+                    {
+                        q = atof(qp + 2);
+                        break;
+                    }
+                    qp++;
+                }
+            }
+            p = semi;
+        }
+        if (q > 0.0 && len)
+        {
+            if (len == 2 && strncasecmp(start, "br", 2) == 0) br = 1;
+            else if (len == 4 && strncasecmp(start, "gzip", 4) == 0) gzip = 1;
+            else if (len == 1 && *start == '*') star = 1;
+        }
+        if (*p == ',') p++;
+        else if (*p) p++;
+    }
+    if (br) return "br";
+    if (gzip || star) return "gzip";
+    return NULL;
+}
+
+/* Comprime con l'algoritmo scelto se il corpo è abbastanza grande da guadagnarci.
  * Ritorna il buffer (malloc, da liberare) e la lunghezza, oppure NULL = invia l'originale.
- * `algo` = "gzip" (Accept-Encoding: gzip). Soglia 1 KB come le gambe managed. */
-static unsigned char* http_gzip_body(const char* accept_encoding, const char* body,
-                                     size_t len, size_t* out_len)
+ * Soglia 1 KB come le gambe managed. */
+static unsigned char* http_encode_body(const char* algo, const char* body,
+                                       size_t len, size_t* out_len)
 {
     *out_len = 0;
-    if (!accept_encoding || !body || len < 1024) return NULL;
-    if (!strstr(accept_encoding, "gzip")) return NULL;
+    if (!algo || !body || len < 1024) return NULL;
+    if (strcmp(algo, "br") == 0)
+        /* qualità 5: la 11 (default) costa ~13x gzip su una pagina, inutile in linea */
+        return gmb_brotli_compress_q((const unsigned char*)body, len, out_len, 5);
     return gmb_compress_data("gzip", (const unsigned char*)body, len, out_len);
 }
 
@@ -4184,24 +4242,25 @@ static void http_send_static_file(gmb_net_sock_t client, SSL* ssl,
      * contenuto NON compresso). Se ne vale la pena, la risposta parte in un colpo. */
     if (pr != 1 && http_ctype_is_compressible(ct) && total >= 1024)
     {
-        const char* ae = http_req_header(req, "Accept-Encoding");
-        if (ae && strstr(ae, "gzip"))
+        const char* enc = http_pick_encoding(http_req_header(req, "Accept-Encoding"));
+        if (enc)
         {
             char* whole = (char*)malloc((size_t)total + 1);
             if (whole)
             {
                 size_t got = fread(whole, 1, (size_t)total, f);
                 size_t gzlen = 0;
-                unsigned char* gz = got ? http_gzip_body(ae, whole, got, &gzlen) : NULL;
+                unsigned char* gz = got ? http_encode_body(enc, whole, got, &gzlen) : NULL;
                 free(whole);
                 if (gz && gzlen > 0 && gzlen < got)
                 {
                     snprintf(head, sizeof head,
                         "HTTP/1.1 200 OK\r\nContent-Type: %s\r\nAccept-Ranges: bytes\r\n"
-                        "Content-Encoding: gzip\r\nContent-Length: %llu\r\n%s"
+                        "Content-Encoding: %s\r\nContent-Length: %llu\r\n%s"
                         "Cache-Control: public, max-age=3600\r\nVary: Accept-Encoding\r\n"
                         "Connection: %s\r\n\r\n",
-                        ct, (unsigned long long)gzlen, hdr_extra, keep ? "keep-alive" : "close");
+                        ct, enc, (unsigned long long)gzlen, hdr_extra,
+                        keep ? "keep-alive" : "close");
                     http_stream_send_all(&out, head, strlen(head));
                     if (!is_head) http_stream_send_all(&out, gz, gzlen);
                     free(gz);
@@ -4282,7 +4341,8 @@ const char* gmb_http_reason_phrase(int status)
  * sovrascrivono header già presenti. Estratto dal loop di dispatch per la catena middleware
  * (ogni passo può accumulare header nello stesso buffer combinato). */
 static void http_send_response(gmb_http_server_t* s, gmb_net_sock_t client, SSL* ssl,
-                               const char* body, size_t body_len, int status, char* headers, int keep)
+                               const char* body, size_t body_len, int status, char* headers,
+                               int keep, int is_head)
 {
     const char* ctype = "text/plain";
     size_t extra_cap = 128, extra_len = 0;
@@ -4340,7 +4400,10 @@ static void http_send_response(gmb_http_server_t* s, gmb_net_sock_t client, SSL*
         status <= 0 ? 200 : status, gmb_http_reason_phrase(status <= 0 ? 200 : status),
         ctype, extra ? extra : "", body_len, keep ? "keep-alive" : "close");
     http_io_send(client, ssl, head, strlen(head));
-    if (body && body_len) http_io_send(client, ssl, body, body_len);
+    /* HEAD: la Content-Length è quella del corpo che una GET avrebbe mandato, ma il corpo
+     * NON viaggia. Vale anche per una route che usa res.SendFile (prima un HEAD su una route
+     * scaricava il file per intero solo per buttarlo). */
+    if (body && body_len && !is_head) http_io_send(client, ssl, body, body_len);
     free(extra);
 }
 
@@ -4428,6 +4491,18 @@ static size_t http_read_request(gmb_http_server_t* s, gmb_net_sock_t client, SSL
     }
     buf[total] = '\0';
     return (long long)total;
+}
+
+/* Una route risponde a questa richiesta? HEAD è "GET senza corpo" (RFC 9110 §9.3.2): senza
+ * questa regola un HEAD su una route finiva in 404 (e su res.SendFile avrebbe scaricato il
+ * file per intero solo per scartarlo). */
+static int http_method_matches(const char* route_method, const char* req_method)
+{
+    if (!route_method || !req_method) return 0;
+    if (strcmp(route_method, "*") == 0) return 1;
+    if (strcmp(route_method, req_method) == 0) return 1;
+    if (strcasecmp(req_method, "HEAD") == 0 && strcasecmp(route_method, "GET") == 0) return 1;
+    return 0;
 }
 
 /* Il client vuole tenere aperta la connessione? HTTP/1.1 = sì (salvo "Connection: close"),
@@ -4655,7 +4730,7 @@ request_start:
         {
             const gmb_http_route_t* r = &s->routes[i];
             if (!r->in_use) continue;
-            if (!(strcmp(r->method, "*") == 0 || strcmp(r->method, method) == 0)) continue;
+            if (!http_method_matches(r->method, method)) continue;
             int pc = 0;
             req.param_names_count = 0;
             if (!route_match_path(r, path_noq, req.params, 16, &pc, req.param_names, &req.param_names_count)) continue;
@@ -4729,7 +4804,7 @@ request_start:
         {
             const gmb_http_route_t* m = &s->middlewares[i];
             if (!m->in_use) continue;
-            if (!(strcmp(m->method, "*") == 0 || strcmp(m->method, method) == 0)) continue;
+            if (!http_method_matches(m->method, method)) continue;
             size_t pl = strlen(m->path);
             if (!pl || strncmp(path_noq, m->path, pl) != 0) continue;
             chain[chain_n++] = m;
@@ -4762,7 +4837,7 @@ request_start:
                 {
                     /* registry step pieno: errore esplicito, mai un fallthrough silenzioso */
                     const char* msg = "500 Internal Server Error: catena HTTP chain-step esausta";
-                    http_send_response(s, client, ssl, msg, strlen(msg), 500, NULL, 0);
+                    http_send_response(s, client, ssl, msg, strlen(msg), 500, NULL, 0, 0);
                     free(acc);
                     close(client);
                     return;
@@ -4805,7 +4880,7 @@ request_start:
                 {
                     const char* msg = "504 Gateway Timeout";
                     char hdr[] = "Content-Type: text/plain; charset=utf-8\n";
-                    http_send_response(s, client, ssl, msg, strlen(msg), 504, hdr, 0);
+                    http_send_response(s, client, ssl, msg, strlen(msg), 504, hdr, 0, 0);
                     gmb_http_chain_step_free(step_id);
                     g_http_current_step = 0;
                     free(acc);
@@ -4874,7 +4949,8 @@ request_start:
                 return;
             }
             http_send_response(s, client, ssl, out_body, out_body_len, out_status, combined,
-                               client_keep && out_status != 100);
+                               client_keep && out_status != 100,
+                               strcasecmp(method, "HEAD") == 0);
             free(out_body);
             free(out_headers);
             free(combined);
@@ -4906,28 +4982,29 @@ request_start:
             {
                 size_t gzlen = 0;
                 unsigned char* gz = NULL;
-                const char* ae = http_req_header(&req, "Accept-Encoding");
-                if (bsp_html && olen >= 1024 && ae && strstr(ae, "gzip"))
-                    gz = http_gzip_body(ae, bsp_html, olen, &gzlen);
+                int is_head_req = (strcasecmp(method, "HEAD") == 0);
+                const char* enc = (bsp_html && olen >= 1024)
+                    ? http_pick_encoding(http_req_header(&req, "Accept-Encoding")) : NULL;
+                if (enc) gz = http_encode_body(enc, bsp_html, olen, &gzlen);
                 if (gz && gzlen > 0 && gzlen < olen)
                 {
                     snprintf(head, sizeof(head),
                         "HTTP/1.1 %d %s\r\nContent-Type: text/html; charset=utf-8\r\n"
-                        "Content-Encoding: gzip\r\nContent-Length: %llu\r\nVary: Accept-Encoding\r\n"
+                        "Content-Encoding: %s\r\nContent-Length: %llu\r\nVary: Accept-Encoding\r\n"
                         "Connection: %s\r\n\r\n",
-                        bsp_st > 0 ? bsp_st : 200, reason, (unsigned long long)gzlen,
+                        bsp_st > 0 ? bsp_st : 200, reason, enc, (unsigned long long)gzlen,
                         bsp_keep ? "keep-alive" : "close");
                     http_io_send(client, ssl, head, strlen(head));
-                    http_io_send(client, ssl, (const char*)gz, gzlen);
+                    if (!is_head_req) http_io_send(client, ssl, (const char*)gz, gzlen);
                 }
                 else
                 {
-                    snprintf(head, sizeof(head),
+                    snprintf(head, sizeof head,
                         "HTTP/1.1 %d %s\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: %zu\r\n"
                         "Vary: Accept-Encoding\r\nConnection: %s\r\n\r\n",
                         bsp_st > 0 ? bsp_st : 200, reason, olen, bsp_keep ? "keep-alive" : "close");
                     http_io_send(client, ssl, head, strlen(head));
-                    if (bsp_html && olen) http_io_send(client, ssl, bsp_html, olen);
+                    if (bsp_html && olen && !is_head_req) http_io_send(client, ssl, bsp_html, olen);
                 }
                 free(gz);
             }

@@ -35,6 +35,9 @@ unsigned char* gmb_decompress_algo(int algo, const unsigned char* data, size_t l
 unsigned char* gmb_bzip2_compress(const unsigned char* data, size_t len, size_t* out_len);
 unsigned char* gmb_bzip2_decompress(const unsigned char* data, size_t len, size_t* out_len);
 unsigned char* gmb_brotli_compress(const unsigned char* data, size_t len, size_t* out_len);
+/* Come sopra con qualità ESPLICITA 0..11 (quality < 0 = default della libreria). Il server
+ * HTTP usa 5: rapporto vicino a gzip -9 con una frazione del costo della qualità 11. */
+unsigned char* gmb_brotli_compress_q(const unsigned char* data, size_t len, size_t* out_len, int quality);
 unsigned char* gmb_brotli_decompress(const unsigned char* data, size_t len, size_t* out_len);
 
 /* Variante char* (ABI stabile per P/Invoke C#): testo/base64 in e out (malloc, gmb_compress_free).

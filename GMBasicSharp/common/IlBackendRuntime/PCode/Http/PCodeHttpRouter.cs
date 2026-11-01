@@ -37,7 +37,13 @@ internal sealed class PCodeHttpRoute
         _regex = new Regex("^" + pattern + "/?$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     }
 
-    public bool MatchesMethod(string method) => Method == "*" || Method.Equals(method, StringComparison.OrdinalIgnoreCase);
+    // HEAD è "GET senza corpo" (RFC 9110 §9.3.2): una route GET risponde anche a HEAD,
+    // altrimenti un HEAD su una route finiva in 404 (e con res.SendFile scaricava il file).
+    public bool MatchesMethod(string method) =>
+        Method == "*"
+        || Method.Equals(method, StringComparison.OrdinalIgnoreCase)
+        || (Method.Equals("GET", StringComparison.OrdinalIgnoreCase)
+            && method.Equals("HEAD", StringComparison.OrdinalIgnoreCase));
 
     public bool MatchesPath(string path) => _regex.IsMatch(path);
 

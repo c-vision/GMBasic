@@ -609,13 +609,20 @@ internal sealed partial class PCodeProcessor
             return;
         }
 
-        if (body.Length >= 1024 && CommonLib.Http.BspRuntime.AcceptsGzip(HeaderOf("Accept-Encoding")))
+        // br/gzip negoziati (come il server C): prima si usava SOLO gzip, ignorando `br`.
+        var enc = CommonLib.Http.HttpCompression.PickEncoding(HeaderOf("Accept-Encoding"));
+        if (body.Length >= 1024 && enc != null)
         {
-            response.SetHeader("Content-Encoding", "gzip");
-            response.SetHeader("Vary", "Accept-Encoding");
-            response.SendBytes(CommonLib.Http.BspRuntime.Gzip(body), "text/html; charset=utf-8");
-            return;
+            var packed = CommonLib.Http.HttpCompression.Encode(enc, body);
+            if (packed.Length < body.Length)
+            {
+                response.SetHeader("Content-Encoding", enc);
+                response.SetHeader("Vary", "Accept-Encoding");
+                response.SendBytes(packed, "text/html; charset=utf-8");
+                return;
+            }
         }
+        response.SetHeader("Vary", "Accept-Encoding");
         response.SendBytes(body, "text/html; charset=utf-8");
     }
 
@@ -834,6 +841,7 @@ internal sealed partial class PCodeProcessor
         var requestPath = request.Path;
         var rangeHeader = request.Headers.TryGetPropertyValue("Range", out var rngNode) ? rngNode?.ToString() : null;
         var ifNoneMatch = request.Headers.TryGetPropertyValue("If-None-Match", out var inmNode) ? inmNode?.ToString() : null;
+        var acceptEncoding = request.Headers.TryGetPropertyValue("Accept-Encoding", out var aeNode) ? aeNode?.ToString() : null;
         var resolved = router.ResolveStaticPath(requestPath);
         if (resolved == null) return false;
         var (urlPrefix, physicalBase) = resolved.Value;
@@ -888,7 +896,24 @@ internal sealed partial class PCodeProcessor
             response.SendBytes(CommonLib.Http.HttpRange.ReadSlice(fullPath, start, end - start + 1), contentType);
             return true;
         }
-        response.SendBytes(File.ReadAllBytes(fullPath), contentType);
+        // Compressione NEGOZIATA (br se offerto, altrimenti gzip) — stessa regola del server C
+        // (§0bis): solo testo, solo sopra 1 KB, MAI con Range (Content-Range vale sul contenuto
+        // non compresso). `Vary` va messo anche quando si manda il file intero: la cache deve
+        // sapere che la variante dipende da Accept-Encoding.
+        var raw = File.ReadAllBytes(fullPath);
+        var enc = CommonLib.Http.HttpCompression.PickEncoding(acceptEncoding);
+        if (enc != null && CommonLib.Http.HttpCompression.IsCompressible(contentType) && raw.Length >= 1024)
+        {
+            response.SetHeader("Vary", "Accept-Encoding");
+            var packed = CommonLib.Http.HttpCompression.Encode(enc, raw);
+            if (packed.Length < raw.Length)
+            {
+                response.SetHeader("Content-Encoding", enc);
+                response.SendBytes(packed, contentType);
+                return true;
+            }
+        }
+        response.SendBytes(raw, contentType);
         return true;
     }
 
