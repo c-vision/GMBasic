@@ -64,81 +64,83 @@ tracked files). These remain:
       build log (`packages/video/1.0.0/.build/ffmpeg/ffbuild/config.log`, never committed or
       pushed) — the log is now scrubbed, but the token must be **revoked** on the HF account.
 
-## 6. Una sola REPL (in C) che PILOTA i due compilatori
+## 6. Una sola REPL (in C) che pilota il compilatore C — il C# è opzionale ed eliminabile
 
-**Obiettivo.** Una sola REPL, binario **C** alla root del monorepo (`gmb repl`, oggi
-`native/repl`), che non perde **nessuna** funzione delle due REPL attuali
-(`native/repl` e `GMBasicSharp/REPL`) e che **non tocca lexer/parser/AST/codegen**:
-si limita a **pilotare** i due compilatori tramite le loro opzioni (processo esterno per il
-C#; processo o, dove serve la velocità, libreria C per il compilatore C).
+**Obiettivo.** Una sola REPL, binario **C** alla root del monorepo (`gmb repl`, oggi `native/repl`),
+che pilota **il compilatore C** tramite le sue opzioni. Non perde nessuna funzione utile al mondo C.
 
-**Perché.** Le due REPL duplicano front-end (input, prompt, comandi, console ×4, IDE, help,
-colori, cursore). Le divergenze osservate (maiuscole sull'input, `HELP`, palette, cursore,
-`IlRuntime` richiesto dai form C#, packaging SDL2) sono *strutturali*.
+**Regole non negoziabili**
+1. **La REPL non è un wrapper di C#**: `GMBasicSharp` può essere cancellato e la REPL C deve
+   continuare a funzionare con **tutte** le sue funzioni (compilare, eseguire, AST, disasm,
+   generare C, debug, console ×4, IDE, help, package/fixtures).
+2. Nessun `#include` di `gmb_lexer.h` / `gmb_parser.h` / `gmb_linker.h` / `gmb_compiler.h` nella
+   REPL: si usa la **CLI** del compilatore (o, se serve la latenza, le librerie C *del proprio*
+   compilatore, ma con un solo punto di ingresso documentato).
+3. Il compilatore C# è un **engine opzionale** (`--engine=csharp`): se manca, i comandi che
+   esistono solo per lui (`IL`, `PCODE`) rispondono "engine non disponibile" e **nient'altro**
+   smette di funzionare. Con la sua futura eliminazione spariscono solo quei comandi.
+4. Niente variabili d'ambiente per il comportamento: solo opzioni/settings.
 
-### 6.1 Contratto CLI dei compilatori (unica superficie usata dalla REPL)
+### 6.1 Contratto CLI del compilatore C (unica superficie REQUIRED)
 
-| operazione | compilatore C (`native/gmb_compiler_c`, `gmb`) | compilatore C# (nuovo `gmbcs`) |
+| operazione | opzione | stato |
 |---|---|---|
-| check/progetto | `gmb check --project <dir> [--json]` *(esiste)* | `gmbcs check --project <dir> [--json]` |
-| build eseguibile | `gmb build --project <dir> [--out exe]` *(esiste)* | `gmbcs build …` |
-| run | `gmb run --project <dir>` *(esiste)* | `gmbcs run --engine il\|pcode` |
-| dump AST | `--dump-ast` **da aggiungere** | `--dump ast` |
-| dump disasm (bytecode) | `--dump-disasm` **da aggiungere** | `--dump disasm` |
-| dump IL | n/a (non è il suo mondo) | `--dump il` |
-| dump P-Code | n/a | `--dump pcode` |
-| emit C (C99Native) | `--emit-c --out file.c` **da aggiungere** (oggi è `gmb_emit_c99_source` interno) | n/a |
-| chunk (A1/GMBC) | `--emit-chunk --out file.chunk` **da aggiungere** (oggi `gmb_compile_c_chunk`) | `--emit chunk` |
-| esecuzione VM/C | `gmb_vm_host <chunk>` *(esiste)* | — |
+| check progetto | `gmb check --project <dir> [--json]` | esiste |
+| build eseguibile | `gmb build --project <dir> [--out exe]` | esiste |
+| run | `gmb run --project <dir>` | esiste |
+| **dump AST** | `gmb --dump-ast <file>` | **da aggiungere** |
+| **dump disasm (A1/GMBC)** | `gmb --dump-disasm <file>` | **da aggiungere** |
+| **emit C (C99Native)** | `gmb --emit-c <file> --out f.c` | **da aggiungere** |
+| **emit chunk** | `gmb --emit-chunk <file> --out f.chunk` | **da aggiungere** |
+| esecuzione VM/C | `gmb_vm_host <chunk>` (+ `--debug-interactive`) | esiste |
+| **eval espressione** | `gmb eval "<exprs>"` | **da aggiungere** (per `EVAL`) |
 
-Regola: **nessun header del compilatore** incluso dalla REPL (niente `gmb_lexer.h`,
-`gmb_parser.h`, `gmb_ast_dump`, `gmb_emit_c99_source`).
+Engine opzionale (mai richiesto): `gmbcs` (`GMBasicSharp/CompilerCli`) con
+`--dump ast|il|pcode|disasm`, `run --engine il|pcode`. Se assente → solo `IL`/`PCODE` non disponibili.
 
-### 6.2 Comandi che oggi NON rispettano la regola (REPL C) e come migrarli
+### 6.2 Comandi C che oggi NON rispettano la regola (usano il compilatore inline) → migrare a opzioni
 
 | comando | oggi | target |
 |---|---|---|
-| `AST` | `gmb_lexer_scan` + `gmb_parse` + `gmb_ast_dump` **inline** | `gmb --dump-ast` (o `gmbcs --dump ast`) |
-| `DASM` | compila in chunk e disassembla **inline** | `gmb --dump-disasm` |
-| `PRGINFO` | compila + disassembla **inline** | `gmb --dump-disasm --info` |
-| `COMPILE` | `gmb_native_compile()` **linkato** | `gmb --emit-chunk/--emit-c` |
-| `IL` | **stub** ("appartiene a REPL C#") | `gmbcs --dump il` |
-| `EVAL` | **mancante** | `gmbcs run --engine il` (o `gmb run`) |
+| `AST` | `gmb_lexer_scan` + `gmb_parse` + `gmb_ast_dump` inline | `gmb --dump-ast` |
+| `DASM` | compila in chunk + disassembla inline | `gmb --dump-disasm` |
+| `PRGINFO` | compila + disassembla inline | `gmb --dump-disasm --info` |
+| `COMPILE` | `gmb_native_compile()` linkato | `gmb --emit-chunk` / `--emit-c` |
+| `EVAL` | **mancante** | `gmb eval` (implementato nel compilatore C) |
+| `IL` | stub che rimanda alla REPL C# | **engine opzionale**: senza C# risponde "non disponibile"; nel mondo C l'equivalente è `DASM` (A1/GMBC). Idem `PCODE`. |
 
-### 6.3 Inventario comandi (nessuno deve sparire)
+### 6.3 Inventario comandi (nessuno del mondo C deve sparire)
 
-**Comuni (58):** AIPATH AST AUTO BACKUP BATCH BL BRAIN BSP CD CLS COMPILE CONVERT CONVFMT COPY CP
-DASM DEL DELETE DELF DEP DEPLOY DL DP DUPLICATE EDIT EVAL EXEC EXIT GPM GRAPH GREP HELP HF IDE IL
-LIBS LIST LOAD LOADPRG LS MLX NEW PACKAGE PRGINFO PROMPT PROVIDERS QUIT RAG RENAME RENUM RG RM RN
-RUN SAMPLE SAVE WH WHERE
+**Comuni alle due REPL (58):** AIPATH AST AUTO BACKUP BATCH BL BRAIN BSP CD CLS COMPILE CONVERT
+CONVFMT COPY CP DASM DEL DELETE DELF DEP DEPLOY DL DP DUPLICATE EDIT EVAL EXEC EXIT GPM GRAPH GREP
+HELP HF IDE IL LIBS LIST LOAD LOADPRG LS MLX NEW PACKAGE PRGINFO PROMPT PROVIDERS QUIT RAG RENAME
+RENUM RG RM RN RUN SAMPLE SAVE WH WHERE
 
-**Solo REPL C (13):** BREAK CLEAR CONT DEBUG DIR ML PALETTE SET STATUS STEP TRACE UNWATCH WATCH
-→ sono debugger/ambiente: restano nella REPL C, ma il debug passa **solo** da `gmb_vm_host --debug-interactive`
-(gia' cosi') e `ML`/`PALETTE`/`SET`/`STATUS` sono wrapper di runtime/settings.
+**Solo REPL C (13) — restano, sono del mondo C:** BREAK CLEAR CONT DEBUG DIR ML PALETTE SET STATUS
+STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
 
-**Solo REPL C# (11):** ADD BUMP CACHE FIXTURES LLM REMOVE RESTORE ROLLBACK SETUP TRUST UPDATE
-→ da portare nel dispatcher C come wrapper: `FIXTURES` → `gmb fixtures *`; `SETUP` → `gmb setup`;
-`ADD/REMOVE/RESTORE/ROLLBACK/BUMP/CACHE` → `gmb pkg *`; `TRUST`/`UPDATE` → `gmb pkg trust|update`;
-`LLM` → opzioni del compilatore/engine (`gmbcs`/`gmb`).
+**Solo REPL C# (11) — da riportare nel mondo C (non wrappando C#):**
+| comando | dove va |
+|---|---|
+| `FIXTURES` | `gmb fixtures list\|ensure\|pull` (runtime C, `gmb_fixtures_*`) |
+| `SETUP` | `gmb setup` |
+| `ADD`/`REMOVE`/`RESTORE`/`ROLLBACK`/`BUMP`/`CACHE` | `gmb pkg *` (runtime C, `gmb_pkg_*`) |
+| `TRUST`/`UPDATE` | `gmb pkg trust\|update` |
+| `LLM` | opzioni del compilatore/engine C (`LLM …` sul proprio motore), non delega a C# |
 
 ### 6.4 Fasi
 
-- [ ] **F0 — Golden dump**: per un set di sample, salvare AST/DASM/C/chunk (C) e AST/IL/PCode (C#)
-      come riferimento, usando i runner esistenti. Serve a dimostrare la non-regressione.
-- [ ] **F1 — CLI C#** (`GMBasicSharp/CompilerCli` → `gmbcs`): estrarre da `ReplEngine.cs` la logica
-      di compilazione/dump; output deterministico (JSON per AST, testo per disasm); test.
-- [ ] **F2 — Opzioni CLI C**: aggiungere a `gmb` `--dump-ast`, `--dump-disasm`, `--emit-c`,
-      `--emit-chunk` (riusando le funzioni interne del compilatore, non della REPL).
-- [ ] **F3 — REPL C pilota**: `COMPILE/AST/DASM/PRGINFO/IL/EVAL` invocano `gmb`/`gmbcs`
-      (processo) e scrivono l'output nella console; rimossi gli include del compilatore.
-- [ ] **F4 — Comandi solo-C# portati** (tabella 6.3) come wrapper nel dispatcher C.
-- [ ] **F5 — Engine selezionabile**: `--engine=c|csharp|il|pcode|vmc` sulla REPL unica; `SET ENGINE` a runtime;
-      dump coerenti per engine.
-- [ ] **F6 — REPL C# non canonica**: resta `gmbcs` + librerie + test; il loop interattivo C# diventa
-      opzionale/dev (o rimosso) — decisione da prendere dopo F5.
-- [ ] **F7 — Pulizia**: guida unica della REPL, help JSON unica fonte (`shared/helps`), manifesti/audit
-      rigenerati; aggiornare `docs/` e il vault.
-
-**Vincoli da rispettare**: C99Native deve continuare a funzionare **senza .NET** (la REPL non deve
-richiedere `gmbcs` per il proprio mondo); C# → C via processo/P-Invoke è ammesso, C → C# solo come
-processo esterno; niente variabili d'ambiente per il comportamento (solo opzioni/settings).
+- [ ] **F0 — Golden dump (solo mondo C)**: AST / disasm / C generato / chunk su un set di sample,
+      salvati come riferimento (non-regressione).
+- [ ] **F1 — Opzioni nel compilatore C** (`--dump-ast`, `--dump-disasm`, `--emit-c`, `--emit-chunk`,
+      `eval`): il pezzo che sblocca tutto; non tocca la REPL.
+- [ ] **F2 — REPL C pilota `gmb`**: `COMPILE/AST/DASM/PRGINFO` via processo/CLI; rimossi gli include
+      del compilatore dalla REPL; `EVAL` via `gmb eval`.
+- [ ] **F3 — Comandi solo-C# riportati nel mondo C** (tabella 6.3) come wrapper di `gmb`/runtime C.
+- [ ] **F4 — `IL`/`PCODE` come engine opzionale**: `--engine=csharp`; senza `gmbcs` rispondono
+      "engine non disponibile" e il resto funziona identico.
+- [ ] **F5 — Prova di eliminabilità**: build + run della REPL con `GMBasicSharp/` **rimosso**
+      (o non compilato) e suite di comandi del mondo C verde.
+- [ ] **F6 — La REPL C# esce**: `GMBasicSharp/REPL` non è più canonica (resta, se serve, `gmbcs` per
+      i test IL/PCode finché il compilatore C# esiste).
+- [ ] **F7 — Pulizia**: guida unica, help JSON unica fonte (`shared/helps`), manifesti/audit rigenerati.
