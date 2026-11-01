@@ -3334,6 +3334,22 @@ public static partial class Linker
              * argomenti = stato del tasto, LEFT(s,n) = funzione stringa): qui si cerca una
              * NativeProcedureDefinition a ZERO parametri visibile nello scope e la si emette come
              * chiamata al builtin (TokenKind dedicato, es. MouseLeft → IlRuntime.MouseLeft). */
+            /* `STRING$(n, ch)` — funzione classica BASIC (n copie del carattere). La leg C la
+             * emette come `gmb_str_repeat(chr, n)`: qui si riscrive nella funzione nativa
+             * REPEAT(s, n) con gli argomenti INVERTITI. Vale per STRING$ e STRING (2 argomenti). */
+            if (symbolId < 0 && aae.Indices.Length == 2
+                && (aae.NameCleaned.Lexeme.Equals("STRING$", StringComparison.OrdinalIgnoreCase)
+                    || aae.NameCleaned.Lexeme.Equals("STRING", StringComparison.OrdinalIgnoreCase)))
+            {
+                var repTok = new Token(TokenKind.RepeatFunc, "REPEAT", null, aae.NameCleaned.Position);
+                var repNs = new Token(TokenKind.Identifier, "STRINGS", null, aae.NameCleaned.Position);
+                var repArgs = ImmutableArray.Create(
+                    RewriteExpression(aae.Indices[1], context, program),
+                    RewriteExpression(aae.Indices[0], context, program));
+                return new BuiltinFunctionCallExpr(repNs, repTok, repArgs, new StringType())
+                    { ScopeId = aae.ScopeId };
+            }
+
             if (symbolId < 0)
             {
                 var builtinByName = program.Symbols.FindSymbolsByName(aae.NameCleaned.Lexeme)

@@ -52,6 +52,26 @@ static string FindRoot()
 foreach (var file in files)
 {
     var name = Path.GetRelativePath(samplesDir, file);
+
+    /* MODULO vs CAMPIONE: i file IMPORTATI (es. Modules/FolderResolution/chain/Chain.bas,
+     * libs/helpers/Deep.bas) non sono programmi eseguibili e non devono essere compilati
+     * stand-alone: si salta PRIMA di compilare (prima fallivano con errori del loro corpo,
+     * es. "Simbolo non definito: 'DeepOrigin'", contati come FAIL). */
+    try
+    {
+        var src = File.ReadAllText(file);
+        var hasEntry = System.Text.RegularExpressions.Regex.IsMatch(src, @"\bSUB\s+Main\b",
+                            System.Text.RegularExpressions.RegexOptions.IgnoreCase)
+                       || System.Text.RegularExpressions.Regex.IsMatch(src, @"\bFUNCTION\s+Main\b",
+                            System.Text.RegularExpressions.RegexOptions.IgnoreCase)
+                       || System.Text.RegularExpressions.Regex.IsMatch(src, @"(?m)^\s*\d+\s");
+        if (!hasEntry)
+        {
+            skipped++;
+            continue;
+        }
+    }
+    catch { /* file illeggibile: si prova comunque a compilarlo */ }
     try
     {
         var program = Basic.Orchestrator.Compile(file, null, false);
