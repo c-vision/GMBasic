@@ -721,7 +721,6 @@ int gmb_sdl_console_pump(gmb_sdl_console_t* c)
           int _sc = c->render_scale > 0 ? c->render_scale : 1;
           int tcx = (lx * _sc) / (c->char_width > 0 ? c->char_width : 1);
           int tcy = (ly * _sc) / (c->char_height > 0 ? c->char_height : 1);
-          { static int _md=0; if(_md<30){_md++; fprintf(stderr,"[mcell] pt=(%d,%d) sc=%d -> cell=(%d,%d)\n",lx,ly,_sc,tcx,tcy); fflush(stderr);} }
           if (e.type == SDL_MOUSEBUTTONDOWN && e.button.windowID == wid) gmb_tui_handle_mouse_cell(tcx, tcy, 1);
           else if (e.type == SDL_MOUSEBUTTONUP && e.button.windowID == wid) gmb_tui_handle_mouse_cell(tcx, tcy, 2);
           else if (e.type == SDL_MOUSEMOTION && e.motion.windowID == wid && gmb_tui_menu_any_open()) gmb_tui_handle_mouse_cell(tcx, tcy, 0); }
