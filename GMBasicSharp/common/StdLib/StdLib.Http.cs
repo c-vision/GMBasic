@@ -257,7 +257,15 @@ public sealed partial class StdLib
                 // OP_CALL_MEMBER (PCodeProcessor) e col runtime IL.
                 { "SetStatus", new VoidType() },
                 { "Status", new VoidType() },
-                { "SetHeader", new VoidType() }
+                { "SetHeader", new VoidType() },
+                // Streaming (chunked): RES.STREAM("text/event-stream") poi WRITE/FLUSH.
+                { "Stream", new VoidType() },
+                { "StartStream", new VoidType() },
+                { "StartStreaming", new VoidType() },
+                { "Write", new VoidType() },
+                { "Flush", new VoidType() },
+                { "EndStream", new VoidType() },
+                { "CloseStream", new VoidType() }
             }
         );
         

@@ -500,6 +500,7 @@ SUB RegisterApiRoutes()
     HTTP ROUTE "GET", "/api/teams", PxGet()
     HTTP ROUTE "GET", "/api/teams/{name}", PxGet()
     HTTP ROUTE "GET", "/api/events", PxGet()
+    HTTP ROUTE "GET", "/api/events/stream", ApiEventStream()
     HTTP ROUTE "GET", "/api/workflows", PxGet()
     HTTP ROUTE "GET", "/api/workflows/{name}", PxGet()
     HTTP ROUTE "GET", "/api/memory", PxGet()
@@ -537,6 +538,44 @@ END SUB
 ' Stato della app + del runtime: la UI lo interroga per le "chip" in testa e per
 ' il polling. Tutto costruito qui, nessuna dipendenza dal server agenti tranne
 ' l'eventuale reachability (una GET leggera).
+' ---------------------------------------------------------------------------
+' GET /api/events/stream — SSE (text/event-stream, chunked): manda gli eventi
+' NUOVI del log agente appena compaiono, piu' un commento di keep-alive ogni
+' mezzo secondo. La dashboard lo consuma con EventSource (fallback: polling
+' su /api/events, che resta invariato).
+' ---------------------------------------------------------------------------
+SUB ApiEventStream(req AS HTTPREQUEST, res AS HTTPRESPONSE)
+    DIM sent AS LONG
+    DIM i AS LONG
+    DIM k AS LONG
+    DIM n AS LONG
+    DIM evs() AS STRING
+
+    res.StartStream("text/event-stream")
+    sent = 0
+    ' ~5 minuti di stream per connessione, poi il client si riconnette.
+    FOR i = 1 TO 600
+        evs = AI.AGENTEVENTS()
+        n = UBOUND(evs) + 1
+        IF n > sent THEN
+            FOR k = sent TO n - 1
+                ' JSON.STRINGIFY produce una stringa JSON con gli escape: il payload SSE
+                ' non puo' contenere newline grezzi.
+                res.Write("data: " + JSON.STRINGIFY(evs(k)) + CHR$(10) + CHR$(10))
+            NEXT k
+            sent = n
+            res.Flush()
+        ELSE
+            ' keep-alive (commento SSE) ogni ~2 s, senza svegliare il client
+            IF (i MOD 4) = 0 THEN
+                res.Write(": ping" + CHR$(10) + CHR$(10))
+                res.Flush()
+            END IF
+        END IF
+        SLEEP 500
+    NEXT i
+END SUB
+
 SUB ApiStatus(req AS HTTPREQUEST, res AS HTTPRESPONSE)
     DIM up AS LONG
     DIM nAgents AS INTEGER

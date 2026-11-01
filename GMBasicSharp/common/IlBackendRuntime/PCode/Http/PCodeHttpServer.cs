@@ -157,6 +157,8 @@ internal static class PCodeHttpServer
 
                 request = request with { RemoteIpAddress = remoteIp };
                 var response = new PCodeHttpResponse();
+                // Streaming (chunked): il codice BASIC scrive sul socket mentre gira.
+                response.AttachStream(stream, serverToken, server.Config.EnableKeepAlive);
 
                 // IP allow/block (HTTP CONFIG AllowedIPs/BlockedIPs — CIDR IPv4/IP singoli)
                 var blocked = !CommonLib.Http.HttpSecurity.IpAllowed(remoteIp, server.Config.AllowedIPs, server.Config.BlockedIPs);
@@ -179,7 +181,7 @@ internal static class PCodeHttpServer
                     if (upgraded) return; // sessione WebSocket gia' conclusa per intero dentro Dispatch
                 }
 
-                if (!response.Sent)
+                if (!response.Sent && !response.Streaming)
                     response.CompleteAsServerError("500 Internal Server Error: no response was ever sent");
 
                 // Header di sicurezza automatici (HTTP CONFIG SecurityHeaders) — non
@@ -192,7 +194,16 @@ internal static class PCodeHttpServer
                 }
 
                 keepAlive = ShouldKeepAlive(request, response, server.Config);
-                await WriteResponseAsync(stream, response, keepAlive, serverToken).ConfigureAwait(false);
+                if (response.Streaming)
+                {
+                    /* Risposta già inviata in chunk: chiude con il chunk terminale. */
+                    response.CompleteStream();
+                    keepAlive = false;   /* dopo uno stream la connessione si chiude (semantica SSE) */
+                }
+                else
+                {
+                    await WriteResponseAsync(stream, response, keepAlive, serverToken).ConfigureAwait(false);
+                }
             }
         }
         catch { /* connessione caduta: nessuna azione, si chiude sotto */ }

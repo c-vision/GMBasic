@@ -294,6 +294,7 @@
     <input id="log-filter" placeholder="filter (text)" style="min-width:220px">
     <button class="btn btn-ghost" id="btn-log-refresh">Refresh</button>
     <label class="kv muted" style="font-size:.8rem"><input type="checkbox" id="log-autoscroll" checked> autoscroll</label>
+    <span class="badge" id="log-live">polling</span>
     <span class="muted" id="log-count"></span>
   </div>
   <div class="card">
@@ -709,6 +710,28 @@
   function wireLog(){
     el('btn-log-refresh').addEventListener('click',refreshEvents);
     el('log-filter').addEventListener('input',refreshEvents);
+    // Eventi in tempo reale via SSE (chunked): il server manda solo i NUOVI eventi.
+    // Se EventSource non e' disponibile o il canale cade, resta il polling di refreshEvents().
+    try{
+      var es=new EventSource('/api/events/stream');
+      es.onopen=function(){ var b=el('log-live'); if(b){ b.textContent='live'; b.className='badge perm-yolo'; } };
+      es.onmessage=function(m){
+        var txt;
+        try{ txt=JSON.parse(m.data); }catch(_){ txt=m.data; }
+        if(typeof txt!=='string') txt=String(txt);
+        var f=(el('log-filter').value||'').toLowerCase();
+        if(f && txt.toLowerCase().indexOf(f)<0) return;
+        var tb=el('log-body');
+        var tr=document.createElement('tr');
+        var td=document.createElement('td');
+        td.className='detail';
+        td.textContent=txt;
+        tr.appendChild(td);
+        if(tb.firstChild) tb.insertBefore(tr, tb.firstChild); else tb.appendChild(tr);
+        var c=el('log-count'); if(c) c.textContent='live';
+      };
+      es.onerror=function(){ var b=el('log-live'); if(b){ b.textContent='polling'; b.className='badge'; } };
+    }catch(_){}
   }
 
   // ---------- workflows ----------
