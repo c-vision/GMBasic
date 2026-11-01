@@ -1143,35 +1143,35 @@ static void con_welcome(int W, const char* mode_line)
 
 static int rpl_loop_ansi(const rpl_options_t* o, const char* initial_cmd, const char* mode_line)
 {
-    int standard = (gmb_console_mode_get() == 2);   /* 2 = Standard (-c), 3 = System (-s) */
+    /* SystemConsole: wrapper diretto del terminale, ma con la palette applicata
+     * (ResetColor + Clear come la console C#: sfondo blu 1, testo 15). Niente
+     * buffer: lo scrollback del terminale resta quello vero. */
     int W = 80;
     struct winsize ws;
     if (ioctl(1, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 20) W = ws.ws_col;
-    if (standard) {
-        con_emit_colors(0);                        /* ResetColor: fg 15 / bg 1 */
-        printf("\x1b[H\x1b[2J\x1b[3J");             /* Clear() con lo sfondo attivo */
-        printf("\x1b[?12l\x1b[?25h");               /* cursore visibile */
-        con_emit_colors(0);                        /* colori ancora attivi per il welcome */
-        fflush(stdout);
-    }
+    con_emit_colors(0);                        /* ResetColor: fg 15 / bg 1 */
+    printf("\x1b[H\x1b[2J\x1b[3J");             /* Clear() con lo sfondo attivo */
+    printf("\x1b[?12l\x1b[?25h");               /* cursore visibile */
+    con_emit_colors(0);                        /* colori attivi per il welcome */
+    fflush(stdout);
     con_welcome(W, mode_line);
     char line[1024];
     if (initial_cmd && *initial_cmd) {
         int q0 = rpl_exec_line(initial_cmd, o, (char*)"READY.\n");
-        if (q0) { if (standard) printf("\x1b[0m"); return 0; }
-        if (standard) con_emit_colors(0);
+        if (q0) { printf("\x1b[0m"); return 0; }
+        con_emit_colors(0);
         printf("READY.\n"); fflush(stdout);
     }
     while (fgets(line, sizeof(line), stdin)) {
         size_t k = strlen(line);
         while (k && (line[k - 1] == '\n' || line[k - 1] == '\r')) line[--k] = 0;
-        if (!line[0]) { if (standard) con_emit_colors(0); printf("READY.\n"); fflush(stdout); continue; }
+        if (!line[0]) { con_emit_colors(0); printf("READY.\n"); fflush(stdout); continue; }
         int q1 = rpl_exec_line(line, o, (char*)"READY.\n");
         if (q1) break;
-        if (standard) con_emit_colors(0);           /* ApplyConsoleColors prima di READY */
+        con_emit_colors(0);                        /* ApplyConsoleColors prima di READY */
         printf("READY.\n"); fflush(stdout);
     }
-    if (standard) { printf("\x1b[0m"); fflush(stdout); }
+    printf("\x1b[0m"); fflush(stdout);
     return 0;
 }
 
