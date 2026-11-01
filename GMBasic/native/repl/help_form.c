@@ -221,8 +221,8 @@ static void help_load_all(void)
 {
     char root[2048];
     /* Help CONDIVISI: <monorepo>/shared/helps (una copia per i due rami). */
-    resolve_repo_path(root, sizeof(root), "shared/helps");
-    if (access(root, F_OK) != 0) resolve_repo_path(root, sizeof(root), "REPL/Helps");
+    resolve_repo_path(root, sizeof(root), "REPL/helps");
+    if (access(root, F_OK) != 0) resolve_repo_path(root, sizeof(root), "shared/helps");
     DIR* d = opendir(root);
     if (!d) return;
     struct dirent* de;
@@ -308,7 +308,7 @@ int gmb_help_print_index(gmb_sdl_console_t* model)
 {
     if (!model) return 1;
     if (!help_ensure_loaded()) {
-        gmb_sdl_console_write(model, "?help: nessun entry (shared/helps/*.json non trovati)\n");
+        gmb_sdl_console_write(model, "?help: nessun entry (REPL/helps/*.json non trovati)\n");
         gmb_sdl_console_render(model);
         return 1;
     }
@@ -351,7 +351,7 @@ int gmb_help_print_index(gmb_sdl_console_t* model)
 
 int gmb_help_browse(void)
 {
-    if (!help_ensure_loaded()) { fprintf(stderr, "?help: nessun entry (shared/helps/*.json non trovati)\n"); return 1; }
+    if (!help_ensure_loaded()) { fprintf(stderr, "?help: nessun entry (REPL/helps/*.json non trovati)\n"); return 1; }
     if (h_tty_open() != 0) { fprintf(stderr, "?help: /dev/tty non disponibile\n"); return 1; }
     printf("\033[?25l");
 
