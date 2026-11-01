@@ -196,4 +196,7 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
       e **rimozione** di `IL`/`PCODE` dalla superficie (non degradati).
 - [ ] **F6 — La REPL C# esce**: `GMBasicSharp/REPL` non è più canonica (resta, se serve, `gmbcs` per
       i test IL/PCode finché il compilatore C# esiste).
-- [ ] **F7 — Pulizia**: guida unica, help JSON unica fonte (`shared/helps`), manifesti/audit rigenerati.
+- [x] **F7a — Help JSON unica fonte** (2026-11-01): i 54 JSON vivono in **`REPL/helps/`**
+      (spostati da `shared/helps`), letti da REPL C (`helps.c`/`help_form.c`) e C# (`REPL.csproj`
+      + `InitHelp`). Nessuna copia in `shared/`.
+- [ ] **F7b — Pulizia finale** (dopo F6): guida unica e manifesti/audit rigenerati.
