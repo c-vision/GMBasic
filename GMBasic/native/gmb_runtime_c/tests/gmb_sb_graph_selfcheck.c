@@ -61,12 +61,18 @@ int main(void) {
     CHECK(r && strstr(r, "rank"), "PAGERANK"); free(r);
 
     printf("... BIPARTITE\n"); fflush(stdout);
+    /* Oracolo: GraphMultiQuery.Bipartite (C#) → JSON {"status":"Success","brain":..,"bipartite":true}
+     * per una catena a→b→c. (Il vecchio test cercava "1": il contratto è il JSON.) */
     r = gmb_graph_brain_query("testgraph", "BIPARTITE", NULL, NULL, 0);
-    CHECK(r && strcmp(r, "1") == 0, "BIPARTITE=1"); free(r);
+    CHECK(r && strstr(r, "\"bipartite\":true"), "BIPARTITE bipartite=true (JSON)"); free(r);
 
-    printf("... GHOST\n"); fflush(stdout);
+    printf("... GHOST (brain inesistente)\n"); fflush(stdout);
+    /* Oracolo: GraphMultiQuery.IsValid("ghost") = 0.0 → "0"; le op JSON (BIPARTITE/NEIGHBORS)
+     * rispondono {"status":"Error","error":"brain 'x' non disponibile come graph"}. */
     r = gmb_graph_brain_query("ghost", "ISVALID", NULL, NULL, 0);
-    CHECK(r && strstr(r, "Error"), "brain ignoto → errore esplicito"); free(r);
+    CHECK(r && strcmp(r, "0") == 0, "ISVALID(ghost)=0 (come GraphMultiQuery.IsValid)"); free(r);
+    r = gmb_graph_brain_query("ghost", "NEIGHBORS", "a.md", NULL, 0);
+    CHECK(r && strstr(r, "Error"), "NEIGHBORS(ghost) → errore esplicito"); free(r);
 
     printf("... NEIGHBORS\n"); fflush(stdout);
     r = gmb_graph_brain_query("testgraph", "NEIGHBORS", "a.md", NULL, 0);
@@ -115,8 +121,9 @@ int main(void) {
     CHECK(r && strcmp(r, "0") == 0, "HASCYCLE=0"); free(r);
 
     printf("... ECCENTRICITY\n"); fflush(stdout);
+    /* Oracolo: GraphMultiQuery.Eccentricity → JSON {"eccentricity":2} per a.md (catena di 3). */
     r = gmb_graph_brain_query("testgraph", "ECCENTRICITY", "a.md", NULL, 0);
-    CHECK(r && *r && atof(r) == 2.0, "ECCENTRICITY(a)=2"); free(r);
+    CHECK(r && strstr(r, "\"eccentricity\":2"), "ECCENTRICITY(a)=2 (JSON)"); free(r);
 
     printf("... SCC\n"); fflush(stdout);
     r = gmb_graph_brain_query("testgraph", "SCC", NULL, NULL, 0);
@@ -126,9 +133,12 @@ int main(void) {
     r = gmb_llm_complete("Sistema", "Domanda");
     CHECK(r && *r, "gmb_llm_complete"); free(r);
 
-    printf("... BRAIN_LIST\n"); fflush(stdout);
+    printf("... AI.BRAINLIST (cervelli installati)\n"); fflush(stdout);
+    /* Superficie BASIC: AI.BRAINLIST() (comando AI BRAIN LIST) — nomi separati da virgola.
+     * Elenca i CERVELLI INSTALLATI (registro + risoluzione su disco), non i vault: `testgraph`
+     * è un vault/grafo e NON deve comparire. Si verifica il formato (nessuna versione `@x.y.z`). */
     r = gmb_brain_registry_list();
-    CHECK(r && strstr(r, "testgraph"), "gmb_brain_registry_list"); free(r);
+    CHECK(r != NULL && strchr(r, '@') == NULL, "AI.BRAINLIST: nomi senza @versione"); free(r);
 
     printf(failures == 0 ? "ALL PASS\n" : "%d FAILURES\n", failures);
     return failures == 0 ? 0 : 1;
