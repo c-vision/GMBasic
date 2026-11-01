@@ -271,6 +271,7 @@ gmb_chunk_t* gmb_chunk_load(const uint8_t* data, size_t len, bool load_lines)
     }
     if (r.err) goto fail;
 
+    c->refs = 1;             /* referenza del chiamante; la cache BSP ne aggiunge una sua */
     return c;
 
 fail:
@@ -286,9 +287,16 @@ static void free_entry(gmb_chunk_dict_entry_t* e)
     if (e->val_list) { gmb_chunk_list_t* l = e->val_list; for (uint32_t i = 0; i < l->count; i++) free_entry(&l->items[i]); free(l->items); free(l); }
 }
 
+gmb_chunk_t* gmb_chunk_retain(gmb_chunk_t* c)
+{
+    if (c) c->refs++;
+    return c;
+}
+
 void gmb_chunk_free(gmb_chunk_t* c)
 {
     if (!c) return;
+    if (c->refs > 1) { c->refs--; return; }   /* ancora in uso da un render concorrente */
     free(c->code);
     free(c->lines);
     if (c->constants)
