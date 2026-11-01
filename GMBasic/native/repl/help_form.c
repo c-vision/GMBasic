@@ -4,6 +4,7 @@
  * Riusa lo stesso approccio raw-mode/ANSI di editor.c e menu.c.
  */
 #include "repl.h"
+#include "gmb_sdl_console.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -289,14 +290,58 @@ static int help_cmp_ns_name(const void* a, const void* b)
     return strcasecmp(x->name, y->name);
 }
 
-int gmb_help_browse(void)
+/* Carica (una volta) e ordina per namespace/nome. 1 = ok. */
+static int help_ensure_loaded(void)
 {
     if (g_nentries == 0) {
         help_load_all();
         qsort(g_entries, (size_t)g_nentries, sizeof(g_entries[0]), help_cmp_ns_name);
         if (getenv("GMBASIC_DEBUG")) fprintf(stderr, "[help] loaded %d entries\n", g_nentries);
     }
-    if (g_nentries == 0) { fprintf(stderr, "?help: nessun entry (shared/helps/*.json non trovati)\n"); return 1; }
+    return g_nentries > 0;
+}
+
+/* Indice dell'help DENTRO il buffer a celle (consolle a finestra: SDL/C64).
+ * Il browser a schermo intero ha bisogno di un terminale; in finestra scriviamo
+ * l'elenco raggruppato nel modello e poi presentiamo. */
+int gmb_help_print_index(gmb_sdl_console_t* model)
+{
+    if (!model) return 1;
+    if (!help_ensure_loaded()) {
+        gmb_sdl_console_write(model, "?help: nessun entry (shared/helps/*.json non trovati)\n");
+        gmb_sdl_console_render(model);
+        return 1;
+    }
+    int W = gmb_screen_width(gmb_sdl_console_screen(model));
+    if (W < 20) W = 80;
+    gmb_sdl_console_write(model, "\n");
+    gmb_sdl_console_write(model, "GMBASIC Help - argomento: HELP <namespace> (es. HELP math), HELP BROWSE nel terminale\n\n");
+    char last_group[64] = "";
+    for (int i = 0; i < g_nentries; i++) {
+        char group[64];
+        snprintf(group, sizeof(group), "%s", g_entries[i].ns);
+        char* dot = strchr(group, '.');
+        if (dot) *dot = 0;
+        if (!group[0] || strcmp(group, "-") == 0) snprintf(group, sizeof(group), "GENERAL");
+        if (strcasecmp(group, last_group) != 0) {
+            if (last_group[0]) gmb_sdl_console_write(model, "\n");
+            char hdr[128];
+            snprintf(hdr, sizeof(hdr), "<%s>\n", group);
+            gmb_sdl_console_write(model, hdr);
+            snprintf(last_group, sizeof(last_group), "%s", group);
+        }
+        char line[160];
+        snprintf(line, sizeof(line), "  %-28.28s %-40.40s\n", g_entries[i].name, g_entries[i].desc);
+        gmb_sdl_console_write(model, line);
+    }
+    gmb_sdl_console_write(model, "\n");
+    gmb_sdl_console_render(model);
+    return 1;
+}
+
+int gmb_help_browse(void)
+{
+    if (!help_ensure_loaded()) { fprintf(stderr, "?help: nessun entry (shared/helps/*.json non trovati)\n"); return 1; }
     if (h_tty_open() != 0) { fprintf(stderr, "?help: /dev/tty non disponibile\n"); return 1; }
     printf("\033[?25l");
 

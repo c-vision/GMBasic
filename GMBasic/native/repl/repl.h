@@ -84,6 +84,9 @@ const char* rpl_editor_source(void);
 
 /* Browser help interattivo (speculare a HelpForm.cs). */
 int gmb_help_browse(void);
+/* Indice dell'help scritto nel buffer a celle (console a finestra SDL/C64). */
+struct gmb_sdl_console;
+int gmb_help_print_index(struct gmb_sdl_console* model);
 /* IDE full-screen (speculare a GMBasicIde.cs). */
 int gmb_ide_run(const char* file);
 /* chunk A1: PRGINFO/DASM/LOADPRG */
