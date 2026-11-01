@@ -38,6 +38,11 @@ bspEngine = "c"
 # Pagine da forzare sulla VM/C anche con bspEngine="managed" (vuoto = nessuna eccezione).
 bspEnginePages = ""
 
+# Pagine che il motore C può renderizzare in PARALLELO (lock di lettura): vale solo per pagine
+# il cui stato passa INTERAMENTE dal client managed (hook) — nessuno stato C condiviso.
+# Tutte le altre restano serializzate. Vedi Knowledge/BSP-Engine-Audit-Concorrenza.
+bspConcurrentPages = "index.bsp,canvas.bsp,wasm.bsp"
+
 [app]
 # Crea Demo/Analyst/Support se il registry degli agenti è vuoto.
 seedDemo  = true

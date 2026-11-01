@@ -18,6 +18,10 @@ extern "C" {
  * dell'host (gmb_vm_host) prima di HTTP SERVER. */
 void gmb_vm_bsp_register(void);
 
+/* Elenco (CSV, es. "index.bsp,canvas.bsp") delle pagine renderizzabili in parallelo: il loro
+ * stato arriva tutto dal client managed (hook), quindi la VM/C non condivide stato mutabile. */
+void gmb_bsp_set_concurrent_pages(const char* csv);
+
 /* Firma compatibile con gmb_bsp_vm_render_fn: 1 = gestita (*out_html malloc,
  * *out_status), 0 = sidecar assente/non fresco (fallback gmb_expr). `host` =
  * header HTTP Host della richiesta (o NULL), seminato come REQ.Headers["Host"]. */

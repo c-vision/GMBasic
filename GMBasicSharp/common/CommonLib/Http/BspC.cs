@@ -51,6 +51,8 @@ public static class BspC
     private delegate int StateFn(IntPtr ctx, IntPtr surface, IntPtr a, IntPtr b, IntPtr c, IntPtr outBuf, int cap);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate void SetStateHookFn(IntPtr fn, IntPtr ctx);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void SetConcurrentPagesFn(IntPtr csv);
 
     private static readonly object Gate = new();
     private static bool _probed;
@@ -62,6 +64,7 @@ public static class BspC
     private static AbiFn? _abi;
     private static InitFn? _init;
     private static SetStateHookFn? _setStateHook;
+    private static SetConcurrentPagesFn? _setConcurrentPages;
     // Il delegato deve restare vivo per tutta la durata del processo (il C ne tiene il puntatore).
     private static readonly StateFn StateCallback = OnStateQuery;
 
@@ -72,6 +75,26 @@ public static class BspC
     /// Va impostato dall'host managed prima di servire la prima pagina con il motore C.
     /// </summary>
     public static Func<string, string?, string?, string?, string?>? StateProvider { get; set; }
+
+    private static string? _concurrentPages;
+
+    /// <summary>
+    /// Elenco (CSV) delle pagine renderizzabili in PARALLELO: il loro stato passa interamente dal
+    /// client managed (hook di stato), quindi la VM/C non condivide stato mutabile. Le altre
+    /// pagine restano serializzate. Vedi Knowledge/BSP-Engine-Audit-Concorrenza.
+    /// </summary>
+    public static void SetConcurrentPages(string? csv)
+    {
+        _concurrentPages = csv;
+        if (!Available || _setConcurrentPages is null) return;   // memorizzato: applicato al probe
+        ApplyConcurrentPages(csv ?? "");
+    }
+
+    private static void ApplyConcurrentPages(string csv)
+    {
+        var p = Marshal.StringToCoTaskMemUTF8(csv ?? "");
+        try { _setConcurrentPages!(p); } finally { Marshal.FreeCoTaskMem(p); }
+    }
 
     /// <summary>Percorso della libreria caricata (diagnostica), o null se non disponibile.</summary>
     public static string? LoadedPath { get { EnsureProbe(); return _loadedPath; } }
@@ -102,6 +125,10 @@ public static class BspC
                 if (NativeLibrary.TryGetExport(_handle, "gmb_bsp_shared_set_state_hook", out var setHook))
                     _setStateHook = Marshal.GetDelegateForFunctionPointer<SetStateHookFn>(setHook);
                 _setStateHook?.Invoke(Marshal.GetFunctionPointerForDelegate(StateCallback), IntPtr.Zero);
+                if (NativeLibrary.TryGetExport(_handle, "gmb_bsp_shared_set_concurrent_pages", out var setPages))
+                    _setConcurrentPages = Marshal.GetDelegateForFunctionPointer<SetConcurrentPagesFn>(setPages);
+                if (!string.IsNullOrEmpty(_concurrentPages) && _setConcurrentPages is not null)
+                    ApplyConcurrentPages(_concurrentPages);
                 _available = true;
             }
             catch

@@ -31,17 +31,17 @@
 extern int g_vm_host_argc; /* definita in gmb_vm_core.c */
 extern const char** g_vm_host_argv; /* definita in gmb_vm_core.c */
 
-static void print_str_hook(const char* s, uint32_t len)
+static void print_str_hook(void* ctx, const char* s, uint32_t len)
 {
     fwrite(s, 1, len, stdout);
 }
 
-static void print_num_hook(double v)
+static void print_num_hook(void* ctx, double v)
 {
     printf("%.17g", v);
 }
 
-static void print_nl_hook(void)
+static void print_nl_hook(void* ctx)
 {
     putchar('\n');
 }

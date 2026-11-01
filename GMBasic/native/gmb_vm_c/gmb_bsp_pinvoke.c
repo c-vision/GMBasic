@@ -73,3 +73,11 @@ void gmb_bsp_shared_set_state_hook(gmb_state_query_fn fn, void* ctx)
 
 /* True se un hook di stato è registrato (diagnostica). */
 int gmb_bsp_shared_state_hook_active(void) { return gmb_state_hook_active(); }
+
+/* Elenco (CSV) delle pagine che possono essere renderizzate in PARALLELO: il loro stato passa
+ * interamente dal client managed (hook), quindi il runtime C non ha stato condiviso da
+ * proteggere. Tutte le altre restano serializzate (lato scrittura del rwlock). */
+void gmb_bsp_shared_set_concurrent_pages(const char* csv)
+{
+    gmb_bsp_set_concurrent_pages(csv);
+}

@@ -55,6 +55,7 @@ DIM g_rateLimitBurst AS INTEGER
 DIM g_bspCacheMs AS INTEGER
 DIM g_bspEngine AS STRING
 DIM g_bspEnginePages AS STRING
+DIM g_bspConcurrentPages AS STRING
 
 ' --- Stato del processo -----------------------------------------------------
 DIM g_appDir AS STRING
@@ -118,6 +119,7 @@ SUB SetDefaults()
     g_bspCacheMs = 0
     g_bspEngine = "c"
     g_bspEnginePages = ""
+    g_bspConcurrentPages = ""
     g_proxied = 0
 END SUB
 
@@ -170,6 +172,7 @@ SUB ParseConfig(path AS STRING)
                         IF key = "BSPCACHEMS" THEN g_bspCacheMs = CINT(VAL(val))
                         IF key = "BSPENGINE" THEN g_bspEngine = STRINGS.LOWER(val)
                         IF key = "BSPENGINEPAGES" THEN g_bspEnginePages = val
+                        IF key = "BSPCONCURRENTPAGES" THEN g_bspConcurrentPages = val
                     ELSEIF section = "APP" THEN
                         IF key = "SEEDDEMO" THEN g_seedDemo = BoolVal(val)
                         IF key = "AUTOTRACE" THEN g_autoTrace = BoolVal(val)
@@ -376,6 +379,7 @@ SUB PrintBanner()
     END IF
     PRINT "bsp engine : "; g_bspEngine
     IF LEN(g_bspEnginePages) > 0 THEN PRINT "bsp c pages: "; g_bspEnginePages
+    IF LEN(g_bspConcurrentPages) > 0 THEN PRINT "bsp conc   : "; g_bspConcurrentPages
 END SUB
 
 FUNCTION ApiUrl() AS STRING
@@ -462,6 +466,7 @@ SUB StartDashboard()
     cfg.BspCacheMs = g_bspCacheMs
     cfg.BspEngine = g_bspEngine
     cfg.BspEnginePages = g_bspEnginePages
+    cfg.BspConcurrentPages = g_bspConcurrentPages
     HTTP CONFIG cfg
 
     ' Più mount statici sono legittimi: vince il prefisso più lungo.

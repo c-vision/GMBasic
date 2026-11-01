@@ -3526,6 +3526,8 @@ public static partial class IlRuntime
                 string.Equals(GetString(cd, "BspEngine"), "c", StringComparison.OrdinalIgnoreCase)
                     ? CommonLib.Http.BspEngine.C : CommonLib.Http.BspEngine.Managed;
             CommonLib.Http.BspRuntime.SetEngineCPages(GetString(cd, "BspEnginePages"));
+            CommonLib.Http.BspRuntime.ConcurrentPages = GetString(cd, "BspConcurrentPages") ?? "";
+            CommonLib.Http.BspC.SetConcurrentPages(CommonLib.Http.BspRuntime.ConcurrentPages);
         }
         _pendingHttpSettings = settings;
         if (_httpServerHandle >= 0)

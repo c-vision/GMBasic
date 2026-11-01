@@ -51,6 +51,10 @@ public sealed class HttpConfig
     /// `BspEngine` è "managed": tipicamente pagine leggere senza stato del runtime (canvas, wasm).</summary>
     public string BspEnginePages { get; set; } = "";
 
+    /// <summary>Pagine (CSV) renderizzabili in parallelo dal motore C: il loro stato passa
+    /// interamente dal client managed. Le altre restano serializzate (stato C condiviso).</summary>
+    public string BspConcurrentPages { get; set; } = "";
+
     /// <summary>Dimensione massima consentita per il body di una richiesta in byte. Default: 10 MB.</summary>
     public long MaxRequestBodySize { get; set; } = 10 * 1024 * 1024;
 

@@ -1935,18 +1935,18 @@ static void vm_emit_captured_print(gmb_vm_t* vm, gmb_task_t* task, const char* s
         if (task->print_staging_len > 0)
         {
             task->print_staging[task->print_staging_len] = '\0';
-            if (vm->print_str) vm->print_str(task->print_staging, (uint32_t)task->print_staging_len);
+            if (vm->print_str) vm->print_str(vm->print_ctx, task->print_staging, (uint32_t)task->print_staging_len);
             else fputs(task->print_staging, stdout);
             task->print_staging_len = 0;
         }
         if (seg > 0)
         {
-            if (vm->print_str) vm->print_str(p, (uint32_t)seg);
+            if (vm->print_str) vm->print_str(vm->print_ctx, p, (uint32_t)seg);
             else fwrite(p, 1, seg, stdout);
         }
         if (nl)
         {
-            if (vm->print_newline) vm->print_newline(); else fputc('\n', stdout);
+            if (vm->print_newline) vm->print_newline(vm->print_ctx); else fputc('\n', stdout);
             p = nl + 1;
         }
         else
@@ -12404,13 +12404,13 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     if (task->print_staging_len > 0)
                     {
                         task->print_staging[task->print_staging_len] = '\0';
-                        if (vm->print_str) vm->print_str(task->print_staging, (uint32_t)task->print_staging_len);
+                        if (vm->print_str) vm->print_str(vm->print_ctx, task->print_staging, (uint32_t)task->print_staging_len);
                         else fputs(task->print_staging, stdout);
                         task->print_staging_len = 0;
                     }
                     if (n > 0)
                     {
-                        if (vm->print_str) vm->print_str(buf, (uint32_t)n);
+                        if (vm->print_str) vm->print_str(vm->print_ctx, buf, (uint32_t)n);
                         else fputs(buf, stdout);
                     }
                     pthread_mutex_unlock(&vm->print_lock);
@@ -12429,16 +12429,16 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 if (task->print_staging_len > 0)
                 {
                     task->print_staging[task->print_staging_len] = '\0';
-                    if (vm->print_str) vm->print_str(task->print_staging, (uint32_t)task->print_staging_len);
+                    if (vm->print_str) vm->print_str(vm->print_ctx, task->print_staging, (uint32_t)task->print_staging_len);
                     else fputs(task->print_staging, stdout);
                     task->print_staging_len = 0;
                 }
                 if (n > 0)
                 {
-                    if (vm->print_str) vm->print_str(buf, (uint32_t)n);
+                    if (vm->print_str) vm->print_str(vm->print_ctx, buf, (uint32_t)n);
                     else fputs(buf, stdout);
                 }
-                if (vm->print_newline) vm->print_newline(); else fputc('\n', stdout);
+                if (vm->print_newline) vm->print_newline(vm->print_ctx); else fputc('\n', stdout);
                 pthread_mutex_unlock(&vm->print_lock);
                 break;
             }
@@ -12448,11 +12448,11 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 if (task->print_staging_len > 0)
                 {
                     task->print_staging[task->print_staging_len] = '\0';
-                    if (vm->print_str) vm->print_str(task->print_staging, (uint32_t)task->print_staging_len);
+                    if (vm->print_str) vm->print_str(vm->print_ctx, task->print_staging, (uint32_t)task->print_staging_len);
                     else fputs(task->print_staging, stdout);
                     task->print_staging_len = 0;
                 }
-                if (vm->print_newline) vm->print_newline(); else fputc('\n', stdout);
+                if (vm->print_newline) vm->print_newline(vm->print_ctx); else fputc('\n', stdout);
                 pthread_mutex_unlock(&vm->print_lock);
                 break;
             }
@@ -16048,7 +16048,7 @@ static void vm_flush_print_staging(gmb_vm_t* vm, gmb_task_t* task)
     if (!vm || !task || task->print_staging_len <= 0) return;
     pthread_mutex_lock(&vm->print_lock);
     task->print_staging[task->print_staging_len] = '\0';
-    if (vm->print_str) vm->print_str(task->print_staging, (uint32_t)task->print_staging_len);
+    if (vm->print_str) vm->print_str(vm->print_ctx, task->print_staging, (uint32_t)task->print_staging_len);
     else fputs(task->print_staging, stdout);
     task->print_staging_len = 0;
     pthread_mutex_unlock(&vm->print_lock);
