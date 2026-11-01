@@ -7,6 +7,7 @@
 #include "packages.h"
 #include "gmb_graph.h"
 #include "gmb_iconsole.h"
+#include "gmb_fixtures.h"
 #include "gmb_sdl_console.h"
 #include "gmb_gfx_input.h"
 #include <sys/ioctl.h>
@@ -546,6 +547,95 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
               printf("  (runtime: %s, %s; libs in %s)\n", cfgd, mlc, libs); }
             goto done;
         }
+        /* ── F3a: comandi nati nella REPL C#, riportati nel mondo C (runtime C) ── */
+        if (strcasecmp(cmd, "FIXTURES") == 0) {
+            char sub[64] = "";
+            sscanf(args, "%63s", sub);
+            for (char* q = sub; *q; q++) *q = (char)toupper((unsigned char)*q);
+            char av[4096], pr[4096], root[2048], man[2048];
+            gmb_fixtures_manifest_path(man, sizeof(man));
+            gmb_fixtures_root(root, sizeof(root));
+            if (!*sub || !strcmp(sub, "LIST") || !strcmp(sub, "AVAILABLE")) {
+                int n = gmb_fixtures_available(av, sizeof(av));
+                printf("  manifest: %s\n  cartella: %s\n", man, root);
+                if (n < 0) printf("  (manifest assente)\n");
+                else printf("  dichiarate: %s\n", av[0] ? av : "(nessuna)");
+                if (gmb_fixtures_present(pr, sizeof(pr)) > 0) printf("  presenti:   %s\n", pr);
+                else printf("  presenti:   (nessuna)\n");
+            } else if (!strcmp(sub, "PRESENT")) {
+                if (gmb_fixtures_present(pr, sizeof(pr)) > 0) printf("%s\n", pr);
+                else printf("(nessuna fixture presente in %s)\n", root);
+            } else if (!strcmp(sub, "ENSURE") || !strcmp(sub, "ALL")) {
+                char err[512] = "";
+                int n = gmb_fixtures_ensure_all(NULL, NULL, NULL, err, sizeof(err));
+                if (n < 0) printf("?FIXTURES ENSURE: %s\n", err[0] ? err : "errore");
+                else printf("FIXTURES: %d scaricate in %s\n", n, root);
+            } else if (!strcmp(sub, "PULL")) {
+                char name[128] = "";
+                const char* rest = args; while (*rest == ' ') rest++;
+                rest += strlen(sub); while (*rest == ' ') rest++;
+                sscanf(rest, "%127s", name);
+                if (!name[0]) { printf("?uso: FIXTURES PULL <nome>\n"); goto done; }
+                char out_dir[2048], err[512] = "";
+                int rc = gmb_fixtures_pull(name, "latest", NULL, 0, NULL, NULL, out_dir, sizeof(out_dir), err, sizeof(err));
+                if (rc != 0) printf("?FIXTURES PULL %s: %s\n", name, err[0] ? err : "errore");
+                else printf("FIXTURES: %s -> %s\n", name, out_dir);
+            } else {
+                printf("uso: FIXTURES [LIST|PRESENT|ENSURE|PULL <nome>]\n");
+            }
+            goto done;
+        }
+        if (strcasecmp(cmd, "SETUP") == 0) {
+            /* Stato della cache delle librerie native + come popolarla (parità informativa
+             * con SETUP della REPL C#; l'ensure vero è nel runtime/CLI). */
+            const char* rid = gmb_libs_rid();
+            char cd[2048]; gmb_paths_libs_dir(cd, sizeof(cd));
+            { size_t l = strlen(cd); if (!(l >= strlen(rid) && !strcmp(cd + l - strlen(rid), rid))) {
+                  snprintf(cd + l, sizeof(cd) - l, "/%s", rid); } }
+            int n = 0;
+            DIR* d = opendir(cd);
+            if (d) { struct dirent* de; while ((de = readdir(d))) if (de->d_name[0] != '.') n++; closedir(d); }
+            printf("  RID: %s\n  cache librerie: %s\n  file presenti: %d\n", rid, cd, n);
+            printf("  per popolarla: `gmb libs ensure` (CLI) oppure SETUP --force\n");
+            goto done;
+        }
+        if (strcasecmp(cmd, "LLM") == 0) {
+            /* Elenco modelli: cartelle sotto i path di AIPATH (*modelPaths* in ai.json) e ML cache. */
+            char cfgd[1024]; gmb_paths_config_dir(cfgd, sizeof(cfgd));
+            char cfg2[1200]; snprintf(cfg2, sizeof(cfg2), "%s/ai.json", cfgd);
+            printf("  modelli (AIPATH):\n");
+            FILE* cf = fopen(cfg2, "r");
+            int found = 0;
+            if (cf) {
+                char buf[8192]; size_t n = fread(buf, 1, sizeof(buf) - 1, cf); buf[n] = 0; fclose(cf);
+                const char* mp = strstr(buf, "modelPaths");
+                const char* b = mp ? strchr(mp, '[') : NULL;
+                const char* e = b ? strchr(b, ']') : NULL;
+                if (b && e) {
+                    const char* q = b + 1;
+                    while (q < e) {
+                        while (q < e && (*q == ' ' || *q == ',' || *q == '"')) q++;
+                        char path[1024]; int pl = 0;
+                        while (q < e && *q != '"' && *q != ',' && pl < (int)sizeof(path) - 1) path[pl++] = *q++;
+                        path[pl] = 0;
+                        while (pl > 0 && (path[pl-1] == ' ' || path[pl-1] == '\n')) path[--pl] = 0;
+                        if (!pl) continue;
+                        DIR* dd = opendir(path);
+                        if (!dd) { printf("  (path non accessibile: %s)\n", path); continue; }
+                        struct dirent* de;
+                        while ((de = readdir(dd))) {
+                            if (de->d_name[0] == '.') continue;
+                            printf("  %s/%s\n", path, de->d_name);
+                            found++;
+                        }
+                        closedir(dd);
+                    }
+                }
+            }
+            if (!found) printf("  (nessun modello: imposta AIPATH=<dir> o scarica con HF)\n");
+            goto done;
+        }
+
         if (strcasecmp(cmd, "AIPATH") == 0) {
             char* args2 = (char*)args;
             while (*args2 == ' ') args2++;

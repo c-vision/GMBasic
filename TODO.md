@@ -156,7 +156,12 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
       Client: le IDE GMBasic e VS Code (o qualunque editor LSP).
 - [ ] **Decisione nome `EVAL`**: nel motore C valuta uno snippet (`gmb eval`), nella REPL C#
       è l'Eval Harness AI. Un solo significato: candidato `AIBENCH` per l'harness.
-- [ ] **F3 — Comandi solo-C# riportati nel mondo C** (tabella 6.3) come wrapper di `gmb`/runtime C.
+- [x] **F3a — comandi riportati nel mondo C** (2026-11-01): `FIXTURES` (runtime
+      `gmb_fixtures_*`), `SETUP` (stato cache libs: RID/cartella/conteggio), `LLM` (modelli
+      sotto AIPATH da `ai.json`). Verificati headless.
+- [ ] **F3b — pacchetto nel mondo C**: `ADD/REMOVE/CACHE/BUMP/ROLLBACK/RESTORE/TRUST/UPDATE`
+      sopra l'API `gmb_pkg_*` (manifest, lock, firme). Finché non sono portati, restano solo
+      nella REPL C# (vedi parità F4).
 - [ ] **F4 — Parità completa con l'engine C# (finché esiste)**: `--engine=csharp` implementa
       **tutti** i comandi identici al ramo C — `IL` e `PCODE` compresi (non stub), `EVAL`, dump,
       debug; stessi flag e stessa semantica. Test di parità comando-per-comando fra i due engine.
