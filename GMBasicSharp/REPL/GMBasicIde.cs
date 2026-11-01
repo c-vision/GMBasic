@@ -1900,7 +1900,7 @@ public class GMBasicIde : IApp
     private void RegisterIde(IGraphicsService g, int W, int H)
     {
         g.UiControlsReset();
-        g.UiAddStatusbar(0, 0, W, $"  GMBASIC IDE  |  {System.IO.Path.GetFileName(_fileName)}{(_dirty ? " [*]" : "")}   F1=Help F2=Subs F3=Save F4=Out F5=Run F7=Build F8=Step F9=Break F10=Over F11=Menu F12=Def  Ctrl+T=New Ctrl+W=Close ESC=Exit");
+        g.UiAddStatusbar(0, 0, W, $"  GMBASIC IDE  |  {System.IO.Path.GetFileName(_fileName)}{(_dirty ? " [*]" : "")}   F1=Help F2=Subs F3=Find F4=Out F5=Run F7=Build F8=Step F9=Break F10=Over F11=Menu F12=Def  Ctrl+S=Save Ctrl+T=New Ctrl+W=Close ESC=Exit");
         // Tab bar: nomi dei tab aperti nel modello C (gmb_ide).
         int tn = Basic.Runtime.CIdeNative.TabCount();
         if (tn <= 0) tn = 1;
@@ -1947,6 +1947,13 @@ public class GMBasicIde : IApp
         // usa Tab per il focus; la selezione tab via mouse/click e' gestita dai controlli C.)
         if ((k & 0x1F) == 20) { DoNewTab(g, W, H); return; }
         if ((k & 0x1F) == 23) { DoCloseTab(g, W, H); return; }
+        // Ctrl+lettera (parità con l'IDE C: stesso set di scorciatoie)
+        if ((k & 0x1F) == 19) { SaveAndClean(); return; }   // Ctrl+S
+        if ((k & 0x1F) == 15) { DoOpen(); return; }         // Ctrl+O
+        if ((k & 0x1F) == 14) { DoNew(); return; }          // Ctrl+N
+        if ((k & 0x1F) == 6)  { DoFind(); return; }         // Ctrl+F
+        if ((k & 0x1F) == 8)  { DoReplace(); return; }      // Ctrl+H
+        if ((k & 0x1F) == 7)  { DoGoToLine(); return; }     // Ctrl+G
 
         SyncCodeFromC(g);
         bool changed = false;
@@ -1954,7 +1961,7 @@ public class GMBasicIde : IApp
         {
             case (int)ConsoleKey.F1: DoAbout(); break;
             case (int)ConsoleKey.F2: DoOutline(); break;
-            case (int)ConsoleKey.F3: SaveAndClean(); break;
+            case (int)ConsoleKey.F3: FindNext(_lastFindDir); break;   // come l'IDE C (Repeat Last Find)
             case (int)ConsoleKey.F4: DoToggleOutput(); changed = true; break;
             case (int)ConsoleKey.F5: DoRun(); break;
             case (int)ConsoleKey.F7: DoBuild(); break;
