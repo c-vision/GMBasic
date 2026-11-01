@@ -842,7 +842,11 @@ public sealed partial class IlProgramCompiler
         switch (elementType)
         {
             case DoubleType: _il.Emit(OpCodes.Ldelem_R8); return;
-            case SingleType: _il.Emit(OpCodes.Ldelem_R4); return;
+            // Elemento di array SINGLE: lo storage e' float[] (ABI FFI/AI.EMBED) ma il VALORE
+            // nel resto del codice e' double (SINGLE scalare mappato a double, parita' C): senza
+            // conv.r8 lo stack resta F e i consumatori emettono `box System.Double` / `add`
+            // F8 su un float = IL invalido (visto su `d = a(1)` e `a(0) + a(1)`).
+            case SingleType: _il.Emit(OpCodes.Ldelem_R4); _il.Emit(OpCodes.Conv_R8); return;
             case LongType or ULongType or IntegerType or UIntegerType: _il.Emit(OpCodes.Ldelem_I8); return;
             case ByteType: _il.Emit(OpCodes.Ldelem_U1); return;
             case SByteType or BitType: _il.Emit(OpCodes.Ldelem_I1); return;

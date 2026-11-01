@@ -861,14 +861,16 @@ public sealed partial class IlProgramCompiler
         // array GLOBALE/STATIC farebbe InvalidCastException su un valore realmente object[]
         // — stesso bug del cast in EmitCoerceToTarget (vedi ObjectArrayReturningBuiltins lì),
         // stessa causa: ArraysUncoveredCoverage.bas.
-        var elementClrType = declaration.InitialValue is BuiltinFunctionCallExpr objArrDecl
+        // ClrArrayType = mappatura dell'ARRAY (non dello scalare): `ArrayType(SingleType)` e'
+        // float[] per l'ABI FFI/AI.EMBED, mentre lo SCALARE SingleType e' double (parita' C).
+        // Con Map(elementType) si dichiarava double[] e il castclass sul risultato float[] di
+        // AI.EMBED lanciava InvalidCastException (Single[] -> Double[]), rompendo
+        // ai/embed_dims. Map(arrayType) gestisce da sola anche i rank annidati (double[][]).
+        // ACHUNK/AZIP restano object[] (vedi commento sopra).
+        var clrArrayType = declaration.InitialValue is BuiltinFunctionCallExpr objArrDecl
             && ObjectArrayReturningBuiltins.Contains(objArrDecl.Name.Kind)
-            ? _types.Object
-            : DataTypeMapper.Map(elementType, _types, _classTypes);
-        // ClrArrayType JAGGED per il rank (double[][] per rank 2) — coerente con la local
-        // (Map ricorsivo) e con gli ldelem.ref intermedi del caricamento.
-        var clrArrayType = elementClrType;
-        for (var i = 0; i < rank; i++) clrArrayType = clrArrayType.MakeArrayType();
+            ? _types.Object.MakeArrayType(rank)
+            : DataTypeMapper.Map(arrayType, _types, _classTypes);
         var local = GetOrDeclareLocal(declaration.SymbolId);
         // Array STATIC o GLOBALE: il riferimento vive nel bag (StoreStatic/StoreGlobal —
         // vedi EmitStoreVariable, che per un simbolo GLOBALE/STATIC non scrive MAI nel local
