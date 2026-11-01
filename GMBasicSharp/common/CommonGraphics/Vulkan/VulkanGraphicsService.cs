@@ -138,6 +138,8 @@ public sealed class VulkanGraphicsService : IGraphicsService
     public void SpriteSetMatrix(int spriteId, long matrixId) => _sdl.SpriteSetMatrix(spriteId, matrixId);
     public SpriteCollisionHit[] TakeLastCollisions() => _sdl.TakeLastCollisions();
     public void SpriteSetPosition(int spriteId, float x, float y) => _sdl.SpriteSetPosition(spriteId, x, y);
+    public void SpriteSetScale(int spriteId, float sx, float sy) => _sdl.SpriteSetScale(spriteId, sx, sy);
+    public void SpriteSetRotation(int spriteId, float degrees) => _sdl.SpriteSetRotation(spriteId, degrees);
     public void SpriteSetVisible(int spriteId, bool visible) => _sdl.SpriteSetVisible(spriteId, visible);
     public void SpriteSetPriority(int spriteId, int priority) => _sdl.SpriteSetPriority(spriteId, priority);
     public void Print(string? text) => _sdl.Print(text);

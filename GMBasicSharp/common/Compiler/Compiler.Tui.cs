@@ -148,7 +148,8 @@ public sealed partial class Compiler
         VisitExpression(stmt.Max);
         VisitExpression(stmt.Value);
         EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.TUI_STARRATING); EmitByte((byte)5);
-        AssignVariable(stmt.Variable, isLet: false);
+        if (stmt.Variable != null) AssignVariable(stmt.Variable, isLet: false);
+        else EmitByte((byte)OpCode.OP_POP);
         EmitTuiId(stmt.Id);
         EmitTuiProps(stmt.Props, stmt.Token);
         if (stmt.Events != null) foreach (var _e in stmt.Events) VisitControlEventStatement(_e);
@@ -262,7 +263,8 @@ public sealed partial class Compiler
         VisitExpression(stmt.Height);
         VisitExpression(stmt.Records);
         EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.TUI_LOGVIEW); EmitByte((byte)5);
-        AssignVariable(stmt.Variable, isLet: false);
+        if (stmt.Variable != null) AssignVariable(stmt.Variable, isLet: false);
+        else EmitByte((byte)OpCode.OP_POP);
         EmitTuiId(stmt.Id);
         EmitTuiProps(stmt.Props, stmt.Token);
         if (stmt.Events != null) foreach (var _e in stmt.Events) VisitControlEventStatement(_e);
@@ -276,7 +278,8 @@ public sealed partial class Compiler
         VisitExpression(stmt.Height);
         VisitExpression(stmt.Data);
         EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.TUI_HEXVIEW); EmitByte((byte)5);
-        AssignVariable(stmt.Variable, isLet: false);
+        if (stmt.Variable != null) AssignVariable(stmt.Variable, isLet: false);
+        else EmitByte((byte)OpCode.OP_POP);
         EmitTuiId(stmt.Id);
         EmitTuiProps(stmt.Props, stmt.Token);
         if (stmt.Events != null) foreach (var _e in stmt.Events) VisitControlEventStatement(_e);
@@ -456,7 +459,8 @@ public sealed partial class Compiler
         VisitExpression(stmt.Col);
         VisitExpression(stmt.Items);
         EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.TUI_MENU); EmitByte((byte)3);
-        AssignVariable(stmt.Variable, isLet: false);
+        if (stmt.Variable != null) AssignVariable(stmt.Variable, isLet: false);
+        else EmitByte((byte)OpCode.OP_POP);
         EmitTuiId(stmt.Id);
         EmitTuiProps(stmt.Props, stmt.Token);
         if (stmt.Events != null) foreach (var _e in stmt.Events) VisitControlEventStatement(_e);

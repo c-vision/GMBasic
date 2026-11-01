@@ -374,6 +374,32 @@ public sealed partial class GraphicsManager
     }
 
     /// <summary>
+    /// Modifica la scala di uno sprite esistente (SPRITE SET SCALE id, sx, sy) e aggiorna
+    /// la bounding box: la scala cambia l'area occupata a schermo.
+    /// </summary>
+    private void SetSpriteScaleInternal(int spriteId, float sx, float sy)
+    {
+        if (_sprites.TryGetValue(spriteId, out var sprite))
+        {
+            sprite.Scale = new Vector2(sx, sy);
+            UpdateBoundingBox(sprite);
+        }
+    }
+
+    /// <summary>
+    /// Modifica la rotazione di uno sprite esistente, in gradi (SPRITE SET ROTATION id, gradi).
+    /// La bounding box si aggiorna perché l'area a schermo cambia con l'angolo.
+    /// </summary>
+    private void SetSpriteRotationInternal(int spriteId, float degrees)
+    {
+        if (_sprites.TryGetValue(spriteId, out var sprite))
+        {
+            sprite.Rotation = degrees;
+            UpdateBoundingBox(sprite);
+        }
+    }
+
+    /// <summary>
     /// Modifica la visibilità di uno sprite esistente.
     /// </summary>
     /// <param name="spriteId">L'ID dello sprite da modificare.</param>

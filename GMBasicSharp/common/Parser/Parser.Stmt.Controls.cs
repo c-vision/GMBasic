@@ -92,8 +92,9 @@ public sealed partial class Parser
         var row = mn[0] ?? new NumberExpr(0, tok);
         var col = mn[1] ?? new NumberExpr(0, tok);
         var items = mn[2] ?? new StringExpr("", tok);
-        p.Consume(TokenKind.Into, "Expected 'INTO' after MENU.");
-        var variable = p.ParseTarget();
+        // INTO è OPZIONALE: un MENU senza destinazione è display-only (nessun valore da
+        // leggere) — come SPINNER. Con INTO la variabile riceve l'indice della voce scelta.
+        Target? variable = p.Match(TokenKind.Into) ? p.ParseTarget() : null;
         Target? id = null;
         var props = ParseControlProps(p, ref id, out var events, tok);
         return new MenuStmt(variable, row, col, items, tok, id, props, events);
@@ -214,8 +215,8 @@ public sealed partial class Parser
         var length = sr[2] ?? new NumberExpr(0, tok);
         var max = sr[3] ?? new NumberExpr(0, tok);
         var value = sr[4] ?? new NumberExpr(0, tok);
-        p.Consume(TokenKind.Into, "Expected 'INTO' after STARRATING.");
-        var variable = p.ParseTarget();
+        // INTO è OPZIONALE: STARRATING senza destinazione è display-only (come SPINNER/MENU).
+        Target? variable = p.Match(TokenKind.Into) ? p.ParseTarget() : null;
         Target? id = null;
         var props = ParseControlProps(p, ref id, out var events, tok);
         return new StarRatingStmt(variable, row, col, length, max, value, tok, id, props, events);
@@ -385,8 +386,8 @@ public sealed partial class Parser
     {
         var tok = p.Peek(); p.Advance();
         var (row, col, width, height, records) = ParseGrid(p, tok);
-        p.Consume(TokenKind.Into, "Expected 'INTO' after LOGVIEW.");
-        var variable = p.ParseTarget();
+        // INTO opzionale: senza destinazione il controllo è display-only.
+        Target? variable = p.Match(TokenKind.Into) ? p.ParseTarget() : null;
         Target? id = null;
         var props = ParseControlProps(p, ref id, out var events, tok);
         return new LogViewStmt(variable, row, col, width, height, records, tok, id, props, events);
@@ -396,8 +397,8 @@ public sealed partial class Parser
     {
         var tok = p.Peek(); p.Advance();
         var (row, col, width, height, data) = ParseGrid(p, tok);
-        p.Consume(TokenKind.Into, "Expected 'INTO' after HEXVIEW.");
-        var variable = p.ParseTarget();
+        // INTO opzionale: senza destinazione il controllo è display-only.
+        Target? variable = p.Match(TokenKind.Into) ? p.ParseTarget() : null;
         Target? id = null;
         var props = ParseControlProps(p, ref id, out var events, tok);
         return new HexViewStmt(variable, row, col, width, height, data, tok, id, props, events);

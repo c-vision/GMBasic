@@ -563,6 +563,13 @@ public static partial class Linker
         {
             if (returnStmt.Value == null || context.CurrentProcedure is not FunctionDefinition funcDef) return;
 
+            // SPECIALIZZAZIONE GENERICA (`FUNCTION Identity<T>`): la firma è già stata
+            // sostituita col tipo concreto (DOUBLE/STRING), ma il CORPO clonato continua a
+            // riferire il parametro per SymbolId e il suo tipo resta `T` (il simbolo è quello
+            // del template). Il confronto statico vedrebbe 'T' vs 'DOUBLE' e fallirebbe: la
+            // conversione la applica il backend sulla firma già concreta.
+            if (program.ResolvedSpecializations.ContainsKey(funcDef.SymbolId)) return;
+
             var returnValueType = LinkerInferExpressionType(returnStmt.Value, context, program);
             var targetType = funcDef.ReturnType;
 

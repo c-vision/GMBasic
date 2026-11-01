@@ -13,6 +13,8 @@
 ' Le uscite finiscono in work/ accanto a questo sample.
 ' ============================================================================
 
+IMPORT LLM      ' comandi LLM PLAN/POLICY/PRUNE/QUANT/SAVE (namespace LLM)
+
 ' --- 1) ISPEZIONA: il piano elenca ruolo + formato proposto per ogni tensore ---
 LLM PLAN "models/olmoe_f16.gguf", "work/piano.txt"
 

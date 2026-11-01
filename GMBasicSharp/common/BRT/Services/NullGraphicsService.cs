@@ -52,6 +52,8 @@ public class NullGraphicsService : IGraphicsService
     public void SpriteSetPosition(int spriteId, float x, float y) { }
     public void SpriteSetVisible(int spriteId, bool visible) { }
     public void SpriteSetPriority(int spriteId, int priority) { }
+    public void SpriteSetScale(int spriteId, float sx, float sy) { }
+    public void SpriteSetRotation(int spriteId, float degrees) { }
     public void SpriteLoadGpm(string filePath, Action<object?, Exception?> completion) => completion(1, null);
     public void LoadTextureGpm(string path, Action<object?, Exception?> completion) => completion(1, null);
     public void LoadTextureSheetGpm(string path, int cellW, int cellH, Action<object?, Exception?> completion)

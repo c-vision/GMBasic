@@ -1190,6 +1190,9 @@ public static partial class Linker
                     specialized.ReturnType,
                     specialized);
                 specialized = specialized with { SymbolId = specId };
+                // Vedi Linker.Rewrites.cs (stessa specializzazione): la DeclarationNode deve
+                // contenere l'id, altrimenti il rewrite dei simboli di alto livello trova -1.
+                program.Symbols.UpdateSymbolDeclaration(specId, specialized);
                 program.ResolvedSpecializations[specId] = specialized;
                 fe = fe with { SymbolId = specId, ReturnType = specialized.ReturnType };
                 resolvedProc = specialized;

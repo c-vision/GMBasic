@@ -266,6 +266,9 @@ public interface IGraphicsService
     void SpriteSetPosition(int spriteId, float x, float y);
     void SpriteSetVisible(int spriteId, bool visible);
     void SpriteSetPriority(int spriteId, int priority);
+    // SPRITE SET SCALE id, sx, sy / SPRITE SET ROTATION id, gradi (parità gmb_gfx_sprite_set_scale/rotation).
+    void SpriteSetScale(int spriteId, float sx, float sy);
+    void SpriteSetRotation(int spriteId, float degrees);
     // Enqueue GPM (coda SDL, callback sul main thread). Il backend IL parcheggia il
     // PCodeTask; VIETATO attendere con GetAwaiter/Wait/Thread.Sleep.
     void SpriteLoadGpm(string filePath, Action<object?, Exception?> completion);

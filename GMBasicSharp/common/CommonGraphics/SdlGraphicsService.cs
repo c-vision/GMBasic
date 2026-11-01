@@ -262,6 +262,10 @@ public sealed class SdlGraphicsService : IGraphicsService
     }
     public void SpriteSetPosition(int spriteId, float x, float y)
         => Gfx.SPRITE_SET_POSITION_GPM(spriteId, x, y, Noop);
+    public void SpriteSetScale(int spriteId, float sx, float sy)
+        => Gfx.SPRITE_SET_SCALE_GPM(spriteId, sx, sy, Noop);
+    public void SpriteSetRotation(int spriteId, float degrees)
+        => Gfx.SPRITE_SET_ROTATION_GPM(spriteId, degrees, Noop);
     public void SpriteSetVisible(int spriteId, bool visible)
     {
         if (visible) Gfx.SPRITE_ON_GPM(spriteId, Noop);

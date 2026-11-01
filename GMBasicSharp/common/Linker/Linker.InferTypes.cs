@@ -948,6 +948,23 @@ public static partial class Linker
              * La leg C li accetta sempre (dispatch per nome a runtime) e l'IL emette per nome
              * (`IlProgramCompiler.Members.Calls` case "REMOVE"/"ADD"/...). */
             case AnyType:
+                return upperMethodName switch
+                {
+                    /* `COUNT`/`INDEXOF` NON entrano qui: per la ricevente dinamica hanno già un
+                     * percorso (2b-prime-3 → SYSTEM.COUNT/INDEXOF) e intercettarli qui faceva
+                     * fallire l'overload ("argomenti non validi per alcun overload") su
+                     * `big.Count()` con `DIM big = []`. */
+                    "REMOVE" or "CONTAINS" or "CONTAINSKEY" or "CONTAINSVALUE" or "TRYGET" or "TRYADD"
+                        => new BitType(),
+                    "REMOVEAT" or "ADD" or "INSERT" or "CLEAR" or "SORT" or "REVERSE" or "ADDRANGE"
+                        => new VoidType(),
+                    "COUNT" or "INDEXOF" => new LongType(),
+                    "TOLIST" or "TOARRAY" or "TOJSON" or "KEYS" or "VALUES" or "GET" or "SET"
+                        or "SETKEYVALUE" or "TRYGETVALUE" or "GETRANGE" or "FIRST" or "LAST"
+                        or "FRONT" or "BACK" or "DEQUEUE" or "PEEK" or "POP" or "MAX" or "MIN" or "SUM"
+                        => new InferredType(),
+                    _ => null
+                };
             case InferredType:
                 return upperMethodName switch
                 {
@@ -955,7 +972,8 @@ public static partial class Linker
                         => new BitType(),
                     "REMOVEAT" or "ADD" or "INSERT" or "CLEAR" or "SORT" or "REVERSE" or "ADDRANGE"
                         => new VoidType(),
-                    "COUNT" or "INDEXOF" => new LongType(),
+                    /* COUNT/INDEXOF restano al percorso storico (fallback): intercettarli qui
+                     * li mandava al builtin COUNT(string,string) e falliva l'overload. */
                     "TOLIST" or "TOARRAY" or "TOJSON" or "KEYS" or "VALUES" or "GET" or "SET"
                         or "SETKEYVALUE" or "TRYGETVALUE" or "GETRANGE" or "FIRST" or "LAST"
                         or "FRONT" or "BACK" or "DEQUEUE" or "PEEK" or "POP" or "MAX" or "MIN" or "SUM"
