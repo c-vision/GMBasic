@@ -3053,6 +3053,7 @@ public static partial class Linker
 
             case DefineWindowStmt:
             case WindowVisibilityStmt:
+            case WindowRequestCloseStmt:   /* `WINDOW CLOSE`: nessuna espressione da risolvere */
             case WindowActionStmt:
             case WindowClearStmt:
             case WindowEditStmt:
@@ -3060,6 +3061,16 @@ public static partial class Linker
             case DeactivateWindowStmt:
             case ReleaseWindowStmt:
                 return stmt;
+            case BoxStmt boxS:
+                return new BoxStmt(
+                    ResolveExpression(boxS.Top, program), ResolveExpression(boxS.Left, program),
+                    ResolveExpression(boxS.Bottom, program), ResolveExpression(boxS.Right, program),
+                    boxS.BorderStyle, boxS.Token);
+            case ScrollStmt scr:
+                return new ScrollStmt(
+                    ResolveExpression(scr.Top, program), ResolveExpression(scr.Left, program),
+                    ResolveExpression(scr.Bottom, program), ResolveExpression(scr.Right, program),
+                    ResolveExpression(scr.Count, program), scr.Token);
                         case CheckBoxStmt xs:
                 return xs with { Variable = ResolveTarget(xs.Variable, program), Row = ResolveExpression(xs.Row, program), Col = ResolveExpression(xs.Col, program), Caption = ResolveExpression(xs.Caption, program), Id = xs.Id != null ? ResolveTarget(xs.Id, program) : null };
                         case ListBoxStmt xs:
