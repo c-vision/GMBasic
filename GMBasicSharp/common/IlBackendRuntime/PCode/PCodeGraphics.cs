@@ -353,6 +353,18 @@ internal sealed class PCodeGraphics
         _c.RunGpm(() => _c.SpriteSetPosition(spriteId, x, y), cb);
     }
 
+    internal void SPRITE_SET_SCALE_GPM(int spriteId, float sx, float sy, Action<object?, Exception?> cb)
+    {
+        if (_c is null) { GraphicsManager.Instance.SPRITE_SET_SCALE_GPM(spriteId, sx, sy, cb); return; }
+        _c.RunGpm(() => _c.SpriteSetScale(spriteId, sx, sy), cb);
+    }
+
+    internal void SPRITE_SET_ROTATION_GPM(int spriteId, float degrees, Action<object?, Exception?> cb)
+    {
+        if (_c is null) { GraphicsManager.Instance.SPRITE_SET_ROTATION_GPM(spriteId, degrees, cb); return; }
+        _c.RunGpm(() => _c.SpriteSetRotation(spriteId, degrees), cb);
+    }
+
     internal void SPRITE_ON_GPM(int spriteId, Action<object?, Exception?> cb)
     {
         if (_c is null) { GraphicsManager.Instance.SPRITE_ON_GPM(spriteId, cb); return; }
