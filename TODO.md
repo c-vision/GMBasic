@@ -203,10 +203,18 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
       Aggiornati: `tools/sh/repl_engine_parity.sh`, `tools/sh/repl_no_csharp_proof.sh`,
       `REPL/README.md`, README root, manuale I.2. `GMBasic/native/repl/` non esiste più.
       Verificato: build OK da `REPL/`, `RUN`/`EVAL` OK, parità engine PASS.
-- [ ] **F6b — eliminare la REPL C# tenendo il CLI**: `GMBasicSharp/REPL` non è solo una REPL, è
-      anche il CLI `gmb` (packages, brain, libs, publish, admin, login, daemon, rag/graph, setup).
-      Prima di cancellarla va deciso/portato quel perimetro (split `GMBasicSharp/Cli` oppure
-      migrazione dei comandi al CLI C/`gmbcs`); il **compilatore C# resta** (non si tocca).
+- [x] **F6b — REPL C# ELIMINATA, CLI conservato** (2026-11-01): split fatto.
+      - `GMBasicSharp/Cli` (assembly **`gmb`**): i 7 `Cli*.cs` + `ConsoleProgressBar`/`RagGraphFlags`,
+        con un `Program.cs` che NON apre più una REPL interattiva (dice di usare `gmb_repl`) e
+        delega i file a `gmbcs run` (`-pcode` → `--engine pcode`, `-m` → `build --target il`).
+      - `GMBasicSharp/CompilerCli` (`gmbcs`): invariato, `Program` pubblico per il delega.
+      - `GMBasicSharp/REPL/` **rimossa** (`git rm -r`: ReplEngine, IDE C#, HelpForm, console,
+        ArgsParser, Notebook server).
+      - Documentazione/script aggiornati: README root, `tools/sh/webapp_up.sh` (usa `gmbcs`),
+        `shared/APPS/*`, `shared/webapp/*`, manuale locale.
+      - **Nota**: il server `NOTEBOOK` (kernel .NET con `/execute`, `/vars`, `/reset`) viveva solo
+        nella REPL C# ed è uscito con essa; il build NativeAOT `-n` non è ancora in `gmbcs`.
+        Entrambi sono candidati F4c/nota separata.
 - [ ] **F4c — residuo di parità**: gli flag IL `-n`/`--native` e `-m`/`--managed` sono ancora
       vietati all'avvio (`rpl_il_forbidden`) anche con `--engine=csharp`. Servono
       `gmbcs build -n|-m` (AOT/managed) per accettarli; oggi il build dell'engine C# produce

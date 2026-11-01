@@ -89,7 +89,7 @@ tools/sh/harness.sh il    shared/APPS/DigUp/src/DigUp.bas
 tools/sh/harness.sh pcode shared/APPS/DigUp/src/DigUp.bas
 
 # native executable (release)
-dotnet run --project GMBasicSharp/REPL -- -n shared/APPS/DigUp/src/DigUp.bas
+REPL/build/gmb_repl shared/APPS/DigUp/src/DigUp.bas
 
 # C99Native (C frontend + emitter → cc → execution; path relative to GMBasic/)
 bash tools/sh/gmb_c99native_run.sh ../shared/APPS/DigUp/src/DigUp.bas

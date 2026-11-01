@@ -113,7 +113,7 @@ tools/sh/harness.sh il    shared/APPS/Masume/src/Masume.bas
 tools/sh/harness.sh vmc   shared/APPS/Masume/src/Masume.bas
 
 # release: NativeAOT executable
-dotnet run --project GMBasicSharp/REPL -- -n shared/APPS/Masume/src/Masume.bas
+REPL/build/gmb_repl shared/APPS/Masume/src/Masume.bas
 
 # C99Native (C frontend + emitter → cc → execution)
 bash tools/sh/gmb_c99native_run.sh ../shared/APPS/Masume/src/Masume.bas   # relative to GMBasic/

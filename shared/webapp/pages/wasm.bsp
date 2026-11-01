@@ -40,7 +40,7 @@
     </div>
     <div class="hint">
       POC today (zero C#):<br>
-      <code>dotnet GMBasicSharp/REPL/bin/Debug/net10.0/REPL.dll --pcode --c99 prog.bas -o /tmp/prog.c</code><br>
+      <code>gmb dump c prog.bas --out /tmp/prog.c</code><br>
       <code>clang --target=wasm32 -o shared/webapp/static/prog.wasm /tmp/prog.c GMBasic/native/gmb_runtime_c/src/*.c</code><br>
       Future: <code>gmb prog.bas -target wasm -o shared/webapp/static/prog.wasm</code>
     </div>
