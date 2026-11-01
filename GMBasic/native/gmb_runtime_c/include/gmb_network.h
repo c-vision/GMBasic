@@ -488,6 +488,10 @@ int gmb_http_server_set_timeout(int64_t server, int timeout_ms);
 /* CONFIG: keep-alive HTTP/1.1. on=1 (default) riusa la connessione per più richieste;
  * on=0 → ogni risposta chiude ("Connection: close"), come il server prima di questa opzione. */
 int gmb_http_server_set_keepalive(int64_t server, int on);
+/* HTTP/2 su TLS (ALPN). Default OFF: finché non c'è il multiplexing, h2 su una connessione è
+ * più lento di h1 con più connessioni (misurato). h2c resta sempre accettato (lo chiede il
+ * client esplicitamente). */
+int gmb_http_server_set_h2(int64_t server, int on);
 /* Security (2026-09-02): header automatici + IP allow/block (CIDR IPv4) — parità HTTP CONFIG IL/PCode. */
 int gmb_http_server_set_security(int64_t server, int security_headers, const char* allowed, const char* blocked);
 /* CONFIG MaxRequestBodySize (0 = illimitato) → 413 su Content-Length oltre soglia. */
