@@ -1,3 +1,4 @@
+' TAG: interactive   (apre una finestra grafica e attende WAITKEY)
 ' SPRITEDEF Demo
 ' Definisce sprite con pixel art inline
 
