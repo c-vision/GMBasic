@@ -188,12 +188,15 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
       `--engine=csharp`: `BREAK`/`STEP` + `RUN` → `gmbcs debug`; senza breakpoint →
       `gmbcs run`. Verificato interattivamente su pty: stop alla riga 4, `bt` (frame
       `#0 __main`), `c` → programma completo. Con `--engine=c` resta `gmb_vm_host --debug`.
-- [~] **F5 — Prova di eliminabilità** (parziale, 2026-11-01): `otool -L gmb_repl` non mostra
-      alcuna dipendenza .NET/mono; `nm -u` non contiene simboli di lexer/parser/linker/compilatore;
-      con `--csharp-cli /nonexistent` (assenza forzata del mondo C#) `RUN`, `AST`, `DASM`,
-      `COMPILE`, `EVAL`, `FIXTURES`, … restano verdi e `IL`/`PCODE` dichiarano esplicitamente
-      "engine C# non disponibile". Resta da fare: build/run con `GMBasicSharp/` davvero rimosso
-      e **rimozione** di `IL`/`PCODE` dalla superficie (non degradati).
+- [x] **F5 — Prova di eliminabilità** (2026-11-01): in un **worktree separato** (nessun file
+      del checkout condiviso toccato, AGENTS §7.6) con `GMBasicSharp/` **rimosso**, si sono
+      costruiti `gmb_repl`, `gmb` (compilatore C) e `gmb_vm_host` e la suite è risultata verde:
+      `RUN` (vmc) → `ciao 42`, `EVAL` → `42`, `AST`, `DASM`, `COMPILE`, `FIXTURES`, `SETUP`,
+      `TRUST`, `CACHE`; `IL`/`PCODE` dichiarano "engine C# non disponibile" (nessun finto
+      successo). Riproducibile con `tools/sh/repl_no_csharp_proof.sh`. Nota: la gamba `-c99`
+      richiede l'include di LLMEnv (dipendenza d'ambiente, non del mondo C#).
+      Quando `GMBasicSharp/` sarà eliminato davvero, `IL`/`PCODE` si **rimuovono** dal
+      dispatcher (non si lasciano a metà).
 - [ ] **F6 — La REPL C# esce**: `GMBasicSharp/REPL` non è più canonica (resta, se serve, `gmbcs` per
       i test IL/PCode finché il compilatore C# esiste).
 - [ ] **F4c — residuo di parità**: gli flag IL `-n`/`--native` e `-m`/`--managed` sono ancora
