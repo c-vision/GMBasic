@@ -10182,12 +10182,37 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
         sb_put(&c->out, ")))");
         return;
     }
-    /* STRING$(n, charcode): ripete CHR(charcode) n volte (funzione BASIC; il nome col `$`
-     * sfugge alla fn_lookup → dispatch per NOME al runtime condiviso). */
+    /* STRING$(n, ch): n copie di `ch` (funzione BASIC; il nome col `$` sfugge alla fn_lookup
+     * → dispatch per NOME al runtime condiviso).
+     * PARITÀ con la riscrittura del linker managed `STRING$(n, ch)` → `REPEAT(ch, n)`:
+     *   - se `ch` è una STRINGA si ripete la STRINGA (anche multi-carattere: "ab" × 3 = "ababab");
+     *   - se `ch` è un NUMERO si ripete CHR(codice).
+     * Prima il secondo argomento finiva SEMPRE in gmb_chr(...): con una stringa il C non
+     * compilava ("passing gmb_string_t to gmb_int_t") — bug aperto trovato dal MiniTest
+     * http/config_limits.bas. */
     if (name && strcasecmp(name, "STRING$") == 0 && nargs >= 2) {
-        sb_put(&c->out, "gmb_str_repeat(gmb_chr((gmb_int_t)(");
-        emit_expr(c, args[1]); sb_put(&c->out, ")), (gmb_int_t)(");
-        emit_expr(c, args[0]); sb_put(&c->out, "), gmb_string_alloc(\"\"))");
+        /* Semantica DUP (la stessa su tutte le gambe, e la stessa che il linker usa per le
+         * gambe managed riscrivendo STRING$ → DUP):
+         *   STRINGA → n copie del PRIMO carattere ("ab" → "aaa");
+         *   NUMERO  → n copie di CHR(codice).
+         * Prima il secondo argomento finiva sempre in gmb_chr(...) → con una stringa il C non
+         * compilava; con la forma "ripeti l'intera stringa" divergeva dalle altre gambe. */
+        if (etype(c, args[1]) == TY_STR || etype(c, args[1]) == TY_VAL)
+        {
+            sb_put(&c->out, "gmb_dup_str((gmb_int_t)(");
+            emit_expr(c, args[0]);
+            sb_put(&c->out, "), (");
+            emit_str_operand(c, args[1]);
+            sb_put(&c->out, ").data)");
+        }
+        else
+        {
+            sb_put(&c->out, "gmb_dup_cp((gmb_int_t)(");
+            emit_expr(c, args[0]);
+            sb_put(&c->out, "), (int)(gmb_int_t)(");
+            emit_expr(c, args[1]);
+            sb_put(&c->out, "))");
+        }
         return;
     }
     /* FORM (C99Native): builtin per nome, senza token dedicato (il parser emette una

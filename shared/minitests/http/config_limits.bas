@@ -30,13 +30,10 @@ SUB Main()
   PRINT "cfg-accepted"
 
   ' corpo piccolo: arriva PER INTERO (100 byte)
-  ' corpo costruito a mano: STRING$(n, "x") non è emesso correttamente su C99Native
-  ' (bug preesistente dell'emitter, annotato in Bugs/(open) - Divergenze-4-Gambe-da-Verifica-HTTP)
+  ' STRING$(n, "x") — forma classica: la usiamo qui anche come verifica che compili ed emetta
+  ' il carattere giusto su TUTTE le gambe (era il bug C99Native di gmb_chr(stringa)).
   DIM chunk AS STRING
-  chunk = ""
-  FOR i = 1 TO 100
-    chunk = chunk + "a"
-  NEXT i
+  chunk = STRING$(100, "a")
 
   DIM o1 AS HTTPOPTIONS = NEW HTTPOPTIONS
   o1.Method = "POST"
@@ -47,11 +44,7 @@ SUB Main()
 
   ' corpo oltre il tetto (5000 > 4096): 413
   DIM big AS STRING
-  big = ""
-  FOR i = 1 TO 50
-    big = big + chunk          ' 50 × 100 = 5000 byte (oltre il tetto di 4096)
-  NEXT i
-  big = big + chunk            ' 5100 byte: sicuramente oltre
+  big = STRING$(5100, "b")     ' oltre il tetto di 4096
   DIM o2 AS HTTPOPTIONS = NEW HTTPOPTIONS
   o2.Method = "POST"
   o2.Body = big

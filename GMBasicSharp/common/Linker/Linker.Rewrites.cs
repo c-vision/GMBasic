@@ -3341,19 +3341,26 @@ public static partial class Linker
              * argomenti = stato del tasto, LEFT(s,n) = funzione stringa): qui si cerca una
              * NativeProcedureDefinition a ZERO parametri visibile nello scope e la si emette come
              * chiamata al builtin (TokenKind dedicato, es. MouseLeft → IlRuntime.MouseLeft). */
-            /* `STRING$(n, ch)` — funzione classica BASIC (n copie del carattere). La leg C la
-             * emette come `gmb_str_repeat(chr, n)`: qui si riscrive nella funzione nativa
-             * REPEAT(s, n) con gli argomenti INVERTITI. Vale per STRING$ e STRING (2 argomenti). */
+            /* `STRING$(n, ch)` — funzione classica BASIC: n copie del CARATTERE `ch`.
+             * Si riscrive in DUP(n, ch), che è la funzione con la STESSA semantica su tutte le
+             * gambe:
+             *   - `ch` STRINGA → n copie del suo PRIMO carattere ("ab" → "aaa");
+             *   - `ch` NUMERO  → n copie di CHR(codice)   (65 → "AAA").
+             * Prima si riscriveva in REPEAT(ch, n), che ha un'altra semantica (ripete l'INTERA
+             * stringa) e con un numero produceva IL invalido sulla gamba IL
+             * (InvalidProgramException) e "" sulle altre. Bug trovato dal MiniTest
+             * strings/string_dollar.bas e da http/config_limits.bas (STRING$(n, "x") non
+             * compilava sulla gamba C99). */
             if (symbolId < 0 && aae.Indices.Length == 2
                 && (aae.NameCleaned.Lexeme.Equals("STRING$", StringComparison.OrdinalIgnoreCase)
                     || aae.NameCleaned.Lexeme.Equals("STRING", StringComparison.OrdinalIgnoreCase)))
             {
-                var repTok = new Token(TokenKind.RepeatFunc, "REPEAT", null, aae.NameCleaned.Position);
-                var repNs = new Token(TokenKind.Identifier, "STRINGS", null, aae.NameCleaned.Position);
-                var repArgs = ImmutableArray.Create(
-                    RewriteExpression(aae.Indices[1], context, program),
-                    RewriteExpression(aae.Indices[0], context, program));
-                return new BuiltinFunctionCallExpr(repNs, repTok, repArgs, new StringType())
+                var dupTok = new Token(TokenKind.Dup, "DUP", null, aae.NameCleaned.Position);
+                var dupNs = new Token(TokenKind.Identifier, "STRINGS", null, aae.NameCleaned.Position);
+                var dupArgs = ImmutableArray.Create(
+                    RewriteExpression(aae.Indices[0], context, program),
+                    RewriteExpression(aae.Indices[1], context, program));
+                return new BuiltinFunctionCallExpr(dupNs, dupTok, dupArgs, new StringType())
                     { ScopeId = aae.ScopeId };
             }
 
