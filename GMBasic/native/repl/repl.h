@@ -97,6 +97,8 @@ const char* rpl_gmb_cli(char* out, size_t cap);
 int rpl_gmb_dump(const char* what, const char* file, const char* out);
 int rpl_gmb_dump_ex(const char* what, const char* file, const char* out, const rpl_options_t* o);
 const char* rpl_resolve_vm_host(void);
+/* F3b: comandi di pacchetto nel mondo C (manifest/keyring/cache). */
+int rpl_pkg_cmd(const char* cmd, const char* args);
 int gmb_loadprg(const char* file);
 
 /* ---- ReplEngine.cs -> repl.c ---- */

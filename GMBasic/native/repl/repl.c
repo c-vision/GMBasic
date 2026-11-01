@@ -547,6 +547,12 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
               printf("  (runtime: %s, %s; libs in %s)\n", cfgd, mlc, libs); }
             goto done;
         }
+        /* ── F3b: comandi di pacchetto (manifest/keyring/cache) ── */
+        if (!strcasecmp(cmd, "ADD") || !strcasecmp(cmd, "REMOVE") || !strcasecmp(cmd, "BUMP")
+            || !strcasecmp(cmd, "TRUST") || !strcasecmp(cmd, "CACHE")) {
+            rpl_pkg_cmd(cmd, args);
+            goto done;
+        }
         /* ── F3a: comandi nati nella REPL C#, riportati nel mondo C (runtime C) ── */
         if (strcasecmp(cmd, "FIXTURES") == 0) {
             char sub[64] = "";
