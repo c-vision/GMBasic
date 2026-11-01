@@ -68,41 +68,49 @@ Misure (loopback, keep-alive, c=10, PCode): `/index.bsp` da ~190 rps a **~21.000
 "a freddo" di una pagina resta ~2 ms: host+VM costano ~0,07 ms, il resto è l'esecuzione della
 pagina (query + costruzione dell'HTML).
 
-### Due motori: managed (default) e C (opzionale)
+### Due motori, UN SOLO stato (agenti/team/workflow/memoria)
 
-La pagina è precompilata in un chunk A1; lo stesso chunk può essere eseguito da **due motori**:
+La pagina è precompilata in un chunk A1; lo stesso chunk è eseguito da **due motori**:
 
-| motore | dove esegue | velocità (pagina da ~47 KB) | cosa vede |
-|---|---|---|---|
-| **managed** (default) | VM P-Code/IL nel processo .NET | ~5,8 ms (`canvas.bsp`), ~6,9 ms (`index.bsp`) | **tutto**: agenti, team, workflow, memoria AI, DB |
-| **C** (`libgmb_bsp`, P/Invoke) | VM/C in `native/gmb_vm_c` | **~0,45 ms** (`canvas.bsp`), ~2,3 ms (`index.bsp`) — **12× / 3×** | solo il file system e la rete: **nessuno stato managed** |
+| motore | dove esegue | velocità (`index.bsp`, 47 KB, cache spenta) |
+|---|---|---|
+| **managed** | VM P-Code/IL nel processo .NET | ~6,9 ms / 163 rps (c=1) · 179 rps (c=10) |
+| **C** (`libgmb_bsp`, P/Invoke) | VM/C in `native/gmb_vm_c` | **~0,7 ms / 1.436 rps (c=1)** · **2.340 rps (c=10)** — **8,8× / 13×** |
 
-Il motore C non può quindi servire `index.bsp` (usa `AI.AGENTLIST`/`TEAMLIST`/`WorkflowList`,
-`MEMORY.LIST`: renderebbe le tabelle vuote). Per questo il default è `managed` e il motore C si
-attiva **per pagina**, dove è sicuro:
+I motori sono **allineati**: lo stato di agenti/team/workflow/memoria è **uno solo**. La VM/C lo
+legge e lo scrive attraverso un **hook opzionale** (`gmb_state_hook.h`, registrato dal client C#
+via P/Invoke) che delega alle **stesse API** che usano le gambe managed
+(`AgentServer`/`TeamServer`/`WorkflowServer`/`AgentMemoryStore`). Senza client managed
+(C99Native, `gmb_vm_host`) l'hook è assente e la VM/C usa il proprio registro: comportamento
+invariato.
+
+Superfici ponte: `agent.list/get/status/events`, `team.list/agents`, `workflow.list/status/steps`,
+`memory.list/load/search` (letture) e `agent.create/delete/set`, `team.create/delete/add/remove/
+set_role/set_strategy/set_coordinator`, `workflow.begin/step/end/execute/delete`,
+`memory.store/delete` (scritture).
 
 ```toml
-bspEngine      = "managed"                  # "c" = tutte le pagine sulla VM C
-bspEnginePages = "canvas.bsp,wasm.bsp"      # pagine SENZA stato managed → motore C
+bspEngine      = "c"     # "c" = VM/C (più veloce) · "managed" = VM P-Code/IL
+bspEnginePages = ""      # pagine da forzare sulla VM/C anche con bspEngine="managed"
 ```
 
-Il sidecar `<pagina>.bsp.chunk` (ciò che esegue la VM C) viene generato **automaticamente** alla
-prima richiesta; `REPL -noconsole -bsp <dir>` lo rigenera per tutte le pagine.
-
-**Verifica prima di spostare una pagina sul motore C** (confronta le due rese e normalizza i
-campi dinamici):
+**Verifica (obbligatoria dopo aver toccato pagine o superfici AI):**
 
 ```sh
-python3 tools/py/bsp_engine_parity.py canvas.bsp wasm.bsp index.bsp
-# canvas.bsp     OK   (200, 3714 byte, identiche)
-# wasm.bsp       OK   (200, 3768 byte, identiche)
-# index.bsp      DIFF (… la pagina legge stato del runtime managed?)   ← resta su managed
+python3 tools/py/bsp_engine_parity.py index.bsp canvas.bsp wasm.bsp
+# index.bsp   OK  (46708 byte, identiche)
+# canvas.bsp  OK  · wasm.bsp OK
 ```
 
-Misura del guadagno (PCode, loopback, **cache della resa spenta**, c=1): `canvas.bsp`
-5,84 ms → **0,455 ms** (171 → 2.197 rps); a c=10, 207 → 2.933 rps (**14×**). Con la cache della
-resa accesa i due motori sono indistinguibili (dominano hash/gzip): il motore C serve per le
-pagine dinamiche (query diverse a ogni richiesta) e per i casi in cui la cache non si può usare.
+Lo strumento imposta i due motori in `.webapp.toml`, riavvia l'app, scarica le pagine,
+normalizza i campi dinamici (timestamp/uptime) e confronta; ripristina la configurazione.
+Misura del guadagno (PCode, loopback, keep-alive, **cache spenta**): `index.bsp` 163 → **1.436
+rps** (c=1) e 179 → **2.340 rps** (c=10). Con `bspCacheMs = 1000` e c=10: `index.bsp` 16,4k rps,
+`canvas.bsp` 44,4k, `wasm.bsp` 53,9k, revalidation `304` 68k.
+
+Nota sulle prestazioni: il motore C esegue la pagina in ~0,7 ms; fino al 2026-10-31 ogni run
+pagava **+250 ms** di chiusura (il watcher dei timer dormiva fino al cap di 250 ms e il join lo
+aspettava) — corretto in `native/gmb_vm_c/gmb_gpm.c` (`gmb_sched_wake_timer_watcher`).
 
 ## Configurazione (`.webapp.toml`)
 

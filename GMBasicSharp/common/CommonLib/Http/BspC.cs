@@ -46,6 +46,11 @@ public static class BspC
                                  out IntPtr outHtml, out int outStatus);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate void FreeFn(IntPtr p);
+    // Hook opzionale di stato (gmb_state_hook.h): il C chiede, il managed risponde.
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate int StateFn(IntPtr ctx, IntPtr surface, IntPtr a, IntPtr b, IntPtr c, IntPtr outBuf, int cap);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void SetStateHookFn(IntPtr fn, IntPtr ctx);
 
     private static readonly object Gate = new();
     private static bool _probed;
@@ -56,6 +61,17 @@ public static class BspC
     private static FreeFn? _free;
     private static AbiFn? _abi;
     private static InitFn? _init;
+    private static SetStateHookFn? _setStateHook;
+    // Il delegato deve restare vivo per tutta la durata del processo (il C ne tiene il puntatore).
+    private static readonly StateFn StateCallback = OnStateQuery;
+
+    /// <summary>
+    /// Stato degli agenti/team/workflow/memoria del runtime managed. Firmato
+    /// `(superficie, a, b, c) → testo` (`null` = non gestita → il C usa il proprio registro).
+    /// Letture: testo (liste separate da `\n`). Mutazioni: `"1"`/`"0"`.
+    /// Va impostato dall'host managed prima di servire la prima pagina con il motore C.
+    /// </summary>
+    public static Func<string, string?, string?, string?, string?>? StateProvider { get; set; }
 
     /// <summary>Percorso della libreria caricata (diagnostica), o null se non disponibile.</summary>
     public static string? LoadedPath { get { EnsureProbe(); return _loadedPath; } }
@@ -82,6 +98,10 @@ public static class BspC
                 _free = Marshal.GetDelegateForFunctionPointer<FreeFn>(NativeLibrary.GetExport(_handle, "gmb_bsp_shared_free"));
                 _loadedPath = path;
                 _init();
+                // Hook di stato: opzionale (una lib precedente non lo esporta → si ignora).
+                if (NativeLibrary.TryGetExport(_handle, "gmb_bsp_shared_set_state_hook", out var setHook))
+                    _setStateHook = Marshal.GetDelegateForFunctionPointer<SetStateHookFn>(setHook);
+                _setStateHook?.Invoke(Marshal.GetFunctionPointerForDelegate(StateCallback), IntPtr.Zero);
                 _available = true;
             }
             catch
@@ -135,6 +155,34 @@ public static class BspC
         foreach (var c in candidates)
             if (File.Exists(c)) return c;
         return null;
+    }
+
+    /// <summary>
+    /// Callback invocata dal runtime C: legge lo stato managed e scrive la risposta UTF-8 nel
+    /// buffer fornito dal C (nessuna allocazione attraversa il confine). Ritorna la lunghezza
+    /// scritta/necessaria, oppure -1 = "non gestita" (il C usa il proprio registro).
+    /// </summary>
+    private static int OnStateQuery(IntPtr ctx, IntPtr surface, IntPtr a, IntPtr b, IntPtr c, IntPtr outBuf, int cap)
+    {
+        try
+        {
+            var provider = StateProvider;
+            if (provider is null) return -1;
+            var name = Marshal.PtrToStringUTF8(surface) ?? "";
+            var arg1 = a == IntPtr.Zero ? null : Marshal.PtrToStringUTF8(a);
+            var arg2 = b == IntPtr.Zero ? null : Marshal.PtrToStringUTF8(b);
+            var arg3 = c == IntPtr.Zero ? null : Marshal.PtrToStringUTF8(c);
+            var result = provider(name, arg1, arg2, arg3);
+            if (result is null) return -1;
+            var bytes = System.Text.Encoding.UTF8.GetBytes(result);
+            if (outBuf == IntPtr.Zero || bytes.Length > cap) return bytes.Length;   // il C rialloca
+            Marshal.Copy(bytes, 0, outBuf, bytes.Length);
+            return bytes.Length;
+        }
+        catch
+        {
+            return -1;
+        }
     }
 
     /// <summary>

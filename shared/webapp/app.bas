@@ -116,7 +116,7 @@ SUB SetDefaults()
     g_rateLimitPerMin = 0
     g_rateLimitBurst = 0
     g_bspCacheMs = 0
-    g_bspEngine = "managed"
+    g_bspEngine = "c"
     g_bspEnginePages = ""
     g_proxied = 0
 END SUB

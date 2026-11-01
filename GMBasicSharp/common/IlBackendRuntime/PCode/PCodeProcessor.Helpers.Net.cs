@@ -235,7 +235,7 @@ internal sealed partial class PCodeProcessor
     /// Ordine argomenti reale emesso da Compiler.Network.cs::VisitHttpServerStatement (verificato
     /// leggendo il compilatore, non assunto): args[0]=isStopCommand (bool), args[1]=porta,
     /// args[2]=indirizzo Ip dell'handler (double, da OP_PUSH_CODE_REF) o null, args[3]=certPath,
-    /// args[4]=certPassword. Il prototipo precedente in GM-Basic aveva questi indici sbagliati
+    /// args[4]=certPassword. Il prototipo precedente in GMBasic aveva questi indici sbagliati
     /// (si aspettava un configDict che il compilatore non emette mai) — non riusato.
     /// </summary>
     /// <summary>
@@ -655,6 +655,9 @@ internal sealed partial class PCodeProcessor
                 Basic.Pipeline.SourcePipeline.SidecarWriter ??=
                     static chunk => Basic.Runtime.ChunkA1Serializer.Serialize(chunk);
                 Basic.Pipeline.SourcePipeline.EnsureBspSidecar(filePath);
+                // Stato (agenti/team/workflow/memoria) al motore C: senza questo la pagina
+                // renderebbe le tabelle vuote (la VM/C ha solo il proprio registro).
+                BspStateProvider.EnsureRegistered();
 
                 request.Headers.TryGetPropertyValue("Host", out var hostNode);
                 if (CommonLib.Http.BspC.TryServe(bspDir, request.Path, request.QueryString,
@@ -1017,7 +1020,7 @@ internal sealed partial class PCodeProcessor
     // producendo un Sec-WebSocket-Accept sempre sbagliato, rifiutato da qualunque client
     // WebSocket standard/rigoroso (System.Net.WebSockets.ClientWebSocket, il WebSocket nativo
     // di Node.js). Mai notato perche' nessun client WebSocket rigoroso e' mai stato usato per
-    // testare il server P-CODE di GM-Basic.
+    // testare il server P-CODE di GMBasic.
     private const string WebSocketMagicGuid = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
     private static string ComputeWebSocketAcceptKey(CommonLib.Http.HttpRequest request)

@@ -10,6 +10,7 @@
  * Volatile di processo (come il C# :memory:), a scelta dell'utente. */
 #include "gmb_runtime.h"
 #include <sqlite3.h>
+#include "gmb_state_hook.h"   /* hook opzionale di stato (client managed) */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -97,6 +98,8 @@ static int gmb_mem_changes(void)
 
 int gmb_mem_store(const char* key, const char* value, int longTerm)
 {
+    { char lt[8]; snprintf(lt, sizeof lt, "%d", longTerm ? 1 : 0);
+      int hr = gmb_state_hook_mutate("memory.store", key, value, lt); if (hr >= 0) return hr; }
     if (!key || !*key) return 0;
     if (gmb_mem_db_open() != 0) return 0;
     char* json = gmb_mem_json_quote(value);
@@ -132,6 +135,7 @@ char* gmb_mem_load(const char* key)
 
 int gmb_mem_delete(const char* key)
 {
+    { int hr = gmb_state_hook_mutate("memory.delete", key, NULL, NULL); if (hr >= 0) return hr; }
     if (!key || gmb_mem_db_open() != 0) return 0;
     sqlite3_stmt* st = NULL;
     if (sqlite3_prepare_v2(g_mem_db, "DELETE FROM agent_memory WHERE key = ?1", -1, &st, NULL) != SQLITE_OK)

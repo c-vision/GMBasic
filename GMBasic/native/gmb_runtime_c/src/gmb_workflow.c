@@ -4,6 +4,8 @@
  * ============================================================================ */
 
 #include "gmb_runtime.h"
+#include "gmb_state_hook.h"   /* hook opzionale di stato (client managed) */
+#include <stdio.h>
 #include <string.h>
 
 /* Registro di workflow: lista concatenata {nome, steps[], count, status, next}.
@@ -47,6 +49,7 @@ static int  gmb_workflow_remove_name(const char* name);
 
 /* WORKFLOW name: apre una definizione (stato vuoto = in building). */
 void gmb_workflow_begin(const char* name) {
+    if (gmb_state_hook_mutate("workflow.begin", name, NULL, NULL) >= 0) return;
     gmb_wf_t* wf = (gmb_wf_t*)calloc(1, sizeof(gmb_wf_t));
     if (!wf) return;
     wf->name = name ? strdup(name) : strdup("");
@@ -61,6 +64,8 @@ void gmb_workflow_step(const char* name, const char* action) {
     gmb_workflow_step_ex(name, action, 0, 0);
 }
 void gmb_workflow_step_ex(const char* name, const char* action, int retry, int timeoutMs) {
+    { char io[48]; snprintf(io, sizeof io, "%d,%d", retry, timeoutMs);
+      if (gmb_state_hook_mutate("workflow.step", name, action, io) >= 0) return; }
     if (!g_current_wf) return;
     gmb_wf_step_t* ns = (gmb_wf_step_t*)realloc(g_current_wf->steps,
         (size_t)(g_current_wf->step_count + 1) * sizeof(gmb_wf_step_t));
@@ -75,6 +80,7 @@ void gmb_workflow_step_ex(const char* name, const char* action, int retry, int t
 
 /* END WORKFLOW: chiude la definizione corrente (stato ready/empty, parità C#). */
 void gmb_workflow_end(void) {
+    if (gmb_state_hook_mutate("workflow.end", NULL, NULL, NULL) >= 0) return;
     if (!g_current_wf) return;
     free(g_current_wf->status);
     g_current_wf->status = strdup(g_current_wf->step_count > 0 ? "ready" : "empty");
@@ -86,6 +92,7 @@ void gmb_workflow_end(void) {
  * Sorgente unica: il corpo è gmb_workflow_execute_ok, questa è solo il wrapper void
  * per le statement BASIC (stessa semantica, nessun duplicato — §0bis). */
 void gmb_workflow_execute(const char* name) {
+    if (gmb_state_hook_mutate("workflow.execute", name, NULL, NULL) >= 0) return;
     (void)gmb_workflow_execute_ok(name);
 }
 
@@ -269,6 +276,7 @@ int gmb_workflow_add_step_by_name(const char* wf, const char* step,
 /* DELETE("name") → 1 se rimosso, 0 se assente o in costruzione (parità
  * WorkflowServer.Delete → la rotta HTTP risponde 404). */
 int gmb_workflow_delete(const char* name) {
+    { int hr = gmb_state_hook_mutate("workflow.delete", name, NULL, NULL); if (hr >= 0) return hr; }
     if (!name || !*name) return 0;
     gmb_wf_t* w = gmb_workflow_find(name);
     if (!w) return 0;

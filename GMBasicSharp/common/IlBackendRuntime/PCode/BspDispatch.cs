@@ -127,6 +127,7 @@ internal static class BspDispatch
                 Basic.Pipeline.SourcePipeline.SidecarWriter ??=
                     static chunk => Basic.Runtime.ChunkA1Serializer.Serialize(chunk);
                 Basic.Pipeline.SourcePipeline.EnsureBspSidecar(filePath);
+                BspStateProvider.EnsureRegistered();
 
                 req.Headers.TryGetValue("Host", out var cHost);
                 if (CommonLib.Http.BspC.TryServe(Path.GetDirectoryName(filePath) ?? "", "/" + Path.GetFileName(filePath),
