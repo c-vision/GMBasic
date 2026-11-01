@@ -3,7 +3,7 @@
 '       BRAIN AIRLINE — knowledge graph sul dominio aereo (AiAirlineWiki)
 ' =================================================================================================
 ' Interroga il brain "airline" (GRAPH) costruito da:
-'   gmb graph build /Users/gaetano/Documents/AiAirlineWiki --name airline
+'   gmb graph build ~/Documents/AiAirlineWiki --name airline
 ' poi collegato con `gmb brain use airline`.
 '
 ' Il grafo ha ~1083 nodi (note .md) e ~323k edge (wikilink). GRAPH.QUERYMULTI trova i nodi

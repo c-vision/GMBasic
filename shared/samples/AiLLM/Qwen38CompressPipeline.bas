@@ -27,7 +27,7 @@ SUB Main()
   MKDIR "work"
 
   ' --- 0. percorsi ----------------------------------------------------------
-  M$ = "/Users/gaetano/ai/Models/Qwen3.8-Flash-Next-4bit"   ' <-- il modello (MLX)
+  M$ = "~/ai/Models/Qwen3.8-Flash-Next-4bit"   ' <-- il modello (MLX)
   G$ = "work/q38.gguf"                                     ' conversione GGUF (surgery GGUF-only)
   D$ = "work/calib_tokens.bin"                              ' dataset di calibrazione
   I$ = "work/q38.imatrix.gguf"                             ' imatrix prodotto

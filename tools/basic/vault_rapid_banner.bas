@@ -12,7 +12,7 @@
 '
 ' Uso:
 '   tools/basic/vault_rapid_banner.bas [--root <dir>] [--apply]
-'   root default: /Users/gaetano/Documents/AiWiki/01-Projects/GMBasic
+'   --root <dir> e' OBBLIGATORIO (nessun default: il vault dipende dalla macchina).
 '
 ' Il criterio "cita rapid" replica la regex del .py (case-insensitive):
 '   Rapid-?MLX | rapid[-_]mlx | RapidMLX | rapidmlx | rapim-mlx
@@ -112,8 +112,8 @@ FUNCTION Main() AS INTEGER
   g_marker = "Rapid-MLX-Repo-Remoto-Copia-Fork-Percorsi"
   g_banner = "> [!info] Rapid-MLX — tre identità distinte (remoto / copia ufficiale / fork) · agg. 2026-09-17" + CHR$(10)
   g_banner = g_banner + "> - **Remoto ufficiale**: https://github.com/raullenchai/Rapid-MLX (tag **v0.14.2**)" + CHR$(10)
-  g_banner = g_banner + "> - **Copia locale ufficiale**: `/Users/gaetano/ai/Rapid-MLX-official` (v0.14.2) + venv `/Users/gaetano/ai/env-rapid-official` (`rapid-mlx==0.14.2`); usata da `tools/bench4_compare.sh`" + CHR$(10)
-  g_banner = g_banner + "> - **Fork personale**: `/Users/gaetano/Documents/Projects/Rapid-MLX-NextGen` (branch `dev`, HEAD `fa7f291d`, ~0.13.1; editable in `env312`, `--version` stale 0.10.3)" + CHR$(10)
+  g_banner = g_banner + "> - **Copia locale ufficiale**: `$AI_ROOT/Rapid-MLX-official` (v0.14.2) + venv `$AI_ROOT/env-rapid-official` (`rapid-mlx==0.14.2`); usata da `tools/bench4_compare.sh`" + CHR$(10)
+  g_banner = g_banner + "> - **Fork personale**: `<checkout>/Rapid-MLX-NextGen` (branch `dev`, HEAD `fa7f291d`, ~0.13.1; editable in `env312`, `--version` stale 0.10.3)" + CHR$(10)
   g_banner = g_banner + "> Canonico: `Knowledge/Rapid-MLX-Repo-Remoto-Copia-Fork-Percorsi.md`" + CHR$(10)
 
   argc = COMMANDCOUNT()
@@ -125,7 +125,10 @@ FUNCTION Main() AS INTEGER
       doApply = -1
     END IF
   NEXT i
-  IF LEN(root) = 0 THEN root = "/Users/gaetano/Documents/AiWiki/01-Projects/GMBasic"
+  IF LEN(root) = 0 THEN
+    PRINT "ERRORE: --root <dir> obbligatorio (cartella del vault)."
+    RETURN 2
+  END IF
   IF NOT DIREXISTS(root) THEN
     PRINT "ERRORE: root non trovato ("; root; ")"
     RETURN 2

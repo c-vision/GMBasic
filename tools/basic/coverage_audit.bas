@@ -90,8 +90,11 @@ FUNCTION Main() AS INTEGER
   mtDir = root + "/shared/minitests"
   smDir = root + "/shared/samples"
   surf = root + "/shared/spec/registry/surface.csv"
-  guides = "/Users/gaetano/Documents/AiWiki/01-Projects/GMBasicMonoRepo/Guide"
-  IF NOT DIREXISTS(guides) THEN guides = "/Users/gaetano/Documents/AiWiki/01-Projects/GMBasic/Guide"
+  ' Guide del vault (opzionale): NON un path personale. Si usa la variabile d'ambiente solo se
+  ' chi lancia lo strumento la imposta, altrimenti la sezione guide viene saltata.
+  ' Guide del vault: OPZIONALI e mai un path personale. Si passano con --guides <dir>
+  ' (vedi parser argomenti sotto); senza, la sezione guide viene saltata.
+  guides = ""
   g_n = 0
   IF FILEEXISTS(surf) THEN
     lines = IO.READLINES(surf)

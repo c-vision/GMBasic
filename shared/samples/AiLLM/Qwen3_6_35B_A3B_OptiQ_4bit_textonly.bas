@@ -7,12 +7,12 @@ IMPORT LLM
 
 SUB Main()
     PRINT "Qwen3.6-35B-A3B-OptiQ-4bit-textonly — motore MLX embedded GMBasic (model_type: qwen3_5_moe)"
-    IF NOT IO.FILEEXISTS("/Users/gaetano/ai/Models/.gmbasic-allow-load") THEN
+    IF NOT IO.FILEEXISTS("~/ai/Models/.gmbasic-allow-load") THEN
         PRINT "Modello NON caricato (protezione anti-saturazione)."
-        PRINT "Per eseguire:  touch /Users/gaetano/ai/Models/.gmbasic-allow-load  e rilancia."
+        PRINT "Per eseguire:  touch ~/ai/Models/.gmbasic-allow-load  e rilancia."
         END
     END IF
-    AI REGISTER "qwen3635ba3boptiq4bittex", "completion", "/Users/gaetano/ai/Models/Qwen3.6-35B-A3B-OptiQ-4bit-textonly", "{""engine"":""mlx"",""swap"":""true"",""maxTokens"":""32"",""temperature"":""0"",""contextSize"":""4096""}"
+    AI REGISTER "qwen3635ba3boptiq4bittex", "completion", "~/ai/Models/Qwen3.6-35B-A3B-OptiQ-4bit-textonly", "{""engine"":""mlx"",""swap"":""true"",""maxTokens"":""32"",""temperature"":""0"",""contextSize"":""4096""}"
     AI SET ACTIVE "completion", "qwen3635ba3boptiq4bittex"
     PRINT "Attivo: "; AI.ACTIVE(%CHAT)
     AI AGENT CREATE "ag"

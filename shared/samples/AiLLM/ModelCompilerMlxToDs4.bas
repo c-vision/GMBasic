@@ -19,14 +19,14 @@ IMPORT LLM
 SUB Main()
     MKDIR "work"
     PRINT "=== Model Compiler LLM: MLX -> GGUF -> QUANT (esperti MXFP4) ==="
-    IF NOT IO.FILEEXISTS("/Users/gaetano/ai/Models/DeepSeek-V2-Lite-Chat-4bit-mlx/config.json") THEN
+    IF NOT IO.FILEEXISTS("~/ai/Models/DeepSeek-V2-Lite-Chat-4bit-mlx/config.json") THEN
         PRINT "sorgente assente: serve DeepSeek-V2-Lite-Chat-4bit-mlx in ~/ai/Models"
         END
     END IF
     PRINT "0) INSPECT (caratteristiche del modello, read-only) ..."
-    LLM MODEL INSPECT "/Users/gaetano/ai/Models/DeepSeek-V2-Lite-Chat-4bit-mlx"
+    LLM MODEL INSPECT "~/ai/Models/DeepSeek-V2-Lite-Chat-4bit-mlx"
     PRINT "1) CONVERT MLX/HF -> GGUF ..."
-    LLM MODEL CONVERT "/Users/gaetano/ai/Models/DeepSeek-V2-Lite-Chat-4bit-mlx", "work/dsv2l.gguf", "GGUF"
+    LLM MODEL CONVERT "~/ai/Models/DeepSeek-V2-Lite-Chat-4bit-mlx", "work/dsv2l.gguf", "GGUF"
     PRINT "2) PLAN ..."
     LLM PLAN "work/dsv2l.gguf", "work/dsv2l_piano.txt"
     PRINT "3) POLICY (prova: esperti routed -> MXFP4) ..."

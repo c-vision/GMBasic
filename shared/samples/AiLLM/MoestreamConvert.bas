@@ -37,7 +37,7 @@ SUB Main()
     ' 1. Conversione ESPLICITA: checkpoint HF/MLX → container `.gmoe` con QUANTIZZAZIONE (offline).
     '    Forma: "GMOE:<dense>:<expert>" (es. dense Q8_0, esperti Q2_K/IQ2_XXS — come gguf-tools);
     '    "GMOE" da solo usa i default (q8_0/q2_k). "GGUF"/"MLX" restano i formati bidirezionali.
-    LLM MODEL CONVERT "/Users/gaetano/ai/Models/Qwen3-Coder-30B-A3B-Instruct-8bit", "/tmp/gmbasic-moestream-convert.gmoe", "GMOE:q8_0:q2_k"
+    LLM MODEL CONVERT "~/ai/Models/Qwen3-Coder-30B-A3B-Instruct-8bit", "/tmp/gmbasic-moestream-convert.gmoe", "GMOE:q8_0:q2_k"
     PRINT "conversione completata: /tmp/gmbasic-moestream-convert.gmoe"
 
     ' 2. Carica il container prodotto (registra da sé il provider "moestream": niente AI REGISTER).
@@ -59,7 +59,7 @@ SUB Main()
     LLM MODEL UNLOAD "conv"
 
     ' 7. Variante AUTOMATICA: dare a LOAD una CARTELLA HF/MLX la converte in <dir>/<nome>.gmoe e la carica.
-    LLM MODEL LOAD "auto", "/Users/gaetano/ai/Models/Qwen3-Coder-30B-A3B-Instruct-8bit"
+    LLM MODEL LOAD "auto", "~/ai/Models/Qwen3-Coder-30B-A3B-Instruct-8bit"
     PRINT LLM.STREAMSTATS("auto")
     LLM MODEL UNLOAD "auto"
 

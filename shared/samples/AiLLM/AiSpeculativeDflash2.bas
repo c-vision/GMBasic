@@ -31,8 +31,8 @@ SUB Main()
 
     PRINT "DFlash2 speculative da BASIC"
     PRINT "============================"
-    AI REGISTER "dfl2", %CHAT, "/Users/gaetano/ai/Models/Qwen3.8-27B-8bit", _
-        "{""draftModelDir"":""/Users/gaetano/ai/Models/Qwen3.8-27B-DFlash2"",""speculation"":""dflash"",""temperature"":""0"",""maxTokens"":""48""}"
+    AI REGISTER "dfl2", %CHAT, "~/ai/Models/Qwen3.8-27B-8bit", _
+        "{""draftModelDir"":""~/ai/Models/Qwen3.8-27B-DFlash2"",""speculation"":""dflash"",""temperature"":""0"",""maxTokens"":""48""}"
     AI SET ACTIVE %CHAT, "dfl2"
     PRINT "registrato+attivo: dfl2 (speculation=dflash, draft DFlash2)"
 

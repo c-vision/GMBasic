@@ -7,12 +7,12 @@ IMPORT LLM
 
 SUB Main()
     PRINT "Kimi-Linear-48B-A3B-Instruct-4bit — motore MLX embedded GMBasic (model_type: kimi_linear)"
-    IF NOT IO.FILEEXISTS("/Users/gaetano/ai/Models/.gmbasic-allow-load") THEN
+    IF NOT IO.FILEEXISTS("~/ai/Models/.gmbasic-allow-load") THEN
         PRINT "Modello NON caricato (protezione anti-saturazione)."
-        PRINT "Per eseguire:  touch /Users/gaetano/ai/Models/.gmbasic-allow-load  e rilancia."
+        PRINT "Per eseguire:  touch ~/ai/Models/.gmbasic-allow-load  e rilancia."
         END
     END IF
-    AI REGISTER "kimilinear48ba3binstruct", "completion", "/Users/gaetano/ai/Models/Kimi-Linear-48B-A3B-Instruct-4bit", "{""engine"":""mlx"",""swap"":""true"",""maxTokens"":""32"",""temperature"":""0"",""contextSize"":""4096""}"
+    AI REGISTER "kimilinear48ba3binstruct", "completion", "~/ai/Models/Kimi-Linear-48B-A3B-Instruct-4bit", "{""engine"":""mlx"",""swap"":""true"",""maxTokens"":""32"",""temperature"":""0"",""contextSize"":""4096""}"
     AI SET ACTIVE "completion", "kimilinear48ba3binstruct"
     PRINT "Attivo: "; AI.ACTIVE(%CHAT)
     AI AGENT CREATE "ag"

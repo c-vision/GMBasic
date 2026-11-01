@@ -29,14 +29,14 @@ SUB Main()
     PRINT "=== Model Compiler LLM — quantizzazione mista stile ds4 (olmoe) ==="
     MKDIR "work"
 
-    IF NOT IO.FILEEXISTS("/Users/gaetano/ai/Models/gguf/olmoe-1b-7b-0924-instruct-q4_k_m.gguf") THEN
+    IF NOT IO.FILEEXISTS("~/ai/Models/gguf/olmoe-1b-7b-0924-instruct-q4_k_m.gguf") THEN
         PRINT "Modello assente: ~/ai/Models/gguf/olmoe-1b-7b-0924-instruct-q4_k_m.gguf"
         PRINT "Scaricalo (GGUF) in quella cartella e rilancia."
         END
     END IF
 
     ' ---- 1) ISPEZIONE: il piano elenca ruolo + formato proposto per ogni tensore ----
-    LLM PLAN "/Users/gaetano/ai/Models/gguf/olmoe-1b-7b-0924-instruct-q4_k_m.gguf", "work/olmoe_piano.txt"
+    LLM PLAN "~/ai/Models/gguf/olmoe-1b-7b-0924-instruct-q4_k_m.gguf", "work/olmoe_piano.txt"
     PRINT "1) PLAN   -> work/olmoe_piano.txt"
 
     ' ---- 2) POLICY: la tabella "punto-di-decisione -> formato" (ricetta mista) ----
@@ -57,7 +57,7 @@ SUB Main()
 
     ' ---- 3) POTA: 64 -> 32 esperti (stessa fetta sul router, *.expert_count aggiornato) ----
     ON ERROR GOTO E1
-    LLM PRUNE "/Users/gaetano/ai/Models/gguf/olmoe-1b-7b-0924-instruct-q4_k_m.gguf", "work/olmoe_pruned.gguf", 32
+    LLM PRUNE "~/ai/Models/gguf/olmoe-1b-7b-0924-instruct-q4_k_m.gguf", "work/olmoe_pruned.gguf", 32
     PRINT "3) PRUNE  -> work/olmoe_pruned.gguf  (64 -> 32 esperti)"
     E1:
 
@@ -69,7 +69,7 @@ SUB Main()
     GOTO FineQuant
     E2:
     ON ERROR GOTO E3
-    LLM QUANT "/Users/gaetano/ai/Models/gguf/olmoe-1b-7b-0924-instruct-q4_k_m.gguf", "work/olmoe_compressed.gguf"
+    LLM QUANT "~/ai/Models/gguf/olmoe-1b-7b-0924-instruct-q4_k_m.gguf", "work/olmoe_compressed.gguf"
     PRINT "4) QUANT  -> work/olmoe_compressed.gguf  (dal sorgente)"
     GOTO FineQuant
     E3:

@@ -7,12 +7,12 @@ IMPORT LLM
 
 SUB Main()
     PRINT "gpt-oss-20b-MXFP4-Q8 — motore MLX embedded GMBasic (model_type: gpt_oss)"
-    IF NOT IO.FILEEXISTS("/Users/gaetano/ai/Models/.gmbasic-allow-load") THEN
+    IF NOT IO.FILEEXISTS("~/ai/Models/.gmbasic-allow-load") THEN
         PRINT "Modello NON caricato (protezione anti-saturazione)."
-        PRINT "Per eseguire:  touch /Users/gaetano/ai/Models/.gmbasic-allow-load  e rilancia."
+        PRINT "Per eseguire:  touch ~/ai/Models/.gmbasic-allow-load  e rilancia."
         END
     END IF
-    AI REGISTER "gptoss20bmxfp4q8", "completion", "/Users/gaetano/ai/Models/gpt-oss-20b-MXFP4-Q8", "{""engine"":""mlx"",""swap"":""true"",""maxTokens"":""32"",""temperature"":""0"",""contextSize"":""4096""}"
+    AI REGISTER "gptoss20bmxfp4q8", "completion", "~/ai/Models/gpt-oss-20b-MXFP4-Q8", "{""engine"":""mlx"",""swap"":""true"",""maxTokens"":""32"",""temperature"":""0"",""contextSize"":""4096""}"
     AI SET ACTIVE "completion", "gptoss20bmxfp4q8"
     PRINT "Attivo: "; AI.ACTIVE(%CHAT)
     AI AGENT CREATE "ag"

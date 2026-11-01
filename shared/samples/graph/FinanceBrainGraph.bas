@@ -3,7 +3,7 @@
 '       BRAIN FINANCE — knowledge graph sul dominio finanziario (AiFinanceWiki)
 ' =================================================================================================
 ' Interroga il brain "finance" (GRAPH) costruito da:
-'   gmb graph build /Users/gaetano/Documents/AiFinanceWiki --name finance
+'   gmb graph build ~/Documents/AiFinanceWiki --name finance
 ' poi collegato con `gmb brain use finance`.
 '
 ' Il grafo ha ~17118 nodi (note .md) e ~83k edge (wikilink), 1883 community. GRAPH.QUERYMULTI

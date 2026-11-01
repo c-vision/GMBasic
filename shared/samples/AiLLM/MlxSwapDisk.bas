@@ -24,16 +24,16 @@ SUB Main()
     PRINT "MLX + swap su disco — modello gigante"
     PRINT "===================================="
 
-    IF NOT IO.FILEEXISTS("/Users/gaetano/ai/Models/.gmbasic-allow-swap-load") THEN
+    IF NOT IO.FILEEXISTS("~/ai/Models/.gmbasic-allow-swap-load") THEN
         PRINT "Modello NON caricato (protezione anti-saturazione)."
-        PRINT "Per eseguire:  touch /Users/gaetano/ai/Models/.gmbasic-allow-swap-load  e rilancia."
+        PRINT "Per eseguire:  touch ~/ai/Models/.gmbasic-allow-swap-load  e rilancia."
         PRINT
         PRINT "Test completato (skip sicuro)."
         END
     END IF
 
     ' swap=true -> pesi lazy/file-backed (mmap), paginati dal SO: il modello non deve entrare tutto in RAM.
-    AI REGISTER "bigmlx", "completion", "/Users/gaetano/ai/Models/Qwen3.8-Flash-Next-tq4a-tq2e-g64", "{""engine"":""mlx"",""swap"":""true"",""maxTokens"":""24"",""temperature"":""0"",""contextSize"":""4096""}"
+    AI REGISTER "bigmlx", "completion", "~/ai/Models/Qwen3.8-Flash-Next-tq4a-tq2e-g64", "{""engine"":""mlx"",""swap"":""true"",""maxTokens"":""24"",""temperature"":""0"",""contextSize"":""4096""}"
     AI SET ACTIVE "completion", "bigmlx"
     PRINT "Attivo: "; AI.ACTIVE(%CHAT)
 

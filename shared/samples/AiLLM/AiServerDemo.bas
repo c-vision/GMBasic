@@ -24,7 +24,7 @@ IMPORT HTTP
 IMPORT JSON
 
 SUB Main
-  DIM MODEL_DIR$ = "/Users/gaetano/ai/Models/Llama-3.2-1B-Instruct-4bit"
+  DIM MODEL_DIR$ = "~/ai/Models/Llama-3.2-1B-Instruct-4bit"
   DIM BASE_URL$ = "http://127.0.0.1:8020"
 
   IF NOT FileExists(MODEL_DIR$ + "/config.json") THEN

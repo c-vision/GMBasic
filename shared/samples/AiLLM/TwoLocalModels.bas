@@ -19,20 +19,20 @@ SUB Main()
     PRINT "==============================================="
 
     ' Portabilita': se i modelli locali non ci sono, salta senza crashare.
-    IF NOT IO.DIREXISTS("/Users/gaetano/ai/Models/Llama-3.2-1B-Instruct-4bit") THEN
+    IF NOT IO.DIREXISTS("~/ai/Models/Llama-3.2-1B-Instruct-4bit") THEN
         PRINT "Modello locale assente: salto. Percorso atteso:"
-        PRINT "/Users/gaetano/ai/Models/Llama-3.2-1B-Instruct-4bit"
+        PRINT "~/ai/Models/Llama-3.2-1B-Instruct-4bit"
         END
     END IF
-    IF NOT IO.DIREXISTS("/Users/gaetano/ai/Models/Ternary-Bonsai-4B-mlx-2bit") THEN
+    IF NOT IO.DIREXISTS("~/ai/Models/Ternary-Bonsai-4B-mlx-2bit") THEN
         PRINT "Modello locale assente: salto. Percorso atteso:"
-        PRINT "/Users/gaetano/ai/Models/Ternary-Bonsai-4B-mlx-2bit"
+        PRINT "~/ai/Models/Ternary-Bonsai-4B-mlx-2bit"
         END
     END IF
 
     ' 1. Registra DUE modelli locali (entrambi restano in memoria; percorsi hardcoded).
-    AI REGISTER "llama1b", "completion", "/Users/gaetano/ai/Models/Llama-3.2-1B-Instruct-4bit", "{""maxTokens"":""24"",""temperature"":""0""}"
-    AI REGISTER "bonsai", "completion", "/Users/gaetano/ai/Models/Ternary-Bonsai-4B-mlx-2bit", "{""maxTokens"":""24"",""temperature"":""0""}"
+    AI REGISTER "llama1b", "completion", "~/ai/Models/Llama-3.2-1B-Instruct-4bit", "{""maxTokens"":""24"",""temperature"":""0""}"
+    AI REGISTER "bonsai", "completion", "~/ai/Models/Ternary-Bonsai-4B-mlx-2bit", "{""maxTokens"":""24"",""temperature"":""0""}"
 
     ' 2. Elenca i provider completion registrati (entrambi i modelli sono presenti).
     PRINT "Provider completion: "; AI.LIST("completion")

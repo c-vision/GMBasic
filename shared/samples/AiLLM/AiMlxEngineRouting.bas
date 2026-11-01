@@ -13,7 +13,7 @@
 '
 ' Determinismo: la parte sempre eseguita usa provider HTTP/fixture (nessuna rete, nessun modello);
 ' la parte REALE DS4 (motore MLX embedded) è protetta dalla sentinella
-' /Users/gaetano/ds4/.gmbasic-allow-load ed è fuori dalla parità 5-backend (modello reale).
+' ~/ds4/.gmbasic-allow-load ed è fuori dalla parità 5-backend (modello reale).
 ' =================================================================================================
 IMPORT AI WITH ALIAS
 IMPORT LLM
@@ -38,8 +38,8 @@ SUB Main()
     '    esegue SOLO se esiste la sentinella. Fuori parità (modello reale): tutti i comandi
     '    (AI REGISTER, AI SET ACTIVE, AI.ACTIVE, AI.AGENTASKSYNC, AI AGENT CREATE/SET)
     '    sono esercitati qui.
-    IF IO.FILEEXISTS("/Users/gaetano/ds4/.gmbasic-allow-load") THEN
-        AI REGISTER "ds4mlx", "completion", "/Users/gaetano/ds4/ds4flash.gguf", "{""engine"":""mlx"",""maxTokens"":""16"",""temperature"":""0"",""contextSize"":""4096""}"
+    IF IO.FILEEXISTS("~/ds4/.gmbasic-allow-load") THEN
+        AI REGISTER "ds4mlx", "completion", "~/ds4/ds4flash.gguf", "{""engine"":""mlx"",""maxTokens"":""16"",""temperature"":""0"",""contextSize"":""4096""}"
         AI SET ACTIVE %CHAT, "ds4mlx"
         PRINT "attivo-ds4: "; AI.ACTIVE(%CHAT)
         AI AGENT CREATE "ds4agent"

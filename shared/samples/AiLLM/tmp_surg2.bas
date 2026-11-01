@@ -2,7 +2,7 @@ IMPORT AI WITH ALIAS
 IMPORT LLM
 SUB Main()
     PRINT "1) PRUNE olmoe 64->32 esperti"
-    LLM PRUNE "/Users/gaetano/ai/Models/gguf/olmoe-1b-7b-0924-instruct-q4_k_m.gguf", "work/olmoe_pruned2.gguf", 32
+    LLM PRUNE "~/ai/Models/gguf/olmoe-1b-7b-0924-instruct-q4_k_m.gguf", "work/olmoe_pruned2.gguf", 32
     PRINT "2) SAVE"
     LLM MODEL SAVE "work/olmoe_pruned2.gguf", "work/olmoe_pruned2_saved.gguf"
     PRINT "3) CONVERT MLX"

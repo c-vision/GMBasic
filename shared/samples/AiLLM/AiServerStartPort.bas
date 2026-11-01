@@ -13,7 +13,7 @@ IMPORT HTTP
 IMPORT JSON
 
 SUB Main
-  DIM MODEL_DIR$ = "/Users/gaetano/ai/Models/Llama-3.2-1B-Instruct-4bit"
+  DIM MODEL_DIR$ = "~/ai/Models/Llama-3.2-1B-Instruct-4bit"
   IF NOT FileExists(MODEL_DIR$ + "/config.json") THEN
     PRINT "Modello non trovato: "; MODEL_DIR$
     PRINT "Modifica MODEL_DIR$ e riesegui."

@@ -175,7 +175,8 @@ FUNCTION Main() AS INTEGER
   DIM hm AS LONG, hs AS LONG, hg AS LONG
   DIM mine$() AS STRING, oname$() AS STRING, ons$() AS STRING, okind$() AS STRING
   DIM cmp AS STRING, only AS LONG, o AS LONG, j AS LONG
-  root = IO.CWD() : guides = "/Users/gaetano/Documents/AiWiki/01-Projects/GMBasicMonoRepo/Guide" : other = "" : nsFilter = ""
+  root = IO.CWD() : guides = "" : other = "" : nsFilter = ""
+  ' Guide del vault: OPZIONALI e mai un path personale (flag --guides <dir>).
   i = 1
   DO WHILE i <= COMMANDCOUNT()
     opt = COMMAND$(i)
@@ -185,7 +186,7 @@ FUNCTION Main() AS INTEGER
     IF opt = "--ns" AND i < COMMANDCOUNT() THEN i = i + 1 : nsFilter = COMMAND$(i)
     i = i + 1
   LOOP
-  IF NOT DIREXISTS(guides) THEN guides = "/Users/gaetano/Documents/AiWiki/01-Projects/GMBasic/Guide"
+
   IF LoadSurface(root) = 0 THEN
     PRINT "registry non trovato da "; root
     RETURN 2

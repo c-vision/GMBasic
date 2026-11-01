@@ -30,13 +30,13 @@ IMPORT LLM
 SUB Main()
     PRINT "=== TRAIN FINETUNE (LoRA su modello MLX locale) ==="
 
-    DIM model$ = "/Users/gaetano/ai/Models/Llama-3.2-1B-Instruct-4bit"
+    DIM model$ = "~/ai/Models/Llama-3.2-1B-Instruct-4bit"
 
     ' Avvia il fine-tune: dataset dalla fixture samples/Fixtures/lora_rule.*.bin,
     ' NB: le chiavi del dict vanno tra virgolette (le chiavi nude multiple sono un
     ' bug noto del parser -> IL invalido; indagare separatamente).
     TRAIN FINETUNE model$, _
-                { "dataset": "../../Fixtures/lora_rule.train.bin", "holdout": "../../Fixtures/lora_rule.hold.bin",
+                { "dataset": "../Fixtures/lora_rule.train.bin", "holdout": "../Fixtures/lora_rule.hold.bin",
                   "ckpt": "work/ft1", "rank": 4, "layer": 15, "steps": 60,
                   "batch": 4, "lr": 0.01, "seed": 7, "verify": TRUE }
 
@@ -61,6 +61,6 @@ SUB Main()
     ' Deploy/verifica: ricarica il checkpoint e confronta la generazione OFF vs ON
     ' su un prompt dal dataset (regola di dominio -> l'adapter deve cambiare il token).
     TRAIN LORA APPLY "work/ft1", _
-                { "model": model$, "dataset": "../../Fixtures/lora_rule.train.bin" }
+                { "model": model$, "dataset": "../Fixtures/lora_rule.train.bin" }
     PRINT "Apply status: "; LLM.FINETUNESTATUS()
 END SUB

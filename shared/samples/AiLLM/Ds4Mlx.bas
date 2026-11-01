@@ -10,7 +10,7 @@
 '
 ' ⚠️ SICUREZZA: il caricamento è PESANTE. Per NON saturare la macchina nei gate automatici
 '    (che eseguono TUTTI i sample), avviene SOLO se esiste la sentinella. Per eseguire davvero:
-'        touch /Users/gaetano/ds4/.gmbasic-allow-load
+'        touch ~/ds4/.gmbasic-allow-load
 '    poi rilanciare. Senza sentinella il sample salta e termina con successo.
 ' ======================================================================================================================
 IMPORT AI WITH ALIAS
@@ -20,10 +20,10 @@ SUB Main()
     PRINT "DS4 (DeepSeek V4 Flash) — motore MLX embedded GMBasic"
     PRINT "===================================================="
 
-    IF NOT IO.FILEEXISTS("/Users/gaetano/ds4/.gmbasic-allow-load") THEN
+    IF NOT IO.FILEEXISTS("~/ds4/.gmbasic-allow-load") THEN
         PRINT "DS4 NON caricato (protezione anti-saturazione)."
-        PRINT "Per eseguire: crea /Users/gaetano/ds4/.gmbasic-allow-load e rilancia."
-        PRINT "Percorso modello: /Users/gaetano/ds4/ds4flash.gguf"
+        PRINT "Per eseguire: crea ~/ds4/.gmbasic-allow-load e rilancia."
+        PRINT "Percorso modello: ~/ds4/ds4flash.gguf"
         PRINT
         PRINT "Test completato (skip sicuro)."
         END
@@ -31,7 +31,7 @@ SUB Main()
 
     ' 1. Registra il modello: il .gguf di DS4 è auto-rilevato dal motore MLX (arch deepseek4).
     '    contextSize/maxTokens sono le chiavi del provider MLX (temperature=0 → greedy).
-    AI REGISTER "ds4mlx", "completion", "/Users/gaetano/ds4/ds4flash.gguf", "{""maxTokens"":""32"",""temperature"":""0"",""contextSize"":""4096""}"
+    AI REGISTER "ds4mlx", "completion", "~/ds4/ds4flash.gguf", "{""maxTokens"":""32"",""temperature"":""0"",""contextSize"":""4096""}"
     AI SET ACTIVE "completion", "ds4mlx"
     PRINT "Attivo: "; AI.ACTIVE(%CHAT)
 

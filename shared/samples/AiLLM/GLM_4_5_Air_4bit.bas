@@ -7,12 +7,12 @@ IMPORT LLM
 
 SUB Main()
     PRINT "GLM-4.5-Air-4bit — motore MLX embedded GMBasic (model_type: glm4_moe)"
-    IF NOT IO.FILEEXISTS("/Users/gaetano/ai/Models/.gmbasic-allow-load") THEN
+    IF NOT IO.FILEEXISTS("~/ai/Models/.gmbasic-allow-load") THEN
         PRINT "Modello NON caricato (protezione anti-saturazione)."
-        PRINT "Per eseguire:  touch /Users/gaetano/ai/Models/.gmbasic-allow-load  e rilancia."
+        PRINT "Per eseguire:  touch ~/ai/Models/.gmbasic-allow-load  e rilancia."
         END
     END IF
-    AI REGISTER "glm45air4bit", "completion", "/Users/gaetano/ai/Models/GLM-4.5-Air-4bit", "{""engine"":""mlx"",""swap"":""true"",""maxTokens"":""32"",""temperature"":""0"",""contextSize"":""4096""}"
+    AI REGISTER "glm45air4bit", "completion", "~/ai/Models/GLM-4.5-Air-4bit", "{""engine"":""mlx"",""swap"":""true"",""maxTokens"":""32"",""temperature"":""0"",""contextSize"":""4096""}"
     AI SET ACTIVE "completion", "glm45air4bit"
     PRINT "Attivo: "; AI.ACTIVE(%CHAT)
     AI AGENT CREATE "ag"
