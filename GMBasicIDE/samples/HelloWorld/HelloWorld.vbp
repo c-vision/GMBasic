@@ -1,4 +1,0 @@
-Type=Exe
-Form=frmHello.frm
-Startup="Form1"
-Name="HelloWorld"

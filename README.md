@@ -25,8 +25,13 @@ The folders are domains, not separate repos:
 | `GMBasic/` | **C** compiler and runtime: frontend, C99Native, VM/C, shared runtime, native libraries |
 | `GMBasicSharp/` | **C#** compiler and runtime: lexer/parser/linker, IL backend, StdLib, REPL/CLI |
 | `shared/` | material shared by both: MiniTests, samples, spec/registry, settings, skills, plugins |
-| `GMBasicIDE/`, `GMBasicTuiIde/` | native macOS IDE (VB6-style form designer, code window, debug, DataGrid) and the TUI IDE |
 | `tools/` | tooling (BASIC/C/shell) at the repo root, shared by both worlds |
+
+The two IDEs (`GMBasicIDE/` — native macOS GUI, VB6-style; `GMBasicTuiIde/` — TUI written in BASIC)
+are **in development and are not part of this repository** for now: they are excluded until
+complete. The REPL's own TUI (`IDE` command: `GMBasic/native/repl/ide.c` +
+`GMBasicSharp/REPL/GMBasicIde.cs`, shared logic in `gmb_runtime_c/src/gmb_ide.c`) **is** in the repo,
+because it is part of the REPL.
 
 Two things are deliberately **outside** this repository and are never cloned as submodules:
 the LLM engine [`c-vision/LLMEnv`](https://github.com/c-vision/LLMEnv) (built and cached as native
@@ -510,12 +515,10 @@ CALL SleepAsync(1000)
 
 The main open work items are tracked in **[TODO.md](./TODO.md)**:
 
-- **complete the two IDEs** — GUI [`GMBasicIDE`](GMBasicIDE/TODO-GMBASIC.md) (plan groups G0–G7,
-  ~51 open items) and TUI [`GMBasicTuiIde`](GMBasicTuiIde/TODO.md) (completion popup, find/replace,
-  caret in the status bar, real screen size, real-display verification, user guide);
-- **`COMMANDS.TXT` in English** (the generator still emits Italian labels) and the removal of the
-  stale duplicate under `docs/implemented/audit/`;
-- **the `libs` CI workflow is red** at the macOS system-dependencies step (so releases and
+- **the two IDEs are not in this repo yet** — the GUI (`GMBasicIDE`, VB6-style: form designer, code
+  window, build/run, debug) and the TUI (`GMBasicTuiIde`, written in BASIC) are developed locally and
+  will be published when complete (GUI backlog ~51 items over groups G0–G7, TUI 11 items);
+- **`libs` CI workflow is red** at the macOS system-dependencies step (so releases and
   `libs-manifest.json` have never been published from CI).
 
 ## Tests

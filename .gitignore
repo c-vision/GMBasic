@@ -110,3 +110,13 @@ TestResults/
 # esegue (motore BSP in C). Si rigenera — anche al volo alla prima richiesta (motore C) — quindi
 # non si versiona, come il resto degli artefatti di build.
 *.bsp.chunk
+
+# ── IDE in sviluppo, FUORI dal repo pubblico (2026-11-01) ────────────────────────────────
+# Le due IDE del progetto non sono complete: `GMBasicIDE/` (GUI nativa macOS/Cocoa, VB6-style)
+# ha ~51+76 item aperti nel suo piano, `GMBasicTuiIde/` (TUI scritta in BASIC) 11. Finché non
+# sono finiti restano **in locale** e non entrano nel repository: qui sono escluse, le copie di
+# lavoro restano su disco (nessun build/test le referenzia). Il motore che usano (REPL TUI in
+# `GMBasic/native/repl/ide.c`, logica condivisa `gmb_runtime_c/src/gmb_ide.c`, `REPL/GMBasicIde.cs`)
+# resta versionato: fa parte del REPL, non delle due IDE.
+/GMBasicIDE/
+/GMBasicTuiIde/
