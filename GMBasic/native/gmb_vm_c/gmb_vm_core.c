@@ -13647,6 +13647,14 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                                 if (vB.kind == GMB_TYPE_STRING && vB.v_string.data) blocked = vB.v_string.data;
                                 gmb_http_server_set_security(server, sec, allowed, blocked);
                             }
+                            /* HTTP/2 su TLS (ALPN): opt-in (HTTP CONFIG Http2). */
+                            {
+                                gmb_val_t vH2 = gmb_dict_get(*cd, "Http2");
+                                int on = 0;
+                                if (vH2.kind == GMB_TYPE_DOUBLE) on = vH2.v_double != 0;
+                                else if (vH2.kind == GMB_TYPE_INT) on = vH2.v_int != 0;
+                                gmb_http_server_set_h2(server, on);
+                            }
                             /* Keep-alive HTTP/1.1 (HTTP CONFIG EnableKeepAlive): default ON.
                                Prima il server C chiudeva SEMPRE la connessione dopo una risposta,
                                anche se il client la teneva aperta. */

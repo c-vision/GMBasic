@@ -3038,6 +3038,12 @@ typedef struct {
      * EnableKeepAlive=FALSE. Così i server già avviati con la struct azzerata restano
      * "riusa connessione" senza dover inizializzare nulla a mano. */
     int keep_alive_disabled;
+    /* ALPN "h2" su TLS: OPT-IN. Con h2 NON multiplexato, un browser su h2 serve le richieste
+     * in SEQUENZA su una connessione (misurato 2x piu' lento di h1 con 4 richieste lente in
+     * parallelo): finché il multiplexing non c'è, il default resta HTTP/1.1 (i browser aprono
+     * piu' connessioni e restano veloci). h2c resta sempre accettato: lo chiede esplicitamente
+     * solo un client che vuole h2. */
+    int h2_alpn;
     SSL_CTX* ssl_ctx;            /* non-NULL = server HTTPS (TLS) */
     char bsp_dir[512];           /* radice pagine .bsp (HTTP BSP); vuoto = disattivo */
     /* Security (2026-09-02, parità HTTP CONFIG IL/PCode): header automatici + IP allow/block */
@@ -3120,6 +3126,9 @@ int64_t gmb_http_server_start(int port)
 /* Server HTTP su TLS (HTTPS): come gmb_http_server_start ma il listener accetta con
    handshake TLS (certificato PEM/PFX). Il loop http_server_loop usa ssl_ctx per
    SSL_accept/SSL_read/SSL_write. Certificato vuoto → -1 (mai server plain sotto maschera). */
+/* HTTP/2 su TLS abilitato (HTTP CONFIG Http2 = TRUE). Default spento — vedi la nota nel flag. */
+static int g_h2_alpn_on = 0;
+
 /* ALPN: senza, un browser non passa MAI a HTTP/2 su TLS (manda il connection preface solo
  * se il protocollo è stato negoziato). Ordine = preferenza del server: h2, poi HTTP/1.1. */
 static int http_alpn_select_cb(SSL* ssl, const unsigned char** out, unsigned char* outlen,
@@ -3129,8 +3138,17 @@ static int http_alpn_select_cb(SSL* ssl, const unsigned char** out, unsigned cha
         2, 'h', '2',
         8, 'h', 't', 't', 'p', '/', '1', '.', '1'
     };
+    static const unsigned char http11_only[] = { 8, 'h', 't', 't', 'p', '/', '1', '.', '1' };
     (void)ssl;
     (void)arg;
+    if (!g_h2_alpn_on)
+    {
+        /* h2 opt-in: senza il flag si negozia solo HTTP/1.1 (niente regressione per i browser) */
+        if (SSL_select_next_proto((unsigned char**)out, outlen, http11_only, sizeof http11_only,
+                                  in, inlen) != OPENSSL_NPN_NEGOTIATED)
+            return SSL_TLSEXT_ERR_NOACK;
+        return SSL_TLSEXT_ERR_OK;
+    }
     if (SSL_select_next_proto((unsigned char**)out, outlen, protos, sizeof protos, in, inlen)
         != OPENSSL_NPN_NEGOTIATED)
         return SSL_TLSEXT_ERR_NOACK;
@@ -3605,6 +3623,14 @@ int gmb_http_server_set_timeout(int64_t server, int timeout_ms)
 
 /* CONFIG: keep-alive HTTP/1.1 (HTTP CONFIG EnableKeepAlive). on=0 → ogni risposta chiude la
  * connessione ("Connection: close"), come il server di prima. */
+/* Abilita l'offerta di "h2" in ALPN sul server TLS (HTTP CONFIG Http2). Default: spento. */
+int gmb_http_server_set_h2(int64_t server, int on)
+{
+    (void)server;
+    g_h2_alpn_on = on ? 1 : 0;
+    return 0;
+}
+
 int gmb_http_server_set_keepalive(int64_t server, int on)
 {
     gmb_http_server_t* s = http_get(server);

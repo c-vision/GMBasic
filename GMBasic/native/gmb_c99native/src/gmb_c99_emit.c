@@ -21108,6 +21108,8 @@ static void st_net_cmd(ctx_t* c, gmb_stmt_t* s) {
             sb_put(&c->out, "{ gmb_val_t _cfgv = ");
             if (nn > 0 && na[0]) emit_expr(c, na[0]); else sb_put(&c->out, "gmb_val_nil()");
             sb_put(&c->out, "; gmb_val_t _cfgcert = gmb_dict_get(gmb_val_as_dict(_cfgv), \"CertificatePath\");");
+            /* HTTP/2 su TLS (ALPN): opt-in (HTTP CONFIG Http2). */
+            sb_put(&c->out, " { gmb_val_t _h2v = gmb_dict_get(gmb_val_as_dict(_cfgv), \"Http2\"); int _h2on = 0; if (_h2v.kind == GMB_TYPE_DOUBLE) _h2on = _h2v.v_double != 0; else if (_h2v.kind == GMB_TYPE_INT) _h2on = _h2v.v_int != 0; gmb_http_server_set_h2(1, _h2on); }");
             /* Keep-alive (HTTP CONFIG EnableKeepAlive): default ON, come la VM/C. */
             sb_put(&c->out, " { gmb_val_t _kav = gmb_dict_get(gmb_val_as_dict(_cfgv), \"EnableKeepAlive\"); int _kaon = 1; if (_kav.kind == GMB_TYPE_DOUBLE) _kaon = _kav.v_double != 0; else if (_kav.kind == GMB_TYPE_INT) _kaon = _kav.v_int != 0; gmb_http_server_set_keepalive(1, _kaon); }");
             /* Parità con la VM/C: SecurityHeaders / AllowedIPs / BlockedIPs, MaxRequestBodySize,
