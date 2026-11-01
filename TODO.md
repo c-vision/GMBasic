@@ -186,9 +186,12 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
 - [ ] **F4b — debug con engine C#**: `BREAK/STEP/TRACE/WATCH` oggi passano da `gmb_vm_host`
       (chunk A1). Con `--engine=csharp` manca il debugger in-process sull'IL/P-Code di `gmbcs`:
       è l'ultimo pezzo della parità F4.
-- [ ] **F5 — Prova di eliminabilità**: build + run della REPL con `GMBasicSharp/` **rimosso**
-      (o non compilato) e suite di comandi del mondo C verde. In quello scenario `IL`/`PCODE`
-      **escono dalla superficie** (rimossi, non degradati).
+- [~] **F5 — Prova di eliminabilità** (parziale, 2026-11-01): `otool -L gmb_repl` non mostra
+      alcuna dipendenza .NET/mono; `nm -u` non contiene simboli di lexer/parser/linker/compilatore;
+      con `--csharp-cli /nonexistent` (assenza forzata del mondo C#) `RUN`, `AST`, `DASM`,
+      `COMPILE`, `EVAL`, `FIXTURES`, … restano verdi e `IL`/`PCODE` dichiarano esplicitamente
+      "engine C# non disponibile". Resta da fare: build/run con `GMBasicSharp/` davvero rimosso
+      e **rimozione** di `IL`/`PCODE` dalla superficie (non degradati).
 - [ ] **F6 — La REPL C# esce**: `GMBasicSharp/REPL` non è più canonica (resta, se serve, `gmbcs` per
       i test IL/PCode finché il compilatore C# esiste).
 - [ ] **F7 — Pulizia**: guida unica, help JSON unica fonte (`shared/helps`), manifesti/audit rigenerati.
