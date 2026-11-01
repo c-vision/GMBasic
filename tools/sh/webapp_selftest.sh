@@ -156,6 +156,33 @@ ENRICH="$(code POST "$B/api/enrich" '{"text":"ciao mondo","mode":"SUMMARIZATION"
 if [ "$ENRICH" = "200" ] || [ "$ENRICH" = "500" ]; then ok "POST /api/enrich raggiungibile ($ENRICH)"; else bad "enrich" "http $ENRICH"; fi
 
 echo ""
+echo "== Streaming SSE (chunked) /api/events/stream =="
+SSE_HDR="$(curl -s -N -m 3 -D - -o /dev/null "$B/api/events/stream" 2>/dev/null | tr -d '\r')"
+case "$SSE_HDR" in
+  *"text/event-stream"*) ok "Content-Type: text/event-stream";;
+  *) bad "SSE content-type" "$(printf '%s' "$SSE_HDR" | head -1)";;
+esac
+case "$SSE_HDR" in
+  *"Transfer-Encoding: chunked"*) ok "Transfer-Encoding: chunked";;
+  *) bad "SSE chunked" "nessun Transfer-Encoding: chunked";;
+esac
+# evento LIVE: apre lo stream, crea un agente, l'evento deve arrivare sul canale aperto
+SSE_OUT="$(mktemp)"
+( curl -s -N -m 6 "$B/api/events/stream" > "$SSE_OUT" 2>/dev/null ) &
+SSE_PID=$!
+sleep 1
+code POST "$B/api/agents" '{"name":"SseProbe"}' >/dev/null 2>&1
+sleep 3
+if grep -q 'SseProbe' "$SSE_OUT" 2>/dev/null; then
+  ok "evento live consegnato sullo stream aperto"
+else
+  bad "SSE live" "nessun evento SseProbe ricevuto"
+fi
+wait $SSE_PID 2>/dev/null
+rm -f "$SSE_OUT"
+code DELETE "$B/api/agents/SseProbe" >/dev/null 2>&1
+
+echo ""
 echo "== WebSocket /ws/canvas =="
 WS="$(curl -s -i -N -m 4 -H 'Connection: Upgrade' -H 'Upgrade: websocket' \
       -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' \
