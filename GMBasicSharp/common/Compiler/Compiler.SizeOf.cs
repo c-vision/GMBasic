@@ -16,6 +16,9 @@ public sealed partial class Compiler
     /// </summary>
     private bool TryStaticSizeOf(Expr arg, out long bytes)
     {
+        // `SIZEOF((x))`: le parentesi sono un GroupingExpr ma la FORMA resta una variabile →
+        // vale il suo tipo statico (canone TypeLayout; C99Native rispondeva già così).
+        while (arg is GroupingExpr grp) arg = grp.Expression;
         // Letterale numerico = il double di default del linguaggio; ogni altro letterale
         // (stringa, booleano, nil) non ha tipo statico dichiarato → -1.
         if (arg is not VariableExpr ve)

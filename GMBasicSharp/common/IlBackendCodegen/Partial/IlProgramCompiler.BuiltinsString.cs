@@ -635,12 +635,17 @@ public sealed partial class IlProgramCompiler
     private void EmitSizeOfCall(BuiltinFunctionCallExpr expr)
     {
         if (expr.Args.Length != 1) throw new NotSupportedException("Backend IL: SIZEOF richiede 1 argomento.");
-        if (expr.Args[0] is not VariableExpr argVar)
+        // `SIZEOF((x))`: le parentesi producono un GroupingExpr, ma la FORMA dell'argomento resta
+        // una variabile → vale il suo tipo statico (canone TypeLayout; il C99Native, che non ha il
+        // nodo Grouping, rispondeva già 2 mentre qui si dava -1: divergenza misurata 2026-11-01).
+        var sizeArg = expr.Args[0];
+        while (sizeArg is GroupingExpr grp) sizeArg = grp.Expression;
+        if (sizeArg is not VariableExpr argVar)
         {
             // NON identificatore: solo il letterale numerico ha un tipo statico (8 = il double di
             // default del linguaggio); ogni altra espressione (aritmetica, chiamata, membro,
             // indice, stringa, booleano) vale -1, come le gambe C che non inferiscono.
-            _il.Emit(OpCodes.Ldc_I8, expr.Args[0] is NumberExpr
+            _il.Emit(OpCodes.Ldc_I8, sizeArg is NumberExpr
                 ? TypeLayout.ScalarByteSize(new DoubleType()) : TypeLayout.NoStaticSize);
             return;
         }

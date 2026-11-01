@@ -4359,34 +4359,12 @@ public static partial class Linker
             var result = op.Kind switch { TokenKind.And => bl.Value && br.Value, TokenKind.Or => bl.Value || br.Value, _ => (bool?)null };
             if (result.HasValue) return new BooleanExpr(result.Value, bl.Token);
         }
-        if (right is NumberExpr nr2)
-        {
-            if (nr2.Value == 0 && (op.Kind == TokenKind.Plus || op.Kind == TokenKind.Minus)) return left;
-            if (nr2.Value == 1 && op.Kind == TokenKind.Multiply) return left;
-            if (nr2.Value == 0 && op.Kind == TokenKind.Multiply) return new NumberExpr(0, nr2.Token);
-        }
-        if (left is NumberExpr nl2 && nl2.Value == 0 && op.Kind == TokenKind.Plus) return right;
-        
-        // Boolean simplification
-        if (left is BooleanExpr bl2)
-        {
-            if (bl2.Value && op.Kind == TokenKind.And) return right;   // TRUE AND x → x
-            if (!bl2.Value && op.Kind == TokenKind.And) return new BooleanExpr(false, bl2.Token); // FALSE AND x → FALSE
-            if (bl2.Value && op.Kind == TokenKind.Or) return new BooleanExpr(true, bl2.Token);  // TRUE OR x → TRUE
-            if (!bl2.Value && op.Kind == TokenKind.Or) return right;    // FALSE OR x → x
-        }
-        if (right is BooleanExpr br2)
-        {
-            if (br2.Value && op.Kind == TokenKind.And) return left;      // x AND TRUE → x
-            if (!br2.Value && op.Kind == TokenKind.And) return new BooleanExpr(false, br2.Token);
-            if (br2.Value && op.Kind == TokenKind.Or) return new BooleanExpr(true, br2.Token);
-            if (!br2.Value && op.Kind == TokenKind.Or) return left;      // x OR FALSE → x
-        }
-        
-        // String identity: s + "" → s, "" + s → s
-        if (left is StringExpr sl2 && sl2.Value.Length == 0 && op.Kind == TokenKind.Plus) return right;
-        if (right is StringExpr sr2 && sr2.Value.Length == 0 && op.Kind == TokenKind.Plus) return left;
-        
+        /* Le identità algebriche/booleane (`x + 0` → x, `x * 1` → x, `x AND TRUE` → x,
+         * `s + ""` → s, …) NON vengono applicate: cambierebbero la FORMA dell'espressione, e il
+         * canone di SIZEOF è basato sulla forma (una variabile ha un tipo statico misurabile, una
+         * espressione vale -1). Con il fold, `SIZEOF(i + 0)` dava 2 su IL/PCode/VM-C e -1 su
+         * C99Native (divergenza misurata 2026-11-01). Restano solo i fold
+         * letterale-con-letterale, che non hanno effetti collaterali. */
         return null;
     }
 
