@@ -154,8 +154,9 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
       eseguibile **`gmb_lsp`** (LSP/JSON-RPC su stdio), costruito dal progetto del compilatore.
       La REPL **non linka più `gmb_compiler_c`** e `--lsp` rimanda al tool.
       Client: le IDE GMBasic e VS Code (o qualunque editor LSP).
-- [ ] **Decisione nome `EVAL`**: nel motore C valuta uno snippet (`gmb eval`), nella REPL C#
-      è l'Eval Harness AI. Un solo significato: candidato `AIBENCH` per l'harness.
+- [x] **Decisione nome `EVAL`** (2026-11-01): `EVAL` = valutazione di uno **snippet BASIC**
+      (`gmb eval` / `gmbcs eval`). L'**Eval Harness AI** della REPL C# è rinominato
+      **`AIBENCH`** (comando, metodo `HandleAiBenchAsync`, guida). Un solo significato.
 - [x] **F3a — comandi riportati nel mondo C** (2026-11-01): `FIXTURES` (runtime
       `gmb_fixtures_*`), `SETUP` (stato cache libs: RID/cartella/conteggio), `LLM` (modelli
       sotto AIPATH da `ai.json`). Verificati headless.
@@ -172,9 +173,19 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
 - [x] **F3 completo**: tutti gli 11 comandi nati nella REPL C# (`FIXTURES`, `SETUP`,
       `ADD`, `REMOVE`, `RESTORE`, `ROLLBACK`, `BUMP`, `CACHE`, `TRUST`, `UPDATE`, `LLM`)
       vivono nel mondo C. Resta la parità *totale* con `--engine=csharp` (F4).
-- [ ] **F4 — Parità completa con l'engine C# (finché esiste)**: `--engine=csharp` implementa
-      **tutti** i comandi identici al ramo C — `IL` e `PCODE` compresi (non stub), `EVAL`, dump,
-      debug; stessi flag e stessa semantica. Test di parità comando-per-comando fra i due engine.
+- [x] **F4a — engine C# reale (`gmbcs`)** (2026-11-01): nuovo progetto `GMBasicSharp/CompilerCli`
+      → eseguibile **`gmbcs`** con lo stesso contratto di `gmb`: `check`, `dump ast|pcode|il|disasm`
+      (sorgente o `.prg`), `prginfo`, `build --target il|pcode`, `run`/`eval --engine il|pcode`
+      (in-process, thread dedicato, **niente SDL**). La REPL ha `--engine c|csharp` e
+      `--csharp-cli <path>`; **rimosso** `GMBASIC_CSHARP_CLI` (era env). Con `--engine=csharp`:
+      `AST`/`DASM`/`PRGINFO`/`COMPILE`/`RUN`/`EVAL` mappano sugli equivalenti C# (P-Code e IL),
+      `IL` e `PCODE` sono dump reali (non stub). Nuovo `PCODE` in superficie.
+      Nuova opzione `gmb --quiet` (dump/eval/check/build/run): niente chatter del driver, così
+      l'output dei due engine coincide. Test: `tools/sh/repl_engine_parity.sh <file.bas>` →
+      PASS su `RUN` (vmc|pcode), `RUN -c99` (c99n|il), `EVAL`, dump non vuoti.
+- [ ] **F4b — debug con engine C#**: `BREAK/STEP/TRACE/WATCH` oggi passano da `gmb_vm_host`
+      (chunk A1). Con `--engine=csharp` manca il debugger in-process sull'IL/P-Code di `gmbcs`:
+      è l'ultimo pezzo della parità F4.
 - [ ] **F5 — Prova di eliminabilità**: build + run della REPL con `GMBasicSharp/` **rimosso**
       (o non compilato) e suite di comandi del mondo C verde. In quello scenario `IL`/`PCODE`
       **escono dalla superficie** (rimossi, non degradati).

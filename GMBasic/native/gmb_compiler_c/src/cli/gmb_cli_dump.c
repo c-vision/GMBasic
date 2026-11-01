@@ -72,6 +72,11 @@ static int exe_dir(char* out, size_t cap)
     return 0;
 }
 
+/* --quiet: il driver non deve sporcare lo stdout del comando (es. "chunk -> …"):
+ * la REPL che pilota il compilatore vuole SOLO l'output del programma/dump. */
+static int g_quiet = 0;
+void gmb_cli_set_quiet(int on) { g_quiet = on ? 1 : 0; }
+
 static int run_tool_ex(const char* tool, const char* a1, const char* a2, const char* extra)
 {
     char dir[1024], path[2048], cmd[4096];
@@ -81,6 +86,10 @@ static int run_tool_ex(const char* tool, const char* a1, const char* a2, const c
     if (a2 && extra) snprintf(cmd, sizeof cmd, "'%s' '%s' '%s' %s", path, a1, a2, extra);
     else if (a2)     snprintf(cmd, sizeof cmd, "'%s' '%s' '%s'", path, a1, a2);
     else             snprintf(cmd, sizeof cmd, "'%s' '%s'", path, a1);
+    if (g_quiet) {
+        size_t used = strlen(cmd);
+        snprintf(cmd + used, sizeof cmd - used, " >/dev/null");
+    }
     int rc = system(cmd);
     return WIFEXITED(rc) ? WEXITSTATUS(rc) : 1;
 }

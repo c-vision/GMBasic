@@ -27,6 +27,8 @@ int gmb_cli_dump_chunk(const char* file, const char* out);
 int gmb_cli_dump_c(const char* file, const char* out);
 int gmb_cli_dump_disasm(const char* file);
 int gmb_cli_eval(const char* code);
+/* --quiet: sopprime lo stdout informativo dei driver (chunk -> …). */
+void gmb_cli_set_quiet(int on);
 
 #define CLI_PATH 4096
 #define CLI_MAX_NS 128   /* namespace massimi considerati da `check` (ex gmb_cli.c) */
@@ -67,6 +69,7 @@ typedef struct {
     const char* baseline; /* minitests: JSON di un run precedente (solo regressioni) */
     int json;
     int strict;
+    int quiet;           /* check|build|run: niente progresso su stderr */
     int all;             /* minitests: includi anche interactive/heavy */
     int interactive;     /* minitests: solo TAG interactive */
     int heavy;           /* minitests: solo TAG heavy */

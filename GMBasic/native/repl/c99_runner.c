@@ -18,7 +18,7 @@ int rpl_run_c99(const char* bas_file, const rpl_options_t* o)
         size_t used = strlen(defs); snprintf(defs + used, sizeof(defs) - used, " -D \"%s\"", o->defines[i]);
     }
     char cmd[6144];
-    snprintf(cmd, sizeof(cmd), "\"%s\" run --project \"%s\" --entry \"%s\"%s", cli, dir, bas_file, defs);
+    snprintf(cmd, sizeof(cmd), "\"%s\" run --project \"%s\" --entry \"%s\" --quiet%s", cli, dir, bas_file, defs);
     int rc = system(cmd);
     rc = WIFEXITED(rc) ? WEXITSTATUS(rc) : 1;
     if (rc != 0) printf("[C99 ERROR] exit %d\n", rc);
