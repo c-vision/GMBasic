@@ -172,7 +172,11 @@ public sealed partial class StdLib
             // Pagine servite dalla VM C anche con BspEngine="managed" (es. "canvas.bsp,wasm.bsp")
             { "BspEnginePages", new StringType() },
             // Pagine renderizzabili in parallelo dal motore C (stato tutto nel client managed)
-            { "BspConcurrentPages", new StringType() }
+            { "BspConcurrentPages", new StringType() },
+            // HTTP/2 su TLS (ALPN). Default FALSE: finché il multiplexing non c'è, h2 su una
+            // connessione è più lento di h1 con più connessioni (misurato 2x su richieste lente
+            // in parallelo). h2c resta accettato sempre (lo chiede il client esplicitamente).
+            { "Http2", new BitType() }
         });
 
         RegisterTypeSchema(typeof(CookieJarType),
