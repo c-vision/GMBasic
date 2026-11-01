@@ -3,10 +3,10 @@
   "superficie": "BuiltInFunction (enum, funzioni)",
   "file_enum": "common/Compiler/BuiltInFunction.cs",
   "file_dispatch": "common/IlBackendRuntime/PCode/PCodeProcessor.Builtins.cs",
-  "totale": 1722,
-  "implementate": 1638,
-  "non_coperte": 84,
-  "percentuale": 95.1,
+  "totale": 1743,
+  "implementate": 1655,
+  "non_coperte": 88,
+  "percentuale": 95,
   "non_coperte_lista": [
     "AICALLMAP",
     "AICONTEXT",
@@ -91,6 +91,10 @@
     "COLLUNIQUEITEMS",
     "COLLUPDATE",
     "COLLVALUES",
-    "CONNECTORAPPROVAL"
+    "CONNECTORAPPROVAL",
+    "GREPCOUNT",
+    "GREPFILES",
+    "GREPMATCHES",
+    "MESSAGEDELIVERY"
   ]
 }
