@@ -9,6 +9,7 @@
  * ricerca è "id|kind|testo" (parità MemoryBrain.Search).
  */
 #include "gmb_runtime.h"
+#include "gmb_state_hook.h"   /* hook opzionale di stato (client managed) */
 #include "gmb_brains.h"   /* gmb_brain_lookup: risoluzione unica dei cervelli */
 #include <sqlite3.h>
 #include <stdio.h>
@@ -1005,6 +1006,8 @@ typedef struct { long long id; double score; int freq; double rec; char* kind; c
 
 char* gmb_memory_rank(const char* query, int topK)
 {
+    { char tk[16]; snprintf(tk, sizeof tk, "%d", topK > 0 ? topK : 5);
+      char* r = gmb_state_hook_query3("memory.rank", query, NULL, tk); if (r) return r; }
     (void)query;
     if (topK <= 0) topK = 5;
     sqlite3* db = brain_open();
@@ -1070,6 +1073,7 @@ char* gmb_memory_rank(const char* query, int topK)
 
 int gmb_memory_consolidate(void)
 {
+    { int hr = gmb_state_hook_mutate("memory.consolidate", NULL, NULL, NULL); if (hr >= 0) return hr; }
     /* Contratto superficie BASIC (guida AI-Namespace-Manual): ritorna 1 in caso di
      * successo, 0 se il db non è utilizzabile. NON il conteggio dei duplicati
      * (parità C#: Consolidate() poi sempre 1.0; VMC che ignora il ritorno e dà 1.0). */

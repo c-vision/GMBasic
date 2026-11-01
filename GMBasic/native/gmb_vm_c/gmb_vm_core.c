@@ -6,6 +6,7 @@
  * ============================================================================ */
 
 #include "gmb_vm_core.h"
+#include "gmb_state_hook.h"   /* canale d'errore dell'hook di stato (VM/C ospitata) */
 #include "gmb_vm_tui.h"
 #include "gmb_vm_events.h"
 #include "gmb_adapter.h"
@@ -6035,7 +6036,20 @@ void gmb_vm_exec_syscall(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
     /* Dispatch a tabella (refactor §18.5): blocchi terminali estratti come handler. I code
      * non in tabella proseguono con i blocchi inline sotto (fall-through e deleghe). */
     for (size_t _t = 0; _t < sizeof(VM_SYS_TBL) / sizeof(VM_SYS_TBL[0]); _t++)
-        if (VM_SYS_TBL[_t].code == code) { VM_SYS_TBL[_t].fn(vm, task, code, argc); return; }
+        if (VM_SYS_TBL[_t].code == code)
+        {
+            gmb_state_hook_clear_error();
+            VM_SYS_TBL[_t].fn(vm, task, code, argc);
+            /* Errore riportato dall'hook di stato (VM/C ospitata): stesso schema ON ERROR/TRY
+             * della gamba managed — mai un fallimento silenzioso. */
+            if (task->pending_exception == NULL)
+            {
+                char* hook_err = gmb_state_hook_take_error();
+                if (hook_err && *hook_err) gmb_raise_basic_error(task, 200.0, hook_err);
+                free(hook_err);
+            }
+            return;
+        }
 
     (void)vm;
     /* ── File I/O non-ISAM (parità PCodeVM FileHandles). Codici = enum SysCall C#:

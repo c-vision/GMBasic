@@ -6,6 +6,7 @@
  * e gmb_agent_runtime in quel caso). §0bis: chiama solo il runtime condiviso.
  */
 #include "gmb_runtime.h"
+#include "gmb_state_hook.h"   /* hook opzionale di stato (client managed) */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,6 +20,7 @@ char* gmb_doc_extract(const char* path);
  * o estrazione documento (pdf/testo), poi passa il testo a gmb_agent_ask. File mancante /
  * contenuto non estraibile → errore esplicito (heap, il chiamante copia). */
 char* gmb_agent_ask_file(const char* name, const char* path, const char* question) {
+    { char* r = gmb_state_hook_query3("agent.askfile", name, path, question); if (r) return r; }
     char* content = NULL;
     char* prompt = NULL;
     char* result = NULL;

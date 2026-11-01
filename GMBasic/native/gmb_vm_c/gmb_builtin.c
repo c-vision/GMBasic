@@ -64,6 +64,18 @@ static int bsp_hook_list(const char* surface, const char* a, const char* b, gmb_
     return 1;
 }
 
+static int bsp_hook_str3(const char* surface, const char* a, const char* b, const char* c, gmb_builtin_out_t* bout)
+{
+    char* r = gmb_state_hook_query3(surface, a, b, c);
+    if (!r) return 0;
+    gmb_obj_string_t* os = gmb_str_cstr(r);
+    free(r);
+    bout->is_num = 0;
+    bout->result_ref = (gmb_obj_t*)os;
+    bout->result_ref_bt = GMB_BT_STRING;
+    return 1;
+}
+
 static const char* bsp_sarg(gmb_stack_entry_t* args, int argc, int i)
 {
     return (argc > i && args[i].type == 2 && args[i].ref && args[i].ref->kind == GMB_OBJ_STRING)
@@ -10072,6 +10084,10 @@ void gmb_bf_488(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, 
         {
             const char* name = (argc >= 1 && args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_STRING) ? ((gmb_obj_string_t*)args[0].ref)->data : "";
             const char* prompt = (argc >= 2 && args[1].type == 2 && args[1].ref && args[1].ref->kind == GMB_OBJ_STRING) ? ((gmb_obj_string_t*)args[1].ref)->data : "";
+            /* L'hook va PRIMA del controllo sul registro C: quando la VM/C è ospitata gli
+             * agenti stanno nel runtime managed e il registro C è vuoto (bug visto: AGENTASK
+             * rispondeva "not registered" pur essendo l'agente creato). */
+            if (bsp_hook_str("agent.ask", name, prompt, bout)) return;
             if (!gmb_agent_exists(name)) {
                 char _m[160]; snprintf(_m, sizeof(_m), "ERROR: Agent '%s' is not registered.", name ? name : "");
                 bout->is_num = 0; bout->result_ref = (gmb_obj_t*)gmb_str_cstr(_m); bout->result_ref_bt = GMB_BT_STRING;
@@ -10158,10 +10174,15 @@ void gmb_bf_stats_c832(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
     if (func_code == 832) snprintf(m, sizeof(m), "{\"error\":\"'%s' non risolve a un contesto KV con completer cache-manager (agente non registrato o fixture)\"}", n ? n : "");
     else if (func_code == 837) heap = gmb_agent_prefill_stats_json(n);
     else if (func_code == 838) heap = gmb_agent_decode_stats_json(n);
-    else if (func_code == 1502) snprintf(m, sizeof(m), "Error: handle team sconosciuto '%s' (TeamRunStart non chiamato o già consumato)", n ? n : "");
-    else if (func_code == 1503) snprintf(m, sizeof(m), "1");
+    /* TEAMRUNSTART (1501) / TEAMRUNWAIT (1502) / TEAMONSTREAM (1503): prima erano testi
+     * FISSI ("Team non trovato" / "handle sconosciuto") — un run asincrono non partiva MAI su
+     * VM/C e la Wait rispondeva sempre errore (stub, §0bis). Ora delegano alle funzioni del
+     * runtime condiviso, che quando la VM/C è ospitata passano dall'hook di stato (team.run_start
+     * / team.run_wait sul runtime managed). */
+    else if (func_code == 1501) heap = gmb_team_run_start(n, vm_builtin_sarg(args, argc, 1));
+    else if (func_code == 1502) heap = gmb_team_run_wait(n);
+    else if (func_code == 1503) snprintf(m, sizeof(m), gmb_team_on_stream(n) ? "1" : "");
     else if (func_code == 1435) snprintf(m, sizeof(m), "Error: Nessun provider LLM configurato (AI SET ACTIVE)");
-    else if (func_code == 1501) snprintf(m, sizeof(m), "ERROR: Team '%s' non trovato (usa TEAM CREATE prima).", n ? n : "");
     else m[0] = 0;
     gmb_obj_string_t* s = gmb_str_cstr(heap ? heap : m);
     free(heap);
@@ -10199,9 +10220,14 @@ void gmb_bf_1229(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code,
 }
 static void gmb_bf_493(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
-        {
-            bout->result = 0;
-        }
+        /* AI.AGENTREGISTERTOOL (493): era uno STUB che ritornava sempre 0 — il tool binding non
+         * veniva mai registrato e l'errore esplicito del runtime ("MCP tool ... not registered")
+         * non arrivava mai. Ora delega al runtime condiviso (che su VM/C ospitata passa
+         * dall'hook → AgentServer.RegisterTool, con l'eccezione propagata come errore BASIC). */
+        (void)vm; (void)func_code;
+        const char* rname = vm_builtin_sarg(args, argc, 0);
+        const char* rtool = vm_builtin_sarg(args, argc, 1);
+        bout->result = gmb_agent_register_tool(rname, rtool) ? -1 : 0;
 }
 void gmb_bf_494(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
@@ -13315,7 +13341,16 @@ void gmb_bf_733_c738(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_c
 }
 void gmb_bf_733_c739(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
-    (void)vm; (void)task; (void)func_code;
+    (void)vm; (void)task;
+    /* MEMORY.ASK (739) = brain del runtime OSPITE quando c'è (IlRuntime.MemoryAsk): stessa
+     * risposta dei motori managed. MEMORY.SAVE/FORGET (737/738) passano da gmb_mem_store/delete,
+     * già ponte. */
+    if (func_code == 739)
+    {
+        char tk[16];
+        snprintf(tk, sizeof tk, "%d", argc >= 2 && args[1].type == 1 ? (int)args[1].num : 5);
+        if (bsp_hook_str("memory.ask", vm_builtin_sarg(args, argc, 0), tk, bout)) return;
+    }
     char* bs = gmb_brain_search(vm_builtin_sarg(args, argc, 0), argc >= 2 ? (int)args[1].num : 5, 0); vm_builtin_rstr(bs, &bout->is_num, &bout->result_ref, &bout->result_ref_bt);
 }
 static void gmb_bf_1213_c1213(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -15006,6 +15041,10 @@ void gmb_bf_agent_run_named_c1441(gmb_vm_t* vm, gmb_stack_entry_t* args, int arg
     const char* name = vm_builtin_sarg(args, argc, 0);
     const char* goal = vm_builtin_sarg(args, argc, 1);
     int steps = argc > 2 && args[2].type == 1 ? (int)args[2].num : 5;
+    if (func_code == 1388) {
+        char io[16]; snprintf(io, sizeof io, "%d", steps);
+        if (bsp_hook_str3("agent.runcua", name, goal, io, bout)) return;
+    }
     if (func_code == 1388 && !gmb_agent_exists(name)) {
         char _m[160]; snprintf(_m, sizeof(_m), "ERROR: Agent '%s' is not registered.", name ? name : "");
         gmb_obj_string_t* r = gmb_str_cstr(_m);
@@ -15668,6 +15707,7 @@ void gmb_bf_askchain_c2002(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int 
     const char* n = vm_builtin_sarg(args, argc, 0);
     const char* p = vm_builtin_sarg(args, argc, 1);
     const char* x = vm_builtin_sarg(args, argc, 2);
+    if (bsp_hook_str("agent.askchain", n, p, bout)) return;
     if (!gmb_agent_exists(n)) {
         char _m[160]; snprintf(_m, sizeof(_m), "ERROR: Agent '%s' is not registered.", n ? n : "");
         bout->is_num = 0; bout->result_ref = (gmb_obj_t*)gmb_str_cstr(_m); bout->result_ref_bt = GMB_BT_STRING;
@@ -19119,7 +19159,24 @@ void gmb_builtin_dispatch(gmb_vm_t* vm, gmb_task_t* task, int func_code, int arg
     if (impl)
     {
             gmb_builtin_out_t out = { 0.0, 1, NULL, GMB_BT_OBJECT };
+            gmb_state_hook_clear_error();   /* nessun errore "stantio" da una chiamata precedente */
             impl->handler(vm, args, argc, func_code, &out, task);
+            /* Se il runtime OSPITE (hook di stato) ha segnalato un'eccezione managed, la si
+             * solleva come errore BASIC: stessa semantica di vm_error, così l'ON ERROR/TRY
+             * della pagina si comporta come sulla gamba managed (mai fallimento silenzioso). */
+            if (task->pending_exception == NULL)
+            {
+                char* hook_err = gmb_state_hook_take_error();
+                if (hook_err && *hook_err)
+                {
+                    if (out.result_ref) { gmb_obj_release(out.result_ref); out.result_ref = NULL; }
+                    gmb_builtin_release_args(args, argc);
+                    gmb_raise_basic_error(task, 200.0, hook_err);
+                    free(hook_err);
+                    return;
+                }
+                free(hook_err);
+            }
             if (task->state == GMB_TS_BLOCKED) return;
             if (task->pending_exception != NULL)
             {

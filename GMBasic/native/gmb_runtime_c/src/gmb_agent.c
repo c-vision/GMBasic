@@ -89,6 +89,7 @@ static void agent_log(const char* kind, const char* name, const char* detail) {
 
 /* AI AGENT TRACE <ON|OFF|VERBOSE> (parità AgentEventLog.SetMode). */
 int gmb_agent_trace(const char* mode) {
+    { int hr = gmb_state_hook_mutate("agent.trace", mode, NULL, NULL); if (hr >= 0) return hr; }
     if (!mode || !*mode) return 0;
     if (strcasecmp(mode, "VERBOSE") == 0) { g_agent_trace_enabled = 1; g_agent_verbose_enabled = 1; return 1; }
     if (strcasecmp(mode, "ON") == 0) { g_agent_trace_enabled = 1; g_agent_verbose_enabled = 0; return 1; }
@@ -177,6 +178,7 @@ int gmb_agent_exists(const char* name) { return find_agent(name) ? 1 : 0; }
  * cumulato), appende l'artefatto <prefix>_s<count> e aggiorna lo stato. Ritorna la risposta. */
 char* gmb_agent_ask_chain(const char* name, const char* prompt, const char* prefix)
 {
+    { char* r = gmb_state_hook_query3("agent.askchain", name, prompt, prefix); if (r) return r; }
     /* PARITÀ IL (divergenza trovata da gen_AI_AskChain su C99Native): `AgentServer` lancia
      * `Agent '<name>' is not registered.` per un agente inesistente; qui il nome era IGNORATO
      * ((void)name) e si finiva nel completo LLM, che senza modello produce il testo fixture
@@ -431,6 +433,7 @@ static void agent_default_model(gmb_agent_t* a) {
 }
 
 char* gmb_agent_ask(const char* name, const char* prompt) {
+    { char* r = gmb_state_hook_query("agent.ask", name, prompt); if (r) return r; }
     /* Tool-call path (`tool: <nome>`): verifica la toolpolicy dell'agente; se deny emette
      * PermissionDenied con il dettaglio (parità AgentPermissionService/AgentServer). Il nome
      * nel dettaglio è quello PIENO del tool (chiave policy), come ToolCall.Name C#. */
@@ -638,6 +641,7 @@ char* gmb_agent_events_str(void) {
 }
 
 int gmb_agent_save(const char* name, const char* path) {
+    { int hr = gmb_state_hook_mutate("agent.save", name, path, NULL); if (hr >= 0) return hr; }
     gmb_agent_t* a = find_agent(name);
     if (!a) return 0;
     FILE* f = fopen(path, "w");
@@ -676,6 +680,7 @@ int gmb_agent_save(const char* name, const char* path) {
 }
 
 int gmb_agent_load(const char* name, const char* path) {
+    { int hr = gmb_state_hook_mutate("agent.load", name, path, NULL); if (hr >= 0) return hr; }
     FILE* f = fopen(path, "r");
     if (!f) return 0;
     char line[4096];
@@ -752,6 +757,7 @@ int gmb_agent_load(const char* name, const char* path) {
 }
 
 int gmb_agent_register_tool(const char* name, const char* tool) {
+    { int hr = gmb_state_hook_mutate("agent.registertool", name, tool, NULL); if (hr >= 0) return hr; }
     gmb_agent_t* a = find_agent(name);
     if (!a || !tool || !*tool) return 0;
     for (int i = 0; i < a->tool_count; i++)
@@ -765,6 +771,7 @@ int gmb_agent_register_tool(const char* name, const char* tool) {
 
 /* --- PERMESSI (Sandbox/Supervised/YOLO) — porting del modello C# AgentPermissionService --- */
 int gmb_agent_permission_default(const char* level) {
+    { int hr = gmb_state_hook_mutate("agent.permission_default", level, NULL, NULL); if (hr >= 0) return hr; }
     if (!level || !*level) return 0;
     g_agent_permission_default = level;
     return 1;
@@ -772,6 +779,7 @@ int gmb_agent_permission_default(const char* level) {
 const char* gmb_agent_permission_default_get(void) { return g_agent_permission_default; }
 
 int gmb_agent_permission(const char* name, const char* level) {
+    { int hr = gmb_state_hook_mutate("agent.permission", name, level, NULL); if (hr >= 0) return hr; }
     if (!level || !*level) return 0;
     /* Normalizza al nome enum C# (AgentPermissionLevel.ToString): Sandbox/Supervised/YOLO. */
     const char* norm = level;
@@ -782,6 +790,7 @@ int gmb_agent_permission(const char* name, const char* level) {
 }
 
 int gmb_agent_tool_policy(const char* name, const char* tool, const char* policy) {
+    { int hr = gmb_state_hook_mutate("agent.toolpolicy", name, tool, policy); if (hr >= 0) return hr; }
     if (!tool || !*tool || !policy || !*policy) return 0;
     char buf[576];
     snprintf(buf, sizeof(buf), "%s|%s", tool, policy);
@@ -800,6 +809,9 @@ int gmb_agent_tool_policy(const char* name, const char* tool, const char* policy
  * vere mentre il C resta sul fallback: e' il gap runtime agenti del mondo C, tracciato.
  * Ritorna una stringa malloc'd (il chiamante fa free), mai NULL. */
 char* gmb_agent_swarm(double n, const char* prefix, const char* task, int max_concurrency) {
+    { char nm[32], cc[16]; snprintf(nm, sizeof nm, "%.0f", n); snprintf(cc, sizeof cc, "%d", max_concurrency);
+      char io[56]; snprintf(io, sizeof io, "%s,%s", nm, cc);
+      char* r = gmb_state_hook_query3("agent.swarm", prefix, task, io); if (r) return r; }
     int count = (int)n;
     if (count < 0) count = 0;
     if (count == 0) return strdup("");

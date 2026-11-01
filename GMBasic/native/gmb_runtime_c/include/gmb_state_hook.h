@@ -61,6 +61,9 @@ int gmb_state_hook_active(void);
  */
 char* gmb_state_hook_query(const char* surface, const char* a, const char* b);
 
+/* Variante a TRE argomenti (es. "agent.askfile"(nome,path,domanda)). */
+char* gmb_state_hook_query3(const char* surface, const char* a, const char* b, const char* c);
+
 /* Interroga l'hook per una MUTAZIONE. Ritorna 1 = riuscita, 0 = rifiutata,
  * -1 = non gestita (nessun hook / superficie non gestita → il runtime C esegue la
  * propria). Operazioni:
@@ -73,6 +76,13 @@ char* gmb_state_hook_query(const char* surface, const char* a, const char* b);
  *   "memory.store"(chiave,valore,longTerm) · "memory.delete"(chiave)
  */
 int gmb_state_hook_mutate(const char* op, const char* a, const char* b, const char* c);
+
+/* Canale d'errore: se il client managed risponde con il marcatore `\x01` + messaggio, la
+ * chiamata ritorna "non gestita" e il messaggio resta qui (thread-local) perché il VM possa
+ * sollevare lo STESSO errore BASIC della gamba managed (schema ON ERROR/TRY della pagina).
+ * `gmb_state_hook_take_error` ritorna il messaggio (malloc, caller free) e azzera il canale. */
+char* gmb_state_hook_take_error(void);
+void  gmb_state_hook_clear_error(void);
 
 #ifdef __cplusplus
 }
