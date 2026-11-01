@@ -1,4 +1,4 @@
-' FILE: samples/Community/Ai/AiAnalyzeImage.bas
+' FILE: samples/Ai/AiAnalyzeImage.bas
 ' =================================================================================================
 '       AI.ANALYZEIMAGE — descrizione/analisi di un'immagine via provider vision
 '

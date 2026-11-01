@@ -1,5 +1,5 @@
 ' TAG: interactive
-' FILE: samples/Community/Http/Mvc/AuthDemo/MvcAuth.bas
+' FILE: samples/Http/Mvc/AuthDemo/MvcAuth.bas
 ' =================================================================================================
 '   MVC DEMO — Autenticazione con sessione (login / me / logout)
 ' =================================================================================================

@@ -1,4 +1,4 @@
-' FILE: samples/Community/Arrays/ArrayLiteralBrackets.bas
+' FILE: samples/Arrays/ArrayLiteralBrackets.bas
 ' ======================================================================================================================
 ' Inizializzatore di array con la forma a PARENTESI QUADRE `[ ... ]`
 ' ======================================================================================================================

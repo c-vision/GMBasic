@@ -1,4 +1,4 @@
-' FILE: samples/Community/Classes/ClassesUpcastReturn.bas
+' FILE: samples/Classes/ClassesUpcastReturn.bas
 ' =================================================================================================
 '   GUIDA TEORICA: Upcast nel RETURN + Dispatch Dinamico su variabili dirette (fix Z1)
 ' =================================================================================================

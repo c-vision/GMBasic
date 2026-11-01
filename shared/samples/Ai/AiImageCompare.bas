@@ -1,4 +1,4 @@
-' FILE: samples/Community/Ai/AiImageCompare.bas
+' FILE: samples/Ai/AiImageCompare.bas
 ' =================================================================================================
 '       AI.IMAGECOMPARE — similarità tra due immagini (0..100)
 '
@@ -10,7 +10,7 @@ IMPORT AI
 
 SUB Main()
     DIM a AS STRING
-    a = "../../../samples/Fixtures/ai/img_4x4.png"
+    a = "../Fixtures/ai/img_4x4.png"
 
     PRINT "COMPARE: ", AI.IMAGECOMPARE(a, a)          ' 100
     PRINT "COMPARE: ", AI.IMAGECOMPARE(a, "inesistente.png")  ' -1

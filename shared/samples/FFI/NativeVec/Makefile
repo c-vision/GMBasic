@@ -1,5 +1,5 @@
 # ============================================================================
-# Makefile — modulo nativo di esempio per gmb_ffi.h (samples/Community/FFI/NativeVec)
+# Makefile — modulo nativo di esempio per gmb_ffi.h (samples/FFI/NativeVec)
 #
 #   make          -> libvec_module.dylib (macOS) o libvec_module.so (Linux)
 #   make clean    -> rimuove l'artefatto

@@ -12,7 +12,7 @@ SUB Main()
   MKDIR "work"
 
   ' --- prepara una copia di lavoro (GATE scrive <base>.out.gguf accanto alla base) ---
-  COPY "../../Fixtures/models/tiny_moe.gguf" TO "work/tiny_moe.gguf"
+  COPY "../Fixtures/models/tiny_moe.gguf" TO "work/tiny_moe.gguf"
 
   ' --- POLICY Livello A: regole WHEN/THEN (DEFINE, APPLY dry-run e attivo) ---
   LLM POLICY DEFINE "full", "ROLE=ROUTED_EXPERT&LAYER>=12:q6k;LIKE=*_down_exps*:q6k;DEFAULT:q4k"

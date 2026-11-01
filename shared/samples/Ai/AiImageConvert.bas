@@ -1,4 +1,4 @@
-' FILE: samples/Community/Ai/AiImageConvert.bas
+' FILE: samples/Ai/AiImageConvert.bas
 ' =================================================================================================
 '       AI.IMAGECONVERT — normalizza un'immagine a PNG
 '
@@ -9,7 +9,7 @@ IMPORT AI
 
 SUB Main()
     DIM src AS STRING
-    src = "../../../samples/Fixtures/ai/img_4x4.png"
+    src = "../Fixtures/ai/img_4x4.png"
 
     DIM ok AS LONG
     ok = AI.IMAGECONVERT(src, "work/ai_info_copy.png")

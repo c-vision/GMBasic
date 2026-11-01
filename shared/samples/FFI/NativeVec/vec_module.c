@@ -1,6 +1,6 @@
 /* ============================================================================
  * vec_module.c — modulo nativo di esempio per gmb_ffi.h
- * File: samples/Community/FFI/NativeVec/vec_module.c
+ * File: samples/FFI/NativeVec/vec_module.c
  *
  * Mostra ENTRAMBI i livelli FFI:
  *   1) semplice `c-abi` — funzioni C piatte esposte come simboli normali

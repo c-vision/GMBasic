@@ -56,7 +56,7 @@ SUB Main()
     PRINT "================================================================"
 
     PRINT "1) LOAD (default SWAP: streaming degli esperti da disco)"
-    LLM MODEL LOAD "moe", "../../Fixtures/models/tiny_moe.gguf"
+    LLM MODEL LOAD "moe", "../Fixtures/models/tiny_moe.gguf"
     DumpStats("moe")
 
     PRINT "2) DEMOTE (residenza WARM: esperti on-demand)"
@@ -87,7 +87,7 @@ AlreadyGone:
     PRINT "    errore catturato: il modello non e' caricato"
 Reload:
     PRINT "8) LOAD con clausola RESIDENT (tutto il modello in RAM: nessuno streaming)"
-    LLM MODEL LOAD "moe", "../../Fixtures/models/tiny_moe.gguf", RESIDENT
+    LLM MODEL LOAD "moe", "../Fixtures/models/tiny_moe.gguf", RESIDENT
     DumpStats("moe")
     LLM MODEL UNLOAD "moe"
     PRINT "Fatto."

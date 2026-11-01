@@ -56,7 +56,7 @@ FUNCTION Main() AS INTEGER
   DIM MAX_PROMPT AS LONG
   MAX_PROMPT = 200         ' budget di esempio (token)
   DIM tok$ AS STRING
-  tok$ = "../../Fixtures/ai/tiny_tokenizer.json"
+  tok$ = "../Fixtures/ai/tiny_tokenizer.json"
   IF COMMANDCOUNT() >= 1 THEN tok$ = COMMAND$(1)
 
   ' prompt realistico: istruzioni di sistema + richiesta utente

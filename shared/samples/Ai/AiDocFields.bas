@@ -1,4 +1,4 @@
-' FILE: samples/Community/Ai/AiDocFields.bas
+' FILE: samples/Ai/AiDocFields.bas
 ' =================================================================================================
 '       AI.DOCFIELDS — campi fattura strutturati (offline, deterministico)
 '
@@ -10,7 +10,7 @@ IMPORT AI
 
 SUB Main()
     DIM inv AS STRING
-    inv = "../../../samples/Fixtures/ai/fattura_it.txt"
+    inv = "../Fixtures/ai/fattura_it.txt"
 
     PRINT "FIELDS: ", AI.DOCFIELDS(inv)
 

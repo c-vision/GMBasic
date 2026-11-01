@@ -1,4 +1,4 @@
-' FILE: samples/Community/Classes/ClassesInterfacesNamespace/ClassesInterfacesNamespace.bas
+' FILE: samples/Classes/ClassesInterfacesNamespace/ClassesInterfacesNamespace.bas
 ' =================================================================================================
 '   GUIDA TEORICA: INTERFACE esportate da un NAMESPACE (fix Z2) + IMPLEMENTS multipli
 ' =================================================================================================

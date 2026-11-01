@@ -13,7 +13,7 @@
 '            il sample verifica la FIRMA e la sintassi del comando, che è quanto si può fare
 '            senza rete.
 '
-' USO REALE: avviare un server locale (samples/Community/Network/) e togliere la guardia.
+' USO REALE: avviare un server locale (samples/Network/) e togliere la guardia.
 ' =================================================================================================
 IMPORT CONVERT
 

@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   MKDIR "work"
-  LLM MODEL SAVE "../../Fixtures/models/tiny_moe.gguf", "work/tiny_emit.mlx"
+  LLM MODEL SAVE "../Fixtures/models/tiny_moe.gguf", "work/tiny_emit.mlx"
   IF IO.FILEEXISTS("work/tiny_emit.mlx/config.json") AND IO.FILEEXISTS("work/tiny_emit.mlx/model.safetensors") THEN
     PRINT "emitter-mlx: config+safetensors scritti"
   ELSE

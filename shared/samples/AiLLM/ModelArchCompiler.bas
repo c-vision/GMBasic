@@ -19,13 +19,13 @@ SUB Main()
 
   PRINT "=== 1) DESCRIZIONE D'ARCHITETTURA (.gmbarch) ==="
   LLM ARCH LIST
-  LLM ARCH RESOLVE "../../Fixtures/models/tiny_arch"
+  LLM ARCH RESOLVE "../Fixtures/models/tiny_arch"
   LLM ARCH SHOW
-  LLM ARCH CHECK "../../Fixtures/models/tiny_arch"
-  LLM ARCH PLAN "../../Fixtures/models/tiny_arch", "work/tiny_plan.txt"
+  LLM ARCH CHECK "../Fixtures/models/tiny_arch"
+  LLM ARCH PLAN "../Fixtures/models/tiny_arch", "work/tiny_plan.txt"
   PRINT "piano scritto in work/tiny_plan.txt"
   ' ARCHRECON: valida la descrizione `.gmbarch` risolta dal modello (UNICA fonte; GMAD eliminato).
-  LLM TENSOR ARCHRECON "../../Fixtures/models/tiny_moe.gguf"
+  LLM TENSOR ARCHRECON "../Fixtures/models/tiny_moe.gguf"
 
   PRINT "=== 2) POLICY dei formati (ruolo -> formato) ==="
   LLM POLICY SHOW
@@ -60,14 +60,14 @@ SUB Main()
 
   PRINT "=== 4) SUPERFICIE .gmbarch: TENSOR / KERNEL / MODULE / KV ==="
   ' TENSOR: ruolo + formato di un tensore (o lista di tutti i ruoli) dalla descrizione risolta.
-  LLM TENSOR ROLE "../../Fixtures/models/tiny_arch", "layers.0.attn.wkv.weight"
-  LLM TENSOR LIST "../../Fixtures/models/tiny_arch"
+  LLM TENSOR ROLE "../Fixtures/models/tiny_arch", "layers.0.attn.wkv.weight"
+  LLM TENSOR LIST "../Fixtures/models/tiny_arch"
   ' KERNEL: primitive (kernel) dichiarate dalle strutture della descrizione.
-  LLM KERNEL SHOW "../../Fixtures/models/tiny_arch"
+  LLM KERNEL SHOW "../Fixtures/models/tiny_arch"
   ' MODULE: strutture (moduli) dichiarate + se il converter le sa mappare.
-  LLM MODULE SHOW "../../Fixtures/models/tiny_arch"
+  LLM MODULE SHOW "../Fixtures/models/tiny_arch"
   ' KV: metadati RUNTIME (engine) della descrizione: state / kv.dtype / activation.dtype.
-  LLM KV SHOW "../../Fixtures/models/tiny_arch"
+  LLM KV SHOW "../Fixtures/models/tiny_arch"
 
   PRINT "=== 5) CONVERSIONE DI FORMATO: LLM MODEL CONVERT <src>, <dst>[, GGUF|MLX] ==="
   ' GGUF/MLX usano il converter del progetto codec (guidato dalla .gmbarch).

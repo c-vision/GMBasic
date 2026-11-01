@@ -7,9 +7,9 @@
 ' gmb prog.bas -target wasm) le stesse chiamate diventano import "env".
 '
 ' Avvio nativo (oggi, zero toolchain):
-'   dotnet run --project REPL/REPL.csproj -- samples/Community/AI/WasmHello.bas
+'   dotnet run --project REPL/REPL.csproj -- samples/AI/WasmHello.bas
 ' Avvio WASM (POC, quando clang wasm32 è disponibile):
-'   dotnet run --project REPL/REPL.csproj -- -c99 samples/Community/AI/WasmHello.bas -o /tmp/hello.c
+'   dotnet run --project REPL/REPL.csproj -- -c99 samples/AI/WasmHello.bas -o /tmp/hello.c
 '   clang --target=wasm32 -o webapp/static/hello.wasm /tmp/hello.c native/gmb_runtime_c/src/*.c
 '   poi apri http://localhost:8090/wasm.bsp
 ' =================================================================

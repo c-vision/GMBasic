@@ -6,7 +6,7 @@
 ' Il browser con webapp/static/canvas.js li replaya su <canvas>.
 '
 ' Avvio:
-'   dotnet run --project REPL/REPL.csproj -- samples/Community/AI/CanvasDemo.bas
+'   dotnet run --project REPL/REPL.csproj -- samples/AI/CanvasDemo.bas
 '   poi apri http://localhost:8092/canvas.bsp
 ' Oppure apri direttamente il canvas standalone (questa modalità):
 '   curl http://localhost:8092/index.bsp

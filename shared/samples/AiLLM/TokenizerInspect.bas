@@ -7,8 +7,8 @@
 ' Deterministico su una fixture tokenizer.json (nessun modello necessario).
 IMPORT LLM
 SUB Main()
-  tok$ = "../../Fixtures/ai/tiny_tokenizer.json"
-  tpl$ = "../../Fixtures/models/tiny_chat"
+  tok$ = "../Fixtures/ai/tiny_tokenizer.json"
+  tpl$ = "../Fixtures/models/tiny_chat"
 
   PRINT "=== 1. TOKENIZER — fonte + vocab_size ==="
   LLM TOKENIZER tok$

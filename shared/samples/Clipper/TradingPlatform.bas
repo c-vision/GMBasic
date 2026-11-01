@@ -8,7 +8,7 @@
 '
 ' Esecuzione / cattura:
 '   GMB_GFX_SHOT=/tmp/platform.png tools/gmb_c99native_run.sh \
-'     samples/Community/Clipper/TradingPlatform.bas platform
+'     samples/Clipper/TradingPlatform.bas platform
 ' ============================================================================
 IMPORT CONTROLS
 IMPORT WINDOWS

@@ -1,5 +1,5 @@
 ' TAG: interactive
-' FILE: samples/Community/Http/Mvc/CrudDemo/MvcCrud.bas
+' FILE: samples/Http/Mvc/CrudDemo/MvcCrud.bas
 ' =================================================================================================
 '   MVC DEMO — CRUD persistente di articoli (storage JSON su file in work/)
 ' =================================================================================================
@@ -10,7 +10,7 @@
 '   PUT    /api/articoli/{id}  → ArticoliController.Put(id)   aggiorna → 200
 '   DELETE /api/articoli/{id}  → ArticoliController.Delete(id) rimuove → 204
 ' I dati sono salvati su work/articoli.json (JSON OPEN ... FOR WRITE/READ, vedi
-' samples/Community/Json/JsonFiles.bas) e ricaricati a OGNI richiesta: nel PCodeVM le
+' samples/Json/JsonFiles.bas) e ricaricati a OGNI richiesta: nel PCodeVM le
 ' variabili globali del modulo vengono re-inizializzate a ogni richiesta HTTP, quindi lo
 ' stato persistente DEVE vivere nel file (vedi Bug report, LIMITE globale per-request).
 '

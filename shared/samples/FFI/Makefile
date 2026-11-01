@@ -1,5 +1,5 @@
 # ============================================================================
-# Makefile — sample FFI drop-in (samples/Community/FFI)
+# Makefile — sample FFI drop-in (samples/FFI)
 #   make        -> libs/libvec_module.dylib (macOS) / libvec_module.so (Linux)
 #   make clean  -> rimuove libs/
 # La dylib vive in `libs/` (auto-discovery), NON accanto al programma.

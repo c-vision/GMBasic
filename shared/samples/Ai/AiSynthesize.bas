@@ -1,4 +1,4 @@
-' FILE: samples/Community/Ai/AiSynthesize.bas
+' FILE: samples/Ai/AiSynthesize.bas
 ' =================================================================================================
 '       AI.SYNTHESIZE — sintesi vocale (TTS) via motore di sistema
 '

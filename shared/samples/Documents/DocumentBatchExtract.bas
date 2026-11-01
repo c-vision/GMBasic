@@ -22,8 +22,8 @@ IF NOT IO.DIREXISTS(g_work) THEN MKDIR g_work
     MKDIR OUT_DIR
 
     ' Copia il PDF di esempio nella cartella sorgente (idempotente)
-    COPY "../../../samples/Fixtures/sample.pdf" TO SRC_DIR + "/doc1.pdf"
-    COPY "../../../samples/Fixtures/sample.pdf" TO SRC_DIR + "/doc2.pdf"
+    COPY "../Fixtures/sample.pdf" TO SRC_DIR + "/doc1.pdf"
+    COPY "../Fixtures/sample.pdf" TO SRC_DIR + "/doc2.pdf"
 
     ' Elenca i file PDF nella cartella sorgente (DIR ritorna un array di stringhe)
     DIM files() AS STRING

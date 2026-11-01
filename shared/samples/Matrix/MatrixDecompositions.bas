@@ -1,4 +1,4 @@
-' FILE: samples/Community/Matrix/MatrixDecompositions.bas
+' FILE: samples/Matrix/MatrixDecompositions.bas
 ' Sample COMPLETO delle funzioni MATRIX (decomposizioni + operazioni matriciali).
 ' A = [[4,2],[2,3]] simmetrica definita positiva; I = identità.
 ' Copre: CHOLESKY/SVD/EVD/LU/QR/EIG/FACTOR, INVERSE/PINVERSE/TRANSPOSE/MULTIPLY,

@@ -1,4 +1,4 @@
-' FILE: samples/Community/Commands/RunChainLoad.bas
+' FILE: samples/Commands/RunChainLoad.bas
 ' RUN "comando" — chain-load via shell
 ' Esegue un comando/script via shell e termina
 IMPORT SYSTEM

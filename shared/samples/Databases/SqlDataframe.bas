@@ -8,7 +8,7 @@ SUB Main()
     SQL OPEN ":memory:" ALIAS D
 
     ' 1) CSV -> tabella (header = nomi colonne)
-    PRINT "fromcsv="; SQL.FROMCSV("D", "prezzi", "../../Fixtures/csv_scan.csv")
+    PRINT "fromcsv="; SQL.FROMCSV("D", "prezzi", "../Fixtures/csv_scan.csv")
 
     DIM rs AS SQLRESULTSET
     SQL QUERY D, rs, "SELECT id, name, price FROM prezzi ORDER BY id"

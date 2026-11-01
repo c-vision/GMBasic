@@ -1,4 +1,4 @@
-' FILE: samples/Community/Ai/AiDocExtract.bas
+' FILE: samples/Ai/AiDocExtract.bas
 ' =================================================================================================
 '       AI.DOCEXTRACT — estrazione guidata da schema JSON via provider %CHAT
 '
@@ -10,7 +10,7 @@ IMPORT AI
 
 SUB Main()
     DIM inv AS STRING
-    inv = "../../../samples/Fixtures/ai/fattura_it.txt"
+    inv = "../Fixtures/ai/fattura_it.txt"
 
     DIM schema AS STRING
     schema = "{""total"":""number"",""vat"":""string""}"

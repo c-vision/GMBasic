@@ -1,4 +1,4 @@
-' FILE: samples/Community/Ai/AiVideoInfo.bas
+' FILE: samples/Ai/AiVideoInfo.bas
 ' =================================================================================================
 '       AI.VIDEOINFO — metadati di un video (Y4M nativo)
 '
@@ -10,7 +10,7 @@ IMPORT AI
 
 SUB Main()
     DIM v AS STRING
-    v = "../../../samples/Fixtures/ai/video_4x4_3f.y4m"
+    v = "../Fixtures/ai/video_4x4_3f.y4m"
 
     PRINT "INFO: ", AI.VIDEOINFO(v)
 

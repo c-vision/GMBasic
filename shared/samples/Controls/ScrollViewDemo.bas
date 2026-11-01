@@ -12,7 +12,7 @@
 ' Headless: il widget è MODALE; il sample inietta SENDKEY CHR(27) per chiuderlo
 ' sui backend C (canary/C99Native).
 '
-' Esecuzione:  tools/gmb_c99native_run.sh samples/Community/Controls/ScrollViewDemo.bas
+' Esecuzione:  tools/gmb_c99native_run.sh samples/Controls/ScrollViewDemo.bas
 ' ============================================================================
 IMPORT CONTROLS
 

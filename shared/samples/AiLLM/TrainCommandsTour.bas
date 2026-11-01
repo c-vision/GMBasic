@@ -1,4 +1,4 @@
-' samples/Community/AiLLM/TrainCommandsTour.bas
+' samples/AiLLM/TrainCommandsTour.bas
 ' ─────────────────────────────────────────────────────────────────────────────
 ' TOUR COMPLETO del namespace TRAIN: usa OGNI comando/funzione implementato.
 '

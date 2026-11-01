@@ -14,7 +14,7 @@
 ' Headless: il widget è MODALE; il sample inietta SENDKEY CHR(27) prima/dopo
 ' per chiuderlo sui backend C (canary/C99Native).
 '
-' Esecuzione:  tools/gmb_c99native_run.sh samples/Community/Controls/NumericUpDownDemo.bas
+' Esecuzione:  tools/gmb_c99native_run.sh samples/Controls/NumericUpDownDemo.bas
 ' ============================================================================
 IMPORT CONTROLS
 

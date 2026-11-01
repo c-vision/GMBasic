@@ -1,4 +1,4 @@
-' FILE: samples/Community/Classes/ClassesInheritsCrossFile/ClassesInheritsCrossFile.bas
+' FILE: samples/Classes/ClassesInheritsCrossFile/ClassesInheritsCrossFile.bas
 ' =================================================================================================
 '   GUIDA TEORICA: INHERITS qualificato / da un altro file (fix Z3)
 ' =================================================================================================

@@ -1,7 +1,7 @@
 ' FILE: Web/RegistryServer.bas
 ' Demo frontend BSP del registry (PackageManager-BSP §3): un server HTTP che
 ' fornisce l'API /api/packages (dati di esempio) e serve le pagine .bsp del
-' frontend (samples/Community/Web/RegistryBsp/). Avvio:
+' frontend (samples/Web/RegistryBsp/). Avvio:
 '   dotnet run --project REPL/REPL.csproj -- RegistryServer.bas
 '   poi apri http://localhost:8099/index.bsp
 '

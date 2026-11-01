@@ -1,4 +1,4 @@
-' FILE: samples/Community/Math/VectorMiniTest.bas
+' FILE: samples/Math/VectorMiniTest.bas
 ' Sample VECTOR — tutte le 6 funzioni di distanza (handle-based).
 ' Output in work/. I valori esatti sono verificati dai MiniTest.
 IMPORT VECTOR

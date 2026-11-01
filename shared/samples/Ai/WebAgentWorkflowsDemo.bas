@@ -1,7 +1,7 @@
 ' Surface HTTP /api/workflows* a PARITA' 4 backend (IL / P-Code / VM/C / C99Native):
 ' server AI AGENT SERVE implementato in ogni backend (VM/C via gmb_agent_http_start),
 ' client FETCH in-process senza deadlock (fix watchdog GPM gmb_c99gpm_extjob_*).
-' FILE: samples/Community/AI/WebAgentWorkflowsDemo.bas
+' FILE: samples/AI/WebAgentWorkflowsDemo.bas
 ' =================================================================
 ' WEBAPP Workflows — demo dettagliata (BASIC + HTTP API)
 ' Mostra il ciclo completo da browser (Log tab) e da BASIC:
@@ -17,7 +17,7 @@ SUB Main()
 
     ' ----------------------------------------------------------
     ' 1. Definizione via BASIC (AI WORKFLOW) — come in
-    '    samples/Community/Workflow/WorkflowBasics.bas
+    '    samples/Workflow/WorkflowBasics.bas
     '    Sintassi: AI WORKFLOW nome / AI WORKFLOW STEP nome, "azione" [,retry [,timeoutMs]] / END WORKFLOW
     ' ----------------------------------------------------------
     PRINT "1) Definizione BASIC: FlowA con 2 step"

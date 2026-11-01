@@ -14,7 +14,7 @@ pure C ABI (`#[no_mangle] pub extern "C"`).
 ## Build & run
 
 ```bash
-cd shared/samples/Community/FFI/NativeRust
+cd shared/samples/FFI/NativeRust
 sh build.sh        # -> libmath_rust.dylib
 # then run MathRust.bas
 ```

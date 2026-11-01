@@ -1,4 +1,4 @@
-' FILE: samples/Community/Ai/AiImageClassify.bas
+' FILE: samples/Ai/AiImageClassify.bas
 ' =================================================================================================
 '       AI.IMAGECLASSIFY — classificazione tra etichette via provider vision
 '

@@ -17,6 +17,6 @@ SUB Main()
   ' --- QuantIR I11: policy a 4 assi (pesi + precisione del CALCOLO: activation/accum/output). ---
   LLM POLICY DEFINE "i11_calc", "ROLE=ATTENTION:w=q4_k,a=fp8,acc=f16,o=f16;DEFAULT:q4k"
   LLM POLICY APPLY "i11_calc"
-  LLM TENSOR QUANTIR "../../Fixtures/models/tiny_moe.gguf"
+  LLM TENSOR QUANTIR "../Fixtures/models/tiny_moe.gguf"
   PRINT "I11: gli assi activation/accum/output sono risolti (report QUANTIR)."
 END SUB

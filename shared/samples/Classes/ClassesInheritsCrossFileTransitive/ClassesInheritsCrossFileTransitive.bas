@@ -1,4 +1,4 @@
-' FILE: samples/Community/Classes/ClassesInheritsCrossFileTransitive/ClassesInheritsCrossFileTransitive.bas
+' FILE: samples/Classes/ClassesInheritsCrossFileTransitive/ClassesInheritsCrossFileTransitive.bas
 ' =================================================================================================
 '   GUIDA TEORICA: OVERRIDE transitivo su 2+ livelli, ciascuno in un file diverso (ex BUG-4)
 ' =================================================================================================

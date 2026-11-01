@@ -1,4 +1,4 @@
-' samples/Community/Ai/SemapraxFullSurface.bas
+' samples/Ai/SemapraxFullSurface.bas
 ' ─────────────────────────────────────────────────────────────────────────────
 ' GMB SEMANTIC GRAPH (SEMAPRAX) — SUPERFICIE COMPLETA, namespace `LLM`.
 ' Usa OGNI funzione/comando della superficie, in un unico programma:

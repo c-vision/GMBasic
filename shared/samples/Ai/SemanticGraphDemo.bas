@@ -1,4 +1,4 @@
-' samples/Community/Ai/SemanticGraphDemo.bas
+' samples/Ai/SemanticGraphDemo.bas
 ' ─────────────────────────────────────────────────────────────────────────────
 ' GMB SEMANTIC GRAPH (SEMAPRAX) — superficie BASIC completa (namespace `AI`).
 '

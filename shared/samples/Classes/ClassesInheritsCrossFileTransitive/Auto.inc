@@ -1,4 +1,4 @@
-' FILE: samples/Community/Classes/ClassesInheritsCrossFileTransitive/Auto.inc
+' FILE: samples/Classes/ClassesInheritsCrossFileTransitive/Auto.inc
 ' =================================================================================================
 '   Livello intermedio della catena: IMPORTA Mezzi, eredita Mezzi.Veicolo, fa OVERRIDE Tipo()
 ' =================================================================================================

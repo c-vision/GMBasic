@@ -1,4 +1,4 @@
-' FILE: samples/Community/Ai/AiImageManipulation.bas
+' FILE: samples/Ai/AiImageManipulation.bas
 ' =================================================================================================
 '       AI.IMAGEINFO / IMAGERESIZE / IMAGECROP / IMAGECONVERT — manipolazione immagini PNG
 '
@@ -12,7 +12,7 @@ IMPORT AI
 
 SUB Main()
     DIM src AS STRING
-    src = "../../../samples/Fixtures/ai/img_4x4.png"
+    src = "../Fixtures/ai/img_4x4.png"
 
     ' ── INFO: "larghezza,altezza,formato" ─────────────────────────────────────
     PRINT "INFO: ", AI.IMAGEINFO(src)

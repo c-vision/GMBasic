@@ -15,7 +15,7 @@ IMPORT AI WITH ALIAS
 IMPORT LLM
 
 SUB Main
-  LET src$ = "../../Fixtures/models/tiny_f16"
+  LET src$ = "../Fixtures/models/tiny_f16"
 
   ' 1) Ispezione read-only del modello (LLM MODEL INSPECT): dump del descriptor.
   PRINT "== Ispezione del modello (LLM MODEL INSPECT) =="

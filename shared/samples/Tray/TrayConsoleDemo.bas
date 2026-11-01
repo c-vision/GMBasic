@@ -3,7 +3,7 @@
 ' Dimostra: icona nella barra del SO (default GMBasic), menu con azioni, polling
 ' dei click, tooltip dinamico, dashboard HTTP, chiusura ordinata.
 '
-' USO:  dotnet REPL/bin/Debug/net10.0/REPL.dll samples/Community/Tray/TrayConsoleDemo.bas
+' USO:  dotnet REPL/bin/Debug/net10.0/REPL.dll samples/Tray/TrayConsoleDemo.bas
 '       (GMBASIC_VM_HOST=<repo>/native/gmb_vm_c/build/gmb_vm_host)
 ' PARIT-: verificato su 4 backend con tools/parity4 minitests/tray/tray_parity.bas
 ' ============================================================================

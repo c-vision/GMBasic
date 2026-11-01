@@ -5,11 +5,11 @@
 IMPORT LLM
 SUB Main()
   PRINT "=== 1. DERIVE — pipeline riproducibile (.gmbderive) ==="
-  LLM DERIVE "../../Fixtures/models/tiny_ablate.gmbderive"
+  LLM DERIVE "../Fixtures/models/tiny_ablate.gmbderive"
 
   PRINT "=== 2. MAKEPATCH / APPLYPATCH — delta binario applicabile ==="
-  LLM MAKEPATCH "../../Fixtures/models/tiny_moe.gguf", "work/target.gguf", "work/delta.gmbpatch"
-  LLM APPLYPATCH "../../Fixtures/models/tiny_moe.gguf", "work/delta.gmbpatch", "work/rebuilt.gguf"
+  LLM MAKEPATCH "../Fixtures/models/tiny_moe.gguf", "work/target.gguf", "work/delta.gmbpatch"
+  LLM APPLYPATCH "../Fixtures/models/tiny_moe.gguf", "work/delta.gmbpatch", "work/rebuilt.gguf"
   LLM TENSOR QUANTERROR "work/rebuilt.gguf", "work/target.gguf"
 
   PRINT "=== 3. REGISTRY — versione + ricetta (provenance) ==="

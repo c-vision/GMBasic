@@ -1,4 +1,4 @@
-' FILE: samples/Community/FFI/FfiDropinLibs.bas
+' FILE: samples/FFI/FfiDropinLibs.bas
 ' ======================================================================================================================
 ' FFI DROP-IN — `include/` + `libs/` senza pacchetto REQUIRE
 ' ======================================================================================================================
@@ -7,7 +7,7 @@
 ' risolta dall'auto-discovery `libs/` (walk-up dal CWD) su tutte e 5 le gambe.
 ' Nessun manifest, nessun REQUIRE.
 '
-' Prima:  make   (in samples/Community/FFI)  -> libs/libvec_module.dylib
+' Prima:  make   (in samples/FFI)  -> libs/libvec_module.dylib
 ' Poi:    esegui questo .bas.
 ' Guida:  Guide/FFI-Guida-Utente.md §9 (Ordine di ricerca delle librerie).
 ' ======================================================================================================================

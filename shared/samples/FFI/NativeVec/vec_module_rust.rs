@@ -1,6 +1,6 @@
 // ============================================================================
 // vec_module_rust.rs — valutazione modulo nativo GMBasic in Rust
-// File: samples/Community/FFI/NativeVec/vec_module_rust.rs
+// File: samples/FFI/NativeVec/vec_module_rust.rs
 //
 // Rust NON può `#include` gmb_ffi.h, ma può MIRRORARE le struct con #[repr(C)]
 // e esporre `#[no_mangle] extern "C"`. Due livelli:

@@ -7,4 +7,4 @@
 '
 ' Verificato su IL e PCodeVM (completer fixture nei test).
 
-PROCESS "../../Fixtures/process-report.txt" PROMPT "Estrai le revenue per divisione e riassumile in italiano."
+PROCESS "../Fixtures/process-report.txt" PROMPT "Estrai le revenue per divisione e riassumile in italiano."

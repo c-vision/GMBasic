@@ -1,4 +1,4 @@
-' samples/Community/AiLLM/TrainRuns.bas
+' samples/AiLLM/TrainRuns.bas
 ' ─────────────────────────────────────────────────────────────────────────────
 ' TRAIN RUNS (F1) — registro dei job di training/apply.
 '
