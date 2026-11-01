@@ -7,7 +7,7 @@ IMPORT LLM
 
 SUB Main()
   ' 1) modello locale MLX come provider di completamento attivo (GMBasic embedding)
-  AI REGISTER "llm-local", "completion", "mlx", "{""modelDir"":""/Users/gaetano/ai/Models/Qwen3.8-27B-8bit""}"
+  AI REGISTER "llm-local", "completion", "mlx", "{""modelDir"":""~/ai/Models/Qwen3.8-27B-8bit""}"
   AI SET ACTIVE "completion", "llm-local"
   PRINT "chat attivo="; AI.ACTIVE(%CHAT)
 

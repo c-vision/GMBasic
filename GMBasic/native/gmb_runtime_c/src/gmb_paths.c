@@ -632,6 +632,20 @@ static void pr_migrate_gmb_root(void)
     rmdir(old_root);                                    /* solo se è rimasto vuoto */
 }
 
+void gmb_paths_resolve_model(const char* in, char* out, size_t cap)
+{
+    if (!out || cap == 0) return;
+    out[0] = 0;
+    if (!in || !*in) return;
+
+    /* SOLO espansione di '~' (HOME). Nessuna rimappatura dei percorsi relativi: quelli sono
+     * relativi alla CWD per contratto (fixture del repo, es. ../../samples/Fixtures/models/...)
+     * e toccarli cambierebbe il comportamento di campioni e MiniTest gia' corretti.
+     * Serve perché campioni e MiniTest possono indicare un modello locale come
+     * "~/ai/Models/<nome>" senza contenere il nome utente. */
+    pr_expand(in, out, cap);
+}
+
 void gmb_paths_libs_cache_dir(char* out, size_t cap)
 {
     if (!out || cap == 0) return;

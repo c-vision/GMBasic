@@ -15,7 +15,7 @@ IMPORT LLM
 IMPORT IO
 
 SUB Main()
-    IF NOT IO.FILEEXISTS("/Users/gaetano/ai/Models/gguf/olmoe-1b-7b-0924-instruct-q4_k_m.gguf") THEN
+    IF NOT IO.FILEEXISTS("~/ai/Models/gguf/olmoe-1b-7b-0924-instruct-q4_k_m.gguf") THEN
         PRINT "Modello assente: ~/ai/Models/gguf/olmoe-1b-7b-0924-instruct-q4_k_m.gguf"
         END
     END IF
@@ -29,6 +29,6 @@ SUB Main()
     IO.FCLOSE(h)
 
     PRINT "=== TRAIN EVAL su GGUF (motore Metal) ==="
-    TRAIN EVAL "/Users/gaetano/ai/Models/gguf/olmoe-1b-7b-0924-instruct-q4_k_m.gguf", "work/eval_ds.txt"
+    TRAIN EVAL "~/ai/Models/gguf/olmoe-1b-7b-0924-instruct-q4_k_m.gguf", "work/eval_ds.txt"
     PRINT "quality-gguf: OK"
 END SUB

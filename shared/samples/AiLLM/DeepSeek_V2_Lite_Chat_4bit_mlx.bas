@@ -7,12 +7,12 @@ IMPORT LLM
 
 SUB Main()
     PRINT "DeepSeek-V2-Lite-Chat-4bit-mlx — motore MLX embedded GMBasic (model_type: deepseek_v2)"
-    IF NOT IO.FILEEXISTS("/Users/gaetano/ai/Models/.gmbasic-allow-load") THEN
+    IF NOT IO.FILEEXISTS("~/ai/Models/.gmbasic-allow-load") THEN
         PRINT "Modello NON caricato (protezione anti-saturazione)."
-        PRINT "Per eseguire:  touch /Users/gaetano/ai/Models/.gmbasic-allow-load  e rilancia."
+        PRINT "Per eseguire:  touch ~/ai/Models/.gmbasic-allow-load  e rilancia."
         END
     END IF
-    AI REGISTER "deepseekv2litechat4bitml", "completion", "/Users/gaetano/ai/Models/DeepSeek-V2-Lite-Chat-4bit-mlx", "{""engine"":""mlx"",""swap"":""true"",""maxTokens"":""32"",""temperature"":""0"",""contextSize"":""4096""}"
+    AI REGISTER "deepseekv2litechat4bitml", "completion", "~/ai/Models/DeepSeek-V2-Lite-Chat-4bit-mlx", "{""engine"":""mlx"",""swap"":""true"",""maxTokens"":""32"",""temperature"":""0"",""contextSize"":""4096""}"
     AI SET ACTIVE "completion", "deepseekv2litechat4bitml"
     PRINT "Attivo: "; AI.ACTIVE(%CHAT)
     AI AGENT CREATE "ag"

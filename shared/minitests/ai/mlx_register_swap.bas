@@ -8,7 +8,7 @@ IMPORT AI
 IMPORT LLM
 
 SUB Main()
-    AI REGISTER "swap-model", "completion", "/Users/gaetano/ai/Models/Llama-3.2-1B-Instruct-4bit", "{""engine"":""mlx"",""swap"":""true""}"
+    AI REGISTER "swap-model", "completion", "~/ai/Models/Llama-3.2-1B-Instruct-4bit", "{""engine"":""mlx"",""swap"":""true""}"
     AI SET ACTIVE %CHAT, "swap-model"
     PRINT AI.ACTIVE(%CHAT)
 END SUB

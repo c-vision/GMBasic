@@ -15,7 +15,7 @@
 ' PREREQUISITI:
 '   - un modello MLX locale (default Llama-3.2-1B-Instruct-4bit; cambiare il path);
 '   - il dataset fixture samples/Fixtures/ai/gsm8k_300.jsonl (campi question/answer);
-'   - abilitare il caricamento:  touch /Users/gaetano/ai/Models/.gmbasic-allow-load
+'   - abilitare il caricamento:  touch ~/ai/Models/.gmbasic-allow-load
 ' La CWD al run deve essere la cartella del sample (AGENTS §9): la pipeline scrive in work/.
 '
 ' NOTA: il comando e' `TRAIN DISTILL ...`, le funzioni sono `LLM.DISTILL*()`.
@@ -27,10 +27,10 @@ IMPORT IO
 SUB Main()
     PRINT "=== TRAIN DISTILL — pipeline self-distillation ==="
 
-    DIM model AS STRING = "/Users/gaetano/ai/Models/Llama-3.2-1B-Instruct-4bit"
-    IF NOT IO.FILEEXISTS("/Users/gaetano/ai/Models/.gmbasic-allow-load") THEN
+    DIM model AS STRING = "~/ai/Models/Llama-3.2-1B-Instruct-4bit"
+    IF NOT IO.FILEEXISTS("~/ai/Models/.gmbasic-allow-load") THEN
         PRINT "Modello NON caricato (protezione anti-saturazione)."
-        PRINT "Per eseguire:  touch /Users/gaetano/ai/Models/.gmbasic-allow-load  e rilancia."
+        PRINT "Per eseguire:  touch ~/ai/Models/.gmbasic-allow-load  e rilancia."
         END
     END IF
     IF NOT IO.FILEEXISTS(model + "/tokenizer.json") THEN
@@ -38,7 +38,7 @@ SUB Main()
         END
     END IF
 
-    DIM jsonl AS STRING = "../../Fixtures/ai/gsm8k_300.jsonl"
+    DIM jsonl AS STRING = "../Fixtures/ai/gsm8k_300.jsonl"
     DIM ds AS STRING = "work/distill_ds"
     DIM ckpt AS STRING = "work/distill_ckpt"
     DIM pairs AS STRING = "work/distill_pairs.jsonl"

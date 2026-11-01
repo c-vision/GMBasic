@@ -36,7 +36,7 @@ int gmb_model_io_convert(const char* model_dir, const char* out_path)
 {
     model_io_register_plugin_dir();
     (void)model_dir; (void)out_path;
-    return -1;
+    return -1;   /* convert: implementato nella lega LLM (questo punto resta l'entry) */
 }
 
 int gmb_model_io_quantize(const char* src_dir, const char* out_dir, int bits, int group,
@@ -44,6 +44,10 @@ int gmb_model_io_quantize(const char* src_dir, const char* out_dir, int bits, in
 {
     model_io_register_plugin_dir();
     if (src_dir == NULL || out_dir == NULL) return -1;
+    char rsrc[2048], rdst[2048];
+    gmb_paths_resolve_model(src_dir, rsrc, sizeof rsrc);
+    gmb_paths_resolve_model(out_dir, rdst, sizeof rdst);
+    if (rsrc[0] && rdst[0]) { src_dir = rsrc; out_dir = rdst; }
     if (bits < 1 || bits > 8) return -1;
     if (group <= 0) group = 64;
     return gmb_model_quantize_ex(src_dir, out_dir, (unsigned)bits, (unsigned)group,
@@ -53,6 +57,9 @@ int gmb_model_io_quantize(const char* src_dir, const char* out_dir, int bits, in
 int gmb_model_io_inspect(const char* dir, char* out, int cap)
 {
     if (dir == NULL || out == NULL || cap <= 0) return -1;
+    char rdir[2048];
+    gmb_paths_resolve_model(dir, rdir, sizeof rdir);
+    if (rdir[0]) dir = rdir;
     /* `.gmbarch` (LLMDesc) = UNICA fonte di architettura. GMAD eliminato. */
     LlmDesc d; char path[4096];
     if (llmdesc_resolve(dir, &d, path, sizeof path) != 0) return -1;

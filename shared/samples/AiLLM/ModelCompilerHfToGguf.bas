@@ -17,7 +17,7 @@ IMPORT LLM
 
 SUB Main()
     DIM src$ AS STRING
-    src$ = "/Users/gaetano/ai/Models/DeepSeek-V2-Lite-Chat-4bit-mlx"
+    src$ = "~/ai/Models/DeepSeek-V2-Lite-Chat-4bit-mlx"
     PRINT "=== EMITTER forte §6 crit.2 — HF/MLX -> GGUF -> MLX -> genera ==="
     IF NOT IO.FILEEXISTS(src$ + "/config.json") THEN
         PRINT "sorgente assente: serve DeepSeek-V2-Lite-Chat-4bit-mlx in ~/ai/Models"

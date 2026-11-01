@@ -7,19 +7,19 @@ IMPORT LLM
 
 SUB Main()
     ' Verifica modello locale presente
-    IF NOT IO.DIREXISTS("/Users/gaetano/ai/Models/Llama-3.2-1B-Instruct-4bit") THEN
+    IF NOT IO.DIREXISTS("~/ai/Models/Llama-3.2-1B-Instruct-4bit") THEN
         PRINT "Modello locale assente. Percorso atteso:"
-        PRINT "/Users/gaetano/ai/Models/Llama-3.2-1B-Instruct-4bit"
+        PRINT "~/ai/Models/Llama-3.2-1B-Instruct-4bit"
         END
     END IF
 
     ' 1. Registra provider embedding (latent hidden states dal LLM)
-    AI REGISTER "llama1b-emb", %EMBEDDING, "mlx", "{""modelDir"":""/Users/gaetano/ai/Models/Llama-3.2-1B-Instruct-4bit"",""maxTokens"":""8""}"
+    AI REGISTER "llama1b-emb", %EMBEDDING, "mlx", "{""modelDir"":""~/ai/Models/Llama-3.2-1B-Instruct-4bit"",""maxTokens"":""8""}"
     AI SET ACTIVE %EMBEDDING, "llama1b-emb"
     PRINT "Embedding provider attivato: "; AI.ACTIVE(%EMBEDDING)
 
     ' 2. Registra provider chat (completion con Llama-1B, deterministica)
-    AI REGISTER "llama1b", %CHAT, "/Users/gaetano/ai/Models/Llama-3.2-1B-Instruct-4bit", "{""maxTokens"":""64"",""temperature"":""0""}"
+    AI REGISTER "llama1b", %CHAT, "~/ai/Models/Llama-3.2-1B-Instruct-4bit", "{""maxTokens"":""64"",""temperature"":""0""}"
     AI SET ACTIVE %CHAT, "llama1b"
     PRINT "Chat provider attivato: "; AI.ACTIVE(%CHAT)
 

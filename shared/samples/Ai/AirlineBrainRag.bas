@@ -3,7 +3,7 @@
 '       BRAIN AIRLINE — retrieval RAG sul dominio aereo (AiAirlineWiki)
 ' =================================================================================================
 ' Interroga il brain "airline" (RAG, embedding reale bge) costruito da:
-'   gmb rag build /Users/gaetano/Documents/AiAirlineWiki --name airline
+'   gmb rag build ~/Documents/AiAirlineWiki --name airline
 ' poi collegato con `gmb brain use airline` (o AI BRAIN USE airline).
 '
 ' Il brain contiene ~1088 documenti del vault AiAirlineWiki (dominio aereo: EDIFACT PADIS,

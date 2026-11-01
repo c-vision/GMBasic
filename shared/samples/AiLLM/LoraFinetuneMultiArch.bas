@@ -13,7 +13,7 @@
 ' lo stesso comando funziona su arch diverse (llama/qwen/deepseek MLA/gemma/glm/gpt-oss/kimi).
 '
 ' PREREQUISITI (per ogni modello che vuoi addestrare):
-'   1) il modello MLX locale in /Users/gaetano/ai/Models/<nome>;
+'   1) il modello MLX locale in ~/ai/Models/<nome>;
 '   2) il dataset a finestre del SUO tokenizer (gli id dipendono dal vocab):
 '        python3 samples/Fixtures/make_lora_dataset.py <modelDir> work/<LABEL> rule
 '      -> work/<LABEL>.train.bin + work/<LABEL>.hold.bin
@@ -64,24 +64,24 @@ END SUB
 
 SUB Main()
     PRINT "=== TRAIN FINETUNE — tour multi-architettura (parametrizzato) ==="
-    IF NOT IO.FILEEXISTS("/Users/gaetano/ai/Models/.gmbasic-allow-load") THEN
-        PRINT "Sentinella assente: touch /Users/gaetano/ai/Models/.gmbasic-allow-load"
+    IF NOT IO.FILEEXISTS("~/ai/Models/.gmbasic-allow-load") THEN
+        PRINT "Sentinella assente: touch ~/ai/Models/.gmbasic-allow-load"
         END
     END IF
     MKDIR "work"
 
-    RunOne("/Users/gaetano/ai/Models/Llama-3.2-1B-Instruct-4bit", "Llama321B")
-    RunOne("/Users/gaetano/ai/Models/Qwen3-8B-4bit", "Qwen38B")
-    RunOne("/Users/gaetano/ai/Models/DeepSeek-R1-Distill-Qwen-32B-MLX-8Bit", "DSR1Qwen32B")
-    RunOne("/Users/gaetano/ai/Models/DeepSeek-V2-Lite-Chat-4bit-mlx", "DSV2Lite")
-    RunOne("/Users/gaetano/ai/Models/gemma-4-31b-it-4bit", "Gemma431B")
-    RunOne("/Users/gaetano/ai/Models/GLM-4.5-Air-4bit", "GLM45Air")
-    RunOne("/Users/gaetano/ai/Models/gpt-oss-20b-MXFP4-Q8", "GptOss20B")
-    RunOne("/Users/gaetano/ai/Models/Kimi-Linear-48B-A3B-Instruct-4bit", "KimiLinear48B")
-    RunOne("/Users/gaetano/ai/Models/Qwen3-Coder-30B-A3B-Instruct-8bit", "Qwen3Coder30B")
-    RunOne("/Users/gaetano/ai/Models/Qwen3.6-27B-4bit", "Qwen36_27B")
-    RunOne("/Users/gaetano/ai/Models/Ternary-Bonsai-4B-mlx-2bit", "TernaryBonsai4B")
-    RunOne("/Users/gaetano/ai/Models/Qwen3-Coder-Next-mxfp4-mlx", "Qwen3CoderNext")
+    RunOne("~/ai/Models/Llama-3.2-1B-Instruct-4bit", "Llama321B")
+    RunOne("~/ai/Models/Qwen3-8B-4bit", "Qwen38B")
+    RunOne("~/ai/Models/DeepSeek-R1-Distill-Qwen-32B-MLX-8Bit", "DSR1Qwen32B")
+    RunOne("~/ai/Models/DeepSeek-V2-Lite-Chat-4bit-mlx", "DSV2Lite")
+    RunOne("~/ai/Models/gemma-4-31b-it-4bit", "Gemma431B")
+    RunOne("~/ai/Models/GLM-4.5-Air-4bit", "GLM45Air")
+    RunOne("~/ai/Models/gpt-oss-20b-MXFP4-Q8", "GptOss20B")
+    RunOne("~/ai/Models/Kimi-Linear-48B-A3B-Instruct-4bit", "KimiLinear48B")
+    RunOne("~/ai/Models/Qwen3-Coder-30B-A3B-Instruct-8bit", "Qwen3Coder30B")
+    RunOne("~/ai/Models/Qwen3.6-27B-4bit", "Qwen36_27B")
+    RunOne("~/ai/Models/Ternary-Bonsai-4B-mlx-2bit", "TernaryBonsai4B")
+    RunOne("~/ai/Models/Qwen3-Coder-Next-mxfp4-mlx", "Qwen3CoderNext")
 
     PRINT "LANCIA-OK lora_finetune_multiar"
 END SUB

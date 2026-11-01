@@ -154,11 +154,9 @@ FUNCTION Main() AS INTEGER
     i = i + 1
   LOOP
   IF UBOUND(roots$) < 0 THEN
-    REDIM roots$(3)
-    roots$(0) = "/Users/gaetano/ai/Models"
-    roots$(1) = "/Users/gaetano/ai/models"
-    roots$(2) = "/Volumes/Armor5TB/LocalLLM/ai/models"
-    roots$(3) = "/Users/gaetano/.cache/huggingface/hub"
+    PRINT "Uso: gen_gmbarch_abi <cartella-modelli> [<altra-cartella> ...] [--out <dir>]"
+    PRINT "Nessuna radice di default: le cartelle dei modelli dipendono dalla macchina."
+    RETURN 2
   END IF
   IF NOT DIREXISTS(out) THEN MKDIR out
   FOR i = 0 TO UBOUND(roots$)

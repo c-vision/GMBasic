@@ -2658,6 +2658,11 @@ int   gmb_paths_brains_manifest(char* out, size_t cap);        /* brains-manifes
 int   gmb_paths_shared_settings_file(const char* name, char* out, size_t cap);
 void  gmb_paths_libs_dir(char* out, size_t cap);               /* default <root>/build/libs/<rid> */
 void  gmb_paths_libs_cache_dir(char* out, size_t cap);          /* cache librerie on-demand: ~/.gmbasic/libs (paths.libsCacheDir) */
+/* Percorsi dei MODELLI (LLM/MLX/GGUF): espande '~' (HOME) e risolve i percorsi RELATIVI contro
+ * l'opzione `paths.modelRoot` (default ~/ai/Models). Un percorso assoluto resta assoluto.
+ * Esiste perché campioni e MiniTest non devono contenere path personali, e perché i test
+ * pesanti (TAG: heavy) restano eseguibili su qualunque macchina che abbia i modelli. */
+void  gmb_paths_resolve_model(const char* in, char* out, size_t cap);
 
 /* ── Download ON-DEMAND di UNA libreria (asset per-file) ───────────────────────────────────
  * `libs.txt` (TSV): nome-file \t sha256 \t size \t url. Emesso dal build accanto all'eseguibile

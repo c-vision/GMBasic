@@ -49,7 +49,7 @@ SUB Main()
     ON ERROR GOTO 0
 
     ' 4) Alternativa: provider LlamaCpp locale (decommenta se hai un .gguf)
-    ' AI REGISTER "llama-local", %CHAT, "llamacpp", "{""modelPath"":""/Users/gaetano/ai/Models/llama-3.2-3b.gguf"",""ctxSize"":4096}"
+    ' AI REGISTER "llama-local", %CHAT, "llamacpp", "{""modelPath"":""~/ai/Models/llama-3.2-3b.gguf"",""ctxSize"":4096}"
     ' AI SET ACTIVE %CHAT, "llama-local"
     ' PRINT "Provider LlamaCpp registrato (structured via prompt)"
 

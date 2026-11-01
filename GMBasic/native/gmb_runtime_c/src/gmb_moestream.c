@@ -205,6 +205,11 @@ int gmb_moestream_stmt_quantize(const char* src, const char* dst, int bits, int 
  * Ritorna 0/-1. */
 int gmb_moestream_stmt_inspect(const char* dir) {
     if (dir == NULL) return -1;
+    /* '~' e percorsi relativi (paths.modelRoot) PRIMA dello stat: altrimenti un percorso
+     * portabile come "~/ai/Models/X" non esiste per stat() e fallisce senza arrivare al loader. */
+    char rdir[2048];
+    gmb_paths_resolve_model(dir, rdir, sizeof rdir);
+    if (rdir[0]) dir = rdir;
     struct stat st;
     if (stat(dir, &st) != 0) return -1;
     return gmb_model_io_inspect_print(dir);
@@ -215,7 +220,9 @@ int gmb_moestream_stmt_load(const char* name, const char* path, int resident) {
     if (p == NULL) { return -1; }
     /* Se `path` è una cartella HF/MLX, convertila una volta in <path>/<nome>.gmoe (artefatto
      * automatico): l'utente passa il modello, non il container. */
-    char resolved[1200]; const char* use = path;
+    char resolved[1200], rmodel[2048];
+    if (path && *path) { gmb_paths_resolve_model(path, rmodel, sizeof rmodel); if (rmodel[0]) path = rmodel; }
+    const char* use = path;
     struct stat st;
     if (path != NULL && stat(path, &st) == 0 && S_ISDIR(st.st_mode)) {
         snprintf(resolved, sizeof(resolved), "%s/%s.gmoe", path, (name && *name) ? name : "model");
