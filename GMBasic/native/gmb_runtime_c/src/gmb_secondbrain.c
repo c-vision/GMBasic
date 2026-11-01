@@ -2680,6 +2680,39 @@ char* gmb_graph_brain_query(const char* brain, const char* op, const char* arg1,
             sb_app(&out, &len, &cap, "}");
             free(p);
         }
+    } else if (strcasecmp(op, "HUBS") == 0) {
+        /* HUBS: nodi più centrali per GRADO (out+in) — parità del tool `graph.hubs` del
+         * managed. Prima non esisteva: il tool graph.* sul motore C rispondeva "non
+         * disponibile". k = arg3 (default 10). */
+        int ncnt = 0; char** ns = gmb_graph_nodes(h, &ncnt);
+        typedef struct { const char* node; int deg; } sb_hub_t;
+        sb_hub_t* v = ns ? (sb_hub_t*)calloc((size_t)(ncnt ? ncnt : 1), sizeof(sb_hub_t)) : NULL;
+        if (v) {
+            for (int i = 0; i < ncnt; i++) {
+                v[i].node = ns[i];
+                v[i].deg = gmb_graph_get_outdegree(h, ns[i]) + gmb_graph_get_indegree(h, ns[i]);
+            }
+            for (int i = 0; i < ncnt; i++)
+                for (int j = i + 1; j < ncnt; j++)
+                    if (v[j].deg > v[i].deg || (v[j].deg == v[i].deg && strcmp(v[j].node, v[i].node) < 0)) {
+                        sb_hub_t t = v[i]; v[i] = v[j]; v[j] = t;
+                    }
+            int kk = arg3 > 0 ? arg3 : ((arg1 && *arg1) ? atoi(arg1) : 10);
+            if (kk <= 0) kk = 10;
+            int k = kk < ncnt ? kk : ncnt;
+            size_t cap = 512, len = 0; out = (char*)malloc(cap); out[0] = 0;
+            char tmp[8192];
+            snprintf(tmp, sizeof(tmp), "{\"status\":\"Success\",\"brain\":\"%s\",\"hubs\":[", bb);
+            sb_app(&out, &len, &cap, tmp);
+            for (int i = 0; i < k; i++) {
+                char nnb[4096]; sb_esc(v[i].node ? v[i].node : "", nnb, sizeof(nnb));
+                snprintf(tmp, sizeof(tmp), "%s{\"node\":\"%s\",\"degree\":%d}", i ? "," : "", nnb, v[i].deg);
+                sb_app(&out, &len, &cap, tmp);
+            }
+            sb_app(&out, &len, &cap, "]}");
+            free(v);
+        }
+        free(ns);
     } else if ((strcasecmp(op, "BFS") == 0 || strcasecmp(op, "DFS") == 0) && arg1) {
         int l = 0; char** p = strcasecmp(op, "BFS") == 0 ? gmb_graph_bfs(h, arg1, &l) : gmb_graph_dfs(h, arg1, &l);
         char rb[4096]; sb_esc(arg1, rb, sizeof(rb));

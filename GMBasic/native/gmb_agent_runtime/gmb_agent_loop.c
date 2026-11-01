@@ -366,28 +366,50 @@ static void gmb_cua_execute(const char* name, const char* args_json, char* out, 
     else if (strcmp(name, "computer.screenshot") == 0)
         r = gmb_cua_computer_screenshot(a7.data ? a7.data : "");
     else if (name && strncmp(name, "graph.", 6) == 0) {
-        /* Tool graph.* sul knowledge graph C (gmb_kg): query e path sono implementati sui
-         * algoritmi del grafo condiviso; gli altri tool dell'oracolo C# (neighbors/bfs/dfs/
-         * dijkstra/hubs/stats) non hanno ancora un equivalente C → errore ESPLICITO (mai un
-         * risultato silenzioso). */
-        gmb_string_t gq = gmb_json_path_text(root, "query");
-        gmb_string_t gf = gmb_json_path_text(root, "from");
-        gmb_string_t gt = gmb_json_path_text(root, "to");
-        if (strcmp(name, "graph.query") == 0) {
-            char* r0 = gmb_kg_query(gq.data ? gq.data : "");
-            r = gmb_string_alloc(r0 ? r0 : "{\"error\":\"query vuota\"}");
-            free(r0);
+        /* Tool graph.* sul knowledge graph (second brain). Il motore C ha già gli algoritmi
+         * nel runtime condiviso (gmb_graph_brain_query: NEIGHBORS/PATH/DIJKSTRA/BFS/DFS/STATS/
+         * PAGERANK/HUBS + gmb_graph_query_multi per la ricerca): qui si fa solo il mapping
+         * nome-tool → operazione, con `brain` dal tool o il grafo attivo. Prima ogni tool
+         * rispondeva "non disponibile": era l'ultimo residuo di parità con il managed. */
+        gmb_string_t gbrain = gmb_json_path_text(root, "brain");
+        gmb_string_t gnode  = gmb_json_path_text(root, "node");
+        gmb_string_t groot  = gmb_json_path_text(root, "root");
+        gmb_string_t gfrom  = gmb_json_path_text(root, "from");
+        gmb_string_t gto    = gmb_json_path_text(root, "to");
+        gmb_string_t gq     = gmb_json_path_text(root, "query");
+        gmb_string_t gtop   = gmb_json_path_text(root, "topK");
+        const char* brain = (gbrain.data && *gbrain.data) ? gbrain.data : gmb_graph_active_name();
+        const char* start_node = (groot.data && *groot.data) ? groot.data : (gnode.data ? gnode.data : "");
+        int topk = (gtop.data && *gtop.data) ? atoi(gtop.data) : 0;
+        char* r0 = NULL;
+        if (!brain || !*brain) {
+            r = gmb_string_alloc("error: manca 'brain' e nessun grafo attivo (GRAPH USE <brain>)");
+        } else if (strcmp(name, "graph.query") == 0) {
+            r0 = gmb_graph_query_multi(gq.data ? gq.data : "", brain);
+        } else if (strcmp(name, "graph.neighbors") == 0) {
+            r0 = gmb_graph_brain_query(brain, "NEIGHBORS", gnode.data ? gnode.data : start_node, NULL, 0);
         } else if (strcmp(name, "graph.path") == 0) {
-            char spec[600];
-            snprintf(spec, sizeof spec, "path %s->%s", gf.data ? gf.data : "", gt.data ? gt.data : "");
-            char* r0 = gmb_kg_query(spec);
-            r = gmb_string_alloc(r0 ? r0 : "{\"error\":\"path non risolto\"}");
-            free(r0);
+            r0 = gmb_graph_brain_query(brain, "PATH", gfrom.data ? gfrom.data : "", gto.data ? gto.data : "", 0);
+        } else if (strcmp(name, "graph.dijkstra") == 0) {
+            r0 = gmb_graph_brain_query(brain, "DIJKSTRA", gfrom.data ? gfrom.data : "", gto.data ? gto.data : "", 0);
+        } else if (strcmp(name, "graph.bfs") == 0) {
+            r0 = gmb_graph_brain_query(brain, "BFS", start_node, NULL, 0);
+        } else if (strcmp(name, "graph.dfs") == 0) {
+            r0 = gmb_graph_brain_query(brain, "DFS", start_node, NULL, 0);
+        } else if (strcmp(name, "graph.hubs") == 0) {
+            char kv[16]; snprintf(kv, sizeof kv, "%d", topk);
+            r0 = gmb_graph_brain_query(brain, "HUBS", kv, NULL, topk);
+        } else if (strcmp(name, "graph.stats") == 0) {
+            r0 = gmb_graph_brain_query(brain, "STATS", NULL, NULL, 0);
         } else {
-            r = gmb_string_alloc("error: tool graph.* non disponibile su questo host C "
-                                 "(neighbors/bfs/dfs/dijkstra/hubs/stats richiedono il brain del runtime managed)");
+            r = gmb_string_alloc("error: tool graph non riconosciuto");
         }
-        gmb_string_free(&gq); gmb_string_free(&gf); gmb_string_free(&gt);
+        if (r0) {
+            r = gmb_string_alloc(r0);
+            free(r0);
+        }
+        gmb_string_free(&gbrain); gmb_string_free(&gnode); gmb_string_free(&groot);
+        gmb_string_free(&gfrom); gmb_string_free(&gto); gmb_string_free(&gq); gmb_string_free(&gtop);
     }
     else if (name && strncmp(name, "code.", 5) == 0) {
         /* §4.10 tool code.* (grafo semantico del codice): via seam verso il compilatore. */
@@ -657,9 +679,14 @@ static size_t ask_tools_append_code(char* out, size_t cap, size_t off) {
 static size_t ask_tools_append_graph(char* out, size_t cap, size_t off) {
     return off + (size_t)snprintf(out + off, cap - off,
         "\n\n## Available tools (respond with JSON {\"tool_calls\":[...]} to invoke):\n"
-        "- graph.query: cerca nel knowledge graph i nodi che contengono 'query' e ritorna il vicinato.\n"
-        "- graph.path: percorso più corto fra 'from' e 'to' del grafo.\n"
-        "Altri strumenti graph.* (neighbors/bfs/dfs/dijkstra/hubs/stats) non sono disponibili su questo host.\n");
+        "- graph.query: nodi il cui path/title contiene 'query' + vicinato 1-hop.\n"
+        "- graph.neighbors: vicini diretti (in+out) di 'node'.\n"
+        "- graph.path: percorso più corto fra 'from' e 'to'.\n"
+        "- graph.dijkstra: percorso a costo minimo fra 'from' e 'to'.\n"
+        "- graph.bfs / graph.dfs: visita in ampiezza / profondità da 'root'.\n"
+        "- graph.hubs: nodi più centrali per grado (topK, default 10).\n"
+        "- graph.stats: metriche del grafo (nodi/archi/pageRank top).\n"
+        "Il parametro 'brain' è opzionale (default: grafo attivo).\n");
 }
 
 /* AI.AGENTRUNGRAPH: loop agentico sui tool graph.* (parità AgentServer.AskGraph del managed).
