@@ -159,9 +159,12 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
 - [x] **F3a — comandi riportati nel mondo C** (2026-11-01): `FIXTURES` (runtime
       `gmb_fixtures_*`), `SETUP` (stato cache libs: RID/cartella/conteggio), `LLM` (modelli
       sotto AIPATH da `ai.json`). Verificati headless.
-- [ ] **F3b — pacchetto nel mondo C**: `ADD/REMOVE/CACHE/BUMP/ROLLBACK/RESTORE/TRUST/UPDATE`
-      sopra l'API `gmb_pkg_*` (manifest, lock, firme). Finché non sono portati, restano solo
-      nella REPL C# (vedi parità F4).
+- [x] **F3b — pacchetto nel mondo C** (2026-11-01): `ADD`, `REMOVE`, `BUMP`, `TRUST`, `CACHE`
+      sopra `gmb_pkg_*` (la REPL linka ora `libgmb_pkg`). Verificati su un manifest di prova
+      (dipendenza aggiunta/rimossa, versione 1.2.3→1.3.0, keyring scritto, gc eseguito).
+- [ ] **F3c — `RESTORE`/`UPDATE`/`ROLLBACK`**: richiedono il resolver/registry
+      (`gmb_pkg_resolve_*`, `gmb_pkg_install_*`) e la lock history
+      (`gmb_pkg_lock_write_with_history`). Sono il resto della parità dei comandi di pacchetto.
 - [ ] **F4 — Parità completa con l'engine C# (finché esiste)**: `--engine=csharp` implementa
       **tutti** i comandi identici al ramo C — `IL` e `PCODE` compresi (non stub), `EVAL`, dump,
       debug; stessi flag e stessa semantica. Test di parità comando-per-comando fra i due engine.
