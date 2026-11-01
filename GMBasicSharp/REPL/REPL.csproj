@@ -46,7 +46,9 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Content Include="Helps\**\*">
+        <!-- Gli help JSON sono CONDIVISI: <monorepo>/shared/helps (una sola copia per
+             ramo C e C#). Nell'output restano in Helps/ per la distribuzione. -->
+        <Content Include="..\..\shared\helps\**\*">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
             <Link>Helps\%(RecursiveDir)%(Filename)%(Extension)</Link>
         </Content>

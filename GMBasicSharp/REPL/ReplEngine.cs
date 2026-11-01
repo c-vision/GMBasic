@@ -233,15 +233,33 @@ public class ReplEngine
         try
         {
             var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            // 1) output (distribuzione) → 2) shared/helps risalendo dal binario/CWD
+            // (checkout del monorepo: UNA copia degli help per il ramo C e C#) → 3) legacy.
             var helpsDir = Path.Combine(baseDir, "Helps");
-            if (!Directory.Exists(helpsDir))
+            if (!Directory.Exists(helpsDir)) helpsDir = FindSharedHelps(baseDir);
+            if (helpsDir == null)
                 helpsDir = Path.Combine(Directory.GetCurrentDirectory(), "Executor", "Helps");
             var commandsPath = Path.Combine(baseDir, "commands.txt");
             if (!File.Exists(commandsPath))
                 commandsPath = Path.Combine(Directory.GetCurrentDirectory(), "commands.txt");
-            _helpIndex = HelpIndex.Load(helpsDir, commandsPath);
+            _helpIndex = HelpIndex.Load(helpsDir ?? "Helps", commandsPath);
         }
         catch { _helpIndex = null; }
+    }
+
+    /// <summary>Trova &lt;monorepo&gt;/shared/helps risalendo da una cartella (o dalla CWD).</summary>
+    private static string? FindSharedHelps(string startDir)
+    {
+        foreach (var start in new[] { startDir, Directory.GetCurrentDirectory() })
+        {
+            var d = new DirectoryInfo(start);
+            for (int i = 0; i < 10 && d != null; i++, d = d.Parent)
+            {
+                var candidate = Path.Combine(d.FullName, "shared", "helps");
+                if (Directory.Exists(candidate)) return candidate;
+            }
+        }
+        return null;
     }
 
     // ── Avvio console (port di GMBasic-Deprecated Executor.Startup.cs) ──────────────

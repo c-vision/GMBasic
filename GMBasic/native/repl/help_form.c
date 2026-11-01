@@ -130,7 +130,9 @@ static void help_load_file(const char* path)
 static void help_load_all(void)
 {
     char root[2048];
-    resolve_repo_path(root, sizeof(root), "REPL/Helps");
+    /* Help CONDIVISI: <monorepo>/shared/helps (una copia per i due rami). */
+    resolve_repo_path(root, sizeof(root), "shared/helps");
+    if (access(root, F_OK) != 0) resolve_repo_path(root, sizeof(root), "REPL/Helps");
     DIR* d = opendir(root);
     if (!d) return;
     struct dirent* de;

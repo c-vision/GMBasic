@@ -86,23 +86,28 @@ rpl_settings_t g_settings;
 static char g_settings_dir[1024] = "";
 
 /* Risolve un path relativo alla root del repo (GMBASIC.sln trovato salendo). */
+/* Risolve una risorsa del repo C# ("REPL/Helps", "Resources", ...).
+ * Il marker storico `GMBASIC.sln` non esiste più col monorepo: si cercano i percorsi
+ * REALI risalendo dalla CWD — prima la forma monorepo (<root>/GMBasicSharp/<rel>),
+ * poi quella del repo C# autonomo (<root>/<rel>). */
 void resolve_repo_path(char* out, int cap, const char* rel)
 {
     char cwd[2048];
-    getcwd(cwd, sizeof(cwd));
+    if (!getcwd(cwd, sizeof(cwd))) { snprintf(out, cap, "%s", rel); return; }
     char cur[2048];
     snprintf(cur, sizeof(cur), "%s", cwd);
     for (;;) {
         char probe[4096];
-        snprintf(probe, sizeof(probe), "%s/GMBASIC.sln", cur);
-        if (access(probe, F_OK) == 0) {
-            snprintf(out, cap, "%s/%s", cur, rel);
-            return;
-        }
+        snprintf(probe, sizeof(probe), "%s/GMBasicSharp/%s", cur, rel);
+        if (access(probe, F_OK) == 0) { snprintf(out, cap, "%s", probe); return; }
+        snprintf(probe, sizeof(probe), "%s/%s", cur, rel);
+        if (access(probe, F_OK) == 0) { snprintf(out, cap, "%s", probe); return; }
         char* slash = strrchr(cur, '/');
-        if (!slash) { snprintf(out, cap, "%s/%s", cwd, rel); return; }
+        if (!slash) break;
         *slash = 0;
+        if (!*cur) break;
     }
+    snprintf(out, cap, "%s/%s", cwd, rel);
 }
 
 static int rpl_is_dir_command(const char* cmd)
@@ -891,6 +896,16 @@ static void con_writeln_centered(gmb_sdl_console_t* c, int width, const char* te
 static int con_exec(const rpl_options_t* o, gmb_sdl_console_t* con, const char* cmd, const char* capfile)
 {
     if (!cmd || !*cmd) return 0;
+    /* I comandi INTERATTIVI (HELP BROWSE, EDIT/IDE) disegnano a schermo intero sul
+     * TERMINALE: catturare stdout li trasformerebbe in testo dentro al buffer. */
+    {
+        const char* c = cmd; while (*c == ' ' || *c == '\t') c++;
+        if (!strncasecmp(c, "HELP BROWSE", 11) || !strncasecmp(c, "HELP ALL", 8) ||
+            !strncasecmp(c, "EDIT", 4) || !strncasecmp(c, "IDE", 3)) {
+            printf("\x1b[?25h"); fflush(stdout);
+            return rpl_exec_line(cmd, o, (char*)"");
+        }
+    }
     int saved = dup(1), q = 0;
     fflush(stdout);
     FILE* f = fopen(capfile, "w+");
@@ -1105,8 +1120,11 @@ static int rpl_loop_standard(const rpl_options_t* o, gmb_iconsole_t* con,
         else if (k == 13 || k == 10) {
             gmb_sdl_console_write(model, "\n");
             line[n] = 0;
+            int interactive = (!strncasecmp(line, "HELP BROWSE", 11) || !strncasecmp(line, "HELP ALL", 8) ||
+                               !strncasecmp(line, "EDIT", 4) || !strncasecmp(line, "IDE", 3));
             int quit = con_exec(o, model, line, capfile);
             n = 0;
+            if (interactive && !quit) { gmb_sdl_console_write(model, "\n"); }
             if (quit) { if (con->present) con->present(con); break; }
             gmb_sdl_console_write(model, "READY.\n");
             row0 = gmb_sdl_console_cursor_row(model); col0 = gmb_sdl_console_cursor_col(model);
