@@ -1156,6 +1156,14 @@ public sealed partial class Parser
     /// Tenta di risolvere e parsare un'istruzione basata su keyword.
     /// Dispatcher centrale per tutti i comandi (solo sintassi legacy/non qualificata).
     /// </summary>
+    /// <summary>Comandi il cui namespace NON serve importare, perché la leg C li tratta come
+    /// keyword globali: `WINDOW …` (THEME/DESKTOP/FRAME/SHADOW/DEFINE…) funziona senza
+    /// `IMPORT WINDOWS` (campioni grafici/Clipper). Solo il COMANDO è globale: le FUNZIONI del
+    /// namespace (X/Y/WIDTH…) restano visibili solo con l'import, quindi non si crea ambiguità
+    /// con MOUSE.X/MOUSE.Y.</summary>
+    private static bool IsLegacyGlobalCommand(TokenKind kind, string? providingNamespace) =>
+        kind == TokenKind.Window && string.Equals(providingNamespace, "WINDOWS", StringComparison.OrdinalIgnoreCase);
+
     private Stmt? DispatchRegisteredCommand()
     {
         const bool log = false;
@@ -1203,7 +1211,8 @@ public sealed partial class Parser
             CommandRegistration? active = null;
             foreach (var reg in allRegistrations)
             {
-                if (!_program.Namespaces.Contains(reg.ProvidingNamespace))
+                if (!_program.Namespaces.Contains(reg.ProvidingNamespace)
+                    && !IsLegacyGlobalCommand(unqualifiedCommandToken.Kind, reg.ProvidingNamespace))
                     continue;
                 active = reg;
                 break;
