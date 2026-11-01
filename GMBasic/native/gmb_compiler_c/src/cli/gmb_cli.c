@@ -1004,6 +1004,9 @@ int main(int argc, char** argv) {
     /* F1: dump/eval sono OPZIONI del compilatore usate dalla REPL (nessun accesso diretto
      * a lexer/parser dal lato REPL). Forme: `gmb dump ast|chunk|c <file> [--out f]`,
      * `gmb eval "<istruzioni>"`. */
+    if (!strcmp(o.command, "dump") || !strcmp(o.command, "eval")) {
+        gmb_cli_set_defines(argc, argv);
+    }
     if (!strcmp(o.command, "dump")) {
         if (argc < 4) { fprintf(stderr, "uso: gmb dump ast|chunk|c|disasm <file.bas> [--out <file>]\n"); return 2; }
         const char* what = argv[2];
@@ -1013,16 +1016,22 @@ int main(int argc, char** argv) {
             if (!strncmp(argv[i], "--out=", 6)) out = argv[i] + 6;
             else if (!strcmp(argv[i], "--out") && i + 1 < argc) out = argv[++i];
         }
-        if (!strcmp(what, "ast"))    return gmb_cli_dump_ast(file);
-        if (!strcmp(what, "chunk"))  return gmb_cli_dump_chunk(file, out);
-        if (!strcmp(what, "c"))      return gmb_cli_dump_c(file, out);
-        if (!strcmp(what, "disasm")) return gmb_cli_dump_disasm(file);
-        fprintf(stderr, "gmb: dump sconosciuto '%s' (ast|chunk|c)\n", what);
+        int rc = 2;
+        if (!strcmp(what, "ast"))    rc = gmb_cli_dump_ast(file);
+        else if (!strcmp(what, "chunk"))  rc = gmb_cli_dump_chunk(file, out);
+        else if (!strcmp(what, "c"))      rc = gmb_cli_dump_c(file, out);
+        else if (!strcmp(what, "disasm")) rc = gmb_cli_dump_disasm(file);
+        gmb_cli_reset_defines();
+        return rc;
+        fprintf(stderr, "gmb: dump sconosciuto '%s' (ast|chunk|c|disasm)\n", what);
+        gmb_cli_reset_defines();
         return 2;
     }
     if (!strcmp(o.command, "eval")) {
         if (argc < 3) { fprintf(stderr, "uso: gmb eval \"<istruzioni BASIC>\"\n"); return 2; }
-        return gmb_cli_eval(argv[2]);
+        int rc = gmb_cli_eval(argv[2]);
+        gmb_cli_reset_defines();
+        return rc;
     }
     if (strcmp(o.command, "check") && strcmp(o.command, "build") && strcmp(o.command, "run")
         && strcmp(o.command, "minitests")) {

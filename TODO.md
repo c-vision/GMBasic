@@ -146,8 +146,13 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
 - [x] **F2 — REPL C pilota `gmb`** (2026-11-01): `AST`, `DASM`, `PRGINFO`, `COMPILE`, `EVAL`,
       `RUN` (vmc) via CLI; **rimossi** gli include `gmb_lexer/parser/linker/compiler.h` dalla REPL.
       Resta (F2b): `RUN` c99 e la compilazione dell'IDE (`ide.c`) usano ancora `native/executor`.
-- [ ] **F2b — ultimo legame con `executor`**: `rpl_run_c99` (`gmb run --project/--entry`) e la
-      compilazione della sessione di debug dell'IDE via `gmb dump chunk`; poi via `executor.h`.
+- [x] **F2b — via `native/executor`** (2026-11-01): `RUN` c99 → `gmb run --project --entry`;
+      sessione di debug dell'IDE → `gmb dump chunk`; `gmb_native_compile/exec` e
+      `gmb_preprocess_*` rimossi; `gmb_executor_native` **non è più linkato** dalla REPL.
+      I `-D` viaggiano come `-D name=val` al CLI (nuova opzione `gmb dump/eval -D`).
+- [ ] **F2c — LSP fuori dalla REPL**: `gmb_lsp.c` è l'unico punto che include `gmb_lexer.h`
+      (resta il link a `gmb_compiler_c`). Va esposto come `gmb lsp` (o binario a parte) e la
+      REPL smette di linkare il front-end.
 - [ ] **Decisione nome `EVAL`**: nel motore C valuta uno snippet (`gmb eval`), nella REPL C#
       è l'Eval Harness AI. Un solo significato: candidato `AIBENCH` per l'harness.
 - [ ] **F3 — Comandi solo-C# riportati nel mondo C** (tabella 6.3) come wrapper di `gmb`/runtime C.

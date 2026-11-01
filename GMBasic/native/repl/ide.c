@@ -31,7 +31,6 @@
 #include "repl.h"
 #include "gmb_debug.h"
 #include "gmb_ide.h"
-#include "executor.h"
 #include <sys/wait.h>
 #include <signal.h>
 #include <errno.h>
@@ -735,9 +734,9 @@ static void dbg_start(ide_t* e, int run_to_line)
     for (int i = 0; i < t->n; i++) fprintf(f, "%s\n", t->lines[i]);
     fclose(f);
     snprintf(e->dbg.chunk, sizeof(e->dbg.chunk), "/tmp/gmb_ide_dbg_%ld.chunk", (long)getpid());
-    if (gmb_native_compile(e->dbg.bas, e->dbg.chunk, GMB_EXEC_VMC) != 0)
+    if (rpl_gmb_dump("chunk", e->dbg.bas, e->dbg.chunk) != 0)
     { snprintf(e->msg, sizeof(e->msg), "?debug: compile failed"); unlink(e->dbg.bas); e->dbg.bas[0] = 0; return; }
-    const char* host = gmb_resolve_vm_host();
+    const char* host = rpl_resolve_vm_host();
     if (!host) { snprintf(e->msg, sizeof(e->msg), "?debug: gmb_vm_host not found"); dbg_close(e, false); return; }
 
     int pin[2], pout[2], perr[2];

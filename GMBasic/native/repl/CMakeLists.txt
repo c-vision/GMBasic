@@ -37,5 +37,7 @@ add_executable(gmb_repl
     bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_bytecode/src/gmb_disasm.c
 )
-target_link_libraries(gmb_repl PRIVATE gmb_runtime gmb_agent_runtime gmb_executor_native gmb_compiler_c)
+# NB: gmb_compiler_c resta linkato SOLO per gmb_lsp.c (il language server usa il lexer):
+# è l'ultimo legame con il front-end, da spostare in `gmb lsp` (TODO §6, F2c).
+target_link_libraries(gmb_repl PRIVATE gmb_runtime gmb_agent_runtime gmb_compiler_c)
 target_include_directories(gmb_repl PRIVATE ../gmb_runtime_c/include ../gmb_compiler_c/include ../executor ../gmb_vm_c ../gmb_bytecode/include)

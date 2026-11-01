@@ -12,12 +12,47 @@
  */
 #include "gmb_cli_internal.h"
 #include "gmb_disasm.h"
+#include "gmb_preprocess.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/wait.h>
+
+/* ── defines (-D NAME[=VAL]) applicati al preprocessing del compilatore ───────────── */
+static char g_defs_name[64][128];
+static char g_defs_val[64][256];
+static int  g_defs_n = 0;
+
+void gmb_cli_reset_defines(void)
+{
+    if (g_defs_n > 0) gmb_preprocess_reset();
+    g_defs_n = 0;
+}
+
+void gmb_cli_set_defines(int argc, char** argv)
+{
+    for (int i = 0; i < argc; i++) {
+        const char* a = argv[i];
+        const char* spec = NULL;
+        if (!strcmp(a, "-D") || !strcmp(a, "--define")) { if (i + 1 < argc) spec = argv[++i]; }
+        else if (!strncmp(a, "-D", 2) && a[2]) spec = a + 2;
+        else if (!strncmp(a, "--define=", 9)) spec = a + 9;
+        if (!spec) continue;
+        const char* eq = strchr(spec, '=');
+        char name[128]; const char* val = "1";
+        size_t nl = eq ? (size_t)(eq - spec) : strlen(spec);
+        if (nl >= sizeof name) nl = sizeof name - 1;
+        memcpy(name, spec, nl); name[nl] = 0;
+        if (eq) val = eq + 1;
+        if (!name[0] || g_defs_n >= 64) continue;
+        snprintf(g_defs_name[g_defs_n], sizeof g_defs_name[0], "%s", name);
+        snprintf(g_defs_val[g_defs_n], sizeof g_defs_val[0], "%s", val);
+        gmb_preprocess_define(g_defs_name[g_defs_n], g_defs_val[g_defs_n]);
+        g_defs_n++;
+    }
+}
 
 /* ── helper: percorso del binario accanto a `gmb` ─────────────────────────────────── */
 static int exe_dir(char* out, size_t cap)
