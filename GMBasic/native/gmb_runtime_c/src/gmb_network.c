@@ -3851,6 +3851,12 @@ static void http_msleep(int ms)
 typedef struct {
     gmb_net_sock_t fd;
     SSL* ssl;
+    /* Trasporto HTTP/2: quando `h2` è valorizzato i byte diventano DATA frame sullo stream
+     * corrente invece di uscire sul socket (HTTP/1.1 chunked). */
+    gmb_h2_conn_t* h2;
+    const gmb_h2_io_t* h2_io;
+    void* h2_io_ctx;
+    int32_t h2_stream;
     gmb_net_lock_t lock;
     int begun;              /* header (chunked) già inviati */
     int finished;           /* chunk terminale già inviato */
@@ -3865,6 +3871,16 @@ static int http_stream_send_all(gmb_http_stream_t* st, const void* data, size_t 
 {
     const char* p = (const char*)data;
     if (!st || st->broken) return -1;
+    if (st->h2)
+    {
+        /* HTTP/2: i byte sono il corpo dei DATA frame (nessun framing chunked). */
+        if (gmb_h2_write_data(st->h2, st->h2_io, st->h2_io_ctx, st->h2_stream, data, len) != 0)
+        {
+            st->broken = 1;
+            return -1;
+        }
+        return 0;
+    }
     while (len > 0)
     {
         int n = http_io_send(st->fd, st->ssl, p, len);
@@ -3908,6 +3924,16 @@ static int http_stream_flush_locked(gmb_http_stream_t* st)
     int n;
     if (!st || st->broken) return -1;
     if (st->pending_len == 0) return 0;
+    if (st->h2)
+    {
+        /* HTTP/2: i byte vanno nei DATA frame, SENZA il framing chunked dell'HTTP/1.1
+         * (l'header di chunk finiva dentro il corpo: "b\r\ndata: uno…"). */
+        int rc = gmb_h2_write_data(st->h2, st->h2_io, st->h2_io_ctx, st->h2_stream,
+                                   st->pending, st->pending_len);
+        st->pending_len = 0;
+        if (rc != 0) { st->broken = 1; return -1; }
+        return 0;
+    }
     n = snprintf(hdr, sizeof hdr, "%zx\r\n", st->pending_len);
     if (n > 0) http_stream_send_all(st, hdr, (size_t)n);
     http_stream_send_all(st, st->pending, st->pending_len);
@@ -3922,7 +3948,10 @@ static void http_stream_finish(gmb_http_stream_t* st)
     if (!st || !st->begun || st->finished) return;
     gmb_net_lock(&st->lock);
     http_stream_flush_locked(st);
-    http_stream_send_all(st, "0\r\n\r\n", 5);
+    if (st->h2)
+        gmb_h2_end_stream(st->h2, st->h2_io, st->h2_io_ctx, st->h2_stream);
+    else
+        http_stream_send_all(st, "0\r\n\r\n", 5);
     st->finished = 1;
     gmb_net_unlock(&st->lock);
 }
@@ -3996,11 +4025,23 @@ int gmb_http_response_stream_begin(gmb_val_t res, const char* content_type)
     extra[el] = '\0';
 
     st->begun = 1;   /* prima della send: un eventuale errore non deve riprovare l'header */
-    snprintf(head, sizeof head,
-             "HTTP/1.1 %d OK\r\nContent-Type: %s\r\n%sTransfer-Encoding: chunked\r\n"
-             "Cache-Control: no-store\r\nConnection: close\r\n\r\n",
-             status, ctype, extra);
-    http_stream_send_all(st, head, strlen(head));
+    if (st->h2)
+    {
+        /* HTTP/2: la lista di header va in una HEADERS (senza END_STREAM), poi i Write
+         * diventano DATA frame: è lo streaming vero, non una risposta bufferizzata. */
+        char hdrs[1400];
+        snprintf(hdrs, sizeof hdrs,
+                 "Content-Type: %s\n%sCache-Control: no-store\n", ctype, extra);
+        gmb_h2_start_stream(st->h2, st->h2_io, st->h2_io_ctx, st->h2_stream, status, hdrs);
+    }
+    else
+    {
+        snprintf(head, sizeof head,
+                 "HTTP/1.1 %d OK\r\nContent-Type: %s\r\n%sTransfer-Encoding: chunked\r\n"
+                 "Cache-Control: no-store\r\nConnection: close\r\n\r\n",
+                 status, ctype, extra);
+        http_stream_send_all(st, head, strlen(head));
+    }
     gmb_net_unlock(&st->lock);
 
     if (d) gmb_val_dict_set(res, "__streaming", gmb_make_val_double(1.0));
@@ -4694,9 +4735,20 @@ static void http_h2_dispatch(void* user, gmb_h2_conn_t* c, int32_t stream,
 {
     http_h2_ctx_t* x = (http_h2_ctx_t*)user;
     gmb_http_request_t req;
-    char* hdrs = NULL;
+    gmb_http_stream_t sink;          /* streaming (SSE/pagine lunghe) su HTTP/2 */
+    const gmb_http_route_t* chain[GMB_HTTP_MAX_ROUTES + 1];
+    int chain_n = 0;
+    const gmb_http_route_t* matched = NULL;
+    char* acc = NULL;
+    size_t acc_len = 0;
 
     memset(&req, 0, sizeof req);
+    memset(&sink, 0, sizeof sink);
+    sink.h2 = c;
+    sink.h2_io = x->io;
+    sink.h2_io_ctx = x->io_ctx;
+    sink.h2_stream = stream;
+
     req.method = method;
     req.path = path;
     req.query = query;
@@ -4705,8 +4757,9 @@ static void http_h2_dispatch(void* user, gmb_h2_conn_t* c, int32_t stream,
     req.header_values = values;
     req.header_count = n_headers;
     req.remote_ip = "";
+    req.stream_handle = (int64_t)(intptr_t)&sink;   /* res.StartStream/Write su h2 */
 
-    /* ── route (stessa tabella e stesso matching dell'HTTP/1.1) ── */
+    /* ── route che matcha (stesso matching dell'HTTP/1.1, HEAD incluso) ── */
     for (int i = 0; i < GMB_HTTP_MAX_ROUTES; i++)
     {
         const gmb_http_route_t* r = &x->s->routes[i];
@@ -4716,94 +4769,183 @@ static void http_h2_dispatch(void* user, gmb_h2_conn_t* c, int32_t stream,
         if (!r->handler && !r->handler_bin) continue;
         if (!route_match_path(r, path, req.params, 16, &pc, req.param_names, &req.param_names_count)) continue;
         req.params_count = pc;
+        matched = r;
+        break;
+    }
+
+    if (!matched)
+    {
+        /* niente route: pagine BSP e file statici, poi 404 — come su HTTP/1.1 */
+        if (x->s->bsp_dir[0])
         {
-            char* out_body = NULL;
-            char* out_headers = NULL;
-            size_t out_len = 0;
-            int status = 200;
-            int rc;
-            if (r->handler_bin)
-                rc = r->handler_bin(r->ctx, &req, &out_body, &out_len, &status, &out_headers);
-            else
+            char* bsp_html = NULL;
+            int bsp_st = 0;
+            if (gmb_bsp_try_serve(x->s->bsp_dir, path, query, "localhost", &bsp_html, &bsp_st))
             {
-                rc = r->handler(r->ctx, &req, &out_body, &status, &out_headers);
-                out_len = out_body ? strlen(out_body) : 0;
+                gmb_h2_respond(c, x->io, x->io_ctx, stream, bsp_st > 0 ? bsp_st : 200,
+                               "Content-Type: text/html; charset=utf-8\n",
+                               bsp_html ? bsp_html : "", bsp_html ? strlen(bsp_html) : 0);
+                free(bsp_html);
+                return;
             }
-            if (rc == 0)
+        }
+        if (x->s->static_count > 0)
+        {
+            for (int i = 0; i < x->s->static_count; i++)
             {
-                /* header di sicurezza (HTTP CONFIG SecurityHeaders) come su HTTP/1.1 */
-                if (x->s->security_headers)
+                size_t plen = strlen(x->s->static_prefix[i]);
+                if (strncmp(path, x->s->static_prefix[i], plen) != 0) continue;
                 {
-                    size_t need = (out_headers ? strlen(out_headers) : 0) + 512;
-                    hdrs = (char*)malloc(need);
-                    if (hdrs)
+                    char fpath[1024];
+                    FILE* tf;
+                    snprintf(fpath, sizeof fpath, "%s%s", x->s->static_dir[i], path + plen);
+                    if (strstr(fpath, "..")) break;      /* guardia path-traversal */
+                    tf = fopen(fpath, "rb");
+                    if (tf)
                     {
-                        hdrs[0] = 0;
-                        if (out_headers) snprintf(hdrs, need, "%s", out_headers);
-                        for (size_t k = 0; k < GMB_HTTP_SEC_HEADERS_COUNT; k++)
-                        {
-                            size_t used = strlen(hdrs);
-                            snprintf(hdrs + used, need - used, "%s: %s\n",
-                                     http_sec_headers[k][0], http_sec_headers[k][1]);
-                        }
+                        fclose(tf);
+                        http_h2_respond_file(c, x->io, x->io_ctx, stream, &req, fpath);
+                        return;
                     }
                 }
-                gmb_h2_respond(c, x->io, x->io_ctx, stream, status <= 0 ? 200 : status,
-                               hdrs ? hdrs : out_headers,
-                               out_body ? out_body : "", out_body ? out_len : 0);
-                free(hdrs);
+            }
+        }
+        gmb_h2_respond(c, x->io, x->io_ctx, stream, 404, "Content-Type: text/plain\n", "", 0);
+        return;
+    }
+
+    /* ── catena middleware (HTTP USE) + route, stessa semantica dell'HTTP/1.1 ── */
+    for (int i = 0; i < GMB_HTTP_MAX_ROUTES && chain_n < GMB_HTTP_MAX_ROUTES; i++)
+    {
+        const gmb_http_route_t* m = &x->s->middlewares[i];
+        size_t pl;
+        if (!m->in_use) continue;
+        if (!http_method_matches(m->method, method)) continue;
+        pl = strlen(m->path);
+        if (!pl || strncmp(path, m->path, pl) != 0) continue;
+        chain[chain_n++] = m;
+    }
+    chain[chain_n++] = matched;
+
+    for (int k = 0; k < chain_n; k++)
+    {
+        const gmb_http_route_t* r = chain[k];
+        int is_last = (k == chain_n - 1);
+        int64_t step_id = 0;
+        char* out_body = NULL;
+        char* out_headers = NULL;
+        int out_status = 200;
+        size_t out_len = 0;
+        int rc, advanced, wrote;
+
+        if (!r->handler && !r->handler_bin)
+        {
+            gmb_h2_respond(c, x->io, x->io_ctx, stream, 501,
+                           "Content-Type: text/plain\n", "501 Not Implemented", 20);
+            free(acc);
+            return;
+        }
+        if (!is_last)
+        {
+            step_id = gmb_http_chain_step_alloc();
+            if (!step_id)
+            {
+                gmb_h2_respond(c, x->io, x->io_ctx, stream, 500, "Content-Type: text/plain\n",
+                               "500 Internal Server Error: catena HTTP chain-step esausta", 61);
+                free(acc);
+                return;
+            }
+        }
+        req.chain_step_id = step_id;
+
+        if (r->handler_bin)
+            rc = r->handler_bin(r->ctx, &req, &out_body, &out_len, &out_status, &out_headers);
+        else
+        {
+            rc = r->handler(r->ctx, &req, &out_body, &out_status, &out_headers);
+            out_len = out_body ? strlen(out_body) : 0;
+        }
+
+        advanced = is_last ? 0 : gmb_http_chain_step_is_advanced(step_id);
+        wrote = (out_len > 0) || (out_status != 200) || sink.begun;
+
+        if (!is_last && !wrote && !advanced)
+        {
+            /* attesa dell'advance da un altro task (GO SUB + HTTP USE NEXT): timeout → 504 */
+            int64_t until = gmb_now_ms_net() + (x->s->request_timeout_ms > 0 ? x->s->request_timeout_ms : 30000);
+            while (!advanced && gmb_now_ms_net() < until)
+            {
+                http_msleep(1);
+                advanced = gmb_http_chain_step_is_advanced(step_id);
+            }
+            if (!advanced)
+            {
+                gmb_h2_respond(c, x->io, x->io_ctx, stream, 504, "Content-Type: text/plain\n",
+                               "504 Gateway Timeout", 19);
+                gmb_http_chain_step_free(step_id);
+                free(acc);
                 free(out_body);
                 free(out_headers);
                 return;
             }
-            free(hdrs);
-            hdrs = NULL;
+        }
+
+        if (!is_last && advanced && !wrote)
+        {
+            /* passo avanzato: gli header si accumulano per il passo successivo */
+            if (out_headers && *out_headers)
+            {
+                size_t hl = strlen(out_headers);
+                char* na = (char*)realloc(acc, acc_len + hl + 1);
+                if (na) { memcpy(na + acc_len, out_headers, hl); na[acc_len + hl] = 0; acc = na; acc_len += hl; }
+            }
+            gmb_http_chain_step_free(step_id);
             free(out_body);
             free(out_headers);
+            continue;
         }
-    }
 
-    /* ── pagine BSP ── */
-    if (x->s->bsp_dir[0])
-    {
-        char* bsp_html = NULL;
-        int bsp_st = 0;
-        if (gmb_bsp_try_serve(x->s->bsp_dir, path, query, "localhost", &bsp_html, &bsp_st))
+        if (is_last && rc != 0)
         {
-            char head[96];
-            snprintf(head, sizeof head, "Content-Type: text/html; charset=utf-8\n");
-            gmb_h2_respond(c, x->io, x->io_ctx, stream, bsp_st > 0 ? bsp_st : 200, head,
-                           bsp_html ? bsp_html : "", bsp_html ? strlen(bsp_html) : 0);
-            free(bsp_html);
+            /* route finale "non gestita": 404 (semantica storica) */
+            free(out_body);
+            free(out_headers);
+            gmb_h2_respond(c, x->io, x->io_ctx, stream, 404, "Content-Type: text/plain\n", "", 0);
+            free(acc);
             return;
         }
-    }
 
-    /* ── file statici (stessa decisione dell'HTTP/1.1: http_file_plan) ── */
-    if (x->s->static_count > 0)
-    {
-        for (int i = 0; i < x->s->static_count; i++)
+        if (sink.begun)
         {
-            size_t plen = strlen(x->s->static_prefix[i]);
-            if (strncmp(path, x->s->static_prefix[i], plen) != 0) continue;
+            /* risposta già inviata in streaming: chiude il flusso, niente corpo bufferizzato */
+            http_stream_finish(&sink);
+        }
+        else
+        {
+            char* combined = NULL;
+            if (acc_len || (out_headers && *out_headers))
             {
-                char fpath[1024];
-                FILE* tf;
-                snprintf(fpath, sizeof fpath, "%s%s", x->s->static_dir[i], path + plen);
-                if (strstr(fpath, "..")) break;      /* guardia path-traversal */
-                tf = fopen(fpath, "rb");
-                if (tf)
+                size_t hl = out_headers ? strlen(out_headers) : 0;
+                combined = (char*)malloc(acc_len + hl + 1);
+                if (combined)
                 {
-                    fclose(tf);
-                    http_h2_respond_file(c, x->io, x->io_ctx, stream, &req, fpath);
-                    return;
+                    if (acc_len) memcpy(combined, acc, acc_len);
+                    if (hl) memcpy(combined + acc_len, out_headers, hl);
+                    combined[acc_len + hl] = 0;
                 }
             }
+            gmb_h2_respond(c, x->io, x->io_ctx, stream, out_status <= 0 ? 200 : out_status,
+                           combined ? combined : out_headers,
+                           out_body ? out_body : "", out_body ? out_len : 0);
+            free(combined);
         }
+        if (step_id) gmb_http_chain_step_free(step_id);
+        free(out_body);
+        free(out_headers);
+        free(acc);
+        return;
     }
-
-    /* ── 404 ── */
-    gmb_h2_respond(c, x->io, x->io_ctx, stream, 404, "Content-Type: text/plain\r\n", "", 0);
+    free(acc);
 }
 
 /* SERVE la connessione come HTTP/2. `initial` = byte già letti DOPO il preface. */
@@ -4824,6 +4966,8 @@ static void http_serve_h2(gmb_http_server_t* s, gmb_net_sock_t client, SSL* ssl,
 
     c = gmb_h2_new();
     if (!c) return;
+    /* stesso tetto del corpo dell'HTTP/1.1 (HTTP CONFIG MaxRequestBodySize): oltre → 413 */
+    if (s->max_body > 0) gmb_h2_set_max_body(c, s->max_body);
     x.s = s;
     x.c = c;
     x.io = &io;

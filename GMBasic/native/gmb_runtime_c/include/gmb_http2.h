@@ -51,4 +51,19 @@ void gmb_h2_free(gmb_h2_conn_t* c);
 int gmb_h2_respond(gmb_h2_conn_t* c, const gmb_h2_io_t* io, void* io_ctx, int32_t stream_id,
                    int status, const char* headers_text, const void* body, size_t body_len);
 
+/* ── Risposta in STREAMING (SSE, pagine lunghe, progress) ─────────────────────
+ * `Start` manda solo la HEADERS (lo stream resta aperto), `Write` manda DATA frame man mano
+ * che il codice BASIC produce i byte, `End` chiude con un DATA vuoto + END_STREAM.
+ * Vanno chiamati dal thread che sta eseguendo l'handler: mentre l'handler gira il thread di
+ * connessione è fermo in attesa, quindi lettura e scrittura dei frame non si sovrappongono.
+ * `Write` rispetta il flow control: se il credito è esaurito legge i WINDOW_UPDATE. */
+int gmb_h2_start_stream(gmb_h2_conn_t* c, const gmb_h2_io_t* io, void* io_ctx, int32_t stream_id,
+                        int status, const char* headers_text);
+int gmb_h2_write_data(gmb_h2_conn_t* c, const gmb_h2_io_t* io, void* io_ctx, int32_t stream_id,
+                      const void* data, size_t len);
+int gmb_h2_end_stream(gmb_h2_conn_t* c, const gmb_h2_io_t* io, void* io_ctx, int32_t stream_id);
+
+/* Tetto del corpo di richiesta (0 = default 1 MB). Oltre il tetto: 413 + RST_STREAM. */
+void gmb_h2_set_max_body(gmb_h2_conn_t* c, int64_t bytes);
+
 #endif /* GMB_HTTP2_H */

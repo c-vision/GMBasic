@@ -33,14 +33,39 @@ PY
 
 cat > "$PROG" <<EOF
 IMPORT HTTP
+SUB AuthMw(req AS HTTPREQUEST, res AS HTTPRESPONSE, next AS LONG)
+  IF req.Headers.Get("X-Token") = "ok" THEN
+    HTTP USE NEXT
+  ELSE
+    res.SetStatus(401)
+    res.Send("no-token")
+  END IF
+END SUB
 SUB Hello(req AS HTTPREQUEST, res AS HTTPRESPONSE)
   res.Send("hello-h2")
+END SUB
+SUB Sse(req AS HTTPREQUEST, res AS HTTPRESPONSE)
+  res.StartStream("text/event-stream")
+  res.Write("data: uno" + CHR\$(10) + CHR\$(10))
+  res.Flush()
+  SLEEP 150
+  res.Write("data: due" + CHR\$(10) + CHR\$(10))
+  res.Flush()
+  res.EndStream()
+END SUB
+SUB Echo(req AS HTTPREQUEST, res AS HTTPRESPONSE)
+  res.Send("len=" + LTRIM\$(STR\$(LEN(req.Body))))
 END SUB
 SUB Main()
   DIM cfg AS HTTPCONFIG = NEW HTTPCONFIG
   cfg.Port = $PORT
+  cfg.MaxRequestBodySize = 1000
   HTTP CONFIG cfg
+  HTTP USE "/api/", AuthMw()
   HTTP ROUTE "GET", "/hello", Hello()
+  HTTP ROUTE "GET", "/api/hello", Hello()
+  HTTP ROUTE "GET", "/sse", Sse()
+  HTTP ROUTE "POST", "/echo", Echo()
   HTTP STATIC "/static", "$BIN_DIR/static"
   PRINT "pronto"
   HTTP SERVER $PORT
@@ -96,6 +121,31 @@ case "$OUT" in
   *"HTTP/2 200"*"content-length: 70000"*) ok "h2 HEAD (content-length 70000, nessun corpo)";;
   *) bad "h2 HEAD" "$(printf '%s' "$OUT" | head -3)";;
 esac
+
+# 8) middleware (HTTP USE) applicato anche su h2: 401 senza token, 200 con token
+code="$(curl -s --http2-prior-knowledge -o /dev/null -w '%{http_code}' --max-time 8 "http://127.0.0.1:$PORT/api/hello" 2>/dev/null)"
+[ "$code" = "401" ] && ok "h2 middleware: 401 senza token" || bad "h2 middleware 401" "code=$code"
+OUT="$(curl -s --http2-prior-knowledge --max-time 8 -H 'X-Token: ok' "http://127.0.0.1:$PORT/api/hello" 2>/dev/null)"
+[ "$OUT" = "hello-h2" ] && ok "h2 middleware: passa con X-Token" || bad "h2 middleware pass" "$OUT"
+
+# 9) STREAMING (SSE) su h2: i due eventi arrivano in momenti diversi, senza framing chunked
+T0=$(date +%s%N)
+BODY="$(curl -s --http2-prior-knowledge -N --max-time 10 "http://127.0.0.1:$PORT/sse" 2>/dev/null)"
+T1=$(date +%s%N)
+MS=$(( (T1 - T0) / 1000000 ))
+EXPECTED=$'data: uno\n\ndata: due'
+if [ "$BODY" = "$EXPECTED" ] && [ "$MS" -ge 150 ]; then
+  ok "h2 SSE in streaming (${MS}ms, corpo pulito)"
+else
+  bad "h2 SSE" "${MS}ms body=$(printf '%s' "$BODY" | head -2 | tr '\n' '|')"
+fi
+
+# 10) 413: corpo oltre MaxRequestBodySize (sia h2 sia h1)
+BODY2000="$(python3 -c 'print("x"*2000, end="")')"
+code="$(curl -s --http2-prior-knowledge -o /dev/null -w '%{http_code}' --max-time 8 -X POST --data-binary "$BODY2000" "http://127.0.0.1:$PORT/echo" 2>/dev/null)"
+[ "$code" = "413" ] && ok "h2 413 oltre MaxRequestBodySize" || bad "h2 413" "code=$code"
+code="$(curl -s --http1.1 -o /dev/null -w '%{http_code}' --max-time 8 -X POST --data-binary "$BODY2000" "http://127.0.0.1:$PORT/echo" 2>/dev/null)"
+[ "$code" = "413" ] && ok "http/1.1 413 oltre MaxRequestBodySize" || bad "http/1.1 413" "code=$code"
 
 echo ""
 echo "──────────────────────────────────"
