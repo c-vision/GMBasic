@@ -79,7 +79,7 @@ public sealed partial class Parser
                 version = m.Version,
                 settings = m.Settings == null ? null : new { minGmbVersion = m.Settings.MinGmbVersion },
             });
-            var err = NativePkg.CompatCheck(json);
+            var err = NativePkg.CompatCheck(json, "");
             if (err.Length > 0) throw new PackageException(err);
         }
 
@@ -181,7 +181,7 @@ public sealed partial class Parser
             var platformKey = string.IsNullOrEmpty(buildCtx.PlatformKey) ? GetCurrentPlatformKey() : buildCtx.PlatformKey;
 
             var (items, error) = NativePkg.Resolve(
-                CacheRoot, buildCtx.VendorDir, buildCtx.Backend, platformKey, buildCtx.Offline, RegistryUrl.TrimEnd('/'),
+                CacheRoot, buildCtx.VendorDir, buildCtx.Backend, platformKey, "", buildCtx.Offline, RegistryUrl.TrimEnd('/'),
                 reqs, overrides, features, locked, local,
                 buildCtx.Registries.Select(kv => (kv.Key, kv.Value)),
                 CommonLib.GmbiPaths.LocalPackagesDir);   /* locale dell'app PRIMA della cache */

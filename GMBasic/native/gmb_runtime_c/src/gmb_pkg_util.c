@@ -5,8 +5,9 @@
 #include <stdio.h>
 #include <string.h>
 
-int gmb_pkg_compat_check(const char* json, char* out_err, size_t cap)
+int gmb_pkg_compat_check(const char* json, const char* edition, char* out_err, size_t cap)
 {
+    (void)edition;   /* ignorato: non esiste piu' la matrice Edition (ABI invariata) */
     if (out_err && cap) out_err[0] = 0;
     if (!json) return 1;
     gmb_pkg_manifest_t* m = gmb_pkg_manifest_parse(json);
