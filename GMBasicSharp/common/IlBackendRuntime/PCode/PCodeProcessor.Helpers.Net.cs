@@ -829,7 +829,7 @@ internal sealed partial class PCodeProcessor
     private static Dictionary<string, object?> ParseFormToDict(CommonLib.Http.HttpRequest request)
         => request.ParseFormDictionary();
 
-    private static bool TryServeStaticFile(PCodeHttpRouter router, string requestPath, PCodeHttpResponse response)
+    private static bool TryServeStaticFile(PCodeHttpRouter router, string requestPath, PCodeHttpResponse response, string? rangeHeader = null)
     {
         var resolved = router.ResolveStaticPath(requestPath);
         if (resolved == null) return false;
@@ -853,8 +853,28 @@ internal sealed partial class PCodeProcessor
         response.SetHeader("ETag", etag);
         response.SetHeader("Last-Modified", info.LastWriteTimeUtc.ToString("R"));
         response.SetHeader("Cache-Control", "public, max-age=3600");
+        // Accept-Ranges su TUTTE le risposte di file: è così che un client SA che può
+        // riprendere un download interrotto (video, archivi) invece di riscaricarlo tutto.
+        response.SetHeader("Accept-Ranges", "bytes");
         var ext = Path.GetExtension(fullPath);
         var contentType = HttpStaticMimeTypes.TryGetValue(ext, out var ct) ? ct : "application/octet-stream";
+
+        // Range HTTP (206/416): unica logica managed in CommonLib.Http.HttpRange (§0bis).
+        var kind = CommonLib.Http.HttpRange.Parse(rangeHeader, info.Length, out var start, out var end);
+        if (kind == CommonLib.Http.HttpRangeKind.Unsatisfiable)
+        {
+            response.SetHeader("Content-Range", $"bytes */{info.Length}");
+            response.SetStatus(416);
+            response.Send("");
+            return true;
+        }
+        if (kind == CommonLib.Http.HttpRangeKind.Valid)
+        {
+            response.SetHeader("Content-Range", $"bytes {start}-{end}/{info.Length}");
+            response.SetStatus(206);
+            response.SendBytes(CommonLib.Http.HttpRange.ReadSlice(fullPath, start, end - start + 1), contentType);
+            return true;
+        }
         response.SendBytes(File.ReadAllBytes(fullPath), contentType);
         return true;
     }
@@ -898,8 +918,10 @@ internal sealed partial class PCodeProcessor
         if (match == null)
         {
             // Stessa priorita' dell'AST: i file statici sono controllati SOLO quando nessuna
-            // route/fallback ha risposto, mai prima.
-            if (!TryServeStaticFile(router, request.Path, response)) response.CompleteAsNotFound();
+            // route/fallback ha risposto, mai prima. L'header Range della richiesta arriva qui:
+            // il file può essere servito in fette (206) invece che per intero.
+            var rangeHdr = request.Headers.TryGetPropertyValue("Range", out var rngNode) ? rngNode?.ToString() : null;
+            if (!TryServeStaticFile(router, request.Path, response, rangeHdr)) response.CompleteAsNotFound();
             return false;
         }
 

@@ -786,7 +786,37 @@ public sealed class HttpService : IHttpService, IDisposable
                     ".json" => "application/json",
                     _ => "application/octet-stream",
                 };
-                return new HttpResponse { Body = File.ReadAllText(filePath), ContentType = contentType };
+                // Range HTTP (206/416): stessa logica managed della gamba PCode
+                // (CommonLib.Http.HttpRange) e dello stesso contratto del runtime C.
+                var info = new FileInfo(filePath);
+                var resp = new HttpResponse
+                {
+                    ContentType = contentType,
+                    Headers = { ["Accept-Ranges"] = "bytes" },
+                };
+                req.Headers.TryGetValue("Range", out var rangeHeader);
+                var kind = CommonLib.Http.HttpRange.Parse(rangeHeader, info.Length, out var rangeStart, out var rangeEnd);
+                if (kind == CommonLib.Http.HttpRangeKind.Unsatisfiable)
+                {
+                    resp.StatusCode = 416;
+                    resp.Headers["Content-Range"] = $"bytes */{info.Length}";
+                    resp.BodyBytes = [];
+                    resp.Body = "";
+                    return resp;
+                }
+                if (kind == CommonLib.Http.HttpRangeKind.Valid)
+                {
+                    resp.StatusCode = 206;
+                    resp.Headers["Content-Range"] = $"bytes {rangeStart}-{rangeEnd}/{info.Length}";
+                    resp.BodyBytes = CommonLib.Http.HttpRange.ReadSlice(filePath, rangeStart, rangeEnd - rangeStart + 1);
+                    resp.Body = "";
+                    return resp;
+                }
+                // File INTERO: byte grezzi (BodyBytes), non ReadAllText — un binario passato per
+                // una stringa veniva corrotto (le sequenze non UTF-8 diventano U+FFFD).
+                resp.BodyBytes = File.ReadAllBytes(filePath);
+                resp.Body = "";
+                return resp;
             }
         }
 

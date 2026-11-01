@@ -2164,7 +2164,30 @@ if (gmb_tk_rem_vari_in(t->kind)) {
             while (!gmb_p_check(p, GMB_TOK_Newline) && !gmb_p_at_end(p)) gmb_p_adv(p);
             return s;
         }
-        /* HTTP STATIC/altro: parity no-op, consuma la riga */
+        /* HTTP STATIC prefix, dir — file statici serviti dal server.
+         * Prima era un no-op del parser: su C99Native `HTTP STATIC` non registrava NULLA e
+         * ogni richiesta a un file statico finiva in 404 (lo stesso valeva per Range/206).
+         * net_sub = 19 (emitter: st_net_case 19 → gmb_http_server_static). */
+        if (gmb_p_check(p, GMB_TOK_Static)) {
+            gmb_p_adv(p);
+            gmb_stmt_t* s = gmb_stmt_new(GMB_STMT_NET_CMD, line);
+            s->net_sub = 19;
+            s->coderef_pos = -1;
+            s->net_args = (gmb_expr_t**)calloc(2, sizeof(gmb_expr_t*));
+            s->n_netargs = 2;
+            /* Alcune forme hanno "HTTP STATIC" già consumato e il token corrente è la prefix;
+             * altre passano dal verbo STATIC come keyword di dichiarazione: si accetta sia
+             * `HTTP STATIC "/s", "./dir"` sia la variante senza virgola. */
+            if (gmb_p_cur(p) && gmb_p_cur(p)->kind == GMB_TOK_Comma) gmb_p_adv(p);
+            if (gmb_p_cur(p) && gmb_p_cur(p)->kind != GMB_TOK_Newline && gmb_p_cur(p)->kind != GMB_TOK_Eof)
+                s->net_args[0] = gmb_p_parse_expr(p);
+            gmb_p_match(p, GMB_TOK_Comma);
+            if (gmb_p_cur(p) && gmb_p_cur(p)->kind != GMB_TOK_Newline && gmb_p_cur(p)->kind != GMB_TOK_Eof)
+                s->net_args[1] = gmb_p_parse_expr(p);
+            while (!gmb_p_check(p, GMB_TOK_Newline) && !gmb_p_at_end(p)) gmb_p_adv(p);
+            return s;
+        }
+        /* HTTP BSP/altro: parity no-op, consuma la riga */
         while (!gmb_p_check(p, GMB_TOK_Newline) && !gmb_p_at_end(p)) gmb_p_adv(p);
         return gmb_stmt_new(GMB_STMT_REM, line);
     }
