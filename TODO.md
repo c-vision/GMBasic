@@ -162,9 +162,16 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
 - [x] **F3b — pacchetto nel mondo C** (2026-11-01): `ADD`, `REMOVE`, `BUMP`, `TRUST`, `CACHE`
       sopra `gmb_pkg_*` (la REPL linka ora `libgmb_pkg`). Verificati su un manifest di prova
       (dipendenza aggiunta/rimossa, versione 1.2.3→1.3.0, keyring scritto, gc eseguito).
-- [ ] **F3c — `RESTORE`/`UPDATE`/`ROLLBACK`**: richiedono il resolver/registry
-      (`gmb_pkg_resolve_*`, `gmb_pkg_install_*`) e la lock history
-      (`gmb_pkg_lock_write_with_history`). Sono il resto della parità dei comandi di pacchetto.
+- [x] **F3c — `RESTORE`/`UPDATE`/`ROLLBACK`** (2026-11-01): resolver C (`gmb_pkg_resolve`,
+      download+estrazione automatica in cache), lock canonico `gmb-package.lock` con history
+      (`gmb_pkg_lock_write_with_history`); `UPDATE --check` = diff `installed -> latest` senza
+      scrivere; `ROLLBACK --list/--to` archivia il lock corrente e re-installa. Il keyring è
+      `~/.gmbasic/trusted-keys.json` (lo stesso del PM C#) e la cache `~/.gmbasic/packages`.
+      Verificati: `alpha@1.0.0` risolto dalla cache, diff `0.9.0 -> 1.0.0`, rollback con
+      history, `TRUST ADD/LIST/FINGERPRINT/REMOVE`, `CACHE LIST/DEDUP/GC`.
+- [x] **F3 completo**: tutti gli 11 comandi nati nella REPL C# (`FIXTURES`, `SETUP`,
+      `ADD`, `REMOVE`, `RESTORE`, `ROLLBACK`, `BUMP`, `CACHE`, `TRUST`, `UPDATE`, `LLM`)
+      vivono nel mondo C. Resta la parità *totale* con `--engine=csharp` (F4).
 - [ ] **F4 — Parità completa con l'engine C# (finché esiste)**: `--engine=csharp` implementa
       **tutti** i comandi identici al ramo C — `IL` e `PCODE` compresi (non stub), `EVAL`, dump,
       debug; stessi flag e stessa semantica. Test di parità comando-per-comando fra i due engine.

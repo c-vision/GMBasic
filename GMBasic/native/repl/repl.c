@@ -290,6 +290,7 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
                        "  GREP (RG) RN RENAME RM DL DELF CP COPY DP DUPLICATE BL BACKUP DEPLOY CONVERT BATCH CONVFMT\n"
                        "  WEB2MD PROVIDERS DEP PACKAGE HF MLX ML AIPATH SET STATUS DEBUG BREAK CLEAR STEP\n"
                        "  CONT TRACE WATCH UNWATCH PALETTE\n"
+                       "  FIXTURES SETUP LLM ADD REMOVE BUMP RESTORE UPDATE ROLLBACK TRUST CACHE\n"
                        "GREP [-rinlcFwvo-.] [--type EXT] [--include G] [--exclude G] [--depth N] PATTERN [PATH]\n"
                        "HELP = guida interattiva · HELP <topic> = namespace (shared/helps/<topic>.json)\n"
                        "HELP COMMANDS = questo elenco\n");
@@ -549,7 +550,8 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
         }
         /* ── F3b: comandi di pacchetto (manifest/keyring/cache) ── */
         if (!strcasecmp(cmd, "ADD") || !strcasecmp(cmd, "REMOVE") || !strcasecmp(cmd, "BUMP")
-            || !strcasecmp(cmd, "TRUST") || !strcasecmp(cmd, "CACHE")) {
+            || !strcasecmp(cmd, "TRUST") || !strcasecmp(cmd, "CACHE")
+            || !strcasecmp(cmd, "RESTORE") || !strcasecmp(cmd, "ROLLBACK") || !strcasecmp(cmd, "UPDATE")) {
             rpl_pkg_cmd(cmd, args);
             goto done;
         }
@@ -595,7 +597,8 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
             /* Stato della cache delle librerie native + come popolarla (parità informativa
              * con SETUP della REPL C#; l'ensure vero è nel runtime/CLI). */
             const char* rid = gmb_libs_rid();
-            char cd[2048]; gmb_paths_libs_dir(cd, sizeof(cd));
+            /* cache canonica delle librerie native: ~/.gmbasic/libs/<rid> */
+            char cd[2048]; gmb_paths_libs_cache_dir(cd, sizeof(cd));
             { size_t l = strlen(cd); if (!(l >= strlen(rid) && !strcmp(cd + l - strlen(rid), rid))) {
                   snprintf(cd + l, sizeof(cd) - l, "/%s", rid); } }
             int n = 0;
