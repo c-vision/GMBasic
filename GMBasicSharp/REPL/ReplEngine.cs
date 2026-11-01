@@ -905,7 +905,7 @@ public class ReplEngine
         Out.WriteLine();
         Out.WriteLine(Center(title, w));
         Out.WriteLine(Center(copyright, w));
-        Out.WriteLine(Center(mode, w));
+        Out.WriteLine(Center($"{mode} - C# VERSION", w));
         Out.WriteLine();
         Out.WriteLine("READY.");
 

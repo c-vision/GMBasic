@@ -273,6 +273,9 @@ static int ide_tty_open(void)
      * IEXTEN OFF: Ctrl+V arriva come 0x16 (paste), non come "literal next". */
     raw.c_lflag &= ~(ICANON | ECHO | ISIG | IEXTEN);
     raw.c_iflag &= ~(IXON | ICRNL | INLCR | IGNCR);
+#ifdef IUCLC
+    raw.c_iflag &= ~IUCLC;   /* niente mappa maiuscole→minuscole in input */
+#endif
     raw.c_cc[VMIN] = 1; raw.c_cc[VTIME] = 0;
     tcsetattr(g_itty, TCSANOW, &raw);
     if (g_out) { fclose(g_out); g_out = NULL; }

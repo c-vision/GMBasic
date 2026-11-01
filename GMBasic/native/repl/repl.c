@@ -1027,6 +1027,9 @@ static int std_tty_open(void)
     raw = g_std_orig;
     raw.c_lflag &= ~(ICANON | ECHO);
     raw.c_iflag &= ~(IXON | ICRNL | INLCR | IGNCR);
+#ifdef IUCLC
+    raw.c_iflag &= ~IUCLC;   /* niente mappa maiuscole→minuscole in input */
+#endif
     raw.c_cc[VMIN] = 0; raw.c_cc[VTIME] = 0;
     tcsetattr(g_std_fd, TCSANOW, &raw);
     return 0;
@@ -1180,7 +1183,7 @@ static int rpl_loop_ansi(const rpl_options_t* o, const char* initial_cmd, const 
 static int rpl_loop_headless(const rpl_options_t* o, const char* initial_cmd)
 {
     char line[1024];
-    printf("GMBASIC 1.0.0 — HEADLESS MODE\nREADY.\n");
+    printf("GMBASIC 1.0.0\n(C) 2026 MINARDI GAETANO. ALL RIGHTS RESERVED.\nHEADLESS MODE - C VERSION\nREADY.\n");
     fflush(stdout);
     if (initial_cmd && *initial_cmd) {
         int q = rpl_exec_line(initial_cmd, o, (char*)"READY.\n");
@@ -1205,12 +1208,16 @@ static int rpl_loop_controls(const rpl_options_t* o, gmb_sdl_console_t* sdl, con
     extern int gmb_console_mode_get(void);
     const char* hl = getenv("GMBASIC_HEADLESS");
     int headless = (hl && *hl && strcmp(hl, "0") != 0);
-    const char* mode_line;
-    if (headless) mode_line = "HEADLESS MODE";
-    else if (gmb_console_mode_get() == 1) mode_line = "C64 MODE";
-    else if (sdl) mode_line = "SDL CONSOLE MODE";
-    else if (gmb_console_mode_get() == 3) mode_line = "SYSTEM CONSOLE MODE";
-    else mode_line = "STANDARD CONSOLE MODE";
+    /* La riga del modo porta anche il RAMO che sta eseguendo: "… - C VERSION". */
+    static char mode_buf[128];
+    const char* mode_base;
+    if (headless) mode_base = "HEADLESS MODE";
+    else if (gmb_console_mode_get() == 1) mode_base = "C64 MODE";
+    else if (sdl) mode_base = "SDL CONSOLE MODE";
+    else if (gmb_console_mode_get() == 3) mode_base = "SYSTEM CONSOLE MODE";
+    else mode_base = "STANDARD CONSOLE MODE";
+    snprintf(mode_buf, sizeof(mode_buf), "%s - C VERSION", mode_base);
+    const char* mode_line = mode_buf;
     if (sdl) return rpl_loop_sdl_model(o, sdl, initial_cmd, mode_line);
     {   /* Standard (-c): console bufferizzata a celle + Present(). */
         gmb_iconsole_t* con = gmb_iconsole_active();
