@@ -148,7 +148,13 @@ public sealed partial class IlProgramCompiler
             case DoubleType or InferredType: _il.Emit(OpCodes.Ldc_R8, 0.0); return;
             case SingleType: _il.Emit(OpCodes.Ldc_R4, 0.0f); return;
             case LongType or ULongType or QuadType or UQuadType: _il.Emit(OpCodes.Ldc_I4_0); _il.Emit(OpCodes.Conv_I8); return;
-            case IntegerType or UIntegerType or ByteType or SByteType or BitType: _il.Emit(OpCodes.Ldc_I4_0); return;
+            // INTEGER/UINTEGER = 64 bit (DataTypeMapper): il default deve avere lo STESSO
+            // tipo di stack del valore vero (unbox.any Int64 → I8). Con Ldc_I4_0 nudo il
+            // merge dei rami "non inizializzato"/"inizializzato" di TryEmitLoadGlobal
+            // vedeva I4 vs I8 → ILOptim "Inconsistent evaluation stack between basic
+            // blocks" (tools/basic/settings_bundle.bas, funzioni con un globale INTEGER).
+            case IntegerType or UIntegerType: _il.Emit(OpCodes.Ldc_I4_0); _il.Emit(OpCodes.Conv_I8); return;
+            case ByteType or SByteType or BitType: _il.Emit(OpCodes.Ldc_I4_0); return;
             case StringType: _il.Emit(OpCodes.Ldstr, string.Empty); return;
             case CurrencyType: _il.Emit(OpCodes.Ldc_R8, 0.0); _il.Emit(OpCodes.Call, _types.ConvertToDecimalDouble); return;
             // CLASS/INTERFACE: sempre un reference type CLR (mai una struct) — il default
