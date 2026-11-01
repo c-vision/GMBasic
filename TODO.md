@@ -70,6 +70,9 @@ tracked files). These remain:
 che pilota **il compilatore C** tramite le sue opzioni. Non perde nessuna funzione utile al mondo C.
 
 **Regole non negoziabili**
+0. **Documentazione**: ogni nuova opzione del compilatore aggiorna la guida nel vault
+   (`AiWiki/01-Projects/GMBasicMonoRepo/Guide/utente/Compiler-CLI-Guide.md`), nello stesso
+   commit della modifica.
 1. **La REPL non è un wrapper di C#**: `GMBasicSharp` può essere cancellato e la REPL C deve
    continuare a funzionare con **tutte** le sue funzioni (compilare, eseguire, AST, disasm,
    generare C, debug, console ×4, IDE, help, package/fixtures).
