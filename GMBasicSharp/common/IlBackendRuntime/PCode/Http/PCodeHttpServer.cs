@@ -202,7 +202,8 @@ internal static class PCodeHttpServer
                 }
                 else
                 {
-                    await WriteResponseAsync(stream, response, keepAlive, serverToken).ConfigureAwait(false);
+                    await WriteResponseAsync(stream, response, keepAlive, serverToken,
+                        string.Equals(request.Method, "HEAD", StringComparison.OrdinalIgnoreCase)).ConfigureAwait(false);
                 }
             }
         }
@@ -268,7 +269,7 @@ internal static class PCodeHttpServer
         return true;
     }
 
-    private static async Task WriteResponseAsync(Stream stream, PCodeHttpResponse response, bool keepAlive, CancellationToken ct)
+    private static async Task WriteResponseAsync(Stream stream, PCodeHttpResponse response, bool keepAlive, CancellationToken ct, bool headOnly = false)
     {
         var sb = new StringBuilder();
         sb.Append("HTTP/1.1 ").Append(response.StatusCode).Append(' ').Append(ReasonPhrase(response.StatusCode)).Append("\r\n");
@@ -286,7 +287,8 @@ internal static class PCodeHttpServer
 
         var headerBytes = Encoding.ASCII.GetBytes(sb.ToString());
         await stream.WriteAsync(headerBytes, ct).ConfigureAwait(false);
-        if (response.Body.Length > 0) await stream.WriteAsync(response.Body, ct).ConfigureAwait(false);
+        // HEAD: header completi (Content-Length compreso), nessun corpo.
+        if (response.Body.Length > 0 && !headOnly) await stream.WriteAsync(response.Body, ct).ConfigureAwait(false);
         await stream.FlushAsync(ct).ConfigureAwait(false);
     }
 
