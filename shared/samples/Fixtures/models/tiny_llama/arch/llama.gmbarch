@@ -1,4 +1,0 @@
-{
-  "arch": "llama",
-  "geometry": {"hidden":16,"n_layers":1,"n_heads":2,"n_kv_heads":1,"head_dim":8,"n_experts":0,"topk":0,"inter":32,"vocab":259,"ctx":2048,"rope_variant":0,"router_kind":0,"norm_kind":0,"flags":0,"eps":1e-05,"rope_theta":10000}
-}

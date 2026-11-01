@@ -1,6 +1,6 @@
 {
   "model": "DeepSeek-R1-Distill-Qwen-32B-MLX-8Bit",
-  "config": "/Users/gaetano/ai/Models/DeepSeek-R1-Distill-Qwen-32B-MLX-8Bit/config.json",
+  "config": "config.json",
   "spec": {
     "model_type": "qwen2",
     "hidden_size": 5120,

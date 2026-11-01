@@ -1,6 +1,6 @@
 {
   "model": "Ternary-Bonsai-4B-mlx-2bit",
-  "config": "/Users/gaetano/ai/Models/Ternary-Bonsai-4B-mlx-2bit/config.json",
+  "config": "config.json",
   "spec": {
     "model_type": "qwen3",
     "hidden_size": 2560,

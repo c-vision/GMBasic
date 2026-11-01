@@ -1,6 +1,6 @@
 {
   "model": "Qwen3.8-Flash-Next-4bit",
-  "config": "/Users/gaetano/ai/Models/Qwen3.8-Flash-Next-4bit/config.json",
+  "config": "config.json",
   "spec": {
     "model_type": "qwen4_exp_text",
     "hidden_size": 2560,
