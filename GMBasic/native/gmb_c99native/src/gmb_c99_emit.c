@@ -2190,7 +2190,17 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                 memcpy(_pre, e->var, _pl); _pre[_pl] = 0;
                 var_t* _bv = lookup_var(c, _pre);
                 if (_bv && (_bv->boxed_val || _bv->gkind == GK_HTTPREQ || _bv->gkind == GK_HTTPRESP)) {
-                    if (e->nargs == 1 && strcasecmp(_dot + 1, "Get") == 0) return TY_STR;
+                    if (e->nargs == 1 && strcasecmp(_dot + 1, "Get") == 0) {
+                        /* DICT TIPIZZATO con VALORI NUMERICI (`DIM d AS DICT OF STRING, INTEGER`):
+                         * Get restituisce il VALORE (double), non una stringa. Prima ogni
+                         * `.Get(...)` era TY_STR per via della regola pensata per i dict
+                         * dinamici (HTTPHEADERS/HTTPOPTIONS, valori stringa) → PRINT emetteva
+                         * gmb_print_string(<double>) e la leg C99 non compilava
+                         * (collections/dict_values.bas, member_case, set_get_grafe, setkeyvalue). */
+                        if (_bv->gkind && gk_is_dict(_bv->gkind) && !_bv->elem_str && !_bv->stats_val)
+                            return TY_NUM;
+                        return TY_STR;
+                    }
                     if (e->nargs == 0 && strcasecmp(_dot + 1, "Headers") == 0) return TY_VAL;
                 }
             }
