@@ -756,8 +756,16 @@ public static partial class Linker
             {
                 if (!CanCoerce(inferredType, finalTargetType, context, program))
                 {
+                    var targetName = finalTarget switch
+                    {
+                        VariableTarget vt => vt.NameCleaned.Lexeme,
+                        ArrayElementTarget aet => aet.NameCleaned.Lexeme,
+                        FieldTarget ft => ft.OriginalToken.Lexeme,
+                        _ => null
+                    };
+                    var named = string.IsNullOrEmpty(targetName) ? "" : $" nella variabile '{targetName}'";
                     throw CreateError(rewrittenValue,
-                        $"Impossibile assegnare un valore di tipo '{inferredType}' a una variabile di tipo '{finalTargetType}'.",
+                        $"Impossibile assegnare un valore di tipo '{inferredType}'{named} (tipo dichiarato '{finalTargetType}'). Tipizzare la variabile (es. AS JSON/AS STRING) o usare il suffisso '$'.",
                         ErrorCode.TypeMismatch);
                 }
             }
@@ -2726,7 +2734,7 @@ public static partial class Linker
                 !CanCoerce(valType, finalType, context, program))
             {
                 throw CreateError(rewrittenInitialValue,
-                    $"Impossibile assegnare un valore di tipo '{valType}' a una variabile di tipo '{finalType}'.",
+                    $"Impossibile assegnare un valore di tipo '{valType}' nella variabile '{decl.NameSuffixed.Lexeme}' (tipo dichiarato '{finalType}'). Tipizzare la variabile (es. AS JSON/AS STRING) o usare il suffisso '$'.",
                     ErrorCode.TypeMismatch);
             }
         }
