@@ -81,7 +81,8 @@ The standalone TUI console (client, via HTTP) is `src/ServiceConsoleTui.bas` (`c
 > [!warning] **Verification 2026-10-31 (monorepo).**
 > 1. **It compiles**: it used four non-existent builtins (`FORM_RESET`, `FORM_FRAME`, `FORM_CLOSED`,
 >    `FORM_CLOSE`); now it goes through the real FFIs of `libgmb_gfx` (`gmb_tui_controls_reset`,
->    `gmb_ui_frame`, `gmb_form_closed`, `gmb_form_request_close`), as `GMBasicTuiIde/src/GMBasicTuiIde.bas` does.
+>    `gmb_ui_frame`, `gmb_form_closed`, `gmb_form_request_close`), come fa il progetto IDE TUI
+>    (`GMBasicTuiIde`, in sviluppo fuori dal repo pubblico).
 > 2. **Default mode (status) fails at runtime**: `OverflowException: Value was either too
 >    large or too small for an Int16` — opened as bug
 >    `Bugs/(open) - ServiceConsole-Status-Overflow-Int16.md` in the monorepo vault.

@@ -38,8 +38,7 @@ alters model weights — but it is **not** a different license: it is PUL like t
 
 ## What is not ours (third-party)
 
-Third-party material keeps **its own license**, and is listed in [`NOTICE`](NOTICE) and
-[`GMBasicIDE/THIRD_PARTY_NOTICES.md`](GMBasicIDE/THIRD_PARTY_NOTICES.md):
+Third-party material keeps **its own license**, and is listed in [`NOTICE`](NOTICE):
 
 - **SQLite** (`GMBasic/native/gmb_sql_ext/sqlite346/`) — public domain;
 - **stb_truetype** (`gmb_runtime_c/include/stb_truetype.h`) — MIT / public domain;

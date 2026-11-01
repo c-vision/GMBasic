@@ -340,6 +340,8 @@ SYNC GMBasic → GMBasicMonoRepo
   point accepted in `Orchestrator`), and in Sharp there is no `build --project` CLI that is
   the counterpart of the change made in C.
 - **GMBasicIDE** enters as the fourth submodule (`url = ../GMBasicIDE`): the former `VB6Clone`,
+  <!-- 2026-11-01: la nota è STORICA. GMBasicIDE e GMBasicTuiIde sono ora fuori dal repo pubblico
+       (in sviluppo, in `.gitignore`) finché non sono complete. -->
   renamed in folder, bundle, identifier, system menu, runtime titles and docs.
   The breakpoint marker in the `.frm` remains `'@VB6CloneBreakpoints` (on-disk format of the
   existing projects, byte-identical round-trip). Build and `make check` green after the rename.

@@ -1,7 +1,0 @@
-{
-  "version": 1,
-  "name": "HelloGMBasic",
-  "language": "gmbasic",
-  "backend": "c99native",
-  "entry": "Main.bas"
-}
