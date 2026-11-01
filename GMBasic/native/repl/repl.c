@@ -1007,6 +1007,113 @@ static void con_emit_colors(int clear)
     fflush(stdout);
 }
 
+static int rpl_loop_ansi(const rpl_options_t* o, const char* initial_cmd, const char* mode_line);
+
+/* ── Loop della StandardConsole (-c): BUFFER A CELLE, non un terminale ─────────
+ * La StandardConsole C# è una console bufferizzata: mantiene una griglia di celle
+ * (ScreenCell), ha scroll region proprie, VIEW PRINT, SAVE/RESTORE SCREEN, LOCATE e
+ * `CONSOLE.SCROLLMODE`. Le scritture vanno NEL BUFFER; Present()/RenderBuffer()
+ * disegna lo schermo (ANSI, con la palette X3 — sfondo blu, testo bianco).
+ * L'input è a tasti (raw sul tty): ogni tasto aggiorna il buffer e si ripresenta. */
+static int  g_std_fd = -1;
+static struct termios g_std_orig;
+
+static int std_tty_open(void)
+{
+    g_std_fd = open("/dev/tty", O_RDWR);
+    if (g_std_fd < 0) return -1;
+    struct termios raw;
+    if (tcgetattr(g_std_fd, &g_std_orig) != 0) { close(g_std_fd); g_std_fd = -1; return -1; }
+    raw = g_std_orig;
+    raw.c_lflag &= ~(ICANON | ECHO);
+    raw.c_iflag &= ~(IXON | ICRNL | INLCR | IGNCR);
+    raw.c_cc[VMIN] = 0; raw.c_cc[VTIME] = 0;
+    tcsetattr(g_std_fd, TCSANOW, &raw);
+    return 0;
+}
+static void std_tty_close(void)
+{
+    if (g_std_fd >= 0) { tcsetattr(g_std_fd, TCSANOW, &g_std_orig); close(g_std_fd); g_std_fd = -1; }
+}
+static int std_key(int ms)
+{
+    if (g_std_fd < 0) return -1;
+    fd_set f; struct timeval tv;
+    FD_ZERO(&f); FD_SET(g_std_fd, &f);
+    tv.tv_sec = ms / 1000; tv.tv_usec = (ms % 1000) * 1000;
+    if (select(g_std_fd + 1, &f, NULL, NULL, &tv) <= 0) return -1;
+    unsigned char c;
+    if (read(g_std_fd, &c, 1) != 1) return -1;
+    return (int)c;
+}
+
+static int rpl_loop_standard(const rpl_options_t* o, gmb_iconsole_t* con,
+                             gmb_sdl_console_t* model, const char* initial_cmd,
+                             const char* mode_line)
+{
+    char capfile[128];
+    snprintf(capfile, sizeof(capfile), "/tmp/gmb_repl_cap_%d.txt", (int)getpid());
+    if (std_tty_open() != 0) return rpl_loop_ansi(o, initial_cmd, mode_line);
+    if (con->poll_for_resize) con->poll_for_resize(con);     /* buffer = terminale fisico */
+    int W = gmb_screen_width(gmb_sdl_console_screen(model));
+    if (W < 20) W = 80;
+    gmb_sdl_console_set_cursor_visible(model, 1);
+    gmb_sdl_console_clear_screen(model);
+    gmb_sdl_console_set_cursor_position(model, 1, 1);
+    gmb_sdl_console_write(model, "\n");
+    con_writeln_centered(model, W, "GMBASIC 1.0.0");
+    con_writeln_centered(model, W, "(C) 2026 MINARDI GAETANO. ALL RIGHTS RESERVED.");
+    con_writeln_centered(model, W, mode_line);
+    gmb_sdl_console_write(model, "\nREADY.\n");
+    if (con->present) con->present(con);
+
+    if (initial_cmd && *initial_cmd) {
+        if (con_exec(o, model, initial_cmd, capfile)) { std_tty_close(); return 0; }
+        gmb_sdl_console_write(model, "READY.\n");
+        if (con->present) con->present(con);
+    }
+
+    char line[1024]; int n = 0;
+    int row0 = gmb_sdl_console_cursor_row(model), col0 = gmb_sdl_console_cursor_col(model);
+    for (;;) {
+        int k = std_key(30);
+        if (k < 0) {
+            int pw = gmb_screen_width(gmb_sdl_console_screen(model));
+            if (con->poll_for_resize) con->poll_for_resize(con);
+            if (gmb_screen_width(gmb_sdl_console_screen(model)) != pw) {
+                int bh = gmb_screen_height(gmb_sdl_console_screen(model));
+                if (row0 >= bh) row0 = bh - 1;
+                if (con->present) con->present(con);
+            }
+            continue;
+        }
+        if (k == 3) n = 0;                        /* Ctrl+C: riga annullata */
+        else if (k == 4) break;                   /* Ctrl+D: esce */
+        else if (k == 13 || k == 10) {
+            gmb_sdl_console_write(model, "\n");
+            line[n] = 0;
+            int quit = con_exec(o, model, line, capfile);
+            n = 0;
+            if (quit) { if (con->present) con->present(con); break; }
+            gmb_sdl_console_write(model, "READY.\n");
+            row0 = gmb_sdl_console_cursor_row(model); col0 = gmb_sdl_console_cursor_col(model);
+        } else if (k == 8 || k == 127) {
+            if (n > 0) n--;
+        } else if (k >= 32) {
+            if (n < (int)sizeof(line) - 1) line[n++] = (char)k;
+        } else continue;
+        line[n] = 0;
+        gmb_sdl_console_set_cursor_position(model, row0 + 1, col0 + 1);
+        gmb_sdl_console_erase_to_eol(model);
+        gmb_sdl_console_write(model, line);
+        if (con->present) con->present(con);
+    }
+    std_tty_close();
+    printf("\x1b[0m"); fflush(stdout);
+    if (con->present) con->present(con);
+    return 0;
+}
+
 /* ── Console testuali: due comportamenti DISTINTI, come nel C# ────────────────
  * Riferimento misurato (REPL C# catturata in un pty, senza finestre):
  *
@@ -1105,7 +1212,14 @@ static int rpl_loop_controls(const rpl_options_t* o, gmb_sdl_console_t* sdl, con
     else if (gmb_console_mode_get() == 3) mode_line = "SYSTEM CONSOLE MODE";
     else mode_line = "STANDARD CONSOLE MODE";
     if (sdl) return rpl_loop_sdl_model(o, sdl, initial_cmd, mode_line);
-    return rpl_loop_ansi(o, initial_cmd, mode_line);   /* Standard/System: ANSI + colori */
+    {   /* Standard (-c): console bufferizzata a celle + Present(). */
+        gmb_iconsole_t* con = gmb_iconsole_active();
+        if (con && gmb_console_mode_get() == 2) {
+            gmb_sdl_console_t* model = gmb_iconsole_model(con);
+            if (model) return rpl_loop_standard(o, con, model, initial_cmd, mode_line);
+        }
+    }
+    return rpl_loop_ansi(o, initial_cmd, mode_line);   /* System: ANSI puro */
 }
 
 int rpl_loop(const rpl_options_t* o, const char* initial_dir)
