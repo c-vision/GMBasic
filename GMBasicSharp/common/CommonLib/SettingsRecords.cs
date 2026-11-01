@@ -281,7 +281,7 @@ public sealed record SystemSettings
 {
     /// <summary>Namespaces predefiniti globali.</summary>
     [JsonPropertyName("defaultNamespaces")]
-    public List<string> DefaultNamespaces { get; init; } = ["SYSTEM", "CONSOLE", "GRAPHICS", "MATH", "STRINGS", "DATETIME", "CONVERSIONS", "IO", "CONCURRENCY", "ARRAYS", "WINDOWS"];
+    public List<string> DefaultNamespaces { get; init; } = ["SYSTEM", "CONSOLE", "GRAPHICS", "MATH", "STRINGS", "DATETIME", "CONVERSIONS", "IO", "CONCURRENCY", "ARRAYS"];
 
     /// <summary>Cartelle di import predefinite.</summary>
     [JsonPropertyName("importFolders")]

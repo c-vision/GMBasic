@@ -36,7 +36,7 @@ public static class SourcePipeline
     }
 
     public static readonly string[] DefaultNamespacesStandard =
-        ["SYSTEM", "CONSOLE", "GRAPHICS", "MATH", "STRINGS", "DATETIME", "CONVERSIONS", "IO", "CONCURRENCY", "ARRAYS", "WINDOWS"];
+        ["SYSTEM", "CONSOLE", "GRAPHICS", "MATH", "STRINGS", "DATETIME", "CONVERSIONS", "IO", "CONCURRENCY", "ARRAYS"];
 
     /// <summary>Seam di test + base del registry P0: registry e namespace di default ESPLICITI,
     /// materializzazione dei builtin nei Symbol DAL registry fornito, Program+Compiler esposti
