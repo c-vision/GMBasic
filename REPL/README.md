@@ -21,7 +21,8 @@ continua a funzionare identica per il mondo C.
       Con `csharp`: `IL`/`PCODE` reali, `EVAL`, dump, `COMPILE`/`RUN` mappati su P-Code e IL.
       `--csharp-cli <path>` rende l'assenza del mondo C# simulabile (F5).
       Parità: `tools/sh/repl_engine_parity.sh <file.bas>`.
-- [ ] **F4b** — debug (`BREAK/STEP/…`) con engine C#.
+- [x] **F4b** — debug con engine C#: `gmbcs debug` (P-Code: `c/s/o/u/b/bt/p/q`), usato da
+      `BREAK`/`STEP` + `RUN`; verificato interattivamente (stop, `bt`, `c`).
 - [ ] **F5** — prova di eliminabilità completa (oggi: `otool -L` = nessuna dipendenza
       .NET; `--csharp-cli /nonexistent` → comandi C tutti verdi, `IL`/`PCODE` dichiarati
       non disponibili).

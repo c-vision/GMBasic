@@ -183,9 +183,11 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
       Nuova opzione `gmb --quiet` (dump/eval/check/build/run): niente chatter del driver, così
       l'output dei due engine coincide. Test: `tools/sh/repl_engine_parity.sh <file.bas>` →
       PASS su `RUN` (vmc|pcode), `RUN -c99` (c99n|il), `EVAL`, dump non vuoti.
-- [ ] **F4b — debug con engine C#**: `BREAK/STEP/TRACE/WATCH` oggi passano da `gmb_vm_host`
-      (chunk A1). Con `--engine=csharp` manca il debugger in-process sull'IL/P-Code di `gmbcs`:
-      è l'ultimo pezzo della parità F4.
+- [x] **F4b — debug con engine C#** (2026-11-01): `gmbcs debug` sul `PCodeDebugDriver`
+      (`--break N… --step`, protocollo `c/s/o/u/b/bt/p/q` su stdin). La REPL con
+      `--engine=csharp`: `BREAK`/`STEP` + `RUN` → `gmbcs debug`; senza breakpoint →
+      `gmbcs run`. Verificato interattivamente su pty: stop alla riga 4, `bt` (frame
+      `#0 __main`), `c` → programma completo. Con `--engine=c` resta `gmb_vm_host --debug`.
 - [~] **F5 — Prova di eliminabilità** (parziale, 2026-11-01): `otool -L gmb_repl` non mostra
       alcuna dipendenza .NET/mono; `nm -u` non contiene simboli di lexer/parser/linker/compilatore;
       con `--csharp-cli /nonexistent` (assenza forzata del mondo C#) `RUN`, `AST`, `DASM`,

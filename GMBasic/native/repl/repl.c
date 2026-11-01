@@ -418,10 +418,8 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
             }
             if (getenv("GMBASIC_DEBUG")) fprintf(stderr, "[RUN] cmd='%s' args='%s' file='%s'\n", cmd, args, file);
             if (rpl_engine_cs(o)) {
-                /* Engine C#: VMC → P-Code (.prg, in-process), C99 → IL. Same command, same output. */
-                const char* e = (o->backend == RPL_VMC) ? " --engine pcode" : " --engine il";
-                int rc = rpl_cs_cmd("run", file, e, o);
-                if (rc != 0) printf("[CS ERROR] exit %d\n", rc);
+                /* Engine C#: run o debug (breakpoint/step) via gmbcs, stdio ereditato. */
+                rpl_run_cs(file, o);
             }
             else if (o->backend == RPL_VMC) { int rc = rpl_run_vmc(file, o); if (rc != 0) printf("[VMC ERROR] exit %d\n", rc); }
             else { int rc = rpl_run_c99(file, o); if (rc != 0) printf("[C99 ERROR] exit %d\n", rc); }   /* successo: solo output del programma */

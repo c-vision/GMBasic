@@ -34,6 +34,7 @@ add_executable(gmb_repl
     pkg_cmds.c
     vmc_runner.c
     c99_runner.c
+    cs_runner.c
     bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_bytecode/src/gmb_disasm.c
 )
