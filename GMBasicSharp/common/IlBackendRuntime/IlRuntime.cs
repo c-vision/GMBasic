@@ -3384,6 +3384,8 @@ public static partial class IlRuntime
     {
         var reqDict = HttpRequestToDict(req);
         var res = new Basic.IlBackend.PCode.Http.PCodeHttpResponse();
+        // Range della richiesta → res.SendFile può servire una fetta (206) anche sulla gamba IL.
+        res.AttachRequestInfo(req.Headers.TryGetValue("Range", out var reqRange) ? reqRange : null);
         var task = DispatchGpmHandler(handlerSymbolId, [reqDict, res], requestTimeoutMs: 30000, _httpScheduler, res);
         if (task?.PendingException is { } ex)
             return new HttpResponse { StatusCode = 500, ContentType = "text/plain", Body = $"500 Handler Error: {ex.Message}" };

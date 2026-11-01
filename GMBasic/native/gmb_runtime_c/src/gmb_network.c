@@ -2241,6 +2241,8 @@ int gmb_http_parse_range(const char* header, long long total, long long* start, 
 void gmb_http_response_send_file(gmb_val_t res, const char* path, const char* content_type)
 {
     FILE* ff;
+    long fsz;
+    const char* ct;
     if (!path || !*path) return;
     ff = fopen(path, "rb");
     if (!ff)
@@ -2254,16 +2256,57 @@ void gmb_http_response_send_file(gmb_val_t res, const char* path, const char* co
         gmb_val_dict_set(res, "__body_len", gmb_make_val_double(0.0));
         return;
     }
+    ct = (content_type && *content_type) ? content_type : gmb_http_guess_content_type(path);
     fseek(ff, 0, SEEK_END);
+    fsz = ftell(ff);
+    fseek(ff, 0, SEEK_SET);
+    if (fsz < 0) fsz = 0;
     {
-        long fsz = ftell(ff);
-        fseek(ff, 0, SEEK_SET);
-        if (fsz < 0) fsz = 0;
+        /* RANGE anche su SendFile (download applicativi: `res.SendFile` di un archivio):
+         * l'header della richiesta arriva nel dict come "__range" (il wrapper lo copia da
+         * req, come "__stream_handle"). Senza, un download interrotto ripartiva da zero. */
+        gmb_val_t rv;
         {
-            char* bb = (char*)malloc((size_t)fsz + 1);
+            gmb_dict_t rd = gmb_val_as_dict(res);
+            rv = gmb_dict_get(rd, "__range");
+        }
+        const char* rng = (rv.kind == GMB_TYPE_STRING && rv.v_string.data && *rv.v_string.data)
+                          ? rv.v_string.data : NULL;
+        long long start = 0, end = fsz > 0 ? fsz - 1 : -1;
+        int pr = rng ? gmb_http_parse_range(rng, (long long)fsz, &start, &end) : 0;
+
+        /* Accept-Ranges sempre: è il segnale che il download è riprendibile. */
+        gmb_http_response_append_header(res, "Accept-Ranges: bytes");
+
+        if (pr < 0)
+        {
+            char cr[96];
+            snprintf(cr, sizeof cr, "Content-Range: bytes */%lld", (long long)fsz);
+            gmb_http_response_append_header(res, cr);
+            gmb_val_dict_set(res, "Status", gmb_make_val_double(416.0));
+            gmb_val_dict_set(res, "StatusCode", gmb_make_val_double(416.0));
+            gmb_val_dict_set(res, "Body", gmb_make_val_string(""));
+            gmb_val_dict_set(res, "__body_len", gmb_make_val_double(0.0));
+            fclose(ff);
+            return;
+        }
+        if (pr == 1)
+        {
+            char cr[96];
+            snprintf(cr, sizeof cr, "Content-Range: bytes %lld-%lld/%lld",
+                     start, end, (long long)fsz);
+            gmb_http_response_append_header(res, cr);
+            gmb_val_dict_set(res, "Status", gmb_make_val_double(206.0));
+            gmb_val_dict_set(res, "StatusCode", gmb_make_val_double(206.0));
+        }
+        {
+            long long want = pr == 1 ? end - start + 1 : (long long)fsz;
+            char* bb = (char*)malloc((size_t)(want > 0 ? want : 0) + 1);
             if (bb)
             {
-                size_t got = fsz ? fread(bb, 1, (size_t)fsz, ff) : 0;
+                size_t got = 0;
+                if (want > 0 && fseek(ff, (long)start, SEEK_SET) == 0)
+                    got = fread(bb, 1, (size_t)want, ff);
                 bb[got] = 0;
                 /* gmb_make_val_string_counted_n COPIA n byte (NUL interni preservati: uno ZIP
                  * ha 0x00 a offset 5) → il buffer temporaneo si libera. */
@@ -2274,10 +2317,7 @@ void gmb_http_response_send_file(gmb_val_t res, const char* path, const char* co
         }
     }
     fclose(ff);
-    if (content_type && *content_type)
-        gmb_val_dict_set(res, "ContentType", gmb_make_val_string(content_type));
-    else
-        gmb_val_dict_set(res, "ContentType", gmb_make_val_string(gmb_http_guess_content_type(path)));
+    gmb_val_dict_set(res, "ContentType", gmb_make_val_string(ct));
 }
 
 #if GMB_HAS_SSL
@@ -4124,6 +4164,38 @@ static void http_send_static_file(gmb_net_sock_t client, SSL* ssl,
     fclose(f);
 }
 
+/* Frase di stato per la status-line. Prima era sempre "OK": un 206 usciva come
+ * "HTTP/1.1 206 OK" (valido per i client, ma sbagliato e diverso dalle gambe managed). */
+const char* gmb_http_reason_phrase(int status)
+{
+    switch (status)
+    {
+        case 200: return "OK";
+        case 201: return "Created";
+        case 202: return "Accepted";
+        case 204: return "No Content";
+        case 206: return "Partial Content";
+        case 301: return "Moved Permanently";
+        case 302: return "Found";
+        case 304: return "Not Modified";
+        case 400: return "Bad Request";
+        case 401: return "Unauthorized";
+        case 403: return "Forbidden";
+        case 404: return "Not Found";
+        case 405: return "Method Not Allowed";
+        case 409: return "Conflict";
+        case 413: return "Payload Too Large";
+        case 416: return "Range Not Satisfiable";
+        case 429: return "Too Many Requests";
+        case 500: return "Internal Server Error";
+        case 501: return "Not Implemented";
+        case 502: return "Bad Gateway";
+        case 503: return "Service Unavailable";
+        case 504: return "Gateway Timeout";
+        default: return "OK";
+    }
+}
+
 /* Invia la risposta HTTP: righe header "Nome: Valore\n" (mutabile, liberato dal chiamante),
  * Content-Type esplicito sostituisce il default, le altre righe (Location, Set-Cookie, ...)
  * passano in risposta; header di sicurezza automatici (HTTP CONFIG SecurityHeaders) non
@@ -4184,8 +4256,9 @@ static void http_send_response(gmb_http_server_t* s, gmb_net_sock_t client, SSL*
     }
     char head[1024];
     snprintf(head, sizeof(head),
-        "HTTP/1.1 %d OK\r\nContent-Type: %s\r\n%sContent-Length: %zu\r\nConnection: close\r\n\r\n",
-        status <= 0 ? 200 : status, ctype, extra ? extra : "", body_len);
+        "HTTP/1.1 %d %s\r\nContent-Type: %s\r\n%sContent-Length: %zu\r\nConnection: close\r\n\r\n",
+        status <= 0 ? 200 : status, gmb_http_reason_phrase(status <= 0 ? 200 : status),
+        ctype, extra ? extra : "", body_len);
     http_io_send(client, ssl, head, strlen(head));
     if (body && body_len) http_io_send(client, ssl, body, body_len);
     free(extra);

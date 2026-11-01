@@ -6,7 +6,9 @@
 ' Il file binario è creato dal test come array di BYTE (PUT # su file BINARY): così il NUL è
 ' reale e il test è portabile senza dipendere da una fixture del repo. Path ASSOLUTI (/tmp)
 ' perché la CWD differisce fra le gambe.
-' EXPECT: txt-ok|bin-ok|miss-500
+'   - 2026-11-01: RANGE su res.SendFile (download riprendibili): 206 + Content-Range,
+'     Accept-Ranges sempre, 416 per una fetta impossibile.
+' EXPECT: txt-ok|bin-ok|miss-500|accept-ranges|range-206|range-416
 IMPORT HTTP
 IMPORT IO
 
@@ -56,6 +58,27 @@ SUB Main()
 
   DIM fm AS FETCHRESULT = FETCH("http://localhost:8798/m", opts)
   IF fm.StatusCode = 500 THEN PRINT "miss-500" ELSE PRINT "miss-fail-st="; fm.StatusCode
+
+  ' 4) Range su SendFile: ripresa di un download (206 + Content-Range + Accept-Ranges)
+  IF fb.Headers.Get("Accept-Ranges") = "bytes" THEN PRINT "accept-ranges" ELSE PRINT "accept-ranges-fail"
+
+  DIM o1 AS HTTPOPTIONS = NEW HTTPOPTIONS
+  o1.Headers.Connection = "close"
+  o1.Headers.Add("Range", "bytes=0-9")
+  DIM fr AS FETCHRESULT = FETCH("http://localhost:8798/b", o1)
+  ' NB: ContentLength, non LEN(fr.Body) — il file è BINARIO e i NUL interni non vivono in una
+  ' stringa (LEN si fermerebbe al primo NUL).
+  IF fr.StatusCode = 206 AND fr.ContentLength = 10 AND fr.Headers.Get("Content-Range") = "bytes 0-9/10" THEN
+    PRINT "range-206"
+  ELSE
+    PRINT "range-fail=["; fr.StatusCode; ":"; fr.ContentLength; ":"; fr.Headers.Get("Content-Range"); "]"
+  END IF
+
+  DIM o2 AS HTTPOPTIONS = NEW HTTPOPTIONS
+  o2.Headers.Connection = "close"
+  o2.Headers.Add("Range", "bytes=999-")
+  DIM f4 AS FETCHRESULT = FETCH("http://localhost:8798/b", o2)
+  IF f4.StatusCode = 416 THEN PRINT "range-416" ELSE PRINT "range-416-fail=["; f4.StatusCode; "]"
 
   HTTP SERVER STOP
   KILL "/tmp/gmb_mt_sf_txt.dat"

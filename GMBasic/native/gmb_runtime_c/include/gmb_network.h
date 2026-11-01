@@ -412,6 +412,10 @@ void gmb_http_response_send_file(gmb_val_t res, const char* path, const char* co
  * una stringa statica (mai NULL). */
 const char* gmb_http_guess_content_type(const char* path);
 
+/* Frase di stato HTTP ("206 Partial Content", "416 Range Not Satisfiable", ...) per la
+ * status-line: antesignana sempre "OK". Sorgente UNICA delle gambe C. */
+const char* gmb_http_reason_phrase(int status);
+
 /* Range HTTP (RFC 9110 §14.1): parse di un header "bytes=start-end" per un corpo di `total`
  * byte. Ritorna:
  *    1 = range valido  (*start/*end inclusivi, già clampati dentro [0, total-1]);

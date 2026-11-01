@@ -7334,6 +7334,18 @@ static int gmb_vm_http_handler_ex(void* ctx, const gmb_http_request_t* req_c,
      * quindi il sink NON può essere thread-local: si passa per il dict res. */
     if (req_c && req_c->stream_handle)
         gmb_dict_set(res->dict, "__stream_handle", gmb_make_val_double((double)req_c->stream_handle));
+    /* Range della richiesta: res.SendFile lo usa per servire una fetta (206) invece del file
+     * intero — stessa via del sink di streaming, perché il task gira su un worker GPM. */
+    if (req_c)
+        for (int i = 0; i < req_c->header_count; i++)
+        {
+            if (req_c->header_names[i] && strcasecmp(req_c->header_names[i], "Range") == 0
+                && req_c->header_values[i] && *req_c->header_values[i])
+            {
+                gmb_dict_set(res->dict, "__range", gmb_make_val_string_counted(req_c->header_values[i]));
+                break;
+            }
+        }
 
     /* crea il task handler e accodalo nel GPM (worker thread lo eseguirà).
        Gli argomenti della SUB (req, res) vanno sullo stack del task. */
@@ -11698,64 +11710,19 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     }
                     else if (strcmp(methodName, "SendFile") == 0 && argCount >= 1)
                     {
-                        /* res.SendFile(path [, contentType]) — era DICHIARATO nello schema del
-                         * tipo (StdLib.Http.cs) ma non implementato su nessun backend: la
-                         * chiamata era un no-op e la risposta restava 200 a corpo vuoto. Per
-                         * PackageServer.bas HandleDownload questo rendeva impossibile
-                         * scaricare QUALSIASI pacchetto dal registry.
-                         * Il file e' letto SUBITO, non lazy: chi lo cancella subito dopo
-                         * (KILL tmp) non svuota la risposta. Il corpo binario viaggia nella
-                         * stringa del dict (che ha lunghezza esplicita) e la lunghezza in
-                         * "__body_len": la route BINARIA la usa al posto di strlen, altrimenti
-                         * uno ZIP verrebbe troncato al primo NUL (l'header locale ne ha a
+                        /* res.SendFile(path [, contentType]) — ora chiama l'UNICA implementazione
+                         * del runtime condiviso (gmb_network.c, §0bis), la stessa che usa il
+                         * C99Native. L'inline che stava qui duplicava lettura file +
+                         * Content-Type e, non conoscendo il Range, non permetteva di riprendere
+                         * un download interrotto. La funzione legge il file SUBITO (chi lo
+                         * cancella subito dopo col KILL non svuota la risposta) e deposita i
+                         * byte in Body + "__body_len" (lunghezza esplicita: uno ZIP ha NUL a
                          * offset 5). */
                         const char* fp = (args[0].type == 2 && args[0].ref)
                             ? ((gmb_obj_string_t*)args[0].ref)->data : "";
-                        FILE* ff = (fp && *fp) ? fopen(fp, "rb") : NULL;
-                        if (!ff)
-                        {
-                            gmb_dict_set(sv->dict, "Status", gmb_make_val_double(500.0));
-                            gmb_dict_set(sv->dict, "Body",
-                                gmb_make_val_string("500 SendFile: file non leggibile"));
-                            gmb_dict_set(sv->dict, "__body_len", gmb_make_val_double(0.0));
-                        }
-                        else
-                        {
-                            fseek(ff, 0, SEEK_END);
-                            long fsz = ftell(ff);
-                            fseek(ff, 0, SEEK_SET);
-                            if (fsz < 0) fsz = 0;
-                            /* gmb_dict_set CONSERVA il puntatore (gmb_dict.c: p->value = v):
-                             * il buffer va allocato qui e NON liberato — liberarlo lasciava
-                             * nel dict un puntatore pendente e la risposta mandava 10 byte. */
-                            char* bb = (char*)malloc((size_t)fsz + 1);
-                            if (bb)
-                            {
-                                size_t got = fsz ? fread(bb, 1, (size_t)fsz, ff) : 0;
-                                bb[got] = 0;
-                                gmb_val_t bv;
-                                bv.kind = GMB_TYPE_STRING;
-                                bv.v_string.data = bb;
-                                bv.v_string.length = (uint32_t)got;
-                                gmb_dict_set(sv->dict, "Body", bv);
-                                gmb_dict_set(sv->dict, "__body_len", gmb_make_val_double((double)got));
-                            }
-                            fclose(ff);
-                            if (argCount < 2)
-                            {
-                                /* Mappa estensione->Content-Type condivisa (parità C99/IL/
-                                 * PCode): prima solo .zip/.json → default text/plain. */
-                                gmb_dict_set(sv->dict, "ContentType",
-                                    gmb_make_val_string(gmb_http_guess_content_type(fp)));
-                            }
-                        }
-                        if (argCount >= 2)
-                        {
-                            const char* ct = (args[1].type == 2 && args[1].ref)
-                                ? ((gmb_obj_string_t*)args[1].ref)->data : "";
-                            if (ct && *ct)
-                                gmb_dict_set(sv->dict, "ContentType", gmb_make_val_string_counted(ct));
-                        }
+                        const char* ct = (argCount >= 2 && args[1].type == 2 && args[1].ref)
+                            ? ((gmb_obj_string_t*)args[1].ref)->data : NULL;
+                        gmb_http_response_send_file(gmb_make_val_obj(inst), fp, ct);
                     }
                     else if (strcmp(methodName, "SendJSON") == 0 || strcmp(methodName, "SendJson") == 0)
                     {
