@@ -121,9 +121,19 @@ managed — ora è identico e l'errore resta nel log (`[bsp-state] …`).
 > nulla. Ora delegano al runtime condiviso.
 
 ```toml
-bspEngine      = "c"     # "c" = VM/C (più veloce) · "managed" = VM P-Code/IL
-bspEnginePages = ""      # pagine da forzare sulla VM/C anche con bspEngine="managed"
+bspEngine          = "c"     # "c" = VM/C (più veloce) · "managed" = VM P-Code/IL
+bspEnginePages     = ""      # pagine da forzare sulla VM/C anche con bspEngine="managed"
+bspConcurrentPages = "index.bsp,canvas.bsp,wasm.bsp"   # render C in parallelo (rwlock lato lettura)
 ```
+
+**Concorrenza del motore C.** Il render non è più serializzato in blocco: le pagine in
+`bspConcurrentPages` (il cui stato passa **interamente** dall'hook → runtime managed) prendono il
+lato **lettura** di un `rwlock` e girano in parallelo; tutte le altre prendono il lato
+**scrittura** (serializzate), perché il ramo C toccherebbe registri non protetti. La cattura HTML
+è **per-render** (`print_ctx`), i net-hook hanno un mutex dedicato. Misure (`index.bsp`, cache
+spenta): c=10 **2.547 → 4.430 rps** (×1,74), c=20 4.674 rps con 0 richieste fallite e risposte
+byte-identiche; con la cache attiva (c=10) **52.348 rps**. Analisi:
+`Knowledge/BSP-Engine-Audit-Concorrenza`.
 
 **Verifica (obbligatoria dopo aver toccato pagine o superfici AI):**
 

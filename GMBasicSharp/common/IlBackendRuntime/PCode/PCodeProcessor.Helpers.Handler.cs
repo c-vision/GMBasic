@@ -187,6 +187,7 @@ internal sealed partial class PCodeProcessor
             ["BspCacheMs"] = 0.0,   // memoizzazione resa BSP (ms); 0 = disattivata
             ["BspEngine"] = "managed",   // "managed" | "c" (VM C, opt-in)
             ["BspEnginePages"] = "",     // pagine da servire con il motore C (es. "canvas.bsp,wasm.bsp")
+            ["BspConcurrentPages"] = "", // pagine renderizzabili in parallelo dal motore C
             ["EnableKeepAlive"] = true,
         };
 

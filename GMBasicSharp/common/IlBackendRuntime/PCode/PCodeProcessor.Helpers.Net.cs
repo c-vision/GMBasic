@@ -446,6 +446,7 @@ internal sealed partial class PCodeProcessor
         var bspCacheMs = (int)GetNum("BspCacheMs", defaults.BspCacheMs);
         var bspEngine = GetStr("BspEngine") ?? defaults.BspEngine;
         var bspEnginePages = GetStr("BspEnginePages") ?? defaults.BspEnginePages;
+        var bspConcurrentPages = GetStr("BspConcurrentPages") ?? defaults.BspConcurrentPages;
         var enableKeepAlive = GetBool("EnableKeepAlive", defaults.EnableKeepAlive);
         var securityHeaders = GetBool("SecurityHeaders", defaults.SecurityHeaders);
         var allowedIPs = GetStr("AllowedIPs") ?? defaults.AllowedIPs;
@@ -465,6 +466,7 @@ internal sealed partial class PCodeProcessor
             BspCacheMs = bspCacheMs,
             BspEngine = bspEngine ?? "managed",
             BspEnginePages = bspEnginePages ?? "",
+            BspConcurrentPages = bspConcurrentPages ?? "",
             EnableKeepAlive = enableKeepAlive,
             SecurityHeaders = securityHeaders,
             AllowedIPs = allowedIPs,
@@ -487,6 +489,8 @@ internal sealed partial class PCodeProcessor
                 string.Equals(bspEngine, "c", StringComparison.OrdinalIgnoreCase)
                     ? CommonLib.Http.BspEngine.C : CommonLib.Http.BspEngine.Managed;
             CommonLib.Http.BspRuntime.SetEngineCPages(bspEnginePages);
+            CommonLib.Http.BspRuntime.ConcurrentPages = bspConcurrentPages ?? "";
+            CommonLib.Http.BspC.SetConcurrentPages(CommonLib.Http.BspRuntime.ConcurrentPages);
             // "0 = nessun limite" è il contratto documentato di RateLimitRequestsPerMinute
             // (HttpServerSettings) e il backend IL lo rispetta (`if (... > 0)`) . Qui invece il
             // limiter veniva SEMPRE creato e configurato: con 0 il token-bucket partiva con 0

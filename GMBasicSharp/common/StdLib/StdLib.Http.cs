@@ -170,7 +170,9 @@ public sealed partial class StdLib
             // Motore BSP: "managed" (default) | "c" (VM C, opt-in)
             { "BspEngine", new StringType() },
             // Pagine servite dalla VM C anche con BspEngine="managed" (es. "canvas.bsp,wasm.bsp")
-            { "BspEnginePages", new StringType() }
+            { "BspEnginePages", new StringType() },
+            // Pagine renderizzabili in parallelo dal motore C (stato tutto nel client managed)
+            { "BspConcurrentPages", new StringType() }
         });
 
         RegisterTypeSchema(typeof(CookieJarType),

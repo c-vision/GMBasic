@@ -122,6 +122,9 @@ public static class BspRuntime
             EngineCPages.Add(Path.GetFileName(part));
     }
 
+    /// <summary>Pagine (CSV) dichiarate renderizzabili in parallelo dal motore C.</summary>
+    public static string ConcurrentPages { get; set; } = "";
+
     /// <summary>True se la pagina va servita dal motore C (preferenza globale o elenco per pagina).</summary>
     public static bool UseCEngine(string pageFilePath)
     {

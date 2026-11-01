@@ -76,9 +76,12 @@ typedef struct {
     struct gmb_obj** desc_obj;
     int desc_n, desc_cap;
     /* Output hook (per ora: stdout via printf) */
-    void (*print_str)(const char* s, uint32_t len);
-    void (*print_num)(double v);
-    void (*print_newline)(void);
+    /* Hook di output: il PRIMO parametro è `print_ctx` (contesto opaco del chiamante).
+     * Serve a rendere la cattura PER-VM: due render concorrenti non si scrivono più nello
+     * stesso buffer statico (prima l'unico modo era serializzare tutto con un mutex). */
+    void (*print_str)(void* ctx, const char* s, uint32_t len);
+    void (*print_num)(void* ctx, double v);
+    void (*print_newline)(void* ctx);
     /* Contesto opaco passato agli hook di output (es. buffer accumulatore
      * del bridge in-process gmb_vm_bridge; NULL per il host CLI). */
     void* print_ctx;

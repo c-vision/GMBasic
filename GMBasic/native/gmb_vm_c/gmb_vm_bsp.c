@@ -21,41 +21,62 @@
 #include <string.h>
 #include <sys/stat.h>
 
-/* ---- Cattura PRINT (buffer accumulatore, serializzato da g_render_mu) ---- */
-static char* g_cap_buf = NULL;
-static size_t g_cap_n = 0, g_cap_cap = 0;
+/* ---- Cattura PRINT: buffer PER-RENDER (contesto = job), non più statico ----
+ * Prima la cattura era un buffer statico e l'unico modo per non corromperlo era serializzare
+ * TUTTI i render con un mutex (un solo core utile). Ora ogni render ha il proprio buffer
+ * (`print_ctx` = &job) e la sincronizzazione si riduce a:
+ *   - rwlock: i render di pagine dichiarate "concorrenti" prendono il lato LETTURA (paralleli),
+ *     tutti gli altri il lato SCRITTURA (serializzati come prima);
+ *   - un piccolo mutex (g_net_mu) attorno al solo ripristino dei net-hook, che sono globali. */
+typedef struct { char* buf; size_t n, cap; } bsp_cap_t;
+static bsp_cap_t g_fallback_cap;          /* solo per chiamate senza ctx (non dovrebbero esistere) */
+static pthread_mutex_t g_fallback_mu = PTHREAD_MUTEX_INITIALIZER;
 
-static int cap_grow(size_t extra)
+static int cap_grow(bsp_cap_t* c, size_t extra)
 {
-    if (g_cap_n + extra + 1 <= g_cap_cap) return 1;
-    size_t nc = g_cap_cap ? g_cap_cap : 1024;
-    while (nc < g_cap_n + extra + 1) nc *= 2;
-    char* p = (char*)realloc(g_cap_buf, nc);
+    if (c->n + extra + 1 <= c->cap) return 1;
+    size_t nc = c->cap ? c->cap : 1024;
+    while (nc < c->n + extra + 1) nc *= 2;
+    char* p = (char*)realloc(c->buf, nc);
     if (!p) return 0;
-    g_cap_buf = p;
-    g_cap_cap = nc;
+    c->buf = p;
+    c->cap = nc;
     return 1;
 }
 
-static void cap_app(const char* s, size_t len)
+static void cap_app(bsp_cap_t* c, const char* s, size_t len)
 {
-    if (!s || !len) return;
-    if (!cap_grow(len)) return;
-    memcpy(g_cap_buf + g_cap_n, s, len);
-    g_cap_n += len;
-    g_cap_buf[g_cap_n] = '\0';
+    if (!c || !s || !len) return;
+    if (!cap_grow(c, len)) return;
+    memcpy(c->buf + c->n, s, len);
+    c->n += len;
+    c->buf[c->n] = '\0';
 }
 
-static void bsp_print_str(const char* s, uint32_t len) { cap_app(s, len); }
+/* Contesto di cattura: il job del render. Senza ctx si usa il fallback statico (protetto:
+ * non deve accadere su questo percorso, ma un print fuori contesto non deve perdere dati). */
+static bsp_cap_t* cap_of(void* ctx) { return ctx ? (bsp_cap_t*)ctx : &g_fallback_cap; }
 
-static void bsp_print_num(double v)
+static void bsp_print_str(void* ctx, const char* s, uint32_t len)
+{
+    if (ctx) { cap_app((bsp_cap_t*)ctx, s, len); return; }
+    pthread_mutex_lock(&g_fallback_mu); cap_app(&g_fallback_cap, s, len); pthread_mutex_unlock(&g_fallback_mu);
+}
+
+static void bsp_print_num(void* ctx, double v)
 {
     char b[64];
     int n = snprintf(b, sizeof(b), "%.17g", v);
-    if (n > 0) cap_app(b, (size_t)n);
+    if (n <= 0) return;
+    if (ctx) { cap_app((bsp_cap_t*)ctx, b, (size_t)n); return; }
+    pthread_mutex_lock(&g_fallback_mu); cap_app(&g_fallback_cap, b, (size_t)n); pthread_mutex_unlock(&g_fallback_mu);
 }
 
-static void bsp_print_nl(void) { cap_app("\n", 1); }
+static void bsp_print_nl(void* ctx)
+{
+    if (ctx) { cap_app((bsp_cap_t*)ctx, "\n", 1); return; }
+    pthread_mutex_lock(&g_fallback_mu); cap_app(&g_fallback_cap, "\n", 1); pthread_mutex_unlock(&g_fallback_mu);
+}
 
 /* ---- Parsing query string (k=v&k2=v2, url-encoded) → dict ---- */
 static int bsp_hexval(int c)
@@ -107,8 +128,45 @@ static gmb_dict_t bsp_parse_query(const char* query)
     return d;
 }
 
-/* ---- Rendering ---- */
-static pthread_mutex_t g_render_mu = PTHREAD_MUTEX_INITIALIZER;
+/* ---- Rendering: sincronizzazione "leggera" ----
+ * Il lock del render non è più un mutex unico: è un rwlock.
+ *   - pagine dichiarate CONCORRENTI (`gmb_bsp_shared_set_concurrent_pages`): lato LETTURA →
+ *     più render in parallelo (buffer di cattura per-render, quindi nessuna interferenza);
+ *   - tutte le altre: lato SCRITTURA → serializzate come prima (stato C condiviso non protetto:
+ *     vedi Knowledge/BSP-Engine-Audit-Concorrenza).
+ * Il ripristino dei net-hook resta serializzato da un mutex dedicato (stato globale del VM/C).
+ * Le pagine "concorrenti" sono quelle il cui stato passa INTERAMENTE dal client managed (hook):
+ * l'elenco è esplicito e verificabile, non dedotto. */
+static pthread_rwlock_t g_render_lock = PTHREAD_RWLOCK_INITIALIZER;
+static pthread_mutex_t g_net_mu = PTHREAD_MUTEX_INITIALIZER;
+static char g_concurrent_pages[1024];
+static int g_concurrent_any = 0;
+
+void gmb_bsp_set_concurrent_pages(const char* csv)
+{
+    snprintf(g_concurrent_pages, sizeof g_concurrent_pages, "%s", csv ? csv : "");
+    g_concurrent_any = g_concurrent_pages[0] != '\0';
+}
+
+/* True se il path (basename) è nell'elenco delle pagine concorrenti. */
+static int bsp_page_is_concurrent(const char* url_path)
+{
+    if (!g_concurrent_any || !url_path) return 0;
+    const char* base = strrchr(url_path, '/');
+    base = base ? base + 1 : url_path;
+    size_t bl = strlen(base);
+    const char* p = g_concurrent_pages;
+    while (*p) {
+        while (*p == ' ' || *p == ',') p++;
+        const char* e = p;
+        while (*e && *e != ',') e++;
+        size_t l = (size_t)(e - p);
+        while (l > 0 && (p[l - 1] == ' ' || p[l - 1] == '\t')) l--;
+        if (l == bl && strncasecmp(p, base, l) == 0) return 1;
+        p = e;
+    }
+    return 0;
+}
 
 /* Il server HTTP nativo serve le connessioni in SERIE nel loop di accept:
  * eseguire la pagina nel thread chiamante bloccherebbe il loop, e una pagina
@@ -122,6 +180,8 @@ typedef struct {
     const char* host;
     char* html;
     int status;
+    bsp_cap_t cap;            /* cattura PRINT di QUESTO render */
+    int concurrent;           /* 1 = lato lettura del rwlock */
     pthread_mutex_t mu;
     pthread_cond_t cv;
     int done;
@@ -131,11 +191,13 @@ static void* bsp_render_worker(void* arg)
 {
     bsp_render_job_t* j = (bsp_render_job_t*)arg;
 
-    /* Cattura PRINT e hook sono statici: un render alla volta. */
-    pthread_mutex_lock(&g_render_mu);
+    /* Pagine concorrenti → lato lettura (parallelo); le altre → lato scrittura. */
+    if (j->concurrent) pthread_rwlock_rdlock(&g_render_lock);
+    else pthread_rwlock_wrlock(&g_render_lock);
 
     gmb_vm_t vm;
     gmb_vm_init(&vm, j->chunk);
+    vm.print_ctx = &j->cap;          /* cattura PER-RENDER */
     vm.print_str = bsp_print_str;
     vm.print_num = bsp_print_num;
     vm.print_newline = bsp_print_nl;
@@ -176,14 +238,17 @@ static void* bsp_render_worker(void* arg)
     gmb_dict_free(&fd);
     gmb_dict_free(&sd);
 
-    g_cap_n = 0;
-    if (g_cap_buf) g_cap_buf[0] = '\0';
+    j->cap.n = 0;
+    if (j->cap.buf) j->cap.buf[0] = '\0';
 
     int rc = gmb_vm_run_mt(&vm);
 
     /* La run secondaria ha sovrascritto i block hook globali del net-watcher:
-     * ripristina quelli della VM principale (handler HTTP parcheggiati). */
+     * ripristina quelli della VM principale (handler HTTP parcheggiati). Sono stato GLOBALE
+     * del VM/C → piccolo mutex dedicato (non serve serializzare tutto il render). */
+    pthread_mutex_lock(&g_net_mu);
     gmb_vm_restore_net_hooks(gmb_vm_get_http_vm());
+    pthread_mutex_unlock(&g_net_mu);
 
     if (rc != 0)
     {
@@ -192,11 +257,14 @@ static void* bsp_render_worker(void* arg)
     }
     else
     {
-        j->html = g_cap_buf ? strdup(g_cap_buf) : strdup("");
+        j->html = j->cap.buf ? strdup(j->cap.buf) : strdup("");
         j->status = 200;
     }
 
-    pthread_mutex_unlock(&g_render_mu);
+    free(j->cap.buf);
+    j->cap.buf = NULL;
+    j->cap.n = j->cap.cap = 0;
+    pthread_rwlock_unlock(&g_render_lock);
 
     gmb_vm_free(&vm);
     gmb_chunk_free(j->chunk);
@@ -263,6 +331,10 @@ int gmb_vm_bsp_render(const char* bsp_path, const char* url_path,
     job.html = NULL;
     job.status = 0;
     job.done = 0;
+    job.cap.buf = NULL; job.cap.n = 0; job.cap.cap = 0;
+    /* Il lato del rwlock si decide UNA volta, dal path della pagina: nell'elenco delle pagine
+     * concorrenti (stato tutto nel client managed) → lettura; altrimenti scrittura. */
+    job.concurrent = bsp_page_is_concurrent(url_path);
     pthread_mutex_init(&job.mu, NULL);
     pthread_cond_init(&job.cv, NULL);
 
