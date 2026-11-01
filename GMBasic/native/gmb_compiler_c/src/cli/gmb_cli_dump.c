@@ -11,6 +11,7 @@
  * logica duplicata nella REPL.
  */
 #include "gmb_cli_internal.h"
+#include "gmb_disasm.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -102,6 +103,17 @@ int gmb_cli_dump_c(const char* file, const char* out)
     if (!out) { snprintf(tmp, sizeof tmp, "/tmp/gmb_dump_%d.c", (int)getpid()); out = tmp; }
     int rc = run_tool_ex("gmb_c99native_driver", file, out, "--no-exe");
     if (rc == 0 && out == tmp) { printf("%s\n", out); }
+    return rc;
+}
+
+/* disasm: produce il chunk e usa il disassemblatore CONDIVISO (gmb_bytecode). */
+int gmb_cli_dump_disasm(const char* file)
+{
+    char chunk[1024];
+    snprintf(chunk, sizeof chunk, "/tmp/gmb_disasm_%d.chunk", (int)getpid());
+    int rc = run_tool("gmb_chunk_driver", file, chunk);
+    if (rc == 0) rc = gmb_disasm_chunk_file(chunk);
+    unlink(chunk);
     return rc;
 }
 

@@ -62,11 +62,15 @@ target_compile_options(gmb_c99native_driver PRIVATE -Wall -Wextra)
 # (la discovery `gmb_inc_resolve`, la stessa del compilatore: niente copie nel CLI). È il
 # contratto a processo che l'IDE userà (D4); il driver C99Native lo cerca accanto al binario.
 add_executable(gmb_cli src/cli/gmb_cli.c src/cli/gmb_cli_project.c src/cli/gmb_cli_dump.c
+               ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_bytecode/src/gmb_disasm.c
+               ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_vm_c/gmb_chunk.c
                $<TARGET_OBJECTS:gmb_frontend>)   # split per la soglia 1200 righe (§0quater)
 # RID di build: il CLI cerca librerie/header nella CACHE (`~/.gmbasic/libs/<rid>/`).
 # Una sola mappatura (GmbRid.cmake), passata come costante al compilatore.
 target_compile_definitions(gmb_cli PRIVATE GMB_RID_STR="${GMB_RID}")
-target_include_directories(gmb_cli PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/frontend/include")
+target_include_directories(gmb_cli PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/frontend/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../gmb_bytecode/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../gmb_vm_c")
 target_compile_options(gmb_cli PRIVATE -Wall -Wextra)
 set_target_properties(gmb_cli PROPERTIES OUTPUT_NAME gmb)
 

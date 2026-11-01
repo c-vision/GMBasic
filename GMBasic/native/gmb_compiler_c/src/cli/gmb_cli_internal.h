@@ -22,6 +22,7 @@
 int gmb_cli_dump_ast(const char* file);
 int gmb_cli_dump_chunk(const char* file, const char* out);
 int gmb_cli_dump_c(const char* file, const char* out);
+int gmb_cli_dump_disasm(const char* file);
 int gmb_cli_eval(const char* code);
 
 #define CLI_PATH 4096

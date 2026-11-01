@@ -35,6 +35,7 @@ add_executable(gmb_repl
     vmc_runner.c
     c99_runner.c
     bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_bytecode/src/gmb_disasm.c
 )
 target_link_libraries(gmb_repl PRIVATE gmb_runtime gmb_agent_runtime gmb_executor_native gmb_compiler_c)
-target_include_directories(gmb_repl PRIVATE ../gmb_runtime_c/include ../gmb_compiler_c/include ../executor ../gmb_vm_c)
+target_include_directories(gmb_repl PRIVATE ../gmb_runtime_c/include ../gmb_compiler_c/include ../executor ../gmb_vm_c ../gmb_bytecode/include)
