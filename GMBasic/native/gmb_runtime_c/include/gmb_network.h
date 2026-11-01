@@ -412,6 +412,16 @@ void gmb_http_response_send_file(gmb_val_t res, const char* path, const char* co
  * una stringa statica (mai NULL). */
 const char* gmb_http_guess_content_type(const char* path);
 
+/* Range HTTP (RFC 9110 §14.1): parse di un header "bytes=start-end" per un corpo di `total`
+ * byte. Ritorna:
+ *    1 = range valido  (*start/*end inclusivi, già clampati dentro [0, total-1]);
+ *    0 = nessun range  (header assente, malformato o MULTI-range: si serve il corpo intero, 200);
+ *   -1 = NON soddisfacibile (start >= total → il server risponde 416 con "bytes *‍/total").
+ * SORGENTE UNICA C (§0bis) per il server nativo (VM/C, C99Native); le gambe managed hanno
+ * l'equivalente in CommonLib.Http.HttpRange, verificate dallo stesso MiniTest.
+ * Forme supportate: "bytes=0-99", "bytes=100-", "bytes=-50" (ultimi 50 byte). */
+int gmb_http_parse_range(const char* header, long long total, long long* start, long long* end);
+
 /* ── Streaming (chunked) di una risposta HTTP ─────────────────────────────────
  * Una risposta può essere inviata PROGRESSIVAMENTE (SSE, pagine lunghe, progressbar)
  * invece che bufferizzata a fine handler. Il server alloca un sink per connessione e lo

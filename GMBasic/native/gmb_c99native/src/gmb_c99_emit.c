@@ -21081,6 +21081,16 @@ static void st_net_cmd(ctx_t* c, gmb_stmt_t* s) {
                     emit_str_operand(c, c->http_routes[ri].path);
                     sb_printf(&c->out, ").data, %s, NULL);\n", c->http_routes[ri].wrap);
                 }
+                /* HTTP STATIC in pendenza: dopo il server (la registrazione ha bisogno
+                 * dell'handle). Prima C99Native non serviva alcun file statico. */
+                for (int si = 0; si < c->n_http_statics && !c->error[0]; si++) {
+                    ind(c);
+                    sb_put(&c->out, "gmb_http_server_static(__gmb_http_srv, (");
+                    emit_str_operand(c, c->http_statics[si].prefix);
+                    sb_put(&c->out, ").data, (");
+                    emit_str_operand(c, c->http_statics[si].dir);
+                    sb_put(&c->out, ").data);\n");
+                }
             }
             break;
         }
@@ -21183,6 +21193,30 @@ static void st_net_cmd(ctx_t* c, gmb_stmt_t* s) {
                 sb_put(&c->out, "0");
             }
             sb_put(&c->out, ");\n");
+            break;
+        }
+        case 19: { /* HTTP STATIC "<prefix>", "<dir>" — file statici (con Range/206 lato runtime).
+                      Se il server è già partito si registra subito, altrimenti resta in pendenza
+                      e viene registrato dopo HTTP SERVER (come route e middleware). */
+            if (nn < 2 || !na[0] || !na[1]) {
+                c99_fail(c, s->line, "HTTP STATIC: attesa forma HTTP STATIC \"<prefix>\", \"<dir>\"");
+                return;
+            }
+            if (c->http_srv_started) {
+                ind(c);
+                sb_put(&c->out, "gmb_http_server_static(__gmb_http_srv, (");
+                emit_str_operand(c, na[0]);
+                sb_put(&c->out, ").data, (");
+                emit_str_operand(c, na[1]);
+                sb_put(&c->out, ").data);\n");
+            } else if (c->n_http_statics < 16) {
+                c->http_statics[c->n_http_statics].prefix = na[0];
+                c->http_statics[c->n_http_statics].dir = na[1];
+                c->n_http_statics++;
+            } else {
+                c99_fail(c, s->line, "HTTP STATIC: troppe mappature (max 16)");
+                return;
+            }
             break;
         }
         case 20: { /* WEBSOCKET CONNECT host, port, ws [, path [, timeout]] — parity oracolo

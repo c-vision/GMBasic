@@ -2185,6 +2185,59 @@ const char* gmb_http_guess_content_type(const char* path)
     return "application/octet-stream";
 }
 
+/* Range HTTP (RFC 9110): "bytes=0-99" | "bytes=100-" | "bytes=-50".
+ * Vedi il contratto (1/0/-1) nel header. Multi-range → 0 (si serve il corpo intero:
+ * multipart/byteranges non è usato dai client reali e complicherebbe il server). */
+int gmb_http_parse_range(const char* header, long long total, long long* start, long long* end)
+{
+    const char* p;
+    char* q;
+    long long s = 0, e = 0;
+
+    if (!header || !*header || total <= 0) return 0;
+    p = header;
+    while (*p == ' ' || *p == '\t') p++;
+    if (strncasecmp(p, "bytes", 5) != 0) return 0;
+    p += 5;
+    while (*p == ' ' || *p == '=') p++;
+    if (*p == '-')
+    {
+        /* suffisso: gli ULTIMI n byte ("bytes=-50") */
+        p++;
+        if (*p < '0' || *p > '9') return 0;
+        e = strtoll(p, &q, 10);
+        while (*q == ' ') q++;
+        if (*q && *q != ',') return 0;          /* multi-range: corpo intero */
+        if (e <= 0) return 0;
+        if (e > total) e = total;
+        *start = total - e;
+        *end = total - 1;
+        return 1;
+    }
+    if (*p < '0' || *p > '9') return 0;
+    s = strtoll(p, &q, 10);
+    if (*q != '-') return 0;
+    p = q + 1;
+    if (*p >= '0' && *p <= '9')
+    {
+        e = strtoll(p, &q, 10);
+        while (*q == ' ') q++;
+        if (*q && *q != ',') return 0;          /* multi-range: corpo intero */
+        if (e < s) return 0;                    /* malformato: corpo intero */
+    }
+    else
+    {
+        while (*p == ' ') p++;
+        if (*p && *p != ',') return 0;
+        e = total - 1;                          /* "bytes=100-" → fino alla fine */
+    }
+    if (s >= total) return -1;                  /* non soddisfacibile → 416 */
+    if (e >= total) e = total - 1;
+    *start = s;
+    *end = e;
+    return 1;
+}
+
 void gmb_http_response_send_file(gmb_val_t res, const char* path, const char* content_type)
 {
     FILE* ff;
@@ -3929,6 +3982,97 @@ int gmb_http_response_is_streaming(gmb_val_t res)
     return (st && st->begun) ? 1 : 0;
 }
 
+/* ── File statici: 200 (intero) o 206 (Range) ─────────────────────────────────
+ * Sorgente UNICA per le gambe native. Due difetti chiusi qui insieme:
+ *  1) il corpo era letto con UN fread da 64 KB → ogni file più grande arrivava TRONCATO
+ *     (una pagina da 200 KB, un video, un archivio: sempre 65536 byte). Ora si copia a blocchi.
+ *  2) `http_io_send` è una `send()` su socket NON bloccante: un invio parziale veniva perso.
+ *     Qui si usa il loop di invio completo (EAGAIN → attesa scrivibile) già usato dallo streaming.
+ * Range: `Accept-Ranges: bytes` su ogni risposta, 206 con `Content-Range` se l'header è valido,
+ * 416 con `Content-Range: bytes *​/total` se non è soddisfacibile. */
+static void http_send_static_file(gmb_net_sock_t client, SSL* ssl,
+                                  const char* fpath, const gmb_http_request_t* req)
+{
+    FILE* f;
+    long long total, start = 0, end = 0, left;
+    int pr = 0;
+    const char* rng = NULL;
+    const char* ct = gmb_http_guess_content_type(fpath);
+    char head[768];
+    char buf[65536];
+    gmb_http_stream_t out;
+
+    memset(&out, 0, sizeof out);
+    out.fd = client;
+    out.ssl = ssl;
+
+    if (req)
+    {
+        for (int i = 0; i < req->header_count; i++)
+        {
+            if (req->header_names[i] && strcasecmp(req->header_names[i], "Range") == 0)
+            {
+                rng = req->header_values[i];
+                break;
+            }
+        }
+    }
+
+    f = fopen(fpath, "rb");
+    if (!f)
+    {
+        const char* nf = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+        http_stream_send_all(&out, nf, strlen(nf));
+        return;
+    }
+    fseek(f, 0, SEEK_END);
+    total = (long long)ftell(f);
+    fseek(f, 0, SEEK_SET);
+    if (total < 0) total = 0;
+
+    if (rng) pr = gmb_http_parse_range(rng, total, &start, &end);
+
+    if (pr < 0)
+    {
+        snprintf(head, sizeof head,
+            "HTTP/1.1 416 Range Not Satisfiable\r\nContent-Type: %s\r\nAccept-Ranges: bytes\r\n"
+            "Content-Range: bytes */%lld\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+            ct, total);
+        http_stream_send_all(&out, head, strlen(head));
+        fclose(f);
+        return;
+    }
+    if (pr != 1)
+    {
+        start = 0;
+        end = total > 0 ? total - 1 : -1;
+    }
+    if (pr == 1)
+        snprintf(head, sizeof head,
+            "HTTP/1.1 206 Partial Content\r\nContent-Type: %s\r\nAccept-Ranges: bytes\r\n"
+            "Content-Range: bytes %lld-%lld/%lld\r\nContent-Length: %lld\r\nConnection: close\r\n\r\n",
+            ct, start, end, total, end - start + 1);
+    else
+        snprintf(head, sizeof head,
+            "HTTP/1.1 200 OK\r\nContent-Type: %s\r\nAccept-Ranges: bytes\r\n"
+            "Content-Length: %lld\r\nConnection: close\r\n\r\n", ct, total);
+    http_stream_send_all(&out, head, strlen(head));
+
+    left = end - start + 1;
+    if (left > 0 && fseek(f, (long)start, SEEK_SET) == 0)
+    {
+        while (left > 0)
+        {
+            size_t want = left < (long long)sizeof buf ? (size_t)left : sizeof buf;
+            size_t got = fread(buf, 1, want, f);
+            if (!got) break;
+            if (http_stream_send_all(&out, buf, got) != 0) break;
+            left -= (long long)got;
+        }
+    }
+    fclose(f);
+}
+
 /* Invia la risposta HTTP: righe header "Nome: Valore\n" (mutabile, liberato dal chiamante),
  * Content-Type esplicito sostituisce il default, le altre righe (Location, Set-Cookie, ...)
  * passano in risposta; header di sicurezza automatici (HTTP CONFIG SecurityHeaders) non
@@ -4067,8 +4211,13 @@ static void http_handle_conn(gmb_http_server_t* s, gmb_net_sock_t client, SSL* s
     const char* hn[GMB_HTTP_MAX_HEADERS];
     const char* hv[GMB_HTTP_MAX_HEADERS];
     int hc = 0;
+    /* `hdr_copy` deve vivere QUANTO `hn`/`hv`: le due tabelle puntano DENTRO questo buffer.
+     * Prima era dichiarato dentro il blocco qui sotto → i puntatori restavano appesi a memoria
+     * di stack riusata: i nomi degli header arrivavano VUOTI (bug reale trovato col Range: il
+     * server non vedeva `Range: bytes=…`, e sarebbero spariti anche Host/Upgrade/Authorization).
+     * Il buffer resta sullo stack della funzione: si libera alla fine della connessione. */
+    char hdr_copy[8192];
     {
-        char hdr_copy[8192];
         size_t hdr_len = (size_t)(hdr_end - buf);
         if (hdr_len > sizeof(hdr_copy) - 1) hdr_len = sizeof(hdr_copy) - 1;
         memcpy(hdr_copy, buf, hdr_len);
@@ -4485,30 +4634,10 @@ static void http_handle_conn(gmb_http_server_t* s, gmb_net_sock_t client, SSL* s
             FILE* f = fopen(fpath, "rb");
                 if (f)
                 {
-                    char fbuf[65536];
-                    size_t fr = fread(fbuf, 1, sizeof(fbuf), f);
+                    /* Risposta dal file: 200/206 (Range) + Accept-Ranges, corpo a blocchi.
+                     * La lettura con UN fread da 64 KB troncava ogni file più grande. */
                     fclose(f);
-                    const char* ext = strrchr(fpath, '.');
-                    const char* ct = "application/octet-stream";
-                    if (ext)
-                    {
-                        if (strcmp(ext, ".html")==0 || strcmp(ext, ".htm")==0) ct = "text/html";
-                        else if (strcmp(ext, ".css")==0) ct = "text/css";
-                        else if (strcmp(ext, ".js")==0) ct = "application/javascript";
-                        else if (strcmp(ext, ".json")==0) ct = "application/json";
-                        else if (strcmp(ext, ".png")==0) ct = "image/png";
-                        else if (strcmp(ext, ".jpg")==0 || strcmp(ext, ".jpeg")==0) ct = "image/jpeg";
-                        else if (strcmp(ext, ".gif")==0) ct = "image/gif";
-                        else if (strcmp(ext, ".svg")==0) ct = "image/svg+xml";
-                        else if (strcmp(ext, ".txt")==0) ct = "text/plain";
-                        else if (strcmp(ext, ".ico")==0) ct = "image/x-icon";
-                    }
-                    char head[512];
-                    snprintf(head, sizeof(head),
-                        "HTTP/1.1 200 OK\r\nContent-Type: %s\r\nContent-Length: %zu\r\nConnection: close\r\n\r\n",
-                        ct, fr);
-                    http_io_send(client, ssl, head, strlen(head));
-                    if (fr) http_io_send(client, ssl, fbuf, fr);
+                    http_send_static_file(client, ssl, fpath, &req);
                     close(client);
                     return;
                 }

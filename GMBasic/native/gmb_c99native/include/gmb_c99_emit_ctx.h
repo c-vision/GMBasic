@@ -77,6 +77,10 @@ typedef struct {
     /* HTTP USE pending: la registrazione deve precedere qualunque HTTP ROUTE (la catena
      * middleware corre prima delle route nel runtime condiviso §0bis). */
     struct { gmb_expr_t* path; char wrap[96]; } http_mws[16]; int n_http_mws;
+    /* HTTP STATIC in pendenza (prima di HTTP SERVER): prefix + directory fisica. Le route e i
+     * middleware hanno già i loro array; senza questo `HTTP STATIC` era un no-op del parser e
+     * non esisteva alcun file statico su C99Native (404 su tutto, Range compreso). */
+    struct { gmb_expr_t* prefix; gmb_expr_t* dir; } http_statics[16]; int n_http_statics;
     int http_srv_started;
     int emitted_ws_cb_args;      /* 2.6(q): typedef gmb_ws_cb_args emessa una volta */
     gmb_stmt_t** top_defers; int n_top_defers, top_defer_cap;   /* DEFER top-level */
