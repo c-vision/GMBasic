@@ -463,6 +463,12 @@ public static partial class Linker
     /// <param name="stmt">Lo statement da risolvere.</param>
     /// <param name="program">L'istanza del programma per l'accesso alla SymbolTable.</param>
     /// <returns>Una nuova istanza dello statement con tutti i riferimenti simbolici risolti.</returns>
+    /// <summary>Un gestore evento dichiarato come CALL (nome nudo o `Sub()`) DEVE essere una SUB;
+    /// la forma legacy `… GOSUB &lt;label&gt;` / `… GOTO &lt;label&gt;` può puntare a una **label** (la leg C
+    /// la accetta e la label viene validata nella fase di risoluzione delle etichette).</summary>
+    private static bool RequiresSubHandler(string? actionKind) =>
+        (actionKind ?? "CALL").ToUpperInvariant() is "CALL";
+
     private static bool IsEventSub(BasicProgram program, string name) =>
         program.Symbols.GetAllProcedures().Any(p =>
             p.OriginalName.Lexeme.Equals(name, StringComparison.OrdinalIgnoreCase)
@@ -476,18 +482,18 @@ public static partial class Linker
             case PixelControlStmt pcs:
                 foreach (var cl in pcs.Clauses)
                     if (cl.Key.Equals("ON", StringComparison.OrdinalIgnoreCase)
-                        && (cl.ActionKind ?? "CALL").ToUpperInvariant() is "CALL" or "GOSUB" or "GOTO"
+                        && RequiresSubHandler(cl.ActionKind)
                         && !string.IsNullOrEmpty(cl.SubName ?? cl.LabelName)
                         && !IsEventSub(program, cl.SubName ?? cl.LabelName!))
-                        throw new InvalidOperationException($"Evento controllo: il gestore '{cl.SubName ?? cl.LabelName}' deve essere una SUB (non un label).");
+                        throw new InvalidOperationException($"Evento controllo: il gestore '{cl.SubName ?? cl.LabelName}' deve essere una SUB esistente.");
                 return pcs with { Into = pcs.Into != null ? ResolveTarget(pcs.Into, program) : null,
                                   Id = pcs.Id != null ? ResolveTarget(pcs.Id, program) : null };
             case FireEventStmt fes:
                 return new FireEventStmt(ResolveExpression(fes.Handle, program), ResolveExpression(fes.Event, program), fes.Token) { ScopeId = fes.ScopeId };
             case ControlEventStmt ces:
-                if ((ces.ActionKind ?? "CALL").ToUpperInvariant() is "CALL" or "GOSUB" or "GOTO"
+                if (RequiresSubHandler(ces.ActionKind)
                     && !string.IsNullOrEmpty(ces.Target) && !IsEventSub(program, ces.Target))
-                    throw new InvalidOperationException($"Evento controllo: il gestore '{ces.Target}' deve essere una SUB (non un label).");
+                    throw new InvalidOperationException($"Evento controllo: il gestore '{ces.Target}' deve essere una SUB esistente.");
                 return ces with { Id = ResolveExpression(ces.Id, program) };
             case ControlMethodStmt cms:
                 // Anche gli ARGOMENTI vanno risolti: prima restavano VariableExpr con SymbolId -1 (solo Into veniva risolto). In un metodo di classe il -1 era trattato
@@ -780,8 +786,10 @@ public static partial class Linker
                     CallAction ca2 when ca2.Call is FunctionExpr fe2 => fe2.OriginalToken.Lexeme,
                     _ => null
                 };
-                if (wname != null && !IsEventSub(program, wname))
-                    throw new InvalidOperationException($"Evento finestra: il gestore '{wname}' deve essere una SUB (non un label).");
+                /* `CALL` (nome nudo o `Sub()`) → SUB esistente. `GOSUB`/`GOTO` → label ammessa
+                 * (parità con la leg C: `ON WINDOW CLOSE GOSUB WinClosed`, forma legacy Clipper). */
+                if (wname != null && s.Action is CallAction && !IsEventSub(program, wname))
+                    throw new InvalidOperationException($"Evento finestra: il gestore '{wname}' deve essere una SUB esistente.");
                 return new OnWindowStmt(
                     s.EventKind,
                     ResolveOnKeyAction(s.Action, program),
