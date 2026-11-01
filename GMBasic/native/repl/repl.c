@@ -159,7 +159,12 @@ int rpl_engine_cs(const rpl_options_t* o)
 
 const char* rpl_cs_cli(const rpl_options_t* o, char* out, size_t cap)
 {
-    if (o && o->csharp_cli && *o->csharp_cli && access(o->csharp_cli, X_OK) == 0) { snprintf(out, cap, "%s", o->csharp_cli); return out; }
+    /* --csharp-cli ESPLICITO è autoritativo: se non è eseguibile NON si ripiega sulla
+     * scoperta standard (serve anche a simulare l'assenza del mondo C#, F5). */
+    if (o && o->csharp_cli && *o->csharp_cli) {
+        if (access(o->csharp_cli, X_OK) == 0) { snprintf(out, cap, "%s", o->csharp_cli); return out; }
+        return NULL;
+    }
     static const char* cands[] = {
         "GMBasicSharp/CompilerCli/bin/Debug/net10.0/gmbcs",
         "../GMBasicSharp/CompilerCli/bin/Debug/net10.0/gmbcs",

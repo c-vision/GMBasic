@@ -103,7 +103,7 @@ int rpl_parse_args(int argc, char** argv, rpl_options_t* o)
     if (o->no_console) setenv("GMBASIC_HEADLESS", "1", 1);
 
     /* file = primo arg non-flag, saltando flag che consumano un valore */
-    static const char* value_flags[] = {"--backend", "-bsp", "-gpm", "-w", "-h", "-size", "-font", "--debug-tcp", "--run", "--il-module", NULL};
+    static const char* value_flags[] = {"--backend", "-bsp", "-gpm", "-w", "-h", "-size", "-font", "--debug-tcp", "--run", "--il-module", "--engine", "--csharp-cli", NULL};
     for (int i = 0; i < n; i++) {
         int consumed = 0;
         if (a[i][0] == '-') {

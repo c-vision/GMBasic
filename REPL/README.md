@@ -14,6 +14,17 @@ continua a funzionare identica per il mondo C.
 ## Stato
 
 - [x] `helps/` — i JSON dell'help (54 file) vivono **qui** (non più in `shared/helps`).
+- [x] **Motore C completo** (F0–F3): AST/DASM/PRGINFO/COMPILE/EVAL/RUN via `gmb`,
+      `FIXTURES`/`SETUP`/`LLM`, e i comandi di pacchetto (`ADD`/`REMOVE`/`BUMP`/`RESTORE`/
+      `UPDATE`/`ROLLBACK`/`TRUST`/`CACHE`) sul runtime C.
+- [x] **Engine C# opzionale** (F4a): `--engine c|csharp` + `gmbcs` (`GMBasicSharp/CompilerCli`).
+      Con `csharp`: `IL`/`PCODE` reali, `EVAL`, dump, `COMPILE`/`RUN` mappati su P-Code e IL.
+      `--csharp-cli <path>` rende l'assenza del mondo C# simulabile (F5).
+      Parità: `tools/sh/repl_engine_parity.sh <file.bas>`.
+- [ ] **F4b** — debug (`BREAK/STEP/…`) con engine C#.
+- [ ] **F5** — prova di eliminabilità completa (oggi: `otool -L` = nessuna dipendenza
+      .NET; `--csharp-cli /nonexistent` → comandi C tutti verdi, `IL`/`PCODE` dichiarati
+      non disponibili).
 - [ ] Sorgenti: saranno spostati da `GMBasic/native/repl` quando la REPL sarà completa
       e testata (fase F2/F3 del TODO §6). Fino ad allora restano lì e vengono compilati
       dal loro CMake.
