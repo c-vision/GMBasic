@@ -3705,6 +3705,230 @@ static void http_msleep(int ms)
 #endif
 }
 
+/* ── Streaming HTTP (chunked) — SORGENTE UNICA C (§0bis) ───────────────────────
+ * Il server alloca un sink per CONNESSIONE prima del dispatch e lo passa all'handler
+ * in req->stream_handle; il wrapper lo deposita nel dict della risposta come
+ * "__stream_handle". Da lì res.StartStream/Write/Flush/EndStream scrivono direttamente
+ * sul socket col framing chunked, anche quando l'handler gira su un task GPM diverso dal
+ * thread di connessione (C99Native: gmb_task_spawn). Il sink sta sullo STACK del thread
+ * di connessione: la sua vita copre per intero il dispatch, nessun registry da liberare.
+ * Una connessione = un thread: una scrittura bloccante non ferma gli altri client. */
+#define GMB_HTTP_STREAM_BUF 8192
+
+typedef struct {
+    gmb_net_sock_t fd;
+    SSL* ssl;
+    gmb_net_lock_t lock;
+    int begun;              /* header (chunked) già inviati */
+    int finished;           /* chunk terminale già inviato */
+    int broken;             /* send fallita: il client se n'è andato */
+    size_t pending_len;
+    char pending[GMB_HTTP_STREAM_BUF];
+} gmb_http_stream_t;
+
+/* Scrive TUTTO il buffer. Socket non bloccante: su EAGAIN si attende scrivibile
+ * (max 5 s per giro, poi il client è considerato andato). 0 = ok, -1 = errore. */
+static int http_stream_send_all(gmb_http_stream_t* st, const void* data, size_t len)
+{
+    const char* p = (const char*)data;
+    if (!st || st->broken) return -1;
+    while (len > 0)
+    {
+        int n = http_io_send(st->fd, st->ssl, p, len);
+        if (n > 0) { p += n; len -= (size_t)n; continue; }
+        if (n < 0)
+        {
+            int e = GMB_NET_ERR();
+            if (e == EAGAIN || e == EWOULDBLOCK || e == EINTR)
+            {
+                if (gmb_net_wait_fd((int)st->fd, 5000) <= 0) { st->broken = 1; return -1; }
+                continue;
+            }
+        }
+        st->broken = 1;
+        return -1;
+    }
+    return 0;
+}
+
+/* Sink della risposta: dal dict res ("__stream_handle"), 0/NULL se la risposta non è
+ * stata creata da un handler HTTP (es. uso fuori server: nessuno stream possibile). */
+static gmb_http_stream_t* http_stream_of(gmb_val_t res)
+{
+    if (res.kind != GMB_TYPE_OBJECT) return NULL;
+    {
+        gmb_obj_t* o = (gmb_obj_t*)res.v_ptr;
+        if (!o || !o->data) return NULL;
+        {
+            gmb_val_t hv = gmb_dict_get(*(gmb_dict_t*)o->data, "__stream_handle");
+            if (hv.kind == GMB_TYPE_DOUBLE && hv.v_double > 0.0)
+                return (gmb_http_stream_t*)(intptr_t)(long long)hv.v_double;
+        }
+    }
+    return NULL;
+}
+
+/* Svuota il buffer pendente come UN chunk. Chiamare col lock preso. */
+static int http_stream_flush_locked(gmb_http_stream_t* st)
+{
+    char hdr[32];
+    int n;
+    if (!st || st->broken) return -1;
+    if (st->pending_len == 0) return 0;
+    n = snprintf(hdr, sizeof hdr, "%zx\r\n", st->pending_len);
+    if (n > 0) http_stream_send_all(st, hdr, (size_t)n);
+    http_stream_send_all(st, st->pending, st->pending_len);
+    http_stream_send_all(st, "\r\n", 2);
+    st->pending_len = 0;
+    return st->broken ? -1 : 0;
+}
+
+/* Flush + chunk terminale (0\r\n\r\n). Idempotente. */
+static void http_stream_finish(gmb_http_stream_t* st)
+{
+    if (!st || !st->begun || st->finished) return;
+    gmb_net_lock(&st->lock);
+    http_stream_flush_locked(st);
+    http_stream_send_all(st, "0\r\n\r\n", 5);
+    st->finished = 1;
+    gmb_net_unlock(&st->lock);
+}
+
+/* Una riga di __headers va replicata in streaming? Le header di framing le decide il
+ * server (Transfer-Encoding/Connection/Cache-Control/Content-Length): replicarle
+ * duplicherebbe il chunked e romperebbe il client. */
+static int http_stream_header_is_framing(const char* line, size_t len)
+{
+    static const char* skip[] = { "content-type", "content-length", "connection",
+                                  "transfer-encoding", "cache-control" };
+    for (size_t k = 0; k < sizeof(skip) / sizeof(skip[0]); k++)
+    {
+        size_t sl = strlen(skip[k]);
+        if (len > sl && strncasecmp(line, skip[k], sl) == 0) return 1;
+    }
+    return 0;
+}
+
+int gmb_http_response_stream_begin(gmb_val_t res, const char* content_type)
+{
+    gmb_http_stream_t* st = http_stream_of(res);
+    gmb_dict_t* d = (res.kind == GMB_TYPE_OBJECT && res.v_ptr) ? (gmb_dict_t*)((gmb_obj_t*)res.v_ptr)->data : NULL;
+    char ctype[256];
+    char extra[1200];
+    char head[1800];
+    size_t el = 0;
+    int status = 200;
+    const char* ct = content_type;
+
+    if (!st || st->finished) return -1;
+    gmb_net_lock(&st->lock);
+    if (st->begun || st->broken) { int b = st->begun; gmb_net_unlock(&st->lock); return b ? 0 : -1; }
+
+    ctype[0] = 0;
+    if ((!ct || !*ct) && d)
+    {
+        gmb_val_t v = gmb_dict_get(*d, "ContentType");
+        if (v.kind == GMB_TYPE_STRING && v.v_string.data) ct = v.v_string.data;
+    }
+    if (ct && *ct) snprintf(ctype, sizeof ctype, "%s", ct);
+    else snprintf(ctype, sizeof ctype, "text/plain; charset=utf-8");
+
+    extra[0] = 0;
+    if (d)
+    {
+        gmb_val_t sv = gmb_dict_get(*d, "StatusCode");
+        if (sv.kind != GMB_TYPE_DOUBLE) sv = gmb_dict_get(*d, "Status");
+        if (sv.kind == GMB_TYPE_DOUBLE && sv.v_double > 0) status = (int)sv.v_double;
+        else if (sv.kind == GMB_TYPE_STRING && sv.v_string.data && *sv.v_string.data) status = atoi(sv.v_string.data);
+        {
+            gmb_val_t hv = gmb_dict_get(*d, "__headers");
+            if (hv.kind == GMB_TYPE_STRING && hv.v_string.data && *hv.v_string.data)
+            {
+                const char* line = hv.v_string.data;
+                while (line && *line && el + 300 < sizeof extra)
+                {
+                    const char* nl = strchr(line, '\n');
+                    size_t ll = nl ? (size_t)(nl - line) : strlen(line);
+                    if (ll > 0 && ll < 300 && !http_stream_header_is_framing(line, ll))
+                    {
+                        memcpy(extra + el, line, ll); el += ll;
+                        extra[el++] = '\r'; extra[el++] = '\n';
+                    }
+                    if (!nl) break;
+                    line = nl + 1;
+                }
+            }
+        }
+    }
+    extra[el] = '\0';
+
+    st->begun = 1;   /* prima della send: un eventuale errore non deve riprovare l'header */
+    snprintf(head, sizeof head,
+             "HTTP/1.1 %d OK\r\nContent-Type: %s\r\n%sTransfer-Encoding: chunked\r\n"
+             "Cache-Control: no-store\r\nConnection: close\r\n\r\n",
+             status, ctype, extra);
+    http_stream_send_all(st, head, strlen(head));
+    gmb_net_unlock(&st->lock);
+
+    if (d) gmb_val_dict_set(res, "__streaming", gmb_make_val_double(1.0));
+    return st->broken ? -1 : 0;
+}
+
+int gmb_http_response_stream_write_bytes(gmb_val_t res, const void* data, size_t len)
+{
+    gmb_http_stream_t* st = http_stream_of(res);
+    const char* p = (const char*)data;
+    if (!st) return -1;
+    if (!st->begun && gmb_http_response_stream_begin(res, NULL) != 0) return -1;
+    if (!p || len == 0) return 0;
+    gmb_net_lock(&st->lock);
+    while (len > 0 && !st->broken)
+    {
+        size_t room = sizeof st->pending - st->pending_len;
+        size_t take = len < room ? len : room;
+        memcpy(st->pending + st->pending_len, p, take);
+        st->pending_len += take;
+        p += take; len -= take;
+        if (st->pending_len >= sizeof st->pending) http_stream_flush_locked(st);
+    }
+    gmb_net_unlock(&st->lock);
+    return st->broken ? -1 : 0;
+}
+
+int gmb_http_response_stream_write(gmb_val_t res, const char* text)
+{
+    if (!text) text = "";
+    return gmb_http_response_stream_write_bytes(res, text, strlen(text));
+}
+
+int gmb_http_response_stream_flush(gmb_val_t res)
+{
+    gmb_http_stream_t* st = http_stream_of(res);
+    int rc;
+    if (!st) return -1;
+    if (!st->begun && gmb_http_response_stream_begin(res, NULL) != 0) return -1;
+    gmb_net_lock(&st->lock);
+    rc = http_stream_flush_locked(st);
+    gmb_net_unlock(&st->lock);
+    return rc;
+}
+
+int gmb_http_response_stream_end(gmb_val_t res)
+{
+    gmb_http_stream_t* st = http_stream_of(res);
+    if (!st) return -1;
+    if (st->finished) return 0;
+    if (!st->begun && gmb_http_response_stream_begin(res, NULL) != 0) return -1;
+    http_stream_finish(st);
+    return st->broken ? -1 : 0;
+}
+
+int gmb_http_response_is_streaming(gmb_val_t res)
+{
+    gmb_http_stream_t* st = http_stream_of(res);
+    return (st && st->begun) ? 1 : 0;
+}
+
 /* Invia la risposta HTTP: righe header "Nome: Valore\n" (mutabile, liberato dal chiamante),
  * Content-Type esplicito sostituisce il default, le altre righe (Location, Set-Cookie, ...)
  * passano in risposta; header di sicurezza automatici (HTTP CONFIG SecurityHeaders) non
@@ -3948,6 +4172,13 @@ static void http_handle_conn(gmb_http_server_t* s, gmb_net_sock_t client, SSL* s
      * rc != 0 alla route finale = "non gestita": si prova la successiva route matchata
      * (semantica storica del server C, usata dal C generato che ritorna -1). */
     int route_scan_from = 0;
+    /* Sink di streaming della connessione (stack: vale per tutto il dispatch). Il wrapper
+     * dell'handler lo copia nel dict res come "__stream_handle". */
+    gmb_http_stream_t stream_sink;
+    memset(&stream_sink, 0, sizeof stream_sink);
+    stream_sink.fd = client;
+    stream_sink.ssl = ssl;
+    req.stream_handle = (int64_t)(intptr_t)&stream_sink;
     while (!handled)
     {
         const gmb_http_route_t* matched = NULL;
@@ -4088,7 +4319,7 @@ static void http_handle_conn(gmb_http_server_t* s, gmb_net_sock_t client, SSL* s
             }
 
             int advanced = is_last ? 0 : gmb_http_chain_step_is_advanced(step_id);
-            int wrote = (out_body_len > 0) || (out_status != 200);
+            int wrote = (out_body_len > 0) || (out_status != 200) || stream_sink.begun;
 
             if (!is_last && !wrote && !advanced)
             {
@@ -4158,6 +4389,20 @@ static void http_handle_conn(gmb_http_server_t* s, gmb_net_sock_t client, SSL* s
                         combined[acc_len + hlen] = 0;
                     }
                 }
+            }
+            if (stream_sink.begun)
+            {
+                /* L'handler ha già inviato la risposta in chunk: chiude il framing e la
+                 * connessione (niente Content-Length, niente body bufferizzato). */
+                http_stream_finish(&stream_sink);
+                free(out_body);
+                free(out_headers);
+                free(combined);
+                if (step_id) gmb_http_chain_step_free(step_id);
+                g_http_current_step = 0;
+                free(acc);
+                close(client);
+                return;
             }
             http_send_response(s, client, ssl, out_body, out_body_len, out_status, combined);
             free(out_body);

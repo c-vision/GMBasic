@@ -284,8 +284,21 @@ public sealed class HttpService : IHttpService, IDisposable
                 }
 
                 HttpResponse resp;
-                try { resp = Dispatch(handle, req) ?? new HttpResponse { StatusCode = 500, ContentType = "text/plain", Body = "500 No response" }; }
+                // Streaming (chunked) anche sul trasporto TLS: stesso protocollo, stesso sink
+                // (CommonLib.Http.ChunkedStreamSink), stessa superficie BASIC.
+                var streamSink = new CommonLib.Http.ChunkedStreamSink(ssl, keepAlive: false);
+                try
+                {
+                    using (CommonLib.Http.HttpStreamAmbient.Use(streamSink))
+                        resp = Dispatch(handle, req) ?? new HttpResponse { StatusCode = 500, ContentType = "text/plain", Body = "500 No response" };
+                }
                 catch { resp = new HttpResponse { StatusCode = 500, ContentType = "text/plain", Body = "500 Internal Server Error" }; }
+
+                if (streamSink.Begun)
+                {
+                    streamSink.End();
+                    return;
+                }
 
                 if (req.SessionSetCookie != null && !resp.Headers.ContainsKey("Set-Cookie"))
                     resp.Headers["Set-Cookie"] = req.SessionSetCookie;
@@ -618,8 +631,13 @@ public sealed class HttpService : IHttpService, IDisposable
 
             // Timeout per richiesta (HTTP CONFIG RequestTimeoutMs): legge+dispatches in un
             // task, se non completa entro il timeout → 503 (il task prosegue in background).
+            // Streaming: il trasporto della connessione viaggia nel task come sink "ambient"
+            // (la risposta la crea il runtime del handler) e la durata della risposta è quella
+            // dello stream, non un timeout di richiesta.
+            var streamSink = new HttpListenerStreamSink(context.Response);
             var process = Task.Run(() =>
             {
+                using var _ambientSink = CommonLib.Http.HttpStreamAmbient.Use(streamSink);
                 var request = ConvertRequest(context.Request, settings);
                 // Sessioni route HTTP (HTTP CONFIG .Sessions): data VIVO + cookie prima risposta
                 if (settings.Sessions && request.SessionData == null)
@@ -637,12 +655,29 @@ public sealed class HttpService : IHttpService, IDisposable
             HttpResponse resp;
             if (settings.RequestTimeoutMs > 0)
             {
-                var completed = await Task.WhenAny(process, Task.Delay(settings.RequestTimeoutMs)).ConfigureAwait(false) == process;
-                resp = completed ? process.Result : new HttpResponse { StatusCode = 503, ContentType = "text/plain", Body = "503 Request Timeout" };
+                var winner = await Task.WhenAny(process, Task.Delay(settings.RequestTimeoutMs)).ConfigureAwait(false);
+                if (winner != process && streamSink.Begun)
+                {
+                    /* Lo stream è già partito: aspettare l'handler NON è un timeout scaduto —
+                     * la risposta dura quanto dura lo stream (SSE: minuti). */
+                    resp = await process.ConfigureAwait(false);
+                }
+                else
+                {
+                    resp = winner == process ? process.Result : new HttpResponse { StatusCode = 503, ContentType = "text/plain", Body = "503 Request Timeout" };
+                }
             }
             else
             {
                 resp = await process.ConfigureAwait(false);
+            }
+            if (streamSink.Begun)
+            {
+                /* Risposta già inviata in chunk: chiude il framing (HttpListener manda il chunk
+                 * terminale alla chiusura) e NON riscrive nulla. */
+                streamSink.End();
+                try { context.Response.Close(); } catch { }
+                return;
             }
             SendResponse(context.Response, resp, settings);
         }

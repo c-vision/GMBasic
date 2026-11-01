@@ -297,6 +297,11 @@ typedef struct {
      * nessuna catena). Il wrapper VM/C lo copia nel task (task->http_chain_step) e lo
      * ripassera' come 3° argomento (handle) quando la catena ha piu' di un passo. */
     int64_t chain_step_id;
+    /* Streaming (chunked): sink della connessione, opaco, allocato dal server PRIMA del
+     * dispatch. Il wrapper dell'handler lo copia nel dict della risposta come
+     * "__stream_handle"; da li' res.StartStream/Write/Flush/EndStream parlano col socket.
+     * 0 = risposta bufferizzata (comportamento storico). */
+    int64_t stream_handle;
 } gmb_http_request_t;
 
 /* Callback per l'handler BASIC: riceve la richiesta decodificata, scrive la risposta.
@@ -406,6 +411,27 @@ void gmb_http_response_send_file(gmb_val_t res, const char* path, const char* co
  * reference C#). Sorgente UNICA usata dal helper condiviso e dal VM/C inline. Ritorna sempre
  * una stringa statica (mai NULL). */
 const char* gmb_http_guess_content_type(const char* path);
+
+/* ── Streaming (chunked) di una risposta HTTP ─────────────────────────────────
+ * Una risposta può essere inviata PROGRESSIVAMENTE (SSE, pagine lunghe, progressbar)
+ * invece che bufferizzata a fine handler. Il server alloca un sink per connessione e lo
+ * passa all'handler in req->stream_handle; il wrapper lo deposita nel dict della risposta
+ * come "__stream_handle". Da lì:
+ *   res.StartStream("text/event-stream") → status + header con Transfer-Encoding: chunked
+ *   res.Write(testo)                     → accoda (flush automatico oltre 8 KB)
+ *   res.Flush()                          → manda ORA il chunk al client
+ *   res.EndStream()                      → flush + chunk terminale, chiude la risposta
+ * SORGENTE UNICA C (§0bis): VM/C e C99Native chiamano SOLO queste funzioni. Con lo
+ * streaming attivo il server NON invia la risposta bufferizzata (niente Content-Length,
+ * niente ETag/gzip/render cache: sono semantiche di una risposta completa).
+ * Ritorno: 0 = ok, -1 = nessun sink (risposta non streammabile in questo contesto). */
+int gmb_http_response_stream_begin(gmb_val_t res, const char* content_type);
+int gmb_http_response_stream_write(gmb_val_t res, const char* text);
+int gmb_http_response_stream_write_bytes(gmb_val_t res, const void* data, size_t len);
+int gmb_http_response_stream_flush(gmb_val_t res);
+int gmb_http_response_stream_end(gmb_val_t res);
+/* 1 se lo stream di questa risposta è già iniziato (il server non deve bufferizzare). */
+int gmb_http_response_is_streaming(gmb_val_t res);
 
 /* Default NEW HTTPCONFIG: unica sorgente C (AGENTS §0bis) per VM/C (OP_NEW 23) e
  * C99Native. Chiavi = CommonLib.Http.HttpConfig (incluso "DefaultRequestTimeout" come chiave

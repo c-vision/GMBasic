@@ -960,18 +960,26 @@ internal sealed partial class PCodeProcessor
                     // middleware intermedio (non solo nel primo/ultimo) viene rilevata senza
                     // aspettare l'intero timeout di richiesta.
                     var active = chainState.CurrentTask;
+                    /* Handler concluso: se ha già inviato (Sent) o ha streammato, la risposta è
+                     * pronta. Il caso streaming è quello in cui Sent resta false finché non si
+                     * chiude il chunked — lo chiude il server dopo questo ritorno. */
                     if (active is { IsFinished: true, PendingException: not null }) { tcs.TrySetResult(); return; }
+                    if (active is { IsFinished: true } && (response.Sent || response.Streaming)) { tcs.TrySetResult(); return; }
                     await Task.Delay(15, ct).ConfigureAwait(false);
                 }
             }
             catch (OperationCanceledException) { }
         }, ct);
 
-        try { await tcs.Task.WaitAsync(TimeSpan.FromMilliseconds(config.RequestTimeoutMs), ct).ConfigureAwait(false); }
+        /* Con lo streaming l'attesa è la DURATA dello stream (SSE: può essere lunga): il timeout
+         * della richiesta vale solo per le risposte normali. La cancellazione del server resta
+         * attiva in entrambi i casi. */
+        var waitMs = response.Streaming ? 24 * 60 * 60 * 1000 : config.RequestTimeoutMs;
+        try { await tcs.Task.WaitAsync(TimeSpan.FromMilliseconds(waitMs), ct).ConfigureAwait(false); }
         catch (TimeoutException) { }
         catch (OperationCanceledException) { }
 
-        if (!response.Sent)
+        if (!response.Sent && !response.Streaming)
         {
             var active = chainState.CurrentTask;
             if (active?.PendingException != null)

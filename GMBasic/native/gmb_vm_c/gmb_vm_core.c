@@ -7329,6 +7329,11 @@ static int gmb_vm_http_handler_ex(void* ctx, const gmb_http_request_t* req_c,
     gmb_dict_set(res->dict, "Status", gmb_make_val_double(200));
     gmb_dict_set(res->dict, "Body", gmb_make_val_string_counted(""));
     gmb_dict_set(res->dict, "__headers", gmb_make_val_string_counted(""));
+    /* Streaming (chunked): il sink della connessione della richiesta viaggia nella
+     * risposta. Il task handler gira su un worker GPM (non sul thread di connessione),
+     * quindi il sink NON può essere thread-local: si passa per il dict res. */
+    if (req_c && req_c->stream_handle)
+        gmb_dict_set(res->dict, "__stream_handle", gmb_make_val_double((double)req_c->stream_handle));
 
     /* crea il task handler e accodalo nel GPM (worker thread lo eseguirà).
        Gli argomenti della SUB (req, res) vanno sullo stack del task. */
@@ -11610,11 +11615,52 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                                 ? ((gmb_obj_string_t*)args[0].ref)->data : "";
                             gmb_ws_send_text((int64_t)wh.v_double, txt);
                         }
+                        else if (gmb_http_response_is_streaming(gmb_make_val_obj(inst)))
+                        {
+                            /* res.Send con lo stream aperto = Write: il testo va sul canale
+                             * già in chunk invece di finire nel Body bufferizzato (che non
+                             * verrebbe più inviato) — nessun output perso. */
+                            gmb_string_t enc = gmb_val_to_string(gmb_adapter_stack_to_val(args[0]));
+                            gmb_http_response_stream_write(gmb_make_val_obj(inst), enc.data ? enc.data : "");
+                            gmb_string_free(&enc);
+                        }
                         else
                         {
                             gmb_val_t v = gmb_adapter_stack_to_val_borrowed(args[0]);
                             gmb_dict_set(sv->dict, "Body", v);
                         }
+                    }
+                    /* ── Streaming (chunked): res.StartStream/Write/Flush/EndStream ──────
+                     * L'invio progressivo è implementato UNA volta sola nel runtime C
+                     * (gmb_network.c, gmb_http_response_stream_*), §0bis: VM/C e C99Native
+                     * chiamano le stesse funzioni. Il sink della connessione arriva nella
+                     * risposta come "__stream_handle" (il task handler gira su un worker
+                     * GPM, non sul thread di connessione). */
+                    else if (argCount >= 1
+                             && (strcmp(methodName, "StartStream") == 0
+                                 || strcmp(methodName, "StartStreaming") == 0
+                                 || strcmp(methodName, "Stream") == 0))
+                    {
+                        const char* ct = (args[0].type == 2 && args[0].ref)
+                            ? ((gmb_obj_string_t*)args[0].ref)->data : "";
+                        gmb_http_response_stream_begin(gmb_make_val_obj(inst), ct);
+                    }
+                    else if (strcmp(methodName, "Write") == 0 && argCount >= 1
+                             && gmb_dict_get(*sv->dict, "__stream_handle").kind == GMB_TYPE_DOUBLE)
+                    {
+                        const char* txt = (args[0].type == 2 && args[0].ref)
+                            ? ((gmb_obj_string_t*)args[0].ref)->data : "";
+                        gmb_http_response_stream_write(gmb_make_val_obj(inst), txt);
+                    }
+                    else if (strcmp(methodName, "Flush") == 0
+                             && gmb_dict_get(*sv->dict, "__stream_handle").kind == GMB_TYPE_DOUBLE)
+                    {
+                        gmb_http_response_stream_flush(gmb_make_val_obj(inst));
+                    }
+                    else if ((strcmp(methodName, "EndStream") == 0 || strcmp(methodName, "CloseStream") == 0)
+                             && gmb_dict_get(*sv->dict, "__stream_handle").kind == GMB_TYPE_DOUBLE)
+                    {
+                        gmb_http_response_stream_end(gmb_make_val_obj(inst));
                     }
                     else if (strcasecmp(methodName, "SaveToFile") == 0 && argCount >= 1)
                     {
@@ -12442,6 +12488,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                  * vivo un gmb_obj_string_t (LEAK misurato: 64+16 B per PRINT, 600.000 blocchi
                  * vivi dopo 600 render di una pagina con 1000 PRINT; `leaks` con
                  * MallocStackLogging: `push_const → gmb_str_alloc`). */
+                if (e.type == 2 && e.ref) gmb_obj_release(e.ref);
                 break;
             }
             case OP_PRINT_LINE:
@@ -12467,6 +12514,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 }
                 if (vm->print_newline) vm->print_newline(vm->print_ctx); else fputc('\n', stdout);
                 pthread_mutex_unlock(&vm->print_lock);
+                if (e.type == 2 && e.ref) gmb_obj_release(e.ref);   /* vedi OP_PRINT_VALUE */
                 break;
             }
             case OP_PRINT_NEWLINE:
