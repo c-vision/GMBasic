@@ -1540,6 +1540,21 @@ public sealed partial class Parser
     private Expr? ResolveBuiltinFunctionCall(Token nameToken, ImmutableArray<Expr> args,
         string? namespaceName = null)
     {
+        /* SIZEOF ha un canone basato sulla FORMA dell'argomento (TypeLayout): identificatore
+         * (anche fra parentesi) → tipo statico; letterale numerico → 8; QUALUNQUE altra
+         * espressione → -1. Deciderlo qui, prima di ogni folding algebrico/costante, è l'unico
+         * modo di non dipendere dall'ordine delle ottimizzazioni: con il fold attivo
+         * `SIZEOF(i + 0)` e `SIZEOF(1 + 2)` davano 2/8 su IL/PCode/VM-C e -1 su C99Native
+         * (divergenza misurata 2026-11-01). La sostituzione con la costante è sicura perché
+         * SIZEOF NON valuta il proprio argomento (nessun effetto collaterale da perdere). */
+        if (nameToken.Kind == TokenKind.SizeOf && args.Length == 1)
+        {
+            var form = args[0];
+            while (form is GroupingExpr grp) form = grp.Expression;
+            if (form is not (VariableExpr or NumberExpr))
+                return new NumberExpr(TypeLayout.NoStaticSize, nameToken);
+        }
+
         IEnumerable<ProcedureDefinition> candidates;
 
         // Namespace di PROVENIENZA di ogni candidato raccolto qui. Serve perché le definizioni
