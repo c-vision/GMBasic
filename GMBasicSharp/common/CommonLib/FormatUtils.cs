@@ -47,12 +47,33 @@ public static class FormatUtils
         if (value is bool || IsBooleanFormat(format))
             return FormatBoolean(value, format);
             
-        if (value is DateTime dt) return FormatDateTime(dt, format, DateNamesCulture);
-        if (value is DateOnly dateOnly) return FormatDateTime(dateOnly.ToDateTime(TimeOnly.MinValue), format, DateNamesCulture);
-        if (value is TimeOnly timeOnly) return FormatDateTime(DateTime.Today.Add(timeOnly.ToTimeSpan()), format, DateNamesCulture);
-        if (value is TimeSpan ts) return FormatDateTime(DateTime.Today.Add(ts), format, DateNamesCulture);
-
         var hasNumericTokens = format.Any(c => "#0".Contains(c));   // come gmb_format.c: solo # e 0 rendono il formato numerico
+
+        /* Data/ora: se la maschera è NUMERICA ('#'/'0') il valore si formatta come SERIALE,
+         * come le gambe C (gmb_format: il ramo "custom numeric" precede i token data/ora).
+         * Prima un DateTime prendeva SEMPRE il ramo data → `FORMAT(d, "0.000000")` dava
+         * "0.000000" su IL mentre PCode/VM-C/C99 davano "46024.000000" (bug aperto
+         * 2026-11-01, vedi Bugs/(open) - Variabile-Con-Suffisso-E-Precisione-SINGLE §3). */
+        if (value is DateTime dt)
+            return hasNumericTokens
+                ? FormatNumeric(dt.ToOADate(), format)
+                : FormatDateTime(dt, format, DateNamesCulture);
+        if (value is DateOnly dateOnly)
+        {
+            var oaDate = dateOnly.ToDateTime(TimeOnly.MinValue).ToOADate();
+            return hasNumericTokens
+                ? FormatNumeric(oaDate, format)
+                : FormatDateTime(dateOnly.ToDateTime(TimeOnly.MinValue), format, DateNamesCulture);
+        }
+        if (value is TimeOnly timeOnly)
+            // TIME = frazione di giornata (0.xxx), come gmb_dt_timeserial delle gambe C.
+            return hasNumericTokens
+                ? FormatNumeric(timeOnly.ToTimeSpan().TotalDays, format)
+                : FormatDateTime(DateTime.Today.Add(timeOnly.ToTimeSpan()), format, DateNamesCulture);
+        if (value is TimeSpan ts)
+            return hasNumericTokens
+                ? FormatNumeric(ts.TotalDays, format)
+                : FormatDateTime(DateTime.Today.Add(ts), format, DateNamesCulture);
 
         if (global::CommonLib.Numerics.IsNumeric(value))
         {

@@ -114,7 +114,16 @@ IMPORT DATETIME
 600 PRINT "ISDATE('xyz')="; ISDATE("xyz")
 610 PRINT "ISNUMERIC('123.45')="; ISNUMERIC("123.45")
 620 PRINT "ISNUMERIC('abc')="; ISNUMERIC("abc")
-630 PRINT
+625 PRINT
+' --- 7. FORMAT: maschera NUMERICA vs maschera DATA sullo stesso valore ---
+' Una maschera con '#'/'0' e' NUMERICA: su una data si formatta il seriale OADate
+' (come le gambe C). Senza token numerici la maschera e' di data/ora.
+626 PRINT "--- 7. FORMAT su una data ---"
+627 PRINT "FORMAT(D, '0.000000') =", FORMAT(D, "0.000000"); "   (seriale OADate)"
+628 PRINT "FORMAT(D, 'dd/MM/yyyy') =", FORMAT(D, "dd/MM/yyyy"); "   (data leggibile)"
+629 PRINT "FORMAT(T, '0.000000') =", FORMAT(T, "0.000000"); "   (TIME = frazione di giornata)"
+630 PRINT "FORMAT(T, 'HH:mm:ss') =", FORMAT(T, "HH:mm:ss")
+631 PRINT
 
 640 PRINT "--- Test completato ---"
 650 END
