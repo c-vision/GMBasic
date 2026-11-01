@@ -168,8 +168,8 @@ public static class TerminalReader
             case ConsoleKey.F8: return KeyConstants.K_F8;
             case ConsoleKey.F9: return KeyConstants.K_F9;
             case ConsoleKey.F10: return KeyConstants.K_F10;
-            case ConsoleKey.F11: return 38;
-            case ConsoleKey.F12: return 39;
+            case ConsoleKey.F11: return KeyConstants.K_F11;
+            case ConsoleKey.F12: return KeyConstants.K_F12;
             default:
                 var ch = ki.KeyChar;
                 if (ch >= 32 && ch <= 126) return ch;

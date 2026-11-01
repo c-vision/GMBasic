@@ -134,7 +134,7 @@ public class GMBasicIde : IApp
     // Top-level menu accelerators (Alt+lettera → indice voce).
     private static readonly (string Letter, int Index)[] MenuAccel =
     [
-        ("F", 0), ("E", 1), ("V", 2), ("S", 3), ("R", 4), ("B", 5), ("D", 6), ("C", 7), ("O", 8), ("H", 9),
+        ("F", 0), ("E", 1), ("V", 2), ("S", 3), ("R", 4), ("B", 5), ("D", 6), ("O", 7), ("H", 8),
     ];
 
     public string Name => "GMBASIC";
@@ -365,7 +365,7 @@ public class GMBasicIde : IApp
                 new() { Label = "", Separator = true },
                 new() { Label = "Print...", Action = DoPrint },
                 new() { Label = "", Separator = true },
-                new() { Label = "Exit", Hotkey = "Alt+F4", Action = DoExit },
+                new() { Label = "Exit", Hotkey = "Esc", Action = DoExit },
             ] },
             new() { Label = " Edit ", SubItems =
             [
@@ -442,14 +442,14 @@ public class GMBasicIde : IApp
                 new() { Label = "", Separator = true },
                 new() { Label = "Add Watch...", Action = DoAddWatch },
                 new() { Label = "Delete All Watch", Action = () => { _userWatches.Clear(); RefreshDebugPanels(); Status("All watch deleted"); } },
+                new() { Label = "Immediate...", Action = () => { _immediateFocused = true; _codeArea.Focused = false; Status("Immediate: digita l'espressione, Enter valuta, ESC esce"); } },
                 new() { Label = "", Separator = true },
                 new() { Label = "Watch Panel", Action = () => SetBottomTab(1) },
                 new() { Label = "Call Stack", Action = () => SetBottomTab(2) },
             ] },
-            new() { Label = "Calls", SubItems = [] },
             new() { Label = "Opts  ", SubItems =
             [
-                new() { Label = "Options...", Hotkey = "Ctrl+O", Action = DoOptions },
+                new() { Label = "Options...", Action = DoOptions },
                 new() { Label = "Theme...", Action = DoOptions },
             ] },
             new() { Label = " Help ", SubItems =
@@ -1888,7 +1888,7 @@ public class GMBasicIde : IApp
             }
             int hk = g.UiPollKey();
             if (_popupActive && hk != 0) { ClosePopup(g, W, H); continue; } // qualsiasi tasto chiude il popup
-            if (hk != 0) HandleHostKey(hk, g, W, H);
+            if (hk != 0) HandleHostKey(ToConsoleKey(hk), g, W, H);
         }
 
         SaveEditorIntoProgram();
@@ -1900,7 +1900,7 @@ public class GMBasicIde : IApp
     private void RegisterIde(IGraphicsService g, int W, int H)
     {
         g.UiControlsReset();
-        g.UiAddStatusbar(0, 0, W, $"  GMBASIC IDE  |  {System.IO.Path.GetFileName(_fileName)}{(_dirty ? " [*]" : "")}   F1=Help F2=Subs F3=Save F5=Run F7=Build F9=Break F12=Goto Ctrl+T=New Ctrl+W=Close ESC=Exit");
+        g.UiAddStatusbar(0, 0, W, $"  GMBASIC IDE  |  {System.IO.Path.GetFileName(_fileName)}{(_dirty ? " [*]" : "")}   F1=Help F2=Subs F3=Save F4=Out F5=Run F7=Build F8=Step F9=Break F10=Over F11=Menu F12=Def  Ctrl+T=New Ctrl+W=Close ESC=Exit");
         // Tab bar: nomi dei tab aperti nel modello C (gmb_ide).
         int tn = Basic.Runtime.CIdeNative.TabCount();
         if (tn <= 0) tn = 1;
@@ -1932,6 +1932,14 @@ public class GMBasicIde : IApp
     private const int TabBarIdx = 1;
     private const int CodeAreaIdx = 2;
 
+    /// <summary>Codici tasto del console a celle (GMB_K_F1..GMB_K_F12 = 300..311, vedi gmb_tui.h)
+    /// riportati a <see cref="ConsoleKey"/>: senza questa mappatura F1..F12 non arrivavano mai
+    /// ai case di HandleHostKey (che confrontano con ConsoleKey.F1 = 112).</summary>
+    private static int ToConsoleKey(int k)
+        => k >= KeyConstants.K_F1 && k <= KeyConstants.K_F12
+             ? (int)ConsoleKey.F1 + (k - KeyConstants.K_F1)
+             : k;
+
     /// <summary>Shortcut host (tasti non consumati dal CodeArea C) → i feature dell'IDE (che operano su _codeArea).</summary>
     private void HandleHostKey(int k, IGraphicsService g, int W, int H)
     {
@@ -1947,15 +1955,37 @@ public class GMBasicIde : IApp
             case (int)ConsoleKey.F1: DoAbout(); break;
             case (int)ConsoleKey.F2: DoOutline(); break;
             case (int)ConsoleKey.F3: SaveAndClean(); break;
+            case (int)ConsoleKey.F4: DoToggleOutput(); changed = true; break;
             case (int)ConsoleKey.F5: DoRun(); break;
             case (int)ConsoleKey.F7: DoBuild(); break;
+            case (int)ConsoleKey.F8: DoStepInto(); break;
             case (int)ConsoleKey.F9: ToggleBreakpointAtCursor(); changed = true; break;
+            case (int)ConsoleKey.F10: DoStepOver(); break;
+            case (int)ConsoleKey.F11: ShowMenuBar(); changed = true; break;
             case (int)ConsoleKey.F12: DoGoToDef(); break;
         }
         if (changed) RegisterIde(g, W, H);
     }
 
     private int _activeTab;
+
+    /// <summary>F11 = barra menu: livello 1 = i menu, livello 2 = le voci (stesse azioni dell'IDE C).
+    /// Nel console a celle i menu non si disegnano come barra: si usano i selettori paginati.</summary>
+    private void ShowMenuBar()
+    {
+        var tops = _menu.Items.Select(i => i.Label.Trim()).ToList();
+        var pick = PaginatedMenu.Select(tops, "Menu");
+        if (string.IsNullOrEmpty(pick)) return;
+        int mi = tops.IndexOf(pick!);
+        if (mi < 0) return;
+        var sub = _menu.Items[mi].SubItems.Where(s => !s.Separator).ToList();
+        if (sub.Count == 0) { Status($"{pick}: nessuna voce"); return; }
+        var labels = sub.Select(s => s.Label).ToList();
+        var chosen = PaginatedMenu.Select(labels, pick!);
+        if (string.IsNullOrEmpty(chosen)) return;
+        int si = labels.IndexOf(chosen!);
+        if (si >= 0) sub[si].Action?.Invoke();
+    }
 
     /// <summary>Nuovo tab vuoto + attivazione.</summary>
     private void DoNewTab(IGraphicsService g, int W, int H)
@@ -2156,6 +2186,19 @@ public class GMBasicIde : IApp
             if (ctrl && key == KeyConstants.K_F8) { DoRunToCursor(); return; }
             if (ctrl && key == KeyConstants.K_F5) { DoRun(); return; }
             HandleFunctionKey(key, shift);
+            return;
+        }
+        // F11 = menu (senza Alt), F12 = Go to Definition / Shift+F12 = Find References
+        if (key == KeyConstants.K_F11)
+        {
+            _menu.SelectedIndex = 0;
+            _menu.SubSelectedIndex = 0;
+            _menu.IsOpen = true;
+            return;
+        }
+        if (key == KeyConstants.K_F12)
+        {
+            if (shift) DoFindRefs(); else DoGoToDef();
             return;
         }
 
@@ -2762,7 +2805,7 @@ public class GMBasicIde : IApp
         var sw = buf.Width;
         buf.SetString(0, y, new string(' ', sw), FgWhite, BgDarkCyan);
 
-        var fn = "F1=Help F2=SUBs F3=Find F4=Out  F5=Run  F6=Window F7=Build F8=Step F9=Break F10=Menu";
+        var fn = "F1=Help F2=SUBs F3=Find F4=Out  F5=Run  F6=Window F7=Build F8=Step F9=Break F10=Over F12=Def";
         var pos = $"{_codeArea.CursorLine + 1,5}:{_codeArea.CursorCol + 1,3}";
         var total = sw - pos.Length - 1;
         if (fn.Length > total) fn = fn[..total];

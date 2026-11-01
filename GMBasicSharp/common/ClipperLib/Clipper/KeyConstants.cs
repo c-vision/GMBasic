@@ -48,6 +48,8 @@ public static class KeyConstants
     public const int K_F8 = 307;
     public const int K_F9 = 308;
     public const int K_F10 = 309;
+    public const int K_F11 = 310;
+    public const int K_F12 = 311;
 
     public const int BLINK_MS = 400;
 

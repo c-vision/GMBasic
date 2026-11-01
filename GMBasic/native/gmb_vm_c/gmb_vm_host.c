@@ -354,7 +354,30 @@ int main(int argc, char** argv)
                     if (!strcmp(p, "s") || !strcmp(p, "step")) {
                         vm.debug->single_step = 1;
                         vm.debug->skip_line = line;
+                        vm.debug->step_over_depth = 0;
+                        vm.debug->step_out_depth = 0;
                         fprintf(stderr, "@@GMBDBG STEP\n");
+                        fflush(stderr);
+                        break;
+                    }
+                    if (!strcmp(p, "o") || !strcmp(p, "over")) {
+                        int d = gmb_vm_debug_depth(&vm);
+                        vm.debug->single_step = 0;
+                        vm.debug->skip_line = 0;
+                        vm.debug->step_over_depth = d + 1;   /* 0 = off */
+                        vm.debug->step_over_line = line;
+                        vm.debug->step_out_depth = 0;
+                        fprintf(stderr, "@@GMBDBG STEPOVER\n");
+                        fflush(stderr);
+                        break;
+                    }
+                    if (!strcmp(p, "u") || !strcmp(p, "out")) {
+                        int d = gmb_vm_debug_depth(&vm);
+                        vm.debug->single_step = 0;
+                        vm.debug->skip_line = 0;
+                        vm.debug->step_out_depth = d + 1;    /* 0 = off */
+                        vm.debug->step_over_depth = 0;
+                        fprintf(stderr, "@@GMBDBG STEPOUT\n");
                         fflush(stderr);
                         break;
                     }
@@ -434,8 +457,15 @@ int main(int argc, char** argv)
         /* Headless RUNTIME: se stdout NON è un TTY (pipe/file — CLI, server, test, harness) o
          * GMBASIC_HEADLESS=1, NON avviare la console grafica SDL. Prima la SDL veniva inizializzata
          * SEMPRE (compile-time) → crash (exit 139) in contesti headless/server. Come il lato C#. */
+        /* SDL solo se la CONSOLE scelta è SDL (GMB_CONSOLE 0/1). Con -c (Standard) / -s
+         * (System) o headless il programma gira testuale: prima si apriva SEMPRE la finestra
+         * SDL anche per un PRINT (il "fondo blu" senza senso, e output in una finestra che
+         * nessuno aveva chiesto). */
+        extern int gmb_console_mode_get(void);
+        int cmode = gmb_console_mode_get();
         const char* hl = getenv("GMBASIC_HEADLESS");
-        int headless = (hl && (hl[0] == '1' || strcmp(hl, "true") == 0)) || !isatty(STDOUT_FILENO);
+        int headless = (hl && (hl[0] == '1' || strcmp(hl, "true") == 0)) || !isatty(STDOUT_FILENO)
+                       || (cmode != 0 && cmode != 1);
         if (headless)
         {
             rc = gmb_vm_run_mt(&vm);

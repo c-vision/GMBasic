@@ -24,20 +24,43 @@ static int run_process(const char* cmd)
     return WIFEXITED(rc) ? WEXITSTATUS(rc) : 1;
 }
 
+/* Radice del repo C (= `GMBasic/`). Dopo il passaggio al MONOREPO il marker storico
+ * `GMBASIC.sln` non esiste più in `GMBasic/`: la ricerca falliva e `gmb_vm_host` non veniva
+ * trovato (RUN/COMPILE/debug -> "gmb_vm_host non trovato"). Ordine:
+ *   1) GMBASIC_REPO_ROOT (harness/build);
+ *   2) antenato della CWD che contiene `native/gmb_vm_c` (radice del repo C);
+ *   3) antenato della CWD che contiene `GMBasic/native/gmb_vm_c` (radice del monorepo);
+ *   4) fallback: CWD. */
 static void resolve_repo_root(char* out, size_t cap)
 {
-    char cwd[2048];
-    getcwd(cwd, sizeof(cwd));
-    snprintf(out, cap, "%s", cwd);
-    for (;;) {
-        char probe[4096];
-        snprintf(probe, sizeof(probe), "%s/GMBASIC.sln", out);
-        if (access(probe, F_OK) == 0) return;
-        char* slash = strrchr(out, '/');
-        if (!slash) { snprintf(out, cap, "%s", cwd); return; }
-        *slash = 0;
-        if (!*out) { snprintf(out, cap, "/"); return; }
+    const char* env = getenv("GMBASIC_REPO_ROOT");
+    if (env && *env) { snprintf(out, cap, "%s", env); return; }
+    char start[2048];
+    if (!getcwd(start, sizeof(start))) { snprintf(out, cap, "."); return; }
+    for (int variant = 0; variant < 2; variant++)
+    {
+        char base[2048];
+        snprintf(base, sizeof(base), "%s", start);
+        for (;;)
+        {
+            char probe[4096];
+            if (variant == 0)
+                snprintf(probe, sizeof(probe), "%s/native/gmb_vm_c", base);
+            else
+                snprintf(probe, sizeof(probe), "%s/GMBasic/native/gmb_vm_c", base);
+            if (access(probe, F_OK) == 0)
+            {
+                if (variant == 0) snprintf(out, cap, "%s", base);
+                else snprintf(out, cap, "%s/GMBasic", base);
+                return;
+            }
+            char* slash = strrchr(base, '/');
+            if (!slash) break;
+            *slash = 0;
+            if (!*base) break;
+        }
     }
+    snprintf(out, cap, "%s", start);
 }
 
 /* Risolve le direttive `IMPORT <Ns>` del modulo principale: per ogni namespace con un file

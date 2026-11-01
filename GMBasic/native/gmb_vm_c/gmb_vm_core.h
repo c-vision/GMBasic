@@ -56,6 +56,12 @@ typedef struct {
     /* Righe da saltare al resume (non ripausare sulla stessa riga del
      * breakpoint appena lasciato). 0 = nessun skip attivo. */
     uint32_t skip_line;
+    /* STEP OVER/OUT (0 = inattivo; altrimenti depth+1, così il memset a 0 è "off").
+     * step_over: fermati alla riga successiva con depth <= quella di partenza.
+     * step_out:  fermati quando depth < quella di partenza (uscita dal frame). */
+    int      step_over_depth;
+    int      step_out_depth;
+    uint32_t step_over_line;
 } gmb_vm_debug_t;
 
 typedef struct {
@@ -385,6 +391,7 @@ uint32_t gmb_vm_debug_current_line(gmb_vm_t* vm);
  * numero scritto. gmb_vm_debug_read cerca un globale o un locale del frame corrente e
  * formatta il valore in buf; ritorna 1 se trovato. */
 int gmb_vm_debug_stack(gmb_vm_t* vm, uint32_t* lines, int max);
+int gmb_vm_debug_depth(gmb_vm_t* vm);   /* frame correnti (STEP OVER/OUT) */
 int gmb_vm_debug_read(gmb_vm_t* vm, const char* name, char* buf, size_t cap);
 
 /* Handler syscall / builtin estesi (per opcode concorrenza) */
