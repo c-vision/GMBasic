@@ -4,11 +4,6 @@
 #include "repl.h"
 #include "menu.h"
 #include "ml.h"
-#include "gmb_lexer.h"
-#include "gmb_parser.h"
-#include "gmb_linker.h"
-#include "gmb_macro_expand.h"
-#include "gmb_compiler.h"
 #include "packages.h"
 #include "gmb_graph.h"
 #include "gmb_iconsole.h"
@@ -108,6 +103,35 @@ void resolve_repo_path(char* out, int cap, const char* rel)
         if (!*cur) break;
     }
     snprintf(out, cap, "%s/%s", cwd, rel);
+}
+
+/* Percorso del CLI del compilatore C (`gmb`). La REPL lo invoca come PROCESSO: è il
+ * contratto che sostituisce gli include diretti del front-end (TODO §6, F2). */
+const char* rpl_gmb_cli(char* out, size_t cap)
+{
+    static const char* cands[] = {
+        "native/gmb_compiler_c/build/gmb",
+        "../GMBasic/native/gmb_compiler_c/build/gmb",
+        "../../GMBasic/native/gmb_compiler_c/build/gmb",
+        NULL
+    };
+    for (int i = 0; cands[i]; i++) if (access(cands[i], X_OK) == 0) { snprintf(out, cap, "%s", cands[i]); return out; }
+    char root[2048]; resolve_repo_path(root, sizeof(root), "native/gmb_compiler_c/build/gmb");
+    if (access(root, X_OK) == 0) { snprintf(out, cap, "%s", root); return out; }
+    return NULL;
+}
+
+/* Esegue `gmb dump <what> <file> [--out <out>]`; stdout finisce nel flusso del comando
+ * (che la console cattura/visualizza). */
+int rpl_gmb_dump(const char* what, const char* file, const char* out)
+{
+    char cli[2048];
+    if (!rpl_gmb_cli(cli, sizeof(cli))) { fprintf(stderr, "?gmb (CLI compilatore C) non trovato\n"); return 1; }
+    char cmd[4096];
+    if (out) snprintf(cmd, sizeof(cmd), "\"%s\" dump %s \"%s\" --out \"%s\"", cli, what, file, out);
+    else     snprintf(cmd, sizeof(cmd), "\"%s\" dump %s \"%s\"", cli, what, file);
+    int rc = system(cmd);
+    return WIFEXITED(rc) ? WEXITSTATUS(rc) : 1;
 }
 
 static int rpl_is_dir_command(const char* cmd)
@@ -330,9 +354,10 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
             goto done;
         }
         if (strcasecmp(cmd, "COMPILE") == 0) {
+            /* F2: si pilota il CLI del compilatore, non si linka il front-end. */
             char out[1024];
             snprintf(out, sizeof(out), "/tmp/gmb_compile_%ld.%s", (long)getpid(), o->backend == RPL_VMC ? "chunk" : "c");
-            int rc = rpl_compile_csharp(args, out, o->backend, o);
+            int rc = rpl_gmb_dump(o->backend == RPL_VMC ? "chunk" : "c", args, out);
             printf(rc == 0 ? "compilato -> %s\n" : "?compilazione fallita (%d)\n", out, rc);
             goto done;
         }
@@ -614,37 +639,28 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
             goto done;
         }
         if (strcasecmp(cmd, "AST") == 0) {
-            /* AST [ALL|ERR|STOP] | AST <file> | AST <filtro> — parità ReplEngine.cs:1913 */
+            /* AST [ALL|ERR|STOP] | AST <file> | AST <filtro> — il dump lo fa il COMPILATORE
+             * (`gmb dump ast`): la REPL non include più lexer/parser (TODO §6, F2). */
             char aarg[1024];
             snprintf(aarg, sizeof(aarg), "%s", args);
             char* ap = aarg; while (*ap == ' ') ap++;
             if (!*ap) { fprintf(stderr, "?uso: AST <file.bas> | AST ALL|ERR|STOP\n"); goto done; }
             char a1[64] = ""; sscanf(ap, "%63s", a1);
             if (strcasecmp(a1, "ALL") == 0 || strcasecmp(a1, "ERR") == 0 || strcasecmp(a1, "STOP") == 0) {
-                int show_ok = strcasecmp(a1, "ERR") != 0;
                 int stop_on_err = strcasecmp(a1, "STOP") == 0;
                 char sampdir[2048]; resolve_repo_path(sampdir, sizeof(sampdir), "samples");
                 char findcmd[4096]; snprintf(findcmd, sizeof(findcmd), "find \"%s\" -name '*.bas' -type f 2>/dev/null", sampdir);
                 FILE* fp = popen(findcmd, "r");
                 if (!fp) { fprintf(stderr, "?AST: find fallito\n"); goto done; }
-                char line[2048]; int ok=0, fail=0;
+                char line[2048]; int ok = 0, fail = 0;
                 while (fgets(line, sizeof(line), fp)) {
                     line[strcspn(line, "\r\n")] = 0; if (!line[0]) continue;
-                    FILE* f = fopen(line, "rb"); if (!f) continue;
-                    fseek(f, 0, SEEK_END); long len = ftell(f); fseek(f, 0, SEEK_SET);
-                    char* src = (char*)malloc(len+1); fread(src,1,len,f); src[len]=0; fclose(f);
-                    gmb_lex_result_t lx = gmb_lexer_scan(src, len);
-                    gmb_lex_result_t lx2 = gmb_macro_expand(&lx); lx.owned_src=NULL;
-                    char* perr=NULL; gmb_program_t prog = gmb_parse(&lx2, &perr);
-                    int is_ok = (perr==NULL);
-                    if (is_ok && show_ok) { printf("."); fflush(stdout); }
-                    if (!is_ok) { fail++; printf("\n  ERRORE: %s - %s\n", line, perr); free(perr); if (stop_on_err) { gmb_program_free(&prog); gmb_lex_result_free(&lx2); gmb_lex_result_free(&lx); free(src); break; } }
-                    else ok++;
-                    gmb_program_free(&prog); gmb_lex_result_free(&lx2); gmb_lex_result_free(&lx); free(src);
-                    if (perr) free(perr);
+                    int rc = rpl_gmb_dump("ast", line, NULL);
+                    if (rc == 0) { ok++; if (strcasecmp(a1, "ALL") == 0) printf("OK   %s\n", line); }
+                    else { fail++; printf("FAIL %s\n", line); if (stop_on_err) break; }
                 }
                 pclose(fp);
-                printf("\nAST %s: OK=%d FAIL=%d\n", a1, ok, fail);
+                printf("; AST: %d ok, %d fail\n", ok, fail);
                 goto done;
             }
             char afile[1024];
@@ -652,92 +668,42 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
             size_t al = strlen(afile);
             while (al > 0 && (afile[0] == '"' || afile[0] == '\'')) { memmove(afile, afile + 1, al); al--; }
             while (al > 0 && (afile[al - 1] == '"' || afile[al - 1] == '\'')) afile[--al] = 0;
-            // filtro SAMPLE: se non è un file ma un filtro, cerca nel catalogo
             if (access(afile, F_OK) != 0) {
                 char sampdir[2048]; resolve_repo_path(sampdir, sizeof(sampdir), "samples");
                 char findcmd2[4096]; snprintf(findcmd2, sizeof(findcmd2), "find \"%s\" -name '*.bas' -type f 2>/dev/null | xargs grep -l \"%s\" 2>/dev/null | head -n 1", sampdir, afile);
                 FILE* fp2 = popen(findcmd2, "r");
-                if (fp2) {
-                    char found[2048]; if (fgets(found, sizeof(found), fp2)) { found[strcspn(found, "\r\n")]=0; snprintf(afile, sizeof(afile), "%s", found); }
-                    pclose(fp2);
-                }
+                if (fp2) { char found[2048]; if (fgets(found, sizeof(found), fp2)) { found[strcspn(found, "\r\n")] = 0; snprintf(afile, sizeof(afile), "%s", found); } pclose(fp2); }
             }
-            FILE* af = fopen(afile, "rb");
-            if (!af) { fprintf(stderr, "?AST: file non trovato: %s\n", afile); goto done; }
-            fseek(af, 0, SEEK_END); long alen = ftell(af); fseek(af, 0, SEEK_SET);
-            char* asrc = (char*)malloc((size_t)alen + 1);
-            fread(asrc, 1, (size_t)alen, af); asrc[alen] = 0; fclose(af);
-            gmb_lex_result_t lx = gmb_lexer_scan(asrc, alen);
-            gmb_lex_result_t lx2 = gmb_macro_expand(&lx);
-            lx.owned_src = NULL;
-            char* perr = NULL;
-            gmb_program_t prog = gmb_parse(&lx2, &perr);
-            if (perr) { fprintf(stderr, "?AST parse error: %s\n", perr); free(perr); }
-            else {
-                // dump con paginazione se output grande
-                char* dump = NULL; size_t dlen = 0;
-                FILE* mem = open_memstream(&dump, &dlen);
-                gmb_ast_dump(prog.stmts, prog.n, mem);
-                gmb_link_result_t lr;
-                gmb_link_resolve(&lr, prog.stmts, prog.n);
-                fprintf(mem, "; Simboli: %d (undefined %d, duplicati %d)\n", lr.count, lr.undefined_count, lr.duplicate_count);
-                if (lr.error) fprintf(mem, "; Errore linker: %s (riga %d)\n", lr.error, lr.error_line);
-                for (int i = 0; i < lr.count; i++)
-                    fprintf(mem, ";   %s %s (riga %d)%s\n", lr.syms[i].kind == GMB_SYM_FUNCTION ? "FUNCTION" : "VAR",
-                           lr.syms[i].name, lr.syms[i].decl_line, lr.syms[i].used ? "" : " [non usato]");
-                gmb_link_free(&lr);
-                fclose(mem);
-                if (dlen > 2000) {
-                    const char* lines[512]; int n=0;
-                    char* p = dump; while (*p && n < 512) { lines[n++]=p; char* nl=strchr(p,'\n'); if(!nl) break; *nl=0; p=nl+1; }
-                    // usa menu paginato se disponibile, altrimenti stampa diretto
-                    printf("%s\n", dump);
-                } else {
-                    printf("; AST di %s (%d statement)\n%s", afile, prog.n, dump);
-                }
-                free(dump);
-            }
-            gmb_program_free(&prog);
-            gmb_lex_result_free(&lx2);
-            gmb_lex_result_free(&lx);
-            free(asrc);
+            rpl_gmb_dump("ast", afile, NULL);
             goto done;
         }
         if (strcasecmp(cmd, "PRGINFO") == 0) {
             char a1[64] = ""; sscanf(args, "%63s", a1);
             if (strcasecmp(a1, "ALL") == 0 || strcasecmp(a1, "ERR") == 0 || strcasecmp(a1, "STOP") == 0) {
+                /* Il catalogo lo compila il COMPILATORE (`gmb dump chunk`): niente front-end qui. */
                 int show_ok = strcasecmp(a1, "ERR") != 0;
                 int stop_on_err = strcasecmp(a1, "STOP") == 0;
                 char sampdir[2048]; resolve_repo_path(sampdir, sizeof(sampdir), "samples");
                 char findcmd[4096]; snprintf(findcmd, sizeof(findcmd), "find \"%s\" -name '*.bas' -type f 2>/dev/null", sampdir);
                 FILE* fp = popen(findcmd, "r");
-                if (!fp) { fprintf(stderr, "?DASM: find fallito\n"); goto done; }
-                char line[2048]; int ok=0, fail=0;
+                if (!fp) { fprintf(stderr, "?PRGINFO: find fallito\n"); goto done; }
+                char line[2048]; int ok = 0, fail = 0;
                 while (fgets(line, sizeof(line), fp)) {
                     line[strcspn(line, "\r\n")] = 0; if (!line[0]) continue;
-                    char chunk[2048]; snprintf(chunk, sizeof(chunk), "/tmp/gmb_prg_%ld.chunk", (long)getpid());
-                    // compile via C pipeline
-                    char* src = NULL; FILE* f = fopen(line, "rb");
-                    if (f) { fseek(f,0,SEEK_END); long len=ftell(f); fseek(f,0,SEEK_SET); src=(char*)malloc(len+1); fread(src,1,len,f); src[len]=0; fclose(f); }
-                    gmb_lex_result_t lx = gmb_lexer_scan(src ? src : "", src ? strlen(src) : 0);
-                    gmb_lex_result_t lx2 = gmb_macro_expand(&lx); lx.owned_src=NULL;
-                    char* perr=NULL; gmb_program_t prog = gmb_parse(&lx2, &perr);
-                    int is_ok = (perr==NULL);
-                    if (is_ok) {
-                        uint8_t* data=NULL; size_t dlen=0; char* cerr=NULL;
-                        int rc = gmb_compile(&prog, &data, &dlen, &cerr);
-                        is_ok = (rc==0);
-                        if (cerr) free(cerr);
-                        if (data) free(data);
+                    char chunk[2048];
+                    snprintf(chunk, sizeof(chunk), "/tmp/gmb_prg_%ld.chunk", (long)getpid());
+                    int rc = rpl_gmb_dump("chunk", line, chunk);
+                    if (rc == 0) {
+                        if (show_ok) { printf("OK   %s\n", line); gmb_prginfo(chunk); }
+                        ok++;
+                    } else {
+                        fail++; printf("FAIL %s\n", line);
+                        if (stop_on_err) break;
                     }
-                    if (is_ok && show_ok) { printf("."); fflush(stdout); }
-                    if (!is_ok) { fail++; printf("\n  ERRORE: %s - %s\n", line, perr ? perr : "compile fallita"); if (stop_on_err) { if (perr) free(perr); gmb_program_free(&prog); gmb_lex_result_free(&lx2); gmb_lex_result_free(&lx); if(src) free(src); break; } }
-                    else ok++;
-                    if (perr) free(perr);
-                    gmb_program_free(&prog); gmb_lex_result_free(&lx2); gmb_lex_result_free(&lx); if(src) free(src);
+                    unlink(chunk);
                 }
                 pclose(fp);
-                printf("\nDASM %s: OK=%d FAIL=%d\n", a1, ok, fail);
+                printf("PRGINFO %s: OK=%d FAIL=%d\n", a1, ok, fail);
                 goto done;
             }
             gmb_prginfo(args); goto done;
@@ -746,45 +712,44 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
         if (strcasecmp(cmd, "DASM") == 0) {
             char a1[64] = ""; sscanf(args, "%63s", a1);
             if (strcasecmp(a1, "ALL") == 0 || strcasecmp(a1, "ERR") == 0 || strcasecmp(a1, "STOP") == 0) {
+                /* Catalogo: compila+disassembla col CLI del compilatore (`gmb dump disasm`). */
                 int show_ok = strcasecmp(a1, "ERR") != 0;
                 int stop_on_err = strcasecmp(a1, "STOP") == 0;
                 char sampdir[2048]; resolve_repo_path(sampdir, sizeof(sampdir), "samples");
                 char findcmd[4096]; snprintf(findcmd, sizeof(findcmd), "find \"%s\" -name '*.bas' -type f 2>/dev/null", sampdir);
                 FILE* fp = popen(findcmd, "r");
                 if (!fp) { fprintf(stderr, "?DASM: find fallito\n"); goto done; }
-                char line[2048]; int ok=0, fail=0;
+                char line[2048]; int ok = 0, fail = 0;
                 while (fgets(line, sizeof(line), fp)) {
                     line[strcspn(line, "\r\n")] = 0; if (!line[0]) continue;
-                    char chunk[2048]; snprintf(chunk, sizeof(chunk), "/tmp/gmb_prg_%ld.chunk", (long)getpid());
-                    FILE* f = fopen(line, "rb");
-                    if (!f) continue;
-                    fseek(f, 0, SEEK_END); long len = ftell(f); fseek(f, 0, SEEK_SET);
-                    char* src = (char*)malloc(len+1); fread(src,1,len,f); src[len]=0; fclose(f);
-                    gmb_lex_result_t lx = gmb_lexer_scan(src, len);
-                    gmb_lex_result_t lx2 = gmb_macro_expand(&lx); lx.owned_src=NULL;
-                    char* perr=NULL; gmb_program_t prog = gmb_parse(&lx2, &perr);
-                    int is_ok = (perr==NULL);
-                    if (is_ok) {
-                        uint8_t* data=NULL; size_t dlen=0; char* cerr=NULL;
-                        int rc = gmb_compile(&prog, &data, &dlen, &cerr);
-                        is_ok = (rc==0);
-                        if (cerr) free(cerr);
-                        if (data) free(data);
-                    }
-                    if (is_ok && show_ok) { printf("."); fflush(stdout); }
-                    if (!is_ok) { fail++; printf("\n  ERRORE: %s - %s\n", line, perr ? perr : "compile fallita"); if (stop_on_err) { if (perr) free(perr); gmb_program_free(&prog); gmb_lex_result_free(&lx2); gmb_lex_result_free(&lx); free(src); break; } }
-                    else ok++;
-                    if (perr) free(perr);
-                    gmb_program_free(&prog); gmb_lex_result_free(&lx2); gmb_lex_result_free(&lx); free(src);
+                    int rc = rpl_gmb_dump("disasm", line, NULL);
+                    if (rc == 0) { ok++; if (show_ok) printf("OK   %s\n", line); }
+                    else { fail++; printf("FAIL %s\n", line); if (stop_on_err) break; }
                 }
                 pclose(fp);
-                printf("\nDASM %s: OK=%d FAIL=%d\n", a1, ok, fail);
+                printf("DASM %s: OK=%d FAIL=%d\n", a1, ok, fail);
                 goto done;
             }
-            gmb_dasm(args); goto done;
+            size_t al = strlen(a1);
+            if (al > 6 && strcasecmp(a1 + al - 6, ".chunk") == 0) { gmb_dasm(a1); goto done; }
+            rpl_gmb_dump("disasm", a1[0] ? a1 : args, NULL);
+            goto done;
         }
         if (strcasecmp(cmd, "IL") == 0) {
-            printf("(IL: diagnostica IL — appartiene a REPL C#; nel nativo usa DASM sul chunk)\n");
+            /* Engine C# (opzionale): finche' c'e', l'IL si ottiene dal suo CLI.
+             * Senza engine il comando lo dice e il resto del mondo C resta intatto. */
+            char cli_cs[2048];
+            const char* cs = getenv("GMBASIC_CSHARP_CLI");
+            if (!cs) {
+                const char* cands[] = { "GMBasicSharp/REPL/bin/Debug/net10.0/REPL.dll", "../GMBasicSharp/REPL/bin/Debug/net10.0/REPL.dll", NULL };
+                for (int i = 0; cands[i]; i++) if (access(cands[i], R_OK) == 0) { cs = cands[i]; break; }
+            }
+            if (!cs) { printf("(IL: engine C# non disponibile — nel mondo C usa DASM sul chunk)\n"); goto done; }
+            snprintf(cli_cs, sizeof(cli_cs), "%s", cs);
+            char cmd3[4096];
+            snprintf(cmd3, sizeof(cmd3), "dotnet \"%s\" --dump-il \"%s\" 2>&1", cli_cs, args);
+            int rc = system(cmd3);
+            if (rc != 0) printf("(IL: il CLI C# non ha prodotto il dump)\n");
             goto done;
         }
         if (strcasecmp(cmd, "WH") == 0) { printf("%s\n", getcwd(line, sizeof(line))); goto done; }
@@ -869,7 +834,13 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
             goto done;
         }
         if (strcasecmp(cmd, "EVAL") == 0) {
-            fprintf(stderr, "?EVAL non ancora disponibile nel percorso C — usa la REPL C#\n");
+            /* Valutazione: la fa il COMPILATORE (`gmb eval`), non la REPL. */
+            char cli[2048];
+            if (!rpl_gmb_cli(cli, sizeof(cli))) { fprintf(stderr, "?gmb (CLI compilatore C) non trovato\n"); goto done; }
+            char cmd2[4096];
+            snprintf(cmd2, sizeof(cmd2), "\"%s\" eval \"%s\"", cli, args);
+            int rc = system(cmd2);
+            if (rc != 0) fprintf(stderr, "?EVAL: errore (%d)\n", WIFEXITED(rc) ? WEXITSTATUS(rc) : 1);
             goto done;
         }
         fprintf(stderr, "?comando sconosciuto: %s (HELP per l'elenco)\n", cmd);
