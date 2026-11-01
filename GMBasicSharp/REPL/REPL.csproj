@@ -112,6 +112,10 @@
     </Target>
 
     <Target Name="LinkSdlAliases" AfterTargets="AfterBuild" Condition="Exists('$(LibsCacheDir)/libSDL2.dylib') AND $([MSBuild]::IsOSPlatform('OSX'))">
+        <!-- Alias e nome vero devono puntare allo STESSO file (la cache), non a due copie:
+             con due file distinti dyld mappa DUE istanze di SDL2 (la seconda inizializzazione
+             fa abort()). La cache è già la fonte di tutto il resto (libgmb_gfx & co.), quindi
+             il puntatore assoluto è coerente. -->
         <Exec Command="ln -sf '$(LibsCacheDir)/libSDL2.dylib' '$(OutDir)SDL2.dll' &amp;&amp; ln -sf '$(LibsCacheDir)/libSDL2.dylib' '$(OutDir)libSDL2.dylib'" EchoOff="true" />
         <Exec Command="ln -sf '$(LibsCacheDir)/libSDL2_ttf.dylib' '$(OutDir)SDL2_ttf.dll' &amp;&amp; ln -sf '$(LibsCacheDir)/libSDL2_ttf.dylib' '$(OutDir)libSDL2_ttf.dylib'" EchoOff="true" Condition="Exists('$(LibsCacheDir)/libSDL2_ttf.dylib')" />
         <Exec Command="ln -sf '$(LibsCacheDir)/libSDL2_image.dylib' '$(OutDir)SDL2_image.dll' &amp;&amp; ln -sf '$(LibsCacheDir)/libSDL2_image.dylib' '$(OutDir)libSDL2_image.dylib'" EchoOff="true" Condition="Exists('$(LibsCacheDir)/libSDL2_image.dylib')" />
