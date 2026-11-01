@@ -13627,6 +13627,16 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                                 if (vB.kind == GMB_TYPE_STRING && vB.v_string.data) blocked = vB.v_string.data;
                                 gmb_http_server_set_security(server, sec, allowed, blocked);
                             }
+                            /* Keep-alive HTTP/1.1 (HTTP CONFIG EnableKeepAlive): default ON.
+                               Prima il server C chiudeva SEMPRE la connessione dopo una risposta,
+                               anche se il client la teneva aperta. */
+                            {
+                                gmb_val_t vKa = gmb_dict_get(*cd, "EnableKeepAlive");
+                                int on = 1;
+                                if (vKa.kind == GMB_TYPE_DOUBLE) on = vKa.v_double != 0;
+                                else if (vKa.kind == GMB_TYPE_INT) on = vKa.v_int != 0;
+                                gmb_http_server_set_keepalive(server, on);
+                            }
                             /* MaxRequestBodySize → 413 sul server C (parità IL/PCode) */
                             {
                                 gmb_val_t vMax = gmb_dict_get(*cd, "MaxRequestBodySize");

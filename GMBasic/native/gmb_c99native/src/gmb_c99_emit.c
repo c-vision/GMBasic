@@ -21108,6 +21108,8 @@ static void st_net_cmd(ctx_t* c, gmb_stmt_t* s) {
             sb_put(&c->out, "{ gmb_val_t _cfgv = ");
             if (nn > 0 && na[0]) emit_expr(c, na[0]); else sb_put(&c->out, "gmb_val_nil()");
             sb_put(&c->out, "; gmb_val_t _cfgcert = gmb_dict_get(gmb_val_as_dict(_cfgv), \"CertificatePath\");");
+            /* Keep-alive (HTTP CONFIG EnableKeepAlive): default ON, come la VM/C. */
+            sb_put(&c->out, " { gmb_val_t _kav = gmb_dict_get(gmb_val_as_dict(_cfgv), \"EnableKeepAlive\"); int _kaon = 1; if (_kav.kind == GMB_TYPE_DOUBLE) _kaon = _kav.v_double != 0; else if (_kav.kind == GMB_TYPE_INT) _kaon = _kav.v_int != 0; gmb_http_server_set_keepalive(1, _kaon); }");
             sb_put(&c->out, " gmb_val_t _cfgpass = gmb_dict_get(gmb_val_as_dict(_cfgv), \"CertificatePassword\");");
             sb_put(&c->out, " gmb_http_server_set_cert(_cfgcert.kind == GMB_TYPE_STRING && _cfgcert.v_string.data ? _cfgcert.v_string.data : \"\", _cfgpass.kind == GMB_TYPE_STRING && _cfgpass.v_string.data ? _cfgpass.v_string.data : \"\"); }\n");
             break;

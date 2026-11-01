@@ -4,6 +4,7 @@
  * ============================================================================ */
 #include "gmb_network.h"
 #include "gmb_bsp.h"
+#include "gmb_compress.h"   /* gzip della risposta (file statici e pagine BSP) */
 #include "gmb_commonlib.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -3026,6 +3027,10 @@ typedef struct {
     char static_dir[16][512];
     int static_count;
     int request_timeout_ms;      /* default 30000 */
+    /* Keep-alive HTTP/1.1: 0 = ATTIVO (default di BSS), 1 = disattivato da HTTP CONFIG
+     * EnableKeepAlive=FALSE. Così i server già avviati con la struct azzerata restano
+     * "riusa connessione" senza dover inizializzare nulla a mano. */
+    int keep_alive_disabled;
     SSL_CTX* ssl_ctx;            /* non-NULL = server HTTPS (TLS) */
     char bsp_dir[512];           /* radice pagine .bsp (HTTP BSP); vuoto = disattivo */
     /* Security (2026-09-02, parità HTTP CONFIG IL/PCode): header automatici + IP allow/block */
@@ -3573,6 +3578,16 @@ int gmb_http_server_set_timeout(int64_t server, int timeout_ms)
     return 0;
 }
 
+/* CONFIG: keep-alive HTTP/1.1 (HTTP CONFIG EnableKeepAlive). on=0 → ogni risposta chiude la
+ * connessione ("Connection: close"), come il server di prima. */
+int gmb_http_server_set_keepalive(int64_t server, int on)
+{
+    gmb_http_server_t* s = http_get(server);
+    if (!s) return -1;
+    s->keep_alive_disabled = on ? 0 : 1;
+    return 0;
+}
+
 /* CONFIG security (2026-09-02): SecurityHeaders + AllowedIPs/BlockedIPs (CIDR IPv4/IP singoli,
    virgola). Parità con CommonLib.Http.HttpSecurity usata da IL/PCode. */
 int gmb_http_server_set_security(int64_t server, int security_headers, const char* allowed, const char* blocked)
@@ -4022,6 +4037,36 @@ int gmb_http_response_is_streaming(gmb_val_t res)
     return (st && st->begun) ? 1 : 0;
 }
 
+/* Valore di un header della richiesta (case-insensitive) o NULL. */
+static const char* http_req_header(const gmb_http_request_t* req, const char* name)
+{
+    if (!req || !name) return NULL;
+    for (int i = 0; i < req->header_count; i++)
+        if (req->header_names[i] && strcasecmp(req->header_names[i], name) == 0)
+            return req->header_values[i];
+    return NULL;
+}
+
+/* Il Content-Type merita compressione? (testo/JSON/SVG/JS/XML — non immagini/archivi) */
+static int http_ctype_is_compressible(const char* ct)
+{
+    if (!ct) return 0;
+    return strncmp(ct, "text/", 5) == 0 || strstr(ct, "json") || strstr(ct, "javascript")
+        || strstr(ct, "svg") || strstr(ct, "xml");
+}
+
+/* Comprime in gzip se il client lo accetta e il corpo è abbastanza grande da guadagnarci.
+ * Ritorna il buffer (malloc, da liberare) e la lunghezza, oppure NULL = invia l'originale.
+ * `algo` = "gzip" (Accept-Encoding: gzip). Soglia 1 KB come le gambe managed. */
+static unsigned char* http_gzip_body(const char* accept_encoding, const char* body,
+                                     size_t len, size_t* out_len)
+{
+    *out_len = 0;
+    if (!accept_encoding || !body || len < 1024) return NULL;
+    if (!strstr(accept_encoding, "gzip")) return NULL;
+    return gmb_compress_data("gzip", (const unsigned char*)body, len, out_len);
+}
+
 /* ── File statici: 200 (intero) o 206 (Range) ─────────────────────────────────
  * Sorgente UNICA per le gambe native. Due difetti chiusi qui insieme:
  *  1) il corpo era letto con UN fread da 64 KB → ogni file più grande arrivava TRONCATO
@@ -4031,7 +4076,7 @@ int gmb_http_response_is_streaming(gmb_val_t res)
  * Range: `Accept-Ranges: bytes` su ogni risposta, 206 con `Content-Range` se l'header è valido,
  * 416 con `Content-Range: bytes *​/total` se non è soddisfacibile. */
 static void http_send_static_file(gmb_net_sock_t client, SSL* ssl,
-                                  const char* fpath, const gmb_http_request_t* req)
+                                  const char* fpath, const gmb_http_request_t* req, int keep)
 {
     FILE* f;
     long long total, start = 0, end = 0, left;
@@ -4110,7 +4155,8 @@ static void http_send_static_file(gmb_net_sock_t client, SSL* ssl,
         {
             snprintf(head, sizeof head,
                 "HTTP/1.1 304 Not Modified\r\n%sCache-Control: public, max-age=3600\r\n"
-                "Accept-Ranges: bytes\r\nConnection: close\r\n\r\n", hdr_extra);
+                "Accept-Ranges: bytes\r\nConnection: %s\r\n\r\n", hdr_extra,
+                keep ? "keep-alive" : "close");
             http_stream_send_all(&out, head, strlen(head));
             fclose(f);
             return;
@@ -4123,8 +4169,8 @@ static void http_send_static_file(gmb_net_sock_t client, SSL* ssl,
     {
         snprintf(head, sizeof head,
             "HTTP/1.1 416 Range Not Satisfiable\r\nContent-Type: %s\r\nAccept-Ranges: bytes\r\n"
-            "Content-Range: bytes */%lld\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
-            ct, total);
+            "Content-Range: bytes */%lld\r\nContent-Length: 0\r\nConnection: %s\r\n\r\n",
+            ct, total, keep ? "keep-alive" : "close");
         http_stream_send_all(&out, head, strlen(head));
         fclose(f);
         return;
@@ -4134,17 +4180,51 @@ static void http_send_static_file(gmb_net_sock_t client, SSL* ssl,
         start = 0;
         end = total > 0 ? total - 1 : -1;
     }
+    /* GZIP del file intero (mai con Range: la fetta è già piccola e Content-Range vale sul
+     * contenuto NON compresso). Se ne vale la pena, la risposta parte in un colpo. */
+    if (pr != 1 && http_ctype_is_compressible(ct) && total >= 1024)
+    {
+        const char* ae = http_req_header(req, "Accept-Encoding");
+        if (ae && strstr(ae, "gzip"))
+        {
+            char* whole = (char*)malloc((size_t)total + 1);
+            if (whole)
+            {
+                size_t got = fread(whole, 1, (size_t)total, f);
+                size_t gzlen = 0;
+                unsigned char* gz = got ? http_gzip_body(ae, whole, got, &gzlen) : NULL;
+                free(whole);
+                if (gz && gzlen > 0 && gzlen < got)
+                {
+                    snprintf(head, sizeof head,
+                        "HTTP/1.1 200 OK\r\nContent-Type: %s\r\nAccept-Ranges: bytes\r\n"
+                        "Content-Encoding: gzip\r\nContent-Length: %llu\r\n%s"
+                        "Cache-Control: public, max-age=3600\r\nVary: Accept-Encoding\r\n"
+                        "Connection: %s\r\n\r\n",
+                        ct, (unsigned long long)gzlen, hdr_extra, keep ? "keep-alive" : "close");
+                    http_stream_send_all(&out, head, strlen(head));
+                    if (!is_head) http_stream_send_all(&out, gz, gzlen);
+                    free(gz);
+                    fclose(f);
+                    return;
+                }
+                free(gz);
+                fseek(f, 0, SEEK_SET);
+            }
+        }
+    }
+
     if (pr == 1)
         snprintf(head, sizeof head,
             "HTTP/1.1 206 Partial Content\r\nContent-Type: %s\r\nAccept-Ranges: bytes\r\n"
             "Content-Range: bytes %lld-%lld/%lld\r\nContent-Length: %lld\r\n%s"
-            "Cache-Control: public, max-age=3600\r\nConnection: close\r\n\r\n",
-            ct, start, end, total, end - start + 1, hdr_extra);
+            "Cache-Control: public, max-age=3600\r\nConnection: %s\r\n\r\n",
+            ct, start, end, total, end - start + 1, hdr_extra, keep ? "keep-alive" : "close");
     else
         snprintf(head, sizeof head,
             "HTTP/1.1 200 OK\r\nContent-Type: %s\r\nAccept-Ranges: bytes\r\n"
             "Content-Length: %lld\r\n%sCache-Control: public, max-age=3600\r\n"
-            "Connection: close\r\n\r\n", ct, total, hdr_extra);
+            "Connection: %s\r\n\r\n", ct, total, hdr_extra, keep ? "keep-alive" : "close");
     http_stream_send_all(&out, head, strlen(head));
 
     /* HEAD: stessa riga di stato e stessi header (Content-Length compreso), NESSUN corpo:
@@ -4202,7 +4282,7 @@ const char* gmb_http_reason_phrase(int status)
  * sovrascrivono header già presenti. Estratto dal loop di dispatch per la catena middleware
  * (ogni passo può accumulare header nello stesso buffer combinato). */
 static void http_send_response(gmb_http_server_t* s, gmb_net_sock_t client, SSL* ssl,
-                               const char* body, size_t body_len, int status, char* headers)
+                               const char* body, size_t body_len, int status, char* headers, int keep)
 {
     const char* ctype = "text/plain";
     size_t extra_cap = 128, extra_len = 0;
@@ -4256,38 +4336,133 @@ static void http_send_response(gmb_http_server_t* s, gmb_net_sock_t client, SSL*
     }
     char head[1024];
     snprintf(head, sizeof(head),
-        "HTTP/1.1 %d %s\r\nContent-Type: %s\r\n%sContent-Length: %zu\r\nConnection: close\r\n\r\n",
+        "HTTP/1.1 %d %s\r\nContent-Type: %s\r\n%sContent-Length: %zu\r\nConnection: %s\r\n\r\n",
         status <= 0 ? 200 : status, gmb_http_reason_phrase(status <= 0 ? 200 : status),
-        ctype, extra ? extra : "", body_len);
+        ctype, extra ? extra : "", body_len, keep ? "keep-alive" : "close");
     http_io_send(client, ssl, head, strlen(head));
     if (body && body_len) http_io_send(client, ssl, body, body_len);
     free(extra);
 }
 
 
+/* Legge UNA richiesta completa in `buf`: header + corpo secondo Content-Length.
+ * `*carry` = byte già presenti all'inizio di `buf` (coda della richiesta precedente sulla
+ * stessa connessione, pipelining); il resto si legge dal socket con la scadenza di richiesta.
+ * Ritorna la lunghezza totale (0 = connessione chiusa, timeout o header troppo grande).
+ *
+ * Perché serve: prima si leggeva SOLO finché non compariva la fine degli header. Con keep-alive
+ * un corpo non ancora arrivato per intero sarebbe stato interpretato come inizio della richiesta
+ * successiva, e un corpo più grande del buffer veniva troncato in silenzio. */
+static long long http_content_length_of(const char* hdrs)
+{
+    const char* p = hdrs;
+    while (p && *p)
+    {
+        const char* nl = strchr(p, '\n');
+        size_t ll = nl ? (size_t)(nl - p) : strlen(p);
+        if (ll <= 1) break;   /* riga vuota = fine header: NON guardare la richiesta successiva */
+        if (ll > 15 && strncasecmp(p, "Content-Length:", 15) == 0)
+        {
+            const char* v = p + 15;
+            while (*v == ' ' || *v == '\t') v++;
+            return strtoll(v, NULL, 10);
+        }
+        if (!nl) break;
+        p = nl + 1;
+    }
+    return 0;
+}
+
+static size_t http_read_request(gmb_http_server_t* s, gmb_net_sock_t client, SSL* ssl,
+                                char* buf, size_t cap, size_t* carry)
+{
+    size_t total = *carry < cap ? *carry : 0;
+    size_t hdr_len = 0;
+    long long clen = 0;
+    size_t want;
+    int64_t deadline = gmb_now_ms_net() + (s->request_timeout_ms > 0 ? s->request_timeout_ms : 30000);
+    *carry = 0;
+
+    /* 1) header: fino alla riga vuota */
+    for (;;)
+    {
+        char* hdr_end;
+        buf[total] = '\0';
+        hdr_end = strstr(buf, "\r\n\r\n");
+        if (hdr_end) hdr_len = (size_t)(hdr_end - buf) + 4;
+        else
+        {
+            hdr_end = strstr(buf, "\n\n");
+            if (hdr_end) hdr_len = (size_t)(hdr_end - buf) + 2;
+        }
+        if (hdr_end) break;
+        if (total + 1 >= cap) return 0;   /* header oltre il buffer: chiusura */
+        {
+            ssize_t r = http_io_recv(client, ssl, buf + total, cap - 1 - total);
+            if (r > 0) { total += (size_t)r; continue; }
+            if (r == 0) return 0;
+            if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) return 0;
+            {
+                int64_t remain = deadline - gmb_now_ms_net();
+                if (remain <= 0) return 0;
+                if (gmb_net_wait_fd((int)client, remain) <= 0) return 0;
+            }
+        }
+    }
+
+    /* 2) corpo: Content-Length byte (un corpo più grande del buffer si tronca al buffer) */
+    clen = http_content_length_of(buf);
+    want = hdr_len + (clen > 0 ? (size_t)clen : 0);
+    if (want > cap - 1) want = cap - 1;
+    while (total < want)
+    {
+        ssize_t r = http_io_recv(client, ssl, buf + total, want - total);
+        if (r > 0) { total += (size_t)r; continue; }
+        if (r == 0) break;
+        if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) break;
+        {
+            int64_t remain = deadline - gmb_now_ms_net();
+            if (remain <= 0) break;
+            if (gmb_net_wait_fd((int)client, remain) <= 0) break;
+        }
+    }
+    buf[total] = '\0';
+    return (long long)total;
+}
+
+/* Il client vuole tenere aperta la connessione? HTTP/1.1 = sì (salvo "Connection: close"),
+ * HTTP/1.0 = no (salvo "Connection: keep-alive"). */
+static int http_client_wants_keep(const char* req_head, const char* ver)
+{
+    const char* p = req_head;
+    int http11 = (ver && strcmp(ver, "HTTP/1.1") == 0);
+    while (p && *p)
+    {
+        const char* nl = strchr(p, '\n');
+        size_t ll = nl ? (size_t)(nl - p) : strlen(p);
+        if (ll <= 1) break;   /* riga vuota = fine header di QUESTA richiesta */
+        if (ll > 11 && strncasecmp(p, "Connection:", 11) == 0)
+        {
+            const char* v = p + 11;
+            if (strstr(v, "close")) return 0;
+            if (strstr(v, "keep-alive")) return 1;
+        }
+        if (!nl) break;
+        p = nl + 1;
+    }
+    return http11;
+}
+
 static void http_handle_conn(gmb_http_server_t* s, gmb_net_sock_t client, SSL* ssl)
 {
     char buf[65536];
     size_t total = 0;
-    int64_t deadline = gmb_now_ms_net() + (s->request_timeout_ms > 0 ? s->request_timeout_ms : 30000);
-    while (total < sizeof(buf) - 1)
-    {
-        ssize_t r = http_io_recv(client, ssl, buf + total, sizeof(buf) - 1 - total);
-        if (r > 0)
-        {
-            total += (size_t)r;
-            buf[total] = '\0';
-            if (strstr(buf, "\r\n\r\n") || strstr(buf, "\n\n")) break;
-            continue;
-        }
-        if (r == 0) { close(client); return; }
-        if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) { close(client); return; }
-        int64_t remain = deadline - gmb_now_ms_net();
-        if (remain <= 0) { close(client); return; }
-        int w = gmb_net_wait_fd((int)client, remain);
-        if (w <= 0) { close(client); return; }
-    }
-    buf[total] = '\0';
+    size_t carry = 0;      /* byte della richiesta SUCCESSIVA già letti (pipelining) */
+    int conn_keep = 0;
+    int client_keep = 0;   /* il client accetta il riuso della connessione */
+
+request_start:
+    total = http_read_request(s, client, ssl, buf, sizeof buf, &carry);
     if (total == 0) { close(client); return; }
 
     /* request line: METHOD PATH VERSION */
@@ -4325,7 +4500,13 @@ static void http_handle_conn(gmb_http_server_t* s, gmb_net_sock_t client, SSL* s
     if (!hdr_end) { hdr_end = strstr(buf, "\n\n"); sep = 2; }
     if (!hdr_end) { close(client); return; }
     const char* body_start = hdr_end + sep;
-    size_t body_len = total - (size_t)(body_start - buf);
+    size_t avail = total - (size_t)(body_start - buf);
+    /* Lunghezza del corpo = quella DICHIARATA (Content-Length), non "tutto ciò che resta nel
+     * buffer": con keep-alive il resto è la richiesta SUCCESSIVA (pipelining) e finiva dentro
+     * req.Body, oltre a far credere che la coda fosse già consumata. */
+    long long body_declared = http_content_length_of(buf);
+    size_t body_len = body_declared > 0 ? (size_t)body_declared : 0;
+    if (body_len > avail) body_len = avail;   /* corpo arrivato solo in parte */
     char body[65536];
     size_t bl = body_len < sizeof(body) - 1 ? body_len : sizeof(body) - 1;
     memcpy(body, body_start, bl);
@@ -4368,6 +4549,21 @@ static void http_handle_conn(gmb_http_server_t* s, gmb_net_sock_t client, SSL* s
             if (!nl) break;
             line = nl + 1;
         }
+    }
+
+    /* Byte della PROSSIMA richiesta già arrivati (pipelining): si tengono da parte prima di
+     * servire questa, così il keep-alive non confonde il corpo con un nuovo request-line. */
+    client_keep = http_client_wants_keep(buf, ver) && !s->keep_alive_disabled;
+    {
+        size_t consumed = (size_t)(body_start - buf) + bl;
+        if (consumed <= total)
+        {
+            carry = total - consumed;
+            /* DOPO aver letto le header di QUESTA richiesta (buf verrà sovrascritto dalla
+             * coda): invertire i due passi faceva valutare la Connection: della prossima. */
+            if (carry) memmove(buf, buf + consumed, carry);
+        }
+        else carry = 0;
     }
 
     /* Body size cap (HTTP CONFIG MaxRequestBodySize) — 413 se Content-Length supera la soglia */
@@ -4566,7 +4762,7 @@ static void http_handle_conn(gmb_http_server_t* s, gmb_net_sock_t client, SSL* s
                 {
                     /* registry step pieno: errore esplicito, mai un fallthrough silenzioso */
                     const char* msg = "500 Internal Server Error: catena HTTP chain-step esausta";
-                    http_send_response(s, client, ssl, msg, strlen(msg), 500, NULL);
+                    http_send_response(s, client, ssl, msg, strlen(msg), 500, NULL, 0);
                     free(acc);
                     close(client);
                     return;
@@ -4609,7 +4805,7 @@ static void http_handle_conn(gmb_http_server_t* s, gmb_net_sock_t client, SSL* s
                 {
                     const char* msg = "504 Gateway Timeout";
                     char hdr[] = "Content-Type: text/plain; charset=utf-8\n";
-                    http_send_response(s, client, ssl, msg, strlen(msg), 504, hdr);
+                    http_send_response(s, client, ssl, msg, strlen(msg), 504, hdr, 0);
                     gmb_http_chain_step_free(step_id);
                     g_http_current_step = 0;
                     free(acc);
@@ -4677,15 +4873,16 @@ static void http_handle_conn(gmb_http_server_t* s, gmb_net_sock_t client, SSL* s
                 close(client);
                 return;
             }
-            http_send_response(s, client, ssl, out_body, out_body_len, out_status, combined);
+            http_send_response(s, client, ssl, out_body, out_body_len, out_status, combined,
+                               client_keep && out_status != 100);
             free(out_body);
             free(out_headers);
             free(combined);
             if (step_id) gmb_http_chain_step_free(step_id);
             g_http_current_step = 0;
             free(acc);
-            close(client);
-            return;
+            conn_keep = client_keep;
+            goto conn_done;
         }
         free(acc);
     }
@@ -4700,15 +4897,43 @@ static void http_handle_conn(gmb_http_server_t* s, gmb_net_sock_t client, SSL* s
             size_t olen = bsp_html ? strlen(bsp_html) : 0;
             const char* reason = bsp_st == 403 ? "Forbidden"
                 : bsp_st == 500 ? "Internal Server Error" : "OK";
-            char head[256];
-            snprintf(head, sizeof(head),
-                "HTTP/1.1 %d %s\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: %zu\r\nConnection: close\r\n\r\n",
-                bsp_st > 0 ? bsp_st : 200, reason, olen);
-            http_io_send(client, ssl, head, strlen(head));
-            if (bsp_html && olen) http_io_send(client, ssl, bsp_html, olen);
+            char head[428];
+            /* La pagina BSP è una risposta completa (Content-Length noto): può restare
+             * sulla connessione. Prima ogni pagina BSP chiudeva il socket. */
+            int bsp_keep = client_keep && bsp_st != 500 && bsp_st != 403;
+            /* GZIP della pagina (HTML: 47 KB → ~6 KB nel caso della dashboard): il corpo è
+             * già in memoria, il costo è una compressione, il guadagno è sulla rete. */
+            {
+                size_t gzlen = 0;
+                unsigned char* gz = NULL;
+                const char* ae = http_req_header(&req, "Accept-Encoding");
+                if (bsp_html && olen >= 1024 && ae && strstr(ae, "gzip"))
+                    gz = http_gzip_body(ae, bsp_html, olen, &gzlen);
+                if (gz && gzlen > 0 && gzlen < olen)
+                {
+                    snprintf(head, sizeof(head),
+                        "HTTP/1.1 %d %s\r\nContent-Type: text/html; charset=utf-8\r\n"
+                        "Content-Encoding: gzip\r\nContent-Length: %llu\r\nVary: Accept-Encoding\r\n"
+                        "Connection: %s\r\n\r\n",
+                        bsp_st > 0 ? bsp_st : 200, reason, (unsigned long long)gzlen,
+                        bsp_keep ? "keep-alive" : "close");
+                    http_io_send(client, ssl, head, strlen(head));
+                    http_io_send(client, ssl, (const char*)gz, gzlen);
+                }
+                else
+                {
+                    snprintf(head, sizeof(head),
+                        "HTTP/1.1 %d %s\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: %zu\r\n"
+                        "Vary: Accept-Encoding\r\nConnection: %s\r\n\r\n",
+                        bsp_st > 0 ? bsp_st : 200, reason, olen, bsp_keep ? "keep-alive" : "close");
+                    http_io_send(client, ssl, head, strlen(head));
+                    if (bsp_html && olen) http_io_send(client, ssl, bsp_html, olen);
+                }
+                free(gz);
+            }
             free(bsp_html);
-            close(client);
-            return;
+            conn_keep = bsp_keep;
+            goto conn_done;
         }
     }
 
@@ -4761,17 +4986,27 @@ static void http_handle_conn(gmb_http_server_t* s, gmb_net_sock_t client, SSL* s
                     /* Risposta dal file: 200/206 (Range) + Accept-Ranges, corpo a blocchi.
                      * La lettura con UN fread da 64 KB troncava ogni file più grande. */
                     fclose(f);
-                    http_send_static_file(client, ssl, fpath, &req);
-                    close(client);
-                    return;
+                    http_send_static_file(client, ssl, fpath, &req, client_keep);
+                    conn_keep = client_keep;
+                    goto conn_done;
                 }
             }
         }
     }
 
-    const char* response = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
-    http_io_send(client, ssl, response, strlen(response));
-    close(client);
+    {
+        char r404[128];
+        snprintf(r404, sizeof r404,
+                 "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: %s\r\n\r\n",
+                 client_keep ? "keep-alive" : "close");
+        http_io_send(client, ssl, r404, strlen(r404));
+        conn_keep = client_keep;
+    }
+
+conn_done:
+    if (!conn_keep) { close(client); return; }
+    /* Prossima richiesta sulla STESSA connessione. */
+    goto request_start;
 }
 
 /* Una connessione per thread (detached): l'accept loop deve restare libero
