@@ -175,6 +175,17 @@ const char* rpl_cs_cli(const rpl_options_t* o, char* out, size_t cap)
     char root[2048];
     resolve_repo_path(root, sizeof(root), "GMBasicSharp/CompilerCli/bin/Debug/net10.0/gmbcs");
     if (access(root, X_OK) == 0) { snprintf(out, cap, "%s", root); return out; }
+    /* installazione/distribuzione: `gmbcs` nel PATH (stessa logica di `gmb`) */
+    const char* path_env = getenv("PATH");
+    if (path_env) {
+        char tmp[4096];
+        snprintf(tmp, sizeof(tmp), "%s", path_env);
+        for (char* dir = strtok(tmp, ":"); dir; dir = strtok(NULL, ":")) {
+            snprintf(out, cap, "%s/gmbcs", dir);
+            if (access(out, X_OK) == 0) return out;
+        }
+        out[0] = 0;
+    }
     return NULL;
 }
 
