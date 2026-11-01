@@ -90,7 +90,7 @@ public static class DataTypeMapper
         // dinamico/generico come il CREATE_ARRAY del p-code Compiler esistente.
         ArrayType a => Map(a.ElementType, types, classTypes).MakeArrayType(),
         // Tipi grafici custom mappati a double[] (la VM li rappresenta come array numerici:
-        // SCREENINFO -> {25, 80}, RGB -> {r, g, b, a}). Porting da GM-Basic.
+        // SCREENINFO -> {25, 80}, RGB -> {r, g, b, a}). Porting da GMBasic.
         DisplayModeType => types.Double.MakeArrayType(),
         RgbaColorType => types.Double.MakeArrayType(),
         // DICT con chiave STRING e valore BYTE[]: necessario alle primitive AEAD

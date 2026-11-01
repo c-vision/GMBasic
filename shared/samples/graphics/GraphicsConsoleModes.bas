@@ -5,9 +5,9 @@
 ' Questi comandi hanno il prefisso C* (Console) per distinguere l'operazione sulla console
 ' testuale da quella sulla finestra grafica. GMBasicAI NON ha la grafica, quindi questi
 ' comandi NON esistono lì (CLS/LOCATE/PRINT/SAVESCREEN/RESTORESCREEN senza prefisso sono
-' la forma portabile). Stanno in Samples/Graphics perché restano solo in GM-Basic.
+' la forma portabile). Stanno in Samples/Graphics perché restano solo in GMBasic.
 '
-' COPERTURA (solo GM-Basic):
+' COPERTURA (solo GMBasic):
 ' - CCLS                 : pulisce SOLO la console testuale (CCLS).
 ' - CLOCATE r, c)        : posiziona il cursore SOLO console.
 ' - CPRINT "testo"       : stampa SOLO console.
@@ -20,7 +20,7 @@
 SUB Main()
     CLS
     PRINT "============================================================"
-    PRINT "CONSOLE C* - Modalita' console (solo GM-Basic)"
+    PRINT "CONSOLE C* - Modalita' console (solo GMBasic)"
     PRINT "============================================================"
     PRINT
 

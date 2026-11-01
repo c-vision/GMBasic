@@ -1,9 +1,9 @@
 using System.Runtime.CompilerServices;
 
 // Il P-Code Interpreter interno dell'IL Backend (common/IlBackend/PCode/, porting da PCodeVm
-// GM-Basic) accede a campi/proprietà internal dei driver RDD (DbfDriver._engine,
+// GMBasic) accede a campi/proprietà internal dei driver RDD (DbfDriver._engine,
 // IsamDriver._engine, SpeedDriver._db/_tableId, Database.Manifest) per gli stessi motivi per cui
-// li usava già in GM-Basic: bypassare l'API pubblica RDD per operazioni a basso livello (SEEK su
+// li usava già in GMBasic: bypassare l'API pubblica RDD per operazioni a basso livello (SEEK su
 // chiave binaria, accesso diretto al Manifest SPEED) che il livello pubblico non espone.
 [assembly: InternalsVisibleTo("GMBasic.IlBackend")]
 [assembly: InternalsVisibleTo("GMBasic.Runtime")]

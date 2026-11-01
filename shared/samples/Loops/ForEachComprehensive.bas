@@ -2,7 +2,7 @@
 ' =================================================================================================
 '       FOR EACH — TUTTE LE FORME SUPPORTATE
 ' =================================================================================================
-' Questo file dimostra TUTTE le varianti di FOR EACH disponibili in GM-Basic/GMBasicAI.
+' Questo file dimostra TUTTE le varianti di FOR EACH disponibili in GMBasic/GMBasicAI.
 ' Ogni sezione è indipendente e testa una forma specifica.
 ' =================================================================================================
 

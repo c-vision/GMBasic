@@ -418,7 +418,7 @@ static void io_sdl_open(gmb_iconsole_t* c)
     i->opened = 1;
     /* UNA sola finestra: la crea il modello (gmb_sdl_console_open). NON creare un secondo
      * gmb_sdl_context qui — apriva una SECONDA finestra (bug "due finestre"). Il vecchio
-     * GM-Basic aveva un solo SdlConsole.Show(). */
+     * GMBasic aveva un solo SdlConsole.Show(). */
     gmb_sdl_console_open(i->model);
 }
 static void io_sdl_present(gmb_iconsole_t* c) { iconsole_impl_t* i = impl_of(c); if (i && i->model) gmb_sdl_console_render(i->model); }
@@ -476,7 +476,7 @@ static gmb_screen_config_t iconsole_build_config(int mode)
         ? gmb_screen_config_get_default(GMB_SM_C64)
         : gmb_screen_config_get_default(GMB_SM_TEXT);
     /* Testo (non C64): palette VGA16 + fg15/bg1 (sfondo BLU), come il vecchio
-     * GM-Basic Executor.Startup.cs (PaletteData=GetVGA16Palette, DefaultFg=15, DefaultBg=1). */
+     * GMBasic Executor.Startup.cs (PaletteData=GetVGA16Palette, DefaultFg=15, DefaultBg=1). */
     if (mode != 1) {
         gmb_screen_palette_vga16((void*)cfg.resolved_palette);
         cfg.palette_size = 16;

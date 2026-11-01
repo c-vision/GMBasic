@@ -1,7 +1,7 @@
 Conformance: edition=Commercial
   code=1394 bytes, consts=59, entry=1064
   A1 chunk: /var/folders/b_/gsctxq2x5sq9gh7zpqpgrd0m0000gn/T/gmb_vmtest_c3f40500.chunk (14073 bytes)
-[2;5HBenvenuto in GM-Basic![4;5HPrezzo base:[5;5HPrezzo formato:[7;5HNome: Mario Rossi[8;5HEta': [10;5H══════════════════════════════════[11;5H  SCHEDA ANAGRAFICA CLIENTE      [12;5H══════════════════════════════════[14;5HNome.......:[15;5HIndirizzo..:[16;5HCitta'.....:[17;5HTelefono...:[18;5H══════════════════════════════════[20;5HData:  46253.9166666667 [21;5HOra:  0.8459375   ---- VM/C OUTPUT ----
+[2;5HBenvenuto in GMBasic![4;5HPrezzo base:[5;5HPrezzo formato:[7;5HNome: Mario Rossi[8;5HEta': [10;5H══════════════════════════════════[11;5H  SCHEDA ANAGRAFICA CLIENTE      [12;5H══════════════════════════════════[14;5HNome.......:[15;5HIndirizzo..:[16;5HCitta'.....:[17;5HTelefono...:[18;5H══════════════════════════════════[20;5HData:  46253.9166666667 [21;5HOra:  0.8459375   ---- VM/C OUTPUT ----
 === CLIPPER @...SAY DEMO ===
 
 

@@ -365,7 +365,7 @@ public static partial class IlRuntime
 
     /// <summary>Applica la semantica STRING * N (padding a destra con spazi se più corta,
     /// troncamento se più lunga) — stessa logica di OP_ADJUST_STRING nella P-Code VM
-    /// (PCodeVm/PCodeProcessor.cs). Porting da GM-Basic (commit 24e8d24e): il backend IL non
+    /// (PCodeVm/PCodeProcessor.cs). Porting da GMBasic (commit 24e8d24e): il backend IL non
     /// applicava MAI questa regola.</summary>
     public static string AdjustFixedString(string? value, int len)
     {
@@ -3754,7 +3754,7 @@ public static partial class IlRuntime
 
     // ======================================================================================
     // DBF (RDD) — delega a IDatabaseService con modello area/alias (porting da
-    // GM-Basic/GMBasicAI IlBackend). Il backend IL non referenzia il motore RDD: ogni
+    // GMBasic/GMBasicAI IlBackend). Il backend IL non referenzia il motore RDD: ogni
     // operazione passa dall'handle dell'area corrente (come la PCodeVM con le aree xBase).
     // ======================================================================================
     private static readonly System.Collections.Generic.Dictionary<string, long> _dbfHandles =
@@ -7178,7 +7178,7 @@ public static partial class IlRuntime
         return Current.Console is Basic.Runtime.Services.HeadlessConsoleService ? 0.0 : 1.0;
     }
 
-    // --- Importato da GM-Basic f74bc366 (Lotto 0 categoria 6, altra AI) ---
+    // --- Importato da GMBasic f74bc366 (Lotto 0 categoria 6, altra AI) ---
     public static string Tab() => "\t";
     public static double Seconds() => (double)(int)DateTime.Now.TimeOfDay.TotalSeconds;
     public static string Dtoc(double oa)
@@ -7454,7 +7454,7 @@ public static partial class IlRuntime
         }
     }
 
-    // --- Importato da GM-Basic (COMPRESSION, altra cat6) ---
+    // --- Importato da GMBasic (COMPRESSION, altra cat6) ---
     public static double Zip(string sources, string dest)
     {
         var list = new System.Collections.Generic.List<string>();
@@ -7767,7 +7767,7 @@ public static double TextWidth(string s)
     { if (tgt != null && src is System.Collections.IEnumerable en) foreach (var item in en) tgt.Add(item); return null; }
     public static double TryGetValue(System.Collections.IDictionary d, object k, System.Collections.IList outList)
     { if (d == null) return 0; var found = d.Contains(k ?? ""); if (found && outList is { Count: > 0 }) outList[0] = d[k ?? ""]; return found ? 1 : 0; }
-    // --- Importato da GM-Basic (ANALYSIS blocco 1 — dict campi BASIC, semantica case VM) ---
+    // --- Importato da GMBasic (ANALYSIS blocco 1 — dict campi BASIC, semantica case VM) ---
     public static Dictionary<string, object?> AdfTest(double[] data)
     {
         try { var (stat, pVal) = CommonLib.Numerics.AdfTest(data ?? Array.Empty<double>()); return new() { ["Statistic"] = stat, ["PValue"] = pVal }; }
@@ -8142,7 +8142,7 @@ public static double TextWidth(string s)
         try { return Current.Graphics.Point((int)x, (int)y); } catch { return -1.0; }
     }
 
-    // --- Importato da GM-Basic (CRYPTO ABI: ABIENCODE/ABIDECODE — Ethereum) ---
+    // --- Importato da GMBasic (CRYPTO ABI: ABIENCODE/ABIDECODE — Ethereum) ---
     /// <summary>Payload ABI: selettore (Keccak-256 della firma) + una parola per argomento.
     /// Il tail variadico puo' arrivare IMPACCHETTATO (il parametro StdLib e' <c>ParamArray</c>,
     /// anche su piu' livelli) o contenere un array a runtime (es. <c>DIM A = {1,2}</c> passato
@@ -13478,7 +13478,7 @@ public static double TextWidth(string s)
     }
     public static object? Peek(System.Collections.IList list) => list.Count > 0 ? list[0] : null;
 
-    // --- Importato da GM-Basic (CONSOLE blocco 1, altra cat6) ---
+    // --- Importato da GMBasic (CONSOLE blocco 1, altra cat6) ---
     public static string Petscii(string s)
     {
         var sb = new System.Text.StringBuilder();
@@ -14179,7 +14179,7 @@ public static double TextWidth(string s)
         return res.ToArray();
     }
 
-    // --- Importato da GM-Basic (SYSTEM, altra cat6) ---
+    // --- Importato da GMBasic (SYSTEM, altra cat6) ---
     public static long VarPtr(object value) => CommonLib.UdtUtils.VarPtr(value);
 
     /// <summary>
@@ -15452,7 +15452,7 @@ public static double TextWidth(string s)
         catch { return false; }
     }
 
-    /// <summary>GET/WAITKEY: come la PCodeVM di GM-Basic (Keyboard.ReadKey bloccante).
+    /// <summary>GET/WAITKEY: come la PCodeVM di GMBasic (Keyboard.ReadKey bloccante).
     /// Con grafica reale (SdlGraphicsService, anche dummy) attende la coda INKEY
     /// alimentata da SDL o da <c>--key</c>. NullGraphicsService → no-op (test senza runner).</summary>
     public static string ReadKey()
@@ -17490,7 +17490,7 @@ public static double TextWidth(string s)
     }
 
     // ── ON KEY / ON MOUSE / ON WINDOW ────────────────────────────────
-    // Porting da GM-Basic (commit 5485907e). Riusa CommonLib.App.EventDispatcher.Instance —
+    // Porting da GMBasic (commit 5485907e). Riusa CommonLib.App.EventDispatcher.Instance —
     // LO STESSO dispatcher unificato usato dal P-Code VM (RegisterKey/RegisterMouse/
     // RegisterWindow + DispatchKey/DispatchMouse/DispatchWindow, già chiamati dai punti di
     // lettura input condivisi tra i due backend) — quindi qui basta registrare l'handler, il
@@ -18514,7 +18514,7 @@ public static double TextWidth(string s)
     /// <summary>
     /// Percorso NativeAOT di <see cref="MacroEval"/>: compila la macro a P-Code (stesso front-end
     /// Parser/Compiler condiviso, nessun <see cref="System.Reflection.Emit.DynamicMethod"/>) ed
-    /// esegue il chunk con l'interprete P-Code interno (porting di PCodeVm da GM-Basic, vedi
+    /// esegue il chunk con l'interprete P-Code interno (porting di PCodeVm da GMBasic, vedi
     /// common/IlBackend/PCode/) — mai un bridge verso codice C, resta tutto in C#.
     ///
     /// Cattura delle variabili GLOBALI: il <see cref="global::Compiler.Compiler"/> usato qui

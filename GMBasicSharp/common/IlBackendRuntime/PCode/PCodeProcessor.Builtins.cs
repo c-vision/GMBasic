@@ -212,7 +212,7 @@ private static double[] ToDoubleArr(object? arg) {
                 // Un elemento di un array di UDT deve avere il proprio dizionario indipendente
                 // taggato __class__ — senza, resta null e ogni lettura/scrittura di campo
                 // (OP_LOAD_MEMBER/OP_STORE_MEMBER) fallisce in silenzio (vedi 02-Knowledge/
-                // GM-Basic-PCODE-UDT-Field-Access-Bug.md). Ogni campo pre-popolato con un
+                // GMBasic-PCODE-UDT-Field-Access-Bug.md). Ogni campo pre-popolato con un
                 // valore di default TIPIZZATO (via FieldTypes/DefaultValueForFieldType — stessa
                 // logica di OP_NEW_UDT_INSTANCE sopra) invece di lasciarlo assente dal
                 // dizionario.
@@ -1607,7 +1607,7 @@ if (args.Length >= 2) { var file = args[0]?.ToString() ?? ""; var section = args
                 }
                 // File sequenziale (IO.EOF(n)): true se la posizione corrente è alla fine.
                 // BIT true = -1 (NOT -1 = 0 in BASIC bitwise), altrimenti `NOT EOF` non esce
-                // e il WHILE NOT EOF di FilesIO gira all'infinito (porting da GM-Basic).
+                // e il WHILE NOT EOF di FilesIO gira all'infinito (porting da GMBasic).
                 if (args.Length > 0)
                 {
                     var eofFileNum = (int)SafeDouble(ArgOr(args, 0));
@@ -1682,7 +1682,7 @@ if (args.Length >= 2) { var file = args[0]?.ToString() ?? ""; var section = args
                 // compile-time contro DIM RegRes AS Analysis.RegressionResult — a runtime,
                 // OP_LOAD_FIELD (PCodeProcessor.cs) ha già un case generico per IDictionary che
                 // risolve .Slope/.Intercept/.R2 per nome, nessun nuovo plumbing necessario (stesso
-                // fix di GM-Basic, TODO AnalysisTests-ADFTEST-ARIMA-KMEANS bug #3).
+                // fix di GMBasic, TODO AnalysisTests-ADFTEST-ARIMA-KMEANS bug #3).
                 if (args.Length >= 2 && args[0] is System.Collections.IList rx && args[1] is System.Collections.IList ry) {
                     var (slope, intercept, r2) = CommonLib.Numerics.LinearRegression(ToDoubleArray(rx), ToDoubleArray(ry));
                     return new Dictionary<string, object?> { ["Slope"] = slope, ["Intercept"] = intercept, ["R2"] = r2 };
@@ -2159,7 +2159,7 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
                 // BASIC: HOLTWINTERS(series, alpha, beta, gamma, period) — args[1..3]=alpha/beta/
                 // gamma, args[4]=period; il case leggeva args[1] come seasonalPeriod invece di
                 // alpha (seasonalPeriod=0 -> forecasts vuoto -> HwRes.Forecast(0) fuori range).
-                // Ritorna un Dictionary (stesso motivo di REGRESS sopra), stesso fix di GM-Basic
+                // Ritorna un Dictionary (stesso motivo di REGRESS sopra), stesso fix di GMBasic
                 // (TODO AnalysisTests-ADFTEST-ARIMA-KMEANS bug #2+#3).
                 if (args.Length >= 2 && args[0] is System.Collections.IList hwIn) {
                     var hwD = ToDoubleArray(hwIn);
@@ -2170,9 +2170,9 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         
             // ARIMA/ADFTEST/KMEANS erano raggruppati nel case INTERPOLATECLAMP (arità e semantica
             // incompatibili) — cadevano silenziosamente nel ramo `return 0.0`, nessuna implementazione
-            // reale sotto (CommonLib.Numerics non aveva ADF/ARIMA/KMeans — stesso bug di GM-Basic,
+            // reale sotto (CommonLib.Numerics non aveva ADF/ARIMA/KMeans — stesso bug di GMBasic,
             // TODO AnalysisTests-ADFTEST-ARIMA-KMEANS bug #1). Implementati in
-            // CommonLib/Numerics/Analysis.cs (identico a GM-Basic); ritornano Dictionary per lo
+            // CommonLib/Numerics/Analysis.cs (identico a GMBasic); ritornano Dictionary per lo
             // stesso motivo di REGRESS/HOLTWINTERS sopra.
         },
         [BuiltInFunction.ARIMA] = (task, args) =>
@@ -4985,7 +4985,7 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         {
                 // BASIC: TRIANGULARPDF(x, min, mode, max) — args[0] è x, va spostato per ultimo
                 // per la firma StdLib.Runtime (min, mode, max, x), come ogni altro case PDF/CDF in
-                // questo blocco. Stesso bug e stesso fix di GM-Basic (scoperto verificando la
+                // questo blocco. Stesso bug e stesso fix di GMBasic (scoperto verificando la
                 // migrazione IlBackend→StdLib.Runtime, Fase 9 del piano): passava args[0..3] senza
                 // riordino, mappando silenziosamente x→min, min→mode, mode→max, max→x —
                 // parametrizzazione quasi sempre invalida, eccezione interna a Triangular.PDF che

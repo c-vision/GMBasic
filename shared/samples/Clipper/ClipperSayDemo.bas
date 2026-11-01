@@ -5,7 +5,7 @@
 PRINT "=== CLIPPER @...SAY DEMO ==="
 
 ' --- SAY base ---
-@ 2, 5 SAY "Benvenuto in GM-Basic!"
+@ 2, 5 SAY "Benvenuto in GMBasic!"
 PRINT
 
 ' --- SAY con PICTURE (formattazione numerica) ---

@@ -2070,7 +2070,7 @@ internal sealed partial class PCodeProcessor
             // === SYSCALL ===
             case OpCode.OP_SYSCALL:
             {
-                // GM-Basic: il compilatore EmitSysCall scrive il syscall come U16 big-endian
+                // GMBasic: il compilatore EmitSysCall scrive il syscall come U16 big-endian
                 // (2 byte: hi, lo) — formato [OP_SYSCALL] [hi] [lo] [argCount] (4 byte).
                 // (GMBasicAI usa invece 1 byte — formato diverso, vedi il suo Compiler.Console.)
                 var syscallCode = ReadU16(task);

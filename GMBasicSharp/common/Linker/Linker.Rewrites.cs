@@ -1810,7 +1810,7 @@ public static partial class Linker
             // risolvila come FunctionExpr (il compiler la emette via _ffiFunctions o come
             // chiamata UDF). Prima il default dispatch della VM la "gestiva" col fallback
             // numerico (magic-number) che collideva coi TokenKind correnti — fix 2026-08-11
-            // (Structural-Bug-Fix-Builtin-Dispatch, allineato GM-Basic).
+            // (Structural-Bug-Fix-Builtin-Dispatch, allineato GMBasic).
             // 2026-09-24: cerca PRIMA nello scope del namespace qualificato (overload utente
             // dentro un namespace builtin, es. MATH.SQR/2), poi visibilità generale.
             var procCandidate = program.GetProceduresForNamespace(bce.Namespace.Lexeme)
@@ -4521,7 +4521,7 @@ public static partial class Linker
     /// -> passthrough invariato): ResourceInit non veniva mai riscritta e il Body non
     /// veniva mai attraversato, quindi DIM/LET dentro un blocco USING perdevano la
     /// riscrittura con inferenza di tipo applicata a tutti gli altri blocchi (IF/WITH/ecc).
-    /// Porting da GM-Basic (stesso gap, stesso codice pre-fork).
+    /// Porting da GMBasic (stesso gap, stesso codice pre-fork).
     /// </summary>
     private static (Stmt Rewritten, AstRewriteContext NewContext) RewriteUsingStatement(
         UsingStmt stmt, AstRewriteContext context, ProcedureDefinition? procedureContext, BasicProgram program)
@@ -4576,7 +4576,7 @@ public static partial class Linker
     }
 
     /// <summary>
-    /// Riscrive una clausola CASE di MATCH (Fase D, twin-port GM-Basic 5a583dc): ogni
+    /// Riscrive una clausola CASE di MATCH (Fase D, twin-port GMBasic 5a583dc): ogni
     /// pattern è un'Espressione che deve passare da RewriteExpression — senza, le chiamate
     /// a FUNCTION utente nei pattern restavano ArrayAccessExpr non risolti → OP_PUSH_NIL.
     /// </summary>
@@ -4640,7 +4640,7 @@ public static partial class Linker
             },
             // Clipper @...GET: riscrive TUTTI i figli Expr (Row/Col/Variable/Picture/Valid/
             // RangeLo/RangeHi/Color/Items/ControlWidth/ControlHeight/Caption/StepValue/
-            // MinValue/MaxValue) — prima solo Variable (twin-port GM-Basic 5a583dc).
+            // MinValue/MaxValue) — prima solo Variable (twin-port GMBasic 5a583dc).
             AtGetStmt s => s with
             {
                 Row = RewriteExpression(s.Row, context, program),
@@ -4662,7 +4662,7 @@ public static partial class Linker
             },
             // Clipper @...SAY: riscrive le espressioni interne — senza, le chiamate builtin
             // con nome Identifier-kind (TIME$()/DATE$() inline) restavano ArrayAccessExpr
-            // non risolti → OP_PUSH_NIL a runtime (allineato GM-Basic).
+            // non risolti → OP_PUSH_NIL a runtime (allineato GMBasic).
             AtSayStmt s => s with
             {
                 Row = RewriteExpression(s.Row, context, program),
@@ -4671,7 +4671,7 @@ public static partial class Linker
                 Picture = s.Picture != null ? RewriteExpression(s.Picture, context, program) : null,
                 ScopeId = s.ScopeId
             },
-            // --- Fase D (audit rewrite non uniforme, twin-port GM-Basic 5a583dc): statement
+            // --- Fase D (audit rewrite non uniforme, twin-port GMBasic 5a583dc): statement
             // con figli Expr che prima cascavano in `_ => stmt` senza riscrivere le espressioni
             // interne. Conseguenze: costanti %NOME non piegate (ora coperte anche dal fallback
             // compiler, ma il folding resta necessario) e chiamate a FUNCTION utente

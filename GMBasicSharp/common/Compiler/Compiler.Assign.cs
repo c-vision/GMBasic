@@ -751,7 +751,7 @@ public sealed partial class Compiler
             // per riferimento — da cui il controllo specifico su UserDefinedType, non su
             // "qualunque tipo strutturato"). Senza questa copia, modificare P2 dopo
             // l'assegnazione modificava anche P1 (stesso Dictionary<string,object?> condiviso
-            // — vedi 02-Knowledge/GM-Basic-PCODE-UDT-Field-Access-Bug.md). Il target, non il
+            // — vedi 02-Knowledge/GMBasic-PCODE-UDT-Field-Access-Bug.md). Il target, non il
             // valore RHS, decide: assegnare un'espressione UDT a un campo/variabile UserDefinedType
             // clona sempre, indipendentemente da come il valore RHS è stato prodotto.
             if (InferExpressionTypeFromTarget(assignment.Target) is UserDefinedType)

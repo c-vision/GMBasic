@@ -632,7 +632,7 @@ static int create_instance(void)
     VkApplicationInfo app;
     memset(&app, 0, sizeof(app));
     app.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    app.pApplicationName = "GM-Basic";
+    app.pApplicationName = "GMBasic";
     app.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
     app.pEngineName = "gmb_gfx";
     app.engineVersion = VK_MAKE_VERSION(1, 0, 0);

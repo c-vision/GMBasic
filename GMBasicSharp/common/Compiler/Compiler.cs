@@ -1331,7 +1331,7 @@ public sealed partial class Compiler
                         // salva nello slot, non veniva mai chiamato) — lo slot restava a
                         // null per tutta la vita della SUB/FUNCTION. `P.X = 42` (OP_STORE_MEMBER
                         // su un obj null) e la lettura successiva fallivano entrambe in
-                        // silenzio (vedi 02-Knowledge/GM-Basic-PCODE-UDT-Field-Access-Bug.md).
+                        // silenzio (vedi 02-Knowledge/GMBasic-PCODE-UDT-Field-Access-Bug.md).
                         // ListType/DictType/ecc. mancavano qui per lo stesso identico motivo di
                         // UserDefinedType sopra: `DIM x AS LIST OF T` (nessun inizializzatore)
                         // prendeva la scorciatoia !needsInit sotto — OP_PUSH_NIL invece di

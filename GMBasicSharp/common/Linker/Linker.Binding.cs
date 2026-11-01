@@ -2381,7 +2381,7 @@ public static partial class Linker
     /// una chiave NON UNIVOCA nel dizionario Variables dello scope, condivisa
     /// da tutte le variabili "non risolte". Risultato: un DIM nel corpo poteva
     /// sovrascrivere silenziosamente il valore della variabile del USING
-    /// (es. il numero di file). Porting da GM-Basic (stesso gap, stesso codice
+    /// (es. il numero di file). Porting da GMBasic (stesso gap, stesso codice
     /// pre-fork).
     /// </summary>
     private static UsingStmt BindUsingStatement(BasicProgram program, UsingStmt usingStmt, bool isStrict)

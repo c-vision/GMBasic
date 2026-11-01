@@ -301,7 +301,7 @@ public sealed partial class IlProgramCompiler
     // il caso "intera palette con nome" nel backend IL (richiederebbe una nuova API
     // runtime, non solo il setter per-colore esistente), NotSupportedException esplicito
     // — SKIP pulito in test_il, coerente con gli altri costrutti non ancora supportati,
-    // invece del crash silenzioso di prima. Porting identico da GM-Basic.
+    // invece del crash silenzioso di prima. Porting identico da GMBasic.
     private void EmitPaletteDefineStatement(PaletteDefineStmt stmt)
     {
         // PALETTE DEFINE: palette nominata — nessuna API runtime per impostarla in blocco;

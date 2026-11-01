@@ -1,6 +1,6 @@
 ' FILE: Types/TypesGenerics.bas
 ' =================================================================================================
-'       TEST: Typed Generics per GM-Basic
+'       TEST: Typed Generics per GMBasic
 ' =================================================================================================
 '
 ' Sintassi supportate:

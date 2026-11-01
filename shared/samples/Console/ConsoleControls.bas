@@ -3,7 +3,7 @@
 ' TEST UNITARIO: CONSOLE - COMANDI NON-BLOCCANTI (PORTABILI IN GMBASICAI)
 ' =================================================================================================
 ' Questo test copre i comandi CONSOLE che NON bloccano in attesa di input e sono implementati
-' sia in GM-Basic che in GMBasicAI. I controlli UI interattivi (CHECKBOX/LISTBOX/MENU/...)
+' sia in GMBasic che in GMBasicAI. I controlli UI interattivi (CHECKBOX/LISTBOX/MENU/...)
 ' stanno in Console/ConsoleUiControls.bas (escluso dal runner perché richiede input).
 '
 ' NIENTE prefisso C* qui: CCLS/CLOCATE/CPRINT/CSAVESCREEN/CRESTORESCREEN/CPALETTE/
@@ -39,7 +39,7 @@ SUB Main()
     PRINT "-- CURSOR / CAPTION --"
     CURSOR ON
     CURSOR OFF
-    CAPTION "GM-Basic Console Test"
+    CAPTION "GMBasic Console Test"
     PRINT "CURSOR/CAPTION eseguiti."
     PRINT
 

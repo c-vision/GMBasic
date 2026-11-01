@@ -1026,7 +1026,7 @@ public sealed partial class IlProgramCompiler
             case SqlExecStmt se: EmitSqlExecStatement(se); break;
             case SqlQueryStmt sq: EmitSqlQueryStatement(sq); break;
             case SqlAttachStmt sa: EmitSqlAttachStatement(sa); break;
-            // --- DBF statement (porting da GM-Basic/GMBasicAI IlBackend): delega a
+            // --- DBF statement (porting da GMBasic/GMBasicAI IlBackend): delega a
             //     IDatabaseService tramite i metodi runtime IlRuntime.Dbf* (area corrente).
             case DbfUseStmt duse: EmitDbfUseStatement(duse); break;
             case DbfSelectWorkAreaStmt dsw: EmitObjectBoxedArgument(dsw.WorkArea); _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.DbfSelectWorkArea), typeof(object))); break;

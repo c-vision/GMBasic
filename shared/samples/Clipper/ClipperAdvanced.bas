@@ -4,7 +4,7 @@ IMPORT CONTROLS
 
 SUB Main()
     PRINT "╔══════════════════════════════════════════════════════════════╗"
-    PRINT "║        GM-Basic Clipper TUI — Advanced Demo                 ║"
+    PRINT "║        GMBasic Clipper TUI — Advanced Demo                 ║"
     PRINT "╚══════════════════════════════════════════════════════════════╝"
     PRINT ""
     

@@ -68,7 +68,7 @@
     "name": "LBOUND",
     "namespace": "ARRAYS",
     "category": "Introspection",
-    "description": "Restituisce l'indice piu' basso (lower bound) di una dimensione di un array. In GM-Basic gli array sono sempre 0-based, quindi LBOUND restituisce sempre 0 (a meno che l'array non sia vuoto). Incluso per compatibilita' con codice legacy.",
+    "description": "Restituisce l'indice piu' basso (lower bound) di una dimensione di un array. In GMBasic gli array sono sempre 0-based, quindi LBOUND restituisce sempre 0 (a meno che l'array non sia vuoto). Incluso per compatibilita' con codice legacy.",
     "syntax": ["LBOUND(array [, dimension])"],
     "returnType": "LONG",
     "parameters": [

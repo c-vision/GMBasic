@@ -299,7 +299,7 @@ public sealed class PCodeCallFrame
     public bool IsDirectCall { get; set; }
     /// <summary>SymbolId della procedura BPM (Stepper) di cui questo frame esegue i chunk.
     /// Campo minimo aggiunto per il modello chunk-resumeIp (vedi AiWiki
-    /// GM-Basic-ILBackend-GPM-Chunk-State-Machine §26.4): il driver usa questo per
+    /// GMBasic-ILBackend-GPM-Chunk-State-Machine §26.4): il driver usa questo per
     /// disassemblare quale stepper invocare quando il task riprende (dispatch
     /// frame → stepper). -1 = main/top-level.</summary>
     public int OwnerProcedure { get; set; } = -1;

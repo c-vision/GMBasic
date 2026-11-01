@@ -7,7 +7,7 @@ using System.Globalization;
 
 namespace Basic.Databases.Rdd;
 
-/// <summary>Tipo Data GM-Basic: giorno/mese/anno con aritmetica date.</summary>
+/// <summary>Tipo Data GMBasic: giorno/mese/anno con aritmetica date.</summary>
 public readonly struct GbDate : IComparable<GbDate>, IEquatable<GbDate>
 {
     public readonly DateTime Value;
@@ -50,7 +50,7 @@ public readonly struct GbDate : IComparable<GbDate>, IEquatable<GbDate>
     }
 }
 
-/// <summary>Tipo Currency GM-Basic: fixed-point 4 decimali, 8 byte.</summary>
+/// <summary>Tipo Currency GMBasic: fixed-point 4 decimali, 8 byte.</summary>
 public readonly struct GbCurrency : IComparable<GbCurrency>, IEquatable<GbCurrency>
 {
     private readonly long _raw; // scaled by 10000

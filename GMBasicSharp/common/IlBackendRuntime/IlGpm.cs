@@ -1,6 +1,6 @@
 // FILE: Basic.IlBackend.IlGpm.cs
 // IL GPM — driver chunk-resumeIp per il backend IL (vedi AiWiki
-// GM-Basic-ILBackend-GPM-Chunk-State-Machine §9-§17, §26).
+// GMBasic-ILBackend-GPM-Chunk-State-Machine §9-§17, §26).
 //
 // Il backend IL NON interpreta bytecode: genera metodi CIL nativi. Il problema è che un
 // metodo CIL non può essere sospeso a metà (stack managed + GC, §6). La soluzione: ogni

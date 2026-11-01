@@ -26,7 +26,7 @@ cfg.Port = 8095
 HTTP CONFIG cfg
 
 ' Path RELATIVO alla cartella del sample (l'executor imposta la CWD sul sample, §9.1):
-' portable, non più l'assoluto legacy GM-Basic.
+' portable, non più l'assoluto legacy GMBasic.
 HTTP STATIC "/static", "wwwroot"
 
 PRINT "Server on http://localhost:8095"

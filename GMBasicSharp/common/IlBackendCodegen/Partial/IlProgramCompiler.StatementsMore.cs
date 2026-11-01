@@ -388,7 +388,7 @@ public sealed partial class IlProgramCompiler
     /// (<see cref="_onErrorDispatch"/> non null — vero per OGNI chunk del dispatcher,
     /// impostato/azzerato ad ogni iterazione) riassegna SEMPRE il local anche se già
     /// dichiarato in precedenza — nessun costo di correttezza, costo di performance
-    /// minimo (IlRuntime.Current è un getter ThreadStatic). Porting identico da GM-Basic.
+    /// minimo (IlRuntime.Current è un getter ThreadStatic). Porting identico da GMBasic.
     /// </summary>
     private void EmitLoadRuntime()
     {

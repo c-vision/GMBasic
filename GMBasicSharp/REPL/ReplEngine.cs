@@ -244,7 +244,7 @@ public class ReplEngine
         catch { _helpIndex = null; }
     }
 
-    // ── Avvio console (port di GM-Basic-Deprecated Executor.Startup.cs) ──────────────
+    // ── Avvio console (port di GMBasic-Deprecated Executor.Startup.cs) ──────────────
     // Regola: System/Standard → TERMINALE; SDL (default, o -c64) → FINESTRA grafica senza
     // terminale. Qui il ramo SDL: la SdlConsole (CommonGraphics) + il loop pompa SDL
     // (PollEvents/Present) sul main thread, e Console.* è rediretto sulla console attiva.
@@ -679,7 +679,7 @@ public class ReplEngine
         {
             // CWD = directory del programma: i sample con path relativi (es. fixtures in
             // "samples/Fixtures") creano i loro file NELLA LORO directory, non nella root
-            // del repo (come GM-Basic).
+            // del repo (come GMBasic).
             // file va reso assoluto PRIMA di cambiare CWD: altrimenti Orchestrator.Compile
             // (poco sotto) risolverebbe un path relativo contro la CWD appena cambiata
             // invece che contro quella originale — bug verificato dal vivo (percorso
@@ -3114,7 +3114,7 @@ public class ReplEngine
             : $"AIPATH={string.Join(';', paths)}");
     }
 
-    // ── LLM (port 1:1 di GM-Basic Executor/ReplEngine.HandleLlmAsync): elenca i modelli
+    // ── LLM (port 1:1 di GMBasic Executor/ReplEngine.HandleLlmAsync): elenca i modelli
     //    trovati nei percorsi AIPATH, rilevando il tipo dal contenuto della cartella. ──
     private Task HandleLlmAsync(string args, CancellationToken __)
     {

@@ -603,7 +603,7 @@ public sealed partial class IlProgramCompiler
             case TokenKind.ReturnsSkewness: EmitTimeSeriesArrayOnlyCall(expr, nameof(IlRuntime.ReturnsSkewness)); break;
             case TokenKind.ReturnsKurtosis: EmitTimeSeriesArrayOnlyCall(expr, nameof(IlRuntime.ReturnsKurtosis)); break;
 
-            // --- Importato da GM-Basic (COLL/STR — 13 funzioni lista/dict, semantica case VM) ---
+            // --- Importato da GMBasic (COLL/STR — 13 funzioni lista/dict, semantica case VM) ---
             case TokenKind.Enqueue: EmitObjectArgsCall(expr, nameof(IlRuntime.Enqueue), 2); break;
             case TokenKind.Dequeue: EmitObjectArgsCall(expr, nameof(IlRuntime.Dequeue), 1); break;
             case TokenKind.First: EmitObjectArgsCall(expr, nameof(IlRuntime.First), 1); break;
@@ -617,7 +617,7 @@ public sealed partial class IlProgramCompiler
             case TokenKind.AddRange: EmitObjectArgsCall(expr, nameof(IlRuntime.AddRange), 2); break;
             case TokenKind.TryGetValue: EmitObjectArgsCall(expr, nameof(IlRuntime.TryGetValue), 3); break;
 
-            // --- Importato da GM-Basic (ANALYSIS blocco 1, altra cat6) ---
+            // --- Importato da GMBasic (ANALYSIS blocco 1, altra cat6) ---
             case TokenKind.Anova: EmitAnalysisMatrixCall(expr, nameof(IlRuntime.Anova)); break;
             case TokenKind.Regress: EmitAnalysisTwoArrayCall(expr, nameof(IlRuntime.Regress)); break;
             case TokenKind.KMeans: EmitAnalysisArrayScalarCall(expr, nameof(IlRuntime.KMeans)); break;
@@ -710,12 +710,12 @@ public sealed partial class IlProgramCompiler
             case TokenKind.LeastSquares: EmitOptimizeLeastSquaresCall(expr); break;
             case TokenKind.Simplex: EmitOptimizeSimplexCall(expr); break;
             case TokenKind.CholeskySolve: EmitOptimizeCholeskyCall(expr); break;
-            // --- Importato da GM-Basic (CONSOLE-GRAFICA: SCREEN/POINT; headless = 0/-1) ---
+            // --- Importato da GMBasic (CONSOLE-GRAFICA: SCREEN/POINT; headless = 0/-1) ---
             case TokenKind.Screen: EmitNoArgBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.Screen))); break;
             case TokenKind.Point:
                 EmitDoubleBinaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.Point)));
                 break;
-            // --- Importato da GM-Basic (CRYPTO ABI: ABIENCODE/ABIDECODE) ---
+            // --- Importato da GMBasic (CRYPTO ABI: ABIENCODE/ABIDECODE) ---
             case TokenKind.AbiEncode: EmitAbiEncodeCall(expr); break;
             case TokenKind.AbiDecode: EmitAbiDecodeCall(expr); break;
             case TokenKind.JarqueBeraTest: EmitTimeSeriesArrayOnlyCall(expr, nameof(IlRuntime.JarqueBeraTest)); break;
@@ -1020,7 +1020,7 @@ public sealed partial class IlProgramCompiler
                     EmitInt64UnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.FileEofNumber)));
                 break;
             case TokenKind.Lof: EmitInt64UnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.FileLofNumber))); break;
-            // --- DBF builtin (porting da GM-Basic/GMBasicAI): BOF/FOUND/RECNO/LASTREC/
+            // --- DBF builtin (porting da GMBasic/GMBasicAI): BOF/FOUND/RECNO/LASTREC/
             //     SELECTED/DELETED/LUPDATE/DBFILTER — 0 o 1 argomento (alias opzionale).
             case TokenKind.Bof: EmitDbfAliasCall(expr, nameof(IlRuntime.DbfBof)); break;
             case TokenKind.Used: EmitDbfAliasCall(expr, nameof(IlRuntime.DbfUsed)); break;
@@ -1993,7 +1993,7 @@ case TokenKind.MemoryWatch: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameo
             // CONVERT/AI: emitter mai stati committati con successo (esistevano solo
             // transitoriamente nel working tree di un'altra sessione concorrente durante una
             // race di build — persi in una ricostruzione di questo file dopo un incidente di
-            // sovrascrittura concorrente; vedi AiWiki/09-Errors/GM-Basic/ConvertAi-QualifiedCall-Bug.md).
+            // sovrascrittura concorrente; vedi AiWiki/09-Errors/GMBasic/ConvertAi-QualifiedCall-Bug.md).
             // IlRuntime ha già i wrapper (ConvertToMd/Html/Text/Batch/Web/Formats, AiOcr/
             // Transcribe/Providers/SetKey/SetModel, AiStub) — mancava solo questo dispatch.
             case TokenKind.ConvDoc: EmitConvDocCall(expr); break;

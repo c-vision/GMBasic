@@ -328,7 +328,7 @@ internal sealed partial class PCodeProcessor
     /// OP_CMP_EQ/OP_CMP_NE cadevano nel ramo numerico generico per due IDictionary (nessun
     /// campo è né string né double), che le convertiva entrambe a 0 (nessuno dei due `is
     /// double`/`is string` combacia) → 0==0 → sempre "uguali", indipendentemente dai campi
-    /// (vedi 02-Knowledge/GM-Basic-PCODE-UDT-Field-Access-Bug.md). Stessa semantica campo-
+    /// (vedi 02-Knowledge/GMBasic-PCODE-UDT-Field-Access-Bug.md). Stessa semantica campo-
     /// per-campo di ExecuteComparisonOperation (Interpreter/Gpm.Expressions.Operators.cs) —
     /// solo `FieldNames` (nomi campo, esclusi __class__/__closure__, chiavi di bookkeeping)
     /// viene confrontato, non l'intero dizionario (che includerebbe anche il riferimento al

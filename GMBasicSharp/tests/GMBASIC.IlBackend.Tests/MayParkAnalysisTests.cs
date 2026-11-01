@@ -2,7 +2,7 @@
 // pipeline). Verifica i punti di blocco espliciti, la propagazione lungo il call graph
 // (fixed-point incl. ricorsione mutua) e lo split in chunk con rientro sul punto di
 // blocco (GWERTY: il retry riparte dall'operazione parcheggiata, MAI dai side-effect
-// precedenti — vedi GM-Basic-ILBackend-GPM-Chunk-State-Machine §7 vs §16.3).
+// precedenti — vedi GMBasic-ILBackend-GPM-Chunk-State-Machine §7 vs §16.3).
 
 using System.Collections.Immutable;
 using Xunit;

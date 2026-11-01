@@ -1,6 +1,6 @@
 # SQLite engine (`Databases/SQLite/`)
 
-Fifth embedded database engine for GM-Basic — general-purpose SQL via NuGet (`Microsoft.Data.Sqlite` + `SQLitePCLRaw.bundle_e_sqlite3`). No vendored amalgamation.
+Fifth embedded database engine for GMBasic — general-purpose SQL via NuGet (`Microsoft.Data.Sqlite` + `SQLitePCLRaw.bundle_e_sqlite3`). No vendored amalgamation.
 
 ## C# API (`Basic.SQLite`)
 

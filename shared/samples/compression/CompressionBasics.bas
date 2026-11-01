@@ -6,7 +6,7 @@ IMPORT COMPRESSION WITH ALIAS
 
 SUB Main()
     PRINT "=== Compressione Stringhe ==="
-    DIM testo$ = "Hello GM-Basic Compression! Questo e un testo ripetuto per rendere la compressione efficace." + " Seconda parte del testo di prova per il roundtrip."
+    DIM testo$ = "Hello GMBasic Compression! Questo e un testo ripetuto per rendere la compressione efficace." + " Seconda parte del testo di prova per il roundtrip."
     PRINT "Originale len: "; LEN(testo$)
     PRINT
 

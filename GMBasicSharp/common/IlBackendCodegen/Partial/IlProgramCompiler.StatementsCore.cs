@@ -480,7 +480,7 @@ public sealed partial class IlProgramCompiler
     /// tollera silenziosamente, producendo poi un riferimento oggetto "stringa" che in
     /// realtà sono i bit grezzi di un double — AccessViolationException al primo uso reale
     /// (es. PRINT) quando il runtime prova a dereferenziarlo come se fosse un vero
-    /// puntatore a un oggetto String. Porting identico da GM-Basic (vedi
+    /// puntatore a un oggetto String. Porting identico da GMBasic (vedi
     /// AiWiki IL-OnError-Loop-Bug.md, riprodotto con Types/TypesFixedLengthStrings.bas).
     /// Fix: converti esplicitamente in stringa PRIMA di Coerce/Ret quando il tipo di
     /// ritorno è stringa ma il valore non lo è.
@@ -496,7 +496,7 @@ public sealed partial class IlProgramCompiler
             // STRING * N: applica padding/troncamento anche al valore di ritorno —
             // mancava, RETURN da una FUNCTION dichiarata AS STRING * N restituiva la
             // stringa così com'era, senza la regola di lunghezza fissa. Porting da
-            // GM-Basic (commit 24e8d24e).
+            // GMBasic (commit 24e8d24e).
             if (returnStrType.FixedLength is > 0 and var retFixedLen)
             {
                 _il.Emit(OpCodes.Ldc_I4, retFixedLen);

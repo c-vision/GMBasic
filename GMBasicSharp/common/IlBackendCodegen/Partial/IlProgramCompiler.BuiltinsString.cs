@@ -201,7 +201,7 @@ public sealed partial class IlProgramCompiler
     }
 
     // ── ON KEY / ON MOUSE / ON WINDOW ────────────────────────────────
-    // Porting da GM-Basic (commit 5485907e). Compilavano a no-op (case: break;). Solo l'azione
+    // Porting da GMBasic (commit 5485907e). Compilavano a no-op (case: break;). Solo l'azione
     // CALL è supportata — vedi il commento in IlRuntime.RegisterKeyHandler per il perché
     private void EmitOnKeyStatement(OnKeyStmt stmt)
     {
