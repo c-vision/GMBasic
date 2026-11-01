@@ -146,6 +146,9 @@ int  gmb_iconsole_drives_output(void);
 int  gmb_iconsole_try_write(const char* text);
 /* Present() della console attiva se sporca; 1 se presentato. */
 int  gmb_iconsole_present_if_active(void);
+/* Modello a celle della console attiva (Standard/Headless/Sdl); NULL per System.
+ * La REPL scrive banner/prompt nel buffer e chiama present() (StandardConsole a celle). */
+struct gmb_sdl_console* gmb_iconsole_model(gmb_iconsole_t* c);
 /* 1 se la console attiva e' la SDL con finestra aperta (sopprime il dump ANSI). */
 int  gmb_iconsole_sdl_active(void);
 

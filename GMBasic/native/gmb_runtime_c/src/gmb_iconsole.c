@@ -415,7 +415,10 @@ gmb_iconsole_t* gmb_iconsole_standard_new(const gmb_screen_config_t* cfg)
     if (!c || !i) { free(c); free(i); return NULL; }
     iconsole_init_common(c, i, 1, cfg);
     i->model = gmb_sdl_console_new(&c->configuration, 0, 0);
-    gmb_sdl_console_set_scroll_mode(i->model, 1);   /* StandardConsole.cs:84 default true */
+    /* StandardConsole: DEFAULT = BUFFER a celle (rendering per celle, scroll region,
+     * VIEW PRINT, SAVE/RESTORE SCREEN). Il modo "nativo" (scritture dirette al
+     * terminale) si attiva solo con CONSOLE.SCROLLMODE "NATIVE". */
+    gmb_sdl_console_set_scroll_mode(i->model, 0);
     c->present = io_present_ansi;
     c->poll_for_resize = io_standard_poll_for_resize;
     snprintf(i->title, sizeof(i->title), "GMBASIC - REPL");
@@ -579,6 +582,14 @@ struct gmb_sdl_console* gmb_iconsole_sdl_model(gmb_iconsole_t* c)
 {
     iconsole_impl_t* i = impl_of(c);
     return (i && i->kind == 3) ? i->model : NULL;
+}
+
+/* Modello a celle per QUALSIASI tipo che ne abbia uno (Standard=1, Headless=2, Sdl=3):
+ * la REPL scrive banner/prompt nel BUFFER e chiama Present() (StandardConsole a celle). */
+struct gmb_sdl_console* gmb_iconsole_model(gmb_iconsole_t* c)
+{
+    iconsole_impl_t* i = impl_of(c);
+    return i ? i->model : NULL;
 }
 
 int gmb_iconsole_present_if_active(void)
