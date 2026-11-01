@@ -314,25 +314,35 @@ int gmb_help_print_index(gmb_sdl_console_t* model)
     }
     int W = gmb_screen_width(gmb_sdl_console_screen(model));
     if (W < 20) W = 80;
+    /* pagina nuova: senza clear l'elenco scorre via dal buffer */
+    gmb_sdl_console_clear_screen(model);
+    gmb_sdl_console_set_cursor_position(model, 1, 1);
     gmb_sdl_console_write(model, "\n");
-    gmb_sdl_console_write(model, "GMBASIC Help - argomento: HELP <namespace> (es. HELP math), HELP BROWSE nel terminale\n\n");
-    char last_group[64] = "";
-    for (int i = 0; i < g_nentries; i++) {
-        char group[64];
-        snprintf(group, sizeof(group), "%s", g_entries[i].ns);
-        char* dot = strchr(group, '.');
-        if (dot) *dot = 0;
-        if (!group[0] || strcmp(group, "-") == 0) snprintf(group, sizeof(group), "GENERAL");
-        if (strcasecmp(group, last_group) != 0) {
-            if (last_group[0]) gmb_sdl_console_write(model, "\n");
-            char hdr[128];
-            snprintf(hdr, sizeof(hdr), "<%s>\n", group);
-            gmb_sdl_console_write(model, hdr);
-            snprintf(last_group, sizeof(last_group), "%s", group);
+    gmb_sdl_console_write(model, "GMBASIC Help | HELP <namespace> (es. HELP math) per il dettaglio\n\n");
+    /* Solo i GRUPPI con il conteggio, UNA riga ciascuno (513 righe non ci stanno). */
+    {
+        char last_group[64] = "", line[160];
+        int count = 0, row = 0;
+        for (int i = 0; i <= g_nentries; i++) {
+            char group[64] = "";
+            if (i < g_nentries) {
+                snprintf(group, sizeof(group), "%s", g_entries[i].ns);
+                char* dot = strchr(group, '.');
+                if (dot) *dot = 0;
+                if (!group[0] || strcmp(group, "-") == 0) snprintf(group, sizeof(group), "GENERAL");
+            }
+            if (i == g_nentries || strcasecmp(group, last_group) != 0) {
+                if (last_group[0] && row < 40) {
+                    snprintf(line, sizeof(line), "  %-18.18s %3d voci\n", last_group, count);
+                    gmb_sdl_console_write(model, line);
+                    row++;
+                }
+                if (i == g_nentries) break;
+                snprintf(last_group, sizeof(last_group), "%s", group);
+                count = 0;
+            }
+            count++;
         }
-        char line[160];
-        snprintf(line, sizeof(line), "  %-28.28s %-40.40s\n", g_entries[i].name, g_entries[i].desc);
-        gmb_sdl_console_write(model, line);
     }
     gmb_sdl_console_write(model, "\n");
     gmb_sdl_console_render(model);
