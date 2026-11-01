@@ -918,6 +918,7 @@ static int rpl_loop_sdl_model(const rpl_options_t* o, gmb_sdl_console_t* con,
 {
     char capfile[128]; snprintf(capfile, sizeof(capfile), "/tmp/gmb_repl_cap_%d.txt", (int)getpid());
     gmb_sdl_console_show(con);                     /* apre con la SUA config (testo/C64) */
+    gmb_sdl_console_set_cursor_visible(con, 1);
     int W = gmb_screen_width(gmb_sdl_console_screen(con));
     if (W < 20) W = 80;
     con_writeln_centered(con, W, "GMBASIC 1.0.0");
