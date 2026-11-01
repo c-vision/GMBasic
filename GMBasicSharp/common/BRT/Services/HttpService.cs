@@ -754,7 +754,11 @@ public sealed class HttpService : IHttpService, IDisposable
         {
             foreach (var route in routes)
             {
-                if (route.Method == req.Method && route.TryMatch(req.Path, out var routeParams))
+                // HEAD è "GET senza corpo" (RFC 9110 §9.3.2): una route GET serve anche HEAD.
+                if ((route.Method == req.Method
+                     || (route.Method.Equals("GET", StringComparison.OrdinalIgnoreCase)
+                         && req.Method.Equals("HEAD", StringComparison.OrdinalIgnoreCase)))
+                    && route.TryMatch(req.Path, out var routeParams))
                 {
                     req.Params = routeParams;
                     return route.Handler(req);
@@ -838,7 +842,24 @@ public sealed class HttpService : IHttpService, IDisposable
                 }
                 // File INTERO: byte grezzi (BodyBytes), non ReadAllText — un binario passato per
                 // una stringa veniva corrotto (le sequenze non UTF-8 diventano U+FFFD).
-                resp.BodyBytes = File.ReadAllBytes(filePath);
+                var raw = File.ReadAllBytes(filePath);
+                // Compressione NEGOZIATA (br se offerto, altrimenti gzip): stessa regola del
+                // server C e della gamba PCode — solo testo, sopra 1 KB, mai con Range.
+                var enc = CommonLib.Http.HttpCompression.PickEncoding(
+                    req.Headers.TryGetValue("Accept-Encoding", out var ae) ? ae : null);
+                if (enc != null && CommonLib.Http.HttpCompression.IsCompressible(contentType) && raw.Length >= 1024)
+                {
+                    resp.Headers["Vary"] = "Accept-Encoding";
+                    var packed = CommonLib.Http.HttpCompression.Encode(enc, raw);
+                    if (packed.Length < raw.Length)
+                    {
+                        resp.Headers["Content-Encoding"] = enc;
+                        resp.BodyBytes = packed;
+                        resp.Body = "";
+                        return resp;
+                    }
+                }
+                resp.BodyBytes = raw;
                 resp.Body = "";
                 return resp;
             }

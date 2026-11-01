@@ -67,7 +67,10 @@ unsigned char* gmb_bzip2_decompress(const unsigned char* data, size_t len, size_
 #endif
 #endif
 
-unsigned char* gmb_brotli_compress(const unsigned char* data, size_t len, size_t* out_len)
+/* Qualità ESPLICITA (0..11): serve al server HTTP, dove la qualità massima (11, il default
+ * della libreria) costa ~13x gzip su una pagina e non è quello che si vuole in linea.
+ * quality < 0 = BROTLI_DEFAULT_QUALITY. */
+unsigned char* gmb_brotli_compress_q(const unsigned char* data, size_t len, size_t* out_len, int quality)
 {
     *out_len = 0;
 #ifdef GMB_HAVE_BROTLI
@@ -75,7 +78,8 @@ unsigned char* gmb_brotli_compress(const unsigned char* data, size_t len, size_t
     unsigned char* out = (unsigned char*)malloc(cap ? cap : len + 16);
     if (!out) return NULL;
     size_t olen = cap;
-    if (!BrotliEncoderCompress(BROTLI_DEFAULT_QUALITY, BROTLI_DEFAULT_WINDOW, BROTLI_DEFAULT_MODE,
+    if (!BrotliEncoderCompress(quality < 0 ? BROTLI_DEFAULT_QUALITY : quality,
+                               BROTLI_DEFAULT_WINDOW, BROTLI_DEFAULT_MODE,
                                len, data, &olen, out))
     { free(out); return NULL; }
     *out_len = olen;
@@ -83,6 +87,11 @@ unsigned char* gmb_brotli_compress(const unsigned char* data, size_t len, size_t
 #else
     return NULL;
 #endif
+}
+
+unsigned char* gmb_brotli_compress(const unsigned char* data, size_t len, size_t* out_len)
+{
+    return gmb_brotli_compress_q(data, len, out_len, -1);
 }
 
 unsigned char* gmb_brotli_decompress(const unsigned char* data, size_t len, size_t* out_len)
