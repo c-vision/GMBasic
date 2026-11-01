@@ -202,6 +202,11 @@ typedef enum {
                            * handler in target_label, azione in flag (0=call,1=gosub,2=stop) */
     GMB_STMT_ON_CONTROL_EVENT, /* ON <EVENTO> CONTROL <id> <azione>: evento in ce_event, id in on_expr,
                                 * target in target_label, azione in flag (0=call,1=gosub,2=stop,3=goto) */
+    GMB_STMT_SIGNAL,      /* SIGNAL <verbo> ... (namespace SIGNAL): verbo in mutex_action, argomenti in
+                           * net_args. SUBSCRIBE: [types,asset,market,symbols,timeframe,id]; EMIT:
+                           * [type,symbol,value,asset,market,timeframe]; UNSUBSCRIBE: [id]; PING: - */
+    GMB_STMT_ON_SIGNAL,   /* ON SIGNAL <id> CALL <handler>: id in net_args[0], handler in target_label,
+                           * arità dell'handler (4/5) in flag */
 } gmb_stmt_kind_t;
 typedef struct gmb_window { const char* name; const char* action; const char* style; int flag; } gmb_window_t;
 

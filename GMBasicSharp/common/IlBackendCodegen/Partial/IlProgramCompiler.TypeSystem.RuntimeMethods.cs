@@ -364,6 +364,10 @@ public sealed partial class IlProgramCompiler
         typeof(Runtime.IGraphicsService).GetMethod(nameof(Runtime.IGraphicsService.SpriteSetVisible), [typeof(int), typeof(bool)])!;
     private static readonly MethodInfo GraphicsSpriteSetPriorityMethod =
         typeof(Runtime.IGraphicsService).GetMethod(nameof(Runtime.IGraphicsService.SpriteSetPriority), [typeof(int), typeof(int)])!;
+    private static readonly MethodInfo GraphicsSpriteSetScaleMethod =
+        typeof(Runtime.IGraphicsService).GetMethod(nameof(Runtime.IGraphicsService.SpriteSetScale), [typeof(int), typeof(float), typeof(float)])!;
+    private static readonly MethodInfo GraphicsSpriteSetRotationMethod =
+        typeof(Runtime.IGraphicsService).GetMethod(nameof(Runtime.IGraphicsService.SpriteSetRotation), [typeof(int), typeof(float)])!;
     private static readonly MethodInfo GraphicsSpriteSetTransformMethod =
         typeof(Runtime.IGraphicsService).GetMethod(nameof(Runtime.IGraphicsService.SpriteSetTransform), [typeof(int), typeof(long)])!;
     private static readonly MethodInfo GraphicsSpriteSetMatrixMethod =
@@ -857,6 +861,12 @@ public sealed partial class IlProgramCompiler
     private static readonly MethodInfo IlRuntimeMessagePingMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.MessagePing))!;
     private static readonly MethodInfo IlRuntimeMessageCloseMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.MessageClose))!;
     private static readonly MethodInfo IlRuntimeMessageHandlerBySymbolMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.RegisterMessageHandlerBySymbol))!;
+    private static readonly MethodInfo IlRuntimeSignalSubscribeMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.SignalSubscribe))!;
+    private static readonly MethodInfo IlRuntimeSignalEmitMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.SignalEmit))!;
+    private static readonly MethodInfo IlRuntimeSignalUnsubscribeMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.SignalUnsubscribe))!;
+    private static readonly MethodInfo IlRuntimeSignalPingMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.SignalPing))!;
+    private static readonly MethodInfo IlRuntimeSignalHandlerBySymbolMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.RegisterSignalHandlerBySymbol))!;
+    private static readonly MethodInfo IlRuntimeSignalUnregisterHandlerMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.UnregisterSignalHandler))!;
     private static readonly MethodInfo IlRuntimeTeamSetRoleMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.TeamSetRole), [typeof(string), typeof(string), typeof(string)])!;
     private static readonly MethodInfo IlRuntimeTeamSetStrategyMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.TeamSetStrategy), [typeof(string), typeof(string)])!;
     private static readonly MethodInfo IlRuntimeTeamSetCoordinatorMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.TeamSetCoordinator), [typeof(string), typeof(string)])!;

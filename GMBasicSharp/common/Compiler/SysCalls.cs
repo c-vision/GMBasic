@@ -511,6 +511,11 @@ public enum SysCall : ushort
     FORM_CTRL_REFRESH = 449,    // CONTROL REFRESH name -> repaint (§11.7)
     FORM_BIND_UC_EVENT = 450,   // (§11.7-3) handle, evIndex, method$, instance -> evento UserControl → metodo-istanza (task GPM)
     PROGRAM_EXIT = 453,         // (n) -> EXIT CODE del processo (FUNCTION Main return); consuma n e pusha 0
+    SIGNAL_SUBSCRIBE = 454,     // SIGNAL SUBSCRIBE: (id, types, asset, market, symbols, timeframe) — gmb_signal.h
+    ON_SIGNAL = 455,            // ON SIGNAL id CALL handler: (id, handler) — arità 4/5 risolta a runtime
+    SIGNAL_EMIT = 456,          // SIGNAL EMIT: (type, symbol, value, asset, market, timeframe)
+    SIGNAL_UNSUBSCRIBE = 457,   // SIGNAL UNSUBSCRIBE: (id) — "" = tutte
+    SIGNAL_PING = 458,          // SIGNAL PING: nessun argomento
 }
 
 /// <summary>

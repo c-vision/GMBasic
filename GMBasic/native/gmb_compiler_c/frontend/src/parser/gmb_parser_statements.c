@@ -462,6 +462,11 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
     if (t->kind == GMB_TOK_Message && gmb_p_is_message_verb(gmb_p_peek(p, 1))) {
         gmb_stmt_t* ms = gmb_p_parse_message(p, line); if (ms) return ms;
     }
+    /* SIGNAL SUBSCRIBE/EMIT/UNSUBSCRIBE/PING — namespace SIGNAL (comando per nome:
+     * SIGNAL non è una keyword del linguaggio, come CONTROL/WINDOW). */
+    if (gmb_p_tok_is_soft_keyword(t, "SIGNAL")) {
+        gmb_stmt_t* ss = gmb_p_parse_signal(p, line); if (ss) return ss;
+    }
     if (t->kind == GMB_TOK_TeamCreate || t->kind == GMB_TOK_Message) { gmb_stmt_t* tm = gmb_p_parse_team(p, line); if (tm) return tm; }
     if (t->kind == GMB_TOK_Llm && gmb_p_peek(p, 1) && (gmb_p_peek(p, 1)->kind == GMB_TOK_AiPatch || (gmb_p_tok_is_soft_keyword(gmb_p_peek(p, 1), "PATCH")))) { gmb_stmt_t* ap = gmb_p_parse_aipatch(p, line); if (ap) return ap; }
     if (t->kind == GMB_TOK_Ai && gmb_p_peek(p, 1) && gmb_p_peek(p, 1)->kind == GMB_TOK_TeamCreate) { gmb_p_adv(p); gmb_stmt_t* tm = gmb_p_parse_team(p, line); if (tm) return tm; }

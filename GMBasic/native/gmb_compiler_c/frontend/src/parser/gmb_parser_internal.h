@@ -224,6 +224,9 @@ gmb_stmt_t* gmb_p_parse_json(gmb_parser_t* p, int line);
 gmb_stmt_t* gmb_p_parse_team(gmb_parser_t* p, int line);
 gmb_stmt_t* gmb_p_parse_message(gmb_parser_t* p, int line);
 int gmb_p_is_message_verb(const gmb_token_t* t);
+/* Parser.Stmt.Signal.c (SIGNAL SUBSCRIBE/EMIT/UNSUBSCRIBE/PING, ON SIGNAL) */
+gmb_stmt_t* gmb_p_parse_signal(gmb_parser_t* p, int line);
+gmb_stmt_t* gmb_p_parse_on_signal(gmb_parser_t* p, int line);
 /* Parser.Stmt.AiAgent.cs (AI AGENT CREATE/DELETE/SET) */
 gmb_stmt_t* gmb_p_parse_agent(gmb_parser_t* p, int line);
 gmb_stmt_t* gmb_p_parse_ai_server(gmb_parser_t* p, int line);

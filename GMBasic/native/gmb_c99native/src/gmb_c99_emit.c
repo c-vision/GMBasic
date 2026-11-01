@@ -5644,6 +5644,86 @@ static void st_on_message(ctx_t* c, gmb_stmt_t* s)
     em_msg_str(c, (s->n_netargs > 0) ? s->net_args[0] : NULL);
     sb_put(&c->out, ", _gmb_msgcb_"); sb_ident(&c->out, h); sb_put(&c->out, ");\n");
 }
+/* SEGNALI (namespace SIGNAL): bus locale con filtro strutturato (gmb_signal_*). */
+static void st_signal(ctx_t* c, gmb_stmt_t* s)
+{
+    const char* v = s->mutex_action ? s->mutex_action : "";
+    ind(c);
+    if (strcmp(v, "SUBSCRIBE") == 0) {
+        /* gmb_signal_subscribe(id, types, asset, market, symbols, timeframe) */
+        sb_put(&c->out, "gmb_signal_subscribe(");
+        em_msg_str(c, (s->n_netargs > 5) ? s->net_args[5] : NULL); sb_put(&c->out, ", ");
+        em_msg_str(c, (s->n_netargs > 0) ? s->net_args[0] : NULL); sb_put(&c->out, ", ");
+        em_msg_str(c, (s->n_netargs > 1) ? s->net_args[1] : NULL); sb_put(&c->out, ", ");
+        em_msg_str(c, (s->n_netargs > 2) ? s->net_args[2] : NULL); sb_put(&c->out, ", ");
+        em_msg_str(c, (s->n_netargs > 3) ? s->net_args[3] : NULL); sb_put(&c->out, ", ");
+        em_msg_str(c, (s->n_netargs > 4) ? s->net_args[4] : NULL);
+        sb_put(&c->out, ");\n");
+    } else if (strcmp(v, "EMIT") == 0) {
+        /* gmb_signal_emit(type, symbol, value, asset, market, timeframe) */
+        sb_put(&c->out, "gmb_signal_emit(");
+        em_msg_str(c, (s->n_netargs > 0) ? s->net_args[0] : NULL); sb_put(&c->out, ", ");
+        em_msg_str(c, (s->n_netargs > 1) ? s->net_args[1] : NULL); sb_put(&c->out, ", ");
+        sb_put(&c->out, "(double)(");
+        if (s->n_netargs > 2 && s->net_args[2]) emit_expr(c, s->net_args[2]); else sb_put(&c->out, "0.0");
+        sb_put(&c->out, "), ");
+        em_msg_str(c, (s->n_netargs > 3) ? s->net_args[3] : NULL); sb_put(&c->out, ", ");
+        em_msg_str(c, (s->n_netargs > 4) ? s->net_args[4] : NULL); sb_put(&c->out, ", ");
+        em_msg_str(c, (s->n_netargs > 5) ? s->net_args[5] : NULL);
+        sb_put(&c->out, ");\n");
+    } else if (strcmp(v, "UNSUBSCRIBE") == 0) {
+        sb_put(&c->out, "gmb_signal_unsubscribe(");
+        em_msg_str(c, (s->n_netargs > 0) ? s->net_args[0] : NULL);
+        sb_put(&c->out, ");\n");
+    } else if (strcmp(v, "PING") == 0) {
+        sb_put(&c->out, "gmb_signal_ping();\n");
+    } else {
+        c99_fail(c, s->line, "SIGNAL: verbo '%s' non supportato", v);
+    }
+}
+/* ON SIGNAL <id> CALL <handler>: wrapper tipizzato sull'arità della SUB (4 = senza
+ * timeframe, 5 = con timeframe) e registrazione su gmb_signal_on. STOP = disattiva. */
+static void st_on_signal(ctx_t* c, gmb_stmt_t* s)
+{
+    const char* h = s->target_label ? s->target_label : "";
+    if (s->flag == 2) {   /* STOP */
+        ind(c);
+        sb_put(&c->out, "gmb_signal_on(");
+        em_msg_str(c, (s->n_netargs > 0) ? s->net_args[0] : NULL);
+        sb_put(&c->out, ", NULL, NULL);\n");
+        return;
+    }
+    if (s->flag != 0) { c99_fail(c, s->line, "ON SIGNAL: azione non supportata (solo CALL e STOP)"); return; }
+    if (!h[0]) { c99_fail(c, s->line, "ON SIGNAL: manca il nome dell'handler"); return; }
+    {
+        fn_info_t* f = find_fn(c, h);
+        int npar = f ? f->n_params : 4;
+        char key[160]; int i, seen = 0;
+        snprintf(key, sizeof(key), "S%s", h);
+        for (i = 0; i < c->n_msg_done; i++) if (strcmp(c->msg_done[i], key) == 0) { seen = 1; break; }
+        if (!seen && c->n_msg_done < 16) {
+            snprintf(c->msg_done[c->n_msg_done], sizeof(c->msg_done[0]), "%s", key); c->n_msg_done++;
+            sb_put(&c->msg_wraps, "static void _gmb_sigcb_"); sb_ident(&c->msg_wraps, h);
+            if (npar >= 5) {
+                sb_put(&c->msg_wraps, "(const char* _id, const char* _t, const char* _s, double _v, const char* _tf) { gmb_user_");
+                sb_ident(&c->msg_wraps, h);
+                sb_put(&c->msg_wraps, "(gmb_string_alloc(_id), gmb_string_alloc(_t), gmb_string_alloc(_s), (gmb_double_t)_v, gmb_string_alloc(_tf)); }\n");
+            } else {
+                sb_put(&c->msg_wraps, "(const char* _id, const char* _t, const char* _s, double _v) { gmb_user_");
+                sb_ident(&c->msg_wraps, h);
+                sb_put(&c->msg_wraps, "(gmb_string_alloc(_id), gmb_string_alloc(_t), gmb_string_alloc(_s), (gmb_double_t)_v); }\n");
+            }
+        }
+        ind(c);
+        sb_put(&c->out, "gmb_signal_on(");
+        em_msg_str(c, (s->n_netargs > 0) ? s->net_args[0] : NULL);
+        if (npar >= 5) { sb_put(&c->out, ", NULL, _gmb_sigcb_"); }
+        else { sb_put(&c->out, ", _gmb_sigcb_"); }
+        sb_ident(&c->out, h);
+        if (npar >= 5) sb_put(&c->out, ");\n");
+        else sb_put(&c->out, ", NULL);\n");
+    }
+}
 void st_team(ctx_t* c, gmb_stmt_t* s); /* gmb_c99_emit_team.c — dominio TEAM (GMB_STMT_TEAM_*) */
 void emit_speed_domain(ctx_t* c, gmb_stmt_t* s); /* gmb_c99_emit_speed.c — dominio SPEED */
 int emit_bf_team(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
@@ -28008,6 +28088,8 @@ static const ST_EMIT_TBL_row ST_EMIT_TBL[] = {
     { GMB_STMT_TEAM_DISTILLTHINKING, st_team },
     { GMB_STMT_TEAM_MESSAGE, st_team },
     { GMB_STMT_MESSAGE, st_message },
+    { GMB_STMT_SIGNAL, st_signal },
+    { GMB_STMT_ON_SIGNAL, st_on_signal },
     { GMB_STMT_ON_MESSAGE, st_on_message },
     { GMB_STMT_ON_CONTROL_EVENT, st_on_control_event },
     { GMB_STMT_TEAM_BROADCAST, st_team },
@@ -31555,7 +31637,7 @@ int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
     sb_t fin;
     memset(&fin, 0, sizeof(fin));
     sb_put(&fin, "/* Generato da gmb_c99_emit (compilatore nativo GMBASIC, FASE 1). */\n");
-    sb_put(&fin, "#include \"gmb_runtime.h\"\n#include \"gmb_collections.h\"\n#include \"gmb_finance.h\"\n#include \"gmb_commonlib.h\"\n#include \"gmb_expr.h\"\n#include \"gmb_c99gpm.h\"\n#include \"gmb_network.h\"\n#include \"gmb_msg.h\"\n#include \"gmb_connector.h\"\n#include \"gmb_graphics.h\"\n#include \"gmb_compress.h\"\n#include \"gmb_grep.h\"\n#include \"gmb_moestream.h\"\n#include \"gmb_cua_runtime.h\"\n#include \"tool_registry.h\"\n#include \"gmb_codegen.h\"\n#include \"gmb_graph.h\"\n#include \"gmb_db.h\"\n#include \"gmb_ml.h\"\n#include \"gmb_torch.h\"\n#include \"llmmodelio_model.h\"\n#include \"gmb_dscope.h\"\n"
+    sb_put(&fin, "#include \"gmb_runtime.h\"\n#include \"gmb_collections.h\"\n#include \"gmb_finance.h\"\n#include \"gmb_commonlib.h\"\n#include \"gmb_expr.h\"\n#include \"gmb_c99gpm.h\"\n#include \"gmb_network.h\"\n#include \"gmb_msg.h\"\n#include \"gmb_signal.h\"\n#include \"gmb_connector.h\"\n#include \"gmb_graphics.h\"\n#include \"gmb_compress.h\"\n#include \"gmb_grep.h\"\n#include \"gmb_moestream.h\"\n#include \"gmb_cua_runtime.h\"\n#include \"tool_registry.h\"\n#include \"gmb_codegen.h\"\n#include \"gmb_graph.h\"\n#include \"gmb_db.h\"\n#include \"gmb_ml.h\"\n#include \"gmb_torch.h\"\n#include \"llmmodelio_model.h\"\n#include \"gmb_dscope.h\"\n"
                     "#include \"gmb_uncertainty.h\"\n"
                     /* P1/P2/P3 runtime AI: OBSERVE/CONTEXT/WORKER. Senza questi header il C
                      * generato non compila ("call to undeclared function gmb_ctx_view"): le

@@ -2051,6 +2051,11 @@ internal sealed partial class PCodeProcessor
             }
             case SysCall.MESSAGE_OP: HandleMessageOp(task); break;
             case SysCall.ON_MESSAGE: HandleOnMessage(task); break;
+            case SysCall.SIGNAL_SUBSCRIBE: HandleSignalSubscribe(task); break;
+            case SysCall.ON_SIGNAL: HandleOnSignal(task); break;
+            case SysCall.SIGNAL_EMIT: HandleSignalEmit(task); break;
+            case SysCall.SIGNAL_UNSUBSCRIBE: HandleSignalUnsubscribe(task); break;
+            case SysCall.SIGNAL_PING: break;
             case SysCall.TEAM_MESSAGE:
             {
                 var teamName = PopString(task) ?? "";
