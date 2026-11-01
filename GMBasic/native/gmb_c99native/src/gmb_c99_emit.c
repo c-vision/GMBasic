@@ -3562,14 +3562,20 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                  * (ramo is_bytes sotto), non un dict. Senza `!dim_empty_parens` il boxed_val
                  * vinceva e il ramo byte-array (che richiede !boxed_val) era saltato →
                  * `priv()` dava "non definita" (BlockchainFullCoverage). */
-                if (dvk && !s->dim_empty_parens) v->boxed_val = 1;
+                /* `DIM x AS STRING = <membro boxed>`: la dichiarazione ESPLICITA vince —
+                 * non marcare boxed_val (altrimenti la var è gmb_val_t e la stampa usa
+                 * gmb_print_string(val), C invalido). Vale solo per STRING: senza tipo
+                 * esplicito il membro resta dinamico (gmb_val_t) come prima. */
+                if (dvk && !s->dim_empty_parens
+                    && !(s->dim_type && s->dim_type_tk == GMB_TOK_StringType)) v->boxed_val = 1;
                 if (dvk == 2) v->stats_val = 1;
                 /* DIM x = <base.membro> dove base è boxed (JSON/val dinamico): x è un valore
                  * dinamico (gmb_val_t) — il tipo del membro è noto solo a runtime. Prima x era
                  * tipato TY_STR (fallback etype) → FOR EACH/indicizzazione rotti
                  * (sample ForEachJsonEdgeCases.bas: `DIM ra = j.roles`). */
                 if (!v->boxed_val && s->dim_init && s->dim_init->kind == GMB_EXPR_VAR
-                    && s->dim_init->var) {
+                    && s->dim_init->var
+                    && !(s->dim_type && s->dim_type_tk == GMB_TOK_StringType)) {
                     const char* dm = strchr(s->dim_init->var, '.');
                     if (dm && dm != s->dim_init->var && !strchr(dm + 1, '.')) {
                         char dbase[160]; size_t dbl = (size_t)(dm - s->dim_init->var);
@@ -9677,9 +9683,15 @@ static void emit_eff_arg(ctx_t* c, gmb_stmt_t* fs, fn_info_t* f, gmb_expr_t** ar
         const char* pt = (fs->param_types && i >= 0 && i < fs->n_params) ? fs->param_types[i] : NULL;
         if (pt) {
             int pstr = (gmb_keyword_tok(pt) == GMB_TOK_StringType);
-            int astr = (etype(c, a) == TY_STR);
-            if (pstr && !astr) { sb_put(&c->out, "gmb_double_to_string("); emit_expr(c, a); sb_put(&c->out, ")"); return; }
-            if (!pstr && astr) { sb_put(&c->out, "gmb_string_to_double("); emit_expr(c, a); sb_put(&c->out, ")"); return; }
+            int aty = etype(c, a);
+            if (pstr && aty != TY_STR) {
+                /* val dinamico (rs("col"), getter RDD, …): conversione dal VAL, non cast a
+                 * double (gmb_double_to_string(gmb_val_t) non compila — bug Masume). */
+                if (aty == TY_VAL) { sb_put(&c->out, "gmb_val_to_string("); emit_expr(c, a); sb_put(&c->out, ")"); return; }
+                sb_put(&c->out, "gmb_double_to_string("); emit_expr(c, a); sb_put(&c->out, ")"); return;
+            }
+            if (!pstr && aty == TY_STR) { sb_put(&c->out, "gmb_string_to_double("); emit_expr(c, a); sb_put(&c->out, ")"); return; }
+            if (!pstr && aty == TY_VAL) { sb_put(&c->out, "gmb_val_to_double("); emit_expr(c, a); sb_put(&c->out, ")"); return; }
         }
         emit_expr(c, a); return;
     }
@@ -14703,6 +14715,18 @@ static void emit_arr_literal_assign(ctx_t* c, const char* target, gmb_expr_t* li
 
  static void emit_assignment(ctx_t* c, const char* target, gmb_expr_t* value, int line, int from_dim) {
       if (target && !strchr(target, '.') && gmb_c99_try_emit_dyn_write(c, target, value)) return;
+      /* Valore dinamico (JSON/dict/val) in una variabile numerica scalare: errore esplicito,
+       * non un C invalido a valle (`assigning to 'gmb_double_t' from 'gmb_val_t'`). */
+      if (target && value && !strchr(target, '.')) {
+          var_t* nv = lookup_var(c, target);
+          if (nv && nv->type == TY_NUM && !nv->boxed_val && !nv->gkind && !nv->vclass[0]
+              && !nv->is_array && dim_val_init_kind(value)) {
+              c99_fail(c, line,
+                       "valore dinamico (JSON/dict) assegnato alla variabile numerica '%s': dichiararla AS JSON (o convertire in stringa)",
+                       nv->name);
+              return;
+          }
+      }
       /* REGEX: r.Pattern = "..." → gmb_regex_set_pattern_val (imposta/ricompila l'handle). */
       if (target && value) {
           const char* rdot = strchr(target, '.');
@@ -17830,6 +17854,13 @@ static void emit_dict_literal(ctx_t* c, gmb_expr_t* e) {
                 return;
             }
         }
+        if (dv && dv->type == TY_NUM && !dv->boxed_val && !dv->gkind && !dv->vclass[0]
+            && dim_val_init_kind(s->dim_init)) {
+            c99_fail(c, s->line,
+                     "valore dinamico (JSON/dict) assegnato alla variabile numerica '%s': dichiararla AS JSON (o convertire in stringa)",
+                     dv->name);
+            return;
+        }
         if (s->dim_init) emit_assignment(c, s->dim_var, s->dim_init, s->line, 1);
         else if (dv && dv->vclass[0] && !dv->is_array) {
             /* 2.7(d)p2b UDT: DIM senza NEW = istanza zero-init (semantica UDT BASIC) */
@@ -17846,6 +17877,29 @@ static void emit_dict_literal(ctx_t* c, gmb_expr_t* e) {
     }
 }
 
+/* Condizioni che sono PREDICATI NUMERICI per costruzione (l'emissione è già double/int),
+ * anche quando le regole "membro di dict" di etype dicono TY_STR/TY_VAL: un
+ * `IF d.Remove(k) THEN` finiva nel ramo "condizione stringa" e il C emesso era
+ * `gmb_string_t _icond = <int>` → non compilabile (bug aperto C99Native-DICT-Remove). */
+static int expr_is_numeric_predicate(ctx_t* c, gmb_expr_t* e)
+{
+    const char* dot;
+    char base[160];
+    size_t bl;
+    var_t* bv;
+    int tk;
+    if (!e || e->kind != GMB_EXPR_CALL || !e->var) return 0;
+    dot = strchr(e->var, '.');
+    if (!dot || dot == e->var || strchr(dot + 1, '.')) return 0;
+    bl = (size_t)(dot - e->var);
+    if (bl >= sizeof(base)) return 0;
+    memcpy(base, e->var, bl); base[bl] = 0;
+    bv = lookup_var(c, base);
+    if (!bv) return 0;
+    tk = gmb_member_tok(dot + 1);
+    return tk == GMB_TOK_Remove || tk == GMB_TOK_Count || tk == GMB_TOK_ContainsKey;
+}
+
 static void st_if(ctx_t* c, gmb_stmt_t* s) {
 {
         ind(c); sb_put(&c->out, "if (");
@@ -17853,7 +17907,11 @@ static void st_if(ctx_t* c, gmb_stmt_t* s) {
          * (`st.IsSuccess` su FETCHRESULT/JSON) diventa gmb_val_to_double(...) — un valore
          * scalare valido per `if`. Prima emetteva gmb_json_path_text (gmb_string_t) →
          * `error: statement requires expression of scalar type` (AiServerStartPort). */
-        if (s->cond && etype(c, s->cond) == TY_STR) {
+        if (s->cond && expr_is_numeric_predicate(c, s->cond)) {
+            /* predicato numerico per costruzione (d.Remove(k), d.Count(), …): emissione nuda */
+            emit_expr(c, s->cond);
+        }
+        else if (s->cond && etype(c, s->cond) == TY_STR) {
             /* condizione STRINGA: truthy = NON-vuota (parità C# IsTruthy: s.Length > 0).
              * Prima emetteva la gmb_string_t come condizione → `statement requires expression
              * of scalar type`. Statement-expression: valuta l'espressione UNA volta. */
