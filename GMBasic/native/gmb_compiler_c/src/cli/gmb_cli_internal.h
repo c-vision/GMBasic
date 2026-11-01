@@ -11,6 +11,19 @@
 #include <stddef.h>
 #include <stdio.h>
 
+/* front-end (stesso compilatore): usato da `gmb dump ast` */
+#include "gmb_lexer.h"
+#include "gmb_macro_expand.h"
+#include "gmb_parser.h"
+#include "gmb_linker.h"
+#include "gmb_ast.h"
+
+/* F1 — dump dietro OPZIONI (la REPL non include il front-end, chiama queste) */
+int gmb_cli_dump_ast(const char* file);
+int gmb_cli_dump_chunk(const char* file, const char* out);
+int gmb_cli_dump_c(const char* file, const char* out);
+int gmb_cli_eval(const char* code);
+
 #define CLI_PATH 4096
 #define CLI_MAX_NS 128   /* namespace massimi considerati da `check` (ex gmb_cli.c) */
 

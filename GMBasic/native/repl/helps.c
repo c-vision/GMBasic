@@ -28,7 +28,7 @@ static const char* json_get_string(const char* js, const char* key)
 /* Cerca Helps/<topic>.json in: CWD/Helps, REPL/Helps, root repo/Helps. */
 static FILE* helps_open(const char* topic, char* path, int cap)
 {
-    const char* dirs[] = {"shared/helps", "Helps", "REPL/Helps", NULL};
+    const char* dirs[] = {"REPL/helps", "shared/helps", "Helps", "REPL/Helps", NULL};
     char cwd[2048];
     getcwd(cwd, sizeof(cwd));
     for (int i = 0; dirs[i]; i++) {

@@ -91,6 +91,7 @@ executable carries only what is needed: minimal settings, `Resources/`, the decl
 
 ### Where the state lives (and what never goes into git)
 
+- **`REPL/`** — la REPL unica (in C) e i suoi `helps/*.json`.
 - **`~/.gmbasic/`** — per-user data root: `libs/`, `brains/`, `packages/`, `skills-marketplaces/`,
   `plugins-marketplaces/`, `github.token` (`chmod 600`).
 - **`GMBasic/config/`** (or `<exe>/config` in a distributed program) — **local state**: active

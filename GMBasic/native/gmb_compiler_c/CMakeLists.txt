@@ -61,7 +61,7 @@ target_compile_options(gmb_c99native_driver PRIVATE -Wall -Wextra)
 # ── CLI di PROGETTO (O7): `gmb check|build|run --project <dir>`. Linka SOLO il front-end
 # (la discovery `gmb_inc_resolve`, la stessa del compilatore: niente copie nel CLI). È il
 # contratto a processo che l'IDE userà (D4); il driver C99Native lo cerca accanto al binario.
-add_executable(gmb_cli src/cli/gmb_cli.c src/cli/gmb_cli_project.c
+add_executable(gmb_cli src/cli/gmb_cli.c src/cli/gmb_cli_project.c src/cli/gmb_cli_dump.c
                $<TARGET_OBJECTS:gmb_frontend>)   # split per la soglia 1200 righe (§0quater)
 # RID di build: il CLI cerca librerie/header nella CACHE (`~/.gmbasic/libs/<rid>/`).
 # Una sola mappatura (GmbRid.cmake), passata come costante al compilatore.

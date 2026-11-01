@@ -233,7 +233,7 @@ public class ReplEngine
         try
         {
             var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            // 1) output (distribuzione) → 2) shared/helps risalendo dal binario/CWD
+            // 1) output (distribuzione) → 2) REPL/helps risalendo dal binario/CWD
             // (checkout del monorepo: UNA copia degli help per il ramo C e C#) → 3) legacy.
             var helpsDir = Path.Combine(baseDir, "Helps");
             if (!Directory.Exists(helpsDir)) helpsDir = FindSharedHelps(baseDir);
@@ -255,7 +255,7 @@ public class ReplEngine
             var d = new DirectoryInfo(start);
             for (int i = 0; i < 10 && d != null; i++, d = d.Parent)
             {
-                var candidate = Path.Combine(d.FullName, "shared", "helps");
+                var candidate = Path.Combine(d.FullName, "REPL", "helps");
                 if (Directory.Exists(candidate)) return candidate;
             }
         }

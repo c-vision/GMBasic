@@ -301,6 +301,8 @@ static void usage(void) {
     fprintf(stderr,
         "uso: gmb check|build|run --project <dir> [--entry <file.bas>] [--json] [--strict]\n"
         "     gmb build ... [--out <exe>]\n"
+        "     gmb dump ast|chunk|c <file.bas> [--out <file>]   dump per la REPL (F1)\n"
+        "     gmb eval \"<istruzioni>\"                          compila ed esegue uno snippet\n"
         "     gmb minitests [--root <dir>] [--filter <substr>] [--all] [--json]\n"
         "                   [--driver <exe>] [--cc <cc>] [--baseline <json>]\n"
         "  check  valida il progetto: entry, NAMESPACE dei moduli, IMPORT risolti\n"
@@ -999,6 +1001,29 @@ int main(int argc, char** argv) {
         return 0;
     }
     o.command = argv[1];
+    /* F1: dump/eval sono OPZIONI del compilatore usate dalla REPL (nessun accesso diretto
+     * a lexer/parser dal lato REPL). Forme: `gmb dump ast|chunk|c <file> [--out f]`,
+     * `gmb eval "<istruzioni>"`. */
+    if (!strcmp(o.command, "dump")) {
+        if (argc < 4) { fprintf(stderr, "uso: gmb dump ast|chunk|c <file.bas> [--out <file>]\n"); return 2; }
+        const char* what = argv[2];
+        const char* file = argv[3];
+        const char* out = NULL;
+        for (int i = 4; i < argc; i++) {
+            if (!strncmp(argv[i], "--out=", 6)) out = argv[i] + 6;
+            else if (!strcmp(argv[i], "--out") && i + 1 < argc) out = argv[++i];
+        }
+        if (!strcmp(what, "ast"))    return gmb_cli_dump_ast(file);
+        if (!strcmp(what, "chunk"))  return gmb_cli_dump_chunk(file, out);
+        if (!strcmp(what, "c"))      return gmb_cli_dump_c(file, out);
+        if (!strcmp(what, "disasm")) { fprintf(stderr, "gmb: 'dump disasm' arriva con F1b (disassemblatore condiviso)\n"); return 2; }
+        fprintf(stderr, "gmb: dump sconosciuto '%s' (ast|chunk|c)\n", what);
+        return 2;
+    }
+    if (!strcmp(o.command, "eval")) {
+        if (argc < 3) { fprintf(stderr, "uso: gmb eval \"<istruzioni BASIC>\"\n"); return 2; }
+        return gmb_cli_eval(argv[2]);
+    }
     if (strcmp(o.command, "check") && strcmp(o.command, "build") && strcmp(o.command, "run")
         && strcmp(o.command, "minitests")) {
         fprintf(stderr, "gmb: comando sconosciuto '%s'\n", o.command);
