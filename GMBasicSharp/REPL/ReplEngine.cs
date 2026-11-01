@@ -1162,25 +1162,16 @@ public class ReplEngine
     {
         if (_helpIndex == null) { Out.WriteLine("?help: indice non disponibile"); return Task.CompletedTask; }
 
-        // StandardConsole: in modalità NATIVA (default) Present() non ridisegna il buffer,
-        // quindi il form a celle resterebbe invisibile. Si forza il BUFFER per la durata
-        // del form e si ripristina dopo.
-        var std = _activeConsole as StandardConsole;
-        bool wasNative = std?.IsNativeScrollMode ?? false;
-        if (std != null && wasNative) { try { std.SetScrollMode(false); } catch { } }
-        try
+        // Il form a celle (HelpForm) usa i controlli C via IlRuntime.Current.Graphics:
+        // esiste solo nel percorso SDL. Sui terminali (-c/-s) non c'è → elenco testuale.
+        if (_useSdl)
         {
-            if (_activeConsole is SystemConsole)
-                PrintHelpText(args?.Trim());     // nessun buffer: elenco testuale
-            else
-                new HelpForm(_helpIndex).Show(); // form a celle
-        }
-        finally
-        {
-            if (std != null && wasNative) { try { std.SetScrollMode(true); } catch { } }
+            new HelpForm(_helpIndex).Show();
             ApplyConsoleColors();
-            Present();
+            return Task.CompletedTask;
         }
+        PrintHelpText(args?.Trim());
+        ApplyConsoleColors();
         return Task.CompletedTask;
     }
 
@@ -1192,11 +1183,23 @@ public class ReplEngine
         var sb = new System.Text.StringBuilder();
         if (!string.IsNullOrEmpty(topic))
         {
-            var r = _helpIndex.Search(topic, 40);
-            if (r.Results.Count == 0) { Out.WriteLine($"Nessun help per '{topic}'"); return; }
-            foreach (var sc in r.Results)
+            // 1) match ESATTO sul nome (es. HELP abs -> ABS), poi 2) ricerca fuzzy.
+            var exactMatches = new List<HelpEntry>();
+            foreach (var ns in _helpIndex.GetNamespaces())
+                foreach (var it in _helpIndex.GetByNamespace(ns))
+                    if (string.Equals(it.Name, topic, StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(it.FullName, topic, StringComparison.OrdinalIgnoreCase))
+                        exactMatches.Add(it);
+            var found = new List<HelpEntry>();
+            if (exactMatches.Count > 0) found.AddRange(exactMatches);
+            else
             {
-                var e = sc.Entry;
+                var r = _helpIndex.Search(topic, 40);
+                foreach (var sc in r.Results) found.Add(sc.Entry);
+            }
+            if (found.Count == 0) { Out.WriteLine($"Nessun help per '{topic}'"); return; }
+            foreach (var e in found)
+            {
                 sb.AppendLine($"{e.FullName}");
                 if (!string.IsNullOrEmpty(e.Description)) sb.AppendLine($"  {e.Description}");
                 if (e.Syntax.Count > 0) sb.AppendLine($"  Sintassi: {string.Join(" | ", e.Syntax)}");
