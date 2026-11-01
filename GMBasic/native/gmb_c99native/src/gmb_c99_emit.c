@@ -3275,6 +3275,7 @@ static int is_stdlib_object_type(const char* t) {
 static void reg_dim(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
     if (s->dim_is_dynamic) return;   /* DYNAMIC: vive nel runtime gmb_dscope, non in una var C */
 if (s->dim_var) {            int ty = suffix_type(s->dim_var);
+            var_t* prior = vars_find(scope, s->dim_var);
             if (s->dim_type) {
                 /* AS <tipo scalare> (parser cattura STRING/LONG/...): dispatch per-token
                  * sulla keyword di parsing del tipo (StringType/Bool/.../Single). FLOAT
@@ -3307,6 +3308,28 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                     if (etype(c, s->dim_init->args[i]) == TY_STR) ty = TY_STR;
             var_t* v = vars_add(scope, s->dim_var, ty);
             v->is_dim_local = 1;
+            /* Stesso nome (il suffisso è il TIPO, non il nome) dichiarato due volte:
+             * - nello scope locale è già errore su IL/PCode/VM-C → qui si allinea;
+             * - nel globale si rifiuta solo se cambia la FAMIGLIA (numerico/stringa/bit),
+             *   che è il caso ambiguo `DIM S AS SINGLE` + `DIM S$ AS STRING`. */
+            if (prior && !s->array_size && !prior->gkind && !prior->vclass[0] && !prior->is_array) {
+                if (scope != &c->globals) {
+                    c99_fail(c, s->line,
+                             "Un simbolo con nome '%s' è già stato dichiarato in questo scope",
+                             s->dim_var);
+                    return;
+                }
+                int famOld = prior->type == TY_STR ? 2 : (prior->type == TY_NUM ? 1 : 0);
+                int famNew = ty == TY_STR ? 2 : 1;
+                if (famOld != 0 && famOld != famNew) {
+                    c99_fail(c, s->line,
+                             "La variabile '%s' è già dichiarata come %s: una seconda DIM con tipo %s nello stesso scope è ambigua (usare un nome distinto)",
+                             s->dim_var,
+                             prior->type == TY_STR ? "STRING" : "numerico",
+                             ty == TY_STR ? "STRING" : "numerico");
+                    return;
+                }
+            }
             /* `DIM v = { "k": v, ... }` (letterale dict SENZA tipo esplicito) → gmb_dict_t.
              * Senza, la var restava numerica e `v("k")` diventava una CHIAMATA alla funzione
              * 'v' ("simbolo non trovato: funzione 'v' non definita"). Stesso schema del

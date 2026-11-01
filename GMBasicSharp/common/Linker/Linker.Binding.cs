@@ -3549,6 +3549,17 @@ public static partial class Linker
     /// <param name="bindExpressions">Flag per evitare il doppio binding nelle espressioni</param>
     /// <param name="isStrict">OPTION STRICT enabled or disabled flag</param>
     /// <returns>Un nuovo nodo `DeclarationStmt` con tutte le dichiarazioni registrate.</returns>
+    /// <summary>Famiglia di tipo per la validazione delle re-dichiarazioni globali:
+    /// 1 = numerico, 2 = stringa, 3 = bit, 0 = altro/inferito (non confrontabile).</summary>
+    private static int TypeFamily(DataType t) => t switch
+    {
+        ByteType or SByteType or IntegerType or UIntegerType or LongType or ULongType
+            or QuadType or UQuadType or SingleType or DoubleType or CurrencyType => 1,
+        StringType => 2,
+        BitType => 3,
+        _ => 0,
+    };
+
     private static DeclarationStmt RegisterGlobalVariables(BasicProgram program, DeclarationStmt declStmt,
         bool bindExpressions, bool isStrict)
     {
@@ -3591,6 +3602,23 @@ public static partial class Linker
                 Log(
                     $"[BINDER]    -> Simbolo globale '{decl.NameSuffixed.Lexeme}' già registrato. ID recuperato: {symbolId}",
                     BindingLog);
+
+                /* Redeclarazione GLOBALE con tipo di famiglia diversa (es. `DIM S AS SINGLE`
+                 * + `DIM S$ AS STRING`: suffisso = tipo, stesso SymbolId): ambigua, perché
+                 * l'ultima dichiarazione cambierebbe il tipo dello stesso slot. Nei SUB è già
+                 * un errore ("già dichiarato in questo scope"); qui si rifiuta solo quando la
+                 * famiglia cambia (numerico/stringa/bit), lasciando legittime le ri-dichiarazioni
+                 * omogenee (INTEGER→LONG). */
+                var priorSymbol = program.Symbols.GetSymbol(symbolId);
+                if (decl.DataType is not null && decl.DataType is not InferredType)
+                {
+                    int famOld = TypeFamily(priorSymbol.DataType);
+                    int famNew = TypeFamily(decl.DataType);
+                    if (famOld != 0 && famNew != 0 && famOld != famNew)
+                        throw CreateError(decl.NameSuffixed,
+                            $"La variabile '{decl.NameCleaned.Lexeme}' è già dichiarata come '{priorSymbol.DataType}': una seconda DIM con tipo '{decl.DataType}' nello stesso scope è ambigua (usare un nome distinto).",
+                            ErrorCode.TypeMismatch);
+                }
             }
             else
             {
