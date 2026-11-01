@@ -1,6 +1,6 @@
 // ============================================================================
 // vec_module_go.go — valutazione modulo nativo GMBasic in Go (cgo)
-// File: samples/Community/FFI/NativeVec/vec_module_go.go
+// File: samples/FFI/NativeVec/vec_module_go.go
 //
 // Go con cgo espone funzioni C ABI SOLO scalari (int64/float64) e richiede
 // `-buildmode=c-shared` + `//export`. NON può includere gmb_ffi.h direttamente;

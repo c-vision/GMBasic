@@ -20,7 +20,7 @@
 ' ognuno (su C99Native/canary e PCode si chiudono; IL/VM richiedono il layer
 ' input in rework). Il server HTTP usa la porta 8786 e viene fermato subito.
 '
-' Esecuzione:  tools/gmb_c99native_run.sh samples/Community/Controls/ControlCenter.bas
+' Esecuzione:  tools/gmb_c99native_run.sh samples/Controls/ControlCenter.bas
 '   (oppure con GMB_TUI_SCRIPT=ESC×N per i modali sui backend C).
 ' ============================================================================
 IMPORT CONTROLS

@@ -1,4 +1,4 @@
-' FILE: samples/Community/Events/Controls.bas
+' FILE: samples/Events/Controls.bas
 ' Widget TUI — CHECKBOX, LISTBOX, MENU, TOGGLE, SLIDER
 ' Esempio completo di controlli interattivi
 IMPORT CONTROLS

@@ -12,7 +12,7 @@
 '
 ' Uso:
 '   export GMBASIC_MCP_API_KEY=segreta        ' http richiede la chiave
-'   dotnet run --project REPL -- samples/Community/Ai/McpBrowserServer.bas
+'   dotnet run --project REPL -- samples/Ai/McpBrowserServer.bas
 '     → registra i tool e serve MCP su http://127.0.0.1:8765/mcp
 '       (Authorization: Bearer $KEY)
 '

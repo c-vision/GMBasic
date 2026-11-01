@@ -1,4 +1,4 @@
-' FILE: samples/Community/Console/SendKey.bas
+' FILE: samples/Console/SendKey.bas
 ' SENDKEY — test typeahead per programmi interattivi
 ' Invia testo simulato al buffer di input della console, poi lo legge
 SUB Main()

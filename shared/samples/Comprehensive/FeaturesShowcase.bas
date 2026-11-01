@@ -1,4 +1,4 @@
-' FILE: samples/Community/Comprehensive/FeaturesShowcase.bas
+' FILE: samples/Comprehensive/FeaturesShowcase.bas
 ' ======================================================================================================================
 ' Sample COMPLETO che esercita OGNI comando/funzione/costrutto implementato (parità 5/5):
 '   - operatori ++ / -- (prefix/postfix; variabile, campo, elemento d'array, parametro)

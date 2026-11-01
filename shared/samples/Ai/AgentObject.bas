@@ -1,4 +1,4 @@
-' FILE: samples/Community/Ai/AgentObject.bas
+' FILE: samples/Ai/AgentObject.bas
 ' =================================================================================================
 ' AgentObject — CLASSE AGENT (include/Agent.inc): property access tipizzato su un agente (A1).
 ' =================================================================================================

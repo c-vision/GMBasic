@@ -16,7 +16,7 @@ Self-contained example of a **GMBasic** native module (`contentType: c-ffi`, `ff
 ## Build & run
 
 ```bash
-cd shared/samples/Community/FFI/NativeVec
+cd shared/samples/FFI/NativeVec
 make                 # -> libvec_module.dylib (macOS) / libvec_module.so (Linux)
 # then run NativeVec.bas (the runtime resolves ./NativeVec/vec_module)
 ```

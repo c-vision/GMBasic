@@ -1,4 +1,4 @@
-' samples/Community/AiLLM/TrainDpo.bas
+' samples/AiLLM/TrainDpo.bas
 ' ─────────────────────────────────────────────────────────────────────────────
 ' TRAIN DPO (F3) — DIRECT PREFERENCE OPTIMIZATION.
 '

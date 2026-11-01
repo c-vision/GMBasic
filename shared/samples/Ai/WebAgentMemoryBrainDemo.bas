@@ -1,7 +1,7 @@
 ' Surface HTTP /api/memory|brain|enrich a PARITA' 4 backend (IL / P-Code / VM/C / C99Native):
 ' server AI AGENT SERVE implementato in ogni backend (VM/C via gmb_agent_http_start),
 ' client FETCH in-process senza deadlock (fix watchdog GPM gmb_c99gpm_extjob_*).
-' FILE: samples/Community/AI/WebAgentMemoryBrainDemo.bas
+' FILE: samples/AI/WebAgentMemoryBrainDemo.bas
 ' =================================================================
 ' WEBAPP Memory/Brain/Summary — demo dettagliata (BASIC + HTTP API)
 ' Copre i 4 blocchi della Log tab: Memory (MEMORY.*), Brain (AI MEMORY*),
@@ -18,7 +18,7 @@ SUB Main()
 
     ' ----------------------------------------------------------
     ' 1. MEMORY.* — key-value SQLite :memory: (AgentMemoryStore)
-    '    Vedi samples/Community/Ai/MemoryDemo.bas per il base.
+    '    Vedi samples/Ai/MemoryDemo.bas per il base.
     '    API HTTP: POST/GET/DELETE /api/memory + GET /api/memory/search
     ' ----------------------------------------------------------
     PRINT "1) MEMORY.* (key-value)"

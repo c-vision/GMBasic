@@ -1,4 +1,4 @@
-' FILE: samples/Community/Ai/AiImageResize.bas
+' FILE: samples/Ai/AiImageResize.bas
 ' =================================================================================================
 '       AI.IMAGERESIZE — ridimensiona un PNG (nearest-neighbor)
 '
@@ -10,7 +10,7 @@ IMPORT AI
 
 SUB Main()
     DIM src AS STRING
-    src = "../../../samples/Fixtures/ai/img_4x4.png"
+    src = "../Fixtures/ai/img_4x4.png"
 
     DIM ok AS LONG
     ok = AI.IMAGERESIZE(src, "work/ai_info_resize.png", 16, 16)

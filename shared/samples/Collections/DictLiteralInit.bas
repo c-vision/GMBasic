@@ -1,4 +1,4 @@
-' FILE: samples/Community/Collections/DictLiteralInit.bas
+' FILE: samples/Collections/DictLiteralInit.bas
 ' ======================================================================================================================
 ' Dizionari con letterale `{ "chiave": valore, ... }`
 ' ======================================================================================================================

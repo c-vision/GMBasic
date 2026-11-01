@@ -64,13 +64,13 @@ SUB Main()
     LLM TENSOR COMPILE "work/dsv2l_mxfp4.gguf", "work/tour2.gmbllm"
 
     ' ── SURGERY su file (fixture tiny, fast) ────────────────────────────────────────
-    LLM MODEL CHECKPOINT "../../Fixtures/models/tiny_moe.gguf", "work/tour_ck", "orig"
-    LLM MODEL ABLATE "../../Fixtures/models/tiny_moe.gguf", "work/tour_abl.gguf", "blk.1"
-    LLM MODEL REMOVE "../../Fixtures/models/tiny_moe.gguf", "work/tour_rm.gguf", 1
-    LLM MODEL DIFF "../../Fixtures/models/tiny_moe.gguf", "work/tour_abl.gguf", "work/tour_diff.txt"
+    LLM MODEL CHECKPOINT "../Fixtures/models/tiny_moe.gguf", "work/tour_ck", "orig"
+    LLM MODEL ABLATE "../Fixtures/models/tiny_moe.gguf", "work/tour_abl.gguf", "blk.1"
+    LLM MODEL REMOVE "../Fixtures/models/tiny_moe.gguf", "work/tour_rm.gguf", 1
+    LLM MODEL DIFF "../Fixtures/models/tiny_moe.gguf", "work/tour_abl.gguf", "work/tour_diff.txt"
     LLM MODEL VALIDATE "work/tour_abl.gguf", "work/tour_val.txt"
     LLM MODEL SAVE "work/tour_abl.gguf", "work/tour_saved.gguf"
-    LLM MODEL ADD "../../Fixtures/models/tiny_moe.gguf", "work/tour_abl.gguf", "work/tour_add.gguf"
+    LLM MODEL ADD "../Fixtures/models/tiny_moe.gguf", "work/tour_abl.gguf", "work/tour_add.gguf"
     LLM MODEL ROLLBACK "work/tour_ck", "orig", "work/tour_restored.gguf"
 
     PRINT "OK: tour completo dei comandi LLM."

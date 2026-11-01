@@ -1,4 +1,4 @@
-' FILE: samples/Community/Databases/DbLedgerCompleteCoverage.bas
+' FILE: samples/Databases/DbLedgerCompleteCoverage.bas
 ' =================================================================================================
 ' Sample COMPLETO LEDGER — usa TUTTE e 17 le funzioni canoniche del namespace
 ' (ACCOUNTS ADD BALANCE BOF COUNT EDIT EOF FOUND GET IMPORT LASTREC OPEN PLOT RECNO

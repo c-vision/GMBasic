@@ -1,4 +1,4 @@
-' FILE: samples/Community/Events/OnMouseWindow.bas
+' FILE: samples/Events/OnMouseWindow.bas
 ' ON MOUSE / ON WINDOW — registrazione eventi interattivi
 ' Demostra la registrazione di handler per eventi mouse e finestra.
 ' Nota: in esecuzione headless, gli eventi non vengono generati;

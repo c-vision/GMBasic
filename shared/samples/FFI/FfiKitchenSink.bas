@@ -1,4 +1,4 @@
-' FILE: samples/Community/FFI/FfiKitchenSink.bas
+' FILE: samples/FFI/FfiKitchenSink.bas
 ' ======================================================================================================================
 ' FFI — KITCHEN SINK: ogni forma del contratto, su tutte e 5 le gambe
 ' ======================================================================================================================
@@ -7,7 +7,7 @@
 ' array BYREF (output/input/multiplo — §4bis), STRING param+ritorno (§4bis), e la
 ' risoluzione drop-in `libs/` (la dylib NON è accanto al programma).
 '
-' Prima:  make   (in samples/Community/FFI)  -> libs/libvec_module.dylib
+' Prima:  make   (in samples/FFI)  -> libs/libvec_module.dylib
 ' Poi:    esegui questo .bas.
 ' Guida:  Guide/FFI-Guida-Utente.md (§1-§9).
 ' ======================================================================================================================

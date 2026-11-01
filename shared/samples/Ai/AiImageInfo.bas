@@ -1,4 +1,4 @@
-' FILE: samples/Community/Ai/AiImageInfo.bas
+' FILE: samples/Ai/AiImageInfo.bas
 ' =================================================================================================
 '       AI.IMAGEINFO — dimensioni e formato di un'immagine PNG
 '
@@ -10,7 +10,7 @@ IMPORT AI
 
 SUB Main()
     DIM path AS STRING
-    path = "../../../samples/Fixtures/ai/img_4x4.png"
+    path = "../Fixtures/ai/img_4x4.png"
 
     PRINT "INFO: ", AI.IMAGEINFO(path)
 

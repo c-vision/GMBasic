@@ -1,4 +1,4 @@
-' FILE: samples/Community/Classes/ClassesInheritsCrossFile/Mezzi.inc
+' FILE: samples/Classes/ClassesInheritsCrossFile/Mezzi.inc
 ' =================================================================================================
 '   Classe base in un modulo separato — fix Z3 (INHERITS qualificato / cross-file)
 ' =================================================================================================

@@ -1,4 +1,4 @@
-' samples/Community/Ai/SemanticPatchApply.bas
+' samples/Ai/SemanticPatchApply.bas
 ' ─────────────────────────────────────────────────────────────────────────────
 ' GMB SEMANTIC GRAPH (SEMAPRAX) — lato SCRITTURA: `LLM PATCH "target","rev" … END PATCH`.
 '

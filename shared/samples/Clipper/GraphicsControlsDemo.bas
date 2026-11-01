@@ -10,7 +10,7 @@
 '            COMBOBOX, MENU (flat), DATEPICKER, COLORPICKER, GRID, TREEVIEW,
 '            TBROWSE, FILEDIALOG, SPINNER, PRINTERDIALOG.
 '
-' Esecuzione: tools/gmb_c99native_run.sh samples/Community/Clipper/GraphicsControlsDemo.bas
+' Esecuzione: tools/gmb_c99native_run.sh samples/Clipper/GraphicsControlsDemo.bas
 ' (finestra SDL ~20s; oppure lancialo dal REPL).
 ' ============================================================================
 IMPORT CONTROLS

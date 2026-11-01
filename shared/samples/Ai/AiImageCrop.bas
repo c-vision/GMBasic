@@ -1,4 +1,4 @@
-' FILE: samples/Community/Ai/AiImageCrop.bas
+' FILE: samples/Ai/AiImageCrop.bas
 ' =================================================================================================
 '       AI.IMAGECROP — ritaglia un PNG (x, y, larghezza, altezza)
 '
@@ -10,7 +10,7 @@ IMPORT AI
 
 SUB Main()
     DIM src AS STRING
-    src = "../../../samples/Fixtures/ai/img_4x4.png"
+    src = "../Fixtures/ai/img_4x4.png"
 
     DIM ok AS LONG
     ok = AI.IMAGECROP(src, "work/ai_info_crop.png", 1, 1, 2, 2)

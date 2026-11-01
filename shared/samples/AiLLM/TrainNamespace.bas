@@ -1,4 +1,4 @@
-' samples/Community/AiLLM/TrainNamespace.bas
+' samples/AiLLM/TrainNamespace.bas
 ' ─────────────────────────────────────────────────────────────────────────────
 ' Namespace TRAIN (Fase F0) — PRODUZIONE/ALTERAZIONE dei pesi (fine-tune, LoRA,
 ' distillazione, eval/quality). Coincide col confine di licenza PUL (gmbllm).
@@ -9,7 +9,7 @@
 ' (PUL/gmbllm), quindi la parità 4 backend è invariata.
 '
 ' L'addestramento REALE (un modello MLX locale + un dataset) è mostrato in
-' `samples/Community/AiLLM/LoraFinetuneMultiArch.bas`. Questo sample verifica
+' `samples/AiLLM/LoraFinetuneMultiArch.bas`. Questo sample verifica
 ' che il namespace TRAIN dispatchi correttamente (parità 4 backend) gestendo
 ' l'errore in modo catturabile, senza richiedere un modello su disco.
 ' ─────────────────────────────────────────────────────────────────────────────

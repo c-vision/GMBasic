@@ -19,21 +19,21 @@ SUB Main()
     PRINT "=== Model Compiler LLM — QUANT AUTO (budget bpw) ==="
     MKDIR "work"
 
-    IF NOT IO.FILEEXISTS("../../Fixtures/models/tiny_big_moe.gguf") THEN
+    IF NOT IO.FILEEXISTS("../Fixtures/models/tiny_big_moe.gguf") THEN
         PRINT "Fixture assente: samples/Fixtures/models/tiny_big_moe.gguf"
         END
     END IF
 
     ' ---- 1) AUTO a 3.5 bpw (più piccolo) ----
-    LLM QUANT "../../Fixtures/models/tiny_big_moe.gguf", "work/auto_b35.gguf", 3.5
+    LLM QUANT "../Fixtures/models/tiny_big_moe.gguf", "work/auto_b35.gguf", 3.5
     PRINT "1) QUANT AUTO 3.5 bpw -> work/auto_b35.gguf"
 
     ' ---- 2) AUTO a 4.5 bpw (più fedele) ----
-    LLM QUANT "../../Fixtures/models/tiny_big_moe.gguf", "work/auto_b45.gguf", 4.5
+    LLM QUANT "../Fixtures/models/tiny_big_moe.gguf", "work/auto_b45.gguf", 4.5
     PRINT "2) QUANT AUTO 4.5 bpw -> work/auto_b45.gguf"
 
     ' ---- 3) per-RUOLO (senza bpw) per confronto ----
-    LLM QUANT "../../Fixtures/models/tiny_big_moe.gguf", "work/role.gguf"
+    LLM QUANT "../Fixtures/models/tiny_big_moe.gguf", "work/role.gguf"
     PRINT "3) QUANT per-ruolo     -> work/role.gguf"
 
     ' ---- 4) verifica: i formati per-tensore del risultato AUTO ----

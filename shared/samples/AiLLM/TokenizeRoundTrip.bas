@@ -9,7 +9,7 @@ IMPORT LLM
 
 SUB Main()
   DIM model$ AS STRING
-  model$ = "../../Fixtures/ai/tiny_tokenizer.json"
+  model$ = "../Fixtures/ai/tiny_tokenizer.json"
   IF COMMANDCOUNT() >= 1 THEN model$ = COMMAND$(1)
 
   DIM testo$ AS STRING

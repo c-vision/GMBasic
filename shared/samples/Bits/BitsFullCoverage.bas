@@ -1,4 +1,4 @@
-' FILE: samples/Community/Bits/BitsFullCoverage.bas
+' FILE: samples/Bits/BitsFullCoverage.bas
 ' =================================================================================================
 '  SAMPLE COMPLETO E COMPLESSO — namespace BITS (manipolazione bit a 64 bit, 21 funzioni)
 ' =================================================================================================

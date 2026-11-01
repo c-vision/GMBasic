@@ -1,4 +1,4 @@
-' FILE: samples/Community/Documents/ConvertFullCoverage.bas
+' FILE: samples/Documents/ConvertFullCoverage.bas
 ' Sample COMPLETO del namespace CONVERT — tutte le funzioni, deterministico.
 ' Markdown (Parse/Headings/Links/MdImages/Tables/CodeBlocks/Query/Tree/RenderHtml/
 ' RenderText/Format/Validate/Strip/Formats) + documento PDF (Open/PageCount/Text/
@@ -30,7 +30,7 @@ SUB Main()
     PRINT "formats="; CONVERT.FORMATS()
 
     PRINT "=== Documento PDF ==="
-    DIM h = CONVERT.OPEN("../../Fixtures/sample.pdf")
+    DIM h = CONVERT.OPEN("../Fixtures/sample.pdf")
     PRINT "pagecount="; CONVERT.PAGECOUNT(h)
     PRINT "textlen="; LEN(CONVERT.TEXT(h))
     PRINT "mdlen="; LEN(CONVERT.MARKDOWN(h))
@@ -42,11 +42,11 @@ SUB Main()
     PRINT "close="; CONVERT.CLOSE(h)
 
     PRINT "=== Conversioni ==="
-    PRINT "extract="; LEN(CONVERT.EXTRACT("../../Fixtures/sample.pdf"))
-    PRINT "extractengine="; CONVERT.EXTRACTENGINE("../../Fixtures/sample.pdf")
-    PRINT "tohtml="; LEN(CONVERT.TOHTML("../../Fixtures/sample.pdf"))
-    PRINT "totext="; LEN(CONVERT.TOTEXT("../../Fixtures/sample.pdf"))
-    PRINT "tomd="; LEN(CONVERT.TOMD("../../Fixtures/sample.pdf"))
+    PRINT "extract="; LEN(CONVERT.EXTRACT("../Fixtures/sample.pdf"))
+    PRINT "extractengine="; CONVERT.EXTRACTENGINE("../Fixtures/sample.pdf")
+    PRINT "tohtml="; LEN(CONVERT.TOHTML("../Fixtures/sample.pdf"))
+    PRINT "totext="; LEN(CONVERT.TOTEXT("../Fixtures/sample.pdf"))
+    PRINT "tomd="; LEN(CONVERT.TOMD("../Fixtures/sample.pdf"))
 
     PRINT "=== Batch (funzione) ==="
     ON ERROR RESUME NEXT

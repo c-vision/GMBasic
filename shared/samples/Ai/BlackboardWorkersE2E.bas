@@ -1,4 +1,4 @@
-' FILE: samples/Community/Ai/BlackboardWorkersE2E.bas
+' FILE: samples/Ai/BlackboardWorkersE2E.bas
 ' ==============================================================================
 ' E2E Blackboard (Fase 2 — GMBasic-Agent-Runtime-Async-DAG-Verifier-Blackboard):
 ' N goroutine GPM (GO SUB ... IN wg) scrivono al Blackboard in CONCORRENZA;

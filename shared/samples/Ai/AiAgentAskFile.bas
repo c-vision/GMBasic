@@ -1,4 +1,4 @@
-' FILE: samples/Community/Ai/AiAgentAskFile.bas
+' FILE: samples/Ai/AiAgentAskFile.bas
 ' =================================================================================================
 '       AI.AGENTASKFILE — l'agente riceve un input multimodale (immagine/audio/documento)
 '

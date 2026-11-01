@@ -57,7 +57,7 @@ SUB Main()
     SQL CLOSE RESULTSET rs
 
     ' ---------------- Parquet ANNIDATO scrivibile (list/struct/map via JSON) ----------------
-    COPY "../../Fixtures/parquet_nested.parquet" TO "work/eventi.parquet"
+    COPY "../Fixtures/parquet_nested.parquet" TO "work/eventi.parquet"
     DIM q AS STRING
     q = CHR(34)
     SQL EXEC S, "CREATE VIRTUAL TABLE ev USING parquet(name='work/eventi.parquet')"

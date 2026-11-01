@@ -1,4 +1,4 @@
-' FILE: samples/Community/Classes/ClassesInheritsCrossFileTransitive/Mezzi.inc
+' FILE: samples/Classes/ClassesInheritsCrossFileTransitive/Mezzi.inc
 ' =================================================================================================
 '   Classe base in un modulo separato — bersaglio del BUG-4 (override transitivo cross-file)
 ' =================================================================================================

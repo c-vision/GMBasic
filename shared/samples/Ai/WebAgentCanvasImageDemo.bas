@@ -1,4 +1,4 @@
-' FILE: samples/Community/AI/WebAgentCanvasImageDemo.bas
+' FILE: samples/AI/WebAgentCanvasImageDemo.bas
 ' =================================================================
 ' WEBAPP Canvas — demo dettagliata (nativo + WebSocket remoto + ImageGet/Put)
 ' Mostra tutte le 8 primitive remote: PSet/Line/Rect/Circle/Paint/PutImage/GetImage/Clear

@@ -1,4 +1,4 @@
-' FILE: samples/Community/Ai/AiDocumentFields.bas
+' FILE: samples/Ai/AiDocumentFields.bas
 ' =================================================================================================
 '       AI.DOCFIELDS / AI.DOCEXTRACT — estrazione strutturata da documenti
 '
@@ -13,7 +13,7 @@ IMPORT AI
 
 SUB Main()
     DIM inv AS STRING
-    inv = "../../../samples/Fixtures/ai/fattura_it.txt"
+    inv = "../Fixtures/ai/fattura_it.txt"
 
     ' ── FIELDS: numero/data/totale/IVA (null se assenti) ──────────────────────
     PRINT "FIELDS: ", AI.DOCFIELDS(inv)

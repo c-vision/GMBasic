@@ -13,7 +13,7 @@ program + the native library in `libs/`, **with no REQUIRE package** and no mani
 ## Build & run
 
 ```bash
-cd shared/samples/Community/FFI
+cd shared/samples/FFI
 make            # -> libs/libvec_module.dylib (macOS) / .so (Linux)
 # then run FfiDropinLibs.bas with a runner (test_ilrun / test_vmrun / Executor)
 ```

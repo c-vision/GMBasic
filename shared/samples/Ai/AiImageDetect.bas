@@ -1,4 +1,4 @@
-' FILE: samples/Community/Ai/AiImageDetect.bas
+' FILE: samples/Ai/AiImageDetect.bas
 ' =================================================================================================
 '       AI.IMAGEDETECT — rilevamento oggetti (JSON con bbox) via provider vision
 '

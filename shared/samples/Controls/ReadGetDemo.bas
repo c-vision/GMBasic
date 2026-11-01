@@ -10,7 +10,7 @@
 ' NOTA: con WHEN 0=1 i campi vengono saltati (nessun input → gira anche headless,
 ' come in questo sample). Con WHEN 1=1 i campi si leggono interattivamente.
 '
-' Esecuzione interattiva:  tools/gmb_c99native_run.sh samples/Community/Controls/ReadGetDemo.bas
+' Esecuzione interattiva:  tools/gmb_c99native_run.sh samples/Controls/ReadGetDemo.bas
 ' ============================================================================
 IMPORT CONSOLE
 

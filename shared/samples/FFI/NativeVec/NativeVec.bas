@@ -2,7 +2,7 @@
 ' =================================================================
 ' NativeVec — esempio FFI livello 1 (c-abi) con modulo nativo gmb_ffi.h
 '
-' Prima:  make                    (in samples/Community/FFI/NativeVec)
+' Prima:  make                    (in samples/FFI/NativeVec)
 '         produce libvec_module.dylib (.so su Linux)
 '
 ' Poi:    esegui questo .bas. Il runtime trova la libreria accanto

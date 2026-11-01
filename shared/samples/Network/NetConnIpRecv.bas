@@ -1,4 +1,4 @@
-' FILE: samples/Community/Network/NetConnIpRecv.bas
+' FILE: samples/Network/NetConnIpRecv.bas
 ' Sample completo NET — tutte le 8 funzioni handle-based.
 ' Handle 0 = nessuna connessione → output deterministico.
 ' MiniTest: MiniTests/net/ per verifica EXPECT esatta.

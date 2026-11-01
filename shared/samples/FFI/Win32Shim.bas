@@ -1,4 +1,4 @@
-' FILE: samples/Community/FFI/Win32Shim.bas
+' FILE: samples/FFI/Win32Shim.bas
 ' =================================================================================================
 '   WIN32 SHIM — API Windows "replicate" su macOS/Linux (porting di codice Windows/MQL)
 ' =================================================================================================

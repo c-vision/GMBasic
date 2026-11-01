@@ -1,4 +1,4 @@
-' FILE: samples/Community/Classes/ClassesInterfacesNamespace/Contracts.inc
+' FILE: samples/Classes/ClassesInterfacesNamespace/Contracts.inc
 ' =================================================================================================
 '   Contratti (INTERFACE) esportati da un NAMESPACE — fix Z2
 ' =================================================================================================

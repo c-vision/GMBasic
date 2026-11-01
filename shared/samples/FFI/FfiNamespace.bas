@@ -1,4 +1,4 @@
-' FILE: samples/Community/FFI/FfiNamespace.bas
+' FILE: samples/FFI/FfiNamespace.bas
 ' ======================================================================================================================
 ' FFI DENTRO NAMESPACE — DECLARE ... LIB importabile via IMPORT
 ' ======================================================================================================================
@@ -9,7 +9,7 @@
 ' Mostra: DOUBLE (all-double), LONG omogeneo (vec_add), ALIAS (nome BASIC != simbolo C),
 ' loop sui primi (vec_isprime), SUB void (vec_bump) + FUNCTION long (vec_tick).
 '
-' Prima:  make   (in samples/Community/FFI/NativeVec)  -> libvec_module.dylib
+' Prima:  make   (in samples/FFI/NativeVec)  -> libvec_module.dylib
 ' Poi:    esegui questo .bas.
 ' ======================================================================================================================
 

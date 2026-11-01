@@ -1,4 +1,4 @@
-' FILE: samples/Community/Classes/ClassesDestructor.bas
+' FILE: samples/Classes/ClassesDestructor.bas
 ' =================================================================================================
 '   GUIDA TEORICA: Distruttori (SUB DESTRUCTOR)
 ' =================================================================================================

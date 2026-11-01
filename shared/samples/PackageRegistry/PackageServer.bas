@@ -1,7 +1,7 @@
 ' PackageRegistry - GMBasic Package Server (registry HTTP)
 ' ============================================================
 ' Avvio (solo API, consigliato — la CWD è la cartella del sample):
-'   dotnet run --project REPL/REPL.csproj -- samples/Community/PackageRegistry/PackageServer.bas
+'   dotnet run --project REPL/REPL.csproj -- samples/PackageRegistry/PackageServer.bas
 '
 ' Serve la cache locale ~/.gmb/packages (gmb-package.json v1+v2):
 '   GET /api/packages                -> lista pacchetti
@@ -14,7 +14,7 @@
 ' Frontend BSP (PackageManager-BSP §3): monta ANCHE le pagine Basic Server Pages del
 ' registry (index.bsp/package.bsp) alla radice — la cartella è configurabile via
 ' cfg.frontendDir (default: ../Web/RegistryBsp relativo alla CWD del sample, ovvero
-' samples/Community/Web/RegistryBsp). Le route API hanno priorità sui file statici
+' samples/Web/RegistryBsp). Le route API hanno priorità sui file statici
 ' (dispatch: route → fallback → static, mai prima), quindi /api/* non viene oscurato.
 ' Le pagine BSP si auto-localizzano l'API via header Host (REGISTRY_URL$ opzionale).
 ' ============================================================

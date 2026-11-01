@@ -10,7 +10,7 @@ IMPORT AI WITH ALIAS
 
 SUB Main()
     DIM dirUat AS STRING
-    dirUat = "../../Fixtures/UatVault"
+    dirUat = "../Fixtures/UatVault"
 
     ' 1. risultato CONFORME -> ok:true
     DIM jsonOk AS STRING

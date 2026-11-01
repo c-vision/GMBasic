@@ -1,4 +1,4 @@
-' FILE: samples/Community/Ai/AiImageEmbed.bas
+' FILE: samples/Ai/AiImageEmbed.bas
 ' =================================================================================================
 '       AI.IMAGEEMBED — embedding percettivo di un'immagine (64 double unitari)
 '
@@ -11,7 +11,7 @@ IMPORT SYSTEM
 
 SUB Main()
     DIM src AS STRING
-    src = "../../../samples/Fixtures/ai/img_4x4.png"
+    src = "../Fixtures/ai/img_4x4.png"
 
     DIM e() = AI.IMAGEEMBED(src)
     PRINT "DIM: ", SYSTEM.UBOUND(e) + 1        ' 64
