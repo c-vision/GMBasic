@@ -3,7 +3,6 @@
  */
 #include "repl.h"
 #include "gmb_iconsole.h"
-#include "gmb_lsp.h"
 #include <unistd.h>
 
 static const char* USAGE =
@@ -24,7 +23,11 @@ static const char* USAGE =
 int main(int argc, char** argv)
 {
     if (argc >= 2 && (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)) { printf("%s", USAGE); return 0; }
-    if (argc >= 2 && strcmp(argv[1], "--lsp") == 0) return gmb_lsp_run();
+    if (argc >= 2 && strcmp(argv[1], "--lsp") == 0) {
+        fprintf(stderr, "?-lsp: il language server e' il tool separato 'gmb_lsp' (native/lsp).\n"
+                        "      Avvialo come processo dal tuo editor (IDE GMBasic, VS Code).\n");
+        return 2;
+    }
     rpl_options_t o;
     if (rpl_parse_args(argc, argv, &o) != 0) { printf("%s", USAGE); return 2; }
     /* IL-only flag vietati */

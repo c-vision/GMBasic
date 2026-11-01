@@ -22,7 +22,6 @@ add_executable(gmb_repl
     helps.c
     editor.c
     gmb_debug.c
-    gmb_lsp.c
     debug_server.c
     menu.c
     ml.c
@@ -37,7 +36,7 @@ add_executable(gmb_repl
     bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_bytecode/src/gmb_disasm.c
 )
-# NB: gmb_compiler_c resta linkato SOLO per gmb_lsp.c (il language server usa il lexer):
-# è l'ultimo legame con il front-end, da spostare in `gmb lsp` (TODO §6, F2c).
-target_link_libraries(gmb_repl PRIVATE gmb_runtime gmb_agent_runtime gmb_compiler_c)
-target_include_directories(gmb_repl PRIVATE ../gmb_runtime_c/include ../gmb_compiler_c/include ../executor ../gmb_vm_c ../gmb_bytecode/include)
+# F2c (2026-11-01): la REPL NON linka più il front-end. Il LSP è il tool separato
+# `gmb_lsp` (native/lsp), avviato come processo dai client (IDE GMBasic, VS Code).
+target_link_libraries(gmb_repl PRIVATE gmb_runtime gmb_agent_runtime)
+target_include_directories(gmb_repl PRIVATE ../gmb_runtime_c/include ../executor ../gmb_vm_c ../gmb_bytecode/include)
