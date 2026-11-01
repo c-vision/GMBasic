@@ -8227,14 +8227,34 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
             int hit = 0;
             if (!skipping && line > 0)
             {
-                hit = vm->debug->single_step || vm->debug->pause_requested;
+                /* STEP OUT: si esce dal frame senza fermarsi sui breakpoint interni
+                 * (si riprende a fermarsi quando depth < quella di partenza). */
+                int out_active = vm->debug->step_out_depth > 0;
+                hit = !out_active && (vm->debug->single_step || vm->debug->pause_requested);
                 vm->debug->pause_requested = 0;
-                for (int b = 0; b < vm->debug->breakpoint_count && !hit; b++)
-                    hit = vm->debug->breakpoints[b] == (uint32_t)line;
+                if (!out_active)
+                    for (int b = 0; b < vm->debug->breakpoint_count && !hit; b++)
+                        hit = vm->debug->breakpoints[b] == (uint32_t)line;
+                /* STEP OVER: riga diversa a profondità <= quella di partenza; se si è
+                 * rientrati in una funzione (depth > od) continua a scendere. */
+                if (!hit && vm->debug->step_over_depth > 0)
+                {
+                    int depth = 0; for (gmb_frame_t* fr = task->frame; fr; fr = fr->prev) depth++;
+                    int od = vm->debug->step_over_depth - 1;
+                    if (depth <= od && (uint32_t)line != vm->debug->step_over_line) hit = 1;
+                }
+                /* STEP OUT: si è usciti dal frame corrente (depth < quella di partenza). */
+                if (!hit && vm->debug->step_out_depth > 0)
+                {
+                    int depth = 0; for (gmb_frame_t* fr = task->frame; fr; fr = fr->prev) depth++;
+                    if (depth < vm->debug->step_out_depth - 1) hit = 1;
+                }
             }
             if (hit)
             {
                 vm->debug->single_step = 0;
+                vm->debug->step_over_depth = 0;
+                vm->debug->step_out_depth = 0;
                 task->state = GMB_TS_DEBUG_PAUSED;
                 return GMB_TICK_DEBUG_PAUSE;
             }
@@ -16216,7 +16236,9 @@ int gmb_vm_run_debug(gmb_vm_t* vm)
 
 void gmb_vm_debug_clear(gmb_vm_t* vm)
 {
-    if (vm->debug) { vm->debug->breakpoint_count = 0; vm->debug->single_step = 0; vm->debug->skip_line = 0; vm->debug->pause_requested = 0; }
+    if (vm->debug) { vm->debug->breakpoint_count = 0; vm->debug->single_step = 0; vm->debug->skip_line = 0;
+                     vm->debug->pause_requested = 0; vm->debug->step_over_depth = 0; vm->debug->step_out_depth = 0;
+                     vm->debug->step_over_line = 0; }
 }
 
 int gmb_vm_debug_add_breakpoint(gmb_vm_t* vm, uint32_t line)
@@ -16229,6 +16251,14 @@ int gmb_vm_debug_add_breakpoint(gmb_vm_t* vm, uint32_t line)
 }
 
 /* Riga corrente del task main di debug (0 se non in pausa). */
+int gmb_vm_debug_depth(gmb_vm_t* vm)
+{
+    if (!vm || !vm->debug_main) return 0;
+    int depth = 0;
+    for (gmb_frame_t* fr = vm->debug_main->frame; fr; fr = fr->prev) depth++;
+    return depth;
+}
+
 int gmb_vm_debug_stack(gmb_vm_t* vm, uint32_t* lines, int max)
 {
     if (!vm || !lines || max <= 0) return 0;
