@@ -85,11 +85,23 @@ internal static class BspDispatch
             return result;
         }
 
-        if (body.Length >= 1024 && CommonLib.Http.BspRuntime.AcceptsGzip(HeaderOf("Accept-Encoding")))
+        // br/gzip negoziati, come le altre gambe (prima SOLO gzip: un client che offriva `br`
+        // riceveva gzip, e la gamba IL restava l'unica a non conoscere brotli).
+        var enc = CommonLib.Http.HttpCompression.PickEncoding(HeaderOf("Accept-Encoding"));
+        if (body.Length >= 1024 && enc != null)
         {
-            result.BodyBytes = CommonLib.Http.BspRuntime.Gzip(body);
-            result.Headers["Content-Encoding"] = "gzip";
-            result.Headers["Vary"] = "Accept-Encoding";
+            var packed = CommonLib.Http.HttpCompression.Encode(enc, body);
+            if (packed.Length < body.Length)
+            {
+                result.BodyBytes = packed;
+                result.Headers["Content-Encoding"] = enc;
+                result.Headers["Vary"] = "Accept-Encoding";
+            }
+            else
+            {
+                result.BodyBytes = body;
+                result.Headers["Vary"] = "Accept-Encoding";
+            }
         }
         else
         {
