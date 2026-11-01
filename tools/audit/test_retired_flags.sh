@@ -3,13 +3,11 @@
 # (exit 2) e NON produrre alcun file — in particolare --registry-c99 non deve più poter
 # rigenerare BackendSupport/Registry/C99.cs.
 #
-# Perché uno script e non xUnit: questo audit vive in migration/tools-unclassified (dir
-# gitignored) e il suo audit.csproj NON è compilabile in place (`../../common` non esiste
-# e contiene un <ProjectReference Include="../...csproj" /> letterale). Il test quindi
-# compila il VERO Program.cs in una directory temporanea, con ProjectReference assoluti
-# verso i progetti reali di GMBasicSharp, e verifica il comportamento del binario.
+# Perché uno script e non xUnit: il test compila il VERO Program.cs in una directory
+# temporanea, con ProjectReference assoluti verso i progetti reali di GMBasicSharp, e
+# verifica il comportamento del binario (il csproj del tool resta quello tracciato).
 #
-# Uso:  bash migration/tools-unclassified/audit/test_retired_flags.sh
+# Uso:  bash tools/audit/test_retired_flags.sh
 #       bash ... --build-only                 compila soltanto (nessun test eseguito)
 #       AUDIT_SRC=/path/Program.cs bash ...   per testare un'altra copia del sorgente
 #       (serve a validare il test stesso: su una copia pre-rimozione deve FALLIRE).
@@ -18,7 +16,7 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"          # audit -> tools-unclassified -> migration -> root
+ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"              # tools/audit -> monorepo root
 SHARP="$ROOT/GMBasicSharp"
 
 BUILD_ONLY=0
@@ -87,14 +85,8 @@ if [ "$BUILD_ONLY" -eq 1 ]; then
     exit 0
 fi
 
-# ── 2. sandbox con Root risolvibile (GMBASIC.sln in CWD) ──────────────────────
-# Root = CWD quando contiene GMBASIC.sln (vedi Program.ResolveRoot). Serve per il
-# controllo di non-regressione su --registry-c99native, che legge i sorgenti del repo.
-SANDBOX="$WORK/root"
-mkdir -p "$SANDBOX"
-: > "$SANDBOX/GMBASIC.sln"
-ln -s "$SHARP/common" "$SANDBOX/common"
-ln -s "$ROOT/GMBasic/native" "$SANDBOX/native"
+# ── 2. cwd = root del monorepo (ResolveRoot trova GMBasicSharp/common/Ast/TokenKind.cs) ──
+SANDBOX="$ROOT"
 
 RC=0
 OUT=""

@@ -37,9 +37,10 @@ index in [`docs/README.md`](../docs/README.md). There are no nested `docs/` (`sh
 `gmb_env_audit.tsv` (`GMB_*` env audit), `comparison/` (audit reports and manifests),
 `ClipperLib/` (Clipper 5.3 reference and checks).
 
-`audit/` and `registry-export/` are .NET projects with **legacy project references**
-(`../../common/...`, `GMBASIC.sln`): they must be repointed to `GMBasicSharp/` before running them. See
- [`audit/README.md`](audit/README.md).
+`audit/` e `registry-export/` sono progetti .NET **allineati al monorepo**: i `ProjectReference`
+puntano a `GMBasicSharp/`, `ResolveRoot()`/`FindMonorepoRoot()` trovano la root da qualunque
+directory. Verificato il 2026-11-01: build 0 errori, `audit --list-backends`/`--pcodevm`,
+`registry-export --check` e `test_retired_flags.sh` (7/7) verdi.
 
 ## Quick invocation
 
