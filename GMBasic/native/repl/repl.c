@@ -212,18 +212,22 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
         if (strcasecmp(cmd, "HELP") == 0) {
             char topic[64] = "";
             sscanf(args, "%63s", topic);
-            if (strcasecmp(topic, "BROWSE") == 0 || strcasecmp(topic, "ALL") == 0) {
+            /* Parità con la REPL C# (HandleHelpAsync): `HELP` senza argomento apre il
+             * BROWSER interattivo. `HELP COMMANDS` stampa l'elenco dei comandi,
+             * `HELP <topic>` la guida del namespace. */
+            if (!*topic || strcasecmp(topic, "BROWSE") == 0 || strcasecmp(topic, "ALL") == 0) {
                 gmb_help_browse();
                 goto done;
             }
-            if (!*topic) {
+            if (strcasecmp(topic, "COMMANDS") == 0) {
                 printf("Comandi: QUIT EXIT CLS PROMPT HELP LIST EDIT NEW AUTO SAVE LOAD DELETE DEL RENUM\n"
                        "  SAMPLE COMPILE BSP RUN EXEC LOADPRG PRGINFO AST DASM IL GPM LS CD WHERE WH\n"
                        "  GREP (RG) RN RENAME RM DL DELF CP COPY DP DUPLICATE BL BACKUP DEPLOY CONVERT BATCH CONVFMT\n"
                        "  WEB2MD PROVIDERS DEP PACKAGE HF MLX ML AIPATH SET STATUS DEBUG BREAK CLEAR STEP\n"
                        "  CONT TRACE WATCH UNWATCH PALETTE\n"
                        "GREP [-rinlcFwvo-.] [--type EXT] [--include G] [--exclude G] [--depth N] PATTERN [PATH]\n"
-                       "HELP <topic> per la guida di un namespace (Helps/<topic>.json)\n");
+                       "HELP = guida interattiva · HELP <topic> = namespace (shared/helps/<topic>.json)\n"
+                       "HELP COMMANDS = questo elenco\n");
             } else rpl_help_show(topic);
             goto done;
         }
@@ -893,18 +897,31 @@ static void con_writeln_centered(gmb_sdl_console_t* c, int width, const char* te
 
 /* Esegue un comando catturando stdout (i comandi usano printf) e scrivendo il risultato
  * nel buffer della console. Stesso contratto del vecchio loop. Ritorna 1 se il REPL esce. */
+/* Comandi che disegnano a schermo intero sul TERMINALE (non nel buffer di celle):
+ * il browser help (HELP bare / BROWSE / ALL) e l'editor IDE. */
+static int cmd_is_interactive(const char* s)
+{
+    while (*s == ' ' || *s == '\t') s++;
+    if (!strncasecmp(s, "EDIT", 4) || !strncasecmp(s, "IDE", 3)) return 1;
+    if (strncasecmp(s, "HELP", 4) != 0) return 0;
+    const char* r = s + 4;
+    while (*r == ' ') r++;
+    size_t len = strlen(r);
+    while (len && (r[len-1] == ' ' || r[len-1] == '\t')) len--;
+    if (len == 0) return 1;                                  /* HELP */
+    if (len == 6 && !strncasecmp(r, "BROWSE", 6)) return 1;
+    if (len == 3 && !strncasecmp(r, "ALL", 3)) return 1;
+    return 0;                                                /* HELP <topic> / COMMANDS */
+}
+
 static int con_exec(const rpl_options_t* o, gmb_sdl_console_t* con, const char* cmd, const char* capfile)
 {
     if (!cmd || !*cmd) return 0;
     /* I comandi INTERATTIVI (HELP BROWSE, EDIT/IDE) disegnano a schermo intero sul
      * TERMINALE: catturare stdout li trasformerebbe in testo dentro al buffer. */
-    {
-        const char* c = cmd; while (*c == ' ' || *c == '\t') c++;
-        if (!strncasecmp(c, "HELP BROWSE", 11) || !strncasecmp(c, "HELP ALL", 8) ||
-            !strncasecmp(c, "EDIT", 4) || !strncasecmp(c, "IDE", 3)) {
-            printf("\x1b[?25h"); fflush(stdout);
-            return rpl_exec_line(cmd, o, (char*)"");
-        }
+    if (cmd_is_interactive(cmd)) {
+        printf("\x1b[?25h"); fflush(stdout);
+        return rpl_exec_line(cmd, o, (char*)"");
     }
     int saved = dup(1), q = 0;
     fflush(stdout);
@@ -1120,8 +1137,7 @@ static int rpl_loop_standard(const rpl_options_t* o, gmb_iconsole_t* con,
         else if (k == 13 || k == 10) {
             gmb_sdl_console_write(model, "\n");
             line[n] = 0;
-            int interactive = (!strncasecmp(line, "HELP BROWSE", 11) || !strncasecmp(line, "HELP ALL", 8) ||
-                               !strncasecmp(line, "EDIT", 4) || !strncasecmp(line, "IDE", 3));
+            int interactive = cmd_is_interactive(line);
             int quit = con_exec(o, model, line, capfile);
             n = 0;
             if (interactive && !quit) { gmb_sdl_console_write(model, "\n"); }
