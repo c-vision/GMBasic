@@ -16,6 +16,7 @@
  * ============================================================================ */
 #include "gmb_bsp.h"
 #include "gmb_vm_bsp.h"
+#include "gmb_state_hook.h"   /* hook opzionale di stato (agenti/team/workflow/memoria) */
 
 #include <stdlib.h>
 #include <stddef.h>
@@ -54,3 +55,15 @@ int gmb_bsp_shared_render(const char* page_path, const char* url_path, const cha
 
 /* Libera un buffer restituito da questa ABI (malloc dello stesso runtime C). */
 void gmb_bsp_shared_free(char* p) { free(p); }
+
+/* Registra l'hook OPZIONALE di stato: quando la VM/C è ospitata da un client managed, i
+ * getter di agenti/team/workflow/memoria chiedono a lui lo stato (il registro C resta il
+ * fallback per gli host senza client). Puntatore OPACO: il C non conosce il managed.
+ * fn = NULL rimuove l'hook (comportamento VM/C standalone). */
+void gmb_bsp_shared_set_state_hook(gmb_state_query_fn fn, void* ctx)
+{
+    gmb_state_hook_set(fn, ctx);
+}
+
+/* True se un hook di stato è registrato (diagnostica). */
+int gmb_bsp_shared_state_hook_active(void) { return gmb_state_hook_active(); }

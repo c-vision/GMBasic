@@ -7,6 +7,7 @@
 #include <ctype.h>
 #include <time.h>
 #include <pthread.h>
+#include "gmb_state_hook.h"   /* hook opzionale di stato (client managed) */
 
 char* gmb_hex_encode_string(const uint8_t* data, size_t len); /* gmb_crypto.c */
 /* F6 multimodale: gmb_doc_extract vive in gmb_doc_c (header non incluso qui). */
@@ -102,6 +103,7 @@ static gmb_agent_t* find_agent(const char* name) {
 }
 
 int gmb_agent_create(const char* name) {
+    { int hr = gmb_state_hook_mutate("agent.create", name, NULL, NULL); if (hr >= 0) return hr; }
     if (!name || !*name || find_agent(name)) return 0;
     for (int i = 0; i < GMB_AGENT_MAX; i++)
         if (!g_agents[i].active) {
@@ -122,6 +124,7 @@ int gmb_agent_create(const char* name) {
 }
 
 int gmb_agent_delete(const char* name) {
+    { int hr = gmb_state_hook_mutate("agent.delete", name, NULL, NULL); if (hr >= 0) return hr; }
     gmb_agent_t* a = find_agent(name);
     if (!a) return 0;
     a->active = 0;
@@ -130,6 +133,7 @@ int gmb_agent_delete(const char* name) {
 }
 
 int gmb_agent_set(const char* name, const char* key, const char* value) {
+    { int hr = gmb_state_hook_mutate("agent.set", name, key, value); if (hr >= 0) return hr; }
     gmb_agent_t* a = find_agent(name);
     if (!a) return 0;
     if (key && *key && value) {

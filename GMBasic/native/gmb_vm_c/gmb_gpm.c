@@ -647,12 +647,17 @@ gmb_task_t* gmb_sched_find_runnable(gmb_scheduler_t* s)
     return t;
 }
 
+static void gmb_sched_wake_timer_watcher(gmb_scheduler_t* s);
+
 void gmb_sched_signal_shutdown(gmb_scheduler_t* s)
 {
     pthread_mutex_lock(&s->qlock);
     s->shutdown = 1;
     pthread_cond_broadcast(&s->qcond);
     pthread_mutex_unlock(&s->qlock);
+    /* Il watcher può essere in timed wait sui timer: va svegliato, altrimenti il join
+     * in chiusura aspetta fino al cap di 250 ms (vedi gmb_sched_wake_timer_watcher). */
+    gmb_sched_wake_timer_watcher(s);
 }
 
 bool gmb_sched_has_active(gmb_scheduler_t* s)
@@ -746,12 +751,28 @@ void gmb_task_mark_finished(gmb_task_t* t)
  *   validati al fire (membership in all_tasks + id) perché i disarm sono pigri.
  * ============================================================================ */
 
+/* Sveglia il watcher dei timer: quando non c'è più nulla da fare deve USCIRE dal timed
+ * wait (cap 250 ms) invece di dormirci fino in fondo. Senza questa sveglia ogni
+ * gmb_vm_run_mt pagava ~250 ms di chiusura ogni volta che il programma durava più del
+ * primo giro del watcher — misurato su una pagina BSP che fa 0,5 ms di lavoro reale:
+ * run_mt = 255 ms, di cui 254 di pura attesa del join (motore BSP in C: 3,9 rps
+ * invece di ~2.000). Lock: solo tcond/tlock, nessun ordine inverso altrove. */
+static void gmb_sched_wake_timer_watcher(gmb_scheduler_t* s)
+{
+    pthread_mutex_lock(&s->tlock);
+    pthread_cond_broadcast(&s->tcond);
+    pthread_mutex_unlock(&s->tlock);
+}
+
 void gmb_sched_note_task_finished(gmb_scheduler_t* s)
 {
+    int idle;
     pthread_mutex_lock(&s->clock);
     if (s->active_count > 0) s->active_count--;
-    if (s->active_count == 0) pthread_cond_broadcast(&s->ccond);
+    idle = (s->active_count == 0);
+    if (idle) pthread_cond_broadcast(&s->ccond);
     pthread_mutex_unlock(&s->clock);
+    if (idle) gmb_sched_wake_timer_watcher(s);
 }
 
 /* Marcatori di attività per risorse non-task (es. receive loop WebSocket lato server):
@@ -766,10 +787,13 @@ void gmb_sched_hold_active(gmb_scheduler_t* s)
 
 void gmb_sched_release_active(gmb_scheduler_t* s)
 {
+    int idle;
     pthread_mutex_lock(&s->clock);
     if (s->active_count > 0) s->active_count--;
-    if (s->active_count == 0) pthread_cond_broadcast(&s->ccond);
+    idle = (s->active_count == 0);
+    if (idle) pthread_cond_broadcast(&s->ccond);
     pthread_mutex_unlock(&s->clock);
+    if (idle) gmb_sched_wake_timer_watcher(s);
 }
 
 int gmb_sched_active_count(gmb_scheduler_t* s)

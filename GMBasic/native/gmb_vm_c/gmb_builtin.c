@@ -1,6 +1,8 @@
 /* gmb_builtin.c — handler builtin (func_code) estratti dallo switch monolitico di
  * gmb_vm_exec_builtin (task 6.5.2/6.5.3). Ogni case → gmb_bf_<code>() col contratto
  * (vm, args, argc, func_code, gmb_builtin_out_t*, task). Tabella gmb_bf_impl. */
+
+
 #include "gmb_vm_core.h"
 #include "gmb_vm_events.h"
 #include "gmb_mcp_exec.h"
@@ -18,6 +20,55 @@
 #include "gmb_grep.h"
 #include "gmb_msg.h"        /* MESSAGE.DELIVERY: contatori di consegna (gmb_msg_delivery_stats) */
 #include "gmb_doc.h"
+/* Hook OPZIONALE di stato (agenti/team/workflow/memoria): registrato dal client managed
+ * quando la VM/C è ospitata (motore BSP in C chiamato dal C# via P/Invoke). Se nessuno lo
+ * registra (C99Native, gmb_vm_host) ogni getter usa il registro C — comportamento invariato. */
+#include "gmb_state_hook.h"
+
+/* ── Hook di stato ospite: helpers condivisi dai getter di agenti/team/workflow/memoria ──
+ * Ritornano 1 se l'hook ha risposto (bout valorizzato e handler da chiudere), 0 se la
+ * superficie non è gestita (l'handler prosegue sul registro C). */
+static int bsp_hook_str(const char* surface, const char* a, const char* b, gmb_builtin_out_t* bout)
+{
+    char* r = gmb_state_hook_query(surface, a, b);
+    if (!r) return 0;
+    gmb_obj_string_t* os = gmb_str_cstr(r);
+    free(r);
+    bout->is_num = 0;
+    bout->result_ref = (gmb_obj_t*)os;
+    bout->result_ref_bt = GMB_BT_STRING;
+    return 1;
+}
+
+static int bsp_hook_list(const char* surface, const char* a, const char* b, gmb_builtin_out_t* bout)
+{
+    char* r = gmb_state_hook_query(surface, a, b);
+    if (!r) return 0;
+    gmb_obj_shared_val_t* out = gmb_shared_list_new();
+    if (!out) { free(r); bout->is_num = 0; bout->result_ref = NULL; return 1; }
+    char* line = r;
+    while (line && *line) {
+        char* nl = strchr(line, '\n');
+        if (nl) *nl = '\0';
+        if (*line) {
+            gmb_obj_string_t* s = gmb_str_cstr(line);
+            gmb_list_add(out->list, gmb_make_val_string_counted(s->data));
+            gmb_str_release(s);
+        }
+        line = nl ? nl + 1 : NULL;
+    }
+    free(r);
+    bout->is_num = 0;
+    bout->result_ref = (gmb_obj_t*)out;
+    bout->result_ref_bt = GMB_BT_OBJECT;
+    return 1;
+}
+
+static const char* bsp_sarg(gmb_stack_entry_t* args, int argc, int i)
+{
+    return (argc > i && args[i].type == 2 && args[i].ref && args[i].ref->kind == GMB_OBJ_STRING)
+        ? ((gmb_obj_string_t*)args[i].ref)->data : "";
+}
 
 #if !defined(GMB_VM_MIN) && !defined(GMB_VM_SPECIALIZED)
 /* Registra l'estrattore PDF per la ricerca trasparente del grep (gmb_vm linka gmb_doc).
@@ -9931,6 +9982,9 @@ static void gmb_bf_694(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
 static void gmb_bf_481(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
+            /* TEAMLIST: se la VM/C è ospitata da un client managed (motore BSP in C) lo stato
+             * vero è il suo → l'hook risponde e il registro C non c'entra. */
+            if (bsp_hook_str("team.list", NULL, NULL, bout)) return;
             /* TEAMLIST: parità canone C# (string.Join("\n", ...)) — usa gmb_team_list_str,
              * non un join locale con "," (divergenza storica VM/C vs IL/PCode). */
             char* joined = gmb_team_list_str();
@@ -9946,6 +10000,8 @@ static void gmb_bf_482(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
              * il pop da task->sp leggeva il vuoto → sempre "" su VM/C). Parità gmb_bf_1260. */
             const char* teamName = (argc >= 1 && args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_STRING)
                 ? ((gmb_obj_string_t*)args[0].ref)->data : "";
+            /* team.agents: formato gestito = stringa unica (virgole) → si passa tal quale. */
+            if (bsp_hook_str("team.agents", teamName, NULL, bout)) return;
             char* joined = gmb_team_agents_str(teamName);
             gmb_obj_string_t* s = gmb_str_cstr(joined ? joined : "");
             if (joined) free(joined);
@@ -9988,11 +10044,15 @@ static void gmb_bf_483(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
         {
             gmb_string_t s;
             if (func_code == 483)
+            {
+                if (bsp_hook_str("workflow.list", NULL, NULL, bout)) return;
                 s = gmb_workflow_list();
+            }
             else
             {
                 const char* wfName = (argc >= 1 && args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_STRING)
                     ? ((gmb_obj_string_t*)args[0].ref)->data : "";
+                if (bsp_hook_str(func_code == 484 ? "workflow.status" : "workflow.steps", wfName, NULL, bout)) return;
                 s = (func_code == 484) ? gmb_workflow_status(wfName) : gmb_workflow_steps(wfName);
             }
             gmb_obj_string_t* os = gmb_str_cstr(s.data);
@@ -10051,6 +10111,7 @@ void gmb_bf_490(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, 
         {
             const char* name = (argc >= 1 && args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_STRING) ? ((gmb_obj_string_t*)args[0].ref)->data : "";
             const char* key = (argc >= 2 && args[1].type == 2 && args[1].ref && args[1].ref->kind == GMB_OBJ_STRING) ? ((gmb_obj_string_t*)args[1].ref)->data : "";
+            if (bsp_hook_str("agent.get", name, key, bout)) return;
             if (!gmb_agent_exists(name)) {
                 char _m[160]; snprintf(_m, sizeof(_m), "ERROR: Agent '%s' is not registered.", name ? name : "");
                 gmb_obj_string_t* r = gmb_str_cstr(_m);
@@ -10160,6 +10221,7 @@ void gmb_bf_494(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, 
 void gmb_bf_496(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
+            if (bsp_hook_list("agent.list", NULL, NULL, bout)) return;
             char names[64][64];
             int n = gmb_agent_list(names, 64);
             gmb_obj_shared_val_t* out = gmb_shared_list_new();
@@ -10180,6 +10242,7 @@ void gmb_bf_497(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, 
 {
         {
             const char* name = (argc >= 1 && args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_STRING) ? ((gmb_obj_string_t*)args[0].ref)->data : "";
+            if (bsp_hook_str("agent.status", name, NULL, bout)) return;
             if (!gmb_agent_exists(name)) {
                 char _m[160]; snprintf(_m, sizeof(_m), "ERROR: Agent '%s' is not registered.", name ? name : "");
                 gmb_obj_string_t* r = gmb_str_cstr(_m);
@@ -10204,6 +10267,7 @@ void gmb_bf_498(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, 
 void gmb_bf_499(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
+            if (bsp_hook_list("agent.events", NULL, NULL, bout)) return;
             char events[64][256];
             int n = gmb_agent_events(events, 64);
             gmb_obj_shared_val_t* out = gmb_shared_list_new();
@@ -10232,6 +10296,7 @@ static void gmb_bf_405(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
 {
         {
             const char* key = (argc >= 1 && args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_STRING) ? ((gmb_obj_string_t*)args[0].ref)->data : "";
+            if (bsp_hook_str("memory.load", key, NULL, bout)) return;
             char* v = gmb_mem_load(key);
             gmb_obj_string_t* r = gmb_str_cstr(v ? v : "");
             free(v);
@@ -10242,6 +10307,7 @@ static void gmb_bf_406(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
 {
         {
             const char* pat = (argc >= 1 && args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_STRING) ? ((gmb_obj_string_t*)args[0].ref)->data : "";
+            if (bsp_hook_str("memory.search", pat, NULL, bout)) return;
             char* s = gmb_mem_search(pat);
             gmb_obj_string_t* r = gmb_str_cstr(s ? s : "");
             free(s);
@@ -10258,6 +10324,7 @@ static void gmb_bf_407(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
 static void gmb_bf_408(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
+            if (bsp_hook_str("memory.list", NULL, NULL, bout)) return;
             char* s = gmb_mem_list();
             gmb_obj_string_t* r = gmb_str_cstr(s ? s : "");
             free(s);

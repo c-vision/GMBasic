@@ -2,6 +2,7 @@
  * TEAM NON è un namespace: i comandi sono `AI TEAM ...`, le letture AI.TEAMLIST/AI.TEAMAGENTS.
  * Speculare a gmb_agent.c (gmb_runtime_c): stesso stile, memoria statica, nessuna dipendenza. */
 #include "gmb_runtime.h"
+#include "gmb_state_hook.h"   /* hook opzionale di stato (client managed) */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -81,6 +82,7 @@ static gmb_team_member_t* find_member(gmb_team_t* t, const char* agent) {
 int gmb_team_exists(const char* name) { return find_team(name) != NULL; }
 
 int gmb_team_create(const char* name) {
+    { int hr = gmb_state_hook_mutate("team.create", name, NULL, NULL); if (hr >= 0) return hr; }
     if (!name || !*name || find_team(name)) return 0;
     for (int i = 0; i < GMB_TEAM_MAX; i++)
         if (!g_teams[i].active) {
@@ -105,6 +107,7 @@ int gmb_team_create(const char* name) {
 }
 
 int gmb_team_delete(const char* name) {
+    { int hr = gmb_state_hook_mutate("team.delete", name, NULL, NULL); if (hr >= 0) return hr; }
     gmb_team_t* t = find_team(name);
     if (!t) return 0;
     t->active = 0;
@@ -112,6 +115,7 @@ int gmb_team_delete(const char* name) {
 }
 
 int gmb_team_add_agent(const char* team, const char* agent) {
+    { int hr = gmb_state_hook_mutate("team.add", team, agent, NULL); if (hr >= 0) return hr; }
     gmb_team_t* t = find_team(team);
     if (!t || !agent || !*agent || find_member(t, agent)) return 0;
     /* Parità C# TeamServer.AddAgent (riga 72): l'agente deve ESISTERE
@@ -127,6 +131,7 @@ int gmb_team_add_agent(const char* team, const char* agent) {
 }
 
 int gmb_team_remove_agent(const char* team, const char* agent) {
+    { int hr = gmb_state_hook_mutate("team.remove", team, agent, NULL); if (hr >= 0) return hr; }
     gmb_team_t* t = find_team(team);
     if (!t) return 0;
     for (int i = 0; i < t->member_count; i++)
@@ -147,6 +152,7 @@ static int role_from_str(const char* r) {
 }
 
 int gmb_team_set_role(const char* team, const char* agent, const char* role) {
+    { int hr = gmb_state_hook_mutate("team.set_role", team, agent, role); if (hr >= 0) return hr; }
     gmb_team_t* t = find_team(team);
     gmb_team_member_t* m = t ? find_member(t, agent) : NULL;
     if (!m) return 0;
@@ -165,6 +171,7 @@ static int strategy_from_str(const char* s) {
 }
 
 int gmb_team_set_strategy(const char* team, const char* strategy) {
+    { int hr = gmb_state_hook_mutate("team.set_strategy", team, strategy, NULL); if (hr >= 0) return hr; }
     gmb_team_t* t = find_team(team);
     if (!t) return 0;
     t->strategy = strategy_from_str(strategy);
@@ -172,6 +179,7 @@ int gmb_team_set_strategy(const char* team, const char* strategy) {
 }
 
 int gmb_team_set_coordinator(const char* team, const char* agent) {
+    { int hr = gmb_state_hook_mutate("team.set_coordinator", team, agent, NULL); if (hr >= 0) return hr; }
     gmb_team_t* t = find_team(team);
     if (!t) return 0;
     if (agent && *agent && !find_member(t, agent)) return 0;
