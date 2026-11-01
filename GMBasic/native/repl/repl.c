@@ -1050,6 +1050,16 @@ static int std_key(int ms)
     return (int)c;
 }
 
+/* Parità ReplEngine.ProcessReplInput: se la riga non inizia con una cifra (quindi non è
+ * una riga di programma numerata), le LETTERE digitate vanno in MAIUSCOLO. */
+static char rpl_edit_char(const char* line, int n, int k)
+{
+    char ch = (char)k;
+    int numbered = (n > 0 && line[0] >= '0' && line[0] <= '9');
+    if (!numbered && ch >= 'a' && ch <= 'z') ch = (char)(ch - 'a' + 'A');
+    return ch;
+}
+
 static int rpl_loop_standard(const rpl_options_t* o, gmb_iconsole_t* con,
                              gmb_sdl_console_t* model, const char* initial_cmd,
                              const char* mode_line)
@@ -1103,7 +1113,7 @@ static int rpl_loop_standard(const rpl_options_t* o, gmb_iconsole_t* con,
         } else if (k == 8 || k == 127) {
             if (n > 0) n--;
         } else if (k >= 32) {
-            if (n < (int)sizeof(line) - 1) line[n++] = (char)k;
+            if (n < (int)sizeof(line) - 1) line[n++] = rpl_edit_char(line, n, k);
         } else continue;
         line[n] = 0;
         gmb_sdl_console_set_cursor_position(model, row0 + 1, col0 + 1);
@@ -1146,16 +1156,15 @@ static void con_welcome(int W, const char* mode_line)
 
 static int rpl_loop_ansi(const rpl_options_t* o, const char* initial_cmd, const char* mode_line)
 {
-    /* SystemConsole: wrapper diretto del terminale, ma con la palette applicata
-     * (ResetColor + Clear come la console C#: sfondo blu 1, testo 15). Niente
-     * buffer: lo scrollback del terminale resta quello vero. */
+    /* SystemConsole: wrapper diretto del terminale, con la palette applicata
+     * (ResetColor + Clear come la console C#: sfondo blu 1, testo 15). */
     int W = 80;
     struct winsize ws;
     if (ioctl(1, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 20) W = ws.ws_col;
-    con_emit_colors(0);                        /* ResetColor: fg 15 / bg 1 */
-    printf("\x1b[H\x1b[2J\x1b[3J");             /* Clear() con lo sfondo attivo */
-    printf("\x1b[?12l\x1b[?25h");               /* cursore visibile */
-    con_emit_colors(0);                        /* colori attivi per il welcome */
+    con_emit_colors(0);
+    printf("\x1b[H\x1b[2J\x1b[3J");
+    printf("\x1b[?12l\x1b[?25h");
+    con_emit_colors(0);
     fflush(stdout);
     con_welcome(W, mode_line);
     char line[1024];
@@ -1165,16 +1174,47 @@ static int rpl_loop_ansi(const rpl_options_t* o, const char* initial_cmd, const 
         con_emit_colors(0);
         printf("READY.\n"); fflush(stdout);
     }
-    while (fgets(line, sizeof(line), stdin)) {
-        size_t k = strlen(line);
-        while (k && (line[k - 1] == '\n' || line[k - 1] == '\r')) line[--k] = 0;
-        if (!line[0]) { con_emit_colors(0); printf("READY.\n"); fflush(stdout); continue; }
-        int q1 = rpl_exec_line(line, o, (char*)"READY.\n");
-        if (q1) break;
-        con_emit_colors(0);                        /* ApplyConsoleColors prima di READY */
-        printf("READY.\n"); fflush(stdout);
+    /* Senza terminale (output rediretto / pipeline): righe da stdin, senza editing. */
+    if (std_tty_open() != 0) {
+        while (fgets(line, sizeof(line), stdin)) {
+            size_t k = strlen(line);
+            while (k && (line[k - 1] == '\n' || line[k - 1] == '\r')) line[--k] = 0;
+            if (!line[0]) { con_emit_colors(0); printf("READY.\n"); fflush(stdout); continue; }
+            int q1 = rpl_exec_line(line, o, (char*)"READY.\n");
+            if (q1) break;
+            con_emit_colors(0);
+            printf("READY.\n"); fflush(stdout);
+        }
+        printf("\x1b[0m"); fflush(stdout);
+        return 0;
     }
-    printf("\x1b[0m"); fflush(stdout);
+    /* Terminale: editor a TASTI (raw) con la stessa regola di ReplEngine C#:
+     * le lettere digitate vanno in MAIUSCOLO se la riga non è numerata. */
+    int n = 0; line[0] = 0;
+    for (;;) {
+        int k = std_key(30);
+        if (k < 0) continue;
+        if (k == 3) { n = 0; line[0] = 0; printf("\r\x1b[K"); fflush(stdout); continue; }   /* Ctrl+C */
+        if (k == 4) break;                                                                  /* Ctrl+D */
+        if (k == 13 || k == 10) {
+            printf("\n");
+            line[n] = 0;
+            int quit = rpl_exec_line(line, o, (char*)"READY.\n");
+            n = 0; line[0] = 0;
+            if (quit) break;
+            con_emit_colors(0);
+            printf("READY.\n"); fflush(stdout);
+            continue;
+        }
+        if (k == 8 || k == 127) { if (n > 0) n--; }
+        else if (k >= 32) { if (n < (int)sizeof(line) - 1) line[n++] = rpl_edit_char(line, n, k); }
+        else continue;
+        line[n] = 0;
+        printf("\r%s\x1b[K", line);
+        fflush(stdout);
+    }
+    std_tty_close();
+    printf("\x1b[0m\n"); fflush(stdout);
     return 0;
 }
 
