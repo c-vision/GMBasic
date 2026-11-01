@@ -17,6 +17,7 @@
 #include "gmb_http2.h"
 #include "gmb_hpack.h"
 
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -89,6 +90,8 @@ struct gmb_h2_conn {
     const unsigned char* pending;
     size_t pending_len;
     size_t pending_off;
+    int64_t  max_body;           /* tetto del corpo di richiesta (0 = H2_MAX_BODY) */
+    int      streaming;          /* 1 = la risposta corrente è già iniziata (HEADERS inviata) */
 };
 
 gmb_h2_conn_t* gmb_h2_new(void)
@@ -104,6 +107,11 @@ gmb_h2_conn_t* gmb_h2_new(void)
     c->recv_window = H2_LOCAL_WINDOW;
     c->stream_id = 0;
     return c;
+}
+
+void gmb_h2_set_max_body(gmb_h2_conn_t* c, int64_t bytes)
+{
+    if (c) c->max_body = bytes > 0 ? bytes : 0;
 }
 
 void gmb_h2_free(gmb_h2_conn_t* c)
@@ -277,7 +285,20 @@ static void h2_on_pair(void* user, const char* name, size_t nl, const char* valu
         char* v = (char*)malloc(vl + 1);
         if (n && v)
         {
-            memcpy(n, name, nl); n[nl] = 0;
+            /* HTTP/2 manda i nomi in minuscolo; il codice BASIC scrive `X-Token`,
+             * `Content-Type`. Si consegnano nella grafia canonica (Title-Case). */
+            {
+                size_t j;
+                int up = 1;
+                for (j = 0; j < nl; j++)
+                {
+                    char ch = name[j];
+                    if (ch == '-') { n[j] = ch; up = 1; continue; }
+                    n[j] = up ? (char)toupper((unsigned char)ch) : ch;
+                    up = 0;
+                }
+                n[nl] = 0;
+            }
             memcpy(v, value, vl); v[vl] = 0;
             r->names[r->n_headers] = n;
             r->values[r->n_headers] = v;
@@ -420,10 +441,11 @@ static int h2_read_header_block(gmb_h2_conn_t* c, const gmb_h2_io_t* io, void* c
     return 0;
 }
 
-static int h2_body_append(h2_request_t* r, const unsigned char* data, size_t len)
+static int h2_body_append(h2_request_t* r, const unsigned char* data, size_t len, int64_t cap)
 {
     if (len == 0) return 0;
-    if (r->body_len + len > H2_MAX_BODY) return -1;
+    if (cap <= 0) cap = H2_MAX_BODY;
+    if (r->body_len + len > (size_t)cap) return -1;
     if (r->body_len + len + 1 > r->body_cap)
     {
         size_t ncap = r->body_cap ? r->body_cap : 1024;
@@ -438,6 +460,34 @@ static int h2_body_append(h2_request_t* r, const unsigned char* data, size_t len
     r->body_len += len;
     r->body[r->body_len] = 0;
     return 0;
+}
+
+/* ── Attesa di credito per l'invio ──────────────────────────────────────────── */
+/* Aspetta che ci sia credito (connection + stream). Legge i frame di controllo in arrivo
+ * (WINDOW_UPDATE, PING, RST). Usata sia dalla risposta bufferizzata sia dallo streaming, dove
+ * il thread di connessione è fermo nell'handler: un solo lettore alla volta. */
+static int h2_wait_credit(gmb_h2_conn_t* c, const gmb_h2_io_t* io, void* io_ctx,
+                          int32_t stream, int* rst)
+{
+    h2_frame_t f;
+    *rst = 0;
+    if (h2_read_frame(c, io, io_ctx, &f) != 0) return -1;
+    if (f.type == H2_TYPE_WINDOW_UPDATE && f.len >= 4)
+    {
+        uint32_t inc = ((uint32_t)f.payload[0] << 24) | ((uint32_t)f.payload[1] << 16)
+                     | ((uint32_t)f.payload[2] << 8) | (uint32_t)f.payload[3];
+        inc &= 0x7FFFFFFFu;
+        if (f.stream == 0) c->send_window = h2_win_add(c->send_window, inc);
+        else if (f.stream == stream) c->stream_send_window = h2_win_add(c->stream_send_window, inc);
+    }
+    else if (f.type == H2_TYPE_PING && !(f.flags & H2_FLAG_ACK))
+        h2_send_frame(c, io, io_ctx, H2_TYPE_PING, H2_FLAG_ACK, 0, f.payload, f.len);
+    else if (f.type == H2_TYPE_RST_STREAM && f.stream == stream)
+        *rst = 1;
+    else if (f.type == H2_TYPE_GOAWAY)
+        *rst = 1;
+    h2_frame_free(&f);
+    return *rst ? -1 : 0;
 }
 
 /* ── Risposta ──────────────────────────────────────────────────────────────── */
@@ -472,27 +522,8 @@ int gmb_h2_respond(gmb_h2_conn_t* c, const gmb_h2_io_t* io, void* io_ctx, int32_
             if (chunk > (size_t)c->peer_max_frame) chunk = (size_t)c->peer_max_frame;
             if (c->send_window <= 0 || c->stream_send_window <= 0)
             {
-                /* credito esaurito: si leggono frame finché arriva un WINDOW_UPDATE */
-                h2_frame_t f;
-                if (h2_read_frame(c, io, io_ctx, &f) != 0) return -1;
-                if (f.type == H2_TYPE_WINDOW_UPDATE && f.len >= 4)
-                {
-                    uint32_t inc = ((uint32_t)f.payload[0] << 24) | ((uint32_t)f.payload[1] << 16)
-                                 | ((uint32_t)f.payload[2] << 8) | (uint32_t)f.payload[3];
-                    inc &= 0x7FFFFFFFu;
-                    if (f.stream == 0) c->send_window = h2_win_add(c->send_window, inc);
-                    else if (f.stream == stream) c->stream_send_window = h2_win_add(c->stream_send_window, inc);
-                }
-                else if (f.type == H2_TYPE_PING && !(f.flags & H2_FLAG_ACK))
-                {
-                    h2_send_frame(c, io, io_ctx, H2_TYPE_PING, H2_FLAG_ACK, 0, f.payload, f.len);
-                }
-                else if (f.type == H2_TYPE_RST_STREAM && f.stream == stream)
-                {
-                    h2_frame_free(&f);
-                    return -1;   /* il client ha annullato la richiesta */
-                }
-                h2_frame_free(&f);
+                int rst = 0;
+                if (h2_wait_credit(c, io, io_ctx, stream, &rst) != 0) return -1;
                 continue;
             }
             if (chunk > (size_t)c->send_window) chunk = (size_t)c->send_window;
@@ -621,9 +652,12 @@ int gmb_h2_serve(gmb_h2_conn_t* c, const gmb_h2_io_t* io, void* io_ctx,
                     off = 1;
                     if (pad + off > df.len) { h2_frame_free(&df); h2_req_free(&req); return 0; }
                 }
-                if (h2_body_append(&req, df.payload + off, df.len - off - pad) != 0)
+                if (h2_body_append(&req, df.payload + off, df.len - off - pad, c->max_body) != 0)
                 {
+                    /* corpo oltre il tetto: 413 esplicito (poi RST), mai troncamento silenzioso */
                     h2_frame_free(&df);
+                    gmb_h2_respond(c, io, io_ctx, c->stream_id, 413,
+                                   "Content-Type: text/plain\n", "413 Payload Too Large", 21);
                     h2_rst(c, io, io_ctx, c->stream_id, H2_ERR_REFUSED_STREAM);
                     h2_req_free(&req);
                     end_stream = 1;
@@ -683,4 +717,50 @@ int gmb_h2_serve(gmb_h2_conn_t* c, const gmb_h2_io_t* io, void* io_ctx,
         h2_req_free(&req);
     }
     return 0;
+}
+
+/* ── STREAMING (DATA progressivi) ──────────────────────────────────────────────
+ * Start → HEADERS senza END_STREAM; Write → DATA (rispettando il flow control); End → DATA
+ * vuoto con END_STREAM. Stesso schema della risposta bufferizzata, ma senza accumulare il
+ * corpo: è ciò che serve a SSE e alle pagine che crescono mentre il codice BASIC lavora. */
+int gmb_h2_start_stream(gmb_h2_conn_t* c, const gmb_h2_io_t* io, void* io_ctx, int32_t stream,
+                        int status, const char* headers_text)
+{
+    unsigned char block[8192];
+    int blen = gmb_hpack_encode_response(status, headers_text, block, sizeof block);
+    if (blen < 0) return -1;
+    if (h2_send_frame(c, io, io_ctx, H2_TYPE_HEADERS, H2_FLAG_END_HEADERS, stream,
+                      block, (size_t)blen) != 0) return -1;
+    c->streaming = 1;
+    return 0;
+}
+
+int gmb_h2_write_data(gmb_h2_conn_t* c, const gmb_h2_io_t* io, void* io_ctx, int32_t stream,
+                      const void* data, size_t len)
+{
+    const unsigned char* p = (const unsigned char*)data;
+    while (len > 0)
+    {
+        size_t chunk = len;
+        int rst = 0;
+        if (chunk > (size_t)c->peer_max_frame) chunk = (size_t)c->peer_max_frame;
+        while (c->send_window <= 0 || c->stream_send_window <= 0)
+        {
+            if (h2_wait_credit(c, io, io_ctx, stream, &rst) != 0) return -1;
+        }
+        if (chunk > (size_t)c->send_window) chunk = (size_t)c->send_window;
+        if (chunk > (size_t)c->stream_send_window) chunk = (size_t)c->stream_send_window;
+        if (h2_send_frame(c, io, io_ctx, H2_TYPE_DATA, 0, stream, p, chunk) != 0) return -1;
+        c->send_window -= (int32_t)chunk;
+        c->stream_send_window -= (int32_t)chunk;
+        p += chunk;
+        len -= chunk;
+    }
+    return 0;
+}
+
+int gmb_h2_end_stream(gmb_h2_conn_t* c, const gmb_h2_io_t* io, void* io_ctx, int32_t stream)
+{
+    c->streaming = 0;
+    return h2_send_frame(c, io, io_ctx, H2_TYPE_DATA, H2_FLAG_END_STREAM, stream, NULL, 0);
 }
