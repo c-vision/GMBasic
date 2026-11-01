@@ -1,6 +1,6 @@
 {
   "model": "Qwen3.8-27B-DFlash2",
-  "config": "/Users/gaetano/ai/Models/Qwen3.8-27B-DFlash2/config.json",
+  "config": "config.json",
   "spec": {
     "model_type": "qwen3",
     "hidden_size": 5120,

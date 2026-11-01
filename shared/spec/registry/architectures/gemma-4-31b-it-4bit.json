@@ -1,6 +1,6 @@
 {
   "model": "gemma-4-31b-it-4bit",
-  "config": "/Users/gaetano/ai/Models/gemma-4-31b-it-4bit/config.json",
+  "config": "config.json",
   "spec": {
     "model_type": "gemma4_text",
     "hidden_size": 5376,

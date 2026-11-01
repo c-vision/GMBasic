@@ -1,6 +1,6 @@
 {
   "model": "Qwen3-Coder-Next-mxfp4-mlx",
-  "config": "/Users/gaetano/ai/Models/Qwen3-Coder-Next-mxfp4-mlx/config.json",
+  "config": "config.json",
   "spec": {
     "model_type": "qwen3_next",
     "hidden_size": 2048,
