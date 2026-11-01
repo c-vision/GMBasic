@@ -235,6 +235,31 @@ internal static class BspStateProvider
                     IlRuntime.TeamSetPrune(a ?? "", ParseD(b));
                     return "1";
 
+                // ── compute dell'agente (loop/KV/benchmark): stesso runtime, stessa risposta ──
+                case "agent.rungraph":
+                    return IlRuntime.AgentRunGraph(a ?? "", b ?? "", ParseI(c, 5));
+                case "agent.runrag":
+                    return IlRuntime.AgentRunRag(a ?? "", b ?? "", ParseI(c, 5));
+                case "agent.runcode":
+                    return IlRuntime.AgentRunCode(a ?? "", b ?? "", ParseI(c, 5));
+                case "agent.benchmark":
+                {
+                    var json = "{\"iterations\":" + ParseI(c, 1) + "}";
+                    return IlRuntime.AiBenchmark(a ?? "", b ?? "", json);
+                }
+                case "agent.cachestats":
+                    return IlRuntime.AiCacheStats(a ?? "");
+                case "agent.prefillstats":
+                    return IlRuntime.AiPrefillStats(a ?? "");
+                case "agent.decodestats":
+                    return IlRuntime.AiDecodeStats(a ?? "");
+                case "agent.cacheclear":
+                    return IlRuntime.AiCacheClear(a ?? "");
+                case "agent.cachetrim":
+                    return IlRuntime.AiCacheTrim(a ?? "", ParseD(c, 0));
+                case "agent.fix":
+                    return IlRuntime.AiAgentFix(a ?? "", b ?? "");
+
                 case "memory.ask":
                     return IlRuntime.MemoryAsk(a ?? "", ParseD(b, 5));
                 case "memory.rank":
@@ -258,6 +283,10 @@ internal static class BspStateProvider
     }
 
     private static string Ok(bool ok) => ok ? "1" : "0";
+
+    /// <summary>Intero dal testo del protocollo.</summary>
+    private static int ParseI(string? text, int fallback)
+        => (int)ParseD(text, fallback);
 
     /// <summary>Numero dal testo del protocollo (virgola o punto decimale).</summary>
     private static double ParseD(string? text, double fallback = 0)

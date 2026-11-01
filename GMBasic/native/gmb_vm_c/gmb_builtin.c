@@ -10143,8 +10143,18 @@ void gmb_bf_490(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, 
  * VM/C delega al runtime condiviso (parita' del caso "agente non registrato" col C#). */
 void gmb_bf_agent_run_graph_c1394(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
-    (void)vm; (void)task; (void)func_code;
-    char* out = gmb_agent_run_graph_json(vm_builtin_sarg(args, argc, 0), "VM/C");
+    (void)vm; (void)task;
+    const char* name = vm_builtin_sarg(args, argc, 0);
+    const char* prompt = vm_builtin_sarg(args, argc, 1);
+    int rounds = (argc >= 3 && args[2].type == 1) ? (int)args[2].num : 5;
+    char io[16];
+    snprintf(io, sizeof io, "%d", rounds);
+    /* AI.AGENTRUNGRAPH(name, prompt[, rounds]) = loop agentico sui tool graph.* — prima qui
+     * arrivava SOLO il nome (prompt/rounds ignorati) e il runtime rispondeva sempre
+     * "non supportato": firma allineata alla dichiarazione StdLib e stato delegato quando la
+     * VM/C è ospitata. */
+    if (bsp_hook_str3(func_code == 1395 ? "agent.runrag" : "agent.rungraph", name, prompt, io, bout)) return;
+    char* out = gmb_agent_run_graph_json(name, prompt, rounds);
     gmb_obj_string_t* s = gmb_str_cstr(out ? out : "");
     free(out);
     bout->is_num = 0; bout->result_ref = (gmb_obj_t*)s; bout->result_ref_bt = GMB_BT_STRING;
@@ -10158,6 +10168,8 @@ void gmb_bf_agent_run_code_c3744(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc
     const char* name = argc >= 1 ? vm_builtin_sarg(args, argc, 0) : "";
     const char* prompt = argc >= 2 ? vm_builtin_sarg(args, argc, 1) : "";
     int rounds = (argc >= 3 && args[2].type == 1) ? (int)args[2].num : 5;
+    { char io[16]; snprintf(io, sizeof io, "%d", rounds);
+      if (bsp_hook_str3("agent.runcode", name, prompt, io, bout)) return; }
     char* out = gmb_agent_run_code_json(name, prompt, rounds);
     gmb_obj_string_t* s = gmb_str_cstr(out ? out : "");
     free(out);
@@ -10171,6 +10183,13 @@ void gmb_bf_stats_c832(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
     const char* n = vm_builtin_sarg(args, argc, 0);
     char m[320];
     char* heap = NULL;
+    /* Superfici che vivevano nel solo managed (KV cache dell'agente, AI.AGENTFIX): con la VM/C
+     * ospitata si delega allo stesso runtime, così la pagina si comporta identicamente; senza
+     * client l'hook tace e restano le implementazioni/errori espliciti del motore C. */
+    if (func_code == 832) { if (bsp_hook_str("agent.cachestats", n, NULL, bout)) return; }
+    else if (func_code == 837) { if (bsp_hook_str("agent.prefillstats", n, NULL, bout)) return; }
+    else if (func_code == 838) { if (bsp_hook_str("agent.decodestats", n, NULL, bout)) return; }
+    else if (func_code == 1435) { if (bsp_hook_str("agent.fix", n, vm_builtin_sarg(args, argc, 1), bout)) return; }
     if (func_code == 832) snprintf(m, sizeof(m), "{\"error\":\"'%s' non risolve a un contesto KV con completer cache-manager (agente non registrato o fixture)\"}", n ? n : "");
     else if (func_code == 837) heap = gmb_agent_prefill_stats_json(n);
     else if (func_code == 838) heap = gmb_agent_decode_stats_json(n);
@@ -16206,6 +16225,7 @@ void gmb_bf_decode_c834(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
 void gmb_bf_cacheclear_c835(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
     (void)vm; (void)func_code; (void)task;
+    if (bsp_hook_str("agent.cacheclear", vm_builtin_sarg(args, argc, 0), NULL, bout)) return;
     char* out = gmb_agent_cache_clear_json(vm_builtin_sarg(args, argc, 0));
     gmb_obj_string_t* s = gmb_str_cstr(out ? out : "");
     free(out);
@@ -16215,6 +16235,8 @@ void gmb_bf_cachetrim_c836(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int 
 {
     (void)vm; (void)func_code; (void)task;
     int drop = (argc > 1 && args[1].type == 1) ? (int)args[1].num : 0;
+    { char io[16]; snprintf(io, sizeof io, "%d", drop);
+      if (bsp_hook_str3("agent.cachetrim", vm_builtin_sarg(args, argc, 0), NULL, io, bout)) return; }
     char* out = gmb_agent_cache_trim_json(vm_builtin_sarg(args, argc, 0), drop);
     gmb_obj_string_t* s = gmb_str_cstr(out ? out : "");
     free(out);
@@ -16224,6 +16246,8 @@ void gmb_bf_benchmark_c1257(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int
 {
     (void)vm; (void)func_code; (void)task;
     int iters = (argc > 2 && args[2].type == 1) ? (int)args[2].num : 1;
+    { char io[16]; snprintf(io, sizeof io, "%d", iters);
+      if (bsp_hook_str3("agent.benchmark", vm_builtin_sarg(args, argc, 0), vm_builtin_sarg(args, argc, 1), io, bout)) return; }
     char* out = gmb_agent_benchmark_json(vm_builtin_sarg(args, argc, 0), vm_builtin_sarg(args, argc, 1), iters, "");
     gmb_obj_string_t* s = gmb_str_cstr(out ? out : "");
     free(out);

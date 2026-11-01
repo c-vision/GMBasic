@@ -36,6 +36,9 @@ void gmb_agent_code_query_set(gmb_agent_code_query_fn fn);
  * Parità AgentServer.AskCode (C#). Richiede il seam code.* (gmb_agent_code_query_set) e un brain.
  * Ritorna malloc'd (mai NULL). */
 char* gmb_agent_run_code(const char* name, const char* prompt, int rounds);
+/* AI.AGENTRUNGRAPH: loop agentico sui tool graph.* (parità AgentServer.AskGraph).
+ * Implementazione C: il knowledge graph è quello condiviso (gmb_kg). */
+char* gmb_agent_run_graph(const char* name, const char* prompt, int rounds);
 
 /* Esegue il loop con il brain GMBasic registrato (se assente → -1 e log esplicito).
    Fallback automatico SOLO su config esplicita GMB_BRAIN_URL (adapter HTTP OpenAI-compat). */

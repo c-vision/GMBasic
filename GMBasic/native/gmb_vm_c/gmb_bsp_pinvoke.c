@@ -17,6 +17,11 @@
 #include "gmb_bsp.h"
 #include "gmb_vm_bsp.h"
 #include "gmb_state_hook.h"   /* hook opzionale di stato (agenti/team/workflow/memoria) */
+/* I loop agentici C (tool code. e tool graph.) vivono in gmb_agent_runtime: la lib BSP li
+ * collega al runtime condiviso all'init, come fa gmb_vm_host (senza, AI.AGENTRUNCODE e
+ * AI.AGENTRUNGRAPH risponderebbero "seam non registrato" pur essendo disponibili nel motore C). */
+#include "gmb_agent_loop.h"
+
 
 #include <stdlib.h>
 #include <stddef.h>
@@ -25,7 +30,8 @@
 int gmb_bsp_shared_abi(void) { return 1; }
 
 /* Registra il renderer VM. Idempotente: si può chiamare a ogni richiesta. */
-void gmb_bsp_shared_init(void) { gmb_vm_bsp_register(); }
+void gmb_bsp_shared_init(void) { gmb_vm_bsp_register(); gmb_agent_run_code_json_set(gmb_agent_run_code);
+    gmb_agent_run_graph_json_set(gmb_agent_run_graph); }
 
 /* Serve un URL `.bsp` sotto `dir` (stessa logica di gmb_bsp_try_serve):
  *   1 = gestita (*out_html malloc, *out_status = codice HTTP)

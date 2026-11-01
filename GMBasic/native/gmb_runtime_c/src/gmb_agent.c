@@ -962,15 +962,19 @@ char* gmb_agent_decode_stats_json(const char* name)
  * registrato il loop non è eseguibile in C → errore esplicito (mai silenzioso). backend_label
  * è il nome del backend chiamante (VM/C, C99 headless). Condivisa da VM/C (1394/1395),
  * C99Native (§0bis: una sola implementazione). */
-char* gmb_agent_run_graph_json(const char* name, const char* backend_label)
+static gmb_agent_graph_run_fn g_agent_graph_run = NULL;
+void gmb_agent_run_graph_json_set(gmb_agent_graph_run_fn fn) { g_agent_graph_run = fn; }
+
+char* gmb_agent_run_graph_json(const char* name, const char* prompt, int rounds)
 {
+    if (g_agent_graph_run != NULL) return g_agent_graph_run(name, prompt, rounds);
     char esc[256]; agent_json_escape(esc, sizeof(esc), name);
     char buf[512];
     if (!name || !*name || !gmb_agent_exists(name))
         snprintf(buf, sizeof(buf), "ERROR: Agent '%s' is not registered.", esc);
     else
-        snprintf(buf, sizeof(buf), "ERROR: AgentRunGraph/Rag non supportato dal backend %s (usa IL/PCode).",
-                 backend_label ? backend_label : "");
+        snprintf(buf, sizeof(buf), "ERROR: AgentRunGraph non supportato su questo host C "
+                                   "(seam gmb_agent_run_graph_json_set non registrato).");
     return strdup(buf);
 }
 

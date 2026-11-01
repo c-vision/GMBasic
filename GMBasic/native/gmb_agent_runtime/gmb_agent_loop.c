@@ -365,6 +365,30 @@ static void gmb_cua_execute(const char* name, const char* args_json, char* out, 
         r = gmb_cua_ui_find(a6.data ? a6.data : "");
     else if (strcmp(name, "computer.screenshot") == 0)
         r = gmb_cua_computer_screenshot(a7.data ? a7.data : "");
+    else if (name && strncmp(name, "graph.", 6) == 0) {
+        /* Tool graph.* sul knowledge graph C (gmb_kg): query e path sono implementati sui
+         * algoritmi del grafo condiviso; gli altri tool dell'oracolo C# (neighbors/bfs/dfs/
+         * dijkstra/hubs/stats) non hanno ancora un equivalente C → errore ESPLICITO (mai un
+         * risultato silenzioso). */
+        gmb_string_t gq = gmb_json_path_text(root, "query");
+        gmb_string_t gf = gmb_json_path_text(root, "from");
+        gmb_string_t gt = gmb_json_path_text(root, "to");
+        if (strcmp(name, "graph.query") == 0) {
+            char* r0 = gmb_kg_query(gq.data ? gq.data : "");
+            r = gmb_string_alloc(r0 ? r0 : "{\"error\":\"query vuota\"}");
+            free(r0);
+        } else if (strcmp(name, "graph.path") == 0) {
+            char spec[600];
+            snprintf(spec, sizeof spec, "path %s->%s", gf.data ? gf.data : "", gt.data ? gt.data : "");
+            char* r0 = gmb_kg_query(spec);
+            r = gmb_string_alloc(r0 ? r0 : "{\"error\":\"path non risolto\"}");
+            free(r0);
+        } else {
+            r = gmb_string_alloc("error: tool graph.* non disponibile su questo host C "
+                                 "(neighbors/bfs/dfs/dijkstra/hubs/stats richiedono il brain del runtime managed)");
+        }
+        gmb_string_free(&gq); gmb_string_free(&gf); gmb_string_free(&gt);
+    }
     else if (name && strncmp(name, "code.", 5) == 0) {
         /* §4.10 tool code.* (grafo semantico del codice): via seam verso il compilatore. */
         if (g_code_query == NULL) {
@@ -627,6 +651,65 @@ static size_t ask_tools_append_code(char* out, size_t cap, size_t off) {
         "- code.findsymbol: simboli il cui nome contiene 'query'.\n"
         "- code.fileoutline: outline del file (simboli definiti).\n"
         "- code.repomap: mappa completa delle chiamate del file.\n");
+}
+
+/* Istruzioni dei tool graph.* (parità GraphAgentLoop.ToolInstructions). */
+static size_t ask_tools_append_graph(char* out, size_t cap, size_t off) {
+    return off + (size_t)snprintf(out + off, cap - off,
+        "\n\n## Available tools (respond with JSON {\"tool_calls\":[...]} to invoke):\n"
+        "- graph.query: cerca nel knowledge graph i nodi che contengono 'query' e ritorna il vicinato.\n"
+        "- graph.path: percorso più corto fra 'from' e 'to' del grafo.\n"
+        "Altri strumenti graph.* (neighbors/bfs/dfs/dijkstra/hubs/stats) non sono disponibili su questo host.\n");
+}
+
+/* AI.AGENTRUNGRAPH: loop agentico sui tool graph.* (parità AgentServer.AskGraph del managed).
+ * Stessa struttura del loop code.*: brain → parse tool_calls → esecuzione (gmb_cua_execute,
+ * ramo graph.*) → osservazione. Errore esplicito se l'agente non esiste o il brain manca. */
+char* gmb_agent_run_graph(const char* name, const char* prompt, int rounds) {
+    if (name && *name && !gmb_agent_exists(name)) {
+        size_t n = strlen(name) + 48;
+        char* m = (char*)malloc(n);
+        if (m) snprintf(m, n, "ERROR: Agent '%s' is not registered.", name);
+        return m ? m : strdup("ERROR: Agent non registrato.");
+    }
+    if (rounds <= 0) rounds = GMB_ASK_TOOLS_MAX_ROUNDS;
+    size_t cap = 65536;
+    char* transcript = (char*)malloc(cap);
+    if (transcript == NULL) return strdup("error: memoria");
+    int tl = snprintf(transcript, cap, "user: %s", prompt ? prompt : "");
+    if (tl < 0) { free(transcript); return strdup("error: transcript"); }
+    (void)ask_tools_append_graph(transcript, cap, (size_t)tl);
+
+    char last[65536]; last[0] = 0;
+    for (int round = 0; round < rounds; round++) {
+        char answer[65536]; answer[0] = 0;
+        if (gmb_brain_ask_sync(transcript, answer, sizeof(answer)) != 0) {
+            free(transcript);
+            return strdup(answer[0] ? answer : "error: brain non disponibile durante il graph tool-loop");
+        }
+        if (answer[0] && strcmp(answer, last) == 0) {
+            free(transcript);
+            return strdup("Loop rilevato: risposta identica senza progresso. Interrompo.");
+        }
+        snprintf(last, sizeof(last), "%s", answer);
+        gmb_cua_call_t calls[GMB_CUA_MAX_CALLS];
+        int ncalls = gmb_cua_parse_calls(answer, calls, GMB_CUA_MAX_CALLS);
+        if (ncalls == 0) { free(transcript); return strdup(answer); }
+        size_t cl = strlen(transcript);
+        if (cl + strlen(answer) + 16 < cap)
+            snprintf(transcript + cl, cap - cl, "\nassistant: %s", answer);
+        for (int i = 0; i < ncalls; i++) {
+            char obs[8192];
+            gmb_cua_execute(calls[i].name, calls[i].args, obs, sizeof(obs));
+            cl = strlen(transcript);
+            if (cl + strlen(calls[i].name) + strlen(obs) + 32 < cap)
+                snprintf(transcript + cl, cap - cl, "\ntool: [%s] %s", calls[i].name, obs);
+        }
+    }
+    free(transcript);
+    char m[128];
+    snprintf(m, sizeof(m), "Tool-calling loop exceeded %d rounds.", rounds);
+    return strdup(m);
 }
 
 char* gmb_agent_run_code(const char* name, const char* prompt, int rounds) {
