@@ -1,11 +1,11 @@
-# netlb — load balancing (soluzione `gmbnet`)
+# netlb — load balancing (pacchetto `netlb`)
 
-**Parte di:** [gmbsuite](../../../README.md) · **Soluzione:** `gmbnet` (networking/infra) · **Prefisso:** `netlb_`
+**Parte di:** monorepo `GMBasicMonoRepo` (`packages/netlb/`) · **Prefisso:** `netlb_`
 **Dipendenze:** nessuna (C99 + libm). Libreria **pura**: nessun thread/socket/I/O.
 
-Libreria di **load balancing** per gmbsuite: un **pool di backend** con **policy
+Libreria di **load balancing** per GMBasic: un **pool di backend** con **policy
 selezionabili**, contabilità eventi (begin/end), salute, slow-start, retry budget, draining.
-L'host (GPM/GMBasic) possiede I/O e tempo; netlb **scegle** solo il backend ed è **deterministica**
+L'host (GPM/GMBasic) possiede I/O e tempo; netlb **sceglie** solo il backend ed è **deterministica**
 (hash stabile + RNG seedabile).
 
 ## Algoritmi
@@ -43,16 +43,18 @@ netlb_end(p, id, /*ok*/1, /*lat_ms*/12.5);
 netlb_free(p);
 ```
 
-## Test
+## Test e pacchetto
 ```sh
-make test     # compila out/libnetlb.a + out/run_tests ed esegue
+make test      # compila out/libnetlb.a + out/run_tests ed esegue
+make packlib   # ricostruisce 0.1.1/lib/<plat>/libnetlb.dylib + 0.1.1/include/netlb.h
+make pkg       # installa in ~/.gmbasic/packages/netlb/<ver>/ (manifest, .inc, lib, samples)
 ```
-Copre (55 check): uniformità RR/WRR/random (χ²), LC, P2C+EWMA (evita il lento), **minimal disruption**
+Copre (**56 check**): uniformità RR/WRR/random (χ²), LC, P2C+EWMA (evita il lento), **minimal disruption**
 di CHASH/HRW/Maglev (~1/N), salute/eiezione, slow-start, draining, retry budget, **JIQ** (idle-first +
 simulazione di coda vs P2C), **sticky soft** (affinità/fallback/TTL), **limite pending** (cap),
 **HRW skeleton** (O(log n): 23 hash/pick su N=400, disruption 0.20%).
 
 ## Riferimenti
-- Analisi: `AiWiki/01-Projects/GMBasic/Knowledge/Load-Balancing-Algoritmi.md`.
-- Piano: `AiWiki/01-Projects/GMBasic/Todo/(open) - GMBSuite-Load-Balancing-Lib-C.md`.
+- Analisi: `AiWiki/01-Projects/GMBasicMonoRepo/Knowledge/Load-Balancing-Algoritmi.md`.
+- Piano: `AiWiki/01-Projects/GMBasicMonoRepo/Todo/(solved) - GMBSuite-Load-Balancing-Lib-C.md`.
 - Paper: Mitzenmacher (P2C), Karger (consistent hashing), Thaler-Ravishankar (HRW), Eisenbud (Maglev NSDI'16), Lu et al. (JIQ, NSDI'16).
