@@ -558,6 +558,28 @@ public sealed partial class GraphicsManager
         }, completionCallback);
 
     /// <summary>
+    /// VERSIONE GPM: imposta la scala di uno sprite (SPRITE SET SCALE id, sx, sy).
+    /// </summary>
+    public void SPRITE_SET_SCALE_GPM(int spriteId, float sx, float sy,
+        Action<object?, Exception?> completionCallback) =>
+        EnqueueGpmOperation(() =>
+        {
+            SetSpriteScaleInternal(spriteId, sx, sy);
+            return null;
+        }, completionCallback);
+
+    /// <summary>
+    /// VERSIONE GPM: imposta la rotazione di uno sprite in gradi (SPRITE SET ROTATION id, deg).
+    /// </summary>
+    public void SPRITE_SET_ROTATION_GPM(int spriteId, float degrees,
+        Action<object?, Exception?> completionCallback) =>
+        EnqueueGpmOperation(() =>
+        {
+            SetSpriteRotationInternal(spriteId, degrees);
+            return null;
+        }, completionCallback);
+
+    /// <summary>
     /// VERSIONE GPM: Rende uno sprite invisibile. Accoda l'operazione e notifica il completamento.
     /// </summary>
     public void SPRITE_OFF_GPM(int spriteId, Action<object?, Exception?> completionCallback) =>

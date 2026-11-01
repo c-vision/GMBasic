@@ -30,10 +30,10 @@ public sealed record ComboBoxStmt(Target Variable, Expr Row, Expr Col, Expr Widt
 
 /// <summary>MENU var, row, col, items()</summary>
 [JsonDerivedType(typeof(MenuStmt), nameof(MenuStmt))]
-public sealed record MenuStmt(Target Variable, Expr Row, Expr Col, Expr Items, Token Token, Target? Id = null, ControlProps? Props = null, List<ControlEventStmt>? Events = null) : Stmt(Token.Position)
+public sealed record MenuStmt(Target? Variable, Expr Row, Expr Col, Expr Items, Token Token, Target? Id = null, ControlProps? Props = null, List<ControlEventStmt>? Events = null) : Stmt(Token.Position)
 {
     public override string ToString() => $"MENU {Variable}, {Row}, {Col}, {Items}";
-    public override AstNode DeepClone() => new MenuStmt((Target)Variable.DeepClone(), (Expr)Row.DeepClone(), (Expr)Col.DeepClone(), (Expr)Items.DeepClone(), (Token)Token.DeepClone());
+    public override AstNode DeepClone() => new MenuStmt((Target?)Variable?.DeepClone(), (Expr)Row.DeepClone(), (Expr)Col.DeepClone(), (Expr)Items.DeepClone(), (Token)Token.DeepClone());
 }
 
 /// <summary>STATUSBAR "text"</summary>
@@ -93,10 +93,10 @@ public sealed record NumericUpDownStmt(Target Variable, Expr Row, Expr Col, Expr
 }
 
 [JsonDerivedType(typeof(StarRatingStmt), nameof(StarRatingStmt))]
-public sealed record StarRatingStmt(Target Variable, Expr Row, Expr Col, Expr Length, Expr Max, Expr Value, Token Token, Target? Id = null, ControlProps? Props = null, List<ControlEventStmt>? Events = null) : Stmt(Token.Position)
+public sealed record StarRatingStmt(Target? Variable, Expr Row, Expr Col, Expr Length, Expr Max, Expr Value, Token Token, Target? Id = null, ControlProps? Props = null, List<ControlEventStmt>? Events = null) : Stmt(Token.Position)
 {
     public override string ToString() => $"STARRATING {Variable}, {Row}, {Col}, {Length}, {Max}, {Value}";
-    public override AstNode DeepClone() => new StarRatingStmt((Target)Variable.DeepClone(), (Expr)Row.DeepClone(), (Expr)Col.DeepClone(), (Expr)Length.DeepClone(), (Expr)Max.DeepClone(), (Expr)Value.DeepClone(), (Token)Token.DeepClone());
+    public override AstNode DeepClone() => new StarRatingStmt((Target?)Variable?.DeepClone(), (Expr)Row.DeepClone(), (Expr)Col.DeepClone(), (Expr)Length.DeepClone(), (Expr)Max.DeepClone(), (Expr)Value.DeepClone(), (Token)Token.DeepClone());
 }
 
 [JsonDerivedType(typeof(ScrollBarStmt), nameof(ScrollBarStmt))]
@@ -135,17 +135,17 @@ public sealed record PropertyGridStmt(Target Variable, Expr Row, Expr Col, Expr 
 }
 
 [JsonDerivedType(typeof(LogViewStmt), nameof(LogViewStmt))]
-public sealed record LogViewStmt(Target Variable, Expr Row, Expr Col, Expr Width, Expr Height, Expr Records, Token Token, Target? Id = null, ControlProps? Props = null, List<ControlEventStmt>? Events = null) : Stmt(Token.Position)
+public sealed record LogViewStmt(Target? Variable, Expr Row, Expr Col, Expr Width, Expr Height, Expr Records, Token Token, Target? Id = null, ControlProps? Props = null, List<ControlEventStmt>? Events = null) : Stmt(Token.Position)
 {
     public override string ToString() => $"LOGVIEW {Variable}, {Row}, {Col}, {Width}, {Height}";
-    public override AstNode DeepClone() => new LogViewStmt((Target)Variable.DeepClone(), (Expr)Row.DeepClone(), (Expr)Col.DeepClone(), (Expr)Width.DeepClone(), (Expr)Height.DeepClone(), (Expr)Records.DeepClone(), (Token)Token.DeepClone());
+    public override AstNode DeepClone() => new LogViewStmt((Target?)Variable?.DeepClone(), (Expr)Row.DeepClone(), (Expr)Col.DeepClone(), (Expr)Width.DeepClone(), (Expr)Height.DeepClone(), (Expr)Records.DeepClone(), (Token)Token.DeepClone());
 }
 
 [JsonDerivedType(typeof(HexViewStmt), nameof(HexViewStmt))]
-public sealed record HexViewStmt(Target Variable, Expr Row, Expr Col, Expr Width, Expr Height, Expr Data, Token Token, Target? Id = null, ControlProps? Props = null, List<ControlEventStmt>? Events = null) : Stmt(Token.Position)
+public sealed record HexViewStmt(Target? Variable, Expr Row, Expr Col, Expr Width, Expr Height, Expr Data, Token Token, Target? Id = null, ControlProps? Props = null, List<ControlEventStmt>? Events = null) : Stmt(Token.Position)
 {
     public override string ToString() => $"HEXVIEW {Variable}, {Row}, {Col}, {Width}, {Height}";
-    public override AstNode DeepClone() => new HexViewStmt((Target)Variable.DeepClone(), (Expr)Row.DeepClone(), (Expr)Col.DeepClone(), (Expr)Width.DeepClone(), (Expr)Height.DeepClone(), (Expr)Data.DeepClone(), (Token)Token.DeepClone());
+    public override AstNode DeepClone() => new HexViewStmt((Target?)Variable?.DeepClone(), (Expr)Row.DeepClone(), (Expr)Col.DeepClone(), (Expr)Width.DeepClone(), (Expr)Height.DeepClone(), (Expr)Data.DeepClone(), (Token)Token.DeepClone());
 }
 
 [JsonDerivedType(typeof(BigTextStmt), nameof(BigTextStmt))]

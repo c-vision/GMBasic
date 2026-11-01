@@ -70,6 +70,8 @@ public sealed class CGfxGraphicsService : IGraphicsService
     [DllImport(Lib)] private static extern void gmb_gfx_sprite_set_position(int id, float x, float y);
     [DllImport(Lib)] private static extern void gmb_gfx_sprite_set_visible(int id, int visible);
     [DllImport(Lib)] private static extern void gmb_gfx_sprite_set_priority(int id, int priority);
+    [DllImport(Lib)] private static extern void gmb_gfx_sprite_set_scale(int id, double sx, double sy);
+    [DllImport(Lib)] private static extern void gmb_gfx_sprite_set_rotation(int id, double degrees);
     [DllImport(Lib)] private static extern void gmb_gfx_sprite_draw(int id);
     [DllImport(Lib)] private static extern int gmb_gfx_sprite_pixels_to_array(int src, int[] outv, int max);
     [DllImport(Lib)] private static extern int gmb_gfx_collide(int id1, int id2);
@@ -1012,6 +1014,8 @@ public sealed class CGfxGraphicsService : IGraphicsService
     public void SpriteSetPosition(int spriteId, float x, float y) => Enq(() => gmb_gfx_sprite_set_position(spriteId, x, y));
     public void SpriteSetVisible(int spriteId, bool visible) => Enq(() => gmb_gfx_sprite_set_visible(spriteId, visible ? 1 : 0));
     public void SpriteSetPriority(int spriteId, int priority) => Enq(() => gmb_gfx_sprite_set_priority(spriteId, priority));
+    public void SpriteSetScale(int spriteId, float sx, float sy) => Enq(() => gmb_gfx_sprite_set_scale(spriteId, sx, sy));
+    public void SpriteSetRotation(int spriteId, float degrees) => Enq(() => gmb_gfx_sprite_set_rotation(spriteId, degrees));
     public void SpriteSetTransform(int spriteId, long matrixId) => SpriteSetMatrix(spriteId, matrixId);
     public void SpriteSetMatrix(int spriteId, long matrixId) => Enq(() =>
     {

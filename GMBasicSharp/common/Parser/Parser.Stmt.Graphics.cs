@@ -1090,9 +1090,30 @@ public sealed partial class Parser
                             Kind = TokenKind.SpriteSetMatrix, Lexeme = "SET MATRIX"
                         };
                         break;
+                    // SPRITE SET SCALE id, sx, sy — ROTATION non è una keyword: si riconosce
+                    // per lessema (ROTATION o ROTATE) e si emette con il TokenKind contestuale
+                    // già esistente (MAI inventare TokenKind: il valore è la chiave canonica).
+                    case TokenKind.Scale:
+                        parser.Advance(); // Consuma 'SCALE'
+                        subCommandToken = firstSubToken with
+                        {
+                            Kind = TokenKind.Scale, Lexeme = "SET SCALE"
+                        };
+                        break;
                     default:
+                        if (secondSubToken.Lexeme != null
+                            && (secondSubToken.Lexeme.Equals("ROTATION", StringComparison.OrdinalIgnoreCase)
+                                || secondSubToken.Lexeme.Equals("ROTATE", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            parser.Advance(); // Consuma 'ROTATION'
+                            subCommandToken = firstSubToken with
+                            {
+                                Kind = TokenKind.Rotate, Lexeme = "SET ROTATION"
+                            };
+                            break;
+                        }
                         throw CreateError(secondSubToken,
-                            "Expected 'POSITION' or 'MATRIX' after 'SPRITE SET'.");
+                            "Expected 'POSITION', 'MATRIX', 'SCALE' or 'ROTATION' after 'SPRITE SET'.");
                 }
 
                 break;

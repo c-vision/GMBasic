@@ -5,6 +5,7 @@
 ' "layers" del piano per-layer, che l'engine applica via l'opzione `execplan`.
 ' Qui si ABLATE un intero layer (tutti i suoi tensori a zero), poi si emette il piano con skip.
 IMPORT LLM
+IMPORT AI      ' AI SET OPTION: le opzioni dell'engine (execplan) sono del namespace AI
 
 SUB Main()
   DIM mdl AS STRING = "work/modello.gguf"

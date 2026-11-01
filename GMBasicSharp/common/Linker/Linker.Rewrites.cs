@@ -2134,12 +2134,19 @@ public static partial class Linker
         // 2a. Array Fluent Methods: arr.Filter(fn) → ARRAYS.AFILTER(arr, fn)
         if (instanceType is ArrayType)
         {
-            // .Count() senza argomenti: restituisci il numero di elementi.
+            // .Count() senza argomenti: numero di elementi. Si risolve a SYSTEM.UBOUND(a):
+            // il builtin COUNT ha firma (stringa, sottostringa) e su un ARRAY non ha overload
+            // ("argomenti non validi per alcun overload della funzione built-in 'Count'").
+            // UBOUND accetta l'array e ritorna l'ultimo indice; per un array di n elementi è n-1,
+            // quindi la lunghezza è UBOUND+1 (stessa semantica del ramo ListType più sotto).
             if (memberName.Equals("Count", StringComparison.OrdinalIgnoreCase) && mce.Args.Length == 0)
             {
-                var countToken = new Token(TokenKind.Count, "Count", null, mce.MethodName.Position);
+                var ubToken = new Token(TokenKind.UBound, "UBOUND", null, mce.MethodName.Position);
                 var nsToken = new Token(TokenKind.Identifier, "SYSTEM", null, mce.MethodName.Position);
-                return new BuiltinFunctionCallExpr(nsToken, countToken, ImmutableArray.Create(rewrittenInstance), new DoubleType());
+                var uboundCall = (Expr)ResolveQualifiedCall("SYSTEM", "UBOUND",
+                    ImmutableArray.Create(rewrittenInstance), program, ubToken);
+                return new BinaryExpr(uboundCall, new Token(TokenKind.Plus, "+", null, ubToken.Position),
+                    new NumberExpr(1, ubToken)) { ScopeId = mce.ScopeId };
             }
             var arrayFuncName = _arrayFluentMethodMap.TryGetValue(memberName, out var mapped)
                 ? mapped
@@ -3530,6 +3537,12 @@ public static partial class Linker
                         specialized.ReturnType,
                         specialized);
                     specialized = specialized with { SymbolId = specId };
+                    // La DeclarationNode del simbolo deve essere la specializzazione CON l'id:
+                    // RegisterSymbol registra l'istanza con SymbolId -1 e il rewrite dei simboli
+                    // di alto livello (ResolveAndRewriteModuleAsts) la ripesca da lì →
+                    // "Invalid SymbolId -1" sui programmi top-level (senza SUB Main, dove il
+                    // simbolo specializzato è nello scope globale).
+                    program.Symbols.UpdateSymbolDeclaration(specId, specialized);
                     program.ResolvedSpecializations[specId] = specialized;
 
                     var specExpr = new FunctionExpr(specId, uce.Name, finalArgsBuilder.ToImmutable(), specialized.ReturnType)

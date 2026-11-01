@@ -30,6 +30,16 @@ public static partial class Linker
         {
             return classDef;
         }
+        // ISTANZIAZIONE già monomorfizzata (nome `Box<DOUBLE>`): i corpi sono stati riscritti
+        // da ResolveGenericClassInstantiation CON GenericTypeArgs nel contesto. Riscriverli qui
+        // di nuovo, con un contesto di modulo che NON conosce i type args (la specializzazione
+        // ha TypeParameters vuoto), faceva fallire la risoluzione del `T` residuo
+        // ("Il tipo 'T' non è stato trovato o è ambiguo") sui programmi con solo codice
+        // top-level (senza SUB Main).
+        if (classDef.Name.Lexeme.Contains('<'))
+        {
+            return classDef;
+        }
 
         // Crea un nuovo contesto che imposta la classe corrente. Questo contesto verrà passato a tutti i membri.
         var classContext = context with { CurrentClass = classDef };

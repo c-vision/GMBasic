@@ -564,6 +564,25 @@ public sealed partial class IlProgramCompiler
             _il.Emit(OpCodes.Callvirt, GraphicsSpriteSetMatrixMethod);
             return;
         }
+        // SPRITE SET SCALE id, sx, sy → IGraphicsService.SpriteSetScale(int, float, float).
+        if (stmt.Command.Kind == TokenKind.Scale && stmt.Arguments.Length >= 3)
+        {
+            EmitLoadGraphicsService();
+            EmitInt32Arg(stmt.Arguments[0]);
+            EmitFloatArg(stmt.Arguments[1]);
+            EmitFloatArg(stmt.Arguments[2]);
+            _il.Emit(OpCodes.Callvirt, GraphicsSpriteSetScaleMethod);
+            return;
+        }
+        // SPRITE SET ROTATION id, gradi → IGraphicsService.SpriteSetRotation(int, float).
+        if (stmt.Command.Kind == TokenKind.Rotate && stmt.Arguments.Length >= 2)
+        {
+            EmitLoadGraphicsService();
+            EmitInt32Arg(stmt.Arguments[0]);
+            EmitFloatArg(stmt.Arguments[1]);
+            _il.Emit(OpCodes.Callvirt, GraphicsSpriteSetRotationMethod);
+            return;
+        }
         // SPRITE GETPIXELS src, dstArray → IGraphicsService.SpriteGetPixels(int) → int[]
         // ([w, h, indice_palette...]) copiato nel target (schema PCodeVM SPRITE_GETPIXELS).
         if (stmt.Command.Kind == TokenKind.SpriteGetPixels && stmt.Arguments.Length >= 2)

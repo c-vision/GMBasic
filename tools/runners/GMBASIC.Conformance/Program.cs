@@ -35,6 +35,28 @@ Console.WriteLine($"Esempi trovati: {files.Count}");
 Console.WriteLine();
 
 int passed = 0, failed = 0, skipped = 0;
+
+// ── MODULI: un file che dichiara `NAMESPACE X` e NON ha alcun punto d'ingresso
+// (nessun `SUB/FUNCTION Main`, nessuna linea numerata) è una LIBRERIA importata da un
+// altro campione, non un programma eseguibile: compilarlo stand-alone produce errori del
+// suo corpo (es. "Simbolo non definito: 'DeepOrigin'" in chain/Chain.bas, il cui IMPORT
+// DEMO_DEEP lo risolve solo insieme alla entry). Il campione vero (AllFolders.bas) li
+// importa e viene compilato normalmente.
+var nsRe = new System.Text.RegularExpressions.Regex(@"^\s*NAMESPACE\s+([A-Za-z_][A-Za-z0-9_]*)",
+    System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Multiline);
+var mainRe = new System.Text.RegularExpressions.Regex(@"\b(SUB|FUNCTION)\s+Main\b",
+    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+var numLineRe = new System.Text.RegularExpressions.Regex(@"^\s*\d+\s",
+    System.Text.RegularExpressions.RegexOptions.Multiline);
+var moduleFiles = new HashSet<string>(StringComparer.Ordinal);
+foreach (var f in files)
+{
+    string txt;
+    try { txt = File.ReadAllText(f); } catch { continue; }
+    if (nsRe.IsMatch(txt) && !mainRe.IsMatch(txt) && !numLineRe.IsMatch(txt))
+        moduleFiles.Add(f);
+}
+
 var errors = new List<(string File, string Error)>();
 
 static string FindRoot()
@@ -53,25 +75,17 @@ foreach (var file in files)
 {
     var name = Path.GetRelativePath(samplesDir, file);
 
-    /* MODULO vs CAMPIONE: i file IMPORTATI (es. Modules/FolderResolution/chain/Chain.bas,
-     * libs/helpers/Deep.bas) non sono programmi eseguibili e non devono essere compilati
-     * stand-alone: si salta PRIMA di compilare (prima fallivano con errori del loro corpo,
-     * es. "Simbolo non definito: 'DeepOrigin'", contati come FAIL). */
-    try
+    /* MODULO vs CAMPIONE: un file che dichiara `NAMESPACE X` ed è IMPORTATO da un altro
+     * campione non è un programma eseguibile (es. Modules/FolderResolution/chain/Chain.bas,
+     * libs/helpers/Deep.bas): compilarlo stand-alone produce errori del suo corpo
+     * ("Simbolo non definito: 'DeepOrigin'") che non sono gap del compilatore. Il campione
+     * vero (AllFolders.bas) li importa e viene compilato normalmente. */
+    if (moduleFiles.Contains(file))
     {
-        var src = File.ReadAllText(file);
-        var hasEntry = System.Text.RegularExpressions.Regex.IsMatch(src, @"\bSUB\s+Main\b",
-                            System.Text.RegularExpressions.RegexOptions.IgnoreCase)
-                       || System.Text.RegularExpressions.Regex.IsMatch(src, @"\bFUNCTION\s+Main\b",
-                            System.Text.RegularExpressions.RegexOptions.IgnoreCase)
-                       || System.Text.RegularExpressions.Regex.IsMatch(src, @"(?m)^\s*\d+\s");
-        if (!hasEntry)
-        {
-            skipped++;
-            continue;
-        }
+        skipped++;
+        continue;
     }
-    catch { /* file illeggibile: si prova comunque a compilarlo */ }
+
     try
     {
         var program = Basic.Orchestrator.Compile(file, null, false);
