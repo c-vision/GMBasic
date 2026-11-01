@@ -942,6 +942,26 @@ public static partial class Linker
                     "CONTAINSKEY" => new BitType(),
                     _ => null
                 };
+            /* RICEVENTE DINAMICA (`ANY`/InferredType: il tipo dichiarato si è perso — es.
+             * `DIM l AS LIST<STRING> = [...]` che il linker tipizza InferredType): i metodi di
+             * collezione si accettano lo stesso, con i tipi di ritorno del caso statico.
+             * La leg C li accetta sempre (dispatch per nome a runtime) e l'IL emette per nome
+             * (`IlProgramCompiler.Members.Calls` case "REMOVE"/"ADD"/...). */
+            case AnyType:
+            case InferredType:
+                return upperMethodName switch
+                {
+                    "REMOVE" or "CONTAINS" or "CONTAINSKEY" or "CONTAINSVALUE" or "TRYGET" or "TRYADD"
+                        => new BitType(),
+                    "REMOVEAT" or "ADD" or "INSERT" or "CLEAR" or "SORT" or "REVERSE" or "ADDRANGE"
+                        => new VoidType(),
+                    "COUNT" or "INDEXOF" => new LongType(),
+                    "TOLIST" or "TOARRAY" or "TOJSON" or "KEYS" or "VALUES" or "GET" or "SET"
+                        or "SETKEYVALUE" or "TRYGETVALUE" or "GETRANGE" or "FIRST" or "LAST"
+                        or "FRONT" or "BACK" or "DEQUEUE" or "PEEK" or "POP" or "MAX" or "MIN" or "SUM"
+                        => new InferredType(),
+                    _ => null
+                };
             case ArrayType at:
                 return upperMethodName switch
                 {
