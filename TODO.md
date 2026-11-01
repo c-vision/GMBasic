@@ -76,9 +76,12 @@ che pilota **il compilatore C** tramite le sue opzioni. Non perde nessuna funzio
 2. Nessun `#include` di `gmb_lexer.h` / `gmb_parser.h` / `gmb_linker.h` / `gmb_compiler.h` nella
    REPL: si usa la **CLI** del compilatore (o, se serve la latenza, le librerie C *del proprio*
    compilatore, ma con un solo punto di ingresso documentato).
-3. Il compilatore C# è un **engine opzionale** (`--engine=csharp`): se manca, i comandi che
-   esistono solo per lui (`IL`, `PCODE`) rispondono "engine non disponibile" e **nient'altro**
-   smette di funzionare. Con la sua futura eliminazione spariscono solo quei comandi.
+3. **Finché il compilatore C# esiste, la parità è TOTALE: nessun degrado.** Con
+   `--engine=csharp` ogni comando della REPL si comporta **identicamente** al ramo C: stessi
+   comandi, stesse opzioni, stessa qualità (inclusi `IL`, `PCODE`, `EVAL`, i dump e il debug dove
+   applicabile). Non esistono comandi "non disponibili" o ridotti mentre l'engine c'è.
+   Solo quando il compilatore C# verrà **eliminato** i comandi che appartengono esclusivamente al
+   suo mondo (`IL`, `PCODE`) escono dalla superficie — rimossi e documentati, mai lasciati a metà.
 4. Niente variabili d'ambiente per il comportamento: solo opzioni/settings.
 
 ### 6.1 Contratto CLI del compilatore C (unica superficie REQUIRED)
@@ -95,8 +98,10 @@ che pilota **il compilatore C** tramite le sue opzioni. Non perde nessuna funzio
 | esecuzione VM/C | `gmb_vm_host <chunk>` (+ `--debug-interactive`) | esiste |
 | **eval espressione** | `gmb eval "<exprs>"` | **da aggiungere** (per `EVAL`) |
 
-Engine opzionale (mai richiesto): `gmbcs` (`GMBasicSharp/CompilerCli`) con
-`--dump ast|il|pcode|disasm`, `run --engine il|pcode`. Se assente → solo `IL`/`PCODE` non disponibili.
+Engine C# (finché esiste: **parità totale, nessun degrado**): `gmbcs`
+(`GMBasicSharp/CompilerCli`) con `--dump ast|il|pcode|disasm`, `run --engine il|pcode` e le stesse
+opzioni (`--json`, `--strict`, `--out`, defines…). Ogni comando della REPL deve produrre lo stesso
+comportamento sui due engine; il test di parità è parte della fase F4.
 
 ### 6.2 Comandi C che oggi NON rispettano la regola (usano il compilatore inline) → migrare a opzioni
 
@@ -137,10 +142,12 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
 - [ ] **F2 — REPL C pilota `gmb`**: `COMPILE/AST/DASM/PRGINFO` via processo/CLI; rimossi gli include
       del compilatore dalla REPL; `EVAL` via `gmb eval`.
 - [ ] **F3 — Comandi solo-C# riportati nel mondo C** (tabella 6.3) come wrapper di `gmb`/runtime C.
-- [ ] **F4 — `IL`/`PCODE` come engine opzionale**: `--engine=csharp`; senza `gmbcs` rispondono
-      "engine non disponibile" e il resto funziona identico.
+- [ ] **F4 — Parità completa con l'engine C# (finché esiste)**: `--engine=csharp` implementa
+      **tutti** i comandi identici al ramo C — `IL` e `PCODE` compresi (non stub), `EVAL`, dump,
+      debug; stessi flag e stessa semantica. Test di parità comando-per-comando fra i due engine.
 - [ ] **F5 — Prova di eliminabilità**: build + run della REPL con `GMBasicSharp/` **rimosso**
-      (o non compilato) e suite di comandi del mondo C verde.
+      (o non compilato) e suite di comandi del mondo C verde. In quello scenario `IL`/`PCODE`
+      **escono dalla superficie** (rimossi, non degradati).
 - [ ] **F6 — La REPL C# esce**: `GMBasicSharp/REPL` non è più canonica (resta, se serve, `gmbcs` per
       i test IL/PCode finché il compilatore C# esiste).
 - [ ] **F7 — Pulizia**: guida unica, help JSON unica fonte (`shared/helps`), manifesti/audit rigenerati.
