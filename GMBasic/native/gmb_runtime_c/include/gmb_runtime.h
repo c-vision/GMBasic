@@ -1437,7 +1437,11 @@ char* gmb_agent_benchmark_json(const char* name, const char* mode, int iteration
 char* gmb_agent_benchresult_json(const char* name);
 char* gmb_agent_prefill_stats_json(const char* name);
 char* gmb_agent_decode_stats_json(const char* name);
-char* gmb_agent_run_graph_json(const char* name, const char* backend_label);
+/* Seam del loop graph (stesso schema di gmb_agent_run_code_json_set): il loop reale
+ * `gmb_agent_run_graph` vive in gmb_agent_runtime; l'host che linka entrambi lo registra. */
+typedef char* (*gmb_agent_graph_run_fn)(const char* name, const char* prompt, int rounds);
+void  gmb_agent_run_graph_json_set(gmb_agent_graph_run_fn fn);
+char* gmb_agent_run_graph_json(const char* name, const char* prompt, int rounds);
 /* §4.10 esposizione agenti: AI.AGENTRUNCODE. Seam verso il loop agenti C `gmb_agent_run_code`
  * (registrato dall'host che linka il runtime agenti: gmb_vm_c, C99Native). */
 typedef char* (*gmb_agent_code_run_fn)(const char* name, const char* prompt, int rounds);

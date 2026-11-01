@@ -584,12 +584,20 @@ static int sb_channel_sub(ctx_t* c, gmb_expr_t** a, int n) {
     emit_s(c, a, 0); sb_put(&c->out, ".data), 1.0)");
     return 1;
 }
-/* AI.AGENTRUNGRAPH/RAG: il loop è in C# → il runtime condiviso ritorna l'errore esplicito
- * (agente non registrato → testo oracolo; registrato → non supportato dal backend C99). */
+/* AI.AGENTRUNGRAPH/RAG: firma canonica (name, prompt [, rounds]) come la dichiarazione
+ * StdLib; il runtime condiviso ritorna l'errore esplicito quando il knowledge graph non è
+ * disponibile su questo host (agente non registrato → testo oracolo). */
 static int sb_agent_run_graph(ctx_t* c, gmb_expr_t** a, int n) {
     if (n < 1) { sb_put(&c->out, "gmb_string_alloc(\"\")"); return 1; }
-    sb_put(&c->out, "gmb_string_alloc(gmb_agent_run_graph_json((");
-    emit_s(c, a, 0); sb_put(&c->out, ").data, \"C99 headless\"))");
+    /* Chiamata DIRETTA al loop C del grafo (gmb_agent_loop.c): su C99Native il motore è C e non
+     * esiste alcun backend managed da preferire. `uses_agent_loop` emette l'include di
+     * gmb_agent_loop.h nel C generato. */
+    c->uses_agent_loop = 1;
+    sb_put(&c->out, "gmb_string_alloc(gmb_agent_run_graph(");
+    emit_s(c, a, 0); sb_put(&c->out, ".data, ");
+    if (n >= 2) { sb_put(&c->out, "("); emit_s(c, a, 1); sb_put(&c->out, ").data, "); } else sb_put(&c->out, "\"\", ");
+    if (n >= 3) { sb_put(&c->out, "(int)("); gb_emit_num(c, a[2], "5"); sb_put(&c->out, ")"); } else sb_put(&c->out, "5");
+    sb_put(&c->out, "))");
     return 1;
 }
 /* §4.10: AI.AGENTRUNCODE name, prompt [, rounds] — loop agentico sul grafo del CODICE (tool
@@ -597,8 +605,11 @@ static int sb_agent_run_graph(ctx_t* c, gmb_expr_t** a, int n) {
  * condiviso via seam. Emette il wrapper uniforme `gmb_agent_run_code_json(name, prompt, rounds)`. */
 static int sb_agent_run_code(ctx_t* c, gmb_expr_t** a, int n) {
     if (n < 1) { sb_put(&c->out, "gmb_string_alloc(\"\")"); return 1; }
-    sb_put(&c->out, "gmb_string_alloc(gmb_agent_run_code_json((");
-    emit_s(c, a, 0); sb_put(&c->out, ").data, ");
+    /* Loop C diretto (tool code.*): il motore principale è C, non c'è un backend managed da
+     * preferire su questa gamba. */
+    c->uses_agent_loop = 1;
+    sb_put(&c->out, "gmb_string_alloc(gmb_agent_run_code(");
+    emit_s(c, a, 0); sb_put(&c->out, ".data, ");
     if (n >= 2) { sb_put(&c->out, "("); emit_s(c, a, 1); sb_put(&c->out, ").data, "); } else sb_put(&c->out, "\"\", ");
     if (n >= 3) { sb_put(&c->out, "(int)("); gb_emit_num(c, a[2], "5"); sb_put(&c->out, ")"); } else sb_put(&c->out, "5");
     sb_put(&c->out, "))");

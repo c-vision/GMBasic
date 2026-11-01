@@ -90,7 +90,14 @@ Il ponte copre **tutte** le superfici di agenti/team/workflow/memoria, non solo 
 |---|---|
 | **letture** | `agent.list/get/status/events` · `team.list/agents` · `workflow.list/status/steps` · `memory.list/load/search/ask/rank/consolidate` |
 | **scritture** | `agent.create/delete/set/permission/permission_default/toolpolicy/registertool/save/load/trace` · `team.create/delete/add/remove/set_role/set_strategy/set_coordinator/set_recursion/set_latent/set_link/set_thoughts/set_dag/set_complexity/set_reflection/set_critic/set_prune/save/load/message/broadcast/redefine` · `workflow.begin/step/end/execute/delete` · `memory.store/delete` |
-| **comportamento** (LLM/loop) | `agent.ask/askfile/askchain/swarm/runcua` · `agent.send/receive/pausa/resume/stop/queuestats/queueclear` · `team.run/run_start/run_wait` · `team.train_thinking/train_ac/distill` |
+| **comportamento** (LLM/loop) | `agent.ask/askfile/askchain/swarm/runcua/rungraph/runrag/runcode/benchmark` · `agent.send/receive/pausa/resume/stop/queuestats/queueclear` · `team.run/run_start/run_wait` · `team.train_thinking/train_ac/distill` |
+| **compute/KV** | `agent.cachestats/prefillstats/decodestats/cacheclear/cachetrim/fix` |
+
+Nessuna superficie è "solo managed": i loop `graph.*`/`code.*` sono **implementati in C**
+(`gmb_agent_run_graph`/`gmb_agent_run_code` in `native/gmb_agent_runtime`), registrati via seam
+dagli host (`gmb_vm_host`, lib BSP) e chiamati **direttamente** dall'emitter C99Native. Nel
+processo dell'app lo stato (agenti, provider, brain) vive nel runtime managed e l'hook lo
+condivide: è una questione di **stato**, non di capacità.
 
 **Errori allineati:** se il runtime managed solleva un'eccezione dentro l'hook, il runtime C la
 riceve come testo (`\x01` + messaggio), **non** la inghiotte, e la solleva come errore BASIC: la

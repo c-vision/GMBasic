@@ -158,6 +158,7 @@ int main(int argc, char** argv)
      * (`gmb_agent_run_code`) e la query semantica del compilatore C (`gmb_semquery_file`). */
     gmb_agent_code_query_set(gmb_semquery_file);
     gmb_agent_run_code_json_set(gmb_agent_run_code);
+    gmb_agent_run_graph_json_set(gmb_agent_run_graph);
         char _mp[1024]; gmb_paths_mcp_json(_mp, sizeof(_mp));
         if (gmb_mcp_load(_mp) == 0) {
             char _cwd[1024];
