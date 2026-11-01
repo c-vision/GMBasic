@@ -80,11 +80,16 @@
              facevano ombra alla cache: bug reale, la libgmb_gfx vecchia continuava a caricare
              SDL2_mixer). Restano copiati SOLO gli alias SDL: il wrapper C# fa DllImport("SDL2")
              e il loader di sistema cerca il file accanto all'eseguibile. -->
-        <LibsCacheDir Condition="$([MSBuild]::IsOSPlatform('OSX')) AND $([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture) == 'Arm64'">$(UserProfile)/.gmbasic/libs/osx-arm64</LibsCacheDir>
-        <LibsCacheDir Condition="$([MSBuild]::IsOSPlatform('OSX')) AND $([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture) == 'X64'">$(UserProfile)/.gmbasic/libs/osx-x64</LibsCacheDir>
-        <LibsCacheDir Condition="$([MSBuild]::IsOSPlatform('WINDOWS')) AND $([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture) == 'Arm64'">$(UserProfile)/.gmbasic/libs/win-arm64</LibsCacheDir>
-        <LibsCacheDir Condition="$([MSBuild]::IsOSPlatform('WINDOWS')) AND $([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture) == 'X64'">$(UserProfile)/.gmbasic/libs/win-x64</LibsCacheDir>
-        <LibsCacheDir Condition="'$(LibsCacheDir)' == ''">$(UserProfile)/.gmbasic/libs/linux-x64</LibsCacheDir>
+        <!-- $(UserProfile) NON è definito in `dotnet build` (resta vuoto): il percorso
+             diventava "/.gmbasic/libs/..." e gli alias SDL non venivano copiati, così la
+             REPL C# in SDL crashava con DllNotFoundException su "SDL2.dll". -->
+        <GmbHomeDir Condition="'$(GmbHomeDir)' == '' AND '$(HOME)' != ''">$(HOME)</GmbHomeDir>
+        <GmbHomeDir Condition="'$(GmbHomeDir)' == '' AND '$(USERPROFILE)' != ''">$(USERPROFILE)</GmbHomeDir>
+        <LibsCacheDir Condition="$([MSBuild]::IsOSPlatform('OSX')) AND $([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture) == 'Arm64'">$(GmbHomeDir)/.gmbasic/libs/osx-arm64</LibsCacheDir>
+        <LibsCacheDir Condition="$([MSBuild]::IsOSPlatform('OSX')) AND $([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture) == 'X64'">$(GmbHomeDir)/.gmbasic/libs/osx-x64</LibsCacheDir>
+        <LibsCacheDir Condition="$([MSBuild]::IsOSPlatform('WINDOWS')) AND $([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture) == 'Arm64'">$(GmbHomeDir)/.gmbasic/libs/win-arm64</LibsCacheDir>
+        <LibsCacheDir Condition="$([MSBuild]::IsOSPlatform('WINDOWS')) AND $([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture) == 'X64'">$(GmbHomeDir)/.gmbasic/libs/win-x64</LibsCacheDir>
+        <LibsCacheDir Condition="'$(LibsCacheDir)' == ''">$(GmbHomeDir)/.gmbasic/libs/linux-x64</LibsCacheDir>
     </PropertyGroup>
     <!-- Le libs native (esterne in Resources/libs; nostre in libs-runtime) vengono copiate
          nell'output con un TARGET di build, NON come item <None>: così non compaiono nel progetto
