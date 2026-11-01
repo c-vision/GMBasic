@@ -92,6 +92,9 @@ int gmb_ide_run(const char* file);
 /* chunk A1: PRGINFO/DASM/LOADPRG */
 int gmb_prginfo(const char* file);
 int gmb_dasm(const char* file);
+/* Contratto a processo col compilatore C (F2): la REPL non include il front-end. */
+const char* rpl_gmb_cli(char* out, size_t cap);
+int rpl_gmb_dump(const char* what, const char* file, const char* out);
 int gmb_loadprg(const char* file);
 
 /* ---- ReplEngine.cs -> repl.c ---- */

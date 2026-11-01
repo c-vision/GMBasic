@@ -143,8 +143,13 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
       salvati come riferimento (non-regressione).
 - [x] **F1 — Opzioni nel compilatore C**: `gmb dump ast|chunk|c|disasm` + `gmb eval` (fatti).
       Il disassemblatore è condiviso (`gmb_bytecode/src/gmb_disasm.c`, usato anche dalla REPL).
-- [ ] **F2 — REPL C pilota `gmb`**: `COMPILE/AST/DASM/PRGINFO` via processo/CLI; rimossi gli include
-      del compilatore dalla REPL; `EVAL` via `gmb eval`.
+- [x] **F2 — REPL C pilota `gmb`** (2026-11-01): `AST`, `DASM`, `PRGINFO`, `COMPILE`, `EVAL`,
+      `RUN` (vmc) via CLI; **rimossi** gli include `gmb_lexer/parser/linker/compiler.h` dalla REPL.
+      Resta (F2b): `RUN` c99 e la compilazione dell'IDE (`ide.c`) usano ancora `native/executor`.
+- [ ] **F2b — ultimo legame con `executor`**: `rpl_run_c99` (`gmb run --project/--entry`) e la
+      compilazione della sessione di debug dell'IDE via `gmb dump chunk`; poi via `executor.h`.
+- [ ] **Decisione nome `EVAL`**: nel motore C valuta uno snippet (`gmb eval`), nella REPL C#
+      è l'Eval Harness AI. Un solo significato: candidato `AIBENCH` per l'harness.
 - [ ] **F3 — Comandi solo-C# riportati nel mondo C** (tabella 6.3) come wrapper di `gmb`/runtime C.
 - [ ] **F4 — Parità completa con l'engine C# (finché esiste)**: `--engine=csharp` implementa
       **tutti** i comandi identici al ramo C — `IL` e `PCODE` compresi (non stub), `EVAL`, dump,

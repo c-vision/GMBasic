@@ -33,7 +33,7 @@ int rpl_run_vmc(const char* bas_file, const rpl_options_t* o)
         // WATCH: per ora stub con g_dbg.current_line, il VM stamperà i watch alla pausa
         char chunk[2048];
         snprintf(chunk, sizeof(chunk), "/tmp/gmb_exec_%ld.chunk", (long)getpid());
-        if (gmb_native_compile(bas_file, chunk, GMB_EXEC_VMC) != 0) { if (o && o->defines_count > 0) gmb_preprocess_reset(); return 2; }
+        { if (rpl_gmb_dump("chunk", bas_file, chunk) != 0) { if (o && o->defines_count > 0) gmb_preprocess_reset(); return 2; } }
         char host[2048]; 
         /* Unica risoluzione del binario gmb_vm_host (executor.c): env GMBASIC_VM_HOST ->
          * GMBASIC_REPO_ROOT -> repo root. Prima esisteva solo come `extern` mai definito. */
@@ -49,7 +49,19 @@ int rpl_run_vmc(const char* bas_file, const rpl_options_t* o)
             printf("[WATCH] %s @ line %d\n", g_dbg.watches[i].name, g_dbg.breaks[0].line);
         }
     } else {
-        rc = gmb_native_exec(bas_file, GMB_EXEC_VMC);
+        { char chunk2[2048];
+          snprintf(chunk2, sizeof(chunk2), "/tmp/gmb_run_%ld.chunk", (long)getpid());
+          if (rpl_gmb_dump("chunk", bas_file, chunk2) != 0) rc = 2;
+          else {
+              const char* h = gmb_resolve_vm_host();
+              char host2[2048];
+              snprintf(host2, sizeof(host2), "%s", h ? h : "native/gmb_vm_c/build/gmb_vm_host");
+              char cmd2[4096];
+              snprintf(cmd2, sizeof(cmd2), "\"%s\" \"%s\"", host2, chunk2);
+              int r2 = system(cmd2);
+              rc = WIFEXITED(r2) ? WEXITSTATUS(r2) : 1;
+              unlink(chunk2);
+          } }
     }
     if (o && o->defines_count > 0) gmb_preprocess_reset();
     if (rc != 0) printf("[VMC ERROR] exit %d\n", rc);
