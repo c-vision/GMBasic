@@ -853,6 +853,10 @@ public sealed partial class IlProgramCompiler
 
     private void EmitCoerceToElementClr(DataType elementType)
     {
+        // Gli ARRAY SINGLE restano float[] (ABI FFI/AI.EMBED, vedi DataTypeMapper: caso
+        // ArrayType): l'elemento va coercito a float32 anche quando lo SCALARE SINGLE è mappato
+        // a double — con la mappatura scalare si emetteva conv.r8 su uno stelem.r4.
+        if (elementType is SingleType) { _il.Emit(OpCodes.Conv_R4); return; }
         var elementClr = DataTypeMapper.Map(elementType, _types, _classTypes);
         if (elementClr == _types.Int16) _il.Emit(OpCodes.Conv_I2);
         else if (elementClr == _types.Int32) _il.Emit(OpCodes.Conv_I4);

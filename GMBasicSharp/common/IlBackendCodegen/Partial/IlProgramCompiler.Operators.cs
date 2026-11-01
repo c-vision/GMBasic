@@ -841,7 +841,12 @@ public sealed partial class IlProgramCompiler
             var reSourceType = NormalizeInferredType(InferType(value));
             if (reSourceType is not StringType and not AnyType and not NullableType and not DateType)
             {
-                _il.Emit(OpCodes.Box, typeof(float));
+                // Box col tipo CLR REALE del valore (SINGLE scalare = double quando mappato a
+                // double, parità C; prima si boxava sempre float → InvalidCastException sul
+                // successivo unbox double di LoadGlobal/GlobalClrType).
+                var reClr = DataTypeMapper.Map(reSourceType, _types, _classTypes);
+                if (reClr.IsValueType) _il.Emit(OpCodes.Box, reClr);
+                else EmitDynamicValueBox(value);
             }
             else
             {
@@ -1036,14 +1041,19 @@ public sealed partial class IlProgramCompiler
     /// CIL (T&amp;, tipico di un parametro BYREF) — stessa idea di ArrayElementOpCodes ma
     /// per gli opcode Ldind/Stind invece di Ldelem/Stelem.
     /// </summary>
+    // NB: statico (lo usa anche EvalIndirectLocalClrType, statica). SINGLE resta R4: gli ARRAY
+    // SINGLE sono float[] (ABI FFI) e il passaggio BYREF di un SINGLE scalare, quando lo scalare
+    // è mappato a double (parità C), va allineato insieme a quella mappatura.
     private static (OpCode Load, OpCode Store) IndirectOpCodes(DataType type) => type switch
     {
         DoubleType => (OpCodes.Ldind_R8, OpCodes.Stind_R8),
         SingleType => (OpCodes.Ldind_R4, OpCodes.Stind_R4),
         LongType => (OpCodes.Ldind_I8, OpCodes.Stind_I8),
         ULongType => (OpCodes.Ldind_I8, OpCodes.Stind_I8),
-        IntegerType => (OpCodes.Ldind_I2, OpCodes.Stind_I2),
-        UIntegerType => (OpCodes.Ldind_U2, OpCodes.Stind_I2),
+        // INTEGER/UINTEGER = 64 bit nel dialetto (parità C, vedi DataTypeMapper): il BYREF punta
+        // a un Int64/UInt64. Prima Ldind_I2/Stind_I2 su un Int64& leggeva i 2 byte bassi
+        // (divergenza col valore vero).
+        IntegerType or UIntegerType => (OpCodes.Ldind_I8, OpCodes.Stind_I8),
         ByteType => (OpCodes.Ldind_U1, OpCodes.Stind_I1),
         SByteType => (OpCodes.Ldind_I1, OpCodes.Stind_I1),
         BitType => (OpCodes.Ldind_I1, OpCodes.Stind_I1),

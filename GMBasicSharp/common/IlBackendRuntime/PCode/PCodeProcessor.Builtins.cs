@@ -747,8 +747,14 @@ if (args.Length > 0) { try { var sizes = new List<int>(); foreach (var a in args
         },
         [BuiltInFunction.CSNG] = (task, args) =>
         {
-                if (args.Length > 0 && args[0] != null) return (float)SafeDouble(args[0]);
-                return 0.0f;
+                /* CSNG = IDENTITÀ numerica (double): le gambe C non hanno un float32 e
+                 * `DIM s AS SINGLE : s = 1.23456789` stampa 1.23456789. Prima qui si faceva
+                 * `(float)` → 1.23456788 su PCode (e TYPENAME diceva SINGLE) mentre
+                 * IL/VM-C/C99 davano 1.23456789/DOUBLE (parità chiusa 2026-11-01; il linker
+                 * normalizza già la chiamata a CDbl, ma il wrapper del letterale su un target
+                 * SINGLE viene creato DOPO la risoluzione → arrivava qui come CSNG). */
+                if (args.Length > 0 && args[0] != null) return SafeDouble(args[0]);
+                return 0.0;
         },
         [BuiltInFunction.CBYTE] = (task, args) =>
         {

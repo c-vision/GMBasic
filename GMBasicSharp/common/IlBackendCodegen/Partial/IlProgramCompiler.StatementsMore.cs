@@ -146,7 +146,14 @@ public sealed partial class IlProgramCompiler
         switch (type)
         {
             case DoubleType or InferredType: _il.Emit(OpCodes.Ldc_R8, 0.0); return;
-            case SingleType: _il.Emit(OpCodes.Ldc_R4, 0.0f); return;
+            // SINGLE scalare: se il backend lo mappa a double (parità C, DataTypeMapper) il
+            // default deve essere R8 — un Ldc_R4 finirebbe in un local/box double (merge IL
+            // invalido: "ldc.r4 0 / box System.Double", visto su DIM ... AS SINGLE con la
+            // mappatura double). Con la mappatura float resta R4.
+            case SingleType:
+                if (DataTypeMapper.Map(type, _types, _classTypes) == _types.Double) _il.Emit(OpCodes.Ldc_R8, 0.0);
+                else _il.Emit(OpCodes.Ldc_R4, 0.0f);
+                return;
             case LongType or ULongType or QuadType or UQuadType: _il.Emit(OpCodes.Ldc_I4_0); _il.Emit(OpCodes.Conv_I8); return;
             // INTEGER/UINTEGER = 64 bit (DataTypeMapper): il default deve avere lo STESSO
             // tipo di stack del valore vero (unbox.any Int64 → I8). Con Ldc_I4_0 nudo il

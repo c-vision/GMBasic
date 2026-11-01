@@ -139,7 +139,11 @@ public sealed partial class IlProgramCompiler
         if (expr.Args[0] is VariableExpr cdblVar2 && _locals.TryGetValue(cdblVar2.SymbolId, out var cdblLb)
             && cdblLb.LocalType == typeof(float))
             cdblSymbolType = new SingleType();
-        if (targetClr == _types.Double && cdblSymbolType is SingleType)
+        // Solo se il valore SULLO STACK è davvero un float (SINGLE mappato a float). Con
+        // SINGLE mappato a double la chiamata CDblSingle(float) su un double è IL invalido:
+        // il ramo "stringa" serviva a stampare 1.234567 invece di 1.23456704616547.
+        if (targetClr == _types.Double && cdblSymbolType is SingleType
+            && DataTypeMapper.Map(cdblSymbolType, _types, _classTypes) == _types.Single)
         {
             _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.CDblSingle), typeof(float)));
             return;
@@ -845,6 +849,12 @@ public sealed partial class IlProgramCompiler
 
     private void EmitConvertToString(DataType type)
     {
+        // SINGLE scalare mappato a double (parità C): la conversione a stringa deve essere
+        // quella del DOUBLE, altrimenti si chiama il Convert/Format di float su un double
+        // (stack I4/R4 vs F8). Gli ARRAY SINGLE restano float[] → per un loro elemento la
+        // conversione resta quella di SINGLE.
+        if (type is SingleType && DataTypeMapper.Map(type, _types, _classTypes) == _types.Double)
+            type = new DoubleType();
         // Delega centralizzata a IlConversion (vedi IlBackend/IlConversion.cs): stessa
         // matrice Double→StringHelpers*ToInvariantString, Long→Convert.ToString(long), ecc.
         // ma in UNICO punto, già testato. Qualsiasi DataType non coperto lancia
