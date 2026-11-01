@@ -144,6 +144,17 @@ static void io_write(gmb_iconsole_t* c, const char* text)
     iconsole_impl_t* i = impl_of(c); if (!text) return;
     if (!i || i->kind == 0) { gmb_console_out_write(text); return; }
     if (i->kind == 2) { gmb_console_out_write(text); if (i->model) gmb_sdl_console_write(i->model, text); return; }
+    if (i->kind == 1 && i->model && i->model->native_scroll_mode) {
+        /* StandardConsole.WriteInternalNative: in native-scroll il testo va DIRETTO al
+         * terminale con i colori correnti (la palette della console) — niente repaint
+         * dello schermo, scrollback conservato, come la REPL C# in `-c`. */
+        int fr = 255, fg = 255, fb = 255, br = 0, bg = 0, bb = 0;
+        int fi = i->model->current_fg, bi = i->model->current_bg;
+        if (fi >= 0 && fi < i->model->palette_size) { fr = i->model->palette[fi][0]; fg = i->model->palette[fi][1]; fb = i->model->palette[fi][2]; }
+        if (bi >= 0 && bi < i->model->palette_size) { br = i->model->palette[bi][0]; bg = i->model->palette[bi][1]; bb = i->model->palette[bi][2]; }
+        printf("\x1b[38;2;%d;%d;%dm\x1b[48;2;%d;%d;%dm%s", fr, fg, fb, br, bg, bb, text);
+        fflush(stdout);
+    }
     if (i->model) gmb_sdl_console_write(i->model, text);
 }
 static int io_read_char(gmb_iconsole_t* c) { (void)c; return gmb_console_in_read_char(); }
@@ -192,11 +203,17 @@ static void io_dispose(gmb_iconsole_t* c)
 static void io_present_ansi(gmb_iconsole_t* c)
 {
     iconsole_impl_t* i = impl_of(c); if (!i || !i->model) return;
+    /* StandardConsole.RenderBuffer: in native-scroll le scritture sono già andate al
+     * terminale → non c'è nulla da ridisegnare (niente repaint full-screen). */
+    if (i->model->native_scroll_mode) { i->model->dirty = 0; return; }
     gmb_screen_buffer_t* b = gmb_sdl_console_screen(i->model);
     int w = gmb_screen_width(b), h = gmb_screen_height(b);
     size_t cap = (size_t)w * h * 32 + 4096;
     char* buf = (char*)malloc(cap);
     if (!buf) return;
+    /* gli indici di palette delle celle vanno risolti in RGB: render_screen legge
+     * SOLO i campi RGB (senza, StandardConsole usciva nero su nero). */
+    gmb_sdl_console_resolve_colors(i->model);
     size_t n = gmb_render_screen(b, buf, cap);
     /* Synchronized update (DEC 2026 ?2026h/l): il terminale applica TUTTO il frame in una
      * volta -> niente flicker e niente shift dell'ultima riga (status bar) durante il
@@ -305,8 +322,16 @@ static void io_standard_poll_for_resize(gmb_iconsole_t* c)
     iconsole_impl_t* i = impl_of(c); if (!i || !i->model) return;
 #ifdef TIOCGWINSZ
     struct winsize ws; if (ioctl(1, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0 && ws.ws_row > 0) {
-        int bw = gmb_console_buffer_width(), bh = gmb_console_buffer_height();
-        if (ws.ws_col != bw || ws.ws_row != bh) { gmb_console_set_buffer_size(ws.ws_col, ws.ws_row); gmb_console_set_window_size(ws.ws_col, ws.ws_row); }
+        /* Ricalibra il BUFFER DEL MODELLO (StandardConsole.RecalculateBuffer): prima
+         * ridimensionava solo il gmb_console globale e lo schermo restava 100x40,
+         * andando a capo/stirando su terminali di dimensione diversa. */
+        gmb_screen_buffer_t* b = gmb_sdl_console_screen(i->model);
+        int bw = gmb_screen_width(b), bh = gmb_screen_height(b);
+        if (ws.ws_col != bw || ws.ws_row != bh) {
+            gmb_screen_resize(b, ws.ws_col, ws.ws_row);
+            i->model->view_width = ws.ws_col; i->model->view_height = ws.ws_row;
+            i->model->dirty = 1;
+        }
     }
 #endif
 }

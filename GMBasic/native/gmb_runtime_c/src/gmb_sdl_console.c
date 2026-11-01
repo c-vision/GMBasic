@@ -32,6 +32,8 @@ gmb_sdl_console_t* gmb_sdl_console_new(const gmb_screen_config_t* config, int wi
     if (!c->buffer) { free(c); return NULL; }
     c->cursor_visible = 1;
     c->cursor_style = GMB_CS_BLOCK;
+    c->blink_on = 1;
+    c->blink_at = 0;
     c->scroll_top = 0;
     c->scroll_bottom = -1;
     c->view_top = 0; c->view_left = 0; c->view_width = width; c->view_height = height;
@@ -391,6 +393,31 @@ static void sdlcon_palette_rgb(gmb_sdl_console_t* c, int idx, const gmb_cell_col
 }
 #endif /* GMB_GFX_SDL_PRESENT */
 
+/* Risolve fg/bg_palette → fg_rgb/bg_rgb su tutte le celle.
+ * Serve al render ANSI (StandardConsole/Present): gmb_render_screen legge SOLO i campi
+ * RGB risolti, mentre la print() del modello memorizza solo gli INDICI di palette.
+ * Senza questa risoluzione lo schermo ANSI usciva tutto nero (0,0,0). */
+void gmb_sdl_console_resolve_colors(gmb_sdl_console_t* c)
+{
+    if (!c || !c->buffer) return;
+    int w = gmb_screen_width(c->buffer), h = gmb_screen_height(c->buffer);
+    gmb_screen_cell_t* cells = gmb_screen_cells(c->buffer);
+    for (int i = 0; i < w * h; i++)
+    {
+        gmb_screen_cell_t* cell = &cells[i];
+        int fr, fg, fb, br, bg, bb;
+        int fi = cell->fg_palette, bi = cell->bg_palette;
+        if (fi >= 0 && fi < c->palette_size) { fr = c->palette[fi][0]; fg = c->palette[fi][1]; fb = c->palette[fi][2]; }
+        else { int v = fi <= 0 ? 0 : 170; fr = fg = fb = v; }
+        if (bi >= 0 && bi < c->palette_size) { br = c->palette[bi][0]; bg = c->palette[bi][1]; bb = c->palette[bi][2]; }
+        else { int v = bi <= 0 ? 0 : 170; br = bg = bb = v; }
+        cell->fg_rgb.r = (uint8_t)fr; cell->fg_rgb.g = (uint8_t)fg; cell->fg_rgb.b = (uint8_t)fb;
+        cell->fg_rgb.is_default = false;
+        cell->bg_rgb.r = (uint8_t)br; cell->bg_rgb.g = (uint8_t)bg; cell->bg_rgb.b = (uint8_t)bb;
+        cell->bg_rgb.is_default = false;
+    }
+}
+
 void gmb_sdl_console_update_font(gmb_sdl_console_t* c)
 {
     if (!c) return;
@@ -451,6 +478,13 @@ void gmb_sdl_console_render(gmb_sdl_console_t* c)
     if (!c->opened) gmb_sdl_console_open(c);
     gmb_sdl_context_t* ctx = (gmb_sdl_context_t*)c->context;
     if (!ctx || !ctx->ok || !c->texture || !c->font_atlas) return;
+    /* Lampeggio del cursore: BLINK_MS (400) come SdlConsole.cs. Il render viene
+     * richiamato dal loop della console (~60 Hz), quindi il toggle e' a tempo. */
+    long long now_ms = (long long)gmb_ticks_ms();
+    if (now_ms - c->blink_at >= 400) {
+        c->blink_on = !c->blink_on;
+        c->blink_at = now_ms;
+    }
     int gw = gmb_screen_width(c->buffer), gh = gmb_screen_height(c->buffer);
     int cw = c->char_width, ch = c->char_height;
     int dbg = c->config.default_bg_color >= 0 ? c->config.default_bg_color : 0;
@@ -461,7 +495,8 @@ void gmb_sdl_console_render(gmb_sdl_console_t* c)
     for (int y = 0; y < gh; y++) {
         for (int x = 0; x < gw; x++) {
             gmb_screen_cell_t cell = cells[y * gw + x];
-            int is_cursor = c->cursor_visible && y == c->cursor_row && x == c->cursor_col;
+            int is_cursor = c->cursor_visible && c->blink_on &&
+                            y == c->cursor_row && x == c->cursor_col;
             int inv = is_cursor || ((cell.attrs & GMB_ATTR_REVERSE) != 0);
             int fr, fg, fb, br, bg, bb;
             sdlcon_palette_rgb(c, cell.fg_palette, &cell.fg_rgb, &fr, &fg, &fb);

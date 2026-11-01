@@ -15,6 +15,8 @@
 #include "gmb_sdl_console.h"
 #include "gmb_gfx_input.h"
 #include <sys/ioctl.h>
+#include <sys/select.h>
+#include <fcntl.h>
 #include <termios.h>
 
 /* Layer controlli TUI (via UNICA): dichiarato extern per non includere gmb_tui_widgets.h
@@ -292,7 +294,7 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
                 }
             }
             if (getenv("GMBASIC_DEBUG")) fprintf(stderr, "[RUN] cmd='%s' args='%s' file='%s'\n", cmd, args, file);
-            if (o->backend == RPL_VMC) { int rc = rpl_run_vmc(file, o); printf(rc == 0 ? "[VMC OK]\n" : "[VMC ERROR] exit %d\n", rc); }
+            if (o->backend == RPL_VMC) { int rc = rpl_run_vmc(file, o); if (rc != 0) printf("[VMC ERROR] exit %d\n", rc); }
             else { int rc = rpl_run_c99(file, o); printf(rc == 0 ? "[C99 OK]\n" : "[C99 ERROR] exit %d\n", rc); }
             goto done;
         }
@@ -309,7 +311,7 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
                 printf("  NB: manifest + publish via CLI C# `gmb libs update|check|publish`\n");
                 goto done;
             }
-            if (o->backend == RPL_VMC) { int rc = rpl_run_vmc("tools/gmb_libs_update.bas", o); printf(rc == 0 ? "[VMC OK]\n" : "[VMC ERROR] exit %d\n", rc); }
+            if (o->backend == RPL_VMC) { int rc = rpl_run_vmc("tools/gmb_libs_update.bas", o); if (rc != 0) printf("[VMC ERROR] exit %d\n", rc); }
             else { int rc = rpl_run_c99("tools/gmb_libs_update.bas", o); printf(rc == 0 ? "[C99 OK]\n" : "[C99 ERROR] exit %d\n", rc); }
             goto done;
         }
@@ -921,8 +923,11 @@ static int rpl_loop_sdl_model(const rpl_options_t* o, gmb_sdl_console_t* con,
     gmb_sdl_console_set_cursor_visible(con, 1);
     int W = gmb_screen_width(gmb_sdl_console_screen(con));
     if (W < 20) W = 80;
+    /* riga vuota iniziale: come il loop ANSI e come PrintWelcome della REPL C#
+     * (senza, il titolo nasce sulla riga 0 e l'ascent tocca il bordo alto). */
+    gmb_sdl_console_write(con, "\n");
     con_writeln_centered(con, W, "GMBASIC 1.0.0");
-    con_writeln_centered(con, W, "(C) 2025 MINARDI GAETANO. ALL RIGHTS RESERVED.");
+    con_writeln_centered(con, W, "(C) 2026 MINARDI GAETANO. ALL RIGHTS RESERVED.");
     con_writeln_centered(con, W, mode_line);
     gmb_sdl_console_write(con, "\nREADY.\n");
     gmb_sdl_console_render(con);
@@ -956,7 +961,7 @@ static int rpl_loop_sdl_model(const rpl_options_t* o, gmb_sdl_console_t* con,
                     if (n < (int)sizeof(line) - 1) line[n++] = (char)ch;
                 } else continue;
                 line[n] = 0;
-                gmb_sdl_console_set_cursor_position(con, row0, col0);
+                gmb_sdl_console_set_cursor_position(con, row0 + 1, col0 + 1);   /* row/col 0-based -> API 1-based */
                 gmb_sdl_console_erase_to_eol(con);
                 gmb_sdl_console_write(con, line);
                 changed = 1;
@@ -981,8 +986,30 @@ static int rpl_loop_sdl_model(const rpl_options_t* o, gmb_sdl_console_t* con,
 }
 
 /* Loop ANSI/System: stesso testo (banner + READY + input) su stdout, nessun form. */
+/* Colori ANSI (truecolor) della palette della console attiva: parità con
+ * ReplEngine.ApplyConsoleColors/ClearConsoleScreen (sfondo = indice bg, testo = indice fg). */
+static void con_emit_colors(int clear)
+{
+    gmb_iconsole_t* c = gmb_iconsole_active();
+    int bg = 0, fg = 15;
+    unsigned char br = 0, bgc = 0, bb = 0, fr = 255, fgc = 255, fb = 255;
+    if (c) {
+        const gmb_screen_config_t* cf = &c->configuration;
+        if (cf->default_bg_color >= 0 && cf->default_bg_color < cf->palette_size) {
+            bg = cf->default_bg_color; br = cf->resolved_palette[bg][0]; bgc = cf->resolved_palette[bg][1]; bb = cf->resolved_palette[bg][2];
+        }
+        if (cf->default_fg_color >= 0 && cf->default_fg_color < cf->palette_size) {
+            fg = cf->default_fg_color; fr = cf->resolved_palette[fg][0]; fgc = cf->resolved_palette[fg][1]; fb = cf->resolved_palette[fg][2];
+        }
+    }
+    if (clear) printf("\x1b[48;2;%u;%u;%um\x1b[2J\x1b[H", br, bgc, bb);
+    printf("\x1b[48;2;%u;%u;%um\x1b[38;2;%u;%u;%um", br, bgc, bb, fr, fgc, fb);
+    fflush(stdout);
+}
+
 static int rpl_loop_ansi(const rpl_options_t* o, const char* initial_cmd, const char* mode_line)
 {
+    con_emit_colors(1);   /* SystemConsole: colori + pulizia come la REPL C# */
     int W = 80;
     struct winsize ws;
     if (ioctl(1, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 20) W = ws.ws_col;
@@ -990,7 +1017,7 @@ static int rpl_loop_ansi(const rpl_options_t* o, const char* initial_cmd, const 
         printf("%*s%s\n", _s, "", t); } while (0)
     printf("\n");
     CENTERED("GMBASIC 1.0.0");
-    CENTERED("(C) 2025 MINARDI GAETANO. ALL RIGHTS RESERVED.");
+    CENTERED("(C) 2026 MINARDI GAETANO. ALL RIGHTS RESERVED.");
     CENTERED(mode_line);
     printf("\nREADY.\n");
     fflush(stdout);
@@ -1009,6 +1036,7 @@ static int rpl_loop_ansi(const rpl_options_t* o, const char* initial_cmd, const 
         if (q1) break;
         printf("READY.\n"); fflush(stdout);
     }
+    printf("\x1b[0m"); fflush(stdout);
     return 0;
 }
 
@@ -1049,7 +1077,7 @@ static int rpl_loop_controls(const rpl_options_t* o, gmb_sdl_console_t* sdl, con
     else if (gmb_console_mode_get() == 3) mode_line = "SYSTEM CONSOLE MODE";
     else mode_line = "STANDARD CONSOLE MODE";
     if (sdl) return rpl_loop_sdl_model(o, sdl, initial_cmd, mode_line);
-    return rpl_loop_ansi(o, initial_cmd, mode_line);
+    return rpl_loop_ansi(o, initial_cmd, mode_line);   /* Standard/System: ANSI + colori */
 }
 
 int rpl_loop(const rpl_options_t* o, const char* initial_dir)
