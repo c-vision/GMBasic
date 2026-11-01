@@ -14,9 +14,10 @@ static const char* USAGE =
     "  --c99       --ast  -n/-m (vietati: IL)  -e/-executor (verbose)\n"
     "  --no-optimize  --dump-il  -bsp <dir>  -gpm[:mode]  -w <w> -h <h>\n"
     "  --debug-tcp <port>  --run <cmd>  --il-module <dll> (vietato: IL)  -D<name>[=val]\n"
+    "  --engine <c|csharp>  --csharp-cli <path>  (default: c; csharp = gmbcs, opzionale)\n"
     "  env: GMBASIC_DEFINES ; GMBASIC_GPM\n"
     "Comandi REPL: QUIT EXIT CLS PROMPT HELP LIST EDIT NEW AUTO SAVE LOAD DELETE DEL RENUM\n"
-    "  SAMPLE COMPILE BSP RUN EXEC LOADPRG PRGINFO AST DASM IL GPM LS CD WHERE WH\n"
+    "  SAMPLE COMPILE BSP RUN EXEC LOADPRG PRGINFO AST DASM IL PCODE GPM LS CD WHERE WH\n"
     "  RN RENAME RM DL DELF CP COPY DP DUPLICATE BL BACKUP DEPLOY CONVERT BATCH CONVFMT\n"
     "  WEB2MD PROVIDERS DEP PACKAGE HF MLX ML AIPATH\n";
 

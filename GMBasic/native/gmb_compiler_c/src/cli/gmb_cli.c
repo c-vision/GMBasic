@@ -1006,6 +1006,8 @@ int main(int argc, char** argv) {
      * `gmb eval "<istruzioni>"`. */
     if (!strcmp(o.command, "dump") || !strcmp(o.command, "eval")) {
         gmb_cli_set_defines(argc, argv);
+        for (int i = 2; i < argc; i++)
+            if (!strcmp(argv[i], "--quiet") || !strcmp(argv[i], "-q")) gmb_cli_set_quiet(1);
     }
     if (!strcmp(o.command, "dump")) {
         if (argc < 4) { fprintf(stderr, "uso: gmb dump ast|chunk|c|disasm <file.bas> [--out <file>]\n"); return 2; }
@@ -1043,6 +1045,7 @@ int main(int argc, char** argv) {
         const char* a = argv[i];
         if (!strcmp(a, "--json")) { o.json = 1; continue; }
         if (!strcmp(a, "--strict")) { o.strict = 1; continue; }
+        if (!strcmp(a, "--quiet") || !strcmp(a, "-q")) { o.quiet = 1; continue; }
         if (!strcmp(a, "--all")) { o.all = 1; continue; }
         if (!strcmp(a, "--interactive")) { o.interactive = 1; continue; }
         if (!strcmp(a, "--heavy")) { o.heavy = 1; continue; }
@@ -1145,11 +1148,13 @@ int main(int argc, char** argv) {
             else fprintf(stderr, "%s: %s: %s\n", d->file,
                          d->is_error ? "errore" : "avviso", d->message);
         }
-        if (entry) fprintf(stderr, "gmb %s: entry %s\n", o.command, entry);
-        fprintf(stderr, "gmb %s: %d sorgenti, %d moduli, %d errori, %d avvisi — %s\n",
-                o.command, sources, modules, diag_errors(&diags), warnings,
-                (rc == 0 && errors == 0) ? "OK" : "FALLITO");
-        if (exe[0]) fprintf(stderr, "gmb: %s %s\n", is_lib ? "libreria" : "eseguibile", exe);
+        if (!o.quiet) {
+            if (entry) fprintf(stderr, "gmb %s: entry %s\n", o.command, entry);
+            fprintf(stderr, "gmb %s: %d sorgenti, %d moduli, %d errori, %d avvisi — %s\n",
+                    o.command, sources, modules, diag_errors(&diags), warnings,
+                    (rc == 0 && errors == 0) ? "OK" : "FALLITO");
+            if (exe[0]) fprintf(stderr, "gmb: %s %s\n", is_lib ? "libreria" : "eseguibile", exe);
+        }
     }
 
     if (rc == 0 && errors > 0) rc = 2;

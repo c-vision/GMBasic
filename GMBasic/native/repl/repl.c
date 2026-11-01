@@ -141,14 +141,57 @@ int rpl_gmb_dump_ex(const char* what, const char* file, const char* out, const r
     if (!rpl_gmb_cli(cli, sizeof(cli))) { fprintf(stderr, "?gmb (CLI compilatore C) non trovato\n"); return 1; }
     char defs[1024]; rpl_defines_args(defs, sizeof(defs), o);
     char cmd[6144];
-    if (out) snprintf(cmd, sizeof(cmd), "\"%s\" dump %s \"%s\" --out \"%s\"%s", cli, what, file, out, defs);
-    else     snprintf(cmd, sizeof(cmd), "\"%s\" dump %s \"%s\"%s", cli, what, file, defs);
+    /* --quiet: il compilatore non deve sporcare lo stdout della REPL ("chunk -> …"). */
+    if (out) snprintf(cmd, sizeof(cmd), "\"%s\" dump %s \"%s\" --out \"%s\" --quiet%s", cli, what, file, out, defs);
+    else     snprintf(cmd, sizeof(cmd), "\"%s\" dump %s \"%s\" --quiet%s", cli, what, file, defs);
     int rc = system(cmd);
     return WIFEXITED(rc) ? WEXITSTATUS(rc) : 1;
 }
 
 int rpl_gmb_dump(const char* what, const char* file, const char* out)
 { return rpl_gmb_dump_ex(what, file, out, NULL); }
+
+/* ── Engine C# (gmbcs), OPZIONALE: parità totale mentre GMBasicSharp esiste ─────────────
+ * La REPL non linka il mondo C#: lo pilota come processo, con lo stesso contratto del CLI
+ * `gmb`. Con --engine=c (default) nessun comando tocca gmbcs. */
+int rpl_engine_cs(const rpl_options_t* o)
+{ return o && o->engine && strcmp(o->engine, "csharp") == 0; }
+
+const char* rpl_cs_cli(const rpl_options_t* o, char* out, size_t cap)
+{
+    if (o && o->csharp_cli && *o->csharp_cli && access(o->csharp_cli, X_OK) == 0) { snprintf(out, cap, "%s", o->csharp_cli); return out; }
+    static const char* cands[] = {
+        "GMBasicSharp/CompilerCli/bin/Debug/net10.0/gmbcs",
+        "../GMBasicSharp/CompilerCli/bin/Debug/net10.0/gmbcs",
+        "../../GMBasicSharp/CompilerCli/bin/Debug/net10.0/gmbcs",
+        NULL
+    };
+    for (int i = 0; cands[i]; i++) if (access(cands[i], X_OK) == 0) { snprintf(out, cap, "%s", cands[i]); return out; }
+    char root[2048];
+    resolve_repo_path(root, sizeof(root), "GMBasicSharp/CompilerCli/bin/Debug/net10.0/gmbcs");
+    if (access(root, X_OK) == 0) { snprintf(out, cap, "%s", root); return out; }
+    return NULL;
+}
+
+int rpl_cs_cmd(const char* sub, const char* arg, const char* extra, const rpl_options_t* o)
+{
+    char cli[2048];
+    if (!rpl_cs_cli(o, cli, sizeof(cli))) {
+        fprintf(stderr, "?gmbcs (engine C#) non trovato: usa --engine=c oppure --csharp-cli <path>\n");
+        return 127;
+    }
+    char defs[1024]; rpl_defines_args(defs, sizeof(defs), o);
+    char cmd[8192];
+    snprintf(cmd, sizeof(cmd), "\"%s\" %s \"%s\"%s%s", cli, sub, arg ? arg : "", extra ? extra : "", defs);
+    int rc = system(cmd);
+    return WIFEXITED(rc) ? WEXITSTATUS(rc) : 1;
+}
+
+/* Un file sul motore selezionato (AST/DASM): stessa forma di output del CLI scelto. */
+static int rpl_ast_one(const char* file, const rpl_options_t* o)
+{ return rpl_engine_cs(o) ? rpl_cs_cmd("dump ast", file, NULL, o) : rpl_gmb_dump("ast", file, NULL); }
+static int rpl_dasm_one(const char* file, const rpl_options_t* o)
+{ return rpl_engine_cs(o) ? rpl_cs_cmd("dump disasm", file, NULL, o) : rpl_gmb_dump("disasm", file, NULL); }
 
 /* Percorso di gmb_vm_host (unica risoluzione lato REPL: prima era in executor.c).
  * Ordine: GMBASIC_VM_HOST (harness) → <repo>/GMBasic/native/gmb_vm_c/build → CWD relativo. */
@@ -286,7 +329,7 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
             }
             if (strcasecmp(topic, "COMMANDS") == 0) {
                 printf("Comandi: QUIT EXIT CLS PROMPT HELP LIST EDIT NEW AUTO SAVE LOAD DELETE DEL RENUM\n"
-                       "  SAMPLE COMPILE BSP RUN EXEC LOADPRG PRGINFO AST DASM IL GPM LS CD WHERE WH\n"
+                       "  SAMPLE COMPILE BSP RUN EXEC LOADPRG PRGINFO AST DASM IL PCODE GPM LS CD WHERE WH\n"
                        "  GREP (RG) RN RENAME RM DL DELF CP COPY DP DUPLICATE BL BACKUP DEPLOY CONVERT BATCH CONVFMT\n"
                        "  WEB2MD PROVIDERS DEP PACKAGE HF MLX ML AIPATH SET STATUS DEBUG BREAK CLEAR STEP\n"
                        "  CONT TRACE WATCH UNWATCH PALETTE\n"
@@ -369,8 +412,14 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
                 }
             }
             if (getenv("GMBASIC_DEBUG")) fprintf(stderr, "[RUN] cmd='%s' args='%s' file='%s'\n", cmd, args, file);
-            if (o->backend == RPL_VMC) { int rc = rpl_run_vmc(file, o); if (rc != 0) printf("[VMC ERROR] exit %d\n", rc); }
-            else { int rc = rpl_run_c99(file, o); printf(rc == 0 ? "[C99 OK]\n" : "[C99 ERROR] exit %d\n", rc); }
+            if (rpl_engine_cs(o)) {
+                /* Engine C#: VMC → P-Code (.prg, in-process), C99 → IL. Same command, same output. */
+                const char* e = (o->backend == RPL_VMC) ? " --engine pcode" : " --engine il";
+                int rc = rpl_cs_cmd("run", file, e, o);
+                if (rc != 0) printf("[CS ERROR] exit %d\n", rc);
+            }
+            else if (o->backend == RPL_VMC) { int rc = rpl_run_vmc(file, o); if (rc != 0) printf("[VMC ERROR] exit %d\n", rc); }
+            else { int rc = rpl_run_c99(file, o); if (rc != 0) printf("[C99 ERROR] exit %d\n", rc); }   /* successo: solo output del programma */
             goto done;
         }
         if (strcasecmp(cmd, "LIBS") == 0) {
@@ -393,6 +442,17 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
         if (strcasecmp(cmd, "COMPILE") == 0) {
             /* F2: si pilota il CLI del compilatore, non si linka il front-end. */
             char out[1024];
+            if (rpl_engine_cs(o)) {
+                /* Engine C#: VMC → P-Code (.prg), C99 → eseguibile IL (managed). */
+                char dir[1024];
+                snprintf(dir, sizeof(dir), "/tmp/gmb_compile_%ld", (long)getpid());
+                char extra[1400];
+                snprintf(extra, sizeof(extra), " --target %s --out \"%s\"",
+                         o->backend == RPL_VMC ? "pcode" : "il", dir);
+                int rc = rpl_cs_cmd("build", args, extra, o);
+                if (rc != 0) printf("?compilazione fallita (%d)\n", rc);
+                goto done;
+            }
             snprintf(out, sizeof(out), "/tmp/gmb_compile_%ld.%s", (long)getpid(), o->backend == RPL_VMC ? "chunk" : "c");
             int rc = rpl_gmb_dump(o->backend == RPL_VMC ? "chunk" : "c", args, out);
             printf(rc == 0 ? "compilato -> %s\n" : "?compilazione fallita (%d)\n", out, rc);
@@ -789,7 +849,7 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
                 char line[2048]; int ok = 0, fail = 0;
                 while (fgets(line, sizeof(line), fp)) {
                     line[strcspn(line, "\r\n")] = 0; if (!line[0]) continue;
-                    int rc = rpl_gmb_dump("ast", line, NULL);
+                    int rc = rpl_ast_one(line, o);
                     if (rc == 0) { ok++; if (strcasecmp(a1, "ALL") == 0) printf("OK   %s\n", line); }
                     else { fail++; printf("FAIL %s\n", line); if (stop_on_err) break; }
                 }
@@ -808,7 +868,7 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
                 FILE* fp2 = popen(findcmd2, "r");
                 if (fp2) { char found[2048]; if (fgets(found, sizeof(found), fp2)) { found[strcspn(found, "\r\n")] = 0; snprintf(afile, sizeof(afile), "%s", found); } pclose(fp2); }
             }
-            rpl_gmb_dump("ast", afile, NULL);
+            rpl_ast_one(afile, o);
             goto done;
         }
         if (strcasecmp(cmd, "PRGINFO") == 0) {
@@ -840,6 +900,7 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
                 printf("PRGINFO %s: OK=%d FAIL=%d\n", a1, ok, fail);
                 goto done;
             }
+            if (rpl_engine_cs(o)) { rpl_cs_cmd("prginfo", args, NULL, o); goto done; }
             gmb_prginfo(args); goto done;
         }
         if (strcasecmp(cmd, "LOADPRG") == 0) { gmb_loadprg(args); goto done; }
@@ -856,7 +917,7 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
                 char line[2048]; int ok = 0, fail = 0;
                 while (fgets(line, sizeof(line), fp)) {
                     line[strcspn(line, "\r\n")] = 0; if (!line[0]) continue;
-                    int rc = rpl_gmb_dump("disasm", line, NULL);
+                    int rc = rpl_dasm_one(line, o);
                     if (rc == 0) { ok++; if (show_ok) printf("OK   %s\n", line); }
                     else { fail++; printf("FAIL %s\n", line); if (stop_on_err) break; }
                 }
@@ -865,25 +926,29 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
                 goto done;
             }
             size_t al = strlen(a1);
-            if (al > 6 && strcasecmp(a1 + al - 6, ".chunk") == 0) { gmb_dasm(a1); goto done; }
-            rpl_gmb_dump("disasm", a1[0] ? a1 : args, NULL);
+            if (!rpl_engine_cs(o) && al > 6 && strcasecmp(a1 + al - 6, ".chunk") == 0) { gmb_dasm(a1); goto done; }
+            rpl_dasm_one(a1[0] ? a1 : args, o);
             goto done;
         }
         if (strcasecmp(cmd, "IL") == 0) {
-            /* Engine C# (opzionale): finche' c'e', l'IL si ottiene dal suo CLI.
-             * Senza engine il comando lo dice e il resto del mondo C resta intatto. */
+            /* IL appartiene SOLO al mondo C#: lo produce `gmbcs dump il` (headless).
+             * Quando GMBasicSharp viene eliminato (F5) il comando esce dalla superficie. */
             char cli_cs[2048];
-            const char* cs = getenv("GMBASIC_CSHARP_CLI");
-            if (!cs) {
-                const char* cands[] = { "GMBasicSharp/REPL/bin/Debug/net10.0/REPL.dll", "../GMBasicSharp/REPL/bin/Debug/net10.0/REPL.dll", NULL };
-                for (int i = 0; cands[i]; i++) if (access(cands[i], R_OK) == 0) { cs = cands[i]; break; }
+            if (!rpl_cs_cli(o, cli_cs, sizeof(cli_cs))) {
+                printf("(IL: engine C# non disponibile — nel mondo C usa DASM/PCODE)\n");
+                goto done;
             }
-            if (!cs) { printf("(IL: engine C# non disponibile — nel mondo C usa DASM sul chunk)\n"); goto done; }
-            snprintf(cli_cs, sizeof(cli_cs), "%s", cs);
-            char cmd3[4096];
-            snprintf(cmd3, sizeof(cmd3), "dotnet \"%s\" --dump-il \"%s\" 2>&1", cli_cs, args);
-            int rc = system(cmd3);
-            if (rc != 0) printf("(IL: il CLI C# non ha prodotto il dump)\n");
+            if (rpl_cs_cmd("dump il", args, NULL, o) != 0) printf("(IL: il CLI C# non ha prodotto il dump)\n");
+            goto done;
+        }
+        if (strcasecmp(cmd, "PCODE") == 0) {
+            /* P-Code appartiene al mondo C# (PCodeVM): `gmbcs dump pcode`. */
+            char cli_cs[2048];
+            if (!rpl_cs_cli(o, cli_cs, sizeof(cli_cs))) {
+                printf("(PCODE: engine C# non disponibile — nel mondo C usa DASM)\n");
+                goto done;
+            }
+            if (rpl_cs_cmd("dump pcode", args, NULL, o) != 0) printf("(PCODE: il CLI C# non ha prodotto il dump)\n");
             goto done;
         }
         if (strcasecmp(cmd, "WH") == 0) { printf("%s\n", getcwd(line, sizeof(line))); goto done; }
@@ -968,11 +1033,15 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
             goto done;
         }
         if (strcasecmp(cmd, "EVAL") == 0) {
-            /* Valutazione: la fa il COMPILATORE (`gmb eval`), non la REPL. */
+            /* EVAL = valutazione di uno SNIPPET BASIC (l'AI Eval Harness si chiama AIBENCH). */
+            if (rpl_engine_cs(o)) {
+                if (rpl_cs_cmd("eval", args, NULL, o) != 0) fprintf(stderr, "?EVAL: errore\n");
+                goto done;
+            }
             char cli[2048];
             if (!rpl_gmb_cli(cli, sizeof(cli))) { fprintf(stderr, "?gmb (CLI compilatore C) non trovato\n"); goto done; }
             char cmd2[4096];
-            snprintf(cmd2, sizeof(cmd2), "\"%s\" eval \"%s\"", cli, args);
+            snprintf(cmd2, sizeof(cmd2), "\"%s\" eval \"%s\" --quiet", cli, args);
             int rc = system(cmd2);
             if (rc != 0) fprintf(stderr, "?EVAL: errore (%d)\n", WIFEXITED(rc) ? WEXITSTATUS(rc) : 1);
             goto done;

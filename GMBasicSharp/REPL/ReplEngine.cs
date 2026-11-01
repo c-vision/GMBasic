@@ -223,7 +223,7 @@ public class ReplEngine
             ["GRAPH"] = HandleGraphAsync,
             ["BRAIN"] = HandleBrainAsync,
             ["FIXTURES"] = HandleFixturesAsync,
-            ["EVAL"] = HandleEvalAsync,
+            ["AIBENCH"] = HandleAiBenchAsync,   // ex EVAL (l'EVAL BASIC è dello snippet, motore C)
         };
         InitHelp();
     }
@@ -3667,17 +3667,17 @@ public class ReplEngine
     // ── BRAIN (Second Brain): USE/DETACH/LIST/INFO/INSTALL/EXPORT/SIGN ─────
     // La costruzione dei cervelli resta a RAG BUILD/GRAPH BUILD. Qui si collegano
     // (USE), si importano da zip (INSTALL), si esportano (EXPORT), si firmano (SIGN).
-    /// <summary>EVAL [RUN] [path] — Eval Harness (M6): esegue le suite metriche
+    /// <summary>AIBENCH [RUN] [path] — Eval Harness AI (M6): esegue le suite metriche
     /// (llm.tokps, rag.ndcg, team.acc, credit.blocked) e scrive eval_report.json se path dato.
     /// Fixture deterministico se nessun provider LLM attivo (mai rete implicita).</summary>
-    private Task HandleEvalAsync(string args, CancellationToken __)
+    private Task HandleAiBenchAsync(string args, CancellationToken __)
     {
         var parts = ParseArgs(args);
         var fixture = Basic.AI.Rag.LlmCompleterResolver.Default is null;
         string? path = null;
         var i = parts.Count > 0 && parts[0].Equals("RUN", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
         if (i < parts.Count) path = parts[i];
-        Out.WriteLine($"EVAL RUN (fixture={fixture})...");
+        Out.WriteLine($"AIBENCH RUN (fixture={fixture})...");
         try
         {
             var json = Basic.AI.Eval.EvalHarness.RunAll(path, fixture: fixture);
@@ -3696,7 +3696,7 @@ public class ReplEngine
         }
         catch (Exception ex)
         {
-             WriteError($"?EVAL fallito: {ex.Message}");
+             WriteError($"?AIBENCH fallito: {ex.Message}");
          }
          return Task.CompletedTask;
      }

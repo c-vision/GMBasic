@@ -44,6 +44,18 @@ int rpl_parse_args(int argc, char** argv, rpl_options_t* o)
         else { fprintf(stderr, "?--backend sconosciuto: %s (vmc|c99)\n", backend_flag); return 1; }
     }
 
+    /* --engine c|csharp (anche --engine=…): sceglie il compilatore pilotato. */
+    const char* eng = flag_value(a, n, "--engine");
+    if (!eng)
+        for (int i = 0; i < n; i++)
+            if (strncmp(a[i], "--engine=", 9) == 0) eng = a[i] + 9;
+    if (eng) {
+        if (strcmp(eng, "c") == 0) o->engine = "c";
+        else if (strcmp(eng, "csharp") == 0 || strcmp(eng, "cs") == 0) o->engine = "csharp";
+        else { fprintf(stderr, "?--engine sconosciuto: %s (c|csharp)\n", eng); return 1; }
+    } else o->engine = "c";
+    o->csharp_cli = flag_value(a, n, "--csharp-cli");
+
     o->no_console = flag_present(a, n, "-noconsole", NULL);
     if (flag_present(a, n, "-c", "-console")) o->use_sdl = false;
     o->use_system_console = flag_present(a, n, "-s", NULL);

@@ -39,6 +39,11 @@ typedef struct rpl_options {
     const char* run_command;
     const char* defines[64];
     int defines_count;
+    /* Engine del compilatore: "c" (default, gmb) oppure "csharp" (gmbcs, opzionale).
+     * Parità totale mentre GMBasicSharp esiste (TODO §6, F4); con --engine=c la REPL
+     * non tocca il mondo C# per nessun comando. */
+    const char* engine;
+    const char* csharp_cli;   /* --csharp-cli <path> (altrimenti scoperta standard) */
 } rpl_options_t;
 
 /* Parsa la CLI (tutti i flag di Arguments.cs, vmc|c99). Ritorna 0 ok, !=0 errore. */
@@ -96,6 +101,12 @@ int gmb_dasm(const char* file);
 const char* rpl_gmb_cli(char* out, size_t cap);
 int rpl_gmb_dump(const char* what, const char* file, const char* out);
 int rpl_gmb_dump_ex(const char* what, const char* file, const char* out, const rpl_options_t* o);
+/* Engine C# opzionale (gmbcs): 1 se selezionato con --engine=csharp. */
+int rpl_engine_cs(const rpl_options_t* o);
+/* Percorso di gmbcs (--csharp-cli o scoperta standard). NULL se assente. */
+const char* rpl_cs_cli(const rpl_options_t* o, char* out, size_t cap);
+/* Esegue `gmbcs <sub> "<arg>" <extra>`; 0 = ok. Stampa l'errore se il CLI manca. */
+int rpl_cs_cmd(const char* sub, const char* arg, const char* extra, const rpl_options_t* o);
 const char* rpl_resolve_vm_host(void);
 /* F3b: comandi di pacchetto nel mondo C (manifest/keyring/cache). */
 int rpl_pkg_cmd(const char* cmd, const char* args);

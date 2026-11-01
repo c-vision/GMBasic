@@ -34,5 +34,6 @@
     <Project Path="modules/Database/Database.csproj" />
   </Folder>
   <Project Path="Executor/Executor.csproj" />
+  <Project Path="CompilerCli/CompilerCli.csproj" />
   <Project Path="REPL/REPL.csproj" />
 </Solution>
