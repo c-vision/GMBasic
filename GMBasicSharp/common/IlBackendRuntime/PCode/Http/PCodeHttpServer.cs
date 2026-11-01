@@ -159,6 +159,9 @@ internal static class PCodeHttpServer
                 var response = new PCodeHttpResponse();
                 // Streaming (chunked): il codice BASIC scrive sul socket mentre gira.
                 response.AttachStream(stream, serverToken, server.Config.EnableKeepAlive);
+                // Range della richiesta: serve a res.SendFile per servire una fetta (206).
+                response.AttachRequestInfo(
+                    request.Headers.TryGetPropertyValue("Range", out var reqRange) ? reqRange?.ToString() : null);
 
                 // IP allow/block (HTTP CONFIG AllowedIPs/BlockedIPs — CIDR IPv4/IP singoli)
                 var blocked = !CommonLib.Http.HttpSecurity.IpAllowed(remoteIp, server.Config.AllowedIPs, server.Config.BlockedIPs);

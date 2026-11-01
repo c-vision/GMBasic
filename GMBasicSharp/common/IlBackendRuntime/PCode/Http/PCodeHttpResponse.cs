@@ -80,6 +80,13 @@ internal sealed class PCodeHttpResponse
     public static IDisposable UseSink(CommonLib.Http.HttpStreamSink? sink)
         => CommonLib.Http.HttpStreamAmbient.Use(sink);
 
+    /* Range della RICHIESTA (per res.SendFile): il download di un archivio deve poter
+     * riprendere da dove si era interrotto. Lo deposita il dispatch, come il sink di
+     * streaming — la risposta non vede la richiesta. */
+    private string? _requestRange;
+
+    internal void AttachRequestInfo(string? rangeHeader) { _requestRange = rangeHeader; }
+
     /// <summary>Aggancia il trasporto della connessione (il loop lo fa prima del dispatch).</summary>
     internal void AttachSink(CommonLib.Http.HttpStreamSink sink) => _sink = sink;
 
@@ -248,7 +255,12 @@ internal sealed class PCodeHttpResponse
     public void SendFile(string path, string? contentType = null)
     {
         byte[] bytes;
-        try { bytes = File.ReadAllBytes(path); }
+        long total;
+        try
+        {
+            total = new FileInfo(path).Length;
+            bytes = File.ReadAllBytes(path);
+        }
         catch (Exception)
         {
             /* Messaggio FISSO (parità bit-exact con il runtime C gmb_http_response_send_file e
@@ -256,7 +268,26 @@ internal sealed class PCodeHttpResponse
             Complete(Encoding.UTF8.GetBytes("500 SendFile: file non leggibile"), "text/plain; charset=utf-8", 500);
             return;
         }
-        Complete(bytes, contentType ?? GuessContentType(path));
+        var ct = contentType ?? GuessContentType(path);
+        // Accept-Ranges sempre: dice al client che il download è riprendibile.
+        SetHeader("Accept-Ranges", "bytes");
+        // Range (RFC 9110): stessa logica managed dei file statici (CommonLib.Http.HttpRange).
+        var kind = CommonLib.Http.HttpRange.Parse(_requestRange, total, out var start, out var end);
+        if (kind == CommonLib.Http.HttpRangeKind.Unsatisfiable)
+        {
+            SetHeader("Content-Range", $"bytes */{total}");
+            Complete([], "text/plain; charset=utf-8", 416);
+            return;
+        }
+        if (kind == CommonLib.Http.HttpRangeKind.Valid)
+        {
+            SetHeader("Content-Range", $"bytes {start}-{end}/{total}");
+            var slice = new byte[end - start + 1];
+            Array.Copy(bytes, start, slice, 0, slice.Length);
+            Complete(slice, ct, 206);
+            return;
+        }
+        Complete(bytes, ct);
     }
 
     /// <summary>Content-type minimo per estensione (ZIP del registry, HTML delle BSP, ...).</summary>

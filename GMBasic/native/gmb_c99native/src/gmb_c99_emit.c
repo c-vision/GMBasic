@@ -16094,6 +16094,9 @@ static const char* http_route_wrapper_for(ctx_t* c, fn_info_t* fn) {
      * viaggia nel dict res, non in TLS. Senza questo, res.StartStream/Write non hanno dove
      * scrivere su C99Native (risposta bufferizzata, SSE impossibile). */
     sb_put(w, "    if (req->stream_handle) gmb_val_dict_set(_res, \"__stream_handle\", gmb_make_val_double((double)req->stream_handle));\n");
+    /* Range della richiesta → res.SendFile serve una fetta (206): stesso canale del sink
+     * di streaming, perché il wrapper gira su un task GPM. */
+    sb_put(w, "    for (int _ri = 0; _ri < req->header_count; _ri++) { if (req->header_names[_ri] && strcasecmp(req->header_names[_ri], \"Range\") == 0 && req->header_values[_ri] && *req->header_values[_ri]) { gmb_val_dict_set(_res, \"__range\", gmb_make_val_string(req->header_values[_ri])); break; } }\n");
     sb_printf(w, "    %s_t* a = (%s_t*)calloc(1, sizeof(%s_t));\n", wrap, wrap, wrap);
     sb_put(w, "    a->req = _req; a->res = _res;\n");
     if (fn->n_params >= 3) {
@@ -16250,6 +16253,9 @@ static const char* http_mw_wrapper_for(ctx_t* c, fn_info_t* fn) {
      * viaggia nel dict res, non in TLS. Senza questo, res.StartStream/Write non hanno dove
      * scrivere su C99Native (risposta bufferizzata, SSE impossibile). */
     sb_put(w, "    if (req->stream_handle) gmb_val_dict_set(_res, \"__stream_handle\", gmb_make_val_double((double)req->stream_handle));\n");
+    /* Range della richiesta → res.SendFile serve una fetta (206): stesso canale del sink
+     * di streaming, perché il wrapper gira su un task GPM. */
+    sb_put(w, "    for (int _ri = 0; _ri < req->header_count; _ri++) { if (req->header_names[_ri] && strcasecmp(req->header_names[_ri], \"Range\") == 0 && req->header_values[_ri] && *req->header_values[_ri]) { gmb_val_dict_set(_res, \"__range\", gmb_make_val_string(req->header_values[_ri])); break; } }\n");
     sb_printf(w, "    %s_t* a = (%s_t*)calloc(1, sizeof(%s_t));\n", wrap, wrap, wrap);
     sb_put(w, "    a->req = _req; a->res = _res;\n");
     sb_put(w, "    a->step = req->chain_step_id;\n");
