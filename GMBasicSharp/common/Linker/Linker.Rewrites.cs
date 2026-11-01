@@ -620,6 +620,20 @@ public static partial class Linker
                         $"[REWRITE-LET] Assegnazione a '{symbol.OriginalName}' (ID {targetSymbolId}). Tipo corrente: {symbol.DataType}, Tipo inferito valore: {inferredType}",
                         log);
 
+                    /* Suffisso tipo sulla scrittura (`S$ = …` su una variabile numerica,
+                     * `n% = …` su una stringa): il suffisso non fa parte del nome, quindi la
+                     * scrittura sarebbe ambigua → errore esplicito, PRIMA che la promozione a
+                     * variante (ANY) la renda silenziosa. */
+                    switch (rewrittenTarget)
+                    {
+                        case VariableTarget vtSfx:
+                            CheckSuffixWriteCompatibility(program, vtSfx.NameSuffixed, targetSymbolId);
+                            break;
+                        case ArrayElementTarget aetSfx:
+                            CheckSuffixWriteCompatibility(program, aetSfx.NameSuffixed, targetSymbolId);
+                            break;
+                    }
+
                     if (symbol.Has(SymbolFlags.IsParameter | SymbolFlags.IsByRef) ||
                         symbol.Has(SymbolFlags.IsConst))
                     {

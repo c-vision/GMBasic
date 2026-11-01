@@ -3560,6 +3560,58 @@ public static partial class Linker
         _ => 0,
     };
 
+    /// <summary>
+    /// Tipo implicito dal suffisso BASIC del nome (`$` STRING, `%` INTEGER, `&` LONG,
+    /// `!` SINGLE, `#` DOUBLE), o null se il nome non ha suffisso.
+    /// </summary>
+    private static DataType? SuffixImpliedType(Token? nameSuffixed)
+    {
+        var lex = nameSuffixed?.Lexeme;
+        if (string.IsNullOrEmpty(lex) || lex.Length < 2) return null;
+        return lex[^1] switch
+        {
+            '$' => new StringType(),
+            '%' => new IntegerType(),
+            '&' => new LongType(),
+            '!' => new SingleType(),
+            '#' => new DoubleType(),
+            _ => null,
+        };
+    }
+
+    /// <summary>
+    /// Il suffisso tipo NON fa parte del nome: `S` e `S$` sono la STESSA variabile (il
+    /// suffisso è un'annotazione di tipo). Quindi una SCRITTURA fatta con un suffisso che
+    /// implica una famiglia diversa da quella dichiarata sarebbe ambigua (stringa scritta in
+    /// un contatore, numero scritto in una stringa): è un errore esplicito, non una
+    /// conversione silenziosa. Su una LETTURA il suffisso resta decorativo (vince il tipo
+    /// della variabile). Decisione 2026-11-01 (vedi AiWiki
+    /// Bugs/(open) - Variabile-Con-Suffisso-E-Precisione-SINGLE.md).
+    /// </summary>
+    private static void CheckSuffixWriteCompatibility(BasicProgram program, Token? nameSuffixed, int symbolId)
+    {
+        if (symbolId < 0 || nameSuffixed is null) return;
+        var implied = SuffixImpliedType(nameSuffixed);
+        if (implied is null) return;
+        var sym = program.Symbols.GetSymbol(symbolId);
+        var declared = sym.DataType;
+        if (declared is null or InferredType) return;
+        // Array/collezione: il suffisso descrive l'ELEMENTO (g_k$, g_k%).
+        if (declared is ArrayType arr) declared = arr.ElementType;
+        if (declared is null or InferredType) return;
+        int famDecl = TypeFamily(declared);
+        int famSuf = TypeFamily(implied);
+        if (famDecl == 0 || famSuf == 0 || famDecl == famSuf) return;
+        static string FamWord(int f) => f == 2 ? "STRING" : "numerico";
+        // Messaggio ASCII e IDENTICO a quello della gamba C99 (gmb_c99_emit.c): i test
+        // `' TAG: expected-error` confrontano il testo esatto su tutte e 4 le gambe.
+        throw CreateError(nameSuffixed,
+            $"La variabile '{sym.OriginalName}' e' di tipo {FamWord(famDecl)}, ma il nome '{nameSuffixed.Lexeme}' ha il suffisso di tipo {FamWord(famSuf)}: " +
+            "sono la STESSA variabile (il suffisso non fa parte del nome), quindi la scrittura e' ambigua. " +
+            "Usare un nome distinto o togliere il suffisso.",
+            ErrorCode.TypeMismatch);
+    }
+
     private static DeclarationStmt RegisterGlobalVariables(BasicProgram program, DeclarationStmt declStmt,
         bool bindExpressions, bool isStrict)
     {

@@ -4386,6 +4386,33 @@ static int prop_let_assign(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
         if (s->target) {
             var_t* v = vars_find(scope, s->target);
             if (!v) v = vars_find(&c->globals, s->target);
+            /* Suffisso tipo sul target (`S$ = …` su una variabile numerica, `n% = …` su una
+             * stringa): il suffisso NON fa parte del nome (S e S$ sono la stessa variabile),
+             * quindi la scrittura sarebbe ambigua → errore esplicito, PRIMA che la
+             * propagazione qui sotto la renda silenziosa (parità col linker C#:
+             * CheckSuffixWriteCompatibility). Decisione 2026-11-01. */
+            if (v && s->target && !strchr(s->target, '.') && !v->is_array && !v->gkind
+                && !v->vclass[0] && !v->boxed_val) {
+                size_t tl = strlen(s->target);
+                char last = tl > 1 ? s->target[tl - 1] : 0;
+                int suf_str = (last == '$');
+                int has_suf = (last == '$' || last == '%' || last == '&' || last == '!' || last == '#');
+                if (has_suf) {
+                    char dty[40];
+                    int decl_str = gmb_var_declared_type(c, s->target, dty, sizeof dty)
+                        ? (strcasecmp(dty, "STRING") == 0 || strncasecmp(dty, "STRING *", 8) == 0)
+                        : (v->type == TY_STR);
+                    if (decl_str != suf_str) {
+                        c99_fail(c, s->line,
+                                 "La variabile '%s' e' di tipo %s, ma il nome '%s' ha il suffisso di tipo %s: "
+                                 "sono la STESSA variabile (il suffisso non fa parte del nome), quindi la scrittura e' ambigua. "
+                                 "Usare un nome distinto o togliere il suffisso",
+                                 v->name, decl_str ? "STRING" : "numerico",
+                                 s->target, suf_str ? "STRING" : "numerico");
+                        return 0;
+                    }
+                }
+            }
             if (v && !v->gkind && v->type != TY_STR && etype(c, s->value) == TY_STR) { v->type = TY_STR; changed = 1; }
             /* assegnamento del risultato di una FUNCTION ... AS FUNCTION() → valore funzione */
             if (v && !v->gkind && s->value && s->value->kind == GMB_EXPR_CALL && s->value->var) {
@@ -16856,6 +16883,40 @@ static void st_let_assign(ctx_t* c, gmb_stmt_t* s) {
             ind(c); sb_printf(&c->out, "jmp_buf __res%d;\n", res_guard);
             ind(c); sb_printf(&c->out, "gmb_err_set_resume(&__res%d);\n", res_guard);
             ind(c); sb_printf(&c->out, "if (setjmp(__res%d) != 0) goto __resume_end_%d;\n", res_guard, res_guard);
+        }
+        /* Suffisso tipo BASIC sulla SCRITTURA scalare (`S$ = …`, `n% = …`): il suffisso NON
+         * fa parte del nome (S e S$ sono la stessa variabile), quindi se contraddice il tipo
+         * dichiarato la scrittura sarebbe ambigua → errore esplicito (parità con il linker
+         * C#: CheckSuffixWriteCompatibility). Su una LETTURA il suffisso resta decorativo.
+         * Decisione 2026-11-01. */
+        if (s->target && !s->array_index && !strchr(s->target, '.')) {
+            size_t tl = strlen(s->target);
+            char last = tl > 1 ? s->target[tl - 1] : 0;
+            if (last == '$' || last == '%' || last == '&' || last == '!' || last == '#') {
+                var_t* sv = lookup_var(c, s->target);
+                if (sv && !sv->is_array && !sv->gkind && !sv->vclass[0] && !sv->boxed_val) {
+                    int suf_str = (last == '$');
+                    /* Il tipo AUTOREVOLE è quello DICHIARATO (DIM ... AS ...): la tabella
+                     * `var_t` può essere già stata "sporcata" dal suffisso stesso (il pass di
+                     * registrazione vede `S$ = …` e classifica S come stringa), quindi si
+                     * consulta prima `var_type_text` e solo in mancanza si usa `sv->type`. */
+                    char dty[40];
+                    int have_decl = gmb_var_declared_type(c, s->target, dty, sizeof dty);
+                    int decl_str = have_decl
+                        ? (strcasecmp(dty, "STRING") == 0 || strncasecmp(dty, "STRING *", 8) == 0)
+                        : (sv->type == TY_STR);
+                    if (decl_str != suf_str) {
+                        c99_fail(c, s->line,
+                                 "La variabile '%s' e' di tipo %s, ma il nome '%s' ha il suffisso di tipo %s: "
+                                 "sono la STESSA variabile (il suffisso non fa parte del nome), quindi la scrittura e' ambigua. "
+                                 "Usare un nome distinto o togliere il suffisso",
+                                 sv->name, decl_str ? "STRING" : "numerico",
+                                 s->target, suf_str ? "STRING" : "numerico");
+                        res_guard_end(c, res_guard);
+                        return;
+                    }
+                }
+            }
         }
         /* keys = JSON.KEYS(obj): array STRING dinamico → riempie l'array target e la lunghezza
          * compagna (gmb_val_dict_keys_array). Parity emitter C# (Statements.Assignment.cs).
