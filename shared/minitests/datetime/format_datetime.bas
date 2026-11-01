@@ -6,7 +6,7 @@
 ' DATESERIAL + TIMESERIAL (DATEVALUE restituisce solo la data, senza ora) per avere un
 ' oracolo deterministico su tutte e 4 le gambe.
 '
-' EXPECT: d=02/01/2026 03:04:05|date=02/01/2026|iso=2026-01-02T03:04:05|len= 19|month-end=31/01/2026|dtoc=01-02-2026
+' EXPECT: d=02/01/2026 03:04:05|date=02/01/2026|iso=2026-01-02T03:04:05|len= 19|month-end=31/01/2026|dtoc=01-02-2026|serial=46024.000000|pct=4602400.00%|tnum=0.127836|thms=03:04:05
 IMPORT DATETIME
 
 SUB Main()
@@ -32,4 +32,18 @@ SUB Main()
 
   ' (6) forma compatta yyyyMMdd
   PRINT "dtoc="; DATETIME.DTOC(DATETIME.DATEVALUE("2026-01-02"))
+
+  ' (7) maschera NUMERICA ('#'/'0') su un valore DATA/ORA: si formatta il SERIALE OADate,
+  '     come le gambe C (gmb_format: il ramo "custom numeric" precede i token data/ora).
+  '     Prima su IL FORMAT(d, "0.000000") dava "0.000000" (bug aperto 2026-11-01).
+  DIM d2 AS DATE
+  d2 = DATETIME.DATESERIAL(2026, 1, 2)
+  PRINT "serial="; FORMAT(d2, "0.000000")
+  PRINT "pct="; FORMAT(d2, "0.00%")
+
+  ' (8) TIME: seriale = frazione di giornata (0.xxx), come TIMESERIAL delle gambe C
+  DIM t AS TIME
+  t = DATETIME.TIMESERIAL(3, 4, 5)
+  PRINT "tnum="; FORMAT(t, "0.000000")
+  PRINT "thms="; FORMAT(t, "HH:mm:ss")
 END SUB
