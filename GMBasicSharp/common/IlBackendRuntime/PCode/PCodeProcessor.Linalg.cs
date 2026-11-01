@@ -757,7 +757,7 @@ internal sealed partial class PCodeProcessor
     }
 
     /// <summary>WRAP dest, min, max — avvolge (modulo periodico) ogni elemento di dest nel
-    /// range [min, max]. Semantica verificata dallo smoke test LINALG (GM-Basic):
+    /// range [min, max]. Semantica verificata dallo smoke test LINALG (GMBasic):
     /// wrap(x) = min + mod_pos(x - min, max - min), dove mod_pos è sempre non-negativo.
     /// es. wrap(4, 0, 3) = 1; wrap(-1, 0, 3) = 2.</summary>
     private void VectorWrap(object?[] args)

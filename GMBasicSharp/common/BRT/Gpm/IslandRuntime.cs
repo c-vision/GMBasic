@@ -63,7 +63,7 @@ public static class IslandRuntime
     /// Sul retry (dopo risveglio da PCodeScheduler), se il tempo è già scaduto, ritorna
     /// subito senza ribloccare.
     ///
-    /// Porting da GM-Basic (commit 179321a9). Fuori da un'isola (_currentTask non impostato —
+    /// Porting da GMBasic (commit 179321a9). Fuori da un'isola (_currentTask non impostato —
     /// es. SLEEP nel Main() top-level, che il backend IL compila con la STESSA chiamata a
     /// prescindere dal contesto: EmitSleepStatement non distingue "dentro un'isola" da
     /// "top-level", e SetCurrentTask viene chiamato SOLO da IlIslandShimCompiler prima di

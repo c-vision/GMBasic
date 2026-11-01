@@ -502,7 +502,7 @@
       { "name": "text$", "type": "STRING", "description": "La stringa da convertire in kebab-case." }
     ],
     "examples": [
-      { "description": "Generazione di slug URL da titoli.", "code": "Titoli$() = {\"Come Installare GM-Basic 2.0\", \"Guida: Funzioni Finanziarie\", \"FAQ - Domande Frequenti\"}\nFOR I = 0 TO UBOUND(Titoli$())\n  PRINT \"/docs/\"; KEBAB(Titoli$(I))\nNEXT I", "expectedOutput": "/docs/come-installare-gm-basic-2-0\n/docs/guida-funzioni-finanziarie\n/docs/faq-domande-frequenti" }
+      { "description": "Generazione di slug URL da titoli.", "code": "Titoli$() = {\"Come Installare GMBasic 2.0\", \"Guida: Funzioni Finanziarie\", \"FAQ - Domande Frequenti\"}\nFOR I = 0 TO UBOUND(Titoli$())\n  PRINT \"/docs/\"; KEBAB(Titoli$(I))\nNEXT I", "expectedOutput": "/docs/come-installare-gm-basic-2-0\n/docs/guida-funzioni-finanziarie\n/docs/faq-domande-frequenti" }
     ],
     "seeAlso": ["SNAKE", "PASCAL", "CAMEL", "LOWER"],
     "isCommand": false

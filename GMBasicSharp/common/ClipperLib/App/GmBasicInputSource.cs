@@ -6,7 +6,7 @@ using ClipperLib.Clipper;
 namespace ClipperLib.App;
 
 /// <summary>
-/// Adattatore che fa da ponte tra <see cref="IKeyboardService"/> (GM-Basic)
+/// Adattatore che fa da ponte tra <see cref="IKeyboardService"/> (GMBasic)
 /// e <see cref="IInputSource"/> (ClipperLib). Un singolo IKeyboardService
 /// alimenta sia il loop eventi TUI che i comandi BASIC (INKEY$, ON KEY).
 /// </summary>

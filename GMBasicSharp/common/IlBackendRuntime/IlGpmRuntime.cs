@@ -1,6 +1,6 @@
 // FILE: Basic.IlBackend.IlGpmRuntime.cs
 // IL GPM RUNTIME — helper chiamati dal codice stepper generato (vedi IlGpm.cs e
-// AiWiki GM-Basic-ILBackend-GPM-Chunk-State-Machine §11, §16, §26).
+// AiWiki GMBasic-ILBackend-GPM-Chunk-State-Machine §11, §16, §26).
 //
 // I metodi qui sono i "task-aware" che lo stepper CIL usa al posto delle funzioni
 // inline no-task (IslandRuntime.SendInline etc.): leggono/parcheggiano il task sul

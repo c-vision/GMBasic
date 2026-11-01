@@ -168,7 +168,7 @@ public sealed partial class Compiler
                         // campo dinamico (OP_STORE_FIELD): quest'ultimo bypasserebbe del tutto
                         // la logica del setter (es. validazione dell'input), che pero' non
                         // viene mai eseguita finche' non esiste un P-CODE VM runtime (vedi
-                        // 02-Knowledge/GM-Basic-GPM-State-Machine-Patterns.md nel vault) — qui
+                        // 02-Knowledge/GMBasic-GPM-State-Machine-Patterns.md nel vault) — qui
                         // e' comunque la scelta piu' corretta per coerenza futura.
                         // Stack: [..., istanza, valore]. Setter compilato con locali
                         // [0]=SELF, [1]=VALUE — stessa convenzione posizionale di BASE.NEW
@@ -224,12 +224,12 @@ public sealed partial class Compiler
 
     /// <summary>
     /// Compila un TYPE...END TYPE. Genera un descrittore di tipo in fase di compilazione e,
-    /// se il TYPE ha costruttori/metodi/operatori/distruttori (i TYPE in GM-Basic possono
+    /// se il TYPE ha costruttori/metodi/operatori/distruttori (i TYPE in GMBasic possono
     /// averne, non sono semplici struct), compila anche il loro P-Code — senza, un TYPE con
     /// costruttore usato tramite <c>NEW MioTipo(args)</c> non avrebbe MAI un descrittore in
     /// <c>_compiledClassDescriptors</c> (quel dizionario era popolato solo da
     /// VisitClassDefinition), causando "UDT descriptor not found" in VisitNewExpression —
-    /// vedi 02-Knowledge/GM-Basic_Issues.md sessione 2026-07-14 (sessione 4) nel vault.
+    /// vedi 02-Knowledge/GMBasic_Issues.md sessione 2026-07-14 (sessione 4) nel vault.
     /// I TYPE non supportano INHERITS: nessuna V-Table/classe base da gestire, a differenza
     /// di VisitClassDefinition.
     /// </summary>
@@ -248,7 +248,7 @@ public sealed partial class Compiler
         // corretto per il primo/unico campo) ma leggeva usando l'ID globale di X come
         // "offset" (es. 47) — fuori dalle voci di un FieldNames con una manciata di campi, la
         // lookup falliva silenziosamente restituendo null/0 (vedi 02-Knowledge/
-        // GM-Basic-PCODE-UDT-Field-Access-Bug.md nel vault).
+        // GMBasic-PCODE-UDT-Field-Access-Bug.md nel vault).
         var fieldOffsetsInThisUdt = new Dictionary<string, ushort>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var field in udt.Fields)

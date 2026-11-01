@@ -105,7 +105,7 @@ internal readonly struct PCodeHttpRouteMatch(IReadOnlyList<int> middlewareChain,
 /// Router HTTP: proprio lock interno per le mutazioni (AddRoute/AddMiddleware/SetFallback),
 /// MAI per l'intera pipeline di dispatch delle richieste — quella gira in parallelo su piu'
 /// connessioni per design (vedi piano Obsidian, filosofia "lock per sottosistema, non per
-/// richiesta" gia' adottata per i lock database in GM-Basic).
+/// richiesta" gia' adottata per i lock database in GMBasic).
 /// </summary>
 internal sealed class PCodeHttpRouter
 {

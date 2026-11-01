@@ -49,7 +49,7 @@ public sealed partial class Compiler
             RddLockKind.Unlock => SysCall.RDD_UNLOCK,
             _ => SysCall.RDD_RLOCK
         };
-        // GM-Basic: OP_SYSCALL usa EmitSysCall (U16 big-endian), NON un byte singolo —
+        // GMBasic: OP_SYSCALL usa EmitSysCall (U16 big-endian), NON un byte singolo —
         // EmitBytes((byte)syscall, 1) produceva [OP_SYSCALL][syscall][argCount] (3 byte)
         // ma il dispatcher legge [hi][lo][argCount] (4 byte): l'IP si disallineava e il
         // flusso dopo lo statement (es. i PRINT legacy in RDD_Legacy.bas) veniva saltato.

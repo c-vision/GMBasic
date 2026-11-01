@@ -860,7 +860,7 @@ done:
 }
 
 /* Loop REPL DENTRO la finestra SdlConsole. Mirror del vecchio
- * GM-Basic Executor.RunMainLoop(): Show() + DisplayBanner("EMULATED CONSOLE MODE") +
+ * GMBasic Executor.RunMainLoop(): Show() + DisplayBanner("EMULATED CONSOLE MODE") +
  * "READY." + loop PollEvents/ProcessReplInput/Present. L'input arriva dai tasti SDL
  * (gmb_sdl_console_pump -> gmb_gfx_input_push_key); l'output dei comandi è catturato
  * (dup di stdout) e scritto nel buffer della console, così la REPL vive nella finestra. */

@@ -14,7 +14,7 @@ public sealed class RddFieldInfo
     public DataType DataType { get; init; } = new StringType(0);
     public int Length { get; init; }
     public int Offset { get; init; }
-    public int SymbolId { get; init; }  // Per compatibilità con il compilatore GM-Basic
+    public int SymbolId { get; init; }  // Per compatibilità con il compilatore GMBasic
 
     public RddFieldInfo(string name, DataType dataType, int length, int offset, int symbolId = 0)
     {
@@ -55,8 +55,8 @@ public sealed class DbSeekInfo
     public bool Last { get; init; }
 }
 
-/// <summary>Interfaccia unificata per tutti i driver database GM-Basic.
-/// Modellata su XSharp IRdd, adattata al type system e al compilatore GM-Basic.</summary>
+/// <summary>Interfaccia unificata per tutti i driver database GMBasic.
+/// Modellata su XSharp IRdd, adattata al type system e al compilatore GMBasic.</summary>
 public interface IDatabaseDriver
 {
     // ═══════════════════════════════════════════════════════════

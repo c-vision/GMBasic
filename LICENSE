@@ -7,10 +7,8 @@ All Rights Reserved.
 
 "Software" means all files of the GMBasic project in every edition, version
 and distribution form, including without limitation the files contained in
-the repositories:
+the repository:
   https://github.com/c-vision/GMBasic
-  https://github.com/c-vision/GMBasicCommunity
-  https://github.com/c-vision/GMBasicRetro
 and in any future repository or branch of the project, whether private or
 public.
 
@@ -83,7 +81,7 @@ Every copy, fork or Derivative Work MUST:
 - retain all copyright notices;
 - identify Gaetano Minardi as the original author;
 - include a visible link to:
-  https://github.com/c-vision/GMBasicCommunity
+  https://github.com/c-vision/GMBasic
 - carry prominent notices stating that modifications have been made, by whom,
   and on what date.
 
@@ -188,9 +186,9 @@ their sole discretion, reinstate rights upon full cure of the violation.
 
 13. TRADEMARKS
 
-No trademark or branding rights are granted. The names "GMBASIC", "GMBasic",
-"GMBasicCommunity", "GMBasicRetro" and "Gaetano Minardi" may be used only for
-the attribution required by Section 5.
+No trademark or branding rights are granted. The names "GMBASIC", "GMBasic"
+and "Gaetano Minardi" may be used only for the attribution required by
+Section 5.
 
 14. DISCLAIMER
 

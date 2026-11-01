@@ -2,7 +2,7 @@
 // Implementazione reale (SDL2) di IGraphicsService che delega a GraphicsManager
 // (CommonGraphics.Graphics). Usata dal backend IL quando una finestra grafica è
 // attiva (es. runner test_graphics); in headless si usa NullGraphicsService.
-// Riferimento: PCodeVM di GM-Basic che delega ogni SysCall grafica a
+// Riferimento: PCodeVM di GMBasic che delega ogni SysCall grafica a
 // GraphicsManager.Instance.*_GPM.
 
 using System;
@@ -150,7 +150,7 @@ public sealed class SdlGraphicsService : IGraphicsService
     public void CSaveScreen(string path) => SaveScreen(path);
     public void CRestoreScreen(string path) => RestoreScreen(path);
     // PRINT BASIC in modalità grafica: delega a GraphicsManager.PRINT_GPM (come la PCodeVM
-    // di GM-Basic). Il testo si ACCODA (PrintInternal avanza il cursore in X) SENZA \n:
+    // di GMBasic). Il testo si ACCODA (PrintInternal avanza il cursore in X) SENZA \n:
     // il newline lo emette PrintNewLineDispatch (fine del PRINT) — altrimenti ogni PRINT
     // produceva il doppio \n (testo+\n E newline finale) → riga vuota tra le PRINT.
     public void Print(string? text)

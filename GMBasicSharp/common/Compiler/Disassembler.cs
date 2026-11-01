@@ -303,7 +303,7 @@ public static class Disassembler
             // OP_AUDIO_CMD mancava dal case esplicito — stesso formato
             // [opcode][subcode][argCount] di OP_FILE_CMD/OP_NET_CMD/ecc sopra (verificato in
             // Compiler.Audio.cs: EmitBytes(op, subOpCode, argCount)).
-            // Opcode specifici di GM-Basic, non presenti in GMBasicAI.
+            // Opcode specifici di GMBasic, non presenti in GMBasicAI.
             case OpCode.OP_AUDIO_CMD:
                 return SubCommandWithArgCountInstruction<AudioSubOpCode>(instruction.ToString(), chunk, offset, sb);
             case OpCode.OP_FETCH:

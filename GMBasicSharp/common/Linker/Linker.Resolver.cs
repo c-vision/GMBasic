@@ -2994,7 +2994,7 @@ public static partial class Linker
             // --- Clipper @...SAY: risolve le espressioni interne (Row/Col/Expression/Picture).
             // Prima era pass-through → TIME$()/DATE$() inline (builtin con nome Identifier-kind)
             // restavano ArrayAccessExpr non risolti → OP_PUSH_NIL a runtime ("Ora: " vuoto).
-            // Allineato GM-Basic (stesso gap, stessa fix).
+            // Allineato GMBasic (stesso gap, stessa fix).
             case AtSayStmt s:
                 return new AtSayStmt(
                     ResolveExpression(s.Row, program),

@@ -17,7 +17,7 @@ internal sealed partial class PCodeProcessor
 {
     private static double ArgOr(object?[] args, int idx, double def = 0) => idx < args.Length ? SafeDouble(args[idx]) : def;
     private static double[] ToDoubleArray(object? val) {
-        // Flatten ricorsivo (come il ToDoubleArr di GM-Basic): un System.Array multidimensionale
+        // Flatten ricorsivo (come il ToDoubleArr di GMBasic): un System.Array multidimensionale
         // (es. object[,] della FFT) implementa IList, ma list[i] lancia "Array was not a
         // one-dimensional array" (crash AnalysisTests — IFFT(FftRes)). Appiattisce invece
         // qualunque IEnumerable (row-major), esattamente come il repo gemello.

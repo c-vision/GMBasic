@@ -1,5 +1,5 @@
 // FILE: IlProgramCompiler.Gpm.cs
-// PARTIAL — dominio GPM/ON-ERROR/GOSUB dispatch (porting da GM-Basic, chunk dispatch).
+// PARTIAL — dominio GPM/ON-ERROR/GOSUB dispatch (porting da GMBasic, chunk dispatch).
 // Migrato da IlProgramCompiler.cs (2026-08-25 — protocollo 3-step).
 
 using System.Collections.Immutable;
@@ -147,7 +147,7 @@ public sealed partial class IlProgramCompiler
         var dispatchLoopStart = _il.DefineLabel();
         var doneLabel = _il.DefineLabel();
 
-        // BuildDispatchChunks (porting da GM-Basic, vedi AiWiki IL-OnError-Loop-Bug.md):
+        // BuildDispatchChunks (porting da GMBasic, vedi AiWiki IL-OnError-Loop-Bug.md):
         // un chunk per riga NON basta quando una riga contiene un'etichetta A METÀ — il
         // Parser genera etichette sintetiche (FOR_START/FOR_CONTINUE/ecc.) che condividono
         // la riga fisica del FOR/NEXT con statement che NON vanno ri-eseguiti quando il
@@ -429,7 +429,7 @@ public sealed partial class IlProgramCompiler
     /// riga BASIC reale per il PRIMO sotto-segmento di una riga, altrimenti uno stato
     /// sintetico NEGATIVO — vedi <see cref="BuildDispatchChunks"/>); OwnerLine resta SEMPRE
     /// il numero di riga BASIC reale da cui il chunk proviene (mai negativo). Porting
-    /// identico da GM-Basic (vedi AiWiki IL-OnError-Loop-Bug.md).
+    /// identico da GMBasic (vedi AiWiki IL-OnError-Loop-Bug.md).
     /// </summary>
     private sealed record DispatchChunk(int State, int OwnerLine, List<Stmt> Statements);
 
@@ -438,7 +438,7 @@ public sealed partial class IlProgramCompiler
     /// un'etichetta A METÀ — vedi il commento in <see cref="EmitEntryPointWithErrorHandling"/>
     /// e <see cref="DispatchChunk"/>. IL vieta di entrare in una regione protetta se non
     /// dalla sua PRIMA istruzione, quindi ogni etichetta a metà riga diventa l'inizio del
-    /// proprio blocco try/catch indipendente. Porting identico da GM-Basic.
+    /// proprio blocco try/catch indipendente. Porting identico da GMBasic.
     /// </summary>
     private static List<DispatchChunk> BuildDispatchChunks(IReadOnlyList<int> executionOrder, Func<int, List<Stmt>> statementsForLine)
     {
@@ -487,7 +487,7 @@ public sealed partial class IlProgramCompiler
 
     /// <summary>Un statement che, con ON ERROR attivo, termina il chunk per-riga emettendo
     /// già un Leave (GOTO/JUMP/END/STOP/RETURN con dispatch): dopo di esso il Leave finale
-    /// del chunk sarebbe fuori dal blocco try → IL invalido. Porting identico da GM-Basic.</summary>
+    /// del chunk sarebbe fuori dal blocco try → IL invalido. Porting identico da GMBasic.</summary>
     private static bool IsChunkTerminatingStatement(Stmt stmt) =>
         stmt is GotoStmt or JumpStmt or EndStmt or StopStmt or ReturnStmt or EndProcedureStmt;
 

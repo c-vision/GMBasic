@@ -1781,7 +1781,7 @@ private void EmitBrowserHumanScrollCall(BuiltinFunctionCallExpr expr)
     }
 
     /// <summary>Builtin DBF con 0 o 1 argomento (alias opzionale): emette l'argomento (o
-    /// null) e chiama il metodo runtime Dbf* (porting GM-Basic/GMBasicAI).</summary>
+    /// null) e chiama il metodo runtime Dbf* (porting GMBasic/GMBasicAI).</summary>
     private void EmitDbfAliasCall(BuiltinFunctionCallExpr expr, string methodName)
     {
         if (expr.Args.Length > 1)
@@ -1836,7 +1836,7 @@ private void EmitBrowserHumanScrollCall(BuiltinFunctionCallExpr expr)
 
     /// <summary>Chiamata che il linker NON ha risolto (es. builtin DBF/SCREEN/POINT
     /// risolti per nome dal P-Code): dispatch builtin col TokenKind del nome (porting
-    /// GM-Basic — EmitUnresolvedCall).</summary>
+    /// GMBasic — EmitUnresolvedCall).</summary>
     private void EmitUnresolvedCall(UnresolvedCallExpr uce)
     {
         // Diagnostico DISTINTO per esito (mai un NotSupported generico): simbolo non trovato /

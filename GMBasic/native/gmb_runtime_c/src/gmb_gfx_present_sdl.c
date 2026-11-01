@@ -244,7 +244,7 @@ static void ensure_window(int w, int h)
         int logW = gmb_gfx_width(), logH = gmb_gfx_height();
         if (logW <= 0) logW = w;
         if (logH <= 0) logH = h;
-        g_window = SDL_CreateWindow("GM-Basic", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        g_window = SDL_CreateWindow("GMBasic", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                      logW, logH, SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE);
         if (!g_window) { fprintf(stderr, "[gmb_gfx] CreateWindow FAILED: %s\n", SDL_GetError()); fflush(stderr); return; }
         SDL_ShowWindow(g_window);

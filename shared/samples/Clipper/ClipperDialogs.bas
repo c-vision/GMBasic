@@ -5,7 +5,7 @@ SUB Main()
     PRINT "=== Dialog Test ==="
     
     ' ALERT semplice
-    DIM r = ALERT("Benvenuto in GM-Basic!")
+    DIM r = ALERT("Benvenuto in GMBasic!")
     PRINT "Alert mostrato"
     
     ' CONFIRM con risultato

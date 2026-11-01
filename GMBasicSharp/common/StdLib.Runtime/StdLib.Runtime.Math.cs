@@ -8,7 +8,7 @@
 // Nome MathFunctions, non Math: un consumer con ImplicitUsings (quindi "global using System;")
 // avrebbe un riferimento ambiguo fra questa classe e System.Math ad ogni chiamata non qualificata
 // — scoperto scrivendo il primo programma di verifica reale, non a tavolino (vedi
-// GM-Basic-PCode-Testing-Bug-Hunting-Methodology per il principio "scrivi il primo sample
+// GMBasic-PCode-Testing-Bug-Hunting-Methodology per il principio "scrivi il primo sample
 // end-to-end", qui applicato al codice invece che a un test .bas).
 //
 // Namespace Basic.StdLibRuntime (NON Basic.StdLib.Runtime): "Basic.StdLib" è già il nome

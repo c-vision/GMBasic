@@ -19,7 +19,6 @@ In `docs/` only documents and generated report artifacts remain.
 | [`comparison/`](comparison/) | canonical surface ↔ backend comparison: `audit-backends.md`, `audit-stdlib.md`, `recon-stdlib.{md,json}`, `unimplemented-canonical.md`, TokenKind dispatch CSVs, TokenKind refactor TODO | `tools/audit` (`--all`), `tools/basic/gen_command_desc.bas`, `recon_stdlib.py` |
 | [`comparison/manifests/`](comparison/manifests/) | one JSON manifest per backend (`IL`, `PCodeVM`, `VMC`, `C99Native`) with coverage and gap list | `tools/audit` (`--all`) |
 | [`comparison/command_desc.tsv`](comparison/command_desc.tsv) | name → syntax/description index used to generate the `COMMANDS.TXT` blocks | `tools/basic/gen_command_desc.bas` |
-| [`implemented/audit/COMMANDS.txt`](implemented/audit/COMMANDS.txt) | **historical snapshot** of the command catalog. The live catalog is [`COMMANDS.TXT`](../COMMANDS.TXT) at the root (more recent and complete) | — |
 | [`ClipperLib/clipper53.md`](ClipperLib/clipper53.md) | technical reference for the Clipper 5.3 emulation (`ClipperLib.Clipper`: SAY/GET/READ/BOX/INKEY/ACHOICE/MEMOEDIT/PICTURE, SET …) | by hand |
 | [`ClipperLib/controls.md`](ClipperLib/controls.md) | documentation for `ClipperLib.Controls` (78+ TUI controls) and `ClipperLib.TBrowse` | by hand |
 
@@ -28,7 +27,6 @@ In `docs/` only documents and generated report artifacts remain.
 | Before | Now |
 |---|---|
 | `shared/docs/comparison/**` | `docs/comparison/**` |
-| `shared/docs/implemented/audit/COMMANDS.txt` | `docs/implemented/audit/COMMANDS.txt` |
 | `GMBasic/docs/gmb_env_audit.tsv` | `docs/gmb_env_audit.tsv` (replaces the **stale** copy, with pre-split paths `GMBasic/`…`GMBasicSharp/`) |
 | `GMBasicSharp/common/ClipperLib/docs/{clipper53,controls}.md` | `docs/ClipperLib/{clipper53,controls}.md` |
 | `docs/Sync-GMBasic-Monorepo.md` | unchanged (it was already at the root) |

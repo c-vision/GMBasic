@@ -17,9 +17,9 @@
 
 #REGION "Inizializzazione"
     CLS
-    DIM app_name$ = "GM-Basic Region Demo"
+    DIM app_name$ = "GMBasic Region Demo"
     DIM version$ = "1.0.0"
-    DIM author$ = "GM-Basic Team"
+    DIM author$ = "GMBasic Team"
 
     PRINT "╔══════════════════════════════════════════════════════════════════════╗"
     PRINT "║ LexerRegions - Organizzazione del codice con #REGION               ║"

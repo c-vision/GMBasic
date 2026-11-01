@@ -1,7 +1,7 @@
 ' TestSuite.bas — Comprehensive FOR EACH / FOR / List / Block tests
-' Deve funzionare identicamente in GM-Basic e GMBasicAI
-' NOTA GM-Basic: Test 5 e 18 usano Max() su lista popolata via FOR EACH.
-'   In GM-Basic questi test sono commentati (bug HandleEndOfCodeStream).
+' Deve funzionare identicamente in GMBasic e GMBasicAI
+' NOTA GMBasic: Test 5 e 18 usano Max() su lista popolata via FOR EACH.
+'   In GMBasic questi test sono commentati (bug HandleEndOfCodeStream).
 
 PRINT "========================================"
 PRINT "=== COMPREHENSIVE LOOP & LIST TESTS ==="

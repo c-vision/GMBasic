@@ -613,7 +613,7 @@ public sealed partial class Compiler
         // GoRoutinesMinimal.bas / GoSelectSimple.bas — ma quello era il tentativo di replicare
         // l'AST, non Go. L'ordine relativo tra i due modelli può differire; canali/waitgroup/select
         // consegnano comunque i valori giusti (stesso principio della Regola d'Oro #7 in
-        // GM-Basic-GoRoutines-Hard-Lessons).
+        // GMBasic-GoRoutines-Hard-Lessons).
     }
 
     /// <summary>

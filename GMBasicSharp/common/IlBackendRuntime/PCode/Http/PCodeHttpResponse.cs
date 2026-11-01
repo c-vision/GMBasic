@@ -1,6 +1,6 @@
 // FILE: Basic.IlBackend.PCode.Http.PCodeHttpResponse.cs
 // Handle di risposta HTTP esposto al codice BASIC via OP_CALL_MEMBER (vedi PCodeProcessor.cs).
-// Non un Dictionary come il vecchio prototipo GM-Basic: una classe dedicata con metodi nativi
+// Non un Dictionary come il vecchio prototipo GMBasic: una classe dedicata con metodi nativi
 // (Send/SendJson/SendFile/SetStatus/SetHeader/SetCookie/Redirect), stesso pattern di dispatch
 // gia' usato per IList/IDictionary in OP_CALL_MEMBER.
 

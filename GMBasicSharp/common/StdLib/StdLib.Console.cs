@@ -115,7 +115,7 @@ public sealed partial class StdLib
             ], new StringType(), TokenKind.CellStr),
 
             // (SCREENS/SCREENINFO/TEXTWIDTH/TEXTHEIGHT/SCREEN restano nel namespace GRAPHICS
-            // in GM-Basic — già polimorfici via GraphicsManager.IsScreenOn; vedi StdLib.Graphics.)
+            // in GMBasic — già polimorfici via GraphicsManager.IsScreenOn; vedi StdLib.Graphics.)
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Inkey, "INKEY"),
                 [new Parameter(-1, T(TokenKind.Identifier, "timeout"), new LongType(), optionalFlag, null, false)],
                 new StringType(), TokenKind.Inkey),

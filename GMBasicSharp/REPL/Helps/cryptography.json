@@ -75,7 +75,7 @@
       { "name": "data", "type": "STRING/ARRAY OF BYTE", "description": "Dati di cui calcolare l'hash MD5." }
     ],
     "examples": [
-      { "description": "Fingerprint rapido di una stringa.", "code": "PRINT \"Fingerprint: \"; CRYPTOGRAPHY.STRMD5(\"GM-Basic 2.0\")", "expectedOutput": "Fingerprint: D41D8CD98F00B204E9800998ECF8427E" }
+      { "description": "Fingerprint rapido di una stringa.", "code": "PRINT \"Fingerprint: \"; CRYPTOGRAPHY.STRMD5(\"GMBasic 2.0\")", "expectedOutput": "Fingerprint: D41D8CD98F00B204E9800998ECF8427E" }
     ],
     "seeAlso": ["MD5", "STRSHA1", "STRSHA256", "STRSHA512", "TOHEX"],
     "isCommand": false
