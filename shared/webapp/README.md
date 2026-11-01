@@ -84,10 +84,24 @@ via P/Invoke) che delega alle **stesse API** che usano le gambe managed
 (C99Native, `gmb_vm_host`) l'hook è assente e la VM/C usa il proprio registro: comportamento
 invariato.
 
-Superfici ponte: `agent.list/get/status/events`, `team.list/agents`, `workflow.list/status/steps`,
-`memory.list/load/search` (letture) e `agent.create/delete/set`, `team.create/delete/add/remove/
-set_role/set_strategy/set_coordinator`, `workflow.begin/step/end/execute/delete`,
-`memory.store/delete` (scritture).
+Il ponte copre **tutte** le superfici di agenti/team/workflow/memoria, non solo lo stato:
+
+| | superfici |
+|---|---|
+| **letture** | `agent.list/get/status/events` · `team.list/agents` · `workflow.list/status/steps` · `memory.list/load/search/ask/rank/consolidate` |
+| **scritture** | `agent.create/delete/set/permission/permission_default/toolpolicy/registertool/save/load/trace` · `team.create/delete/add/remove/set_role/set_strategy/set_coordinator/set_recursion/set_latent/set_link/set_thoughts/set_dag/set_complexity/set_reflection/set_critic/set_prune/save/load/message/broadcast/redefine` · `workflow.begin/step/end/execute/delete` · `memory.store/delete` |
+| **comportamento** (LLM/loop) | `agent.ask/askfile/askchain/swarm/runcua` · `agent.send/receive/pausa/resume/stop/queuestats/queueclear` · `team.run/run_start/run_wait` · `team.train_thinking/train_ac/distill` |
+
+**Errori allineati:** se il runtime managed solleva un'eccezione dentro l'hook, il runtime C la
+riceve come testo (`\x01` + messaggio), **non** la inghiotte, e la solleva come errore BASIC: la
+pagina si comporta come sulla gamba managed (gestore `ON ERROR` incluso). Prima un
+`AI AGENT REGISTER TOOL` fallito era silenzioso (0) sul motore C e stampava il blocco 500 sul
+managed — ora è identico e l'errore resta nel log (`[bsp-state] …`).
+
+> Nel frattempo sono stati chiusi due **stub** del VM/C che rendevano impossibili queste
+> superfici: `TEAMRUNSTART/TEAMRUNWAIT/TEAMONSTREAM` rispondevano con testi fissi ("Team non
+> trovato"/"handle sconosciuto") e `AI.AGENTREGISTERTOOL` ritornava sempre 0 senza registrare
+> nulla. Ora delegano al runtime condiviso.
 
 ```toml
 bspEngine      = "c"     # "c" = VM/C (più veloce) · "managed" = VM P-Code/IL

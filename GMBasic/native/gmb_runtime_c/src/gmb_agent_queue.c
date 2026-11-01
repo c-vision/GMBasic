@@ -1,5 +1,6 @@
 /* gmb_agent_queue.c — coda FIFO per agente (L1, mondo C) */
 #include "gmb_runtime.h"
+#include "gmb_state_hook.h"   /* hook opzionale di stato (client managed) */
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -70,6 +71,8 @@ int gmb_agent_queue_create(const char* agent) {
     return q ? 1 : 0;
 }
 int gmb_agent_queue_send(const char* agent, const char* from, const char* task, const char* input, double payment) {
+    /* `from` e `payment` non sono ponte: l'API managed (AiAgentSend) usa "user" e paga 0. */
+    { int hr = gmb_state_hook_mutate("agent.send", agent, task, input); if (hr >= 0) return hr; }
     if(!agent || !*agent) return 0;
     gmb_aq_t* q = find_or_create_aq(agent);
     if(!q) return 0;
@@ -89,6 +92,7 @@ int gmb_agent_queue_send(const char* agent, const char* from, const char* task, 
     return 1;
 }
 char* gmb_agent_queue_receive(const char* agent) {
+    { char* r = gmb_state_hook_query("agent.receive", agent, NULL); if (r) return r; }
     if(!agent || !*agent) return NULL;
     gmb_aq_t* q = find_aq(agent);
     if(!q) return NULL;
@@ -116,6 +120,7 @@ char* gmb_agent_queue_receive(const char* agent) {
     return out;
 }
 char* gmb_agent_queue_stats(const char* agent) {
+    { char* r = gmb_state_hook_query("agent.queuestats", agent, NULL); if (r) return r; }
     gmb_aq_t* q = find_aq(agent);
     int count=0, paused=0, stopped=0;
     if(q){ pthread_mutex_lock(&q->lock); count=q->count; paused=q->paused; stopped=q->stopped; pthread_mutex_unlock(&q->lock); }
@@ -125,12 +130,16 @@ char* gmb_agent_queue_stats(const char* agent) {
     return out;
 }
 int gmb_agent_queue_clear(const char* agent) {
+    { int hr = gmb_state_hook_mutate("agent.queueclear", agent, NULL, NULL); if (hr >= 0) return hr; }
     gmb_aq_t* q=find_aq(agent); if(!q) return 0;
     pthread_mutex_lock(&q->lock); q->head=q->tail=q->count=0; pthread_mutex_unlock(&q->lock); return 1;
 }
-int gmb_agent_queue_pause(const char* agent){ gmb_aq_t* q=find_aq(agent); if(!q) return 0; pthread_mutex_lock(&q->lock); q->paused=1; pthread_mutex_unlock(&q->lock); return 1; }
-int gmb_agent_queue_resume(const char* agent){ gmb_aq_t* q=find_aq(agent); if(!q) return 0; pthread_mutex_lock(&q->lock); q->paused=0; pthread_mutex_unlock(&q->lock); return 1; }
-int gmb_agent_queue_stop(const char* agent){ gmb_aq_t* q=find_aq(agent); if(!q) return 0; pthread_mutex_lock(&q->lock); q->stopped=1; q->head=q->tail=q->count=0; pthread_mutex_unlock(&q->lock); return 1; }
+int gmb_agent_queue_pause(const char* agent){
+    { int hr = gmb_state_hook_mutate("agent.pause", agent, NULL, NULL); if (hr >= 0) return hr; } gmb_aq_t* q=find_aq(agent); if(!q) return 0; pthread_mutex_lock(&q->lock); q->paused=1; pthread_mutex_unlock(&q->lock); return 1; }
+int gmb_agent_queue_resume(const char* agent){
+    { int hr = gmb_state_hook_mutate("agent.resume", agent, NULL, NULL); if (hr >= 0) return hr; } gmb_aq_t* q=find_aq(agent); if(!q) return 0; pthread_mutex_lock(&q->lock); q->paused=0; pthread_mutex_unlock(&q->lock); return 1; }
+int gmb_agent_queue_stop(const char* agent){
+    { int hr = gmb_state_hook_mutate("agent.stop", agent, NULL, NULL); if (hr >= 0) return hr; } gmb_aq_t* q=find_aq(agent); if(!q) return 0; pthread_mutex_lock(&q->lock); q->stopped=1; q->head=q->tail=q->count=0; pthread_mutex_unlock(&q->lock); return 1; }
 int gmb_agent_queue_is_paused(const char* agent){ gmb_aq_t* q=find_aq(agent); return q ? q->paused : 0; }
 int gmb_agent_queue_is_stopped(const char* agent){ gmb_aq_t* q=find_aq(agent); return q ? q->stopped : 0; }
 int gmb_agent_queue_count(const char* agent){ gmb_aq_t* q=find_aq(agent); return q ? q->count : 0; }

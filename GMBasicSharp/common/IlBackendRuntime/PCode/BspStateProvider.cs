@@ -122,28 +122,150 @@ internal static class BspStateProvider
                 case "memory.delete":
                     return Ok(IlRuntime.MemoryDelete(a ?? "") != 0);
 
+                // ── COMPORTAMENTO (LLM/loop/persistenza): sempre il runtime managed ─────
+                case "agent.ask":
+                    return IlRuntime.AiAgentAsk(a ?? "", b ?? "");
+                case "agent.runcua":
+                {
+                    int rounds = int.TryParse(c, out var rr) ? rr : 5;
+                    return IlRuntime.AgentRunCua(a ?? "", b ?? "", rounds);
+                }
+                case "agent.askfile":
+                    return IlRuntime.AiAgentAskFile(a ?? "", b ?? "", c ?? "");
+                case "agent.askchain":
+                    return IlRuntime.AiAskChain(a ?? "", b ?? "", c ?? "chain");
+                case "agent.swarm":
+                {
+                    double n = 3, cc = 1;
+                    if (!string.IsNullOrEmpty(c))
+                    {
+                        var parts = c.Split(',');
+                        if (parts.Length > 0) double.TryParse(parts[0], out n);
+                        if (parts.Length > 1) double.TryParse(parts[1], out cc);
+                    }
+                    return IlRuntime.AiAgentSwarm(n, a ?? "", b ?? "", cc);
+                }
+                case "agent.save":
+                    return Ok(IlRuntime.AiAgentSave(a ?? "", b ?? "") != 0);
+                case "agent.load":
+                    return Ok(IlRuntime.AiAgentLoad(a ?? "", b ?? "") != 0);
+                case "agent.trace":
+                    return Ok(IlRuntime.AiAgentTrace(a ?? "") != 0);
+                case "agent.permission":
+                    return Ok(IlRuntime.AiPermissionLevel(a ?? "", b ?? "") != 0);
+                case "agent.permission_default":
+                    return Ok(IlRuntime.AiPermissionDefault(a ?? "") != 0);
+                case "agent.toolpolicy":
+                    return Ok(IlRuntime.AiPermissionTool(a ?? "", b ?? "", c ?? "") != 0);
+                case "agent.registertool":
+                    return Ok(IlRuntime.AiAgentRegisterTool(a ?? "", b ?? "") != 0);
+                case "agent.send":
+                    return Ok(IlRuntime.AiAgentSend(a ?? "", b ?? "", c ?? "", 0) != 0);
+                case "agent.receive":
+                    return IlRuntime.AiAgentReceive(a ?? "");
+                case "agent.queuestats":
+                    return IlRuntime.AiAgentQueueStats(a ?? "");
+                case "agent.pause":
+                    return Ok(IlRuntime.AiAgentPause(a ?? "") != 0);
+                case "agent.resume":
+                    return Ok(IlRuntime.AiAgentResume(a ?? "") != 0);
+                case "agent.stop":
+                    return Ok(IlRuntime.AiAgentStop(a ?? "") != 0);
+                case "agent.queueclear":
+                    return Ok(IlRuntime.AiAgentQueueClear(a ?? "") != 0);
+
+                case "team.run":
+                    return IlRuntime.TeamRun(a ?? "", b ?? "");
+                case "team.run_start":
+                    return IlRuntime.TeamRunStart(a ?? "", b ?? "");
+                case "team.run_wait":
+                    return IlRuntime.TeamRunWait(a ?? "");
+                case "team.broadcast":
+                    return Ok(IlRuntime.TeamBroadcast(a ?? "", b ?? "") != 0);
+                case "team.redefine":
+                    return Ok(IlRuntime.TeamRedefine(a ?? "", b ?? "") != 0);
+                case "team.message":
+                    IlRuntime.TeamMessage(a ?? "", b ?? "");
+                    return "1";
+                case "team.save":
+                    IlRuntime.TeamSave(a ?? "");
+                    return "1";
+                case "team.load":
+                    return Ok(IlRuntime.TeamLoad(a ?? "") != 0);
+                case "team.train_thinking":
+                    IlRuntime.TeamTrainThinking(a ?? "", b ?? "");
+                    return "1";
+                case "team.train_ac":
+                    IlRuntime.TeamTrainActorCritic(a ?? "", b ?? "");
+                    return "1";
+                case "team.distill":
+                    IlRuntime.TeamDistillThinking(a ?? "", b ?? "");
+                    return "1";
+                case "team.set_recursion":
+                    IlRuntime.TeamSetRecursion(a ?? "", ParseD(b));
+                    return "1";
+                case "team.set_latent":
+                    IlRuntime.TeamSetLatent(a ?? "", b ?? "");
+                    return "1";
+                case "team.set_link":
+                    IlRuntime.TeamSetLink(a ?? "", b ?? "", c ?? "");
+                    return "1";
+                case "team.set_thoughts":
+                    IlRuntime.TeamSetThoughts(a ?? "", ParseD(b));
+                    return "1";
+                case "team.set_dag":
+                {
+                    var p = (b ?? "0,0,0").Split(',');
+                    double d1 = p.Length > 0 ? ParseD(p[0]) : 0;
+                    double d2 = p.Length > 1 ? ParseD(p[1]) : 0;
+                    double d3 = p.Length > 2 ? ParseD(p[2]) : 0;
+                    IlRuntime.TeamSetDag(a ?? "", d1, d2, d3);
+                    return "1";
+                }
+                case "team.set_complexity":
+                    IlRuntime.TeamSetComplexity(a ?? "", ParseD(b));
+                    return "1";
+                case "team.set_reflection":
+                    IlRuntime.TeamSetReflection(a ?? "", b ?? "");
+                    return "1";
+                case "team.set_critic":
+                    IlRuntime.TeamSetCritic(a ?? "", b ?? "", c ?? "");
+                    return "1";
+                case "team.set_prune":
+                    IlRuntime.TeamSetPrune(a ?? "", ParseD(b));
+                    return "1";
+
+                case "memory.ask":
+                    return IlRuntime.MemoryAsk(a ?? "", ParseD(b, 5));
+                case "memory.rank":
+                    return IlRuntime.MemoryRank(a ?? "", ParseD(b, 5));
+                case "memory.consolidate":
+                    return Ok(IlRuntime.MemoryConsolidate() != 0);
+
                 default:
                     return null;
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Mai propagare un'eccezione managed attraverso il confine P/Invoke: si risponde
-            // "non gestita" (letture) o "rifiutata" (mutazioni).
-            return surface.StartsWith("agent.", StringComparison.Ordinal)
-                || surface.StartsWith("team.", StringComparison.Ordinal)
-                || surface.StartsWith("workflow.", StringComparison.Ordinal)
-                || surface.StartsWith("memory.", StringComparison.Ordinal)
-                    ? (IsRead(surface) ? null : "0")
-                    : null;
+            // Mai propagare un'eccezione managed attraverso il confine P/Invoke: il runtime C
+            // la riceve come testo (marcatore \x01) e solleva lo STESSO errore BASIC che la
+            // gamba managed avrebbe sollevato (ON ERROR/TRY della pagina), invece di un
+            // fallimento silenzioso (0/"non gestita").
+            System.Console.Error.WriteLine($"[bsp-state] {surface} ha sollevato: {ex.Message}");
+            return "\u0001" + ex.Message;
         }
     }
 
     private static string Ok(bool ok) => ok ? "1" : "0";
 
-    private static bool IsRead(string surface) => surface.EndsWith(".list", StringComparison.Ordinal)
-        || surface is "agent.get" or "agent.status" or "agent.events" or "team.agents"
-            or "workflow.status" or "workflow.steps" or "memory.load" or "memory.search";
+    /// <summary>Numero dal testo del protocollo (virgola o punto decimale).</summary>
+    private static double ParseD(string? text, double fallback = 0)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return fallback;
+        return double.TryParse(text.Replace(',', '.'), System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : fallback;
+    }
 
     private static bool AgentExists(string? name)
     {

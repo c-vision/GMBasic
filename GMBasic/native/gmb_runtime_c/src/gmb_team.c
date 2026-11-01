@@ -188,6 +188,8 @@ int gmb_team_set_coordinator(const char* team, const char* agent) {
 }
 
 int gmb_team_set_recursion(const char* team, int rounds) {
+    { char io[16]; snprintf(io, sizeof io, "%d", rounds);
+      int hr = gmb_state_hook_mutate("team.set_recursion", team, io, NULL); if (hr >= 0) return hr; }
     gmb_team_t* t = find_team(team);
     if (!t || rounds < 1 || rounds > 8) return 0;
     t->recursion_rounds = rounds;
@@ -195,6 +197,7 @@ int gmb_team_set_recursion(const char* team, int rounds) {
 }
 
 int gmb_team_set_latent(const char* team, const char* mode) {
+    { int hr = gmb_state_hook_mutate("team.set_latent", team, mode, NULL); if (hr >= 0) return hr; }
     gmb_team_t* t = find_team(team);
     if (!t || !mode || !*mode) return 0;
     if (strcmp(mode, "text") != 0 && strcmp(mode, "embed") != 0 &&
@@ -205,6 +208,7 @@ int gmb_team_set_latent(const char* team, const char* mode) {
 }
 
 int gmb_team_set_link(const char* team, const char* which, const char* cfg) {
+    { int hr = gmb_state_hook_mutate("team.set_link", team, which, cfg); if (hr >= 0) return hr; }
     gmb_team_t* t = find_team(team);
     if (!t || !which || !*which) return 0;
     if (strcmp(which, "inner") == 0 && strcmp(which, "outer") != 0 && strcmp(which, "distill") != 0 && strcmp(which, "INNER") != 0)
@@ -216,6 +220,8 @@ int gmb_team_set_link(const char* team, const char* which, const char* cfg) {
 }
 
 int gmb_team_set_thoughts(const char* team, int n) {
+    { char io[16]; snprintf(io, sizeof io, "%d", n);
+      int hr = gmb_state_hook_mutate("team.set_thoughts", team, io, NULL); if (hr >= 0) return hr; }
     gmb_team_t* t = find_team(team);
     if (!t || n < 1 || n > 32) return 0;
     t->latent_thoughts = n;
@@ -224,6 +230,8 @@ int gmb_team_set_thoughts(const char* team, int n) {
 
 /* ── Estensioni §9.4/9.5: DAG, reflection, critic, prune ──────────────────── */
 int gmb_team_set_dag(const char* team, int d, int l, int n) {
+    { char io[48]; snprintf(io, sizeof io, "%d,%d,%d", d, l, n);
+      int hr = gmb_state_hook_mutate("team.set_dag", team, io, NULL); if (hr >= 0) return hr; }
     gmb_team_t* t = find_team(team);
     if (!t) return 0;
     if (d > 0) t->dag_dmax = d;
@@ -232,12 +240,15 @@ int gmb_team_set_dag(const char* team, int d, int l, int n) {
     return 1;
 }
 int gmb_team_set_complexity(const char* team, double threshold) {
+    { char io[32]; snprintf(io, sizeof io, "%.17g", threshold);
+      int hr = gmb_state_hook_mutate("team.set_complexity", team, io, NULL); if (hr >= 0) return hr; }
     gmb_team_t* t = find_team(team);
     if (!t) return 0;
     t->complexity_threshold = threshold;
     return 1;
 }
 int gmb_team_set_reflection(const char* team, const char* mode) {
+    { int hr = gmb_state_hook_mutate("team.set_reflection", team, mode, NULL); if (hr >= 0) return hr; }
     gmb_team_t* t = find_team(team);
     if (!t || !mode || !*mode) return 0;
     if (strcmp(mode, "intra") != 0 && strcmp(mode, "inter") != 0 &&
@@ -247,6 +258,7 @@ int gmb_team_set_reflection(const char* team, const char* mode) {
     return 1;
 }
 int gmb_team_set_critic(const char* team, const char* personas, const char* judge) {
+    { int hr = gmb_state_hook_mutate("team.set_critic", team, personas, judge); if (hr >= 0) return hr; }
     gmb_team_t* t = find_team(team);
     if (!t) return 0;
     if (personas && *personas) { strncpy(t->critic_personas, personas, sizeof(t->critic_personas) - 1); t->critic_personas[sizeof(t->critic_personas) - 1] = '\0'; }
@@ -254,6 +266,8 @@ int gmb_team_set_critic(const char* team, const char* personas, const char* judg
     return 1;
 }
 int gmb_team_set_prune(const char* team, int topk) {
+    { char io[16]; snprintf(io, sizeof io, "%d", topk);
+      int hr = gmb_state_hook_mutate("team.set_prune", team, io, NULL); if (hr >= 0) return hr; }
     gmb_team_t* t = find_team(team);
     if (!t || topk < 1) return 0;
     t->prune_topk = topk;
@@ -261,6 +275,7 @@ int gmb_team_set_prune(const char* team, int topk) {
 }
 /* 9.3/9.6: training thinking / actor-critic — disabilita il thinking dei membri e registra lo step. */
 int gmb_team_train_thinking(const char* team, const char* dataset) {
+    { int hr = gmb_state_hook_mutate("team.train_thinking", team, dataset, NULL); if (hr >= 0) return hr; }
     gmb_team_t* t = find_team(team);
     if (!t) return 0;
     t->thinking_enabled = 0;
@@ -268,12 +283,14 @@ int gmb_team_train_thinking(const char* team, const char* dataset) {
     return 1;
 }
 int gmb_team_train_actor_critic(const char* team, const char* dataset) {
+    { int hr = gmb_state_hook_mutate("team.train_ac", team, dataset, NULL); if (hr >= 0) return hr; }
     gmb_team_t* t = find_team(team);
     if (!t) return 0;
     t->thinking_steps += (int)(dataset ? strlen(dataset) : 0) / 4 + 1;
     return 1;
 }
 int gmb_team_distill_thinking(const char* team, const char* dataset) {
+    { int hr = gmb_state_hook_mutate("team.distill", team, dataset, NULL); if (hr >= 0) return hr; }
     gmb_team_t* t = find_team(team);
     if (!t) return 0;
     t->thinking_enabled = 0;
@@ -282,6 +299,7 @@ int gmb_team_distill_thinking(const char* team, const char* dataset) {
 }
 
 int gmb_team_message(const char* team, const char* msg) {
+    { int hr = gmb_state_hook_mutate("team.message", team, msg, NULL); if (hr >= 0) return hr; }
     gmb_team_t* t = find_team(team);
     if (!t) return 0;
     if (t->conv_count < GMB_TEAM_CONV_MAX) {
@@ -349,6 +367,7 @@ static gmb_team_async_t g_team_async[GMB_TEAM_ASYNC_MAX];
 static int g_team_async_seq = 0;
 
 char* gmb_team_run_start(const char* team, const char* task) {
+    { char* r = gmb_state_hook_query("team.run_start", team, task); if (r) return r; }
     char* out = (char*)malloc(256);
     if (!out) return NULL;
     if (!find_team(team ? team : "")) {
@@ -374,6 +393,7 @@ char* gmb_team_run_start(const char* team, const char* task) {
 }
 
 char* gmb_team_run_wait(const char* handle) {
+    { char* r = gmb_state_hook_query("team.run_wait", handle, NULL); if (r) return r; }
     char* out;
     const char* h = handle ? handle : "";
     for (int i = 0; i < GMB_TEAM_ASYNC_MAX; i++)
@@ -615,6 +635,7 @@ static char* dispatch_strategy(gmb_team_t* t, const char* task, const char* ctx)
 }
 
 char* gmb_team_run(const char* team, const char* task) {
+    { char* r = gmb_state_hook_query("team.run", team, task); if (r) return r; }
     gmb_team_t* t = find_team(team);
     if (!t) {
         char* empty = (char*)malloc(1);
@@ -650,6 +671,7 @@ const char* gmb_team_status(const char* team) {
 }
 
 int gmb_team_save(const char* team, const char* path) {
+    { int hr = gmb_state_hook_mutate("team.save", team, path, NULL); if (hr >= 0) return hr; }
     gmb_team_t* t = find_team(team);
     if (!t) return 0;
     FILE* f = fopen(path, "w");
@@ -661,6 +683,7 @@ int gmb_team_save(const char* team, const char* path) {
 }
 
 int gmb_team_load(const char* team, const char* path) {
+    { int hr = gmb_state_hook_mutate("team.load", team, path, NULL); if (hr >= 0) return hr; }
     FILE* f = fopen(path, "r");
     if (!f) return 0;
     char line[4096];
@@ -959,11 +982,13 @@ char* gmb_team_runtime_stats_str(const char* team) {
 }
 
 int gmb_team_broadcast(const char* team, const char* message) {
+    { int hr = gmb_state_hook_mutate("team.broadcast", team, message, NULL); if (hr >= 0) return hr; }
     // L1: broadcast via MessageBus/queue — per ora enqueues nel gmb_agent_queue se disponibile, altrimenti no-op
     (void)team; (void)message;
     return 1;
 }
 int gmb_team_redefine(const char* team, const char* definition) {
+    { int hr = gmb_state_hook_mutate("team.redefine", team, definition, NULL); if (hr >= 0) return hr; }
     gmb_team_t* t = find_team(team);
     if (!t || !definition) return 0;
     // definition CSV "A1,A2,A3" → sostituisce i membri

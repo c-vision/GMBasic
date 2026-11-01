@@ -132,10 +132,12 @@ public static class BspC
         var candidates = new List<string>
         {
             Path.Combine(AppContext.BaseDirectory, name),
-            Path.Combine(CommonLib.GmbiPaths.HomeRoot, "libs", rid, name),
         };
 
-        // Sviluppo: <repo>/GMBasic/native/gmb_vm_c/build/
+        // Sviluppo: <repo>/GMBasic/native/gmb_vm_c/build/ — PRIMA della cache utente: in un
+        // checkout il build del repo è sempre più fresco della copia installata (una copia
+        // stale in ~/.gmbasic/libs veniva caricata al posto del build: hook assenti a runtime
+        // pur essendo nel codice — bug reale, visto come "AGENTASK: not registered").
         try
         {
             var dir = new DirectoryInfo(AppContext.BaseDirectory);
@@ -151,6 +153,8 @@ public static class BspC
             }
         }
         catch { /* best effort */ }
+
+        candidates.Add(Path.Combine(CommonLib.GmbiPaths.HomeRoot, "libs", rid, name));
 
         foreach (var c in candidates)
             if (File.Exists(c)) return c;
