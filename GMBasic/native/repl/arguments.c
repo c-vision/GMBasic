@@ -81,8 +81,11 @@ int rpl_parse_args(int argc, char** argv, rpl_options_t* o)
     /* Selezione console d'avvio (parità Arguments.cs::Parse): i flag legacy -c/-s/-c64
      * mappano sul runtime C via GMB_CONSOLE (0=%SDL default, 1=%C64, 2=%ANSI, 3=%SYSTEM).
      * Settato solo se un flag è presente, così non sovrascrive un GMB_CONSOLE impostato a mano. */
-    if (o->use_c64_mode || o->use_system_console || !o->use_sdl)
-        setenv("GMB_CONSOLE", o->use_c64_mode ? "1" : (!o->use_sdl ? "2" : "3"), 1);
+    /* Precedenza come Arguments.cs/InitConsole: -s (System) vince su -c (Standard);
+     * -c64 seleziona C64; senza flag resta il default SDL (GMB_CONSOLE non toccato). */
+    if (o->use_c64_mode) setenv("GMB_CONSOLE", "1", 1);
+    else if (o->use_system_console) setenv("GMB_CONSOLE", "3", 1);
+    else if (!o->use_sdl) setenv("GMB_CONSOLE", "2", 1);
     /* -noconsole: esecuzione SENZA console grafica (headless): GMBASIC_HEADLESS=1 salta
      * SDL/video e usa la HeadlessConsole (stdout lineare). */
     if (o->no_console) setenv("GMBASIC_HEADLESS", "1", 1);
