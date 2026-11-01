@@ -12,25 +12,24 @@ key `(namespace, nome)` instead of the name alone, recognition of the dispatch b
 `case SysCall` (without it, 12 CONTROLS/WINDOWS functions showed up as false gaps), SPEED/MOUSE.
 `Program.cs` is identical to the deleted file (verified with `diff`).
 
-## Status of the project references — TO BE REPOINTED BEFORE USE
+## Project references — verificate 2026-11-01
 
-`audit.csproj` and the `ResolveRoot()` resolver in `Program.cs` are still those of the
-pre-monorepo layout:
+Lo stato pre-monorepo è stato sanato. Verificato in questo albero:
 
-- the `ProjectReference` point to `../../common/...` (and one to `../...csproj`, which does not exist):
-  in the monorepo the C# projects live in `GMBasicSharp/common/...`;
-- `ResolveRoot()` looks for `GMBASIC.sln`, which is not there in the monorepo (there is
-  `GMBasicSharp/GMBasicSharp.slnx`), and falls back to walking up from `bin/`;
-- the internal paths (`common/Compiler/BuiltInFunction.cs`, `native/gmb_c99native/src/...`,
-  `native/gmb_vm_c/gmb_vm_core.c`) are relative to the root of the C# project / of the C project,
-  not to the monorepo root;
-- the output (`--out-dir` defaults to `Root + docs/comparison/manifests`, and the report
-  `Root + docs/comparison/audit-backends.md`) must end up in the **`docs/` of the monorepo
-  root** (the only documentation folder, index `docs/README.md`): as long as `ResolveRoot()`
-  returns the C# project root, use `--out-dir <monorepo>/docs/comparison/manifests`.
+- i `ProjectReference` di `audit.csproj` puntano a `GMBasicSharp/common/...` (StdLib, Compiler,
+  IlBackendRuntime, BackendSupport);
+- `ResolveRoot()` cerca `GMBasicSharp/common/Ast/TokenKind.cs` risalendo da CWD/assembly: trova la
+  root del monorepo da qualunque directory;
+- `RepoRoot` = `GMBasicSharp/..`, `NativeRoot` = `<monorepo>/GMBasic/native`, `SharedRoot` =
+  `<monorepo>/shared`; i default di output sono `docs/comparison/manifests` e
+  `docs/comparison/audit-backends.md` sotto la root del monorepo;
+- `dotnet build tools/audit/audit.csproj` → 0 errori; `--list-backends` e
+  `--pcodevm --json <file>` girano e producono il manifest;
+- `test_retired_flags.sh` è stato riallineato al monorepo (root a `../..`, niente `.sln` finto):
+  **7/7 PASS**.
 
-Same situation as `tools/registry-export/registry-export.csproj` (legacy references). The
-project **was not compiled nor executed** after the move: no verification is claimed.
+Nessuna riparazione di path è più necessaria; se in futuro la root cambia, i marker sono
+`GMBasic` + `GMBasicSharp` + `shared`.
 
 ## Documented usage (original form)
 
@@ -41,7 +40,7 @@ dotnet run --project tools/audit -- --list-backends
 ```
 
 `test_retired_flags.sh` verifies that the retired flags (`--c99`, `--registry-c99`) exit with 2 and
-do not produce files. This script too assumes the pre-monorepo layout.
+do not produce files; the script is now monorepo-aware (7/7 PASS on 2026-11-01).
 
 ## Why it is kept
 

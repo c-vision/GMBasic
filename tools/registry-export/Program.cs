@@ -688,16 +688,18 @@ static HashSet<string> CMembers(string gb, string? text = null)
 
 static string FindMonorepoRoot()
 {
+    // Marker reali del monorepo. NON `.gitmodules`: i submodule sono stati assorbiti il
+    // 2026-10-30 e quel file non esiste più (la sua assenza faceva fallire il tool).
     var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
     while (dir is not null)
     {
-        if (File.Exists(Path.Combine(dir.FullName, ".gitmodules")) &&
-            Directory.Exists(Path.Combine(dir.FullName, "GMBasic")) &&
-            Directory.Exists(Path.Combine(dir.FullName, "GMBasicSharp")))
+        if (Directory.Exists(Path.Combine(dir.FullName, "GMBasic")) &&
+            Directory.Exists(Path.Combine(dir.FullName, "GMBasicSharp")) &&
+            Directory.Exists(Path.Combine(dir.FullName, "shared")))
             return dir.FullName;
         dir = dir.Parent;
     }
-    throw new InvalidOperationException("registry-export: root del monorepo non trovata (cercato .gitmodules + GMBasic + GMBasicSharp)");
+    throw new InvalidOperationException("registry-export: root del monorepo non trovata (cercato GMBasic + GMBasicSharp + shared)");
 }
 
 static string Rel(string root, string path) => Path.GetRelativePath(root, path);
