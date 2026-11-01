@@ -107,6 +107,8 @@ int rpl_engine_cs(const rpl_options_t* o);
 const char* rpl_cs_cli(const rpl_options_t* o, char* out, size_t cap);
 /* Esegue `gmbcs <sub> "<arg>" <extra>`; 0 = ok. Stampa l'errore se il CLI manca. */
 int rpl_cs_cmd(const char* sub, const char* arg, const char* extra, const rpl_options_t* o);
+/* RUN sull'engine C# (run o debug secondo lo stato di BREAK/STEP). */
+int rpl_run_cs(const char* bas_file, const rpl_options_t* o);
 const char* rpl_resolve_vm_host(void);
 /* F3b: comandi di pacchetto nel mondo C (manifest/keyring/cache). */
 int rpl_pkg_cmd(const char* cmd, const char* args);

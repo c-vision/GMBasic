@@ -12,6 +12,7 @@
 //   gmbcs prginfo <file.prg>
 //   gmbcs run  <file> [--engine il|pcode]
 //   gmbcs eval "<istruzioni>" [--engine il|pcode]
+//   gmbcs debug <file> [--break N]… [--step]   (debugger P-Code, comandi su stdin)
 //
 // Opzioni comuni: -D name=val (ripetibile), --out <file>.
 // Nessuna variabile d'ambiente per il comportamento.
@@ -59,6 +60,8 @@ internal static class Program
         var engine = TakeOption(list, "--engine") ?? "il";
         var outPath = TakeOption(list, "--out");
         var json = list.Remove("--json");
+        var breaks = TakeAllInts(list, "--break");
+        var step = list.Remove("--step");
 
         if (list.Count == 0) { Usage(); return 2; }
         var cmd = list[0].ToLowerInvariant();
@@ -124,6 +127,11 @@ internal static class Program
                 var program = CompileFile(file, defines);
                 Console.Write(RunProgram(program, file, engine));
                 return 0;
+            }
+            case "debug":
+            {
+                var file = FileArg(list, 1);
+                return RunDebug(file, defines, breaks, step, engine);
             }
             case "eval":
             {
@@ -246,6 +254,73 @@ internal static class Program
         return 0;
     }
 
+    // ── debugger P-Code (unico backend C# con debugger) ─────────────────────────
+    //
+    // Protocollo su stdin/stdout (usato dalla REPL che lancia il processo con stdio
+    // ereditato): a ogni pausa stampa `* stop line N` e legge un comando.
+    //   c / continue · s / step (entra) · o / stepover · u / stepout
+    //   b <linea> (breakpoint) · bt (stack) · p <espressione> · q / quit
+    private static int RunDebug(string file, IReadOnlyDictionary<string, string?> defines,
+                                List<int> breaks, bool step, string engine)
+    {
+        var program = CompileFile(file, defines);
+        var chunk = new global::Compiler.Compiler().Compile(program);
+        var driver = new global::Basic.IlBackend.PCode.PCodeDebugDriver();
+        try
+        {
+            driver.Start(chunk, breaks);
+            if (step) driver.StepIn();
+
+            var lastOut = "";
+            while (driver.IsRunning || driver.IsPaused)
+            {
+                if (!driver.IsPaused) { Thread.Sleep(10); continue; }
+
+                var outText = driver.TakeOutput();
+                if (outText.Length > 0) { Console.Write(outText); lastOut += outText; }
+                var line = driver.CurrentLine;
+                var frames = driver.StackFrames;
+                var ip = frames is { Count: > 0 } ? frames[0].Ip : -1;
+                Console.WriteLine(line > 0 ? $"* stop line {line}" : $"* stop (ip {ip})");
+                Console.Write("(gmbcs) ");
+
+                var cmd = Console.ReadLine();
+                if (cmd == null) { driver.Stop(); break; }
+                cmd = cmd.Trim();
+                if (cmd.Length == 0) cmd = "c";
+                var parts = cmd.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+                var op = parts[0].ToLowerInvariant();
+                var arg = parts.Length > 1 ? parts[1] : "";
+
+                switch (op)
+                {
+                    case "c": case "continue": case "cont": driver.Continue(); break;
+                    case "s": case "step": driver.StepIn(); break;
+                    case "o": case "over": case "stepover": driver.StepOver(); break;
+                    case "u": case "out": case "stepout": driver.StepOut(); break;
+                    case "b": case "break":
+                        if (int.TryParse(arg, out var bl)) { driver.SetBreakpoint(bl); Console.WriteLine($"breakpoint line {bl}"); }
+                        else Console.WriteLine("uso: b <linea>");
+                        break;
+                    case "bt": case "stack":
+                        if (frames == null || frames.Count == 0) { Console.WriteLine("(stack vuoto)"); break; }
+                        foreach (var f in frames) Console.WriteLine($"  #{f.Id} {f.Name} line {f.Line} ip {f.Ip}");
+                        break;
+                    case "p": case "print":
+                        if (arg.Length == 0) { Console.WriteLine("uso: p <espressione>"); break; }
+                        Console.WriteLine(driver.Evaluate(arg) ?? "(non valutabile)");
+                        break;
+                    case "q": case "quit": case "exit": driver.Stop(); break;
+                    default: Console.WriteLine("comandi: c s o u b <linea> bt p <expr> q"); break;
+                }
+            }
+            var tail = driver.TakeOutput();
+            if (tail.Length > 0) Console.Write(tail);
+            return 0;
+        }
+        finally { try { driver.Dispose(); } catch { /* best effort */ } }
+    }
+
     // ── esecuzione in-process (stesse garanzie dei test di parità) ───────────────
 
     private static string RunProgram(BasicProgram program, string sourcePath, string engine)
@@ -330,6 +405,19 @@ internal static class Program
         return list[index];
     }
 
+    private static List<int> TakeAllInts(List<string> list, string name)
+    {
+        var v = new List<int>();
+        for (var i = 0; i < list.Count; i++)
+        {
+            if (list[i] != name) continue;
+            list.RemoveAt(i);
+            if (i < list.Count && int.TryParse(list[i], out var n)) { v.Add(n); list.RemoveAt(i); i--; }
+            i--;
+        }
+        return v;
+    }
+
     private static string? TakeOption(List<string> list, string name)
     {
         var i = list.IndexOf(name);
@@ -364,6 +452,7 @@ internal static class Program
               gmbcs prginfo <file.prg>
               gmbcs run  <file> [--engine il|pcode]
               gmbcs eval "<istruzioni>" [--engine il|pcode]
+              gmbcs debug <file> [--break N]… [--step]
 
             opzioni: -D name=val (ripetibile), --out <file>, --json
             """);
