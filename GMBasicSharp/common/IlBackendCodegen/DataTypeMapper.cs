@@ -35,7 +35,11 @@ public static class DataTypeMapper
     public static Type Map(DataType dataType, IlTypeContext types, IReadOnlyDictionary<int, TypeBuilder> classTypes) => dataType switch
     {
         DoubleType => types.Double,
-        SingleType => types.Single,
+        /* SINGLE: le gambe C (VM/C, C99Native) rappresentano TUTTI i numerici come double e
+         * non arrotondano le variabili SINGLE. Per parità di stampa/valore anche il backend
+         * gestito usa double (CSNG è già identità double). Gli ARRAY SINGLE restano float[]
+         * (vedi caso ArrayType sotto) per non cambiare l'ABI FFI (AI.EMBED). */
+        SingleType => types.Double,
         LongType => types.Int64,
         // Il dialetto usa QUAD come intero signed a 64 bit (sinonimo storico di LONG
         // nella rappresentazione CLR del backend); mappare entrambi evita firme IL
@@ -94,7 +98,9 @@ public static class DataTypeMapper
         // un vero array CLR con elementi unboxed (T[]) è la rappresentazione più
         // veloce possibile — accesso diretto via ldelem/stelem, niente wrapper
         // dinamico/generico come il CREATE_ARRAY del p-code Compiler esistente.
-        ArrayType a => Map(a.ElementType, types, classTypes).MakeArrayType(),
+        ArrayType a => (a.ElementType is SingleType)
+            ? types.Single.MakeArrayType()   /* ABI FFI: array SINGLE = float[] (AI.EMBED) */
+            : Map(a.ElementType, types, classTypes).MakeArrayType(),
         // Tipi grafici custom mappati a double[] (la VM li rappresenta come array numerici:
         // SCREENINFO -> {25, 80}, RGB -> {r, g, b, a}). Porting da GMBasic.
         DisplayModeType => types.Double.MakeArrayType(),

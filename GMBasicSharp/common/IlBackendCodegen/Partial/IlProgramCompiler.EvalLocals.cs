@@ -104,7 +104,7 @@ public sealed partial class IlProgramCompiler
 
     private static Type EvalIndirectStackType(DataType dt) => dt switch
     {
-        SingleType => typeof(float),
+        SingleType => typeof(double),
         DoubleType => typeof(double),
         LongType => typeof(long),
         ULongType => typeof(ulong),

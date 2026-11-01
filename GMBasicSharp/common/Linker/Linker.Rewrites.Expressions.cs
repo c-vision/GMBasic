@@ -166,7 +166,7 @@ public static partial class Linker
                     TokenKind conversionKind;
                     // Determina la funzione di conversione corretta.
                     if (context.ExpectedType is DoubleType) conversionKind = TokenKind.CDbl;
-                    else if (context.ExpectedType is SingleType) conversionKind = TokenKind.CSng;
+                    else if (context.ExpectedType is SingleType) conversionKind = TokenKind.CDbl; /* SINGLE = double (parità C) */
                     else if (context.ExpectedType is CurrencyType) conversionKind = TokenKind.CCur;
                     else if (context.ExpectedType is LongType) conversionKind = TokenKind.CLng;
                     else if (context.ExpectedType is IntegerType) conversionKind = TokenKind.CInt;
@@ -1415,7 +1415,7 @@ public static partial class Linker
                 {
                     // ...lo avvolgiamo in una chiamata esplicita a CDBL() o equivalente.
                     // Questo "timbra" il tipo corretto nell'AST in modo inequivocabile.
-                    var conversionTokenKind = expectedElementType is SingleType ? TokenKind.CSng :
+                    var conversionTokenKind = expectedElementType is SingleType ? TokenKind.CDbl :
                         expectedElementType is CurrencyType ? TokenKind.CCur :
                         TokenKind.CDbl;
 
