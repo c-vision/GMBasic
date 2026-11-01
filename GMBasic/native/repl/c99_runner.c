@@ -2,21 +2,25 @@
  * Esecuzione C99: Native Executor V2 -> cc + libgmb_runtime.a.
  */
 #include "repl.h"
-#include "executor.h"
-#include "gmb_preprocess.h"
 
 int rpl_run_c99(const char* bas_file, const rpl_options_t* o)
 {
-    if (o && o->defines_count > 0) {
-        for (int i = 0; i < o->defines_count; i++) {
-            const char* d = o->defines[i];
-            const char* eq = strchr(d, '=');
-            if (eq) { char name[128]; size_t nl = (size_t)(eq - d); if (nl >= sizeof(name)) nl = sizeof(name)-1; memcpy(name, d, nl); name[nl]=0; gmb_preprocess_define(name, eq+1); }
-            else gmb_preprocess_define(d, "1");
-        }
+    /* Esecuzione C99: la fa il CLI del compilatore (`gmb run` = emette C, compila, esegue).
+     * La REPL non linka più l'executor: nessuna compilazione in-process (F2b). */
+    char cli[2048];
+    if (!rpl_gmb_cli(cli, sizeof(cli))) { fprintf(stderr, "?gmb (CLI compilatore C) non trovato\n"); return 1; }
+    char dir[2048];
+    snprintf(dir, sizeof(dir), "%s", bas_file);
+    char* slash = strrchr(dir, '/');
+    if (slash) *slash = 0; else snprintf(dir, sizeof(dir), ".");
+    char defs[1024] = "";
+    if (o) for (int i = 0; i < o->defines_count; i++) {
+        size_t used = strlen(defs); snprintf(defs + used, sizeof(defs) - used, " -D \"%s\"", o->defines[i]);
     }
-    int rc = gmb_native_exec(bas_file, GMB_EXEC_C99);
-    if (o && o->defines_count > 0) gmb_preprocess_reset();
-    printf(rc == 0 ? "[C99 OK]\n" : "[C99 ERROR] exit %d\n", rc);
+    char cmd[6144];
+    snprintf(cmd, sizeof(cmd), "\"%s\" run --project \"%s\" --entry \"%s\"%s", cli, dir, bas_file, defs);
+    int rc = system(cmd);
+    rc = WIFEXITED(rc) ? WEXITSTATUS(rc) : 1;
+    if (rc != 0) printf("[C99 ERROR] exit %d\n", rc);
     return rc;
 }

@@ -95,13 +95,14 @@ int gmb_dasm(const char* file);
 /* Contratto a processo col compilatore C (F2): la REPL non include il front-end. */
 const char* rpl_gmb_cli(char* out, size_t cap);
 int rpl_gmb_dump(const char* what, const char* file, const char* out);
+int rpl_gmb_dump_ex(const char* what, const char* file, const char* out, const rpl_options_t* o);
+const char* rpl_resolve_vm_host(void);
 int gmb_loadprg(const char* file);
 
 /* ---- ReplEngine.cs -> repl.c ---- */
 int rpl_loop(const rpl_options_t* o, const char* initial_dir);
 
 /* ---- Orchestrator.cs -> orchestrator.c (compila .bas -> chunk/.c via ponte C#) ---- */
-int rpl_compile_csharp(const char* bas_file, const char* out_path, rpl_backend_t be, const rpl_options_t* o);
 
 /* ---- GmVmHostRunner.cs/VmCDebugDriver.cs -> vmc_runner.c ---- */
 int rpl_run_vmc(const char* bas_file, const rpl_options_t* o);

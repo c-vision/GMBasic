@@ -20,6 +20,9 @@
 
 /* F1 — dump dietro OPZIONI (la REPL non include il front-end, chiama queste) */
 int gmb_cli_dump_ast(const char* file);
+/* Defines di preprocessing (coppie NAME=VAL) applicate dal CLI, non dalla REPL. */
+void gmb_cli_set_defines(int argc, char** argv);
+void gmb_cli_reset_defines(void);
 int gmb_cli_dump_chunk(const char* file, const char* out);
 int gmb_cli_dump_c(const char* file, const char* out);
 int gmb_cli_dump_disasm(const char* file);

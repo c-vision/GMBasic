@@ -123,15 +123,50 @@ const char* rpl_gmb_cli(char* out, size_t cap)
 
 /* Esegue `gmb dump <what> <file> [--out <out>]`; stdout finisce nel flusso del comando
  * (che la console cattura/visualizza). */
-int rpl_gmb_dump(const char* what, const char* file, const char* out)
+/* Defines (-D) della REPL passati al CLI: il preprocessing appartiene al compilatore. */
+static void rpl_defines_args(char* out, size_t cap, const rpl_options_t* o)
+{
+    out[0] = 0;
+    if (!o) return;
+    for (int i = 0; i < o->defines_count; i++) {
+        size_t used = strlen(out);
+        snprintf(out + used, cap - used, " -D \"%s\"", o->defines[i]);
+    }
+}
+
+int rpl_gmb_dump_ex(const char* what, const char* file, const char* out, const rpl_options_t* o)
 {
     char cli[2048];
     if (!rpl_gmb_cli(cli, sizeof(cli))) { fprintf(stderr, "?gmb (CLI compilatore C) non trovato\n"); return 1; }
-    char cmd[4096];
-    if (out) snprintf(cmd, sizeof(cmd), "\"%s\" dump %s \"%s\" --out \"%s\"", cli, what, file, out);
-    else     snprintf(cmd, sizeof(cmd), "\"%s\" dump %s \"%s\"", cli, what, file);
+    char defs[1024]; rpl_defines_args(defs, sizeof(defs), o);
+    char cmd[6144];
+    if (out) snprintf(cmd, sizeof(cmd), "\"%s\" dump %s \"%s\" --out \"%s\"%s", cli, what, file, out, defs);
+    else     snprintf(cmd, sizeof(cmd), "\"%s\" dump %s \"%s\"%s", cli, what, file, defs);
     int rc = system(cmd);
     return WIFEXITED(rc) ? WEXITSTATUS(rc) : 1;
+}
+
+int rpl_gmb_dump(const char* what, const char* file, const char* out)
+{ return rpl_gmb_dump_ex(what, file, out, NULL); }
+
+/* Percorso di gmb_vm_host (unica risoluzione lato REPL: prima era in executor.c).
+ * Ordine: GMBASIC_VM_HOST (harness) → <repo>/GMBasic/native/gmb_vm_c/build → CWD relativo. */
+const char* rpl_resolve_vm_host(void)
+{
+    static char path[2048];
+    const char* env = getenv("GMBASIC_VM_HOST");
+    if (env && *env && access(env, X_OK) == 0) return env;
+    static const char* cands[] = {
+        "native/gmb_vm_c/build/gmb_vm_host",
+        "GMBasic/native/gmb_vm_c/build/gmb_vm_host",
+        "../GMBasic/native/gmb_vm_c/build/gmb_vm_host",
+        NULL
+    };
+    for (int i = 0; cands[i]; i++) if (access(cands[i], X_OK) == 0) { snprintf(path, sizeof(path), "%s", cands[i]); return path; }
+    char root[2048];
+    resolve_repo_path(root, sizeof(root), "native/gmb_vm_c/build/gmb_vm_host");
+    if (access(root, X_OK) == 0) { snprintf(path, sizeof(path), "%s", root); return path; }
+    return NULL;
 }
 
 static int rpl_is_dir_command(const char* cmd)
