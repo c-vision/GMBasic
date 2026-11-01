@@ -41,8 +41,11 @@ namespace Basic;
 ///     (<see cref="IsBuiltinFunctionKeyword"/>).
 ///
 /// Il canone è la dimensione LOGICA (byte del record/scambio FFI), NON la dimensione della
-/// struct C o dell'oggetto CLR: VM/C e C99 salvano ogni numerico in un double (8 byte) e IL
-/// mappa INTEGER su Int16 — SIZEOF risponde allo stesso modo su tutti e cinque i backend.
+/// struct C o dell'oggetto CLR: le gambe C salvano ogni numerico in un double (8 byte) e il
+/// backend managed mappa INTEGER su Int64 e SINGLE scalare su double — la tabella logica
+/// (INTEGER = 2, SINGLE = 4) resta la STESSA su tutti e cinque i backend, perché descrive il
+/// layout di record/FFI, non lo storage del valore. Vedi la nota AiWiki
+/// `Knowledge/SizeOf-Forma-e-Folding.md`.
 /// C99Native (compilatore C puro, deliberatamente indipendente da C# e dal runtime) ha la
 /// stessa tabella replicata in native/gmb_compiler_c (gmb_cls_field_bytes): è l'unico posto
 /// dove la duplicazione è ammessa, perché quel mondo non può chiamare il C#.
