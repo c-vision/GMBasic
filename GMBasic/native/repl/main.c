@@ -41,6 +41,7 @@ int main(int argc, char** argv)
     if (o.font_name || o.font_size > 0) { char _b[192]; snprintf(_b, sizeof(_b), "%s,%d", o.font_name ? o.font_name : "", o.font_size); setenv("GMB_CONSOLE_FONT", _b, 1); }
     gmb_iconsole_boot();   /* startup console: replica Executor.Startup.cs (GMB_CONSOLE/GMBASIC_HEADLESS) */
     if (o.file_name) {
+        if (rpl_engine_cs(&o)) return rpl_run_cs(o.file_name, &o);   /* engine C#: gmbcs run/debug */
         if (o.backend == RPL_VMC) return rpl_run_vmc(o.file_name, &o);
         return rpl_run_c99(o.file_name, &o);
     }

@@ -196,6 +196,10 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
       e **rimozione** di `IL`/`PCODE` dalla superficie (non degradati).
 - [ ] **F6 — La REPL C# esce**: `GMBasicSharp/REPL` non è più canonica (resta, se serve, `gmbcs` per
       i test IL/PCode finché il compilatore C# esiste).
+- [ ] **F4c — residuo di parità**: gli flag IL `-n`/`--native` e `-m`/`--managed` sono ancora
+      vietati all'avvio (`rpl_il_forbidden`) anche con `--engine=csharp`. Servono
+      `gmbcs build -n|-m` (AOT/managed) per accettarli; oggi il build dell'engine C# produce
+      solo IL gestito con `build --target il`.
 - [x] **F7a — Help JSON unica fonte** (2026-11-01): i 54 JSON vivono in **`REPL/helps/`**
       (spostati da `shared/helps`), letti da REPL C (`helps.c`/`help_form.c`) e C# (`REPL.csproj`
       + `InitHelp`). Nessuna copia in `shared/`.
