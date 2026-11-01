@@ -544,6 +544,8 @@ public sealed partial class Compiler
         TokenKind.SpritePriority => "PRIORITY",
         TokenKind.SpriteTransform => "TRANSFORM",
         TokenKind.SpriteSetMatrix => "MATRIX",
+        TokenKind.Scale => "SET SCALE",
+        TokenKind.Rotate => "SET ROTATION",
         TokenKind.SpriteGetPixels => "GETPIXELS",
         _ => "UNKNOWN"
     };

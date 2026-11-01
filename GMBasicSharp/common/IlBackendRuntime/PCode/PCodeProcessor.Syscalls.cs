@@ -6121,6 +6121,8 @@ internal sealed partial class PCodeProcessor
                         break;
                     }
                     case "POSITION": { var y = (float)PopNum(task); var x = (float)PopNum(task); var id = PopInt(task); gfx.SPRITE_SET_POSITION_GPM(id, x, y, noOpCb); break; }
+                    case "SET SCALE": { var sy = (float)PopNum(task); var sx = (float)PopNum(task); var id = PopInt(task); gfx.SPRITE_SET_SCALE_GPM(id, sx, sy, noOpCb); break; }
+                    case "SET ROTATION": { var deg = (float)PopNum(task); var id = PopInt(task); gfx.SPRITE_SET_ROTATION_GPM(id, deg, noOpCb); break; }
                     case "ON": gfx.SPRITE_ON_GPM(PopInt(task), noOpCb); break;
                     case "OFF": gfx.SPRITE_OFF_GPM(PopInt(task), noOpCb); break;
                     case "PRIORITY": { var pr = PopInt(task); var id = PopInt(task); gfx.SPRITE_PRIORITY_GPM(id, pr, noOpCb); break; }
