@@ -303,7 +303,8 @@ public sealed class HttpService : IHttpService, IDisposable
                 if (req.SessionSetCookie != null && !resp.Headers.ContainsKey("Set-Cookie"))
                     resp.Headers["Set-Cookie"] = req.SessionSetCookie;
 
-                await WriteTlsResponseAsync(ssl, resp, settings).ConfigureAwait(false);
+                await WriteTlsResponseAsync(ssl, resp, settings,
+                    string.Equals(req.Method, "HEAD", StringComparison.OrdinalIgnoreCase)).ConfigureAwait(false);
             }
         }
         catch { /* connessione caduta / handshake fallito */ }
@@ -354,7 +355,7 @@ public sealed class HttpService : IHttpService, IDisposable
     }
 
     /// <summary>Scrive una risposta HTTP/1.1 su stream TLS (header di sicurezza se configurati).</summary>
-    private static async Task WriteTlsResponseAsync(Stream stream, HttpResponse resp, HttpServerSettings settings)
+    private static async Task WriteTlsResponseAsync(Stream stream, HttpResponse resp, HttpServerSettings settings, bool headOnly = false)
     {
         var sb = new StringBuilder();
         var code = resp.StatusCode;
@@ -381,7 +382,8 @@ public sealed class HttpService : IHttpService, IDisposable
         sb.Append("Connection: close\r\n\r\n");
         var bytes = Encoding.UTF8.GetBytes(sb.ToString());
         await stream.WriteAsync(bytes).ConfigureAwait(false);
-        if (bodyBytes.Length > 0)
+        // HEAD: header completi (Content-Length compreso), nessun corpo.
+        if (bodyBytes.Length > 0 && !headOnly)
             await stream.WriteAsync(bodyBytes).ConfigureAwait(false);
         await stream.FlushAsync().ConfigureAwait(false);
     }
@@ -679,7 +681,8 @@ public sealed class HttpService : IHttpService, IDisposable
                 try { context.Response.Close(); } catch { }
                 return;
             }
-            SendResponse(context.Response, resp, settings);
+            var isHead = string.Equals(context.Request.HttpMethod, "HEAD", StringComparison.OrdinalIgnoreCase);
+            SendResponse(context.Response, resp, settings, isHead);
         }
         catch (HttpListenerException) { }
         catch { }
@@ -774,26 +777,47 @@ public sealed class HttpService : IHttpService, IDisposable
                     var bspResponse = GlobalBspPageHandler(filePath, req);
                     if (bspResponse != null) return bspResponse;
                 }
+                // Mappa allineata alla gamba PCode (HttpStaticMimeTypes) e a gmb_http_guess_content_type:
+                // .txt/.htm/.ico mancavano qui → un .txt servito come application/octet-stream
+                // (il browser lo scaricava invece di mostrarlo).
                 var contentType = ext switch
                 {
-                    ".html" => "text/html",
+                    ".html" or ".htm" => "text/html",
                     ".css" => "text/css",
                     ".js" => "application/javascript",
+                    ".txt" => "text/plain",
                     ".png" => "image/png",
                     ".jpg" or ".jpeg" => "image/jpeg",
                     ".gif" => "image/gif",
                     ".svg" => "image/svg+xml",
+                    ".ico" => "image/x-icon",
                     ".json" => "application/json",
                     _ => "application/octet-stream",
                 };
-                // Range HTTP (206/416): stessa logica managed della gamba PCode
-                // (CommonLib.Http.HttpRange) e dello stesso contratto del runtime C.
+                // Range HTTP (206/416) + cache condizionale (304): stessa logica managed della
+                // gamba PCode (CommonLib.Http.HttpRange) e stesso contratto del runtime C.
                 var info = new FileInfo(filePath);
+                var etag = $"\"{info.Length:x}-{info.LastWriteTimeUtc.Ticks:x}\"";
                 var resp = new HttpResponse
                 {
                     ContentType = contentType,
-                    Headers = { ["Accept-Ranges"] = "bytes" },
+                    Headers =
+                    {
+                        ["Accept-Ranges"] = "bytes",
+                        ["ETag"] = etag,
+                        ["Last-Modified"] = info.LastWriteTimeUtc.ToString("R"),
+                        ["Cache-Control"] = "public, max-age=3600",
+                    },
                 };
+                // If-None-Match: copia del client ancora valida → 304 senza corpo.
+                req.Headers.TryGetValue("If-None-Match", out var inm);
+                if (!string.IsNullOrEmpty(inm) && (inm.Contains('*') || inm.Contains(etag, StringComparison.Ordinal)))
+                {
+                    resp.StatusCode = 304;
+                    resp.Body = "";
+                    resp.BodyBytes = [];
+                    return resp;
+                }
                 req.Headers.TryGetValue("Range", out var rangeHeader);
                 var kind = CommonLib.Http.HttpRange.Parse(rangeHeader, info.Length, out var rangeStart, out var rangeEnd);
                 if (kind == CommonLib.Http.HttpRangeKind.Unsatisfiable)
@@ -823,7 +847,7 @@ public sealed class HttpService : IHttpService, IDisposable
         return new HttpResponse { StatusCode = 404, Body = "Not Found" };
     }
 
-    private static void SendResponse(HttpListenerResponse response, HttpResponse resp, HttpServerSettings settings)
+    private static void SendResponse(HttpListenerResponse response, HttpResponse resp, HttpServerSettings settings, bool headOnly = false)
     {
         response.StatusCode = resp.StatusCode;
         response.ContentType = resp.ContentType;
@@ -850,8 +874,10 @@ public sealed class HttpService : IHttpService, IDisposable
             ?? (resp.Body != null ? Encoding.UTF8.GetBytes(resp.Body) : null);
         if (outBytes != null)
         {
+            // HEAD: stessi header (Content-Length compreso) e NESSUN corpo — è così che un
+            // client controlla dimensione/ETag senza scaricare il file.
             response.ContentLength64 = outBytes.Length;
-            response.OutputStream.Write(outBytes, 0, outBytes.Length);
+            if (!headOnly) response.OutputStream.Write(outBytes, 0, outBytes.Length);
         }
         response.OutputStream.Close();
     }

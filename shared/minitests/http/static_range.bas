@@ -12,7 +12,7 @@
 '   (g) una route normale continua a funzionare (il Range non tocca le risposte dinamiche).
 '
 ' Il file è generato dal test in bin/ (gitignored) e cancellato alla fine.
-' EXPECT: start|full=[ok]|accept-ranges=[bytes]|r206=[ok]|suffix=[ok]|resume=[ok]|416=[ok]|route=[route-ok]
+' EXPECT: start|full=[ok]|accept-ranges=[bytes]|r206=[ok]|suffix=[ok]|resume=[ok]|416=[ok]|304=[ok]|etag-miss=[ok]|route=[route-ok]
 IMPORT HTTP
 
 DIM g_dir AS STRING = "bin/static_range"
@@ -107,6 +107,25 @@ SUB Main()
   ELSE
     PRINT "416-fail=["; r4.StatusCode; ":"; r4.Headers.Get("Content-Range"); "]"
   END IF
+
+  ' (h) cache condizionale: il secondo GET con l'ETag ricevuto → 304 SENZA corpo
+  '     (è il meccanismo che evita al browser di riscaricare il file a ogni navigazione)
+  DIM et AS STRING
+  et = full.Headers.Get("ETag")
+  DIM o5 AS HTTPOPTIONS = NEW HTTPOPTIONS
+  o5.Headers.Connection = "close"
+  o5.Headers.Add("If-None-Match", et)
+  DIM r6 AS FETCHRESULT = FETCH("http://127.0.0.1:8793/static/big.txt", o5)
+  IF r6.StatusCode = 304 THEN PRINT "304=[ok]" ELSE PRINT "304-fail=["; r6.StatusCode; "]"
+
+  ' (i) ETag diverso → il file viene riscaricato (200): niente 304 "per sbaglio"
+  DIM etbad AS STRING
+  etbad = CHR$(34) + "nope" + CHR$(34)
+  DIM o6 AS HTTPOPTIONS = NEW HTTPOPTIONS
+  o6.Headers.Connection = "close"
+  o6.Headers.Add("If-None-Match", etbad)
+  DIM r7 AS FETCHRESULT = FETCH("http://127.0.0.1:8793/static/big.txt", o6)
+  IF r7.StatusCode = 200 AND LEN(r7.Body) > 65536 THEN PRINT "etag-miss=[ok]" ELSE PRINT "etag-miss-fail=["; r7.StatusCode; "]"
 
   ' (g) le route dinamiche non sono toccate
   DIM r5 AS FETCHRESULT = FETCH("http://127.0.0.1:8793/route", o0)

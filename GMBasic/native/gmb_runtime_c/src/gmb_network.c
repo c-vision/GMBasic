@@ -3997,24 +3997,31 @@ static void http_send_static_file(gmb_net_sock_t client, SSL* ssl,
     long long total, start = 0, end = 0, left;
     int pr = 0;
     const char* rng = NULL;
+    const char* inm = NULL;
     const char* ct = gmb_http_guess_content_type(fpath);
-    char head[768];
+    char head[1024];
+    char etag[64];
+    char lastmod[64];
+    char hdr_extra[256];
     char buf[65536];
     gmb_http_stream_t out;
+    int is_head = 0;
+    struct stat st;
 
     memset(&out, 0, sizeof out);
     out.fd = client;
     out.ssl = ssl;
+    etag[0] = 0;
+    lastmod[0] = 0;
 
     if (req)
     {
+        if (req->method && strcasecmp(req->method, "HEAD") == 0) is_head = 1;
         for (int i = 0; i < req->header_count; i++)
         {
-            if (req->header_names[i] && strcasecmp(req->header_names[i], "Range") == 0)
-            {
-                rng = req->header_values[i];
-                break;
-            }
+            if (!req->header_names[i]) continue;
+            if (!rng && strcasecmp(req->header_names[i], "Range") == 0) rng = req->header_values[i];
+            else if (!inm && strcasecmp(req->header_names[i], "If-None-Match") == 0) inm = req->header_values[i];
         }
     }
 
@@ -4029,6 +4036,46 @@ static void http_send_static_file(gmb_net_sock_t client, SSL* ssl,
     total = (long long)ftell(f);
     fseek(f, 0, SEEK_SET);
     if (total < 0) total = 0;
+
+    /* ETag debole-deterministico da dimensione + mtime: è ciò che permette al browser di
+     * RIUSARE la copia in cache (304) invece di riscaricare il file a ogni navigazione.
+     * Formato allineato alle gambe managed: "<size-hex>-<mtime-hex>". */
+    if (stat(fpath, &st) == 0)
+    {
+        snprintf(etag, sizeof etag, "\"%llx-%llx\"",
+                 (unsigned long long)total, (unsigned long long)st.st_mtime);
+        {
+            struct tm tmv;
+            time_t mt = st.st_mtime;
+#if defined(_WIN32) || defined(_WIN64)
+            gmtime_s(&tmv, &mt);
+#else
+            gmtime_r(&mt, &tmv);
+#endif
+            strftime(lastmod, sizeof lastmod, "%a, %d %b %Y %H:%M:%S GMT", &tmv);
+        }
+    }
+
+    /* Header di caching in un unico blocco: un ETag vuoto (stat fallita) non deve produrre
+     * una riga "ETag: " invalida. */
+    hdr_extra[0] = 0;
+    if (etag[0])
+        snprintf(hdr_extra, sizeof hdr_extra, "ETag: %s\r\nLast-Modified: %s\r\n", etag, lastmod);
+
+    /* If-None-Match: la copia del client è ancora valida → 304 SENZA corpo. */
+    if (inm && etag[0])
+    {
+        int match = strstr(inm, "*") != NULL || strstr(inm, etag) != NULL;
+        if (match)
+        {
+            snprintf(head, sizeof head,
+                "HTTP/1.1 304 Not Modified\r\n%sCache-Control: public, max-age=3600\r\n"
+                "Accept-Ranges: bytes\r\nConnection: close\r\n\r\n", hdr_extra);
+            http_stream_send_all(&out, head, strlen(head));
+            fclose(f);
+            return;
+        }
+    }
 
     if (rng) pr = gmb_http_parse_range(rng, total, &start, &end);
 
@@ -4050,15 +4097,19 @@ static void http_send_static_file(gmb_net_sock_t client, SSL* ssl,
     if (pr == 1)
         snprintf(head, sizeof head,
             "HTTP/1.1 206 Partial Content\r\nContent-Type: %s\r\nAccept-Ranges: bytes\r\n"
-            "Content-Range: bytes %lld-%lld/%lld\r\nContent-Length: %lld\r\nConnection: close\r\n\r\n",
-            ct, start, end, total, end - start + 1);
+            "Content-Range: bytes %lld-%lld/%lld\r\nContent-Length: %lld\r\n%s"
+            "Cache-Control: public, max-age=3600\r\nConnection: close\r\n\r\n",
+            ct, start, end, total, end - start + 1, hdr_extra);
     else
         snprintf(head, sizeof head,
             "HTTP/1.1 200 OK\r\nContent-Type: %s\r\nAccept-Ranges: bytes\r\n"
-            "Content-Length: %lld\r\nConnection: close\r\n\r\n", ct, total);
+            "Content-Length: %lld\r\n%sCache-Control: public, max-age=3600\r\n"
+            "Connection: close\r\n\r\n", ct, total, hdr_extra);
     http_stream_send_all(&out, head, strlen(head));
 
-    left = end - start + 1;
+    /* HEAD: stessa riga di stato e stessi header (Content-Length compreso), NESSUN corpo:
+     * è così che un client controlla se un file è cambiato senza scaricarlo. */
+    left = is_head ? 0 : end - start + 1;
     if (left > 0 && fseek(f, (long)start, SEEK_SET) == 0)
     {
         while (left > 0)

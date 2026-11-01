@@ -829,8 +829,11 @@ internal sealed partial class PCodeProcessor
     private static Dictionary<string, object?> ParseFormToDict(CommonLib.Http.HttpRequest request)
         => request.ParseFormDictionary();
 
-    private static bool TryServeStaticFile(PCodeHttpRouter router, string requestPath, PCodeHttpResponse response, string? rangeHeader = null)
+    private static bool TryServeStaticFile(PCodeHttpRouter router, CommonLib.Http.HttpRequest request, PCodeHttpResponse response)
     {
+        var requestPath = request.Path;
+        var rangeHeader = request.Headers.TryGetPropertyValue("Range", out var rngNode) ? rngNode?.ToString() : null;
+        var ifNoneMatch = request.Headers.TryGetPropertyValue("If-None-Match", out var inmNode) ? inmNode?.ToString() : null;
         var resolved = router.ResolveStaticPath(requestPath);
         if (resolved == null) return false;
         var (urlPrefix, physicalBase) = resolved.Value;
@@ -858,6 +861,16 @@ internal sealed partial class PCodeProcessor
         response.SetHeader("Accept-Ranges", "bytes");
         var ext = Path.GetExtension(fullPath);
         var contentType = HttpStaticMimeTypes.TryGetValue(ext, out var ct) ? ct : "application/octet-stream";
+
+        // If-None-Match: la copia del client è ancora valida → 304 SENZA corpo (il browser
+        // riusa la cache invece di riscaricare il file a ogni navigazione).
+        if (!string.IsNullOrEmpty(ifNoneMatch)
+            && (ifNoneMatch.Contains('*') || ifNoneMatch.Contains(etag, StringComparison.Ordinal)))
+        {
+            response.SetStatus(304);
+            response.Send("");
+            return true;
+        }
 
         // Range HTTP (206/416): unica logica managed in CommonLib.Http.HttpRange (§0bis).
         var kind = CommonLib.Http.HttpRange.Parse(rangeHeader, info.Length, out var start, out var end);
@@ -918,10 +931,9 @@ internal sealed partial class PCodeProcessor
         if (match == null)
         {
             // Stessa priorita' dell'AST: i file statici sono controllati SOLO quando nessuna
-            // route/fallback ha risposto, mai prima. L'header Range della richiesta arriva qui:
-            // il file può essere servito in fette (206) invece che per intero.
-            var rangeHdr = request.Headers.TryGetPropertyValue("Range", out var rngNode) ? rngNode?.ToString() : null;
-            if (!TryServeStaticFile(router, request.Path, response, rangeHdr)) response.CompleteAsNotFound();
+            // route/fallback ha risposto, mai prima. La RICHIESTA arriva intera: da lì il file
+            // può essere servito in fette (Range → 206) o confermato in cache (If-None-Match → 304).
+            if (!TryServeStaticFile(router, request, response)) response.CompleteAsNotFound();
             return false;
         }
 
