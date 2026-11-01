@@ -13,7 +13,7 @@
 '   └───────────────────────────────────────────────────────────────┘
 '
 ' Avvio (dalla root del monorepo, in-process PCode — nessun host esterno):
-'   dotnet GMBasicSharp/REPL/bin/Debug/net10.0/REPL.dll -noconsole --pcode shared/webapp/app.bas
+'   GMBasicSharp/CompilerCli/bin/Debug/net10.0/gmbcs run --engine pcode shared/webapp/app.bas
 ' oppure, con gestione start/stop/log:
 '   tools/sh/webapp_up.sh start
 '

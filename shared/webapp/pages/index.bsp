@@ -475,7 +475,7 @@
     </div>
     <canvas id="wasm-canvas" class="gmb-canvas" width="800" height="320"></canvas>
     <div class="hint" id="wasm-hint">
-      To build a module: <code>dotnet GMBasicSharp/REPL/bin/Debug/net10.0/REPL.dll --pcode --c99 prog.bas -o /tmp/prog.c</code>
+      To build a module: <code>gmb dump c prog.bas --out /tmp/prog.c</code>
       then <code>clang --target=wasm32 -o shared/webapp/static/prog.wasm /tmp/prog.c GMBasic/native/gmb_runtime_c/src/*.c</code>.
     </div>
     <pre class="out" id="wasm-log"></pre>

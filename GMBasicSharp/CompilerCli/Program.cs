@@ -22,11 +22,14 @@ using System.Text;
 using Basic;
 using Basic.IlBackend;
 
-internal static class Program
+namespace Basic.CliEngine;
+
+/// <summary>CLI headless dell'engine C# (`gmbcs`). Pubblica `Main` anche per il CLI `gmb`.</summary>
+public static class Program
 {
     private const string Version = "gmbcs 1.0.0 (GMBASIC C# engine CLI)";
 
-    private static int Main(string[] args)
+    public static int Main(string[] args)
     {
         try { return Run(args); }
         catch (Exception ex)

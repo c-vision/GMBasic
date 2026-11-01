@@ -9,7 +9,7 @@
 #   tools/sh/webapp_up.sh logs       # tail -f del log
 #   tools/sh/webapp_up.sh url        # stampa gli URL
 #
-# Il processo gira con il backend PCode del REPL (`--pcode`, in-process: nessun
+# Il processo gira con il backend PCode dell engine C# (`gmbcs run --engine pcode`,
 # gmb_vm_host esterno). Porte/seed/refresh vengono da shared/webapp/.webapp.toml.
 # PID e log stanno in ${TMPDIR} (mai nel repo).
 # ============================================================================
@@ -18,7 +18,7 @@ set -u
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 APP="$ROOT/shared/webapp/app.bas"
 CFG="$ROOT/shared/webapp/.webapp.toml"
-REPL="$ROOT/GMBasicSharp/REPL/bin/Debug/net10.0/REPL.dll"
+REPL="$ROOT/GMBasicSharp/CompilerCli/bin/Debug/net10.0/gmbcs"
 PIDFILE="${TMPDIR:-/tmp}/gmb_webapp.pid"
 LOGFILE="${TMPDIR:-/tmp}/gmb_webapp.log"
 
@@ -61,14 +61,14 @@ cmd_start() {
     echo "già in esecuzione (pid $(cat "$PIDFILE")) → $BASE/index.bsp"
     return 0
   fi
-  if [ ! -f "$REPL" ]; then
-    echo "errore: REPL non compilato: $REPL" >&2
-    echo "  compila:  dotnet build GMBasicSharp/REPL/REPL.csproj" >&2
+  if [ ! -x "$REPL" ]; then
+    echo "errore: engine C# (gmbcs) non compilato: $REPL" >&2
+    echo "  compila:  dotnet build GMBasicSharp/CompilerCli/CompilerCli.csproj" >&2
     return 1
   fi
   if [ ! -f "$APP" ]; then echo "errore: app mancante: $APP" >&2; return 1; fi
   : > "$LOGFILE"
-  nohup dotnet "$REPL" -noconsole --pcode "$APP" >>"$LOGFILE" 2>&1 &
+  nohup "$REPL" run --engine pcode "$APP" >>"$LOGFILE" 2>&1 &
   echo $! > "$PIDFILE"
   if wait_health; then
     echo "avviata (pid $(cat "$PIDFILE"))"

@@ -54,7 +54,7 @@ same semantics). Then it resolves the `IMPORT`s starting from the entry file.
    app folder.
 
 There is **no textual `INCLUDE` directive** in the language: modularity is `IMPORT` + `.inc`
-modules (optionally packages: `gmb-package.json` / `REQUIRE`, see `GMBasicSharp/REPL/CliPackages.cs`).
+modules (optionally packages: `gmb-package.json` / `REQUIRE`, see `GMBasicSharp/Cli/CliPackages.cs`).
 
 Consequence: keep one app per folder and keep the entry file at the app level you want scanned —
 a stray `SUB Main` in a sibling file of the same project root is a link-time risk.
@@ -90,7 +90,7 @@ tools/sh/harness.sh pcode shared/APPS/<AppName>/src/<AppName>.bas
 tools/sh/harness.sh vmc   shared/APPS/<AppName>/src/<AppName>.bas
 
 # Release: NativeAOT executable (REPL is the only executable project)
-dotnet run --project GMBasicSharp/REPL -- -n shared/APPS/<AppName>/src/<AppName>.bas
+REPL/build/gmb_repl shared/APPS/<AppName>/src/<AppName>.bas
 
 # C99Native (C frontend + emitter → `cc` → execution)
 bash tools/sh/gmb_c99native_run.sh ../shared/APPS/<AppName>/src/<AppName>.bas   # path relative to GMBasic/

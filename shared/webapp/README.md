@@ -202,7 +202,7 @@ tools/sh/webapp_up.sh logs
 tools/sh/webapp_up.sh stop
 
 # equivalente manuale
-dotnet GMBasicSharp/REPL/bin/Debug/net10.0/REPL.dll -noconsole --pcode shared/webapp/app.bas
+GMBasicSharp/CompilerCli/bin/Debug/net10.0/gmbcs run --engine pcode shared/webapp/app.bas
 ```
 
 PID e log stanno in `${TMPDIR}` (`gmb_webapp.pid`, `gmb_webapp.log`), **mai nel repo**.

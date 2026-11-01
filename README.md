@@ -52,16 +52,16 @@ in the **releases** of two companion repos and are downloaded **only when needed
 | **`c-vision/GMBasicBrains`** | private | **brains** (Second Brain): RAG and knowledge graph, shipped as release assets |
 
 The other two repos never need to be cloned: the commands below fetch from their releases. From a
-checkout use `dotnet run --project GMBasicSharp/REPL -- …`; with the distributed binary it is
-simply `gmb …`.
+checkout use `dotnet run --project GMBasicSharp/Cli -- …`; with the distributed binary it is
+simply `gmb …`. The **interactive REPL is the C binary** `REPL/build/gmb_repl` (see `REPL/README.md`).
 
 ### First time — the four commands that actually matter
 
 ```sh
-dotnet run --project GMBasicSharp/REPL -- libs ensure            # missing native libraries
-dotnet run --project GMBasicSharp/REPL -- fixtures ensure        # market feeds for the samples
-dotnet run --project GMBasicSharp/REPL -- brain login --github   # once: token for the private repo
-dotnet run --project GMBasicSharp/REPL -- brain install brainvault
+dotnet run --project GMBasicSharp/Cli -- libs ensure            # missing native libraries
+dotnet run --project GMBasicSharp/Cli -- fixtures ensure        # market feeds for the samples
+dotnet run --project GMBasicSharp/Cli -- brain login --github   # once: token for the private repo
+dotnet run --project GMBasicSharp/Cli -- brain install brainvault
 ```
 
 `ensure` downloads **only what is missing**, so you can re-run it whenever you like.
@@ -142,22 +142,31 @@ bash ../LLMEnv/tools/build_ai_libs.sh          # engine → ~/.gmbasic/libs/<rid
 dotnet build GMBasicSharp/GMBasicSharp.slnx
 ```
 
-The CLI is `GMBasicSharp/REPL` (assembly `REPL`; the installed binary is `gmb`). One entry point,
-**four engines** selected by flag:
+Tre programmi separati, un compito ciascuno:
+
+| programma | cos'è |
+|---|---|
+| `REPL/build/gmb_repl` | **REPL interattiva** e runner del mondo C (canonica): `RUN`, `EVAL`, `AST`, `DASM`, `COMPILE`, `IDE`, package/fixtures. Nessuna dipendenza dal mondo C#. |
+| `GMBasicSharp/CompilerCli` → `gmbcs` | **CLI headless dell'engine C#**: `check`, `dump ast\|pcode\|il\|disasm`, `build --target il\|pcode`, `run`/`eval --engine il\|pcode`, `debug`. |
+| `GMBasicSharp/Cli` → `gmb` | **CLI amministrativo del mondo C#**: pacchetti, brain, libs, setup, daemon, rag/graph, grep. |
 
 ```sh
 # PCodeVM — P-Code virtual machine written in C# (in-process, no native code)
-dotnet run --project GMBasicSharp/REPL -- --pcode <file.bas>
+dotnet run --project GMBasicSharp/CompilerCli -- run --engine pcode <file.bas>
 
-# IL backend — .NET IL: managed JIT (-m) or NativeAOT executable (-n)
-dotnet run --project GMBasicSharp/REPL -- -m <file.bas>    # -m/--managed: IL + JIT
-dotnet run --project GMBasicSharp/REPL -- -n <file.bas>    # -n/--native: NativeAOT build
+# IL backend — .NET IL managed (JIT)
+dotnet run --project GMBasicSharp/CompilerCli -- run --engine il <file.bas>
+dotnet run --project GMBasicSharp/CompilerCli -- build --target il <file.bas>
 
-# VM/C — the DEFAULT engine: P-Code executed by the external gmb_vm_host
+# VM/C — P-Code executed by the external gmb_vm_host (REPL C)
 cmake -S GMBasic/native/gmb_vm_c -B GMBasic/native/gmb_vm_c/build && cmake --build GMBasic/native/gmb_vm_c/build
-export GMBASIC_VM_HOST="$PWD/GMBasic/native/gmb_vm_c/build/gmb_vm_host"   # or copy it next to the CLI
-dotnet run --project GMBasicSharp/REPL -- <file.bas>
+REPL/build/gmb_repl <file.bas>
 dotnet run --project tools/runners/GMBASIC.Conformance -- vmtest <file.bas>
+```
+
+> Il build **NativeAOT** (`-n`) del vecchio runner C# non è ancora in `gmbcs`: il percorso
+> nativo canonico è il compilatore C (`gmb build --project <dir>`). La reintroduzione di `-n`
+> in `gmbcs` è tracciata in `TODO.md` §6 (F4c).
 
 # C99Native — C frontend + C emitter, `cc` against the shared C runtime, no VM
 # The script cds into GMBasic/ itself, so sample paths are relative to GMBasic/ (../shared/...)
