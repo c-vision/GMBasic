@@ -197,8 +197,10 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
       richiede l'include di LLMEnv (dipendenza d'ambiente, non del mondo C#).
       Quando `GMBasicSharp/` sarà eliminato davvero, `IL`/`PCODE` si **rimuovono** dal
       dispatcher (non si lasciano a metà).
-- [ ] **F6 — La REPL C# esce**: `GMBasicSharp/REPL` non è più canonica (resta, se serve, `gmbcs` per
-      i test IL/PCode finché il compilatore C# esiste).
+- [~] **F6 — La REPL C# esce** (2026-11-01, deprecazione): il banner della REPL C# dichiara che
+      la REPL canonica è `gmb_repl` (C) e che il client resta per engine IL/P-Code (`gmbcs` per i
+      test headless). Resta da fare: spostare i sorgenti `GMBasic/native/repl` → `REPL/` con
+      CMake proprio e aggiornare i riferimenti (build script/IDE/CI).
 - [ ] **F4c — residuo di parità**: gli flag IL `-n`/`--native` e `-m`/`--managed` sono ancora
       vietati all'avvio (`rpl_il_forbidden`) anche con `--engine=csharp`. Servono
       `gmbcs build -n|-m` (AOT/managed) per accettarli; oggi il build dell'engine C# produce

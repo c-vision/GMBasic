@@ -931,6 +931,9 @@ public class ReplEngine
         Out.WriteLine(Center(copyright, w));
         Out.WriteLine(Center($"{mode} - C# VERSION", w));
         Out.WriteLine();
+        Out.WriteLine("  (REPL C# deprecata: la REPL canonica e' `gmb_repl` in C; questo client resta");
+        Out.WriteLine("   per l'engine IL/P-Code — nei test headless il CLI e' `gmbcs`.)");
+        Out.WriteLine();
         Out.WriteLine("READY.");
 
         static string Center(string s, int width)
