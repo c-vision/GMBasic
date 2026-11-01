@@ -112,11 +112,16 @@ typedef struct {
     char** _strings;
     uint32_t _strings_count;
     uint32_t _strings_cap;
+    /* Refcount: il chunk compilato è IMMUTABILE durante l'esecuzione → la cache in-memory del
+     * motore BSP lo condivide fra render concorrenti (eviction quando l'ultimo render finisce). */
+    int refs;
 } gmb_chunk_t;
 
 /* ---- API ---- */
 gmb_chunk_t* gmb_chunk_load(const uint8_t* data, size_t len, bool load_lines);
 void         gmb_chunk_free(gmb_chunk_t* chunk);
+/* Aggiunge una referenza (il chunk è condivisibile: immutabile dopo il load). */
+gmb_chunk_t* gmb_chunk_retain(gmb_chunk_t* chunk);
 
 /* Accesso costanti */
 const gmb_value_t* gmb_chunk_const(const gmb_chunk_t* chunk, uint32_t idx);

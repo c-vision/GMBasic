@@ -211,16 +211,14 @@ static void* bsp_render_worker(void* arg)
      * il bug fissato lato PCodeVM/BspDispatch (C#): usa gmb_vm_set_dynamic_scope, letto
      * da OP_LOAD_DYNAMIC_SCOPE indipendentemente da chunk->global_names. */
     gmb_dict_t qd = bsp_parse_query(j->query);
-    gmb_vm_set_dynamic_scope(&vm, "QUERY", gmb_make_val_dict(qd));
+    gmb_val_t vq = gmb_make_val_dict(qd);
+    gmb_vm_set_dynamic_scope(&vm, "QUERY", vq);
+    gmb_val_free_temp_dict(vq);                       /* box "immortale": va liberato a mano */
     gmb_dict_t rd = gmb_dict_new();
     gmb_dict_set(&rd, "Method", gmb_make_val_string("GET"));
     gmb_dict_set(&rd, "Path", gmb_make_val_string(j->url_path ? j->url_path : ""));
     gmb_dict_set(&rd, "Body", gmb_make_val_string(""));
-    gmb_dict_set(&rd, "Query", gmb_make_val_dict(qd));
-    /* Headers (parità BuildRequestDict C#): essenziale per le pagine BSP che si
-     * auto-localizzano il registry via Host (es. RegistryBsp/index.bsp →
-     * "http://" + REQ.Headers.Get("Host")). Senza, REQ.Headers è un dict vuoto e
-     * la pagina BSP del registry non può fare FETCH verso lo stesso server. */
+    gmb_dict_set(&rd, "Query", gmb_make_val_dict_take(&qd));
     {
         gmb_dict_t hd = gmb_dict_new();
         if (j->host && *j->host)
@@ -228,16 +226,25 @@ static void* bsp_render_worker(void* arg)
         gmb_dict_set(&rd, "Headers", gmb_make_val_dict_take(&hd));
         gmb_dict_free(&hd);
     }
-    gmb_vm_seed_global(&vm, "REQ", gmb_make_val_dict_take(&rd));
+    {   /* REQ: il box è temporaneo → seminato l'entry, si libera */
+        gmb_val_t vr = gmb_make_val_dict_take(&rd);
+        gmb_vm_seed_global(&vm, "REQ", vr);
+        gmb_val_free_temp_dict(vr);
+    }
     gmb_dict_t fd = gmb_dict_new();
-    gmb_vm_set_dynamic_scope(&vm, "FORM", gmb_make_val_dict_take(&fd));
+    {   gmb_val_t vf = gmb_make_val_dict_take(&fd);
+        gmb_vm_set_dynamic_scope(&vm, "FORM", vf);
+        gmb_val_free_temp_dict(vf);
+    }
     gmb_dict_t sd = gmb_dict_new();
-    gmb_vm_seed_global(&vm, "SESSION", gmb_make_val_dict_take(&sd));
+    {   gmb_val_t vs = gmb_make_val_dict_take(&sd);
+        gmb_vm_seed_global(&vm, "SESSION", vs);
+        gmb_val_free_temp_dict(vs);
+    }
     gmb_dict_free(&qd);
     gmb_dict_free(&rd);
     gmb_dict_free(&fd);
     gmb_dict_free(&sd);
-
     j->cap.n = 0;
     if (j->cap.buf) j->cap.buf[0] = '\0';
 
@@ -295,6 +302,70 @@ static uint8_t* bsp_read_file(const char* path, size_t* out_len, long max_len)
     return b;
 }
 
+/* ── Cache IN-MEMORY dei chunk compilati (una per pagina, invalidata da mtime+size) ──
+ * Prima ogni richiesta rileggeva il sidecar (138 KB per index.bsp) e lo ri-parsava con
+ * gmb_chunk_load: costo puro per richieste ripetute. Il chunk è immutabile durante
+ * l'esecuzione → si condivide fra render concorrenti con un refcount; l'eviction libera la
+ * referenza della cache, la memoria muore quando l'ultimo render la rilascia. */
+#define GMB_BSP_CHUNK_CACHE 32
+typedef struct {
+    char path[1088];
+    time_t mtime;
+    long size;
+    unsigned long long seq;
+    gmb_chunk_t* chunk;
+} bsp_chunk_entry_t;
+static bsp_chunk_entry_t g_chunk_cache[GMB_BSP_CHUNK_CACHE];
+static unsigned long long g_chunk_seq = 0;
+static pthread_mutex_t g_cache_mu = PTHREAD_MUTEX_INITIALIZER;
+
+/* Ritorna il chunk per `chunk_path` con UNA referenza del chiamante (da rilasciare con
+ * gmb_chunk_free), oppure NULL se il sidecar non è leggibile/valido. */
+static gmb_chunk_t* bsp_chunk_get(const char* chunk_path, const struct stat* st)
+{
+    pthread_mutex_lock(&g_cache_mu);
+    for (int i = 0; i < GMB_BSP_CHUNK_CACHE; i++) {
+        if (g_chunk_cache[i].chunk && strcmp(g_chunk_cache[i].path, chunk_path) == 0) {
+            if (g_chunk_cache[i].mtime == st->st_mtime && g_chunk_cache[i].size == (long)st->st_size) {
+                g_chunk_cache[i].seq = ++g_chunk_seq;
+                gmb_chunk_t* hit = gmb_chunk_retain(g_chunk_cache[i].chunk);
+                pthread_mutex_unlock(&g_cache_mu);
+                return hit;
+            }
+            /* stale: si toglie dalla cache (la memoria resta viva finché un render la usa) */
+            gmb_chunk_free(g_chunk_cache[i].chunk);
+            g_chunk_cache[i].chunk = NULL;
+            g_chunk_cache[i].path[0] = '\0';
+            break;
+        }
+    }
+    pthread_mutex_unlock(&g_cache_mu);
+
+    size_t chunk_len = 0;
+    uint8_t* data = bsp_read_file(chunk_path, &chunk_len, GMB_BSP_MAX_CHUNK);
+    if (!data) return NULL;
+    gmb_chunk_t* chunk = gmb_chunk_load(data, chunk_len, true);
+    free(data);
+    if (!chunk) return NULL;
+
+    pthread_mutex_lock(&g_cache_mu);
+    int slot = -1;
+    unsigned long long oldest = ~0ULL;
+    int oldest_i = 0;
+    for (int i = 0; i < GMB_BSP_CHUNK_CACHE; i++) {
+        if (!g_chunk_cache[i].chunk) { slot = i; break; }
+        if (g_chunk_cache[i].seq < oldest) { oldest = g_chunk_cache[i].seq; oldest_i = i; }
+    }
+    if (slot < 0) { slot = oldest_i; gmb_chunk_free(g_chunk_cache[slot].chunk); }
+    snprintf(g_chunk_cache[slot].path, sizeof g_chunk_cache[slot].path, "%s", chunk_path);
+    g_chunk_cache[slot].mtime = st->st_mtime;
+    g_chunk_cache[slot].size = (long)st->st_size;
+    g_chunk_cache[slot].seq = ++g_chunk_seq;
+    g_chunk_cache[slot].chunk = gmb_chunk_retain(chunk);   /* referenza della cache */
+    pthread_mutex_unlock(&g_cache_mu);
+    return chunk;                                          /* referenza del chiamante */
+}
+
 int gmb_vm_bsp_render(const char* bsp_path, const char* url_path,
                       const char* query, const char* host,
                       char** out_html, int* out_status)
@@ -311,11 +382,7 @@ int gmb_vm_bsp_render(const char* bsp_path, const char* url_path,
     if (stat(chunk_path, &st_chunk) != 0) return 0;
     if (stat(bsp_path, &st_bsp) == 0 && st_chunk.st_mtime < st_bsp.st_mtime) return 0;
 
-    size_t chunk_len = 0;
-    uint8_t* data = bsp_read_file(chunk_path, &chunk_len, GMB_BSP_MAX_CHUNK);
-    if (!data) return 0;
-    gmb_chunk_t* chunk = gmb_chunk_load(data, chunk_len, true);
-    free(data);
+    gmb_chunk_t* chunk = bsp_chunk_get(chunk_path, &st_chunk);
     if (!chunk)
     {
         if (out_html) *out_html = strdup("500 BSP chunk invalid");

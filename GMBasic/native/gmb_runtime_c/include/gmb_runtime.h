@@ -338,6 +338,9 @@ void  gmb_asr_free(char* p);
  * serializzazione list/dict->JSON; VM/C (STRINGIFY) e chiamanti handle-based ci
  * delegano. gmb_val_to_json copre il caso dict già boxato in gmb_obj_t/type_name. */
 void gmb_json_append_dict(gmb_dict_t* d, char** buf, size_t* cap, size_t* pos);
+/* Libera un valore temporaneo di gmb_make_val_dict/_take (box "gmb_dict" senza release_fn):
+ * per i percorsi per-richiesta (seeding BSP) che creano dict e li abbandonano. */
+void gmb_val_free_temp_dict(gmb_val_t v);
 void gmb_json_append_list(gmb_list_t* l, char** buf, size_t* cap, size_t* pos);
 /* Serializza un gmb_dict_t* GREZZO (non boxato in gmb_obj_t) come oggetto JSON dell'INTERO
  * record — parità PCodeVM SpeedRecordToBytes. Unica implementazione condivisa VM/C + C99

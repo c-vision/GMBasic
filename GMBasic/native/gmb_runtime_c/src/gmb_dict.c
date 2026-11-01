@@ -364,6 +364,22 @@ gmb_val_t gmb_make_val_dict_take(gmb_dict_t* src) {
     return gmb_make_val_obj(box);
 }
 
+/* Libera un valore temporaneo creato da gmb_make_val_dict / gmb_make_val_dict_take.
+ * Quei box sono deliberatamente "immortali" (release_fn NULL, refcount 0) perché nei mondi
+ * transpiler i dict sono condivisi fra variabili; ma un percorso PER-RICHIESTA (il seeding
+ * BSP: REQ/QUERY/FORM/SESSION) li crea e li abbandona → leak di ~1,7 KB per render, misurato
+ * con `leaks` (8.684 leak/300 render su una pagina vuota). Qui si libera SOLO un box "gmb_dict"
+ * senza distruttore: qualunque altro oggetto è ignorato (mai liberare roba altrui). */
+void gmb_val_free_temp_dict(gmb_val_t v) {
+    if (v.kind != GMB_TYPE_OBJECT || !v.v_ptr) return;
+    gmb_obj_t* o = (gmb_obj_t*)v.v_ptr;
+    if (o->release_fn || o->dtor) return;                 /* oggetto contato/gestito: non è nostro */
+    if (!o->type_name || strcmp(o->type_name, "gmb_dict") != 0) return;
+    gmb_dict_t* d = (gmb_dict_t*)o->data;
+    if (d) { gmb_dict_free(d); free(d); }
+    free(o);
+}
+
 gmb_list_t gmb_val_dict_keys(gmb_val_t v) {
     gmb_list_t l = gmb_list_new();
     gmb_dict_t d = gmb_val_as_dict(v);
@@ -382,162 +398,366 @@ gmb_string_t* gmb_val_dict_keys_array(gmb_val_t v, gmb_int_t* len_out) {
     return out;
 }
 
-/* PARSE(json): parser JSON minimale (oggetti e array nidificati).
-   Popola `out` (dict runtime) con chiavi→valori (string/num/bool/nil/oggetto). */
-static gmb_val_t gmb_json_parse_value(const char** pp, gmb_dict_t* dict_out);
+/* ============================================================================
+ * Parser JSON — UNA implementazione, tre percorsi (2026-11-01)
+ *
+ *   gmb_json_parse            → albero completo (gmb_val_t)
+ *   gmb_json_extract_val      → ZERO-ALLOC: scansiona e materializza SOLO il valore al path
+ *                               (stile `fastjson.c` di Redis: i rami non richiesti si SALTANO)
+ *   gmb_json_parse_to_dict    → riversa le coppie di primo livello in un dict esistente
+ *
+ * Perché è stato riscritto (misure su questa macchina, JSON di 11.891 B con 1000 chiavi
+ * piatte): 964 µs/parse, 12 MB/s — il costo era `gmb_dict_set`, che cerca la chiave in modo
+ * LINEARE (O(n²) sull'intero oggetto). Ora l'oggetto si costruisce con un indice hash locale
+ * (open addressing) → O(1) per chiave. Inoltre:
+ *   - stringhe: fast path `memchr` (nessun escape → UNA allocazione esatta, niente crescita
+ *     geometrica con realloc);
+ *   - numeri: fast path intero con `strtoll` (niente `atof`), altrimenti `strtod`;
+ *   - chiavi: confronto in-place sul testo (nessun buffer fisso da 512 B);
+ *   - profondità limitata (GMB_JSON_MAX_DEPTH) contro input ostili (prima stack overflow);
+ *   - `extract` di un campo non costruisce più l'albero: da ~940 µs a pochi µs sul caso sopra.
+ * ============================================================================ */
 
-static void gmb_json_skip_ws(const char** pp) {
-    while (**pp == ' ' || **pp == '\t' || **pp == '\n' || **pp == '\r') (*pp)++;
+#define GMB_JSON_MAX_DEPTH 256
+
+static const char* jp_ws(const char* p) {
+    while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r') p++;
+    return p;
 }
 
-static gmb_val_t gmb_json_parse_obj(const char** pp, gmb_dict_t* dict_out) {
-    gmb_dict_t obj = gmb_dict_new();
-    (*pp)++; /* { */
-    gmb_json_skip_ws(pp);
-    while (**pp && **pp != '}') {
-        gmb_json_skip_ws(pp);
-        if (**pp == '"') {
-            (*pp)++;
-            char key[512]; size_t ki = 0;
-            while (**pp && **pp != '"' && ki < 511) key[ki++] = **pp, (*pp)++;
-            key[ki] = 0;
-            if (**pp == '"') (*pp)++;
-            gmb_json_skip_ws(pp);
-            if (**pp == ':') { (*pp)++; gmb_json_skip_ws(pp); }
-            gmb_val_t v = gmb_json_parse_value(pp, dict_out);
-            gmb_dict_set(&obj, key, v);
-        }
-        gmb_json_skip_ws(pp);
-        if (**pp == ',') (*pp)++;
+static int jp_is_num_char(char c) {
+    return (c >= '0' && c <= '9') || c == '-' || c == '+' || c == '.' || c == 'e' || c == 'E';
+}
+
+/* Fine della stringa JSON che inizia su `p` (che punta a '"'). *has_esc = 1 se contiene '\\'.
+ * ATTENZIONE: scansione LINEARE sul solo contenuto della stringa (niente strlen sul resto del
+ * documento: con quello ogni stringa costava O(documento) → O(n²) sull'intero JSON, misurato
+ * 5x più lento su un payload da 200 elementi). */
+static const char* jp_str_end(const char* p, int* has_esc) {
+    if (has_esc) *has_esc = 0;
+    if (*p != '"') return p;
+    p++;
+    for (;;) {
+        while (*p && *p != '"' && *p != '\\') p++;
+        if (*p == '\\') { if (has_esc) *has_esc = 1; p++; if (*p) p++; continue; }
+        return p;                     /* '"' oppure fine input */
     }
-    if (**pp == '}') (*pp)++;
+}
+
+/* Decodifica una stringa JSON [start,end) in `out` (cap): ritorna la lunghezza scritta. */
+static size_t jp_str_decode(const char* start, const char* end, char* out, size_t cap) {
+    size_t n = 0;
+    const char* p = start;
+    while (p < end && n + 1 < cap) {
+        char c = *p++;
+        if (c != '\\' || p >= end) { out[n++] = c; continue; }
+        char e = *p++;
+        switch (e) {
+            case 'n': out[n++] = '\n'; break;
+            case 't': out[n++] = '\t'; break;
+            case 'r': out[n++] = '\r'; break;
+            case 'b': out[n++] = '\b'; break;
+            case 'f': out[n++] = '\f'; break;
+            case 'u': {
+                int cp = 0, ok = 1;
+                for (int i = 0; i < 4 && ok; i++) {
+                    char h = (p + i < end) ? p[i] : 0;
+                    if (h >= '0' && h <= '9') cp = (cp << 4) | (h - '0');
+                    else if (h >= 'a' && h <= 'f') cp = (cp << 4) | (h - 'a' + 10);
+                    else if (h >= 'A' && h <= 'F') cp = (cp << 4) | (h - 'A' + 10);
+                    else ok = 0;
+                }
+                if (ok) {
+                    p += 4;
+                    if (n + 4 >= cap) break;
+                    if (cp < 0x80) out[n++] = (char)cp;
+                    else if (cp < 0x800) { out[n++] = (char)(0xC0 | (cp >> 6)); out[n++] = (char)(0x80 | (cp & 0x3F)); }
+                    else { out[n++] = (char)(0xE0 | (cp >> 12)); out[n++] = (char)(0x80 | ((cp >> 6) & 0x3F)); out[n++] = (char)(0x80 | (cp & 0x3F)); }
+                } else out[n++] = '?';
+                break;
+            }
+            default: out[n++] = e; break;   /* \" \\ \/ e altro: il carattere stesso */
+        }
+    }
+    out[n] = '\0';
+    return n;
+}
+
+/* Valore JSON che inizia su `p`: albero completo. */
+static gmb_val_t jp_value(const char** pp, int depth);
+
+/* Salta un valore senza allocare (fastjson): ritorna il puntatore dopo il valore. */
+static const char* jp_skip_value(const char* p, int depth) {
+    p = jp_ws(p);
+    if (*p == '"') { const char* e = jp_str_end(p, NULL); return *e == '"' ? e + 1 : e; }
+    if (*p == '{' || *p == '[') {
+        if (depth > GMB_JSON_MAX_DEPTH) { p++; return p; }
+        char close = (*p == '{') ? '}' : ']';
+        p = jp_ws(p + 1);
+        if (*p == close) return p + 1;
+        for (;;) {
+            if (*p == '\0') return p;
+            if (close == '}') {                       /* chiave: "k" : valore */
+                if (*p == '"') { const char* e = jp_str_end(p, NULL); p = (*e == '"') ? e + 1 : e; }
+                else p++;                              /* input malformato: avanza (mai loop) */
+                p = jp_ws(p);
+                if (*p == ':') p = jp_ws(p + 1);
+            }
+            p = jp_skip_value(p, depth + 1);
+            p = jp_ws(p);
+            if (*p == ',') { p = jp_ws(p + 1); continue; }
+            if (*p == close) return p + 1;
+            if (*p == '\0') return p;
+            p++;
+        }
+    }
+    if (*p == 't') return p + 4;
+    if (*p == 'f') return p + 5;
+    if (*p == 'n') return p + 4;
+    while (jp_is_num_char(*p)) p++;
+    return p;
+}
+
+/* Indice hash locale per gli oggetti (open addressing, slot = indice+1 in dict.items).
+ * Cresce al 50% di carico; il confronto delle chiavi è sul testo (i dict non hanno hash). */
+typedef struct { size_t cap, mask, count; size_t* slot; } jp_hash_t;
+
+static uint64_t jp_hash_bytes(const char* s, size_t n) {
+    uint64_t h = 1469598103934665603ULL;          /* FNV-1a 64 */
+    for (size_t i = 0; i < n; i++) { h ^= (unsigned char)s[i]; h *= 1099511628211ULL; }
+    return h;
+}
+
+static void jp_hash_reinsert(jp_hash_t* h, gmb_dict_t* d) {
+    for (size_t k = 0; k < d->count; k++) {
+        const char* key = d->items[k].key;
+        if (!key) continue;
+        uint64_t hv = jp_hash_bytes(key, strlen(key));
+        size_t i = (size_t)hv & h->mask;
+        while (h->slot[i]) i = (i + 1) & h->mask;
+        h->slot[i] = k + 1;
+    }
+}
+
+static void jp_hash_grow(jp_hash_t* h, gmb_dict_t* d) {
+    size_t ncap = h->cap ? h->cap * 2 : 16;
+    free(h->slot);
+    h->slot = (size_t*)calloc(ncap, sizeof(size_t));
+    if (!h->slot) { h->cap = h->mask = h->count = 0; return; }
+    h->cap = ncap; h->mask = ncap - 1;
+    jp_hash_reinsert(h, d);
+    h->count = d->count;                /* slot occupati: serve al controllo di carico */
+}
+
+/* Accoda una coppia al dict SENZA ricerca lineare (l'unicità la garantisce l'hash). */
+static gmb_pair_t* jp_dict_append(gmb_dict_t* d, const char* key, size_t klen, gmb_val_t v) {
+    if (d->count >= d->capacity) {
+        size_t nc = d->capacity == 0 ? 8 : d->capacity * 2;
+        gmb_pair_t* ni = (gmb_pair_t*)realloc(d->items, nc * sizeof(gmb_pair_t));
+        if (!ni) return NULL;
+        d->items = ni; d->capacity = nc;
+    }
+    gmb_pair_t* pr = &d->items[d->count];
+    pr->key = (char*)malloc(klen + 1);
+    if (!pr->key) return NULL;
+    memcpy(pr->key, key, klen);
+    pr->key[klen] = '\0';
+    pr->value = v;
+    gmb_val_retain(v);
+    d->count++;
+    return pr;
+}
+
+/* Inserisce (o sostituisce, "vince l'ultima") una coppia oggetto.
+ * Ibrido: fino a GMB_JSON_HASH_MIN chiavi si usa la scansione LINEARE (gli oggetti piccoli —
+ * record, risposte API — sono la norma e l'hash costerebbe un calloc per oggetto); da lì in poi
+ * si passa all'indice hash, che elimina l'O(n²) sugli oggetti con molte chiavi (1000 chiavi
+ * piatte: 964 µs → ~32 µs). */
+#define GMB_JSON_HASH_MIN 12
+
+static void jp_obj_put(jp_hash_t* h, gmb_dict_t* d, const char* key, size_t klen, gmb_val_t v) {
+    if (h->cap == 0 && d->count < GMB_JSON_HASH_MIN) {
+        for (size_t i = 0; i < d->count; i++) {
+            gmb_pair_t* pr = &d->items[i];
+            if (pr->key && pr->key[klen] == '\0' && memcmp(pr->key, key, klen) == 0) {
+                gmb_val_retain(v);
+                gmb_val_t old = pr->value;
+                pr->value = v;
+                gmb_val_release(old);
+                return;
+            }
+        }
+        if (jp_dict_append(d, key, klen, v) && d->count == GMB_JSON_HASH_MIN) jp_hash_grow(h, d);
+        return;
+    }
+    if (h->cap == 0) jp_hash_grow(h, d);
+    if ((h->count + 1) * 2 > h->cap) jp_hash_grow(h, d);
+    if (!h->cap) {                                     /* OOM: degrado a scansione lineare */
+        if (jp_dict_append(d, key, klen, v)) h->count = d->count;
+        return;
+    }
+    uint64_t hv = jp_hash_bytes(key, klen);
+    size_t i = (size_t)hv & h->mask;
+    while (h->slot[i]) {
+        gmb_pair_t* pr = &d->items[h->slot[i] - 1];
+        if (pr->key[klen] == '\0' && memcmp(pr->key, key, klen) == 0) {
+            gmb_val_retain(v);
+            gmb_val_t old = pr->value;
+            pr->value = v;
+            gmb_val_release(old);
+            return;
+        }
+        i = (i + 1) & h->mask;
+    }
+    if (jp_dict_append(d, key, klen, v)) { h->slot[i] = d->count; h->count++; }
+}
+
+static gmb_val_t jp_number(const char** pp) {
+    const char* p = *pp;
+    int is_int = 1;
+    const char* q = p;
+    if (*q == '-') q++;
+    for (; jp_is_num_char(*q); q++)
+        if (*q == '.' || *q == 'e' || *q == 'E') is_int = 0;
+    if (is_int && q > p) {
+        char buf[32]; size_t n = (size_t)(q - p);
+        if (n < sizeof buf) {
+            memcpy(buf, p, n); buf[n] = '\0';
+            *pp = q;
+            return gmb_make_val_double((double)strtoll(buf, NULL, 10));
+        }
+    }
+    char num[128]; size_t ni = 0;
+    while (jp_is_num_char(*p) && ni < sizeof(num) - 1) num[ni++] = *p++;
+    num[ni] = '\0';
+    *pp = p;
+    return gmb_make_val_double(ni ? strtod(num, NULL) : 0.0);
+}
+
+static gmb_val_t jp_object(const char** pp, int depth) {
+    gmb_dict_t obj = gmb_dict_new();
+    jp_hash_t h = { 0, 0, 0, NULL };
+    const char* p = jp_ws(*pp + 1);            /* dopo '{' */
+    while (*p && *p != '}') {
+        p = jp_ws(p);
+        if (*p != '"') { if (*p) p++; else break; continue; }
+        int esc = 0;
+        const char* kstart = p + 1;
+        const char* kend = jp_str_end(p, &esc);
+        if (*kend != '"') { p = kend; break; }
+        char kbuf[512];
+        const char* key = kstart;
+        size_t klen = (size_t)(kend - kstart);
+        if (esc) { klen = jp_str_decode(kstart, kend, kbuf, sizeof kbuf); key = kbuf; }
+        p = jp_ws(kend + 1);
+        if (*p == ':') p = jp_ws(p + 1);
+        gmb_val_t v = jp_value(&p, depth + 1);
+        jp_obj_put(&h, &obj, key, klen, v);
+        gmb_val_release(v);                     /* la referenza del dict resta */
+        p = jp_ws(p);
+        if (*p == ',') { p = jp_ws(p + 1); continue; }
+        if (*p == '}') break;
+        if (*p == '\0') break;
+        p++;
+    }
+    if (*p == '}') p++;
+    *pp = p;
+    free(h.slot);
     return gmb_make_val_dict_take(&obj);
 }
 
-static gmb_val_t gmb_json_parse_arr(const char** pp) {
+static gmb_val_t jp_array(const char** pp, int depth) {
     gmb_list_t l = gmb_list_new();
-    (*pp)++; /* [ */
-    gmb_json_skip_ws(pp);
-    while (**pp && **pp != ']') {
-        gmb_val_t v = gmb_json_parse_value(pp, NULL);
-        gmb_list_add(&l, v);
-        gmb_json_skip_ws(pp);
-        if (**pp == ',') (*pp)++;
+    const char* p = jp_ws(*pp + 1);
+    if (*p == ']') { *pp = p + 1; return gmb_make_val_list_take(&l); }
+    while (*p) {
+        gmb_val_t v = jp_value(&p, depth + 1);
+        gmb_list_add(&l, v);                    /* trattiene */
+        gmb_val_release(v);                     /* rilasciamo la nostra */
+        p = jp_ws(p);
+        if (*p == ',') { p = jp_ws(p + 1); continue; }
+        if (*p == ']') { p++; break; }
+        if (*p == '\0') break;
+        p++;
     }
-    if (**pp == ']') (*pp)++;
+    *pp = p;
     return gmb_make_val_list_take(&l);
 }
 
-static gmb_val_t gmb_json_parse_value(const char** pp, gmb_dict_t* dict_out) {
-    gmb_json_skip_ws(pp);
-    if (**pp == '{') return gmb_json_parse_obj(pp, dict_out);
-    if (**pp == '[') return gmb_json_parse_arr(pp);
-    if (**pp == '"') {
-        (*pp)++;
-        /* Escape-aware (F2, §0bis: unica implementazione — portata dal parser VM/C
-         * vm_json_full_string): \n\t\r\b\f e \uXXXX → UTF-8 (BMP; surrogate → '?');
-         * buffer heap a crescita geometrica (nessun limite di 2048). */
-        size_t cap = 256, n = 0;
-        char* buf = (char*)malloc(cap);
-        if (!buf) { while (**pp && **pp != '"') (*pp)++; if (**pp == '"') (*pp)++; return gmb_make_val_string(""); }
-        while (**pp && **pp != '"') {
-            char c = **pp;
-            if (c == '\\' && (*pp)[1]) {
-                (*pp)++;
-                char e = **pp;
-                if (e == 'u') {
-                    int cp = 0; int ok = 1;
-                    for (int i = 1; i <= 4 && ok; i++) {
-                        char h = (*pp)[i];
-                        if (h >= '0' && h <= '9') cp = (cp << 4) | (h - '0');
-                        else if (h >= 'a' && h <= 'f') cp = (cp << 4) | (h - 'a' + 10);
-                        else if (h >= 'A' && h <= 'F') cp = (cp << 4) | (h - 'A' + 10);
-                        else ok = 0;
-                    }
-                    if (ok) {
-                        (*pp) += 4;
-                        if (n + 5 > cap) { cap = (n + 5) * 2; char* nb = (char*)realloc(buf, cap); if (!nb) break; buf = nb; }
-                        if (cp < 0x80) buf[n++] = (char)cp;
-                        else if (cp < 0x800) { buf[n++] = (char)(0xC0 | (cp >> 6)); buf[n++] = (char)(0x80 | (cp & 0x3F)); }
-                        else { buf[n++] = (char)(0xE0 | (cp >> 12)); buf[n++] = (char)(0x80 | ((cp >> 6) & 0x3F)); buf[n++] = (char)(0x80 | (cp & 0x3F)); }
-                    } else if (n + 2 <= cap) buf[n++] = '?';
-                } else {
-                    char out = e;
-                    if (e == 'n') out = '\n';
-                    else if (e == 't') out = '\t';
-                    else if (e == 'r') out = '\r';
-                    else if (e == 'b') out = '\b';
-                    else if (e == 'f') out = '\f';
-                    if (n + 2 > cap) { cap *= 2; char* nb = (char*)realloc(buf, cap); if (!nb) break; buf = nb; }
-                    buf[n++] = out;
-                }
-                (*pp)++;
-                continue;
-            }
-            if (n + 2 > cap) { cap *= 2; char* nb = (char*)realloc(buf, cap); if (!nb) break; buf = nb; }
-            buf[n++] = c;
-            (*pp)++;
+static gmb_val_t jp_value(const char** pp, int depth) {
+    if (depth > GMB_JSON_MAX_DEPTH) { *pp = jp_skip_value(*pp, depth); return gmb_val_nil(); }
+    const char* p = jp_ws(*pp);
+    if (*p == '{') return jp_object(pp, depth);
+    if (*p == '[') return jp_array(pp, depth);
+    if (*p == '"') {
+        int esc = 0;
+        const char* start = p + 1;
+        const char* end = jp_str_end(p, &esc);
+        char* buf;
+        size_t n;
+        if (!esc) {                            /* fast path: nessun escape, allocazione esatta */
+            n = (size_t)(end - start);
+            buf = (char*)malloc(n + 1);
+            if (!buf) { *pp = (*end == '"') ? end + 1 : end; return gmb_make_val_string(""); }
+            memcpy(buf, start, n); buf[n] = '\0';
+        } else {
+            size_t cap = (size_t)(end - start) + 1;
+            buf = (char*)malloc(cap);
+            if (!buf) { *pp = (*end == '"') ? end + 1 : end; return gmb_make_val_string(""); }
+            n = jp_str_decode(start, end, buf, cap);
+            (void)n;
         }
-        if (**pp == '"') (*pp)++;
-        buf[n] = '\0';
+        *pp = (*end == '"') ? end + 1 : end;
         gmb_val_t v = gmb_make_val_string(buf);
         free(buf);
         return v;
     }
-    /* JSON `true`/`false` → BOOL (GMB_TYPE_BOOL), come il dict-literal BASIC TRUE e come
-     * l'assegnazione `o("k") = TRUE`: è l'unica rappresentazione che conserva il TIPO nel
-     * round-trip parse → stringify (gmb_json_append_val serializza BOOL come true/false).
-     * Un BOOL in contesto numerico vale -1/0 (canone TRUE=-1: gmb_val_to_double), quindi la
-     * semantica BASIC non cambia.
-     * Prima era forzato a -1.0/0.0 per allinearsi al vecchio JsonElementToObject del C#,
-     * che a sua volta perdeva il tipo: stesso bug, corretto in entrambi i mondi
-     * (Bugs/(open) - JSON-Parse-Booleani-RoundTrip.md). */
-    if (**pp == 't') { (*pp) += 4; return gmb_make_val_bool(1); }
-    if (**pp == 'f') { (*pp) += 5; return gmb_make_val_bool(0); }
-    if (**pp == 'n') { (*pp) += 4; return gmb_val_nil(); }
-    /* numero */
-    char num[128]; size_t ni = 0;
-    while (**pp && (ni < 127) && (isdigit((unsigned char)**pp) || **pp=='-' || **pp=='.' || **pp=='+' || **pp=='e' || **pp=='E'))
-        num[ni++] = **pp, (*pp)++;
-    num[ni] = 0;
-    return gmb_make_val_double(atof(num));
+    if (*p == 't') { *pp = p + 4; return gmb_make_val_bool(1); }
+    if (*p == 'f') { *pp = p + 5; return gmb_make_val_bool(0); }
+    if (*p == 'n') { *pp = p + 4; return gmb_val_nil(); }
+    return jp_number(pp);
 }
 
 gmb_val_t gmb_json_parse(const char* js) {
-    gmb_val_t out = gmb_val_nil();
-    if (js) {
-        const char* p = js;
-        gmb_json_skip_ws(&p);
-        out = gmb_json_parse_value(&p, NULL);
-    }
-    return out;
+    if (!js) return gmb_val_nil();
+    const char* p = jp_ws(js);
+    return jp_value(&p, 0);
 }
 
-/* PARSE(json) top-level dict: riempie un dict runtime con le coppie. */
+/* Riversa le coppie di PRIMO livello nel dict `out` (merge: chiavi già presenti sostituite,
+ * come gmb_dict_set). Usa lo stesso scanner del parser: stringhe con escape decodificate,
+ * numeri con fast path intero. */
 void gmb_json_parse_to_dict(const char* js, gmb_dict_t* out) {
     if (!js || !out) return;
-    const char* p = js;
-    gmb_json_skip_ws(&p);
-    if (*p == '{') {
-        p++;
-        gmb_json_skip_ws(&p);
-        while (*p && *p != '}') {
-            gmb_json_skip_ws(&p);
-            if (*p == '"') {
-                p++;
-                char key[512]; size_t ki = 0;
-                while (*p && *p != '"' && ki < 511) key[ki++] = *p, p++;
-                key[ki] = 0;
-                if (*p == '"') p++;
-                gmb_json_skip_ws(&p);
-                if (*p == ':') { p++; gmb_json_skip_ws(&p); }
-                gmb_val_t v = gmb_json_parse_value(&p, NULL);
-                gmb_dict_set(out, key, v);
-            }
-            else if (*p != ',' && *p != '}') { p++; continue; }  /* input malformato: avanza (mai loop) */
-            gmb_json_skip_ws(&p);
-            if (*p == ',') p++;
+    const char* p = jp_ws(js);
+    if (*p != '{') return;
+    p = jp_ws(p + 1);
+    while (*p && *p != '}') {
+        if (*p != '"') { if (*p) p++; else break; continue; }
+        int esc = 0;
+        const char* ks = p + 1;
+        const char* ke = jp_str_end(p, &esc);
+        if (*ke != '"') break;
+        char kbuf[512];
+        const char* key = ks;
+        size_t kl = (size_t)(ke - ks);
+        if (esc) {
+            kl = jp_str_decode(ks, ke, kbuf, sizeof kbuf);
+            key = kbuf;
+        } else {
+            if (kl >= sizeof kbuf) kl = sizeof kbuf - 1;
+            memcpy(kbuf, key, kl);
+            kbuf[kl] = '\0';
+            key = kbuf;
         }
+        p = jp_ws(ke + 1);
+        if (*p == ':') p = jp_ws(p + 1);
+        gmb_val_t v = jp_value(&p, 0);
+        gmb_dict_set(out, key, v);      /* trattiene */
+        gmb_val_release(v);             /* rilasciamo la nostra referenza */
+        p = jp_ws(p);
+        if (*p == ',') { p = jp_ws(p + 1); continue; }
+        break;
     }
 }
 
@@ -767,44 +987,89 @@ static void gmb_json_append_val(gmb_val_t v, char** buf, size_t* cap, size_t* po
  * Unica implementazione del walk; gmb_json_extract è la forma testuale (per gli usi che
  * vogliono una stringa), gmb_json_extract_val quella tipizzata (PRINT: un numero conserva
  * la zona, parità IL/PCode/VM-C). */
+/* Cerca la chiave (key,klen) nell'oggetto che inizia su `p` e ritorna il puntatore al
+ * VALORE, saltando le coppie che non interessano (zero allocazioni). */
+static const char* jp_object_get(const char* p, const char* key, size_t klen) {
+    p = jp_ws(p);
+    if (*p != '{') return NULL;
+    p = jp_ws(p + 1);
+    while (*p && *p != '}') {
+        if (*p != '"') return NULL;
+        int esc = 0;
+        const char* ks = p + 1;
+        const char* ke = jp_str_end(p, &esc);
+        if (*ke != '"') return NULL;
+        int match;
+        if (!esc) match = ((size_t)(ke - ks) == klen && memcmp(ks, key, klen) == 0);
+        else {
+            char buf[512];
+            size_t n = jp_str_decode(ks, ke, buf, sizeof buf);
+            match = (n == klen && memcmp(buf, key, klen) == 0);
+        }
+        p = jp_ws(ke + 1);
+        if (*p == ':') p = jp_ws(p + 1);
+        if (match) return p;
+        p = jp_skip_value(p, 0);
+        p = jp_ws(p);
+        if (*p == ',') { p = jp_ws(p + 1); continue; }
+        return NULL;
+    }
+    return NULL;
+}
+
+/* Elemento idx dell'array che inizia su `p` (zero allocazioni). */
+static const char* jp_array_item(const char* p, int idx) {
+    p = jp_ws(p);
+    if (*p != '[') return NULL;
+    p = jp_ws(p + 1);
+    if (*p == ']') return NULL;
+    int i = 0;
+    while (*p) {
+        if (i == idx) return p;
+        p = jp_skip_value(p, 0);
+        p = jp_ws(p);
+        if (*p == ',') { p = jp_ws(p + 1); i++; continue; }
+        return NULL;
+    }
+    return NULL;
+}
+
+/* Estrae il valore al path SENZA costruire l'albero (modello `fastjson.c` di Redis): si
+ * scansiona il testo saltando i rami non richiesti e si materializza SOLO il valore finale.
+ * Semantica del path invariata rispetto alla versione parse-then-walk: `a.b[2].c`, `[0].x`,
+ * chiave assente o indice fuori range → nil.
+ * Prima: `gmb_json_parse(js)` + walk (costruiva tutto: su un oggetto piatto da 1000 chiavi
+ * ~940 µs per estrarre UNA chiave). */
 gmb_val_t gmb_json_extract_val(const char* js, const char* path)
 {
-    gmb_val_t nil = gmb_val_nil();
-    if (!js || !path) return nil;
-    gmb_val_t v = gmb_json_parse(js);
-    if (v.kind == GMB_TYPE_NIL) return nil;
-    const char* p = path;
-    while (*p)
-    {
-        char seg[512]; size_t si = 0;
-        while (*p && *p != '.' && si < 511) seg[si++] = *p, p++;
-        seg[si] = '\0';
-        char key[512]; size_t ki = 0;
-        for (char* q = seg; *q && *q != '['; q++) if (ki < 511) key[ki++] = *q;
-        key[ki] = '\0';
-        char* br = strchr(seg, '[');
-        int idx = (br != NULL) ? atoi(br + 1) : -1;
-        /* Radice/sezione LISTA con indice (`[i]`): il segmento ha key vuota e idx >= 0 →
-         * il valore si prende dall'indice sotto. */
-        if (key[0])
-        {
-            if (v.kind != GMB_TYPE_OBJECT) return nil;
-            v = gmb_dict_get(gmb_val_as_dict(v), key);
-            if (v.kind == GMB_TYPE_NIL) return nil;
+    if (!js || !path) return gmb_val_nil();
+    const char* p = jp_ws(js);
+    const char* s = path;
+    while (*s) {
+        char key[512];
+        size_t kl = 0;
+        while (*s && *s != '.' && *s != '[' && kl < sizeof(key) - 1) key[kl++] = *s++;
+        key[kl] = '\0';
+        int idx = -1;
+        if (*s == '[') {
+            const char* b = s + 1;
+            idx = (int)strtol(b, NULL, 10);
+            while (*s && *s != ']') s++;
+            if (*s == ']') s++;
         }
-        else if (idx < 0)
-        {
-            return nil;
+        if (kl > 0) {
+            p = jp_object_get(p, key, kl);
+            if (!p) return gmb_val_nil();
+        } else if (idx < 0) {
+            return gmb_val_nil();               /* segmento vuoto senza indice: path invalido */
         }
-        if (idx >= 0)
-        {
-            gmb_list_t l = gmb_val_as_list(v);
-            if (idx >= 0 && idx < (int)l.count) v = l.items[idx];
-            else return nil;
+        if (idx >= 0) {
+            p = jp_array_item(p, idx);
+            if (!p) return gmb_val_nil();
         }
-        if (*p == '.') p++;
+        if (*s == '.') s++;
     }
-    return v;
+    return jp_value(&p, 0);
 }
 
 char* gmb_json_extract(const char* js, const char* path)
