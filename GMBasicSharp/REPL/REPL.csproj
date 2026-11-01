@@ -98,10 +98,20 @@
     <!-- SOLO gli alias SDL accanto all'eseguibile (il wrapper C# fa DllImport("SDL2")).
          Tutto il resto (libgmb_*, MLX, codec) si carica dalla CACHE on-demand. -->
     <Target Name="CopySdlAliases" AfterTargets="AfterBuild" Condition="Exists('$(LibsCacheDir)/libSDL2.dylib')">
+        <!-- Alias per il wrapper gestito: DllImport("SDL2") cerca "SDL2.dll". -->
         <Copy SourceFiles="$(LibsCacheDir)/libSDL2.dylib" DestinationFiles="$(OutDir)SDL2.dll" SkipUnchangedFiles="true" />
         <Copy SourceFiles="$(LibsCacheDir)/libSDL2_ttf.dylib" DestinationFiles="$(OutDir)SDL2_ttf.dll" SkipUnchangedFiles="true" Condition="Exists('$(LibsCacheDir)/libSDL2_ttf.dylib')" />
         <Copy SourceFiles="$(LibsCacheDir)/libSDL2_image.dylib" DestinationFiles="$(OutDir)SDL2_image.dll" SkipUnchangedFiles="true" Condition="Exists('$(LibsCacheDir)/libSDL2_image.dylib')" />
         <Copy SourceFiles="$(LibsCacheDir)/libSDL2_mixer.dylib" DestinationFiles="$(OutDir)SDL2_mixer.dll" SkipUnchangedFiles="true" Condition="Exists('$(LibsCacheDir)/libSDL2_mixer.dylib')" />
+        <!-- NOMI VERI accanto all'eseguibile: le dipendenze interne sono
+             @rpath/libSDL2.dylib con rpath @loader_path, quindi SDL2_ttf/img/mixer
+             caricate da qui trovano SDL2 SOLO se esiste "<out>/libSDL2.dylib".
+             Senza queste copie il loader ripiegava su una libSDL2 di sistema
+             (sdl2-compat) e falliva con "Failed loading SDL3 library." -->
+        <Copy SourceFiles="$(LibsCacheDir)/libSDL2.dylib" DestinationFiles="$(OutDir)libSDL2.dylib" SkipUnchangedFiles="true" />
+        <Copy SourceFiles="$(LibsCacheDir)/libSDL2_ttf.dylib" DestinationFiles="$(OutDir)libSDL2_ttf.dylib" SkipUnchangedFiles="true" Condition="Exists('$(LibsCacheDir)/libSDL2_ttf.dylib')" />
+        <Copy SourceFiles="$(LibsCacheDir)/libSDL2_image.dylib" DestinationFiles="$(OutDir)libSDL2_image.dylib" SkipUnchangedFiles="true" Condition="Exists('$(LibsCacheDir)/libSDL2_image.dylib')" />
+        <Copy SourceFiles="$(LibsCacheDir)/libSDL2_mixer.dylib" DestinationFiles="$(OutDir)libSDL2_mixer.dylib" SkipUnchangedFiles="true" Condition="Exists('$(LibsCacheDir)/libSDL2_mixer.dylib')" />
     </Target>
 
   <ItemGroup>
