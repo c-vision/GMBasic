@@ -23,9 +23,9 @@ continua a funzionare identica per il mondo C.
       Parità: `tools/sh/repl_engine_parity.sh <file.bas>`.
 - [x] **F4b** — debug con engine C#: `gmbcs debug` (P-Code: `c/s/o/u/b/bt/p/q`), usato da
       `BREAK`/`STEP` + `RUN`; verificato interattivamente (stop, `bt`, `c`).
-- [ ] **F5** — prova di eliminabilità completa (oggi: `otool -L` = nessuna dipendenza
-      .NET; `--csharp-cli /nonexistent` → comandi C tutti verdi, `IL`/`PCODE` dichiarati
-      non disponibili).
+- [x] **F5** — prova di eliminabilità: worktree con `GMBasicSharp/` **rimosso** → la REPL,
+      `gmb` e `gmb_vm_host` si costruiscono e i comandi C sono verdi; `IL`/`PCODE` dichiarano
+      l'assenza. Riproducibile: `tools/sh/repl_no_csharp_proof.sh`.
 - [ ] Sorgenti: saranno spostati da `GMBasic/native/repl` quando la REPL sarà completa
       e testata (fase F2/F3 del TODO §6). Fino ad allora restano lì e vengono compilati
       dal loro CMake.
