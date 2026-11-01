@@ -2,8 +2,9 @@
 '
 ' È il formato che PRINT usa per i valori DATA/ORA (prima la gamba C99 stampava il NUMERO
 ' SERIALE OADate: "46327.7783564815" invece di "01/11/2026 18:40:53", divergenza trovata sul
-' sample Http/HttpRoutes.bas che logga NOW()). Il test usa date FISSE via DATEVALUE per avere
-' un oracolo deterministico su tutte e 4 le gambe.
+' sample Http/HttpRoutes.bas che logga NOW()). Il test usa date FISSE costruite con
+' DATESERIAL + TIMESERIAL (DATEVALUE restituisce solo la data, senza ora) per avere un
+' oracolo deterministico su tutte e 4 le gambe.
 '
 ' EXPECT: d=02/01/2026 03:04:05|date=02/01/2026|iso=2026-01-02T03:04:05|len= 19|month-end=31/01/2026|dtoc=01-02-2026
 IMPORT DATETIME
