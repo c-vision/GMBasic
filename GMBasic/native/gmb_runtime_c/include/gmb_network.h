@@ -485,6 +485,9 @@ int gmb_http_server_bsp(int64_t server, const char* dir);
 
 /* Imposta il timeout richiesta del server (ms). */
 int gmb_http_server_set_timeout(int64_t server, int timeout_ms);
+/* CONFIG: keep-alive HTTP/1.1. on=1 (default) riusa la connessione per più richieste;
+ * on=0 → ogni risposta chiude ("Connection: close"), come il server prima di questa opzione. */
+int gmb_http_server_set_keepalive(int64_t server, int on);
 /* Security (2026-09-02): header automatici + IP allow/block (CIDR IPv4) — parità HTTP CONFIG IL/PCode. */
 int gmb_http_server_set_security(int64_t server, int security_headers, const char* allowed, const char* blocked);
 /* CONFIG MaxRequestBodySize (0 = illimitato) → 413 su Content-Length oltre soglia. */
