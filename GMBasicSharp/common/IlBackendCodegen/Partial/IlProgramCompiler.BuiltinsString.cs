@@ -170,7 +170,16 @@ public sealed partial class IlProgramCompiler
     private void EmitStringRepeatCall(BuiltinFunctionCallExpr expr)
     {
         if (expr.Args.Length is < 2 or > 3) throw new NotSupportedException("Backend IL: REPEAT richiede 2 o 3 argomenti.");
-        EmitExpression(expr.Args[0]); EmitInt64Argument(expr.Args[1]);
+        // Primo argomento SEMPRE stringa: REPEAT ha firma (string, long, string?). Se arriva un
+        // numero (es. il vecchio `STRING$(3, 65)` riscritto senza CHR) l'IL risultava INVALIDO
+        // (InvalidProgramException a runtime). Caso trovato dal MiniTest strings/string_dollar.
+        EmitExpression(expr.Args[0]);
+        {
+            var firstType = NormalizeInferredType(InferType(expr.Args[0]));
+            if (firstType is not StringType and not AnyType)
+                EmitConvertToString(firstType);
+        }
+        EmitInt64Argument(expr.Args[1]);
         if (expr.Args.Length == 3) EmitExpression(expr.Args[2]); else _il.Emit(OpCodes.Ldnull);
         _il.Emit(OpCodes.Call, StringHelpersRepeatMethod);
     }

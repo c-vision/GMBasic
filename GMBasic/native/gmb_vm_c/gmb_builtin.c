@@ -3869,23 +3869,20 @@ static void gmb_bf_303(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
         {
             int count = (int)args[0].num;
             if (count < 0) count = 0;
-            char ch[8];
+            /* DUP(n, ch): n copie del PRIMO carattere UTF-8 di `ch` (stringa) oppure di
+             * CHR(codice) se numerico — stessa semantica di IL (IlRuntime.Dup), PCode e
+             * C99Native (gmb_dup_str/gmb_dup_cp). Prima qui si copiava fino a 7 BYTE della
+             * stringa: DUP(3, "ab") dava "ababab" su VM/C e "aaa" sulle altre gambe. */
+            gmb_string_t out;
             if (args[1].type == 2 && args[1].ref)
             {
                 gmb_obj_string_t* sc = (gmb_obj_string_t*)args[1].ref;
-                size_t cl = sc->length ? sc->length : 1;
-                memcpy(ch, sc->data, cl);
-                ch[cl] = 0;
+                out = gmb_dup_str((gmb_int_t)count, sc->data ? sc->data : "");
             }
             else
             {
-                gmb_string_t g = gmb_chr((gmb_int_t)args[1].num);
-                if (g.data) { strncpy(ch, g.data, 7); free(g.data); }
-                else ch[0] = 0;
+                out = gmb_dup_cp((gmb_int_t)count, (int)args[1].num);
             }
-            gmb_string_t sep0 = { "", 0, 1 };
-            gmb_string_t inp = { ch, strlen(ch), 1 };
-            gmb_string_t out = gmb_str_repeat(inp, count, sep0);
             if (out.data) { gmb_obj_string_t* r = gmb_str_alloc(out.data, (uint32_t)out.length); free(out.data); bout->is_num = 0; bout->result_ref = (gmb_obj_t*)r; bout->result_ref_bt = GMB_BT_STRING; }
             else { bout->is_num = 0; bout->result_ref = NULL; }
         }

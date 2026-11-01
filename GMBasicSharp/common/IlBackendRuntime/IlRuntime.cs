@@ -13041,7 +13041,10 @@ public static double TextWidth(string s)
     {
         var c = (int)count; if (c < 0) c = 0;
         if (value is string s && s.Length > 0) return new string(s[0], c);
-        if (value is double or int or long)
+        // `INTEGER` in BASIC è a 16 bit → sulla gamba IL arriva BOXATO come short/byte:
+        // senza questi tipi nel pattern il codice (DUP(n, codice) / STRING$(n, codice)) tornava
+        // stringa VUOTA mentre le altre gambe davano i caratteri.
+        if (value is double or float or int or long or short or byte or sbyte or ushort or uint)
         {
             var ch = Convert.ToInt32(value);
             if (ch >= 0 && ch <= 0xFFFF) return new string((char)ch, c);
