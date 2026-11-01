@@ -16,7 +16,7 @@ typedef struct gmb_pkg_resolve_result gmb_pkg_resolve_result_t;
 
 gmb_pkg_resolve_ctx_t* gmb_pkg_resolve_ctx_new(void);
 void gmb_pkg_resolve_ctx_set(gmb_pkg_resolve_ctx_t* c, const char* cache_root, const char* vendor_dir,
-                             const char* backend, const char* platform, int offline);
+                             const char* backend, const char* platform, const char* edition, int offline);
 /* Registry HTTP (per dist-tag e per scaricare i pacchetti mancanti in cache). "" = nessuno. */
 void gmb_pkg_resolve_ctx_set_registry(gmb_pkg_resolve_ctx_t* c, const char* registry_url);
 /* Root di ricerca AGGIUNTIVA (installazione locale dell'app, `<dir dell'eseguibile>/packages`):

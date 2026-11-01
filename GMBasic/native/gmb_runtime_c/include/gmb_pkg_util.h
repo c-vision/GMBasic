@@ -9,8 +9,10 @@
 #define GMB_PKG_ENGINE_VERSION "1.0.0"
 
 /* Gate: 1 se il manifest è compatibile con `edition`; 0 + messaggio in out_err. */
-/* Gate di compatibilita' del manifest: SOLO versione dell'engine (nessuna edizione). */
-int gmb_pkg_compat_check(const char* manifest_json, char* out_err, size_t cap);
+/* Gate di compatibilita' del manifest: SOLO versione dell'engine (nessuna edizione).
+ * `edition` resta nella FIRMA (ignorato) per non rompere l'ABI delle librerie precompilate
+ * (P/Invoke da C#): togliere il parametro sposta out_err/cap e fa crashare il chiamante. */
+int gmb_pkg_compat_check(const char* manifest_json, const char* edition, char* out_err, size_t cap);
 
 /* Nome cartella sicuro: '/' e '\' → '_'. */
 int gmb_pkg_safe_dir(const char* name, char* out, size_t cap);

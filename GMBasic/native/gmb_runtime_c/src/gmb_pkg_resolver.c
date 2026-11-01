@@ -55,11 +55,12 @@ gmb_pkg_resolve_ctx_t* gmb_pkg_resolve_ctx_new(void)
     return (gmb_pkg_resolve_ctx_t*)calloc(1, sizeof(gmb_pkg_resolve_ctx_t));
 }
 void gmb_pkg_resolve_ctx_set(gmb_pkg_resolve_ctx_t* c, const char* cache_root, const char* vendor_dir,
-                             const char* backend, const char* platform, int offline)
+                             const char* backend, const char* platform, const char* edition, int offline)
 {
     if (!c) return;
     free(c->cache_root); free(c->vendor_dir); free(c->backend); free(c->platform);
     c->cache_root = dupstr(cache_root); c->vendor_dir = dupstr(vendor_dir); c->backend = dupstr(backend);
+    (void)edition;   /* ignorato: non esiste piu' la matrice Edition (ABI invariata) */
     c->platform = dupstr(platform); c->offline = offline;
 }
 void gmb_pkg_resolve_ctx_set_registry(gmb_pkg_resolve_ctx_t* c, const char* registry_url)
@@ -410,7 +411,7 @@ gmb_pkg_resolve_result_t* gmb_pkg_resolve(gmb_pkg_resolve_ctx_t* ctx)
             char* js = read_file(mpath);
             if (js) {
                 char cerr[512];
-                if (!gmb_pkg_compat_check(js, cerr, sizeof(cerr))) { R->error = dupstr(cerr); free(js); goto done; }
+                if (!gmb_pkg_compat_check(js, NULL, cerr, sizeof(cerr))) { R->error = dupstr(cerr); free(js); goto done; }
                 enqueue_manifest(js, ctx, &Q, &opt, &nopt, &copt, name);
                 free(js);
             }
@@ -429,7 +430,7 @@ gmb_pkg_resolve_result_t* gmb_pkg_resolve(gmb_pkg_resolve_ctx_t* ctx)
             char* js = read_file(mpath);
             if (js) {
                 char cerr[512];
-                if (!gmb_pkg_compat_check(js, cerr, sizeof(cerr))) { R->error = dupstr(cerr); free(js); goto done; }
+                if (!gmb_pkg_compat_check(js, NULL, cerr, sizeof(cerr))) { R->error = dupstr(cerr); free(js); goto done; }
                 enqueue_manifest(js, ctx, &Q, &opt, &nopt, &copt, e->name);
                 free(js);
             }
