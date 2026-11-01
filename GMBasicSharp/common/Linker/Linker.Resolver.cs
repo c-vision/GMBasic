@@ -3735,7 +3735,15 @@ public static partial class Linker
             {
                 var resolvedArgs = bce.Args.Select(arg => ResolveExpression(arg, program, inDatabaseContext))
                     .ToImmutableArray();
-                return new BuiltinFunctionCallExpr(bce.Namespace, bce.Name, resolvedArgs, bce.ReturnType)
+                /* CSNG è un'identità numerica (parità con le gambe C, che rappresentano tutti i
+                 * numerici come double): normalizzato a CDbl così IL/PCode non arrotondano a
+                 * float32 (1.23456788) mentre VM/C/C99 danno 1.23456789. Le variabili SINGLE
+                 * restano float32: la conversione esplicita CSNG è double. */
+                var nameToken = bce.Name.Kind == TokenKind.CSng
+                    ? bce.Name with { Kind = TokenKind.CDbl, Lexeme = "CDbl" }
+                    : bce.Name;
+                var retType = bce.Name.Kind == TokenKind.CSng ? new DoubleType() : bce.ReturnType;
+                return new BuiltinFunctionCallExpr(bce.Namespace, nameToken, resolvedArgs, retType)
                 {
                     OriginalToken = bce.OriginalToken,
                     ScopeId = bce.ScopeId

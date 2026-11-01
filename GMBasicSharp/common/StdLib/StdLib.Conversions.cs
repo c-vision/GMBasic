@@ -65,7 +65,7 @@ public sealed partial class StdLib
                 TokenKind.Bin),
             new NativeProcedureDefinition(-1, SymbolFlags.IsPublic, T(TokenKind.CSng, "CSng"),
                 [new Parameter(-1, T(TokenKind.Identifier, "expression"), new InferredType(), noFlags, null, false)],
-                new SingleType(),
+                new DoubleType(),
                 TokenKind.CSng),
             new NativeProcedureDefinition(-1, SymbolFlags.IsPublic, T(TokenKind.CDbl, "CDbl"),
                 [new Parameter(-1, T(TokenKind.Identifier, "expression"), new InferredType(), noFlags, null, false)],

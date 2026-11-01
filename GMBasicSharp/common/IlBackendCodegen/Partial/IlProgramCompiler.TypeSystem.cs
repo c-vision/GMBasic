@@ -122,7 +122,7 @@ public sealed partial class IlProgramCompiler
         // DoubleType: con DoubleType il box del PRINT era .Double → il float esteso a double
         // veniva formattato G15 ("1.23456788063049") invece di G9 del float ("1.23456788").
         // Golden TypesConversions 'CSNG(1.23456789) = 1.23456788'.
-        if (f.Name.Kind is TokenKind.CSng) return new SingleType();
+        if (f.Name.Kind is TokenKind.CSng) return new DoubleType();
         // Data/ora: TODAY()/RDD.TODAY()/CTOD() ritornano DateTime CLR (DateType). Senza,
         // una variabile implicita (double) riceveva il DateTime senza coerce → reinterpretato
         // come double denormal (RDD_Complete 'TODAY: -6.0E-266'). NOTA: TokenKind.Date è
