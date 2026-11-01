@@ -1007,12 +1007,22 @@ static void con_emit_colors(int clear)
     fflush(stdout);
 }
 
-static int rpl_loop_ansi(const rpl_options_t* o, const char* initial_cmd, const char* mode_line)
+/* ── Console testuali: due comportamenti DISTINTI, come nel C# ────────────────
+ * Riferimento misurato (REPL C# catturata in un pty, senza finestre):
+ *
+ *  -s  SystemConsole   → NESSUN colore, NESSUNA pulizia: solo testo sul terminale
+ *                        dell'utente (il suo tema decide i colori).
+ *                        "
+" + 3 righe centrate + "
+READY.
+"
+ *  -c  StandardConsole → ResetColor (fg 15 / bg 1) + Clear() con lo sfondo attivo:
+ *                        "[38;2;255;255;255m[48;2;0;0;170m"
+ *                        "[H[2J[3J" "[?12l[?25h"
+ *                        poi lo stesso welcome; OGNI scrittura riemette i colori
+ *                        (WriteInternalNative) → testo bianco su fondo blu. */
+static void con_welcome(int W, const char* mode_line)
 {
-    con_emit_colors(1);   /* SystemConsole: colori + pulizia come la REPL C# */
-    int W = 80;
-    struct winsize ws;
-    if (ioctl(1, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 20) W = ws.ws_col;
     #define CENTERED(t) do { int _l = (int)strlen(t); int _s = (W - _l) / 2; if (_s < 0) _s = 0; \
         printf("%*s%s\n", _s, "", t); } while (0)
     printf("\n");
@@ -1022,21 +1032,39 @@ static int rpl_loop_ansi(const rpl_options_t* o, const char* initial_cmd, const 
     printf("\nREADY.\n");
     fflush(stdout);
     #undef CENTERED
+}
+
+static int rpl_loop_ansi(const rpl_options_t* o, const char* initial_cmd, const char* mode_line)
+{
+    int standard = (gmb_console_mode_get() == 2);   /* 2 = Standard (-c), 3 = System (-s) */
+    int W = 80;
+    struct winsize ws;
+    if (ioctl(1, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 20) W = ws.ws_col;
+    if (standard) {
+        con_emit_colors(0);                        /* ResetColor: fg 15 / bg 1 */
+        printf("\x1b[H\x1b[2J\x1b[3J");             /* Clear() con lo sfondo attivo */
+        printf("\x1b[?12l\x1b[?25h");               /* cursore visibile */
+        con_emit_colors(0);                        /* colori ancora attivi per il welcome */
+        fflush(stdout);
+    }
+    con_welcome(W, mode_line);
     char line[1024];
     if (initial_cmd && *initial_cmd) {
         int q0 = rpl_exec_line(initial_cmd, o, (char*)"READY.\n");
-        if (q0) return 0;
+        if (q0) { if (standard) printf("\x1b[0m"); return 0; }
+        if (standard) con_emit_colors(0);
         printf("READY.\n"); fflush(stdout);
     }
     while (fgets(line, sizeof(line), stdin)) {
         size_t k = strlen(line);
         while (k && (line[k - 1] == '\n' || line[k - 1] == '\r')) line[--k] = 0;
-        if (!line[0]) { printf("READY.\n"); fflush(stdout); continue; }
+        if (!line[0]) { if (standard) con_emit_colors(0); printf("READY.\n"); fflush(stdout); continue; }
         int q1 = rpl_exec_line(line, o, (char*)"READY.\n");
         if (q1) break;
+        if (standard) con_emit_colors(0);           /* ApplyConsoleColors prima di READY */
         printf("READY.\n"); fflush(stdout);
     }
-    printf("\x1b[0m"); fflush(stdout);
+    if (standard) { printf("\x1b[0m"); fflush(stdout); }
     return 0;
 }
 
