@@ -216,7 +216,12 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
              * BROWSER interattivo. `HELP COMMANDS` stampa l'elenco dei comandi,
              * `HELP <topic>` la guida del namespace. */
             if (!*topic || strcasecmp(topic, "BROWSE") == 0 || strcasecmp(topic, "ALL") == 0) {
-                gmb_help_browse();
+                /* Console a FINESTRA (SDL/C64): niente terminale per il browser a schermo
+                 * intero → si scrive l'indice nel buffer a celle e si presenta. */
+                gmb_iconsole_t* active = gmb_iconsole_active();
+                gmb_sdl_console_t* win = active ? gmb_iconsole_sdl_model(active) : NULL;
+                if (win) gmb_help_print_index(win);
+                else gmb_help_browse();
                 goto done;
             }
             if (strcasecmp(topic, "COMMANDS") == 0) {

@@ -1160,10 +1160,72 @@ public class ReplEngine
 
     private Task HandleHelpAsync(string args, CancellationToken __)
     {
-        if (_helpIndex == null) return Task.CompletedTask;
+        if (_helpIndex == null) { Out.WriteLine("?help: indice non disponibile"); return Task.CompletedTask; }
 
-        new HelpForm(_helpIndex).Show();
+        // StandardConsole: in modalità NATIVA (default) Present() non ridisegna il buffer,
+        // quindi il form a celle resterebbe invisibile. Si forza il BUFFER per la durata
+        // del form e si ripristina dopo.
+        var std = _activeConsole as StandardConsole;
+        bool wasNative = std?.IsNativeScrollMode ?? false;
+        if (std != null && wasNative) { try { std.SetScrollMode(false); } catch { } }
+        try
+        {
+            if (_activeConsole is SystemConsole)
+                PrintHelpText(args?.Trim());     // nessun buffer: elenco testuale
+            else
+                new HelpForm(_helpIndex).Show(); // form a celle
+        }
+        finally
+        {
+            if (std != null && wasNative) { try { std.SetScrollMode(true); } catch { } }
+            ApplyConsoleColors();
+            Present();
+        }
         return Task.CompletedTask;
+    }
+
+    /// <summary>Elenco testuale dell'help (console senza buffer, es. SystemConsole):
+    /// raggruppato per namespace; con un argomento mostra la voce cercata.</summary>
+    private void PrintHelpText(string? topic)
+    {
+        if (_helpIndex == null) return;
+        var sb = new System.Text.StringBuilder();
+        if (!string.IsNullOrEmpty(topic))
+        {
+            var r = _helpIndex.Search(topic, 40);
+            if (r.Results.Count == 0) { Out.WriteLine($"Nessun help per '{topic}'"); return; }
+            foreach (var sc in r.Results)
+            {
+                var e = sc.Entry;
+                sb.AppendLine($"{e.FullName}");
+                if (!string.IsNullOrEmpty(e.Description)) sb.AppendLine($"  {e.Description}");
+                if (e.Syntax.Count > 0) sb.AppendLine($"  Sintassi: {string.Join(" | ", e.Syntax)}");
+                if (!string.IsNullOrEmpty(e.ReturnType)) sb.AppendLine($"  Ritorna: {e.ReturnType}");
+                foreach (var p in e.Parameters)
+                    sb.AppendLine($"  {p.Name} {p.Type} - {p.Description}");
+                foreach (var ex in e.Examples)
+                {
+                    sb.AppendLine($"  Esempio{(string.IsNullOrEmpty(ex.Description) ? "" : " - " + ex.Description)}");
+                    foreach (var line in (ex.Code ?? "").Split('\n')) sb.AppendLine($"    {line}");
+                    if (!string.IsNullOrEmpty(ex.ExpectedOutput))
+                        foreach (var line in ex.ExpectedOutput.Split('\n')) sb.AppendLine($"    -> {line}");
+                }
+                if (e.SeeAlso.Count > 0) sb.AppendLine($"  Vedi anche: {string.Join(" ", e.SeeAlso)}");
+                sb.AppendLine();
+            }
+        }
+        else
+        {
+            sb.AppendLine($"GMBASIC Help - {_helpIndex.Count} voci (HELP <topic> per il dettaglio)");
+            foreach (var ns in _helpIndex.GetNamespaces())
+            {
+                var items = _helpIndex.GetByNamespace(ns);
+                if (items.Count == 0) continue;
+                sb.AppendLine($"<{ns}> ({items.Count})");
+                foreach (var e in items) sb.AppendLine($"  {e.Name,-28} {e.Description}");
+            }
+        }
+        Out.Write(sb.ToString());
     }
 
     private Task HandleListAsync(string _, CancellationToken __)
