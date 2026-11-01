@@ -106,7 +106,7 @@ public sealed partial class IlProgramCompiler
             case TokenKind.CInt: EmitNumericConversionCall(expr, _types.ConvertToInt64Double); break;
             case TokenKind.CCur: EmitNumericConversionTo(expr, _types.Decimal); break;
             case TokenKind.CDbl: EmitNumericConversionTo(expr, _types.Double); break;
-            case TokenKind.CSng: EmitNumericConversionTo(expr, _types.Single); break;
+            case TokenKind.CSng: EmitNumericConversionTo(expr, _types.Double); break;
             case TokenKind.CByte: EmitNumericConversionTo(expr, _types.Byte); break;
             case TokenKind.Asc: EmitStringUnaryBuiltinCall(expr, StringHelpersAscMethod); break;
             case TokenKind.Val: EmitStringUnaryBuiltinCall(expr, StringHelpersValMethod); break;
