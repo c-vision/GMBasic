@@ -60,29 +60,32 @@ internal sealed class PCodeHttpResponse
     /* ── Streaming (chunked) ────────────────────────────────────────────────────
      * Una risposta può essere inviata PROGRESSIVAMENTE: `Stream(contentType)` scrive subito
      * status+header con `Transfer-Encoding: chunked` e da quel momento `Write`/`Flush` mandano
-     * i byte al socket mentre il codice BASIC continua a girare (SSE, pagine lunghe, progress).
-     * Il sink è il NetworkStream della connessione, agganciato dal loop prima del dispatch.
+     * i byte al client mentre il codice BASIC continua a girare (SSE, pagine lunghe, progress).
+     * Il TRASPORTO (socket grezzo, SslStream, OutputStream di HttpListener) è un
+     * HttpStreamSink: la logica della risposta è una sola per tutte le gambe.
      * Con lo streaming attivo NON si applicano Content-Length, gzip, ETag e render cache
      * (sono semantiche di una risposta completa): chi streamma non li riceve. */
-    private Stream? _sink;
-    private CancellationToken _sinkCt;
-    private bool _sinkKeepAlive = true;
+    private CommonLib.Http.HttpStreamSink? _sink;
     private bool _streaming;
     private readonly MemoryStream _pending = new();
     public bool Streaming { get { lock (_lock) return _streaming; } }
 
-    /// <summary>Aggancia il socket della connessione (il loop lo fa prima del dispatch).</summary>
-    internal void AttachStream(Stream sink, CancellationToken ct, bool keepAlive)
-    {
-        _sink = sink; _sinkCt = ct; _sinkKeepAlive = keepAlive;
-    }
+    /* Sink "ambient": le gambe che NON possono agganciare il sink all'oggetto (la gamba IL crea
+     * la risposta dentro il runtime del handler, non nel server) lo impostano con UseSink sul
+     * thread che esegue il dispatch; il costruttore lo adotta. Il trasporto resta in CommonLib. */
+    public PCodeHttpResponse() => _sink = CommonLib.Http.HttpStreamAmbient.Current;
 
-    private void StreamWriteRaw(byte[] data)
-    {
-        var sink = _sink;
-        if (sink == null) return;
-        try { sink.Write(data, 0, data.Length); sink.Flush(); } catch { /* client andato */ }
-    }
+    /// <summary>Rende <paramref name="sink"/> il trasporto delle risposte create su questo
+    /// thread finché lo scope non è chiuso (gamba IL: HttpListener/TLS).</summary>
+    public static IDisposable UseSink(CommonLib.Http.HttpStreamSink? sink)
+        => CommonLib.Http.HttpStreamAmbient.Use(sink);
+
+    /// <summary>Aggancia il trasporto della connessione (il loop lo fa prima del dispatch).</summary>
+    internal void AttachSink(CommonLib.Http.HttpStreamSink sink) => _sink = sink;
+
+    /// <summary>Aggancia il socket della connessione (HTTP/1.1 grezzo, framing chunked).</summary>
+    internal void AttachStream(Stream sink, CancellationToken ct, bool keepAlive)
+        => _sink = new CommonLib.Http.ChunkedStreamSink(sink, keepAlive);
 
     private void StreamFlushChunk()
     {
@@ -93,47 +96,37 @@ internal sealed class PCodeHttpResponse
             payload = _pending.ToArray();
             _pending.SetLength(0);
         }
-        var header = Encoding.ASCII.GetBytes($"{payload.Length:x}\r\n");
-        StreamWriteRaw(header);
-        StreamWriteRaw(payload);
-        StreamWriteRaw([(byte)'\r', (byte)'\n']);
+        _sink?.Write(payload, 0, payload.Length);
     }
 
     /// <summary>
-    /// Avvia la risposta in streaming: status + header (chunked) scritti ORA, poi ogni
-    /// Write/Flush manda i byte. Content-Type di default: text/plain; charset=utf-8.
+    /// Avvia la risposta in streaming: status + header scritti ORA, poi ogni Write/Flush manda
+    /// i byte. Content-Type di default: text/plain; charset=utf-8. Senza trasporto (uso fuori
+    /// da un server) la risposta resta bufferizzata: Write accoda nel Body.
     /// </summary>
     public void StartStreaming(string? contentType)
     {
-        Action? cb;
+        CommonLib.Http.HttpStreamSink? sink;
+        string ctype;
+        List<KeyValuePair<string, string>> hdrs;
+        int status;
         lock (_lock)
         {
-            if (_streaming || Sent) return;
+            if (_streaming || Sent || _sink == null) return;
             if (contentType != null && !Headers.ContainsKey("Content-Type")) Headers["Content-Type"] = contentType;
             if (!Headers.ContainsKey("Content-Type")) Headers["Content-Type"] = "text/plain; charset=utf-8";
             _streaming = true;
             /* NON si imposta Sent: per lo streaming "risposta pronta" = handler FINITO
              * (il dispatch attende la fine del task, altrimenti il server chiuderebbe il
              * chunked mentre l'handler continua a scrivere). Sent lo mette CompleteStream. */
-            cb = null;
+            sink = _sink;
+            ctype = Headers["Content-Type"];
+            status = StatusCode;
+            hdrs = new List<KeyValuePair<string, string>>(Headers.Count + RawSetCookieHeaders.Count);
+            foreach (var kv in Headers) hdrs.Add(kv);
+            foreach (var c in RawSetCookieHeaders) hdrs.Add(new KeyValuePair<string, string>("Set-Cookie", c));
         }
-        _ = cb;
-        var sb = new StringBuilder();
-        sb.Append("HTTP/1.1 ").Append(StatusCode).Append(' ').Append(StatusCode == 200 ? "OK" : "OK").Append("\r\n");
-        foreach (var kv in Headers)
-        {
-            if (kv.Key.Equals("Content-Length", StringComparison.OrdinalIgnoreCase)) continue;
-            if (kv.Key.Equals("Connection", StringComparison.OrdinalIgnoreCase)) continue;
-            if (kv.Key.Equals("Transfer-Encoding", StringComparison.OrdinalIgnoreCase)) continue;
-            sb.Append(kv.Key).Append(": ").Append(kv.Value).Append("\r\n");
-        }
-        foreach (var cookie in RawSetCookieHeaders)
-            sb.Append("Set-Cookie: ").Append(cookie).Append("\r\n");
-        sb.Append("Transfer-Encoding: chunked\r\n");
-        sb.Append("Cache-Control: no-store\r\n");
-        sb.Append("Connection: ").Append(_sinkKeepAlive ? "keep-alive" : "close").Append("\r\n");
-        sb.Append("\r\n");
-        StreamWriteRaw(Encoding.ASCII.GetBytes(sb.ToString()));
+        sink.Begin(status, ctype, hdrs);
     }
 
     /// <summary>Accoda testo alla risposta in streaming (se non è iniziato, lo avvia).</summary>
@@ -141,6 +134,7 @@ internal sealed class PCodeHttpResponse
     {
         if (!Streaming) StartStreaming(null);
         var bytes = Encoding.UTF8.GetBytes(text ?? "");
+        if (!Streaming) { AppendBodyFallback(bytes); return; }
         lock (_lock) _pending.Write(bytes, 0, bytes.Length);
         if (_pending.Length >= 8192) StreamFlushChunk();
     }
@@ -148,8 +142,22 @@ internal sealed class PCodeHttpResponse
     public void WriteStreamBytes(byte[] data)
     {
         if (!Streaming) StartStreaming(null);
+        if (!Streaming) { AppendBodyFallback(data); return; }
         lock (_lock) _pending.Write(data, 0, data.Length);
         if (_pending.Length >= 8192) StreamFlushChunk();
+    }
+
+    /// <summary>Nessun trasporto (risposta costruita fuori da un server): i byte finiscono nel
+    /// Body bufferizzato, così un handler non perde silenziosamente l'output.</summary>
+    private void AppendBodyFallback(byte[] data)
+    {
+        lock (_lock)
+        {
+            var merged = new byte[Body.Length + data.Length];
+            Buffer.BlockCopy(Body, 0, merged, 0, Body.Length);
+            Buffer.BlockCopy(data, 0, merged, Body.Length, data.Length);
+            Body = merged;
+        }
     }
 
     /// <summary>Manda ORA al client quello che è in coda (senza chiudere la risposta).</summary>
@@ -165,7 +173,7 @@ internal sealed class PCodeHttpResponse
     {
         if (!Streaming) return;
         StreamFlushChunk();
-        StreamWriteRaw([(byte)'0', (byte)'\r', (byte)'\n', (byte)'\r', (byte)'\n']);
+        _sink?.End();
         Action? cb;
         lock (_lock)
         {

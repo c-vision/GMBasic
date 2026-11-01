@@ -3526,13 +3526,9 @@ internal sealed partial class PCodeProcessor
                         case "SetCookie" when argCount >= 2: httpRes.SetCookie(args[0]?.ToString() ?? "", args[1]?.ToString() ?? "",
                             argCount >= 3 ? args[2]?.ToString() : null, argCount < 4 || (args[3] is double hb && hb != 0), argCount >= 5 && args[4] is double sb && sb != 0); break;
                         case "Redirect" when argCount >= 1: httpRes.Redirect(args[0]?.ToString() ?? "/", argCount >= 2 ? Convert.ToInt32(args[1] ?? 302.0) : 302); break;
-                        // ── Streaming (chunked): RES.STREAM/WRITE/FLUSH/ENDSTREAM ──────────
-                        case "Stream" when argCount >= 1: httpRes.StartStreaming(args[0]?.ToString()); break;
-                        case "StartStream" when argCount >= 1: httpRes.StartStreaming(args[0]?.ToString()); break;
-                        case "StartStreaming" when argCount >= 1: httpRes.StartStreaming(args[0]?.ToString()); break;
-                        case "Write" when argCount >= 1: httpRes.WriteStream(args[0]?.ToString() ?? ""); break;
-                        case "Flush": httpRes.FlushStream(); break;
-                        case "EndStream" or "CloseStream": httpRes.CompleteStream(); break;
+                        // ── Streaming (chunked): RES.STARTSTREAM/WRITE/FLUSH/ENDSTREAM ──────
+                        // Logica UNICA condivisa con il backend IL (PCodeHttpResponseStreamInvoke).
+                        case var _ when PCodeHttpResponseStreamInvoke(httpRes, methodName, args, argCount): break;
                     }
                     task.PushRef(null);
                     return true;

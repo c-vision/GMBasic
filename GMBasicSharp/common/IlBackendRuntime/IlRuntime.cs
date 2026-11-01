@@ -3384,7 +3384,7 @@ public static partial class IlRuntime
     {
         var reqDict = HttpRequestToDict(req);
         var res = new Basic.IlBackend.PCode.Http.PCodeHttpResponse();
-        var task = DispatchGpmHandler(handlerSymbolId, [reqDict, res], requestTimeoutMs: 30000, _httpScheduler);
+        var task = DispatchGpmHandler(handlerSymbolId, [reqDict, res], requestTimeoutMs: 30000, _httpScheduler, res);
         if (task?.PendingException is { } ex)
             return new HttpResponse { StatusCode = 500, ContentType = "text/plain", Body = $"500 Handler Error: {ex.Message}" };
         return PCodeResponseToHttpResponse(res);
@@ -3397,7 +3397,7 @@ public static partial class IlRuntime
     /// thread di rete NON la esegue mai. Fallback deterministico (invocazione diretta) solo
     /// quando nessun GPM è attivo. Ritorna il task (per ispezionare PendingException) o null se
     /// il dispatch è fallito.</summary>
-    private static PCodeTask? DispatchGpmHandler(int symbolId, object?[] args, int requestTimeoutMs, Basic.Runtime.Gpm.PCodeScheduler? scheduler = null)
+    private static PCodeTask? DispatchGpmHandler(int symbolId, object?[] args, int requestTimeoutMs, Basic.Runtime.Gpm.PCodeScheduler? scheduler = null, Basic.IlBackend.PCode.Http.PCodeHttpResponse? streamingWatch = null)
     {
         var activeScheduler = scheduler ?? IlGpmRuntime.CurrentScheduler;
         if (activeScheduler != null)
@@ -3406,7 +3406,13 @@ public static partial class IlRuntime
             var deadline = Environment.TickCount64 + Math.Max(1000, requestTimeoutMs);
             while (task.State != PCodeTaskState.Finished && task.PendingException == null
                    && Environment.TickCount64 < deadline)
+            {
+                /* Streaming in corso: la durata della risposta è quella dello stream (SSE/minuti),
+                 * non il timeout della richiesta — si sposta la scadenza avanti. */
+                if (streamingWatch is { Streaming: true })
+                    deadline = Environment.TickCount64 + 24 * 60 * 60 * 1000;
                 System.Threading.Thread.Sleep(5);
+            }
             return task;
         }
         var method = FindProcedureMethod(symbolId, null);
@@ -14675,6 +14681,13 @@ public static double TextWidth(string s)
         if (instance is System.Collections.IDictionary httpReqDict
             && Basic.IlBackend.PCode.PCodeProcessor.PCodeHttpRequestDictInvoke(httpReqDict, methodName, args.Length, out var hrRes))
             return hrRes;
+        // Streaming (chunked) della risposta HTTP: stesse funzioni della gamba PCode
+        // (PCodeHttpResponseStreamInvoke, §0bis). Senza questo il dispatch cadeva nella
+        // reflection di CollectionInvoke, che cerca "StartStream"/"Flush" sul tipo CLR —
+        // metodi che hanno altri nomi → NotSupportedException e risposta 204.
+        if (instance is Basic.IlBackend.PCode.Http.PCodeHttpResponse httpResStream
+            && Basic.IlBackend.PCode.PCodeProcessor.PCodeHttpResponseStreamInvoke(httpResStream, methodName, args, args.Length))
+            return null;
         // Metodi "logici" BASIC su collection boxed: Min/Max/Keys/Count/UniqueCount/Contains/
         // Add/Remove — dispatch specializzato sul tipo reale (Dictionary per Tree/AVL/Bag/...).
         switch (methodName.ToUpperInvariant())

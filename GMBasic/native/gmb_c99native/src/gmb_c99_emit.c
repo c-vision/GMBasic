@@ -12062,6 +12062,33 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                                         emit_str_operand(c, args[1]); sb_put(&c->out, ").data), 0.0)");
                                         free(rb.s); return;
                                     }
+                                    /* ── Streaming (chunked) — SELF.Response.StartStream/... ──
+                                     * stesse funzioni del runtime C di block 1 (§0bis). */
+                                    if ((!strcasecmp(meth2, "StartStream") || !strcasecmp(meth2, "StartStreaming")
+                                         || !strcasecmp(meth2, "Stream")) && nargs >= 1) {
+                                        sb_put(&c->out, "(gmb_http_response_stream_begin(");
+                                        sb_put(&c->out, R);
+                                        sb_put(&c->out, ", ("); emit_str_operand(c, args[0]); sb_put(&c->out, ").data), 0.0)");
+                                        free(rb.s); return;
+                                    }
+                                    if (!strcasecmp(meth2, "Write") && nargs >= 1) {
+                                        sb_put(&c->out, "(gmb_http_response_stream_write(");
+                                        sb_put(&c->out, R);
+                                        sb_put(&c->out, ", ("); emit_str_operand(c, args[0]); sb_put(&c->out, ").data), 0.0)");
+                                        free(rb.s); return;
+                                    }
+                                    if (!strcasecmp(meth2, "Flush") && nargs == 0) {
+                                        sb_put(&c->out, "(gmb_http_response_stream_flush(");
+                                        sb_put(&c->out, R);
+                                        sb_put(&c->out, "), 0.0)");
+                                        free(rb.s); return;
+                                    }
+                                    if ((!strcasecmp(meth2, "EndStream") || !strcasecmp(meth2, "CloseStream")) && nargs == 0) {
+                                        sb_put(&c->out, "(gmb_http_response_stream_end(");
+                                        sb_put(&c->out, R);
+                                        sb_put(&c->out, "), 0.0)");
+                                        free(rb.s); return;
+                                    }
                                     free(rb.s);
                                 }
                             }
@@ -12303,6 +12330,27 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                         sb_put(&c->out, ", ("); emit_str_operand(c, args[0]); sb_put(&c->out, ").data, ");
                         if (nargs >= 2) { sb_put(&c->out, "("); emit_str_operand(c, args[1]); sb_put(&c->out, ").data"); }
                         else sb_put(&c->out, "NULL");
+                        sb_put(&c->out, "), 0.0)"); return;
+                    }
+                    /* ── Streaming (chunked) ────────────────────────────────────────────
+                     * res.StartStream(ct) / Write(t) / Flush() / EndStream(): le funzioni
+                     * del runtime C condiviso (gmb_network.c, §0bis) — le stesse che chiama
+                     * la VM/C. Il sink arriva in res["__stream_handle"] (seeding nel wrapper). */
+                    if ((!strcasecmp(m2, "StartStream") || !strcasecmp(m2, "StartStreaming")
+                         || !strcasecmp(m2, "Stream")) && nargs >= 1) {
+                        sb_put(&c->out, "(gmb_http_response_stream_begin("); emit_ident(c, bv->name);
+                        sb_put(&c->out, ", ("); emit_str_operand(c, args[0]); sb_put(&c->out, ").data), 0.0)"); return;
+                    }
+                    if (!strcasecmp(m2, "Write") && nargs >= 1) {
+                        sb_put(&c->out, "(gmb_http_response_stream_write("); emit_ident(c, bv->name);
+                        sb_put(&c->out, ", ("); emit_str_operand(c, args[0]); sb_put(&c->out, ").data), 0.0)"); return;
+                    }
+                    if (!strcasecmp(m2, "Flush") && nargs == 0) {
+                        sb_put(&c->out, "(gmb_http_response_stream_flush("); emit_ident(c, bv->name);
+                        sb_put(&c->out, "), 0.0)"); return;
+                    }
+                    if ((!strcasecmp(m2, "EndStream") || !strcasecmp(m2, "CloseStream")) && nargs == 0) {
+                        sb_put(&c->out, "(gmb_http_response_stream_end("); emit_ident(c, bv->name);
                         sb_put(&c->out, "), 0.0)"); return;
                     }
                 }
@@ -16041,6 +16089,11 @@ static const char* http_route_wrapper_for(ctx_t* c, fn_info_t* fn) {
     /* __headers = stringa accodante per le header di risposta aggiuntive (Set-Cookie,
      * Redirect, ...). Parità VM/C gmb_vm_core.c.EmitHttpHandlerWrapper. */
     sb_put(w, "    gmb_val_dict_set(_res, \"__headers\", gmb_make_val_string(\"\"));\n");
+    /* Streaming (chunked): il sink della connessione arriva dal server in req->stream_handle.
+     * La SUB gira su un task GPM (gmb_task_spawn), non sul thread di connessione: il sink
+     * viaggia nel dict res, non in TLS. Senza questo, res.StartStream/Write non hanno dove
+     * scrivere su C99Native (risposta bufferizzata, SSE impossibile). */
+    sb_put(w, "    if (req->stream_handle) gmb_val_dict_set(_res, \"__stream_handle\", gmb_make_val_double((double)req->stream_handle));\n");
     sb_printf(w, "    %s_t* a = (%s_t*)calloc(1, sizeof(%s_t));\n", wrap, wrap, wrap);
     sb_put(w, "    a->req = _req; a->res = _res;\n");
     if (fn->n_params >= 3) {
@@ -16192,6 +16245,11 @@ static const char* http_mw_wrapper_for(ctx_t* c, fn_info_t* fn) {
     sb_put(w, "    gmb_val_dict_set(_res, \"StatusCode\", gmb_make_val_int(200));\n");
     sb_put(w, "    gmb_val_dict_set(_res, \"Body\", gmb_make_val_string(\"\"));\n");
     sb_put(w, "    gmb_val_dict_set(_res, \"__headers\", gmb_make_val_string(\"\"));\n");
+    /* Streaming (chunked): il sink della connessione arriva dal server in req->stream_handle.
+     * La SUB gira su un task GPM (gmb_task_spawn), non sul thread di connessione: il sink
+     * viaggia nel dict res, non in TLS. Senza questo, res.StartStream/Write non hanno dove
+     * scrivere su C99Native (risposta bufferizzata, SSE impossibile). */
+    sb_put(w, "    if (req->stream_handle) gmb_val_dict_set(_res, \"__stream_handle\", gmb_make_val_double((double)req->stream_handle));\n");
     sb_printf(w, "    %s_t* a = (%s_t*)calloc(1, sizeof(%s_t));\n", wrap, wrap, wrap);
     sb_put(w, "    a->req = _req; a->res = _res;\n");
     sb_put(w, "    a->step = req->chain_step_id;\n");

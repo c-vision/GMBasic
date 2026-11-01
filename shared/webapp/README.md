@@ -126,6 +126,23 @@ bspEnginePages     = ""      # pagine da forzare sulla VM/C anche con bspEngine=
 bspConcurrentPages = "index.bsp,canvas.bsp,wasm.bsp"   # render C in parallelo (rwlock lato lettura)
 ```
 
+**Streaming (chunked) e SSE.** Le risposte possono essere inviate **progressivamente**:
+`res.StartStream(contentType)` scrive subito status+header con `Transfer-Encoding: chunked`, poi
+`res.Write(testo)` + `res.Flush()` mandano i byte mentre l'handler continua (niente
+`Content-Length`, `Cache-Control: no-store`, gzip/ETag disattivati: sono semantiche di una
+risposta completa). La dashboard usa **`GET /api/events/stream`** (SSE): gli eventi del log
+agente arrivano in tempo reale via `EventSource`, con **fallback automatico al polling** di
+`/api/events` se il canale cade. Verificato: tick a 400 ms di distanza e un evento generato da
+una POST arriva sul canale aperto in <1 s (3 check nel selftest).
+
+Lo streaming è implementato su **tutte e quattro le gambe** (IL, PCodeVM, VM/C, C99Native) con lo
+stesso comportamento in rete: sulla gamba nativa il protocollo è scritto **una volta sola** in C
+(`gmb_network.c`: `gmb_http_response_stream_begin/write/flush/end`), chiamato da VM/C e dal C
+emesso da C99Native; sulle gambe managed il framing lo fa il trasporto (socket PCode, SslStream
+TLS, `HttpListener`) dietro `CommonLib.Http.HttpStreamSink`. Prova end-to-end:
+`shared/minitests/http/stream_chunked.bas` (4 gambe, verifica `Transfer-Encoding: chunked` sul
+filo) e l'esempio `shared/samples/Http/HttpStreaming.bas`.
+
 **Concorrenza del motore C.** Il render non è più serializzato in blocco: le pagine in
 `bspConcurrentPages` (il cui stato passa **interamente** dall'hook → runtime managed) prendono il
 lato **lettura** di un `rwlock` e girano in parallelo; tutte le altre prendono il lato

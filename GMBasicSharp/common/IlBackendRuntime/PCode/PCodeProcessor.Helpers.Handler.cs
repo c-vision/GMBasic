@@ -242,6 +242,40 @@ internal sealed partial class PCodeProcessor
     /// Ritorna true SOLO se il dict è una req HTTPREQUEST: in tal caso ogni metodo non
     /// riconosciuto vale null (semantica PCode originale intatta). Consumatori:
     /// OP_CALL_MEMBER PCodeVM e IlRuntime.CollectionInvoke (parità gestita).</summary>
+    /// <summary>
+    /// Streaming (chunked) della risposta HTTP: UNICA superficie C# condivisa da PCode e IL.
+    /// La logica è una sola (PCodeHttpResponse.StartStreaming/WriteStream/FlushStream/CompleteStream);
+    /// le due gambe differiscono solo per il modo di arrivarci — PCode lo fa in OP_CALL_MEMBER,
+    /// IL in IlRuntime.CollectionInvoke (che altrimenti cadrebbe nella reflection e non
+    /// troverebbe "StartStream"/"Flush", perché i metodi C# hanno altri nomi).
+    /// Ritorna false se il nome non è un metodo di streaming (il chiamante prosegue col suo dispatch).
+    /// </summary>
+    internal static bool PCodeHttpResponseStreamInvoke(Basic.IlBackend.PCode.Http.PCodeHttpResponse res,
+                                                       string methodName, object?[] args, int argCount)
+    {
+        switch ((methodName ?? "").ToUpperInvariant())
+        {
+            case "STARTSTREAM":
+            case "STARTSTREAMING":
+            case "STREAM":
+                if (argCount < 1) return false;
+                res.StartStreaming(args[0]?.ToString());
+                return true;
+            case "WRITE":
+                if (argCount < 1) return false;
+                res.WriteStream(args[0]?.ToString() ?? "");
+                return true;
+            case "FLUSH":
+                res.FlushStream();
+                return true;
+            case "ENDSTREAM":
+            case "CLOSESTREAM":
+                res.CompleteStream();
+                return true;
+        }
+        return false;
+    }
+
     internal static bool PCodeHttpRequestDictInvoke(System.Collections.IDictionary reqDict, string methodName, int argCount, out object? result)
     {
         result = null;
