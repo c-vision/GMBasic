@@ -77,8 +77,15 @@ foreach (var file in files)
     }
     catch (Exception ex)
     {
-        // Errore chiaro per feature commerciali vs mancanza vera
         var msg = ex.Message;
+        /* MODULO, non campione: `shared/samples/Modules/**` contiene anche i file IMPORTATI dai
+         * campioni (chain/nested/libs/pinned/shared): non hanno (e non devono avere) un punto
+         * d'ingresso. Prima erano contati come FAIL, falsando il conteggio della Conformance. */
+        if (msg.Contains("No valid entry point", StringComparison.OrdinalIgnoreCase))
+        {
+            skipped++;
+            continue;
+        }
         Console.WriteLine($"  ERROR [{name}] {msg.Split('\n')[0]}");
         failed++;
         errors.Add((name, msg));
