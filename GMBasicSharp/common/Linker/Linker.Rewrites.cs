@@ -3328,6 +3328,36 @@ public static partial class Linker
                     { ScopeId = aae.ScopeId };
             }
 
+            /* CHIAMATA NUDA a funzione di libreria SENZA argomenti: `LEFT()`, `RIGHT()`, `X()`,
+             * `CLICK()`, … Il parser la rappresenta come accesso indicizzato con 0 indici (una
+             * keyword non è un identificatore). La leg C risolve questi nomi per ARITÀ (LEFT() a 0
+             * argomenti = stato del tasto, LEFT(s,n) = funzione stringa): qui si cerca una
+             * NativeProcedureDefinition a ZERO parametri visibile nello scope e la si emette come
+             * chiamata al builtin (TokenKind dedicato, es. MouseLeft → IlRuntime.MouseLeft). */
+            if (symbolId < 0)
+            {
+                var builtinByName = program.Symbols.FindSymbolsByName(aae.NameCleaned.Lexeme)
+                    .Select(sp => sp.DeclarationNode)
+                    .OfType<NativeProcedureDefinition>()
+                    .FirstOrDefault(pr => SymbolTable.IsProcedureSignatureCompatible(pr, aae.Indices.Length)
+                                          && (pr.OriginalName.Lexeme.Equals(aae.NameCleaned.Lexeme,
+                                                  StringComparison.OrdinalIgnoreCase)
+                                              || pr.OriginalName.Lexeme.Equals(
+                                                  aae.NameCleaned.Lexeme.TrimEnd('$'),
+                                                  StringComparison.OrdinalIgnoreCase)));
+                if (builtinByName is not null)
+                {
+                    Log($"[RewriteArrayAccess] '{aae.NameCleaned.Lexeme}(...)' risolto come builtin ({builtinByName.BuiltinKind}).", log);
+                    var nsTok = new Token(TokenKind.Identifier, "BUILTIN", null, aae.NameCleaned.Position);
+                    var fnTok = new Token(builtinByName.BuiltinKind, builtinByName.OriginalName.Lexeme, null,
+                        aae.NameCleaned.Position);
+                    var boundIndices = aae.Indices.Select(i => RewriteExpression(i, context, program))
+                        .ToImmutableArray();
+                    return new BuiltinFunctionCallExpr(nsTok, fnTok, boundIndices,
+                        builtinByName.ReturnType) { ScopeId = aae.ScopeId };
+                }
+            }
+
             if (symbolId < 0)
             {
                 // Nome nudo di una funzione di libreria in namespace NON caricato: hint distinto
