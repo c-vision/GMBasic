@@ -234,6 +234,8 @@ set(GMB_ALL_SRCS
     src/gmb_interp.c
     src/gmb_spatial.c
     src/gmb_network.c
+    src/gmb_hpack.c
+    src/gmb_http2.c
     src/gmb_validation.c
     src/gmb_matrix.c
     src/gmb_finance.c
