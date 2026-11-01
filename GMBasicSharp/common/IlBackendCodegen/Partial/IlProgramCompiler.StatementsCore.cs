@@ -175,6 +175,11 @@ public sealed partial class IlProgramCompiler
         var method = NormalizeInferredType(dataType) switch
         {
             DoubleType => IlRuntimeReadDataDoubleMethod,
+            // READ ... INTO una variabile SINGLE: se SINGLE è mappato a double (parità C) la
+            // lettura deve produrre un double (ReadDataSingle restituisce float → stloc double
+            // = IL invalido).
+            SingleType when DataTypeMapper.Map(dataType, _types, _classTypes) == _types.Double
+                => IlRuntimeReadDataDoubleMethod,
             SingleType => IlRuntimeReadDataSingleMethod,
             LongType => IlRuntimeReadDataLongMethod,
             ULongType => IlRuntimeReadDataULongMethod,
