@@ -298,8 +298,13 @@ public class ReplEngine
             // Standard (-c) o System (-s): IConsole con buffer (Standard) / wrapper (System).
             if (cli.UseSystemConsole)
             {
-                _activeConsole = new SystemConsole(cfg);
+                var sys = new SystemConsole(cfg);
+                _activeConsole = sys;
                 _kb = new CommonLib.Keyboard.KeyboardServiceConsole(new CommonLib.Clipboard.ClipboardServiceSystem());
+                _kb.Start();   // SENZA Start() il listener dei tasti non parte: input morto
+                // Parità visiva con Standard/SDL/C64: palette applicata e schermo pulito
+                // con lo sfondo attivo (la StandardConsole lo fa già nel costruttore).
+                try { sys.ResetColor(); sys.Clear(); } catch (IOException) { }
             }
             else
             {
@@ -307,6 +312,7 @@ public class ReplEngine
                 var kb = new CommonLib.Keyboard.KeyboardServiceConsole(clip);
                 _activeConsole = new StandardConsole(cfg, kb, clip);
                 _kb = kb;
+                _kb.Start();   // idem: il listener dei tasti va avviato esplicitamente
             }
         }
 
