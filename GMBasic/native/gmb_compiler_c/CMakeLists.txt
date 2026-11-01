@@ -74,6 +74,15 @@ target_include_directories(gmb_cli PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/frontend
 target_compile_options(gmb_cli PRIVATE -Wall -Wextra)
 set_target_properties(gmb_cli PROPERTIES OUTPUT_NAME gmb)
 
+# ── Language Server (LSP) come TOOL SEPARATO (F2c): serve le IDE e VS Code.
+# Prima viveva dentro la REPL (flag --lsp) e la costringeva a linkare il front-end.
+add_executable(gmb_lsp
+               "${CMAKE_CURRENT_SOURCE_DIR}/../lsp/main.c"
+               "${CMAKE_CURRENT_SOURCE_DIR}/../lsp/gmb_lsp.c")
+target_link_libraries(gmb_lsp PRIVATE gmb_compiler_c)
+target_include_directories(gmb_lsp PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/frontend/include")
+target_compile_options(gmb_lsp PRIVATE -Wall -Wextra)
+
 # ── Driver chunk A1/GMBC (.bas -> bytecode VM/C): usato da tools/test_mcp_e2e.sh e da
 # gmbsuite. Stesso problema del gmb_c99native_driver: senza target CMake il binario
 # restava STALE dopo ogni modifica a parser/emitter.

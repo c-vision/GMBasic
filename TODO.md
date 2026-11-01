@@ -150,9 +150,10 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
       sessione di debug dell'IDE → `gmb dump chunk`; `gmb_native_compile/exec` e
       `gmb_preprocess_*` rimossi; `gmb_executor_native` **non è più linkato** dalla REPL.
       I `-D` viaggiano come `-D name=val` al CLI (nuova opzione `gmb dump/eval -D`).
-- [ ] **F2c — LSP fuori dalla REPL**: `gmb_lsp.c` è l'unico punto che include `gmb_lexer.h`
-      (resta il link a `gmb_compiler_c`). Va esposto come `gmb lsp` (o binario a parte) e la
-      REPL smette di linkare il front-end.
+- [x] **F2c — LSP come tool separato** (2026-11-01): `native/lsp/` (main + gmb_lsp.c) →
+      eseguibile **`gmb_lsp`** (LSP/JSON-RPC su stdio), costruito dal progetto del compilatore.
+      La REPL **non linka più `gmb_compiler_c`** e `--lsp` rimanda al tool.
+      Client: le IDE GMBasic e VS Code (o qualunque editor LSP).
 - [ ] **Decisione nome `EVAL`**: nel motore C valuta uno snippet (`gmb eval`), nella REPL C#
       è l'Eval Harness AI. Un solo significato: candidato `AIBENCH` per l'harness.
 - [ ] **F3 — Comandi solo-C# riportati nel mondo C** (tabella 6.3) come wrapper di `gmb`/runtime C.
