@@ -623,11 +623,14 @@ internal static class Program
     private static int AuditC99Native(string[] args)
     {
         var jsonOut = ArgValue(args, "--json");
-        var root = Root;
-        var astHdr = File.ReadAllText(Path.Combine(root, "native", "gmb_compiler_c", "frontend", "include", "gmb_ast.h"));
+        // I SORGENTI C stanno nel repo nativo (`<monorepo>/GMBasic/native`), NON sotto
+        // `GMBasicSharp/`: `Root` è la radice del repo C# (usata per i manifest managed).
+        // Con `Root` il path diventava `GMBasicSharp/native/...` → DirectoryNotFoundException.
+        var root = NativeRoot;
+        var astHdr = File.ReadAllText(Path.Combine(root, "gmb_compiler_c", "frontend", "include", "gmb_ast.h"));
         var emitFiles = new[] { "gmb_c99_emit.c", "gmb_c99_emit.h" }
-            .Select(f => Path.Combine(root, "native", "gmb_c99native", f))
-            .Concat(Directory.GetFiles(Path.Combine(root, "native", "gmb_c99native", "src"), "gmb_c99_emit*.c", SearchOption.AllDirectories));
+            .Select(f => Path.Combine(root, "gmb_c99native", f))
+            .Concat(Directory.GetFiles(Path.Combine(root, "gmb_c99native", "src"), "gmb_c99_emit*.c", SearchOption.AllDirectories));
 
         var emitText = new System.Text.StringBuilder();
         foreach (var f in emitFiles)
