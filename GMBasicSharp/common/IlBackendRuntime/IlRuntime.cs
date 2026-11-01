@@ -354,8 +354,10 @@ public static partial class IlRuntime
     public static float ReadDataSingle() => Convert.ToSingle(TakeData(), CultureInfo.InvariantCulture);
     public static long ReadDataLong() => Convert.ToInt64(TakeData(), CultureInfo.InvariantCulture);
     public static ulong ReadDataULong() => Convert.ToUInt64(TakeData(), CultureInfo.InvariantCulture);
-    public static short ReadDataInteger() => Convert.ToInt16(TakeData(), CultureInfo.InvariantCulture);
-    public static ushort ReadDataUInteger() => Convert.ToUInt16(TakeData(), CultureInfo.InvariantCulture);
+    // READ ... INTO una variabile INTEGER: INTEGER è a 64 bit (parità PCode/VM-C/C99Native,
+    // dove non c'è troncamento a 16 bit), quindi la lettura non deve ridurre a short.
+    public static long ReadDataInteger() => Convert.ToInt64(TakeData(), CultureInfo.InvariantCulture);
+    public static ulong ReadDataUInteger() => Convert.ToUInt64(TakeData(), CultureInfo.InvariantCulture);
     public static byte ReadDataByte() => Convert.ToByte(TakeData(), CultureInfo.InvariantCulture);
     public static sbyte ReadDataSByte() => Convert.ToSByte(TakeData(), CultureInfo.InvariantCulture);
     public static bool ReadDataBit() => Convert.ToBoolean(TakeData(), CultureInfo.InvariantCulture);
@@ -13328,6 +13330,11 @@ public static double TextWidth(string s)
         byte by => PrintFormatDouble(by),
         decimal dec => (dec >= 0.0m ? " " : "") + dec.ToString("G", System.Globalization.CultureInfo.InvariantCulture) + " ",
         System.Collections.IEnumerable en => "[" + string.Join(", ", en.Cast<object?>().Select(JsonValueToString)) + "]",
+        // DATA/ORA: "dd/MM/yyyy HH:mm:ss" SENZA lo spazio finale del caso generico.
+        // Le gambe C (gmb_dt_datetime_to_string) e la PCodeVM non aggiungono padding; prima
+        // l'IL era l'unico a stampare "01/11/2026 18:43:38 " (divergenza trovata sul sample
+        // Http/HttpRoutes.bas, che logga NOW()). Formato esplicito = indipendente dalla cultura.
+        DateTime dt => dt.ToString("dd/MM/yyyy HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture),
         _ => (value?.ToString() ?? "") + " "
     };
     private static string PrintFormatDouble(double d)

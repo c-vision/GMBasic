@@ -230,6 +230,13 @@ public sealed partial class IlProgramCompiler
     private Type GlobalClrType(int symbolId)
     {
         var symbol = _program.Symbols.GetSymbol(symbolId);
+        // Simbolo con tipo RIDEFINITO (`DIM S AS SINGLE` + `DIM S$ AS STRING`: stesso
+        // SymbolId, tipi CLR diversi): nel bag globale il valore è BOXED, qualunque sia
+        // il tipo dell'ultima dichiarazione. Senza questo, la lettura emetteva
+        // `castclass System.String` su un Single boxed → InvalidCastException
+        // (sample TypesConversions.bas). Gemello del ramo LOCAL (vedi
+        // EmitLocalClrType/`clrType = typeof(object)`).
+        if (_redefinedTypeSymbols.Contains(symbolId)) return typeof(object);
         if (symbol.DataType is BitType) return _types.Int32;
         return DataTypeMapper.Map(symbol.DataType, _types, _classTypes);
     }

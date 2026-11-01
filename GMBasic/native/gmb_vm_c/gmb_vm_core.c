@@ -2682,6 +2682,15 @@ void gmb_format_value(char* buf, size_t cap, gmb_stack_entry_t e)
     {
         if (e.basic_type == GMB_BT_BOOL)
             snprintf(buf, cap, e.num != 0 ? "-1 " : " 0 ");
+        else if (e.basic_type == GMB_BT_DATE)
+        {
+            /* DATA/ORA (NOW/TODAY, variabile DATETIME): resa "dd/mm/yyyy hh:mm:ss" come
+             * IL/PCode/C99. Prima usciva il NUMERO SERIALE OADate ("46327.7793171296"),
+             * divergenza trovata sul sample Http/HttpRoutes.bas (PRINT NOW() nel log). */
+            gmb_string_t _dt = gmb_dt_datetime_to_string(e.num);
+            snprintf(buf, cap, "%s", _dt.data ? _dt.data : "");
+            gmb_string_free(&_dt);
+        }
         else if (e.basic_type == GMB_BT_CURRENCY)
             /* CURRENCY (campo DBF N/F): resa con `scale` decimali E spazio-segno per i
              * valori ≥ 0 (la colonna del segno), come gmb_format_double e il canone
@@ -11464,8 +11473,14 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                         }
                         else
                         {
+                            /* DICT.Remove(k) è un PREDICATO (-1 rimosso / 0 assente) e va
+                             * LASCIATO SULLO STACK: prima non si pushava nulla, così
+                             * `IF d.Remove(k) THEN` leggeva un valore qualsiasi → il ramo
+                             * vero non veniva mai preso (e lo stack restava disallineato).
+                             * Parità con IL/PCode (bool -1/0) e col C99
+                             * (`(gmb_dict_remove(...) ? -1 : 0)`). */
                             const char* k = (args[0].type == 2 && args[0].ref) ? ((gmb_obj_string_t*)args[0].ref)->data : "";
-                            gmb_dict_remove(sv->dict, k);
+                            push_num_entry(task, gmb_dict_remove(sv->dict, k) ? -1.0 : 0.0, GMB_BT_BOOL);
                         }
                     }
                     else if (strcmp(methodName, "Add") == 0 && argCount >= 2)

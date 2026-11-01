@@ -459,8 +459,11 @@ public static class IlConversion
             SingleType => StringHelpersSingleToInvariantStringMethod,
             LongType or QuadType => types.ConvertToStringInt64,
             UQuadType => types.ConvertToStringUInt64,
-            IntegerType => types.ConvertToStringInt16,
-            UIntegerType => types.ConvertToStringUInt16,
+            // INTEGER = 64 bit in questo dialetto (vedi DataTypeMapper): la conversione a
+            // stringa deve corrispondere al TIPO CLR del valore sullo stack, altrimenti
+            // Convert.ToString(short) su un long è IL invalido.
+            IntegerType => types.ConvertToStringInt64,
+            UIntegerType => types.ConvertToStringUInt64,
             ByteType => types.ConvertToStringByte,
             SByteType => types.ConvertToStringSByte,
             BitType => types.ConvertToStringBoolean,

@@ -182,11 +182,14 @@ public sealed class HttpService : IHttpService, IDisposable
     /// BSP. Prima versione: una risposta per connessione (Connection: close), WebSocket upgrade
     /// non supportato (501) — il path plain (HttpListener) resta invariato.
     /// </summary>
+    // Il caricamento del certificato (PEM o PFX) è CONDIVISO con la gamba PCode:
+    // CommonLib.Http.HttpServerCertificate.Load (§0bis).
+
     public long HttpServerStartTls(int port, string certPath, string certPassword)
     {
         try
         {
-            var cert = string.IsNullOrEmpty(certPath) ? null : new X509Certificate2(certPath, certPassword, X509KeyStorageFlags.Exportable);
+            var cert = CommonLib.Http.HttpServerCertificate.Load(certPath, certPassword);
             if (cert is null) return -1;
             var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, port);
             listener.Start();
@@ -226,7 +229,12 @@ public sealed class HttpService : IHttpService, IDisposable
                 await ssl.AuthenticateAsServerAsync(new SslServerAuthenticationOptions
                 {
                     ServerCertificate = cert,
-                    EnabledSslProtocols = SslProtocols.None
+                    EnabledSslProtocols = SslProtocols.None,
+                    /* ALPN esplicito: questa gamba serve SOLO HTTP/1.1 (niente h2: HttpListener/
+                     * SslStream non hanno un server h2). Senza, `openssl s_client` non vedeva
+                     * alcun protocollo negoziato e un client che richiedeva h2 restava senza
+                     * risposta ALPN — le gambe C invece negoziano h2/http1.1. */
+                    ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http11 }
                 }).ConfigureAwait(false);
 
                 var settings = _settings.TryGetValue(handle, out var s) ? s : new HttpServerSettings();

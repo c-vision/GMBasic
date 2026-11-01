@@ -69,10 +69,26 @@ IMPORT MATH
 190 PRINT "CLNG(987654.3) =", CLNG(987654.3); "(Atteso: 987654, arrotondamento standard)"
 200 PRINT
 
-210 PRINT "--- 3. Test VAL, FIX, FLOOR (INT) ---"
-220 DIM S$ AS STRING
-230 S$ = "  -123.45xyz"
-240 PRINT "VAL('"; S$; "') =", VAL(S$); "(Atteso: -123.45)"
+210 PRINT "--- 2bis. INTEGER a 64 bit e CINT (2026-11-01) ---"
+' INTEGER NON è un intero a 16 bit: 70000 è un valore legittimo su tutte le gambe.
+' Prima della correzione la gamba IL lanciava OverflowException e LEN() di un testo
+' da 70.000 caratteri tornava 4464 (= 70000 MOD 65536).
+DIM CONTATORE AS INTEGER
+CONTATORE = 70000
+PRINT "INTEGER = 70000 →", CONTATORE
+PRINT "CINT(70000) =", CINT(70000)
+PRINT "CINT(2.5) =", CINT(2.5); " CINT(3.5) =", CINT(3.5); "(half-to-even)"
+DIM TESTO_LUNGO AS STRING
+TESTO_LUNGO = DUP(70000, "x")
+PRINT "LEN(testo da 70.000 caratteri) =", LEN(TESTO_LUNGO)
+CONTATORE = CONTATORE + 1
+PRINT "70000 + 1 =", CONTATORE
+PRINT
+
+PRINT "--- 3. Test VAL, FIX, FLOOR (INT) ---"
+220 DIM TESTOVAL AS STRING
+230 TESTOVAL = "  -123.45xyz"
+240 PRINT "VAL('"; TESTOVAL; "') =", VAL(TESTOVAL); "(Atteso: -123.45)"
 250 PRINT
 260 PRINT "Confronto su 3.7:  FIX="; FIX(3.7); " | FLOOR="; FLOOR(3.7)
 270 PRINT "Confronto su -3.7: FIX="; FIX(-3.7); "| FLOOR="; FLOOR(-3.7); "(FIX tronca, FLOOR va verso -inf)"

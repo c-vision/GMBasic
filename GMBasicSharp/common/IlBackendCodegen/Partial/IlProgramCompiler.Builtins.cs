@@ -99,7 +99,11 @@ public sealed partial class IlProgramCompiler
             case TokenKind.LTrim: EmitStringUnaryBuiltinCall(expr, IlRuntimeStringTrimStartMethod); break;
             case TokenKind.RTrim: EmitStringUnaryBuiltinCall(expr, IlRuntimeStringTrimEndMethod); break;
             case TokenKind.CLng: EmitNumericConversionCall(expr, _types.ConvertToInt64Double); break;
-            case TokenKind.CInt: EmitNumericConversionCall(expr, _types.ConvertToInt16Double); break;
+            // CINT produce un intero a 64 bit (INTEGER): con Convert.ToInt16(double) la gamba
+            // IL era l'UNICA a lanciare OverflowException su valori legittimi (70000) e a
+            // troncare LEN(...) di un corpo >64 KB; le gambe PCode/VM-C/C99Native restituiscono
+            // il valore intero (arrotondato all'intero più vicino, 2.5→2 come Convert.ToInt64).
+            case TokenKind.CInt: EmitNumericConversionCall(expr, _types.ConvertToInt64Double); break;
             case TokenKind.CCur: EmitNumericConversionTo(expr, _types.Decimal); break;
             case TokenKind.CDbl: EmitNumericConversionTo(expr, _types.Double); break;
             case TokenKind.CSng: EmitNumericConversionTo(expr, _types.Single); break;

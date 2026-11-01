@@ -43,8 +43,14 @@ public static class DataTypeMapper
         QuadType => types.Int64,
         ULongType => types.UInt64,
         UQuadType => types.UInt64,
-        IntegerType => types.Int16,
-        UIntegerType => types.UInt16,
+        /* INTEGER = intero a 64 bit, come su PCode/VM-C/C99Native (dove è un double/intero senza
+         * troncamento). Con Int16 la gamba IL era l'UNICA a divergere: `DIM i AS INTEGER :
+         * i = 70000` lanciava OverflowException (le altre gambe stampavano 70000) e
+         * `i = LEN(corpo)` su un corpo di 70 KB dava 4464 (70000 mod 65536) solo qui.
+         * Il dialetto non emula il wraparound classico a 16 bit: nessuna gamba lo fa, e
+         * introdurlo troncherebbe in silenzio valori legittimi. */
+        IntegerType => types.Int64,
+        UIntegerType => types.UInt64,
         ByteType => types.Byte,
         SByteType => types.SByte,
         BitType => types.Boolean,

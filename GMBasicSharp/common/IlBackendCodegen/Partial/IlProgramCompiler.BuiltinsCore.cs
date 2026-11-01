@@ -1447,6 +1447,17 @@ private void EmitBrowserHumanScrollCall(BuiltinFunctionCallExpr expr)
         // Callback per AMAP/AFILTER/AREDUCE/ACOUNT/...: la FUNCTION è già un metodo CIL
         // statico (in _procedureMethods) — costruisce il delegate Func<> con la firma CLR
         // della FunctionDefinition (parametri + return), poi Ldftn + Newobj.
+        /* Il simbolo è una LOCALE o un PARAMETRO (es. `next AS NEXTHANDLER` passato a
+         * `GO SUB OperazioneLunga(req, res, next)`): il valore è già un oggetto/delegate sullo
+         * stack, NON una procedura da compilare. Prima si cercava solo fra i metodi delle
+         * procedure → NotSupportedException "callback 'next' non compilato", che rendeva
+         * impossibile compilare qualunque middleware a 3 parametri sulla gamba IL
+         * (bug trovato su samples/Http/HttpRoutes.bas). */
+        if (_parameters.ContainsKey(expr.SymbolId) || _locals.ContainsKey(expr.SymbolId))
+        {
+            EmitLoadVariable(expr.SymbolId);
+            return;
+        }
         if (!_procedureMethods.TryGetValue(expr.SymbolId, out var fnMethod))
             throw new NotSupportedException($"Backend IL: callback '{expr.OriginalToken.Lexeme}' non compilato (bug interno).");
         var symbol = _program.Symbols.GetSymbol(expr.SymbolId);

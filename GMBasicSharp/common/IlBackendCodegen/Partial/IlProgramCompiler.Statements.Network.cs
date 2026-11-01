@@ -746,8 +746,27 @@ public sealed partial class IlProgramCompiler
     /// </summary>
     private void EmitHttpUseNextStatement(HttpUseNextStmt stmt)
     {
-        EmitExpression(stmt.NextHandle);
-        _il.Emit(OpCodes.Pop);
+        /* Handle ESPLICITO (`HTTP USE NEXT h`): si valuta e si scarta (può avere effetti).
+         * Handle IMPLICITO (`HTTP USE NEXT`): il parser sintetizza `VariableExpr(-1, "next")`,
+         * che NON è una procedura — valutarlo finiva in EmitFunctionReference →
+         * NotSupportedException "callback 'next' non compilato": per questo un middleware a
+         * 3 parametri non compilava sulla gamba IL (bug trovato su samples/Http/HttpRoutes.bas).
+         * L'handle implicito è un flag, non un valore: non si emette nulla. */
+        /* L'handle IMPLICITO arriva come `VariableExpr(-1, "next")` oppure, dopo le riscritture
+         * del linker, come `FunctionReferenceExpr(SymbolId 0)` con lexeme "next" (AST:
+         * `@(FuncRef: next#0)`). In entrambi i casi NON è una procedura: valutarlo faceva
+         * fallire la compilazione ("callback 'next' non compilato") su qualunque middleware
+         * (anche a 2 parametri) che usa `HTTP USE NEXT` senza argomento. */
+        var implicitNext =
+            (stmt.NextHandle is VariableExpr vNext && vNext.SymbolId < 0
+             && vNext.NameCleaned.Lexeme.Equals("next", StringComparison.OrdinalIgnoreCase))
+            || (stmt.NextHandle is FunctionReferenceExpr frNext && frNext.SymbolId <= 0
+                && frNext.OriginalToken.Lexeme.Equals("next", StringComparison.OrdinalIgnoreCase));
+        if (!implicitNext)
+        {
+            EmitExpression(stmt.NextHandle);
+            _il.Emit(OpCodes.Pop);
+        }
         _il.Emit(OpCodes.Call, IlRuntimeHttpUseNextMethod);
     }
 
