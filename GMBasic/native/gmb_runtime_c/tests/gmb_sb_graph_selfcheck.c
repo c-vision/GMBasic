@@ -104,6 +104,12 @@ int main(void) {
     r = gmb_graph_brain_query("testgraph", "DIJKSTRA", "a.md", "c.md", 0);
     CHECK(r && strstr(r, "a.md") && strstr(r, "c.md"), "DIJKSTRA"); free(r);
 
+    printf("... HUBS (grado: b.md al centro della catena a→b→c)\n"); fflush(stdout);
+    r = gmb_graph_brain_query("testgraph", "HUBS", "10", NULL, 10);
+    printf("  HUBS result=[%s]\n", r ? r : "null"); fflush(stdout);
+    CHECK(r && strstr(r, "\"hubs\"") && strstr(r, "b.md") && strstr(r, "\"degree\":2"),
+          "HUBS b.md grado 2 (in+out)"); free(r);
+
     printf("... HASCYCLE (path lineare -> 0)\n"); fflush(stdout);
     r = gmb_graph_brain_query("testgraph", "HASCYCLE", NULL, NULL, 0);
     CHECK(r && strcmp(r, "0") == 0, "HASCYCLE=0"); free(r);

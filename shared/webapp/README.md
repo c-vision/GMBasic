@@ -99,6 +99,11 @@ dagli host (`gmb_vm_host`, lib BSP) e chiamati **direttamente** dall'emitter C99
 processo dell'app lo stato (agenti, provider, brain) vive nel runtime managed e l'hook lo
 condivide: è una questione di **stato**, non di capacità.
 
+Il tool set `graph.*` è completo anche in C: `query`, `neighbors`, `path`, `dijkstra`, `bfs`,
+`dfs`, `hubs` (grado in+out), `stats` — gli algoritmi sono nel runtime condiviso
+(`gmb_graph_brain_query` + op `HUBS` nuova, `gmb_graph_query_multi` per la ricerca) e il loop fa
+solo il mapping nome-tool → operazione, con `brain` dal tool o il grafo attivo.
+
 **Errori allineati:** se il runtime managed solleva un'eccezione dentro l'hook, il runtime C la
 riceve come testo (`\x01` + messaggio), **non** la inghiotte, e la solleva come errore BASIC: la
 pagina si comporta come sulla gamba managed (gestore `ON ERROR` incluso). Prima un
