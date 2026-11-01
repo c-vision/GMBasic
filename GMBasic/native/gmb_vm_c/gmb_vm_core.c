@@ -11647,19 +11647,14 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                                 ? ((gmb_obj_string_t*)args[0].ref)->data : "";
                             gmb_ws_send_text((int64_t)wh.v_double, txt);
                         }
-                        else if (gmb_http_response_is_streaming(gmb_make_val_obj(inst)))
-                        {
-                            /* res.Send con lo stream aperto = Write: il testo va sul canale
-                             * già in chunk invece di finire nel Body bufferizzato (che non
-                             * verrebbe più inviato) — nessun output perso. */
-                            gmb_string_t enc = gmb_val_to_string(gmb_adapter_stack_to_val(args[0]));
-                            gmb_http_response_stream_write(gmb_make_val_obj(inst), enc.data ? enc.data : "");
-                            gmb_string_free(&enc);
-                        }
                         else
                         {
-                            gmb_val_t v = gmb_adapter_stack_to_val_borrowed(args[0]);
-                            gmb_dict_set(sv->dict, "Body", v);
+                            /* res.Send: SORGENTE UNICA del runtime (§0bis) — con lo stream
+                             * aperto scrive nel flusso, altrimenti riempie il Body. Prima la
+                             * logica era duplicata qui e diversa dal C99. */
+                            gmb_string_t enc = gmb_val_to_string(gmb_adapter_stack_to_val(args[0]));
+                            gmb_http_response_send_text(gmb_make_val_obj(inst), enc.data ? enc.data : "", NULL);
+                            gmb_string_free(&enc);
                         }
                     }
                     /* ── Streaming (chunked): res.StartStream/Write/Flush/EndStream ──────

@@ -4025,8 +4025,9 @@ int gmb_http_response_stream_begin(gmb_val_t res, const char* content_type)
     if (d)
     {
         gmb_val_t sv = gmb_dict_get(*d, "StatusCode");
-        if (sv.kind != GMB_TYPE_DOUBLE) sv = gmb_dict_get(*d, "Status");
+        if (sv.kind != GMB_TYPE_DOUBLE && sv.kind != GMB_TYPE_INT) sv = gmb_dict_get(*d, "Status");
         if (sv.kind == GMB_TYPE_DOUBLE && sv.v_double > 0) status = (int)sv.v_double;
+        else if (sv.kind == GMB_TYPE_INT && sv.v_int > 0) status = (int)sv.v_int;   /* SetStatus del C99 */
         else if (sv.kind == GMB_TYPE_STRING && sv.v_string.data && *sv.v_string.data) status = atoi(sv.v_string.data);
         {
             gmb_val_t hv = gmb_dict_get(*d, "__headers");
@@ -4118,9 +4119,37 @@ int gmb_http_response_stream_end(gmb_val_t res)
     gmb_http_stream_t* st = http_stream_of(res);
     if (!st) return -1;
     if (st->finished) return 0;
-    if (!st->begun && gmb_http_response_stream_begin(res, NULL) != 0) return -1;
+    /* NESSUN auto-avvio: `EndStream` su una risposta mai aperta è un NO-OP (parità con
+     * CompleteStream del managed, che fa `if (!Streaming) return;`). Prima apriva e chiudeva
+     * uno stream vuoto, e il `Send` successivo finiva nel flusso chiuso → corpo VUOTO su VM/C
+     * mentre IL/PCode restituivano il corpo bufferizzato. */
+    if (!st->begun) return 0;
     http_stream_finish(st);
     return st->broken ? -1 : 0;
+}
+
+void gmb_http_response_send_text(gmb_val_t res, const char* text, const char* content_type)
+{
+    const char* txt = text ? text : "";
+    /* Sorgente UNICA per VM/C e C99 (§0bis): con lo stream aperto il testo va NEL FLUSSO
+     * (prima il C99 lo metteva in Body, che non viene più inviato → output perso). */
+    if (gmb_http_response_is_streaming(res))
+    {
+        gmb_http_response_stream_write(res, txt);
+        return;
+    }
+    {
+        gmb_dict_t* d = (res.kind == GMB_TYPE_OBJECT && res.v_ptr)
+                        ? (gmb_dict_t*)((gmb_obj_t*)res.v_ptr)->data : NULL;
+        gmb_val_dict_set(res, "Body", gmb_make_val_string(txt));
+        if (d)
+        {
+            gmb_val_t cur = gmb_dict_get(*d, "ContentType");
+            if (!(cur.kind == GMB_TYPE_STRING && cur.v_string.data && *cur.v_string.data))
+                gmb_val_dict_set(res, "ContentType", gmb_make_val_string(
+                    (content_type && *content_type) ? content_type : "text/plain; charset=utf-8"));
+        }
+    }
 }
 
 int gmb_http_response_is_streaming(gmb_val_t res)
