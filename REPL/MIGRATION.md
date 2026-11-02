@@ -55,8 +55,8 @@ Comandi riportati nel mondo C o instradati (vedi commit F3/F6b):
 | `-e`/`-executor` | `gmb_repl -e` (log settings) |
 | `-gpm[:mode]` / `GPM <mode>` | **implementato**: `auto|always|linear` passa a `gmb --gpm` (emissione C99). `auto` = rilevamento (default effettivo), `always` = forza lo scheduler (`gmb_gpm_start` sempre), `linear` = percorso diretto se lineare (mai crash) |
 | `--run <cmd>` | `gmb_repl --run <cmd>` |
-| `-m`/`--managed` | **non nel REPL**: `gmbcs build --target il` (messaggio esplicito se passato) |
-| `-n`/`--native` | **non portato** (AOT): percorso nativo canonico `gmb build` — messaggio esplicito |
+| `-m`/`--managed` | **engine C#**: `gmbcs run --engine il` (con `--engine=csharp`); senza engine, errore esplicito. `gmb <file> -m` equivalente |
+| `-n`/`--native` | **engine C#**: `gmbcs run --engine native` (NativeAOT via `IlProgramCompiler.CompileNative` + ilc, poi esegue); `gmbcs build --target native` per il solo binario. `gmb <file> -n` equivalente |
 | `-full` | **implementato**: `gmbcs build --target il --full` (copia il runtime .NET accanto all'eseguibile; `gmb <file> -full` lo inoltra). `--all` disattiva il filtro ClosureSlim |
 | `--debug-tcp <port>` | **mai stato operativo**: nel vecchio runner il valore era solo salvato (`DebugPort`), nessun listener TCP veniva aperto (verificato nel sorgente storico). Nel mondo C il flag dà un avviso esplicito; per il debug usare `IDE` o `gmbcs debug` |
 | `--target wasm`, `-o` | **rimossi** con la REPL C# (POC): messaggio esplicito; per il C usare `gmb dump c` |
@@ -84,8 +84,9 @@ vengono ignorati: il CLI stampa un errore esplicito con il programma giusto da u
 
 ## 5. Aperti (tracciati, mai silenziosi)
 
-1. **NativeAOT `-n`** (build nativo dal mondo C#): non portato in `gmbcs`; il nativo canonico
-   è il compilatore C (`gmb build`).
+1. ~~NativeAOT `-n`~~ — **portato** in `gmbcs build --target native` / `run --engine native`
+   (DLL managed temporanea + `NativeBackend.Build` → eseguibile senza runtime .NET).
+   Il percorso nativo canonico resta il compilatore C (`gmb build`).
 2. ~~`-full`~~ — **portato** in `gmbcs build --full` (runtime .NET copiato; verificato: 314 file
    nella cartella di build, `System.Private.CoreLib` incluso).
 3. ~~`--debug-tcp`~~ — **non era una funzione**: il flag veniva solo memorizzato, nessun server

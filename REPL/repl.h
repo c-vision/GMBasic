@@ -47,6 +47,9 @@ typedef struct rpl_options {
     bool ast;                 /* --ast: stampa l'AST del file all'avvio */
     bool stay_in_repl;        /* -repl: dopo il file resta nella REPL */
     bool pcode;               /* --pcode: engine C# → P-Code (nel mondo C è il default VMC) */
+    bool native_backend;      /* -n/--native: engine C# → NativeAOT (gmbcs run --engine native) */
+    bool managed_backend;     /* -m/--managed: engine C# → IL managed (gmbcs run --engine il) */
+    bool full;                /* -full: distribuzione managed con runtime .NET copiato */
     const char* il_modules[8];/* --il-module <dll> (ripetibile, engine C#) */
     int il_modules_count;
 } rpl_options_t;

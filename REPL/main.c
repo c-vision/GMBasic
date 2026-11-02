@@ -40,9 +40,11 @@ int main(int argc, char** argv)
         fprintf(stderr, "?--il-module richiede --engine=csharp (moduli IL esterni sono del mondo C#).\n");
         return 2;
     }
-    if (rpl_il_forbidden(argc, argv) && !has_il_module) {
-        fprintf(stderr, "?-n/--native e -m/--managed sono build dell'engine C#: usa `gmbcs build --target il`\n"
-                        "  (managed) o il compilatore C `gmb build --project <dir>` (nativo).\n");
+    /* -n/-m sono build dell'engine C#: con --engine=csharp vengono inoltrati a gmbcs
+     * (run --engine native|il). Nel mondo C il nativo canonico è `gmb build`. */
+    if ((o.native_backend || o.managed_backend || o.full) && !rpl_engine_cs(&o)) {
+        fprintf(stderr, "?-n/--native, -m/--managed e -full sono dell'engine C#: aggiungi --engine=csharp\n"
+                        "  (oppure usa il compilatore C: `gmb build --project <dir>`).\n");
         return 2;
     }
     /* -size/-font sovrascrivono i settings: passati alla console via env. */

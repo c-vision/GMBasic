@@ -66,6 +66,9 @@ int rpl_parse_args(int argc, char** argv, rpl_options_t* o)
     o->ast = flag_present(a, n, "--ast", NULL);
     o->stay_in_repl = flag_present(a, n, "-repl", NULL);
     o->pcode = flag_present(a, n, "--pcode", "-pcode");
+    o->native_backend = flag_present(a, n, "-n", "--native");
+    o->managed_backend = flag_present(a, n, "-m", "--managed");
+    o->full = flag_present(a, n, "-full", "--full");
     /* --il-module <dll> (ripetibile): moduli IL esterni, solo con engine C#. */
     o->il_modules_count = 0;
     for (int i = 0; i < n && o->il_modules_count < 8; i++)
