@@ -66,7 +66,7 @@ public static class Program
         var entry = RealPath(file);
         var proj = project != null ? RealPath(project) : (Path.GetDirectoryName(entry) ?? ".");
         var modules = program?.ResolvedModuleSourcePaths.Count ?? 0;
-        var sources = modules + 1;
+        var sources = CountProjectBas(proj);
         Console.WriteLine("{");
         Console.WriteLine($"  \"command\": {Json(command)},");
         Console.WriteLine($"  \"project\": {Json(proj)},");
@@ -82,6 +82,29 @@ public static class Program
         Console.WriteLine("  \"diagnostics\": [");
         Console.WriteLine("  ]");
         Console.WriteLine("}");
+    }
+
+    /* Conta i sorgenti `.bas` del progetto (stessa semantica di `gmb_project_sources`:
+     * ricorsivo, esclusi bin/obj/work/.git). Prima `sources` era modules+1 e in un progetto
+     * multi-file non coincideva col CLI C. */
+    private static int CountProjectBas(string dir)
+    {
+        try
+        {
+            if (!Directory.Exists(dir)) return 1;
+            int n = 0;
+            foreach (var f in Directory.EnumerateFiles(dir, "*.bas", SearchOption.AllDirectories))
+            {
+                var rel = Path.GetRelativePath(dir, f).Replace('\\', '/');
+                if (rel.StartsWith("bin/") || rel.Contains("/bin/")
+                    || rel.StartsWith("obj/") || rel.Contains("/obj/")
+                    || rel.StartsWith("work/") || rel.Contains("/work/")
+                    || rel.Contains("/.git/") || rel.StartsWith(".git/")) continue;
+                n++;
+            }
+            return n > 0 ? n : 1;
+        }
+        catch { return 1; }
     }
 
     private static string BuildExePath(string file, string? outDir, string target)
@@ -141,7 +164,7 @@ public static class Program
         Console.WriteLine($"  \"command\": {Json(JsonCmd)},");
         Console.WriteLine($"  \"project\": {Json(proj)},");
         Console.WriteLine($"  \"entry\": {(entry.Length > 0 ? Json(entry) : "null")},");
-        Console.WriteLine("  \"sources\": 0,");
+        Console.WriteLine($"  \"sources\": {(JsonCmd == "check" ? CountProjectBas(proj) : 0)},");
         Console.WriteLine("  \"modules\": 0,");
         var code = IsParseError(new InvalidOperationException(message)) ? "parse" : "compile";
         if (JsonCmd is "build" or "run" && JsonTarget != null)
@@ -211,6 +234,11 @@ public static class Program
         var project = TakeOption(list, "--project");
         var entry = TakeOption(list, "--entry");
         var outPath = TakeOption(list, "--out");
+        /* ASSOLUTI subito: `CompileFile` fa `Directory.SetCurrentDirectory(dir)`, quindi un
+         * path relativo usato dopo (bundle, sourcePath, --out) verrebbe risolto nella cartella
+         * del sorgente. Il CLI C li risolve rispetto alla CWD di invocazione. */
+        if (project != null) project = Path.GetFullPath(project);
+        if (entry != null) entry = Path.GetFullPath(entry);
         var json = list.Remove("--json");
         var breaks = TakeAllInts(list, "--break");
         var step = list.Remove("--step");
@@ -258,7 +286,7 @@ public static class Program
         {
             case "check":
             {
-                var file = ResolveEntry(list, project, entry, 1);
+                var file = Path.GetFullPath(ResolveEntry(list, project, entry, 1));
                 JsonMode = json; JsonCmd = "check"; JsonFile = file; JsonProj = project; JsonTarget = null;
                 var program = CompileFile(file, defines);
                 /* STESSO schema del CLI C (`gmb check --json`). */
@@ -307,7 +335,7 @@ public static class Program
                 var plugins = TakeBundle(list, "--plugins", "-plugins");
                 var skills = TakeBundle(list, "--skills", "-skills");
                 var brains = TakeBundle(list, "--brains", "-brains");
-                var file = ResolveEntry(list, project, entry, 1);
+                var file = Path.GetFullPath(ResolveEntry(list, project, entry, 1));
                 JsonMode = json; JsonCmd = "build"; JsonFile = file; JsonProj = project;
                 JsonOut = outPath; JsonTarget = target;
                 var program = CompileFile(file, defines);
@@ -348,7 +376,7 @@ public static class Program
             }
             case "prginfo":
             {
-                var file = ResolveEntry(list, project, entry, 1);
+                var file = Path.GetFullPath(ResolveEntry(list, project, entry, 1));
                 var chunk = global::Basic.Runtime.PrgFormat.Read(file);
                 Console.WriteLine($"{Path.GetFileName(file)}: {chunk.Code.Length} opcodes, {chunk.Constants.Length} constants");
                 return 0;
@@ -361,7 +389,7 @@ public static class Program
                 var plugins = TakeBundle(list, "--plugins", "-plugins");
                 var skills = TakeBundle(list, "--skills", "-skills");
                 var brains = TakeBundle(list, "--brains", "-brains");
-                var file = ResolveEntry(list, project, entry, 1);
+                var file = Path.GetFullPath(ResolveEntry(list, project, entry, 1));
                 JsonMode = json; JsonCmd = "run"; JsonFile = file; JsonProj = project;
                 JsonOut = outPath; JsonTarget = engine.Equals("native", StringComparison.OrdinalIgnoreCase) ? "native" : null;
                 var program = CompileFile(file, defines);
@@ -373,13 +401,22 @@ public static class Program
                 }
                 if (libsOn || plugins.On || skills.On || brains.On)
                     Info("[bundle] ignorato con target gestito 'il' in run: usa `gmbcs build --libs …`");
+                /* Con --json l'artefatto viene MATERIALIZZATO in bin/ (come fa il CLI C) e il
+                 * JSON riporta l'exe che esiste davvero; l'esecuzione resta in-process. */
+                string? builtExe = null;
+                if (json)
+                {
+                    var brc2 = BuildIl(program, file, outPath, false, false, false);
+                    if (brc2 != 0) return brc2;
+                    builtExe = BuildExePath(file, outPath, "il");
+                }
                 Console.Write(RunProgram(program, file, engine));
-                if (json) EmitJson("run", file, project, program);   /* l'IL in-process non lascia un exe */
+                if (json) EmitJson("run", file, project, program, builtExe);
                 return 0;
             }
             case "debug":
             {
-                var file = ResolveEntry(list, project, entry, 1);
+                var file = Path.GetFullPath(ResolveEntry(list, project, entry, 1));
                 return RunDebug(file, defines, breaks, step, engine);
             }
             case "eval":
@@ -452,7 +489,7 @@ public static class Program
         try { CommonLib.ProgramBundle.CopyNextTo(dir, sourcePath, Console.WriteLine); } catch { /* best effort */ }
         if (allLibs || plugins.On || skills.On || brains.On)
             DeployBundle(dir, allLibs ? (libsSel ?? "used") : null,
-                         plugins.On, plugins.Sel, skills.On, skills.Sel, brains.On, brains.Sel);
+                         plugins.On, plugins.Sel, skills.On, skills.Sel, brains.On, brains.Sel, sourcePath);
         return exe;
     }
 
@@ -504,7 +541,7 @@ public static class Program
     /* ── bundle di distribuzione: --libs / --plugins / --skills / --brains ─────────────
      * Stesso contratto del CLI C (`gmb`): selettore opzionale con `=`, alias storici.
      * Le sottocartelle nella destinazione sono libs/<rid>, plugins/, skills/, brains/. */
-    private sealed record BundleSel(bool On, string? Sel);
+    private readonly record struct BundleSel(bool On, string? Sel);   /* struct: `default` è valido (On=false) */
 
     private static BundleSel TakeBundle(List<string> list, params string[] names)
     {
@@ -565,7 +602,7 @@ public static class Program
      *   gruppo         → le voci dell'indice (`index.txt`, 5ª colonna) di quel gruppo;
      *   ml|chromium|obscura|ocr → la sottocartella componente;
      *   nomi,...       → i file richiesti. */
-    private static void DeployLibs(string dir, string? sel)
+    private static void DeployLibs(string dir, string? sel, string? sourcePath = null)
     {
         var rid = CommonLib.LibsResolver.Rid();
         var cache = CommonLib.LibsResolver.CacheDir(rid);
@@ -659,6 +696,69 @@ public static class Program
                     CopyFrom(cache, t);
             }
         }
+        // FFI (2026-11-02): le lib aperte con dlopen non compaiono in nessuna chiusura —
+        // si raccolgono dai `DECLARE … LIB "nome"` del sorgente e si copiano nel bundle.
+        if (!string.IsNullOrWhiteSpace(sourcePath) && File.Exists(sourcePath))
+        {
+            var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var srcDirFfi = Path.GetDirectoryName(Path.GetFullPath(sourcePath)) ?? ".";
+            /* I DECLARE possono stare anche in un MODULO (`PUBLIC DECLARE ...`) o in un .inc:
+             * si leggono tutti i .bas/.inc del progetto (bin/obj/work esclusi). */
+            var srcFiles = new List<string> { sourcePath };
+            try
+            {
+                foreach (var f in Directory.EnumerateFiles(srcDirFfi, "*.*", SearchOption.AllDirectories))
+                {
+                    var ext = Path.GetExtension(f).ToLowerInvariant();
+                    if (ext != ".bas" && ext != ".inc") continue;
+                    var rel = Path.GetRelativePath(srcDirFfi, f).Replace('\\', '/');
+                    if (rel.StartsWith("bin/") || rel.Contains("/bin/") || rel.StartsWith("obj/")
+                        || rel.Contains("/obj/") || rel.StartsWith("work/") || rel.Contains("/work/")
+                        || rel.Contains("/.git/") || rel.StartsWith(".git/")) continue;
+                    srcFiles.Add(f);
+                }
+            }
+            catch { /* best effort */ }
+            foreach (var srcFile in srcFiles)
+            foreach (var line in File.ReadLines(srcFile))
+            {
+                for (var i = 0; i + 3 <= line.Length; i++)
+                {
+                    if (!line.AsSpan(i, 3).Equals("LIB", StringComparison.OrdinalIgnoreCase)) continue;
+                    var j = i + 3;
+                    while (j < line.Length && char.IsWhiteSpace(line[j])) j++;
+                    if (j >= line.Length || (line[j] != '"' && line[j] != '\'')) continue;
+                    var q = line[j];
+                    var k = line.IndexOf(q, j + 1);
+                    if (k < 0) break;
+                    var nm = line[(j + 1)..k].Trim();
+                    if (nm.Length > 0) names.Add(nm);
+                    i = k;
+                }
+            }
+            var srcDir = Path.GetDirectoryName(Path.GetFullPath(sourcePath)) ?? ".";
+            var dirsF = new List<string>
+            {
+                srcDir, Path.Combine(srcDir, "libs"),
+                Directory.GetCurrentDirectory(), Path.Combine(Directory.GetCurrentDirectory(), "libs")
+            };
+            var up = srcDir;
+            for (var u = 0; u < 5; u++)
+            {
+                var p = Path.GetDirectoryName(up);
+                if (string.IsNullOrEmpty(p)) break;
+                up = p;
+                dirsF.Add(Path.Combine(up, "libs"));
+            }
+            dirsF.Add(cache);
+            foreach (var nm in names)
+            {
+                var before = n[0];
+                foreach (var d in dirsF) { CopyFrom(d, nm); if (n[0] > before) break; }
+                if (n[0] == before)
+                    Console.Error.WriteLine($"[libs] FFI '{nm}' non trovata (non copiata nel bundle)");
+            }
+        }
         if (n[0] == 0 && !string.IsNullOrWhiteSpace(sel))
             Console.Error.WriteLine($"[libs] selettore '{sel}': nessun file trovato nella cache");
         Info($"[libs] {n[0]} file -> {dst}");
@@ -680,9 +780,10 @@ public static class Program
     }
 
     private static void DeployBundle(string dir, string? libsSel, bool plugins, string? pluginsSel,
-                                     bool skills, string? skillsSel, bool brains, string? brainsSel)
+                                     bool skills, string? skillsSel, bool brains, string? brainsSel,
+                                     string? sourcePath = null)
     {
-        if (libsSel != null) DeployLibs(dir, libsSel);
+        if (libsSel != null) DeployLibs(dir, libsSel, sourcePath);
         if (plugins) DeployEntries(RepoSharedDir("plugins"), Path.Combine(dir, "plugins"), pluginsSel, "plugins");
         if (skills) DeployEntries(RepoSharedDir("skills"), Path.Combine(dir, "skills"), skillsSel, "skills");
         if (brains)
@@ -704,7 +805,7 @@ public static class Program
             noOptimize: false, dumpIl: false, linkRuntime: !allLibs, dllOnly: false, slim: !all));
         if (allLibs || plugins.On || skills.On || brains.On)
             DeployBundle(dir, allLibs ? (libsSel ?? "used") : null,
-                         plugins.On, plugins.Sel, skills.On, skills.Sel, brains.On, brains.Sel);
+                         plugins.On, plugins.Sel, skills.On, skills.Sel, brains.On, brains.Sel, sourcePath);
         if (full) CopyNetRuntime(dir);
         Info($"[IL] {sourcePath} -> {exe}{(allLibs ? " (bundle: dipendenze copiate)" : "")}{(full ? " (full: runtime .NET copiato)" : "")}");
         return 0;
@@ -1018,6 +1119,7 @@ public static class Program
             opzioni: -D name=val, --il-module <dll>, --out <file>, --json,
                      --project <dir> [--entry <file>]  (stesso contratto di `gmb` C)
             build: --libs[=…] (bundle: dipendenze managed reali + libs native in <out>/libs/<rid>,
+                    incluse le FFI dichiarate con DECLARE … LIB "nome";
                     selettore =used|all|gruppo|componente|nomi), --plugins/--skills/--brains
                     (sottocartelle <out>/plugins|skills|brains), --full (= --libs + runtime .NET),
                     --all (nessun filtro ClosureSlim). Alias storici di --libs: -alllib, --alllibs.

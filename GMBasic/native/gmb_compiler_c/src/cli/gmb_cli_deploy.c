@@ -386,6 +386,156 @@ static void dp_copy_file_named(const char* token, char dirs[][CLI_PATH], int ndi
     }
 }
 
+/* ── FFI: lib richieste da `DECLARE … LIB "nome"` ────────────────────────────────────────
+ * Le lib FFI sono aperte con dlopen, quindi NON compaiono in `otool -L`: la chiusura
+ * "used" non le vede. Con `--libs` vanno raccolte dal sorgente e copiate nel bundle,
+ * altrimenti il programma distribuito non le trova (`Library not found`). */
+static const char* dp_ci_find(const char* hay, const char* needle)
+{
+    size_t n = strlen(needle);
+    for (const char* p = hay; *p; p++) {
+        size_t i = 0;
+        while (i < n && p[i] &&
+               tolower((unsigned char)p[i]) == tolower((unsigned char)needle[i])) i++;
+        if (i == n) return p;
+    }
+    return NULL;
+}
+
+static int dp_ffi_collect(const char* srcFile, char names[][128], int max)
+{
+    FILE* f = fopen(srcFile, "r");
+    if (!f) return 0;
+    int n = 0;
+    char line[8192];
+    while (fgets(line, sizeof line, f) != NULL && n < max) {
+        const char* p = line;
+        while ((p = dp_ci_find(p, "LIB")) != NULL) {
+            const char* q = p + 3;
+            if (*q != ' ' && *q != '\t') { p = q; continue; }
+            while (*q == ' ' || *q == '\t') q++;
+            char quote = *q;
+            if (quote != '"' && quote != '\'') { p = q; continue; }
+            const char* s = q + 1;
+            const char* e = strchr(s, quote);
+            if (!e) { p = q; continue; }
+            size_t len = (size_t)(e - s);
+            if (len > 0 && len < 128) {
+                char nm[128];
+                int dup = 0;
+                memcpy(nm, s, len);
+                nm[len] = 0;
+                for (int i = 0; i < n; i++) if (!strcmp(names[i], nm)) { dup = 1; break; }
+                if (!dup) snprintf(names[n++], 128, "%s", nm);
+            }
+            p = e + 1;
+        }
+    }
+    fclose(f);
+    return n;
+}
+
+/* I `DECLARE … LIB` possono stare anche in un MODULO (`PUBLIC DECLARE ...`, importato
+ * dall'entry) o in un `.inc`: leggere solo l'entry lasciava fuori la lib dal bundle. Si
+ * raccolgono i nomi da tutti i `.bas`/`.inc` del progetto (bin/obj/work esclusi). */
+static void dp_ffi_collect_tree(const char* dir, char names[][128], int* n, int max, int depth)
+{
+    if (depth > 8 || *n >= max) return;
+    DIR* d = opendir(dir);
+    if (!d) return;
+    struct dirent* e;
+    while ((e = readdir(d)) != NULL && *n < max) {
+        if (e->d_name[0] == '.') continue;
+        if (!strcmp(e->d_name, "bin") || !strcmp(e->d_name, "obj") || !strcmp(e->d_name, "work")
+            || !strcmp(e->d_name, "node_modules") || !strcmp(e->d_name, "packages")) continue;
+        char p[CLI_PATH];
+        snprintf(p, sizeof p, "%s/%s", dir, e->d_name);
+        struct stat st;
+        if (lstat(p, &st) != 0) continue;
+        if (S_ISDIR(st.st_mode)) { dp_ffi_collect_tree(p, names, n, max, depth + 1); continue; }
+        const char* ext = strrchr(e->d_name, '.');
+        if (!S_ISREG(st.st_mode) || !ext
+            || (strcasecmp(ext, ".bas") && strcasecmp(ext, ".inc"))) continue;
+        char tmp[64][128];
+        int nt = dp_ffi_collect(p, tmp, 64);
+        for (int i = 0; i < nt && *n < max; i++) {
+            int dup = 0;
+            for (int k = 0; k < *n; k++) if (!strcmp(names[k], tmp[i])) { dup = 1; break; }
+            if (!dup) snprintf(names[(*n)++], 128, "%s", tmp[i]);
+        }
+    }
+    closedir(d);
+}
+
+static int dp_deploy_ffi_libs(const char* src, const char* install, const char* dstDir, int quiet)
+{
+    char names[64][128];
+    int nn, nd = 0, copied = 0;
+    char dirs[DP_MAX_DIRS][CLI_PATH];
+    char srcDir[CLI_PATH];
+
+    if (!src || !*src) return 0;
+    nn = dp_ffi_collect(src, names, 64);
+    /* moduli/inc del progetto: i DECLARE possono stare lì (PUBLIC DECLARE nel modulo). */
+    path_dir(src, srcDir, sizeof srcDir);
+    if (srcDir[0]) {
+        dp_ffi_collect_tree(srcDir, names, &nn, 64, 0);
+        /* rimuovi eventuali doppioni introdotti dall'entry (già presente nel tree) */
+        for (int i = 0; i < nn; i++)
+            for (int k = i + 1; k < nn; ) {
+                if (!strcmp(names[i], names[k])) {
+                    memmove(names[k], names[k + 1], (size_t)(nn - k - 1) * 128);
+                    nn--;
+                } else k++;
+            }
+    }
+    if (nn <= 0) return 0;
+    /* (1) accanto al sorgente e nella sua libs/ */
+    if (srcDir[0]) {
+        snprintf(dirs[nd], CLI_PATH, "%s", srcDir); nd++;
+        snprintf(dirs[nd], CLI_PATH, "%s/libs", srcDir); nd++;
+    }
+    /* (2) CWD + libs/ (esecuzione dall'albero del progetto) */
+    {
+        char cwd[CLI_PATH];
+        if (getcwd(cwd, sizeof cwd)) {
+            snprintf(dirs[nd], CLI_PATH, "%s", cwd); nd++;
+            snprintf(dirs[nd], CLI_PATH, "%s/libs", cwd); nd++;
+        }
+    }
+    /* (3) risalita dal sorgente: ogni antenato con libs/ (max 5) */
+    {
+        char up[CLI_PATH];
+        snprintf(up, CLI_PATH, "%s", srcDir);
+        for (int i = 0; i < 5 && nd < DP_MAX_DIRS - 1 && up[0]; i++) {
+            char* sl = strrchr(up, '/');
+            if (!sl) break;
+            *sl = 0;
+            snprintf(dirs[nd], CLI_PATH, "%s/libs", up); nd++;
+        }
+    }
+    /* (4) cache RID del runtime */
+    if (nd < DP_MAX_DIRS - 1) { dp_cache_rid_dir(dirs[nd], CLI_PATH); nd++; }
+
+    for (int i = 0; i < nn; i++) {
+        char found[CLI_PATH], dst[CLI_PATH];
+        const char* base;
+        if (!dp_find_named(names[i], dirs, nd, found, sizeof found)) {
+            if (!quiet) fprintf(stderr, "gmb: FFI lib '%s' non trovata (non copiata nel bundle)\n", names[i]);
+            continue;
+        }
+        base = strrchr(found, '/');
+        base = base ? base + 1 : found;
+        snprintf(dst, sizeof dst, "%s/%s", dstDir, base);
+        if (dp_copy(found, dst)) {
+            copied++;
+            dp_closure_file(found, install, dstDir, quiet);
+            if (!quiet) fprintf(stderr, "gmb: ffi lib -> %s\n", dst);
+        }
+    }
+    return copied;
+}
+
 /* Copia le lib secondo il selettore. Ritorna il numero di file copiati. */
 static int dp_deploy_libs_select(const char* exe, const char* install, const char* sel,
                                  const char* dstDir, int quiet)
@@ -497,6 +647,7 @@ static int dp_deploy_libs_select(const char* exe, const char* install, const cha
 static int dp_deploy_entries(const char* srcRoot, const char* dstRoot, const char* sel,
                              int quiet, int want_versions)
 {
+    (void)quiet;   /* il riepilogo lo stampa il chiamante (niente una riga per file) */
     if (!is_dir(srcRoot)) return 0;
     dp_mkdir_p(dstRoot);
     int n = 0;
@@ -560,7 +711,11 @@ void gmb_deploy_bundle(const char* exe, const char* install, const DeployOpts* o
 #elif !defined(__APPLE__)
     aiName = "libgmb_runtime_ai.so";
 #endif
-    if (o && o->libs) dp_deploy_libs_select(exe, install, o->libs_sel, libsDir, quiet);
+    if (o && o->libs) {
+        dp_deploy_libs_select(exe, install, o->libs_sel, libsDir, quiet);
+        /* Le FFI (dlopen) non sono nella chiusura otool: vanno aggiunte esplicitamente. */
+        if (o->src && *o->src) dp_deploy_ffi_libs(o->src, install, libsDir, quiet);
+    }
     else dp_mkdir_p(libsDir);
     for (size_t i = 0; i < sizeof aiRe / sizeof aiRe[0]; i++) {
         char src[CLI_PATH], dst[CLI_PATH];

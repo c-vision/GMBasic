@@ -716,6 +716,7 @@ int build_project(const Options* o, const char* project, const char* entry,
         DeployOpts d;
         memset(&d, 0, sizeof d);
         d.libs = o->libs;             d.libs_sel = o->libs_sel;
+        d.src = entry;
         d.plugins = o->plugins;       d.plugins_sel = o->plugins_sel;
         d.skills = o->skills;         d.skills_sel = o->skills_sel;
         d.brains = o->brains;         d.brains_sel = o->brains_sel;
