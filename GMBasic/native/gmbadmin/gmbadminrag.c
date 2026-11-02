@@ -250,8 +250,9 @@ int gmbadmin_graph(int argc, char** argv)
             snprintf(to, sizeof to, "%s/%s.json", dir, name);
             if (rename(from, to) != 0) fprintf(stderr, "?graph build: rename %s -> %s fallito\n", from, to);
         }
-        printf("[OK] grafo %s: %lld nodi -> %s/%s.json\n", !strcmp(sub, "update") ? "aggiornato" : "costruito",
-               (long long)nn, dir, name);
+        gmb_brain_graph_artifacts(name, dir);
+        printf("[OK] grafo %s: %lld nodi -> %s/%s.json (stats/mermaid/graphml/html)\n",
+               !strcmp(sub, "update") ? "aggiornato" : "costruito", (long long)nn, dir, name);
         return 0;
     }
     if (!strcmp(sub, "export-obsidian")) {

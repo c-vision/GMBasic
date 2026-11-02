@@ -582,6 +582,11 @@ gmb_brain_result_t gmb_brain_tool_create(const char* name, const char* from_dir,
 /* Pagine `.md` per namespace dal registry canonico (shared/spec/registry). Il catalogo C#
  * ha anche i nomi/tipi dei parametri; qui si emettono nome, kind e arietà — quanto serve al
  * RAG per rispondere "quale funzione esiste e quanti argomenti prende". */
+/* Pagine `.md` per namespace dal catalogo FIRME della StdLib
+ * (`shared/spec/registry/stdlib-signatures.json`, generato da tools/registry-export):
+ * nome, firma completa (parametri con tipo/opzionale/byref/array) e tipo di ritorno —
+ * parità con BrainVault.BuildNamespacePage del vecchio toolchain C#.
+ * Se il catalogo manca, si ricade sul registry canonico (nome+arità+tipo). */
 gmb_brain_result_t gmb_brain_tool_buildvault(const char* out_dir)
 {
     char dir[2048];
@@ -591,39 +596,49 @@ gmb_brain_result_t gmb_brain_tool_buildvault(const char* out_dir)
     snprintf(brain, sizeof brain, "%s/brain", dir);
     gmb_fs_mkdir_p(brain);
 
-    char root[1024];
-    char reg[2048];
+    char root[1024], reg[2048], sigs[2048];
     if (gmb_paths_repo_root(root, sizeof root) && root[0]) {
+        snprintf(sigs, sizeof sigs, "%s/shared/spec/registry/stdlib-signatures.json", root);
+        if (access(sigs, R_OK) != 0)
+            snprintf(sigs, sizeof sigs, "%s/../shared/spec/registry/stdlib-signatures.json", root);
         snprintf(reg, sizeof reg, "%s/shared/spec/registry/canonical.registry.json", root);
-        if (access(reg, R_OK) != 0) snprintf(reg, sizeof reg, "%s/../shared/spec/registry/canonical.registry.json", root);
-    } else snprintf(reg, sizeof reg, "shared/spec/registry/canonical.registry.json");
+        if (access(reg, R_OK) != 0)
+            snprintf(reg, sizeof reg, "%s/../shared/spec/registry/canonical.registry.json", root);
+    } else {
+        snprintf(sigs, sizeof sigs, "shared/spec/registry/stdlib-signatures.json");
+        snprintf(reg, sizeof reg, "shared/spec/registry/canonical.registry.json");
+    }
 
-    char* js = br_read_file(reg);
-    if (!js) return br_fail("registry canonico non trovato (%s)", reg);
+    const int have_sigs = access(sigs, R_OK) == 0;
+    char* js = br_read_file(have_sigs ? sigs : reg);
+    if (!js)
+        return br_fail("catalogo StdLib non trovato (%s): esegui `dotnet run --project tools/registry-export -- --signatures`",
+                       have_sigs ? sigs : reg);
     gmb_val_t r = gmb_json_parse(js);
     free(js);
-    if (r.kind != GMB_TYPE_OBJECT) return br_fail("registry canonico non leggibile (%s)", reg);
+    if (r.kind != GMB_TYPE_OBJECT) return br_fail("catalogo StdLib non leggibile (%s)", have_sigs ? sigs : reg);
     gmb_list_t procs = gmb_val_foreach_list(gmb_val_dict_get(r, "procedures"));
     gmb_int_t np = gmb_list_count(procs);
-    if (np <= 0) { gmb_list_free(&procs); return br_fail("nessuna procedura nel registry canonico"); }
+    if (np <= 0) { gmb_list_free(&procs); return br_fail("nessuna procedura nel catalogo StdLib"); }
 
-    /* raggruppa per namespace (ordine alfabetico) */
+    /* namespace distinti (ordine alfabetico) */
     char namespaces[512][64];
     int nns = 0;
     for (gmb_int_t i = 0; i < np && nns < 512; i++) {
         gmb_val_t p = gmb_list_get(procs, i);
         gmb_val_t nsv = gmb_val_dict_get(p, "ns");
         if (nsv.kind != GMB_TYPE_STRING || !nsv.v_string.data) continue;
-        const char* ns = nsv.v_string.data;
         int found = 0;
-        for (int k = 0; k < nns; k++) if (!strcasecmp(namespaces[k], ns)) { found = 1; break; }
-        if (!found) snprintf(namespaces[nns++], sizeof namespaces[0], "%s", ns);
+        for (int k = 0; k < nns; k++) if (!strcasecmp(namespaces[k], nsv.v_string.data)) { found = 1; break; }
+        if (!found) snprintf(namespaces[nns++], sizeof namespaces[0], "%s", nsv.v_string.data);
     }
     for (int i = 0; i < nns; i++)
         for (int j = i + 1; j < nns; j++)
-            if (strcasecmp(namespaces[j], namespaces[i]) < 0) { char t[64]; memcpy(t, namespaces[i], 64); memcpy(namespaces[i], namespaces[j], 64); memcpy(namespaces[j], t, 64); }
+            if (strcasecmp(namespaces[j], namespaces[i]) < 0) {
+                char t[64]; memcpy(t, namespaces[i], 64); memcpy(namespaces[i], namespaces[j], 64); memcpy(namespaces[j], t, 64);
+            }
 
-    int written = 0, indexed_files = 0;
+    int written = 0;
     for (int k = 0; k < nns; k++) {
         const char* ns = namespaces[k];
         int count = 0;
@@ -632,45 +647,99 @@ gmb_brain_result_t gmb_brain_tool_buildvault(const char* out_dir)
             gmb_val_t nsv = gmb_val_dict_get(p, "ns");
             if (nsv.kind == GMB_TYPE_STRING && nsv.v_string.data && !strcasecmp(nsv.v_string.data, ns)) count++;
         }
-        size_t cap = (size_t)count * 160 + 2048;
-        char* page = (char*)malloc(cap);
-        if (!page) continue;
-        size_t off = (size_t)snprintf(page, cap,
-            "---\ntitle: %s\nnamespace: %s\ntype: stdlib\nfunctions: %d\n---\n\n"
-            "# Namespace %s — %d funzioni GMBasic\n\n"
-            "| Funzione | Arità | Tipo |\n|---|---|---|\n", ns, ns, count, ns, count);
+        /* ordine dei nomi (case-insensitive) */
+        int* order = (int*)malloc((size_t)(count ? count : 1) * sizeof(int));
+        int no = 0;
         for (gmb_int_t i = 0; i < np; i++) {
             gmb_val_t p = gmb_list_get(procs, i);
             gmb_val_t nsv = gmb_val_dict_get(p, "ns");
-            if (nsv.kind != GMB_TYPE_STRING || !nsv.v_string.data || strcasecmp(nsv.v_string.data, ns)) continue;
+            if (nsv.kind == GMB_TYPE_STRING && nsv.v_string.data && !strcasecmp(nsv.v_string.data, ns))
+                order[no++] = (int)i;
+        }
+        for (int i = 0; i < no; i++)
+            for (int j = i + 1; j < no; j++) {
+                gmb_val_t a = gmb_list_get(procs, order[i]);
+                gmb_val_t b = gmb_list_get(procs, order[j]);
+                gmb_val_t an = gmb_val_dict_get(a, "name");
+                gmb_val_t bn = gmb_val_dict_get(b, "name");
+                const char* as = (an.kind == GMB_TYPE_STRING && an.v_string.data) ? an.v_string.data : "";
+                const char* bs = (bn.kind == GMB_TYPE_STRING && bn.v_string.data) ? bn.v_string.data : "";
+                if (strcasecmp(bs, as) < 0) { int t = order[i]; order[i] = order[j]; order[j] = t; }
+            }
+
+        size_t cap = (size_t)count * 320 + 4096;
+        char* page = (char*)malloc(cap);
+        if (!page) { free(order); continue; }
+        size_t off = (size_t)snprintf(page, cap,
+            "---\ntitle: %s\nnamespace: %s\ntype: stdlib\nfunctions: %d\n---\n\n"
+            "# Namespace %s — %d funzioni GMBasic\n\n"
+            "| Funzione | Firma | Ritorno |\n|---|---|---|\n", ns, ns, count, ns, count);
+
+        for (int oi = 0; oi < no; oi++) {
+            gmb_val_t p = gmb_list_get(procs, order[oi]);
             gmb_val_t nm = gmb_val_dict_get(p, "name");
-            gmb_val_t kind = gmb_val_dict_get(p, "kindName");
-            gmb_val_t isfn = gmb_val_dict_get(p, "fn");
-            gmb_val_t amin = gmb_val_dict_get(p, "arityMin");
-            gmb_val_t amax = gmb_val_dict_get(p, "arityMax");
-            long lo = amin.kind == GMB_TYPE_INT ? (long)amin.v_int : 0;
-            long hi = amax.kind == GMB_TYPE_INT ? (long)amax.v_int : lo;
-            char arity[32];
-            if (hi <= 0) snprintf(arity, sizeof arity, "0");
-            else if (hi == lo) snprintf(arity, sizeof arity, "%ld", lo);
-            else snprintf(arity, sizeof arity, "%ld-%ld", lo, hi);
-            off += (size_t)snprintf(page + off, cap - off, "| `%s.%s()` | `%s` | %s |\n",
-                                    ns,
-                                    (nm.kind == GMB_TYPE_STRING && nm.v_string.data) ? nm.v_string.data : "?",
-                                    arity,
-                                    (isfn.kind == GMB_TYPE_BOOL && isfn.v_bool) ? "funzione" : "comando");
-            (void)kind;
+            const char* name = (nm.kind == GMB_TYPE_STRING && nm.v_string.data) ? nm.v_string.data : "?";
+            char params[2048] = "";
+            char optional[512] = "";
+            const char* ret = "—";
+            if (have_sigs) {
+                gmb_val_t isfn = gmb_val_dict_get(p, "fn");
+                gmb_val_t rv = gmb_val_dict_get(p, "return");
+                if (isfn.kind == GMB_TYPE_BOOL && isfn.v_bool && rv.kind == GMB_TYPE_STRING && rv.v_string.data)
+                    ret = rv.v_string.data;
+                gmb_list_t pl = gmb_val_foreach_list(gmb_val_dict_get(p, "params"));
+                gmb_int_t pn = gmb_list_count(pl);
+                size_t po = 0, oo = 0;
+                for (gmb_int_t pi = 0; pi < pn; pi++) {
+                    gmb_val_t par = gmb_list_get(pl, pi);
+                    if (par.kind != GMB_TYPE_OBJECT) continue;
+                    gmb_val_t pnm = gmb_val_dict_get(par, "name");
+                    gmb_val_t pt = gmb_val_dict_get(par, "type");
+                    gmb_val_t popt = gmb_val_dict_get(par, "optional");
+                    gmb_val_t pbyr = gmb_val_dict_get(par, "byRef");
+                    gmb_val_t parr = gmb_val_dict_get(par, "array");
+                    int is_opt = popt.kind == GMB_TYPE_BOOL && popt.v_bool;
+                    int is_ref = pbyr.kind == GMB_TYPE_BOOL && pbyr.v_bool;
+                    int is_arr = parr.kind == GMB_TYPE_BOOL && parr.v_bool;
+                    const char* pname = (pnm.kind == GMB_TYPE_STRING && pnm.v_string.data) ? pnm.v_string.data : "?";
+                    const char* ptype = (pt.kind == GMB_TYPE_STRING && pt.v_string.data) ? pt.v_string.data : "";
+                    if (po && po + 4 < sizeof params) { params[po++] = ','; params[po++] = ' '; params[po] = 0; }
+                    po += (size_t)snprintf(params + po, sizeof params - po, "%s%s%s:%s",
+                                           is_opt ? "?" : "", is_ref ? "@" : "", pname, ptype);
+                    if (is_arr && po + 2 < sizeof params) { params[po++] = '['; params[po++] = ']'; params[po] = 0; }
+                    if (is_opt) {
+                        if (oo && oo + 2 < sizeof optional) { optional[oo++] = ','; optional[oo++] = ' '; optional[oo] = 0; }
+                        oo += (size_t)snprintf(optional + oo, sizeof optional - oo, "%s", pname);
+                    }
+                }
+                gmb_list_free(&pl);
+            } else {
+                gmb_val_t amin = gmb_val_dict_get(p, "arityMin");
+                gmb_val_t amax = gmb_val_dict_get(p, "arityMax");
+                long lo = amin.kind == GMB_TYPE_INT ? (long)amin.v_int : 0;
+                long hi = amax.kind == GMB_TYPE_INT ? (long)amax.v_int : lo;
+                char arity[32];
+                if (hi <= 0) snprintf(arity, sizeof arity, "0");
+                else if (hi == lo) snprintf(arity, sizeof arity, "%ld", lo);
+                else snprintf(arity, sizeof arity, "%ld-%ld", lo, hi);
+                snprintf(params, sizeof params, "arità %s", arity);
+            }
+            char opt_note[600] = "";
+            if (optional[0]) snprintf(opt_note, sizeof opt_note, " *(opzionali: %s)*", optional);
+            off += (size_t)snprintf(page + off, cap - off, "| `%s.%s()` | `%s` | `%s`%s |\n",
+                                    ns, name, params, ret, opt_note);
         }
         off += (size_t)snprintf(page + off, cap - off,
             "\nUsa questa pagina per generare codice GMBasic corretto: quando ti chiedono di scrivere\n"
-            "codice che usa queste funzioni, consulta il nome esatto e l'arità.\n");
+            "codice che usa queste funzioni, consulta la firma esatta e i tipi.\n");
         char path[2400];
         snprintf(path, sizeof path, "%s/%s.md", brain, ns);
-        if (br_write_file(path, page)) { written++; indexed_files++; }
+        if (br_write_file(path, page)) written++;
         free(page);
+        free(order);
     }
     gmb_list_free(&procs);
-    if (written == 0) return br_fail("nessuna pagina generata (registry vuoto?)");
+    if (written == 0) return br_fail("nessuna pagina generata (catalogo vuoto?)");
 
     /* indice RAG del brainvault */
     char ragdir[1024], db[2200];
@@ -680,10 +749,8 @@ gmb_brain_result_t gmb_brain_tool_buildvault(const char* out_dir)
     gmb_fs_mkdir_p(ragdir);
     gmb_rag_build_dir(dir, db, "wiki", 2048, 256, 0, &idx, &upd, &sk, &rem, &fail);
     if (idx + upd == 0) {
-        /* Le pagine sono scritte (utili), ma senza provider embedding il brain non esiste:
-         * errore ESPLICITO, come `gmb rag build` (mai un successo silenzioso). */
         return br_fail("BRAIN BUILDVAULT: %d pagine scritte in %s, ma 0 indicizzate — serve un provider di "
-                       "embedding reale (configura i provider: `gmb setup` / AI SET ACTIVE %EMBEDDING)", written, dir);
+                       "embedding reale (configura i provider: `gmb setup` / AI SET ACTIVE %%EMBEDDING)", written, dir);
     }
     gmb_brain_reg_register("brainvault", db, NULL, "rag", NULL, NULL, 0, NULL);
     return br_ok("BRAIN BUILDVAULT: %d pagine in %s, %d indicizzate → %s", written, dir, idx + upd, db);

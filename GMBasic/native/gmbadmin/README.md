@@ -150,9 +150,14 @@ gmb keygen · gmb pkg verify
 ## Residuo (F9c)
 
 **Nessun comando esiste solo in C#**: il vecchio CLI `GMBasicSharp/Cli` è stato rimosso.
-Limiti dichiarati (non silenziosi): le pagine `buildvault` riportano nome+arità+tipo (i tipi dei
-parametri vivono nel linker C#); `stats.json` del grafo è un sottoinsieme (niente betweenness/
-godNodes); `publish --repo` non carica gli asset binari (materialize).
+
+- `brain buildvault` usa il catalogo firme `shared/spec/registry/stdlib-signatures.json`
+  (generato da `tools/registry-export --signatures`, incluso in `--all`/`--check`): ogni riga
+  ha **firma completa** (parametri con tipo, `?` opzionale, `@` byref, `[]` array) e ritorno.
+- `stats.json` del grafo è **completo** (degreeTop/betweennessTop/godNodes/surprisingConnections/
+  suggestedQuestions/edgeProvenance/folders), stesse chiavi di `GraphExporter.ToStatsJson`.
+- `publish --repo` fa l'intero flusso: manifest → git → compilazione+self-test → register →
+  pubblicazione dell'artefatto `.gmbpkg` → **materialize** degli asset binari.
 
 ## Verifica
 

@@ -15,6 +15,7 @@
 #include "gmb_pkg_registry.h"
 #include "gmb_pkg_util.h"
 #include "gmb_pkg_pack.h"
+#include "gmb_fetch.h"
 #include "gmb_pkg_ed25519.h"
 #include "gmb_fsutil.h"
 #include "gmb_commonlib.h"
@@ -26,6 +27,9 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#if defined(__APPLE__)
+#include <mach-o/dyld.h>
+#endif
 #include <fcntl.h>
 #include <sys/wait.h>
 #include <dirent.h>
@@ -641,11 +645,11 @@ int gmbadmin_publish_repo(int argc, char** argv)
     }
     printf("  [2] git OK (manifest versionato, tag: %s)\n", tag);
 
-    /* [3] compilazione dell'entry di test (se dichiarata o individuabile) */
+    /* [3]/[4] compilazione + self-test: `gmb run --project <work> --entry <entry>`
+     * (il compilatore C compila ED esegue; l'output è il self-test). */
     const char* entry = NULL;
     char entry_buf[1024] = "";
     {
-        /* si cerca un sample .bas eseguibile (ricorsivo, esclusi bin/obj/work) */
         extern int gmbadmin_find_bas(const char* dir, const char* rel, char* out, size_t cap);
         if (gmbadmin_find_bas(work, "", entry_buf, sizeof entry_buf) && entry_buf[0]) entry = entry_buf;
     }
@@ -661,42 +665,309 @@ int gmbadmin_publish_repo(int argc, char** argv)
             if (access(cand, X_OK) == 0) { snprintf(gmb, sizeof gmb, "%s", cand); have_gmb = 1; break; }
         }
     }
+    if (!have_gmb) {
+        /* checkout: `gmb` accanto a gmbadmin (native/gmb_compiler_c/build/gmb) */
+        char exe[4096] = "";
+#if defined(__APPLE__)
+        uint32_t sz = (uint32_t)sizeof exe;
+        if (_NSGetExecutablePath(exe, &sz) == 0) {
+#else
+        {
+            ssize_t n = readlink("/proc/self/exe", exe, sizeof exe - 1);
+            if (n > 0) { exe[n] = 0;
+#endif
+            char* sl = strrchr(exe, '/');
+            if (sl) {
+                *sl = 0;
+                static const char* rels[] = {
+                    "../gmb_compiler_c/build/gmb", "../../gmb_compiler_c/build/gmb",
+                    "../../../gmb_compiler_c/build/gmb", NULL
+                };
+                for (int i = 0; rels[i]; i++) {
+                    char c[4200];
+                    snprintf(c, sizeof c, "%s/%s", exe, rels[i]);
+                    if (access(c, X_OK) == 0) { snprintf(gmb, sizeof gmb, "%s", c); have_gmb = 1; break; }
+                }
+            }
+        }
+    }
+    char test_output[4096] = "";
+    int test_exit = 0;
     if (entry && have_gmb) {
-        char* av_check[] = { gmb, "check", "--project", work, "--entry", entry, "--quiet", NULL };
-        if (run_in(NULL, av_check, out, sizeof out) != 0) {
+        char* av_run[] = { gmb, "run", "--project", work, "--entry", entry, "--quiet", NULL };
+        int rc = run_in(NULL, av_run, test_output, sizeof test_output);
+        if (rc != 0) {
             free(mjs);
-            fprintf(stderr, "?publish --repo: compilazione dell'entry '%s' FALLITA:\n%s\n", entry, out);
+            fprintf(stderr, "?publish --repo: compilazione/esecuzione dell'entry '%s' FALLITA (exit %d):\n%s\n",
+                    entry, rc, test_output);
             gmb_fs_rmtree(work);
             return 1;
         }
+        test_exit = 0;
         printf("  [3] compilazione OK (%s)\n", entry);
+        printf("  [4] self-test OK (exit 0, %zu byte output)\n", strlen(test_output));
     } else {
-        printf("  [3] compilazione SALTATA (nessuna entry .bas trovata o `gmb` non nel PATH)\n");
+        printf("  [3] compilazione SALTATA: nessuna entry eseguibile (o `gmb` non nel PATH)\n");
+        printf("  [4] self-test SALTATO (niente da eseguire)\n");
     }
 
-    /* [4] register: report inviato al registry */
+    /* commit */
+    char commit[128] = "";
+    {
+        char* av_head[] = { "git", "rev-parse", "HEAD", NULL };
+        char out2[256] = "";
+        if (run_in(work, av_head, out2, sizeof out2) == 0) {
+            snprintf(commit, sizeof commit, "%s", out2);
+            char* nl = strchr(commit, '\n');
+            if (nl) *nl = 0;
+        }
+    }
+    (void)commit;
+
     char registry[512];
     gmbadmin_registry_url(argc, argv, registry, sizeof registry);
     const char* token = NULL;
     for (int i = 2; i < argc; i++)
         if (!strcmp(argv[i], "--token") && i + 1 < argc) token = argv[i + 1];
-    char body[8192];
-    snprintf(body, sizeof body,
-             "{\"name\":\"%s\",\"version\":\"%s\",\"tag\":\"%s\",\"repo\":\"%s\","
-             "\"checks\":{\"manifest\":true,\"git\":true,\"compile\":%s}}",
-             mname, mver, tag, repo, (entry && have_gmb) ? "true" : "false");
-    char url[1024], resp[4096] = "";
+
+    char* report = NULL;
+    {
+        /* verify_report: manifest completo (manifestJson) + esito test (max 2000 byte) */
+        char out_esc[4200];
+        size_t k = 0;
+        const char* to = test_output;
+        size_t tl = strlen(to);
+        if (tl > 2000) tl = 2000;
+        for (size_t i = 0; i < tl && k < sizeof out_esc - 8; i++) {
+            unsigned char c = (unsigned char)to[i];
+            if (c == '"' || c == '\\') { out_esc[k++] = '\\'; out_esc[k++] = (char)c; }
+            else if (c == '\n') { out_esc[k++] = '\\'; out_esc[k++] = 'n'; }
+            else if (c == '\r') { out_esc[k++] = '\\'; out_esc[k++] = 'r'; }
+            else if (c == '\t') { out_esc[k++] = '\\'; out_esc[k++] = 't'; }
+            else if (c < 0x20) { k += (size_t)snprintf(out_esc + k, sizeof out_esc - k, "\\u%04x", c); }
+            else out_esc[k++] = (char)c;
+        }
+        out_esc[k] = 0;
+        char mjs_esc[8192];
+        size_t mk = 0;
+        for (const char* q = mjs; *q && mk < sizeof mjs_esc - 8; q++) {
+            unsigned char c = (unsigned char)*q;
+            if (c == '"' || c == '\\') { mjs_esc[mk++] = '\\'; mjs_esc[mk++] = (char)c; }
+            else if (c == '\n') { mjs_esc[mk++] = '\\'; mjs_esc[mk++] = 'n'; }
+            else if (c == '\r') { mjs_esc[mk++] = '\\'; mjs_esc[mk++] = 'r'; }
+            else if (c < 0x20) { mk += (size_t)snprintf(mjs_esc + mk, sizeof mjs_esc - mk, "\\u%04x", c); }
+            else mjs_esc[mk++] = (char)c;
+        }
+        mjs_esc[mk] = 0;
+        report = (char*)malloc(sizeof mjs_esc + sizeof out_esc + strlen(repo) + 2048);
+        if (!report) { free(mjs); gmb_fs_rmtree(work); return 1; }
+        sprintf(report,
+                "{\"repo\":\"%s\",\"name\":\"%s\",\"tag\":\"%s\",\"verify_report\":{"
+                "\"name\":\"%s\",\"repo\":\"%s\",\"tag\":\"%s\","
+                "\"manifest\":{\"name\":\"%s\",\"version\":\"%s\"},"
+                "\"manifestJson\":\"%s\",\"backend\":\"c\",\"testOutput\":\"%s\","
+                "\"testExitCode\":%d,\"commit\":\"%s\"}}",
+                repo, name, tag, name, repo, tag, mname, mver, mjs_esc, out_esc, test_exit, commit);
+    }
+    free(mjs);
+
+    /* [5] register */
+    char url[1024], resp[8192] = "";
     snprintf(url, sizeof url, "%s/api/packages/register", registry);
     int status = 0;
-    int ok = gmb_pkg_registry_post(url, body, (token && *token) ? token : NULL, resp, sizeof resp, &status);
-    free(mjs);
-    gmb_fs_rmtree(work);
-    if (!ok) {
+    if (!gmb_pkg_registry_post(url, report, (token && *token) ? token : NULL, resp, sizeof resp, &status)) {
         if (status == 0) fprintf(stderr, "?publish --repo: registry NON RAGGIUNGIBILE su %s\n", url);
-        else fprintf(stderr, "?publish --repo: register fallito (%d): %s\n", status, resp);
+        else fprintf(stderr, "?publish --repo: registrazione fallita (%d): %s\n", status, resp);
+        free(report);
+        gmb_fs_rmtree(work);
         return 1;
     }
-    printf("  [4] registrato sul registry: %s (%s)\n", url, resp[0] ? resp : "ok");
+    free(report);
+    printf("  [5] registrato: %s@%s (status %d)\n", name, tag, status);
+
+    /* [6] pubblica l'ARTEFATTO (.gmbpkg) così il pacchetto è installabile */
+    {
+        char pkg[1400];
+        snprintf(pkg, sizeof pkg, "%s/%s-%s.gmbpkg", work, name, mver);
+        if (gmb_pkg_pack(work, pkg, NULL)) {
+            /* riusa la POST base64 di `publish <file>` */
+            FILE* f = fopen(pkg, "rb");
+            if (f) {
+                fseek(f, 0, SEEK_END);
+                long n = ftell(f);
+                fseek(f, 0, SEEK_SET);
+                unsigned char* data = (unsigned char*)malloc((size_t)n);
+                if (data && fread(data, 1, (size_t)n, f) == (size_t)n) {
+                    fclose(f);
+                    char* b64 = gmb_base64_encode(data, (size_t)n);
+                    free(data);
+                    if (b64) {
+                        size_t plen = strlen(b64) + strlen(name) + strlen(mver) + 256;
+                        char* payload = (char*)malloc(plen);
+                        if (payload) {
+                            snprintf(payload, plen,
+                                     "{\"name\":\"%s\",\"version\":\"%s\",\"file\":\"%s\",\"token\":\"%s\"}",
+                                     name, mver, b64, token ? token : "");
+                            char purl[1200], presp[4096] = "";
+                            int pst = 0;
+                            snprintf(purl, sizeof purl, "%s/api/packages", registry);
+                            if (gmb_pkg_registry_post(purl, payload, (token && *token) ? token : NULL,
+                                                      presp, sizeof presp, &pst)) {
+                                printf("  [6] pubblicato: %s@%s (installabile)\n", name, mver);
+                            } else {
+                                printf("  [6] pubblicazione SALTATA (%d): %s\n", pst, presp);
+                            }
+                            free(payload);
+                        }
+                        free(b64);
+                    }
+                } else {
+                    fclose(f);
+                    free(data);
+                }
+                unlink(pkg);
+            }
+        } else {
+            printf("  [6] pack SALTATO (manifest senza file impacchettabili)\n");
+        }
+    }
+
+    /* [7] materializzazione degli asset binari dichiarati in manifest.binaries */
+    {
+        char mpath2[1600];
+        snprintf(mpath2, sizeof mpath2, "%s/gmb-package.json", work);
+        char* mj = NULL;
+        FILE* f = fopen(mpath2, "rb");
+        if (f) {
+            fseek(f, 0, SEEK_END);
+            long n = ftell(f);
+            fseek(f, 0, SEEK_SET);
+            mj = (char*)malloc((size_t)n + 1);
+            if (mj && fread(mj, 1, (size_t)n, f) != (size_t)n) { free(mj); mj = NULL; }
+            if (mj) mj[n] = 0;
+            fclose(f);
+        }
+        gmb_val_t root = mj ? gmb_json_parse(mj) : (gmb_val_t){0};
+        free(mj);
+        gmb_val_t bins = gmb_val_dict_get(root, "binaries");
+        if (bins.kind == GMB_TYPE_OBJECT) {
+            int nassets = 0, failed = 0;
+            char* assets = (char*)malloc(1 << 20);
+            size_t alen = 0;
+            if (assets) { strcpy(assets, "{"); alen = 1; }
+            gmb_int_t nb = 0;
+            gmb_string_t* bkeys = gmb_val_dict_keys_array(bins, &nb);
+            for (int i = 0; bkeys && i < (int)nb; i++) {
+                if (!bkeys[i].data) continue;
+                gmb_val_t bv = gmb_val_dict_get(bins, bkeys[i].data);
+                if (bv.kind == GMB_TYPE_OBJECT) {
+                    gmb_int_t np = 0;
+                    gmb_string_t* pkeys = gmb_val_dict_keys_array(bv, &np);
+                    for (int k = 0; pkeys && k < (int)np; k++) {
+                        if (!pkeys[k].data) continue;
+                        gmb_val_t uv = gmb_val_dict_get(bv, pkeys[k].data);
+                        if (uv.kind != GMB_TYPE_STRING || !uv.v_string.data) continue;
+                        if (strncmp(uv.v_string.data, "http", 4) != 0) continue;
+                        char tmpf[1200];
+                        snprintf(tmpf, sizeof tmpf, "%s/.asset-%d-%d", work, i, k);
+                        gmb_fetch_request rq;
+                        memset(&rq, 0, sizeof rq);
+                        rq.url = uv.v_string.data;
+                        rq.dest_path = tmpf;
+                        gmb_fetch_opts o;
+                        gmb_fetch_opts_default(&o);
+                        o.quiet = 1;
+                        char err[256] = "";
+                        if (gmb_fetch_to_file(&rq, &o, gmb_fetch_transport_curl(), err, sizeof err) != 0) {
+                            failed++;
+                            printf("  [7] asset %s/%s NON scaricato (%s)\n", bkeys[i].data, pkeys[k].data, err);
+                            continue;
+                        }
+                        FILE* af = fopen(tmpf, "rb");
+                        if (af) {
+                            fseek(af, 0, SEEK_END);
+                            long an = ftell(af);
+                            fseek(af, 0, SEEK_SET);
+                            unsigned char* ab = (unsigned char*)malloc((size_t)an);
+                            if (ab && fread(ab, 1, (size_t)an, af) == (size_t)an) {
+                                char* ab64 = gmb_base64_encode(ab, (size_t)an);
+                                if (ab64 && assets) {
+                                    size_t need = strlen(ab64) + strlen(bkeys[i].data) + strlen(pkeys[k].data) + 64;
+                                    if (alen + need + 4 < (1 << 20)) {
+                                        alen += (size_t)sprintf(assets + alen, "%s\"%s/%s\":\"%s\"",
+                                                                nassets ? "," : "", bkeys[i].data, pkeys[k].data, ab64);
+                                        nassets++;
+                                    }
+                                }
+                                free(ab64);
+                            }
+                            free(ab);
+                            fclose(af);
+                        }
+                        unlink(tmpf);
+                    }
+                } else if (bv.kind == GMB_TYPE_STRING && bv.v_string.data && !strncmp(bv.v_string.data, "http", 4)) {
+                    char tmpf[1200];
+                    snprintf(tmpf, sizeof tmpf, "%s/.asset-any-%d", work, i);
+                    gmb_fetch_request rq;
+                    memset(&rq, 0, sizeof rq);
+                    rq.url = bv.v_string.data;
+                    rq.dest_path = tmpf;
+                    gmb_fetch_opts o;
+                    gmb_fetch_opts_default(&o);
+                    o.quiet = 1;
+                    char err[256] = "";
+                    if (gmb_fetch_to_file(&rq, &o, gmb_fetch_transport_curl(), err, sizeof err) == 0) {
+                        FILE* af = fopen(tmpf, "rb");
+                        if (af) {
+                            fseek(af, 0, SEEK_END);
+                            long an = ftell(af);
+                            fseek(af, 0, SEEK_SET);
+                            unsigned char* ab = (unsigned char*)malloc((size_t)an);
+                            if (ab && fread(ab, 1, (size_t)an, af) == (size_t)an) {
+                                char* ab64 = gmb_base64_encode(ab, (size_t)an);
+                                if (ab64 && assets) {
+                                    size_t need = strlen(ab64) + strlen(bkeys[i].data) + 64;
+                                    if (alen + need + 4 < (1 << 20)) {
+                                        alen += (size_t)sprintf(assets + alen, "%s\"any/%s\":\"%s\"",
+                                                                nassets ? "," : "", bkeys[i].data, ab64);
+                                        nassets++;
+                                    }
+                                }
+                                free(ab64);
+                            }
+                            free(ab);
+                            fclose(af);
+                        }
+                        unlink(tmpf);
+                    } else failed++;
+                }
+            }
+            if (assets) strcat(assets, "}");
+            if (nassets > 0) {
+                char murl[1200], mresp[4096] = "";
+                int mst = 0;
+                snprintf(murl, sizeof murl, "%s/api/packages/%s/materialize", registry, name);
+                size_t plen = strlen(assets) + strlen(name) + strlen(mver) + 256;
+                char* payload = (char*)malloc(plen);
+                if (payload) {
+                    snprintf(payload, plen, "{\"name\":\"%s\",\"version\":\"%s\",\"assets\":%s}", name, mver, assets);
+                    if (gmb_pkg_registry_post(murl, payload, (token && *token) ? token : NULL, mresp, sizeof mresp, &mst))
+                        printf("  [7] materialize: %d asset (status %d)\n", nassets, mst);
+                    else
+                        printf("  [7] materialize SALTATO (%d): %s\n", mst, mresp);
+                    free(payload);
+                }
+            } else {
+                printf("  [7] materialize: nessun asset binario da caricare (%d errori)\n", failed);
+            }
+            free(assets);
+        } else {
+            printf("  [7] materialize: manifest senza binaries (source-only)\n");
+        }
+    }
+
+    gmb_fs_rmtree(work);
     return 0;
 }
 
