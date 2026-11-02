@@ -142,7 +142,8 @@ internal sealed partial class PCodeProcessor
             // nessun modello/rete. Stessa forma del runtime C (gmb_ai_decide_run_json).
             var state = ArgOr(args, 0)?.ToString() ?? "";
             var kind = ArgOr(args, 1)?.ToString() ?? "";
-            return Basic.IlBackend.IlRuntime.AiDecide(state, kind);
+            var provider = ArgOr(args, 2)?.ToString() ?? "";
+            return Basic.IlBackend.IlRuntime.AiDecide(state, kind, provider);
         },
         [BuiltInFunction.AIVERIFY] = (task, args) =>
         {

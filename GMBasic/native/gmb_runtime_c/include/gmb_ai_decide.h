@@ -71,7 +71,7 @@ int gmb_decision_result_json(const gmb_decision_result_t* result, char* out, siz
 /* Superficie BASIC v0: esegue il provider di default (Rules) sul dominio canonico del kind
  * ("NOUL"/"SCORE"/"CHOICE") e restituisce il JSON del risultato in heap (libera con free).
  * NULL su kind invalido/errore. Stessa forma del JSON C# (IlRuntime.AiDecide). */
-char* gmb_ai_decide_run_json(const char* state, const char* kind);
+char* gmb_ai_decide_run_json(const char* state, const char* kind, const char* provider);
 
 #ifdef __cplusplus
 }

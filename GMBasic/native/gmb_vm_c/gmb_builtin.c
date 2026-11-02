@@ -15704,7 +15704,9 @@ void gmb_bf_decide_c3817(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fu
     (void)vm; (void)func_code; (void)task;
     const char* state = vm_builtin_sarg(args, argc, 0);
     const char* kind = vm_builtin_sarg(args, argc, 1);
-    char* res = gmb_ai_decide_run_json(state ? state : "", kind ? kind : "");
+    const char* provider = vm_builtin_sarg(args, argc, 2);
+    char* res = gmb_ai_decide_run_json(state ? state : "", kind ? kind : "",
+                                       provider ? provider : "");
     bout->is_num = 0;
     bout->result_ref = (gmb_obj_t*)gmb_str_cstr(res ? res : "");
     bout->result_ref_bt = GMB_BT_STRING;

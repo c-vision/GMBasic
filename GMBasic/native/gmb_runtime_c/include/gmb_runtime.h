@@ -2445,7 +2445,7 @@ int gmb_kg_add_node(const char* node);
 int gmb_kg_add_edge(const char* from, const char* to);
 char* gmb_kg_query(const char* q);
 gmb_string_t gmb_string_take(char* heap);
-char* gmb_ai_decide_run_json(const char* state, const char* kind);
+char* gmb_ai_decide_run_json(const char* state, const char* kind, const char* provider);
 int gmb_ai_register_ocr_backend(void* load, void* read_image, void* read_audio, void* free_s, void* unload);
 int gmb_ai_ocr_load_model(const char* model, const char* mmproj);
 const char* gmb_ai_ocr_read(const char* path, const char* prompt, int max_tokens);

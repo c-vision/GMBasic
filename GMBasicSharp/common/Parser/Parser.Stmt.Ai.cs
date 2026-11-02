@@ -557,10 +557,18 @@ if (parser.Match(TokenKind.Set))
         Expr state = parser.ParseExpression();
         parser.Consume(TokenKind.Comma, "Expected ',' after AI DECIDE state.");
         Expr kind = parser.ParseExpression();
+        // [ , "<provider>" ] — selezione esplicita del provider (rules/mock in v0).
+        // Forma a comma (non `USING`): il parser delle espressioni non ha un delimite
+        // soft-keyword e `USING` verrebbe inghiottito come operando.
+        Expr? provider = null;
+        if (parser.Match(TokenKind.Comma))
+            provider = parser.ParseExpression();
         var nsTok = new Token(TokenKind.Identifier, "AI", null, tok.Position);
         var nameTok = new Token(TokenKind.AiDecide, "DECIDE", null, tok.Position);
-        var call = new BuiltinFunctionCallExpr(nsTok, nameTok,
-            ImmutableArray.Create(state, kind), new StringType());
+        var args = provider is null
+            ? ImmutableArray.Create(state, kind)
+            : ImmutableArray.Create(state, kind, provider);
+        var call = new BuiltinFunctionCallExpr(nsTok, nameTok, args, new StringType());
         if (parser.Match(TokenKind.Into))
         {
             var target = parser.ParseTarget();

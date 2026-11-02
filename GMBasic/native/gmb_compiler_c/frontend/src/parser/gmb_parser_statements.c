@@ -580,11 +580,20 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
         gmb_expr_t* dc_state = gmb_p_parse_expr(p);
         if (gmb_p_cur(p) && gmb_p_cur(p)->kind == GMB_TOK_Comma) gmb_p_adv(p);
         gmb_expr_t* dc_kind = gmb_p_parse_expr(p);
+        /* [ , "<provider>" ] — selezione esplicita (rules/mock in v0). Forma a comma:
+         * il parser delle espressioni non ha un delimitatore soft-keyword. */
+        gmb_expr_t* dc_provider = NULL;
+        if (gmb_p_cur(p) && gmb_p_cur(p)->kind == GMB_TOK_Comma) {
+            gmb_p_adv(p);
+            dc_provider = gmb_p_parse_expr(p);
+        }
         /* gmb_expr_call_typed salva il PUNTATORE args senza copiare → array su HEAP
          * (un array di stack diventerebbe dangling e l'emitter leggerebbe NULL/0). */
-        gmb_expr_t** dc_args = (gmb_expr_t**)malloc(2 * sizeof(gmb_expr_t*));
+        int dc_n = dc_provider ? 3 : 2;
+        gmb_expr_t** dc_args = (gmb_expr_t**)malloc((size_t)dc_n * sizeof(gmb_expr_t*));
         dc_args[0] = dc_state; dc_args[1] = dc_kind;
-        gmb_expr_t* dc_call = gmb_expr_call_typed("DECIDE", GMB_TOK_AiDecide, dc_args, 2, line);
+        if (dc_provider) dc_args[2] = dc_provider;
+        gmb_expr_t* dc_call = gmb_expr_call_typed("DECIDE", GMB_TOK_AiDecide, dc_args, dc_n, line);
         if (gmb_p_cur(p) && gmb_p_cur(p)->kind == GMB_TOK_Into) {
             gmb_p_adv(p);
             const gmb_token_t* dc_tgt = gmb_p_cur(p);
