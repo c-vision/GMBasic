@@ -18180,15 +18180,29 @@ public static double TextWidth(string s)
     {
         try
         {
-            var k = (kind ?? "").Trim().ToUpperInvariant();
-            Basic.Decision.DecisionRequest request = k switch
+            var raw = (kind ?? "").Trim();
+            var k = raw.ToUpperInvariant();
+            var kindName = k.StartsWith("CHOICE", StringComparison.Ordinal) ? "CHOICE" : k;
+            Basic.Decision.DecisionRequest request;
+            if (kindName == "CHOICE" && raw.Length > 6 && raw[6] == ':')
             {
-                "NOUL" => Basic.Decision.DecisionSlots.CreateNoul(state ?? ""),
-                "SCORE" => Basic.Decision.DecisionSlots.CreateScore(state ?? ""),
-                "CHOICE" => new Basic.Decision.DecisionRequest(state ?? "",
-                    Basic.Decision.DecisionKind.Choice, Basic.Decision.DecisionSlots.Choice),
-                _ => throw new ArgumentException($"kind '{kind}' non valido (NOUL/SCORE/CHOICE)"),
-            };
+                var labels = raw[7..].Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                request = labels.Length > 0
+                    ? Basic.Decision.DecisionSlots.CreateChoice(state ?? "", labels)
+                    : new Basic.Decision.DecisionRequest(state ?? "",
+                        Basic.Decision.DecisionKind.Choice, Basic.Decision.DecisionSlots.Choice);
+            }
+            else
+            {
+                request = kindName switch
+                {
+                    "NOUL" => Basic.Decision.DecisionSlots.CreateNoul(state ?? ""),
+                    "SCORE" => Basic.Decision.DecisionSlots.CreateScore(state ?? ""),
+                    "CHOICE" => new Basic.Decision.DecisionRequest(state ?? "",
+                        Basic.Decision.DecisionKind.Choice, Basic.Decision.DecisionSlots.Choice),
+                    _ => throw new ArgumentException($"kind '{kind}' non valido (NOUL/SCORE/CHOICE[:labels])"),
+                };
+            }
             var result = new Basic.Decision.RuleDecisionProvider().Evaluate(request)[0];
             var value = result.Value switch
             {
@@ -18198,7 +18212,7 @@ public static double TextWidth(string s)
                 _ => result.Value.ToString() ?? "",
             };
             static string Esc(string? s) => (s ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"");
-            return $"{{\"kind\":\"{k}\",\"option\":\"{Esc(result.OptionId)}\",\"value\":\"{Esc(value)}\",\"probability\":{result.Probability.ToString("0.000000", System.Globalization.CultureInfo.InvariantCulture)},\"confidence\":null,\"calibrated\":null}}";
+            return $"{{\"kind\":\"{kindName}\",\"option\":\"{Esc(result.OptionId)}\",\"value\":\"{Esc(value)}\",\"probability\":{result.Probability.ToString("0.000000", System.Globalization.CultureInfo.InvariantCulture)},\"confidence\":null,\"calibrated\":null}}";
         }
         catch (Exception ex)
         {
