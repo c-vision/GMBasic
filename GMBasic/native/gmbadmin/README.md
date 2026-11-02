@@ -72,6 +72,11 @@ gmb setup status
 gmb setup <LIBS|OCR|TORCH|BROWSER|OBSCURA|ALL> [--force] [--yes] [--torch-local dir]
 gmb setup rm <BROWSER|OBSCURA|TORCH|LIBS|OCR|ALL> [--force]
 ```
+`setup TORCH` cerca **prima** un torch locale, in quest'ordine: `--torch-local <dir>` →
+option `paths.torchLocal` (system/app settings) → **auto-detect** dei venv (`~/ai/<env>`,
+`.venv`, `venv`, conda envs, Python di sistema/Homebrew). Una cartella è valida se contiene
+`lib/libtorch*`. I file dichiarati `source=local` vengono copiati da lì; solo il resto va in
+rete (url/archivio, sha256 verificato).
 Manifest in `shared/settings/` (`chromium-manifest.json`, `obscura-manifest.json`,
 `ml-manifest.json`), download via `gmb_fetch` (ripresa + sha256 + rename atomico), estrazione
 zip/`tar`. `OCR` fa parte del bundle LIBS (tesseract).
@@ -182,8 +187,18 @@ con il compilatore C (equivalente a `gmb run --project <cartella> --entry <file>
 ## Verifica
 
 ```bash
-tools/sh/brain_c_smoke.sh        # 30 check: create/stats/verify/sign/export/install/… (isolato)
+tools/sh/test_c_selfchecks.sh    # selfcheck UNITARI in C (brain registry/toolchain, pack firmato)
+tools/sh/brain_c_smoke.sh        # 30 check end-to-end del CLI brain (isolato)
 ```
+
+I selfcheck C (`GMBasic/native/gmb_runtime_c/tests/`) girano su una cartella temporanea via
+`gmb_paths_test_override` (nessuna scrittura nella config dell'utente, nessuna env):
+
+| test | copre |
+|---|---|
+| `gmb_brain_registry_selfcheck` | registry `brains.json`, risoluzione rag/graph, use/detach, manifest+corruzione |
+| `gmb_brain_tools_selfcheck` | stats/verify/dedupe/extract/merge/convert(+stats completo)/diff/doctor/export/sign |
+| `gmb_pkg_pack_signed_selfcheck` | firma Ed25519 (.sig/.pub), verify con la chiave del pacchetto, manomissione, HMAC |
 
 ## Sorgente unica
 
