@@ -18206,13 +18206,32 @@ public static double TextWidth(string s)
                 };
             }
             var p = (provider ?? "").Trim().ToLowerInvariant();
-            Basic.Decision.ISystemOneProvider decisionProvider = p switch
+            Basic.Decision.DecisionResult result;
+            if (p == "local")
             {
-                "" or "rules" => new Basic.Decision.RuleDecisionProvider(),
-                "mock" => new Basic.Decision.MockDecisionProvider(),
-                _ => throw new ArgumentException($"provider '{provider}' non valido (rules/mock)"),
-            };
-            var result = decisionProvider.Evaluate(request)[0];
+                // Provider locale MLX: richiede un completer attivo che implementi
+                // IDecisionCompleter (MlxLlmCompleter). Senza modello attivo → errore JSON
+                // esplicito, identico al runtime C (che non ha il provider locale).
+                Basic.AI.Rag.ILlmCompleter? completer = null;
+                try { completer = Basic.Providers.ProviderServer.Instance.GetActiveCompletion(); }
+                catch { /* nessun provider attivo: sotto → errore esplicito */ }
+                if (completer is not Basic.Decision.IDecisionCompleter decisionCompleter)
+                    return "{\"error\":\"local provider non disponibile\"}";
+                var localResults = decisionCompleter.Decide(request);
+                if (localResults.Count == 0)
+                    return "{\"error\":\"local provider: nessun risultato\"}";
+                result = localResults.OrderByDescending(r => r.Probability).First();
+            }
+            else
+            {
+                Basic.Decision.ISystemOneProvider decisionProvider = p switch
+                {
+                    "" or "rules" => new Basic.Decision.RuleDecisionProvider(),
+                    "mock" => new Basic.Decision.MockDecisionProvider(),
+                    _ => throw new ArgumentException($"provider '{provider}' non valido (rules/mock/local)"),
+                };
+                result = decisionProvider.Evaluate(request)[0];
+            }
             var value = result.Value switch
             {
                 bool b => b ? "true" : "false",

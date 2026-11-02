@@ -261,6 +261,16 @@ char* gmb_ai_decide_run_json(const char* state, const char* kind, const char* pr
     else return NULL;
     (void)is_choice_custom;
 
+    /* Provider locale MLX: non esiste nel runtime C (il core inferenziale è in LLMEnv e il
+     * provider locale è nel runtime managed). Errore JSON esplicito, stessa forma del C#. */
+    if (provider_name && ieq(provider_name, "local")) {
+        const char* err = "{\"error\":\"local provider non disponibile\"}";
+        size_t en = strlen(err);
+        char* eout = (char*)malloc(en + 1);
+        if (!eout) return NULL;
+        memcpy(eout, err, en + 1);
+        return eout;
+    }
     gmb_decision_provider_t* provider = NULL;
     if (!provider_name || !provider_name[0] || ieq(provider_name, "rules"))
         provider = gmb_decision_provider_rules();
