@@ -300,9 +300,14 @@ static void deploy_ai_runtime(const char* exe, const char* install, int quiet)
 #define GMB_LIB_LDFLAGS "-shared -fPIC -Wl,-undefined,dynamic_lookup"
 /* macOS: `dlopen` risolve i simboli del core con la ricerca a due livelli (dynamic_lookup). */
 #define GMB_EXE_EXPORT_DYNAMIC ""
+/* Tiene in LC_LOAD_DYLIB solo le librerie che il binario USA davvero: senza, il `-lSDL2`
+ * incondizionato del link faceva dipendere anche un `PRINT` da SDL/Vulkan (e `--alllibs`
+ * ne copiava 30 inutilmente). Stessa scelta di tools/gmb_c99native_run.sh. */
+#define GMB_EXE_STRIP_UNUSED_LIBS "-Wl,-dead_strip_dylibs"
 #else
 #define GMB_LIB_EXT ".so"
 #define GMB_LIB_LDFLAGS "-shared -fPIC"
+#define GMB_EXE_STRIP_UNUSED_LIBS "-Wl,--as-needed"
 /* ELF: la dylib AI (`libgmb_runtime_ai.so`, caricata con `dlopen`) risolve a load-time i
  * simboli del core (`gmb_raise_error`, `gmb_paths_*`, …). Se l'eseguibile non li esporta
  * nella tabella dinamica il caricamento fallisce con "undefined symbol": `--export-dynamic`
@@ -699,6 +704,15 @@ int build_project(const Options* o, const char* project, const char* entry,
         strncat(libs, " -lgmb_tray", sizeof libs - strlen(libs) - 1);
     }
 
+    /* `--alllibs` copia le librerie accanto all'eseguibile: l'rpath di load-time deve
+     * comprendere la cartella dell'eseguibile (prima c'erano solo le dir assolute della
+     * cache/build: le copie non sarebbero state trovate). */
+#if defined(__APPLE__)
+    strncat(ldirs, " -Wl,-rpath,@loader_path", sizeof ldirs - strlen(ldirs) - 1);
+#else
+    strncat(ldirs, " -Wl,-rpath,'$ORIGIN'", sizeof ldirs - strlen(ldirs) - 1);
+#endif
+
     char qr[CLI_PATH + 8], qexe[CLI_PATH + 8];
     shell_quote(runtime, qr, sizeof qr);
     shell_quote(exe, qexe, sizeof qexe);
@@ -709,7 +723,7 @@ int build_project(const Options* o, const char* project, const char* entry,
         snprintf(cmd, sizeof cmd, "cc %s %s %s -lm -lpthread -lcrypto -lssl -o %s 2>&1",
                  GMB_LIB_LDFLAGS, qc, qr, qexe);
     else
-        snprintf(cmd, sizeof cmd, "cc %s %s %s%s%s%s -lm -lpthread -lcrypto -lssl%s -o %s 2>&1",
+        snprintf(cmd, sizeof cmd, "cc " GMB_EXE_STRIP_UNUSED_LIBS " %s %s %s%s%s%s -lm -lpthread -lcrypto -lssl%s -o %s 2>&1",
                  qc, qr, qchart, ldirs, libs, GMB_EXE_EXPORT_DYNAMIC, GMB_EXE_FRAMEWORKS, qexe);
     rc = run_cmd(cmd, &log);
     if (rc != 0) {
@@ -726,6 +740,11 @@ int build_project(const Options* o, const char* project, const char* entry,
     free(log);
     /* La dylib AI accanto all'eseguibile: senza, un programma distribuito fuori dal checkout
      * non troverebbe il runtime AI (per una LIBRARY il caricamento è dell'host: si salta). */
-    if (!is_lib) deploy_ai_runtime(exe, tc.install, o->quiet);
+    if (!is_lib) {
+        deploy_ai_runtime(exe, tc.install, o->quiet);
+        /* `--alllibs`: TUTTE le lib usate (chiusura delle dipendenze dinamiche) accanto
+         * all'eseguibile — la distribuzione non dipende più dalla cache. */
+        if (o->alllibs) gmb_deploy_lib_closure(exe, tc.install, o->quiet);
+    }
     return 0;
 }

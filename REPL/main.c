@@ -17,7 +17,8 @@ static const char* USAGE =
     "  -bsp <dir> (precompila pagine BSP)  -gpm <auto|always|linear>\n"
     "  --debug-tcp <port> (avviso: non implementato nel mondo C)\n"
     "  --run <cmd>  -D<name>[=val]\n"
-    "  -n/--native, -m/--managed, -full  → engine C# (richiede --engine=csharp)\n"
+    "  -n/--native, -m/--managed → engine C# (richiede --engine=csharp)\n"
+    "  -full  → distribuzione: engine C# = runtime .NET, engine C = --alllibs (tutte le lib accanto all'exe)\n"
     "  --il-module <dll>                  → solo con --engine=csharp\n"
     "  --engine <c|csharp>  --csharp-cli <path>  (default: c; csharp = gmbcs)\n"
     "Comandi REPL: QUIT EXIT CLS PROMPT HELP LIST EDIT NEW AUTO SAVE LOAD DELETE DEL RENUM\n"
@@ -47,10 +48,12 @@ int main(int argc, char** argv)
         return 2;
     }
     /* -n/-m sono build dell'engine C#: con --engine=csharp vengono inoltrati a gmbcs
-     * (run --engine native|il). Nel mondo C il nativo canonico è `gmb build`. */
-    if ((o.native_backend || o.managed_backend || o.full) && !rpl_engine_cs(&o)) {
-        fprintf(stderr, "?-n/--native, -m/--managed e -full sono dell'engine C#: aggiungi --engine=csharp\n"
-                        "  (oppure usa il compilatore C: `gmb build --project <dir>`).\n");
+     * (run --engine native|il). Nel mondo C il nativo canonico è `gmb build`.
+     * `-full` invece vale per ENTRAMBI: con C# è la distribuzione .NET, con l'engine C è
+     * `--alllibs` (copia accanto all'eseguibile tutte le librerie usate). */
+    if ((o.native_backend || o.managed_backend) && !rpl_engine_cs(&o)) {
+        fprintf(stderr, "?-n/--native e -m/--managed sono dell'engine C#: aggiungi --engine=csharp\n"
+                        "  (nel mondo C il nativo canonico è `gmb build`).\n");
         return 2;
     }
     /* -size/-font sovrascrivono i settings: passati alla console via env. */

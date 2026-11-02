@@ -74,6 +74,7 @@ typedef struct {
     int quiet;           /* check|build|run: niente progresso su stderr */
     const char* gpm;     /* check|build|run|dump c: auto|always|linear (emit C99) */
     int all;             /* minitests: includi anche interactive/heavy */
+    int alllibs;         /* build|run: copia accanto all'eseguibile TUTTE le lib usate (closure) */
     int interactive;     /* minitests: solo TAG interactive */
     int heavy;           /* minitests: solo TAG heavy */
 } Options;
@@ -94,6 +95,8 @@ int nameset_has(const NameSet* s, const char* v);
 void nameset_add(NameSet* s, const char* v);
 void nameset_free(NameSet* s);
 int path_under(const char* path, const char* root);
+/* build|run --alllibs: chiusura delle dipendenze dinamiche accanto all'eseguibile. */
+void gmb_deploy_lib_closure(const char* exe, const char* install, int quiet);
 
 /* ── comandi e helper di progetto (definiti in gmb_cli_project.c) ──────────────────────── */
 int find_driver(Toolchain* tc, const char* argv0);

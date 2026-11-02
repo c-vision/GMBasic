@@ -349,7 +349,10 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
           `GMBasic/build/libs/<rid>/`, accanto all'eseguibile, cache `~/.gmbasic/libs/<rid>/`).
           L'ABI dei modelli (`llmdesc`) è registrata dalla dylib via `gmb_abi_set_llmdesc`.
           **Deploy**: `gmb build`/`gmb run` copiano `libgmb_runtime_ai` **accanto
-          all'eseguibile** (stesso principio della closure C#: il programma distribuito non
+          all'eseguibile**; con **`--alllibs`** (alias `-alllib`, `--full`; stesso flag su
+          `gmbcs`) si copia la **chiusura delle dipendenze dinamiche** (C, via otool/readelf,
+          ricorsiva) o le dipendenze managed reali + le lib native del RID (C#). Il link C ha
+          `-Wl,-dead_strip_dylibs` (un `PRINT` non dipende più da SDL) e `-rpath @loader_path` (stesso principio della closure C#: il programma distribuito non
           dipende dal checkout); la cache `~/.gmbasic/libs/<rid>/` non è il posto canonico
           (`libs prune` rimuove i file fuori manifest). **Windows**: niente `dynamic_lookup` →
           lo split non c'è, le sorgenti AI restano nel core. **Linux**: i consumer esportano i
