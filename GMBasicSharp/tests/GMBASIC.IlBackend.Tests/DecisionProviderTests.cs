@@ -48,6 +48,29 @@ public sealed class DecisionProviderTests
     }
 
     [Fact]
+    public void Rules_Score_Severity_Keywords()
+    {
+        var provider = new RuleDecisionProvider();
+        var result = provider.Evaluate(DecisionSlots.CreateScore("critical incident")).Single();
+
+        Assert.Equal("5", result.OptionId);
+        Assert.Equal(5.0, result.Value);
+        Assert.Equal(1.0, result.Probability);
+    }
+
+    [Fact]
+    public void Rules_Choice_Label_In_State()
+    {
+        var provider = new RuleDecisionProvider();
+        var request = DecisionSlots.CreateChoice("technical issue", ["billing", "technical", "sales"]);
+        var result = provider.Evaluate(request).Single();
+
+        Assert.Equal("B", result.OptionId);
+        Assert.Equal("technical", result.Value);
+        Assert.Equal(1.0, result.Probability);
+    }
+
+    [Fact]
     public void Registry_Uses_Fallback_When_Primary_Throws()
     {
         var registry = new DecisionProviderRegistry()

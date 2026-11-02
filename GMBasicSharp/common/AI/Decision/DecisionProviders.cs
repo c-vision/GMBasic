@@ -77,6 +77,39 @@ public sealed class RuleDecisionProvider : ISystemOneProvider
             return new[] { DecisionResult.FromOption(request, option, rule.Probability, raw: $"rule:{rule.Contains}") };
         }
 
+        // CHOICE: se lo stato nomina una label/slot, sceglila (match case-insensitive).
+        if (request.Kind == DecisionKind.Choice)
+        {
+            foreach (var option in request.Options)
+            {
+                // Solo label "vera" (len > 1): gli slot canonici A..P sono lettere singole e
+                // matcherebbero quasi qualunque stato (es. "technical" contiene 'a').
+                var label = option.Display;
+                if (label.Length > 1 && request.State.Contains(label, StringComparison.OrdinalIgnoreCase))
+                    return new[] { DecisionResult.FromOption(request, option, 1.0, raw: $"rule:label:{label}") };
+            }
+        }
+
+        // SCORE: mappa keyword di severità sullo slot 0..5 (default: prima opzione, 0.5).
+        if (request.Kind == DecisionKind.Score)
+        {
+            var scoreKeywords = new (string Key, string Slot)[]
+            {
+                ("critical", "5"), ("critico", "5"),
+                ("high", "4"), ("alto", "4"),
+                ("medium", "3"), ("medio", "3"),
+                ("low", "2"), ("basso", "2"),
+                ("none", "0"), ("nessuno", "0"),
+            };
+            foreach (var (key, slot) in scoreKeywords)
+            {
+                if (!request.State.Contains(key, StringComparison.OrdinalIgnoreCase)) continue;
+                var option = request.Options.FirstOrDefault(o => o.Id.Equals(slot, StringComparison.OrdinalIgnoreCase));
+                if (option is not null)
+                    return new[] { DecisionResult.FromOption(request, option, 1.0, raw: $"rule:score:{key}") };
+            }
+        }
+
         // Nessuna regola: prima opzione, evidenza debole e dichiarata.
         return new[] { DecisionResult.FromOption(request, request.Options[0], 0.5, raw: "rule:default") };
     }
