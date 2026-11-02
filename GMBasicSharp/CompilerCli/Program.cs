@@ -806,6 +806,9 @@ public static class Program
         if (allLibs || plugins.On || skills.On || brains.On)
             DeployBundle(dir, allLibs ? (libsSel ?? "used") : null,
                          plugins.On, plugins.Sel, skills.On, skills.Sel, brains.On, brains.Sel, sourcePath);
+        /* skill/plugin/config DICHIARATI in app.settings.json: stesso bundle del target
+         * native e del compilatore C (prima solo `--target native` lo faceva). */
+        try { CommonLib.ProgramBundle.CopyNextTo(dir, sourcePath, m => Info(m)); } catch { /* best effort */ }
         if (full) CopyNetRuntime(dir);
         Info($"[IL] {sourcePath} -> {exe}{(allLibs ? " (bundle: dipendenze copiate)" : "")}{(full ? " (full: runtime .NET copiato)" : "")}");
         return 0;

@@ -10,7 +10,7 @@ procedures: [BrowserNavigate, BrowserText, BrowserTitle, BrowserEvaluate, Browse
 ---
 # Plugin browser
 
-Operating instructions for the agent: use `AI.PLUGIN.CALL("browser", ...)` to drive a headless
+Operating instructions for the agent: use `AI.PLUGINCALL("browser", ...)` to drive a headless
 Chromium browser. The `BrowserNavigate(url, port)` procedure opens a page; the reading/interaction
 capabilities use the Chrome DevTools Protocol (CDP) over WebSocket.
 Requires Chromium started with `--remote-debugging-port` (see `launch_chromium.sh`).

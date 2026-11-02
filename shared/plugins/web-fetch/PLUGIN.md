@@ -10,5 +10,5 @@ procedures: [WebFetch]
 ---
 # Plugin web-fetch
 
-Operating instructions for the agent: use `AI.PLUGIN.CALL("web-fetch", url)` to download and
+Operating instructions for the agent: use `AI.PLUGINCALL("web-fetch", url)` to download and
 summarize a page. The `WebFetch` procedure uses `HTTP.FETCH` + `AI.ASK`.
