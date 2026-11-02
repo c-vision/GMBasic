@@ -13,6 +13,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 static const char* bopt(int argc, char** argv, int start, const char* name)
 {
@@ -61,7 +63,7 @@ static void brain_help(void)
     printf("uso: gmb brain <comando> [opzioni]\n"
            "\n"
            "  list | info <nome> | use <nome[,nome]> | detach <nome> | resolve <nome>\n"
-           "  install <nome> [<sorgente>] | uninstall <nome>\n"
+           "  install <nome> [<sorgente>] | uninstall <nome> | login --github [token] | logout\n"
            "  stats <nome> [--json]\n"
            "  verify <nome> [--json] | verify <nome> --golden <file> [--topk N] [--min-p1 X]\n"
            "  create <nome> --from <dir> [--mode rag|graph|both] [--register] [--activate] [--dry-run]\n"
@@ -105,13 +107,53 @@ int gmbadmin_brain(int argc, char** argv)
         printf(rc ? "scollegato: %s\n" : "?brain detach fallito\n", name);
         return rc ? 0 : 1;
     }
+    if (!strcasecmp(sub, "login") || !strcasecmp(sub, "logout")) {
+        /* Token GitHub per gli asset privati di GMBasicBrains: <configDir>/github.token (0600).
+         * Letto dal runtime (gmb_brains_github_token) con fail-closed sui permessi. */
+        char cfg[1024], path[1200];
+        gmb_paths_config_dir(cfg, sizeof cfg);
+        snprintf(path, sizeof path, "%s/github.token", cfg);
+        if (!strcasecmp(sub, "logout")) {
+            if (unlink(path) != 0) { fprintf(stderr, "?brain logout: nessun token in %s\n", path); return 1; }
+            printf("token GitHub rimosso (%s)\n", path);
+            return 0;
+        }
+        const char* tok = bopt(argc, argv, 3, "--token");
+        if (!tok) {
+            /* `--github` è un flag BOOLEANO: non consuma l'argomento successivo */
+            for (int i = 3; i < argc; i++) {
+                if (argv[i][0] != '-') { tok = argv[i]; break; }
+            }
+        }
+        if (!tok || !*tok) {
+            fprintf(stderr, "?uso: gmb brain login --github [<token>|--token T]\n"
+                            "  (crea un token su https://github.com/settings/tokens con scope 'repo' —\n"
+                            "   serve per il repo privato c-vision/GMBasicBrains)\n");
+            return 2;
+        }
+        gmb_fs_mkdir_p(cfg);
+        FILE* f = fopen(path, "wb");
+        if (!f) { fprintf(stderr, "?brain login: scrittura fallita (%s)\n", path); return 1; }
+        fprintf(f, "%s\n", tok);
+        fclose(f);
+        chmod(path, 0600);
+        printf("token GitHub salvato in %s (chmod 600)\n", path);
+        return 0;
+    }
     if (!strcasecmp(sub, "install") || !strcasecmp(sub, "uninstall")) {
         const char* name = bpos(argc, argv, 3, 0);
         if (!name) { fprintf(stderr, "?uso: gmb brain %s <nome> [<sorgente>]\n", sub); return 2; }
         if (!strcasecmp(sub, "uninstall")) {
             double ok = gmb_brain_uninstall(name);
-            printf(ok > 0 ? "rimosso: %s\n" : "?brain uninstall fallito\n", name);
-            return ok > 0 ? 0 : 1;
+            if (ok > 0) {
+                /* coerente col registry: niente voce "registrata ma vuota" dopo la rimozione */
+                gmb_brain_detach(name);
+                gmb_brain_reg_unregister(name);
+                printf("rimosso: %s\n", name);
+                return 0;
+            }
+            fprintf(stderr, "?brain uninstall fallito\n");
+            return 1;
         }
         const char* src = bpos(argc, argv, 3, 1);
         double ok = gmb_brain_install(name, (src && *src) ? src : NULL);

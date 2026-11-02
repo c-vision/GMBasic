@@ -138,11 +138,33 @@ static void libs_index_path(char* out, size_t cap)
     else snprintf(out, cap, "libs.txt");
 }
 
-static int libs_ensure(void)
+/* `libs ensure|install [--runtime-only|--dev|--components|--all]` — default: tutte.
+ * L'indice in cache viene rinfrescato: un indice vecchio farebbe risultare "tutto a posto"
+ * e un gruppo nuovo non verrebbe mai scaricato (parità con il vecchio CLI). */
+static int libs_check(int argc, char** argv);   /* sotto */
+
+static int libs_ensure(int argc, char** argv)
 {
-    printf("libs ensure: download dei file dello scope ALL nella cache ~/.gmbasic/libs/<rid>/\n");
-    int r = gmb_bootstrap(GMB_SCOPE_ALL);
-    if (!r) { fprintf(stderr, "?libs ensure: bootstrap fallito (indice di rete assente o rete non disponibile)\n"); return 1; }
+    for (int i = 3; i < argc; i++)
+        if (!strcmp(argv[i], "--verify")) return libs_check(argc, argv);   /* solo controllo sha */
+    int scope = GMB_SCOPE_ALL;
+    for (int i = 3; i < argc; i++) {
+        if (!strcmp(argv[i], "--runtime-only") || !strcmp(argv[i], "--runtime")) scope = GMB_SCOPE_RUNTIME;
+        else if (!strcmp(argv[i], "--dev")) scope = GMB_SCOPE_DEV;
+        else if (!strcmp(argv[i], "--components")) scope = GMB_SCOPE_COMPONENTS;
+        else if (!strcmp(argv[i], "--all")) scope = GMB_SCOPE_ALL;
+    }
+    const char* rid = gmb_libs_rid();
+    char cache[2048], dir[2300], idx[2400];
+    gmb_paths_libs_cache_dir(cache, sizeof cache);
+    snprintf(dir, sizeof dir, "%s/%s", cache, rid);
+    snprintf(idx, sizeof idx, "%s/index.txt", dir);
+    unlink(idx);   /* forza il refresh dell'indice (pochi KB) */
+    printf("libs ensure: RID %s, scope %s → %s\n", rid,
+           scope == GMB_SCOPE_ALL ? "tutte" : scope & GMB_SCOPE_DEV ? "runtime+dev" :
+           scope & GMB_SCOPE_COMPONENTS ? "componenti" : "runtime", dir);
+    int r = gmb_bootstrap(scope);
+    if (!r) { fprintf(stderr, "?libs ensure: bootstrap incompleto (indice di rete assente o rete non disponibile)\n"); return 1; }
     printf("libs ensure: completato\n");
     return 0;
 }
@@ -190,10 +212,11 @@ int gmbadmin_libs(int argc, char** argv)
 {
     const char* sub = (argc > 2) ? argv[2] : "status";
     if (!strcmp(sub, "status")) return cache_status();
-    if (!strcmp(sub, "ensure")) return libs_ensure();
+    if (!strcmp(sub, "ensure") || !strcmp(sub, "install")) return libs_ensure(argc, argv);
     if (!strcmp(sub, "check")) return libs_check(argc, argv);
     if (!strcmp(sub, "help") || !strcmp(sub, "--help")) {
-        printf("uso: gmb libs <status|ensure|check|publish>\n");
+        printf("uso: gmb libs <status|ensure|check|prune|index|publish>\n");
+        printf("  ensure|install [--runtime-only|--dev|--components|--all]: download dalla cache\n");
         printf("  status: cache ~/.gmbasic/libs/<rid>/\n  check [--index file]: sha256 vs indice\n");
         printf("  publish <support|engine|core> <rid> [--yes]: release su GMBasicModules\n");
         printf("  prune [--dry-run]: rimuove dalla cache i file non presenti nel manifest\n");
@@ -284,6 +307,132 @@ int gmbadmin_doc(int argc, char** argv)
     } else printf("%s", res);
     free(res);
     return 0;
+}
+
+/* ── web2md / batch: documenti in blocco ─────────────────────────────────── */
+
+/* Estensioni che gmb_doc sa convertire (le stesse di `convfmt`). */
+static int doc_ext_known(const char* name)
+{
+    static const char* exts[] = { ".txt", ".csv", ".md", ".markdown", ".html", ".htm", ".rtf",
+                                  ".docx", ".epub", ".odt", ".xlsx", ".pptx", ".pdf", NULL };
+    const char* d = strrchr(name, '.');
+    if (!d) return 0;
+    for (int i = 0; exts[i]; i++) if (!strcasecmp(d, exts[i])) return 1;
+    return 0;
+}
+
+static int batch_walk(const char* root, const char* rel, const char* outdir, int recursive,
+                      int* done, int* failed);
+
+static int batch_one(const char* root, const char* rel, const char* outdir, int* done, int* failed)
+{
+    char src[4096];
+    snprintf(src, sizeof src, "%s/%s", root, rel);
+    char* text = gmb_doc_convert(src, "md");
+    if (!text) { (*failed)++; return 0; }
+    char dst[4600];
+    {
+        /* `a.txt` → `a.md`, `b.md` → `b.md` (non `b.md.md`) */
+        char stem[4096];
+        snprintf(stem, sizeof stem, "%s", rel);
+        char* dot = strrchr(stem, '.');
+        if (dot && dot != stem) *dot = 0;
+        snprintf(dst, sizeof dst, "%s/%s.md", outdir, stem);
+    }
+    /* mantiene le sottocartelle */
+    char dir[4600];
+    snprintf(dir, sizeof dir, "%s", dst);
+    char* sl = strrchr(dir, '/');
+    if (sl) { *sl = 0; gmb_fs_mkdir_p(dir); }
+    FILE* f = fopen(dst, "wb");
+    int ok = 0;
+    if (f) {
+        size_t l = strlen(text);
+        ok = (fwrite(text, 1, l, f) == l);
+        fclose(f);
+    }
+    free(text);
+    if (ok) (*done)++; else (*failed)++;
+    return ok;
+}
+
+static int batch_walk(const char* root, const char* rel, const char* outdir, int recursive,
+                      int* done, int* failed)
+{
+    char dir[4096];
+    if (rel && *rel) snprintf(dir, sizeof dir, "%s/%s", root, rel);
+    else snprintf(dir, sizeof dir, "%s", root);
+    DIR* d = opendir(dir);
+    if (!d) return 0;
+    struct dirent* e;
+    while ((e = readdir(d))) {
+        if (e->d_name[0] == '.') continue;
+        if (!strcmp(e->d_name, "bin") || !strcmp(e->d_name, "obj") ||
+            !strcmp(e->d_name, "node_modules") || !strcmp(e->d_name, "work")) continue;
+        char r[4096];
+        if (rel && *rel) snprintf(r, sizeof r, "%s/%s", rel, e->d_name);
+        else snprintf(r, sizeof r, "%s", e->d_name);
+        char full[4600];
+        snprintf(full, sizeof full, "%s/%s", root, r);
+        if (outdir && *outdir && !strcmp(full, outdir)) continue;   /* mai ri-convertire l'output */
+        struct stat st;
+        if (stat(full, &st) != 0) continue;
+        if (S_ISDIR(st.st_mode)) { if (recursive) batch_walk(root, r, outdir, recursive, done, failed); continue; }
+        if (!S_ISREG(st.st_mode) || !doc_ext_known(e->d_name)) continue;
+        batch_one(root, r, outdir, done, failed);
+    }
+    closedir(d);
+    return 1;
+}
+
+int gmbadmin_web2md(int argc, char** argv)
+{
+    const char* url = NULL;
+    const char* out = NULL;
+    for (int i = 2; i < argc; i++) {
+        if (!strcmp(argv[i], "-o") && i + 1 < argc) { out = argv[++i]; continue; }
+        if (!strncmp(argv[i], "--out=", 6)) { out = argv[i] + 6; continue; }
+        if (argv[i][0] != '-') { url = argv[i]; break; }
+    }
+    if (!url) { fprintf(stderr, "?uso: gmb web2md <url> [-o out.md]\n"); return 2; }
+    char* md = gmb_doc_web(url, "md");
+    if (!md) { fprintf(stderr, "?web2md: conversione fallita (%s)\n", url); return 1; }
+    if (!strncmp(md, "?Error:", 7)) { fprintf(stderr, "?web2md: %s\n", md); free(md); return 1; }
+    if (out) {
+        FILE* f = fopen(out, "wb");
+        if (!f) { free(md); fprintf(stderr, "?web2md: scrittura fallita (%s)\n", out); return 1; }
+        fwrite(md, 1, strlen(md), f);
+        fclose(f);
+        printf("[OK] %s (%zu byte)\n", out, strlen(md));
+    } else printf("%s", md);
+    free(md);
+    return 0;
+}
+
+int gmbadmin_batch(int argc, char** argv)
+{
+    const char* dir = NULL;
+    const char* out = NULL;
+    int recursive = 0;
+    for (int i = 2; i < argc; i++) {
+        if (!strcmp(argv[i], "-o") && i + 1 < argc) { out = argv[++i]; continue; }
+        if (!strncmp(argv[i], "--out=", 6)) { out = argv[i] + 6; continue; }
+        if (!strcmp(argv[i], "-r") || !strcmp(argv[i], "--recursive")) { recursive = 1; continue; }
+        if (argv[i][0] != '-' && !dir) { dir = argv[i]; continue; }
+    }
+    if (!dir) { fprintf(stderr, "?uso: gmb batch <dir> [-o outdir] [-r]\n"); return 2; }
+    char outdir[2048];
+    if (out && *out) snprintf(outdir, sizeof outdir, "%s", out);
+    else snprintf(outdir, sizeof outdir, "%s/md", dir);
+    gmb_fs_mkdir_p(outdir);
+    int done = 0, failed = 0;
+    if (!batch_walk(dir, "", outdir, recursive, &done, &failed)) {
+        fprintf(stderr, "?batch: cartella non leggibile (%s)\n", dir);
+        return 1;
+    }
+    printf("batch: %d convertiti, %d errori → %s\n", done, failed, outdir);
+    return failed && !done ? 1 : 0;
 }
 
 /* ── keygen ──────────────────────────────────────────────────────────────── */

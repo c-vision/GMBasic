@@ -322,6 +322,15 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
           build|run` sceglieva `libgmb_runtime_min.a` anche quando l'archivio era vuoto/parziale
           (build interrotta) → link senza simboli (`_gmb_print_newline`). Ora un archivio
           < 64 KB viene scartato e si usa il runtime completo.
+        - **Parità CLI completata (2026-11-02)**: alias storici `gmb init|add|remove|bump|restore|
+          update|trust|rollback|cache` → `pkg`, `gmb install` → `libs ensure` (`--verify` → check),
+          `gmb <file.bas>` → `run --project`; `brain login --github|logout` (token in
+          `<configDir>/github.token`, 0600); `brain install` ora **registra** il cervello in
+          `brains.json` (mode/versione dal manifest) e lo collega (come `activate:true` del C#);
+          `brain uninstall` deregistra; `libs ensure` accetta gli scope e rinfresca l'indice;
+          `web2md`/`batch` (API `gmb_doc_web`/`gmb_doc_convert`). Verificato: install reale di
+          `airline`/`brainvault` da GMBasicBrains con token (sha verificato) in cache isolata,
+          `libs ensure --runtime-only` → `libs check` 537 OK / 0 corrotti / 0 mancanti.
         - Restano **C#** solo i moduli usati dai backend C# (IL/PCode): `BrainRegistry`,
           `BrainInstaller`, `BrainManifest`, `BrainVault` (il C# può esistere come altro
           compilatore, ma non ha più alcun comando che esista SOLO lì).

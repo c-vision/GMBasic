@@ -10,29 +10,30 @@
 
 static void usage(void)
 {
-    printf("gmbadmin — comandi amministrativi di GMBASIC (C)\n"
+    printf("gmbadmin — CLI amministrativo di GMBASIC (C). Il front per l'utente è `gmb`:\n"
+           "quando il primo argomento è un comando admin, `gmb` esegue `gmbadmin` con lo stesso argv.\n"
            "\n"
-           "uso: gmbadmin <comando> [opzioni]\n"
-           "\n"
-           "  pkg <init|add|remove|bump|list|info|install|uninstall|restore|update|trust|cache|rollback>\n"
-           "  fixtures <list|ensure|pull <nome>>\n"
-           "  setup <status>\n"
-           "  libs <status>\n"
-           "  brain <list|info <nome>|use <nome>|detach <nome>>\n"
-           "  grep <pattern> [path] [-i] [-n] [--include G] [--depth N]\n"
-           "  convert <file> [-o out.(md|html|txt)] · convfmt\n"
+           "  pkg  init|add|remove|bump|list|info|install|uninstall|restore|update|rollback\n"
+           "       trust|verify|cache <list|verify|gc|dedup|clean>\n"
+           "  pack <dir> [--out f.gmbpkg] [--dry-run] [--key-file priv|--key segreto]\n"
+           "  publish <f.gmbpkg> | publish --repo <git|path> <nome@tag> [--registry u] [--token t]\n"
+           "  login <token> | logout | register <nome> | admin reserve|assign|revoke|password|user …\n"
            "  keygen [dir] [--pem]\n"
-           "  pack <dir> [--out f.gmbpkg] [--key-file priv|--key segreto]\n"
-           "  publish <f.gmbpkg> [--registry u] [--token t] · login <token> · logout\n"
-           "  register <nome> [--email e] · admin <reserve|assign|revoke|password|user …>\n"
-           "  rag <build|update|status|query> …  ·  graph <build|update|status> <wiki>\n"
-           "  daemon <install|start|stop|restart|status|logs|list|uninstall> …\n"
-           "  setup <TORCH|BROWSER|OBSCURA|OCR|LIBS|ALL> [--force] [--yes] [--torch-local dir]\n"
+           "  fixtures list|ensure|pull <nome>\n"
+           "  libs status|ensure|check|prune|index|publish <gruppo> <rid>\n"
+           "  setup status | setup <LIBS|OCR|TORCH|BROWSER|OBSCURA|ALL> [--force] [--yes] | setup rm\n"
+           "  brain list|info|use|detach|forget|resolve|install|uninstall\n"
+           "        stats|verify|create|register|buildvault|optimize|rename|backup|export|sign\n"
+           "        dedupe|extract|merge|convert|diff|doctor\n"
+           "  rag build|update|status|query · graph build|update|status|watch|export-obsidian\n"
+           "  daemon install|start|stop|restart|status|logs|list|uninstall   (macOS/launchd)\n"
            "  hf <repo> [--file F] [--dest D] · mlx <repo> [--dest D]\n"
-           "  libs publish <support|engine|core> <rid> [--yes]\n"
+           "  grep <pattern> [path] [-i] [--include G] [--depth N]\n"
+           "  convert <file> [-o out.(md|html|txt)] · convfmt · web2md <url> · batch <dir> [-r]\n"
            "\n"
-           "Solo macOS per `daemon` (launchd). Residuo F9c: graph export-obsidian/watch,\n"
-           "web2md, batch (rispondono con un errore esplicito, nessuna dipendenza C#).\n");
+           "Dettaglio di ogni comando: `gmb brain help`, `gmb libs`, `gmb setup`, `gmb pkg help`.\n"
+           "Download: `gmb libs ensure` (GMBasicModules), `gmb brain install <nome>` (GMBasicBrains),\n"
+           "`gmb fixtures ensure` (fixtures-v1), `gmb setup <comp>` (ML/Chromium/Obscura).\n");
 }
 
 int main(int argc, char** argv)
@@ -48,6 +49,8 @@ int main(int argc, char** argv)
     if (!strcmp(cmd, "brain"))    return gmbadmin_brain(argc, argv);
     if (!strcmp(cmd, "grep") || !strcmp(cmd, "rg")) return gmbadmin_grep(argc, argv);
     if (!strcmp(cmd, "convert") || !strcmp(cmd, "convfmt")) return gmbadmin_doc(argc, argv);
+    if (!strcmp(cmd, "web2md"))   return gmbadmin_web2md(argc, argv);
+    if (!strcmp(cmd, "batch"))    return gmbadmin_batch(argc, argv);
     if (!strcmp(cmd, "keygen"))   return gmbadmin_keygen(argc, argv);
     if (!strcmp(cmd, "pack"))     return gmbadmin_pack(argc, argv);
     if (!strcmp(cmd, "publish")) {
@@ -66,16 +69,6 @@ int main(int argc, char** argv)
     if (!strcmp(cmd, "hf"))       return gmbadmin_hf(argc, argv, 0);
     if (!strcmp(cmd, "mlx"))      return gmbadmin_hf(argc, argv, 1);
 
-    static const char* pending[] = {
-        "web2md", "batch", NULL
-    };
-    for (int i = 0; pending[i]; i++) {
-        if (!strcmp(cmd, pending[i])) {
-            fprintf(stderr, "?gmb %s: non ancora in C (porting F9c tracciato in TODO §6);\n"
-                            "  nessuna dipendenza C# verra' aggiunta: il comando sara' portato qui.\n", cmd);
-            return 2;
-        }
-    }
     fprintf(stderr, "?gmbadmin: comando sconosciuto '%s'\n", cmd);
     usage();
     return 2;

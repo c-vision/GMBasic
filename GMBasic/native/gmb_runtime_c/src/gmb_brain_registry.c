@@ -187,6 +187,30 @@ static char* json_compact(gmb_val_t v)
     return NULL;
 }
 
+/* Rilegge SOLO l'array `attached` dal file: il mirror di `gmb_brain_use` (e un altro
+ * processo) possono averlo cambiato dopo il load; senza refresh una scrittura successiva
+ * ripristinerebbe la lista vecchia (bug: `brain install` restava scollegato). */
+static void reg_refresh_attached(void)
+{
+    if (!g_reg_path[0]) return;
+    char* js = read_all(g_reg_path);
+    if (!js) return;
+    gmb_val_t root = gmb_json_parse(js);
+    free(js);
+    if (root.kind != GMB_TYPE_OBJECT) return;
+    gmb_val_t att = gmb_val_dict_get(root, "attached");
+    gmb_list_t al = gmb_val_foreach_list(att);
+    gmb_int_t an = gmb_list_count(al);
+    for (int i = 0; i < g_nattached; i++) { free(g_attached[i]); g_attached[i] = NULL; }
+    g_nattached = 0;
+    for (gmb_int_t i = 0; i < an && g_nattached < BR_MAX; i++) {
+        gmb_val_t e = gmb_list_get(al, i);
+        if (e.kind == GMB_TYPE_STRING && e.v_string.data && e.v_string.data[0])
+            g_attached[g_nattached++] = strdup(e.v_string.data);
+    }
+    gmb_list_free(&al);
+}
+
 static br_entry_t* find_entry(const char* name)
 {
     for (int i = 0; i < g_nbrain; i++)
@@ -414,6 +438,7 @@ int gmb_brain_reg_available(const char* name, char* out, size_t cap)
 int gmb_brain_reg_attached(const char* name)
 {
     reg_load();
+    reg_refresh_attached();
     for (int i = 0; i < g_nattached; i++) if (!strcasecmp(g_attached[i], name)) return 1;
     return 0;
 }
@@ -509,6 +534,7 @@ int gmb_brain_reg_info(const char* name, gmb_brain_rec_t* out)
     if (!name || !*name || !out) return 0;
     memset(out, 0, sizeof *out);
     reg_load();
+    reg_refresh_attached();
     br_entry_t* t = find_entry(name);
     char avail[64] = "";
     gmb_brain_reg_available(name, avail, sizeof avail);
@@ -575,6 +601,7 @@ int gmb_brain_reg_register(const char* name, const char* source, const char* vau
 {
     if (!name || !*name) return 0;
     reg_load();
+    reg_refresh_attached();
     br_entry_t* t = find_entry(name);
     if (!t) {
         if (g_nbrain >= BR_MAX) return 0;
@@ -629,4 +656,19 @@ int gmb_brain_reg_unregister(const char* name)
         }
     }
     return reg_save();
+}
+
+int gmb_brain_reg_register_installed(const char* name, const char* source, const char* root)
+{
+    if (!name || !*name) return 0;
+    char avail[64] = "";
+    gmb_brain_reg_available(name, avail, sizeof avail);
+    const char* mode = !strcmp(avail, "rag,graph") ? "both" : (avail[0] ? avail : "");
+    char mv[64] = "";
+    char mm[16] = "";
+    long md = 0;
+    if (root && *root) gmb_brain_manifest_meta(root, NULL, 0, mv, sizeof mv, mm, sizeof mm, &md);
+    if (!mode[0] && mm[0]) mode = mm;
+    return gmb_brain_reg_register(name, source, root, mode, NULL,
+                                  mv[0] ? mv : NULL, md, NULL);
 }

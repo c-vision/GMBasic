@@ -13,6 +13,19 @@
 #include <mach-o/dyld.h>
 #endif
 
+/* `gmb install …` = installazione delle LIBRERIE native (contratto storico del CLI). */
+static int is_libs_install(const char* c) { return c && !strcmp(c, "install"); }
+
+/* Alias TOP-LEVEL del package manager (contratto storico: `gmb add …` == `gmb pkg add …`). */
+static int is_pkg_alias(const char* c)
+{
+    static const char* names[] = {
+        "init", "add", "remove", "bump", "restore", "update", "trust", "rollback", "cache", NULL
+    };
+    for (int i = 0; names[i]; i++) if (!strcmp(c, names[i])) return 1;
+    return 0;
+}
+
 static int is_admin_cmd(const char* c)
 {
     static const char* names[] = {
@@ -74,15 +87,31 @@ static int find_admin(char* out, size_t cap)
 /* -1 = non è un comando admin (prosegui); altrimenti exit code del tool. */
 int gmb_cli_admin_maybe(int argc, char** argv)
 {
-    if (argc < 2 || !is_admin_cmd(argv[1])) return -1;
+    if (argc < 2) return -1;
+    const int alias = is_pkg_alias(argv[1]);
+    const int libs_install = is_libs_install(argv[1]);
+    if (!alias && !libs_install && !is_admin_cmd(argv[1])) return -1;
+
     char path[4096];
     if (!find_admin(path, sizeof path)) {
         fprintf(stderr, "?gmb %s: tool `gmbadmin` non trovato. Compila GMBasic/native/gmbadmin "
                         "oppure mettilo nel PATH.\n", argv[1]);
         return 2;
     }
-    if (strchr(path, '/')) execv(path, argv);
-    else execvp(path, argv);
+    /* `gmb add …` → `gmbadmin pkg add …`; `gmb install …` → `gmbadmin libs install …`
+     * (stesso argv, un solo backend) */
+    char** nv = argv;
+    if (alias || libs_install) {
+        nv = (char**)calloc((size_t)argc + 2, sizeof(char*));
+        if (!nv) { fprintf(stderr, "?gmb: memoria esaurita\n"); return 2; }
+        nv[0] = argv[0];
+        nv[1] = alias ? (char*)"pkg" : (char*)"libs";
+        nv[2] = argv[1];
+        for (int i = 2; i < argc; i++) nv[i + 1] = argv[i];
+        nv[argc + 1] = NULL;
+    }
+    if (strchr(path, '/')) execv(path, nv);
+    else execvp(path, nv);
     perror("?gmb: exec gmbadmin");
     return 2;
 }

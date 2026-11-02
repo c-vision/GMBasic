@@ -56,9 +56,11 @@ gmb keygen [dir] [--pem]
 - `pkg verify` verifica la firma: `firma OK (ed25519)`, `non firmato`, oppure errore esplicito.
 - `login`/`register` scrivono token e registry in `~/.gmbasic/config.json` (chmod 600).
 
-### Librerie native
+### Librerie native (GMBasicModules)
 ```bash
-gmb libs status · gmb libs ensure [--runtime-only|--dev|--components|--all]
+gmb install [--runtime-only|--dev|--components|--all]   # alias di `gmb libs ensure`
+gmb install --verify                                     # alias di `gmb libs check`
+gmb libs status · gmb libs ensure|install [--runtime-only|--dev|--components|--all]
 gmb libs check [--index file] · gmb libs publish <support|engine|core> <rid> [--yes]
 gmb libs prune [--dry-run]      # elimina dalla cache i file non presenti nel manifest
 gmb libs index [--rid R]        # rigenera l'indice delle librerie (script di release)
@@ -142,8 +144,10 @@ verify-golden/diff/doctor + export grafo). Il C# non ha più nessuno di questi c
 gmb fixtures [list|ensure|pull <nome>]
 gmb brain [list|info <nome>|use <nome[,nome]>|detach <nome>]
 gmb brain install <nome> [<sorgente>] · uninstall <nome> · resolve <nome>
+gmb brain login --github [<token>|--token T] · logout     # token per GMBasicBrains (0600)
 gmb grep <pattern> [path] [-i] [-n] [--include G] [--depth N]
 gmb convert <file> [-o out.(md|html|txt)] · gmb convfmt
+gmb web2md <url> [-o out.md] · gmb batch <dir> [-o outdir] [-r]
 gmb keygen · gmb pkg verify
 ```
 
@@ -158,6 +162,22 @@ gmb keygen · gmb pkg verify
   suggestedQuestions/edgeProvenance/folders), stesse chiavi di `GraphExporter.ToStatsJson`.
 - `publish --repo` fa l'intero flusso: manifest → git → compilazione+self-test → register →
   pubblicazione dell'artefatto `.gmbpkg` → **materialize** degli asset binari.
+
+## Alias storici (contratto del vecchio CLI)
+
+`gmb init|add|remove|bump|restore|update|trust|rollback|cache …` sono accettati come alias di
+`gmb pkg …`; `gmb install …` è alias di `gmb libs ensure`; `gmb <file.bas>` esegue il programma
+con il compilatore C (equivalente a `gmb run --project <cartella> --entry <file>`).
+
+## Download (dove va cosa)
+
+| cosa | comando | sorgente | destinazione |
+|---|---|---|---|
+| librerie native | `gmb libs ensure` / `gmb install` | indice piatto `…/GMBasicModules/releases/download/libs-index/index-<rid>.txt` (sha256 per file) | `~/.gmbasic/libs/<rid>/` |
+| brains | `gmb brain install <nome>` | `shared/settings/brains-manifest.json` → asset del repo **privato** `c-vision/GMBasicBrains` (GitHub API + token) | `~/.gmbasic/brains/<nome>/<ver>/` |
+| fixtures | `gmb fixtures ensure` | release `fixtures-v1` | `shared/samples/Fixtures/<nome>/` |
+| componenti | `gmb setup TORCH\|BROWSER\|OBSCURA` | manifest in `shared/settings/` | `~/.gmbasic/libs/<comp>/<rid>/` |
+| modelli HF/MLX | `gmb hf` / `gmb mlx` | HF API | `--dest` o `samples/ai/models/<hf\|mlx>/` |
 
 ## Verifica
 
