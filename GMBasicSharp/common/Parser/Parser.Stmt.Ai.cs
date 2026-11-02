@@ -572,7 +572,18 @@ if (parser.Match(TokenKind.Set))
         if (parser.Match(TokenKind.Into))
         {
             var target = parser.ParseTarget();
-            return new LetStmt([new Assignment(target, call)], null);
+            Expr value = call;
+            // Target dichiarato AS JSON/DECISION: il builtin restituisce il TESTO JSON,
+            // l'assegnazione a un oggetto JSON va fatta con JSON.PARSE, così i membri
+            // .VALUE/.PROBABILITY/.CONFIDENCE sono leggibili (IL/PCode; C già lo faceva).
+            if (target is VariableTarget vt && parser._declaredJsonNames.Contains(vt.NameCleaned.Lexeme))
+            {
+                var parseNs = new Token(TokenKind.Identifier, "JSON", null, tok.Position);
+                var parseName = new Token(TokenKind.Parse, "PARSE", null, tok.Position);
+                value = new BuiltinFunctionCallExpr(parseNs, parseName,
+                    ImmutableArray.Create<Expr>(call), new JsonType());
+            }
+            return new LetStmt([new Assignment(target, value)], null);
         }
         return new ExpressionStmt(call);
     }

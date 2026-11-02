@@ -1585,7 +1585,7 @@ static struct cls_info* cls_specialize(ctx_t* c, const char* name) {
  * parametri e dei DIM, che già usano gmb_val_t per questi tipi). */
 static int decl_is_opaque_val(const char* tn) {
     return tn && (!strcasecmp(tn, "HTTPRESPONSE") || !strcasecmp(tn, "HTTPREQUEST")
-        || !strcasecmp(tn, "JSON") || !strcasecmp(tn, "ANY") || !strcasecmp(tn, "VARIANT")
+        || !strcasecmp(tn, "JSON") || !strcasecmp(tn, "DECISION") || !strcasecmp(tn, "ANY") || !strcasecmp(tn, "VARIANT")
         || !strcasecmp(tn, "FETCHRESULT") || !strcasecmp(tn, "HTTPOPTIONS")
         || !strcasecmp(tn, "HTTPHEADERS") || !strcasecmp(tn, "HTTPCONFIG")
         || !strcasecmp(tn, "HTTPPOSTEDDATA") || !strcasecmp(tn, "WEBSOCKET"));

@@ -1230,6 +1230,9 @@ static const gmb_keyword_t gmb_keywords[] = {
     GMB_KEYWORD_ENTRY("CELL", Cell),
     GMB_KEYWORD_ENTRY("CELLSTR", CellStr),
     GMB_KEYWORD_ENTRY("JSON", Json),
+    /* DECISION = alias del tipo JSON (decision layer JEV/SystemOne): DIM d AS DECISION →
+     * oggetto JSON boxed con VALUE/PROBABILITY/CONFIDENCE. */
+    GMB_KEYWORD_ENTRY("DECISION", Json),
     GMB_KEYWORD_ENTRY("PARSE", Parse),
     GMB_KEYWORD_ENTRY("LOAD", Load),
     GMB_KEYWORD_ENTRY("STRINGIFY", Stringify),
