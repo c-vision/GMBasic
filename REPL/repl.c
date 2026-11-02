@@ -1261,9 +1261,13 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
                 char* info = gmb_brain_registry_info(name);
                 if (info) { printf("%s", info); free(info); }
                 else fprintf(stderr, "?cervello '%s' non trovato\n", name);
-            } else if (strcasecmp(sub, "INSTALL") == 0 || strcasecmp(sub, "EXPORT") == 0
-                       || strcasecmp(sub, "SIGN") == 0) {
-                /* install/export/sign sono nel CLI C# `gmb brain …` (zip, firma con probe). */
+            } else if (strcasecmp(sub, "INSTALL") == 0 || strcasecmp(sub, "UNINSTALL") == 0) {
+                /* install/uninstall: tool C `gmbadmin brain` (gmb_brains_install). */
+                char raw[2048];
+                snprintf(raw, sizeof(raw), "%s %s", strcasecmp(sub, "INSTALL") == 0 ? "install" : "uninstall", name);
+                rpl_admin_cmd("brain", raw);
+            } else if (strcasecmp(sub, "EXPORT") == 0 || strcasecmp(sub, "SIGN") == 0) {
+                /* Export/sign: ancora nel CLI C# `gmb brain …` (gap F9d: manifest .gmbrain). */
                 char raw[2048];
                 snprintf(raw, sizeof(raw), "%s", args);
                 rpl_admin_cmd("brain", raw);

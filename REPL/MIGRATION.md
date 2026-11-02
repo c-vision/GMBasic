@@ -31,7 +31,7 @@ Comandi riportati nel mondo C o instradati (vedi commit F3/F6b):
 | `HF`/`MLX` | `gmb hf` / `gmb mlx` — **C** (HF API + `gmb_fetch`, token da `~/.cache/huggingface/token`) |
 | `RAG` | `gmb rag build/update/status/query` — **C** (`gmb_rag_index_source`/`search`, `--prune` con `gmb_rag_list_sources`) |
 | `GRAPH` | **C**: `gmb graph build/update/status` (`gmb_graph_build`); REPL `rpl_graph_build` resta per il comando interattivo |
-| `BRAIN INSTALL/EXPORT/SIGN` | `gmb brain …` (USE/DETACH/LIST/INFO in C) |
+| `BRAIN INSTALL`/`UNINSTALL` | **C**: `gmbadmin brain install|uninstall` (`gmb_brain_install`); `EXPORT`/`SIGN` ancora nel CLI C# (gap F9d) |
 | `LIBS UPDATE/CHECK/PUBLISH` | **C**: `gmb libs status/ensure/check/publish` |
 | `CONVERT` / `CONVFMT` | **C**: `gmb convert` / `gmb convfmt` (`gmb_doc_*`) |
 | `BSP <dir>` | **C**: `gmb_bsp_compile` + `gmb dump chunk` → `<pagina>.bsp.chunk` |
