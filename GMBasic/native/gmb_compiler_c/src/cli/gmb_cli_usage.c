@@ -24,5 +24,10 @@ void gmb_cli_usage(void) {
         "  minitests  TUTTI i MiniTests: driver → C → `cc -fsyntax-only` (nessun link)\n"
         "             con --baseline <json> di un run precedente: rosso solo per le regressioni\n"
         "  exit: 0 ok · 2 compilazione/progetto (minitests: almeno un FAIL) · 3 parse ·\n"
-        "        4 emissione/cc · 5 link · 6 runtime · 1 setup (minitests)\n");
+        "        4 emissione/cc · 5 link · 6 runtime · 1 setup (minitests)\n"
+        "\n"
+        "Comandi amministrativi (tool C `gmbadmin`, stesso argv; `gmbadmin --help` per l'elenco):\n"
+        "  gmb pkg … · pack · publish · login/logout/register/admin · keygen\n"
+        "  gmb fixtures … · libs … · setup … · brain … (toolchain completo) · daemon …\n"
+        "  gmb rag … · graph … · grep · convert/convfmt · hf · mlx\n");
 }
