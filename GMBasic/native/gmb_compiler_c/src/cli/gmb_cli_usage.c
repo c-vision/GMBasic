@@ -7,13 +7,15 @@
 void gmb_cli_usage(void) {
     fprintf(stderr,
         "uso: gmb check|build|run --project <dir> [--entry <file.bas>] [--json] [--strict]\n"
-        "     gmb build ... [--out <exe>]\n"
+        "     gmb build ... [--out <exe>] [--alllibs|-alllib|--full]\n"
         "     gmb dump ast|chunk|c|disasm <file.bas> [--out <file>]   dump per la REPL (F1)\n"
         "     gmb eval \"<istruzioni>\"                          compila ed esegue uno snippet\n"
         "     gmb minitests [--root <dir>] [--filter <substr>] [--all] [--json]\n"
         "                   [--driver <exe>] [--cc <cc>] [--baseline <json>]\n"
         "  check  valida il progetto: entry, NAMESPACE dei moduli, IMPORT risolti\n"
         "  build  emette il C e linka l'eseguibile in <progetto>/bin\n"
+        "         --alllibs (alias -alllib, --full): copia accanto all'eseguibile TUTTE le\n"
+        "         librerie che il programma usa (chiusura delle dipendenze dinamiche)\n"
         "         LIBRARY \"nome\": linka <progetto>/bin/nome.dylib (nessun main), come .gmblib\n"
         "  run    build + esecuzione (CWD = cartella del progetto)\n"
         "  --engine c|csharp   sceglie il compilatore (default c). Con csharp lo STESSO argv\n"

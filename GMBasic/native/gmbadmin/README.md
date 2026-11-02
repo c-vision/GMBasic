@@ -209,6 +209,13 @@ Senza dylib i comandi AI falliscono con un errore **esplicito** («runtime AI no
 non con un no-op. `gmbllm` è a sua volta diviso in `gmbllm_core` (consumato dal runtime) e
 `gmbllm_train` (training/MLX, solo tool TRAIN).
 
+**Distribuzione (`gmb build --alllibs`, alias `-alllib`, `--full`).** Copia accanto
+all'eseguibile la chiusura delle sue dipendenze dinamiche (risolta da cache e build del
+checkout, ricorsiva) + `libgmb_runtime_ai`; l'rpath di load-time include `@loader_path`
+(`$ORIGIN` su ELF), quindi le copie vincono sulla cache. `gmbcs build --alllibs` fa la stessa
+cosa dal lato C# (dipendenze managed come copie reali + librerie native del RID).
+Senza il flag resta il percorso di iterazione (rpath verso la cache / symlink).
+
 **Dove sta la dylib** (ordine di ricerca del gateway):
 1. `GMBasic/build/libs/<rid>/` nel checkout (output del build);
 2. **accanto all'eseguibile** — `gmb build`/`gmb run` ce la **copiano** a ogni link (come il

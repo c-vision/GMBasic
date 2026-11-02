@@ -135,13 +135,19 @@ public static class Program
                 var target = TakeOption(list, "--target") ?? "il";
                 var full = list.Remove("--full") | list.Remove("-full");
                 var all = list.Remove("--all");
+                /* --alllibs: TUTTE le librerie usate dal programma accanto all'output (le
+                 * dipendenze managed diventano COPIE reali invece di symlink + le lib native
+                 * del RID dalla cache). Alias: -alllib (nome storico), --all-libs.
+                 * `--full` lo implica: la distribuzione managed autonoma non può lasciare
+                 * symlink verso il build tree. */
+                var allLibs = list.Remove("--alllibs") | list.Remove("-alllib") | list.Remove("--all-libs") | full;
                 var file = ResolveEntry(list, project, entry, 1);
                 var program = CompileFile(file, defines);
                 return target.ToLowerInvariant() switch
                 {
                     "pcode" => BuildPCode(program, file, outPath),
-                    "il" => BuildIl(program, file, outPath, full, all),
-                    "native" => BuildNative(program, file, outPath),
+                    "il" => BuildIl(program, file, outPath, full, all, allLibs),
+                    "native" => BuildNative(program, file, outPath, allLibs),
                     _ => throw new ArgumentException($"target sconosciuto: {target} (il|pcode|native)"),
                 };
             }
@@ -179,10 +185,13 @@ public static class Program
             }
             case "run":
             {
+                var allLibs = list.Remove("--alllibs") | list.Remove("-alllib") | list.Remove("--all-libs")
+                              | list.Remove("--full") | list.Remove("-full");
                 var file = ResolveEntry(list, project, entry, 1);
                 var program = CompileFile(file, defines);
                 if (engine.Equals("native", StringComparison.OrdinalIgnoreCase))
-                    return RunNative(program, file, outPath);
+                    return RunNative(program, file, outPath, allLibs);
+                if (allLibs) Console.Error.WriteLine("[alllibs] ignorato con target gestito 'il' in run: usa `gmbcs build --alllibs` per la distribuzione");
                 Console.Write(RunProgram(program, file, engine));
                 return 0;
             }
@@ -252,24 +261,25 @@ public static class Program
     /* NativeAOT: DLL managed intermedia (temp) + ilc via NativeBackend → singolo eseguibile
      * senza runtime .NET. Artefatti accanto al binario (globals.json per &/EVAL) e bundle
      * settings/Resources come il vecchio `-n`. */
-    private static string CompileNativeInto(BasicProgram program, string sourcePath, string? outDir)
+    private static string CompileNativeInto(BasicProgram program, string sourcePath, string? outDir, bool allLibs = false)
     {
         var dir = outDir != null ? Path.GetFullPath(outDir) : Path.Combine(Path.GetDirectoryName(Path.GetFullPath(sourcePath))!, "bin", "native");
         var exe = IlProgramCompiler.CompileNative(program, sourcePath, dir);
         try { CommonLib.ProgramBundle.CopyNextTo(dir, sourcePath, Console.WriteLine); } catch { /* best effort */ }
+        if (allLibs) CopyNativeLibsBeside(dir);
         return exe;
     }
 
-    private static int BuildNative(BasicProgram program, string sourcePath, string? outDir)
+    private static int BuildNative(BasicProgram program, string sourcePath, string? outDir, bool allLibs = false)
     {
-        var exe = CompileNativeInto(program, sourcePath, outDir);
+        var exe = CompileNativeInto(program, sourcePath, outDir, allLibs);
         Console.WriteLine($"[NATIVE] {sourcePath} -> {exe}");
         return 0;
     }
 
-    private static int RunNative(BasicProgram program, string sourcePath, string? outDir)
+    private static int RunNative(BasicProgram program, string sourcePath, string? outDir, bool allLibs = false)
     {
-        var exe = CompileNativeInto(program, sourcePath, outDir);
+        var exe = CompileNativeInto(program, sourcePath, outDir, allLibs);
         Console.WriteLine($"[NATIVE] {sourcePath} -> {exe}");
         var psi = new System.Diagnostics.ProcessStartInfo(exe)
         {
@@ -301,14 +311,48 @@ public static class Program
         return 0;
     }
 
-    private static int BuildIl(BasicProgram program, string sourcePath, string? outDir, bool full = false, bool all = false)
+    private static int BuildIl(BasicProgram program, string sourcePath, string? outDir, bool full = false, bool all = false,
+                               bool allLibs = false)
     {
         var dir = outDir != null ? Path.GetFullPath(outDir) : Path.Combine(Path.GetDirectoryName(Path.GetFullPath(sourcePath))!, "bin");
+        /* `linkRuntime: !allLibs`: con --alllibs/--full le dipendenze sono COPIE reali (una
+         * distribuzione non può contenere symlink verso il build tree o l'assembly dela
+         * toolchain). Senza il flag resta il percorso di iterazione (symlink, ~140 KB). */
         var exe = IlProgramCompiler.Compile(program, sourcePath, dir, Path.GetFileNameWithoutExtension(sourcePath),
-            noOptimize: false, dumpIl: false, linkRuntime: true, dllOnly: false, slim: !all);
+            noOptimize: false, dumpIl: false, linkRuntime: !allLibs, dllOnly: false, slim: !all);
+        if (allLibs) CopyNativeLibsBeside(dir);
         if (full) CopyNetRuntime(dir);
-        Console.WriteLine($"[IL] {sourcePath} -> {exe}{(full ? " (full: runtime .NET copiato)" : "")}");
+        Console.WriteLine($"[IL] {sourcePath} -> {exe}{(allLibs ? " (alllibs: dipendenze copiate)" : "")}{(full ? " (full: runtime .NET copiato)" : "")}");
         return 0;
+    }
+
+    /* --alllibs: le librerie NATIVE del RID (`~/.gmbasic/libs/<rid>/`) accanto all'output.
+     * Il compilatore IL non linka le dylib: le carica il runtime per nome (P/Invoke/dlopen),
+     * quindi la "chiusura" non è calcolabile staticamente — si copia il set del RID, che è
+     * esattamente ciò che `gmb libs ensure` ha reso disponibile alla macchina. Le sottocartelle
+     * (include/, lib/) NON si copiano: servono al build, non all'esecuzione. */
+    private static void CopyNativeLibsBeside(string destDir)
+    {
+        try
+        {
+            var rid = CommonLib.LibsResolver.Rid();
+            var cache = CommonLib.LibsResolver.CacheDir(rid);
+            if (!Directory.Exists(cache))
+            {
+                Console.Error.WriteLine($"[alllibs] cache assente: {cache} (esegui `gmb libs ensure`)");
+                return;
+            }
+            int n = 0;
+            foreach (var f in Directory.EnumerateFiles(cache))
+            {
+                var ext = Path.GetExtension(f).ToLowerInvariant();
+                if (ext is not (".dylib" or ".so" or ".dll")) continue;
+                try { File.Copy(f, Path.Combine(destDir, Path.GetFileName(f)), overwrite: true); n++; }
+                catch { /* file in uso / permessi: le altre si copiano comunque */ }
+            }
+            Console.WriteLine($"[alllibs] {n} librerie native -> {destDir}");
+        }
+        catch (Exception ex) { Console.Error.WriteLine($"[alllibs] copia non riuscita: {ex.Message}"); }
     }
 
     /* -full (dal vecchio runner): copia il framework .NET accanto all'eseguibile, così la
@@ -607,7 +651,7 @@ public static class Program
               gmbcs dump pcode  <file> [--out f]
               gmbcs dump il     <file> [--out f]
               gmbcs dump disasm <file> [--out f]
-              gmbcs build <file> [--target il|pcode|native] [--out dir] [--full] [--all]
+              gmbcs build <file> [--target il|pcode|native] [--out dir] [--alllibs|-alllib] [--full] [--all]
               gmbcs prginfo <file.prg>
               gmbcs run  <file> [--engine il|pcode|native]
               gmbcs eval "<istruzioni>" [--engine il|pcode]
@@ -616,7 +660,9 @@ public static class Program
 
             opzioni: -D name=val, --il-module <dll>, --out <file>, --json,
                      --project <dir> [--entry <file>]  (stesso contratto di `gmb` C)
-            build: --full (copia il runtime .NET), --all (nessun filtro ClosureSlim)
+            build: --alllibs|-alllib (COPIA accanto all'output tutte le librerie usate: dipendenze
+                    managed reali + librerie native del RID), --full (come --alllibs + runtime
+                    .NET), --all (nessun filtro ClosureSlim)
             """);
     }
 }
