@@ -15,8 +15,9 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../gmb_doc_c gmb_doc_build)
 add_executable(gmbadmin
     gmbadmin.c
     gmbadminpkg.c
+    gmbadminpkg2.c
     gmbadminsys.c
 )
 
-target_link_libraries(gmbadmin PRIVATE gmb_runtime gmb_agent_runtime gmb_pkg gmb_doc)
+target_link_libraries(gmbadmin PRIVATE gmb_runtime gmb_agent_runtime gmb_pkg gmb_doc gmb_boot)
 target_include_directories(gmbadmin PRIVATE ../gmb_runtime_c/include ../gmb_doc_c/include)

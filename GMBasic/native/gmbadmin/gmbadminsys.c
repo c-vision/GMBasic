@@ -9,6 +9,7 @@
 #include "gmb_grep.h"
 #include "gmb_doc.h"
 #include "gmb_pkg_ecdsa.h"
+#include "gmb_pkg_lock.h"
 #include "gmb_fsutil.h"
 
 #include <stdio.h>
@@ -18,6 +19,9 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#if defined(__APPLE__)
+#include <mach-o/dyld.h>
+#endif
 
 static const char* apos_from(int argc, char** argv, int start, int n)
 {
@@ -105,14 +109,80 @@ int gmbadmin_setup(int argc, char** argv)
     return 2;
 }
 
+/* libs.txt accanto all'eseguibile (indice piatto per-file emesso dal build). */
+static void libs_index_path(char* out, size_t cap)
+{
+    char exe[4096] = "";
+#if defined(__APPLE__)
+    uint32_t sz = (uint32_t)sizeof exe;
+    if (_NSGetExecutablePath(exe, &sz) != 0) exe[0] = 0;
+#else
+    ssize_t n = readlink("/proc/self/exe", exe, sizeof exe - 1);
+    if (n > 0) exe[n] = 0;
+#endif
+    char* sl = strrchr(exe, '/');
+    if (sl) { *sl = 0; snprintf(out, cap, "%s/libs.txt", exe); }
+    else snprintf(out, cap, "libs.txt");
+}
+
+static int libs_ensure(void)
+{
+    printf("libs ensure: download dei file dello scope ALL nella cache ~/.gmbasic/libs/<rid>/\n");
+    int r = gmb_bootstrap(GMB_SCOPE_ALL);
+    if (!r) { fprintf(stderr, "?libs ensure: bootstrap fallito (indice di rete assente o rete non disponibile)\n"); return 1; }
+    printf("libs ensure: completato\n");
+    return 0;
+}
+
+static int libs_check(int argc, char** argv)
+{
+    char idx[4096], cache[2048];
+    const char* explicit = NULL;
+    for (int i = 2; i < argc; i++)
+        if (!strcmp(argv[i], "--index") && i + 1 < argc) explicit = argv[++i];
+    gmb_paths_libs_cache_dir(cache, sizeof cache);
+    const char* rid = gmb_libs_rid();
+    if (explicit && *explicit) snprintf(idx, sizeof idx, "%s", explicit);
+    else {
+        libs_index_path(idx, sizeof idx);
+        if (access(idx, R_OK) != 0) {
+            /* indice della cache utente, poi il bundle dei tool */
+            snprintf(idx, sizeof idx, "%s/%s/index.txt", cache, rid);
+            if (access(idx, R_OK) != 0) snprintf(idx, sizeof idx, "tools/basic/bin/libs.txt");
+        }
+    }
+    FILE* f = fopen(idx, "r");
+    if (!f) { fprintf(stderr, "?libs check: indice non trovato (%s)\n", idx); return 2; }
+    char line[4096];
+    int ok = 0, bad = 0, missing = 0;
+    while (fgets(line, sizeof line, f)) {
+        line[strcspn(line, "\r\n")] = 0;
+        if (!line[0] || line[0] == '#') continue;
+        char name[512] = "", sha[128] = "";
+        if (sscanf(line, "%511s %127s", name, sha) != 2) continue;
+        char path[2400];
+        snprintf(path, sizeof path, "%s/%s/%s", cache, rid, name);
+        if (access(path, R_OK) != 0) { missing++; continue; }
+        char actual[65] = "";
+        if (!gmb_pkg_sha256_file(path, actual, sizeof actual)) { bad++; printf("  BAD   %s (hash non calcolabile)\n", name); continue; }
+        if (strcasecmp(actual, sha) == 0) ok++;
+        else { bad++; printf("  BAD   %s (sha diverso)\n", name); }
+    }
+    fclose(f);
+    printf("libs check: %d OK, %d corrotti, %d mancanti (cache %s/%s)\n", ok, bad, missing, cache, rid);
+    return bad ? 1 : 0;
+}
+
 int gmbadmin_libs(int argc, char** argv)
 {
     const char* sub = (argc > 2) ? argv[2] : "status";
     if (!strcmp(sub, "status")) return cache_status();
+    if (!strcmp(sub, "ensure")) return libs_ensure();
+    if (!strcmp(sub, "check")) return libs_check(argc, argv);
     if (!strcmp(sub, "help") || !strcmp(sub, "--help")) {
         printf("uso: gmb libs <status|ensure|check|publish>\n");
-        printf("  status: cache ~/.gmbasic/libs/<rid>/\n");
-        printf("  ensure/check/publish: porting C in corso (F9c)\n");
+        printf("  status: cache ~/.gmbasic/libs/<rid>/\n  check [--index file]: sha256 vs indice\n");
+        printf("  publish: porting C in corso (F9c)\n");
         return 0;
     }
     fprintf(stderr, "?libs %s: non ancora in C (porting F9c tracciato in TODO §6)\n", sub);
