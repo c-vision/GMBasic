@@ -133,6 +133,14 @@ public interface ISystemOneProvider
     IReadOnlyList<DecisionResult> Evaluate(DecisionRequest request, CancellationToken cancellationToken = default);
 }
 
+/// <summary>Capability opzionale: un completer LLM che sa anche leggere una decisione dai
+/// logits (provider locale MLX, ABI v8 CAP_DECIDE). I provider non-LLM (Mock/Rules/HTTP)
+/// implementano direttamente ISystemOneProvider.</summary>
+public interface IDecisionCompleter
+{
+    IReadOnlyList<DecisionResult> Decide(DecisionRequest request);
+}
+
 public sealed class DecisionProviderException : Exception
 {
     public DecisionProviderException(string message) : base(message) { }

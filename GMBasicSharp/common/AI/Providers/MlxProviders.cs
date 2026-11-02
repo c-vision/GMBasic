@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Basic.AI.Rag;
+using Basic.Decision;
 using Basic.AI.Speculative;
 using Basic.Mcp;
 
@@ -167,6 +168,26 @@ internal static partial class MlxEngineNative
     [LibraryImport(LibName)]
     internal static partial int llm_ai_mlx_session_set_prefill_chunk(IntPtr sessionHandle, int chunkSize);
 
+    // DECIDE (ABI v8, CAP_DECIDE): readout batch di opzioni a token singolo + softmax.
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct MlxDecideOption
+    {
+        public int OptionTokenId;
+        public float Bias;
+        public float Temperature;
+    }
+
+    [LibraryImport(LibName)]
+    internal static partial IntPtr llm_ai_mlx_decide_plan_create(IntPtr sessionHandle,
+        [In] MlxDecideOption[] options, int nOptions, float headTemperature);
+
+    [LibraryImport(LibName)]
+    internal static partial int llm_ai_mlx_decide_plan_run(IntPtr plan, [Out] float[] outLogprob,
+        [Out] float[] outProb, out int outArgmax);
+
+    [LibraryImport(LibName)]
+    internal static partial void llm_ai_mlx_decide_plan_free(IntPtr plan);
+
     // T2 speculative: verify a 1 token (confronta il draft col greedy corrente).
     [LibraryImport(LibName)]
     internal static partial int llm_ai_mlx_session_verify_token(IntPtr sessionHandle, int proposedToken, out int accepted, out int nextToken);
@@ -306,7 +327,7 @@ internal static partial class MlxTokenizerNative
 /// model. Only the actual decisions (which tool or "ANSWER", enum/boolean values, numeric
 /// digits) go through <c>llm_ai_mlx_session_generate_constrained</c>, one token at a time,
 /// restricted to the finitely many valid continuations at that point.</summary>
-internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter, ISessionStreamingCompleter, ISessionSamplingCompleter, ISessionPenaltyCompleter, ILoraAdapterCompleter, ISessionBatchCompleter, IDiskSwappableSessionCompleter, INativeToolDispatchCompleter, ILatentCompleter, ITokenizingCompleter, Basic.AI.Speculative.ISpeculativeTarget, Basic.AI.Speculative.ISpeculativeBatchTarget, IDisposable
+internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter, ISessionStreamingCompleter, ISessionSamplingCompleter, ISessionPenaltyCompleter, ILoraAdapterCompleter, ISessionBatchCompleter, IDiskSwappableSessionCompleter, INativeToolDispatchCompleter, ILatentCompleter, ITokenizingCompleter, IDecisionCompleter, Basic.AI.Speculative.ISpeculativeTarget, Basic.AI.Speculative.ISpeculativeBatchTarget, IDisposable
 {
     // Generous fixed cap for the tokenizer's "query then fill" API -- large enough for any
     // realistic prompt without needing the two-call size-query dance on every request; the
@@ -737,6 +758,81 @@ internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter
                 return [];
             // pending_h è l'hidden dell'ULTIMO token appeso (pre-lm_head) — l'embedding del testo.
             return LastHidden(sessionId);
+        }
+        finally
+        {
+            DestroySession(sessionId);
+        }
+    }
+
+    // ── IDecisionCompleter (JEV/SystemOne): decisione dai logits del modello locale ──
+    // Prompt via chat template reale, prefill once, readout delle opzioni a token singolo
+    // (ABI v8 CAP_DECIDE). Nessuna generazione: legge solo P(token_opzione) alla posizione
+    // in cui il modello risponderebbe. Calibrazione non ancora applicata (bias/T = input).
+    public IReadOnlyList<DecisionResult> Decide(DecisionRequest request)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        request.Validate();
+
+        var labels = request.Options.Select(o => o.Display).ToArray();
+        var instructions = string.IsNullOrWhiteSpace(request.Instructions)
+            ? "You are a decision engine. Choose exactly one allowed option."
+            : request.Instructions!;
+        var user = $"State:\n{request.State}\nAllowed options: {string.Join(", ", labels)}\n" +
+                   "Answer with exactly one option and nothing else.";
+        var messages = new List<(string Role, string Content)>
+        {
+            ("system", instructions),
+            ("user", user),
+        };
+        var prompt = _buildChatTranscript(messages, addAssistantOpener: true);
+        var promptIds = Encode(prompt);
+        if (promptIds.Length == 0)
+            throw new DecisionProviderException("local MLX: prompt di decisione vuoto.");
+
+        var sessionId = CreateSession();
+        try
+        {
+            var native = _sessions[sessionId].NativeHandle;
+            if (RunBigStack(() => MlxEngineNative.llm_ai_mlx_session_append(native, promptIds, promptIds.Length)) != 0)
+                throw new DecisionProviderException("local MLX: prefill della sessione fallito.");
+
+            var options = new MlxEngineNative.MlxDecideOption[request.Options.Count];
+            for (var i = 0; i < request.Options.Count; i++)
+            {
+                var label = request.Options[i].Display;
+                var ids = Encode(label);
+                if (ids.Length != 1) ids = Encode(" " + label);
+                if (ids.Length != 1)
+                    throw new DecisionProviderException(
+                        $"local MLX: l'opzione '{label}' non è un token singolo ({ids.Length} token).");
+                options[i] = new MlxEngineNative.MlxDecideOption
+                {
+                    OptionTokenId = ids[0],
+                    Bias = request.Options[i].Bias,
+                    Temperature = request.Options[i].Temperature,
+                };
+            }
+
+            var plan = RunBigStack(() => MlxEngineNative.llm_ai_mlx_decide_plan_create(
+                native, options, options.Length, 1.0f));
+            if (plan == IntPtr.Zero)
+                throw new DecisionProviderException("local MLX: decide_plan_create fallito.");
+            try
+            {
+                var logprob = new float[options.Length];
+                var prob = new float[options.Length];
+                if (RunBigStack(() => MlxEngineNative.llm_ai_mlx_decide_plan_run(plan, logprob, prob, out _)) != 0)
+                    throw new DecisionProviderException("local MLX: decide_plan_run fallito.");
+                return request.Options
+                    .Select((option, i) => DecisionResult.FromOption(request, option, prob[i],
+                        raw: $"local:logprob={logprob[i].ToString("0.######", System.Globalization.CultureInfo.InvariantCulture)}"))
+                    .ToList();
+            }
+            finally
+            {
+                MlxEngineNative.llm_ai_mlx_decide_plan_free(plan);
+            }
         }
         finally
         {

@@ -1,6 +1,7 @@
 // FILE: AI.Tests.MlxProviderTests
 using System.Text.Json.Nodes;
 using Basic.Agents;
+using Basic.Decision;
 using Basic.AI.Rag;
 using Basic.AI.Speculative;
 using Basic.Mcp;
@@ -89,6 +90,23 @@ public sealed class MlxProviderTests(MlxRealModelFixture fixture) : IClassFixtur
         answer.Should().NotBeNullOrWhiteSpace();
         answer.Should().Contain("Paris");
         fixture.Completer.ModelName.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact(DisplayName = "MLX decision readout (JEV/SystemOne) when model env set")]
+    public void Decide_WhenModelEnvSet_ReadsOptionProbability()
+    {
+        if (!fixture.Available) return;
+
+        var completer = fixture.Completer;
+        if (completer is not IDecisionCompleter decision)
+            return; // provider non-MLX: capacità non disponibile, skip
+
+        var request = DecisionSlots.CreateNoul("Il cliente ha detto sì: è una frode?");
+        var results = decision.Decide(request);
+
+        results.Should().HaveCount(2);
+        results.Should().OnlyContain(r => r.Probability >= 0.0 && r.Probability <= 1.0);
+        results.Sum(r => r.Probability).Should().BeApproximately(1.0, 1e-4);
     }
 
     [Fact(DisplayName = "MLX session (FASE 2b): multi-turn generation reuses the persistent KV-cache instead of re-prefilling")]
