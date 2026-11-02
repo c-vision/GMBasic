@@ -288,10 +288,10 @@ int rpl_cs_cmd_raw(const char* sub, const char* raw_args, const rpl_options_t* o
     return WIFEXITED(rc) ? WEXITSTATUS(rc) : 1;
 }
 
-/* ── CLI amministrativo C# (`gmb`, GMBasicSharp/Cli) ─────────────────────────
- * RAG/GRAPH/HF/MLX/CONVERT/CONVFMT/BRAIN INSTALL|EXPORT|SIGN/LIBS vivono lì (il mondo C#
- * RESTA): la REPL li invoca come processo, così nessuna funzione si perde con
- * l'eliminazione della REPL C# (F6b). */
+/* ── CLI amministrativo C (`gmbadmin`, GMBasic/native/gmbadmin) ──────────────
+ * RAG/GRAPH/HF/MLX/CONVERT/CONVFMT/BRAIN …/LIBS/PKG vivono nel tool C: la REPL lo invoca
+ * come processo (stesso front `gmb`, un solo backend). Il CLI C# è stato rimosso in F9d:
+ * nessun comando vive più solo nel mondo C#. */
 const char* rpl_admin_cli(char* out, size_t cap)
 {
     static const char* cands[] = {

@@ -64,10 +64,12 @@ Comandi riportati nel mondo C o instradati (vedi commit F3/F6b):
 
 ## 3. CLI `gmb` (comandi amministrativi)
 
-Tutti conservati in `GMBasicSharp/Cli`: `init`, `pack`, `keygen`, `bump`, `add`, `remove`,
-`login`, `register`, `logout`, `cache`, `admin`, `pkg`, `brain`, `fixtures`, `publish`,
-`restore`, `update`, `trust`, `rollback`, `libs`, `setup`, `daemon`, `rag`, `graph`, `grep`.
-Recuperati dalla REPL eliminata: `convert`, `convfmt`, `hf`, `mlx`.
+Tutti in **C** (`GMBasic/native/gmbadmin`): `init`, `pack`, `keygen`, `bump`, `add`, `remove`,
+`login`, `register`, `logout`, `cache`, `admin`, `pkg`, `brain` (toolchain completo),
+`fixtures`, `publish` (file e `--repo`), `restore`, `update`, `trust`, `rollback`, `libs`,
+`setup`, `daemon`, `rag`, `graph`, `grep`, `convert`, `convfmt`, `hf`, `mlx`.
+Il CLI C# `GMBasicSharp/Cli` è stato **rimosso** (F9d): non esiste più alcun comando che
+viva solo nel mondo C#.
 
 I flag che appartengono alla REPL (`-size`, `-font`, `-c`, `-s`, `-c64`, `-noconsole`,
 `--sdl`, `-gpm`, `--debug-tcp`, `--run`, `-bsp`) o alla POC wasm (`--target`, `-o`) **non**

@@ -154,6 +154,12 @@ Limiti dichiarati (non silenziosi): le pagine `buildvault` riportano nome+arità
 parametri vivono nel linker C#); `stats.json` del grafo è un sottoinsieme (niente betweenness/
 godNodes); `publish --repo` non carica gli asset binari (materialize).
 
+## Verifica
+
+```bash
+tools/sh/brain_c_smoke.sh        # 30 check: create/stats/verify/sign/export/install/… (isolato)
+```
+
 ## Sorgente unica
 
 La REPL C usa lo stesso backend per `ADD/REMOVE/BUMP/TRUST/CACHE/RESTORE/UPDATE/ROLLBACK`
