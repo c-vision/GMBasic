@@ -10196,7 +10196,46 @@ int gmb_c99_coll_handle_supports(ctx_t* c, const char* recv, const char* m, int 
     return coll_handle_supports(v, gmb_member_tok(m), nargs);
 }
 
+/* 1 se `suffix` è un SUFFISSO proprio (a segmenti) di `full` (es. PORTFOLIO vs
+ * TRADING.PORTFOLIO). Usato per rifiutare la qualifica PARZIALE di un namespace composto. */
+static int ns_is_proper_suffix(const char* suffix, const char* full) {
+    size_t sl = suffix ? strlen(suffix) : 0, fl = full ? strlen(full) : 0;
+    if (sl == 0 || sl >= fl) return 0;
+    return full[fl - sl - 1] == '.' && !strcasecmp(full + fl - sl, suffix);
+}
+
 static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line, gmb_tokenkind_t pf) {
+    /* QUALIFICA PARZIALE di un namespace COMPOSTO (es. PORTFOLIO.ISLONGONLY): il
+     * namespace scritto non esiste, è solo un suffisso di quello canonico
+     * (TRADING.PORTFOLIO). Prima C99 risolveva per ultimo segmento (permissivo) mentre
+     * IL/PCode/VM-C lo rifiutavano: ora errore esplicito su tutte le gambe. Un alias
+     * (IMPORT ... AS X) arriva qui GIÀ risolto al namespace canonico. */
+    if (ns && ns[0] && name && name[0]) {
+        const char* kns0 = gmb_reg_known_ns(name);
+        if (kns0 && kns0[0] && strcasecmp(ns, kns0) != 0 && ns_is_proper_suffix(ns, kns0)) {
+            c99_fail(c, line, "namespace '%s' sconosciuto: usare la qualifica COMPLETA '%s.%s(...)' o IMPORT %s (backend C99Native)",
+                     ns, kns0, name, kns0);
+            return;
+        }
+    }
+    /* Stessa cosa quando la call arriva con il nome DOTTATO e ns vuoto
+     * (`PORTFOLIO.ISLONGONLY` → name="PORTFOLIO.ISLONGONLY", ns=NULL): il parser C non
+     * riconosce PORTFOLIO come namespace e passa tutto nel nome; l'emitter risolveva per
+     * ultimo segmento. Qui si rifiuta la qualifica parziale. */
+    if (name && (!ns || !ns[0])) {
+        const char* dotq = strrchr(name, '.');
+        if (dotq && dotq != name && (size_t)(dotq - name) < 95) {
+            char pfx[96];
+            size_t pl = (size_t)(dotq - name);
+            memcpy(pfx, name, pl); pfx[pl] = 0;
+            const char* kns1 = gmb_reg_known_ns(dotq + 1);
+            if (kns1 && kns1[0] && strcasecmp(pfx, kns1) != 0 && ns_is_proper_suffix(pfx, kns1)) {
+                c99_fail(c, line, "namespace '%s' sconosciuto: usare la qualifica COMPLETA '%s.%s(...)' o IMPORT %s (backend C99Native)",
+                         pfx, kns1, dotq + 1, kns1);
+                return;
+            }
+        }
+    }
     /* STRINGBUILDER: metodo su una variabile builder → gmb_sb_* (runtime C condiviso).
      * Il nome può arrivare qualificato `sb.Append` (ns=NULL, name dotted) o ns+name. */
     {

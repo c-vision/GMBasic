@@ -2331,6 +2331,17 @@ public static partial class Linker
         }
 
         // 3. Fallback Campo Indicizzabile
+        // Base NON risolta (es. `PORTFOLIO.ISLONGONLY(w)` con qualifica PARZIALE): NON è un
+        // "campo indicizzabile". Prima si costruiva IndexedAccessExpr su un simbolo
+        // placeholder (__dummy, SymbolId<0): il backend IL lanciava NotSupportedException
+        // ("impossibile risolvere il tipo per il simbolo '__dummy'") e PCode/VM-C
+        // restituivano NIL in silenzio. Errore esplicito QUI = stessa diagnosi ovunque.
+        if (rewrittenInstance is VariableExpr { SymbolId: < 0 } unknownBase)
+        {
+            throw CreateError(mce.MethodName,
+                $"Namespace o oggetto '{unknownBase.NameCleaned.Lexeme}' sconosciuto: impossibile risolvere '{unknownBase.NameCleaned.Lexeme}.{memberName}'. Usare la qualifica COMPLETA (es. TRADING.PORTFOLIO.{memberName}) o IMPORT del namespace.",
+                ErrorCode.UndefinedSubOrFunction);
+        }
         FieldAccessExpr fieldAccessExpr = new FieldAccessExpr(rewrittenInstance, mce.MethodName);
         DataType fieldType = LinkerInferExpressionType(fieldAccessExpr, context, program);
         if (fieldType is ArrayType or ListType or DictType or InferredType or JsonType or HttpHeadersType)

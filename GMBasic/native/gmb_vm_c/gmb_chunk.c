@@ -312,6 +312,8 @@ gmb_chunk_t* gmb_chunk_load(const uint8_t* data, size_t len, bool load_lines)
                 }
             }
         }
+        /* USES TRAY (coda FINALE opzionale): 1 byte 0/1. */
+        if (!r.err && r.p < r.end) c->uses_tray = rd_u8(&r) != 0 ? 1 : 0;
     }
     if (r.err) goto fail;
 

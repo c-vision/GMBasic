@@ -48,6 +48,7 @@ public static class ChunkMerger
         foreach (var (k, v) in main.ProcedureArities) merged.ProcedureArities[k] = v;
         foreach (var (tryIp, region) in main.TryRegions) merged.TryRegions[tryIp] = region;
         merged.StatementRanges.AddRange(main.StatementRanges);
+        merged.UsesTray = main.UsesTray;
         foreach (var (k, v) in main.ProcedureLocalNumeric) merged.ProcedureLocalNumeric[k] = v;
 
         // nome → indirizzo ribasato nella lib (le lib successive sovrascrivono)
@@ -106,6 +107,7 @@ public static class ChunkMerger
                 merged.StatementRanges.Add((st + codeBase, en + codeBase));
             foreach (var (addr, flags) in lib.ProcedureLocalNumeric)
                 merged.ProcedureLocalNumeric.TryAdd(addr + codeBase, flags);
+            merged.UsesTray |= lib.UsesTray;
             foreach (var (tryIp, region) in lib.TryRegions)
                 merged.TryRegions[tryIp + codeBase] = new TryRegionMetadata(
                     region.FinallyIp + codeBase,

@@ -6,6 +6,7 @@
  * ============================================================================ */
 
 #include "gmb_vm_core.h"
+#include "gmb_tray.h"
 #include "gmb_vm_signal.h"
 #include "gmb_state_hook.h"   /* canale d'errore dell'hook di stato (VM/C ospitata) */
 #include "gmb_vm_tui.h"
@@ -16873,7 +16874,14 @@ int gmb_vm_run_mt(gmb_vm_t* vm)
             wait_ms = cancel_at_ms - gmb_now_ms();
             if (wait_ms < 0) wait_ms = 0;
         }
+        /* TRAY: la coda si drena SOLO sul main thread (Cocoa/NSStatusItem). Il BASIC gira sui
+         * worker e si limita ad accodare; qui il main alterna attese brevi e gmb_tray_poll().
+         * Attivo solo se il chunk usa TRAY (CompiledChunk.UsesTray): nessun overhead per gli
+         * altri programmi. Prima l'icona non veniva mai creata su questa gamba. */
+        int tray_on = vm->chunk && vm->chunk->uses_tray;
+        if (tray_on && (wait_ms < 0 || wait_ms > 20)) wait_ms = 20;
         if (gmb_sched_wait_all_done_ms(vm->scheduler, wait_ms)) break;
+        if (tray_on) (void)gmb_tray_poll();
         if (cancel_at_ms >= 0 && gmb_now_ms() >= cancel_at_ms)
         {
             cancel_at_ms = -1;   /* poi attende illimitato l'unwind Cancel */

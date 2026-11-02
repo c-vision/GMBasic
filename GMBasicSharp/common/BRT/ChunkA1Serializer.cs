@@ -104,6 +104,7 @@ public static class ChunkA1Serializer
             WriteU32(w, (uint)en);
         }
 
+
         // LOCAL NUMERIC (coda FINALE opzionale): per procedura, quali slot locali sono numerici
         // (default 0). u32 count → per voce: u32 addr, u32 count, count byte (0/1).
         WriteU32(w, (uint)chunk.ProcedureLocalNumeric.Count);
@@ -113,6 +114,9 @@ public static class ChunkA1Serializer
             WriteU32(w, (uint)flags.Length);
             foreach (var f in flags) w.Write(f ? (byte)1 : (byte)0);
         }
+
+        // USES TRAY (coda FINALE opzionale): 1 byte 0/1 — il programma usa il namespace TRAY.
+        w.Write(chunk.UsesTray ? (byte)1 : (byte)0);
 
         return ms.ToArray();
     }
@@ -212,6 +216,9 @@ public static class ChunkA1Serializer
                 for (var j = 0; j < n; j++) flags[j] = r.ReadByte() != 0;
                 chunk.ProcedureLocalNumeric[addr] = flags;
             }
+            // USES TRAY (coda FINALE, opzionale): byte 0/1.
+            if (r.BaseStream.Position < r.BaseStream.Length)
+                chunk.UsesTray = r.ReadByte() != 0;
         }
         catch (EndOfStreamException) { }
 
