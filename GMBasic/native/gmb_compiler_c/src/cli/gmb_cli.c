@@ -985,6 +985,10 @@ int main(int argc, char** argv) {
         return 0;
     }
     {
+        int arc = gmb_cli_admin_maybe(argc, argv);   /* pkg/fixtures/setup/... → gmbadmin (C) */
+        if (arc >= 0) return arc;
+    }
+    {
         int erc = gmb_cli_engine_maybe(argc, argv);
         if (erc >= 0) return erc;
     }

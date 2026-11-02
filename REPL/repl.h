@@ -123,8 +123,6 @@ int rpl_run_cs(const char* bas_file, const rpl_options_t* o);
 const char* rpl_admin_cli(char* out, size_t cap);
 int rpl_admin_cmd(const char* sub, const char* args);
 const char* rpl_resolve_vm_host(void);
-/* F3b: comandi di pacchetto nel mondo C (manifest/keyring/cache). */
-int rpl_pkg_cmd(const char* cmd, const char* args);
 /* Precompila le pagine .bsp di una cartella in sidecar .bsp.chunk (comando BSP, -bsp). */
 int rpl_bsp_compile_dir(const char* dir, const rpl_options_t* o);
 int gmb_loadprg(const char* file);

@@ -1,0 +1,246 @@
+/* gmbadminsys.c — sottocomandi di servizio del CLI C `gmbadmin`:
+ *   fixtures · setup · libs · brain · grep · convert/convfmt · keygen
+ * Tutto su API del runtime C (fixtures/brain/grep/doc/pkg): il C# diventa un wrapper.
+ */
+#include "gmbadmin.h"
+
+#include "gmb_runtime.h"
+#include "gmb_fixtures.h"
+#include "gmb_grep.h"
+#include "gmb_doc.h"
+#include "gmb_pkg_ecdsa.h"
+#include "gmb_fsutil.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+static const char* apos_from(int argc, char** argv, int start, int n)
+{
+    int seen = 0;
+    for (int i = start; i < argc; i++) {
+        if (argv[i][0] == '-') continue;
+        if (seen++ == n) return argv[i];
+    }
+    return NULL;
+}
+
+static const char* apos(int argc, char** argv, int n) { return apos_from(argc, argv, 3, n); }
+
+/* ── fixtures ────────────────────────────────────────────────────────────── */
+
+int gmbadmin_fixtures(int argc, char** argv)
+{
+    const char* sub = (argc > 2) ? argv[2] : "list";
+    char man[2048], root[2048];
+    gmb_fixtures_manifest_path(man, sizeof man);
+    gmb_fixtures_root(root, sizeof root);
+
+    if (!strcmp(sub, "list") || !strcmp(sub, "status") || !strcmp(sub, "help")) {
+        char av[4096] = "", pr[4096] = "";
+        int n = gmb_fixtures_available(av, sizeof av);
+        printf("  manifest: %s\n  cartella: %s\n", man, root);
+        if (n < 0) printf("  (manifest assente)\n");
+        else printf("  dichiarate: %s\n", av[0] ? av : "(nessuna)");
+        if (gmb_fixtures_present(pr, sizeof pr) > 0) printf("  presenti:   %s\n", pr);
+        else printf("  presenti:   (nessuna)\n");
+        return 0;
+    }
+    if (!strcmp(sub, "ensure") || !strcmp(sub, "all")) {
+        char err[512] = "";
+        int n = gmb_fixtures_ensure_all(NULL, NULL, NULL, err, sizeof err);
+        if (n < 0) { fprintf(stderr, "?fixtures ensure: %s\n", err[0] ? err : "errore"); return 1; }
+        printf(n ? "fixtures: %d scaricate in %s\n" : "fixtures: nessuna mancante\n", n, root);
+        return 0;
+    }
+    if (!strcmp(sub, "pull")) {
+        const char* name = apos(argc, argv, 0);
+        if (!name) { fprintf(stderr, "?uso: gmb fixtures pull <nome>\n"); return 2; }
+        char out_dir[2048], err[512] = "";
+        int rc = gmb_fixtures_pull(name, "latest", NULL, 0, NULL, NULL, out_dir, sizeof out_dir, err, sizeof err);
+        if (rc != 0) { fprintf(stderr, "?fixtures pull %s: %s\n", name, gmb_fixtures_strerror(rc)); return 1; }
+        printf("fixtures: %s -> %s\n", name, out_dir);
+        return 0;
+    }
+    fprintf(stderr, "?uso: gmb fixtures <list|ensure|pull <nome>>\n");
+    return 2;
+}
+
+/* ── setup / libs ────────────────────────────────────────────────────────── */
+
+static int cache_status(void)
+{
+    const char* rid = gmb_libs_rid();
+    char cd[2048];
+    gmb_paths_libs_cache_dir(cd, sizeof cd);
+    char full[2300];
+    snprintf(full, sizeof full, "%s/%s", cd, rid);
+    int n = 0;
+    DIR* d = opendir(full);
+    if (d) {
+        struct dirent* de;
+        while ((de = readdir(d))) if (de->d_name[0] != '.') n++;
+        closedir(d);
+    }
+    printf("  RID: %s\n  cache librerie: %s\n  file presenti: %d\n", rid, full, n);
+    printf("  per popolarla: `gmb libs ensure` (porting C in corso) oppure il CLI storico\n");
+    return 0;
+}
+
+int gmbadmin_setup(int argc, char** argv)
+{
+    const char* sub = (argc > 2) ? argv[2] : "status";
+    if (!strcmp(sub, "status")) return cache_status();
+    if (!strcmp(sub, "help") || !strcmp(sub, "--help")) {
+        printf("uso: gmb setup <status|TORCH|BROWSER|OCR|ALL|rm>\n");
+        printf("  status: RID + cache librerie native (~/.gmbasic/libs/<rid>/)\n");
+        printf("  TORCH/BROWSER/OCR/ALL/rm: porting C in corso (F9c)\n");
+        return 0;
+    }
+    fprintf(stderr, "?setup %s: non ancora in C (porting F9c tracciato in TODO §6)\n", sub);
+    return 2;
+}
+
+int gmbadmin_libs(int argc, char** argv)
+{
+    const char* sub = (argc > 2) ? argv[2] : "status";
+    if (!strcmp(sub, "status")) return cache_status();
+    if (!strcmp(sub, "help") || !strcmp(sub, "--help")) {
+        printf("uso: gmb libs <status|ensure|check|publish>\n");
+        printf("  status: cache ~/.gmbasic/libs/<rid>/\n");
+        printf("  ensure/check/publish: porting C in corso (F9c)\n");
+        return 0;
+    }
+    fprintf(stderr, "?libs %s: non ancora in C (porting F9c tracciato in TODO §6)\n", sub);
+    return 2;
+}
+
+/* ── brain ───────────────────────────────────────────────────────────────── */
+
+int gmbadmin_brain(int argc, char** argv)
+{
+    const char* sub = (argc > 2) ? argv[2] : "list";
+    if (!strcmp(sub, "list") || !strcmp(sub, "help")) {
+        char* l = gmb_brain_registry_list();
+        if (l && l[0]) printf("%s\n", l);
+        else printf("(nessun cervello registrato)\n");
+        free(l);
+        return 0;
+    }
+    const char* name = apos(argc, argv, 0);
+    if (!strcmp(sub, "info")) {
+        if (!name) { fprintf(stderr, "?uso: gmb brain info <nome>\n"); return 2; }
+        char* i = gmb_brain_registry_info(name);
+        if (i) { printf("%s", i); free(i); return 0; }
+        fprintf(stderr, "?brain '%s' non trovato\n", name);
+        return 1;
+    }
+    if (!strcmp(sub, "use")) {
+        if (!name) { fprintf(stderr, "?uso: gmb brain use <nome[,nome...]>\n"); return 2; }
+        int rc = gmb_brain_use(name);
+        printf(rc ? "collegati: %s\n" : "?brain use fallito\n", name);
+        return rc ? 0 : 1;
+    }
+    if (!strcmp(sub, "detach")) {
+        if (!name) { fprintf(stderr, "?uso: gmb brain detach <nome>\n"); return 2; }
+        int rc = gmb_brain_detach(name);
+        printf(rc ? "scollegato: %s\n" : "?brain detach fallito\n", name);
+        return rc ? 0 : 1;
+    }
+    fprintf(stderr, "?brain: comando sconosciuto '%s' (list|info|use|detach)\n", sub);
+    return 2;
+}
+
+/* ── grep ────────────────────────────────────────────────────────────────── */
+
+int gmbadmin_grep(int argc, char** argv)
+{
+    if (argc < 3 || !strcmp(argv[2], "help")) {
+        printf("uso: gmb grep <pattern> [path] [-i] [-n] [--include G] [--depth N]\n");
+        return argc < 2 ? 2 : 0;
+    }
+    const char* pattern = argv[2];
+    const char* path = ".";
+    int ignore_case = 0, line_no = 1, depth = -1;
+    const char* include = NULL;
+    for (int i = 3; i < argc; i++) {
+        if (!strcmp(argv[i], "-i")) { ignore_case = 1; continue; }
+        if (!strcmp(argv[i], "-n")) { line_no = 1; continue; }
+        if (!strcmp(argv[i], "--include") && i + 1 < argc) { include = argv[++i]; continue; }
+        if (!strcmp(argv[i], "--depth") && i + 1 < argc) { depth = atoi(argv[++i]); continue; }
+        if (argv[i][0] != '-') path = argv[i];
+    }
+    char opts[1024];
+    int n = snprintf(opts, sizeof opts,
+                     "{\"pattern\":\"%s\",\"recursive\":true,\"line_number\":%s,\"ignore_case\":%s",
+                     pattern, line_no ? "true" : "false", ignore_case ? "true" : "false");
+    if (include) n += snprintf(opts + n, sizeof opts - n, ",\"include\":\"%s\"", include);
+    if (depth >= 0) n += snprintf(opts + n, sizeof opts - n, ",\"max_depth\":%d", depth);
+    snprintf(opts + n, sizeof opts - n, "}");
+
+    char* hits = gmb_grep_search_json(opts, path);
+    if (!hits) { fprintf(stderr, "?grep: errore\n"); return 1; }
+    char* text = gmb_grep_format_json(hits, 1, 0);
+    if (text) printf("%s", text);
+    gmb_grep_free(text);
+    gmb_grep_free(hits);
+    return 0;
+}
+
+/* ── convert / convfmt (documenti) ───────────────────────────────────────── */
+
+int gmbadmin_doc(int argc, char** argv)
+{
+    const char* cmd = (argc > 1) ? argv[1] : "convert";
+    if (!strcmp(cmd, "convfmt")) {
+        char* f = gmb_doc_formats_s();
+        printf("Formati input:  %s\n", f ? f : "(n/d)");
+        printf("Formati output: md, html, text\n");
+        free(f);
+        return 0;
+    }
+    const char* file = apos_from(argc, argv, 2, 0);
+    if (!file) { fprintf(stderr, "?uso: gmb convert <file> [-o out.(md|html|txt)]\n"); return 2; }
+    const char* out = NULL;
+    for (int i = 3; i < argc; i++) {
+        if (!strcmp(argv[i], "-o") && i + 1 < argc) out = argv[++i];
+        else if (!strncmp(argv[i], "--out=", 6)) out = argv[i] + 6;
+    }
+    const char* fmt = "md";
+    if (out) {
+        const char* d = strrchr(out, '.');
+        if (d) {
+            if (!strcasecmp(d, ".html") || !strcasecmp(d, ".htm")) fmt = "html";
+            else if (!strcasecmp(d, ".txt")) fmt = "text";
+        }
+    }
+    char* res = gmb_doc_convert(file, fmt);
+    if (!res) { fprintf(stderr, "?convert: conversione fallita (%s)\n", file); return 1; }
+    if (out) {
+        FILE* f = fopen(out, "wb");
+        if (!f) { free(res); fprintf(stderr, "?convert: scrittura fallita (%s)\n", out); return 1; }
+        fwrite(res, 1, strlen(res), f);
+        fclose(f);
+        printf("[OK] %s (%zu bytes)\n", out, strlen(res));
+    } else printf("%s", res);
+    free(res);
+    return 0;
+}
+
+/* ── keygen ──────────────────────────────────────────────────────────────── */
+
+int gmbadmin_keygen(int argc, char** argv)
+{
+    (void)argc; (void)argv;
+    char priv[8192] = "", pub[8192] = "";
+    if (!gmb_pkg_ecdsa_keygen_pem(priv, sizeof priv, pub, sizeof pub)) {
+        fprintf(stderr, "?keygen: generazione fallita\n");
+        return 1;
+    }
+    printf("PRIVATE KEY:\n%s\nPUBLIC KEY:\n%s\n", priv, pub);
+    return 0;
+}

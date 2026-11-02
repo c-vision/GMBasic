@@ -261,10 +261,14 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
       - [x] **F9a** (2026-11-02): `gmbcs` accetta `--project/--entry` (stesso contratto di
         `gmb`); `gmb --engine c|csharp` esegue lo **stesso argv** su `gmbcs` (nessuna
         traduzione). Verificato: `check/dump/run --engine=csharp --project` e `--engine=c`.
-      - [ ] **F9b** — `gmb` front per l'admin in **C**. API C già disponibili: `gmb_pkg_*`
-        (manifest/resolver/lock/trust/contentaddr/registry/install), `gmb_fixtures_*`,
-        `gmb_brain_*` (list/info/use/detach), `gmb_graph_*`, `gmb_grep_*`, `gmb_rag_*`,
-        `gmb_libs_*`, `gmb_doc_*` (conversione), `gmb_fetch_*` (download modelli).
+      - [x] **F9b** (2026-11-02) — tool C **`gmbadmin`** (`GMBasic/native/gmbadmin/`) e front
+        `gmb <admin>` via exec con lo stesso argv. Implementati in C: `pkg init/add/remove/
+        bump/list/info/install/uninstall/restore/update/rollback/trust/cache`, `fixtures`,
+        `setup status`, `libs status`, `brain list/info/use/detach`, `grep`, `convert/convfmt`,
+        `keygen`. La REPL usa lo stesso backend (`ADD/REMOVE/BUMP/TRUST/CACHE/RESTORE/UPDATE/
+        ROLLBACK` → `gmbadmin pkg …`); `REPL/pkg_cmds.c` rimosso e link `gmb_pkg` tolto.
+        Verificato: pkg init/add/remove/bump/list, fixtures, setup, brain, grep, convert,
+        convfmt, keygen; REPL ADD/REMOVE/BUMP/CACHE/TRUST.
       - [ ] **F9c** — portare i comandi oggi solo-C#: `publish`, `login/register/logout/admin`,
         `pack/keygen`, `libs publish`, `setup TORCH|BROWSER|OCR`, `daemon`, `rag build/query`,
         `hf/mlx`, `convert/convfmt`.

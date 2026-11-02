@@ -23,10 +23,10 @@ Comandi riportati nel mondo C o instradati (vedi commit F3/F6b):
 
 | comando | dove |
 |---|---|
-| `FIXTURES` | runtime C `gmb_fixtures_*` |
+| `FIXTURES` | runtime C `gmb_fixtures_*` (anche `gmb fixtures`, tool C `gmbadmin`) |
 | `SETUP` | runtime C (cache libs) |
 | `LLM` | runtime C (AIPATH) |
-| `ADD`/`REMOVE`/`BUMP`/`RESTORE`/`UPDATE`/`ROLLBACK`/`TRUST`/`CACHE` | runtime C `gmb_pkg_*` |
+| `ADD`/`REMOVE`/`BUMP`/`RESTORE`/`UPDATE`/`ROLLBACK`/`TRUST`/`CACHE` | **`gmbadmin pkg …`** (tool C, runtime `gmb_pkg_*`; la REPL non linka più gmb_pkg) |
 | `AIBENCH` | `gmbcs aibench` |
 | `HF`/`MLX` | `gmb hf` / `gmb mlx` (CLI C#) |
 | `RAG` | `gmb rag …` |

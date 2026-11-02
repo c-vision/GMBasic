@@ -241,21 +241,21 @@ int rpl_cs_cmd_raw(const char* sub, const char* raw_args, const rpl_options_t* o
 const char* rpl_admin_cli(char* out, size_t cap)
 {
     static const char* cands[] = {
-        "GMBasicSharp/Cli/bin/Debug/net10.0/gmb",
-        "../GMBasicSharp/Cli/bin/Debug/net10.0/gmb",
-        "../../GMBasicSharp/Cli/bin/Debug/net10.0/gmb",
+        "GMBasic/native/gmbadmin/build/gmbadmin",
+        "../GMBasic/native/gmbadmin/build/gmbadmin",
+        "../../GMBasic/native/gmbadmin/build/gmbadmin",
         NULL
     };
     for (int i = 0; cands[i]; i++) if (access(cands[i], X_OK) == 0) { snprintf(out, cap, "%s", cands[i]); return out; }
     char root[2048];
-    resolve_repo_path(root, sizeof(root), "GMBasicSharp/Cli/bin/Debug/net10.0/gmb");
+    resolve_repo_path(root, sizeof(root), "GMBasic/native/gmbadmin/build/gmbadmin");
     if (access(root, X_OK) == 0) { snprintf(out, cap, "%s", root); return out; }
     const char* path_env = getenv("PATH");
     if (path_env) {
         char tmp[4096];
         snprintf(tmp, sizeof(tmp), "%s", path_env);
         for (char* dir = strtok(tmp, ":"); dir; dir = strtok(NULL, ":")) {
-            snprintf(out, cap, "%s/gmb", dir);
+            snprintf(out, cap, "%s/gmbadmin", dir);
             if (access(out, X_OK) == 0) return out;
         }
         out[0] = 0;
@@ -267,8 +267,8 @@ int rpl_admin_cmd(const char* sub, const char* args)
 {
     char cli[2048];
     if (!rpl_admin_cli(cli, sizeof(cli))) {
-        fprintf(stderr, "?CLI `gmb` (GMBasicSharp/Cli) non trovato: compila con\n"
-                        "  dotnet build GMBasicSharp/Cli/Cli.csproj\n");
+        fprintf(stderr, "?tool `gmbadmin` (C) non trovato: compila con\n"
+                        "  cmake -S GMBasic/native/gmbadmin -B GMBasic/native/gmbadmin/build\n");
         return 127;
     }
     char cmd[8192];
@@ -774,7 +774,13 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
         if (!strcasecmp(cmd, "ADD") || !strcasecmp(cmd, "REMOVE") || !strcasecmp(cmd, "BUMP")
             || !strcasecmp(cmd, "TRUST") || !strcasecmp(cmd, "CACHE")
             || !strcasecmp(cmd, "RESTORE") || !strcasecmp(cmd, "ROLLBACK") || !strcasecmp(cmd, "UPDATE")) {
-            rpl_pkg_cmd(cmd, args);
+            /* sorgente UNICA: il Package Manager CLI è `gmbadmin pkg` (C), non una copia. */
+            char sub[32];
+            snprintf(sub, sizeof sub, "%s", cmd);
+            for (char* q = sub; *q; q++) *q = (char)tolower((unsigned char)*q);
+            char raw[2048];
+            snprintf(raw, sizeof raw, "%s %s", sub, args);
+            rpl_admin_cmd("pkg", raw);
             goto done;
         }
         /* ── F3a: comandi nati nella REPL C#, riportati nel mondo C (runtime C) ── */
