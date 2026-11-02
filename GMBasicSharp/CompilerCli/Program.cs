@@ -3,7 +3,7 @@
 // È il gemello di `gmb` (compilatore C) per il mondo managed: stessa superficie di comandi,
 // stessi exit code, output su stdout senza banner/prompt (adatto a essere pilotato dalla REPL).
 //
-//   gmbcs check <file> [--json]
+//   gmbcs check <file> [--json]        (oppure --project <dir> [--entry <file>])
 //   gmbcs dump ast    <file>
 //   gmbcs dump pcode  <file> [--out f]
 //   gmbcs dump il     <file> [--out f]
@@ -62,6 +62,8 @@ public static class Program
         }
 
         var engine = TakeOption(list, "--engine") ?? "il";
+        var project = TakeOption(list, "--project");
+        var entry = TakeOption(list, "--entry");
         var outPath = TakeOption(list, "--out");
         var json = list.Remove("--json");
         var breaks = TakeAllInts(list, "--break");
@@ -81,6 +83,12 @@ public static class Program
             catch (Exception ex) { Console.Error.WriteLine($"?gmbcs: modulo IL {mod}: {ex.GetBaseException().Message}"); return 2; }
         }
 
+        if (engine.Equals("c", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.Error.WriteLine("?gmbcs è l'engine C#: per l'engine C usa `gmb --engine=c` (CLI nativo).");
+            return 2;
+        }
+
         if (list.Count == 0) { Usage(); return 2; }
         var cmd = list[0].ToLowerInvariant();
 
@@ -88,7 +96,7 @@ public static class Program
         {
             case "check":
             {
-                var file = FileArg(list, 1);
+                var file = ResolveEntry(list, project, entry, 1);
                 var program = CompileFile(file, defines);
                 if (json) Console.WriteLine($"{{\"ok\":true,\"file\":{Json(file)}}}");
                 else Console.WriteLine($"OK {file}");
@@ -97,9 +105,9 @@ public static class Program
             }
             case "dump":
             {
-                if (list.Count < 3) { Console.Error.WriteLine("?uso: gmbcs dump <ast|pcode|il|disasm> <file> [--out f]"); return 2; }
+                if (list.Count < 2) { Console.Error.WriteLine("?uso: gmbcs dump <ast|pcode|il|disasm> [<file>|--project D [--entry F]] [--out f]"); return 2; }
                 var what = list[1].ToLowerInvariant();
-                var file = list[2];
+                var file = ResolveEntry(list, project, entry, 2);
                 var isPrg = file.EndsWith(".prg", StringComparison.OrdinalIgnoreCase);
                 if (isPrg && what is "pcode" or "disasm")
                     return Emit(CapturePCodeFile(file), outPath);
@@ -127,7 +135,7 @@ public static class Program
                 var target = TakeOption(list, "--target") ?? "il";
                 var full = list.Remove("--full") | list.Remove("-full");
                 var all = list.Remove("--all");
-                var file = FileArg(list, 1);
+                var file = ResolveEntry(list, project, entry, 1);
                 var program = CompileFile(file, defines);
                 return target.ToLowerInvariant() switch
                 {
@@ -164,14 +172,14 @@ public static class Program
             }
             case "prginfo":
             {
-                var file = FileArg(list, 1);
+                var file = ResolveEntry(list, project, entry, 1);
                 var chunk = global::Basic.Runtime.PrgFormat.Read(file);
                 Console.WriteLine($"{Path.GetFileName(file)}: {chunk.Code.Length} opcodes, {chunk.Constants.Length} constants");
                 return 0;
             }
             case "run":
             {
-                var file = FileArg(list, 1);
+                var file = ResolveEntry(list, project, entry, 1);
                 var program = CompileFile(file, defines);
                 if (engine.Equals("native", StringComparison.OrdinalIgnoreCase))
                     return RunNative(program, file, outPath);
@@ -180,7 +188,7 @@ public static class Program
             }
             case "debug":
             {
-                var file = FileArg(list, 1);
+                var file = ResolveEntry(list, project, entry, 1);
                 return RunDebug(file, defines, breaks, step, engine);
             }
             case "eval":
@@ -505,6 +513,38 @@ public static class Program
 
     // ── utilità ──────────────────────────────────────────────────────────────────
 
+    /* Contratto UNICO con `gmb` (C): il sorgente si indica come `--project <dir>` +
+     * `--entry <file>` oppure, in forma abbreviata, come primo argomento posizionale.
+     * Con solo `--project` l'entry viene scoperta (unico `.bas` con `SUB Main`). */
+    private static string ResolveEntry(List<string> list, string? project, string? entry, int position)
+    {
+        if (!string.IsNullOrEmpty(entry)) return entry!;
+        if (!string.IsNullOrEmpty(project)) return DiscoverEntry(project!);
+        if (list.Count > position && !list[position].StartsWith("-")) return list[position];
+        throw new ArgumentException("manca il file (usa <file.bas> oppure --project <dir> [--entry <file>])");
+    }
+
+    private static string DiscoverEntry(string project)
+    {
+        var root = Path.GetFullPath(project);
+        if (!Directory.Exists(root)) throw new DirectoryNotFoundException($"progetto non trovato: {project}");
+        var sep = Path.DirectorySeparatorChar;
+        var files = Directory.EnumerateFiles(root, "*.bas", SearchOption.AllDirectories)
+            .Where(f => !f.Contains($"{sep}bin{sep}") && !f.Contains($"{sep}obj{sep}") &&
+                        !f.Contains($"{sep}work{sep}") && !f.Contains($"{sep}vendor{sep}") &&
+                        !f.Contains($"{sep}.git{sep}"))
+            .Where(f =>
+            {
+                try { return System.Text.RegularExpressions.Regex.IsMatch(File.ReadAllText(f), @"(?im)^\s*SUB\s+Main\b"); }
+                catch { return false; }
+            })
+            .OrderBy(f => f, StringComparer.Ordinal).ToList();
+        if (files.Count == 1) return files[0];
+        if (files.Count == 0) throw new InvalidOperationException($"nessuna entry con SUB Main in {project}");
+        throw new InvalidOperationException("più entry candidati: " +
+            string.Join(", ", files.Select(f => Path.GetRelativePath(root, f))) + " — usa --entry <file>");
+    }
+
     private static string FileArg(List<string> list, int index)
     {
         if (list.Count <= index) throw new ArgumentException("manca il file");
@@ -574,7 +614,8 @@ public static class Program
               gmbcs debug <file> [--break N]… [--step]
               gmbcs aibench [RUN] [path]
 
-            opzioni: -D name=val, --il-module <dll>, --out <file>, --json
+            opzioni: -D name=val, --il-module <dll>, --out <file>, --json,
+                     --project <dir> [--entry <file>]  (stesso contratto di `gmb` C)
             build: --full (copia il runtime .NET), --all (nessun filtro ClosureSlim)
             """);
     }
