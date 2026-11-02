@@ -7327,6 +7327,13 @@ static int aiag_eval_validate(ctx_t* c, gmb_expr_t** a, int n, int line) {
     emit_str_operand(c, a[1]); sb_put(&c->out, ".data))");
     return 1;
 }
+static int aiag_decide(ctx_t* c, gmb_expr_t** a, int n, int line) {
+    if (n < 2) { c99_fail(c, line, "AI DECIDE: attesi (state, kind)"); return 1; }
+    sb_put(&c->out, "gmb_string_take(gmb_ai_decide_run_json(");
+    emit_str_operand(c, a[0]); sb_put(&c->out, ".data, ");
+    emit_str_operand(c, a[1]); sb_put(&c->out, ".data))");
+    return 1;
+}
 static int aiag_hook_fire(ctx_t* c, gmb_expr_t** a, int n, int line) {
     if (n < 1) { c99_fail(c, line, "AI.HOOKFIRE: atteso (event[, payload])"); return 1; }
     sb_put(&c->out, "gmb_string_alloc(gmb_hook_fire(");
@@ -7403,6 +7410,7 @@ static const aiag_row AIAG_TBL[] = {
     { GMB_TOK_AiReplayRun, aiag_replay_run },
     { GMB_TOK_AiGoalAgent, aiag_goal_agent },
     { GMB_TOK_AiEvalValidate, aiag_eval_validate },
+    { GMB_TOK_AiDecide, aiag_decide },
     { GMB_TOK_AiMetricRecord, aiag_metric_record },
     { GMB_TOK_AiMetricGet, aiag_metric_get },
     { GMB_TOK_AiMetricList, aiag_metric_list },

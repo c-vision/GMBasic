@@ -1652,4 +1652,6 @@ MCPSERVERMARKETPLACELIST = 730, MCPSERVERMARKETPLACEGET = 731, MCPLISTTOOLSSERVE
     MESSAGEDELIVERY = 3815,
     // LENB(s): BYTE UTF-8 della stringa (LEN conta i CARATTERI). Coda: mirror in gmb_builtin.c.
     LENB = 3816,
+    // AI DECIDE(state, kind): decision layer JEV/SystemOne v0 (provider Rules, JSON). Coda.
+    AIDECIDE = 3817,
 }

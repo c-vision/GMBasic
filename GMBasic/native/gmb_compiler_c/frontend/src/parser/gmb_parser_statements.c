@@ -571,6 +571,38 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
             gmb_stmt_t* gs = gmb_stmt_new(GMB_STMT_CALL, line); gs->expr = gc; return gs;
         }
     }
+    /* AI DECIDE <state>, "NOUL|SCORE|CHOICE" [INTO <target>] — decision layer JEV/SystemOne
+     * (v0: builtin GMB_TOK_AiDecide → gmb_ai_decide_run_json, provider Rules, JSON).
+     * DECIDE è una soft keyword (Identifier), non una keyword lessicale. */
+    if (t->kind == GMB_TOK_Ai && gmb_p_peek(p, 1) && gmb_p_tok_is_soft_keyword(gmb_p_peek(p, 1), "DECIDE")) {
+        gmb_p_adv(p);   /* AI */
+        gmb_p_adv(p);   /* DECIDE */
+        gmb_expr_t* dc_state = gmb_p_parse_expr(p);
+        if (gmb_p_cur(p) && gmb_p_cur(p)->kind == GMB_TOK_Comma) gmb_p_adv(p);
+        gmb_expr_t* dc_kind = gmb_p_parse_expr(p);
+        /* gmb_expr_call_typed salva il PUNTATORE args senza copiare → array su HEAP
+         * (un array di stack diventerebbe dangling e l'emitter leggerebbe NULL/0). */
+        gmb_expr_t** dc_args = (gmb_expr_t**)malloc(2 * sizeof(gmb_expr_t*));
+        dc_args[0] = dc_state; dc_args[1] = dc_kind;
+        gmb_expr_t* dc_call = gmb_expr_call_typed("DECIDE", GMB_TOK_AiDecide, dc_args, 2, line);
+        if (gmb_p_cur(p) && gmb_p_cur(p)->kind == GMB_TOK_Into) {
+            gmb_p_adv(p);
+            const gmb_token_t* dc_tgt = gmb_p_cur(p);
+            if (dc_tgt && dc_tgt->length > 0) {
+                char* dc_tn = (char*)malloc((size_t)dc_tgt->length + 1);
+                memcpy(dc_tn, dc_tgt->lexeme, (size_t)dc_tgt->length); dc_tn[dc_tgt->length] = 0;
+                gmb_p_adv(p);
+                gmb_stmt_t* dc_a = gmb_stmt_new(GMB_STMT_ASSIGN, line);
+                dc_a->target = dc_tn;
+                dc_a->value = dc_call;
+                return dc_a;
+            }
+        }
+        gmb_stmt_t* dc_s = gmb_stmt_new(GMB_STMT_CALL, line);
+        dc_s->expr = dc_call;
+        return dc_s;
+    }
+
     /* AI ASKCHAIN <name>, <prompt>, <prefix> [INTO <target>] — anello di ragionamento
      * concatenato via Blackboard (T1.2). Statement = GMB_STMT_CALL con call GMB_TOK_AiAskChain;
      * runtime condiviso gmb_agent_ask_chain. */

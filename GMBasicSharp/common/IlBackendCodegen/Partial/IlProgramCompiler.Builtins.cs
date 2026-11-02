@@ -1373,6 +1373,7 @@ public sealed partial class IlProgramCompiler
             case TokenKind.AiAgentAskStream: EmitAiAgentAskStream(expr); break;
             case TokenKind.AiVerify: EmitAiVerifyCall(expr); break;
             case TokenKind.AiEvalValidate: EmitStringBinaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.AiEvalValidate))); break;
+            case TokenKind.AiDecide: EmitStringBinaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.AiDecide))); break;
             case TokenKind.AiAskChain: EmitAiStringsCall(expr, nameof(IlRuntime.AiAskChain), 3); break;
             case TokenKind.AiAgentSet: EmitAiStringsCall(expr, nameof(IlRuntime.AiAgentSet), 3); break;
             case TokenKind.AiPermission:

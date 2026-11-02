@@ -556,6 +556,7 @@ public sealed partial class Compiler
         { TokenKind.AiSetStatus, BuiltInFunction.PROVIDERSETSTATUS }, { TokenKind.AiStatus, BuiltInFunction.PROVIDERSTATUS },
         { TokenKind.AiVerify, BuiltInFunction.AIVERIFY },
         { TokenKind.AiEvalValidate, BuiltInFunction.AIEVALVALIDATE },
+        { TokenKind.AiDecide, BuiltInFunction.AIDECIDE },
         { TokenKind.AiAskChain, BuiltInFunction.AIASKCHAIN },
         { TokenKind.ProviderStartHealthCheck, BuiltInFunction.PROVIDERSTARTHEALTHCHECK }, { TokenKind.ProviderStopHealthCheck, BuiltInFunction.PROVIDERSTOPHEALTHCHECK },
         { TokenKind.ProviderHealthCheckInterval, BuiltInFunction.PROVIDERHEALTHCHECKINTERVAL }, { TokenKind.ProviderRunHealthCheck, BuiltInFunction.PROVIDERRUNHEALTHCHECK },

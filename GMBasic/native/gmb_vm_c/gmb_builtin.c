@@ -15698,6 +15698,18 @@ void gmb_bf_eval_validate_c2001(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc,
     bout->result_ref_bt = GMB_BT_STRING;
     free(res);
 }
+/* AI DECIDE (3817): decision layer JEV/SystemOne v0 (Rules, JSON) → gmb_ai_decide_run_json. */
+void gmb_bf_decide_c3817(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)func_code; (void)task;
+    const char* state = vm_builtin_sarg(args, argc, 0);
+    const char* kind = vm_builtin_sarg(args, argc, 1);
+    char* res = gmb_ai_decide_run_json(state ? state : "", kind ? kind : "");
+    bout->is_num = 0;
+    bout->result_ref = (gmb_obj_t*)gmb_str_cstr(res ? res : "");
+    bout->result_ref_bt = GMB_BT_STRING;
+    free(res);
+}
 /* AI ASKCHAIN (2002): anello di ragionamento concatenato via Blackboard → gmb_agent_ask_chain. */
 /* CONNECTOR (codici 2003-2023) — runtime condiviso gmb_connector_* (parità IL/C99). */
 static void gmb_bf_conn_str(gmb_builtin_out_t* bout, char* res)

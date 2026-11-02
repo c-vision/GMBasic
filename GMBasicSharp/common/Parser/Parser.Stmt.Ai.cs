@@ -107,6 +107,12 @@ public partial class Parser
         parser.Consume(TokenKind.Ai, "Internal parser error: Expected 'AI' keyword.");
         var commandToken = parser.Peek();
 
+        // AI DECIDE <state>, "<NOUL|SCORE|CHOICE>" [INTO <target>] — decision layer JEV/SystemOne
+        // (v0: builtin JSON con provider Rules; la superficie DECISION<T> arriva dopo).
+        if (commandToken.Kind == TokenKind.Identifier
+            && commandToken.Lexeme.Equals("DECIDE", System.StringComparison.OrdinalIgnoreCase))
+            return ParseAiDecideStatement(parser, expectedNamespace);
+
         // Sottocomandi composti: AI SET ...
         if (commandToken.Kind == TokenKind.Set)
         {
@@ -542,6 +548,27 @@ if (parser.Match(TokenKind.Set))
     // AI EVAL VALIDATE <resultExpr> AGAINST [VAULT] <folderExpr> [INTO <target>] — comando
     // (T4.1, 2026-09-09): UAT automatica via vault. Motore VaultValidator (termini, no LLM);
     // esito JSON {"ok":bool,...} su variabile (INTO) o scartato.
+    /// <summary>AI DECIDE &lt;state&gt;, "NOUL|SCORE|CHOICE" [INTO target] — v0 del decision layer:
+    /// chiama il builtin DECIDE (provider Rules deterministico) e restituisce il JSON del risultato.
+    /// La forma tipizzata `DECISION&lt;T&gt;` e il provider locale MLX sono il passo successivo.</summary>
+    public static Stmt ParseAiDecideStatement(Parser parser, string expectedNamespace)
+    {
+        var tok = parser.Advance();   // DECIDE (Identifier: non è una keyword lessicale)
+        Expr state = parser.ParseExpression();
+        parser.Consume(TokenKind.Comma, "Expected ',' after AI DECIDE state.");
+        Expr kind = parser.ParseExpression();
+        var nsTok = new Token(TokenKind.Identifier, "AI", null, tok.Position);
+        var nameTok = new Token(TokenKind.AiDecide, "DECIDE", null, tok.Position);
+        var call = new BuiltinFunctionCallExpr(nsTok, nameTok,
+            ImmutableArray.Create(state, kind), new StringType());
+        if (parser.Match(TokenKind.Into))
+        {
+            var target = parser.ParseTarget();
+            return new LetStmt([new Assignment(target, call)], null);
+        }
+        return new ExpressionStmt(call);
+    }
+
     public static Stmt ParseAiEvalValidateStatement(Parser parser, string expectedNamespace)
     {
         var tok = parser.Consume(TokenKind.Eval, "Expected 'EVAL' after 'AI'.");
