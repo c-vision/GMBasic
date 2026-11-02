@@ -418,7 +418,14 @@ int build_project(const Options* o, const char* project, const char* entry,
         for (size_t i = 0; i < sizeof mincand / sizeof mincand[0]; i++) {
             char p[CLI_PATH];
             snprintf(p, sizeof p, "%s/%s", tc.install, mincand[i]);
-            if (is_file(p)) { snprintf(runtime, sizeof runtime, "%s", p); use_min = 1; break; }
+            /* un archivio VUOTO/parziale (pochi byte: build interrotta) non è una libreria:
+             * sceglierlo produce un link senza simboli (`_gmb_print_newline` non definito).
+             * Si accetta solo un'archivio con dimensione plausibile. */
+            struct stat st_min;
+            if (!is_file(p) || stat(p, &st_min) != 0 || st_min.st_size < 65536) continue;
+            snprintf(runtime, sizeof runtime, "%s", p);
+            use_min = 1;
+            break;
         }
     }
     /* Il terzo candidato non esiste più nel build attuale: costa un `is_file` e copre i

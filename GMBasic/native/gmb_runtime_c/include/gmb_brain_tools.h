@@ -95,6 +95,11 @@ gmb_brain_result_t gmb_brain_tool_convert(const char* name, const char* to, cons
 gmb_brain_result_t gmb_brain_tool_diff(const char* a, const char* b, int as_json);
 gmb_brain_result_t gmb_brain_tool_doctor(const char* name);
 
+/* Riscrive gli export accessori di <graphs_dir>/<name>.json: stats.json completo
+ * (degree/pagerank/betweenness/louvain, godNodes, surprisingConnections, questions),
+ * mermaid, graphml, html. 1 = ok. */
+int gmb_brain_graph_artifacts(const char* name, const char* graphs_dir);
+
 /* Grafo → vault Obsidian (`graph export-obsidian`). */
 gmb_brain_result_t gmb_brain_tool_graph_export_obsidian(const char* graphs_dir, const char* name, const char* out_dir);
 

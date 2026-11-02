@@ -223,6 +223,63 @@ static int64_t wg_to_handle(wgraph_t* g)
     return h;
 }
 
+/* Pretty-print in formato System.Text.Json WriteIndented: oggetti/array NON vuoti su più
+ * righe (2 spazi per livello), vuoti inline. Serve a produrre stats.json uguale al C#. */
+static char* json_pretty_csharp(const char* src)
+{
+    if (!src) return NULL;
+    size_t cap = strlen(src) * 3 + 64, n = 0;
+    char* out = (char*)malloc(cap);
+    if (!out) return NULL;
+    int indent = 0;
+    int in_str = 0;
+    for (const char* p = src; *p; p++) {
+        char ch = *p;
+        if (in_str) {
+            if (n + 2 >= cap) { cap *= 2; char* nb = (char*)realloc(out, cap); if (!nb) { free(out); return NULL; } out = nb; }
+            out[n++] = ch;
+            if (ch == '\\' && p[1]) { out[n++] = *++p; }
+            else if (ch == '"') in_str = 0;
+            continue;
+        }
+        if (ch == '"') { in_str = 1; out[n++] = ch; continue; }
+        if (ch == '{' || ch == '[') {
+            /* vuoto? */
+            const char* q = p + 1;
+            while (*q == ' ') q++;
+            if ((ch == '{' && *q == '}') || (ch == '[' && *q == ']')) {
+                out[n++] = ch; out[n++] = *q; p = q; continue;
+            }
+            out[n++] = ch;
+            indent++;
+            out[n++] = '\n';
+            for (int i = 0; i < indent; i++) { out[n++] = ' '; out[n++] = ' '; if (n + 4 >= cap) { cap *= 2; char* nb = (char*)realloc(out, cap); if (!nb) { free(out); return NULL; } out = nb; } }
+            continue;
+        }
+        if (ch == '}' || ch == ']') {
+            indent--;
+            out[n++] = '\n';
+            for (int i = 0; i < indent; i++) { out[n++] = ' '; out[n++] = ' '; if (n + 4 >= cap) { cap *= 2; char* nb = (char*)realloc(out, cap); if (!nb) { free(out); return NULL; } out = nb; } }
+            out[n++] = ch;
+            continue;
+        }
+        if (ch == ',') { out[n++] = ','; out[n++] = '\n'; for (int i = 0; i < indent; i++) { out[n++] = ' '; out[n++] = ' '; if (n + 4 >= cap) { cap *= 2; char* nb = (char*)realloc(out, cap); if (!nb) { free(out); return NULL; } out = nb; } } continue; }
+        if (ch == ':') { out[n++] = ':'; out[n++] = ' '; continue; }
+        if (ch == ' ') continue;
+        out[n++] = ch;
+        if (n + 4 >= cap) { cap *= 2; char* nb = (char*)realloc(out, cap); if (!nb) { free(out); return NULL; } out = nb; }
+    }
+    out[n] = 0;
+    return out;
+}
+
+int br_graph_write_artifacts(const char* name, const char* graphs_dir);
+
+int gmb_brain_graph_artifacts(const char* name, const char* graphs_dir)
+{
+    return br_graph_write_artifacts(name, graphs_dir);
+}
+
 int br_graph_write_artifacts(const char* name, const char* graphs_dir)
 {
     char json_path[2400];
@@ -297,54 +354,167 @@ int br_graph_write_artifacts(const char* name, const char* graphs_dir)
         free(b.p);
     }
 
-    /* stats.json: nodi/edge/dangling/community + top hub + pagerank (calcolati dal runtime) */
+    /* stats.json COMPLETO (parità GraphExporter.ToStatsJson): degree/pagerank/
+     * betweenness/louvain + godNodes + surprisingConnections + suggestedQuestions. */
     {
-        int communities = 0;
+        int n = g.nn;
         int64_t h = wg_to_handle(&g);
-        if (h >= 0) {
-            int cn = 0;
-            gmb_graph_comp_t* comps = gmb_graph_louvain(h, 1.0, &cn);
-            if (comps && cn > 0) {
-                /* conta le community distinte */
-                int maxc = 0;
-                for (int i = 0; i < cn; i++) if (comps[i].component > maxc) maxc = comps[i].component;
-                communities = maxc + 1;
-                free(comps);
+
+        /* metriche per nodo (indice allineato a g.nodes) */
+        int* degree = (int*)calloc((size_t)(n ? n : 1), sizeof(int));
+        double* pr = (double*)calloc((size_t)(n ? n : 1), sizeof(double));
+        double* bet = (double*)calloc((size_t)(n ? n : 1), sizeof(double));
+        int* comm = (int*)calloc((size_t)(n ? n : 1), sizeof(int));
+        for (int i = 0; i < n; i++) {
+            for (int e = 0; e < g.ne; e++) {
+                if (!strcmp(g.edges[e].from, g.nodes[i].id)) degree[i]++;
+                if (!strcmp(g.edges[e].to, g.nodes[i].id)) degree[i]++;
             }
         }
-        sbuf_t b;
-        sb_init(&b);
-        char t[256];
-        sb_put(&b, "{\n  \"name\": "); sb_esc(&b, name);
-        snprintf(t, sizeof t, ",\n  \"nodes\": %d,\n  \"edges\": %d,\n  \"dangling\": %d,\n  \"communities\": %d,\n",
-                 g.nn, g.ne, g.nd, communities);
-        sb_put(&b, t);
-        /* topHubs */
-        sb_put(&b, "  \"topHubs\": [");
-        int written = 0;
-        for (int i = 0; i < g.nn && written < 10; i++) {
-            int deg = 0;
-            for (int k = 0; k < g.ne; k++) if (!strcmp(g.edges[k].from, g.nodes[i].id)) deg++;
-            if (deg == 0) continue;
-            if (written) sb_put(&b, ", ");
-            snprintf(t, sizeof t, "{\"node\": \"%s\", \"degree\": %d}", g.nodes[i].id, deg);
-            sb_put(&b, t);
-            written++;
+        /* indice id → posizione (open addressing; i grafi veri hanno 10^4-10^5 nodi) */
+        int cap = 1;
+        while (cap < n * 2 + 7) cap <<= 1;
+        int* tab = (int*)malloc((size_t)cap * sizeof(int));
+        for (int i = 0; i < cap; i++) tab[i] = -1;
+        for (int i = 0; i < n; i++) {
+            unsigned long hh = 5381;
+            for (const char* q = g.nodes[i].id; *q; q++) hh = hh * 33u + (unsigned char)*q;
+            int k = (int)(hh & (unsigned long)(cap - 1));
+            while (tab[k] >= 0) k = (k + 1) & (cap - 1);
+            tab[k] = i;
         }
-        sb_put(&b, "],\n  \"pageRankTop\": [");
+
+        int ncomm = 0;
         if (h >= 0) {
             int pn = 0;
-            gmb_graph_pagerank_t* pr = gmb_graph_pagerank(h, 0.85, 100, &pn);
-            int top = pn < 10 ? pn : 10;
-            for (int i = 0; i < top; i++) {
-                if (i) sb_put(&b, ", ");
-                snprintf(t, sizeof t, "{\"node\": \"%s\", \"rank\": %.6f}", pr[i].node ? pr[i].node : "", pr[i].rank);
-                sb_put(&b, t);
+            gmb_graph_pagerank_t* arr = gmb_graph_pagerank(h, 0.85, 100, &pn);
+            for (int i = 0; i < pn; i++) {
+                if (!arr[i].node) continue;
+                unsigned long hh = 5381;
+                for (const char* q = arr[i].node; *q; q++) hh = hh * 33u + (unsigned char)*q;
+                int k = (int)(hh & (unsigned long)(cap - 1));
+                while (tab[k] >= 0) {
+                    if (!strcmp(g.nodes[tab[k]].id, arr[i].node)) { pr[tab[k]] = arr[i].rank; break; }
+                    k = (k + 1) & (cap - 1);
+                }
             }
-            free(pr);
+            free(arr);
+            int bn = 0;
+            gmb_graph_centrality_t* b = gmb_graph_betweenness(h, &bn);
+            for (int i = 0; i < bn; i++) {
+                if (!b[i].node) continue;
+                unsigned long hh = 5381;
+                for (const char* q = b[i].node; *q; q++) hh = hh * 33u + (unsigned char)*q;
+                int k = (int)(hh & (unsigned long)(cap - 1));
+                while (tab[k] >= 0) {
+                    if (!strcmp(g.nodes[tab[k]].id, b[i].node)) { bet[tab[k]] = b[i].value; break; }
+                    k = (k + 1) & (cap - 1);
+                }
+            }
+            free(b);
+            int cn = 0;
+            gmb_graph_comp_t* c = gmb_graph_louvain(h, 1.0, &cn);
+            int maxc = -1;
+            for (int i = 0; i < cn; i++) {
+                if (!c[i].node) continue;
+                if (c[i].component > maxc) maxc = c[i].component;
+                unsigned long hh = 5381;
+                for (const char* q = c[i].node; *q; q++) hh = hh * 33u + (unsigned char)*q;
+                int k = (int)(hh & (unsigned long)(cap - 1));
+                while (tab[k] >= 0) {
+                    if (!strcmp(g.nodes[tab[k]].id, c[i].node)) { comm[tab[k]] = c[i].component; break; }
+                    k = (k + 1) & (cap - 1);
+                }
+            }
+            free(c);
+            ncomm = maxc + 1;
+            if (ncomm < 0) ncomm = 0;
         }
-        sb_put(&b, "],\n  \"edgeTypes\": {");
-        /* tipi distinti */
+        /* lookup id → indice */
+        #define NODE_IDX(idv) ({ int _k = -1; unsigned long _h = 5381; \
+            for (const char* _q = (idv); *_q; _q++) _h = _h * 33u + (unsigned char)*_q; \
+            int _i = (int)(_h & (unsigned long)(cap - 1)); \
+            while (tab[_i] >= 0) { if (!strcmp(g.nodes[tab[_i]].id, (idv))) { _k = tab[_i]; break; } _i = (_i + 1) & (cap - 1); } _k; })
+
+        /* ordinamenti (indici) */
+        int* byDeg = (int*)malloc((size_t)(n ? n : 1) * sizeof(int));
+        int* byPr = (int*)malloc((size_t)(n ? n : 1) * sizeof(int));
+        int* byBet = (int*)malloc((size_t)(n ? n : 1) * sizeof(int));
+        for (int i = 0; i < n; i++) { byDeg[i] = byPr[i] = byBet[i] = i; }
+        for (int i = 0; i < n; i++)
+            for (int j = i + 1; j < n; j++) {
+                if (degree[byDeg[j]] > degree[byDeg[i]]) { int t2 = byDeg[i]; byDeg[i] = byDeg[j]; byDeg[j] = t2; }
+                if (pr[byPr[j]] > pr[byPr[i]]) { int t2 = byPr[i]; byPr[i] = byPr[j]; byPr[j] = t2; }
+                if (bet[byBet[j]] > bet[byBet[i]]) { int t2 = byBet[i]; byBet[i] = byBet[j]; byBet[j] = t2; }
+            }
+        /* normalizzazioni per godNodes */
+        double dmax = 1, pmax = 1e-9, bmax = 1;
+        for (int i = 0; i < n; i++) {
+            if (degree[i] > dmax) dmax = degree[i];
+            if (pr[i] > pmax) pmax = pr[i];
+            if (bet[i] > bmax) bmax = bet[i];
+        }
+        double* score = (double*)calloc((size_t)(n ? n : 1), sizeof(double));
+        int* byScore = (int*)malloc((size_t)(n ? n : 1) * sizeof(int));
+        for (int i = 0; i < n; i++) {
+            score[i] = 0.4 * (degree[i] / dmax) + 0.4 * (pr[i] / pmax) + 0.2 * (bet[i] / bmax);
+            byScore[i] = i;
+        }
+        for (int i = 0; i < n; i++)
+            for (int j = i + 1; j < n; j++)
+                if (score[byScore[j]] > score[byScore[i]]) { int t2 = byScore[i]; byScore[i] = byScore[j]; byScore[j] = t2; }
+
+        /* JSON compatto → pretty (formato System.Text.Json WriteIndented) */
+        sbuf_t c;
+        sb_init(&c);
+        char t2[512];
+        sb_put(&c, "{\"name\":");
+        sb_esc(&c, name);
+        snprintf(t2, sizeof t2, ",\"nodes\":%d,\"edges\":%d,\"dangling\":%d,\"communities\":%d,",
+                 g.nn, g.ne, g.nd, ncomm);
+        sb_put(&c, t2);
+        /* topHubs (out-degree, come il C#: GroupBy(From) + Take(10)) */
+        sb_put(&c, "\"topHubs\":[");
+        {
+            int written = 0;
+            for (int i = 0; i < g.nn && written < 10; i++) {
+                int outdeg = 0;
+                for (int e = 0; e < g.ne; e++) if (!strcmp(g.edges[e].from, g.nodes[i].id)) outdeg++;
+                if (outdeg == 0) continue;
+                if (written) sb_put(&c, ",");
+                sb_put(&c, "{\"node\":");
+                sb_esc(&c, g.nodes[i].id);
+                snprintf(t2, sizeof t2, ",\"degree\":%d}", outdeg);
+                sb_put(&c, t2);
+                written++;
+            }
+        }
+        sb_put(&c, "],\"pageRankTop\":[");
+        for (int i = 0; i < n && i < 10; i++) {
+            if (i) sb_put(&c, ",");
+            sb_put(&c, "{\"node\":");
+            sb_esc(&c, g.nodes[byPr[i]].id);
+            snprintf(t2, sizeof t2, ",\"rank\":%.6f}", pr[byPr[i]]);
+            sb_put(&c, t2);
+        }
+        sb_put(&c, "],\"degreeTop\":[");
+        for (int i = 0; i < n && i < 10; i++) {
+            if (i) sb_put(&c, ",");
+            sb_put(&c, "{\"node\":");
+            sb_esc(&c, g.nodes[byDeg[i]].id);
+            snprintf(t2, sizeof t2, ",\"degree\":%d}", degree[byDeg[i]]);
+            sb_put(&c, t2);
+        }
+        sb_put(&c, "],\"betweennessTop\":[");
+        for (int i = 0; i < n && i < 10; i++) {
+            if (i) sb_put(&c, ",");
+            sb_put(&c, "{\"node\":");
+            sb_esc(&c, g.nodes[byBet[i]].id);
+            snprintf(t2, sizeof t2, ",\"betweenness\":%.4f}", bet[byBet[i]]);
+            sb_put(&c, t2);
+        }
+        /* edgeTypes / edgeProvenance */
+        sb_put(&c, "],\"edgeTypes\":{");
         {
             int first = 1;
             for (int i = 0; i < g.ne; i++) {
@@ -353,14 +523,145 @@ int br_graph_write_artifacts(const char* name, const char* graphs_dir)
                 if (seen) continue;
                 int cnt = 0;
                 for (int j = 0; j < g.ne; j++) if (!strcmp(g.edges[j].type, g.edges[i].type)) cnt++;
-                if (!first) sb_put(&b, ", ");
+                if (!first) sb_put(&c, ",");
                 first = 0;
-                sb_esc(&b, g.edges[i].type);
-                snprintf(t, sizeof t, ": %d", cnt);
-                sb_put(&b, t);
+                sb_esc(&c, g.edges[i].type);
+                snprintf(t2, sizeof t2, ":%d", cnt);
+                sb_put(&c, t2);
             }
         }
-        sb_put(&b, "},\n  \"folders\": ");
+        sb_put(&c, "},\"edgeProvenance\":{");
+        {
+            int first = 1;
+            for (int i = 0; i < g.ne; i++) {
+                const char* prov = !strcmp(g.edges[i].type, "link") ? "EXTRACTED" : "INFERRED";
+                int seen = 0;
+                for (int j = 0; j < i; j++) {
+                    const char* pj = !strcmp(g.edges[j].type, "link") ? "EXTRACTED" : "INFERRED";
+                    if (!strcmp(pj, prov)) { seen = 1; break; }
+                }
+                if (seen) continue;
+                int cnt = 0;
+                for (int j = 0; j < g.ne; j++) {
+                    const char* pj = !strcmp(g.edges[j].type, "link") ? "EXTRACTED" : "INFERRED";
+                    if (!strcmp(pj, prov)) cnt++;
+                }
+                if (!first) sb_put(&c, ",");
+                first = 0;
+                sb_esc(&c, prov);
+                snprintf(t2, sizeof t2, ":%d", cnt);
+                sb_put(&c, t2);
+            }
+        }
+        sb_put(&c, "},\"godNodes\":[");
+        for (int i = 0; i < n && i < 10; i++) {
+            int k = byScore[i];
+            if (i) sb_put(&c, ",");
+            sb_put(&c, "{\"node\":");
+            sb_esc(&c, g.nodes[k].id);
+            snprintf(t2, sizeof t2, ",\"score\":%.4f,\"degree\":%.3f,\"pagerank\":%.3f,\"betweenness\":%.3f}",
+                     score[k], degree[k] / dmax, pr[k] / pmax, bet[k] / bmax);
+            sb_put(&c, t2);
+        }
+        /* surprisingConnections: unici/pochi ponti tra community diverse (type link) */
+        sb_put(&c, "],\"surprisingConnections\":[");
+        {
+            typedef struct { int a, b; int cnt; } pair_t;
+            pair_t pairs[4096];
+            int np = 0;
+            for (int e = 0; e < g.ne; e++) {
+                if (strcmp(g.edges[e].type, "link") != 0) continue;
+                int ia = NODE_IDX(g.edges[e].from), ib = NODE_IDX(g.edges[e].to);
+                if (ia < 0 || ib < 0) continue;
+                if (comm[ia] == comm[ib]) continue;
+                int a = comm[ia] < comm[ib] ? comm[ia] : comm[ib];
+                int b = comm[ia] < comm[ib] ? comm[ib] : comm[ia];
+                int found = 0;
+                for (int k = 0; k < np; k++) if (pairs[k].a == a && pairs[k].b == b) { pairs[k].cnt++; found = 1; break; }
+                if (!found && np < 4096) { pairs[np].a = a; pairs[np].b = b; pairs[np].cnt = 1; np++; }
+            }
+            int written = 0;
+            for (int e = 0; e < g.ne && written < 10; e++) {
+                if (strcmp(g.edges[e].type, "link") != 0) continue;
+                int ia = NODE_IDX(g.edges[e].from), ib = NODE_IDX(g.edges[e].to);
+                if (ia < 0 || ib < 0 || comm[ia] == comm[ib]) continue;
+                int a = comm[ia] < comm[ib] ? comm[ia] : comm[ib];
+                int b = comm[ia] < comm[ib] ? comm[ib] : comm[ia];
+                int cnt = 0;
+                for (int k = 0; k < np; k++) if (pairs[k].a == a && pairs[k].b == b) { cnt = pairs[k].cnt; break; }
+                if (cnt > 2) continue;
+                if (written) sb_put(&c, ",");
+                sb_put(&c, "{\"from\":");
+                sb_esc(&c, g.edges[e].from);
+                sb_put(&c, ",\"to\":");
+                sb_esc(&c, g.edges[e].to);
+                snprintf(t2, sizeof t2, ",\"commFrom\":%d,\"commTo\":%d}", comm[ia], comm[ib]);
+                sb_put(&c, t2);
+                written++;
+            }
+        }
+        /* suggestedQuestions: hub più importanti + ponti sorprendenti + confronto cluster */
+        sb_put(&c, "],\"suggestedQuestions\":[");
+        {
+            int written = 0;
+            for (int i = 0; i < n && i < 5 && written < 10; i++) {
+                int k = byScore[i];
+                char q[1600];
+                snprintf(q, sizeof q, "Perché '%s' è al centro del grafo? Quali community attraversa?",
+                         g.nodes[k].title ? g.nodes[k].title : g.nodes[k].id);
+                if (written) sb_put(&c, ",");
+                sb_esc(&c, q);
+                written++;
+            }
+            for (int e = 0; e < g.ne && written < 16; e++) {
+                if (strcmp(g.edges[e].type, "link") != 0) continue;
+                int ia = NODE_IDX(g.edges[e].from), ib = NODE_IDX(g.edges[e].to);
+                if (ia < 0 || ib < 0 || comm[ia] == comm[ib]) continue;
+                int a = comm[ia] < comm[ib] ? comm[ia] : comm[ib];
+                int b = comm[ia] < comm[ib] ? comm[ib] : comm[ia];
+                int cnt = 0;
+                for (int k = 0; k < n; k++) {
+                    /* conta i ponti fra le due community */
+                }
+                (void)a; (void)b; (void)cnt;
+                char q[1600];
+                snprintf(q, sizeof q, "Cosa collega '%s' (community %d) a '%s' (community %d)?",
+                         g.nodes[ia].title ? g.nodes[ia].title : g.nodes[ia].id, comm[ia],
+                         g.nodes[ib].title ? g.nodes[ib].title : g.nodes[ib].id, comm[ib]);
+                if (written) sb_put(&c, ",");
+                sb_esc(&c, q);
+                written++;
+                if (written >= 6) break;
+            }
+            /* i due cluster più grandi (per numero di nodi) */
+            if (ncomm >= 2) {
+                int c1 = -1, c2 = -1, n1 = -1, n2 = -1;
+                for (int ccc = 0; ccc < ncomm; ccc++) {
+                    int cnt = 0;
+                    for (int i = 0; i < n; i++) if (comm[i] == ccc) cnt++;
+                    if (cnt > n1) { n2 = n1; c2 = c1; n1 = cnt; c1 = ccc; }
+                    else if (cnt > n2) { n2 = cnt; c2 = ccc; }
+                }
+                if (c1 >= 0 && c2 >= 0) {
+                    int h1 = -1, h2 = -1;
+                    int d1 = -1, d2 = -1;
+                    for (int i = 0; i < n; i++) {
+                        if (comm[i] == c1 && degree[i] > d1) { d1 = degree[i]; h1 = i; }
+                        if (comm[i] == c2 && degree[i] > d2) { d2 = degree[i]; h2 = i; }
+                    }
+                    if (h1 >= 0 && h2 >= 0 && written < 10) {
+                        char q[1600];
+                        snprintf(q, sizeof q, "Cosa differenzia il cluster guidato da '%s' da quello guidato da '%s'?",
+                                 g.nodes[h1].title ? g.nodes[h1].title : g.nodes[h1].id,
+                                 g.nodes[h2].title ? g.nodes[h2].title : g.nodes[h2].id);
+                        if (written) sb_put(&c, ",");
+                        sb_esc(&c, q);
+                        written++;
+                    }
+                }
+            }
+        }
+        sb_put(&c, "],\"folders\":");
         {
             int nfolders = 0;
             gmb_val_t f = gmb_json_parse(g.folders_json ? g.folders_json : "{}");
@@ -369,15 +670,22 @@ int br_graph_write_artifacts(const char* name, const char* graphs_dir)
                 gmb_val_dict_keys_array(f, &nk);
                 nfolders = (int)nk;
             }
-            snprintf(t, sizeof t, "%d", nfolders);
-            sb_put(&b, t);
+            snprintf(t2, sizeof t2, "%d", nfolders);
+            sb_put(&c, t2);
         }
-        sb_put(&b, "\n}\n");
+        sb_put(&c, "}");
+
+        char* pretty = json_pretty_csharp(c.p ? c.p : "{}");
         char p[2400];
         snprintf(p, sizeof p, "%s/%s.stats.json", graphs_dir, name);
-        br_write_file(p, b.p ? b.p : "");
-        free(b.p);
+        br_write_file(p, pretty ? pretty : (c.p ? c.p : "{}"));
+        free(pretty);
+        free(c.p);
+
+        free(byDeg); free(byPr); free(byBet); free(byScore);
+        free(score); free(degree); free(pr); free(bet); free(comm); free(tab);
         if (h >= 0) gmb_graph_free(h);
+        #undef NODE_IDX
     }
 
     /* html: viewer autonomo minimale (JSON embedded) */

@@ -304,11 +304,24 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
           create/stats/verify/sign/export/install/use/detach/rename/optimize/dedupe/diff/doctor/
           export-obsidian/extract/merge/convert/dedupe-rag. I test C# del toolchain sono stati
           rimossi con il codice che testavano.
-        - **Riduzioni dichiarate** (non silenziose): le pagine `buildvault` hanno nome+arità+tipo
-          (il catalogo firme completo coi tipi dei parametri vive nel linker C#; il registry
-          canonico C ha `ns/name/kind/arity`); `graph` export (stats/mermaid/graphml/html) è
-          completo nei formati ma `stats.json` ha un sottoinsieme (niente betweenness/godNodes/
-          surprisingConnections); `publish --repo` non carica gli asset binari (materialize).
+        - **Limiti corretti** (2026-11-02, dopo la prima consegna):
+          - `brain buildvault` emette la **firma completa** (parametri con tipo/opzionale/byref/
+            array + tipo di ritorno): nuovo catalogo `shared/spec/registry/stdlib-signatures.json`
+            generato da `tools/registry-export --signatures` (e incluso in `--all`/`--check`)
+            dalla StdLib — stessa fonte del registry canonico.
+          - `stats.json` del grafo è **completo come il C#**: degreeTop, betweennessTop,
+            godNodes (0.4·deg + 0.4·pagerank + 0.2·betweenness normalizzati), surprisingConnections
+            (ponti ≤2 fra community), suggestedQuestions, edgeProvenance, folders — stesse chiavi
+            del file prodotto da `GraphExporter.ToStatsJson`.
+          - `publish --repo` esegue l'intero flusso: manifest → git → **compilazione+self-test**
+            (`gmb run --project --entry`) → register (con `verify_report` e `manifestJson`) →
+            **pubblicazione dell'artefatto** `.gmbpkg` → **materialize** degli asset binari
+            (download + base64 + POST `/api/packages/<n>/materialize`), verificato con un registry
+            stub locale (register 200, publish 548 byte base64, materialize 1 asset).
+        - Corretto anche un difetto reale del compilatore C incontrato strada facendo: `gmb
+          build|run` sceglieva `libgmb_runtime_min.a` anche quando l'archivio era vuoto/parziale
+          (build interrotta) → link senza simboli (`_gmb_print_newline`). Ora un archivio
+          < 64 KB viene scartato e si usa il runtime completo.
         - Restano **C#** solo i moduli usati dai backend C# (IL/PCode): `BrainRegistry`,
           `BrainInstaller`, `BrainManifest`, `BrainVault` (il C# può esistere come altro
           compilatore, ma non ha più alcun comando che esista SOLO lì).

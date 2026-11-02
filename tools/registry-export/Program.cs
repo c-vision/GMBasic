@@ -29,6 +29,21 @@ using Basic;
 var argsList = args.ToList();
 var repoRoot = FindMonorepoRoot();
 
+if (argsList.Contains("--signatures"))
+{
+    // Catalogo FIRME per il brainvault in C (`gmb brain buildvault`): nome, tipo di ritorno
+    // e parametri (nome, tipo, opzionale/byref/array). Generato dalla StdLib (fonte unica):
+    // il runtime C lo legge da shared/spec/registry/stdlib-signatures.json.
+    var reg0 = (IParserRegistry)Basic.StdLib.Instance;
+    var sigs = CollectSignatures(reg0);
+    var sigJson = SignaturesJson(sigs);
+    var sigOut = argsList.SkipWhile(a => a != "--signatures").Skip(1).FirstOrDefault();
+    if (sigOut is null || sigOut.StartsWith('-'))
+        sigOut = Path.Combine(repoRoot, "shared/spec/registry/stdlib-signatures.json");
+    File.WriteAllText(sigOut, sigJson);
+    Console.Error.WriteLine($"wrote {sigOut} ({sigs.Count} procedure)");
+    return 0;
+}
 if (argsList.Contains("--check-enum-ids")) return CheckEnumIds(repoRoot);
 if (argsList.Contains("--all")) return RunAll(repoRoot, write: true);
 if (argsList.Contains("--check")) return RunAll(repoRoot, write: false);
@@ -47,6 +62,20 @@ else File.WriteAllText(argsList[0], canonJson);
 return 0;
 
 // ─────────────────────────────── collection ───────────────────────────────
+
+// Nome breve leggibile del tipo (parità con BrainVault.FormatType del vecchio toolchain C#).
+static string FormatType(DataType t) => t switch
+{
+    StringType => "string",
+    DoubleType => "double",
+    IntegerType => "int",
+    LongType => "long",
+    BitType => "bool",
+    ByteType => "byte",
+    ArrayType at => FormatType(at.ElementType) + "[]",
+    DictType => "dict",
+    _ => t.ToString(),
+};
 
 static (List<ProcRow> procs, List<CmdRow> cmds, List<ConstRow> consts) Collect(IParserRegistry reg)
 {
@@ -147,6 +176,39 @@ static string InventoryJson(List<ProcRow> procs, IParserRegistry reg)
     }, new JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
 }
 
+// Catalogo FIRME (per il brainvault in C): generato dalla StdLib, stessa fonte del registry.
+static List<SigRow> CollectSignatures(IParserRegistry reg)
+{
+    var sigs = new List<SigRow>();
+    foreach (var ns0 in reg.BuiltinProcedures.Keys.OrderBy(x => x, StringComparer.Ordinal))
+    {
+        foreach (var p0 in reg.BuiltinProcedures[ns0].OrderBy(p => p.OriginalName.Lexeme, StringComparer.Ordinal))
+        {
+            if (p0 is not NativeProcedureDefinition n0) continue;
+            sigs.Add(new SigRow
+            {
+                Ns = ns0,
+                Name = n0.OriginalName.Lexeme,
+                Fn = n0.IsFunction,
+                Return = FormatType(n0.ReturnType),
+                Params = n0.Parameters.Select(x => new SigParam
+                {
+                    Name = x.OriginalName.Lexeme,
+                    Type = FormatType(x.DataType),
+                    Optional = x.Flags.HasFlag(SymbolFlags.IsOptional),
+                    ByRef = x.Flags.HasFlag(SymbolFlags.IsByRef),
+                    Array = x.Flags.HasFlag(SymbolFlags.IsArray),
+                }).ToList(),
+            });
+        }
+    }
+    return sigs;
+}
+
+static string SignaturesJson(List<SigRow> sigs) =>
+    JsonSerializer.Serialize(new { schema = "gmb.stdlib-signatures@1", procedures = sigs },
+        new JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase }) + "\n";
+
 // ─────────────────────────────── --all / --check ───────────────────────────────
 
 static int RunAll(string root, bool write)
@@ -168,6 +230,8 @@ static int RunAll(string root, bool write)
     outputs.Add((Path.Combine(gs, "common/Registry/canonical.registry.json"), canon));
     outputs.Add((Path.Combine(sh, "spec/registry/canonical.registry.json"), canon));
     outputs.Add((Path.Combine(gs, "common/Registry/inventory.json"), InventoryJson(procs, reg)));
+
+    outputs.Add((Path.Combine(sh, "spec/registry/stdlib-signatures.json"), SignaturesJson(CollectSignatures(reg))));
 
     var csv = BuildCsv(procs);
     outputs.Add((Path.Combine(gs, "common/Registry/stdlib_tokens.csv"), csv));
@@ -709,6 +773,24 @@ sealed class ConstRow
     public string Ns { get; set; } = "";
     public string Name { get; set; } = "";
     public double Value { get; set; }
+}
+
+sealed class SigParam
+{
+    public string Name { get; set; } = "";
+    public string Type { get; set; } = "";
+    public bool Optional { get; set; }
+    public bool ByRef { get; set; }
+    public bool Array { get; set; }
+}
+
+sealed class SigRow
+{
+    public string Ns { get; set; } = "";
+    public string Name { get; set; } = "";
+    public bool Fn { get; set; }
+    public string Return { get; set; } = "";
+    public List<SigParam> Params { get; set; } = new();
 }
 
 sealed class ProcRow
