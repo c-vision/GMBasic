@@ -567,7 +567,15 @@ int build_project(const Options* o, const char* project, const char* entry,
     char ldir_storage[4][CLI_PATH];
     const char* ldirs_ptr[4];
     size_t nldirs = 0;
-    char ldirs[CLI_PATH * 4]; ldirs[0] = 0;
+    /* PRIMA di ogni dir assoluta: la cartella dell'eseguibile. Così le copie di `--alllibs`
+     * vincono sulla cache (comportamento di una distribuzione) e restano valide su una
+     * macchina dove la cache non esiste. */
+    char ldirs[CLI_PATH * 4];
+#if defined(__APPLE__)
+    snprintf(ldirs, sizeof ldirs, " -Wl,-rpath,@loader_path");
+#else
+    snprintf(ldirs, sizeof ldirs, " -Wl,-rpath,'$ORIGIN'");
+#endif
     {
         char cache_lib[CLI_PATH];
         const int have_cache = gmb_cache_libdir(cache_lib, sizeof cache_lib);
@@ -703,15 +711,6 @@ int build_project(const Options* o, const char* project, const char* entry,
         }
         strncat(libs, " -lgmb_tray", sizeof libs - strlen(libs) - 1);
     }
-
-    /* `--alllibs` copia le librerie accanto all'eseguibile: l'rpath di load-time deve
-     * comprendere la cartella dell'eseguibile (prima c'erano solo le dir assolute della
-     * cache/build: le copie non sarebbero state trovate). */
-#if defined(__APPLE__)
-    strncat(ldirs, " -Wl,-rpath,@loader_path", sizeof ldirs - strlen(ldirs) - 1);
-#else
-    strncat(ldirs, " -Wl,-rpath,'$ORIGIN'", sizeof ldirs - strlen(ldirs) - 1);
-#endif
 
     char qr[CLI_PATH + 8], qexe[CLI_PATH + 8];
     shell_quote(runtime, qr, sizeof qr);
