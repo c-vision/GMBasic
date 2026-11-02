@@ -57,7 +57,7 @@ public sealed partial class Compiler
                     }
                     else
                     {
-                        AddImplicitLocal(vt.NameCleaned);
+                        AddImplicitLocal(vt.NameCleaned, vt.NameSuffixed);
                         EmitByte((byte)OpCode.OP_STORE_LOCAL); EmitShort((ushort)(_locals.Count - 1));
                     }
                 }
@@ -137,7 +137,7 @@ public sealed partial class Compiler
                         }
                         else if (_scopeDepth > 0)
                         {
-                            AddImplicitLocal(vt.NameCleaned);
+                            AddImplicitLocal(vt.NameCleaned, vt.NameSuffixed);
                             EmitByte((byte)OpCode.OP_STORE_LOCAL); EmitShort((ushort)(_locals.Count - 1));
                         }
                         else

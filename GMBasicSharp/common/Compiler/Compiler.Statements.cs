@@ -18,6 +18,16 @@ public sealed partial class Compiler
     /// <param name="stmt">Il nodo da compilare.</param>
     private void VisitStatement(Stmt stmt)
     {
+        /* Intervallo di ISTRUZIONE (start,end) per RESUME NEXT: il wrapper registra il
+         * bytecode emesso dal dispatcher, compresi i sotto-statement (annidati). */
+        int stmtStart = _chunk.Code.Count;
+        VisitStatementCore(stmt);
+        if (_chunk.Code.Count > stmtStart)
+            _chunk.StatementRanges.Add((stmtStart, _chunk.Code.Count));
+    }
+
+    private void VisitStatementCore(Stmt stmt)
+    {
         // Le etichette sono speciali: rendono il codice successivo raggiungibile.
         // Vanno processate anche se _isReachable è false.
         if (stmt is LabelStmt labelStmt)

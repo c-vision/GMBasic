@@ -523,7 +523,7 @@ internal sealed partial class PCodeProcessor
     private void PropagateFutureFailure(PCodeTask task, PCodeFutureValue future)
     {
         task.ErrorLineIp = task.CurrentInstructionIp;
-        task.ErrorResumeNextIp = task.Ip;
+        task.ErrorResumeNextIp = StatementResumeIp(task.CurrentInstructionIp, task.Ip);
         DiscardIncompletePrintStatement(task);
         // ExecuteTaskTick incorpora lo stack trace .NET dentro Message (per il debug di crash
         // interni non gestiti) — non appropriato da mostrare in un CATCH lato BASIC, prendiamo
@@ -577,7 +577,7 @@ internal sealed partial class PCodeProcessor
     private bool RaiseBasicError(PCodeTask task, double errCode, string msg)
     {
         task.ErrorLineIp = task.CurrentInstructionIp;
-        task.ErrorResumeNextIp = task.Ip;
+        task.ErrorResumeNextIp = StatementResumeIp(task.CurrentInstructionIp, task.Ip);
         DiscardIncompletePrintStatement(task);
         // Pseudo-variabile ERR del linguaggio (StdLib: ERR.Number/Description/LineNumber/…):
         // va popolata PRIMA del dispatch, così l'handler ON ERROR e il CATCH la vedono.
@@ -623,6 +623,32 @@ internal sealed partial class PCodeProcessor
             return false;
         }
         throw new InvalidOperationException("BASIC Runtime Error: " + msg);
+    }
+
+    /// <summary>Intervalli [start,end) del bytecode emesso da ogni istruzione BASIC (per
+    /// RESUME NEXT a granularità di ISTRUZIONE). Null per i chunk vecchi/senza metadata.</summary>
+    private readonly (int Start, int End)[]? _debugStatementRanges;
+
+    /// <summary>Slot locali numerici per indirizzo di procedura (default 0).</summary>
+    private readonly Dictionary<int, bool[]>? _localNumericByAddr;
+
+    /// <summary>
+    /// Ip di ripresa per RESUME NEXT: l'END dell'istruzione più INTERNA che contiene
+    /// <paramref name="instructionIp"/> (l'opcode fallito). Senza metadata o se l'ip non è in
+    /// nessun intervallo si ricade su <paramref name="fallbackIp"/> (ip dopo l'opcode).
+    /// </summary>
+    private int StatementResumeIp(int instructionIp, int fallbackIp)
+    {
+        var ranges = _debugStatementRanges;
+        if (ranges is null || instructionIp < 0) return fallbackIp;
+        int best = -1, bestLen = int.MaxValue;
+        foreach (var (st, en) in ranges)
+        {
+            if (instructionIp < st || instructionIp >= en) continue;
+            var len = en - st;
+            if (len < bestLen) { bestLen = len; best = en; }
+        }
+        return best >= 0 ? best : fallbackIp;
     }
 
     /// <summary>
@@ -704,7 +730,7 @@ internal sealed partial class PCodeProcessor
         task.ErrorResumeNextIp = frame.SavedErrorResumeNextIp;
     }
 
-    private static void UnwindProcedureFramesToErrorHandler(PCodeTask task)
+    private void UnwindProcedureFramesToErrorHandler(PCodeTask task)
     {
         while (task.ErrorHandlerIp is null && task.Frame is { IsErrorScopeBoundary: true } frame)
         {
@@ -716,7 +742,9 @@ internal sealed partial class PCodeProcessor
             // Il punto di continuazione del chiamante è subito dopo CALL/CALL_N, non subito
             // dopo l'ERROR nella procedura ormai rimossa dalla frame chain.
             task.ErrorLineIp = Math.Max(0, frame.ReturnIp - 1);
-            task.ErrorResumeNextIp = frame.ReturnIp;
+            /* Il CALL del chiamante può stare dentro un'espressione (`x = F()`): la ripresa
+             * va all'END di quell'istruzione, non all'opcode subito dopo il CALL. */
+            task.ErrorResumeNextIp = StatementResumeIp(frame.ReturnIp - 1, frame.ReturnIp);
         }
     }
 
@@ -753,6 +781,24 @@ internal sealed partial class PCodeProcessor
         }
         if (target == null)
         {
+            /* Nessun CATCH attivo, ma ci possono essere FINALLY da attraversare (TRY … FINALLY
+             * senza CATCH): avvia comunque l'unwind con TargetHandler = null, così i cleanup
+             * eseguono PRIMA della propagazione. Prima il FINALLY veniva saltato del tutto
+             * (divergenza con IL/C99Native: "FINALLY sempre eseguito"). */
+            if (task.CleanupStack.Count > 0)
+            {
+                task.PendingUnwind = new PCodeUnwindState
+                {
+                    Reason = PCodeUnwindReason.Exception,
+                    OriginIp = task.CurrentInstructionIp,
+                    Frame = task.Frame,
+                    TargetHandler = null,
+                    ErrorValue = AttachSuppressedErrors(errorValue, suppressed),
+                    SuppressedErrors = suppressed
+                };
+                ContinuePendingUnwind(task);
+                return true;
+            }
             if (superseded != null)
             {
                 AttachSuppressedErrors(errorValue, suppressed);
@@ -948,7 +994,12 @@ internal sealed partial class PCodeProcessor
         if (unwind.Reason == PCodeUnwindReason.Exception)
         {
             task.LastSuppressedErrors = unwind.SuppressedErrors;
-            EnterSelectedExceptionHandler(task, unwind.TargetHandler!, unwind.ErrorValue);
+            if (unwind.TargetHandler is null)
+            {
+                DeliverExceptionAfterFinally(task, unwind.ErrorValue);
+                return false;
+            }
+            EnterSelectedExceptionHandler(task, unwind.TargetHandler, unwind.ErrorValue);
             return false;
         }
         if (unwind.Reason == PCodeUnwindReason.Cancel)
@@ -979,6 +1030,34 @@ internal sealed partial class PCodeProcessor
         }
         task.Ip = unwind.Reason == PCodeUnwindReason.Goto ? unwind.TargetIp : unwind.ReturnOpcodeIp;
         return false;
+    }
+
+    /// <summary>Consegna un'eccezione la cui catena di FINALLY è stata attraversata e per cui
+    /// non esiste alcun CATCH attivo: stesso schema a 3 livelli del ramo "nessun target"
+    /// (ON ERROR RESUME NEXT → ON ERROR GOTO/GOSUB → errore fatale), ma DOPO i FINALLY.</summary>
+    private void DeliverExceptionAfterFinally(PCodeTask task, object? errorValue)
+    {
+        var msg = "Unspecified runtime error";
+        if (errorValue is System.Collections.Generic.IDictionary<string, object?> d &&
+            d.TryGetValue("Description", out var dv) && dv is string ds && ds.Length > 0)
+            msg = ds;
+        if (task.ErrorMode == PCodeErrorMode.ResumeNext)
+        {
+            task.Ip = task.ErrorResumeNextIp;
+            return;
+        }
+        UnwindProcedureFramesToErrorHandler(task);
+        if (task.ErrorHandlerIp > 0)
+        {
+            if (task.ErrorHandlerIsGosub)
+            {
+                task.IpStack ??= new Stack<int>();
+                task.IpStack.Push(task.Ip);
+            }
+            task.Ip = task.ErrorHandlerIp.Value;
+            return;
+        }
+        throw new InvalidOperationException("BASIC Runtime Error: " + msg);
     }
 
     private static void EnterSelectedExceptionHandler(PCodeTask task, TryInfo target, object? errorValue)

@@ -47,6 +47,8 @@ public static class ChunkMerger
         foreach (var (k, v) in main.ProcedureAddresses) merged.ProcedureAddresses[k] = v;
         foreach (var (k, v) in main.ProcedureArities) merged.ProcedureArities[k] = v;
         foreach (var (tryIp, region) in main.TryRegions) merged.TryRegions[tryIp] = region;
+        merged.StatementRanges.AddRange(main.StatementRanges);
+        foreach (var (k, v) in main.ProcedureLocalNumeric) merged.ProcedureLocalNumeric[k] = v;
 
         // nome → indirizzo ribasato nella lib (le lib successive sovrascrivono)
         var libProcs = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
@@ -100,6 +102,10 @@ public static class ChunkMerger
             }
             foreach (var (addr, arity) in lib.ProcedureArities)
                 merged.ProcedureArities[addr + codeBase] = arity;
+            foreach (var (st, en) in lib.StatementRanges)
+                merged.StatementRanges.Add((st + codeBase, en + codeBase));
+            foreach (var (addr, flags) in lib.ProcedureLocalNumeric)
+                merged.ProcedureLocalNumeric.TryAdd(addr + codeBase, flags);
             foreach (var (tryIp, region) in lib.TryRegions)
                 merged.TryRegions[tryIp + codeBase] = new TryRegionMetadata(
                     region.FinallyIp + codeBase,

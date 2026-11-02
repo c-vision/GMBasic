@@ -726,6 +726,15 @@ gmb_val_t* gmb_obj_require(gmb_val_t* self, long line) {
  * NON esiste più il valore "legacy" (+inf/NAN): era proprio ciò che faceva divergere le gambe —
  * su IL/PCode la stessa espressione sollevava ERR 11 e su VM/C restituiva 0/Inf in silenzio.
  * Vedi Bugs/(solved) - Divisione-Per-Zero-Divergente-4-Gambe. */
+gmb_int_t gmb_arr_check(gmb_int_t idx, gmb_int_t lo, gmb_int_t hi, long line) {
+    if (idx < lo || idx > hi) {
+        gmb_raise_error(9, "", line);
+        /* Se ON ERROR RESUME NEXT riprende da qui, si restituisce l'indice originale:
+         * l'accesso che segue resta l'unico punto che ha bisogno di un valore. */
+    }
+    return idx;
+}
+
 double gmb_safe_div(double a, double b, long line) {
     if (b == 0) gmb_raise_error(11, "Division by zero", line);
     return a / b;

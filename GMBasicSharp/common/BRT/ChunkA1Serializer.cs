@@ -95,6 +95,25 @@ public static class ChunkA1Serializer
                 WriteString(w, n ?? "");
         }
 
+        // STATEMENT RANGES (coda FINALE, opzionale: i loader vecchi ignorano i byte extra):
+        // intervalli [start,end) delle istruzioni per RESUME NEXT a granularità corretta.
+        WriteU32(w, (uint)chunk.StatementRanges.Count);
+        foreach (var (st, en) in chunk.StatementRanges)
+        {
+            WriteU32(w, (uint)st);
+            WriteU32(w, (uint)en);
+        }
+
+        // LOCAL NUMERIC (coda FINALE opzionale): per procedura, quali slot locali sono numerici
+        // (default 0). u32 count → per voce: u32 addr, u32 count, count byte (0/1).
+        WriteU32(w, (uint)chunk.ProcedureLocalNumeric.Count);
+        foreach (var (addr, flags) in chunk.ProcedureLocalNumeric)
+        {
+            WriteU32(w, (uint)addr);
+            WriteU32(w, (uint)flags.Length);
+            foreach (var f in flags) w.Write(f ? (byte)1 : (byte)0);
+        }
+
         return ms.ToArray();
     }
 
@@ -174,6 +193,24 @@ public static class ChunkA1Serializer
                     locNames[j] = string.IsNullOrEmpty(s) ? null : s;
                 }
                 chunk.ProcedureLocalNames[addr] = locNames;
+            }
+            // STATEMENT RANGES (coda FINALE, opzionale: i chunk vecchi finiscono prima).
+            var stmtRangeCount = ReadU32(r);
+            for (var i = 0; i < stmtRangeCount; i++)
+            {
+                var st = unchecked((int)ReadU32(r));
+                var en = unchecked((int)ReadU32(r));
+                chunk.StatementRanges.Add((st, en));
+            }
+            // LOCAL NUMERIC (coda FINALE, opzionale).
+            var plnumCount = ReadU32(r);
+            for (var i = 0; i < plnumCount; i++)
+            {
+                var addr = unchecked((int)ReadU32(r));
+                var n = (int)ReadU32(r);
+                var flags = new bool[n];
+                for (var j = 0; j < n; j++) flags[j] = r.ReadByte() != 0;
+                chunk.ProcedureLocalNumeric[addr] = flags;
             }
         }
         catch (EndOfStreamException) { }

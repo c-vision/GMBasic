@@ -1521,13 +1521,25 @@ public sealed partial class Compiler
     private void SnapshotProcedureLocalNames(int procStartAddr)
     {
         var names = new string?[_locals.Count];
+        var numeric = new bool[_locals.Count];
         for (var i = 0; i < _locals.Count; i++)
         {
             var lexeme = _locals[i].Name.Lexeme;
             names[i] = string.IsNullOrEmpty(lexeme) ? null : CompiledChunk.NormalizeLocalName(lexeme);
+            numeric[i] = _locals[i].NumericDefault ?? IsNumericDefaultType(_locals[i].Type);
         }
         _chunk.ProcedureLocalNames[procStartAddr] = names;
+        _chunk.ProcedureLocalNumeric[procStartAddr] = numeric;
     }
+
+    /// <summary>Il default di una variabile di questo tipo è 0 (numerico)? Per STRING/CLASS/
+    /// UDT/ANY/collezioni il default resta null. Vedi ProcedureLocalNumeric.</summary>
+    internal static bool IsNumericDefaultType(DataType? type) => type switch
+    {
+        SingleType or DoubleType or CurrencyType or BitType or ByteType or SByteType
+            or IntegerType or UIntegerType or LongType or ULongType or QuadType or UQuadType => true,
+        _ => false
+    };
 
     /// <summary>
     /// Cattura le locali VIVE al SITO macro (EVAL/&) sotto l'indirizzo corrente del chunk —

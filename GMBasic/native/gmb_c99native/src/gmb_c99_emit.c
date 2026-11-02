@@ -7750,14 +7750,47 @@ static int emit_builtin(ctx_t* c, const char* name, const char* ns, gmb_tokenkin
 
 
 /* Indice flat row-major per array N-D: i0*(b1+1)*(b2+1)... + i1*(b2+1)... + ... */
+/* Tipo di guardia dei limiti per l'indice k di un array: 1 = bound statici `<v>__b<k>`
+ * (DIM con dimensioni esplicite / parametro array), 2 = lunghezza runtime `<v>_len`
+ * (array dinamico), 0 = nessuna guardia (matrici/jagged/boxed/collezioni/byref). */
+static int arr_index_guard(ctx_t* c, const var_t* v, int k) {
+    if (!v || !v->is_array) return 0;
+    if (v->matrix || v->jagged || v->matrix_handle || v->boxed_val || v->gkind
+        || v->vclass[0] || v->arr_byref) return 0;
+    if (v->dyn_len) return (k == 0) ? 2 : 0;
+    if (v->ndims >= 1 && k < v->ndims) return 1;
+    return 0;
+}
+
 static void emit_flat_index(ctx_t* c, var_t* v, gmb_expr_t** idx, int nidx) {
     emit_var_ref(c, v);
     sb_put(&c->out, "[");
     for (int k = 0; k < nidx; k++) {
         if (k) sb_put(&c->out, " + ");
-        sb_put(&c->out, "((gmb_int_t)(");
-        emit_expr(c, idx[k]);
-        sb_put(&c->out, "))");
+        int gk = arr_index_guard(c, v, k);
+        if (gk) {
+            /* Indice valutato UNA volta: gmb_arr_check solleva ERR 9 fuori dai limiti
+             * (parità IL/PCode/VM-C; prima C99 leggeva/sciveva fuori allocazione). */
+            sb_put(&c->out, "gmb_arr_check((gmb_int_t)(");
+            emit_expr(c, idx[k]);
+            sb_put(&c->out, "), ");
+            if (gk == 2) {
+                sb_put(&c->out, "0, (gmb_int_t)(");
+                emit_var_ref(c, v);
+                sb_put(&c->out, "_len) - 1");
+            } else {
+                if (v->has_blo && k == 0) sb_bound_lo(&c->out, v);
+                else sb_put(&c->out, "0");
+                sb_put(&c->out, ", (gmb_int_t)(");
+                sb_bound_var(&c->out, v, k);
+                sb_put(&c->out, ")");
+            }
+            sb_printf(&c->out, ", %d)", idx[k] ? idx[k]->line : 0);
+        } else {
+            sb_put(&c->out, "((gmb_int_t)(");
+            emit_expr(c, idx[k]);
+            sb_put(&c->out, "))");
+        }
         for (int j = k + 1; j < nidx; j++) {
             sb_put(&c->out, " * ((gmb_int_t)(");
             sb_bound_var(&c->out, v, j);
@@ -14857,6 +14890,19 @@ static void emit_arr_literal_assign(ctx_t* c, const char* target, gmb_expr_t* li
 
  static void emit_assignment(ctx_t* c, const char* target, gmb_expr_t* value, int line, int from_dim) {
       if (target && !strchr(target, '.') && gmb_c99_try_emit_dyn_write(c, target, value)) return;
+      /* Istanza di CLASSE scalare (`DIM p AS Classe`): il valore è un gmb_val_t boxato
+       * (`NEW Classe(...)` è TY_VAL). Assegnazione DIRETTA, senza l'unbox numerico
+       * `gmb_val_to_double` che il percorso dei target numerici applicherebbe. */
+      if (target && value && !strchr(target, '.')) {
+          var_t* cv0 = lookup_var(c, target);
+          if (cv0 && cv0->vclass[0] && !cv0->is_array && !cv0->gkind && !cv0->boxed_val
+              && etype(c, value) == TY_VAL) {
+              ind(c); emit_var_ref(c, cv0); sb_put(&c->out, " = ");
+              emit_expr(c, value);
+              sb_put(&c->out, ";\n");
+              return;
+          }
+      }
       /* Valore dinamico (JSON/dict/val) in una variabile numerica scalare: errore esplicito,
        * non un C invalido a valle (`assigning to 'gmb_double_t' from 'gmb_val_t'`). */
       if (target && value && !strchr(target, '.')) {
@@ -17559,9 +17605,14 @@ static void st_let_assign(ctx_t* c, gmb_stmt_t* s) {
                 ind(c); sb_put(&c->out, "}\n");
                 { res_guard_end(c, res_guard); return; }
             }
-            if (v->type != etype(c, s->value)) {
+            /* Array di ISTANZE di classe (`DIM a(n) AS Classe`): l'elemento C è `gmb_val_t`
+             * (sb_var_ctype), quindi accetta un valore TY_VAL — `a(i) = NEW Classe(...)` dopo
+             * la classificazione di NEW come TY_VAL (prima era TY_NUM e "combaciava" per caso). */
+            int elem_vty = etype(c, s->value);
+            if (v->type != elem_vty
+                && !((v->vclass[0] || v->elem_class[0]) && elem_vty == TY_VAL)) {
                 c99_fail(c, s->line, "type mismatch in assegnamento a elemento di '%s' (%s vs %s)",
-                         s->target, ctype_name(v->type), ctype_name(etype(c, s->value)));
+                         s->target, ctype_name(v->type), ctype_name(elem_vty));
                 { res_guard_end(c, res_guard); return; }
             }
             int ni = 1 + s->n_array_idx_extra;

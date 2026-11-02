@@ -395,6 +395,8 @@ internal sealed partial class PCodeProcessor
         _runtime = runtime;
         _code = chunk.Code.ToArray();
         _debugSourceLines = chunk.Lines.Count == chunk.Code.Count ? chunk.Lines.ToArray() : null;
+        _debugStatementRanges = chunk.StatementRanges.Count > 0 ? chunk.StatementRanges.ToArray() : null;
+        _localNumericByAddr = chunk.ProcedureLocalNumeric.Count > 0 ? chunk.ProcedureLocalNumeric : null;
         _constants = chunk.Constants.ToList();
         _dataPool = chunk.Data.ToArray();
         _dataPointer = 0;
@@ -442,7 +444,30 @@ internal sealed partial class PCodeProcessor
         Basic.AI.Rag.AiVectorRuntime.SqlDataSession = _runtime.SqlDataSession;
     }
 
-    private object?[] CreateLocals() => new object?[_localCount];
+    private object?[] CreateLocals() => CreateLocals(-1);
+
+    /// <summary>Crea l'array dei locali e inizializza a 0.0 gli slot NUMERICI della
+    /// procedura <paramref name="procAddr"/> (metadata ProcedureLocalNumeric). Senza, una
+    /// variabile la cui unica scrittura non viene mai eseguita restava null (stampa vuota,
+    /// TYPENAME NIL) mentre IL/C99Native danno 0/DOUBLE.</summary>
+    private object?[] CreateLocals(int procAddr)
+    {
+        var locals = new object?[_localCount];
+        InitNumericLocals(locals, procAddr);
+        return locals;
+    }
+
+    private void InitNumericLocals(object?[] locals, int procAddr)
+    {
+        if (_localNumericByAddr is null || procAddr < 0) return;
+        if (!_localNumericByAddr.TryGetValue(procAddr, out var flags)) return;
+        for (int i = 0; i < flags.Length && i < locals.Length; i++)
+            if (flags[i] && locals[i] is null) locals[i] = 0.0;
+    }
+
+    /// <summary>Inizializza gli slot numerici del task radice (top-level/Main).</summary>
+    internal void InitRootNumericLocals(PCodeTask task, int procAddr)
+        => InitNumericLocals(task.GetLocals(), procAddr);
 
     /// <summary>Valuta una macro (&amp;/EVAL) contro lo scope della PCodeVM corrente, semantica
     /// S_eval (scope figlio transiente, vincolante 2026-09-09): lookup nome → LOCALI della procedura
@@ -603,7 +628,7 @@ internal sealed partial class PCodeProcessor
             SavedStackPointer = savedSp,
             ReturnIp = savedIp,
             Previous = savedFrame,
-            LocalVariables = CreateLocals(),
+            LocalVariables = CreateLocals(addr),
             ReturnValue = null
         };
         EnterProcedureErrorScope(hostTask, frame);
@@ -717,8 +742,8 @@ internal sealed partial class PCodeProcessor
         var prevSendRetry = task.Frame?.IslandSendRetry ?? false;
         var prevRecvRetry = task.Frame?.IslandRecvRetry ?? false;
         var newFrame = isCallN
-            ? new PCodeCallFrame { SavedStackPointer = savedSp, ReturnIp = task.Ip, Previous = task.Frame, LocalVariables = CreateLocals(), ReturnValue = null, IslandSleepDeadlineMs = prevSleepDeadline, IslandSendRetry = prevSendRetry, IslandRecvRetry = prevRecvRetry }
-            : new PCodeCallFrame { SavedStackPointer = savedSp, ReturnIp = task.Ip, Previous = task.Frame, LocalVariables = CreateLocals(), IslandSleepDeadlineMs = prevSleepDeadline, IslandSendRetry = prevSendRetry, IslandRecvRetry = prevRecvRetry };
+            ? new PCodeCallFrame { SavedStackPointer = savedSp, ReturnIp = task.Ip, Previous = task.Frame, LocalVariables = CreateLocals(addr), ReturnValue = null, IslandSleepDeadlineMs = prevSleepDeadline, IslandSendRetry = prevSendRetry, IslandRecvRetry = prevRecvRetry }
+            : new PCodeCallFrame { SavedStackPointer = savedSp, ReturnIp = task.Ip, Previous = task.Frame, LocalVariables = CreateLocals(addr), IslandSleepDeadlineMs = prevSleepDeadline, IslandSendRetry = prevSendRetry, IslandRecvRetry = prevRecvRetry };
         EnterProcedureErrorScope(task, newFrame);
         task.Frame = newFrame;
         Basic.Runtime.Gpm.IslandRuntime.SetCurrentTask(task);
@@ -1499,7 +1524,7 @@ internal sealed partial class PCodeProcessor
                 var addr = ReadU16(task);
                 var island = DispatchIsland(task, addr, isCallN: false, task.Sp);
                 if (island != null) { if (!island.Value) task.Ip = callIp - 1; return island.Value; }
-                var newFrame = new PCodeCallFrame { SavedStackPointer = task.Sp,  ReturnIp = task.Ip, Previous = task.Frame, LocalVariables = CreateLocals() };
+                var newFrame = new PCodeCallFrame { SavedStackPointer = task.Sp,  ReturnIp = task.Ip, Previous = task.Frame, LocalVariables = CreateLocals(addr) };
                 EnterProcedureErrorScope(task, newFrame);
                 task.Frame = newFrame;
                 task.Ip = addr;
@@ -1513,7 +1538,7 @@ internal sealed partial class PCodeProcessor
                 var savedSp = task.Sp - argCount;
                 var island = DispatchIsland(task, addr, isCallN: true, savedSp);
                 if (island != null) { if (!island.Value) task.Ip = callIp - 1; return island.Value; }
-                var newFrame = new PCodeCallFrame { SavedStackPointer = savedSp, ReturnIp = task.Ip, Previous = task.Frame, LocalVariables = CreateLocals(), ReturnValue = null };
+                var newFrame = new PCodeCallFrame { SavedStackPointer = savedSp, ReturnIp = task.Ip, Previous = task.Frame, LocalVariables = CreateLocals(addr), ReturnValue = null };
                 EnterProcedureErrorScope(task, newFrame);
                 task.Frame = newFrame;
                 task.Ip = addr;
@@ -2114,6 +2139,12 @@ internal sealed partial class PCodeProcessor
                         var elem = array.GetValue(idx);
                         task.PushRef(elem);
                     }
+                    catch (Exception ex) when (ex is IndexOutOfRangeException or ArgumentOutOfRangeException)
+                    {
+                        // Indice fuori dai limiti di un array dimensionato: ERR 9, non un
+                        // silenzioso null (parità IL; VM/C e C99Native fanno lo stesso).
+                        if (RaiseBasicError(task, 9.0, string.Empty)) task.PushNum(0);
+                    }
                     catch { task.PushRef(null); }
                 }
                 else if (arr is System.Collections.IDictionary dict && numIndices == 1)
@@ -2303,6 +2334,12 @@ internal sealed partial class PCodeProcessor
                 {
                     var idx = keys.Select(k => Convert.ToInt32(k ?? 0)).ToArray();
                     try { array.SetValue(val, idx); }
+                    catch (Exception ex) when (ex is IndexOutOfRangeException or ArgumentOutOfRangeException)
+                    {
+                        // Scrittura oltre UBOUND di un array dimensionato: ERR 9 (prima veniva
+                        // scartata in silenzio; VM/C e C99Native estendevano l'array).
+                        RaiseBasicError(task, 9.0, string.Empty);
+                    }
                     catch { }
                 }
                 else if (arr is System.Collections.IDictionary dict && numIndices == 1)
@@ -3150,6 +3187,11 @@ internal sealed partial class PCodeProcessor
             case OpCode.OP_THROW:
             {
                 var val = task.Sp > 0 ? task.PopRef() : null;
+                /* Punti di ripresa per ON ERROR: un THROW non numerico non passava da
+                 * RaiseBasicError e lasciava ErrorResumeNextIp STANTIO (ripresa in un punto
+                 * arbitrario o loop). Granularità di ISTRUZIONE come per gli altri errori. */
+                task.ErrorLineIp = task.CurrentInstructionIp;
+                task.ErrorResumeNextIp = StatementResumeIp(task.CurrentInstructionIp, task.Ip);
                 // THROW di un CODICE NUMERICO = errore BASIC: stesso schema a 3 livelli di
                 // `ERROR n` (TRY/CATCH -> ON ERROR GOTO -> fatale), così ERR.Number viene
                 // popolata e `ON ERROR` lo cattura. Prima, senza TRY, il THROW terminava il
@@ -3187,13 +3229,11 @@ internal sealed partial class PCodeProcessor
                 if (task.ErrorMode == PCodeErrorMode.ResumeNext)
                 {
                     task.Ip = task.ErrorResumeNextIp;
-                    task.PushRef(val);
                     return true;
                 }
                 UnwindProcedureFramesToErrorHandler(task);
                 if (task.ErrorHandlerIp > 0)
                 {
-                    task.PushRef(val);
                     if (task.ErrorHandlerIsGosub)
                     {
                         task.IpStack ??= new Stack<int>();

@@ -98,9 +98,8 @@ public sealed partial class IlProgramCompiler
 
         // Vedi il commento su _activeTryScopes: un GOTO dentro stmt.TryBody il cui
         // target non è tra queste etichette/righe deve uscire dal try con Leave, non Br
-        // diretto. Solo il corpo del TRY conta (non CATCH/FINALLY: un salto da lì verso
-        // l'esterno del try non attraversa PIÙ questa regione, essendo già fuori dal
-        // blocco try quando quel codice gira).
+        // diretto. Solo il corpo del TRY conta (non CATCH/FINALLY sono gestiti sotto con
+        // uno scope dedicato).
         var labelsInTry = new HashSet<string>();
         var linesInTry = new HashSet<int>();
         foreach (var s in stmt.TryBody)
@@ -119,49 +118,76 @@ public sealed partial class IlProgramCompiler
         }
         _il.Emit(OpCodes.Leave, endLabel);
 
-        // A differenza del pattern per-riga di ON ERROR (dove il dispatch NON compila
-        // mai codice utente, solo local/label interni — sicuro da emettere due volte,
-        // una per catch), qui il dispatch esegue i corpi VERI delle CatchClauses
-        // (EmitStatement su AST scritto dall'utente): compilarli due volte (una per
-        // ciascun catch — BasicException "nativa" e la CLR grezza sotto) duplicherebbe
-        // qualunque effetto collaterale non idempotente della compilazione (label,
-        // GOTO, chiusure...) e produce IL invalido/InvalidProgramException al primo
-        // caso non banale. Design: entrambi i catch fanno SOLO Stloc+Leave verso
-        // endLabel (nessun dispatch dentro il catch); caughtLocal parte a null (default
-        // di un local a riferimento mai assegnato — resta tale sul percorso normale,
-        // che non lo tocca) e SUBITO dopo EndExceptionBlock() un unico blocco, fuori da
-        // qualunque regione protetta, controlla "caughtLocal != null" e fa il dispatch
-        // UNA SOLA VOLTA se serve — corpi delle CatchClauses compilati esattamente una
-        // volta indipendentemente da quale dei due catch li ha innescati.
+        // UN SOLO catch, di tipo Exception: BasicException (il tipo canonico dei THROW/ERROR
+        // BASIC) e qualunque eccezione CLR nativa passano da qui. Il dispatch delle CatchClause
+        // avviene DENTRO il catch — così il FINALLY (blocco finally IL, emesso dopo) esegue
+        // DOPO il corpo del CATCH, come sulle altre gambe. Prima il dispatch stava dopo
+        // EndExceptionBlock: il FINALLY girava PRIMA del CATCH (divergenza con PCode/VM-C/C99).
         var caughtLocal = _il.DeclareLocal(_types.BasicExceptionType);
+        if (stmt.CatchClauses.Length == 0)
+        {
+            /* TRY … FINALLY senza CATCH: nessun dispatch. Un unico catch cattura SOLO per
+             * lasciare eseguire il FINALLY e poi ripropaga (semantica corretta: il FINALLY
+             * attraversa l'errore). Struttura "catch che rilancia fuori dalla regione":
+             * l'ottimizzatore ILOpt non sa ricostruire un `throw` DENTRO try/finally
+             * (NullReferenceException in ILGenerator), con questa forma resta ottimizzabile. */
+            _il.BeginCatchBlock(_types.ExceptionType);
+            var clr0 = _il.DeclareLocal(_types.ExceptionType);
+            _il.Emit(OpCodes.Stloc, clr0);
+            var notBasic0 = _il.DefineLabel();
+            var wrapDone0 = _il.DefineLabel();
+            _il.Emit(OpCodes.Ldloc, clr0);
+            _il.Emit(OpCodes.Isinst, _types.BasicExceptionType);
+            _il.Emit(OpCodes.Brfalse, notBasic0);
+            _il.Emit(OpCodes.Ldloc, clr0);
+            _il.Emit(OpCodes.Castclass, _types.BasicExceptionType);
+            _il.Emit(OpCodes.Stloc, caughtLocal);
+            _il.Emit(OpCodes.Br, wrapDone0);
+            _il.MarkLabel(notBasic0);
+            _il.Emit(OpCodes.Ldloc, clr0);
+            _il.Emit(OpCodes.Ldc_I4, stmt.Position.FileId);
+            _il.Emit(OpCodes.Ldc_I4, stmt.Position.Line);
+            _il.Emit(OpCodes.Ldc_I4, stmt.Position.Column);
+            _il.Emit(OpCodes.Newobj, _types.SourcePositionConstructor);
+            _il.Emit(OpCodes.Call, _types.BasicExceptionFromClrExceptionMethod);
+            _il.Emit(OpCodes.Stloc, caughtLocal);
+            _il.MarkLabel(wrapDone0);
+            _il.Emit(OpCodes.Leave, endLabel);
 
-        _il.BeginCatchBlock(_types.BasicExceptionType);
-        _il.Emit(OpCodes.Stloc, caughtLocal);
-        _il.Emit(OpCodes.Leave, endLabel);
+            if (stmt.Finally is not null)
+            {
+                _il.BeginFinallyBlock();
+                foreach (var fs in stmt.Finally.Body) EmitStatement(fs);
+            }
+            _il.EndExceptionBlock();
 
-        // Secondo catch: un'eccezione CLR nativa (IndexOutOfRangeException/
-        // FileNotFoundException/...) mai avvolta in una BasicException bypasserebbe del
-        // tutto TRY/CATCH — vedi AiWiki IL-OnError-Loop-Bug.md, gap array-out-of-range/
-        // file mancante. Avvolta con FromClrException usando la posizione del TRY stesso
-        // (nessun tracciamento per-statement della riga qui, a differenza del pattern
-        // per-riga di ON ERROR — è la miglior posizione disponibile a compile-time).
+            var nothing0 = _il.DefineLabel();
+            _il.Emit(OpCodes.Ldloc, caughtLocal);
+            _il.Emit(OpCodes.Brfalse, nothing0);
+            _il.Emit(OpCodes.Ldloc, caughtLocal);
+            _il.Emit(OpCodes.Throw);
+            _il.MarkLabel(nothing0);
+            return;
+        }
+
         _il.BeginCatchBlock(_types.ExceptionType);
         var clrCaughtLocal = _il.DeclareLocal(_types.ExceptionType);
         _il.Emit(OpCodes.Stloc, clrCaughtLocal);
-        // Se l'eccezione è GIÀ una BasicException (il catch dedicato sopra dovrebbe averla
-        // intercettata, ma l'ordine dei due handler non è garantito su tutti i runtime/JIT:
-        // osservato in pratica che questo ramo vince sul precedente, mappando un `ERROR 1000`
-        // a ErrorCode.InternalError=200 via FromClrException), usala AS-IS senza rimappare il
-        // codice — altrimenti `ex.Number` perde il valore originale.
-        var notBasic = _il.DefineLabel();
+
+        // Se l'eccezione è GIÀ una BasicException usala AS-IS (non rimappare il codice:
+        // `ex.Number` deve restare quello originale); altrimenti avvolgila con
+        // FromClrException (IndexOutOfRangeException/FileNotFoundException/... non passano
+        // mai da un THROW BASIC).
+        var notBasicLabel = _il.DefineLabel();
+        var wrapDoneLabel = _il.DefineLabel();
         _il.Emit(OpCodes.Ldloc, clrCaughtLocal);
         _il.Emit(OpCodes.Isinst, _types.BasicExceptionType);
-        _il.Emit(OpCodes.Brfalse, notBasic);
+        _il.Emit(OpCodes.Brfalse, notBasicLabel);
         _il.Emit(OpCodes.Ldloc, clrCaughtLocal);
         _il.Emit(OpCodes.Castclass, _types.BasicExceptionType);
         _il.Emit(OpCodes.Stloc, caughtLocal);
-        _il.Emit(OpCodes.Leave, endLabel);
-        _il.MarkLabel(notBasic);
+        _il.Emit(OpCodes.Br, wrapDoneLabel);
+        _il.MarkLabel(notBasicLabel);
         _il.Emit(OpCodes.Ldloc, clrCaughtLocal);
         _il.Emit(OpCodes.Ldc_I4, stmt.Position.FileId);
         _il.Emit(OpCodes.Ldc_I4, stmt.Position.Line);
@@ -169,7 +195,84 @@ public sealed partial class IlProgramCompiler
         _il.Emit(OpCodes.Newobj, _types.SourcePositionConstructor);
         _il.Emit(OpCodes.Call, _types.BasicExceptionFromClrExceptionMethod);
         _il.Emit(OpCodes.Stloc, caughtLocal);
-        _il.Emit(OpCodes.Leave, endLabel);
+        _il.MarkLabel(wrapDoneLabel);
+
+        // Corpi dei CATCH dentro la regione protetta: un GOTO/RETURN che ne esce deve usare
+        // Leave (Br diretto attraverso il confine della protected region è IL invalido).
+        var catchLabels = new HashSet<string>();
+        var catchLines = new HashSet<int>();
+        foreach (var clause in stmt.CatchClauses)
+            foreach (var s in clause.Body)
+            {
+                if (s is LabelStmt ls) catchLabels.Add(ls.Label.Lexeme);
+                catchLines.Add(s.Position.Line);
+            }
+        _activeTryScopes.Push((catchLabels, catchLines));
+        try
+        {
+            foreach (var catchClause in stmt.CatchClauses)
+            {
+                var nextClauseLabel = _il.DefineLabel();
+
+                if (catchClause.Variable is not null)
+                {
+                    var variableType = _program.Symbols.GetSymbol(catchClause.Variable.SymbolId).DataType;
+                    if (variableType is ErrType)
+                    {
+                        EmitBuildErrInstance(caughtLocal, _currentLineLocal, stmt.Position.Line);
+                        _il.Emit(OpCodes.Stloc, GetOrDeclareLocal(catchClause.Variable.SymbolId));
+                    }
+                    else if (variableType is ClassType classType)
+                    {
+                        // Stloc in un local dedicato invece di Dup+Brfalse: Dup+Brfalse
+                        // lascia un valore residuo sullo stack di valutazione sul ramo
+                        // "salta a nextClauseLabel" (Brfalse consuma SEMPRE una sola delle
+                        // due copie, indipendentemente dal salto) — un vero stack-imbalance
+                        // a un punto di merge (Br) raggiunto anche da un ramo WhenCondition
+                        // pulito (0 residui) → InvalidProgramException al load. Stloc+Ldloc
+                        // (+Ldloc) pulisce lo stack su ENTRAMBI i rami.
+                        var classTypeClr = DataTypeMapper.Map(classType, _types, _classTypes);
+                        var isMatchLocal = _il.DeclareLocal(classTypeClr);
+                        _il.Emit(OpCodes.Ldloc, caughtLocal);
+                        _il.Emit(OpCodes.Callvirt, _types.BasicExceptionUserExceptionInstanceGetter);
+                        _il.Emit(OpCodes.Isinst, classTypeClr);
+                        _il.Emit(OpCodes.Stloc, isMatchLocal);
+                        _il.Emit(OpCodes.Ldloc, isMatchLocal);
+                        _il.Emit(OpCodes.Brfalse, nextClauseLabel);
+                        _il.Emit(OpCodes.Ldloc, isMatchLocal);
+                        _il.Emit(OpCodes.Stloc, GetOrDeclareLocal(catchClause.Variable.SymbolId));
+                    }
+                    else
+                    {
+                        throw new NotSupportedException($"Backend IL: CATCH con variabile di tipo '{variableType.GetType().Name}' non ancora supportato (solo ERR o una CLASS utente).");
+                    }
+                }
+
+                if (catchClause.WhenCondition is not null)
+                {
+                    EmitExpression(catchClause.WhenCondition);
+                    _il.Emit(OpCodes.Brfalse, nextClauseLabel);
+                }
+
+                foreach (var s in catchClause.Body) EmitStatement(s);
+                // Leave: uscita dalla protected region; il FINALLY (se presente) esegue qui.
+                _il.Emit(OpCodes.Leave, endLabel);
+
+                _il.MarkLabel(nextClauseLabel);
+            }
+        }
+        finally
+        {
+            _activeTryScopes.Pop();
+        }
+
+        // Nessuna CatchClause ha gestito l'eccezione: ripropaga l'eccezione catturata.
+        // Ldloc+Throw (non `rethrow`): il generatore IL dell'ottimizzatore ILOpt non
+        // supporta `rethrow` dentro un catch con FINALLY (NullReferenceException in
+        // ILOptim.CodeGen.Cil.ILGenerator → fallback non ottimizzato). Il costo è la
+        // perdita dello stack trace originale solo in questo caso limite.
+        _il.Emit(OpCodes.Ldloc, caughtLocal);
+        _il.Emit(OpCodes.Throw);
 
         if (stmt.Finally is not null)
         {
@@ -178,73 +281,6 @@ public sealed partial class IlProgramCompiler
         }
 
         _il.EndExceptionBlock();
-
-        var noDispatchNeededLabel = _il.DefineLabel();
-        _il.Emit(OpCodes.Ldloc, caughtLocal);
-        _il.Emit(OpCodes.Brfalse, noDispatchNeededLabel);
-
-        foreach (var catchClause in stmt.CatchClauses)
-        {
-            var nextClauseLabel = _il.DefineLabel();
-
-            if (catchClause.Variable is not null)
-            {
-                var variableType = _program.Symbols.GetSymbol(catchClause.Variable.SymbolId).DataType;
-                if (variableType is ErrType)
-                {
-                    EmitBuildErrInstance(caughtLocal, _currentLineLocal, stmt.Position.Line);
-                    _il.Emit(OpCodes.Stloc, GetOrDeclareLocal(catchClause.Variable.SymbolId));
-                }
-                else if (variableType is ClassType classType)
-                {
-                    // Stloc in un local dedicato invece di Dup+Brfalse: Dup+Brfalse
-                    // lascia un valore residuo sullo stack di valutazione sul ramo
-                    // "salta a nextClauseLabel" (Brfalse consuma SEMPRE una sola delle
-                    // due copie, indipendentemente dal salto) — un vero stack-imbalance
-                    // a un punto di merge (Br) raggiunto anche da un ramo WhenCondition
-                    // pulito (0 residui) → InvalidProgramException al load. Stloc+Ldloc
-                    // (+Ldloc) pulisce lo stack su ENTRAMBI i rami.
-                    var classTypeClr = DataTypeMapper.Map(classType, _types, _classTypes);
-                    var isMatchLocal = _il.DeclareLocal(classTypeClr);
-                    _il.Emit(OpCodes.Ldloc, caughtLocal);
-                    _il.Emit(OpCodes.Callvirt, _types.BasicExceptionUserExceptionInstanceGetter);
-                    _il.Emit(OpCodes.Isinst, classTypeClr);
-                    _il.Emit(OpCodes.Stloc, isMatchLocal);
-                    _il.Emit(OpCodes.Ldloc, isMatchLocal);
-                    _il.Emit(OpCodes.Brfalse, nextClauseLabel);
-                    _il.Emit(OpCodes.Ldloc, isMatchLocal);
-                    _il.Emit(OpCodes.Stloc, GetOrDeclareLocal(catchClause.Variable.SymbolId));
-                }
-                else
-                {
-                    throw new NotSupportedException($"Backend IL: CATCH con variabile di tipo '{variableType.GetType().Name}' non ancora supportato (solo ERR o una CLASS utente).");
-                }
-            }
-
-            if (catchClause.WhenCondition is not null)
-            {
-                EmitExpression(catchClause.WhenCondition);
-                _il.Emit(OpCodes.Brfalse, nextClauseLabel);
-            }
-
-            foreach (var s in catchClause.Body) EmitStatement(s);
-            // Br, non Leave: qui siamo già fuori da qualunque regione protetta (dopo
-            // EndExceptionBlock), un Leave non sarebbe necessario né valido.
-            _il.Emit(OpCodes.Br, noDispatchNeededLabel);
-
-            _il.MarkLabel(nextClauseLabel);
-        }
-
-        // Nessuna CatchClause ha gestito l'eccezione (tipo/WHEN non soddisfatti da
-        // nessuna): ripropaga. Ldloc+Throw, non Rethrow — Rethrow non è più disponibile
-        // qui (fuori da ogni catch): perde la preservazione dello stack trace originale
-        // SOLO in questo caso limite (nessuna clausola ha corrisposto), tradeoff
-        // accettato per evitare di ricompilare (quindi duplicare) i corpi delle
-        // CatchClauses.
-        _il.Emit(OpCodes.Ldloc, caughtLocal);
-        _il.Emit(OpCodes.Throw);
-
-        _il.MarkLabel(noDispatchNeededLabel);
     }
 
     /// <summary>
