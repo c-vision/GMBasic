@@ -209,11 +209,15 @@ Senza dylib i comandi AI falliscono con un errore **esplicito** («runtime AI no
 non con un no-op. `gmbllm` è a sua volta diviso in `gmbllm_core` (consumato dal runtime) e
 `gmbllm_train` (training/MLX, solo tool TRAIN).
 
-**Distribuzione (`gmb build --alllibs`, alias `-alllib`, `--full`).** Copia accanto
-all'eseguibile la chiusura delle sue dipendenze dinamiche (risolta da cache e build del
-checkout, ricorsiva) + `libgmb_runtime_ai`; l'rpath di load-time include `@loader_path`
-(`$ORIGIN` su ELF), quindi le copie vincono sulla cache. `gmbcs build --alllibs` fa la stessa
-cosa dal lato C# (dipendenze managed come copie reali + librerie native del RID).
+**Bundle di distribuzione (`--libs`, `--plugins`, `--skills`, `--brains`).** Crea
+sottocartelle nella destinazione: `<out>/libs/<rid>/` (chiusura delle dipendenze; oppure
+`=all`, un gruppo `runtime|dev|ffi|llmmotor|torch`, un componente `ml|chromium|obscura|ocr`,
+un elenco di nomi), `<out>/plugins/<nome>/`, `<out>/skills/<nome>/`,
+`<out>/brains/<nome>/<ver>/`. `libgmb_runtime_ai` è sempre in `libs/<rid>`. L'rpath di
+load-time è `@loader_path/libs/<rid>` + `@loader_path` (`$ORIGIN` su ELF): le copie vincono
+sulla cache. `gmbcs` accetta gli stessi flag (dipendenze managed come copie reali).
+Il runtime cerca **prima** accanto al programma (gateway AI, FFI, plugin, skill, componenti)
+e solo dopo nella cache. Alias storici di `--libs`: `-alllib`, `--alllibs`, `--full`.
 Senza il flag resta il percorso di iterazione (rpath verso la cache / symlink).
 
 **Dove sta la dylib** (ordine di ricerca del gateway):

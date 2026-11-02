@@ -47,6 +47,7 @@
 
 #define CLI_MAX_NS 128
 
+
 /* ── diagnosi ──────────────────────────────────────────────────────────────────────────── */
 
 static void diags_free(DiagList* l) {
@@ -1051,11 +1052,9 @@ int main(int argc, char** argv) {
         if (!strcmp(a, "--csharp-cli") && i + 1 < argc) { i++; continue; }
         if (!strncmp(a, "--csharp-cli=", 13)) continue;
         if (!strcmp(a, "--all")) { o.all = 1; continue; }
-        /* --alllibs: porta accanto all'eseguibile TUTTE le lib usate (closure). Alias:
-         * -alllib (nome storico), --all-libs. `--full` lo implica (distribuzione completa:
-         * per il C non c'è un framework da aggiungere, quindi coincide). */
-        if (!strcmp(a, "--alllibs") || !strcmp(a, "-alllib") || !strcmp(a, "--all-libs")
-            || !strcmp(a, "--full") || !strcmp(a, "-full")) { o.alllibs = 1; continue; }
+        /* Bundle di distribuzione (--libs/--plugins/--skills/--brains): parser in
+         * gmb_cli_deploy.c (tiene questo file sotto la soglia di 1200 righe). */
+        if (gmb_parse_bundle_arg(&o, a)) continue;
         if (!strcmp(a, "--interactive")) { o.interactive = 1; continue; }
         if (!strcmp(a, "--heavy")) { o.heavy = 1; continue; }
         const char* v = NULL;

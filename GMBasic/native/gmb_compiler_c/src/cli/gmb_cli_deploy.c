@@ -1,26 +1,29 @@
-/* gmb_cli_deploy.c — `gmb build|run --alllibs`: porta accanto all'eseguibile TUTTE le
- * librerie che il programma usa.
+/* gmb_cli_deploy.c — bundle di distribuzione del programma compilato.
  *
- * PERCHÉ. La cache `~/.gmbasic/libs/<rid>/` e i build del checkout bastano in sviluppo (rpath
- * assoluto), ma un programma che si distribuisce deve portarsi dietro le sue dipendenze, come
- * fa il compilatore C# quando copia la closure accanto al programma. Senza questo passo un
- * eseguibile copiato su un'altra macchina muore con "Library not loaded: @rpath/libSDL2.dylib"
- * (o, dopo lo split AI, con "runtime AI non disponibile").
+ * FLAGS (stessi in `gmb` e `gmbcs`):
+ *   --libs[=used|all|runtime|dev|ffi|llmmotor|torch|ml|chromium|obscura|ocr|nome1,nome2]
+ *   --plugins[=all|nome1,nome2]   --skills[=all|nome1,nome2]   --brains[=all|nome1,nome2]
  *
- * COME. Si legge la tabella delle dipendenze dinamiche del binario (`otool -L` su macOS,
- * `readelf -d` su ELF), si risolve ogni voce NON di sistema nelle cartelle note (accanto
- * all'eseguibile, cache del RID, build del runtime/db/doc/codec, Homebrew) e si copia col
- * nome del file. Le librerie della cache hanno install-name `@rpath/<nome>` e il link mette
- * `-rpath @loader_path` (macOS) / `$ORIGIN` (Linux): la copia accanto all'eseguibile è quindi
- * trovata SUBITO, prima della cache. La chiusura è ricorsiva (SDL2_ttf → SDL2, …).
+ * DOVE FINISCE TUTTO (sottocartelle nella destinazione = cartella dell'eseguibile):
+ *   <out>/libs/<rid>/          librerie native (sempre `libgmb_runtime_ai`; con --libs: la
+ *                              chiusura delle dipendenze, oppure tutto/gruppi/nomi scelti)
+ *   <out>/libs/<comp>/<rid>/   componenti (ml, chromium, obscura, ocr)
+ *   <out>/plugins/<nome>/      plugin
+ *   <out>/skills/<nome>/       skill
+ *   <out>/brains/<nome>/<ver>/ cervelli
  *
- * Non si riscrivono gli install-name: le copie sono identiche alle originali (stesso sha), e
- * `@rpath` risolve per costruzione. Se una dipendenza non si trova si salta (non è un errore:
- * può essere una lib di sistema che non riconosciamo).
+ * La CACHE (`~/.gmbasic/libs`, `~/.gmbasic/brains`, `shared/plugins`, `shared/skills`) resta
+ * la sorgente: `--libs` senza selettore copia solo ciò che il programma USA (chiusura via
+ * otool/readelf), `=all` la cache del RID, i gruppi/nomi il sottoinsieme scelto.
+ *
+ * Il runtime cerca PRIMA accanto al programma (gateway AI, FFI, plugin, skill: vedi
+ * gmb_ai_gateway.c / gmb_ffi_dl.c / gmb_ai.c / gmb_paths.c), poi la cache: un bundle con
+ * `--libs --plugins …` funziona su una macchina senza cache e senza checkout.
  */
 #include "gmb_cli_internal.h"
 
 #include <ctype.h>
+#include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,22 +37,7 @@
 #define DP_MAX_DIRS 20
 #define DP_MAX_SEEN 512
 
-/* Libreria di sistema (POSIX / runtime C/C++ / framework Apple): non si copia. */
-static int dp_is_system(const char* p)
-{
-    if (!p || !*p) return 1;
-    if (strncmp(p, "/usr/lib/", 9) == 0) return 1;
-    if (strncmp(p, "/System/", 8) == 0) return 1;
-    if (strncmp(p, "/Library/Apple/", 15) == 0) return 1;
-    if (strncmp(p, "/usr/local/lib/", 15) == 0) return 0;   /* Homebrew x86: può essere una nostra */
-    static const char* sys[] = {
-        "libSystem", "libc++.", "libobjc", "libc.so", "ld-linux", "libm.so", "libpthread",
-        "libdl.so", "libgcc_s", "libstdc++", "libresolv", "librt.so", "libutil",
-    };
-    for (size_t i = 0; i < sizeof sys / sizeof sys[0]; i++)
-        if (strncmp(p, sys[i], strlen(sys[i])) == 0) return 1;
-    return 0;
-}
+/* ── utilità file ───────────────────────────────────────────────────────────────────────── */
 
 static int dp_copy(const char* src, const char* dst)
 {
@@ -65,9 +53,101 @@ static int dp_copy(const char* src, const char* dst)
     if (ferror(in)) ok = 0;
     fclose(in);
     if (fclose(out) != 0) ok = 0;
-    if (!ok) remove(dst);
-    else chmod(dst, 0755);
-    return ok;
+    if (!ok) { remove(dst); return 0; }
+    chmod(dst, 0755);
+    return 1;
+}
+
+static int dp_mkdir_p(const char* path)
+{
+    char tmp[4096];
+    snprintf(tmp, sizeof tmp, "%s", path);
+    for (char* p = tmp + 1; *p; p++) {
+        if (*p == '/') { *p = 0; mkdir(tmp, 0755); *p = '/'; }
+    }
+    mkdir(tmp, 0755);
+    return is_dir(path);
+}
+
+/* Copia ricorsiva di una directory (contenuto dentro dst/). Ritorna i file copiati. */
+static int dp_copy_tree(const char* src, const char* dst, int quiet)
+{
+    if (!is_dir(src)) return 0;
+    dp_mkdir_p(dst);
+    int n = 0;
+    DIR* d = opendir(src);
+    if (!d) return 0;
+    struct dirent* e;
+    while ((e = readdir(d)) != NULL) {
+        if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, "..")) continue;
+        char s[4096], t[4096];
+        snprintf(s, sizeof s, "%s/%s", src, e->d_name);
+        snprintf(t, sizeof t, "%s/%s", dst, e->d_name);
+        struct stat st;
+        if (lstat(s, &st) != 0) continue;
+        if (S_ISDIR(st.st_mode)) n += dp_copy_tree(s, t, quiet);
+        else if (S_ISREG(st.st_mode)) {
+            if (dp_copy(s, t)) { n++; if (!quiet) fprintf(stderr, "gmb: copia %s\n", t); }
+        }
+        /* symlink: si copia il CONTENUTO (un bundle non deve puntare al build tree). */
+        else if (S_ISLNK(st.st_mode)) {
+            struct stat st2;
+            if (stat(s, &st2) == 0 && S_ISREG(st2.st_mode) && dp_copy(s, t)) {
+                n++; if (!quiet) fprintf(stderr, "gmb: copia %s\n", t);
+            }
+        }
+    }
+    closedir(d);
+    return n;
+}
+
+static int dp_looks_lib(const char* name)
+{
+    const char* e = strrchr(name, '.');
+    if (!e) return 0;
+    if (!strcmp(e, ".dylib") || !strcmp(e, ".dll") || !strcmp(e, ".metallib")) return 1;
+    if (!strcmp(e, ".so")) return 1;
+    /* libfoo.so.1 */
+    const char* so = strstr(name, ".so.");
+    return so != NULL;
+}
+
+/* `sel` è un elenco separato da virgole: token presente? (case-insensitive) */
+static int dp_sel_has(const char* sel, const char* name)
+{
+    if (!sel || !*sel) return 0;
+    size_t n = strlen(name);
+    const char* p = sel;
+    while (*p) {
+        while (*p == ',' || *p == ' ' || *p == '\t') p++;
+        const char* q = p;
+        while (*q && *q != ',' && *q != ' ') q++;
+        if ((size_t)(q - p) == n && strncasecmp(p, name, n) == 0) return 1;
+        p = q;
+    }
+    return 0;
+}
+
+static int dp_sel_is_all(const char* sel)
+{
+    return !sel || !*sel || dp_sel_has(sel, "all");
+}
+
+/* ── librerie native ────────────────────────────────────────────────────────────────────── */
+
+static int dp_is_system(const char* p)
+{
+    if (!p || !*p) return 1;
+    if (strncmp(p, "/usr/lib/", 9) == 0) return 1;
+    if (strncmp(p, "/System/", 8) == 0) return 1;
+    if (strncmp(p, "/Library/Apple/", 15) == 0) return 1;
+    static const char* sys[] = {
+        "libSystem", "libc++.", "libobjc", "libc.so", "ld-linux", "libm.so", "libpthread",
+        "libdl.so", "libgcc_s", "libstdc++", "libresolv", "librt.so", "libutil",
+    };
+    for (size_t i = 0; i < sizeof sys / sizeof sys[0]; i++)
+        if (strncmp(p, sys[i], strlen(sys[i])) == 0) return 1;
+    return 0;
 }
 
 static int dp_is_seen(char seen[][256], int n, const char* name)
@@ -76,7 +156,6 @@ static int dp_is_seen(char seen[][256], int n, const char* name)
     return 0;
 }
 
-/* Risolve una voce della tabella dipendenze in un file esistente. */
 static int dp_resolve(const char* dep, char dirs[][CLI_PATH], int ndirs, char* out, size_t cap)
 {
     const char* name = dep;
@@ -93,7 +172,6 @@ static int dp_resolve(const char* dep, char dirs[][CLI_PATH], int ndirs, char* o
     return 0;
 }
 
-/* Dipendenze dinamiche di `file`: chiama la callback per ognuna. */
 static void dp_each_dep(const char* file, void (*cb)(const char*, void*), void* ctx)
 {
     char cmd[CLI_PATH * 2 + 32];
@@ -130,7 +208,7 @@ static void dp_each_dep(const char* file, void (*cb)(const char*, void*), void* 
 typedef struct {
     char   dirs[DP_MAX_DIRS][CLI_PATH];
     int    ndirs;
-    char   exedir[CLI_PATH];
+    char   dst[CLI_PATH];
     char   seen[DP_MAX_SEEN][256];
     int    nseen;
     int    quiet;
@@ -151,8 +229,7 @@ static void dp_visit(const char* dep, void* vctx)
     snprintf(c->seen[c->nseen++], sizeof c->seen[0], "%s", name);
 
     char dst[CLI_PATH];
-    snprintf(dst, sizeof dst, "%s/%s", c->exedir, name);
-    /* già accanto all'eseguibile (stesso file) → niente copia, ma si scende comunque. */
+    snprintf(dst, sizeof dst, "%s/%s", c->dst, name);
     struct stat a, b;
     int same = (stat(src, &a) == 0 && stat(dst, &b) == 0 &&
                 a.st_dev == b.st_dev && a.st_ino == b.st_ino);
@@ -163,30 +240,21 @@ static void dp_visit(const char* dep, void* vctx)
     dp_each_dep(src, dp_visit, c);
 }
 
-void gmb_deploy_lib_closure(const char* exe, const char* install, int quiet)
+/* Cartelle in cui risolvere le dipendenze: output, cache del RID, build del checkout. */
+static void dp_add_shadow_dirs(DpCtx* c, const char* exe, const char* install)
 {
-    if (!exe || !*exe) return;
-    DpCtx c;
-    memset(&c, 0, sizeof c);
-    c.quiet = quiet;
-    path_dir(exe, c.exedir, sizeof c.exedir);
-    if (!c.exedir[0]) return;
-
 #define DP_ADD(fmt, ...) do { \
-        if (c.ndirs < DP_MAX_DIRS) { \
-            snprintf(c.dirs[c.ndirs], CLI_PATH, fmt, __VA_ARGS__); \
-            if (is_dir(c.dirs[c.ndirs])) c.ndirs++; \
+        if (c->ndirs < DP_MAX_DIRS) { \
+            snprintf(c->dirs[c->ndirs], CLI_PATH, fmt, __VA_ARGS__); \
+            if (is_dir(c->dirs[c->ndirs])) c->ndirs++; \
         } } while (0)
-
-    DP_ADD("%s", c.exedir);
+    DP_ADD("%s", c->dst);
     const char* home = getenv("HOME");
-    if (home && *home) {
-        DP_ADD("%s/.gmbasic/libs/" GMB_RID_STR, home);
-        DP_ADD("%s/.gmbasic/libs/" GMB_RID_STR "/lib", home);
-    }
+    if (home && *home) DP_ADD("%s/.gmbasic/libs/" GMB_RID_STR, home);
     if (install && *install) {
         DP_ADD("%s/build/libs/" GMB_RID_STR, install);
         DP_ADD("%s/native/gmb_runtime_c/build", install);
+        DP_ADD("%s/native/gmb_role_c_build", install);
         DP_ADD("%s/native/gmb_runtime_c/build/gmb_chart_build", install);
         DP_ADD("%s/native/gmb_vm_c/build/gmb_runtime_c_build", install);
         DP_ADD("%s/native/gmb_compiler_c/build", install);
@@ -197,7 +265,351 @@ void gmb_deploy_lib_closure(const char* exe, const char* install, int quiet)
     }
     DP_ADD("%s", "/opt/homebrew/lib");
     DP_ADD("%s", "/usr/local/lib");
+#undef DP_ADD
+    (void)exe;
+}
 
-    /* 1) l'eseguibile, 2) ricorsivamente ogni libreria copiata. */
+/* Chiusura delle dipendenze dinamiche di `exe` dentro `dst`. */
+static void dp_closure(const char* exe, const char* install, const char* dst, int quiet)
+{
+    if (!exe || !*exe) return;
+    DpCtx c;
+    memset(&c, 0, sizeof c);
+    c.quiet = quiet;
+    snprintf(c.dst, sizeof c.dst, "%s", dst);
+    dp_mkdir_p(dst);
+    dp_add_shadow_dirs(&c, exe, install);
     dp_each_dep(exe, dp_visit, &c);
+}
+
+static const char* dp_rid(void) { return GMB_RID_STR; }
+
+/* Dipendenze di un file GIÀ copiato (dlopen: non sono nella tabella dell'eseguibile). */
+static void dp_closure_file(const char* file, const char* install, const char* dst, int quiet)
+{
+    DpCtx c;
+    memset(&c, 0, sizeof c);
+    c.quiet = quiet;
+    snprintf(c.dst, sizeof c.dst, "%s", dst);
+    dp_mkdir_p(dst);
+    dp_add_shadow_dirs(&c, file, install);
+    dp_each_dep(file, dp_visit, &c);
+}
+
+/* Chiusura di tutti i moduli di una cartella (per i componenti copiati). */
+static void dp_closure_dir(const char* dir, const char* install, int quiet)
+{
+    DIR* d = opendir(dir);
+    if (!d) return;
+    struct dirent* e;
+    while ((e = readdir(d)) != NULL) {
+        if (e->d_name[0] == '.') continue;
+        char p[CLI_PATH];
+        snprintf(p, sizeof p, "%s/%s", dir, e->d_name);
+        struct stat st;
+        if (lstat(p, &st) != 0) continue;
+        if (S_ISDIR(st.st_mode)) { dp_closure_dir(p, install, quiet); continue; }
+        if (S_ISREG(st.st_mode) && dp_looks_lib(e->d_name)) dp_closure_file(p, install, dir, quiet);
+    }
+    closedir(d);
+}
+
+static void dp_cache_rid_dir(char* out, size_t cap)
+{
+    out[0] = 0;
+    const char* home = getenv("HOME");
+    if (home && *home) snprintf(out, cap, "%s/.gmbasic/libs/%s", home, dp_rid());
+}
+
+/* Nome del file dylib di una voce dell'indice/di un token (`foo` → `libfoo.dylib`). */
+static int dp_find_named(const char* token, char dirs[][CLI_PATH], int ndirs, char* out, size_t cap)
+{
+    static const char* exts[] = { ".dylib", ".so", ".dll", ".metallib" };
+    for (int d = 0; d < ndirs; d++) {
+        for (size_t i = 0; i < sizeof exts / sizeof exts[0]; i++) {
+            char p[CLI_PATH];
+            snprintf(p, sizeof p, "%s/%s%s", dirs[d], token, exts[i]);
+            if (is_file(p)) { snprintf(out, cap, "%s", p); return 1; }
+            snprintf(p, sizeof p, "%s/lib%s%s", dirs[d], token, exts[i]);
+            if (is_file(p)) { snprintf(out, cap, "%s", p); return 1; }
+            /* `libfoo.1.dylib` / `libfoo.2.so` */
+            DIR* dp = opendir(dirs[d]);
+            if (!dp) continue;
+            struct dirent* e;
+            while ((e = readdir(dp)) != NULL) {
+                if (e->d_name[0] == '.') continue;
+                char base[512];
+                snprintf(base, sizeof base, "%s", e->d_name);
+                char* dot = strstr(base, exts[i]);
+                if (!dot) continue;
+                *dot = 0;
+                const char* nm = base;
+                if (!strncmp(nm, "lib", 3)) nm += 3;
+                if (!strcasecmp(nm, token)) {
+                    snprintf(p, sizeof p, "%s/%s", dirs[d], e->d_name);
+                    closedir(dp);
+                    snprintf(out, cap, "%s", p);
+                    return 1;
+                }
+            }
+            closedir(dp);
+        }
+    }
+    return 0;
+}
+
+static void dp_copy_file_named(const char* token, char dirs[][CLI_PATH], int ndirs,
+                               const char* dstDir, int quiet, int* n)
+{
+    char src[CLI_PATH], dst[CLI_PATH];
+    if (!dp_find_named(token, dirs, ndirs, src, sizeof src)) {
+        if (!quiet) fprintf(stderr, "gmb: libreria '%s' non trovata nella cache/build\n", token);
+        return;
+    }
+    const char* name = strrchr(src, '/');
+    name = name ? name + 1 : src;
+    snprintf(dst, sizeof dst, "%s/%s", dstDir, name);
+    if (dp_copy(src, dst)) {
+        (*n)++;
+        if (!quiet) fprintf(stderr, "gmb: lib -> %s\n", dst);
+    }
+}
+
+/* Copia le lib secondo il selettore. Ritorna il numero di file copiati. */
+static int dp_deploy_libs_select(const char* exe, const char* install, const char* sel,
+                                 const char* dstDir, int quiet)
+{
+    dp_mkdir_p(dstDir);
+    if (!sel || !*sel || !strcasecmp(sel, "used")) {
+        dp_closure(exe, install, dstDir, quiet);
+        return 1;
+    }
+    if (!strcasecmp(sel, "all")) {
+        char cache[CLI_PATH];
+        dp_cache_rid_dir(cache, sizeof cache);
+        int n = 0;
+        DIR* d = opendir(cache);
+        if (d) {
+            struct dirent* e;
+            while ((e = readdir(d)) != NULL) {
+                if (e->d_name[0] == '.' || !dp_looks_lib(e->d_name)) continue;
+                char src[CLI_PATH], dst[CLI_PATH];
+                snprintf(src, sizeof src, "%s/%s", cache, e->d_name);
+                snprintf(dst, sizeof dst, "%s/%s", dstDir, e->d_name);
+                if (is_file(src) && dp_copy(src, dst)) {
+                    n++;
+                    if (!quiet) fprintf(stderr, "gmb: lib -> %s\n", dst);
+                }
+            }
+            closedir(d);
+        }
+        return n;
+    }
+    /* gruppi dell'indice (runtime/dev/ffi/llmmotor/torch) */
+    static const char* groups[] = { "runtime", "dev", "ffi", "llmmotor", "torch" };
+    for (size_t g = 0; g < sizeof groups / sizeof groups[0]; g++) {
+        if (strcasecmp(sel, groups[g]) != 0) continue;
+        char idx[CLI_PATH];
+        dp_cache_rid_dir(idx, sizeof idx);
+        strncat(idx, "/index.txt", sizeof idx - strlen(idx) - 1);
+        FILE* f = fopen(idx, "r");
+        if (!f) { if (!quiet) fprintf(stderr, "gmb: indice assente (%s)\n", idx); return 0; }
+        char line[4096];
+        int n = 0;
+        while (fgets(line, sizeof line, f)) {
+            char* nl = strchr(line, '\n'); if (nl) *nl = 0;
+            char* f1 = strchr(line, '\t'); if (!f1) continue;
+            char* f2 = strchr(f1 + 1, '\t'); if (!f2) continue;
+            char* f3 = strchr(f2 + 1, '\t'); if (!f3) continue;
+            char* grp = strchr(f3 + 1, '\t'); if (!grp) continue;
+            grp++;
+            char* ge = grp; while (*ge && *ge != '\t') ge++;
+            *ge = 0;
+            if (strcasecmp(grp, groups[g]) != 0) continue;
+            *f1 = 0;
+            char src[CLI_PATH], dst[CLI_PATH];
+            char cache[CLI_PATH];
+            dp_cache_rid_dir(cache, sizeof cache);
+            snprintf(src, sizeof src, "%s/%s", cache, line);
+            snprintf(dst, sizeof dst, "%s/%s", dstDir, line);
+            if (is_file(src) && dp_copy(src, dst)) {
+                n++;
+                if (!quiet) fprintf(stderr, "gmb: lib -> %s\n", dst);
+            }
+        }
+        fclose(f);
+        return n;
+    }
+    /* componenti (sottocartella della cache: ml/chromium/obscura/ocr) */
+    static const char* comps[] = { "ml", "chromium", "obscura", "ocr" };
+    for (size_t i = 0; i < sizeof comps / sizeof comps[0]; i++) {
+        if (strcasecmp(sel, comps[i]) != 0) continue;
+        char src[CLI_PATH], base[CLI_PATH], dstRoot[CLI_PATH];
+        dp_cache_rid_dir(base, sizeof base);
+        char* slash = strrchr(base, '/');           /* togli /<rid> */
+        if (slash) *slash = 0;
+        snprintf(src, sizeof src, "%s/%s/%s", base, comps[i], dp_rid());
+        path_dir(dstDir, dstRoot, sizeof dstRoot);  /* <out>/libs/<rid> → <out>/libs */
+        char dst[CLI_PATH];
+        snprintf(dst, sizeof dst, "%s/%s/%s", dstRoot, comps[i], dp_rid());
+        int n = dp_copy_tree(src, dst, quiet);
+        dp_closure_dir(dst, install, quiet);
+        return n;
+    }
+    /* elenco esplicito di nomi */
+    DpCtx c;
+    memset(&c, 0, sizeof c);
+    c.quiet = quiet;
+    dp_add_shadow_dirs(&c, exe, install);
+    int n = 0;
+    const char* p = sel;
+    while (*p) {
+        while (*p == ',' || *p == ' ' || *p == '\t') p++;
+        const char* q = p;
+        while (*q && *q != ',' && *q != ' ') q++;
+        if (q > p) {
+            char tok[256];
+            size_t len = (size_t)(q - p);
+            if (len >= sizeof tok) len = sizeof tok - 1;
+            memcpy(tok, p, len); tok[len] = 0;
+            dp_copy_file_named(tok, c.dirs, c.ndirs, dstDir, quiet, &n);
+        }
+        p = q;
+    }
+    return n;
+}
+
+/* ── plugin / skill / cervelli ──────────────────────────────────────────────────────────── */
+
+/* Sceglie, in una cartella che contiene <nome>/…, le voci da copiare. */
+static int dp_deploy_entries(const char* srcRoot, const char* dstRoot, const char* sel,
+                             int quiet, int want_versions)
+{
+    if (!is_dir(srcRoot)) return 0;
+    dp_mkdir_p(dstRoot);
+    int n = 0;
+    DIR* d = opendir(srcRoot);
+    if (!d) return 0;
+    struct dirent* e;
+    while ((e = readdir(d)) != NULL) {
+        if (e->d_name[0] == '.' || !strcmp(e->d_name, "index.json")) continue;
+        char src[CLI_PATH];
+        snprintf(src, sizeof src, "%s/%s", srcRoot, e->d_name);
+        if (!is_dir(src)) continue;
+        if (!dp_sel_is_all(sel) && !dp_sel_has(sel, e->d_name)) continue;
+        char dst[CLI_PATH];
+        snprintf(dst, sizeof dst, "%s/%s", dstRoot, e->d_name);
+        if (want_versions) {
+            /* brains/<nome>/<versione>/: copia l'albero delle versioni così com'è. */
+            n += dp_copy_tree(src, dst, quiet);
+        } else {
+            n += dp_copy_tree(src, dst, quiet);
+        }
+    }
+    closedir(d);
+    return n;
+}
+
+/* Radice delle risorse condivise del checkout: `<install>/../shared/<nome>` o `<install>/<nome>`. */
+static void dp_shared_dir(const char* install, const char* name, char* out, size_t cap)
+{
+    out[0] = 0;
+    char p[CLI_PATH];
+    snprintf(p, sizeof p, "%s/../shared/%s", install, name);
+    if (is_dir(p)) { snprintf(out, cap, "%s", p); return; }
+    snprintf(p, sizeof p, "%s/%s", install, name);
+    if (is_dir(p)) { snprintf(out, cap, "%s", p); return; }
+}
+
+static void dp_brains_src_dir(char* out, size_t cap)
+{
+    out[0] = 0;
+    const char* home = getenv("HOME");
+    if (home && *home) snprintf(out, cap, "%s/.gmbasic/brains", home);
+}
+
+/* ── entry point ───────────────────────────────────────────────────────────────────────── */
+
+/* `--nome` (selettore NULL) o `--nome=valore`: 1 se `a` è questa opzione. */
+static int opt_sel(const char* a, const char* name, const char** sel)
+{
+    size_t n = strlen(name);
+    if (strcmp(a, name) == 0) { *sel = NULL; return 1; }
+    if (!strncmp(a, name, n) && a[n] == '=') { *sel = a + n + 1; return 1; }
+    return 0;
+}
+
+/* Riconosce un'opzione di bundle e la registra in `o`. 1 se consumata.
+ * (Vive qui e non in gmb_cli.c per tenere il parser sotto la soglia di 1200 righe.) */
+int gmb_parse_bundle_arg(Options* o, const char* a)
+{
+    const char* sel = NULL;
+    if (opt_sel(a, "--libs", &sel) || opt_sel(a, "-libs", &sel)) { o->libs = 1; o->libs_sel = sel; return 1; }
+    if (!strcmp(a, "--alllibs") || !strcmp(a, "-alllib") || !strcmp(a, "--all-libs")
+        || !strcmp(a, "--full") || !strcmp(a, "-full")) { o->libs = 1; o->libs_sel = NULL; return 1; }
+    if (opt_sel(a, "--plugins", &sel) || opt_sel(a, "-plugins", &sel)) { o->plugins = 1; o->plugins_sel = sel; return 1; }
+    if (opt_sel(a, "--skills", &sel) || opt_sel(a, "-skills", &sel)) { o->skills = 1; o->skills_sel = sel; return 1; }
+    if (opt_sel(a, "--brains", &sel) || opt_sel(a, "-brains", &sel)) { o->brains = 1; o->brains_sel = sel; return 1; }
+    return 0;
+}
+
+void gmb_deploy_bundle(const char* exe, const char* install, const DeployOpts* o, int quiet)
+{
+    if (!exe || !*exe) return;
+    char outDir[CLI_PATH];
+    path_dir(exe, outDir, sizeof outDir);
+    if (!outDir[0]) return;
+
+    char libsDir[CLI_PATH];
+    snprintf(libsDir, sizeof libsDir, "%s/libs/%s", outDir, GMB_RID_STR);
+
+    /* `libgmb_runtime_ai` è SEMPRE nel bundle: senza, i comandi AI falliscono. */
+    static const char* const aiRe[] = {
+        "build/libs/" GMB_RID_STR "/",
+        "native/gmb_runtime_c/build/",
+        "native/gmb_vm_c/build/gmb_runtime_c_build/",
+    };
+    const char* aiName = "libgmb_runtime_ai.dylib";
+#if defined(_WIN32)
+    aiName = "gmb_runtime_ai.dll";
+#elif !defined(__APPLE__)
+    aiName = "libgmb_runtime_ai.so";
+#endif
+    if (o && o->libs) dp_deploy_libs_select(exe, install, o->libs_sel, libsDir, quiet);
+    else dp_mkdir_p(libsDir);
+    for (size_t i = 0; i < sizeof aiRe / sizeof aiRe[0]; i++) {
+        char src[CLI_PATH], dst[CLI_PATH];
+        snprintf(src, sizeof src, "%s/%s%s", install, aiRe[i], aiName);
+        snprintf(dst, sizeof dst, "%s/%s", libsDir, aiName);
+        if (!is_file(src)) continue;
+        struct stat a, b;
+        if (stat(src, &a) == 0 && stat(dst, &b) == 0 && a.st_dev == b.st_dev && a.st_ino == b.st_ino) break;
+        if (dp_copy(src, dst)) {
+            if (!quiet) fprintf(stderr, "gmb: runtime AI -> %s\n", dst);
+            dp_closure_file(src, install, libsDir, quiet);
+        }
+        break;
+    }
+
+    if (o && o->plugins) {
+        char srcRoot[CLI_PATH], dstRoot[CLI_PATH];
+        dp_shared_dir(install, "plugins", srcRoot, sizeof srcRoot);
+        snprintf(dstRoot, sizeof dstRoot, "%s/plugins", outDir);
+        int n = dp_deploy_entries(srcRoot, dstRoot, o->plugins_sel, quiet, 0);
+        if (!quiet) fprintf(stderr, "gmb: %d plugin -> %s\n", n, dstRoot);
+    }
+    if (o && o->skills) {
+        char srcRoot[CLI_PATH], dstRoot[CLI_PATH];
+        dp_shared_dir(install, "skills", srcRoot, sizeof srcRoot);
+        snprintf(dstRoot, sizeof dstRoot, "%s/skills", outDir);
+        int n = dp_deploy_entries(srcRoot, dstRoot, o->skills_sel, quiet, 0);
+        if (!quiet) fprintf(stderr, "gmb: %d skill -> %s\n", n, dstRoot);
+    }
+    if (o && o->brains) {
+        char srcRoot[CLI_PATH], dstRoot[CLI_PATH];
+        dp_brains_src_dir(srcRoot, sizeof srcRoot);
+        snprintf(dstRoot, sizeof dstRoot, "%s/brains", outDir);
+        int n = dp_deploy_entries(srcRoot, dstRoot, o->brains_sel, quiet, 1);
+        if (!quiet) fprintf(stderr, "gmb: %d cervelli (file) -> %s\n", n, dstRoot);
+    }
 }

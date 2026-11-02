@@ -74,7 +74,11 @@ typedef struct {
     int quiet;           /* check|build|run: niente progresso su stderr */
     const char* gpm;     /* check|build|run|dump c: auto|always|linear (emit C99) */
     int all;             /* minitests: includi anche interactive/heavy */
-    int alllibs;         /* build|run: copia accanto all'eseguibile TUTTE le lib usate (closure) */
+    /* build|run: bundle di distribuzione (sottocartelle nella destinazione). */
+    int libs;            const char* libs_sel;      /* --libs[=used|all|gruppo|comp|nomi] */
+    int plugins;         const char* plugins_sel;   /* --plugins[=all|nomi] */
+    int skills;          const char* skills_sel;    /* --skills[=all|nomi]  */
+    int brains;          const char* brains_sel;    /* --brains[=all|nomi]  */
     int interactive;     /* minitests: solo TAG interactive */
     int heavy;           /* minitests: solo TAG heavy */
 } Options;
@@ -95,8 +99,21 @@ int nameset_has(const NameSet* s, const char* v);
 void nameset_add(NameSet* s, const char* v);
 void nameset_free(NameSet* s);
 int path_under(const char* path, const char* root);
-/* build|run --alllibs: chiusura delle dipendenze dinamiche accanto all'eseguibile. */
-void gmb_deploy_lib_closure(const char* exe, const char* install, int quiet);
+/* Bundle di distribuzione del programma compilato: --libs/--plugins/--skills/--brains.
+ * `o` può essere NULL (solo la dylib AI, sempre necessaria). */
+typedef struct {
+    int         libs;
+    const char* libs_sel;
+    int         plugins;
+    const char* plugins_sel;
+    int         skills;
+    const char* skills_sel;
+    int         brains;
+    const char* brains_sel;
+} DeployOpts;
+void gmb_deploy_bundle(const char* exe, const char* install, const DeployOpts* o, int quiet);
+/* Riconosce un'opzione di bundle (--libs/--plugins/--skills/--brains). 1 se consumata. */
+int  gmb_parse_bundle_arg(Options* o, const char* a);
 
 /* ── comandi e helper di progetto (definiti in gmb_cli_project.c) ──────────────────────── */
 int find_driver(Toolchain* tc, const char* argv0);

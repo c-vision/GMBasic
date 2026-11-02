@@ -142,6 +142,24 @@ static int gmb_ffi_dl_find_libs(const char* path, char* out, size_t cap)
     char cwd0[4096];   /* CWD originale: il walk-up sotto muta `cwd` in place */
     snprintf(cwd0, sizeof(cwd0), "%s", cwd);
 
+    /* (0) LOCALE AL PROGRAMMA (bundle del compilatore): <exe>/libs/<rid>, <exe>/libs, <exe>.
+     * Ha la PRECEDENZA su tutto: un programma distribuito con `--libs` non deve dipendere
+     * dalla cache né dal checkout della macchina. */
+    {
+        char exed[4096];
+        if (gmb_paths_exe_dir(exed, sizeof(exed)) && exed[0]) {
+            char libsdir[8192];
+            snprintf(libsdir, sizeof(libsdir), "%s/libs/%s", exed, gmb_libs_rid());
+            if (dl_try_in_root(libsdir, name, base, out, cap)) return 1;
+            snprintf(libsdir, sizeof(libsdir), "%s/libs", exed);
+            if (dl_try_in_root(libsdir, name, base, out, cap)) return 1;
+            if (dl_try_in_root(exed, name, base, out, cap)) return 1;
+            /* <progetto>/libs quando l'eseguibile sta in <progetto>/bin */
+            snprintf(libsdir, sizeof(libsdir), "%s/../libs", exed);
+            if (dl_try_in_root(libsdir, name, base, out, cap)) return 1;
+        }
+    }
+
     /* (1) risalendo dal CWD (nearest-first) */
     for (int up = 0; up < 16; up++) {
         char libsdir[8192];

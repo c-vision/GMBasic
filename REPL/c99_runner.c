@@ -19,8 +19,8 @@ int rpl_run_c99(const char* bas_file, const rpl_options_t* o)
     }
     char gpm[64] = "";
     if (o && o->gpm_mode && *o->gpm_mode) snprintf(gpm, sizeof(gpm), " --gpm %s", o->gpm_mode);
-    /* -full con l'engine C = distribuzione: `--alllibs` (tutte le lib usate accanto all'exe). */
-    const char* alllibs = (o && o->full) ? " --alllibs" : "";
+    /* -full con l'engine C = bundle: `--libs` (libs usate in <exe>/libs/<rid>). */
+    const char* alllibs = (o && o->full) ? " --libs" : "";
     char cmd[6144];
     snprintf(cmd, sizeof(cmd), "\"%s\" run --project \"%s\" --entry \"%s\" --quiet%s%s%s", cli, dir, bas_file, gpm, defs, alllibs);
     int rc = system(cmd);
