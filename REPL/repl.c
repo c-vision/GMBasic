@@ -484,6 +484,7 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
                        "  WEB2MD PROVIDERS DEP PACKAGE HF MLX ML AIPATH SET STATUS DEBUG BREAK CLEAR STEP\n"
                        "  CONT TRACE WATCH UNWATCH PALETTE\n"
                        "  FIXTURES SETUP LLM ADD REMOVE BUMP RESTORE UPDATE ROLLBACK TRUST CACHE AIBENCH\n"
+                       "  BRAIN RAG GRAPH IDE LIBS EVAL DIR\n"
                        "GREP [-rinlcFwvo-.] [--type EXT] [--include G] [--exclude G] [--depth N] PATTERN [PATH]\n"
                        "HELP = guida interattiva · HELP <topic> = namespace (shared/helps/<topic>.json)\n"
                        "HELP COMMANDS = questo elenco\n");
