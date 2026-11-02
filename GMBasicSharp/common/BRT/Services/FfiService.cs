@@ -268,6 +268,17 @@ public class FfiService : IFfiService
         var name = Path.GetFileName(path);
         if (string.IsNullOrEmpty(name)) return null;
         var baseName = name.StartsWith("lib", StringComparison.OrdinalIgnoreCase) ? name[3..] : name;
+        // (0) BUNDLE del compilatore (locale-prima, parità con gmb_ffi_dl.c): la lib copiata
+        // da `--libs` sta in <exe>/libs/<rid>/ e deve vincere su CWD/cache.
+        {
+            var exeDir = AppContext.BaseDirectory;
+            var rid = PlatformRid();
+            var local = TryFindLibIn(Path.Combine(exeDir, "libs", rid), name, baseName)
+                        ?? TryFindLibIn(Path.Combine(exeDir, "libs"), name, baseName)
+                        ?? TryFindLibIn(exeDir, name, baseName)
+                        ?? TryFindLibIn(Path.Combine(exeDir, "..", "libs", rid), name, baseName);
+            if (local != null) return local;
+        }
         // (1) risalendo dal CWD (nearest-first)
         var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
         for (int i = 0; i < 5 && dir != null; i++)
