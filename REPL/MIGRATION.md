@@ -58,7 +58,7 @@ Comandi riportati nel mondo C o instradati (vedi commit F3/F6b):
 | `-m`/`--managed` | **non nel REPL**: `gmbcs build --target il` (messaggio esplicito se passato) |
 | `-n`/`--native` | **non portato** (AOT): percorso nativo canonico `gmb build` — messaggio esplicito |
 | `-full` | **non portato** (closure managed completa): `gmbcs build --target il` — messaggio esplicito |
-| `--debug-tcp <port>` | **non implementato nel mondo C** (debug TCP per IDE esterni): avviso esplicito; usare `IDE` o `gmbcs debug` |
+| `--debug-tcp <port>` | **mai stato operativo**: nel vecchio runner il valore era solo salvato (`DebugPort`), nessun listener TCP veniva aperto (verificato nel sorgente storico). Nel mondo C il flag dà un avviso esplicito; per il debug usare `IDE` o `gmbcs debug` |
 | `--target wasm`, `-o` | **rimossi** con la REPL C# (POC): messaggio esplicito; per il C usare `gmb dump c` |
 | `--no-optimize` | C: nessun ottimizzatore (avviso esplicito); engine C#: non esposto |
 
@@ -87,7 +87,8 @@ vengono ignorati: il CLI stampa un errore esplicito con il programma giusto da u
 1. **NativeAOT `-n`** (build nativo dal mondo C#): non portato in `gmbcs`; il nativo canonico
    è il compilatore C (`gmb build`).
 2. **`-full`** (closure managed completa copiata): non portato.
-3. **`--debug-tcp`** (debug server TCP per IDE esterni): non implementato nel mondo C.
+3. ~~`--debug-tcp`~~ — **non era una funzione**: il flag veniva solo memorizzato, nessun server
+   TCP esisteva (né in C# né in C). Oggi risponde con un avviso esplicito.
 4. ~~GPM mode sul runner C99~~ — **fatto**: `gmb --gpm auto|always|linear` arriva all'emettitore
    C99 (`gmb_c99_set_gpm_mode`); REPL `-gpm`/`GPM` lo propagano a `RUN`/`COMPILE`.
 5. ~~BSP index.bsp~~ — **risolto** (2026-11-02): la causa non era il front-end:
