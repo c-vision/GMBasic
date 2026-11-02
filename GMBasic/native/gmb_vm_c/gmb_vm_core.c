@@ -7785,6 +7785,42 @@ static void set_err_global(gmb_task_t* task, gmb_obj_shared_val_t* err)
     gmb_task_store_global(task, slot, e);   /* fa retain: il dizionario resta vivo nel globale */
 }
 
+static long current_source_line(gmb_task_t* task);
+
+/* Popola la pseudo-variabile ERR per un THROW NON numerico (istanza di classe o stringa),
+ * con lo stesso canone del ramo PCode (PCodeProcessor OP_THROW / SetErrGlobal):
+ * Number = 256 (ErrorCode.UserDefined), Description dal valore (stringa) o canonica,
+ * LineNumber dalla mappa sorgente. Serve a `CATCH e AS ERR` su un'eccezione UTENTE: la
+ * variabile di una clausola ERR è l'istanza ERR, non il valore lanciato. */
+static void set_err_global_from_throw(gmb_task_t* task, gmb_stack_entry_t val)
+{
+    if (!task) return;
+    double code = 256.0;   /* ErrorCode.UserDefined (parità PCode/IL) */
+    const char* desc = "Unspecified runtime error";
+    if (val.type == 2 && val.ref && val.ref->kind == GMB_OBJ_STRING)
+        desc = ((gmb_obj_string_t*)val.ref)->data ? ((gmb_obj_string_t*)val.ref)->data : desc;
+    else if (val.type == 2 && val.ref && val.ref->kind == GMB_OBJ_DICT)
+    {
+        gmb_obj_shared_val_t* vd = (gmb_obj_shared_val_t*)val.ref;
+        if (vd->dict)
+        {
+            gmb_val_t dv = gmb_dict_get(*vd->dict, "Description");
+            if (dv.kind == GMB_TYPE_STRING && dv.v_string.data && dv.v_string.data[0]) desc = dv.v_string.data;
+            gmb_val_t nv = gmb_dict_get(*vd->dict, "Number");
+            if (nv.kind == GMB_TYPE_DOUBLE) code = nv.v_double;
+            else if (nv.kind == GMB_TYPE_INT) code = (double)nv.v_int;
+        }
+    }
+    gmb_obj_shared_val_t* err = gmb_shared_dict_new();
+    if (!err) return;
+    gmb_dict_set(err->dict, "Number", gmb_make_val_double(code));
+    gmb_dict_set(err->dict, "Description", gmb_make_val_string_counted(desc));
+    gmb_dict_set(err->dict, "LineNumber", gmb_make_val_double((double)current_source_line(task)));
+    gmb_dict_set(err->dict, "SourceLineText", gmb_make_val_string_counted(""));
+    gmb_dict_set(err->dict, "StackTrace", gmb_make_val_string_counted(""));
+    set_err_global(task, err);
+}
+
 /* Schema a 3 livelli per un errore BASIC a runtime (specchio RaiseBasicError):
  * TRY/CATCH attivo → ON ERROR GOTO/GOSUB → errore fatale del task.
  * Ritorna 1 SOLO nel caso ON ERROR RESUME NEXT (l'esecuzione riprende dall'istruzione
@@ -7792,25 +7828,20 @@ static void set_err_global(gmb_task_t* task, gmb_obj_shared_val_t* err)
  * fallita); 0 quando l'errore è stato consegnato a TRY/CATCH o all'handler ON ERROR (l'ip è
  * già cambiato: NIENTE va pushato, altrimenti il valore finirebbe sopra quello che l'handler
  * sta per consumare — è il bug per cui `CATCH e AS ERR` legava 0 invece del dizionario). */
-static int raise_basic_error(gmb_task_t* task, double err_code, const char* msg)
+/* Riga sorgente dell'istruzione corrente (0 se la mappa non la copre). Le voci sintetiche
+ * valgono 0xFFFFFFFF: si cerca la prima voce valida all'indietro (poi in avanti), così
+ * ERR.LineNumber riporta una riga reale invece di un valore assurdo. Le voci valide sono
+ * l'INDICE 0-based della riga (`SourceLineIndex` = currentTokenLine - 1); la riga del sorgente
+ * è quindi voce+1, come il `s->line` (1-based) che C99Native passa a gmb_raise_error. */
+static long current_source_line(gmb_task_t* task)
 {
-    task->error_line_ip = task->current_ip;
-    task->error_resume_next_ip = task->ip;
-    task->print_staging_len = 0;   /* DiscardIncompletePrintStatement */
-
-    /* Linea sorgente dell'errore: mappa ip → linea del chunk. Le voci sintetiche valgono
-     * 0xFFFFFFFF: si cerca la prima voce valida all'indietro (poi in avanti), così
-     * ERR.LineNumber riporta una riga reale invece di un valore assurdo. */
+    if (!task) return 0;
     gmb_vm_t* err_vm = (gmb_vm_t*)task->vm_ctx;
     long err_line = 0;
     if (err_vm && err_vm->chunk && err_vm->chunk->lines && err_vm->chunk->code_len > 0)
     {
         uint32_t n = err_vm->chunk->code_len;
         int ip0 = task->current_ip;
-        /* Le voci valide della mappa sono l'INDICE 0-based della riga (Chunk.Lines C#,
-         * `SourceLineIndex` = currentTokenLine - 1); -1 = voce sintetica da saltare. La riga
-         * del sorgente e' quindi voce+1, come il `s->line` (1-based) che C99Native passa a
-         * gmb_raise_error. */
         int raw_line = -1;
         if (ip0 >= 0 && (uint32_t)ip0 < n && err_vm->chunk->lines[ip0] < 0xFFFFFFF0u)
             raw_line = (int)err_vm->chunk->lines[ip0];
@@ -7831,6 +7862,16 @@ static int raise_basic_error(gmb_task_t* task, double err_code, const char* msg)
         }
         if (raw_line >= 0) err_line = (long)(raw_line + 1);
     }
+    return err_line;
+}
+
+static int raise_basic_error(gmb_task_t* task, double err_code, const char* msg)
+{
+    task->error_line_ip = task->current_ip;
+    task->error_resume_next_ip = task->ip;
+    task->print_staging_len = 0;   /* DiscardIncompletePrintStatement */
+
+    long err_line = current_source_line(task);
 
     /* Descrizione: se il raise non ne porta una (es. `ERROR 11`), usa il catalogo canonico
      * condiviso con C99Native/IL/PCode — `ERR.Description` non deve restare vuota. */
@@ -7867,13 +7908,11 @@ static int raise_basic_error(gmb_task_t* task, double err_code, const char* msg)
     unwind_procedure_frames_to_error_handler(task);
     if (task->error_handler_ip > 0)
     {
-        /* L'handler riceve il messaggio in cima allo stack (PushRef(msg) in C#). */
-        gmb_obj_string_t* s = gmb_str_cstr(msg ? msg : "");
-        if (s)
-        {
-            push_ref_entry(task, (gmb_obj_t*)s, GMB_BT_STRING);
-            gmb_obj_release((gmb_obj_t*)s);   /* push_ref_entry trattiene un ref */
-        }
+        /* NB: NON si pusha il messaggio. L'handler ON ERROR non riceve un valore in cima allo
+         * stack (il canone è la pseudo-variabile ERR, popolata sopra): il messaggio restava
+         * lì e con RESUME NEXT dopo un errore dentro un'espressione veniva consumato dallo
+         * STORE successivo (`C = A / B` con B=0 → C = "Division by zero" invece di 0,
+         * divergenza con IL/C99Native). */
         if (task->error_handler_is_gosub && task->ip_stack_count < 64)
             task->ip_stack[task->ip_stack_count++] = task->ip;
         task->ip = task->error_handler_ip;
@@ -14524,6 +14563,9 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     if (task->state == GMB_TS_FINISHED) return 0;
                     break;
                 }
+                /* ERR aggiornata PRIMA del dispatch: `CATCH e AS ERR` lega l'istanza ERR
+                 * (Number/Description), non l'oggetto lanciato — parità PCode OP_THROW. */
+                set_err_global_from_throw(task, val);
                 if (try_enter_exception_handler(task, val, 1))
                 {
                     if (task->state == GMB_TS_FINISHED) return 0;

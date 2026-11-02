@@ -463,6 +463,20 @@ const char* gmb_err_description(void);
 long gmb_err_line(void);
 jmp_buf* gmb_err_set_handler(jmp_buf* buf);
 void gmb_raise_error(int number, const char* description, long line);
+/* Eccezione UTENTE (`THROW NEW <Classe>`): il valore lanciato (istanza boxed) viaggia accanto
+ * a numero/descrizione/riga. gmb_raise_user_error fa longjmp come gmb_raise_error;
+ * gmb_err_take_value TRASFERISCE il valore al chiamante (lo slot viene azzerato), così il
+ * CATCH può legarlo a una variabile tipizzata senza lasciare un riferimento pendente.
+ * Sulle gambe C il codice di un errore utente è 256 (ErrorCode.UserDefined) e la descrizione
+ * vuota diventa "Unspecified runtime error", come il canone gestito. */
+void gmb_raise_user_error(gmb_val_t value, int number, const char* description, long line);
+gmb_val_t gmb_err_take_value(void);
+int gmb_err_has_value(void);
+/* 1 se `v` è un oggetto il cui type_name coincide con `name` (case-insensitive). Usato da
+ * `CATCH e AS <Classe>`: il dispatch per ereditarietà è espanso a compile-time dall'emitter
+ * (una chiamata per ogni classe che eredita il tipo della clausola). */
+int gmb_val_is_class(gmb_val_t v, const char* name);
+
 /* Descrizione canonica di un codice d'errore ("" se sconosciuto). Usata da gmb_raise_error
  * quando la descrizione è vuota e dai backend (VM/C) per popolare ERR.Description. */
 const char* gmb_err_default_message(int code);
@@ -1789,6 +1803,10 @@ int     gmb_rag_delete_source(const char* db, const char* coll, const char* sour
 int     gmb_rag_purge_deprecated(const char* db, const char* coll);   /* n rimossi, -1 errore */
 int     gmb_rag_count(const char* db, const char* coll);
 char*   gmb_rag_list_collections(const char* db);
+/* Sorgenti (source_id) indicizzate in una collezione: JSON array di stringhe, ordine di
+ * inserimento. Serve a `rag build --prune` (CLI C) per rimuovere i documenti spariti dal
+ * disco. Ritorno malloc; NULL/stringa d'errore "ERROR: ..." come list_collections. */
+char*   gmb_rag_list_sources(const char* db, const char* coll);
 char*   gmb_rag_search(const char* db, const char* coll, const char* query, int topk, const char* filter_json);        /* hybrid */
 char*   gmb_rag_search_vector(const char* db, const char* coll, const char* query, int topk, const char* filter_json);  /* vector-only */
 /* gmb_rag_search_sel: AIVECTOR.SEARCH con knob (reranker OFF/KEYWORD, minEvidence, explain) —

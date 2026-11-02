@@ -549,7 +549,11 @@ internal sealed partial class PCodeProcessor
         UnwindProcedureFramesToErrorHandler(task);
         if (task.ErrorHandlerIp is > 0)
         {
-            task.PushRef(msg);
+            /* NB: NON si pusha il messaggio. L'handler ON ERROR non ha un valore in cima allo
+             * stack (il canone è la pseudo-variabile ERR, popolata sopra): il messaggio
+             * rimaneva lì e, con RESUME NEXT dopo un errore in MEZZO a un'espressione, veniva
+             * consumato dallo STORE che segue (es. `C = A / B` con B=0 → C = "Division by
+             * zero" invece di 0, divergenza con IL/C99Native). */
             if (task.ErrorHandlerIsGosub)
             {
                 task.IpStack ??= new Stack<int>();
@@ -606,7 +610,10 @@ internal sealed partial class PCodeProcessor
         UnwindProcedureFramesToErrorHandler(task);
         if (task.ErrorHandlerIp > 0)
         {
-            task.PushRef(msg);
+            /* NB: NON si pusha il messaggio (vedi PropagateFutureFailure sopra): l'handler
+             * ON ERROR non riceve un valore sullo stack — il canone è la pseudo-variabile ERR.
+             * Il valore rimasto finiva consumato dallo STORE che segue un errore in MEZZO a
+             * un'espressione (`C = A / B`, B=0 → C = "Division by zero" invece di 0). */
             if (task.ErrorHandlerIsGosub)
             {
                 task.IpStack ??= new Stack<int>();

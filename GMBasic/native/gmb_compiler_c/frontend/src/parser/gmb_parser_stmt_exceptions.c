@@ -27,7 +27,45 @@ gmb_stmt_t* gmb_p_parse_try_catch(gmb_parser_t* p, int line, bool* multiline)
                 c->catch_var = (char*)malloc((size_t)v->length + 1);
                 memcpy(c->catch_var, v->lexeme, (size_t)v->length); c->catch_var[v->length] = 0;
                 gmb_p_adv(p);   /* pasto la variabile */
-                if (gmb_p_tok_is_keyword(gmb_p_cur(p), "As") || gmb_p_check(p, GMB_TOK_As)) { gmb_p_adv(p); while (!gmb_p_at_end(p) && !gmb_p_check(p, GMB_TOK_Newline)) gmb_p_adv(p); }
+                if (gmb_p_tok_is_keyword(gmb_p_cur(p), "As") || gmb_p_check(p, GMB_TOK_As)) {
+                    gmb_p_adv(p);
+                    /* Tipo della clausola (ERR oppure una classe, eventualmente qualificata
+                     * `Ns.Cls`): il NOME è l'ULTIMO segmento, come per `NEW Ns.Cls(...)`.
+                     * Prima il tipo veniva saltato fino a fine riga: senza di esso l'emitter
+                     * non può fare il dispatch per tipo (CATCH tipizzato). */
+                    const gmb_token_t* tt = gmb_p_cur(p);
+                    if (tt && tt->lexeme && tt->length > 0
+                        && tt->kind != GMB_TOK_Newline && tt->kind != GMB_TOK_Colon
+                        && tt->kind != GMB_TOK_LeftParen && tt->kind != GMB_TOK_RightParen) {
+                        gmb_p_adv(p);
+                        while (gmb_p_check(p, GMB_TOK_Dot) && gmb_p_peek(p, 1)
+                               && gmb_p_peek(p, 1)->lexeme && gmb_p_peek(p, 1)->length > 0) {
+                            gmb_p_adv(p);           /* '.' */
+                            tt = gmb_p_cur(p);      /* nuovo ultimo segmento */
+                            gmb_p_adv(p);
+                        }
+                    } else tt = NULL;
+                    if (tt) {
+                        c->catch_type = (char*)malloc((size_t)tt->length + 1);
+                        memcpy(c->catch_type, tt->lexeme, (size_t)tt->length);
+                        c->catch_type[tt->length] = 0;
+                    }
+                    /* Filtro WHEN: raccolto (prima veniva saltato → la clausola
+                     * corrispondeva sempre, vinceva la prima). */
+                    if (gmb_p_cur(p) && (gmb_p_cur(p)->kind == GMB_TOK_When
+                                         || gmb_p_tok_is_keyword(gmb_p_cur(p), "When"))) {
+                        gmb_p_adv(p);
+                        c->catch_when = gmb_p_parse_expr(p);
+                    }
+                    /* resto della riga (commento/virgole spurie): ignorato come prima */
+                    while (!gmb_p_at_end(p) && !gmb_p_check(p, GMB_TOK_Newline)) gmb_p_adv(p);
+                }
+                else if (gmb_p_cur(p) && (gmb_p_cur(p)->kind == GMB_TOK_When
+                                          || gmb_p_tok_is_keyword(gmb_p_cur(p), "When"))) {
+                    /* `CATCH e WHEN <cond>` senza AS: catch-all con filtro */
+                    gmb_p_adv(p);
+                    c->catch_when = gmb_p_parse_expr(p);
+                }
             }
             gmb_stmt_list_t cb = gmb_p_stmt_list_new();
             gmb_p_parse_block(p, &cb, GMB_TOK_Catch, "Catch", line);

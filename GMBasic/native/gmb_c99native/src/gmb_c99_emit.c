@@ -1210,8 +1210,11 @@ static void emit_defer_epilogue(ctx_t* c) {
     if (c->cur_fn && !c->cur_fn->has_gosub)
         emit_class_locals_dtors(c);
     ind(c);
-    if (cur_scope_has_gosub(c)) emit_gosub_return(c, c->cur_fn ? "return __ret;" : "return;");
-    else sb_put(&c->out, c->cur_fn ? "return __ret;\n" : "return;\n");
+    /* `main` è `int main(...)`: un'uscita a livello di programma deve restituire un valore
+     * (prima `return;` → error: non-void function 'main' should return a value, che rompeva
+     * la compilazione dei sample con RETURN raggiungibile a top-level, es. ExceptionsRethrow). */
+    if (cur_scope_has_gosub(c)) emit_gosub_return(c, c->cur_fn ? "return __ret;" : "return 0;");
+    else sb_put(&c->out, c->cur_fn ? "return __ret;\n" : "return 0;\n");
 }
 
 /* 2.8: writeback dei parametri array BYREF (alias "_<ident>" → *<ident>, parity
@@ -1264,13 +1267,17 @@ static void emit_fn_return(ctx_t* c) {
         ind(c); sb_put(&c->out, "gmb_dscope_pop();\n");
     }
     ind(c);
-    if (cur_scope_has_gosub(c)) emit_gosub_return(c, c->cur_fn ? "return __ret;" : "return;");
-    else sb_put(&c->out, c->cur_fn ? "return __ret;\n" : "return;\n");
+    /* `main` è `int main(...)`: un'uscita a livello di programma deve restituire un valore
+     * (prima `return;` → error: non-void function 'main' should return a value, che rompeva
+     * la compilazione dei sample con RETURN raggiungibile a top-level, es. ExceptionsRethrow). */
+    if (cur_scope_has_gosub(c)) emit_gosub_return(c, c->cur_fn ? "return __ret;" : "return 0;");
+    else sb_put(&c->out, c->cur_fn ? "return __ret;\n" : "return 0;\n");
 }
 
 /* ─────────────────────── inferenza tipi espressioni ─────────────────────── */
 
 static fn_info_t* find_fn(ctx_t* c, const char* name);
+static int cls_inherits_named(ctx_t* c, const char* clsname, const char* target);
 static int fn_ret_is_str(const fn_info_t* fn);
 static int fn_ret_is_tuple(const fn_info_t* fn);
 static int fn_ret_is_func(const fn_info_t* fn);
@@ -2957,7 +2964,11 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                     }
                 }
             } else if (e->var && cls_find(c, e->var)) {
-                return TY_NUM;   /* costruttore: istanza boxed (usata solo come valore opaco) */
+                /* `NEW <Classe>(...)`: il valore è un'ISTANZA BOXED (gmb_val_t), non un numero.
+                 * Con TY_NUM i contesti numerici la castavano a int/double: `THROW NEW X(...)`
+                 * emetteva `(int)(gmb_val_t)` (C invalido) e `DIM e = NEW X(...)` la passava a
+                 * gmb_make_val_double. Coerente con l'emissione (emit_call -> gmb_user_..._NEW). */
+                return TY_VAL;
             }
         }
         /* lettura array: nome(i) è una CALL nell'AST; il tipo è quello dell'elemento */
@@ -19389,12 +19400,22 @@ static void st_error(ctx_t* c, gmb_stmt_t* s) {
 }
 
 static void st_throw(ctx_t* c, gmb_stmt_t* s) {
-/* THROW <expr> (parity oracolo): stringa → ERR 1 con descrizione; numero → codice */
+/* THROW <expr>: stringa → ERR 1 con descrizione; ISTANZA DI CLASSE → errore UTENTE (il valore
+ * viaggia nell'errore, per `CATCH e AS <Classe>`); numero → codice d'errore.
+ * Prima esisteva solo stringa/numero: `THROW NEW X(...)` finiva in `(int)(gmb_val_t)` (C
+ * invalido) perché l'istanza boxed non era classificata (vedi etype: NEW -> TY_VAL). */
         ind(c);
-        if (etype(c, s->throw_expr) == TY_STR) {
+        int tt = etype(c, s->throw_expr);
+        if (tt == TY_STR) {
             sb_put(&c->out, "gmb_raise_error(1, (");
             emit_str_operand(c, s->throw_expr);
             sb_printf(&c->out, ").data, %d);\n", s->line);
+        } else if (tt == TY_VAL) {
+            /* 256 = ErrorCode.UserDefined; descrizione vuota → "Unspecified runtime error"
+             * (stesso canone del gestito, BasicException.GetDefaultMessage). */
+            sb_put(&c->out, "gmb_raise_user_error((");
+            emit_expr(c, s->throw_expr);
+            sb_printf(&c->out, "), 256, \"\", %d);\n", s->line);
         } else {
             sb_put(&c->out, "gmb_raise_error((int)(");
             emit_expr(c, s->throw_expr);
@@ -19510,43 +19531,146 @@ static void st_try(ctx_t* c, gmb_stmt_t* s) {
             ind(c); sb_printf(&c->out, "__err_active_%d = 1; __err_num_%d = gmb_err_number(); __err_desc_%d = gmb_err_description(); __err_line_%d = gmb_err_line();\n",
                                id, id, id, id);
         } else {
-            /* variabili CATCH uniche (gmb_int_t <nome>__try<id>) dichiarate UNA volta,
-               poi assegnate col numero errore; visibili ai body di tutte le clausole. */
-            for (int k = 0; k < s->n_catch; k++) {
-                gmb_stmt_t* cl = s->catch_body[k];
-                if (!cl || !cl->catch_var) continue;
-                int dup = 0;
-                for (int j = 0; j < k; j++) {
-                    gmb_stmt_t* cj = s->catch_body[j];
-                    if (cj && cj->catch_var && strcasecmp(cj->catch_var, cl->catch_var) == 0) { dup = 1; break; }
-                }
-                if (dup) continue;
-                ind(c); sb_printf(&c->out, "gmb_int_t %s__try%d = 0;\n", cl->catch_var, id);
-            }
-            int saved = c->n_catch_names;
-            for (int k = 0; k < s->n_catch && c->n_catch_names < 16; k++) {
-                gmb_stmt_t* cl = s->catch_body[k];
-                if (!cl || !cl->catch_var) continue;
-                int dup = 0;
-                for (int j = saved; j < c->n_catch_names; j++)
-                    if (strcasecmp(c->catch_names[j], cl->catch_var) == 0) { dup = 1; break; }
-                if (!dup) {
-                    snprintf(c->catch_names[c->n_catch_names], 64, "%s", cl->catch_var);
-                    snprintf(c->catch_cnames[c->n_catch_names], 80, "%s__try%d", cl->catch_var, id);
-                    c->n_catch_names++;
-                }
-            }
-            for (int k = 0; k < s->n_catch; k++) {
-                gmb_stmt_t* cl = s->catch_body[k];
-                if (!cl || !cl->catch_var) continue;
-                ind(c); sb_printf(&c->out, "%s__try%d = gmb_err_number();\n", cl->catch_var, id);
-            }
+            /* TRY/CATCH con dispatch PER TIPO (parità IL): la prima clausola che corrisponde
+             * vince, le successive sono saltate; se nessuna corrisponde l'errore si RIPROPAGA.
+             * Prima i corpi di tutte le clausole venivano emessi in sequenza: vinceva sempre il
+             * primo, indipendentemente dal tipo lanciato (CATCH tipizzato di fatto assente).
+             *
+             * Stato catturato in locali di stack: il VALORE utente (istanza di classe) viene
+             * PRELEVATO dallo stato errore (move) per non lasciare riferimenti pendenti; numero/
+             * descrizione/riga restano nello stato per i pseudo-membri di `CATCH e AS ERR`. */
+            ind(c); sb_printf(&c->out, "gmb_val_t __exc_%d = gmb_err_take_value();\n", id);
+            ind(c); sb_printf(&c->out, "int __excnum_%d = gmb_err_number();\n", id);
+            ind(c); sb_printf(&c->out, "const char* __excdesc_%d = gmb_err_description();\n", id);
+            ind(c); sb_printf(&c->out, "long __excline_%d = gmb_err_line();\n", id);
+            ind(c); sb_printf(&c->out, "int __excmatched_%d = 0;\n", id);
             for (int k = 0; k < s->n_catch && !c->error[0]; k++) {
                 gmb_stmt_t* cl = s->catch_body[k];
                 if (!cl) continue;
+                const char* ctype = cl->catch_type;
+                int is_err = ctype && ctype[0] && strcasecmp(ctype, "ERR") == 0;
+                /* Match: ERR (o clausola senza tipo) = catch-all; una CLASSE = istanza del
+                 * tipo dichiarato O di una sua sottoclasse / implementatore (espanso qui a
+                 * compile-time: l'istanza porta solo il type_name della classe CONCRETA). */
+                char match[2048]; match[0] = 0;
+                if (ctype && ctype[0] && !is_err) {
+                    struct cls_info* tci = cls_find(c, ctype);
+                    if (!tci) { c99_fail(c, s->line, "CATCH ... AS '%s': classe sconosciuta", ctype); continue; }
+                    size_t mo = 0;
+                    for (int ci = 0; ci < c->n_classes && mo + 96 < sizeof(match); ci++) {
+                        struct cls_info* cc = &c->classes[ci];
+                        int matchable = cls_inherits_named(c, cc->name, ctype);
+                        if (!matchable && tci->is_interface) {
+                            for (int q = 0; q < cc->nimpl; q++)
+                                if (strcasecmp(cc->impl[q], ctype) == 0) { matchable = 1; break; }
+                        }
+                        if (!matchable) continue;
+                        mo += (size_t)snprintf(match + mo, sizeof(match) - mo, "%sgmb_val_is_class(__exc_%d, \"%s\")",
+                                               mo ? " || " : "", id, cc->name);
+                    }
+                    if (!match[0])
+                        snprintf(match, sizeof(match), "gmb_val_is_class(__exc_%d, \"%s\")", id, ctype);
+                } else {
+                    snprintf(match, sizeof(match), "1");
+                }
+                int saved_names = c->n_catch_names;
+                vars_t* sc = cur_scope(c);
+                int saved_n = sc->n;
+                var_t saved_var; int had_var = 0;
+                int is_class_clause = ctype && ctype[0] && !is_err;
+                const char* cvar = cl->catch_var;
+                /* Ogni clausola in un blocco C proprio: il binding per il filtro WHEN
+                 * (`gmb_val_t e = __exc_N`) vive a livello di clausola, e due clausole con lo
+                 * stesso nome BASIC (scope distinti) non devono collidere come redeclaration. */
+                ind(c); sb_put(&c->out, "{\n");
+                c->indent++;
+                /* Filtro WHEN (`CATCH e AS ERR WHEN e.Number = 11`): la condizione può
+                 * riferirsi alla variabile della clausola, quindi la si lega PRIMA del test
+                 * (per ERR i pseudo-membri puntano allo stato catturato __excnum; per una
+                 * CLASSE l'istanza è un locale visibile al filtro). Senza questo il parser
+                 * scartava il WHEN e C99 eseguiva sempre la prima clausola. */
+                int pre_bound = 0;
+                if (cl->catch_when && cvar) {
+                    if (is_class_clause) {
+                        ind(c); sb_printf(&c->out, "gmb_val_t %s = __exc_%d;\n", cvar, id);
+                        var_t* prev = vars_find(sc, cvar);
+                        if (prev) { saved_var = *prev; had_var = 1; }
+                        var_t* cvv = vars_add(sc, cvar, TY_VAL);
+                        cvv->type = TY_VAL;
+                        cvv->boxed_val = 1;
+                        snprintf(cvv->vclass, sizeof(cvv->vclass), "%s", ctype);
+                        cvv->is_dim_local = 1;
+                    } else if (c->n_catch_names < 16) {
+                        snprintf(c->catch_names[c->n_catch_names], 64, "%s", cvar);
+                        snprintf(c->catch_cnames[c->n_catch_names], 80, "__excnum_%d", id);
+                        c->n_catch_names++;
+                    }
+                    pre_bound = 1;
+                }
+                ind(c); sb_printf(&c->out, "if (!__excmatched_%d && (%s)", id, match);
+                if (cl->catch_when) {
+                    /* stessa semantica di st_if: predicato numerico nudo, stringa = non vuota,
+                     * altrimenti valore numerico truthy. */
+                    sb_put(&c->out, " && (");
+                    if (expr_is_numeric_predicate(c, cl->catch_when)) emit_expr(c, cl->catch_when);
+                    else if (etype(c, cl->catch_when) == TY_STR) {
+                        sb_put(&c->out, "({ gmb_string_t _wcond = ");
+                        emit_expr(c, cl->catch_when);
+                        sb_put(&c->out, "; _wcond.data && _wcond.data[0]; })");
+                    } else emit_num_operand(c, cl->catch_when);
+                    sb_put(&c->out, ")");
+                }
+                sb_put(&c->out, ") {\n");
+                c->indent++;
+                ind(c); sb_printf(&c->out, "__excmatched_%d = 1;\n", id);
+                if (cvar) {
+                    if (is_class_clause) {
+                        if (!pre_bound) {
+                            /* Lega l'ISTANZA (gmb_val_t) e la registra come variabile di classe:
+                             * `ex.Campo` risolve sui campi della classe, non sui pseudo-membri. */
+                            ind(c); sb_printf(&c->out, "gmb_val_t %s = __exc_%d;\n", cvar, id);
+                            var_t* prev = vars_find(sc, cvar);
+                            if (prev) { saved_var = *prev; had_var = 1; }
+                            var_t* cvv = vars_add(sc, cvar, TY_VAL);
+                            cvv->type = TY_VAL;
+                            cvv->boxed_val = 1;
+                            snprintf(cvv->vclass, sizeof(cvv->vclass), "%s", ctype);
+                            cvv->is_dim_local = 1;
+                        }
+                    } else {
+                        /* ERR / catch-all: pseudo-membri Number/Description/LineNumber. */
+                        ind(c); sb_printf(&c->out, "gmb_int_t %s = __excnum_%d;\n", cvar, id);
+                        if (pre_bound && c->n_catch_names > saved_names) {
+                            /* riusa la voce registrata per il filtro: nel corpo `.Number`
+                             * legge la variabile della clausola, non lo stato __excnum. */
+                            snprintf(c->catch_cnames[c->n_catch_names - 1], 80, "%s", cvar);
+                        } else if (c->n_catch_names < 16) {
+                            snprintf(c->catch_names[c->n_catch_names], 64, "%s", cvar);
+                            snprintf(c->catch_cnames[c->n_catch_names], 80, "%s", cvar);
+                            c->n_catch_names++;
+                        }
+                    }
+                }
                 emit_list(c, cl->catch_body, cl->n_catch);
+                c->n_catch_names = saved_names;
+                if (is_class_clause) {
+                    if (had_var) { var_t* now = vars_find(sc, cvar); if (now) *now = saved_var; }
+                    else if (sc->n > saved_n) sc->n = saved_n;
+                }
+                c->indent--;
+                ind(c); sb_put(&c->out, "}\n");
+                c->indent--;
+                ind(c); sb_put(&c->out, "}\n");
             }
-            c->n_catch_names = saved;
+            /* Nessuna clausola corrisponde: RIPROPAGA (parità IL). Se era un'eccezione utente
+             * (valore OBJECT) la si rilancia col suo valore; altrimenti il codice numerico. */
+            ind(c); sb_printf(&c->out, "if (!__excmatched_%d) {\n", id);
+            c->indent++;
+            ind(c); sb_printf(&c->out, "if (__exc_%d.kind == GMB_TYPE_OBJECT) gmb_raise_user_error(__exc_%d, __excnum_%d, __excdesc_%d, __excline_%d);\n",
+                               id, id, id, id, id);
+            ind(c); sb_printf(&c->out, "else gmb_raise_error(__excnum_%d, __excdesc_%d, __excline_%d);\n", id, id, id);
+            c->indent--;
+            ind(c); sb_put(&c->out, "}\n");
         }
         c->indent--;
         ind(c); sb_put(&c->out, "}\n");
@@ -19831,8 +19955,8 @@ static void st_return(ctx_t* c, gmb_stmt_t* s) {
             emit_fn_return(c);
         } else {
             if (defer_count(c) > 0) { sb_printf(&c->out, "goto %s;\n", defer_exit_label(c)); return; }
-            if (cur_scope_has_gosub(c)) emit_gosub_return(c, "return;");
-            else sb_put(&c->out, "return;\n");
+            if (cur_scope_has_gosub(c)) emit_gosub_return(c, c->cur_fn ? "return;" : "return 0;");
+            else sb_put(&c->out, c->cur_fn ? "return;\n" : "return 0;\n");
         }
         return;
     }
