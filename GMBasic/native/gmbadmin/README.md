@@ -204,11 +204,22 @@ I selfcheck C (`GMBasic/native/gmb_runtime_c/tests/`) girano su una cartella tem
 
 Il runtime C (`libgmb_runtime.a`) **non linka LLMEnv**. Le parti AI — ASR, tokenizer LLM,
 model I/O, TRAIN DISTILL e i sorgenti MoE di LLMEnv — vivono nella dylib
-`libgmb_runtime_ai` (in `GMBasic/build/libs/<rid>/` nel checkout, `~/.gmbasic/libs/<rid>/`
-quando distribuita), caricata su richiesta dal gateway `gmb_ai_gateway.c`.
+`libgmb_runtime_ai`, caricata su richiesta dal gateway `gmb_ai_gateway.c`.
 Senza dylib i comandi AI falliscono con un errore **esplicito** («runtime AI non disponibile»),
 non con un no-op. `gmbllm` è a sua volta diviso in `gmbllm_core` (consumato dal runtime) e
 `gmbllm_train` (training/MLX, solo tool TRAIN).
+
+**Dove sta la dylib** (ordine di ricerca del gateway):
+1. `GMBasic/build/libs/<rid>/` nel checkout (output del build);
+2. **accanto all'eseguibile** — `gmb build`/`gmb run` ce la **copiano** a ogni link (come il
+   compilatore C# copia la closure accanto al programma: un eseguibile distribuito non deve
+   dipendere dal checkout);
+3. `~/.gmbasic/libs/<rid>/` (solo se ve la mette un deploy esplicito: `gmb libs prune` toglie
+   dalla cache i file non presenti nel manifest, quindi NON è il posto canonico).
+
+Su Windows lo split non esiste (niente `dynamic_lookup`): le sorgenti AI restano nel core e la
+dylib non si costruisce. Su Linux i consumer esportano i simboli del core
+(`-Wl,--export-dynamic`) perché la dylib li risolve a load-time.
 
 ## Sorgente unica
 

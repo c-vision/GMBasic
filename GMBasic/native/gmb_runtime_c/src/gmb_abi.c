@@ -18,12 +18,6 @@
  * Compilato in due contesti: runtime (scope APP) e dylib del compilatore gmb_ai_modelio (-DGMB_ABI_SCOPE_SYSTEM). */
 
 #include "gmb_runtime.h"
-/* NIENTE `llmdesc.h` (LLMEnv) nel core: le 3 funzioni usate sono dichiarate qui come DEBOLI
- * e vivono nella dylib `gmb_runtime_ai` (SPLIT 2026-11-02). */
-
-/* SPLIT core/AI (2026-11-02): `llmdesc` (LLMEnv) vive nella dylib `gmb_runtime_ai`.
- * Questi riferimenti sono DEBOLI: senza la dylib il core linka comunque e le funzioni che
- * richiedono l'ABI dicono esplicitamente che l'AI non è disponibile (mai un ripiego muto). */
 /* SPLIT core/AI (2026-11-02): l'ABI dei modelli (LLMEnv `llmdesc`) vive nella dylib
  * `gmb_runtime_ai`. Il core non linka LLMEnv: i tre servizi sono PUNTATORI registrati dalla
  * dylib al caricamento (`gmb_abi_set_llmdesc`). Se non è caricata, l'ABI non c'è e le
@@ -40,8 +34,24 @@ void gmb_abi_set_llmdesc(int (*valid)(const char*), int (*locate)(char*, size_t,
     g_llmdesc_policy = policy;
 }
 
+#if defined(_WIN32)
+/* Windows: lo split non c'è (niente dynamic_lookup) → `llmdesc` è linkato nel core e i
+ * servizi si registrano direttamente al primo uso (nessun constructor esterno). */
+#include "llmdesc.h"
+static void gmb_abi_bind_direct(void)
+{
+    if (g_llmdesc_valid) return;
+    g_llmdesc_valid  = llmdesc_abi_valid;
+    g_llmdesc_locate = llmdesc_abi_locate;
+    g_llmdesc_policy = llmdesc_set_abi_policy;
+}
+#else
+static void gmb_abi_bind_direct(void) { }
+#endif
+
 static int gmb_abi_available(void)
 {
+    gmb_abi_bind_direct();
     return g_llmdesc_valid != NULL;
 }
 
@@ -402,6 +412,7 @@ int gmb_abi_dir(char* out, size_t cap)
 /* Registrazione: richiesta della cartella ABI = risolta da qui, e senza ABI il caricamento del modello fallisce. */
 __attribute__((constructor)) static void gmb_abi_register(void)
 {
+    gmb_abi_bind_direct();   /* Windows: binding statico; altrove no-op */
     if (g_llmdesc_policy) g_llmdesc_policy(gmb_abi_dir, 1);
 }
 

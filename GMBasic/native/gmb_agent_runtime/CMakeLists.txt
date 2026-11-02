@@ -49,7 +49,10 @@ target_include_directories(gmb_agent_runtime PUBLIC
 add_subdirectory("${LLMENV}/LLMJinja" "${CMAKE_CURRENT_BINARY_DIR}/llmjinja_build")
 # SPLIT core/AI (2026-11-02): il runtime non propaga più le lib LLMEnv. Chi usa direttamente
 # llmcodec/llmtoken (chat template, tokenizer) le dichiara qui.
-target_link_libraries(gmb_agent_runtime PUBLIC llmjinja llmcodec llmtoken)
+# SPLIT core/AI (2026-11-02): llmtoken NON è linkata: gmb_brain_mlx.c la carica a RUNTIME via
+# dlopen (libllmtoken.dylib). Linkarla qui aggiungeva una LC_LOAD_DYLIB a ogni consumer del
+# runtime (REPL compresa) senza che nessun simbolo fosse usato.
+target_link_libraries(gmb_agent_runtime PUBLIC llmjinja llmcodec)
 
 if(APPLE)
     enable_language(OBJC)

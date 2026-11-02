@@ -1,6 +1,6 @@
 # GmbAiNativeLibs.cmake — GARANZIA anti-stale GLOBALE per le lib/dylib AI native.
 #
-# PROBLEMA (ricorrente): le lib AI native (libgmb_runtime.a, libgmbllm.a) e le dylib
+# PROBLEMA (ricorrente): le lib AI native (libgmb_runtime.a, libgmbllm_core.a, libgmbllm_train.a) e le dylib
 # (libgmb_ai_llm, libgmb_ai_modelio) sono PRODOTTE da ALBERI CMake separati
 # (native/gmb_runtime_c, native/gmb_compiler_c) e linkate BY-PATH dai consumer: CMake NON le
 # conosce come dipendenze -> un cambio di sorgente AI le lascia STALE, e il consumer usa il
