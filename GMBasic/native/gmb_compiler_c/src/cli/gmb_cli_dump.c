@@ -76,6 +76,8 @@ static int exe_dir(char* out, size_t cap)
  * la REPL che pilota il compilatore vuole SOLO l'output del programma/dump. */
 static int g_quiet = 0;
 void gmb_cli_set_quiet(int on) { g_quiet = on ? 1 : 0; }
+static const char* g_gpm = NULL;
+void gmb_cli_set_gpm(const char* mode) { g_gpm = (mode && *mode) ? mode : NULL; }
 
 static int run_tool_ex(const char* tool, const char* a1, const char* a2, const char* extra)
 {
@@ -145,7 +147,9 @@ int gmb_cli_dump_c(const char* file, const char* out)
 {
     char tmp[1024];
     if (!out) { snprintf(tmp, sizeof tmp, "/tmp/gmb_dump_%d.c", (int)getpid()); out = tmp; }
-    int rc = run_tool_ex("gmb_c99native_driver", file, out, "--no-exe");
+    char extra[64] = "--no-exe";
+    if (g_gpm) snprintf(extra, sizeof extra, "--no-exe --gpm %s", g_gpm);
+    int rc = run_tool_ex("gmb_c99native_driver", file, out, extra);
     if (rc == 0 && out == tmp) { printf("%s\n", out); }
     return rc;
 }

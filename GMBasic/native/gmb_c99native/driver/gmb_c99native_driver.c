@@ -421,6 +421,7 @@ int main(int argc, char** argv) {
         fprintf(stderr,
             "uso: %s <file.bas> [out.c] [--exe <bin>] [--no-exe] [-I dir] [--obj f] [--lib f]\n"
             "          [--cc cc] [--cflags \"f\"] [--ldflags \"f\"] [--defines \"f\"]\n"
+            "          [--gpm auto|always|linear]\n"
                         "[--line-map <file.json>] [--semgraph] [--semgraph-diff <base.bas>]\n"
             "  di default emette il C e poi COMPILA/LINKA l'eseguibile; --no-exe ferma al solo C;\n"
             "  --exe <bin> sceglie il nome. Ogni opzione accetta anche --opt=valore.\n", argv[0]);
@@ -428,6 +429,7 @@ int main(int argc, char** argv) {
     }
     const char* in = argv[1];
     int no_exe = 0;
+    int gpm_mode = 0;   /* 0 auto, 1 always, 2 linear (--gpm) */
     int want_semgraph = 0;
     const char* semgraph_base = NULL;
     const char* exe_opt = NULL;
@@ -470,6 +472,14 @@ int main(int argc, char** argv) {
         if ((v = opt_value(a, "--semgraph-diff")) != NULL) { semgraph_base = v[0] ? v : next_value(argc, argv, &i); continue; }
         if ((v = opt_value(a, "--line-map")) != NULL) { line_map = v[0] ? v : next_value(argc, argv, &i); continue; }
         if (opt_flag(a, "--no-exe")) { no_exe = 1; continue; }
+        if ((v = opt_value(a, "--gpm")) != NULL) {
+            const char* m = v[0] ? v : next_value(argc, argv, &i);
+            if (!m || !strcasecmp(m, "auto")) gpm_mode = 0;
+            else if (!strcasecmp(m, "always")) gpm_mode = 1;
+            else if (!strcasecmp(m, "linear")) gpm_mode = 2;
+            else { fprintf(stderr, "opzione --gpm sconosciuta: %s (auto|always|linear)\n", m ? m : ""); return 2; }
+            continue;
+        }
         fprintf(stderr, "opzione sconosciuta: %s\n", a);
         fprintf(stderr, "uso: %s <file.bas> [out.c] [--exe <bin>] [--no-exe] [-I dir] "
                         "[--obj f] [--lib f] [--cc cc] [--cflags \"f\"] [--ldflags \"f\"] [--defines \"f\"]\n", argv[0]);
@@ -600,6 +610,7 @@ int main(int argc, char** argv) {
         for (int k = 0; k < na; k++) { anchors[k].line = smap.segs[k].line; anchors[k].file = smap.segs[k].file; }
         gmb_c99_set_source_anchors(anchors, na);
     }
+    gmb_c99_set_gpm_mode(gpm_mode);
     if (gmb_c99_emit(&prog, &csrc, &eerr) != 0) {
         fprintf(stderr, "emissione: %s\n", eerr ? eerr : "errore"); free(eerr);
         gmb_typereg_free(&tr); gmb_symtab_free(&st);

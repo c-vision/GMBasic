@@ -26,7 +26,7 @@ int rpl_parse_args(int argc, char** argv, rpl_options_t* o)
     memset(o, 0, sizeof(*o));
     o->backend = RPL_VMC;          /* default: vmc (native) */
     o->use_sdl = true;
-    o->gpm_mode = "Always";
+    o->gpm_mode = "Auto";   /* default EFFETTIVO: rilevamento (Always solo su richiesta) */
     o->grid_width = o->grid_height = 0;
     o->debug_port = -1;
 
@@ -72,8 +72,12 @@ int rpl_parse_args(int argc, char** argv, rpl_options_t* o)
         if (!strcmp(a[i], "--il-module") && i + 1 < n) o->il_modules[o->il_modules_count++] = a[i + 1];
     o->compile_bsp_dir = flag_value(a, n, "-bsp");
     const char* gpm = flag_value(a, n, "-gpm");
+    /* -gpm <mode> (o -gpm:<mode>): niente variabili d'ambiente per il comportamento. */
     if (gpm) o->gpm_mode = gpm;
-    else { const char* eg = getenv("GMBASIC_GPM"); if (eg) o->gpm_mode = eg; }
+    else {
+        for (int i = 0; i < n; i++)
+            if (strncmp(a[i], "-gpm:", 5) == 0) { o->gpm_mode = a[i] + 5; break; }
+    }
     const char* w = flag_value(a, n, "-w"); if (w) o->grid_width = atoi(w);
     const char* h = flag_value(a, n, "-h"); if (h) o->grid_height = atoi(h);
     /* -size W,H (grid celle) e -font name,size: sovrascrivono i settings (parità C#). */

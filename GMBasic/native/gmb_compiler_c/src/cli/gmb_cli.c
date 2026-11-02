@@ -309,6 +309,8 @@ static void usage(void) {
         "  build  emette il C e linka l'eseguibile in <progetto>/bin\n"
         "         LIBRARY \"nome\": linka <progetto>/bin/nome.dylib (nessun main), come .gmblib\n"
         "  run    build + esecuzione (CWD = cartella del progetto)\n"
+        "  --gpm auto|always|linear   schedulatore GPM nel C emesso (default auto)\n"
+        "         always = forza lo scheduler; linear = percorso diretto se lineare (mai crash)\n"
         "  minitests  TUTTI i MiniTests: driver → C → `cc -fsyntax-only` (nessun link)\n"
         "             con --baseline <json> di un run precedente: rosso solo per le regressioni\n"
         "  exit: 0 ok · 2 compilazione/progetto (minitests: almeno un FAIL) · 3 parse ·\n"
@@ -1006,8 +1008,11 @@ int main(int argc, char** argv) {
      * `gmb eval "<istruzioni>"`. */
     if (!strcmp(o.command, "dump") || !strcmp(o.command, "eval")) {
         gmb_cli_set_defines(argc, argv);
-        for (int i = 2; i < argc; i++)
+        for (int i = 2; i < argc; i++) {
             if (!strcmp(argv[i], "--quiet") || !strcmp(argv[i], "-q")) gmb_cli_set_quiet(1);
+            if (!strcmp(argv[i], "--gpm") && i + 1 < argc) gmb_cli_set_gpm(argv[i + 1]);
+            else if (!strncmp(argv[i], "--gpm=", 6)) gmb_cli_set_gpm(argv[i] + 6);
+        }
     }
     if (!strcmp(o.command, "dump")) {
         if (argc < 4) { fprintf(stderr, "uso: gmb dump ast|chunk|c|disasm <file.bas> [--out <file>]\n"); return 2; }
@@ -1058,9 +1063,10 @@ int main(int argc, char** argv) {
         if (!strncmp(a, "--driver=", 9)) { o.driver = a + 9; continue; }
         if (!strncmp(a, "--cc=", 5)) { o.cc = a + 5; continue; }
         if (!strncmp(a, "--baseline=", 11)) { o.baseline = a + 11; continue; }
+        if (!strncmp(a, "--gpm=", 6)) { o.gpm = a + 6; continue; }
         if ((!strcmp(a, "--project") || !strcmp(a, "--entry") || !strcmp(a, "--out")
              || !strcmp(a, "--root") || !strcmp(a, "--filter") || !strcmp(a, "--driver")
-             || !strcmp(a, "--cc") || !strcmp(a, "--baseline")) && i + 1 < argc) {
+             || !strcmp(a, "--cc") || !strcmp(a, "--baseline") || !strcmp(a, "--gpm")) && i + 1 < argc) {
             v = argv[++i];
             if (!strcmp(a, "--project")) o.project = v;
             else if (!strcmp(a, "--entry")) o.entry = v;
@@ -1069,6 +1075,7 @@ int main(int argc, char** argv) {
             else if (!strcmp(a, "--filter")) o.filter = v;
             else if (!strcmp(a, "--driver")) o.driver = v;
             else if (!strcmp(a, "--baseline")) o.baseline = v;
+            else if (!strcmp(a, "--gpm")) o.gpm = v;
             else o.cc = v;
             continue;
         }

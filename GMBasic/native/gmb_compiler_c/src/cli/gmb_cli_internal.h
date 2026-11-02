@@ -29,6 +29,8 @@ int gmb_cli_dump_disasm(const char* file);
 int gmb_cli_eval(const char* code);
 /* --quiet: sopprime lo stdout informativo dei driver (chunk -> …). */
 void gmb_cli_set_quiet(int on);
+/* --gpm (dump c): modo GPM passato al driver C99. */
+void gmb_cli_set_gpm(const char* mode);
 
 #define CLI_PATH 4096
 #define CLI_MAX_NS 128   /* namespace massimi considerati da `check` (ex gmb_cli.c) */
@@ -70,6 +72,7 @@ typedef struct {
     int json;
     int strict;
     int quiet;           /* check|build|run: niente progresso su stderr */
+    const char* gpm;     /* check|build|run|dump c: auto|always|linear (emit C99) */
     int all;             /* minitests: includi anche interactive/heavy */
     int interactive;     /* minitests: solo TAG interactive */
     int heavy;           /* minitests: solo TAG heavy */

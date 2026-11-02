@@ -15,6 +15,10 @@
 int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error);
 /* §3.6 PARSEC: nome del file sorgente (per LLM.FILEOUTLINE nel fold semantico). */
 void gmb_c99_set_source_file(const char* f);
+/* GPM: 0 = auto (rilevamento dal programma), 1 = always (forza lo scheduler anche se il
+ * rilevamento non vede concorrenza), 2 = linear (percorso diretto quando è lineare;
+ * ripiega su auto se c'è concorrenza). Da chiamare PRIMA di gmb_c99_emit. */
+void gmb_c99_set_gpm_mode(int mode);
 
 /* O8 — mappa diagnostica C→BASIC. `line` è la prima riga (1-based) che il file occupa nel
  * testo concatenato passato al parser; dentro il file la riga riparte da 1. Passata al

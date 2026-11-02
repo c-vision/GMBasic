@@ -53,7 +53,7 @@ Comandi riportati nel mondo C o instradati (vedi commit F3/F6b):
 | `-D name=val` | REPL → `gmb`/`gmbcs`; CLI → `gmbcs` |
 | `--il-module <dll>` | solo con `--engine=csharp` (inoltrato a `gmbcs`); senza engine: errore esplicito |
 | `-e`/`-executor` | `gmb_repl -e` (log settings) |
-| `-gpm[:mode]` | accettato e mostrato (`STATUS`/`GPM`); il runner C99 usa il GPM di default — **parziale** |
+| `-gpm[:mode]` / `GPM <mode>` | **implementato**: `auto|always|linear` passa a `gmb --gpm` (emissione C99). `auto` = rilevamento (default effettivo), `always` = forza lo scheduler (`gmb_gpm_start` sempre), `linear` = percorso diretto se lineare (mai crash) |
 | `--run <cmd>` | `gmb_repl --run <cmd>` |
 | `-m`/`--managed` | **non nel REPL**: `gmbcs build --target il` (messaggio esplicito se passato) |
 | `-n`/`--native` | **non portato** (AOT): percorso nativo canonico `gmb build` — messaggio esplicito |
@@ -88,7 +88,8 @@ vengono ignorati: il CLI stampa un errore esplicito con il programma giusto da u
    è il compilatore C (`gmb build`).
 2. **`-full`** (closure managed completa copiata): non portato.
 3. **`--debug-tcp`** (debug server TCP per IDE esterni): non implementato nel mondo C.
-4. **`GPM` mode sul runner C99**: accettato/mostrato, non ancora propagato al runtime.
+4. ~~GPM mode sul runner C99~~ — **fatto**: `gmb --gpm auto|always|linear` arriva all'emettitore
+   C99 (`gmb_c99_set_gpm_mode`); REPL `-gpm`/`GPM` lo propagano a `RUN`/`COMPILE`.
 5. **BSP**: le pagine che definiscono procedure omonime di builtin (es. `EscapeHtml` vs
    `IMPORT STRINGS`) sono rifiutate dal compilatore C — divergenza del front-end da
    indagare; le altre pagine compilano (`BSP: N OK`).
