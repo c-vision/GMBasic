@@ -255,3 +255,18 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
       native/full, `EVAL` unico significato; il blocco storico Rapid-MLX è stato spostato in
       **appendice** (nessuna informazione persa). La guida REPL ora descrive solo la REPL C e
       rimanda a `Compiler-CLI-Guide`, `Notebook-Server-Guide`, `LSP-Server-Guide`.
+
+- [ ] **F9 — CLI admin in C (front unico `gmb`)** — direzione: **tutto ciò che è in C# deve
+      esistere in C**, il C# usa **P/Invoke** (mai logica solo-C#). Stato:
+      - [x] **F9a** (2026-11-02): `gmbcs` accetta `--project/--entry` (stesso contratto di
+        `gmb`); `gmb --engine c|csharp` esegue lo **stesso argv** su `gmbcs` (nessuna
+        traduzione). Verificato: `check/dump/run --engine=csharp --project` e `--engine=c`.
+      - [ ] **F9b** — `gmb` front per l'admin in **C**. API C già disponibili: `gmb_pkg_*`
+        (manifest/resolver/lock/trust/contentaddr/registry/install), `gmb_fixtures_*`,
+        `gmb_brain_*` (list/info/use/detach), `gmb_graph_*`, `gmb_grep_*`, `gmb_rag_*`,
+        `gmb_libs_*`, `gmb_doc_*` (conversione), `gmb_fetch_*` (download modelli).
+      - [ ] **F9c** — portare i comandi oggi solo-C#: `publish`, `login/register/logout/admin`,
+        `pack/keygen`, `libs publish`, `setup TORCH|BROWSER|OCR`, `daemon`, `rag build/query`,
+        `hf/mlx`, `convert/convfmt`.
+      - [ ] **F9d** — il CLI C# `GMBasicSharp/Cli` diventa **wrapper P/Invoke** delle funzioni
+        C (o viene rimosso a F9c completo): nessun comando può restare C#-only.

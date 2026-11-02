@@ -297,28 +297,6 @@ int path_under(const char* path, const char* root) {
 
 /* ── opzioni ──────────────────────────────────────────────────────────────────────────── */
 
-static void usage(void) {
-    fprintf(stderr,
-        "uso: gmb check|build|run --project <dir> [--entry <file.bas>] [--json] [--strict]\n"
-        "     gmb build ... [--out <exe>]\n"
-        "     gmb dump ast|chunk|c|disasm <file.bas> [--out <file>]   dump per la REPL (F1)\n"
-        "     gmb eval \"<istruzioni>\"                          compila ed esegue uno snippet\n"
-        "     gmb minitests [--root <dir>] [--filter <substr>] [--all] [--json]\n"
-        "                   [--driver <exe>] [--cc <cc>] [--baseline <json>]\n"
-        "  check  valida il progetto: entry, NAMESPACE dei moduli, IMPORT risolti\n"
-        "  build  emette il C e linka l'eseguibile in <progetto>/bin\n"
-        "         LIBRARY \"nome\": linka <progetto>/bin/nome.dylib (nessun main), come .gmblib\n"
-        "  run    build + esecuzione (CWD = cartella del progetto)\n"
-        "  --engine c|csharp   sceglie il compilatore (default c). Con csharp lo STESSO argv\n"
-        "                      va a `gmbcs` (stesso contratto: --project/--entry/--out/...).\n"
-        "  --csharp-cli <path> percorso di gmbcs (default: PATH o checkout di sviluppo)\n"
-        "  --gpm auto|always|linear   schedulatore GPM nel C emesso (default auto)\n"
-        "         always = forza lo scheduler; linear = percorso diretto se lineare (mai crash)\n"
-        "  minitests  TUTTI i MiniTests: driver → C → `cc -fsyntax-only` (nessun link)\n"
-        "             con --baseline <json> di un run precedente: rosso solo per le regressioni\n"
-        "  exit: 0 ok · 2 compilazione/progetto (minitests: almeno un FAIL) · 3 parse ·\n"
-        "        4 emissione/cc · 5 link · 6 runtime · 1 setup (minitests)\n");
-}
 
 /* ── entry ────────────────────────────────────────────────────────────────────────────── */
 
@@ -998,102 +976,17 @@ static int run_minitests(const Options* o) {
 /* ── main ────────────────────────────────────────────────────────────────────────────── */
 
 
-/* ── ENGINE: `gmb --engine c|csharp` mantiene UNA superficie CLI ──────────────────────────
- * Il front è questo CLI C. Con `--engine=csharp` lo STESSO argv (tolti --engine e
- * --csharp-cli) viene eseguito da `gmbcs`, che accetta lo stesso contratto
- * (--project/--entry/--out/...). Nessuna traduzione di parametri. */
-static int find_csharp_cli(const char* explicit_path, char* out, size_t cap)
-{
-    if (explicit_path && *explicit_path) {
-        if (access(explicit_path, X_OK) == 0) { snprintf(out, cap, "%s", explicit_path); return 1; }
-        return 0;
-    }
-    /* PATH (gmbcs installato) */
-    const char* pe = getenv("PATH");
-    if (pe) {
-        char tmp[4096];
-        snprintf(tmp, sizeof tmp, "%s", pe);
-        for (char* d = strtok(tmp, ":"); d; d = strtok(NULL, ":")) {
-            snprintf(out, cap, "%s/gmbcs", d);
-            if (access(out, X_OK) == 0) return 1;
-        }
-    }
-    /* checkout di sviluppo: <repo>/GMBasicSharp/CompilerCli/bin/Debug/net10.0/gmbcs */
-    const char* rel[] = {
-        "GMBasicSharp/CompilerCli/bin/Debug/net10.0/gmbcs",
-        "../GMBasicSharp/CompilerCli/bin/Debug/net10.0/gmbcs",
-        "../../GMBasicSharp/CompilerCli/bin/Debug/net10.0/gmbcs",
-        "../../../GMBasicSharp/CompilerCli/bin/Debug/net10.0/gmbcs",
-        "../../../../GMBasicSharp/CompilerCli/bin/Debug/net10.0/gmbcs",
-        NULL
-    };
-    for (int i = 0; rel[i]; i++)
-        if (access(rel[i], X_OK) == 0) { snprintf(out, cap, "%s", rel[i]); return 1; }
-    char exe[4096], dir[4096];
-    ssize_t n = readlink("/proc/self/exe", exe, sizeof exe - 1);
-    if (n > 0) {
-        exe[n] = 0;
-        char* sl = strrchr(exe, '/');
-        if (sl) { *sl = 0; snprintf(dir, sizeof dir, "%s", exe); }
-        else dir[0] = 0;
-    } else {
-        snprintf(dir, sizeof dir, "%s", ".");
-    }
-    char cand[4096];
-    snprintf(cand, sizeof cand, "%s/../../../../GMBasicSharp/CompilerCli/bin/Debug/net10.0/gmbcs", dir);
-    if (access(cand, X_OK) == 0) { snprintf(out, cap, "%s", cand); return 1; }
-    snprintf(cand, sizeof cand, "%s/../../../GMBasicSharp/CompilerCli/bin/Debug/net10.0/gmbcs", dir);
-    if (access(cand, X_OK) == 0) { snprintf(out, cap, "%s", cand); return 1; }
-    return 0;
-}
-
 int main(int argc, char** argv) {
     Options o; memset(&o, 0, sizeof o);
     o.argv0 = argv[0];
-    if (argc < 2) { usage(); return 2; }
+    if (argc < 2) { gmb_cli_usage(); return 2; }
     if (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help") || !strcmp(argv[1], "help")) {
-        usage();
+        gmb_cli_usage();
         return 0;
     }
-    /* --engine: selezione del compilatore con la STESSA superficie. */
     {
-        const char* eng = NULL;
-        const char* cli = NULL;
-        for (int i = 2; i < argc; i++) {
-            if (!strcmp(argv[i], "--engine") && i + 1 < argc) eng = argv[++i];
-            else if (!strncmp(argv[i], "--engine=", 9)) eng = argv[i] + 9;
-            else if (!strcmp(argv[i], "--csharp-cli") && i + 1 < argc) cli = argv[++i];
-            else if (!strncmp(argv[i], "--csharp-cli=", 13)) cli = argv[i] + 13;
-        }
-        if (eng && (strcmp(eng, "csharp") == 0 || strcmp(eng, "cs") == 0)) {
-            char path[4096];
-            if (!find_csharp_cli(cli, path, sizeof path)) {
-                fprintf(stderr, "?gmb: engine C# (gmbcs) non trovato. Compila GMBasicSharp/CompilerCli "
-                                "oppure passa --csharp-cli <path>.\n");
-                return 2;
-            }
-            /* argv senza --engine <v> e --csharp-cli <v> (stessi parametri, nessuna traduzione) */
-            char** na = (char**)calloc((size_t)argc + 2, sizeof(char*));
-            if (!na) return 2;
-            int k = 0;
-            na[k++] = path;
-            for (int i = 1; i < argc; i++) {
-                if (!strcmp(argv[i], "--engine") && i + 1 < argc) { i++; continue; }
-                if (!strncmp(argv[i], "--engine=", 9)) continue;
-                if (!strcmp(argv[i], "--csharp-cli") && i + 1 < argc) { i++; continue; }
-                if (!strncmp(argv[i], "--csharp-cli=", 13)) continue;
-                na[k++] = argv[i];
-            }
-            na[k] = NULL;
-            if (strchr(path, '/')) execv(path, na);
-            else execvp(path, na);
-            perror("?gmb: exec gmbcs");
-            return 2;
-        }
-        if (eng && strcmp(eng, "c") != 0) {
-            fprintf(stderr, "?gmb: --engine sconosciuto '%s' (c|csharp)\n", eng);
-            return 2;
-        }
+        int erc = gmb_cli_engine_maybe(argc, argv);
+        if (erc >= 0) return erc;
     }
     o.command = argv[1];
     /* F1: dump/eval sono OPZIONI del compilatore usate dalla REPL (nessun accesso diretto
@@ -1136,7 +1029,7 @@ int main(int argc, char** argv) {
     if (strcmp(o.command, "check") && strcmp(o.command, "build") && strcmp(o.command, "run")
         && strcmp(o.command, "minitests")) {
         fprintf(stderr, "gmb: comando sconosciuto '%s'\n", o.command);
-        usage();
+        gmb_cli_usage();
         return 2;
     }
     for (int i = 2; i < argc; i++) {
@@ -1178,7 +1071,7 @@ int main(int argc, char** argv) {
             continue;
         }
         fprintf(stderr, "gmb: opzione sconosciuta '%s'\n", a);
-        usage();
+        gmb_cli_usage();
         return 2;
     }
     /* minitests non ha un progetto: la radice è la suite stessa. */
@@ -1186,7 +1079,7 @@ int main(int argc, char** argv) {
 
     if (!o.project || !*o.project) {
         fprintf(stderr, "gmb: --project <dir> è obbligatorio\n");
-        usage();
+        gmb_cli_usage();
         return 2;
     }
 

@@ -100,6 +100,13 @@ int find_driver(Toolchain* tc, const char* argv0);
 void build_inc(char* inc, size_t cap, const char* install);
 void run_check(const Options* o, const char* project, const char* entry,
                DiagList* diags, int* out_sources, int* out_modules);
+/* Testo di aiuto del CLI. */
+void gmb_cli_usage(void);
+
+/* Engine: -1 = resta sull'engine C; altrimenti exit code (con csharp esegue gmbcs). */
+int gmb_cli_engine_maybe(int argc, char** argv);
+
+/* Build di progetto: emette e linka; ritorna l'exit code del CLI. */
 int build_project(const Options* o, const char* project, const char* entry,
                   DiagList* diags, char* out_exe, size_t exe_cap, int* out_is_lib);
 int library_directive(const char* path, char* out, size_t cap);
