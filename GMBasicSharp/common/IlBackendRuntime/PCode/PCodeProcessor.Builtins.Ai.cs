@@ -48,6 +48,7 @@ internal sealed partial class PCodeProcessor
         BuiltInFunction.OBSERVATIONLATEST, BuiltInFunction.OBSERVATION, BuiltInFunction.OBSERVATIONHASH,
         BuiltInFunction.OBSERVATIONCOUNT, BuiltInFunction.OBSERVATIONLIST, BuiltInFunction.OBSERVATIONFILE,
         BuiltInFunction.AIEVALVALIDATE,
+        BuiltInFunction.AIDECIDE,
         BuiltInFunction.AIASKCHAIN,
         // F3 multimodale (2026-09-11).
         BuiltInFunction.AIIMAGEINFO,
@@ -134,6 +135,14 @@ internal sealed partial class PCodeProcessor
             var result = ArgOr(args, 0)?.ToString() ?? "";
             var folder = ArgOr(args, 1)?.ToString() ?? "";
             return Basic.IlBackend.IlRuntime.AiEvalValidate(result, folder);
+        },
+        [BuiltInFunction.AIDECIDE] = (task, args) =>
+        {
+            // AI DECIDE <state>, "NOUL|SCORE|CHOICE" (v0, provider Rules, JSON): sincrono,
+            // nessun modello/rete. Stessa forma del runtime C (gmb_ai_decide_run_json).
+            var state = ArgOr(args, 0)?.ToString() ?? "";
+            var kind = ArgOr(args, 1)?.ToString() ?? "";
+            return Basic.IlBackend.IlRuntime.AiDecide(state, kind);
         },
         [BuiltInFunction.AIVERIFY] = (task, args) =>
         {

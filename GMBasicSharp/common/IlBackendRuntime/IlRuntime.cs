@@ -18172,6 +18172,40 @@ public static double TextWidth(string s)
     public static string AiEvalValidate(string result, string folder)
         => Basic.AI.Eval.VaultValidator.ToJson(Basic.AI.Eval.VaultValidator.Validate(result, folder));
 
+    // ── AI DECIDE <state>, "<NOUL|SCORE|CHOICE>" [INTO target] (JEV/SystemOne, v0 JSON) ──
+    // Provider deterministico Rules (nessun modello): restituisce lo stesso JSON del runtime C
+    // (gmb_ai_decide_run_json), così le 4 gambe sono confrontabili. La superficie tipizzata
+    // DECISION<T> e il provider locale MLX (ABI v8 CAP_DECIDE) sono il passo successivo.
+    public static string AiDecide(string state, string kind)
+    {
+        try
+        {
+            var k = (kind ?? "").Trim().ToUpperInvariant();
+            Basic.Decision.DecisionRequest request = k switch
+            {
+                "NOUL" => Basic.Decision.DecisionSlots.CreateNoul(state ?? ""),
+                "SCORE" => Basic.Decision.DecisionSlots.CreateScore(state ?? ""),
+                "CHOICE" => new Basic.Decision.DecisionRequest(state ?? "",
+                    Basic.Decision.DecisionKind.Choice, Basic.Decision.DecisionSlots.Choice),
+                _ => throw new ArgumentException($"kind '{kind}' non valido (NOUL/SCORE/CHOICE)"),
+            };
+            var result = new Basic.Decision.RuleDecisionProvider().Evaluate(request)[0];
+            var value = result.Value switch
+            {
+                bool b => b ? "true" : "false",
+                double d => d.ToString("0.#####", System.Globalization.CultureInfo.InvariantCulture),
+                null => "",
+                _ => result.Value.ToString() ?? "",
+            };
+            static string Esc(string? s) => (s ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"");
+            return $"{{\"kind\":\"{k}\",\"option\":\"{Esc(result.OptionId)}\",\"value\":\"{Esc(value)}\",\"probability\":{result.Probability.ToString("0.000000", System.Globalization.CultureInfo.InvariantCulture)},\"confidence\":null,\"calibrated\":null}}";
+        }
+        catch (Exception ex)
+        {
+            return $"{{\"error\":\"{ex.Message.Replace("\"", "'")}\"}}";
+        }
+    }
+
     // ── AI ASKCHAIN (T1.2, 2026-09-09): anello di ragionamento concatenato via Blackboard ──
     public static string AiAskChain(string name, string prompt, string prefix)
     {

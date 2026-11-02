@@ -2214,6 +2214,7 @@ typedef enum gmb_tokenkind {
     GMB_TOK_TorchArgmax,
     GMB_TOK_AiVerify,
     GMB_TOK_AiEvalValidate,
+    GMB_TOK_AiDecide,
     GMB_TOK_AiAskChain,
     GMB_TOK_AiSubFinetune,
     GMB_TOK_AiFinetune,

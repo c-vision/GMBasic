@@ -1538,6 +1538,7 @@ public enum TokenKind
     AiIngestWeb,
     AiVerify,
     AiEvalValidate,
+    AiDecide,
     AiAskChain,
     Unlink,
     Web,

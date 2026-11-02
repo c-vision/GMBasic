@@ -212,6 +212,7 @@ void gmb_bf_agent_run_named_c1441(gmb_vm_t*, gmb_stack_entry_t*, int, int, gmb_b
 void gmb_bf_agent_swarm_c1507(gmb_vm_t*, gmb_stack_entry_t*, int, int, gmb_builtin_out_t*, gmb_task_t*);
 void gmb_bf_askchain_c2002(gmb_vm_t*, gmb_stack_entry_t*, int, int, gmb_builtin_out_t*, gmb_task_t*);
 void gmb_bf_eval_validate_c2001(gmb_vm_t*, gmb_stack_entry_t*, int, int, gmb_builtin_out_t*, gmb_task_t*);
+void gmb_bf_decide_c3817(gmb_vm_t*, gmb_stack_entry_t*, int, int, gmb_builtin_out_t*, gmb_task_t*);
 void gmb_bf_agent_code_c1439(gmb_vm_t*, gmb_stack_entry_t*, int, int, gmb_builtin_out_t*, gmb_task_t*);
 void gmb_bf_agent_fix_c1440(gmb_vm_t*, gmb_stack_entry_t*, int, int, gmb_builtin_out_t*, gmb_task_t*);
 void gmb_bf_brain_use_c1278(gmb_vm_t*, gmb_stack_entry_t*, int, int, gmb_builtin_out_t*, gmb_task_t*);
@@ -455,6 +456,7 @@ static const gmb_bf_impl_t gmb_bf_ext[] = {
     { 1507, gmb_bf_agent_swarm_c1507 },
     { 2002, gmb_bf_askchain_c2002 },
     { 2001, gmb_bf_eval_validate_c2001 },
+    { 3817, gmb_bf_decide_c3817 },
     { 1434, gmb_bf_agent_code_c1439 },
     { 1440, gmb_bf_agent_fix_c1440 },
     { 1278, gmb_bf_brain_use_c1278 },
