@@ -8,6 +8,7 @@
 #include "gmb_graph.h"
 #include "gmb_iconsole.h"
 #include "gmb_fixtures.h"
+#include "gmb_bsp.h"
 #include "gmb_sdl_console.h"
 #include "gmb_gfx_input.h"
 #include <sys/ioctl.h>
@@ -189,6 +190,18 @@ const char* rpl_cs_cli(const rpl_options_t* o, char* out, size_t cap)
     return NULL;
 }
 
+/* Opzioni comuni per l'engine C#: -D e --il-module (entrambi ripetibili). */
+static void rpl_cs_common_args(char* out, size_t cap, const rpl_options_t* o)
+{
+    out[0] = 0;
+    rpl_defines_args(out, cap, o);
+    if (!o) return;
+    for (int i = 0; i < o->il_modules_count; i++) {
+        size_t used = strlen(out);
+        snprintf(out + used, cap - used, " --il-module \"%s\"", o->il_modules[i]);
+    }
+}
+
 int rpl_cs_cmd(const char* sub, const char* arg, const char* extra, const rpl_options_t* o)
 {
     char cli[2048];
@@ -196,9 +209,66 @@ int rpl_cs_cmd(const char* sub, const char* arg, const char* extra, const rpl_op
         fprintf(stderr, "?gmbcs (engine C#) non trovato: usa --engine=c oppure --csharp-cli <path>\n");
         return 127;
     }
-    char defs[1024]; rpl_defines_args(defs, sizeof(defs), o);
+    char common[2048]; rpl_cs_common_args(common, sizeof(common), o);
     char cmd[8192];
-    snprintf(cmd, sizeof(cmd), "\"%s\" %s \"%s\"%s%s", cli, sub, arg ? arg : "", extra ? extra : "", defs);
+    snprintf(cmd, sizeof(cmd), "\"%s\" %s \"%s\"%s%s", cli, sub, arg ? arg : "", extra ? extra : "", common);
+    int rc = system(cmd);
+    return WIFEXITED(rc) ? WEXITSTATUS(rc) : 1;
+}
+
+int rpl_cs_cmd_raw(const char* sub, const char* raw_args, const rpl_options_t* o)
+{
+    char cli[2048];
+    if (!rpl_cs_cli(o, cli, sizeof(cli))) {
+        fprintf(stderr, "?gmbcs (engine C#) non trovato: usa --engine=c oppure --csharp-cli <path>\n");
+        return 127;
+    }
+    char common[2048]; rpl_cs_common_args(common, sizeof(common), o);
+    char cmd[8192];
+    snprintf(cmd, sizeof(cmd), "\"%s\" %s %s%s", cli, sub, raw_args ? raw_args : "", common);
+    int rc = system(cmd);
+    return WIFEXITED(rc) ? WEXITSTATUS(rc) : 1;
+}
+
+/* ── CLI amministrativo C# (`gmb`, GMBasicSharp/Cli) ─────────────────────────
+ * RAG/GRAPH/HF/MLX/CONVERT/CONVFMT/BRAIN INSTALL|EXPORT|SIGN/LIBS vivono lì (il mondo C#
+ * RESTA): la REPL li invoca come processo, così nessuna funzione si perde con
+ * l'eliminazione della REPL C# (F6b). */
+const char* rpl_admin_cli(char* out, size_t cap)
+{
+    static const char* cands[] = {
+        "GMBasicSharp/Cli/bin/Debug/net10.0/gmb",
+        "../GMBasicSharp/Cli/bin/Debug/net10.0/gmb",
+        "../../GMBasicSharp/Cli/bin/Debug/net10.0/gmb",
+        NULL
+    };
+    for (int i = 0; cands[i]; i++) if (access(cands[i], X_OK) == 0) { snprintf(out, cap, "%s", cands[i]); return out; }
+    char root[2048];
+    resolve_repo_path(root, sizeof(root), "GMBasicSharp/Cli/bin/Debug/net10.0/gmb");
+    if (access(root, X_OK) == 0) { snprintf(out, cap, "%s", root); return out; }
+    const char* path_env = getenv("PATH");
+    if (path_env) {
+        char tmp[4096];
+        snprintf(tmp, sizeof(tmp), "%s", path_env);
+        for (char* dir = strtok(tmp, ":"); dir; dir = strtok(NULL, ":")) {
+            snprintf(out, cap, "%s/gmb", dir);
+            if (access(out, X_OK) == 0) return out;
+        }
+        out[0] = 0;
+    }
+    return NULL;
+}
+
+int rpl_admin_cmd(const char* sub, const char* args)
+{
+    char cli[2048];
+    if (!rpl_admin_cli(cli, sizeof(cli))) {
+        fprintf(stderr, "?CLI `gmb` (GMBasicSharp/Cli) non trovato: compila con\n"
+                        "  dotnet build GMBasicSharp/Cli/Cli.csproj\n");
+        return 127;
+    }
+    char cmd[8192];
+    snprintf(cmd, sizeof(cmd), "\"%s\" %s %s", cli, sub, args ? args : "");
     int rc = system(cmd);
     return WIFEXITED(rc) ? WEXITSTATUS(rc) : 1;
 }
@@ -301,6 +371,60 @@ static void rpl_grep(const char* args)
 }
 
 /* Esegue UNA riga di comando (usata dal loop interattivo e da BATCH). * Ritorna 1 se QUIT/EXIT, 0 altrimenti. */
+/* BSP <dir>: precompila le pagine .bsp in sidecar `<pagina>.bsp.chunk` (eseguiti dal
+ * renderer nativo gmb_vm_bsp.c). Compilazione BSP->BASIC nel runtime C (`gmb_bsp_compile`),
+ * poi chunk con il compilatore C: nessun C#. Usata dal comando BSP e da `-bsp <dir>`. */
+int rpl_bsp_compile_dir(const char* dir_in, const rpl_options_t* o)
+{
+    char dir[1024];
+    snprintf(dir, sizeof(dir), "%s", dir_in ? dir_in : "");
+    char* d = dir; while (*d == ' ') d++;
+    size_t dl = strlen(d);
+    while (dl > 0 && (d[dl-1] == '"' || d[dl-1] == '\'' || d[dl-1] == ' ')) d[--dl] = 0;
+    if (d != dir) memmove(dir, d, dl + 1);
+    if (!dir[0]) { fprintf(stderr, "?uso: BSP <directory>\n"); return 2; }
+
+    char findcmd[4096];
+    snprintf(findcmd, sizeof(findcmd), "find \"%s\" -name '*.bsp' -type f 2>/dev/null", dir);
+    FILE* fp = popen(findcmd, "r");
+    if (!fp) { fprintf(stderr, "?BSP: find fallito\n"); return 1; }
+
+    char line[2048]; int ok = 0, fail = 0;
+    while (fgets(line, sizeof(line), fp)) {
+        line[strcspn(line, "\r\n")] = 0;
+        if (!line[0]) continue;
+        FILE* bf = fopen(line, "rb");
+        if (!bf) { fail++; printf("  FAIL %s (apertura)\n", line); continue; }
+        fseek(bf, 0, SEEK_END); long n = ftell(bf); fseek(bf, 0, SEEK_SET);
+        char* src = (char*)malloc((size_t)n + 1);
+        if (!src || fread(src, 1, (size_t)n, bf) != (size_t)n) { if (src) free(src); fclose(bf); fail++; continue; }
+        src[n] = 0; fclose(bf);
+        char* bas = NULL;
+        int rc = gmb_bsp_compile(src, &bas);
+        free(src);
+        if (rc != GMB_EXPR_OK || !bas) { fail++; printf("  FAIL %s (compilazione BSP)\n", line); free(bas); continue; }
+        char tmp[1200], chunk[1400];
+        snprintf(tmp, sizeof(tmp), "/tmp/gmb_bsp_%ld.bas", (long)getpid());
+        snprintf(chunk, sizeof(chunk), "%s.chunk", line);
+        FILE* tf = fopen(tmp, "w");
+        if (!tf) { free(bas); fail++; continue; }
+        fputs(bas, tf); fclose(tf); free(bas);
+        int crc = rpl_gmb_dump_ex("chunk", tmp, chunk, o);
+        unlink(tmp);
+        if (crc == 0) {
+            ok++;
+            printf("  OK   %s (%s)\n", strrchr(line, '/') ? strrchr(line, '/') + 1 : line,
+                   strrchr(chunk, '/') ? strrchr(chunk, '/') + 1 : chunk);
+        } else {
+            fail++;
+            printf("  FAIL %s (chunk: errore del compilatore sopra)\n", line);
+        }
+    }
+    pclose(fp);
+    printf("BSP: %d OK, %d FAIL\n", ok, fail);
+    return fail ? 1 : 0;
+}
+
 static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
 {
     do {
@@ -349,7 +473,7 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
                        "  GREP (RG) RN RENAME RM DL DELF CP COPY DP DUPLICATE BL BACKUP DEPLOY CONVERT BATCH CONVFMT\n"
                        "  WEB2MD PROVIDERS DEP PACKAGE HF MLX ML AIPATH SET STATUS DEBUG BREAK CLEAR STEP\n"
                        "  CONT TRACE WATCH UNWATCH PALETTE\n"
-                       "  FIXTURES SETUP LLM ADD REMOVE BUMP RESTORE UPDATE ROLLBACK TRUST CACHE\n"
+                       "  FIXTURES SETUP LLM ADD REMOVE BUMP RESTORE UPDATE ROLLBACK TRUST CACHE AIBENCH\n"
                        "GREP [-rinlcFwvo-.] [--type EXT] [--include G] [--exclude G] [--depth N] PATTERN [PATH]\n"
                        "HELP = guida interattiva · HELP <topic> = namespace (shared/helps/<topic>.json)\n"
                        "HELP COMMANDS = questo elenco\n");
@@ -444,13 +568,13 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
             snprintf(sub, sizeof(sub), "%s", args);
             while (*sub == ' ') memmove(sub, sub + 1, strlen(sub));
             if (!*sub) {
-                printf("  LIBS UPDATE    bundle di supporto (tools/gmb_libs_update.bas): zip+sha per RID\n");
+                printf("  LIBS UPDATE    bundle di supporto + manifest (CLI C# `gmb libs update`)\n");
+                printf("  LIBS CHECK     verifica sha256 dei bundle\n");
+                printf("  LIBS PUBLISH   publish della release (gh)\n");
                 printf("  LIBS           (questo help)\n");
-                printf("  NB: manifest + publish via CLI C# `gmb libs update|check|publish`\n");
                 goto done;
             }
-            if (o->backend == RPL_VMC) { int rc = rpl_run_vmc("tools/gmb_libs_update.bas", o); if (rc != 0) printf("[VMC ERROR] exit %d\n", rc); }
-            else { int rc = rpl_run_c99("tools/gmb_libs_update.bas", o); printf(rc == 0 ? "[C99 OK]\n" : "[C99 ERROR] exit %d\n", rc); }
+            rpl_admin_cmd("libs", args);
             goto done;
         }
         if (strcasecmp(cmd, "COMPILE") == 0) {
@@ -570,20 +694,33 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
             char c[4096]; snprintf(c, sizeof(c), "cp \"%s\" \"%s.bak\"", args, args); system(c); goto done;
         }
         if (strcasecmp(cmd, "BSP") == 0) {
-            fprintf(stderr, "?BSP non ancora disponibile nel percorso C — usa la REPL C# (REPL/Program.cs --bsp)\n");
+            rpl_bsp_compile_dir(args, o);
             goto done;
         }
-        if (strcasecmp(cmd, "CONVERT") == 0 || strcasecmp(cmd, "CONVFMT") == 0) {
-            fprintf(stderr, "?%s non ancora disponibile nel percorso C — usa la REPL C#\n", cmd);
+        if (strcasecmp(cmd, "CONVERT") == 0) {
+            rpl_admin_cmd("convert", args);
+            goto done;
+        }
+        if (strcasecmp(cmd, "CONVFMT") == 0) {
+            rpl_admin_cmd("convfmt", "");
             goto done;
         }
         if (strcasecmp(cmd, "PACKAGE") == 0) { gmb_packages_dispatch(args); goto done; }
-        if (strcasecmp(cmd, "ML") == 0 || strcasecmp(cmd, "MLX") == 0) {
+        if (strcasecmp(cmd, "ML") == 0) {
             char sub[64] = "";
             sscanf(args, "%63s", sub);
             if (strcasecmp(sub, "STATUS") == 0) gmb_ml_status();
             else if (strcasecmp(sub, "RM") == 0) gmb_ml_rm();
             else gmb_ml_setup(strcasestr(args, "--force") != NULL);
+            goto done;
+        }
+        if (strcasecmp(cmd, "MLX") == 0) {
+            /* MLX = download di un repo MLX (CLI C# `gmb mlx`); la gestione legacy resta su ML. */
+            char sub[64] = "";
+            sscanf(args, "%63s", sub);
+            if (strcasecmp(sub, "STATUS") == 0) gmb_ml_status();
+            else if (strcasecmp(sub, "RM") == 0) gmb_ml_rm();
+            else rpl_admin_cmd("mlx", args);
             goto done;
         }
         if (strcasecmp(cmd, "PROVIDERS") == 0) {
@@ -806,13 +943,13 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
             goto done;
         }
         if (strcasecmp(cmd, "HF") == 0) {
-            fprintf(stderr, "?HF (HuggingFace download) non ancora disponibile nel percorso C — usa la REPL C#\n");
+            /* Download modelli HuggingFace: nel CLI C# `gmb hf …`. */
+            rpl_admin_cmd("hf", args);
             goto done;
         }
         if (strcasecmp(cmd, "RAG") == 0) {
-            /* RAG richiede SQLite+embedding: percorso C# (REPL C#/CLI gmb rag ...), non ancora
-             * portato nel percorso C. Errore esplicito di divergenza (mai stub). */
-            fprintf(stderr, "?RAG non ancora disponibile nel percorso C — usa la REPL C# (comando RAG) o `gmb rag ...`.\n");
+            /* RAG (indice wiki + embedding): nel CLI C# `gmb rag …`. */
+            rpl_admin_cmd("rag", args);
             goto done;
         }
         if (strcasecmp(cmd, "GRAPH") == 0) {
@@ -1034,16 +1171,26 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
                 char* info = gmb_brain_registry_info(name);
                 if (info) { printf("%s", info); free(info); }
                 else fprintf(stderr, "?cervello '%s' non trovato\n", name);
-            } else if (strcasecmp(sub, "INSTALL") == 0) {
-                fprintf(stderr, "?BRAIN INSTALL non ancora disponibile nel percorso C\n");
-            } else if (strcasecmp(sub, "EXPORT") == 0) {
-                fprintf(stderr, "?BRAIN EXPORT non ancora disponibile nel percorso C\n");
-            } else if (strcasecmp(sub, "SIGN") == 0) {
-                fprintf(stderr, "?BRAIN SIGN non ancora disponibile nel percorso C\n");
+            } else if (strcasecmp(sub, "INSTALL") == 0 || strcasecmp(sub, "EXPORT") == 0
+                       || strcasecmp(sub, "SIGN") == 0) {
+                /* install/export/sign sono nel CLI C# `gmb brain …` (zip, firma con probe). */
+                char raw[2048];
+                snprintf(raw, sizeof(raw), "%s", args);
+                rpl_admin_cmd("brain", raw);
             } else {
-                printf("BRAIN comandi: USE <name> | DETACH <name> | LIST | INFO <name>\n");
-                printf("  (INSTALL|EXPORT|SIGN non ancora disponibili nel percorso C)\n");
+                printf("BRAIN comandi: USE <name> | DETACH <name> | LIST | INFO <name> | INSTALL|EXPORT|SIGN\n");
             }
+            goto done;
+        }
+        if (strcasecmp(cmd, "AIBENCH") == 0) {
+            /* AI Eval Harness (suite metriche AI): vive nell'engine C# (gmbcs aibench).
+             * Era un comando della REPL C# eliminata (F6b): qui non si perde. */
+            char cli_cs[2048];
+            if (!rpl_cs_cli(o, cli_cs, sizeof(cli_cs))) {
+                printf("(AIBENCH: engine C# non disponibile — serve gmbcs)\n");
+                goto done;
+            }
+            if (rpl_cs_cmd_raw("aibench", args, o) != 0) fprintf(stderr, "?AIBENCH: errore\n");
             goto done;
         }
         if (strcasecmp(cmd, "EVAL") == 0) {

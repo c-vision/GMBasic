@@ -1,6 +1,7 @@
 /* ============================================================================
  * gmb_bsp.c — HTML / <%= expr %> / <% code %> → PRINT e statement BASIC.
- * Allineato a BspCompiler.EmitContent (senza preambolo C#).
+ * Direttive `<%@ IMPORT ... %>` tradotte in IMPORT (prima erano ignorate: le pagine che
+ * importano AI/JSON non compilavano). Preambolo minimo: IMPORT HTTP + STRINGS.
  * ============================================================================ */
 #include "gmb_bsp.h"
 
@@ -8,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 
 /* Renderer VM registrato da gmb_vm_c (pagine precompilate in chunk A1). */
 static gmb_bsp_vm_render_fn g_vm_renderer = 0;
@@ -104,6 +106,10 @@ int gmb_bsp_compile(const char* src, char** out_bas)
     if (!src) src = "";
     buf b;
     memset(&b, 0, sizeof(b));
+    /* Preambolo: le direttive `<%@ IMPORT ... %>` erano IGNORATE (una pagina che importa
+     * AI/JSON compilava con "simbolo non trovato"). Parità con il BspCompiler C#: HTTP e
+     * STRINGS sempre, poi i namespace dichiarati. */
+    buf_app(&b, "IMPORT HTTP\nIMPORT STRINGS\n");
     const char* p = src;
     while (*p) {
         const char* tag = strstr(p, "<%");
@@ -116,7 +122,24 @@ int gmb_bsp_compile(const char* src, char** out_bas)
         if (*p == '@') {
             p++;
             const char* e = strstr(p, "%>");
-            p = e ? e + 2 : p + strlen(p);
+            const char* end = e ? e : p + strlen(p);
+            /* direttiva: `IMPORT a, b` → `IMPORT a` + `IMPORT b` */
+            const char* q = p;
+            while (q < end && isspace((unsigned char)*q)) q++;
+            if (end - q >= 6 && !strncasecmp(q, "IMPORT", 6)) {
+                q += 6;
+                while (q < end) {
+                    while (q < end && (isspace((unsigned char)*q) || *q == ',')) q++;
+                    const char* ns = q;
+                    while (q < end && (isalnum((unsigned char)*q) || *q == '_' || *q == '.')) q++;
+                    if (q > ns) {
+                        buf_app(&b, "IMPORT ");
+                        buf_napp(&b, ns, (size_t)(q - ns));
+                        buf_app(&b, "\n");
+                    } else if (q < end && *q != ',') q++;
+                }
+            }
+            p = e ? e + 2 : end;
             continue;
         }
         if (p[0] == '-' && p[1] == '-') {

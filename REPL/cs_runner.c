@@ -21,6 +21,8 @@ int rpl_run_cs(const char* bas_file, const rpl_options_t* o)
         const char* extra = (o->backend == RPL_VMC) ? " --engine pcode" : " --engine il";
         int rc = rpl_cs_cmd("run", bas_file, extra, o);
         if (rc != 0) printf("[CS ERROR] exit %d\n", rc);
+        /* --dump-il: oltre a eseguire, produce il dump IL (comportamento del vecchio REPL) */
+        if (o->dump_il) rpl_cs_cmd("dump il", bas_file, NULL, o);
         return rc;
     }
 

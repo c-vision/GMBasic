@@ -44,6 +44,11 @@ typedef struct rpl_options {
      * non tocca il mondo C# per nessun comando. */
     const char* engine;
     const char* csharp_cli;   /* --csharp-cli <path> (altrimenti scoperta standard) */
+    bool ast;                 /* --ast: stampa l'AST del file all'avvio */
+    bool stay_in_repl;        /* -repl: dopo il file resta nella REPL */
+    bool pcode;               /* --pcode: engine C# → P-Code (nel mondo C è il default VMC) */
+    const char* il_modules[8];/* --il-module <dll> (ripetibile, engine C#) */
+    int il_modules_count;
 } rpl_options_t;
 
 /* Parsa la CLI (tutti i flag di Arguments.cs, vmc|c99). Ritorna 0 ok, !=0 errore. */
@@ -107,11 +112,18 @@ int rpl_engine_cs(const rpl_options_t* o);
 const char* rpl_cs_cli(const rpl_options_t* o, char* out, size_t cap);
 /* Esegue `gmbcs <sub> "<arg>" <extra>`; 0 = ok. Stampa l'errore se il CLI manca. */
 int rpl_cs_cmd(const char* sub, const char* arg, const char* extra, const rpl_options_t* o);
+/* Come rpl_cs_cmd, ma gli argomenti NON vengono quotati (sottocomandi con più token). */
+int rpl_cs_cmd_raw(const char* sub, const char* raw_args, const rpl_options_t* o);
 /* RUN sull'engine C# (run o debug secondo lo stato di BREAK/STEP). */
 int rpl_run_cs(const char* bas_file, const rpl_options_t* o);
+/* CLI amministrativo C# (`gmb`, GMBasicSharp/Cli): RAG/GRAPH/HF/MLX/CONVERT/BRAIN/LIBS. */
+const char* rpl_admin_cli(char* out, size_t cap);
+int rpl_admin_cmd(const char* sub, const char* args);
 const char* rpl_resolve_vm_host(void);
 /* F3b: comandi di pacchetto nel mondo C (manifest/keyring/cache). */
 int rpl_pkg_cmd(const char* cmd, const char* args);
+/* Precompila le pagine .bsp di una cartella in sidecar .bsp.chunk (comando BSP, -bsp). */
+int rpl_bsp_compile_dir(const char* dir, const rpl_options_t* o);
 int gmb_loadprg(const char* file);
 
 /* ---- ReplEngine.cs -> repl.c ---- */

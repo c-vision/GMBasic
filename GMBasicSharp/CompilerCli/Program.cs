@@ -13,6 +13,7 @@
 //   gmbcs run  <file> [--engine il|pcode]
 //   gmbcs eval "<istruzioni>" [--engine il|pcode]
 //   gmbcs debug <file> [--break N]… [--step]   (debugger P-Code, comandi su stdin)
+//   gmbcs aibench [RUN] [path]                 (AI Eval Harness: suite metriche)
 //
 // Opzioni comuni: -D name=val (ripetibile), --out <file>.
 // Nessuna variabile d'ambiente per il comportamento.
@@ -65,6 +66,20 @@ public static class Program
         var json = list.Remove("--json");
         var breaks = TakeAllInts(list, "--break");
         var step = list.Remove("--step");
+        var ilModules = TakeAllStrings(list, "--il-module");
+
+        /* --il-module <dll> (ripetibile): moduli IL esterni registrati PRIMA di ogni
+         * compilazione, come faceva il vecchio REPL. */
+        foreach (var mod in ilModules)
+        {
+            if (!File.Exists(mod)) { Console.Error.WriteLine($"?gmbcs: modulo IL non trovato: {mod}"); return 2; }
+            try
+            {
+                var nmod = Basic.IlBackend.IlModuleLoader.Load(Path.GetFullPath(mod));
+                Console.Error.WriteLine($"[IL-MODULE] caricato {Path.GetFileName(mod)}: {nmod} namespace.");
+            }
+            catch (Exception ex) { Console.Error.WriteLine($"?gmbcs: modulo IL {mod}: {ex.GetBaseException().Message}"); return 2; }
+        }
 
         if (list.Count == 0) { Usage(); return 2; }
         var cmd = list[0].ToLowerInvariant();
@@ -116,6 +131,31 @@ public static class Program
                     "il" => BuildIl(program, file, outPath),
                     _ => throw new ArgumentException($"target sconosciuto: {target} (il|pcode)"),
                 };
+            }
+            case "aibench":
+            {
+                /* AI Eval Harness (ex comando EVAL della REPL C#): suite metriche
+                 * llm.tokps, rag.ndcg, team.acc, credit.blocked. Fixture deterministica
+                 * quando nessun provider LLM è attivo (mai rete implicita). */
+                if (list.Count > 1 && list[1].Equals("RUN", StringComparison.OrdinalIgnoreCase))
+                    list.RemoveAt(1);
+                var path = list.Count > 1 ? list[1] : null;
+                var fixture = Basic.AI.Rag.LlmCompleterResolver.Default is null;
+                Console.WriteLine($"AIBENCH RUN (fixture={fixture})...");
+                var report = Basic.AI.Eval.EvalHarness.RunAll(path, fixture: fixture);
+                using var doc = System.Text.Json.JsonDocument.Parse(report);
+                var root = doc.RootElement;
+                Console.WriteLine($"total: {root.GetProperty("total").GetProperty("passed").GetInt32()}/{root.GetProperty("total").GetProperty("cases").GetInt32()} pass");
+                foreach (var suite in root.GetProperty("suites").EnumerateArray())
+                {
+                    var name = suite.GetProperty("Name").GetString();
+                    var metrics = suite.GetProperty("Metrics").EnumerateArray()
+                        .Select(m => $"{m.GetProperty("Key").GetString()}={m.GetProperty("Value")}")
+                        .ToList();
+                    Console.WriteLine($"  {name}: {string.Join("  ", metrics)}");
+                }
+                if (path != null) Console.WriteLine($"report → {path}");
+                return 0;
             }
             case "prginfo":
             {
@@ -408,6 +448,19 @@ public static class Program
         return list[index];
     }
 
+    private static List<string> TakeAllStrings(List<string> list, string name)
+    {
+        var v = new List<string>();
+        for (var i = 0; i < list.Count; i++)
+        {
+            if (list[i] != name) continue;
+            list.RemoveAt(i);
+            if (i < list.Count) { v.Add(list[i]); list.RemoveAt(i); i--; }
+            i--;
+        }
+        return v;
+    }
+
     private static List<int> TakeAllInts(List<string> list, string name)
     {
         var v = new List<int>();
@@ -456,8 +509,9 @@ public static class Program
               gmbcs run  <file> [--engine il|pcode]
               gmbcs eval "<istruzioni>" [--engine il|pcode]
               gmbcs debug <file> [--break N]… [--step]
+              gmbcs aibench [RUN] [path]
 
-            opzioni: -D name=val (ripetibile), --out <file>, --json
+            opzioni: -D name=val, --il-module <dll>, --out <file>, --json
             """);
     }
 }

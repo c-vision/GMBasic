@@ -51,6 +51,7 @@ public static class Program
         if (CliRagGraph.TryDispatch(args)) return 0;
         if (CliBrain.TryDispatch(args)) return 0;
         if (CliGrep.TryDispatch(args)) return 0;
+        if (CliTools.TryDispatch(args)) return 0;
 
         if (args.Length == 1 && args[0] is "-h" or "--help")
         {
@@ -84,11 +85,17 @@ public static class Program
         var managed = list.Remove("-m") | list.Remove("--managed");
         var native = list.Remove("-n") | list.Remove("--native");
         var ast = list.Remove("--ast");
+        var full = list.Remove("-full") | list.Remove("--full");
 
         if (native)
         {
             Console.Error.WriteLine("?-n/--native (AOT): non e' nel CLI C. Usa `gmbcs build --target il` (IL gestito)");
             Console.Error.WriteLine("  oppure il compilatore C: `gmb build --project <dir>`.");
+            return 2;
+        }
+        if (full)
+        {
+            Console.Error.WriteLine("?-full (closure managed completa): non portato. Usa `gmbcs build --target il`.");
             return 2;
         }
 
@@ -97,6 +104,30 @@ public static class Program
 
         if (managed)
             return Basic.CliEngine.Program.Main(["build", "--target", "il", .. list]);
+
+        // Flag della REPL (console/debug/BSP/wasm) non appartengono al runner headless: errore
+        // esplicito, MAI ignorati in silenzio (migrazione F6b: nessuna funzione sparisce muta).
+        for (var i = 0; i < list.Count; i++)
+        {
+            var a = list[i];
+            if (a is "-size" or "-font" or "-w" or "-h" or "--debug-tcp" or "--run" or "-bsp"
+                || a == "-gpm" || a.StartsWith("-gpm:")
+                || a is "-c" or "-console" or "-s" or "-c64" or "-noconsole" or "--sdl")
+            {
+                Console.Error.WriteLine($"?{a}: opzione della REPL/console, non del runner headless.");
+                Console.Error.WriteLine("  REPL interattiva e console: `gmb_repl` (REPL/build/gmb_repl).");
+                Console.Error.WriteLine("  Debug dell'engine C#: `gmbcs debug <file> --break N`.");
+                return 2;
+            }
+            if (a is "--target" or "-target" or "-o")
+            {
+                Console.Error.WriteLine($"?{a}: build wasm/POC rimossa con la REPL C#.");
+                Console.Error.WriteLine("  Emetti C con il compilatore C: `gmb dump c <file.bas> --out <f.c>`.");
+                return 2;
+            }
+            if (a == "--il-module") { i++; continue; }   // inoltrato a gmbcs
+            if (a.StartsWith("-D")) continue;            // inoltrato a gmbcs
+        }
 
         var runArgs = new List<string> { "run" };
         runArgs.AddRange(list);
@@ -114,6 +145,7 @@ public static class Program
                   restore|update|trust|rollback
               gmb setup … | gmb libs update|check|publish | gmb daemon …
               gmb rag … | gmb graph … | gmb brain … | gmb grep|rg …
+              gmb convert <file> [-o out] | gmb convfmt | gmb hf <repo> | gmb mlx <repo>
               gmb <file.bas> [-pcode]        esegue con l'engine C# (gmbcs)
               gmb -v | --version | -h | --help
 
