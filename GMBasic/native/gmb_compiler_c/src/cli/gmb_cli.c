@@ -992,6 +992,10 @@ int main(int argc, char** argv) {
         int erc = gmb_cli_engine_maybe(argc, argv);
         if (erc >= 0) return erc;
     }
+    {
+        int frc = gmb_cli_file_maybe(argc, argv);   /* `gmb <file.bas>` → run --project */
+        if (frc >= 0) return frc;
+    }
     o.command = argv[1];
     /* F1: dump/eval sono OPZIONI del compilatore usate dalla REPL (nessun accesso diretto
      * a lexer/parser dal lato REPL). Forme: `gmb dump ast|chunk|c <file> [--out f]`,

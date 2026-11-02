@@ -109,6 +109,9 @@ int gmb_cli_engine_maybe(int argc, char** argv);
 /* Comandi admin: -1 = non è admin (prosegui); altrimenti exec di `gmbadmin`. */
 int gmb_cli_admin_maybe(int argc, char** argv);
 
+/* `gmb <file.bas>`: -1 = non è un file (prosegui); altrimenti esegue `run --project`. */
+int gmb_cli_file_maybe(int argc, char** argv);
+
 /* Build di progetto: emette e linka; ritorna l'exit code del CLI. */
 int build_project(const Options* o, const char* project, const char* entry,
                   DiagList* diags, char* out_exe, size_t exe_cap, int* out_is_lib);

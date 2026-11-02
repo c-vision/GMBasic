@@ -52,6 +52,11 @@ int gmb_brain_reg_register(const char* name, const char* source, const char* vau
                            long docs, const char* signed_by);
 int gmb_brain_reg_unregister(const char* name);
 
+/* Registra un cervello APPENA INSTALLATO: mode derivata dagli artefatti presenti, versione e
+ * docs dal manifest interno (`brain.manifest.json`). Parità con BrainInstaller del C#:
+ * senza, un `brain install` non comparirebbe in `brain info`/`stats`. 1/0. */
+int gmb_brain_reg_register_installed(const char* name, const char* source, const char* root);
+
 /* Forme disponibili: "rag", "graph", "rag,graph" o "" (nessuna). */
 int gmb_brain_reg_available(const char* name, char* out, size_t cap);
 /* Artefatti risolti (root installata → registry → dir di build). 1 se esistono. */

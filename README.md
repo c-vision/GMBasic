@@ -61,8 +61,8 @@ use `gmb …` — the whole administrative surface is **C** (there is no C# CLI 
 ```sh
 gmb libs ensure                 # missing native libraries
 gmb fixtures ensure             # market feeds for the samples
-gmb brain login --github        # once: token for the private repo
-gmb brain install brainvault    # download + install the brain (checksum verified)
+gmb brain login --github        # once: GitHub token (scope "repo") for the private GMBasicBrains
+gmb brain install brainvault    # download + install + register (sha256 verified)
 ```
 
 `ensure` downloads **only what is missing**, so you can re-run it whenever you like.

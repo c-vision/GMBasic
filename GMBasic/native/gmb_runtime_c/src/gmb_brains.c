@@ -14,6 +14,7 @@
  */
 
 #include "gmb_brains.h"
+#include "gmb_brain_tools.h"
 #include "gmb_commonlib.h"
 #include "gmb_pkg_manifest.h"
 #include "gmb_compress.h"
@@ -1146,7 +1147,18 @@ gmb_double_t gmb_brain_install(const char* name, const char* source)
     /* Parità con IL/PCodeVM (BrainInstaller.Install(..., activate: true)): il comando INSTALL
      * COLLEGA il cervello. Senza, su C99Native/VM-C `AI BRAIN USED()` resterebbe vuoto mentre
      * su IL/PCode conterrebbe il cervello appena installato. */
-    if (name && *name) gmb_brain_use(name);
+    if (name && *name) {
+        /* REGISTRY: parità BrainInstaller (C#) — un cervello appena installato deve comparire
+         * in `brain info`/`stats` (mode/versione/docs dal manifest interno). La registrazione
+         * viene fatta PRIMA del collegamento: `gmb_brain_use` accetta il cervello se è nel
+         * registry (o nel vault store), e un cervello appena scaricato nella CACHE non è
+         * ancora in nessuno dei due. Poi si riallinea `attached` della voce. */
+        char root[BR_PATH] = "";
+        gmb_brain_lookup(name, NULL, root, sizeof root);
+        gmb_brain_reg_register_installed(name, source, root);
+        gmb_brain_use(name);
+        gmb_brain_reg_register_installed(name, source, root);
+    }
     return 1.0;
 }
 
