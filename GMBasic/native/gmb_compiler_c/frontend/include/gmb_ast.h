@@ -302,6 +302,10 @@ struct gmb_stmt {
                                 * Variables-Scope §2.5): reuse GMB_STMT_DIM — la var NON è un
                                 * locale/globale C, vive nel runtime gmb_dscope per NOME
                                 * (parità emitter C#). Vedi gmb_c99_emit_dynamic.c. */
+    int dim_is_global;         /* `GLOBAL v ...` (anche dentro SUB/FUNCTION): registro a scope
+                                * modulo, condiviso da tutte le procedure. */
+    int dim_is_local;          /* `LOCAL v ...`: lexical block-scope; se ombreggia una GLOBAL,
+                                * la dichiarazione locale ha effetto solo dal punto in poi. */
     char* dim_type;            /* DIM v AS <tipo>: nome tipo (CHANNEL/WAITGROUP/MUTEX/...) */
     char* dim_type_args;       /* DIM v AS Base<A1,A2>: CSV degli argomenti generici ("A1,A2");
                                 * NULL se il tipo non è istanziato (parità C# `Pair_INTEGER_STRING_`). */
