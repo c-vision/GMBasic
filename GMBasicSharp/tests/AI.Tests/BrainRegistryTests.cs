@@ -1,7 +1,11 @@
 // FILE: AI.Tests.BrainRegistryTests
-// Second Brain: BrainRegistry (USE/DETACH/LIST/INFO/available) + BrainSigner (probe minimi)
-// + BrainInstaller (import zip + validazione manifest/checksum + rollback). Isolato dalla
-// config utente reale (AiConfig + BrainRegistry overridden su path temporanei).
+// Second Brain: BrainRegistry (USE/DETACH/LIST/INFO/available) + BrainInstaller (import zip +
+// validazione manifest/checksum + rollback). Isolato dalla config utente reale (AiConfig +
+// BrainRegistry overridden su path temporanei).
+//
+// NOTA (F9d, 2026-11-02): export/sign e il toolchain (stats/verify/create/dedupe/…)
+// vivono ORA nel mondo C (`gmbadmin brain …`, runtime `gmb_brain_tool_*`). I test di quelle
+// funzioni sono in `tools/sh/brain_c_smoke.sh` (stessa copertura, sul binario reale).
 using Basic.AI;
 using Basic.AI.Knowledge;
 using FluentAssertions;
@@ -37,11 +41,14 @@ public sealed class BrainRegistryTests : IDisposable
         if (File.Exists(_configPath)) File.Delete(_configPath);
     }
 
-    private static void MakeVault(string dir, int files = 3)
+    /// <summary>Crea un cervello "installato" (graphs/&lt;name&gt;.json) sotto la root isolata.</summary>
+    private void MakeInstalledBrain(string name)
     {
+        var dir = Path.Combine(_brainsRoot, name, "graphs");
         Directory.CreateDirectory(dir);
-        for (var i = 0; i < files; i++)
-            File.WriteAllText(Path.Combine(dir, $"doc{i}.md"), $"# Doc {i}\nlink [[doc{(i + 1) % files}]]\n");
+        File.WriteAllText(Path.Combine(dir, name + ".json"),
+            "{\"nodes\":[{\"id\":\"a.md\",\"title\":\"a\"}],\"edges\":[],\"dangling\":[],\"folderCounts\":{}}");
+        BrainRegistry.Register(name, source: null, vaultPath: Path.Combine(_brainsRoot, name), mode: "graph");
     }
 
     [Fact]
@@ -51,65 +58,34 @@ public sealed class BrainRegistryTests : IDisposable
     }
 
     [Fact]
-    public void Sign_UserVaultMarkdown_AvailableAsGraph()
+    public void Use_InstalledBrain_Attaches_DetachKeepsFiles()
     {
-        var vault = Path.Combine(_brainsRoot, "vault-src");
-        MakeVault(vault);
+        MakeInstalledBrain("mywiki");
 
-        var result = BrainSigner.Sign("mywiki", vault);
-
-        result.Valid.Should().BeTrue();
-        result.Available.Should().Contain("graph");
-        result.Probe.Should().ContainKey("graph");
         BrainRegistry.IsAvailableAsGraph("mywiki").Should().BeTrue();
         BrainRegistry.Use("mywiki").Should().BeTrue();
         BrainRegistry.Used().Should().Contain("mywiki");
+
         var info = BrainRegistry.Info("mywiki");
         info.Should().NotBeNull();
         info!.Available.Should().Contain("graph");
-        info.Checksum.Should().NotBeNullOrEmpty();
-        info.SignedBy.Should().Be("gmb-sign");
+
+        BrainRegistry.Detach("mywiki").Should().BeTrue();
+        BrainRegistry.Used().Should().NotContain("mywiki");
+        BrainRegistry.IsAvailableAsGraph("mywiki").Should().BeTrue();
     }
 
     [Fact]
-    public void Sign_EmptyDir_NotValid_WithReport()
+    public void List_ReturnsRegisteredAndAvailable()
     {
-        var empty = Path.Combine(_brainsRoot, "empty");
-        Directory.CreateDirectory(empty);
-
-        var result = BrainSigner.Sign("emptybrain", empty);
-
-        result.Valid.Should().BeFalse();
-        result.Probe.Should().ContainKey("graph");
+        MakeInstalledBrain("listbrain");
+        BrainRegistry.List().Should().Contain("listbrain");
     }
 
     [Fact]
-    public void Sign_MissingDir_NotValid()
+    public void AvailableModes_Empty_ForGhost()
     {
-        var result = BrainSigner.Sign("ghost", Path.Combine(_brainsRoot, "nope"));
-        result.Valid.Should().BeFalse();
-    }
-
-    [Fact]
-    public void Install_ValidZip_RoundTrip()
-    {
-        var vault = Path.Combine(_brainsRoot, "vault-rt");
-        MakeVault(vault);
-        var sign = BrainSigner.Sign("rtbrain", vault);
-        sign.Valid.Should().BeTrue();
-
-        // export dello zip dal brain firmato (root import ha manifest + graphs/<name>.json)
-        var zipPath = Path.Combine(_brainsRoot, "rtbrain.gmbrain.zip");
-        BrainSigner.ExportSignedZip("rtbrain", zipPath).Should().BeTrue();
-
-        var dest = Path.Combine(_brainsRoot, "imported");
-        var install = BrainInstaller.Install("rtbrain", zipPath, dest, activate: true);
-
-        install.Ok.Should().BeTrue();
-        install.InstallRoot.Should().Be(dest);
-        install.Available.Should().Contain("graph");
-        Directory.Exists(Path.Combine(dest, "graphs")).Should().BeTrue();
-        File.Exists(Path.Combine(dest, "brain.manifest.json")).Should().BeTrue();
+        BrainRegistry.AvailableModes("ghost").Should().BeEmpty();
     }
 
     [Fact]
@@ -125,34 +101,5 @@ public sealed class BrainRegistryTests : IDisposable
         install.Ok.Should().BeFalse();
         install.Error.Should().NotBeNullOrEmpty();
         Directory.Exists(dest).Should().BeFalse();
-    }
-
-    [Fact]
-    public void Detach_KeepsFiles()
-    {
-        var vault = Path.Combine(_brainsRoot, "vault-det");
-        MakeVault(vault);
-        BrainSigner.Sign("detbrain", vault);
-        BrainRegistry.Use("detbrain");
-
-        BrainRegistry.Detach("detbrain").Should().BeTrue();
-        BrainRegistry.Used().Should().NotContain("detbrain");
-        BrainRegistry.IsAvailableAsGraph("detbrain").Should().BeTrue();
-    }
-
-    [Fact]
-    public void List_ReturnsRegisteredAndAvailable()
-    {
-        var vault = Path.Combine(_brainsRoot, "vault-list");
-        MakeVault(vault);
-        BrainSigner.Sign("listbrain", vault);
-
-        BrainRegistry.List().Should().Contain("listbrain");
-    }
-
-    [Fact]
-    public void AvailableModes_Empty_ForGhost()
-    {
-        BrainRegistry.AvailableModes("ghost").Should().BeEmpty();
     }
 }

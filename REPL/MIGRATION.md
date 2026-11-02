@@ -10,7 +10,7 @@ Programmi attuali:
 |---|---|
 | `REPL/build/gmb_repl` | REPL canonica (C) — comandi, IDE, console, package/fixtures |
 | `GMBasicSharp/CompilerCli` → `gmbcs` | engine C# headless: `check`, `dump ast\|pcode\|il\|disasm`, `prginfo`, `build`, `run`, `eval`, `debug`, `aibench` |
-| `GMBasic/native/gmbadmin` → `gmbadmin` | **CLI amministrativo C** (front unico `gmb`): pacchetti, pack/publish/login/register/admin, brain, libs, setup, daemon, rag/graph, grep, convert/convfmt, hf/mlx |
+| `GMBasic/native/gmbadmin` → `gmbadmin` | **CLI amministrativo C** (front unico `gmb`): pacchetti, pack/publish/login/register/admin, **brain/toolchain completo**, libs, setup, daemon, rag/graph, grep, convert/convfmt, hf/mlx |
 | `Notebook/build/gmb_notebook` | notebook server (C): sessione BASIC via HTTP su 127.0.0.1 |
 
 ## 1. Comandi della REPL (70 nella mappa C#)
@@ -31,7 +31,7 @@ Comandi riportati nel mondo C o instradati (vedi commit F3/F6b):
 | `HF`/`MLX` | `gmb hf` / `gmb mlx` — **C** (HF API + `gmb_fetch`, token da `~/.cache/huggingface/token`) |
 | `RAG` | `gmb rag build/update/status/query` — **C** (`gmb_rag_index_source`/`search`, `--prune` con `gmb_rag_list_sources`) |
 | `GRAPH` | **C**: `gmb graph build/update/status` (`gmb_graph_build`); REPL `rpl_graph_build` resta per il comando interattivo |
-| `BRAIN INSTALL`/`UNINSTALL` | **C**: `gmbadmin brain install|uninstall` (`gmb_brain_install`); `EXPORT`/`SIGN` ancora nel CLI C# (gap F9d) |
+| `BRAIN …` | **C**: `gmbadmin brain` (install/uninstall/resolve/stats/verify/create/register/buildvault/optimize/rename/backup/export/sign/dedupe/extract/merge/convert/diff/doctor/forget) |
 | `LIBS UPDATE/CHECK/PUBLISH` | **C**: `gmb libs status/ensure/check/publish` |
 | `CONVERT` / `CONVFMT` | **C**: `gmb convert` / `gmb convfmt` (`gmb_doc_*`) |
 | `BSP <dir>` | **C**: `gmb_bsp_compile` + `gmb dump chunk` → `<pagina>.bsp.chunk` |

@@ -27,8 +27,9 @@ continua a funzionare identica per il mondo C.
       `gmb` e `gmb_vm_host` si costruiscono e i comandi C sono verdi; `IL`/`PCODE` dichiarano
       l'assenza. Riproducibile: `tools/sh/repl_no_csharp_proof.sh`.
 - [x] **F6** — la REPL **C#** è stata eliminata (`GMBasicSharp/REPL`); il **compilatore C# resta**
-      con due CLI: `gmbcs` (engine: run/dump/build/debug) e `gmb` (`GMBasicSharp/Cli`:
-      pacchetti/brain/libs/setup/daemon/rag/graph/grep). Questa cartella è l'unica REPL.
+      come motore headless: `gmbcs` (`check`, `dump`, `build`, `run`, `debug`, `aibench`). Tutto
+      l'admin (pacchetti/brain/libs/setup/daemon/rag/graph/grep/hf/mlx) è **C** in
+      `GMBasic/native/gmbadmin` (front unico `gmb`). Questa cartella è l'unica REPL.
 - [x] **Sorgenti qui** (F6, 2026-11-01): tutti i `.c/.h` e il `CMakeLists.txt` vivono in
       `REPL/`; build `cmake -S REPL -B REPL/build && cmake --build REPL/build --target gmb_repl`.
       `GMBasic/native/repl/` non esiste più.

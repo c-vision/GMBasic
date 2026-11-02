@@ -1807,6 +1807,13 @@ char*   gmb_rag_list_collections(const char* db);
  * inserimento. Serve a `rag build --prune` (CLI C) per rimuovere i documenti spariti dal
  * disco. Ritorno malloc; NULL/stringa d'errore "ERROR: ..." come list_collections. */
 char*   gmb_rag_list_sources(const char* db, const char* coll);
+/* Indicizza una CARTELLA (markdown/testo) in una collezione: walk, chunking condiviso,
+ * `prune` = rimuove dal DB le sorgenti sparite. Sorgente unica di `gmb rag build` (CLI C) e
+ * di `BRAIN CREATE --mode rag|both`. Ritorna il numero di file processati, -1 su errore;
+ * i contatori (opzionali) riportano indicizzati/aggiornati/invariati/rimossi/falliti. */
+int     gmb_rag_build_dir(const char* dir, const char* db, const char* coll, int max_chars, int overlap,
+                          int prune, int* out_indexed, int* out_updated, int* out_skipped,
+                          int* out_removed, int* out_failed);
 char*   gmb_rag_search(const char* db, const char* coll, const char* query, int topk, const char* filter_json);        /* hybrid */
 char*   gmb_rag_search_vector(const char* db, const char* coll, const char* query, int topk, const char* filter_json);  /* vector-only */
 /* gmb_rag_search_sel: AIVECTOR.SEARCH con knob (reranker OFF/KEYWORD, minEvidence, explain) —

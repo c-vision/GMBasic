@@ -569,6 +569,7 @@ int gmbadmin_pkg(int argc, char** argv)
     if (!strcmp(sub, "cache")) {
         const char* a1 = first_pos(argc, argv, 0);
         if (!a1 || !strcasecmp(a1, "list")) return cache_list(cache);
+        if (!strcasecmp(a1, "verify")) return gmbadmin_cache_verify(argc, argv);
         if (!strcasecmp(a1, "gc")) {
             char content[1200];
             snprintf(content, sizeof content, "%s/content", cache);
@@ -600,4 +601,34 @@ int gmbadmin_pkg(int argc, char** argv)
     }
     fprintf(stderr, "?pkg: comando sconosciuto '%s' (gmb pkg help)\n", sub);
     return 2;
+}
+
+/* ── cache verify: confronto dei file in cache col LOCK su disco ──────────── */
+
+int gmbadmin_cache_verify(int argc, char** argv)
+{
+    const char* lock = opt_val(argc, argv, "--lock");
+    char path[2400];
+    if (lock && *lock) snprintf(path, sizeof path, "%s", lock);
+    else {
+        char cwd[1024];
+        if (!getcwd(cwd, sizeof cwd)) cwd[0] = 0;
+        snprintf(path, sizeof path, "%s/%s", cwd, GMBADMIN_LOCK);
+    }
+    if (access(path, R_OK) != 0) {
+        printf("cache verify: manca il lock di riferimento (%s); usa --lock <file>.\n", path);
+        return 1;
+    }
+    char cache[1024];
+    const char* copt = opt_val(argc, argv, "--cache");
+    if (copt && *copt) snprintf(cache, sizeof cache, "%s", copt);
+    else gmbadmin_cache_root(cache, sizeof cache);
+    gmb_pkg_lock_t* l = gmb_pkg_lock_read(path);
+    if (!l) { fprintf(stderr, "?cache verify: lock illeggibile (%s)\n", path); return 1; }
+    char out[16384] = "";
+    int rc = gmb_pkg_lock_verify(l, cache, out, sizeof out);
+    gmb_pkg_lock_free(l);
+    if (rc == 0) { printf("Cache integra (vs lock).\n"); return 0; }
+    printf("%s\n", out[0] ? out : "cache NON integra rispetto al lock");
+    return 1;
 }

@@ -19,6 +19,7 @@ add_executable(gmbadmin
     gmbadminrag.c
     gmbadmindaemon.c
     gmbadminfetch.c
+    gmbadminbrain.c
     gmbadminsys.c
 )
 

@@ -52,16 +52,17 @@ in the **releases** of two companion repos and are downloaded **only when needed
 | **`c-vision/GMBasicBrains`** | private | **brains** (Second Brain): RAG and knowledge graph, shipped as release assets |
 
 The other two repos never need to be cloned: the commands below fetch from their releases. From a
-checkout use `dotnet run --project GMBasicSharp/Cli -- …`; with the distributed binary it is
-simply `gmb …`. The **interactive REPL is the C binary** `REPL/build/gmb_repl` (see `REPL/README.md`).
+checkout, build the C tools once (`GMBasic/native/gmb_compiler_c`, `GMBasic/native/gmbadmin`) and
+use `gmb …` — the whole administrative surface is **C** (there is no C# CLI any more). The
+**interactive REPL is the C binary** `REPL/build/gmb_repl` (see `REPL/README.md`).
 
 ### First time — the four commands that actually matter
 
 ```sh
-dotnet run --project GMBasicSharp/Cli -- libs ensure            # missing native libraries
-dotnet run --project GMBasicSharp/Cli -- fixtures ensure        # market feeds for the samples
-dotnet run --project GMBasicSharp/Cli -- brain login --github   # once: token for the private repo
-dotnet run --project GMBasicSharp/Cli -- brain install brainvault
+gmb libs ensure                 # missing native libraries
+gmb fixtures ensure             # market feeds for the samples
+gmb brain login --github        # once: token for the private repo
+gmb brain install brainvault    # download + install the brain (checksum verified)
 ```
 
 `ensure` downloads **only what is missing**, so you can re-run it whenever you like.
@@ -148,7 +149,7 @@ Tre programmi separati, un compito ciascuno:
 |---|---|
 | `REPL/build/gmb_repl` | **REPL interattiva** e runner del mondo C (canonica): `RUN`, `EVAL`, `AST`, `DASM`, `COMPILE`, `IDE`, package/fixtures. Nessuna dipendenza dal mondo C#. |
 | `GMBasicSharp/CompilerCli` → `gmbcs` | **CLI headless dell'engine C#**: `check`, `dump ast\|pcode\|il\|disasm`, `build --target il\|pcode`, `run`/`eval --engine il\|pcode`, `debug`. |
-| `GMBasicSharp/Cli` → `gmb` | **CLI amministrativo del mondo C#**: pacchetti, brain, libs, setup, daemon, rag/graph, grep. |
+| `GMBasic/native/gmbadmin` → `gmbadmin` | **CLI amministrativo in C** (front unico `gmb`): pacchetti, brain/toolchain, libs, setup, daemon, rag/graph, grep, hf/mlx. |
 | `Notebook/build/gmb_notebook` | **notebook server** (C): sessione BASIC con stato via HTTP su 127.0.0.1 (`/execute`, `/vars`, `/reset`). |
 
 ```sh

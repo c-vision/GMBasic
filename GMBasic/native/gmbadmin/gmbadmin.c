@@ -50,7 +50,12 @@ int main(int argc, char** argv)
     if (!strcmp(cmd, "convert") || !strcmp(cmd, "convfmt")) return gmbadmin_doc(argc, argv);
     if (!strcmp(cmd, "keygen"))   return gmbadmin_keygen(argc, argv);
     if (!strcmp(cmd, "pack"))     return gmbadmin_pack(argc, argv);
-    if (!strcmp(cmd, "publish"))  return gmbadmin_publish(argc, argv);
+    if (!strcmp(cmd, "publish")) {
+        for (int i = 2; i < argc; i++)
+            if (!strcmp(argv[i], "--repo") || !strncmp(argv[i], "--repo=", 7))
+                return gmbadmin_publish_repo(argc, argv);
+        return gmbadmin_publish(argc, argv);
+    }
     if (!strcmp(cmd, "login"))    return gmbadmin_login(argc, argv, 0);
     if (!strcmp(cmd, "logout"))   return gmbadmin_login(argc, argv, 1);
     if (!strcmp(cmd, "register")) return gmbadmin_register(argc, argv);
