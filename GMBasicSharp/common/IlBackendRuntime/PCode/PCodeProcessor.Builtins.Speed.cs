@@ -95,8 +95,10 @@ internal sealed partial class PCodeProcessor
                     var fullFlag = args.Length >= 2 && args[1] is bool sfb && sfb;
                     var sVal = ResolveSpeedDatabase(task, args.Length >= 1 && !(args[0] is bool) ? args[0] : null);
                     if (sVal == null) return 0.0;
-                    return fullFlag ? (sVal.ValidateIntegrityFull().IsValid ? 1.0 : 0.0)
-                : (sVal.ValidateIntegrity().IsValid ? 1.0 : 0.0);
+                    // Convenzione Bit canonica -1 vero / 0 falso (prima 1.0: divergeva
+                    // da IL/C99/VM-C e da TYPENAME/confronti).
+                    return fullFlag ? (sVal.ValidateIntegrityFull().IsValid ? -1.0 : 0.0)
+                : (sVal.ValidateIntegrity().IsValid ? -1.0 : 0.0);
                 }
                     catch { return 0.0; }
                 }

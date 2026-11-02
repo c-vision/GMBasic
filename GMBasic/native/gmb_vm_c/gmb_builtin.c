@@ -10818,9 +10818,14 @@ void gmb_bf_446(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, 
 }
 static void gmb_bf_459(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
-        {
-            bout->result = 0;
-        }
+    /* SPEED.VALIDATE([alias][, full]) — BuiltInFunction 459. Integrità del DB SPEED
+     * corrente con il runtime condiviso `gmb_db_speed_validate` (§0bis): Bit canonico
+     * -1 valido / 0 non valido. Il flag `full` è informativo (la libreria fa sempre
+     * l'integrità completa); l'alias è accettato per compatibilità di firma.
+     * Prima era uno stub `bout->result = 0` (valor sempre falso). */
+    (void)vm; (void)args; (void)argc; (void)func_code; (void)task;
+    bout->is_num = 1;
+    bout->result = gmb_db_speed_validate(gmb_db_current_speed(), NULL, 0) == GMB_DB_OK ? -1.0 : 0.0;
 }
 void gmb_bf_449(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {

@@ -6909,6 +6909,7 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { "SPEED", GMB_TOK_SpeedBeginGroupCommit, emit_bf_speed },
     { "SPEED", GMB_TOK_SpeedEndGroupCommit, emit_bf_speed },
     { "SPEED", GMB_TOK_SpeedInfo, emit_bf_speed },
+    { "SPEED", GMB_TOK_SpeedValidate, emit_bf_speed },
     { NULL, GMB_TOK_SpeedSetDurability, emit_bf_speed },
     { NULL, GMB_TOK_SpeedFlushDurability, emit_bf_speed },
     { NULL, GMB_TOK_SpeedBeginGroupCommit, emit_bf_speed },

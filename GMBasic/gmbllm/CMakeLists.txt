@@ -52,6 +52,7 @@ target_include_directories(gmbllm PUBLIC include include/quant
     ${LLMENV}/LLMCodec/include       # header Apache (fp16, iq_grids) — gmbllm li CONSUMA, mai l'inverso
     ${LLMENV}/LLMEngine/moe/include
     ${LLMENV}/LLMJinja              # llmjinja.h (rendering chat template) — Apache, consumato da PUL
+    ${LLMENV}/LLMEngine/include      # llmengine.h (ABI comune vtable/opzioni) — incluso da llmengine_mlx.h
     ${LLMENV}/LLMEngine/mlx          # ABI Apache (llmengine_mlx.h, llmengine_mlx_diff_forward.h) — forward differenziabile
     ${LLMENV}/LLMEngine/Options      # llm_engine_opts.h (transitivo)
     ${LLMENV}/libs/mlx-deps/mlx-c-src   # <mlx/c/*.h> (closure/value_and_grad) — TRAIN
