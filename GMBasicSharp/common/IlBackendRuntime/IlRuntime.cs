@@ -18240,7 +18240,10 @@ public static double TextWidth(string s)
                 _ => result.Value.ToString() ?? "",
             };
             static string Esc(string? s) => (s ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"");
-            return $"{{\"kind\":\"{kindName}\",\"option\":\"{Esc(result.OptionId)}\",\"value\":\"{Esc(value)}\",\"probability\":{result.Probability.ToString("0.000000", System.Globalization.CultureInfo.InvariantCulture)},\"confidence\":null,\"calibrated\":null}}";
+            static string Num(double? v) => v.HasValue
+                ? v.Value.ToString("0.000000", System.Globalization.CultureInfo.InvariantCulture)
+                : "null";
+            return $"{{\"kind\":\"{kindName}\",\"option\":\"{Esc(result.OptionId)}\",\"value\":\"{Esc(value)}\",\"probability\":{result.Probability.ToString("0.000000", System.Globalization.CultureInfo.InvariantCulture)},\"confidence\":{Num(result.Confidence)},\"calibrated\":{Num(result.Calibrated)}}}";
         }
         catch (Exception ex)
         {

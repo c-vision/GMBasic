@@ -365,6 +365,10 @@ internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter
     // Solo con "speculation":"dflash"; il draft dir deve essere DFlash2 (create != NULL).
     private readonly IntPtr _dflash2Handle;
     private readonly string _modelName;
+    // Cartella del modello: sorgente di `scoring_head.json` (calibrazione JEV/SystemOne).
+    private readonly string _modelDirPath;
+    // Lazy: l'artefatto è opzionale e si legge una volta sola.
+    private ScoringHead? _scoringHead;
     private readonly int _maxTokens;
     private readonly int _contextSize;
     private readonly int _eosTokenId;
@@ -417,6 +421,7 @@ internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter
     internal MlxLlmCompleter(ProviderDescriptor descriptor)
     {
         var modelDir = ProviderHttp.RequireConfig(descriptor, "modelDir");
+        _modelDirPath = modelDir;
         // Modello MLX single-file GGUF (oggi DS4/DeepSeek V4 Flash): tokenizer letto dal GGUF e
         // pesi mmap-ati dal motore MLX; vedi i due blocchi "isGguf" più sotto.
         var isGguf = modelDir.EndsWith(".gguf", StringComparison.OrdinalIgnoreCase);
@@ -768,13 +773,20 @@ internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter
     // ── IDecisionCompleter (JEV/SystemOne): decisione dai logits del modello locale ──
     // Prompt via chat template reale, prefill once, readout delle opzioni a token singolo
     // (ABI v8 CAP_DECIDE). Nessuna generazione: legge solo P(token_opzione) alla posizione
-    // in cui il modello risponderebbe. Calibrazione non ancora applicata (bias/T = input).
+    // in cui il modello risponderebbe.
+    //
+    // Calibrazione: se la cartella modello contiene `scoring_head.json`, i suoi parametri
+    // (bias per slot, T_kind, head_T) entrano nel readout; `calibrated`/`confidence` restano
+    // null senza artefatto (mai copiare Probability in Confidence — canone JEV).
     public IReadOnlyList<DecisionResult> Decide(DecisionRequest request)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         request.Validate();
 
-        var labels = request.Options.Select(o => o.Display).ToArray();
+        var head = _scoringHead ??= ScoringHead.TryLoad(_modelDirPath);
+        var effective = head?.Apply(request) ?? request;
+
+        var labels = effective.Options.Select(o => o.Display).ToArray();
         var instructions = string.IsNullOrWhiteSpace(request.Instructions)
             ? "You are a decision engine. Choose exactly one allowed option."
             : request.Instructions!;
@@ -797,25 +809,30 @@ internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter
             if (RunBigStack(() => MlxEngineNative.llm_ai_mlx_session_append(native, promptIds, promptIds.Length)) != 0)
                 throw new DecisionProviderException("local MLX: prefill della sessione fallito.");
 
-            var options = new MlxEngineNative.MlxDecideOption[request.Options.Count];
-            for (var i = 0; i < request.Options.Count; i++)
+            var options = new MlxEngineNative.MlxDecideOption[effective.Options.Count];
+            for (var i = 0; i < effective.Options.Count; i++)
             {
-                var label = request.Options[i].Display;
-                var ids = Encode(label);
-                if (ids.Length != 1) ids = Encode(" " + label);
-                if (ids.Length != 1)
-                    throw new DecisionProviderException(
-                        $"local MLX: l'opzione '{label}' non è un token singolo ({ids.Length} token).");
+                var option = effective.Options[i];
+                var tokenId = option.TokenId;
+                if (tokenId is null)
+                {
+                    var ids = Encode(option.Display);
+                    if (ids.Length != 1) ids = Encode(" " + option.Display);
+                    if (ids.Length != 1)
+                        throw new DecisionProviderException(
+                            $"local MLX: l'opzione '{option.Display}' non è un token singolo ({ids.Length} token).");
+                    tokenId = ids[0];
+                }
                 options[i] = new MlxEngineNative.MlxDecideOption
                 {
-                    OptionTokenId = ids[0],
-                    Bias = request.Options[i].Bias,
-                    Temperature = request.Options[i].Temperature,
+                    OptionTokenId = tokenId.Value,
+                    Bias = option.Bias,
+                    Temperature = option.Temperature,
                 };
             }
 
             var plan = RunBigStack(() => MlxEngineNative.llm_ai_mlx_decide_plan_create(
-                native, options, options.Length, 1.0f));
+                native, options, options.Length, head?.HeadTemperature ?? 1.0f));
             if (plan == IntPtr.Zero)
                 throw new DecisionProviderException("local MLX: decide_plan_create fallito.");
             try
@@ -824,9 +841,25 @@ internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter
                 var prob = new float[options.Length];
                 if (RunBigStack(() => MlxEngineNative.llm_ai_mlx_decide_plan_run(plan, logprob, prob, out _)) != 0)
                     throw new DecisionProviderException("local MLX: decide_plan_run fallito.");
-                return request.Options
-                    .Select((option, i) => DecisionResult.FromOption(request, option, prob[i],
-                        raw: $"local:logprob={logprob[i].ToString("0.######", System.Globalization.CultureInfo.InvariantCulture)}"))
+
+                // Probability = probabilità FINALE (con bias/T se la testa è caricata) — è la
+                // grandezza su cui la superficie sceglie l'argmax. La softmax grezza resta in Raw.
+                var raw = ScoringHead.Softmax(logprob);
+                var finalProbability = new double[options.Length];
+                var best = 0;
+                for (var i = 0; i < options.Length; i++)
+                {
+                    finalProbability[i] = head is null ? raw[i] : prob[i];
+                    if (finalProbability[i] > finalProbability[best]) best = i;
+                }
+                var calibrated = head is { IsCalibrated: true };
+                double? confidence = calibrated ? ScoringHead.Confidence(finalProbability, best) : null;
+                return effective.Options
+                    .Select((option, i) => DecisionResult.FromOption(request, option, finalProbability[i],
+                        confidence: i == best ? confidence : null,
+                        calibrated: calibrated ? finalProbability[i] : null,
+                        raw: $"local:logprob={logprob[i].ToString("0.######", System.Globalization.CultureInfo.InvariantCulture)}" +
+                             $";raw={raw[i].ToString("0.######", System.Globalization.CultureInfo.InvariantCulture)}"))
                     .ToList();
             }
             finally
