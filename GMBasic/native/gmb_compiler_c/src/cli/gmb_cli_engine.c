@@ -10,6 +10,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#if defined(__APPLE__)
+#include <mach-o/dyld.h>
+#endif
 
 /* ── ENGINE: `gmb --engine c|csharp` mantiene UNA superficie CLI ──────────────────────────
  * Il front è questo CLI C. Con `--engine=csharp` lo STESSO argv (tolti --engine e
@@ -43,7 +46,15 @@ static int find_csharp_cli(const char* explicit_path, char* out, size_t cap)
     for (int i = 0; rel[i]; i++)
         if (access(rel[i], X_OK) == 0) { snprintf(out, cap, "%s", rel[i]); return 1; }
     char exe[4096], dir[4096];
-    ssize_t n = readlink("/proc/self/exe", exe, sizeof exe - 1);
+    ssize_t n = -1;
+#if defined(__APPLE__)
+    {
+        uint32_t sz = (uint32_t)sizeof exe;
+        if (_NSGetExecutablePath(exe, &sz) == 0) n = (ssize_t)strlen(exe);
+    }
+#else
+    n = readlink("/proc/self/exe", exe, sizeof exe - 1);
+#endif
     if (n > 0) {
         exe[n] = 0;
         char* sl = strrchr(exe, '/');
