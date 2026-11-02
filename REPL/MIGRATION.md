@@ -90,6 +90,13 @@ vengono ignorati: il CLI stampa un errore esplicito con il programma giusto da u
 3. **`--debug-tcp`** (debug server TCP per IDE esterni): non implementato nel mondo C.
 4. ~~GPM mode sul runner C99~~ — **fatto**: `gmb --gpm auto|always|linear` arriva all'emettitore
    C99 (`gmb_c99_set_gpm_mode`); REPL `-gpm`/`GPM` lo propagano a `RUN`/`COMPILE`.
-5. **BSP**: le pagine che definiscono procedure omonime di builtin (es. `EscapeHtml` vs
-   `IMPORT STRINGS`) sono rifiutate dal compilatore C — divergenza del front-end da
-   indagare; le altre pagine compilano (`BSP: N OK`).
+5. ~~BSP index.bsp~~ — **risolto** (2026-11-02): la causa non era il front-end:
+   - il `.bas` generato veniva scritto in `/tmp`, e la discovery del compilatore (ricorsiva
+     sulla cartella dell'entry) includeva `.inc` estranei lasciati lì (duplicati `EscapeHtml`).
+     Ora `BSP` usa una **cartella temporanea privata** (`mkdtemp`);
+   - `REPLACE$` mancava in **VM/C** (A1): aggiunta (via `gmb_str_replace`, MiniTest
+     `strings/replace_dollar.bas` verde su 4 backend);
+   - il compilatore A1 non mappava i nomi `AI.AGENTLIST/AGENTEVENTS/AGENTGET/MEMORYASK/
+     WORKFLOW*` (implementati nel VM): aggiunti. `BSP` su `shared/webapp/pages` → **2 OK, 0 FAIL**.
+   Resta una divergenza preesistente (non BSP): `REPLACE$("abc","","-")` — IL/PCode lanciano,
+   C99/C99Native inseriscono.

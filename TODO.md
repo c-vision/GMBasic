@@ -233,6 +233,10 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
       (pagine con AI/JSON non compilavano). **GPM reso reale** (2026-11-02): `gmb --gpm
       auto|always|linear` → `gmb_c99_set_gpm_mode`; REPL `-gpm`/`GPM` lo propagano a
       `RUN`/`COMPILE` (verificato: always → `gmb_gpm_start` nel C emesso; auto/linear no).
-      Aperti tracciati: AOT `-n`, `-full`, `--debug-tcp`, divergenza front-end su procedure
-      omonime di builtin (es. `EscapeHtml`).
+      **BSP completo** (2026-11-02): `BSP shared/webapp/pages` → 2 OK; cause risolte:
+      cartella temporanea privata (la discovery ricorsiva su /tmp includeva `.inc` estranei),
+      `REPLACE$` aggiunta al VM/C (`gmb_str_replace`, MiniTest `strings/replace_dollar.bas`
+      4 backend), nomi `AI.AGENTLIST/AGENTEVENTS/AGENTGET/MEMORYASK/WORKFLOW*` mappati nel
+      compilatore A1. Aperti tracciati: AOT `-n`, `-full`, `--debug-tcp`; divergenza
+      preesistente `REPLACE$("abc","","-")` (IL/PCode lanciano, C99/C99Native inseriscono).
 - [ ] **F7b — Pulizia finale** (dopo F6): guida unica e manifesti/audit rigenerati.
