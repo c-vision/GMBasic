@@ -364,6 +364,14 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
           `LLM.TOKENS` eseguito da un programma in `/tmp` (fuori dal checkout) carica la dylib
           copiata accanto all'exe (errore corretto: modello assente). La VM (`gmb_vm`) e i
           tool TRAIN linkano `gmbllm_core`/`gmbllm_train` come prima.
+        - **Parità CLI C/C# (2026-11-02)**: stessa superficie per i flag comuni
+          (`--json` con schema identico anche sugli errori, `--strict`, `--quiet/-q`,
+          `-D/--define` in 4 forme, `--target`, bundle). Bug corretti dalla verifica:
+          `gmb` non accettava `-D`; il preprocessore C cancellava i define a ogni sorgente
+          (ora "base defines" che sopravvivono al reset); `#IFDEF … #ELSE` includeva entrambi
+          i rami (stato `outer/active/taken` per livello); `gmb check` non validava la sintassi
+          (ora lexer+parser, stessi diagnostics di `gmbcs`); `gmbcs` ignorava le opzioni
+          sconosciute e `--quiet`. Matrice completa nella guida `Compiler-CLI-Guide.md`.
         - Restano **C#** solo i moduli usati dai backend C# (IL/PCode): `BrainRegistry`,
           `BrainInstaller`, `BrainManifest`, `BrainVault` (il C# può esistere come altro
           compilatore, ma non ha più alcun comando che esista SOLO lì).

@@ -30,11 +30,150 @@ public static class Program
 {
     private const string Version = "gmbcs 1.0.0 (GMBASIC C# engine CLI)";
 
+    /* --quiet/-q: stessa semantica di `gmb` (sopprime il progresso, non gli errori).
+     * Il progresso va su STDERR (stdout resta per i dati: --json), come nel CLI C. */
+    /* realpath(3): il CLI C usa realpath() (es. /tmp → /private/tmp su macOS); con
+     * Path.GetFullPath i due `--json` non sarebbero confrontabili. */
+    [System.Runtime.InteropServices.DllImport("libc", SetLastError = true)]
+    private static extern IntPtr realpath(string path, IntPtr resolved);
+    [System.Runtime.InteropServices.DllImport("libc")]
+    private static extern void free(IntPtr p);
+
+    private static string RealPath(string path)
+    {
+        try
+        {
+            if (!OperatingSystem.IsWindows())
+            {
+                var r = realpath(path, IntPtr.Zero);
+                if (r != IntPtr.Zero)
+                {
+                    var s = System.Runtime.InteropServices.Marshal.PtrToStringUTF8(r);
+                    free(r);
+                    if (!string.IsNullOrEmpty(s)) return s;
+                }
+            }
+        }
+        catch { /* fallback */ }
+        return Path.GetFullPath(path);
+    }
+
+    /* Schema UNICO di `--json` (identico al CLI C): command/project/entry/sources/modules/
+     * [exe/library]/ok/diagnostics. */
+    private static void EmitJson(string command, string file, string? project, BasicProgram? program,
+                                 string? exe = null, bool library = false)
+    {
+        var entry = RealPath(file);
+        var proj = project != null ? RealPath(project) : (Path.GetDirectoryName(entry) ?? ".");
+        var modules = program?.ResolvedModuleSourcePaths.Count ?? 0;
+        var sources = modules + 1;
+        Console.WriteLine("{");
+        Console.WriteLine($"  \"command\": {Json(command)},");
+        Console.WriteLine($"  \"project\": {Json(proj)},");
+        Console.WriteLine($"  \"entry\": {Json(entry)},");
+        Console.WriteLine($"  \"sources\": {sources},");
+        Console.WriteLine($"  \"modules\": {modules},");
+        if (exe != null)
+        {
+            Console.WriteLine($"  \"exe\": {Json(RealPath(exe))},");
+            Console.WriteLine($"  \"library\": {(library ? "true" : "false")},");
+        }
+        Console.WriteLine("  \"ok\": true,");
+        Console.WriteLine("  \"diagnostics\": [");
+        Console.WriteLine("  ]");
+        Console.WriteLine("}");
+    }
+
+    private static string BuildExePath(string file, string? outDir, string target)
+    {
+        var baseName = Path.GetFileNameWithoutExtension(file);
+        if (target.Equals("pcode", StringComparison.OrdinalIgnoreCase))
+        {
+            var d = outDir != null ? Path.GetFullPath(outDir) : Path.Combine(Path.GetDirectoryName(Path.GetFullPath(file))!, "bin");
+            return Path.Combine(d, baseName + ".prg");
+        }
+        if (target.Equals("native", StringComparison.OrdinalIgnoreCase))
+        {
+            var d = outDir != null ? Path.GetFullPath(outDir) : Path.Combine(Path.GetDirectoryName(Path.GetFullPath(file))!, "bin", "native");
+            return Path.Combine(d, OperatingSystem.IsWindows() ? baseName + ".exe" : baseName);
+        }
+        {
+            var d = outDir != null ? Path.GetFullPath(outDir) : Path.Combine(Path.GetDirectoryName(Path.GetFullPath(file))!, "bin");
+            return Path.Combine(d, OperatingSystem.IsWindows() ? baseName + ".exe" : baseName);
+        }
+    }
+
+    private static bool Quiet;
+    /* Contesto per `--json` in caso di ERRORE (il CLI C emette comunque il JSON con
+     * ok:false + diagnostics: unico formato per tool/IDE, identico fra C e C#). */
+    private static bool JsonMode;
+    private static string JsonCmd = "";
+    private static string? JsonFile, JsonProj, JsonOut, JsonTarget;
+
+    private static bool IsParseError(Exception ex)
+    {
+        var m = ex.Message;
+        return m.Contains("Expected", StringComparison.OrdinalIgnoreCase)
+            || m.Contains("parse", StringComparison.OrdinalIgnoreCase)
+            || m.Contains("attesa", StringComparison.OrdinalIgnoreCase)
+            || m.Contains("Unexpected", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static int JsonRc(Exception ex)
+    {
+        var m = ex.Message;
+        if (IsParseError(ex)) return 3;   /* come il CLI C per build/run */
+        if (m.Contains("Expected", StringComparison.OrdinalIgnoreCase)
+            || m.Contains("parse", StringComparison.OrdinalIgnoreCase)
+            || m.Contains("attesa", StringComparison.OrdinalIgnoreCase)
+            || m.Contains("Unexpected", StringComparison.OrdinalIgnoreCase)) return 3;
+        if (ex is FileNotFoundException) return 2;
+        return 2;
+    }
+
+    private static void EmitJsonError(string message)
+    {
+        var file = JsonFile ?? "";
+        var entry = file.Length > 0 ? RealPath(file) : "";
+        var proj = JsonProj != null ? RealPath(JsonProj)
+                 : (entry.Length > 0 ? (Path.GetDirectoryName(entry) ?? ".") : ".");
+        Console.WriteLine("{");
+        Console.WriteLine($"  \"command\": {Json(JsonCmd)},");
+        Console.WriteLine($"  \"project\": {Json(proj)},");
+        Console.WriteLine($"  \"entry\": {(entry.Length > 0 ? Json(entry) : "null")},");
+        Console.WriteLine("  \"sources\": 0,");
+        Console.WriteLine("  \"modules\": 0,");
+        var code = IsParseError(new InvalidOperationException(message)) ? "parse" : "compile";
+        if (JsonCmd is "build" or "run" && JsonTarget != null)
+        {
+            Console.WriteLine($"  \"exe\": {Json(RealPath(BuildExePath(file, JsonOut, JsonTarget)))},");
+            Console.WriteLine("  \"library\": false,");
+        }
+        Console.WriteLine("  \"ok\": false,");
+        Console.WriteLine("  \"diagnostics\": [");
+        Console.WriteLine($"    {{\"severity\": \"error\", \"code\": \"{code}\", \"file\": {Json(entry)}, \"line\": 0, \"message\": {Json(message)}}}");
+        Console.WriteLine("  ]");
+        Console.WriteLine("}");
+    }
+    private static void Info(string s) { if (!Quiet) Console.Error.WriteLine(s); }
+    private static T Quietly<T>(Func<T> f)
+    {
+        if (!Quiet) return f();
+        var err = Console.Error;
+        Console.SetError(TextWriter.Null);
+        try { return f(); } finally { Console.SetError(err); }
+    }
+
     public static int Main(string[] args)
     {
         try { return Run(args); }
         catch (Exception ex)
         {
+            if (JsonMode)
+            {
+                EmitJsonError(ex.Message);
+                return JsonCmd == "check" ? 2 : JsonRc(ex);
+            }
             Console.Error.WriteLine($"?gmbcs: {ex.Message}");
             return 1;
         }
@@ -53,13 +192,20 @@ public static class Program
         {
             var a = list[i];
             string? raw = null;
-            if (a == "-D" && i + 1 < list.Count) { raw = list[i + 1]; list.RemoveAt(i + 1); list.RemoveAt(i); i--; }
+            if ((a == "-D" || a == "--define") && i + 1 < list.Count)
+            { raw = list[i + 1]; list.RemoveAt(i + 1); list.RemoveAt(i); i--; }
             else if (a.StartsWith("-D") && a.Length > 2) { raw = a[2..]; list.RemoveAt(i); i--; }
+            else if (a.StartsWith("--define=", StringComparison.Ordinal) && a.Length > 9)
+            { raw = a[9..]; list.RemoveAt(i); i--; }
             if (raw == null) continue;
             var eq = raw.IndexOf('=');
             if (eq > 0) defines[raw[..eq]] = raw[(eq + 1)..];
             else if (raw.Length > 0) defines[raw] = "true";
         }
+
+        if (list.Remove("--quiet") | list.Remove("-q")) Quiet = true;
+        /* --strict: il linker C# non produce "avvisi"; accettato per parità col CLI C. */
+        list.Remove("--strict");
 
         var engine = TakeOption(list, "--engine") ?? "il";
         var project = TakeOption(list, "--project");
@@ -78,7 +224,7 @@ public static class Program
             try
             {
                 var nmod = Basic.IlBackend.IlModuleLoader.Load(Path.GetFullPath(mod));
-                Console.Error.WriteLine($"[IL-MODULE] caricato {Path.GetFileName(mod)}: {nmod} namespace.");
+                Info($"[IL-MODULE] caricato {Path.GetFileName(mod)}: {nmod} namespace.");
             }
             catch (Exception ex) { Console.Error.WriteLine($"?gmbcs: modulo IL {mod}: {ex.GetBaseException().Message}"); return 2; }
         }
@@ -91,16 +237,33 @@ public static class Program
 
         if (list.Count == 0) { Usage(); return 2; }
         var cmd = list[0].ToLowerInvariant();
+        /* Opzioni sconosciute = ERRORE (prima venivano ignorate in silenzio: `--pippo`
+         * passava). `eval` è l'eccezione: il resto sono istruzioni, anche con `-`. */
+        {
+            string[] known = ["--target", "--full", "-full", "--all", "--libs", "-libs",
+                              "--alllibs", "-alllib", "--all-libs", "--plugins", "-plugins",
+                              "--skills", "-skills", "--brains", "-brains", "--break", "--step",
+                              "--il-module", "--help", "-h"];
+            if (cmd != "eval")
+                foreach (var a in list.Skip(1))
+                {
+                    if (a.Length < 2 || a[0] != '-') continue;
+                    if (known.Any(k => a == k || a.StartsWith(k + "=", StringComparison.Ordinal))) continue;
+                    Console.Error.WriteLine($"?gmbcs: opzione sconosciuta '{a}'");
+                    return 2;
+                }
+        }
 
         switch (cmd)
         {
             case "check":
             {
                 var file = ResolveEntry(list, project, entry, 1);
+                JsonMode = json; JsonCmd = "check"; JsonFile = file; JsonProj = project; JsonTarget = null;
                 var program = CompileFile(file, defines);
-                if (json) Console.WriteLine($"{{\"ok\":true,\"file\":{Json(file)}}}");
-                else Console.WriteLine($"OK {file}");
-                _ = program;
+                /* STESSO schema del CLI C (`gmb check --json`). */
+                if (json) EmitJson("check", file, project, program);
+                else if (!Quiet) Console.WriteLine($"OK {file}");
                 return 0;
             }
             case "dump":
@@ -145,14 +308,18 @@ public static class Program
                 var skills = TakeBundle(list, "--skills", "-skills");
                 var brains = TakeBundle(list, "--brains", "-brains");
                 var file = ResolveEntry(list, project, entry, 1);
+                JsonMode = json; JsonCmd = "build"; JsonFile = file; JsonProj = project;
+                JsonOut = outPath; JsonTarget = target;
                 var program = CompileFile(file, defines);
-                return target.ToLowerInvariant() switch
+                var brc = target.ToLowerInvariant() switch
                 {
                     "pcode" => BuildPCode(program, file, outPath),
                     "il" => BuildIl(program, file, outPath, full, all, libsOn, libs.Sel, plugins, skills, brains),
                     "native" => BuildNative(program, file, outPath, libsOn, libs.Sel, plugins, skills, brains),
                     _ => throw new ArgumentException($"target sconosciuto: {target} (il|pcode|native)"),
                 };
+                if (brc == 0 && json) EmitJson("build", file, project, program, BuildExePath(file, outPath, target));
+                return brc;
             }
             case "aibench":
             {
@@ -195,12 +362,19 @@ public static class Program
                 var skills = TakeBundle(list, "--skills", "-skills");
                 var brains = TakeBundle(list, "--brains", "-brains");
                 var file = ResolveEntry(list, project, entry, 1);
+                JsonMode = json; JsonCmd = "run"; JsonFile = file; JsonProj = project;
+                JsonOut = outPath; JsonTarget = engine.Equals("native", StringComparison.OrdinalIgnoreCase) ? "native" : null;
                 var program = CompileFile(file, defines);
                 if (engine.Equals("native", StringComparison.OrdinalIgnoreCase))
-                    return RunNative(program, file, outPath, libsOn, libs.Sel, plugins, skills, brains);
+                {
+                    var nrc = RunNative(program, file, outPath, libsOn, libs.Sel, plugins, skills, brains);
+                    if (nrc == 0 && json) EmitJson("run", file, project, program, BuildExePath(file, outPath, "native"));
+                    return nrc;
+                }
                 if (libsOn || plugins.On || skills.On || brains.On)
-                    Console.Error.WriteLine("[bundle] ignorato con target gestito 'il' in run: usa `gmbcs build --libs …`");
+                    Info("[bundle] ignorato con target gestito 'il' in run: usa `gmbcs build --libs …`");
                 Console.Write(RunProgram(program, file, engine));
+                if (json) EmitJson("run", file, project, program);   /* l'IL in-process non lascia un exe */
                 return 0;
             }
             case "debug":
@@ -231,7 +405,7 @@ public static class Program
         if (!File.Exists(full)) throw new FileNotFoundException($"file non trovato: {file}");
         var dir = Path.GetDirectoryName(full)!;
         Directory.SetCurrentDirectory(dir);
-        var program = Orchestrator.Compile(full, defines, false);
+        var program = Quietly(() => Orchestrator.Compile(full, defines, false));
         if (program?.MainModule == null) throw new InvalidOperationException($"compilazione fallita: {file}");
         return program;
     }
@@ -239,7 +413,7 @@ public static class Program
     private static BasicProgram CompileSnippet(string code, IReadOnlyDictionary<string, string?> defines)
     {
         var src = "SUB Main()\n" + code + "\nEND SUB\n";
-        var program = Orchestrator.CompileFromString(src, "eval.bas", defines, false);
+        var program = Quietly(() => Orchestrator.CompileFromString(src, "eval.bas", defines, false));
         if (program?.MainModule == null) throw new InvalidOperationException("compilazione fallita: eval");
         return program;
     }
@@ -274,7 +448,7 @@ public static class Program
                                             BundleSel skills = default, BundleSel brains = default)
     {
         var dir = outDir != null ? Path.GetFullPath(outDir) : Path.Combine(Path.GetDirectoryName(Path.GetFullPath(sourcePath))!, "bin", "native");
-        var exe = IlProgramCompiler.CompileNative(program, sourcePath, dir);
+        var exe = Quietly(() => IlProgramCompiler.CompileNative(program, sourcePath, dir));
         try { CommonLib.ProgramBundle.CopyNextTo(dir, sourcePath, Console.WriteLine); } catch { /* best effort */ }
         if (allLibs || plugins.On || skills.On || brains.On)
             DeployBundle(dir, allLibs ? (libsSel ?? "used") : null,
@@ -287,7 +461,7 @@ public static class Program
                                    BundleSel skills = default, BundleSel brains = default)
     {
         var exe = CompileNativeInto(program, sourcePath, outDir, allLibs, libsSel, plugins, skills, brains);
-        Console.WriteLine($"[NATIVE] {sourcePath} -> {exe}");
+        Info($"[NATIVE] {sourcePath} -> {exe}");
         return 0;
     }
 
@@ -296,7 +470,7 @@ public static class Program
                                  BundleSel skills = default, BundleSel brains = default)
     {
         var exe = CompileNativeInto(program, sourcePath, outDir, allLibs, libsSel, plugins, skills, brains);
-        Console.WriteLine($"[NATIVE] {sourcePath} -> {exe}");
+        Info($"[NATIVE] {sourcePath} -> {exe}");
         var psi = new System.Diagnostics.ProcessStartInfo(exe)
         {
             UseShellExecute = false,
@@ -323,7 +497,7 @@ public static class Program
             SourceName = Path.GetFileName(sourcePath),
         };
         global::Basic.Runtime.PrgFormat.Write(prgFile, prg);
-        Console.WriteLine($"[P-Code] {sourcePath} -> {prgFile} ({chunk.Code.Count} opcodes)");
+        Info($"[P-Code] {sourcePath} -> {prgFile} ({chunk.Code.Count} opcodes)");
         return 0;
     }
 
@@ -475,7 +649,7 @@ public static class Program
                 var src = Path.Combine(libsRoot, comp, rid);
                 var target = Path.Combine(dir, "libs", comp, rid);
                 CopyTree(src, target, n);
-                Console.WriteLine($"[libs] componente {comp}: {n[0]} file -> {target}");
+                Info($"[libs] componente {comp}: {n[0]} file -> {target}");
                 return;
             }
             // elenco di nomi
@@ -487,7 +661,7 @@ public static class Program
         }
         if (n[0] == 0 && !string.IsNullOrWhiteSpace(sel))
             Console.Error.WriteLine($"[libs] selettore '{sel}': nessun file trovato nella cache");
-        Console.WriteLine($"[libs] {n[0]} file -> {dst}");
+        Info($"[libs] {n[0]} file -> {dst}");
     }
 
     private static void DeployEntries(string srcRoot, string dstRoot, string? sel, string label)
@@ -502,7 +676,7 @@ public static class Program
             if (!SelAll(sel) && !SelHas(sel, name)) continue;
             CopyTree(d, Path.Combine(dstRoot, name), n);
         }
-        if (n[0] > 0) Console.WriteLine($"[{label}] {n[0]} file -> {dstRoot}");
+        if (n[0] > 0) Info($"[{label}] {n[0]} file -> {dstRoot}");
     }
 
     private static void DeployBundle(string dir, string? libsSel, bool plugins, string? pluginsSel,
@@ -526,13 +700,13 @@ public static class Program
         /* `linkRuntime: !allLibs`: con --libs/--full le dipendenze sono COPIE reali (una
          * distribuzione non può contenere symlink verso il build tree o l'assembly della
          * toolchain). Senza il flag resta il percorso di iterazione (symlink, ~140 KB). */
-        var exe = IlProgramCompiler.Compile(program, sourcePath, dir, Path.GetFileNameWithoutExtension(sourcePath),
-            noOptimize: false, dumpIl: false, linkRuntime: !allLibs, dllOnly: false, slim: !all);
+        var exe = Quietly(() => IlProgramCompiler.Compile(program, sourcePath, dir, Path.GetFileNameWithoutExtension(sourcePath),
+            noOptimize: false, dumpIl: false, linkRuntime: !allLibs, dllOnly: false, slim: !all));
         if (allLibs || plugins.On || skills.On || brains.On)
             DeployBundle(dir, allLibs ? (libsSel ?? "used") : null,
                          plugins.On, plugins.Sel, skills.On, skills.Sel, brains.On, brains.Sel);
         if (full) CopyNetRuntime(dir);
-        Console.WriteLine($"[IL] {sourcePath} -> {exe}{(allLibs ? " (bundle: dipendenze copiate)" : "")}{(full ? " (full: runtime .NET copiato)" : "")}");
+        Info($"[IL] {sourcePath} -> {exe}{(allLibs ? " (bundle: dipendenze copiate)" : "")}{(full ? " (full: runtime .NET copiato)" : "")}");
         return 0;
     }
 

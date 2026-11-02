@@ -538,29 +538,6 @@ static void dp_brains_src_dir(char* out, size_t cap)
 
 /* ── entry point ───────────────────────────────────────────────────────────────────────── */
 
-/* `--nome` (selettore NULL) o `--nome=valore`: 1 se `a` è questa opzione. */
-static int opt_sel(const char* a, const char* name, const char** sel)
-{
-    size_t n = strlen(name);
-    if (strcmp(a, name) == 0) { *sel = NULL; return 1; }
-    if (!strncmp(a, name, n) && a[n] == '=') { *sel = a + n + 1; return 1; }
-    return 0;
-}
-
-/* Riconosce un'opzione di bundle e la registra in `o`. 1 se consumata.
- * (Vive qui e non in gmb_cli.c per tenere il parser sotto la soglia di 1200 righe.) */
-int gmb_parse_bundle_arg(Options* o, const char* a)
-{
-    const char* sel = NULL;
-    if (opt_sel(a, "--libs", &sel) || opt_sel(a, "-libs", &sel)) { o->libs = 1; o->libs_sel = sel; return 1; }
-    if (!strcmp(a, "--alllibs") || !strcmp(a, "-alllib") || !strcmp(a, "--all-libs")
-        || !strcmp(a, "--full") || !strcmp(a, "-full")) { o->libs = 1; o->libs_sel = NULL; return 1; }
-    if (opt_sel(a, "--plugins", &sel) || opt_sel(a, "-plugins", &sel)) { o->plugins = 1; o->plugins_sel = sel; return 1; }
-    if (opt_sel(a, "--skills", &sel) || opt_sel(a, "-skills", &sel)) { o->skills = 1; o->skills_sel = sel; return 1; }
-    if (opt_sel(a, "--brains", &sel) || opt_sel(a, "-brains", &sel)) { o->brains = 1; o->brains_sel = sel; return 1; }
-    return 0;
-}
-
 void gmb_deploy_bundle(const char* exe, const char* install, const DeployOpts* o, int quiet)
 {
     if (!exe || !*exe) return;

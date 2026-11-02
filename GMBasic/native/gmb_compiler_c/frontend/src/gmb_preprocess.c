@@ -209,10 +209,41 @@ static double pp_eval_expr(const char* expr)
 }
 
 /* ── API principale ── */
+/* Defines ESTERNI (CLI -D/--define): restano fuori da `g_pp` e vengono riapplicati a ogni
+ * reset, così non si perdono quando si preprocessa un nuovo sorgente. */
+static gmb_pp_sym_t g_base[GMB_PP_MAX_SYMS];
+static int g_nbase;
+
+void gmb_preprocess_define_base(const char* name, const char* value)
+{
+    if (!name || !*name) return;
+    for (int i = 0; i < g_nbase; i++)
+        if (strcasecmp(g_base[i].name, name) == 0) {
+            free(g_base[i].value);
+            g_base[i].value = strdup(value && *value ? value : "1");
+            pp_def(g_base[i].name, g_base[i].value);
+            return;
+        }
+    if (g_nbase < GMB_PP_MAX_SYMS) {
+        g_base[g_nbase].name = strdup(name);
+        g_base[g_nbase].value = strdup(value && *value ? value : "1");
+        pp_def(g_base[g_nbase].name, g_base[g_nbase].value);
+        g_nbase++;
+    }
+}
+
+void gmb_preprocess_clear_base(void)
+{
+    for (int i = 0; i < g_nbase; i++) { free(g_base[i].name); free(g_base[i].value); }
+    g_nbase = 0;
+}
+
 void gmb_preprocess_reset(void)
 {
     for (int i = 0; i < g_pp.nsyms; i++) { free(g_pp.syms[i].name); free(g_pp.syms[i].value); }
     g_pp.nsyms = 0;
+    /* riapplica i -D della CLI: un #DEF del file precedente non resta, i -D sì. */
+    for (int i = 0; i < g_nbase; i++) pp_def(g_base[i].name, g_base[i].value);
 }
 
 void gmb_preprocess_define(const char* name, const char* value)
@@ -267,16 +298,22 @@ int gmb_preprocess_line(const char* line, char* out, int cap)
 }
 
 /* ═══ STATO A SESSIONE: stack di inclusione #IF/#IFDEF/#ELSEIF/#ELSE/#ENDIF ═══ */
+/* Stato di un livello #IF/#IFDEF: `outer` = il livello superiore includeva, `active` = il
+ * RAMO CORRENTE è incluso, `taken` = almeno un ramo precedente è stato preso.
+ * Prima esisteva solo `any_branch` (usato sia come "preso" sia come "attivo"): con
+ * `#IFDEF VERO … #ELSE` il ramo ELSE restava incluso → ENTRAMBE le diramazioni nel codice
+ * (bug reale, scoperto confrontando C e C# su -D). */
 typedef struct gmb_pp_session {
-    bool parent[GMB_PP_MAX_DEPTH];
-    bool any_branch[GMB_PP_MAX_DEPTH];
+    bool outer[GMB_PP_MAX_DEPTH];
+    bool active[GMB_PP_MAX_DEPTH];
+    bool taken[GMB_PP_MAX_DEPTH];
     int depth;
 } gmb_pp_session_t;
 
 static bool pp_including(const gmb_pp_session_t* s)
 {
     if (s->depth == 0) return true;
-    return s->parent[s->depth - 1] && s->any_branch[s->depth - 1];
+    return s->active[s->depth - 1];
 }
 
 void gmb_preprocess_init(gmb_pp_session_t* s) { s->depth = 0; }
@@ -328,8 +365,9 @@ bool gmb_preprocess_step(gmb_pp_session_t* s, const char* line, char* out, int c
         sscanf(rest, "%127s", name);
         bool cond = pp_sym_defined(name);
         if (s->depth < GMB_PP_MAX_DEPTH) {
-            s->parent[s->depth] = pp_including(s);
-            s->any_branch[s->depth] = cond;
+            s->outer[s->depth] = pp_including(s);
+            s->active[s->depth] = s->outer[s->depth] && cond;
+            s->taken[s->depth] = cond;
             s->depth++;
         }
         return false;
@@ -339,8 +377,9 @@ bool gmb_preprocess_step(gmb_pp_session_t* s, const char* line, char* out, int c
         sscanf(rest, "%127s", name);
         bool cond = !pp_sym_defined(name);
         if (s->depth < GMB_PP_MAX_DEPTH) {
-            s->parent[s->depth] = pp_including(s);
-            s->any_branch[s->depth] = cond;
+            s->outer[s->depth] = pp_including(s);
+            s->active[s->depth] = s->outer[s->depth] && cond;
+            s->taken[s->depth] = cond;
             s->depth++;
         }
         return false;
@@ -348,24 +387,28 @@ bool gmb_preprocess_step(gmb_pp_session_t* s, const char* line, char* out, int c
     if (pp_word(dir) == PPW_IF) {
         bool cond = pp_eval_expr(rest) != 0;
         if (s->depth < GMB_PP_MAX_DEPTH) {
-            s->parent[s->depth] = pp_including(s);
-            s->any_branch[s->depth] = cond;
+            s->outer[s->depth] = pp_including(s);
+            s->active[s->depth] = s->outer[s->depth] && cond;
+            s->taken[s->depth] = cond;
             s->depth++;
         }
         return false;
     }
     if (pp_word(dir) == PPW_ELSEIF) {
         if (s->depth > 0) {
-            if (s->parent[s->depth - 1] && !s->any_branch[s->depth - 1]) {
-                bool cond = pp_eval_expr(rest) != 0;
-                s->any_branch[s->depth - 1] = cond;
-            }
+            int d = s->depth - 1;
+            bool cond = pp_eval_expr(rest) != 0;
+            s->active[d] = s->outer[d] && !s->taken[d] && cond;
+            if (cond) s->taken[d] = true;
         }
         return false;
     }
     if (pp_word(dir) == PPW_ELSE) {
-        if (s->depth > 0 && s->parent[s->depth - 1] && !s->any_branch[s->depth - 1])
-            s->any_branch[s->depth - 1] = true;   /* else prende il ramo */
+        if (s->depth > 0) {
+            int d = s->depth - 1;
+            s->active[d] = s->outer[d] && !s->taken[d];
+            s->taken[d] = true;
+        }
         return false;
     }
     if (pp_word(dir) == PPW_ENDIF) {

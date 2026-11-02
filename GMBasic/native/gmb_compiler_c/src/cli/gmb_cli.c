@@ -47,7 +47,6 @@
 
 #define CLI_MAX_NS 128
 
-
 /* ── diagnosi ──────────────────────────────────────────────────────────────────────────── */
 
 static void diags_free(DiagList* l) {
@@ -985,6 +984,10 @@ int main(int argc, char** argv) {
         gmb_cli_usage();
         return 0;
     }
+    if (!strcmp(argv[1], "-v") || !strcmp(argv[1], "--version")) {
+        printf("gmb 1.0.0 (GMBASIC C CLI)\n");
+        return 0;
+    }
     {
         int arc = gmb_cli_admin_maybe(argc, argv);   /* pkg/fixtures/setup/... → gmbadmin (C) */
         if (arc >= 0) return arc;
@@ -1052,9 +1055,7 @@ int main(int argc, char** argv) {
         if (!strcmp(a, "--csharp-cli") && i + 1 < argc) { i++; continue; }
         if (!strncmp(a, "--csharp-cli=", 13)) continue;
         if (!strcmp(a, "--all")) { o.all = 1; continue; }
-        /* Bundle di distribuzione (--libs/--plugins/--skills/--brains): parser in
-         * gmb_cli_deploy.c (tiene questo file sotto la soglia di 1200 righe). */
-        if (gmb_parse_bundle_arg(&o, a)) continue;
+        if (gmb_parse_extra_arg(&o, a, argc, argv, &i)) continue;   /* bundle/-D/--target */
         if (!strcmp(a, "--interactive")) { o.interactive = 1; continue; }
         if (!strcmp(a, "--heavy")) { o.heavy = 1; continue; }
         const char* v = NULL;
@@ -1111,7 +1112,9 @@ int main(int argc, char** argv) {
 
     if (entry) {
         if (!strcmp(o.command, "check")) {
+            gmb_cli_set_defines(argc, argv);   /* i -D valgono anche per la validazione */
             run_check(&o, proj, entry, &diags, &sources, &modules);
+            gmb_cli_reset_defines();
         } else {
             rc = build_project(&o, proj, entry, &diags, exe, sizeof exe, &is_lib);
             if (rc == 0) {
