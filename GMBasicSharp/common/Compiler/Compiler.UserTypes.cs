@@ -178,6 +178,11 @@ public sealed partial class Compiler
                         var callLocation = EmitJump((byte)OpCode.OP_CALL_CTOR);
                         _jumpsToPatch.Add((callLocation,
                             new Token(TokenKind.Identifier, setterName, null, target.OriginalToken.Position)));
+                        // L'assegnazione a proprietà è uno STATEMENT: il valore di ritorno del
+                        // setter (spinto da OP_RETURN) va scartato, altrimenti resta sullo stack
+                        // del chiamante e OP_RETURN lo scambia per il valore di ritorno della
+                        // procedura corrente (stack leak: `b = NEW B(...)` tornava NIL).
+                        EmitByte((byte)OpCode.OP_POP);
                         return;
                     }
                     isProperty = foundMember is PropertyMember;
@@ -853,6 +858,11 @@ public sealed partial class Compiler
                 var baseCtorName = $"{classDef.ResolvedBaseClass!.Name.Lexeme}#{classDef.ResolvedBaseClass!.SymbolId}.__new";
                 _jumpsToPatch.Add((callLocation,
                     new Token(TokenKind.Identifier, baseCtorName, null, SourcePosition.Unknown)));
+                // BASE.NEW è uno STATEMENT: il valore di ritorno del costruttore base (spinto da
+                // OP_RETURN) va scartato. Senza, resta sullo stack della procedura derivata e
+                // OP_RETURN lo usa come proprio valore di ritorno: `DIM b AS B = NEW B("x")`
+                // assegnava NIL (ogni campo ereditato poi letto come vuoto — fe_inherit/PCode).
+                EmitByte((byte)OpCode.OP_POP);
 
                 // Gli inizializzatori inline dei campi DI QUESTA classe vanno emessi subito dopo
                 // BASE.NEW() (che ha appena inizializzato i campi ereditati) e prima del resto del

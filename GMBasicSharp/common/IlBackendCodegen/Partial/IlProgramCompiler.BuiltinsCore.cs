@@ -1607,11 +1607,16 @@ private void EmitBrowserHumanScrollCall(BuiltinFunctionCallExpr expr)
     {
         if (expr.Args.Length != 1 || !TryGetNativeCollectionType(InferType(expr.Args[0]), out var collectionType))
             throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede una collection nativa.");
-        EmitExpression(expr.Args[0]);
+        // ATTENZIONE: emit UNA sola volta l'argomento. Prima l'EmitExpression era qui, comune,
+        // e il ramo ClosedOverTypeBuilder lo RIEMETTEVA → due copie della collezione sullo
+        // stack e solo una consumata da CollectionCount(object): una resta al `ret` → IL
+        // non verificabile (InvalidProgramException in StampaMembri di
+        // ClassesSimpleInheritance: `PRINT ...; SELF.Animali.Count()`).
         // ARRAY: Count() = Length (double[] non ha la property Count — la VM COUNT su
         // ICollection usa Count che per un array è Length).
         if (collectionType.IsArray)
         {
+            EmitExpression(expr.Args[0]);
             _il.Emit(OpCodes.Ldlen);
             _il.Emit(OpCodes.Conv_R8);
             return;
@@ -1625,6 +1630,7 @@ private void EmitBrowserHumanScrollCall(BuiltinFunctionCallExpr expr)
             _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.CollectionCount), typeof(object)));
             return;
         }
+        EmitExpression(expr.Args[0]);
         var getter = GetCollectionCountGetter(collectionType);
         _il.Emit(OpCodes.Callvirt, getter);
         _il.Emit(OpCodes.Conv_R8);
