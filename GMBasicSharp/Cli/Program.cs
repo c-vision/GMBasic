@@ -88,19 +88,15 @@ public static class Program
         var full = list.Remove("-full") | list.Remove("--full");
 
         if (native)
-        {
-            Console.Error.WriteLine("?-n/--native (AOT): non e' nel CLI C. Usa `gmbcs build --target il` (IL gestito)");
-            Console.Error.WriteLine("  oppure il compilatore C: `gmb build --project <dir>`.");
-            return 2;
-        }
+            return Basic.CliEngine.Program.Main(["run", "--engine", "native", .. list]);
         if (full)
             return Basic.CliEngine.Program.Main(["build", "--target", "il", "--full", .. list]);
 
         if (ast)
             return Basic.CliEngine.Program.Main(["dump", "ast", .. list]);
 
-        if (managed)
-            return Basic.CliEngine.Program.Main(["build", "--target", "il", .. list]);
+        if (managed && !ast)
+            return Basic.CliEngine.Program.Main(["run", "--engine", "il", .. list]);
 
         // Flag della REPL (console/debug/BSP/wasm) non appartengono al runner headless: errore
         // esplicito, MAI ignorati in silenzio (migrazione F6b: nessuna funzione sparisce muta).

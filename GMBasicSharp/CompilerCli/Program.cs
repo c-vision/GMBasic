@@ -133,7 +133,8 @@ public static class Program
                 {
                     "pcode" => BuildPCode(program, file, outPath),
                     "il" => BuildIl(program, file, outPath, full, all),
-                    _ => throw new ArgumentException($"target sconosciuto: {target} (il|pcode)"),
+                    "native" => BuildNative(program, file, outPath),
+                    _ => throw new ArgumentException($"target sconosciuto: {target} (il|pcode|native)"),
                 };
             }
             case "aibench":
@@ -172,6 +173,8 @@ public static class Program
             {
                 var file = FileArg(list, 1);
                 var program = CompileFile(file, defines);
+                if (engine.Equals("native", StringComparison.OrdinalIgnoreCase))
+                    return RunNative(program, file, outPath);
                 Console.Write(RunProgram(program, file, engine));
                 return 0;
             }
@@ -236,6 +239,39 @@ public static class Program
         foreach (var c in prg.Constants) chunk.Constants.Add(c);
         foreach (var l in prg.Lines) chunk.Lines.Add(l);
         return global::Compiler.Disassembler.Disassemble(chunk, Path.GetFileName(prgPath));
+    }
+
+    /* NativeAOT: DLL managed intermedia (temp) + ilc via NativeBackend → singolo eseguibile
+     * senza runtime .NET. Artefatti accanto al binario (globals.json per &/EVAL) e bundle
+     * settings/Resources come il vecchio `-n`. */
+    private static string CompileNativeInto(BasicProgram program, string sourcePath, string? outDir)
+    {
+        var dir = outDir != null ? Path.GetFullPath(outDir) : Path.Combine(Path.GetDirectoryName(Path.GetFullPath(sourcePath))!, "bin", "native");
+        var exe = IlProgramCompiler.CompileNative(program, sourcePath, dir);
+        try { CommonLib.ProgramBundle.CopyNextTo(dir, sourcePath, Console.WriteLine); } catch { /* best effort */ }
+        return exe;
+    }
+
+    private static int BuildNative(BasicProgram program, string sourcePath, string? outDir)
+    {
+        var exe = CompileNativeInto(program, sourcePath, outDir);
+        Console.WriteLine($"[NATIVE] {sourcePath} -> {exe}");
+        return 0;
+    }
+
+    private static int RunNative(BasicProgram program, string sourcePath, string? outDir)
+    {
+        var exe = CompileNativeInto(program, sourcePath, outDir);
+        Console.WriteLine($"[NATIVE] {sourcePath} -> {exe}");
+        var psi = new System.Diagnostics.ProcessStartInfo(exe)
+        {
+            UseShellExecute = false,
+            WorkingDirectory = Path.GetDirectoryName(exe) ?? ".",
+        };
+        using var proc = System.Diagnostics.Process.Start(psi);
+        if (proc == null) { Console.Error.WriteLine("?NATIVE: processo non avviato"); return 1; }
+        proc.WaitForExit();
+        return proc.ExitCode;
     }
 
     private static int BuildPCode(BasicProgram program, string sourcePath, string? outDir)
@@ -531,9 +567,9 @@ public static class Program
               gmbcs dump pcode  <file> [--out f]
               gmbcs dump il     <file> [--out f]
               gmbcs dump disasm <file> [--out f]
-              gmbcs build <file> [--target il|pcode] [--out dir] [--full] [--all]
+              gmbcs build <file> [--target il|pcode|native] [--out dir] [--full] [--all]
               gmbcs prginfo <file.prg>
-              gmbcs run  <file> [--engine il|pcode]
+              gmbcs run  <file> [--engine il|pcode|native]
               gmbcs eval "<istruzioni>" [--engine il|pcode]
               gmbcs debug <file> [--break N]… [--step]
               gmbcs aibench [RUN] [path]

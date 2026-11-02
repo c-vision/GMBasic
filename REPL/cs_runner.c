@@ -18,7 +18,15 @@ int rpl_run_cs(const char* bas_file, const rpl_options_t* o)
     int use_debug = (g_dbg.mode != GMB_DBG_OFF || g_dbg.break_count > 0);
 
     if (!use_debug) {
-        const char* extra = (o->backend == RPL_VMC) ? " --engine pcode" : " --engine il";
+        /* -n/-m scelgono l'engine (native AOT / IL managed); default: vmc→P-Code, c99→IL. */
+        const char* extra = o->native_backend ? " --engine native"
+                          : o->managed_backend ? " --engine il"
+                          : (o->backend == RPL_VMC) ? " --engine pcode" : " --engine il";
+        /* -full: prima materializza la distribuzione managed completa (runtime copiato). */
+        if (o->full) {
+            int brc = rpl_cs_cmd("build", bas_file, " --target il --full", o);
+            if (brc != 0) printf("[CS ERROR] build -full exit %d\n", brc);
+        }
         int rc = rpl_cs_cmd("run", bas_file, extra, o);
         if (rc != 0) printf("[CS ERROR] exit %d\n", rc);
         /* --dump-il: oltre a eseguire, produce il dump IL (comportamento del vecchio REPL) */
