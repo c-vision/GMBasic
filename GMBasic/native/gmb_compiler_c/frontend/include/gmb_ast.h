@@ -344,6 +344,15 @@ struct gmb_stmt {
     /* TRY/CATCH/FINALLY */
     gmb_stmt_t** try_body; int n_try;
     char* catch_var;
+    /* Tipo dichiarato nella clausola (`CATCH e AS <Classe>` / `AS ERR`): NULL = catch-all.
+     * Il nome è l'ULTIMO segmento di un tipo qualificato (`Ns.Cls` -> "Cls"), come per NEW.
+     * Senza questo campo l'emitter C99 non può fare il dispatch per tipo (prima il tipo
+     * veniva semplicemente saltato dal parser). */
+    char* catch_type;
+    /* Filtro opzionale della clausola (`CATCH e AS ERR WHEN e.Number = 11`): a parità di
+     * tipo la condizione decide se la clausola corrisponde. Prima veniva scartato dal
+     * parser: C99Native eseguiva sempre la PRIMA clausola (divergenza con IL/PCode/VM-C). */
+    gmb_expr_t* catch_when;
     gmb_stmt_t** catch_body; int n_catch;
     gmb_stmt_t** finally_body; int n_finally;
     gmb_expr_t* error_code;

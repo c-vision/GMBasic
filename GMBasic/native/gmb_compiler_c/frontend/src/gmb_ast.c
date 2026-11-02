@@ -285,6 +285,8 @@ void gmb_stmt_free(gmb_stmt_t* s)
     gmb_expr_free(s->error_code);
     gmb_expr_free(s->throw_expr);
     if (s->catch_var) free(s->catch_var);
+    if (s->catch_type) free(s->catch_type);
+    gmb_expr_free(s->catch_when);
     free_stmt_array(s->try_body, s->n_try);
     free_stmt_array(s->catch_body, s->n_catch);
     free_stmt_array(s->finally_body, s->n_finally);

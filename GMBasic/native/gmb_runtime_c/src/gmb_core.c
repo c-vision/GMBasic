@@ -583,10 +583,32 @@ static __thread const char* g_err_description = "";
 static __thread long g_err_line = 0;
 static __thread jmp_buf* g_err_jmp = NULL;
 static __thread jmp_buf* g_err_resume = NULL;
+/* Eccezione UTENTE (THROW NEW <Classe>): valore boxed che viaggia con l'errore. Lo slot è
+ * "owned" dallo stato finché il CATCH non lo preleva (gmb_err_take_value, move). */
+static __thread gmb_val_t g_err_value;
+static __thread int g_err_has_value = 0;
 
 int gmb_err_number(void) { return g_err_number; }
 const char* gmb_err_description(void) { return g_err_description; }
 long gmb_err_line(void) { return g_err_line; }
+
+int gmb_err_has_value(void) { return g_err_has_value; }
+/* TRASFERISCE il valore dell'eccezione utente al chiamante: dopo la chiamata lo slot è vuoto
+ * (il chiamante ne diventa l'unico detentore — nessun doppio free con i dtor delle classi). */
+gmb_val_t gmb_err_take_value(void) {
+    gmb_val_t v = g_err_has_value ? g_err_value : gmb_val_nil();
+    g_err_value = gmb_val_nil();
+    g_err_has_value = 0;
+    return v;
+}
+static void gmb_err_clear_value(void) { g_err_value = gmb_val_nil(); g_err_has_value = 0; }
+
+/* 1 se v è un oggetto con type_name == name (case-insensitive). */
+int gmb_val_is_class(gmb_val_t v, const char* name) {
+    if (v.kind != GMB_TYPE_OBJECT || !name || !*name) return 0;
+    const char* t = gmb_obj_type(v);
+    return t && *t && strcasecmp(t, name) == 0;
+}
 
 jmp_buf* gmb_err_set_handler(jmp_buf* buf) {
     jmp_buf* prev = g_err_jmp;
@@ -652,7 +674,9 @@ const char* gmb_err_default_message(int code) {
     }
 }
 
-void gmb_raise_error(int number, const char* description, long line) {
+/* Nucleo condiviso da gmb_raise_error (errore "numerico": azzera un eventuale valore utente
+ * rimasto) e gmb_raise_user_error (keep_value=1: il valore è già nello slot). */
+static void gmb_raise_error_impl(int number, const char* description, long line, int keep_value) {
     gmb_print_stage_end(0);   /* canone: scarta l'output PARZIALE del PRINT in corso */
     /* Descrizione vuota (es. `ERROR 11` senza testo) → catalogo canonico: `ERR.Description`
      * deve riportare il testo dell'errore, non una stringa vuota (parità IL/PCode, dove
@@ -661,6 +685,7 @@ void gmb_raise_error(int number, const char* description, long line) {
     g_err_number = number;
     g_err_description = description ? description : "";
     g_err_line = line;
+    if (!keep_value) gmb_err_clear_value();
     if (g_err_jmp) {
         longjmp(*g_err_jmp, number);
     }
@@ -670,6 +695,19 @@ void gmb_raise_error(int number, const char* description, long line) {
      * IL/PCode (test_ilrun) e VM/C (gmb_vm_host). Vedi
      * Bugs/(solved) - Semantica-Errore-Builtin-Tra-Backend.md. */
     exit(6);
+}
+
+void gmb_raise_error(int number, const char* description, long line) {
+    gmb_raise_error_impl(number, description, line, 0);
+}
+
+/* THROW NEW <Classe>: il valore lanciato è l'istanza boxed; numero/descrizione/riga seguono
+ * il canone degli errori utente (256 = UserDefined, descrizione vuota → "Unspecified runtime
+ * error"). Il valore resta nello slot finché il CATCH non lo preleva. */
+void gmb_raise_user_error(gmb_val_t value, int number, const char* description, long line) {
+    g_err_value = value;
+    g_err_has_value = 1;
+    gmb_raise_error_impl(number, description, line, 1);
 }
 
 /* Guardia del dispatch di metodo: `DIM c AS Cls` senza NEW è un riferimento NIL;
