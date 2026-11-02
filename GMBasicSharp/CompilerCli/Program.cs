@@ -135,19 +135,22 @@ public static class Program
                 var target = TakeOption(list, "--target") ?? "il";
                 var full = list.Remove("--full") | list.Remove("-full");
                 var all = list.Remove("--all");
-                /* --alllibs: TUTTE le librerie usate dal programma accanto all'output (le
-                 * dipendenze managed diventano COPIE reali invece di symlink + le lib native
-                 * del RID dalla cache). Alias: -alllib (nome storico), --all-libs.
-                 * `--full` lo implica: la distribuzione managed autonoma non può lasciare
-                 * symlink verso il build tree. */
-                var allLibs = list.Remove("--alllibs") | list.Remove("-alllib") | list.Remove("--all-libs") | full;
+                /* Bundle di distribuzione — STESSO contratto del CLI C:
+                 *   --libs[=used|all|runtime|dev|ffi|llmmotor|torch|ml|chromium|obscura|ocr|nomi]
+                 *   --plugins[=all|nomi] --skills[=all|nomi] --brains[=all|nomi]
+                 * Alias storici di --libs: -alllib, --alllibs, --all-libs; --full lo implica. */
+                var libs = TakeBundle(list, "--libs", "-libs", "--alllibs", "-alllib", "--all-libs");
+                var libsOn = libs.On || full;
+                var plugins = TakeBundle(list, "--plugins", "-plugins");
+                var skills = TakeBundle(list, "--skills", "-skills");
+                var brains = TakeBundle(list, "--brains", "-brains");
                 var file = ResolveEntry(list, project, entry, 1);
                 var program = CompileFile(file, defines);
                 return target.ToLowerInvariant() switch
                 {
                     "pcode" => BuildPCode(program, file, outPath),
-                    "il" => BuildIl(program, file, outPath, full, all, allLibs),
-                    "native" => BuildNative(program, file, outPath, allLibs),
+                    "il" => BuildIl(program, file, outPath, full, all, libsOn, libs.Sel, plugins, skills, brains),
+                    "native" => BuildNative(program, file, outPath, libsOn, libs.Sel, plugins, skills, brains),
                     _ => throw new ArgumentException($"target sconosciuto: {target} (il|pcode|native)"),
                 };
             }
@@ -185,13 +188,18 @@ public static class Program
             }
             case "run":
             {
-                var allLibs = list.Remove("--alllibs") | list.Remove("-alllib") | list.Remove("--all-libs")
-                              | list.Remove("--full") | list.Remove("-full");
+                var full = list.Remove("--full") | list.Remove("-full");
+                var libs = TakeBundle(list, "--libs", "-libs", "--alllibs", "-alllib", "--all-libs");
+                var libsOn = libs.On || full;
+                var plugins = TakeBundle(list, "--plugins", "-plugins");
+                var skills = TakeBundle(list, "--skills", "-skills");
+                var brains = TakeBundle(list, "--brains", "-brains");
                 var file = ResolveEntry(list, project, entry, 1);
                 var program = CompileFile(file, defines);
                 if (engine.Equals("native", StringComparison.OrdinalIgnoreCase))
-                    return RunNative(program, file, outPath, allLibs);
-                if (allLibs) Console.Error.WriteLine("[alllibs] ignorato con target gestito 'il' in run: usa `gmbcs build --alllibs` per la distribuzione");
+                    return RunNative(program, file, outPath, libsOn, libs.Sel, plugins, skills, brains);
+                if (libsOn || plugins.On || skills.On || brains.On)
+                    Console.Error.WriteLine("[bundle] ignorato con target gestito 'il' in run: usa `gmbcs build --libs …`");
                 Console.Write(RunProgram(program, file, engine));
                 return 0;
             }
@@ -261,25 +269,31 @@ public static class Program
     /* NativeAOT: DLL managed intermedia (temp) + ilc via NativeBackend → singolo eseguibile
      * senza runtime .NET. Artefatti accanto al binario (globals.json per &/EVAL) e bundle
      * settings/Resources come il vecchio `-n`. */
-    private static string CompileNativeInto(BasicProgram program, string sourcePath, string? outDir, bool allLibs = false)
+    private static string CompileNativeInto(BasicProgram program, string sourcePath, string? outDir, bool allLibs = false,
+                                            string? libsSel = null, BundleSel plugins = default,
+                                            BundleSel skills = default, BundleSel brains = default)
     {
         var dir = outDir != null ? Path.GetFullPath(outDir) : Path.Combine(Path.GetDirectoryName(Path.GetFullPath(sourcePath))!, "bin", "native");
         var exe = IlProgramCompiler.CompileNative(program, sourcePath, dir);
         try { CommonLib.ProgramBundle.CopyNextTo(dir, sourcePath, Console.WriteLine); } catch { /* best effort */ }
-        if (allLibs) CopyNativeLibsBeside(dir);
+        if (allLibs) DeployBundle(dir, libsSel ?? "used", plugins.On, plugins.Sel, skills.On, skills.Sel, brains.On, brains.Sel);
         return exe;
     }
 
-    private static int BuildNative(BasicProgram program, string sourcePath, string? outDir, bool allLibs = false)
+    private static int BuildNative(BasicProgram program, string sourcePath, string? outDir, bool allLibs = false,
+                                   string? libsSel = null, BundleSel plugins = default,
+                                   BundleSel skills = default, BundleSel brains = default)
     {
-        var exe = CompileNativeInto(program, sourcePath, outDir, allLibs);
+        var exe = CompileNativeInto(program, sourcePath, outDir, allLibs, libsSel, plugins, skills, brains);
         Console.WriteLine($"[NATIVE] {sourcePath} -> {exe}");
         return 0;
     }
 
-    private static int RunNative(BasicProgram program, string sourcePath, string? outDir, bool allLibs = false)
+    private static int RunNative(BasicProgram program, string sourcePath, string? outDir, bool allLibs = false,
+                                 string? libsSel = null, BundleSel plugins = default,
+                                 BundleSel skills = default, BundleSel brains = default)
     {
-        var exe = CompileNativeInto(program, sourcePath, outDir, allLibs);
+        var exe = CompileNativeInto(program, sourcePath, outDir, allLibs, libsSel, plugins, skills, brains);
         Console.WriteLine($"[NATIVE] {sourcePath} -> {exe}");
         var psi = new System.Diagnostics.ProcessStartInfo(exe)
         {
@@ -311,48 +325,200 @@ public static class Program
         return 0;
     }
 
+    /* ── bundle di distribuzione: --libs / --plugins / --skills / --brains ─────────────
+     * Stesso contratto del CLI C (`gmb`): selettore opzionale con `=`, alias storici.
+     * Le sottocartelle nella destinazione sono libs/<rid>, plugins/, skills/, brains/. */
+    private sealed record BundleSel(bool On, string? Sel);
+
+    private static BundleSel TakeBundle(List<string> list, params string[] names)
+    {
+        foreach (var n in names)
+            for (int i = 0; i < list.Count; i++)
+            {
+                var a = list[i];
+                if (a == n) { list.RemoveAt(i); return new(true, null); }
+                if (a.StartsWith(n + "=", StringComparison.Ordinal))
+                {
+                    var v = a[(n.Length + 1)..];
+                    list.RemoveAt(i);
+                    return new(true, v);
+                }
+            }
+        return new(false, null);
+    }
+
+    private static bool SelAll(string? sel) => string.IsNullOrWhiteSpace(sel) || sel.Equals("all", StringComparison.OrdinalIgnoreCase);
+
+    private static bool SelHas(string? sel, string name)
+    {
+        if (string.IsNullOrWhiteSpace(sel)) return false;
+        foreach (var t in sel.Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries))
+            if (t.Equals(name, StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
+    }
+
+    private static void CopyTree(string src, string dst, int[] n)
+    {
+        if (!Directory.Exists(src)) return;
+        Directory.CreateDirectory(dst);
+        foreach (var f in Directory.EnumerateFiles(src))
+        {
+            try { File.Copy(f, Path.Combine(dst, Path.GetFileName(f)), overwrite: true); n[0]++; }
+            catch { /* file in uso: gli altri si copiano */ }
+        }
+        foreach (var d in Directory.EnumerateDirectories(src))
+            CopyTree(d, Path.Combine(dst, Path.GetFileName(d)), n);
+    }
+
+    private static string RepoSharedDir(string name)
+    {
+        // <repo>/shared/<name> a partire dalla cartella dell'eseguibile della toolchain.
+        var dir = AppContext.BaseDirectory;
+        for (int up = 0; up < 8 && dir != null; up++)
+        {
+            var cand = Path.Combine(dir, "shared", name);
+            if (Directory.Exists(cand)) return cand;
+            dir = Path.GetDirectoryName(dir.TrimEnd(Path.DirectorySeparatorChar));
+        }
+        return "";
+    }
+
+    /* Copia le librerie native secondo il selettore:
+     *   used (default) → il set che il runtime IL carica per nome;
+     *   all            → tutte le lib del RID dalla cache;
+     *   gruppo         → le voci dell'indice (`index.txt`, 5ª colonna) di quel gruppo;
+     *   ml|chromium|obscura|ocr → la sottocartella componente;
+     *   nomi,...       → i file richiesti. */
+    private static void DeployLibs(string dir, string? sel)
+    {
+        var rid = CommonLib.LibsResolver.Rid();
+        var cache = CommonLib.LibsResolver.CacheDir(rid);
+        var dst = Path.Combine(dir, "libs", rid);
+        Directory.CreateDirectory(dst);
+        var n = new[] { 0 };
+        string[] exts = [".dylib", ".so", ".dll", ".metallib"];
+
+        void CopyFrom(string srcDir, string name)
+        {
+            foreach (var e in exts)
+            {
+                var p = Path.Combine(srcDir, name + e);
+                if (File.Exists(p)) { File.Copy(p, Path.Combine(dst, Path.GetFileName(p)), true); n[0]++; return; }
+                p = Path.Combine(srcDir, "lib" + name + e);
+                if (File.Exists(p)) { File.Copy(p, Path.Combine(dst, Path.GetFileName(p)), true); n[0]++; return; }
+            }
+            // libfoo.1.dylib ecc.
+            if (!Directory.Exists(srcDir)) return;
+            foreach (var f in Directory.EnumerateFiles(srcDir))
+            {
+                var baseName = Path.GetFileName(f);
+                var cut = baseName.IndexOf(".dylib", StringComparison.Ordinal);
+                if (cut < 0) cut = baseName.IndexOf(".so", StringComparison.Ordinal);
+                if (cut <= 0) continue;
+                var stem = baseName[..cut];
+                if (stem.StartsWith("lib", StringComparison.Ordinal)) stem = stem[3..];
+                if (stem.Equals(name, StringComparison.OrdinalIgnoreCase))
+                {
+                    File.Copy(f, Path.Combine(dst, baseName), true); n[0]++; return;
+                }
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(sel) || sel.Equals("used", StringComparison.OrdinalIgnoreCase))
+        {
+            // Set che il runtime gestito carica per nome (P/Invoke o dlopen): i moduli nostri.
+            string[] used = ["gmb_gfx", "gmb_ai_llm", "gmb_ai_modelio", "gmb_pkg", "gmb_bsp",
+                             "gmb_tray", "gmb_runtime_ai", "gmb_sql_csv_ext", "gmb_sql_parquet_ext",
+                             "llmtoken", "e_sqlite3"];
+            foreach (var u in used) CopyFrom(cache, u);
+        }
+        else if (SelAll(sel))
+        {
+            foreach (var f in Directory.EnumerateFiles(cache))
+            {
+                var name = Path.GetFileName(f);
+                if (!exts.Any(e => name.EndsWith(e, StringComparison.OrdinalIgnoreCase))) continue;
+                try { File.Copy(f, Path.Combine(dst, name), true); n[0]++; } catch { }
+            }
+        }
+        else
+        {
+            // gruppo dall'indice?
+            string[] groups = ["runtime", "dev", "ffi", "llmmotor", "torch"];
+            var grp = groups.FirstOrDefault(g => g.Equals(sel, StringComparison.OrdinalIgnoreCase));
+            if (grp != null)
+            {
+                var idx = Path.Combine(cache, "index.txt");
+                if (File.Exists(idx))
+                    foreach (var line in File.ReadLines(idx))
+                    {
+                        var cols = line.Split('\t');
+                        if (cols.Length < 5 || !cols[4].Equals(grp, StringComparison.OrdinalIgnoreCase)) continue;
+                        var src = Path.Combine(cache, cols[0]);
+                        if (!File.Exists(src)) continue;
+                        try { File.Copy(src, Path.Combine(dst, cols[0]), true); n[0]++; } catch { }
+                    }
+            }
+            // componente?
+            else if (new[] { "ml", "chromium", "obscura", "ocr" }.FirstOrDefault(c => c.Equals(sel, StringComparison.OrdinalIgnoreCase)) is { } comp)
+            {
+                var libsRoot = Path.GetDirectoryName(cache)!;
+                var src = Path.Combine(libsRoot, comp, rid);
+                var target = Path.Combine(dir, "libs", comp, rid);
+                CopyTree(src, target, n);
+            }
+            // elenco di nomi
+            else
+            {
+                foreach (var t in sel.Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries))
+                    CopyFrom(cache, t);
+            }
+        }
+        Console.WriteLine($"[libs] {n[0]} file -> {dst}");
+    }
+
+    private static void DeployEntries(string srcRoot, string dstRoot, string? sel, string label)
+    {
+        if (string.IsNullOrEmpty(srcRoot) || !Directory.Exists(srcRoot)) return;
+        Directory.CreateDirectory(dstRoot);
+        var n = new[] { 0 };
+        foreach (var d in Directory.EnumerateDirectories(srcRoot))
+        {
+            var name = Path.GetFileName(d);
+            if (name.StartsWith(".", StringComparison.Ordinal)) continue;
+            if (!SelAll(sel) && !SelHas(sel, name)) continue;
+            CopyTree(d, Path.Combine(dstRoot, name), n);
+        }
+        if (n[0] > 0) Console.WriteLine($"[{label}] {n[0]} file -> {dstRoot}");
+    }
+
+    private static void DeployBundle(string dir, string? libsSel, bool plugins, string? pluginsSel,
+                                     bool skills, string? skillsSel, bool brains, string? brainsSel)
+    {
+        if (libsSel != null) DeployLibs(dir, libsSel);
+        if (plugins) DeployEntries(RepoSharedDir("plugins"), Path.Combine(dir, "plugins"), pluginsSel, "plugins");
+        if (skills) DeployEntries(RepoSharedDir("skills"), Path.Combine(dir, "skills"), skillsSel, "skills");
+        if (brains)
+        {
+            var brainsCache = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".gmbasic", "brains");
+            DeployEntries(brainsCache, Path.Combine(dir, "brains"), brainsSel, "brains");
+        }
+    }
+
     private static int BuildIl(BasicProgram program, string sourcePath, string? outDir, bool full = false, bool all = false,
-                               bool allLibs = false)
+                               bool allLibs = false, string? libsSel = null,
+                               BundleSel plugins = default, BundleSel skills = default, BundleSel brains = default)
     {
         var dir = outDir != null ? Path.GetFullPath(outDir) : Path.Combine(Path.GetDirectoryName(Path.GetFullPath(sourcePath))!, "bin");
-        /* `linkRuntime: !allLibs`: con --alllibs/--full le dipendenze sono COPIE reali (una
-         * distribuzione non può contenere symlink verso il build tree o l'assembly dela
+        /* `linkRuntime: !allLibs`: con --libs/--full le dipendenze sono COPIE reali (una
+         * distribuzione non può contenere symlink verso il build tree o l'assembly della
          * toolchain). Senza il flag resta il percorso di iterazione (symlink, ~140 KB). */
         var exe = IlProgramCompiler.Compile(program, sourcePath, dir, Path.GetFileNameWithoutExtension(sourcePath),
             noOptimize: false, dumpIl: false, linkRuntime: !allLibs, dllOnly: false, slim: !all);
-        if (allLibs) CopyNativeLibsBeside(dir);
+        if (allLibs) DeployBundle(dir, libsSel ?? "used", plugins.On, plugins.Sel, skills.On, skills.Sel, brains.On, brains.Sel);
         if (full) CopyNetRuntime(dir);
-        Console.WriteLine($"[IL] {sourcePath} -> {exe}{(allLibs ? " (alllibs: dipendenze copiate)" : "")}{(full ? " (full: runtime .NET copiato)" : "")}");
+        Console.WriteLine($"[IL] {sourcePath} -> {exe}{(allLibs ? " (bundle: dipendenze copiate)" : "")}{(full ? " (full: runtime .NET copiato)" : "")}");
         return 0;
-    }
-
-    /* --alllibs: le librerie NATIVE del RID (`~/.gmbasic/libs/<rid>/`) accanto all'output.
-     * Il compilatore IL non linka le dylib: le carica il runtime per nome (P/Invoke/dlopen),
-     * quindi la "chiusura" non è calcolabile staticamente — si copia il set del RID, che è
-     * esattamente ciò che `gmb libs ensure` ha reso disponibile alla macchina. Le sottocartelle
-     * (include/, lib/) NON si copiano: servono al build, non all'esecuzione. */
-    private static void CopyNativeLibsBeside(string destDir)
-    {
-        try
-        {
-            var rid = CommonLib.LibsResolver.Rid();
-            var cache = CommonLib.LibsResolver.CacheDir(rid);
-            if (!Directory.Exists(cache))
-            {
-                Console.Error.WriteLine($"[alllibs] cache assente: {cache} (esegui `gmb libs ensure`)");
-                return;
-            }
-            int n = 0;
-            foreach (var f in Directory.EnumerateFiles(cache))
-            {
-                var ext = Path.GetExtension(f).ToLowerInvariant();
-                if (ext is not (".dylib" or ".so" or ".dll")) continue;
-                try { File.Copy(f, Path.Combine(destDir, Path.GetFileName(f)), overwrite: true); n++; }
-                catch { /* file in uso / permessi: le altre si copiano comunque */ }
-            }
-            Console.WriteLine($"[alllibs] {n} librerie native -> {destDir}");
-        }
-        catch (Exception ex) { Console.Error.WriteLine($"[alllibs] copia non riuscita: {ex.Message}"); }
     }
 
     /* -full (dal vecchio runner): copia il framework .NET accanto all'eseguibile, così la
@@ -651,7 +817,9 @@ public static class Program
               gmbcs dump pcode  <file> [--out f]
               gmbcs dump il     <file> [--out f]
               gmbcs dump disasm <file> [--out f]
-              gmbcs build <file> [--target il|pcode|native] [--out dir] [--alllibs|-alllib] [--full] [--all]
+              gmbcs build <file> [--target il|pcode|native] [--out dir]
+                           [--libs[=used|all|gruppo|ml|chromium|obscura|ocr|nomi]] [--full] [--all]
+                           [--plugins[=all|nomi]] [--skills[=all|nomi]] [--brains[=all|nomi]]
               gmbcs prginfo <file.prg>
               gmbcs run  <file> [--engine il|pcode|native]
               gmbcs eval "<istruzioni>" [--engine il|pcode]
@@ -660,9 +828,10 @@ public static class Program
 
             opzioni: -D name=val, --il-module <dll>, --out <file>, --json,
                      --project <dir> [--entry <file>]  (stesso contratto di `gmb` C)
-            build: --alllibs|-alllib (COPIA accanto all'output tutte le librerie usate: dipendenze
-                    managed reali + librerie native del RID), --full (come --alllibs + runtime
-                    .NET), --all (nessun filtro ClosureSlim)
+            build: --libs[=…] (bundle: dipendenze managed reali + libs native in <out>/libs/<rid>,
+                    selettore =used|all|gruppo|componente|nomi), --plugins/--skills/--brains
+                    (sottocartelle <out>/plugins|skills|brains), --full (= --libs + runtime .NET),
+                    --all (nessun filtro ClosureSlim). Alias storici di --libs: -alllib, --alllibs.
             """);
     }
 }

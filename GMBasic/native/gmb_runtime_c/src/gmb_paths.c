@@ -446,9 +446,21 @@ static void pr_shared_or_root(const char* key, const char* defrel, char* out, si
         else snprintf(out, cap, "%s/%s", g_pr_root, ex);
         return;
     }
+    /* BUNDLE del compilatore: `<exe>/<defrel>` (plugins/skills) ha la PRECEDENZA — un
+     * programma distribuito con `--plugins`/`--skills` porta le sue risorse con sé. Seconda
+     * chance `<progetto>/<defrel>` quando l'eseguibile sta in `<progetto>/bin`. */
+    {
+        char exe[2048], local[2200];
+        if (gmb_paths_exe_dir(exe, sizeof exe) && exe[0]) {
+            snprintf(local, sizeof local, "%s/%s", exe, defrel);
+            if (access(local, F_OK) == 0) { snprintf(out, cap, "%s", local); return; }
+            snprintf(local, sizeof local, "%s/../%s", exe, defrel);
+            if (access(local, F_OK) == 0) { snprintf(out, cap, "%s", local); return; }
+        }
+    }
     {
         char shared_parent[2048];
-        snprintf(shared_parent, sizeof(shared_parent), "%s/../shared", g_pr_root);
+        snprintf(shared_parent, sizeof shared_parent, "%s/../shared", g_pr_root);
         if (access(shared_parent, F_OK) == 0) {
             snprintf(out, cap, "%s/%s", shared_parent, defrel);
             return;
@@ -887,21 +899,25 @@ void gmb_paths_recursivemas_dir(char* out, size_t cap)
 /* Componenti runtime scaricati on-demand: nella CACHE utente (<cache>/<comp>/<rid>), come
  * `GmbiPaths.MlDir/ChromiumDir/ObscuraDir` nel mondo C#. Prima stavano in `<root>/libs-runtime/`
  * (cartella del checkout, ora inesistente): una seconda copia che il client non aveva. */
-void gmb_paths_ml_dir(const char* rid, char* out, size_t cap)
+/* Componenti (ml/chromium/obscura): LOCALE al programma prima della cache — il bundle del
+ * compilatore li mette in `<exe>/libs/<comp>/<rid>` (stessa struttura della cache). */
+static void pr_component_dir(const char* comp, const char* rid, char* out, size_t cap)
 {
+    const char* r = rid && *rid ? rid : "osx-arm64";
+    char exe[2048];
+    if (gmb_paths_exe_dir(exe, sizeof exe) && exe[0]) {
+        char local[2400];
+        snprintf(local, sizeof local, "%s/libs/%s/%s", exe, comp, r);
+        if (access(local, F_OK) == 0) { snprintf(out, cap, "%s", local); return; }
+        snprintf(local, sizeof local, "%s/../libs/%s/%s", exe, comp, r);
+        if (access(local, F_OK) == 0) { snprintf(out, cap, "%s", local); return; }
+    }
     char d[1024]; gmb_paths_libs_cache_dir(d, sizeof(d));
-    snprintf(out, cap, "%s/ml/%s", d, rid && *rid ? rid : "osx-arm64");
+    snprintf(out, cap, "%s/%s/%s", d, comp, r);
 }
-void gmb_paths_chromium_dir(const char* rid, char* out, size_t cap)
-{
-    char d[1024]; gmb_paths_libs_cache_dir(d, sizeof(d));
-    snprintf(out, cap, "%s/chromium/%s", d, rid && *rid ? rid : "osx-arm64");
-}
-void gmb_paths_obscura_dir(const char* rid, char* out, size_t cap)
-{
-    char d[1024]; gmb_paths_libs_cache_dir(d, sizeof(d));
-    snprintf(out, cap, "%s/obscura/%s", d, rid && *rid ? rid : "osx-arm64");
-}
+void gmb_paths_ml_dir(const char* rid, char* out, size_t cap)       { pr_component_dir("ml", rid, out, cap); }
+void gmb_paths_chromium_dir(const char* rid, char* out, size_t cap) { pr_component_dir("chromium", rid, out, cap); }
+void gmb_paths_obscura_dir(const char* rid, char* out, size_t cap)  { pr_component_dir("obscura", rid, out, cap); }
 
 /* Marketplace di skills/plugins: CACHE UTENTE (~/.gmbasic/<nome>-marketplaces), non la
  * cartella temporanea. `AI SKILLS|PLUGINS MARKETPLACE "url"` AGGIUNGE il clone ai percorsi di

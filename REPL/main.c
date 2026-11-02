@@ -18,7 +18,7 @@ static const char* USAGE =
     "  --debug-tcp <port> (avviso: non implementato nel mondo C)\n"
     "  --run <cmd>  -D<name>[=val]\n"
     "  -n/--native, -m/--managed → engine C# (richiede --engine=csharp)\n"
-    "  -full  → distribuzione: engine C# = runtime .NET, engine C = --alllibs (tutte le lib accanto all'exe)\n"
+    "  -full  → distribuzione: engine C# = runtime .NET, engine C = --libs (lib accanto all'exe, sottocartelle)\n"
     "  --il-module <dll>                  → solo con --engine=csharp\n"
     "  --engine <c|csharp>  --csharp-cli <path>  (default: c; csharp = gmbcs)\n"
     "Comandi REPL: QUIT EXIT CLS PROMPT HELP LIST EDIT NEW AUTO SAVE LOAD DELETE DEL RENUM\n"

@@ -52,11 +52,8 @@ static void* ai_lib(void)
     if (g_ai_tried) return g_ai_lib;
     g_ai_tried = 1;
 
-    char cand[8][4096];
+    char cand[16][4096];
     int n = 0;
-#ifdef GMB_RUNTIME_AI_PATH
-    snprintf(cand[n++], sizeof cand[0], "%s", GMB_RUNTIME_AI_PATH);
-#endif
     char exe[4096] = "";
 #if defined(__APPLE__)
     {
@@ -69,45 +66,54 @@ static void* ai_lib(void)
         if (r > 0) { exe[r] = 0; }
     }
 #endif
+    /* NOME della dylib per piattaforma: il bundle la mette in <exe>/libs/<rid>/. */
+#if defined(_WIN32)
+    const char* aiFile = "gmb_runtime_ai.dll";
+#elif defined(__APPLE__)
+    const char* aiFile = "libgmb_runtime_ai.dylib";
+#else
+    const char* aiFile = "libgmb_runtime_ai.so";
+#endif
     if (exe[0]) {
         char dir[4096];
         snprintf(dir, sizeof dir, "%s", exe);
         char* sl = strrchr(dir, '/');
+#if defined(_WIN32)
+        if (!sl) sl = strrchr(dir, '\\');
+#endif
         if (sl) {
             *sl = 0;
-            static const char* rel[] = {
-                "/libgmb_runtime_ai.dylib",
-                "/../libgmb_runtime_ai.dylib",
-                "/../../build/libs/gmb_runtime_ai.dylib",
-                NULL
-            };
-            for (int i = 0; rel[i] && n < 8; i++) {
-                snprintf(cand[n], sizeof cand[0], "%s%s", dir, rel[i]);
-                n++;
-            }
+            /* LOCALE PRIMA: bundle `<exe>/libs/<rid>/`, poi `<exe>/libs`, poi accanto. */
+            if (n < 16) { snprintf(cand[n], sizeof cand[0], "%s/libs/%s/%s", dir, gmb_libs_rid(), aiFile); n++; }
+            if (n < 16) { snprintf(cand[n], sizeof cand[0], "%s/libs/%s", dir, aiFile); n++; }
+            if (n < 16) { snprintf(cand[n], sizeof cand[0], "%s/%s", dir, aiFile); n++; }
+            if (n < 16) { snprintf(cand[n], sizeof cand[0], "%s/../libs/%s/%s", dir, gmb_libs_rid(), aiFile); n++; }
         }
     }
+    /* path di build compilato dentro (checkout/REPL in sviluppo). DOPO il locale: un bundle
+     * accanto all'eseguibile deve vincere sul build tree. */
+#ifdef GMB_RUNTIME_AI_PATH
+    if (n < 16) { snprintf(cand[n], sizeof cand[0], "%s", GMB_RUNTIME_AI_PATH); n++; }
+#endif
     /* checkout: la dylib è prodotta in GMBasic/build/libs/<rid>/ (e, per il build standalone
      * del runtime, nella radice del suo build dir). */
     {
         char root[2048];
         if (gmb_paths_repo_root(root, sizeof root) && root[0]) {
-            if (n < 8) { snprintf(cand[n], sizeof cand[0], "%s/build/libs/%s/libgmb_runtime_ai.dylib", root, gmb_libs_rid()); n++; }
-            if (n < 8) { snprintf(cand[n], sizeof cand[0], "%s/native/gmb_runtime_c/build/libgmb_runtime_ai.dylib", root); n++; }
-            if (n < 8) { snprintf(cand[n], sizeof cand[0], "%s/../GMBasic/build/libs/%s/libgmb_runtime_ai.dylib", root, gmb_libs_rid()); n++; }
+            if (n < 16) { snprintf(cand[n], sizeof cand[0], "%s/build/libs/%s/%s", root, gmb_libs_rid(), aiFile); n++; }
+            if (n < 16) { snprintf(cand[n], sizeof cand[0], "%s/native/gmb_runtime_c/build/%s", root, aiFile); n++; }
+            if (n < 16) { snprintf(cand[n], sizeof cand[0], "%s/../GMBasic/build/libs/%s/%s", root, gmb_libs_rid(), aiFile); n++; }
         }
     }
     {
         char cache[2048];
         gmb_paths_libs_cache_dir(cache, sizeof cache);
-        if (cache[0] && n < 8) {
-            snprintf(cand[n], sizeof cand[0], "%s/%s/libgmb_runtime_ai.dylib", cache, gmb_libs_rid());
+        if (cache[0] && n < 16) {
+            snprintf(cand[n], sizeof cand[0], "%s/%s/%s", cache, gmb_libs_rid(), aiFile);
             n++;
-            if (n < 8) { snprintf(cand[n], sizeof cand[0], "%s/%s/libgmb_runtime_ai.so", cache, gmb_libs_rid()); n++; }
         }
     }
-    if (n < 8) { snprintf(cand[n], sizeof cand[0], "libgmb_runtime_ai.dylib"); n++; }
-    if (n < 8) { snprintf(cand[n], sizeof cand[0], "libgmb_runtime_ai.so"); n++; }
+    if (n < 16) { snprintf(cand[n], sizeof cand[0], "%s", aiFile); n++; }
 
     for (int i = 0; i < n; i++) if (ai_try(cand[i])) return g_ai_lib;
 

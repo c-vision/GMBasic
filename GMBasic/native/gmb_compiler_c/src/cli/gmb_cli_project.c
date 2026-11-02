@@ -226,70 +226,6 @@ void build_inc(char* inc, size_t cap, const char* install) {
     }
 }
 
-/* ── DEPLOY della dylib AI accanto all'eseguibile ──────────────────────────────────────────
- * `libgmb_runtime_ai` è l'unica libreria del runtime che NON vive nella cache delle lib di
- * terze parti (`~/.gmbasic/libs/<rid>/`: quella è gestita da `gmb libs` e `prune` la ripulisce
- * dei file non presenti nel manifest, quindi NON è posto per un nostro artefatto di build).
- * Il gateway (`gmb_ai_gateway.c`) la cerca PRIMA accanto all'eseguibile: il compilatore la
- * copia lì, come la closure del compilatore C# viene copiata accanto al programma
- * (`IlProgramCompiler.CopyDependencies`): un programma distribuito non deve dipendere dal
- * checkout. Se la dylib manca (build senza AI) non si fa nulla: il programma gira lo stesso. */
-static int copy_file_raw(const char* src, const char* dst)
-{
-    FILE* in = fopen(src, "rb");
-    if (!in) return 0;
-    FILE* out = fopen(dst, "wb");
-    if (!out) { fclose(in); return 0; }
-    char buf[65536];
-    size_t n;
-    int ok = 1;
-    while ((n = fread(buf, 1, sizeof buf, in)) > 0)
-        if (fwrite(buf, 1, n, out) != n) { ok = 0; break; }
-    if (ferror(in)) ok = 0;
-    fclose(in);
-    if (fclose(out) != 0) ok = 0;
-    if (!ok) remove(dst);
-    return ok;
-}
-
-static void deploy_ai_runtime(const char* exe, const char* install, int quiet)
-{
-#if defined(_WIN32)
-    static const char* const name = "gmb_runtime_ai.dll";
-#elif defined(__APPLE__)
-    static const char* const name = "libgmb_runtime_ai.dylib";
-#else
-    static const char* const name = "libgmb_runtime_ai.so";
-#endif
-    /* Output canonico del build (GMB_LIBS_OUT) + build autonomi del runtime. */
-    static const char* const reldirs[] = {
-        "build/libs/" GMB_RID_STR "/",
-        "native/gmb_runtime_c/build/",
-        "native/gmb_vm_c/build/gmb_runtime_c_build/",
-    };
-    char exedir[CLI_PATH];
-    path_dir(exe, exedir, sizeof exedir);
-    if (!exedir[0]) return;
-    char dst[CLI_PATH];
-    snprintf(dst, sizeof dst, "%s/%s", exedir, name);
-
-    for (size_t i = 0; i < sizeof reldirs / sizeof reldirs[0]; i++) {
-        char src[CLI_PATH];
-        snprintf(src, sizeof src, "%s/%s%s", install, reldirs[i], name);
-        if (!is_file(src)) continue;
-        struct stat ss, ds;
-        if (stat(src, &ss) != 0) continue;
-        /* già lì (stessa dir dell'output del build): niente copia su se stesso. */
-        if (stat(dst, &ds) == 0 && ss.st_dev == ds.st_dev && ss.st_ino == ds.st_ino) return;
-        if (copy_file_raw(src, dst)) {
-            chmod(dst, 0755);
-            if (!quiet)
-                fprintf(stderr, "gmb: runtime AI -> %s\n", dst);
-        }
-        return;   /* primo candidato esistente: è quello del build corrente */
-    }
-}
-
 /* Prodotto di un sorgente LIBRARY: una libreria condivisa (.gmblib), non un eseguibile.
  * `dynamic_lookup` è la scelta già fatta da tools/gmb_c99native_run.sh: la libreria si carica
  * in un host che espone il runtime (e le sue dipendenze grafiche), quindi i simboli che il
@@ -572,9 +508,9 @@ int build_project(const Options* o, const char* project, const char* entry,
      * macchina dove la cache non esiste. */
     char ldirs[CLI_PATH * 4];
 #if defined(__APPLE__)
-    snprintf(ldirs, sizeof ldirs, " -Wl,-rpath,@loader_path");
+    snprintf(ldirs, sizeof ldirs, " -Wl,-rpath,@loader_path/libs/" GMB_RID_STR " -Wl,-rpath,@loader_path");
 #else
-    snprintf(ldirs, sizeof ldirs, " -Wl,-rpath,'$ORIGIN'");
+    snprintf(ldirs, sizeof ldirs, " -Wl,-rpath,'$ORIGIN/libs/" GMB_RID_STR "' -Wl,-rpath,'$ORIGIN'");
 #endif
     {
         char cache_lib[CLI_PATH];
@@ -737,13 +673,17 @@ int build_project(const Options* o, const char* project, const char* entry,
         return 5;
     }
     free(log);
-    /* La dylib AI accanto all'eseguibile: senza, un programma distribuito fuori dal checkout
-     * non troverebbe il runtime AI (per una LIBRARY il caricamento è dell'host: si salta). */
+    /* Bundle di distribuzione: la dylib AI è SEMPRE in <out>/libs/<rid>/; `--libs` aggiunge
+     * la chiusura (default), tutto/gruppi/nomi/componenti; `--plugins/--skills/--brains`
+     * creano le sottocartelle. Per una LIBRARY il caricamento è dell'host: si salta. */
     if (!is_lib) {
-        deploy_ai_runtime(exe, tc.install, o->quiet);
-        /* `--alllibs`: TUTTE le lib usate (chiusura delle dipendenze dinamiche) accanto
-         * all'eseguibile — la distribuzione non dipende più dalla cache. */
-        if (o->alllibs) gmb_deploy_lib_closure(exe, tc.install, o->quiet);
+        DeployOpts d;
+        memset(&d, 0, sizeof d);
+        d.libs = o->libs;             d.libs_sel = o->libs_sel;
+        d.plugins = o->plugins;       d.plugins_sel = o->plugins_sel;
+        d.skills = o->skills;         d.skills_sel = o->skills_sel;
+        d.brains = o->brains;         d.brains_sel = o->brains_sel;
+        gmb_deploy_bundle(exe, tc.install, &d, o->quiet);
     }
     return 0;
 }
