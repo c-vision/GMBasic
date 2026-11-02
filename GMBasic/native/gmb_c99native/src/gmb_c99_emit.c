@@ -16,6 +16,7 @@
 #include "gen/gmb_registry.gen.h"
 
 static const char* gmb_reg_known_ns(const char* name);
+static int gmb_reg_arity_of(const char* ns, const char* name, int* lo, int* hi);
 
 /* lookup set token (P2bis: niente if-chain di catalogo). */
 static int gmb_tk_in(gmb_tokenkind_t tk, const gmb_tokenkind_t* s, unsigned n)
@@ -10387,14 +10388,23 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
     if (name && nargs >= 2 && !strcasecmp(name, "CTRLGETPROPS")) {
         sb_put(&c->out, "gmb_string_alloc(gmb_form_control_get_str(("); emit_str_operand(c, args[0]); sb_put(&c->out, ").data, ("); emit_str_operand(c, args[1]); sb_put(&c->out, ").data))"); return;
     }
-    if (name && nargs == 1) {
+    if (name && nargs <= 1) {
+        /* CLICKED/CHANGED/…: il parametro `handle` è OPZIONALE (StdLib.Controls: optFlag;
+         * registry arity 0..1). Con 0 argomenti vale 0, come sulle gambe gestite (che
+         * inseriscono il default) — prima C99 rifiutava la forma `CONTROLS.CLICKED()` con un
+         * fuorviante "non definita". */
         const char* fn = NULL;
         if      (!strcasecmp(name, "CLICKED"))     fn = "gmb_form_clicked";
         else if (!strcasecmp(name, "DOUBLECLICKED")) fn = "gmb_form_dblclicked";
         else if (!strcasecmp(name, "CHANGED"))     fn = "gmb_form_changed";
         else if (!strcasecmp(name, "GOTFOCUSED"))  fn = "gmb_form_gotfocused";
         else if (!strcasecmp(name, "LOSTFOCUSED")) fn = "gmb_form_lostfocused";
-        if (fn) { sb_printf(&c->out, "%s((int)(", fn); emit_expr(c, args[0]); sb_put(&c->out, "))"); return; }
+        if (fn) {
+            sb_printf(&c->out, "%s((int)(", fn);
+            if (nargs == 1) emit_expr(c, args[0]); else sb_put(&c->out, "0");
+            sb_put(&c->out, "))");
+            return;
+        }
     }
     if (name && nargs >= 2 && !strcasecmp(name, "MSGBOX")) {
         /* MSGBOX(titolo, messaggio [, bottoni$="OK|Annulla" [, stile$]]) -> indice premuto. */
@@ -13120,6 +13130,25 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                      name ? name : "", user_ar, nargs);
             return;
         }
+        /* Nome NOTO nel registry canonico ma con ARITÀ diversa: prima il messaggio era
+         * "funzione non definita" (fuorviante: es. CONTROLS.CLICKED(1,2)). Riporta il range
+         * atteso, con o senza qualifica. */
+        {
+            char nsn[96];
+            const char* lookNs = (ns && ns[0]) ? ns : gmb_reg_known_ns(name);
+            if (lookNs && lookNs[0] && snprintf(nsn, sizeof nsn, "%s", lookNs) > 0) {
+                int lo = -1, hi = -1;
+                if (gmb_reg_arity_of(nsn, name, &lo, &hi) && (nargs < lo || nargs > hi)) {
+                    if (lo == hi)
+                        c99_fail(c, line, "numero argomenti errato per %s.%s: attesi %d, trovati %d (backend C99Native)",
+                                 nsn, name, lo, nargs);
+                    else
+                        c99_fail(c, line, "numero argomenti errato per %s.%s: attesi da %d a %d, trovati %d (backend C99Native)",
+                                 nsn, name, lo, hi, nargs);
+                    return;
+                }
+            }
+        }
         const char* kns = gmb_reg_known_ns(name);
         if (kns && !(ns && ns[0]))
             c99_fail(c, line, "simbolo non trovato: '%s' è una funzione di libreria (namespace %s); "
@@ -13139,6 +13168,23 @@ static int op_is(const char* op, const char* want) { return op && strcasecmp(op,
 
 /* Registry canonico (P0, gen/gmb_registry.gen.h): nome di libreria NOTO? Se sì, mostra il
  * namespace per l'hint (qualifica/IMPORT) invece del generico "non definita". */
+/* Arity del builtin (ns, name) nel registry canonico: 1 se trovato (lo/hi valorizzati). */
+static int gmb_reg_arity_of(const char* ns, const char* name, int* lo, int* hi)
+{
+    if (!ns || !*ns || !name || !*name) return 0;
+    for (size_t i = 0; i < sizeof(gmb_reg_procs) / sizeof(gmb_reg_procs[0]); i++)
+    {
+        const gmb_reg_proc_t* p = &gmb_reg_procs[i];
+        if (p->ns && !strcasecmp(p->ns, ns) && p->name && !strcasecmp(p->name, name))
+        {
+            if (lo) *lo = p->arity_min;
+            if (hi) *hi = p->arity_max;
+            return 1;
+        }
+    }
+    return 0;
+}
+
 static const char* gmb_reg_known_ns(const char* name)
 {
     if (!name || !*name) return NULL;
