@@ -57,6 +57,26 @@ public sealed class CompiledChunk
     public int LocalCount { get; set; }
 
     /// <summary>
+    /// Intervalli [Start, End) del bytecode emesso da OGNI istruzione BASIC (annidati: un
+    /// corpo IF è dentro l'intervallo dell'IF). Servono a riprendere a granularità di
+    /// ISTRUZIONE (RESUME NEXT / ON ERROR RESUME NEXT): l'istruzione che contiene l'ip
+    /// fallito è quella con l'intervallo più PICCOLO che lo contiene, e la ripresa va al suo
+    /// End — così un errore a metà di `C = A / B` non riprende sullo STORE (che scriverebbe
+    /// NIL) e un errore nella CONDIZIONE non esegue il corpo dell'IF. Coda opzionale del
+    /// formato A1: i chunk vecchi non ce l'hanno e si ricade sull'ip successivo all'opcode.
+    /// </summary>
+    public List<(int Start, int End)> StatementRanges { get; } = [];
+
+    /// <summary>
+    /// Per procedura (indirizzo iniziale): quali slot locali sono NUMERICI (default 0). La VM
+    /// inizializza quegli slot a 0.0 alla creazione del frame; senza, una variabile la cui
+    /// unica scrittura non è mai eseguita (es. dopo RESUME NEXT o dentro un IF falso) restava
+    /// null → stampa vuota e TYPENAME NIL, mentre IL/C99Native danno 0/DOUBLE.
+    /// Coda opzionale del formato A1 (i chunk vecchi non ce l'hanno).
+    /// </summary>
+    public Dictionary<int, bool[]> ProcedureLocalNumeric { get; } = new();
+
+    /// <summary>
     /// Nome procedura -> indirizzo Ip assoluto (copia di Compiler._procedureAddresses, che
     /// altrimenti esiste solo a compile-time e viene scartato). Serve alla VM per risolvere a
     /// runtime un riferimento a procedura passato come STRINGA (es. WEBSOCKET.OnMessage =
@@ -107,6 +127,8 @@ public sealed class CompiledChunk
     /// </summary>
     public void MergeChildLocalNames(CompiledChunk child, int hostAddress, int shift)
     {
+        foreach (var (childAddr, flags) in child.ProcedureLocalNumeric)
+            ProcedureLocalNumeric[hostAddress + shift + childAddr] = flags;
         foreach (var (childAddr, names) in child.ProcedureLocalNames)
             ProcedureLocalNames[hostAddress + shift + childAddr] = names;
     }

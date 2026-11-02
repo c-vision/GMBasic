@@ -268,6 +268,50 @@ gmb_chunk_t* gmb_chunk_load(const uint8_t* data, size_t len, bool load_lines)
                 }
             }
         }
+        /* STATEMENT RANGES (coda FINALE opzionale): u32 count + (u32 start, u32 end) per voce.
+         * Chunk vecchi finiscono prima: lettura corta tollerata. */
+        if (!r.err && r.p < r.end)
+        {
+            uint32_t ssc = rd_u32(&r);
+            if (!r.err && ssc > 0 && ssc <= (uint32_t)(r.end - r.p) / 8)
+            {
+                c->stmt_starts = (uint32_t*)calloc(ssc, sizeof(uint32_t));
+                c->stmt_ends = (uint32_t*)calloc(ssc, sizeof(uint32_t));
+                if (!c->stmt_starts || !c->stmt_ends) goto fail;
+                c->stmt_range_count = ssc;
+                for (uint32_t i = 0; i < ssc && !r.err; i++)
+                {
+                    c->stmt_starts[i] = rd_u32(&r);
+                    c->stmt_ends[i] = rd_u32(&r);
+                }
+            }
+        }
+        /* LOCAL NUMERIC (coda FINALE opzionale): u32 count, per voce u32 addr, u32 count,
+         * count byte (0/1), DOPO le statement ranges. Lettura corta tollerata. */
+        if (!r.err && r.p < r.end)
+        {
+            uint32_t n = rd_u32(&r);
+            if (!r.err && n > 0 && n <= (uint32_t)(r.end - r.p) / 8)
+            {
+                c->plnum_addrs = (uint32_t*)calloc(n, sizeof(uint32_t));
+                c->plnum_flags = (uint8_t**)calloc(n, sizeof(uint8_t*));
+                c->plnum_counts = (uint32_t*)calloc(n, sizeof(uint32_t));
+                if (!c->plnum_addrs || !c->plnum_flags || !c->plnum_counts) goto fail;
+                c->plnum_count = n;
+                for (uint32_t i = 0; i < n && !r.err; i++)
+                {
+                    c->plnum_addrs[i] = rd_u32(&r);
+                    uint32_t cnt = rd_u32(&r);
+                    if (!r.err && cnt > 0 && cnt <= (uint32_t)(r.end - r.p))
+                    {
+                        c->plnum_flags[i] = (uint8_t*)calloc(cnt, 1);
+                        if (!c->plnum_flags[i]) goto fail;
+                        c->plnum_counts[i] = cnt;
+                        for (uint32_t j = 0; j < cnt && !r.err; j++) c->plnum_flags[i][j] = rd_u8(&r);
+                    }
+                }
+            }
+        }
     }
     if (r.err) goto fail;
 
@@ -298,6 +342,15 @@ void gmb_chunk_free(gmb_chunk_t* c)
     if (!c) return;
     if (c->refs > 1) { c->refs--; return; }   /* ancora in uso da un render concorrente */
     free(c->code);
+    free(c->stmt_starts);
+    free(c->stmt_ends);
+    if (c->plnum_flags)
+    {
+        for (uint32_t i = 0; i < c->plnum_count; i++) free(c->plnum_flags[i]);
+        free(c->plnum_flags);
+    }
+    free(c->plnum_addrs);
+    free(c->plnum_counts);
     free(c->lines);
     if (c->constants)
     {

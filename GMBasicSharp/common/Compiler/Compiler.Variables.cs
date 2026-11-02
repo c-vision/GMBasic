@@ -45,6 +45,12 @@ public sealed partial class Compiler
         /// salta e continua a chiudere le locali di blocco che restano sotto di lei).
         /// </summary>
         public bool Promoted { get; set; }
+
+        /// <summary>Default dello slot: true = 0 numerico, false = null (stringa/riferimento).
+        /// null = deducilo dal tipo. Serve alle variabili IMPLICITE, dove il tipo è dedotto dal
+        /// nome SENZA suffisso: `S$ = "x"` sarebbe Double e la VM inizializzerebbe 0 invece di
+        /// null (parità IL).</summary>
+        public bool? NumericDefault { get; set; }
     }
 
     /// <summary>
@@ -329,9 +335,16 @@ public sealed partial class Compiler
     /// Crea la locale di una variabile IMPLICITA. In BASIC vive per tutta la procedura: se la prima assegnazione cade in un blocco
     /// annidato (profondita' &gt; 1) la si crea subito a profondita' di procedura, cosi' `IF c THEN r = 2` poi `PRINT r` la vede.
     /// </summary>
-    private void AddImplicitLocal(Token name)
+    private void AddImplicitLocal(Token name, Token? suffixed = null)
     {
         AddLocal(name);
+        if (suffixed is not null)
+        {
+            /* Il suffisso non fa parte del nome (S e S$ sono la stessa variabile) ma la PRIMA
+             * scrittura ne fissa la famiglia: `$` = stringa (default null), altrimenti numerico. */
+            var lex = suffixed.Lexeme ?? string.Empty;
+            _locals[^1].NumericDefault = lex.Length == 0 || !lex.EndsWith('$');
+        }
         if (_scopeDepth > 1)
         {
             var l = _locals[^1];

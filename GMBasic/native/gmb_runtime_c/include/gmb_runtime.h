@@ -477,6 +477,11 @@ int gmb_err_has_value(void);
  * (una chiamata per ogni classe che eredita il tipo della clausola). */
 int gmb_val_is_class(gmb_val_t v, const char* name);
 
+/* Controllo indice per un array DIMensionato: se `idx` è fuori da [lo, hi] solleva
+ * ERR 9 ("Subscript out of range") alla riga indicata; altrimenti restituisce `idx`.
+ * Usato dall'emissione C99 degli accessi indicizzati (parità IL/PCode/VM-C: prima
+ * C99 leggeva/sciveva fuori dall'allocazione). */
+gmb_int_t gmb_arr_check(gmb_int_t idx, gmb_int_t lo, gmb_int_t hi, long line);
 /* Descrizione canonica di un codice d'errore ("" se sconosciuto). Usata da gmb_raise_error
  * quando la descrizione è vuota e dai backend (VM/C) per popolare ERR.Description. */
 const char* gmb_err_default_message(int code);

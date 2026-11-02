@@ -72,6 +72,8 @@ internal sealed class PCodeVm : IDisposable
         if (chunk.GlobalCount > 0)
             _mainTask.EnsureGlobals(chunk.GlobalCount);
         _processor = new PCodeProcessor(runtime, chunk, _scheduler, new object(), this);
+        /* Slot locali numerici del root (top-level/Main) a 0.0: parità IL/C99Native. */
+        _processor.InitRootNumericLocals(_mainTask, startIp);
     }
 
     /// <summary>Imposta un valore globale nel task principale prima dell'esecuzione.</summary>

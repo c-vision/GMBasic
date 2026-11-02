@@ -196,7 +196,11 @@ public sealed record ErrInstance(int Number, string Description, int LineNumber,
             KeyNotFoundException => ErrorCode.KeyNotFound,
             _ => ErrorCode.InternalError
         };
-        return new BasicException(code, position, ex.Message, null, ex);
+        /* Descrizione CANONICA quando il codice è noto (parità 4 gambe: PCode/VM-C/C99Native
+         * sollevano ERR 9 con "Subscript out of range"; il messaggio CLR inglese
+         * "Index was outside the bounds of the array." rendeva ERR.Description diverso). */
+        var message = code is ErrorCode.SubscriptOutOfRange ? GetDefaultMessage(code) : ex.Message;
+        return new BasicException(code, position, message, null, ex);
     }
 
     /// <summary>

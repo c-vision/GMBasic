@@ -2613,6 +2613,33 @@ static gmb_frame_t* push_frame(gmb_task_t* t, int saved_sp, int return_ip)
     return f;
 }
 
+/* Inizializza a 0 gli slot locali NUMERICI della procedura `addr` (metadata
+ * ProcedureLocalNumeric del chunk). Senza, una variabile la cui unica scrittura non viene
+ * mai eseguita (IF falso, RESUME NEXT che salta l'assegnazione) restava nil: stampa vuota e
+ * TYPENAME NIL, mentre IL/C99Native danno 0/DOUBLE. */
+static void init_numeric_locals(gmb_task_t* t, int addr)
+{
+    gmb_vm_t* vm = (gmb_vm_t*)t->vm_ctx;
+    if (!vm || !vm->chunk || !vm->chunk->plnum_addrs || vm->chunk->plnum_count == 0) return;
+    double* nums; uint8_t* types; uint8_t* basic;
+    if (t->frame) { nums = t->frame->local_nums; types = t->frame->local_types; basic = t->frame->local_basic; }
+    else { nums = t->locals_nums; types = t->locals_types; basic = t->locals_basic; }
+    for (uint32_t i = 0; i < vm->chunk->plnum_count; i++)
+    {
+        if ((int)vm->chunk->plnum_addrs[i] != addr) continue;
+        const uint8_t* fl = vm->chunk->plnum_flags[i];
+        uint32_t n = vm->chunk->plnum_counts[i];
+        for (uint32_t s = 0; s < n && s < GMB_FRAME_LOCALS_CAP; s++)
+            if (fl[s] && types[s] == 0)
+            {
+                nums[s] = 0.0;
+                types[s] = 1;
+                basic[s] = GMB_BT_NUMBER;
+            }
+        return;
+    }
+}
+
 static void pop_frame(gmb_task_t* t)
 {
     gmb_frame_t* f = t->frame;
@@ -2992,6 +3019,22 @@ static void vm_apply_bsp_seeds(gmb_vm_t* vm, gmb_task_t* main)
 
 /* ---- Chiamata sincrona di una closure BASIC dai builtin (es. OPTIMIZE.*) ----
    Esegue la closure con un argomento double e restituisce il risultato. */
+/* 1 se `sv` è un array DIMensionato (DIM A(n) / DIM A(l TO u)) e uno degli indici
+ * indicati cade fuori dai limiti dichiarati. In quel caso lettura/scrittura devono
+ * sollevare ERR 9 (parità IL), non restituire nil né estendere la lista in silenzio.
+ * Gli array DINAMICI (DIM A(), ndims=0) restano a crescita automatica. */
+static int array_fixed_index_out_of_bounds(gmb_obj_shared_val_t* sv,
+                                           const double* indices, int numIndices)
+{
+    if (!sv || !sv->is_array || sv->ndims < 1) return 0;
+    for (int d = 0; d < numIndices && d < sv->ndims && d < 8; d++)
+    {
+        long ix = (long)indices[d];
+        if (ix < (long)sv->dim_lower[d] || ix > (long)sv->dim_upper[d]) return 1;
+    }
+    return 0;
+}
+
 int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task);
 double gmb_vm_call_closure_sync(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure, double arg)
 {
@@ -7539,6 +7582,57 @@ static void pop_cleanup(gmb_task_t* task, gmb_try_entry_t* cleanup)
         gmb_try_entry_release(task->try_stack[--task->try_count]);
 }
 
+static void unwind_procedure_frames_to_error_handler(gmb_task_t* task);
+static void deliver_exception_after_finally(gmb_task_t* task, gmb_stack_entry_t* ev, int has);
+
+/* Consegna un'eccezione dopo aver attraversato i FINALLY e senza alcun CATCH attivo:
+ * specchio di DeliverExceptionAfterFinally (PCode): ON ERROR RESUME NEXT -> ON ERROR
+ * GOTO/GOSUB -> errore fatale. */
+static void deliver_exception_after_finally(gmb_task_t* task, gmb_stack_entry_t* ev, int has)
+{
+    const char* desc = "Unspecified runtime error";
+    if (has && ev->type == 2 && ev->ref)
+    {
+        if (ev->ref->kind == GMB_OBJ_DICT)
+        {
+            gmb_obj_shared_val_t* d = (gmb_obj_shared_val_t*)ev->ref;
+            if (d->dict)
+            {
+                gmb_val_t dv = gmb_dict_get(*d->dict, "Description");
+                if (dv.kind == GMB_TYPE_STRING && dv.v_string.data && dv.v_string.data[0])
+                    desc = dv.v_string.data;
+            }
+        }
+        else if (ev->ref->kind == GMB_OBJ_STRING)
+        {
+            const char* sd = ((gmb_obj_string_t*)ev->ref)->data;
+            if (sd && sd[0]) desc = sd;
+        }
+    }
+    if (task->error_mode == 1)
+    {
+        task->ip = task->error_resume_next_ip;
+    }
+    else
+    {
+        unwind_procedure_frames_to_error_handler(task);
+        if (task->error_handler_ip > 0)
+        {
+            if (task->error_handler_is_gosub && task->ip_stack_count < 64)
+                task->ip_stack[task->ip_stack_count++] = task->ip;
+            task->ip = task->error_handler_ip;
+        }
+        else
+        {
+            char buf[1100];
+            snprintf(buf, sizeof(buf), "BASIC Runtime Error: %s", desc);
+            vm_error(task, buf);
+        }
+    }
+    if (has && ev->type == 2 && ev->ref) gmb_obj_release(ev->ref);
+    ev->ref = NULL;
+}
+
 static int continue_pending_unwind(gmb_task_t* task)
 {
     if (!task->unwind_active) return 0;
@@ -7583,6 +7677,15 @@ static int continue_pending_unwind(gmb_task_t* task)
         /* EnterSelectedExceptionHandler: pop del TryStack fino al target (incluso). */
         gmb_try_entry_t* target = uw->target_handler;
         uw->target_handler = NULL;
+        if (!target)
+        {
+            /* Nessun CATCH attivo: i FINALLY sono già stati attraversati sopra ->
+             * consegna (ON ERROR / fatale). Prima il FINALLY di un TRY senza CATCH
+             * veniva saltato del tutto. */
+            deliver_exception_after_finally(task, &uw->error_value, uw->has_error_value);
+            uw->has_error_value = 0;
+            return 0;
+        }
         int found = 0;
         while (task->try_count > 0)
         {
@@ -7709,6 +7812,23 @@ static int try_enter_exception_handler(gmb_task_t* task, gmb_stack_entry_t err, 
     }
     if (target_idx < 0)
     {
+        /* Nessun CATCH, ma ci sono FINALLY da attraversare (TRY ... FINALLY senza CATCH):
+         * avvia l'unwind con target_handler = NULL, così i cleanup eseguono prima della
+         * propagazione (specchio TryEnterExceptionHandler di PCode). */
+        if (task->cleanup_count > 0)
+        {
+            gmb_unwind_t* uw0 = &task->unwind;
+            memset(uw0, 0, sizeof(*uw0));
+            uw0->reason = GMB_UW_EXCEPTION;
+            uw0->origin_ip = task->current_ip;
+            uw0->frame = task->frame;
+            uw0->target_handler = NULL;
+            uw0->error_value = err;
+            uw0->has_error_value = has_err ? 1 : 0;
+            task->unwind_active = 1;
+            continue_pending_unwind(task);
+            return 1;
+        }
         if (has_err && err.type == 2 && err.ref) gmb_obj_release(err.ref);
         return 0;
     }
@@ -7744,6 +7864,8 @@ static void restore_caller_error_scope(gmb_task_t* task, gmb_frame_t* f)
  * scope chiamante (specchio UnwindProcedureFramesToErrorHandler): per ogni frame poppato
  * ripristina lo stack operandi, scarta i suoi TRY residui e aggiorna i punti di RESUME
  * sul RETURN del chiamante. */
+static int statement_resume_ip(gmb_task_t* task, int opcode_ip, int fallback_ip);
+
 static void unwind_procedure_frames_to_error_handler(gmb_task_t* task)
 {
     while (task->error_handler_ip == 0 &&
@@ -7756,7 +7878,9 @@ static void unwind_procedure_frames_to_error_handler(gmb_task_t* task)
             gmb_try_entry_release(task->try_stack[--task->try_count]);
         restore_caller_error_scope(task, f);
         task->error_line_ip = f->return_ip - 1 > 0 ? f->return_ip - 1 : 0;
-        task->error_resume_next_ip = f->return_ip;
+        /* Il CALL del chiamante può stare dentro un'espressione (`x = F()`): la ripresa va
+         * all'END di quell'istruzione, non all'opcode subito dopo il CALL. */
+        task->error_resume_next_ip = statement_resume_ip(task, f->return_ip - 1, f->return_ip);
         gmb_frame_release(f);
     }
 }
@@ -7865,10 +7989,32 @@ static long current_source_line(gmb_task_t* task)
     return err_line;
 }
 
+/* Ip di ripresa per RESUME NEXT: END dell'istruzione più INTERNA che contiene l'opcode
+ * fallito (intervalli StatementRanges del chunk). Senza metadata o fuori intervallo si usa
+ * `fallback_ip` (ip dopo l'opcode). Specchio PCodeProcessor.StatementResumeIp. */
+static int statement_resume_ip(gmb_task_t* task, int opcode_ip, int fallback_ip)
+{
+    gmb_vm_t* vm = (gmb_vm_t*)task->vm_ctx;
+    if (!vm || !vm->chunk || !vm->chunk->stmt_starts || !vm->chunk->stmt_ends
+        || vm->chunk->stmt_range_count == 0 || opcode_ip < 0)
+        return fallback_ip;
+    int best = -1;
+    uint32_t best_len = 0xFFFFFFFFu;
+    for (uint32_t i = 0; i < vm->chunk->stmt_range_count; i++)
+    {
+        int st = (int)vm->chunk->stmt_starts[i];
+        int en = (int)vm->chunk->stmt_ends[i];
+        if (opcode_ip < st || opcode_ip >= en) continue;
+        uint32_t len = (uint32_t)(en - st);
+        if (len < best_len) { best_len = len; best = en; }
+    }
+    return best >= 0 ? best : fallback_ip;
+}
+
 static int raise_basic_error(gmb_task_t* task, double err_code, const char* msg)
 {
     task->error_line_ip = task->current_ip;
-    task->error_resume_next_ip = task->ip;
+    task->error_resume_next_ip = statement_resume_ip(task, task->current_ip, task->ip);
     task->print_staging_len = 0;   /* DiscardIncompletePrintStatement */
 
     long err_line = current_source_line(task);
@@ -9045,6 +9191,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 int addr = gmb_vm_read_u16(vm, task);
                 if (!push_frame(task, task->sp, task->ip)) return -1;
                 task->ip = addr;
+                init_numeric_locals(task, addr);
                 break;
             }
             case OP_CALL_N:
@@ -9054,6 +9201,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 int saved_sp = task->sp - argc;
                 if (!push_frame(task, saved_sp, task->ip)) return -1;
                 task->ip = addr;
+                init_numeric_locals(task, addr);
                 break;
             }
             case OP_CALL_CTOR:
@@ -9654,6 +9802,14 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                      * (parità IL: il FOR EACH su matrice riceve una riga-lista — il
                      * compilatore C# emette LOAD_ELEMENT_POSITIONAL anche per isMatrix).
                      * Matrice flat row-major: m[r*cols + c], cols = dim_upper[1]+1. */
+                    /* Indice fuori dai limiti di un array DIMensionato: ERR 9 (prima
+                     * restituiva nil in silenzio; IL e C99Native sollevano l'errore). */
+                    if (!isKeyStr && array_fixed_index_out_of_bounds((gmb_obj_shared_val_t*)arrO, indices, numIndices))
+                    {
+                        gmb_obj_release(arrE.ref);
+                        gmb_raise_basic_error(task, 9, "");
+                        break;
+                    }
                     if (numIndices == 1 && !isKeyStr && ((gmb_obj_shared_val_t*)arrO)->ndims >= 2)
                     {
                         gmb_obj_shared_val_t* msv = (gmb_obj_shared_val_t*)arrO;
@@ -9856,6 +10012,16 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 if (arrO && arrO->kind == GMB_OBJ_LIST && ((gmb_obj_shared_val_t*)arrO)->list && numIndices >= 1)
                 {
                     gmb_list_t* l = ((gmb_obj_shared_val_t*)arrO)->list;
+                    /* Scrittura oltre UBOUND di un array DIMensionato: ERR 9 (prima la
+                     * lista veniva ESTESA in silenzio; IL solleva l'errore). */
+                    if (!isKeyStr && array_fixed_index_out_of_bounds((gmb_obj_shared_val_t*)arrO, indices, numIndices))
+                    {
+                        gmb_val_discard(v);
+                        gmb_obj_release(arrE.ref);
+                        gmb_obj_release(valE.ref);
+                        gmb_raise_basic_error(task, 9, "");
+                        break;
+                    }
                     long target = (long)indices[0];
                     if (numIndices >= 2 && isKeyStr == 0)
                     {
@@ -14555,6 +14721,11 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                  * SEMPRE fatale ("unhandled exception") anche con un handler installato:
                  * `THROW 42` + ON ERROR divergeva da IL/C99 (che lo catturano). */
                 gmb_stack_entry_t val = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
+                /* Punti di ripresa per ON ERROR: un THROW non numerico non passava da
+                 * raise_basic_error e lasciava error_resume_next_ip STANTIO. Granularità di
+                 * ISTRUZIONE come per gli altri errori. */
+                task->error_line_ip = task->current_ip;
+                task->error_resume_next_ip = statement_resume_ip(task, task->current_ip, task->ip);
                 if (val.type == 1)   /* numero = codice d'errore */
                 {
                     double code = val.num;
@@ -14576,15 +14747,14 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                  * il dettaglio in forma di dizionario. */
                 if (task->error_mode == 1)
                 {
+                    /* NB: nessun push del valore lanciato — l'handler ON ERROR non riceve
+                     * valori dallo stack (il canone è la pseudo-variabile ERR). */
                     task->ip = task->error_resume_next_ip;
-                    push_ref_entry(task, val.type == 2 ? val.ref : NULL, val.basic_type);
                     break;
                 }
                 unwind_procedure_frames_to_error_handler(task);
                 if (task->error_handler_ip > 0)
                 {
-                    if (val.type == 2 && val.ref) gmb_obj_retain(val.ref);
-                    push_ref_entry(task, val.type == 2 ? val.ref : NULL, val.basic_type);
                     if (task->error_handler_is_gosub && task->ip_stack_count < 64)
                         task->ip_stack[task->ip_stack_count++] = task->ip;
                     task->ip = task->error_handler_ip;
@@ -16205,7 +16375,9 @@ int gmb_vm_run(gmb_vm_t* vm)
     gmb_net_set_block_hooks(NULL, vm_net_wake, vm->scheduler);
     gmb_task_t* main = gmb_task_create(vm->scheduler, vm->chunk->entry_point > 0 ? vm->chunk->entry_point : 0);
     if (!main) return -1;
+    main->vm_ctx = vm;
     gmb_task_ensure_globals(main, vm->chunk->global_count);
+    init_numeric_locals(main, vm->chunk->entry_point > 0 ? vm->chunk->entry_point : 0);
     vm_apply_bsp_seeds(vm, main);                /* BSP: REQ/QUERY/FORM/SESSION */
     vm->http_main_task = main; /* handler HTTP/WS condividono le globali del main */
     int r;
@@ -16259,7 +16431,9 @@ int gmb_vm_run_debug(gmb_vm_t* vm)
     {
         vm->debug_main = gmb_task_create(vm->scheduler, vm->chunk->entry_point > 0 ? vm->chunk->entry_point : 0);
         if (!vm->debug_main) return -1;
+        vm->debug_main->vm_ctx = vm;
         gmb_task_ensure_globals(vm->debug_main, vm->chunk->global_count);
+        init_numeric_locals(vm->debug_main, vm->chunk->entry_point > 0 ? vm->chunk->entry_point : 0);
     }
     gmb_task_t* main = vm->debug_main;
     int guard = 0;
@@ -16664,6 +16838,7 @@ int gmb_vm_run_mt(gmb_vm_t* vm)
     main->vm_ctx = vm;
     main->owns_globals = 1;   /* il main possiede i globals; i GO li condividono senza free */
     gmb_task_ensure_globals(main, vm->chunk->global_count);
+    init_numeric_locals(main, vm->chunk->entry_point > 0 ? vm->chunk->entry_point : 0);
     vm_apply_bsp_seeds(vm, main);                /* BSP: REQ/QUERY/FORM/SESSION */
     vm->http_main_task = main; /* handler HTTP/WS condividono le globali del main */
     gmb_sched_enqueue(vm->scheduler, main);

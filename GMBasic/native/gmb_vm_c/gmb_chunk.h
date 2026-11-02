@@ -101,6 +101,22 @@ typedef struct {
     uint32_t* try_end_ips;
     uint8_t*  try_has_catch;
     uint32_t  try_region_count;
+    /* Intervalli [start,end) del bytecode emesso da OGNI istruzione BASIC (coda FINALE
+     * opzionale A1; annidati: il corpo di un IF è dentro l'intervallo dell'IF). Servono a
+     * RESUME NEXT: la ripresa va all'END dell'istruzione che contiene l'opcode fallito (la
+     * più interna), non allo STORE che segue un errore nato a metà di un'espressione.
+     * Specchio di CompiledChunk.StatementRanges. */
+    uint32_t* stmt_starts;
+    uint32_t* stmt_ends;
+    uint32_t  stmt_range_count;
+    /* LOCAL NUMERIC (coda FINALE opzionale A1): per procedura (indirizzo iniziale), quali
+     * slot locali sono numerici (default 0). La VM inizializza quegli slot alla creazione
+     * del frame/root: senza, una variabile mai scritta restava nil (TYPENAME NIL, stampa
+     * vuota) mentre IL/C99Native danno 0/DOUBLE. Specchio ProcedureLocalNumeric. */
+    uint32_t* plnum_addrs;
+    uint8_t** plnum_flags;
+    uint32_t* plnum_counts;
+    uint32_t  plnum_count;
     /* nomi locali per procedura (coda opzionale A1, S_eval EVAL/macro): per voce indirizzo
      * di inizio procedura + nomi per slot (NULL = slot anonimo). Specchio di
      * CompiledChunk.ProcedureLocalNames (C#) / ploc_* del compilatore nativo. */
