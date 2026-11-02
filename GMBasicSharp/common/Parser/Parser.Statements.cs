@@ -803,9 +803,14 @@ public sealed partial class Parser
             // VARIABILE (parità col parser C — Bugs/(open) - Parser-STEP-...).
             var isKeywordAssign = token.Kind == TokenKind.Function && At(1).Kind == TokenKind.Equal
                 && _functionContextReturnsValue.Count > 0 && _functionContextReturnsValue.Peek();
-            var isNameAssign = token.Kind == TokenKind.Identifier &&
-                               token.Lexeme.Equals(currentFn.Lexeme, StringComparison.OrdinalIgnoreCase) &&
-                               At(1).Kind == TokenKind.Equal;
+            // Un nome uguale a quello della procedura corrente seguito da '=' è SEMPRE
+            // l'assegnazione al valore di ritorno, anche quando il lexer classifica il nome
+            // come KEYWORD di un builtin (es. `FUNCTION Sum()`: `Sum` è TokenKind.Sum, non
+            // Identifier → prima non veniva riconosciuto e finiva nel recupero "builtin a 0
+            // argomenti", che produceva "A function call cannot be the target of an
+            // assignment", bug types/class_array_member).
+            var isNameAssign = token.Lexeme.Equals(currentFn.Lexeme, StringComparison.OrdinalIgnoreCase)
+                               && At(1).Kind == TokenKind.Equal;
             if (isKeywordAssign || isNameAssign)
             {
                 return [ParseFunctionReturnAssignmentStatement()];

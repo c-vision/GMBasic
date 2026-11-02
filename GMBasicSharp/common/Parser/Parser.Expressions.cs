@@ -828,10 +828,15 @@ public sealed partial class Parser
             // il dispatch è per TokenKind (0 argomenti compatibili), esattamente come per la
             // forma con parentesi. Prima il nodo restava un VariableExpr e solo IL/VM-C lo
             // recuperavano a valle: su PCode `PRINT STRTIME` stampava 0 (bug 2026-11-01).
-            // Esclusi i nomi con una VARIABILE dichiarata omonima (shadowing per scope).
+            // Esclusi i nomi con una VARIABILE dichiarata omonima (shadowing per scope) e il
+            // nome della procedura corrente: `PRINT Sum` dentro `FUNCTION Sum()` legge lo
+            // slot del valore di ritorno, non chiama il builtin SUM() a zero argomenti.
+            var isCurrentProcName = _functionContextStack.Count > 0
+                && _functionContextStack.Peek().Lexeme.Equals(originalToken.Lexeme, StringComparison.OrdinalIgnoreCase);
             if (originalToken.Kind != TokenKind.Identifier
                 && Peek().Kind != TokenKind.LeftParen     // `STRTIME()` lo gestisce il postfix
-                && !_declaredVariableNames.Contains(originalToken.Lexeme))
+                && !_declaredVariableNames.Contains(originalToken.Lexeme)
+                && !isCurrentProcName)
             {
                 if (ResolveBuiltinFunctionCall(originalToken, ImmutableArray<Expr>.Empty) is { } zeroArgCall)
                 {
@@ -1554,6 +1559,15 @@ public sealed partial class Parser
             if (form is not (VariableExpr or NumberExpr))
                 return new NumberExpr(TypeLayout.NoStaticSize, nameToken);
         }
+
+        // Una PROCEDURA UTENTE con lo stesso nome di una keyword builtin vince quando la
+        // chiamata non è qualificata: `FUNCTION Sum()` rende `Sum(x)` una chiamata utente e
+        // non `MATH.Sum(x)`. Il Linker risolve poi il nome al simbolo della funzione definita
+        // nel file (fallback ArrayAccessExpr → risoluzione UDF). Senza, il dispatch per
+        // TokenKind del parser rubava la chiamata al builtin (bug types/class_array_member:
+        // `Sum = ...` dentro la FUNCTION era riconosciuto dal parser, ma `Sum()` fuori no).
+        if (namespaceName == null && _userProcedureNames.Contains(nameToken.Lexeme))
+            return null;
 
         IEnumerable<ProcedureDefinition> candidates;
 
