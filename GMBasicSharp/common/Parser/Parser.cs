@@ -323,6 +323,11 @@ public sealed partial class Parser
     /// </summary>
     private readonly HashSet<string> _declaredArrayNames = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Variabili dichiarate AS JSON (o AS DECISION, alias di JSON): `AI DECIDE ... INTO d`
+    /// va avvolto in JSON.PARSE, così `d.VALUE/.PROBABILITY/.CONFIDENCE` funzionano davvero
+    /// (senza, IL/PCode conservavano la stringa JSON e il membro tornava vuoto).</summary>
+    private readonly HashSet<string> _declaredJsonNames = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>
     /// Nomi delle procedure (FUNCTION/SUB/GENERATOR e metodi di classe) definite in questo
     /// file fino a questo punto del parsing. Serve a dare loro la precedenza sui builtin

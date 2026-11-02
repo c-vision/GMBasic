@@ -107,6 +107,15 @@ public sealed partial class Parser
             return ParseGenericTypeArgumentsSuffix(new UnresolvedQualifiedType(qualifiedName));
         }
 
+        // `AS DECISION` = alias del tipo JSON (decision layer JEV/SystemOne): il valore è
+        // l'oggetto JSON con VALUE/PROBABILITY/CONFIDENCE. Il tipo nativo DECISION<T> è futuro.
+        if (typeToken.Kind == TokenKind.Identifier
+            && typeToken.Lexeme.Equals("DECISION", StringComparison.OrdinalIgnoreCase))
+        {
+            Advance();
+            return new JsonType(typeToken);
+        }
+
         var isBuiltinKeyword = typeToken.Kind != TokenKind.Identifier;
 
         // Parsa il tipo sottostante (senza suffisso nullable).

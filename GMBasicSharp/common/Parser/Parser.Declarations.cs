@@ -216,6 +216,7 @@ public sealed partial class Parser
             };
 
             Log($"[ParseDeclSyntaxOnly]   -> Creato VariableDeclaration: {declaration}", log);
+            if (finalDataType is JsonType) _declaredJsonNames.Add(normalizedNameToken.Lexeme);
             declarations.Add(declaration);
         } while (Match(TokenKind.Comma));
 
