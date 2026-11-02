@@ -1122,18 +1122,36 @@ public sealed partial class Parser
                         var prefix = "";
                         string? resolvedNs = null;
                         List<NativeProcedureDefinition> candidates = [];
+                        var lookupMember = memberName.EndsWith('$') ? memberName[..^1] : memberName;
                         for (int pi = 0; pi < qne.Parts.Length - 1; pi++)
                         {
                             prefix = prefix.Length == 0 ? qne.Parts[pi].Lexeme : prefix + "." + qne.Parts[pi].Lexeme;
-                            if (!_program.Namespaces.Contains(prefix)) continue;
-                            var cand = _program.Symbols.GetProceduresForNamespace(prefix)
-                                .OfType<NativeProcedureDefinition>()
-                                .Where(p =>
-                                    p.OriginalName.Lexeme.Equals(memberName.EndsWith('$') ? memberName[..^1] : memberName, StringComparison.OrdinalIgnoreCase) &&
-                                    SymbolTable.IsProcedureSignatureCompatible(p, args.Length))
-                                .ToList();
-                            resolvedNs = prefix;
-                            if (cand.Count > 0) candidates = cand;
+                            bool materialized = _program.Namespaces.Contains(prefix);
+                            List<NativeProcedureDefinition> cand = [];
+                            if (materialized)
+                            {
+                                cand = _program.Symbols.GetProceduresForNamespace(prefix)
+                                    .OfType<NativeProcedureDefinition>()
+                                    .Where(p =>
+                                        p.OriginalName.Lexeme.Equals(lookupMember, StringComparison.OrdinalIgnoreCase) &&
+                                        SymbolTable.IsProcedureSignatureCompatible(p, args.Length))
+                                    .ToList();
+                            }
+                            // Namespace COMPOSTO non materializzato (nessun IMPORT): il registro
+                            // canonico lo conosce comunque. Prima si usava solo `Parts[0]` per
+                            // il fallback → `TRADING.PORTFOLIO.ISLONGONLY(...)` senza IMPORT
+                            // dava "ISLONGONLY non definita" (mentre il C99Native la risolve e
+                            // con `IMPORT TRADING.PORTFOLIO` funzionava su tutte le gambe).
+                            if (cand.Count == 0 && _registry.BuiltinProcedures.TryGetValue(prefix, out var regProcs))
+                            {
+                                cand = regProcs.OfType<NativeProcedureDefinition>()
+                                    .Where(p =>
+                                        p.OriginalName.Lexeme.Equals(lookupMember, StringComparison.OrdinalIgnoreCase) &&
+                                        SymbolTable.IsProcedureSignatureCompatible(p, args.Length))
+                                    .ToList();
+                            }
+                            if (cand.Count > 0) { candidates = cand; resolvedNs = prefix; }
+                            else if (materialized && resolvedNs == null) resolvedNs = prefix;
                         }
                         // Se il namespace è registrato ma lo scope builtin non è materializzato
                         // (GetProceduresForNamespace può restituire [] per i namespace composti — in

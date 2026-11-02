@@ -182,6 +182,21 @@ if grep -qiE '^[[:space:]]*(FORM|READ|TORCH|TRAIN|JINJA|SCREEN|GRAPHICS|SPRITE|S
 else
   echo "[c99native] programma testuale → runtime minimo (0 librerie esterne)" >&2
 fi
+# TRAY: le funzioni gmb_tray_* vivono in una dylib CONDIVISA (target CMake gmb_tray), non
+# nella statica del runtime. La si ricostruisce in modo incrementale e la si aggiunge al link
+# SOLO se il C generato la usa: un programma testuale senza TRAY resta senza dipendenze.
+TRAY_LINK=""
+if grep -q 'gmb_tray_' "$DIR/$CASE.c" 2>/dev/null; then
+  cmake --build "$ROOT/native/gmb_runtime_c/build" --target gmb_tray -j4 >/dev/null 2>&1 || true
+  TRAY_DYLIB="$LIBS_CACHE/libgmb_tray.dylib"
+  [ -f "$TRAY_DYLIB" ] || TRAY_DYLIB="$ROOT/build/libs/$RID/libgmb_tray.dylib"
+  if [ -f "$TRAY_DYLIB" ]; then
+    TRAY_LINK="$TRAY_DYLIB -Wl,-rpath,$(dirname "$TRAY_DYLIB")"
+    echo "[c99native] TRAY: link di $(basename "$TRAY_DYLIB")" >&2
+  else
+    echo "[c99native] TRAY: libgmb_tray.dylib assente (target gmb_tray non costruito)" >&2
+  fi
+fi
 ASRLIB="$L/gmb_runtime_c_build/llmasr_build/libllm_asr.a"
 [ -f "$ASRLIB" ] || ASRLIB="$ROOT/native/gmb_runtime_c/build/llmasr_build/libllm_asr.a"
 # -dead_strip_dylibs: ld64 tiene SOLO le dylib che servono davvero ai simboli usati dal
@@ -198,7 +213,7 @@ if [ "$MIN_LINK" = "1" ]; then
   [ -f "$LLMDESC_LIB" ] || LLMDESC_LIB="$ROOT/native/gmb_vm_c/build/gmb_runtime_c_build/llmdesc_build/libllmdesc.a"
   [ -f "$LLMDESC_LIB" ] || LLMDESC_LIB=""
   $CC_BIN $CF $CCFIRST -Wl,-dead_strip_dylibs "$DIR/$CASE.o" -o "$OUTBIN" \
-    "$RUNTIME_LIB" "$ROOT/native/gmb_runtime_c/build/gmb_chart_build/libgmb_chart.a" \
+    "$RUNTIME_LIB" $TRAY_LINK "$ROOT/native/gmb_runtime_c/build/gmb_chart_build/libgmb_chart.a" \
     ${LLMDESC_LIB:+"$LLMDESC_LIB"} \
     -lpthread -lm -lz -lbz2 -lcurl -lcompression 2>/tmp/gmb_minlink.err || {
       echo "[c99native] link minimo fallito, uso il lib-set completo (vedi /tmp/gmb_minlink.err)" >&2
@@ -228,7 +243,7 @@ if [ -x "$FETCH" ]; then
 fi
 
 $CC_BIN $CF $CCFIRST -Wl,-dead_strip_dylibs -Wl,-rpath,@loader_path -Wl,-rpath,"$CODEC" "$DIR/$CASE.o" $TORCH_OBJS $JINJA_OBJ -o "$OUTBIN" \
-  "$L/libgmb_vm.a" "$RUNTIME_LIB" "$ASRLIB" \
+  "$L/libgmb_vm.a" "$RUNTIME_LIB" $TRAY_LINK "$ASRLIB" \
   "$ROOT/native/gmb_runtime_c/build/gmb_chart_build/libgmb_chart.a" \
   "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm.a" \
   "$ROOT/native/gmb_runtime_c/build/llmengine_plugin_build/libllmengine_plugin.a" \

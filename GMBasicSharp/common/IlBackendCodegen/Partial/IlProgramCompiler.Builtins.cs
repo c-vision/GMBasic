@@ -42,6 +42,14 @@ public sealed partial class IlProgramCompiler
         _il.Emit(OpCodes.Call, method);
     }
 
+    /// <summary>Argomento `handle` OPZIONALE dei polling CONTROLS (CLICKED/CHANGED/…):
+    /// 0 argomenti → 0.0 (parità PCode/VM-C/C99Native).</summary>
+    private void EmitFormHandleArg(BuiltinFunctionCallExpr expr)
+    {
+        if (expr.Args.Length > 0) EmitExpression(expr.Args[0]);
+        else _il.Emit(OpCodes.Ldc_R8, 0.0);
+    }
+
     private void EmitBuiltinFunctionCall(BuiltinFunctionCallExpr expr)
     {
         // FORM_* (GUI): controlli pixel — per nome (nessun TokenKind).
@@ -49,13 +57,16 @@ public sealed partial class IlProgramCompiler
         if (_formName == "WINDOWCLOSED") { _il.Emit(OpCodes.Call, IlRuntimeFormClosedMethod); return; }
         switch (_formName)
         {
-            case "CLICKED": EmitExpression(expr.Args[0]); _il.Emit(OpCodes.Call, IlRuntimeFormClickedMethod); return;
+            /* CLICKED/CHANGED/…: handle OPZIONALE (StdLib.Controls: optFlag, registry arity
+             * 0..1). Con 0 argomenti il default è 0 — prima `expr.Args[0]` andava in
+             * IndexOutOfRange (ILGEN) mentre PCode/VM-C restituivano 0. */
+            case "CLICKED": EmitFormHandleArg(expr); _il.Emit(OpCodes.Call, IlRuntimeFormClickedMethod); return;
             case "CTRLGETPROP": EmitExpression(expr.Args[0]); EmitExpression(expr.Args[1]); _il.Emit(OpCodes.Call, IlRuntimeFormControlGetMethod); return;
             case "CTRLGETPROPS": EmitExpression(expr.Args[0]); EmitExpression(expr.Args[1]); _il.Emit(OpCodes.Call, IlRuntimeFormControlGetStrMethod); return;
-            case "DOUBLECLICKED": EmitExpression(expr.Args[0]); _il.Emit(OpCodes.Call, IlRuntimeFormDblClickedMethod); return;
-            case "CHANGED": EmitExpression(expr.Args[0]); _il.Emit(OpCodes.Call, IlRuntimeFormChangedMethod); return;
-            case "GOTFOCUSED": EmitExpression(expr.Args[0]); _il.Emit(OpCodes.Call, IlRuntimeFormGotFocusedMethod); return;
-            case "LOSTFOCUSED": EmitExpression(expr.Args[0]); _il.Emit(OpCodes.Call, IlRuntimeFormLostFocusedMethod); return;
+            case "DOUBLECLICKED": EmitFormHandleArg(expr); _il.Emit(OpCodes.Call, IlRuntimeFormDblClickedMethod); return;
+            case "CHANGED": EmitFormHandleArg(expr); _il.Emit(OpCodes.Call, IlRuntimeFormChangedMethod); return;
+            case "GOTFOCUSED": EmitFormHandleArg(expr); _il.Emit(OpCodes.Call, IlRuntimeFormGotFocusedMethod); return;
+            case "LOSTFOCUSED": EmitFormHandleArg(expr); _il.Emit(OpCodes.Call, IlRuntimeFormLostFocusedMethod); return;
             case "MOUSECLICKED": _il.Emit(OpCodes.Call, IlRuntimeMouseClickedMethod); return;
             case "MOUSEDBLCLICKED": _il.Emit(OpCodes.Call, IlRuntimeMouseDblClickedMethod); return;
             case "MOUSEPRESSED": _il.Emit(OpCodes.Call, IlRuntimeMousePressedMethod); return;
