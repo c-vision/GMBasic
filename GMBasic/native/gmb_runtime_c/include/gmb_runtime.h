@@ -332,6 +332,13 @@ void gmb_json_parse_to_dict(const char* js, gmb_dict_t* out);
 
 /* --- ASR (speech-to-text Qwen3-ASR): entry-point della superficie ASR.TRANSCRIBE.
  * Engine nativo in gmb_asr_*.c; `gmb_asr_cmd` ritorna testo malloc'd (liberare con gmb_asr_free). --- */
+/* Errore dell'ultima operazione AI (NULL se l'ultima è andata). Impostato dal gateway quando
+ * la dylib `libgmb_runtime_ai` non è caricabile: permette un messaggio esplicito al chiamante. */
+const char* gmb_ai_last_error(void);
+/* Registrazione dei servizi ABI (LLMEnv `llmdesc`) da parte della dylib gmb_runtime_ai:
+ * il core non linka LLMEnv. Chiamata dal constructor della dylib al dlopen. */
+void gmb_abi_set_llmdesc(int (*valid)(const char*), int (*locate)(char*, size_t, char*, size_t),
+                         void (*policy)(int (*)(char*, size_t), int));
 char* gmb_asr_cmd(const char* model_dir, const char* wav_path, const char* out_path);
 void  gmb_asr_free(char* p);
 /* F2 (§0bis): serializzatori JSON grezzi PUBBLICI — unica implementazione della
@@ -2438,6 +2445,7 @@ int gmb_kg_add_node(const char* node);
 int gmb_kg_add_edge(const char* from, const char* to);
 char* gmb_kg_query(const char* q);
 gmb_string_t gmb_string_take(char* heap);
+char* gmb_ai_decide_run_json(const char* state, const char* kind);
 int gmb_ai_register_ocr_backend(void* load, void* read_image, void* read_audio, void* free_s, void* unload);
 int gmb_ai_ocr_load_model(const char* model, const char* mmproj);
 const char* gmb_ai_ocr_read(const char* path, const char* prompt, int max_tokens);
