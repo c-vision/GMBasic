@@ -9099,6 +9099,17 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     rv.num = 0; rv.ref = f->constructor_instance;
                     gmb_obj_retain(f->constructor_instance); /* il ref del frame va via col frame */
                 }
+                else if (f->is_direct_call)
+                {
+                    /* Parità PCode C# (PCodeProcessor.OP_RETURN): una chiamata DIRETTA
+                     * (OP_CALL_CTOR — BASE.NEW, setter di proprietà, metodi di closure-context)
+                     * che non ha prodotto un valore spinge comunque NIL. Il call-site che
+                     * emette OP_POP dopo la chiamata (statement) resta così bilanciato;
+                     * senza, il POP consumava un valore del chiamante (regressione
+                     * ClassesSimpleInheritance: NRE sull'operatore +). */
+                    rv.type = 2; rv.basic_type = GMB_BT_NULL;
+                    rv.num = 0; rv.ref = NULL;
+                }
                 int return_ip = f->return_ip;
                 int saved_sp = f->saved_sp;
                 restore_caller_error_scope(task, f);   /* V4e: prima del release (use-after-free) */
