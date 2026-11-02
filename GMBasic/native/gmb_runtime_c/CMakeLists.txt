@@ -125,35 +125,39 @@ endif()
 # runtime — e quindi REPL/gmbadmin/vm_host — si compila e linka SENZA LLMEnv.
 # Non linka il runtime: risolve i simboli del core a load-time (evita una seconda copia degli
 # stati globali del core). Su macOS `-undefined dynamic_lookup`; su ELF servono i simboli
-# esportati dal consumer.
-set(GMB_RUNTIME_AI_SRCS
-    src/gmb_ai_register.c
-    src/gmb_asr_cmd.c
-    src/gmb_llm_tok.c
-    src/gmb_model_io.c
-    src/gmb_distill.c
-    ../gmb_compiler_c/src/model/gmb_model_quantize.c
-    ${LLMENV}/LLMEngine/moe/src/llmengine_moe_quant_alloc.c
-    ${LLMENV}/LLMEngine/moe/src/llmengine_moe_gguf.c
-    ${LLMENV}/LLMEngine/moe/src/llmengine_moe_gguf_expert.c
-    ${LLMENV}/LLMEngine/moe/src/llmengine_moe_ggml.c
-    ${LLMENV}/LLMEngine/moe/src/llmengine_moe_discover.c)
-add_library(gmb_runtime_ai SHARED ${GMB_RUNTIME_AI_SRCS})
-target_include_directories(gmb_runtime_ai PRIVATE include src
-    ${LLMENV}/LLMEngine/include
-    ${LLMENV}/LLMCodec/include
-    ${LLMENV}/LLMToken/include
-    ${LLMENV}/LLMEngine/moe/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../gmbllm/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../gmbllm/include/quant)
-target_link_libraries(gmb_runtime_ai PRIVATE
-    llm_asr llmcodec llmtoken llmdesc llmengine_plugin gmbllm_core ${CMAKE_DL_LIBS} m)
-if(APPLE)
-    target_link_options(gmb_runtime_ai PRIVATE "-Wl,-undefined,dynamic_lookup")
+# esportati dal consumer (`-Wl,--export-dynamic`, sotto).
+# Windows NON ha il "dynamic_lookup": là lo split non c'è, le sorgenti AI restano nel CORE
+# (vedi il blocco condizionale su GMB_CORE_SRCS) e questa dylib non si costruisce.
+if(NOT WIN32)
+    set(GMB_RUNTIME_AI_SRCS
+        src/gmb_ai_register.c
+        src/gmb_asr_cmd.c
+        src/gmb_llm_tok.c
+        src/gmb_model_io.c
+        src/gmb_distill.c
+        ../gmb_compiler_c/src/model/gmb_model_quantize.c
+        ${LLMENV}/LLMEngine/moe/src/llmengine_moe_quant_alloc.c
+        ${LLMENV}/LLMEngine/moe/src/llmengine_moe_gguf.c
+        ${LLMENV}/LLMEngine/moe/src/llmengine_moe_gguf_expert.c
+        ${LLMENV}/LLMEngine/moe/src/llmengine_moe_ggml.c
+        ${LLMENV}/LLMEngine/moe/src/llmengine_moe_discover.c)
+    add_library(gmb_runtime_ai SHARED ${GMB_RUNTIME_AI_SRCS})
+    target_include_directories(gmb_runtime_ai PRIVATE include src
+        ${LLMENV}/LLMEngine/include
+        ${LLMENV}/LLMCodec/include
+        ${LLMENV}/LLMToken/include
+        ${LLMENV}/LLMEngine/moe/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../gmbllm/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../gmbllm/include/quant)
+    target_link_libraries(gmb_runtime_ai PRIVATE
+        llm_asr llmcodec llmtoken llmdesc llmengine_plugin gmbllm_core ${CMAKE_DL_LIBS} m)
+    if(APPLE)
+        target_link_options(gmb_runtime_ai PRIVATE "-Wl,-undefined,dynamic_lookup")
+    endif()
+    set_target_properties(gmb_runtime_ai PROPERTIES
+        PREFIX "lib" OUTPUT_NAME "gmb_runtime_ai"
+        LIBRARY_OUTPUT_DIRECTORY "${GMB_LIBS_OUT}")
 endif()
-set_target_properties(gmb_runtime_ai PROPERTIES
-    PREFIX "lib" OUTPUT_NAME "gmb_runtime_ai"
-    LIBRARY_OUTPUT_DIRECTORY "${GMB_LIBS_OUT}")
 
 # Motore chart autonomo e riusabile (native/gmb_chart): pura libc/math + function table
 # di disegno fornita dall'host. Linkato dal runtime via l'adapter gmb_graphics_chart.c;
@@ -400,8 +404,31 @@ foreach(_s IN LISTS GMB_ALL_SRCS)
   endif()
 endforeach()
 list(REMOVE_ITEM GMB_CORE_SRCS src/gmb_sql.c src/gmb_csv_vtab.c src/gmb_parquet_vtab.c)
+# SPLIT core/AI — Windows: niente risoluzione dinamica dei simboli del core, quindi le
+# sorgenti AI restano nel core (link statico, come prima dello split) e il gateway (che
+# parla solo dlopen/LoadLibrary) non si compila: i simboli forti sono già qui.
+if(WIN32)
+  list(REMOVE_ITEM GMB_CORE_SRCS src/gmb_ai_gateway.c)
+  list(APPEND GMB_CORE_SRCS
+      src/gmb_asr_cmd.c
+      src/gmb_llm_tok.c
+      src/gmb_model_io.c
+      src/gmb_distill.c
+      ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_compiler_c/src/model/gmb_model_quantize.c
+      ${LLMENV}/LLMEngine/moe/src/llmengine_moe_quant_alloc.c
+      ${LLMENV}/LLMEngine/moe/src/llmengine_moe_gguf.c
+      ${LLMENV}/LLMEngine/moe/src/llmengine_moe_gguf_expert.c
+      ${LLMENV}/LLMEngine/moe/src/llmengine_moe_ggml.c
+      ${LLMENV}/LLMEngine/moe/src/llmengine_moe_discover.c)
+endif()
 set(GMB_SQL_SRCS src/gmb_sql.c src/gmb_csv_vtab.c src/gmb_parquet_vtab.c src/gmb_sql_iface.c)
 add_library(gmb_runtime_deps INTERFACE)
+if(WIN32)
+  # Windows (split assente): il core contiene le sorgenti AI → serve LLMEnv al link.
+  target_link_libraries(gmb_runtime_deps INTERFACE
+      llmcodec llmcodec_ggml llmcodec_fp8 llmcodec_mlx_affine llmtoken llmengine_plugin
+      llmdesc llm_asr gmbllm_core)
+endif()
 add_library(gmb_runtime_sql_obj OBJECT ${GMB_SQL_SRCS})
 target_link_libraries(gmb_runtime_sql_obj PRIVATE gmb_runtime_deps)
 add_library(gmb_runtime_sql STATIC $<TARGET_OBJECTS:gmb_runtime_sql_obj>)
@@ -413,7 +440,7 @@ target_link_libraries(gmb_runtime_core_obj PRIVATE gmb_runtime_deps)
 target_compile_definitions(gmb_runtime_core_obj PRIVATE GMB_WITH_UI=1)
 # Path di BUILD della dylib AI: il gateway la trova anche senza install (dev/REPL build dir).
 target_compile_definitions(gmb_runtime_core_obj PRIVATE
-    GMB_RUNTIME_AI_PATH="${GMB_LIBS_OUT}/libgmb_runtime_ai.dylib")
+    GMB_RUNTIME_AI_PATH="${GMB_LIBS_OUT}/${CMAKE_SHARED_LIBRARY_PREFIX}gmb_runtime_ai${CMAKE_SHARED_LIBRARY_SUFFIX}")
 target_link_libraries(gmb_runtime_ui_obj PRIVATE gmb_runtime_deps)
 # La copia UI (TUI + present SDL/Vulkan) dichiara GMB_WITH_UI: è lei che fornisce
 # listbox/combobox/input/ombra a FORM e READ. Il CORE resta senza riferimenti all'UI,
@@ -430,11 +457,20 @@ target_link_libraries(gmb_runtime_min_obj PRIVATE gmb_runtime_deps)
 # Stesso path di build della dylib AI del core completo: anche i programmi generati da
 # `gmb run` (linkati contro libgmb_runtime_min.a) devono trovare gmb_runtime_ai.
 target_compile_definitions(gmb_runtime_min_obj PRIVATE
-    GMB_RUNTIME_AI_PATH="${GMB_LIBS_OUT}/libgmb_runtime_ai.dylib")
+    GMB_RUNTIME_AI_PATH="${GMB_LIBS_OUT}/${CMAKE_SHARED_LIBRARY_PREFIX}gmb_runtime_ai${CMAKE_SHARED_LIBRARY_SUFFIX}")
 # Stub NO-OP dell'API UI: permettono alla variante minima di linkare senza SDL/Vulkan.
 add_library(gmb_ui_null_obj OBJECT src/gmb_ui_null.c)
 target_link_libraries(gmb_ui_null_obj PRIVATE gmb_runtime_deps)
 add_library(gmb_runtime_min STATIC $<TARGET_OBJECTS:gmb_runtime_min_obj> $<TARGET_OBJECTS:gmb_ui_null_obj>)
+
+# SPLIT core/AI (2026-11-02) — ELF: la dylib AI è caricata con dlopen e risolve a load-time i
+# simboli del core. Su Linux l'eseguibile deve esportarli (`-rdynamic`), altrimenti il
+# caricamento fallisce con "undefined symbol". macOS non ne ha bisogno (dynamic_lookup).
+if(UNIX AND NOT APPLE)
+    target_link_options(gmb_runtime INTERFACE "-Wl,--export-dynamic")
+    target_link_options(gmb_runtime_min INTERFACE "-Wl,--export-dynamic")
+    target_link_options(gmb_runtime_core INTERFACE "-Wl,--export-dynamic")
+endif()
 
 # ── libgmb_screen: SOLO il buffer di schermo a celle (zero terze parti) ────────────────────────
 # La console testuale (C# ScreenBuffer/CClipperBuffer) usa solo queste funzioni: tenerle in

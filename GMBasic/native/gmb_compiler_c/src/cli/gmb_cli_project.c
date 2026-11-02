@@ -129,7 +129,7 @@ static int source_needs_full_runtime(const char* entry) {
         "FORM","READ","TORCH","TRAIN","JINJA","SCREEN","GRAPHICS","SPRITE","SPRITESET","PSET",
         "PRESET","CIRCLE","PAINT","DRAW","POLYGON","PCOPY","SCREENSET","PALETTE","MOUSE","WINDOW",
         "IMAGE","BITMAP","TILE","FONT","PLOT","CHART","VIDEO","DBF","ISAM","SPEED","RDD","SQL",
-        "NET","HTTP","AI","LLM","MEMORY","VECTORDB","DOC","FETCH","TUI"
+        "NET","HTTP","AI","LLM","ASR","MEMORY","VECTORDB","DOC","FETCH","TUI"
     };
     int need = 0;
     const char* p = src;
@@ -226,6 +226,70 @@ void build_inc(char* inc, size_t cap, const char* install) {
     }
 }
 
+/* ── DEPLOY della dylib AI accanto all'eseguibile ──────────────────────────────────────────
+ * `libgmb_runtime_ai` è l'unica libreria del runtime che NON vive nella cache delle lib di
+ * terze parti (`~/.gmbasic/libs/<rid>/`: quella è gestita da `gmb libs` e `prune` la ripulisce
+ * dei file non presenti nel manifest, quindi NON è posto per un nostro artefatto di build).
+ * Il gateway (`gmb_ai_gateway.c`) la cerca PRIMA accanto all'eseguibile: il compilatore la
+ * copia lì, come la closure del compilatore C# viene copiata accanto al programma
+ * (`IlProgramCompiler.CopyDependencies`): un programma distribuito non deve dipendere dal
+ * checkout. Se la dylib manca (build senza AI) non si fa nulla: il programma gira lo stesso. */
+static int copy_file_raw(const char* src, const char* dst)
+{
+    FILE* in = fopen(src, "rb");
+    if (!in) return 0;
+    FILE* out = fopen(dst, "wb");
+    if (!out) { fclose(in); return 0; }
+    char buf[65536];
+    size_t n;
+    int ok = 1;
+    while ((n = fread(buf, 1, sizeof buf, in)) > 0)
+        if (fwrite(buf, 1, n, out) != n) { ok = 0; break; }
+    if (ferror(in)) ok = 0;
+    fclose(in);
+    if (fclose(out) != 0) ok = 0;
+    if (!ok) remove(dst);
+    return ok;
+}
+
+static void deploy_ai_runtime(const char* exe, const char* install, int quiet)
+{
+#if defined(_WIN32)
+    static const char* const name = "gmb_runtime_ai.dll";
+#elif defined(__APPLE__)
+    static const char* const name = "libgmb_runtime_ai.dylib";
+#else
+    static const char* const name = "libgmb_runtime_ai.so";
+#endif
+    /* Output canonico del build (GMB_LIBS_OUT) + build autonomi del runtime. */
+    static const char* const reldirs[] = {
+        "build/libs/" GMB_RID_STR "/",
+        "native/gmb_runtime_c/build/",
+        "native/gmb_vm_c/build/gmb_runtime_c_build/",
+    };
+    char exedir[CLI_PATH];
+    path_dir(exe, exedir, sizeof exedir);
+    if (!exedir[0]) return;
+    char dst[CLI_PATH];
+    snprintf(dst, sizeof dst, "%s/%s", exedir, name);
+
+    for (size_t i = 0; i < sizeof reldirs / sizeof reldirs[0]; i++) {
+        char src[CLI_PATH];
+        snprintf(src, sizeof src, "%s/%s%s", install, reldirs[i], name);
+        if (!is_file(src)) continue;
+        struct stat ss, ds;
+        if (stat(src, &ss) != 0) continue;
+        /* già lì (stessa dir dell'output del build): niente copia su se stesso. */
+        if (stat(dst, &ds) == 0 && ss.st_dev == ds.st_dev && ss.st_ino == ds.st_ino) return;
+        if (copy_file_raw(src, dst)) {
+            chmod(dst, 0755);
+            if (!quiet)
+                fprintf(stderr, "gmb: runtime AI -> %s\n", dst);
+        }
+        return;   /* primo candidato esistente: è quello del build corrente */
+    }
+}
+
 /* Prodotto di un sorgente LIBRARY: una libreria condivisa (.gmblib), non un eseguibile.
  * `dynamic_lookup` è la scelta già fatta da tools/gmb_c99native_run.sh: la libreria si carica
  * in un host che espone il runtime (e le sue dipendenze grafiche), quindi i simboli che il
@@ -234,9 +298,16 @@ void build_inc(char* inc, size_t cap, const char* install) {
 #if defined(__APPLE__)
 #define GMB_LIB_EXT ".dylib"
 #define GMB_LIB_LDFLAGS "-shared -fPIC -Wl,-undefined,dynamic_lookup"
+/* macOS: `dlopen` risolve i simboli del core con la ricerca a due livelli (dynamic_lookup). */
+#define GMB_EXE_EXPORT_DYNAMIC ""
 #else
 #define GMB_LIB_EXT ".so"
 #define GMB_LIB_LDFLAGS "-shared -fPIC"
+/* ELF: la dylib AI (`libgmb_runtime_ai.so`, caricata con `dlopen`) risolve a load-time i
+ * simboli del core (`gmb_raise_error`, `gmb_paths_*`, …). Se l'eseguibile non li esporta
+ * nella tabella dinamica il caricamento fallisce con "undefined symbol": `--export-dynamic`
+ * li pubblica (l'equivalente di `-rdynamic`). */
+#define GMB_EXE_EXPORT_DYNAMIC " -Wl,--export-dynamic"
 #endif
 
 /* Frameworks Cocoa/CoreGraphics chiesti dal motore grafico del runtime (SDL si appoggia al
@@ -638,8 +709,8 @@ int build_project(const Options* o, const char* project, const char* entry,
         snprintf(cmd, sizeof cmd, "cc %s %s %s -lm -lpthread -lcrypto -lssl -o %s 2>&1",
                  GMB_LIB_LDFLAGS, qc, qr, qexe);
     else
-        snprintf(cmd, sizeof cmd, "cc %s %s %s%s%s -lm -lpthread -lcrypto -lssl%s -o %s 2>&1",
-                 qc, qr, qchart, ldirs, libs, GMB_EXE_FRAMEWORKS, qexe);
+        snprintf(cmd, sizeof cmd, "cc %s %s %s%s%s%s -lm -lpthread -lcrypto -lssl%s -o %s 2>&1",
+                 qc, qr, qchart, ldirs, libs, GMB_EXE_EXPORT_DYNAMIC, GMB_EXE_FRAMEWORKS, qexe);
     rc = run_cmd(cmd, &log);
     if (rc != 0) {
         char msg[1200];
@@ -653,5 +724,8 @@ int build_project(const Options* o, const char* project, const char* entry,
         return 5;
     }
     free(log);
+    /* La dylib AI accanto all'eseguibile: senza, un programma distribuito fuori dal checkout
+     * non troverebbe il runtime AI (per una LIBRARY il caricamento è dell'host: si salta). */
+    if (!is_lib) deploy_ai_runtime(exe, tc.install, o->quiet);
     return 0;
 }

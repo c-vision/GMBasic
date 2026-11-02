@@ -197,6 +197,10 @@ if grep -q 'gmb_tray_' "$DIR/$CASE.c" 2>/dev/null; then
     echo "[c99native] TRAY: libgmb_tray.dylib assente (target gmb_tray non costruito)" >&2
   fi
 fi
+# SPLIT core/AI (2026-11-02): su ELF la dylib `libgmb_runtime_ai.so` è caricata con dlopen e
+# risolve a load-time i simboli del core: l'eseguibile deve esportarli (`-rdynamic`).
+EXPORTDYN=""
+if [ "$(uname -s)" = "Linux" ]; then EXPORTDYN="-Wl,--export-dynamic"; fi
 ASRLIB="$L/gmb_runtime_c_build/llmasr_build/libllm_asr.a"
 [ -f "$ASRLIB" ] || ASRLIB="$ROOT/native/gmb_runtime_c/build/llmasr_build/libllm_asr.a"
 # -dead_strip_dylibs: ld64 tiene SOLO le dylib che servono davvero ai simboli usati dal
@@ -212,7 +216,7 @@ if [ "$MIN_LINK" = "1" ]; then
   LLMDESC_LIB="$ROOT/native/gmb_runtime_c/build/llmdesc_build/libllmdesc.a"
   [ -f "$LLMDESC_LIB" ] || LLMDESC_LIB="$ROOT/native/gmb_vm_c/build/gmb_runtime_c_build/llmdesc_build/libllmdesc.a"
   [ -f "$LLMDESC_LIB" ] || LLMDESC_LIB=""
-  $CC_BIN $CF $CCFIRST -Wl,-dead_strip_dylibs "$DIR/$CASE.o" -o "$OUTBIN" \
+  $CC_BIN $CF $CCFIRST -Wl,-dead_strip_dylibs $EXPORTDYN "$DIR/$CASE.o" -o "$OUTBIN" \
     "$RUNTIME_LIB" $TRAY_LINK "$ROOT/native/gmb_runtime_c/build/gmb_chart_build/libgmb_chart.a" \
     ${LLMDESC_LIB:+"$LLMDESC_LIB"} \
     -lpthread -lm -lz -lbz2 -lcurl -lcompression 2>/tmp/gmb_minlink.err || {
@@ -242,7 +246,7 @@ if [ -x "$FETCH" ]; then
   fi
 fi
 
-$CC_BIN $CF $CCFIRST -Wl,-dead_strip_dylibs -Wl,-rpath,@loader_path -Wl,-rpath,"$CODEC" "$DIR/$CASE.o" $TORCH_OBJS $JINJA_OBJ -o "$OUTBIN" \
+$CC_BIN $CF $CCFIRST -Wl,-dead_strip_dylibs $EXPORTDYN -Wl,-rpath,@loader_path -Wl,-rpath,"$CODEC" "$DIR/$CASE.o" $TORCH_OBJS $JINJA_OBJ -o "$OUTBIN" \
   "$L/libgmb_vm.a" "$RUNTIME_LIB" $TRAY_LINK "$ASRLIB" \
   "$ROOT/native/gmb_runtime_c/build/gmb_chart_build/libgmb_chart.a" \
   "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm.a" \

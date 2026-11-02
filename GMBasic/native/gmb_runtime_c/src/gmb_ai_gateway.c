@@ -113,7 +113,7 @@ static void* ai_lib(void)
 
     snprintf(g_ai_err, sizeof g_ai_err,
              "runtime AI non disponibile: libgmb_runtime_ai non caricabile "
-             "(cercata accanto all'eseguibile e in ~/.gmbasic/libs/%s; `gmb libs ensure`)%s%s",
+             "(cercata accanto all'eseguibile, nel build del checkout e in ~/.gmbasic/libs/%s)%s%s",
              gmb_libs_rid(),
              g_ai_last_dlerr[0] ? " — " : "", g_ai_last_dlerr);
     fprintf(stderr, "?%s\n", g_ai_err);

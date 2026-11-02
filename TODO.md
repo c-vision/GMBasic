@@ -348,11 +348,18 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
           richiesta dal gateway debole `gmb_ai_gateway.c` (RTLD_LAZY; path: checkout
           `GMBasic/build/libs/<rid>/`, accanto all'eseguibile, cache `~/.gmbasic/libs/<rid>/`).
           L'ABI dei modelli (`llmdesc`) è registrata dalla dylib via `gmb_abi_set_llmdesc`.
-          Verificato: `libgmb_runtime.a` ha **0** simboli LLMEnv; `gmb_repl` compila e linka
-          senza il motore MLX (solo `libllmtoken` via `gmb_agent_runtime`); `LLM.TOKENS`
-          eseguito da un programma generato carica la dylib (errore corretto: modello assente)
-          e, senza dylib, dà l'errore esplicito del gateway. La VM (`gmb_vm`) e i tool TRAIN
-          linkano `gmbllm_core`/`gmbllm_train` come prima.
+          **Deploy**: `gmb build`/`gmb run` copiano `libgmb_runtime_ai` **accanto
+          all'eseguibile** (stesso principio della closure C#: il programma distribuito non
+          dipende dal checkout); la cache `~/.gmbasic/libs/<rid>/` non è il posto canonico
+          (`libs prune` rimuove i file fuori manifest). **Windows**: niente `dynamic_lookup` →
+          lo split non c'è, le sorgenti AI restano nel core. **Linux**: i consumer esportano i
+          simboli del core (`-Wl,--export-dynamic`).
+          Verificato: `libgmb_runtime.a` ha **0** simboli LLMEnv; `gmb_repl` e `gmbadmin`
+          **non hanno più alcuna dylib LLM** (tolto anche il `-llmtoken` inutile da
+          `gmb_agent_runtime`: `gmb_brain_mlx.c` la carica a runtime via dlopen);
+          `LLM.TOKENS` eseguito da un programma in `/tmp` (fuori dal checkout) carica la dylib
+          copiata accanto all'exe (errore corretto: modello assente). La VM (`gmb_vm`) e i
+          tool TRAIN linkano `gmbllm_core`/`gmbllm_train` come prima.
         - Restano **C#** solo i moduli usati dai backend C# (IL/PCode): `BrainRegistry`,
           `BrainInstaller`, `BrainManifest`, `BrainVault` (il C# può esistere come altro
           compilatore, ma non ha più alcun comando che esista SOLO lì).
