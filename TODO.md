@@ -239,7 +239,8 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
       4 backend), nomi `AI.AGENTLIST/AGENTEVENTS/AGENTGET/MEMORYASK/WORKFLOW*` mappati nel
       compilatore A1. **`REPLACE$` con old vuoto**: inserimento in ogni posizione su TUTTI i
       backend (`StringHelpers.Replace` allineata a `gmb_str_replace`; MiniTest aggiornato).
-      Aperti tracciati: AOT `-n`, `-full`, `--debug-tcp`.
+      Aperti tracciati: AOT `-n` (il nativo canonico è `gmb build`). `-full` portato in
+      `gmbcs build --full` (runtime .NET copiato, verificato); `--debug-tcp` era inerte.
 - [x] **F7b — Audit rigenerato** (2026-11-02): `dotnet run --project tools/audit -- --all` →
       **1540 funzioni canoniche, IL/PCodeVM/VM-C/C99Native 100%, 0 gap**. Report in
       `tools/reports/` (manifest + `audit-backends.md`, artefatti locali non versionati).

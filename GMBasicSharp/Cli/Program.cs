@@ -94,10 +94,7 @@ public static class Program
             return 2;
         }
         if (full)
-        {
-            Console.Error.WriteLine("?-full (closure managed completa): non portato. Usa `gmbcs build --target il`.");
-            return 2;
-        }
+            return Basic.CliEngine.Program.Main(["build", "--target", "il", "--full", .. list]);
 
         if (ast)
             return Basic.CliEngine.Program.Main(["dump", "ast", .. list]);

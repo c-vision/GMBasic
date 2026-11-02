@@ -122,13 +122,17 @@ public static class Program
             }
             case "build":
             {
-                var file = FileArg(list, 1);
+                /* Le opzioni si consumano PRIMA di leggere il file: i chiamanti possono
+                 * scrivere sia `build <file> --target il` sia `build --target il <file>`. */
                 var target = TakeOption(list, "--target") ?? "il";
+                var full = list.Remove("--full") | list.Remove("-full");
+                var all = list.Remove("--all");
+                var file = FileArg(list, 1);
                 var program = CompileFile(file, defines);
                 return target.ToLowerInvariant() switch
                 {
                     "pcode" => BuildPCode(program, file, outPath),
-                    "il" => BuildIl(program, file, outPath),
+                    "il" => BuildIl(program, file, outPath, full, all),
                     _ => throw new ArgumentException($"target sconosciuto: {target} (il|pcode)"),
                 };
             }
@@ -253,13 +257,36 @@ public static class Program
         return 0;
     }
 
-    private static int BuildIl(BasicProgram program, string sourcePath, string? outDir)
+    private static int BuildIl(BasicProgram program, string sourcePath, string? outDir, bool full = false, bool all = false)
     {
         var dir = outDir != null ? Path.GetFullPath(outDir) : Path.Combine(Path.GetDirectoryName(Path.GetFullPath(sourcePath))!, "bin");
         var exe = IlProgramCompiler.Compile(program, sourcePath, dir, Path.GetFileNameWithoutExtension(sourcePath),
-            noOptimize: false, dumpIl: false, linkRuntime: true, dllOnly: false, slim: true);
-        Console.WriteLine($"[IL] {sourcePath} -> {exe}");
+            noOptimize: false, dumpIl: false, linkRuntime: true, dllOnly: false, slim: !all);
+        if (full) CopyNetRuntime(dir);
+        Console.WriteLine($"[IL] {sourcePath} -> {exe}{(full ? " (full: runtime .NET copiato)" : "")}");
         return 0;
+    }
+
+    /* -full (dal vecchio runner): copia il framework .NET accanto all'eseguibile, così la
+     * distribuzione managed non dipende dal runtime installato. */
+    private static void CopyNetRuntime(string destDir)
+    {
+        var fxDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            ".dotnet", "shared", "Microsoft.NETCore.App");
+        if (!Directory.Exists(fxDir))
+        {
+            fxDir = "/usr/local/share/dotnet/shared/Microsoft.NETCore.App";
+            if (!Directory.Exists(fxDir)) return;
+        }
+        var latestVer = Directory.GetDirectories(fxDir).Select(Path.GetFileName).OrderDescending().FirstOrDefault();
+        if (latestVer == null) return;
+        var srcDir = Path.Combine(fxDir, latestVer);
+        foreach (var f in Directory.GetFiles(srcDir, "*"))
+        {
+            var dest = Path.Combine(destDir, Path.GetFileName(f));
+            if (!File.Exists(dest)) File.Copy(f, dest, true);
+        }
     }
 
     private static string CapturePCode(BasicProgram program, string sourcePath)
@@ -504,7 +531,7 @@ public static class Program
               gmbcs dump pcode  <file> [--out f]
               gmbcs dump il     <file> [--out f]
               gmbcs dump disasm <file> [--out f]
-              gmbcs build <file> [--target il|pcode] [--out dir]
+              gmbcs build <file> [--target il|pcode] [--out dir] [--full] [--all]
               gmbcs prginfo <file.prg>
               gmbcs run  <file> [--engine il|pcode]
               gmbcs eval "<istruzioni>" [--engine il|pcode]
@@ -512,6 +539,7 @@ public static class Program
               gmbcs aibench [RUN] [path]
 
             opzioni: -D name=val, --il-module <dll>, --out <file>, --json
+            build: --full (copia il runtime .NET), --all (nessun filtro ClosureSlim)
             """);
     }
 }
