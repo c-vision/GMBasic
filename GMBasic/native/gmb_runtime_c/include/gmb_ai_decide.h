@@ -68,6 +68,11 @@ extern const gmb_decision_option_t gmb_decision_slots_choice[16];
  * Ritorna la lunghezza scritta (senza NUL) o -1 se il buffer è troppo piccolo. */
 int gmb_decision_result_json(const gmb_decision_result_t* result, char* out, size_t cap);
 
+/* Superficie BASIC v0: esegue il provider di default (Rules) sul dominio canonico del kind
+ * ("NOUL"/"SCORE"/"CHOICE") e restituisce il JSON del risultato in heap (libera con free).
+ * NULL su kind invalido/errore. Stessa forma del JSON C# (IlRuntime.AiDecide). */
+char* gmb_ai_decide_run_json(const char* state, const char* kind);
+
 #ifdef __cplusplus
 }
 #endif
