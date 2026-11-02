@@ -36,6 +36,7 @@ gmb pkg rollback [dir] [--list] [--to prefisso]
 gmb pkg trust [list|add|remove|fingerprint] …
 gmb pkg cache [list|gc|dedup|clean [--force]]
 gmb pkg verify <file.gmbpkg>
+gmb pack --dry-run <dir>        # elenca i file che entrerebbero (nessuna scrittura)
 ```
 
 ### Pubblicazione
@@ -58,12 +59,14 @@ gmb keygen [dir] [--pem]
 ```bash
 gmb libs status · gmb libs ensure [--runtime-only|--dev|--components|--all]
 gmb libs check [--index file] · gmb libs publish <support|engine|core> <rid> [--yes]
+gmb libs prune [--dry-run]      # elimina dalla cache i file non presenti nel manifest
 ```
 
 ### Setup componenti on-demand
 ```bash
 gmb setup status
 gmb setup <LIBS|OCR|TORCH|BROWSER|OBSCURA|ALL> [--force] [--yes] [--torch-local dir]
+gmb setup rm <BROWSER|OBSCURA|TORCH|LIBS|OCR|ALL> [--force]
 ```
 Manifest in `shared/settings/` (`chromium-manifest.json`, `obscura-manifest.json`,
 `ml-manifest.json`), download via `gmb_fetch` (ripresa + sha256 + rename atomico), estrazione
@@ -109,6 +112,7 @@ Elenco file da `https://huggingface.co/api/models/<repo>`, download con `gmb_fet
 ```bash
 gmb fixtures [list|ensure|pull <nome>]
 gmb brain [list|info <nome>|use <nome[,nome]>|detach <nome>]
+gmb brain install <nome> [<sorgente>] · uninstall <nome> · resolve <nome>
 gmb grep <pattern> [path] [-i] [-n] [--include G] [--depth N]
 gmb convert <file> [-o out.(md|html|txt)] · gmb convfmt
 gmb keygen · gmb pkg verify
@@ -116,9 +120,10 @@ gmb keygen · gmb pkg verify
 
 ## Residuo (F9c)
 
-`graph export-obsidian`, `graph watch|unwatch`, `web2md`, `batch`: rispondono con un errore
-**esplicito** («non ancora in C»). Nessuna nuova logica C# è stata aggiunta: il porting è
-tracciato in `TODO.md` §6.
+Ancora solo-C# (inventario completo in `TODO.md` §6, F9d): toolchain Second Brain
+(`brain stats|verify|create|optimize|backup|rename|dedupe|extract|merge|buildvault|register|
+diff|doctor|convert`), `brain export|sign`, `graph export-obsidian`, `graph watch|unwatch`,
+`libs index`, `pkg cache verify`, `publish --repo`. Il resto dell'amministrazione è C.
 
 ## Sorgente unica
 

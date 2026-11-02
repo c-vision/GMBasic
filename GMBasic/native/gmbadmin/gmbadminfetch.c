@@ -631,3 +631,95 @@ int gmbadmin_hf(int argc, char** argv, int mlx)
            failed ? "PARZIALE" : "OK", repo, root, done, skipped, failed);
     return failed ? 1 : 0;
 }
+
+/* ── setup rm: rimuove la cache di un componente ─────────────────────────── */
+
+int gmbadmin_setup_rm(const char* comp, int force)
+{
+    if (!comp || !*comp) comp = "ALL";
+    const char* rid = gmb_libs_rid();
+    char dirs[4][2048];
+    int n = 0;
+    int wants_libs = 0;
+    if (!strcasecmp(comp, "BROWSER")) gmb_paths_chromium_dir(rid, dirs[n++], sizeof dirs[0]);
+    else if (!strcasecmp(comp, "OBSCURA")) gmb_paths_obscura_dir(rid, dirs[n++], sizeof dirs[0]);
+    else if (!strcasecmp(comp, "TORCH")) gmb_paths_ml_dir(rid, dirs[n++], sizeof dirs[0]);
+    else if (!strcasecmp(comp, "LIBS") || !strcasecmp(comp, "OCR")) {
+        char c[2048];
+        gmb_paths_libs_cache_dir(c, sizeof c);
+        snprintf(dirs[n++], sizeof dirs[0], "%s/%s", c, rid);
+        wants_libs = 1;
+    } else if (!strcasecmp(comp, "ALL")) {
+        gmb_paths_chromium_dir(rid, dirs[n++], sizeof dirs[0]);
+        gmb_paths_obscura_dir(rid, dirs[n++], sizeof dirs[0]);
+        gmb_paths_ml_dir(rid, dirs[n++], sizeof dirs[0]);
+    } else {
+        fprintf(stderr, "?setup rm: componente '%s' sconosciuto (TORCH|BROWSER|OBSCURA|OCR|LIBS|ALL)\n", comp);
+        return 2;
+    }
+    for (int i = 0; i < n; i++) {
+        if (access(dirs[i], F_OK) != 0) { printf("[%s] nessuna cache: %s\n", comp, dirs[i]); continue; }
+        if (!force && !wants_libs) {
+            printf("[%s] rimuoverei %s (rilancia con --force)\n", comp, dirs[i]);
+            continue;
+        }
+        if (wants_libs && !force) {
+            fprintf(stderr, "?setup rm %s: rimuove TUTTE le librerie native di %s — serve --force\n", comp, rid);
+            return 1;
+        }
+        gmb_fs_rmtree(dirs[i]);
+        printf("[%s] rimosso %s\n", comp, dirs[i]);
+    }
+    return 0;
+}
+
+/* ── libs prune: file in cache non presenti nel manifest ─────────────────── */
+
+int gmbadmin_libs_prune(int argc, char** argv)
+{
+    int dry = fflag(argc, argv, 3, "--dry-run");
+    char mp[2400];
+    manifest_of("libs-manifest.json", mp, sizeof mp);
+    gmb_val_t root = load_json(mp);
+    if (root.kind != GMB_TYPE_OBJECT) { fprintf(stderr, "?libs prune: manifest non leggibile (%s)\n", mp); return 1; }
+    const char* rid = gmb_libs_rid();
+    gmb_val_t r = gmb_val_dict_get(gmb_val_dict_get(root, "rids"), rid);
+    gmb_val_t files = gmb_val_dict_get(r, "files");
+    if (files.kind != GMB_TYPE_OBJECT) { fprintf(stderr, "?libs prune: nessuna entry per RID '%s'\n", rid); return 1; }
+
+    char dir[2048];
+    gmb_paths_libs_cache_dir(dir, sizeof dir);
+    char full[2400];
+    snprintf(full, sizeof full, "%s/%s", dir, rid);
+    DIR* d = opendir(full);
+    if (!d) { printf("[libs] cache assente: %s\n", full); return 0; }
+
+    /* set dei nomi noti (il manifest elenca i file per nome, non per path) */
+    gmb_int_t nk = 0;
+    gmb_string_t* keys = gmb_val_dict_keys_array(files, &nk);
+    int nkeys = (int)nk;
+
+    struct dirent* de;
+    int removed = 0, kept = 0;
+    /* prima passata: file di primo livello */
+    while ((de = readdir(d))) {
+        if (de->d_name[0] == '.') continue;
+        char p[4096];
+        snprintf(p, sizeof p, "%s/%s", full, de->d_name);
+        struct stat st;
+        if (stat(p, &st) != 0) continue;
+        if (S_ISDIR(st.st_mode)) continue;
+        int known = 0;
+        for (int i = 0; keys && i < nkeys; i++)
+            if (keys[i].data && !strcmp(keys[i].data, de->d_name)) { known = 1; break; }
+        if (known) { kept++; continue; }
+        if (S_ISLNK(st.st_mode)) { kept++; continue; }   /* alias derivati */
+        if (dry) printf("  rimuoverei %s\n", de->d_name);
+        else { unlink(p); printf("  rimosso %s\n", de->d_name); }
+        removed++;
+    }
+    closedir(d);
+    printf("[libs] %s: %d rimossi%s, %d noti in cache (%s/%s)\n",
+           dry ? "dry-run" : "prune", removed, dry ? " (simulati)" : "", kept, dir, rid);
+    return 0;
+}

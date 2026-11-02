@@ -101,10 +101,16 @@ int gmbadmin_setup(int argc, char** argv)
     const char* sub = (argc > 2) ? argv[2] : "status";
     if (!strcmp(sub, "status")) return cache_status();
     if (!strcmp(sub, "help") || !strcmp(sub, "--help")) {
-        printf("uso: gmb setup <status|TORCH|BROWSER|OBSCURA|OCR|LIBS|ALL> [--force] [--yes] [--torch-local dir]\n");
+        printf("uso: gmb setup <status|TORCH|BROWSER|OBSCURA|OCR|LIBS|ALL|rm> [--force] [--yes] [--torch-local dir]\n");
         printf("  status: RID + cache librerie native (~/.gmbasic/libs/<rid>/)\n");
         printf("  TORCH/BROWSER/OBSCURA/OCR/LIBS/ALL: download on-demand (sha256 verificato)\n");
         return 0;
+    }
+    if (!strcmp(sub, "rm")) {
+        const char* comp = (argc > 3) ? argv[3] : "ALL";
+        int force = 0;
+        for (int i = 3; i < argc; i++) if (!strcmp(argv[i], "--force")) force = 1;
+        return gmbadmin_setup_rm(comp, force);
     }
     {
         int quiet = 0, yes = 0;
@@ -190,10 +196,12 @@ int gmbadmin_libs(int argc, char** argv)
         printf("uso: gmb libs <status|ensure|check|publish>\n");
         printf("  status: cache ~/.gmbasic/libs/<rid>/\n  check [--index file]: sha256 vs indice\n");
         printf("  publish <support|engine|core> <rid> [--yes]: release su GMBasicModules\n");
+        printf("  prune [--dry-run]: rimuove dalla cache i file non presenti nel manifest\n");
         printf("  publish <support|engine|core> <rid> [--yes]: release su GMBasicModules\n");
         return 0;
     }
     if (!strcmp(sub, "publish")) return gmbadmin_libs_publish(argc, argv);
+    if (!strcmp(sub, "prune")) return gmbadmin_libs_prune(argc, argv);
     fprintf(stderr, "?libs: comando sconosciuto '%s' (status|ensure|check|publish)\n", sub);
     return 2;
 }
@@ -203,7 +211,7 @@ int gmbadmin_libs(int argc, char** argv)
 int gmbadmin_brain(int argc, char** argv)
 {
     const char* sub = (argc > 2) ? argv[2] : "list";
-    if (!strcmp(sub, "list") || !strcmp(sub, "help")) {
+    if (!strcasecmp(sub, "list") || !strcasecmp(sub, "help")) {
         char* l = gmb_brain_registry_list();
         if (l && l[0]) printf("%s\n", l);
         else printf("(nessun cervello registrato)\n");
@@ -211,26 +219,50 @@ int gmbadmin_brain(int argc, char** argv)
         return 0;
     }
     const char* name = apos(argc, argv, 0);
-    if (!strcmp(sub, "info")) {
+    if (!strcasecmp(sub, "info")) {
         if (!name) { fprintf(stderr, "?uso: gmb brain info <nome>\n"); return 2; }
         char* i = gmb_brain_registry_info(name);
         if (i) { printf("%s", i); free(i); return 0; }
         fprintf(stderr, "?brain '%s' non trovato\n", name);
         return 1;
     }
-    if (!strcmp(sub, "use")) {
+    if (!strcasecmp(sub, "use")) {
         if (!name) { fprintf(stderr, "?uso: gmb brain use <nome[,nome...]>\n"); return 2; }
         int rc = gmb_brain_use(name);
         printf(rc ? "collegati: %s\n" : "?brain use fallito\n", name);
         return rc ? 0 : 1;
     }
-    if (!strcmp(sub, "detach")) {
+    if (!strcasecmp(sub, "detach")) {
         if (!name) { fprintf(stderr, "?uso: gmb brain detach <nome>\n"); return 2; }
         int rc = gmb_brain_detach(name);
         printf(rc ? "scollegato: %s\n" : "?brain detach fallito\n", name);
         return rc ? 0 : 1;
     }
-    fprintf(stderr, "?brain: comando sconosciuto '%s' (list|info|use|detach)\n", sub);
+    if (!strcasecmp(sub, "install") || !strcasecmp(sub, "uninstall")) {
+        if (!name) { fprintf(stderr, "?uso: gmb brain %s <nome> [<sorgente>]\n", sub); return 2; }
+        const char* src = apos(argc, argv, 1);
+        if (!strcasecmp(sub, "uninstall")) {
+            double ok = gmb_brain_uninstall(name);
+            printf(ok > 0 ? "rimosso: %s\n" : "?brain uninstall fallito\n", name);
+            return ok > 0 ? 0 : 1;
+        }
+        double ok = gmb_brain_install(name, (src && *src) ? src : NULL);
+        if (ok <= 0) return 1;
+        printf("installato e collegato: %s\n", name);
+        return 0;
+    }
+    if (!strcasecmp(sub, "resolve")) {
+        if (!name) { fprintf(stderr, "?uso: gmb brain resolve <nome>\n"); return 2; }
+        char* i = gmb_brain_registry_info(name);
+        if (!i) { fprintf(stderr, "?brain '%s' non registrato\n", name); return 1; }
+        printf("%s\n", i);
+        free(i);
+        char db[2048], g[4096];
+        if (gmb_brain_rag_db(name, db, sizeof db)) printf("rag:    %s\n", db);
+        if (gmb_brain_graph_json(name, g, sizeof g)) printf("graph:  %s\n", g);
+        return 0;
+    }
+    fprintf(stderr, "?brain: comando sconosciuto '%s' (list|info|use|detach|install|uninstall|resolve)\n", sub);
     return 2;
 }
 

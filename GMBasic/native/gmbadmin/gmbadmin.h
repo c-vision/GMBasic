@@ -27,6 +27,8 @@ int gmbadmin_graph(int argc, char** argv);     /* graph <build|update|status> */
 int gmbadmin_daemon(int argc, char** argv);    /* daemon <install|start|stop|status|logs|list|uninstall> */
 /* Download on-demand (gmbadminfetch.c): componenti setup, libs publish, hf/mlx. */
 int gmbadmin_setup_component(const char* name, int argc, char** argv, int quiet, int yes);
+int gmbadmin_setup_rm(const char* comp, int force);
+int gmbadmin_libs_prune(int argc, char** argv);
 int gmbadmin_libs_publish(int argc, char** argv);
 int gmbadmin_hf(int argc, char** argv, int mlx);
 int gmbadmin_verify_pkg(int argc, char** argv);   /* pkg verify <file.gmbpkg> */

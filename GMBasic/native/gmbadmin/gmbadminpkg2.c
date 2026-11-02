@@ -160,6 +160,20 @@ int gmbadmin_pack(int argc, char** argv)
     char outbuf[4096];
     if (!out) { snprintf(outbuf, sizeof outbuf, "%s/%s-%s.gmbpkg", dir, name, ver); out = outbuf; }
 
+    /* --dry-run: elenca i file che entrerebbero nell'archivio (nessuna scrittura). */
+    {
+        int dry = 0;
+        for (int i = 2; i < argc; i++) if (!strcmp(argv[i], "--dry-run") || !strcmp(argv[i], "-D")) dry = 1;
+        if (dry) {
+            gmb_pkg_pack_files_t* dl = gmb_pkg_pack_files(dir, "all");
+            int dn = dl ? gmb_pkg_pack_files_count(dl) : 0;
+            printf("DRY-RUN pack %s@%s -> %s (%d file)\n", name, ver, out, dn);
+            for (int i = 0; i < dn; i++) printf("  %s\n", gmb_pkg_pack_files_get(dl, i));
+            if (dl) gmb_pkg_pack_files_free(dl);
+            return 0;
+        }
+    }
+
     char priv[512] = "";
     int sign = 0;
     if ((key_file && *key_file) || (secret && *secret)) {
