@@ -98,5 +98,7 @@ vengono ignorati: il CLI stampa un errore esplicito con il programma giusto da u
      `strings/replace_dollar.bas` verde su 4 backend);
    - il compilatore A1 non mappava i nomi `AI.AGENTLIST/AGENTEVENTS/AGENTGET/MEMORYASK/
      WORKFLOW*` (implementati nel VM): aggiunti. `BSP` su `shared/webapp/pages` → **2 OK, 0 FAIL**.
-   Resta una divergenza preesistente (non BSP): `REPLACE$("abc","","-")` — IL/PCode lanciano,
-   C99/C99Native inseriscono.
+   Semantica di `REPLACE$` con **old vuoto**: **inserisce** il nuovo in ogni posizione (inizio
+   e fine inclusi), su TUTTI i backend (allineata il 2026-11-02 in `StringHelpers.Replace`;
+   .NET `string.Replace` lancia, quindi non si delega più a lui). MiniTest
+   `strings/replace_dollar.bas` copre anche questo caso.

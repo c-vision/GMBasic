@@ -237,6 +237,7 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
       cartella temporanea privata (la discovery ricorsiva su /tmp includeva `.inc` estranei),
       `REPLACE$` aggiunta al VM/C (`gmb_str_replace`, MiniTest `strings/replace_dollar.bas`
       4 backend), nomi `AI.AGENTLIST/AGENTEVENTS/AGENTGET/MEMORYASK/WORKFLOW*` mappati nel
-      compilatore A1. Aperti tracciati: AOT `-n`, `-full`, `--debug-tcp`; divergenza
-      preesistente `REPLACE$("abc","","-")` (IL/PCode lanciano, C99/C99Native inseriscono).
+      compilatore A1. **`REPLACE$` con old vuoto**: inserimento in ogni posizione su TUTTI i
+      backend (`StringHelpers.Replace` allineata a `gmb_str_replace`; MiniTest aggiornato).
+      Aperti tracciati: AOT `-n`, `-full`, `--debug-tcp`.
 - [ ] **F7b — Pulizia finale** (dopo F6): guida unica e manifesti/audit rigenerati.
