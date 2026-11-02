@@ -18176,7 +18176,9 @@ public static double TextWidth(string s)
     // Provider deterministico Rules (nessun modello): restituisce lo stesso JSON del runtime C
     // (gmb_ai_decide_run_json), così le 4 gambe sono confrontabili. La superficie tipizzata
     // DECISION<T> e il provider locale MLX (ABI v8 CAP_DECIDE) sono il passo successivo.
-    public static string AiDecide(string state, string kind)
+    public static string AiDecide(string state, string kind) => AiDecide(state, kind, "");
+
+    public static string AiDecide(string state, string kind, string provider)
     {
         try
         {
@@ -18203,7 +18205,14 @@ public static double TextWidth(string s)
                     _ => throw new ArgumentException($"kind '{kind}' non valido (NOUL/SCORE/CHOICE[:labels])"),
                 };
             }
-            var result = new Basic.Decision.RuleDecisionProvider().Evaluate(request)[0];
+            var p = (provider ?? "").Trim().ToLowerInvariant();
+            Basic.Decision.ISystemOneProvider decisionProvider = p switch
+            {
+                "" or "rules" => new Basic.Decision.RuleDecisionProvider(),
+                "mock" => new Basic.Decision.MockDecisionProvider(),
+                _ => throw new ArgumentException($"provider '{provider}' non valido (rules/mock)"),
+            };
+            var result = decisionProvider.Evaluate(request)[0];
             var value = result.Value switch
             {
                 bool b => b ? "true" : "false",

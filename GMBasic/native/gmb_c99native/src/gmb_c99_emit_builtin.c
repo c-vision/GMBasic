@@ -7331,7 +7331,10 @@ static int aiag_decide(ctx_t* c, gmb_expr_t** a, int n, int line) {
     if (n < 2) { c99_fail(c, line, "AI DECIDE: attesi (state, kind)"); return 1; }
     sb_put(&c->out, "gmb_string_take(gmb_ai_decide_run_json(");
     emit_str_operand(c, a[0]); sb_put(&c->out, ".data, ");
-    emit_str_operand(c, a[1]); sb_put(&c->out, ".data))");
+    emit_str_operand(c, a[1]); sb_put(&c->out, ".data, ");
+    if (n >= 3) { emit_str_operand(c, a[2]); sb_put(&c->out, ".data"); }
+    else sb_put(&c->out, "\"\"");
+    sb_put(&c->out, "))");
     return 1;
 }
 static int aiag_hook_fire(ctx_t* c, gmb_expr_t** a, int n, int line) {

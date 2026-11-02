@@ -189,7 +189,7 @@ int gmb_decision_result_json(const gmb_decision_result_t* result, char* out, siz
     return n;
 }
 
-char* gmb_ai_decide_run_json(const char* state, const char* kind) {
+char* gmb_ai_decide_run_json(const char* state, const char* kind, const char* provider_name) {
     if (!kind) return NULL;
     const gmb_decision_option_t* options = NULL;
     int n_options = 0;
@@ -233,7 +233,11 @@ char* gmb_ai_decide_run_json(const char* state, const char* kind) {
     else return NULL;
     (void)is_choice_custom;
 
-    gmb_decision_provider_t* provider = gmb_decision_provider_rules();
+    gmb_decision_provider_t* provider = NULL;
+    if (!provider_name || !provider_name[0] || ieq(provider_name, "rules"))
+        provider = gmb_decision_provider_rules();
+    else if (ieq(provider_name, "mock"))
+        provider = gmb_decision_provider_mock(NULL, 1.0);
     if (!provider) return NULL;
     gmb_decision_result_t result;
     int rc = gmb_decision_evaluate(provider, state ? state : "", k, options, n_options, &result);
