@@ -937,6 +937,45 @@ char* gmb_rag_list_collections(const char* db)
     return out;
 }
 
+/* Sorgenti indicizzate in una collezione (JSON array di stringhe). Usata da `rag build
+ * --prune` nel CLI C: la build confronta il set su disco con quello nel DB. */
+char* gmb_rag_list_sources(const char* db, const char* coll)
+{
+    if (!coll || !coll[0]) return NULL;
+    sqlite3* s = rag_db(rag_handle(db));
+    if (!s) return NULL;
+    int64_t cid = rag_coll_id(s, coll);
+    if (cid <= 0) return strdup("[]");
+    sqlite3_stmt* st = NULL;
+    char* out = (char*)malloc(1 << 16);
+    if (!out) return NULL;
+    strcpy(out, "[");
+    int first = 1;
+    if (sqlite3_prepare_v2(s, "SELECT source_id FROM vec_documents WHERE collection_id=$1 ORDER BY id", -1, &st, NULL) == SQLITE_OK)
+    {
+        sqlite3_bind_int64(st, 1, cid);
+        while (sqlite3_step(st) == SQLITE_ROW)
+        {
+            const char* n = (const char*)sqlite3_column_text(st, 0);
+            if (!n) continue;
+            if (!first) strcat(out, ",");
+            first = 0;
+            char esc[1024]; size_t j = 0;
+            esc[j++] = '"';
+            for (const char* q = n; *q && j < sizeof(esc) - 3; q++)
+            {
+                if (*q == '"' || *q == '\\') esc[j++] = '\\';
+                esc[j++] = *q;
+            }
+            esc[j++] = '"'; esc[j] = '\0';
+            if (strlen(out) + j + 4 < (1 << 16)) strcat(out, esc);
+        }
+        sqlite3_finalize(st);
+    }
+    strcat(out, "]");
+    return out;
+}
+
 /* Candidati (chunk con embedding) di una collezione → per search. Ritorna numero righe. */
 typedef struct {
     int64_t chunk_id, doc_id;

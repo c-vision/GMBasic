@@ -9,6 +9,7 @@
 #include "gmb_grep.h"
 #include "gmb_doc.h"
 #include "gmb_pkg_ecdsa.h"
+#include "gmb_pkg_ed25519.h"
 #include "gmb_pkg_lock.h"
 #include "gmb_fsutil.h"
 
@@ -91,7 +92,7 @@ static int cache_status(void)
         closedir(d);
     }
     printf("  RID: %s\n  cache librerie: %s\n  file presenti: %d\n", rid, full, n);
-    printf("  per popolarla: `gmb libs ensure` (porting C in corso) oppure il CLI storico\n");
+    printf("  per popolarla: `gmb libs ensure` (bootstrap C) oppure `gmb setup LIBS`\n");
     return 0;
 }
 
@@ -100,13 +101,19 @@ int gmbadmin_setup(int argc, char** argv)
     const char* sub = (argc > 2) ? argv[2] : "status";
     if (!strcmp(sub, "status")) return cache_status();
     if (!strcmp(sub, "help") || !strcmp(sub, "--help")) {
-        printf("uso: gmb setup <status|TORCH|BROWSER|OCR|ALL|rm>\n");
+        printf("uso: gmb setup <status|TORCH|BROWSER|OBSCURA|OCR|LIBS|ALL> [--force] [--yes] [--torch-local dir]\n");
         printf("  status: RID + cache librerie native (~/.gmbasic/libs/<rid>/)\n");
-        printf("  TORCH/BROWSER/OCR/ALL/rm: porting C in corso (F9c)\n");
+        printf("  TORCH/BROWSER/OBSCURA/OCR/LIBS/ALL: download on-demand (sha256 verificato)\n");
         return 0;
     }
-    fprintf(stderr, "?setup %s: non ancora in C (porting F9c tracciato in TODO §6)\n", sub);
-    return 2;
+    {
+        int quiet = 0, yes = 0;
+        for (int i = 3; i < argc; i++) {
+            if (!strcmp(argv[i], "--quiet")) quiet = 1;
+            if (!strcmp(argv[i], "--yes") || !strcmp(argv[i], "-y")) yes = 1;
+        }
+        return gmbadmin_setup_component(sub, argc, argv, quiet, yes);
+    }
 }
 
 /* libs.txt accanto all'eseguibile (indice piatto per-file emesso dal build). */
@@ -182,10 +189,12 @@ int gmbadmin_libs(int argc, char** argv)
     if (!strcmp(sub, "help") || !strcmp(sub, "--help")) {
         printf("uso: gmb libs <status|ensure|check|publish>\n");
         printf("  status: cache ~/.gmbasic/libs/<rid>/\n  check [--index file]: sha256 vs indice\n");
-        printf("  publish: porting C in corso (F9c)\n");
+        printf("  publish <support|engine|core> <rid> [--yes]: release su GMBasicModules\n");
+        printf("  publish <support|engine|core> <rid> [--yes]: release su GMBasicModules\n");
         return 0;
     }
-    fprintf(stderr, "?libs %s: non ancora in C (porting F9c tracciato in TODO §6)\n", sub);
+    if (!strcmp(sub, "publish")) return gmbadmin_libs_publish(argc, argv);
+    fprintf(stderr, "?libs: comando sconosciuto '%s' (status|ensure|check|publish)\n", sub);
     return 2;
 }
 
@@ -305,12 +314,41 @@ int gmbadmin_doc(int argc, char** argv)
 
 int gmbadmin_keygen(int argc, char** argv)
 {
-    (void)argc; (void)argv;
-    char priv[8192] = "", pub[8192] = "";
-    if (!gmb_pkg_ecdsa_keygen_pem(priv, sizeof priv, pub, sizeof pub)) {
+    int pem = 0;
+    const char* dir = NULL;
+    for (int i = 2; i < argc; i++) {
+        if (!strcmp(argv[i], "--pem")) { pem = 1; continue; }
+        if (argv[i][0] != '-') { dir = argv[i]; break; }
+    }
+    if (pem) {
+        char priv[8192] = "", pub[8192] = "";
+        if (!gmb_pkg_ecdsa_keygen_pem(priv, sizeof priv, pub, sizeof pub)) {
+            fprintf(stderr, "?keygen --pem: generazione fallita\n");
+            return 1;
+        }
+        printf("PRIVATE KEY:\n%s\nPUBLIC KEY:\n%s\n", priv, pub);
+        return 0;
+    }
+    char priv[256] = "", pub[256] = "";
+    if (!gmb_pkg_ed25519_keygen(priv, sizeof priv, pub, sizeof pub)) {
         fprintf(stderr, "?keygen: generazione fallita\n");
         return 1;
     }
-    printf("PRIVATE KEY:\n%s\nPUBLIC KEY:\n%s\n", priv, pub);
+    if (!dir) {
+        printf("private.key: %s\npublic.key: %s\n", priv, pub);
+        return 0;
+    }
+    gmb_fs_mkdir_p(dir);
+    char pp[2400], up[2400];
+    snprintf(pp, sizeof pp, "%s/private.key", dir);
+    snprintf(up, sizeof up, "%s/public.key", dir);
+    FILE* a = fopen(pp, "wb");
+    FILE* b = fopen(up, "wb");
+    if (!a || !b) { if (a) fclose(a); if (b) fclose(b); fprintf(stderr, "?keygen: scrittura fallita\n"); return 1; }
+    fprintf(a, "%s", priv);
+    fprintf(b, "%s", pub);
+    fclose(a); fclose(b);
+    chmod(pp, 0600);
+    printf("KeyPair Ed25519 generata in %s (private.key / public.key, seed 32B base64)\n", dir);
     return 0;
 }

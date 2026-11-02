@@ -45,6 +45,9 @@ char* gmb_grep_format_json(const char* hits_json, int with_line, int with_column
 void  gmb_grep_free(char* p);
 #include <ctype.h>
 #include <unistd.h>
+#if defined(__APPLE__)
+#include <mach-o/dyld.h>
+#endif
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -87,6 +90,41 @@ static char g_settings_dir[1024] = "";
  * Il marker storico `GMBASIC.sln` non esiste più col monorepo: si cercano i percorsi
  * REALI risalendo dalla CWD — prima la forma monorepo (<root>/GMBasicSharp/<rel>),
  * poi quella del repo C# autonomo (<root>/<rel>). */
+/* Dir dell'eseguibile REPL (per risolvere i tool anche quando la CWD NON è il repo:
+ * un job launchd parte con WorkingDirectory arbitraria). */
+static int repl_exe_dir(char* out, size_t cap)
+{
+#if defined(__APPLE__)
+    char exe[4096];
+    uint32_t sz = (uint32_t)sizeof exe;
+    if (_NSGetExecutablePath(exe, &sz) != 0) return 0;
+#else
+    char exe[4096];
+    ssize_t n = readlink("/proc/self/exe", exe, sizeof exe - 1);
+    if (n <= 0) return 0;
+    exe[n] = 0;
+#endif
+    char* sl = strrchr(exe, '/');
+    if (!sl) return 0;
+    *sl = 0;
+    snprintf(out, cap, "%s", exe);
+    return 1;
+}
+
+/* Cerca `tool` nel PATH (nome esatto). */
+static int repl_find_in_path(const char* tool, char* out, size_t cap)
+{
+    const char* pe = getenv("PATH");
+    if (!pe) return 0;
+    char tmp[4096];
+    snprintf(tmp, sizeof tmp, "%s", pe);
+    for (char* d = strtok(tmp, ":"); d; d = strtok(NULL, ":")) {
+        snprintf(out, cap, "%s/%s", d, tool);
+        if (access(out, X_OK) == 0) return 1;
+    }
+    return 0;
+}
+
 void resolve_repo_path(char* out, int cap, const char* rel)
 {
     char cwd[2048];
@@ -120,6 +158,22 @@ const char* rpl_gmb_cli(char* out, size_t cap)
     for (int i = 0; cands[i]; i++) if (access(cands[i], X_OK) == 0) { snprintf(out, cap, "%s", cands[i]); return out; }
     char root[2048]; resolve_repo_path(root, sizeof(root), "native/gmb_compiler_c/build/gmb");
     if (access(root, X_OK) == 0) { snprintf(out, cap, "%s", root); return out; }
+    if (repl_find_in_path("gmb", out, cap)) return out;
+    char ed[2048];
+    if (repl_exe_dir(ed, sizeof ed)) {
+        static const char* rels[] = {
+            "../gmb_compiler_c/build/gmb",
+            "../../gmb_compiler_c/build/gmb",
+            "../../../GMBasic/native/gmb_compiler_c/build/gmb",
+            "../../../../GMBasic/native/gmb_compiler_c/build/gmb",
+            NULL
+        };
+        for (int i = 0; rels[i]; i++) {
+            char c[4096];
+            snprintf(c, sizeof c, "%s/%s", ed, rels[i]);
+            if (access(c, X_OK) == 0) { snprintf(out, cap, "%s", c); return out; }
+        }
+    }
     return NULL;
 }
 
@@ -300,6 +354,20 @@ const char* rpl_resolve_vm_host(void)
     char root[2048];
     resolve_repo_path(root, sizeof(root), "native/gmb_vm_c/build/gmb_vm_host");
     if (access(root, X_OK) == 0) { snprintf(path, sizeof(path), "%s", root); return path; }
+    if (repl_find_in_path("gmb_vm_host", path, sizeof path)) return path;
+    char ed[2048];
+    if (repl_exe_dir(ed, sizeof ed)) {
+        static const char* rels[] = {
+            "../../GMBasic/native/gmb_vm_c/build/gmb_vm_host",
+            "../../../GMBasic/native/gmb_vm_c/build/gmb_vm_host",
+            NULL
+        };
+        for (int i = 0; rels[i]; i++) {
+            char c[4096];
+            snprintf(c, sizeof c, "%s/%s", ed, rels[i]);
+            if (access(c, X_OK) == 0) { snprintf(path, sizeof(path), "%s", c); return path; }
+        }
+    }
     return NULL;
 }
 

@@ -4,6 +4,7 @@
 #include "gmb_pkg_glob.h"
 #include "gmb_compress.h"
 #include "gmb_commonlib.h"
+#include "gmb_pkg_ed25519.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -151,7 +152,8 @@ void gmb_pkg_pack_files_free(gmb_pkg_pack_files_t* f)
     free(f);
 }
 
-int gmb_pkg_pack(const char* dir, const char* out_file, const char* hmac_key)
+/* Implementazione UNICA: hmac_key (HMAC-SHA256) oppure priv_b64 (Ed25519 detached). */
+static int pack_impl(const char* dir, const char* out_file, const char* hmac_key, const char* priv_b64)
 {
     gmb_pkg_pack_files_t* f = gmb_pkg_pack_files(dir, NULL);
     if (!f) return 0;
@@ -199,6 +201,28 @@ int gmb_pkg_pack(const char* dir, const char* out_file, const char* hmac_key)
         }
     }
 
+    /* firma Ed25519 detached del manifest (.gmbpkg.sig + .gmbpkg.pub), parità con il C#
+     * (PackageBuilder.Pack): la firma è PUBBLICA e verificabile dal client. */
+    if (priv_b64 && priv_b64[0]) {
+        char mpath[2600];
+        snprintf(mpath, sizeof(mpath), "%s/gmb-package.json", dir);
+        char* js = read_file(mpath);
+        if (js) {
+            char sig[512] = "", pub[256] = "";
+            if (gmb_pkg_ed25519_sign(priv_b64, (const unsigned char*)js, strlen(js), sig, sizeof sig) &&
+                gmb_pkg_ed25519_public(priv_b64, pub, sizeof pub)) {
+                char sp[2400], up[2400];
+                snprintf(sp, sizeof(sp), "%s/.gmbpkg.sig", stage);
+                snprintf(up, sizeof(up), "%s/.gmbpkg.pub", stage);
+                FILE* a = fopen(sp, "w");
+                if (a) { fputs(sig, a); fclose(a); abs[na++] = strdup(sp); }
+                FILE* b = fopen(up, "w");
+                if (b) { fputs(pub, b); fclose(b); abs[na++] = strdup(up); }
+            }
+            free(js);
+        }
+    }
+
     /* zip (store) */
     unlink(out_file);
     int rc = gmb_zip_files((const char* const*)abs, na, out_file);
@@ -208,4 +232,14 @@ int gmb_pkg_pack(const char* dir, const char* out_file, const char* hmac_key)
     system(cmd);
     gmb_pkg_pack_files_free(f);
     return rc == 0;
+}
+
+int gmb_pkg_pack(const char* dir, const char* out_file, const char* hmac_key)
+{
+    return pack_impl(dir, out_file, hmac_key, NULL);
+}
+
+int gmb_pkg_pack_signed(const char* dir, const char* out_file, const char* priv_b64)
+{
+    return pack_impl(dir, out_file, NULL, priv_b64);
 }
