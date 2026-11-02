@@ -2193,6 +2193,7 @@ if (gmb_tk_rem_vari_in(t->kind)) {
     }
     if (t->kind == GMB_TOK_Local || t->kind == GMB_TOK_Static || t->kind == GMB_TOK_Private) {
         gmb_stmt_t* ls = gmb_stmt_new(GMB_STMT_DIM, line);
+        ls->dim_is_local = (t->kind == GMB_TOK_Local);
         gmb_p_adv(p);
         const gmb_token_t* lv = gmb_p_cur(p);
         if (lv) { ls->dim_var = (char*)malloc((size_t)lv->length + 1); memcpy(ls->dim_var, lv->lexeme, (size_t)lv->length); ls->dim_var[lv->length] = 0; gmb_p_adv(p); }
@@ -2266,6 +2267,7 @@ if (gmb_tk_rem_vari_in(t->kind)) {
     if (t->kind == GMB_TOK_Global) {
         gmb_p_adv(p);
         gmb_stmt_t* gs = gmb_stmt_new(GMB_STMT_DIM, line);
+        gs->dim_is_global = 1;
         const gmb_token_t* gv = gmb_p_cur(p);
         if (gv) { gs->dim_var = (char*)malloc((size_t)gv->length + 1); memcpy(gs->dim_var, gv->lexeme, (size_t)gv->length); gs->dim_var[gv->length] = 0; gmb_p_adv(p); }
         if (gmb_p_match(p, GMB_TOK_LeftParen)) { if (!gmb_p_check(p, GMB_TOK_RightParen)) gs->array_size = gmb_p_parse_expr(p);

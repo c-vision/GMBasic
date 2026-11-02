@@ -456,7 +456,7 @@ var_t* lookup_var(ctx_t* c, const char* name) {
     if (!name) return NULL;
     if (c->cur_fn) {
         var_t* v = vars_find(&c->cur_fn->locals, name);
-        if (v) return v;
+        if (v && !v->late_local) return v;
     }
     return vars_find(&c->globals, name);
 }
@@ -2481,6 +2481,18 @@ int etype(ctx_t* c, gmb_expr_t* e) {
         * numerica in questo emitter (nessun sample bersaglio usa elementi stringa —
         * bug C99Native-Comprehension-DictParam-ChiaviNumeriche, AiWiki). */
     case GMB_EXPR_VAR: {
+        /* `x.VALUE` su nullable: il tipo è quello della variabile base (STRING? → TY_STR). */
+        if (e->var) {
+            const char* vd = strrchr(e->var, '.');
+            if (vd && vd != e->var && !strchr(vd + 1, '.') && strcasecmp(vd + 1, "VALUE") == 0) {
+                size_t vl = (size_t)(vd - e->var); char vb[160];
+                if (vl < sizeof(vb)) {
+                    memcpy(vb, e->var, vl); vb[vl] = 0;
+                    var_t* nv = lookup_var(c, vb);
+                    if (nv && nv->nullable) return nv->type == TY_STR ? TY_STR : TY_NUM;
+                }
+            }
+        }
         /* §11.1: prop STRINGA di un controllo (`istanza.Name/Tag/Tooltip/ForeColor/BackColor`)
          * → TY_STR (altrimenti il + / = la tratterebbe come numero). */
         if (e->var) {
@@ -2664,6 +2676,18 @@ int etype(ctx_t* c, gmb_expr_t* e) {
     }
     case GMB_EXPR_UNARY: return TY_NUM;
     case GMB_EXPR_CALL: {
+        /* `x.VALUE` su nullable (forma CALL 0-arg): tipo della base. */
+        if (e->nargs == 0 && e->var) {
+            const char* vd = strrchr(e->var, '.');
+            if (vd && vd != e->var && !strchr(vd + 1, '.') && strcasecmp(vd + 1, "VALUE") == 0) {
+                size_t vl = (size_t)(vd - e->var); char vb[160];
+                if (vl < sizeof(vb)) {
+                    memcpy(vb, e->var, vl); vb[vl] = 0;
+                    var_t* nv = lookup_var(c, vb);
+                    if (nv && nv->nullable) return nv->type == TY_STR ? TY_STR : TY_NUM;
+                }
+            }
+        }
         /* Funzione UTENTE: il suo tipo di ritorno VINCE su keyword/builtin omonimi (es. `ASK`,
          * che nel lexer è la keyword AiVectorAsk→STRING ma qui può essere una FUNCTION AS DOUBLE).
          * Coerente con l'EMISSIONE (gmb_user_<nome>). Prima l'etype usava la keyword → una var
@@ -3125,7 +3149,10 @@ static void register_list(ctx_t* c, gmb_stmt_t** list, int n, vars_t* scope) {
    già registrata → non crea un locale che oscurerebbe la globale (parity PCodeVM:
    le globali sono condivise tra i task GPM). */
 static int use_global(ctx_t* c, vars_t* scope, const char* name) {
-    return scope != &c->globals && name && vars_find(&c->globals, name) != NULL;
+    if (scope == &c->globals || !name) return 0;
+    var_t* lv = vars_find(scope, name);
+    if (lv && !lv->late_local) return 0;   /* una locale attiva ombreggia la globale */
+    return vars_find(&c->globals, name) != NULL;
 }
 
 /* Vero se 'name' è stato dichiarato esplicitamente (DIM/GLOBAL) nel programma: usato dal
@@ -3280,9 +3307,10 @@ static int is_stdlib_object_type(const char* t) {
 }
 
 static void reg_dim(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
+    vars_t* dscope = s->dim_is_global ? &c->globals : scope;
     if (s->dim_is_dynamic) return;   /* DYNAMIC: vive nel runtime gmb_dscope, non in una var C */
 if (s->dim_var) {            int ty = suffix_type(s->dim_var);
-            var_t* prior = vars_find(scope, s->dim_var);
+            var_t* prior = vars_find(dscope, s->dim_var);
             if (s->dim_type) {
                 /* AS <tipo scalare> (parser cattura STRING/LONG/...): dispatch per-token
                  * sulla keyword di parsing del tipo (StringType/Bool/.../Single). FLOAT
@@ -3296,7 +3324,7 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
              * (minitests/constructs/types_class_ctor.bas). */
             if (!s->array_size && s->dim_init && s->dim_init->kind == GMB_EXPR_CALL
                 && s->dim_init->var && cls_find(c, s->dim_init->var)) {
-                var_t* cv2 = vars_add(scope, s->dim_var, TY_NUM);
+                var_t* cv2 = vars_add(dscope, s->dim_var, TY_NUM);
                 cv2->is_dim_local = 1;
                 snprintf(cv2->vclass, sizeof(cv2->vclass), "%s", s->dim_init->var);
                 if (c->n_udt_var_names < 64) {
@@ -3313,16 +3341,21 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                 && !is_nested_array_literal(s->dim_init))
                 for (int i = 0; i < s->dim_init->nargs && ty != TY_STR; i++)
                     if (etype(c, s->dim_init->args[i]) == TY_STR) ty = TY_STR;
-            var_t* v = vars_add(scope, s->dim_var, ty);
+            var_t* v = vars_add(dscope, s->dim_var, ty);
             v->is_dim_local = 1;
+            /* LOCAL che ombreggia una GLOBAL: la dichiarazione locale vale dal punto in cui
+             * compare (scope lessicale a blocchi). Prima il pre-pass la registrava per tutta
+             * la funzione e le letture precedenti vedevano la locale (0) invece della globale. */
+            if (s->dim_is_local && dscope != &c->globals && vars_find(&c->globals, s->dim_var))
+                v->late_local = 1;
             /* Stesso nome (il suffisso è il TIPO, non il nome) dichiarato due volte:
-             * - nello scope locale è già errore su IL/PCode/VM-C → qui si allinea;
+             * - nello dscope locale è già errore su IL/PCode/VM-C → qui si allinea;
              * - nel globale si rifiuta solo se cambia la FAMIGLIA (numerico/stringa/bit),
              *   che è il caso ambiguo `DIM S AS SINGLE` + `DIM S$ AS STRING`. */
             if (prior && !s->array_size && !prior->gkind && !prior->vclass[0] && !prior->is_array) {
-                if (scope != &c->globals) {
+                if (dscope != &c->globals) {
                     c99_fail(c, s->line,
-                             "Un simbolo con nome '%s' è già stato dichiarato in questo scope",
+                             "Un simbolo con nome '%s' è già stato dichiarato in questo dscope",
                              s->dim_var);
                     return;
                 }
@@ -3330,7 +3363,7 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                 int famNew = ty == TY_STR ? 2 : 1;
                 if (famOld != 0 && famOld != famNew) {
                     c99_fail(c, s->line,
-                             "La variabile '%s' è già dichiarata come %s: una seconda DIM con tipo %s nello stesso scope è ambigua (usare un nome distinto)",
+                             "La variabile '%s' è già dichiarata come %s: una seconda DIM con tipo %s nello stesso dscope è ambigua (usare un nome distinto)",
                              s->dim_var,
                              prior->type == TY_STR ? "STRING" : "numerico",
                              ty == TY_STR ? "STRING" : "numerico");
@@ -3394,7 +3427,7 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
             { v->regex_obj = 1; v->boxed_val = 1; v->type = TY_NUM; }
             /* Comprehension letterale `[sel FOR var IN src ...]`/`{k:v FOR ...}`/
              * `{sel FOR ...}`: registra la/le variabile/i di iterazione (comp_var +
-             * comp_more_var[]) come locali numeriche nello scope corrente — servono a
+             * comp_more_var[]) come locali numeriche nello dscope corrente — servono a
              * emit_expr quando valuta comp_sel/comp_where/comp_key più sotto, altrimenti
              * risulterebbero simboli sconosciuti (bug
              * C99Native-Comprehension-DictParam-ChiaviNumeriche, AiWiki: comprehension del
@@ -3403,11 +3436,11 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
              * stesso schema di un builtin array-returning (AMAP/AFILTER/...). */
             if (s->dim_init && s->dim_init->kind == GMB_EXPR_COMPREHENSION) {
                 gmb_expr_t* ce = s->dim_init;
-                if (ce->comp_var && !vars_find(scope, ce->comp_var) && !vars_find(&c->globals, ce->comp_var))
-                    vars_add(scope, ce->comp_var, comp_src_is_str(c, ce->comp_src) ? TY_STR : TY_NUM);   /* iteratore stringa se la sorgente lo e' */
+                if (ce->comp_var && !vars_find(dscope, ce->comp_var) && !vars_find(&c->globals, ce->comp_var))
+                    vars_add(dscope, ce->comp_var, comp_src_is_str(c, ce->comp_src) ? TY_STR : TY_NUM);   /* iteratore stringa se la sorgente lo e' */
                 for (int ci = 0; ci < ce->n_comp_more; ci++)
-                    if (ce->comp_more_var[ci] && !vars_find(scope, ce->comp_more_var[ci]) && !vars_find(&c->globals, ce->comp_more_var[ci]))
-                        vars_add(scope, ce->comp_more_var[ci], comp_src_is_str(c, ce->comp_more_src[ci]) ? TY_STR : TY_NUM);
+                    if (ce->comp_more_var[ci] && !vars_find(dscope, ce->comp_more_var[ci]) && !vars_find(&c->globals, ce->comp_more_var[ci]))
+                        vars_add(dscope, ce->comp_more_var[ci], comp_src_is_str(c, ce->comp_more_src[ci]) ? TY_STR : TY_NUM);
                 if (ce->comp_ctype == 0 && !s->dim_type) { v->is_array = 1; v->dyn_len = 1; }
                 /* `DIM d = { k : v FOR ... }` / `DIM s = { x FOR ... }` (SENZA tipo): la variabile e' un gmb_dict_t / gmb_list_t (set).
                  * Senza, restava numerica e `d.Count`/`d(k)` diventavano CHIAMATE a una funzione 'd' ("simbolo non trovato"). */
@@ -3553,7 +3586,7 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                     int itk = s->dim_init->tk;
                     if (itk == GMB_TOK_AReverse || itk == GMB_TOK_AClone
                         || itk == GMB_TOK_AUnique || itk == GMB_TOK_APad) {
-                        var_t* svar = vars_find(scope, s->dim_init->args[0]->var);
+                        var_t* svar = vars_find(dscope, s->dim_init->args[0]->var);
                         if (!svar) svar = vars_find(&c->globals, s->dim_init->args[0]->var);
                         if (svar && svar->is_array && svar->type == TY_STR) v->type = TY_STR;
                     }
@@ -3563,7 +3596,7 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                      * così `target(i).Campo` si risolve. Senza questa inferenza il target
                      * restava numerico e la lettura del campo falliva ("simbolo non trovato
                      * 'target.Campo'"). */
-                    var_t* suvar = vars_find(scope, s->dim_init->args[0]->var);
+                    var_t* suvar = vars_find(dscope, s->dim_init->args[0]->var);
                     if (!suvar) suvar = vars_find(&c->globals, s->dim_init->args[0]->var);
                     if (suvar && suvar->is_array && suvar->vclass[0]) {
                         if (itk == GMB_TOK_AFilter || itk == GMB_TOK_AClone
@@ -3611,7 +3644,7 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                         char dbase[160]; size_t dbl = (size_t)(dm - s->dim_init->var);
                         if (dbl < sizeof(dbase)) {
                             memcpy(dbase, s->dim_init->var, dbl); dbase[dbl] = 0;
-                            var_t* dbv = vars_find(scope, dbase);
+                            var_t* dbv = vars_find(dscope, dbase);
                             if (!dbv) dbv = vars_find(&c->globals, dbase);
                             /* req.BodyJson / req.Params (GK_HTTPREQ): anche qui il membro è un dict dinamico. */
                             if (dbv && ((dbv->boxed_val && !dbv->gkind && !dbv->vclass[0]
@@ -3636,7 +3669,7 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                 if (!v->boxed_val && !v->gkind && !v->is_array && !s->dim_empty_parens && s->dim_init
                     && s->dim_init->kind == GMB_EXPR_CALL && s->dim_init->var
                     && s->dim_init->nargs == 1 && !strchr(s->dim_init->var, '.')) {
-                    var_t* gsrc = vars_find(scope, s->dim_init->var);
+                    var_t* gsrc = vars_find(dscope, s->dim_init->var);
                     if (!gsrc) gsrc = vars_find(&c->globals, s->dim_init->var);
                     if (gsrc && gsrc->boxed_val && !gsrc->gkind && !gsrc->vclass[0]
                         && !gsrc->boxed_md && !gsrc->stats_val)
@@ -3679,7 +3712,7 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                     char bmb[160]; size_t bml = (size_t)(bmdot - s->dim_init->var);
                     if (bml < sizeof(bmb)) {
                         memcpy(bmb, s->dim_init->var, bml); bmb[bml] = 0;
-                        var_t* bmv = vars_find(scope, bmb);
+                        var_t* bmv = vars_find(dscope, bmb);
                         if (!bmv) bmv = vars_find(&c->globals, bmb);
                         if (!bmv) bmv = lookup_var(c, bmb);
                         if (bmv && bmv->boxed_md) { v->boxed_val = 1; v->boxed_md = 1; }
@@ -3756,11 +3789,11 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
             }
             /* LET x() = <riga di array JAGGED> (`LET Trend() = Decomposed(0)`): x = la RIGA
              * (double*), NON un byte-array. Il RHS è CALL(base,[i]) con `base` jagged nello
-             * scope → marca x come array dinamico (il ramo byte sotto lo skippa). */
+             * dscope → marca x come array dinamico (il ramo byte sotto lo skippa). */
             if (!v->is_array && !v->gkind && !v->boxed_val && s->dim_empty_parens && !s->dim_type
                 && s->dim_init && s->dim_init->kind == GMB_EXPR_CALL && s->dim_init->var
                 && !strchr(s->dim_init->var, '.') && s->dim_init->nargs == 1) {
-                var_t* jb = vars_find(scope, s->dim_init->var);
+                var_t* jb = vars_find(dscope, s->dim_init->var);
                 if (!jb) jb = vars_find(&c->globals, s->dim_init->var);
                 if (jb && jb->is_array && jb->jagged) { v->is_array = 1; v->ndims = 1; v->dyn_len = 1; }
             }
@@ -3790,7 +3823,7 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
             if (!v->is_array && !v->gkind && !v->boxed_val && s->dim_empty_parens && s->dim_init
                 && s->dim_init->kind == GMB_EXPR_CALL && s->dim_init->var && s->dim_init->nargs == 1
                 && s->dim_init->args[0] && s->dim_init->args[0]->kind == GMB_EXPR_STR) {
-                var_t* bvd = vars_find(scope, s->dim_init->var);
+                var_t* bvd = vars_find(dscope, s->dim_init->var);
                 if (!bvd) bvd = vars_find(&c->globals, s->dim_init->var);
                 if (bvd && bvd->boxed_val && !bvd->gkind && !bvd->vclass[0]) {
                     v->type = TY_STR; v->is_bytes = 1;
@@ -13286,6 +13319,27 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
     case GMB_EXPR_VAR: {
         /* chiave canonica del nome risolta UNA volta per questo VAR (True/False/Pi/Count) */
         int tbk = (int)e->tk;
+        /* `x.VALUE` su nullable, indipendentemente dal TokenKind assegnato dal lexer:
+         * il nome può arrivare senza tk Value e finire in una variabile implicita
+         * `x_2EVALUE` a 0 (TypesNullable). */
+        if (e->var) {
+            const char* vdot0 = strrchr(e->var, '.');
+            if (vdot0 && vdot0 != e->var && !strchr(vdot0 + 1, '.')
+                && strcasecmp(vdot0 + 1, "VALUE") == 0) {
+                size_t vl0 = (size_t)(vdot0 - e->var);
+                char vp0[160];
+                if (vl0 < sizeof(vp0)) {
+                    memcpy(vp0, e->var, vl0); vp0[vl0] = 0;
+                    var_t* nvv0 = lookup_var(c, vp0);
+                    if (nvv0 && nvv0->nullable) {
+                        sb_put(&c->out, nvv0->type == TY_STR ? "gmb_val_to_string(" : "gmb_val_to_double(");
+                        emit_ident(c, vp0);
+                        sb_put(&c->out, ")");
+                        break;
+                    }
+                }
+            }
+        }
         /* STRINGBUILDER: proprietà sb.Length / sb.Capacity. Il member-access su una var
          * non-classe arriva come var dotted `sb.Length` → gmb_sb_length/capacity. */
         if (e->var) {
@@ -14252,6 +14306,26 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
         break;
     }
     case GMB_EXPR_CALL:
+        /* `x.VALUE` su nullable: il parser produce una CALL 0-arg con nome "x.VALUE"
+         * (la forma VAR era già gestita). Prima diventava una variabile implicita
+         * `x_2EVALUE` a 0. */
+        if (e->nargs == 0 && e->var) {
+            const char* vdot = strchr(e->var, '.');
+            if (vdot && vdot != e->var && !strchr(vdot + 1, '.')) {
+                size_t vl = (size_t)(vdot - e->var);
+                char vp[160];
+                if (vl < sizeof(vp)) {
+                    memcpy(vp, e->var, vl); vp[vl] = 0;
+                    var_t* nvv = lookup_var(c, vp);
+                    if (nvv && nvv->nullable) {
+                        sb_put(&c->out, nvv->type == TY_STR ? "gmb_val_to_string(" : "gmb_val_to_double(");
+                        emit_ident(c, vp);
+                        sb_put(&c->out, ")");
+                        break;
+                    }
+                }
+            }
+        }
         /* costanti sentinella TRUE/FALSE (e Clipper .T./.F.): call `_true_`/`_false_` 0-arg */
         if (e->nargs == 0 && e->var && strcmp(e->var, "_true_") == 0) { sb_put(&c->out, "-1"); break; }
         if (e->nargs == 0 && e->var && strcmp(e->var, "_false_") == 0) { sb_put(&c->out, "0"); break; }
@@ -15526,9 +15600,14 @@ static void emit_arr_literal_assign(ctx_t* c, const char* target, gmb_expr_t* li
                         sb_put(&c->out, " = ");
                         if (value && value->kind == GMB_EXPR_CALL && value->var
                             && strncmp(value->var, "LISTOF:", 7) == 0) {
+                            /* NEW LIST OF → emit_expr produce già un gmb_list_t: il campo è
+                             * gmb_list_t, quindi va assegnato RAW (prima gmb_val_as_list(list)
+                             * passava un gmb_list_t dove serve un gmb_val_t). */
+                            emit_expr(c, value);
+                        } else if (value && etype(c, value) == TY_VAL) {
                             sb_put(&c->out, "gmb_val_as_list(");
                             emit_expr(c, value);
-            sb_put(&c->out, ")");
+                            sb_put(&c->out, ")");
                         } else {
                             emit_expr(c, value);
                         }
@@ -17636,7 +17715,30 @@ static void emit_dict_literal(ctx_t* c, gmb_expr_t* e) {
  static void st_dim(ctx_t* c, gmb_stmt_t* s) {
  {
          if (s->dim_is_dynamic) { gmb_c99_emit_dyn_declare(c, s); return; }
-         var_t* dv = s->dim_var ? lookup_var(c, s->dim_var) : NULL;
+         var_t* dv = NULL;
+         if (c->cur_fn && s->dim_var) dv = vars_find(&c->cur_fn->locals, s->dim_var);
+         if (!dv && s->dim_var) dv = lookup_var(c, s->dim_var);
+         /* LOCAL che ombreggia una GLOBAL: dichiarazione C emessa QUI, non nel prologo,
+          * così le istruzioni precedenti continuano a vedere la globale. */
+         if (dv && dv->late_local) {
+             ind(c);
+             if (dv->type == TY_STR) {
+                 sb_put(&c->out, "gmb_string_t ");
+                 emit_ident(c, dv->name);
+                 sb_put(&c->out, " = ");
+                 if (s->dim_init) emit_str_operand(c, s->dim_init);
+                 else sb_put(&c->out, "gmb_string_alloc(\"\")");
+             } else {
+                 sb_put(&c->out, "gmb_double_t ");
+                 emit_ident(c, dv->name);
+                 sb_put(&c->out, " = ");
+                 if (s->dim_init) emit_num_operand(c, s->dim_init);
+                 else sb_put(&c->out, "0");
+             }
+             sb_put(&c->out, ";\n");
+             dv->late_local = 0;
+             return;
+         }
          if (dv && dv->matrix_handle) {
              /* DIM h = MATRIX.CREATE(r,c) → int64_t handle */
              ind(c);
@@ -29659,7 +29761,7 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
                              strcasecmp(fn->stmt->func_name, "OP_CTYPE") == 0;
         if (!is_static_conv) {
             ind(c);
-            sb_printf(&c->out, "gmb_obj_require(self, %d);\n", s->line);
+            sb_printf(&c->out, "if (self) gmb_obj_require(self, %d);\n", s->line);
         }
     }
     /* Campi-ARRAY di classe: alloca i loro buffer all'inizio del costruttore `_init`
@@ -29697,6 +29799,7 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
     for (int i = s->n_params; i < fn->locals.n; i++) {
         var_t* v = &fn->locals.v[i];
         if (v->captured) continue;
+        if (v->late_local) continue;   /* LOCAL che ombreggia GLOBAL: dichiarata al punto d'uso */
         ind(c);
         if (v->nullable) {
             /* DIM v AS <scalare>?: local gmb_val_t boxed, init NIL (non 0). */
@@ -31081,6 +31184,41 @@ static void mvc_emit_bridges(ctx_t* c) {
     }
 }
 
+/* Pre-pass: `GLOBAL x` anche DENTRO una SUB/FUNCTION dichiara nel registro globale del
+ * modulo (condiviso da tutte le procedure). Senza, la GLOBAL scritta in una SUB restava una
+ * locale della SUB e Main continuava a vedere il valore iniziale (ScopesAdvanced). */
+static void collect_global_decls(ctx_t* c, gmb_stmt_t** list, int n) {
+    for (int i = 0; i < n; i++) {
+        gmb_stmt_t* s = list[i];
+        if (!s) continue;
+        if (s->kind == GMB_STMT_DIM && s->dim_is_global && s->dim_var && s->dim_var[0]) {
+            reg_dim(c, s, &c->globals);
+            continue;
+        }
+        if (s->then_body && s->n_then) collect_global_decls(c, s->then_body, s->n_then);
+        if (s->else_body && s->n_else) collect_global_decls(c, s->else_body, s->n_else);
+        if (s->for_body && s->n_for) collect_global_decls(c, s->for_body, s->n_for);
+        if (s->while_body && s->n_while) collect_global_decls(c, s->while_body, s->n_while);
+        if (s->do_body && s->n_do) collect_global_decls(c, s->do_body, s->n_do);
+        if (s->try_body && s->n_try) collect_global_decls(c, s->try_body, s->n_try);
+        if (s->finally_body && s->n_finally) collect_global_decls(c, s->finally_body, s->n_finally);
+        if (s->func_body && s->n_funcbody) collect_global_decls(c, s->func_body, s->n_funcbody);
+        for (int k = 0; k < s->n_select_cases; k++) {
+            gmb_stmt_t* cs = s->select_cases[k];
+            if (cs && cs->case_body && cs->n_case_body) collect_global_decls(c, cs->case_body, cs->n_case_body);
+        }
+        for (int k = 0; k < s->n_go_cases; k++)
+            if (s->go_cases[k].body && s->go_cases[k].n_body)
+                collect_global_decls(c, s->go_cases[k].body, s->go_cases[k].n_body);
+        if (s->catch_body && s->n_catch) {
+            for (int k = 0; k < s->n_catch; k++) {
+                gmb_stmt_t* cb = s->catch_body[k];
+                if (cb && cb->catch_body && cb->n_catch) collect_global_decls(c, cb->catch_body, cb->n_catch);
+            }
+        }
+    }
+}
+
 int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
     g_c99_last_dir_line = -1;   /* O8: la prima direttiva della nuova emissione */
     g_c99_last_dir_file[0] = 0;
@@ -31135,6 +31273,9 @@ int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
      * (reg_dim/reg_let_assign lo saltano; letture/scritture passano da gmb_dscope).
      * Spec: Guide/Variables-Scope-Spec.md §2.5; parità emitter C# CollectDynamicScope. */
     gmb_c99_collect_dynamic(c, prog->stmts, prog->n);
+
+    /* 0quater. GLOBAL dichiarate dentro SUB/FUNCTION: al registro globale PRIMA dei locali. */
+    collect_global_decls(c, (gmb_stmt_t**)prog->stmts, prog->n);
 
     /* 1. registra le variabili globali (statement top level non-funzione) —
        PRIMA dei locali delle funzioni, così register_stmt (use_global) non crea
