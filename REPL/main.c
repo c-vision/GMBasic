@@ -6,21 +6,27 @@
 #include <unistd.h>
 
 static const char* USAGE =
-    "gm (ReplNative, C) — Native Executor vmc|c99, mai IL\n"
-    "USO: gm <file.bas> [--backend <vmc|c99>] [opzioni]\n"
-    "Backend: vmc (chunk->gmb_vm_host) | c99 (C99->cc)\n"
-    "Opzioni (da REPL/Arguments.cs):\n"
-    "  -noconsole  -c/-console (no SDL)  -s (system console)  -c64  --pcode(vmc)\n"
+    "gmb_repl (REPL unica, C) — esegue vmc|c99; engine C# opzionale per IL/P-Code\n"
+    "USO: gmb_repl [<file.bas>] [opzioni]\n"
+    "Backend C: vmc (chunk -> gmb_vm_host) | c99 (C99 -> cc)\n"
+    "Opzioni:\n"
+    "  -noconsole  -c/-console (no SDL)  -s (system console)  -c64  -w <w> -h <h>\n"
+    "  -size W,H  -font nome,size  -e/-executor (verbose)\n"
     "  --ast (stampa l'AST del file)  -repl (dopo il file resta nella REPL)\n"
-    "  --c99       --ast  -n/-m (vietati: IL)  -e/-executor (verbose)\n"
-    "  --no-optimize  --dump-il  -bsp <dir>  -gpm <auto|always|linear>  -w <w> -h <h>\n"
-    "  --debug-tcp <port>  --run <cmd>  --il-module <dll> (vietato: IL)  -D<name>[=val]\n"
-    "  --engine <c|csharp>  --csharp-cli <path>  (default: c; csharp = gmbcs, opzionale)\n"
-    "  env: GMBASIC_DEFINES ; GMBASIC_GPM\n"
+    "  --pcode  --no-optimize  --dump-il (dump IL con --engine=csharp)\n"
+    "  -bsp <dir> (precompila pagine BSP)  -gpm <auto|always|linear>\n"
+    "  --debug-tcp <port> (avviso: non implementato nel mondo C)\n"
+    "  --run <cmd>  -D<name>[=val]\n"
+    "  -n/--native, -m/--managed, -full  → engine C# (richiede --engine=csharp)\n"
+    "  --il-module <dll>                  → solo con --engine=csharp\n"
+    "  --engine <c|csharp>  --csharp-cli <path>  (default: c; csharp = gmbcs)\n"
     "Comandi REPL: QUIT EXIT CLS PROMPT HELP LIST EDIT NEW AUTO SAVE LOAD DELETE DEL RENUM\n"
     "  SAMPLE COMPILE BSP RUN EXEC LOADPRG PRGINFO AST DASM IL PCODE GPM LS CD WHERE WH\n"
-    "  RN RENAME RM DL DELF CP COPY DP DUPLICATE BL BACKUP DEPLOY CONVERT BATCH CONVFMT\n"
-    "  WEB2MD PROVIDERS DEP PACKAGE HF MLX ML AIPATH\n";
+    "  GREP (RG) RN RENAME RM DL DELF CP COPY DP DUPLICATE BL BACKUP DEPLOY CONVERT BATCH CONVFMT\n"
+    "  WEB2MD PROVIDERS DEP PACKAGE HF MLX ML AIPATH SET STATUS DEBUG BREAK CLEAR STEP\n"
+    "  CONT TRACE WATCH UNWATCH PALETTE BRAIN RAG GRAPH IDE LIBS EVAL DIR\n"
+    "  FIXTURES SETUP LLM ADD REMOVE BUMP RESTORE UPDATE ROLLBACK TRUST CACHE AIBENCH\n";
+
 
 int main(int argc, char** argv)
 {
