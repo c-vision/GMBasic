@@ -43,6 +43,17 @@ static int dp_copy(const char* src, const char* dst)
 {
     FILE* in = fopen(src, "rb");
     if (!in) return 0;
+    /* il file può avere un SOTTOPERCORSO (`include/…`): va creata la catena di directory. */
+    {
+        char parent[4096];
+        snprintf(parent, sizeof parent, "%s", dst);
+        char* sl = strrchr(parent, '/');
+        if (sl) { *sl = 0; if (parent[0]) { /* mkdir -p */ 
+            char tmp[4096]; snprintf(tmp, sizeof tmp, "%s", parent);
+            for (char* q = tmp + 1; *q; q++) if (*q == '/') { *q = 0; mkdir(tmp, 0755); *q = '/'; }
+            mkdir(tmp, 0755);
+        } }
+    }
     FILE* out = fopen(dst, "wb");
     if (!out) { fclose(in); return 0; }
     char buf[65536];
@@ -452,8 +463,9 @@ static int dp_deploy_libs_select(const char* exe, const char* install, const cha
         path_dir(dstDir, dstRoot, sizeof dstRoot);  /* <out>/libs/<rid> → <out>/libs */
         char dst[CLI_PATH];
         snprintf(dst, sizeof dst, "%s/%s/%s", dstRoot, comps[i], dp_rid());
-        int n = dp_copy_tree(src, dst, quiet);
+        int n = dp_copy_tree(src, dst, 1);
         dp_closure_dir(dst, install, quiet);
+        if (!quiet) fprintf(stderr, "gmb: %d file (componente %s) -> %s\n", n, comps[i], dst);
         return n;
     }
     /* elenco esplicito di nomi */
@@ -499,12 +511,8 @@ static int dp_deploy_entries(const char* srcRoot, const char* dstRoot, const cha
         if (!dp_sel_is_all(sel) && !dp_sel_has(sel, e->d_name)) continue;
         char dst[CLI_PATH];
         snprintf(dst, sizeof dst, "%s/%s", dstRoot, e->d_name);
-        if (want_versions) {
-            /* brains/<nome>/<versione>/: copia l'albero delle versioni così com'è. */
-            n += dp_copy_tree(src, dst, quiet);
-        } else {
-            n += dp_copy_tree(src, dst, quiet);
-        }
+        (void)want_versions;   /* in entrambi i casi: l'albero così com'è (brains/<nome>/<ver>/) */
+        n += dp_copy_tree(src, dst, 1);
     }
     closedir(d);
     return n;

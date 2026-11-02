@@ -149,23 +149,21 @@ void resolve_repo_path(char* out, int cap, const char* rel)
  * contratto che sostituisce gli include diretti del front-end (TODO §6, F2). */
 const char* rpl_gmb_cli(char* out, size_t cap)
 {
-    static const char* cands[] = {
-        "native/gmb_compiler_c/build/gmb",
-        "../GMBasic/native/gmb_compiler_c/build/gmb",
-        "../../GMBasic/native/gmb_compiler_c/build/gmb",
-        NULL
-    };
-    for (int i = 0; cands[i]; i++) if (access(cands[i], X_OK) == 0) { snprintf(out, cap, "%s", cands[i]); return out; }
-    char root[2048]; resolve_repo_path(root, sizeof(root), "native/gmb_compiler_c/build/gmb");
-    if (access(root, X_OK) == 0) { snprintf(out, cap, "%s", root); return out; }
-    if (repl_find_in_path("gmb", out, cap)) return out;
+    /* ORDINE: prima il gmb che appartiene a QUESTA installazione (relativo all'eseguibile
+     * della REPL e alla root risolta), POI quello nel PATH, e solo ALLA FINE i path relativi
+     * al CWD. Il vecchio ordine metteva `../GMBasic/...` per primo: lanciando la REPL dalla
+     * root del monorepo quel path è un ALTRO checkout (il vecchio progetto GMBasic) e si
+     * compilava con un gmb diverso — bug reale trovato verificando il bundle (nessuna lib
+     * copiata). */
     char ed[2048];
     if (repl_exe_dir(ed, sizeof ed)) {
         static const char* rels[] = {
+            /* layout A: <GMBasic>/REPL/build → <GMBasic>/native/... */
+            "../../native/gmb_compiler_c/build/gmb",
+            /* layout B (monorepo): <repo>/REPL/build → <repo>/GMBasic/native/... */
+            "../../GMBasic/native/gmb_compiler_c/build/gmb",
             "../gmb_compiler_c/build/gmb",
             "../../gmb_compiler_c/build/gmb",
-            "../../../GMBasic/native/gmb_compiler_c/build/gmb",
-            "../../../../GMBasic/native/gmb_compiler_c/build/gmb",
             NULL
         };
         for (int i = 0; rels[i]; i++) {
@@ -174,6 +172,17 @@ const char* rpl_gmb_cli(char* out, size_t cap)
             if (access(c, X_OK) == 0) { snprintf(out, cap, "%s", c); return out; }
         }
     }
+    char root[2048]; resolve_repo_path(root, sizeof(root), "native/gmb_compiler_c/build/gmb");
+    if (access(root, X_OK) == 0) { snprintf(out, cap, "%s", root); return out; }
+    if (repl_find_in_path("gmb", out, cap)) return out;
+    /* legacy: gmb relativo al CWD (esecuzione da GMBasic/ o dalla root del monorepo). */
+    static const char* cands[] = {
+        "native/gmb_compiler_c/build/gmb",
+        "../GMBasic/native/gmb_compiler_c/build/gmb",
+        "../../GMBasic/native/gmb_compiler_c/build/gmb",
+        NULL
+    };
+    for (int i = 0; cands[i]; i++) if (access(cands[i], X_OK) == 0) { snprintf(out, cap, "%s", cands[i]); return out; }
     return NULL;
 }
 
