@@ -11,4 +11,4 @@ procedures: [FsRead, FsWrite, FsList]
 # Plugin fs-scoped
 
 Operating instructions for the agent: SAFE file operations limited to the project `work/` folder
-(never outside). Use `AI.PLUGIN.CALL("fs-scoped", ...)`.
+(never outside). Use `AI.PLUGINCALL("fs-scoped", ...)`.

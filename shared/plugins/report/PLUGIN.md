@@ -10,5 +10,5 @@ procedures: [ReportGenerate]
 ---
 # Plugin report
 
-Operating instructions for the agent: use `AI.PLUGIN.CALL("report", args)` to generate a text report.
+Operating instructions for the agent: use `AI.PLUGINCALL("report", args)` to generate a text report.
 The `ReportGenerate` procedure composes title, sections and rows into a single document.

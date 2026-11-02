@@ -687,6 +687,67 @@ static void dp_brains_src_dir(char* out, size_t cap)
     if (home && *home) snprintf(out, cap, "%s/.gmbasic/brains", home);
 }
 
+/* ── skill/plugin DICHIARATI dal programma ────────────────────────────────────────────────
+ * Un programma che usa l'agente dichiara cio' che gli serve nell'app.settings.json:
+ *     { "plugins": ["web-fetch", "browser"], "skills": ["board"] }
+ * (stesso schema dei "fixtures"). Il compilatore C# lo fa in ProgramBundle.CopyNextTo; qui
+ * si fa lo stesso per il compilatore C: senza, un eseguibile distribuito partirebbe con
+ * l'agente privo di capacita' (AI.SKILLSLIST() vuota, nessun tool). I flag --plugins/--skills
+ * restano l'aggiunta manuale; questa copia e' quella DICHIARATA (idempotente). */
+static int dp_json_string_array(const char* file, const char* key, char out[][128], int max)
+{
+    char* txt = read_all(file);
+    if (!txt) return 0;
+    int n = 0;
+    char pat[160];
+    snprintf(pat, sizeof pat, "\"%s\"", key);
+    const char* p = strstr(txt, pat);          /* le chiavi del bundle sono in minuscolo */
+    if (!p) { free(txt); return 0; }
+    p += strlen(pat);
+    while (*p && *p != ':') p++;
+    while (*p && *p != '[') p++;
+    if (*p != '[') { free(txt); return 0; }
+    p++;
+    while (*p && *p != ']' && n < max) {
+        while (*p && *p != '"' && *p != ']') p++;
+        if (*p != '"') break;
+        const char* e = strchr(p + 1, '"');
+        if (!e) break;
+        size_t len = (size_t)(e - (p + 1));
+        if (len > 0 && len < 128) { memcpy(out[n], p + 1, len); out[n][len] = 0; n++; }
+        p = e + 1;
+    }
+    free(txt);
+    return n;
+}
+
+static int dp_deploy_declared_kind(const char* srcDir, const char* install, const char* outDir,
+                                   const char* kind, int quiet)
+{
+    if (!srcDir || !*srcDir) return 0;
+    char app[CLI_PATH];
+    snprintf(app, sizeof app, "%s/app.settings.json", srcDir);
+    if (!is_file(app)) return 0;
+    char names[64][128];
+    int nn = dp_json_string_array(app, kind, names, 64);
+    if (nn <= 0) return 0;
+    char srcRoot[CLI_PATH];
+    dp_shared_dir(install, kind, srcRoot, sizeof srcRoot);
+    if (!srcRoot[0]) return 0;
+    int files = 0, copied = 0;
+    for (int i = 0; i < nn; i++) {
+        char src[CLI_PATH], dst[CLI_PATH];
+        snprintf(src, sizeof src, "%s/%s", srcRoot, names[i]);
+        if (!is_dir(src)) continue;
+        snprintf(dst, sizeof dst, "%s/%s/%s", outDir, kind, names[i]);
+        int c = dp_copy_tree(src, dst, 1);
+        if (c > 0) { files += c; copied++; }
+    }
+    if (!quiet && copied > 0)
+        fprintf(stderr, "gmb: %d %s dichiarati -> %s/%s\n", copied, kind, outDir, kind);
+    return files;
+}
+
 /* ── entry point ───────────────────────────────────────────────────────────────────────── */
 
 void gmb_deploy_bundle(const char* exe, const char* install, const DeployOpts* o, int quiet)
@@ -729,6 +790,14 @@ void gmb_deploy_bundle(const char* exe, const char* install, const DeployOpts* o
             dp_closure_file(src, install, libsDir, quiet);
         }
         break;
+    }
+
+    /* skill/plugin DICHIARATI in app.settings.json (parità con ProgramBundle C#). */
+    if (o && o->src && *o->src) {
+        char srcDir[CLI_PATH];
+        path_dir(o->src, srcDir, sizeof srcDir);
+        dp_deploy_declared_kind(srcDir, install, outDir, "plugins", quiet);
+        dp_deploy_declared_kind(srcDir, install, outDir, "skills", quiet);
     }
 
     if (o && o->plugins) {

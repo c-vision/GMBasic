@@ -10,5 +10,5 @@ procedures: [PdfToMarkdown]
 ---
 # Plugin pdf
 
-Operating instructions for the agent: use `AI.PLUGIN.CALL("pdf", src)` to convert a PDF to Markdown.
+Operating instructions for the agent: use `AI.PLUGINCALL("pdf", src)` to convert a PDF to Markdown.
 The `PdfToMarkdown` procedure uses `CONVERT <src> INTO out$` (PDFOxide backend).

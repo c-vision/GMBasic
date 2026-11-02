@@ -10,5 +10,5 @@ procedures: [MarkdownConvert]
 ---
 # Plugin markdown
 
-Operating instructions for the agent: use `AI.PLUGIN.CALL("markdown", src)` to convert Markdown
+Operating instructions for the agent: use `AI.PLUGINCALL("markdown", src)` to convert Markdown
 (or a URL into Markdown) to HTML/text. The `MarkdownConvert` procedure uses `CONVERT`/`WEB2MD`.

@@ -10,5 +10,5 @@ procedures: [McpInvoke]
 ---
 # Plugin mcp-tool
 
-Operating instructions for the agent: use `AI.PLUGIN.CALL("mcp-tool", "server.tool args")` to invoke
+Operating instructions for the agent: use `AI.PLUGINCALL("mcp-tool", "server.tool args")` to invoke
 a tool of an MCP server. The `McpInvoke` procedure uses `AI.MCPCALL`.

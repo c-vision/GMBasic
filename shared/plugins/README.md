@@ -15,7 +15,7 @@ plugins/<nome>/
 |---|---|
 | **LLM agent** (`AI AGENT ...`) | injects into the system prompt the description + `trigger` of the enabled plugins (`AgentRecord`, `AgentServer`) and, with `AI PLUGINS ENABLE`, registers the **schemas** of `tool.json` in the `McpToolRegistry` (`PluginRegistry.Enable`) |
 | `AI PLUGINS LIST / INFO / REFRESH` | folder scan (`PluginIndex.Scan`) |
-| `AI.PLUGIN.CALL("nome", arg)` | reads `procedures` from `PLUGIN.md` and invokes **the first procedure of the PROGRAM** with that name: C# `CallHandler` → `_basicProcedures`; VM/C → hook in `gmb_builtin.c` |
+| `AI.PLUGINCALL("nome", arg)` | reads `procedures` from `PLUGIN.md` and invokes **the first procedure of the PROGRAM** with that name: C# `CallHandler` → `_basicProcedures`; VM/C → hook in `gmb_builtin.c` |
 | **compiler** | **nothing.** No include in the linker/emitter: a `.bas` inside a plugin never enters the compilation |
 
 **The `<nome>.bas` is not executed.** It is the reference contract (the expected signatures): that
@@ -35,7 +35,7 @@ is why `samples/Browser/BrowserPluginTest.bas` and `samples/Ai/AiPlugins.bas`
 
   The compiler copies only the declared ones into `<exe>/plugins/<nome>` (see
   [ProgramBundle](../../GMBasicSharp/common/CommonLib/ProgramBundle.cs)).
-- **`AI.PLUGIN.CALL` on all legs** (2026-10-31): the program procedure is invoked on
+- **`AI.PLUGINCALL` on all legs** (2026-10-31): the program procedure is invoked on
   IL, PCodeVM, VM/C **and C99Native**. On C99Native there is no BASIC VM in the binary,
   so the transpiler emits a **generated dispatcher** (`__gmb_plugin_call`) toward the
   program's `gmb_user_*`; the procedure name comes from `PLUGIN.md`
