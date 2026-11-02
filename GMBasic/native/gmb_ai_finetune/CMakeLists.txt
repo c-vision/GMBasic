@@ -28,12 +28,16 @@ endif()
 target_include_directories(gmb_ai_finetune PRIVATE include "${MLX_DIR}" "${LLMENV}/LLMEngine/include" "${LLMENV}/LLMEngine/Options" "${LLMENV}/LLMToken/include" "${CMAKE_CURRENT_SOURCE_DIR}/../../gmbllm/include")
 # gmbllm (PUL): orchestrazione training/DPO (llm_ai_mlx_train_dpo_step). Statico, PRIMA del motore
 # (chi usa i simboli precede chi li fornisce). I simboli mlx-c sono esportati dal motore.
-set(GMBLLM_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c/build/gmbllm_build/libgmbllm.a")
+# SPLIT 2026-11-02: `gmbllm` è diviso in core (modelio+quant) e train (MLX/LoRA).
+# Il finetune usa il TRAINING → linka train (prima) + core (le sue dipendenze).
+set(GMBLLM_TRAIN_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c/build/gmbllm_build/libgmbllm_train.a")
+set(GMBLLM_CORE_LIB  "${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c/build/gmbllm_build/libgmbllm_core.a")
+set(GMBLLM_LIB "${GMBLLM_TRAIN_LIB}")
 # Tokenizer condiviso (LLMEnv LLMToken: gmb_distill SAMPLE/EVAL; l'engine MLX non espone CAP_TOKENIZE).
-if(EXISTS "${GMBLLM_LIB}")
-    target_link_libraries(gmb_ai_finetune PRIVATE "${GMBLLM_LIB}" "${MLX_LIB}" llmtoken "-framework Accelerate")
+if(EXISTS "${GMBLLM_TRAIN_LIB}" AND EXISTS "${GMBLLM_CORE_LIB}")
+    target_link_libraries(gmb_ai_finetune PRIVATE "${GMBLLM_TRAIN_LIB}" "${GMBLLM_CORE_LIB}" "${MLX_LIB}" llmtoken "-framework Accelerate")
 else()
-    message(WARNING "libgmbllm.a non trovata (${GMBLLM_LIB}): DPO esatto disabilitato, resta il self-contained")
+    message(WARNING "libgmbllm_{train,core}.a non trovate (${GMBLLM_LIB}): DPO esatto disabilitato, resta il self-contained")
     target_link_libraries(gmb_ai_finetune PRIVATE "${MLX_LIB}" llmtoken "-framework Accelerate")
 endif()
 

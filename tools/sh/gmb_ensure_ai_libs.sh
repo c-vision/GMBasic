@@ -30,9 +30,9 @@ if [ ! -d "$RT" ]; then
   exit 1
 fi
 
-# 1) lib statiche AI (libgmb_runtime.a, libgmbllm.a) + dylib gmb_ai_llm (P/Invoke C#/IL).
+# 1) lib statiche AI (libgmb_runtime.a, libgmbllm_core.a, libgmbllm_train.a) + dylib gmb_ai_llm/gmb_runtime_ai.
 #    NIENTE `|| true`: se il build AI fallisce la build del consumer DEVE fallire (mai stale silenzioso).
-cmake --build "$RT" --target gmb_runtime gmbllm gmb_ai_llm -j 6 >/dev/null
+cmake --build "$RT" --target gmb_runtime gmb_runtime_ai gmbllm_core gmbllm_train gmb_ai_llm -j 6 >/dev/null
 # 2) dylib gmb_ai_modelio (model compiler, P/Invoke) — albero separato (gmb_compiler_c).
 #    Se il build fallisce -> ERRORE (prima c'era `|| true` che lasciava una dylib STALE).
 if [ -d "$CC" ]; then

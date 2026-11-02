@@ -115,8 +115,11 @@ add_library(gmb_vm STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_torch/src/gmb_torch.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_torch/src/gmb_torch_str.c
 )
-target_link_libraries(gmb_vm PUBLIC pthread gmb_runtime gmb_doc gmb_agent_runtime ${CMAKE_DL_LIBS})
-target_include_directories(gmb_vm PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c/include ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c/src ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_doc_c/include ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_torch/include ${LLMENV}/LLMEngine/include ${LLMENV}/LLMEngine/mlx ${LLMENV}/LLMEngine/Options ${LLMENV}/LLMEngine/plugin ${LLMENV}/LLMEngine/moe/include ${CMAKE_CURRENT_SOURCE_DIR}/../gmbllm/include ${LLMENV}/LLMToken/include ${LLMENV}/LLMCodec/include ${LLMENV}/LLMDesc)
+# SPLIT 2026-11-02: il runtime non propaga più gmbllm/LLMEnv. La VM dispatcha i comandi
+# LLM (LLM TENSOR/ARCH/KERNEL…) e usa direttamente llmmodelio_* → linka gmbllm_core (che a sua
+# volta porta llmcodec/llmtoken/llmdesc in PUBLIC). ASR/DISTILL/modelio passano dal gateway.
+target_link_libraries(gmb_vm PUBLIC pthread gmb_runtime gmb_doc gmb_agent_runtime gmbllm_core ${CMAKE_DL_LIBS})
+target_include_directories(gmb_vm PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c/include ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c/src ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_doc_c/include ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_torch/include ${LLMENV}/LLMEngine/include ${LLMENV}/LLMEngine/mlx ${LLMENV}/LLMEngine/Options ${LLMENV}/LLMEngine/plugin ${LLMENV}/LLMEngine/moe/include ${CMAKE_CURRENT_SOURCE_DIR}/../../gmbllm/include ${CMAKE_CURRENT_SOURCE_DIR}/../../gmbllm/include/quant ${LLMENV}/LLMToken/include ${LLMENV}/LLMCodec/include ${LLMENV}/LLMDesc)
 
 # Database su file (DBF/ISAM/SPEED/Ledger/Clipper RDD) via gmb_db: SEMPRE presente.
 # Prima era un option(GMB_HAS_COMMERCIAL_DB ... OFF) legato all'"edizione": con la rimozione

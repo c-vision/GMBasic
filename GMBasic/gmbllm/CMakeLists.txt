@@ -23,7 +23,14 @@ endif()
 # --- F2: model compiler / surgery / planning (ex-LLMModelIO) -----------------
 # --- F3: quant-ENCODE (da LLMCodec; il DEQUANT resta Apache) ------------------
 # --- F4: training (dal LLMEngine; il forward differenziabile resta Apache) ----
-set(GMBLLM_SOURCES
+# ── SPLIT 2026-11-02 — core (consumato dal runtime) vs train (MLX/LoRA) ──────────────
+# `gmbllm_core`: model compiler/surgery + quant-ENCODE + jinja. NON include header del motore
+#   MLX: è ciò che il runtime C (= REPL, gmbadmin, vm_host) linka davvero.
+# `gmbllm_train`: orchestrazione training/DPO e loss sopra il forward differenziabile MLX
+#   (`llmengine_mlx*.h`, `<mlx/c/*>`). Lo linkano SOLO i tool di training (gmb_ai_finetune).
+# `gmbllm` resta il nome storico ma è un AGGREGATO (INTERFACE) dei due, così i consumer che lo
+#   linkano per nome continuano a funzionare (self-check, build esistenti).
+set(GMBLLM_CORE_SOURCES
     src/llmcodec_gguf_mlx.c      # converter MLX<->GGUF (PUL): orchestrazione via registry (read/write Apache, encode PUL)
     src/llmmodelio_mlx_merge.c   # MERGE LoRA su modello MLX (dir) — dequant/fuse/requant
     src/llmmodelio_model.c       # model compiler: quantize/convert/ablate/add/adapter/module/merge/prune + report LLM MODEL/TENSOR
@@ -42,23 +49,35 @@ set(GMBLLM_SOURCES
     src/quant/llmcodec_iq2_xxs.c    # F3a
     src/quant/llmcodec_iq4_xs.c     # F3a-bis: encode IQ4_XS/IQ4_NL (PUL)
     src/quant/llmcodec_hf_quant.c   # F3d: encode HF (NF4/AWQ/GPTQ/FP4) — contropartite dei decoder Apache
-    src/quant/llmcodec_moe_quant.c   # F3c (strangler): encode affine MoE (il dequant resta Apache) (strangler): encode ggml k-quants (il dequant resta Apache): quant-ENCODE iq (iq2/iq1/iq3) — il DEQUANT resta Apache in LLMCodec
+    src/quant/llmcodec_moe_quant.c  # F3c: encode affine MoE (il dequant resta Apache)
+)
+
+# Solo questi due richiedono il MOTORE MLX (llmengine_mlx*.h + <mlx/c/*>).
+set(GMBLLM_TRAIN_SOURCES
     src/train/llm_train.c            # F4: orchestrazione training/DPO (PUL) — consuma l'ABI Apache
     src/train/llm_train_ce.c         # F4: la LOSS (masked CE/DPO) sopra i logits del forward Apache
 )
 
-add_library(gmbllm STATIC ${GMBLLM_SOURCES})
-target_include_directories(gmbllm PUBLIC include include/quant
+add_library(gmbllm_core STATIC ${GMBLLM_CORE_SOURCES})
+target_include_directories(gmbllm_core PUBLIC include include/quant
     ${LLMENV}/LLMCodec/include       # header Apache (fp16, iq_grids) — gmbllm li CONSUMA, mai l'inverso
     ${LLMENV}/LLMEngine/moe/include
     ${LLMENV}/LLMJinja              # llmjinja.h (rendering chat template) — Apache, consumato da PUL
-    ${LLMENV}/LLMEngine/include      # llmengine.h (ABI comune vtable/opzioni) — incluso da llmengine_mlx.h
-    ${LLMENV}/LLMEngine/mlx          # ABI Apache (llmengine_mlx.h, llmengine_mlx_diff_forward.h) — forward differenziabile
-    ${LLMENV}/LLMEngine/Options      # llm_engine_opts.h (transitivo)
-    ${LLMENV}/libs/mlx-deps/mlx-c-src   # <mlx/c/*.h> (closure/value_and_grad) — TRAIN
-    ${CMAKE_CURRENT_SOURCE_DIR}/../native/gmb_runtime_c/include)  # gmb_c99gpm.h: GMB_MUTEX_*/GMB_THREAD_* (abstraction thread GPM-safe)
+    ${LLMENV}/LLMEngine/include      # llmengine.h (ABI comune) — serve a llmengine_moe_quant_alloc
+    ${CMAKE_CURRENT_SOURCE_DIR}/../native/gmb_runtime_c/include)  # gmb_c99gpm.h: GMB_MUTEX_*/GMB_THREAD_*
 # Dipendenze SOLO in direzione gmbllm -> Apache (mai il contrario).
-target_link_libraries(gmbllm PUBLIC llmcodec llmtoken llmengine_plugin llmdesc ${CMAKE_DL_LIBS} m)
+target_link_libraries(gmbllm_core PUBLIC llmcodec llmtoken llmengine_plugin llmdesc ${CMAKE_DL_LIBS} m)
+
+add_library(gmbllm_train STATIC ${GMBLLM_TRAIN_SOURCES})
+target_include_directories(gmbllm_train PUBLIC
+    ${LLMENV}/LLMEngine/mlx          # ABI Apache (llmengine_mlx.h, llmengine_mlx_diff_forward.h)
+    ${LLMENV}/LLMEngine/Options      # llm_engine_opts.h (transitivo)
+    ${LLMENV}/libs/mlx-deps/mlx-c-src)  # <mlx/c/*.h> (closure/value_and_grad) — TRAIN
+target_link_libraries(gmbllm_train PUBLIC gmbllm_core)
+
+# Nome storico: aggregato dei due (link order: train prima di core).
+add_library(gmbllm INTERFACE)
+target_link_libraries(gmbllm INTERFACE gmbllm_train gmbllm_core)
 
 # --- Self-check dei componenti PUL (converter MLX<->GGUF + quant-ENCODE) ---------------------
 # Opzionale, default OFF: non tocca la build normale (runtime/dylib gmb_ai_llm). I plugin Apache

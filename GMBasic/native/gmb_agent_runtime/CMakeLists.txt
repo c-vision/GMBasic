@@ -47,7 +47,9 @@ target_include_directories(gmb_agent_runtime PUBLIC
 # gmb_jinja (motore Jinja C) — ora LLMJinja di LLMEnv (sorgente unica), libreria statica,
 # condiviso col resto del mondo C (gmb_llm_server). Nessun bridge verso C#.
 add_subdirectory("${LLMENV}/LLMJinja" "${CMAKE_CURRENT_BINARY_DIR}/llmjinja_build")
-target_link_libraries(gmb_agent_runtime PUBLIC llmjinja)
+# SPLIT core/AI (2026-11-02): il runtime non propaga più le lib LLMEnv. Chi usa direttamente
+# llmcodec/llmtoken (chat template, tokenizer) le dichiara qui.
+target_link_libraries(gmb_agent_runtime PUBLIC llmjinja llmcodec llmtoken)
 
 if(APPLE)
     enable_language(OBJC)

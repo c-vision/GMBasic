@@ -339,6 +339,20 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
           `gmb_paths_test_override` (niente env, niente config utente) e runner
           `tools/sh/test_c_selfchecks.sh` (build fuori dal repo). Verificato: 3/3 pass.
           (`publish --repo`: nessun doppio controllo in C# — la verifica vive solo nel C.)
+        - **Split licenza/ciclo di vita (2026-11-02)**: `gmbllm` è diviso in **`gmbllm_core`**
+          (model compiler + quant-ENCODE + jinja, ~17 simboli consumati dal runtime) e
+          **`gmbllm_train`** (training/DPO/MLX, linkata solo dai tool TRAIN); `gmbllm` resta
+          un aggregato INTERFACE. Il **runtime C** non linka più LLMEnv: le parti AI
+          (`gmb_asr_cmd`, `gmb_llm_tok`, `gmb_model_io`, `gmb_distill`, il model-quant e i
+          sorgenti MoE di LLMEnv) vivono nella dylib **`libgmb_runtime_ai`**, caricata su
+          richiesta dal gateway debole `gmb_ai_gateway.c` (RTLD_LAZY; path: checkout
+          `GMBasic/build/libs/<rid>/`, accanto all'eseguibile, cache `~/.gmbasic/libs/<rid>/`).
+          L'ABI dei modelli (`llmdesc`) è registrata dalla dylib via `gmb_abi_set_llmdesc`.
+          Verificato: `libgmb_runtime.a` ha **0** simboli LLMEnv; `gmb_repl` compila e linka
+          senza il motore MLX (solo `libllmtoken` via `gmb_agent_runtime`); `LLM.TOKENS`
+          eseguito da un programma generato carica la dylib (errore corretto: modello assente)
+          e, senza dylib, dà l'errore esplicito del gateway. La VM (`gmb_vm`) e i tool TRAIN
+          linkano `gmbllm_core`/`gmbllm_train` come prima.
         - Restano **C#** solo i moduli usati dai backend C# (IL/PCode): `BrainRegistry`,
           `BrainInstaller`, `BrainManifest`, `BrainVault` (il C# può esistere come altro
           compilatore, ma non ha più alcun comando che esista SOLO lì).

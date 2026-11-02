@@ -18,7 +18,33 @@
  * Compilato in due contesti: runtime (scope APP) e dylib del compilatore gmb_ai_modelio (-DGMB_ABI_SCOPE_SYSTEM). */
 
 #include "gmb_runtime.h"
-#include "llmdesc.h"
+/* NIENTE `llmdesc.h` (LLMEnv) nel core: le 3 funzioni usate sono dichiarate qui come DEBOLI
+ * e vivono nella dylib `gmb_runtime_ai` (SPLIT 2026-11-02). */
+
+/* SPLIT core/AI (2026-11-02): `llmdesc` (LLMEnv) vive nella dylib `gmb_runtime_ai`.
+ * Questi riferimenti sono DEBOLI: senza la dylib il core linka comunque e le funzioni che
+ * richiedono l'ABI dicono esplicitamente che l'AI non è disponibile (mai un ripiego muto). */
+/* SPLIT core/AI (2026-11-02): l'ABI dei modelli (LLMEnv `llmdesc`) vive nella dylib
+ * `gmb_runtime_ai`. Il core non linka LLMEnv: i tre servizi sono PUNTATORI registrati dalla
+ * dylib al caricamento (`gmb_abi_set_llmdesc`). Se non è caricata, l'ABI non c'è e le
+ * operazioni AI riportano l'errore del gateway (mai un ripiego muto). */
+static int  (*g_llmdesc_valid)(const char*) = NULL;
+static int  (*g_llmdesc_locate)(char*, size_t, char*, size_t) = NULL;
+static void (*g_llmdesc_policy)(int (*)(char*, size_t), int) = NULL;
+
+void gmb_abi_set_llmdesc(int (*valid)(const char*), int (*locate)(char*, size_t, char*, size_t),
+                         void (*policy)(int (*)(char*, size_t), int))
+{
+    g_llmdesc_valid = valid;
+    g_llmdesc_locate = locate;
+    g_llmdesc_policy = policy;
+}
+
+static int gmb_abi_available(void)
+{
+    return g_llmdesc_valid != NULL;
+}
+
 #include <unistd.h>
 #include <ctype.h>
 #include <sys/stat.h>
@@ -251,7 +277,7 @@ static int abi_stored(const char* file, char* out, size_t cap)
 {
     char v[2048]; if (!file || !file[0] || !abi_file_get(file, v, sizeof v)) return 0;
     char e[2048]; abi_expand(v, e, sizeof e);
-    if (!llmdesc_abi_valid(e)) return 0;
+    if (!gmb_abi_available() || !g_llmdesc_valid(e)) return 0;
     snprintf(out, cap, "%s", e);
     return 1;
 }
@@ -312,8 +338,17 @@ int gmb_abi_dir(char* out, size_t cap)
         if (gmb_paths_settings_file(sys, sizeof sys) && abi_stored(sys, found, sizeof found)) ok = 1;
     }
 #endif
+    /* senza la dylib AI (LLMEnv) non c'è ABI: si esce in silenzio — l'errore vero lo dà
+     * l'operazione AI quando viene invocata (`gmb_ai_last_error`). */
+    if (!gmb_abi_available())
+    {
+        g_abi_dir[0] = 0;
+        g_abi_done = 1; g_abi_busy = 0;
+        snprintf(out, cap, "%s", g_abi_dir);
+        return 0;
+    }
     /* 2. prima esecuzione (o percorso non piu' valido): localizza e ricorda */
-    if (!ok && llmdesc_abi_locate(found, sizeof found, how, sizeof how)) ok = 2;
+    if (!ok && g_llmdesc_locate(found, sizeof found, how, sizeof how)) ok = 2;
     /* 2b. MONOREPO: LLMEnv è un progetto FRATELLO (<repo>/../LLMEnv/ABI). llmdesc_abi_locate
      * conosce solo install (pkg/Homebrew) e albero sorgente RISALENDO da cwd/eseguibile/libreria:
      * in un run di test (cwd nei binari, libreria in una cache) non trova NULLA, e ogni
@@ -331,7 +366,7 @@ int gmb_abi_dir(char* out, size_t cap)
             {
                 char cand[4096];
                 snprintf(cand, sizeof cand, "%s%s", root, tails[t]);
-                if (llmdesc_abi_valid(cand))
+                if (g_llmdesc_valid && g_llmdesc_valid(cand))
                 {
                     snprintf(found, sizeof found, "%s", cand);
                     snprintf(how, sizeof how, "monorepo sibling");
@@ -341,7 +376,8 @@ int gmb_abi_dir(char* out, size_t cap)
         }
     }
     /* 3. LLMEnv assente: propone l'installazione */
-    if (!ok && abi_offer_install() && llmdesc_abi_locate(found, sizeof found, how, sizeof how)) ok = 2;
+    if (!ok && g_llmdesc_locate && abi_offer_install() &&
+        g_llmdesc_locate(found, sizeof found, how, sizeof how)) ok = 2;
 
     if (ok == 2 && have_target && strncmp(how, "source tree", 11) != 0 && strcmp(how, "LLMDESC_ABI_DIR") != 0)
         abi_file_set(target, found);   /* l'albero sorgente si ritrova da solo; l'env e' per-processo: non si salvano */
@@ -366,7 +402,7 @@ int gmb_abi_dir(char* out, size_t cap)
 /* Registrazione: richiesta della cartella ABI = risolta da qui, e senza ABI il caricamento del modello fallisce. */
 __attribute__((constructor)) static void gmb_abi_register(void)
 {
-    llmdesc_set_abi_policy(gmb_abi_dir, 1);
+    if (g_llmdesc_policy) g_llmdesc_policy(gmb_abi_dir, 1);
 }
 
 /* Riferimento forzato dal modulo paths: tiene il file oggetto nel link anche da libreria statica. */

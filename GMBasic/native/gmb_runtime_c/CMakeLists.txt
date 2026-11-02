@@ -119,6 +119,42 @@ if(NOT TARGET gmbllm)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../gmbllm gmbllm_build)
 endif()
 
+# ── DYLIB AI del runtime (2026-11-02): le SOLE parti che dipendono da LLMEnv ──────────────────
+# `gmb_asr_cmd.c`, `gmb_llm_tok.c`, `gmb_model_io.c` usano ASR/llmmodelio/llmdesc di LLMEnv.
+# Vivono in una dylib separata, caricata su richiesta dal core (`gmb_ai_gateway.c`): così il
+# runtime — e quindi REPL/gmbadmin/vm_host — si compila e linka SENZA LLMEnv.
+# Non linka il runtime: risolve i simboli del core a load-time (evita una seconda copia degli
+# stati globali del core). Su macOS `-undefined dynamic_lookup`; su ELF servono i simboli
+# esportati dal consumer.
+set(GMB_RUNTIME_AI_SRCS
+    src/gmb_ai_register.c
+    src/gmb_asr_cmd.c
+    src/gmb_llm_tok.c
+    src/gmb_model_io.c
+    src/gmb_distill.c
+    ../gmb_compiler_c/src/model/gmb_model_quantize.c
+    ${LLMENV}/LLMEngine/moe/src/llmengine_moe_quant_alloc.c
+    ${LLMENV}/LLMEngine/moe/src/llmengine_moe_gguf.c
+    ${LLMENV}/LLMEngine/moe/src/llmengine_moe_gguf_expert.c
+    ${LLMENV}/LLMEngine/moe/src/llmengine_moe_ggml.c
+    ${LLMENV}/LLMEngine/moe/src/llmengine_moe_discover.c)
+add_library(gmb_runtime_ai SHARED ${GMB_RUNTIME_AI_SRCS})
+target_include_directories(gmb_runtime_ai PRIVATE include src
+    ${LLMENV}/LLMEngine/include
+    ${LLMENV}/LLMCodec/include
+    ${LLMENV}/LLMToken/include
+    ${LLMENV}/LLMEngine/moe/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../gmbllm/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../gmbllm/include/quant)
+target_link_libraries(gmb_runtime_ai PRIVATE
+    llm_asr llmcodec llmtoken llmdesc llmengine_plugin gmbllm_core ${CMAKE_DL_LIBS} m)
+if(APPLE)
+    target_link_options(gmb_runtime_ai PRIVATE "-Wl,-undefined,dynamic_lookup")
+endif()
+set_target_properties(gmb_runtime_ai PROPERTIES
+    PREFIX "lib" OUTPUT_NAME "gmb_runtime_ai"
+    LIBRARY_OUTPUT_DIRECTORY "${GMB_LIBS_OUT}")
+
 # Motore chart autonomo e riusabile (native/gmb_chart): pura libc/math + function table
 # di disegno fornita dall'host. Linkato dal runtime via l'adapter gmb_graphics_chart.c;
 # linkabile anche da app C esterne. Nessuna dipendenza da GMBasic/SDL/g_gfx.
@@ -132,6 +168,7 @@ set(GMB_ALL_SRCS
     src/gmb_fetch.c        # motore download: streaming + resume + lock + sha (brains/pacchetti/libs)
     src/gmb_fetch_curl.c   # trasporto HTTP del motore (libcurl); senza curl = NULL, non stub
     src/gmb_brains.c       # cervelli come dati: risoluzione (vendor/exe/cache) + install da manifest
+    src/gmb_ai_gateway.c   # entry point AI (ASR/LLM/modelio) → dylib gmb_runtime_ai, deboli nel core
     src/gmb_brain_registry.c   # Second Brain: registry brains.json + manifest brain.manifest.json
     src/gmb_brain_tools.c      # Second Brain: stats/verify/create/register/buildvault/optimize/rename/export/sign
     src/gmb_brain_tools2.c     # Second Brain: dedupe/extract/merge/convert/verify-golden/diff/doctor
@@ -173,21 +210,14 @@ set(GMB_ALL_SRCS
     src/gmb_finetune.c
     # MODEL COMPILER LLM (save/quantize/convert) + imatrix/forward: progetto gmb_model_io (linkato sotto)
     # registry plugin + .gmbarch: progetti autonomi (LLMEngine/plugin / LLMDesc), linkati sotto
-    ${LLMENV}/LLMEngine/moe/src/llmengine_moe_quant_alloc.c
     # MODEL I/O in-process (LLM MODEL CONVERT/QUANTIZE/INSPECT): la logica di discover/convert/
     # quantize sta nel runtime condiviso così i 3 backend C la chiamano DIRETTAMENTE (niente
     # subprocess da gmb_moestream.c). Le stesse sorgenti sono usate dalla dylib gmb_ai_modelio.
-    src/gmb_model_io.c
     # LLM MODEL LOAD/UNLOAD/CACHE/PREFETCH/DEVICE/PROMOTE/DEMOTE + LLM.STREAMSTATS: provider
     # MoE out-of-core (dlopen libgmb_ai_moestream). Ripristinato 2026-09-25.
     src/gmb_moestream.c
     ${LLMENV}/LLMEngine/moe/src/llmengine_moe_arch.c
     ${LLMENV}/LLMEngine/moe/src/llmengine_moe_json.c
-    ${LLMENV}/LLMEngine/moe/src/llmengine_moe_gguf.c
-    ${LLMENV}/LLMEngine/moe/src/llmengine_moe_gguf_expert.c
-    ${LLMENV}/LLMEngine/moe/src/llmengine_moe_discover.c
-    ${LLMENV}/LLMEngine/moe/src/llmengine_moe_ggml.c
-    ../gmb_compiler_c/src/model/gmb_model_quantize.c
     ../gmb_compiler_c/src/model/gmb_st.c
     src/gmb_ipc_client.c
     src/gmb_job_registry.c
@@ -198,7 +228,6 @@ set(GMB_ALL_SRCS
     # CommonLib AudioUtils (5 func math, no SDL dep)
     src/gmb_audio.c
     # ASR: entry-point P/Invoke `gmb_asr_cmd` (engine in LLMEnv/LLMEngine/asr, target llm_asr).
-    src/gmb_asr_cmd.c
     src/gmb_workflow.c
     src/gmb_strings.c
     src/gmb_stringbuilder.c
@@ -274,7 +303,6 @@ set(GMB_ALL_SRCS
     src/gmb_team.c
     src/gmb_ai.c
     src/gmb_ai_decide.c
-    src/gmb_llm_tok.c
     src/gmb_mcp_server.c
     src/gmb_ai_server.c
     src/gmb_brain.c
@@ -300,7 +328,6 @@ set(GMB_ALL_SRCS
     # RAG eval: quartetto retrieval (P@K/R@K/MRR/NDCG) + giudizi generazione tier-1 (todo Rag-Eval-Gap-Analysis Fase A)
     src/gmb_rag_eval.c
     # Stream D: self-distillation lm_head-only — dataset/report condiviso (AI DISTILL, fase D1)
-    src/gmb_distill.c
     # RAG eval avanzato R4-R8: diagnosi, Cohen kappa, Wilson CI, calibrazione, gate, PSI, z-test, Welch t, compare
     src/gmb_rageval_advanced.c
     # Self-Consistency / Semantic Entropy (Spanda R_sc) — todo AI-SelfConsistency-Uncertainty-Spanda-Gap-Analysis
@@ -384,6 +411,9 @@ add_library(gmb_runtime_ui_obj OBJECT ${GMB_UI_SRCS})
 target_link_libraries(gmb_runtime_core_obj PRIVATE gmb_runtime_deps)
 # Il runtime COMPLETO include l'UI (FORM/READ con listbox/combobox/ombra/input).
 target_compile_definitions(gmb_runtime_core_obj PRIVATE GMB_WITH_UI=1)
+# Path di BUILD della dylib AI: il gateway la trova anche senza install (dev/REPL build dir).
+target_compile_definitions(gmb_runtime_core_obj PRIVATE
+    GMB_RUNTIME_AI_PATH="${GMB_LIBS_OUT}/libgmb_runtime_ai.dylib")
 target_link_libraries(gmb_runtime_ui_obj PRIVATE gmb_runtime_deps)
 # La copia UI (TUI + present SDL/Vulkan) dichiara GMB_WITH_UI: è lei che fornisce
 # listbox/combobox/input/ombra a FORM e READ. Il CORE resta senza riferimenti all'UI,
@@ -397,6 +427,10 @@ add_library(gmb_runtime_core STATIC $<TARGET_OBJECTS:gmb_runtime_core_obj>)
 # (niente SDL2/SDL2_ttf/MoltenVK). Il runtime completo (gmb_runtime) resta quello con l'UI.
 add_library(gmb_runtime_min_obj OBJECT ${GMB_CORE_SRCS})
 target_link_libraries(gmb_runtime_min_obj PRIVATE gmb_runtime_deps)
+# Stesso path di build della dylib AI del core completo: anche i programmi generati da
+# `gmb run` (linkati contro libgmb_runtime_min.a) devono trovare gmb_runtime_ai.
+target_compile_definitions(gmb_runtime_min_obj PRIVATE
+    GMB_RUNTIME_AI_PATH="${GMB_LIBS_OUT}/libgmb_runtime_ai.dylib")
 # Stub NO-OP dell'API UI: permettono alla variante minima di linkare senza SDL/Vulkan.
 add_library(gmb_ui_null_obj OBJECT src/gmb_ui_null.c)
 target_link_libraries(gmb_ui_null_obj PRIVATE gmb_runtime_deps)
@@ -532,7 +566,7 @@ endif()
 # gmb_runtime (statica) ha ancora riferimenti a gmb_tray_* (es. gmb_c99gpm.c): propagali.
 target_link_libraries(gmb_runtime_deps INTERFACE gmb_tray)
 
-target_link_libraries(gmb_runtime_deps INTERFACE llmcodec llmcodec_ggml llmcodec_fp8 llmcodec_mlx_affine llmtoken llmengine_plugin llmdesc llm_asr gmbllm)   # codec GGML = plugin; tokenizer/plugin/model_desc/model_io/ASR = progetti autonomi
+target_link_libraries(gmb_runtime_deps INTERFACE)   # SPLIT 2026-11-02: nessuna dipendenza LLMEnv nel core (AI = dylib gmb_runtime_ai)   # codec GGML = plugin; tokenizer/plugin/model_desc/model_io/ASR = progetti autonomi
 # F2 multimodale (2026-09-11): gmb_docfields.c usa gmb_doc_extract (header gmb_doc_c).
 target_include_directories(gmb_runtime_deps INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_doc_c/include)
 target_link_libraries(gmb_runtime_deps INTERFACE ${CMAKE_DL_LIBS})
@@ -1260,7 +1294,7 @@ target_include_directories(gmb_ai_llm PRIVATE include src
     ${LLMENV}/LLMEngine/moe/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_doc_c/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_torch/include)
-target_link_libraries(gmb_ai_llm PRIVATE gmb_runtime llmcodec llmcodec_ggml llmcodec_mlx_affine llmcodec_fp8 llmengine_plugin llmdesc gmbllm)   # IQ2_XXS + affine = plugin
+target_link_libraries(gmb_ai_llm PRIVATE gmb_runtime llmcodec llmcodec_ggml llmcodec_mlx_affine llmcodec_fp8 llmengine_plugin llmdesc llm_asr llmtoken gmbllm_core)   # IQ2_XXS + affine = plugin
 # Forza l inclusione/esportazione di gmb_opt_env (usato da GmbEnv C#) dalla runtime static.
 if(APPLE)
     target_link_options(gmb_ai_llm PRIVATE "-Wl,-u,_gmb_opt_env")

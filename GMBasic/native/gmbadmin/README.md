@@ -200,6 +200,16 @@ I selfcheck C (`GMBasic/native/gmb_runtime_c/tests/`) girano su una cartella tem
 | `gmb_brain_tools_selfcheck` | stats/verify/dedupe/extract/merge/convert(+stats completo)/diff/doctor/export/sign |
 | `gmb_pkg_pack_signed_selfcheck` | firma Ed25519 (.sig/.pub), verify con la chiave del pacchetto, manomissione, HMAC |
 
+## Runtime AI (split 2026-11-02)
+
+Il runtime C (`libgmb_runtime.a`) **non linka LLMEnv**. Le parti AI — ASR, tokenizer LLM,
+model I/O, TRAIN DISTILL e i sorgenti MoE di LLMEnv — vivono nella dylib
+`libgmb_runtime_ai` (in `GMBasic/build/libs/<rid>/` nel checkout, `~/.gmbasic/libs/<rid>/`
+quando distribuita), caricata su richiesta dal gateway `gmb_ai_gateway.c`.
+Senza dylib i comandi AI falliscono con un errore **esplicito** («runtime AI non disponibile»),
+non con un no-op. `gmbllm` è a sua volta diviso in `gmbllm_core` (consumato dal runtime) e
+`gmbllm_train` (training/MLX, solo tool TRAIN).
+
 ## Sorgente unica
 
 La REPL C usa lo stesso backend per `ADD/REMOVE/BUMP/TRUST/CACHE/RESTORE/UPDATE/ROLLBACK`
