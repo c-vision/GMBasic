@@ -19,6 +19,7 @@ int gmbadmin_doc(int argc, char** argv);       /* argv[0]="convert"|"convfmt" */
 int gmbadmin_keygen(int argc, char** argv);    /* argv[0]="keygen" */
 int gmbadmin_pack(int argc, char** argv);      /* pack <dir> [--out f.gmbpkg] */
 int gmbadmin_publish(int argc, char** argv);   /* publish <f.gmbpkg> [--registry u] [--token t] */
+int gmbadmin_publish_repo(int argc, char** argv); /* publish --repo <git|path> <nome@tag> */
 int gmbadmin_login(int argc, char** argv, int logout);  /* login <token> | logout */
 int gmbadmin_register(int argc, char** argv);  /* register <name> [--email e] [--registry u] */
 int gmbadmin_admin(int argc, char** argv);     /* admin <reserve|assign|revoke|password|user ...> */
@@ -30,8 +31,10 @@ int gmbadmin_setup_component(const char* name, int argc, char** argv, int quiet,
 int gmbadmin_setup_rm(const char* comp, int force);
 int gmbadmin_libs_prune(int argc, char** argv);
 int gmbadmin_libs_publish(int argc, char** argv);
+int gmbadmin_libs_index(int argc, char** argv);
 int gmbadmin_hf(int argc, char** argv, int mlx);
 int gmbadmin_verify_pkg(int argc, char** argv);   /* pkg verify <file.gmbpkg> */
+int gmbadmin_cache_verify(int argc, char** argv); /* pkg cache verify [--lock file] */
 
 /* Percorsi/utility condivisi. */
 void gmbadmin_cache_root(char* out, size_t cap);   /* ~/.gmbasic/packages */

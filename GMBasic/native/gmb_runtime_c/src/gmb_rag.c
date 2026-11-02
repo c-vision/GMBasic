@@ -1007,3 +1007,143 @@ float rag_cos(const float* a, const float* b, int n)
     if (na == 0.0 || nb == 0.0) return 0.0f;
     return (float)(dot / (sqrt(na) * sqrt(nb)));
 }
+
+/* ── BUILD DI UNA CARTELLA (sorgente unica di `rag build` / `BRAIN CREATE`) ──
+ * Cammina `dir` (markdown/testo), indicizza ogni file con gmb_rag_index_source (chunking
+ * condiviso col C#), opzionalmente elimina dal DB le sorgenti non più presenti (`prune`).
+ * Esclusi bin/obj/build/work/node_modules e i dotfile. */
+#include <dirent.h>
+#include <sys/stat.h>
+
+typedef struct { char** v; int n, cap; } rag_slist_t;
+static void rag_sl_push(rag_slist_t* l, const char* s)
+{
+    if (l->n == l->cap) {
+        int cap = l->cap ? l->cap * 2 : 64;
+        char** p = (char**)realloc(l->v, (size_t)cap * sizeof(char*));
+        if (!p) return;
+        l->v = p; l->cap = cap;
+    }
+    l->v[l->n++] = strdup(s);
+}
+static int rag_sl_has(rag_slist_t* l, const char* s)
+{
+    for (int i = 0; i < l->n; i++) if (!strcmp(l->v[i], s)) return 1;
+    return 0;
+}
+static void rag_sl_free(rag_slist_t* l)
+{
+    for (int i = 0; i < l->n; i++) free(l->v[i]);
+    free(l->v);
+    l->v = NULL; l->n = l->cap = 0;
+}
+static int rag_doc_ext(const char* name)
+{
+    static const char* exts[] = { ".md", ".markdown", ".txt", NULL };
+    const char* d = strrchr(name, '.');
+    if (!d) return 0;
+    for (int i = 0; exts[i]; i++) if (!strcasecmp(d, exts[i])) return 1;
+    return 0;
+}
+static void rag_walk(const char* root, const char* rel, rag_slist_t* out)
+{
+    char dir[4096];
+    if (rel && *rel) snprintf(dir, sizeof dir, "%s/%s", root, rel);
+    else snprintf(dir, sizeof dir, "%s", root);
+    DIR* d = opendir(dir);
+    if (!d) return;
+    struct dirent* e;
+    while ((e = readdir(d))) {
+        if (e->d_name[0] == '.') continue;
+        if (!strcmp(e->d_name, "bin") || !strcmp(e->d_name, "obj") ||
+            !strcmp(e->d_name, "node_modules") || !strcmp(e->d_name, "work")) continue;
+        char r[4096];
+        if (rel && *rel) snprintf(r, sizeof r, "%s/%s", rel, e->d_name);
+        else snprintf(r, sizeof r, "%s", e->d_name);
+        char full[4608];
+        snprintf(full, sizeof full, "%s/%s", root, r);
+        struct stat st;
+        if (stat(full, &st) != 0) continue;
+        if (S_ISDIR(st.st_mode)) rag_walk(root, r, out);
+        else if (S_ISREG(st.st_mode) && rag_doc_ext(e->d_name)) rag_sl_push(out, r);
+    }
+    closedir(d);
+}
+static char* rag_read_all(const char* path)
+{
+    FILE* f = fopen(path, "rb");
+    if (!f) return NULL;
+    fseek(f, 0, SEEK_END);
+    long n = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    if (n < 0) n = 0;
+    char* b = (char*)malloc((size_t)n + 1);
+    if (!b) { fclose(f); return NULL; }
+    size_t rd = fread(b, 1, (size_t)n, f);
+    b[rd] = 0;
+    fclose(f);
+    return b;
+}
+
+int gmb_rag_build_dir(const char* dir, const char* db, const char* coll, int max_chars, int overlap,
+                      int prune, int* out_indexed, int* out_updated, int* out_skipped,
+                      int* out_removed, int* out_failed)
+{
+    if (out_indexed) *out_indexed = 0;
+    if (out_updated) *out_updated = 0;
+    if (out_skipped) *out_skipped = 0;
+    if (out_removed) *out_removed = 0;
+    if (out_failed) *out_failed = 0;
+    if (!dir || !*dir || !db || !*db) return -1;
+    struct stat st;
+    if (stat(dir, &st) != 0 || !S_ISDIR(st.st_mode)) return -1;
+    if (max_chars <= 0) max_chars = 2048;
+    if (overlap < 0) overlap = 256;
+    if (!coll || !*coll) coll = "wiki";
+
+    rag_slist_t files;
+    memset(&files, 0, sizeof files);
+    rag_walk(dir, "", &files);
+    int indexed = 0, updated = 0, skipped = 0, failed = 0;
+    for (int i = 0; i < files.n; i++) {
+        char full[4608];
+        snprintf(full, sizeof full, "%s/%s", dir, files.v[i]);
+        char* text = rag_read_all(full);
+        if (!text) { failed++; continue; }
+        char meta[1200];
+        snprintf(meta, sizeof meta, "{\"path\":\"%s\"}", files.v[i]);
+        int rc = gmb_rag_index_source(db, coll, files.v[i], text, meta, max_chars, overlap);
+        free(text);
+        if (rc == 1) indexed++;
+        else if (rc == 2) updated++;
+        else if (rc == 0) skipped++;
+        else failed++;
+    }
+    int removed = 0;
+    if (prune) {
+        char* known = gmb_rag_list_sources(db, coll);
+        if (known) {
+            const char* p = known;
+            while ((p = strchr(p, '"')) != NULL) {
+                const char* s = p + 1;
+                const char* e = strchr(s, '"');
+                if (!e) break;
+                char src[2048];
+                size_t l = (size_t)(e - s);
+                if (l >= sizeof src) l = sizeof src - 1;
+                memcpy(src, s, l);
+                src[l] = 0;
+                if (!rag_sl_has(&files, src)) { gmb_rag_delete_source(db, coll, src); removed++; }
+                p = e + 1;
+            }
+            free(known);
+        }
+    }
+    rag_sl_free(&files);
+    if (out_indexed) *out_indexed = indexed;
+    if (out_updated) *out_updated = updated;
+    if (out_skipped) *out_skipped = skipped;
+    if (out_removed) *out_removed = removed;
+    if (out_failed) *out_failed = failed;
+    return indexed + updated + skipped + failed;
+}

@@ -26,6 +26,9 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <sys/wait.h>
+#include <dirent.h>
 
 static void config_json(char* out, size_t cap)
 {
@@ -517,4 +520,218 @@ int gmbadmin_admin(int argc, char** argv)
     }
     fprintf(stderr, "?uso: gmb admin reserve|assign|revoke|password|user <create|setkey|status|list>\n");
     return 2;
+}
+
+/* ── publish --repo: verifica del repo contributor + register ─────────────── */
+
+static int run_in(const char* dir, char* const av[], char* out, size_t cap)
+{
+    int fds[2];
+    int have_pipe = (out && cap) ? (pipe(fds) == 0) : 0;
+    pid_t pid = fork();
+    if (pid < 0) return -1;
+    if (pid == 0) {
+        if (dir && *dir && chdir(dir) != 0) _exit(127);
+        if (have_pipe) { dup2(fds[1], 1); dup2(fds[1], 2); close(fds[0]); close(fds[1]); }
+        execvp(av[0], av);
+        _exit(127);
+    }
+    int st = 0;
+    if (have_pipe) {
+        close(fds[1]);
+        size_t off = 0;
+        ssize_t r;
+        while ((r = read(fds[0], out + off, cap - 1 - off)) > 0 && off + (size_t)r < cap - 1) off += (size_t)r;
+        out[off] = 0;
+        close(fds[0]);
+    }
+    waitpid(pid, &st, 0);
+    return WIFEXITED(st) ? WEXITSTATUS(st) : -1;
+}
+
+int gmbadmin_publish_repo(int argc, char** argv)
+{
+    const char* repo = NULL;
+    const char* name_tag = NULL;
+    for (int i = 2; i < argc; i++) {   /* argv[1] = "publish" */
+        if (!strcmp(argv[i], "--repo") && i + 1 < argc) { repo = argv[++i]; continue; }
+        if (!strncmp(argv[i], "--repo=", 7)) { repo = argv[i] + 7; continue; }
+        if (argv[i][0] == '-') {
+            if (!strchr(argv[i], '=') && i + 1 < argc && argv[i + 1][0] != '-') i++;
+            continue;
+        }
+        if (!name_tag) name_tag = argv[i];
+    }
+    if (!repo || !name_tag) {
+        fprintf(stderr, "?uso: gmb publish --repo <git-url|path> <nome@tag> [--registry url] [--token t]\n");
+        return 2;
+    }
+    /* name@tag: separatore = ULTIMO '@' (nome può essere @scope/name) */
+    char name[256], tag[128] = "HEAD";
+    const char* at = strrchr(name_tag, '@');
+    if (at && at != name_tag) {
+        size_t l = (size_t)(at - name_tag);
+        if (l >= sizeof name) l = sizeof name - 1;
+        memcpy(name, name_tag, l); name[l] = 0;
+        snprintf(tag, sizeof tag, "%s", at + 1);
+    } else snprintf(name, sizeof name, "%s", name_tag);
+
+    char work[1200];
+    const char* tmp = getenv("TMPDIR");
+    snprintf(work, sizeof work, "%s/gmb_repo_%ld", (tmp && *tmp) ? tmp : "/tmp", (long)getpid());
+    gmb_fs_rmtree(work);
+    gmb_fs_mkdir_p(work);
+
+    char out[8192];
+    char* av_git_init[] = { "git", "init", "-q", NULL };
+    if (run_in(work, av_git_init, out, sizeof out) != 0) {
+        fprintf(stderr, "?publish --repo: git init fallito in %s: %s\n", work, out);
+        gmb_fs_rmtree(work);
+        return 1;
+    }
+    char* av_remote[] = { "git", "remote", "add", "origin", (char*)repo, NULL };
+    if (run_in(work, av_remote, out, sizeof out) != 0) {
+        fprintf(stderr, "?publish --repo: remote add fallito: %s\n", out);
+        gmb_fs_rmtree(work);
+        return 1;
+    }
+    char ref[256];
+    snprintf(ref, sizeof ref, "%s", !strcmp(tag, "HEAD") ? "HEAD" : "");
+    char tagref[300];
+    if (ref[0]) snprintf(tagref, sizeof tagref, "%s", ref);
+    else snprintf(tagref, sizeof tagref, "refs/tags/%s", tag);
+    char* av_fetch[] = { "git", "fetch", "-q", "--depth", "1", "origin", tagref, NULL };
+    if (run_in(work, av_fetch, out, sizeof out) != 0) {
+        fprintf(stderr, "?publish --repo: fetch di '%s' fallito: %s\n", tagref, out);
+        gmb_fs_rmtree(work);
+        return 1;
+    }
+    char* av_co[] = { "git", "checkout", "-q", "FETCH_HEAD", NULL };
+    if (run_in(work, av_co, out, sizeof out) != 0) {
+        fprintf(stderr, "?publish --repo: checkout fallito: %s\n", out);
+        gmb_fs_rmtree(work);
+        return 1;
+    }
+
+    /* [1] manifest in root e valido */
+    char mp[1600];
+    snprintf(mp, sizeof mp, "%s/gmb-package.json", work);
+    FILE* mf = fopen(mp, "rb");
+    if (!mf) { fprintf(stderr, "?publish --repo: gmb-package.json mancante in root del repo\n"); gmb_fs_rmtree(work); return 1; }
+    fseek(mf, 0, SEEK_END); long ml = ftell(mf); fseek(mf, 0, SEEK_SET);
+    char* mjs = (char*)malloc((size_t)ml + 1);
+    if (!mjs || fread(mjs, 1, (size_t)ml, mf) != (size_t)ml) { fclose(mf); free(mjs); gmb_fs_rmtree(work); return 1; }
+    mjs[ml] = 0; fclose(mf);
+    gmb_pkg_manifest_t* man = gmb_pkg_manifest_parse(mjs);
+    if (!man) { free(mjs); fprintf(stderr, "?publish --repo: manifest non valido\n"); gmb_fs_rmtree(work); return 1; }
+    char mname[256] = "", mver[64] = "";
+    gmb_pkg_manifest_get(man, "name", mname, sizeof mname);
+    gmb_pkg_manifest_get(man, "version", mver, sizeof mver);
+    gmb_pkg_manifest_free(man);
+    if (!mname[0] || !mver[0]) { free(mjs); fprintf(stderr, "?publish --repo: name/version mancanti\n"); gmb_fs_rmtree(work); return 1; }
+    printf("  [1] manifest OK: %s@%s\n", mname, mver);
+
+    /* [2] il manifest è versionato */
+    char* av_ls[] = { "git", "ls-files", "--error-unmatch", "gmb-package.json", NULL };
+    if (run_in(work, av_ls, out, sizeof out) != 0) {
+        free(mjs);
+        fprintf(stderr, "?publish --repo: gmb-package.json non è versionato nel repo\n");
+        gmb_fs_rmtree(work);
+        return 1;
+    }
+    printf("  [2] git OK (manifest versionato, tag: %s)\n", tag);
+
+    /* [3] compilazione dell'entry di test (se dichiarata o individuabile) */
+    const char* entry = NULL;
+    char entry_buf[1024] = "";
+    {
+        /* si cerca un sample .bas eseguibile (ricorsivo, esclusi bin/obj/work) */
+        extern int gmbadmin_find_bas(const char* dir, const char* rel, char* out, size_t cap);
+        if (gmbadmin_find_bas(work, "", entry_buf, sizeof entry_buf) && entry_buf[0]) entry = entry_buf;
+    }
+    char gmb[2048];
+    const char* path = getenv("PATH");
+    int have_gmb = 0;
+    if (path) {
+        char tmp2[4096];
+        snprintf(tmp2, sizeof tmp2, "%s", path);
+        for (char* dd = strtok(tmp2, ":"); dd; dd = strtok(NULL, ":")) {
+            char cand[4096];
+            snprintf(cand, sizeof cand, "%s/gmb", dd);
+            if (access(cand, X_OK) == 0) { snprintf(gmb, sizeof gmb, "%s", cand); have_gmb = 1; break; }
+        }
+    }
+    if (entry && have_gmb) {
+        char* av_check[] = { gmb, "check", "--project", work, "--entry", entry, "--quiet", NULL };
+        if (run_in(NULL, av_check, out, sizeof out) != 0) {
+            free(mjs);
+            fprintf(stderr, "?publish --repo: compilazione dell'entry '%s' FALLITA:\n%s\n", entry, out);
+            gmb_fs_rmtree(work);
+            return 1;
+        }
+        printf("  [3] compilazione OK (%s)\n", entry);
+    } else {
+        printf("  [3] compilazione SALTATA (nessuna entry .bas trovata o `gmb` non nel PATH)\n");
+    }
+
+    /* [4] register: report inviato al registry */
+    char registry[512];
+    gmbadmin_registry_url(argc, argv, registry, sizeof registry);
+    const char* token = NULL;
+    for (int i = 2; i < argc; i++)
+        if (!strcmp(argv[i], "--token") && i + 1 < argc) token = argv[i + 1];
+    char body[8192];
+    snprintf(body, sizeof body,
+             "{\"name\":\"%s\",\"version\":\"%s\",\"tag\":\"%s\",\"repo\":\"%s\","
+             "\"checks\":{\"manifest\":true,\"git\":true,\"compile\":%s}}",
+             mname, mver, tag, repo, (entry && have_gmb) ? "true" : "false");
+    char url[1024], resp[4096] = "";
+    snprintf(url, sizeof url, "%s/api/packages/register", registry);
+    int status = 0;
+    int ok = gmb_pkg_registry_post(url, body, (token && *token) ? token : NULL, resp, sizeof resp, &status);
+    free(mjs);
+    gmb_fs_rmtree(work);
+    if (!ok) {
+        if (status == 0) fprintf(stderr, "?publish --repo: registry NON RAGGIUNGIBILE su %s\n", url);
+        else fprintf(stderr, "?publish --repo: register fallito (%d): %s\n", status, resp);
+        return 1;
+    }
+    printf("  [4] registrato sul registry: %s (%s)\n", url, resp[0] ? resp : "ok");
+    return 0;
+}
+
+/* Primo sample .bas eseguibile sotto `dir` (path relativo). */
+int gmbadmin_find_bas(const char* dir, const char* rel, char* out, size_t cap)
+{
+    char d[2048];
+    if (rel && *rel) snprintf(d, sizeof d, "%s/%s", dir, rel);
+    else snprintf(d, sizeof d, "%s", dir);
+    DIR* dh = opendir(d);
+    if (!dh) return 0;
+    struct dirent* e;
+    int found = 0;
+    while (!found && (e = readdir(dh))) {
+        if (e->d_name[0] == '.') continue;
+        if (!strcmp(e->d_name, "bin") || !strcmp(e->d_name, "obj") ||
+            !strcmp(e->d_name, "build") || !strcmp(e->d_name, "work") ||
+            !strcmp(e->d_name, ".git")) continue;
+        char r[2048];
+        if (rel && *rel) snprintf(r, sizeof r, "%s/%s", rel, e->d_name);
+        else snprintf(r, sizeof r, "%s", e->d_name);
+        char full[2400];
+        snprintf(full, sizeof full, "%s/%s", dir, r);
+        struct stat st;
+        if (stat(full, &st) != 0) continue;
+        if (S_ISREG(st.st_mode)) {
+            size_t l = strlen(e->d_name);
+            if (l > 4 && !strcasecmp(e->d_name + l - 4, ".bas")) {
+                snprintf(out, cap, "%s", r);
+                found = 1;
+            }
+        } else if (S_ISDIR(st.st_mode)) {
+            found = gmbadmin_find_bas(dir, r, out, cap);
+        }
+    }
+    closedir(dh);
+    return found;
 }

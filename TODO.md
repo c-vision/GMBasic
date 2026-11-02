@@ -287,17 +287,28 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
         (cached), hf 1 file e 5 file con pattern, keygen su dir.
         Residuo (errore esplicito, nessuna logica C#): `graph export-obsidian`, `graph watch|
         unwatch`, `web2md`, `batch`.
-      - [ ] **F9d** — `GMBasicSharp/Cli` diventa **wrapper P/Invoke** o viene rimosso. Inventario
-        ESATTO di ciò che è ancora solo-C# (verificato 2026-11-02, dopo F9c):
-        - **Second Brain toolchain** (`common/AI/Knowledge/BrainToolchain*.cs`, ~1500 righe):
-          `gmb brain stats|verify [--golden]|create|optimize|backup|rename|dedupe|extract|
-          merge|buildvault|register|diff|doctor|convert`;
-        - **brain export/sign** (`BrainPackager.cs`, `BrainSigner.cs`): `.gmbrain.zip` +
-          `brain.manifest.json` con **checksum auto-riferito** (serializzazione canonica JSON
-          identica a System.Text.Json camelCase/indentata: da replicare byte per byte, altrimenti
-          un cervello esportato da C risulterebbe non valido al C#) + probe graph/vectordb;
-        - `gmb graph export-obsidian`, `gmb graph watch|unwatch` (`GraphWatchService`);
-        - `gmb libs index` (rigenera `index.txt`), `gmb pkg cache verify`, `gmb publish --repo`
-          (verifica repo contributor + POST `/api/packages/register`);
-        - `gmb <file.bas>` legacy (esecuzione diretta con engine C# → già coperta da `gmbcs run`).
-        Tutto il resto dell'amministrazione è **C**: `gmbadmin` + `gmbadminrag/daemon/fetch`.
+      - [x] **F9d** (2026-11-02) — **nessun C#-only**: il CLI C# `GMBasicSharp/Cli` è stato
+        **rimosso** (progetto + slnx + documentazione) e tutto il suo contenuto vive in C.
+        - **Brain toolchain in C** (`gmb_runtime_c/src/gmb_brain_{registry,tools,tools2}.c`,
+          API `gmb_brain_tool_*` in `include/gmb_brain_tools.h`): registry `config/brains.json`
+          (register/unregister/use/detach/info/available/rag-db/graph-json/root), manifest
+          `brain.manifest.json` (formato `gmbrain`, sha256 per file, **checksum auto-riferito**
+          con serializzazione identica a System.Text.Json WriteIndented — verificato con un
+          ricalcolo indipendente), **EXPORT/SIGN/BACKUP** (.gmbrain.zip), stats, verify,
+          verify --golden, create, register, buildvault, optimize, rename, dedupe, extract,
+          merge, convert (rag↔graph), diff, doctor, graph export-obsidian, forget.
+        - **Altri comandi portati**: `setup rm`, `libs prune`, `libs index`, `publish --repo`
+          (manifest+git+compilazione+register), `pkg cache verify` (vs lock), `pack --dry-run`,
+          `pack --sign` (Ed25519), `brain install/uninstall` (già C), `graph watch` (polling).
+        - **Test**: `tools/sh/brain_c_smoke.sh` (30 check, HOME+GMBASIC_ROOT isolati) copre
+          create/stats/verify/sign/export/install/use/detach/rename/optimize/dedupe/diff/doctor/
+          export-obsidian/extract/merge/convert/dedupe-rag. I test C# del toolchain sono stati
+          rimossi con il codice che testavano.
+        - **Riduzioni dichiarate** (non silenziose): le pagine `buildvault` hanno nome+arità+tipo
+          (il catalogo firme completo coi tipi dei parametri vive nel linker C#; il registry
+          canonico C ha `ns/name/kind/arity`); `graph` export (stats/mermaid/graphml/html) è
+          completo nei formati ma `stats.json` ha un sottoinsieme (niente betweenness/godNodes/
+          surprisingConnections); `publish --repo` non carica gli asset binari (materialize).
+        - Restano **C#** solo i moduli usati dai backend C# (IL/PCode): `BrainRegistry`,
+          `BrainInstaller`, `BrainManifest`, `BrainVault` (il C# può esistere come altro
+          compilatore, ma non ha più alcun comando che esista SOLO lì).

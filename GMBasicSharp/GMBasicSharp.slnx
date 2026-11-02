@@ -35,5 +35,4 @@
   </Folder>
   <Project Path="Executor/Executor.csproj" />
   <Project Path="CompilerCli/CompilerCli.csproj" />
-  <Project Path="Cli/Cli.csproj" />
 </Solution>

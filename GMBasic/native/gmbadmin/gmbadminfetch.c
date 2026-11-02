@@ -517,6 +517,28 @@ int gmbadmin_libs_publish(int argc, char** argv)
     return rc == 0 ? 0 : 1;
 }
 
+/* ── libs index: rigenera l'indice delle librerie (script di release) ────── */
+
+int gmbadmin_libs_index(int argc, char** argv)
+{
+    const char* rid = gmb_libs_rid();
+    for (int i = 3; i < argc; i++) {
+        if (!strcmp(argv[i], "--rid") && i + 1 < argc) rid = argv[i + 1];
+        else if (!strncmp(argv[i], "--rid=", 6)) rid = argv[i] + 6;
+    }
+    char root[2048], script[2400];
+    if (!gmb_paths_repo_root(root, sizeof root) || !root[0]) {
+        fprintf(stderr, "?libs index: repo root non trovata\n");
+        return 1;
+    }
+    snprintf(script, sizeof script, "%s/tools/sh/libs_manifest_gh.sh", root);
+    if (access(script, R_OK) != 0) { fprintf(stderr, "?libs index: script assente (%s)\n", script); return 1; }
+    char* av[] = { "bash", script, "build", "--rid", (char*)rid, "--repo", "c-vision/GMBasicModules", NULL };
+    int rc = run_cmd(av);
+    printf("libs index (rid %s): %s\n", rid, rc == 0 ? "OK" : "FALLITO");
+    return rc == 0 ? 0 : 1;
+}
+
 /* ── hf / mlx: download modelli (HF API + gmb_fetch) ─────────────────────── */
 
 static int token_from_cache(char* out, size_t cap)

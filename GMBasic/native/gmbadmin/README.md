@@ -34,7 +34,7 @@ gmb pkg restore [dir] [--locked] [--cache d] [--registry url]
 gmb pkg update [dir] [--check] [--cache d]
 gmb pkg rollback [dir] [--list] [--to prefisso]
 gmb pkg trust [list|add|remove|fingerprint] …
-gmb pkg cache [list|gc|dedup|clean [--force]]
+gmb pkg cache [list|verify|gc|dedup|clean [--force]]   # verify = confronto col lock
 gmb pkg verify <file.gmbpkg>
 gmb pack --dry-run <dir>        # elenca i file che entrerebbero (nessuna scrittura)
 ```
@@ -43,6 +43,7 @@ gmb pack --dry-run <dir>        # elenca i file che entrerebbero (nessuna scritt
 ```bash
 gmb pack <dir> [--out f.gmbpkg] [--key-file priv|--key segreto]
 gmb publish <f.gmbpkg> [--registry u] [--token t]
+gmb publish --repo <git-url|path> <nome@tag> [--registry u] [--token t]   # verifica repo + register
 gmb login <token> [--registry u] · gmb logout
 gmb register <nome> [--email e] [--registry u]
 gmb admin reserve|assign|revoke|password|user <create|setkey|status|list> …
@@ -60,6 +61,7 @@ gmb keygen [dir] [--pem]
 gmb libs status · gmb libs ensure [--runtime-only|--dev|--components|--all]
 gmb libs check [--index file] · gmb libs publish <support|engine|core> <rid> [--yes]
 gmb libs prune [--dry-run]      # elimina dalla cache i file non presenti nel manifest
+gmb libs index [--rid R]        # rigenera l'indice delle librerie (script di release)
 ```
 
 ### Setup componenti on-demand
@@ -108,6 +110,33 @@ gmb mlx <repo> [--dest D] [--token T] [--quiet]      # intero repo
 Elenco file da `https://huggingface.co/api/models/<repo>`, download con `gmb_fetch`
 (ripresa/stall-retry), token da `--token` o `~/.cache/huggingface/token`.
 
+### Second Brain (toolchain completo, C)
+```bash
+gmb brain list|info <nome>|use <nome>|detach <nome>|forget <nome>|resolve <nome>
+gmb brain install <nome> [<sorgente>] · uninstall <nome>
+gmb brain stats <nome> [--json]
+gmb brain verify <nome> [--json] · verify <nome> --golden <file.jsonl> [--topk N] [--min-p1 X]
+gmb brain create <nome> --from <dir> [--mode rag|graph|both] [--register] [--activate] [--dry-run]
+gmb brain register <nome> [--mode …] [--source …] [--activate]
+gmb brain buildvault [--out <dir>]
+gmb brain optimize <nome> [--dry-run] [--reindex-fts]
+gmb brain rename <nome> <nuovo> [--dry-run]
+gmb brain backup|export <nome> [--out file.zip]
+gmb brain sign <nome> <cartella> [--out file.zip]
+gmb brain dedupe <nome> [--apply] [--min-chars N] [--dry-run]
+gmb brain extract <nome> --out <nuovo> [--source S] [--node N] [--hops N] [--dry-run]
+gmb brain merge <a> <b> [<c>…] --out <nuovo> [--on-conflict skip|replace] [--dry-run]
+gmb brain convert <nome> --to rag|graph [--out nuovo] [--in-place] [--dry-run] [--min-edges N]
+gmb brain diff <a> <b> [--json]
+gmb brain doctor <nome>
+gmb graph export-obsidian <nome> [--graphs d] [--out dir]
+gmb graph watch <wikiDir> [--graphs d] [--name n] [--interval S] [--once]
+```
+Implementazione: `gmb_runtime_c/src/gmb_brain_registry.c` (registry `config/brains.json` +
+manifest `brain.manifest.json`), `gmb_brain_tools.c` (stats/verify/create/register/buildvault/
+optimize/rename/export/sign/backup), `gmb_brain_tools2.c` (dedupe/extract/merge/convert/
+verify-golden/diff/doctor + export grafo). Il C# non ha più nessuno di questi comandi.
+
 ### Altro
 ```bash
 gmb fixtures [list|ensure|pull <nome>]
@@ -120,10 +149,10 @@ gmb keygen · gmb pkg verify
 
 ## Residuo (F9c)
 
-Ancora solo-C# (inventario completo in `TODO.md` §6, F9d): toolchain Second Brain
-(`brain stats|verify|create|optimize|backup|rename|dedupe|extract|merge|buildvault|register|
-diff|doctor|convert`), `brain export|sign`, `graph export-obsidian`, `graph watch|unwatch`,
-`libs index`, `pkg cache verify`, `publish --repo`. Il resto dell'amministrazione è C.
+**Nessun comando esiste solo in C#**: il vecchio CLI `GMBasicSharp/Cli` è stato rimosso.
+Limiti dichiarati (non silenziosi): le pagine `buildvault` riportano nome+arità+tipo (i tipi dei
+parametri vivono nel linker C#); `stats.json` del grafo è un sottoinsieme (niente betweenness/
+godNodes); `publish --repo` non carica gli asset binari (materialize).
 
 ## Sorgente unica
 

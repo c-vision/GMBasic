@@ -132,6 +132,10 @@ set(GMB_ALL_SRCS
     src/gmb_fetch.c        # motore download: streaming + resume + lock + sha (brains/pacchetti/libs)
     src/gmb_fetch_curl.c   # trasporto HTTP del motore (libcurl); senza curl = NULL, non stub
     src/gmb_brains.c       # cervelli come dati: risoluzione (vendor/exe/cache) + install da manifest
+    src/gmb_brain_registry.c   # Second Brain: registry brains.json + manifest brain.manifest.json
+    src/gmb_brain_tools.c      # Second Brain: stats/verify/create/register/buildvault/optimize/rename/export/sign
+    src/gmb_brain_tools2.c     # Second Brain: dedupe/extract/merge/convert/verify-golden/diff/doctor
+    src/gmb_brain_graph.c      # Second Brain: modello grafo + export (json/stats/mermaid/graphml/html/obsidian)
     src/gmb_fixtures.c     # fixture di mercato on demand (manifest pubblico + gmb_fetch)
     src/gmb_fsutil.c       # mkdir -p / rmtree / isdir / spazio: una sola implementazione
     src/gmb_ui_stub.c   # debole, PRIMO membro: risolve i riferimenti UI del core in headless

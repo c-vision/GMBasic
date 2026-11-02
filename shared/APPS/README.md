@@ -54,7 +54,7 @@ same semantics). Then it resolves the `IMPORT`s starting from the entry file.
    app folder.
 
 There is **no textual `INCLUDE` directive** in the language: modularity is `IMPORT` + `.inc`
-modules (optionally packages: `gmb-package.json` / `REQUIRE`, see `GMBasicSharp/Cli/CliPackages.cs`).
+modules (optionally packages: `gmb-package.json` / `REQUIRE`, see `GMBasic/native/gmbadmin/gmbadminpkg.c`).
 
 Consequence: keep one app per folder and keep the entry file at the app level you want scanned —
 a stray `SUB Main` in a sibling file of the same project root is a link-time risk.

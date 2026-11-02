@@ -17,6 +17,7 @@
 
 #include "gmb_runtime.h"
 #include "gmb_doc.h"
+#include "gmb_brain_tools.h"
 #include "gmb_fsutil.h"
 
 #include <stdio.h>
@@ -57,6 +58,46 @@ static const char* posn(int argc, char** argv, int start, int n)
         if (seen++ == n) return argv[i];
     }
     return NULL;
+}
+
+/* Somma grezza degli mtime dei .md sotto `dir` (rileva modifiche senza inotify). */
+static long graph_mtime_sum(const char* dir)
+{
+    DIR* d = opendir(dir);
+    if (!d) return 0;
+    long sum = 0;
+    struct dirent* e;
+    char** subs = NULL;
+    int nsubs = 0;
+    while ((e = readdir(d))) {
+        if (e->d_name[0] == '.') continue;
+        char p[4096];
+        snprintf(p, sizeof p, "%s/%s", dir, e->d_name);
+        struct stat st;
+        if (stat(p, &st) != 0) continue;
+        if (S_ISDIR(st.st_mode)) {
+            subs = (char**)realloc(subs, (size_t)(nsubs + 1) * sizeof(char*));
+            if (subs) subs[nsubs++] = strdup(p);
+            continue;
+        }
+        size_t l = strlen(e->d_name);
+        if (l > 3 && (!strcasecmp(e->d_name + l - 3, ".md") || !strcasecmp(e->d_name + l - 9, ".markdown")))
+            sum += (long)st.st_mtime + (long)st.st_size;
+    }
+    closedir(d);
+    for (int i = 0; i < nsubs; i++) { sum += graph_mtime_sum(subs[i]); free(subs[i]); }
+    free(subs);
+    return sum;
+}
+
+static const char* now_stamp_str(void)
+{
+    static char buf[32];
+    time_t t = time(NULL);
+    struct tm tmv;
+    localtime_r(&t, &tmv);
+    strftime(buf, sizeof buf, "%H:%M:%S", &tmv);
+    return buf;
 }
 
 static void base_name(const char* path, char* out, size_t cap)
@@ -213,9 +254,59 @@ int gmbadmin_graph(int argc, char** argv)
                (long long)nn, dir, name);
         return 0;
     }
-    if (!strcmp(sub, "export-obsidian") || !strcmp(sub, "watch") || !strcmp(sub, "unwatch")) {
-        fprintf(stderr, "?graph %s: non ancora in C (porting F9c); usa il grafo con `gmb graph build`\n", sub);
-        return 2;
+    if (!strcmp(sub, "export-obsidian")) {
+        const char* nm = vopt(argc, argv, 3, "--name");
+        if (!nm) nm = vopt(argc, argv, 3, "-n");
+        if (!nm) nm = posn(argc, argv, 3, 0);
+        if (!nm) { fprintf(stderr, "?uso: gmb graph export-obsidian <nome> [--graphs d] [--out dir]\n"); return 2; }
+        const char* outdir = vopt(argc, argv, 3, "--out");
+        gmb_brain_result_t r = gmb_brain_tool_graph_export_obsidian(dir, nm, outdir);
+        if (r.text && r.text[0]) printf("%s\n", r.text);
+        if (!r.ok && r.error) fprintf(stderr, "?%s\n", r.error);
+        int rc = r.ok ? 0 : 1;
+        gmb_brain_result_free(&r);
+        return rc;
+    }
+    if (!strcmp(sub, "watch")) {
+        const char* wiki = posn(argc, argv, 3, 0);
+        if (!wiki) { fprintf(stderr, "?uso: gmb graph watch <wikiDir> [--graphs d] [--name n] [--interval S] [--once]\n"); return 2; }
+        const char* nm = vopt(argc, argv, 3, "--name");
+        if (!nm) nm = vopt(argc, argv, 3, "-n");
+        char base[512];
+        base_name(wiki, base, sizeof base);
+        if (!nm || !*nm) nm = base;
+        int interval = 10;
+        const char* iv = vopt(argc, argv, 3, "--interval");
+        if (iv && atoi(iv) > 0) interval = atoi(iv);
+        int once = hasflag(argc, argv, 3, "--once");
+        gmb_fs_mkdir_p(dir);
+        printf("GRAPH WATCH: %s → %s/%s.json (ogni %ds%s)\n", wiki, dir, nm, interval,
+               once ? ", una volta" : ", Ctrl-C per fermare");
+        long last = -1;
+        for (;;) {
+            long sig = graph_mtime_sum(wiki);
+            if (sig != last) {
+                int64_t nn = gmb_graph_build(wiki, dir);
+                if (nn >= 0) {
+                    char from[4400], to[4600];
+                    snprintf(from, sizeof from, "%s/%s.json", dir, base);
+                    snprintf(to, sizeof to, "%s/%s.json", dir, nm);
+                    if (strcmp(from, to) != 0) rename(from, to);
+                    printf("[%s] grafo aggiornato: %lld nodi -> %s/%s.json\n",
+                           now_stamp_str(), (long long)nn, dir, nm);
+                } else {
+                    fprintf(stderr, "?graph watch: build fallita (%s)\n", wiki);
+                }
+                last = sig;
+            }
+            if (once) return 0;
+            sleep((unsigned)interval);
+        }
+    }
+    if (!strcmp(sub, "unwatch")) {
+        printf("GRAPH UNWATCH: il watcher gira in primo piano: fermalo con Ctrl-C, oppure installalo come\n"
+               "  servizio (`gmb daemon install <nome> <programma>` + `gmb daemon stop <nome>`).\n");
+        return 0;
     }
     fprintf(stderr, "?uso: gmb graph <build|update|status> <wikiDir> [--graphs d] [--name n]\n");
     return 2;
