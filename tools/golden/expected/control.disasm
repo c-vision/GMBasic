@@ -1,0 +1,85 @@
+; Disassembly (117 istruzioni, 10 costanti)
+   0  OP_PUSH_NIL              #4               ; L0
+   1  OP_POP                                    ; L0
+   2  OP_TYPEOF                #0               ; L0
+   4  OP_PUSH_CONST            const #11        ; L0
+   5  OP_?                     #1               ; L0
+   6  OP_PUSH_NIL                               ; L0
+   7  OP_?                     #1               ; L0
+   8  OP_PUSH_NIL              #4               ; L0
+   9  OP_POP                                    ; L0
+  10  OP_?                                      ; L0
+  11  OP_PARK                                   ; L0
+  12  OP_?                     #1               ; L0
+  13  OP_PUSH_NIL                               ; L0
+  14  OP_?                     #0               ; L0
+  16  OP_PUSH_CONST            const #0         ; L0
+  18  OP_PUSH_CONST            const #0         ; L3
+  19  OP_CALL_VAR              #0               ; L3
+  21  OP_PUSH_CONST            const #1         ; L3
+  23  OP_PUSH_CONST            const #0         ; L4
+  25  OP_PUSH_CONST            const #28        ; L4
+  27  OP_PUSH_CONST            const #2         ; L4
+  29  OP_PUSH_CONST            const #0         ; L5
+  30  OP_PUSH_NIL                               ; L5
+  31  OP_CALL_VAR              #0               ; L5
+  33  OP_PUSH_CONST            const #2         ; L5
+  35  OP_PUSH_CONST            const #0         ; L6
+  36  OP_PUSH_TRUE             #0               ; L6
+  38  OP_PUSH_CONST            const #0         ; L6
+  39  OP_PUSH_FALSE            #0               ; L6
+  41  OP_PUSH_CONST            const #0         ; L6
+  42  OP_PUSH_TRUE                              ; L6
+  43  OP_NUM_TO_STR            #0               ; L6
+  45  OP_PUSH_CONST            const #1         ; L6
+  46  OP_UNBOX                 #0               ; L6
+  48  OP_PUSH_CONST            const #56        ; L6
+  49  OP_CALL                  #0               ; L7
+  51  OP_PUSH_CONST            const #1         ; L7
+  53  OP_PUSH_CONST            const #0         ; L7
+  54  OP_POP                                    ; L7
+  55  OP_MOD                   #0               ; L7
+  57  OP_PUSH_CONST            const #0         ; L7
+  58  OP_PUSH_TRUE                              ; L7
+  59  OP_CMP_EQ                                 ; L7
+  60  OP_UNBOX                 #0               ; L7
+  62  OP_PUSH_CONST            const #27        ; L7
+  63  OP_CALL                  #0               ; L8
+  65  OP_PUSH_CONST            const #2         ; L8
+  67  OP_PUSH_CONST            const #0         ; L8
+  68  OP_DUP                   #0               ; L8
+  70  OP_PUSH_CONST            const #0         ; L8
+  71  OP_ADD                   #0               ; L8
+  73  OP_PUSH_CONST            const #0         ; L8
+  74  OP_SUBTRACT                               ; L8
+  75  OP_SYSCALL               #1               ; L8
+  76  OP_PUSH_NIL                               ; L8
+  77  OP_PARK                  #3               ; L8
+  78  OP_PUSH_FALSE            #6               ; L8
+  79  OP_ADD                   #0               ; L8
+  81  OP_PUSH_CONST            const #0         ; L8
+  82  OP_MULTIPLY              #6               ; L8
+  83  OP_ADD                                    ; L8
+  84  OP_CALL_VAR              #0               ; L8
+  86  OP_PUSH_CONST            const #2         ; L8
+  87  OP_?                     #0               ; L8
+  89  OP_PUSH_CONST            const #10        ; L8
+  90  OP_CALL                  #0               ; L10
+  92  OP_PUSH_CONST            const #2         ; L10
+  94  OP_PUSH_CONST            const #0         ; L10
+  95  OP_DIVIDE                #6               ; L10
+  96  OP_ADD                                    ; L10
+  97  OP_CALL_VAR              #0               ; L10
+  99  OP_PUSH_CONST            const #2         ; L10
+ 100  OP_STR_TO_NUM            #0               ; L10
+ 102  OP_PUSH_CONST            const #1         ; L10
+ 104  OP_PUSH_CONST            const #56        ; L10
+ 105  OP_CALL                  #0               ; L13
+ 107  OP_PUSH_CONST            const #2         ; L13
+ 108  OP_TASK_SPAWN                             ; L13
+ 109  OP_CALL                  #0               ; L13
+ 111  OP_PUSH_CONST            const #0         ; L13
+ 112  OP_?                     #1               ; L13
+ 113  OP_PUSH_NIL                               ; L13
+ 114  OP_?                     #0               ; L13
+ 116  OP_PUSH_CONST            const #62        ; L13

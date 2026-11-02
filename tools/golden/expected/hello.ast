@@ -1,0 +1,8 @@
+; AST di hello.bas (1 statement)
+FUNCTION Main(0 params) (L2)
+  PRINT (L3)
+    STR "hello"
+    BINARY *
+      NUM 6
+      NUM 7
+; Simboli: 1 (undefined 0, duplicati 0)
