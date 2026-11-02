@@ -117,6 +117,10 @@ typedef struct {
     uint8_t** plnum_flags;
     uint32_t* plnum_counts;
     uint32_t  plnum_count;
+    /* USES TRAY (coda FINALE opzionale): il programma usa il namespace TRAY. Il pump della
+     * coda va fatto sul MAIN THREAD del host (Cocoa/NSStatusItem) mentre il BASIC gira sui
+     * worker: attivo solo per questi programmi. Specchio CompiledChunk.UsesTray. */
+    uint8_t   uses_tray;
     /* nomi locali per procedura (coda opzionale A1, S_eval EVAL/macro): per voce indirizzo
      * di inizio procedura + nomi per slot (NULL = slot anonimo). Specchio di
      * CompiledChunk.ProcedureLocalNames (C#) / ploc_* del compilatore nativo. */

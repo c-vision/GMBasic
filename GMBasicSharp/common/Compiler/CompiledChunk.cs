@@ -76,6 +76,11 @@ public sealed class CompiledChunk
     /// </summary>
     public Dictionary<int, bool[]> ProcedureLocalNumeric { get; } = new();
 
+    /// <summary>Il programma usa il namespace TRAY: la coda delle funzioni TRAY va drenata dal
+    /// MAIN THREAD del host (Cocoa/NSStatusItem), mentre il BASIC gira sui worker. Il pump
+    /// (PCodeVm/VM-C) si attiva solo per questi programmi. Coda opzionale del formato A1.</summary>
+    public bool UsesTray { get; set; }
+
     /// <summary>
     /// Nome procedura -> indirizzo Ip assoluto (copia di Compiler._procedureAddresses, che
     /// altrimenti esiste solo a compile-time e viene scartato). Serve alla VM per risolvere a

@@ -1052,6 +1052,11 @@ public sealed class PCodeScheduler : IDisposable
 
     public void WaitForAllTasks() => _allTasksCompleted.Wait();
 
+    /// <summary>Attesa con TIMEOUT: false = timeout (ci sono ancora task attivi). Usata dal
+    /// pump main-thread del host (TRAY): alterna attese brevi e drenaggio della coda TRAY
+    /// mentre il BASIC gira sui worker.</summary>
+    public bool WaitForAllTasks(int millisecondsTimeout) => _allTasksCompleted.Wait(millisecondsTimeout);
+
     public void RegisterSleep(PCodeTask task, long deadlineMs, long generation)
     {
         lock (_timerLock)

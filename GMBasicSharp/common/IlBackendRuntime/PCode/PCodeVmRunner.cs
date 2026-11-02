@@ -153,6 +153,9 @@ public static class PCodeVmRunner
                     CommonGraphics.Consoles.SdlManager.Instance.PollEvents();
                     CommonGraphics.Graphics.GraphicsManager.Instance.Present();
                 }
+                // TRAY: il pump della coda va fatto SUL MAIN THREAD (Cocoa/NSStatusItem);
+                // qui il BASIC gira sul thread del driver. Solo se il programma usa TRAY.
+                if (vm.UsesTray) { try { TrayUtils.Poll(); } catch { /* lib assente */ } }
             }
             catch { /* ignore */ }
             Thread.Sleep(16);

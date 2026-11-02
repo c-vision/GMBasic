@@ -2786,6 +2786,12 @@ public sealed partial class Compiler
 
     private void VisitBuiltinFunctionCallExpression(BuiltinFunctionCallExpr expr)
     {
+        /* TRAY: la coda comandi va DRENATA sul main thread del host (il BASIC gira sui
+         * worker). Marca il chunk: il pump main-thread (PCodeVm/VM-C) si attiva solo per i
+         * programmi che usano TRAY. */
+        if (expr.Namespace.Lexeme.Equals("TRAY", StringComparison.OrdinalIgnoreCase)
+            || (expr.Name.Kind >= TokenKind.TrayCreate && expr.Name.Kind <= TokenKind.TrayLast))
+            _chunk.UsesTray = true;
         if (TryVisitFormBuiltin(expr)) return;
         var nsName = expr.Namespace.Lexeme;
         var funcName = expr.Name.Lexeme;

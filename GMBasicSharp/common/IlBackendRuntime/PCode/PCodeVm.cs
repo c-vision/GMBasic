@@ -19,6 +19,8 @@ internal sealed class PCodeVm : IDisposable
     private readonly PCodeScheduler _scheduler;
     private readonly PCodeTask _mainTask;
     private readonly PCodeProcessor _processor;
+    /// <summary>Il programma usa TRAY: il main thread drena la coda TRAY (vedi Run).</summary>
+    private readonly bool _usesTray;
     private readonly int _instructionQuantum = ResolveInstructionQuantum();
     private readonly object _workersLock = new();
     private Thread[] _workers = [];
@@ -38,6 +40,10 @@ internal sealed class PCodeVm : IDisposable
     /// per-record — vedi DbExprPCodeEvaluator): il chiamante resetta Ip/State/Sp/Globals tra una
     /// valutazione e l'altra senza allocare una nuova VM per record.</summary>
     public PCodeTask MainTask => _mainTask;
+
+    /// <summary>Il programma usa TRAY: la coda va drenata sul main thread (vedi
+    /// PCodeVmRunner.RunWithGraphicsPump e il pump in Run).</summary>
+    internal bool UsesTray => _usesTray;
 
     /// <summary>Processor della VM — esposto per installare il provider genitore S_eval
     /// (EVAL annidato: MacroParentKnown/Get/Set) prima di Run/RunSync.</summary>
@@ -71,6 +77,7 @@ internal sealed class PCodeVm : IDisposable
         // sotto vero parallelismo, non la mitiga soltanto).
         if (chunk.GlobalCount > 0)
             _mainTask.EnsureGlobals(chunk.GlobalCount);
+        _usesTray = chunk.UsesTray;
         _processor = new PCodeProcessor(runtime, chunk, _scheduler, new object(), this);
         /* Slot locali numerici del root (top-level/Main) a 0.0: parità IL/C99Native. */
         _processor.InitRootNumericLocals(_mainTask, startIp);
@@ -157,7 +164,17 @@ internal sealed class PCodeVm : IDisposable
         lock (_workersLock) _workers = workers;
 
         using var cancellationRegistration = externalCt.Register(_scheduler.RequestCancellation);
-        _scheduler.WaitForAllTasks();
+        /* TRAY: il BASIC gira sui worker; le funzioni TRAY accodano soltanto e la coda va
+         * drenata SUL MAIN THREAD (Cocoa/NSStatusItem). Il thread chiamante alterna attese
+         * brevi (20 ms) e TrayUtils.Poll() — solo per i programmi che usano TRAY. */
+        if (_usesTray)
+        {
+            while (!_scheduler.WaitForAllTasks(20))
+            {
+                try { TrayUtils.Poll(); } catch { /* lib tray assente: nessun pump */ }
+            }
+        }
+        else _scheduler.WaitForAllTasks();
 
         workerCts.Cancel();
         _scheduler.SignalShutdown();
