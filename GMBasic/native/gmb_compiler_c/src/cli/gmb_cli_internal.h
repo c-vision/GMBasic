@@ -108,6 +108,7 @@ int path_under(const char* path, const char* root);
 typedef struct {
     int         libs;
     const char* libs_sel;
+    const char* src;       /* sorgente d'ingresso: per raccogliere le FFI (DECLARE … LIB) */
     int         plugins;
     const char* plugins_sel;
     int         skills;
