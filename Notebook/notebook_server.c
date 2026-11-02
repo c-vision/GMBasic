@@ -178,9 +178,11 @@ static char* handle_execute(const char* body)
         return json_error("campo 'source' (stringa) mancante");
     }
     const char* code = src.v_string.data ? src.v_string.data : "";
+    gmb_val_t idv = gmb_val_dict_get(root, "cellId");
+    const char* cellId = (idv.kind == GMB_TYPE_STRING && idv.v_string.data) ? idv.v_string.data : "";
 
     nb_result_t r;
-    int rc = nb_kernel_exec(g_kernel, code, &r);
+    int rc = nb_kernel_exec_cell(g_kernel, cellId, code, &r);
     if (rc != 0) {
         char* out = json_error(r.error ? r.error : "errore di esecuzione");
         nb_result_free(&r);
@@ -226,6 +228,31 @@ static int dispatch(const nb_request_t* r, int* status, char** out)
         if (!is_post) { *status = 405; *out = json_error("usa POST /execute"); return 1; }
         *status = 200;
         *out = handle_execute(r->body);
+        return 1;
+    }
+    if (strcmp(r->path, "/cells") == 0) {
+        *status = 200; *out = nb_kernel_cells_json(g_kernel);
+        return 1;
+    }
+    if (strcmp(r->path, "/order") == 0) {
+        *status = 200; *out = nb_kernel_order_json(g_kernel);
+        return 1;
+    }
+    if (strcmp(r->path, "/runall") == 0) {
+        *status = 200; *out = nb_kernel_runall(g_kernel);
+        autosave_snapshot();
+        return 1;
+    }
+    if (strcmp(r->path, "/ai") == 0) {
+        /* SSE verso il provider LLM: non implementata nel notebook C (nessun LLM in-process). */
+        *status = 501;
+        *out = json_error("POST /ai (streaming AI) non supportato nel notebook C: "
+                          "usa il codice BASIC con AI.* oppure il server del mondo C#");
+        return 1;
+    }
+    if (strcmp(r->path, "/") == 0) {
+        *status = 404;
+        *out = json_error("frontend web non incluso nel notebook C (solo API JSON)");
         return 1;
     }
     if (strcmp(r->path, "/vars") == 0) {

@@ -11,7 +11,7 @@ here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$here/../.." && pwd)
 port=${1:-8049}
 bin="$root/Notebook/build/gmb_notebook"
-log=$(mktemp /tmp/gmb_notebook_smoke.XXXXXX.log)
+log=$(mktemp /tmp/gmb_notebook_smoke.XXXXXX)
 
 [ -x "$bin" ] || { echo "?gmb_notebook non costruito: $bin" >&2; echo "  cmake -S Notebook -B Notebook/build && cmake --build Notebook/build --target gmb_notebook" >&2; exit 2; }
 
@@ -47,6 +47,24 @@ check "$r" '"output":" 1  2  3 "' "FOR/NEXT"
 
 r=$(curl -s --max-time 5 -X POST "127.0.0.1:$port/execute" -d '{"cellId":"4","source":"PRINT 1/0"}')
 check "$r" '"ok":false.*division by zero' "errore riportato"
+
+r=$(curl -s --max-time 5 "127.0.0.1:$port/cells")
+check "$r" '"cells":\[.*"cellId":"1".*"cellId":"2"' "/cells (celle memorizzate)"
+
+r=$(curl -s --max-time 5 "127.0.0.1:$port/order")
+check "$r" '"order":\["1","2"' "/order"
+
+r=$(curl -s --max-time 5 -X POST "127.0.0.1:$port/runall")
+check "$r" '"results":\[.*"ok":true.*"ok":true' "/runall (riesegue in ordine)"
+
+r=$(curl -s --max-time 5 -X POST "127.0.0.1:$port/execute" -d '{"cellId":"5","source":"%md # titolo"}')
+check "$r" '"ok":true.*"output":"# titolo"' "cella %md (passthrough)"
+
+r=$(curl -s --max-time 5 -X POST "127.0.0.1:$port/execute" -d '{"cellId":"6","source":"%sql SELECT 1"}')
+check "$r" '"ok":false.*non supportata' "cella %sql dichiarata non supportata"
+
+r=$(curl -s --max-time 5 -X POST "127.0.0.1:$port/ai" -d '{}')
+check "$r" '"ok":false.*non supportato' "/ai dichiarato non supportato"
 
 r=$(curl -s --max-time 5 -X POST "127.0.0.1:$port/reset")
 check "$r" '"ok":true' "/reset"
