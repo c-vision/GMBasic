@@ -17,8 +17,10 @@ int rpl_run_c99(const char* bas_file, const rpl_options_t* o)
     if (o) for (int i = 0; i < o->defines_count; i++) {
         size_t used = strlen(defs); snprintf(defs + used, sizeof(defs) - used, " -D \"%s\"", o->defines[i]);
     }
+    char gpm[64] = "";
+    if (o && o->gpm_mode && *o->gpm_mode) snprintf(gpm, sizeof(gpm), " --gpm %s", o->gpm_mode);
     char cmd[6144];
-    snprintf(cmd, sizeof(cmd), "\"%s\" run --project \"%s\" --entry \"%s\" --quiet%s", cli, dir, bas_file, defs);
+    snprintf(cmd, sizeof(cmd), "\"%s\" run --project \"%s\" --entry \"%s\" --quiet%s%s", cli, dir, bas_file, gpm, defs);
     int rc = system(cmd);
     rc = WIFEXITED(rc) ? WEXITSTATUS(rc) : 1;
     if (rc != 0) printf("[C99 ERROR] exit %d\n", rc);

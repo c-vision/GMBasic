@@ -13,7 +13,7 @@ static const char* USAGE =
     "  -noconsole  -c/-console (no SDL)  -s (system console)  -c64  --pcode(vmc)\n"
     "  --ast (stampa l'AST del file)  -repl (dopo il file resta nella REPL)\n"
     "  --c99       --ast  -n/-m (vietati: IL)  -e/-executor (verbose)\n"
-    "  --no-optimize  --dump-il  -bsp <dir>  -gpm[:mode]  -w <w> -h <h>\n"
+    "  --no-optimize  --dump-il  -bsp <dir>  -gpm <auto|always|linear>  -w <w> -h <h>\n"
     "  --debug-tcp <port>  --run <cmd>  --il-module <dll> (vietato: IL)  -D<name>[=val]\n"
     "  --engine <c|csharp>  --csharp-cli <path>  (default: c; csharp = gmbcs, opzionale)\n"
     "  env: GMBASIC_DEFINES ; GMBASIC_GPM\n"

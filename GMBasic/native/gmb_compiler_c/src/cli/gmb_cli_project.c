@@ -349,7 +349,9 @@ int build_project(const Options* o, const char* project, const char* entry,
     shell_quote(entry, qe, sizeof qe);
     shell_quote(cpath, qc, sizeof qc);
     shell_quote(tc.driver, qd, sizeof qd);
-    snprintf(cmd, sizeof cmd, "%s %s %s --no-exe 2>&1", qd, qe, qc);
+    char gpmarg[64] = "";
+    if (o->gpm && *o->gpm) snprintf(gpmarg, sizeof gpmarg, " --gpm %s", o->gpm);
+    snprintf(cmd, sizeof cmd, "%s %s %s --no-exe%s 2>&1", qd, qe, qc, gpmarg);
     char* log = NULL;
     int rc = run_cmd(cmd, &log);
     if (rc != 0) {

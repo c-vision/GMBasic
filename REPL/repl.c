@@ -142,9 +142,13 @@ int rpl_gmb_dump_ex(const char* what, const char* file, const char* out, const r
     if (!rpl_gmb_cli(cli, sizeof(cli))) { fprintf(stderr, "?gmb (CLI compilatore C) non trovato\n"); return 1; }
     char defs[1024]; rpl_defines_args(defs, sizeof(defs), o);
     char cmd[6144];
-    /* --quiet: il compilatore non deve sporcare lo stdout della REPL ("chunk -> …"). */
-    if (out) snprintf(cmd, sizeof(cmd), "\"%s\" dump %s \"%s\" --out \"%s\" --quiet%s", cli, what, file, out, defs);
-    else     snprintf(cmd, sizeof(cmd), "\"%s\" dump %s \"%s\" --quiet%s", cli, what, file, defs);
+    /* --quiet: il compilatore non deve sporcare lo stdout della REPL ("chunk -> …").
+     * --gpm: il modo GPM conta solo per l'emissione C (dump c / COMPILE c99). */
+    char gpm[64] = "";
+    if (o && !strcmp(what, "c") && o->gpm_mode && *o->gpm_mode)
+        snprintf(gpm, sizeof(gpm), " --gpm %s", o->gpm_mode);
+    if (out) snprintf(cmd, sizeof(cmd), "\"%s\" dump %s \"%s\" --out \"%s\" --quiet%s%s", cli, what, file, out, gpm, defs);
+    else     snprintf(cmd, sizeof(cmd), "\"%s\" dump %s \"%s\" --quiet%s%s", cli, what, file, gpm, defs);
     int rc = system(cmd);
     return WIFEXITED(rc) ? WEXITSTATUS(rc) : 1;
 }
@@ -592,7 +596,7 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
                 goto done;
             }
             snprintf(out, sizeof(out), "/tmp/gmb_compile_%ld.%s", (long)getpid(), o->backend == RPL_VMC ? "chunk" : "c");
-            int rc = rpl_gmb_dump(o->backend == RPL_VMC ? "chunk" : "c", args, out);
+            int rc = rpl_gmb_dump_ex(o->backend == RPL_VMC ? "chunk" : "c", args, out, o);
             printf(rc == 0 ? "compilato -> %s\n" : "?compilazione fallita (%d)\n", out, rc);
             goto done;
         }
@@ -973,14 +977,19 @@ static int rpl_exec_line(const char* line, const rpl_options_t* o, char* prompt)
             char m[32] = "";
             sscanf(args, "%31s", m);
             if (m[0]) {
-                if (strcasecmp(m, "ALWAYS") == 0 || strcasecmp(m, "LINEAR") == 0 || strcasecmp(m, "NEVER") == 0) {
+                if (strcasecmp(m, "AUTO") == 0 || strcasecmp(m, "ALWAYS") == 0 || strcasecmp(m, "LINEAR") == 0) {
                     /* o->gpm_mode è const char*: teniamo un buffer statico */
                     static char gpm_buf[32];
                     snprintf(gpm_buf, sizeof(gpm_buf), "%s", m);
                     *(const char**)&o->gpm_mode = gpm_buf;
-                    printf("GPM mode=%s (usato dal backend C99; vmc usa il runner GPM di default)\n", o->gpm_mode);
-                } else fprintf(stderr, "?GPM: modo sconosciuto %s (Always|Linear|Never)\n", m);
-            } else printf("GPM mode=%s (Always|Linear|Never)\n", o->gpm_mode);
+                    printf("GPM mode=%s — vale per RUN/COMPILE sul backend C99 (gmb --gpm)\n", o->gpm_mode);
+                } else fprintf(stderr, "?GPM: modo sconosciuto %s (Auto|Always|Linear)\n", m);
+            } else {
+                printf("GPM mode=%s\n", o->gpm_mode);
+                printf("  Auto   = lo scheduler GPM si attiva solo se il programma usa la concorrenza (default)\n");
+                printf("  Always = forza lo scheduler anche se il rilevamento non la vede (rete di sicurezza)\n");
+                printf("  Linear = percorso diretto quando il programma e' lineare; se c'e' concorrenza usa Auto\n");
+            }
             goto done;
         }
         if (strcasecmp(cmd, "AST") == 0) {

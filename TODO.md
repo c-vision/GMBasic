@@ -230,7 +230,9 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
       (CLI C#), `CONVERT`/`CONVFMT` (gmb convert/convfmt), `BSP <dir>` **in C**
       (`gmb_bsp_compile` + chunk), flag `--ast`, `-repl`, `--dump-il`, `-bsp`, `--il-module`
       con engine C#. Fix BSP: le direttive `<%@ IMPORT … %>` erano ignorate da `gmb_bsp.c`
-      (pagine con AI/JSON non compilavano). Aperti tracciati: AOT `-n`, `-full`,
-      `--debug-tcp`, propagazione GPM al runner C99, divergenza front-end su procedure
+      (pagine con AI/JSON non compilavano). **GPM reso reale** (2026-11-02): `gmb --gpm
+      auto|always|linear` → `gmb_c99_set_gpm_mode`; REPL `-gpm`/`GPM` lo propagano a
+      `RUN`/`COMPILE` (verificato: always → `gmb_gpm_start` nel C emesso; auto/linear no).
+      Aperti tracciati: AOT `-n`, `-full`, `--debug-tcp`, divergenza front-end su procedure
       omonime di builtin (es. `EscapeHtml`).
 - [ ] **F7b — Pulizia finale** (dopo F6): guida unica e manifesti/audit rigenerati.

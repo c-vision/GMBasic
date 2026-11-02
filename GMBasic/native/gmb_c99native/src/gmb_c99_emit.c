@@ -1141,8 +1141,15 @@ static int gpm_kind_p(int k) {
 static int onerr_stmt_p(gmb_stmt_t* s) {
     return s->kind == GMB_STMT_ON_ERROR && s->on_kind && strncmp(s->on_kind, "ERROR", 5) == 0;
 }
+/* Modo GPM richiesto dal chiamante: 0 auto (rilevamento), 1 always (forza scheduler),
+ * 2 linear (usa il percorso diretto quando il programma è genuinamente lineare: stesso
+ * rilevamento di auto, mai crash). */
+static int g_gpm_mode = 0;
+void gmb_c99_set_gpm_mode(int mode) { g_gpm_mode = mode; }
+
 static void gpm_scan(ctx_t* c, gmb_stmt_t* s) {
     if (!s || (c->uses_gpm && c->uses_onerror)) return;
+    if (g_gpm_mode == 1) c->uses_gpm = 1;   /* --gpm always: rete di sicurezza */
     if (gpm_kind_p((int)s->kind)) c->uses_gpm = 1;
     /* HTTP ROUTE (net_sub 15) / HTTP USE (net_sub 18): il wrapper esegue l'handler come
      * task GPM (stessa condizione di st_net_cmd) → va deciso PRIMA di emettere l'entry,
