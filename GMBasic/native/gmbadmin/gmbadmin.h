@@ -17,6 +17,9 @@ int gmbadmin_brain(int argc, char** argv);     /* argv[0]="brain" */
 int gmbadmin_grep(int argc, char** argv);      /* argv[0]="grep" */
 int gmbadmin_doc(int argc, char** argv);       /* argv[0]="convert"|"convfmt" */
 int gmbadmin_keygen(int argc, char** argv);    /* argv[0]="keygen" */
+int gmbadmin_pack(int argc, char** argv);      /* pack <dir> [--out f.gmbpkg] */
+int gmbadmin_publish(int argc, char** argv);   /* publish <f.gmbpkg> [--registry u] [--token t] */
+int gmbadmin_login(int argc, char** argv, int logout);  /* login <token> | logout */
 
 /* Percorsi/utility condivisi. */
 void gmbadmin_cache_root(char* out, size_t cap);   /* ~/.gmbasic/packages */

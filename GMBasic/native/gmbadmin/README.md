@@ -5,8 +5,8 @@ Backend **C** dei sottocomandi amministrativi di `gmb` (`pkg`, `fixtures`, `setu
 primo argomento è un comando admin, `gmb` esegue `gmbadmin` con lo **stesso argv**.
 
 Regola: tutto ciò che esiste nel mondo C# deve esistere in C; il C# è un wrapper P/Invoke.
-I comandi non ancora portati (`publish`, `login/admin`, `pack`, `daemon`, `rag`, `graph`,
-`hf/mlx`, `setup TORCH|BROWSER|OCR`, `libs ensure|check|publish`) rispondono con un errore
+Restano da portare (`register`, `admin`, `daemon`, `rag`, `graph`, `hf/mlx`,
+`setup TORCH|BROWSER|OCR`, `libs publish`, firma Ed25519 del pack): rispondono con un errore
 **esplicito** (porting F9c in `TODO.md` §6).
 
 ## Build
@@ -40,6 +40,9 @@ gmb setup status · gmb libs status
 gmb brain [list|info <nome>|use <nome>|detach <nome>]
 gmb grep <pattern> [path] [-i] [-n] [--include G] [--depth N]
 gmb convert <file> [-o out.(md|html|txt)] · gmb convfmt
+gmb pack <dir> [--out f.gmbpkg] · gmb publish <f.gmbpkg> [--registry u] [--token t]
+gmb login <token> [--registry u] · gmb logout
+gmb libs ensure · gmb libs check [--index file]
 gmb keygen
 ```
 

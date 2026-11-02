@@ -269,8 +269,12 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
         ROLLBACK` → `gmbadmin pkg …`); `REPL/pkg_cmds.c` rimosso e link `gmb_pkg` tolto.
         Verificato: pkg init/add/remove/bump/list, fixtures, setup, brain, grep, convert,
         convfmt, keygen; REPL ADD/REMOVE/BUMP/CACHE/TRUST.
-      - [ ] **F9c** — portare i comandi oggi solo-C#: `publish`, `login/register/logout/admin`,
-        `pack/keygen`, `libs publish`, `setup TORCH|BROWSER|OCR`, `daemon`, `rag build/query`,
-        `hf/mlx`, `convert/convfmt`.
+      - [~] **F9c** (2026-11-02) — portati in C: `pack`, `publish`, `login`, `logout`,
+        `keygen`, `libs ensure`, `libs check`, `convert/convfmt`. Verificato: pack di un
+        progetto (2 file → demo.gmbpkg), publish con registry spento → errore esplicito,
+        login/logout su config utente (chmod 600), libs check (503 OK / 27 sha diversi / 0
+        mancanti sull'indice della cache). Restano: `register`, `admin`, `daemon`,
+        `rag build/query`, `graph build`, `hf/mlx`, `setup TORCH|BROWSER|OCR`,
+        `libs publish`, firma Ed25519 del pack.
       - [ ] **F9d** — il CLI C# `GMBasicSharp/Cli` diventa **wrapper P/Invoke** delle funzioni
         C (o viene rimosso a F9c completo): nessun comando può restare C#-only.

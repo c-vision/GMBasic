@@ -23,6 +23,8 @@ static void usage(void)
            "  convert <file> [-o out.(md|html|txt)]\n"
            "  convfmt\n"
            "  keygen\n"
+           "  pack <dir> [--out f.gmbpkg] · publish <f.gmbpkg> [--registry u] [--token t]\n"
+           "  login <token> [--registry u] · logout\n"
            "\n"
            "I comandi non ancora portati in C (publish, login/admin, pack, daemon, rag, graph,\n"
            "hf/mlx, setup TORCH|BROWSER|OCR) rispondono con un errore esplicito: porting F9c.\n");
@@ -42,9 +44,13 @@ int main(int argc, char** argv)
     if (!strcmp(cmd, "grep") || !strcmp(cmd, "rg")) return gmbadmin_grep(argc, argv);
     if (!strcmp(cmd, "convert") || !strcmp(cmd, "convfmt")) return gmbadmin_doc(argc, argv);
     if (!strcmp(cmd, "keygen"))   return gmbadmin_keygen(argc, argv);
+    if (!strcmp(cmd, "pack"))     return gmbadmin_pack(argc, argv);
+    if (!strcmp(cmd, "publish"))  return gmbadmin_publish(argc, argv);
+    if (!strcmp(cmd, "login"))    return gmbadmin_login(argc, argv, 0);
+    if (!strcmp(cmd, "logout"))   return gmbadmin_login(argc, argv, 1);
 
     static const char* pending[] = {
-        "publish", "login", "register", "logout", "admin", "pack", "daemon",
+        "register", "admin", "daemon",
         "rag", "graph", "hf", "mlx", "web2md", "batch", NULL
     };
     for (int i = 0; pending[i]; i++) {
