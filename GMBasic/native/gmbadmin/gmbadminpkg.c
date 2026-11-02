@@ -424,6 +424,7 @@ int gmbadmin_pkg(int argc, char** argv)
         manifest_path(dir, mp, sizeof mp);
         return pkg_bump(mp, how);
     }
+    if (!strcmp(sub, "verify")) return gmbadmin_verify_pkg(argc, argv);
     if (!strcmp(sub, "list")) return cache_list(cache);
     if (!strcmp(sub, "info")) {
         const char* name = first_pos(argc, argv, 0);

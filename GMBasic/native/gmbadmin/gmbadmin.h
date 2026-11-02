@@ -20,6 +20,16 @@ int gmbadmin_keygen(int argc, char** argv);    /* argv[0]="keygen" */
 int gmbadmin_pack(int argc, char** argv);      /* pack <dir> [--out f.gmbpkg] */
 int gmbadmin_publish(int argc, char** argv);   /* publish <f.gmbpkg> [--registry u] [--token t] */
 int gmbadmin_login(int argc, char** argv, int logout);  /* login <token> | logout */
+int gmbadmin_register(int argc, char** argv);  /* register <name> [--email e] [--registry u] */
+int gmbadmin_admin(int argc, char** argv);     /* admin <reserve|assign|revoke|password|user ...> */
+int gmbadmin_rag(int argc, char** argv);       /* rag <build|update|status|query> */
+int gmbadmin_graph(int argc, char** argv);     /* graph <build|update|status> */
+int gmbadmin_daemon(int argc, char** argv);    /* daemon <install|start|stop|status|logs|list|uninstall> */
+/* Download on-demand (gmbadminfetch.c): componenti setup, libs publish, hf/mlx. */
+int gmbadmin_setup_component(const char* name, int argc, char** argv, int quiet, int yes);
+int gmbadmin_libs_publish(int argc, char** argv);
+int gmbadmin_hf(int argc, char** argv, int mlx);
+int gmbadmin_verify_pkg(int argc, char** argv);   /* pkg verify <file.gmbpkg> */
 
 /* Percorsi/utility condivisi. */
 void gmbadmin_cache_root(char* out, size_t cap);   /* ~/.gmbasic/packages */

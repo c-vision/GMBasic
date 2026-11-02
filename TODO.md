@@ -269,12 +269,23 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
         ROLLBACK` → `gmbadmin pkg …`); `REPL/pkg_cmds.c` rimosso e link `gmb_pkg` tolto.
         Verificato: pkg init/add/remove/bump/list, fixtures, setup, brain, grep, convert,
         convfmt, keygen; REPL ADD/REMOVE/BUMP/CACHE/TRUST.
-      - [~] **F9c** (2026-11-02) — portati in C: `pack`, `publish`, `login`, `logout`,
-        `keygen`, `libs ensure`, `libs check`, `convert/convfmt`. Verificato: pack di un
-        progetto (2 file → demo.gmbpkg), publish con registry spento → errore esplicito,
-        login/logout su config utente (chmod 600), libs check (503 OK / 27 sha diversi / 0
-        mancanti sull'indice della cache). Restano: `register`, `admin`, `daemon`,
-        `rag build/query`, `graph build`, `hf/mlx`, `setup TORCH|BROWSER|OCR`,
-        `libs publish`, firma Ed25519 del pack.
+      - [x] **F9c** (2026-11-02) — amministrazione **tutta in C** (`GMBasic/native/gmbadmin/`):
+        `pkg` (init/add/remove/bump/list/info/install/uninstall/restore/update/rollback/trust/
+        cache/verify), `pack` (+ **firma Ed25519 detached** via `gmb_pkg_pack_signed`, parità con
+        `PackageBuilder.Pack`), `publish`, `login`, `logout`, `register`, `admin` (reserve/assign/
+        revoke/password/user create|setkey|status|list), `keygen` (Ed25519 su dir, `--pem` ECDSA).
+      - [x] **F9c.2** — servizi e dati: `fixtures`, `brain`, `grep`, `convert/convfmt`,
+        `libs status|ensure|check|publish`, `setup LIBS|OCR|TORCH|BROWSER|OBSCURA|ALL`
+        (manifest in `shared/settings/`, `gmb_fetch` con ripresa+sha256), `daemon`
+        install/start/stop/restart/status/logs/list/uninstall (launchd; il job lancia `gmb run`,
+        non più `dotnet REPL.dll`), `rag build/update/status/query` (chunking condiviso, `--prune`
+        con `gmb_rag_list_sources`), `graph build/update/status` (`gmb_graph_build`),
+        `hf`/`mlx` (HF API + `gmb_fetch`, token da `~/.cache/huggingface/token`).
+        Verificato end-to-end: pkg su manifest di prova, pack firmato + `pkg verify` (firma OK),
+        graph build 3 nodi, rag build (errore esplicito senza provider di embedding) / dry-run /
+        query, daemon install+start (running) + logs + uninstall, setup BROWSER/OBSCURA/TORCH
+        (cached), hf 1 file e 5 file con pattern, keygen su dir.
+        Residuo (errore esplicito, nessuna logica C#): `graph export-obsidian`, `graph watch|
+        unwatch`, `web2md`, `batch`.
       - [ ] **F9d** — il CLI C# `GMBasicSharp/Cli` diventa **wrapper P/Invoke** delle funzioni
-        C (o viene rimosso a F9c completo): nessun comando può restare C#-only.
+        C (o viene rimosso ora che F9b/F9c sono in C): nessun comando deve restare C#-only.

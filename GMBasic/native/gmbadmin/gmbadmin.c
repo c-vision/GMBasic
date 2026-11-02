@@ -20,14 +20,19 @@ static void usage(void)
            "  libs <status>\n"
            "  brain <list|info <nome>|use <nome>|detach <nome>>\n"
            "  grep <pattern> [path] [-i] [-n] [--include G] [--depth N]\n"
-           "  convert <file> [-o out.(md|html|txt)]\n"
-           "  convfmt\n"
-           "  keygen\n"
-           "  pack <dir> [--out f.gmbpkg] · publish <f.gmbpkg> [--registry u] [--token t]\n"
-           "  login <token> [--registry u] · logout\n"
+           "  convert <file> [-o out.(md|html|txt)] · convfmt\n"
+           "  keygen [dir] [--pem]\n"
+           "  pack <dir> [--out f.gmbpkg] [--key-file priv|--key segreto]\n"
+           "  publish <f.gmbpkg> [--registry u] [--token t] · login <token> · logout\n"
+           "  register <nome> [--email e] · admin <reserve|assign|revoke|password|user …>\n"
+           "  rag <build|update|status|query> …  ·  graph <build|update|status> <wiki>\n"
+           "  daemon <install|start|stop|restart|status|logs|list|uninstall> …\n"
+           "  setup <TORCH|BROWSER|OBSCURA|OCR|LIBS|ALL> [--force] [--yes] [--torch-local dir]\n"
+           "  hf <repo> [--file F] [--dest D] · mlx <repo> [--dest D]\n"
+           "  libs publish <support|engine|core> <rid> [--yes]\n"
            "\n"
-           "I comandi non ancora portati in C (publish, login/admin, pack, daemon, rag, graph,\n"
-           "hf/mlx, setup TORCH|BROWSER|OCR) rispondono con un errore esplicito: porting F9c.\n");
+           "Solo macOS per `daemon` (launchd). Residuo F9c: graph export-obsidian/watch,\n"
+           "web2md, batch (rispondono con un errore esplicito, nessuna dipendenza C#).\n");
 }
 
 int main(int argc, char** argv)
@@ -48,10 +53,16 @@ int main(int argc, char** argv)
     if (!strcmp(cmd, "publish"))  return gmbadmin_publish(argc, argv);
     if (!strcmp(cmd, "login"))    return gmbadmin_login(argc, argv, 0);
     if (!strcmp(cmd, "logout"))   return gmbadmin_login(argc, argv, 1);
+    if (!strcmp(cmd, "register")) return gmbadmin_register(argc, argv);
+    if (!strcmp(cmd, "admin"))    return gmbadmin_admin(argc, argv);
+    if (!strcmp(cmd, "rag"))      return gmbadmin_rag(argc, argv);
+    if (!strcmp(cmd, "graph"))    return gmbadmin_graph(argc, argv);
+    if (!strcmp(cmd, "daemon"))   return gmbadmin_daemon(argc, argv);
+    if (!strcmp(cmd, "hf"))       return gmbadmin_hf(argc, argv, 0);
+    if (!strcmp(cmd, "mlx"))      return gmbadmin_hf(argc, argv, 1);
 
     static const char* pending[] = {
-        "register", "admin", "daemon",
-        "rag", "graph", "hf", "mlx", "web2md", "batch", NULL
+        "web2md", "batch", NULL
     };
     for (int i = 0; pending[i]; i++) {
         if (!strcmp(cmd, pending[i])) {

@@ -10,7 +10,7 @@ Programmi attuali:
 |---|---|
 | `REPL/build/gmb_repl` | REPL canonica (C) — comandi, IDE, console, package/fixtures |
 | `GMBasicSharp/CompilerCli` → `gmbcs` | engine C# headless: `check`, `dump ast\|pcode\|il\|disasm`, `prginfo`, `build`, `run`, `eval`, `debug`, `aibench` |
-| `GMBasicSharp/Cli` → `gmb` | CLI amministrativo C#: pacchetti, brain, libs, setup, daemon, rag/graph, grep, convert/convfmt, hf/mlx |
+| `GMBasic/native/gmbadmin` → `gmbadmin` | **CLI amministrativo C** (front unico `gmb`): pacchetti, pack/publish/login/register/admin, brain, libs, setup, daemon, rag/graph, grep, convert/convfmt, hf/mlx |
 | `Notebook/build/gmb_notebook` | notebook server (C): sessione BASIC via HTTP su 127.0.0.1 |
 
 ## 1. Comandi della REPL (70 nella mappa C#)
@@ -24,16 +24,16 @@ Comandi riportati nel mondo C o instradati (vedi commit F3/F6b):
 | comando | dove |
 |---|---|
 | `FIXTURES` | runtime C `gmb_fixtures_*` (anche `gmb fixtures`, tool C `gmbadmin`) |
-| `SETUP` | runtime C (cache libs) |
+| `SETUP` | **C**: `gmb setup LIBS\|OCR\|TORCH\|BROWSER\|OBSCURA\|ALL` (manifest + `gmb_fetch`) |
 | `LLM` | runtime C (AIPATH) |
 | `ADD`/`REMOVE`/`BUMP`/`RESTORE`/`UPDATE`/`ROLLBACK`/`TRUST`/`CACHE` | **`gmbadmin pkg …`** (tool C, runtime `gmb_pkg_*`; la REPL non linka più gmb_pkg) |
 | `AIBENCH` | `gmbcs aibench` |
-| `HF`/`MLX` | `gmb hf` / `gmb mlx` (CLI C#) |
-| `RAG` | `gmb rag …` |
-| `GRAPH` | BUILD/STATUS in C (`rpl_graph_build`); altre sottoforme a `gmb graph …` |
+| `HF`/`MLX` | `gmb hf` / `gmb mlx` — **C** (HF API + `gmb_fetch`, token da `~/.cache/huggingface/token`) |
+| `RAG` | `gmb rag build/update/status/query` — **C** (`gmb_rag_index_source`/`search`, `--prune` con `gmb_rag_list_sources`) |
+| `GRAPH` | **C**: `gmb graph build/update/status` (`gmb_graph_build`); REPL `rpl_graph_build` resta per il comando interattivo |
 | `BRAIN INSTALL/EXPORT/SIGN` | `gmb brain …` (USE/DETACH/LIST/INFO in C) |
-| `LIBS UPDATE/CHECK/PUBLISH` | `gmb libs …` |
-| `CONVERT` / `CONVFMT` | `gmb convert` / `gmb convfmt` |
+| `LIBS UPDATE/CHECK/PUBLISH` | **C**: `gmb libs status/ensure/check/publish` |
+| `CONVERT` / `CONVFMT` | **C**: `gmb convert` / `gmb convfmt` (`gmb_doc_*`) |
 | `BSP <dir>` | **C**: `gmb_bsp_compile` + `gmb dump chunk` → `<pagina>.bsp.chunk` |
 | `IL` / `PCODE` | `gmbcs dump il|pcode` (solo se engine C# presente) |
 | `EDIT`/`IDE` | IDE integrato C (`REPL/ide.c`) |
