@@ -212,9 +212,11 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
         ArgsParser, Notebook server).
       - Documentazione/script aggiornati: README root, `tools/sh/webapp_up.sh` (usa `gmbcs`),
         `shared/APPS/*`, `shared/webapp/*`, manuale locale.
-      - **Nota**: il server `NOTEBOOK` (kernel .NET con `/execute`, `/vars`, `/reset`) viveva solo
-        nella REPL C# ed è uscito con essa; il build NativeAOT `-n` non è ancora in `gmbcs`.
-        Entrambi sono candidati F4c/nota separata.
+      - Il server `NOTEBOOK` è stato **ripristinato in C** come progetto autonomo alla root:
+        **`Notebook/`** (`gmb_notebook`, HTTP su 127.0.0.1, stesso protocollo `/execute`,
+        `/vars`, `/reset`, `/health`, `/shutdown`, stato di sessione via valutatore runtime).
+        Vedi `Notebook/README.md`.
+      - Resta aperto il build NativeAOT `-n` (F4c): oggi il nativo canonico è `gmb build`.
 - [ ] **F4c — residuo di parità**: gli flag IL `-n`/`--native` e `-m`/`--managed` sono ancora
       vietati all'avvio (`rpl_il_forbidden`) anche con `--engine=csharp`. Servono
       `gmbcs build -n|-m` (AOT/managed) per accettarli; oggi il build dell'engine C# produce

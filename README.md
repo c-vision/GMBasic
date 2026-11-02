@@ -149,6 +149,7 @@ Tre programmi separati, un compito ciascuno:
 | `REPL/build/gmb_repl` | **REPL interattiva** e runner del mondo C (canonica): `RUN`, `EVAL`, `AST`, `DASM`, `COMPILE`, `IDE`, package/fixtures. Nessuna dipendenza dal mondo C#. |
 | `GMBasicSharp/CompilerCli` → `gmbcs` | **CLI headless dell'engine C#**: `check`, `dump ast\|pcode\|il\|disasm`, `build --target il\|pcode`, `run`/`eval --engine il\|pcode`, `debug`. |
 | `GMBasicSharp/Cli` → `gmb` | **CLI amministrativo del mondo C#**: pacchetti, brain, libs, setup, daemon, rag/graph, grep. |
+| `Notebook/build/gmb_notebook` | **notebook server** (C): sessione BASIC con stato via HTTP su 127.0.0.1 (`/execute`, `/vars`, `/reset`). |
 
 ```sh
 # PCodeVM — P-Code virtual machine written in C# (in-process, no native code)
