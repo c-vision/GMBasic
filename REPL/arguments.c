@@ -63,6 +63,13 @@ int rpl_parse_args(int argc, char** argv, rpl_options_t* o)
     o->verbose = flag_present(a, n, "-e", "-executor");
     o->no_optimize = flag_present(a, n, "--no-optimize", NULL);
     o->dump_il = flag_present(a, n, "--dump-il", NULL);
+    o->ast = flag_present(a, n, "--ast", NULL);
+    o->stay_in_repl = flag_present(a, n, "-repl", NULL);
+    o->pcode = flag_present(a, n, "--pcode", "-pcode");
+    /* --il-module <dll> (ripetibile): moduli IL esterni, solo con engine C#. */
+    o->il_modules_count = 0;
+    for (int i = 0; i < n && o->il_modules_count < 8; i++)
+        if (!strcmp(a[i], "--il-module") && i + 1 < n) o->il_modules[o->il_modules_count++] = a[i + 1];
     o->compile_bsp_dir = flag_value(a, n, "-bsp");
     const char* gpm = flag_value(a, n, "-gpm");
     if (gpm) o->gpm_mode = gpm;
