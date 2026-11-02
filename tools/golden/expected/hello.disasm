@@ -1,0 +1,30 @@
+; Disassembly (36 istruzioni, 3 costanti)
+   0  OP_PUSH_NIL                               ; L0
+   1  OP_POP                                    ; L0
+   2  OP_TYPEOF                #0               ; L0
+   4  OP_PUSH_CONST            const #11        ; L0
+   5  OP_?                     #1               ; L0
+   6  OP_PUSH_NIL                               ; L0
+   7  OP_?                     #1               ; L0
+   8  OP_PUSH_NIL                               ; L0
+   9  OP_POP                                    ; L0
+  10  OP_?                                      ; L0
+  11  OP_PARK                                   ; L0
+  12  OP_?                     #1               ; L0
+  13  OP_PUSH_NIL                               ; L0
+  14  OP_?                     #0               ; L0
+  16  OP_PUSH_CONST            const #0         ; L0
+  18  OP_PUSH_CONST            const #0         ; L3
+  19  OP_SPREAD                #0               ; L3
+  21  OP_PUSH_CONST            const #0         ; L3
+  22  OP_PUSH_NIL              #0               ; L3
+  24  OP_PUSH_CONST            const #0         ; L3
+  25  OP_PUSH_TRUE                              ; L3
+  26  OP_MULTIPLY                               ; L3
+  27  OP_TASK_SPAWN                             ; L3
+  28  OP_CALL                  #0               ; L3
+  30  OP_PUSH_CONST            const #0         ; L3
+  31  OP_?                     #1               ; L3
+  32  OP_PUSH_NIL                               ; L3
+  33  OP_?                     #0               ; L3
+  35  OP_PUSH_CONST            const #62        ; L3

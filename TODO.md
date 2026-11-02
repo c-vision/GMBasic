@@ -139,8 +139,11 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
 
 ### 6.4 Fasi
 
-- [ ] **F0 — Golden dump (solo mondo C)**: AST / disasm / C generato / chunk su un set di sample,
-      salvati come riferimento (non-regressione).
+- [x] **F0 — Golden dump (solo mondo C)** (2026-11-02): `tools/sh/golden_dump.sh` genera/verifica
+      AST + disasm (bytecode A1) + C generato per i sorgenti in `tools/golden/src/` contro i
+      riferimenti versionati in `tools/golden/expected/` (2 sample, 6 dump, deterministici:
+      nessun path assoluto). `--update` rigenera dopo una modifica voluta; senza flag le
+      differenze sono regressioni (exit 1).
 - [x] **F1 — Opzioni nel compilatore C**: `gmb dump ast|chunk|c|disasm` + `gmb eval` (fatti).
       Il disassemblatore è condiviso (`gmb_bytecode/src/gmb_disasm.c`, usato anche dalla REPL).
 - [x] **F2 — REPL C pilota `gmb`** (2026-11-01): `AST`, `DASM`, `PRGINFO`, `COMPILE`, `EVAL`,
@@ -217,10 +220,10 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
         `/vars`, `/reset`, `/health`, `/shutdown`, stato di sessione via valutatore runtime).
         Vedi `Notebook/README.md`.
       - Resta aperto il build NativeAOT `-n` (F4c): oggi il nativo canonico è `gmb build`.
-- [ ] **F4c — residuo di parità**: gli flag IL `-n`/`--native` e `-m`/`--managed` sono ancora
-      vietati all'avvio (`rpl_il_forbidden`) anche con `--engine=csharp`. Servono
-      `gmbcs build -n|-m` (AOT/managed) per accettarli; oggi il build dell'engine C# produce
-      solo IL gestito con `build --target il`.
+- [x] **F4c — flag IL risolti** (2026-11-02): `-n`/`--native` e `-m`/`--managed` sono accettati
+      con `--engine=csharp` e inoltrati a `gmbcs run --engine native|il` (AOT via
+      `IlProgramCompiler.CompileNative`, verificato: binario Mach-O 45 MB, nessun runtime .NET);
+      `-full` → `gmbcs build --full`. Senza engine: errore esplicito con l'alternativa C.
 - [x] **F7a — Help JSON unica fonte** (2026-11-01): i 54 JSON vivono in **`REPL/helps/`**
       (spostati da `shared/helps`), letti da REPL C (`helps.c`/`help_form.c`) e C# (`REPL.csproj`
       + `InitHelp`). Nessuna copia in `shared/`.

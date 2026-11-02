@@ -1,0 +1,35 @@
+; AST di control.bas (1 statement)
+FUNCTION Main(0 params) (L2)
+  DIM i (L3)
+  DIM s (L4)
+  ASSIGN s = (L5)
+    STR ""
+  FOR i (L6)
+    NUM 1
+    NUM 3
+    (null)
+    IF (L7)
+      BINARY =
+        BINARY MOD
+          VAR i
+          NUM 2
+        NUM 1
+  THEN
+        ASSIGN s = (L8)
+          BINARY +
+            BINARY +
+              VAR s
+              CALL REPLACE$ (args 3)
+                STR "a-b"
+                STR "-"
+                STR "+"
+            STR "|"
+  ELSE
+        ASSIGN s = (L10)
+          BINARY +
+            VAR s
+            STR "even|"
+  PRINT (L13)
+    VAR s
+; Simboli: 4 (undefined 1, duplicati 1)
+; Errore linker: definizione duplicata (riga 6)
