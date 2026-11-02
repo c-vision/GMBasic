@@ -53,8 +53,13 @@ gmb_double_t gmb_dict_get_double(gmb_dict_t d, const char* key) {
 }
 
 static gmb_pair_t* gmb_dict_find(gmb_dict_t* d, const char* key) {
+    /* Chiavi CASE-INSENSITIVE (parità col Dictionary OrdinalIgnoreCase del managed):
+     * il JSON parse conserva la case del documento ("value"), mentre la superficie BASIC
+     * scrive `d.VALUE`; con strcmp il membro JSON su C99Native tornava NIL. L'accesso
+     * esatto resta il caso normale; il confronto case-insensitive è la semantica canonica
+     * delle chiavi (vedi anche gmb_dict_get_str). */
     for (size_t i = 0; i < d->count; i++)
-        if (d->items[i].key && strcmp(d->items[i].key, key) == 0) return &d->items[i];
+        if (d->items[i].key && strcasecmp(d->items[i].key, key) == 0) return &d->items[i];
     return NULL;
 }
 
