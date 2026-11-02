@@ -93,7 +93,11 @@ vengono ignorati: il CLI stampa un errore esplicito con il programma giusto da u
    TCP esisteva (né in C# né in C). Oggi risponde con un avviso esplicito.
 4. ~~GPM mode sul runner C99~~ — **fatto**: `gmb --gpm auto|always|linear` arriva all'emettitore
    C99 (`gmb_c99_set_gpm_mode`); REPL `-gpm`/`GPM` lo propagano a `RUN`/`COMPILE`.
-5. ~~BSP index.bsp~~ — **risolto** (2026-11-02): la causa non era il front-end:
+5. **Notebook**: ripristinato come progetto C (`Notebook/`) con `/execute`, `/vars`, `/cells`,
+   `/order`, `/runall`, `/reset`, `/health`, `/shutdown`, `%md`; `%sql`/`%ai`/`%vdb`/`%chart`,
+   `POST /ai` (SSE) e `GET /` (frontend) **non sono supportati** e rispondono con errore
+   esplicito. Il kernel usa il valutatore BASIC del runtime (niente compilazione per-cell).
+6. ~~BSP index.bsp~~ — **risolto** (2026-11-02): la causa non era il front-end:
    - il `.bas` generato veniva scritto in `/tmp`, e la discovery del compilatore (ricorsiva
      sulla cartella dell'entry) includeva `.inc` estranei lasciati lì (duplicati `EscapeHtml`).
      Ora `BSP` usa una **cartella temporanea privata** (`mkdtemp`);

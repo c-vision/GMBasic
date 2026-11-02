@@ -24,11 +24,33 @@ dal mondo C#.
 | `GET /health` | — | `{"ok":true}` |
 | `POST /execute` | `{"cellId":"c1","source":"x = 2\nPRINT x * 3"}` | `{"ok":true,"output":"6","value":null,"compileMs":0,"executeMs":0.02,"fromCache":false}` |
 | `GET\|POST /vars` | — | `{"vars":[{"name":"x","value":2}]}` |
-| `GET\|POST /reset` | — | `{"ok":true}` |
+| `GET /cells` | — | `{"cells":[{"cellId","source","output","ok"}]}` (celle in ordine di prima esecuzione) |
+| `GET /order` | — | `{"order":["c1","c2"]}` |
+| `POST /runall` | — | azzera lo scope e riesegue le celle in ordine: `{"results":[...]}` |
+| `GET\|POST /reset` | — | `{"ok":true}` (azzera le variabili, non le celle) |
 | `POST /shutdown` | — | `{"ok":true}` e il server si ferma |
 
 Errore: `{"ok":false,"error":"..."}` con status 200 (come il server C#), 400 per richiesta
-malformata, 404 per endpoint sconosciuto, 413 oltre 768 KB di corpo.
+malformata, 404 per endpoint sconosciuto, 413 oltre 768 KB di corpo, 501 per le funzioni non
+supportate (`/ai`).
+
+**Celle magiche**: `%md testo` è passthrough (output = testo). `%sql`, `%ai`, `%vdb`, `%chart`
+rispondono con un **errore esplicito** (non supportate nel notebook C — vedi sotto).
+
+### Differenze dalla vecchia versione C# (nessuna persa in silenzio)
+
+| funzione (C#) | stato nel notebook C |
+|---|---|
+| `/execute`, `/vars`, `/reset`, `/health`, `/shutdown` | **presenti** |
+| `/cells`, `/order`, `/runall` | **presenti** (in C) |
+| `%md` | **presente** |
+| compilazione per-cell P-Code + cache per cella | sostituita dal **valutatore BASIC del runtime** (assegnazioni, PRINT, IF, FOR, WHILE, espressioni); non compila SUB/FUNCTION |
+| `%sql` (SQLite in-memory), `%vdb` (VectorDB) | **non supportate** → errore esplicito |
+| `%ai` e `POST /ai` (SSE) | **non supportati** → errore esplicito (usare AI.* in BASIC o il server del mondo C#) |
+| `%chart` | **non supportato** → errore esplicito |
+| `GET /` (frontend web) | **non incluso** → 404 esplicito |
+| `NOTEBOOK SAVE/LOAD/EXPORT/AUTOSAVE` (.gmnb) | il notebook ora è un processo: `/cells` espone le celle, `--autosave` salva lo **snapshot variabili**; nessun `.gmnb` |
+| frontend/SSE, multi-kernel | fuori perimetro (un kernel = un processo) |
 
 Esempio:
 

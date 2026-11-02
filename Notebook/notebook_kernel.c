@@ -21,9 +21,13 @@
 #include <ctype.h>
 #include <time.h>
 
+#define NB_MAX_CELLS 256
+
 struct nb_kernel {
     gmb_dict_t env;
-    int cells;
+    int cells;                         /* celle eseguite (contatore storico) */
+    nb_cell_t list[NB_MAX_CELLS];      /* celle per id (ordine di prima esecuzione) */
+    int nlist;
 };
 
 /* ── JSON ────────────────────────────────────────────────────────────────── */
@@ -153,8 +157,140 @@ nb_kernel_t* nb_kernel_new(void)
 void nb_kernel_free(nb_kernel_t* k)
 {
     if (!k) return;
+    for (int i = 0; i < k->nlist; i++) {
+        free(k->list[i].id);
+        free(k->list[i].source);
+        free(k->list[i].output);
+    }
     gmb_dict_free(&k->env);
     free(k);
+}
+
+static nb_cell_t* nb_cell_find(nb_kernel_t* k, const char* id)
+{
+    if (!id || !*id) return NULL;
+    for (int i = 0; i < k->nlist; i++)
+        if (k->list[i].id && !strcmp(k->list[i].id, id)) return &k->list[i];
+    return NULL;
+}
+
+static void nb_cell_store(nb_kernel_t* k, const char* id, const char* source, const nb_result_t* r)
+{
+    if (!id || !*id) return;
+    nb_cell_t* c = nb_cell_find(k, id);
+    if (!c) {
+        if (k->nlist >= NB_MAX_CELLS) return;
+        c = &k->list[k->nlist++];
+        c->id = strdup(id);
+    }
+    free(c->source);
+    free(c->output);
+    c->source = strdup(source ? source : "");
+    c->output = strdup(r->output ? r->output : "");
+    c->ok = r->ok;
+}
+
+/* Celle magiche della vecchia implementazione C#: %md è puro passthrough; le altre
+ * richiedono SQLite/LLM/VectorDB e non esistono nel notebook C (errore ESPLICITO). */
+static int nb_magic(const char* src, const char** out_text)
+{
+    const char* p = src;
+    while (*p && isspace((unsigned char)*p)) p++;
+    if (*p != '%') return 0;
+    if (!strncasecmp(p, "%md", 3) && (!p[3] || isspace((unsigned char)p[3]))) {
+        *out_text = p + 3;
+        while (**out_text == ' ' || **out_text == '\t') (*out_text)++;
+        return 1;
+    }
+    *out_text = NULL;
+    return 2;   /* magia non supportata */
+}
+
+int nb_kernel_exec_cell(nb_kernel_t* k, const char* id, const char* source, nb_result_t* r)
+{
+    const char* text = NULL;
+    int magic = nb_magic(source ? source : "", &text);
+    if (magic == 1) {
+        memset(r, 0, sizeof(*r));
+        r->ok = 1;
+        r->output = strdup(text ? text : "");
+        r->exec_ms = 0;
+        k->cells++;
+        nb_cell_store(k, id, source, r);
+        return 0;
+    }
+    if (magic == 2) {
+        memset(r, 0, sizeof(*r));
+        r->output = strdup("");
+        r->ok = 0;
+        r->error = strdup("cella magica non supportata nel notebook C: usa il codice BASIC "
+                          "oppure la superficie C/engine (gmb, gmbcs)");
+        nb_cell_store(k, id, source, r);
+        return 1;
+    }
+    int rc = nb_kernel_exec(k, source, r);
+    nb_cell_store(k, id, source, r);
+    return rc;
+}
+
+char* nb_kernel_cells_json(nb_kernel_t* k)
+{
+    jbuf_t b;
+    jb_init(&b, 256);
+    jb_puts(&b, "{\"cells\":[");
+    for (int i = 0; i < k->nlist; i++) {
+        if (i) jb_puts(&b, ",");
+        jb_puts(&b, "{\"cellId\":\"");
+        jb_escape(&b, k->list[i].id ? k->list[i].id : "");
+        jb_puts(&b, "\",\"source\":\"");
+        jb_escape(&b, k->list[i].source ? k->list[i].source : "");
+        jb_puts(&b, "\",\"output\":\"");
+        jb_escape(&b, k->list[i].output ? k->list[i].output : "");
+        jb_puts(&b, k->list[i].ok ? "\",\"ok\":true}" : "\",\"ok\":false}");
+    }
+    jb_puts(&b, "]}");
+    return b.p;
+}
+
+char* nb_kernel_order_json(nb_kernel_t* k)
+{
+    jbuf_t b;
+    jb_init(&b, 128);
+    jb_puts(&b, "{\"order\":[");
+    for (int i = 0; i < k->nlist; i++) {
+        if (i) jb_puts(&b, ",");
+        jb_puts(&b, "\"");
+        jb_escape(&b, k->list[i].id ? k->list[i].id : "");
+        jb_puts(&b, "\"");
+    }
+    jb_puts(&b, "]}");
+    return b.p;
+}
+
+char* nb_kernel_runall(nb_kernel_t* k)
+{
+    jbuf_t b;
+    jb_init(&b, 256);
+    jb_puts(&b, "{\"ok\":true,\"results\":[");
+    gmb_dict_clear(&k->env);
+    for (int i = 0; i < k->nlist; i++) {
+        nb_result_t r;
+        nb_kernel_exec(k, k->list[i].source ? k->list[i].source : "", &r);
+        free(k->list[i].output);
+        k->list[i].output = strdup(r.output ? r.output : "");
+        k->list[i].ok = r.ok;
+        if (i) jb_puts(&b, ",");
+        jb_puts(&b, "{\"cellId\":\"");
+        jb_escape(&b, k->list[i].id ? k->list[i].id : "");
+        jb_puts(&b, "\",\"ok\":");
+        jb_puts(&b, r.ok ? "true" : "false");
+        jb_puts(&b, ",\"output\":\"");
+        jb_escape(&b, r.output ? r.output : "");
+        jb_puts(&b, "\"}");
+        nb_result_free(&r);
+    }
+    jb_puts(&b, "]}");
+    return b.p;
 }
 
 static double ms_since(const struct timespec* t0)

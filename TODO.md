@@ -247,5 +247,7 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
       `tools/reports/` (manifest + `audit-backends.md`, artefatti locali non versionati).
       `--debug-tcp` chiarito: era inerte anche nel runner C# (solo `DebugPort` salvato, nessun
       listener) — non è una funzione persa.
-- [ ] **F7c — Guida unica**: consolidare la documentazione REPL in una sola guida (il resto è
-      fatto: help JSON in `REPL/helps`, README, MIGRATION, guide utente).
+- [~] **F7c — Guida unica**: `REPL-Commands-Reference` consolidata (sezione Notebook →
+      rimando al progetto `Notebook/`; stato F8; GPM; native/full). Restano da spostare/archiviare
+      le note storiche non-REPL (es. blocco Rapid-MLX in testa alla guida) se si vuole una
+      guida puramente REPL.
