@@ -889,6 +889,26 @@ if(APPLE)
 endif()
 add_test(NAME gmb_grep_selfcheck COMMAND gmb_grep_selfcheck)
 
+# ── Second Brain (registry/manifest/toolchain) e pack firmato: selfcheck dedicati ──────────
+# Isolati con gmb_paths_test_override (nessuna scrittura nella config dell'utente).
+add_executable(gmb_brain_registry_selfcheck tests/brain_registry_selfcheck.c)
+target_link_libraries(gmb_brain_registry_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_brain_registry_selfcheck PRIVATE include)
+add_test(NAME gmb_brain_registry_selfcheck COMMAND gmb_brain_registry_selfcheck)
+
+add_executable(gmb_brain_tools_selfcheck tests/brain_tools_selfcheck.c)
+target_link_libraries(gmb_brain_tools_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_brain_tools_selfcheck PRIVATE include)
+add_test(NAME gmb_brain_tools_selfcheck COMMAND gmb_brain_tools_selfcheck)
+
+# gmb_pkg_pack/ed25519 vivono nella lib condivisa gmb_pkg: qui si compilano nel test
+# (gmb_compress/gmb_zip_* sono già in gmb_runtime, non vanno duplicati).
+add_executable(gmb_pkg_pack_signed_selfcheck tests/gmb_pkg_pack_signed_selfcheck.c
+    src/gmb_pkg_pack.c src/gmb_pkg_glob.c src/gmb_pkg_ed25519.c)
+target_link_libraries(gmb_pkg_pack_signed_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_pkg_pack_signed_selfcheck PRIVATE include)
+add_test(NAME gmb_pkg_pack_signed_selfcheck COMMAND gmb_pkg_pack_signed_selfcheck)
+
 add_executable(gmb_compress_selfcheck tests/gmb_compress_selfcheck.c)
 target_link_libraries(gmb_compress_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_compress_selfcheck PRIVATE include)

@@ -331,6 +331,14 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
           `web2md`/`batch` (API `gmb_doc_web`/`gmb_doc_convert`). Verificato: install reale di
           `airline`/`brainvault` da GMBasicBrains con token (sha verificato) in cache isolata,
           `libs ensure --runtime-only` → `libs check` 537 OK / 0 corrotti / 0 mancanti.
+        - **Rifiniture (2026-11-02, seconda passata)**: `setup TORCH` fa **auto-detect** del
+          torch locale (flag → `paths.torchLocal` → venv `~/ai`/.venv/conda/sistema) prima di
+          scaricare; **selfcheck unitari in C** per il Second Brain
+          (`tests/brain_registry_selfcheck.c`, `tests/brain_tools_selfcheck.c`) e per il pack
+          firmato (`tests/gmb_pkg_pack_signed_selfcheck.c`), con hook
+          `gmb_paths_test_override` (niente env, niente config utente) e runner
+          `tools/sh/test_c_selfchecks.sh` (build fuori dal repo). Verificato: 3/3 pass.
+          (`publish --repo`: nessun doppio controllo in C# — la verifica vive solo nel C.)
         - Restano **C#** solo i moduli usati dai backend C# (IL/PCode): `BrainRegistry`,
           `BrainInstaller`, `BrainManifest`, `BrainVault` (il C# può esistere come altro
           compilatore, ma non ha più alcun comando che esista SOLO lì).

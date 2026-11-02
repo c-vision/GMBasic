@@ -2672,6 +2672,11 @@ int  gmb_shell_run(const char* command);             /* RUN "cmd": esegue, outpu
  * in root, i componenti runtime scaricati nella CACHE (<cache>/<comp>/<rid>), la cache in /tmp.
  * Ogni valore può essere assoluto o relativo alla root; ~ è espanso. --- */
 int   gmb_paths_repo_root(char* out, size_t cap);              /* 1 se trovata root, 0 altrimenti */
+/* HOOK TEST-ONLY: overrides delle directory (selfcheck del runtime). `key` è la chiave
+ * "paths.*" ("configDir", "ragDir", "graphsDir", "brainsDir", "brainsExportsDir",
+ * "brainsCacheDir"); `dir` NULL rimuove l'override, `key` NULL li rimuove tutti.
+ * Non è una variabile d'ambiente: è una chiamata esplicita, usata solo dai test. */
+void  gmb_paths_test_override(const char* key, const char* dir);
 int   gmb_paths_resources_dir(char* out, size_t cap);          /* Resources CONDIVISA (font/sprite/manifest): 1 se trovata */
 int   gmb_paths_settings_file(char* out, size_t cap);          /* 1 se system.settings.json trovato */
 int   gmb_paths_app_settings(char* out, size_t cap);           /* app.settings.json: CWD → accanto all'eseguibile */

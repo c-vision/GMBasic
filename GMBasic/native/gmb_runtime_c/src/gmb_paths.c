@@ -480,22 +480,81 @@ static void pr_user_dir(const char* key, const char* defrel, char* out, size_t c
     pr_user_root(defrel, out, cap);
 }
 
-void gmb_paths_config_dir(char* out, size_t cap) { pr_dir("configDir", "config", out, cap); }
+/* ── HOOK TEST-ONLY: override delle directory ────────────────────────────────
+ * I selfcheck del runtime devono poter scrivere in una cartella temporanea senza toccare la
+ * config/rag/grafi/cervelli dell'utente e SENZA variabili d'ambiente (regola AGENTS).
+ * `key` = "configDir"|"ragDir"|"graphsDir"|"brainsDir"|"brainsExportsDir"|"brainsCacheDir".
+ * `dir` = NULL rimuove l'override, `key` = NULL li rimuove tutti. Chiamare PRIMA del primo uso. */
+#define PR_OV_MAX 8
+static struct { char key[32]; char val[2048]; } g_ov[PR_OV_MAX];
+static int g_ov_n = 0;
+
+static const char* pr_override(const char* key)
+{
+    for (int i = 0; i < g_ov_n; i++) if (!strcmp(g_ov[i].key, key)) return g_ov[i].val;
+    return NULL;
+}
+
+void gmb_paths_test_override(const char* key, const char* dir)
+{
+    if (!key) { g_ov_n = 0; return; }
+    int idx = -1;
+    for (int i = 0; i < g_ov_n; i++) if (!strcmp(g_ov[i].key, key)) { idx = i; break; }
+    if (!dir) {
+        if (idx >= 0) { g_ov[idx] = g_ov[g_ov_n - 1]; g_ov_n--; }
+        return;
+    }
+    if (idx < 0) {
+        if (g_ov_n >= PR_OV_MAX) return;
+        idx = g_ov_n++;
+        snprintf(g_ov[idx].key, sizeof g_ov[idx].key, "%s", key);
+    }
+    snprintf(g_ov[idx].val, sizeof g_ov[idx].val, "%s", dir);
+}
+
+void gmb_paths_config_dir(char* out, size_t cap)
+{
+    const char* o = pr_override("configDir");
+    if (o) { snprintf(out, cap, "%s", o); return; }
+    pr_dir("configDir", "config", out, cap);
+}
 void gmb_paths_skills_dir(char* out, size_t cap) { pr_shared_or_root("skillsDir", "skills", out, cap); }
 void gmb_paths_plugins_dir(char* out, size_t cap) { pr_shared_or_root("pluginsDir", "plugins", out, cap); }
 void gmb_paths_logs_dir(char* out, size_t cap) { pr_dir("logsDir", "ai-logs", out, cap); }
 /* RAG e grafi sono DATI condivisi dai due mondi (C# li scrive, il runtime li legge): nel
  * monorepo la copia unica sta in `<root>/../shared/<nome>`; altrove `<root>/<nome>`. */
-void gmb_paths_rag_dir(char* out, size_t cap) { pr_user_dir("ragDir", "rag", out, cap); }
-void gmb_paths_graphs_dir(char* out, size_t cap) { pr_user_dir("graphsDir", "graphs", out, cap); }
-void gmb_paths_brains_dir(char* out, size_t cap) { pr_dir("brainsDir", "brains", out, cap); }
-void gmb_paths_brains_exports_dir(char* out, size_t cap) { pr_dir("brainsExportsDir", "brains-exports", out, cap); }
+void gmb_paths_rag_dir(char* out, size_t cap)
+{
+    const char* o = pr_override("ragDir");
+    if (o) { snprintf(out, cap, "%s", o); return; }
+    pr_user_dir("ragDir", "rag", out, cap);
+}
+void gmb_paths_graphs_dir(char* out, size_t cap)
+{
+    const char* o = pr_override("graphsDir");
+    if (o) { snprintf(out, cap, "%s", o); return; }
+    pr_user_dir("graphsDir", "graphs", out, cap);
+}
+void gmb_paths_brains_dir(char* out, size_t cap)
+{
+    const char* o = pr_override("brainsDir");
+    if (o) { snprintf(out, cap, "%s", o); return; }
+    pr_dir("brainsDir", "brains", out, cap);
+}
+void gmb_paths_brains_exports_dir(char* out, size_t cap)
+{
+    const char* o = pr_override("brainsExportsDir");
+    if (o) { snprintf(out, cap, "%s", o); return; }
+    pr_dir("brainsExportsDir", "brains-exports", out, cap);
+}
 
 /* CACHE dei cervelli scaricati (on demand): `~/.gmbasic/brains` — la stessa radice utente dei
  * pacchetti e delle librerie. Chiave `paths.brainsCacheDir` per spostarla. */
 static void pr_user_root(const char* name, char* out, size_t cap);
 void gmb_paths_brains_cache_dir(char* out, size_t cap)
 {
+    const char* o = pr_override("brainsCacheDir");
+    if (o) { snprintf(out, cap, "%s", o); return; }
     if (!g_pr_loaded) pr_load();
     char v[1024];
     if (pr_paths_value("brainsCacheDir", v, sizeof(v)))

@@ -293,6 +293,128 @@ static int setup_archive_component(const char* manifest_file, int is_browser,
 
 /* ── TORCH (ml-manifest: file url/archive/build/local) ───────────────────── */
 
+/* ── TORCH locale: auto-detect PRIMA di scaricare ─────────────────────────
+ * Ordine: --torch-local → option `paths.torchLocal` (system/app settings) → scansione dei
+ * venv Python più comuni (incluso ~/ai, dove il progetto installa gli ambienti) → PATH.
+ * Una cartella è valida se contiene `lib/libtorch*` (pacchetto torch) oppure `libtorch*`
+ * direttamente (cartella lib). Restituisce 1 e scrive il path; 0 se non trovato.
+ * NIENTE variabili d'ambiente: la selezione passa da flag o options (AGENTS §0bis). */
+
+static int torch_dir_has_libs(const char* dir)
+{
+    char lib[2400];
+    snprintf(lib, sizeof lib, "%s/lib", dir);
+    DIR* d = opendir(lib);
+    if (d) {
+        struct dirent* e;
+        while ((e = readdir(d))) {
+            if (!strncmp(e->d_name, "libtorch", 8) || !strncmp(e->d_name, "torch", 5)) {
+                closedir(d);
+                return 1;
+            }
+        }
+        closedir(d);
+    }
+    d = opendir(dir);
+    if (d) {
+        struct dirent* e;
+        while ((e = readdir(d))) {
+            if (!strncmp(e->d_name, "libtorch", 8)) {
+                closedir(d);
+                return 1;
+            }
+        }
+        closedir(d);
+    }
+    return 0;
+}
+
+static int torch_try(const char* dir, char* out, size_t cap)
+{
+    if (!dir || !*dir || access(dir, F_OK) != 0) return 0;
+    if (!torch_dir_has_libs(dir)) return 0;
+    snprintf(out, cap, "%s", dir);
+    return 1;
+}
+
+/* Scansiona una radice di venv provando le posizioni note: <env>/site-packages/torch e
+ * <env>/lib/pythonX.Y/site-packages/torch. Non serve un glob completo. */
+static int torch_scan_venv(const char* base, char* out, size_t cap)
+{
+    DIR* d = opendir(base);
+    if (!d) return 0;
+    struct dirent* e;
+    int found = 0;
+    while (!found && (e = readdir(d))) {
+        if (e->d_name[0] == '.') continue;
+        char env[2400];
+        snprintf(env, sizeof env, "%s/%s", base, e->d_name);
+        struct stat st;
+        if (stat(env, &st) != 0 || !S_ISDIR(st.st_mode)) continue;
+        /* pacchetto torch in <env>/site-packages oppure in <env>/lib/pythonX.Y/site-packages */
+        char c[2600];
+        snprintf(c, sizeof c, "%s/site-packages/torch", env);
+        if (torch_try(c, out, cap)) { found = 1; break; }
+        snprintf(c, sizeof c, "%s/lib", env);
+        DIR* l = opendir(c);
+        if (l) {
+            struct dirent* p;
+            while (!found && (p = readdir(l))) {
+                if (strncmp(p->d_name, "python", 6) != 0) continue;
+                char c2[2800];
+                snprintf(c2, sizeof c2, "%s/%s/site-packages/torch", c, p->d_name);
+                if (torch_try(c2, out, cap)) found = 1;
+            }
+            closedir(l);
+        }
+    }
+    closedir(d);
+    return found;
+}
+
+static int torch_autodetect(char* out, size_t cap)
+{
+    const char* home = getenv("HOME");
+    if (!home || !*home) return 0;
+
+    /* 1) venv del progetto (~/ai/<env>) — la convenzione documentata in Ambienti-Env-AI */
+    {
+        char base[2400];
+        snprintf(base, sizeof base, "%s/ai", home);
+        if (torch_scan_venv(base, out, cap)) return 1;
+    }
+    /* 2) venv comuni nella home */
+    static const char* venvs[] = { ".venv", "venv", "miniconda3/envs", "anaconda3/envs",
+                                   "miniconda3", "anaconda3", NULL };
+    for (int i = 0; venvs[i]; i++) {
+        char base[2400];
+        snprintf(base, sizeof base, "%s/%s", home, venvs[i]);
+        if (torch_scan_venv(base, out, cap)) return 1;
+        /* il venv stesso può essere la radice (pacchetto in lib/pythonX.Y/site-packages) */
+        char c[2600];
+        snprintf(c, sizeof c, "%s/%s/site-packages/torch", home, venvs[i]);
+        if (torch_try(c, out, cap)) return 1;
+    }
+    /* 3) Python di sistema / Homebrew (site-packages globale) */
+    static const char* sysbases[] = { "/opt/homebrew/lib", "/usr/local/lib",
+                                      "/Library/Python", NULL };
+    for (int i = 0; sysbases[i]; i++) {
+        DIR* d = opendir(sysbases[i]);
+        if (!d) continue;
+        struct dirent* e;
+        int found = 0;
+        while (!found && (e = readdir(d))) {
+            if (strncmp(e->d_name, "python", 6) != 0) continue;
+            char c[2600];
+            snprintf(c, sizeof c, "%s/%s/site-packages/torch", sysbases[i], e->d_name);
+            if (torch_try(c, out, cap)) found = 1;
+        }
+        closedir(d);
+        if (found) return 1;
+    }
+    return 0;
+}
+
 static int setup_torch(int argc, char** argv, int quiet)
 {
     char mp[2400];
@@ -308,7 +430,23 @@ static int setup_torch(int argc, char** argv, int quiet)
     gmb_paths_ml_dir(rid, dest, sizeof dest);
     gmb_fs_mkdir_p(dest);
     int force = fflag(argc, argv, 3, "--force");
+    /* TORCH locale: flag → option `paths.torchLocal` → auto-detect (venv ~/ai, .venv, …).
+     * Si prova PRIMA di scaricare: se il torch locale c'è, i file `source=local` vengono
+     * copiati da lì e non serve rete per quelli. */
     const char* local_dir = fopt(argc, argv, 3, "--torch-local");
+    const char* local_from = local_dir && *local_dir ? "--torch-local" : NULL;
+    char local_cfg[2048] = "";
+    if (!local_from && gmb_paths_get("torchLocal", local_cfg, sizeof local_cfg) && local_cfg[0]) {
+        local_dir = local_cfg;
+        local_from = "paths.torchLocal";
+    }
+    static char local_det[2048];
+    if (!local_from && torch_autodetect(local_det, sizeof local_det)) {
+        local_dir = local_det;
+        local_from = "auto-detect";
+    }
+    if (local_from) printf("[torch] torch locale: %s (%s)\n", local_dir, local_from);
+    else printf("[torch] nessun torch locale rilevato (flag --torch-local / option paths.torchLocal / venv ~/ai)\n");
     char libs_cache[2048];
     gmb_paths_libs_cache_dir(libs_cache, sizeof libs_cache);
     char libs_rid[2200];
@@ -374,7 +512,9 @@ static int setup_torch(int argc, char** argv, int quiet)
             ok++;
         } else if (src && !strcasecmp(src, "local")) {
             if (!local_dir || !*local_dir) {
-                fprintf(stderr, "  ! %s: source=local — serve --torch-local <dir con libtorch>\n", name);
+                fprintf(stderr, "  ! %s: source=local ma nessun torch locale rilevato — passa "
+                                "--torch-local <dir>, imposta paths.torchLocal, oppure usa un venv "
+                                "in ~/ai (<venv>/lib/python*/site-packages/torch)\n", name);
                 failed++;
                 continue;
             }
