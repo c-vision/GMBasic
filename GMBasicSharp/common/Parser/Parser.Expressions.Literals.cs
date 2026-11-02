@@ -113,6 +113,19 @@ public sealed partial class Parser
             && typeToken.Lexeme.Equals("DECISION", StringComparison.OrdinalIgnoreCase))
         {
             Advance();
+            // `DECISION<T>` / `DECISION<T, U>`: il parametro è documentale (il valore resta
+            // JSON); consuma l'intero suffisso generico con un contatore di profondità, così
+            // il parser non lascia `<...>` appeso (causava un loop su PCode).
+            if (Check(TokenKind.LessThan))
+            {
+                var depth = 0;
+                do
+                {
+                    if (Check(TokenKind.LessThan)) depth++;
+                    else if (Check(TokenKind.GreaterThan)) depth--;
+                    Advance();
+                } while (!IsAtEnd() && depth > 0);
+            }
             return new JsonType(typeToken);
         }
 

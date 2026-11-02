@@ -1,7 +1,7 @@
 ' MiniTest: AI DECIDE v0 (JEV/SystemOne) — provider Rules deterministico, JSON su 4 gambe.
 ' La superficie tipizzata DECISION<T> e il provider locale (ABI v8 CAP_DECIDE) sono il passo
 ' successivo; qui si verifica il contratto/provider e la parità del JSON.
-' EXPECT: noul-true:{"kind":"NOUL","option":"true","value":"true","probability":1.000000,"confidence":null,"calibrated":null}|noul-false:{"kind":"NOUL","option":"false","value":"false","probability":0.500000,"confidence":null,"calibrated":null}|score:{"kind":"SCORE","option":"0","value":"0","probability":0.500000,"confidence":null,"calibrated":null}|choice:{"kind":"CHOICE","option":"A","value":"A","probability":0.500000,"confidence":null,"calibrated":null}|mock:{"kind":"NOUL","option":"false","value":"false","probability":1.000000,"confidence":null,"calibrated":null}|score-keyword:{"kind":"SCORE","option":"5","value":"5","probability":1.000000,"confidence":null,"calibrated":null}|choice-keyword:{"kind":"CHOICE","option":"B","value":"technical","probability":1.000000,"confidence":null,"calibrated":null}|choice-labels:{"kind":"CHOICE","option":"A","value":"billing","probability":0.500000,"confidence":null,"calibrated":null}|typed-value=billing|typed-prob= 0.5|typed-conf=[]|decision-value=true|decision-prob= 1|decision-conf=[]
+' EXPECT: noul-true:{"kind":"NOUL","option":"true","value":"true","probability":1.000000,"confidence":null,"calibrated":null}|noul-false:{"kind":"NOUL","option":"false","value":"false","probability":0.500000,"confidence":null,"calibrated":null}|score:{"kind":"SCORE","option":"0","value":"0","probability":0.500000,"confidence":null,"calibrated":null}|choice:{"kind":"CHOICE","option":"A","value":"A","probability":0.500000,"confidence":null,"calibrated":null}|mock:{"kind":"NOUL","option":"false","value":"false","probability":1.000000,"confidence":null,"calibrated":null}|score-keyword:{"kind":"SCORE","option":"5","value":"5","probability":1.000000,"confidence":null,"calibrated":null}|choice-keyword:{"kind":"CHOICE","option":"B","value":"technical","probability":1.000000,"confidence":null,"calibrated":null}|choice-labels:{"kind":"CHOICE","option":"A","value":"billing","probability":0.500000,"confidence":null,"calibrated":null}|typed-value=billing|typed-prob= 0.5|typed-conf=[]|decision-value=true|decision-prob= 1|decision-conf=[]|decision-generic=true
 IMPORT AI
 IMPORT JSON
 
@@ -34,4 +34,7 @@ SUB Main()
     PRINT "decision-value="; dec.VALUE
     PRINT "decision-prob="; dec.PROBABILITY
     PRINT "decision-conf=["; dec.CONFIDENCE; "]"
+    DIM decg AS DECISION<NOUL>
+    AI DECIDE "il cliente ha detto SÌ", "NOUL" INTO decg
+    PRINT "decision-generic="; decg.VALUE
 END SUB
