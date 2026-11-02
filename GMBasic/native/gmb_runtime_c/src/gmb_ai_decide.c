@@ -132,9 +132,10 @@ int gmb_decision_evaluate(const gmb_decision_provider_t* provider, const char* s
         return 1;
     }
 
-    /* Rules: NOUL riconosce yes/true/sì vs no/false; per gli altri tipi, prima opzione 0.5. */
+    /* Rules: NOUL riconosce yes/true/sì vs no/false; CHOICE matcha la label/slot nello stato;
+     * SCORE mappa keyword di severità; altrimenti prima opzione 0.5. */
+    const char* s = state ? state : "";
     if (kind == GMB_DECISION_NOUL) {
-        const char* s = state ? state : "";
         /* UTF-8: tolower non fa case-folding sulle lettere accentate, quindi "sì" va
          * confrontato anche nelle varianti maiuscole/miste (SÌ/Sì/sÌ). */
         if (icontains(s, "sì") || icontains(s, "Sì") || icontains(s, "sÌ") || icontains(s, "SÌ") ||
@@ -147,6 +148,33 @@ int gmb_decision_evaluate(const gmb_decision_provider_t* provider, const char* s
             if (option) { fill_result(out, kind, option, 1.0); return 1; }
         }
     }
+    if (kind == GMB_DECISION_CHOICE) {
+        for (int i = 0; i < n_options; i++) {
+            const char* label = (options[i].label && options[i].label[0])
+                                ? options[i].label : options[i].id;
+            /* Solo label "vera" (len > 1): gli slot canonici A..P sono lettere singole e
+             * matcherebbero quasi qualunque stato (es. "technical" contiene 'a'). */
+            if (label && strlen(label) > 1 && icontains(s, label)) {
+                fill_result(out, kind, &options[i], 1.0);
+                return 1;
+            }
+        }
+    }
+    if (kind == GMB_DECISION_SCORE) {
+        static const struct { const char* key; const char* slot; } map[] = {
+            { "critical", "5" }, { "critico", "5" },
+            { "high", "4" }, { "alto", "4" },
+            { "medium", "3" }, { "medio", "3" },
+            { "low", "2" }, { "basso", "2" },
+            { "none", "0" }, { "nessuno", "0" },
+        };
+        for (size_t i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
+            if (!icontains(s, map[i].key)) continue;
+            const gmb_decision_option_t* option = find_option(options, n_options, map[i].slot);
+            if (option) { fill_result(out, kind, option, 1.0); return 1; }
+        }
+    }
+
     fill_result(out, kind, &options[0], 0.5);
     return 1;
 }

@@ -40,6 +40,22 @@ int main(void) {
     CHECK(gmb_decision_evaluate(rules, "nulla di rilevante", GMB_DECISION_NOUL,
                                 gmb_decision_slots_noul, 2, &r) == 1, "rules default");
     CHECK(r.probability == 0.5, "rules fallback 0.5");
+
+    /* SCORE: keyword di severità → slot 5. */
+    CHECK(gmb_decision_evaluate(rules, "critical incident", GMB_DECISION_SCORE,
+                                gmb_decision_slots_score, 6, &r) == 1, "rules score");
+    CHECK(strcmp(r.option_id, "5") == 0 && r.probability == 1.0, "rules score critical");
+
+    /* CHOICE: la label nello stato seleziona lo slot. */
+    gmb_decision_option_t ch[3] = {
+        { "A", "billing", -1, 0.0f, 1.0f },
+        { "B", "technical", -1, 0.0f, 1.0f },
+        { "C", "sales", -1, 0.0f, 1.0f },
+    };
+    CHECK(gmb_decision_evaluate(rules, "technical issue", GMB_DECISION_CHOICE, ch, 3, &r) == 1, "rules choice");
+    CHECK(strcmp(r.option_id, "B") == 0 && strcmp(r.value, "technical") == 0 && r.probability == 1.0,
+          "rules choice technical");
+
     gmb_decision_provider_free(rules);
 
     /* JSON: null per confidence/calibrated e valori numerici quando presenti. */
