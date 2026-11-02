@@ -3027,6 +3027,33 @@ static void gmb_bf_299_c315(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int
     else { bout->is_num = 0; bout->result_ref = NULL; }
 
 }
+/* REPLACE(s, old, new): sostituisce TUTTE le occorrenze (parità C# String.Replace e
+ * gmb_str_replace del runtime). Assente in VM/C fino al 2026-11-02: le pagine BSP che
+ * usano DASHBOARD.EscapeHtml (REPLACE$) non compilavano sul chunk A1. */
+static void gmb_bf_299_c317(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)task; (void)func_code;
+    if (argc < 3 ||
+        args[0].type != 2 || !args[0].ref ||
+        args[1].type != 2 || !args[1].ref ||
+        args[2].type != 2 || !args[2].ref)
+    { bout->is_num = 0; bout->result_ref = NULL; return; }
+    gmb_obj_string_t* a0 = (gmb_obj_string_t*)args[0].ref;
+    gmb_obj_string_t* a1 = (gmb_obj_string_t*)args[1].ref;
+    gmb_obj_string_t* a2 = (gmb_obj_string_t*)args[2].ref;
+    gmb_string_t s = { a0->data, a0->length, 1 };
+    gmb_string_t old = { a1->data, a1->length, 1 };
+    gmb_string_t neu = { a2->data, a2->length, 1 };
+    gmb_string_t out = gmb_str_replace(s, old, neu);
+    if (out.data)
+    {
+        gmb_obj_string_t* r = gmb_str_alloc(out.data, (uint32_t)out.length);
+        gmb_string_free(&out);   /* stringa runtime temporanea: copiata nella VM */
+        bout->is_num = 0; bout->result_ref = (gmb_obj_t*)r; bout->result_ref_bt = GMB_BT_STRING;
+    }
+    else { bout->is_num = 0; bout->result_ref = NULL; }
+}
+
 static void gmb_bf_299_c316(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
     (void)vm; (void)task; (void)func_code;
@@ -18013,6 +18040,7 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 306, gmb_bf_299_c306 },
     { 314, gmb_bf_299_c314 },
     { 315, gmb_bf_299_c315 },
+    { 317, gmb_bf_299_c317 },
     { 316, gmb_bf_299_c316 },
     { 308, gmb_bf_299_c308 },
     { 309, gmb_bf_299_c309 },

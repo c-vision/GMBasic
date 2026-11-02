@@ -407,14 +407,20 @@ int rpl_bsp_compile_dir(const char* dir_in, const rpl_options_t* o)
         int rc = gmb_bsp_compile(src, &bas);
         free(src);
         if (rc != GMB_EXPR_OK || !bas) { fail++; printf("  FAIL %s (compilazione BSP)\n", line); free(bas); continue; }
-        char tmp[1200], chunk[1400];
-        snprintf(tmp, sizeof(tmp), "/tmp/gmb_bsp_%ld.bas", (long)getpid());
+        /* Cartella TEMPORANEA PRIVATA per il .bas generato: la discovery del compilatore
+         * scandisce la cartella dell'entry (recursivamente). Scrivendolo in /tmp si
+         * includevano .inc estranei lasciati da altre sessioni (duplicati tipo EscapeHtml). */
+        char tmpdir[] = "/tmp/gmb_bsp_XXXXXX";
+        if (!mkdtemp(tmpdir)) { free(bas); fail++; printf("  FAIL %s (tmpdir)\n", line); continue; }
+        char tmp[1400], chunk[1400];
+        snprintf(tmp, sizeof(tmp), "%s/page.bas", tmpdir);
         snprintf(chunk, sizeof(chunk), "%s.chunk", line);
         FILE* tf = fopen(tmp, "w");
         if (!tf) { free(bas); fail++; continue; }
         fputs(bas, tf); fclose(tf); free(bas);
         int crc = rpl_gmb_dump_ex("chunk", tmp, chunk, o);
         unlink(tmp);
+        rmdir(tmpdir);
         if (crc == 0) {
             ok++;
             printf("  OK   %s (%s)\n", strrchr(line, '/') ? strrchr(line, '/') + 1 : line,
