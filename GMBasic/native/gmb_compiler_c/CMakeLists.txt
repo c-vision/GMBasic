@@ -61,7 +61,7 @@ target_compile_options(gmb_c99native_driver PRIVATE -Wall -Wextra)
 # ── CLI di PROGETTO (O7): `gmb check|build|run --project <dir>`. Linka SOLO il front-end
 # (la discovery `gmb_inc_resolve`, la stessa del compilatore: niente copie nel CLI). È il
 # contratto a processo che l'IDE userà (D4); il driver C99Native lo cerca accanto al binario.
-add_executable(gmb_cli src/cli/gmb_cli.c src/cli/gmb_cli_project.c src/cli/gmb_cli_dump.c src/cli/gmb_cli_engine.c src/cli/gmb_cli_usage.c src/cli/gmb_cli_admin.c src/cli/gmb_cli_file.c src/cli/gmb_cli_deploy.c
+add_executable(gmb_cli src/cli/gmb_cli.c src/cli/gmb_cli_project.c src/cli/gmb_cli_dump.c src/cli/gmb_cli_engine.c src/cli/gmb_cli_usage.c src/cli/gmb_cli_admin.c src/cli/gmb_cli_file.c src/cli/gmb_cli_deploy.c src/cli/gmb_cli_args.c
                ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_bytecode/src/gmb_disasm.c
                ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_vm_c/gmb_chunk.c
                $<TARGET_OBJECTS:gmb_frontend>)   # split per la soglia 1200 righe (§0quater)

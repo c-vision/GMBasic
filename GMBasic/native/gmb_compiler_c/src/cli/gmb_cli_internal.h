@@ -79,6 +79,10 @@ typedef struct {
     int plugins;         const char* plugins_sel;   /* --plugins[=all|nomi] */
     int skills;          const char* skills_sel;    /* --skills[=all|nomi]  */
     int brains;          const char* brains_sel;    /* --brains[=all|nomi]  */
+    /* -D/--define del PREPROCESSORE BASIC (stessa semantica di gmbcs). */
+    char defines[32][160];
+    int  ndefines;
+    const char* target;  /* build: native|c99 (il resto è dell'engine C#) */
     int interactive;     /* minitests: solo TAG interactive */
     int heavy;           /* minitests: solo TAG heavy */
 } Options;
@@ -112,8 +116,8 @@ typedef struct {
     const char* brains_sel;
 } DeployOpts;
 void gmb_deploy_bundle(const char* exe, const char* install, const DeployOpts* o, int quiet);
-/* Riconosce un'opzione di bundle (--libs/--plugins/--skills/--brains). 1 se consumata. */
-int  gmb_parse_bundle_arg(Options* o, const char* a);
+/* Riconosce UNA opzione extra (bundle, -D/--define, --target). 1 se consumata. */
+int  gmb_parse_extra_arg(Options* o, const char* a, int argc, char** argv, int* i);
 
 /* ── comandi e helper di progetto (definiti in gmb_cli_project.c) ──────────────────────── */
 int find_driver(Toolchain* tc, const char* argv0);

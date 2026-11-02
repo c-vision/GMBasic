@@ -1,4 +1,5 @@
 #include "gmb_lexer.h"
+#include "gmb_preprocess.h"   /* -D/--define: define BASE del preprocessore BASIC */
 #include "gmb_macro_expand.h"
 #include "gmb_parser.h"
 #include "gmb_c99_emit.h"
@@ -420,7 +421,7 @@ int main(int argc, char** argv) {
     if (argc < 2) {
         fprintf(stderr,
             "uso: %s <file.bas> [out.c] [--exe <bin>] [--no-exe] [-I dir] [--obj f] [--lib f]\n"
-            "          [--cc cc] [--cflags \"f\"] [--ldflags \"f\"] [--defines \"f\"]\n"
+            "          [--cc cc] [--cflags \"f\"] [--ldflags \"f\"] [--defines \"f\"] [--define N[=V]]\n"
             "          [--gpm auto|always|linear]\n"
                         "[--line-map <file.json>] [--semgraph] [--semgraph-diff <base.bas>]\n"
             "  di default emette il C e poi COMPILA/LINKA l'eseguibile; --no-exe ferma al solo C;\n"
@@ -468,6 +469,21 @@ int main(int argc, char** argv) {
         if ((v = opt_value(a, "--cflags")) != NULL) { cflags = v; continue; }
         if ((v = opt_value(a, "--ldflags")) != NULL) { ldflags = v; continue; }
         if ((v = opt_value(a, "--defines")) != NULL) { defines = v; continue; }
+        /* --define NAME[=VALORE] (ripetibile): define del PREPROCESSORE BASIC, non del C.
+         * Stessa semantica di `gmb`/`gmbcs -D` (in C# va a Orchestrator.Compile(defines)). */
+        if ((v = opt_value(a, "--define")) != NULL) {
+            const char* spec = v[0] ? v : next_value(argc, argv, &i);
+            if (spec && *spec) {
+                const char* eq = strchr(spec, '=');
+                char nm[128]; const char* val = "1";
+                size_t nl = eq ? (size_t)(eq - spec) : strlen(spec);
+                if (nl >= sizeof nm) nl = sizeof nm - 1;
+                memcpy(nm, spec, nl); nm[nl] = 0;
+                if (eq) val = eq + 1;
+                gmb_preprocess_define_base(nm, val);
+            }
+            continue;
+        }
         if (opt_flag(a, "--semgraph")) { want_semgraph = 1; continue; }
         if ((v = opt_value(a, "--semgraph-diff")) != NULL) { semgraph_base = v[0] ? v : next_value(argc, argv, &i); continue; }
         if ((v = opt_value(a, "--line-map")) != NULL) { line_map = v[0] ? v : next_value(argc, argv, &i); continue; }

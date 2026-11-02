@@ -7,6 +7,8 @@
  */
 #include "gmb_cli_internal.h"
 #include "gmb_inc_resolve.h"
+#include "gmb_lexer.h"   /* check: validazione sintattica (parità con gmbcs) */
+#include "gmb_parser.h"
 
 #include <ctype.h>
 #include <dirent.h>
@@ -19,6 +21,23 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+
+/* Valida la sintassi di un file col front-end C (lexer+parser). Prima `check` guardava
+ * solo NAMESPACE/IMPORT testuali: un file con un errore di sintassi risultava OK, mentre
+ * `gmbcs check` (che compila) lo rifiutava — divergenza reale fra i due compilatori. */
+static void check_syntax(const char* path, DiagList* diags)
+{
+    char* src = read_all(path);
+    if (!src) return;
+    gmb_lex_result_t lx = gmb_lexer_scan(src, (long)strlen(src));
+    char* err = NULL;
+    gmb_program_t prog = gmb_parse(&lx, &err);
+    if (err && *err) diag_add(diags, 1, "parse", path, 0, err);
+    free(err);
+    gmb_program_free(&prog);
+    gmb_lex_result_free(&lx);
+    free(src);
+}
 
 void run_check(const Options* o, const char* project, const char* entry,
                       DiagList* diags, int* out_sources, int* out_modules) {
@@ -42,6 +61,7 @@ void run_check(const Options* o, const char* project, const char* entry,
         for (int k = 0; k < nn; k++) nameset_add(&declared, names[k]);
         /* 2. Ogni `.bas` del PROGETTO (non l'entry) deve dichiarare un NAMESPACE, altrimenti
          *    non può essere importato da nessuno. */
+        if (ends_with(sources[i], ".bas")) check_syntax(sources[i], diags);
         if (nn == 0 && ends_with(sources[i], ".bas") && path_under(sources[i], project)
             && strcmp(sources[i], entry) != 0) {
             diag_add(diags, 0, "no-namespace", sources[i], 0,
@@ -356,6 +376,14 @@ int build_project(const Options* o, const char* project, const char* entry,
     char* dot = strrchr(name, '.');
     if (dot) *dot = 0;
 
+    /* --target: il C compila solo nativo/C99. `il|pcode` sono dell'engine C#. */
+    if (o->target && *o->target && strcasecmp(o->target, "native") != 0 && strcasecmp(o->target, "c99") != 0) {
+        diag_add(diags, 1, "target", entry, 0,
+                 "il target indicato è dell'engine C#: usa `--engine csharp` "
+                 "(il compilatore C produce solo eseguibili nativi/C99)");
+        return 2;
+    }
+
     char bin[CLI_PATH];
     snprintf(bin, sizeof bin, "%s/bin", project);
     if (mkdir_p(bin) != 0) {
@@ -382,7 +410,15 @@ int build_project(const Options* o, const char* project, const char* entry,
     shell_quote(tc.driver, qd, sizeof qd);
     char gpmarg[64] = "";
     if (o->gpm && *o->gpm) snprintf(gpmarg, sizeof gpmarg, " --gpm %s", o->gpm);
-    snprintf(cmd, sizeof cmd, "%s %s %s --no-exe%s 2>&1", qd, qe, qc, gpmarg);
+    /* -D/--define: definiscono il preprocessore BASIC nel DRIVER (processo separato). */
+    char defargs[32 * 200]; defargs[0] = 0;
+    for (int di = 0; di < o->ndefines; di++) {
+        char q[192];
+        shell_quote(o->defines[di], q, sizeof q);
+        size_t used = strlen(defargs);
+        snprintf(defargs + used, sizeof defargs - used, " --define %s", q);
+    }
+    snprintf(cmd, sizeof cmd, "%s %s %s --no-exe%s%s 2>&1", qd, qe, qc, gpmarg, defargs);
     char* log = NULL;
     int rc = run_cmd(cmd, &log);
     if (rc != 0) {

@@ -27,7 +27,7 @@ static int  g_defs_n = 0;
 
 void gmb_cli_reset_defines(void)
 {
-    if (g_defs_n > 0) gmb_preprocess_reset();
+    if (g_defs_n > 0) gmb_preprocess_clear_base();
     g_defs_n = 0;
 }
 
@@ -49,7 +49,7 @@ void gmb_cli_set_defines(int argc, char** argv)
         if (!name[0] || g_defs_n >= 64) continue;
         snprintf(g_defs_name[g_defs_n], sizeof g_defs_name[0], "%s", name);
         snprintf(g_defs_val[g_defs_n], sizeof g_defs_val[0], "%s", val);
-        gmb_preprocess_define(g_defs_name[g_defs_n], g_defs_val[g_defs_n]);
+        gmb_preprocess_define_base(g_defs_name[g_defs_n], g_defs_val[g_defs_n]);
         g_defs_n++;
     }
 }
