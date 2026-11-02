@@ -276,7 +276,9 @@ public static class Program
         var dir = outDir != null ? Path.GetFullPath(outDir) : Path.Combine(Path.GetDirectoryName(Path.GetFullPath(sourcePath))!, "bin", "native");
         var exe = IlProgramCompiler.CompileNative(program, sourcePath, dir);
         try { CommonLib.ProgramBundle.CopyNextTo(dir, sourcePath, Console.WriteLine); } catch { /* best effort */ }
-        if (allLibs) DeployBundle(dir, libsSel ?? "used", plugins.On, plugins.Sel, skills.On, skills.Sel, brains.On, brains.Sel);
+        if (allLibs || plugins.On || skills.On || brains.On)
+            DeployBundle(dir, allLibs ? (libsSel ?? "used") : null,
+                         plugins.On, plugins.Sel, skills.On, skills.Sel, brains.On, brains.Sel);
         return exe;
     }
 
@@ -456,7 +458,14 @@ public static class Program
                         if (cols.Length < 5 || !cols[4].Equals(grp, StringComparison.OrdinalIgnoreCase)) continue;
                         var src = Path.Combine(cache, cols[0]);
                         if (!File.Exists(src)) continue;
-                        try { File.Copy(src, Path.Combine(dst, cols[0]), true); n[0]++; } catch { }
+                        var target = Path.Combine(dst, cols[0]);
+                        try
+                        {
+                            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                            File.Copy(src, target, true);
+                            n[0]++;
+                        }
+                        catch { }
                     }
             }
             // componente?
@@ -466,6 +475,8 @@ public static class Program
                 var src = Path.Combine(libsRoot, comp, rid);
                 var target = Path.Combine(dir, "libs", comp, rid);
                 CopyTree(src, target, n);
+                Console.WriteLine($"[libs] componente {comp}: {n[0]} file -> {target}");
+                return;
             }
             // elenco di nomi
             else
@@ -474,6 +485,8 @@ public static class Program
                     CopyFrom(cache, t);
             }
         }
+        if (n[0] == 0 && !string.IsNullOrWhiteSpace(sel))
+            Console.Error.WriteLine($"[libs] selettore '{sel}': nessun file trovato nella cache");
         Console.WriteLine($"[libs] {n[0]} file -> {dst}");
     }
 
@@ -515,7 +528,9 @@ public static class Program
          * toolchain). Senza il flag resta il percorso di iterazione (symlink, ~140 KB). */
         var exe = IlProgramCompiler.Compile(program, sourcePath, dir, Path.GetFileNameWithoutExtension(sourcePath),
             noOptimize: false, dumpIl: false, linkRuntime: !allLibs, dllOnly: false, slim: !all);
-        if (allLibs) DeployBundle(dir, libsSel ?? "used", plugins.On, plugins.Sel, skills.On, skills.Sel, brains.On, brains.Sel);
+        if (allLibs || plugins.On || skills.On || brains.On)
+            DeployBundle(dir, allLibs ? (libsSel ?? "used") : null,
+                         plugins.On, plugins.Sel, skills.On, skills.Sel, brains.On, brains.Sel);
         if (full) CopyNetRuntime(dir);
         Console.WriteLine($"[IL] {sourcePath} -> {exe}{(allLibs ? " (bundle: dipendenze copiate)" : "")}{(full ? " (full: runtime .NET copiato)" : "")}");
         return 0;
