@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 
 /* 24 slot canonici: le etichette sono STABILI (cambiarle invalida bias/T allenati). */
 const gmb_decision_option_t gmb_decision_slots_noul[2] = {
@@ -186,4 +187,64 @@ int gmb_decision_result_json(const gmb_decision_result_t* result, char* out, siz
         kind, option, value, result->probability, conf, cal);
     if (n < 0 || (size_t)n >= cap) return -1;
     return n;
+}
+
+char* gmb_ai_decide_run_json(const char* state, const char* kind) {
+    if (!kind) return NULL;
+    const gmb_decision_option_t* options = NULL;
+    int n_options = 0;
+    gmb_decision_kind_t k;
+    /* CHOICE:<label1>|<label2>|... — dominio libero mappato agli slot stabili A..P.
+     * Le label puntano a `labelbuf` (vita della funzione). */
+    char labelbuf[512];
+    gmb_decision_option_t custom[GMB_DECISION_MAX_OPTIONS];
+    int is_choice_custom = 0;
+    if (strncasecmp(kind, "CHOICE:", 7) == 0) {
+        size_t len = strlen(kind + 7);
+        if (len == 0 || len >= sizeof(labelbuf)) return NULL;
+        memcpy(labelbuf, kind + 7, len + 1);
+        char* p = labelbuf;
+        while (*p && n_options < GMB_DECISION_MAX_OPTIONS) {
+            char* sep = strchr(p, '|');
+            if (sep) *sep = 0;
+            /* salta spazi iniziali/finali */
+            while (*p == ' ' || *p == '\t') p++;
+            char* end = p + strlen(p);
+            while (end > p && (end[-1] == ' ' || end[-1] == '\t')) *--end = 0;
+            if (*p) {
+                custom[n_options].id = gmb_decision_slots_choice[n_options].id;
+                custom[n_options].label = p;
+                custom[n_options].token_id = -1;
+                custom[n_options].bias = 0.0f;
+                custom[n_options].temperature = 1.0f;
+                n_options++;
+            }
+            if (!sep) break;
+            p = sep + 1;
+        }
+        if (n_options == 0) return NULL;
+        options = custom;
+        k = GMB_DECISION_CHOICE;
+        is_choice_custom = 1;
+    }
+    else if (ieq(kind, "NOUL")) { k = GMB_DECISION_NOUL; options = gmb_decision_slots_noul; n_options = 2; }
+    else if (ieq(kind, "SCORE")) { k = GMB_DECISION_SCORE; options = gmb_decision_slots_score; n_options = 6; }
+    else if (ieq(kind, "CHOICE")) { k = GMB_DECISION_CHOICE; options = gmb_decision_slots_choice; n_options = 16; }
+    else return NULL;
+    (void)is_choice_custom;
+
+    gmb_decision_provider_t* provider = gmb_decision_provider_rules();
+    if (!provider) return NULL;
+    gmb_decision_result_t result;
+    int rc = gmb_decision_evaluate(provider, state ? state : "", k, options, n_options, &result);
+    gmb_decision_provider_free(provider);
+    if (rc != 1) return NULL;
+
+    char buffer[1024];
+    if (gmb_decision_result_json(&result, buffer, sizeof(buffer)) < 0) return NULL;
+    size_t n = strlen(buffer);
+    char* out = (char*)malloc(n + 1);
+    if (!out) return NULL;
+    memcpy(out, buffer, n + 1);
+    return out;
 }
