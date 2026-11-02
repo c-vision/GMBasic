@@ -61,7 +61,28 @@ public static class StringHelpers
     public static string Camel(string? value) => CommonLib.StringUtils.Camel(value);
     public static string Title(string? value) => CommonLib.StringUtils.Title(value);
     public static string Sentence(string? value) => CommonLib.StringUtils.Sentence(value);
-    public static string Replace(string? value, string? oldValue, string? newValue) => (value ?? string.Empty).Replace(oldValue ?? string.Empty, newValue ?? string.Empty, StringComparison.Ordinal);
+    /// <summary>REPLACE$(s, old, new): sostituisce TUTTE le occorrenze. Con `old` VUOTO
+    /// inserisce `new` in ogni posizione (inizio e fine inclusi) — semantica canonica della
+    /// gamba nativa `gmb_str_replace`; .NET <c>string.Replace("", …)</c> lancia, quindi non
+    /// si può delegare a lui. Fix 2026-11-02: IL/PCode divergevano da C99/C99Native.</summary>
+    public static string Replace(string? value, string? oldValue, string? newValue)
+    {
+        var s = value ?? string.Empty;
+        var oldV = oldValue ?? string.Empty;
+        var newV = newValue ?? string.Empty;
+        if (oldV.Length == 0)
+        {
+            if (newV.Length == 0) return s;
+            var sb = new System.Text.StringBuilder(s.Length + newV.Length * (s.Length + 1));
+            for (var i = 0; i <= s.Length; i++)
+            {
+                sb.Append(newV);
+                if (i < s.Length) sb.Append(s[i]);
+            }
+            return sb.ToString();
+        }
+        return s.Replace(oldV, newV, StringComparison.Ordinal);
+    }
     public static string Remove(string? value, string? substring) => (value ?? string.Empty).Replace(substring ?? string.Empty, string.Empty, StringComparison.Ordinal);
     public static bool Contains(string? value, string? search) => (value ?? string.Empty).Contains(search ?? string.Empty, StringComparison.Ordinal);
     public static bool StartsWith(string? value, string? prefix) => (value ?? string.Empty).StartsWith(prefix ?? string.Empty, StringComparison.OrdinalIgnoreCase);
