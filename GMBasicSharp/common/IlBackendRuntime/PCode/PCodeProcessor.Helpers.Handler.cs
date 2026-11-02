@@ -970,6 +970,14 @@ internal sealed partial class PCodeProcessor
     {
         var area = ResolveAreaNum(task, fileRef, task.CurrentDbfArea);
         var wa = area > 0 ? _dataSession.GetWorkArea(area) : null;
+        var db = (wa?.Driver as Basic.Databases.Rdd.SpeedDriver)?._db;
+        if (db != null) return db;
+        /* Alias non risolto: `SPEED.VALIDATE/INFO("G")` passa l'alias del DATABASE
+         * (`SPEED OPEN … ALIAS G`), che NON è un alias di work-area (FindAlias lo ignora)
+         * → area 0 e valore vuoto/0. Fallback alla work-area CORRENTE (dove SPEED.USE ha
+         * legato il driver), come IL (DbDriverFor(null)) e C99Native (gmb_db_current_speed). */
+        var cur = _dataSession.CurrentArea;
+        wa = cur > 0 ? _dataSession.GetWorkArea(cur) : null;
         return (wa?.Driver as Basic.Databases.Rdd.SpeedDriver)?._db;
     }
 

@@ -673,6 +673,16 @@ int emit_bf_speed(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk
         sb_put(&c->out, "((double)(gmb_db_speed_end_group_commit(gmb_db_current_speed()) == 0 ? -1.0 : 0.0))");
         return 1;
     }
+    if (tk == GMB_TOK_SpeedValidate) {
+        /* VALIDATE(), VALIDATE(alias$), VALIDATE(full), VALIDATE(alias$, full):
+         * integrità del DB SPEED corrente. La libreria C esegue sempre l'integrità
+         * COMPLETA (il flag `full` è quindi informativo, come in IL/PCode); l'alias è
+         * accettato per compatibilità di firma. Ritorno Bit canonico: -1 valido / 0 no
+         * (prima: "funzione non definita", gap §backend). */
+        (void)nargs;
+        sb_put(&c->out, "((double)(gmb_db_speed_validate(gmb_db_current_speed(), NULL, 0) == GMB_DB_OK ? -1.0 : 0.0))");
+        return 1;
+    }
     if (tk == GMB_TOK_SpeedInfo) {
         sb_put(&c->out, "gmb_db_speed_info_str(gmb_db_current_speed())");
         return 1;

@@ -103,6 +103,25 @@ static int ci_word_at(const char* p, const char* w) {
     char c = p[n];
     return (c == ' ' || c == '\t' || c == '(' || c == '\r' || c == '\n' || c == '\0' || c == ',');
 }
+/* Sottostringa case-insensitive (usata per riconoscere i programmi TRAY). */
+static int gmb_ci_contains(const char* hay, const char* needle) {
+    size_t n = needle ? strlen(needle) : 0;
+    if (!hay || n == 0) return 0;
+    for (const char* p = hay; *p; p++)
+        if (strncasecmp(p, needle, n) == 0) return 1;
+    return 0;
+}
+
+/* true se il programma usa il namespace TRAY: in quel caso il link deve includere la
+ * dylib CONDIVISA gmb_tray (gmb_tray_* non è nella statica del runtime). */
+static int source_uses_tray(const char* entry) {
+    char* src = read_all(entry);
+    if (!src) return 0;
+    int used = gmb_ci_contains(src, "TRAY");
+    free(src);
+    return used;
+}
+
 static int source_needs_full_runtime(const char* entry) {
     char* src = read_all(entry);
     if (!src) return 1;
@@ -509,15 +528,18 @@ int build_project(const Options* o, const char* project, const char* entry,
         strncat(libs, " -lz", sizeof libs - strlen(libs) - 1);
         /* Il runtime MINIMO linka anche bz2, curl e libcompression (stessa riga di
          * tools/gmb_c99native_run.sh): senza, il link del solo PRINT falliva. */
-        if (use_min) {
+        /* bz2/curl(/libcompression): usati dal runtime anche nel percorso COMPLETO
+         * (gmb_network.c chiama curl_easy_*). Prima erano solo nel ramo `use_min`. */
 #if defined(__APPLE__)
-            strncat(libs, " -lbz2 -lcurl -lcompression", sizeof libs - strlen(libs) - 1);
+        strncat(libs, " -lbz2 -lcurl -lcompression", sizeof libs - strlen(libs) - 1);
 #else
-            strncat(libs, " -lbz2 -lcurl", sizeof libs - strlen(libs) - 1);
+        strncat(libs, " -lbz2 -lcurl", sizeof libs - strlen(libs) - 1);
 #endif
-            /* Il runtime MINIMO include `gmb_abi.o` (forzato da `gmb_paths.c` via
-             * `gmb_abi_link_anchor`) che usa `llmdesc_abi_*`: senza questa statica il link
-             * falliva con "_llmdesc_abi_locate non definito" anche su un PRINT. */
+        /* `gmb_abi.o` (forzato da `gmb_paths.c` via `gmb_abi_link_anchor`) usa
+         * `llmdesc_abi_*`/`llmdesc_set_abi_policy`: la statica va linkata SEMPRE, anche
+         * col runtime COMPLETO — prima il ramo `!use_min` la ometteva e ogni programma
+         * grafico falliva con "_llmdesc_set_abi_policy non definito". */
+        {
             const char* ldcand[] = {
                 "native/gmb_runtime_c/build/llmdesc_build/libllmdesc.a",
                 "native/gmb_vm_c/build/gmb_runtime_c_build/llmdesc_build/libllmdesc.a",
@@ -533,6 +555,77 @@ int build_project(const Options* o, const char* project, const char* entry,
                 break;
             }
         }
+        /* FULL runtime: DBF/ISAM/SPEED/RDD/SQL vivono nella statica `gmb_db_c` (fuori dal
+         * runtime). Primail link completo la ometteva: un programma SPEED/DBF falliva con
+         * "_gmb_db_speed_validate non definito". Solo per i programmi che la richiedono. */
+        if (need_full) {
+            /* Compressione (LZ4/LZMA/zstd/brotli/pcre2): `gmb_compress.c` e il runtime
+             * completo le referenziano; nella cache i nomi hanno la VERSIONE nel file
+             * (`libzstd.1.5.7.dylib`), quindi -l non basta: si linkano per path (come
+             * tools/sh/gmb_c99native_run.sh). Senza: "_LZ4F_compressFrame non definito". */
+            char cache3[CLI_PATH];
+            if (gmb_cache_libdir(cache3, sizeof cache3)) {
+                static const char* comp[] = {
+                    "libzstd.1.5.7.dylib", "liblz4.1.10.0.dylib", "liblzma.5.dylib",
+                    "libbrotlienc.1.dylib", "libbrotlidec.1.dylib", "libpcre2-8.0.dylib",
+                };
+                for (size_t i = 0; i < sizeof comp / sizeof comp[0]; i++) {
+                    char cp[CLI_PATH];
+                    snprintf(cp, sizeof cp, "%s/%s", cache3, comp[i]);
+                    if (!is_file(cp)) continue;
+                    char cq[CLI_PATH + 8];
+                    shell_quote(cp, cq, sizeof cq);
+                    strncat(libs, " ", sizeof libs - strlen(libs) - 1);
+                    strncat(libs, cq, sizeof libs - strlen(libs) - 1);
+                }
+            }
+            const char* dbcand[] = {
+                "native/gmb_db_c/build/libgmb_db.a",
+                "native/gmb_vm_c/build/gmb_db_c_build/libgmb_db.a",
+            };
+            for (size_t i = 0; i < sizeof dbcand / sizeof dbcand[0]; i++) {
+                char dp[CLI_PATH];
+                snprintf(dp, sizeof dp, "%s/%s", tc.install, dbcand[i]);
+                if (!is_file(dp)) continue;
+                char dq[CLI_PATH + 8];
+                shell_quote(dp, dq, sizeof dq);
+                strncat(libs, " ", sizeof libs - strlen(libs) - 1);
+                strncat(libs, dq, sizeof libs - strlen(libs) - 1);
+#if defined(__APPLE__)
+                strncat(libs, " -lsqlite3", sizeof libs - strlen(libs) - 1);
+#endif
+                break;
+            }
+        }
+    }
+
+    /* TRAY: gmb_tray_* vive nella dylib condivisa `gmb_tray` (target CMake omonimo, non
+     * nella statica). Va aggiunta al link SOLO per i programmi che usano TRAY; senza, il
+     * CLI falliva con "_gmb_tray_available undefined" (arm64). Prima la CACHE
+     * (~/.gmbasic/libs/<rid>), poi il build del checkout (<install>/build/libs/<rid>). */
+    if (!is_lib && source_uses_tray(entry)) {
+        char cache2[CLI_PATH];
+        if (gmb_cache_libdir(cache2, sizeof cache2)) {
+            char q[CLI_PATH + 8];
+            shell_quote(cache2, q, sizeof q);
+            strncat(ldirs, " -L", sizeof ldirs - strlen(ldirs) - 1);
+            strncat(ldirs, q, sizeof ldirs - strlen(ldirs) - 1);
+            strncat(ldirs, " -Wl,-rpath,", sizeof ldirs - strlen(ldirs) - 1);
+            strncat(ldirs, q, sizeof ldirs - strlen(ldirs) - 1);
+        }
+        {
+            char build2[CLI_PATH + 16];
+            snprintf(build2, sizeof build2, "%s/build/libs/%s", tc.install, GMB_RID_STR);
+            if (is_dir(build2)) {
+                char q[CLI_PATH + 8];
+                shell_quote(build2, q, sizeof q);
+                strncat(ldirs, " -L", sizeof ldirs - strlen(ldirs) - 1);
+                strncat(ldirs, q, sizeof ldirs - strlen(ldirs) - 1);
+                strncat(ldirs, " -Wl,-rpath,", sizeof ldirs - strlen(ldirs) - 1);
+                strncat(ldirs, q, sizeof ldirs - strlen(ldirs) - 1);
+            }
+        }
+        strncat(libs, " -lgmb_tray", sizeof libs - strlen(libs) - 1);
     }
 
     char qr[CLI_PATH + 8], qexe[CLI_PATH + 8];

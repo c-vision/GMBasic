@@ -50,6 +50,25 @@ public sealed partial class IlProgramCompiler
         else _il.Emit(OpCodes.Ldc_R8, 0.0);
     }
 
+    /// <summary>SPEED.VALIDATE: 4 overload registrati — `()`, `(alias$)`, `(full)`,
+    /// `(alias$, full)`. Il runtime espone `SpeedValidate(string? alias)` (-1 valido /
+    /// 0 no): l'alias è il primo argomento STRING, il flag `full` viene valutato (effetti)
+    /// ma ignorato (l'integrità è sempre completa). Prima si emetteva sempre un cast a
+    /// string sul primo argomento → ILGEN "conversione numerica da Double a String".</summary>
+    private void EmitSpeedValidateCall(BuiltinFunctionCallExpr expr)
+    {
+        var aliasArg = expr.Args.FirstOrDefault(a => InferType(a) is StringType);
+        foreach (var a in expr.Args)
+        {
+            if (ReferenceEquals(a, aliasArg)) continue;
+            EmitExpression(a);
+            _il.Emit(OpCodes.Pop);   /* flag `full` (o argomento non-stringa): nessun uso */
+        }
+        if (aliasArg is not null) EmitExpression(aliasArg);
+        else _il.Emit(OpCodes.Ldnull);
+        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SpeedValidate), typeof(string)));
+    }
+
     private void EmitBuiltinFunctionCall(BuiltinFunctionCallExpr expr)
     {
         // FORM_* (GUI): controlli pixel — per nome (nessun TokenKind).
@@ -2199,7 +2218,7 @@ case TokenKind.MemoryWatch: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameo
             case TokenKind.DbfReplicationShipTcp: EmitVariadicRuntimeCall(expr, nameof(IlRuntime.DbfReplicationShip)); break;
             case TokenKind.DbfReplicationRecvTcp: EmitVariadicRuntimeCall(expr, nameof(IlRuntime.DbfReplicationRecv)); break;
             case TokenKind.SpeedInfo: EmitTypedRuntimeCall(expr, RuntimeMethod(nameof(IlRuntime.SpeedInfo), typeof(string))); break;
-            case TokenKind.SpeedValidate: EmitTypedRuntimeCall(expr, RuntimeMethod(nameof(IlRuntime.SpeedValidate), typeof(string))); break;
+            case TokenKind.SpeedValidate: EmitSpeedValidateCall(expr); break;
             case TokenKind.ToolSearch: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.ToolSearch))); break;
             case TokenKind.ToolRegister: EmitToolRegisterCall(expr); break;
             case TokenKind.UiFind: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.UiFind))); break;
