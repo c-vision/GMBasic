@@ -240,4 +240,10 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
       compilatore A1. **`REPLACE$` con old vuoto**: inserimento in ogni posizione su TUTTI i
       backend (`StringHelpers.Replace` allineata a `gmb_str_replace`; MiniTest aggiornato).
       Aperti tracciati: AOT `-n`, `-full`, `--debug-tcp`.
-- [ ] **F7b — Pulizia finale** (dopo F6): guida unica e manifesti/audit rigenerati.
+- [x] **F7b — Audit rigenerato** (2026-11-02): `dotnet run --project tools/audit -- --all` →
+      **1540 funzioni canoniche, IL/PCodeVM/VM-C/C99Native 100%, 0 gap**. Report in
+      `tools/reports/` (manifest + `audit-backends.md`, artefatti locali non versionati).
+      `--debug-tcp` chiarito: era inerte anche nel runner C# (solo `DebugPort` salvato, nessun
+      listener) — non è una funzione persa.
+- [ ] **F7c — Guida unica**: consolidare la documentazione REPL in una sola guida (il resto è
+      fatto: help JSON in `REPL/helps`, README, MIGRATION, guide utente).
