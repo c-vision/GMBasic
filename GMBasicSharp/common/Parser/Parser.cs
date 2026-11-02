@@ -324,6 +324,25 @@ public sealed partial class Parser
     private readonly HashSet<string> _declaredArrayNames = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
+    /// Nomi delle procedure (FUNCTION/SUB/GENERATOR e metodi di classe) definite in questo
+    /// file fino a questo punto del parsing. Serve a dare loro la precedenza sui builtin
+    /// quando il nome coincide con una keyword: `FUNCTION Sum()` rende `Sum(...)` una chiamata
+    /// UTENTE, non `MATH.Sum(...)` (prima il dispatch per TokenKind del parser vinceva sempre,
+    /// bug types/class_array_member: `Sum = arr(0) + ...` veniva letto come target di una
+    /// chiamata a funzione). Flat sul file, non per-scope: stesso limite noto degli altri set.
+    /// </summary>
+    private readonly HashSet<string> _userProcedureNames = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Registra un nome di procedura utente (con e senza suffisso `$`, perché il
+    /// lookup dei builtin normalizza `Nome$` → `Nome`).</summary>
+    internal void RegisterUserProcedureName(string lexeme)
+    {
+        if (string.IsNullOrEmpty(lexeme)) return;
+        _userProcedureNames.Add(lexeme);
+        if (lexeme.EndsWith('$') && lexeme.Length > 1) _userProcedureNames.Add(lexeme[..^1]);
+    }
+
+    /// <summary>
     /// Il programma in fase di compilazione, che funge da contesto centrale.
     /// </summary>
     private readonly BasicProgram _program;

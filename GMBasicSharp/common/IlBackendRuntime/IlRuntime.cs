@@ -2535,6 +2535,11 @@ public static partial class IlRuntime
             case decimal: return "CURRENCY";
             case DateTime: return "DATETIME";
             case Array: return "ARRAY";
+            // BAG<T> è materializzato come Dictionary<T,long> (BagMultiset). Le altre gambe
+            // (PCode/VM-C/C99) vedono un DICTIONARY e riportano "DICTIONARY`2": il nome CLR
+            // "BAGMULTISET`1" era una divergenza solo IL (minitest
+            // collections/collection_typename_valtype).
+            case IBagMultiset: return "DICTIONARY`2";
             default:
                 // UDT: nome BASIC dal registro (parità PCode/VM-C) invece del nome CLR "UDT_540".
                 if (UdtTypeNames.TryGetValue(value.GetType().FullName ?? "", out var bn)) return bn;

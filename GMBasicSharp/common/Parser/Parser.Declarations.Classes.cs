@@ -363,6 +363,7 @@ public sealed partial class Parser
         var isSub = Peek().Lexeme.Equals("SUB", StringComparison.OrdinalIgnoreCase);
         Consume(TokenKind.Function, "Expected 'FUNCTION' or 'SUB' keyword.");
         var nameToken = ConsumeProcedureName();
+        RegisterUserProcedureName(nameToken.Lexeme);
 
         var parameters = Check(TokenKind.LeftParen) ? ParseParameters() : ImmutableArray<Parameter>.Empty;
 

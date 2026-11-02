@@ -436,6 +436,7 @@ public sealed partial class Parser
         var isSub = Peek().Lexeme.Equals("SUB", StringComparison.OrdinalIgnoreCase);
         var keywordToken = Consume(TokenKind.Function, "Expected 'FUNCTION' or 'SUB' keyword.");
         var nameToken = ConsumeProcedureName();
+        RegisterUserProcedureName(nameToken.Lexeme);
 
         // --- ATTRIBUTES: <Serializable>, <Required>, etc ---
         // Gli attributes vengono parsati da ParseStatement e salvati in _pendingAttributes.
@@ -552,6 +553,7 @@ public sealed partial class Parser
         // Salva il token 'GENERATOR' che contiene la posizione corretta.
         var keywordToken = Consume(TokenKind.Generator, "Expected 'GENERATOR' or 'GEN' keyword.");
         var nameToken = ConsumeProcedureName();
+        RegisterUserProcedureName(nameToken.Lexeme);
         var parameters = Check(TokenKind.LeftParen) ? ParseParameters() : ImmutableArray<Parameter>.Empty;
         var yieldType = ParseTypeClause(nameToken, isFunctionDeclaration: true);
         Consume(TokenKind.Newline, "Expected newline after generator signature.");
