@@ -769,14 +769,14 @@ static int sys_command(ctx_t* c, gmb_expr_t** a, int n) {
     return 1;
 }
 static int sys_envget(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 1) return 0;
+    if (n != 1) return 0;
     sb_put(&c->out, "gmb_string_alloc(gmb_env_get((");
     emit_str_operand(c, a[0]);
     sb_put(&c->out, ").data))");
     return 1;
 }
 static int sys_envhas(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 1) return 0;
+    if (n != 1) return 0;
     /* Convenzione booleana BASIC: -1 se presente, 0 se assente (gmb_env_has è 1/0). */
     sb_put(&c->out, "((gmb_double_t)(gmb_env_has((");
     emit_str_operand(c, a[0]);
