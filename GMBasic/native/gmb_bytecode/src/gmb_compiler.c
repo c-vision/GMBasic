@@ -1397,6 +1397,37 @@ static int cc_body_assigns_lambda(const gmb_stmt_t* const* body, int n, const ch
     return 0;
 }
 
+/* Un RETURN che restituisce una VARIABILE riempita con un code block letterale nel
+ * corpo (`DIM f = { |x| … }` / `LET f = {…}` / `f = {…}` + `RETURN f`): la procedura
+ * restituisce una CLOSURE. Senza questo caso `DIM fs = MkStr()` non era registrata come
+ * closure var e sia `EVAL(fs)` sia `fs()` restituivano nil in silenzio. */
+static int cc_body_returns_lambda_var(const gmb_stmt_t* const* body, int n)
+{
+    for (int i = 0; i < n; i++) {
+        const gmb_stmt_t* s = body[i]; if (!s) continue;
+        if (s->kind == GMB_STMT_RETURN && s->ret_value
+            && s->ret_value->kind == GMB_EXPR_VAR && s->ret_value->var) {
+            for (int j = 0; j < n; j++) {
+                const gmb_stmt_t* t = body[j]; if (!t) continue;
+                const char* tgt = NULL; const gmb_expr_t* init = NULL;
+                if (t->kind == GMB_STMT_DIM) { tgt = t->dim_var; init = t->dim_init; }
+                else if (t->kind == GMB_STMT_ASSIGN || t->kind == GMB_STMT_LET) { tgt = t->target; init = t->value; }
+                if (tgt && init && init->kind == GMB_EXPR_LAMBDA
+                    && strcasecmp(tgt, s->ret_value->var) == 0) return 1;
+            }
+        }
+        if (cc_body_returns_lambda_var((const gmb_stmt_t* const*)s->then_body, s->n_then)
+            || cc_body_returns_lambda_var((const gmb_stmt_t* const*)s->else_body, s->n_else)
+            || cc_body_returns_lambda_var((const gmb_stmt_t* const*)s->for_body, s->n_for)
+            || cc_body_returns_lambda_var((const gmb_stmt_t* const*)s->while_body, s->n_while)
+            || cc_body_returns_lambda_var((const gmb_stmt_t* const*)s->do_body, s->n_do)
+            || cc_body_returns_lambda_var((const gmb_stmt_t* const*)s->try_body, s->n_try)
+            || cc_body_returns_lambda_var((const gmb_stmt_t* const*)s->catch_body, s->n_catch)
+            || cc_body_returns_lambda_var((const gmb_stmt_t* const*)s->finally_body, s->n_finally)) return 1;
+    }
+    return 0;
+}
+
 /* Un RETURN che restituisce una FUNCTION/SUB ANNIDATA (referenza al nome, es. `RETURN
  * Incrementa`) fa sì che la procedura restituisca una CLOSURE — anche senza assegnare mai
  * una lambda al proprio nome. Il nome restituito deve essere una funzione annidata
@@ -3750,6 +3781,20 @@ static void cc_emit_nested_function(gmb_cc_t* c, const gmb_stmt_t* s)
     cc_local_t* saved_locals = c->locals; int saved_nlocals = c->nlocals, saved_cap = c->nloc_cap;
     int saved_in_proc = c->in_proc;
     const char* saved_proc_name = c->current_proc_name;
+    /* Push dello scope del frame CORRENTE (come cc_emit_lambda): la risoluzione delle
+     * catture è TRANSITIVA su tutta la catena (funzione annidata dentro lambda/altra
+     * funzione, profondità arbitraria). Senza, i nomi del contenitore cadevano nel
+     * fallback "globale" → la closure leggeva una globale omonima (0/vuoto). */
+    if (c->cap_depth < 8) {
+        c->cap_stack[c->cap_depth].locals = saved_locals;
+        c->cap_stack[c->cap_depth].nlocals = saved_nlocals;
+        c->cap_stack[c->cap_depth].up_names = c->lambda_up_names;
+        c->cap_stack[c->cap_depth].up_is_local = c->lambda_up_is_local;
+        c->cap_stack[c->cap_depth].up_index = c->lambda_up_index;
+        c->cap_stack[c->cap_depth].nup = c->n_lambda_up;
+        c->cap_stack[c->cap_depth].cap = c->lambda_up_cap;
+        c->cap_depth++;
+    }
     c->enclosing_locals = saved_locals; c->n_enclosing_locals = saved_nlocals;
     c->locals = NULL; c->nlocals = 0; c->nloc_cap = 0;
     c->compiling_lambda = 1;
@@ -3791,9 +3836,19 @@ static void cc_emit_nested_function(gmb_cc_t* c, const gmb_stmt_t* s)
     free(c->lambda_up_names); free(c->lambda_up_is_local); free(c->lambda_up_index);
     c->locals = saved_locals; c->nlocals = saved_nlocals; c->nloc_cap = saved_cap;
     c->in_proc = saved_in_proc; c->compiling_lambda = 0;
-    c->enclosing_locals = NULL; c->n_enclosing_locals = 0;
-    c->lambda_up_names = NULL; c->lambda_up_is_local = NULL; c->lambda_up_index = NULL;
-    c->n_lambda_up = c->lambda_up_cap = 0;
+    c->enclosing_locals = (c->cap_depth > 1) ? c->cap_stack[c->cap_depth - 2].locals : NULL;
+    c->n_enclosing_locals = (c->cap_depth > 1) ? c->cap_stack[c->cap_depth - 2].nlocals : 0;
+    if (c->cap_depth > 0) {
+        c->cap_depth--;
+        c->lambda_up_names = c->cap_stack[c->cap_depth].up_names;
+        c->lambda_up_is_local = c->cap_stack[c->cap_depth].up_is_local;
+        c->lambda_up_index = c->cap_stack[c->cap_depth].up_index;
+        c->n_lambda_up = c->cap_stack[c->cap_depth].nup;
+        c->lambda_up_cap = c->cap_stack[c->cap_depth].cap;
+    } else {
+        c->lambda_up_names = NULL; c->lambda_up_is_local = NULL; c->lambda_up_index = NULL;
+        c->n_lambda_up = c->lambda_up_cap = 0;
+    }
     c->current_proc_name = saved_proc_name;
     if (c->error) return;
 
@@ -4017,7 +4072,13 @@ static void cc_stmt(gmb_cc_t* c, const gmb_stmt_t* s)
             cc_expr(c, s->print_args[i]);
             if (c->error) return;
             if (i == s->nprint - 1) cc_byte(c, GMB_OP_PRINT_LINE);
-            else cc_byte(c, GMB_OP_PRINT_VALUE);
+            else {
+                cc_byte(c, GMB_OP_PRINT_VALUE);
+                /* separatore ',' → zona di 14 colonne (parità IL/PCode/C99
+                 * IlRuntime.PrintTabZone). Prima la virgola era ignorata: il VM/C
+                 * stampava "x: 1" dove IL/PCode/C99 stampano "x:             1". */
+                if (s->print_comma && s->print_comma[i]) cc_byte(c, GMB_OP_PRINT_TAB_ZONE);
+            }
         }
         break;
     }
@@ -6879,6 +6940,9 @@ int gmb_compile(const gmb_program_t* prog, uint8_t** out_data, size_t* out_len, 
                     (const gmb_stmt_t* const*)prog->stmts[i]->func_body,
                     prog->stmts[i]->n_funcbody, prog->stmts[i]->func_name)
                 || cc_body_returns_nested_func(
+                    (const gmb_stmt_t* const*)prog->stmts[i]->func_body,
+                    prog->stmts[i]->n_funcbody)
+                || cc_body_returns_lambda_var(
                     (const gmb_stmt_t* const*)prog->stmts[i]->func_body,
                     prog->stmts[i]->n_funcbody))) {
                 snprintf(c.closure_return_procs[c.n_closure_return_procs++], 64, "%s",

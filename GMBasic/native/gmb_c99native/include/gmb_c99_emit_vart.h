@@ -51,6 +51,11 @@ typedef struct { char* name; int type; int is_array; int ndims; int byref; int g
                  int fn_ret_arity[8];
                  int fn_ret_mask[8];
                  int fn_ret_str;
+                 int cell;          /* 1 = variabile catturata da una closure figlia: vive in una
+                                     * CELLA heap condivisa (il corpo vi accede via imap
+                                     * `(*__cell_<nome>)`, la closure riceve il puntatore).
+                                     * Semantica per-riferimento + lifetime corretto per le
+                                     * closure ritornate (parità VM/C/IL). */
                  char gen_id[40];   /* GK_GEN: nome del generatore → tipo gmb_gen_<id>_t */
                  char dim_expr[24]; /* nome della variabile-bound del primo DIM (__dim<id>_0): serve
                                      * a chi deve conoscere la DIMENSIONE a runtime (es. APPENDMANY) */

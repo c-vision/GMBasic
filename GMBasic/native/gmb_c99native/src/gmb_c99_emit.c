@@ -485,7 +485,7 @@ static void dbf_field_imap_ensure_as(ctx_t* c, const char* key, const char* fiel
     if (!key || !*key || !field || !*field) return;
     for (int i = 0; i < c->n_imap; i++)
         if (strcasecmp(c->imap_name[i], key) == 0) return;
-    if (c->n_imap >= 32) return;
+    if (c->n_imap >= GMB_IMAP_CAP) return;
     snprintf(dx, sizeof(dx),
              "(gmb_db_current_dbf() > 0 ? gmb_db_dbf_field_val_name(gmb_db_current_dbf(), \"%s\") : gmb_rdd_get_field_str_name(\"%s\"))",
              field, field);
@@ -515,7 +515,7 @@ static void dbf_field_imap_ensure(ctx_t* c, const char* name) {
     if (!name || !*name) return;
     for (int i = 0; i < c->n_imap; i++)
         if (strcasecmp(c->imap_name[i], name) == 0) return;
-    if (c->n_imap >= 32) return;
+    if (c->n_imap >= GMB_IMAP_CAP) return;
     snprintf(dx, sizeof(dx),
              "(gmb_db_current_dbf() > 0 ? gmb_db_dbf_field_val_name(gmb_db_current_dbf(), \"%s\") : gmb_rdd_get_field_str_name(\"%s\"))",
              name, name);
@@ -1226,11 +1226,11 @@ static void emit_defer_epilogue(ctx_t* c) {
     if (c->cur_fn && !c->cur_fn->has_gosub)
         emit_class_locals_dtors(c);
     ind(c);
-    /* `main` è `int main(...)`: un'uscita a livello di programma deve restituire un valore
-     * (prima `return;` → error: non-void function 'main' should return a value, che rompeva
-     * la compilazione dei sample con RETURN raggiungibile a top-level, es. ExceptionsRethrow). */
-    if (cur_scope_has_gosub(c)) emit_gosub_return(c, c->cur_fn ? "return __ret;" : "return 0;");
-    else sb_put(&c->out, c->cur_fn ? "return __ret;\n" : "return 0;\n");
+    /* Il codice di MODULO vive in `gmb_program_main` (VOID): un'uscita a top-level
+     * (RETURN modulo) è `return;`. Non `return 0;` — error: void function should not
+     * return a value (FunctionsParams: 1200 RETURN a livello modulo). */
+    if (cur_scope_has_gosub(c)) emit_gosub_return(c, c->cur_fn ? "return __ret;" : "return;");
+    else sb_put(&c->out, c->cur_fn ? "return __ret;\n" : "return;\n");
 }
 
 /* 2.8: writeback dei parametri array BYREF (alias "_<ident>" → *<ident>, parity
@@ -1283,11 +1283,11 @@ static void emit_fn_return(ctx_t* c) {
         ind(c); sb_put(&c->out, "gmb_dscope_pop();\n");
     }
     ind(c);
-    /* `main` è `int main(...)`: un'uscita a livello di programma deve restituire un valore
-     * (prima `return;` → error: non-void function 'main' should return a value, che rompeva
-     * la compilazione dei sample con RETURN raggiungibile a top-level, es. ExceptionsRethrow). */
-    if (cur_scope_has_gosub(c)) emit_gosub_return(c, c->cur_fn ? "return __ret;" : "return 0;");
-    else sb_put(&c->out, c->cur_fn ? "return __ret;\n" : "return 0;\n");
+    /* Il codice di MODULO vive in `gmb_program_main` (VOID): un'uscita a top-level
+     * (RETURN modulo) è `return;`. Non `return 0;` — error: void function should not
+     * return a value (FunctionsParams: 1200 RETURN a livello modulo). */
+    if (cur_scope_has_gosub(c)) emit_gosub_return(c, c->cur_fn ? "return __ret;" : "return;");
+    else sb_put(&c->out, c->cur_fn ? "return __ret;\n" : "return;\n");
 }
 
 /* ─────────────────────── inferenza tipi espressioni ─────────────────────── */
@@ -5551,6 +5551,17 @@ static int byref_param_captured_by_closure(ctx_t* c, fn_info_t* fn, int idx) {
     return 0;
 }
 
+/* Vero se `name` è un parametro BYREF di `f` (il suo storage è già un puntatore allo
+ * storage del chiamante: non serve una cella per condividerlo con le closure). */
+static int fn_param_is_byref(fn_info_t* f, const char* name)
+{
+    if (!f || !f->stmt || !name || !f->stmt->func_params) return 0;
+    for (int i = 0; i < f->stmt->n_params; i++)
+        if (f->stmt->func_params[i] && strcasecmp(f->stmt->func_params[i], name) == 0)
+            return f->stmt->param_byref && f->stmt->param_byref[i] ? 1 : 0;
+    return 0;
+}
+
 /* Registra le funzioni nidificate dirette del genitore parent_idx (hoisting a livello
  * modulo, parity oracolo) con rilevazione delle variabili catturate. */
 static void hoist_nested_fns(ctx_t* c, int parent_idx) {
@@ -5619,20 +5630,19 @@ static void hoist_nested_fns(ctx_t* c, int parent_idx) {
             if (!pv || pv->is_array || pv->gkind) continue;
             var_t* cv = vars_add(&fn->locals, vn, pv->type);
             cv->captured = 1;
-            /* Cattura di un parametro BYREF del genitore (es. `contatore` in
-             * CreaIncrementatore/Incrementa, FunctionsAdvanced.bas): il campo diventa un
-             * PUNTATORE (sb_var_ctype/imap aggiungono '*'/deref) allo stesso storage del
-             * chiamante di CreaIncrementatore — semantica write-through, mai una copia
-             * (prima i BYREF erano esclusi qui sopra: chiamata/valore funzionavano ma la
-             * mutazione non tornava mai al chiamante). */
-            cv->byref = pv->byref;
-            /* Cattura di un PARAMETRO (byref o byval) del genitore, mai un DIM locale: il
-             * campo closure va seminato esplicitamente dal parametro C grezzo alla
-             * creazione (un DIM locale catturato si auto-inizializza via il remap degli
-             * identificatori sulla propria istruzione DIM, un parametro non ha una simile
-             * istruzione nel body da redirigere). */
-            for (int q = 0; q < P->stmt->n_params; q++)
-                if (strcasecmp(P->stmt->func_params[q], vn) == 0) { cv->cap_from_param = 1; break; }
+            /* SEMPRE per riferimento (2026-11-03, parità VM/C/IL): il campo del ctx è un
+             * PUNTATORE allo storage condiviso. Per un parametro BYREF il puntatore è
+             * quello del chiamante (write-through); per ogni altro storage il proprietario
+             * crea una CELLA heap (pv->cell) e il figlio ne riceve il puntatore. */
+            cv->cap_ref = 1;
+            cv->byref = 0;
+            if (fn_param_is_byref(P, vn)) {
+                /* BYREF del genitore: si semina col puntatore del chiamante (RAW). */
+                cv->cap_from_param = 1;
+            } else if (!pv->captured) {
+                /* storage REALE del genitore (param by-value o locale) → cella heap */
+                pv->cell = 1;
+            }
             fn->n_cap++;
         }
         int sv_i = fn_index(c, c->cur_fn);   /* per INDICE: register_list può far crescere c->fns */
@@ -5664,6 +5674,8 @@ static void hoist_nested_fns(ctx_t* c, int parent_idx) {
                 var_t* cap = vars_add(&fn->locals, cn, TY_NUM);
                 cap->gkind = GK_FUNCVAL;
                 cap->captured = 1;
+                cap->cap_ref = 1;      /* cattura per-RIFERIMENTO (campo gmb_fn_t*) */
+                cap->byref = 0;
                 cap->func_arity = sib->n_params;
                 cap->func_ret_str = fn_ret_is_str(sib);
                 fn->n_cap++;
@@ -18451,6 +18463,29 @@ static void emit_dict_literal(ctx_t* c, gmb_expr_t* e) {
                 else sb_put(&c->out, " = (gmb_fn_t){0};\n");
                 break;
             case GK_GEN:
+                /* DIM it = Generatore(args): la struct `gmb_gen_<id>_t` si costruisce coi
+                 * PARAMETRI del generatore nei campi omonimi (il corpo NON parte: lo step 0
+                 * lo avvia il primo NEXT). Prima si emetteva una CALL al nome del
+                 * generatore in posizione di assegnazione → valore double. */
+                if (s->dim_init && s->dim_init->kind == GMB_EXPR_CALL && s->dim_init->var
+                    && s->dim_init->nargs <= 8) {
+                    fn_info_t* gf = find_fn(c, s->dim_init->var);
+                    if (gf && gf->stmt && gf->stmt->is_generator) {
+                        sb_put(&c->out, " = (gmb_gen_");
+                        sb_ident(&c->out, dv->gen_id);
+                        sb_put(&c->out, "_t){");
+                        for (int ai = 0; ai < s->dim_init->nargs; ai++) {
+                            if (ai < gf->stmt->n_params && gf->stmt->func_params[ai]) {
+                                sb_put(&c->out, "."); sb_ident(&c->out, gf->stmt->func_params[ai]);
+                                sb_put(&c->out, " = ");
+                            }
+                            emit_expr(c, s->dim_init->args[ai]);
+                            sb_put(&c->out, ", ");
+                        }
+                        sb_put(&c->out, "};\n");
+                        break;
+                    }
+                }
                 if (s->dim_init) { sb_put(&c->out, " = "); emit_expr(c, s->dim_init); sb_put(&c->out, ";\n"); }
                 else sb_put(&c->out, " = {0};\n");
                 break;
@@ -19316,7 +19351,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                     ind(c); sb_printf(&c->out, "__mde%d = gmb_list_get(", id);
                     emit_ident(c, av->name);
                     sb_printf(&c->out, ", __feb%d);\n", id);
-                    if (c->n_imap < 32) {
+                    if (c->n_imap < GMB_IMAP_CAP) {
                         char* ex = (char*)malloc(24);
                         snprintf(ex, 24, "__mde%d", id);
                         c->imap_name[c->n_imap] = s->for_var;
@@ -19434,7 +19469,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                                 ind(c); sb_printf(&c->out, "for (gmb_int_t __fep%d = 0; __fep%d < gmb_list_count(__feP%d); __fep%d++) {\n", id, id, id, id);
                                 c->indent++;
                                 ind(c); sb_printf(&c->out, "__mde%d = gmb_list_get(__feP%d, __fep%d);\n", id, id, id);
-                                if (c->n_imap < 32) {
+                                if (c->n_imap < GMB_IMAP_CAP) {
                                     char* ex = (char*)malloc(24);
                                     snprintf(ex, 24, "__mde%d", id);
                                     c->imap_name[c->n_imap] = s->for_var;
@@ -20580,8 +20615,8 @@ static void st_return(ctx_t* c, gmb_stmt_t* s) {
             emit_fn_return(c);
         } else {
             if (defer_count(c) > 0) { sb_printf(&c->out, "goto %s;\n", defer_exit_label(c)); return; }
-            if (cur_scope_has_gosub(c)) emit_gosub_return(c, c->cur_fn ? "return;" : "return 0;");
-            else sb_put(&c->out, c->cur_fn ? "return;\n" : "return 0;\n");
+            if (cur_scope_has_gosub(c)) emit_gosub_return(c, c->cur_fn ? "return;" : "return;");
+            else sb_put(&c->out, c->cur_fn ? "return;\n" : "return;\n");
         }
         return;
     }
@@ -30796,6 +30831,7 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
     for (int i = s->n_params; i < fn->locals.n; i++) {
         var_t* v = &fn->locals.v[i];
         if (v->captured) continue;
+        if (v->cell) continue;         /* vive in una cella heap: vedi blocco "celle" sotto */
         if (v->late_local) continue;   /* LOCAL che ombreggia GLOBAL: dichiarata al punto d'uso */
         ind(c);
         if (v->nullable) {
@@ -30946,6 +30982,48 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
      * - genitore con figli-cattura: nome → __clo_<figlio>.<campo>; dichiara le
      *   struct closure stack-local zero-init (una per figlio con catture). */
     int sv_imap = c->n_imap;
+    /* ── CELLE BY-REF (2026-11-03) ────────────────────────────────────────────────
+     * Ogni variabile di QUESTA funzione catturata da una closure figlia vive in una
+     * cella HEAP: il corpo vi accede tramite imap `(*__cell_<nome>)`, la closure riceve
+     * il puntatore. Semantica per-RIFERIMENTO (parità VM/C/IL: la closure cattura la
+     * variabile, non il valore) e lifetime corretto per le closure ritornate (prima il
+     * puntatore era allo stack frame del genitore → dangling). Leak intenzionale (come
+     * i ctx delle closure: la durata non è staticamente determinabile). */
+    for (int i = 0; i < fn->locals.n; i++) {
+        var_t* v = &fn->locals.v[i];
+        if (!v->cell) continue;
+        char cn[400];
+        snprintf(cn, sizeof(cn), "__cell_");
+        sb_ident_to(cn + strlen(cn), v->name);
+        ind(c);
+        sb_var_ctype(&c->out, v);
+        sb_printf(&c->out, "* %s = (", cn);
+        sb_var_ctype(&c->out, v);
+        sb_printf(&c->out, "*)calloc(1, sizeof(");
+        sb_var_ctype(&c->out, v);
+        sb_printf(&c->out, "));\n");
+        /* default per i tipi non scalari (calloc = 0/NULL per i numerici e i puntatori) */
+        const char* dv = NULL;
+        if (v->nullable || v->boxed_val || v->type == TY_VAL || v->coll_handle) dv = "gmb_val_nil()";
+        else if (v->type == TY_STR) dv = "gmb_string_alloc(\"\")";
+        else if (gk_is_list(v->gkind)) dv = "gmb_list_new()";
+        else if (gk_is_dict(v->gkind)) dv = "gmb_dict_new()";
+        if (dv) { ind(c); sb_printf(&c->out, "*%s = %s;\n", cn, dv); }
+        /* parametro by-value: la cella parte col valore del parametro */
+        if (i < s->n_params) {
+            ind(c);
+            sb_printf(&c->out, "*%s = ", cn);
+            sb_ident(&c->out, v->name);       /* RAW: il parametro C */
+            sb_put(&c->out, ";\n");
+        }
+        if (c->n_imap < GMB_IMAP_CAP) {
+            char* ex = (char*)malloc(strlen(cn) + 8);
+            sprintf(ex, "(*%s)", cn);
+            c->imap_name[c->n_imap] = v->name;
+            c->imap_expr[c->n_imap] = ex;
+            c->n_imap++;
+        }
+    }
     fn_info_t* kids[16];
     int nk = fn_capture_children(c, fn, kids, 16);
     if (has_ctx) {
@@ -30958,11 +31036,12 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
              * chiamante — un ulteriore deref (*...) legge/scrive attraverso il puntatore,
              * mai una copia. Stesso schema concettuale del box IL/PCodeVM, ma qui basta
              * il puntatore nudo perché il C non serve il boxing per il write-through. */
-            char* ex = (char*)malloc(strlen(v->name) + (v->byref ? 24 : 16));
-            if (v->byref) strcpy(ex, "(*__ctx->");
+            int deref = (v->cap_ref || v->byref);
+            char* ex = (char*)malloc(strlen(v->name) + (deref ? 24 : 16));
+            if (deref) strcpy(ex, "(*__ctx->");
             else strcpy(ex, "__ctx->");
             sb_ident_to(ex + strlen(ex), v->name);
-            if (v->byref) strcat(ex, ")");
+            if (deref) strcat(ex, ")");
             c->imap_name[c->n_imap] = v->name;
             c->imap_expr[c->n_imap] = ex;
             c->n_imap++;
@@ -31024,41 +31103,44 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
              * (loop has_ctx), e il genitore chiama la sorella in DIRETTA (gmb_user_...,
              * mai per nome di variabile). */
             if (v->gkind == GK_FUNCVAL && !v->cap_from_param) {
+                /* Valore funzione catturato (closure sorella): il campo è un `gmb_fn_t*`
+                 * (cap_ref) → cella heap con {fn, ctx}; il __clo_<sorella> è già allocato. */
                 ind(c);
-                sb_put(&c->out, clo); sb_put(&c->out, "->");
-                sb_ident(&c->out, v->name);
-                sb_put(&c->out, " = (gmb_fn_t){ .fn = (void*)gmb_user_");
+                sb_put(&c->out, "{ gmb_fn_t* __fv = (gmb_fn_t*)calloc(1, sizeof(gmb_fn_t)); *__fv = (gmb_fn_t){ .fn = (void*)gmb_user_");
                 sb_ident(&c->out, v->name);
                 sb_put(&c->out, ", .ctx = (void*)__clo_");
                 sb_ident(&c->out, v->name);
-                sb_put(&c->out, " };\n");
+                sb_put(&c->out, " }; ");
+                sb_put(&c->out, clo); sb_put(&c->out, "->");
+                sb_ident(&c->out, v->name);
+                sb_put(&c->out, " = __fv; }\n");
                 continue;
             }
-            /* Cattura di un PARAMETRO del genitore (v->cap_from_param, es. `contatore`):
-             * un DIM locale catturato si auto-inizializza più avanti quando il body esegue
-             * la propria istruzione DIM (redirect via imap sulla STESSA riga) — un
-             * parametro non ha un simile statement, va seminato ORA dal parametro C
-             * grezzo (RAW, mai via emit_ident: l'imap per questo nome non è ancora
-             * registrato in QUESTO punto del ciclo, quindi sb_ident legge il parametro
-             * vero, non un altro campo closure). Per BYREF il campo è un puntatore: si
-             * copia il puntatore stesso (identico storage del chiamante), mai un deref. */
-            else if (v->cap_from_param) {
+            if (v->cap_from_param) {
+                /* Parametro BYREF del genitore: si semina col PUNTATORE del chiamante
+                 * (storage identico, write-through). */
                 ind(c);
                 sb_put(&c->out, clo); sb_put(&c->out, "->");
                 sb_ident(&c->out, v->name);
                 sb_put(&c->out, " = ");
                 sb_ident(&c->out, v->name);
                 sb_put(&c->out, ";\n");
+                continue;
             }
-            char* ex = (char*)malloc(strlen(clo) + strlen(v->name) + (v->byref ? 24 : 16));
-            if (v->byref) { strcpy(ex, "(*"); strcat(ex, clo); }
-            else strcpy(ex, clo);
-            strcat(ex, "->");
-            sb_ident_to(ex + strlen(ex), v->name);
-            if (v->byref) strcat(ex, ")");
-            c->imap_name[c->n_imap] = v->name;
-            c->imap_expr[c->n_imap] = ex;
-            c->n_imap++;
+            /* Cattura per-riferimento: il puntatore allo storage condiviso. L'accesso del
+             * genitore al nome passa dall'imap (cella `(*__cell_x)` o campo del proprio
+             * ctx): `&(<expr>)` ne dà esattamente il puntatore — una sola formula per
+             * cella del genitore, cattura di un livello superiore e parametro by-value. */
+            ind(c);
+            sb_put(&c->out, clo); sb_put(&c->out, "->");
+            sb_ident(&c->out, v->name);
+            sb_put(&c->out, " = &(");
+            {
+                gmb_expr_t cvex; memset(&cvex, 0, sizeof(cvex));
+                cvex.kind = GMB_EXPR_VAR; cvex.var = v->name;
+                emit_expr(c, &cvex);
+            }
+            sb_put(&c->out, ");\n");
         }
     }
     if (fn_ret_is_arr(fn)) { /* AS ARRAY OF: void + double* __out (nessun __ret) */ }
@@ -31816,6 +31898,15 @@ static void lambda_synth(ctx_t* c, gmb_expr_t* e) {
                      "supportata dall'emitter nativo", nm);
             break;
         }
+        /* CELLA BY-REF sul PROPRIETARIO: la variabile catturata vive in una cella heap
+         * condivisa (il proprietario vi accede via imap, la closure riceve il puntatore) →
+         * semantica per-riferimento e lifetime corretto per le closure ritornate.
+         * Non serve se lo storage è già una cattura del livello superiore (campo `T*` del
+         * ctx: si condivide il puntatore) o un parametro BYREF (puntatore al chiamante). */
+        if (owner_i >= 0) {
+            fn_info_t* ow = &c->fns[owner_i];
+            if (!sv->captured && !fn_param_is_byref(ow, nm)) sv->cell = 1;
+        }
         /* PROPAGAZIONE TRANSITIVA (λ dentro λ / funzione dentro λ): ogni livello
          * intermedio fra la λ corrente e il PROPRIETARIO della variabile deve catturarla
          * per conto proprio — senza, il sito di creazione della λ interna non ha il nome
@@ -31830,7 +31921,8 @@ static void lambda_synth(ctx_t* c, gmb_expr_t* e) {
                 if (vars_find(&h->locals, nm)) { hi = next; continue; }
                 var_t* tv = vars_add(&h->locals, nm, sv->type);
                 tv->captured = 1;
-                tv->cap_ref = nl_has(&mut, nm) ? 1 : 0;
+                tv->cap_ref = 1;    /* semantica per-riferimento (parità VM/C/IL) */
+                tv->byref = 0;
                 snprintf(tv->vclass, sizeof(tv->vclass), "%s", sv->vclass);
                 tv->gkind = sv->gkind;
                 tv->func_arity = sv->func_arity;
@@ -31951,8 +32043,11 @@ static void lambda_synth(ctx_t* c, gmb_expr_t* e) {
                     if (sv) break;
                 }
                 var_t* capv = vars_add(&lf->locals, caps.names[k], sv ? sv->type : TY_NUM);
-                capv->captured = 1;      /* 2026-09-09: by-value SOLO se sola-lettura */
-                capv->cap_ref = nl_has(&mut, caps.names[k]) ? 1 : 0;  /* MUTATA → per RIFERIMENTO */
+                capv->captured = 1;
+                /* SEMPRE per riferimento (2026-11-03): una closure cattura la VARIABILE,
+                 * non il valore (parità VM/C e IL): `DIM k=10 : f={||k} : k=99` → 99.
+                 * Il campo del ctx è un puntatore alla cella del proprietario. */
+                capv->cap_ref = 1;
                 /* Function-value catturato (`DIM inner = {...}; EVAL(inner, x)` in una λ):
                  * copia la firma GK_FUNCVAL — senza, la call dentro la λ non trovava il
                  * callee (la cattura perdeva gkind/func_arity/func_ret_str). */
@@ -32712,6 +32807,7 @@ int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
             if (!v->captured) continue;
             sb_put(&proto, "    ");
             sb_var_ctype(&proto, v);
+            if (v->cap_ref) sb_put(&proto, "*");   /* cattura per RIFERIMENTO */
             sb_put(&proto, " ");
             sb_ident(&proto, v->name);
             sb_put(&proto, ";\n");
