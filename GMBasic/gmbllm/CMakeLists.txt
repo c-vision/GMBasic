@@ -104,6 +104,14 @@ if(GMBLLM_TESTS)
     target_link_libraries(gmbllm_decide_calib_selfcheck PRIVATE gmbllm_core)
     target_include_directories(gmbllm_decide_calib_selfcheck PRIVATE include)
     add_test(NAME gmbllm_decide_calib_selfcheck COMMAND gmbllm_decide_calib_selfcheck)
+    # Tool utente: fit da file di campioni -> scoring_head.json (nessuna dipendenza MLX).
+    add_executable(gmbllm_decide_calibrate tools/decide_calibrate.c)
+    target_link_libraries(gmbllm_decide_calibrate PRIVATE gmbllm_core)
+    target_include_directories(gmbllm_decide_calibrate PRIVATE include)
+    add_test(NAME gmbllm_decide_calibrate
+             COMMAND gmbllm_decide_calibrate
+                     ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/decide_calib_samples.txt
+                     ${CMAKE_CURRENT_BINARY_DIR}/decide_calib_out.json)
     # modulo codec di prova usato da test_plugin (nome logico "test_id" -> libllmcodec_test_id)
     add_library(llmcodec_test_id MODULE tests/plugin_test_id.c)
     target_include_directories(llmcodec_test_id PRIVATE ${_gmbllm_test_includes})
