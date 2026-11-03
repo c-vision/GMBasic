@@ -3,7 +3,7 @@
 ' TI, TYPENAME, UBOUND, UDTALIGNED, UDTPACKED, VALTYPE, VARPTR.
 ' Include il generatore (SYSTEM.NEXT) e la shell opt-in (SET SHELL ON + SHELLCODE/SHELLOUT).
 ' Scopo: verificare la STESSA versione del namespace sui 4 backend.
-' EXPECT: choose=b|cmdcount>=-1|command=[]|ctype_s=-1|ctype_i= 123|count= 2|empty0=-1 |empty1= 0|iif= 10|lbound= 0 |ubound= 4|numcpu>0=-1|ngor>=-1|sizeof_int= 2|strptr!=0=-1|strti_len= 8|sys_os>0=-1|tab_len= 1|ti>=-1|typename>0=-1|udtaligned= 1 |udtpacked= 2|valtype_n=N|valtype_s=C|varptr!=0=-1|next= 6|gen_inst=10 20|7|30|stop|shellcode= 0|shellout>0=-1|gomax_q>0=-1|gomax_prev>0=-1|gomax_cur= 2|gomax_cur2= 2
+' EXPECT: choose=b|cmdcount>=-1|command=[]|ctype_s=-1|ctype_i= 123|count= 2|empty0=-1 |empty1= 0|iif= 10|lbound= 0 |ubound= 4|numcpu>0=-1|ngor>=-1|sizeof_int= 2|strptr!=0=-1|strti_len= 8|sys_os>0=-1|tab_len= 1|ti>=-1|typename>0=-1|udtaligned= 1 |udtpacked= 2|valtype_n=N|valtype_s=C|varptr!=0=-1|next= 6|gen_inst=10 20|7|30|stop|gomax_q>0=-1|gomax_prev>0=-1|gomax_cur= 2|gomax_cur2= 2|shellcode= 0|shellout>0=-1
 IMPORT SYSTEM
 IMPORT CONCURRENCY
 
@@ -97,18 +97,17 @@ SUB Main()
   PRINT "next="; total
   TestGeneratori()
 
-  SET SHELL ON
-  PRINT "shellcode="; SHELLCODE("true")
-  PRINT "shellout>0="; (LEN(SHELLOUT("echo hi")) > 0)
-
-  ' GOMAXPROCS: lettura (0 argomenti), valore PRECEDENTE e valore impostato. Eseguito
-  ' DOPO i park (shell/generatore) perché nel runner PCode in-process il
-  ' ridimensionamento seguito da un park va in stallo
-  ' (Bugs/(open) - GOMAXPROCS-Ridimensionamento-Park.md).
+  ' GOMAXPROCS: ridimensiona i worker e POI la shell parcheggia (interazione che in
+  ' passato mandava in stallo la VM PCode in-process; corretta il 2026-11-03).
   DIM prev AS LONG
   PRINT "gomax_q>0="; (GOMAXPROCS() > 0)
   prev = GOMAXPROCS(2)
   PRINT "gomax_prev>0="; (prev > 0)
   PRINT "gomax_cur="; GOMAXPROCS()
   PRINT "gomax_cur2="; GOMAXPROCS(0)
+
+  SET SHELL ON
+  PRINT "shellcode="; SHELLCODE("true")
+  PRINT "shellout>0="; (LEN(SHELLOUT("echo hi")) > 0)
+
 END SUB
