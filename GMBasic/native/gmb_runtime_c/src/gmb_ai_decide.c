@@ -162,16 +162,22 @@ int gmb_decision_evaluate(const gmb_decision_provider_t* provider, const char* s
         }
     }
     if (kind == GMB_DECISION_SCORE) {
-        static const struct { const char* key; const char* slot; } map[] = {
-            { "critical", "5" }, { "critico", "5" },
-            { "high", "4" }, { "alto", "4" },
-            { "medium", "3" }, { "medio", "3" },
-            { "low", "2" }, { "basso", "2" },
-            { "none", "0" }, { "nessuno", "0" },
+        int max_score = 0;
+        for (int i = 0; i < n_options; i++) {
+            int v = atoi(options[i].id ? options[i].id : "");
+            if (v > max_score) max_score = v;
+        }
+        static const struct { const char* key; const char* slot5; const char* slot10; } map[] = {
+            { "critical", "5", "10" }, { "critico", "5", "10" },
+            { "high", "4", "8" }, { "alto", "4", "8" },
+            { "medium", "3", "5" }, { "medio", "3", "5" },
+            { "low", "2", "3" }, { "basso", "2", "3" },
+            { "none", "0", "0" }, { "nessuno", "0", "0" },
         };
         for (size_t i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
             if (!icontains(s, map[i].key)) continue;
-            const gmb_decision_option_t* option = find_option(options, n_options, map[i].slot);
+            const gmb_decision_option_t* option =
+                find_option(options, n_options, max_score >= 10 ? map[i].slot10 : map[i].slot5);
             if (option) { fill_result(out, kind, option, 1.0); return 1; }
         }
     }
@@ -234,6 +240,7 @@ char* gmb_ai_decide_run_json(const char* state, const char* kind, const char* pr
     /* CHOICE:<label1>|<label2>|... — dominio libero mappato agli slot stabili A..P.
      * Le label puntano a `labelbuf` (vita della funzione). */
     char labelbuf[512];
+    char score_labels[11][4];   /* "0".."10" per la rubrica SCORE:lo:hi */
     gmb_decision_option_t custom[GMB_DECISION_MAX_OPTIONS];
     int is_choice_custom = 0;
     if (strncasecmp(kind, "CHOICE:", 7) == 0) {
@@ -265,6 +272,22 @@ char* gmb_ai_decide_run_json(const char* state, const char* kind, const char* pr
         is_choice_custom = 1;
     }
     else if (ieq(kind, "NOUL")) { k = GMB_DECISION_NOUL; options = gmb_decision_slots_noul; n_options = 2; }
+    else if (strncasecmp(kind, "SCORE:", 6) == 0) {
+        /* SCORE:0:10 — rubrica linguistica (11 livelli); SCORE:0:5 = canonica. */
+        int lo = -1, hi = -1;
+        if (sscanf(kind + 6, "%d:%d", &lo, &hi) != 2 || lo != 0 || (hi != 5 && hi != 10)) return NULL;
+        for (int i = 0; i <= hi; i++) {
+            snprintf(score_labels[i], sizeof score_labels[i], "%d", i);
+            custom[i].id = score_labels[i];
+            custom[i].label = score_labels[i];
+            custom[i].token_id = -1;
+            custom[i].bias = 0.0f;
+            custom[i].temperature = 1.0f;
+        }
+        k = GMB_DECISION_SCORE;
+        options = custom;
+        n_options = hi + 1;
+    }
     else if (ieq(kind, "SCORE")) { k = GMB_DECISION_SCORE; options = gmb_decision_slots_score; n_options = 6; }
     else if (ieq(kind, "CHOICE")) { k = GMB_DECISION_CHOICE; options = gmb_decision_slots_choice; n_options = 16; }
     else return NULL;

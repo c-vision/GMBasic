@@ -90,17 +90,32 @@ public sealed class RuleDecisionProvider : ISystemOneProvider
             }
         }
 
-        // SCORE: mappa keyword di severità sullo slot 0..5 (default: prima opzione, 0.5).
+        // SCORE: mappa keyword di severità sulla rubrica del dominio. La canonica 0..5 usa
+        // 5/4/3/2/0; la rubrica linguistica 0..10 usa 10/8/5/3/0 (proiezione deterministica,
+        // T6). Default: prima opzione, 0.5.
         if (request.Kind == DecisionKind.Score)
         {
-            var scoreKeywords = new (string Key, string Slot)[]
-            {
-                ("critical", "5"), ("critico", "5"),
-                ("high", "4"), ("alto", "4"),
-                ("medium", "3"), ("medio", "3"),
-                ("low", "2"), ("basso", "2"),
-                ("none", "0"), ("nessuno", "0"),
-            };
+            var maxScore = request.Options
+                .Select(o => int.TryParse(o.Id, System.Globalization.NumberStyles.Integer,
+                    System.Globalization.CultureInfo.InvariantCulture, out var n) ? n : -1)
+                .DefaultIfEmpty(-1).Max();
+            var scoreKeywords = maxScore >= 10
+                ? new (string Key, string Slot)[]
+                {
+                    ("critical", "10"), ("critico", "10"),
+                    ("high", "8"), ("alto", "8"),
+                    ("medium", "5"), ("medio", "5"),
+                    ("low", "3"), ("basso", "3"),
+                    ("none", "0"), ("nessuno", "0"),
+                }
+                : new (string Key, string Slot)[]
+                {
+                    ("critical", "5"), ("critico", "5"),
+                    ("high", "4"), ("alto", "4"),
+                    ("medium", "3"), ("medio", "3"),
+                    ("low", "2"), ("basso", "2"),
+                    ("none", "0"), ("nessuno", "0"),
+                };
             foreach (var (key, slot) in scoreKeywords)
             {
                 if (!request.State.Contains(key, StringComparison.OrdinalIgnoreCase)) continue;

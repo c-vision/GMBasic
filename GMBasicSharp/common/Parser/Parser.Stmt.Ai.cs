@@ -648,9 +648,12 @@ if (parser.Match(TokenKind.Set))
                     var lo = parser.Advance();
                     parser.Consume(TokenKind.To, "Expected TO after the SCORE minimum.");
                     var hi = parser.Consume(TokenKind.Number, "Expected the SCORE maximum after TO.");
-                    if (lo.Literal is not double l || hi.Literal is not double h || l != 0 || h != 5)
+                    if (lo.Literal is not double l || hi.Literal is not double h
+                        || l != 0 || (h != 5 && h != 10))
                         throw Parser.CreateError(lo,
-                            "AI DECIDE batch: SCORE supports only the 0 TO 5 rubric (the 0..10 projection is not implemented yet).");
+                            "AI DECIDE batch: SCORE supports only the 0 TO 5 and 0 TO 10 rubrics.");
+                    kind = new StringExpr(h == 10 ? "SCORE:0:10" : "SCORE", t);
+                    break;
                 }
                 kind = new StringExpr("SCORE", t);
                 break;
