@@ -2,7 +2,7 @@
 /* Port 1:1 di modules/Database/SPEED/QueryPlan.cs */
 /* Ogni riga del C# è sotto come // — nessun commento, attributo o riga persa. */
 #include "../../include/gmb_db_port.h"
-#include "gmb_expr.h"
+#include "gmb_eval_scope.h"
 
 /* --- C# originale --- */
 //// FILE: Basic.Databases.Speed.QueryPlan.cs

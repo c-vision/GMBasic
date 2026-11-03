@@ -1,5 +1,5 @@
 /* ============================================================================
- * gmb_expr_scope.c — scope transiente S_eval per & / EVAL (condiviso VM/C e C99).
+ * gmb_eval_scope.c — scope transiente S_eval per & / EVAL (condiviso VM/C e C99).
  * Ogni esecuzione EVAL gira in un nuovo frame figlio: DIM/LET e le assegnazioni
  * implicite su nomi ignoti creano QUI e muoiono col pop (mai leak in host/globali);
  * le assegnazioni implicite su nomi esterni scrivono in place via backend.
@@ -8,7 +8,7 @@
  * (il tree-walk non libera mai i temporanei durante l'eval — nessun dangling
  * dentro la vita dello scope; lo scope non sopravvive all'eval).
  * ============================================================================ */
-#include "gmb_expr.h"
+#include "gmb_eval_scope.h"
 
 #include <stdlib.h>
 #include <string.h>

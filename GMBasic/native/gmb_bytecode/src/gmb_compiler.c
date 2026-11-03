@@ -1223,6 +1223,27 @@ static int cc_lambda_upvalue(gmb_cc_t* c, const char* name, int create)
     return u;
 }
 
+/* Frammenti a runtime: le closure dichiarate nel frammento (DIM f = { … }) devono
+ * essere viste anche quando il call-site viene compilato in una passata che non
+ * porta con sé la lista per-proc. Set per-compilazione (azzerato all'inizio di
+ * gmb_compile_snippet). */
+static char* g_snip_closures[64];
+static int g_snip_nclosures = 0;
+
+static void snip_closure_clear(void)
+{
+    for (int i = 0; i < g_snip_nclosures; i++) free(g_snip_closures[i]);
+    g_snip_nclosures = 0;
+}
+
+static void snip_closure_add(const char* name)
+{
+    if (!name || !name[0] || g_snip_nclosures >= 64) return;
+    for (int i = 0; i < g_snip_nclosures; i++)
+        if (strcasecmp(g_snip_closures[i], name) == 0) return;
+    g_snip_closures[g_snip_nclosures++] = strdup(name);
+}
+
 static void cc_closure_var_add(gmb_cc_t* c, const char* name)
 {
     if (!name) return;
@@ -1233,11 +1254,16 @@ static void cc_closure_var_add(gmb_cc_t* c, const char* name)
         c->closure_vars = (char**)realloc(c->closure_vars, (size_t)c->closure_vars_cap * sizeof(char*));
     }
     c->closure_vars[c->n_closure_vars++] = strdup(name);
+    if (c->snippet_mode) snip_closure_add(name);
 }
 static int cc_is_closure_var(gmb_cc_t* c, const char* name)
 {
     for (int i = 0; i < c->n_closure_vars; i++)
         if (strcasecmp(c->closure_vars[i], name) == 0) return 1;
+    if (c->snippet_mode) {
+        for (int i = 0; i < g_snip_nclosures; i++)
+            if (strcasecmp(g_snip_closures[i], name) == 0) return 1;
+    }
     return 0;
 }
 static int cc_proc_returns_closure(gmb_cc_t* c, const char* name)
@@ -4345,6 +4371,10 @@ static void cc_stmt(gmb_cc_t* c, const gmb_stmt_t* s)
                 && strcmp(s->dim_init->var, "_tuple_lit_") == 0
                 && s->dim_init->ns && s->dim_init->ns[0])
                 cc_tuple_set(s->dim_var, s->dim_init->ns);
+            /* Registra la closure PRIMA di compilare l'inizializzatore: la
+             * compilazione della lambda può riscrivere il nodo (e in un frammento
+             * runtime il controllo `cc_is_closure_var` al call-site deve vederla). */
+            if (s->dim_init->kind == GMB_EXPR_LAMBDA) cc_closure_var_add(c, s->dim_var);
             cc_expr(c, s->dim_init);
             if (c->error) return;
             if (s->dim_init->kind == GMB_EXPR_LAMBDA) cc_closure_var_add(c, s->dim_var);
@@ -6646,6 +6676,9 @@ static void cc_proc(gmb_cc_t* c, const gmb_stmt_t* s)
        in_proc=1 → DIM locali; se la procedura contiene SUB/FUNCTION annidate
        le DIM restano globali: sono il veicolo della cattura by-reference. */
     c->in_proc = !cc_body_has_nested_func(s->func_body, s->n_funcbody);
+    /* Frammento a runtime: la DIM resta LOCALE (una lambda nel corpo non deve far
+     * diventare globali le variabili del frammento). */
+    if (c->snippet_mode) c->in_proc = 1;
     cc_syscall(c, 470, 0);   /* SCOPE DINAMICO: frame di procedura (§2.5) */
     for (int i = 0; i < s->n_funcbody; i++) cc_stmt(c, s->func_body[i]);
     c->in_proc = 0;
@@ -8001,6 +8034,7 @@ int gmb_compile_snippet(const char* src, int as_stmt, const gmb_snippet_ext_t* e
     int rc = -1;
 
     pthread_mutex_lock(&g_snip_mu);
+    snip_closure_clear();
 
     /* LET dichiara un locale transiente (S_eval): non è un parametro BYREF. */
     char** let_targets = NULL;

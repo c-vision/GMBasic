@@ -15,7 +15,7 @@
 #include <ctype.h>
 #include <math.h>
 #include "gmb_decimal.h"
-#include "gmb_expr.h"
+#include "gmb_eval_scope.h"
 
 #ifdef __cplusplus
 extern "C" {

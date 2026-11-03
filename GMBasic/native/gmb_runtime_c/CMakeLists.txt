@@ -197,7 +197,7 @@ set(GMB_ALL_SRCS
     src/gmb_signal.c
     src/gmb_core.c
     src/gmb_module.c
-    src/gmb_expr_scope.c
+    src/gmb_eval_scope.c
     # Scope dinamico BASIC (DYNAMIC): catena di frame per-task, condivisa VM/C/C99Native
     src/gmb_dscope.c
     src/gmb_bsp.c

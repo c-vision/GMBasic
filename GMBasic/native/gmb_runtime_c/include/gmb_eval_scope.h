@@ -1,12 +1,12 @@
 /* ============================================================================
- * gmb_expr.h — tipi condivisi per i frammenti BASIC a runtime (& / EVAL).
+ * gmb_eval_scope.h — tipi condivisi per i frammenti BASIC a runtime (& / EVAL).
  *
  * Il VECCHIO valutatore tree-walk (gmb_expr.c) è stato RIMOSSO: i frammenti sono
  * compilati dal COMPILATORE C (gmb_compile_snippet) ed eseguiti dalla VM/C, in
  * processo oppure via libgmb_eval (dlopen) nei contesti senza VM.
  * Qui restano solo:
  *  - i typedef dei callback (get/set/call) usati dagli emitter e dal runtime;
- *  - lo SCOPE transiente S_eval (gmb_expr_scope.c), usato dall'emitter C99 per
+ *  - lo SCOPE transiente S_eval (gmb_eval_scope.c), usato dall'emitter C99 per
  *    seed/write-back delle locali del chiamante;
  *  - i codici GMB_EXPR_OK/ERR usati dalle API che li espongono (BSP, DB).
  * ============================================================================ */
