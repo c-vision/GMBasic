@@ -1,5 +1,5 @@
 SAMPLE AUDIT — shared/samples/**/*.bas
-totale file: 1191   categorie: 80
+totale file: 1192   categorie: 80
 
 == per categoria ==
   Ai                   147
@@ -45,11 +45,11 @@ totale file: 1191   categorie: 80
   Scopes               7
   packages             7
   Events               6
+  Finance              6
   Lexer                6
   TimeSeries           6
   VectorDB             6
   ControlFlow          5
-  Finance              5
   Mouse                5
   Sprites              5
   compression          5
@@ -85,9 +85,9 @@ totale file: 1191   categorie: 80
 
 == per classificazione (un file può avere più tag) ==
   ENV          481
-  DIDATTICO    215
-  CORTO        170
-  SURFACE      41
+  DIDATTICO    217
+  CORTO        169
+  SURFACE      40
   SUPPORTO     25
   MODULO       15
   PACKAGE      7
@@ -122,7 +122,6 @@ totale file: 1191   categorie: 80
   Documents/ConvertFullCoverage.bas                                      righe=68   import=2
   Events/OnKeyUncoveredCoverage.bas                                      righe=65   import=1
   Files/FilesFullCoverage.bas                                            righe=94   import=1
-  Finance/FinanceFullCoverage.bas                                        righe=20   import=1
   GameDev/JoystickUncoveredCoverage.bas                                  righe=44   import=1
   Http/HttpStreaming.bas                                                 righe=74   import=1
   Network/NetworkFullCoverage.bas                                        righe=28   import=1
@@ -135,7 +134,7 @@ totale file: 1191   categorie: 80
   Trading/TradingPortfolioUncoveredCoverage.bas                          righe=50   import=1
   Workflow/WorkflowFullCoverage.bas                                      righe=25   import=1
   graphics/GraphicsUncoveredCoverage.bas                                 righe=41   import=1
-  (41 file)
+  (40 file)
 
 == EXPECT nei Sample (violazione del contratto) ==
   (0 file)
@@ -273,7 +272,6 @@ totale file: 1191   categorie: 80
   Stricts/StrictsTypelessParam.bas                                       righe=18   import=0
   Strings/TmpSubOnErr.bas                                                righe=15   import=0
   Strings/TmpVmIlCmp.bas                                                 righe=10   import=0
-  System/EnvDemo.bas                                                     righe=13   import=1
   System/SystemCommandArgs.bas                                           righe=16   import=0
   System/SystemCtypeUdt.bas                                              righe=15   import=1
   System/TypeInfoIntrospect.bas                                          righe=15   import=1
@@ -311,7 +309,7 @@ totale file: 1191   categorie: 80
   windows/SSel.bas                                                       righe=10   import=1
   windows/WSel.bas                                                       righe=9    import=1
   windows/WindowHeightWidth.bas                                          righe=15   import=1
-  (170 file)
+  (169 file)
 
 == ENV (rete/UI/modelli: oracolo non deterministico) ==
   Ai/AgentBasic.bas                                                      righe=36   import=1
@@ -931,6 +929,8 @@ totale file: 1191   categorie: 80
   Files/FilesMemoryMap.bas                                               righe=195  import=2
   Finance/FinanceAdvanced.bas                                            righe=67   import=4
   Finance/FinanceGeneralTests.bas                                        righe=122  import=3
+  Finance/InvestimentoFurgone.bas                                        righe=104  import=3
+  Finance/MutuoCasa.bas                                                  righe=74   import=2
   Functions/FunctionsLambda.bas                                          righe=125  import=2
   Functions/FunctionsLambdaInference.bas                                 righe=80   import=2
   Functions/FunctionsParams.bas                                          righe=94   import=2
@@ -1013,5 +1013,5 @@ totale file: 1191   categorie: 80
   graph/FinanceBrainGraph.bas                                            righe=51   import=2
   graph/GraphAgentAsk.bas                                                righe=34   import=2
   graph/GraphQueryMulti.bas                                              righe=29   import=2
-  (215 file)
+  (217 file)
 
