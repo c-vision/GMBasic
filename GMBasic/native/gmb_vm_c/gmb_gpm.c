@@ -335,8 +335,9 @@ static void byref_write(gmb_obj_byref_t* b, gmb_stack_entry_t e, int retain_exis
 gmb_stack_entry_t gmb_byref_load(const gmb_obj_byref_t* box) { return byref_read(box); }
 void gmb_byref_store(gmb_obj_byref_t* box, gmb_stack_entry_t value) { byref_write(box, value, 0); }
 
-static gmb_stack_entry_t capture_slot_byref(double* nums, gmb_obj_t** refs,
-                                             uint8_t* types, uint8_t* basic, int slot)
+static gmb_stack_entry_t capture_slot_byref_x(double* nums, gmb_obj_t** refs,
+                                               uint8_t* types, uint8_t* basic, int slot,
+                                               int box_strings)
 {
     gmb_stack_entry_t out = { 0 };
     if (slot < 0 || slot >= GMB_LOCALS_CAP) return out;
@@ -356,16 +357,13 @@ static gmb_stack_entry_t capture_slot_byref(double* nums, gmb_obj_t** refs,
      * cell — così le scritture della closure e del chiamante condividono lo slot. */
     if (types[slot] == 2 && refs[slot])
     {
-        /* STRINGA (oggetto stringa "puro": kind GMB_OBJ_STRING e SENZA type_name, la
-         * stessa discriminante dell'adapter): si imbusta come gli scalari. Serve al
-         * write-through: `@ row,col GET nome$` deve scrivere nella variabile tramite il
-         * box (prima riceveva l'oggetto stringa stesso e il testo digitato finiva nel
-         * vuoto — VM/C dava il campo vuoto mentre IL/PCode/C99 lo riempivano). Per le
-         * closure la semantica non cambia: OP_LOAD_UPVALUE/OP_STORE_UPVALUE attraversano
-         * il byref (unwrap/write-through), come per gli scalari. I REFERENCE type
-         * (dict/oggetti/array/chiusure) restano NON imbustati: sono già condivisi e un
-         * proxy a uno slot di un frame poppato leggerebbe garbage. */
-        if (refs[slot]->kind != GMB_OBJ_STRING || refs[slot]->type_name)
+        /* box_strings=1 SOLO per i target di @GET: una variabile STRINGA locale deve
+         * ricevere il testo digitato, quindi serve una cella write-through. Un oggetto
+         * stringa "puro" (kind GMB_OBJ_STRING senza type_name, la stessa discriminante
+         * dell'adapter) è un valore scalare: imbustarlo è sicuro. Dict/oggetti/array/
+         * chiusure restano NON imbustati anche qui (sono condivisi e un proxy a uno slot
+         * di un frame poppato leggerebbe garbage). */
+        if (!(box_strings && refs[slot]->kind == GMB_OBJ_STRING && !refs[slot]->type_name))
         {
             out.type = 2; out.ref = refs[slot]; out.basic_type = basic[slot];
             gmb_obj_retain(out.ref);
@@ -386,9 +384,18 @@ static gmb_stack_entry_t capture_slot_byref(double* nums, gmb_obj_t** refs,
 gmb_stack_entry_t gmb_task_capture_local_byref(gmb_task_t* t, int slot)
 {
     if (!t) return (gmb_stack_entry_t){0};
-    if (t->frame) return capture_slot_byref(t->frame->local_nums, t->frame->local_refs,
-        t->frame->local_types, t->frame->local_basic, slot);
-    return capture_slot_byref(t->locals_nums, t->locals_refs, t->locals_types, t->locals_basic, slot);
+    if (t->frame) return capture_slot_byref_x(t->frame->local_nums, t->frame->local_refs,
+        t->frame->local_types, t->frame->local_basic, slot, 0);
+    return capture_slot_byref_x(t->locals_nums, t->locals_refs, t->locals_types, t->locals_basic, slot, 0);
+}
+
+/* Target di @GET (anche stringa): cella write-through sullo slot locale. */
+gmb_stack_entry_t gmb_task_capture_local_cell(gmb_task_t* t, int slot)
+{
+    if (!t) return (gmb_stack_entry_t){0};
+    if (t->frame) return capture_slot_byref_x(t->frame->local_nums, t->frame->local_refs,
+        t->frame->local_types, t->frame->local_basic, slot, 1);
+    return capture_slot_byref_x(t->locals_nums, t->locals_refs, t->locals_types, t->locals_basic, slot, 1);
 }
 
 gmb_stack_entry_t gmb_task_capture_global_byref(gmb_task_t* t, int slot)

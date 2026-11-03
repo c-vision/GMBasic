@@ -5176,9 +5176,17 @@ static void cc_stmt(gmb_cc_t* c, const gmb_stmt_t* s)
             const char* vn = s->read_vars[0];
             if (s->win_coords[0]) cc_expr(c, s->win_coords[0]); else cc_byte(c, GMB_OP_PUSH_NIL);
             if (s->win_coords[1]) cc_expr(c, s->win_coords[1]); else cc_byte(c, GMB_OP_PUSH_NIL);
-            {   /* target READ: BYREF per locali/globali, nome per DYNAMIC */
+            {   /* target READ: BYREF per locali/globali, nome per DYNAMIC.
+                 * Per i LOCALI si passa lo SLOT come numero: il VM/C costruisce una cella
+                 * write-through (gmb_task_capture_local_cell) che funziona anche per le
+                 * STRINGHE. Con OP_MAKE_BYREF una variabile stringa arrivava al campo come
+                 * valore (non come box) e il testo digitato andava perso (VM/C dava il
+                 * campo vuoto, IL/PCode/C99 lo riempivano). */
                 int l = cc_local(c, vn);
-                if (l >= 0) { cc_byte(c, GMB_OP_MAKE_BYREF); cc_u16(c, l); }
+                if (l >= 0) {
+                    int ci = cc_add_const(c, GMB_CCONST_DOUBLE, (double)l, NULL);
+                    cc_byte(c, GMB_OP_PUSH_CONST); cc_u16(c, ci);
+                }
                 else if (cc_dyn_is(c, vn)) cc_push_str_const(c, vn);
                 else { int g = cc_global(c, vn, 1);
                        if (g >= 0) { cc_byte(c, GMB_OP_MAKE_BYREF_GLOBAL); cc_u16(c, g); }
