@@ -237,6 +237,9 @@ typedef struct gmb_frame {
     int      frame_sp;
     /* upvalue catturate (per closure annidate); [0..15] */
     gmb_stack_entry_t upvalues[16];
+    /* 1 = il frame HA una ref propria su ciascuna upvalue (solo OP_CALL_INDIRECT, dove
+     * la closure chiamata può essere l'ultima referenza e viene rilasciata subito). */
+    uint8_t upvalues_owned;
     gmb_stack_entry_t return_value;
     /* V4f: classi utente — specchio PCodeCallFrame.ConstructorInstance: nei frame di
      * costruttore (OP_NEW_CLASS_INSTANCE) il RETURN ripusha l'istanza sullo stack. */

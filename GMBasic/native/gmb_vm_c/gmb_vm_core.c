@@ -9061,7 +9061,17 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 {
                     int isLocal = gmb_vm_read_u8(vm, task);
                     int index = gmb_vm_read_u8(vm, task);
-                    if (isLocal)
+                    if (isLocal == 2)
+                    {
+                        /* Lambda ANNIDATA: cattura l'UPVALUE (box byref) del frame corrente —
+                         * la catena di catture resta per riferimento (parità C# dove la
+                         * closure figlia referenzia il campo del __ClosureCtx del padre). */
+                        gmb_stack_entry_t u = task->frame ? task->frame->upvalues[index]
+                                                          : (gmb_stack_entry_t){0};
+                        if (u.type == 2 && u.ref) gmb_obj_retain(u.ref);
+                        closure->upvalues[i] = u;
+                    }
+                    else if (isLocal)
                         closure->upvalues[i] = gmb_task_capture_local_byref(task, index);
                     else
                         closure->upvalues[i] = gmb_task_capture_global_byref(task, index);
@@ -9400,11 +9410,18 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     if (!push_frame(task, saved_sp, task->ip)) return -1;
                     if (closure)
                     {
-                        /* passa le upvalue catturate al nuovo frame */
+                        /* passa le upvalue catturate al nuovo frame. La closure può essere
+                         * l'ULTIMA referenza (es. EVAL(EVAL(g, 1), 2): il risultato della
+                         * chiamata interna è il callable di quella esterna) e viene
+                         * rilasciata in fondo a questo opcode: il frame ne prende una ref
+                         * propria, liberata in gmb_frame_release (upvalues_owned). */
                         for (int i = 0; i < closure->num_upvalues && i < 16; i++)
                         {
                             task->frame->upvalues[i] = closure->upvalues[i];
+                            if (closure->upvalues[i].type == 2 && closure->upvalues[i].ref)
+                                gmb_obj_retain(closure->upvalues[i].ref);
                         }
+                        task->frame->upvalues_owned = 1;
                         /* 2026-09-24 (parità PCodeVM OP_CALL_INDIRECT): per una closure con
                          * CONTESTO (__ClosureCtx, upvalue 0 = dict) il corpo accede al
                          * contesto via OP_LOAD_LOCAL(0)/STORE — non via OP_LOAD_UPVALUE.

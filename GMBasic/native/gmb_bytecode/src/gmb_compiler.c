@@ -569,6 +569,12 @@ typedef struct {
     cc_local_t* enclosing_locals; int n_enclosing_locals;
     char** lambda_up_names; uint8_t* lambda_up_is_local; uint8_t* lambda_up_index;
     int n_lambda_up, lambda_up_cap;
+    /* Catene di cattura per le lambda annidate (profondità arbitraria): ogni livello
+     * racchiude i locali del frame e la lista up della lambda che lo contiene. */
+    struct { cc_local_t* locals; int nlocals;
+             char** up_names; uint8_t* up_is_local; uint8_t* up_index; int nup, cap; }
+        cap_stack[8];
+    int cap_depth;
     int compiling_lambda;
     /* Variabili note contenenti closure: distingue f(args) da array indexing. */
     char** closure_vars; int n_closure_vars, closure_vars_cap;
@@ -1196,31 +1202,76 @@ static void cc_ploc_free(gmb_cc_t* c)
     c->nploc = c->capploc = 0;
 }
 
+/* Aggiunge una cattura a una lista up (nome, is_local, index). Ritorna l'indice. */
+static int cc_up_add(char*** names, uint8_t** is_local, uint8_t** index,
+                     int* n, int* cap, const char* name, int loc, int idx)
+{
+    for (int i = 0; i < *n; i++)
+        if (strcasecmp((*names)[i], name) == 0) return i;
+    if (*n >= 16) return -1;
+    if (*n >= *cap) {
+        *cap = *cap ? *cap * 2 : 8;
+        *names = (char**)realloc(*names, (size_t)*cap * sizeof(char*));
+        *is_local = (uint8_t*)realloc(*is_local, (size_t)*cap);
+        *index = (uint8_t*)realloc(*index, (size_t)*cap);
+    }
+    int u = (*n)++;
+    (*names)[u] = strdup(name);
+    (*is_local)[u] = (uint8_t)loc;
+    (*index)[u] = (uint8_t)idx;
+    return u;
+}
+
+static int cc_up_find(const char** names, int n, const char* name)
+{
+    for (int i = 0; i < n; i++)
+        if (names[i] && strcasecmp(names[i], name) == 0) return i;
+    return -1;
+}
+
+/* Cattura di `name` nella lambda CORRENTE, con risoluzione TRANSITIVA su tutta la
+ * catena (profondità arbitraria). Ogni livello intermedio cattura il nome per conto
+ * proprio: il primo hop è un locale (kind 1) o un globale (kind 0), gli hop successivi
+ * sono catture di UPVALUE del frame corrente (kind 2, supportato dalla VM/C). */
 static int cc_lambda_upvalue(gmb_cc_t* c, const char* name, int create)
 {
     if (!c->compiling_lambda || !name) return -1;
     for (int i = 0; i < c->n_lambda_up; i++)
         if (strcasecmp(c->lambda_up_names[i], name) == 0) return i;
     if (!create) return -1;
-    int is_local = 0, index = -1;
-    for (int i = 0; i < c->n_enclosing_locals; i++)
-        if (strcasecmp(c->enclosing_locals[i].name, name) == 0) {
-            is_local = 1; index = c->enclosing_locals[i].slot; break;
+
+    int found = -1, base_kind = 0, base_index = -1;
+    for (int d = c->cap_depth - 1; d >= 0 && found < 0; d--) {
+        for (int i = 0; i < c->cap_stack[d].nlocals; i++)
+            if (c->cap_stack[d].locals && c->cap_stack[d].locals[i].name
+                && strcasecmp(c->cap_stack[d].locals[i].name, name) == 0) {
+                found = d; base_kind = 1; base_index = c->cap_stack[d].locals[i].slot; break;
+            }
+        if (found < 0) {
+            int u = cc_up_find((const char**)c->cap_stack[d].up_names, c->cap_stack[d].nup, name);
+            if (u >= 0) { found = d; base_kind = 2; base_index = u; }
         }
-    if (index < 0) index = cc_global(c, name, 0);
-    if (index < 0 || index > 255) return -1;
-    if (c->n_lambda_up >= 16) { cc_err(c, "lambda: massimo 16 variabili catturate"); return -1; }
-    if (c->n_lambda_up >= c->lambda_up_cap) {
-        c->lambda_up_cap = c->lambda_up_cap ? c->lambda_up_cap * 2 : 8;
-        c->lambda_up_names = (char**)realloc(c->lambda_up_names, (size_t)c->lambda_up_cap * sizeof(char*));
-        c->lambda_up_is_local = (uint8_t*)realloc(c->lambda_up_is_local, (size_t)c->lambda_up_cap);
-        c->lambda_up_index = (uint8_t*)realloc(c->lambda_up_index, (size_t)c->lambda_up_cap);
     }
-    int u = c->n_lambda_up++;
-    c->lambda_up_names[u] = strdup(name);
-    c->lambda_up_is_local[u] = (uint8_t)is_local;
-    c->lambda_up_index[u] = (uint8_t)index;
-    return u;
+    if (found < 0) {
+        /* globale (o campo DBF risolto a runtime): cattura come globale */
+        base_kind = 0;
+        base_index = cc_global(c, name, 0);
+        found = c->cap_depth - 1;
+        if (base_index < 0) return -1;
+    }
+
+    int idx = base_index;
+    for (int k = found + 1; k <= c->cap_depth - 1; k++) {
+        int kind = (k == found + 1) ? base_kind : 2;
+        int pos = cc_up_add(&c->cap_stack[k].up_names, &c->cap_stack[k].up_is_local,
+                            &c->cap_stack[k].up_index, &c->cap_stack[k].nup,
+                            &c->cap_stack[k].cap, name, kind, idx);
+        if (pos < 0) return -1;
+        idx = pos;
+    }
+    int cur_kind = (found == c->cap_depth - 1) ? base_kind : 2;
+    return cc_up_add(&c->lambda_up_names, &c->lambda_up_is_local, &c->lambda_up_index,
+                     &c->n_lambda_up, &c->lambda_up_cap, name, cur_kind, idx);
 }
 
 /* Frammenti a runtime: le closure dichiarate nel frammento (DIM f = { … }) devono
@@ -1354,6 +1405,12 @@ static int cc_body_returns_nested_func(const gmb_stmt_t* const* body, int n)
 {
     for (int i = 0; i < n; i++) {
         const gmb_stmt_t* s = body[i]; if (!s) continue;
+        /* `RETURN { |x| … }` — la funzione restituisce un CODE BLOCK (closure): senza
+         * questo caso `DIM f = Mk()` non era registrata come closure var e sia
+         * `EVAL(f)` (0 argomenti) sia la chiamata diretta `f()` finivano nel fallback
+         * "proc sconosciuta" → valore nil, silenzioso. */
+        if (s->kind == GMB_STMT_RETURN && s->ret_value
+            && s->ret_value->kind == GMB_EXPR_LAMBDA) return 1;
         if (s->kind == GMB_STMT_RETURN && s->ret_value
             && s->ret_value->kind == GMB_EXPR_VAR && s->ret_value->var) {
             for (int j = 0; j < n; j++) {
@@ -3583,6 +3640,19 @@ static void cc_emit_lambda(gmb_cc_t* c, const gmb_expr_t* e)
 
     cc_local_t* saved_locals = c->locals; int saved_nlocals = c->nlocals, saved_cap = c->nloc_cap;
     int saved_in_proc = c->in_proc;
+    /* Push dello scope del frame CORRENTE (dove nascerà questa closure): locali del
+     * frame + lista up della lambda che lo contiene (vuota a livello funzione). Serve
+     * alla risoluzione transitiva delle catture a profondità arbitraria. */
+    if (c->cap_depth < 8) {
+        c->cap_stack[c->cap_depth].locals = saved_locals;
+        c->cap_stack[c->cap_depth].nlocals = saved_nlocals;
+        c->cap_stack[c->cap_depth].up_names = c->lambda_up_names;
+        c->cap_stack[c->cap_depth].up_is_local = c->lambda_up_is_local;
+        c->cap_stack[c->cap_depth].up_index = c->lambda_up_index;
+        c->cap_stack[c->cap_depth].nup = c->n_lambda_up;
+        c->cap_stack[c->cap_depth].cap = c->lambda_up_cap;
+        c->cap_depth++;
+    }
     c->enclosing_locals = saved_locals; c->n_enclosing_locals = saved_nlocals;
     c->locals = NULL; c->nlocals = 0; c->nloc_cap = 0;
     c->compiling_lambda = 1;
@@ -3615,9 +3685,18 @@ static void cc_emit_lambda(gmb_cc_t* c, const gmb_expr_t* e)
     free(c->lambda_up_names); free(c->lambda_up_is_local); free(c->lambda_up_index);
     c->locals = saved_locals; c->nlocals = saved_nlocals; c->nloc_cap = saved_cap;
     c->in_proc = saved_in_proc; c->compiling_lambda = 0;
-    c->enclosing_locals = NULL; c->n_enclosing_locals = 0;
-    c->lambda_up_names = NULL; c->lambda_up_is_local = NULL; c->lambda_up_index = NULL;
-    c->n_lambda_up = c->lambda_up_cap = 0;
+    c->enclosing_locals = (c->cap_depth > 1) ? c->cap_stack[c->cap_depth - 2].locals : NULL;
+    c->n_enclosing_locals = (c->cap_depth > 1) ? c->cap_stack[c->cap_depth - 2].nlocals : 0;
+    /* Pop dello scope: ripristina la lista up della lambda che ci contiene (può essere
+     * stata estesa dalla propagazione transitiva). */
+    if (c->cap_depth > 0) {
+        c->cap_depth--;
+        c->lambda_up_names = c->cap_stack[c->cap_depth].up_names;
+        c->lambda_up_is_local = c->cap_stack[c->cap_depth].up_is_local;
+        c->lambda_up_index = c->cap_stack[c->cap_depth].up_index;
+        c->n_lambda_up = c->cap_stack[c->cap_depth].nup;
+        c->lambda_up_cap = c->cap_stack[c->cap_depth].cap;
+    }
     if (c->error) return;
 
     int after = c->code_len;

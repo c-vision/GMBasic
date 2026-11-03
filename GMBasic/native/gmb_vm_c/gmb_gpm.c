@@ -151,6 +151,9 @@ void gmb_frame_release(gmb_frame_t* f)
     {
         for (int i = 0; i < GMB_FRAME_LOCALS_CAP; i++)
             if (f->local_types[i] == 2 && f->local_refs[i]) gmb_obj_release(f->local_refs[i]);
+        if (f->upvalues_owned)
+            for (int i = 0; i < 16; i++)
+                if (f->upvalues[i].type == 2 && f->upvalues[i].ref) gmb_obj_release(f->upvalues[i].ref);
         if (f->constructor_instance) gmb_obj_release(f->constructor_instance);
         gmb_dyn_scope_clear(&f->dyn);
         gmb_for_clear(&f->for_state);

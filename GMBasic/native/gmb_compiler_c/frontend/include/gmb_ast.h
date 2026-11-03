@@ -333,6 +333,16 @@ struct gmb_stmt {
     int func_val_arity;        /* DIM v AS FUNCTION(...) AS <ret>: numero di parametri della firma */
     int func_val_str_mask;     /* DIM v AS FUNCTION(...): bit i = 1 se il parametro i della firma è AS STRING */
     int func_val_ret_is_str;   /* DIM v AS FUNCTION(...) AS STRING: 1 = ritorno stringa (altrimenti numerico) */
+    /* CATENA di ritorni-block (lambda dentro lambda, profondità arbitraria).
+     * fn_ret_n = 0 → la procedura ritorna il valore scalare dichiarato (func_ret_type);
+     * fn_ret_n = k > 0 → ritorna un code block; fn_ret_arity[i]/fn_ret_mask[i] sono la
+     * firma del block al livello i (i = 0 è il block direttamente ritornato) e fn_ret_str
+     * è il tipo del valore FINALE (1 = stringa). I campi func_val_* restano la firma del
+     * PRIMO block (livello 0), per i consumatori storici. */
+    int fn_ret_n;
+    int fn_ret_arity[8];
+    int fn_ret_mask[8];
+    int fn_ret_str;
     /* RETURN / EXIT */
     gmb_expr_t* ret_value;
     char* exit_target;
