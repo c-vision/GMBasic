@@ -3236,34 +3236,9 @@ static void cc_expr(gmb_cc_t* c, const gmb_expr_t* e)
                          * gmb_vm_core.c insieme a questa entry). Le voci Graph/BFS/DFS/... erano
                          * già implementate lato interprete ma MAI raggiungibili da qui — stesso
                          * bug, corretto contestualmente. */
-                        static const char* kMemberMethods[] = {
-                            "Count", "Length", "Set", "SetKeyValue", "ContainsKey", "Remove", "Send", "SendBytes",
-                            "MaxPair", "MinPair", "IsEmpty", "AddUnique",
-                            "Front", "Back",
-                            "Close", "SendJSON", "SendJson", "SetStatus", "ParseMultipartForm", "ParseForm",
-                            "SetHeader", "SetCookie", "Redirect", "Add", "AddRange", "RemoveAt",
-                            "Clear", "Contains", "IndexOf", "Sort", "Reverse", "Join",
-                            "AddNode", "AddNodeConsistent", "AddEdge", "RemoveNode", "RemoveEdge", "HasNode", "HasEdge",
-                            "GetNeighbors", "GetEdgeWeight", "GetInDegree", "NodeCount", "Nodes",
-                            "Keys", "Values", "BFS", "DFS", "Dijkstra", "Max", "Min", "Sum",
-                            "ToArray", "ToList", "ToDict", "ToJson", "ToJSON", "Append", "ToString", "Union",
-                            "Intersect", "Except", "Push", "Pop", "Peek", "Enqueue", "Dequeue",
-                            "AddFirst", "AddLast", "AddAfter", "AddBefore", "RemoveFirst",
-                            "RemoveLast", "First", "Last", "Capacity", "Extract", "ExtractMax",
-                            "ExtractMin", "UniqueCount", "UniqueItems", "HasItem", "GetNode",
-                            "GetRange", "FindAll", "StartsWith", "Query", "QueryRange",
-                            "TryGetValue", "Parse", "Get", "Update", "Top", "PeekAt", NULL
-                        };
-                        int is_method = 0;
-                        /* F1 Incongruenze (AGENTS §12, regola d'oro): whitelist per KIND —
-                         * i metodi di collection risolti nel TokenKind Coll* da gmb_members
-                         * sono metodi a prescindere dalla grafia; la lista legacy sotto
-                         * resta per i metodi VM-only (Length/Send/SendJSON/SetCookie/...)
-                         * che fonderemo in gmb_members in F1e. */
-                        if (gmb_is_coll_member_tok(gmb_member_tok(dot + 1))) is_method = 1;
-                        for (int mi = 0; !is_method && kMemberMethods[mi]; mi++)
-                            if (strcasecmp(dot + 1, kMemberMethods[mi]) == 0) { is_method = 1; break; }
-                        if (!is_method) {
+                        int is_method = gmb_is_coll_member_tok(gmb_member_tok(dot + 1))
+                                      || gmb_is_vm_member_method(dot + 1);
+if (!is_method) {
                             /* metodo utente di una CLASS (2.9): mbase è stato DIM'ensionato
                              * (o assegnato da NEW ClassName(...)) con un tipo tracciato in
                              * vt_names/vt_types — se quel nome è una CLASS registrata col
