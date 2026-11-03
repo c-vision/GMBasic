@@ -545,6 +545,137 @@ if (parser.Match(TokenKind.Set))
         return new ExpressionStmt(call);
     }
 
+    /// <summary>Forma batch di AI DECIDE (una sola `FROM <stato>`, N domande):
+    /// <code>
+    /// AI DECIDE
+    ///     fraud    AS NOUL
+    ///     priority AS SCORE
+    ///     route    AS CHOICE ("billing", "technical", "sales")
+    /// FROM transaction
+    /// USING "local"          ' opzionale (default rules)
+    /// END DECIDE
+    /// </code>
+    /// v1: DESUGAR in N assegnazioni sequenziali con lo stesso builtin DECIDE (semantica
+    /// batch completa); la fusione prefill/KV (`DECISION_GROUP`) è l'ottimizzazione successiva,
+    /// non un cambio di semantica. I nomi delle domande SONO le variabili di destinazione.</summary>
+    private static Stmt ParseAiDecideBatch(Parser parser, Token decideTok)
+    {
+        var questions = new List<(Target Target, Expr Kind)>();
+        SkipNewlines(parser);
+        while (!parser.Check(TokenKind.From))
+        {
+            if (parser.Check(TokenKind.End))
+                throw Parser.CreateError(parser.Peek(),
+                    "AI DECIDE batch: manca FROM <stato> prima di END DECIDE.");
+            if (parser.Check(TokenKind.Eof))
+                throw Parser.CreateError(parser.Peek(),
+                    "AI DECIDE batch: manca FROM <stato> / END DECIDE.");
+            var target = parser.ParseTarget();
+            parser.Consume(TokenKind.As, "Expected AS after the question name in AI DECIDE batch.");
+            var kind = ParseAiDecideBatchKind(parser);
+            questions.Add((target, kind));
+            SkipNewlines(parser);
+        }
+        parser.Consume(TokenKind.From, "Expected FROM after the questions in AI DECIDE batch.");
+        var state = parser.ParseExpression();
+        SkipNewlines(parser);
+        Expr? provider = null;
+        if (parser.Match(TokenKind.Using))
+        {
+            provider = parser.ParseExpression();
+            SkipNewlines(parser);
+        }
+        if (parser.Check(TokenKind.Into))
+            throw Parser.CreateError(parser.Peek(),
+                "AI DECIDE batch: INTO non è supportato; i nomi delle domande sono le destinazioni.");
+        parser.Consume(TokenKind.End, "Expected END DECIDE at the end of the batch.");
+        var endName = parser.Peek();
+        if (endName.Kind != TokenKind.Identifier
+            || !endName.Lexeme.Equals("DECIDE", StringComparison.OrdinalIgnoreCase))
+            throw Parser.CreateError(endName, "Expected DECIDE after END.");
+        parser.Advance();
+
+        var nsTok = new Token(TokenKind.Identifier, "AI", null, decideTok.Position);
+        var nameTok = new Token(TokenKind.AiDecide, "DECIDE", null, decideTok.Position);
+        var assigns = ImmutableArray.CreateBuilder<Assignment>(questions.Count);
+        foreach (var (target, kind) in questions)
+        {
+            var args = provider is null
+                ? ImmutableArray.Create(state, kind)
+                : ImmutableArray.Create(state, kind, provider);
+            var call = new BuiltinFunctionCallExpr(nsTok, nameTok, args, new StringType());
+            Expr value = call;
+            if (target is VariableTarget vt && parser._declaredJsonNames.Contains(vt.NameCleaned.Lexeme))
+            {
+                var parseNs = new Token(TokenKind.Identifier, "JSON", null, decideTok.Position);
+                var parseName = new Token(TokenKind.Parse, "PARSE", null, decideTok.Position);
+                value = new BuiltinFunctionCallExpr(parseNs, parseName,
+                    ImmutableArray.Create<Expr>(call), new JsonType());
+            }
+            assigns.Add(new Assignment(target, value));
+        }
+        return new LetStmt(assigns.ToImmutable(), null);
+    }
+
+    /// <summary>Kind di una domanda batch: NOUL, SCORE (rubrica solo 0..5 per ora), CHOICE
+    /// con etichette stringa opzionali. Ritorna la stringa-kind già nel formato del builtin
+    /// (`"NOUL"`, `"SCORE"`, `"CHOICE"`, `"CHOICE:a|b"`).</summary>
+    private static Expr ParseAiDecideBatchKind(Parser parser)
+    {
+        var t = parser.Peek();
+        if (t.Kind != TokenKind.Identifier)
+            throw Parser.CreateError(t, "AI DECIDE batch: expected NOUL, SCORE or CHOICE after AS.");
+        parser.Advance();
+        var name = t.Lexeme.ToUpperInvariant();
+        Expr kind;
+        switch (name)
+        {
+            case "NOUL":
+                kind = new StringExpr("NOUL", t);
+                break;
+            case "SCORE":
+                if (parser.Check(TokenKind.Number))
+                {
+                    var lo = parser.Advance();
+                    parser.Consume(TokenKind.To, "Expected TO after the SCORE minimum.");
+                    var hi = parser.Consume(TokenKind.Number, "Expected the SCORE maximum after TO.");
+                    if (lo.Literal is not double l || hi.Literal is not double h || l != 0 || h != 5)
+                        throw Parser.CreateError(lo,
+                            "AI DECIDE batch: SCORE supports only the 0 TO 5 rubric (the 0..10 projection is not implemented yet).");
+                }
+                kind = new StringExpr("SCORE", t);
+                break;
+            case "CHOICE":
+            {
+                var labels = new List<string>();
+                if (parser.Match(TokenKind.LeftParen))
+                {
+                    if (!parser.Check(TokenKind.RightParen))
+                    {
+                        do
+                        {
+                            var s = parser.Advance();
+                            if (s.Kind != TokenKind.StringLiteral)
+                                throw Parser.CreateError(s, "AI DECIDE batch: CHOICE expects string labels.");
+                            labels.Add((string)s.Literal!);
+                        } while (parser.Match(TokenKind.Comma));
+                    }
+                    parser.Consume(TokenKind.RightParen, "Expected ')' after the CHOICE labels.");
+                }
+                kind = new StringExpr(labels.Count > 0 ? "CHOICE:" + string.Join("|", labels) : "CHOICE", t);
+                break;
+            }
+            default:
+                throw Parser.CreateError(t,
+                    $"AI DECIDE batch: kind '{t.Lexeme}' non valido (NOUL/SCORE/CHOICE).");
+        }
+        if (!parser.Check(TokenKind.Newline) && !parser.Check(TokenKind.From)
+            && !parser.Check(TokenKind.Eof) && !parser.Check(TokenKind.Colon))
+            throw Parser.CreateError(parser.Peek(),
+                "AI DECIDE batch: unexpected token after the question kind.");
+        return kind;
+    }
+
     // AI EVAL VALIDATE <resultExpr> AGAINST [VAULT] <folderExpr> [INTO <target>] — comando
     // (T4.1, 2026-09-09): UAT automatica via vault. Motore VaultValidator (termini, no LLM);
     // esito JSON {"ok":bool,...} su variabile (INTO) o scartato.
@@ -554,6 +685,11 @@ if (parser.Match(TokenKind.Set))
     public static Stmt ParseAiDecideStatement(Parser parser, string expectedNamespace)
     {
         var tok = parser.Advance();   // DECIDE (Identifier: non è una keyword lessicale)
+        // Forma BATCH: `AI DECIDE` a fine riga (canonica §5.1 del piano JEV). Le domande
+        // seguono una per riga (`nome AS NOUL|SCORE|CHOICE(...)`), poi `FROM <stato>`,
+        // `USING <provider>` opzionale e `END DECIDE`.
+        if (parser.Check(TokenKind.Newline) || parser.Check(TokenKind.Colon))
+            return ParseAiDecideBatch(parser, tok);
         Expr state = parser.ParseExpression();
         parser.Consume(TokenKind.Comma, "Expected ',' after AI DECIDE state.");
         Expr kind = parser.ParseExpression();
