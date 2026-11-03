@@ -55,6 +55,21 @@ public static class DecisionSlots
 
     /// <summary>CHOICE con dominio libero: le etichette utente mappano gli slot A..P in ordine
     /// (la prima etichetta è A, la seconda B, ...). Oltre 16 opzioni è errore esplicito.</summary>
+    /// <summary>CHOICE con verbalizer A..P: il prompt elenca `A) testo`, il readout usa il
+    /// token dello slot (single-token) e il risultato conserva il testo come Value.</summary>
+    public static DecisionRequest CreateVerbalizedChoice(string state, IReadOnlyList<string> labels,
+        string? instructions = null)
+    {
+        if (labels is null || labels.Count == 0)
+            throw new ArgumentException("CHOICE: almeno un'etichetta.", nameof(labels));
+        if (labels.Count > Choice.Count)
+            throw new ArgumentException($"CHOICE: massimo {Choice.Count} opzioni (slot A..P).", nameof(labels));
+        var options = new List<DecisionOption>(labels.Count);
+        for (var i = 0; i < labels.Count; i++)
+            options.Add(new DecisionOption(Choice[i].Id, labels[i]));
+        return new DecisionRequest(state, DecisionKind.Choice, options, instructions, UseSlotTokens: true);
+    }
+
     public static DecisionRequest CreateChoice(string state, IReadOnlyList<string> labels, string? instructions = null)
     {
         if (labels is null || labels.Count == 0)
