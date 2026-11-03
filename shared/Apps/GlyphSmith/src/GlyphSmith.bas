@@ -1315,6 +1315,7 @@ SUB RunTui()
     DIM i AS LONG, k AS STRING, path AS STRING
     path = TuiKeysPath()
     IF NOT IO.FILEEXISTS(path) THEN Fail("script tasti assente: " + path)
+    LoadBdf(BdfPath())
     g_tuiGlyph = 0
     g_tuiX = 0
     g_tuiY = 0
