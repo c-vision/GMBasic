@@ -3627,6 +3627,25 @@ internal sealed partial class PCodeProcessor
                     return true;
                 }
 
+                // F4 (Incongruenze): BRIDGE managed — un solo dispatcher per le collection.
+                // I casi non-collection (StringBuilder/HTTP/class) sono già stati gestiti sopra;
+                // per IList/IDictionary si prova il dispatcher condiviso IL e si ricade sul
+                // vecchio switch PCode SOLO se il metodo non è noto (NotSupportedException).
+                // Le due gambe condividono così la stessa semantica (Add/Remove/Keys/Min/Max/
+                // Trie/Bag/Graph/...), senza duplicare 76 casi.
+                if (instance is System.Collections.IList || instance is System.Collections.IDictionary)
+                {
+                    try
+                    {
+                        task.PushRef(IlRuntime.CollectionInvoke(instance, methodName, args));
+                        return true;
+                    }
+                    catch (NotSupportedException)
+                    {
+                        /* metodo non gestito dal dispatcher condiviso: fallback PCode sotto */
+                    }
+                }
+
                 int? methodAddr = null;
                 // Check IList FIRST (collections like List<T>)
                 if (instance is System.Collections.IList iList)

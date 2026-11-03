@@ -6,38 +6,20 @@ namespace Compiler;
 
 public sealed partial class Compiler
 {
-    /// <summary>
-    /// Mappa speciale per le funzioni built-in i cui nomi (e TokenKind) sono ambigui
-    /// perché possono rappresentare anche tipi di dato (es. DATE, TIME).
-    /// La chiave è una tupla (namespace, nome_funzione).
-    /// </summary>
+    /// <summary>Unica ambiguità rimasta: `DBF.SELECT(...)` è una CHIAMATA, mentre `SELECT`
+    /// è anche la keyword del comando `SELECT CASE`/`DBF SELECT`. DATE/TIME sono già nel
+    /// FunctionMap per TokenKind e non richiedono una mappa separata.</summary>
     private static readonly Dictionary<(string, string), BuiltInFunction> AmbiguousFunctionMap =
-        new(new AmbiguousNameComparer())
-        {
-            { ("DATETIME", "DATE"), BuiltInFunction.DATE_FUNC },
-            { ("DATETIME", "TIME"), BuiltInFunction.TIME_FUNC },
-            // Aggiungere qui altre funzioni ambigue se necessario, es. SELECT
-            // La keyword SELECT può essere un comando (SELECT CASE) o una funzione (DBF.SELECT()).
-            // Questa mappa risolve la chiamata a funzione.
-            { ("DBF", "SELECT"), BuiltInFunction.SELECT }
-        };
+        new(new AmbiguousNameComparer()) { { ("DBF", "SELECT"), BuiltInFunction.SELECT } };
 
-    /// <summary>
-    /// Comparer per la mappa delle funzioni ambigue per garantire una ricerca case-insensitive.
-    /// </summary>
     private class AmbiguousNameComparer : IEqualityComparer<(string, string)>
     {
-        public bool Equals((string, string) x, (string, string) y)
-        {
-            return x.Item1.Equals(y.Item1, StringComparison.OrdinalIgnoreCase) &&
-                   x.Item2.Equals(y.Item2, StringComparison.OrdinalIgnoreCase);
-        }
-
-        public int GetHashCode((string, string) obj)
-        {
-            return StringComparer.OrdinalIgnoreCase.GetHashCode(obj.Item1) ^
-                   StringComparer.OrdinalIgnoreCase.GetHashCode(obj.Item2);
-        }
+        public bool Equals((string, string) x, (string, string) y) =>
+            x.Item1.Equals(y.Item1, StringComparison.OrdinalIgnoreCase) &&
+            x.Item2.Equals(y.Item2, StringComparison.OrdinalIgnoreCase);
+        public int GetHashCode((string, string) obj) =>
+            StringComparer.OrdinalIgnoreCase.GetHashCode(obj.Item1) ^
+            StringComparer.OrdinalIgnoreCase.GetHashCode(obj.Item2);
     }
 
     // La mappa completa delle funzioni predefinite.
@@ -418,6 +400,10 @@ public sealed partial class Compiler
         // --- Funzioni Data e Ora (27) ---
         { TokenKind.Now, BuiltInFunction.NOW }, { TokenKind.Today, BuiltInFunction.TODAY },
         { TokenKind.Date, BuiltInFunction.DATE_FUNC }, { TokenKind.Time, BuiltInFunction.TIME_FUNC },
+        /* F6: `DBF.SELECT(...)` è una CHIAMATA, non il comando `DBF SELECT`: il TokenKind
+         * Select è già distinto dal contesto di statement, quindi la funzione si risolve
+         * direttamente qui. Elimina AmbiguousFunctionMap (DATE/TIME erano già in mappa). */
+        { TokenKind.Select, BuiltInFunction.SELECT },
         { TokenKind.StrTime, BuiltInFunction.TIMEDOLLAR }, { TokenKind.StrDate, BuiltInFunction.STRDATE },
         { TokenKind.DateValue, BuiltInFunction.DATEVALUE }, { TokenKind.DateSerial, BuiltInFunction.DATESERIAL },
         { TokenKind.TimeSerial, BuiltInFunction.TIMESERIAL }, { TokenKind.DateAdd, BuiltInFunction.DATEADD },

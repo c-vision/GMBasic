@@ -2945,16 +2945,12 @@ public sealed partial class Compiler
         var tokenKind = expr.Name.Kind;
         BuiltInFunction builtInFunc;
         var found = BuiltInFunctionMap.TryGetValue(tokenKind, out builtInFunc);
+        if (!found)
+            found = AmbiguousFunctionMap.TryGetValue((expr.Namespace.Lexeme, expr.Name.Lexeme), out builtInFunc);
         // RDD.RECNO() e DBF.RECNO() condividono TokenKind.Recno: la forma RDD ha un codice proprio (vedi BuiltInFunction.RDDRECNO).
         if (found && builtInFunc == BuiltInFunction.RECNO && nsName.Equals("RDD", StringComparison.OrdinalIgnoreCase))
             builtInFunc = BuiltInFunction.RDDRECNO;
 
-        if (!found)
-        {
-            // Livello 2: Se fallisce, prova la mappa per nomi ambigui (es. DATE, TIME).
-            var ambiguousKey = (expr.Namespace.Lexeme, expr.Name.Lexeme);
-            found = AmbiguousFunctionMap.TryGetValue(ambiguousKey, out builtInFunc);
-        }
 
         // SIZEOF: la chiamata NON gira — diventa una costante, quando il tipo statico
         // dell'argomento esiste (vedi TypeLayout e Compiler.SizeOf.cs). È l'unico modo di
