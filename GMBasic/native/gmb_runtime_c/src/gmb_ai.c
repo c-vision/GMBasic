@@ -119,7 +119,8 @@ int gmb_provider_register(const char* role, const char* name, const char* kind, 
         && strcasecmp(kind, "fixture") && strcasecmp(kind, "keyword")
         && strcasecmp(kind, "llamacpp")
         && strcasecmp(kind, "mlx") && strcasecmp(kind, "local")
-        && strcasecmp(kind, "rules") && strcasecmp(kind, "mock"))
+        && strcasecmp(kind, "rules") && strcasecmp(kind, "mock")
+        && strcasecmp(kind, "typesafe"))
         return 0;
     gmb_provider_t* p = find_provider(role, name);
     if (p) { strncpy(p->kind, kind ? kind : "", 511); strncpy(p->config, config ? config : "", 511); return 1; }
@@ -250,6 +251,20 @@ const char* gmb_provider_active_kind(const char* role) {
     if (!p) return kind;
     snprintf(kind, sizeof kind, "%s", p->kind);
     return kind;
+}
+
+/* Config JSON del provider attivo per un ruolo ("" se assente). */
+const char* gmb_provider_active_config(const char* role) {
+    static char cfg[512];
+    cfg[0] = 0;
+    char rbuf[32];
+    snprintf(rbuf, sizeof rbuf, "%s", gmb_provider_normalize_role(role));
+    const char* name = gmb_provider_active(rbuf);
+    if (!name || !*name) return cfg;
+    gmb_provider_t* p = find_provider(rbuf, name);
+    if (!p) return cfg;
+    snprintf(cfg, sizeof cfg, "%s", p->config ? p->config : "");
+    return cfg;
 }
 
 const char* gmb_provider_active_model_path(void) {

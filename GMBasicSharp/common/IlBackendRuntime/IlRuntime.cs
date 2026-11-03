@@ -18237,11 +18237,12 @@ public static double TextWidth(string s)
                 };
             }
             var p = (provider ?? "").Trim().ToLowerInvariant();
+            string? decideName = null;
             if (p.Length == 0)
             {
                 // Ruolo %DECIDE: provider di decisione attivo (AI REGISTER alias, %DECIDE, kind;
                 // AI SET ACTIVE %DECIDE, alias). Solo se il chiamante non ne forza uno.
-                var decideName = Basic.Providers.ProviderServer.Instance.GetActiveName(Basic.Providers.ProviderRole.Decide);
+                decideName = Basic.Providers.ProviderServer.Instance.GetActiveName(Basic.Providers.ProviderRole.Decide);
                 if (!string.IsNullOrWhiteSpace(decideName))
                 {
                     var decideKind = Basic.Providers.ProviderServer.Instance.GetKind(decideName);
@@ -18250,7 +18251,26 @@ public static double TextWidth(string s)
                 }
             }
             Basic.Decision.DecisionResult result;
-            if (p == "local")
+            if (p == "typesafe")
+            {
+                // Provider remoto: config dal provider %DECIDE attivo (kind "typesafe").
+                decideName ??= Basic.Providers.ProviderServer.Instance.GetActiveName(
+                    Basic.Providers.ProviderRole.Decide);
+                if (string.IsNullOrWhiteSpace(decideName))
+                    throw new Basic.Decision.DecisionProviderException(
+                        "typesafe: nessun provider %DECIDE attivo con config baseUrl.");
+                var cfg = Basic.Providers.ProviderServer.Instance.GetConfigMap(decideName);
+                cfg.TryGetValue("baseUrl", out var baseUrl);
+                cfg.TryGetValue("apiKey", out var apiKey);
+                cfg.TryGetValue("model", out var model);
+                var timeout = TimeSpan.FromSeconds(30);
+                if (cfg.TryGetValue("timeoutMs", out var timeoutText)
+                    && int.TryParse(timeoutText, out var timeoutMs) && timeoutMs > 0)
+                    timeout = TimeSpan.FromMilliseconds(timeoutMs);
+                result = new Basic.Decision.TypesafeDecisionProvider(baseUrl ?? "", apiKey, model, timeout)
+                    .Evaluate(request)[0];
+            }
+            else if (p == "local")
             {
                 // Provider locale MLX: richiede un completer attivo che implementi
                 // IDecisionCompleter (MlxLlmCompleter). Senza modello attivo → errore JSON
