@@ -1,4 +1,4 @@
-' FILE: shared/APPS/RuleFlow/src/RuleFlow.bas
+' FILE: shared/Apps/RuleFlow/src/RuleFlow.bas
 ' ============================================================================
 ' RuleFlow (GMBasic port) — modellare, evolvere e analizzare sistemi discreti
 ' con un GRAFO CAUSALE esplicito.
@@ -27,7 +27,7 @@
 '   -DRULEFLOW_MODE_CHECK     diagnostica: config, regole, evoluzione, DAG, metriche
 '
 ' RUN (dalla ROOT del monorepo):
-'   tools/sh/harness.sh pcode shared/APPS/RuleFlow/src/RuleFlow.bas
+'   tools/sh/harness.sh pcode shared/Apps/RuleFlow/src/RuleFlow.bas
 '   # modo diverso: aggiungere in testa al file  #DEF RULEFLOW_MODE_GRAPH
 ' ============================================================================
 IMPORT IO

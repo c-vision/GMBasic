@@ -9,7 +9,7 @@ the BASIC program (`*.bas` entry point, app-local `*.inc` modules, data/config f
 ## Layout
 
 ```
-APPS/
+Apps/
   README.md                  <- this file (conventions, app index)
   <AppName>/                 <- one dedicated folder per application
     README.md                <- REQUIRED: what it is, upstream links, license/attribution,
@@ -62,7 +62,7 @@ a stray `SUB Main` in a sibling file of the same project root is a link-time ris
 ## Output conventions
 
 * Generated data (databases, exports, logs, dumps) goes to **`bin/` inside the app folder** —
-  e.g. `APPS/Masume/bin/masume.sqlite`. `**/bin/` is gitignored, so runtime artifacts never
+  e.g. `Apps/Masume/bin/masume.sqlite`. `**/bin/` is gitignored, so runtime artifacts never
   pollute the repository or the app's tracked contents.
 * **`work/` is not used in apps**: it exists only under `shared/samples/**/work/` (data artifacts
   of the samples). See the note in §Layout.
@@ -81,19 +81,19 @@ runtime with a seed script (`git add -f` is a last resort, and never for generat
 ## How to run an app
 
 **All commands are launched from the monorepo ROOT** (`GMBasicMonoRepo/`); the app paths are
-therefore `shared/APPS/<AppName>/src/<AppName>.bas`.
+therefore `shared/Apps/<AppName>/src/<AppName>.bas`.
 
 ```sh
 # Dev loop — one file, one leg
-tools/sh/harness.sh il    shared/APPS/<AppName>/src/<AppName>.bas
-tools/sh/harness.sh pcode shared/APPS/<AppName>/src/<AppName>.bas
-tools/sh/harness.sh vmc   shared/APPS/<AppName>/src/<AppName>.bas
+tools/sh/harness.sh il    shared/Apps/<AppName>/src/<AppName>.bas
+tools/sh/harness.sh pcode shared/Apps/<AppName>/src/<AppName>.bas
+tools/sh/harness.sh vmc   shared/Apps/<AppName>/src/<AppName>.bas
 
 # Release: NativeAOT executable (REPL is the only executable project)
-REPL/build/gmb_repl shared/APPS/<AppName>/src/<AppName>.bas
+REPL/build/gmb_repl shared/Apps/<AppName>/src/<AppName>.bas
 
 # C99Native (C frontend + emitter → `cc` → execution)
-bash tools/sh/gmb_c99native_run.sh ../shared/APPS/<AppName>/src/<AppName>.bas   # path relative to GMBasic/
+bash tools/sh/gmb_c99native_run.sh ../shared/Apps/<AppName>/src/<AppName>.bas   # path relative to GMBasic/
 ```
 
 > [!warning] **`GMBasicSharp/Executor` is NOT executable** (`OutputType=Library`): `dotnet run
@@ -150,7 +150,7 @@ the tool's CLI). Apps therefore select their behaviour through `#IFDEF` compile-
 | [`RuleFlow`](RuleFlow/README.md) | [RuleFlow-OSS/RuleFlow](https://github.com/RuleFlow-OSS/RuleFlow) — rewrite systems (SSS/ECA) with causal graph and metrics | Python | MIT | M1 headless: FlowLang parser (`->` `-->` `>` `><`), events with delta, **causal DAG** (nodes/edges/density/max path); **verified on IL/PCode/VM/C/C99Native**; parallelism/multiway in TODO |
 | [`ServiceConsole`](ServiceConsole/README.md) | — (original) | BASIC | GMBasic | test bench for the polymorphic **daemon + GUI** (in-language HTTP, tray, console TUI; scripts `console_tui.sh`/`console_gui.sh`) |
 
-> **No longer here**: the TUI IDE (formerly `APPS/GMBasicIde`, now `GMBasicTuiIde`) is **not in this
+> **No longer here**: the TUI IDE (formerly `Apps/GMBasicIde`, now `GMBasicTuiIde`) is **not in this
 > repository**: it is developed locally and excluded until complete (`.gitignore`), together with the
 > GUI IDE (`GMBasicIDE/`). Reason it will be published as an autonomous project when ready: it is the
 > measurement bench for the footprint of a complex, compiled BASIC program.

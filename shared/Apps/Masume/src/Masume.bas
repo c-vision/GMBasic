@@ -1,18 +1,18 @@
 ' ============================================================================
-' FILE: APPS/Masume/src/Masume.bas
+' FILE: Apps/Masume/src/Masume.bas
 '
 ' MASUME (GMBasic port) — keyboard-first terminal database client with AI chat
 ' and an MCP server.
 '
 ' Upstream (Go, Apache-2.0): https://github.com/turanmahmudov/masume
 ' Reference docs:            https://github.com/turanmahmudov/masume/tree/master/docs
-' Port notes + backlog:      APPS/Masume/README.md and APPS/Masume/TODO.md
+' Port notes + backlog:      Apps/Masume/README.md and Apps/Masume/TODO.md
 '
 ' This port is a clean rewrite: it reproduces the OBSERVABLE behaviour of the
 ' upstream client (project file, profiles, named queries, headless output shape,
 ' browse/query interaction model), not the Go source code.
 '
-' MODES (compile-time symbol, see APPS/README.md — BASIC has no runtime argv):
+' MODES (compile-time symbol, see Apps/README.md — BASIC has no runtime argv):
 '   (default)                    status: banner + project file + connectivity
 '   -DMASUME_MODE_SEED           create the demo database in bin/
 '   -DMASUME_MODE_OBJECTS        object tree (tables/views + columns)
@@ -32,7 +32,7 @@ DIM g_outDir AS STRING          ' <app>/bin — output della app (binari + artef
 DIM g_projectFile AS STRING     ' path of the .masume.toml found ("" if none)
 DIM g_dbPath AS STRING          ' path of the demo database (profile "demo")
 ' LLM: il modello si LEGGE dai settings dell'app (`.masume.toml`, sezione [llm]).
-' Regola (shared/APPS/README): nessuna app hardcoda il modello.
+' Regola (shared/Apps/README): nessuna app hardcoda il modello.
 DIM g_llmModel AS STRING        ' alias/provider %CHAT da attivare ("" = default)
 DIM g_llmCapability AS STRING   ' capability del modello (default "completion")
 
@@ -230,7 +230,7 @@ END SUB
 
 ' The query → TSV text conversion, shared by the headless mode and the MCP tool.
 ' NB: rs(i) (positional index) and rs.COLUMNS are NOT reliable on this build (both
-' return empty/zero on the PCode engine — verified live, see APPS/Masume/TODO.md
+' return empty/zero on the PCode engine — verified live, see Apps/Masume/TODO.md
 ' §M1 "SQLRESULTSET positional access"), so columns are read by NAME (rs("col"),
 ' proven correct everywhere else in this file) using the names SelectListHeader
 ' already parses out of the SELECT list text.
@@ -447,7 +447,7 @@ SUB ApplySetting(key AS STRING, val AS STRING)
     IF STRINGS.UPPER(key) = "MODE" THEN g_cfgMode = STRINGS.UPPER(val)
 END SUB
 
-' [llm] — modello LLM dell'app. REGOLA (shared/APPS/README): un'app che usa un
+' [llm] — modello LLM dell'app. REGOLA (shared/Apps/README): un'app che usa un
 ' modello LLM lo LEGGE dai propri settings, mai hardcoded. `model` = alias/provider
 ' della capability (es. "ds4mlx", "glm45air4bit"); vuoto = si usa il provider già
 ' attivo (default del linguaggio). `capability` = nome della capability (default
@@ -477,9 +477,9 @@ END SUB
 ' ============================================================================
 ' Boot: paths, active connection
 ' ============================================================================
-' The compiler's project root is the folder of this entry file (APPS/Masume/src),
+' The compiler's project root is the folder of this entry file (Apps/Masume/src),
 ' so the app folder is its parent and every generated file lands in
-' APPS/Masume/work — the convention for output in this repository (AGENTS.md §11).
+' Apps/Masume/work — the convention for output in this repository (AGENTS.md §11).
 SUB BootPaths()
     DIM srcDir AS STRING, appDir AS STRING
     srcDir = PROJECTFOLDER()
@@ -541,7 +541,7 @@ SUB RunNamedQuery()
 END SUB
 
 ' ${name} substitution from the [params] section — the port of upstream
-' `masume run ... --param name=value` (no argv in BASIC yet, see APPS/README.md).
+' `masume run ... --param name=value` (no argv in BASIC yet, see Apps/README.md).
 FUNCTION SubstituteParams(sqlText AS STRING) AS STRING
     DIM out AS STRING
     DIM i AS INTEGER
@@ -660,10 +660,10 @@ SUB DrawShell()
 END SUB
 
 ' ============================================================================
-' Mode selection. BASIC has no runtime argv (see APPS/README.md), so the mode is
+' Mode selection. BASIC has no runtime argv (see Apps/README.md), so the mode is
 ' chosen EITHER with a compile-time symbol or with the project file ([settings]).
 '
-'   tools/sh/harness.sh pcode shared/APPS/Masume/src/Masume.bas      (dalla ROOT)
+'   tools/sh/harness.sh pcode shared/Apps/Masume/src/Masume.bas      (dalla ROOT)
 '   modo esplicito: #DEF MASUME_MODE_OBJECTS in testa al file (i runner non passano -D;
 '   `REPL -D` vale per le direttive della REPL, non per l'esecuzione di un file)
 '

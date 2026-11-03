@@ -26,7 +26,7 @@ First application of the **daemon + GUI** series in GMBasic. It serves as a test
 
 ## Layout
 ```
-APPS/ServiceConsole/
+Apps/ServiceConsole/
   README.md              this file
   TODO.md                backlog
   serviceconsole.cfg     configuration (key=value)
@@ -44,7 +44,7 @@ tray     = 1             # 0 = no icon
 # icon   = /percorso/icona.png   (empty = GMBasic brand)
 ```
 Lines starting with `#` are comments. The file is searched in `IO.CWD()` and then, walking up the
-parents, in `APPS/ServiceConsole/` and `shared/APPS/ServiceConsole/`.
+parents, in `Apps/ServiceConsole/` and `shared/Apps/ServiceConsole/`.
 
 ## Build & run
 
@@ -52,15 +52,15 @@ From the **monorepo ROOT** (`GMBasicMonoRepo/`):
 
 ```sh
 # status (default) — non-interactive
-tools/sh/harness.sh il shared/APPS/ServiceConsole/src/ServiceConsole.bas
+tools/sh/harness.sh il shared/Apps/ServiceConsole/src/ServiceConsole.bas
 
 # daemon (HTTP) and GUI (console TUI): compile-time modes → `#DEF` at the top of the file
 #   #DEF SERVICECONSOLE_MODE_DAEMON   or   #DEF SERVICECONSOLE_MODE_GUI
-tools/sh/harness.sh il shared/APPS/ServiceConsole/src/ServiceConsole.bas
+tools/sh/harness.sh il shared/Apps/ServiceConsole/src/ServiceConsole.bas
 
 # console TUI (app script, sets the CWD = shared/ itself and resolves the tools from the root)
-./shared/APPS/ServiceConsole/console_tui.sh
-./shared/APPS/ServiceConsole/console_gui.sh
+./shared/Apps/ServiceConsole/console_tui.sh
+./shared/Apps/ServiceConsole/console_gui.sh
 ```
 
 The `tools/runners/` runners do not pass `-D` (no `-D` in `test_ilrun`/`test_pcode`/`test_vmrun`);

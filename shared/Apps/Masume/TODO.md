@@ -82,7 +82,7 @@ equivalent — confirmed against `samples/Lexer/LexerPreProcessing.bas`). Run 20
 
 | Mode | Command basis | Result |
 |---|---|---|
-| `STATUS` (default) | `--engine=pcode APPS/Masume/src/Masume.bas` | banner; `project file`, `working dir`, 2 profiles (`demo`, `shop`), 3 named queries, `connection: not open — run with -DMASUME_MODE_SEED...`, mode list. Matches "working". |
+| `STATUS` (default) | `--engine=pcode Apps/Masume/src/Masume.bas` | banner; `project file`, `working dir`, 2 profiles (`demo`, `shop`), 3 named queries, `connection: not open — run with -DMASUME_MODE_SEED...`, mode list. Matches "working". |
 | `SEED` | `#DEF MASUME_MODE_SEED` + run | `seeding demo database: .../bin/masume_demo.sqlite` / `customers= 3  orders= 5` / `done — now run -DMASUME_MODE_OBJECTS or -DMASUME_MODE_RUN`. Matches "working". |
 | `OBJECTS` | `#DEF MASUME_MODE_OBJECTS` + run (after SEED) | `schema: 2 tables, 0 views`, `TABLES` list (`customers`, `orders` with row counts), `columns of orders` (id/customer_id/total/created_at, `id` flagged `PK`). Matches "working". |
 | `RUN` | `#DEF MASUME_MODE_RUN` + run (after SEED) | `# query=objects (from .../.masume.toml)` then TSV `type\tname` / `table\tcustomers` / `table\torders`. Required the `QueryToText` fix (gap #3) — before the fix this printed a header with zero data rows. Matches "working" after the fix. |
@@ -93,7 +93,7 @@ equivalent — confirmed against `samples/Lexer/LexerPreProcessing.bas`). Run 20
 
 An earlier session's `git reset` touching `libs/`/`libs_runtime/` tracking was investigated
 separately (reflog/fsck, read-only) — no destructive loss found; the reset was a single
-one-commit-back-and-recommit. `APPS/Masume/` itself was never git-tracked before this session
-(`git ls-files APPS/` was empty), so it could not have been affected either way. Not a
+one-commit-back-and-recommit. `Apps/Masume/` itself was never git-tracked before this session
+(`git ls-files Apps/` was empty), so it could not have been affected either way. Not a
 Masume-specific concern; noted here only because the investigation happened in the same session as
 this port's completion.

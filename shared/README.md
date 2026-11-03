@@ -7,7 +7,7 @@ Material **shared by the two worlds** (`GMBasic/` in C, `GMBasicSharp/` in C#), 
 | `samples/` | sample BASIC programs (`Community/`, `Native/`) + `Fixtures/` |
 | `samples/Fixtures/` | **fixtures**: the 4 market feeds (`markets`, `option_chains`, `rates`, `darkpool`) + the small fixtures. The feeds are downloaded with `gmb fixtures ensure` **always here** — no symlinks, no external disk (decision 2026-10-31) |
 | `minitests/` | corpus with `' EXPECT:` oracle (the native leg is the reference) |
-| `APPS/` | complete applications that use the compiler |
+| `Apps/` | complete applications that use the compiler |
 | `include/`, `Controls/` | `.inc` exports of the libraries and control examples |
 | `libs/` | sources of **our** FFI libraries (`src/`, `include/`, `build.sh`) |
 | **`settings/`** | **shared compiler seeds**: `system.settings.json` and the manifests (fixtures, brains, libs, ml, chromium, obscura) + `providers.json`. See `settings/README.md` |
@@ -23,4 +23,6 @@ Material **shared by the two worlds** (`GMBasic/` in C, `GMBasicSharp/` in C#), 
 - **State** of the installation (active providers, MCP servers, brains, indexes) → `<configDir>`
   (`GMBasic/config`, or `<exe>/config` in a distributed program). **It does not go into git**: it
   contains machine paths.
-- The monorepo documentation lives in **`docs/`** at the root (`shared/docs` no longer exists).
+- The monorepo documentation lives in the **vault** (`AiWiki/01-Projects/GMBasicMonoRepo`);
+  `docs/` at the root is reserved for the printed manual (currently empty), the reports of the tools
+  are in `tools/reports/`.
