@@ -2768,6 +2768,13 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                 }
             }
         }
+        /* Lettura di un ARRAY locale il cui nome collide con un builtin non qualificato
+         * (`DIM fill(3)` / `fill(0)`: Fill → BROWSER.Fill, StringType): il simbolo locale
+         * VINCE sul builtin (parità IL/PCode/VM-C), quindi il tipo è quello dell'elemento. */
+        if (e->var && !strchr(e->var, '.') && !e->ns) {
+            var_t* lav = lookup_var(c, e->var);
+            if (lav && lav->is_array) return lav->type;
+        }
         /* Builtin StdLib string-return (keyword-builtin, var NULL): tipo dal DispatchToken
          * (es. SQL.DFSCHEMA → StringType). Senza, la call restava TY_NUM → gmb_print_double. */
         if (gmb_ns_type_is_str(e->tk)) return TY_STR;
@@ -3146,6 +3153,9 @@ int etype(ctx_t* c, gmb_expr_t* e) {
         /* FASE 2.6(g): POOL.GET/SYNCMAP.LOAD/DELETE/LOADORSTORE → gmb_string_t
          * (override della tabella tipi: nel C99 il valore è gmb_string_t). Dispatch sul
          * DispatchToken risolto dal parser, MAI su e->ns/nome. */
+        /* POOL.GET ritorna il valore DINAMICO custodito (numero o stringa): gmb_val_t → TY_VAL. Come
+         * stringa, `n = POOL.GET(p)` (n AS LONG) stampava "n=42" senza lo spazio del numero. */
+        if (e->tk == GMB_TOK_PoolGet) return TY_VAL;
         if (gmb_tk_in(e->tk, gmb_tk_pool_get, (unsigned)(sizeof(gmb_tk_pool_get)/sizeof(gmb_tk_pool_get[0]))))
             return TY_STR;
         /* FASE 1: funzioni utente che ritornano double e builtin numerici */
@@ -26758,7 +26768,31 @@ static void emit_dbf_domain(ctx_t* c, gmb_stmt_t* s) {
             /* DBF VALIDATE → parità emitter C# DbfValidateStmt (gmb_db_dbf_validate); DBF EXPORT →
              * no-op (parità emitter C#: "export non implementato"). Prima cadevano nel default. */
             if (strcasecmp(dbfv, "VALIDATE") == 0) { ind(c); sb_put(&c->out, "(void)gmb_db_dbf_validate(gmb_db_current_dbf());\n"); return; }
-            if (strcasecmp(dbfv, "EXPORT") == 0) { ind(c); sb_put(&c->out, "/* DBF EXPORT: no-op (parity export non implementato) */\n"); return; }
+            /* DBF EXPORT [area] TO "f" AS CSV|JSON  /  DBF IMPORT area FROM "f" AS CSV|JSON →
+             * gmb_db_dbf_export/import (parità IlRuntime.ExportToFile/ImportFromFile). L'area è
+             * l'alias prima di TO/FROM (assente = area corrente); il formato segue AS. */
+            if (strcasecmp(dbfv, "EXPORT") == 0 || strcasecmp(dbfv, "IMPORT") == 0) {
+                int isexp = strcasecmp(dbfv, "EXPORT") == 0;
+                const char* kw = isexp ? "TO" : "FROM";
+                gmb_expr_t* fpath = NULL; const char* area = NULL; const char* fmtw = "CSV";
+                int k;
+                for (k = 0; k < na; k++) {
+                    const char* w = dom_ident(a[k]);
+                    if (w && strcasecmp(w, kw) == 0 && k + 1 < na) { fpath = a[k + 1]; if (k > 0 && !area) area = dom_ident(a[k - 1]); }
+                    else if (w && strcasecmp(w, "AS") == 0 && k + 1 < na) { const char* f2 = dom_ident(a[k + 1]); if (f2) fmtw = f2; }
+                }
+                /* forma senza TO/FROM: `DBF EXPORT "f" AS CSV` → il primo argomento è il path */
+                if (!fpath && na > 0) fpath = a[0];
+                if (!fpath) { c99_fail(c, s->line, "DBF %s: atteso il path del file", dbfv); return; }
+                if (area && (strcasecmp(area, kw) == 0 || strcasecmp(area, "AS") == 0)) area = NULL;
+                ind(c); sb_printf(&c->out, "(void)gmb_db_dbf_%s(", isexp ? "export" : "import");
+                if (area) sb_printf(&c->out, "gmb_db_dbf_find_handle_by_alias(\"%s\")", area);
+                else sb_put(&c->out, "gmb_db_current_dbf()");
+                sb_put(&c->out, ", ");
+                emit_str_operand(c, fpath);
+                sb_printf(&c->out, ".data, %d);\n", strcasecmp(fmtw, "JSON") == 0 ? 1 : 0);
+                return;
+            }
         }
     }
     switch (s->act_tk) {
@@ -27348,7 +27382,9 @@ static void emit_dbf_domain(ctx_t* c, gmb_stmt_t* s) {
             if (w && strcasecmp(w, "FORM") == 0) rform = a[i + 1];
             else if (w && strcasecmp(w, "TO") == 0) {
                 const char* nx = dom_ident(a[i + 1]);
-                if (nx && strcasecmp(nx, "PRINT") == 0) rprint = 1; else rdest = a[i + 1];
+                if (nx && strcasecmp(nx, "PRINT") == 0) rprint = 1;
+                else if (nx && strcasecmp(nx, "FILE") == 0 && i + 2 < na) rdest = a[i + 2];   /* TO FILE "x" */
+                else rdest = a[i + 1];
             }
         }
         ind(c); sb_put(&c->out, "(void)gmb_db_dbf_report(gmb_db_current_dbf(), ");

@@ -2495,13 +2495,15 @@ public static partial class IlRuntime
     /// PCodeVM (l'IL esegue sul thread host con la coda globale), quindi il valore riflette
     /// l'ambiente GMBASIC_GOMAXPROCS/ProcessorCount senza effetti collaterali. Sulla PCodeVM la
     /// stessa funzione ridimensiona davvero i P (vedi PCodeProcessor.Builtins GOMAXPROCS).</summary>
+    private static int _goMaxProcs;
     public static double GoMaxProcs(double n = 0)
     {
-        var env = Environment.GetEnvironmentVariable("GMBASIC_GOMAXPROCS");
-        var current = !string.IsNullOrWhiteSpace(env) && int.TryParse(env, out var parsed) && parsed > 0
-            ? parsed
-            : Math.Max(1, Environment.ProcessorCount);
-        return current;
+        // Valore corrente = numero di CPU (come i worker di PCode/VM-C/C99); n > 0 lo imposta e la
+        // funzione ritorna il PRECEDENTE (Go runtime.GOMAXPROCS). Prima ignorava n e leggeva la env
+        // GMBASIC_GOMAXPROCS (vietata dalla direttiva sulle variabili d'ambiente).
+        var previous = _goMaxProcs > 0 ? _goMaxProcs : Math.Max(1, Math.Min(8, Environment.ProcessorCount));
+        if (n > 0) _goMaxProcs = (int)n;
+        return previous;
     }
     /// <summary>SYSTEM.NUMGOROUTINE() nel path LINEARE: nessuna goroutine (non-GPM) → 0. Nel
     /// path v2 l'emitter legge direttamente task.Scheduler.TaskCount.</summary>
@@ -3997,7 +3999,15 @@ public static partial class IlRuntime
             foreach (var k in _dbfHandles.Keys) { _dbfCurrentAlias = k; break; }
         }
     }
-    public static void DbfCloseAll() => Current.Database.DbfCloseAll();
+    public static void DbfCloseAll()
+    {
+        Current.Database.DbfCloseAll();
+        // Le aree sono chiuse: gli alias in _dbfHandles puntano a handle morti. Rimasti, un alias
+        // riusato (es. `C` in ISAM OPEN … ALIAS C) veniva risolto PRIMA come DBF (DbfBof/DbfEof/
+        // DbfFound provano _dbfHandles prima di _isamHandles) → ISAM.EOF(C)/FOUND(C) sbagliati.
+        _dbfHandles.Clear();
+        _dbfCurrentAlias = "dbf";
+    }
     public static double DbfBof(string? alias = null)
     {
         var h = DbfHandleFor(alias);
@@ -4899,7 +4909,8 @@ public static partial class IlRuntime
     private static int ResolveExportImportArea(Basic.Databases.Rdd.DataSession session, string? areaToken)
     {
         if (string.IsNullOrEmpty(areaToken)) return session.CurrentArea;
-        if (int.TryParse(areaToken, out var n)) return n;
+        // 0 = area implicita (`DBF EXPORT TO "f" AS CSV`, `DBF.EXPORT(0, …)`): l'area corrente.
+        if (int.TryParse(areaToken, out var n)) return n > 0 ? n : session.CurrentArea;
         return session.FindAreaByAlias(areaToken);
     }
 
@@ -5747,6 +5758,18 @@ public static partial class IlRuntime
         _isamCurrentAlias = alias;
         return handle;
     }
+    /// <summary>Chiude TUTTE le aree DBF/ISAM e azzera le mappe alias→handle (statiche di
+    /// processo). Per gli harness che eseguono più programmi nello stesso processo: un alias
+    /// lasciato aperto da un programma (es. `C`) altrimenti viene risolto dal successivo prima
+    /// del proprio (DbfLastRec/Bof/Eof provano _dbfHandles prima di _isamHandles).</summary>
+    public static void ResetDatabaseState()
+    {
+        foreach (var h in _isamHandles.Values.ToArray()) { try { Current.Database.IsamClose(h); } catch { } }
+        _isamHandles.Clear();
+        _isamCurrentAlias = "";
+        try { DbfCloseAll(); } catch { }
+    }
+
     public static void IsamClose(string? alias = null)
     {
         // Alias NOMINATO ma sconosciuto = no-op (IsamHandleFor ripiegherebbe sul primo handle aperto e
@@ -5928,7 +5951,23 @@ public static partial class IlRuntime
     /// (§ trovato da MiniTests/dbf/dbf_state.bas).
     public static string DbfRelation(string? alias = null)
     {
-        try { return DbDriverFor(alias)?.RelationKeyExpression ?? ""; } catch { return ""; }
+        try
+        {
+            var drv = DbDriverFor(alias);
+            if (drv is null) return "";
+            // SetRelation memorizza la chiave sul driver FIGLIO; DBRELATION() si legge dall'area
+            // PADRE (quella che ha eseguito SET RELATION): cerca il figlio che la punta.
+            if (!string.IsNullOrEmpty(drv.RelationKeyExpression)) return drv.RelationKeyExpression!;
+            var session = Current.SqlDataSession;
+            for (var a = 1; a <= Basic.Databases.Rdd.DataSession.MaxWorkareas; a++)
+            {
+                var child = session.GetWorkArea(a)?.Driver;
+                if (child != null && child.HasActiveRelation && ReferenceEquals(child.ParentRelationDriver, drv))
+                    return child.RelationKeyExpression ?? "";
+            }
+            return "";
+        }
+        catch { return ""; }
     }
     /// DBF.INDEXKEY([area]) / ISAM.INDEXKEY([area]) → chiave corrente.
     public static string DbfIndexKey(string? alias = null)
@@ -15843,15 +15882,7 @@ public static double TextWidth(string s)
 
     /// <summary>Converte un array BASIC (int[]/double[]/IEnumerable) in double[] per il
     /// runtime chart (CHART.PLOT) — schema PCodeVM CHART_PLOT.</summary>
-    public static double[] ArrayToDoubleArray(object? value)
-    {
-        if (value is double[] da) return da;
-        if (value is int[] ia) return ia.Select(x => (double)x).ToArray();
-        if (value is float[] fa) return fa.Select(x => (double)x).ToArray();
-        if (value is System.Collections.IEnumerable en)
-            return en.Cast<object?>().Select(v => ToDouble(v)).ToArray();
-        return Array.Empty<double>();
-    }
+    public static double[] ArrayToDoubleArray(object? value) => RuntimeFlatten.ToDoubles(value);
 
     public static double[] EmptyDoubleArray() => Array.Empty<double>();
 
