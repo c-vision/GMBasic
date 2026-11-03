@@ -2,7 +2,7 @@
 ' ACCOUNTS, ADD, BALANCE, BOF, COUNT, EDIT, EOF, FOUND, GET, IMPORT, LASTREC, OPEN,
 ' PLOT, RECNO, REGISTER, VALIDATE, VARIANCE. Due sezioni indipendenti (file .dat distinti
 ' in /tmp), derivate dai MiniTest per-funzione; nessuna dipendenza da sample.
-' EXPECT: count:  1|lastrec:  1|accounts:  2|balance:  2|register:  2|import:  0|plot: si|found:  0|recno:  0|bof: -1|eof: -1|found:  0|validate: -1|get:  2|variance: ok|afterDelete:  1
+' EXPECT: count:  1|lastrec:  1|accounts:  2|balance_q>=0=-1|balance:  2|register:  2|import:  0|plot: si|found:  0|recno:  0|bof: -1|eof: -1|found:  0|validate: -1|get:  2|variance: -100|afterDelete:  1
 IMPORT LEDGER
 IMPORT IO
 
@@ -37,6 +37,7 @@ SUB TestOps()
     PRINT "count: "; LEDGER.COUNT(h)
     PRINT "lastrec: "; LEDGER.LASTREC(h)
     PRINT "accounts: "; LEN(LEDGER.ACCOUNTS(h))
+    PRINT "balance_q>=0="; (LEN(LEDGER.BALANCE(h, "Attivita:Cassa")) >= 0)   ' query opzionale (dai Sample)
     PRINT "balance: "; LEN(LEDGER.BALANCE(h))
     PRINT "register: "; LEN(LEDGER.REGISTER(h))
 
@@ -97,8 +98,10 @@ SUB TestCursor()
 
     ' --- Dettaglio: GET (lista dei movimenti) e VARIANCE (double) ---
     PRINT "get: "; LEN(LEDGER.GET(h, newId))
+    ' BUDGET (comando) + VARIANCE (funzione): budget 900 su un conto che ha 1000.
+    LEDGER BUDGET h, "Attivita:Cassa", 900.00, "2026-01"
     DIM varj = LEDGER.VARIANCE(h, "Attivita:Cassa", "2026-01")
-    PRINT "variance: ok"
+    PRINT "variance: "; varj
 
     ' --- SAVE + DELETE (comandi) ---
     LEDGER SAVE h

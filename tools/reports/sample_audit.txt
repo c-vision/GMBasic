@@ -4,7 +4,7 @@ totale file: 1192   categorie: 80
 == per categoria ==
   Ai                   147
   Concurrency          87
-  Databases            86
+  Databases            85
   AiLLM                82
   Clipper              67
   graphics             60
@@ -27,8 +27,8 @@ totale file: 1192   categorie: 80
   Loops                15
   Modules              15
   System               15
+  Collections          13
   Analysis             12
-  Collections          12
   Strings              12
   graph                12
   Crypto               11
@@ -85,9 +85,9 @@ totale file: 1192   categorie: 80
 
 == per classificazione (un file può avere più tag) ==
   ENV          481
-  DIDATTICO    217
+  DIDATTICO    218
   CORTO        169
-  SURFACE      40
+  SURFACE      38
   SUPPORTO     25
   MODULO       15
   PACKAGE      7
@@ -115,8 +115,6 @@ totale file: 1192   categorie: 80
   Controls/ControlPropertiesCoverage.bas                                 righe=35   import=1
   Crypto/CryptoFullCoverage.bas                                          righe=22   import=2
   Databases/DbIsamUncoveredCoverage.bas                                  righe=60   import=2
-  Databases/DbLedgerCompleteCoverage.bas                                 righe=76   import=2
-  Databases/DbLedgerUncoveredCoverage.bas                                righe=79   import=2
   Databases/DbSqlUncoveredCoverage.bas                                   righe=56   import=2
   Databases/RddCompleteCoverage.bas                                      righe=72   import=3
   Documents/ConvertFullCoverage.bas                                      righe=68   import=2
@@ -134,7 +132,7 @@ totale file: 1192   categorie: 80
   Trading/TradingPortfolioUncoveredCoverage.bas                          righe=50   import=1
   Workflow/WorkflowFullCoverage.bas                                      righe=25   import=1
   graphics/GraphicsUncoveredCoverage.bas                                 righe=41   import=1
-  (40 file)
+  (38 file)
 
 == EXPECT nei Sample (violazione del contratto) ==
   (0 file)
@@ -861,6 +859,7 @@ totale file: 1192   categorie: 80
   Databases/AiLoadDocs.bas                                               righe=49   import=3
   Databases/AnagraficaClienti.bas                                        righe=45   import=2
   Databases/BareCommandFallback.bas                                      righe=54   import=2
+  Databases/ContabilitaPasticceria.bas                                   righe=106  import=3
   Databases/CsvFinancialReport.bas                                       righe=102  import=3
   Databases/CustomerOrdersReport.bas                                     righe=86   import=3
   Databases/DbDbfBuffered.bas                                            righe=24   import=2
@@ -1013,5 +1012,5 @@ totale file: 1192   categorie: 80
   graph/FinanceBrainGraph.bas                                            righe=51   import=2
   graph/GraphAgentAsk.bas                                                righe=34   import=2
   graph/GraphQueryMulti.bas                                              righe=29   import=2
-  (217 file)
+  (218 file)
 
