@@ -34,7 +34,7 @@ the repo: it is part of the REPL, not of the two IDE projects.
 
 ## 4. Content still in Italian (deliberate, needs a decision)
 
-- [ ] `shared/APPS/DigUp/fixtures/{lease.md,zebra.txt,podcast.txt}` — demo **data** paired with
+- [ ] `shared/Apps/DigUp/fixtures/{lease.md,zebra.txt,podcast.txt}` — demo **data** paired with
       Italian queries inside `DigUp.bas`; translating one side alone breaks the demo.
 
 ## 5. Before publishing the repository (still open)
@@ -214,7 +214,7 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
       - `GMBasicSharp/REPL/` **rimossa** (`git rm -r`: ReplEngine, IDE C#, HelpForm, console,
         ArgsParser, Notebook server).
       - Documentazione/script aggiornati: README root, `tools/sh/webapp_up.sh` (usa `gmbcs`),
-        `shared/APPS/*`, `shared/webapp/*`, manuale locale.
+        `shared/Apps/*`, `shared/webapp/*`, manuale locale.
       - Il server `NOTEBOOK` è stato **ripristinato in C** come progetto autonomo alla root:
         **`Notebook/`** (`gmb_notebook`, HTTP su 127.0.0.1, stesso protocollo `/execute`,
         `/vars`, `/reset`, `/health`, `/shutdown`, stato di sessione via valutatore runtime).

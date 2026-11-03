@@ -1,19 +1,19 @@
 ' ============================================================================
-' FILE: APPS/ServiceConsole/src/ServiceConsole.bas
+' FILE: Apps/ServiceConsole/src/ServiceConsole.bas
 '
 ' ServiceConsole (GMBasic) - primo servizio con GUI.
 '   * servizio: daemon HTTP con /healthz, /status, /config (keep-alive cooperativo)
 '   * GUI: finestra TUI di stato con refresh periodico (in futuro i widget TUI
 '     saranno polimorfici verso la GUI nativa pixel - vedi Knowledge/).
 '
-' MODI (simboli compile-time, vedi APPS/README.md):
+' MODI (simboli compile-time, vedi Apps/README.md):
 '   (default)                       status: banner + config + stato
 '   -DSERVICECONSOLE_MODE_DAEMON    daemon: HTTP + keep-alive
 '   -DSERVICECONSOLE_MODE_GUI       GUI: finestra TUI con refresh
 '
 ' CONFIG: serviceconsole.cfg (key=value) nella cartella dell'app.
 ' RUN (dalla ROOT del monorepo):
-'   tools/sh/harness.sh il shared/APPS/ServiceConsole/src/ServiceConsole.bas
+'   tools/sh/harness.sh il shared/Apps/ServiceConsole/src/ServiceConsole.bas
 '   (modo) aggiungere in testa al file: #DEF SERVICECONSOLE_MODE_DAEMON  (o _GUI)
 '          i runner di tools/runners/ non passano -D
 ' ============================================================================
@@ -91,7 +91,7 @@ SUB Main
 END SUB
 
 ' Modo: dal config (mode=...), override compile-time con #IFDEF.
-' (Il -D non arriva a tutti i runner: stesso pattern di APPS/Masume.)
+' (Il -D non arriva a tutti i runner: stesso pattern di Apps/Masume.)
 FUNCTION ComputeMode() AS STRING
   DIM m AS STRING
   m = g_mode
@@ -121,8 +121,8 @@ SUB LoadConfig
     candidate = ""
     dir = IO.CWD()
     FOR t = 1 TO 6
-      IF IO.FILEEXISTS(dir + "/APPS/ServiceConsole/serviceconsole.cfg") THEN
-        candidate = dir + "/APPS/ServiceConsole/serviceconsole.cfg"
+      IF IO.FILEEXISTS(dir + "/Apps/ServiceConsole/serviceconsole.cfg") THEN
+        candidate = dir + "/Apps/ServiceConsole/serviceconsole.cfg"
         EXIT FOR
       END IF
       dir = IO.PARENTDIR(dir)
@@ -739,7 +739,7 @@ FUNCTION FindRepoRoot() AS STRING
   DIM t AS INTEGER
   dir = IO.CWD()
   FOR t = 1 TO 8
-    IF IO.FILEEXISTS(dir + "/APPS/ServiceConsole/console_tui.sh") THEN
+    IF IO.FILEEXISTS(dir + "/Apps/ServiceConsole/console_tui.sh") THEN
       FindRepoRoot = dir
       EXIT FUNCTION
     END IF

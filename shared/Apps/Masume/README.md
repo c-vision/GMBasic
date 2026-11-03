@@ -108,15 +108,15 @@ From the **monorepo ROOT** (`GMBasicMonoRepo/`):
 
 ```sh
 # dev loop — one file, one leg (PCode = verified engine of this port; see IL caveat below)
-tools/sh/harness.sh pcode shared/APPS/Masume/src/Masume.bas
-tools/sh/harness.sh il    shared/APPS/Masume/src/Masume.bas
-tools/sh/harness.sh vmc   shared/APPS/Masume/src/Masume.bas
+tools/sh/harness.sh pcode shared/Apps/Masume/src/Masume.bas
+tools/sh/harness.sh il    shared/Apps/Masume/src/Masume.bas
+tools/sh/harness.sh vmc   shared/Apps/Masume/src/Masume.bas
 
 # release: NativeAOT executable
-REPL/build/gmb_repl shared/APPS/Masume/src/Masume.bas
+REPL/build/gmb_repl shared/Apps/Masume/src/Masume.bas
 
 # C99Native (C frontend + emitter → cc → execution)
-bash tools/sh/gmb_c99native_run.sh ../shared/APPS/Masume/src/Masume.bas   # relative to GMBasic/
+bash tools/sh/gmb_c99native_run.sh ../shared/Apps/Masume/src/Masume.bas   # relative to GMBasic/
 ```
 
 The **modes** (`_SEED`, `_OBJECTS`, `_RUN`, `_CHECK`, `_TUI`) are **compile-time** symbols (`-D` +
@@ -131,7 +131,7 @@ renamed: `items` would collide with the `ITEMS` clause of the control commands �
 `Hard-Lessons/ITEMS-Keyword-Collision-Variabile` in the monorepo vault (in `RunTui` the array is
 called `menuItems`).
 
-Run from `shared/APPS/Masume/` (or from one of its subfolders), so the `.masume.toml` project file
+Run from `shared/Apps/Masume/` (or from one of its subfolders), so the `.masume.toml` project file
 is found: the app searches in the working directory and its ancestors.
 
 **Environment note:** `GMBasicSharp/Executor` is a **Library** (`OutputType` not `Exe`), so

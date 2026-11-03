@@ -29,7 +29,7 @@ top = 5
 query = "zebra nella savana"
 
 [llm]
-# REGOLA (shared/APPS/README, ADR-App-LLM-Modello-nei-Settings): il modello si
+# REGOLA (shared/Apps/README, ADR-App-LLM-Modello-nei-Settings): il modello si
 # legge da qui, mai dal codice.
 #   model = alias/provider della capability "embedding" (default: fixture
 #           deterministico, utile per test e per l'out-of-the-box)

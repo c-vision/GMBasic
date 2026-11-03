@@ -695,7 +695,7 @@ public sealed partial class IlProgramCompiler
                 // non ha un default "" per i reference type) — a differenza di uno scalare
                 // STRING, già inizializzato a "" altrove in questo backend. Un elemento mai
                 // assegnato e poi letto da LEN/TRIM/concatenazione darebbe NullReferenceException
-                // (visto dal vivo: APPS/Masume — DIM arr(8) AS STRING poi LEN(arr(1))).
+                // (visto dal vivo: Apps/Masume — DIM arr(8) AS STRING poi LEN(arr(1))).
                 _il.Emit(OpCodes.Call, ArrayHelpersNewStringArrayMethod);
                 _il.Emit(OpCodes.Stloc, arrayLocal);
             }

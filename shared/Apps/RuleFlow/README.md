@@ -122,13 +122,13 @@ From the **monorepo root** (`GMBasicMonoRepo/`):
 
 ```sh
 # status (default)
-tools/sh/harness.sh pcode shared/APPS/RuleFlow/src/RuleFlow.bas
-tools/sh/harness.sh il    shared/APPS/RuleFlow/src/RuleFlow.bas
+tools/sh/harness.sh pcode shared/Apps/RuleFlow/src/RuleFlow.bas
+tools/sh/harness.sh il    shared/Apps/RuleFlow/src/RuleFlow.bas
 
 # run / graph / check: add at the top of the .bas   #DEF RULEFLOW_MODE_RUN (or _GRAPH/_CHECK)
 
 # native leg (C99Native), path relative to GMBasic/
-bash tools/sh/gmb_c99native_run.sh "$PWD/shared/APPS/RuleFlow/src/RuleFlow.bas"
+bash tools/sh/gmb_c99native_run.sh "$PWD/shared/Apps/RuleFlow/src/RuleFlow.bas"
 ```
 
 No output on disk: the app is pure in-memory computation (`bin/` is only created,

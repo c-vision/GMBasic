@@ -1,4 +1,4 @@
-' FILE: shared/APPS/DigUp/src/DigUp.bas
+' FILE: shared/Apps/DigUp/src/DigUp.bas
 ' ============================================================================
 ' DigUp (GMBasic port) — "Describe it. Dig it up."
 ' Ricerca semantica nei file: indicizza il TESTO dei file scelti (M1) e trova i
@@ -20,7 +20,7 @@
 '   -DDIGUP_MODE_CHECK           diagnostica: provider embedding + indice
 '
 ' RUN (dalla ROOT del monorepo):
-'   tools/sh/harness.sh pcode shared/APPS/DigUp/src/DigUp.bas
+'   tools/sh/harness.sh pcode shared/Apps/DigUp/src/DigUp.bas
 '   # modo diverso: aggiungere in testa al file  #DEF DIGUP_MODE_INDEX
 '   # (i runner di tools/runners/ non passano -D)
 ' ============================================================================

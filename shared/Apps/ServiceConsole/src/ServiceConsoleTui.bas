@@ -2,7 +2,7 @@
 ' ServiceConsoleTui — console TUI di controllo (client del daemon ServiceConsole).
 ' Legge /status.txt dal daemon e permette di fermare/avviare i servizi.
 ' TASTI: [a] avvia tutti  [f] ferma tutti  [q] esci  (refresh ogni 2s)
-' USO:   dotnet REPL/bin/Debug/net10.0/REPL.dll APPS/ServiceConsole/src/ServiceConsoleTui.bas
+' USO:   dotnet REPL/bin/Debug/net10.0/REPL.dll Apps/ServiceConsole/src/ServiceConsoleTui.bas
 '        (GMBASIC_VM_HOST=<repo>/native/gmb_vm_c/build/gmb_vm_host)
 ' ============================================================================
 IMPORT HTTP
