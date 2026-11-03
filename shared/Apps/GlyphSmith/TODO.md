@@ -31,7 +31,10 @@ Verified on the four backends of the monorepo (IL, PCodeVM, VM-C, C99Native).
 - [ ] **PCF** writer (binary tables with accelerators) and **BDF v2.2** properties.
 - [x] **ASCII art** per terminale: `mini8.ascii` (`@ enc name w h` + righe `#`/`.`), riletto
       dal modo `textin` e confrontato glifo per glifo con il modello nel check.
-- [ ] **Sixel preview** per terminali che lo supportano (l'ASCII art c'e').
+- [x] **Sixel** per terminali che lo supportano: `mini8.six` (stream DEC `ESC P q "1;1;w;h`,
+      bande da 6 righe, un carattere per colonna, `-` fra le bande, chiuso da `ESC \\`),
+      scritto con `ASC` + `IO.WRITEBYTES` e **riletto** da `SixelLoad` nel check con confronto
+      di firma. Non validato con un decoder esterno.
 - [x] **Import of a plain text bitmap** (`#`/`.` grid): modo `textin`, config `[text]`
       (`source`, `out`); `TextLoad` costruisce il modello e `BdfSave` scrive il BDF.
 

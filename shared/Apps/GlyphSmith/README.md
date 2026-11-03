@@ -23,6 +23,7 @@ BMP and PSF2 were impossible to emit from BASIC.
 | **PSF2** | write | Linux console font: magic `0x72b54a86`, header 32 bytes, glyphs padded to `maxW`×`maxH` |
 | **PSF1** | write | legacy Linux console font: magic `0x36 0x04`, 256 slots of `charsize` bytes, 8 px per row; a glyph wider than 8 px is an explicit error |
 | **ASCII art** | read + write | `mini8.ascii`: one block per glyph (`@ enc name w h` then `#`/`.` rows). The `check` re-reads it with `TextLoad` and compares every glyph with the model |
+| **Sixel** | read + write | `mini8.six`: DEC stream (`ESC P q "1;1;w;h`, then per band `#0` + one character per column, `-` between bands, closed by `ESC \\`). The `check` decodes it with `SixelLoad` and compares the glyph with the model |
 | **PBM** (P1 ASCII) | write | `P1` bitmap, one glyph per block, same layout as the BMP sheet |
 | **C header** | write | `static const unsigned char glyph_<code>[]` + metrics, ready to be `#include`d |
 
@@ -140,6 +141,7 @@ found regardless of the working directory of the runner.
 | `mini8.psf` | PSF2 console font |
 | `mini8.psf1` | PSF1 console font (`4 + 256 * charsize` bytes) |
 | `mini8.ascii` | ASCII art of every glyph, re-read by the `check` |
+| `mini8.six` | sixel preview of the glyph `A`, re-read by the `check` |
 | `from_text.bdf` | BDF rebuilt from an ASCII art bitmap (`textin` mode) |
 | `tui.bdf` | model as left by the TUI session (`tui` mode) |
 | `mini8.h` | C header with the bitmaps |
