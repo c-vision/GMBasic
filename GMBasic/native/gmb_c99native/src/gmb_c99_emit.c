@@ -4520,6 +4520,36 @@ static int fn_str_mask_of(fn_info_t* ff) {
     return msk;
 }
 
+static void stmt_ret_chain(gmb_stmt_t* st, int* n, int* arity, int* mask, int* str);
+static void var_apply_fn_signature(var_t* v, gmb_stmt_t* st, int own_arity,
+                                   int own_mask, int is_returned_block);
+
+/* `DIM v = EVAL(<block>, args…)` / `v = EVAL(<block>, args…)`: se il block target
+ * RITORNA un altro block (λ dentro λ, firma registrata su ret_fn) allora v è a sua
+ * volta un valore funzione con QUELla firma (senza, `eval(two, 5)` su v falliva con
+ * "EVAL su un target dinamico"). */
+static void prop_eval_ret_fn(ctx_t* c, var_t* v, gmb_expr_t* value, vars_t* scope, int* changed)
+{
+    if (!v || v->gkind || !value || value->kind != GMB_EXPR_CALL || !value->var
+        || strcmp(value->var, "_macro_") != 0 || value->nargs < 1 || !value->args[0]) return;
+    gmb_expr_t* t = value->args[0];
+    if (t->kind != GMB_EXPR_VAR || !t->var) return;
+    var_t* tv = vars_find(scope, t->var);
+    if (!tv) tv = vars_find(&c->globals, t->var);
+    if (!tv || tv->gkind != GK_FUNCVAL || tv->fn_ret_n < 1) return;
+    v->gkind = GK_FUNCVAL;
+    v->func_arity = tv->fn_ret_arity[0];
+    v->fn_str_params = tv->fn_ret_mask[0];
+    v->func_ret_str = (tv->fn_ret_n == 1) ? tv->fn_ret_str : 0;
+    v->fn_ret_n = tv->fn_ret_n - 1;
+    for (int i = 0; i < v->fn_ret_n; i++) {
+        v->fn_ret_arity[i] = tv->fn_ret_arity[i + 1];
+        v->fn_ret_mask[i] = tv->fn_ret_mask[i + 1];
+    }
+    v->fn_ret_str = tv->fn_ret_str;
+    *changed = 1;
+}
+
 static int prop_let_assign(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
     int changed = 0;
 {
@@ -4562,9 +4592,8 @@ static int prop_let_assign(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
                      * `AS FUNCTION(params) AS <ret>`): senza, arity 0 → EVAL(b, args)
                      * falliva con "numero argomenti errato" (DIM b = Mk() inferito). */
                     v->gkind = GK_FUNCVAL;
-                    v->func_arity = f->stmt->func_val_arity;
                     v->func_ret_str = f->stmt->func_val_ret_is_str;
-                    v->fn_str_params = f->stmt->func_val_str_mask;
+                    var_apply_fn_signature(v, f->stmt, 0, 0, 1);
                     changed = 1;
                 }
                 if (f && f->stmt->is_generator) {
@@ -4577,12 +4606,13 @@ static int prop_let_assign(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
                 fn_info_t* ff = find_fn(c, s->value->var);
                 if (ff) {
                     v->gkind = GK_FUNCVAL;
-                    v->func_arity = ff->n_params;
                     v->func_ret_str = fn_ret_is_str(ff);
-                    v->fn_str_params = fn_str_mask_of(ff);
+                    var_apply_fn_signature(v, ff->stmt, ff->n_params,
+                                           fn_str_mask_of(ff), 0);
                     changed = 1;
                 }
             }
+            if (v) prop_eval_ret_fn(c, v, s->value, scope, &changed);
         }
         return changed;
     }
@@ -4604,9 +4634,8 @@ static int prop_dim(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
                      * `AS FUNCTION(params) AS <ret>`): senza, arity 0 → EVAL(b, args)
                      * falliva con "numero argomenti errato" (DIM b = Mk() inferito). */
                     v->gkind = GK_FUNCVAL;
-                    v->func_arity = f->stmt->func_val_arity;
                     v->func_ret_str = f->stmt->func_val_ret_is_str;
-                    v->fn_str_params = f->stmt->func_val_str_mask;
+                    var_apply_fn_signature(v, f->stmt, 0, 0, 1);
                     changed = 1;
                 }
                 if (f && f->stmt->is_generator) {
@@ -4647,12 +4676,13 @@ static int prop_dim(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
                 fn_info_t* ff = find_fn(c, s->dim_init->var);
                 if (ff) {
                     v->gkind = GK_FUNCVAL;
-                    v->func_arity = ff->n_params;
                     v->func_ret_str = fn_ret_is_str(ff);
-                    v->fn_str_params = fn_str_mask_of(ff);
+                    var_apply_fn_signature(v, ff->stmt, ff->n_params,
+                                           fn_str_mask_of(ff), 0);
                     changed = 1;
                 }
             }
+            if (v) prop_eval_ret_fn(c, v, s->dim_init, scope, &changed);
         }
         return changed;
     }
@@ -5045,7 +5075,12 @@ static int emit_eval_fn_call(ctx_t* c, gmb_expr_t** args, int nargs, int line) {
         if (eval_check_arg_types(c, args, nargs, smask, line)) return 1;
         sb_put(&c->out, "({ gmb_fn_t __ev = ");
         emit_expr(c, tgt);
-        sb_printf(&c->out, "; ((%s (*)(void*", fn_ret_is_str(lf) ? "gmb_string_t" : "gmb_double_t");
+        sb_printf(&c->out, "; ((%s (*)(void*",
+                  (lf->stmt->fn_ret_n > 0
+                       ? "gmb_fn_t"
+                       : ((lf->stmt->fn_ret_n == 0 && fn_ret_is_func(lf))
+                              ? "gmb_fn_t"
+                              : (fn_ret_is_str(lf) ? "gmb_string_t" : "gmb_double_t"))));
         for (int i = 0; i < lf->stmt->n_params; i++)
             sb_put(&c->out, (smask & (1 << i)) ? ", gmb_string_t" : ", gmb_double_t");
         sb_put(&c->out, "))__ev.fn)(__ev.ctx");
@@ -5065,7 +5100,9 @@ static int emit_eval_fn_call(ctx_t* c, gmb_expr_t** args, int nargs, int line) {
         return 1;
     }
     if (eval_check_arg_types(c, args, nargs, fv->fn_str_params, line)) return 1;
-    sb_printf(&c->out, "((%s (*)(void*", fv->func_ret_str ? "gmb_string_t" : "gmb_double_t");
+    sb_printf(&c->out, "((%s (*)(void*",
+              fv->fn_ret_n > 0 ? "gmb_fn_t"
+                               : (fv->fn_ret_str ? "gmb_string_t" : "gmb_double_t"));
     for (int i = 0; i < fv->func_arity; i++)
         sb_put(&c->out, (fv->fn_str_params & (1 << i)) ? ", gmb_string_t" : ", gmb_double_t");
     sb_put(&c->out, "))");
@@ -5081,6 +5118,28 @@ static int emit_eval_fn_call(ctx_t* c, gmb_expr_t** args, int nargs, int line) {
     }
     sb_put(&c->out, ")");
     return 1;
+}
+
+/* EVAL(EVAL(…, a), b) — catena di EVAL: ogni livello intermedio è un VALORE BLOCK
+ * (gmb_fn_t), l'ultimo è scalare. Il tipo del valore finale è quello dell'espressione
+ * complessiva (`want_str`). Ogni livello invoca per indirezione con la firma dei soli
+ * argomenti presenti (ABI lambda: double, oppure gmb_string_t per gli argomenti stringa). */
+static void emit_eval_chain(ctx_t* c, gmb_expr_t* e, int want_fn, int want_str) {
+    gmb_expr_t* tgt = (e && e->nargs >= 1) ? e->args[0] : NULL;
+    int tgt_ev = tgt && tgt->kind == GMB_EXPR_CALL && tgt->var
+                 && strcmp(tgt->var, "_macro_") == 0;
+    sb_put(&c->out, "({ gmb_fn_t __ev = ");
+    /* il valore del livello INTERNO è il target di questa chiamata → deve essere un
+     * block (gmb_fn_t), indipendentemente da cosa deve produrre questo livello. */
+    if (tgt_ev) emit_eval_chain(c, tgt, 1, 0);
+    else emit_expr(c, tgt);
+    const char* rt = want_fn ? "gmb_fn_t" : (want_str ? "gmb_string_t" : "gmb_double_t");
+    sb_printf(&c->out, "; ((%s (*)(void*", rt);
+    for (int i = 1; i < e->nargs; i++)
+        sb_put(&c->out, etype(c, e->args[i]) == TY_STR ? ", gmb_string_t" : ", gmb_double_t");
+    sb_put(&c->out, "))__ev.fn)(__ev.ctx");
+    for (int i = 1; i < e->nargs; i++) { sb_put(&c->out, ", "); emit_expr(c, e->args[i]); }
+    sb_put(&c->out, "); })");
 }
 
 /* FASE 2.6(f): tipo di ritorno delle funzioni utente — il parser cattura la clausola
@@ -14812,6 +14871,12 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
          * EVAL(bBlock [, args...]) con un VALORE FUNZIONE: invocazione del block (Clipper). */
         if (e->var && strcmp(e->var, "_macro_") == 0) {
             if (emit_eval_fn_call(c, e->args, e->nargs, e->line)) break;
+            /* EVAL(EVAL(…), args…): target = valore block prodotto da un altro EVAL. */
+            if (e->nargs >= 2 && e->args[0] && e->args[0]->kind == GMB_EXPR_CALL
+                && e->args[0]->var && strcmp(e->args[0]->var, "_macro_") == 0) {
+                emit_eval_chain(c, e, 0, etype(c, e) == TY_STR);
+                break;
+            }
             if (e->nargs == 1) {
                 sb_put(&c->out, "gmb_val_to_double(");
                 emit_macro_eval(c, e->args[0], e->line);
@@ -17190,7 +17255,13 @@ static int is_json_path_member(ctx_t* c, gmb_expr_t* e, var_t** out_bv, const ch
               * stringa stampava 0. */
              if (s->print_args[i] && s->print_args[i]->kind == GMB_EXPR_CALL
                  && s->print_args[i]->var && strcmp(s->print_args[i]->var, "_macro_") == 0
-                 && !(s->print_args[i]->nargs >= 1 && gmb_expr_is_fn_value(c, s->print_args[i]->args[0]))) {
+                 && !(s->print_args[i]->nargs >= 1 && s->print_args[i]->args[0]
+                      && (gmb_expr_is_fn_value(c, s->print_args[i]->args[0])
+                          /* EVAL(EVAL(…), args…): catena di EVAL → percorso emit_expr
+                           * (emit_eval_chain), non il macro-eval di stringa. */
+                          || (s->print_args[i]->args[0]->kind == GMB_EXPR_CALL
+                              && s->print_args[i]->args[0]->var
+                              && strcmp(s->print_args[i]->args[0]->var, "_macro_") == 0)))) {
                  /* Target dinamico CON argomenti (EVAL(<var macro dinamica>, args)): errore
                   * ESPLICITO uniforme (parity col Linker C#) — prima gli argomenti extra
                   * erano ignorati e si stampava il macro-eval del target (0). */
@@ -31518,8 +31589,104 @@ static int lambda_name_is_dbf_field(ctx_t* c, fn_info_t* host, const char* nm) {
     return 1;
 }
 
+/* Indice del GENITORE di una funzione/λ: `parent` può non essere ancora risolto
+ * durante il prepass (le λ sintetiche lo fissano dopo, con repair_parents) → si usa
+ * `parent_i` come fallback. Sempre per INDICE: c->fns può essere riallocato. */
+static int fn_parent_index(ctx_t* c, fn_info_t* f) {
+    if (f->parent)
+        for (int i = 0; i < c->nfn; i++) if (&c->fns[i] == f->parent) return i;
+    if (f->parent_i >= 0 && f->parent_i < c->nfn) return f->parent_i;
+    return -1;
+}
+
+/* Firma della CATENA di block ritornati da una λ (lambda dentro lambda):
+ * n = numero di livelli di block, arity/mask = firma del block al livello i,
+ * str = tipo del valore FINALE. Va chiamata PRIMA del lowering delle λ interne. */
+static void lambda_ret_chain(ctx_t* c, gmb_expr_t* lam,
+                             int* n, int* arity, int* mask, int* str)
+{
+    *n = 0; *str = 0;
+    if (!lam) return;
+    lambda_infer_param_types(c, lam);
+    gmb_expr_t* rv = NULL;
+    if (lam->lambda_expr) rv = lam->lambda_expr;
+    else for (int i = lam->n_lambda_body - 1; i >= 0 && !rv; i--) {
+        gmb_stmt_t* bs = lam->lambda_body ? lam->lambda_body[i] : NULL;
+        if (bs && bs->kind == GMB_STMT_RETURN) rv = bs->ret_value;
+    }
+    if (!rv || rv->kind != GMB_EXPR_LAMBDA) { *str = lam->lambda_ret_str; return; }
+    lambda_infer_param_types(c, rv);
+    arity[0] = rv->n_lambda_params;
+    mask[0] = 0;
+    for (int i = 0; i < rv->n_lambda_params; i++)
+        if (rv->lambda_params_str && rv->lambda_params_str[i]) mask[0] |= (1 << i);
+    int sn = 0, sa[8] = {0}, sm[8] = {0}, ss = 0;
+    lambda_ret_chain(c, rv, &sn, sa, sm, &ss);
+    if (sn > 7) sn = 7;
+    for (int i = 0; i < sn; i++) { arity[1 + i] = sa[i]; mask[1 + i] = sm[i]; }
+    *n = 1 + sn;
+    *str = ss;
+}
+
+/* Firma della catena di block ritornati da una PROCEDURA dichiarata:
+ * il parser popola func_val_* per il PRIMO block; fn_ret_* (lambda_synth) per la catena. */
+static void stmt_ret_chain(gmb_stmt_t* st, int* n, int* arity, int* mask, int* str)
+{
+    *n = 0; *str = 0;
+    if (!st) return;
+    if (st->fn_ret_n > 0) {
+        *n = st->fn_ret_n > 7 ? 7 : st->fn_ret_n;
+        for (int i = 0; i < *n; i++) { arity[i] = st->fn_ret_arity[i]; mask[i] = st->fn_ret_mask[i]; }
+        *str = st->fn_ret_str;
+        return;
+    }
+    if (st->func_ret_type && gmb_keyword_tok(st->func_ret_type) == GMB_TOK_Function) {
+        *n = 1;
+        arity[0] = st->func_val_arity;
+        mask[0] = st->func_val_str_mask;
+        *str = st->func_val_ret_is_str;
+    } else if (st->func_val_arity > 0) {
+        *n = 1;
+        arity[0] = st->func_val_arity;
+        mask[0] = st->func_val_str_mask;
+        *str = st->func_val_ret_is_str;
+    } else {
+        /* nessun block ritornato: tipo del valore scalare (STRINGA vs numerico) */
+        *str = (st->func_ret_type && gmb_keyword_tok(st->func_ret_type) == GMB_TOK_StringType) ? 1 : 0;
+    }
+}
+
+/* Applica la firma di un valore funzione (block) alla variabile `v`.
+ * `is_returned_block` = 1 quando v riceve il block RITORNATO dalla funzione `st`
+ * (DIM v = F()): il livello 0 della catena è la firma del block stesso;
+ * = 0 quando v È la funzione/λ `st` (DIM v = {…} / DIM v = <λ>). */
+static void var_apply_fn_signature(var_t* v, gmb_stmt_t* st, int own_arity,
+                                   int own_mask, int is_returned_block)
+{
+    int n = 0, ar[8] = {0}, mk[8] = {0}, str = 0;
+    stmt_ret_chain(st, &n, ar, mk, &str);
+    if (is_returned_block) {
+        if (n == 0) return;                       /* la funzione non ritorna un block */
+        v->func_arity = ar[0];
+        v->fn_str_params = mk[0];
+        v->fn_ret_n = n - 1;
+        for (int i = 0; i < v->fn_ret_n; i++) { v->fn_ret_arity[i] = ar[1 + i]; v->fn_ret_mask[i] = mk[1 + i]; }
+        v->fn_ret_str = str;
+    } else {
+        v->func_arity = own_arity;
+        v->fn_str_params = own_mask;
+        v->fn_ret_n = n > 7 ? 7 : n;
+        for (int i = 0; i < v->fn_ret_n; i++) { v->fn_ret_arity[i] = ar[i]; v->fn_ret_mask[i] = mk[i]; }
+        v->fn_ret_str = str;
+    }
+}
+
 static void lambda_synth(ctx_t* c, gmb_expr_t* e) {
     lambda_infer_param_types(c, e);
+    /* CATENA dei block ritornati (lambda dentro lambda): calcolata PRIMA che il corpo
+     * venga trasferito alla funzione sintetica (dopo non e' piu' raggiungibile). */
+    int ret_n = 0, ret_arity[8] = {0}, ret_mask[8] = {0}, ret_str = 0;
+    lambda_ret_chain(c, e, &ret_n, &ret_arity[0], &ret_mask[0], &ret_str);
     /* funzione che contiene la λ (per le catture): salvata anche per INDICE, perché
      * add_fn_info (più sotto, per la λ sintetica) rialloca c->fns → un puntatore
      * diventerebbe pendente (use-after-free, ASan 2026-09-10). */
@@ -31577,7 +31744,12 @@ static void lambda_synth(ctx_t* c, gmb_expr_t* e) {
             break;
         }
         var_t* sv = NULL;
-        for (fn_info_t* h = host; h; h = h->parent) { sv = vars_find(&h->locals, nm); if (sv) break; }
+        int owner_i = -1;
+        for (int hi = host_i; hi >= 0 && hi < c->nfn; ) {
+            sv = vars_find(&c->fns[hi].locals, nm);
+            if (sv) { owner_i = hi; break; }
+            hi = fn_parent_index(c, &c->fns[hi]);
+        }
         if (!sv) {
             /* Clipper late-binding: identico al caso top-level — campo DBF risolto a runtime,
              * nessuna cattura (es. lambda dentro una SUB che legge un campo dell'area corrente). */
@@ -31590,6 +31762,31 @@ static void lambda_synth(ctx_t* c, gmb_expr_t* e) {
             c99_fail(c, e->line, "lambda: cattura della variabile '%s' (tipo composito) non "
                      "supportata dall'emitter nativo", nm);
             break;
+        }
+        /* PROPAGAZIONE TRANSITIVA (λ dentro λ / funzione dentro λ): ogni livello
+         * intermedio fra la λ corrente e il PROPRIETARIO della variabile deve catturarla
+         * per conto proprio — senza, il sito di creazione della λ interna non ha il nome
+         * in scope (`__ctx->k` non esiste) e la catena si rompe. Una λ intermedia diventa
+         * is_lambda_cap (ctx __lctx_); una funzione annidata incrementa n_cap (ctx
+         * __cctx_ con la struct __clo_). Il flag di mutazione (cap_ref) viaggia con la
+         * cattura. */
+        if (owner_i >= 0 && owner_i != host_i) {
+            for (int hi = host_i; hi >= 0 && hi < c->nfn && hi != owner_i; ) {
+                fn_info_t* h = &c->fns[hi];
+                int next = fn_parent_index(c, h);
+                if (vars_find(&h->locals, nm)) { hi = next; continue; }
+                var_t* tv = vars_add(&h->locals, nm, sv->type);
+                tv->captured = 1;
+                tv->cap_ref = nl_has(&mut, nm) ? 1 : 0;
+                snprintf(tv->vclass, sizeof(tv->vclass), "%s", sv->vclass);
+                tv->gkind = sv->gkind;
+                tv->func_arity = sv->func_arity;
+                tv->func_ret_str = sv->func_ret_str;
+                tv->fn_str_params = sv->fn_str_params;
+                if (h->is_lambda || h->is_lambda_cap) h->is_lambda_cap = 1;
+                else h->n_cap++;
+                hi = next;
+            }
         }
         nl_add(&caps, nm);
     }
@@ -31613,6 +31810,22 @@ static void lambda_synth(ctx_t* c, gmb_expr_t* e) {
             fn->func_body = e->lambda_body;                 /* trasferimento */
             fn->n_funcbody = e->n_lambda_body;
             e->lambda_body = NULL;
+        }
+        /* λ che RITORNA una λ (`{ |x| RETURN { |y| ... } }`): clausola di ritorno
+         * FUNCTION(...) + CATENA dei block ritornati. Senza, la funzione sintetica
+         * ritornava gmb_double_t e il valore-block andava perso. */
+        if (ret_n > 0) {
+            free(fn->func_ret_type);
+            fn->func_ret_type = strdup("FUNCTION");
+            fn->func_val_arity = ret_arity[0];
+            fn->func_val_str_mask = ret_mask[0];
+            fn->func_val_ret_is_str = (ret_n == 1) ? ret_str : 0;
+            fn->fn_ret_n = ret_n > 7 ? 7 : ret_n;
+            for (int qi = 0; qi < fn->fn_ret_n; qi++) {
+                fn->fn_ret_arity[qi] = ret_arity[qi];
+                fn->fn_ret_mask[qi] = ret_mask[qi];
+            }
+            fn->fn_ret_str = ret_str;
         }
         add_fn_info(c, fn, NULL);
         host = fn_at(c, host_i);   /* ri-risolto: fns_reserve può aver spostato l'array */
@@ -31726,13 +31939,23 @@ static void lambda_synth(ctx_t* c, gmb_expr_t* e) {
 static void lambda_prepass_expr(ctx_t* c, gmb_expr_t* e) {
     if (!e) return;
     if (e->kind == GMB_EXPR_LAMBDA) {
-        /* Prima le λ ANNIDATE nel corpo (il synth riscrive il nodo in place): così anche
-         * le inner hanno prototipo/definizione (bug EVAL annidato: la λ interna restava
-         * non loweringata → "use of undeclared identifier gmb_user___lambda_N"). */
-        if (e->lambda_expr) lambda_prepass_expr(c, e->lambda_expr);
-        for (int i = 0; i < e->n_lambda_body; i++)
-            if (e->lambda_body && e->lambda_body[i]) lambda_prepass_stmt(c, e->lambda_body[i]);
+        /* PRIMA la λ esterna (il synth trasferisce il corpo nella funzione sintetica),
+         * POI le λ del suo corpo con `cur_fn` = la λ sintetica: le catture delle λ
+         * ANNIDATE si risolvono contro i locali della λ che le contiene (parametri e
+         * catture), con propagazione transitiva su tutta la catena. L'ordine inverso
+         * (inner-first) lasciava `host` = funzione esterna → "cattura della variabile
+         * locale 'x' non risolta" per ogni λ dentro una λ. */
         lambda_synth(c, e);
+        if (c->error[0]) return;
+        if (e->kind == GMB_EXPR_VAR && e->var) {
+            fn_info_t* self = find_fn(c, e->var);
+            if (self && self->stmt) {
+                int prv_i = fn_index(c, c->cur_fn);
+                c->cur_fn = self;
+                lambda_prepass_list(c, self->stmt->func_body, self->stmt->n_funcbody);
+                c->cur_fn = fn_at(c, prv_i);
+            }
+        }
         return;
     }
     /* EVAL({ |p| ... }, args): inferisci i tipi dei parametri dagli ARGOMENTI del

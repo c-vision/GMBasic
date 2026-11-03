@@ -42,6 +42,15 @@ typedef struct { char* name; int type; int is_array; int ndims; int byref; int g
                  int func_arity;    /* GK_FUNCVAL: numero di parametri della firma (DIM v AS FUNCTION(...)) */
                  int func_ret_str;  /* GK_FUNCVAL: 1 = la firma dichiara ritorno STRING (altrimenti numerico) */
                  int fn_str_params; /* GK_FUNCVAL: bit i = 1 se il parametro i della firma è AS STRING */
+                 /* CATENA di block RITORNATI dal valore funzione in questa variabile (lambda
+                  * dentro lambda, profondità arbitraria): fn_ret_n = 0 → il block ritorna un
+                  * valore scalare (fn_ret_str dice se stringa); fn_ret_n = k > 0 → ritorna un
+                  * block, con firma fn_ret_arity[i]/fn_ret_mask[i] al livello i e valore
+                  * finale fn_ret_str. Serve a tipizzare `EVAL(v, args)` / `EVAL(EVAL(…))`. */
+                 int fn_ret_n;
+                 int fn_ret_arity[8];
+                 int fn_ret_mask[8];
+                 int fn_ret_str;
                  char gen_id[40];   /* GK_GEN: nome del generatore → tipo gmb_gen_<id>_t */
                  char dim_expr[24]; /* nome della variabile-bound del primo DIM (__dim<id>_0): serve
                                      * a chi deve conoscere la DIMENSIONE a runtime (es. APPENDMANY) */
