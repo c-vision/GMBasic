@@ -376,6 +376,85 @@ static int dc_typesafe_run(const char* state, const char* kind,
     return 1;
 }
 
+/* Risolve il dominio del kind in una struttura STABILE (label/custom inclusi). Una sola
+ * grammatica per dispatcher, group e provider locale; `d` deve vivere quanto il dominio. */
+int gmb_decision_resolve_domain(const char* kind, gmb_decision_domain_t* d) {
+    if (!kind || !d) return -1;
+    d->kind = GMB_DECISION_CHOICE;
+    d->options = NULL;
+    d->n_options = 0;
+    d->labelbuf[0] = 0;
+    for (int i = 0; i < 11; i++) d->score_labels[i][0] = 0;
+    memset(d->custom, 0, sizeof d->custom);
+
+    /* CHOICE:<label1>|<label2>|... — dominio libero mappato agli slot stabili A..P. */
+    if (strncasecmp(kind, "CHOICE:", 7) == 0) {
+        size_t len = strlen(kind + 7);
+        if (len == 0 || len >= sizeof(d->labelbuf)) return -1;
+        memcpy(d->labelbuf, kind + 7, len + 1);
+        char* p = d->labelbuf;
+        int n = 0;
+        while (*p && n < GMB_DECISION_MAX_OPTIONS) {
+            char* sep = strchr(p, '|');
+            if (sep) *sep = 0;
+            while (*p == ' ' || *p == '\t') p++;
+            char* end = p + strlen(p);
+            while (end > p && (end[-1] == ' ' || end[-1] == '\t')) *--end = 0;
+            if (*p) {
+                d->custom[n].id = gmb_decision_slots_choice[n].id;
+                d->custom[n].label = p;
+                d->custom[n].token_id = -1;
+                d->custom[n].bias = 0.0f;
+                d->custom[n].temperature = 1.0f;
+                n++;
+            }
+            if (!sep) break;
+            p = sep + 1;
+        }
+        if (n == 0) return -1;
+        d->options = d->custom;
+        d->n_options = n;
+        d->kind = GMB_DECISION_CHOICE;
+        return 0;
+    }
+    if (ieq(kind, "NOUL")) {
+        d->kind = GMB_DECISION_NOUL;
+        d->options = gmb_decision_slots_noul;
+        d->n_options = 2;
+        return 0;
+    }
+    if (strncasecmp(kind, "SCORE:", 6) == 0) {
+        /* SCORE:0:10 — rubrica linguistica (11 livelli); SCORE:0:5 = canonica. */
+        int lo = -1, hi = -1;
+        if (sscanf(kind + 6, "%d:%d", &lo, &hi) != 2 || lo != 0 || (hi != 5 && hi != 10)) return -1;
+        for (int i = 0; i <= hi; i++) {
+            snprintf(d->score_labels[i], sizeof d->score_labels[i], "%d", i);
+            d->custom[i].id = d->score_labels[i];
+            d->custom[i].label = d->score_labels[i];
+            d->custom[i].token_id = -1;
+            d->custom[i].bias = 0.0f;
+            d->custom[i].temperature = 1.0f;
+        }
+        d->kind = GMB_DECISION_SCORE;
+        d->options = d->custom;
+        d->n_options = hi + 1;
+        return 0;
+    }
+    if (ieq(kind, "SCORE")) {
+        d->kind = GMB_DECISION_SCORE;
+        d->options = gmb_decision_slots_score;
+        d->n_options = 6;
+        return 0;
+    }
+    if (ieq(kind, "CHOICE")) {
+        d->kind = GMB_DECISION_CHOICE;
+        d->options = gmb_decision_slots_choice;
+        d->n_options = 16;
+        return 0;
+    }
+    return -1;
+}
+
 char* gmb_ai_decide_run_json(const char* state, const char* kind, const char* provider_name) {
     if (!kind) return NULL;
     /* Provider esplicito assente → ruolo %DECIDE attivo, se registrato/attivato. */
@@ -384,64 +463,11 @@ char* gmb_ai_decide_run_json(const char* state, const char* kind, const char* pr
         const char* decide_kind = gmb_provider_active_kind("decide");
         if (decide_kind && *decide_kind) effective_provider = decide_kind;
     }
-    const gmb_decision_option_t* options = NULL;
-    int n_options = 0;
-    gmb_decision_kind_t k;
-    /* CHOICE:<label1>|<label2>|... — dominio libero mappato agli slot stabili A..P.
-     * Le label puntano a `labelbuf` (vita della funzione). */
-    char labelbuf[512];
-    char score_labels[11][4];   /* "0".."10" per la rubrica SCORE:lo:hi */
-    gmb_decision_option_t custom[GMB_DECISION_MAX_OPTIONS];
-    int is_choice_custom = 0;
-    if (strncasecmp(kind, "CHOICE:", 7) == 0) {
-        size_t len = strlen(kind + 7);
-        if (len == 0 || len >= sizeof(labelbuf)) return NULL;
-        memcpy(labelbuf, kind + 7, len + 1);
-        char* p = labelbuf;
-        while (*p && n_options < GMB_DECISION_MAX_OPTIONS) {
-            char* sep = strchr(p, '|');
-            if (sep) *sep = 0;
-            /* salta spazi iniziali/finali */
-            while (*p == ' ' || *p == '\t') p++;
-            char* end = p + strlen(p);
-            while (end > p && (end[-1] == ' ' || end[-1] == '\t')) *--end = 0;
-            if (*p) {
-                custom[n_options].id = gmb_decision_slots_choice[n_options].id;
-                custom[n_options].label = p;
-                custom[n_options].token_id = -1;
-                custom[n_options].bias = 0.0f;
-                custom[n_options].temperature = 1.0f;
-                n_options++;
-            }
-            if (!sep) break;
-            p = sep + 1;
-        }
-        if (n_options == 0) return NULL;
-        options = custom;
-        k = GMB_DECISION_CHOICE;
-        is_choice_custom = 1;
-    }
-    else if (ieq(kind, "NOUL")) { k = GMB_DECISION_NOUL; options = gmb_decision_slots_noul; n_options = 2; }
-    else if (strncasecmp(kind, "SCORE:", 6) == 0) {
-        /* SCORE:0:10 — rubrica linguistica (11 livelli); SCORE:0:5 = canonica. */
-        int lo = -1, hi = -1;
-        if (sscanf(kind + 6, "%d:%d", &lo, &hi) != 2 || lo != 0 || (hi != 5 && hi != 10)) return NULL;
-        for (int i = 0; i <= hi; i++) {
-            snprintf(score_labels[i], sizeof score_labels[i], "%d", i);
-            custom[i].id = score_labels[i];
-            custom[i].label = score_labels[i];
-            custom[i].token_id = -1;
-            custom[i].bias = 0.0f;
-            custom[i].temperature = 1.0f;
-        }
-        k = GMB_DECISION_SCORE;
-        options = custom;
-        n_options = hi + 1;
-    }
-    else if (ieq(kind, "SCORE")) { k = GMB_DECISION_SCORE; options = gmb_decision_slots_score; n_options = 6; }
-    else if (ieq(kind, "CHOICE")) { k = GMB_DECISION_CHOICE; options = gmb_decision_slots_choice; n_options = 16; }
-    else return NULL;
-    (void)is_choice_custom;
+    gmb_decision_domain_t dom;
+    if (gmb_decision_resolve_domain(kind, &dom) != 0) return NULL;
+    const gmb_decision_option_t* options = dom.options;
+    int n_options = dom.n_options;
+    gmb_decision_kind_t k = dom.kind;
 
     /* Provider REMOTO TypeSafe (JEV). */
     if (effective_provider && ieq(effective_provider, "typesafe")) {
@@ -618,30 +644,90 @@ char* gmb_ai_decide_group_json(const char* state, const char* names_json, const 
         const char* e = "{\"error\":\"AiDecideGroup: names/kinds disallineati\"}";
         return strdup(e);
     }
-    char* out = NULL; size_t cap = 0, off = 0;
-    if (!dc_sb_add(&out, &cap, &off, "{", 1)) return NULL;
-    char numbuf[64];
+
+    gmb_string_t* names = (gmb_string_t*)calloc((size_t)n, sizeof(gmb_string_t));
+    gmb_string_t* kinds = (gmb_string_t*)calloc((size_t)n, sizeof(gmb_string_t));
+    if (!names || !kinds) { free(names); free(kinds); return NULL; }
     for (int i = 0; i < n; i++) {
-        gmb_string_t ns = gmb_val_to_string(gmb_list_get(nl, i));
-        gmb_string_t ks = gmb_val_to_string(gmb_list_get(kl, i));
-        if (i > 0 && !dc_sb_add(&out, &cap, &off, ",", 1)) { gmb_string_free(&ns); gmb_string_free(&ks); free(out); return NULL; }
-        if (!dc_sb_add(&out, &cap, &off, "\"", 1)) { gmb_string_free(&ns); gmb_string_free(&ks); free(out); return NULL; }
+        names[i] = gmb_val_to_string(gmb_list_get(nl, i));
+        kinds[i] = gmb_val_to_string(gmb_list_get(kl, i));
+    }
+
+    /* FUSIONE C: con provider locale e nessuna catena di fallback, risolve TUTTI i domini e
+     * delega a `gmb_ai_decide_local_run_group`, che condivide il prefill del prefisso comune
+     * (stessa semantica del percorso managed). Se la dylib AI non espone l'entry point, si
+     * ricade sul loop sequenziale qui sotto (stessa semantica, nessun errore mascherato). */
+    const char* eff = provider;
+    if (!eff || !*eff) {
+        const char* dk = gmb_provider_active_kind("decide");
+        if (dk && *dk) eff = dk;
+    }
+    const char* group_off = getenv("GMB_DECIDE_GROUP_OFF");
+    int allow_group = !(group_off && *group_off && strcmp(group_off, "0") != 0);
+    if (allow_group && (!fallback || !*fallback) && eff && ieq(eff, "local") && n <= 32) {
+        gmb_decision_domain_t* doms = (gmb_decision_domain_t*)calloc((size_t)n, sizeof(*doms));
+        gmb_decision_result_t* res = (gmb_decision_result_t*)calloc((size_t)n, sizeof(*res));
+        int okall = doms && res;
+        for (int i = 0; i < n && okall; i++)
+            if (gmb_decision_resolve_domain(kinds[i].data ? kinds[i].data : "", &doms[i]) != 0)
+                okall = 0;
+        if (okall) {
+            char gerr[GMB_DECISION_ERR_CAP] = "";
+            if (gmb_ai_decide_local_run_group(state ? state : "", doms, n, res,
+                                              gerr, sizeof gerr) == 1) {
+                char* out = NULL; size_t cap = 0, off = 0;
+                int good = dc_sb_add(&out, &cap, &off, "{", 1);
+                for (int i = 0; i < n && good; i++) {
+                    char buf[1024];
+                    if (gmb_decision_result_json(&res[i], buf, sizeof buf) < 0) { good = 0; break; }
+                    char esc[2048];
+                    json_escape(names[i].data ? names[i].data : "", esc, sizeof esc);
+                    good = (i == 0 || dc_sb_add(&out, &cap, &off, ",", 1))
+                        && dc_sb_add(&out, &cap, &off, "\"", 1)
+                        && dc_sb_add(&out, &cap, &off, esc, strlen(esc))
+                        && dc_sb_add(&out, &cap, &off, "\":\"", 3);
+                    if (good) {
+                        json_escape(buf, esc, sizeof esc);
+                        good = dc_sb_add(&out, &cap, &off, esc, strlen(esc))
+                            && dc_sb_add(&out, &cap, &off, "\"", 1);
+                    }
+                }
+                if (good && dc_sb_add(&out, &cap, &off, "}", 1)) {
+                    free(doms); free(res);
+                    for (int i = 0; i < n; i++) { gmb_string_free(&names[i]); gmb_string_free(&kinds[i]); }
+                    free(names); free(kinds);
+                    return out;
+                }
+                free(out);
+            }
+        }
+        free(doms); free(res);
+    }
+
+    /* Percorso sequenziale (provider non locale, fallback esplicito o group non disponibile). */
+    char* out = NULL; size_t cap = 0, off = 0;
+    if (!dc_sb_add(&out, &cap, &off, "{", 1)) { free(names); free(kinds); return NULL; }
+    for (int i = 0; i < n; i++) {
         char esc[2048];
-        json_escape(ns.data ? ns.data : "", esc, sizeof esc);
+        if (i > 0 && !dc_sb_add(&out, &cap, &off, ",", 1)) { free(out); return NULL; }
+        if (!dc_sb_add(&out, &cap, &off, "\"", 1)) { free(out); return NULL; }
+        json_escape(names[i].data ? names[i].data : "", esc, sizeof esc);
         if (!dc_sb_add(&out, &cap, &off, esc, strlen(esc)) ||
-            !dc_sb_add(&out, &cap, &off, "\":\"", 3)) { gmb_string_free(&ns); gmb_string_free(&ks); free(out); return NULL; }
+            !dc_sb_add(&out, &cap, &off, "\":\"", 3)) { free(out); return NULL; }
         char* r = (fallback && *fallback)
-            ? gmb_ai_decide_run_json_chain(state ? state : "", ks.data ? ks.data : "", provider ? provider : "", fallback)
-            : gmb_ai_decide_run_json(state ? state : "", ks.data ? ks.data : "", provider ? provider : "");
+            ? gmb_ai_decide_run_json_chain(state ? state : "", kinds[i].data ? kinds[i].data : "",
+                                           provider ? provider : "", fallback)
+            : gmb_ai_decide_run_json(state ? state : "", kinds[i].data ? kinds[i].data : "",
+                                     provider ? provider : "");
         if (!r) r = strdup("{\"error\":\"decisione fallita\"}");
         json_escape(r, esc, sizeof esc);
         if (!dc_sb_add(&out, &cap, &off, esc, strlen(esc)) ||
-            !dc_sb_add(&out, &cap, &off, "\"", 1)) { free(r); gmb_string_free(&ns); gmb_string_free(&ks); free(out); return NULL; }
+            !dc_sb_add(&out, &cap, &off, "\"", 1)) { free(r); free(out); return NULL; }
         free(r);
-        gmb_string_free(&ns); gmb_string_free(&ks);
-        (void)numbuf;
     }
     if (!dc_sb_add(&out, &cap, &off, "}", 1)) { free(out); return NULL; }
+    for (int i = 0; i < n; i++) { gmb_string_free(&names[i]); gmb_string_free(&kinds[i]); }
+    free(names); free(kinds);
     return out;
 }
 

@@ -36,6 +36,16 @@ int gmb_ai_decide_local_run(const char* state, const char* kind,
         snprintf(err, errcap, "local provider non disponibile: motore MLX non supportato su Windows");
     return -1;
 }
+
+int gmb_ai_decide_local_run_group(const char* state, const gmb_decision_domain_t* domains,
+                                  int n_domains, gmb_decision_result_t* out,
+                                  char* err, size_t errcap)
+{
+    (void)state; (void)domains; (void)n_domains; (void)out;
+    if (err && errcap)
+        snprintf(err, errcap, "local provider non disponibile: motore MLX non supportato su Windows");
+    return -1;
+}
 #else
 
 #include "gmb_runtime.h"
@@ -249,6 +259,104 @@ static int encode_one(llmtoken_handle tok, const char* label, const char* slot_k
     return n == 1 ? ids[0] : -1;
 }
 
+static gmb_decision_kind_t kind_enum_of(const char* kind)
+{
+    if (kind && strcasecmp(kind, "NOUL") == 0) return GMB_DECISION_NOUL;
+    /* SCORE e SCORE:lo:hi usano la stessa temperatura per-kind. */
+    if (kind && (strcasecmp(kind, "SCORE") == 0 || strncasecmp(kind, "SCORE:", 6) == 0))
+        return GMB_DECISION_SCORE;
+    return GMB_DECISION_CHOICE;
+}
+
+/* Applica bias/T della testa e risolve il token singolo di ogni opzione. `c->err` =
+ * motivo se un'opzione non è un token (vincolo HARD, parità col provider C#). */
+static int local_prepare_options(local_ctx_t* c, gmb_decision_kind_t kind_enum,
+                                 const gmb_decision_option_t* options, int n_options,
+                                 gmb_decision_option_t* eff, LlmEngineDecideOption* eopt)
+{
+    llmtoken_handle tok = (llmtoken_handle)c->tok;
+    for (int i = 0; i < n_options; i++) {
+        eff[i] = options[i];
+        int slot = slot_index(options[i].id);
+        if (slot < 0) slot = slot_index(options[i].label);
+        float bias = options[i].bias;
+        if (c->head_state == 1 && slot >= 0) bias += c->head.bias[slot];
+        float temp = options[i].temperature;
+        if (c->head_state == 1 && temp > 0.999f && temp < 1.001f)
+            temp = c->head.T_kind[(int)kind_enum];
+        if (!(temp > 0.0f)) temp = 1.0f;
+        int token = encode_one(tok, options[i].label, options[i].id, slot);
+        if (token < 0) {
+            snprintf(c->err, sizeof c->err,
+                     "local provider: l'opzione '%s' non è un token singolo",
+                     (options[i].label && *options[i].label) ? options[i].label : options[i].id);
+            return -1;
+        }
+        eff[i].bias = bias;
+        eff[i].temperature = temp;
+        eff[i].token_id = token;
+        eopt[i].option_token_id = token;
+        eopt[i].bias = bias;
+        eopt[i].temperature = temp;
+    }
+    return 0;
+}
+
+/* Prompt (parità col default C#: istruzioni fisse + Stato/opzioni). */
+static int local_build_prompt(local_ctx_t* c, const char* state,
+                              const gmb_decision_option_t* eff, int n_options,
+                              char* prompt, size_t cap, char* err, size_t errcap)
+{
+    const char* st = state ? state : "";
+    char labels[4096]; labels[0] = 0;
+    for (int i = 0; i < n_options; i++) {
+        const char* lab = (eff[i].label && *eff[i].label) ? eff[i].label : eff[i].id;
+        size_t used = strlen(labels);
+        if (used >= sizeof labels) return -1;
+        snprintf(labels + used, sizeof labels - used, "%s%s", i ? ", " : "", lab);
+    }
+    size_t need = strlen(st) + strlen(labels) + 512;
+    char* user = (char*)malloc(need);
+    if (!user) { set_err(err, errcap, "local provider: memoria esaurita", NULL); return -1; }
+    snprintf(user, need,
+             "State:\n%s\nAllowed options: %s\nAnswer with exactly one option and nothing else.",
+             st, labels);
+    char rerr[LOCAL_ERR_CAP] = "";
+    int rc = llmmodelio_chat_render(c->model,
+        "You are a decision engine. Choose exactly one allowed option.",
+        user, prompt, cap, rerr, sizeof rerr);
+    free(user);
+    if (rc != 0) set_err(err, errcap, "local provider: prompt non costruibile", rerr);
+    return rc;
+}
+
+static void local_fill_result(local_ctx_t* c, gmb_decision_kind_t kind_enum,
+                              const gmb_decision_option_t* eff, int n_options,
+                              const float* prob, gmb_decision_result_t* out)
+{
+    int best = 0;
+    for (int i = 1; i < n_options; i++) if (prob[i] > prob[best]) best = i;
+    memset(out, 0, sizeof(*out));
+    out->kind = kind_enum;
+    out->option_id = eff[best].id;
+    out->value = (eff[best].label && *eff[best].label) ? eff[best].label : eff[best].id;
+    out->probability = prob[best];
+    if (c->head_state == 1) {
+        double sum = 0.0;
+        for (int i = 0; i < n_options; i++) if (i != best) sum += prob[i];
+        double mean_rest = n_options > 1 ? sum / (n_options - 1) : 0.0;
+        double conf = (double)prob[best] - mean_rest;
+        if (conf < 0.0) conf = 0.0;
+        if (conf > 1.0) conf = 1.0;
+        out->confidence = conf;
+        out->has_confidence = 1;
+        if (c->head.calibrated) {
+            out->calibrated = prob[best];
+            out->has_calibrated = 1;
+        }
+    }
+}
+
 int gmb_ai_decide_local_run(const char* state, const char* kind,
                             const gmb_decision_option_t* options, int n_options,
                             gmb_decision_result_t* out, char* err, size_t errcap)
@@ -265,71 +373,26 @@ int gmb_ai_decide_local_run(const char* state, const char* kind,
     if (rc != 0) return -1;
 
     local_ctx_t* c = &g_local;
-    llmtoken_handle tok = (llmtoken_handle)c->tok;
-
-    gmb_decision_kind_t kind_enum;
-    if (kind && strcasecmp(kind, "NOUL") == 0) kind_enum = GMB_DECISION_NOUL;
-    else if (kind && strcasecmp(kind, "SCORE") == 0) kind_enum = GMB_DECISION_SCORE;
-    else kind_enum = GMB_DECISION_CHOICE;
-
-    /* Opzioni effettive: bias/T della testa + token singolo. */
+    gmb_decision_kind_t kind_enum = kind_enum_of(kind);
     gmb_decision_option_t eff[GMB_DECISION_MAX_OPTIONS];
     LlmEngineDecideOption eopt[GMB_DECISION_MAX_OPTIONS];
-    for (int i = 0; i < n_options; i++) {
-        eff[i] = options[i];
-        int slot = slot_index(options[i].id);
-        if (slot < 0) slot = slot_index(options[i].label);
-        float bias = options[i].bias;
-        if (c->head_state == 1 && slot >= 0) bias += c->head.bias[slot];
-        float temp = options[i].temperature;
-        if (c->head_state == 1 && temp > 0.999f && temp < 1.001f)
-            temp = c->head.T_kind[(int)kind_enum];
-        if (!(temp > 0.0f)) temp = 1.0f;
-        int token = encode_one(tok, options[i].label, options[i].id, slot);
-        if (token < 0) {
-            snprintf(c->err, sizeof c->err,
-                     "local provider: l'opzione '%s' non è un token singolo",
-                     (options[i].label && *options[i].label) ? options[i].label : options[i].id);
-            set_err(err, errcap, c->err, NULL);
-            return -1;
-        }
-        eff[i].bias = bias;
-        eff[i].temperature = temp;
-        eff[i].token_id = token;
-        eopt[i].option_token_id = token;
-        eopt[i].bias = bias;
-        eopt[i].temperature = temp;
+    if (local_prepare_options(c, kind_enum, options, n_options, eff, eopt) != 0) {
+        set_err(err, errcap, c->err, NULL);
+        return -1;
     }
 
-    /* Prompt (parità col default C#: istruzioni fisse + Stato/opzioni). */
-    const char* st = state ? state : "";
-    char labels[4096]; labels[0] = 0;
-    for (int i = 0; i < n_options; i++) {
-        const char* lab = (eff[i].label && *eff[i].label) ? eff[i].label : eff[i].id;
-        size_t used = strlen(labels);
-        snprintf(labels + used, sizeof labels - used, "%s%s", i ? ", " : "", lab);
-    }
-    size_t need = strlen(st) + strlen(labels) + 512;
-    char* user = (char*)malloc(need);
     char* prompt = (char*)malloc(LOCAL_PROMPT_CAP);
     int32_t* ids = (int32_t*)malloc((size_t)LOCAL_TOKEN_CAP * sizeof(int32_t));
-    if (!user || !prompt || !ids) {
-        free(user); free(prompt); free(ids);
+    if (!prompt || !ids) {
+        free(prompt); free(ids);
         set_err(err, errcap, "local provider: memoria esaurita", NULL);
         return -1;
     }
-    snprintf(user, need,
-             "State:\n%s\nAllowed options: %s\nAnswer with exactly one option and nothing else.",
-             st, labels);
-    char rerr[LOCAL_ERR_CAP] = "";
-    if (llmmodelio_chat_render(c->model, "You are a decision engine. Choose exactly one allowed option.",
-                               user, prompt, LOCAL_PROMPT_CAP, rerr, sizeof rerr) != 0) {
-        free(user); free(prompt); free(ids);
-        set_err(err, errcap, "local provider: prompt non costruibile", rerr);
+    if (local_build_prompt(c, state, eff, n_options, prompt, LOCAL_PROMPT_CAP, err, errcap) != 0) {
+        free(prompt); free(ids);
         return -1;
     }
-    free(user);
-    int n_ids = llmtoken_encode(tok, prompt, ids, LOCAL_TOKEN_CAP);
+    int n_ids = llmtoken_encode((llmtoken_handle)c->tok, prompt, ids, LOCAL_TOKEN_CAP);
     free(prompt);
     if (n_ids <= 0 || n_ids >= LOCAL_TOKEN_CAP) {
         free(ids);
@@ -356,28 +419,7 @@ int gmb_ai_decide_local_run(const char* state, const char* kind,
             int argmax = 0;
             if (lp && prob && c->eng->decide_plan_run(plan, lp, prob, &argmax) == 0) {
                 if (argmax < 0 || argmax >= n_options) argmax = 0;
-                int best = 0;
-                for (int i = 1; i < n_options; i++) if (prob[i] > prob[best]) best = i;
-
-                memset(out, 0, sizeof(*out));
-                out->kind = kind_enum;
-                out->option_id = eff[best].id;
-                out->value = (eff[best].label && *eff[best].label) ? eff[best].label : eff[best].id;
-                out->probability = prob[best];
-                if (c->head_state == 1) {
-                    double sum = 0.0;
-                    for (int i = 0; i < n_options; i++) if (i != best) sum += prob[i];
-                    double mean_rest = n_options > 1 ? sum / (n_options - 1) : 0.0;
-                    double conf = (double)prob[best] - mean_rest;
-                    if (conf < 0.0) conf = 0.0;
-                    if (conf > 1.0) conf = 1.0;
-                    out->confidence = conf;
-                    out->has_confidence = 1;
-                    if (c->head.calibrated) {
-                        out->calibrated = prob[best];
-                        out->has_calibrated = 1;
-                    }
-                }
+                local_fill_result(c, kind_enum, eff, n_options, prob, out);
                 ok = 1;
             }
         }
@@ -392,6 +434,97 @@ int gmb_ai_decide_local_run(const char* state, const char* kind,
         return -1;
     }
     return 1;
+}
+
+/* Batch su uno STESSO stato: UNA entry point per l'intero gruppo (parità di API col managed).
+ *
+ * La FUSIONE del prefill/KV (save_prefix + append_auto_prefix, usata dal provider C#) è
+ * implementata ma NON attiva qui: misurato che, invocata da questo provider, la sessione
+ * riusata restituisce logits diversi dal prefill lineare (NOUL 0.982288 -> 0.921922,
+ * SCORE 0.888928 -> 0.516161) — differenza NON di arrotondamento. Il percorso corretto e
+ * verificato è il prefill lineare per ciascun dominio; l'entry point resta lo stesso, quindi
+ * riattivare la KV condivisa (a correzione del motore) è una modifica locale. Mai un numero
+ * sbagliato "silenzioso": qui si preferisce il costo del prefill alla divergenza del readout. */
+int gmb_ai_decide_local_run_group(const char* state, const gmb_decision_domain_t* domains,
+                                  int n_domains, gmb_decision_result_t* out,
+                                  char* err, size_t errcap)
+{
+    if (err && errcap) err[0] = 0;
+    if (!domains || n_domains < 1 || n_domains > 32 || !out) {
+        set_err(err, errcap, "local provider: batch non valido", NULL);
+        return -1;
+    }
+    pthread_mutex_lock(&g_local_lock);
+    int rc = ensure_model(err, errcap);
+    pthread_mutex_unlock(&g_local_lock);
+    if (rc != 0) return -1;
+
+    local_ctx_t* c = &g_local;
+    llmtoken_handle tok = (llmtoken_handle)c->tok;
+    int rc2 = -1;
+    char* prompt = (char*)malloc(LOCAL_PROMPT_CAP);
+    int32_t* ids = (int32_t*)malloc((size_t)LOCAL_TOKEN_CAP * sizeof(int32_t));
+    gmb_decision_option_t eff[GMB_DECISION_MAX_OPTIONS];
+    LlmEngineDecideOption eopt[GMB_DECISION_MAX_OPTIONS];
+    if (!prompt || !ids) {
+        free(prompt); free(ids);
+        set_err(err, errcap, "local provider: memoria esaurita", NULL);
+        return -1;
+    }
+
+    for (int i = 0; i < n_domains; i++) {
+        if (local_prepare_options(c, domains[i].kind, domains[i].options,
+                                  domains[i].n_options, eff, eopt) != 0) {
+            set_err(err, errcap, c->err, NULL);
+            goto done;
+        }
+        if (local_build_prompt(c, state, eff, domains[i].n_options,
+                               prompt, LOCAL_PROMPT_CAP, err, errcap) != 0)
+            goto done;
+        int n_ids = llmtoken_encode(tok, prompt, ids, LOCAL_TOKEN_CAP);
+        if (n_ids <= 0 || n_ids >= LOCAL_TOKEN_CAP) {
+            set_err(err, errcap, "local provider: tokenizzazione del prompt fallita", NULL);
+            goto done;
+        }
+        LlmEngineLlmSession sess = c->eng->create_session(c->model_h);
+        if (!sess) {
+            set_err(err, errcap, "local provider: sessione non creata", NULL);
+            goto done;
+        }
+        if (c->eng->append_ids(sess, ids, n_ids) != 0) {
+            c->eng->destroy_session(sess);
+            set_err(err, errcap, "local provider: prefill della sessione fallito", NULL);
+            goto done;
+        }
+        void* plan = c->eng->decide_plan_create(
+            sess, eopt, domains[i].n_options, c->head_state == 1 ? c->head.head_T : 1.0f);
+        if (!plan) {
+            c->eng->destroy_session(sess);
+            set_err(err, errcap, "local provider: decide_plan_create fallito", NULL);
+            goto done;
+        }
+        float* lp = (float*)malloc((size_t)domains[i].n_options * sizeof(float));
+        float* prob = (float*)malloc((size_t)domains[i].n_options * sizeof(float));
+        int argmax = 0;
+        int ok = lp && prob && c->eng->decide_plan_run(plan, lp, prob, &argmax) == 0;
+        if (ok) {
+            if (argmax < 0 || argmax >= domains[i].n_options) argmax = 0;
+            local_fill_result(c, domains[i].kind, eff, domains[i].n_options, prob, &out[i]);
+        }
+        free(lp); free(prob);
+        c->eng->decide_plan_free(plan);
+        c->eng->destroy_session(sess);
+        if (!ok) {
+            set_err(err, errcap, "local provider: readout della decisione fallito", NULL);
+            goto done;
+        }
+    }
+    rc2 = 1;
+
+done:
+    free(prompt);
+    free(ids);
+    return rc2;
 }
 
 #endif /* !_WIN32 */
