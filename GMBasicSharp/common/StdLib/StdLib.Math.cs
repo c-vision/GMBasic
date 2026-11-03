@@ -194,13 +194,13 @@ public sealed partial class StdLib
                     new Parameter(-1, T(TokenKind.Identifier, "values"), new ArrayType(new InferredType()),
                         SymbolFlags.IsArray | SymbolFlags.IsParamArray, null, false)
                 ],
-                new InferredType(), TokenKind.Sum),
+                new DoubleType(), TokenKind.Sum),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Avg, "Avg"),
                 [
                     new Parameter(-1, T(TokenKind.Identifier, "values"), new ArrayType(new InferredType()),
                         SymbolFlags.IsArray | SymbolFlags.IsParamArray, null, false)
                 ],
-                new InferredType(), TokenKind.Avg, ExecutionKind: NativeExecutionKind.Pure),
+                new DoubleType(), TokenKind.Avg, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Min, "Min"),
                 [
                     new Parameter(-1, T(TokenKind.Identifier, "values"), new ArrayType(new InferredType()),
