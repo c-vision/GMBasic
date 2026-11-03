@@ -348,6 +348,9 @@
      Live from <code>GET /api/events</code>.</p>
   <div class="toolbar">
     <input id="log-filter" placeholder="filter (text)" style="min-width:220px">
+    <select id="log-saved" title="Filtri salvati" style="max-width:220px"></select>
+    <button class="btn btn-ghost" id="btn-log-save">salva filtro</button>
+    <button class="btn btn-ghost" id="btn-log-del">elimina</button>
     <button class="btn btn-ghost" id="btn-log-refresh">Refresh</button>
     <label class="kv muted" style="font-size:.8rem"><input type="checkbox" id="log-autoscroll" checked> autoscroll</label>
     <span class="badge" id="log-live">polling</span>
@@ -586,7 +589,7 @@
 (function(){
   "use strict";
   var S = { refreshMs: 2500, paused:false, status:null, agents:[], teams:[], events:[],
-            attention:{}, inbox:[], theme:'auto', lastInbox:0, palette:[], palSel:0, ws:null };
+            attention:{}, inbox:[], theme:'auto', lastInbox:0, palette:[], palSel:0, ws:null, serverState:false };
   var el = function(id){ return document.getElementById(id); };
   function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){
       return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
@@ -645,7 +648,29 @@
     if(/work|run|start|tool|plan/.test(s)) return 'working';
     return 'idle';
   }
+  function setAttention(agents, items){
+    var map={};
+    (agents||[]).forEach(function(a){ if(a && a.name && a.state && a.state!=='idle') map[a.name]=a.state; });
+    S.attention=map;
+    S.inbox=(items||[]).slice(0,200);
+    var n=S.inbox.filter(function(i){ return i.state!=='done'; }).length;
+    var c=el('chip-inbox');
+    if(c){ c.innerHTML='inbox: <b>'+n+'</b>'; c.className='chip chip-btn'+(n?' bad':''); }
+    var ic=el('inbox-count'); if(ic){ ic.textContent=n+' in attesa'; ic.className='badge'+(n?' perm-yolo':''); }
+    renderRail(); renderInbox(); maybeNotify(n);
+  }
+  /* Stato ESPLICITO dal server (app.bas /api/state): niente euristica nel browser. */
+  function refreshState(){
+    return api('/api/state').then(function(d){
+      if(!d || !d.agents){ S.serverState=false; return null; }
+      S.serverState=true;
+      setAttention(d.agents, d.inbox||[]);
+      return d;
+    }).catch(function(){ S.serverState=false; computeAttention(); return null; });
+  }
+  /* Fallback (vecchio app.bas senza /api/state): classifica gli eventi nel browser. */
   function computeAttention(){
+    if(S.serverState) return;
     var map={}, items=[];
     (S.events||[]).forEach(function(e){
       var st=classify(e);
@@ -655,13 +680,12 @@
         items.push({ agent:name||'—', state:st, ts:(e&&e.timestamp)||'',
                      detail:(e&&(e.detail||e.raw))||String(e) });
     });
-    S.attention=map;
-    S.inbox=items.slice(-200).reverse();
-    var n=S.inbox.filter(function(i){ return i.state!=='done'; }).length;
-    var c=el('chip-inbox');
-    if(c){ c.innerHTML='inbox: <b>'+n+'</b>'; c.className='chip chip-btn'+(n?' bad':''); }
-    var ic=el('inbox-count'); if(ic){ ic.textContent=n+' in attesa'; ic.className='badge'+(n?' perm-yolo':''); }
-    renderRail(); renderInbox(); maybeNotify(n);
+    setAttention(Object.keys(map).map(function(k){ return {name:k, state:map[k]}; }), items.reverse());
+  }
+  var stateTimer=null;
+  function scheduleState(){
+    clearTimeout(stateTimer);
+    stateTimer=setTimeout(function(){ refreshState(); }, 300);
   }
   function maybeNotify(n){
     var prev=typeof S.lastInbox==='number'?S.lastInbox:0;
@@ -716,6 +740,13 @@
     A.push({label:'Aiuto / scorciatoie', hint:'?', run:openHelp});
     (S.agents||[]).forEach(function(a){
       A.push({label:'Chat con '+a.name, hint:'agente', run:function(){ showTab('agents'); var s2=el('sel-agent'); if(s2) s2.value=a.name; var p2=el('chat-prompt'); if(p2) p2.focus(); }});
+      var st=(S.attention&&S.attention[a.name])||'idle';
+      if(st==='working'){
+        A.push({label:'Pausa '+a.name, hint:'coda', run:function(){ agentOp(a.name,'pause'); }});
+        A.push({label:'Stop '+a.name, hint:'coda', run:function(){ agentOp(a.name,'stop'); }});
+      } else {
+        A.push({label:'Riprendi '+a.name, hint:'coda', run:function(){ agentOp(a.name,'resume'); }});
+      }
     });
     (S.teams||[]).forEach(function(t){
       A.push({label:'Team '+t.name, hint:'team', run:function(){ showTab('teams'); var e3=el('bc-team'); if(e3) e3.value=t.name; }});
@@ -748,6 +779,15 @@
   }
   function cycleTheme(){ applyTheme(S.theme==='system'?'dark':S.theme==='dark'?'light':'system');
     toast('tema: '+(S.theme==='system'?'auto (sistema)':S.theme)); }
+  function agentOp(name, op){
+    return postJson('/api/agents/'+encodeURIComponent(name)+'/'+op, {})
+      .then(function(r){
+        toast(op+': '+name+(r && r.ok===false ? ' (niente in coda)' : ''));
+        refreshState(); refreshAgents();
+      })
+      .catch(function(e){ toast(op+': '+e.message, true); });
+  }
+
   function wireChrome(){
     var ci=el('chip-inbox'); if(ci) ci.addEventListener('click',openInbox);
     var bh=el('btn-help'); if(bh) bh.addEventListener('click',openHelp);
@@ -841,12 +881,16 @@
   // ---------- agents ----------
   function agentRow(a){
     var st=(S.attention&&S.attention[a.name])||'idle';
+    var acts='<button class="btn btn-ghost" data-act="chat" data-name="'+esc(a.name)+'">Chat</button> '
+      + '<button class="btn btn-ghost" data-act="pick" data-name="'+esc(a.name)+'">Seleziona</button>';
+    if(st==='working') acts+=' <button class="btn btn-ghost" data-act="pause" data-name="'+esc(a.name)+'">Pausa</button>'
+      + ' <button class="btn btn-danger" data-act="stop" data-name="'+esc(a.name)+'">Stop</button>';
+    else acts+=' <button class="btn btn-ghost" data-act="resume" data-name="'+esc(a.name)+'">Riprendi</button>';
     return '<tr><td class="name"><span class="dot '+st+'" style="margin-right:.35rem"></span>'+esc(a.name)+'</td>'
-      + '<td><span class="badge '+st+'">'+esc(a.status||st)+'</span></td>'
+      + '<td><span class="badge '+st+'">'+esc(st!=='idle'?st:(a.status||st))+'</span></td>'
       + '<td>'+badgePerm(a.permission)+'</td>'
       + '<td class="muted">'+esc(a.model||'-')+'</td>'
-      + '<td><button class="btn btn-ghost" data-act="chat" data-name="'+esc(a.name)+'">Chat</button> '
-      + '<button class="btn btn-ghost" data-act="pick" data-name="'+esc(a.name)+'">Seleziona</button></td></tr>';
+      + '<td>'+acts+'</td></tr>';
   }
   function badgePerm(p){
     var k=(p||'').toLowerCase();
@@ -911,8 +955,11 @@
     });
     el('agents-body').addEventListener('click',function(ev){
       var b=ev.target.closest('button[data-act]'); if(!b) return;
-      el('sel-agent').value=b.getAttribute('data-name');
-      if(b.getAttribute('data-act')==='chat') el('chat-prompt').focus();
+      var act=b.getAttribute('data-act'), name=b.getAttribute('data-name');
+      el('sel-agent').value=name;
+      if(act==='chat'){ el('chat-prompt').focus(); return; }
+      if(act==='pick'){ return; }
+      agentOp(name, act);
     });
   }
 
@@ -994,6 +1041,42 @@
       return rows;
     }).catch(function(e){ el('log-count').textContent='error: '+e.message; return []; });
   }
+  // ---------- filtri del Log salvati (localStorage) ----------
+  function loadFilters(){
+    try{ var a=JSON.parse(localStorage.getItem('gmb-webapp-filters')||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; }
+  }
+  function saveFilters(list){
+    try{ localStorage.setItem('gmb-webapp-filters', JSON.stringify(list)); }catch(e){}
+  }
+  function renderFilters(){
+    var sel=el('log-saved'); if(!sel) return;
+    var f=loadFilters();
+    sel.innerHTML='<option value="">— filtri salvati —</option>'+
+      f.map(function(v){ return '<option value="'+esc(v)+'">'+esc(v)+'</option>'; }).join('');
+  }
+  function wireFilters(){
+    var sel=el('log-saved');
+    if(sel) sel.addEventListener('change',function(){
+      if(!sel.value) return;
+      el('log-filter').value=sel.value;
+      refreshEvents();
+    });
+    var bs=el('btn-log-save');
+    if(bs) bs.addEventListener('click',function(){
+      var v=(el('log-filter').value||'').trim();
+      if(!v){ toast('scrivi un filtro prima di salvarlo',true); return; }
+      var f=loadFilters(); if(f.indexOf(v)<0){ f.push(v); saveFilters(f); }
+      renderFilters(); toast('filtro salvato: '+v);
+    });
+    var bd=el('btn-log-del');
+    if(bd) bd.addEventListener('click',function(){
+      var v=el('log-saved').value;
+      if(!v){ toast('seleziona un filtro salvato',true); return; }
+      saveFilters(loadFilters().filter(function(x){ return x!==v; }));
+      renderFilters(); toast('filtro eliminato: '+v);
+    });
+  }
+
   function wireLog(){
     el('btn-log-refresh').addEventListener('click',refreshEvents);
     el('log-filter').addEventListener('input',refreshEvents);
@@ -1018,7 +1101,7 @@
         var c=el('log-count'); if(c) c.textContent='live';
         S.events.push({ raw: txt, detail: txt, kind: 'live' });
         if(S.events.length>500) S.events.shift();
-        computeAttention();
+        scheduleState();
       };
       es.onerror=function(){ var b=el('log-live'); if(b){ b.textContent='polling'; b.className='badge'; } };
     }catch(_){}
@@ -1276,10 +1359,11 @@
     if(S.paused) return;
     refreshStatus().then(function(st){
       if(!st) return;
-      refreshEvents();
+      refreshState();
       var tab=(location.hash||'#agents').slice(1);
       if(tab==='agents') refreshAgents();
       else if(tab==='teams') refreshTeams();
+      else if(tab==='log') refreshEvents();
     });
   }
   function startPolling(){
@@ -1296,12 +1380,12 @@
 
   // ---------- init ----------
   wireTabs(); wireAgents(); wireTeams(); wireLog(); wireWorkflows(); wireMemory(); wireBrain(); wireCanvas(); wireWasm(); wirePause();
-  wireChrome();
+  wireChrome(); wireFilters(); renderFilters();
   applyTheme((function(){ try{ return localStorage.getItem('gmb-webapp-theme')||'auto'; }catch(e){ return 'auto'; } })());
   var initial=(location.hash||'').slice(1);
   if(!initial){ try{ initial=localStorage.getItem('gmb-webapp-tab')||'agents'; }catch(e){ initial='agents'; } }
   refreshStatus().then(function(){
-    refreshEvents(); refreshAgents(); refreshTeams();
+    refreshState(); refreshAgents(); refreshTeams(); refreshEvents();
     showTab(initial); startPolling();
   });
 })();

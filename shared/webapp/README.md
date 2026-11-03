@@ -30,6 +30,8 @@ shared/webapp/
 |---|---|---|
 | GET | `/api/health` | liveness (`{"ok":true}`) |
 | GET | `/api/status` | stato app+runtime: provider attivo, modello, agenti, eventi, uptime, porte, reachability dell'API, contatore proxy |
+| GET | `/api/state` | **stato esplicito** per la UI: `agents:[{name,state}]` (idle/working/waiting/error), `inbox:[{state,agent,kind,detail}]`, `counts`; classificazione eventi fatta **una volta, lato server** |
+| POST | `/api/agents/{name}/pause` · `/resume` · `/stop` | azioni sulla **coda** dell'agente (`AI.AGENTPAUSE/RESUME/STOP`); `ok:false` = niente in coda |
 | POST | `/api/agents` | crea agente `{name, systemPrompt?, permission?, temperature?, model?}` → 201, **409** se esiste |
 | PATCH | `/api/agents/{name}` | aggiorna i soli campi presenti (prompt/permessi/temperatura/modello) |
 | DELETE | `/api/agents/{name}` | elimina l'agente |
@@ -65,11 +67,16 @@ La dashboard ha adottato gli stessi pattern, senza nuovi endpoint e senza build 
 | **Tema** | `auto` (segue il sistema) → `dark` → `light`; persistito in `localStorage` | `t` |
 | **Scorciatoie** | `1…8` tab, `n` nuovo agente, `/` cerca nel log, `r` refresh, `?` aiuto, `Esc` chiude gli overlay | `?` |
 | **Notifiche** | opt-in con la Notification API quando cresce il numero di voci in attesa | — |
+| **Azioni coda** | nella tabella Agents e nella palette: Pausa/Stop per gli agenti `working`, Riprendi per gli altri (`POST /api/agents/{name}/{pause,resume,stop}`) | — |
+| **Filtri salvati** | nel Log: salva/elimina/riapplica filtri (persistiti in `localStorage`) | — |
 
 Persistenza locale: `gmb-webapp-theme`, `gmb-webapp-notify`, `gmb-webapp-tab`.
-L'Inbox è **derivata** da `/api/events` (SSE `live` + polling): nessun endpoint nuovo, nessuna
-duplicazione dello stato. Lo stato per agente è calcolato dall'ultimo evento che lo riguarda,
-quindi il rail e le card restano coerenti con il Log.
+L'Inbox e lo stato per agente arrivano da **`GET /api/state`** (server-side): la UI non
+classifica più il testo degli eventi. La classificazione è una sola, in `app.bas`:
+`PermissionRequested` → `waiting`, `PermissionDenied` → `error`, `Asked`/`ToolCalled` →
+`working`, il resto `idle`. Se l'endpoint non c'è (app più vecchia) il JS ricade sulla
+classificazione locale degli eventi. SSE resta per il Log live; `/api/state` è interrogato al
+tick (e con debounce sugli eventi live).
 
 ## Engine BSP (motore) — cosa c'è sotto
 

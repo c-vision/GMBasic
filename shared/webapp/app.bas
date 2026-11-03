@@ -491,6 +491,10 @@ SUB RegisterApiRoutes()
     HTTP ROUTE "PATCH", "/api/agents/{name}", ApiAgentUpdate()
     HTTP ROUTE "DELETE", "/api/agents/{name}", ApiAgentDelete()
     HTTP ROUTE "POST", "/api/agents/{name}/ask", ApiAgentAsk()
+    HTTP ROUTE "GET", "/api/state", ApiState()
+    HTTP ROUTE "POST", "/api/agents/{name}/pause", ApiAgentPause()
+    HTTP ROUTE "POST", "/api/agents/{name}/resume", ApiAgentResume()
+    HTTP ROUTE "POST", "/api/agents/{name}/stop", ApiAgentStop()
     HTTP ROUTE "POST", "/api/teams", ApiTeamCreate()
     HTTP ROUTE "POST", "/api/teams/{name}/agents", ApiTeamAddAgent()
     HTTP ROUTE "DELETE", "/api/teams/{name}", ApiTeamDelete()
@@ -905,6 +909,177 @@ FUNCTION JsonField(body AS STRING, key AS STRING) AS STRING
     v = JSON.EXTRACT(j, key)
     JsonField = v
 END FUNCTION
+
+ ' ============================================================================
+' Stato esplicito per la UI (/api/state)
+' ----------------------------------------------------------------------------
+' Gli eventi sono stringhe `[AGENT <Kind>] <timestamp> agent=<nome> <detail>`
+' (stesso formato in C e C#: AgentEventLog.Format verbose). Qui la classificazione
+' sta UNA volta sola, lato server, invece di essere euristica nel JS:
+'   PermissionRequested → waiting (serve l'umano)
+'   PermissionDenied    → error
+'   Asked / ToolCalled  → working
+'   altro               → idle
+' ============================================================================
+
+FUNCTION EvKind(e AS STRING) AS STRING
+    DIM a AS LONG
+    DIM rest AS STRING
+    DIM b AS LONG
+    a = INSTR(e, "[AGENT ")
+    IF a = 0 THEN
+        EvKind = ""
+        EXIT FUNCTION
+    END IF
+    rest = MID(e, a + 7)
+    b = INSTR(rest, "]")
+    IF b = 0 THEN
+        EvKind = ""
+        EXIT FUNCTION
+    END IF
+    EvKind = LEFT(rest, b - 1)
+END FUNCTION
+
+FUNCTION EvAgent(e AS STRING) AS STRING
+    DIM a AS LONG
+    DIM rest AS STRING
+    DIM sp AS LONG
+    a = INSTR(e, "agent=")
+    IF a = 0 THEN
+        EvAgent = ""
+        EXIT FUNCTION
+    END IF
+    rest = MID(e, a + 6)
+    sp = INSTR(rest, " ")
+    IF sp = 0 THEN
+        EvAgent = STRINGS.TRIM(rest)
+    ELSE
+        EvAgent = LEFT(rest, sp - 1)
+    END IF
+END FUNCTION
+
+FUNCTION EvDetail(e AS STRING) AS STRING
+    DIM a AS LONG
+    DIM rest AS STRING
+    DIM sp AS LONG
+    a = INSTR(e, "agent=")
+    IF a = 0 THEN
+        EvDetail = ""
+        EXIT FUNCTION
+    END IF
+    rest = MID(e, a + 6)
+    sp = INSTR(rest, " ")
+    IF sp = 0 THEN
+        EvDetail = ""
+    ELSE
+        EvDetail = MID(rest, sp + 1)
+    END IF
+END FUNCTION
+
+FUNCTION StateOfKind(k AS STRING) AS STRING
+    DIM u AS STRING
+    u = STRINGS.UPPER(k)
+    IF INSTR(u, "PERMISSIONREQUESTED") > 0 THEN
+        StateOfKind = "waiting"
+    ELSEIF INSTR(u, "PERMISSIONDENIED") > 0 THEN
+        StateOfKind = "error"
+    ELSEIF INSTR(u, "ASKED") > 0 OR INSTR(u, "TOOLCALLED") > 0 THEN
+        StateOfKind = "working"
+    ELSE
+        StateOfKind = "idle"
+    END IF
+END FUNCTION
+
+' GET /api/state → {agents:[{name,state}], inbox:[{state,agent,kind,detail}], counts:{...}}
+SUB ApiState(req AS HTTPREQUEST, res AS HTTPRESPONSE)
+    DIM names() = AI.AGENTLIST()
+    DIM evs() = AI.AGENTEVENTS()
+    DIM i AS LONG
+    DIM k AS LONG
+    DIM nm AS STRING
+    DIM st AS STRING
+    DIM out AS STRING
+    DIM nw AS LONG
+    DIM ne AS LONG
+    DIM nwork AS LONG
+    DIM first AS INTEGER
+
+    out = "{" + JQ("agents") + ":["
+    FOR i = 0 TO UBOUND(names)
+        nm = names(i)
+        st = "idle"
+        IF UBOUND(evs) >= 0 THEN
+            FOR k = UBOUND(evs) TO 0 STEP -1
+                IF STRINGS.UPPER(EvAgent(evs(k))) = STRINGS.UPPER(nm) THEN
+                    st = StateOfKind(EvKind(evs(k)))
+                    EXIT FOR
+                END IF
+            NEXT k
+        END IF
+        IF i > 0 THEN out = out + ","
+        out = out + "{" + JQ("name") + ":" + JStr(nm) + "," + JQ("state") + ":" + JStr(st) + "}"
+        IF st = "working" THEN nwork = nwork + 1
+    NEXT i
+
+    out = out + "]," + JQ("inbox") + ":["
+    first = 1
+    IF UBOUND(evs) >= 0 THEN
+        FOR k = UBOUND(evs) TO 0 STEP -1
+            st = StateOfKind(EvKind(evs(k)))
+            IF st = "waiting" OR st = "error" THEN
+                IF first = 0 THEN out = out + ","
+                first = 0
+                out = out + "{" + JQ("state") + ":" + JStr(st)
+                out = out + "," + JQ("agent") + ":" + JStr(EvAgent(evs(k)))
+                out = out + "," + JQ("kind") + ":" + JStr(EvKind(evs(k)))
+                out = out + "," + JQ("detail") + ":" + JStr(EvDetail(evs(k))) + "}"
+                IF st = "waiting" THEN nw = nw + 1
+                IF st = "error" THEN ne = ne + 1
+            END IF
+        NEXT k
+    END IF
+    out = out + "]," + JQ("counts") + ":{" + JQ("waiting") + ":" + LTRIM$(STR$(nw))
+    out = out + "," + JQ("error") + ":" + LTRIM$(STR$(ne))
+    out = out + "," + JQ("working") + ":" + LTRIM$(STR$(nwork)) + "}}"
+    res.Send(out)
+END SUB
+
+' POST /api/agents/{name}/pause|resume|stop — code di lavoro dell'agente.
+SUB AgentQueueOp(req AS HTTPREQUEST, res AS HTTPRESPONSE, action AS STRING, rc AS DOUBLE)
+    DIM name AS STRING
+    name = req.Params["name"]
+    IF LEN(STRINGS.TRIM(name)) = 0 THEN
+        res.StatusCode = 400
+        res.Send(ErrorJson("missing_name", "missing agent name in path"))
+        EXIT SUB
+    END IF
+    PRINT "[api] agent "; action; ": "; name
+    res.Send("{" + JQ("agent") + ":" + JStr(name) + "," + JQ("action") + ":" + JStr(action) + "," + JQ("ok") + ":" + BoolJson(rc <> 0) + "}")
+END SUB
+
+SUB ApiAgentPause(req AS HTTPREQUEST, res AS HTTPRESPONSE)
+    DIM name AS STRING
+    name = req.Params["name"]
+    DIM rc AS DOUBLE
+    rc = AI.AGENTPAUSE(name)
+    AgentQueueOp(req, res, "pause", rc)
+END SUB
+
+SUB ApiAgentResume(req AS HTTPREQUEST, res AS HTTPRESPONSE)
+    DIM name AS STRING
+    name = req.Params["name"]
+    DIM rc AS DOUBLE
+    rc = AI.AGENTRESUME(name)
+    AgentQueueOp(req, res, "resume", rc)
+END SUB
+
+SUB ApiAgentStop(req AS HTTPREQUEST, res AS HTTPRESPONSE)
+    DIM name AS STRING
+    name = req.Params["name"]
+    DIM rc AS DOUBLE
+    rc = AI.AGENTSTOP(name)
+    AgentQueueOp(req, res, "stop", rc)
+END SUB
 
 ' ============================================================================
 ' WebSocket canvas (WEBCANVAS: frame JSON → static/canvas.js)
