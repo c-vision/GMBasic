@@ -210,6 +210,8 @@ GMB_DB_API int      gmb_db_dbf_recall(int64_t h);
 GMB_DB_API int      gmb_db_dbf_pack(int64_t h);
 GMB_DB_API int      gmb_db_dbf_index_on(int64_t h, const char* field, const char* index_path, int unique);
 GMB_DB_API int      gmb_db_dbf_append_blank(int64_t h);
+GMB_DB_API int      gmb_db_dbf_export(int64_t h, const char* path, int fmt);   /* fmt 0=CSV 1=JSON */
+GMB_DB_API int      gmb_db_dbf_import(int64_t h, const char* path, int fmt);
 GMB_DB_API int      gmb_db_dbf_append_from(int64_t h, const char* sourceFilePath);
 GMB_DB_API int      gmb_db_dbf_append_from_cond(int64_t h, const char* sourceFilePath, const char* condition);
 GMB_DB_API int      gmb_db_dbf_copy_to(int64_t h, const char* destPath);

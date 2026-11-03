@@ -1639,6 +1639,8 @@ int i;
             if (strcasecmp(vm->vm_dbf_alias[i], calb) == 0) childR = vm->vm_dbf_alias_handle[i];
         if (childR > 0 && parentR > 0)
             gmb_db_dbf_set_relation(childR, parentR, keb);
+        else if (parentR > 0 && !keb[0])
+            gmb_db_dbf_set_relation(0, parentR, "");   /* SET RELATION TO senza chiave: azzera */
         push_num_entry(task, 0.0, GMB_BT_NUMBER);
         return 0;
     }

@@ -108,6 +108,11 @@ public sealed partial class IlProgramCompiler
         // applicava la conversione bool->numerico su un double (mul double*int32 =
         // "Invalid operand types in BinaryInst", ABS(<BIT>) su GPM).
         if (f.Name.Kind is TokenKind.Abs) return new DoubleType();
+        // POOL.GET(p): PCodePool.Get ritorna un `object` (valore dinamico). Dichiararlo AnyType
+        // (→ System.Object) fa convertire al consumatore con il dispatch runtime sul tipo reale;
+        // con il ReturnType InferredType (→ double) lo stack aveva object dove si attendeva double
+        // → InvalidProgramException su `n = POOL.GET(p)`.
+        if (f.Name.Kind is TokenKind.PoolGet or TokenKind.Next) return new AnyType();
         // Conversioni numeriche esplicite/implicite (CINT/CBYTE/CLNG/CDBL/...): il tipo
         // di ritorno è il tipo TARGET della conversione, NON il default Double. Senza,
         // un argomento già coercedo dal Linker (CINT(2) per un param INTEGER) veniva

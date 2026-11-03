@@ -204,7 +204,7 @@ public static class DataTypeMapper
         // per la catena dei middleware — boxed object (il runtime lo passa al chaining).
         NextHandlerType => types.Object,
         // GeneratorExpr materializzata: List<object?> (il FOR EACH la itera).
-        GeneratorType => typeof(System.Collections.Generic.List<object?>),
+        GeneratorType => typeof(object),   // IlGeneratorInstance (IlRuntime.GeneratorCreate)
         // REGEX nativo (r AS REGEX — Pattern/IsMatch/Match/...): classe wrapper reale.
         RegexType => typeof(Basic.RegexNative.RegexWrapper),
         RegexMatchType => typeof(Basic.RegexNative.RegexMatchValue),

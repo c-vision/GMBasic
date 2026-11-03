@@ -1377,6 +1377,12 @@ public static partial class Linker
 
         if (resolvedProc == null) return new InferredType();
 
+        // --- GESTIONE SPECIALE: POOL.GET ---
+        // Ritorna il VALORE custodito nel pool (dinamico, object a runtime), mai il POOL stesso: senza,
+        // il "Caso 1" generico sotto restituiva il tipo del primo argomento (POOL) e
+        // `n = POOL.GET(p)` con `n AS LONG` falliva «Impossibile assegnare un valore di tipo 'POOL'».
+        if (resolvedProc.BuiltinKind == TokenKind.PoolGet) return new AnyType();
+
         // --- GESTIONE SPECIALE: AMAP ---
         if (resolvedProc.BuiltinKind == TokenKind.AMap && bce.Args is [_, LambdaExpr lambdaMap, ..])
         {

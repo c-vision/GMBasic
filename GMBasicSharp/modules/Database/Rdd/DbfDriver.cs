@@ -91,7 +91,10 @@ public class DbfDriver : BaseDriver
     public override void GoTo(long n)
     {
         if (_engine == null) return;
-        _engine.Seek(n);
+        // GO n = posizionamento sul record n (NON una ricerca per chiave: Seek(object) cercava n
+        // nell'ordine attivo e, senza indice, finiva a EOF). Stessa semantica del P-Code.
+        _engine.GoTop();
+        if (n > 1) _engine.Skip((int)(n - 1));
         SyncCursorState();
     }
 

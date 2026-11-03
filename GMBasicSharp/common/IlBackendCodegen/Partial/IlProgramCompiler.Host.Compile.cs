@@ -443,6 +443,11 @@ public sealed partial class IlProgramCompiler
             .Where(d => d.TypeParameters.IsDefaultOrEmpty)
             .Concat(program.ResolvedSpecializations.Values)
             .Concat(localProcedures)
+            // GENERATOR ... YIELD: compilato come metodo statico `Proc_<id>(params)` void con il CORPO
+            // del generatore; YIELD (IlRuntime.GeneratorYield) passa i valori al chiamante, il call site
+            // (EmitFunctionCall) crea l'iteratore (IlRuntime.GeneratorCreate) e NEXT lo riprende.
+            .Concat(AllModuleDeclarations(program).OfType<GeneratorDefinition>()
+                .Select(g => new FunctionDefinition(g.SymbolId, g.Name, g.Parameters, new VoidType(), g.Body, g.Flags)))
             .ToImmutableArray();
         foreach (var definition in procedureDefinitions)
         {

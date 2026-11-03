@@ -2693,6 +2693,16 @@ public sealed partial class Compiler
                 }
                 else if (funcName.Equals("APPENDMANY", StringComparison.OrdinalIgnoreCase))
                 {
+                    // Forme: (records) → area CORRENTE; (area, records). Con UN solo argomento args[0] era
+                    // trattato come numero d'area e i record venivano letti da uno stack vuoto (conteggio
+                    // spazzatura, nessun insert). L'handler pop-a (batch, area): serve SEMPRE l'area.
+                    if (args.Length == 1)
+                    {
+                        EmitConstant(0.0);                 // 0 = area ISAM corrente (ResolveAreaNum)
+                        VisitExpression(args[0]);
+                        EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.ISAM_APPENDMANY); EmitByte((byte)2);
+                        return true;
+                    }
                     EmitFileNumber(args[0]);
                     for (int i = 1; i < args.Length; i++) VisitExpression(args[i]);
                     EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.ISAM_APPENDMANY); EmitByte((byte)(args.Length));

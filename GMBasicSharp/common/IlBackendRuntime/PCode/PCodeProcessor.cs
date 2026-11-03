@@ -2503,7 +2503,11 @@ internal sealed partial class PCodeProcessor
                 if (task.Sp > 0 && task.Stack[task.Sp - 1].Type == 2)
                 {
                     var existingRef = task.Stack[task.Sp - 1].Ref;
-                    if (existingRef is System.Collections.IDictionary existing)
+                    // Solo un'istanza VUOTA (appena creata da OP_NEW per `DIM x AS DICT = {…}`) viene popolata.
+                    // Un dict GIÀ popolato in cima allo stack è l'elemento precedente di un letterale
+                    // (`[{a:1}, {b:2}]`): fonderci dentro il successivo faceva collassare la lista in
+                    // UN solo dict (LEN 0/1, APPENDMANY inseriva un solo record).
+                    if (existingRef is System.Collections.IDictionary existing && existing.Count == 0)
                     {
                         foreach (var (key, val) in pairs)
                             existing[key!] = val;

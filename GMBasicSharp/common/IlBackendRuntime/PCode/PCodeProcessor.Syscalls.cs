@@ -6613,21 +6613,30 @@ internal sealed partial class PCodeProcessor
             case SysCall.EXPORT_TO_FILE:
             {
                 // Compiler pusha 4: (EngineType, Area, FilePath, Format) → pop in ordine inverso.
-                var format_ = task.Sp > 0 ? task.PopRef() : null;   // Format
+                var format_ = task.Sp > 0 ? task.PopRef() : null;   // Format (TokenKind come double)
                 var file_ = task.Sp > 0 ? task.PopRef()?.ToString() ?? "" : "";  // FilePath
                 var area_ = (int)PopNum(task);                        // Area
                 var eng_ = task.Sp > 0 ? task.PopRef() : null;        // EngineType
-                var isam = ResolveIsamEngine(task, area_);
-                if (isam != null) try { isam.CopyTo(file_, null, null, null); task.PushRef(1.0); } catch { task.PushRef(0.0); }
+                // Stessa logica del backend IL (CoreDb.CopyTo per CSV, ExportAreaToJson per JSON,
+                // area 0 = corrente): prima l'export era solo ISAM e ignorava il formato.
+                var fmtName_ = string.Equals(format_?.ToString(), "JSON", StringComparison.OrdinalIgnoreCase) ? "JSON" : "CSV";
+                var waE_ = area_ > 0 ? _dataSession.GetWorkArea(area_) : _dataSession.GetWorkArea(_dataSession.CurrentArea);
+                if (waE_ != null)
+                {
+                    try { Basic.IlBackend.IlRuntime.ExportToFile("", (area_ > 0 ? area_ : _dataSession.CurrentArea).ToString(), file_, fmtName_); task.PushRef(1.0); }
+                    catch { task.PushRef(0.0); }
+                }
                 else task.PushRef(0.0);
                 break;
             }
             case SysCall.IMPORT_FROM_FILE:
             {
                 // Compiler pusha 4: (EngineType, Area, FilePath, Format) → pop in ordine inverso.
-                var format_ = task.Sp > 0 ? task.PopRef()?.ToString() ?? "" : ""; // Format
+                var formatRaw_ = task.Sp > 0 ? task.PopRef() : null; // Format (TokenKind come double)
+                var format_ = string.Equals(formatRaw_?.ToString(), "JSON", StringComparison.OrdinalIgnoreCase) ? "JSON" : "CSV";
                 var file_ = task.Sp > 0 ? task.PopRef()?.ToString() ?? "" : "";  // FilePath
                 var area_ = (int)PopNum(task);                         // Area
+                if (area_ <= 0) area_ = _dataSession.CurrentArea;      // 0 = area implicita (corrente)
                 var engineType_ = task.Sp > 0 ? task.PopRef()?.ToString() ?? "" : ""; // EngineType
                 var wa_ = area_ > 0 ? _dataSession.GetWorkArea(area_) : null;
                 if (wa_?.Driver is Basic.Databases.Rdd.SqlDriver sd_)
@@ -6635,7 +6644,7 @@ internal sealed partial class PCodeProcessor
                     if (File.Exists(file_)) try { sd_.ExecRaw("INSERT INTO " + (wa_.Alias ?? "t") + " SELECT * FROM read_csv_auto('" + file_.Replace("'", "''") + "')", null, null); task.PushRef(1.0); } catch { task.PushRef(0.0); }
                     else task.PushRef(0.0);
                 }
-                else if (ResolveIsamDriver(task, area_) is not null)
+                else if (wa_?.Driver is not null)
                 {
                     // Delega al backend IL (CoreDb.CopyFrom per CSV, ImportAreaFromJson per JSON)
                     // — stessa logica di `IMPORT` nel backend IL, evita duplicazione.

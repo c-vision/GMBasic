@@ -36,7 +36,10 @@ public static class RuntimeFilterParser
         try
         {
             var line = new SourceLine(0, condition, 1, condition);
-            return Parser.ParseSingleExpression(condition, Program, line, 1, null);
+            // Registry OBBLIGATORIO: il Parser fa `_registry = registry!` e lo dereferenzia per
+            // operatori/builtin (NullReferenceException con `null`, condizione trattata come «nessun
+            // filtro»). Stesso registry di DbExprPCodeEvaluator/MacroEval.
+            return Parser.ParseSingleExpression(condition, Program, line, 1, StdLib.Instance);
         }
         catch (Exception ex)
         {
