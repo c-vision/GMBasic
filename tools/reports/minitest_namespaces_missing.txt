@@ -8,20 +8,12 @@ MANCA FILE  AI -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minit
 AI                               274   0   274   NO
 MANCA FILE  ASR -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/asr/asr_all.bas
 ASR                                1   0     1   NO
-MANCA FILE  BLOCKCHAIN -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/blockchain/blockchain_all.bas
-BLOCKCHAIN                        24   0    24   NO
 MANCA FILE  BROWSER -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/browser/browser_all.bas
 BROWSER                           21   0    21   NO
 MANCA FILE  COMPUTER -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/computer/computer_all.bas
 COMPUTER                          12   0    12   NO
-MANCA FILE  CONSOLE -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/console/console_all.bas
-CONSOLE                           12   0    12   NO
-MANCA FILE  CONTROLS -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/controls/controls_all.bas
-CONTROLS                          11   0    11   NO
 MANCA FILE  FONTS -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/fonts/fonts_all.bas
 FONTS                              3   0     3   NO
-MANCA FILE  GRAPHICS -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/graphics/graphics_all.bas
-GRAPHICS                          15   0    15   NO
   MANCA IO.WRITEBYTES
 IO                                33  32     1   si
   MANCA ISAM.APPENDMANY
@@ -31,8 +23,6 @@ MANCA FILE  LLM -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/mini
 LLM                               61   0    61   NO
 MANCA FILE  MESSAGE -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/message/message_all.bas
 MESSAGE                            1   0     1   NO
-MANCA FILE  MOUSE -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/mouse/mouse_all.bas
-MOUSE                             11   0    11   NO
 MANCA FILE  RDD -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/rdd/rdd_all.bas
 RDD                               22   0    22   NO
 MANCA FILE  SYNCMAP -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/syncmap/syncmap_all.bas
@@ -43,12 +33,10 @@ SYNCMAP                            4   0     4   NO
 SYSTEM                            26  23     3   si
 MANCA FILE  TORCH -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/torch/torch_all.bas
 TORCH                             76   0    76   NO
-MANCA FILE  TRAY -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/tray/tray_all.bas
-TRAY                              10   0    10   NO
 MANCA FILE  VECTORDB -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/vectordb/vectordb_all.bas
 VECTORDB                          28   0    28   NO
 
-namespace con file canonico:  54 / 72 
-namespace completi (file + superficie):  51 / 72 
-superficie coperta:  1236 / 1829   (mancano  593 )
+namespace con file canonico:  60 / 72 
+namespace completi (file + superficie):  57 / 72 
+superficie coperta:  1319 / 1829   (mancano  510 )
 struttura base del linguaggio: /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/constructs/base.bas -> presente
