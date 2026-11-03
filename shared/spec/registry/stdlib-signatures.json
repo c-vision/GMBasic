@@ -11729,7 +11729,15 @@
       "name": "SELECTED",
       "fn": true,
       "return": "long",
-      "params": []
+      "params": [
+        {
+          "name": "area",
+          "type": "\u003Cinferred\u003E",
+          "optional": true,
+          "byRef": false,
+          "array": false
+        }
+      ]
     },
     {
       "ns": "DBF",
@@ -12715,6 +12723,79 @@
           "name": "basis",
           "type": "double",
           "optional": true,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "FONTS",
+      "name": "TTGLYPHS",
+      "fn": true,
+      "return": "double[]",
+      "params": [
+        {
+          "name": "path",
+          "type": "string",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "FONTS",
+      "name": "TTMETRICS",
+      "fn": true,
+      "return": "double[]",
+      "params": [
+        {
+          "name": "path",
+          "type": "string",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "size",
+          "type": "\u003Cinferred\u003E",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "codepoint",
+          "type": "\u003Cinferred\u003E",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "FONTS",
+      "name": "TTRENDER",
+      "fn": true,
+      "return": "byte[]",
+      "params": [
+        {
+          "name": "path",
+          "type": "string",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "size",
+          "type": "\u003Cinferred\u003E",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "codepoint",
+          "type": "\u003Cinferred\u003E",
+          "optional": false,
           "byRef": false,
           "array": false
         }
@@ -14196,6 +14277,28 @@
       "fn": true,
       "return": "string",
       "params": []
+    },
+    {
+      "ns": "IO",
+      "name": "WriteBytes",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "path",
+          "type": "string",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "bytes",
+          "type": "byte[]",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
     },
     {
       "ns": "ISAM",
@@ -16588,7 +16691,7 @@
       "ns": "MATH",
       "name": "Avg",
       "fn": true,
-      "return": "\u003Cinferred\u003E",
+      "return": "double",
       "params": [
         {
           "name": "values",
@@ -17194,7 +17297,7 @@
       "ns": "MATH",
       "name": "Sum",
       "fn": true,
-      "return": "\u003Cinferred\u003E",
+      "return": "double",
       "params": [
         {
           "name": "values",
