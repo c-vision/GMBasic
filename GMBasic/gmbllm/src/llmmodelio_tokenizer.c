@@ -150,6 +150,81 @@ static int chat_template_of(const char* model, char* out, size_t cap)
     return out[0] ? 0 : -1;
 }
 
+/* Token string (es. bos_token/eos_token) da tokenizer_config.json: forma stringa oppure
+ * oggetto {"content": "..."} (parità ChatTranscripts.ReadTokenString C#). 0 ok / -1 assente. */
+static int json_token_string(const char* json, const char* field,
+                             char* out, size_t cap)
+{
+    out[0] = 0;
+    if (json == NULL) return -1;
+    if (json_first_string(json, field, out, cap) == 0 && out[0]) return 0;
+    char pat[128]; snprintf(pat, sizeof pat, "\"%s\"", field);
+    const char* p = strstr(json, pat);
+    if (p == NULL) return -1;
+    return json_first_string(p, "content", out, cap);
+}
+
+/* Prompt chat REALE del modello: una sola fonte C per `LLM TENSOR TEMPLATETEST` e per il
+ * decision provider locale (gmb_ai_decide_local.c). Rende il `chat_template` (cartella o GGUF)
+ * con messages=[system?, user], add_generation_prompt=true, bos/eos dal tokenizer_config.
+ * -1 su template assente/errore di render: il chiamante fallisce esplicitamente. */
+int llmmodelio_chat_render(const char* model, const char* system, const char* user,
+                           char* out, size_t cap, char* err, size_t errcap)
+{
+    if (err && errcap) err[0] = 0;
+    if (out == NULL || cap == 0) { if (err && errcap) snprintf(err, errcap, "buffer prompt nullo"); return -1; }
+    out[0] = 0;
+    if (model == NULL || !*model) { if (err && errcap) snprintf(err, errcap, "modello mancante"); return -1; }
+
+    char tpl[65536];
+    if (chat_template_of(model, tpl, sizeof tpl) != 0) {
+        if (err && errcap) snprintf(err, errcap, "chat_template assente per '%s'", model);
+        return -1;
+    }
+
+    char bos[256] = "", eos[256] = "";
+    size_t ml = strlen(model);
+    if (!(ml > 5 && strcasecmp(model + ml - 5, ".gguf") == 0)) {
+        const size_t sc = 4u * 1024u * 1024u;
+        char* cfg = (char*)malloc(sc);
+        if (cfg != NULL) {
+            char p[1300];
+            snprintf(p, sizeof p, "%s/tokenizer_config.json", model);
+            if (read_text_file(p, cfg, sc) == 0) {
+                json_token_string(cfg, "bos_token", bos, sizeof bos);
+                json_token_string(cfg, "eos_token", eos, sizeof eos);
+            }
+            free(cfg);
+        }
+    }
+
+    llmjinja_val* root = llmjinja_obj();
+    llmjinja_val* msgs = llmjinja_arr();
+    if (system != NULL && *system) {
+        llmjinja_val* sm = llmjinja_obj();
+        llmjinja_obj_set(sm, "role", llmjinja_str("system"));
+        llmjinja_obj_set(sm, "content", llmjinja_str(system));
+        llmjinja_arr_push(msgs, sm);
+    }
+    llmjinja_val* um = llmjinja_obj();
+    llmjinja_obj_set(um, "role", llmjinja_str("user"));
+    llmjinja_obj_set(um, "content", llmjinja_str(user ? user : ""));
+    llmjinja_arr_push(msgs, um);
+    llmjinja_obj_set(root, "messages", msgs);
+    llmjinja_obj_set(root, "add_generation_prompt", llmjinja_bool(1));
+    llmjinja_obj_set(root, "bos_token", llmjinja_str(bos));
+    llmjinja_obj_set(root, "eos_token", llmjinja_str(eos));
+    char* rendered = llmjinja_render(tpl, root, err, errcap);
+    llmjinja_val_free(root);
+    if (rendered == NULL) {
+        if (err && errcap && !err[0]) snprintf(err, errcap, "render del chat_template fallito");
+        return -1;
+    }
+    snprintf(out, cap, "%s", rendered);
+    free(rendered);
+    return 0;
+}
+
 /* B4 — carica i token del dataset di calibrazione: `.bin` = int32 grezzi; altrimenti un file di
  * testo tokenizzato col tokenizer del modello (fonte unica llmtoken). Ritorna n (>0) o -1. */
 static int b4_load_tokens(const char* model, const char* dataset, int32_t* ids, int cap)

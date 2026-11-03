@@ -17,6 +17,7 @@
 #include "gmb_llm_tok.h"
 #include "gmb_model_io.h"
 #include "gmb_distill.h"
+#include "gmb_ai_decide.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -190,6 +191,45 @@ GMB_AI_WEAK char* gmb_llm_out_or_raise(char* r, const char* what, long line)
 {
     if (!r) gmb_raise_error(9, what && *what ? what : "LLM error", line);
     return r;
+}
+
+static void set_err_local(char* err, size_t cap)
+{
+    if (!err || cap == 0) return;
+    if (g_ai_err[0]) snprintf(err, cap, "%s", g_ai_err);
+    else snprintf(err, cap, "runtime AI non disponibile");
+}
+
+/* ── DECIDE locale (JEV/SystemOne): implementazione nella dylib AI ────────── */
+
+GMB_AI_WEAK int gmb_ai_decide_local_run(const char* state, const char* kind,
+                                        const gmb_decision_option_t* options, int n_options,
+                                        gmb_decision_result_t* out, char* err, size_t errcap)
+{
+    /* KEEP-ALIVE per gli host linkati con `-Wl,-dead_strip` (gmb_vm_host): la dylib AI
+     * risolve a load-time i simboli del core `gmb_ai_decide_active_model_path` e
+     * `gmb_json_extract`, ma il linker li vedrebbe "non usati" dall'eseguibile e li
+     * rimuoverebbe → salto a simbolo nullo. I riferimenti volatile qui sotto li ancorano. */
+    static void* volatile g_decide_core_anchor;
+    g_decide_core_anchor = (void*)&gmb_ai_decide_active_model_path;
+    g_decide_core_anchor = (void*)&gmb_json_extract;
+    /* Import dell'intera dylib AI (non solo di DECIDE): sono simboli del core usati dai suoi
+     * moduli (ABI/llmdesc, rid, paths) e senza ancora dead_strip li rimuove dall'eseguibile
+     * → dlopen della dylib fallisce/aborta al primo uso. */
+    g_decide_core_anchor = (void*)&gmb_abi_set_llmdesc;
+    g_decide_core_anchor = (void*)&gmb_rid;
+    g_decide_core_anchor = (void*)&gmb_paths_libs_cache_dir;
+    g_decide_core_anchor = (void*)&gmb_paths_resolve_model;
+    g_decide_core_anchor = (void*)&gmb_raise_error;
+    int (*fn)(const char*, const char*, const gmb_decision_option_t*, int,
+              gmb_decision_result_t*, char*, size_t) =
+        (int (*)(const char*, const char*, const gmb_decision_option_t*, int,
+                 gmb_decision_result_t*, char*, size_t))ai_sym("gmb_ai_decide_local_run");
+    if (!fn) {
+        set_err_local(err, errcap);
+        return -1;
+    }
+    return fn(state, kind, options, n_options, out, err, errcap);
 }
 
 /* ── Model I/O (LLM MODEL CONVERT/QUANTIZE/INSPECT) ──────────────────────── */

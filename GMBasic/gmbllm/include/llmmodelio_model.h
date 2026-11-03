@@ -65,6 +65,13 @@ int llmmodelio_detokenize_to(const char* model, const char* ids_csv, char* out, 
  * (void*): `<dir>/tokenizer.json`, con FALLBACK SentencePiece nativo (`<dir>/tokenizer.model`).
  * NULL su errore. Esposto per i verbi che costruivano il path a mano. */
 void* llmmodelio_tokenizer_open(const char* model);
+/* Chat prompt REALE del modello (una sola fonte C, condivisa da LLM TENSOR TEMPLATETEST e dal
+ * decision provider locale): rende `chat_template` (cartella o GGUF) con `messages` =
+ * [system (se non vuoto), user], `add_generation_prompt=true`, bos/eos dal config.
+ * Ritorna 0 e scrive il prompt NUL-terminato in `out`; -1 con motivo in `err` (mai prompt
+ * approssimato: il chiamante decide il fallback o fallisce esplicitamente). */
+int llmmodelio_chat_render(const char* model, const char* system, const char* user,
+                           char* out, size_t cap, char* err, size_t errcap);
 /* B3 — model registry/versioning: `LLM REGISTRY <op>,<a>,<b>` (llmmodelio_registry.c).
  * *handled=1 se <op> è riconosciuto (0 ok / -1 errore). Store: work/models.registry. */
 int llmmodelio_registry_cmd(const char* op, const char* a, const char* b, FILE* out, int* handled);

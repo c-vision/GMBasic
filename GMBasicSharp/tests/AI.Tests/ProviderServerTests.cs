@@ -47,6 +47,30 @@ public sealed class ProviderServerTests : IDisposable
         server.Rotate(ProviderRole.Completion).Should().Be("llm-a");
     }
 
+    [Fact(DisplayName = "RegisterSource engine-first: \"mlx\" + modelDir (parità col runtime C)")]
+    public void RegisterSource_EngineFirstMlx_RegistersModelDir()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "gmb-mlx-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(Path.Combine(dir, "config.json"), "{\"model_type\":\"llama\"}");
+        File.WriteAllBytes(Path.Combine(dir, "model.safetensors"), [0]);
+        try
+        {
+            var server = ProviderServer.Instance;
+            var alias = server.RegisterSource("mlx-engine", "completion", "mlx",
+                $"{{\"modelDir\":\"{dir.Replace("\\", "\\\\")}\",\"maxTokens\":\"32\"}}");
+
+            alias.Should().Be("mlx-engine");
+            server.List(ProviderRole.Completion).Should().Contain("mlx-engine");
+            server.GetConfig("mlx-engine", "modelDir").Should().Be(dir);
+            server.GetConfig("mlx-engine", "maxTokens").Should().Be("32");
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
     [Fact]
     public void Configure_InvalidatesCachedInstance()
     {
