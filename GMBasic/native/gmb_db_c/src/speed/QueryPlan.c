@@ -637,7 +637,9 @@ int SpeedExpressionEvaluator_Dummy(const char* expressionString, const QueryResu
         }
         src = inner[0] ? inner : expressionString;
     }
-    if (gmb_expr_eval_filter(src, (void*)rowContext, dummy_expr_get, NULL, &v) != GMB_EXPR_OK) {
+    int erw = gmb_eval_filter_env(src, dummy_expr_get, NULL, (void*)rowContext, &v);
+    if (erw != 0) erw = gmb_expr_eval_filter(src, (void*)rowContext, dummy_expr_get, NULL, &v);
+    if (erw != GMB_EXPR_OK) {
         out->isNull = 1;
         return GMB_DB_OK;
     }

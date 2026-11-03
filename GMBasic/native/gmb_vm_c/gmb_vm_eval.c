@@ -59,6 +59,9 @@ typedef struct {
     char*** own_ploc_names; uint32_t own_ploc_n;
     uint32_t* own_try_ips; uint32_t* own_try_fins; uint32_t* own_try_ends;
     uint8_t* own_try_catch;
+    /* runner STANDALONE (contesti senza task: filtri, C99): VM minima dedicata */
+    gmb_vm_t* s_vm;
+    gmb_task_t* s_task;
     uint64_t last_use;
 } eval_ent_t;
 
@@ -120,6 +123,7 @@ static uint32_t chunk_proc_addr_at(const gmb_chunk_t* ch, int ip)
 
 static void merged_free(eval_ent_t* e)
 {
+    if (e->s_vm) { gmb_vm_free(e->s_vm); free(e->s_vm); e->s_vm = NULL; e->s_task = NULL; }
     for (int i = 0; i < e->n_own_strings; i++) free(e->own_strings[i]);
     free(e->own_strings);
     if (e->own_proc_names) {
@@ -506,10 +510,21 @@ static int eval_env_hook(const char* src, int as_stmt,
     return gmb_vm_eval_text_env(t, src, as_stmt, get, set, env, out);
 }
 
+/* Filtri/chiavi: SEMPRE valutatore standalone (nessun locale del chiamante: i
+ * nomi sono campi della riga). In-process, senza caricare libgmb_eval. */
+static int eval_filter_hook(const char* src, int as_stmt,
+                            gmb_eval_env_get_fn get, gmb_eval_env_set_fn set,
+                            void* env, gmb_val_t* out)
+{
+    (void)as_stmt;
+    return gmb_vm_eval_text_standalone(src, 2, get, set, env, out);
+}
+
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((constructor)) static void gmb_eval_env_register(void)
 {
     gmb_eval_register_env(eval_env_hook);
+    gmb_eval_register_filter(eval_filter_hook);
 }
 #endif
 
@@ -520,4 +535,126 @@ void gmb_vm_eval_cache_clear(void)
     for (int i = 0; i < g_cache_n; i++) merged_free(&g_cache[i]);
     g_cache_n = 0;
     pthread_mutex_unlock(&g_mu);
+}
+
+/* ── Valutatore STANDALONE (nessuna task ospite) ──────────────────────────────
+ * Usato dai contesti che non hanno una VM (filtri DBF/SPEED, C99Native): il
+ * frammento è compilato con SOLI parametri (nessun locale del chiamante, così
+ * un campo della riga non viene shadowato) ed eseguito su una VM minima
+ * dedicata, creata una volta e riusata per ogni riga.
+ * `get`/`set`: 0 = trovato/ok, <0 = assente (valore BORROWED in lettura). */
+int gmb_vm_eval_text_standalone(const char* src, int as_stmt,
+                                gmb_eval_env_get_fn get, gmb_eval_env_set_fn set,
+                                void* env, gmb_val_t* out)
+{
+    g_err[0] = 0;
+    if (out) *out = gmb_val_nil();
+    if (!src) src = "";
+
+    pthread_once(&g_mu_once, eval_mu_init);
+    pthread_mutex_lock(&g_mu);
+
+    eval_ent_t* e = NULL;
+    for (int i = 0; i < g_cache_n; i++) {
+        if (g_cache[i].host == NULL && g_cache[i].as_stmt == (as_stmt ? 1 : 0)
+            && g_cache[i].src && strcmp(g_cache[i].src, src) == 0) {
+            e = &g_cache[i]; e->last_use = ++g_clock; break;
+        }
+    }
+    if (!e) {
+        gmb_snippet_ext_t ext;
+        memset(&ext, 0, sizeof ext);       /* nessun simbolo ospite */
+        if (!gmb_compile_snippet) {
+            pthread_mutex_unlock(&g_mu);
+            set_err("frammenti a runtime: compilatore C non collegato");
+            return -1;
+        }
+        gmb_compiled_snippet_t sn;
+        char* cerr = NULL;
+        if (gmb_compile_snippet(src, as_stmt, &ext, &sn, &cerr) != 0) {
+            set_err(cerr ? cerr : "compilazione del frammento fallita");
+            free(cerr);
+            pthread_mutex_unlock(&g_mu);
+            return -1;
+        }
+        free(cerr);
+        eval_ent_t* slot;
+        if (g_cache_n < EVAL_CACHE_MAX) slot = &g_cache[g_cache_n++];
+        else {
+            int lru = 0;
+            for (int i = 1; i < g_cache_n; i++) if (g_cache[i].last_use < g_cache[lru].last_use) lru = i;
+            slot = &g_cache[lru];
+            merged_free(slot);
+        }
+        memset(slot, 0, sizeof *slot);
+        slot->src = strdup(src);
+        slot->as_stmt = as_stmt ? 1 : 0;
+        if (merged_build(slot, NULL, &sn, 0, 0) != 0) {
+            merged_free(slot);
+            gmb_compiled_snippet_free(&sn);
+            pthread_mutex_unlock(&g_mu);
+            if (!g_err[0]) set_err("preparazione del frammento fallita");
+            return -1;
+        }
+        gmb_compiled_snippet_free(&sn);
+        slot->last_use = ++g_clock;
+        e = slot;
+    }
+
+    /* VM minima dedicata (una per espressione compilata, riusata per riga). */
+    if (!e->s_vm) {
+        e->s_vm = (gmb_vm_t*)calloc(1, sizeof(gmb_vm_t));
+        if (!e->s_vm) { pthread_mutex_unlock(&g_mu); set_err("memoria esaurita (VM eval)"); return -1; }
+        gmb_vm_init(e->s_vm, &e->merged);
+        e->s_task = gmb_task_create(e->s_vm->scheduler, 0);
+        if (!e->s_task) {
+            gmb_vm_free(e->s_vm); free(e->s_vm); e->s_vm = NULL;
+            pthread_mutex_unlock(&g_mu);
+            set_err("creazione della task eval fallita");
+            return -1;
+        }
+        e->s_task->vm_ctx = e->s_vm;
+        gmb_task_ensure_globals(e->s_task, e->merged.global_count);
+    }
+
+    int argc = e->n_params;
+    gmb_obj_byref_t** cells = (gmb_obj_byref_t**)calloc((size_t)(argc ? argc : 1), sizeof(void*));
+    for (int i = 0; i < argc; i++) {
+        gmb_val_t fv = gmb_val_nil();
+        int own_fv = 0;
+        if (get) {
+            if (get(env, e->param_names[i], &fv) != 0) fv = gmb_val_nil();   /* BORROWED */
+        } else {
+            own_fv = 1;   /* nessun env: campo DBF (owned) — raro in standalone */
+            gmb_vm_dbf_field_get(e->param_names[i], &fv);
+        }
+        gmb_stack_entry_t se = gmb_adapter_val_to_stack(fv);
+        if (own_fv && fv.kind == GMB_TYPE_STRING) gmb_string_free(&fv.v_string);
+        gmb_obj_byref_t* box = gmb_byref_new_cell(e->s_task, se);
+        if (se.type == 2 && se.ref) gmb_obj_release(se.ref);
+        if (!box) { gmb_task_push_nil(e->s_task); continue; }
+        cells[i] = box;
+        gmb_task_push_ref(e->s_task, (gmb_obj_t*)box, GMB_BT_OBJECT);
+    }
+
+    gmb_val_t result = gmb_val_nil();
+    int want_result = (as_stmt != 1);
+    int rc = gmb_vm_call_sync(e->s_task, (int)e->entry, argc, want_result ? &result : NULL);
+
+    for (int i = 0; i < argc; i++) {
+        gmb_obj_byref_t* box = cells ? cells[i] : NULL;
+        if (!box) continue;
+        gmb_stack_entry_t cur = gmb_byref_load(box);   /* BORROWED */
+        gmb_val_t v = gmb_adapter_stack_to_val(cur);
+        if (set) set(env, e->param_names[i], v);
+        if (v.kind == GMB_TYPE_STRING) gmb_string_free(&v.v_string);
+        gmb_obj_release((gmb_obj_t*)box);
+    }
+    free(cells);
+    pthread_mutex_unlock(&g_mu);
+
+    if (rc != 0) { set_err("esecuzione del frammento BASIC fallita"); return -1; }
+    if (out && want_result) *out = result;
+    else if (result.kind == GMB_TYPE_STRING) gmb_string_free(&result.v_string);
+    return 0;
 }

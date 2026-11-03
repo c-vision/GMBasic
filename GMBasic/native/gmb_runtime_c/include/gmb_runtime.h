@@ -2849,9 +2849,16 @@ typedef int (*gmb_eval_env_fn)(const char* src, int as_stmt,
                                gmb_eval_env_get_fn get, gmb_eval_env_set_fn set,
                                void* env, gmb_val_t* out);
 void gmb_eval_register_env(gmb_eval_env_fn fn);
+/* Filtri/chiavi (espressione pura, NESSUN locale del chiamante: i nomi sono
+ * campi della riga). Se non c'è un motore in-process si carica libgmb_eval. */
+void gmb_eval_register_filter(gmb_eval_env_fn fn);
 int  gmb_eval_env(const char* src, int as_stmt,
                   gmb_eval_env_get_fn get, gmb_eval_env_set_fn set,
                   void* env, gmb_val_t* out);
+int  gmb_eval_filter_env(const char* src,
+                         gmb_eval_env_get_fn get, gmb_eval_env_set_fn set,
+                         void* env, gmb_val_t* out);
+const char* gmb_eval_last_error(void);
 #ifdef __cplusplus
 }
 #endif

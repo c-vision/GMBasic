@@ -807,6 +807,33 @@ void gmb_deploy_bundle(const char* exe, const char* install, const DeployOpts* o
         break;
     }
 
+    /* VALUTATORE A RUNTIME (libgmb_eval): compilatore+VM minima usata ON DEMAND dai
+     * contesti senza VM (filtri/chiavi DBF-SPEED nei programmi C99Native). Non è
+     * linkata nel binario: viene caricata solo quando un frammento va valutato. */
+    {
+        const char* evName = "libgmb_eval.dylib";
+#if defined(_WIN32)
+        evName = "gmb_eval.dll";
+#elif !defined(__APPLE__)
+        evName = "libgmb_eval.so";
+#endif
+        static const char* const evRe[] = {
+            "native/gmb_vm_c/build/",
+            "build/libs/" GMB_RID_STR "/",
+        };
+        for (size_t i = 0; i < sizeof evRe / sizeof evRe[0]; i++) {
+            char src[CLI_PATH], dst[CLI_PATH];
+            snprintf(src, sizeof src, "%s/%s%s", install, evRe[i], evName);
+            snprintf(dst, sizeof dst, "%s/%s", libsDir, evName);
+            if (!is_file(src)) continue;
+            if (dp_copy(src, dst)) {
+                if (!quiet) fprintf(stderr, "gmb: valutatore runtime (libgmb_eval) -> %s\n", dst);
+                dp_closure_file(src, install, libsDir, quiet);
+            }
+            break;
+        }
+    }
+
     /* BSP COMPLETO: progetto con `pages/*.bsp` → la dylib `libgmb_bsp` (VM/C) va nel bundle;
      * il runtime la carica via dlopen e rende le pagine precompilate (chunk A1). */
     if (o && o->src && *o->src) {
