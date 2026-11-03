@@ -415,7 +415,17 @@ public static partial class Numerics
     {
         var objectiveFunction = new NumericalGradientObjective(f);
         var solver = new ConjugateGradientMinimizer(tolerance, maxIterations);
-        return solver.FindMinimum(objectiveFunction, initialGuess);
+        try
+        {
+            return solver.FindMinimum(objectiveFunction, initialGuess);
+        }
+        catch (MaximumIterationsException)
+        {
+            /* Non-convergenza (MathNet lancia e butta via il percorso, es. Rosenbrock da (0,0)).
+             * Fallback deterministico su BFGS (stessa famiglia quasi-Newton, converge su questi
+             * casi): il chiamante ottiene un minimo valido invece di un'eccezione. */
+            return Bfgs(f, initialGuess, tolerance, Math.Max(maxIterations, 2000));
+        }
     }
 
     /// <summary>

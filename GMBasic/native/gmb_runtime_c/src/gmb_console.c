@@ -259,7 +259,8 @@ void gmb_print_double(gmb_double_t val) {
     if (isnan(val)) snprintf(buf, sizeof(buf), "NaN");
     else if (isinf(val)) snprintf(buf, sizeof(buf), val > 0 ? "Infinity" : "-Infinity");
     else {
-        snprintf(buf, sizeof(buf), "%.15g", val);
+        if (val == 0.0) val = 0.0;   /* -0.0 -> "0" (parita con .NET/sample) */
+snprintf(buf, sizeof(buf), "%.15g", val);
         char* e = strchr(buf, 'e');
         if (e) { *e = 'E'; if (e[1] != '-' && e[1] != '+') { memmove(e + 2, e + 1, strlen(e + 1) + 1); e[1] = '+'; } }
     }
@@ -354,7 +355,8 @@ void gmb_print_val(gmb_val_t v) {
                     if (e.kind == GMB_TYPE_DOUBLE) {
                         double d = e.v_double;
                         if (d == (double)(long long)d) snprintf(ebuf, sizeof(ebuf), "%lld", (long long)d);
-                        else snprintf(ebuf, sizeof(ebuf), "%.15g", d);
+                        else if (d == 0.0) d = 0.0;   /* -0.0 -> "0" (parita con .NET/sample) */
+snprintf(ebuf, sizeof(ebuf), "%.15g", d);
                         print_buf_add(&ob, &oc, &ol, ebuf);
                     } else if (e.kind == GMB_TYPE_INT) {
                         snprintf(ebuf, sizeof(ebuf), "%lld", (long long)e.v_int);

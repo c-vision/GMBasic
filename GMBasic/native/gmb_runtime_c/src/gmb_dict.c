@@ -1183,6 +1183,7 @@ static void gmb_display_append(gmb_val_t v, char** buf, size_t* cap, size_t* pos
     else if (v.kind == GMB_TYPE_DOUBLE)
     {
         double d = v.v_double;
+        if (d == 0.0) d = 0.0;   /* -0.0 -> "0" (parita con .NET/sample) */
         n = (d == (double)(long long)d) ? snprintf(t, sizeof(t), "%lld", (long long)d)
                                         : snprintf(t, sizeof(t), "%.15g", d);
     }

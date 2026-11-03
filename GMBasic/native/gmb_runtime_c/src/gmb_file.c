@@ -388,7 +388,8 @@ gmb_string_t gmb_csv_double(gmb_double_t v) {
     if (isnan(v)) snprintf(buf, sizeof(buf), "NaN");
     else if (isinf(v)) snprintf(buf, sizeof(buf), v > 0 ? "Infinity" : "-Infinity");
     else {
-        snprintf(buf, sizeof(buf), "%.15g", v);
+        if (v == 0.0) v = 0.0;   /* -0.0 -> "0" (parita con .NET/sample) */
+snprintf(buf, sizeof(buf), "%.15g", v);
         char* e = strchr(buf, 'e');
         if (e) { *e = 'E'; if (e[1] != '-' && e[1] != '+') { memmove(e + 2, e + 1, strlen(e + 1) + 1); e[1] = '+'; } }
     }
