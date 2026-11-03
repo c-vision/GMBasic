@@ -1,4 +1,4 @@
-MiniTest PER NAMESPACE — superficie:  1826  voci (procedure+costanti),  71  namespace
+MiniTest PER NAMESPACE — superficie:  1829  voci (procedure+costanti),  72  namespace
 file canonico: shared/minitests/<ns>/<ns>_all.bas
 
 namespace                          tot  cop  manca  file
@@ -11,8 +11,10 @@ COMPUTER                          12   0    12   NO
 CONSOLE                           12   0    12   NO
 CONTROLS                          11   0    11   NO
 CONVERT                           31   0    31   NO
+FONTS                              3   0     3   NO
 GRAPHICS                          15   0    15   NO
-ISAM                              24   0    24   NO
+IO                                33  32     1   si
+ISAM                              24  22     2   si
 LEDGER                            17   0    17   NO
 LLM                               61   0    61   NO
 MESSAGE                            1   0     1   NO
@@ -25,7 +27,7 @@ TRAY                              10   0    10   NO
 VECTORDB                          28   0    28   NO
 CONSTANTS                        285   0   285   NO
 
-namespace con file canonico:  50 / 71 
-namespace completi (file + superficie):  49 / 71 
-superficie coperta:  882 / 1826   (mancano  944 )
+namespace con file canonico:  51 / 72 
+namespace completi (file + superficie):  48 / 72 
+superficie coperta:  903 / 1829   (mancano  926 )
 struttura base del linguaggio: /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/constructs/base.bas -> presente

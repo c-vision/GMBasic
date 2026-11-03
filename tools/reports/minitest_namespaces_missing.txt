@@ -1,4 +1,4 @@
-MiniTest PER NAMESPACE — superficie:  1826  voci (procedure+costanti),  71  namespace
+MiniTest PER NAMESPACE — superficie:  1829  voci (procedure+costanti),  72  namespace
 file canonico: shared/minitests/<ns>/<ns>_all.bas
 
 namespace                          tot  cop  manca  file
@@ -20,10 +20,15 @@ MANCA FILE  CONTROLS -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared
 CONTROLS                          11   0    11   NO
 MANCA FILE  CONVERT -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/convert/convert_all.bas
 CONVERT                           31   0    31   NO
+MANCA FILE  FONTS -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/fonts/fonts_all.bas
+FONTS                              3   0     3   NO
 MANCA FILE  GRAPHICS -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/graphics/graphics_all.bas
 GRAPHICS                          15   0    15   NO
-MANCA FILE  ISAM -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/isam/isam_all.bas
-ISAM                              24   0    24   NO
+  MANCA IO.WRITEBYTES
+IO                                33  32     1   si
+  MANCA ISAM.APPENDMANY
+  MANCA ISAM.LOG
+ISAM                              24  22     2   si
 MANCA FILE  LEDGER -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/ledger/ledger_all.bas
 LEDGER                            17   0    17   NO
 MANCA FILE  LLM -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/llm/llm_all.bas
@@ -49,7 +54,7 @@ VECTORDB                          28   0    28   NO
 MANCA FILE  CONSTANTS -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/constants/constants_all.bas
 CONSTANTS                        285   0   285   NO
 
-namespace con file canonico:  50 / 71 
-namespace completi (file + superficie):  49 / 71 
-superficie coperta:  882 / 1826   (mancano  944 )
+namespace con file canonico:  51 / 72 
+namespace completi (file + superficie):  48 / 72 
+superficie coperta:  903 / 1829   (mancano  926 )
 struttura base del linguaggio: /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/constructs/base.bas -> presente
