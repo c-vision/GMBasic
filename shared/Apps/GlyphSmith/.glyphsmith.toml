@@ -8,6 +8,7 @@
 #   [import]   font, size, first, last, threshold, out   (solo in mode = "import")
 #   [text]     source, out                              (solo in mode = "textin")
 #   [bmpin]    source, scale, cols, cellw, cellh, first, trim, out  (mode = "bmpin")
+#   [gui]      zoom, frames, glyph                    (solo in mode = "gui")
 #   [tui]      keys, render                            (solo in mode = "tui")
 # ============================================================================
 
@@ -84,3 +85,14 @@ first = 65
 trim = "1"
 # nome del BDF prodotto (dentro [output] dir)
 out = "from_bmp.bdf"
+
+[gui]
+# ingrandimento del pixel nella griglia disegnata nella finestra
+zoom = 8
+# frame disegnati prima di uscire da soli: rende il percorso verificabile senza
+# chiudere la finestra a mano (marker GUI-READY / GUI-FRAME n / GUI-EXIT).
+# Con ESC o 'q' si esce prima; 'n'/'p' cambiano glifo (INKEY: serve un backend
+# con lettura tastiera, oggi VM/C).
+frames = 2
+# glifo mostrato all'apertura (indice nel modello)
+glyph = 0
