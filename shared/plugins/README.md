@@ -9,13 +9,18 @@ plugins/<nome>/
 └── <nome>.bas  REFERENCE: the procedures inside are NOT loaded by any backend
 ```
 
+> [!IMPORTANT] Sintassi: il punto separa **solo il namespace** dalla funzione/valore.
+> La capacità si invoca come **funzione** `x$ = AI.PLUGINCALL("nome", arg)`; la forma
+> `AI.PLUGIN.CALL(...)` **non esiste** (due punti: `AI.PLUGIN` non è un namespace).
+> I comandi restano a spazio e **senza** parentesi: `AI PLUGINS LIST`, `AI PLUGINS ENABLE "x"`.
+
 ## Who actually uses them
 
 | consumer | what it does |
 |---|---|
 | **LLM agent** (`AI AGENT ...`) | injects into the system prompt the description + `trigger` of the enabled plugins (`AgentRecord`, `AgentServer`) and, with `AI PLUGINS ENABLE`, registers the **schemas** of `tool.json` in the `McpToolRegistry` (`PluginRegistry.Enable`) |
 | `AI PLUGINS LIST / INFO / REFRESH` | folder scan (`PluginIndex.Scan`) |
-| `AI.PLUGINCALL("nome", arg)` | reads `procedures` from `PLUGIN.md` and invokes **the first procedure of the PROGRAM** with that name: C# `CallHandler` → `_basicProcedures`; VM/C → hook in `gmb_builtin.c` |
+| `AI.PLUGINCALL("nome", arg)` | **funzione** (parentesi): legge `procedures` da `PLUGIN.md` e invoca **la prima procedura del PROGRAMMA** con quel nome: C# `CallHandler` → `_basicProcedures`; VM/C → hook in `gmb_builtin.c`; C99Native → dispatcher generato |
 | **compiler** | **nothing.** No include in the linker/emitter: a `.bas` inside a plugin never enters the compilation |
 
 **The `<nome>.bas` is not executed.** It is the reference contract (the expected signatures): that

@@ -53,7 +53,7 @@ SUB Main()
   PRINT "DISABLE=1"
   PRINT "REGISTRO_OFF="; AI.PLUGINLIST()
   ' CALL_OFF è NON vuoto: DISABLE toglie il plugin dal registro in-process (e i suoi tool dal
-  ' McpToolRegistry), ma `AI.PLUGIN.CALL` risolve ancora dal DISCO (C# PluginRegistry.Get cade
+  ' McpToolRegistry), ma `AI.PLUGINCALL` risolve ancora dal DISCO (C# PluginRegistry.Get cade
   ' su PluginIndex.Scan) — stessa semantica su C99Native/VM-C dopo l'allineamento 2026-10-31.
   PRINT "CALL_OFF="; AI.PLUGINCALL("lc-full", "x")
 
