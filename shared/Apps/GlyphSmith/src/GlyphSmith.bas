@@ -449,6 +449,7 @@ SUB LoadBdf(path AS STRING)
             END IF
         END IF
     NEXT i
+    AddStdProps()
 END SUB
 
 SUB ParseSize(rest AS STRING)
@@ -1383,6 +1384,69 @@ END FUNCTION
 SUB WText(h AS LONG, s AS STRING)
     IO.FWRITE(h, s + CHR$(10))
 END SUB
+
+' Proprieta' standard BDF 2.2 / X11 che i font reali dichiarano sempre: se il
+' sorgente non le ha si aggiungono UNA volta in lettura, cosi' BDF e PCF le
+' emettono e il round trip resta idempotente (la seconda lettura non aggiunge nulla).
+SUB AddStdProps()
+    DIM i AS INTEGER, hasRes AS INTEGER, hasAsc AS INTEGER, hasDsc AS INTEGER, hasDef AS INTEGER
+    DIM up AS STRING, asc AS INTEGER, dsc AS INTEGER, def AS INTEGER, v AS INTEGER
+    hasRes = 0
+    hasAsc = 0
+    hasDsc = 0
+    hasDef = 0
+    i = 0
+    WHILE i < g_nProps
+        up = STRINGS.UPPER(g_propName(i))
+        IF up = "RESOLUTION_X" OR up = "RESOLUTION_Y" THEN hasRes = 1
+        IF up = "FONT_ASCENT" THEN hasAsc = 1
+        IF up = "FONT_DESCENT" THEN hasDsc = 1
+        IF up = "DEFAULT_CHAR" THEN hasDef = 1
+        i = i + 1
+    WEND
+    asc = 0
+    dsc = 0
+    i = 0
+    WHILE i < g_nGlyphs
+        v = g_gy(i) + g_gh(i)
+        IF v > asc THEN asc = v
+        v = 0
+        IF g_gy(i) < 0 THEN v = -g_gy(i)
+        IF v > dsc THEN dsc = v
+        i = i + 1
+    WEND
+    def = g_enc(0)
+    i = 0
+    WHILE i < g_nGlyphs
+        IF g_enc(i) = 32 THEN def = 32
+        i = i + 1
+    WEND
+    IF hasRes = 0 THEN
+        AddPropKV("RESOLUTION_X", NumS(g_xres))
+        AddPropKV("RESOLUTION_Y", NumS(g_yres))
+    END IF
+    IF hasAsc = 0 THEN AddPropKV("FONT_ASCENT", NumS(asc))
+    IF hasDsc = 0 THEN AddPropKV("FONT_DESCENT", NumS(dsc))
+    IF hasDef = 0 THEN AddPropKV("DEFAULT_CHAR", NumS(def))
+END SUB
+
+SUB AddPropKV(name AS STRING, value AS STRING)
+    IF g_nProps < GS_PROPS THEN
+        g_propName(g_nProps) = name
+        g_propValue(g_nProps) = value
+        g_nProps = g_nProps + 1
+    END IF
+END SUB
+
+FUNCTION PropInt(name AS STRING) AS INTEGER
+    DIM i AS INTEGER
+    PropInt = -1
+    i = 0
+    WHILE i < g_nProps
+        IF STRINGS.UPPER(g_propName(i)) = STRINGS.UPPER(name) THEN PropInt = CINT(VAL(g_propValue(i)))
+        i = i + 1
+    WEND
+END FUNCTION
 
 SUB BdfSave(path AS STRING)
     DIM h AS LONG, g AS INTEGER, r AS INTEGER, c AS INTEGER, i AS INTEGER
@@ -2547,7 +2611,7 @@ SUB RunCheck()
     ' --- 1. parsing e metriche ---
     KEq(g_nGlyphs, 3, "numero glifi")
     KEq(g_declChars, 3, "CHARS dichiarati")
-    KEq(g_nProps, 4, "proprieta del font")
+    KEq(g_nProps, 9, "proprieta del font (4 del file + 5 standard)")
     KEq(g_enc(0), 32, "encoding[0] = spazio")
     KEq(g_enc(1), 65, "encoding[1] = A")
     KEq(g_enc(2), 66, "encoding[2] = B")
@@ -2559,6 +2623,11 @@ SUB RunCheck()
     KEq(g_bbW, 8, "FONTBOUNDINGBOX larghezza")
     KEq(g_bbH, 8, "FONTBOUNDINGBOX altezza")
     KEq(g_pointSize, 8, "SIZE punto")
+    KEq(PropInt("RESOLUTION_X"), g_xres, "RESOLUTION_X dal SIZE")
+    KEq(PropInt("RESOLUTION_Y"), g_yres, "RESOLUTION_Y dal SIZE")
+    KEq(PropInt("FONT_ASCENT"), 8, "FONT_ASCENT dal modello")
+    KEq(PropInt("FONT_DESCENT"), 0, "FONT_DESCENT dal modello")
+    KEq(PropInt("DEFAULT_CHAR"), 32, "DEFAULT_CHAR = spazio")
 
     ' --- 2. inchiostro e pixel ---
     KEq(InkCount(0), 0, "inchiostro spazio")
@@ -2614,7 +2683,7 @@ SUB RunCheck()
     LoadBdf(OutPath("roundtrip.bdf"))
     KStr(ModelSignature(), sig, "round trip BDF identico")
     KEq(g_nGlyphs, 3, "glifi dopo round trip")
-    KEq(g_nProps, 4, "proprieta dopo round trip")
+    KEq(g_nProps, 9, "proprieta dopo round trip (idempotente)")
     KEq(g_nRows(1), 8, "righe A dopo round trip")
 
     ' --- 5. export ---
