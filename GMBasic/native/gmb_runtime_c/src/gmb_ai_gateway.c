@@ -18,6 +18,7 @@
 #include "gmb_model_io.h"
 #include "gmb_distill.h"
 #include "gmb_ai_decide.h"
+#include "gmb_decision_head.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -221,6 +222,11 @@ GMB_AI_WEAK int gmb_ai_decide_local_run(const char* state, const char* kind,
     g_decide_core_anchor = (void*)&gmb_paths_libs_cache_dir;
     g_decide_core_anchor = (void*)&gmb_paths_resolve_model;
     g_decide_core_anchor = (void*)&gmb_raise_error;
+    /* Testa di scoring condivisa (T3): importata dalla dylib AI per leggere l'artefatto. */
+    g_decide_core_anchor = (void*)&gmb_decision_head_init;
+    g_decide_core_anchor = (void*)&gmb_decision_head_load;
+    g_decide_core_anchor = (void*)&gmb_decision_head_slot;
+    g_decide_core_anchor = (void*)&gmb_decision_head_apply;
     int (*fn)(const char*, const char*, const gmb_decision_option_t*, int,
               gmb_decision_result_t*, char*, size_t) =
         (int (*)(const char*, const char*, const gmb_decision_option_t*, int,
