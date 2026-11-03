@@ -117,6 +117,12 @@ if(GMBLLM_TESTS)
              COMMAND gmbllm_decide_calibrate
                      ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/decide_calib_samples.txt
                      ${CMAKE_CURRENT_BINARY_DIR}/decide_calib_out.json)
+    add_executable(gmbllm_decide_eval tools/decide_eval.c)
+    target_link_libraries(gmbllm_decide_eval PRIVATE gmbllm_core)
+    target_include_directories(gmbllm_decide_eval PRIVATE include)
+    add_test(NAME gmbllm_decide_eval
+             COMMAND gmbllm_decide_eval
+                     ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/decide_calib_samples.txt)
     # modulo codec di prova usato da test_plugin (nome logico "test_id" -> libllmcodec_test_id)
     add_library(llmcodec_test_id MODULE tests/plugin_test_id.c)
     target_include_directories(llmcodec_test_id PRIVATE ${_gmbllm_test_includes})
