@@ -2998,6 +2998,17 @@ static void cc_expr(gmb_cc_t* c, const gmb_expr_t* e)
         break;
     }
     case GMB_EXPR_CALL: {
+        /* Invocazione diretta di un VALORE callable: `{ |x| … }(41)` — il callee
+         * (lambda) è spinto sullo stack, poi gli argomenti, poi CALL_INDIRECT. */
+        if (e->callee) {
+            /* Ordine VM: argomenti, poi il CALLABLE in cima (OP_CALL_INDIRECT lo pop-a). */
+            for (int i = 0; i < e->nargs; i++) cc_expr(c, e->args[i]);
+            if (c->error) return;
+            cc_expr(c, e->callee);
+            if (c->error) return;
+            cc_byte(c, GMB_OP_CALL_INDIRECT); cc_byte(c, (uint8_t)e->nargs);
+            break;
+        }
         if (cc_gfxctx_sugar(c, e)) return;
         if (e->var && (strcasecmp(e->var, "WINDOWCLOSED") == 0
                        || strcasecmp(e->var, "CTRLGETPROP") == 0
@@ -3534,7 +3545,9 @@ static void cc_emit_lambda(gmb_cc_t* c, const gmb_expr_t* e)
     if (c->compiling_lambda) { cc_err(c, "lambda annidata non ancora supportata dal compilatore nativo"); return; }
     cc_byte(c, GMB_OP_JUMP_FORWARD);
     int skip_pos = c->code_len; cc_u16(c, 0);
-    int address = c->code_len;
+    /* Indirizzo ASSOLUTO (base del frammento nel chunk merged): la costante
+     * OP_CLOSURE è un indirizzo di codice, non un offset relativo. */
+    int address = c->code_len + c->code_base;
 
     cc_local_t* saved_locals = c->locals; int saved_nlocals = c->nlocals, saved_cap = c->nloc_cap;
     int saved_in_proc = c->in_proc;
@@ -3618,7 +3631,9 @@ static void cc_emit_nested_function(gmb_cc_t* c, const gmb_stmt_t* s)
     if (c->compiling_lambda) { cc_err(c, "funzione annidata dentro una closure non ancora supportata dal compilatore nativo"); return; }
     cc_byte(c, GMB_OP_JUMP_FORWARD);
     int skip_pos = c->code_len; cc_u16(c, 0);
-    int address = c->code_len;
+    /* Indirizzo ASSOLUTO (base del frammento nel chunk merged): la costante
+     * OP_CLOSURE è un indirizzo di codice, non un offset relativo. */
+    int address = c->code_len + c->code_base;
 
     cc_local_t* saved_locals = c->locals; int saved_nlocals = c->nlocals, saved_cap = c->nloc_cap;
     int saved_in_proc = c->in_proc;
@@ -8021,6 +8036,52 @@ static int snip_classify(const char* src, char** params, int nparams, char** out
     return verdict;
 }
 
+/* Riferimenti QUALIFICATI `Alias.Campo` (es. `O.IDCLI = C.ID` in DBF JOIN WITH): il compilatore li
+ * chiede all'ospite col nome COMPLETO (SNIP_GLOBAL:O.IDCLI) — l'ospite sa risolvere l'alias. Un nome
+ * con '.' non è però un parametro BASIC valido (`BYREF O.IDCLI` non parsa → frammento rifiutato → la
+ * condizione risultava falsa in silenzio). Nel TESTO del wrapper il parametro si chiama `O__D__IDCLI`
+ * e le occorrenze nel sorgente sono riscritte uguale; all'ospite resta il nome puntato (param_names). */
+static void snip_mangle_name(const char* name, char* out, size_t cap)
+{
+    size_t o = 0;
+    for (const char* p = name; *p && o + 6 < cap; p++) {
+        if (*p == '.') { memcpy(out + o, "__D__", 5); o += 5; }
+        else out[o++] = *p;
+    }
+    out[o] = 0;
+}
+static int snip_is_id(char ch)
+{ return (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || ch == '_' || ch == '$'; }
+/* Copia di `src` con ogni occorrenza (fuori da stringhe) di un parametro puntato sostituita dal suo nome mangled. */
+static char* snip_mangle_src(const char* src, char** params, int nparams)
+{
+    size_t n = strlen(src);
+    char* out = (char*)malloc(n * 2 + 64 + 1);
+    if (!out) return NULL;
+    size_t o = 0; int in_str = 0;
+    for (size_t i = 0; i < n; ) {
+        char ch = src[i];
+        if (ch == '"') { in_str = !in_str; out[o++] = ch; i++; continue; }
+        if (!in_str && (i == 0 || (!snip_is_id(src[i - 1]) && src[i - 1] != '.'))) {
+            int hit = 0;
+            for (int k = 0; k < nparams && !hit; k++) {
+                if (!params[k] || !strchr(params[k], '.')) continue;
+                size_t pl = strlen(params[k]);
+                if (strncasecmp(src + i, params[k], pl) == 0 && !snip_is_id(src[i + pl]) && src[i + pl] != '.') {
+                    char mg[200]; snip_mangle_name(params[k], mg, sizeof mg);
+                    size_t ml = strlen(mg);
+                    if (o + ml + (n - i) + 1 > n * 2 + 64) break;
+                    memcpy(out + o, mg, ml); o += ml; i += pl; hit = 1;
+                }
+            }
+            if (hit) continue;
+        }
+        out[o++] = ch; i++;
+    }
+    out[o] = 0;
+    return out;
+}
+
 int gmb_compile_snippet(const char* src, int as_stmt, const gmb_snippet_ext_t* ext,
                         gmb_compiled_snippet_t* out, char** error)
 {
@@ -8082,25 +8143,33 @@ int gmb_compile_snippet(const char* src, int as_stmt, const gmb_snippet_ext_t* e
 
     for (int attempt = 0; attempt < 32; attempt++) {
         char* wrapped;
+        /* Nomi puntati (Alias.Campo) → nomi BASIC validi nel testo del wrapper (vedi snip_mangle_src). */
+        char* srcm = snip_mangle_src(src, params, nparams);
+        char** pm = (char**)calloc((size_t)(nparams > 0 ? nparams : 1), sizeof(char*));
+        if (!srcm || !pm) { free(srcm); free(pm); break; }
+        for (int i = 0; i < nparams; i++) { char mg[200]; snip_mangle_name(params[i], mg, sizeof mg); pm[i] = strdup(mg); }
         if (n_let > 0) {
-            size_t need = strlen(src) + 512;
-            for (int i = 0; i < nparams; i++) need += strlen(params[i]) + 8;
+            size_t need = strlen(srcm) + 512;
+            for (int i = 0; i < nparams; i++) need += strlen(pm[i]) + 8;
             for (int i = 0; i < n_let; i++) need += strlen(let_targets[i]) + 8;
             wrapped = (char*)malloc(need);
             if (wrapped) {
                 char* w = wrapped;
                 if (wrap_mode == 1) w += sprintf(w, "SUB __GMB_EVAL__(");
                 else                w += sprintf(w, "FUNCTION __GMB_EVAL__(");
-                for (int i = 0; i < nparams; i++) w += sprintf(w, "%sBYREF %s", i ? ", " : "", params[i]);
+                for (int i = 0; i < nparams; i++) w += sprintf(w, "%sBYREF %s", i ? ", " : "", pm[i]);
                 w += sprintf(w, ")\n");
                 for (int i = 0; i < n_let; i++) w += sprintf(w, "DIM %s\n", let_targets[i]);
-                if (wrap_mode == 0)      w += sprintf(w, "RETURN %s\nEND FUNCTION\n", src);
-                else if (wrap_mode == 2) w += sprintf(w, "%s\nRETURN %s\nEND FUNCTION\n", src, assign_target ? assign_target : "");
-                else                     w += sprintf(w, "%s\nEND SUB\n", src);
+                if (wrap_mode == 0)      w += sprintf(w, "RETURN %s\nEND FUNCTION\n", srcm);
+                else if (wrap_mode == 2) w += sprintf(w, "%s\nRETURN %s\nEND FUNCTION\n", srcm, assign_target ? assign_target : "");
+                else                     w += sprintf(w, "%s\nEND SUB\n", srcm);
             }
         } else {
-            wrapped = snip_wrap_text(src, wrap_mode, assign_target, params, nparams);
+            wrapped = snip_wrap_text(srcm, wrap_mode, assign_target, pm, nparams);
         }
+        free(srcm);
+        for (int i = 0; i < nparams; i++) free(pm[i]);
+        free(pm);
         if (!wrapped) break;
 
         gmb_lex_result_t lx = gmb_lexer_scan(wrapped, (long)strlen(wrapped));
@@ -8156,7 +8225,7 @@ int gmb_compile_snippet(const char* src, int as_stmt, const gmb_snippet_ext_t* e
             break;
         }
 
-        int retried = 0;
+        int retried = 0; { FILE* tdf = fopen("/tmp/gmbq/snip.txt", "a"); if (tdf) { fprintf(tdf, "src=[%s] cerr=[%s] nparams=%d\n", src, cerr ? cerr : "(null)", nparams); fclose(tdf); } } /*TMPDBG*/
         if (cerr && strncmp(cerr, "SNIP_GLOBAL:", 12) == 0) {
             const char* name = cerr + 12;
             int dup = 0;
