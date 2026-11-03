@@ -63,6 +63,8 @@ typedef struct gmb_fn {
  * della chiamata. Thread-local: nessuna interferenza fra esecuzioni concorrenti. */
 #define GMB_LAMBDA_MAX_BOUNDS 4
 gmb_int_t gmb_lambda_bound(int idx);
+gmb_int_t gmb_lambda_ret_len_get(void);
+void gmb_lambda_ret_len_set(gmb_int_t n);
 void gmb_lambda_bound_set(int idx, gmb_int_t b0);
 
 typedef enum {

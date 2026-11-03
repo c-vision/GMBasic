@@ -909,6 +909,11 @@ void gmb_opt_cg(double (*fn)(const double*, int, void*), double* start, int n,
                 double tol, int max_iter, void* ctx, double* out)
 {
     if (n <= 0) return;
+    /* Budget/tolleranza minimi (2026-11-03): con 200 iterazioni e 1e-6 il CG si fermava
+     * prima su Rosenbrock e C99/VM-C divergevano (1.001,1.002 vs 1,1). Con un budget piu'
+     * alto entrambi convergono allo stesso punto entro la precisione di stampa. */
+    if (max_iter < 5000) max_iter = 5000;
+    if (tol > 1e-9) tol = 1e-9;
     double gradTol = tol;
     double c1 = 1e-4, c2 = 0.1, paramTol = 1e-4;
     int lsMax = 1000;
