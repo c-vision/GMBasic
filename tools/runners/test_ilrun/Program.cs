@@ -16,14 +16,27 @@ using Basic.IlBackend;
 var engine = "il";
 var gfx = false;
 var positional = new System.Collections.Generic.List<string>();
-foreach (var a in args)
+var defines = new System.Collections.Generic.Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+for (var ai = 0; ai < args.Length; ai++)
 {
+    var a = args[ai];
     if (a.StartsWith("--engine=", StringComparison.OrdinalIgnoreCase))
         engine = a["--engine=".Length..].Trim().ToLowerInvariant();
     else if (a == "--gfx")
         gfx = true;
+    else if (a == "--define" && ai + 1 < args.Length)
+        AddDefine(defines, args[++ai]);
+    else if (a.StartsWith("--define=", StringComparison.OrdinalIgnoreCase))
+        AddDefine(defines, a["--define=".Length..]);
     else
         positional.Add(a);
+}
+
+static void AddDefine(System.Collections.Generic.Dictionary<string, string?> defs, string spec)
+{
+    var eq = spec.IndexOf('=');
+    if (eq < 0) defs[spec] = null;
+    else defs[spec[..eq]] = spec[(eq + 1)..];
 }
 if (engine is not ("il" or "pcode" or "vmc"))
 {
@@ -68,7 +81,7 @@ samplePath = Path.GetFullPath(samplePath);
 Directory.SetCurrentDirectory(Path.GetDirectoryName(samplePath)!);
 
 BasicProgram program;
-try { program = Orchestrator.Compile(samplePath, null, false); }
+try { program = Orchestrator.Compile(samplePath, defines.Count > 0 ? defines : null, false); }
 catch (Exception ex) { Console.Error.WriteLine($"[COMPILE] {ex.GetType().Name}: {ex.Message}"); return 2; }
 if (program?.MainModule == null) { Console.Error.WriteLine("[COMPILE] null"); return 2; }
 

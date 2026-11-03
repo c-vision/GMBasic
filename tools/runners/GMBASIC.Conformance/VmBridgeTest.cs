@@ -23,8 +23,25 @@ class VmBridgeTest
         // causa storica di sporcizia in root (AGENTS.md §9).
         Directory.SetCurrentDirectory(Path.GetDirectoryName(file)!);
 
+        // Definizioni compile-time: `vmtest file.bas --define MODE_A [--define X=1] ...`.
+        // I --define NON sono argomenti del programma (COMMAND$): vengono tolti da progArgs.
+        var defines = new System.Collections.Generic.Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        var progArgList = new System.Collections.Generic.List<string>();
+        for (var ai = 2; ai < args.Length; ai++)
+        {
+            if (args[ai] == "--define" && ai + 1 < args.Length)
+            {
+                AddDefine(defines, args[++ai]);
+            }
+            else if (args[ai].StartsWith("--define=", StringComparison.OrdinalIgnoreCase))
+            {
+                AddDefine(defines, args[ai]["--define=".Length..]);
+            }
+            else progArgList.Add(args[ai]);
+        }
+
         // 1. Compile
-        var program = Orchestrator.Compile(file, null, false);
+        var program = Orchestrator.Compile(file, defines.Count > 0 ? defines : null, false);
         if (program?.MainModule == null)
         {
             Console.Error.WriteLine("Compilazione fallita");
@@ -56,7 +73,7 @@ class VmBridgeTest
              * parità con la gamba IL, dove COMMAND(1) è il primo argomento dopo il file e non
              * i flag dell'harness. Prima non venivano inoltrati: COMMANDCOUNT() valeva 0 anche
              * con argomenti e nessun test poteva coprire COMMAND$ sulla gamba VM/C. */
-            var progArgs = args.Length > 2 ? string.Join(" ", args.Skip(2).Select(a => "\"" + a.Replace("\"", "\\\"") + "\"")) : "";
+            var progArgs = progArgList.Count > 0 ? string.Join(" ", progArgList.Select(a => "\"" + a.Replace("\"", "\\\"") + "\"")) : "";
             var psi = new ProcessStartInfo(exePath, $"\"{chunkPath}\" --entry-source \"{file}\"" + (progArgs.Length > 0 ? " " + progArgs : ""))
             {
                 UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true,
@@ -99,6 +116,13 @@ class VmBridgeTest
         {
             try { File.Delete(chunkPath); } catch { /* best effort */ }
         }
+    }
+
+    private static void AddDefine(System.Collections.Generic.Dictionary<string, string?> defs, string spec)
+    {
+        var eq = spec.IndexOf('=');
+        if (eq < 0) defs[spec] = null;
+        else defs[spec[..eq]] = spec[(eq + 1)..];
     }
 
     /// <summary>Stesso schema di GmbVmHostRunner (common/Executor): variabile d'ambiente
