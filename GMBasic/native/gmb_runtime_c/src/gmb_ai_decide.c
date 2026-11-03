@@ -493,6 +493,32 @@ char* gmb_ai_decide_run_json(const char* state, const char* kind, const char* pr
         return tout;
     }
 
+    /* P6 — provider ADAPTER (generativo): il modello locale GENERA la risposta e il testo
+     * viene riconosciuto come opzione. Esplicito: nessun match = errore JSON, mai un fallback. */
+    if (effective_provider && (ieq(effective_provider, "adapter") || ieq(effective_provider, "llm"))) {
+        gmb_decision_result_t adapter_result;
+        char aerr[GMB_DECISION_ERR_CAP] = "";
+        if (gmb_ai_decide_local_adapter_run(state ? state : "", kind, options, n_options,
+                                            &adapter_result, aerr, sizeof aerr) != 1) {
+            char esc[GMB_DECISION_ERR_CAP + 64];
+            json_escape(aerr[0] ? aerr : "adapter non disponibile", esc, sizeof esc);
+            char ebuf[GMB_DECISION_ERR_CAP + 96];
+            int en = snprintf(ebuf, sizeof ebuf, "{\"error\":\"adapter: %s\"}", esc);
+            if (en < 0) return NULL;
+            char* eout = (char*)malloc((size_t)en + 1);
+            if (!eout) return NULL;
+            memcpy(eout, ebuf, (size_t)en + 1);
+            return eout;
+        }
+        char abuffer[1024];
+        if (gmb_decision_result_json(&adapter_result, abuffer, sizeof abuffer) < 0) return NULL;
+        size_t an = strlen(abuffer);
+        char* aout = (char*)malloc(an + 1);
+        if (!aout) return NULL;
+        memcpy(aout, abuffer, an + 1);
+        return aout;
+    }
+
     /* Provider locale MLX: l'inferenza vive nella dylib AI (`gmb_ai_decide_local_run`),
      * che usa il motore LLMEnv (CAP_DECIDE), il tokenizer e il chat_template reale. Un
      * fallimento è un errore JSON ESPLICITO: mai un fallback silenzioso a rules. */

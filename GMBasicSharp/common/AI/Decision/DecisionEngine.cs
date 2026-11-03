@@ -41,6 +41,17 @@ public static class DecisionEngine
             return results.OrderByDescending(r => r.Probability).First();
         }
 
+        if (p is "adapter" or "llm")
+        {
+            ILlmCompleter? completer = null;
+            try { completer = ProviderServer.Instance.GetActiveCompletion(); }
+            catch { /* nessun provider attivo */ }
+            if (completer is null)
+                throw new DecisionProviderException("adapter: nessun provider di completion attivo");
+            var results = new AdapterDecisionProvider(completer).Evaluate(request);
+            return results.OrderByDescending(r => r.Probability).First();
+        }
+
         if (p == "typesafe")
         {
             decideName ??= ProviderServer.Instance.GetActiveName(ProviderRole.Decide);

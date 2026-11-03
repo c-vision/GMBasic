@@ -106,6 +106,14 @@ int gmb_ai_decide_local_run(const char* state, const char* kind,
                             const gmb_decision_option_t* options, int n_options,
                             gmb_decision_result_t* out, char* err, size_t errcap);
 
+/* P6 — provider ADAPTER (generativo): usa il MODELLO LOCALE per GENERARE la risposta e
+ * riconosce l'opzione scelta (id/label esatti → numero → parola intera → slot A..P).
+ * È il corrispettivo C di `AdapterDecisionProvider` (managed): per i modelli/endpoint senza
+ * logprob. La probabilità è 1/0 (adapter, non calibrato); nessun match = errore esplicito. */
+int gmb_ai_decide_local_adapter_run(const char* state, const char* kind,
+                                    const gmb_decision_option_t* options, int n_options,
+                                    gmb_decision_result_t* out, char* err, size_t errcap);
+
 /* Batch del provider locale: N domini SULLO STESSO stato con prefill/KV CONDIVISO. Il
  * dispatcher risolve i domini (`gmb_decision_resolve_domain`) e il provider costruisce i
  * prompt, calcola il prefisso comune di token, lo prefill-a UNA volta e lo salva nella

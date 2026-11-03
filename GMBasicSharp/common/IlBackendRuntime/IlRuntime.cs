@@ -18270,6 +18270,18 @@ public static double TextWidth(string s)
                 result = new Basic.Decision.TypesafeDecisionProvider(baseUrl ?? "", apiKey, model, timeout)
                     .Evaluate(request)[0];
             }
+            else if (p is "adapter" or "llm")
+            {
+                // P6: adapter generativo sul completer ATTIVO (locale o remoto). Serve ai
+                // modelli/endpoint che non espongono logprob; la probabilità è 1/0 sull'opzione
+                // riconosciuta e nessun match è un errore esplicito.
+                Basic.AI.Rag.ILlmCompleter? adapterCompleter = null;
+                try { adapterCompleter = Basic.Providers.ProviderServer.Instance.GetActiveCompletion(); }
+                catch { /* sotto → errore esplicito */ }
+                if (adapterCompleter is null)
+                    return "{\"error\":\"adapter: nessun provider di completion attivo\"}";
+                result = new Basic.Decision.AdapterDecisionProvider(adapterCompleter).Evaluate(request)[0];
+            }
             else if (p == "local")
             {
                 // Provider locale MLX: richiede un completer attivo che implementi
