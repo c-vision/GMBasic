@@ -17,12 +17,37 @@ static void put(const char* path, const char* body) { FILE* f = fopen(path, "wb"
 static char* get(const char* path) { size_t n; return abi_slurp(path, &n); }
 static void reset(void) { g_abi_done = 0; g_abi_busy = 0; g_abi_dir[0] = 0; }
 
+/* La SCOPERTA della cartella ABI (dove sta LLMEnv: pkg, Homebrew, albero sorgente) e' di LLMEnv,
+ * che ha il proprio selfcheck (`llmdesc_abi_selfcheck.c`). Qui si verifica la POLICY
+ * dell'applicazione: settings `paths.abiDir`, persistenza alla prima esecuzione, fallimento
+ * netto quando non c'e' nulla. Lo split core/AI (2026-11-02) espone i servizi come puntatori
+ * registrati: il test sostituisce la sola scoperta con uno stub deterministico, senza toccare
+ * il resto (validita' e policy restano quelle vere). */
+static int  g_locate_ok = 0;
+static char g_locate_path[2048];
+
+static void locate_set(int ok, const char* path)
+{
+    g_locate_ok = ok;
+    snprintf(g_locate_path, sizeof g_locate_path, "%s", path != NULL ? path : "");
+}
+
+static int stub_valid(const char* dir) { (void)dir; return 0; }   /* "nessuna ABI valida" */
+
+static int stub_locate(char* out, size_t cap, char* how, size_t howcap)
+{
+    if (!g_locate_ok) return 0;
+    if (out != NULL && cap > 0) snprintf(out, cap, "%s", g_locate_path);
+    if (how != NULL && howcap > 0) snprintf(how, howcap, "test");
+    return 1;
+}
+
 int main(void)
 {
     /* SPLIT core/AI (2026-11-02): in produzione i tre servizi ABI li registra la dylib
      * `gmb_runtime_ai` (constructor in gmb_ai_register.c). Il test linka `llmdesc.c`
      * direttamente, quindi fa la stessa registrazione qui, prima di ogni uso. */
-    gmb_abi_set_llmdesc(llmdesc_abi_valid, llmdesc_abi_locate, llmdesc_set_abi_policy);
+    gmb_abi_set_llmdesc(llmdesc_abi_valid, stub_locate, llmdesc_set_abi_policy);
     /* La policy ("la cartella ABI la risolve l'applicazione") la registra il constructor di
      * gmb_abi.c, che qui gira PRIMA di questa registrazione: la si applica quindi esplicitamente,
      * come farebbe il core quando i servizi sono gia' presenti. */
@@ -85,18 +110,26 @@ int main(void)
 
     /* ---- 3. percorso obsoleto (altra macchina) -> localizza (finto brew) -> riscrive nei settings ---- */
     put("app.settings.json", "{ \"paths\": { \"abiDir\": \"/gone/elsewhere/ABI\" } }");
+    snprintf(cmd, sizeof cmd, "%s/lib/llmenv/ABI", prefix);
+    locate_set(1, cmd);
     reset();
     CHECK(gmb_abi_dir(out, sizeof out) == 1);
-    snprintf(cmd, sizeof cmd, "%s/lib/llmenv/ABI", prefix);
     CHECK(strcmp(out, cmd) == 0);
     CHECK(abi_file_get("app.settings.json", v, sizeof v) == 1 && strcmp(v, cmd) == 0);
 
     /* ---- 4. prima esecuzione, nessun file di settings -> lo crea ---- */
-    remove("app.settings.json"); reset();
+    remove("app.settings.json");
+    locate_set(1, good);
+    reset();
     CHECK(gmb_abi_dir(out, sizeof out) == 1 && abi_file_get("app.settings.json", v, sizeof v) == 1);
 
     /* ---- 5. LLMEnv assente: errore netto, il caricamento del modello fallisce ---- */
-    remove("app.settings.json"); remove(fake); reset();
+    remove("app.settings.json"); remove(fake);
+    /* Nessuna ABI nel sistema: oltre alla scoperta senza esito, anche la validazione deve
+     * dire di no (il core altrimenti riconosce l'ABI dell'albero sorgente accanto al checkout). */
+    gmb_abi_set_llmdesc(stub_valid, stub_locate, llmdesc_set_abi_policy);
+    locate_set(0, "");
+    reset();
     snprintf(cmd, sizeof cmd, "rm -rf '%s'", prefix); (void)system(cmd);            /* il prefisso del finto brew non esiste piu' */
     snprintf(path, sizeof path, "%s/bin:/usr/bin:/bin", root); setenv("PATH", path, 1);
     CHECK(gmb_abi_dir(out, sizeof out) == 0);
