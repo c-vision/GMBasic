@@ -452,33 +452,33 @@ public sealed partial class IlProgramCompiler
     private void EmitControlMethod(ControlMethodStmt cm)
     {
         var a = cm.Args;
-        switch (cm.Sub.ToUpperInvariant())
+        switch (cm.ResolveSubKind())
         {
-            case "SET":
+            case TokenKind.Set:
                 EmitLdStr(a.Count > 0 ? a[0] : null); EmitLdStr(a.Count > 1 ? a[1] : null); EmitLdDbl(a.Count > 2 ? a[2] : null); EmitLdStr(a.Count > 3 ? a[3] : null);
                 _il.Emit(OpCodes.Call, IlRuntimeFormControlSetMethod); break;
-            case "GET":
+            case TokenKind.Get:
                 EmitLdStr(a.Count > 0 ? a[0] : null); EmitLdStr(a.Count > 1 ? a[1] : null);
                 _il.Emit(OpCodes.Call, IlRuntimeFormControlGetMethod);
                 if (cm.Into is VariableTarget gv) EmitAssignTargetFromTop(gv); else _il.Emit(OpCodes.Pop);
                 break;
-            case "GETS":
+            case TokenKind.ControlGets:
                 EmitLdStr(a.Count > 0 ? a[0] : null); EmitLdStr(a.Count > 1 ? a[1] : null);
                 _il.Emit(OpCodes.Call, IlRuntimeFormControlGetStrMethod);
                 if (cm.Into is VariableTarget gs) EmitAssignTargetFromTop(gs, new StringType()); else _il.Emit(OpCodes.Pop);
                 break;
-            case "MOVE":
+            case TokenKind.Move:
                 EmitLdStr(a.Count > 0 ? a[0] : null); EmitLdI4(a.Count > 1 ? a[1] : null); EmitLdI4(a.Count > 2 ? a[2] : null); EmitLdI4(a.Count > 3 ? a[3] : null); EmitLdI4(a.Count > 4 ? a[4] : null);
                 _il.Emit(OpCodes.Call, IlRuntimeFormControlMoveMethod); break;
-            case "FOCUS":
+            case TokenKind.Focus:
                 EmitLdStr(a.Count > 0 ? a[0] : null); _il.Emit(OpCodes.Call, IlRuntimeFormControlFocusMethod); break;
-            case "INVALIDATE":
+            case TokenKind.ControlInvalidate:
                 EmitLdStr(a.Count > 0 ? a[0] : null); _il.Emit(OpCodes.Call, IlRuntimeFormControlInvalidateMethod); break;
-            case "REFRESH":
+            case TokenKind.Refresh:
                 EmitLdStr(a.Count > 0 ? a[0] : null); _il.Emit(OpCodes.Call, IlRuntimeFormControlRefreshMethod); break;
-            case "ZORDER":
+            case TokenKind.ControlZorder:
                 EmitLdStr(a.Count > 0 ? a[0] : null); EmitLdI4(a.Count > 1 ? a[1] : null); _il.Emit(OpCodes.Call, IlRuntimeFormControlZorderMethod); break;
-            case "ADD":
+            case TokenKind.Add:
                 if (a.Count > 0) EmitExpression(a[0]); else _il.Emit(OpCodes.Ldnull);
                 EmitLdI4(a.Count > 1 ? a[1] : null); EmitLdI4(a.Count > 2 ? a[2] : null); EmitLdI4(a.Count > 3 ? a[3] : null); EmitLdI4(a.Count > 4 ? a[4] : null);
                 _il.Emit(OpCodes.Ldstr, PixelRefName(PixelPosEnd(a) > 5 ? a[5] : null));   /* PARENT (contenitore) */
@@ -488,10 +488,10 @@ public sealed partial class IlProgramCompiler
                 if (cm.Into is VariableTarget ivt) { _il.Emit(OpCodes.Call, IlRuntimeFormLastHandleMethod); EmitAssignTargetFromTop(ivt, new DoubleType()); }
                 else if (cm.Into != null) { _il.Emit(OpCodes.Call, IlRuntimeFormLastHandleMethod); _il.Emit(OpCodes.Pop); }
                 break;
-            case "REMOVE":
+            case TokenKind.Remove:
                 if (a.Count > 0) EmitExpression(a[0]); else _il.Emit(OpCodes.Ldnull);
                 _il.Emit(OpCodes.Call, IlRuntimeFormControlRemoveMethod); break;
-            case "DRAW":
+            case TokenKind.Draw:
                 EmitLdDbl(a.Count > 0 ? a[0] : null); EmitLdDbl(a.Count > 1 ? a[1] : null); EmitLdDbl(a.Count > 2 ? a[2] : null);
                 EmitLdDbl(a.Count > 3 ? a[3] : null); EmitLdDbl(a.Count > 4 ? a[4] : null); EmitLdDbl(a.Count > 5 ? a[5] : null);
                 EmitLdStr(a.Count > 6 ? a[6] : null);

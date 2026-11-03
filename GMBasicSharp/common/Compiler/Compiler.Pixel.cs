@@ -59,43 +59,43 @@ public sealed partial class Compiler
         var a = cm.Args;
         void S(int i) => EmitConstant(i < a.Count ? PxStr(a[i]) : "");
         void N(int i) { if (i < a.Count) VisitExpression(a[i]); else EmitConstant(0.0); }
-        switch (cm.Sub.ToUpperInvariant())
+        switch (cm.ResolveSubKind())
         {
-            case "SET":
+            case TokenKind.Set:
                 S(0); S(1); N(2); S(3);
                 EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.FORM_CTRL_SET); EmitByte((byte)4);
                 break;
-            case "GET":
+            case TokenKind.Get:
                 S(0); S(1);
                 EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.FORM_CTRL_GET); EmitByte((byte)2);
                 if (cm.Into != null) AssignVariable(cm.Into, isLet: false);
                 break;
-            case "GETS":
+            case TokenKind.ControlGets:
                 S(0); S(1);
                 EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.FORM_CTRL_GETS); EmitByte((byte)2);
                 if (cm.Into != null) AssignVariable(cm.Into, isLet: false);
                 break;
-            case "MOVE":
+            case TokenKind.Move:
                 S(0); N(1); N(2); N(3); N(4);
                 EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.FORM_CTRL_MOVE); EmitByte((byte)5);
                 break;
-            case "FOCUS":
+            case TokenKind.Focus:
                 S(0);
                 EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.FORM_CTRL_FOCUS); EmitByte((byte)1);
                 break;
-            case "INVALIDATE":
+            case TokenKind.ControlInvalidate:
                 S(0);
                 EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.FORM_CTRL_INVALIDATE); EmitByte((byte)1);
                 break;
-            case "REFRESH":
+            case TokenKind.Refresh:
                 S(0);
                 EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.FORM_CTRL_REFRESH); EmitByte((byte)1);
                 break;
-            case "ZORDER":
+            case TokenKind.ControlZorder:
                 S(0); N(1);
                 EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.FORM_CTRL_ZORDER); EmitByte((byte)2);
                 break;
-            case "ADD":
+            case TokenKind.Add:
                 /* CONTROL ADD instance AT x,y SIZE w,h [PARENT parent] → registra un UserControl.
                  * Nome controllo = nome-variabile dell'istanza; contenitore = nome-variabile (o
                  * stringa) di PARENT. La composizione annidata usa questi nomi. */
@@ -119,11 +119,11 @@ public sealed partial class Compiler
                     EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.FORM_BIND_UC_EVENT); EmitByte((byte)5);
                 }
                 break;
-            case "REMOVE":
+            case TokenKind.Remove:
                 if (a.Count > 0) VisitExpression(a[0]); else EmitConstant(0.0);
                 EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.FORM_CTRL_REMOVE); EmitByte((byte)1);
                 break;
-            case "DRAW":
+            case TokenKind.Draw:
                 /* CONTROL DRAW handle, op, a, b, c, d, str$ → primitiva GraphicsContext. */
                 if (a.Count > 0) VisitExpression(a[0]); else EmitConstant(0.0);
                 N(1); N(2); N(3); N(4); N(5); S(6);

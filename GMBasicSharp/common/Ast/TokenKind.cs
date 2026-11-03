@@ -2563,4 +2563,7 @@ public enum TokenKind
     // P_* (2026-11-03): sottocomando CHART GETS (non esiste un keyword dedicato).
     // In coda: gli ordinali sono nel registry canonico, mai inserire nel mezzo.
     ChartGets,
+    // P_* (2026-11-03): sottocomandi CONTROL senza keyword dedicata. In coda (ordinali
+    // canonici): mai inserire nel mezzo.
+    ControlGets, ControlZorder, ControlInvalidate,
 }
