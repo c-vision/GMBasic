@@ -1751,6 +1751,88 @@ SUB AsciiSave(path AS STRING)
     IO.FCLOSE(h)
 END SUB
 
+' --- export: anteprima sixel (un carattere per colonna, bande da 6 righe) ---
+' Stream DEC: ESC P q " 1;1;<w>;<h>  poi per ogni banda "#0" + w caratteri (63+bit)
+' e un '-' di fine banda, chiuso da ESC \\. Nessuna palette: il colore 0 e' quello
+' di default del terminale. Il file e' byte-esatto, quindi il check lo rilegge.
+SUB SixelSave(g AS INTEGER, path AS STRING)
+    DIM w AS INTEGER, h AS INTEGER, bands AS INTEGER, band AS INTEGER
+    DIM x AS INTEGER, k AS INTEGER, r AS INTEGER, v AS INTEGER, s AS STRING
+    DIM i AS LONG, n AS LONG
+    IF g < 0 THEN Fail("sixel: glifo fuori limite")
+    IF g >= GS_GMAX THEN Fail("sixel: glifo fuori limite")
+    w = g_gw(g)
+    h = g_gh(g)
+    IF w < 1 THEN Fail("sixel: glifo vuoto")
+    IF h < 1 THEN Fail("sixel: glifo vuoto")
+    bands = INT((h + 5) / 6)
+    s = CHR$(27) + "Pq" + CHR$(34) + "1;1;" + NumS(w) + ";" + NumS(h)
+    FOR band = 0 TO bands - 1
+        s = s + "#0"
+        FOR x = 0 TO w - 1
+            v = 0
+            FOR k = 0 TO 5
+                r = band * 6 + k
+                IF r < h THEN
+                    IF GetPx(g, x, r) = 1 THEN v = v + Pow2(k)
+                END IF
+            NEXT k
+            s = s + CHR$(63 + v)
+        NEXT x
+        s = s + "-"
+    NEXT band
+    s = s + CHR$(27) + CHR$(92)
+    DIM buf(LEN(s) - 1) AS BYTE
+    FOR i = 1 TO LEN(s)
+        buf(i - 1) = ASC(MID$(s, i, 1))
+    NEXT i
+    n = IO.WRITEBYTES(path, buf)
+    IF n <> LEN(s) THEN Fail("scrittura sixel incompleta: " + path)
+END SUB
+
+' Rilettura della sixel prodotta sopra: decodifica le bande e ricostruisce la griglia.
+SUB SixelLoad(g AS INTEGER, path AS STRING)
+    DIM w AS INTEGER, h AS INTEGER, bands AS INTEGER, band AS INTEGER
+    DIM x AS INTEGER, k AS INTEGER, j AS LONG, i AS LONG, last AS LONG, v AS INTEGER
+    IF NOT IO.FILEEXISTS(path) THEN Fail("sixel assente: " + path)
+    DIM raw() = IO.READBYTES(path)
+    last = UBOUND(raw)
+    w = g_gw(g)
+    h = g_gh(g)
+    IF w < 1 THEN Fail("sixel: glifo vuoto")
+    IF h < 1 THEN Fail("sixel: glifo vuoto")
+    bands = INT((h + 5) / 6)
+    i = -1
+    FOR j = 0 TO last
+        IF i < 0 THEN
+            IF raw(j) = 35 THEN i = j
+        END IF
+    NEXT j
+    IF i < 0 THEN Fail("sixel: nessun dato nel file")
+    ClearGlyph(g)
+    FOR band = 0 TO bands - 1
+        IF i + 1 > last THEN Fail("sixel: stream troncato")
+        IF raw(i) <> 35 THEN Fail("sixel: atteso selettore di colore")
+        IF raw(i + 1) <> 48 THEN Fail("sixel: selettore diverso da 0")
+        i = i + 2
+        FOR x = 0 TO w - 1
+            IF i > last THEN Fail("sixel: banda troncata")
+            v = raw(i) - 63
+            IF v < 0 THEN Fail("sixel: carattere fuori intervallo")
+            IF v > 63 THEN Fail("sixel: carattere fuori intervallo")
+            FOR k = 0 TO 5
+                IF INT(v / Pow2(k)) - INT(v / Pow2(k + 1)) * 2 = 1 THEN
+                    SetPx(g, x, band * 6 + k, "1")
+                END IF
+            NEXT k
+            i = i + 1
+        NEXT x
+        IF i <= last THEN
+            IF raw(i) = 45 THEN i = i + 1
+        END IF
+    NEXT band
+END SUB
+
 ' --- import: ASCII art (stesso formato di AsciiSave) ------------------------
 FUNCTION TextPath() AS STRING
     IF STRINGS.STARTSWITH(g_textSrc, "/") THEN
@@ -1831,12 +1913,14 @@ SUB SheetAll()
     Psf2Save(OutPath("mini8.psf"))
     Psf1Save(OutPath("mini8.psf1"))
     AsciiSave(OutPath("mini8.ascii"))
+    SixelSave(1, OutPath("mini8.six"))
     HeaderC(OutPath("mini8.h"))
     PRINT "export       : "; OutPath("sheet.bmp"); " ("; FileSizeOf(OutPath("sheet.bmp")); " byte)"
     PRINT "export       : "; OutPath("sheet.pbm"); " ("; FileSizeOf(OutPath("sheet.pbm")); " byte)"
     PRINT "export       : "; OutPath("mini8.psf"); " ("; FileSizeOf(OutPath("mini8.psf")); " byte)"
     PRINT "export       : "; OutPath("mini8.psf1"); " ("; FileSizeOf(OutPath("mini8.psf1")); " byte)"
     PRINT "export       : "; OutPath("mini8.ascii"); " ("; FileSizeOf(OutPath("mini8.ascii")); " byte)"
+    PRINT "export       : "; OutPath("mini8.six"); " ("; FileSizeOf(OutPath("mini8.six")); " byte)"
     PRINT "export       : "; OutPath("mini8.h"); " ("; FileSizeOf(OutPath("mini8.h")); " byte)"
 END SUB
 
@@ -2268,7 +2352,7 @@ SUB RunCheck()
     ' I glifi di lavoro si creano qui: il fixture ne ha pochi e gli indici alti non
     ' esistono, quindi non si assume nulla sul modello caricato.
     DIM n0 AS INTEGER, wa AS INTEGER, wb AS INTEGER, wc AS INTEGER
-    DIM regInk AS INTEGER, yy AS INTEGER, xx2 AS INTEGER, sigLast AS STRING
+    DIM regInk AS INTEGER, yy AS INTEGER, xx2 AS INTEGER, sigLast AS STRING, sigS AS STRING
     n0 = g_nGlyphs
     sigLast = GlyphSig(n0 - 1)
     InsertGlyph(900, "m2a", 8, 8)
@@ -2351,6 +2435,20 @@ SUB RunCheck()
     KTrue(Has(fr, "glifo") = 1, "TUI: frame con intestazione")
     KTrue(Has(fr, "cursore 3,0") = 1, "TUI: frame con riga di stato")
     KTrue(Has(fr, "+") = 1, "TUI: frame con bordo")
+
+    ' --- 10. sixel: byte del flusso e round-trip ---------------------------------
+    SixelSave(wb, OutPath("mini8.six"))
+    DIM sx() = IO.READBYTES(OutPath("mini8.six"))
+    KTrue(UBOUND(sx) + 1 > 20, "sixel: file non vuoto")
+    KEq(sx(0), 27, "sixel: ESC iniziale")
+    KEq(sx(1), 80, "sixel: 'P'")
+    KEq(sx(2), 113, "sixel: 'q'")
+    KEq(sx(UBOUND(sx)), 92, "sixel: terminatore backslash")
+    KEq(sx(UBOUND(sx) - 1), 27, "sixel: ESC del terminatore")
+    sigS = GlyphSig(wb)
+    ClearGlyph(wb)
+    SixelLoad(wb, OutPath("mini8.six"))
+    KStr(GlyphSig(wb), sigS, "sixel: round-trip identico al modello")
 
     RemoveGlyph(wc)
     RemoveGlyph(wb)
