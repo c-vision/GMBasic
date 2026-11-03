@@ -1,5 +1,5 @@
 SAMPLE AUDIT — shared/samples/**/*.bas
-totale file: 1190   categorie: 80
+totale file: 1191   categorie: 80
 
 == per categoria ==
   Ai                   147
@@ -34,8 +34,8 @@ totale file: 1190   categorie: 80
   Crypto               11
   Network              11
   Web                  11
+  Files                10
   Team                 10
-  Files                9
   Json                 9
   Stricts              9
   Documents            8
@@ -85,9 +85,9 @@ totale file: 1190   categorie: 80
 
 == per classificazione (un file può avere più tag) ==
   ENV          481
-  DIDATTICO    208
+  DIDATTICO    210
   CORTO        169
-  SURFACE      50
+  SURFACE      48
   SUPPORTO     25
   MODULO       15
   PACKAGE      7
@@ -118,7 +118,6 @@ totale file: 1190   categorie: 80
   Crypto/BlockchainFullCoverage.bas                                      righe=64   import=3
   Crypto/CryptoFullCoverage.bas                                          righe=22   import=2
   Crypto/CryptoUncoveredCoverage.bas                                     righe=50   import=2
-  Databases/DbDbfUncoveredCoverage.bas                                   righe=59   import=2
   Databases/DbIsamUncoveredCoverage.bas                                  righe=60   import=2
   Databases/DbLedgerCompleteCoverage.bas                                 righe=76   import=2
   Databases/DbLedgerUncoveredCoverage.bas                                righe=79   import=2
@@ -137,14 +136,13 @@ totale file: 1190   categorie: 80
   System/SystemFullCoverage.bas                                          righe=24   import=2
   Team/TeamFullCoverage.bas                                              righe=23   import=1
   TimeSeries/TimeSeriesFullCoverage.bas                                  righe=43   import=2
-  TimeSeries/TimeSeriesUncoveredCoverage.bas                             righe=43   import=1
   Trading/TradingCoreUncoveredCoverage.bas                               righe=30   import=1
   Trading/TradingFullCoverage.bas                                        righe=60   import=4
   Trading/TradingMetricsUncoveredCoverage.bas                            righe=66   import=2
   Trading/TradingPortfolioUncoveredCoverage.bas                          righe=50   import=1
   Workflow/WorkflowFullCoverage.bas                                      righe=25   import=1
   graphics/GraphicsUncoveredCoverage.bas                                 righe=41   import=1
-  (50 file)
+  (48 file)
 
 == EXPECT nei Sample (violazione del contratto) ==
   (0 file)
@@ -866,6 +864,7 @@ totale file: 1190   categorie: 80
   Crypto/CryptoFunctions.bas                                             righe=190  import=2
   Crypto/CryptoWalletHD.bas                                              righe=127  import=4
   Databases/AiLoadDocs.bas                                               righe=49   import=3
+  Databases/AnagraficaClienti.bas                                        righe=45   import=2
   Databases/BareCommandFallback.bas                                      righe=54   import=2
   Databases/CsvFinancialReport.bas                                       righe=102  import=3
   Databases/CustomerOrdersReport.bas                                     righe=86   import=3
@@ -979,6 +978,7 @@ totale file: 1190   categorie: 80
   System/SystemConstants.bas                                             righe=46   import=3
   System/SystemLowLevel.bas                                              righe=123  import=3
   System/SystemLowLevelCanon.bas                                         righe=52   import=3
+  TimeSeries/AnalisiPrezzi.bas                                           righe=34   import=2
   TimeSeries/TimeSeriesAdvanced.bas                                      righe=80   import=3
   TimeSeries/TimeSeriesTests.bas                                         righe=106  import=3
   Torch/TorchDatasetChar.bas                                             righe=44   import=2
@@ -1014,5 +1014,5 @@ totale file: 1190   categorie: 80
   graph/FinanceBrainGraph.bas                                            righe=51   import=2
   graph/GraphAgentAsk.bas                                                righe=34   import=2
   graph/GraphQueryMulti.bas                                              righe=29   import=2
-  (208 file)
+  (210 file)
 
