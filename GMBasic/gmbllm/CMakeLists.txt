@@ -32,6 +32,7 @@ endif()
 #   linkano per nome continuano a funzionare (self-check, build esistenti).
 set(GMBLLM_CORE_SOURCES
     src/llmcodec_gguf_mlx.c      # converter MLX<->GGUF (PUL): orchestrazione via registry (read/write Apache, encode PUL)
+    src/llm_decide_calib.c       # T5 PUL: fit temperatura 2 stadi (Brier) -> scoring_head.json
     src/llmmodelio_mlx_merge.c   # MERGE LoRA su modello MLX (dir) — dequant/fuse/requant
     src/llmmodelio_model.c       # model compiler: quantize/convert/ablate/add/adapter/module/merge/prune + report LLM MODEL/TENSOR
     src/llmmodelio_recover.c     # RECOVER (§9.B): gate->retrain->re-eval->ACCEPT/ROLLBACK (dominio separato)
@@ -98,6 +99,11 @@ if(GMBLLM_TESTS)
         add_test(NAME gmbllm_${_t}_selfcheck COMMAND gmbllm_${_t}_selfcheck)
     endforeach()
     target_compile_definitions(gmbllm_test_rolemap_selfcheck PRIVATE LLMCODEC_ABI_DIR="${LLMENV}/ABI")
+    # T5: calibrazione (model-free) — linka SOLO il core, senza la closure MLX del trainer.
+    add_executable(gmbllm_decide_calib_selfcheck tests/test_decide_calib.c)
+    target_link_libraries(gmbllm_decide_calib_selfcheck PRIVATE gmbllm_core)
+    target_include_directories(gmbllm_decide_calib_selfcheck PRIVATE include)
+    add_test(NAME gmbllm_decide_calib_selfcheck COMMAND gmbllm_decide_calib_selfcheck)
     # modulo codec di prova usato da test_plugin (nome logico "test_id" -> libllmcodec_test_id)
     add_library(llmcodec_test_id MODULE tests/plugin_test_id.c)
     target_include_directories(llmcodec_test_id PRIVATE ${_gmbllm_test_includes})
