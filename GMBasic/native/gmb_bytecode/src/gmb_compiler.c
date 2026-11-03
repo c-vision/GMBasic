@@ -5686,6 +5686,83 @@ static void cc_stmt(gmb_cc_t* c, const gmb_stmt_t* s)
                 #undef CC_PUSH_EMPTY_STR
             }
         }
+        /* AI WORKER NEW/RUN/LOOP/MANAGE, AI WORKER "<task>" e AI REPLAY AUTO:
+         * prima erano NO-OP SILENZIOSI (il ramo generico consumava solo gli argomenti
+         * e faceva POP). Mappatura sui builtin del runtime condiviso:
+         *   3559 new(name,opts) · 3560 run(name) · 3568 invoke(task)
+         *   3569 loop(task,rounds,require) · 3570 manage(cycles,require,plan)
+         *   3592 replay_auto(session)                                          */
+        if (s->win_name && s->mutex_action && strcasecmp(s->win_name, "AI") == 0) {
+            const char* verb = s->mutex_action;
+            gmb_expr_t* a0 = (s->n_go_args >= 1) ? s->go_args[0] : NULL;
+            const char* sub = (a0 && a0->kind == GMB_EXPR_VAR) ? a0->var : NULL;
+            if (strcasecmp(verb, "WORKER") == 0 && a0) {
+                if (sub && strcasecmp(sub, "NEW") == 0 && s->n_go_args >= 2) {
+                    cc_expr(c, s->go_args[1]); if (c->error) return;
+                    if (s->n_go_args >= 3) { cc_expr(c, s->go_args[2]); if (c->error) return; }
+                    else cc_byte(c, GMB_OP_PUSH_NIL);
+                    cc_byte(c, GMB_OP_CALL_BUILTIN); cc_u16(c, 3559); cc_byte(c, 2); cc_byte(c, GMB_OP_POP);
+                    break;
+                }
+                if (sub && strcasecmp(sub, "RUN") == 0 && s->n_go_args >= 2) {
+                    cc_expr(c, s->go_args[1]); if (c->error) return;
+                    cc_byte(c, GMB_OP_CALL_BUILTIN); cc_u16(c, 3560); cc_byte(c, 1); cc_byte(c, GMB_OP_POP);
+                    break;
+                }
+                if (sub && strcasecmp(sub, "LOOP") == 0 && s->n_go_args >= 2) {
+                    cc_expr(c, s->go_args[1]); if (c->error) return;
+                    int rounds_i = -1, req_i = -1;
+                    for (int i = 2; i < s->n_go_args; i++) {
+                        gmb_expr_t* e = s->go_args[i];
+                        int is_req = (e && e->kind == GMB_EXPR_VAR && e->var
+                                      && strcasecmp(e->var, "REQUIRE") == 0)
+                                     || (e && e->tk == GMB_TOK_Require);
+                        if (is_req) { if (i + 1 < s->n_go_args) req_i = i + 1; break; }
+                        if (rounds_i < 0) rounds_i = i;
+                    }
+                    if (rounds_i > 0) { cc_expr(c, s->go_args[rounds_i]); if (c->error) return; }
+                    else cc_byte(c, GMB_OP_PUSH_NIL);
+                    if (req_i > 0) { cc_expr(c, s->go_args[req_i]); if (c->error) return; }
+                    else cc_byte(c, GMB_OP_PUSH_NIL);
+                    cc_byte(c, GMB_OP_CALL_BUILTIN); cc_u16(c, 3569); cc_byte(c, 3); cc_byte(c, GMB_OP_POP);
+                    break;
+                }
+                if (sub && strcasecmp(sub, "MANAGE") == 0 && s->n_go_args >= 2) {
+                    int plan_i = -1, cycles_i = -1, req_i = -1, i = 1;
+                    if (i < s->n_go_args && s->go_args[i]->kind == GMB_EXPR_STR) { plan_i = i; i++; }
+                    for (; i < s->n_go_args; i++) {
+                        gmb_expr_t* e = s->go_args[i];
+                        int is_req = (e && e->kind == GMB_EXPR_VAR && e->var
+                                      && strcasecmp(e->var, "REQUIRE") == 0)
+                                     || (e && e->tk == GMB_TOK_Require);
+                        if (is_req) { if (i + 1 < s->n_go_args) req_i = i + 1; break; }
+                        if (cycles_i < 0) cycles_i = i;
+                    }
+                    if (cycles_i > 0) { cc_expr(c, s->go_args[cycles_i]); if (c->error) return; }
+                    else cc_byte(c, GMB_OP_PUSH_NIL);
+                    if (req_i > 0) { cc_expr(c, s->go_args[req_i]); if (c->error) return; }
+                    else { int _si = cc_add_const(c, GMB_CCONST_STRING, 0, ""); if (c->error) return;
+                           cc_byte(c, GMB_OP_PUSH_CONST); cc_u16(c, _si); }
+                    if (plan_i > 0) { cc_expr(c, s->go_args[plan_i]); if (c->error) return; }
+                    else { int _si = cc_add_const(c, GMB_CCONST_STRING, 0, ""); if (c->error) return;
+                           cc_byte(c, GMB_OP_PUSH_CONST); cc_u16(c, _si); }
+                    cc_byte(c, GMB_OP_CALL_BUILTIN); cc_u16(c, 3570); cc_byte(c, 3); cc_byte(c, GMB_OP_POP);
+                    break;
+                }
+                /* AI WORKER "<task>" (invoke) */
+                if (!sub && a0->kind == GMB_EXPR_STR) {
+                    cc_expr(c, a0); if (c->error) return;
+                    cc_byte(c, GMB_OP_CALL_BUILTIN); cc_u16(c, 3568); cc_byte(c, 1); cc_byte(c, GMB_OP_POP);
+                    break;
+                }
+            }
+            if (strcasecmp(verb, "REPLAY") == 0 && sub && strcasecmp(sub, "AUTO") == 0
+                && s->n_go_args >= 2) {
+                cc_expr(c, s->go_args[1]); if (c->error) return;
+                cc_byte(c, GMB_OP_CALL_BUILTIN); cc_u16(c, 3592); cc_byte(c, 1); cc_byte(c, GMB_OP_POP);
+                break;
+            }
+        }
         /* TRAIN LORA SAVE|LOAD (§4): adapter RAW <-> .safetensors (builtin 2312/2313).
          * go_args[0] = SAVE|LOAD, [1] = ckpt/adapter, [2] = out. */
         if (s->win_name && strcasecmp(s->win_name, "TRAIN") == 0 && s->mutex_action

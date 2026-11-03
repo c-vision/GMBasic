@@ -28,6 +28,15 @@
 #include <string.h>
 #include <strings.h>
 
+/* Il COMPILATORE C è collegato solo dove serve (host VM/C e BSP): qui il simbolo è
+ * debole, così la VM resta linkabile anche senza compilatore e un EVAL a runtime
+ * produce un errore ESPLICITO ("compilatore non collegato") invece di un errore
+ * di link. */
+#if defined(__GNUC__) || defined(__clang__)
+extern int gmb_compile_snippet(const char*, int, const gmb_snippet_ext_t*,
+                               gmb_compiled_snippet_t*, char**) __attribute__((weak));
+#endif
+
 #define EVAL_CACHE_MAX 32
 
 typedef struct {
@@ -351,6 +360,11 @@ static eval_ent_t* cache_build(const gmb_chunk_t* host, int paddr, const char* s
     }
     ext.local_names = local_names;
     ext.local_count = nlocals;
+
+    if (!gmb_compile_snippet) {
+        set_err("EVAL/frammenti: compilatore C non collegato in questo binario");
+        return NULL;
+    }
 
     gmb_compiled_snippet_t sn;
     char* cerr = NULL;
