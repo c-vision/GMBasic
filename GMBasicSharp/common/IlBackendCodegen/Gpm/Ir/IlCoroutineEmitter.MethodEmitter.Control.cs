@@ -835,6 +835,30 @@ internal sealed partial class MethodEmitter
                 case VariableExpr v:
                     LoadSlotObject(SlotOf(v.SymbolId));
                     break;
+                // Elemento di array in contesto OBJECT (es. `PRINT px(1)` in un metodo con
+                // park: SPRITE GETPIXELS marca la procedura come may-park → StepV2). Prima
+                // mancava e l'eccezione "ArrayAccessExpr non supportata (G2)" veniva
+                // inghiottita, lasciando label definite e mai marcate: il metodo non
+                // compilava ("Label 2 has not been marked"). Stessa semantica di
+                // EmitExprDouble per gli array numerici, con il box del tipo elemento.
+                case ArrayAccessExpr aa:
+                {
+                    var elem = ArrayElementType(aa.SymbolId);
+                    LoadSlotObject(SlotOf(aa.SymbolId));
+                    EmitExprDouble(aa.Indices[0]);
+                    _il.Emit(OpCodes.Conv_I4);
+                    EmitLoadArrayElementObject(elem);
+                    break;
+                }
+                case IndexedAccessExpr ia:
+                {
+                    var elem = ia.Base is VariableExpr iav ? ArrayElementType(iav.SymbolId) : null;
+                    EmitExprObject(ia.Base);
+                    EmitExprDouble(ia.Indices[0]);
+                    _il.Emit(OpCodes.Conv_I4);
+                    EmitLoadArrayElementObject(elem);
+                    break;
+                }
                 case GroupingExpr g:
                     EmitExprObject(g.Expression);
                     break;
@@ -1034,6 +1058,40 @@ internal sealed partial class MethodEmitter
                     break;
                 default:
                     throw new NotSupportedException($"StepV2: espressione '{e.GetType().Name}' non supportata (G2).");
+            }
+        }
+
+        /// <summary>Tipo dell'ELEMENTO di un array fisso: il simbolo può essere tipizzato
+        /// ArrayType oppure direttamente col tipo elemento.</summary>
+        private Basic.DataType? ArrayElementType(int symbolId)
+        {
+            if (_program is null) return null;
+            var dt = _program.Symbols.GetSymbol(symbolId).DataType;
+            return dt is ArrayType at ? at.ElementType : dt;
+        }
+
+        /// <summary>Carica l'elemento puntato da (array, indice) sullo stack come object,
+        /// con il box del tipo elemento (parità flat/ArrayAccessExpr).</summary>
+        private void EmitLoadArrayElementObject(Basic.DataType? elem)
+        {
+            if (elem is LongType)
+            {
+                _il.Emit(OpCodes.Ldelem_I8);
+                _il.Emit(OpCodes.Box, typeof(long));
+            }
+            else if (elem is DoubleType)
+            {
+                _il.Emit(OpCodes.Ldelem_R8);
+                _il.Emit(OpCodes.Box, typeof(double));
+            }
+            else if (elem is StringType)
+            {
+                _il.Emit(OpCodes.Ldelem_Ref);
+            }
+            else
+            {
+                _il.Emit(OpCodes.Ldelem_I4);
+                _il.Emit(OpCodes.Box, typeof(int));
             }
         }
 
