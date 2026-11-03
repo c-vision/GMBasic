@@ -121,6 +121,13 @@ DIM g_redoNR(GS_UNDO) AS INTEGER
 DIM g_redoRow(GS_UNDO * GS_ROWS) AS STRING
 DIM g_redoTop AS INTEGER
 
+' --- M4: TUI (vista sullo stesso modello, pilotata da uno script di tasti) ---
+DIM g_tuiKeys AS STRING
+DIM g_tuiRender AS STRING
+DIM g_tuiGlyph AS INTEGER
+DIM g_tuiX AS INTEGER
+DIM g_tuiY AS INTEGER
+
 ' --- Contatori dell'autocheck ----------------------------------------------
 DIM g_ok AS INTEGER
 DIM g_ko AS INTEGER
@@ -146,6 +153,8 @@ SUB Main()
         RunImport()
     ELSEIF mode = "TEXTIN" THEN
         RunTextIn()
+    ELSEIF mode = "TUI" THEN
+        RunTui()
     ELSE
         PrintStatus()
     END IF
@@ -168,6 +177,9 @@ FUNCTION ComputeMode() AS STRING
 #ENDIF
 #IFDEF GLYPHSMITH_MODE_TEXTIN
     m = "TEXTIN"
+#ENDIF
+#IFDEF GLYPHSMITH_MODE_TUI
+    m = "TUI"
 #ENDIF
     ComputeMode = m
 END FUNCTION
@@ -196,6 +208,8 @@ SUB ConfigureDefaults()
     g_importOut = "imported.bdf"
     g_textSrc = "bin/mini8.ascii"
     g_textOut = "from_text.bdf"
+    g_tuiKeys = "edits/keys.txt"
+    g_tuiRender = "0"
 END SUB
 
 SUB PrintBanner()
@@ -267,6 +281,8 @@ SUB ParseSettingsFile(path AS STRING)
                     IF section = "IMPORT" AND key = "OUT" THEN g_importOut = val
                     IF section = "TEXT" AND key = "SOURCE" THEN g_textSrc = val
                     IF section = "TEXT" AND key = "OUT" THEN g_textOut = val
+                    IF section = "TUI" AND key = "KEYS" THEN g_tuiKeys = val
+                    IF section = "TUI" AND key = "RENDER" THEN g_tuiRender = val
                 END IF
             END IF
         END IF
@@ -1175,6 +1191,146 @@ SUB DoRedo()
         RSlotToGlyph(slot)
         g_redoTop = slot
     END IF
+END SUB
+
+' ============================================================================
+' M4 — TUI: una vista sullo STESSO modello (nessun secondo stato)
+' Il frame e' deterministico e i tasti arrivano da uno script, cosi' il percorso
+' interattivo resta verificabile nel check; il terminale e' solo una sorgente.
+' ============================================================================
+FUNCTION Has(s AS STRING, sub AS STRING) AS INTEGER
+    DIM i AS INTEGER, j AS INTEGER, ls AS INTEGER, lb AS INTEGER, ok AS INTEGER
+    Has = 0
+    ls = LEN(s)
+    lb = LEN(sub)
+    IF lb > 0 THEN
+        IF ls >= lb THEN
+            FOR i = 1 TO ls - lb + 1
+                ok = 1
+                FOR j = 1 TO lb
+                    IF MID$(s, i + j - 1, 1) <> MID$(sub, j, 1) THEN ok = 0
+                NEXT j
+                IF ok = 1 THEN Has = 1
+            NEXT i
+        END IF
+    END IF
+END FUNCTION
+
+FUNCTION TuiFrame() AS STRING
+    DIM s AS STRING, top AS STRING, ch AS STRING, g AS INTEGER
+    DIM r AS INTEGER, x AS INTEGER
+    g = g_tuiGlyph
+    IF g < 0 THEN g = 0
+    IF g >= GS_GMAX THEN g = GS_GMAX - 1
+    top = "+"
+    FOR x = 1 TO g_gw(g) + 2
+        top = top + "-"
+    NEXT x
+    top = top + "+"
+    s = "glifo " + NumS(g) + " '" + g_gname(g) + "' enc " + NumS(g_enc(g)) + " box " + NumS(g_gw(g)) + "x" + NumS(g_gh(g)) + " inchiostro " + NumS(InkCount(g))
+    s = s + CHR$(10) + top
+    FOR r = 0 TO g_gh(g) - 1
+        s = s + CHR$(10) + "| "
+        FOR x = 0 TO g_gw(g) - 1
+            IF GetPx(g, x, r) = 1 THEN
+                ch = "#"
+            ELSE
+                ch = "."
+            END IF
+            IF x = g_tuiX THEN
+                IF r = g_tuiY THEN
+                    IF GetPx(g, x, r) = 1 THEN
+                        ch = "X"
+                    ELSE
+                        ch = "+"
+                    END IF
+                END IF
+            END IF
+            s = s + ch
+        NEXT x
+        s = s + " |"
+    NEXT r
+    s = s + CHR$(10) + top
+    s = s + CHR$(10) + "cursore " + NumS(g_tuiX) + "," + NumS(g_tuiY) + "  clip " + NumS(g_clipW) + "x" + NumS(g_clipH) + "  undo " + NumS(g_undoTop) + " redo " + NumS(g_redoTop)
+    TuiFrame = s
+END FUNCTION
+
+SUB TuiApply(k AS STRING)
+    DIM g AS INTEGER
+    g = g_tuiGlyph
+    IF k = "l" OR k = "L" THEN
+        IF g_tuiX < g_gw(g) - 1 THEN g_tuiX = g_tuiX + 1
+    ELSEIF k = "h" OR k = "H" THEN
+        IF g_tuiX > 0 THEN g_tuiX = g_tuiX - 1
+    ELSEIF k = "j" OR k = "J" THEN
+        IF g_tuiY < g_gh(g) - 1 THEN g_tuiY = g_tuiY + 1
+    ELSEIF k = "k" OR k = "K" THEN
+        IF g_tuiY > 0 THEN g_tuiY = g_tuiY - 1
+    ELSEIF k = " " THEN
+        HistPush(g)
+        IF GetPx(g, g_tuiX, g_tuiY) = 1 THEN
+            SetPx(g, g_tuiX, g_tuiY, "0")
+        ELSE
+            SetPx(g, g_tuiX, g_tuiY, "1")
+        END IF
+    ELSEIF k = "n" OR k = "N" THEN
+        IF g_tuiGlyph < g_nGlyphs - 1 THEN g_tuiGlyph = g_tuiGlyph + 1
+        g_tuiX = 0
+        g_tuiY = 0
+    ELSEIF k = "p" OR k = "P" THEN
+        IF g_tuiGlyph > 0 THEN g_tuiGlyph = g_tuiGlyph - 1
+        g_tuiX = 0
+        g_tuiY = 0
+    ELSEIF k = "c" OR k = "C" THEN
+        HistPush(g)
+        ClearGlyph(g)
+    ELSEIF k = "x" OR k = "X" THEN
+        HistPush(g)
+        FlipH(g)
+    ELSEIF k = "y" OR k = "Y" THEN
+        HistPush(g)
+        FlipV(g)
+    ELSEIF k = "b" OR k = "B" THEN
+        HistPush(g)
+        BearingRecompute(g)
+    ELSEIF k = "u" OR k = "U" THEN
+        DoUndo()
+    ELSEIF k = "r" OR k = "R" THEN
+        DoRedo()
+    ELSE
+        Fail("tasto TUI non riconosciuto: " + k)
+    END IF
+END SUB
+
+FUNCTION TuiKeysPath() AS STRING
+    IF STRINGS.STARTSWITH(g_tuiKeys, "/") THEN
+        TuiKeysPath = g_tuiKeys
+    ELSE
+        TuiKeysPath = g_appDir + "/" + g_tuiKeys
+    END IF
+END FUNCTION
+
+SUB RunTui()
+    DIM lines
+    DIM i AS LONG, k AS STRING, path AS STRING
+    path = TuiKeysPath()
+    IF NOT IO.FILEEXISTS(path) THEN Fail("script tasti assente: " + path)
+    g_tuiGlyph = 0
+    g_tuiX = 0
+    g_tuiY = 0
+    PRINT "tui          : "; path
+    PRINT TuiFrame()
+    lines = IO.READLINES(path)
+    FOR i = 0 TO UBOUND(lines)
+        k = lines(i)
+        IF LEN(k) > 0 THEN
+            IF MID$(k, 1, 1) <> "#" THEN
+                TuiApply(k)
+                IF g_tuiRender = "1" THEN PRINT TuiFrame()
+            END IF
+        END IF
+    NEXT i
+    PRINT TuiFrame()
 END SUB
 
 ' ============================================================================
@@ -2167,6 +2323,27 @@ SUB RunCheck()
     KEq(g_gx(wb), 2, "M2: bearing x = primo pixel")
     KEq(g_dwx(wb), 4, "M2: bearing DWIDTH = larghezza inchiostrata")
     KEq(g_gy(wb), -4, "M2: bearing y = -(ultima riga + 1)")
+
+    ' --- 9. M4: TUI sullo stesso modello --------------------------------------
+    DIM fr AS STRING
+    g_tuiGlyph = wb
+    g_tuiX = 2
+    g_tuiY = 1
+    TuiApply(" ")
+    KEq(GetPx(wb, 2, 1), 0, "TUI: spazio spegne il pixel sotto il cursore")
+    TuiApply(" ")
+    KEq(GetPx(wb, 2, 1), 1, "TUI: spazio riaccende")
+    TuiApply("l")
+    KEq(g_tuiX, 3, "TUI: 'l' sposta a destra")
+    TuiApply("k")
+    KEq(g_tuiY, 0, "TUI: 'k' sale")
+    KEq(g_tuiX, 3, "TUI: il cursore non esce dal box")
+    TuiApply("u")
+    KEq(g_tuiX, 3, "TUI: undo non muove il cursore")
+    fr = TuiFrame()
+    KTrue(Has(fr, "glifo") = 1, "TUI: frame con intestazione")
+    KTrue(Has(fr, "cursore 3,0") = 1, "TUI: frame con riga di stato")
+    KTrue(Has(fr, "+") = 1, "TUI: frame con bordo")
 
     RemoveGlyph(wc)
     RemoveGlyph(wb)
