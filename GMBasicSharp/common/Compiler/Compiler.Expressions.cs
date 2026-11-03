@@ -2629,13 +2629,15 @@ public sealed partial class Compiler
                     { syscall = SysCall.ISAM_FOLLOW_REPLICATION; expectedArgs = args.Length; }
                 else if (funcName.Equals("INTEGRITY", StringComparison.OrdinalIgnoreCase))
                 {
-                    EmitFileNumber(args[0]);
+                    // L'area è OPZIONALE (INTEGRITY() = area corrente): senza args[0] il
+                    // compilatore andava in IndexOutOfRange e PCode/VM-C non compilavano.
+                    if (args.Length > 0) EmitFileNumber(args[0]);
                     EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.ISAM_INTEGRITY); EmitByte((byte)(args.Length));
                     return true;
                 }
                 else if (funcName.Equals("INFO", StringComparison.OrdinalIgnoreCase))
                 {
-                    EmitFileNumber(args[0]);
+                    if (args.Length > 0) EmitFileNumber(args[0]);
                     EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.ISAM_INFO); EmitByte((byte)(args.Length));
                     return true;
                 }

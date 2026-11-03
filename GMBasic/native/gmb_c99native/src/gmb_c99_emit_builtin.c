@@ -478,6 +478,30 @@ static int io_readbytes(ctx_t* c, gmb_expr_t** a, int n) {
     sb_put(&c->out, "gmb_read_all_bytes_list(("); emit_str_operand(c, a[0]); sb_put(&c->out, ").data)");
     return 1;
 }
+/* FONTS.TTRENDER / TTMETRICS / TTGLYPHS (funzioni, §1/§3): le liste le costruisce il
+ * runtime condiviso (gmb_fonts.c), qui si emette solo la chiamata. */
+int emit_bf_fonts(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk,
+                  gmb_expr_t** args, int nargs, int line) {
+    (void)name; (void)ns; (void)line;
+    if (tk == GMB_TOK_TtGlyphsFunc) {
+        if (nargs != 1 || !args[0]) return 0;
+        sb_put(&c->out, "gmb_fonts_tt_glyphs_list((");
+        emit_str_operand(c, args[0]);
+        sb_put(&c->out, ").data)");
+        return 1;
+    }
+    if (nargs != 3 || !args[0] || !args[1] || !args[2]) return 0;
+    if (tk == GMB_TOK_TtRenderFunc) sb_put(&c->out, "gmb_fonts_tt_render_list((");
+    else sb_put(&c->out, "gmb_fonts_tt_metrics_list((");
+    emit_str_operand(c, args[0]);
+    sb_put(&c->out, ").data, (double)(");
+    emit_expr(c, args[1]);
+    sb_put(&c->out, "), (int)(");
+    emit_expr(c, args[2]);
+    sb_put(&c->out, "))");
+    return 1;
+}
+
 static int io_readlines(ctx_t* c, gmb_expr_t** a, int n) {
     if (n != 1) return 0;
     sb_put(&c->out, "gmb_read_all_lines_list(("); emit_str_operand(c, a[0]); sb_put(&c->out, ").data)");
@@ -4712,8 +4736,18 @@ int emit_bf_ledger(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t t
  * handler VM/C (gmb_bf_466/473) — unica fonte di verità del comportamento.
  * Convenzione: -1 = vero (BASIC), 0 = falso, come i bit delle funzioni DBF. */
 static int db_used(ctx_t* c, gmb_expr_t** a, int n) {
-    (void)a; (void)n;
-    sb_put(&c->out, "((gmb_double_t)((gmb_db_current_dbf() > 0 && gmb_db_dbf_field_count(gmb_db_current_dbf()) > 0) ? -1.0 : 0.0))");
+    /* USED([alias]): un'area è "usata" se l'alias (o l'area corrente) è un DBF con campi
+     * oppure un'area ISAM aperta. Prima guardava SOLO il DBF: ISAM.USED("X") dava 0 su
+     * C99Native mentre IL/VM-C davano -1 (divergenza misurata dal MiniTest ISAM). */
+    if (n >= 1 && a[0] && a[0]->kind == GMB_EXPR_VAR && a[0]->var && !strchr(a[0]->var, '.')) {
+        sb_put(&c->out, "((gmb_double_t)((gmb_db_dbf_find_handle_by_alias(\"");
+        sb_put(&c->out, a[0]->var);
+        sb_put(&c->out, "\") > 0 || gmb_db_isam_handle_for(\"");
+        sb_put(&c->out, a[0]->var);
+        sb_put(&c->out, "\") > 0) ? -1.0 : 0.0))");
+        return 1;
+    }
+    sb_put(&c->out, "((gmb_double_t)((gmb_db_current_isam() > 0 || (gmb_db_current_dbf() > 0 && gmb_db_dbf_field_count(gmb_db_current_dbf()) > 0)) ? -1.0 : 0.0))");
     return 1;
 }
 static int db_bit(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
@@ -4908,18 +4942,21 @@ static int db_alias(ctx_t* c, gmb_expr_t** a, int n) {
 static int db_selected(ctx_t* c, gmb_expr_t** a, int n) {
     if (n < 1) {
         /* SELECTED() senza argomenti = numero d'area 1-based (parità C#/IL/PCode/VM-C): 1 se
-         * l'area corrente è un DBF valido con campi, altrimenti 0. Prima era la COSTANTE
-         * `((gmb_double_t)1)` (stub: sbagliata senza DBF aperto, e diverge dal C# che stampa 0). */
-        sb_put(&c->out, "((gmb_double_t)((gmb_db_current_dbf() > 0 && gmb_db_dbf_field_count(gmb_db_current_dbf()) > 0) ? 1.0 : 0.0))");
+         * l'area corrente è un DBF valido con campi O un'area ISAM aperta, altrimenti 0. */
+        sb_put(&c->out, "((gmb_double_t)((gmb_db_current_isam() > 0 || (gmb_db_current_dbf() > 0 && gmb_db_dbf_field_count(gmb_db_current_dbf()) > 0)) ? 1.0 : 0.0))");
         return 1;
     }
     /* ISAM/DEF SELECTED(alias): l'argomento e' un ALIAS -> identificatore nudo = STRINGA.
      * Prima `emit_str_operand(VAR)` emetteva gmb_double_to_string(Var) (variabile!) →
      * gmb_selected("0") = 0 (ISAM.SELECTED=0 su C99Native). */
     if (a[0] && a[0]->kind == GMB_EXPR_VAR && a[0]->var && !strchr(a[0]->var, '.')) {
-        sb_put(&c->out, "gmb_selected(\"");
+        sb_put(&c->out, "(gmb_db_isam_selected(\"");
         sb_put(&c->out, a[0]->var);
-        sb_put(&c->out, "\")");
+        sb_put(&c->out, "\") > 0 ? (gmb_double_t)gmb_db_isam_selected(\"");
+        sb_put(&c->out, a[0]->var);
+        sb_put(&c->out, "\") : gmb_selected(\"");
+        sb_put(&c->out, a[0]->var);
+        sb_put(&c->out, "\"))");
         return 1;
     }
     sb_put(&c->out, "gmb_selected((");
