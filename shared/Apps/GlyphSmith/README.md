@@ -98,12 +98,12 @@ From the monorepo root:
 
 ```bash
 # native leg (default)
-bash tools/sh/gmb_c99native_run.sh ../shared/apps/GlyphSmith/src/GlyphSmith.bas
+bash tools/sh/gmb_c99native_run.sh ../shared/Apps/GlyphSmith/src/GlyphSmith.bas
 
 # managed legs
-tools/sh/harness.sh il    shared/apps/GlyphSmith/src/GlyphSmith.bas
-tools/sh/harness.sh pcode shared/apps/GlyphSmith/src/GlyphSmith.bas
-tools/sh/harness.sh vmc   shared/apps/GlyphSmith/src/GlyphSmith.bas
+tools/sh/harness.sh il    shared/Apps/GlyphSmith/src/GlyphSmith.bas
+tools/sh/harness.sh pcode shared/Apps/GlyphSmith/src/GlyphSmith.bas
+tools/sh/harness.sh vmc   shared/Apps/GlyphSmith/src/GlyphSmith.bas
 ```
 
 The app resolves its folder from `PROJECTFOLDER()`, so the configuration and the fixture are
