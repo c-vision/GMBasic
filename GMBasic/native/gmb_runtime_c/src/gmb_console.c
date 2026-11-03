@@ -511,13 +511,12 @@ gmb_string_t gmb_console_inkey(void)
     }
     if (!GMB_GFX_SCREEN_ON())
     {
-        gmb_ui_event_t ev;
-        if (gmb_terminal_reader_read_event_core(NULL, &ev) == 1
-            && ev.type == GMB_UIEVENT_KEY && ev.key > 0 && ev.key <= 126)
-        {
-            char buf[2] = { (char)ev.key, '\0' };
-            return gmb_string_alloc(buf);
-        }
+        /* Il terminale NON si legge qui: il feeder (gmb_input_pump) lo immette nella
+         * coda eventi globale; INKEY ne è un CONSUMATORE, come i controlli TUI e ON KEY. */
+        char kb[8];
+        gmb_input_pump();
+        if (GMB_GFX_POLL_KEY(kb, (int)sizeof(kb))) return gmb_string_alloc(kb);
+        return gmb_string_alloc("");
     }
     /* GRAFICA: la tastiera e' quella della FINESTRA SDL (non il terminale). Pumpa gli
      * eventi (push_sdl_key riempie la coda input) e preleva il tasto dalla coda. */
@@ -584,24 +583,19 @@ gmb_string_t gmb_console_readkey(int timeout_ms)
 #else
     if (isatty(STDIN_FILENO) == 0) return gmb_string_alloc("");
 #endif
-    gmb_ui_event_t ev;
     int waited = 0;
     for (;;)
     {
-        if (gmb_terminal_reader_is_event_available_timeout(timeout_ms > 0 ? 20 : 20))
-        {
-            if (gmb_terminal_reader_read_event_core(NULL, &ev) == 1
-                && ev.type == GMB_UIEVENT_KEY && ev.key > 0 && ev.key <= 126)
-            {
-                char buf[2] = { (char)ev.key, '\0' };
-                return gmb_string_alloc(buf);
-            }
-        }
+        /* Unico imbuto: il terminale riempie la coda, qui si consuma la coda. */
+        char kb[8];
+        gmb_input_pump();
+        if (GMB_GFX_POLL_KEY(kb, (int)sizeof(kb))) return gmb_string_alloc(kb);
         if (timeout_ms > 0)
         {
             waited += 20;
             if (waited >= timeout_ms) return gmb_string_alloc("");
         }
+        usleep(16000);
     }
     return gmb_string_alloc("");
 }
@@ -659,18 +653,22 @@ int gmb_console_readkey_nb(gmb_string_t* out)
      *    digitato resta nel buffer di riga del tty). ensure_raw va chiamato PRIMA; has_byte
      *    fa solo select non bloccante (niente lseek: su un tty fallisce); se pronto,
      *    read_event_core legge e decodifica la sequenza. */
-    gmb_raw_input_reader_ensure_raw();
-    if (!gmb_raw_input_reader_has_byte()) return 0;
-    gmb_ui_event_t ev;
-    if (gmb_raw_input_reader_read_event_core(NULL, &ev) == 1
-        && ev.type == GMB_UIEVENT_KEY && ev.key > 0 && ev.key <= 126)
+    gmb_input_pump();
     {
-        out->data = (char*)malloc(2);
-        if (!out->data) return -1;
-        out->data[0] = (char)ev.key; out->data[1] = '\0'; out->length = 1;
-        return 1;
+        char kb[8];
+        if (GMB_GFX_POLL_KEY(kb, (int)sizeof(kb)))
+        {
+            size_t len = strlen(kb);
+            out->data = (char*)malloc(len + 1);
+            if (!out->data) return -1;
+            memcpy(out->data, kb, len + 1);
+            out->length = len;
+            return 1;
+        }
     }
-    return 0;
+    /* Niente in coda: con un tty reale il chiamante parcheggia e riprova (0);
+     * senza terminale l'input è definitivamente assente (-1). */
+    return gmb_input_terminal_available() ? 0 : -1;
 }
 
 /* CURSOR ON/OFF: ANSI show/hide cursor. In grafica il cursore è pixel-based

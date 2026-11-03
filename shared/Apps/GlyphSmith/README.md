@@ -162,9 +162,11 @@ found regardless of the working directory of the runner.
   run; hinting/antialias policy is not configurable yet (a registry option, never an environment
   variable). See `TODO.md` (M5).
 - The **TUI** is a view over this same model, not a second editor: it moves a cursor, toggles
-  pixels, flips, recomputes bearings and drives the same undo/redo stack. Its keys are read from
-  a script (`[tui] keys`) because a headless runner has no terminal; a real keyboard reader is
-  just another source for the same `TuiApply`. The **GUI** is still M4 (a second view, same model).
+  pixels, flips, recomputes bearings and drives the same undo/redo stack. In the check its keys
+  come from a script (`[tui] keys`) because the runners are headless; a real terminal is just
+  another producer for the same event queue that `INKEY()` consumes (the natives feed it with
+  `gmb_input_pump`), and both land in the same `TuiApply`. The **GUI** is a second view over the
+  same model.
 - **PCF** follows the byte conventions of a real X11 file: the header and each table's `format` field are little-endian, the fields inside the tables are big-endian, rows are padded to 4 bytes and bits are MSB-first (the leftmost pixel is the high bit, exactly as in the BDF hex rows). `CHARSET_REGISTRY`/`CHARSET_ENCODING` are added when the source BDF lacks them, otherwise FreeType builds a face with no charmap.
 - Limits are declared, not silent: `GS_GMAX` glyphs, `GS_ROWS` rows per glyph, `GS_BUFMAX`
   bytes per binary export. Exceeding a limit is an explicit error.
