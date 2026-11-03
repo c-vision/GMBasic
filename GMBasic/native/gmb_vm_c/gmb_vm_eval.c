@@ -385,7 +385,9 @@ static eval_ent_t* cache_build(const gmb_chunk_t* host, int paddr, const char* s
 }
 
 /* ── driver ─────────────────────────────────────────────────────────────────── */
-int gmb_vm_eval_text(gmb_task_t* task, const char* src, int as_stmt, gmb_val_t* out)
+int gmb_vm_eval_text_env(gmb_task_t* task, const char* src, int as_stmt,
+                         gmb_eval_env_get_fn env_get, gmb_eval_env_set_fn env_set,
+                         void* env_ctx, gmb_val_t* out)
 {
     g_err[0] = 0;
     if (out) *out = gmb_val_nil();
@@ -415,7 +417,8 @@ int gmb_vm_eval_text(gmb_task_t* task, const char* src, int as_stmt, gmb_val_t* 
             else gmb_task_push_nil(task);
         } else {
             gmb_val_t fv = gmb_val_nil();
-            gmb_vm_dbf_field_get(e->param_names[i], &fv);   /* assente = nil */
+            if (env_get) { if (env_get(env_ctx, e->param_names[i], &fv) != 0) fv = gmb_val_nil(); }
+            else gmb_vm_dbf_field_get(e->param_names[i], &fv);   /* assente = nil */
             gmb_stack_entry_t se = gmb_adapter_val_to_stack(fv);
             if (fv.kind == GMB_TYPE_STRING) gmb_string_free(&fv.v_string);
             gmb_obj_byref_t* box = gmb_byref_new_cell(task, se);
@@ -452,7 +455,8 @@ int gmb_vm_eval_text(gmb_task_t* task, const char* src, int as_stmt, gmb_val_t* 
         if (!box) continue;
         gmb_stack_entry_t cur = gmb_byref_load(box);
         gmb_val_t v = gmb_adapter_stack_to_val(cur);
-        gmb_vm_dbf_field_set(e->param_names[i], v);
+        if (env_set) env_set(env_ctx, e->param_names[i], v);
+        else gmb_vm_dbf_field_set(e->param_names[i], v);
         if (v.kind == GMB_TYPE_STRING) gmb_string_free(&v.v_string);
         if (cur.type == 2 && cur.ref) gmb_obj_release(cur.ref);
         gmb_obj_release((gmb_obj_t*)box);
@@ -464,6 +468,11 @@ int gmb_vm_eval_text(gmb_task_t* task, const char* src, int as_stmt, gmb_val_t* 
     if (out) *out = result;
     else if (result.kind == GMB_TYPE_STRING) gmb_string_free(&result.v_string);
     return 0;
+}
+
+int gmb_vm_eval_text(gmb_task_t* task, const char* src, int as_stmt, gmb_val_t* out)
+{
+    return gmb_vm_eval_text_env(task, src, as_stmt, NULL, NULL, NULL, out);
 }
 
 void gmb_vm_eval_cache_clear(void)
