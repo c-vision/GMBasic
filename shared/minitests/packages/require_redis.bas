@@ -1,7 +1,7 @@
 ' TAG: unsupported-c99native
 ' EXPECT: noredis
 ' REQUIRE (package manager) + FFI Redis (namespace REDIS).
-'   REQUIRE "redis" risolve il pacchetto (~/.gmb/packages) e include redis.inc.
+'   REQUIRE "redis" risolve il pacchetto (~/.gmbasic/packages) e include redis.inc.
 '   IMPORT REDIS WITH ALIAS -> REDIS.<Membro>(...).
 ' Deterministico SENZA un server Redis: AVAILABLE()=1 (lib presente) e CONNECT a una porta
 ' chiusa ritorna 0. Il protocollo RESP e' coperto dal mock test in C (gmbsuite); l'end-to-end

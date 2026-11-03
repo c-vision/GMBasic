@@ -3,7 +3,7 @@
 ' Avvio (solo API, consigliato — la CWD è la cartella del sample):
 '   dotnet run --project REPL/REPL.csproj -- samples/PackageRegistry/PackageServer.bas
 '
-' Serve la cache locale ~/.gmb/packages (gmb-package.json v1+v2):
+' Serve la cache locale ~/.gmbasic/packages (gmb-package.json v1+v2):
 '   GET /api/packages                -> lista pacchetti
 '   GET /api/packages/{name}         -> dettaglio (con negoziazione ?backend&platform&edition)
 '   GET /api/packages/search?q=...   -> ricerca

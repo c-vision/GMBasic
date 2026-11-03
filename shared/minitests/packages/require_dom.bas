@@ -1,7 +1,7 @@
 ' TAG: unsupported-c99native
 ' EXPECT: available= 1|title=Demo|nlinks= 1|href=https://a.example
 ' REQUIRE (package manager) + FFI DOM (namespace DOM, HTML/XML su libxml2).
-'   REQUIRE "dom" risolve il pacchetto (~/.gmb/packages) e include dom.inc.
+'   REQUIRE "dom" risolve il pacchetto (~/.gmbasic/packages) e include dom.inc.
 '   Deterministico: parse di stringhe HTML inline (nessuna rete).
 REQUIRE "dom"
 IMPORT DOM WITH ALIAS

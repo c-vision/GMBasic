@@ -1,7 +1,7 @@
 ' TAG: unsupported-c99native
 ' EXPECT: available= 1|encode= 0|info= 0|size= 4x 3
 ' REQUIRE (package manager) + FFI WebP (namespace WEBP, shim self-contained con libwebp statica).
-'   Richiede il pacchetto `webp` installato in ~/.gmb/packages. Deterministico (fixture PPM locale).
+'   Richiede il pacchetto `webp` installato in ~/.gmbasic/packages. Deterministico (fixture PPM locale).
 REQUIRE "webp"
 IMPORT WEBP WITH ALIAS
 

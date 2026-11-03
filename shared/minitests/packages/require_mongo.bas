@@ -1,7 +1,7 @@
 ' TAG: unsupported-c99native
 ' EXPECT: nomongo
 ' REQUIRE (package manager) + FFI MongoDB (namespace MONGO).
-'   REQUIRE "mongo" risolve il pacchetto (~/.gmb/packages) e include mongo.inc.
+'   REQUIRE "mongo" risolve il pacchetto (~/.gmbasic/packages) e include mongo.inc.
 '   IMPORT MONGO WITH ALIAS -> MONGO.<Membro>(...).
 ' Deterministico SENZA un server MongoDB: AVAILABLE()=1 (lib presente) e una connessione a una
 ' porta chiusa fallisce al PING. L'end-to-end reale richiede un server (es. docker run -p
