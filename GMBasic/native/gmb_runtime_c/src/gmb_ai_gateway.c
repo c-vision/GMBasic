@@ -238,6 +238,22 @@ GMB_AI_WEAK int gmb_ai_decide_local_run(const char* state, const char* kind,
     return fn(state, kind, options, n_options, out, err, errcap);
 }
 
+/* P6 — adapter generativo (generazione sul modello locale). */
+GMB_AI_WEAK int gmb_ai_decide_local_adapter_run(const char* state, const char* kind,
+                                                const gmb_decision_option_t* options, int n_options,
+                                                gmb_decision_result_t* out, char* err, size_t errcap)
+{
+    int (*fn)(const char*, const char*, const gmb_decision_option_t*, int,
+              gmb_decision_result_t*, char*, size_t) =
+        (int (*)(const char*, const char*, const gmb_decision_option_t*, int,
+                 gmb_decision_result_t*, char*, size_t))ai_sym("gmb_ai_decide_local_adapter_run");
+    if (!fn) {
+        set_err_local(err, errcap);
+        return -1;
+    }
+    return fn(state, kind, options, n_options, out, err, errcap);
+}
+
 /* Batch locale: N domini sullo stesso stato con prefill/KV condiviso (fusione C). */
 GMB_AI_WEAK int gmb_ai_decide_local_run_group(const char* state,
                                               const gmb_decision_domain_t* domains,

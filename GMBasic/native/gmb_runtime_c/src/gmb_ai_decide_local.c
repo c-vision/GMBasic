@@ -46,6 +46,16 @@ int gmb_ai_decide_local_run_group(const char* state, const gmb_decision_domain_t
         snprintf(err, errcap, "local provider non disponibile: motore MLX non supportato su Windows");
     return -1;
 }
+
+int gmb_ai_decide_local_adapter_run(const char* state, const char* kind,
+                                    const gmb_decision_option_t* options, int n_options,
+                                    gmb_decision_result_t* out, char* err, size_t errcap)
+{
+    (void)state; (void)kind; (void)options; (void)n_options; (void)out;
+    if (err && errcap)
+        snprintf(err, errcap, "adapter non disponibile: motore MLX non supportato su Windows");
+    return -1;
+}
 #else
 
 #include "gmb_runtime.h"
@@ -503,6 +513,160 @@ int gmb_ai_decide_local_run(const char* state, const char* kind,
         set_err(err, errcap, "local provider: readout della decisione fallito", NULL);
         return -1;
     }
+    return 1;
+}
+
+/* ── P6 — provider ADAPTER (generativo) ────────────────────────────────────────────────────
+ * A differenza del provider locale (readout dei logits), qui il modello GENERA e il testo
+ * viene riconosciuto come opzione. È il corrispettivo C di `AdapterDecisionProvider`.
+ * Confronto deterministico: esatto (id/label) → numero → parola intera (label più lunga vince:
+ * "1" non cattura "10") → slot A..P. Nessun match = errore esplicito con la risposta grezza. */
+
+static void adapter_trim(const char* in, char* out, size_t cap) {
+    if (!out || cap == 0) return;
+    out[0] = 0;
+    if (!in) return;
+    const char* p = in;
+    while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r' || *p == '"' || *p == '\'' ||
+           *p == '(' || *p == '[' || *p == '{') p++;
+    const char* e = p + strlen(p);
+    while (e > p && (e[-1] == ' ' || e[-1] == '\t' || e[-1] == '\n' || e[-1] == '\r' ||
+                     e[-1] == '"' || e[-1] == '\'' || e[-1] == '.' || e[-1] == '!' ||
+                     e[-1] == '?' || e[-1] == ':' || e[-1] == ';' || e[-1] == ')' ||
+                     e[-1] == ']' || e[-1] == '}')) e--;
+    size_t n = (size_t)(e - p);
+    if (n >= cap) n = cap - 1;
+    memcpy(out, p, n);
+    out[n] = 0;
+}
+
+static int adapter_alnum(char c) {
+    return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_';
+}
+
+/* Sottostringa con confini non-alfanumerici (case-insensitive). */
+static int adapter_word_contains(const char* haystack, const char* needle) {
+    if (!needle || !*needle) return 0;
+    size_t nl = strlen(needle);
+    for (const char* p = haystack; *p; p++) {
+        if (strncasecmp(p, needle, nl) != 0) continue;
+        int left_ok = (p == haystack) || !adapter_alnum(p[-1]);
+        int right_ok = !adapter_alnum(p[nl]);
+        if (left_ok && right_ok) return 1;
+    }
+    return 0;
+}
+
+static int adapter_match_option(const gmb_decision_option_t* options, int n, const char* text) {
+    char t[512];
+    adapter_trim(text, t, sizeof t);
+    if (!t[0]) return -1;
+    for (int i = 0; i < n; i++)
+        if ((options[i].id && strcasecmp(t, options[i].id) == 0) ||
+            (options[i].label && strcasecmp(t, options[i].label) == 0))
+            return i;
+    char* end = NULL;
+    double num = strtod(t, &end);
+    if (end && end != t) {
+        while (*end == ' ' || *end == '\t') end++;
+        if (*end == 0) {
+            for (int i = 0; i < n; i++) {
+                const char* lab = (options[i].label && *options[i].label) ? options[i].label : options[i].id;
+                char* e2 = NULL;
+                if (!lab) continue;
+                double v = strtod(lab, &e2);
+                if (e2 && e2 != lab && *e2 == 0 && fabs(v - num) < 1e-9) return i;
+            }
+        }
+    }
+    int best = -1;
+    size_t best_len = 0;
+    for (int i = 0; i < n; i++) {
+        const char* lab = (options[i].label && *options[i].label) ? options[i].label : options[i].id;
+        if (!lab) continue;
+        if (adapter_word_contains(t, lab) || (options[i].id && adapter_word_contains(t, options[i].id))) {
+            size_t l = strlen(lab);
+            if (l > best_len) { best = i; best_len = l; }
+        }
+    }
+    if (best >= 0) return best;
+    char first = t[0];
+    for (int i = 0; i < n; i++)
+        if (options[i].id && options[i].id[1] == 0 && toupper((unsigned char)options[i].id[0]) == toupper((unsigned char)first))
+            return i;
+    return -1;
+}
+
+int gmb_ai_decide_local_adapter_run(const char* state, const char* kind,
+                                    const gmb_decision_option_t* options, int n_options,
+                                    gmb_decision_result_t* out, char* err, size_t errcap)
+{
+    if (err && errcap) err[0] = 0;
+    if (!out || !options || n_options < 1 || n_options > GMB_DECISION_MAX_OPTIONS) {
+        set_err(err, errcap, "adapter: dominio non valido", NULL);
+        return -1;
+    }
+    pthread_mutex_lock(&g_local_lock);
+    int rc = ensure_model(err, errcap);
+    pthread_mutex_unlock(&g_local_lock);
+    if (rc != 0) return -1;
+
+    local_ctx_t* c = &g_local;
+    llmtoken_handle tok = (llmtoken_handle)c->tok;
+    gmb_decision_kind_t kind_enum = kind_enum_of(kind);
+    char* prompt = (char*)malloc(LOCAL_PROMPT_CAP);
+    int32_t* ids = (int32_t*)malloc((size_t)LOCAL_TOKEN_CAP * sizeof(int32_t));
+    int32_t* gen = (int32_t*)malloc(64 * sizeof(int32_t));
+    char* text = (char*)malloc(1024);
+    if (!prompt || !ids || !gen || !text) {
+        free(prompt); free(ids); free(gen); free(text);
+        set_err(err, errcap, "adapter: memoria esaurita", NULL);
+        return -1;
+    }
+    if (local_build_prompt(c, state, options, n_options, prompt, LOCAL_PROMPT_CAP, err, errcap) != 0) {
+        free(prompt); free(ids); free(gen); free(text);
+        return -1;
+    }
+    int n_ids = llmtoken_encode(tok, prompt, ids, LOCAL_TOKEN_CAP);
+    free(prompt);
+    if (n_ids <= 0 || n_ids >= LOCAL_TOKEN_CAP) {
+        free(ids); free(gen); free(text);
+        set_err(err, errcap, "adapter: tokenizzazione del prompt fallita", NULL);
+        return -1;
+    }
+    LlmEngineLlmSession sess = c->eng->create_session(c->model_h);
+    if (!sess) {
+        free(ids); free(gen); free(text);
+        set_err(err, errcap, "adapter: sessione non creata", NULL);
+        return -1;
+    }
+    int ok = (c->eng->append_ids(sess, ids, n_ids) == 0);
+    int ngen = 0;
+    if (ok && c->eng->generate_ids) ngen = c->eng->generate_ids(sess, 48, -1, gen);
+    c->eng->destroy_session(sess);
+    free(ids);
+    if (!ok || ngen <= 0) {
+        free(gen); free(text);
+        set_err(err, errcap, "adapter: generazione fallita", NULL);
+        return -1;
+    }
+    text[0] = 0;
+    llmtoken_decode(tok, gen, ngen, text, 1023);
+    free(gen);
+    int best = adapter_match_option(options, n_options, text);
+    if (best < 0) {
+        char detail[256];
+        adapter_trim(text, detail, sizeof detail);
+        set_err(err, errcap, "adapter: la risposta non corrisponde a un'opzione", detail);
+        free(text);
+        return -1;
+    }
+    memset(out, 0, sizeof(*out));
+    out->kind = kind_enum;
+    out->option_id = options[best].id;
+    out->value = (options[best].label && *options[best].label) ? options[best].label : options[best].id;
+    out->probability = 1.0f;
+    free(text);
     return 1;
 }
 
