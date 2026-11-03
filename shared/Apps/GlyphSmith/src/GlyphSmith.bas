@@ -1,4 +1,4 @@
-' FILE: shared/apps/GlyphSmith/src/GlyphSmith.bas
+' FILE: shared/Apps/GlyphSmith/src/GlyphSmith.bas
 ' ============================================================================
 ' GlyphSmith — bitmap font workshop (headless).
 '
@@ -23,8 +23,8 @@
 '   -DGLYPHSMITH_MODE_EDIT      applica lo script batch di editing, poi salva
 '
 ' RUN (dalla root del monorepo):
-'   bash tools/sh/gmb_c99native_run.sh ../shared/apps/GlyphSmith/src/GlyphSmith.bas
-'   tools/sh/harness.sh il shared/apps/GlyphSmith/src/GlyphSmith.bas
+'   bash tools/sh/gmb_c99native_run.sh ../shared/Apps/GlyphSmith/src/GlyphSmith.bas
+'   tools/sh/harness.sh il shared/Apps/GlyphSmith/src/GlyphSmith.bas
 ' ============================================================================
 IMPORT IO
 IMPORT STRINGS
