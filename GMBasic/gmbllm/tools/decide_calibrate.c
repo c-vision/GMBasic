@@ -47,12 +47,16 @@ static int parse_line(char* line, llm_decide_sample_t* out) {
 }
 
 int main(int argc, char** argv) {
-    if (argc < 3) {
-        fprintf(stderr, "uso: %s <samples.txt> <scoring_head.json>\n", argv[0]);
+    int fit_bias = 0, argi = 1;
+    if (argc > 1 && strcmp(argv[1], "--bias") == 0) { fit_bias = 1; argi = 2; }
+    if (argc < argi + 2) {
+        fprintf(stderr, "uso: %s [--bias] <samples.txt> <scoring_head.json>\n", argv[0]);
         return 2;
     }
-    FILE* f = fopen(argv[1], "rb");
-    if (!f) { fprintf(stderr, "ERRORE: input non leggibile: %s\n", argv[1]); return 2; }
+    const char* in_path = argv[argi];
+    const char* out_path = argv[argi + 1];
+    FILE* f = fopen(in_path, "rb");
+    if (!f) { fprintf(stderr, "ERRORE: input non leggibile: %s\n", in_path); return 2; }
 
     llm_decide_sample_t* samples = (llm_decide_sample_t*)calloc(MAX_SAMPLES, sizeof(*samples));
     if (!samples) { fclose(f); fprintf(stderr, "ERRORE: memoria\n"); return 2; }
@@ -70,18 +74,21 @@ int main(int argc, char** argv) {
     if (n == 0) { fprintf(stderr, "ERRORE: nessun campione\n"); free(samples); return 1; }
 
     llm_decide_calib_result_t r;
-    if (llm_decide_calib_fit(samples, n, &r, argv[2]) != 0) {
+    if (llm_decide_calib_fit_ex(samples, n, &r, out_path, fit_bias) != 0) {
         fprintf(stderr, "ERRORE: fit fallito (input invalido)\n");
         free(samples);
         return 1;
     }
     free(samples);
 
-    printf("DECIDE-CALIBRATE n=%d head_T=%.6f T_kind=[noul %.6f choice %.6f score %.6f] identity=%d cv=%d\n",
-           r.n_questions, r.head_T, r.T_kind[0], r.T_kind[1], r.T_kind[2], r.identity, r.cv_folds);
+    printf("DECIDE-CALIBRATE n=%d head_T=%.6f T_kind=[noul %.6f choice %.6f score %.6f] identity=%d cv=%d bias_slots=%d\n",
+           r.n_questions, r.head_T, r.T_kind[0], r.T_kind[1], r.T_kind[2], r.identity,
+           r.cv_folds, r.bias_slots);
     printf("  accuracy=%.4f brier %.6f -> %.6f  ece %.6f -> %.6f (oof brier %.6f -> %.6f)\n",
            r.accuracy, r.brier_before, r.brier_after, r.ece_before, r.ece_after,
            r.brier_oof_before, r.brier_oof_after);
-    printf("  scritto: %s\n", argv[2]);
+    if (fit_bias)
+        printf("  con bias: brier %.6f  ece %.6f\n", r.brier_bias, r.ece_bias);
+    printf("  scritto: %s\n", out_path);
     return 0;
 }
