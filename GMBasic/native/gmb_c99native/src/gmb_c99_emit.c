@@ -20438,11 +20438,9 @@ static void st_return(ctx_t* c, gmb_stmt_t* s) {
                  * __out = NULL e la funzione alloca l'array esatto, pubblicandolo nel canale
                  * thread-local insieme alla lunghezza (2026-11-03). */
                 ind(c);
-                sb_put(&c->out, "if (!__out) { __out = (gmb_double_t*)malloc(sizeof(gmb_double_t) * (size_t)(");
+                sb_put(&c->out, "if (!__out) { gmb_int_t __rn = (gmb_int_t)(");
                 emit_arr_len_of(c, av);
-                sb_put(&c->out, ") > 0 ? (size_t)(");
-                emit_arr_len_of(c, av);
-                sb_put(&c->out, ") : 1); gmb_lambda_ret_ptr_set(__out); }\n");
+                sb_put(&c->out, "); if (__rn < 1) __rn = 1; __out = (gmb_double_t*)malloc(sizeof(gmb_double_t) * (size_t)__rn); gmb_lambda_ret_ptr_set(__out); }\n");
                 ind(c);
                 sb_put(&c->out, "gmb_lambda_ret_len_set((gmb_int_t)(");
                 emit_arr_len_of(c, av);

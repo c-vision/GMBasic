@@ -17,7 +17,7 @@ SUB Main()
   DIM Cf(3) AS DOUBLE
   Cf(0) = 4.0 : Cf(1) = 2.0 : Cf(2) = 2.0 : Cf(3) = 3.0
   DIM bc(1) AS DOUBLE = {10.0, 8.0}
-  CALL OPT.CHOLESOLVESOLVE(Cf, 2, bc, o)
+  CALL OPT.CHOLESKYSOLVE(Cf, 2, bc, o)
   PRINT "chol="; MATH.ROUND(o(0), 4); " "; MATH.ROUND(o(1), 4)
   DIM Aub(1) AS ARRAY OF DOUBLE
   Aub(0) = {1.0, 2.0} : Aub(1) = {3.0, 2.0}

@@ -23,7 +23,7 @@ quattro i backend (IL, PCodeVM, VM/C, C99Native).
 | **Globali** | `BRUTE`/`BRUTEN`, `BASINHOPPING`/`BASINHOPPINGN`, `DUALANNEALING`/`DUALANNEALINGN`, `DIFFERENTIALEVOLUTION` |
 | **Sistemi** | `FSOLVE`, `BROYDEN`, `LEASTSQUARESFIT`/`LEASTSQUARESFITB` |
 | **Curve fitting** | `LEVENBERGMARQUARDT`, `LEVENBERGMARQUARDTVEC`, `CURVEFIT` |
-| **Algebra / LP** | `LEASTSQUARES`, `CHOLESOLVESOLVE`, `SIMPLEX`, `LINPROG`/`LINPROGB`/`LINPROGEQ`/`LINPROGFULL` |
+| **Algebra / LP** | `LEASTSQUARES`, `CHOLESKYSOLVE`, `SIMPLEX`, `LINPROG`/`LINPROGB`/`LINPROGEQ`/`LINPROGFULL` |
 
 Guida utente completa (34 funzioni, parametri, esempi, esito §4.1):
 `AiWiki/01-Projects/GMBasic/Guide/utente/Optimize-FFI-Guida-Utente.md`.

@@ -20,8 +20,8 @@ SUB Main()
     DIM bc(1) AS DOUBLE
     bc(0) = 10.0 : bc(1) = 8.0
     DIM xc(1) AS DOUBLE
-    CALL OPT.CHOLESOLVESOLVE(CH, 2, bc, xc)
-    PRINT "CHOLESOLVESOLVE ="; xc(0); ","; xc(1)
+    CALL OPT.CHOLESKYSOLVE(CH, 2, bc, xc)
+    PRINT "CHOLESKYSOLVE ="; xc(0); ","; xc(1)
 
     ' SIMPLEX: max 2x+3y, x+y<=4, x<=2 -> (0,4) obiettivo 12
     DIM c(1) AS DOUBLE

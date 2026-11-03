@@ -1141,7 +1141,14 @@ static GMB_LAMBDA_TLS gmb_int_t g_lambda_bounds[GMB_LAMBDA_MAX_BOUNDS] = { -1, -
 /* Lunghezza dell'ultimo array restituito da una lambda AS ARRAY (2026-11-03): il chiamante
  * (es. LEASTSQUARESFIT) la usa quando il numero di residui non e' noto a compile-time. */
 static GMB_LAMBDA_TLS gmb_int_t g_lambda_ret_len = 0;
+/* Puntatore dell'array restituito da una funzione `AS ARRAY` quando il chiamante passa
+ * `__out == NULL` (2026-11-03): l'ABI `void (..., double* __out)` non può restituire un
+ * array composto, quindi la funzione alloca e pubblica qui puntatore + lunghezza; il call
+ * site BASIC legge subito i due valori. Thread-local (nessuna interferenza fra esecuzioni). */
+static GMB_LAMBDA_TLS gmb_double_t* g_lambda_ret_ptr = NULL;
 gmb_int_t gmb_lambda_bound(int idx) { return (idx >= 0 && idx < GMB_LAMBDA_MAX_BOUNDS) ? g_lambda_bounds[idx] : -1; }
 void gmb_lambda_bound_set(int idx, gmb_int_t b0) { if (idx >= 0 && idx < GMB_LAMBDA_MAX_BOUNDS) g_lambda_bounds[idx] = b0; }
 gmb_int_t gmb_lambda_ret_len_get(void) { return g_lambda_ret_len; }
 void gmb_lambda_ret_len_set(gmb_int_t n) { g_lambda_ret_len = n; }
+gmb_double_t* gmb_lambda_ret_ptr_get(void) { return g_lambda_ret_ptr; }
+void gmb_lambda_ret_ptr_set(gmb_double_t* p) { g_lambda_ret_ptr = p; }

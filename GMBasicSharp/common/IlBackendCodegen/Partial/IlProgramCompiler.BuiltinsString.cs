@@ -1199,6 +1199,19 @@ public sealed partial class IlProgramCompiler
         _il.Emit(OpCodes.Call, RuntimeMethod(mname, refDel));
     }
 
+    /// <summary>Adatta un delegate `ref` (FfiRefCallbackTypes) alla <c>Func&lt;&gt;</c> che un
+    /// parametro <c>AS FUNCTION</c> di una procedura utente si aspetta (2026-11-03). Il
+    /// chiamante ha già lasciato il delegate sullo stack.</summary>
+    private void EmitRefCallbackAdapter(Type refDel)
+    {
+        string mname;
+        if (refDel == typeof(FfiRefCallbackTypes.CbRef1ArrD)) mname = nameof(IlRuntime.OptVecVecFromRef);
+        else if (refDel == typeof(FfiRefCallbackTypes.CbRef1S1D) || refDel == typeof(FfiRefCallbackTypes.CbRef1S1I)) mname = nameof(IlRuntime.OptModelFromRef);
+        else if (refDel == typeof(FfiRefCallbackTypes.CbRef2ArrD)) mname = nameof(IlRuntime.OptVModelFromRef);
+        else mname = nameof(IlRuntime.OptVecFromRef);
+        _il.Emit(OpCodes.Call, RuntimeMethod(mname, refDel));
+    }
+
     private void EmitOptimizeVecCall(BuiltinFunctionCallExpr expr, string methodName)
     {
         if (expr.Args.Length != 2) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 2 argomenti (funzione vettoriale, initialGuess).");

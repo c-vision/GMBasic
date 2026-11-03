@@ -11,6 +11,6 @@ SUB Main()
     DIM b(1) AS DOUBLE
     b(0) = 10.0 : b(1) = 8.0
     DIM o(1) AS DOUBLE
-    CALL OPT.CHOLESOLVESOLVE(A, 2, b, o)
+    CALL OPT.CHOLESKYSOLVE(A, 2, b, o)
     PRINT "v="; MATH.ROUND(o(0), 4); ","; MATH.ROUND(o(1), 4)
 END SUB
