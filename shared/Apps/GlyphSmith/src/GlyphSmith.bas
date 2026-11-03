@@ -2083,12 +2083,10 @@ SUB PcfSave(path AS STRING)
 
     minEnc = g_enc(0)
     maxEnc = g_enc(0)
-    g = 1
-    WHILE g < n
+    FOR g = 1 TO n - 1
         IF g_enc(g) < minEnc THEN minEnc = g_enc(g)
         IF g_enc(g) > maxEnc THEN maxEnc = g_enc(g)
-        g = g + 1
-    WEND
+    NEXT g
     IF minEnc < 0 OR maxEnc > 255 THEN Fail("PCF: encoding fuori da 0..255")
     encSize = 14 + 2 * (maxEnc - minEnc + 1)
 
@@ -2102,8 +2100,7 @@ SUB PcfSave(path AS STRING)
     maxAs = asc
     minDs = dsc
     maxDs = dsc
-    g = 1
-    WHILE g < n
+    FOR g = 1 TO n - 1
         IF g_gx(g) < minLs THEN minLs = g_gx(g)
         IF g_gx(g) + g_gw(g) > maxRs THEN maxRs = g_gx(g) + g_gw(g)
         IF g_dwx(g) > maxAdv THEN maxAdv = g_dwx(g)
@@ -2114,8 +2111,7 @@ SUB PcfSave(path AS STRING)
         IF asc > maxAs THEN maxAs = asc
         IF dsc < minDs THEN minDs = dsc
         IF dsc > maxDs THEN maxDs = dsc
-        g = g + 1
-    WEND
+    NEXT g
     ascMax = maxAs
     dscMax = maxDs
 
@@ -2137,22 +2133,16 @@ SUB PcfSave(path AS STRING)
 
     ' --- PROPERTIES ------------------------------------------------------------
     s = s + HLE32(14) + HBE32(nP)
-    i = 0
-    WHILE i < nP
+    FOR i = 0 TO nP - 1
         s = s + HBE32(nNameOff(i)) + "01" + HBE32(nValOff(i))
-        i = i + 1
-    WEND
-    i = 0
-    WHILE i < pad
+    NEXT i
+    FOR i = 1 TO pad
         s = s + "00"
-        i = i + 1
-    WEND
+    NEXT i
     s = s + HBE32(strTotal)
-    i = 0
-    WHILE i < nP
+    FOR i = 0 TO nP - 1
         s = s + HText(g_pcfN(i)) + HText(g_pcfV(i))
-        i = i + 1
-    WEND
+    NEXT i
 
     ' --- ACCELERATORS ----------------------------------------------------------
     s = s + HLE32(14) + "0000000000000000"
@@ -2162,85 +2152,63 @@ SUB PcfSave(path AS STRING)
 
     ' --- METRICS ---------------------------------------------------------------
     s = s + HLE32(14) + HBE32(n)
-    g = 0
-    WHILE g < n
+    FOR g = 0 TO n - 1
         asc = g_gh(g) + g_gy(g)
         dsc = 0
         IF g_gy(g) < 0 THEN dsc = -g_gy(g)
         s = s + HBE16(g_gx(g)) + HBE16(g_gx(g) + g_gw(g)) + HBE16(g_dwx(g))
         s = s + HBE16(asc) + HBE16(dsc) + HBE16(0)
-        g = g + 1
-    WEND
+    NEXT g
 
     ' --- BITMAPS ---------------------------------------------------------------
     s = s + HLE32(14) + HBE32(n)
     offNow = 0
-    g = 0
-    WHILE g < n
+    FOR g = 0 TO n - 1
         nb = INT((g_gw(g) + 7) / 8)
         pb = INT((nb + 3) / 4) * 4
         s = s + HBE32(offNow)
         offNow = offNow + g_gh(g) * pb
-        g = g + 1
-    WEND
+    NEXT g
     s = s + HBE32(s1) + HBE32(s2) + HBE32(s4) + HBE32(s8)
-    i = 8 + 4 * n + 16
-    WHILE i < dataStart
+    FOR i = 8 + 4 * n + 16 TO dataStart - 1
         s = s + "00"
-        i = i + 1
-    WEND
-    g = 0
-    WHILE g < n
+    NEXT i
+    FOR g = 0 TO n - 1
         nb = INT((g_gw(g) + 7) / 8)
         pb = INT((nb + 3) / 4) * 4
-        r = 0
-        WHILE r < g_gh(g)
+        FOR r = 0 TO g_gh(g) - 1
             row = RowAt(g, r)
-            c = 0
-            WHILE c < nb
+            FOR c = 0 TO nb - 1
                 v = 0
-                i = 0
-                WHILE i < 8
+                FOR i = 0 TO 7
                     IF c * 8 + i < LEN(row) THEN
                         IF MID$(row, c * 8 + i + 1, 1) = "1" THEN v = v + Pow2(7 - i)
                     END IF
-                    i = i + 1
-                WEND
+                NEXT i
                 s = s + HB(v)
-                c = c + 1
-            WEND
-            c = nb
-            WHILE c < pb
+            NEXT c
+            FOR c = nb TO pb - 1
                 s = s + "00"
-                c = c + 1
-            WEND
-            r = r + 1
-        WEND
-        g = g + 1
-    WEND
+            NEXT c
+        NEXT r
+    NEXT g
 
     ' --- BDF_ENCODINGS ---------------------------------------------------------
     s = s + HLE32(14)
     s = s + HBE16(minEnc) + HBE16(maxEnc) + HBE16(0) + HBE16(0) + HBE16(0)
-    x = minEnc
-    WHILE x <= maxEnc
+    FOR x = minEnc TO maxEnc
         v = 65535
-        g = 0
-        WHILE g < n
+        FOR g = 0 TO n - 1
             IF g_enc(g) = x THEN v = g
-            g = g + 1
-        WEND
+        NEXT g
         s = s + HBE16(v)
-        x = x + 1
-    WEND
+    NEXT x
 
     IF LEN(s) <> total * 2 THEN Fail("PCF: lunghezza interna incoerente (" + NumS(LEN(s) / 2) + " vs " + NumS(total) + "; prop " + NumS(propSize) + " acc " + NumS(accSize) + " met " + NumS(metSize) + " bit " + NumS(bitSize) + " enc " + NumS(encSize) + " nP " + NumS(nP) + ")")
     DIM buf(total - 1) AS BYTE
-    i = 0
-    WHILE i < total
+    FOR i = 0 TO total - 1
         buf(i) = HexVal(MID$(s, i * 2 + 1, 1)) * 16 + HexVal(MID$(s, i * 2 + 2, 1))
-        i = i + 1
-    WEND
+    NEXT i
     sz = IO.WRITEBYTES(path, buf)
     IF sz <> total THEN Fail("scrittura PCF incompleta: " + path)
 END SUB
