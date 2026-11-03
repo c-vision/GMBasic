@@ -606,21 +606,47 @@ if (parser.Match(TokenKind.Set))
 
         var nsTok = new Token(TokenKind.Identifier, "AI", null, decideTok.Position);
         var nameTok = new Token(TokenKind.AiDecide, "DECIDE", null, decideTok.Position);
-        var assigns = ImmutableArray.CreateBuilder<Assignment>(questions.Count);
+        var jsonNs = new Token(TokenKind.Identifier, "JSON", null, decideTok.Position);
+        var parseTok = new Token(TokenKind.Parse, "PARSE", null, decideTok.Position);
+        var extractTok = new Token(TokenKind.Extract, "EXTRACT", null, decideTok.Position);
+
+        // Una sola entry point per l'intero batch: aiuta il provider a condividere il prefisso
+        // (la v1 può ancora valutare in sequenza). Ritorna {nome: "<json risultato>"}; ogni
+        // destinazione estrae la propria stringa (JSON.EXTRACT) e, se dichiarata DECISION/JSON,
+        // la parse (JSON.PARSE) per l'accesso tipizzato.
+        var names = new List<string>(questions.Count);
+        var kindsCsv = new List<string>(questions.Count);
         foreach (var (target, kind) in questions)
         {
-            var argsList = new List<Expr> { state, kind };
-            if (provider is not null) argsList.Add(provider);
-            if (fallbackExpr is not null) argsList.Add(fallbackExpr);
-            var call = new BuiltinFunctionCallExpr(nsTok, nameTok, argsList.ToImmutableArray(), new StringType());
-            Expr value = call;
+            if (target is not VariableTarget vt)
+                throw Parser.CreateError(decideTok,
+                    "AI DECIDE batch: le domande devono essere nomi di variabile.");
+            names.Add(vt.NameCleaned.Lexeme);
+            if (kind is not StringExpr se)
+                throw Parser.CreateError(decideTok, "AI DECIDE batch: kind non costante.");
+            kindsCsv.Add(se.Value);
+        }
+        var groupArgs = ImmutableArray.Create<Expr>(
+            state,
+            new StringExpr(System.Text.Json.JsonSerializer.Serialize(names), decideTok),
+            new StringExpr(System.Text.Json.JsonSerializer.Serialize(kindsCsv), decideTok),
+            provider ?? new StringExpr("", decideTok),
+            fallbackExpr ?? new StringExpr("", decideTok));
+        var group = new BuiltinFunctionCallExpr(nsTok, nameTok, groupArgs, new StringType());
+        var parsedGroup = new BuiltinFunctionCallExpr(jsonNs, parseTok,
+            ImmutableArray.Create<Expr>(group), new JsonType());
+
+        var assigns = ImmutableArray.CreateBuilder<Assignment>(questions.Count);
+        for (var i = 0; i < questions.Count; i++)
+        {
+            var (target, _) = questions[i];
+            var extracted = new BuiltinFunctionCallExpr(jsonNs, extractTok,
+                ImmutableArray.Create<Expr>(parsedGroup, new StringExpr(names[i], decideTok)),
+                new StringType());   // il group object mappa nome -> STRINGA json
+            Expr value = extracted;
             if (target is VariableTarget vt && parser._declaredJsonNames.Contains(vt.NameCleaned.Lexeme))
-            {
-                var parseNs = new Token(TokenKind.Identifier, "JSON", null, decideTok.Position);
-                var parseName = new Token(TokenKind.Parse, "PARSE", null, decideTok.Position);
-                value = new BuiltinFunctionCallExpr(parseNs, parseName,
-                    ImmutableArray.Create<Expr>(call), new JsonType());
-            }
+                value = new BuiltinFunctionCallExpr(jsonNs, parseTok,
+                    ImmutableArray.Create<Expr>(extracted), new JsonType());
             assigns.Add(new Assignment(target, value));
         }
         return new LetStmt(assigns.ToImmutable(), null);

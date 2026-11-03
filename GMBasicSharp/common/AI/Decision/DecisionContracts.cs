@@ -141,6 +141,14 @@ public interface IDecisionCompleter
     IReadOnlyList<DecisionResult> Decide(DecisionRequest request);
 }
 
+/// <summary>Capability opzionale: un provider che sa valutare PIÙ domande sullo stesso stato
+/// in un solo giro (prefill/KV condiviso). Il runtime la usa per la forma batch di AI DECIDE;
+/// se non disponibile, il batch resta una sequenza di decisioni singole.</summary>
+public interface IDecisionGroupCompleter
+{
+    IReadOnlyList<DecisionResult> DecideGroup(IReadOnlyList<DecisionRequest> requests);
+}
+
 public sealed class DecisionProviderException : Exception
 {
     public DecisionProviderException(string message) : base(message) { }

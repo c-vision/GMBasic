@@ -1295,6 +1295,17 @@ public sealed partial class IlProgramCompiler
             case TokenKind.ProjectFolderFunc: EmitNoArgBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.ProjectFolder))); break;
             case TokenKind.ParentDirFunc: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.ParentDir))); break;
             case TokenKind.ReadBytesFunc: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.ReadBytes))); break;
+            case TokenKind.WriteBytesFunc:
+                // WRITEBYTES(path, bytes): il secondo argomento è un byte[] (tipo riferimento),
+                // quindi passa all'`object` del runtime senza box; il ritorno long si coerce al
+                // tipo inferito come per le altre funzioni IO.
+                if (expr.Args.Length != 2)
+                    throw new NotSupportedException("Backend IL: IO.WRITEBYTES richiede 2 argomenti (path, bytes).");
+                EmitStringArg(expr.Args[0]);
+                EmitExpression(expr.Args[1]);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.WriteBytes), typeof(string), typeof(object)));
+                EmitCoerceTypes(new LongType(), NormalizeInferredType(InferType(expr)));
+                break;
             case TokenKind.ReadLinesFunc: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.ReadLines))); break;
             case TokenKind.ReadFileFunc: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.ReadFile))); break;
             case TokenKind.CountLinesFunc: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.CountLines))); break;
@@ -1374,7 +1385,9 @@ public sealed partial class IlProgramCompiler
             case TokenKind.AiVerify: EmitAiVerifyCall(expr); break;
             case TokenKind.AiEvalValidate: EmitStringBinaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.AiEvalValidate))); break;
             case TokenKind.AiDecide:
-                if (expr.Args.Length >= 4)
+                if (expr.Args.Length >= 5)
+                    EmitAiStringsCall(expr, nameof(IlRuntime.AiDecideGroup), 5);
+                else if (expr.Args.Length >= 4)
                     EmitAiStringsCall(expr, nameof(IlRuntime.AiDecide), 4);
                 else if (expr.Args.Length >= 3)
                     EmitStringTernaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.AiDecide), typeof(string), typeof(string), typeof(string)));

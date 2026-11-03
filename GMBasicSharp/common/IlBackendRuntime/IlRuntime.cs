@@ -18348,6 +18348,144 @@ public static double TextWidth(string s)
         return json;
     }
 
+    [ThreadStatic] private static string? _lastDecideGroupKey;
+    [ThreadStatic] private static string? _lastDecideGroupResult;
+
+    private static string[] ParseGroupArray(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return [];
+        try
+        {
+            return System.Text.Json.JsonSerializer.Deserialize<string[]>(json) ?? [];
+        }
+        catch { return []; }
+    }
+
+    /// <summary>Forma batch interna: N domande sullo stesso stato, una sola entry point.
+    /// Ritorna un oggetto JSON `{nome:"&lt;json risultato&gt;"}` (i valori sono STRINGHE col
+    /// JSON della singola decisione, così `JSON.EXTRACT` restituisce il testo originale).
+    /// Se il provider è `local` e implementa `IDecisionGroupCompleter`, usa il percorso
+    /// group-aware (prefill/KV condiviso); altrimenti valuta le domande in sequenza con la
+    /// stessa semantica (fallback incluso).</summary>
+    public static string AiDecideGroup(string state, string namesCsv, string kindsCsv,
+        string provider, string fallback)
+    {
+        var names = ParseGroupArray(namesCsv);
+        var kinds = ParseGroupArray(kindsCsv);
+        // La desugar del batch riusa lo stesso nodo per N estrazioni: la prima chiamata
+        // calcola il gruppo, le successive (stessi argomenti, stesso thread) leggono la cache.
+        var cacheKey = (state ?? "") + "\u0001" + (namesCsv ?? "") + "\u0001" + (kindsCsv ?? "")
+                     + "\u0001" + (provider ?? "") + "\u0001" + (fallback ?? "");
+        if (cacheKey == _lastDecideGroupKey && _lastDecideGroupResult is not null)
+            return _lastDecideGroupResult;
+        var obj = new System.Text.Json.Nodes.JsonObject();
+        if (names.Length == 0)
+            return "{\"error\":\"AiDecideGroup: nessuna domanda\"}";
+        if (names.Length != kinds.Length)
+        {
+            for (var i = 0; i < names.Length; i++)
+                obj[names[i]] = "{\"error\":\"AiDecideGroup: names/kinds disallineati\"}";
+            return obj.ToJsonString();
+        }
+
+        var p = (provider ?? "").Trim().ToLowerInvariant();
+        if (p.Length == 0)
+        {
+            var decideName = Basic.Providers.ProviderServer.Instance.GetActiveName(
+                Basic.Providers.ProviderRole.Decide);
+            if (!string.IsNullOrWhiteSpace(decideName))
+            {
+                var decideKind = Basic.Providers.ProviderServer.Instance.GetKind(decideName);
+                if (!string.IsNullOrWhiteSpace(decideKind))
+                    p = decideKind.Trim().ToLowerInvariant();
+            }
+        }
+
+        var canGroup = p == "local" && string.IsNullOrWhiteSpace(fallback);
+        if (canGroup)
+        {
+            Basic.AI.Rag.ILlmCompleter? completer = null;
+            try { completer = Basic.Providers.ProviderServer.Instance.GetActiveCompletion(); }
+            catch { /* sotto: percorso sequenziale */ }
+            if (completer is Basic.Decision.IDecisionGroupCompleter groupCompleter)
+            {
+                var requests = kinds.Select(k => BuildDecisionRequest(state, k)).ToList();
+                var results = groupCompleter.DecideGroup(requests);
+                if (results.Count == requests.Count)
+                {
+                    for (var i = 0; i < names.Length; i++)
+                    {
+                        var kindName = KindName(kinds[i]);
+                        obj[names[i]] = FormatDecisionJson(kindName, results[i]);
+                    }
+                    _lastDecideGroupKey = cacheKey; _lastDecideGroupResult = obj.ToJsonString();
+                    return _lastDecideGroupResult;
+                }
+                /* numero inatteso: sotto si ricade sul percorso sequenziale */
+            }
+        }
+
+        for (var i = 0; i < names.Length; i++)
+            obj[names[i]] = AiDecide(state, kinds[i], provider, fallback);
+        _lastDecideGroupKey = cacheKey; _lastDecideGroupResult = obj.ToJsonString();
+        return _lastDecideGroupResult;
+    }
+
+    private static Basic.Decision.DecisionRequest BuildDecisionRequest(string state, string kind)
+    {
+        var raw = (kind ?? "").Trim();
+        var k = raw.ToUpperInvariant();
+        if (k.StartsWith("CHOICE", StringComparison.Ordinal) && raw.Length > 6 && raw[6] == ':')
+        {
+            var labels = raw[7..].Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            return labels.Length > 0
+                ? Basic.Decision.DecisionSlots.CreateChoice(state ?? "", labels)
+                : new Basic.Decision.DecisionRequest(state ?? "",
+                    Basic.Decision.DecisionKind.Choice, Basic.Decision.DecisionSlots.Choice);
+        }
+        if (k.StartsWith("SCORE:", StringComparison.Ordinal))
+        {
+            var parts = raw.Split(':');
+            if (parts.Length == 3
+                && int.TryParse(parts[1], System.Globalization.NumberStyles.Integer,
+                    System.Globalization.CultureInfo.InvariantCulture, out var lo)
+                && int.TryParse(parts[2], System.Globalization.NumberStyles.Integer,
+                    System.Globalization.CultureInfo.InvariantCulture, out var hi))
+                return Basic.Decision.DecisionSlots.CreateScoreRange(state ?? "", lo, hi);
+            throw new ArgumentException($"kind '{kind}' non valido (SCORE:lo:hi).");
+        }
+        return k switch
+        {
+            "NOUL" => Basic.Decision.DecisionSlots.CreateNoul(state ?? ""),
+            "SCORE" => Basic.Decision.DecisionSlots.CreateScore(state ?? ""),
+            "CHOICE" => new Basic.Decision.DecisionRequest(state ?? "",
+                Basic.Decision.DecisionKind.Choice, Basic.Decision.DecisionSlots.Choice),
+            _ => throw new ArgumentException($"kind '{kind}' non valido (NOUL/SCORE/CHOICE[:labels])"),
+        };
+    }
+
+    private static string KindName(string kind)
+    {
+        var k = (kind ?? "").Trim().ToUpperInvariant();
+        return k.StartsWith("CHOICE", StringComparison.Ordinal) ? "CHOICE" : k;
+    }
+
+    private static string FormatDecisionJson(string kindName, Basic.Decision.DecisionResult result)
+    {
+        var value = result.Value switch
+        {
+            bool b => b ? "true" : "false",
+            double d => d.ToString("0.#####", System.Globalization.CultureInfo.InvariantCulture),
+            null => "",
+            _ => result.Value.ToString() ?? "",
+        };
+        static string Esc(string? s) => (s ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"");
+        static string Num(double? v) => v.HasValue
+            ? v.Value.ToString("0.000000", System.Globalization.CultureInfo.InvariantCulture)
+            : "null";
+        return $"{{\"kind\":\"{kindName}\",\"option\":\"{Esc(result.OptionId)}\",\"value\":\"{Esc(value)}\",\"probability\":{result.Probability.ToString("0.000000", System.Globalization.CultureInfo.InvariantCulture)},\"confidence\":{Num(result.Confidence)},\"calibrated\":{Num(result.Calibrated)}}}";
+    }
+
     // ── AI ASKCHAIN (T1.2, 2026-09-09): anello di ragionamento concatenato via Blackboard ──
     public static string AiAskChain(string name, string prompt, string prefix)
     {
