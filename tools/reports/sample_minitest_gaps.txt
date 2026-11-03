@@ -1,6 +1,6 @@
 SAMPLE → MINITEST: casi d'uso non previsti dai canonici
 
-casi: 62   sample coinvolti: 21
+casi: 53   sample coinvolti: 19
 
 == ARITA (stessa funzione, arità diversa nel canonico) ==
   samples/Ai/AiFullSurfaceCoverage.bas                           AI.search(5)  canonico: 9
@@ -28,8 +28,6 @@ casi: 62   sample coinvolti: 21
   samples/Console/WidgetsFullCoverage.bas                        CONTROLS.cs(1)
   samples/Controls/ControlPropertiesCoverage.bas                 CONTROL.md(1)
   samples/Crypto/CryptoFullCoverage.bas                          BLOCKCHAIN.abidecode(2)
-  samples/Crypto/CryptoUncoveredCoverage.bas                     CRYPTOGRAPHY.hashfile(2)
-  samples/Crypto/CryptoUncoveredCoverage.bas                     CRYPTOGRAPHY.strhashfile(2)
   samples/Databases/RddCompleteCoverage.bas                      RDD.delete(2)
   samples/Databases/RddCompleteCoverage.bas                      RDD.recall(2)
   samples/Databases/RddCompleteCoverage.bas                      RDD.replace(4)
@@ -41,13 +39,6 @@ casi: 62   sample coinvolti: 21
   samples/Http/HttpStreaming.bas                                 RES.startstream(1)
   samples/Http/HttpStreaming.bas                                 RES.write(1)
   samples/Optimization/OptimizeUncoveredCoverage.bas             MATH.round(2)
-  samples/System/DateTimeUncoveredCoverage.bas                   DATETIME.cdow(1)
-  samples/System/DateTimeUncoveredCoverage.bas                   DATETIME.cmonth(1)
-  samples/System/DateTimeUncoveredCoverage.bas                   DATETIME.dow(1)
-  samples/System/DateTimeUncoveredCoverage.bas                   DATETIME.dtoc(1)
-  samples/System/DateTimeUncoveredCoverage.bas                   DATETIME.dtos(1)
-  samples/System/DateTimeUncoveredCoverage.bas                   DATETIME.isoweekofyear(1)
-  samples/System/DateTimeUncoveredCoverage.bas                   DATETIME.seconds(0)
   samples/System/SystemFullCoverage.bas                          SYSTEM.command(1)
   samples/System/SystemFullCoverage.bas                          SYSTEM.valtype(1)
   samples/Trading/TradingFullCoverage.bas                        TRADING.PORTFOLIO.kellycriterion(2)

@@ -85,9 +85,9 @@ totale file: 1191   categorie: 80
 
 == per classificazione (un file può avere più tag) ==
   ENV          481
-  DIDATTICO    211
+  DIDATTICO    213
   CORTO        169
-  SURFACE      47
+  SURFACE      44
   SUPPORTO     25
   MODULO       15
   PACKAGE      7
@@ -109,14 +109,12 @@ totale file: 1191   categorie: 80
   Bits/BitsFullCoverage.bas                                              righe=163  import=1
   Concurrency/AtomicFullCoverage.bas                                     righe=64   import=2
   Connectors/ConnectorFullCoverage.bas                                   righe=57   import=1
-  Console/ClipboardUncoveredCoverage.bas                                 righe=49   import=2
   Console/ConstantsColorsCoverage.bas                                    righe=211  import=1
   Console/ConstantsKeysCoverage.bas                                      righe=150  import=1
   Console/ConstantsModesCoverage.bas                                     righe=102  import=1
   Console/WidgetsFullCoverage.bas                                        righe=83   import=1
   Controls/ControlPropertiesCoverage.bas                                 righe=35   import=1
   Crypto/CryptoFullCoverage.bas                                          righe=22   import=2
-  Crypto/CryptoUncoveredCoverage.bas                                     righe=50   import=2
   Databases/DbIsamUncoveredCoverage.bas                                  righe=60   import=2
   Databases/DbLedgerCompleteCoverage.bas                                 righe=76   import=2
   Databases/DbLedgerUncoveredCoverage.bas                                righe=79   import=2
@@ -131,7 +129,6 @@ totale file: 1191   categorie: 80
   Http/HttpStreaming.bas                                                 righe=74   import=1
   Network/NetworkFullCoverage.bas                                        righe=28   import=1
   Optimization/OptimizeUncoveredCoverage.bas                             righe=69   import=2
-  System/DateTimeUncoveredCoverage.bas                                   righe=66   import=1
   System/SystemFullCoverage.bas                                          righe=24   import=2
   Team/TeamFullCoverage.bas                                              righe=23   import=1
   TimeSeries/TimeSeriesFullCoverage.bas                                  righe=43   import=2
@@ -141,7 +138,7 @@ totale file: 1191   categorie: 80
   Trading/TradingPortfolioUncoveredCoverage.bas                          righe=50   import=1
   Workflow/WorkflowFullCoverage.bas                                      righe=25   import=1
   graphics/GraphicsUncoveredCoverage.bas                                 righe=41   import=1
-  (47 file)
+  (44 file)
 
 == EXPECT nei Sample (violazione del contratto) ==
   (0 file)
@@ -599,7 +596,7 @@ totale file: 1191   categorie: 80
   Connectors/ConnectorPostgresLocal.bas                                  righe=74   import=1
   Connectors/ConnectorT1_SheetsNotionLinear.bas                          righe=39   import=1
   Connectors/ConnectorT2_StripeHubspot.bas                               righe=30   import=1
-  Console/ClipboardUncoveredCoverage.bas                                 righe=49   import=2
+  Console/BloccoNote.bas                                                 righe=55   import=3
   Console/ConsoleAdvanced.bas                                            righe=133  import=0
   Console/ConsoleBasics.bas                                              righe=63   import=0
   Console/ConsoleBreakTrap.bas                                           righe=51   import=0
@@ -862,7 +859,8 @@ totale file: 1191   categorie: 80
   Crypto/CryptoERC20.bas                                                 righe=111  import=2
   Crypto/CryptoFunctions.bas                                             righe=190  import=2
   Crypto/CryptoWalletHD.bas                                              righe=127  import=4
-  Crypto/PortafoglioHD.bas                                               righe=61   import=2
+  Crypto/FirmaContratto.bas                                              righe=79   import=2
+  Crypto/VerificaDownload.bas                                            righe=81   import=2
   Databases/AiLoadDocs.bas                                               righe=49   import=3
   Databases/AnagraficaClienti.bas                                        righe=45   import=2
   Databases/BareCommandFallback.bas                                      righe=54   import=2
@@ -974,6 +972,7 @@ totale file: 1191   categorie: 80
   Spatial/SpatialDistances.bas                                           righe=35   import=2
   Strings/StringsExamples.bas                                            righe=238  import=3
   Strings/StringsInterpolation.bas                                       righe=101  import=2
+  System/ScadenzeRate.bas                                                righe=70   import=2
   System/SettingsPaths.bas                                               righe=65   import=3
   System/SystemConstants.bas                                             righe=46   import=3
   System/SystemLowLevel.bas                                              righe=123  import=3
@@ -1014,5 +1013,5 @@ totale file: 1191   categorie: 80
   graph/FinanceBrainGraph.bas                                            righe=51   import=2
   graph/GraphAgentAsk.bas                                                righe=34   import=2
   graph/GraphQueryMulti.bas                                              righe=29   import=2
-  (211 file)
+  (213 file)
 
