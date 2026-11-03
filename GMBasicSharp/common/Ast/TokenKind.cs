@@ -2566,4 +2566,7 @@ public enum TokenKind
     // P_* (2026-11-03): sottocomandi CONTROL senza keyword dedicata. In coda (ordinali
     // canonici): mai inserire nel mezzo.
     ControlGets, ControlZorder, ControlInvalidate,
+    // P_* (2026-11-03): chiavi delle clausole PIXEL senza keyword dedicata. In coda
+    // (ordinali canonici): mai inserire nel mezzo.
+    PixelName, PixelTooltip, PixelVisible, PixelEnabled, PixelTabIndex, PixelTabStop, PixelStyle,
 }

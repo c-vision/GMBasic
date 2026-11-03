@@ -56,6 +56,19 @@ public sealed partial class Parser
             var att = AttachedEvent(t);
             if (att == null && !IsClauseKeyword(t)) break;
             var key = att != null ? "ON" : t.Lexeme!.ToUpperInvariant();
+            var keyKind = key switch
+            {
+                "NAME" => TokenKind.PixelName,
+                "TAG" => TokenKind.Tag,
+                "TOOLTIP" => TokenKind.PixelTooltip,
+                "VISIBLE" => TokenKind.PixelVisible,
+                "ENABLED" => TokenKind.PixelEnabled,
+                "TABINDEX" => TokenKind.PixelTabIndex,
+                "TABSTOP" => TokenKind.PixelTabStop,
+                "FOCUS" => TokenKind.Focus,
+                "STYLE" => TokenKind.PixelStyle,
+                _ => TokenKind.Identifier
+            };
             p.Advance();
             if (key == "ON")
             {
@@ -66,7 +79,7 @@ public sealed partial class Parser
             }
             else if (key == "FOCUS")
             {
-                clauses.Add(new PixelClause("FOCUS", null, null, null));
+                clauses.Add(new PixelClause("FOCUS", null, null, null, KeyKind: keyKind));
             }
             else if (key == "ID")
             {
@@ -75,7 +88,7 @@ public sealed partial class Parser
             else
             {
                 var v = p.ParseExpression();
-                clauses.Add(new PixelClause(key, v, null, null));
+                clauses.Add(new PixelClause(key, v, null, null, KeyKind: keyKind));
             }
         }
         return new PixelControlStmt(kind, args, clauses, into, tok, id);
