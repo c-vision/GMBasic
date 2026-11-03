@@ -34,6 +34,22 @@ typedef struct {
     float temperature;      /* T per-kind (>0; <=0 = 1) */
 } gmb_decision_option_t;
 
+/* Dominio RISOLTO di un kind ("NOUL", "CHOICE", "CHOICE:a|b", "SCORE", "SCORE:0:10"):
+ * `options` punta a `custom` (o agli slot canonici) e resta valido finché vive `d`. Usato dal
+ * dispatcher e dal provider locale (batch con prefill condiviso): una sola risoluzione del
+ * kind, nessuna copia della grammatica dei domini. */
+typedef struct {
+    gmb_decision_kind_t kind;
+    const gmb_decision_option_t* options;
+    int n_options;
+    char labelbuf[512];
+    char score_labels[11][4];
+    gmb_decision_option_t custom[GMB_DECISION_MAX_OPTIONS];
+} gmb_decision_domain_t;
+
+/* Risolve `kind` nel dominio canonico/custom. 0 ok / -1 su kind non valido. */
+int gmb_decision_resolve_domain(const char* kind, gmb_decision_domain_t* d);
+
 typedef struct {
     gmb_decision_kind_t kind;
     const char* option_id;  /* id dell'opzione scelta */
@@ -89,6 +105,16 @@ char* gmb_ai_decide_run_json_chain(const char* state, const char* kind,
 int gmb_ai_decide_local_run(const char* state, const char* kind,
                             const gmb_decision_option_t* options, int n_options,
                             gmb_decision_result_t* out, char* err, size_t errcap);
+
+/* Batch del provider locale: N domini SULLO STESSO stato con prefill/KV CONDIVISO. Il
+ * dispatcher risolve i domini (`gmb_decision_resolve_domain`) e il provider costruisce i
+ * prompt, calcola il prefisso comune di token, lo prefill-a UNA volta e lo salva nella
+ * prefix-cache del motore; ogni domanda riusa la KV (`session_append_auto_prefix`). Se il
+ * prefisso è corto o il motore non espone la prefix-cache, degrada al prefill lineare —
+ * stessi risultati. Ritorna 1 = N risultati in `out`, -1 = errore in `err`. */
+int gmb_ai_decide_local_run_group(const char* state, const gmb_decision_domain_t* domains,
+                                  int n_domains, gmb_decision_result_t* out,
+                                  char* err, size_t errcap);
 
 /* Ponte STABILE core → dylib AI: `gmb_ai_decide_local.c` vive in `gmb_runtime_ai`, che risolve
  * i simboli del core a load-time. Chiamare direttamente gli interni di `gmb_ai.c`/`gmb_paths.c`
