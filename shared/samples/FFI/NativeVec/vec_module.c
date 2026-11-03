@@ -299,3 +299,78 @@ long vec_mixed8(long a, double b, long c, double d, long e, double f, long g, do
 {
     return a + (long)b + c + (long)d + e + (long)f + g + (long)h;
 }
+
+/* Array BYREF + scalari DOUBLE nella STESSA firma (2026-11-02): il puntatore viaggia come
+ * intero, gli scalari come double — il kind per-slot deve restare distinto. Somma
+ * buf[i]*scale + offset. */
+double vec_array_scale(const double* buf, long n, double scale, double offset)
+{
+    double s = offset;
+    long i;
+    if (!buf || n <= 0) return offset;
+    for (i = 0; i < n; i++) s += buf[i] * scale;
+    return s;
+}
+
+/* Callback scalare + limiti double (forma OPTIMIZE.BRENTQ): bisezione 60 passi. */
+double vec_cb_rootq(double (*cb)(double), double a, double b)
+{
+    double fa;
+    int i;
+    if (!cb) return 0.0;
+    fa = cb(a);
+    if (fa * cb(b) > 0.0) return 0.0;
+    for (i = 0; i < 60; i++) {
+        double m = 0.5 * (a + b);
+        double fm = cb(m);
+        if (fa * fm <= 0.0) b = m;
+        else { a = m; fa = fm; }
+    }
+    return 0.5 * (a + b);
+}
+
+/* Callback VETTORIALE (2026-11-02): f(v[], n) -> double. Il nativo riceve (double*, n) e il
+ * trampolino ricostruisce l'array BASIC. Somma dei quadrati (25 per v={3,4}). */
+double vec_cb_vecd(double (*cb)(double*, int64_t), const double* v, int64_t n)
+{
+    return cb ? cb((double*)v, n) : 0.0;
+}
+
+/* Callback ARRAY + SCALARE (2026-11-02): forma dei modelli LM/CurveFit f(p[], x). */
+double vec_cb_arr_scalar(double (*cb)(double*, int64_t, double), const double* v, int64_t n, double s)
+{
+    return cb ? cb((double*)v, n, s) : 0.0;
+}
+
+/* Callback con RITORNO ARRAY (2026-11-02): f(v[]) AS ARRAY (Fsolve/Broyden/LSQF). */
+void vec_cb_arr_out(void (*cb)(double*, int64_t, double*), const double* v, int64_t n, double* out)
+{
+    if (cb) cb((double*)v, n, out);
+}
+/* Due array in ingresso + ritorno array (LMVec): f(p[], x[]) AS ARRAY. */
+void vec_cb_vv_out(void (*cb)(double*, int64_t, double*, int64_t, double*),
+                   const double* p, int64_t np, const double* x, int64_t nx, double* out)
+{
+    if (cb) cb((double*)p, np, (double*)x, nx, out);
+}
+
+/* Due array -> scalare (2026-11-02): f(a[], b[]) AS DOUBLE (descriptor 129). */
+double vec_cb_vv_scalar(double (*cb)(double*, int64_t, double*, int64_t), const double* a, int64_t na, const double* b, int64_t nb)
+{
+    return cb ? cb((double*)a, na, (double*)b, nb) : 0.0;
+}
+
+/* Test marshalling: 5 array in una sola chiamata. out(i) = a(i)+b(i)+c(i)+d(i). */
+void vec_five(const double* a, int64_t na, const double* b, int64_t nb, const double* c, int64_t nc, const double* d, int64_t nd, double* out)
+{
+    int64_t i, n = na;
+    if (nb < n) n = nb; if (nc < n) n = nc; if (nd < n) n = nd;
+    for (i = 0; i < n; i++) out[i] = a[i] + b[i] + c[i] + d[i];
+}
+
+/* 5 array + 1 scalare (forma di LINPROG: c, A, b, bounds, out). */
+void vec_five2(const double* a, const double* b, const double* c, const double* d, int64_t n, double* out)
+{
+    int64_t i;
+    for (i = 0; i < n; i++) out[i] = a[i] + b[i] + c[i] + d[i];
+}

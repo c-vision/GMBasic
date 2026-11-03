@@ -5041,7 +5041,11 @@ static int fn_needs_fv_adapter(const fn_info_t* fn) {
     for (int i = 0; i < fn->n_params; i++) {
         if (fn->stmt->param_byref && fn->stmt->param_byref[i]) return 0;
         if (fn->stmt->param_variadic && fn->stmt->param_variadic[i]) return 0;
-        if (fn->stmt->param_is_array && fn->stmt->param_is_array[i]) return 0;
+        /* Array (2026-11-02): un parametro array del target e' un PUNTATORE, ma il gmb_fn_t
+         * viene invocato con `void* ctx` in testa: senza adapter il ctx finisce nel registro
+         * del primo argomento e il puntatore scala di uno -> crash (callback FFI nominati con
+         * array). L'adapter ctx-first rigira i parametri identici, quindi vale per tutti. */
+        if (fn->stmt->param_is_array && fn->stmt->param_is_array[i]) { need = 1; continue; }
         var_t* pv = vars_find(&fn->locals, fn->stmt->func_params[i]);
         if (!pv || pv->gkind || pv->is_array || pv->fixed_len > 0) return 0;
         if (pv->type == TY_STR || pv->vclass[0]) need = 1;
@@ -29387,8 +29391,20 @@ static const char* ffi_cb_native_type(int arity, int isInt, int hasRet) {
         /* Callback vettoriale (2026-11-02): descriptor = arity-128.
          * 128: (double*, n)                   132: (double*, n, double)
          * 129: (double*, n, double*, n2)      144/145: ritorno ARRAY (out finale) */
+        if (arity == 129) {
+            snprintf(buf, 80, "%s (*)(gmb_double_t*, gmb_int_t, gmb_double_t*, gmb_int_t)", retT);
+            return buf;
+        }
         if (arity == 132) {
             snprintf(buf, 80, "%s (*)(gmb_double_t*, gmb_int_t, gmb_double_t)", retT);
+            return buf;
+        }
+        if (arity == 144) {
+            snprintf(buf, 80, "void (*)(gmb_double_t*, gmb_int_t, gmb_double_t*)");
+            return buf;
+        }
+        if (arity == 145) {
+            snprintf(buf, 80, "void (*)(gmb_double_t*, gmb_int_t, gmb_double_t*, gmb_int_t, gmb_double_t*)");
             return buf;
         }
         snprintf(buf, 80, "%s (*)(gmb_double_t*, gmb_int_t)", retT);
@@ -29494,6 +29510,31 @@ static void emit_ffi_callback_pool(ctx_t* c) {
         sb_printf(&c->out, "static int gmb_ffi_cb_acquire_%s132(gmb_fn_t f) { for (int s = 0; s < 2; s++) if (!g_ffi_cb_inuse_%s132[s]) { g_ffi_cb_inuse_%s132[s] = 1; g_ffi_cb_slot_%s132[s] = f; return s; } return -1; }\n",
             kind, kind, kind, kind);
         sb_printf(&c->out, "static void gmb_ffi_cb_release_%s132(int s) { if (s >= 0) g_ffi_cb_inuse_%s132[s] = 0; }\n", kind, kind);
+        /* Due array -> scalare (2026-11-02, arity 129): f(a[], b[]) AS DOUBLE. */
+        sb_printf(&c->out, "static gmb_fn_t g_ffi_cb_slot_%s129[2];\nstatic int g_ffi_cb_inuse_%s129[2];\n", kind, kind);
+        for (int slot = 0; slot < 2; slot++)
+            sb_printf(&c->out, "static %s gmb_ffi_cb_%s129_%d(gmb_double_t* a, gmb_int_t na, gmb_double_t* b, gmb_int_t nb) { gmb_int_t p0 = gmb_lambda_bound(0), p1 = gmb_lambda_bound(1); gmb_fn_t f = g_ffi_cb_slot_%s129[%d]; %s r; gmb_lambda_bound_set(0, na - 1); gmb_lambda_bound_set(1, nb - 1); r = (%s)((gmb_double_t(*)(void*, gmb_double_t*, gmb_double_t*))f.fn)(f.ctx, a, b); gmb_lambda_bound_set(0, p0); gmb_lambda_bound_set(1, p1); return r; }\n",
+                ct, kind, slot, kind, slot, ct, ct);
+        sb_printf(&c->out, "static %s (*g_ffi_cb_ptr_%s129[2])(gmb_double_t*, gmb_int_t, gmb_double_t*, gmb_int_t) = { gmb_ffi_cb_%s129_0, gmb_ffi_cb_%s129_1 };\n", ct, kind, kind, kind);
+        sb_printf(&c->out, "static int gmb_ffi_cb_acquire_%s129(gmb_fn_t f) { for (int s = 0; s < 2; s++) if (!g_ffi_cb_inuse_%s129[s]) { g_ffi_cb_inuse_%s129[s] = 1; g_ffi_cb_slot_%s129[s] = f; return s; } return -1; }\n", kind, kind, kind, kind);
+        sb_printf(&c->out, "static void gmb_ffi_cb_release_%s129(int s) { if (s >= 0) g_ffi_cb_inuse_%s129[s] = 0; }\n", kind, kind);
+        /* Ritorno ARRAY (2026-11-02): arity 144 (1 array -> out) e 145 (2 array -> out). */
+        sb_printf(&c->out, "static gmb_fn_t g_ffi_cb_slot_%s144[2];\nstatic int g_ffi_cb_inuse_%s144[2];\n", kind, kind);
+        for (int slot = 0; slot < 2; slot++)
+            sb_printf(&c->out, "static void gmb_ffi_cb_%s144_%d(gmb_double_t* v, gmb_int_t n, gmb_double_t* out) { gmb_int_t pv = gmb_lambda_bound(0); gmb_fn_t f = g_ffi_cb_slot_%s144[%d]; gmb_lambda_bound_set(0, n - 1); ((void(*)(void*, gmb_double_t*, gmb_double_t*))f.fn)(f.ctx, v, out); gmb_lambda_bound_set(0, pv); }\n",
+                kind, slot, kind, slot);
+        sb_printf(&c->out, "static void (*g_ffi_cb_ptr_%s144[2])(gmb_double_t*, gmb_int_t, gmb_double_t*) = { gmb_ffi_cb_%s144_0, gmb_ffi_cb_%s144_1 };\n", kind, kind, kind);
+        sb_printf(&c->out, "static void (*g_ffi_cb_ptr_sub_%s144[2])(gmb_double_t*, gmb_int_t, gmb_double_t*) = { gmb_ffi_cb_%s144_0, gmb_ffi_cb_%s144_1 };\n", kind, kind, kind);
+        sb_printf(&c->out, "static int gmb_ffi_cb_acquire_%s144(gmb_fn_t f) { for (int s = 0; s < 2; s++) if (!g_ffi_cb_inuse_%s144[s]) { g_ffi_cb_inuse_%s144[s] = 1; g_ffi_cb_slot_%s144[s] = f; return s; } return -1; }\n", kind, kind, kind, kind);
+        sb_printf(&c->out, "static void gmb_ffi_cb_release_%s144(int s) { if (s >= 0) g_ffi_cb_inuse_%s144[s] = 0; }\n", kind, kind);
+        sb_printf(&c->out, "static gmb_fn_t g_ffi_cb_slot_%s145[2];\nstatic int g_ffi_cb_inuse_%s145[2];\n", kind, kind);
+        for (int slot = 0; slot < 2; slot++)
+            sb_printf(&c->out, "static void gmb_ffi_cb_%s145_%d(gmb_double_t* a, gmb_int_t na, gmb_double_t* b, gmb_int_t nb, gmb_double_t* out) { gmb_int_t p0 = gmb_lambda_bound(0), p1 = gmb_lambda_bound(1); gmb_fn_t f = g_ffi_cb_slot_%s145[%d]; gmb_lambda_bound_set(0, na - 1); gmb_lambda_bound_set(1, nb - 1); ((void(*)(void*, gmb_double_t*, gmb_double_t*, gmb_double_t*))f.fn)(f.ctx, a, b, out); gmb_lambda_bound_set(0, p0); gmb_lambda_bound_set(1, p1); }\n",
+                kind, slot, kind, slot);
+        sb_printf(&c->out, "static void (*g_ffi_cb_ptr_%s145[2])(gmb_double_t*, gmb_int_t, gmb_double_t*, gmb_int_t, gmb_double_t*) = { gmb_ffi_cb_%s145_0, gmb_ffi_cb_%s145_1 };\n", kind, kind, kind);
+        sb_printf(&c->out, "static void (*g_ffi_cb_ptr_sub_%s145[2])(gmb_double_t*, gmb_int_t, gmb_double_t*, gmb_int_t, gmb_double_t*) = { gmb_ffi_cb_%s145_0, gmb_ffi_cb_%s145_1 };\n", kind, kind, kind);
+        sb_printf(&c->out, "static int gmb_ffi_cb_acquire_%s145(gmb_fn_t f) { for (int s = 0; s < 2; s++) if (!g_ffi_cb_inuse_%s145[s]) { g_ffi_cb_inuse_%s145[s] = 1; g_ffi_cb_slot_%s145[s] = f; return s; } return -1; }\n", kind, kind, kind, kind);
+        sb_printf(&c->out, "static void gmb_ffi_cb_release_%s145(int s) { if (s >= 0) g_ffi_cb_inuse_%s145[s] = 0; }\n", kind, kind);
     }
     sb_put(&c->out, "\n");
 }
@@ -29564,11 +29605,25 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
             /* Callback VETTORIALE (2026-11-02): 1-2 array in testa (+ eventuali scalari).
              * descriptor = (nArr-1) | (nSca<<2). Native: (double*, n[, double*, n2][, double...]). */
             if (s->param_fn_arr_mask && (s->param_fn_arr_mask[i] & 1)) {
-                int nArr = 0, nSca, code;
+                int nArr = 0, nSca, code, arrRet;
                 while (nArr < arity && (s->param_fn_arr_mask[i] & (1 << nArr))) nArr++;
                 if (nArr < 1) nArr = 1;
                 nSca = arity - nArr;
-                code = (nArr - 1) | (nSca << 2);
+                arrRet = (s->param_fn_ret_arr && s->param_fn_ret_arr[i]) ? 1 : 0;
+                /* Forme supportate (2026-11-02): 128 f(v), 129 f(a,b), 132 f(v,x),
+                 * 144 f(v)->array, 145 f(a,b)->array. Tutto il resto e' un errore. */
+                if (kindmask & (1 << i)) {
+                    c99_fail(c, s->line, "FFI '%s': il callback usato per %s ha un array di "
+                             "INTERI: i callback vettoriali ammettono solo array di DOUBLE.", sym, what);
+                    return;
+                }
+                if (!((nArr == 1 && nSca == 0) || (nArr == 2 && nSca == 0) || (nArr == 1 && nSca == 1))) {
+                    c99_fail(c, s->line, "FFI '%s': forma di callback non supportata per %s "
+                             "(%d array, %d scalari): ammesse f(v()), f(a(), b()) e f(v(), x).",
+                             sym, what, nArr, nSca);
+                    return;
+                }
+                code = (nArr - 1) | (nSca << 2) | (arrRet << 4);
                 is_cb_param[i] = 1;
                 cb_arity[i] = 128 + code;
                 cb_kind_int[i] = retInt;
@@ -32139,6 +32194,7 @@ int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
     for (int i = 0; i < c->nfn; i++) {
         fn_info_t* fa = &c->fns[i];
         if (!fn_needs_fv_adapter(fa)) continue;
+        int fa_ret_arr = fn_ret_is_arr(fa);
         sb_put(&proto, "static ");
         sb_put(&proto, fn_ret_ctype(c, fa));
         sb_put(&proto, " gmb_user_");
@@ -32152,14 +32208,27 @@ int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
             else sb_put(&proto, "gmb_double_t ");
             sb_ident(&proto, fa->stmt->func_params[k]);
         }
-        sb_put(&proto, ") { (void)__fu; return gmb_user_");
+        /* Ritorno ARRAY (2026-11-02): la funzione e' `void (..., double* __out)`; l'adapter
+         * gmb_fn_t deve esporre lo stesso slot finale (callback 144/145 nominati). */
+        if (fa_ret_arr) sb_put(&proto, ", double* __out");
+        sb_put(&proto, ") { (void)__fu; ");
+        if (!fa_ret_arr) sb_put(&proto, "return ");
+        sb_put(&proto, "gmb_user_");
         sb_ident(&proto, fa->stmt->func_name);
         if (fa->ovl_idx > 0) sb_printf(&proto, "__%d", fa->ovl_idx);
         sb_put(&proto, "(");
+        int arr_idx = 0;
         for (int k = 0; k < fa->stmt->n_params; k++) {
             if (k) sb_put(&proto, ", ");
             sb_ident(&proto, fa->stmt->func_params[k]);
+            /* Array (2026-11-02): il target riceve il bound come parametro compagno; il
+             * chiamante gmb_fn_t lo pubblica nel canale thread-local (stesso meccanismo dei
+             * trampolini FFI/lambda). */
+            if (fa->stmt->param_is_array && fa->stmt->param_is_array[k]) {
+                sb_printf(&proto, ", gmb_lambda_bound(%d)", arr_idx++);
+            }
         }
+        if (fa_ret_arr) sb_put(&proto, ", __out");
         sb_put(&proto, "); }\n");
     }
 

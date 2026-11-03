@@ -1,0 +1,12 @@
+' EXPECT: v= 1
+' OPTIMIZE.BRENTMIN — MiniTest §4.1 (parità 4 backend).
+IMPORT OPT
+IMPORT MATH
+
+FUNCTION P(x AS DOUBLE) AS DOUBLE
+    RETURN (x - 1.0) * (x - 1.0)
+END FUNCTION
+
+SUB Main()
+    PRINT "v="; MATH.ROUND(OPT.BRENTMIN(P, 0.0, 3.0), 6)
+END SUB

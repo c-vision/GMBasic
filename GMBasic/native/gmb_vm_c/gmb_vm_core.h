@@ -273,6 +273,7 @@ double gmb_vm_call_closure_sync_val(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_clos
 double gmb_vm_call_closure_sync3_val(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure, gmb_val_t a, gmb_val_t b, gmb_val_t c);
 double gmb_vm_call_closure_sync2_val(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure, gmb_val_t a, gmb_val_t b);
 void gmb_vm_call_closure_sync_list2_vec(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure, const double* p, int np, const double* xs, int nx, double* out);
+double gmb_vm_call_closure_sync_ll(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure, const double* a, int na, const double* b, int nb);
 double gmb_vm_call_closure_sync_list(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure, const double* vals, int n);
 void gmb_vm_call_closure_sync_entry(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure, gmb_val_t a);
 void gmb_vm_call_closure_sync2_entry(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure, gmb_val_t a, gmb_val_t b);

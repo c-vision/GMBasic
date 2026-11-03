@@ -7,7 +7,7 @@
 
 CC      ?= cc
 CFLAGS   = -std=c99 -Wall -Wextra -fPIC
-GMB_INC  = ../../../native/gmb_runtime_c/include
+GMB_INC  = ../../../GMBasic/native/gmb_runtime_c/include
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
@@ -23,6 +23,9 @@ all: $(LIB_OUT)
 $(LIB_OUT): NativeVec/vec_module.c NativeVec/gmb_ffi.h
 	mkdir -p libs
 	$(CC) $(CFLAGS) -I NativeVec -I$(GMB_INC) $(LDFLAGS) -o $@ NativeVec/vec_module.c
+ifeq ($(UNAME_S),Darwin)
+	codesign --force --sign - $@
+endif
 
 clean:
 	rm -rf libs

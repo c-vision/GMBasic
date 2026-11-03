@@ -3145,6 +3145,62 @@ void gmb_vm_call_closure_sync_list2_vec(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_
     else if (task->sync_result_ref) { for (int i = 0; i < nx; i++) out[i] = 0; }
 }
 
+/* Callback con RITORNO ARRAY (2026-11-02): una lista in ingresso -> out[] (f(v[]) AS ARRAY). */
+static void gmb_vm_call_closure_sync_list_vec(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure,
+                                              const double* vals, int n, double* out, int nout)
+{
+    if (!closure) { for (int i = 0; i < nout; i++) out[i] = 0; return; }
+    gmb_obj_shared_val_t* lst = gmb_shared_list_new();
+    if (lst) { for (int i = 0; i < n; i++) gmb_list_add(lst->list, gmb_make_val_double(vals[i])); gmb_task_push_ref(task, (gmb_obj_t*)lst, GMB_BT_OBJECT); }
+    else gmb_task_push_num(task, 0, GMB_BT_NUMBER);
+    if (!push_frame(task, task->sp - 1, -2)) return;
+    if (closure->num_upvalues > 0 && closure->upvalues)
+        for (int i = 0; i < closure->num_upvalues && i < 16; i++)
+            task->frame->upvalues[i] = closure->upvalues[i];
+    task->sync_saved_ip = task->ip;
+    task->sync_active = 1;
+    task->sync_result = 0;
+    task->sync_result_ref = NULL;
+    task->sync_result_type = 0;
+    task->ip = closure->address;
+    int guard = 0;
+    while (task->sync_active && guard++ < 1000000) gmb_vm_tick(vm, task);
+    if (task->ip == -2) task->ip = task->sync_saved_ip;
+    if (task->sync_result_ref && task->sync_result_ref->kind == GMB_OBJ_LIST)
+    {
+        gmb_obj_shared_val_t* rl = (gmb_obj_shared_val_t*)task->sync_result_ref;
+        for (int i = 0; i < nout && i < (int)rl->list->count; i++)
+        { gmb_val_t v = rl->list->items[i]; out[i] = v.kind == GMB_TYPE_DOUBLE ? v.v_double : (double)v.v_int; }
+    }
+    else for (int i = 0; i < nout; i++) out[i] = 0;
+}
+
+/* Chiamata sincrona (lista + lista) -> scalare. Usata dai callback FFI f(a[], b[]) AS DOUBLE
+ * (descriptor 129): due array in ingresso, ritorno scalare. */
+double gmb_vm_call_closure_sync_ll(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure,
+                                   const double* a, int na, const double* b, int nb)
+{
+    if (!closure) return 0;
+    gmb_obj_shared_val_t* al = gmb_shared_list_new();
+    if (al) { for (int i = 0; i < na; i++) gmb_list_add(al->list, gmb_make_val_double(a[i])); gmb_task_push_ref(task, (gmb_obj_t*)al, GMB_BT_OBJECT); }
+    else gmb_task_push_num(task, 0, GMB_BT_NUMBER);
+    gmb_obj_shared_val_t* bl = gmb_shared_list_new();
+    if (bl) { for (int i = 0; i < nb; i++) gmb_list_add(bl->list, gmb_make_val_double(b[i])); gmb_task_push_ref(task, (gmb_obj_t*)bl, GMB_BT_OBJECT); }
+    else gmb_task_push_num(task, 0, GMB_BT_NUMBER);
+    if (!push_frame(task, task->sp - 2, -2)) return 0;
+    if (closure->num_upvalues > 0 && closure->upvalues)
+        for (int i = 0; i < closure->num_upvalues && i < 16; i++)
+            task->frame->upvalues[i] = closure->upvalues[i];
+    task->sync_saved_ip = task->ip;
+    task->sync_active = 1;
+    task->sync_result = 0;
+    task->ip = closure->address;
+    int guard = 0;
+    while (task->sync_active && guard++ < 1000000) gmb_vm_tick(vm, task);
+    if (task->ip == -2) task->ip = task->sync_saved_ip;
+    return task->sync_result;
+}
+
 double gmb_vm_call_closure_sync_list2(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure, const double* vals, int n, double x)
 {    if (!closure) return 0;
     gmb_obj_shared_val_t* lst = gmb_shared_list_new();
@@ -3322,11 +3378,106 @@ static void* g_ffi_cb_trampolines_i[5][2] = {
     { (void*)gmb_ffi_cb_i4_0, (void*)gmb_ffi_cb_i4_1 },
 };
 
+/* ── Callback VETTORIALE (2026-11-02, arity 128): `FUNCTION(v() AS DOUBLE) AS DOUBLE`.
+ * Il nativo chiama (double* v, int64_t n); il trampolino costruisce la lista BASIC di n
+ * elementi e invoca la closure (stessa convenzione di gmb_opt_f_vec / OPTIMIZE). */
+static gmb_ffi_cb_slot_t g_ffi_cb_slots_vd[2];
+static gmb_ffi_cb_slot_t g_ffi_cb_slots_vi[2];
+static double gmb_ffi_cb_vd_0(double* v, int64_t n) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_vd[0]; return gmb_vm_call_closure_sync_list(s->vm, s->task, s->closure, v, (int)n); }
+static double gmb_ffi_cb_vd_1(double* v, int64_t n) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_vd[1]; return gmb_vm_call_closure_sync_list(s->vm, s->task, s->closure, v, (int)n); }
+static int64_t gmb_ffi_cb_vi_0(double* v, int64_t n) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_vi[0]; return (int64_t)gmb_vm_call_closure_sync_list(s->vm, s->task, s->closure, v, (int)n); }
+static int64_t gmb_ffi_cb_vi_1(double* v, int64_t n) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_vi[1]; return (int64_t)gmb_vm_call_closure_sync_list(s->vm, s->task, s->closure, v, (int)n); }
+static void* g_ffi_cb_tramp_vd[2] = { (void*)gmb_ffi_cb_vd_0, (void*)gmb_ffi_cb_vd_1 };
+static void* g_ffi_cb_tramp_vi[2] = { (void*)gmb_ffi_cb_vi_0, (void*)gmb_ffi_cb_vi_1 };
+/* Forma array + scalare (2026-11-02, arity 132): `FUNCTION(p() AS DOUBLE, x AS DOUBLE) AS DOUBLE`. */
+static gmb_ffi_cb_slot_t g_ffi_cb_slots_vs_d[2];
+static gmb_ffi_cb_slot_t g_ffi_cb_slots_vs_i[2];
+static double gmb_ffi_cb_vs_d_0(double* v, int64_t n, double s) { gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_vs_d[0]; return gmb_vm_call_closure_sync_list2(q->vm, q->task, q->closure, v, (int)n, s); }
+static double gmb_ffi_cb_vs_d_1(double* v, int64_t n, double s) { gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_vs_d[1]; return gmb_vm_call_closure_sync_list2(q->vm, q->task, q->closure, v, (int)n, s); }
+static int64_t gmb_ffi_cb_vs_i_0(double* v, int64_t n, double s) { gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_vs_i[0]; return (int64_t)gmb_vm_call_closure_sync_list2(q->vm, q->task, q->closure, v, (int)n, s); }
+static int64_t gmb_ffi_cb_vs_i_1(double* v, int64_t n, double s) { gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_vs_i[1]; return (int64_t)gmb_vm_call_closure_sync_list2(q->vm, q->task, q->closure, v, (int)n, s); }
+static void* g_ffi_cb_tramp_vs_d[2] = { (void*)gmb_ffi_cb_vs_d_0, (void*)gmb_ffi_cb_vs_d_1 };
+static void* g_ffi_cb_tramp_vs_i[2] = { (void*)gmb_ffi_cb_vs_i_0, (void*)gmb_ffi_cb_vs_i_1 };
+/* Due array -> scalare (2026-11-02, descriptor 129): f(a[], b[]) AS DOUBLE. */
+static gmb_ffi_cb_slot_t g_ffi_cb_slots_vv_d[2];
+static gmb_ffi_cb_slot_t g_ffi_cb_slots_vv_i[2];
+static double gmb_ffi_cb_vv_d_0(double* a, int64_t na, double* b, int64_t nb) { gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_vv_d[0]; return gmb_vm_call_closure_sync_ll(q->vm, q->task, q->closure, a, (int)na, b, (int)nb); }
+static double gmb_ffi_cb_vv_d_1(double* a, int64_t na, double* b, int64_t nb) { gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_vv_d[1]; return gmb_vm_call_closure_sync_ll(q->vm, q->task, q->closure, a, (int)na, b, (int)nb); }
+static int64_t gmb_ffi_cb_vv_i_0(double* a, int64_t na, double* b, int64_t nb) { gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_vv_i[0]; return (int64_t)gmb_vm_call_closure_sync_ll(q->vm, q->task, q->closure, a, (int)na, b, (int)nb); }
+static int64_t gmb_ffi_cb_vv_i_1(double* a, int64_t na, double* b, int64_t nb) { gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_vv_i[1]; return (int64_t)gmb_vm_call_closure_sync_ll(q->vm, q->task, q->closure, a, (int)na, b, (int)nb); }
+static void* g_ffi_cb_tramp_vv_d[2] = { (void*)gmb_ffi_cb_vv_d_0, (void*)gmb_ffi_cb_vv_d_1 };
+static void* g_ffi_cb_tramp_vv_i[2] = { (void*)gmb_ffi_cb_vv_i_0, (void*)gmb_ffi_cb_vv_i_1 };
+/* Ritorno ARRAY (2026-11-02): 144 = f(v[]) AS ARRAY, 145 = f(p[], x[]) AS ARRAY. */
+static gmb_ffi_cb_slot_t g_ffi_cb_slots_vo[2];
+static gmb_ffi_cb_slot_t g_ffi_cb_slots_vvo[2];
+static void gmb_ffi_cb_vo_0(double* v, int64_t n, double* out) { gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_vo[0]; gmb_vm_call_closure_sync_list_vec(q->vm, q->task, q->closure, v, (int)n, out, (int)n); }
+static void gmb_ffi_cb_vo_1(double* v, int64_t n, double* out) { gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_vo[1]; gmb_vm_call_closure_sync_list_vec(q->vm, q->task, q->closure, v, (int)n, out, (int)n); }
+static void gmb_ffi_cb_vvo_0(double* a, int64_t na, double* b, int64_t nb, double* out) { gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_vvo[0]; gmb_vm_call_closure_sync_list2_vec(q->vm, q->task, q->closure, a, (int)na, b, (int)nb, out); }
+static void gmb_ffi_cb_vvo_1(double* a, int64_t na, double* b, int64_t nb, double* out) { gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_vvo[1]; gmb_vm_call_closure_sync_list2_vec(q->vm, q->task, q->closure, a, (int)na, b, (int)nb, out); }
+static void* g_ffi_cb_tramp_vo[2] = { (void*)gmb_ffi_cb_vo_0, (void*)gmb_ffi_cb_vo_1 };
+static void* g_ffi_cb_tramp_vvo[2] = { (void*)gmb_ffi_cb_vvo_0, (void*)gmb_ffi_cb_vvo_1 };
+
 /* Trova il primo slot libero per (kind,arita'), lo popola con vm/task/closure(o addr), e
  * ritorna l'indirizzo del trampolino pre-dichiarato corrispondente (NULL se pool esaurito —
  * >2 callback CONCORRENTI dello stesso kind/arita' nella stessa chiamata FFI, limite v1). */
 static void* gmb_ffi_cb_alloc(int kind, int arity, gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure, int addr, int* out_slot)
 {
+    if (arity == 144 || arity == 145)
+    {
+        gmb_ffi_cb_slot_t* arr = (arity == 144) ? g_ffi_cb_slots_vo : g_ffi_cb_slots_vvo;
+        for (int s = 0; s < 2; s++)
+        {
+            if (!arr[s].in_use)
+            {
+                arr[s].vm = vm; arr[s].task = task; arr[s].closure = closure; arr[s].addr = addr; arr[s].in_use = 1;
+                *out_slot = s;
+                return (arity == 144) ? g_ffi_cb_tramp_vo[s] : g_ffi_cb_tramp_vvo[s];
+            }
+        }
+        return NULL;
+    }
+    if (arity == 129)
+    {
+        gmb_ffi_cb_slot_t* arr = kind == 1 ? g_ffi_cb_slots_vv_i : g_ffi_cb_slots_vv_d;
+        for (int s = 0; s < 2; s++)
+        {
+            if (!arr[s].in_use)
+            {
+                arr[s].vm = vm; arr[s].task = task; arr[s].closure = closure; arr[s].addr = addr; arr[s].in_use = 1;
+                *out_slot = s;
+                return kind == 1 ? g_ffi_cb_tramp_vv_i[s] : g_ffi_cb_tramp_vv_d[s];
+            }
+        }
+        return NULL;
+    }
+    if (arity == 132)
+    {
+        gmb_ffi_cb_slot_t* arr = kind == 1 ? g_ffi_cb_slots_vs_i : g_ffi_cb_slots_vs_d;
+        for (int s = 0; s < 2; s++)
+        {
+            if (!arr[s].in_use)
+            {
+                arr[s].vm = vm; arr[s].task = task; arr[s].closure = closure; arr[s].addr = addr; arr[s].in_use = 1;
+                *out_slot = s;
+                return kind == 1 ? g_ffi_cb_tramp_vs_i[s] : g_ffi_cb_tramp_vs_d[s];
+            }
+        }
+        return NULL;
+    }
+    if (arity >= 128)
+    {
+        gmb_ffi_cb_slot_t* arr = kind == 1 ? g_ffi_cb_slots_vi : g_ffi_cb_slots_vd;
+        for (int s = 0; s < 2; s++)
+        {
+            if (!arr[s].in_use)
+            {
+                arr[s].vm = vm; arr[s].task = task; arr[s].closure = closure; arr[s].addr = addr; arr[s].in_use = 1;
+                *out_slot = s;
+                return kind == 1 ? g_ffi_cb_tramp_vi[s] : g_ffi_cb_tramp_vd[s];
+            }
+        }
+        return NULL;
+    }
     if (arity < 0 || arity > 4) return NULL;
     gmb_ffi_cb_slot_t (*arr)[2] = kind == 1 ? g_ffi_cb_slots_i : g_ffi_cb_slots_d;
     for (int s = 0; s < 2; s++)
@@ -3347,7 +3498,36 @@ static void* gmb_ffi_cb_alloc(int kind, int arity, gmb_vm_t* vm, gmb_task_t* tas
 
 static void gmb_ffi_cb_free(int kind, int arity, int slot)
 {
-    if (arity < 0 || arity > 4 || slot < 0 || slot > 1) return;
+    if (slot < 0 || slot > 1) return;
+    if (arity == 144 || arity == 145)
+    {
+        gmb_ffi_cb_slot_t* q = (arity == 144) ? &g_ffi_cb_slots_vo[slot] : &g_ffi_cb_slots_vvo[slot];
+        q->in_use = 0;
+        q->closure = NULL;
+        return;
+    }
+    if (arity == 129)
+    {
+        gmb_ffi_cb_slot_t* q = kind == 1 ? &g_ffi_cb_slots_vv_i[slot] : &g_ffi_cb_slots_vv_d[slot];
+        q->in_use = 0;
+        q->closure = NULL;
+        return;
+    }
+    if (arity == 132)
+    {
+        gmb_ffi_cb_slot_t* q = kind == 1 ? &g_ffi_cb_slots_vs_i[slot] : &g_ffi_cb_slots_vs_d[slot];
+        q->in_use = 0;
+        q->closure = NULL;
+        return;
+    }
+    if (arity >= 128)
+    {
+        gmb_ffi_cb_slot_t* s = kind == 1 ? &g_ffi_cb_slots_vi[slot] : &g_ffi_cb_slots_vd[slot];
+        s->in_use = 0;
+        s->closure = NULL;
+        return;
+    }
+    if (arity < 0 || arity > 4) return;
     gmb_ffi_cb_slot_t* s = kind == 1 ? &g_ffi_cb_slots_i[arity][slot] : &g_ffi_cb_slots_d[arity][slot];
     s->in_use = 0;
     s->closure = NULL;
@@ -14366,7 +14546,12 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     {
                         void* p = gmb_ffi_dl_sym(h, fn);
                         unsigned fullMaskForArgc = argc >= 8 ? 0xFFu : (unsigned)((1 << argc) - 1);
-                        if (p != NULL && (unsigned)scalarKindMask != (unsigned)(kind == 1 ? fullMaskForArgc : 0))
+                        /* 2026-11-02: slot puntatore (array/STRING/BYREF) presenti? Se sì il
+                         * path "misto" scalare-puro non basta: serve il marshalling degli
+                         * argomenti puntatore PRIMA della dispatch (vedi il ramo sotto). */
+                        int hasPtrSlot = (arrayMask | byrefScalarMask | stringMask) != 0;
+                        if (p != NULL && !hasPtrSlot &&
+                            (unsigned)scalarKindMask != (unsigned)(kind == 1 ? fullMaskForArgc : 0))
                         {
                             /* Firma mista LONG/DOUBLE fra SCALARI SEMPLICI (2026-10, v1):
                              * scalarKindMask non-uniforme con 'kind' — possibile SOLO quando
@@ -14377,7 +14562,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                              * diretto al dispatcher generato (gmb_vm_ffi_call_mixed, sopra). */
                             result = gmb_vm_ffi_call_mixed(p, argc, scalarKindMask & fullMaskForArgc, kind == 1 ? 1 : 0, args);
                         }
-                        else if (p != NULL && kind == 1)
+                        else if (p != NULL && (kind == 1 || hasPtrSlot))
                         {
                             /* Array BYREF (2026-09-28): gli array BASIC qui sono gmb_val_t*
                              * TAGGATI (gmb_obj_shared_val_t->list), non un buffer nativo
@@ -14467,7 +14652,28 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                             }
                             #undef GMB_FFI_A
                             int64_t r = 0;
-                            if (retUdtFieldCount == 0)
+                            int mixedDispatch = 0;
+                            if (retUdtFieldCount == 0 && !retIsString &&
+                                (unsigned)scalarKindMask != (unsigned)(kind == 1 ? fullMaskForArgc : 0))
+                            {
+                                /* 2026-11-02: firma mista anche con slot puntatore. Gli
+                                 * argomenti array/BYREF/STRING sono già stati materializzati
+                                 * in scratch[]/arrRefs[] sopra: qui si sostituiscono in args[]
+                                 * col loro indirizzo (double, come già avviene per i
+                                 * callback), poi si dispatcha per-kind-slot. */
+                                for (int i = 0; i < argc && i < 8; i++)
+                                {
+                                    if ((arrayMask | byrefScalarMask) & (1 << i))
+                                        args[i] = (double)(intptr_t)scratch[i];
+                                    else if (stringMask & (1 << i))
+                                        args[i] = arrRefs[i] ? (double)(intptr_t)((gmb_obj_string_t*)arrRefs[i])->data : 0.0;
+                                }
+                                mixedDispatch = 1;
+                                result = gmb_vm_ffi_call_mixed(p, argc,
+                                                               scalarKindMask & fullMaskForArgc,
+                                                               kind == 1 ? 1 : 0, args);
+                            }
+                            else if (retUdtFieldCount == 0)
                                 GMB_FFI_CALL_T(int64_t, int64_t, nativeArgs, r);
                             /* Struct/UDT per valore, RITORNO (2026-09-28): switch su
                              * retUdtFieldCount per selezionare la "forma" pre-dichiarata
@@ -14495,7 +14701,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                                 default: { gmb_ffi_udti2_t rv = {0}; GMB_FFI_CALL_T(int64_t, gmb_ffi_udti2_t, nativeArgs, rv); retFieldsD[0] = (double)rv.f[0]; retFieldsD[1] = (double)rv.f[1]; break; }
                                 }
                             }
-                            result = (double)r;
+                            result = mixedDispatch ? result : (double)r;
                             /* Struct/UDT per valore, RITORNO: costruisce una NUOVA istanza VM/C
                              * (gmb_obj_shared_val_t GMB_OBJ_DICT) dai campi ricopiati sopra —
                              * chiave "__m<SymbolId>" (fallback che OP_LOAD_MEMBER usa quando la

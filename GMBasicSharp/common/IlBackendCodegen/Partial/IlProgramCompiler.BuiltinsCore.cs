@@ -1468,8 +1468,13 @@ private void EmitBrowserHumanScrollCall(BuiltinFunctionCallExpr expr)
             .Select(p => DataTypeMapper.Map(NormalizeInferredType(p.DataType), _types, _classTypes))
             .ToArray();
         var retClr = DataTypeMapper.Map(NormalizeInferredType(fd.ReturnType), _types, _classTypes);
+        // FUNCTION con parametri ARRAY (2026-11-02): il metodo ha `T[]&` (BYREF) e un delegate
+        // by-value non combacia con la firma (thunk con ABI sbagliata). Si usa un delegate
+        // dedicato con parametri `ref` (FfiRefCallbackTypes) anche fuori dall'FFI (es. una
+        // FUNCTION nominata passata a un parametro FUNCTION di una SUB).
+        Type? refDel = TryRefDelegateType(fd);
         // SUB (VoidType): callback Action<T...> — Func con retClr=void è IL illegale.
-        Type delegateType = retClr == _types.Void
+        Type delegateType = refDel ?? (retClr == _types.Void
             ? paramClr.Length switch
             {
                 0 => typeof(Action),
@@ -1485,18 +1490,28 @@ private void EmitBrowserHumanScrollCall(BuiltinFunctionCallExpr expr)
                 2 => typeof(Func<,,>).MakeGenericType(paramClr[0], paramClr[1], retClr),
                 3 => typeof(Func<,,,>).MakeGenericType(paramClr[0], paramClr[1], paramClr[2], retClr),
                 _ => throw new NotSupportedException($"Backend IL: callback '{expr.OriginalToken.Lexeme}' con {paramClr.Length} parametri non supportata.")
-            };
+            });
         // Delegate generico chiuso che può contenere un TypeBuilder (es. Func<Punto, Punto>
         // con Punto = TYPE utente): GetConstructor diretto fallisce — serve il ponte
         // TypeBuilder.GetConstructor(closedType, openCtor). MA il ponte richiede che il
         // tipo chiuso CONTENGA davvero un TypeBuilder (List<double> → ArgumentException):
         // percorso diretto per i generici chiusi "normali" (vedi EmitNewNativeCollection).
-        var openCtor = delegateType.GetGenericTypeDefinition().GetConstructor([_types.Object, typeof(IntPtr)])
-            ?? throw new NotSupportedException($"Backend IL: costruttore del delegate '{delegateType.Name}' non trovato.");
-        var ctor = ClosedGenericContainsTypeBuilder(delegateType)
-            ? TypeBuilder.GetConstructor(delegateType, openCtor)
-            : delegateType.GetConstructor([_types.Object, typeof(IntPtr)])
-              ?? throw new NotSupportedException($"Backend IL: costruttore del delegate '{delegateType.Name}' non trovato.");
+        ConstructorInfo? ctor;
+        if (!delegateType.IsGenericType)
+        {
+            // Delegate dedicato con parametri `ref` (FfiRefCallbackTypes): non generico.
+            ctor = delegateType.GetConstructor([_types.Object, typeof(IntPtr)])
+                ?? throw new NotSupportedException($"Backend IL: costruttore del delegate '{delegateType.Name}' non trovato.");
+        }
+        else
+        {
+            var openCtor = delegateType.GetGenericTypeDefinition().GetConstructor([_types.Object, typeof(IntPtr)])
+                ?? throw new NotSupportedException($"Backend IL: costruttore del delegate '{delegateType.Name}' non trovato.");
+            ctor = ClosedGenericContainsTypeBuilder(delegateType)
+                ? TypeBuilder.GetConstructor(delegateType, openCtor)
+                : delegateType.GetConstructor([_types.Object, typeof(IntPtr)])
+                  ?? throw new NotSupportedException($"Backend IL: costruttore del delegate '{delegateType.Name}' non trovato.");
+        }
         // Metodo d'ISTANZA della closure (__context heap-promotato): il delegate va legato
         // all'istanza della closure nel corpo corrente (local __context), mai null this.
         if (fnMethod.IsStatic)

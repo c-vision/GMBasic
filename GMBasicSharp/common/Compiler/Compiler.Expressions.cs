@@ -907,8 +907,46 @@ public sealed partial class Compiler
             // documentato ed estendibile con lo stesso pattern, non un vincolo ABI). Vedi
             // AiWiki Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §3.
             bool IsCallbackParam(Parameter p) => !IsArrayParam(p) && !IsStringParam(p) && !IsByRefScalarParam(p) && p.DataType is FunctionPointerType;
+            // Callback VETTORIALE (2026-11-02): 1-2 parametri ARRAY di DOUBLE seguiti da 0-1
+            // scalare DOUBLE, ritorno DOUBLE o ARRAY OF DOUBLE. È un'ABI in virgola mobile:
+            // il nativo riceve (double* a0, int64_t n0[, double* a1, int64_t n1][, double s0])
+            // e, per un ritorno ARRAY, un `double* out` finale. Elementi/ritorni interi NON
+            // sono ammessi (nessun marshalling coerente tra i backend).
+            bool IsVecElem(DataType? t) => t is DoubleType or InferredType or AnyType;
+            bool IsVecCallback(FunctionPointerType fp) =>
+                fp.ParameterTypes.Length >= 1
+                && fp.ParameterTypes[0] is ArrayType
+                && fp.ParameterTypes.TakeWhile(t => t is ArrayType).All(t => IsVecElem(((ArrayType)t).ElementType))
+                && fp.ReturnType is not VoidType
+                && (fp.ReturnType is ArrayType rat ? IsVecElem(rat.ElementType) : IsFfiDoubleType(fp.ReturnType))
+                // array SOLO in testa (gli scalari vengono dopo): nessun array dopo il primo scalare
+                && fp.ParameterTypes.SkipWhile(t => t is ArrayType).All(t => t is not ArrayType);
+            int VecCallbackCode(FunctionPointerType fp)
+            {
+                int nArr = 0;
+                while (nArr < fp.ParameterTypes.Length && fp.ParameterTypes[nArr] is ArrayType) nArr++;
+                int nSca = fp.ParameterTypes.Length - nArr;
+                bool arrRet = fp.ReturnType is ArrayType;
+                return (nArr - 1) | (nSca << 2) | (arrRet ? 16 : 0);
+            }
+            int CallbackArityByte(FunctionPointerType fp) =>
+                IsVecCallback(fp) ? 128 + VecCallbackCode(fp) : fp.ParameterTypes.Length;
             void ValidateCallbackForFfi(FunctionPointerType fp, string what)
             {
+                if (IsVecCallback(fp))
+                {
+                    int nArr = 0;
+                    while (nArr < fp.ParameterTypes.Length && fp.ParameterTypes[nArr] is ArrayType) nArr++;
+                    int nSca = fp.ParameterTypes.Length - nArr;
+                    if (!((nArr == 1 && nSca == 0) || (nArr == 2 && nSca == 0) || (nArr == 1 && nSca == 1)))
+                        throw new BasicException(expr.OriginalToken,
+                            $"FFI '{symbolName}': forma di callback non supportata per {what} ({nArr} array, {nSca} scalari): ammesse: f(v()) -> scalare/array, f(a(), b()) -> scalare/array, f(v(), x) -> scalare.");
+                    return;
+                }
+                if (fp.ParameterTypes.Any(t => t is ArrayType))
+                    throw new BasicException(expr.OriginalToken,
+                        $"FFI '{symbolName}': callback con array usato per {what} non supportato " +
+                        "(ammessi solo array di DOUBLE, con ritorno DOUBLE o ARRAY OF DOUBLE).");
                 if (fp.ParameterTypes.Length > 4)
                     throw new BasicException(expr.OriginalToken,
                         $"FFI '{symbolName}': il callback usato per {what} ha {fp.ParameterTypes.Length} parametri (ammessi 0-4 nella v1 del supporto callback).");
@@ -933,9 +971,11 @@ public sealed partial class Compiler
             // callback arità-0/SUB (nessun parametro, nessun ritorno) non ha nessuno scalare da
             // marshallare: il kind non è mai consultato a runtime per quello slot, FfiDouble è
             // un default innocuo.
-            bool CallbackIsInt64(FunctionPointerType fp) => fp.ParameterTypes.Length > 0
-                ? IsFfiInt64Type(fp.ParameterTypes[0])
-                : fp.ReturnType is not VoidType && IsFfiInt64Type(fp.ReturnType);
+            bool CallbackIsInt64(FunctionPointerType fp) => IsVecCallback(fp)
+                ? IsFfiInt64Type(fp.ReturnType)
+                : fp.ParameterTypes.Length > 0
+                    ? IsFfiInt64Type(fp.ParameterTypes[0])
+                    : fp.ReturnType is not VoidType && IsFfiInt64Type(fp.ReturnType);
             foreach (var p in ffiProc.Parameters)
                 if (IsCallbackParam(p)) ValidateCallbackForFfi((FunctionPointerType)p.DataType, $"il parametro '{p.Name.Lexeme}'");
             // Struct/UDT per valore (2026-09-28): un UDT "semplice" (nessun operatore/
@@ -1141,7 +1181,13 @@ public sealed partial class Compiler
             // Vedi AiWiki Bugs/(solved) - FFI-Firma-Mista-Scalari-Semplici.md.
             var anyHardPtr = anyArray || anyByRefScalar || anyCallbackParam || retIsString;  /* STRING-param ammessa col misto */
         var mixedScalarsOnly = !anyHardPtr && !anyUdt && kindList.Distinct().Count() > 1;
-            if (!mixedScalarsOnly && kindList.Distinct().Count() > 1)
+            // 2026-11-02: firma MISTA ammessa in presenza di puntatori (array/STRING/BYREF),
+            // NON con callback: il trampolino callback + slot misti resta instabile (hang
+            // osservato su IL/C99) → per i callback vale ancora la firma omogenea, con errore
+            // di compilazione esplicito invece di un crash.
+            var mixedKinds = kindList.Distinct().Count() > 1;
+            var mixedWithPointers = anyHardPtr && !anyUdt && mixedKinds;
+            if (!mixedScalarsOnly && !mixedWithPointers && mixedKinds)
                 throw new BasicException(expr.OriginalToken,
                     anyPtr
                         ? $"FFI '{symbolName}': un parametro array, STRING o BYREF richiede firma INT64 (dichiarare gli altri parametri/il ritorno AS LONG — il puntatore viaggia come intero)."
@@ -1162,7 +1208,7 @@ public sealed partial class Compiler
             // useTypedPath è vero, perché un array/STRING/BYREF/UDT implica sempre ≥1 elemento).
             // Firma mista (2026-10): mai omogenea, serve SEMPRE il path tipizzato (OP_CALL_FFI
             // legacy è all-double, incompatibile con un kind Int64 anche per un solo slot).
-            var useTypedPath = allInt64 || anyUdt || mixedScalarsOnly;
+            var useTypedPath = allInt64 || anyUdt || mixedScalarsOnly || mixedWithPointers;
             // emittedKind ('kind' nel bytecode) = kind del RITORNO per una FUNCTION (coincide
             // sempre col vecchio kindList.First() nel caso omogeneo, perché lì TUTTI gli
             // elementi di kindList sono garantiti uguali); per una SUB non c'è ritorno, resta
@@ -1187,7 +1233,11 @@ public sealed partial class Compiler
             {
                 var p = ffiProc.Parameters[pi];
                 var isPlainScalar = !IsArrayParam(p) && !IsStringParam(p) && !IsByRefScalarParam(p) && !IsCallbackParam(p) && !IsUdtParam(p);
-                var bitIsInt = isPlainScalar ? ClassifyFfiType(p.DataType, $"il parametro '{p.Name.Lexeme}'") == FfiInt64 : emittedKind == FfiInt64;
+                // Puntatori (array/STRING/BYREF/callback) = Int64; UDT resta 'emittedKind'
+                // (il suo dispatch è per-shape e il bit non deve creare un falso "misto").
+                var bitIsInt = isPlainScalar ? ClassifyFfiType(p.DataType, $"il parametro '{p.Name.Lexeme}'") == FfiInt64
+                              : IsUdtParam(p) ? emittedKind == FfiInt64
+                              : true;
                 if (bitIsInt) scalarKindMask |= (byte)(1 << pi);
             }
             if (useTypedPath)
@@ -1302,7 +1352,7 @@ public sealed partial class Compiler
                     if (pi < ffiProc.Parameters.Length && IsCallbackParam(ffiProc.Parameters[pi]))
                     {
                         var fp = (FunctionPointerType)ffiProc.Parameters[pi].DataType;
-                        EmitByte((byte)fp.ParameterTypes.Length);
+                        EmitByte((byte)CallbackArityByte(fp));
                         if (CallbackIsInt64(fp)) callbackParamKindMask |= (byte)(1 << pi);
                         if (fp.ReturnType is not VoidType) callbackParamHasRetMask |= (byte)(1 << pi);
                     }

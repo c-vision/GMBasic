@@ -261,10 +261,17 @@ struct gmb_stmt {
      * basta per una libreria C esterna che si aspetta un long reale in un registro intero).
      * Vedi AiWiki Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §3bis. */
     int* param_fn_kind_mask;
+    /* Callback FFI (2026-11-02): bit i = 1 se il parametro i della FIRMA interna del callback
+     * e' un ARRAY (`v() AS DOUBLE`) — forma "vettoriale" dell'obiettivo OPTIMIZE. Il nativo
+     * riceve (double*, int64_t) e il trampolino ricostruisce l'array BASIC. */
+    int* param_fn_arr_mask;
     /* Callback FFI (2026-09-29): 1 se il RITORNO della firma interna del callback è INTERO
      * (stesso motivo di param_fn_kind_mask sopra) — irrilevante se param_fn_has_ret[i]==0
      * (callback SUB, nessun ritorno). */
     uint8_t* param_fn_ret_int;
+    /* Callback FFI (2026-11-02): 1 se il RITORNO della firma interna del callback e' un ARRAY
+     * (`f(x()) AS ARRAY`) — il nativo lo riceve come parametro `double* out` finale. */
+    uint8_t* param_fn_ret_arr;
     /* Callback FFI (2026-09-29): 1 se il parametro FUNCTION aveva una clausola `AS <ritorno>`
      * esplicita (sintassi `AS FUNCTION(...) AS T`, sempre presente per una FUNCTION — mai per
      * una SUB) — l'UNICO modo per distinguere "callback SUB" (nessun ritorno) da "callback
