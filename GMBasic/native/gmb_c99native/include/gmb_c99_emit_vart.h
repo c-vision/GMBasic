@@ -70,6 +70,10 @@ typedef struct { char* name; int type; int is_array; int ndims; int byref; int g
                   int is_dim_local; /* 1 = locale dichiarato con DIM esplicito: un nome-campo di
                                     * CLASSE in forma NUDa va reso SELF.<campo> solo se NON è
                                     * un DIM locale né un parametro (che lo ombreggiano). */
+                  const void* dim_stmt; /* istruzione DIM che ha registrato la variabile: il
+                                    * pre-pass di registrazione può girare più di una volta sulla
+                                    * stessa istruzione (idempotente) — la dichiarazione DUPLICATA
+                                    * vera è solo quella di un'istruzione DIVERSA. */
                   int late_local;   /* 1 = LOCAL che ombreggia una GLOBAL: dichiarato C solo dal
                                     * punto della LOCAL in poi (lookup_var lo ignora prima). */
                  int elem_byte; /* DIM x(n) AS BYTE: array di BYTE (PUT/GET #n su file BINARY = 1 byte per elemento) */

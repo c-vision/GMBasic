@@ -85,9 +85,9 @@ totale file: 1191   categorie: 80
 
 == per classificazione (un file può avere più tag) ==
   ENV          481
-  DIDATTICO    210
+  DIDATTICO    211
   CORTO        169
-  SURFACE      48
+  SURFACE      47
   SUPPORTO     25
   MODULO       15
   PACKAGE      7
@@ -115,7 +115,6 @@ totale file: 1191   categorie: 80
   Console/ConstantsModesCoverage.bas                                     righe=102  import=1
   Console/WidgetsFullCoverage.bas                                        righe=83   import=1
   Controls/ControlPropertiesCoverage.bas                                 righe=35   import=1
-  Crypto/BlockchainFullCoverage.bas                                      righe=64   import=3
   Crypto/CryptoFullCoverage.bas                                          righe=22   import=2
   Crypto/CryptoUncoveredCoverage.bas                                     righe=50   import=2
   Databases/DbIsamUncoveredCoverage.bas                                  righe=60   import=2
@@ -142,7 +141,7 @@ totale file: 1191   categorie: 80
   Trading/TradingPortfolioUncoveredCoverage.bas                          righe=50   import=1
   Workflow/WorkflowFullCoverage.bas                                      righe=25   import=1
   graphics/GraphicsUncoveredCoverage.bas                                 righe=41   import=1
-  (48 file)
+  (47 file)
 
 == EXPECT nei Sample (violazione del contratto) ==
   (0 file)
@@ -863,6 +862,7 @@ totale file: 1191   categorie: 80
   Crypto/CryptoERC20.bas                                                 righe=111  import=2
   Crypto/CryptoFunctions.bas                                             righe=190  import=2
   Crypto/CryptoWalletHD.bas                                              righe=127  import=4
+  Crypto/PortafoglioHD.bas                                               righe=61   import=2
   Databases/AiLoadDocs.bas                                               righe=49   import=3
   Databases/AnagraficaClienti.bas                                        righe=45   import=2
   Databases/BareCommandFallback.bas                                      righe=54   import=2
@@ -1007,12 +1007,12 @@ totale file: 1191   categorie: 80
   VectorDB/RagEvalE2eGentest.bas                                         righe=65   import=4
   VectorDB/RagEvalGenTest.bas                                            righe=61   import=2
   VectorDB/VectordbSq8.bas                                               righe=58   import=2
-  compression/BackupReport.bas                                           righe=55   import=2
+  compression/BackupReport.bas                                           righe=57   import=2
   compression/CompressionRoundTrip.bas                                   righe=35   import=2
   compression/ZipUnzipDemo.bas                                           righe=56   import=2
   graph/AirlineBrainGraph.bas                                            righe=49   import=2
   graph/FinanceBrainGraph.bas                                            righe=51   import=2
   graph/GraphAgentAsk.bas                                                righe=34   import=2
   graph/GraphQueryMulti.bas                                              righe=29   import=2
-  (210 file)
+  (211 file)
 
