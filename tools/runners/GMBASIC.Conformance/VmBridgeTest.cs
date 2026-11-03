@@ -40,8 +40,17 @@ class VmBridgeTest
             else progArgList.Add(args[ai]);
         }
 
-        // 1. Compile
-        var program = Orchestrator.Compile(file, defines.Count > 0 ? defines : null, false);
+        // 1. Compile — un errore di parsing/link è un errore di COMPILAZIONE (exit 2, come
+        // test_ilrun/C99), non un crash non gestito (exit 134). Prima `ENV$()`/`ENV$("a","b")`
+        // faceva esplodere vmtest con "Simbolo non definito: 'ENV'" e exit 134 mentre
+        // IL/PCode/C99 uscivano con 2.
+        BasicProgram program;
+        try { program = Orchestrator.Compile(file, defines.Count > 0 ? defines : null, false); }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[COMPILE] {ex.GetType().Name}: {ex.Message}");
+            return 2;
+        }
         if (program?.MainModule == null)
         {
             Console.Error.WriteLine("Compilazione fallita");

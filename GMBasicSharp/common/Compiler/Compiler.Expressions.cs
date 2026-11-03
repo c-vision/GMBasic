@@ -2959,6 +2959,17 @@ public sealed partial class Compiler
         if (found && builtInFunc == BuiltInFunction.RECNO && nsName.Equals("RDD", StringComparison.OrdinalIgnoreCase))
             builtInFunc = BuiltInFunction.RDDRECNO;
 
+        // ENV$ / ENV.HAS: una sola stringa (nome). Il vecchio compilatore P-Code/VM-C non
+        // applicava gli overload di StdLib: con 0/2 argomenti emetteva una chiamata che in
+        // VM/C leggeva args[0] fuori range (exit 134) o ignorava l'extra. Rifiuto esplicito
+        // qui = stessa classe di errore di IL/C99.
+        if (found && builtInFunc is BuiltInFunction.ENVGET or BuiltInFunction.ENVHAS
+            && expr.Args.Length != 1)
+        {
+            throw new BasicException(expr.OriginalToken,
+                $"{expr.OriginalToken.Lexeme} richiede 1 argomento (nome della variabile d'ambiente).");
+        }
+
 
         // SIZEOF: la chiamata NON gira — diventa una costante, quando il tipo statico
         // dell'argomento esiste (vedi TypeLayout e Compiler.SizeOf.cs). È l'unico modo di
