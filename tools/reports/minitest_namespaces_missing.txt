@@ -2,8 +2,12 @@ MiniTest PER NAMESPACE — superficie:  1829  voci (procedure+costanti),  72  na
 file canonico: shared/minitests/<ns>/<ns>_all.bas
 
 namespace                          tot  cop  manca  file
-MANCA FILE  AI -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/ai/ai_all.bas
-AI                               274   0   274   NO
+  MANCA AI.DISCOVER
+  MANCA AI.OBSERVATION
+  MANCA AI.OBSERVATIONFILE
+  MANCA AI.OBSERVATIONHASH
+  MANCA AI.STARTHEALTHCHECK
+AI                               274 269     5   si
 MANCA FILE  ASR -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/asr/asr_all.bas
 ASR                                1   0     1   NO
 MANCA FILE  BROWSER -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/browser/browser_all.bas
@@ -82,7 +86,7 @@ SYSTEM                            26  23     3   si
 MANCA FILE  TORCH -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/torch/torch_all.bas
 TORCH                             76   0    76   NO
 
-namespace con file canonico:  65 / 72 
+namespace con file canonico:  66 / 72 
 namespace completi (file + superficie):  60 / 72 
-superficie coperta:  1381 / 1829   (mancano  448 )
+superficie coperta:  1650 / 1829   (mancano  179 )
 struttura base del linguaggio: /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/constructs/base.bas -> presente
