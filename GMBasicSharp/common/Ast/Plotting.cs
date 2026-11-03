@@ -33,13 +33,14 @@ public sealed record ChartFinancialStmt(ImmutableArray<Expr> Args, Token Token)
 /// CHART GETS handle, "prop" INTO var$. Configurazione del grafico da BASIC (rendering,
 /// view window per zoom/pan, colori, titolo).</summary>
 [JsonDerivedType(typeof(ChartConfigStmt), nameof(ChartConfigStmt))]
-public sealed record ChartConfigStmt(Expr Handle, string Sub, Expr Prop, Expr? Num, Expr? Str, Target? Into, Token Token)
+public sealed record ChartConfigStmt(Expr Handle, string Sub, Expr Prop, Expr? Num, Expr? Str, Target? Into, Token Token,
+    TokenKind SubKind = TokenKind.Identifier)
     : Stmt(Token.Position)
 {
     public override string ToString() => $"CHART.{Sub} {Handle}, {Prop}";
     public override AstNode DeepClone() => new ChartConfigStmt(
         (Expr)Handle.DeepClone(), Sub, (Expr)Prop.DeepClone(), (Expr?)Num?.DeepClone(),
-        (Expr?)Str?.DeepClone(), (Target?)Into?.DeepClone(), (Token)Token.DeepClone());
+        (Expr?)Str?.DeepClone(), (Target?)Into?.DeepClone(), (Token)Token.DeepClone(), SubKind);
 }
 
 /// <summary>CHART DRAW handle, "op"[, args...] [INTO id] — oggetti di disegno (trendline,

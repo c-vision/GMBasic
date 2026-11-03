@@ -8,28 +8,40 @@ public sealed partial class Compiler
 
     private void VisitChartConfigStatement(ChartConfigStmt cm)
     {
-        switch (cm.Sub.ToUpperInvariant())
+        switch (cm.SubKind)
         {
-            case "SET":
-                VisitExpression(cm.Handle);
-                EmitConstant(ChartPropStr(cm.Prop));
-                if (cm.Num != null) VisitExpression(cm.Num); else EmitConstant(0.0);
-                EmitConstant(cm.Str is StringExpr ss ? (ss.Value ?? "") : "");
-                EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.CHART_SET); EmitByte((byte)4);
-                break;
-            case "GET":
-                VisitExpression(cm.Handle);
-                EmitConstant(ChartPropStr(cm.Prop));
-                EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.CHART_GET); EmitByte((byte)2);
-                if (cm.Into != null) AssignVariable(cm.Into, isLet: false);
-                break;
-            case "GETS":
-                VisitExpression(cm.Handle);
-                EmitConstant(ChartPropStr(cm.Prop));
-                EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.CHART_GETS); EmitByte((byte)2);
-                if (cm.Into != null) AssignVariable(cm.Into, isLet: false);
+            case TokenKind.Set: VisitChartConfigSet(cm); break;
+            case TokenKind.Get: VisitChartConfigGet(cm, gets: false); break;
+            case TokenKind.ChartGets: VisitChartConfigGet(cm, gets: true); break;
+            default:
+                // Costruzioni legacy (SubKind Identifier): fallback sulla grafia risolta.
+                switch (cm.Sub.ToUpperInvariant())
+                {
+                    case "SET": VisitChartConfigSet(cm); break;
+                    case "GET": VisitChartConfigGet(cm, gets: false); break;
+                    case "GETS": VisitChartConfigGet(cm, gets: true); break;
+                }
                 break;
         }
+    }
+
+    private void VisitChartConfigSet(ChartConfigStmt cm)
+    {
+        VisitExpression(cm.Handle);
+        EmitConstant(ChartPropStr(cm.Prop));
+        if (cm.Num != null) VisitExpression(cm.Num); else EmitConstant(0.0);
+        EmitConstant(cm.Str is StringExpr ss ? (ss.Value ?? "") : "");
+        EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.CHART_SET); EmitByte((byte)4);
+    }
+
+    private void VisitChartConfigGet(ChartConfigStmt cm, bool gets)
+    {
+        VisitExpression(cm.Handle);
+        EmitConstant(ChartPropStr(cm.Prop));
+        EmitByte((byte)OpCode.OP_SYSCALL);
+        EmitSysCall(gets ? SysCall.CHART_GETS : SysCall.CHART_GET);
+        EmitByte((byte)2);
+        if (cm.Into != null) AssignVariable(cm.Into, isLet: false);
     }
 
     private static string ChartOpStr(Expr e) => e is StringExpr s ? (s.Value ?? "") : "";
