@@ -370,17 +370,17 @@ public sealed partial class IlProgramCompiler
     {
         var parts = new System.Collections.Generic.List<string>();
         int Num(PixelClause c) => c.Value is NumberExpr n ? (int)n.Value : 0;
-        foreach (var c in cs) switch ((c.Key ?? "").ToUpperInvariant())
+        foreach (var c in cs) switch (c.ResolveKeyKind())
         {
-            case "NAME": parts.Add($"name=\"{PxStr(c.Value)}\" "); break;
-            case "TAG": parts.Add($"tag=\"{PxStr(c.Value)}\" "); break;
-            case "TOOLTIP": parts.Add($"tooltip=\"{PxStr(c.Value)}\" "); break;
-            case "VISIBLE": parts.Add($"visible={Num(c)} "); break;
-            case "ENABLED": parts.Add($"enabled={Num(c)} "); break;
-            case "TABINDEX": parts.Add($"tabindex={Num(c)} "); break;
-            case "TABSTOP": parts.Add($"tabstop={Num(c)} "); break;
-            case "FOCUS": parts.Add("focus "); break;
-            case "STYLE": parts.Add(PxStr(c.Value) + " "); break;
+            case TokenKind.PixelName: parts.Add($"name=\"{PxStr(c.Value)}\" "); break;
+            case TokenKind.Tag: parts.Add($"tag=\"{PxStr(c.Value)}\" "); break;
+            case TokenKind.PixelTooltip: parts.Add($"tooltip=\"{PxStr(c.Value)}\" "); break;
+            case TokenKind.PixelVisible: parts.Add($"visible={Num(c)} "); break;
+            case TokenKind.PixelEnabled: parts.Add($"enabled={Num(c)} "); break;
+            case TokenKind.PixelTabIndex: parts.Add($"tabindex={Num(c)} "); break;
+            case TokenKind.PixelTabStop: parts.Add($"tabstop={Num(c)} "); break;
+            case TokenKind.Focus: parts.Add("focus "); break;
+            case TokenKind.PixelStyle: parts.Add(PxStr(c.Value) + " "); break;
         }
         var r = string.Join("", parts).Trim();
         return r.Length > 0 ? r : null!;

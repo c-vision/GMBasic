@@ -11,7 +11,27 @@ namespace Basic;
 /// "STOP" (deregistra). Default "CALL" preserva la semantica storica (bare sub).</summary>
 public sealed record PixelClause(
     string Key, Expr? Value, string? EventName, string? SubName,
-    string ActionKind = "CALL", string? LabelName = null);
+    string ActionKind = "CALL", string? LabelName = null,
+    TokenKind KeyKind = TokenKind.Identifier)
+{
+    /// <summary>TokenKind della chiave di clausola: quello risolto dal parser, con fallback
+    /// sulla grafia per le clausole costruite altrove (ON/ID restano Identifier).</summary>
+    public TokenKind ResolveKeyKind() => KeyKind != TokenKind.Identifier
+        ? KeyKind
+        : Key.ToUpperInvariant() switch
+        {
+            "NAME" => TokenKind.PixelName,
+            "TAG" => TokenKind.Tag,
+            "TOOLTIP" => TokenKind.PixelTooltip,
+            "VISIBLE" => TokenKind.PixelVisible,
+            "ENABLED" => TokenKind.PixelEnabled,
+            "TABINDEX" => TokenKind.PixelTabIndex,
+            "TABSTOP" => TokenKind.PixelTabStop,
+            "FOCUS" => TokenKind.Focus,
+            "STYLE" => TokenKind.PixelStyle,
+            _ => TokenKind.Identifier
+        };
+}
 
 /// <summary>Controllo pixel: CHECK/RADIO/TRACK/DROPDOWN/PROGRESS/TOGGLE/SPINNER/TAB/
 /// LISTBOX/COLORPICKER/GRID/TREEVIEW/STATUSBAR/DATEPICKER/FILEDIALOG/MENU/TBROWSE/
