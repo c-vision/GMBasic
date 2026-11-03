@@ -548,6 +548,18 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
         return gmb_stmt_new(GMB_STMT_REM, line);
     }
 
+    /* `{ |x| … }(args)` come STATEMENT: invocazione diretta di un literal lambda.
+     * Il parser delle espressioni sa costruire la CALL con callee (gmb_p_parse_power);
+     * qui si ammette un'espressione che INIZIA con `{` (es. `{ |d| n = n + d }(1)`). */
+    if (t->kind == GMB_TOK_LeftBrace) {
+        gmb_expr_t* lx = gmb_p_parse_expr(p);
+        if (lx) {
+            gmb_stmt_t* ls = gmb_stmt_new(GMB_STMT_EXPR, line);
+            ls->expr = lx;
+            return ls;
+        }
+    }
+
     if (t->kind == GMB_TOK_Print && gmb_p_peek(p, 1) && gmb_p_peek(p, 1)->kind == GMB_TOK_Hash) { gmb_p_adv(p); return gmb_p_parse_printfile(p, line); }
     if (t->kind == GMB_TOK_Input && gmb_p_peek(p, 1) && gmb_p_peek(p, 1)->kind == GMB_TOK_Hash) { gmb_p_adv(p); return gmb_p_parse_inputfile(p, line); }
     if (t->kind == GMB_TOK_LineInput && gmb_p_peek(p, 1) && gmb_p_peek(p, 1)->kind == GMB_TOK_Hash) { gmb_p_adv(p); return gmb_p_parse_lineinput(p, line); }

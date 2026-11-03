@@ -14512,6 +14512,40 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
         break;
     }
     case GMB_EXPR_CALL:
+        /* Invocazione di un LITERAL lambda `{ |x| … }(args)`: il pre-pass ha abbassato il
+         * callee a "__lambda_N" (VAR). Si emette il VALORE gmb_fn_t completo (che per una
+         * λ con catture costruisce __lctx_*) e lo si chiama via puntatore passando il ctx:
+         * così le catture (per valore e per riferimento) funzionano anche al call-site. */
+        if (e->callee) {
+            fn_info_t* lf = (e->callee->kind == GMB_EXPR_VAR) ? find_fn(c, e->callee->var) : NULL;
+            if (!lf) { c99_fail(c, e->line, "lambda: callee non risolto"); break; }
+            int np = lf->stmt ? lf->stmt->n_params : 0;
+            if (e->nargs != np) {
+                c99_fail(c, e->line, "lambda: attesi %d argomenti, trovati %d", np, e->nargs);
+                break;
+            }
+            int ret_str = fn_ret_is_str(lf);
+            static int lcall_uid = 0;
+            int id = ++lcall_uid;
+            sb_printf(&c->out, "({ gmb_fn_t __lfv%d = ", id);
+            emit_expr(c, e->callee);
+            sb_printf(&c->out, "; %s __lfr%d = ((%s (*)(void*", ret_str ? "gmb_string_t" : "gmb_double_t", id,
+                      ret_str ? "gmb_string_t" : "gmb_double_t");
+            for (int k = 0; k < np; k++) {
+                var_t* pv = (lf->stmt && lf->stmt->func_params) ? vars_find(&lf->locals, lf->stmt->func_params[k]) : NULL;
+                sb_put(&c->out, (pv && pv->type == TY_STR) ? ", gmb_string_t" : ", gmb_double_t");
+            }
+            sb_printf(&c->out, "))__lfv%d.fn)(__lfv%d.ctx", id, id);
+            for (int i = 0; i < e->nargs; i++) {
+                var_t* pv = (lf->stmt && lf->stmt->func_params && i < np) ? vars_find(&lf->locals, lf->stmt->func_params[i]) : NULL;
+                sb_put(&c->out, ", ");
+                if (pv && pv->type == TY_STR && etype(c, e->args[i]) != TY_STR) {
+                    sb_put(&c->out, "gmb_double_to_string("); emit_expr(c, e->args[i]); sb_put(&c->out, ")");
+                } else emit_expr(c, e->args[i]);
+            }
+            sb_printf(&c->out, "); __lfr%d; })", id);
+            break;
+        }
         /* `x.VALUE` su nullable: il parser produce una CALL 0-arg con nome "x.VALUE"
          * (la forma VAR era già gestita). Prima diventava una variabile implicita
          * `x_2EVALUE` a 0. */
@@ -20201,6 +20235,15 @@ static void st_return(ctx_t* c, gmb_stmt_t* s) {
 }
 
 static void st_call(ctx_t* c, gmb_stmt_t* s) {
+if (s->expr && s->expr->kind == GMB_EXPR_CALL && s->expr->callee) {
+            /* `{ |x| … }(args)` come STATEMENT: passa da emit_expr (che costruisce il ctx
+             * della λ con catture e la invoca via gmb_fn_t). */
+            ind(c);
+            sb_put(&c->out, "(void)(");
+            emit_expr(c, s->expr);
+            sb_put(&c->out, ");\n");
+            return;
+        }
 if (s->expr && s->expr->kind == GMB_EXPR_CALL) {
             ind(c);
             /* (void): la CALL nuda scarta il valore — senza il cast `cc -Wunused-value`
@@ -20215,6 +20258,13 @@ if (s->expr && s->expr->kind == GMB_EXPR_CALL) {
 
 static void st_expr(ctx_t* c, gmb_stmt_t* s) {
 {
+        if (s->expr && s->expr->kind == GMB_EXPR_CALL && s->expr->callee) {
+            ind(c);
+            sb_put(&c->out, "(void)(");
+            emit_expr(c, s->expr);
+            sb_put(&c->out, ");\n");
+            return;
+        }
         if (s->expr && s->expr->kind == GMB_EXPR_CALL) {
             if (s->expr->var && strcasecmp(s->expr->var, "_assign_") == 0 && s->expr->nargs == 2) {
                 /* forma 'x := expr' */
@@ -31459,11 +31509,11 @@ static void lambda_prepass_expr(ctx_t* c, gmb_expr_t* e) {
     if (e->kind == GMB_EXPR_CALL && e->callee) {
         lambda_prepass_expr(c, e->callee);
         if (e->callee && e->callee->kind == GMB_EXPR_VAR && e->callee->var) {
+            /* Mantieni il CALLEE (serve per costruire il ctx delle catture al call-site)
+             * e allinea e->var al nome sintetico (etype/altri pass). */
             if (e->var) free(e->var);
             e->var = strdup(e->callee->var);
             e->tk = GMB_TOK_Unknown;
-            gmb_expr_free(e->callee);
-            e->callee = NULL;
         }
     }
     if (e->left) lambda_prepass_expr(c, e->left);
