@@ -79,6 +79,7 @@ static const gmb_tokenkind_t gmb_tk_coll_methods_any[] = {
     GMB_TOK_Add, GMB_TOK_AddFirst, GMB_TOK_AddLast, GMB_TOK_AddRange, GMB_TOK_AddNode,
     GMB_TOK_CollAddEdge, GMB_TOK_CollAddNodeConsistent, GMB_TOK_CollAddAfter,
     GMB_TOK_CollAddBefore, GMB_TOK_CollAddUnique, GMB_TOK_CollRemoveEdge, GMB_TOK_RemoveNode,
+    GMB_TOK_CollSymmetricExcept,
     GMB_TOK_Insert, GMB_TOK_Remove, GMB_TOK_RemoveAt, GMB_TOK_RemoveFirst, GMB_TOK_RemoveLast,
     GMB_TOK_Set, GMB_TOK_Get, GMB_TOK_CollSet, GMB_TOK_CollSetKeyValue, GMB_TOK_Contains,
     GMB_TOK_ContainsKey, GMB_TOK_Push, GMB_TOK_Enqueue, GMB_TOK_Pop, GMB_TOK_Dequeue,
@@ -91,7 +92,7 @@ static const gmb_tokenkind_t gmb_tk_coll_methods_any[] = {
     GMB_TOK_Join, GMB_TOK_AEval, GMB_TOK_AFilter, GMB_TOK_AMap
 };
 static const gmb_tokenkind_t gmb_tk_dict_val[] = { GMB_TOK_Values, GMB_TOK_ToDict, GMB_TOK_ToJson };
-static const gmb_tokenkind_t gmb_tk_list_setops[] = { GMB_TOK_Union, GMB_TOK_Intersect, GMB_TOK_Except };
+static const gmb_tokenkind_t gmb_tk_list_setops[] = { GMB_TOK_Union, GMB_TOK_Intersect, GMB_TOK_Except, GMB_TOK_CollSymmetricExcept };
 static const gmb_tokenkind_t gmb_tk_pool_get[] = { GMB_TOK_PoolGet, GMB_TOK_SyncMapLoad, GMB_TOK_SyncMapDelete, GMB_TOK_SyncMapLoadOrStore };
 static const gmb_tokenkind_t gmb_tk_aeval[] = { GMB_TOK_AEval, GMB_TOK_AScan, GMB_TOK_AFilter, GMB_TOK_AMap };
 static const gmb_tokenkind_t gmb_tk_sig_arr[] = { GMB_TOK_SignalSavgolFilter, GMB_TOK_SignalResample, GMB_TOK_SignalDecimate };
@@ -234,6 +235,13 @@ static int tk_returns_list(gmb_tokenkind_t tk, int* elem_str) {
         /* G10: SQL.COL(rs, col) → gmb_list_t (colonna intera; valori resi stringa per il
          * path DIM-lista condiviso, parità di OUTPUT con IL/PCode/VM-C). */
         case GMB_TOK_SqlCol: *elem_str = 1; return 1;
+        /* LEDGER: ACCOUNTS → nomi dei conti (stringhe); BALANCE/REGISTER → una voce per
+         * conto/movimento (gmb_val_t dict, es. {Account, TotalAmount}). Senza queste voci
+         * `DIM x() = LEDGER.ACCOUNTS(h)` finiva nel ramo "byte buffer" (is_bytes) e
+         * LEN/x(i) non compilavano (trovato scrivendo il Sample contabile). */
+        case GMB_TOK_Accounts: *elem_str = 1; return 1;
+        case GMB_TOK_Balance:
+        case GMB_TOK_Register: *elem_str = 0; return 1;
         /* CONVERT.* Markdown AST list-returning (gmb_val_t boxed → gmb_val_as_list, che
          * l'handler emit_bf_convert emette): elementi gmb_val_t (dict), non double/string. */
         case GMB_TOK_MdHeadings: case GMB_TOK_MdLinks: case GMB_TOK_MdImages:
@@ -3215,6 +3223,7 @@ static int dlg_lookup(ctx_t* c, const char* ty, int* arity, int* strm, int* rets
 /* Builtin che RESTITUISCONO un array double* (gestiti da dim_arr_optimize): servono anche
  * per l'assegnazione a una variabile esistente (`a = OPTIMIZE.X(...)`, 2026-11-03). */
 static int is_param_of_cur(ctx_t* c, const char* name);
+static int user_fn_ret_arr(ctx_t* c, const char* name, int nargs);
 static int is_opt_array_call_tk(gmb_tokenkind_t tk) {
     switch (tk) {
     case GMB_TOK_NelderMead: case GMB_TOK_Bfgs: case GMB_TOK_LBfgs: case GMB_TOK_Broyden:
@@ -3292,8 +3301,12 @@ static void reg_let_assign(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
             }
             /* a = OPTIMIZE.<array-returning>(...) su una variabile esistente (anche DIM fissa):
              * l'assegnazione SOSTITUISCE l'array come su IL/VM-C → la var diventa dinamica
-             * (double* + _len). Prima C99 falliva con "'OPTIMIZE.X' non definita". */
-            if (s->value && s->value->kind == GMB_EXPR_CALL && is_opt_array_call_tk(s->value->tk)
+             * (double* + _len). Prima C99 falliva con "'OPTIMIZE.X' non definita".
+             * Vale anche per `a = <FUNCTION utente AS ARRAY OF …>(...)` (2026-11-03). */
+            if (s->value && s->value->kind == GMB_EXPR_CALL
+                && (is_opt_array_call_tk(s->value->tk)
+                    || (s->value->var && !strchr(s->value->var, '.')
+                        && user_fn_ret_arr(c, s->value->var, s->value->nargs)))
                 && !tv->coll_handle && !tv->gkind && !tv->boxed_val && !tv->vclass[0]
                 && !is_param_of_cur(c, s->target)) {
                 tv->is_array = 1; tv->dyn_len = 1; tv->ndims = 1; tv->matrix = 0; tv->jagged = 0;
@@ -3861,6 +3874,15 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                 var_t* jb = vars_find(dscope, s->dim_init->var);
                 if (!jb) jb = vars_find(&c->globals, s->dim_init->var);
                 if (jb && jb->is_array && jb->jagged) { v->is_array = 1; v->ndims = 1; v->dyn_len = 1; }
+            }
+            /* `DIM x() = <FUNCTION utente AS ARRAY OF …>(...)` (2026-11-03): array dinamico
+             * numerico (double* + _len). Prima cadeva nel ramo "is_bytes" e la variabile
+             * restava un buffer byte: `x(0)` dava "member reference base type 'double'". */
+            if (!v->is_array && !v->gkind && !v->boxed_val && s->dim_empty_parens
+                && (!s->dim_type || v->type == TY_NUM) && s->dim_init
+                && s->dim_init->kind == GMB_EXPR_CALL && s->dim_init->var
+                && user_fn_ret_arr(c, s->dim_init->var, s->dim_init->nargs)) {
+                v->is_array = 1; v->ndims = 1; v->dyn_len = 1; v->is_bytes = 0;
             }
             /* DIM x() (vuota) NON tipizzata, fuori dai rami TY_STR: array DINAMICO
              * (es. DIM b() = CRYPTOGRAPHY.RANDOMCRYPTOBYTES(n) → b(i) indicizzabile;
@@ -5154,6 +5176,21 @@ static const char* fn_ret_ctype(ctx_t* c, const fn_info_t* fn) {
 }
 static int fn_ret_is_arr(const fn_info_t* fn) {
     return fn && fn->stmt && fn->stmt->func_ret_type && strcmp(fn->stmt->func_ret_type, "ARRAY") == 0;
+}
+
+/* 1 se <name>/<nargs> è una FUNCTION utente che ritorna AS ARRAY OF … (ABI C99: void +
+ * __out). Usata per registrare `DIM x() = F(...)` come array dinamico e per instradare
+ * l'assegnazione (`x = F(...)`) sul percorso che legge puntatore+lunghezza dal canale
+ * thread-local (2026-11-03). Risolve sull'ARITÀ: l'inc può avere omonimi SUB/FUNCTION
+ * (`SUB BFGS(f,x0,out)` + `FUNCTION BFGS(f,x0)`). */
+static int user_fn_ret_arr(ctx_t* c, const char* name, int nargs) {
+    if (!c || !name || !name[0]) return 0;
+    /* nome qualificato (`OPT.BFGS`): la funzione utente sta nel namespace, in tabella è
+     * registrata col nome nudo. */
+    const char* dot = strrchr(name, '.');
+    if (dot && dot[1]) name = dot + 1;
+    fn_info_t* f = find_fn_arity(c, name, nargs, NULL);
+    return f && fn_ret_is_arr(f) ? 1 : 0;
 }
 
 /* Match nome builtin con o senza '$' finale (LEFT$ / LEFT), case-insensitive. */
@@ -8016,6 +8053,10 @@ static int an1d_arr(ctx_t* c, gmb_expr_t* a, var_t** out);
  * Parity emitter C# Statements.Declaration.cs (NELDERMEAD/BFGS/…) e C99 runtime. */
 static int dim_arr_optimize(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init) {
     if (c->error[0] || !init || init->kind != GMB_EXPR_CALL || !init->var) return 0;
+    /* OMONIMO UTENTE (forma drop-in di opt.inc: `FUNCTION BFGS(f,x0)` accanto alla SUB):
+     * vince la funzione utente, stesso ordine di emit_call (find_fn_arity prima del builtin).
+     * Senza, `DIM x() = OPT.CHOLESKYSOLVE(A, n, b)` finiva nel builtin con arità sbagliata. */
+    if (user_fn_ret_arr(c, init->var, init->nargs)) return 0;
     var_t* v = lookup_var(c, s->dim_var);
     if (!v) return 0;
     var_t* av = NULL;
@@ -8673,6 +8714,22 @@ static void emit_dim_arr_init(ctx_t* c, gmb_stmt_t* s) {
         return;
     }
     if (dim_arr_optimize(c, s, init)) return;
+    /* DIM x() = <FUNCTION utente AS ARRAY OF …>(...) (2026-11-03): la chiamata passa
+     * __out=NULL e la funzione alloca; puntatore e lunghezza arrivano dal canale
+     * thread-local. `emit_expr` emette già `({ call(..., NULL); gmb_lambda_ret_ptr_get(); })`. */
+    if (!c->error[0] && init->kind == GMB_EXPR_CALL && init->var
+        && user_fn_ret_arr(c, init->var, init->nargs)) {
+        v->is_array = 1; v->ndims = 1; v->dyn_len = 1; v->is_bytes = 0;
+        ind(c);
+        emit_ident(c, v->name);
+        sb_put(&c->out, " = ");
+        emit_expr(c, init);
+        sb_put(&c->out, ";\n");
+        ind(c);
+        emit_ident(c, v->name);
+        sb_put(&c->out, "_len = gmb_lambda_ret_len_get();\n");
+        return;
+    }
     /* BLOCKCHAIN.ABIDECODE(hex$, types[]) → double* + <var>_len (gmb_abi_decode_doubles).
      * Parità IlRuntime.AbiDecode: parole da 32 byte big-endian dall'offset 0. */
     if (init->tk == GMB_TOK_AbiDecode) {
@@ -11645,6 +11702,7 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                         if (is_set && gmb_tk_in(mk, gmb_tk_list_setops, (unsigned)(sizeof(gmb_tk_list_setops)/sizeof(gmb_tk_list_setops[0]))) && args[0]->kind == GMB_EXPR_VAR) {
                             if (mk == GMB_TOK_Union) sb_put(&c->out, "gmb_set_union(");
                             else if (mk == GMB_TOK_Intersect) sb_put(&c->out, "gmb_set_intersect(");
+                            else if (mk == GMB_TOK_CollSymmetricExcept) sb_put(&c->out, "gmb_set_symmetric_except(");
                             else sb_put(&c->out, "gmb_set_except(");
                             sb_ident(&c->out, cv->name);
                             sb_put(&c->out, ", ");
@@ -13206,6 +13264,13 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
         }
         /* 2026-09-24 (overload): nome C con suffisso __N (closure escluse sopra:
          * hanno sempre ovl_idx 0 — le nidificate non partecipano agli overload). */
+        /* FUNZIONE che ritorna AS ARRAY OF (2026-11-03): l'ABI C è
+         * `void (..., double* __out)`; come ESPRESSIONE si passa NULL (la funzione alloca e
+         * pubblica puntatore+lunghezza nel canale thread-local) e si legge il puntatore.
+         * Il chiamante che deve anche la lunghezza (`DIM x() = F(...)`) la preleva subito
+         * dopo con gmb_lambda_ret_len_get(). */
+        int ret_arr_call = fn_ret_is_arr(fn);
+        if (ret_arr_call) sb_put(&c->out, "({ ");
         emit_fn_cname(c, fn);
         sb_put(&c->out, "(");
             for (int i = 0; i < fixed_count && !c->error[0]; i++) {
@@ -13218,7 +13283,8 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                 if (fixed_count) sb_put(&c->out, ", ");
                 emit_variadic_pack(c, fn, args, fixed_count, variadic_argc, line);
             }
-            sb_put(&c->out, ")");
+            if (ret_arr_call) sb_put(&c->out, ", NULL); gmb_lambda_ret_ptr_get(); })");
+            else sb_put(&c->out, ")");
             return;
         }
         if (fn->parent && fn->n_cap > 0) {
@@ -17356,7 +17422,8 @@ static void st_let_assign(ctx_t* c, gmb_stmt_t* s) {
          * Su un PARAMETRO la promozione è disattivata (rappresentazione fissata dalla
          * firma): errore esplicito invece di C invalido. */
         if (s->target && !s->array_index && s->value && s->value->kind == GMB_EXPR_CALL
-            && is_opt_array_call_tk(s->value->tk)) {
+            && (is_opt_array_call_tk(s->value->tk)
+                || (s->value->var && user_fn_ret_arr(c, s->value->var, s->value->nargs)))) {
             if (is_param_of_cur(c, s->target)) {
                 c99_fail(c, s->line, "%s: assegnazione di un builtin che ritorna un array a un "
                          "parametro array non supportata (usare una variabile locale)", s->target);
@@ -17364,6 +17431,19 @@ static void st_let_assign(ctx_t* c, gmb_stmt_t* s) {
             }
             var_t* atv = lookup_var(c, s->target);
             if (atv && atv->is_array && atv->dyn_len) {
+                /* FUNZIONE utente AS ARRAY: la call passa __out=NULL e pubblica
+                 * puntatore+lunghezza nel canale thread-local. */
+                if (!is_opt_array_call_tk(s->value->tk)) {
+                    ind(c);
+                    emit_ident(c, atv->name);
+                    sb_put(&c->out, " = ");
+                    emit_expr(c, s->value);
+                    sb_put(&c->out, ";\n");
+                    ind(c);
+                    emit_ident(c, atv->name);
+                    sb_put(&c->out, "_len = gmb_lambda_ret_len_get();\n");
+                    return;
+                }
                 gmb_stmt_t shim = *s;
                 shim.dim_var = s->target;
                 if (dim_arr_optimize(c, &shim, s->value)) return;
@@ -18256,7 +18336,11 @@ static void emit_dict_literal(ctx_t* c, gmb_expr_t* e) {
             }
             return;
         }
-        if (!s->array_size && dim_arr_init_kind(s->dim_init)) {
+        if (!s->array_size && (dim_arr_init_kind(s->dim_init)
+            /* FUNZIONE utente che ritorna AS ARRAY OF … (2026-11-03): array dinamico con
+             * puntatore+lunghezza dal canale thread-local (emit_dim_arr_init). */
+            || (s->dim_init && s->dim_init->kind == GMB_EXPR_CALL && s->dim_init->var
+                && user_fn_ret_arr(c, s->dim_init->var, s->dim_init->nargs)))) {
             /* (b4): DIM x() = SIGNAL.CONVOLVE/HANN/ANALYSIS.FFT/IFFT(...) */
             emit_dim_arr_init(c, s);
             return;
@@ -20279,6 +20363,15 @@ static void st_return(ctx_t* c, gmb_stmt_t* s) {
         if (c->cur_fn && fn_ret_is_arr(c->cur_fn) && s->ret_value) {
             var_t* av = (s->ret_value->kind == GMB_EXPR_VAR && s->ret_value->var) ? lookup_var(c, s->ret_value->var) : NULL;
             if (av && av->is_array) {
+                /* Chiamata come ESPRESSIONE (`DIM x() = F(...)`): il call site passa
+                 * __out = NULL e la funzione alloca l'array esatto, pubblicandolo nel canale
+                 * thread-local insieme alla lunghezza (2026-11-03). */
+                ind(c);
+                sb_put(&c->out, "if (!__out) { __out = (gmb_double_t*)malloc(sizeof(gmb_double_t) * (size_t)(");
+                emit_arr_len_of(c, av);
+                sb_put(&c->out, ") > 0 ? (size_t)(");
+                emit_arr_len_of(c, av);
+                sb_put(&c->out, ") : 1); gmb_lambda_ret_ptr_set(__out); }\n");
                 ind(c);
                 sb_put(&c->out, "gmb_lambda_ret_len_set((gmb_int_t)(");
                 emit_arr_len_of(c, av);
@@ -20294,6 +20387,9 @@ static void st_return(ctx_t* c, gmb_stmt_t* s) {
             }
             /* RETURN { e0, ..., en } → letterale-array: scrivi ogni elemento in __out */
             if (s->ret_value->kind == GMB_EXPR_CALL && s->ret_value->var && strcmp(s->ret_value->var, "_array_") == 0) {
+                ind(c);
+                sb_printf(&c->out, "if (!__out) { __out = (gmb_double_t*)malloc(sizeof(gmb_double_t) * %d); gmb_lambda_ret_ptr_set(__out); }\n",
+                          s->ret_value->nargs > 0 ? s->ret_value->nargs : 1);
                 ind(c);
                 sb_printf(&c->out, "gmb_lambda_ret_len_set(%d);\n", s->ret_value->nargs);
                 for (int __k = 0; __k < s->ret_value->nargs; __k++) {
@@ -25923,6 +26019,20 @@ static void emit_ledger_domain(ctx_t* c, gmb_stmt_t* s) {
         ind(c); sb_put(&c->out, "(void)gmb_db_ledger_save((int64_t)(");
         emit_expr(c, a[0]);
         sb_put(&c->out, "));\n");
+        return;
+    }
+    /* LEDGER BUDGET <h> "<conto>" <importo> "<periodo>": fissa il budget di un conto per un
+     * periodo (gmb_db_ledger_budget). Prima l'emitter nativo rispondeva "statement non
+     * supportato" e il comando era documentato come non eseguibile. */
+    if (s->act_tk == GMB_TOK_Budget) {
+        if (na < 4) { c99_fail(c, s->line, "LEDGER BUDGET: forma attesa `LEDGER BUDGET <h> \"<conto>\" <importo> \"<periodo>\"`"); return; }
+        ind(c); sb_put(&c->out, "(void)gmb_db_ledger_budget((int64_t)(");
+        emit_expr(c, a[0]);
+        sb_put(&c->out, "), ");
+        emit_str_operand(c, a[1]); sb_put(&c->out, ".data, (double)(");
+        emit_expr(c, a[2]);
+        sb_put(&c->out, "), ");
+        emit_str_operand(c, a[3]); sb_put(&c->out, ".data);\n");
         return;
     }
     /* LEDGER DELETE <h> ID <id>: rimozione di una transazione. */
