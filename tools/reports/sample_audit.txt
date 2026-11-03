@@ -1,5 +1,5 @@
 SAMPLE AUDIT — shared/samples/**/*.bas
-totale file: 1192   categorie: 80
+totale file: 1193   categorie: 80
 
 == per categoria ==
   Ai                   147
@@ -59,6 +59,7 @@ totale file: 1192   categorie: 80
   Commands             3
   Datetime             3
   Grep                 3
+  Bits                 2
   C99                  2
   Computer             2
   Matrix               2
@@ -68,7 +69,6 @@ totale file: 1192   categorie: 80
   Tray                 2
   UI                   2
   cua                  2
-  Bits                 1
   Comprehensive        1
   Data                 1
   Fixtures             1
@@ -87,7 +87,7 @@ totale file: 1192   categorie: 80
   ENV          481
   DIDATTICO    218
   CORTO        169
-  SURFACE      38
+  SURFACE      37
   SUPPORTO     25
   MODULO       15
   PACKAGE      7
@@ -105,7 +105,6 @@ totale file: 1192   categorie: 80
   Ai/SemapraxFullSurface.bas                                             righe=49   import=1
   Ai/TypeInfoFullCoverage.bas                                            righe=73   import=1
   AiLLM/ModelCompilerFull.bas                                            righe=69   import=1
-  Bits/BitsFullCoverage.bas                                              righe=163  import=1
   Concurrency/AtomicFullCoverage.bas                                     righe=64   import=2
   Connectors/ConnectorFullCoverage.bas                                   righe=57   import=1
   Console/ConstantsColorsCoverage.bas                                    righe=211  import=1
@@ -132,7 +131,7 @@ totale file: 1192   categorie: 80
   Trading/TradingPortfolioUncoveredCoverage.bas                          righe=50   import=1
   Workflow/WorkflowFullCoverage.bas                                      righe=25   import=1
   graphics/GraphicsUncoveredCoverage.bas                                 righe=41   import=1
-  (38 file)
+  (37 file)
 
 == EXPECT nei Sample (violazione del contratto) ==
   (0 file)
