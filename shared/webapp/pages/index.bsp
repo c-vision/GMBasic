@@ -3,7 +3,8 @@
 <%
   ' FILE: shared/webapp/pages/index.bsp — Agents Operating Center (UI)
   ' =====================================================================
-  ' Pagina unica, 5 tab. Il markup e questo file sono il "sorgente di verità":
+  ' Pagina unica, 8 tab + chrome (palette, rail, inbox, tema). Il markup e questo file
+  ' sono il "sorgente di verità":
   ' si modifica qui (HTML/CSS/JS) e negli helper BASIC di include/AgentsDashboard.inc,
   ' senza toccare C#.
   '
@@ -97,6 +98,56 @@
   .hint{background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:10px;padding:.6rem .8rem;font-size:.8rem;margin:.6rem 0}
   .kv{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
   @media (max-width:900px){.grid.cols4{grid-template-columns:1fr 1fr}.split{grid-template-columns:1fr}}
+
+  /* ── tuios-inspired chrome (2026-11-02) ─────────────────────────────── */
+  html[data-theme="dark"]{
+    color-scheme:dark;
+    --bg:#0b1220; --card:#111a2b; --ink:#e6edf7; --muted:#94a3b8;
+    --line:#223047; --brand:#60a5fa; --brand-ink:#93c5fd;
+    --ok:#34d399; --warn:#fbbf24; --bad:#f87171; --head1:#070d18; --head2:#13233c;
+  }
+  html[data-theme="dark"] .btn-ghost:hover,html[data-theme="dark"] nav.tabs button:hover{background:#16233a;color:var(--ink)}
+  html[data-theme="dark"] code{background:#1b2740}
+  html[data-theme="dark"] .hint{background:#2a2210;border-color:#5c4813;color:#fbbf24}
+  html[data-theme="dark"] td{border-bottom-color:#1b2740}
+  html[data-theme="dark"] .badge{background:#1e3a8a33;color:#dbeafe}
+  .badge.done{background:#dbeafe;color:#1e40af}
+  .badge.error{background:#fee2e2;color:#991b1b}
+  /* rail: stato degli agenti a colpo d'occhio (tuios session rail) */
+  .rail{display:flex;gap:.4rem;overflow-x:auto;padding:.5rem 1.6rem;border-bottom:1px solid var(--line);background:var(--card)}
+  .rail:empty{display:none}
+  .rail .r{display:flex;align-items:center;gap:.35rem;border:1px solid var(--line);border-radius:999px;
+           padding:.2rem .6rem;font-size:.75rem;cursor:pointer;white-space:nowrap;background:transparent;color:inherit}
+  .rail .r:hover{border-color:var(--brand)}
+  .rail .r.attention{border-color:var(--warn);box-shadow:0 0 0 1px #fbbf2455 inset}
+  .dot{width:.55rem;height:.55rem;border-radius:50%;background:#94a3b8;display:inline-block;flex:none}
+  .dot.working{background:#16a34a;box-shadow:0 0 0 2px #16a34a40}
+  .dot.waiting{background:#d97706;border-radius:2px;transform:rotate(45deg)}
+  .dot.done{background:#2563eb}
+  .dot.error{background:#dc2626;border-radius:2px}
+  .dot.idle{background:#94a3b8}
+  /* overlay: palette, aiuto, inbox */
+  .overlay{position:fixed;inset:0;background:rgba(2,6,23,.55);display:none;z-index:50;padding-top:8vh}
+  .overlay.show{display:block}
+  .sheet{max-width:660px;margin:0 auto;background:var(--card);border:1px solid var(--line);border-radius:14px;
+         box-shadow:0 24px 60px rgba(2,6,23,.4);overflow:hidden;color:var(--ink)}
+  .sheet .sh{display:flex;align-items:center;gap:.6rem;padding:.75rem 1rem;border-bottom:1px solid var(--line)}
+  .sheet .sh b{font-size:.9rem}
+  .sheet .body{padding:.7rem 1rem 1rem;max-height:62vh;overflow:auto}
+  .sheet input{width:100%}
+  .pal-item{display:flex;justify-content:space-between;gap:1rem;padding:.42rem .55rem;border-radius:8px;cursor:pointer;font-size:.85rem}
+  .pal-item.sel{background:#eef2ff;color:#1e3a8a}
+  html[data-theme="dark"] .pal-item.sel{background:#1e3a8a55;color:#dbeafe}
+  .pal-item small{color:var(--muted)}
+  .kbd{display:inline-block;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;
+       padding:0 .35rem;font-size:.72rem;font-family:ui-monospace,Menlo,monospace;background:var(--bg)}
+  .help-grid{display:grid;grid-template-columns:auto 1fr;gap:.35rem .9rem;font-size:.84rem;align-items:center}
+  .inbox-item{display:flex;gap:.6rem;align-items:flex-start;padding:.55rem .2rem;border-bottom:1px solid var(--line)}
+  .inbox-item:last-child{border-bottom:none}
+  .inbox-item .grow{flex:1;min-width:0}
+  .inbox-item .msg{font-size:.82rem;word-break:break-word}
+  .inbox-item .who{font-size:.74rem;color:var(--muted)}
+  @media (max-width:700px){.rail{padding:.5rem .8rem}.overlay{padding-top:0}.sheet{max-width:none;border-radius:0;height:100%}}
 </style>
 </head>
 <body>
@@ -113,6 +164,9 @@
       <span class="chip" id="chip-agents">agents: <b>0</b></span>
       <span class="chip" id="chip-teams">teams: <b>0</b></span>
       <span class="chip" id="chip-uptime">uptime: <b>…</b></span>
+      <span class="chip chip-btn" id="chip-inbox" title="Cose in attesa (i)">inbox: <b>0</b></span>
+      <span class="chip chip-btn" id="btn-theme" title="Tema: auto → dark → light (t)">theme: <b>auto</b></span>
+      <span class="chip chip-btn" id="btn-help" title="Scorciatoie (?)">? keys</span>
       <span class="chip chip-btn" id="btn-pause" title="Pause/resume polling">⏸ pause</span>
     </div>
   </div>
@@ -130,6 +184,8 @@
   <button data-tab="canvas">Canvas</button>
   <button data-tab="wasm">WASM</button>
 </nav>
+
+<div class="rail" id="rail" aria-label="Agenti"></div>
 
 <main>
 
@@ -483,12 +539,54 @@
 </section>
 
 </main>
+<div class="overlay" id="ov-palette">
+  <div class="sheet">
+    <div class="sh"><b>Command palette</b><span class="muted">azioni, agenti, team</span>
+      <span style="margin-left:auto" class="muted"><span class="kbd">Ctrl</span>+<span class="kbd">K</span></span></div>
+    <div class="body">
+      <input id="pal-q" placeholder="Cerca… (fuzzy)" autocomplete="off" spellcheck="false">
+      <div id="pal-list" style="margin-top:.5rem"></div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="ov-help">
+  <div class="sheet">
+    <div class="sh"><b>Scorciatoie</b><span style="margin-left:auto" class="muted"><span class="kbd">Esc</span> chiude</span></div>
+    <div class="body">
+      <div class="help-grid">
+        <span><span class="kbd">Ctrl</span>+<span class="kbd">K</span> / <span class="kbd">Ctrl</span>+<span class="kbd">P</span></span><span>Command palette</span>
+        <span><span class="kbd">1</span>…<span class="kbd">8</span></span><span>Vai alla tab</span>
+        <span><span class="kbd">n</span></span><span>Nuovo agente</span>
+        <span><span class="kbd">/</span></span><span>Cerca nel log</span>
+        <span><span class="kbd">i</span></span><span>Inbox (cose in attesa)</span>
+        <span><span class="kbd">t</span></span><span>Tema auto → dark → light</span>
+        <span><span class="kbd">r</span></span><span>Aggiorna ora</span>
+        <span><span class="kbd">?</span></span><span>Questo aiuto</span>
+        <span><span class="kbd">Esc</span></span><span>Chiude overlay</span>
+      </div>
+      <p class="muted" style="margin-top:.8rem">Le scorciatoie sono disattivate mentre scrivi in un campo.</p>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="ov-inbox">
+  <div class="sheet">
+    <div class="sh"><b>Inbox</b><span class="badge" id="inbox-count">0</span>
+      <label class="muted" style="margin-left:auto;font-size:.78rem"><input type="checkbox" id="inbox-notify"> notifiche</label>
+      <button class="btn btn-ghost" id="inbox-read">segna letto</button>
+      <span class="muted"><span class="kbd">Esc</span></span></div>
+    <div class="body" id="inbox-body"></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
 (function(){
   "use strict";
-  var S = { refreshMs: 2500, paused:false, status:null, agents:[], ws:null };
+  var S = { refreshMs: 2500, paused:false, status:null, agents:[], teams:[], events:[],
+            attention:{}, inbox:[], theme:'auto', lastInbox:0, palette:[], palSel:0, ws:null };
   var el = function(id){ return document.getElementById(id); };
   function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){
       return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
@@ -527,6 +625,190 @@
     e.className='out show';
   }
 
+  // ---------- tuios-inspired: palette, inbox, rail, tema, scorciatoie ----------
+  var TABS_ORDER=['agents','teams','log','workflows','memory','brain','canvas','wasm'];
+  function fuzzyScore(q, text){
+    q=(q||'').toLowerCase().trim(); if(!q) return 1;
+    var t=(text||'').toLowerCase(), qi=0, score=0, streak=0;
+    for(var i=0;i<t.length && qi<q.length;i++){
+      if(t[i]===q[qi]){ qi++; streak++; score+=streak; }
+      else streak=0;
+    }
+    return qi===q.length ? score - (t.length-q.length)*0.01 : -1;
+  }
+  function classify(e){
+    var s=(typeof e==='string')? e : ((e.kind||'')+' '+(e.detail||'')+' '+(e.agent||'')+' '+(e.raw||''));
+    s=s.toLowerCase();
+    if(/error|fail|errore|exception|crash/.test(s)) return 'error';
+    if(/wait|approv|question|human|perm|attention|block/.test(s)) return 'waiting';
+    if(/done|finish|complet|success|ok\b/.test(s)) return 'done';
+    if(/work|run|start|tool|plan/.test(s)) return 'working';
+    return 'idle';
+  }
+  function computeAttention(){
+    var map={}, items=[];
+    (S.events||[]).forEach(function(e){
+      var st=classify(e);
+      var name=(e && (e.agent||e.name))||'';
+      if(name && st!=='idle') map[name]=st;
+      if(st==='error'||st==='waiting'||st==='done')
+        items.push({ agent:name||'—', state:st, ts:(e&&e.timestamp)||'',
+                     detail:(e&&(e.detail||e.raw))||String(e) });
+    });
+    S.attention=map;
+    S.inbox=items.slice(-200).reverse();
+    var n=S.inbox.filter(function(i){ return i.state!=='done'; }).length;
+    var c=el('chip-inbox');
+    if(c){ c.innerHTML='inbox: <b>'+n+'</b>'; c.className='chip chip-btn'+(n?' bad':''); }
+    var ic=el('inbox-count'); if(ic){ ic.textContent=n+' in attesa'; ic.className='badge'+(n?' perm-yolo':''); }
+    renderRail(); renderInbox(); maybeNotify(n);
+  }
+  function maybeNotify(n){
+    var prev=typeof S.lastInbox==='number'?S.lastInbox:0;
+    var on=false; try{ on=localStorage.getItem('gmb-webapp-notify')==='1'; }catch(e){}
+    if(on && n>prev && window.Notification && Notification.permission==='granted'){
+      var last=S.inbox.filter(function(i){return i.state!=='done';})[0];
+      try{ new Notification('GMBasic — '+n+' in attesa', { body: last ? (last.agent+': '+last.detail).slice(0,140) : '' }); }catch(e){}
+    }
+    S.lastInbox=n;
+  }
+  function renderRail(){
+    var r=el('rail'); if(!r) return;
+    var agents=(S.agents||[]);
+    if(!agents.length){ r.innerHTML=''; return; }
+    r.innerHTML=agents.map(function(a){
+      var st=(S.attention&&S.attention[a.name])||'idle';
+      var att=(st==='waiting'||st==='error');
+      return '<button class="r'+(att?' attention':'')+'" data-rail="'+esc(a.name)+'" title="'+esc(a.name)+' — '+st+'">'+
+             '<span class="dot '+st+'"></span>'+esc(a.name)+'</button>';
+    }).join('');
+  }
+  function renderInbox(){
+    var b=el('inbox-body'); if(!b) return;
+    if(!S.inbox.length){ b.innerHTML='<p class="muted">Niente in attesa. Le voci compaiono dagli eventi degli agenti (domande, approvazioni, errori, turni finiti).</p>'; return; }
+    b.innerHTML=S.inbox.map(function(i,idx){
+      var ts=i.ts? String(i.ts).replace('T',' ').slice(0,19):'';
+      return '<div class="inbox-item">'
+        + '<span class="dot '+i.state+'" style="margin-top:.35rem"></span>'
+        + '<div class="grow"><div class="msg"><b>'+esc(i.agent)+'</b> — '+esc(i.detail)+'</div>'
+        + '<div class="who">'+esc(i.state)+' · '+esc(ts)+'</div></div>'
+        + '<button class="btn btn-ghost" data-inbox-log="'+esc(i.agent)+'">Log</button>'
+        + '<button class="btn btn-ghost" data-inbox-chat="'+esc(i.agent)+'">Chat</button></div>';
+    }).join('');
+  }
+  function openInbox(){
+    closeOverlays(); var o=el('ov-inbox'); if(o) o.className='overlay show';
+    var c=el('inbox-notify'); try{ c.checked=localStorage.getItem('gmb-webapp-notify')==='1'; }catch(e){}
+    renderInbox();
+  }
+  function openHelp(){ closeOverlays(); var o=el('ov-help'); if(o) o.className='overlay show'; }
+  function closeOverlays(){
+    ['ov-palette','ov-help','ov-inbox'].forEach(function(id){ var o=el(id); if(o) o.className='overlay'; });
+  }
+  function paletteActions(){
+    var A=[];
+    TABS_ORDER.forEach(function(t,i){ A.push({label:'Vai a '+t, hint:'tab '+(i+1), run:function(){ showTab(t); }}); });
+    A.push({label:'Aggiorna ora', hint:'r', run:function(){ tick(); toast('refresh'); }});
+    A.push({label:'Nuovo agente', hint:'n', run:function(){ showTab('agents'); setTimeout(function(){ var e=el('new-name'); if(e) e.focus(); },60); }});
+    A.push({label:'Inbox — cose in attesa', hint:'i', run:openInbox});
+    A.push({label:'Tema auto/dark/light', hint:'t', run:function(){ cycleTheme(); }});
+    A.push({label:'Pausa/riprendi polling', hint:'', run:function(){ var b=el('btn-pause'); if(b) b.click(); }});
+    A.push({label:'Aiuto / scorciatoie', hint:'?', run:openHelp});
+    (S.agents||[]).forEach(function(a){
+      A.push({label:'Chat con '+a.name, hint:'agente', run:function(){ showTab('agents'); var s2=el('sel-agent'); if(s2) s2.value=a.name; var p2=el('chat-prompt'); if(p2) p2.focus(); }});
+    });
+    (S.teams||[]).forEach(function(t){
+      A.push({label:'Team '+t.name, hint:'team', run:function(){ showTab('teams'); var e3=el('bc-team'); if(e3) e3.value=t.name; }});
+    });
+    return A;
+  }
+  function renderPalette(q){
+    var list=paletteActions().map(function(a){ return { a:a, s:fuzzyScore(q, a.label+' '+a.hint) }; })
+      .filter(function(x){ return x.s>=0; })
+      .sort(function(x,y){ return y.s-x.s; }).slice(0,18).map(function(x){ return x.a; });
+    S.palette=list; if(S.palSel>=list.length) S.palSel=Math.max(0,list.length-1);
+    var box=el('pal-list'); if(!box) return;
+    box.innerHTML=list.map(function(a,i){
+      return '<div class="pal-item'+(i===S.palSel?' sel':'')+'" data-pal="'+i+'"><span>'+esc(a.label)+'</span><small>'+esc(a.hint||'')+'</small></div>';
+    }).join('') || '<p class="muted">Nessun risultato</p>';
+  }
+  function openPalette(){
+    closeOverlays(); var o=el('ov-palette'); if(o) o.className='overlay show';
+    var q=el('pal-q'); if(q){ q.value=''; q.focus(); }
+    S.palSel=0; renderPalette('');
+  }
+  function runPalette(i){ var a=S.palette[i]; if(!a) return; closeOverlays(); try{ a.run(); }catch(e){ toast(String(e),true); } }
+  function applyTheme(mode){
+    if(mode!=='light' && mode!=='dark') mode='system';
+    var resolved=mode==='system' ? (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark':'light') : mode;
+    document.documentElement.setAttribute('data-theme', resolved);
+    S.theme=mode;
+    var b=el('btn-theme'); if(b) b.innerHTML='theme: <b>'+mode+'</b>';
+    try{ localStorage.setItem('gmb-webapp-theme', mode); }catch(e){}
+  }
+  function cycleTheme(){ applyTheme(S.theme==='system'?'dark':S.theme==='dark'?'light':'system');
+    toast('tema: '+(S.theme==='system'?'auto (sistema)':S.theme)); }
+  function wireChrome(){
+    var ci=el('chip-inbox'); if(ci) ci.addEventListener('click',openInbox);
+    var bh=el('btn-help'); if(bh) bh.addEventListener('click',openHelp);
+    var bt=el('btn-theme'); if(bt) bt.addEventListener('click',cycleTheme);
+    Array.prototype.forEach.call(document.querySelectorAll('.overlay'),function(o){
+      o.addEventListener('click',function(ev){ if(ev.target===o) closeOverlays(); });
+    });
+    var pq=el('pal-q');
+    if(pq){
+      pq.addEventListener('input',function(){ S.palSel=0; renderPalette(pq.value); });
+      pq.addEventListener('keydown',function(ev){
+        if(ev.key==='ArrowDown'){ ev.preventDefault(); S.palSel=Math.min(S.palSel+1,S.palette.length-1); renderPalette(pq.value); }
+        else if(ev.key==='ArrowUp'){ ev.preventDefault(); S.palSel=Math.max(0,S.palSel-1); renderPalette(pq.value); }
+        else if(ev.key==='Enter'){ ev.preventDefault(); runPalette(S.palSel); }
+        else if(ev.key==='Escape'){ closeOverlays(); }
+      });
+    }
+    var pl=el('pal-list');
+    if(pl) pl.addEventListener('click',function(ev){ var d=ev.target.closest('[data-pal]'); if(d) runPalette(+d.getAttribute('data-pal')); });
+    var ib=el('inbox-body');
+    if(ib) ib.addEventListener('click',function(ev){
+      var l=ev.target.closest('[data-inbox-log]');
+      if(l){ closeOverlays(); showTab('log'); var f=el('log-filter'); if(f){ f.value=l.getAttribute('data-inbox-log'); refreshEvents(); } return; }
+      var c=ev.target.closest('[data-inbox-chat]');
+      if(c){ closeOverlays(); showTab('agents'); var s2=el('sel-agent'); if(s2) s2.value=c.getAttribute('data-inbox-chat'); var p2=el('chat-prompt'); if(p2) p2.focus(); }
+    });
+    var ir=el('inbox-read'); if(ir) ir.addEventListener('click',function(){
+      S.events=[]; S.inbox=[]; S.attention={}; S.lastInbox=0; computeAttention(); toast('inbox svuotata (solo vista locale)');
+    });
+    var ino=el('inbox-notify');
+    if(ino) ino.addEventListener('change',function(){
+      try{ localStorage.setItem('gmb-webapp-notify', ino.checked?'1':'0'); }catch(e){}
+      if(ino.checked && window.Notification && Notification.permission!=='granted'){
+        Notification.requestPermission().then(function(p){ toast('notifiche: '+p, p!=='granted'); });
+      }
+    });
+    var railEl=el('rail');
+    if(railEl) railEl.addEventListener('click',function(ev){
+      var b=ev.target.closest('[data-rail]'); if(!b) return;
+      showTab('agents'); var s2=el('sel-agent'); if(s2) s2.value=b.getAttribute('data-rail');
+      var p2=el('chat-prompt'); if(p2) p2.focus();
+    });
+    document.addEventListener('keydown',function(ev){
+      var tag=(ev.target && ev.target.tagName ? ev.target.tagName : '').toLowerCase();
+      var typing=(tag==='input'||tag==='textarea'||tag==='select');
+      if((ev.metaKey||ev.ctrlKey) && (ev.key==='k'||ev.key==='p'||ev.key==='K'||ev.key==='P')){ ev.preventDefault(); openPalette(); return; }
+      if(ev.key==='Escape'){ closeOverlays(); return; }
+      if(typing) return;
+      if(ev.key==='?'){ ev.preventDefault(); openHelp(); }
+      else if(ev.key==='i'){ openInbox(); }
+      else if(ev.key==='t'){ cycleTheme(); }
+      else if(ev.key==='n'){ ev.preventDefault(); showTab('agents'); setTimeout(function(){ var e=el('new-name'); if(e) e.focus(); },50); }
+      else if(ev.key==='/'){ ev.preventDefault(); showTab('log'); var f=el('log-filter'); if(f) f.focus(); }
+      else if(ev.key==='r'){ tick(); toast('refresh'); }
+      else if(ev.key>='1' && ev.key<='8'){ showTab(TABS_ORDER[(+ev.key)-1]); }
+    });
+    if(window.matchMedia){
+      try{ matchMedia('(prefers-color-scheme: dark)').addEventListener('change',function(){ if(S.theme==='system') applyTheme('system'); }); }catch(e){}
+    }
+  }
+
   // ---------- stato ----------
   function fmtUp(s){
     s = Math.max(0, s|0);
@@ -558,8 +840,9 @@
 
   // ---------- agents ----------
   function agentRow(a){
-    return '<tr><td class="name">'+esc(a.name)+'</td>'
-      + '<td><span class="badge '+(a.status?'idle':'')+'">'+esc(a.status||'—')+'</span></td>'
+    var st=(S.attention&&S.attention[a.name])||'idle';
+    return '<tr><td class="name"><span class="dot '+st+'" style="margin-right:.35rem"></span>'+esc(a.name)+'</td>'
+      + '<td><span class="badge '+st+'">'+esc(a.status||st)+'</span></td>'
       + '<td>'+badgePerm(a.permission)+'</td>'
       + '<td class="muted">'+esc(a.model||'-')+'</td>'
       + '<td><button class="btn btn-ghost" data-act="chat" data-name="'+esc(a.name)+'">Chat</button> '
@@ -572,6 +855,7 @@
   function refreshAgents(){
     return api('/api/agents').then(function(list){
       S.agents=list||[];
+      renderRail();
       var tb=el('agents-body');
       tb.innerHTML = S.agents.length ? S.agents.map(agentRow).join('')
         : '<tr><td colspan="5" class="muted">No agents — create one with the form below</td></tr>';
@@ -637,6 +921,7 @@
     return api('/api/teams').then(function(list){
       var tb=el('teams-body');
       list=list||[];
+      S.teams=list;
       tb.innerHTML = list.length ? list.map(function(t){
         return '<tr><td class="name">'+esc(t.name)+'</td><td><span class="badge strategy">'+esc(t.strategy||'-')+
                '</span></td><td>'+esc(t.memberCount||0)+'</td>'
@@ -691,7 +976,9 @@
   function refreshEvents(){
     return api('/api/events').then(function(list){
       list=list||[];
-      var f=(el('log-filter').value||'').toLowerCase();
+      S.events=list;
+      computeAttention();
+      var f=(el('log-filter') && el('log-filter').value||'').toLowerCase();
       var rows=list.filter(function(e){
         if(!f) return true;
         return JSON.stringify(e).toLowerCase().indexOf(f)>=0;
@@ -729,6 +1016,9 @@
         tr.appendChild(td);
         if(tb.firstChild) tb.insertBefore(tr, tb.firstChild); else tb.appendChild(tr);
         var c=el('log-count'); if(c) c.textContent='live';
+        S.events.push({ raw: txt, detail: txt, kind: 'live' });
+        if(S.events.length>500) S.events.shift();
+        computeAttention();
       };
       es.onerror=function(){ var b=el('log-live'); if(b){ b.textContent='polling'; b.className='badge'; } };
     }catch(_){}
@@ -957,6 +1247,7 @@
   // ---------- tabs ----------
   var TABS=['agents','teams','log','workflows','memory','brain','canvas','wasm'];
   function showTab(name){
+    closeOverlays();
     if(TABS.indexOf(name)<0) name='agents';
     TABS.forEach(function(t){
       var p=el('panel-'+t); if(p) p.className='panel'+(t===name?' active':'');
@@ -985,10 +1276,10 @@
     if(S.paused) return;
     refreshStatus().then(function(st){
       if(!st) return;
+      refreshEvents();
       var tab=(location.hash||'#agents').slice(1);
       if(tab==='agents') refreshAgents();
       else if(tab==='teams') refreshTeams();
-      else if(tab==='log') refreshEvents();
     });
   }
   function startPolling(){
@@ -1005,9 +1296,14 @@
 
   // ---------- init ----------
   wireTabs(); wireAgents(); wireTeams(); wireLog(); wireWorkflows(); wireMemory(); wireBrain(); wireCanvas(); wireWasm(); wirePause();
+  wireChrome();
+  applyTheme((function(){ try{ return localStorage.getItem('gmb-webapp-theme')||'auto'; }catch(e){ return 'auto'; } })());
   var initial=(location.hash||'').slice(1);
   if(!initial){ try{ initial=localStorage.getItem('gmb-webapp-tab')||'agents'; }catch(e){ initial='agents'; } }
-  refreshStatus().then(function(){ showTab(initial); startPolling(); });
+  refreshStatus().then(function(){
+    refreshEvents(); refreshAgents(); refreshTeams();
+    showTab(initial); startPolling();
+  });
 })();
 </script>
 </body>
