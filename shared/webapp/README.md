@@ -51,6 +51,26 @@ All'avvio l'app ricarica tutto: `AI AGENT LOAD` per gli agenti, `POST /api/teams
 per i team. **Il seed demo scatta solo se non c'è nessun agente persistito.**
 `bin/` è gitignorato (artefatti-dati della app: mai nel sorgente).
 
+## UI (2026-11-02) — idee da `tuios`
+
+`tuios` (terminal window manager) organizza il lavoro per **stato** e per **attenzione**:
+rail delle sessioni, Inbox di ciò che aspetta l'umano, command palette, scorciatoie e temi.
+La dashboard ha adottato gli stessi pattern, senza nuovi endpoint e senza build step:
+
+| Cosa | Come funziona | Tasto |
+|---|---|---|
+| **Command palette** | fuzzy su tab, azioni, agenti e team (azioni eseguibili, non solo navigazione) | `Ctrl`/`Cmd`+`K` (o `Ctrl`+`P`) |
+| **Rail agenti** | striscia sotto le tab con stato a colpo d'occhio: `working` (verde), `waiting` (ambra), `done` (blu), `error` (rosso); click → seleziona e apre la chat | — |
+| **Inbox** | aggrega dagli eventi ciò che richiede attenzione (domande/approvazioni/errori/turni finiti) con Log/Chat per riga e contatore nell'header | `i` |
+| **Tema** | `auto` (segue il sistema) → `dark` → `light`; persistito in `localStorage` | `t` |
+| **Scorciatoie** | `1…8` tab, `n` nuovo agente, `/` cerca nel log, `r` refresh, `?` aiuto, `Esc` chiude gli overlay | `?` |
+| **Notifiche** | opt-in con la Notification API quando cresce il numero di voci in attesa | — |
+
+Persistenza locale: `gmb-webapp-theme`, `gmb-webapp-notify`, `gmb-webapp-tab`.
+L'Inbox è **derivata** da `/api/events` (SSE `live` + polling): nessun endpoint nuovo, nessuna
+duplicazione dello stato. Lo stato per agente è calcolato dall'ultimo evento che lo riguarda,
+quindi il rail e le card restano coerenti con il Log.
+
 ## Engine BSP (motore) — cosa c'è sotto
 
 Le pagine non sono template: sono **compilate ed eseguite**. Il motore BSP ha ora (2026-10-31):
