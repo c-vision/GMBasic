@@ -1840,7 +1840,7 @@ static int sy_atomicswap(ctx_t* c, gmb_expr_t** a, int n) {
 }
 static int sy_poolget(ctx_t* c, gmb_expr_t** a, int n) {
     if (n != 1) return 0;
-    sb_put(&c->out, "gmb_val_str_or_empty(gmb_c99_pool_get("); emit_expr(c, a[0]);
+    sb_put(&c->out, "(gmb_c99_pool_get("); emit_expr(c, a[0]);   /* gmb_val_t dinamico (TY_VAL): numero o stringa */
     sb_put(&c->out, "))");
     return 1;
 }
@@ -8601,8 +8601,10 @@ static int aimo_llm_kv_out(ctx_t* c, gmb_expr_t** a, int n, int line) {
     sb_put(&c->out, "gmb_string_alloc(gmb_asr_cmd(");
     emit_str_operand(c, a[0]); sb_put(&c->out, ".data, ");
     emit_str_operand(c, a[1]); sb_put(&c->out, ".data, ");
-    if (n >= 3) { emit_str_operand(c, a[2]); sb_put(&c->out, ".data)"); }
-    else sb_put(&c->out, "\"\")");
+    /* Due parentesi: chiude gmb_asr_cmd( e gmb_string_alloc( (prima ne mancava una
+     * → il C generato non compilava: "expected ')'" su ogni ASR.RECOGNIZE). */
+    if (n >= 3) { emit_str_operand(c, a[2]); sb_put(&c->out, ".data))"); }
+    else sb_put(&c->out, "\"\"))");
     return 1;
 }
 static int aimo_streamstats(ctx_t* c, gmb_expr_t** a, int n, int line) {    if (n != 1) return 0;

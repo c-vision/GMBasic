@@ -21,11 +21,11 @@ SUB Main()
             PRINT "ok= " + r$
         END IF
     ELSE
-        DIM r$ = VECTORDB.GENTEST("bin/gt.db", 1, "simple")
-        IF INSTR(r$, "not found") > 0 OR INSTR(r$, "ERROR") > 0 THEN
+        DIM r2$ = VECTORDB.GENTEST("bin/gt.db", 1, "simple")
+        IF INSTR(r2$, "not found") > 0 OR INSTR(r2$, "ERROR") > 0 THEN
             PRINT "ok= test-ok"
         ELSE
-            PRINT "ok= " + r$
+            PRINT "ok= " + r2$
         END IF
     END IF
 END SUB
