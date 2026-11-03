@@ -1374,7 +1374,18 @@ double* gmb_opt_fsolve_c99(gmb_fn_t fn, double* x0, int n, gmb_int_t* outn)
 double* gmb_opt_lstsq_c99(gmb_fn_t fn, double* x0, int n, int m, gmb_double_t** bounds, gmb_int_t* outn)
 {
     if (n <= 0 || n > 64) { *outn = 0; return NULL; }
-    if (m <= 0 || m > 256) m = n;
+    if (m <= 0)
+    {
+        /* m non noto a compile-time (lambda in variabile / RETURN di un array): una chiamata
+         * di probe riempie un buffer generoso e il RETURN array pubblica la lunghezza vera
+         * (gmb_lambda_ret_len). 2026-11-03: prima si assumeva m=n e il fit era sbagliato. */
+        double probe[256];
+        gmb_lambda_ret_len_set(0);
+        gmb_opt_c99_fvv(x0, n, probe, &fn);
+        m = (int)gmb_lambda_ret_len_get();
+        if (m <= 0 || m > 256) m = n;
+    }
+    if (m > 256) m = 256;
     double* out = (double*)malloc(sizeof(double) * (size_t)n);
     if (!out) { *outn = 0; return NULL; }
     double lo[64], hi[64];

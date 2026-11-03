@@ -1126,3 +1126,22 @@ static gmb_val_t gmb_data_take(void) {
 }
 gmb_double_t gmb_data_read_num(void) { return gmb_val_to_double(gmb_data_take()); }
 gmb_string_t gmb_data_read_str(void) { return gmb_val_to_string(gmb_data_take()); }
+
+/* Bound degli array per le lambda C99 (2026-11-02): la lambda riceve `double*` senza
+ * lunghezza; il chiamante pubblica gli indici massimi (uno per parametro array, in ordine)
+ * prima della chiamata. Thread-local. */
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#define GMB_LAMBDA_TLS _Thread_local
+#elif defined(__GNUC__)
+#define GMB_LAMBDA_TLS __thread
+#else
+#define GMB_LAMBDA_TLS
+#endif
+static GMB_LAMBDA_TLS gmb_int_t g_lambda_bounds[GMB_LAMBDA_MAX_BOUNDS] = { -1, -1, -1, -1 };
+/* Lunghezza dell'ultimo array restituito da una lambda AS ARRAY (2026-11-03): il chiamante
+ * (es. LEASTSQUARESFIT) la usa quando il numero di residui non e' noto a compile-time. */
+static GMB_LAMBDA_TLS gmb_int_t g_lambda_ret_len = 0;
+gmb_int_t gmb_lambda_bound(int idx) { return (idx >= 0 && idx < GMB_LAMBDA_MAX_BOUNDS) ? g_lambda_bounds[idx] : -1; }
+void gmb_lambda_bound_set(int idx, gmb_int_t b0) { if (idx >= 0 && idx < GMB_LAMBDA_MAX_BOUNDS) g_lambda_bounds[idx] = b0; }
+gmb_int_t gmb_lambda_ret_len_get(void) { return g_lambda_ret_len; }
+void gmb_lambda_ret_len_set(gmb_int_t n) { g_lambda_ret_len = n; }
