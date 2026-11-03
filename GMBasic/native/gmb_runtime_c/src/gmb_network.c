@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <signal.h>
 #if defined(_WIN32) || defined(_WIN64)
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -468,6 +469,12 @@ void gmb_net_init(void)
 {
 #if defined(_WIN32) || defined(_WIN64)
     wsa_init();
+#else
+    /* SIGPIPE: un `send()` su un socket chiuso dal peer (client SSE/WebSocket che
+     * disconnette) terminerebbe il PROCESSO. Il gestore HTTP/SSE deve continuare a
+     * servire gli altri client: si ignora SIGPIPE una volta per processo, come fa
+     * qualsiasi server (e come il runtime managed). */
+    signal(SIGPIPE, SIG_IGN);
 #endif
 #if GMB_HAS_SSL
     gmb_ssl_init();
@@ -3227,6 +3234,19 @@ static gmb_http_server_t* http_get(int64_t handle)
     return GMB_NET_SOCK_OK(s->sock) ? s : NULL;
 }
 
+/* Slot per CONFIGURAZIONE e REGISTRAZIONE, valido anche PRIMA di HTTP SERVER
+ * (`HTTP ROUTE ... HTTP SERVER` è l'ordine canonico, e le route possono essere
+ * registrate dentro una SUB chiamata prima): il listener (sock) non esiste ancora,
+ * ma lo slot sì. handle <= 0 → slot 0 (server canonico); 1..8 → handle-1.
+ * Prima le route pre-start finivano nel vuoto (http_get richiede sock) e ogni
+ * endpoint BASIC del dashboard rispondeva 404 pur essendo nel sorgente. */
+static gmb_http_server_t* http_slot(int64_t handle)
+{
+    int idx = (handle <= 0) ? 0 : (int)handle - 1;
+    if (idx < 0 || idx > 7) return NULL;
+    return &g_http_servers[idx];
+}
+
 /* gmb_http_query_dict — query string → val dict (parità IL/PCode/VM: req.Query("k")
  * è un lookup nel DICT dei parametri, non sulla stringa grezza). Prima i wrapper C
  * mettevano "Query" come stringa → req.Query("k") dava nil (<nil>). */
@@ -3416,7 +3436,7 @@ static gmb_http_route_t* http_route_alloc(gmb_http_route_t* arr, const char* met
 int gmb_http_server_route_bin(int64_t server, const char* method, const char* path,
                               gmb_http_handler_bin_fn handler, void* ctx)
 {
-    gmb_http_server_t* s = http_get(server);
+    gmb_http_server_t* s = http_slot(server);
     if (!s || !handler) return -1;
     gmb_http_route_t* r = http_route_alloc(s->routes, method, path);
     if (!r) return -1;
@@ -3428,7 +3448,7 @@ int gmb_http_server_route_bin(int64_t server, const char* method, const char* pa
 int gmb_http_server_route(int64_t server, const char* method, const char* path,
                           gmb_http_handler_fn handler, void* ctx)
 {
-    gmb_http_server_t* s = http_get(server);
+    gmb_http_server_t* s = http_slot(server);
     if (!s || !handler) return -1;
     gmb_http_route_t* r = http_route_alloc(s->routes, method, path);
     if (!r) return -1;
@@ -3444,7 +3464,7 @@ int gmb_http_server_route(int64_t server, const char* method, const char* path,
 int gmb_http_server_use_bin(int64_t server, const char* method, const char* path_prefix,
                             gmb_http_handler_bin_fn handler, void* ctx)
 {
-    gmb_http_server_t* s = http_get(server);
+    gmb_http_server_t* s = http_slot(server);
     if (!s || !handler) return -1;
     gmb_http_route_t* r = http_route_alloc(s->middlewares, method, path_prefix);
     if (!r) return -1;
@@ -3456,7 +3476,7 @@ int gmb_http_server_use_bin(int64_t server, const char* method, const char* path
 int gmb_http_server_use(int64_t server, const char* method, const char* path_prefix,
                         gmb_http_handler_fn handler, void* ctx)
 {
-    gmb_http_server_t* s = http_get(server);
+    gmb_http_server_t* s = http_slot(server);
     if (!s || !handler) return -1;
     gmb_http_route_t* r = http_route_alloc(s->middlewares, method, path_prefix);
     if (!r) return -1;
@@ -3582,7 +3602,7 @@ int gmb_http_use_next(int64_t step_id)
 /* Statico: registra una mappatura prefix→dir fisica. */
 int gmb_http_server_static(int64_t server, const char* prefix, const char* dir)
 {
-    gmb_http_server_t* s = http_get(server);
+    gmb_http_server_t* s = http_slot(server);
     if (!s || s->static_count >= 16) return -1;
     snprintf(s->static_prefix[s->static_count], sizeof(s->static_prefix[0]), "%s", prefix);
     /* Normalizza la dir (path assoluto, `..` risolto) come fa Path.GetFullPath in C#:
@@ -3615,7 +3635,7 @@ int gmb_http_server_bsp(int64_t server, const char* dir)
 /* CONFIG: porta/cert (già al start), timeout richiesta. */
 int gmb_http_server_set_timeout(int64_t server, int timeout_ms)
 {
-    gmb_http_server_t* s = http_get(server);
+    gmb_http_server_t* s = http_slot(server);
     if (!s) return -1;
     s->request_timeout_ms = timeout_ms > 0 ? timeout_ms : 30000;
     return 0;
@@ -3633,7 +3653,7 @@ int gmb_http_server_set_h2(int64_t server, int on)
 
 int gmb_http_server_set_keepalive(int64_t server, int on)
 {
-    gmb_http_server_t* s = http_get(server);
+    gmb_http_server_t* s = http_slot(server);
     if (!s) return -1;
     s->keep_alive_disabled = on ? 0 : 1;
     return 0;
@@ -3643,7 +3663,7 @@ int gmb_http_server_set_keepalive(int64_t server, int on)
    virgola). Parità con CommonLib.Http.HttpSecurity usata da IL/PCode. */
 int gmb_http_server_set_security(int64_t server, int security_headers, const char* allowed, const char* blocked)
 {
-    gmb_http_server_t* s = http_get(server);
+    gmb_http_server_t* s = http_slot(server);
     if (!s) return -1;
     s->security_headers = security_headers ? 1 : 0;
     s->allowed_ip[0] = 0;
@@ -3656,7 +3676,7 @@ int gmb_http_server_set_security(int64_t server, int security_headers, const cha
 /* CONFIG MaxRequestBodySize (0 = illimitato) → 413 se Content-Length supera la soglia. */
 int gmb_http_server_set_max_body(int64_t server, long bytes)
 {
-    gmb_http_server_t* s = http_get(server);
+    gmb_http_server_t* s = http_slot(server);
     if (!s) return -1;
     s->max_body = bytes > 0 ? bytes : 0;
     return 0;
@@ -3666,7 +3686,7 @@ int gmb_http_server_set_max_body(int64_t server, long bytes)
    (connessioni concorrenti; spinlock). per_min <= 0 = disabilitato. */
 int gmb_http_server_set_rate_limit(int64_t server, int per_min, int burst)
 {
-    gmb_http_server_t* s = http_get(server);
+    gmb_http_server_t* s = http_slot(server);
     if (!s) return -1;
     gmb_net_lock(&s->rate_lock);
     s->rate_per_min = per_min > 0 ? per_min : 0;

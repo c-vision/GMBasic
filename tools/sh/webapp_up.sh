@@ -2,15 +2,17 @@
 # webapp_up.sh — gestione del processo della WEBAPP (Agents Operating Center)
 # ============================================================================
 # Uso:
-#   tools/sh/webapp_up.sh start      # avvia in background (PCode in-process)
-#   tools/sh/webapp_up.sh stop       # ferma il processo avviato da start
-#   tools/sh/webapp_up.sh restart    # stop + start
-#   tools/sh/webapp_up.sh status     # stato (pid, health, /api/status)
-#   tools/sh/webapp_up.sh logs       # tail -f del log
-#   tools/sh/webapp_up.sh url        # stampa gli URL
+#   tools/sh/webapp_up.sh start [c|csharp]  # avvia in background (default: c)
+#   tools/sh/webapp_up.sh stop              # ferma il processo avviato da start
+#   tools/sh/webapp_up.sh restart [c|csharp]
+#   tools/sh/webapp_up.sh status            # stato (pid, health, /api/status)
+#   tools/sh/webapp_up.sh logs              # tail -f del log
+#   tools/sh/webapp_up.sh url               # stampa gli URL
 #
-# Il processo gira con il backend PCode dell engine C# (`gmbcs run --engine pcode`,
-# gmb_vm_host esterno). Porte/seed/refresh vengono da shared/webapp/.webapp.toml.
+# DEFAULT = compilatore C (`gmb run --project shared/webapp`): è il mondo canonico,
+# il processo è un singolo eseguibile nativo (runtime C, server HTTP + agent API).
+# `csharp` resta disponibile come alternativa (`gmbcs run --engine pcode`).
+# Porte/seed/refresh vengono da shared/webapp/.webapp.toml.
 # PID e log stanno in ${TMPDIR} (mai nel repo).
 # ============================================================================
 set -u
@@ -18,7 +20,9 @@ set -u
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 APP="$ROOT/shared/webapp/app.bas"
 CFG="$ROOT/shared/webapp/.webapp.toml"
+GMB="$ROOT/GMBasic/native/gmb_compiler_c/build/gmb"
 REPL="$ROOT/GMBasicSharp/CompilerCli/bin/Debug/net10.0/gmbcs"
+ENGINE="c"
 PIDFILE="${TMPDIR:-/tmp}/gmb_webapp.pid"
 LOGFILE="${TMPDIR:-/tmp}/gmb_webapp.log"
 
@@ -61,14 +65,28 @@ cmd_start() {
     echo "già in esecuzione (pid $(cat "$PIDFILE")) → $BASE/index.bsp"
     return 0
   fi
-  if [ ! -x "$REPL" ]; then
-    echo "errore: engine C# (gmbcs) non compilato: $REPL" >&2
-    echo "  compila:  dotnet build GMBasicSharp/CompilerCli/CompilerCli.csproj" >&2
-    return 1
+  if [ "$ENGINE" = "csharp" ]; then
+    if [ ! -x "$REPL" ]; then
+      echo "errore: engine C# (gmbcs) non compilato: $REPL" >&2
+      echo "  compila:  dotnet build GMBasicSharp/CompilerCli/CompilerCli.csproj" >&2
+      return 1
+    fi
+  else
+    if [ ! -x "$GMB" ]; then
+      echo "errore: compilatore C non compilato: $GMB" >&2
+      echo "  compila:  cmake --build GMBasic/native/gmb_compiler_c/build --target gmb_cli" >&2
+      return 1
+    fi
   fi
   if [ ! -f "$APP" ]; then echo "errore: app mancante: $APP" >&2; return 1; fi
   : > "$LOGFILE"
-  nohup "$REPL" run --engine pcode "$APP" >>"$LOGFILE" 2>&1 &
+  if [ "$ENGINE" = "csharp" ]; then
+    nohup "$REPL" run --engine pcode "$APP" >>"$LOGFILE" 2>&1 &
+  else
+    # `run`: build + esecuzione con CWD = cartella del progetto; l'eseguibile e gli
+    # agenti persistiti stanno in shared/webapp/bin (mai versionato).
+    nohup "$GMB" run --project "$ROOT/shared/webapp" --entry app.bas >>"$LOGFILE" 2>&1 &
+  fi
   echo $! > "$PIDFILE"
   if wait_health; then
     echo "avviata (pid $(cat "$PIDFILE"))"
@@ -137,12 +155,15 @@ cmd_url() {
   echo "  api      : $BASE/api/agents  (proxy) / http://127.0.0.1:$API_PORT/api/agents (diretto)"
 }
 
-case "${1:-status}" in
+CMD="${1:-status}"
+if [ "${2:-}" = "c" ] || [ "${2:-}" = "csharp" ]; then ENGINE="$2"; fi
+
+case "$CMD" in
   start)   cmd_start ;;
   stop)    cmd_stop ;;
   restart) cmd_stop; cmd_start ;;
   status)  cmd_status ;;
   logs)    cmd_logs ;;
   url)     cmd_url ;;
-  *) echo "uso: $0 start|stop|restart|status|logs|url" >&2; exit 2 ;;
+  *) echo "uso: $0 start|stop|restart|status|logs|url [c|csharp]" >&2; exit 2 ;;
 esac

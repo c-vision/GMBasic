@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <math.h>
 #include <time.h>
 
@@ -145,9 +146,10 @@ int gmb_team_remove_agent(const char* team, const char* agent) {
 
 static int role_from_str(const char* r) {
     if (!r) return 1;
-    if (strcmp(r, "COORDINATOR") == 0) return 0;
-    if (strcmp(r, "CRITIC") == 0) return 2;
-    if (strcmp(r, "OBSERVER") == 0) return 3;
+    /* case-insensitive come TeamRole (Enum.TryParse ignoreCase) del managed. */
+    if (strcasecmp(r, "COORDINATOR") == 0) return 0;
+    if (strcasecmp(r, "CRITIC") == 0) return 2;
+    if (strcasecmp(r, "OBSERVER") == 0) return 3;
     return 1;
 }
 
@@ -162,11 +164,14 @@ int gmb_team_set_role(const char* team, const char* agent, const char* role) {
 
 static int strategy_from_str(const char* s) {
     if (!s) return 0;
-    if (strcmp(s, "ROUNDROBIN") == 0 || strcmp(s, "ROUND_ROBIN") == 0) return 1;
-    if (strcmp(s, "COORDINATOR") == 0) return 2;
-    if (strcmp(s, "MIXTURE") == 0) return 3;
-    if (strcmp(s, "DISTILLATION") == 0) return 4;
-    if (strcmp(s, "DELIBERATION") == 0) return 5;
+    /* case-insensitive: la superficie HTTP manda "Sequential"/"RoundRobin" (enum C#
+     * Enum.TryParse ignoreCase); i comandi BASIC mandano la forma maiuscola. */
+    if (strcasecmp(s, "ROUNDROBIN") == 0 || strcasecmp(s, "ROUND_ROBIN") == 0) return 1;
+    if (strcasecmp(s, "COORDINATOR") == 0) return 2;
+    if (strcasecmp(s, "MIXTURE") == 0) return 3;
+    if (strcasecmp(s, "DISTILLATION") == 0) return 4;
+    if (strcasecmp(s, "DELIBERATION") == 0) return 5;
+    if (strcasecmp(s, "DAG") == 0) return 6;
     return 0;
 }
 
@@ -454,6 +459,117 @@ char* gmb_team_agents_str(const char* team) {
     return team_join(names, n, ",");
 }
 
+/* ── JSON della superficie HTTP (GET /api/teams e /api/teams/{nome}) ──────────
+ * Parità AgentStatusManager.GetTeamsJson/GetTeamStatusJson del managed. Costruito
+ * con le primitive list/dict del runtime (escape System.Text.Json identico). */
+static const char* team_strategy_name(int s) {
+    switch (s) {
+        case 1: return "RoundRobin";
+        case 2: return "Coordinator";
+        case 3: return "Mixture";
+        case 4: return "Distillation";
+        case 5: return "Deliberation";
+        case 6: return "Dag";
+        default: return "Sequential";
+    }
+}
+
+static const char* team_role_name(int r) {
+    switch (r) {
+        case 0: return "Coordinator";
+        case 2: return "Critic";
+        case 3: return "Observer";
+        default: return "Worker";
+    }
+}
+
+/* Id STABILE del team (32 hex, forma GUID senza trattini come AgentServer): il C non
+ * ha un generatore persistente per i team, quindi deriva dal nome (FNV-1a 64 × 2).
+ * Deterministico tra le esecuzioni, unico per nome. */
+static void team_id_hex(const char* name, char out[33]) {
+    unsigned long long h1 = 1469598103934665603ULL, h2 = 1099511628211ULL;
+    for (const unsigned char* p = (const unsigned char*)name; *p; p++) {
+        h1 = (h1 ^ (unsigned long long)*p) * 1099511628211ULL;
+        h2 = (h2 + (unsigned long long)*p) * 0x100000001B3ULL;
+    }
+    snprintf(out, 33, "%016llx%016llx", h1, h2);
+}
+
+static char* team_json_take(gmb_list_t* out) {
+    /* cap INIZIALE non-zero: gmb_json_append_* cresce con *cap *= 2 (cap 0 → loop infinito). */
+    size_t cap = 256, pos = 0;
+    char* buf = (char*)malloc(cap);
+    if (!buf) { gmb_list_free(out); return strdup("[]"); }
+    buf[0] = '\0';
+    gmb_json_append_list(out, &buf, &cap, &pos);
+    gmb_list_free(out);
+    if (pos < cap) buf[pos] = '\0';
+    return buf;
+}
+
+char* gmb_team_json(void) {
+    gmb_list_t out = gmb_list_new();
+    for (int i = 0; i < GMB_TEAM_MAX; i++) {
+        gmb_team_t* t = &g_teams[i];
+        if (!t->active) continue;
+        gmb_dict_t d = gmb_dict_new();
+        gmb_dict_set(&d, "name", gmb_make_val_string(t->name));
+        gmb_dict_set(&d, "strategy", gmb_make_val_string(team_strategy_name(t->strategy)));
+        gmb_dict_set(&d, "memberCount", gmb_make_val_int((gmb_int_t)t->member_count));
+        gmb_list_push(&out, gmb_make_val_dict_take(&d));
+    }
+    return team_json_take(&out);
+}
+
+char* gmb_team_detail_json(const char* team) {
+    gmb_team_t* t = find_team(team);
+    if (!t) {
+        gmb_dict_t e = gmb_dict_new();
+        char msg[256];
+        snprintf(msg, sizeof(msg), "team '%s' non trovato", team ? team : "");
+        gmb_dict_set(&e, "error", gmb_make_val_string(msg));
+        size_t ecap = 256, epos = 0;
+        char* eb = (char*)malloc(ecap);
+        if (!eb) { gmb_dict_free(&e); return strdup("{\"error\":\"team non trovato\"}"); }
+        eb[0] = '\0';
+        gmb_json_append_dict(&e, &eb, &ecap, &epos);
+        gmb_dict_free(&e);
+        if (epos < ecap) eb[epos] = '\0';
+        return eb;
+    }
+    gmb_dict_t d = gmb_dict_new();
+    char id[33];
+    team_id_hex(t->name, id);
+    gmb_dict_set(&d, "name", gmb_make_val_string(t->name));
+    gmb_dict_set(&d, "id", gmb_make_val_string(id));
+    gmb_dict_set(&d, "status", gmb_make_val_string("Idle"));
+    gmb_dict_set(&d, "strategy", gmb_make_val_string(team_strategy_name(t->strategy)));
+    gmb_dict_set(&d, "coordinator", gmb_make_val_string(t->coordinator));
+    gmb_dict_set(&d, "memberCount", gmb_make_val_int((gmb_int_t)t->member_count));
+    gmb_list_t members = gmb_list_new();
+    for (int i = 0; i < t->member_count; i++) {
+        gmb_dict_t m = gmb_dict_new();
+        gmb_dict_set(&m, "name", gmb_make_val_string(t->members[i].name));
+        gmb_dict_set(&m, "role", gmb_make_val_string(team_role_name(t->members[i].role)));
+        gmb_list_push(&members, gmb_make_val_dict_take(&m));
+    }
+    gmb_dict_set(&d, "members", gmb_make_val_list_take(&members));
+    {
+        char ts[64];
+        gmb_now_iso(ts, sizeof(ts));
+        gmb_dict_set(&d, "updatedAt", gmb_make_val_string(ts));
+    }
+    /* il dettaglio è un OGGETTO: serializzo il dict direttamente */
+    size_t cap = 256, pos = 0;
+    char* buf = (char*)malloc(cap);
+    if (!buf) { gmb_dict_free(&d); return strdup("{}"); }
+    buf[0] = '\0';
+    gmb_json_append_dict(&d, &buf, &cap, &pos);
+    gmb_dict_free(&d);
+    if (pos < cap) buf[pos] = '\0';
+    return buf;
+}
+
 static const char* member_prompt(gmb_team_t* t, int idx, const char* task, const char* context) {
     static char buf[2048];
     snprintf(buf, sizeof(buf), "%s\nTeam: %s\nTask: %s\nContesto: %s",
@@ -670,14 +786,43 @@ const char* gmb_team_status(const char* team) {
     return buf;
 }
 
+/* Nome della strategia (TeamStrategy.ToString) del team; NULL se non esiste.
+ * Usato dalle risposte HTTP (POST /api/teams) e dal dettaglio. */
+const char* gmb_team_strategy_name(const char* team) {
+    gmb_team_t* t = find_team(team);
+    if (!t) return NULL;
+    return team_strategy_name(t->strategy);
+}
+
+static void team_fput_escaped(FILE* f, const char* s) {
+    char buf[2048];
+    if (!s) s = "";
+    if (strlen(s) >= sizeof(buf) / 6) s = "";   /* buffer troppo piccolo: mai JSON invalido */
+    size_t n = gmb_json_escape(buf, sizeof(buf) - 1, s);
+    buf[n] = '\0';
+    fputs(buf, f);
+}
+
 int gmb_team_save(const char* team, const char* path) {
     { int hr = gmb_state_hook_mutate("team.save", team, path, NULL); if (hr >= 0) return hr; }
     gmb_team_t* t = find_team(team);
     if (!t) return 0;
     FILE* f = fopen(path, "w");
     if (!f) return 0;
-    fprintf(f, "{\"name\":\"%s\",\"members\":%d,\"strategy\":%d,\"recursion\":%d,\"latent\":\"%s\",\"thoughts\":%d}",
-        t->name, t->member_count, t->strategy, t->recursion_rounds, t->latent_mode, t->latent_thoughts);
+    /* Snapshot con MEMBRI e RUOLI (parità TeamServer.Save del managed: prima si salvava
+     * solo il conteggio → al Load i nomi andavano persi e il team tornava vuoto). */
+    fputs("{\"name\":\"", f); team_fput_escaped(f, t->name); fputs("\",", f);
+    fprintf(f, "\"strategy\":%d,\"coordinator\":\"", t->strategy);
+    team_fput_escaped(f, t->coordinator);
+    fprintf(f, "\",\"recursion\":%d,\"latent\":\"", t->recursion_rounds);
+    team_fput_escaped(f, t->latent_mode);
+    fprintf(f, "\",\"thoughts\":%d,\"members\":[", t->latent_thoughts);
+    for (int i = 0; i < t->member_count; i++) {
+        if (i) fputc(',', f);
+        fputs("{\"name\":\"", f); team_fput_escaped(f, t->members[i].name);
+        fprintf(f, "\",\"role\":%d}", t->members[i].role);
+    }
+    fputs("]}", f);
     fclose(f);
     return 1;
 }
@@ -695,7 +840,55 @@ int gmb_team_load(const char* team, const char* path) {
     if (!t) return 0;
     /* parse "key":value minimale */
     const char* p = line;
-    if ((p = strstr(p, "\"members\"")) != NULL) { p = strchr(p, ':'); if (p) t->member_count = atoi(p + 1); }
+    t->member_count = 0;
+    if ((p = strstr(line, "\"members\"")) != NULL) {
+        p = strchr(p, ':');
+        if (p) {
+            p++;
+            while (*p && isspace((unsigned char)*p)) p++;
+            if (*p == '[') {
+                /* array di membri {"name":"X","role":N} — formato nuovo */
+                p++;
+                while (*p && *p != ']') {
+                    const char* nm = strstr(p, "\"name\"");
+                    if (!nm) break;
+                    nm = strchr(nm, ':');
+                    if (!nm) break;
+                    nm++;
+                    while (*nm && (*nm == ' ' || *nm == '"')) nm++;
+                    char nb[64]; int k = 0;
+                    while (*nm && *nm != '"' && k < 63) nb[k++] = *nm++;
+                    nb[k] = '\0';
+                    int role = 1;
+                    const char* rl = strstr(p, "\"role\"");
+                    if (rl) { rl = strchr(rl, ':'); if (rl) role = atoi(rl + 1); }
+                    if (k > 0 && t->member_count < GMB_TEAM_MEMBERS_MAX) {
+                        strncpy(t->members[t->member_count].name, nb, 63);
+                        t->members[t->member_count].name[63] = '\0';
+                        t->members[t->member_count].role = role;
+                        t->member_count++;
+                    }
+                    p = nm;
+                    while (*p && *p != '}') p++;
+                    if (*p == '}') p++;
+                }
+            } else {
+                /* formato vecchio: "members":<conteggio> */
+                t->member_count = atoi(p);
+            }
+        }
+    }
+    if ((p = strstr(line, "\"coordinator\"")) != NULL) {
+        p = strchr(p, ':');
+        if (p) {
+            p++;
+            while (*p && *p != '"') p++;
+            if (*p == '"') p++;
+            int k = 0;
+            while (*p && *p != '"' && k < 63) t->coordinator[k++] = *p++;
+            t->coordinator[k] = '\0';
+        }
+    }
     if ((p = strstr(line, "\"strategy\"")) != NULL) { p = strchr(p, ':'); if (p) t->strategy = atoi(p + 1); }
     if ((p = strstr(line, "\"recursion\"")) != NULL) { p = strchr(p, ':'); if (p) t->recursion_rounds = atoi(p + 1); }
     if ((p = strstr(line, "\"thoughts\"")) != NULL) { p = strchr(p, ':'); if (p) t->latent_thoughts = atoi(p + 1); }

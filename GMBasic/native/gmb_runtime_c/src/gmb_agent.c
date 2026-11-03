@@ -640,6 +640,112 @@ char* gmb_agent_events_str(void) {
     return b;
 }
 
+/* ── Aggregatori JSON della superficie HTTP agente ─────────────────────────────
+ * Parità AgentStatusManager.GetAgentsJson (C#) e AgentEventLog dell'IL: il JSON è
+ * costruito qui, nel runtime (§0bis), non nel server HTTP. Serializzazione con le
+ * primitive list/dict del runtime (escape System.Text.Json identico al managed). */
+static gmb_val_t ag_str(const char* s) { return gmb_make_val_string(s ? s : ""); }
+
+char* gmb_agent_agents_json(void)
+{
+    char team_names[64][64];
+    int nt = gmb_team_list(team_names, 64);
+    gmb_list_t out = gmb_list_new();
+    for (int i = 0; i < GMB_AGENT_MAX; i++) {
+        gmb_agent_t* a = &g_agents[i];
+        if (!a->active) continue;
+        gmb_dict_t d = gmb_dict_new();
+        gmb_dict_set(&d, "name", ag_str(a->name));
+        /* C# GetAgentsJson: status SEMPRE "Idle" (lo stato vivo è in /api/state). */
+        gmb_dict_set(&d, "status", ag_str("Idle"));
+        const char* perm = gmb_agent_get(a->name, "permission");
+        gmb_dict_set(&d, "permission", ag_str((perm && *perm) ? perm : g_agent_permission_default));
+        gmb_dict_set(&d, "model", ag_str(a->model));
+        /* teams: appartenenza con confronto OrdinalIgnoreCase (come il managed). */
+        gmb_list_t teams = gmb_list_new();
+        for (int t = 0; t < nt; t++) {
+            char members[64][64];
+            int nm = gmb_team_agents(team_names[t], members, 64);
+            for (int k = 0; k < nm; k++)
+                if (strcasecmp(members[k], a->name) == 0) {
+                    gmb_list_push(&teams, ag_str(team_names[t]));
+                    break;
+                }
+        }
+        gmb_dict_set(&d, "teams", gmb_make_val_list_take(&teams));
+        gmb_dict_set(&d, "toolCount", gmb_make_val_int((gmb_int_t)a->tool_count));
+        gmb_dict_set(&d, "historyCount", gmb_make_val_int((gmb_int_t)a->history_count));
+        {
+            const char* pk = gmb_agent_get(a->name, "publickey");
+            int has = (pk && *pk) ? 1 : 0;
+            if (!has) { const char* kp = gmb_agent_get(a->name, "keypair"); has = (kp && *kp) ? 1 : 0; }
+            gmb_dict_set(&d, "hasKeypair", gmb_make_val_bool(has ? 1 : 0));
+        }
+        gmb_list_push(&out, gmb_make_val_dict_take(&d));
+    }
+    /* cap INIZIALE non-zero: gmb_json_append_* cresce con *cap *= 2 (cap 0 → loop infinito). */
+    size_t cap = 256, pos = 0;
+    char* buf = (char*)malloc(cap);
+    if (!buf) { gmb_list_free(&out); return strdup("[]"); }
+    buf[0] = '\0';
+    gmb_json_append_list(&out, &buf, &cap, &pos);
+    gmb_list_free(&out);
+    if (pos < cap) buf[pos] = '\0';
+    return buf;
+}
+
+/* Eventi in JSON: [{timestamp,kind,agent,detail}] — stessa forma dell'anonimo C#
+ * (IlRuntime, case "api/events"). Gli eventi sono nel formato verbose di agent_log:
+ * "[AGENT <Kind>] <ts> agent=<nome> <detail>". */
+char* gmb_agent_events_json(void)
+{
+    gmb_list_t out = gmb_list_new();
+    for (int i = 0; i < g_agent_event_count; i++) {
+        const char* e = g_agent_events[i];
+        char kind[64] = "", ts[64] = "", agent[128] = "", detail[256] = "";
+        const char* p = strstr(e, "[AGENT ");
+        if (p) {
+            p += 7;
+            const char* ke = strstr(p, "] ");
+            if (ke) {
+                size_t kl = (size_t)(ke - p);
+                if (kl >= sizeof(kind)) kl = sizeof(kind) - 1;
+                memcpy(kind, p, kl); kind[kl] = '\0';
+                const char* rest = ke + 2;
+                const char* am = strstr(rest, " agent=");
+                if (am) {
+                    size_t tl = (size_t)(am - rest);
+                    if (tl >= sizeof(ts)) tl = sizeof(ts) - 1;
+                    memcpy(ts, rest, tl); ts[tl] = '\0';
+                    const char* nm = am + 7;
+                    const char* sp = strchr(nm, ' ');
+                    size_t nl = sp ? (size_t)(sp - nm) : strlen(nm);
+                    if (nl >= sizeof(agent)) nl = sizeof(agent) - 1;
+                    memcpy(agent, nm, nl); agent[nl] = '\0';
+                    if (sp) snprintf(detail, sizeof(detail), "%s", sp + 1);
+                }
+            }
+        }
+        gmb_dict_t d = gmb_dict_new();
+        gmb_dict_set(&d, "timestamp", ag_str(ts));
+        gmb_dict_set(&d, "kind", ag_str(kind));
+        gmb_dict_set(&d, "agent", ag_str(agent));
+        gmb_dict_set(&d, "detail", ag_str(detail));
+        gmb_list_push(&out, gmb_make_val_dict_take(&d));
+    }
+    /* cap INIZIALE non-zero: gmb_json_append_* cresce con *cap *= 2 (cap 0 → loop infinito). */
+    size_t cap = 256, pos = 0;
+    char* buf = (char*)malloc(cap);
+    if (!buf) { gmb_list_free(&out); return strdup("[]"); }
+    buf[0] = '\0';
+    gmb_json_append_list(&out, &buf, &cap, &pos);
+    gmb_list_free(&out);
+    if (pos < cap) buf[pos] = '\0';
+    return buf;
+}
+
+void gmb_now_iso(char* out, size_t cap) { agent_iso_ts(out, cap); }
+
 int gmb_agent_save(const char* name, const char* path) {
     { int hr = gmb_state_hook_mutate("agent.save", name, path, NULL); if (hr >= 0) return hr; }
     gmb_agent_t* a = find_agent(name);

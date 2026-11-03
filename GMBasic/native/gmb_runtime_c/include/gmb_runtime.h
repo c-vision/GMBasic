@@ -1459,6 +1459,13 @@ int gmb_agent_list(char out[][64], int max);
 const char* gmb_agent_status(const char* name);
 int gmb_agent_events(char out[][256], int max);
 char* gmb_agent_events_str(void);
+/* Aggregatori JSON della superficie HTTP agente (parità AgentStatusManager/AgentEventLog
+ * del mondo managed): GET /api/agents e GET /api/events. Restano nel runtime (§0bis),
+ * il server HTTP (gmb_agent_http.c) si limita a servire la stringa. malloc → free. */
+char* gmb_agent_agents_json(void);
+char* gmb_agent_events_json(void);
+/* Timestamp ISO-8601 ":O" (yyyy-MM-ddTHH:mm:ss.fffffff+00:00), come DateTimeOffset C#. */
+void gmb_now_iso(char* out, size_t cap);
 /* AI AGENT TRACE <ON|OFF|VERBOSE> (parità AgentEventLog.SetMode): abilita l'echo degli eventi
  * su stderr. Ritorna 1 se la modalità è valida. */
 int gmb_agent_trace(const char* mode);
@@ -1517,6 +1524,12 @@ int gmb_team_list(char out[][64], int max);
 int gmb_team_agents(const char* team, char out[][64], int max);
 char* gmb_team_list_str(void);
 char* gmb_team_agents_str(const char* team);
+/* JSON della superficie HTTP agente: GET /api/teams (lista) e GET /api/teams/{nome}
+ * (dettaglio con membri/ruoli) — parità TeamServer/AgentStatusManager del managed. */
+char* gmb_team_json(void);
+char* gmb_team_detail_json(const char* team);
+/* Nome della strategia (TeamStrategy.ToString) o NULL se il team non esiste. */
+const char* gmb_team_strategy_name(const char* team);
 char* gmb_team_run(const char* team, const char* task);
 char* gmb_team_run_start(const char* team, const char* task);
 char* gmb_team_run_wait(const char* handle);

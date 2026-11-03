@@ -12,10 +12,9 @@
  *   legacy agent : /chat /execute /memory /workflow
  *   webapp       : /api/memory /api/memory/search /api/brain/<route> /api/enrich
  *                  /api/workflows[/{n}[/steps|/execute]] /api/agent/{n}/prompt
- *                  /api/team/{n}/broadcast
- *   non portate  : /api/agents /api/teams /api/teams/{n} /api/events → 501 ESPLICITO
- *                  (servono gli aggregatori JSON di AgentStatusManager/AgentEventLog,
- *                  assenti nel runtime C: vedi Todo/(open) - Webapp-HTTP-Surface-C-Port §2.1)
+ *                  /api/team/{n}/broadcast /api/agents /api/teams[/{n}] /api/events
+ *                  (gli aggregatori JSON vivono nel runtime: gmb_agent_agents_json,
+ *                   gmb_team_json/gmb_team_detail_json, gmb_agent_events_json)
  */
 #include "gmb_runtime.h"
 #include "gmb_network.h"
@@ -846,10 +845,162 @@ static void h_not_in_c_msg(http_res_t* r)
 {
     res_err(r, 501, "route non implementata nel runtime C (manca l'aggregatore JSON: vedi Todo Webapp-HTTP-Surface-C-Port §2.1)");
 }
-static void h_not_in_c(const http_req_t* q, http_res_t* r)
+
+/* GET /api/agents — JSON aggregato dal registro agenti (AgentStatusManager.GetAgentsJson). */
+static void h_api_agents(const http_req_t* q, http_res_t* r)
 {
     (void)q;
-    h_not_in_c_msg(r);
+    res_set(r, 200, gmb_agent_agents_json());
+}
+
+/* GET /api/teams — lista team (AgentStatusManager.GetTeamsJson). */
+static void h_api_teams(const http_req_t* q, http_res_t* r)
+{
+    (void)q;
+    res_set(r, 200, gmb_team_json());
+}
+
+/* GET /api/teams/{n} — dettaglio con membri e ruoli (GetTeamStatusJson). */
+static void h_api_team_detail(const http_req_t* q, http_res_t* r, const char* name)
+{
+    (void)q;
+    res_set(r, 200, gmb_team_detail_json(name));
+}
+
+/* GET /api/events — ring buffer eventi (AgentEventLog) in JSON. */
+static void h_api_events(const http_req_t* q, http_res_t* r)
+{
+    (void)q;
+    res_set(r, 200, gmb_agent_events_json());
+}
+
+/* GET /api/state-level helper: membri del team come array JSON di nomi. */
+static void rb_add_team_members(rbuf_t* b, const char* team)
+{
+    char names[64][64];
+    int n = gmb_team_agents(team, names, 64);
+    rb_adds(b, "[");
+    for (int i = 0; i < n; i++) {
+        if (i) rb_adds(b, ",");
+        rb_adds(b, "\"");
+        rb_add_escaped(b, names[i]);
+        rb_adds(b, "\"");
+    }
+    rb_adds(b, "]");
+}
+
+/* POST /api/teams {name, strategy} — parità V2 TEAM CRUD (IlRuntime): 400 senza nome,
+ * 409 se esiste, 201 {name,strategy,members[]}. */
+static void h_api_team_create(const http_req_t* q, http_res_t* r)
+{
+    char name[160] = "", strat[64] = "";
+    field_or_query(q, "name", name, sizeof name);
+    field_or_query(q, "strategy", strat, sizeof strat);
+    if (blank(name)) { res_err(r, 400, "Missing 'name'"); return; }
+    if (!gmb_team_create(name)) {
+        char msg[256];
+        snprintf(msg, sizeof(msg), "Team '%s' already exists", name);
+        res_err(r, 409, msg);
+        return;
+    }
+    if (!blank(strat)) gmb_team_set_strategy(name, strat);
+    rbuf_t b = {0};
+    rb_adds(&b, "{");
+    rb_open_kv(&b, "name", name);
+    rb_adds(&b, ",");
+    rb_open_kv(&b, "strategy", gmb_team_strategy_name(name));
+    rb_adds(&b, ",\"members\":");
+    rb_add_team_members(&b, name);
+    rb_adds(&b, "}");
+    res_set(r, 201, rb_take(&b));
+}
+
+/* POST /api/teams/{name}/agents {agent, role} — 400 se mancano, 404 se team/agente
+ * non validi (o già membro), 200 {team,agent,role,members[]}. */
+static void h_api_team_add_member(const http_req_t* q, http_res_t* r, const char* team)
+{
+    char agent[160] = "", role[64] = "";
+    field_or_query(q, "agent", agent, sizeof agent);
+    field_or_query(q, "role", role, sizeof role);
+    if (blank(team) || blank(agent)) { res_err(r, 400, "Missing team or agent"); return; }
+    if (!gmb_team_add_agent(team, agent)) {
+        char msg[320];
+        snprintf(msg, sizeof(msg),
+                 "Team '%s' or agent '%s' not valid (already a member?)", team, agent);
+        res_err(r, 404, msg);
+        return;
+    }
+    if (!blank(role)) gmb_team_set_role(team, agent, role);
+    rbuf_t b = {0};
+    rb_adds(&b, "{");
+    rb_open_kv(&b, "team", team);
+    rb_adds(&b, ",");
+    rb_open_kv(&b, "agent", agent);
+    rb_adds(&b, ",");
+    rb_open_kv(&b, "role", blank(role) ? "Worker" : role);
+    rb_adds(&b, ",\"members\":");
+    rb_add_team_members(&b, team);
+    rb_adds(&b, "}");
+    res_set(r, 200, rb_take(&b));
+}
+
+/* DELETE /api/teams/{name} — 404 se assente, 200 {deleted}. */
+static void h_api_team_delete(const http_req_t* q, http_res_t* r, const char* team)
+{
+    (void)q;
+    if (blank(team)) { res_err(r, 400, "Missing team name"); return; }
+    if (!gmb_team_delete(team)) {
+        char msg[256];
+        snprintf(msg, sizeof(msg), "Team '%s' not found", team);
+        res_err(r, 404, msg);
+        return;
+    }
+    rbuf_t b = {0};
+    rb_adds(&b, "{");
+    rb_open_kv(&b, "deleted", team);
+    rb_adds(&b, "}");
+    res_set(r, 200, rb_take(&b));
+}
+
+/* POST /api/teams/{name}/save {"path"} — persiste il team su file. */
+static void h_api_team_save(const http_req_t* q, http_res_t* r, const char* team)
+{
+    char path[1024] = "";
+    field_or_query(q, "path", path, sizeof path);
+    if (blank(team) || blank(path)) { res_err(r, 400, "Missing team or path"); return; }
+    if (!gmb_team_save(team, path)) {
+        char msg[256];
+        snprintf(msg, sizeof(msg), "Team '%s' non trovato o path non scrivibile", team);
+        res_err(r, 404, msg);
+        return;
+    }
+    res_set(r, 200, strdup("{\"saved\":true}"));
+}
+
+/* POST /api/teams/load {name, path} — carica un team da file. */
+static void h_api_team_load(const http_req_t* q, http_res_t* r)
+{
+    char name[160] = "", path[1024] = "";
+    field_or_query(q, "name", name, sizeof name);
+    field_or_query(q, "path", path, sizeof path);
+    if (blank(name) || blank(path)) { res_err(r, 400, "Missing name or path"); return; }
+    FILE* f = fopen(path, "r");
+    if (!f) {
+        char msg[1200];
+        snprintf(msg, sizeof(msg), "File not found: %s", path);
+        res_err(r, 404, msg);
+        return;
+    }
+    fclose(f);
+    if (!gmb_team_load(name, path)) {
+        res_err(r, 500, "Load del team fallito");
+        return;
+    }
+    rbuf_t b = {0};
+    rb_adds(&b, "{");
+    rb_open_kv(&b, "loaded", name);
+    rb_adds(&b, "}");
+    res_set(r, 200, rb_take(&b));
 }
 
 /* ============================================================================
@@ -878,9 +1029,11 @@ static const route_t ROUTES[] = {
     { "*",    "api/brain/search",        h_api_brain_search },
     { "*",    "api/enrich",              h_api_enrich },
     { "*",    "api/workflows",           h_api_workflows_coll },
-    { "GET",  "api/agents",              h_not_in_c },
-    { "GET",  "api/teams",               h_not_in_c },
-    { "GET",  "api/events",              h_not_in_c },
+    { "POST", "api/teams",               h_api_team_create },
+    { "POST", "api/teams/load",          h_api_team_load },
+    { "GET",  "api/agents",              h_api_agents },
+    { "GET",  "api/teams",               h_api_teams },
+    { "GET",  "api/events",              h_api_events },
 };
 
 #define ROUTE_COUNT ((int)(sizeof(ROUTES) / sizeof(ROUTES[0])))
@@ -956,9 +1109,29 @@ static void dispatch(const http_req_t* q, http_res_t* r)
         res_err(r, 404, "route not found");
         return;
     }
-    /* api/teams/<name> → non portata */
+    /* api/teams/<name> → dettaglio (GET) · delete (DELETE) · POST <name>/agents */
     static const char* TEAMS = "api/teams/";
-    if (strncmp(q->path, TEAMS, strlen(TEAMS)) == 0) { h_not_in_c_msg(r); return; }
+    if (strncmp(q->path, TEAMS, strlen(TEAMS)) == 0) {
+        const char* rest = q->path + strlen(TEAMS);
+        size_t rl = strlen(rest);
+        if (rl > 5 && strcmp(rest + rl - 5, "/save") == 0 && strcmp(q->method, "POST") == 0) {
+            char nm[160] = "";
+            snprintf(nm, sizeof(nm), "%.*s", (int)(rl - 5), rest);
+            h_api_team_save(q, r, nm);
+            return;
+        }
+        if (rl > 7 && strcmp(rest + rl - 7, "/agents") == 0 && strcmp(q->method, "POST") == 0) {
+            char nm[160] = "";
+            snprintf(nm, sizeof(nm), "%.*s", (int)(rl - 7), rest);
+            h_api_team_add_member(q, r, nm);
+            return;
+        }
+        if (strchr(rest, '/')) { res_err(r, 404, "route not found"); return; }
+        if (is_get(q)) { h_api_team_detail(q, r, rest); return; }
+        if (is_delete(q)) { h_api_team_delete(q, r, rest); return; }
+        res_err(r, 404, "route not found");
+        return;
+    }
 
     res_err(r, 404, "route not found");
 }
