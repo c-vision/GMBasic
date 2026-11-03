@@ -11,6 +11,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <pthread.h>
 #include "gmb_vm_value.h"
 #include "gmb_chunk.h"
@@ -140,12 +141,88 @@ typedef struct {
  * riusa gli stessi numeri di slot, quindi con stato indicizzato dal solo slot il
  * FOR_PREPARE del callee sovrascriveva end/step del chiamante e il suo FOR_LOOP
  * lasciava active=0 → il FOR esterno terminava e le iterazioni andavano perse. */
+/* Stato dei cicli FOR — MAPPA SPARSA slot → (counter, end, step), come
+ * PCodeCallFrame.ForState (Dictionary<int,(double,double,double)> in GpmCore.cs).
+ *
+ * Prima erano quattro array densi di 64 elementi indicizzati dallo slot del locale: una
+ * capacità fissa arbitraria, mentre gli slot di una procedura crescono in fretta perché
+ * ogni temp del compilatore (cc_local_add, gmb_compiler.c) ne occupa uno nuovo e non
+ * viene mai riusato. Con slot >= 64 il FOR_PREPARE non marcava il ciclo e il FOR_LOOP
+ * usciva subito: UNA sola iterazione, in silenzio (caso reale: SUB PcfSave di GlyphSmith,
+ * PCF con una proprietà invece di nove).
+ *
+ * La mappa non ha alcun tetto di slot e paga solo per i cicli DAVVERO aperti nel frame
+ * (tipicamente 1-3, ricerca lineare su pochi elementi). Il ciclo è aperto se la voce
+ * esiste: alla fine si rimuove, esattamente come il Remove(slot) di PCodeVM. */
 typedef struct {
-    double  counter[64];
-    double  end[64];
-    double  step[64];
-    uint8_t active[64];
+    int    slot;
+    double counter;
+    double end;
+    double step;
+} gmb_for_entry_t;
+
+typedef struct {
+    gmb_for_entry_t* v;
+    int n;
+    int cap;
 } gmb_for_state_t;
+
+/* Voce del ciclo aperto sullo slot, o NULL se non c'è (ciclo chiuso/mai preparato). */
+static inline gmb_for_entry_t* gmb_for_find(gmb_for_state_t* s, int slot)
+{
+    if (!s) return NULL;
+    for (int i = 0; i < s->n; i++)
+        if (s->v[i].slot == slot) return &s->v[i];
+    return NULL;
+}
+
+/* Apre (o riapre) il ciclo sullo slot. NULL solo se manca memoria. */
+static inline gmb_for_entry_t* gmb_for_upsert(gmb_for_state_t* s, int slot,
+                                              double counter, double end, double step)
+{
+    if (!s) return NULL;
+    gmb_for_entry_t* e = gmb_for_find(s, slot);
+    if (!e)
+    {
+        if (s->n >= s->cap)
+        {
+            int nc = s->cap ? s->cap * 2 : 4;
+            gmb_for_entry_t* nv = (gmb_for_entry_t*)realloc(s->v, (size_t)nc * sizeof(*nv));
+            if (!nv) return NULL;
+            s->v = nv;
+            s->cap = nc;
+        }
+        e = &s->v[s->n++];
+        e->slot = slot;
+    }
+    e->counter = counter;
+    e->end = end;
+    e->step = step;
+    return e;
+}
+
+/* Chiude il ciclo sullo slot (PCode: ForState.Remove(slot)). */
+static inline void gmb_for_drop(gmb_for_state_t* s, int slot)
+{
+    if (!s) return;
+    for (int i = 0; i < s->n; i++)
+        if (s->v[i].slot == slot)
+        {
+            s->v[i] = s->v[s->n - 1];
+            s->n--;
+            return;
+        }
+}
+
+/* Libera la mappa (frame in uscita, task in distruzione). */
+static inline void gmb_for_clear(gmb_for_state_t* s)
+{
+    if (!s) return;
+    free(s->v);
+    s->v = NULL;
+    s->n = 0;
+    s->cap = 0;
+}
 
 typedef struct gmb_frame {
     struct gmb_frame* prev;

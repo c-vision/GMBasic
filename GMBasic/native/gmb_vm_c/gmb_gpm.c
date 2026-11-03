@@ -153,6 +153,7 @@ void gmb_frame_release(gmb_frame_t* f)
             if (f->local_types[i] == 2 && f->local_refs[i]) gmb_obj_release(f->local_refs[i]);
         if (f->constructor_instance) gmb_obj_release(f->constructor_instance);
         gmb_dyn_scope_clear(&f->dyn);
+        gmb_for_clear(&f->for_state);
         free(f);
     }
 }
@@ -352,9 +353,21 @@ static gmb_stack_entry_t capture_slot_byref(double* nums, gmb_obj_t** refs,
      * cell — così le scritture della closure e del chiamante condividono lo slot. */
     if (types[slot] == 2 && refs[slot])
     {
-        out.type = 2; out.ref = refs[slot]; out.basic_type = basic[slot];
-        gmb_obj_retain(out.ref);
-        return out;
+        /* STRINGA (oggetto stringa "puro": kind GMB_OBJ_STRING e SENZA type_name, la
+         * stessa discriminante dell'adapter): si imbusta come gli scalari. Serve al
+         * write-through: `@ row,col GET nome$` deve scrivere nella variabile tramite il
+         * box (prima riceveva l'oggetto stringa stesso e il testo digitato finiva nel
+         * vuoto — VM/C dava il campo vuoto mentre IL/PCode/C99 lo riempivano). Per le
+         * closure la semantica non cambia: OP_LOAD_UPVALUE/OP_STORE_UPVALUE attraversano
+         * il byref (unwrap/write-through), come per gli scalari. I REFERENCE type
+         * (dict/oggetti/array/chiusure) restano NON imbustati: sono già condivisi e un
+         * proxy a uno slot di un frame poppato leggerebbe garbage. */
+        if (refs[slot]->kind != GMB_OBJ_STRING || refs[slot]->type_name)
+        {
+            out.type = 2; out.ref = refs[slot]; out.basic_type = basic[slot];
+            gmb_obj_retain(out.ref);
+            return out;
+        }
     }
     gmb_obj_byref_t* box = (gmb_obj_byref_t*)calloc(1, sizeof(*box));
     if (!box) return out;
@@ -1931,6 +1944,9 @@ void gmb_task_free(gmb_task_t* t)
      * abbandona — lo slot del pool viene liberato dal worker al completamento. */
     if (t->net_dns_job) { gmb_net_dns_cancel(t->net_dns_job); t->net_dns_job = 0; }
     while (t->frame) { gmb_frame_t* f = t->frame; t->frame = f->prev; gmb_frame_release(f); }
+    /* Stato FOR del task (usato solo senza frame attivo: top-level/__main e goroutine
+     * radice GO SUB): mappa sparsa, va liberata esplicitamente. */
+    gmb_for_clear(&t->for_state);
     /* V1: lo stack operandi è heap — rilascia i ref residui (prima erano leak). */
     for (int i = 0; i < t->sp; i++)
         if (t->stack[i].type == 2 && t->stack[i].ref) gmb_obj_release(t->stack[i].ref);

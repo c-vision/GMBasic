@@ -13042,13 +13042,13 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 double step = gmb_task_pop_num(task);
                 double end = gmb_task_pop_num(task);
                 double start = gmb_task_pop_num(task);
-                if (slot >= 0 && slot < 64)
+                /* Ciclo aperto = voce nella mappa sparsa del frame (PCode: ForState[slot] =
+                 * (counter, end, step)): nessun tetto di slot, la voce vive solo finché il
+                 * ciclo e' aperto. */
+                if (slot >= 0 && !gmb_for_upsert(for_state_of(task), slot, start, end, step))
                 {
-                    gmb_for_state_t* fs = for_state_of(task);
-                    fs->counter[slot] = start;
-                    fs->end[slot] = end;
-                    fs->step[slot] = step;
-                    fs->active[slot] = 1;
+                    vm_error(task, "out of memory: stato FOR");
+                    break;
                 }
                 if (slot >= 0 && slot < GMB_FRAME_LOCALS_CAP)
                 {
@@ -13065,7 +13065,8 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 int slot = gmb_vm_read_u16(vm, task);
                 int jump_off = gmb_vm_read_u16(vm, task);
                 gmb_for_state_t* fs = for_state_of(task);
-                if (slot >= 0 && slot < 64 && fs->active[slot])
+                gmb_for_entry_t* fe = (slot >= 0) ? gmb_for_find(fs, slot) : NULL;
+                if (fe)
                 {
                     double actual = 0;
                     if (slot < GMB_FRAME_LOCALS_CAP)
@@ -13073,12 +13074,12 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                         gmb_stack_entry_t e = gmb_task_load_local(task, slot);
                         if (e.type == 1) actual = e.num;
                     }
-                    if (actual == 0) actual = fs->counter[slot];
-                    double step = fs->step[slot];
-                    double end = fs->end[slot];
+                    if (actual == 0) actual = fe->counter;
+                    double step = fe->step;
+                    double end = fe->end;
                     double nxt = actual + step;
                     int done = (step >= 0) ? nxt > end : nxt < end;
-                    fs->counter[slot] = nxt;
+                    fe->counter = nxt;
                     if (slot < GMB_FRAME_LOCALS_CAP)
                     {
                         gmb_stack_entry_t e = { 0 };
@@ -13086,7 +13087,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                         gmb_task_store_local(task, slot, e);
                     }
                     if (!done) task->ip -= jump_off;
-                    else fs->active[slot] = 0;
+                    else gmb_for_drop(fs, slot);   /* PCode: ForState.Remove(slot) */
                 }
                 break;
             }
@@ -13114,15 +13115,16 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     if (cv->type == GMB_CONST_DOUBLE) m = cv->d;
                     else if (cv->type == GMB_CONST_INT) m = (double)cv->d;
                 }
-                if (ctr_slot >= 0 && ctr_slot < 64 && for_state_of(task)->active[ctr_slot])
+                gmb_for_state_t* fs = for_state_of(task);
+                gmb_for_entry_t* fe = (ctr_slot >= 0) ? gmb_for_find(fs, ctr_slot) : NULL;
+                if (fe)
                 {
-                    gmb_for_state_t* fs = for_state_of(task);
                     double acc = 0;
                     gmb_stack_entry_t ae = gmb_task_load_local(task, acc_slot);
                     if (ae.type == 1) acc = ae.num;
-                    double step = fs->step[ctr_slot];
-                    double end  = fs->end[ctr_slot];
-                    double i = fs->counter[ctr_slot];
+                    double step = fe->step;
+                    double end  = fe->end;
+                    double i = fe->counter;
                     /* loop nativo: nessun dispatch, solo calcolo C */
                     for (; ; )
                     {
@@ -13194,8 +13196,10 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                         i = nxt;
                         if (done) break;
                     }
-                    fs->counter[ctr_slot] = i;
-                    fs->active[ctr_slot] = 0;
+                    /* Ciclo consumato in un colpo solo: contatore finale e chiusura
+                     * (PCode: ForState.Remove(slot)). */
+                    fe->counter = i;
+                    gmb_for_drop(fs, ctr_slot);
                     /* scrivi l'accumulatore e il contatore finale nelle locals */
                     if (acc_slot >= 0 && acc_slot < GMB_FRAME_LOCALS_CAP)
                     {
@@ -13231,9 +13235,10 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 int f_code    = gmb_vm_read_u16(vm, task);
                 int const_idx = gmb_vm_read_u16(vm, task);
                 (void)f_code; /* in v1 solo 31/8, entrambi gmb_val_str */
-                if (ctr_slot >= 0 && ctr_slot < 64 && for_state_of(task)->active[ctr_slot])
+                gmb_for_state_t* fs = for_state_of(task);
+                gmb_for_entry_t* fe = (ctr_slot >= 0) ? gmb_for_find(fs, ctr_slot) : NULL;
+                if (fe)
                 {
-                    gmb_for_state_t* fs = for_state_of(task);
                     /* Seed: valore CORRENTE dello slot (sola lettura: si copia il contenuto,
                      * non si trattiene il puntatore — nessun retain necessario). */
                     char* buf = NULL; size_t len = 0, cap = 0;
@@ -13259,9 +13264,9 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                             lit_len = strlen(cv->s);
                         }
                     }
-                    double step = fs->step[ctr_slot];
-                    double end  = fs->end[ctr_slot];
-                    double i = fs->counter[ctr_slot];
+                    double step = fe->step;
+                    double end  = fe->end;
+                    double i = fe->counter;
                     /* loop nativo: nessun dispatch, solo append su buffer C */
                     for (; ; )
                     {
@@ -13288,8 +13293,10 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                         i = nxt;
                         if (done) break;
                     }
-                    fs->counter[ctr_slot] = i;
-                    fs->active[ctr_slot] = 0;
+                    /* Ciclo consumato in un colpo solo: contatore finale e chiusura
+                     * (PCode: ForState.Remove(slot)). */
+                    fe->counter = i;
+                    gmb_for_drop(fs, ctr_slot);
                     /* scrivi il risultato (oggetto nuovo) e il contatore finale nelle locals */
                     if (acc_slot >= 0 && acc_slot < GMB_FRAME_LOCALS_CAP)
                     {
@@ -16643,7 +16650,8 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
             int slot = gmb_vm_read_u16(vm, task);
             int jump_off = gmb_vm_read_u16(vm, task);
             gmb_for_state_t* fs = for_state_of(task);
-            if (slot >= 0 && slot < 64 && fs->active[slot])
+            gmb_for_entry_t* fe = (slot >= 0) ? gmb_for_find(fs, slot) : NULL;
+            if (fe)
             {
                 double actual = 0;
                 if (slot < GMB_FRAME_LOCALS_CAP)
@@ -16651,12 +16659,12 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     gmb_stack_entry_t e = gmb_task_load_local(task, slot);
                     if (e.type == 1) actual = e.num;
                 }
-                if (actual == 0) actual = fs->counter[slot];
-                double step = fs->step[slot];
-                double end = fs->end[slot];
+                if (actual == 0) actual = fe->counter;
+                double step = fe->step;
+                double end = fe->end;
                 double nxt = actual + step;
                 int done = (step >= 0) ? nxt > end : nxt < end;
-                fs->counter[slot] = nxt;
+                fe->counter = nxt;
                 if (slot < GMB_FRAME_LOCALS_CAP)
                 {
                     gmb_stack_entry_t e = { 0 };
@@ -16664,7 +16672,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     gmb_task_store_local(task, slot, e);
                 }
                 if (!done) task->ip -= jump_off;
-                else fs->active[slot] = 0;
+                else gmb_for_drop(fs, slot);   /* PCode: ForState.Remove(slot) */
             }
             goto fetch_next;
         }
