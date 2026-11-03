@@ -288,19 +288,8 @@ public sealed partial class IlProgramCompiler
     private void EmitCallArgumentAsBox(Expr argExpr, DataType paramDataType)
     {
         var boxClrType = typeof(ByRefBox<>).MakeGenericType(MapProcedureType(paramDataType, _types, _classTypes));
-        if (argExpr is VariableExpr { SymbolId: >= 0 } ve)
-        {
-            if (BoxedSymbols.Contains(ve.SymbolId))
-            {
-                _il.Emit(OpCodes.Ldloc, GetOrDeclareLocal(ve.SymbolId));
-                return;
-            }
-            if (_parameters.TryGetValue(ve.SymbolId, out var paramInfo) && paramInfo.IsBox)
-            {
-                _il.Emit(OpCodes.Ldarg, paramInfo.ArgIndex);
-                return;
-            }
-        }
+        if (argExpr is VariableExpr { SymbolId: >= 0 } ve && TryEmitBoxReference(ve.SymbolId))
+            return;
         EmitExpression(argExpr);
         _il.Emit(OpCodes.Newobj, boxClrType.GetConstructor([boxClrType.GetGenericArguments()[0]])!);
     }

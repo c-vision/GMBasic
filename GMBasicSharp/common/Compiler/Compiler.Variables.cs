@@ -275,16 +275,20 @@ public sealed partial class Compiler
     /// </summary>
     private int AddUpvalue(byte index, bool isLocal)
     {
+        // Kind 3 valori: 1 = locale del frame chiamante, 2 = upvalue del frame corrente
+        // (cattura TRANSITIVA lambda-in-lambda). Il vecchio booleano schiacciava entrambe
+        // su 0/1 e la cattura transitiva finiva nel caso "globale".
+        var kind = (byte)(isLocal ? 1 : 2);
         for (var i = 0; i < _upvalues.Count; i++)
         {
             var upvalue = _upvalues[i];
-            if (upvalue.Index == index && upvalue.IsLocal == isLocal)
+            if (upvalue.Index == index && upvalue.Kind == kind)
             {
                 return i;
             }
         }
 
-        _upvalues.Add(new Upvalue { Index = index, IsLocal = isLocal });
+        _upvalues.Add(new Upvalue { Index = index, IsLocal = isLocal, Kind = kind });
         return _upvalues.Count - 1;
     }
 

@@ -723,8 +723,10 @@ public sealed partial class Parser
             return new ArrayLiteralExpr(ImmutableArray<Expr>.Empty, openBrace);
         }
 
-        // Caso 2: Code Block Clipper. Il primo token è inequivocabile.
-        if (Check(TokenKind.Bar))
+        // Caso 2: Code Block Clipper. Il primo token è inequivocabile. `||` (lista
+        // parametri VUOTA, `{ || 3.14 }`) è un token BitOr — il lexer fonde la doppia
+        // barra — quindi va accettato qui come l'equivalente di due Bar.
+        if (Check(TokenKind.Bar) || Check(TokenKind.BitOr))
         {
             return ParseCodeBlockBody(openBrace);
         }

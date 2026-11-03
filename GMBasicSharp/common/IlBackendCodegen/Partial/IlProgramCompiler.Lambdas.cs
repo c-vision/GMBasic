@@ -408,6 +408,39 @@ public sealed partial class IlProgramCompiler
     }
 
     /// <summary>
+    /// Emette il RIFERIMENTO al box di una cattura mutata (per condividerlo con una closure
+    /// figlia), in ordine di precedenza:
+    /// 1. CAMPO ByRefBox di una closure ESTERNA (lambda dentro lambda: il simbolo è una
+    ///    cattura del genitore, non un local di questa lambda);
+    /// 2. LOCAL box della procedura corrente (<see cref="BoxedSymbols"/>);
+    /// 3. PARAMETRO box (BYREF promosso).
+    /// Ritorna false se non c'è un box da condividere. Senza il caso 1 la closure interna
+    /// riceveva un local nuovo (null) al posto del box del genitore → NullReferenceException
+    /// alla prima mutazione (lambda annidata: `k = k + a + b + c` due livelli dentro).
+    /// </summary>
+    private bool TryEmitBoxReference(int symbolId)
+    {
+        if (_capturedFields.TryGetValue(symbolId, out var capturedField)
+            && IsByRefBoxFieldType(capturedField.FieldType))
+        {
+            _il.Emit(OpCodes.Ldarg_0);
+            _il.Emit(OpCodes.Ldfld, capturedField);
+            return true;
+        }
+        if (BoxedSymbols.Contains(symbolId))
+        {
+            _il.Emit(OpCodes.Ldloc, GetOrDeclareLocal(symbolId));
+            return true;
+        }
+        if (_parameters.TryGetValue(symbolId, out var boxParam) && boxParam.IsBox)
+        {
+            _il.Emit(OpCodes.Ldarg, boxParam.ArgIndex);
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>
     /// NEW implicita del valore lambda: nessuna cattura → delegate legato a null su un
     /// metodo STATIC (ldnull+ldftn+newobj); con catture → istanzia il tipo di chiusura,
     /// copia lo snapshot corrente di ogni cattura in un campo (letta dal contesto
@@ -445,11 +478,7 @@ public sealed partial class IlProgramCompiler
                 // Campo BOX (cattura mutata per riferimento): passa il BOX STESSO, non il
                 // valore — la closure condivide l'identità col local/param del chiamante, così
                 // le scritture dentro la lambda si propagano (bug closure_byref).
-                if (BoxedSymbols.Contains(symbolId))
-                    _il.Emit(OpCodes.Ldloc, GetOrDeclareLocal(symbolId));
-                else if (_parameters.TryGetValue(symbolId, out var boxParam) && boxParam.IsBox)
-                    _il.Emit(OpCodes.Ldarg, boxParam.ArgIndex);
-                else
+                if (!TryEmitBoxReference(symbolId))
                     throw new NotSupportedException("Backend IL: campo box senza box sorgente (bug interno).");
             }
             else
@@ -479,6 +508,10 @@ public sealed partial class IlProgramCompiler
     {
         FunctionExpr fe => fe.ReturnType as FunctionPointerType
             ?? (fe.ResolvedDefinition as FunctionDefinition)?.ReturnType as FunctionPointerType,
+        // EVAL(EVAL(…, a), b): il target è un altro EVAL il cui risultato è un block — la
+        // firma è il ReturnType della catena (ricorsivo). Senza, il 3° livello cadeva in
+        // "espressione 'EvalExpr' non ancora supportata" (lambda_nested_capture).
+        EvalExpr ev => ResolveEvalTargetFpt(ev.Target)?.ReturnType as FunctionPointerType,
         _ => null
     };
 

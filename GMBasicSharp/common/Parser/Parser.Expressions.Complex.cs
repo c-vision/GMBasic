@@ -651,10 +651,20 @@ public sealed partial class Parser
     /// <returns>Un nodo AST <see cref="LambdaExpr"/> che rappresenta il code block.</returns>
     private LambdaExpr ParseCodeBlockBody(Token openBrace)
     {
-        Consume(TokenKind.Bar, "Expected '|' to start code block parameter list.");
-
         var parameters = ImmutableArray.CreateBuilder<Parameter>();
-        if (!Check(TokenKind.Bar)) // Controlla se ci sono parametri
+        // `{ || corpo }`: parametri VUOTI. Il lexer emette BitOr per la doppia barra
+        // (è anche l'operatore OR bit a bit in espressione), quindi qui la lista vuota
+        // non ha né la Bar di apertura né quella di chiusura da consumare.
+        var emptyParams = Match(TokenKind.BitOr);
+        if (!emptyParams)
+        {
+            Consume(TokenKind.Bar, "Expected '|' to start code block parameter list.");
+        }
+        else
+        {
+            // niente parametri: si va direttamente al corpo
+        }
+        if (!emptyParams && !Check(TokenKind.Bar)) // Controlla se ci sono parametri
         {
             do
             {
@@ -681,7 +691,10 @@ public sealed partial class Parser
             } while (Match(TokenKind.Comma));
         }
 
-        Consume(TokenKind.Bar, "Expected '|' to end code block parameter list.");
+        if (!emptyParams)
+        {
+            Consume(TokenKind.Bar, "Expected '|' to end code block parameter list.");
+        }
 
         // Corpo del code block: PRIMA gli statement (RETURN/IF/LET/assegnazioni — un `=` a
         // livello statement È un'assegnazione, mai un confronto), POI, se lo statement non
@@ -698,7 +711,11 @@ public sealed partial class Parser
         {
             while (!Check(TokenKind.RightBrace) && !IsAtEnd())
             {
-                if (Match(TokenKind.Newline) || Match(TokenKind.Colon)) continue;
+                /* Separatori di statement in un code block: newline, ':' e — DENTRO le
+                 * graffe — DictColon (il lexer emette DictColon per ':' dentro '{...}',
+                 * vedi ConsumeColonOrDictColon): `{ |x| c = c + x : RETURN c }` senza
+                 * DictColon falliva con "Expected '}' after expression in code block". */
+                if (Match(TokenKind.Newline) || Match(TokenKind.Colon) || Match(TokenKind.DictColon)) continue;
 
                 var positionBeforeParse = _current;
                 var parsedOk = false;
@@ -706,8 +723,8 @@ public sealed partial class Parser
                 {
                     var parsedNodes = ParseStatement(dummyProc);
                     // Uno statement valido termina su un separatore o sul '}' di chiusura.
-                    if (Check(TokenKind.Newline) || Check(TokenKind.Colon) || Check(TokenKind.RightBrace) ||
-                        IsAtEnd())
+                    if (Check(TokenKind.Newline) || Check(TokenKind.Colon) || Check(TokenKind.DictColon) ||
+                        Check(TokenKind.RightBrace) || IsAtEnd())
                     {
                         foreach (var node in parsedNodes)
                             if (node is Stmt stmtNode)
