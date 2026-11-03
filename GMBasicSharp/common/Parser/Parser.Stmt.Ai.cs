@@ -734,6 +734,8 @@ if (parser.Match(TokenKind.Set))
         Expr? provider = null;
         if (parser.Match(TokenKind.Comma))
             provider = parser.ParseExpression();
+        else if (parser.Match(TokenKind.Using))
+            provider = parser.ParseExpression();   // forma canonica: USING "local"
         // [ FALLBACK "p1" [, "p2" ...] ] — catena esplicita; senza provider il primo nome
         // della catena è il provider primario (nessun fallback implicito).
         var fallback = ParseAiDecideFallbackList(parser);
