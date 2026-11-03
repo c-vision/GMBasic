@@ -1630,6 +1630,18 @@ static void gmb_bf_92(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_
             free(cent);
         }
 }
+/* Etichetta una lista PIATTA row-major come MATRICE rows x 2 (re,im).
+ * Senza i metadati ndims/dim_upper l'indicizzazione f(i,j) cade nel fallback
+ * isqrt(count) di gmb_multidim_target e legge celle sbagliate: era il caso di
+ * ANALYSIS.FFT/FFTCOMPLEX su VM/C (picco di frequenza su un bin inesistente,
+ * mentre IL/PCode/C99 restituivano la matrice n x 2). */
+static void gmb_mark_rows2(gmb_obj_shared_val_t* sv, int rows)
+{
+    if (!sv) return;
+    sv->ndims = 2;
+    sv->dim_upper[0] = rows - 1;
+    sv->dim_upper[1] = 1;
+}
 static void gmb_bf_105(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
@@ -1676,6 +1688,7 @@ static void gmb_bf_105(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
                 if (out)
                 {
                     for (int i = 0; i < half; i++) { gmb_list_add(out->list, gmb_make_val_double(re[i])); gmb_list_add(out->list, gmb_make_val_double(im[i])); }
+                    gmb_mark_rows2(out, half);
                     bout->is_num = 0; bout->result_ref = (gmb_obj_t*)out; bout->result_ref_bt = GMB_BT_OBJECT;
                 }
                 free(re); free(im);
@@ -1704,6 +1717,7 @@ static void gmb_bf_105(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
                 if (out)
                 {
                     for (int i = 0; i < sz; i++) { gmb_list_add(out->list, gmb_make_val_double(re[i])); gmb_list_add(out->list, gmb_make_val_double(im[i])); }
+                    gmb_mark_rows2(out, sz);
                     bout->is_num = 0; bout->result_ref = (gmb_obj_t*)out; bout->result_ref_bt = GMB_BT_OBJECT;
                 }
                 else { bout->is_num = 0; bout->result_ref = NULL; }
@@ -7914,6 +7928,7 @@ static void gmb_bf_107(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
             if (out)
             {
                 for (int i = 0; i < sz; i++) { gmb_list_add(out->list, gmb_make_val_double(re2[i])); gmb_list_add(out->list, gmb_make_val_double(im2[i])); }
+                gmb_mark_rows2(out, sz);
                 bout->is_num = 0; bout->result_ref = (gmb_obj_t*)out; bout->result_ref_bt = GMB_BT_OBJECT;
             }
             else { bout->is_num = 0; bout->result_ref = NULL; }
@@ -11679,6 +11694,25 @@ static void gmb_bf_657(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
             const char* r = (idx >= 1 && idx <= g_vm_host_argc) ? g_vm_host_argv[idx - 1] : "";
             gmb_obj_string_t* s = gmb_str_cstr(r);
             bout->is_num = 0; bout->result_ref = (gmb_obj_t*)s; bout->result_ref_bt = GMB_BT_STRING;
+        }
+}
+static void gmb_bf_3818(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        {
+            (void)vm; (void)func_code; (void)task;
+            const char* name = (argc >= 1 && args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_STRING)
+                ? ((gmb_obj_string_t*)args[0].ref)->data : "";
+            gmb_obj_string_t* s = gmb_str_cstr(gmb_env_get(name));
+            bout->is_num = 0; bout->result_ref = (gmb_obj_t*)s; bout->result_ref_bt = GMB_BT_STRING;
+        }
+}
+static void gmb_bf_3819(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        {
+            (void)vm; (void)func_code; (void)task;
+            const char* name = (argc >= 1 && args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_STRING)
+                ? ((gmb_obj_string_t*)args[0].ref)->data : "";
+            bout->result = gmb_env_has(name) ? -1.0 : 0.0;
         }
 }
 static void gmb_bf_679(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -18798,6 +18832,8 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 679, gmb_bf_679 },
     { 555, gmb_bf_555 },
     { 656, gmb_bf_656 },
+    { 3818, gmb_bf_3818 },
+    { 3819, gmb_bf_3819 },
     { 683, gmb_bf_683 },
     { 684, gmb_bf_684 },
     { 2186, gmb_bf_2115 },
