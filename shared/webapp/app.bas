@@ -557,8 +557,10 @@ SUB ApiEventStream(req AS HTTPREQUEST, res AS HTTPRESPONSE)
 
     res.StartStream("text/event-stream")
     sent = 0
-    ' ~5 minuti di stream per connessione, poi il client si riconnette.
-    FOR i = 1 TO 600
+    ' ~30 s per connessione, poi EventSource riconnette da solo. Prima erano 600 giri
+    ' (~5 minuti): un client disconnesso lasciava la coroutine a girare fino a 5 minuti
+    ' (ora SLEEP e' cooperativo e non occupa un worker, ma la coroutine resta viva).
+    FOR i = 1 TO 60
         evs = AI.AGENTEVENTS()
         n = UBOUND(evs) + 1
         IF n > sent THEN

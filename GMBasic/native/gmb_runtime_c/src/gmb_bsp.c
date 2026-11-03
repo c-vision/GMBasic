@@ -72,7 +72,11 @@ static int html_blank(const char* s, size_t n)
 
 static void emit_html(buf* b, const char* s, size_t n)
 {
-    if (!s || !n || html_blank(s, n)) return;
+    if (!s || !n) return;
+    /* OGNI riga sorgente diventa `PRINT "..."` SENZA `;`: il newline va preservato.
+     * Con `;` le righe venivano concatenate: dentro <script> i commenti `//` si
+     * mangiavano il resto del codice (SyntaxError "Unexpected end of input") e i
+     * <pre> perdevano le righe. Anche le righe vuote emettono il loro newline. */
     const char* line = s;
     const char* end = s + n;
     while (line < end) {
@@ -80,14 +84,15 @@ static void emit_html(buf* b, const char* s, size_t n)
         const char* le = nl ? nl : end;
         size_t ln = (size_t)(le - line);
         if (ln && line[ln - 1] == '\r') ln--;
-        if (ln) {
-            buf_app(b, "PRINT \"");
-            for (size_t i = 0; i < ln; i++) {
-                if (line[i] == '"') buf_app(b, "\"\"");
-                else buf_ch(b, line[i]);
-            }
-            buf_app(b, "\";\n");
+        buf_app(b, "PRINT \"");
+        for (size_t i = 0; i < ln; i++) {
+            if (line[i] == '"') buf_app(b, "\"\"");
+            else buf_ch(b, line[i]);
         }
+        /* `;` solo sull'ULTIMO segmento senza newline (es. HTML prima di <%= %>):
+         * il testo deve restare attaccato. Con newline: PRINT senza `;` → riga
+         * preservata (commenti // dentro <script>, <pre>, ecc.). */
+        buf_app(b, nl ? "\"\n" : "\";\n");
         line = nl ? nl + 1 : end;
     }
 }
