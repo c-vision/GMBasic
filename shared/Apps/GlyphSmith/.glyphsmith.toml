@@ -56,3 +56,5 @@ out = "from_text.bdf"
 keys = "edits/keys.txt"
 # "1" = stampa il frame dopo ogni tasto, "0" = solo quello iniziale e quello finale
 render = "0"
+# BDF scritto all'uscita (dentro [output] dir): la TUI non butta il lavoro
+out = "tui.bdf"

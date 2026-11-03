@@ -141,6 +141,7 @@ found regardless of the working directory of the runner.
 | `mini8.psf1` | PSF1 console font (`4 + 256 * charsize` bytes) |
 | `mini8.ascii` | ASCII art of every glyph, re-read by the `check` |
 | `from_text.bdf` | BDF rebuilt from an ASCII art bitmap (`textin` mode) |
+| `tui.bdf` | model as left by the TUI session (`tui` mode) |
 | `mini8.h` | C header with the bitmaps |
 | `imported.bdf` | BDF produced by the `import` mode |
 

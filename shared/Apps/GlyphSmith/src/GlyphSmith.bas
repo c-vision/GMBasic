@@ -124,6 +124,7 @@ DIM g_redoTop AS INTEGER
 ' --- M4: TUI (vista sullo stesso modello, pilotata da uno script di tasti) ---
 DIM g_tuiKeys AS STRING
 DIM g_tuiRender AS STRING
+DIM g_tuiOut AS STRING
 DIM g_tuiGlyph AS INTEGER
 DIM g_tuiX AS INTEGER
 DIM g_tuiY AS INTEGER
@@ -210,6 +211,7 @@ SUB ConfigureDefaults()
     g_textOut = "from_text.bdf"
     g_tuiKeys = "edits/keys.txt"
     g_tuiRender = "0"
+    g_tuiOut = "tui.bdf"
 END SUB
 
 SUB PrintBanner()
@@ -283,6 +285,7 @@ SUB ParseSettingsFile(path AS STRING)
                     IF section = "TEXT" AND key = "OUT" THEN g_textOut = val
                     IF section = "TUI" AND key = "KEYS" THEN g_tuiKeys = val
                     IF section = "TUI" AND key = "RENDER" THEN g_tuiRender = val
+                    IF section = "TUI" AND key = "OUT" THEN g_tuiOut = val
                 END IF
             END IF
         END IF
@@ -1332,6 +1335,9 @@ SUB RunTui()
         END IF
     NEXT i
     PRINT TuiFrame()
+    EnsureOutDir()
+    BdfSave(OutPath(g_tuiOut))
+    PRINT "bdf          : "; OutPath(g_tuiOut); " ("; FileSizeOf(OutPath(g_tuiOut)); " byte)"
 END SUB
 
 ' ============================================================================
