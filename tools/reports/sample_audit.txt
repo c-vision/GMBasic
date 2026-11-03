@@ -85,9 +85,9 @@ totale file: 1190   categorie: 80
 
 == per classificazione (un file può avere più tag) ==
   ENV          481
-  DIDATTICO    205
+  DIDATTICO    208
   CORTO        169
-  SURFACE      54
+  SURFACE      50
   SUPPORTO     25
   MODULO       15
   PACKAGE      7
@@ -106,7 +106,6 @@ totale file: 1190   categorie: 80
   Ai/TypeInfoFullCoverage.bas                                            righe=73   import=1
   AiLLM/ModelCompilerFull.bas                                            righe=69   import=1
   Analysis/AnalysisUncoveredCoverage.bas                                 righe=66   import=2
-  Arrays/ArraysUncoveredCoverage.bas                                     righe=64   import=1
   Bits/BitsFullCoverage.bas                                              righe=163  import=1
   Concurrency/AtomicFullCoverage.bas                                     righe=64   import=2
   Connectors/ConnectorFullCoverage.bas                                   righe=57   import=1
@@ -132,8 +131,6 @@ totale file: 1190   categorie: 80
   Finance/FinanceFullCoverage.bas                                        righe=20   import=1
   GameDev/JoystickUncoveredCoverage.bas                                  righe=44   import=1
   Http/HttpStreaming.bas                                                 righe=74   import=1
-  Json/JsonFullCoverage.bas                                              righe=21   import=1
-  Math/MathFullCoverage.bas                                              righe=24   import=1
   Network/NetworkFullCoverage.bas                                        righe=28   import=1
   Optimization/OptimizeUncoveredCoverage.bas                             righe=69   import=2
   System/DateTimeUncoveredCoverage.bas                                   righe=66   import=1
@@ -146,9 +143,8 @@ totale file: 1190   categorie: 80
   Trading/TradingMetricsUncoveredCoverage.bas                            righe=66   import=2
   Trading/TradingPortfolioUncoveredCoverage.bas                          righe=50   import=1
   Workflow/WorkflowFullCoverage.bas                                      righe=25   import=1
-  compression/CompressionFullCoverage.bas                                righe=25   import=1
   graphics/GraphicsUncoveredCoverage.bas                                 righe=41   import=1
-  (54 file)
+  (50 file)
 
 == EXPECT nei Sample (violazione del contratto) ==
   (0 file)
@@ -943,6 +939,7 @@ totale file: 1190   categorie: 80
   Functions/FunctionsLambdaInference.bas                                 righe=80   import=2
   Functions/FunctionsParams.bas                                          righe=94   import=2
   Functions/GeneratorExpr.bas                                            righe=62   import=2
+  Json/ConfigurazioneNegozio.bas                                         righe=38   import=2
   Json/JsonApiComplete.bas                                               righe=141  import=3
   Json/JsonFiles.bas                                                     righe=108  import=2
   Json/JsonFullTests.bas                                                 righe=165  import=2
@@ -951,6 +948,7 @@ totale file: 1190   categorie: 80
   Math/MathAtnVectorAngle.bas                                            righe=105  import=4
   Math/MathExtended.bas                                                  righe=59   import=2
   Math/MathLogarithms.bas                                                righe=83   import=2
+  Math/PianificazioneRisparmi.bas                                        righe=43   import=2
   Math/SciPyP1Parity.bas                                                 righe=70   import=4
   Math/SignalIntegrateP0Parity.bas                                       righe=25   import=3
   Math/StatsInverseSciPyParity.bas                                       righe=29   import=2
@@ -1009,11 +1007,12 @@ totale file: 1190   categorie: 80
   VectorDB/RagEvalE2eGentest.bas                                         righe=65   import=4
   VectorDB/RagEvalGenTest.bas                                            righe=61   import=2
   VectorDB/VectordbSq8.bas                                               righe=58   import=2
+  compression/BackupReport.bas                                           righe=55   import=2
   compression/CompressionRoundTrip.bas                                   righe=35   import=2
   compression/ZipUnzipDemo.bas                                           righe=56   import=2
   graph/AirlineBrainGraph.bas                                            righe=49   import=2
   graph/FinanceBrainGraph.bas                                            righe=51   import=2
   graph/GraphAgentAsk.bas                                                righe=34   import=2
   graph/GraphQueryMulti.bas                                              righe=29   import=2
-  (205 file)
+  (208 file)
 
