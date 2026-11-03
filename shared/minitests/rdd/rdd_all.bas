@@ -1,8 +1,6 @@
-' MiniTest NAMESPACE RDD — 20/22 funzioni della superficie.
-' Escluse DELETE e RECALL: il marcatore di cancellazione non viene applicato su nessuna
-' gamba per aree DBF/CSV (DELETED() resta 0) → gap documentato nei Bugs.
+' MiniTest NAMESPACE RDD — tutte le 22 funzioni della superficie.
 ' Ordine: prima i COMANDI (GO/REPLACE), poi le funzioni, così non restano lock aperti.
-' EXPECT: replaced= 999|recno= 1|bof= 0|eof= 0|found= 0|valtype=DBF|f1= 1|f2=ALICE|fs= 0|old=[]|buffer=-1|update=-1|after_update= 777|buffer2=-1|revert=-1|after_revert= 777|setdeleted=-1|ctod=2026-01-15|today_len= 10|float= 12|cur= 49|rlock=-1|flock=-1
+' EXPECT: replaced= 999|deleted=-1|recalled= 0|recno= 1|bof= 0|eof= 0|found= 0|valtype=DBF|f1= 1|f2=ALICE|fs= 0|old=[]|buffer=-1|update=-1|after_update= 777|buffer2=-1|revert=-1|after_revert= 777|setdeleted=-1|ctod=2026-01-15|today_len= 10|float= 12|cur= 49|rlock=-1|flock=-1
 IMPORT RDD
 IMPORT IO
 
@@ -15,6 +13,10 @@ SUB Main()
   RDD GO TOP
   RDD REPLACE Saldo WITH 999
   PRINT "replaced="; RDD.GETFIELD(1, 3)
+  RDD DELETE
+  PRINT "deleted="; RDD.DELETED()
+  RDD RECALL
+  PRINT "recalled="; RDD.DELETED()
 
   ' --- navigazione e campi ---
   PRINT "recno="; RDD.RECNO()

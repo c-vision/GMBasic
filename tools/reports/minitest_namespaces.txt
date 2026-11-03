@@ -2,14 +2,8 @@ MiniTest PER NAMESPACE — superficie:  1829  voci (procedure+costanti),  72  na
 file canonico: shared/minitests/<ns>/<ns>_all.bas
 
 namespace                          tot  cop  manca  file
-AI                               274 269     5   si
-ISAM                              24  22     2   si
-LLM                               61   9    52   si
-RDD                               22  20     2   si
-SYSTEM                            26  23     3   si
-TORCH                             76  68     8   si
 
 namespace con file canonico:  72 / 72 
-namespace completi (file + superficie):  66 / 72 
-superficie coperta:  1757 / 1829   (mancano  72 )
+namespace completi (file + superficie):  72 / 72 
+superficie coperta:  1829 / 1829   (mancano  0 )
 struttura base del linguaggio: /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/constructs/base.bas -> presente

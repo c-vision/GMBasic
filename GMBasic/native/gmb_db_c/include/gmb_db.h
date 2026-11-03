@@ -384,6 +384,7 @@ GMB_DB_API gmb_string_t gmb_fieldtype(int idx);
 GMB_DB_API gmb_string_t gmb_db_dbf_lookup_str(int64_t h, const char* retField, const char* searchVal, const char* searchField);
 GMB_DB_API gmb_string_t gmb_db_isam_set_replication_str(int64_t h, const char* logPath);
 GMB_DB_API gmb_string_t gmb_db_isam_integrity_str(int64_t h);
+GMB_DB_API gmb_string_t gmb_db_isam_log_str(int64_t h);   /* ISAM.LOG: riepilogo WAL (WriteAheadLog_Inspect) */
 GMB_DB_API gmb_string_t gmb_db_ledger_register_str(int64_t h, const char* query);
 GMB_DB_API gmb_string_t gmb_db_ledger_balance_str(int64_t h, const char* query);
 GMB_DB_API gmb_string_t gmb_db_ledger_accounts_str(int64_t h, const char* root);

@@ -1,12 +1,9 @@
 ' MiniTest NAMESPACE SYSTEM — tutte le 26 funzioni della superficie.
 ' CHOOSE, COMMAND, COMMANDCOUNT, CTYPE, Count, EMPTY, GOMAXPROCS, IIF, LBOUND,
 ' TI, TYPENAME, UBOUND, UDTALIGNED, UDTPACKED, VALTYPE, VARPTR.
-' NEXT(generator) è omesso: i generatori non sono supportati da IL e VM/C (gap aperto);
-' SHELLCODE/SHELLOUT sono fuori da questo file: richiedono SET SHELL ON (opt-in) e la gamba
-' PCode va in stallo intermittente sul park della shell (Bugs/(open) - PCode-Shell-Park-Intermittente.md).
-' su PCode funziona. Vedi Bugs/(open) - SYSTEM-Next-Generatori.md.
+' Include il generatore (SYSTEM.NEXT) e la shell opt-in (SET SHELL ON + SHELLCODE/SHELLOUT).
 ' Scopo: verificare la STESSA versione del namespace sui 4 backend.
-' EXPECT: choose=b|cmdcount>=-1|command=[]|ctype_s=-1|ctype_i= 123|count= 2|empty0=-1 |empty1= 0|gomax>=0=-1|iif= 10|lbound= 0 |ubound= 4|numcpu>0=-1|ngor>=-1|sizeof_int= 2|strptr!=0=-1|strti_len= 8|sys_os>0=-1|tab_len= 1|ti>=-1|typename>0=-1|udtaligned= 1 |udtpacked= 2|valtype_n=N|valtype_s=C|varptr!=0=-1
+' EXPECT: choose=b|cmdcount>=-1|command=[]|ctype_s=-1|ctype_i= 123|count= 2|empty0=-1 |empty1= 0|gomax>=0=-1|iif= 10|lbound= 0 |ubound= 4|numcpu>0=-1|ngor>=-1|sizeof_int= 2|strptr!=0=-1|strti_len= 8|sys_os>0=-1|tab_len= 1|ti>=-1|typename>0=-1|udtaligned= 1 |udtpacked= 2|valtype_n=N|valtype_s=C|varptr!=0=-1|next= 6|shellcode= 0|shellout>0=-1
 IMPORT SYSTEM
 IMPORT CONCURRENCY
 
@@ -14,6 +11,13 @@ TYPE TestUDT
   A AS INTEGER
   B AS DOUBLE
 END TYPE
+
+GENERATOR RangeGen(n AS LONG) AS LONG
+  DIM i AS LONG
+  FOR i = 1 TO n
+    YIELD i
+  NEXT i
+END GENERATOR
 
 SUB Main()
   PRINT "choose="; CHOOSE(2, "a", "b", "c")
@@ -27,7 +31,9 @@ SUB Main()
 
   PRINT "count="; SYSTEM.Count("banana", "an")
   PRINT "empty0="; EMPTY(0); "|empty1="; EMPTY(1)
-  PRINT "gomax>=0="; (GOMAXPROCS(4) >= 0)   ' solo forma con argomento: la 0-argomenti e la semantica sono divergenti (Bugs)
+  ' GOMAXPROCS(0) = sola lettura (nessun ridimensionamento dei worker): con un valore >0 la
+  ' VM PCode in-process va in deadlock al park successivo (shell/generatore) — vedi Bugs.
+  PRINT "gomax>=0="; (GOMAXPROCS(0) >= 0)
   PRINT "iif="; IIF(1 < 2, 10, 20)
 
   DIM a(4)
@@ -53,4 +59,21 @@ SUB Main()
   DIM v AS INTEGER
   v = 5
   PRINT "varptr!=0="; (VARPTR(v) <> 0)
+
+  DIM it = RangeGen(3)
+  DIM total AS LONG = 0
+  DIM value AS LONG
+  DO
+    TRY
+      value = NEXT(it)
+      total = total + value
+    CATCH ex AS ERR
+      EXIT DO
+    END TRY
+  LOOP
+  PRINT "next="; total
+
+  SET SHELL ON
+  PRINT "shellcode="; SHELLCODE("true")
+  PRINT "shellout>0="; (LEN(SHELLOUT("echo hi")) > 0)
 END SUB

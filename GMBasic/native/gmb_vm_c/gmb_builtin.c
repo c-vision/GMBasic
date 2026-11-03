@@ -12635,6 +12635,33 @@ static void gmb_bf_1202(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
         }
         
 }
+/* ISAM.LOG([area|alias]) → riepilogo WAL (builtin 451: TokenKind.IsamLog →
+ * BuiltInFunction.ISAMLOG). Stessa fonte unica del C99 (gmb_db_isam_log_str). */
+static void gmb_bf_451(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    int64_t h;
+    gmb_string_t s;
+    gmb_obj_string_t* o;
+    (void)vm; (void)func_code; (void)task;
+    h = gmb_db_current_isam();
+    if (argc >= 1)
+    {
+        if (args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_STRING)
+        {
+            const char* an = ((gmb_obj_string_t*)args[0].ref)->data;
+            if (an && an[0]) h = gmb_db_isam_handle_for(an);
+        }
+        else if (args[0].type == 1 && args[0].num > 0)
+        {
+            h = (int64_t)args[0].num;
+        }
+    }
+    s = gmb_db_isam_log_str(h);
+    o = gmb_str_cstr(s.data ? s.data : "");
+    if (s.data) free(s.data);
+    bout->is_num = 0; bout->result_ref = (gmb_obj_t*)o; bout->result_ref_bt = GMB_BT_STRING;
+}
+
 static void gmb_bf_1203(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
     /* SYNCMAP.STORE(m,k,v): gmb_concurrentmap_store ADOTTA chiave e valore. Il dispatch
@@ -18786,6 +18813,7 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 1164, gmb_bf_1164 },
     { 1201, gmb_bf_1201 },
     { 1202, gmb_bf_1202 },
+    { 451, gmb_bf_451 },   /* ISAM.LOG */
     { 1203, gmb_bf_1203 },
     { 1204, gmb_bf_1204 },
     { 1205, gmb_bf_1205 },
