@@ -4207,6 +4207,14 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         {
                 return Basic.IlBackend.IlRuntime.CommandCount();
         },
+        [BuiltInFunction.ENVGET] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.EnvGet(ArgOr(args, 0)?.ToString());
+        },
+        [BuiltInFunction.ENVHAS] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.EnvHas(ArgOr(args, 0)?.ToString());
+        },
         [BuiltInFunction.CUMIPMT] = (task, args) =>
         {
                 // Runtime comune (IlRuntime): stessa logica — unica implementazione.

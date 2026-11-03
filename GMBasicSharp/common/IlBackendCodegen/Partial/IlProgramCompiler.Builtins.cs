@@ -1051,6 +1051,14 @@ public sealed partial class IlProgramCompiler
             case TokenKind.SizeOf: EmitSizeOfCall(expr); break;
             case TokenKind.CommandCount: EmitNoArgBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.CommandCount))); break;
             case TokenKind.Command: EmitInt64UnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.Command))); break;
+            case TokenKind.EnvGet:
+                EmitStringArg(expr.Args[0]);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.EnvGet), typeof(string)));
+                break;
+            case TokenKind.EnvHas:
+                EmitStringArg(expr.Args[0]);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.EnvHas), typeof(string)));
+                break;
             case TokenKind.EofFunc:
                 // EOF() è condiviso: FILE.EOF(n) usa Eof(long) sugli handle file; ISAM.EOF/
                 // DBF.EOF/RDD.EOF(alias) usano DbfEof(alias) (con fallback alle aree ISAM);

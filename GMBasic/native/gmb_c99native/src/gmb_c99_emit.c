@@ -6336,6 +6336,8 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_Confirm, emit_bf_system },
     { NULL, GMB_TOK_CommandCount, emit_bf_system },
     { NULL, GMB_TOK_Command, emit_bf_system },
+    { NULL, GMB_TOK_EnvGet, emit_bf_system },
+    { NULL, GMB_TOK_EnvHas, emit_bf_system },
     { NULL, GMB_TOK_Sys, emit_bf_system },
     { NULL, GMB_TOK_Tab, emit_bf_system },
     { NULL, GMB_TOK_NumCpu, emit_bf_system },

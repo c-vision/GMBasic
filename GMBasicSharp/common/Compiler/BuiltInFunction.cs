@@ -1658,4 +1658,7 @@ MCPSERVERMARKETPLACELIST = 730, MCPSERVERMARKETPLACEGET = 731, MCPLISTTOOLSSERVE
     LENB = 3816,
     // AI DECIDE(state, kind): decision layer JEV/SystemOne v0 (provider Rules, JSON). Coda.
     AIDECIDE = 3817,
+    // ENV (2026-11-03): ENV$(nome) e ENV.HAS(nome). In coda: mirror in gmb_builtin.c.
+    ENVGET = 3818,
+    ENVHAS = 3819,
 }

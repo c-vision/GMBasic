@@ -11873,6 +11873,36 @@
       ]
     },
     {
+      "ns": "ENV",
+      "name": "ENV",
+      "fn": true,
+      "return": "string",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "ENV",
+      "name": "HAS",
+      "fn": true,
+      "return": "bool",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
       "ns": "FINANCE",
       "name": "CUMIPMT",
       "fn": true,

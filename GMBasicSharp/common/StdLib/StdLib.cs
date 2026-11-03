@@ -128,6 +128,7 @@ public sealed partial class StdLib : IParserRegistry
                 .OrdinalIgnoreCase);
         
         CreateSystemNamespace();
+        CreateEnvNamespace();
         CreateJsonNamespace();
         CreateConsoleNamespace();
         CreateClipNamespace();

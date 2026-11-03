@@ -2698,9 +2698,11 @@ typedef enum gmb_tokenkind {
     GMB_TOK_PixelTabIndex,
     GMB_TOK_PixelTabStop,
     GMB_TOK_PixelStyle,
+    GMB_TOK_EnvGet,
+    GMB_TOK_EnvHas,
 } gmb_tokenkind_t;
 
-#define GMB_TOK_COUNT 2676
+#define GMB_TOK_COUNT 2678
 
 /* 2026-09-09 (direttiva 2026-09-08): gmb_tokenkind_name()/gmb_tokenkind_from_name() e la
  * tabella gmb_token_names[] sono state RIMOSSE — dispatch solo per TokenKind; la risoluzione

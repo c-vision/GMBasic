@@ -948,6 +948,19 @@ void gmb_set_command_args(int argc, char** argv) { g_cmd_argc = argc; g_cmd_argv
 int gmb_command_count(void) { return g_cmd_argc > 0 ? g_cmd_argc - 1 : 0; }
 const char* gmb_command_arg(int i) { if (i >= 1 && i < g_cmd_argc && g_cmd_argv) return g_cmd_argv[i]; return ""; }
 
+/* ENV$(nome) / ENV.HAS(nome): lettura ESPLICITA dell'ambiente da parte del programma.
+ * Il motore continua a usare il registro opzioni (AGENTS); qui non si imposta nulla. */
+const char* gmb_env_get(const char* name)
+{
+    if (!name || !*name) return "";
+    const char* v = getenv(name);
+    return v ? v : "";
+}
+int gmb_env_has(const char* name)
+{
+    return (name && *name && getenv(name)) ? 1 : 0;
+}
+
 int64_t gmb_ticks_ms(void) {
 #if defined(_WIN32) || defined(_WIN64)
     return (int64_t)GetTickCount64();

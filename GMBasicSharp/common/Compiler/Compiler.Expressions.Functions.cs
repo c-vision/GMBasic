@@ -1095,6 +1095,8 @@ public sealed partial class Compiler
 
         // --- Funzioni di Sistema (10) ---
         { TokenKind.CommandCount, BuiltInFunction.COMMANDCOUNT },
+        { TokenKind.EnvGet, BuiltInFunction.ENVGET },
+        { TokenKind.EnvHas, BuiltInFunction.ENVHAS },
         { TokenKind.Command, BuiltInFunction.COMMAND },
         { TokenKind.ABinarySearch, BuiltInFunction.ABINARYSEARCH }, { TokenKind.AChunk, BuiltInFunction.ACHUNK },
         { TokenKind.APad, BuiltInFunction.APAD }, { TokenKind.AShuffle, BuiltInFunction.ASHUFFLE },

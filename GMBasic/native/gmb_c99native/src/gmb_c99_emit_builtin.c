@@ -768,6 +768,21 @@ static int sys_command(ctx_t* c, gmb_expr_t** a, int n) {
     emit_expr(c, a[0]); sb_put(&c->out, ")))");
     return 1;
 }
+static int sys_envget(ctx_t* c, gmb_expr_t** a, int n) {
+    if (n < 1) return 0;
+    sb_put(&c->out, "gmb_string_alloc(gmb_env_get((");
+    emit_str_operand(c, a[0]);
+    sb_put(&c->out, ").data))");
+    return 1;
+}
+static int sys_envhas(ctx_t* c, gmb_expr_t** a, int n) {
+    if (n < 1) return 0;
+    /* Convenzione booleana BASIC: -1 se presente, 0 se assente (gmb_env_has è 1/0). */
+    sb_put(&c->out, "((gmb_double_t)(gmb_env_has((");
+    emit_str_operand(c, a[0]);
+    sb_put(&c->out, ").data) ? -1.0 : 0.0))");
+    return 1;
+}
 static int sys_sys(ctx_t* c, gmb_expr_t** a, int n) {
     if (n < 1) return 0;
     /* SYSTEM.SYS(prop): runtime condiviso gmb_sys_info (OS/ARCH/UI/CPU/MACHINE/USER/CWD/MEM*),
@@ -1031,6 +1046,7 @@ static const sys_row SYS_TBL[] = {
     { GMB_TOK_Ti, sys_ti }, { GMB_TOK_StrTi, sys_stri }, { GMB_TOK_DATEMONEY, sys_datemoney },
     { GMB_TOK_Alert, sys_alert }, { GMB_TOK_Confirm, sys_confirm },
     { GMB_TOK_CommandCount, sys_commandcount }, { GMB_TOK_Command, sys_command },
+    { GMB_TOK_EnvGet, sys_envget }, { GMB_TOK_EnvHas, sys_envhas },
     { GMB_TOK_Sys, sys_sys }, { GMB_TOK_Tab, sys_tab },
     { GMB_TOK_NumCpu, sys_ncpu }, { GMB_TOK_NumGoroutine, sys_numgoroutine },
     { GMB_TOK_GoMaxProcs, sys_gomaxprocs }, { GMB_TOK_VarPtr, sys_varptr },
