@@ -5978,7 +5978,13 @@ static int bf_m_len(ctx_t* c, gmb_expr_t** a, int n){
         return 1;
     }
     /* LEN(<stringa>) — numero di CARATTERI (code point): "é"=1, "😀"=1 (4 byte).
-     * Prima si contavano i byte (`.length`) o le unità UTF-16: vedi (solved) LEN-UTF8. */
+     * Prima si contavano i byte (`.length`) o le unità UTF-16: vedi (solved) LEN-UTF8.
+     * CAMPO DBF late-binding (IMPORT DBF): l'espressione è un gmb_val_t, non una
+     * gmb_string_t → va convertita, altrimenti il C generato non compila
+     * ("passing gmb_val_t to gmb_str_t_len": LEN(DESC) in DbfMemoCrud.bas). */
+    if (ensure_dbf_field_var(c, a[0])) {
+        sb_put(&c->out,"((gmb_double_t)gmb_str_t_len(gmb_val_to_string("); emit_expr(c,a[0]); sb_put(&c->out,")))"); return 1;
+    }
     sb_put(&c->out,"((gmb_double_t)gmb_str_t_len("); emit_expr(c,a[0]); sb_put(&c->out,"))"); return 1; }
 /* LENB(<expr>) — BYTE UTF-8 (LEN conta i CARATTERI). Argomento non stringa → -1, come le
  * altre gambe (parità dei parametri: prima un numero dava un errore di compilazione C). */
