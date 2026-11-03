@@ -160,6 +160,35 @@ static const gmb_tokenkind_t gmb_coll_member_toks[] = {
     GMB_TOK_CollToJSON, GMB_TOK_CollFront, GMB_TOK_CollBack, GMB_TOK_CollIsEmpty,
 };
 
+/* Metodi MEMBRO non-collection che il runtime VM/C conosce per nome (socket/HTTP/graph/
+ * stream: Length/Send/SendJSON/SetCookie/...). Lista UNICA condivisa con il compilatore
+ * bytecode (prima era un array statico dentro gmb_bytecode/src/gmb_compiler.c). I metodi
+ * collection sono già risolti per TokenKind da gmb_member_tok/gmb_is_coll_member_tok. */
+static inline int gmb_is_vm_member_method(const char* m)
+{
+    static const char* const k[] = {
+        "Count", "Length", "Set", "SetKeyValue", "ContainsKey", "Remove", "Send", "SendBytes",
+        "MaxPair", "MinPair", "IsEmpty", "AddUnique",
+        "Front", "Back",
+        "Close", "SendJSON", "SendJson", "SetStatus", "ParseMultipartForm", "ParseForm",
+        "SetHeader", "SetCookie", "Redirect", "Add", "AddRange", "RemoveAt",
+        "Clear", "Contains", "IndexOf", "Sort", "Reverse", "Join",
+        "AddNode", "AddNodeConsistent", "AddEdge", "RemoveNode", "RemoveEdge", "HasNode", "HasEdge",
+        "GetNeighbors", "GetEdgeWeight", "GetInDegree", "NodeCount", "Nodes",
+        "Keys", "Values", "BFS", "DFS", "Dijkstra", "Max", "Min", "Sum",
+        "ToArray", "ToList", "ToDict", "ToJson", "ToJSON", "Append", "ToString", "Union",
+        "Intersect", "Except", "Push", "Pop", "Peek", "Enqueue", "Dequeue",
+        "AddFirst", "AddLast", "AddAfter", "AddBefore", "RemoveFirst",
+        "RemoveLast", "First", "Last", "Capacity", "Extract", "ExtractMax",
+        "ExtractMin", "UniqueCount", "UniqueItems", "HasItem", "GetNode",
+        "GetRange", "FindAll", "StartsWith", "Query", "QueryRange",
+        "TryGetValue", "Parse", "Get", "Update", "Top", "PeekAt", NULL
+    };
+    if (!m) return 0;
+    for (int i = 0; k[i]; i++) if (strcasecmp(m, k[i]) == 0) return 1;
+    return 0;
+}
+
 /* True se il TokenKind è un metodo di collection (Coll*) gestito dal VM/C. */
 static inline int gmb_is_coll_member_tok(gmb_tokenkind_t tk)
 {
