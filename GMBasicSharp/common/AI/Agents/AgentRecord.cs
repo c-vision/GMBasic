@@ -201,6 +201,12 @@ public sealed class AgentRecord
     /// <summary>Nome del provider grande/frontier usato dal router quando Decide → Frontier.</summary>
     public string? FrontierProvider { get; set; }
 
+    /// <summary>Modalità decisione per il routing: `off` | `on` | `auto` | alias provider.
+    /// `auto` (default) usa il provider %DECIDE attivo se presente, altrimenti il router TES;
+    /// `on` richiede il provider (errore esplicito se assente); un alias forza quel provider
+    /// (rules/mock/local/typesafe). Impostabile con `AI AGENT SET nome, decide, …`.</summary>
+    public string? DecideMode { get; set; }
+
     /// <summary>A1/B5: categoria di task dell'agente (deep/quick/ultrabrain/…). Se impostata e
     /// il routing automatico è attivo, <see cref="AgentServer.PickRoutedProvider"/> consulta
     /// <c>Basic.AI.Providers.CategoryRegistry</c> prima del Differential Router.</summary>

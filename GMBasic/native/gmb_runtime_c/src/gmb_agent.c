@@ -289,6 +289,12 @@ const char* gmb_agent_get(const char* name, const char* key) {
          * MaxTokens lo usa in lettura → il GET con strcmp("maxtokens") non lo trovava
          * (MaxTokens=0 sul VM/C, AgentObject). */
         if (strcasecmp(key, "maxtokens") == 0) { snprintf(out, sizeof(out), "%d", a->max_tokens); return out; }
+        /* decide: off|on|auto|alias (JEV). Default "auto" (parità AgentServer.Get). */
+        if (strcasecmp(key, "decide") == 0) {
+            for (int i = 0; i < a->cfg_count; i++)
+                if (strcasecmp(a->cfg[i].key, "decide") == 0) return a->cfg[i].value;
+            return "auto";
+        }
         /* Proprietà BOOLEANE (parità AgentServer.Get): "ON"/"OFF" dal valore cfg o default
          * OFF se mai settate. Prima cadevano nel loop cfg → "" (divergenza IL: "OFF"). */
         {

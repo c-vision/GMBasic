@@ -589,6 +589,9 @@ public sealed class AgentServer
                 case "frontierprovider":
                     agent.FrontierProvider = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
                     return true;
+                case "decide":
+                    agent.DecideMode = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+                    return true;
                 case "category":
                     agent.Category = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
                     return true;
@@ -676,6 +679,7 @@ public sealed class AgentServer
                 "router" or "routerenabled" => agent.RouterEnabled ? "ON" : "OFF",
                 "smallprovider" => agent.SmallProvider ?? string.Empty,
                 "frontierprovider" => agent.FrontierProvider ?? string.Empty,
+                "decide" => agent.DecideMode ?? "auto",
                 "category" => agent.Category ?? string.Empty,
                 "reflection" => agent.ReflectionMode,
                 "critic" => agent.CriticPersona ?? string.Empty,
@@ -1700,6 +1704,42 @@ public sealed class AgentServer
         }
         if (string.IsNullOrWhiteSpace(agent.SmallProvider) || string.IsNullOrWhiteSpace(agent.FrontierProvider))
             throw new ArgumentException("router ON: impostare smallprovider e frontierprovider (AI AGENT SET).");
+
+        // JEV (§4.3): decide=off|on|auto|<alias>. `auto` usa il %DECIDE attivo se presente,
+        // altrimenti il router TES; `on` lo richiede; un alias forza quel provider.
+        var mode = (agent.DecideMode ?? "auto").Trim();
+        var useDecision = !mode.Equals("off", StringComparison.OrdinalIgnoreCase);
+        if (useDecision)
+        {
+            var isAuto = mode.Equals("auto", StringComparison.OrdinalIgnoreCase)
+                      || mode.Equals("on", StringComparison.OrdinalIgnoreCase);
+            var activeDecide = Basic.Providers.ProviderServer.Instance.GetActiveName(
+                Basic.Providers.ProviderRole.Decide);
+            if (isAuto && string.IsNullOrWhiteSpace(activeDecide))
+            {
+                if (mode.Equals("on", StringComparison.OrdinalIgnoreCase))
+                    throw new ArgumentException(
+                        "decide ON: nessun provider %DECIDE attivo (AI REGISTER/AI SET ACTIVE %DECIDE).");
+            }
+            else
+            {
+                try
+                {
+                    var request = Basic.Decision.DecisionSlots.CreateNoul(prompt ?? "",
+                        "Rispondi true se la richiesta richiede il modello frontier (più capace), " +
+                        "false se basta il modello locale.");
+                    var result = Basic.Decision.DecisionEngine.Decide(request, isAuto ? null : mode);
+                    var frontier = result.Value is bool b && b;
+                    return frontier ? agent.FrontierProvider : agent.SmallProvider;
+                }
+                catch (Basic.Decision.DecisionProviderException) when (
+                    mode.Equals("auto", StringComparison.OrdinalIgnoreCase))
+                {
+                    /* auto: degrada al router TES */
+                }
+            }
+        }
+
         var decision = Basic.AI.Providers.DifferentialRouter.Decide(prompt ?? "", 256);
         return decision.Tier == Basic.AI.Providers.RouterTier.Local
             ? agent.SmallProvider
