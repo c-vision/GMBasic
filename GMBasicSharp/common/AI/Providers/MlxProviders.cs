@@ -873,13 +873,148 @@ internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter
         }
     }
 
-    /// <summary>Batch di decisioni sullo stesso stato. v1: N decisioni singole (correttezza);
-    /// il prefill/KV condiviso è l'ottimizzazione successiva (stessa API).</summary>
+    /// <summary>Batch di decisioni sullo stesso stato con PREFILL CONDIVISO: tokenizza i
+    /// prompt, salva una volta il prefisso comune (system+stato) nella prefix-cache del motore
+    /// e per ogni domanda riusa la KV con `append_auto_prefix` + readout. Se il prefisso è
+    /// troppo corto o il motore non supporta la prefix-cache (GGUF/DFlash), degrada in modo
+    /// trasparente al prefill lineare — stessi risultati.</summary>
     public IReadOnlyList<DecisionResult> DecideGroup(IReadOnlyList<DecisionRequest> requests)
     {
+        if (requests.Count == 0) return [];
+
+        var prompts = new List<int[]>(requests.Count);
+        var engineOptions = new List<MlxEngineNative.MlxDecideOption[]>(requests.Count);
+        var effectiveOptions = new List<DecisionOption[]>(requests.Count);
+        var heads = new List<ScoringHead?>(requests.Count);
+
+        foreach (var request in requests)
+        {
+            request.Validate();
+            var head = _scoringHead ??= ScoringHead.TryLoad(_modelDirPath);
+            var effective = head?.Apply(request) ?? request;
+            var labels = effective.Options.Select(o => o.Display).ToArray();
+            var instructions = string.IsNullOrWhiteSpace(request.Instructions)
+                ? "You are a decision engine. Choose exactly one allowed option."
+                : request.Instructions!;
+            var user = $"State:\n{request.State}\nAllowed options: {string.Join(", ", labels)}\n" +
+                       "Answer with exactly one option and nothing else.";
+            var prompt = _buildChatTranscript([("system", instructions), ("user", user)], addAssistantOpener: true);
+            var ids = Encode(prompt);
+            if (ids.Length == 0)
+                throw new DecisionProviderException("local MLX: prompt di decisione vuoto.");
+
+            var options = new MlxEngineNative.MlxDecideOption[effective.Options.Count];
+            for (var i = 0; i < effective.Options.Count; i++)
+            {
+                var option = effective.Options[i];
+                var tokenId = option.TokenId;
+                if (tokenId is null)
+                {
+                    var labelIds = Encode(option.Display);
+                    if (labelIds.Length != 1) labelIds = Encode(" " + option.Display);
+                    if (labelIds.Length != 1)
+                        throw new DecisionProviderException(
+                            $"local MLX: l'opzione '{option.Display}' non è un token singolo ({labelIds.Length} token).");
+                    tokenId = labelIds[0];
+                }
+                options[i] = new MlxEngineNative.MlxDecideOption
+                {
+                    OptionTokenId = tokenId.Value,
+                    Bias = option.Bias,
+                    Temperature = option.Temperature,
+                };
+            }
+            prompts.Add(ids);
+            engineOptions.Add(options);
+            effectiveOptions.Add(effective.Options.ToArray());
+            heads.Add(head);
+        }
+
+        var commonPrefix = CommonTokenPrefix(prompts);
+        var usePrefix = commonPrefix >= 8 && !_isGgufModel;
+        if (usePrefix)
+        {
+            var prefixSession = CreateSession();
+            try
+            {
+                var native = _sessions[prefixSession].NativeHandle;
+                var prefixIds = prompts[0][..commonPrefix];
+                if (RunBigStack(() => MlxEngineNative.llm_ai_mlx_session_append(native, prefixIds, prefixIds.Length)) != 0)
+                    usePrefix = false;
+                else if (RunBigStack(() => MlxEngineNative.llm_ai_mlx_model_save_prefix(
+                             _modelHandle, "gmb_decide_group", native)) != 0)
+                    usePrefix = false;
+            }
+            finally { DestroySession(prefixSession); }
+        }
+
         var all = new List<DecisionResult>(requests.Count);
-        foreach (var request in requests) all.AddRange(Decide(request));
+        for (var r = 0; r < requests.Count; r++)
+        {
+            var head = heads[r];
+            var effective = effectiveOptions[r];
+            var options = engineOptions[r];
+            var ids = prompts[r];
+            var sessionId = CreateSession();
+            try
+            {
+                var native = _sessions[sessionId].NativeHandle;
+                var appended = usePrefix
+                    ? RunBigStack(() => MlxEngineNative.llm_ai_mlx_session_append_auto_prefix(
+                          native, _modelHandle, ids, ids.Length, 8))
+                    : -1;
+                if (appended != 0 &&
+                    RunBigStack(() => MlxEngineNative.llm_ai_mlx_session_append(native, ids, ids.Length)) != 0)
+                    throw new DecisionProviderException("local MLX: prefill della sessione fallito.");
+
+                var plan = RunBigStack(() => MlxEngineNative.llm_ai_mlx_decide_plan_create(
+                    native, options, options.Length, head?.HeadTemperature ?? 1.0f));
+                if (plan == IntPtr.Zero)
+                    throw new DecisionProviderException("local MLX: decide_plan_create fallito.");
+                try
+                {
+                    var logprob = new float[options.Length];
+                    var prob = new float[options.Length];
+                    if (RunBigStack(() => MlxEngineNative.llm_ai_mlx_decide_plan_run(plan, logprob, prob, out _)) != 0)
+                        throw new DecisionProviderException("local MLX: decide_plan_run fallito.");
+
+                    var raw = ScoringHead.Softmax(logprob);
+                    var finalProbability = new double[options.Length];
+                    var best = 0;
+                    for (var i = 0; i < options.Length; i++)
+                    {
+                        finalProbability[i] = head is null ? raw[i] : prob[i];
+                        if (finalProbability[i] > finalProbability[best]) best = i;
+                    }
+                    var calibrated = head is { IsCalibrated: true };
+                    double? confidence = calibrated ? ScoringHead.Confidence(finalProbability, best) : null;
+                    all.AddRange(effective.Select((option, i) => DecisionResult.FromOption(
+                        requests[r], option, finalProbability[i],
+                        confidence: i == best ? confidence : null,
+                        calibrated: calibrated ? finalProbability[i] : null,
+                        raw: $"local:logprob={logprob[i].ToString("0.######", System.Globalization.CultureInfo.InvariantCulture)}" +
+                             $";raw={raw[i].ToString("0.######", System.Globalization.CultureInfo.InvariantCulture)}")));
+                }
+                finally { MlxEngineNative.llm_ai_mlx_decide_plan_free(plan); }
+            }
+            finally { DestroySession(sessionId); }
+        }
         return all;
+    }
+
+    private static int CommonTokenPrefix(IReadOnlyList<int[]> prompts)
+    {
+        if (prompts.Count == 0) return 0;
+        var limit = prompts.Min(p => p.Length);
+        var n = 0;
+        while (n < limit)
+        {
+            var token = prompts[0][n];
+            for (var i = 1; i < prompts.Count; i++)
+                if (prompts[i][n] != token) return n;
+            n++;
+        }
+        return n;
     }
 
     /// <summary>Pulizia del rumore di template dall'output GREZZO del modello, PARI a quella di
