@@ -312,10 +312,12 @@ static char* dc_parse_batch_kind(gmb_parser_t* p, int line) {
                 gmb_p_set_err(p, "SCORE: atteso il massimo dopo TO", line); return NULL;
             }
             gmb_p_adv(p);
-            if (atof(lo->lexeme) != 0.0 || atof(hi->lexeme) != 5.0) {
-                gmb_p_set_err(p, "AI DECIDE batch: SCORE supporta solo la rubrica 0 TO 5", line);
+            double lv = atof(lo->lexeme), hv = atof(hi->lexeme);
+            if (lv != 0.0 || (hv != 5.0 && hv != 10.0)) {
+                gmb_p_set_err(p, "AI DECIDE batch: SCORE supporta le rubriche 0 TO 5 e 0 TO 10", line);
                 return NULL;
             }
+            return strdup(hv == 10.0 ? "SCORE:0:10" : "SCORE");
         }
         return strdup("SCORE");
     }

@@ -18213,6 +18213,18 @@ public static double TextWidth(string s)
                     : new Basic.Decision.DecisionRequest(state ?? "",
                         Basic.Decision.DecisionKind.Choice, Basic.Decision.DecisionSlots.Choice);
             }
+            else if (kindName.StartsWith("SCORE:", StringComparison.Ordinal))
+            {
+                // Rubrica esplicita `SCORE:lo:hi` (oggi 0..5 canonica e 0..10 linguistica).
+                var parts = raw.Split(':');
+                if (parts.Length != 3
+                    || !int.TryParse(parts[1], System.Globalization.NumberStyles.Integer,
+                        System.Globalization.CultureInfo.InvariantCulture, out var lo)
+                    || !int.TryParse(parts[2], System.Globalization.NumberStyles.Integer,
+                        System.Globalization.CultureInfo.InvariantCulture, out var hi))
+                    throw new ArgumentException($"kind '{kind}' non valido (SCORE:lo:hi).");
+                request = Basic.Decision.DecisionSlots.CreateScoreRange(state ?? "", lo, hi);
+            }
             else
             {
                 request = kindName switch
