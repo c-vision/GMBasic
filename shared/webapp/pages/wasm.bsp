@@ -1,3 +1,4 @@
+<%@ IMPORT WASMBRIDGE %>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -29,7 +30,7 @@
 </header>
 <main>
   <div class="card">
-    <p class="muted">Import JS: <code>DECLARE LIB "env" ALIAS "wasm_pset"</code> in <code>WasmBridge.inc</code> → <code>wasm.js:importObject.env</code> → <code>&lt;canvas&gt;</code>. Info: <code>WasmBridge v1</code></p>
+    <p class="muted">Import JS: <code>DECLARE LIB "env" ALIAS "wasm_pset"</code> in <code>WasmBridge.inc</code> → <code>wasm.js:importObject.env</code> → <code>&lt;canvas&gt;</code>. Info: <code><%= WASMBRIDGE.Info() %></code></p>
     <canvas id="wasm-canvas" class="gmb-canvas" width="800" height="480"></canvas>
     <div class="toolbar">
       <button class="btn btn-primary" onclick="loadWasm()">Load prog.wasm</button>
@@ -43,7 +44,7 @@
       <code>clang --target=wasm32 -o shared/webapp/static/prog.wasm /tmp/prog.c GMBasic/native/gmb_runtime_c/src/*.c</code><br>
       Future: <code>gmb prog.bas -target wasm -o shared/webapp/static/prog.wasm</code>
     </div>
-    <pre id="wasm-log" class="json">WasmBridge v1</pre>
+    <pre id="wasm-log" class="json"><%= WASMBRIDGE.Info() %></pre>
   </div>
 </main>
 <script src="/static/wasm.js"></script>

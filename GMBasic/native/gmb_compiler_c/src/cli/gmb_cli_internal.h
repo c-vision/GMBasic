@@ -134,6 +134,10 @@ int gmb_cli_engine_maybe(int argc, char** argv);
 /* Comandi admin: -1 = non è admin (prosegui); altrimenti exec di `gmbadmin`. */
 int gmb_cli_admin_maybe(int argc, char** argv);
 
+/* Precompila le pagine BSP del progetto (`<progetto>/pages/*.bsp` → `.chunk` A1) per il
+ * motore BSP COMPLETO in C (VM/C). 0 = fatto/senza pagine (non fa fallire la build). */
+int gmb_cli_precompile_bsp(const char* project);
+
 /* `gmb <file.bas>`: -1 = non è un file (prosegui); altrimenti esegue `run --project`. */
 int gmb_cli_file_maybe(int argc, char** argv);
 

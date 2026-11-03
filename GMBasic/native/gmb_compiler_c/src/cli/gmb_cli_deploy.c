@@ -112,6 +112,21 @@ static int dp_copy_tree(const char* src, const char* dst, int quiet)
     return n;
 }
 
+/* True se `dir` contiene almeno un `*.bsp` (progetto con pagine BSP). */
+static int dp_dir_has_bsp(const char* dir)
+{
+    DIR* d = opendir(dir);
+    if (!d) return 0;
+    int found = 0;
+    struct dirent* e;
+    while ((e = readdir(d)) != NULL) {
+        size_t n = strlen(e->d_name);
+        if (n > 4 && strcasecmp(e->d_name + n - 4, ".bsp") == 0) { found = 1; break; }
+    }
+    closedir(d);
+    return found;
+}
+
 static int dp_looks_lib(const char* name)
 {
     const char* e = strrchr(name, '.');
@@ -790,6 +805,37 @@ void gmb_deploy_bundle(const char* exe, const char* install, const DeployOpts* o
             dp_closure_file(src, install, libsDir, quiet);
         }
         break;
+    }
+
+    /* BSP COMPLETO: progetto con `pages/*.bsp` → la dylib `libgmb_bsp` (VM/C) va nel bundle;
+     * il runtime la carica via dlopen e rende le pagine precompilate (chunk A1). */
+    if (o && o->src && *o->src) {
+        char proj[CLI_PATH], pages[CLI_PATH];
+        path_dir(o->src, proj, sizeof proj);
+        snprintf(pages, sizeof pages, "%s/pages", proj);
+        if (dp_dir_has_bsp(pages)) {
+            const char* bspName = "libgmb_bsp.dylib";
+#if defined(_WIN32)
+            bspName = "gmb_bsp.dll";
+#elif !defined(__APPLE__)
+            bspName = "libgmb_bsp.so";
+#endif
+            static const char* const bspRe[] = {
+                "build/libs/" GMB_RID_STR "/",
+                "native/gmb_vm_c/build/",
+            };
+            for (size_t i = 0; i < sizeof bspRe / sizeof bspRe[0]; i++) {
+                char src[CLI_PATH], dst[CLI_PATH];
+                snprintf(src, sizeof src, "%s/%s%s", install, bspRe[i], bspName);
+                snprintf(dst, sizeof dst, "%s/%s", libsDir, bspName);
+                if (!is_file(src)) continue;
+                if (dp_copy(src, dst)) {
+                    if (!quiet) fprintf(stderr, "gmb: BSP engine (VM/C) -> %s\n", dst);
+                    dp_closure_file(src, install, libsDir, quiet);
+                }
+                break;
+            }
+        }
     }
 
     /* skill/plugin DICHIARATI in app.settings.json (parità con ProgramBundle C#). */

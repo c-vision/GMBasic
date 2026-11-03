@@ -4,6 +4,7 @@
  * importano AI/JSON non compilavano). Preambolo minimo: IMPORT HTTP + STRINGS.
  * ============================================================================ */
 #include "gmb_bsp.h"
+#include "gmb_bsp_internal.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -17,182 +18,6 @@ static gmb_bsp_vm_render_fn g_vm_renderer = 0;
 void gmb_bsp_set_vm_renderer(gmb_bsp_vm_render_fn fn)
 {
     g_vm_renderer = fn;
-}
-
-typedef struct {
-    char* p;
-    size_t n;
-    size_t cap;
-} buf;
-
-static int buf_grow(buf* b, size_t extra)
-{
-    if (b->n + extra + 1 <= b->cap) return 1;
-    size_t nc = b->cap ? b->cap * 2 : 256;
-    while (nc < b->n + extra + 1) nc *= 2;
-    char* p = (char*)realloc(b->p, nc);
-    if (!p) return 0;
-    b->p = p;
-    b->cap = nc;
-    return 1;
-}
-
-static void buf_app(buf* b, const char* s)
-{
-    if (!b || !s) return;
-    size_t k = strlen(s);
-    if (!buf_grow(b, k)) return;
-    memcpy(b->p + b->n, s, k);
-    b->n += k;
-    b->p[b->n] = 0;
-}
-
-static void buf_napp(buf* b, const char* s, size_t k)
-{
-    if (!b || !s || !k) return;
-    if (!buf_grow(b, k)) return;
-    memcpy(b->p + b->n, s, k);
-    b->n += k;
-    b->p[b->n] = 0;
-}
-
-static void buf_ch(buf* b, char ch)
-{
-    if (!buf_grow(b, 1)) return;
-    b->p[b->n++] = ch;
-    b->p[b->n] = 0;
-}
-
-static int html_blank(const char* s, size_t n)
-{
-    for (size_t i = 0; i < n; i++)
-        if (!isspace((unsigned char)s[i])) return 0;
-    return 1;
-}
-
-static void emit_html(buf* b, const char* s, size_t n)
-{
-    if (!s || !n) return;
-    /* OGNI riga sorgente diventa `PRINT "..."` SENZA `;`: il newline va preservato.
-     * Con `;` le righe venivano concatenate: dentro <script> i commenti `//` si
-     * mangiavano il resto del codice (SyntaxError "Unexpected end of input") e i
-     * <pre> perdevano le righe. Anche le righe vuote emettono il loro newline. */
-    const char* line = s;
-    const char* end = s + n;
-    while (line < end) {
-        const char* nl = (const char*)memchr(line, '\n', (size_t)(end - line));
-        const char* le = nl ? nl : end;
-        size_t ln = (size_t)(le - line);
-        if (ln && line[ln - 1] == '\r') ln--;
-        buf_app(b, "PRINT \"");
-        for (size_t i = 0; i < ln; i++) {
-            if (line[i] == '"') buf_app(b, "\"\"");
-            else buf_ch(b, line[i]);
-        }
-        /* `;` solo sull'ULTIMO segmento senza newline (es. HTML prima di <%= %>):
-         * il testo deve restare attaccato. Con newline: PRINT senza `;` → riga
-         * preservata (commenti // dentro <script>, <pre>, ecc.). */
-        buf_app(b, nl ? "\"\n" : "\";\n");
-        line = nl ? nl + 1 : end;
-    }
-}
-
-/* Le pagine BSP contengono commenti BASIC `' ...` dentro i blocchi <% %>. Il motore
- * di espressioni C (gmb_expr) usa `'` come delimitatore di STRINGA (idioma
- * Clipper/SQL), quindi un commento verrebbe letto come stringa non chiusa →
- * "expected expression". Qui si tolgono i commenti riga rispettando le stringhe
- * "..." (un apostrofo DENTRO una stringa resta). Il testo HTML resta intatto. */
-static void buf_app_code(buf* b, const char* s, size_t n)
-{
-    size_t i = 0;
-    int in_str = 0;
-    while (i < n) {
-        char ch = s[i];
-        if (in_str) {
-            buf_napp(b, &ch, 1);
-            if (ch == '"') {
-                if (i + 1 < n && s[i + 1] == '"') { buf_napp(b, &s[i + 1], 1); i += 2; continue; }
-                in_str = 0;
-            }
-            i++;
-            continue;
-        }
-        if (ch == '"') { in_str = 1; buf_napp(b, &ch, 1); i++; continue; }
-        if (ch == '\'') {                       /* commento fino a fine riga */
-            while (i < n && s[i] != '\n') i++;
-            continue;
-        }
-        buf_napp(b, &ch, 1);
-        i++;
-    }
-}
-
-static const char* trim_start(const char* s, size_t* n)
-{
-    while (*n && isspace((unsigned char)*s)) { s++; (*n)--; }
-    while (*n && isspace((unsigned char)s[*n - 1])) (*n)--;
-    return s;
-}
-
-int gmb_bsp_compile(const char* src, char** out_bas)
-{
-    if (!out_bas) return GMB_EXPR_ERR_PARSE;
-    *out_bas = NULL;
-    if (!src) src = "";
-    buf b;
-    memset(&b, 0, sizeof(b));
-    /* NIENTE IMPORT nel programma per gmb_expr: il valutatore non ha namespace e
-     * `IMPORT HTTP` verrebbe letto come identificatore `IMPORT` → "undefined identifier"
-     * (canvas.bsp non si renderizzava). Gli identificatori sono risolti da get/scope;
-     * le chiamate dal callback `call`. Le direttive <%@ ... %> sono quindi solo
-     * consumate (nessun codice emesso). */
-    const char* p = src;
-    while (*p) {
-        const char* tag = strstr(p, "<%");
-        if (!tag) {
-            emit_html(&b, p, strlen(p));
-            break;
-        }
-        if (tag > p) emit_html(&b, p, (size_t)(tag - p));
-        p = tag + 2;
-        if (*p == '@') {
-            p++;
-            const char* e = strstr(p, "%>");
-            const char* end = e ? e : p + strlen(p);
-            /* direttiva <%@ ... %>: solo consumata (IMPORT inclusi) — vedi sopra. */
-            p = e ? e + 2 : end;
-            continue;
-        }
-        if (p[0] == '-' && p[1] == '-') {
-            const char* e = strstr(p, "--%>");
-            p = e ? e + 4 : p + strlen(p);
-            continue;
-        }
-        if (*p == '=') {
-            p++;
-            const char* e = strstr(p, "%>");
-            size_t n = e ? (size_t)(e - p) : strlen(p);
-            const char* expr = trim_start(p, &n);
-            buf_app(&b, "PRINT ");
-            if (n) buf_napp(&b, expr, n);
-            buf_app(&b, ";\n");
-            p = e ? e + 2 : p + n;
-            continue;
-        }
-        const char* e = strstr(p, "%>");
-        size_t n = e ? (size_t)(e - p) : strlen(p);
-        if (n) {
-            buf_app_code(&b, p, n);
-            if (p[n - 1] != '\n') buf_app(&b, "\n");
-        }
-        p = e ? e + 2 : p + n;
-    }
-    if (!b.p) {
-        b.p = (char*)calloc(1, 1);
-        if (!b.p) return GMB_EXPR_ERR_PARSE;
-    }
-    *out_bas = b.p;
-    return GMB_EXPR_OK;
 }
 
 int gmb_bsp_render(const char* src, void* env,
@@ -389,20 +214,20 @@ static int bsp_runtime_call(void* env, const char* name, const gmb_val_t* args, 
  * HTML in testa (nessun inganno) e stderr riporta la causa. */
 static char* bsp_static_shell(const char* src)
 {
-    buf b;
+    gmb_bsp_buf b;
     memset(&b, 0, sizeof(b));
-    buf_app(&b, "<!-- BSP: SSR non eseguito dal motore C per questa pagina; "
+    gmb_bsp_buf_app(&b, "<!-- BSP: SSR non eseguito dal motore C per questa pagina; "
                 "la UI carica i dati via /api/* -->\n");
     const char* p = src ? src : "";
     while (*p) {
         const char* tag = strstr(p, "<%");
         if (tag) {
-            if (tag > p) buf_napp(&b, p, (size_t)(tag - p));
+            if (tag > p) gmb_bsp_buf_napp(&b, p, (size_t)(tag - p));
             const char* e = strstr(tag + 2, "%>");
             p = e ? e + 2 : tag + strlen(tag);
             continue;
         }
-        buf_app(&b, p);
+        gmb_bsp_buf_app(&b, p);
         break;
     }
     if (!b.p) return strdup("");
@@ -437,6 +262,13 @@ int gmb_bsp_try_serve(const char* dir, const char* url_path, const char* query,
     /* Renderer VM (gmb_vm_c): pagina precompilata in chunk A1 eseguita dalla VM
      * completa (FETCH/JSON/metodi). 0 = sidecar assente/non fresco → fallback gmb_expr. */
     if (g_vm_renderer && g_vm_renderer(path, url_path, query, host, out_html, out_status))
+        return 1;
+
+    /* Renderer BSP COMPLETO via dylib `libgmb_bsp` (VM/C): la pagina è compilata in
+     * un chunk A1 dal compilatore C (gmb_chunk_driver) e usa TUTTO il linguaggio
+     * (FUNCTION degli include, classi, …). Se la dylib o il sidecar mancano, si
+     * prosegue col valutatore di espressioni qui sotto. */
+    if (gmb_bsp_gateway_serve(dir, url_path, query, host, out_html, out_status))
         return 1;
 
     src = bsp_read_file(path);

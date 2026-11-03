@@ -100,24 +100,23 @@ Misure (loopback, keep-alive, c=10, PCode): `/index.bsp` da ~190 rps a **~21.000
 "a freddo" di una pagina resta ~2 ms: host+VM costano ~0,07 ms, il resto è l'esecuzione della
 pagina (query + costruzione dell'HTML).
 
-### Su C99Native (`gmb run`): SSR nativo col motore C
+### Su C99Native (`gmb run`): il compilatore BSP in C è COMPLETO
 
-Con il compilatore C non c'è una VM/C precompilata: le pagine passano dal valutatore C
-(`gmb_expr`) con le direttive `<%@ ... %>` consumate e i commenti BASIC rimossi. Il
-valutatore ora copre ciò che serve all'SSR e le **tre pagine sono rese nativamente**:
+Il percorso C usa **lo stesso motore VM/C del managed** (dylib `libgmb_bsp`):
 
-- **array**: `DIM a()` / `DIM a() = AI.AGENTLIST()` / `a(i)` / `UBOUND(a)` / `SPLIT(...)`;
-- **chiamate di runtime**: `AI.AGENTLIST/AGENTGET/TEAMLIST/AGENTEVENTS/WorkflowList/
-  WorkflowStatus/WorkflowSteps`, `MEMORY.LIST` (dispatcher nel runtime, stesse funzioni
-  dei backend compilati);
-- **IF di una riga vs IF a blocco** distinti per riga (prima `IF c THEN x = 1` inghiottiva
-  le righe successive), più `REPLACE$`, `CHR$`, `TRIM$`.
+1. `gmb build`/`run` precompila ogni `<progetto>/pages/*.bsp` in un chunk A1
+   (`gmb_chunk_driver`, che accetta direttamente il `.bsp`: BSP → BASIC **con gli IMPORT**
+   → bytecode). Se il chunk è più vecchio della pagina viene rigenerato;
+2. all'avvio il runtime carica `libgmb_bsp` (dlopen) e le passa la pagina: la **VM/C**
+   esegue il chunk, quindi la pagina usa **tutto il linguaggio** — `FUNCTION`/`SUB`
+   degli include (`DASHBOARD.*`, `WASMBRIDGE.*`), classi, `SELECT CASE`, ecc.;
+3. lo **stato** (agenti/team/workflow/memoria) arriva dall'host tramite l'hook opzionale
+   `gmb_state_hook`: la VM vede il registro del processo, non una copia.
 
-Le pagine non usano più le `FUNCTION` di `include/AgentsDashboard.inc` (escape HTML e
-markup delle righe sono inline nella pagina): una FUNCTION BASIC non è eseguibile dal
-valutatore. Resta un **fallback statico** per costrutti fuori dal sottoinsieme: markup senza
-blocchi `<% %>`, causa su stderr e commento HTML in testa — mai un 500. Il percorso
-managed/VM/C continua a fare SSR completo con lo stesso sorgente di pagina.
+Il valutatore di espressioni (`gmb_expr`) resta solo come **fallback** se la dylib o il
+sidecar mancano (o per pagine fuori dal progetto); in quel caso, se la pagina usa costrutti
+non supportati, si serve il markup statico (causa su stderr, commento HTML) — mai un 500.
+I `.chunk` sono artefatti di build (gitignored).
 
 ### Due motori, UN SOLO stato (agenti/team/workflow/memoria)
 

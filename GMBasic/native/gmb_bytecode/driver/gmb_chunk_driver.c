@@ -10,10 +10,12 @@
 #include "gmb_parser.h"
 #include "gmb_compiler.h"
 #include "gmb_inc_resolve.h"
+#include "gmb_bsp.h"
 #include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 static int pkg_cache_is_dir(const char* p)
 {
@@ -37,12 +39,42 @@ int main(int argc, char** argv) {
     if (alen > 0 && fread(src, 1, (size_t)alen, f) != (size_t)alen) { fclose(f); free(src); return 2; }
     src[alen] = 0; fclose(f);
 
+    /* `.bsp`: pagina BSP → BASIC COMPLETO (con IMPORT) → chunk A1 per la VM/C.
+     * È il compilatore BSP in C completo: la pagina usa tutto il linguaggio
+     * (FUNCTION/SUB dell'include, classi, ecc.), non il sottoinsieme di gmb_expr.
+     * Il BASIC viene scritto in un `.bas` TEMPORANEO accanto alla pagina: il resolver
+     * degli include inferisce la root del progetto dall'ingresso e con l'estensione
+     * `.bsp` non la trovava (DASHBOARD non risolto). */
+    char resolve_in[2048];
+    snprintf(resolve_in, sizeof resolve_in, "%s", in);
+    char bsp_tmp[2048] = "";
+    { size_t il = strlen(in);
+      if (il > 4 && strcmp(in + il - 4, ".bsp") == 0) {
+          char* bas = NULL;
+          if (gmb_bsp_compile_full(src, &bas) != GMB_EXPR_OK || !bas) {
+              fprintf(stderr, "bsp: compilazione BSP -> BASIC fallita\n");
+              free(src);
+              return 4;
+          }
+          snprintf(bsp_tmp, sizeof bsp_tmp, "%s.gmb_tmp.bas", in);
+          FILE* tf = fopen(bsp_tmp, "wb");
+          if (!tf) {
+              fprintf(stderr, "bsp: impossibile scrivere %s\n", bsp_tmp);
+              free(bas); free(src); return 4;
+          }
+          fwrite(bas, 1, strlen(bas), tf);
+          fclose(tf);
+          free(src);
+          src = bas;
+          snprintf(resolve_in, sizeof resolve_in, "%s", bsp_tmp);
+      } }
+
     /* Moduli `include/*.inc` (IMPORT <ns>): prepend — parità col driver C99Native.
      * Con --map si conservano i segmenti per riportare le righe del chunk ai file
      * originali (breakpoint e debug). */
     GMB_SRC_MAP srcmap;
     gmb_src_map_init(&srcmap);
-    { char* rs = gmb_resolve_includes_mapped(src, in, map_path ? &srcmap : NULL); free(src); src = rs; }
+    { char* rs = gmb_resolve_includes_mapped(src, resolve_in, map_path ? &srcmap : NULL); free(src); src = rs; }
     /* Cache pacchetti = cartella `packages/` del PROGETTO (GMBasic/packages). */
     {
         static char pkgcache[2048];
@@ -68,7 +100,7 @@ int main(int argc, char** argv) {
         }
     }
     /* REQUIRE: prepend degli export dei pacchetti risolti. */
-    { char* reqsrc = gmb_pkg_collect_requires(src, proj_dir_of(in));
+    { char* reqsrc = gmb_pkg_collect_requires(src, proj_dir_of(resolve_in));
  if (gmb_pkg_require_failed()) {
      fprintf(stderr, "errore: uno o piu' pacchetti REQUIRE non risolti (vedi sopra).\n");
      free(src);
@@ -123,8 +155,10 @@ int main(int argc, char** argv) {
     free(data);
     gmb_program_free(&prog);
     gmb_lex_result_free(&lx2); gmb_lex_result_free(&lx); free(src);
+    if (bsp_tmp[0]) unlink(bsp_tmp);
     return 0;
 fail:
     gmb_lex_result_free(&lx2); gmb_lex_result_free(&lx); free(src);
+    if (bsp_tmp[0]) unlink(bsp_tmp);
     return 3;
 }

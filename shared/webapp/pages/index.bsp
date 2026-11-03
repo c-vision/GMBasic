@@ -1,11 +1,12 @@
 <%@ IMPORT JSON, AI, MEMORY %>
+<%@ IMPORT DASHBOARD %>
 <%
   ' FILE: shared/webapp/pages/index.bsp — Agents Operating Center (UI)
   ' =====================================================================
   ' Pagina unica, 8 tab + chrome (palette, rail, inbox, tema). Il markup e questo file
-  ' sono il "sorgente di verità": si modifica qui (HTML/CSS/JS), senza toccare C#.
-  ' L'SSR usa solo linguaggio base + builtin del runtime (niente FUNCTION dell'include):
-  ' cosi' la pagina si renderizza anche col motore BSP in C (gmb run), non solo managed.
+  ' sono il "sorgente di verità":
+  ' si modifica qui (HTML/CSS/JS) e negli helper BASIC di include/AgentsDashboard.inc,
+  ' senza toccare C#.
   '
   ' Dati:
   '   - SSR (funziona anche senza JavaScript) via AI.AGENTLIST/TEAMLIST/AGENTEVENTS,
@@ -153,7 +154,7 @@
 <header>
   <div class="row">
     <div>
-      <h1>GMBasic — Agents Operating Center</h1>
+      <h1><%= DASHBOARD.TITLE$ %></h1>
       <div class="sub">Agents · Teams · Log · Workflows · Memory · Canvas · WASM — all in BASIC</div>
     </div>
     <div class="chips">
@@ -198,12 +199,9 @@
       <thead><tr><th>Name</th><th>Status</th><th>Permissions</th><th>Model</th><th>Actions</th></tr></thead>
       <tbody id="agents-body">
         <%
-          ' SSR senza helper BASIC: il motore C (valutatore) esegue solo il linguaggio
-          ' base e i builtin del runtime. Escape HTML inline (stesso contratto di
-          ' AgentsDashboard.EscapeHtml: & < > " ').
           DIM anames() = AI.AGENTLIST()
           IF UBOUND(anames) < 0 THEN
-            PRINT "<tr><td colspan='5' class='empty muted'>No agents — create one with the form below</td></tr>"
+            PRINT DASHBOARD.EmptyRowHtml(5, "No agents — create one with the form below")
           ELSE
             FOR i = 0 TO UBOUND(anames)
               DIM nm$ = anames(i)
@@ -211,30 +209,7 @@
               IF perm$ = "" THEN perm$ = "YOLO"
               DIM model$ = AI.AGENTGET(nm$, "model")
               IF model$ = "" THEN model$ = "-"
-              DIM nmh AS STRING
-              nmh = REPLACE$(nm$, "&", "&amp;")
-              nmh = REPLACE$(nmh, "<", "&lt;")
-              nmh = REPLACE$(nmh, ">", "&gt;")
-              nmh = REPLACE$(nmh, CHR$(34), "&quot;")
-              nmh = REPLACE$(nmh, "'", "&#39;")
-              DIM permh AS STRING
-              permh = REPLACE$(perm$, "&", "&amp;")
-              permh = REPLACE$(permh, "<", "&lt;")
-              permh = REPLACE$(permh, ">", "&gt;")
-              permh = REPLACE$(permh, CHR$(34), "&quot;")
-              permh = REPLACE$(permh, "'", "&#39;")
-              DIM modelh AS STRING
-              modelh = REPLACE$(model$, "&", "&amp;")
-              modelh = REPLACE$(modelh, "<", "&lt;")
-              modelh = REPLACE$(modelh, ">", "&gt;")
-              modelh = REPLACE$(modelh, CHR$(34), "&quot;")
-              modelh = REPLACE$(modelh, "'", "&#39;")
-              DIM pcls AS STRING
-              pcls = ""
-              IF UPPER$(perm$) = "YOLO" THEN pcls = " perm-yolo"
-              IF UPPER$(perm$) = "SUPERVISED" THEN pcls = " perm-supervised"
-              IF UPPER$(perm$) = "SANDBOX" THEN pcls = " perm-sandbox"
-              PRINT "<tr><td class='name'>" + nmh + "</td><td><span class='badge idle'>Idle</span></td><td><span class='badge" + pcls + "'>" + permh + "</span></td><td class='model ver'>" + modelh + "</td><td><button class='btn btn-ghost' data-act='chat' data-name='" + nmh + "'>Chat</button></td></tr>"
+              PRINT DASHBOARD.AgentRowRichHtml(nm$, "Idle", perm$, "-", model$)
             NEXT i
           END IF
         %>
@@ -311,20 +286,11 @@
         <%
           DIM tl$ = AI.TEAMLIST()
           IF LEN(tl$) = 0 THEN
-            PRINT "<tr><td colspan='4' class='empty muted'>No teams — create one below</td></tr>"
+            PRINT DASHBOARD.EmptyRowHtml(4, "No teams — create one below")
           ELSE
             DIM tnames() AS STRING = SPLIT(tl$, CHR$(10))
             FOR i = 0 TO UBOUND(tnames)
-              DIM tn$ = TRIM$(tnames(i))
-              IF LEN(tn$) > 0 THEN
-                DIM tnh AS STRING
-                tnh = REPLACE$(tn$, "&", "&amp;")
-                tnh = REPLACE$(tnh, "<", "&lt;")
-                tnh = REPLACE$(tnh, ">", "&gt;")
-                tnh = REPLACE$(tnh, CHR$(34), "&quot;")
-                tnh = REPLACE$(tnh, "'", "&#39;")
-                PRINT "<tr><td class='name'>" + tnh + "</td><td><span class='badge strategy'>-</span></td><td class='count'>0</td><td><button class='btn btn-ghost' data-act='team' data-name='" + tnh + "'>Broadcast</button></td></tr>"
-              END IF
+              IF LEN(TRIM$(tnames(i))) > 0 THEN PRINT DASHBOARD.TeamRowHtml(TRIM$(tnames(i)), "-", 0)
             NEXT i
           END IF
         %>
@@ -399,13 +365,7 @@
             PRINT "<tr><td class='empty muted'>No events — enable TRACE and use an agent</td></tr>"
           ELSE
             FOR i = 0 TO UBOUND(evs)
-              DIM eh AS STRING
-              eh = REPLACE$(evs(i), "&", "&amp;")
-              eh = REPLACE$(eh, "<", "&lt;")
-              eh = REPLACE$(eh, ">", "&gt;")
-              eh = REPLACE$(eh, CHR$(34), "&quot;")
-              eh = REPLACE$(eh, "'", "&#39;")
-              PRINT "<tr><td class='detail'>" + eh + "</td></tr>"
+              PRINT "<tr><td class='detail'>" + DASHBOARD.EscapeHtml(evs(i)) + "</td></tr>"
             NEXT i
           END IF
         %>
@@ -432,25 +392,7 @@
             FOR i = 0 TO UBOUND(wfs)
               DIM wname AS STRING = TRIM$(wfs(i))
               IF LEN(wname) > 0 THEN
-                DIM wnh AS STRING
-                wnh = REPLACE$(wname, "&", "&amp;")
-                wnh = REPLACE$(wnh, "<", "&lt;")
-                wnh = REPLACE$(wnh, ">", "&gt;")
-                wnh = REPLACE$(wnh, CHR$(34), "&quot;")
-                wnh = REPLACE$(wnh, "'", "&#39;")
-                DIM wsh AS STRING
-                wsh = REPLACE$(AI.WorkflowStatus(wname), "&", "&amp;")
-                wsh = REPLACE$(wsh, "<", "&lt;")
-                wsh = REPLACE$(wsh, ">", "&gt;")
-                wsh = REPLACE$(wsh, CHR$(34), "&quot;")
-                wsh = REPLACE$(wsh, "'", "&#39;")
-                DIM wph AS STRING
-                wph = REPLACE$(AI.WorkflowSteps(wname), "&", "&amp;")
-                wph = REPLACE$(wph, "<", "&lt;")
-                wph = REPLACE$(wph, ">", "&gt;")
-                wph = REPLACE$(wph, CHR$(34), "&quot;")
-                wph = REPLACE$(wph, "'", "&#39;")
-                PRINT "<tr><td class='name'>" + wnh + "</td><td><span class='badge'>" + wsh + "</span></td><td class='muted'>" + wph + "</td><td></td></tr>"
+                PRINT "<tr><td class='name'>" + DASHBOARD.EscapeHtml(wname) + "</td><td><span class='badge'>" + DASHBOARD.EscapeHtml(AI.WorkflowStatus(wname)) + "</span></td><td class='muted'>" + DASHBOARD.EscapeHtml(AI.WorkflowSteps(wname)) + "</td><td></td></tr>"
               END IF
             NEXT i
           END IF
@@ -507,15 +449,7 @@
             DIM mkeys() AS STRING = SPLIT(mlist$, CHR$(10))
             FOR i = 0 TO UBOUND(mkeys)
               DIM mk$ = TRIM$(mkeys(i))
-              IF LEN(mk$) > 0 THEN
-                DIM mkh AS STRING
-                mkh = REPLACE$(mk$, "&", "&amp;")
-                mkh = REPLACE$(mkh, "<", "&lt;")
-                mkh = REPLACE$(mkh, ">", "&gt;")
-                mkh = REPLACE$(mkh, CHR$(34), "&quot;")
-                mkh = REPLACE$(mkh, "'", "&#39;")
-                PRINT "<tr><td class='name'>" + mkh + "</td><td class='muted'>…</td><td></td></tr>"
-              END IF
+              IF LEN(mk$) > 0 THEN PRINT "<tr><td class='name'>" + DASHBOARD.EscapeHtml(mk$) + "</td><td class='muted'>…</td><td></td></tr>"
             NEXT i
           END IF
         %>
