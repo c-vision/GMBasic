@@ -1385,7 +1385,9 @@ public sealed partial class IlProgramCompiler
             case TokenKind.AiVerify: EmitAiVerifyCall(expr); break;
             case TokenKind.AiEvalValidate: EmitStringBinaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.AiEvalValidate))); break;
             case TokenKind.AiDecide:
-                if (expr.Args.Length >= 5)
+                if (expr.Args.Length >= 6)
+                    EmitAiStringsCall(expr, nameof(IlRuntime.AiDecideVerify), 6);
+                else if (expr.Args.Length >= 5)
                     EmitAiStringsCall(expr, nameof(IlRuntime.AiDecideGroup), 5);
                 else if (expr.Args.Length >= 4)
                     EmitAiStringsCall(expr, nameof(IlRuntime.AiDecide), 4);

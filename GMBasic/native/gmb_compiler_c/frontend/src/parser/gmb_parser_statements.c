@@ -805,6 +805,34 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
     if (t->kind == GMB_TOK_Ai && gmb_p_peek(p, 1) && gmb_p_tok_is_soft_keyword(gmb_p_peek(p, 1), "DECIDE")) {
         gmb_p_adv(p);   /* AI */
         gmb_p_adv(p);   /* DECIDE */
+        if (gmb_p_cur(p) && (gmb_p_cur(p)->kind == GMB_TOK_Verify
+                             || gmb_p_tok_is_keyword(gmb_p_cur(p), "VERIFY"))) {
+            gmb_p_adv(p);
+            gmb_expr_t* vs = gmb_p_parse_expr(p);
+            if (gmb_p_cur(p) && gmb_p_cur(p)->kind == GMB_TOK_Comma) gmb_p_adv(p);
+            gmb_expr_t* vk = gmb_p_parse_expr(p);
+            gmb_expr_t* vp = NULL;
+            if (gmb_p_cur(p) && gmb_p_cur(p)->kind == GMB_TOK_Comma) { gmb_p_adv(p); vp = gmb_p_parse_expr(p); }
+            gmb_expr_t** va = (gmb_expr_t**)malloc(6 * sizeof(gmb_expr_t*));
+            va[0] = vs; va[1] = vk; va[2] = vp ? vp : gmb_expr_str("rules|mock", line);
+            va[3] = gmb_expr_str("", line); va[4] = gmb_expr_str("", line); va[5] = gmb_expr_str("", line);
+            gmb_expr_t* vc = gmb_expr_call_typed("DECIDE", GMB_TOK_AiDecide, va, 6, line);
+            if (gmb_p_cur(p) && gmb_p_cur(p)->kind == GMB_TOK_Into) {
+                gmb_p_adv(p);
+                const gmb_token_t* vt = gmb_p_cur(p);
+                if (vt && vt->length > 0) {
+                    char* vn = (char*)malloc((size_t)vt->length + 1);
+                    memcpy(vn, vt->lexeme, (size_t)vt->length); vn[vt->length] = 0;
+                    gmb_p_adv(p);
+                    gmb_stmt_t* va2 = gmb_stmt_new(GMB_STMT_ASSIGN, line);
+                    va2->target = vn; va2->value = vc;
+                    return va2;
+                }
+            }
+            gmb_stmt_t* vstmt = gmb_stmt_new(GMB_STMT_CALL, line);
+            vstmt->expr = vc;
+            return vstmt;
+        }
         if (gmb_p_cur(p) && (gmb_p_cur(p)->kind == GMB_TOK_Newline || gmb_p_cur(p)->kind == GMB_TOK_Colon))
             return dc_parse_batch(p, line);
         gmb_expr_t* dc_state = gmb_p_parse_expr(p);

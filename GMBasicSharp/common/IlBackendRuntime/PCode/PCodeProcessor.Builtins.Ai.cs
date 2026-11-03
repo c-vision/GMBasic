@@ -140,6 +140,11 @@ internal sealed partial class PCodeProcessor
         {
             // AI DECIDE <state>, "NOUL|SCORE|CHOICE" (v0, provider Rules, JSON): sincrono,
             // nessun modello/rete. Stessa forma del runtime C (gmb_ai_decide_run_json).
+            if (args.Length >= 6)
+                return Basic.IlBackend.IlRuntime.AiDecideVerify(
+                    ArgOr(args, 0)?.ToString() ?? "",
+                    ArgOr(args, 1)?.ToString() ?? "",
+                    ArgOr(args, 2)?.ToString() ?? "");
             if (args.Length >= 5)
                 return Basic.IlBackend.IlRuntime.AiDecideGroup(
                     ArgOr(args, 0)?.ToString() ?? "",

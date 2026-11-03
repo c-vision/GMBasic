@@ -644,3 +644,74 @@ char* gmb_ai_decide_group_json(const char* state, const char* names_json, const 
     if (!dc_sb_add(&out, &cap, &off, "}", 1)) { free(out); return NULL; }
     return out;
 }
+
+/* ── Diagnostica `AI DECIDE VERIFY`: stessa richiesta su più provider, report accordo/drift ── */
+char* gmb_ai_decide_verify_json(const char* state, const char* kind, const char* providers_csv) {
+    const char* csv = (providers_csv && *providers_csv) ? providers_csv : "rules|mock";
+    char* copy = strdup(csv);
+    if (!copy) return NULL;
+    char* out = NULL; size_t cap = 0, off = 0;
+    if (!dc_sb_add(&out, &cap, &off, "{\"ok\":", 6)) { free(copy); return NULL; }
+
+    char* opts[16]; double probs[16]; int nopts = 0, nprobs = 0, ok = 1, first = 1;
+    char* results = NULL; size_t rcap = 0, roff = 0;
+    if (!dc_sb_add(&results, &rcap, &roff, "[", 1)) { free(copy); free(out); return NULL; }
+    char* p = copy;
+    while (*p) {
+        char* sep = strchr(p, '|');
+        if (sep) *sep = 0;
+        while (*p == ' ' || *p == '\t') p++;
+        char* e = p + strlen(p);
+        while (e > p && (e[-1] == ' ' || e[-1] == '\t')) *--e = 0;
+        if (*p) {
+            char escp[256]; json_escape(p, escp, sizeof escp);
+            char* r = gmb_ai_decide_run_json(state ? state : "", kind ? kind : "", p);
+            if (!first && !dc_sb_add(&results, &rcap, &roff, ",", 1)) { free(r); break; }
+            first = 0;
+            char head[512];
+            int hn = snprintf(head, sizeof head, "{\"provider\":\"%s\",\"result\":", escp);
+            if (hn < 0 || !dc_sb_add(&results, &rcap, &roff, head, (size_t)hn) ||
+                !dc_sb_add(&results, &rcap, &roff, r ? r : "null", strlen(r ? r : "null")) ||
+                !dc_sb_add(&results, &rcap, &roff, "}", 1)) { free(r); break; }
+            if (r) {
+                char* opt = gmb_json_extract(r, "option");
+                char* prob = gmb_json_extract(r, "probability");
+                if (opt && *opt && prob && *prob) {
+                    if (nopts < 16) opts[nopts++] = strdup(opt);
+                    if (nprobs < 16) probs[nprobs++] = atof(prob);
+                } else ok = 0;
+                free(opt); free(prob);
+            } else ok = 0;
+            free(r);
+        }
+        if (!sep) break;
+        p = sep + 1;
+    }
+    free(copy);
+    if (!dc_sb_add(&results, &rcap, &roff, "]", 1)) { free(out); free(results); return NULL; }
+
+    int distinct = 0;
+    for (int i = 0; i < nopts; i++) {
+        int seen = 0;
+        for (int j = 0; j < i; j++) if (ieq(opts[i], opts[j])) { seen = 1; break; }
+        if (!seen) distinct++;
+    }
+    int agreement = distinct <= 1;
+    int drift = nopts == 0 ? 0 : distinct - 1;
+    double spread = 0.0;
+    if (nprobs > 0) {
+        double mn = probs[0], mx = probs[0];
+        for (int i = 1; i < nprobs; i++) { if (probs[i] < mn) mn = probs[i]; if (probs[i] > mx) mx = probs[i]; }
+        spread = mx - mn;
+    }
+    for (int i = 0; i < nopts; i++) free(opts[i]);
+
+    char tail[512];
+    int tn = snprintf(tail, sizeof tail,
+        ",\"agreement\":%s,\"argmaxDrift\":%d,\"probabilitySpread\":%.15g,\"results\":%s}",
+        agreement ? "true" : "false", drift, spread, results);
+    free(results);
+    if (tn < 0 || !dc_sb_add(&out, &cap, &off, ok ? "true" : "false", ok ? 4 : 5) ||
+        !dc_sb_add(&out, &cap, &off, tail, (size_t)tn)) { free(out); return NULL; }
+    return out;
+}

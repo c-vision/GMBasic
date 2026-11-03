@@ -2474,6 +2474,7 @@ gmb_string_t gmb_string_take(char* heap);
 char* gmb_ai_decide_run_json(const char* state, const char* kind, const char* provider);
 char* gmb_ai_decide_run_json_chain(const char* state, const char* kind, const char* provider, const char* fallback_csv);
 char* gmb_ai_decide_group_json(const char* state, const char* names_json, const char* kinds_json, const char* provider, const char* fallback);
+char* gmb_ai_decide_verify_json(const char* state, const char* kind, const char* providers_csv);
 int gmb_ai_register_ocr_backend(void* load, void* read_image, void* read_audio, void* free_s, void* unload);
 int gmb_ai_ocr_load_model(const char* model, const char* mmproj);
 const char* gmb_ai_ocr_read(const char* path, const char* prompt, int max_tokens);

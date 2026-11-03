@@ -15702,6 +15702,18 @@ void gmb_bf_eval_validate_c2001(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc,
 void gmb_bf_decide_c3817(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
     (void)vm; (void)func_code; (void)task;
+    if (argc >= 6) {
+        const char* state = vm_builtin_sarg(args, argc, 0);
+        const char* kind = vm_builtin_sarg(args, argc, 1);
+        const char* providers = vm_builtin_sarg(args, argc, 2);
+        char* vres = gmb_ai_decide_verify_json(state ? state : "", kind ? kind : "",
+                                               providers ? providers : "");
+        bout->is_num = 0;
+        bout->result_ref = (gmb_obj_t*)gmb_str_cstr(vres ? vres : "");
+        bout->result_ref_bt = GMB_BT_STRING;
+        free(vres);
+        return;
+    }
     if (argc >= 5) {
         const char* state = vm_builtin_sarg(args, argc, 0);
         const char* names = vm_builtin_sarg(args, argc, 1);

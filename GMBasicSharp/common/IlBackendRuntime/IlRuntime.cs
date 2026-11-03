@@ -18431,6 +18431,59 @@ public static double TextWidth(string s)
         return _lastDecideGroupResult;
     }
 
+    /// <summary>Diagnostica `AI DECIDE VERIFY`: esegue la stessa richiesta su più provider
+    /// (default `rules|mock`) e riporta accordo/drift. Non altera lo stato.</summary>
+    public static string AiDecideVerify(string state, string kind, string providersCsv)
+        => AiDecideVerify(state, kind, providersCsv, "", "", "");
+
+    public static string AiDecideVerify(string state, string kind, string providersCsv,
+        string unused1, string unused2, string unused3)
+    {
+        _ = unused1; _ = unused2; _ = unused3;
+        var providers = (providersCsv ?? "").Split('|',
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (providers.Length == 0) providers = ["rules", "mock"];
+        var results = new System.Text.Json.Nodes.JsonArray();
+        var options = new List<string>();
+        var probabilities = new List<double>();
+        var ok = true;
+        foreach (var provider in providers)
+        {
+            var raw = AiDecide(state, kind, provider);
+            System.Text.Json.Nodes.JsonNode? node;
+            try { node = System.Text.Json.Nodes.JsonNode.Parse(raw); }
+            catch { node = null; }
+            results.Add(new System.Text.Json.Nodes.JsonObject
+            {
+                ["provider"] = provider,
+                ["result"] = node,
+            });
+            if (node is System.Text.Json.Nodes.JsonObject obj && obj["error"] is null)
+            {
+                var option = obj["option"]?.GetValue<string>();
+                if (!string.IsNullOrEmpty(option)) options.Add(option!);
+                if (double.TryParse(obj["probability"]?.ToJsonString(),
+                        System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out var prob))
+                    probabilities.Add(prob);
+            }
+            else ok = false;
+        }
+        var distinct = options.Distinct(StringComparer.OrdinalIgnoreCase).Count();
+        var agreement = distinct <= 1;
+        var drift = options.Count == 0 ? 0 : distinct - 1;
+        var spread = probabilities.Count == 0 ? 0.0 : probabilities.Max() - probabilities.Min();
+        var report = new System.Text.Json.Nodes.JsonObject
+        {
+            ["ok"] = ok,
+            ["agreement"] = agreement,
+            ["argmaxDrift"] = drift,
+            ["probabilitySpread"] = spread,
+            ["results"] = results,
+        };
+        return report.ToJsonString();
+    }
+
     private static Basic.Decision.DecisionRequest BuildDecisionRequest(string state, string kind)
     {
         var raw = (kind ?? "").Trim();
