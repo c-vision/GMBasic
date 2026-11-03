@@ -3029,32 +3029,11 @@ static void gmb_bf_299_c315(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int
     else { bout->is_num = 0; bout->result_ref = NULL; }
 
 }
-/* REPLACE(s, old, new): sostituisce TUTTE le occorrenze (parità C# String.Replace e
- * gmb_str_replace del runtime). Assente in VM/C fino al 2026-11-02: le pagine BSP che
- * usano DASHBOARD.EscapeHtml (REPLACE$) non compilavano sul chunk A1. */
-static void gmb_bf_299_c317(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-    (void)vm; (void)task; (void)func_code;
-    if (argc < 3 ||
-        args[0].type != 2 || !args[0].ref ||
-        args[1].type != 2 || !args[1].ref ||
-        args[2].type != 2 || !args[2].ref)
-    { bout->is_num = 0; bout->result_ref = NULL; return; }
-    gmb_obj_string_t* a0 = (gmb_obj_string_t*)args[0].ref;
-    gmb_obj_string_t* a1 = (gmb_obj_string_t*)args[1].ref;
-    gmb_obj_string_t* a2 = (gmb_obj_string_t*)args[2].ref;
-    gmb_string_t s = { a0->data, a0->length, 1 };
-    gmb_string_t old = { a1->data, a1->length, 1 };
-    gmb_string_t neu = { a2->data, a2->length, 1 };
-    gmb_string_t out = gmb_str_replace(s, old, neu);
-    if (out.data)
-    {
-        gmb_obj_string_t* r = gmb_str_alloc(out.data, (uint32_t)out.length);
-        gmb_string_free(&out);   /* stringa runtime temporanea: copiata nella VM */
-        bout->is_num = 0; bout->result_ref = (gmb_obj_t*)r; bout->result_ref_bt = GMB_BT_STRING;
-    }
-    else { bout->is_num = 0; bout->result_ref = NULL; }
-}
+/* REPLACE(s, old, new) — sostituisce TUTTE le occorrenze (parità C# String.Replace):
+ * servita da gmb_bf_317 (lo stesso func_code). La copia inline `gmb_bf_299_c317`
+ * portata il 2026-11-02 era un SECONDO binding sullo stesso codice: duplicato
+ * segnalato da check_enum_ids e vietato da AGENTS §0bis (una sola implementazione,
+ * in `gmb_str_replace` del runtime). Rimossa; la voce in tabella resta una. */
 
 static void gmb_bf_299_c316(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
@@ -4380,7 +4359,7 @@ static void gmb_bf_357(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
             /* Parità con l'oracolo (IlRuntime.PasswordVerify -> bool): vero = 1, falso = 0.
              * Prima ritornava -1 quando la password era CORRETTA (stessa classe del bug
              * VERIFYNOTE: valore inventato che divergeva da IL/PCode). */
-            bout->result = gmb_password_verify(pw, st) ? 1 : 0;
+            bout->result = gmb_password_verify(pw, st) ? -1.0 : 0.0;
         }
 }
 static void gmb_bf_342(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -4756,7 +4735,7 @@ static void gmb_bf_363(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
                 memcpy(data, s->data, dlen);
             }
             int handle = (int)args[2].num;
-            bout->result = gmb_keys_verify(handle, data, dlen, sig, slen) ? 1.0 : 0.0;
+            bout->result = gmb_keys_verify(handle, data, dlen, sig, slen) ? -1.0 : 0.0;
         }
 }
 static void gmb_bf_364(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -11100,8 +11079,13 @@ void gmb_bf_473(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, 
                 snprintf(fbuf, sizeof(fbuf), "%s", va ? va : "");
                 res = fbuf;
             }
-            /* 475 INDEXKEY: la VM/C non ha alcun indice attivo → stringa vuota (nessun indice
-             * impostato e' un valore, non un fallback silenzioso). */
+            /* 475 INDEXKEY: campo chiave dell'ordine attivo (vuoto se nessun ordine). */
+            else if (func_code == 475)
+            {
+                gmb_string_t ik = gmb_indexkey(0);
+                snprintf(fbuf, sizeof(fbuf), "%s", ik.data ? ik.data : "");
+                res = fbuf;
+            }
             gmb_obj_string_t* r = gmb_str_cstr(res);
             bout->is_num = 0; bout->result_ref = (gmb_obj_t*)r; bout->result_ref_bt = GMB_BT_STRING;
         }
@@ -11110,11 +11094,9 @@ static void gmb_bf_476(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
 {
         (void)vm; (void)args; (void)argc; (void)func_code; (void)task;
         {
-            /* INDEXORD(): numero d'ordine corrente. La VM/C non tiene alcun indice (nessun
-             * ordine impostato) → 0 e' il valore corretto, non un fallback silenzioso: con un
-             * indice attivo IL/PCode ritornano il numero d'ordine e questo va rivisto insieme
-             * al supporto indici della VM/C. § MiniTests/dbf/dbf_state.bas. */
-            bout->result = 0;
+            /* INDEXORD(): numero d'ordine attivo dell'area DBF corrente (0 = ordine fisico),
+             * letto dal runtime DBF condiviso (stesso stato di DBF SET ORDER). */
+            bout->result = gmb_indexord_dbl(0);
         }
 }
 static void gmb_bf_623(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -12483,9 +12465,9 @@ static void gmb_bf_1155(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
             pthread_mutex_lock(&vm->worker_lock);
             cur = vm->worker_target;
             pthread_mutex_unlock(&vm->worker_lock);
-            if (argc == 0) { bout->result = cur; }
+            if (argc == 0) { bout->result = cur; return; }
             int target = (int)args[0].num;
-            if (target <= 0) { bout->result = cur; }
+            if (target <= 0) { bout->result = cur; return; }   /* 0 = sola query (Go runtime.GOMAXPROCS(0)) */
             if (target > 32) target = 32;
             int spawn_n = 0;
             pthread_mutex_lock(&vm->worker_lock);
@@ -12628,12 +12610,14 @@ static void gmb_bf_1201(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
                 gmb_stack_entry_t e = gmb_pool_get((gmb_pool_t*)args[0].ref);
                 if (e.type == 2 && e.ref)
                 {
-                    if (gmb_task_push_move(task, e) != 0) gmb_obj_release(e.ref);
+                    /* Il valore esce dal pool POSSEDUTO (+1): lo prende il dispatcher via bout. Spingerlo
+                     * qui lasciava anche il push_nil del dispatcher in cima → POOL.GET sempre 0/nil. */
+                    bout->is_num = 0; bout->result_ref = e.ref; bout->result_ref_bt = e.basic_type;
                     return;
                 }
-                if (e.type == 1) { push_num_entry(task, e.num, e.basic_type); return; }
+                if (e.type == 1) { bout->is_num = 1; bout->result = e.num; bout->num_bt = e.basic_type; return; }
             }
-            push_nil(task);
+            bout->is_num = 0; bout->result_ref = NULL;   /* pool vuoto → NIL (il dispatcher lo pusha) */
             return;
         }
 }
@@ -12642,7 +12626,10 @@ static void gmb_bf_1202(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
         {
             if (argc >= 2 && args[0].type == 2 && args[0].ref &&
                 args[0].ref->kind == GMB_OBJ_POOL)
-                gmb_pool_put((gmb_pool_t*)args[0].ref, args[1]); 
+            {
+                gmb_pool_put((gmb_pool_t*)args[0].ref, args[1]);
+                args[1].ref = NULL;   /* il pool ha PRESO il riferimento: il dispatcher non deve rilasciarlo (use-after-free → stringa vuota) */
+            }
         }
         
 }
@@ -16282,7 +16269,7 @@ static void gmb_bf_verifyraw_c3509(gmb_vm_t* vm, gmb_stack_entry_t* args, int ar
         memcpy(data, s->data, dlen);
     }
     const char* key = vm_builtin_sarg(args, argc, 2);
-    bout->result = gmb_keys_verify_raw(data, dlen, sig, slen, key ? key : "") ? 1.0 : 0.0;
+    bout->result = gmb_keys_verify_raw(data, dlen, sig, slen, key ? key : "") ? -1.0 : 0.0;
 }
 
 static void gmb_bf_sleep_c1271(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -18159,7 +18146,6 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 306, gmb_bf_299_c306 },
     { 314, gmb_bf_299_c314 },
     { 315, gmb_bf_299_c315 },
-    { 317, gmb_bf_299_c317 },
     { 316, gmb_bf_299_c316 },
     { 308, gmb_bf_299_c308 },
     { 309, gmb_bf_299_c309 },

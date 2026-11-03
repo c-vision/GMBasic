@@ -37,22 +37,7 @@ internal sealed partial class PCodeProcessor
         return ParkedBuiltinResult;
     }
 
-private static double[] ToDoubleArr(object? arg) {
-        if (arg is double[] da) return da;
-        var flat = new System.Collections.Generic.List<double>();
-        void FlattenToDouble(object? item)
-        {
-            if (item is double[] dad) { foreach (var d in dad) flat.Add(d); return; }
-            if (item is System.Collections.IEnumerable en && item is not string && item is not System.Collections.IDictionary)
-            {
-                foreach (var sub in en) FlattenToDouble(sub);
-                return;
-            }
-            flat.Add(SafeDouble(item ?? 0));
-        }
-        FlattenToDouble(arg);
-        return flat.ToArray();
-    }
+private static double[] ToDoubleArr(object? arg) => Basic.IlBackend.RuntimeFlatten.ToDoubles(arg);
     private static double[][] ToDoubleMatrix(object? value)
     {
         if (value is not System.Collections.IEnumerable rows || value is string) return [];
@@ -478,7 +463,7 @@ if (args.Length > 0) { try { var sizes = new List<int>(); foreach (var a in args
         },
         [BuiltInFunction.PASSWORDVERIFY] = (task, args) =>
         {
-                return args.Length >= 2 && Basic.IlBackend.IlRuntime.PasswordVerify(args[0]?.ToString() ?? "", args[1]?.ToString() ?? "") ? 1.0 : 0.0;
+                return args.Length >= 2 && Basic.IlBackend.IlRuntime.PasswordVerify(args[0]?.ToString() ?? "", args[1]?.ToString() ?? "") ? -1.0 : 0.0;
         },
         [BuiltInFunction.RANDOMCRYPTOBYTES] = (task, args) =>
         {
@@ -5043,12 +5028,12 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         [BuiltInFunction.VERIFY] = (task, args) =>
         {
                 // Runtime comune (IlRuntime): registry handle unico (§0bis).
-                return Basic.IlBackend.IlRuntime.Verify(ArgOr(args, 0), ArgOr(args, 1), (long)SafeDouble(ArgOr(args, 2)));
+                return Basic.IlBackend.IlRuntime.Verify(ArgOr(args, 0), ArgOr(args, 1), (long)SafeDouble(ArgOr(args, 2))) ? -1.0 : 0.0;
         },
         [BuiltInFunction.VERIFYRAW] = (task, args) =>
         {
                 // Runtime comune (IlRuntime): verifica Ed25519 con chiave pubblica raw (base64).
-                return Basic.IlBackend.IlRuntime.VerifyRaw(ArgOr(args, 0), ArgOr(args, 1), args.Length > 2 ? (ArgOr(args, 2)?.ToString() ?? "") : "");
+                return Basic.IlBackend.IlRuntime.VerifyRaw(ArgOr(args, 0), ArgOr(args, 1), args.Length > 2 ? (ArgOr(args, 2)?.ToString() ?? "") : "") ? -1.0 : 0.0;
         },
         [BuiltInFunction.VOLATILITY] = (task, args) =>
         {

@@ -368,6 +368,16 @@ void gmb_vm_restore_net_hooks(gmb_vm_t* vm);
  *  -1  errore (task.state = GMB_TS_FINISHED). */
 int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task);
 
+/* Chiamata SINCRONA a un indirizzo (frame nuovo, marker sync): gli argomenti sono
+ * già sullo stack (argc). Usata dal driver EVAL (gmb_vm_eval.c) e dal prestito C. */
+int gmb_vm_call_sync(gmb_task_t* task, int addr, int argc, gmb_val_t* out);
+/* Campo del record DBF attivo (per pre/post-carico dei nomi-campo in EVAL). */
+int gmb_vm_dbf_field_get(const char* name, gmb_val_t* out);
+int gmb_vm_dbf_field_set(const char* name, gmb_val_t in);
+/* Riversa l'output catturato di un frammento nello staging della task ospite
+ * (ordine interleaving con i PRINT del chiamante). */
+void gmb_vm_emit_captured(gmb_vm_t* vm, gmb_task_t* task, const char* s);
+
 /* Esegue fino alla fine (single task, no GPM) — per programmi lineari. */
 int gmb_vm_run(gmb_vm_t* vm);
 

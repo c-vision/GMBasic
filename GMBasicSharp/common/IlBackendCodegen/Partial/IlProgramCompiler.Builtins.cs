@@ -960,8 +960,17 @@ public sealed partial class IlProgramCompiler
             case TokenKind.Shell: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.SystemShell))); break;
             case TokenKind.ShellOut: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.SystemExec))); break;
             case TokenKind.ShellCode: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.SystemExecCode))); break;
-            case TokenKind.GoMaxProcs: EmitNumericCall(expr, RuntimeMethod(nameof(IlRuntime.GoMaxProcs))); break;
+            case TokenKind.GoMaxProcs:
+                // Argomento opzionale (`double n = 0`): con 0 argomenti va spinto 0.0, altrimenti `call` a stack vuoto.
+                if (expr.Args.Length == 0) _il.Emit(OpCodes.Ldc_R8, 0.0);
+                EmitNumericCall(expr, RuntimeMethod(nameof(IlRuntime.GoMaxProcs)));
+                break;
             // G8-bis: POOL/SYNCMAP/ATOMIC/SYSTEM.NUMGOROUTINE/NUMCPU (parità PCodeVM).
+            case TokenKind.Next:
+                // NEXT(generatore): prossimo valore (object) o BasicException(StopIteration) a fine corsa.
+                EmitExpression(expr.Args[0]);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.GeneratorNext), typeof(object)));
+                break;
             case TokenKind.PoolGet:
                 EmitExpression(expr.Args[0]);
                 _il.Emit(OpCodes.Castclass, typeof(PCodePool));
@@ -971,6 +980,12 @@ public sealed partial class IlProgramCompiler
                 EmitExpression(expr.Args[0]);
                 _il.Emit(OpCodes.Castclass, typeof(PCodePool));
                 EmitExpression(expr.Args[1]);
+                {
+                    // PCodePool.Put(object): un valore numerico (double/long…) va BOXATO, altrimenti
+                    // IL invalido («invalid program») con `POOL.PUT(p, 42)`; le stringhe sono già object.
+                    var poolItemClr = DataTypeMapper.Map(NormalizeInferredType(InferType(expr.Args[1])), _types, _classTypes);
+                    if (poolItemClr.IsValueType) _il.Emit(OpCodes.Box, poolItemClr);
+                }
                 _il.Emit(OpCodes.Callvirt, PoolPutMethod);
                 break;
             case TokenKind.SyncMapStore:

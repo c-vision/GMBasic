@@ -13,8 +13,7 @@
 #include "gmb_vm_events.h"
 #include "gmb_adapter.h"
 #include "gmb_syscall_codes.h"   /* GMB_SC_<NOME> = valore dell'enum SysCall (generato) */
-#include "gmb_expr.h"
-#include "gmb_vm_expr_compile.h"
+#include "gmb_vm_eval.h"
 #include "gmb_vm_value.h"
 #include "gmb_commonlib.h"
 #include "gmb_graphics.h"
@@ -1637,10 +1636,6 @@ static int gmb_dyn_task_find(gmb_task_t* t, const char* name, gmb_stack_entry_t*
 
 static gmb_frame_t* push_frame(gmb_task_t* t, int saved_sp, int return_ip);
 
-typedef struct {
-    gmb_task_t* task;
-    const gmb_chunk_t* chunk;
-} vm_expr_env_t;
 
 /* S_eval record-scope DBF (parità PCodeVM/IL): EVAL/& risolve i nomi come CAMPI del record
  * corrente dell'area DBF nativa attiva (dopo locali+globali). gmb_db è già una dipendenza
@@ -1751,74 +1746,27 @@ static int vm_expr_dbf_record_set(const char* name, gmb_val_t in)
 #endif
 }
 
-static int vm_expr_get(void* env, const char* name, gmb_val_t* out)
+/* Campi DBF dell'area attiva: API usata dal driver EVAL (gmb_vm_eval.c) per
+ * pre-caricare/riscrivere i locali che rappresentano campi del record corrente. */
+int gmb_vm_dbf_field_get(const char* name, gmb_val_t* out)
 {
-    vm_expr_env_t* e = (vm_expr_env_t*)env;
-    if (!e || !name || !out || !e->chunk || !e->task) return -1;
-    /* S_eval: le LOCALI della procedura chiamante vengono PRIMA dei globali
-     * (specchio PCodeVM EvalMacroInPCode; BYREF unwrappato in lettura da
-     * gmb_task_load_local come OP_LOAD_LOCAL). */
-    if (e->chunk->ploc_count > 0) {
-        int slot = gmb_chunk_local_slot(e->chunk, e->task->ip, name);
-        if (slot >= 0) {
-            *out = gmb_adapter_stack_to_val(gmb_task_load_local(e->task, slot));
-            return 0;
-        }
-    }
-    for (uint32_t i = 0; i < e->chunk->global_name_count; i++) {
-        const char* n = e->chunk->global_names ? e->chunk->global_names[i] : NULL;
-        if (n && n[0] && strcasecmp(n, name) == 0) {
-            *out = gmb_adapter_stack_to_val(gmb_task_load_global(e->task, (int)i));
-            return 0;
-        }
-    }
-    /* S_eval record-scope: campo del record corrente dell'area DBF attiva (dopo locali+globali). */
-    if (vm_expr_dbf_record_get(name, out) == 0) return 0;
-    return -1;
+    return vm_expr_dbf_record_get(name, out);
 }
 
-static int vm_expr_set(void* env, const char* name, gmb_val_t in)
+int gmb_vm_dbf_field_set(const char* name, gmb_val_t in)
 {
-    vm_expr_env_t* e = (vm_expr_env_t*)env;
-    if (!e || !name || !e->chunk || !e->task) return -1;
-    /* S_eval: write-back in place sulla locale del chiamante (write-through BYREF
-     * dentro gmb_task_store_local come OP_STORE_LOCAL, ReturnValue incluso). */
-    if (e->chunk->ploc_count > 0) {
-        int slot = gmb_chunk_local_slot(e->chunk, e->task->ip, name);
-        if (slot >= 0) {
-            gmb_task_store_local(e->task, slot, gmb_adapter_val_to_stack(in));
-            return 0;
-        }
-    }
-    for (uint32_t i = 0; i < e->chunk->global_name_count; i++) {
-        const char* n = e->chunk->global_names ? e->chunk->global_names[i] : NULL;
-        if (n && n[0] && strcasecmp(n, name) == 0) {
-            gmb_task_store_global(e->task, (int)i, gmb_adapter_val_to_stack(in));
-            return 0;
-        }
-    }
-    /* S_eval record-scope: scrittura sul campo del record corrente (parità Clipper). */
-    if (vm_expr_dbf_record_set(name, in) == 0) return 0;
-    return -1;
+    return vm_expr_dbf_record_set(name, in);
 }
 
-static int vm_expr_call(void* env, const char* name, const gmb_val_t* args, int nargs, gmb_val_t* out)
+/* Chiamata SINCRONA: frame nuovo con marker -2, esecuzione a tick finché la
+ * RETURN del callee azzera sync_active. È il meccanismo usato dal driver EVAL per
+ * eseguire il frammento compilato (parametri BYREF verso i locali del chiamante) e
+ * dalle API C che invocano procedure del programma. */
+int gmb_vm_call_sync(gmb_task_t* task, int addr, int argc, gmb_val_t* out)
 {
-    vm_expr_env_t* e = (vm_expr_env_t*)env;
-    if (!e || !name || !out || !e->task || !e->chunk) return -1;
-    gmb_vm_t* vm = (gmb_vm_t*)e->task->vm_ctx;
-    if (!vm) return -1;
-    int addr = -1;
-    for (uint32_t i = 0; i < e->chunk->proc_count; i++) {
-        const char* n = e->chunk->proc_names ? e->chunk->proc_names[i] : NULL;
-        if (n && strcasecmp(n, name) == 0) {
-            addr = (int)e->chunk->proc_addrs[i];
-            break;
-        }
-    }
-    if (addr < 0) return -1;
-
-    gmb_task_t* task = e->task;
+    gmb_vm_t* vm = task ? (gmb_vm_t*)task->vm_ctx : NULL;
+    if (!vm || !task || addr < 0) return -1;
+    if (argc < 0) argc = 0;
     int saved_ip = task->ip;
     int saved_sync = task->sync_active;
     int saved_sip = task->sync_saved_ip;
@@ -1826,12 +1774,6 @@ static int vm_expr_call(void* env, const char* name, const gmb_val_t* args, int 
     gmb_obj_t* saved_sref = task->sync_result_ref;
     uint8_t saved_st = task->sync_result_type;
 
-    for (int i = 0; i < nargs; i++) {
-        gmb_stack_entry_t s = gmb_adapter_val_to_stack(args[i]);
-        if (s.type == 2 && s.ref) gmb_task_push_ref(task, s.ref, s.basic_type);
-        else gmb_task_push_num(task, s.num, s.basic_type);
-    }
-    int argc = nargs > 0 ? nargs : 0;
     if (!push_frame(task, task->sp - argc, -2)) return -1;
     task->sync_saved_ip = saved_ip;
     task->sync_active = 1;
@@ -1840,29 +1782,40 @@ static int vm_expr_call(void* env, const char* name, const gmb_val_t* args, int 
     task->sync_result_type = 0;
     task->ip = addr;
     int guard = 0;
-    while (task->sync_active && guard++ < 1000000)
-        gmb_vm_tick(vm, task);
-    if (task->ip == -2) task->ip = saved_ip;
-    else task->ip = saved_ip;
+    int rc = 0;
+    while (task->sync_active && guard++ < 20000000) {
+        int t = gmb_vm_tick(vm, task);
+        if (t < 0) { rc = -1; break; }
+    }
+    if (task->sync_active && rc == 0) rc = -1;   /* non è tornato: errore esplicito */
 
     gmb_stack_entry_t rv;
-    memset(&rv, 0, sizeof(rv));
+    memset(&rv, 0, sizeof rv);
     rv.type = task->sync_result_type;
     rv.num = task->sync_result;
     rv.ref = task->sync_result_ref;
-    *out = gmb_adapter_stack_to_val(rv);
+    if (out) *out = rc == 0 ? gmb_adapter_stack_to_val(rv) : gmb_val_nil();
+    else if (rv.type == 2 && rv.ref) gmb_obj_release(rv.ref);
 
+    task->ip = saved_ip;
     task->sync_active = saved_sync;
     task->sync_saved_ip = saved_sip;
     task->sync_result = saved_sr;
     task->sync_result_ref = saved_sref;
     task->sync_result_type = saved_st;
-    return 0;
+    return rc;
 }
 
-/* & / EVAL: la stringa in cima allo stack è il sorgente. Env = globali del chunk. */
 static void vm_emit_captured_print(gmb_vm_t* vm, gmb_task_t* task, const char* s);
+void gmb_vm_emit_captured(gmb_vm_t* vm, gmb_task_t* task, const char* s)
+{ vm_emit_captured_print(vm, task, s); }
 
+/* Cattura l'output dei PRINT del frammento (macro-comando): viene poi riversato
+ * nello staging della task ospite, così l'ordine con i PRINT del chiamante è
+ * preservato (bug ClipperMacroCanary). */
+/* & / EVAL: la stringa in cima allo stack è il sorgente. Il frammento è compilato
+ * dal COMPILATORE C contro le tabelle del chunk ospite ed eseguito inline
+ * (gmb_vm_eval.c): nessun valutatore di espressioni separato. */
 static void vm_eval_macro(gmb_task_t* task, int as_stmt)
 {
     if (task->sp <= 0) {
@@ -1880,45 +1833,25 @@ static void vm_eval_macro(gmb_task_t* task, int as_stmt)
         snprintf(nbuf, sizeof nbuf, "%.14g", gmb_val_to_double(keep));
         text = nbuf;
     }
-    gmb_vm_t* vm = (gmb_vm_t*)task->vm_ctx;
-    vm_expr_env_t env = { task, vm ? vm->chunk : NULL };
     gmb_val_t result = gmb_val_nil();
-    int crc = gmb_vm_expr_try_compiled(task, vm ? vm->chunk : NULL, text, as_stmt, NULL);
-    if (crc < 0) {
-        vm_error(task, "MACRO (&) eval failed");
-        return;
-    }
-    if (crc == 0) return; /* snippet: expr lascia il valore sullo stack */
-    int rc;
-    if (as_stmt) {
-        /* Macro-comando: output CATTURATO e riversato nello staging del task ospite,
-         * così l'ordine con i PRINT del chiamante è preservato (bug ClipperMacroCanary). */
-        char* cap = NULL;
-        rc = gmb_expr_exec_capture(text, &env, vm_expr_get, vm_expr_set, vm_expr_call, &cap);
-        if (cap) { vm_emit_captured_print(vm, task, cap); free(cap); }
-    } else {
-        rc = gmb_expr_eval_ex(text, &env, vm_expr_get, vm_expr_set, vm_expr_call, &result);
-    }
-    if (rc == GMB_EXPR_ERR_UNDEF) {
-        /* S_eval: nome ignoto ovunque (fuori scope, fuori host) → NIL come il C#
-         * (nested-VM spinge NIL), non errore fatale. Expr: NIL sullo stack. */
-        if (!as_stmt)
-            push_val_entry(task, gmb_val_nil());
-        return;
-    }
-    if (rc != GMB_EXPR_OK) {
-        /* Contratto C# (MacroEvalExpr): l'errore è reso come STRINGA "MACRO ERROR: <msg>",
-         * MAI abort del processo (bug ClipperMacroStaticError: VM/C usciva con exit 6).
-         * Gli statement lo ingoiano (il C# ritorna null per asExpr=false). */
+    int rc = gmb_vm_eval_text(task, text, as_stmt, as_stmt ? NULL : &result);
+
+    if (keep.kind == GMB_TYPE_STRING) gmb_string_free(&keep.v_string);
+
+    if (rc != 0) {
+        /* Contratto C# (MacroEvalExpr): errore → STRINGA "MACRO ERROR: <msg>",
+         * mai abort del processo. Gli statement lo ingoiano. */
         if (!as_stmt) {
-            char ebuf[320];
-            snprintf(ebuf, sizeof ebuf, "MACRO ERROR: %s", gmb_expr_last_error());
+            char ebuf[480];
+            snprintf(ebuf, sizeof ebuf, "MACRO ERROR: %s", gmb_vm_eval_last_error());
             push_val_entry(task, gmb_make_val_string_counted(ebuf));
         }
         return;
     }
-    if (!as_stmt)
+    if (!as_stmt) {
         push_val_entry(task, result);
+        if (result.kind == GMB_TYPE_STRING) gmb_string_free(&result.v_string);
+    }
 }
 
 /* Emette l'output catturato di una macro-comando (&(\"PRINT ...\")) attraverso lo STESSO
@@ -4737,6 +4670,24 @@ static void vm_sys_rdd_set_default(gmb_vm_t* vm, gmb_task_t* task, int code, int
     char drv[16]; vm_pop_str(task, drv, sizeof(drv));
     push_num_entry(task, (double)gmb_rdd_set_default(drv), GMB_BT_NUMBER);
 }
+/* DBF EXPORT/IMPORT: il compilatore C# passa (EngineType, Area, FilePath, Format) con engine e
+ * formato come STRINGHE ("DBF", "CSV"/"JSON"); l'area implicita/numerica = area DBF corrente,
+ * un alias stringa = quell'area. Ritorna 1 se l'istruzione era DBF (esito in *rc), 0 altrimenti
+ * (resta il percorso RDD/ISAM storico). */
+static int vm_dbf_exchange(gmb_stack_entry_t* a, int is_export, int* rc)
+{
+    const char* eng = (a[0].type == 2 && a[0].ref) ? ((gmb_obj_string_t*)a[0].ref)->data : "";
+    char alias[128]; char path[1024]; int64_t h; int f;
+    if (!eng || strcasecmp(eng, "DBF") != 0) return 0;
+    alias[0] = 0; path[0] = 0;
+    if (a[1].type == 2 && a[1].ref) snprintf(alias, sizeof(alias), "%s", ((gmb_obj_string_t*)a[1].ref)->data);
+    if (a[2].type == 2 && a[2].ref) snprintf(path, sizeof(path), "%s", ((gmb_obj_string_t*)a[2].ref)->data);
+    f = (a[3].type == 2 && a[3].ref && strcasecmp(((gmb_obj_string_t*)a[3].ref)->data, "JSON") == 0) ? 1 : 0;
+    h = alias[0] ? gmb_db_dbf_find_handle_by_alias(alias) : 0;
+    if (h <= 0) h = gmb_db_current_dbf();
+    *rc = h > 0 ? (is_export ? gmb_db_dbf_export(h, path, f) : gmb_db_dbf_import(h, path, f)) : -1;
+    return 1;
+}
 static void vm_sys_export_114(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
     (void)vm; (void)code; (void)argc;
     gmb_stack_entry_t a[4];
@@ -4744,7 +4695,8 @@ static void vm_sys_export_114(gmb_vm_t* vm, gmb_task_t* task, int code, int argc
     char path[1024];
     if (a[2].type == 2 && a[2].ref) { gmb_obj_string_t* ms = (gmb_obj_string_t*)a[2].ref; size_t nn = ms->length < 1023 ? ms->length : 1023; memcpy(path, ms->data, nn); path[nn] = 0; } else path[0] = 0;
     double fmt = a[3].type == 1 ? a[3].num : 0;
-    int rc = gmb_rdd_copy_to(path, fmt == 1 ? "CSV" : "SDF");
+    int rc; if (vm_dbf_exchange(a, 1, &rc)) { push_num_entry(task, (double)(rc == 0), GMB_BT_NUMBER); return; }
+    rc = gmb_rdd_copy_to(path, fmt == 1 ? "CSV" : "SDF");
     push_num_entry(task, (double)(rc == 0), GMB_BT_NUMBER);
 }
 static void vm_sys_export_115(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
@@ -4754,7 +4706,8 @@ static void vm_sys_export_115(gmb_vm_t* vm, gmb_task_t* task, int code, int argc
     char path[1024];
     if (a[2].type == 2 && a[2].ref) { gmb_obj_string_t* ms = (gmb_obj_string_t*)a[2].ref; size_t nn = ms->length < 1023 ? ms->length : 1023; memcpy(path, ms->data, nn); path[nn] = 0; } else path[0] = 0;
     double fmt = a[3].type == 1 ? a[3].num : 0;
-    int rc = gmb_rdd_use(path, "A", fmt == 1 ? "CSV" : "SDF");
+    int rc; if (vm_dbf_exchange(a, 0, &rc)) { push_num_entry(task, (double)(rc == 0), GMB_BT_NUMBER); return; }
+    rc = gmb_rdd_use(path, "A", fmt == 1 ? "CSV" : "SDF");
     push_num_entry(task, (double)(rc == 0), GMB_BT_NUMBER);
 }
 static void vm_sys_set_clipper(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
@@ -5714,6 +5667,110 @@ static void vm_sys_db(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
 }
 #endif
 
+/* SPRITE_CMD (299): il sottocomando è pushato PER ULTIMO (in cima allo stack), gli argomenti
+ * in ordine sotto; `vm_pop_args_ordered` li riporta in ordine sorgente. Porta la grafica VM/C
+ * dal vecchio headless al runtime CONDIVISO `gmb_gfx_sprite_*` (lo stesso usato da C99Native).
+ * TRANSFORM/MATRIX restano no-op ESPLICITI: il runtime C non ha la matrice e anche C99/C#
+ * non la applicano (parità dichiarata, non un buco silenzioso). */
+static void vm_sys_sprite_cmd(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[16];
+    int n = argc > 16 ? 16 : argc;
+    if (n < 2) { push_num_entry(task, 0.0, GMB_BT_NUMBER); return; }
+    vm_pop_args_ordered(task, a, n);
+    char cmd[64]; cmd[0] = 0;
+    if (a[n - 1].type == 2 && a[n - 1].ref && a[n - 1].ref->kind == GMB_OBJ_STRING) {
+        const char* d = ((gmb_obj_string_t*)a[n - 1].ref)->data;
+        if (d) snprintf(cmd, sizeof cmd, "%s", d);
+    }
+    #define SPR_NUM(i) ((i) < n - 1 && a[i].type == 1 ? (double)a[i].num : 0.0)
+    #define SPR_INT(i) ((int)SPR_NUM(i))
+    if (strcasecmp(cmd, "LOAD") == 0) {
+        char path[1024]; path[0] = 0;
+        if (a[0].type == 2 && a[0].ref && a[0].ref->kind == GMB_OBJ_STRING) {
+            const char* d = ((gmb_obj_string_t*)a[0].ref)->data;
+            if (d) snprintf(path, sizeof path, "%s", d);
+        }
+        push_num_entry(task, (double)gmb_gfx_sprite_load(path), GMB_BT_NUMBER);
+    } else if (strcasecmp(cmd, "POSITION") == 0) {
+        gmb_gfx_sprite_set_position(SPR_INT(0), (float)SPR_NUM(1), (float)SPR_NUM(2));
+        push_num_entry(task, 0.0, GMB_BT_NUMBER);
+    } else if (strcasecmp(cmd, "SET SCALE") == 0) {
+        gmb_gfx_sprite_set_scale(SPR_INT(0), SPR_NUM(1), SPR_NUM(2));
+        push_num_entry(task, 0.0, GMB_BT_NUMBER);
+    } else if (strcasecmp(cmd, "SET ROTATION") == 0) {
+        gmb_gfx_sprite_set_rotation(SPR_INT(0), SPR_NUM(1));
+        push_num_entry(task, 0.0, GMB_BT_NUMBER);
+    } else if (strcasecmp(cmd, "ON") == 0) {
+        gmb_gfx_sprite_set_visible(SPR_INT(0), 1);
+        push_num_entry(task, 0.0, GMB_BT_NUMBER);
+    } else if (strcasecmp(cmd, "OFF") == 0) {
+        gmb_gfx_sprite_set_visible(SPR_INT(0), 0);
+        push_num_entry(task, 0.0, GMB_BT_NUMBER);
+    } else if (strcasecmp(cmd, "PRIORITY") == 0) {
+        gmb_gfx_sprite_set_priority(SPR_INT(0), SPR_INT(1));
+        push_num_entry(task, 0.0, GMB_BT_NUMBER);
+    } else if (strcasecmp(cmd, "GETPIXELS") == 0) {
+        int buf[8192];
+        int got = gmb_gfx_sprite_pixels_to_array(SPR_INT(0), buf, 8192);
+        if (got < 0) got = 0;
+        gmb_list_t l = gmb_list_new();
+        for (int i = 0; i < got; i++) gmb_list_push(&l, gmb_make_val_double((double)buf[i]));
+        push_val_entry(task, gmb_make_val_list(l));
+        gmb_list_free(&l);
+    } else {
+        /* TRANSFORM / MATRIX / sconosciuto: no-op esplicito (parità C99/C#). */
+        push_num_entry(task, 0.0, GMB_BT_NUMBER);
+    }
+    #undef SPR_NUM
+    #undef SPR_INT
+}
+
+/* SPRITE_DEF: righe pixel-art pushate in ordine, id sprite PER ULTIMO (sopra).
+ * Stessa mappatura carattere→RGB di C#/PCode ('.'=trasparente, '0'-'9' grigi,
+ * lettere rampa RGB) e stesso runtime condiviso `gmb_gfx_sprite_def`. */
+static void vm_sys_sprite_def(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[64];
+    int n = argc > 64 ? 64 : argc;
+    if (n < 2) { push_num_entry(task, 0.0, GMB_BT_NUMBER); return; }
+    vm_pop_args_ordered(task, a, n);
+    int rows = n - 1;
+    int id = a[rows].type == 1 ? (int)a[rows].num : 0;
+    int width = 0;
+    if (a[0].type == 2 && a[0].ref && a[0].ref->kind == GMB_OBJ_STRING) {
+        const char* d = ((gmb_obj_string_t*)a[0].ref)->data;
+        if (d) width = (int)strlen(d);
+    }
+    if (rows <= 0 || width <= 0) { push_num_entry(task, 0.0, GMB_BT_NUMBER); return; }
+    int* px = (int*)calloc((size_t)rows * (size_t)width, sizeof(int));
+    if (!px) { push_num_entry(task, -1.0, GMB_BT_NUMBER); return; }
+    for (int y = 0; y < rows; y++) {
+        const char* row = "";
+        if (a[y].type == 2 && a[y].ref && a[y].ref->kind == GMB_OBJ_STRING) {
+            const char* d = ((gmb_obj_string_t*)a[y].ref)->data;
+            if (d) row = d;
+        }
+        for (int x = 0; x < width; x++) {
+            char ch = row[x] ? row[x] : '.';
+            int rgb = 0;
+            if (ch == '.' || ch == ' ') rgb = 0;
+            else if (ch >= '0' && ch <= '9') {
+                int v = (ch - '0') * 16 + 15;
+                rgb = (v << 16) | (v << 8) | v;
+            } else if ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')) {
+                int idx = (ch >= 'a' ? ch - 'a' : ch - 'A') + 10;
+                int r = (idx & 15) * 8 + 127, g = (idx & 15) * 4 + 63, b = (idx & 15) * 2 + 31;
+                rgb = ((r & 255) << 16) | ((g & 255) << 8) | (b & 255);
+            }
+            px[(size_t)y * (size_t)width + (size_t)x] = rgb;
+        }
+    }
+    int rc = gmb_gfx_sprite_def(id, width, rows, px);
+    free(px);
+    push_num_entry(task, (double)rc, GMB_BT_NUMBER);
+}
+
 typedef struct { int code; void (*fn)(gmb_vm_t*, gmb_task_t*, int, int); } vm_sys_row;
 /* Precedenza = ordine dei blocchi originali. 294 → SET_CLIPPER (prima); i restanti di
  * {291-296,332-337,349} (catturati dal vecchio headless_2 DOPO SET_CLIPPER) → headless_zero.
@@ -5733,7 +5790,7 @@ static const vm_sys_row VM_SYS_TBL[] = {
     { 291, vm_sys_delegate_tui }, { 292, vm_sys_delegate_tui }, { 293, vm_sys_delegate_tui },
     { 294, vm_sys_delegate_tui },
     { GMB_SC_TUI_LAST_HANDLE, vm_sys_delegate_tui }, { GMB_SC_CONTROL_APPLY_PROPS, vm_sys_delegate_tui }, { GMB_SC_SET_CLIPPER, vm_sys_delegate_tui },
-    { GMB_SC_SPRITE_DEF, vm_sys_headless_zero },   /* era la riga {296, headless_zero} sostituita dal delegate TUI quando 295/296 sono slittati */
+    { GMB_SC_SPRITE_DEF, vm_sys_sprite_def },   /* era la riga {296, headless_zero} sostituita dal delegate TUI quando 295/296 sono slittati */
     { 332, vm_sys_headless_zero }, { 333, vm_sys_headless_zero }, { 334, vm_sys_headless_zero },
     { GMB_SC_CHART_CREATE, vm_sys_delegate_tui }, { GMB_SC_CHART_PLOT, vm_sys_delegate_tui }, { GMB_SC_CHART_FINANCIAL, vm_sys_delegate_tui },   /* 335/336/337 = stato reale (create/plot/financial) */
     /* passo 2: deleghe a domini con handler dedicato (TUI/RDD/SQL/TEAM) */
@@ -5895,7 +5952,7 @@ static const vm_sys_row VM_SYS_TBL[] = {
     /* SPRITE_CMD (297) / TILEMAP_CMD (298): sono codici GRAFICA (come 240-247) — prima
      * erano instradati a vm_sys_delegate_console (misroute: la grafica finiva nel modulo
      * console). Headless come gli altri codici grafica (il runtime grafico non è nel VM/C). */
-    { GMB_SC_SPRITE_CMD, vm_sys_headless_big },
+    { GMB_SC_SPRITE_CMD, vm_sys_sprite_cmd },
     { GMB_SC_TILEMAP_CMD, vm_sys_headless_big },
     { GMB_SC_TICK_PROCESS, vm_sys_headless_big },
     { GMB_SC_SYNC_PROCESS, vm_sys_headless_big },

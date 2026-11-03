@@ -1760,13 +1760,18 @@ private void EmitBrowserHumanScrollCall(BuiltinFunctionCallExpr expr)
         var sourceType = NormalizeInferredType(InferType(expr.Args[0]));
         if (sourceType is BitType)
         {
-            // BIT/BOOL (CLR bool) → numero con la convenzione VMBASIC TRUE = -1:
-            // Conv_R8 porta il bool a 0/1, poi × -1. Prima una conv diretta bool→double
-            // lasciava un bool a Math.Abs (InvalidProgram).
+            // BIT/BOOL → numero con la convenzione VMBASIC TRUE = -1.
+            // Il valore sullo stack NON è sempre un bool CLR: una VARIABILE BIT vive in un
+            // local int32 (GetOrDeclareLocal) e vale già -1/0 (o il numero assegnato, es. 5).
+            // Solo letterali/confronti/chiamate BIT sono bool 0/1 da moltiplicare per -1:
+            // senza la distinzione `STR$(b)` stampava " 1" su IL contro "-1" delle gambe C.
             EmitExpression(expr.Args[0]);
             _il.Emit(OpCodes.Conv_R8);
-            _il.Emit(OpCodes.Ldc_R8, -1.0);
-            _il.Emit(OpCodes.Mul);
+            if (EmitsClrBoolValue(expr.Args[0]))
+            {
+                _il.Emit(OpCodes.Ldc_R8, -1.0);
+                _il.Emit(OpCodes.Mul);
+            }
         }
         else
         {
