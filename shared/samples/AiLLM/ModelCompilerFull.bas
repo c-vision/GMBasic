@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' ModelCompilerFull.bas — superficie COMPLETA del Model Compiler (namespace LLM) + registry moduli.
 ' Copre OGNI comando/funzione implementato:
 '   POLICY  DEFINE, APPLY [DRYRUN], DIFF, ITEMS, ITEM <i>, SETITEM, CALLBACK <Proc>, CLEARITEM,

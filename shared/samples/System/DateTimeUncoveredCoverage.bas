@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: System/DateTimeUncoveredCoverage.bas
 ' =================================================================================================
 ' TEST UNITARIO: DATETIME - FUNZIONI NON ANCORA COPERTE DAGLI ESEMPI

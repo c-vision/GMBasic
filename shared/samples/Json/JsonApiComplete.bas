@@ -3,7 +3,7 @@
 ' per blocco). Copre: PARSE, EXTRACT, KEYS, STRINGIFY, TOOBJECT, LOAD, READVALUE (2 arità),
 ' READSECTION (2 arità), i COMANDI SAVE / WRITEVALUE / WRITESECTION e i metodi DICT.
 ' Parità verificata su IL, PCodeVM, VM/C, C99Native (stesso output, tools/parity4).
-' EXPECT: parse=ok|extract=ok|keys=ok|stringify=ok|toobject=ok|load=ok|readvalue=ok|readvalue_file=ok|readsection=ok|readsection_file=ok|dict=ok|dict_pair=ok|dict_values=ok|save=ok|writevalue=ok|writesection=ok|cmd_variant=ok|list_roundtrip=ok|ALL=ok
+' (nessun oracolo: è un Sample, non un MiniTest)
 IMPORT JSON
 IMPORT COLLECTIONS
 IMPORT IO

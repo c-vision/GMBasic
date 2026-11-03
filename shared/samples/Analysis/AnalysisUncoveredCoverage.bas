@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: Analysis/AnalysisUncoveredCoverage.bas
 ' =================================================================================================
 ' TEST UNITARIO: ANALYSIS - FUNZIONI NON ANCORA COPERTE DAGLI ESEMPI

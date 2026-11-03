@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' ==============================================================================
 ' FILE: Ai/McpFullSurface.bas
 ' MCP — SUPERFICIE COMPLETA (esempio completo e complesso)

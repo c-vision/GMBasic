@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: GameDev/JoystickUncoveredCoverage.bas
 ' =================================================================================================
 ' TEST UNITARIO: JOY - FUNZIONI NON ANCORA COPERTE DAGLI ESEMPI

@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: Workflow/WorkflowFullCoverage.bas
 ' Copertura completa delle funzioni Workflow non ancora coperte.
 IMPORT AI

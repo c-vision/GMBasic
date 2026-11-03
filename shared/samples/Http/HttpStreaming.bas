@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' Esempio completo: risposta HTTP in STREAMING (chunked) — Server-Sent Events.
 '
 ' Mostra la superficie completa dello streaming, la stessa su TUTTE le gambe
@@ -13,7 +14,7 @@
 '
 ' Il programma si autoverifica: avvia il server, consuma lo stream come farebbe un browser
 ' (FETCH), stampa ciò che ha ricevuto e chiude. Output deterministico su tutte le gambe.
-' EXPECT: start|received=[evento 1|evento 2|evento 3]|status-ok|plain-ok
+' (nessun oracolo: è un Sample, non un MiniTest)
 
 IMPORT HTTP
 

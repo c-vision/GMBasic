@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: Trading/TradingPortfolioUncoveredCoverage.bas
 ' =================================================================================================
 ' TEST UNITARIO: TRADING.PORTFOLIO - FUNZIONI/TIPI NON ANCORA COPERTI DAGLI ESEMPI

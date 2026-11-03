@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: samples/Concurrency/AtomicFullCoverage.bas
 ' ======================================================================================================================
 ' ATOMIC — copertura completa del namespace (5/5) in uno scenario deterministico.

@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: Optimization/OptimizeUncoveredCoverage.bas
 ' =================================================================================================
 ' TEST UNITARIO: OPTIMIZE - FUNZIONI NON ANCORA COPERTE DAGLI ESEMPI

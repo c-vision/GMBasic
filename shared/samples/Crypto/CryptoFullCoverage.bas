@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 IMPORT TYPEINFO
 ' FILE: Crypto/CryptoFullCoverage.bas
 ' Copertura completa delle funzioni Crypto non ancora coperte.

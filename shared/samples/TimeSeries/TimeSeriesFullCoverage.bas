@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 IMPORT TYPEINFO
 ' FILE: TimeSeries/TimeSeriesFullCoverage.bas
 ' Copertura completa delle funzioni Time Series non ancora coperte.

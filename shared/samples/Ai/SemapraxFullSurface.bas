@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' samples/Ai/SemapraxFullSurface.bas
 ' ─────────────────────────────────────────────────────────────────────────────
 ' GMB SEMANTIC GRAPH (SEMAPRAX) — SUPERFICIE COMPLETA, namespace `LLM`.

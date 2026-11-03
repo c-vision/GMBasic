@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: Crypto/CryptoUncoveredCoverage.bas
 ' =================================================================================================
 ' TEST UNITARIO: CRYPTOGRAPHY - FUNZIONI NON ANCORA COPERTE DAGLI ESEMPI

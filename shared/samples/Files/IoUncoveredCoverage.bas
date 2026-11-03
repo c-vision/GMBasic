@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: Files/IoUncoveredCoverage.bas
 ' =================================================================================================
 ' TEST UNITARIO: IO - FUNZIONI NON ANCORA COPERTE DAGLI ESEMPI

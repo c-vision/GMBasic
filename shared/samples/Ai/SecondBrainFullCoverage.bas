@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: Ai/SecondBrainFullCoverage.bas
 ' Superficie completa del Second Brain L2 (vault + note) + registry skill + plugin,
 ' esercitata end-to-end e verificata su 4 backend: parità IL+PCode+VM/C,

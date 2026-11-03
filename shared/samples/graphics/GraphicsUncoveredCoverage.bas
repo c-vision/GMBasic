@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: Graphics/GraphicsUncoveredCoverage.bas
 ' =================================================================================================
 ' TEST UNITARIO: GRAPHICS - COMANDI BSAVE/BLOAD NON ANCORA COPERTI DAGLI ESEMPI

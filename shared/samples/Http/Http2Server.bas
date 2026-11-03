@@ -17,7 +17,7 @@
 '
 ' Il programma si autoverifica su HTTP/1.1 (l'unico che il client BASIC sa usare): la
 ' verifica di HTTP/2 si fa con curl, come documentato sopra e in tools/sh/http2_smoke.sh.
-' EXPECT: start|h1-ok|static-ok
+' (nessun oracolo: è un Sample, non un MiniTest)
 IMPORT HTTP
 
 SUB Hello(req AS HTTPREQUEST, res AS HTTPRESPONSE)

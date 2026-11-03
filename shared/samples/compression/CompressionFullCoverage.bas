@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: compression/CompressionFullCoverage.bas
 ' Copertura completa delle funzioni compression non ancora coperte.
 IMPORT COMPRESSION

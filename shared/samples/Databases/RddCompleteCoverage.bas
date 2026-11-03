@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: samples/Databases/RddCompleteCoverage.bas
 ' Sample COMPLETO RDD — usa tutte e 22 le funzioni del namespace
 ' (BOF BUFFER CTOD CURVAL DELETE DTOC EOF FLOAT FLOCK FOUND GETFIELD GETFLDSTATE

@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: AI/TypeInfoFullCoverage.bas
 ' =================================================================================================
 '   COPERTURA COMPLETA — riflessione (TYPEINFO) + tipi nullable

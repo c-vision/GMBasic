@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 IMPORT TYPEINFO
 ' FILE: Trading/TradingFullCoverage.bas
 ' Copertura completa delle funzioni Trading/Portfolio non ancora coperte.

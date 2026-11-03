@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: Databases/DbIsamUncoveredCoverage.bas
 ' =================================================================================================
 ' TEST UNITARIO: ISAM - FUNZIONI/COMANDI NON ANCORA COPERTI DAGLI ESEMPI

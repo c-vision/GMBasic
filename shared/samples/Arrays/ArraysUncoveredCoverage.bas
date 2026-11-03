@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: Arrays/ArraysUncoveredCoverage.bas
 ' =================================================================================================
 ' TEST UNITARIO: ARRAYS - FUNZIONI NON ANCORA COPERte DAGLI ESEMPI

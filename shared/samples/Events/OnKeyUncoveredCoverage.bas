@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: Events/OnKeyUncoveredCoverage.bas
 ' =================================================================================================
 ' TEST UNITARIO: ONKEY - COSTANTI KEY NON ANCORA COPERte DAGLI ESEMPI

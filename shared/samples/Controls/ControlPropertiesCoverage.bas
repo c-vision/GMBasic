@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: Controls/ControlPropertiesCoverage.bas
 ' =================================================================================================
 ' TEST UNITARIO: CONTROLS — ACCESSOR PROPRIETÀ (CTRLGETPROP / CTRLGETPROPS)

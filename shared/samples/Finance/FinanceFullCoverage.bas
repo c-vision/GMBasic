@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: Finance/FinanceFullCoverage.bas
 ' Copertura completa delle funzioni Finance non ancora coperte.
 IMPORT FINANCE

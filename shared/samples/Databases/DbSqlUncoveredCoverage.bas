@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: Databases/DbSqlUncoveredCoverage.bas
 ' =================================================================================================
 ' TEST UNITARIO: SQL - FUNZIONI NON ANCORA COPERTE DAGLI ESEMPI

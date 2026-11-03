@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: AI/McpUncoveredCoverage.bas
 ' =================================================================================================
 ' TEST UNITARIO: MCP - FUNZIONI NON ANCORA COPERTE DAGLI ESEMPI

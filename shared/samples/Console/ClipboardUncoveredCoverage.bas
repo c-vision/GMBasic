@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: Console/ClipboardUncoveredCoverage.bas
 ' =================================================================================================
 ' TEST UNITARIO: CONSOLE - SUB-NAMESPACE CLIP (APPUNTI)
