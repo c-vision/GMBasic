@@ -23,9 +23,9 @@ internal static class FfiCallbackTrampolineTypes
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate long CbVecI(IntPtr v, long n);
     // Forme generalizzate (2026-11-02): array+scalare, array→array, due array.
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate double CbV1S1D(IntPtr a0, long n0, double s0);
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate void CbV1OutD(IntPtr a0, long n0, IntPtr outv);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate double CbV1OutD(IntPtr a0, long n0, IntPtr outv);   // ritorna il numero di elementi scritti
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate double CbV2D(IntPtr a0, long n0, IntPtr a1, long n1);
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate void CbV2OutD(IntPtr a0, long n0, IntPtr a1, long n1, IntPtr outv);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate double CbV2OutD(IntPtr a0, long n0, IntPtr a1, long n1, IntPtr outv);   // idem
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate long CbFnI1(long a0);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate long CbFnI2(long a0, long a1);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate long CbFnI3(long a0, long a1, long a2);

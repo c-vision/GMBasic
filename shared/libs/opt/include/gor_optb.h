@@ -30,6 +30,10 @@ extern "C" {
 typedef double (*gor_optb_fx)(double x);
 typedef double (*gor_optb_fv)(const double *x, int64_t n);
 typedef void (*gor_optb_fvv)(const double *x, int64_t n, double *out);
+/* Variante che RITORNA il numero di elementi scritti in `out` (2026-11-03): serve a
+ * dedurre m in `least_squares_fit_auto`. ABI-compatibile con gor_optb_fvv (il valore di
+ * ritorno viene ignorato dai chiamanti esistenti). */
+typedef double (*gor_optb_fvv_len)(const double *x, int64_t n, double *out);
 typedef double (*gor_optb_fm)(const double *p, int64_t np, double x);
 typedef void (*gor_optb_fvm)(const double *p, int64_t np, const double *x, int64_t nx, double *out);
 
@@ -72,6 +76,9 @@ void gor_optb_broyden(gor_optb_fvv f, const double *x0, int n, double *out);
 /* m = numero di residui (>= n); out[m] */
 void gor_optb_least_squares_fit(gor_optb_fvv f, const double *x0, int n, int m,
                                 const double *bounds, double *out);
+/* Come sopra con m DEDOTTO dal numero di residui restituiti dalla callback (max 512). */
+void gor_optb_least_squares_fit_auto(gor_optb_fvv_len f, const double *x0, int n,
+                                    const double *bounds, double *out);
 
 /* ── curve fitting (Levenberg-Marquardt) — out[np] ─────────────────────────── */
 void gor_optb_levenberg_marquardt(gor_optb_fm model, const double *p0, int np,

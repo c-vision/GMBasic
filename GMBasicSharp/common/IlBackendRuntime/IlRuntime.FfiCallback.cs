@@ -52,6 +52,11 @@ public static partial class IlRuntime
     }
 
     /// <summary>Scrive in `out` un risultato array di callback (double[] o IList boxed).</summary>
+    /// <summary>Numero di elementi scritti in `out` (2026-11-03): il valore di ritorno del
+    /// trampolino è il "m" dedotto da LEASTSQUARESFIT (i chiamanti void lo ignorano).</summary>
+    private static double OutLength(object? r)
+        => r switch { double[] a => a.Length, System.Collections.IList l => l.Count, _ => 0.0 };
+
     private static void WriteOutArray(IntPtr outp, object? r)
     {
         if (r is double[] a) { if (a.Length > 0) Marshal.Copy(a, 0, outp, a.Length); return; }
@@ -91,7 +96,9 @@ public static partial class IlRuntime
             {
                 var dv = new CbV1OutD((p, n, outp) =>
                 {
-                    WriteOutArray(outp, InvokeFfiCallbackDelegate(cb, [CopyD(p, n)]));
+                    var r1 = InvokeFfiCallbackDelegate(cb, [CopyD(p, n)]);
+                    WriteOutArray(outp, r1);
+                    return OutLength(r1);
                 });
                 return (dv, Marshal.GetFunctionPointerForDelegate(dv));
             }
@@ -104,7 +111,9 @@ public static partial class IlRuntime
             {
                 var dv = new CbV2OutD((p0, n0, p1, n1, outp) =>
                 {
-                    WriteOutArray(outp, InvokeFfiCallbackDelegate(cb, [CopyD(p0, n0), CopyD(p1, n1)]));
+                    var r2 = InvokeFfiCallbackDelegate(cb, [CopyD(p0, n0), CopyD(p1, n1)]);
+                    WriteOutArray(outp, r2);
+                    return OutLength(r2);
                 });
                 return (dv, Marshal.GetFunctionPointerForDelegate(dv));
             }

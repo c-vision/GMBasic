@@ -409,6 +409,21 @@ void gor_optb_least_squares_fit(gor_optb_fvv f, const double *x0, int n, int m,
     free(lo); free(hi); free(w.buf);
 }
 
+/* m dedotto: la callback dichiara quanti residui restituisce (valore di ritorno).
+ * Buffer grande (512) perché la callback scrive PRIMA di dichiarare la lunghezza. */
+#define GOR_OPTB_MAX_RES 512
+void gor_optb_least_squares_fit_auto(gor_optb_fvv_len f, const double *x0, int n,
+                                    const double *bounds, double *out)
+{
+    double probe[GOR_OPTB_MAX_RES];
+    double m = 0.0;
+    if (f == NULL || x0 == NULL || out == NULL || n <= 0) return;
+    m = f(x0, (int64_t)n, probe);
+    if (m < 1.0) m = (double)n;              /* callback legacy (void): fallback m = n */
+    if (m > (double)GOR_OPTB_MAX_RES) m = (double)GOR_OPTB_MAX_RES;
+    gor_optb_least_squares_fit((gor_optb_fvv)f, x0, n, (int)m, bounds, out);
+}
+
 /* ------------------------------------------------------------------------- */
 /* Curve fitting                                                             */
 /* ------------------------------------------------------------------------- */
