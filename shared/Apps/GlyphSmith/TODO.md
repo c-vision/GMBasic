@@ -62,6 +62,12 @@ Verified on the four backends of the monorepo (IL, PCodeVM, VM-C, C99Native).
       (`TuiFrame`) e tasti da `[tui] keys`, cosi' il percorso e' verificato nel check.
 - [ ] Lettura dei tasti dal **terminale** (oggi arrivano dallo script `[tui] keys`): stesso
       `TuiApply`, cambia solo la sorgente.
+      **Bloccata da un buco di backend, non dall'app** (misurato 2026-11-03): `CONSOLE.INKEY()`
+      restituisce il tasto su **VM/C** (`k=[x]` con `printf 'x' |`), ma su **IL**, **PCode** e
+      **C99Native** torna `""` **senza errore** (il lettore terminale è un no-op: `[ui] build
+      testuale: API UI no-op`). Un front-end che legge da `INKEY` sarebbe quindi muto su tre leg
+      su quattro: va prima implementata la lettura in GMBasic (→ permesso esplicito), altrimenti
+      è uno stub mascherato.
 - [x] **GUI** (`mode = "gui"`): finestra PIXEL (`SCREEN 12` + `WINDOW DEFINE ... PIXEL`),
       griglia del glifo zoomata (`zoom`), pannello metriche (`enc`, `bbx`, `dwx`) e cambio glifo
       con `n`/`p`, ESC/`q` per uscire. È una **seconda vista** sullo stesso modello: i tasti
@@ -74,8 +80,10 @@ Verified on the four backends of the monorepo (IL, PCodeVM, VM-C, C99Native).
       video device`, quindi la finestra va guardata da una sessione desktop (Terminal.app) con
       `mode = "gui"`. Manca anche un gate a pixel (`test_graphics_*`) nel repo: è una voce aperta
       di ServiceConsole, non di questa app.
-- [ ] Both front-ends must keep the `check` mode byte-identical (golden artefacts in
-      `bin/`), so the headless path stays the reference.
+- [x] Both front-ends must keep the `check` mode byte-identical (golden artefacts in
+      `bin/`), so the headless path stays the reference. Verificato dopo TUI e GUI: `148 ok,
+      0 falliti` + `GLYPHSMITH-CHECK-OK` su IL/PCodeVM/VM-C/C99Native e `bin/mini8.pcf` con md5
+      `a6deb85ba334e545d80f94c626fca12d` identico sulle quattro leg.
 
 ## M5 — TrueType / OpenType (RUNTIME, NOT BASIC)
 
@@ -100,6 +108,9 @@ engine behind the `FONTS` functions.
       **byte-identical** on IL / PCodeVM / VM-C / C99Native; `status` re-reads the produced BDF
       (round-trip through the app's own parser).
 - [ ] Rendering hinting/antialias policy as an **option in the registry** (never an environment
-      variable), with the same default on all backends.
+      variable), with the same default on all backends. **Fuori dall'app**: è un'opzione del
+      registry di GMBasic letta dal runtime `FONTS` (C) → serve il permesso esplicito per toccare
+      `GMBasic`.
 - [ ] Collections `.ttc` (indice > 0) e glifi oltre il BMP: oggi `TTGLYPHS` esplora 0..0xFFFF e
-      usa l'indice 0.
+      usa l'indice 0. **Fuori dall'app**: `FONTS` è runtime C di GMBasic (`gmb_fonts.c`) →
+      permesso esplicito richiesto.
