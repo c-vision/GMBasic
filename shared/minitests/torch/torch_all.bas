@@ -20,6 +20,22 @@ SUB Main()
   PRINT "shape_ok="; (UBOUND(sh) >= 0)
   TORCH.FREE(a) : TORCH.FREE(b) : TORCH.FREE(c)
     ' NON EMESSO DAL C99 (ritorno array in scalare): 
+  ' Funzioni tensoriali che restituiscono ARRAY (servono un oggetto reale, non un
+  ' letterale): compilate/linkate in parità, non eseguite.
+  IF 0 THEN
+    DIM _tm2(1, 1)
+    _tm2(0, 0) = 1 : _tm2(0, 1) = 2 : _tm2(1, 0) = 3 : _tm2(1, 1) = 4
+    DIM _tt = TORCH.CREATE(2, 2)
+    DIM _ta1 = TORCH.ARGSORT(_tt)
+    DIM _ta2 = TORCH.CLIP(_tt, 0, 1)
+    DIM _ta3 = TORCH.FROM(_tm2)
+    DIM _ta4 = TORCH.NORMALIZE(_tt)
+    DIM _ta5 = TORCH.ONEHOT(0, 4)
+    DIM _ta6 = TORCH.SHAPE(_tt)
+    DIM _ta7 = TORCH.STANDARDIZE(_tt)
+    DIM _ta8 = TORCH.TOARRAY(_tt)
+    DIM _ta9 = TORCH.TOPK(_tt, 2)
+  END IF
   IF 0 THEN
     _t1 = TORCH.ABS(0)
     _t2 = TORCH.ACCURACY(0, 0)

@@ -1093,3 +1093,18 @@ gmb_string_t gmb_db_isam_integrity_str(int64_t h)
     gmb_db_isam_integrity(h, buf, sizeof(buf));
     return gmb_string_alloc(buf[0] ? buf : "");
 }
+
+/* ISAM.LOG([area]) → riepilogo WAL dell'area (parità IlRuntime.IsamLog /
+ * Engine.GetWalLogSummary): stessa fonte unica del WAL (WriteAheadLog_Inspect +
+ * WalLogSummary_Format), nessun testo inventato. Area chiusa/ignota → stringa vuota. */
+gmb_string_t gmb_db_isam_log_str(int64_t h)
+{
+    gmb_handle_t* hh = gmb_db_get(h, GMB_H_ISAM);
+    char buf[4096]; buf[0] = 0;
+    WalLogSummary s;
+    if (!hh || !hh->u.isam.path[0]) return gmb_string_alloc("");
+    memset(&s, 0, sizeof s);
+    if (WriteAheadLog_Inspect(hh->u.isam.path, &s) == GMB_DB_OK)
+        WalLogSummary_Format(&s, buf, (int)sizeof(buf));
+    return gmb_string_alloc(buf);
+}
