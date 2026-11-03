@@ -62,12 +62,15 @@ Verified on the four backends of the monorepo (IL, PCodeVM, VM-C, C99Native).
       (`TuiFrame`) e tasti da `[tui] keys`, cosi' il percorso e' verificato nel check.
 - [ ] Lettura dei tasti dal **terminale** (oggi arrivano dallo script `[tui] keys`): stesso
       `TuiApply`, cambia solo la sorgente.
-      **Bloccata da un buco di backend, non dall'app** (misurato 2026-11-03): `CONSOLE.INKEY()`
-      restituisce il tasto su **VM/C** (`k=[x]` con `printf 'x' |`), ma su **IL**, **PCode** e
-      **C99Native** torna `""` **senza errore** (il lettore terminale è un no-op: `[ui] build
-      testuale: API UI no-op`). Un front-end che legge da `INKEY` sarebbe quindi muto su tre leg
-      su quattro: va prima implementata la lettura in GMBasic (→ permesso esplicito), altrimenti
-      è uno stub mascherato.
+      **Non più bloccata** (misurato 2026-11-03 dopo il fix dell'imbuto input in GMBasic): il
+      terminale è ora un **produttore** della coda eventi globale (`gmb_input_pump` → `gmb_gfx_input`)
+      e `INKEY()` ne è un consumatore, come i controlli TUI e `ON KEY`. Su **VM/C** e **C99Native**
+      una pressione reale su pty arriva: `PROBE key=[x] code= 120` (tasto inviato 400 ms dopo
+      l'avvio, letto dal ciclo). Prima il C99 testuale linkava gli stub di `gmb_ui_null.c`
+      (`[ui] build testuale: API UI no-op`); su **IL**/**PCode** i runner restano muti **per
+      progetto** (headless: `GMBASIC_HEADLESS=1`, feeder di console spento), non per difetto.
+      Resta da fare solo il cablaggio lato app: nel `mode = "tui"` reale, quando `[tui] keys` è
+      vuoto, leggere da `INKEY()` (stessa `TuiApply`).
 - [x] **GUI** (`mode = "gui"`): finestra PIXEL (`SCREEN 12` + `WINDOW DEFINE ... PIXEL`),
       griglia del glifo zoomata (`zoom`), pannello metriche (`enc`, `bbx`, `dwx`) e cambio glifo
       con `n`/`p`, ESC/`q` per uscire. È una **seconda vista** sullo stesso modello: i tasti

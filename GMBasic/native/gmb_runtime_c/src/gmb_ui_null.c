@@ -33,8 +33,6 @@ void gmb_control_apply_style(gmb_control_t* c, const char* spec) { gmb_ui_null_w
 void gmb_gfx_cls(int color) { gmb_ui_null_warn("gmb_gfx_cls"); }
 void gmb_gfx_draw_text(const char* text, int x, int y, int align, int color) { gmb_ui_null_warn("gmb_gfx_draw_text"); }
 void gmb_gfx_fill_rounded_rect(int x, int y, int w, int h, int radius, unsigned int rgba) { gmb_ui_null_warn("gmb_gfx_fill_rounded_rect"); }
-int gmb_gfx_input_poll_key(char* out, int maxlen) { gmb_ui_null_warn("gmb_gfx_input_poll_key"); return 0; }
-int gmb_gfx_input_poll_mouse(int* type, int* x, int* y, int* button, int* wheel) { gmb_ui_null_warn("gmb_gfx_input_poll_mouse"); return 0; }
 int gmb_gfx_present_on_main_thread(void) { return 0; }
 void gmb_gfx_present_start(void) { gmb_ui_null_warn("gmb_gfx_present_start"); }
 void gmb_gfx_present_stop(void) { gmb_ui_null_warn("gmb_gfx_present_stop"); }
@@ -112,12 +110,7 @@ int gmb_browse_sort_dir(const gmb_browse_t* b) { gmb_ui_null_warn("gmb_browse_so
 int gmb_browse_sortkeys(const gmb_browse_t* b, char* out, int cap) { gmb_ui_null_warn("gmb_browse_sortkeys"); return 0; }
 gmb_clipper_state_t* gmb_clipper_global_state(void) { gmb_ui_null_warn("gmb_clipper_global_state"); return NULL; }
 gmb_rect_t gmb_managed_window_content_rect(const gmb_managed_window_t* w) { gmb_ui_null_warn("gmb_managed_window_content_rect"); gmb_rect_t z; memset(&z,0,sizeof z); return z; }
-void gmb_raw_input_reader_ensure_raw(void) { gmb_ui_null_warn("gmb_raw_input_reader_ensure_raw"); }
-bool gmb_raw_input_reader_has_byte(void) { gmb_ui_null_warn("gmb_raw_input_reader_has_byte"); return false; }
-int gmb_raw_input_reader_read_event_core(gmb_clipper_state_t* st, gmb_ui_event_t* out) { gmb_ui_null_warn("gmb_raw_input_reader_read_event_core"); return 0; }
 void gmb_spinner_set_preset(gmb_spinner_t* s, const char* name) { gmb_ui_null_warn("gmb_spinner_set_preset"); }
-bool gmb_terminal_reader_is_event_available_timeout(int timeout_ms) { gmb_ui_null_warn("gmb_terminal_reader_is_event_available_timeout"); return false; }
-int gmb_terminal_reader_read_event_core(gmb_clipper_state_t* st, gmb_ui_event_t* out) { gmb_ui_null_warn("gmb_terminal_reader_read_event_core"); return 0; }
 gmb_widget_style_t gmb_widget_style_current(void) { gmb_ui_null_warn("gmb_widget_style_current"); gmb_widget_style_t z; memset(&z,0,sizeof z); return z; }
 int gmb_window_manager_focused(gmb_window_manager_t* m) { gmb_ui_null_warn("gmb_window_manager_focused"); return 0; }
 gmb_managed_window_t* gmb_window_manager_get(gmb_window_manager_t* m, int id) { gmb_ui_null_warn("gmb_window_manager_get"); return NULL; }

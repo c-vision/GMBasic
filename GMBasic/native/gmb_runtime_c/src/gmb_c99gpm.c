@@ -1403,6 +1403,7 @@ gmb_sel_state_t* gmb_select_park(gmb_chan_t** chans, int* dir, gmb_val_t* send_v
  * il tasto come stringa (sempre allocata; "" se timeout/nessun terminale). Mai spin-wait. */
 extern int gmb_gfx_screen_on(void);
 extern int gmb_gfx_input_poll_key(char* out, int maxlen);
+extern int gmb_input_pump(void);   /* terminale → coda eventi (unico imbuto) */
 
 gmb_string_t gmb_key_wait_park(int timeout_ms)
 {
@@ -1413,6 +1414,7 @@ gmb_string_t gmb_key_wait_park(int timeout_ms)
         /* SORGENTI agnostiche dal backend: si provano TUTTE, in ordine, ad ogni giro.
          * (grafica: coda finestra; test/TUI: typeahead scriptata; altrimenti tty). */
         char kb[256];
+        gmb_input_pump();   /* il terminale entra nella stessa coda di SDL */
         if (gmb_gfx_input_poll_key(kb, (int)sizeof(kb))) return gmb_string_alloc(kb);
         { extern int gmb_tui_global_typeahead_read(void);
           int tk = gmb_tui_global_typeahead_read();

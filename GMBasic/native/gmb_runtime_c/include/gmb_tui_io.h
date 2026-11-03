@@ -31,6 +31,14 @@ int  gmb_terminal_reader_decode_csi_key_len(const char* seq, int len);
 bool gmb_raw_input_reader_has_byte(void);
 bool gmb_raw_input_reader_is_event_available(void);
 int  gmb_raw_input_reader_read_event_core(gmb_clipper_state_t* st, gmb_ui_event_t* out);
+
+/* ── Imbuto input (gmb_input_feeder.c) ─────────────────────────────────────────────────
+ * Il terminale è un PRODUTTORE della coda eventi globale (gmb_gfx_input), come la pump
+ * SDL: gmb_input_pump() drena i tasti pronti e li immette nella coda; INKEY/WAITKEY/GET,
+ * ON KEY e i controlli TUI consumano SOLO la coda (nessun lettore diretto del tty).
+ * gmb_input_terminal_available(): 1 = c'è un tty reale (no grafica, no script iniettato). */
+bool gmb_input_terminal_available(void);
+int  gmb_input_pump(void);
 void gmb_raw_input_reader_shutdown(void);
 void gmb_raw_input_reader_ensure_raw(void);
 

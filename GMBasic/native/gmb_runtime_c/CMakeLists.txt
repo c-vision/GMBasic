@@ -460,6 +460,13 @@ add_library(gmb_runtime_core STATIC $<TARGET_OBJECTS:gmb_runtime_core_obj>)
 # (niente SDL2/SDL2_ttf/MoltenVK). Il runtime completo (gmb_runtime) resta quello con l'UI.
 add_library(gmb_runtime_min_obj OBJECT ${GMB_CORE_SRCS})
 target_link_libraries(gmb_runtime_min_obj PRIVATE gmb_runtime_deps)
+# IMBUTO INPUT: il lettore del terminale (termios, ZERO SDL) e la coda eventi condivisa
+# sono core, non UI. Senza queste due la variante minima ripiegava sugli stub di
+# gmb_ui_null.c: INKEY leggeva sempre "" e i tasti non entravano mai nel gestore eventi
+# (nessun TUI/GUI/ON KEY li vedeva). Cfr. gmb_input_feeder.c.
+target_sources(gmb_runtime_min_obj PRIVATE src/gmb_tui_io.c src/gmb_gfx_input.c src/gmb_input_feeder.c)
+# GMB_ALL_SRCS è una lista esplicita: il feeder input va aggiunto anche al core completo.
+target_sources(gmb_runtime_core_obj PRIVATE src/gmb_input_feeder.c)
 # Stesso path di build della dylib AI del core completo: anche i programmi generati da
 # `gmb run` (linkati contro libgmb_runtime_min.a) devono trovare gmb_runtime_ai.
 target_compile_definitions(gmb_runtime_min_obj PRIVATE
