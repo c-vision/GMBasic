@@ -3402,6 +3402,11 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                     if (etype(c, s->dim_init->args[i]) == TY_STR) ty = TY_STR;
             var_t* v = vars_add(dscope, s->dim_var, ty);
             v->is_dim_local = 1;
+            /* Il pre-pass di registrazione può ripassare sulla STESSA istruzione DIM
+             * (registrazione idempotente): annotando l'istruzione che ha dichiarato la
+             * variabile, il controllo di duplicato sotto distingue la ri-registrazione
+             * dello stesso DIM da una SECONDA dichiarazione con lo stesso nome. */
+            v->dim_stmt = (const void*)s;
             /* LOCAL che ombreggia una GLOBAL: la dichiarazione locale vale dal punto in cui
              * compare (scope lessicale a blocchi). Prima il pre-pass la registrava per tutta
              * la funzione e le letture precedenti vedevano la locale (0) invece della globale. */
@@ -3411,7 +3416,8 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
              * - nello dscope locale è già errore su IL/PCode/VM-C → qui si allinea;
              * - nel globale si rifiuta solo se cambia la FAMIGLIA (numerico/stringa/bit),
              *   che è il caso ambiguo `DIM S AS SINGLE` + `DIM S$ AS STRING`. */
-            if (prior && !s->array_size && !prior->gkind && !prior->vclass[0] && !prior->is_array) {
+            if (prior && prior->dim_stmt != (const void*)s
+                && !s->array_size && !prior->gkind && !prior->vclass[0] && !prior->is_array) {
                 if (dscope != &c->globals) {
                     c99_fail(c, s->line,
                              "Un simbolo con nome '%s' è già stato dichiarato in questo dscope",
@@ -3905,6 +3911,19 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
             }
             /* DIM x(n) AS BYTE: array di BYTE (PUT/GET #n su file BINARY = un byte per elemento) */
             if (s->dim_type && s->dim_type_tk == GMB_TOK_Byte && (s->array_size || v->is_array) && !v->gkind) v->elem_byte = 1;
+            /* DIM x() AS BYTE (parentesi VUOTE, nessun bound) = BUFFER BINARIO (gmb_string_t,
+             * is_bytes), NON un array dinamico numerico. È la stessa rappresentazione di
+             * `DIM x() = FROMHEX(...)` (ramo is_bytes sopra) e del campo `x(i)` byte-index
+             * (emit_expr: is_bytes && !is_array → x.data[i]). Prima la var restava
+             * array dinamico (gmb_double_t* + x_len) e la successiva scrittura
+             * `x() = FROMHEX(..)`/digest/HASHFILE non compilava
+             * (`assigning to 'gmb_string_t *' from incompatible type 'gmb_string_t'`).
+             * Il caso a bound fisso `DIM x(n) AS BYTE` resta elem_byte (sopra). */
+            if (s->dim_type && s->dim_type_tk == GMB_TOK_Byte && s->dim_empty_parens
+                && !s->array_size && !v->gkind && !v->vclass[0]) {
+                v->is_array = 0; v->dyn_len = 0; v->ndims = 0; v->matrix = 0; v->jagged = 0;
+                v->elem_byte = 0; v->is_bytes = 1; v->type = TY_STR;
+            }
             /* FASE 2.6(b): DIM v AS CHANNEL/WAITGROUP/MUTEX/RWMUTEX/ONCE/COND */
             int gk = sync_gkind_tok(s->dim_type_tk);
             if (gk != GK_PLAIN) { v->gkind = gk; v->elem_str = s->dim_elem_str; }
@@ -5941,6 +5960,8 @@ static int bf_m_sqr(ctx_t* c, gmb_expr_t** a, int n){ if(n!=1)return 0; sb_put(&
  * verso zero (INT(-3.9) = -4). FIX/TRUNC restano tronca. */
 static int bf_m_int(ctx_t* c, gmb_expr_t** a, int n){ if(n!=1)return 0; sb_put(&c->out,"floor((double)("); emit_num_operand(c,a[0]); sb_put(&c->out,"))"); return 1; }
 static int is_byval_arr_param(ctx_t* c, const char* name);
+/* definita più sotto (sezione PRINT/TOHEX): variabile/esito byte-array (gmb_string_t binaria) */
+static int is_byte_expr(ctx_t* c, gmb_expr_t* e);
 static int bf_m_len(ctx_t* c, gmb_expr_t** a, int n){
     if(n!=1)return 0;
     /* LEN(bytes()) — CALL 0-arg su una var LISTA = il contenitore INTERO (array da
@@ -6062,6 +6083,13 @@ static int bf_m_len(ctx_t* c, gmb_expr_t** a, int n){
      * ("passing gmb_val_t to gmb_str_t_len": LEN(DESC) in DbfMemoCrud.bas). */
     if (ensure_dbf_field_var(c, a[0])) {
         sb_put(&c->out,"((gmb_double_t)gmb_str_t_len(gmb_val_to_string("); emit_expr(c,a[0]); sb_put(&c->out,")))"); return 1;
+    }
+    /* LEN di un BUFFER BINARIO (var AS BYTE / FROMHEX / digest / HASHFILE) = numero di
+     * BYTE, non di CARATTERI: gmb_str_t_len conta i code point e si ferma al primo NUL,
+     * quindi un digest che inizia con 0x00 dava LEN=0 (IL/PCode/VM-C danno la lunghezza
+     * reale). gmb_str_bytes legge .length (i byte memorizzati). */
+    if (is_byte_expr(c, a[0])) {
+        sb_put(&c->out,"((gmb_double_t)gmb_str_bytes("); emit_expr(c, a[0]); sb_put(&c->out,"))"); return 1;
     }
     sb_put(&c->out,"((gmb_double_t)gmb_str_t_len("); emit_expr(c,a[0]); sb_put(&c->out,"))"); return 1; }
 /* LENB(<expr>) — BYTE UTF-8 (LEN conta i CARATTERI). Argomento non stringa → -1, come le

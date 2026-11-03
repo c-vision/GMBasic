@@ -2017,9 +2017,21 @@ static void gmb_bf_23(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_
         {
             if (args[0].type == 2 && args[0].ref)
             {
+                /* BYTES boxed (gmb_make_val_bytes, es. dict("privateKey") di BLOCKCHAIN.DERIVEKEY):
+                 * layout [len][bytes...] con `kind == GMB_OBJ_STRING` e type_name "gmb_bytes".
+                 * LEN = numero di BYTE del buffer (parità IL/PCode/C99Native): prima cadeva nel
+                 * ramo stringa e leggeva il campo `size_t len` come testo → 0. */
+                if (args[0].ref->type_name && strcmp(args[0].ref->type_name, "gmb_bytes") == 0)
+                {
+                    gmb_val_t bv; bv.kind = GMB_TYPE_OBJECT; bv.v_ptr = args[0].ref;
+                    size_t blen = 0;
+                    uint8_t* bd = gmb_val_as_bytes(bv, &blen);
+                    if (bd) free(bd);
+                    bout->result = (double)blen;
+                }
                 /* LEN di una STRINGA: CARATTERI (code point Unicode), non byte né unità UTF-16.
                  * Per i BYTE c'è LENB (gmb_bf_3816). Vedi Bugs/(solved) - LEN-UTF8-Byte-VS-Char-Gambe-C. */
-                if (args[0].ref->kind == GMB_OBJ_STRING) bout->result = (double)gmb_chars_len(((gmb_obj_string_t*)args[0].ref)->data);
+                else if (args[0].ref->kind == GMB_OBJ_STRING) bout->result = (double)gmb_chars_len(((gmb_obj_string_t*)args[0].ref)->data);
                 else if (args[0].ref->kind == GMB_OBJ_LIST && ((gmb_obj_shared_val_t*)args[0].ref)->list) bout->result = (double)((gmb_obj_shared_val_t*)args[0].ref)->list->count;
                 else if (args[0].ref->kind == GMB_OBJ_DICT && ((gmb_obj_shared_val_t*)args[0].ref)->dict) bout->result = (double)((gmb_obj_shared_val_t*)args[0].ref)->dict->count;
                 else bout->result = 0;
@@ -10816,6 +10828,14 @@ void gmb_bf_449(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, 
              * area corrente valida con campi → area 1. Prima ritornava -1/0 (un flag RDD).
              * § MiniTests/dbf/dbf_state.bas. */
             const char* alias = (argc >= 1 && args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_STRING) ? ((gmb_obj_string_t*)args[0].ref)->data : "";
+            if (argc >= 1 && args[0].type == 1)
+            {
+                /* SELECTED(<numero>): numero d'area 1-based, 0 se non aperta. Prima il
+                 * ramo numerico veniva ignorato e tornava l'area corrente (2 sempre). */
+                int an = (int)args[0].num;
+                bout->result = (an > 0 && gmb_db_dbf_find_handle_by_area(an) > 0) ? (double)an : 0.0;
+                return;
+            }
             if (alias && alias[0])
             {
                 /* Alias esplicito: numero d'area 1-based via gmb_db_isam_selected (ISAM) o
@@ -11339,8 +11359,29 @@ static void gmb_bf_387(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
             size_t mlen = 0, klen = 0;
             if (args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_LIST)
             { gmb_obj_shared_val_t* sv=(gmb_obj_shared_val_t*)args[0].ref; mlen = sv->list->count < sizeof(msg) ? sv->list->count : sizeof(msg); for (size_t i=0;i<mlen;i++){gmb_val_t v=sv->list->items[i];msg[i]=(uint8_t)(v.kind==GMB_TYPE_DOUBLE?v.v_double:(double)v.v_int);} }
+            else if (args[0].type == 2 && args[0].ref && args[0].ref->type_name
+                     && strcmp(args[0].ref->type_name, "gmb_bytes") == 0)
+            {
+                /* MESSAGGIO bytes boxed (es. KECCAK256(...) o dict boxed): layout [len][bytes...],
+                 * non una gmb_obj_string_t. Senza questo ramo mlen restava 0 e la firma era
+                 * VUOTA su VM/C (IL/PCode/C99 davano la firma DER). */
+                gmb_val_t bv; bv.kind = GMB_TYPE_OBJECT; bv.v_ptr = args[0].ref;
+                size_t blen = 0;
+                uint8_t* bd = gmb_val_as_bytes(bv, &blen);
+                if (bd) { mlen = blen < sizeof(msg) ? blen : sizeof(msg); memcpy(msg, bd, mlen); free(bd); }
+            }
             if (argc >= 2 && args[1].type == 2 && args[1].ref && args[1].ref->kind == GMB_OBJ_LIST)
             { gmb_obj_shared_val_t* sv=(gmb_obj_shared_val_t*)args[1].ref; klen = sv->list->count < sizeof(key) ? sv->list->count : sizeof(key); for (size_t i=0;i<klen;i++){gmb_val_t v=sv->list->items[i];key[i]=(uint8_t)(v.kind==GMB_TYPE_DOUBLE?v.v_double:(double)v.v_int);} }
+            else if (argc >= 2 && args[1].type == 2 && args[1].ref && args[1].ref->type_name
+                     && strcmp(args[1].ref->type_name, "gmb_bytes") == 0)
+            {
+                /* CHIAVE PRIVATA bytes boxed (BLOCKCHAIN.DERIVEKEY("privateKey")): stesso layout
+                 * [len][bytes...]. Stessa lacuna di bf_391 (GETPUBLICKEY), già corretta lì. */
+                gmb_val_t bv; bv.kind = GMB_TYPE_OBJECT; bv.v_ptr = args[1].ref;
+                size_t blen = 0;
+                uint8_t* bd = gmb_val_as_bytes(bv, &blen);
+                if (bd) { klen = blen < sizeof(key) ? blen : sizeof(key); memcpy(key, bd, klen); free(bd); }
+            }
             uint8_t sig[128];
             size_t siglen = 0;
             uint8_t* sigp = gmb_ecdsa_sign_raw(msg, mlen, key, klen, &siglen);
