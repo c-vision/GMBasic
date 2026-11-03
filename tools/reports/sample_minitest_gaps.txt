@@ -1,6 +1,6 @@
 SAMPLE → MINITEST: casi d'uso non previsti dai canonici
 
-casi: 51   sample coinvolti: 18
+casi: 50   sample coinvolti: 17
 
 == ARITA (stessa funzione, arità diversa nel canonico) ==
   samples/Ai/AiFullSurfaceCoverage.bas                           AI.search(5)  canonico: 9
@@ -36,7 +36,6 @@ casi: 51   sample coinvolti: 18
   samples/Http/HttpStreaming.bas                                 RES.setheader(2)
   samples/Http/HttpStreaming.bas                                 RES.startstream(1)
   samples/Http/HttpStreaming.bas                                 RES.write(1)
-  samples/Optimization/OptimizeUncoveredCoverage.bas             MATH.round(2)
   samples/System/SystemFullCoverage.bas                          SYSTEM.command(1)
   samples/System/SystemFullCoverage.bas                          SYSTEM.valtype(1)
   samples/Trading/TradingFullCoverage.bas                        TRADING.PORTFOLIO.kellycriterion(2)

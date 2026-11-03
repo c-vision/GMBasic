@@ -85,9 +85,9 @@ totale file: 1191   categorie: 80
 
 == per classificazione (un file può avere più tag) ==
   ENV          481
-  DIDATTICO    214
+  DIDATTICO    215
   CORTO        170
-  SURFACE      42
+  SURFACE      41
   SUPPORTO     25
   MODULO       15
   PACKAGE      7
@@ -126,7 +126,6 @@ totale file: 1191   categorie: 80
   GameDev/JoystickUncoveredCoverage.bas                                  righe=44   import=1
   Http/HttpStreaming.bas                                                 righe=74   import=1
   Network/NetworkFullCoverage.bas                                        righe=28   import=1
-  Optimization/OptimizeUncoveredCoverage.bas                             righe=69   import=2
   System/SystemFullCoverage.bas                                          righe=24   import=2
   Team/TeamFullCoverage.bas                                              righe=23   import=1
   TimeSeries/TimeSeriesFullCoverage.bas                                  righe=43   import=2
@@ -136,7 +135,7 @@ totale file: 1191   categorie: 80
   Trading/TradingPortfolioUncoveredCoverage.bas                          righe=50   import=1
   Workflow/WorkflowFullCoverage.bas                                      righe=25   import=1
   graphics/GraphicsUncoveredCoverage.bas                                 righe=41   import=1
-  (42 file)
+  (41 file)
 
 == EXPECT nei Sample (violazione del contratto) ==
   (0 file)
@@ -955,6 +954,7 @@ totale file: 1191   categorie: 80
   Mouse/test_mouse_full.bas                                              righe=61   import=2
   Namespaces/NamespacesMain.bas                                          righe=108  import=3
   Optimization/OptimizationTests.bas                                     righe=150  import=2
+  Optimization/PrezzoOttimale.bas                                        righe=117  import=2
   PackageRegistry/PackageServer.bas                                      righe=2020 import=5
   ParserStress.bas                                                       righe=193  import=10
   SQL/SqlDataFrameG10.bas                                                righe=48   import=2
@@ -1013,5 +1013,5 @@ totale file: 1191   categorie: 80
   graph/FinanceBrainGraph.bas                                            righe=51   import=2
   graph/GraphAgentAsk.bas                                                righe=34   import=2
   graph/GraphQueryMulti.bas                                              righe=29   import=2
-  (214 file)
+  (215 file)
 
