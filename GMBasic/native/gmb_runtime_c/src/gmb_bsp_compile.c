@@ -79,11 +79,11 @@ static void emit_html(gmb_bsp_buf* b, const char* s, size_t n)
     }
 }
 
-/* Le pagine BSP contengono commenti BASIC `' ...` dentro i blocchi <% %>. Il motore
- * di espressioni C (gmb_expr) usa `'` come delimitatore di STRINGA (idioma
- * Clipper/SQL), quindi un commento verrebbe letto come stringa non chiusa →
- * "expected expression". Qui si tolgono i commenti riga rispettando le stringhe
- * "..." (un apostrofo DENTRO una stringa resta). Il testo HTML resta intatto. */
+/* Le pagine BSP contengono commenti BASIC `' ...` dentro i blocchi <% %>. Qui si
+ * tolgono i commenti riga rispettando le stringhe "..." (un apostrofo DENTRO una
+ * stringa resta). Il testo HTML resta intatto. Il BASIC prodotto va al
+ * compilatore completo (VM/C), che li ignorerebbe comunque: la pulizia evita di
+ * trascinare testo inerte nel chunk. */
 static void buf_app_code(gmb_bsp_buf* b, const char* s, size_t n)
 {
     size_t i = 0;
@@ -202,11 +202,6 @@ static int bsp_compile_impl(const char* src, char** out_bas, int full)
     }
     *out_bas = b.p;
     return GMB_EXPR_OK;
-}
-
-int gmb_bsp_compile(const char* src, char** out_bas)
-{
-    return bsp_compile_impl(src, out_bas, 0);
 }
 
 int gmb_bsp_compile_full(const char* src, char** out_bas)

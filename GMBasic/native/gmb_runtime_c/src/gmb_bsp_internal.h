@@ -1,4 +1,4 @@
-/* gmb_bsp_internal.h — buffer e helper condivisi fra gmb_bsp.c (render/serve) e
+/* gmb_bsp_internal.h — buffer e helper condivisi fra gmb_bsp.c (serve) e
  * gmb_bsp_compile.c (traduzione .bsp → BASIC). Uso interno al runtime. */
 #ifndef GMB_BSP_INTERNAL_H
 #define GMB_BSP_INTERNAL_H

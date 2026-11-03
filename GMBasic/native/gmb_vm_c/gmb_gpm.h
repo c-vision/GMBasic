@@ -219,6 +219,10 @@ typedef struct gmb_obj_byref {
 
 gmb_obj_byref_t* gmb_byref_new_local(struct gmb_task* owner, gmb_frame_t* frame, int slot);
 gmb_obj_byref_t* gmb_byref_new_global(struct gmb_task* owner, int slot);
+/* Cella BYREF con valore PROPRIO (non legata a uno slot): usata dal driver EVAL per
+ * passare campi DBF / nomi ignoti al frammento compilato (scritture visibili al
+ * chiamante, che le riporta sul record dopo la chiamata). */
+gmb_obj_byref_t* gmb_byref_new_cell(struct gmb_task* owner, gmb_stack_entry_t value);
 gmb_obj_byref_t* gmb_byref_new_array_elem(struct gmb_task* owner, gmb_obj_shared_val_t* arr, int index);
 gmb_stack_entry_t gmb_task_capture_local_byref(struct gmb_task* owner, int slot);
 gmb_stack_entry_t gmb_task_capture_global_byref(struct gmb_task* owner, int slot);

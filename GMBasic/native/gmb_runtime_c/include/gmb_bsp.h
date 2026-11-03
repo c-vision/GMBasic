@@ -1,6 +1,7 @@
 /* ============================================================================
- * gmb_bsp.h — transpilazione .bsp (HTML + <% %>) → BASIC per gmb_expr.
- * Non emette IMPORT/ON ERROR/END/handler: quelli restano nel pipeline C#.
+ * gmb_bsp.h — transpilazione .bsp (HTML + <% %>) → BASIC per il COMPILATORE
+ * completo (VM/C). Non esiste un percorso "ridotto": la pagina viene sempre
+ * compilata in un chunk A1 ed eseguita dalla VM.
  * ============================================================================ */
 #ifndef GMB_BSP_H
 #define GMB_BSP_H
@@ -11,25 +12,22 @@
 extern "C" {
 #endif
 
-/* Transpila src BSP in BASIC. *out_bas è malloc (caller free).
- * `gmb_bsp_compile` = BASIC per il valutatore di espressioni (niente IMPORT).
- * `gmb_bsp_compile_full` = BASIC per il COMPILATORE completo (VM/C): emette le
- * direttive IMPORT della pagina, quindi `DASHBOARD.*`, `AI.*`, … si risolvono. */
-int gmb_bsp_compile(const char* src, char** out_bas);
+/* Transpila src BSP in BASIC per il COMPILATORE completo (VM/C): emette le
+ * direttive IMPORT della pagina, quindi `DASHBOARD.*`, `AI.*`, … si risolvono.
+ * *out_bas è malloc (caller free). */
 int gmb_bsp_compile_full(const char* src, char** out_bas);
 
-/* compile + exec_capture. *out_html è malloc (caller free). */
-int gmb_bsp_render(const char* src, void* env,
-                   gmb_expr_get_fn get, gmb_expr_set_fn set,
-                   gmb_expr_call_fn call, char** out_html);
-
-/* Equivalente nativo di TryServeBspPage: path URL `.bsp` sotto dir, query `k=v`
- * seminata nell'env. `host` (header HTTP Host della richiesta, o NULL) è seminato
- * come REQ.Headers["Host"] così le pagine BSP possono auto-localizzare il registry
- * (es. "http://" + REQ.Headers.Get("Host")). 1 = gestita (200/403/500, *out_html
- * malloc), 0 = non .bsp o file assente (il caller può fare fallback statico/404). */
+/* Equivalente nativo di TryServeBspPage: path URL `.bsp` sotto dir, servito dal
+ * motore BSP COMPLETO (chunk A1 + VM/C via libgmb_bsp). `host` (header HTTP Host
+ * della richiesta, o NULL) è seminato come REQ.Headers["Host"] così le pagine
+ * possono auto-localizzarsi. 1 = gestita (200/403/500, *out_html malloc),
+ * 0 = non .bsp o file assente. Se la pagina esiste ma chunk/dylib mancano:
+ * 500 esplicito (nessun rendering alternativo). */
 int gmb_bsp_try_serve(const char* dir, const char* url_path, const char* query,
                       const char* host, char** out_html, int* out_status);
+/* Solo renderer VM (senza gateway): usato dalla dylib libgmb_bsp per evitare ricorsioni. */
+int gmb_bsp_try_serve_vm(const char* dir, const char* url_path, const char* query,
+                        const char* host, char** out_html, int* out_status);
 
 /* Renderer BSP COMPLETO via `libgmb_bsp` (VM/C, pagine precompilate in chunk A1):
  * 1 = gestita, 0 = dylib/sidecar assente → il chiamante usa gmb_expr/fallback. */

@@ -821,8 +821,8 @@ void gmb_deploy_bundle(const char* exe, const char* install, const DeployOpts* o
             bspName = "libgmb_bsp.so";
 #endif
             static const char* const bspRe[] = {
-                "build/libs/" GMB_RID_STR "/",
-                "native/gmb_vm_c/build/",
+                "native/gmb_vm_c/build/",       /* build del checkout = fresca (ABI 2) */
+                "build/libs/" GMB_RID_STR "/",  /* install/distribuzione */
             };
             for (size_t i = 0; i < sizeof bspRe / sizeof bspRe[0]; i++) {
                 char src[CLI_PATH], dst[CLI_PATH];

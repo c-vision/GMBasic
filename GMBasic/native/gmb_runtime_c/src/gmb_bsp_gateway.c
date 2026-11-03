@@ -163,7 +163,7 @@ static void* bsp_load(void)
 #else
     const char* file = "libgmb_bsp.so";
 #endif
-    char cand[12][4096];
+    char cand[24][4096];
     int n = 0;
     char exe[4096] = "";
 #if defined(__APPLE__)
@@ -179,50 +179,57 @@ static void* bsp_load(void)
         char* sl = strrchr(dir, '/');
         if (sl) {
             *sl = 0;
-            if (n < 12) { snprintf(cand[n], 4096, "%s/libs/%s/%s", dir, gmb_libs_rid(), file); n++; }
-            if (n < 12) { snprintf(cand[n], 4096, "%s/libs/%s", dir, file); n++; }
-            if (n < 12) { snprintf(cand[n], 4096, "%s/%s", dir, file); n++; }
-            if (n < 12) { snprintf(cand[n], 4096, "%s/../libs/%s/%s", dir, gmb_libs_rid(), file); n++; }
+            /* LOCALE PRIMA (bundle), poi RISALENDO dal checkout (sviluppo): la dylib
+             * può essere in <build>/libs/<rid>, accanto, o in native/gmb_vm_c/build. */
+            for (int up = 0; up < 5 && dir[0]; up++) {
+                if (n < 24) { snprintf(cand[n], 4096, "%s/libs/%s/%s", dir, gmb_libs_rid(), file); n++; }
+                if (n < 24) { snprintf(cand[n], 4096, "%s/libs/%s", dir, file); n++; }
+                if (n < 24) { snprintf(cand[n], 4096, "%s/%s", dir, file); n++; }
+                if (n < 24) { snprintf(cand[n], 4096, "%s/gmb_vm_c/build/%s", dir, file); n++; }
+                if (n < 24) { snprintf(cand[n], 4096, "%s/build/libs/%s/%s", dir, gmb_libs_rid(), file); n++; }
+                char* slash = strrchr(dir, '/');
+                if (!slash) break;
+                *slash = 0;
+            }
         }
     }
     {
         char root[2048];
         if (gmb_paths_repo_root(root, sizeof root) && root[0]) {
-            if (n < 12) { snprintf(cand[n], 4096, "%s/GMBasic/native/gmb_vm_c/build/%s", root, file); n++; }
-            if (n < 12) { snprintf(cand[n], 4096, "%s/build/libs/%s/%s", root, gmb_libs_rid(), file); n++; }
-            if (n < 12) { snprintf(cand[n], 4096, "%s/GMBasic/build/libs/%s/%s", root, gmb_libs_rid(), file); n++; }
+            if (n < 24) { snprintf(cand[n], 4096, "%s/GMBasic/native/gmb_vm_c/build/%s", root, file); n++; }
+            if (n < 24) { snprintf(cand[n], 4096, "%s/build/libs/%s/%s", root, gmb_libs_rid(), file); n++; }
+            if (n < 24) { snprintf(cand[n], 4096, "%s/GMBasic/build/libs/%s/%s", root, gmb_libs_rid(), file); n++; }
         }
     }
     {
         char cache[2048];
         gmb_paths_libs_cache_dir(cache, sizeof cache);
-        if (cache[0] && n < 12) {
+        if (cache[0] && n < 24) {
             snprintf(cand[n], 4096, "%s/%s/%s", cache, gmb_libs_rid(), file); n++;
         }
     }
-    if (n < 12) { snprintf(cand[n], 4096, "%s", file); n++; }
+    if (n < 24) { snprintf(cand[n], 4096, "%s", file); n++; }
 
-    for (int i = 0; i < n; i++) if (bsp_try(cand[i])) break;
-    if (!g_lib) {
-        snprintf(g_err, sizeof g_err,
-                 "BSP completo: %s non caricabile (cercata accanto all'eseguibile, nel build "
-                 "del checkout e in ~/.gmbasic/libs/%s)", file, gmb_libs_rid());
-        return NULL;
+    /* Accetta SOLO l'ABI corrente: una dylib vecchia nella cache NON deve essere
+     * caricata (renderebbe con semantica diversa, es. il vecchio fallback gmb_expr). */
+    for (int i = 0; i < n; i++) {
+        void* h = dlopen(cand[i], RTLD_LAZY | RTLD_LOCAL);
+        if (!h) continue;
+        bsp_abi_fn abi = (bsp_abi_fn)dlsym(h, "gmb_bsp_shared_abi");
+        bsp_init_fn init = (bsp_init_fn)dlsym(h, "gmb_bsp_shared_init");
+        bsp_hook_fn sethook = (bsp_hook_fn)dlsym(h, "gmb_bsp_shared_set_state_hook");
+        bsp_serve_fn serve = (bsp_serve_fn)dlsym(h, "gmb_bsp_shared_serve");
+        bsp_free_fn freefn = (bsp_free_fn)dlsym(h, "gmb_bsp_shared_free");
+        if (!abi || abi() != 2 || !init || !serve || !freefn) { dlclose(h); continue; }
+        g_lib = h; g_init = init; g_sethook = sethook; g_serve = serve; g_free = freefn;
+        g_init();
+        if (g_sethook) g_sethook((void*)host_hook, NULL);
+        return g_lib;
     }
-    bsp_abi_fn abi = (bsp_abi_fn)dlsym(g_lib, "gmb_bsp_shared_abi");
-    g_init    = (bsp_init_fn)dlsym(g_lib, "gmb_bsp_shared_init");
-    g_sethook = (bsp_hook_fn)dlsym(g_lib, "gmb_bsp_shared_set_state_hook");
-    g_serve   = (bsp_serve_fn)dlsym(g_lib, "gmb_bsp_shared_serve");
-    g_free    = (bsp_free_fn)dlsym(g_lib, "gmb_bsp_shared_free");
-    if (!abi || !g_init || !g_serve || !g_free || abi() != 1) {
-        snprintf(g_err, sizeof g_err, "BSP completo: ABI di %s incompatibile", file);
-        dlclose(g_lib);
-        g_lib = NULL;
-        return NULL;
-    }
-    g_init();
-    if (g_sethook) g_sethook((void*)host_hook, NULL);
-    return g_lib;
+    snprintf(g_err, sizeof g_err,
+             "BSP completo: %s (ABI 2) non caricabile (cercata accanto all'eseguibile, nel "
+             "build del checkout e in ~/.gmbasic/libs/%s)", file, gmb_libs_rid());
+    return NULL;
 }
 
 /* 1 = pagina gestita dalla VM/C (html malloc, va liberato con bsp_free); 0 = non gestita

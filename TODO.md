@@ -231,7 +231,7 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
       **`REPL/MIGRATION.md`** (comandi, flag, CLI, esecuzione). Riportati/instradati:
       `AIBENCH` (gmbcs), `HF`/`MLX` (gmb hf/mlx), `RAG`/`BRAIN INSTALL|EXPORT|SIGN`/`LIBS`
       (CLI C#), `CONVERT`/`CONVFMT` (gmb convert/convfmt), `BSP <dir>` **in C**
-      (`gmb_bsp_compile` + chunk), flag `--ast`, `-repl`, `--dump-il`, `-bsp`, `--il-module`
+      (`gmb_bsp_compile_full` + chunk), flag `--ast`, `-repl`, `--dump-il`, `-bsp`, `--il-module`
       con engine C#. Fix BSP: le direttive `<%@ IMPORT … %>` erano ignorate da `gmb_bsp.c`
       (pagine con AI/JSON non compilavano). **GPM reso reale** (2026-11-02): `gmb --gpm
       auto|always|linear` → `gmb_c99_set_gpm_mode`; REPL `-gpm`/`GPM` lo propagano a

@@ -3320,6 +3320,7 @@ if (gmb_tk_rem_vari_in(t->kind)) {
         }
         gmb_p_adv(p);
         gmb_stmt_t* st = gmb_p_parse_assign_or_call(p, name, line);
+        if (st && is_let) st->is_let = 1;
         free(name);
         return st;
     }

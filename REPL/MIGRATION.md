@@ -34,7 +34,7 @@ Comandi riportati nel mondo C o instradati (vedi commit F3/F6b):
 | `BRAIN …` | **C**: `gmbadmin brain` (install/uninstall/resolve/stats/verify/create/register/buildvault/optimize/rename/backup/export/sign/dedupe/extract/merge/convert/diff/doctor/forget) |
 | `LIBS UPDATE/CHECK/PUBLISH` | **C**: `gmb libs status/ensure/check/publish` |
 | `CONVERT` / `CONVFMT` | **C**: `gmb convert` / `gmb convfmt` (`gmb_doc_*`) |
-| `BSP <dir>` | **C**: `gmb_bsp_compile` + `gmb dump chunk` → `<pagina>.bsp.chunk` |
+| `BSP <dir>` | **C**: `gmb_bsp_compile_full` + `gmb dump chunk` → `<pagina>.bsp.chunk` |
 | `IL` / `PCODE` | `gmbcs dump il|pcode` (solo se engine C# presente) |
 | `EDIT`/`IDE` | IDE integrato C (`REPL/ide.c`) |
 | `EVAL` | `gmb eval` (C) / `gmbcs eval` (engine C#) |
