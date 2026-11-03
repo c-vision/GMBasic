@@ -24,6 +24,7 @@ BMP and PSF2 were impossible to emit from BASIC.
 | **PSF1** | write | legacy Linux console font: magic `0x36 0x04`, 256 slots of `charsize` bytes, 8 px per row; a glyph wider than 8 px is an explicit error |
 | **ASCII art** | read + write | `mini8.ascii`: one block per glyph (`@ enc name w h` then `#`/`.` rows). The `check` re-reads it with `TextLoad` and compares every glyph with the model |
 | **Sixel** | read + write | `mini8.six`: DEC stream (`ESC P q "1;1;w;h`, then per band `#0` + one character per column, `-` between bands, closed by `ESC \\`). The `check` decodes it with `SixelLoad` and compares the glyph with the model |
+| **PCF** | write | X11 Portable Compiled Format: `mini8.pcf`, tabelle PROPERTIES/ACCELERATORS/METRICS/BITMAPS/BDF_ENCODINGS. File validato con **FreeType 2.13** (si apre, charmap risolto, bitmap identici al modello, riga per riga con il pitch), **byte-identico** sulle quattro leg e riletto dal `check` |
 | **PBM** (P1 ASCII) | write | `P1` bitmap, one glyph per block, same layout as the BMP sheet |
 | **C header** | write | `static const unsigned char glyph_<code>[]` + metrics, ready to be `#include`d |
 
@@ -142,6 +143,7 @@ found regardless of the working directory of the runner.
 | `mini8.psf1` | PSF1 console font (`4 + 256 * charsize` bytes) |
 | `mini8.ascii` | ASCII art of every glyph, re-read by the `check` |
 | `mini8.six` | sixel preview of the glyph `A`, re-read by the `check` |
+| `mini8.pcf` | X11 PCF font, opened by FreeType and re-read by the `check` |
 | `from_text.bdf` | BDF rebuilt from an ASCII art bitmap (`textin` mode) |
 | `tui.bdf` | model as left by the TUI session (`tui` mode) |
 | `mini8.h` | C header with the bitmaps |
@@ -160,5 +162,6 @@ found regardless of the working directory of the runner.
   pixels, flips, recomputes bearings and drives the same undo/redo stack. Its keys are read from
   a script (`[tui] keys`) because a headless runner has no terminal; a real keyboard reader is
   just another source for the same `TuiApply`. The **GUI** is still M4 (a second view, same model).
+- **PCF** follows the byte conventions of a real X11 file: the header and each table's `format` field are little-endian, the fields inside the tables are big-endian, rows are padded to 4 bytes and bits are MSB-first (the leftmost pixel is the high bit, exactly as in the BDF hex rows). `CHARSET_REGISTRY`/`CHARSET_ENCODING` are added when the source BDF lacks them, otherwise FreeType builds a face with no charmap.
 - Limits are declared, not silent: `GS_GMAX` glyphs, `GS_ROWS` rows per glyph, `GS_BUFMAX`
   bytes per binary export. Exceeding a limit is an explicit error.

@@ -28,7 +28,16 @@ Verified on the four backends of the monorepo (IL, PCodeVM, VM-C, C99Native).
 - [x] **PSF1** (256 slots, 8-pixel wide) in addition to PSF2: `mini8.psf1`,
       `4 + 256 * charsize` byte, magic `0x36 0x04`; il check verifica header, dimensione e un
       byte di glifo calcolato dal modello. Un glifo piu' largo di 8 px e' un errore dichiarato.
-- [ ] **PCF** writer (binary tables with accelerators) and **BDF v2.2** properties.
+- [x] **PCF** (`mini8.pcf`): tabelle PROPERTIES/ACCELERATORS/METRICS/BITMAPS/BDF_ENCODINGS,
+      header e campi `format` little-endian, campi delle tabelle big-endian, righe paddate a 4
+      byte con bit **MSB-first** (pixel piu' a sinistra = bit alto, come le righe hex del BDF).
+      **Validato con FreeType 2.13**: faccia aperta, charmap `[32, 65, 66]`, bitmap identici al
+      BDF riga per riga con il pitch. **md5 identico sulle quattro leg** (IL, PCodeVM, VM-C,
+      C99Native) e riletto dal `check` con 135 asserzioni, fra cui l'ordine dei bit su una riga
+      non simmetrica (`0x7c` di `B`) e gli estremi + lunghezza della tabella `BDF_ENCODINGS`.
+- [ ] **BDF 2.2 properties**: il writer conserva le proprieta' verbatim; manca l'emissione dei
+      campi v2.2 (`RESOLUTION_X/Y`, `FONT_TYPE`) quando il sorgente non li ha — e' una scelta di
+      valori, non codice mancante.
 - [x] **ASCII art** per terminale: `mini8.ascii` (`@ enc name w h` + righe `#`/`.`), riletto
       dal modo `textin` e confrontato glifo per glifo con il modello nel check.
 - [x] **Sixel** per terminali che lo supportano: `mini8.six` (stream DEC `ESC P q "1;1;w;h`,
