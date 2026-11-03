@@ -243,6 +243,8 @@ static int tk_returns_list(gmb_tokenkind_t tk, int* elem_str) {
     }
 }
 /* CONVERT.* Markdown AST che ritornano una LISTA boxed (elementi gmb_val_t dict). */
+/* Esposta a gmb_c99_emit_builtin.c (TU separata): `UBOUND(<call>)` per OGNI builtin che ritorna lista. */
+int gmb_c99_tk_returns_list(gmb_tokenkind_t tk) { int es = 0; return tk_returns_list(tk, &es); }
 static int tk_is_md_list(gmb_tokenkind_t tk) {
     return tk == GMB_TOK_MdHeadings || tk == GMB_TOK_MdLinks || tk == GMB_TOK_MdImages
         || tk == GMB_TOK_MdTables || tk == GMB_TOK_MdCodeBlocks || tk == GMB_TOK_MdQuery;
@@ -3250,10 +3252,14 @@ static void reg_let_assign(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
              * NON se v è già un ARRAY dichiarato (DIM dims(7) AS SINGLE : dims = AI.EMBED(...)):
              * lì il RHS è un double* (gmb_aiv_embed) e la var resta un array — prima veniva
              * riclassificata lista → "assigning to 'gmb_list_t' from 'double *'" (SqlVecSearch). */
-            if (s->value && s->value->kind == GMB_EXPR_CALL && !tv->is_array) {
+            /* `DIM m()` (array DINAMICO senza elementi dichiarati) + `m = <call che ritorna lista>`: l'assegnazione
+             * SOSTITUISCE l'array con la lista (come IL/PCode/VM-C) → riclassifica; un array a bound FISSO
+             * (`DIM dims(7)`) resta array (il RHS lì è un double*). */
+            if (s->value && s->value->kind == GMB_EXPR_CALL && (!tv->is_array || (tv->dyn_len && !tv->gkind && !tv->matrix))) {
                 int es0 = 0;
                 if (tk_returns_list(s->value->tk, &es0)) {
                     tv->gkind = GK_LIST; tv->elem_str = es0; if (es0) tv->type = TY_STR;
+                    tv->is_array = 0; tv->dyn_len = 0; tv->ndims = 0; tv->is_bytes = 0;   /* da array dinamico a lista */
                     if (tk_is_md_list(s->value->tk)) tv->elem_boxed = 1;
                 }
             }

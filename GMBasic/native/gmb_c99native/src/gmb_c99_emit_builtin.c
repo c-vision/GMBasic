@@ -2349,6 +2349,13 @@ static int bd_ubound(ctx_t* c, gmb_expr_t** a, int n, int line) {
         /* UBOUND(<call che ritorna gmb_list_t>) — AI.AGENTLIST/AGENTEVENTS/AI.LIST:
          * gmb_list_count(<call>) - 1. Prima il call non era un nome di variabile →
          * "simbolo non trovato: UBOUND" (AgentOperatingCenter). */
+        extern int gmb_c99_tk_returns_list(gmb_tokenkind_t tk);   /* gmb_c99_emit.c */
+        if (a[0]->kind == GMB_EXPR_CALL && gmb_c99_tk_returns_list(a[0]->tk)) {
+            sb_put(&c->out, "(gmb_double_t)(gmb_list_count(");
+            emit_expr(c, a[0]);
+            sb_put(&c->out, ") - 1)");
+            return 1;
+        }
         if (a[0]->kind == GMB_EXPR_CALL
             && (a[0]->tk == GMB_TOK_AiAgentList || a[0]->tk == GMB_TOK_AiAgentEvents
                 || a[0]->tk == GMB_TOK_AiList)) {
