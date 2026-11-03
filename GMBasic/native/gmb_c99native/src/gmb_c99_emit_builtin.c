@@ -4457,10 +4457,10 @@ static int rd_setdeleted(ctx_t* c, gmb_expr_t** a, int n) {
      * valido → il C generato non compilava ("expected ')'"). Prima l'area va selezionata,
      * poi si applica SETDELETED. */
     sb_put(&c->out, "({ gmb_rdd_select((int)("); emit_expr(c, a[0]);
-    /* Ritorno: SUCCESSO (1) quando l'impostazione è applicata — parity IlRuntime.RddSetDeleted
-     * che ritorna true; il valore del flag (0) sarebbe falso (§ rdd_fields: "setdeleted: si"). */
+    /* Ritorno BIT BASIC (-1 vero / 0 falso), come IL/VM-C: prima emetteva 1 secco
+     * (`setdeleted= 1` contro `-1` delle altre gambe). */
     sb_put(&c->out, ")); (gmb_double_t)(gmb_rdd_set_deleted((int)("); emit_expr(c, a[1]);
-    sb_put(&c->out, ")) == 0 ? 1 : 0); })");
+    sb_put(&c->out, ")) == 0 ? -1.0 : 0.0); })");
     return 1;
 }
 static int rd_delete(ctx_t* c, gmb_expr_t** a, int n) { (void)a; if (n != 0) return 0; sb_put(&c->out, "(gmb_double_t)gmb_rdd_delete()"); return 1; }
