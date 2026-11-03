@@ -97,6 +97,11 @@ DIM g_tmp(GS_ROWS) AS STRING
 
 ' --- M2: clipboard di regione e cronologia undo/redo (stack limitato) -------
 CONST GS_UNDO = 4
+' Proprieta' del PCF in scrittura (globali: gli array di stringhe locali a un SUB
+' non sono affidabili su tutte le gambe, e il writer PCF deve essere portabile).
+DIM g_pcfN(64) AS STRING
+DIM g_pcfV(64) AS STRING
+
 DIM g_clipW AS INTEGER
 DIM g_clipH AS INTEGER
 DIM g_clipRows(GS_ROWS) AS STRING
@@ -1834,6 +1839,348 @@ SUB SixelLoad(g AS INTEGER, path AS STRING)
     NEXT band
 END SUB
 
+' --- export: PCF (X11 Portable Compiled Format) ------------------------------
+' File validato con FreeType (la faccia si apre, il charmap e' Unicode e i bitmap
+' coincidono con il BDF di partenza).
+' Header e campi "format" sono little-endian; i campi DENTRO le tabelle sono
+' big-endian (convenzione del PCF reale: il formato 0xE dichiara byte order MSB,
+' bit LSB-first, righe paddate a 4 byte). Tabelle: PROPERTIES(1), ACCELERATORS(2),
+' METRICS(4), BITMAPS(8), BDF_ENCODINGS(32); gli acceleratori sono obbligatori.
+' Il file si assembla come stringa ESADECIMALE e si converte in byte alla fine:
+' CHR$(0) in questo dialetto e' la stringa vuota, e un array BYTE passato BYREF
+' non riceve le scritture sulle gambe gestite (lo dimostra il check su PCode).
+' HexVal(ch) esiste gia' nell'app (una cifra esadecimale -> 0..15).
+FUNCTION H1(v AS INTEGER) AS STRING
+    DIM d AS STRING, x AS INTEGER
+    d = "0123456789abcdef"
+    x = v - INT(v / 16) * 16
+    H1 = MID$(d, x + 1, 1)
+END FUNCTION
+
+FUNCTION HB(v AS INTEGER) AS STRING
+    DIM x AS INTEGER, r AS STRING
+    x = v - INT(v / 256) * 256
+    r = H1(INT(x / 16)) + H1(x)
+    HB = r
+END FUNCTION
+
+FUNCTION H8(v AS LONG) AS STRING
+    DIM x AS LONG, r AS STRING
+    x = v
+    IF x < 0 THEN x = x + 256
+    r = HB(x)
+    H8 = r
+END FUNCTION
+
+FUNCTION HLE16(v AS LONG) AS STRING
+    DIM x AS LONG, r AS STRING
+    x = v
+    IF x < 0 THEN x = x + 65536
+    r = HB(x - INT(x / 256) * 256) + HB(INT(x / 256))
+    HLE16 = r
+END FUNCTION
+
+FUNCTION HLE32(v AS LONG) AS STRING
+    DIM x AS LONG, b0 AS INTEGER, b1 AS INTEGER, b2 AS INTEGER, b3 AS INTEGER, r AS STRING
+    x = v
+    IF x < 0 THEN x = x + 4294967296
+    b0 = x - INT(x / 256) * 256
+    x = INT(x / 256)
+    b1 = x - INT(x / 256) * 256
+    x = INT(x / 256)
+    b2 = x - INT(x / 256) * 256
+    x = INT(x / 256)
+    b3 = x
+    r = HB(b0) + HB(b1) + HB(b2) + HB(b3)
+    HLE32 = r
+END FUNCTION
+
+FUNCTION HBE16(v AS LONG) AS STRING
+    DIM x AS LONG, r AS STRING
+    x = v
+    IF x < 0 THEN x = x + 65536
+    r = HB(INT(x / 256)) + HB(x - INT(x / 256) * 256)
+    HBE16 = r
+END FUNCTION
+
+FUNCTION HBE32(v AS LONG) AS STRING
+    DIM x AS LONG, b0 AS INTEGER, b1 AS INTEGER, b2 AS INTEGER, b3 AS INTEGER, r AS STRING
+    x = v
+    IF x < 0 THEN x = x + 4294967296
+    b3 = x - INT(x / 256) * 256
+    x = INT(x / 256)
+    b2 = x - INT(x / 256) * 256
+    x = INT(x / 256)
+    b1 = x - INT(x / 256) * 256
+    x = INT(x / 256)
+    b0 = x
+    r = HB(b0) + HB(b1) + HB(b2) + HB(b3)
+    HBE32 = r
+END FUNCTION
+
+' testo + NUL finale, come stringa esadecimale
+FUNCTION HText(t AS STRING) AS STRING
+    DIM x AS INTEGER, s AS STRING
+    s = ""
+    FOR x = 1 TO LEN(t)
+        s = s + HB(ASC(MID$(t, x, 1)))
+    NEXT x
+    HText = s + "00"
+END FUNCTION
+
+FUNCTION Align4(v AS LONG) AS LONG
+    Align4 = INT((v + 3) / 4) * 4
+END FUNCTION
+
+SUB PcfSave(path AS STRING)
+    DIM g AS INTEGER, r AS INTEGER, c AS INTEGER, x AS INTEGER, i AS INTEGER
+    DIM nb AS INTEGER, pb AS INTEGER, v AS INTEGER, row AS STRING, ch AS STRING
+    DIM nNameOff(64) AS LONG, nValOff(64) AS LONG
+    DIM propHdr AS LONG, strStart AS LONG, strTotal AS LONG, pos AS LONG, pad AS LONG
+    DIM propSize AS LONG, accSize AS LONG, metSize AS LONG, bitHdr AS LONG, dataStart AS LONG
+    DIM dataSize AS LONG, bitSize AS LONG, encSize AS LONG
+    DIM offProp AS LONG, offAcc AS LONG, offMet AS LONG, offBit AS LONG, offEnc AS LONG
+    DIM total AS LONG, offNow AS LONG, sz AS LONG
+    DIM minEnc AS INTEGER, maxEnc AS INTEGER
+    DIM n AS LONG, s1 AS LONG, s2 AS LONG, s4 AS LONG, s8 AS LONG
+    DIM ascMax AS INTEGER, dscMax AS INTEGER, asc AS INTEGER, dsc AS INTEGER
+    DIM minLs AS INTEGER, maxRs AS INTEGER, maxAdv AS INTEGER
+    DIM minAs AS INTEGER, maxAs AS INTEGER, minDs AS INTEGER, maxDs AS INTEGER
+    DIM up AS STRING, vv AS STRING
+    DIM nP AS INTEGER, hasReg AS INTEGER, hasEnc AS INTEGER
+    DIM s AS STRING
+    IF g_nGlyphs < 1 THEN Fail("PCF: nessun glifo")
+    IF g_nProps > 62 THEN Fail("PCF: troppe proprieta' (" + NumS(g_nProps) + ")")
+    n = g_nGlyphs
+
+    ' Proprieta' del PCF: quelle del modello senza virgolette, piu' il charset se manca
+    ' (senza CHARSET_REGISTRY FreeType apre la faccia ma senza charmap).
+    hasReg = 0
+    hasEnc = 0
+    nP = 0
+    FOR i = 0 TO g_nProps - 1
+        g_pcfN(nP) = g_propName(i)
+        vv = g_propValue(i)
+        IF LEN(vv) >= 2 THEN
+            IF MID$(vv, 1, 1) = CHR$(34) THEN
+                IF MID$(vv, LEN(vv), 1) = CHR$(34) THEN vv = MID$(vv, 2, LEN(vv) - 2)
+            END IF
+        END IF
+        g_pcfV(nP) = vv
+        up = STRINGS.UPPER(g_pcfN(nP))
+        IF up = "CHARSET_REGISTRY" THEN hasReg = 1
+        IF up = "CHARSET_ENCODING" THEN hasEnc = 1
+        nP = nP + 1
+    NEXT i
+    IF hasReg = 0 THEN
+        g_pcfN(nP) = "CHARSET_REGISTRY"
+        g_pcfV(nP) = "ISO8859"
+        nP = nP + 1
+    END IF
+    IF hasEnc = 0 THEN
+        g_pcfN(nP) = "CHARSET_ENCODING"
+        g_pcfV(nP) = "1"
+        nP = nP + 1
+    END IF
+
+    pos = 0
+    FOR i = 0 TO nP - 1
+        nNameOff(i) = pos
+        pos = pos + LEN(g_pcfN(i)) + 1
+        nValOff(i) = pos
+        pos = pos + LEN(g_pcfV(i)) + 1
+    NEXT i
+    strTotal = pos
+    propHdr = 8 + nP * 9
+    pad = 4 - (nP - INT(nP / 4) * 4)
+    IF pad = 4 THEN pad = 0
+    strStart = propHdr + pad + 4
+    propSize = strStart + strTotal
+    accSize = 48
+
+    metSize = 8 + 12 * n
+    bitHdr = 8 + 4 * n + 16
+    dataStart = Align4(bitHdr)
+    dataSize = 0
+    s1 = 0
+    s2 = 0
+    s4 = 0
+    s8 = 0
+    FOR g = 0 TO n - 1
+        nb = INT((g_gw(g) + 7) / 8)
+        pb = INT((nb + 3) / 4) * 4
+        dataSize = dataSize + g_gh(g) * pb
+        s1 = s1 + g_gh(g) * nb
+        s2 = s2 + g_gh(g) * (INT((nb + 1) / 2) * 2)
+        s4 = s4 + g_gh(g) * pb
+        s8 = s8 + g_gh(g) * (INT((nb + 7) / 8) * 8)
+    NEXT g
+    bitSize = dataStart + dataSize
+
+    minEnc = g_enc(0)
+    maxEnc = g_enc(0)
+    g = 1
+    WHILE g < n
+        IF g_enc(g) < minEnc THEN minEnc = g_enc(g)
+        IF g_enc(g) > maxEnc THEN maxEnc = g_enc(g)
+        g = g + 1
+    WEND
+    IF minEnc < 0 OR maxEnc > 255 THEN Fail("PCF: encoding fuori da 0..255")
+    encSize = 14 + 2 * (maxEnc - minEnc + 1)
+
+    minLs = g_gx(0)
+    maxRs = g_gx(0) + g_gw(0)
+    maxAdv = g_dwx(0)
+    asc = g_gh(0) + g_gy(0)
+    dsc = 0
+    IF g_gy(0) < 0 THEN dsc = -g_gy(0)
+    minAs = asc
+    maxAs = asc
+    minDs = dsc
+    maxDs = dsc
+    g = 1
+    WHILE g < n
+        IF g_gx(g) < minLs THEN minLs = g_gx(g)
+        IF g_gx(g) + g_gw(g) > maxRs THEN maxRs = g_gx(g) + g_gw(g)
+        IF g_dwx(g) > maxAdv THEN maxAdv = g_dwx(g)
+        asc = g_gh(g) + g_gy(g)
+        dsc = 0
+        IF g_gy(g) < 0 THEN dsc = -g_gy(g)
+        IF asc < minAs THEN minAs = asc
+        IF asc > maxAs THEN maxAs = asc
+        IF dsc < minDs THEN minDs = dsc
+        IF dsc > maxDs THEN maxDs = dsc
+        g = g + 1
+    WEND
+    ascMax = maxAs
+    dscMax = maxDs
+
+    total = 88 + propSize + accSize + metSize + bitSize + encSize
+    IF total > 262144 THEN Fail("PCF: file troppo grande (" + NumS(total) + ")")
+    offProp = 88
+    offAcc = offProp + propSize
+    offMet = offAcc + accSize
+    offBit = offMet + metSize
+    offEnc = offBit + bitSize
+
+    ' --- header (little-endian) -----------------------------------------------
+    s = "01" + "66" + "63" + "70" + HLE32(5)
+    s = s + HLE32(1) + HLE32(14) + HLE32(propSize) + HLE32(offProp)
+    s = s + HLE32(2) + HLE32(14) + HLE32(accSize) + HLE32(offAcc)
+    s = s + HLE32(4) + HLE32(14) + HLE32(metSize) + HLE32(offMet)
+    s = s + HLE32(8) + HLE32(14) + HLE32(bitSize) + HLE32(offBit)
+    s = s + HLE32(32) + HLE32(14) + HLE32(encSize) + HLE32(offEnc)
+
+    ' --- PROPERTIES ------------------------------------------------------------
+    s = s + HLE32(14) + HBE32(nP)
+    i = 0
+    WHILE i < nP
+        s = s + HBE32(nNameOff(i)) + "01" + HBE32(nValOff(i))
+        i = i + 1
+    WEND
+    i = 0
+    WHILE i < pad
+        s = s + "00"
+        i = i + 1
+    WEND
+    s = s + HBE32(strTotal)
+    i = 0
+    WHILE i < nP
+        s = s + HText(g_pcfN(i)) + HText(g_pcfV(i))
+        i = i + 1
+    WEND
+
+    ' --- ACCELERATORS ----------------------------------------------------------
+    s = s + HLE32(14) + "0000000000000000"
+    s = s + HBE32(ascMax) + HBE32(dscMax) + HBE32(0)
+    s = s + HBE16(minLs) + HBE16(maxRs) + HBE16(maxAdv) + HBE16(minAs) + HBE16(minDs) + HBE16(0)
+    s = s + HBE16(minLs) + HBE16(maxRs) + HBE16(maxAdv) + HBE16(maxAs) + HBE16(maxDs) + HBE16(0)
+
+    ' --- METRICS ---------------------------------------------------------------
+    s = s + HLE32(14) + HBE32(n)
+    g = 0
+    WHILE g < n
+        asc = g_gh(g) + g_gy(g)
+        dsc = 0
+        IF g_gy(g) < 0 THEN dsc = -g_gy(g)
+        s = s + HBE16(g_gx(g)) + HBE16(g_gx(g) + g_gw(g)) + HBE16(g_dwx(g))
+        s = s + HBE16(asc) + HBE16(dsc) + HBE16(0)
+        g = g + 1
+    WEND
+
+    ' --- BITMAPS ---------------------------------------------------------------
+    s = s + HLE32(14) + HBE32(n)
+    offNow = 0
+    g = 0
+    WHILE g < n
+        nb = INT((g_gw(g) + 7) / 8)
+        pb = INT((nb + 3) / 4) * 4
+        s = s + HBE32(offNow)
+        offNow = offNow + g_gh(g) * pb
+        g = g + 1
+    WEND
+    s = s + HBE32(s1) + HBE32(s2) + HBE32(s4) + HBE32(s8)
+    i = 8 + 4 * n + 16
+    WHILE i < dataStart
+        s = s + "00"
+        i = i + 1
+    WEND
+    g = 0
+    WHILE g < n
+        nb = INT((g_gw(g) + 7) / 8)
+        pb = INT((nb + 3) / 4) * 4
+        r = 0
+        WHILE r < g_gh(g)
+            row = RowAt(g, r)
+            c = 0
+            WHILE c < nb
+                v = 0
+                i = 0
+                WHILE i < 8
+                    IF c * 8 + i < LEN(row) THEN
+                        IF MID$(row, c * 8 + i + 1, 1) = "1" THEN v = v + Pow2(7 - i)
+                    END IF
+                    i = i + 1
+                WEND
+                s = s + HB(v)
+                c = c + 1
+            WEND
+            c = nb
+            WHILE c < pb
+                s = s + "00"
+                c = c + 1
+            WEND
+            r = r + 1
+        WEND
+        g = g + 1
+    WEND
+
+    ' --- BDF_ENCODINGS ---------------------------------------------------------
+    s = s + HLE32(14)
+    s = s + HBE16(minEnc) + HBE16(maxEnc) + HBE16(0) + HBE16(0) + HBE16(0)
+    x = minEnc
+    WHILE x <= maxEnc
+        v = 65535
+        g = 0
+        WHILE g < n
+            IF g_enc(g) = x THEN v = g
+            g = g + 1
+        WEND
+        s = s + HBE16(v)
+        x = x + 1
+    WEND
+
+    IF LEN(s) <> total * 2 THEN Fail("PCF: lunghezza interna incoerente (" + NumS(LEN(s) / 2) + " vs " + NumS(total) + "; prop " + NumS(propSize) + " acc " + NumS(accSize) + " met " + NumS(metSize) + " bit " + NumS(bitSize) + " enc " + NumS(encSize) + " nP " + NumS(nP) + ")")
+    DIM buf(total - 1) AS BYTE
+    i = 0
+    WHILE i < total
+        buf(i) = HexVal(MID$(s, i * 2 + 1, 1)) * 16 + HexVal(MID$(s, i * 2 + 2, 1))
+        i = i + 1
+    WEND
+    sz = IO.WRITEBYTES(path, buf)
+    IF sz <> total THEN Fail("scrittura PCF incompleta: " + path)
+END SUB
+
 ' --- import: ASCII art (stesso formato di AsciiSave) ------------------------
 FUNCTION TextPath() AS STRING
     IF STRINGS.STARTSWITH(g_textSrc, "/") THEN
@@ -1915,6 +2262,7 @@ SUB SheetAll()
     Psf1Save(OutPath("mini8.psf1"))
     AsciiSave(OutPath("mini8.ascii"))
     SixelSave(1, OutPath("mini8.six"))
+    PcfSave(OutPath("mini8.pcf"))
     HeaderC(OutPath("mini8.h"))
     PRINT "export       : "; OutPath("sheet.bmp"); " ("; FileSizeOf(OutPath("sheet.bmp")); " byte)"
     PRINT "export       : "; OutPath("sheet.pbm"); " ("; FileSizeOf(OutPath("sheet.pbm")); " byte)"
@@ -1922,6 +2270,7 @@ SUB SheetAll()
     PRINT "export       : "; OutPath("mini8.psf1"); " ("; FileSizeOf(OutPath("mini8.psf1")); " byte)"
     PRINT "export       : "; OutPath("mini8.ascii"); " ("; FileSizeOf(OutPath("mini8.ascii")); " byte)"
     PRINT "export       : "; OutPath("mini8.six"); " ("; FileSizeOf(OutPath("mini8.six")); " byte)"
+    PRINT "export       : "; OutPath("mini8.pcf"); " ("; FileSizeOf(OutPath("mini8.pcf")); " byte)"
     PRINT "export       : "; OutPath("mini8.h"); " ("; FileSizeOf(OutPath("mini8.h")); " byte)"
 END SUB
 
@@ -2470,6 +2819,53 @@ SUB RunCheck()
         IF GetPx(1, xx, 0) = 1 THEN expByte = expByte + Pow2(7 - xx)
     NEXT xx
     KEq(p1(4 + 65 * g_bbH), expByte, "PSF1: byte di 'A' riga 0")
+
+    ' --- PCF: si riscrive il file e si verificano header, tabelle e bitmap ----
+    PcfSave(OutPath("mini8.pcf"))
+    DIM pf() = IO.READBYTES(OutPath("mini8.pcf"))
+    DIM offBit AS LONG, offMet AS LONG, bitData AS LONG, i0 AS LONG
+    DIM offEnc AS LONG, mn AS INTEGER, mx AS INTEGER
+    KEq(pf(0), 1, "PCF: magic 0x01")
+    KEq(pf(1), 102, "PCF: 'f'")
+    KEq(pf(2), 99, "PCF: 'c'")
+    KEq(pf(3), 112, "PCF: 'p'")
+    KEq(pf(4), 5, "PCF: cinque tabelle")
+    KEq(pf(8), 1, "PCF: PROPERTIES")
+    KEq(pf(24), 2, "PCF: ACCELERATORS")
+    KEq(pf(40), 4, "PCF: METRICS")
+    KEq(pf(56), 8, "PCF: BITMAPS")
+    KEq(pf(72), 32, "PCF: BDF_ENCODINGS")
+    offMet = pf(52) + pf(53) * 256 + pf(54) * 65536 + pf(55) * 16777216
+    KEq(pf(offMet + 7), g_nGlyphs, "PCF: conteggio metriche (big-endian)")
+    offBit = pf(68) + pf(69) * 256 + pf(70) * 65536 + pf(71) * 16777216
+    bitData = offBit + 24 + 4 * g_nGlyphs
+    i0 = bitData + 32
+    expByte = 0
+    FOR xx = 0 TO 7
+        IF GetPx(1, xx, 0) = 1 THEN expByte = expByte + Pow2(7 - xx)
+    NEXT xx
+    KEq(pf(i0), expByte, "PCF: prima riga di 'A' (bit MSB-first)")
+
+    ' Riga NON simmetrica: e' l'unica che distingue davvero l'ordine dei bit
+    ' (0x7c letto LSB-first darebbe 62).
+    expByte = 0
+    FOR xx = 0 TO 7
+        IF GetPx(2, xx, 0) = 1 THEN expByte = expByte + Pow2(7 - xx)
+    NEXT xx
+    KEq(expByte, 124, "PCF: prima riga di 'B' = 0x7c")
+    KEq(pf(i0 + 32), expByte, "PCF: prima riga di 'B' nel file")
+
+    ' Tabella BDF_ENCODINGS: estremi dichiarati e lunghezza fino a fine file.
+    offEnc = pf(84) + pf(85) * 256 + pf(86) * 65536 + pf(87) * 16777216
+    mn = g_enc(0)
+    mx = g_enc(0)
+    FOR gA = 1 TO g_nGlyphs - 1
+        IF g_enc(gA) < mn THEN mn = g_enc(gA)
+        IF g_enc(gA) > mx THEN mx = g_enc(gA)
+    NEXT gA
+    KEq(pf(offEnc + 4) * 256 + pf(offEnc + 5), mn, "PCF: encoding minimo della tabella")
+    KEq(pf(offEnc + 6) * 256 + pf(offEnc + 7), mx, "PCF: encoding massimo della tabella")
+    KEq(offEnc + 14 + 2 * (mx - mn + 1), LEN(pf), "PCF: encodings fino a fine file")
 
     sig0 = ""
     FOR gA = 0 TO g_nGlyphs - 1
