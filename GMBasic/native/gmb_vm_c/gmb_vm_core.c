@@ -12533,6 +12533,33 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     gmb_val_t v1 = argCount >= 2 ? gmb_adapter_stack_to_val(args[1]) : gmb_val_nil();
                     int isMap = (tc == 6 || tc == 7 || tc == 8 || tc == 9 || tc == 26 || tc == 18 || tc == 19);
 
+                    if (tc == 3 && argCount == 1 && args[0].type == 2 && args[0].ref
+                        && args[0].ref->kind == GMB_OBJ_COLLECTION)
+                    {
+                        /* HASHSET<...>: Union/Intersect/Except/SymmetricExcept su un'altra
+                         * collezione → NUOVO HashSet (parità IL/PCode/C99). Prima questi
+                         * metodi cadevano nel fallback "metodo non noto" → nil/0. */
+                        int setop = -1;
+                        if (strcasecmp(methodName, "Union") == 0) setop = 0;
+                        else if (strcasecmp(methodName, "Intersect") == 0) setop = 1;
+                        else if (strcasecmp(methodName, "Except") == 0) setop = 2;
+                        else if (strcasecmp(methodName, "SymmetricExcept") == 0) setop = 3;
+                        if (setop >= 0)
+                        {
+                            gmb_obj_collection_t* other = (gmb_obj_collection_t*)args[0].ref;
+                            int64_t nh = gmb_collection_set_op(ch, other->handle, setop);
+                            gmb_obj_release(instE.ref);
+                            for (int i = 0; i < argCount && i < 16; i++) gmb_obj_release(args[i].ref);
+                            if (nh > 0)
+                            {
+                                gmb_obj_collection_t* nc = gmb_collection_obj_new(nh, 3);
+                                if (nc) push_ref_new(task, (gmb_obj_t*)nc, GMB_BT_OBJECT);
+                                else { gmb_collections_free(nh); push_nil(task); }
+                            }
+                            else push_nil(task);
+                            break;
+                        }
+                    }
                     if (isMap && (strcasecmp(methodName, "Add") == 0 || strcasecmp(methodName, "Set") == 0 ||
                                   strcasecmp(methodName, "Update") == 0) && argCount >= 2)
                     {

@@ -49,6 +49,10 @@ gmb_val_t gmb_coll_peek(int64_t h);
 /* ToArray: lista di gmb_val_t */
 gmb_val_t* gmb_coll_to_array(int64_t h, int* out_len);
 
+/* Set algebra su HashSet (typeCode 3): 0=Union, 1=Intersect, 2=Except, 3=SymmetricExcept.
+ * Ritorna un NUOVO handle HashSet (o -1). */
+int64_t gmb_collection_set_op(int64_t ha, int64_t hb, int op);
+
 /* Accesso sequenziale (LinkedList/Doubly/Circular): First/Last/RemoveLast/IndexOf */
 gmb_val_t gmb_coll_first(int64_t h);
 gmb_val_t gmb_coll_last(int64_t h);

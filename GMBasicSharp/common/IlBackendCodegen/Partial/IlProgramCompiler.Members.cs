@@ -1230,8 +1230,7 @@ public sealed partial class IlProgramCompiler
         var isSetUnion = CollMembers.Is(expr.MethodName, TokenKind.CollUnion);
         var isSetIntersect = CollMembers.Is(expr.MethodName, TokenKind.CollIntersect);
         var isSetExcept = CollMembers.Is(expr.MethodName, TokenKind.CollExcept);
-        // SYMMETRICEXCEPT non ha (ancora) un Coll* dedicato: resta lexeme di frontiera.
-        var isSetSymmetric = expr.MethodName.Lexeme.Equals("SYMMETRICEXCEPT", StringComparison.OrdinalIgnoreCase);
+        var isSetSymmetric = CollMembers.Is(expr.MethodName, TokenKind.CollSymmetricExcept);
         if (instanceType is HashSetType && expr.Args.Length == 1
             && (isSetUnion || isSetIntersect || isSetExcept || isSetSymmetric))
         {
@@ -1288,7 +1287,7 @@ public sealed partial class IlProgramCompiler
                 ? nameof(HashSet<int>.IntersectWith)
             : instanceType is HashSetType && CollMembers.Is(expr.MethodName, TokenKind.CollExcept)
                 ? nameof(HashSet<int>.ExceptWith)
-            : instanceType is HashSetType && expr.MethodName.Lexeme.Equals("SYMMETRICEXCEPT", StringComparison.OrdinalIgnoreCase)
+            : instanceType is HashSetType && CollMembers.Is(expr.MethodName, TokenKind.CollSymmetricExcept)
                 ? nameof(HashSet<int>.SymmetricExceptWith)
             : expr.MethodName.Lexeme;
         var method = ResolveNativeCollectionMethod(collectionType, methodName, expr.Args);

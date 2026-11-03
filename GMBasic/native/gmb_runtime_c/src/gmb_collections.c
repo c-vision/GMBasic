@@ -529,6 +529,33 @@ gmb_val_t* gmb_coll_to_array(int64_t h, int* out_len)
     return arr;
 }
 
+/* ---- Set algebra su HashSet (typeCode 3): Union/Intersect/Except/SymmetricExcept ----
+ * Ritorna un NUOVO handle HashSet; op: 0=union, 1=intersect, 2=except, 3=symmetric. */
+int64_t gmb_collection_set_op(int64_t ha, int64_t hb, int op)
+{
+    gmb_collection_t* a = coll_get(ha);
+    gmb_collection_t* b = coll_get(hb);
+    if (!a || !b) return -1;
+    int64_t out = gmb_collections_create(a->type_code);
+    if (out < 0) return -1;
+    int na = 0, nb = 0;
+    gmb_val_t* va = gmb_coll_to_array(ha, &na);
+    gmb_val_t* vb = gmb_coll_to_array(hb, &nb);
+    if (op == 0) {
+        for (int i = 0; i < na; i++) gmb_coll_add(out, va[i]);
+        for (int i = 0; i < nb; i++) gmb_coll_add(out, vb[i]);
+    } else if (op == 1) {
+        for (int i = 0; i < na; i++) if (gmb_coll_contains(hb, va[i])) gmb_coll_add(out, va[i]);
+    } else if (op == 2) {
+        for (int i = 0; i < na; i++) if (!gmb_coll_contains(hb, va[i])) gmb_coll_add(out, va[i]);
+    } else if (op == 3) {
+        for (int i = 0; i < na; i++) if (!gmb_coll_contains(hb, va[i])) gmb_coll_add(out, va[i]);
+        for (int i = 0; i < nb; i++) if (!gmb_coll_contains(ha, vb[i])) gmb_coll_add(out, vb[i]);
+    }
+    free(va); free(vb);
+    return out;
+}
+
 /* ---- Accesso sequenziale: First/Last/RemoveLast/IndexOf ---- */
 gmb_val_t gmb_coll_first(int64_t h)
 {

@@ -4099,6 +4099,8 @@ internal sealed partial class PCodeProcessor
                     { var r = new System.Collections.Generic.HashSet<object?>(hsInst); r.IntersectWith(i2); task.PushRef(r); return true; }
                     if (upName == "EXCEPT" && argCount == 1 && args[0] is System.Collections.Generic.HashSet<object?> e2)
                     { var r = new System.Collections.Generic.HashSet<object?>(hsInst); r.ExceptWith(e2); task.PushRef(r); return true; }
+                    if (upName == "SYMMETRICEXCEPT" && argCount == 1 && args[0] is System.Collections.Generic.HashSet<object?> x2)
+                    { var r = new System.Collections.Generic.HashSet<object?>(hsInst); r.SymmetricExceptWith(x2); task.PushRef(r); return true; }
                 }
                 // BAG.Add: il Bag BASIC è un Dictionary<object,long> — Add con 1 argomento
                 // incrementa il conteggio (prima: il case IDictionary.Add a 2 argomenti non
@@ -5247,7 +5249,7 @@ internal sealed partial class PCodeProcessor
                 }
                 var libPath = libIdx >= 0 && libIdx < _constants.Count ? _constants[libIdx] as string : null;
                 var funcName = nameIdx >= 0 && nameIdx < _constants.Count ? _constants[nameIdx] as string : null;
-                if (libPath != null && funcName != null)
+                                if (libPath != null && funcName != null)
                 {
                     try
                     {

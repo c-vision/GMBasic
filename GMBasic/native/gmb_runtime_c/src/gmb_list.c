@@ -278,6 +278,20 @@ gmb_list_t gmb_set_except(gmb_list_t a, gmb_list_t b) {
     return r;
 }
 
+/* Differenza simmetrica: (A \ B) U (B \ A), senza duplicati. */
+gmb_list_t gmb_set_symmetric_except(gmb_list_t a, gmb_list_t b) {
+    gmb_list_t r = gmb_set_except(a, b);
+    gmb_list_t rb = gmb_set_except(b, a);
+    for (size_t i = 0; i < rb.count; i++) {
+        int dup = 0;
+        for (size_t j = 0; j < r.count; j++)
+            if (gmb_val_equals(r.items[j], rb.items[i])) { dup = 1; break; }
+        if (!dup) gmb_list_add(&r, rb.items[i]);
+    }
+    gmb_list_free(&rb);
+    return r;
+}
+
 gmb_list_t gmb_list_flatten_copy(gmb_list_t l) {
     gmb_list_t r = gmb_list_from_doubles(NULL, 0);
     for (size_t i = 0; i < l.count; i++) {
