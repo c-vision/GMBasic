@@ -10,7 +10,7 @@
 ' non un'applicazione. Path ASSOLUTI in /tmp e fixture create/rimosse dal test:
 ' l'output non dipende dalla CWD. I path d'ambiente sono verificati come "presenti",
 ' mai stampati (cambiano fra le gambe).
-' EXPECT: lof= 8|seek0= 0|read1=[uno]|read3=[due]|ferror0=-1|finput3=[uno]|exists=-1|count= 2|rflen= 8|linesN= 2 |line0=[uno]|bytesN= 8|eofBefore= 0|readOpen=[uno]|freefile=-1|norm=/a/c|parent=/a/b|resolve=-1|cwd=-1|app=-1 |bin=-1 |proj=-1|folder=-1|tempdir=-1 |tempfile=-1|tempdir2=-1 |tempfile2=-1|direxists=si|foldersize=-1|dirN= 1|seekIni= 0|seek3= 2|cleaned=-1
+' EXPECT: lof= 8|seek0= 0|read1=[uno]|read3=[due]|ferror0=-1|finput3=[uno]|exists=-1|count= 2|rflen= 8|linesN= 2 |line0=[uno]|bytesN= 8|eofBefore= 0|readOpen=[uno]|freefile=-1|norm=/a/c|parent=/a/b|resolve=-1|cwd=-1|app=-1 |bin=-1 |proj=-1|folder=-1|tempdir=-1 |tempfile=-1|tempdir2=-1 |tempfile2=-1|direxists=si|foldersize=-1|dirN= 1|seekIni= 0|seek3= 2|writebytes= 3|cleaned=-1
 IMPORT IO
 
 SUB Main()
@@ -78,6 +78,10 @@ SUB Main()
   PRINT "seek3="; IO.SEEK(1)
   CLOSE #1
 
+  DIM wb(2) AS BYTE
+  wb(0) = 65 : wb(1) = 66 : wb(2) = 67
+  PRINT "writebytes="; IO.WRITEBYTES("/tmp/gmb_mt_io_all_wb.bin", wb)
+  KILL "/tmp/gmb_mt_io_all_wb.bin"
   KILL p
   PRINT "cleaned="; (NOT IO.FILEEXISTS(p))
 END SUB
