@@ -7,7 +7,7 @@
 '
 ' Riferimento: Guide/utente (linguaggio base) e i MiniTest per namespace in
 ' shared/minitests/<ns>/<ns>_all.bas. Qui NON si testano i namespace applicativi.
-' EXPECT: types= 7 | 70000 | 2.5 |abc|-1|bit=-1 | 0 | 0|arith= 15 | 1 | 6.25 | 3 |-7|cmp=-1 |-1 |-1 | 0|logic=-1 |-1 | 5|str=abcde| 3 |ab|bc|b|case=ABC|abc| 2|if=B|sel=seven|for= 10|forstep= 22|while= 6|do= 4|exitdo= 3|each= 60 |ub= 2 |lb= 0|mat= 2 | 3|eachstr= 3 |abc|eachlist= 12|udt= 3 | 4 |P1|cls= 41 | 41|proc= 15 | 42 |-1|gosub= 2|try= 42|onerror=ok|bitnum=-1 |-1|True|BIT|bitdouble=-1|bitarg=-1
+' EXPECT: types= 7 | 70000 | 2.5 |abc|-1|bit=-1 | 0 | 0|arith= 15 | 1 | 6.25 | 3 |-7|cmp=-1 |-1 |-1 | 0|logic=-1 |-1 | 5|str=abcde| 3 |ab|bc|b|case=ABC|abc| 2|if=B|sel=seven|for= 10|forstep= 22|while= 6|do= 4|exitdo= 3|each= 60 |ub= 2 |lb= 0|mat= 2 | 3|eachstr= 3 |abc|eachlist= 12|udt= 3 | 4 |P1|cls= 41 | 41|proc= 15 | 42 |-1|gosub= 2|try= 42|onerror=ok|bitnum=-1 |-1|True|BIT|bitdouble=-1|bitarg=-1|shadow= 7
 SUB Aggiungi(BYREF acc AS INTEGER, v AS INTEGER)
   acc = acc + v
 END SUB
@@ -203,4 +203,9 @@ fine:
   d = b
   PRINT "bitdouble="; d
   StampaDoppio(b)
+
+  ' ── ombreggiatura: un array locale vince sul builtin non qualificato ─────
+  DIM fill(3)
+  fill(0) = 7
+  PRINT "shadow="; fill(0)
 END SUB

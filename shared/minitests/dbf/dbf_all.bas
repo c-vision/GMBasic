@@ -12,13 +12,18 @@
 ' SORT TO, TOTAL ON, JOIN WITH, UPDATE ON, EXPORT, IMPORT, BEGIN/COMMIT/ROLLBACK,
 ' VALIDATE, PACK, REINDEX, ZAP, LIST, AGGREGATE.
 ' NON esercitati (gap aperti, non omissioni del test):
-'   - DBF REPORT FORM: richiede un file form .frx esterno al namespace.
+'   - (nessuno: REPORT FORM è coperto in coda da ReportForm()).
 '
 ' Struttura: sezioni indipendenti (fixture e file distinti), così ogni funzione è
 ' verificata nello scenario che le altre gambe già coprono. Path ASSOLUTI in /tmp.
-' EXPECT: used=-1|selected= 1|alias=D|lastrec= 2|recno= 2|recsize>0=-1|field1=ID|deleted0= 0|neterr= 0|filter0=-1|relation0=-1|indexord0= 0|indexkey0=-1|bof0= 0|recno_top= 1|recno_skip= 2|eof_bottom= 0|eof_after=-1|deleted1=-1|deleted2= 0|get1=1|ALICE|lastrec_blank= 2|get2=2|BOB|rlock=-1|flock=-1|neterr2= 0|setdur=-1|flushdur=-1|groupbegin=-1|groupend=-1|filter0=-1|filter1=-1|lookup=A2|indexord>=-1|found=-1|recno= 2|indexkey_len>=-1|found_noord= 0|relation_called=si|setrepl=-1|appendmany= 2|lastrec= 2|lupdate=-1|apply=-1|follow=-1|ship0= 0|recv0= 0|copy= 2|appendfrom= 4|sort_exists=-1|total_exists=-1|join= 2|update= 2|validate_ok=-1|tx_ok=-1|pack= 1|zap= 0|export=-1|list=-1|aggregate=-1
+' EXPECT: used=-1|selected= 1|alias=D|lastrec= 2|recno= 2|recsize>0=-1|field1=ID|deleted0= 0|neterr= 0|filter0=-1|relation0=-1|indexord0= 0|indexkey0=-1|bof0= 0|recno_top= 1|recno_skip= 2|eof_bottom= 0|eof_after=-1|deleted1=-1|deleted2= 0|get1=1|ALICE|lastrec_blank= 2|get2=2|BOB|rlock=-1|flock=-1|neterr2= 0|setdur=-1|flushdur=-1|groupbegin=-1|groupend=-1|filter0=-1|filter1=-1|lookup=A2|indexord>=-1|found=-1|recno= 2|indexkey_len>=-1|found_noord= 0|relation_called=si|setrepl=-1|appendmany= 2|lastrec= 2|lupdate=-1|apply=-1|follow=-1|ship0= 0|recv0= 0|copy= 2|appendfrom= 4|sort_exists=-1|total_exists=-1|join= 2|update= 2|validate_ok=-1|tx_ok=-1|pack= 1|zap= 0|export=-1|list=-1|aggregate=-1|rf_exists=-1|rf_alfa=-1|rf_beta=-1
 IMPORT DBF
 IMPORT IO
+
+TYPE TReport
+  ID AS INTEGER
+  Nome AS STRING * 10
+END TYPE
 
 TYPE TCli
   ID AS INTEGER
@@ -333,6 +338,30 @@ SUB Estrazione()
   KILL "/tmp/gmb_mt_dbf_all_io_agg.dbf"
 END SUB
 
+SUB ReportForm()
+  ' REPORT FORM: il form non viene letto (elenco dei campi per record), come il canone
+  ' C#/IL: verifica che il file di output esista e contenga i valori dei record.
+  DIM p AS STRING
+  p = "/tmp/gmb_mt_dbf_all_rf.dbf"
+  ON ERROR RESUME NEXT
+  KILL p
+  KILL "/tmp/gmb_mt_dbf_all_rf.txt"
+  ON ERROR GOTO 0
+  DBF CREATE p FROM TYPE TReport
+  DBF USE p ALIAS RF EXCLUSIVE NEW
+  DBF APPEND RECORD {ID: 1, Nome: "Alfa"}
+  DBF APPEND RECORD {ID: 2, Nome: "Beta"}
+  DBF REPORT FORM "/tmp/gmb_mt_dbf_all_rf.frx" TO FILE "/tmp/gmb_mt_dbf_all_rf.txt"
+  DIM out AS STRING
+  out = IO.READFILE("/tmp/gmb_mt_dbf_all_rf.txt")
+  PRINT "rf_exists="; IO.FILEEXISTS("/tmp/gmb_mt_dbf_all_rf.txt")
+  PRINT "rf_alfa="; (INSTR(out, "Alfa") > 0)
+  PRINT "rf_beta="; (INSTR(out, "Beta") > 0)
+  DBF CLOSE DATABASES
+  KILL p
+  KILL "/tmp/gmb_mt_dbf_all_rf.txt"
+END SUB
+
 SUB Main()
   Stato()
   RecordCorrente()
@@ -344,4 +373,5 @@ SUB Main()
   JoinUpdate()
   Manutenzione()
   Estrazione()
+  ReportForm()
 END SUB
