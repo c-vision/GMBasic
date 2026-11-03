@@ -26,10 +26,10 @@ public sealed partial class IlProgramCompiler
 
         // dict.Keys / dict.Values (senza parentesi): Dictionary.Keys/Values → array via
         // Enumerable.ToArray (come il metodo .Keys()/.Values()).
-        if (expr.Field.Lexeme.Equals("KEYS", StringComparison.OrdinalIgnoreCase) ||
-            expr.Field.Lexeme.Equals("VALUES", StringComparison.OrdinalIgnoreCase))
+        if (CollMembers.Is(expr.Field, TokenKind.CollKeys) ||
+            CollMembers.Is(expr.Field, TokenKind.CollValues))
         {
-            var isKeys = expr.Field.Lexeme.Equals("KEYS", StringComparison.OrdinalIgnoreCase);
+            var isKeys = CollMembers.Is(expr.Field, TokenKind.CollKeys);
             var dictType = NormalizeInferredType(InferType(expr.Structure));
             var elemClr = dictType switch
             {
@@ -48,9 +48,9 @@ public sealed partial class IlProgramCompiler
 
         // q.Peek / q.Dequeue (Queue), s.Pop (Stack) come FIELD (senza parentesi): sono
         // METODI CLR — emit call diretto.
-        if (expr.Field.Lexeme.Equals("PEEK", StringComparison.OrdinalIgnoreCase) ||
-            expr.Field.Lexeme.Equals("DEQUEUE", StringComparison.OrdinalIgnoreCase) ||
-            expr.Field.Lexeme.Equals("POP", StringComparison.OrdinalIgnoreCase))
+        if (CollMembers.Is(expr.Field, TokenKind.CollPeek) ||
+            CollMembers.Is(expr.Field, TokenKind.CollDequeue) ||
+            CollMembers.Is(expr.Field, TokenKind.CollPop))
         {
             var m = collectionType.GetMethod(expr.Field.Lexeme, Type.EmptyTypes)
                 ?? throw new NotSupportedException($"Backend IL: collection '{collectionType}' non espone {expr.Field.Lexeme}.");
@@ -60,7 +60,7 @@ public sealed partial class IlProgramCompiler
             return true;
         }
 
-        if (!expr.Field.Lexeme.Equals("COUNT", StringComparison.OrdinalIgnoreCase))
+        if (!CollMembers.Is(expr.Field, TokenKind.CollCount))
             throw new NotSupportedException($"Backend IL: membro collection '{expr.Field.Lexeme}' non ancora supportato.");
 
         MethodInfo? getterF = null;
@@ -1064,7 +1064,7 @@ public sealed partial class IlProgramCompiler
     private bool TryEmitNativeCollectionProperty(PropertyAccessExpr expr)
     {
         if (!TryGetNativeCollectionType(InferType(expr.Instance), out var collectionType)) return false;
-        if (!expr.PropertyName.Lexeme.Equals("COUNT", StringComparison.OrdinalIgnoreCase))
+        if (!CollMembers.Is(expr.PropertyName, TokenKind.CollCount))
             throw new NotSupportedException($"Backend IL: proprietà collection '{expr.PropertyName.Lexeme}' non ancora supportata.");
 
         MethodInfo? getter = null;
@@ -1188,11 +1188,11 @@ public sealed partial class IlProgramCompiler
         // L'alias conserva la semantica di append del resto delle collection native.
         // .Keys()/.Values() su un DICT: non sono metodi CLR (Dictionary ha property
         // Keys/Values, non metodi) — emette le chiavi/valori come array (Enumerable.ToArray).
-        if (expr.Args.Length == 0 && (expr.MethodName.Lexeme.Equals("KEYS", StringComparison.OrdinalIgnoreCase)
-            || expr.MethodName.Lexeme.Equals("VALUES", StringComparison.OrdinalIgnoreCase)))
+        if (expr.Args.Length == 0 && (CollMembers.Is(expr.MethodName, TokenKind.CollKeys)
+            || CollMembers.Is(expr.MethodName, TokenKind.CollValues)))
         {
             var dictArgType = NormalizeInferredType(InferType(expr.Instance));
-            var isKeys = expr.MethodName.Lexeme.StartsWith("KEY", StringComparison.OrdinalIgnoreCase);
+            var isKeys = CollMembers.Is(expr.MethodName, TokenKind.CollKeys);
             var elemClr = dictArgType switch
             {
                 DictType dd => DataTypeMapper.Map(isKeys ? dd.KeyType : dd.ValueType, _types, _classTypes),
@@ -1214,7 +1214,7 @@ public sealed partial class IlProgramCompiler
 
         // JOIN su una collection: MyList.Join(", ") → String.Join(sep, list) — non è un
         // metodo CLR nativo della collezione, va gestito prima della risoluzione per nome.
-        if (expr.MethodName.Lexeme.Equals("JOIN", StringComparison.OrdinalIgnoreCase))
+        if (CollMembers.Is(expr.MethodName, TokenKind.CollJoin))
         {
             if (expr.Args.Length != 1)
                 throw new NotSupportedException("Backend IL: JOIN su collection richiede 1 argomento (separatore).");
@@ -1227,19 +1227,20 @@ public sealed partial class IlProgramCompiler
         // HashSet.Union/Intersect/Except/SymmetricExcept: il BASIC li usa come espressione
         // che ritorna un NUOVO set; UnionWith/IntersectWith (CLR) modificano in-place e
         // ritornano void → `DIM x = SetA.Union(SetB)` sarebbe InvalidProgram. Helper runtime.
-        var setName = expr.MethodName.Lexeme.ToUpperInvariant();
+        var isSetUnion = CollMembers.Is(expr.MethodName, TokenKind.CollUnion);
+        var isSetIntersect = CollMembers.Is(expr.MethodName, TokenKind.CollIntersect);
+        var isSetExcept = CollMembers.Is(expr.MethodName, TokenKind.CollExcept);
+        // SYMMETRICEXCEPT non ha (ancora) un Coll* dedicato: resta lexeme di frontiera.
+        var isSetSymmetric = expr.MethodName.Lexeme.Equals("SYMMETRICEXCEPT", StringComparison.OrdinalIgnoreCase);
         if (instanceType is HashSetType && expr.Args.Length == 1
-            && setName is "UNION" or "INTERSECT" or "EXCEPT" or "SYMMETRICEXCEPT")
+            && (isSetUnion || isSetIntersect || isSetExcept || isSetSymmetric))
         {
             EmitObjectBoxedArgument(expr.Instance);
             EmitObjectBoxedArgument(expr.Args[0]);
-            var setOp = setName switch
-            {
-                "UNION" => nameof(IlRuntime.SetUnion),
-                "INTERSECT" => nameof(IlRuntime.SetIntersect),
-                "SYMMETRICEXCEPT" => nameof(IlRuntime.SetSymmetricExcept),
-                _ => nameof(IlRuntime.SetExcept)
-            };
+            var setOp = isSetUnion ? nameof(IlRuntime.SetUnion)
+                : isSetIntersect ? nameof(IlRuntime.SetIntersect)
+                : isSetSymmetric ? nameof(IlRuntime.SetSymmetricExcept)
+                : nameof(IlRuntime.SetExcept);
             _il.Emit(OpCodes.Call, RuntimeMethod(setOp, typeof(object), typeof(object)));
             // SetUnion/Intersect/Except ritornano HashSet<object>/List<object> (boxed), ma
             // il BASIC li usa come espressione tipizzata: `DIM U = A.Union(B)` alloca un
@@ -1252,10 +1253,10 @@ public sealed partial class IlProgramCompiler
             return true;
         }
 
-        var upperMember = expr.MethodName.Lexeme.ToUpperInvariant();
         // SET/SETKEYVALUE/GET su map-like: Dictionary non espone .Set/.Get — kind dispatch
         // (push order = (kind, instance, args), firma CollectionInvokeByKind(int, object, object[])).
-        if (upperMember is "SET" or "SETKEYVALUE" && expr.Args.Length == 2)
+        if ((CollMembers.Is(expr.MethodName, TokenKind.CollSet)
+             || CollMembers.Is(expr.MethodName, TokenKind.CollSetKeyValue)) && expr.Args.Length == 2)
         {
             _il.Emit(OpCodes.Ldc_I4, (int)TokenKind.CollSet);
             EmitExpression(expr.Instance);
@@ -1266,7 +1267,7 @@ public sealed partial class IlProgramCompiler
             // per un uso in espressione). Un Pop qui spezzava l'uso come argomento PRINT.
             return true;
         }
-        if (upperMember is "GET" && expr.Args.Length == 1)
+        if (CollMembers.Is(expr.MethodName, TokenKind.CollGet) && expr.Args.Length == 1)
         {
             _il.Emit(OpCodes.Ldc_I4, (int)TokenKind.CollGet);
             EmitExpression(expr.Instance);
@@ -1279,13 +1280,13 @@ public sealed partial class IlProgramCompiler
             return true;
         }
         var methodName = instanceType is LinkedListType or DoublyLinkedListType
-                && expr.MethodName.Lexeme.Equals("ADD", StringComparison.OrdinalIgnoreCase)
+                && CollMembers.Is(expr.MethodName, TokenKind.CollAdd)
             ? nameof(LinkedList<int>.AddLast)
-            : instanceType is HashSetType && expr.MethodName.Lexeme.Equals("UNION", StringComparison.OrdinalIgnoreCase)
+            : instanceType is HashSetType && CollMembers.Is(expr.MethodName, TokenKind.CollUnion)
                 ? nameof(HashSet<int>.UnionWith)
-            : instanceType is HashSetType && expr.MethodName.Lexeme.Equals("INTERSECT", StringComparison.OrdinalIgnoreCase)
+            : instanceType is HashSetType && CollMembers.Is(expr.MethodName, TokenKind.CollIntersect)
                 ? nameof(HashSet<int>.IntersectWith)
-            : instanceType is HashSetType && expr.MethodName.Lexeme.Equals("EXCEPT", StringComparison.OrdinalIgnoreCase)
+            : instanceType is HashSetType && CollMembers.Is(expr.MethodName, TokenKind.CollExcept)
                 ? nameof(HashSet<int>.ExceptWith)
             : instanceType is HashSetType && expr.MethodName.Lexeme.Equals("SYMMETRICEXCEPT", StringComparison.OrdinalIgnoreCase)
                 ? nameof(HashSet<int>.SymmetricExceptWith)
@@ -1307,34 +1308,34 @@ public sealed partial class IlProgramCompiler
             return true;
         }
         // IndexOf su collection senza metodo CLR (LinkedList/Doubly/Circular): helper runtime.
-        if (method is null && expr.MethodName.Lexeme.Equals("SORT", StringComparison.OrdinalIgnoreCase) && expr.Args.Length == 0)
+        if (method is null && CollMembers.Is(expr.MethodName, TokenKind.CollSort) && expr.Args.Length == 0)
         {
             EmitExpression(expr.Instance);
             _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.CollectionSort), typeof(object)));
             return true;
         }
-        if (method is null && expr.MethodName.Lexeme.Equals("REVERSE", StringComparison.OrdinalIgnoreCase) && expr.Args.Length == 0)
+        if (method is null && CollMembers.Is(expr.MethodName, TokenKind.CollReverse) && expr.Args.Length == 0)
         {
             EmitExpression(expr.Instance);
             _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.CollectionReverse), typeof(object)));
             return true;
         }
         if (method is null && instanceType is CircularLinkedListType
-            && expr.MethodName.Lexeme.Equals("CURRENT", StringComparison.OrdinalIgnoreCase) && expr.Args.Length == 0)
+            && CollMembers.Is(expr.MethodName, TokenKind.CollCurrent) && expr.Args.Length == 0)
         {
             EmitExpression(expr.Instance);
             _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.CircularCurrent), typeof(object)));
             return true;
         }
         if (method is null && instanceType is CircularLinkedListType
-            && expr.MethodName.Lexeme.Equals("ROTATE", StringComparison.OrdinalIgnoreCase) && expr.Args.Length == 1)
+            && CollMembers.Is(expr.MethodName, TokenKind.CollRotate) && expr.Args.Length == 1)
         {
             EmitExpression(expr.Instance);
             EmitDoubleArgument(expr.Args[0]);
             _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.CircularRotate), typeof(object), typeof(double)));
             return true;
         }
-        if (method is null && expr.MethodName.Lexeme.Equals("INDEXOF", StringComparison.OrdinalIgnoreCase) && expr.Args.Length == 1)
+        if (method is null && CollMembers.Is(expr.MethodName, TokenKind.CollIndexOf) && expr.Args.Length == 1)
         {
             EmitExpression(expr.Instance);
             EmitExpression(expr.Args[0]);

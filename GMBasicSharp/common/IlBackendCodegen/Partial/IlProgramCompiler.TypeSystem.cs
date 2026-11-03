@@ -504,10 +504,10 @@ public sealed partial class IlProgramCompiler
         // operandi dello stesso tipo).
         FieldAccessExpr fa when NormalizeInferredType(InferType(fa.Structure)) is StringBuilderType
             && (fa.Field.Lexeme.Equals("LENGTH", StringComparison.OrdinalIgnoreCase)
-                || fa.Field.Lexeme.Equals("CAPACITY", StringComparison.OrdinalIgnoreCase)) => new DoubleType(),
-        FieldAccessExpr fa when TryGetNativeCollectionType(InferType(fa.Structure), out _) && fa.Field.Lexeme.Equals("COUNT", StringComparison.OrdinalIgnoreCase) => new DoubleType(),
+                || CollMembers.Is(fa.Field, TokenKind.CollCapacity)) => new DoubleType(),
+        FieldAccessExpr fa when TryGetNativeCollectionType(InferType(fa.Structure), out _) && CollMembers.Is(fa.Field, TokenKind.CollCount) => new DoubleType(),
         FieldAccessExpr fa when NormalizeInferredType(InferType(fa.Structure)) is SqlResultSetType
-            && (fa.Field.Lexeme.Equals("COUNT", StringComparison.OrdinalIgnoreCase)
+            && (CollMembers.Is(fa.Field, TokenKind.CollCount)
                 || fa.Field.Lexeme.Equals("COLUMNS", StringComparison.OrdinalIgnoreCase)) => new DoubleType(),
         FieldAccessExpr fa when NormalizeInferredType(InferType(fa.Structure)) is FetchResultType => new AnyType(),
         FieldAccessExpr fa when InferType(fa.Structure) is ErrType =>
@@ -575,7 +575,7 @@ public sealed partial class IlProgramCompiler
         MethodCallExpr mc => NormalizeInferredType(mc.ResolvedDefinition is FunctionDefinition fd ? fd.ReturnType : new VoidType()),
         QualifiedNameExpr qne => new DoubleType(),
         NewExpr ne => ne.ParsedType,
-        PropertyAccessExpr pa when TryGetNativeCollectionType(InferType(pa.Instance), out _) && pa.PropertyName.Lexeme.Equals("COUNT", StringComparison.OrdinalIgnoreCase) => new DoubleType(),
+        PropertyAccessExpr pa when TryGetNativeCollectionType(InferType(pa.Instance), out _) && CollMembers.Is(pa.PropertyName, TokenKind.CollCount) => new DoubleType(),
         PropertyAccessExpr pa => NormalizeInferredType(ResolvePropertyDefinition(pa).Type),
         // Accesso SAFE ([k]?): il valore è boxed object (null se assente) — il tipo statico
         // è dinamico (AnyType), altrimenti la coerce a valle usa il tipo dell'elemento (es.
@@ -706,33 +706,33 @@ public sealed partial class IlProgramCompiler
 
         // JOIN su collection (MyList.Join(", ")): non è un metodo CLR nativo — la collection
         // EmitCollectionJoin lo gestisce; qui il tipo di ritorno è string.
-        if (expr.MethodName.Lexeme.Equals("JOIN", StringComparison.OrdinalIgnoreCase))
+        if (CollMembers.Is(expr.MethodName, TokenKind.CollJoin))
         {
             returnType = new StringType();
             return true;
         }
 
         // Current() su CIRCULAR → tipo elemento.
-        if (instanceType is CircularLinkedListType && expr.MethodName.Lexeme.Equals("CURRENT", StringComparison.OrdinalIgnoreCase) && expr.Args.Length == 0)
+        if (instanceType is CircularLinkedListType && CollMembers.Is(expr.MethodName, TokenKind.CollCurrent) && expr.Args.Length == 0)
         {
             returnType = CollectionElementType(instanceType);
             return true;
         }
 
         // IndexOf su collection (helper runtime CollectionIndexOf) → double.
-        if (expr.MethodName.Lexeme.Equals("INDEXOF", StringComparison.OrdinalIgnoreCase) && expr.Args.Length == 1)
+        if (CollMembers.Is(expr.MethodName, TokenKind.CollIndexOf) && expr.Args.Length == 1)
         {
             returnType = new DoubleType();
             return true;
         }
 
         // .Keys()/.Values() su DICT/SORTED → array delle chiavi/valori.
-        if (expr.Args.Length == 0 && (expr.MethodName.Lexeme.Equals("KEYS", StringComparison.OrdinalIgnoreCase)
-            || expr.MethodName.Lexeme.Equals("VALUES", StringComparison.OrdinalIgnoreCase)))
+        if (expr.Args.Length == 0 && (CollMembers.Is(expr.MethodName, TokenKind.CollKeys)
+            || CollMembers.Is(expr.MethodName, TokenKind.CollValues)))
         {
             var kArgType = NormalizeInferredType(instanceType);
-            if (kArgType is DictType kd) { returnType = new ArrayType(expr.MethodName.Lexeme.StartsWith("KEY", StringComparison.OrdinalIgnoreCase) ? kd.KeyType : kd.ValueType); return true; }
-            if (kArgType is SortedDictType ksd) { returnType = new ArrayType(expr.MethodName.Lexeme.StartsWith("KEY", StringComparison.OrdinalIgnoreCase) ? ksd.KeyType : ksd.ValueType); return true; }
+            if (kArgType is DictType kd) { returnType = new ArrayType(CollMembers.Is(expr.MethodName, TokenKind.CollKeys) ? kd.KeyType : kd.ValueType); return true; }
+            if (kArgType is SortedDictType ksd) { returnType = new ArrayType(CollMembers.Is(expr.MethodName, TokenKind.CollKeys) ? ksd.KeyType : ksd.ValueType); return true; }
         }
 
         // F1 Incongruenze: SET/SETKEYVALUE (comandi sovrascrittura) e GET (lookup) su
@@ -745,20 +745,20 @@ public sealed partial class IlProgramCompiler
         var setGetInst = NormalizeInferredType(instanceType);
         if (setGetInst is DictType sgd || setGetInst is SortedDictType sgsd)
         {
-            if (expr.Args.Length == 2 && (expr.MethodName.Lexeme.Equals("SET", StringComparison.OrdinalIgnoreCase)
-                || expr.MethodName.Lexeme.Equals("SETKEYVALUE", StringComparison.OrdinalIgnoreCase)))
+            if (expr.Args.Length == 2 && (CollMembers.Is(expr.MethodName, TokenKind.CollSet)
+                || CollMembers.Is(expr.MethodName, TokenKind.CollSetKeyValue)))
             {
                 returnType = new AnyType();
                 return true;
             }
-            if (expr.Args.Length == 1 && expr.MethodName.Lexeme.Equals("GET", StringComparison.OrdinalIgnoreCase))
+            if (expr.Args.Length == 1 && CollMembers.Is(expr.MethodName, TokenKind.CollGet))
             {
                 returnType = setGetInst is DictType sgv ? sgv.ValueType : ((SortedDictType)setGetInst).ValueType;
                 return true;
             }
             // F1: MaxPair/MinPair — restituiscono la CHIAVE (stringa).
-            if (expr.Args.Length == 0 && (expr.MethodName.Lexeme.Equals("MAXPAIR", StringComparison.OrdinalIgnoreCase)
-                || expr.MethodName.Lexeme.Equals("MINPAIR", StringComparison.OrdinalIgnoreCase)))
+            if (expr.Args.Length == 0 && (CollMembers.Is(expr.MethodName, TokenKind.CollMaxPair)
+                || CollMembers.Is(expr.MethodName, TokenKind.CollMinPair)))
             {
                 returnType = new StringType();
                 return true;
@@ -768,29 +768,29 @@ public sealed partial class IlProgramCompiler
         // (runtime object) o un bool; InferType deve allinearsi al valore emesso (prima:
         // fallback VoidType → unbox.any/box System.Void = InvalidProgramException).
         var f1Inst = NormalizeInferredType(instanceType);
-        if (expr.Args.Length == 0 && (expr.MethodName.Lexeme.Equals("ISEMPTY", StringComparison.OrdinalIgnoreCase))
+        if (expr.Args.Length == 0 && (CollMembers.Is(expr.MethodName, TokenKind.CollIsEmpty))
             && (f1Inst is ListType or QueueType or StackType or HashSetType or DictType or SortedDictType
                 or LinkedListType or DoublyLinkedListType or CircularLinkedListType or RingBufferType))
         {
             returnType = new BitType();
             return true;
         }
-        if (expr.Args.Length == 0 && (expr.MethodName.Lexeme.Equals("FRONT", StringComparison.OrdinalIgnoreCase)
-            || expr.MethodName.Lexeme.Equals("BACK", StringComparison.OrdinalIgnoreCase)))
+        if (expr.Args.Length == 0 && (CollMembers.Is(expr.MethodName, TokenKind.CollFront)
+            || CollMembers.Is(expr.MethodName, TokenKind.CollBack)))
         {
             if (f1Inst is ListType fl) { returnType = fl.ElementType; return true; }
             if (f1Inst is QueueType fq) { returnType = fq.ElementType; return true; }
             if (f1Inst is StackType fs) { returnType = fs.ElementType; return true; }
         }
-        if ((expr.Args.Length == 1 && expr.MethodName.Lexeme.Equals("ADDUNIQUE", StringComparison.OrdinalIgnoreCase))
-            || (expr.Args.Length == 2 && (expr.MethodName.Lexeme.Equals("ADDAFTER", StringComparison.OrdinalIgnoreCase)
-                || expr.MethodName.Lexeme.Equals("ADDBEFORE", StringComparison.OrdinalIgnoreCase))))
+        if ((expr.Args.Length == 1 && CollMembers.Is(expr.MethodName, TokenKind.CollAddUnique))
+            || (expr.Args.Length == 2 && (CollMembers.Is(expr.MethodName, TokenKind.CollAddAfter)
+                || CollMembers.Is(expr.MethodName, TokenKind.CollAddBefore))))
         {
             returnType = new AnyType();
             return true;
         }
 
-        var methodName = instanceType is LinkedListType && expr.MethodName.Lexeme.Equals("ADD", StringComparison.OrdinalIgnoreCase)
+        var methodName = instanceType is LinkedListType && CollMembers.Is(expr.MethodName, TokenKind.CollAdd)
             ? nameof(LinkedList<int>.AddLast)
             : expr.MethodName.Lexeme;
         var method = ResolveNativeCollectionMethod(collectionType, methodName, expr.Args);
@@ -909,21 +909,21 @@ private bool TryInferNativeCollectionIndexType(IndexedAccessExpr expr, out DataT
         // array via Enumerable.ToArray — il tipo statico deve essere ArrayType. PRIMA del
         // FieldSymbolId: il linker registra "Keys" nello schema con ListType, incoerente
         // con l'emit ToArray.
-        if ((fa.Field.Lexeme.Equals("KEYS", StringComparison.OrdinalIgnoreCase) ||
-             fa.Field.Lexeme.Equals("VALUES", StringComparison.OrdinalIgnoreCase))
+        if ((CollMembers.Is(fa.Field, TokenKind.CollKeys) ||
+             CollMembers.Is(fa.Field, TokenKind.CollValues))
             && NormalizeInferredType(InferType(fa.Structure)) is DictType dk)
-            return new ArrayType(fa.Field.Lexeme.StartsWith("KEY", StringComparison.OrdinalIgnoreCase) ? dk.KeyType : dk.ValueType);
-        if ((fa.Field.Lexeme.Equals("KEYS", StringComparison.OrdinalIgnoreCase) ||
-             fa.Field.Lexeme.Equals("VALUES", StringComparison.OrdinalIgnoreCase))
+            return new ArrayType(CollMembers.Is(fa.Field, TokenKind.CollKeys) ? dk.KeyType : dk.ValueType);
+        if ((CollMembers.Is(fa.Field, TokenKind.CollKeys) ||
+             CollMembers.Is(fa.Field, TokenKind.CollValues))
             && NormalizeInferredType(InferType(fa.Structure)) is SortedDictType sk)
-            return new ArrayType(fa.Field.Lexeme.StartsWith("KEY", StringComparison.OrdinalIgnoreCase) ? sk.KeyType : sk.ValueType);
+            return new ArrayType(CollMembers.Is(fa.Field, TokenKind.CollKeys) ? sk.KeyType : sk.ValueType);
         // q.Peek/q.Dequeue (Queue), s.Pop (Stack) come field → tipo elemento della collection.
-        if ((fa.Field.Lexeme.Equals("PEEK", StringComparison.OrdinalIgnoreCase) ||
-             fa.Field.Lexeme.Equals("DEQUEUE", StringComparison.OrdinalIgnoreCase))
+        if ((CollMembers.Is(fa.Field, TokenKind.CollPeek) ||
+             CollMembers.Is(fa.Field, TokenKind.CollDequeue))
             && NormalizeInferredType(InferType(fa.Structure)) is QueueType qt)
             return qt.ElementType;
-        if ((fa.Field.Lexeme.Equals("POP", StringComparison.OrdinalIgnoreCase) ||
-             fa.Field.Lexeme.Equals("PEEK", StringComparison.OrdinalIgnoreCase))
+        if ((CollMembers.Is(fa.Field, TokenKind.CollPop) ||
+             CollMembers.Is(fa.Field, TokenKind.CollPeek))
             && NormalizeInferredType(InferType(fa.Structure)) is StackType st)
             return st.ElementType;
         if (fa.FieldSymbolId >= 0) return _program.Symbols.GetSymbol(fa.FieldSymbolId).DataType;

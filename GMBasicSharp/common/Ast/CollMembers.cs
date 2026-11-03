@@ -135,6 +135,18 @@ public static class CollMembers
     /// <summary>True se il TokenKind è un membro di collection (Coll*).</summary>
     public static bool IsCollMember(TokenKind kind) => ByKind.ContainsKey(kind);
 
+    /// <summary>True se il token è il membro <paramref name="kind"/>: usa il TokenKind
+    /// risolto dal parser quando presente, altrimenti la grafia canonica del kind (fallback
+    /// per i token non rimappati, es. FieldAccessExpr o costruzioni del linker). Il lexeme
+    /// non è più la chiave di dispatch: è solo il fallback della frontiera.</summary>
+    public static bool Is(Token member, TokenKind kind)
+    {
+        if (member.Kind == kind) return true;
+        if (IsCollMember(member.Kind)) return false;
+        var canon = Canonical(kind);
+        return canon is not null && string.Equals(member.Lexeme, canon, StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>Nome runtime canonico (UPPER) del membro per TokenKind; null se non è
     /// un membro di collection (chiave di dispatch per Kind con fallback lexeme).</summary>
     public static string? RuntimeName(TokenKind kind) => ByKind.TryGetValue(kind, out var n) ? n : null;
