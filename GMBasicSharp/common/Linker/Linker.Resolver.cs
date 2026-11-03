@@ -2696,7 +2696,7 @@ public static partial class Linker
                     ResolveExpression(s.Handle, program), s.Sub, ResolveExpression(s.Prop, program),
                     s.Num != null ? ResolveExpression(s.Num, program) : null,
                     s.Str != null ? ResolveExpression(s.Str, program) : null,
-                    s.Into, s.Token
+                    s.Into, s.Token, s.SubKind
                 ) { ScopeId = s.ScopeId };
 
             case ChartDrawStmt s:

@@ -1265,13 +1265,17 @@ private void EmitBrowserHumanScrollCall(BuiltinFunctionCallExpr expr)
         EmitInt32Argument(cm.Handle);
         EmitStringArg(cm.Prop);
         var sub = cm.Sub.ToUpperInvariant();
-        if (sub == "SET")
+        var isSet = cm.SubKind == TokenKind.Set
+            || (cm.SubKind == TokenKind.Identifier && sub == "SET");
+        var isGet = cm.SubKind == TokenKind.Get
+            || (cm.SubKind == TokenKind.Identifier && sub == "GET");
+        if (isSet)
         {
             if (cm.Num != null) EmitDoubleArgument(cm.Num); else _il.Emit(OpCodes.Ldc_R8, 0.0);
             if (cm.Str != null) EmitStringArg(cm.Str); else _il.Emit(OpCodes.Ldstr, "");
             _il.Emit(OpCodes.Call, IlRuntimeChartConfigSetMethod);
         }
-        else if (sub == "GET")
+        else if (isGet)
         {
             _il.Emit(OpCodes.Call, IlRuntimeChartConfigGetMethod);
             if (cm.Into is VariableTarget gv) EmitAssignTargetFromTop(gv); else _il.Emit(OpCodes.Pop);

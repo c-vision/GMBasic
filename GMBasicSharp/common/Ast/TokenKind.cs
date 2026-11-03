@@ -2560,4 +2560,7 @@ public enum TokenKind
     // point: "😀"=1), LENB i byte ("😀"=4): servono entrambi (limiti di buffer/file vs
     // conteggio visibile). In coda (ordinali canonici).
     LenB,
+    // P_* (2026-11-03): sottocomando CHART GETS (non esiste un keyword dedicato).
+    // In coda: gli ordinali sono nel registry canonico, mai inserire nel mezzo.
+    ChartGets,
 }

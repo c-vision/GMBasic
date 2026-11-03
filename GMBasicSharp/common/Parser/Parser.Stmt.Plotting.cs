@@ -59,7 +59,7 @@ public sealed partial class Parser
         // GETS non è un TokenKind: si riconosce dal lessema (come CONTROL GETS).
         if (subCommandToken.Kind == TokenKind.Identifier
             && string.Equals(subCommandToken.Lexeme, "GETS", StringComparison.OrdinalIgnoreCase))
-            return ParseChartConfig(parser, expectedNamespace, "GETS");
+            return ParseChartConfig(parser, expectedNamespace, "GETS", TokenKind.ChartGets);
         return subCommandToken.Kind switch
         {
             TokenKind.Plot => ParseChartPlotStatement(parser, expectedNamespace),
@@ -68,8 +68,8 @@ public sealed partial class Parser
             TokenKind.Close => ParseChartCloseStatement(parser, expectedNamespace),
             TokenKind.Save => ParseChartSaveStatement(parser, expectedNamespace),
             TokenKind.Show => ParseChartShowStatement(parser, expectedNamespace),
-            TokenKind.Set => ParseChartConfig(parser, expectedNamespace, "SET"),
-            TokenKind.Get => ParseChartConfig(parser, expectedNamespace, "GET"),
+            TokenKind.Set => ParseChartConfig(parser, expectedNamespace, "SET", TokenKind.Set),
+            TokenKind.Get => ParseChartConfig(parser, expectedNamespace, "GET", TokenKind.Get),
             TokenKind.Draw => ParseChartDrawStatement(parser, expectedNamespace),
             _ => throw CreateError(subCommandToken,
                 $"Sottocomando non valido per CHART: '{subCommandToken.Lexeme}'.")
@@ -78,7 +78,7 @@ public sealed partial class Parser
 
     /// <summary>CHART SET h, "prop", num [, "str"] | CHART GET h, "prop" INTO v |
     /// CHART GETS h, "prop" INTO v$ — configurazione grafico da BASIC.</summary>
-    public static Stmt ParseChartConfig(Parser parser, string ns, string sub)
+    public static Stmt ParseChartConfig(Parser parser, string ns, string sub, TokenKind subKind)
     {
         var tok = parser.Peek();
         parser.Advance();   // consuma SET/GET/GETS
@@ -99,7 +99,7 @@ public sealed partial class Parser
         {
             if (parser.Match(TokenKind.Into)) into = parser.ParseTarget();
         }
-        return new ChartConfigStmt(handle, sub, prop, num, str, into, tok);
+        return new ChartConfigStmt(handle, sub, prop, num, str, into, tok, subKind);
     }
 
     /// <summary>CHART DRAW h, "op"[, args...] [INTO id] — oggetti di disegno
