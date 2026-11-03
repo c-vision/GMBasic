@@ -18,7 +18,7 @@ BMP and PSF2 were impossible to emit from BASIC.
 | Format | Direction | Notes |
 |---|---|---|
 | **TTF / OTF** | read (import) | outline → BDF via `FONTS.TTMETRICS` / `FONTS.TTRENDER`: the app only orchestrates the codepoint loop, the threshold and the metric conversion; the parser and the rasteriser are C (`native/gmb_runtime_c/src/gmb_fonts.c`, stb_truetype) |
-| **BDF 2.1** | read + write | subset: `FONT`, `SIZE`, `FONTBOUNDINGBOX`, `STARTPROPERTIES`/`ENDPROPERTIES`, `CHARS`, and per glyph `STARTCHAR`, `ENCODING`, `SWIDTH`, `DWIDTH`, `BBX`, `BITMAP`, `ENDCHAR` |
+| **BDF 2.1** | read + write | subset: `FONT`, `SIZE`, `FONTBOUNDINGBOX`, `STARTPROPERTIES`/`ENDPROPERTIES`, `CHARS`, and per glyph `STARTCHAR`, `ENCODING`, `SWIDTH`, `DWIDTH`, `BBX`, `BITMAP`, `ENDCHAR`. The standard 2.2 properties (`RESOLUTION_X/Y`, `FONT_ASCENT`/`FONT_DESCENT`, `DEFAULT_CHAR`) are added at load time when the source does not declare them |
 | **BMP** (24-bit) | read + write | contact sheet of every glyph, scaled by `bmp_scale`, `cells_per_row` per row; opens in Preview/Paint. The `check` mode reads the sheet back with `IO.READBYTES` and verifies header, row size and the black pixels against the model |
 | **PSF2** | write | Linux console font: magic `0x72b54a86`, header 32 bytes, glyphs padded to `maxW`×`maxH` |
 | **PSF1** | write | legacy Linux console font: magic `0x36 0x04`, 256 slots of `charsize` bytes, 8 px per row; a glyph wider than 8 px is an explicit error |

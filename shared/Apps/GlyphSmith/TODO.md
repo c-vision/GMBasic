@@ -35,9 +35,11 @@ Verified on the four backends of the monorepo (IL, PCodeVM, VM-C, C99Native).
       BDF riga per riga con il pitch. **md5 identico sulle quattro leg** (IL, PCodeVM, VM-C,
       C99Native) e riletto dal `check` con 135 asserzioni, fra cui l'ordine dei bit su una riga
       non simmetrica (`0x7c` di `B`) e gli estremi + lunghezza della tabella `BDF_ENCODINGS`.
-- [ ] **BDF 2.2 properties**: il writer conserva le proprieta' verbatim; manca l'emissione dei
-      campi v2.2 (`RESOLUTION_X/Y`, `FONT_TYPE`) quando il sorgente non li ha — e' una scelta di
-      valori, non codice mancante.
+- [x] **BDF 2.2 properties**: `AddStdProps` completa in LETTURA le proprieta' standard che il
+      sorgente non dichiara — `RESOLUTION_X/Y` (dal `SIZE`), `FONT_ASCENT`/`FONT_DESCENT` e
+      `DEFAULT_CHAR` (dal modello) — cosi' BDF e PCF le emettono e il round trip resta
+      idempotente (9 proprieta' prima e dopo). `FONT_TYPE` non e' una proprieta' della BDF 2.2:
+      non viene emessa.
 - [x] **ASCII art** per terminale: `mini8.ascii` (`@ enc name w h` + righe `#`/`.`), riletto
       dal modo `textin` e confrontato glifo per glifo con il modello nel check.
 - [x] **Sixel** per terminali che lo supportano: `mini8.six` (stream DEC `ESC P q "1;1;w;h`,
