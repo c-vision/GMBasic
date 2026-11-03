@@ -10943,7 +10943,9 @@ void gmb_bf_466(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, 
                      * minimo: IL -1, VM/C 0). */
                     bout->result = gmb_rdd_used() ? -1 : 0;
             }
-            else if (func_code == 477) bout->result = (gmb_db_current_dbf() > 0)
+            else if (func_code == 477) bout->result = (gmb_db_current_dbf() <= 0 && gmb_rdd_used())   /* area RDD: marcatore RDD (RDD DELETE) */
+                ? (gmb_rdd_deleted() ? -1 : 0)
+                : (gmb_db_current_dbf() > 0)
                 ? (gmb_db_dbf_deleted(gmb_db_current_dbf()) ? -1 : 0)
                 : (gmb_dbf_deleted(dbfAlias) ? -1 : 0);
             else if (func_code == 479)
@@ -11075,10 +11077,18 @@ void gmb_bf_473(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, 
             else if (func_code == 474) { gmb_db_dbf_relation_key(dh, fbuf, (int)sizeof(fbuf)); res = fbuf; }
             else if (func_code == 480)
             {
-                /* ALIAS(): alias dell'ultima area aperta con DBF USE (registrato dal handler
-                 * DBF USE: la VM/C non ha un registro delle aree per nome). */
-                const char* va = gmb_vm_dbf_current_alias();
-                snprintf(fbuf, sizeof(fbuf), "%s", va ? va : "");
+                /* ALIAS(): alias dell'AREA CORRENTE. Prima la VM/C usava solo l'ultima
+                 * area aperta con DBF USE → dopo `DBF SELECT Clienti` continuava a
+                 * rispondere "Ordini" (divergenza IL/PCode/C99, sample SelectAreas). Il
+                 * layer DBF conosce l'alias per handle; se vuoto (USE senza ALIAS / area
+                 * RDD) si ripiega sul registro storico. */
+                gmb_string_t al = gmb_db_dbf_get_alias_str(dh);
+                if (al.data && al.data[0]) snprintf(fbuf, sizeof(fbuf), "%s", al.data);
+                else {
+                    const char* va = gmb_vm_dbf_current_alias();
+                    snprintf(fbuf, sizeof(fbuf), "%s", va ? va : "");
+                }
+                if (al.data) gmb_string_free(&al);
                 res = fbuf;
             }
             /* 475 INDEXKEY: campo chiave dell'ordine attivo (vuoto se nessun ordine). */
