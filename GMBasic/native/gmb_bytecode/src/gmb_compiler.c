@@ -8225,7 +8225,7 @@ int gmb_compile_snippet(const char* src, int as_stmt, const gmb_snippet_ext_t* e
             break;
         }
 
-        int retried = 0; { FILE* tdf = fopen("/tmp/gmbq/snip.txt", "a"); if (tdf) { fprintf(tdf, "src=[%s] cerr=[%s] nparams=%d\n", src, cerr ? cerr : "(null)", nparams); fclose(tdf); } } /*TMPDBG*/
+        int retried = 0;
         if (cerr && strncmp(cerr, "SNIP_GLOBAL:", 12) == 0) {
             const char* name = cerr + 12;
             int dup = 0;
