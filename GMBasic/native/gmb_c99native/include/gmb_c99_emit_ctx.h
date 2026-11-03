@@ -97,7 +97,10 @@ typedef struct {
     char lib_name[96];
     /* FASE 2.6(j): remap identificatori per variabili catturate dalle closure:
      * nome BASIC → espressione C (es. "fattore" → "__clo_Moltiplica.fattore"). */
-    const char* imap_name[32]; const char* imap_expr[32]; int n_imap;
+    /* imap: nome BASIC → espressione C (catture, celle by-ref, campi DBF late-bound,
+     * variabili di ciclo). 256: fino a 16 catture per 16 livelli di annidamento. */
+    #define GMB_IMAP_CAP 256
+    const char* imap_name[GMB_IMAP_CAP]; const char* imap_expr[GMB_IMAP_CAP]; int n_imap;
     /* DBF GET <var>: nomi dei RECORD VAR (vista del record corrente). `<var>.<campo>` legge il
      * campo dell'area corrente via late binding (parità Clipper DBF GET). */
     const char* recvar_name[16]; int n_recvar;

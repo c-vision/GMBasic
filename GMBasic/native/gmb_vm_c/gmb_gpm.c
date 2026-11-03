@@ -384,9 +384,14 @@ static gmb_stack_entry_t capture_slot_byref_x(double* nums, gmb_obj_t** refs,
 gmb_stack_entry_t gmb_task_capture_local_byref(gmb_task_t* t, int slot)
 {
     if (!t) return (gmb_stack_entry_t){0};
+    /* box_strings=1: anche una STRINGA va imbustata in una cella write-through. Una
+     * closure cattura la VARIABILE, non il valore (parità C#/IL/C99): senza cella il
+     * `s = "b"` del chiamante sostituiva l'oggetto nello slot e la closure continuava a
+     * vedere l'oggetto vecchio. La cella `is_cell` possiede il valore → sopravvive
+     * anche al pop del frame (closure ritornata). */
     if (t->frame) return capture_slot_byref_x(t->frame->local_nums, t->frame->local_refs,
-        t->frame->local_types, t->frame->local_basic, slot, 0);
-    return capture_slot_byref_x(t->locals_nums, t->locals_refs, t->locals_types, t->locals_basic, slot, 0);
+        t->frame->local_types, t->frame->local_basic, slot, 1);
+    return capture_slot_byref_x(t->locals_nums, t->locals_refs, t->locals_types, t->locals_basic, slot, 1);
 }
 
 /* Target di @GET (anche stringa): cella write-through sullo slot locale. */
