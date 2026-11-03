@@ -3019,9 +3019,13 @@ public sealed partial class Compiler
                 // come OP_PUSH_NIL e la builtin non poteva risolvere l'area per nome.
                 // Emetti il NOME dell'identificatore come stringa (l'alias) quando non è una
                 // variabile dichiarata.
-                if (builtInFunc == BuiltInFunction.DBFSELECTED && arg is VariableExpr selVe &&
-                    ResolveLocal(selVe.NameSuffixed.Lexeme) == -1 &&
-                    !_globals.ContainsKey(selVe.NameSuffixed.Lexeme))
+                // DBF.SELECTED(alias): un identificatore NUDO è SEMPRE il nome dell'alias,
+                // anche se esiste una variabile con quel nome (parità IL/C99, dove
+                // EmitDbfAliasCall emette Ldstr del nome). Prima la PCode valutava la
+                // variabile dichiarata → `DBF.SELECTED(n)` dava 2 mentre IL/C99 davano 0.
+                // Per passare un numero d'area usare un letterale o un'espressione
+                // (`DBF.SELECTED(2)`, `DBF.SELECTED(1+1)`), non un identificatore nudo.
+                if (builtInFunc == BuiltInFunction.DBFSELECTED && arg is VariableExpr selVe)
                 {
                     EmitConstant(selVe.NameSuffixed.Lexeme);
                     continue;

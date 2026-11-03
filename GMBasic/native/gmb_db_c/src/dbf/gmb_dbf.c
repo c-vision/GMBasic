@@ -1342,6 +1342,14 @@ int gmb_db_area_of_alias(const char* alias)
 gmb_double_t gmb_selected(const char* alias)
 {
     if (!alias || !alias[0]) return 0;
+    /* `SELECTED(<numero>)` e `<numero>` passato come stringa: è il NUMERO d'area 1-based,
+     * non un alias. Ritorna l'area se è aperta, altrimenti 0 (parità IL/PCode). */
+    {
+        char* end = NULL;
+        double n = strtod(alias, &end);
+        if (end && end != alias && *end == 0 && n >= 1 && n <= 65535 && n == (double)(int)n)
+            return gmb_db_dbf_find_handle_by_area((int)n) > 0 ? n : 0;
+    }
     {
         /* ISAM: gli alias ISAM sono in g_handles[].u.isam.alias (gmb_db_isam_set_alias),
          * NON nel registro RDD → gmb_rdd_select_alias dava 0 (ISAM.SELECTED=0 sulle gambe C). */
@@ -1366,6 +1374,16 @@ int gmb_db_dbf_get_alias(int64_t h, char* out, int cap)
     if (!hh || !out || cap <= 0) return GMB_DB_ERR;
     snprintf(out, (size_t)cap, "%s", hh->u.dbf.alias);
     return GMB_DB_OK;
+}
+
+int64_t gmb_db_dbf_find_handle_by_area(int area)
+{
+    if (area <= 0) return 0;
+    for (int64_t i = 1; i < GMB_DB_MAX_HANDLES; i++) {
+        if (g_handles[i].kind != GMB_H_DBF) continue;
+        if (g_handles[i].u.dbf.area == area) return i;
+    }
+    return 0;
 }
 
 int64_t gmb_db_dbf_find_handle_by_alias(const char* alias)

@@ -281,6 +281,7 @@ int gmb_db_apply_syscall_known(int code)
         case GMB_SYS_DBF_LASTREC: case GMB_SYS_DBF_BEGIN_GROUP_COMMIT: case GMB_SYS_DBF_END_GROUP_COMMIT:
         case GMB_SYS_DBF_SET_DURABILITY: case GMB_SYS_DBF_SET_EXCLUSIVE: case GMB_SYS_DBF_SET_SCHEMA:
         case GMB_SYS_DBF_CLOSE_CURRENT:
+        case GMB_SYS_DBF_CLOSE_AREA:
         case GMB_SYS_ISAM_RECORD: case GMB_SYS_ISAM_SKIP: case GMB_SYS_ISAM_SEEK:
         case GMB_SYS_ISAM_DELETE: case GMB_SYS_ISAM_RECALL: case GMB_SYS_ISAM_PACK: case GMB_SYS_ISAM_REINDEX:
         case GMB_SYS_ISAM_REPAIR: case GMB_SYS_ISAM_BACKUP: case GMB_SYS_ISAM_LOCK: case GMB_SYS_ISAM_UNLOCK:
@@ -497,6 +498,16 @@ int gmb_db_apply_syscall(int code, const char* sarg, int64_t iarg, int64_t* resu
         case GMB_SYS_DBF_END_GROUP_COMMIT:
             *result = gmb_db_dbf_end_group_commit(g_last_dbf) == GMB_DB_OK ? -1 : 0;
             return GMB_DB_OK;
+        case GMB_SYS_DBF_CLOSE_AREA:
+        {
+            /* DBF CLOSE <alias|area>: -1 = area non aperta (no-op), altrimenti chiude SOLO
+             * quella. L'argomento arriva come alias (sarg) o numero d'area (iarg). */
+            int64_t ch = (sarg && sarg[0]) ? gmb_db_dbf_find_handle_by_alias(sarg)
+                        : (iarg > 0 ? gmb_db_dbf_find_handle_by_area((int)iarg) : 0);
+            if (ch <= 0) { *result = 0; return GMB_DB_OK; }
+            *result = gmb_db_dbf_close(ch) == GMB_DB_OK ? 1 : 0;
+            return GMB_DB_OK;
+        }
         case GMB_SYS_DBF_CLOSE_CURRENT:
             if (g_last_dbf > 0) return gmb_db_dbf_close(g_last_dbf);
             /* Area RDD (RDD USE): libera l'area cell-store (parità IL, che al CLOSE libera

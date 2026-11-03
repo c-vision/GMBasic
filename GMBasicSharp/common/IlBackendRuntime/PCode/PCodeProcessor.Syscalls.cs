@@ -4236,6 +4236,26 @@ internal sealed partial class PCodeProcessor
                 break;
             }
             
+            case SysCall.DBF_CLOSE_AREA:
+            {
+                // DBF CLOSE <alias|area>: chiude SOLO l'area indicata (parità IL/C99).
+                // Prima il compilatore emetteva DBF_CLOSE_CURRENT per qualunque DBF CLOSE.
+                var wa = task.Sp > 0 ? task.PopRef() : null;
+                int closeArea = 0;
+                if (wa is string sAlias && !string.IsNullOrWhiteSpace(sAlias))
+                    closeArea = _dataSession.FindAreaByAlias(sAlias);
+                else if (wa is double dArea && dArea > 0) closeArea = (int)dArea;
+                else if (wa is int iArea && iArea > 0) closeArea = iArea;
+                else if (wa is long lArea && lArea > 0) closeArea = (int)lArea;
+                if (closeArea > 0)
+                {
+                    _dataSession.Unregister(closeArea);
+                    if (task.CurrentDbfArea == closeArea) task.CurrentDbfArea = _dataSession.CurrentArea;
+                }
+                task.PushRef(null);
+                break;
+            }
+
             case SysCall.DBF_CLOSE_CURRENT:
             {
                 if (task.CurrentDbfArea > 0)

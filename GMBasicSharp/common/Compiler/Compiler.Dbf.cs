@@ -219,7 +219,20 @@ public sealed partial class Compiler
         }
         else
         {
-            EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.DBF_CLOSE_CURRENT); EmitByte((byte)0);
+            // DBF CLOSE <alias|area>[, ...]: chiude SOLO le aree indicate. Prima emetteva
+            // sempre DBF_CLOSE_CURRENT → `DBF CLOSE B` dopo `DBF SELECT A` chiudeva A.
+            // L'argomento è un alias (identificatore/stringa) o un numero d'area; la
+            // syscall risolve l'uno o l'altro e ignora un'area non aperta.
+            foreach (var wa in stmt.WorkAreas)
+            {
+                // Un identificatore nudo è il NOME dell'alias (non una variabile), come per
+                // DBF SELECT/USE: `DBF CLOSE B` → stringa "B". Un numero resta l'area.
+                if (wa is VariableExpr cv)
+                    VisitExpression(new StringExpr(cv.NameCleaned.Lexeme, cv.NameCleaned));
+                else
+                    VisitExpression(wa);
+                EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.DBF_CLOSE_AREA); EmitByte((byte)1);
+            }
         }
     }
 
