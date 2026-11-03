@@ -697,12 +697,15 @@ int emit_bf_speed(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk
     if (tk == GMB_TOK_EofFunc) {
         /* SPEED.EOF(alias) → BIT del cursore SPEED. Prima cadeva su IO.EOF (file) →
          * sempre true (i loop `DO WHILE NOT SPEED.EOF(T)` non partivano). Si usa
-         * table_by_alias(alias) come GO/GET (curtable può essere stale). */
+         * table_by_alias(alias) come GO/GET (curtable può essere stale).
+         * Il valore è NORMALIZZATO a -1/0 (convenzione BIT delle 4 gambe): prima la
+         * funzione C restituisce 0/1 e la stampa diretta dava 1 su C99Native contro
+         * -1 su IL/PCode/VM-C. */
         const char* an = (nargs >= 1) ? dom_ident(args[0]) : NULL;
         if (an && an[0])
-            sb_printf(&c->out, "((double)gmb_db_speed_eof(gmb_db_current_speed(), gmb_db_speed_table_by_alias(\"%s\")))", an);
+            sb_printf(&c->out, "((double)(gmb_db_speed_eof(gmb_db_current_speed(), gmb_db_speed_table_by_alias(\"%s\")) ? -1.0 : 0.0))", an);
         else
-            sb_put(&c->out, "((double)gmb_db_speed_eof(gmb_db_current_speed(), gmb_db_speed_curtable(gmb_db_current_speed())))");
+            sb_put(&c->out, "((double)(gmb_db_speed_eof(gmb_db_current_speed(), gmb_db_speed_curtable(gmb_db_current_speed())) ? -1.0 : 0.0))");
         return 1;
     }
     return 0;

@@ -74,6 +74,16 @@ public sealed partial class IlProgramCompiler
         if (expr.Args.Length != 1)
             throw new NotSupportedException("Backend IL: CSTR richiede esattamente 1 argomento.");
         EmitExpression(expr.Args[0]);
+        // CSTR(BIT) → "True"/"False" (canonico: isam_protocol41 `CSTRbool:[True]`). Il
+        // valore BIT sullo stack è un I4 (bool 0/1 oppure int32 -1/0/numero): il box come
+        // Boolean lo normalizza a vero/falso, come le gambe C (`b ? "True" : "False"`).
+        // Prima, per le variabili (local int32), si boxava Int32 e usciva "-1".
+        if (NormalizeInferredType(InferType(expr.Args[0])) is BitType)
+        {
+            _il.Emit(OpCodes.Box, _types.Boolean);
+            _il.Emit(OpCodes.Call, StringHelpersCStrMethod);
+            return;
+        }
         // Box col tipo CLR REALE del valore sullo stack (come EmitDynamicValueBox), NON col
         // tipo statico da DataTypeMapper: un BIT (DIM bResult AS BIT) vive in un local
         // int32 (GetOrDeclareLocal) ma DataTypeMapper.Map(BitType) = System.Boolean →

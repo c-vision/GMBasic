@@ -898,6 +898,16 @@ public sealed partial class IlProgramCompiler
                 else if (bitClr.IsValueType) _il.Emit(OpCodes.Conv_I4);
                 else _il.Emit(OpCodes.Call, _types.IlRuntimeToDoubleMethod);
             }
+            else if (EmitsClrBoolValue(value))
+            {
+                // Il local BIT scalare è int32 (GetOrDeclareLocal) ma TRUE/confronti/chiamate
+                // BIT lasciano sullo stack un bool CLR 1/0: la convenzione BASIC è -1 per vero
+                // (parità PCode/VM-C/C99). Senza questa normalizzazione `b = TRUE : PRINT b`
+                // stampava " 1 " solo su IL e `b = TRUE` risultava falso. Una variabile BIT
+                // (locale/globale) è già int32 e non va toccata: EmitsClrBoolValue la esclude.
+                _il.Emit(OpCodes.Ldc_I4_M1);
+                _il.Emit(OpCodes.Mul);
+            }
             return;
         }
         // BUG REALE trovato 2026-09-07 (AccessViolationException, due FOR EACH su RANGE(...)
@@ -1035,6 +1045,22 @@ public sealed partial class IlProgramCompiler
         var toClr = DataTypeMapper.Map(targetType, _types, _classTypes);
         IlConversion.EmitConvert(_il, _types, valueType, fromClr, toClr);
     }
+
+    /// <summary>
+    /// Vero quando l'espressione lascia sullo stack un <c>bool</c> CLR (0/1) invece di un
+    /// intero -1/0. Serve al solo store su un BIT scalare (local int32): una variabile BIT
+    /// (locale o globale) è già int32 — <c>EmitLoadVariable</c>/<c>LoadGlobal</c> la
+    /// restituiscono numerica — mentre letterali booleani, confronti e chiamate BIT
+    /// producono il bool CLR, normalizzato per BASIC nella conversione a -1.
+    /// </summary>
+    private bool EmitsClrBoolValue(Expr e) => e switch
+    {
+        VariableExpr => false,
+        // Un'assegnazione-espressione restituisce il valore già memorizzato (int32).
+        AssignmentExpr => false,
+        GroupingExpr g => EmitsClrBoolValue(g.Expression),
+        _ => DataTypeMapper.Map(NormalizeInferredType(InferType(e)), _types, _classTypes) == _types.Boolean,
+    };
 
     /// <summary>
     /// Coppia (ldind, stind) per la lettura/scrittura indiretta attraverso un puntatore

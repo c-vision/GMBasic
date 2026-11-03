@@ -302,6 +302,18 @@ public sealed partial class Parser
 
         var nextToken = Consume(TokenKind.Next, "Expected 'NEXT' to close FOR EACH block.");
 
+        // NEXT può nominare le variabili del ciclo (`FOR EACH x IN ...` / `NEXT x`), come
+        // il FOR classico e come il parser C. Prima il nome dopo NEXT restava un token
+        // orfano ("Token 'x' inatteso all'inizio di un'istruzione") e il file non compilava
+        // sulle gambe gestite (IL/PCode/VM-C), mentre C99Native lo accettava.
+        if (!IsAtEndOfStatement() && IsPermissiveNameToken(Peek()))
+        {
+            do
+            {
+                Advance();
+            } while (Match(TokenKind.Comma) && IsPermissiveNameToken(Peek()));
+        }
+
         statements.Add(new LabelStmt(loopContinueLabel));
         statements.Add(new JumpStmt(loopStartLabel));
         statements.Add(new LabelStmt(loopExitLabel));

@@ -1,0 +1,55 @@
+MiniTest PER NAMESPACE — superficie:  1826  voci (procedure+costanti),  71  namespace
+file canonico: shared/minitests/<ns>/<ns>_all.bas
+
+namespace                          tot  cop  manca  file
+MANCA FILE  AGENT -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/agent/agent_all.bas
+AGENT                              1   0     1   NO
+MANCA FILE  AI -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/ai/ai_all.bas
+AI                               274   0   274   NO
+MANCA FILE  ASR -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/asr/asr_all.bas
+ASR                                1   0     1   NO
+MANCA FILE  BLOCKCHAIN -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/blockchain/blockchain_all.bas
+BLOCKCHAIN                        24   0    24   NO
+MANCA FILE  BROWSER -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/browser/browser_all.bas
+BROWSER                           21   0    21   NO
+MANCA FILE  COMPUTER -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/computer/computer_all.bas
+COMPUTER                          12   0    12   NO
+MANCA FILE  CONSOLE -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/console/console_all.bas
+CONSOLE                           12   0    12   NO
+MANCA FILE  CONTROLS -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/controls/controls_all.bas
+CONTROLS                          11   0    11   NO
+MANCA FILE  CONVERT -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/convert/convert_all.bas
+CONVERT                           31   0    31   NO
+MANCA FILE  GRAPHICS -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/graphics/graphics_all.bas
+GRAPHICS                          15   0    15   NO
+MANCA FILE  ISAM -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/isam/isam_all.bas
+ISAM                              24   0    24   NO
+MANCA FILE  LEDGER -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/ledger/ledger_all.bas
+LEDGER                            17   0    17   NO
+MANCA FILE  LLM -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/llm/llm_all.bas
+LLM                               61   0    61   NO
+MANCA FILE  MESSAGE -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/message/message_all.bas
+MESSAGE                            1   0     1   NO
+MANCA FILE  MOUSE -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/mouse/mouse_all.bas
+MOUSE                             11   0    11   NO
+MANCA FILE  RDD -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/rdd/rdd_all.bas
+RDD                               22   0    22   NO
+MANCA FILE  SYNCMAP -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/syncmap/syncmap_all.bas
+SYNCMAP                            4   0     4   NO
+  MANCA SYSTEM.NEXT
+  MANCA SYSTEM.SHELLCODE
+  MANCA SYSTEM.SHELLOUT
+SYSTEM                            26  23     3   si
+MANCA FILE  TORCH -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/torch/torch_all.bas
+TORCH                             76   0    76   NO
+MANCA FILE  TRAY -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/tray/tray_all.bas
+TRAY                              10   0    10   NO
+MANCA FILE  VECTORDB -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/vectordb/vectordb_all.bas
+VECTORDB                          28   0    28   NO
+MANCA FILE  CONSTANTS -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/constants/constants_all.bas
+CONSTANTS                        285   0   285   NO
+
+namespace con file canonico:  50 / 71 
+namespace completi (file + superficie):  49 / 71 
+superficie coperta:  882 / 1826   (mancano  944 )
+struttura base del linguaggio: /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/constructs/base.bas -> presente

@@ -1,0 +1,68 @@
+' MiniTest NAMESPACE TRADING.OPTIONS — tutte le 16 funzioni della superficie.
+' BsCall/BsPut/Delta/Gamma/Vega/Rho + BinomialOption/Charm/DeltaSpeed/GammaColor/
+' MertonCall/MertonPut/Theta/Vanna/Volga/Zomma.
+' EXPECT: 10.4506|5.5735|0.636831|0.01876202|0.37524035|0.53232482|10.430612|-0.000253|-0.000516|-0.025798|10.450584|5.573526|-0.017573|-0.28143|9.850059|-0.088885
+IMPORT TRADING.OPTIONS
+
+SUB O_options()
+  PRINT ROUND(TRADING.OPTIONS.BsCall(100, 100, 1, 0.05, 0.2, 0), 4)
+  PRINT ROUND(TRADING.OPTIONS.BsPut(100, 100, 1, 0.05, 0.2, 0), 4)
+  PRINT ROUND(TRADING.OPTIONS.Delta(100, 100, 1, 0.05, 0.2, 1), 6)
+  PRINT ROUND(TRADING.OPTIONS.Gamma(100, 100, 1, 0.05, 0.2), 8)
+  PRINT ROUND(TRADING.OPTIONS.Vega(100, 100, 1, 0.05, 0.2), 8)
+  PRINT ROUND(TRADING.OPTIONS.Rho(100, 100, 1, 0.05, 0.2, 1), 8)
+END SUB
+
+SUB O_binomialoption()
+  PRINT ROUND(TRADING.BONDS.BINOMIALOPTION(100, 100, 1, 0.05, 0.2, 100, "CALL"), 6)
+END SUB
+
+SUB O_charm()
+  PRINT ROUND(TRADING.BONDS.CHARM(100, 100, 1, 0.05, 0.2, 0), 6)
+END SUB
+
+SUB O_deltaspeed()
+  PRINT ROUND(TRADING.BONDS.DELTASPEED(100, 100, 1, 0.05, 0.2), 6)
+END SUB
+
+SUB O_gammacolor()
+  PRINT ROUND(TRADING.BONDS.GAMMACOLOR(100, 100, 1, 0.05, 0.2), 6)
+END SUB
+
+SUB O_mertoncall()
+  PRINT ROUND(TRADING.BONDS.MERTONCALL(100, 100, 1, 0.05, 0.2, 0), 6)
+END SUB
+
+SUB O_mertonput()
+  PRINT ROUND(TRADING.BONDS.MERTONPUT(100, 100, 1, 0.05, 0.2, 0), 6)
+END SUB
+
+SUB O_theta()
+  PRINT ROUND(TRADING.BONDS.THETA(100, 100, 1, 0.05, 0.2, 0), 6)
+END SUB
+
+SUB O_vanna()
+  PRINT ROUND(TRADING.BONDS.VANNA(100, 100, 1, 0.05, 0.2), 6)
+END SUB
+
+SUB O_volga()
+  PRINT ROUND(TRADING.BONDS.VOLGA(100, 100, 1, 0.05, 0.2), 6)
+END SUB
+
+SUB O_zomma()
+  PRINT ROUND(TRADING.BONDS.ZOMMA(100, 100, 1, 0.05, 0.2), 6)
+END SUB
+
+SUB Main()
+  O_options()
+  O_binomialoption()
+  O_charm()
+  O_deltaspeed()
+  O_gammacolor()
+  O_mertoncall()
+  O_mertonput()
+  O_theta()
+  O_vanna()
+  O_volga()
+  O_zomma()
+END SUB

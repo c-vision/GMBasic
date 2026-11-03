@@ -37,7 +37,8 @@ static bool dim_map_kind(gmb_tokenkind_t k) {
  * Parser.ParseGraphNameArg). Un identificatore con suffisso ($/tipo) resta variabile. */
 static gmb_expr_t* gmb_p_graph_arg(gmb_parser_t* p, int line) {
     const gmb_token_t* tk = gmb_p_cur(p);
-    if (tk && tk->kind == GMB_TOK_Identifier && tk->length > 0 && tk->lexeme[tk->length - 1] != '$') {
+    if (tk && tk->kind == GMB_TOK_Identifier && tk->length > 0 && tk->lexeme[tk->length - 1] != '$'
+        && !gmb_p_is_declared_tok(p, tk)) {
         char* nm = (char*)malloc((size_t)tk->length + 1);
         memcpy(nm, tk->lexeme, (size_t)tk->length); nm[tk->length] = 0;
         gmb_p_adv(p);

@@ -253,13 +253,13 @@ public sealed partial class StdLib
             ], new DoubleType(), TokenKind.Dist3d),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.PolarX, "POLAR_X"),
             [
-                new Parameter(-1, T(TokenKind.Identifier, "angleRadians"), new DoubleType(), noFlags, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "radius"), new DoubleType(), noFlags, null, false)
+                new Parameter(-1, T(TokenKind.Identifier, "radius"), new DoubleType(), noFlags, null, false),
+                new Parameter(-1, T(TokenKind.Identifier, "angleDegrees"), new DoubleType(), noFlags, null, false)
             ], new DoubleType(), TokenKind.PolarX),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.PolarY, "POLAR_Y"),
             [
-                new Parameter(-1, T(TokenKind.Identifier, "angleRadians"), new DoubleType(), noFlags, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "radius"), new DoubleType(), noFlags, null, false)
+                new Parameter(-1, T(TokenKind.Identifier, "radius"), new DoubleType(), noFlags, null, false),
+                new Parameter(-1, T(TokenKind.Identifier, "angleDegrees"), new DoubleType(), noFlags, null, false)
             ], new DoubleType(), TokenKind.PolarY),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Angle2d, "Angle2d"),
             [

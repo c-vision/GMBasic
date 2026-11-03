@@ -516,6 +516,15 @@ public sealed partial class IlProgramCompiler
                 if (valueClr.IsValueType) _il.Emit(OpCodes.Box, valueClr);
             }
         }
+        else if (valueType is BitType && IlConversion.IsNumeric(_currentReturnType)
+                 && _currentReturnType is not BitType && !EmitsClrBoolValue(value))
+        {
+            // Variabile BIT (local/global int32, già -1/0) restituita da una FUNCTION
+            // dichiarata numerica: la conversione standard tratta BitType come bool CLR e
+            // moltiplica per -1, portando -1 a +1. Qui il valore sullo stack è numerico.
+            var retClr = DataTypeMapper.Map(NormalizeInferredType(_currentReturnType), _types, _classTypes);
+            IlConversion.EmitConvert(_il, _types, valueType, _types.Int32, retClr);
+        }
         else
             EmitCoerceTypes(valueType, _currentReturnType);
     }
