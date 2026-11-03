@@ -49,7 +49,7 @@ or from the configuration file.
 | `edit` | `mode = "edit"` or `#DEF GLYPHSMITH_MODE_EDIT` | applies a **batch script** of editing commands, then writes the edited BDF and the exports |
 | `import` | `mode = "import"` or `#DEF GLYPHSMITH_MODE_IMPORT` | converts an outline font (`.ttf`/`.otf`) into a BDF over a codepoint range: `FONTS.TTMETRICS` for the box/metrics, `FONTS.TTRENDER` for the alpha bitmap, threshold to `0`/`1` |
 | `textin` | `mode = "textin"` or `#DEF GLYPHSMITH_MODE_TEXTIN` | reads an **ASCII art** file (`@ enc name w h` + `#`/`.` rows) into the model and writes a BDF; `[text] source` / `[text] out` |
-| `tui` | `mode = "tui"` or `#DEF GLYPHSMITH_MODE_TUI` | **interactive view** over the same model: cursor, pixel toggle, flip, bearing, undo/redo. Keys come from `[tui] keys` (one key per line) so the session is deterministic and checkable; `[tui] render = "1"` prints a frame after every key |
+| `tui` | `mode = "tui"` or `#DEF GLYPHSMITH_MODE_TUI` | **interactive view** over the same model: cursor, pixel toggle, flip, bearing, undo/redo. Keys come from `[tui] keys` (one key per line) so the session is deterministic and checkable; `[tui] render = "1"` prints a frame after every key, and the session writes `[tui] out` (`tui.bdf`) on exit |
 
 Compile-time symbols win over the configuration file.
 
