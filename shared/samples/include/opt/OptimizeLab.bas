@@ -85,7 +85,7 @@ SUB Main()
     CALL OPT.BROYDEN(Equilibrio, e0, root)
     PRINT "BROYDEN  x,y ="; MATH.ROUND(root(0), 3); ","; MATH.ROUND(root(1), 3)
 
-    ' ── 4. algebra lineare (LEASTSQUARES, CHOLESOLVESOLVE) ───────────────────
+    ' ── 4. algebra lineare (LEASTSQUARES, CHOLESKYSOLVE) ───────────────────
     DIM A(5) AS DOUBLE
     A(0) = 1.0 : A(1) = 1.0 : A(2) = 1.0 : A(3) = 2.0 : A(4) = 1.0 : A(5) = 3.0
     DIM yb(2) AS DOUBLE
@@ -99,7 +99,7 @@ SUB Main()
     DIM rhs(1) AS DOUBLE
     rhs(0) = 10.0 : rhs(1) = 8.0
     DIM chol(1) AS DOUBLE
-    CALL OPT.CHOLESOLVESOLVE(SPD, 2, rhs, chol)
+    CALL OPT.CHOLESKYSOLVE(SPD, 2, rhs, chol)
     PRINT "CHOLESKY x,y ="; MATH.ROUND(chol(0), 3); ","; MATH.ROUND(chol(1), 3)
 
     ' ── 5. programmazione lineare (SIMPLEX, LINPROG, LINPROGEQ) ───────────────

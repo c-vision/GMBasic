@@ -1149,7 +1149,19 @@ public sealed partial class IlProgramCompiler
                 if (paramType is AnyType)
                     EmitObjectBoxedArgument(expr.Args[i]);
                 else
+                {
                     EmitExpression(expr.Args[i]);
+                    // FUNCTION NOMINATA con parametri ARRAY passata a un parametro FUNCTION di
+                    // una procedura UTENTE (2026-11-03): EmitExpression produce il delegate
+                    // `ref` (Cbrif*, firma T[]&) mentre il parametro è tipizzato Func<...> →
+                    // senza adattatore lo stack è del tipo sbagliato e `f(...)` dentro il
+                    // callee falliva (InvalidProgram/IndexOutOfRange, es. wrapper OPT).
+                    if (expr.Args[i] is FunctionReferenceExpr frArg
+                        && paramType is FunctionPointerType
+                        && _program.Symbols.GetSymbol(frArg.SymbolId).DeclarationNode is FunctionDefinition fdArg
+                        && TryRefDelegateType(fdArg) is { } refDelArg)
+                        EmitRefCallbackAdapter(refDelArg);
+                }
                 // Coerce dell'argomento al tipo del PARAMETRO: n (double da un FOR EACH su
                 // array) passato a `num AS INTEGER` (Int16 CLR) senza conversione → stack
                 // mismatch → InvalidProgram (IsPrimo(n) in una comprensione/FOR EACH).

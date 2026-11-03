@@ -497,8 +497,13 @@ public sealed partial class Compiler
             for (var ai = 0; ai < expr.Indices.Length; ai++)
             {
                 var argExpr = expr.Indices[ai];
+                /* Gli ARRAY non si incapsulano in una ByRefBox (2026-11-03): l'array è già
+                 * un riferimento e il callee lo usa tale e quale. Con la box, inoltrare un
+                 * PARAMETRO array a un'altra procedura passava la box e il callee vedeva
+                 * UBOUND=0/elementi vuoti (bug PCode: `SUB Outer(x()); CALL Inner(x)`). */
                 var isByRefArg = procArr is ProcedureDefinition pdArr && ai < pdArr.Parameters.Length &&
-                    pdArr.Parameters[ai].Flags.HasFlag(SymbolFlags.IsByRef);
+                    pdArr.Parameters[ai].Flags.HasFlag(SymbolFlags.IsByRef) &&
+                    !pdArr.Parameters[ai].Flags.HasFlag(SymbolFlags.IsArray);
                 if (isByRefArg && argExpr is VariableExpr veArg)
                 {
                     var localArgIdx = ResolveLocal(veArg.NameCleaned.Lexeme);
@@ -680,9 +685,13 @@ public sealed partial class Compiler
 
         for (var i = 0; i < expr.Args.Length && !isClosureCtxCall; i++)
         {
+            /* Gli ARRAY non si incapsulano in una ByRefBox (2026-11-03) — vedi il gemello
+             * nel percorso ArrayAccessExpr: inoltrare un PARAMETRO array a un'altra
+             * procedura passava la box e il callee vedeva UBOUND=0. */
             var isByRef = found && proc is ProcedureDefinition pd &&
                 i < pd.Parameters.Length &&
-                pd.Parameters[i].Flags.HasFlag(SymbolFlags.IsByRef);
+                pd.Parameters[i].Flags.HasFlag(SymbolFlags.IsByRef) &&
+                !pd.Parameters[i].Flags.HasFlag(SymbolFlags.IsArray);
             // BYREF scalare FFI (2026-09-28): riusa lo STESSO meccanismo del BYREF ordinario
             // (OP_MAKE_BYREF/OP_MAKE_BYREF_GLOBAL — una ByRefBox generica, scrive-attraverso
             // sullo slot locale/globale del chiamante). L'argomento deve essere una VARIABILE

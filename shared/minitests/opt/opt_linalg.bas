@@ -22,7 +22,7 @@ SUB Main()
     DIM bc(1) AS DOUBLE
     bc(0) = 10.0 : bc(1) = 8.0
     DIM xc(1) AS DOUBLE
-    CALL OPT.CHOLESOLVESOLVE(CH, 2, bc, xc)
+    CALL OPT.CHOLESKYSOLVE(CH, 2, bc, xc)
     PRINT "chol="; MATH.ROUND(xc(0), 4); ","; MATH.ROUND(xc(1), 4)
 
     ' SIMPLEX: max 2x+3y, x+y<=4, x<=2  ->  x=0, y=4, obiettivo 12
