@@ -864,8 +864,8 @@ static int dc_sb_add(char** buf, size_t* cap, size_t* off, const char* s, size_t
     return 1;
 }
 
-char* gmb_ai_decide_group_json(const char* state, const char* names_json, const char* kinds_json,
-                               const char* provider, const char* fallback) {
+static char* dc_group_build(const char* state, const char* names_json, const char* kinds_json,
+                            const char* provider, const char* fallback) {
     gmb_val_t nv = gmb_json_parse(names_json ? names_json : "[]");
     gmb_val_t kv = gmb_json_parse(kinds_json ? kinds_json : "[]");
     gmb_list_t nl = gmb_val_as_list(nv);
@@ -960,6 +960,42 @@ char* gmb_ai_decide_group_json(const char* state, const char* names_json, const 
     for (int i = 0; i < n; i++) { gmb_string_free(&names[i]); gmb_string_free(&kinds[i]); }
     free(names); free(kinds);
     return out;
+}
+
+/* Il desugar del batch emette UNA chiamata per ogni destinazione (EXTRACT dal gruppo): senza
+ * cache il gruppo verrebbe rieseguito N volte — con un provider generativo (adapter/LLM) i
+ * target vedrebbero generazioni DIVERSE, oltre al costo N×. Cache thread-local dell'ultima
+ * richiesta identica (stessa forma del provider managed). */
+static __thread char* g_group_key;
+static __thread char* g_group_result;
+
+static char* dc_group_cache_get(const char* key) {
+    if (g_group_key && g_group_result && strcmp(g_group_key, key) == 0)
+        return strdup(g_group_result);
+    return NULL;
+}
+static void dc_group_cache_put(const char* key, const char* result) {
+    free(g_group_key); g_group_key = strdup(key ? key : "");
+    free(g_group_result); g_group_result = strdup(result ? result : "");
+}
+
+char* gmb_ai_decide_group_json(const char* state, const char* names_json, const char* kinds_json,
+                               const char* provider, const char* fallback) {
+    const char* s = state ? state : "";
+    const char* nj = names_json ? names_json : "";
+    const char* kj = kinds_json ? kinds_json : "";
+    const char* pr = provider ? provider : "";
+    const char* fb = fallback ? fallback : "";
+    size_t klen = strlen(s) + strlen(nj) + strlen(kj) + strlen(pr) + strlen(fb) + 8;
+    char* key = (char*)malloc(klen);
+    if (!key) return dc_group_build(state, names_json, kinds_json, provider, fallback);
+    snprintf(key, klen, "%s\x1f%s\x1f%s\x1f%s\x1f%s", s, nj, kj, pr, fb);
+    char* cached = dc_group_cache_get(key);
+    if (cached) { free(key); return cached; }
+    char* result = dc_group_build(state, names_json, kinds_json, provider, fallback);
+    if (result) dc_group_cache_put(key, result);
+    free(key);
+    return result;
 }
 
 /* ── Diagnostica `AI DECIDE VERIFY`: stessa richiesta su più provider, report accordo/drift ── */
