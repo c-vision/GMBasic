@@ -92,6 +92,36 @@ static void emit_html(buf* b, const char* s, size_t n)
     }
 }
 
+/* Le pagine BSP contengono commenti BASIC `' ...` dentro i blocchi <% %>. Il motore
+ * di espressioni C (gmb_expr) usa `'` come delimitatore di STRINGA (idioma
+ * Clipper/SQL), quindi un commento verrebbe letto come stringa non chiusa →
+ * "expected expression". Qui si tolgono i commenti riga rispettando le stringhe
+ * "..." (un apostrofo DENTRO una stringa resta). Il testo HTML resta intatto. */
+static void buf_app_code(buf* b, const char* s, size_t n)
+{
+    size_t i = 0;
+    int in_str = 0;
+    while (i < n) {
+        char ch = s[i];
+        if (in_str) {
+            buf_napp(b, &ch, 1);
+            if (ch == '"') {
+                if (i + 1 < n && s[i + 1] == '"') { buf_napp(b, &s[i + 1], 1); i += 2; continue; }
+                in_str = 0;
+            }
+            i++;
+            continue;
+        }
+        if (ch == '"') { in_str = 1; buf_napp(b, &ch, 1); i++; continue; }
+        if (ch == '\'') {                       /* commento fino a fine riga */
+            while (i < n && s[i] != '\n') i++;
+            continue;
+        }
+        buf_napp(b, &ch, 1);
+        i++;
+    }
+}
+
 static const char* trim_start(const char* s, size_t* n)
 {
     while (*n && isspace((unsigned char)*s)) { s++; (*n)--; }
@@ -106,10 +136,11 @@ int gmb_bsp_compile(const char* src, char** out_bas)
     if (!src) src = "";
     buf b;
     memset(&b, 0, sizeof(b));
-    /* Preambolo: le direttive `<%@ IMPORT ... %>` erano IGNORATE (una pagina che importa
-     * AI/JSON compilava con "simbolo non trovato"). Parità con il BspCompiler C#: HTTP e
-     * STRINGS sempre, poi i namespace dichiarati. */
-    buf_app(&b, "IMPORT HTTP\nIMPORT STRINGS\n");
+    /* NIENTE IMPORT nel programma per gmb_expr: il valutatore non ha namespace e
+     * `IMPORT HTTP` verrebbe letto come identificatore `IMPORT` → "undefined identifier"
+     * (canvas.bsp non si renderizzava). Gli identificatori sono risolti da get/scope;
+     * le chiamate dal callback `call`. Le direttive <%@ ... %> sono quindi solo
+     * consumate (nessun codice emesso). */
     const char* p = src;
     while (*p) {
         const char* tag = strstr(p, "<%");
@@ -123,22 +154,7 @@ int gmb_bsp_compile(const char* src, char** out_bas)
             p++;
             const char* e = strstr(p, "%>");
             const char* end = e ? e : p + strlen(p);
-            /* direttiva: `IMPORT a, b` → `IMPORT a` + `IMPORT b` */
-            const char* q = p;
-            while (q < end && isspace((unsigned char)*q)) q++;
-            if (end - q >= 6 && !strncasecmp(q, "IMPORT", 6)) {
-                q += 6;
-                while (q < end) {
-                    while (q < end && (isspace((unsigned char)*q) || *q == ',')) q++;
-                    const char* ns = q;
-                    while (q < end && (isalnum((unsigned char)*q) || *q == '_' || *q == '.')) q++;
-                    if (q > ns) {
-                        buf_app(&b, "IMPORT ");
-                        buf_napp(&b, ns, (size_t)(q - ns));
-                        buf_app(&b, "\n");
-                    } else if (q < end && *q != ',') q++;
-                }
-            }
+            /* direttiva <%@ ... %>: solo consumata (IMPORT inclusi) — vedi sopra. */
             p = e ? e + 2 : end;
             continue;
         }
@@ -161,7 +177,7 @@ int gmb_bsp_compile(const char* src, char** out_bas)
         const char* e = strstr(p, "%>");
         size_t n = e ? (size_t)(e - p) : strlen(p);
         if (n) {
-            buf_napp(&b, p, n);
+            buf_app_code(&b, p, n);
             if (p[n - 1] != '\n') buf_app(&b, "\n");
         }
         p = e ? e + 2 : p + n;
@@ -288,6 +304,33 @@ static char* bsp_dup_lit(const char* s)
     return b;
 }
 
+/* Fallback STATICO di una pagina BSP: markup HTML/CSS/JS senza i blocchi <% %>.
+ * Serve quando il valutatore C non esegue un costrutto della pagina (DIM array,
+ * chiamate a FUNCTION dell'include, stato del runtime...): la UI resta viva perché
+ * carica i dati dagli endpoint /api/*. NON è SSR: il client lo legge nel commento
+ * HTML in testa (nessun inganno) e stderr riporta la causa. */
+static char* bsp_static_shell(const char* src)
+{
+    buf b;
+    memset(&b, 0, sizeof(b));
+    buf_app(&b, "<!-- BSP: SSR non eseguito dal motore C per questa pagina; "
+                "la UI carica i dati via /api/* -->\n");
+    const char* p = src ? src : "";
+    while (*p) {
+        const char* tag = strstr(p, "<%");
+        if (tag) {
+            if (tag > p) buf_napp(&b, p, (size_t)(tag - p));
+            const char* e = strstr(tag + 2, "%>");
+            p = e ? e + 2 : tag + strlen(tag);
+            continue;
+        }
+        buf_app(&b, p);
+        break;
+    }
+    if (!b.p) return strdup("");
+    return b.p;
+}
+
 int gmb_bsp_try_serve(const char* dir, const char* url_path, const char* query,
                       const char* host, char** out_html, int* out_status)
 {
@@ -325,13 +368,21 @@ int gmb_bsp_try_serve(const char* dir, const char* url_path, const char* query,
     bsp_seed_query(&env, query);
     rc = gmb_bsp_render(src, &env, gmb_expr_dict_get, gmb_expr_dict_set, NULL, out_html);
     gmb_dict_free(&env);
-    free(src);
     if (rc != GMB_EXPR_OK) {
+        /* Il motore di espressioni C non è un interprete BASIC completo: una pagina che
+         * usa costrutti fuori dal suo sottoinsieme non si può renderizzare qui. Si serve
+         * il MARKUP STATICO (stessa UI, dati via /api/*) invece del 500 "BSP error", che
+         * rendeva il dashboard inutilizzabile. Causa SEMPRE su stderr, nota nel commento
+         * HTML: non è un successo silenzioso. */
+        fprintf(stderr, "[bsp] %s: motore C non esegue la pagina (%s) → fallback statico\n",
+                path, gmb_expr_last_error());
         if (out_html && *out_html) { free(*out_html); *out_html = NULL; }
-        if (out_html) *out_html = bsp_dup_lit("BSP error");
-        if (out_status) *out_status = 500;
+        if (out_html) *out_html = bsp_static_shell(src);
+        if (out_status) *out_status = 200;
+        free(src);
         return 1;
     }
+    free(src);
     if (out_status) *out_status = 200;
     return 1;
 }

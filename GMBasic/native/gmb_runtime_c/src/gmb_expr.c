@@ -90,7 +90,12 @@ typedef struct {
      * chiamante (VM/C) lo mappa a NIL invece che a errore fatale — parità col C# che
      * spinge NIL per gli ignoti. First-error-wins: impostato solo se !failed. */
     int undef;
-    char* arena;
+    /* Arena a CHUNK IMMOBILI (lista): i puntatori dei nodi/array restano validi.
+     * Prima era un unico blocco con realloc: alla crescita il blocco si spostava e
+     * TUTTI i pointer già salvati (nodi, n->args, a/b) puntavano alla memoria liberata
+     * → crash/garbage su programmi lunghi (pagine BSP: la resa di index.bsp crashava
+     * in parse_print/parse_stmt_list). */
+    char* arena;                 /* testa della lista arena_chunk_t */
     size_t arena_used;
     size_t arena_cap;
     int capturing;
@@ -115,19 +120,29 @@ static void fail(ctx* c, const char* m)
 
 const char* gmb_expr_last_error(void) { return g_last_err; }
 
+typedef struct arena_chunk {
+    struct arena_chunk* next;
+    size_t used;
+    size_t cap;
+    char data[];
+} arena_chunk_t;
+
 static void* arena_alloc(ctx* c, size_t n)
 {
     size_t need = (n + 7u) & ~7u;
-    if (c->arena_used + need > c->arena_cap) {
-        size_t nc = c->arena_cap ? c->arena_cap * 2 : 8192;
-        while (nc < c->arena_used + need) nc *= 2;
-        char* p = (char*)realloc(c->arena, nc);
-        if (!p) { fail(c, "out of memory"); return NULL; }
-        c->arena = p;
-        c->arena_cap = nc;
+    arena_chunk_t* ch = (arena_chunk_t*)c->arena;
+    if (!ch || ch->used + need > ch->cap) {
+        size_t cap = 8192;
+        if (need + 64 > cap) cap = need + 64;
+        ch = (arena_chunk_t*)malloc(sizeof(arena_chunk_t) + cap);
+        if (!ch) { fail(c, "out of memory"); return NULL; }
+        ch->next = (arena_chunk_t*)c->arena;
+        ch->used = 0;
+        ch->cap = cap;
+        c->arena = (char*)ch;
     }
-    void* r = c->arena + c->arena_used;
-    c->arena_used += need;
+    void* r = ch->data + ch->used;
+    ch->used += need;
     memset(r, 0, need);
     return r;
 }
@@ -187,16 +202,19 @@ static void next_tok(ctx* c)
     if (*s == '"' || *s == '\'') {
         char q = *s++;
         size_t n = 0;
-        while (*s && *s != q) {
-            if (s[0] == q && s[1] == q) {
-                if (n + 1 < sizeof(c->text)) c->text[n++] = q;
-                s += 2;
-                continue;
+        /* Il raddoppio `""` (escape BASIC/JSON del quote) va gestito DENTRO il loop:
+         * con `while (*s && *s != q)` la guardia usciva prima di vedere la coppia,
+         * quindi `PRINT "<html lang=""en"">"` dava "expected expression" (le pagine
+         * BSP con attributi HTML non si potevano renderizzare col motore C). */
+        while (*s) {
+            if (s[0] == q) {
+                if (s[1] == q) { if (n + 1 < sizeof(c->text)) c->text[n++] = q; s += 2; continue; }
+                s++;            /* quote di chiusura */
+                break;
             }
             if (n + 1 < sizeof(c->text)) c->text[n++] = *s;
             s++;
         }
-        if (*s == q) s++;
         c->text[n] = 0;
         c->kind = TK_STR;
         c->p = s;
@@ -660,6 +678,7 @@ static node* parse_stmt_list(ctx* c)
     int cap = 4;
     if (!seq) return l;
     seq->args = (node**)arena_alloc(c, (size_t)cap * sizeof(node*));
+    if (!seq->args) return l;
     seq->args[seq->nargs++] = l;
     while (!is_stmt_end(c->kind) && !c->failed) {
         if (!args_grow(c, seq, &cap)) return seq;
@@ -1141,7 +1160,9 @@ int gmb_expr_parse(const char* src, int as_stmt, int eq_is_assign, gmb_expr_prog
 void gmb_expr_prog_free(gmb_expr_prog* p)
 {
     if (!p) return;
-    free(p->arena);
+    arena_chunk_t* ch = (arena_chunk_t*)p->arena;
+    while (ch) { arena_chunk_t* nx = ch->next; free(ch); ch = nx; }
+    p->arena = NULL;
     memset(p, 0, sizeof(*p));
 }
 

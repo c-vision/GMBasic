@@ -3,6 +3,11 @@
 Cruscotto web dello stack **AI Agents** di GMBasic, scritto **interamente in BASIC**:
 un launcher, cinque pagine BSP e due file JS. Nessun C# da toccare, nessun build step.
 
+> **Runtime canonico: C.** `tools/sh/webapp_up.sh start` (default) e
+> `gmb run --project shared/webapp` eseguono l'app con il compilatore C (C99Native): un solo
+> eseguibile nativo (runtime C + server HTTP + agent API). Il percorso C#
+> (`gmbcs run --engine pcode`) resta disponibile come alternativa/parità.
+
 ```
 shared/webapp/
 ├── app.bas              launcher: config, seed, due server, proxy /api/*, WebSocket
@@ -20,7 +25,7 @@ shared/webapp/
 
 | componente | porta | cosa fa |
 |---|---|---|
-| `AI AGENT SERVE` | **8765** | API JSON del runtime: `/api/agents`, `/api/teams`, `/api/events`, `/api/workflows` (+ `/{n}`, `/{n}/steps`, `/{n}/execute`, `DELETE`), `/api/team/{n}/broadcast`, `/api/agent/{n}/prompt`, `/api/memory` (+ `/search`), `/api/brain/*`, `/api/enrich` |
+| `AI AGENT SERVE` | **8765** | API JSON del runtime (`native/gmb_runtime_c/src/gmb_agent_http.c`): `/api/agents`, `/api/teams` (+ `/{n}`, POST, `/{n}/agents`, DELETE), `/api/events`, `/api/workflows` (+ `/{n}`, `/{n}/steps`, `/{n}/execute`, `DELETE`), `/api/team/{n}/broadcast`, `/api/agent/{n}/prompt`, `/api/memory` (+ `/search`), `/api/brain/*`, `/api/enrich` |
 | `HTTP SERVER` + BSP | **8090** | serve `pages/*.bsp` renderizzate e `static/*`; espone **tutta** `/api/*` come proxy same-origin verso 8765 (niente CORS); endpoint propri della app |
 | `HTTP ROUTE /ws/canvas` | 8090 | WebSocket: `WEBCANVAS` spinge frame JSON che `canvas.js` disegna |
 
@@ -94,6 +99,17 @@ Misure (loopback, keep-alive, c=10, PCode): `/index.bsp` da ~190 rps a **~21.000
 `bspCacheMs = 1000`; `/canvas.bsp` **~56.000 rps**; revalidation `304` ~25.000 rps. Il costo
 "a freddo" di una pagina resta ~2 ms: host+VM costano ~0,07 ms, il resto è l'esecuzione della
 pagina (query + costruzione dell'HTML).
+
+### Su C99Native (`gmb run`): valutatore C + shell statica
+
+Con il compilatore C non c'è una VM/C precompilata: le pagine passano dal valutatore di
+espressioni C (`gmb_expr`, sottoinsieme BASIC) con le direttive `<%@ ... %>` consumate e i
+commenti BASIC rimossi. `canvas.bsp` è reso **nativamente**. `index.bsp`/`wasm.bsp` usano
+costrutti fuori dal sottoinsieme (`DIM x() = AI.AGENTLIST()`, le `FUNCTION` di
+`shared/include/AgentsDashboard.inc`, `WASMBRIDGE.Info()`): in quel caso il server serve il
+**markup statico** della pagina (blocchi `<% %>` omessi) e la UI popola tutto via `/api/*`.
+Non è un 500 e non è silenzioso: la causa va su stderr e un commento HTML in testa alla
+pagina dichiara la modalità. Il percorso managed/VM/C continua a fare SSR completo.
 
 ### Due motori, UN SOLO stato (agenti/team/workflow/memoria)
 
@@ -222,13 +238,18 @@ valgono i default interni. **Nessun parametro è hardcoded** in `app.bas`.
 ## Avvio
 
 ```sh
-# gestione completa (start/stop/restart/status/logs/url) — backend PCode in-process
-tools/sh/webapp_up.sh start
+# gestione completa (start/stop/restart/status/logs/url) — DEFAULT: compilatore C
+tools/sh/webapp_up.sh start            # = start c
 tools/sh/webapp_up.sh status
 tools/sh/webapp_up.sh logs
 tools/sh/webapp_up.sh stop
 
-# equivalente manuale
+# alternativa C# (PCode in-process), stesso launcher e stesse porte
+tools/sh/webapp_up.sh start csharp
+
+# equivalente manuale (C: build in shared/webapp/bin e avvio)
+GMBasic/native/gmb_compiler_c/build/gmb run --project shared/webapp
+# equivalente manuale (C#, opzionale)
 GMBasicSharp/CompilerCli/bin/Debug/net10.0/gmbcs run --engine pcode shared/webapp/app.bas
 ```
 
@@ -252,8 +273,8 @@ tools/sh/webapp_selftest.sh
 Avvia la app (se non è già attiva), esercita pagine, statici, CRUD agenti, **persistenza
 agenti (file creato/rimosso)**, **team (create/409/aggiungi membro/file/delete)**,
 workflow (crea → step → esegui → cancella), memory (store/load/delete), brain, enrich,
-handshake WebSocket, poi ripulisce ciò che ha creato e ferma la app. Oggi: **43 PASS / 0 FAIL**
-(identico su PCode e IL).
+handshake WebSocket, poi ripulisce ciò che ha creato e ferma la app. Lo script usa
+`webapp_up.sh`, quindi gira sul **runtime C** di default (`start csharp` per il confronto).
 
 ## Note
 

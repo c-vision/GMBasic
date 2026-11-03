@@ -282,7 +282,20 @@ gmb_stmt_t* gmb_p_parse_agent(gmb_parser_t* p, int line)
             gmb_p_set_err(p, "Attesa chiave dopo AI AGENT SET <nome>", line);
             return s;
         }
-        gmb_expr_t* key = gmb_p_agent_term(p, line);
+        /* La CHIAVE è un NOME (parità C# ParseAiKeyToken), non un'espressione: con
+         * `AI AGENT SET (name) systemPrompt (v)` il termine `systemPrompt` veniva letto
+         * come chiamata di funzione (l'identificatore è "expr"), e l'emitter falliva con
+         * "simbolo non trovato: systemPrompt". Un identificatore qui è sempre letterale. */
+        gmb_expr_t* key;
+        if (kt->kind == GMB_TOK_Identifier) {
+            char kb[512];
+            int kl = kt->length < 511 ? kt->length : 511;
+            memcpy(kb, kt->lexeme, (size_t)kl); kb[kl] = 0;
+            gmb_p_adv(p);
+            key = gmb_expr_str(kb, line);
+        } else {
+            key = gmb_p_agent_term(p, line);
+        }
         if (key) gmb_p_agent_add_arg(s, key);
         /* virgola opzionale dopo la chiave + clausola 'VALUE' esplicita */
         gmb_p_match(p, GMB_TOK_Comma);

@@ -15414,6 +15414,25 @@ static void emit_arr_literal_assign(ctx_t* c, const char* target, gmb_expr_t* li
                return;
            }
        }
+       /* AI.AGENTLIST()/AI.AGENTEVENTS()/AI.LIST() su array di stringhe dinamico:
+        * il runtime ritorna gmb_list_t, il target è gmb_string_t* + <nome>_len.
+        * Senza conversione il C emesso non compila (`gmb_string_t* = gmb_list_t`):
+        * caso ApiEventStream della webapp (`DIM evs() AS STRING` + `evs = AI.AGENTEVENTS()`). */
+       if (target && value && value->kind == GMB_EXPR_CALL
+           && (value->tk == GMB_TOK_AiAgentList || value->tk == GMB_TOK_AiAgentEvents
+               || value->tk == GMB_TOK_AiList)) {
+           var_t* alv = lookup_var(c, target);
+           if (alv && alv->is_array && alv->type == TY_STR) {
+               ind(c); sb_put(&c->out, "{ gmb_int_t _aln = 0; ");
+               sb_ident(&c->out, alv->name);
+               sb_put(&c->out, " = gmb_list_to_strings_array(");
+               emit_expr(c, value);
+               sb_put(&c->out, ", &_aln); ");
+               sb_ident(&c->out, alv->name);
+               sb_put(&c->out, "_len = _aln; }\n");
+               return;
+           }
+       }
        /* IO.DIR(mask) su array di stringhe dinamico: gmb_fs_dir ritorna gmb_list_t,
         * il target e` gmb_string_t* + <nome>_len. */
        if (target && value && value->kind == GMB_EXPR_CALL && value->tk == GMB_TOK_DirFunc) {
