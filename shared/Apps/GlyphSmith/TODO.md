@@ -62,7 +62,18 @@ Verified on the four backends of the monorepo (IL, PCodeVM, VM-C, C99Native).
       (`TuiFrame`) e tasti da `[tui] keys`, cosi' il percorso e' verificato nel check.
 - [ ] Lettura dei tasti dal **terminale** (oggi arrivano dallo script `[tui] keys`): stesso
       `TuiApply`, cambia solo la sorgente.
-- [ ] **GUI** window with zoom, glyph list, metrics panel (`WINDOW DEFINE`, `IMAGE*`).
+- [x] **GUI** (`mode = "gui"`): finestra PIXEL (`SCREEN 12` + `WINDOW DEFINE ... PIXEL`),
+      griglia del glifo zoomata (`zoom`), pannello metriche (`enc`, `bbx`, `dwx`) e cambio glifo
+      con `n`/`p`, ESC/`q` per uscire. È una **seconda vista** sullo stesso modello: i tasti
+      passano da `TuiApply`. Si chiude da sola dopo `[gui] frames` e stampa marker deterministici
+      (`GUI-READY`, `GUI-FRAME n`, `GUI-EXIT`) per la verifica. Disegno con `LINE ... "B"/"BF"`:
+      `IMAGEPUT` non serve (nessuna immagine da caricare). **Verificato il flusso di controllo** su
+      VM/C: `GUI-READY` → `GUI-FRAME n` → uscita su ESC iniettato dall'host (`GUI-EXIT`), exit 0.
+      **La resa NON è verificata**: in questo ambiente il backend grafico risponde
+      `[gmb_gfx] present_start: video=0 video_driver=none` e `CreateWindow FAILED: No available
+      video device`, quindi la finestra va guardata da una sessione desktop (Terminal.app) con
+      `mode = "gui"`. Manca anche un gate a pixel (`test_graphics_*`) nel repo: è una voce aperta
+      di ServiceConsole, non di questa app.
 - [ ] Both front-ends must keep the `check` mode byte-identical (golden artefacts in
       `bin/`), so the headless path stays the reference.
 

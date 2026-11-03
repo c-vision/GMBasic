@@ -22,6 +22,7 @@
 '   -DGLYPHSMITH_MODE_SHEET     scrive gli export in <app>/bin
 '   -DGLYPHSMITH_MODE_EDIT      applica lo script batch di editing, poi salva
 '   -DGLYPHSMITH_MODE_BMPIN     importa un foglio BMP 24-bit come glifi (ritaglio)
+'   -DGLYPHSMITH_MODE_GUI       finestra grafica (griglia zoomata, lista, metriche)
 '
 ' RUN (dalla root del monorepo):
 '   bash tools/sh/gmb_c99native_run.sh ../shared/Apps/GlyphSmith/src/GlyphSmith.bas
@@ -72,6 +73,11 @@ DIM g_bmpinCellH AS INTEGER
 DIM g_bmpinFirst AS LONG
 DIM g_bmpinTrim AS STRING
 DIM g_bmpinOut AS STRING
+
+' --- M4: GUI (finestra PIXEL sullo stesso modello) --------------------------
+DIM g_guiZoom AS INTEGER
+DIM g_guiFrames AS INTEGER
+DIM g_guiGlyph AS INTEGER
 
 ' --- Intestazione del font --------------------------------------------------
 DIM g_startFont AS STRING
@@ -172,6 +178,8 @@ SUB Main()
         RunTextIn()
     ELSEIF mode = "BMPIN" THEN
         RunBmpIn()
+    ELSEIF mode = "GUI" THEN
+        RunGui()
     ELSEIF mode = "TUI" THEN
         RunTui()
     ELSE
@@ -199,6 +207,9 @@ FUNCTION ComputeMode() AS STRING
 #ENDIF
 #IFDEF GLYPHSMITH_MODE_BMPIN
     m = "BMPIN"
+#ENDIF
+#IFDEF GLYPHSMITH_MODE_GUI
+    m = "GUI"
 #ENDIF
 #IFDEF GLYPHSMITH_MODE_TUI
     m = "TUI"
@@ -238,6 +249,9 @@ SUB ConfigureDefaults()
     g_bmpinFirst = 32
     g_bmpinTrim = "1"
     g_bmpinOut = "from_bmp.bdf"
+    g_guiZoom = 8
+    g_guiFrames = 2
+    g_guiGlyph = 0
     g_tuiKeys = "edits/keys.txt"
     g_tuiRender = "0"
     g_tuiOut = "tui.bdf"
@@ -320,6 +334,9 @@ SUB ParseSettingsFile(path AS STRING)
                     IF section = "BMPIN" AND key = "FIRST" THEN g_bmpinFirst = CLNG(VAL(val))
                     IF section = "BMPIN" AND key = "TRIM" THEN g_bmpinTrim = val
                     IF section = "BMPIN" AND key = "OUT" THEN g_bmpinOut = val
+                    IF section = "GUI" AND key = "ZOOM" THEN g_guiZoom = CINT(VAL(val))
+                    IF section = "GUI" AND key = "FRAMES" THEN g_guiFrames = CINT(VAL(val))
+                    IF section = "GUI" AND key = "GLYPH" THEN g_guiGlyph = CINT(VAL(val))
                     IF section = "TUI" AND key = "KEYS" THEN g_tuiKeys = val
                     IF section = "TUI" AND key = "RENDER" THEN g_tuiRender = val
                     IF section = "TUI" AND key = "OUT" THEN g_tuiOut = val
@@ -422,7 +439,7 @@ SUB PrintStatus()
         PRINT "bounding box : "; g_bbW; "x"; g_bbH; " a "; g_bbX; ","; g_bbY
     END IF
     PRINT ""
-    PRINT "modi         : -DGLYPHSMITH_MODE_CHECK | _SHEET | _EDIT | _IMPORT | _TEXTIN | _TUI | _BMPIN"
+    PRINT "modi         : -DGLYPHSMITH_MODE_CHECK | _SHEET | _EDIT | _IMPORT | _TEXTIN | _TUI | _BMPIN | _GUI"
 END SUB
 
 FUNCTION PresenceText(p AS STRING) AS STRING
@@ -2484,6 +2501,80 @@ SUB RunBmpIn()
     PRINT "glifi        : "; g_nGlyphs
     PRINT "bounding box : "; g_bbW; "x"; g_bbH
     PRINT "bdf          : "; OutPath(g_bmpinOut); " ("; FileSizeOf(OutPath(g_bmpinOut)); " byte)"
+END SUB
+
+' ============================================================================
+' MODE: GUI (finestra PIXEL — seconda vista sullo stesso modello)
+' ============================================================================
+' Non e' un secondo editor: disegna il modello e applica gli STESSI verbi TUI
+' (TuiApply) ai tasti che arrivano da INKEY(). La finestra si chiude da sola dopo
+' [gui] frames, cosi' il percorso e' verificabile senza toccare il desktop a mano:
+' marker deterministici GUI-READY / GUI-FRAME n / GUI-EXIT.
+' Nota: la resa grafica richiede un backend con finestre (verificata su VM/C); su
+' un leg senza finestre la finestra non compare e restano i marker di testo.
+SUB RunGui()
+    DIM f AS INTEGER, nf AS INTEGER, zoom AS INTEGER
+    DIM k AS STRING, quit AS INTEGER, prev AS INTEGER
+    LoadBdf(BdfPath())
+    IF g_nGlyphs < 1 THEN Fail("GUI: nessun glifo")
+    zoom = g_guiZoom
+    IF zoom < 1 THEN zoom = 1
+    nf = g_guiFrames
+    IF nf < 1 THEN nf = 1
+    IF g_guiGlyph < 0 THEN g_guiGlyph = 0
+    IF g_guiGlyph > g_nGlyphs - 1 THEN g_guiGlyph = g_nGlyphs - 1
+
+    SCREEN 12
+    WINDOW DEFINE GsMain FROM 20, 20 TO 240, 360 TITLE "GlyphSmith" PIXEL
+    WINDOW SELECT GsMain
+    PRINT "GUI-READY glyphs="; g_nGlyphs; " zoom="; zoom
+    f = 0
+    quit = 0
+    WHILE f < nf AND quit = 0
+        f = f + 1
+        GuiDraw(g_guiGlyph, zoom)
+        PRINT "GUI-FRAME "; f; " glyph="; g_guiGlyph; " enc="; g_enc(g_guiGlyph); " box="; g_gw(g_guiGlyph); "x"; g_gh(g_guiGlyph)
+        k = INKEY()
+        IF LEN(k) > 0 THEN
+            IF k = CHR$(27) THEN quit = 1
+            IF k = "q" THEN quit = 1
+            IF k = "n" THEN
+                prev = g_guiGlyph + 1
+                IF prev > g_nGlyphs - 1 THEN prev = 0
+                g_guiGlyph = prev
+            END IF
+            IF k = "p" THEN
+                prev = g_guiGlyph - 1
+                IF prev < 0 THEN prev = g_nGlyphs - 1
+                g_guiGlyph = prev
+            END IF
+        END IF
+    WEND
+    WINDOW SELECT 0
+    PRINT "GUI-EXIT frames="; f; " glyph="; g_guiGlyph
+END SUB
+
+' Disegno del frame: griglia zoomata del glifo corrente + metriche. Coordinate
+' relative al client della finestra selezionata (come i sample WINDOW ... PIXEL).
+SUB GuiDraw(gcur AS INTEGER, zoom AS INTEGER)
+    DIM px AS INTEGER, py AS INTEGER, ox AS INTEGER, oy AS INTEGER
+    CLS
+    ox = 12
+    oy = 12
+    FOR py = 0 TO g_gh(gcur) - 1
+        FOR px = 0 TO g_gw(gcur) - 1
+            IF GetPx(gcur, px, py) = 1 THEN
+                LINE (ox + px * zoom, oy + py * zoom)-(ox + px * zoom + zoom - 1, oy + py * zoom + zoom - 1), 15, "BF"
+            END IF
+        NEXT px
+    NEXT py
+    LINE (ox - 2, oy - 2)-(ox + g_gw(gcur) * zoom + 1, oy + g_gh(gcur) * zoom + 1), 7, "B"
+    PRINT "glifo "; gcur; " di "; g_nGlyphs - 1
+    PRINT "enc   "; g_enc(gcur)
+    PRINT "bbx   "; g_gw(gcur); "x"; g_gh(gcur); " a "; g_gx(gcur); ","; g_gy(gcur)
+    PRINT "dwx   "; g_dwx(gcur)
+    PRINT "n p   glifo precedente / successivo"
+    PRINT "esc q esci"
 END SUB
 
 SUB SheetAll()
