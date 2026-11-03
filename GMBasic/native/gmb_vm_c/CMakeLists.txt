@@ -129,6 +129,21 @@ target_compile_definitions(gmb_vm PRIVATE GMB_NATIVE_DB)
 target_include_directories(gmb_vm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_db_c/include)
 target_link_libraries(gmb_vm PRIVATE gmb_db)
 
+# ── Valutatore a runtime come libreria CONDIVISA (libgmb_eval) ──────────────
+# Compilatore C + VM minima, caricata ON DEMAND (dlopen) dai contesti senza VM
+# (filtri DBF/SPEED, programmi C99Native). Non è linkata nei binari normali.
+add_library(gmb_eval SHARED gmb_eval_lib.c)
+target_include_directories(gmb_eval PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c/include)
+target_link_libraries(gmb_eval PRIVATE gmb_vm gmb_runtime gmb_compiler_c pthread ${CMAKE_DL_LIBS})
+set_target_properties(gmb_eval PROPERTIES
+    OUTPUT_NAME gmb_eval
+    C_VISIBILITY_PRESET default)
+if(APPLE)
+    target_link_options(gmb_eval PRIVATE "LINKER:-u,_gmb_builtin_ext_anchor")
+endif()
+
 # ── BSP engine come libreria CONDIVISA per P/Invoke (C#) ─────────────────────
 # Espone il renderer VM/C (gmb_vm_bsp.c) senza passare dal processo gmb_vm_host:
 # un host C# può servire le pagine .bsp eseguendole nella VM C in-process.

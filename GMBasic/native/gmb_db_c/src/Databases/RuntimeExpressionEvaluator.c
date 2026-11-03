@@ -260,7 +260,11 @@ int RuntimeExpressionEvaluator_Eval(const char* expression, RtFilterGetField get
     gmb_val_t v = gmb_val_nil();
     env.get = get;
     env.ctx = ctx;
-    if (gmb_expr_eval_filter(expression, &env, rt_expr_get, NULL, &v) != GMB_EXPR_OK)
+    /* Motore compilatore+VM (in-process o libgmb_eval on-demand); fallback al
+     * valutatore runtime finché la gamba senza motore non è completa. */
+    int rc = gmb_eval_filter_env(expression, rt_expr_get, NULL, &env, &v);
+    if (rc != 0) rc = gmb_expr_eval_filter(expression, &env, rt_expr_get, NULL, &v);
+    if (rc != GMB_EXPR_OK)
         return 0;
     return rt_val_truth(v);
 }
@@ -292,7 +296,9 @@ int RuntimeExpressionEvaluator_EvalVal(const char* expression, RtFilterGetFieldV
     env.get = get;
     env.call = call;
     env.ctx = ctx;
-    if (gmb_expr_eval_filter_ex(expression, &env, rt_get_val, NULL, call, &v) != GMB_EXPR_OK)
+    int rc = gmb_eval_filter_env(expression, rt_get_val, NULL, &env, &v);
+    if (rc != 0) rc = gmb_expr_eval_filter_ex(expression, &env, rt_get_val, NULL, call, &v);
+    if (rc != GMB_EXPR_OK)
         return 0;
     return rt_val_truth(v);
 }
