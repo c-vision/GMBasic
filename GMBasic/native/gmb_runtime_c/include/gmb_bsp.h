@@ -11,8 +11,12 @@
 extern "C" {
 #endif
 
-/* Transpila src BSP in BASIC. *out_bas è malloc (caller free). */
+/* Transpila src BSP in BASIC. *out_bas è malloc (caller free).
+ * `gmb_bsp_compile` = BASIC per il valutatore di espressioni (niente IMPORT).
+ * `gmb_bsp_compile_full` = BASIC per il COMPILATORE completo (VM/C): emette le
+ * direttive IMPORT della pagina, quindi `DASHBOARD.*`, `AI.*`, … si risolvono. */
 int gmb_bsp_compile(const char* src, char** out_bas);
+int gmb_bsp_compile_full(const char* src, char** out_bas);
 
 /* compile + exec_capture. *out_html è malloc (caller free). */
 int gmb_bsp_render(const char* src, void* env,
@@ -26,6 +30,11 @@ int gmb_bsp_render(const char* src, void* env,
  * malloc), 0 = non .bsp o file assente (il caller può fare fallback statico/404). */
 int gmb_bsp_try_serve(const char* dir, const char* url_path, const char* query,
                       const char* host, char** out_html, int* out_status);
+
+/* Renderer BSP COMPLETO via `libgmb_bsp` (VM/C, pagine precompilate in chunk A1):
+ * 1 = gestita, 0 = dylib/sidecar assente → il chiamante usa gmb_expr/fallback. */
+int gmb_bsp_gateway_serve(const char* dir, const char* url_path, const char* query,
+                          const char* host, char** out_html, int* out_status);
 
 /* Renderer VM (registrato da gmb_vm_c): esegue la pagina precompilata (sidecar
  * chunk A1 "<file>.bsp.chunk") con la VM BASIC completa. 1 = gestita

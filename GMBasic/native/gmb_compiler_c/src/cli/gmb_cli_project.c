@@ -790,6 +790,9 @@ int build_project(const Options* o, const char* project, const char* entry,
         d.skills = o->skills;         d.skills_sel = o->skills_sel;
         d.brains = o->brains;         d.brains_sel = o->brains_sel;
         gmb_deploy_bundle(exe, tc.install, &d, o->quiet);
+        /* Pagine BSP: sidecar A1 per il motore COMPLETO (VM/C). Stesso passo di build:
+         * il progetto non deve lanciare tool a mano. */
+        gmb_cli_precompile_bsp(project);
     }
     return 0;
 }

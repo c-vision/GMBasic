@@ -202,6 +202,8 @@ set(GMB_ALL_SRCS
     # Scope dinamico BASIC (DYNAMIC): catena di frame per-task, condivisa VM/C/C99Native
     src/gmb_dscope.c
     src/gmb_bsp.c
+    src/gmb_bsp_compile.c
+    src/gmb_bsp_gateway.c
     src/gmb_state_hook.c   # hook opzionale di stato (agenti/team/workflow/memoria) per la VM/C ospitata
     src/gmb_list.c
     src/gmb_dict.c

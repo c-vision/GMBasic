@@ -61,7 +61,7 @@ target_compile_options(gmb_c99native_driver PRIVATE -Wall -Wextra)
 # ── CLI di PROGETTO (O7): `gmb check|build|run --project <dir>`. Linka SOLO il front-end
 # (la discovery `gmb_inc_resolve`, la stessa del compilatore: niente copie nel CLI). È il
 # contratto a processo che l'IDE userà (D4); il driver C99Native lo cerca accanto al binario.
-add_executable(gmb_cli src/cli/gmb_cli.c src/cli/gmb_cli_project.c src/cli/gmb_cli_dump.c src/cli/gmb_cli_engine.c src/cli/gmb_cli_usage.c src/cli/gmb_cli_admin.c src/cli/gmb_cli_file.c src/cli/gmb_cli_deploy.c src/cli/gmb_cli_args.c
+add_executable(gmb_cli src/cli/gmb_cli.c src/cli/gmb_cli_project.c src/cli/gmb_cli_dump.c src/cli/gmb_cli_engine.c src/cli/gmb_cli_usage.c src/cli/gmb_cli_admin.c src/cli/gmb_cli_file.c src/cli/gmb_cli_deploy.c src/cli/gmb_cli_args.c src/cli/gmb_cli_bsp.c
                ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_bytecode/src/gmb_disasm.c
                ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_vm_c/gmb_chunk.c
                $<TARGET_OBJECTS:gmb_frontend>)   # split per la soglia 1200 righe (§0quater)
@@ -86,7 +86,10 @@ target_compile_options(gmb_lsp PRIVATE -Wall -Wextra)
 # ── Driver chunk A1/GMBC (.bas -> bytecode VM/C): usato da tools/test_mcp_e2e.sh e da
 # gmbsuite. Stesso problema del gmb_c99native_driver: senza target CMake il binario
 # restava STALE dopo ogni modifica a parser/emitter.
-add_executable(gmb_chunk_driver "${CMAKE_CURRENT_SOURCE_DIR}/../gmb_bytecode/driver/gmb_chunk_driver.c")
+add_executable(gmb_chunk_driver "${CMAKE_CURRENT_SOURCE_DIR}/../gmb_bytecode/driver/gmb_chunk_driver.c"
+               "${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c/src/gmb_bsp_compile.c")
+target_include_directories(gmb_chunk_driver PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c/src")
 target_link_libraries(gmb_chunk_driver PRIVATE gmb_compiler_c "-lc++" m pthread)
 target_compile_options(gmb_chunk_driver PRIVATE -Wall -Wextra)
 
