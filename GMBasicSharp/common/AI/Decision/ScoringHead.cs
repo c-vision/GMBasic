@@ -65,6 +65,18 @@ public sealed class ScoringHead
         var path = Path.Combine(modelDir, FileName);
         if (!File.Exists(path))
             return null;
+        return TryLoadFile(path);
+    }
+
+    /// <summary>Carica un artefatto a PATH ESPLICITO (`decideCalibration` nella config del
+    /// provider). File assente o illeggibile = errore esplicito: la calibrazione richiesta non
+    /// può degradare in silenzio a identità.</summary>
+    public static ScoringHead TryLoadFile(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            throw new DecisionProviderException("scoring_head.json: path vuoto.");
+        if (!File.Exists(path))
+            throw new DecisionProviderException($"scoring_head.json non trovato ('{path}').");
         try
         {
             return Parse(File.ReadAllText(path));

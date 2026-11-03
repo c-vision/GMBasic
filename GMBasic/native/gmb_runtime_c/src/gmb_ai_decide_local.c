@@ -79,6 +79,11 @@ typedef struct {
     /* scoring_head.json (opzionale): -1 = non letto, 0 = assente, 1 = caricato. */
     int head_state;
     gmb_decision_head_t head;
+    /* Config decide per il modello attivo (dalla config del provider completion, la stessa
+     * che porta modelDir/engine): decide=off|on|auto, decideTemplate, decideCalibration. */
+    char decide_mode[16];
+    char decide_template[4096];
+    char decide_calibration[LOCAL_MODEL_CAP];
 } local_ctx_t;
 
 static local_ctx_t g_local;
@@ -173,11 +178,36 @@ static void close_locked(local_ctx_t* c)
     gmb_decision_head_init(&c->head);
     c->model[0] = 0;
     c->err[0] = 0;
+    snprintf(c->decide_mode, sizeof c->decide_mode, "auto");
+    c->decide_template[0] = 0;
+    c->decide_calibration[0] = 0;
+}
+
+/* Legge le chiavi decide* dalla config del provider completion attivo (JSON di AI REGISTER).
+ * `gmb_json_extract` è un simbolo del core (ancorato dal gateway). Assente => default auto. */
+static void load_decide_config(local_ctx_t* c) {
+    snprintf(c->decide_mode, sizeof c->decide_mode, "auto");
+    c->decide_template[0] = 0;
+    c->decide_calibration[0] = 0;
+    const char* cfg = gmb_provider_active_config("completion");
+    if (!cfg || !*cfg) return;
+    char* v = gmb_json_extract(cfg, "decide");
+    if (v) { if (*v && strcmp(v, "null") != 0) snprintf(c->decide_mode, sizeof c->decide_mode, "%s", v); free(v); }
+    v = gmb_json_extract(cfg, "decideTemplate");
+    if (v) { if (*v && strcmp(v, "null") != 0) snprintf(c->decide_template, sizeof c->decide_template, "%s", v); free(v); }
+    v = gmb_json_extract(cfg, "decideCalibration");
+    if (v) { if (*v && strcmp(v, "null") != 0) { expand_home(v, c->decide_calibration, sizeof c->decide_calibration); } free(v); }
 }
 
 /* Apre/riusa il modello attivo. Ritorna 0 ok / -1 con motivo in err. */
 static int ensure_model(char* err, size_t errcap)
 {
+    load_decide_config(&g_local);
+    if (strcasecmp(g_local.decide_mode, "off") == 0) {
+        set_err(err, errcap,
+                "local provider: decisione disabilitata per questo modello (decide=off)", NULL);
+        return -1;
+    }
     const char* active = gmb_ai_decide_active_model_path();
     if (!active || !*active) {
         set_err(err, errcap, "local provider non disponibile",
@@ -228,7 +258,9 @@ static int ensure_model(char* err, size_t errcap)
     g_local.model_h = m;
     g_local.tok = tok;
     gmb_decision_head_init(&g_local.head);
-    g_local.head_state = gmb_decision_head_load(model, &g_local.head);
+    g_local.head_state = g_local.decide_calibration[0]
+        ? gmb_decision_head_load_file(g_local.decide_calibration, &g_local.head)
+        : gmb_decision_head_load(model, &g_local.head);
     if (g_local.head_state < 0) {
         /* Artefatto presente ma illeggibile: errore esplicito (parità col provider C#),
          * non una decisione "non calibrata" silenziosa. */
@@ -315,16 +347,43 @@ static int local_build_prompt(local_ctx_t* c, const char* state,
         if (used >= sizeof labels) return -1;
         snprintf(labels + used, sizeof labels - used, "%s%s", i ? ", " : "", lab);
     }
-    size_t need = strlen(st) + strlen(labels) + 512;
-    char* user = (char*)malloc(need);
+    /* decideTemplate: se contiene {state}/{options} è un TEMPLATE del messaggio utente; se non
+     * contiene placeholder è il testo di SISTEMA (override completo). Default invariato. */
+    const char* sys = "You are a decision engine. Choose exactly one allowed option.";
+    size_t base = strlen(st) + strlen(labels) + 512;
+    size_t tplcap = strlen(c->decide_template);
+    /* Capacità nel caso peggiore: ogni occorrenza dei placeholder può espandere lo stato/le
+     * opzioni, quindi si dimensiona sul numero massimo di occorrenze (poi si taglia al buffer). */
+    size_t cap2 = base;
+    if (tplcap) {
+        size_t worst = tplcap + (tplcap / 7 + 1) * strlen(st)
+                     + (tplcap / 9 + 1) * strlen(labels) + 2;
+        if (worst > cap2) cap2 = worst;
+    }
+    char* user = (char*)malloc(cap2);
     if (!user) { set_err(err, errcap, "local provider: memoria esaurita", NULL); return -1; }
-    snprintf(user, need,
-             "State:\n%s\nAllowed options: %s\nAnswer with exactly one option and nothing else.",
-             st, labels);
+    if (c->decide_template[0] &&
+        (strstr(c->decide_template, "{state}") || strstr(c->decide_template, "{options}"))) {
+        const char* t = c->decide_template;
+        size_t o = 0;
+        while (*t && o + 1 < cap2) {
+            if (strncmp(t, "{state}", 7) == 0) {
+                size_t l = strlen(st); memcpy(user + o, st, l); o += l; t += 7;
+            } else if (strncmp(t, "{options}", 9) == 0) {
+                size_t l = strlen(labels); memcpy(user + o, labels, l); o += l; t += 9;
+            } else {
+                user[o++] = *t++;
+            }
+        }
+        user[o] = 0;
+    } else {
+        if (c->decide_template[0]) sys = c->decide_template;
+        snprintf(user, cap2,
+                 "State:\n%s\nAllowed options: %s\nAnswer with exactly one option and nothing else.",
+                 st, labels);
+    }
     char rerr[LOCAL_ERR_CAP] = "";
-    int rc = llmmodelio_chat_render(c->model,
-        "You are a decision engine. Choose exactly one allowed option.",
-        user, prompt, cap, rerr, sizeof rerr);
+    int rc = llmmodelio_chat_render(c->model, sys, user, prompt, cap, rerr, sizeof rerr);
     free(user);
     if (rc != 0) set_err(err, errcap, "local provider: prompt non costruibile", rerr);
     return rc;

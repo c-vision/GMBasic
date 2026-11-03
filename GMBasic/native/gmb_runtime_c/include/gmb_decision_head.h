@@ -39,6 +39,10 @@ void gmb_decision_head_init(gmb_decision_head_t* head);
  * 1 = artefatto caricato, 0 = assente, -1 = presente ma illeggibile/malformato. */
 int gmb_decision_head_load(const char* model_dir, gmb_decision_head_t* head);
 
+/* Carica l'artefatto da un PATH ESPLICITO (config provider `decideCalibration`). Stessi
+ * codici di ritorno di `gmb_decision_head_load`. */
+int gmb_decision_head_load_file(const char* path, gmb_decision_head_t* head);
+
 /* Slot canonico 0..23 dell'opzione (prima id, poi label), o -1 se non canonico. */
 int gmb_decision_head_slot(const gmb_decision_option_t* option);
 
