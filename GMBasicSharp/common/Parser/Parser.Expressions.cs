@@ -1695,6 +1695,18 @@ public sealed partial class Parser
         }
 
 
+        // ENV$ / ENV.HAS: arità ESATTAMENTE 1. Se il nome risolve a una di queste procedure
+        // ma gli argomenti sono 0/2, l'errore è di PARAMETRI (compilazione) su tutte le gambe:
+        // senza questo check il candidato non era "compatible" → null → il linker parlava di
+        // "Simbolo non definito: ENV" (e VM/C usciva 134 prima del fix del runner).
+        if (candidates.Any(p => p is NativeProcedureDefinition np
+                && np.BuiltinKind is TokenKind.EnvGet or TokenKind.EnvHas)
+            && args.Length != 1)
+        {
+            throw CreateError(nameToken,
+                $"{nameToken.Lexeme} richiede 1 argomento (nome della variabile d'ambiente).");
+        }
+
         var compatibleCandidates = candidates.Where(proc =>
         {
             var lastParam = proc.Parameters.LastOrDefault();
