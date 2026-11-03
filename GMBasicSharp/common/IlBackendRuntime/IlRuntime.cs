@@ -2570,6 +2570,15 @@ public static partial class IlRuntime
         return index >= 1 && index < args.Length ? args[index] : string.Empty;
     }
 
+    /// <summary>ENV$(nome): valore della variabile d'ambiente, "" se assente. Lettura
+    /// ESPLICITA del programma utente; il motore continua a usare il registro opzioni.</summary>
+    public static string EnvGet(string? name)
+        => string.IsNullOrEmpty(name) ? string.Empty : (Environment.GetEnvironmentVariable(name) ?? string.Empty);
+
+    /// <summary>ENV.HAS(nome): -1 se presente, 0 se assente (convenzione booleana BASIC).</summary>
+    public static double EnvHas(string? name)
+        => !string.IsNullOrEmpty(name) && Environment.GetEnvironmentVariable(name) is not null ? -1.0 : 0.0;
+
     // IO: handle file autonomi per il codice IL, separati dal registro della VM.
     private static long StoreFile(FileStream stream)
     {

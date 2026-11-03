@@ -2158,6 +2158,9 @@ gmb_val_t gmb_anova_flat(const double* data, const int* sizes, int k);
 gmb_val_t gmb_anova_jagged(const double* const* rows, const int* sizes, int k);
 /* Argomenti da riga di comando (salvati da main via gmb_set_command_args). */
 void gmb_set_command_args(int argc, char** argv);
+/* ENV$(nome) / ENV.HAS(nome) — lettura esplicita dell'ambiente (sola lettura). */
+const char* gmb_env_get(const char* name);
+int gmb_env_has(const char* name);
 int gmb_command_count(void);
 const char* gmb_command_arg(int i);
 /* TSMINMAX: [min, max] della serie. */

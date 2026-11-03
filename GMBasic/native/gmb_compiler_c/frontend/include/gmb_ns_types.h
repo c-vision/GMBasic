@@ -626,6 +626,8 @@ static const gmb_ns_type_row_t gmb_ns_types[] = {
     { GMB_TOK_DbfFollowReplication, 0 },
     { GMB_TOK_DbfReplicationShipTcp, 0 },
     { GMB_TOK_DbfReplicationRecvTcp, 0 },
+    { GMB_TOK_EnvGet, 1 },
+    { GMB_TOK_EnvHas, 0 },
     { GMB_TOK_Pmt, 0 },
     { GMB_TOK_Fv, 0 },
     { GMB_TOK_Pv, 0 },

@@ -644,6 +644,8 @@ static const gmb_ns_lookup_row_t gmb_ns_lookup[] = {
     { "DBF", "SETDURABILITY", GMB_TOK_DbfSetDurability },
     { "DBF", "SETREPLICATION", GMB_TOK_DbfSetReplication },
     { "DBF", "USED", GMB_TOK_Used },
+    { "ENV", "ENV", GMB_TOK_EnvGet },
+    { "ENV", "HAS", GMB_TOK_EnvHas },
     { "FINANCE", "CUMIPMT", GMB_TOK_Cumipmt },
     { "FINANCE", "CUMPRINC", GMB_TOK_Cumprinc },
     { "FINANCE", "DAYS360", GMB_TOK_Days360 },
