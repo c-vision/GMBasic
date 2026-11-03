@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: samples/Documents/ConvertFullCoverage.bas
 ' Sample COMPLETO del namespace CONVERT — tutte le funzioni, deterministico.
 ' Markdown (Parse/Headings/Links/MdImages/Tables/CodeBlocks/Query/Tree/RenderHtml/

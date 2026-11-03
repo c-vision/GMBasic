@@ -24,7 +24,7 @@
 '   curl -N http://127.0.0.1:8775/export
 '   curl -i -X POST http://127.0.0.1:8775/created
 '
-' EXPECT: start|progress=[ok]|header=[export-42]|export=[ok]|created=[201]|body=[phase1;phase2;done]
+' (nessun oracolo: è un Sample, non un MiniTest)
 IMPORT HTTP
 
 ' --- 1) SSE di avanzamento: StartStream + Write + Flush + EndStream -------------------

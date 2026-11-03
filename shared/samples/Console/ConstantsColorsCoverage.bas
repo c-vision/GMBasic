@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: Console/ConstantsColorsCoverage.bas
 ' =================================================================================================
 ' TEST UNITARIO: CONSOLE — COSTANTI COLORE NOMINATE (ANSI-256)

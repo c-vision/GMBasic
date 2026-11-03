@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: AI/AiAgentUncoveredCoverage.bas
 ' =================================================================================================
 ' TEST UNITARIO: AIAGENT - FUNZIONI NON ANCORA COPERTE DAGLI ESEMPI

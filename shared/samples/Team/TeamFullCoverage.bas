@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: Team/TeamFullCoverage.bas
 ' Copertura completa delle funzioni Team (TEAM vive dentro AI, non è namespace).
 IMPORT AI WITH ALIAS

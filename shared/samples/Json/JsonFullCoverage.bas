@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: Json/JsonFullCoverage.bas
 ' Copertura completa delle funzioni JSON non ancora coperte.
 IMPORT JSON

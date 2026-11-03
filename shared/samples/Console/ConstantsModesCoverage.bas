@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: Console/ConstantsModesCoverage.bas
 ' =================================================================================================
 ' TEST UNITARIO: CONSOLE — COSTANTI DI SET/MODO (pulsanti, console, joy, file, AI)

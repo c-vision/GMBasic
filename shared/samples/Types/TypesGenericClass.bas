@@ -30,7 +30,7 @@ PRINT "=== Istanziazione generica: Box<DOUBLE> ==="
 DIM b AS Box<DOUBLE>
 b = NEW Box<DOUBLE>(42.5)
 PRINT "b.GetValue() = "; b.GetValue()
-' EXPECT: === Generic CLASS<T> ===|=== Istanziazione generica: Box<DOUBLE> ===|b.GetValue() =  42.5|=== Fine ===
+' (nessun oracolo: è un Sample, non un MiniTest)
 
 PRINT
 PRINT "=== Fine ==="

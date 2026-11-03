@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: Databases/DbLedgerUncoveredCoverage.bas
 ' =================================================================================================
 ' TEST UNITARIO: LEDGER - COMANDO BUDGET NON ANCORA COPERTO DAGLI ESEMPI

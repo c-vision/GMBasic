@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: Ai/AiVaultNotesCoverage.bas
 ' Copertura funzioni AI VAULT/NOTE/BRAIN/MEMORY (Second Brain L2) — forma funzione
 ' (AI.VaultXxx/NoteXxx/BrainXxx), complementare ai comandi AI VAULT/NOTE usati in AiNoteVault.bas.

@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: samples/Crypto/BlockchainFullCoverage.bas
 ' Sample COMPLETO BLOCKCHAIN — tutte le 18 funzioni del namespace, deterministico.
 ' Copre: KECCAK256/RIPEMD160/BLAKE2B256, RLPENCODE/VARINTENCODE/VARINTDECODE,

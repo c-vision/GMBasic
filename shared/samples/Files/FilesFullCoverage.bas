@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: Files/FilesFullCoverage.bas
 ' Copertura completa delle funzioni Files/IO non ancora coperte.
 IMPORT IO

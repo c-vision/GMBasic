@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: System/SystemFullCoverage.bas
 ' Copertura completa delle funzioni System non ancora coperte.
 IMPORT SYSTEM

@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' RUNTIME-FULL-COVERAGE — sample COMPLETO del filone AI-Runtime (P1 OBSERVE + P2 CONTEXT +
 ' P3/P4 WORKER): usa OGNI comando e funzione implementata in questa sessione, con output
 ' deterministico su tutte e 5 le gambe (IL, PCodeVM, VM/C, C99Native).

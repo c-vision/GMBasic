@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' ============================================================================
 ' Widget TUI senza-namespace — copertura COMPLETA (tutti i 17 comandi)
 ' ============================================================================

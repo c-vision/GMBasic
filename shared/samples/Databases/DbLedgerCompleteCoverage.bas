@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: samples/Databases/DbLedgerCompleteCoverage.bas
 ' =================================================================================================
 ' Sample COMPLETO LEDGER — usa TUTTE e 17 le funzioni canoniche del namespace

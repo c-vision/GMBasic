@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: Math/MathFullCoverage.bas
 ' Copertura completa delle funzioni Math non ancora coperte.
 IMPORT MATH

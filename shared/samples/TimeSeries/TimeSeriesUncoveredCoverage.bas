@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: TimeSeries/TimeSeriesUncoveredCoverage.bas
 ' =================================================================================================
 ' TEST UNITARIO: TIMESERIES - FUNZIONI NON ANCORA COPERTE DAGLI ESEMPI

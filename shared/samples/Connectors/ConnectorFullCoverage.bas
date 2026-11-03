@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: Connectors/ConnectorFullCoverage.bas
 ' Copertura completa del dominio CONNECTOR: 11 funzioni + 1 comando AI CONNECTOR (tutti i verbi).
 ' Usa un connettore custom "demo-conn" per il ciclo di vita, con clean-up finale.

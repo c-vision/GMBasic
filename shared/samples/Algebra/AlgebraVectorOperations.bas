@@ -1,4 +1,4 @@
-' EXPECT: Test Completato con successo.
+' (nessun oracolo: è un Sample, non un MiniTest)
 ' FILE: Algebra/AlgebraVectorOperations.bas
 ' =================================================================================================
 '                          GUIDA TEORICA: OPERAZIONI VETTORIALI BATCH

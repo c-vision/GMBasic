@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: Ai/AiFullSurfaceCoverage.bas
 ' AI — SUPERFICIE COMPLETA dei builtin coperti su emitter C# (era "builtin non implementato").
 ' Esercita in un unico programma: CATEGORY (set/list/pick/auto/fallback), HOOK

@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: samples/Bits/BitsFullCoverage.bas
 ' =================================================================================================
 '  SAMPLE COMPLETO E COMPLESSO — namespace BITS (manipolazione bit a 64 bit, 21 funzioni)

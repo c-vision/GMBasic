@@ -1,3 +1,4 @@
+' SURFACE: esercita la superficie del namespace (drill), non uno scenario didattico.
 ' FILE: Network/NetworkFullCoverage.bas
 ' Copertura completa delle funzioni Network non ancora coperte.
 IMPORT NET
