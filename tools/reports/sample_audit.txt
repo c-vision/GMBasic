@@ -1,10 +1,10 @@
 SAMPLE AUDIT — shared/samples/**/*.bas
-totale file: 1193   categorie: 80
+totale file: 1192   categorie: 80
 
 == per categoria ==
   Ai                   147
   Concurrency          87
-  Databases            85
+  Databases            84
   AiLLM                82
   Clipper              67
   graphics             60
@@ -85,9 +85,9 @@ totale file: 1193   categorie: 80
 
 == per classificazione (un file può avere più tag) ==
   ENV          481
-  DIDATTICO    218
+  DIDATTICO    219
   CORTO        169
-  SURFACE      37
+  SURFACE      35
   SUPPORTO     25
   MODULO       15
   PACKAGE      7
@@ -113,8 +113,6 @@ totale file: 1193   categorie: 80
   Console/WidgetsFullCoverage.bas                                        righe=83   import=1
   Controls/ControlPropertiesCoverage.bas                                 righe=35   import=1
   Crypto/CryptoFullCoverage.bas                                          righe=22   import=2
-  Databases/DbIsamUncoveredCoverage.bas                                  righe=60   import=2
-  Databases/DbSqlUncoveredCoverage.bas                                   righe=56   import=2
   Databases/RddCompleteCoverage.bas                                      righe=72   import=3
   Documents/ConvertFullCoverage.bas                                      righe=68   import=2
   Events/OnKeyUncoveredCoverage.bas                                      righe=65   import=1
@@ -131,7 +129,7 @@ totale file: 1193   categorie: 80
   Trading/TradingPortfolioUncoveredCoverage.bas                          righe=50   import=1
   Workflow/WorkflowFullCoverage.bas                                      righe=25   import=1
   graphics/GraphicsUncoveredCoverage.bas                                 righe=41   import=1
-  (37 file)
+  (35 file)
 
 == EXPECT nei Sample (violazione del contratto) ==
   (0 file)
@@ -883,6 +881,7 @@ totale file: 1193   categorie: 80
   Databases/ISAM_Simple_Test.bas                                         righe=63   import=2
   Databases/ISAM_Test.bas                                                righe=50   import=2
   Databases/IsamReplicationTcp.bas                                       righe=47   import=2
+  Databases/MagazzinoIsam.bas                                            righe=88   import=3
   Databases/QueryPhaseD.bas                                              righe=43   import=2
   Databases/RDD_Buffer_Demo.bas                                          righe=102  import=3
   Databases/RDD_Buffering_Complete.bas                                   righe=94   import=3
@@ -1011,5 +1010,5 @@ totale file: 1193   categorie: 80
   graph/FinanceBrainGraph.bas                                            righe=51   import=2
   graph/GraphAgentAsk.bas                                                righe=34   import=2
   graph/GraphQueryMulti.bas                                              righe=29   import=2
-  (218 file)
+  (219 file)
 
