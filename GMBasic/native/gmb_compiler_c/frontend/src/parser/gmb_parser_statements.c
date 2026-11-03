@@ -776,6 +776,9 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
         if (gmb_p_cur(p) && gmb_p_cur(p)->kind == GMB_TOK_Comma) {
             gmb_p_adv(p);
             dc_provider = gmb_p_parse_expr(p);
+        } else if (gmb_p_cur(p) && gmb_p_cur(p)->kind == GMB_TOK_Using) {
+            gmb_p_adv(p);   /* forma canonica: USING "local" */
+            dc_provider = gmb_p_parse_expr(p);
         }
         /* [ FALLBACK "p1","p2"… ]: senza provider il primo nome è il primario. */
         int dc_fb_present = 0;
