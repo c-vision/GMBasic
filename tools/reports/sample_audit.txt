@@ -1,20 +1,20 @@
 SAMPLE AUDIT — shared/samples/**/*.bas
-totale file: 1192   categorie: 80
+totale file: 1195   categorie: 80
 
 == per categoria ==
   Ai                   147
   Concurrency          87
   Databases            84
   AiLLM                82
-  Clipper              67
+  Clipper              68
   graphics             60
-  Controls             42
+  Controls             43
   Types                33
   Math                 30
   Browser              25
   include              25
+  Console              23
   Security             23
-  Console              22
   Arrays               20
   Http                 20
   Torch                18
@@ -84,7 +84,7 @@ totale file: 1192   categorie: 80
   Spatial              1
 
 == per classificazione (un file può avere più tag) ==
-  ENV          481
+  ENV          483
   DIDATTICO    219
   CORTO        169
   SURFACE      35
@@ -604,6 +604,7 @@ totale file: 1192   categorie: 80
   Console/ConstantsColorsCoverage.bas                                    righe=211  import=1
   Console/ConstantsKeysCoverage.bas                                      righe=150  import=1
   Console/ConstantsModesCoverage.bas                                     righe=102  import=1
+  Console/PannelloVenditeTui.bas                                         righe=114  import=2
   Console/SendKey.bas                                                    righe=9    import=0
   Console/TbrowseSortFilter.bas                                          righe=35   import=1
   Console/TbrowseSortMultiCsv.bas                                        righe=24   import=1
@@ -636,6 +637,7 @@ totale file: 1192   categorie: 80
   Controls/PropertyGridDemo.bas                                          righe=26   import=1
   Controls/ReadGetDemo.bas                                               righe=33   import=1
   Controls/ReorderListBoxDemo.bas                                        righe=26   import=1
+  Controls/SchedaOrdineGui.bas                                           righe=82   import=2
   Controls/ScrollBarDemo.bas                                             righe=25   import=1
   Controls/ScrollViewDemo.bas                                            righe=26   import=1
   Controls/SegmentedDemo.bas                                             righe=17   import=1
@@ -788,7 +790,7 @@ totale file: 1192   categorie: 80
   windows/WindowTuiGraphics.bas                                          righe=40   import=2
   windows/WindowTuiTest.bas                                              righe=57   import=1
   windows/WindowViewport.bas                                             righe=46   import=1
-  (481 file)
+  (483 file)
 
 == DIDATTICO (≥2 domini, ≥ 20 righe) ==
   Algebra/AlgebraMatrixOperations.bas                                    righe=95   import=3

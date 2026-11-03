@@ -5254,6 +5254,14 @@ internal sealed partial class PCodeProcessor
                 var valid = task.Sp > 0 ? task.PopRef() : null;
                 var getPic = task.Sp > 0 ? task.PopRef()?.ToString() : null;
                 var getVar = task.Sp > 0 ? task.PopRef() : null;
+                // Target LOCALE passato come SLOT numerico (vedi Compiler.Console.cs
+                // VisitAtGetStatement): serve una ByRefBox write-through così anche le
+                // STRINGHE ricevono il testo digitato.
+                if (getVar is double slotLocalG)
+                {
+                    var localsG = (task.Frame?.LocalVariables is { Length: > 0 } fLocalsG) ? fLocalsG : task.GetLocals();
+                    getVar = new ByRefBox(localsG, (int)slotLocalG);
+                }
                 var getCol = (int)PopNum(task);
                 var getRow = (int)PopNum(task);
                 try

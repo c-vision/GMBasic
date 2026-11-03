@@ -253,7 +253,11 @@ public sealed partial class Compiler
             else
             {
                 var liG = ResolveLocal(nmG);
-                if (liG >= 0) { EmitByte((byte)OpCode.OP_MAKE_BYREF); EmitShort((ushort)liG); }
+                // LOCALI: si passa lo SLOT come NUMERO. La VM/C (gmb_task_capture_local_cell)
+                // e la PCodeVM costruiscono una ByRefBox write-through, che funziona anche per
+                // le STRINGHE. Con OP_MAKE_BYREF la variabile stringa arrivava al campo come
+                // VALORE e il testo digitato andava perso (VM/C mostrava il campo vuoto).
+                if (liG >= 0) { var slotCiG = AddConstant((double)liG); EmitByte((byte)OpCode.OP_PUSH_CONST); EmitShort((ushort)slotCiG); }
                 else if (ShouldUseDynamicScope(NormalizeIdentifierName(nmG))) EmitConstant(nmG);
                 else if (_globals.TryGetValue(nmG, out var giG)) { EmitByte((byte)OpCode.OP_MAKE_BYREF_GLOBAL); EmitShort(giG); }
                 else EmitByte((byte)OpCode.OP_PUSH_NIL);

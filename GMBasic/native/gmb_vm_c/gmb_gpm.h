@@ -305,6 +305,10 @@ gmb_obj_byref_t* gmb_byref_new_global(struct gmb_task* owner, int slot);
 gmb_obj_byref_t* gmb_byref_new_cell(struct gmb_task* owner, gmb_stack_entry_t value);
 gmb_obj_byref_t* gmb_byref_new_array_elem(struct gmb_task* owner, gmb_obj_shared_val_t* arr, int index);
 gmb_stack_entry_t gmb_task_capture_local_byref(struct gmb_task* owner, int slot);
+/* Cella write-through per TARGET di form (@ row,col GET <var locale>): a differenza di
+ * gmb_task_capture_local_byref imbusta anche le STRINGHE. Le closure NON la usano: per
+ * loro una stringa resta l'oggetto condiviso (proxy a un frame poppato = garbage). */
+gmb_stack_entry_t gmb_task_capture_local_cell(struct gmb_task* owner, int slot);
 gmb_stack_entry_t gmb_task_capture_global_byref(struct gmb_task* owner, int slot);
 gmb_stack_entry_t gmb_byref_load(const gmb_obj_byref_t* box);
 void gmb_byref_store(gmb_obj_byref_t* box, gmb_stack_entry_t value);

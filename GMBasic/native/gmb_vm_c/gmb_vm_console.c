@@ -649,7 +649,14 @@ static void vm_console_atget(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
     double rangeHi = tui_pop_num(task), rangeLo = tui_pop_num(task); (void)rangeHi; (void)rangeLo;
     double valid = tui_pop_num(task);
     const char* pic = tui_pop_str(task); (void)pic;
-    gmb_stack_entry_t varE = gmb_task_pop(task);   /* var ref (byref) */
+    gmb_stack_entry_t varE = gmb_task_pop(task);   /* var ref (byref) o SLOT per i locali */
+    if (varE.type == 1)
+    {
+        /* Il compilatore C passa lo SLOT dei locali come numero (vedi cc ATFORM GET):
+         * qui si materializza la cella write-through, che copre anche le STRINGHE. */
+        gmb_stack_entry_t cellE = gmb_task_capture_local_cell(task, (int)varE.num);
+        varE = cellE;
+    }
     double col = tui_pop_num(task), row = tui_pop_num(task);
     int width = (ctrlW > 0) ? (int)ctrlW : 10;
     const char* initial = "";
