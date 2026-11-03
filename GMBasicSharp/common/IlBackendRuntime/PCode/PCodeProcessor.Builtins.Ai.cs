@@ -143,7 +143,10 @@ internal sealed partial class PCodeProcessor
             var state = ArgOr(args, 0)?.ToString() ?? "";
             var kind = ArgOr(args, 1)?.ToString() ?? "";
             var provider = ArgOr(args, 2)?.ToString() ?? "";
-            return Basic.IlBackend.IlRuntime.AiDecide(state, kind, provider);
+            var fallback = ArgOr(args, 3)?.ToString() ?? "";
+            return fallback.Length > 0
+                ? Basic.IlBackend.IlRuntime.AiDecide(state, kind, provider, fallback)
+                : Basic.IlBackend.IlRuntime.AiDecide(state, kind, provider);
         },
         [BuiltInFunction.AIVERIFY] = (task, args) =>
         {

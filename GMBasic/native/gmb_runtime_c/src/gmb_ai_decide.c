@@ -301,7 +301,18 @@ char* gmb_ai_decide_run_json(const char* state, const char* kind, const char* pr
         provider = gmb_decision_provider_rules();
     else if (ieq(provider_name, "mock"))
         provider = gmb_decision_provider_mock(NULL, 1.0);
-    if (!provider) return NULL;
+    if (!provider) {
+        char esc[256];
+        json_escape(provider_name ? provider_name : "", esc, sizeof esc);
+        char ebuf[512];
+        int en = snprintf(ebuf, sizeof ebuf,
+                          "{\"error\":\"provider '%s' non valido (rules/mock/local)\"}", esc);
+        if (en < 0) return NULL;
+        char* eout = (char*)malloc((size_t)en + 1);
+        if (!eout) return NULL;
+        memcpy(eout, ebuf, (size_t)en + 1);
+        return eout;
+    }
     gmb_decision_result_t result;
     int rc = gmb_decision_evaluate(provider, state ? state : "", k, options, n_options, &result);
     gmb_decision_provider_free(provider);
@@ -314,4 +325,67 @@ char* gmb_ai_decide_run_json(const char* state, const char* kind, const char* pr
     if (!out) return NULL;
     memcpy(out, buffer, n + 1);
     return out;
+}
+
+/* Catena esplicita: il primo provider che non risponde `{"error":…}` vince. */
+static int dc_chain_is_error(const char* r) {
+    return r && strncmp(r, "{\"error\"", 8) == 0;
+}
+
+char* gmb_ai_decide_run_json_chain(const char* state, const char* kind,
+                                   const char* provider, const char* fallback_csv) {
+    const char* parts[16];
+    char* owned[16] = { 0 };
+    int n = 0;
+    if (provider && *provider) parts[n++] = provider;
+    if (fallback_csv && *fallback_csv) {
+        char* copy = strdup(fallback_csv);
+        if (!copy) return NULL;
+        char* p = copy;
+        while (*p && n < 16) {
+            char* sep = strchr(p, '|');
+            if (sep) *sep = 0;
+            while (*p == ' ' || *p == '\t') p++;
+            char* e = p + strlen(p);
+            while (e > p && (e[-1] == ' ' || e[-1] == '\t')) *--e = 0;
+            if (*p) { owned[n] = strdup(p); parts[n] = owned[n]; n++; }
+            if (!sep) break;
+            p = sep + 1;
+        }
+        free(copy);
+    }
+    if (n == 0) parts[n++] = "rules";
+
+    char errbuf[2048]; size_t used = 0; errbuf[0] = 0;
+    for (int i = 0; i < n; i++) {
+        char* r = gmb_ai_decide_run_json(state, kind, parts[i]);
+        if (r && !dc_chain_is_error(r)) {
+            for (int k = 0; k < n; k++) free(owned[k]);
+            return r;
+        }
+        const char* txt = r ? r : "errore";
+        size_t tl = strlen(txt);
+        const char* body = txt; size_t bl = tl;
+        if (r && tl >= 12 && strncmp(txt, "{\"error\":\"", 10) == 0
+            && txt[tl - 2] == '"' && txt[tl - 1] == '}') {
+            body = txt + 10; bl = tl - 12;
+        }
+        if (used + bl + strlen(parts[i]) + 8 < sizeof errbuf) {
+            if (used) { memcpy(errbuf + used, " | ", 3); used += 3; }
+            used += (size_t)snprintf(errbuf + used, sizeof errbuf - used,
+                                     "%s: %.*s", parts[i], (int)bl, body);
+        }
+        free(r);
+    }
+    for (int k = 0; k < n; k++) free(owned[k]);
+
+    char esc[2300];
+    json_escape(errbuf[0] ? errbuf : "nessun provider", esc, sizeof esc);
+    char out[2400];
+    int len = snprintf(out, sizeof out, "{\"error\":\"tutti i provider falliti: %s\"}", esc);
+    if (len < 0) return NULL;
+    char* res = (char*)malloc((size_t)len + 1);
+    if (!res) return NULL;
+    memcpy(res, out, (size_t)len + 1);
+    return res;
 }

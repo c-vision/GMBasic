@@ -585,6 +585,15 @@ if (parser.Match(TokenKind.Set))
             provider = parser.ParseExpression();
             SkipNewlines(parser);
         }
+        var fallback = ParseAiDecideFallbackList(parser);
+        Expr? fallbackExpr = null;
+        if (fallback is { Count: > 0 })
+        {
+            if (provider is null) { provider = new StringExpr(fallback[0], decideTok); fallback.RemoveAt(0); }
+            if (fallback.Count > 0)
+                fallbackExpr = new StringExpr(string.Join("|", fallback), decideTok);
+            SkipNewlines(parser);
+        }
         if (parser.Check(TokenKind.Into))
             throw Parser.CreateError(parser.Peek(),
                 "AI DECIDE batch: INTO non è supportato; i nomi delle domande sono le destinazioni.");
@@ -600,10 +609,10 @@ if (parser.Match(TokenKind.Set))
         var assigns = ImmutableArray.CreateBuilder<Assignment>(questions.Count);
         foreach (var (target, kind) in questions)
         {
-            var args = provider is null
-                ? ImmutableArray.Create(state, kind)
-                : ImmutableArray.Create(state, kind, provider);
-            var call = new BuiltinFunctionCallExpr(nsTok, nameTok, args, new StringType());
+            var argsList = new List<Expr> { state, kind };
+            if (provider is not null) argsList.Add(provider);
+            if (fallbackExpr is not null) argsList.Add(fallbackExpr);
+            var call = new BuiltinFunctionCallExpr(nsTok, nameTok, argsList.ToImmutableArray(), new StringType());
             Expr value = call;
             if (target is VariableTarget vt && parser._declaredJsonNames.Contains(vt.NameCleaned.Lexeme))
             {
@@ -676,6 +685,29 @@ if (parser.Match(TokenKind.Set))
         return kind;
     }
 
+    /// <summary>Legge la clausola opzionale `FALLBACK "p1", "p2", …` (nomi stringa).
+    /// Ritorna null se assente; la lista non include il provider primario.</summary>
+    private static List<string>? ParseAiDecideFallbackList(Parser parser)
+    {
+        var p = parser.Peek();
+        if (p.Kind != TokenKind.Identifier
+            || !p.Lexeme.Equals("FALLBACK", StringComparison.OrdinalIgnoreCase))
+            return null;
+        parser.Advance();
+        var names = new List<string>();
+        do
+        {
+            var s = parser.Peek();
+            if (s.Kind != TokenKind.StringLiteral)
+                throw Parser.CreateError(s, "FALLBACK: expected a string provider name.");
+            parser.Advance();
+            names.Add((string)s.Literal!);
+        } while (parser.Match(TokenKind.Comma));
+        if (names.Count == 0)
+            throw Parser.CreateError(p, "FALLBACK: at least one provider is required.");
+        return names;
+    }
+
     // AI EVAL VALIDATE <resultExpr> AGAINST [VAULT] <folderExpr> [INTO <target>] — comando
     // (T4.1, 2026-09-09): UAT automatica via vault. Motore VaultValidator (termini, no LLM);
     // esito JSON {"ok":bool,...} su variabile (INTO) o scartato.
@@ -699,11 +731,22 @@ if (parser.Match(TokenKind.Set))
         Expr? provider = null;
         if (parser.Match(TokenKind.Comma))
             provider = parser.ParseExpression();
+        // [ FALLBACK "p1" [, "p2" ...] ] — catena esplicita; senza provider il primo nome
+        // della catena è il provider primario (nessun fallback implicito).
+        var fallback = ParseAiDecideFallbackList(parser);
+        Expr? fallbackExpr = null;
+        if (fallback is { Count: > 0 })
+        {
+            if (provider is null) { provider = new StringExpr(fallback[0], tok); fallback.RemoveAt(0); }
+            if (fallback.Count > 0)
+                fallbackExpr = new StringExpr(string.Join("|", fallback), tok);
+        }
         var nsTok = new Token(TokenKind.Identifier, "AI", null, tok.Position);
         var nameTok = new Token(TokenKind.AiDecide, "DECIDE", null, tok.Position);
-        var args = provider is null
-            ? ImmutableArray.Create(state, kind)
-            : ImmutableArray.Create(state, kind, provider);
+        var argsList = new List<Expr> { state, kind };
+        if (provider is not null) argsList.Add(provider);
+        if (fallbackExpr is not null) argsList.Add(fallbackExpr);
+        var args = argsList.ToImmutableArray();
         var call = new BuiltinFunctionCallExpr(nsTok, nameTok, args, new StringType());
         if (parser.Match(TokenKind.Into))
         {
