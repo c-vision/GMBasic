@@ -3212,6 +3212,24 @@ static int dlg_lookup(ctx_t* c, const char* ty, int* arity, int* strm, int* rets
         }
     return 0;
 }
+/* Builtin che RESTITUISCONO un array double* (gestiti da dim_arr_optimize): servono anche
+ * per l'assegnazione a una variabile esistente (`a = OPTIMIZE.X(...)`, 2026-11-03). */
+static int is_param_of_cur(ctx_t* c, const char* name);
+static int is_opt_array_call_tk(gmb_tokenkind_t tk) {
+    switch (tk) {
+    case GMB_TOK_NelderMead: case GMB_TOK_Bfgs: case GMB_TOK_LBfgs: case GMB_TOK_Broyden:
+    case GMB_TOK_ConjugateGradient: case GMB_TOK_OptimizePowell: case GMB_TOK_OptimizeFsolve:
+    case GMB_TOK_LevenbergMarquardt: case GMB_TOK_LevenbergMarquardtVec: case GMB_TOK_CurveFit:
+    case GMB_TOK_OptimizeBasinHopping: case GMB_TOK_OptimizeTnc: case GMB_TOK_OptimizeCobyla:
+    case GMB_TOK_OptimizeSlsqp: case GMB_TOK_OptimizeMinimize: case GMB_TOK_OptimizeBrute:
+    case GMB_TOK_OptimizeDualAnnealing: case GMB_TOK_DifferentialEvolution:
+    case GMB_TOK_OptimizeLeastSquares: case GMB_TOK_LeastSquares: case GMB_TOK_CholeskySolve:
+    case GMB_TOK_Simplex: case GMB_TOK_OptimizeLinprog:
+        return 1;
+    default: return 0;
+    }
+}
+
 static void reg_let_assign(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
  {
         if (s->target && gmb_c99_dyn_is(c, s->target)) return;   /* DYNAMIC: gmb_dscope_set, non var C */
@@ -3271,6 +3289,14 @@ static void reg_let_assign(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
             if (s->value && s->value->kind == GMB_EXPR_CALL && s->value->tk == GMB_TOK_Split
                 && !tv->coll_handle && !tv->gkind && !tv->boxed_val) {
                 tv->is_array = 1; tv->dyn_len = 1; tv->ndims = 1; tv->type = TY_STR;
+            }
+            /* a = OPTIMIZE.<array-returning>(...) su una variabile esistente (anche DIM fissa):
+             * l'assegnazione SOSTITUISCE l'array come su IL/VM-C → la var diventa dinamica
+             * (double* + _len). Prima C99 falliva con "'OPTIMIZE.X' non definita". */
+            if (s->value && s->value->kind == GMB_EXPR_CALL && is_opt_array_call_tk(s->value->tk)
+                && !tv->coll_handle && !tv->gkind && !tv->boxed_val && !tv->vclass[0]
+                && !is_param_of_cur(c, s->target)) {
+                tv->is_array = 1; tv->dyn_len = 1; tv->ndims = 1; tv->matrix = 0; tv->jagged = 0;
             }
             /* x = <ANALYSIS/SIGNAL array-returning>(...) con x NON dichiarato: array dinamico
              * (`gmb_double_t* x` + `x_len` + `x__b0`), come il DIM `()` — il decl loop lo
@@ -7934,6 +7960,17 @@ static int is_byval_arr_param(ctx_t* c, const char* name) {
     return 0;
 }
 
+/* 1 se <name> è un QUALSIASI parametro della funzione corrente (anche array BYVAL):
+ * un parametro NON viene promosso a variabile dinamica da `p = OPTIMIZE.X(...)` perché la
+ * sua rappresentazione (puntatore + bound compagna) è fissata dalla firma. */
+static int is_param_of_cur(ctx_t* c, const char* name) {
+    if (!c->cur_fn || !c->cur_fn->stmt || !name) return 0;
+    gmb_stmt_t* fs = c->cur_fn->stmt;
+    for (int k = 0; k < fs->n_params; k++)
+        if (fs->func_params[k] && strcasecmp(fs->func_params[k], name) == 0) return 1;
+    return 0;
+}
+
 /* (b4): DIM x() = builtin array-returning (parity oracolo Statements.cs DIM-array-init:
  * chiamata runtime con out-len compagna). Nota: l'oracolo C# per IFFT su matrice passa
  * il double** con cast UB (gmb_fft_matrix stampa FAIL nel round-trip); qui l'IFFT su
@@ -9728,6 +9765,52 @@ static int dim_arr_timeseries1d(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init) {
  * (parity EmitArrayArg oracolo, Collections.cs:506); se il parametro callee è
  * REDIMmato nel body (arr_byref) passa gli indirizzi (&arr, &arr__b0). */
 static void emit_arr_call_arg(ctx_t* c, fn_info_t* fn, int i, gmb_expr_t* arg, int line) {
+    /* Array LITERAL come argomento (2026-11-03): `Somma({1, 2})`. Il parser rappresenta
+     * `{…}` come CALL "_array_"; si materializza un array temporaneo C99 e si passa
+     * (puntatore, bound n-1). */
+    if (arg && arg->kind == GMB_EXPR_CALL && arg->var && strcmp(arg->var, "_array_") == 0) {
+        var_t* pvl = vars_find(&fn->locals, fn->stmt->func_params[i]);
+        int want_refl = pvl && pvl->arr_byref;
+        if (want_refl) {
+            c99_fail(c, line,
+                     "%s: un array literal non puo' essere passato a un parametro array BYREF/REDIM",
+                     fn->stmt->func_name);
+            return;
+        }
+        /* Tipo ELEMENTO dal parametro (AS STRING → gmb_string_t, altrimenti double, che è
+         * il modello numerico del C99Native): gli elementi vengono coerciti come in
+         * emit_eff_arg. */
+        int pstrl = pvl && pvl->type == TY_STR;
+        int n = arg->nargs > 0 ? arg->nargs : 1;
+        /* COMPOUND LITERAL C99: la durata dell'oggetto è quella del blocco racchiudente
+         * (una statement-expression `({ double a[n] = …; a; })` restituirebbe un puntatore
+         * a storage già scaduto → garbage, misurato su Stampa({x, x+1, 3})). */
+        sb_printf(&c->out, "(%s[]){ ", pstrl ? "gmb_string_t" : "gmb_double_t");
+        if (arg->nargs == 0) sb_put(&c->out, pstrl ? "gmb_string_alloc(\"\")" : "0.0");
+        for (int k = 0; k < arg->nargs; k++) {
+            if (k) sb_put(&c->out, ", ");
+            gmb_expr_t* el = arg->args[k];
+            int ety = el ? etype(c, el) : TY_NUM;
+            if (pstrl && ety != TY_STR) {
+                sb_put(&c->out, ety == TY_VAL ? "gmb_val_to_string(" : "gmb_double_to_string(");
+                emit_expr(c, el);
+                sb_put(&c->out, ")");
+            } else if (!pstrl && ety == TY_STR) {
+                sb_put(&c->out, "gmb_string_to_double(");
+                emit_expr(c, el);
+                sb_put(&c->out, ")");
+            } else if (!pstrl && ety == TY_VAL) {
+                sb_put(&c->out, "gmb_val_to_double(");
+                emit_expr(c, el);
+                sb_put(&c->out, ")");
+            } else {
+                emit_expr(c, el);
+            }
+        }
+        sb_put(&c->out, " }, (gmb_int_t)");
+        sb_printf(&c->out, "%d", n - 1);
+        return;
+    }
     /* variabile nuda (stile moderno) o "Nome()" con 0 argomenti (stile classico) */
     const char* vname = NULL;
     if (arg && arg->kind == GMB_EXPR_VAR) vname = arg->var;
@@ -17238,6 +17321,24 @@ static void res_guard_end(ctx_t* c, int res_guard) {
 
 static void st_let_assign(ctx_t* c, gmb_stmt_t* s) {
 {
+        /* a = OPTIMIZE.<array-returning>(...) → stesso percorso del DIM `x() = …`
+         * (l'assegnazione sostituisce l'array; var promossa a dyn_len dal pre-pass).
+         * Su un PARAMETRO la promozione è disattivata (rappresentazione fissata dalla
+         * firma): errore esplicito invece di C invalido. */
+        if (s->target && !s->array_index && s->value && s->value->kind == GMB_EXPR_CALL
+            && is_opt_array_call_tk(s->value->tk)) {
+            if (is_param_of_cur(c, s->target)) {
+                c99_fail(c, s->line, "%s: assegnazione di un builtin che ritorna un array a un "
+                         "parametro array non supportata (usare una variabile locale)", s->target);
+                return;
+            }
+            var_t* atv = lookup_var(c, s->target);
+            if (atv && atv->is_array && atv->dyn_len) {
+                gmb_stmt_t shim = *s;
+                shim.dim_var = s->target;
+                if (dim_arr_optimize(c, &shim, s->value)) return;
+            }
+        }
         /* ON ERROR/RESUME attivo (parity oracolo C#): guard setjmp per-istruzione.
          * RESUME NEXT fa longjmp al jmp_buf di QUESTO guard → goto salta OLTRE
          * l'istruzione fallita (ripresa dopo, come il resume-ip della VM). */

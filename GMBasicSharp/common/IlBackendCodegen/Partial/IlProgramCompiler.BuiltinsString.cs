@@ -1167,11 +1167,14 @@ public sealed partial class IlProgramCompiler
     private void EmitOptimizeBroydenCall(BuiltinFunctionCallExpr expr)
     {
         if (expr.Args.Length != 2) throw new NotSupportedException("Backend IL: BROYDEN richiede 2 argomenti (funzione vettoriale, initialGuess).");
-        EmitExpression(expr.Args[0]);
-        EmitDoubleArrayArgument(expr.Args[1]);
         // Callback con return SCALARE (Rosenbrock) → overload scalare-return (parità VM).
         var cbType = NormalizeInferredType(InferType(expr.Args[0]));
         var isScalarReturn = cbType is FunctionPointerType fptB && fptB.ReturnType is not ArrayType;
+        // FUNCTION nominata con parametro array: il delegate è `ref` (CbRef1ArrD) e va adattato
+        // alla Func<double[],double[]> attesa (2026-11-03: la chiamata diretta passava il
+        // delegate sbagliato → InvalidProgram/IndexOutOfRange su IL).
+        EmitOptimizeCallback(expr.Args[0], isScalarReturn ? typeof(Func<double[], double>) : typeof(Func<double[], double[]>));
+        EmitDoubleArrayArgument(expr.Args[1]);
         _il.Emit(OpCodes.Call, isScalarReturn
             ? RuntimeMethod(nameof(IlRuntime.Broyden), typeof(Func<double[], double>), typeof(double[]))
             : RuntimeMethod(nameof(IlRuntime.Broyden), typeof(Func<double[], double[]>), typeof(double[])));
