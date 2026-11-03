@@ -90,10 +90,24 @@ line   <g> <x1> <y1> <x2> <y2> <0|1>   # Bresenham
 flip   <g> h|v
 shift  <g> <dx> <dy>
 clone  <src> <dst>
+rot90  <g>                            # clockwise, width and height swap
+shear  <g> <k>                        # row y moves by k*y pixels
+region <g> <x1> <y1> <x2> <y2>        # copy a rectangle into the clipboard
+paste  <g> <x> <y>                    # ink-only paste of the clipboard
+bearing <g>                           # BBX x, DWIDTH, SWIDTH, vertical offset from the ink
+insert <enc> <name> <w> <h>           # append an empty glyph
+remove <g>                            # delete a glyph, later glyphs shift down
+undo                                  # revert the last recorded glyph edit
+redo                                  # re-apply the last undone edit
 ```
 
 Glyph indices are 0-based in BDF order. `edits/demo.txt` draws a frame on glyph 2, flips it
 horizontally and shifts it down by one row.
+
+Every glyph mutation pushes a snapshot **before** acting: `undo`/`redo` walk a bounded stack of
+`GS_UNDO` (4) snapshots of a single glyph. `insert`/`remove` change the glyph list itself and are
+**not** undoable — the script is the source of truth, so the operation is re-run rather than
+reverted. `paste` only sets ink, it does not clear the destination rectangle.
 
 ## Run
 
@@ -123,6 +137,9 @@ found regardless of the working directory of the runner.
 | `sheet.bmp` | contact sheet, 24-bit BMP |
 | `sheet.pbm` | same sheet as ASCII PBM |
 | `mini8.psf` | PSF2 console font |
+| `mini8.psf1` | PSF1 console font (`4 + 256 * charsize` bytes) |
+| `mini8.ascii` | ASCII art of every glyph, re-read by the `check` |
+| `from_text.bdf` | BDF rebuilt from an ASCII art bitmap (`textin` mode) |
 | `mini8.h` | C header with the bitmaps |
 | `imported.bdf` | BDF produced by the `import` mode |
 
