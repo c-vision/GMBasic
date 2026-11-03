@@ -33,7 +33,11 @@ public static class StringHelpers
     /// prescindere dalla locale dell'host (stesso comportamento dell'Executor/PCodeVm
     /// esistenti) — da qui l'InvariantCulture esplicita invece del metodo Convert diretto.
     /// </summary>
-    public static string DoubleToInvariantString(double value) => value.ToString("G15", CultureInfo.InvariantCulture);
+    public static string DoubleToInvariantString(double value)
+    {
+        if (value == 0.0) value = 0.0;   // -0.0 -> "0": stessa normalizzazione dei backend C (PRINT/EXPECT)
+        return value.ToString("G15", CultureInfo.InvariantCulture);
+    }
 
     /// <summary>Stessa ragione di <see cref="DoubleToInvariantString"/>, per SINGLE.</summary>
     public static string SingleToInvariantString(float value) => value.ToString("G15", CultureInfo.InvariantCulture);

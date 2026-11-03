@@ -234,7 +234,8 @@ gmb_int_t gmb_is_numeric(const char* s) {
 /* STR(value): .NET double.ToString("G") con spazio iniziale per i positivi. */
 static char* gmb_fmt_g_net(double v) {
     char buf[64];
-    snprintf(buf, sizeof(buf), "%.15g", v);
+    if (v == 0.0) v = 0.0;   /* -0.0 -> "0" (parita con .NET/sample) */
+snprintf(buf, sizeof(buf), "%.15g", v);
     /* converti esponente in E+xx maiuscolo (stile .NET G) */
     char* e = strchr(buf, 'e');
     if (e) {

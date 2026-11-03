@@ -344,9 +344,11 @@ public static partial class Numerics
     private static double LineSearchMin(Func<Vector<double>, double> f, Vector<double> x, Vector<double> dir)
     {
         double G(double t) => f(x + t * dir);
-        // campionamento globale grossolano (Rosenbrock non è unimodale lungo la
-        // direzione: un bracket locale convergerebbe al minimo locale sbagliato)
-        double[] ts = { 0, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0 };
+        // Campionamento grossolano con campioni SIMMETRICI (2026-11-03): il minimo lungo la
+        // direzione puo' stare a t<0 (Powell su f=(x-1)^2+(y+2)^2 da (0,0) richiede t=-2);
+        // con soli t>=0 la ricerca si bloccava a t=0 e Powell non convergeva.
+        double[] ts = { -50.0, -20.0, -10.0, -5.0, -2.0, -1.0, -0.5, -0.2,
+                        0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0 };
         var bestT = 0.0;
         var bestG = G(0);
         foreach (var t in ts)
@@ -355,8 +357,8 @@ public static partial class Numerics
             if (g < bestG) { bestG = g; bestT = t; }
         }
         if (bestT == 0) return 0;
-        var lo = bestT * 0.5;
-        var hi = bestT * 2.0;
+        var lo = bestT > 0 ? bestT * 0.5 : bestT * 2.0;
+        var hi = bestT > 0 ? bestT * 2.0 : bestT * 0.5;
         return BrentMinimize(G, lo, hi);
     }
 

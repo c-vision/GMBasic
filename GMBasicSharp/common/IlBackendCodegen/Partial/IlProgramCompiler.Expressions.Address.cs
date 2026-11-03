@@ -64,6 +64,22 @@ public sealed partial class IlProgramCompiler
             case ArrayAccessExpr a:
                 EmitArrayElementAddress(a);
                 return;
+            /* Array literal come argomento BYREF (2026-11-03): `CALL F({1, 2})` non ha una
+             * variabile da indirizzare. Si materializza un array temporaneo (locale) e se ne
+             * passa l'indirizzo: il callee puo' leggerlo/modificarlo, le modifiche restano nel
+             * temporaneo (nessun chiamante le osserva, e' un letterale). */
+            case ArrayLiteralExpr lit:
+            {
+                var et = lit.Elements.Length == 0
+                    ? (DataType)new DoubleType()
+                    : NormalizeInferredType(InferType(lit.Elements[0]));
+                var clrElem = DataTypeMapper.Map(et, _types, _classTypes);
+                EmitArrayLiteralExpression(lit);
+                var tmp = _il.DeclareLocal(clrElem.MakeArrayType());
+                _il.Emit(OpCodes.Stloc, tmp);
+                _il.Emit(OpCodes.Ldloca, tmp);
+                return;
+            }
             default:
                 throw new NotSupportedException(
                     "Backend IL: un argomento passato BYREF deve essere una variabile o un elemento di array semplice, non un'espressione generica.");

@@ -188,7 +188,12 @@ void gmb_lm_fit_vec(gmb_lm_vmodel_fn vmodel, void* vctx,
 static double gmb_opt_c99_f_vec(const double* v, int n, void* ctx)
 {
     gmb_fn_t fn = *(const gmb_fn_t*)ctx;
-    return ((double(*)(void*, double*))fn.fn)(fn.ctx, (double*)v);
+    gmb_int_t prev = gmb_lambda_bound(0);
+    double r;
+    gmb_lambda_bound_set(0, (gmb_int_t)n - 1);
+    r = ((double(*)(void*, double*))fn.fn)(fn.ctx, (double*)v);
+    gmb_lambda_bound_set(0, prev);
+    return r;
 }
 static double gmb_opt_c99_f_scalar(double x, void* ctx)
 {
@@ -198,14 +203,23 @@ static double gmb_opt_c99_f_scalar(double x, void* ctx)
 static double gmb_opt_c99_lm_model(const double* p, int np, double x, void* ctx)
 {
     gmb_fn_t fn = *(const gmb_fn_t*)ctx;
-    return ((double(*)(void*, double*, double))fn.fn)(fn.ctx, (double*)p, x);
+    gmb_int_t prev = gmb_lambda_bound(0);
+    double r;
+    gmb_lambda_bound_set(0, (gmb_int_t)np - 1);
+    r = ((double(*)(void*, double*, double))fn.fn)(fn.ctx, (double*)p, x);
+    gmb_lambda_bound_set(0, prev);
+    return r;
 }
 /* Modello vettoriale C99: lambda `void f(void* ctx, double* p, double* x, double* out)`. */
 static void gmb_opt_c99_lm_model_vec(const double* p, int np, const double* x, int nx, double* out, void* ctx)
 {
-    (void)np; (void)nx;
     gmb_fn_t fn = *(const gmb_fn_t*)ctx;
+    gmb_int_t b0 = gmb_lambda_bound(0), b1 = gmb_lambda_bound(1);
+    gmb_lambda_bound_set(0, (gmb_int_t)np - 1);
+    gmb_lambda_bound_set(1, (gmb_int_t)nx - 1);
     ((void(*)(void*, double*, double*, double*))fn.fn)(fn.ctx, (double*)p, (double*)x, out);
+    gmb_lambda_bound_set(0, b0);
+    gmb_lambda_bound_set(1, b1);
 }
 
 /* Entry C99: la VM/C usa il bridge proprio; qui il contesto è direttamente la lambda.
@@ -517,13 +531,18 @@ static double gmb_opt_lm_g(double t, void* c)
 }
 static double gmb_opt_line_min(gmb_opt_fvec_fn f, void* ctx, const double* x, const double* dir, int n)
 {
-    /* campionamento globale grossolano + rifinitura brent */
-    double ts[11] = { 0, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0 };
+    /* Campionamento grossolano + rifinitura brent. Campioni SIMMETRICI (2026-11-03):
+     * il minimo lungo la direzione puo' stare a t<0 (es. Powell su f=(x-1)^2+(y+2)^2 da
+     * (0,0): la direzione +y richiede t=-2). Con soli t>=0 la ricerca si bloccava a t=0. */
+    double ts[17] = { -50.0, -20.0, -10.0, -5.0, -2.0, -1.0, -0.5, -0.2, 0.0,
+                      0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0 };
     double* buf = (double*)malloc(sizeof(double) * (size_t)n);
+    double bestT, bestG, lo, hi;
     if (!buf) return 0;
     gmb_opt_lmctx_t g = { f, ctx, x, dir, n, buf };
-    double bestT = 0, bestG = gmb_opt_lm_g(0, &g);
-    for (int i = 1; i < 11; i++)
+    bestT = 0;
+    bestG = gmb_opt_lm_g(0, &g);
+    for (int i = 0; i < 17; i++)
     {
         double gv = gmb_opt_lm_g(ts[i], &g);
         if (gv < bestG) { bestG = gv; bestT = ts[i]; }
@@ -533,7 +552,9 @@ static double gmb_opt_line_min(gmb_opt_fvec_fn f, void* ctx, const double* x, co
     buf = (double*)malloc(sizeof(double) * (size_t)n);
     if (!buf) return 0;
     g.buf = buf;
-    double res = gmb_opt_brentmin(gmb_opt_lm_g, &g, bestT * 0.5, bestT * 2.0);
+    if (bestT > 0) { lo = bestT * 0.5; hi = bestT * 2.0; }
+    else { lo = bestT * 2.0; hi = bestT * 0.5; }
+    double res = gmb_opt_brentmin(gmb_opt_lm_g, &g, lo, hi);
     free(buf);
     return res;
 }
@@ -1329,7 +1350,10 @@ double* gmb_opt_linprog_c99(const double* c, int n, const double** aub, const do
 static void gmb_opt_c99_fvv(const double* v, int n, double* out, void* ctx)
 {
     gmb_fn_t fn = *(const gmb_fn_t*)ctx;
+    gmb_int_t prev = gmb_lambda_bound(0);
+    gmb_lambda_bound_set(0, (gmb_int_t)n - 1);
     ((void(*)(void*, double*, double*))fn.fn)(fn.ctx, (double*)v, out);
+    gmb_lambda_bound_set(0, prev);
 }
 
 double gmb_opt_newton_c99(gmb_fn_t fn, double guess)

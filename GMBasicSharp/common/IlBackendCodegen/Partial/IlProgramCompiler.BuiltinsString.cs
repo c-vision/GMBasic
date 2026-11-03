@@ -1177,6 +1177,25 @@ public sealed partial class IlProgramCompiler
             : RuntimeMethod(nameof(IlRuntime.Broyden), typeof(Func<double[], double[]>), typeof(double[])));
     }
 
+    /// <summary>Argomento callback di un builtin OPTIMIZE (2026-11-03): se è una FUNCTION
+    /// nominata con parametri array, EmitExpression produce un delegate con parametri `ref`;
+    /// qui lo si adatta alla Func&lt;&gt; attesa dal builtin.</summary>
+    private void EmitOptimizeCallback(Expr arg, Type expected)
+    {
+        EmitExpression(arg);
+        if (arg is not FunctionReferenceExpr fr) return;
+        if (_program.Symbols.GetSymbol(fr.SymbolId).DeclarationNode is not FunctionDefinition fd) return;
+        if (TryRefDelegateType(fd) is not { } refDel) return;
+        string mname;
+        Type target;
+        if (refDel == typeof(FfiRefCallbackTypes.CbRef1ArrD)) { mname = nameof(IlRuntime.OptVecVecFromRef); target = typeof(Func<double[], double[]>); }
+        else if (refDel == typeof(FfiRefCallbackTypes.CbRef1S1D) || refDel == typeof(FfiRefCallbackTypes.CbRef1S1I)) { mname = nameof(IlRuntime.OptModelFromRef); target = typeof(Func<double[], double, double>); }
+        else if (refDel == typeof(FfiRefCallbackTypes.CbRef2ArrD)) { mname = nameof(IlRuntime.OptVModelFromRef); target = typeof(Func<double[], double[], double[]>); }
+        else { mname = nameof(IlRuntime.OptVecFromRef); target = typeof(Func<double[], double>); }
+        if (target != expected) return;
+        _il.Emit(OpCodes.Call, RuntimeMethod(mname, refDel));
+    }
+
     private void EmitOptimizeVecCall(BuiltinFunctionCallExpr expr, string methodName)
     {
         if (expr.Args.Length != 2) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 2 argomenti (funzione vettoriale, initialGuess).");
@@ -1188,14 +1207,14 @@ public sealed partial class IlProgramCompiler
             EmitExpression(expr.Args[0]);
             _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.VectorizeScalar)));
         }
-        else EmitExpression(expr.Args[0]);
+        else EmitOptimizeCallback(expr.Args[0], typeof(Func<double[], double>));
         EmitDoubleArrayArgument(expr.Args[1]);
         _il.Emit(OpCodes.Call, RuntimeMethod(methodName));
     }
     private void EmitOptimizeLMCall(BuiltinFunctionCallExpr expr, string methodName)
-    { if (expr.Args.Length != 4) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 4 argomenti (modello, initialGuess, inputs, targets)."); EmitExpression(expr.Args[0]); EmitDoubleArrayArgument(expr.Args[1]); EmitDoubleArrayArgument(expr.Args[2]); EmitDoubleArrayArgument(expr.Args[3]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
+    { if (expr.Args.Length != 4) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 4 argomenti (modello, initialGuess, inputs, targets)."); EmitOptimizeCallback(expr.Args[0], methodName == nameof(IlRuntime.LevenbergMarquardtVec) ? typeof(Func<double[], double[], double[]>) : typeof(Func<double[], double, double>)); EmitDoubleArrayArgument(expr.Args[1]); EmitDoubleArrayArgument(expr.Args[2]); EmitDoubleArrayArgument(expr.Args[3]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
     private void EmitOptimizeDECall(BuiltinFunctionCallExpr expr)
-    { if (expr.Args.Length != 2) throw new NotSupportedException("Backend IL: DIFFERENTIALEVOLUTION richiede 2 argomenti (funzione vettoriale, bounds)."); EmitExpression(expr.Args[0]); EmitDoubleArrayArrayArgument(expr.Args[1]); _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.DifferentialEvolution))); }
+    { if (expr.Args.Length != 2) throw new NotSupportedException("Backend IL: DIFFERENTIALEVOLUTION richiede 2 argomenti (funzione vettoriale, bounds)."); EmitOptimizeCallback(expr.Args[0], typeof(Func<double[], double>)); EmitDoubleArrayArrayArgument(expr.Args[1]); _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.DifferentialEvolution))); }
     private void EmitOptimizeLeastSquaresCall(BuiltinFunctionCallExpr expr)
     { if (expr.Args.Length != 2) throw new NotSupportedException("Backend IL: LEASTSQUARES richiede 2 argomenti (A, b)."); EmitDoubleArrayArrayArgument(expr.Args[0]); EmitDoubleArrayArgument(expr.Args[1]); _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.LeastSquares))); }
     private void EmitOptimizeSimplexCall(BuiltinFunctionCallExpr expr)
@@ -1219,7 +1238,7 @@ public sealed partial class IlProgramCompiler
     {
         if (expr.Args.Length < 2 || expr.Args.Length > boundsArgIndex + 1)
             throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede (funzione, x0[, bounds]).");
-        EmitExpression(expr.Args[0]);
+        EmitOptimizeCallback(expr.Args[0], typeof(Func<double[], double>));
         EmitDoubleArrayArgument(expr.Args[1]);
         if (expr.Args.Length > boundsArgIndex) EmitDoubleArrayArrayArgument(expr.Args[boundsArgIndex]);
         else _il.Emit(OpCodes.Ldnull);
@@ -1229,7 +1248,7 @@ public sealed partial class IlProgramCompiler
     private void EmitOptimizeMinimizeCall(BuiltinFunctionCallExpr expr)
     {
         if (expr.Args.Length is < 2 or > 4) throw new NotSupportedException("Backend IL: MINIMIZE richiede (funzione, x0[, method][, bounds]).");
-        EmitExpression(expr.Args[0]);
+        EmitOptimizeCallback(expr.Args[0], typeof(Func<double[], double>));
         EmitDoubleArrayArgument(expr.Args[1]);
         if (expr.Args.Length >= 3) EmitStringArg(expr.Args[2]);
         else _il.Emit(OpCodes.Ldstr, "nelder-mead");
@@ -1242,7 +1261,7 @@ public sealed partial class IlProgramCompiler
     {
         if (expr.Args.Length < 2 || expr.Args.Length > boundsArgIndex + 1)
             throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede (funzione vettoriale, x0[, bounds]).");
-        EmitExpression(expr.Args[0]);
+        EmitOptimizeCallback(expr.Args[0], typeof(Func<double[], double[]>));
         EmitDoubleArrayArgument(expr.Args[1]);
         // overload esplicito (closure vettore→vettore), come Broyden
         MethodInfo method;
@@ -1279,7 +1298,7 @@ public sealed partial class IlProgramCompiler
     {
         if (expr.Args.Length < 2 || expr.Args.Length > 3)
             throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede (funzione, array[, parametro]).");
-        EmitExpression(expr.Args[0]);
+        EmitOptimizeCallback(expr.Args[0], typeof(Func<double[], double>));
         if (jagged) EmitDoubleArrayArrayArgument(expr.Args[1]);
         else EmitDoubleArrayArgument(expr.Args[1]);
         if (expr.Args.Length > 2) EmitInt32Argument(expr.Args[2]);

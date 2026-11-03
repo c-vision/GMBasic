@@ -103,7 +103,8 @@ gmb_string_t gmb_double_to_string(gmb_double_t val) {
      * "40.8333333333333"), pur essendo identico per la maggioranza dei valori "corti". */
     if (isnan(val)) return gmb_string_alloc("NaN");
     if (isinf(val)) return gmb_string_alloc(val > 0 ? "Infinity" : "-Infinity");
-    snprintf(buf, sizeof(buf), "%.15g", val);
+    if (val == 0.0) val = 0.0;   /* -0.0 -> "0" (parita con .NET/sample) */
+snprintf(buf, sizeof(buf), "%.15g", val);
     return gmb_string_alloc(buf);
 }
 
@@ -114,7 +115,8 @@ gmb_string_t gmb_str_basic(gmb_double_t val) {
     char buf[80];
     int n = 0;
     if (val >= 0) buf[n++] = ' ';
-    snprintf(buf + n, sizeof(buf) - (size_t)n, "%.15g", val);
+    if (val == 0.0) val = 0.0;   /* -0.0 -> "0" (parita con .NET/sample) */
+snprintf(buf + n, sizeof(buf) - (size_t)n, "%.15g", val);
     return gmb_string_alloc(buf);
 }
 
