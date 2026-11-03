@@ -1,4 +1,4 @@
-# APPS — complete applications in GMBasic
+# Apps — complete applications in GMBasic
 
 This folder hosts **complete applications written in GMBasic**, obtained by porting existing
 applications written in other languages (Go, Python, C#, Rust, ...).
