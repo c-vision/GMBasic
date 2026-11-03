@@ -11,7 +11,7 @@
  * Ritorna 1 se la condizione è vera, 0 altrimenti (incluso il caso di espressione non valutabile).
  */
 #include "gmb_runtime.h"
-#include "gmb_expr.h"
+#include "gmb_eval_scope.h"
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>

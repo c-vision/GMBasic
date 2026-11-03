@@ -2,7 +2,7 @@
 /* Port 1:1 di modules/Database/DBF/DbfEngine.cs */
 /* Ogni riga del C# è sotto come // — nessun commento, attributo o riga persa. */
 #include "../../include/gmb_db_port.h"
-#include "../../../gmb_runtime_c/include/gmb_expr.h"
+#include "../../../gmb_runtime_c/include/gmb_eval_scope.h"
 
 /* --- C# originale --- */
 //// FILE: Basic.DBF.DbfEngine.cs

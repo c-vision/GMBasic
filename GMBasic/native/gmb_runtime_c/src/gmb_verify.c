@@ -13,7 +13,7 @@
  * Runtime CONDIVISO (AGENTS §0bis): VM/C, C99Native usano le stesse gmb_verify_*.
  */
 #include "gmb_runtime.h"
-#include "gmb_expr.h"
+#include "gmb_eval_scope.h"
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>

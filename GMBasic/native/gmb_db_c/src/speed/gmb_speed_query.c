@@ -19,7 +19,7 @@
  */
 #include "gmb_db_internal.h"
 #include "gmb_runtime.h"
-#include "gmb_expr.h"
+#include "gmb_eval_scope.h"
 #include <ctype.h>
 #include <strings.h>
 

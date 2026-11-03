@@ -6,7 +6,7 @@
 #ifndef GMB_BSP_H
 #define GMB_BSP_H
 
-#include "gmb_expr.h"
+#include "gmb_eval_scope.h"
 
 #ifdef __cplusplus
 extern "C" {

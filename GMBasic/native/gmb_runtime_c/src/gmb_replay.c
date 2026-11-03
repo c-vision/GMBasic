@@ -6,7 +6,7 @@
  * Basic.Agents.ReplayRegistry (C#): stesso formato JSON. Runtime CONDIVISO (AGENTS §0bis).
  */
 #include "gmb_runtime.h"
-#include "gmb_expr.h"   /* valutatore runtime condiviso (E1 replay automatico) */
+#include "gmb_eval_scope.h"   /* valutatore runtime condiviso (E1 replay automatico) */
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
