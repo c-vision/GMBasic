@@ -1792,10 +1792,11 @@ END SUB
 
 ' Rilettura della sixel prodotta sopra: decodifica le bande e ricostruisce la griglia.
 SUB SixelLoad(g AS INTEGER, path AS STRING)
+    DIM raw()
     DIM w AS INTEGER, h AS INTEGER, bands AS INTEGER, band AS INTEGER
     DIM x AS INTEGER, k AS INTEGER, j AS LONG, i AS LONG, last AS LONG, v AS INTEGER
     IF NOT IO.FILEEXISTS(path) THEN Fail("sixel assente: " + path)
-    DIM raw() = IO.READBYTES(path)
+    raw = IO.READBYTES(path)
     last = UBOUND(raw)
     w = g_gw(g)
     h = g_gh(g)
