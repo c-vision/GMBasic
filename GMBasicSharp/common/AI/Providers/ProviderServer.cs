@@ -136,6 +136,35 @@ public sealed class ProviderServer
             _ => Basic.AI.Rag.AiCapability.Chat,
         };
 
+        // Forma ENGINE-FIRST (parità col runtime C, usata dai sample AiLLM/*.bas):
+        //   AI REGISTER alias, capability, "mlx"|"llamacpp"|"embedded", "{""modelDir"": ...}"
+        // La sorgente è il NOME del motore, il path sta nel param. Prima questa forma falliva
+        // con "sorgente senza scheme (ricevuto 'mlx')" mentre le gambe C la accettavano.
+        if (IsLocalEngineName(source) && !string.IsNullOrWhiteSpace(param))
+        {
+            var engineCfg = ParseConfigJson(param);
+            if (engineCfg is not null
+                && engineCfg.TryGetValue("modelDir", out var modelDirCfg)
+                && !string.IsNullOrWhiteSpace(modelDirCfg))
+            {
+                var engineDir = Basic.ModelDownload.PathExpansion.Expand(modelDirCfg);
+                if (Directory.Exists(engineDir) || File.Exists(engineDir))
+                {
+                    var detected = Basic.ModelDownload.ModelScanner.DetectConfig(
+                        engineDir, cap == Basic.AI.Rag.AiCapability.Chat ? null : cap);
+                    var merged = new Dictionary<string, string>(detected.Config);
+                    foreach (var kv in engineCfg)
+                        if (!kv.Key.Equals("modelDir", StringComparison.OrdinalIgnoreCase)
+                            && !kv.Key.Equals("engine", StringComparison.OrdinalIgnoreCase))
+                            merged[kv.Key] = kv.Value;
+                    var engineKind = source.Equals("embedded", StringComparison.OrdinalIgnoreCase)
+                        ? detected.Kind : source.ToLowerInvariant();
+                    Register(cap.ToRole(), alias, engineKind, merged);
+                    return alias;
+                }
+            }
+        }
+
         if (source.StartsWith("hf:", StringComparison.OrdinalIgnoreCase)
             || source.StartsWith("huggingface:", StringComparison.OrdinalIgnoreCase))
         {
@@ -256,6 +285,13 @@ public sealed class ProviderServer
         };
         return Path.Combine(baseDir, sub);
     }
+
+    /// <summary>Nome di motore locale accettato nella forma engine-first di REGISTER
+    /// (`AI REGISTER alias, cap, "mlx", "{""modelDir"":...}"`).</summary>
+    private static bool IsLocalEngineName(string source)
+        => source.Equals("mlx", StringComparison.OrdinalIgnoreCase)
+        || source.Equals("llamacpp", StringComparison.OrdinalIgnoreCase)
+        || source.Equals("embedded", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Classifica il kind remoto dall'URL: path /api/chat o porta :11434
     /// (default ollama) -> ollama, /v1/messages -> anthropic, altrimenti openai (default).</summary>

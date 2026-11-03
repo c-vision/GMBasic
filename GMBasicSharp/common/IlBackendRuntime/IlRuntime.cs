@@ -18216,10 +18216,10 @@ public static double TextWidth(string s)
                 try { completer = Basic.Providers.ProviderServer.Instance.GetActiveCompletion(); }
                 catch { /* nessun provider attivo: sotto → errore esplicito */ }
                 if (completer is not Basic.Decision.IDecisionCompleter decisionCompleter)
-                    return "{\"error\":\"local provider non disponibile\"}";
+                    return "{\"error\":\"local: local provider non disponibile: nessun modello MLX attivo (AI REGISTER con path o \\\"mlx\\\"+modelDir + AI SET ACTIVE)\"}";
                 var localResults = decisionCompleter.Decide(request);
                 if (localResults.Count == 0)
-                    return "{\"error\":\"local provider: nessun risultato\"}";
+                    return "{\"error\":\"local: local provider: nessun risultato\"}";
                 result = localResults.OrderByDescending(r => r.Probability).First();
             }
             else

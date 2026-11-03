@@ -24,6 +24,7 @@ typedef enum {
 } gmb_decision_kind_t;
 
 #define GMB_DECISION_MAX_OPTIONS 16
+#define GMB_DECISION_ERR_CAP 512
 
 typedef struct {
     const char* id;         /* identificatore stabile dello slot */
@@ -72,6 +73,23 @@ int gmb_decision_result_json(const gmb_decision_result_t* result, char* out, siz
  * ("NOUL"/"SCORE"/"CHOICE") e restituisce il JSON del risultato in heap (libera con free).
  * NULL su kind invalido/errore. Stessa forma del JSON C# (IlRuntime.AiDecide). */
 char* gmb_ai_decide_run_json(const char* state, const char* kind, const char* provider);
+
+/* Provider locale MLX (JEV/SystemOne), implementato in `gmb_ai_decide_local.c`: vive nella
+ * dylib `gmb_runtime_ai` (non-Windows, che linka LLMEnv) o nel core (Windows) ed è invocato
+ * dal dispatcher tramite il gateway. Usa il modello attivo del ruolo completion, il
+ * chat_template reale, il tokenizer e l'ABI v8 CAP_DECIDE; applica `scoring_head.json` se
+ * presente. `out->option_id/value` puntano a `options[i]` (vita del chiamante).
+ * Ritorna 1 = risultato, -1 = errore con motivo in `err` (mai un fallback silenzioso). */
+int gmb_ai_decide_local_run(const char* state, const char* kind,
+                            const gmb_decision_option_t* options, int n_options,
+                            gmb_decision_result_t* out, char* err, size_t errcap);
+
+/* Ponte STABILE core → dylib AI: `gmb_ai_decide_local.c` vive in `gmb_runtime_ai`, che risolve
+ * i simboli del core a load-time. Chiamare direttamente gli interni di `gmb_ai.c`/`gmb_paths.c`
+ * li lascerebbe fuori dal link dei programmi che usano solo DECIDE (dead-strip degli oggetti
+ * non referenziati) → salto a simbolo nullo al primo uso. Questi due wrapper garantiscono che
+ * l'oggetto del core sia linkato e che la dylib abbia un entry point stabile. */
+const char* gmb_ai_decide_active_model_path(void);
 
 #ifdef __cplusplus
 }

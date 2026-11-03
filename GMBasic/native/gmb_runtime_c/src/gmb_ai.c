@@ -418,7 +418,11 @@ static int gmb_fixture_completion_len(const char* userPrompt) {
 static void provider_model_path(const gmb_provider_t* p, char* out, size_t cap) {
     out[0] = 0;
     if (!p) return;
-    const char* c = p->config;
+    /* `config` è NULL per i provider di default (fixture): prima `strstr(p->config, ...)`
+     * crashava quando `gmb_provider_active_model_path()` scandiva il registro senza un
+     * modello MLX registrato. */
+    const char* cfg = p->config ? p->config : "";
+    const char* c = cfg;
     while (c && *c) {
         if (strncmp(c, "model=", 6) == 0) {
             size_t k = 0; c += 6;
@@ -427,7 +431,9 @@ static void provider_model_path(const gmb_provider_t* p, char* out, size_t cap) 
         }
         c = strchr(c, '\n'); if (c) c++;
     }
-    const char* m = strstr(p->config, "\"model\"");
+    /* Chiave JSON `model`, oppure `modelDir` (forma AI REGISTER "mlx", "{modelDir:...}"). */
+    const char* m = strstr(cfg, "\"model\"");
+    if (!m) m = strstr(cfg, "\"modelDir\"");
     if (m) {
         m = strchr(m, ':'); if (m) { m++; while (*m == ' ' || *m == '"') m++;
             size_t k = 0; while (*m && *m != '"' && k + 1 < cap) out[k++] = *m++; out[k] = 0; }

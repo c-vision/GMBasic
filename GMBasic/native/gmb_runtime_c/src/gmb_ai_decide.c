@@ -2,6 +2,7 @@
  * Mirror di GMBasicSharp/common/AI/Decision. Il core di inferenza è in LLMEnv (ABI v8
  * CAP_DECIDE); qui non si tocca il motore. */
 #include "gmb_ai_decide.h"
+#include "gmb_runtime.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -217,6 +218,14 @@ int gmb_decision_result_json(const gmb_decision_result_t* result, char* out, siz
     return n;
 }
 
+/* Ponte per la dylib AI (vedi gmb_ai_decide.h): il riferimento forte a queste funzioni del
+ * core garantisce che i loro oggetti (`gmb_ai.o`, `gmb_paths.o`) entrino nel link anche in un
+ * programma che usa SOLO `AI DECIDE ... "local"`. */
+const char* gmb_ai_decide_active_model_path(void)
+{
+    return gmb_provider_active_model_path();
+}
+
 char* gmb_ai_decide_run_json(const char* state, const char* kind, const char* provider_name) {
     if (!kind) return NULL;
     const gmb_decision_option_t* options = NULL;
@@ -261,15 +270,31 @@ char* gmb_ai_decide_run_json(const char* state, const char* kind, const char* pr
     else return NULL;
     (void)is_choice_custom;
 
-    /* Provider locale MLX: non esiste nel runtime C (il core inferenziale è in LLMEnv e il
-     * provider locale è nel runtime managed). Errore JSON esplicito, stessa forma del C#. */
+    /* Provider locale MLX: l'inferenza vive nella dylib AI (`gmb_ai_decide_local_run`),
+     * che usa il motore LLMEnv (CAP_DECIDE), il tokenizer e il chat_template reale. Un
+     * fallimento è un errore JSON ESPLICITO: mai un fallback silenzioso a rules. */
     if (provider_name && ieq(provider_name, "local")) {
-        const char* err = "{\"error\":\"local provider non disponibile\"}";
-        size_t en = strlen(err);
-        char* eout = (char*)malloc(en + 1);
-        if (!eout) return NULL;
-        memcpy(eout, err, en + 1);
-        return eout;
+        gmb_decision_result_t local_result;
+        char lerr[GMB_DECISION_ERR_CAP] = "";
+        if (gmb_ai_decide_local_run(state ? state : "", kind, options, n_options,
+                                    &local_result, lerr, sizeof lerr) != 1) {
+            char esc[GMB_DECISION_ERR_CAP + 64];
+            json_escape(lerr[0] ? lerr : "local provider non disponibile", esc, sizeof esc);
+            char ebuf[GMB_DECISION_ERR_CAP + 96];
+            int en = snprintf(ebuf, sizeof ebuf, "{\"error\":\"local: %s\"}", esc);
+            if (en < 0) return NULL;
+            char* eout = (char*)malloc((size_t)en + 1);
+            if (!eout) return NULL;
+            memcpy(eout, ebuf, (size_t)en + 1);
+            return eout;
+        }
+        char lbuffer[1024];
+        if (gmb_decision_result_json(&local_result, lbuffer, sizeof lbuffer) < 0) return NULL;
+        size_t ln = strlen(lbuffer);
+        char* lout = (char*)malloc(ln + 1);
+        if (!lout) return NULL;
+        memcpy(lout, lbuffer, ln + 1);
+        return lout;
     }
     gmb_decision_provider_t* provider = NULL;
     if (!provider_name || !provider_name[0] || ieq(provider_name, "rules"))

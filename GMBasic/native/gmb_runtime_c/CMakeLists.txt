@@ -135,6 +135,7 @@ if(NOT WIN32)
         src/gmb_llm_tok.c
         src/gmb_model_io.c
         src/gmb_distill.c
+        src/gmb_ai_decide_local.c
         ../gmb_compiler_c/src/model/gmb_model_quantize.c
         ${LLMENV}/LLMEngine/moe/src/llmengine_moe_quant_alloc.c
         ${LLMENV}/LLMEngine/moe/src/llmengine_moe_gguf.c
@@ -414,6 +415,7 @@ if(WIN32)
       src/gmb_llm_tok.c
       src/gmb_model_io.c
       src/gmb_distill.c
+      src/gmb_ai_decide_local.c
       ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_compiler_c/src/model/gmb_model_quantize.c
       ${LLMENV}/LLMEngine/moe/src/llmengine_moe_quant_alloc.c
       ${LLMENV}/LLMEngine/moe/src/llmengine_moe_gguf.c

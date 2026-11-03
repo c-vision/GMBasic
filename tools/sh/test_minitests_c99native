@@ -36,6 +36,11 @@ INC_CHART="$ROOT/native/gmb_chart/include"
 DRV="$HOST_BUILD/gmb_c99native_driver"
 # gmb_chart = motore chart autonomo (native/gmb_chart): compilato insieme al runtime.
 RT_SRCS="$(echo "$ROOT"/native/gmb_runtime_c/src/*.c) $(echo "$ROOT"/native/gmb_runtime_c/src/amos/*.c) $(echo "$ROOT"/native/gmb_chart/src/*.c)"
+# SPLIT core/AI (2026-11-02): l'implementazione del provider locale DECIDE dipende da LLMEnv
+# (llmtoken/llmjinja/engine) e vive nella dylib `gmb_runtime_ai`, NON nel core. Il glob sopra la
+# includerebbe → due definizioni di `gmb_ai_decide_local_run` e riferimenti LLMEnv non linkati.
+# Il core usa il forwarder del gateway, che carica la dylib a runtime.
+RT_SRCS="$(echo $RT_SRCS | tr ' ' '\n' | grep -v '/gmb_ai_decide_local.c$' | tr '\n' ' ')"
 # Engine ASR (LLMEnv/LLMEngine/asr): gmb_asr_cmd.c (in gmb_runtime_c/src) usa i simboli gmb_asr_*,
 # le cui implementazioni NON sono più in gmb_runtime_c/src (refactor ASR) → senza, il link fallisce.
 RT_SRCS="$RT_SRCS $(echo "$LLMENV"/LLMEngine/asr/src/*.c)"
@@ -325,6 +330,15 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
   if grep -qE 'gmb_doc_|gmb_docfields_json|gmb_docextract_json|gmb_agent_ask_file' "$WORK/out.c" 2>/dev/null; then
     DOC_SRCS="$ROOT/native/gmb_doc_c/src/gmb_doc.c $ROOT/native/gmb_doc_c/src/gmb_doc_pdf.c $ROOT/native/gmb_doc_c/src/gmb_doc_ocr.c"
   fi
+  # TORCH: il loader C (dlopen dell'host ML) NON sta in librt.a — lo script diretto
+  # (gmb_c99native_run.sh) lo compila insieme al programma. Senza questo blocco ogni
+  # MiniTest TORCH.* falliva al link con `_gmb_ml_tensor_*` indefiniti (relu: il C emesso
+  # era corretto, mancava solo gmb_torch.o). Condizionale: chi non usa TORCH non lo paga.
+  TORCH_SRCS=""
+  if grep -q 'gmb_ml_' "$WORK/out.c" 2>/dev/null; then
+    TORCH_SRCS="$ROOT/native/gmb_torch/src/gmb_torch.c"
+    [ -f "$ROOT/native/gmb_torch/src/gmb_torch_str.c" ] && TORCH_SRCS="$TORCH_SRCS $ROOT/native/gmb_torch/src/gmb_torch_str.c"
+  fi
   # MODEL I/O + plugin/model_desc + tokenizer: `gmb_llm_model_convert` (e il resto del namespace
   # LLM) vivono nel progetto separato gmb_model_io, che il C99Native deve linkare
   # (il C generato per `LLM MODEL CONVERT` li chiama). Prebuilt come db/moe/codec.
@@ -336,7 +350,7 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
   # duplicata (due copie da tenere allineate) e la gamba LIBRARY linkava per forza un binario.
   # Array (non stringa) perché il path di rpath può contenere spazi e perché $AGENT/$DOC_SRCS
   # sono già liste: nello stringone i confini dei token dipendevano dallo split implicito.
-  LINK_IN=( "$RT_LIB" $AGENT $COMPILER "$DB_LIB" "$MOE_LIB" "$MIO" "$PLG" "$MDS" $DOC_SRCS )
+  LINK_IN=( "$RT_LIB" $AGENT $COMPILER "$DB_LIB" "$MOE_LIB" "$MIO" "$PLG" "$MDS" $DOC_SRCS $TORCH_SRCS )
   LINK_FLAGS=( $INC_RT -I"$ROOT/native/gmb_agent_runtime" -I"$LLMENV/LLMJinja" -I"$LLMENV/LLMEngine/mlx"
     -I"$ROOT/native/gmb_compiler_c/include" $CODEC_INC $DB_INC $LLM_INC $INC_EXTRA $FRAMEWORKS
     -lm -w -ffp-contract=off -Wl,-dead_strip $CODEC_LIB "$TOK" -Wl,-rpath,"$(dirname "$TOK")"
