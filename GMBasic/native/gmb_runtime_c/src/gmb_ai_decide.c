@@ -3,6 +3,7 @@
  * CAP_DECIDE); qui non si tocca il motore. */
 #include "gmb_ai_decide.h"
 #include "gmb_runtime.h"
+#include "gmb_network.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -232,6 +233,149 @@ const char* gmb_ai_decide_active_model_path(void)
     return gmb_provider_active_model_path();
 }
 
+/* ── Provider REMOTO TypeSafe (JEV): POST JSON, risposta con la decisione già calcolata ── */
+static int dc_typesafe_run(const char* state, const char* kind,
+                           const gmb_decision_option_t* options, int n_options,
+                           gmb_decision_result_t* out, char* err, size_t errcap) {
+    const char* cfg = gmb_provider_active_config("decide");
+    if (!cfg || !*cfg) {
+        if (err && errcap) snprintf(err, errcap, "typesafe: nessun provider %%DECIDE attivo con config baseUrl");
+        return -1;
+    }
+    char* base = gmb_json_extract(cfg, "baseUrl");
+    if (!base || !*base) {
+        free(base);
+        if (err && errcap) snprintf(err, errcap, "typesafe: baseUrl mancante nel config del provider %%DECIDE");
+        return -1;
+    }
+    char* api = gmb_json_extract(cfg, "apiKey");
+    char* model = gmb_json_extract(cfg, "model");
+    char* timeout_s = gmb_json_extract(cfg, "timeoutMs");
+    /* Al remoto si manda il kind CANONICO (NOUL|CHOICE|SCORE), non "CHOICE:labels"/"SCORE:0:10". */
+    const char* kind_wire = (kind && strncasecmp(kind, "CHOICE", 6) == 0) ? "CHOICE"
+                          : (kind && strncasecmp(kind, "SCORE", 5) == 0) ? "SCORE" : "NOUL";
+
+    size_t cap = strlen(state ? state : "") + strlen(kind ? kind : "") + 1024;
+    for (int i = 0; i < n_options; i++) {
+        cap += strlen(options[i].id ? options[i].id : "") + strlen(options[i].label ? options[i].label : "") + 96;
+    }
+    char* req = (char*)malloc(cap);
+    if (!req) { free(base); free(api); free(model); free(timeout_s); return -1; }
+    size_t off = 0;
+    #define DC_APP(...) do { int _n = snprintf(req + off, cap - off, __VA_ARGS__);         if (_n < 0 || (size_t)_n >= cap - off) { off = cap; } else off += (size_t)_n; } while (0)
+    DC_APP("{\"state\":\"");
+    if (off < cap) { json_escape(state ? state : "", req + off, cap - off); off += strlen(req + off); }
+    DC_APP("\",\"kind\":\"");
+    if (off < cap) { json_escape(kind_wire, req + off, cap - off); off += strlen(req + off); }
+    DC_APP("\",\"options\":[");
+    for (int i = 0; i < n_options && off < cap; i++) {
+        if (i) DC_APP(",");
+        DC_APP("{\"id\":\"");
+        if (off < cap) { json_escape(options[i].id ? options[i].id : "", req + off, cap - off); off += strlen(req + off); }
+        DC_APP("\",\"label\":\"");
+        if (off < cap) { json_escape(options[i].label ? options[i].label : "", req + off, cap - off); off += strlen(req + off); }
+        DC_APP("\"}");
+    }
+    DC_APP("]");
+    if (model && *model) {
+        DC_APP(",\"model\":\"");
+        if (off < cap) { json_escape(model, req + off, cap - off); off += strlen(req + off); }
+        DC_APP("\"");
+    }
+    DC_APP("}");
+    if (off >= cap) {
+        free(req); free(base); free(api); free(model); free(timeout_s);
+        if (err && errcap) snprintf(err, errcap, "typesafe: richiesta troppo grande");
+        return -1;
+    }
+
+    gmb_net_http_options_t opts;
+    memset(&opts, 0, sizeof opts);
+    opts.method = "POST";
+    opts.body = req;
+    opts.body_len = strlen(req);
+    opts.timeout_ms = 15000;
+    opts.allow_redirects = 1;
+    opts.max_redirects = 5;
+    if (api && *api) opts.bearer_token = api;
+    if (timeout_s && *timeout_s) {
+        long t = strtol(timeout_s, NULL, 10);
+        if (t > 0) opts.timeout_ms = t;
+    }
+    int status = 0;
+    char* body = NULL; size_t blen = 0; char* neterr = NULL; char* hdrs = NULL;
+    int rc = gmb_net_http_request(base, &opts, &status, &body, &blen, &neterr, &hdrs);
+    free(req); free(base); free(api); free(model); free(timeout_s);
+    if (hdrs) free(hdrs);
+    if (rc != 0) {
+        if (err && errcap) snprintf(err, errcap, "typesafe: HTTP fallito: %s", neterr ? neterr : "errore di rete");
+        free(body); free(neterr);
+        return -1;
+    }
+    free(neterr);
+    if (status < 200 || status >= 300) {
+        if (err && errcap) snprintf(err, errcap, "typesafe: HTTP %d", status);
+        free(body);
+        return -1;
+    }
+    if (!body || blen == 0) {
+        free(body);
+        if (err && errcap) snprintf(err, errcap, "typesafe: risposta vuota");
+        return -1;
+    }
+    char* js = (char*)malloc(blen + 1);
+    if (!js) { free(body); return -1; }
+    memcpy(js, body, blen); js[blen] = 0; free(body);
+
+    char* opt_text = gmb_json_extract(js, "option");
+    char* prob_text = gmb_json_extract(js, "probability");
+    char* conf_text = gmb_json_extract(js, "confidence");
+    char* cal_text = gmb_json_extract(js, "calibrated");
+    char* rkind = gmb_json_extract(js, "kind");
+    if (!opt_text || !*opt_text || !prob_text || !*prob_text) {
+        if (err && errcap) snprintf(err, errcap, "typesafe: risposta senza option/probability");
+        free(js); free(opt_text); free(prob_text); free(conf_text); free(cal_text); free(rkind);
+        return -1;
+    }
+    double prob = atof(prob_text);
+    if (!(prob >= 0.0 && prob <= 1.0)) {
+        if (err && errcap) snprintf(err, errcap, "typesafe: probability fuori [0,1]");
+        free(js); free(opt_text); free(prob_text); free(conf_text); free(cal_text); free(rkind);
+        return -1;
+    }
+    const gmb_decision_option_t* chosen = NULL;
+    for (int i = 0; i < n_options; i++) {
+        if (options[i].id && ieq(options[i].id, opt_text)) { chosen = &options[i]; break; }
+    }
+    if (!chosen) {
+        for (int i = 0; i < n_options; i++) {
+            if (options[i].label && ieq(options[i].label, opt_text)) { chosen = &options[i]; break; }
+        }
+    }
+    if (!chosen) {
+        if (err && errcap) snprintf(err, errcap, "typesafe: option '%s' non è nel dominio", opt_text);
+        free(js); free(opt_text); free(prob_text); free(conf_text); free(cal_text); free(rkind);
+        return -1;
+    }
+    if (rkind && *rkind) {
+        int match = ieq(rkind, kind_wire);
+        if (!match) {
+            if (err && errcap) snprintf(err, errcap, "typesafe: kind '%s' incoerente", rkind);
+            free(js); free(opt_text); free(prob_text); free(conf_text); free(cal_text); free(rkind);
+            return -1;
+        }
+    }
+    memset(out, 0, sizeof(*out));
+    out->kind = (gmb_decision_kind_t)((kind && ieq(kind, "NOUL")) ? 0 : (kind && strncasecmp(kind, "SCORE", 5) == 0) ? 2 : 1);
+    out->option_id = chosen->id;
+    out->value = chosen->label ? chosen->label : chosen->id;
+    out->probability = prob;
+    if (conf_text && *conf_text && strcmp(conf_text, "null") != 0) { out->confidence = atof(conf_text); out->has_confidence = 1; }
+    if (cal_text && *cal_text && strcmp(cal_text, "null") != 0) { out->calibrated = atof(cal_text); out->has_calibrated = 1; }
+    free(js); free(opt_text); free(prob_text); free(conf_text); free(cal_text); free(rkind);
+    return 1;
+}
+
 char* gmb_ai_decide_run_json(const char* state, const char* kind, const char* provider_name) {
     if (!kind) return NULL;
     /* Provider esplicito assente → ruolo %DECIDE attivo, se registrato/attivato. */
@@ -298,6 +442,30 @@ char* gmb_ai_decide_run_json(const char* state, const char* kind, const char* pr
     else if (ieq(kind, "CHOICE")) { k = GMB_DECISION_CHOICE; options = gmb_decision_slots_choice; n_options = 16; }
     else return NULL;
     (void)is_choice_custom;
+
+    /* Provider REMOTO TypeSafe (JEV). */
+    if (effective_provider && ieq(effective_provider, "typesafe")) {
+        gmb_decision_result_t ts;
+        char terr[GMB_DECISION_ERR_CAP] = "";
+        if (dc_typesafe_run(state ? state : "", kind, options, n_options, &ts, terr, sizeof terr) != 1) {
+            char esc[GMB_DECISION_ERR_CAP + 64];
+            json_escape(terr[0] ? terr : "typesafe: errore", esc, sizeof esc);
+            char ebuf[GMB_DECISION_ERR_CAP + 96];
+            int en = snprintf(ebuf, sizeof ebuf, "{\"error\":\"%s\"}", esc);
+            if (en < 0) return NULL;
+            char* eout = (char*)malloc((size_t)en + 1);
+            if (!eout) return NULL;
+            memcpy(eout, ebuf, (size_t)en + 1);
+            return eout;
+        }
+        char tbuf[1024];
+        if (gmb_decision_result_json(&ts, tbuf, sizeof tbuf) < 0) return NULL;
+        size_t tn = strlen(tbuf);
+        char* tout = (char*)malloc(tn + 1);
+        if (!tout) return NULL;
+        memcpy(tout, tbuf, tn + 1);
+        return tout;
+    }
 
     /* Provider locale MLX: l'inferenza vive nella dylib AI (`gmb_ai_decide_local_run`),
      * che usa il motore LLMEnv (CAP_DECIDE), il tokenizer e il chat_template reale. Un
