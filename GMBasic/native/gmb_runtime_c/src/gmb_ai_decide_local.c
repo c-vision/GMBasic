@@ -84,6 +84,9 @@ typedef struct {
     char decide_mode[16];
     char decide_template[4096];
     char decide_calibration[LOCAL_MODEL_CAP];
+    /* Prefix-cache MLX (opzionale): simboli risolti dalla dylib del motore. */
+    int (*save_prefix)(void* mh, const char* name, void* sh);
+    int (*append_auto_prefix)(void* sh, void* mh, const int32_t* ids, int n_ids, int min_match);
 } local_ctx_t;
 
 static local_ctx_t g_local;
@@ -181,6 +184,8 @@ static void close_locked(local_ctx_t* c)
     snprintf(c->decide_mode, sizeof c->decide_mode, "auto");
     c->decide_template[0] = 0;
     c->decide_calibration[0] = 0;
+    c->save_prefix = NULL;
+    c->append_auto_prefix = NULL;
 }
 
 /* Legge le chiavi decide* dalla config del provider completion attivo (JSON di AI REGISTER).
@@ -257,6 +262,10 @@ static int ensure_model(char* err, size_t errcap)
     g_local.eng = eng;
     g_local.model_h = m;
     g_local.tok = tok;
+    g_local.save_prefix = (int (*)(void*, const char*, void*))
+        dlsym(lib, "llm_ai_mlx_model_save_prefix");
+    g_local.append_auto_prefix = (int (*)(void*, void*, const int32_t*, int, int))
+        dlsym(lib, "llm_ai_mlx_session_append_auto_prefix");
     gmb_decision_head_init(&g_local.head);
     g_local.head_state = g_local.decide_calibration[0]
         ? gmb_decision_head_load_file(g_local.decide_calibration, &g_local.head)
@@ -497,13 +506,13 @@ int gmb_ai_decide_local_run(const char* state, const char* kind,
 
 /* Batch su uno STESSO stato: UNA entry point per l'intero gruppo (parità di API col managed).
  *
- * La FUSIONE del prefill/KV (save_prefix + append_auto_prefix, usata dal provider C#) è
- * implementata ma NON attiva qui: misurato che, invocata da questo provider, la sessione
- * riusata restituisce logits diversi dal prefill lineare (NOUL 0.982288 -> 0.921922,
- * SCORE 0.888928 -> 0.516161) — differenza NON di arrotondamento. Il percorso corretto e
- * verificato è il prefill lineare per ciascun dominio; l'entry point resta lo stesso, quindi
- * riattivare la KV condivisa (a correzione del motore) è una modifica locale. Mai un numero
- * sbagliato "silenzioso": qui si preferisce il costo del prefill alla divergenza del readout. */
+ * Percorso di riferimento: un prefill lineare per dominio (numeri identici al dispatcher
+ * singolo). La FUSIONE KV (prefill comune + `append_auto_prefix`) è disponibile dietro
+ * `GMB_DECIDE_GROUP_PREFIX=1`: è la stessa strategia del provider managed e, con una
+ * prefix-cache PULITA, è numericamente equivalente (0.982151/0.887789 vs 0.982288/0.888928;
+ * differenza FP, argmax identico). Resta opt-in perché la radix del motore sceglie il match
+ * PIÙ LUNGO: un prefisso "full prompt" rimasto in cache da build precedenti (tail=0) può
+ * cambiare il readout. Default = prefill lineare: nessun numero sbagliato in silenzio. */
 int gmb_ai_decide_local_run_group(const char* state, const gmb_decision_domain_t* domains,
                                   int n_domains, gmb_decision_result_t* out,
                                   char* err, size_t errcap)
@@ -522,41 +531,100 @@ int gmb_ai_decide_local_run_group(const char* state, const gmb_decision_domain_t
     llmtoken_handle tok = (llmtoken_handle)c->tok;
     int rc2 = -1;
     char* prompt = (char*)malloc(LOCAL_PROMPT_CAP);
-    int32_t* ids = (int32_t*)malloc((size_t)LOCAL_TOKEN_CAP * sizeof(int32_t));
-    gmb_decision_option_t eff[GMB_DECISION_MAX_OPTIONS];
-    LlmEngineDecideOption eopt[GMB_DECISION_MAX_OPTIONS];
-    if (!prompt || !ids) {
-        free(prompt); free(ids);
+    int32_t* tmp = (int32_t*)malloc((size_t)LOCAL_TOKEN_CAP * sizeof(int32_t));
+    gmb_decision_option_t* eff = (gmb_decision_option_t*)calloc(
+        (size_t)n_domains * GMB_DECISION_MAX_OPTIONS, sizeof(gmb_decision_option_t));
+    LlmEngineDecideOption* eopt = (LlmEngineDecideOption*)calloc(
+        (size_t)n_domains * GMB_DECISION_MAX_OPTIONS, sizeof(LlmEngineDecideOption));
+    int32_t** all_ids = (int32_t**)calloc((size_t)n_domains, sizeof(int32_t*));
+    int* all_lens = (int*)calloc((size_t)n_domains, sizeof(int));
+    if (!prompt || !tmp || !eff || !eopt || !all_ids || !all_lens) {
         set_err(err, errcap, "local provider: memoria esaurita", NULL);
-        return -1;
+        goto done;
     }
 
+    /* Fase 1: opzioni, prompt e token di OGNI dominio (servono tutti per il prefisso comune). */
     for (int i = 0; i < n_domains; i++) {
+        gmb_decision_option_t* ei = eff + (size_t)i * GMB_DECISION_MAX_OPTIONS;
+        LlmEngineDecideOption* oi = eopt + (size_t)i * GMB_DECISION_MAX_OPTIONS;
         if (local_prepare_options(c, domains[i].kind, domains[i].options,
-                                  domains[i].n_options, eff, eopt) != 0) {
+                                  domains[i].n_options, ei, oi) != 0) {
             set_err(err, errcap, c->err, NULL);
             goto done;
         }
-        if (local_build_prompt(c, state, eff, domains[i].n_options,
+        if (local_build_prompt(c, state, ei, domains[i].n_options,
                                prompt, LOCAL_PROMPT_CAP, err, errcap) != 0)
             goto done;
-        int n_ids = llmtoken_encode(tok, prompt, ids, LOCAL_TOKEN_CAP);
-        if (n_ids <= 0 || n_ids >= LOCAL_TOKEN_CAP) {
+        int n = llmtoken_encode(tok, prompt, tmp, LOCAL_TOKEN_CAP);
+        if (n <= 0 || n >= LOCAL_TOKEN_CAP) {
             set_err(err, errcap, "local provider: tokenizzazione del prompt fallita", NULL);
             goto done;
         }
+        all_ids[i] = (int32_t*)malloc((size_t)n * sizeof(int32_t));
+        if (!all_ids[i]) {
+            set_err(err, errcap, "local provider: memoria esaurita", NULL);
+            goto done;
+        }
+        memcpy(all_ids[i], tmp, (size_t)n * sizeof(int32_t));
+        all_lens[i] = n;
+    }
+    free(prompt); prompt = NULL;
+    free(tmp); tmp = NULL;
+
+    /* Fase 2: fusione KV opzionale. Prefisso = match comune, con almeno 1 token di coda. */
+    const char* pfenv = getenv("GMB_DECIDE_GROUP_PREFIX");
+    int use_prefix = pfenv && *pfenv && strcmp(pfenv, "0") != 0
+                  && c->save_prefix && c->append_auto_prefix;
+    int common = 0;
+    if (use_prefix) {
+        int min_len = all_lens[0];
+        for (int i = 1; i < n_domains; i++) if (all_lens[i] < min_len) min_len = all_lens[i];
+        common = all_lens[0];
+        for (int i = 1; i < n_domains; i++) {
+            int m = common < all_lens[i] ? common : all_lens[i];
+            int k = 0;
+            while (k < m && all_ids[0][k] == all_ids[i][k]) k++;
+            if (k < common) common = k;
+        }
+        if (common >= min_len) common = min_len - 1;
+        if (common < 8) use_prefix = 0;
+        if (use_prefix) {
+            LlmEngineLlmSession ps = c->eng->create_session(c->model_h);
+            if (!ps) use_prefix = 0;
+            else {
+                if (c->eng->append_ids(ps, all_ids[0], common) != 0) use_prefix = 0;
+                else if (c->save_prefix((void*)c->model_h, "gmb_decide_group_c", (void*)ps) != 0)
+                    use_prefix = 0;
+                c->eng->destroy_session(ps);
+            }
+        }
+    }
+    {   /* Diagnostica opt-in. */
+        const char* dbg = getenv("GMB_DECIDE_GROUP_DEBUG");
+        if (dbg && *dbg)
+            fprintf(stderr, "[decide-group-c] n=%d common=%d usePrefix=%d\n",
+                    n_domains, common, use_prefix);
+    }
+
+    /* Fase 3: readout per dominio (lineare o KV riusata). */
+    for (int i = 0; i < n_domains; i++) {
+        gmb_decision_option_t* ei = eff + (size_t)i * GMB_DECISION_MAX_OPTIONS;
+        LlmEngineDecideOption* oi = eopt + (size_t)i * GMB_DECISION_MAX_OPTIONS;
         LlmEngineLlmSession sess = c->eng->create_session(c->model_h);
         if (!sess) {
             set_err(err, errcap, "local provider: sessione non creata", NULL);
             goto done;
         }
-        if (c->eng->append_ids(sess, ids, n_ids) != 0) {
+        int appended = use_prefix
+            ? c->append_auto_prefix((void*)sess, (void*)c->model_h, all_ids[i], all_lens[i], 8)
+            : -1;
+        if (appended < 0 && c->eng->append_ids(sess, all_ids[i], all_lens[i]) != 0) {
             c->eng->destroy_session(sess);
             set_err(err, errcap, "local provider: prefill della sessione fallito", NULL);
             goto done;
         }
         void* plan = c->eng->decide_plan_create(
-            sess, eopt, domains[i].n_options, c->head_state == 1 ? c->head.head_T : 1.0f);
+            sess, oi, domains[i].n_options, c->head_state == 1 ? c->head.head_T : 1.0f);
         if (!plan) {
             c->eng->destroy_session(sess);
             set_err(err, errcap, "local provider: decide_plan_create fallito", NULL);
@@ -568,7 +636,7 @@ int gmb_ai_decide_local_run_group(const char* state, const gmb_decision_domain_t
         int ok = lp && prob && c->eng->decide_plan_run(plan, lp, prob, &argmax) == 0;
         if (ok) {
             if (argmax < 0 || argmax >= domains[i].n_options) argmax = 0;
-            local_fill_result(c, domains[i].kind, eff, domains[i].n_options, prob, &out[i]);
+            local_fill_result(c, domains[i].kind, ei, domains[i].n_options, prob, &out[i]);
         }
         free(lp); free(prob);
         c->eng->decide_plan_free(plan);
@@ -582,7 +650,9 @@ int gmb_ai_decide_local_run_group(const char* state, const gmb_decision_domain_t
 
 done:
     free(prompt);
-    free(ids);
+    free(tmp);
+    if (all_ids) for (int i = 0; i < n_domains; i++) free(all_ids[i]);
+    free(all_ids); free(all_lens); free(eff); free(eopt);
     return rc2;
 }
 
