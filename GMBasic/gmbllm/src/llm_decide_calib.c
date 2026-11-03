@@ -454,3 +454,40 @@ int llm_decide_calib_fit(const llm_decide_sample_t* samples, int n,
                          llm_decide_calib_result_t* result, const char* out_path) {
     return llm_decide_calib_fit_ex(samples, n, result, out_path, 0);
 }
+
+int llm_decide_eval(const llm_decide_sample_t* samples, int n,
+                    float head_T, const float T_kind[3],
+                    llm_decide_metrics_t* overall, llm_decide_metrics_t per_kind[3]) {
+    if (!samples || n < 1) return -1;
+    for (int i = 0; i < n; i++) {
+        const llm_decide_sample_t* s = &samples[i];
+        if (s->kind < 0 || s->kind > 2 || s->n_options < 1 || s->n_options > LLM_DECIDE_MAX_OPTIONS
+            || s->label < 0 || s->label >= s->n_options) return -1;
+    }
+    double tk[3] = { T_kind ? T_kind[0] : 1.0, T_kind ? T_kind[1] : 1.0, T_kind ? T_kind[2] : 1.0 };
+    double scale = (head_T > 0.0f) ? head_T : 1.0;
+    calib_metrics_t all = metrics_on(samples, n, NULL, 0, scale, tk, NULL);
+    if (overall) {
+        overall->n = all.n;
+        overall->accuracy = all.accuracy;
+        overall->brier = all.brier;
+        overall->nll = all.nll;
+        overall->ece = all.ece;
+    }
+    if (per_kind) {
+        for (int k = 0; k < 3; k++) {
+            int* idx = (int*)malloc((size_t)n * sizeof(int));
+            int ni = 0;
+            if (!idx) return -1;
+            for (int i = 0; i < n; i++) if (samples[i].kind == k) idx[ni++] = i;
+            calib_metrics_t m = metrics_on(samples, n, idx, ni, scale, tk, NULL);
+            per_kind[k].n = m.n;
+            per_kind[k].accuracy = m.accuracy;
+            per_kind[k].brier = m.brier;
+            per_kind[k].nll = m.nll;
+            per_kind[k].ece = m.ece;
+            free(idx);
+        }
+    }
+    return 0;
+}

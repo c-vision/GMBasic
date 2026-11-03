@@ -49,6 +49,21 @@ typedef struct {
     double ece_oof_before, ece_oof_after;
 } llm_decide_calib_result_t;
 
+typedef struct {
+    int n;
+    double accuracy;
+    double brier;
+    double nll;
+    double ece;
+} llm_decide_metrics_t;
+
+/* Valutazione DETERMINISTICA di un dataset con una calibrazione già data (T4/T7): metriche
+ * complessive e per kind (noul/choice/score). `head_T`/`T_kind` possono essere 1 per il
+ * readout grezzo. Ritorna 0 / -1 su input invalido. */
+int llm_decide_eval(const llm_decide_sample_t* samples, int n,
+                    float head_T, const float T_kind[3],
+                    llm_decide_metrics_t* overall, llm_decide_metrics_t per_kind[3]);
+
 /* Fit 2 stadi. Se `out_path` non è NULL scrive il manifest `scoring_head.json`.
  * Ritorna 0, oppure -1 su input invalido (n<1, kind fuori 0..2, n_options fuori 1..16,
  * label fuori range). */
