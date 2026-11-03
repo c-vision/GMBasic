@@ -86,7 +86,9 @@ typedef struct {
     char decide_calibration[LOCAL_MODEL_CAP];
     /* Prefix-cache MLX (opzionale): simboli risolti dalla dylib del motore. */
     int (*save_prefix)(void* mh, const char* name, void* sh);
-    int (*append_auto_prefix)(void* sh, void* mh, const int32_t* ids, int n_ids, int min_match);
+    /* Riuso PER NOME (deterministico): ignora la radix e quindi i prefissi più lunghi rimasti
+     * in cache da altri usi/build (match tail=0). */
+    int (*append_reuse_prefix)(void* sh, void* mh, const char* name, const int32_t* ids, int n_ids);
 } local_ctx_t;
 
 static local_ctx_t g_local;
@@ -185,7 +187,7 @@ static void close_locked(local_ctx_t* c)
     c->decide_template[0] = 0;
     c->decide_calibration[0] = 0;
     c->save_prefix = NULL;
-    c->append_auto_prefix = NULL;
+    c->append_reuse_prefix = NULL;
 }
 
 /* Legge le chiavi decide* dalla config del provider completion attivo (JSON di AI REGISTER).
@@ -264,8 +266,8 @@ static int ensure_model(char* err, size_t errcap)
     g_local.tok = tok;
     g_local.save_prefix = (int (*)(void*, const char*, void*))
         dlsym(lib, "llm_ai_mlx_model_save_prefix");
-    g_local.append_auto_prefix = (int (*)(void*, void*, const int32_t*, int, int))
-        dlsym(lib, "llm_ai_mlx_session_append_auto_prefix");
+    g_local.append_reuse_prefix = (int (*)(void*, void*, const char*, const int32_t*, int))
+        dlsym(lib, "llm_ai_mlx_session_append_reuse_prefix");
     gmb_decision_head_init(&g_local.head);
     g_local.head_state = g_local.decide_calibration[0]
         ? gmb_decision_head_load_file(g_local.decide_calibration, &g_local.head)
@@ -506,13 +508,13 @@ int gmb_ai_decide_local_run(const char* state, const char* kind,
 
 /* Batch su uno STESSO stato: UNA entry point per l'intero gruppo (parità di API col managed).
  *
- * Percorso di riferimento: un prefill lineare per dominio (numeri identici al dispatcher
- * singolo). La FUSIONE KV (prefill comune + `append_auto_prefix`) è disponibile dietro
- * `GMB_DECIDE_GROUP_PREFIX=1`: è la stessa strategia del provider managed e, con una
- * prefix-cache PULITA, è numericamente equivalente (0.982151/0.887789 vs 0.982288/0.888928;
- * differenza FP, argmax identico). Resta opt-in perché la radix del motore sceglie il match
- * PIÙ LUNGO: un prefisso "full prompt" rimasto in cache da build precedenti (tail=0) può
- * cambiare il readout. Default = prefill lineare: nessun numero sbagliato in silenzio. */
+ * FUSIONE KV (default): prefill del prefisso comune UNA volta e riuso PER NOME
+ * (`append_reuse_prefix`) per ogni dominio, con almeno 1 token di coda. Il nome è salvato
+ * nella stessa chiamata, quindi eventuali voci pregresse con lo stesso nome vengono
+ * sovrascritte (niente match tail=0 da cache vecchie); numeri equivalenti al prefill lineare
+ * entro il FP (0.982151/0.887789 vs 0.982288/0.888928, argmax identico).
+ * `GMB_DECIDE_GROUP_PREFIX=0` riporta al prefill lineare; i modelli senza prefix-cache
+ * (GGUF/delegati) degradano automaticamente al lineare. */
 int gmb_ai_decide_local_run_group(const char* state, const gmb_decision_domain_t* domains,
                                   int n_domains, gmb_decision_result_t* out,
                                   char* err, size_t errcap)
@@ -572,9 +574,12 @@ int gmb_ai_decide_local_run_group(const char* state, const gmb_decision_domain_t
     free(tmp); tmp = NULL;
 
     /* Fase 2: fusione KV opzionale. Prefisso = match comune, con almeno 1 token di coda. */
+    /* Default ON: riuso PER NOME dopo aver salvato il prefisso nella STESSA chiamata (save
+     * sovrascrive il token_len della voce, quindi una cache pregressa non può imporre un
+     * match più lungo). `GMB_DECIDE_GROUP_PREFIX=0` riporta al prefill lineare. */
     const char* pfenv = getenv("GMB_DECIDE_GROUP_PREFIX");
-    int use_prefix = pfenv && *pfenv && strcmp(pfenv, "0") != 0
-                  && c->save_prefix && c->append_auto_prefix;
+    int use_prefix = !(pfenv && *pfenv && strcmp(pfenv, "0") == 0)
+                  && c->save_prefix && c->append_reuse_prefix;
     int common = 0;
     if (use_prefix) {
         int min_len = all_lens[0];
@@ -616,7 +621,8 @@ int gmb_ai_decide_local_run_group(const char* state, const gmb_decision_domain_t
             goto done;
         }
         int appended = use_prefix
-            ? c->append_auto_prefix((void*)sess, (void*)c->model_h, all_ids[i], all_lens[i], 8)
+            ? c->append_reuse_prefix((void*)sess, (void*)c->model_h,
+                                     "gmb_decide_group_c", all_ids[i], all_lens[i])
             : -1;
         if (appended < 0 && c->eng->append_ids(sess, all_ids[i], all_lens[i]) != 0) {
             c->eng->destroy_session(sess);
