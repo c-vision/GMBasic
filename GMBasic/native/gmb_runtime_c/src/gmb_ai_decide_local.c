@@ -540,63 +540,6 @@ static void adapter_trim(const char* in, char* out, size_t cap) {
     out[n] = 0;
 }
 
-static int adapter_alnum(char c) {
-    return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_';
-}
-
-/* Sottostringa con confini non-alfanumerici (case-insensitive). */
-static int adapter_word_contains(const char* haystack, const char* needle) {
-    if (!needle || !*needle) return 0;
-    size_t nl = strlen(needle);
-    for (const char* p = haystack; *p; p++) {
-        if (strncasecmp(p, needle, nl) != 0) continue;
-        int left_ok = (p == haystack) || !adapter_alnum(p[-1]);
-        int right_ok = !adapter_alnum(p[nl]);
-        if (left_ok && right_ok) return 1;
-    }
-    return 0;
-}
-
-static int adapter_match_option(const gmb_decision_option_t* options, int n, const char* text) {
-    char t[512];
-    adapter_trim(text, t, sizeof t);
-    if (!t[0]) return -1;
-    for (int i = 0; i < n; i++)
-        if ((options[i].id && strcasecmp(t, options[i].id) == 0) ||
-            (options[i].label && strcasecmp(t, options[i].label) == 0))
-            return i;
-    char* end = NULL;
-    double num = strtod(t, &end);
-    if (end && end != t) {
-        while (*end == ' ' || *end == '\t') end++;
-        if (*end == 0) {
-            for (int i = 0; i < n; i++) {
-                const char* lab = (options[i].label && *options[i].label) ? options[i].label : options[i].id;
-                char* e2 = NULL;
-                if (!lab) continue;
-                double v = strtod(lab, &e2);
-                if (e2 && e2 != lab && *e2 == 0 && fabs(v - num) < 1e-9) return i;
-            }
-        }
-    }
-    int best = -1;
-    size_t best_len = 0;
-    for (int i = 0; i < n; i++) {
-        const char* lab = (options[i].label && *options[i].label) ? options[i].label : options[i].id;
-        if (!lab) continue;
-        if (adapter_word_contains(t, lab) || (options[i].id && adapter_word_contains(t, options[i].id))) {
-            size_t l = strlen(lab);
-            if (l > best_len) { best = i; best_len = l; }
-        }
-    }
-    if (best >= 0) return best;
-    char first = t[0];
-    for (int i = 0; i < n; i++)
-        if (options[i].id && options[i].id[1] == 0 && toupper((unsigned char)options[i].id[0]) == toupper((unsigned char)first))
-            return i;
-    return -1;
-}
-
 int gmb_ai_decide_local_adapter_run(const char* state, const char* kind,
                                     const gmb_decision_option_t* options, int n_options,
                                     gmb_decision_result_t* out, char* err, size_t errcap)
@@ -653,7 +596,7 @@ int gmb_ai_decide_local_adapter_run(const char* state, const char* kind,
     text[0] = 0;
     llmtoken_decode(tok, gen, ngen, text, 1023);
     free(gen);
-    int best = adapter_match_option(options, n_options, text);
+    int best = gmb_decision_match_text(options, n_options, text);
     if (best < 0) {
         char detail[256];
         adapter_trim(text, detail, sizeof detail);
