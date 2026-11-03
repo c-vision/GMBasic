@@ -131,8 +131,16 @@ public sealed partial class Parser
     {
         var tok = p.Peek();          // CONTROL (Identifier)
         p.Advance();
-        var sub = (p.Peek().Lexeme ?? "").ToUpperInvariant();  // SET/GET/GETS/MOVE/FOCUS/ZORDER
+        var subTok = p.Peek();
+        var sub = (subTok.Lexeme ?? "").ToUpperInvariant();  // SET/GET/GETS/MOVE/FOCUS/ZORDER
         p.Advance();
+        var subKind = subTok.Kind != TokenKind.Identifier ? subTok.Kind : sub switch
+        {
+            "GETS" => TokenKind.ControlGets,
+            "ZORDER" => TokenKind.ControlZorder,
+            "INVALIDATE" => TokenKind.ControlInvalidate,
+            _ => TokenKind.Identifier
+        };
 
         var args = new List<Expr>();
         Target? into = null;
@@ -148,6 +156,6 @@ public sealed partial class Parser
             break;
         }
         if (into == null && p.Peek().Kind == TokenKind.Into) { p.Advance(); into = p.ParseTarget(); }
-        return new ControlMethodStmt(sub, args, into, tok);
+        return new ControlMethodStmt(sub, args, into, tok, subKind);
     }
 }

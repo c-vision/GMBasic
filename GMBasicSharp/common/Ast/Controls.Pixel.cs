@@ -53,12 +53,35 @@ public sealed record FireEventStmt(Expr Handle, Expr Event, Token Token) : Stmt(
 /// Args = argomenti; Into = variabile target (GET/GETS).</summary>
 [JsonDerivedType(typeof(ControlMethodStmt), nameof(ControlMethodStmt))]
 public sealed record ControlMethodStmt(
-    string Sub, List<Expr> Args, Target? Into, Token Token) : Stmt(Token.Position)
+    string Sub, List<Expr> Args, Target? Into, Token Token,
+    TokenKind SubKind = TokenKind.Identifier) : Stmt(Token.Position)
 {
     public override string ToString() => $"CONTROL {Sub} [{string.Join(", ", Args)}]";
+
+    /// <summary>TokenKind del sottocomando: quello risolto dal parser, con fallback sulla
+    /// grafia per le AST costruite dal linker (SubKind = Identifier).</summary>
+    public TokenKind ResolveSubKind() => SubKind != TokenKind.Identifier
+        ? SubKind
+        : Sub.ToUpperInvariant() switch
+        {
+            "SET" => TokenKind.Set,
+            "GET" => TokenKind.Get,
+            "GETS" => TokenKind.ControlGets,
+            "MOVE" => TokenKind.Move,
+            "FOCUS" => TokenKind.Focus,
+            "INVALIDATE" => TokenKind.ControlInvalidate,
+            "REFRESH" => TokenKind.Refresh,
+            "ZORDER" => TokenKind.ControlZorder,
+            "ADD" => TokenKind.Add,
+            "REMOVE" => TokenKind.Remove,
+            "DRAW" => TokenKind.Draw,
+            _ => TokenKind.Identifier
+        };
+
     public override AstNode DeepClone() => new ControlMethodStmt(
         Sub,
         Args.Select(a => (Expr)a.DeepClone()).ToList(),
         (Target?)Into?.DeepClone(),
-        (Token)Token.DeepClone());
+        (Token)Token.DeepClone(),
+        SubKind);
 }
