@@ -10844,7 +10844,9 @@ void gmb_bf_449(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, 
                 return;
             }
             int64_t selh = gmb_db_current_dbf();
-            bout->result = (selh > 0 && gmb_db_dbf_field_count(selh) > 0) ? 1.0 : 0.0;
+            /* Anche un'area ISAM aperta è un'area 1-based valida (prima dava 0). */
+            bout->result = (selh > 0 && gmb_db_dbf_field_count(selh) > 0) ? 1.0
+                         : (gmb_db_current_isam() > 0 ? 1.0 : 0.0);
         }
 }
 void gmb_bf_450(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -10942,8 +10944,16 @@ void gmb_bf_466(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, 
                  * work-area condivisa (gmb_dbf_used() chiama wa_or_new, che CREA l'area:
                  * ritornava sempre vero). § MiniTests/dbf/dbf_state.bas. */
                 int64_t usedh = gmb_db_current_dbf();
-                if (usedh > 0)
+                if (dbfAlias && dbfAlias[0])
+                    /* USED(alias): l'area è usata se l'alias è un DBF O un ISAM aperto.
+                     * Prima l'alias ISAM era ignorato → ISAM.USED("X")=0 contro -1 di IL. */
+                    bout->result = (gmb_db_dbf_find_handle_by_alias(dbfAlias) > 0
+                                    || gmb_db_isam_handle_for(dbfAlias) > 0) ? -1 : 0;
+                else if (usedh > 0)
                     bout->result = gmb_db_dbf_field_count(usedh) > 0 ? -1 : 0;
+                else if (gmb_db_current_isam() > 0)
+                    /* ISAM.USED(): area B+Tree corrente aperta (il layer gmb_db non ha DBF). */
+                    bout->result = -1;
                 else
                     /* RDD.USED() (e DBF.USED() su un'area aperta via RDD USE): l'area del driver
                      * RDD. `RDD.USED()` ritornava 0 con l'area aperta (misurato con un probe

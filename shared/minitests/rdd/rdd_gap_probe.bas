@@ -1,0 +1,47 @@
+' SONDA GAP (non canonica): RDD ha divergenze fra le gambe, vedi
+' Bugs/(open) - ISAM-RDD-Gap-Backend-C.md. Non ha EXPECT: non entra nel corpus.
+' BOF, BUFFER, CTOD, CURVAL, DELETE, DTOC, EOF, FLOAT, FLOCK, FOUND, GETFIELD,
+' GETFLDSTATE, OLDVAL, RECALL, RECNO, REPLACE, RLOCK, SETDELETED, TABLEREVERT,
+' TABLEUPDATE, TODAY, VALTYPE. DELETE/RECALL/REPLACE sono COMANDI (sintassi legacy):
+' il file di lavoro è una copia della fixture in bin/, la fixture resta read-only.
+' (nessun EXPECT: sonda diagnostica)
+IMPORT RDD
+IMPORT IO
+
+SUB Main()
+  MKDIR "bin"
+  COPY "../../samples/Fixtures/rdd_mini.dbf" TO "bin/rdd_all.dbf"
+  RDD USE "bin/rdd_all.dbf" ALIAS R
+
+  PRINT "recno="; RDD.RECNO()
+  PRINT "bof="; RDD.BOF()
+  PRINT "eof="; RDD.EOF()
+  PRINT "found="; RDD.FOUND()
+  PRINT "valtype="; RDD.VALTYPE(1)
+  PRINT "f1="; RDD.GETFIELD(1, 1)
+  PRINT "f2="; RDD.GETFIELD(1, 2)
+  PRINT "fs="; RDD.GETFLDSTATE(1, 1)
+  PRINT "old="; RDD.OLDVAL(1, 1)
+  PRINT "rlock="; (RDD.RLOCK(1) <> 0)
+  PRINT "flock="; (RDD.FLOCK(1) <> 0)
+  RDD UNLOCK 1
+  PRINT "buffer="; RDD.BUFFER(1, 3)
+  PRINT "update="; RDD.TABLEUPDATE(1)
+  PRINT "revert="; RDD.TABLEREVERT(1)
+  PRINT "setdeleted="; RDD.SETDELETED(1, 0)
+  PRINT "ctod="; RDD.DTOC(RDD.CTOD("2026-01-15"))
+  PRINT "today_len="; LEN(RDD.DTOC(RDD.TODAY()))
+  PRINT "float="; RDD.FLOAT(12.5)
+  PRINT "cur="; RDD.CURVAL(49.99)
+
+  RDD GO TOP
+  RDD DELETE
+  PRINT "deleted="; RDD.DELETED()
+  RDD RECALL
+  PRINT "recalled="; RDD.DELETED()
+  RDD REPLACE Saldo WITH 999.5
+  PRINT "replaced="; RDD.GETFIELD(1, 3)
+
+  RDD CLOSE 1
+  KILL "bin/rdd_all.dbf"
+END SUB
