@@ -80,6 +80,15 @@ static void eval_mu_init(void)
 }
 static char g_err[512];
 
+/* Callback per OP_CALL_EXTERNAL del frammento in esecuzione (TLS: sicuro con
+ * valutazioni annidate/thread concorrenti). NULL = procedura utente non
+ * richiamabile in questo contesto. */
+static __thread gmb_eval_call_fn g_call_cur = NULL;
+/* Ambiente del frammento in esecuzione: gli EVAL ANNIDATI ereditano get/set/ctx. */
+static __thread gmb_eval_env_get_fn g_env_get_cur = NULL;
+static __thread gmb_eval_env_set_fn g_env_set_cur = NULL;
+static __thread void* g_env_ctx_cur = NULL;
+
 static void set_err(const char* m) { snprintf(g_err, sizeof g_err, "%s", m ? m : "errore"); }
 const char* gmb_vm_eval_last_error(void) { return g_err; }
 
@@ -405,7 +414,9 @@ static eval_ent_t* cache_build(const gmb_chunk_t* host, int paddr, const char* s
 /* ── driver ─────────────────────────────────────────────────────────────────── */
 int gmb_vm_eval_text_env(gmb_task_t* task, const char* src, int as_stmt,
                          gmb_eval_env_get_fn env_get, gmb_eval_env_set_fn env_set,
-                         void* env_ctx, gmb_val_t* out)
+                         void* env_ctx, gmb_eval_call_fn call,
+                         gmb_eval_print_str_fn pstr, gmb_eval_print_num_fn pnum,
+                         gmb_eval_print_nl_fn pnl, void* pctx, gmb_val_t* out)
 {
     g_err[0] = 0;
     if (out) *out = gmb_val_nil();
@@ -414,6 +425,8 @@ int gmb_vm_eval_text_env(gmb_task_t* task, const char* src, int as_stmt,
     const gmb_chunk_t* host = vm->chunk;
     if (!host) { set_err("EVAL: nessun chunk"); return -1; }
     if (!src) src = "";
+    /* Eredità dell'ambiente dai livelli esterni (EVAL annidato). */
+    if (!env_get && g_env_get_cur) { env_get = g_env_get_cur; env_set = g_env_set_cur; env_ctx = g_env_ctx_cur; }
 
     int paddr = (int)chunk_proc_addr_at(host, task->ip);
 
@@ -468,7 +481,26 @@ int gmb_vm_eval_text_env(gmb_task_t* task, const char* src, int as_stmt,
     vm->chunk = &e->merged;
     gmb_val_t result = gmb_val_nil();
     int want_result = (as_stmt != 1);
+    gmb_eval_call_fn saved_call = g_call_cur;
+    g_call_cur = call;
+    gmb_eval_env_get_fn sv_g = g_env_get_cur; gmb_eval_env_set_fn sv_s = g_env_set_cur; void* sv_c = g_env_ctx_cur;
+    g_env_get_cur = env_get; g_env_set_cur = env_set; g_env_ctx_cur = env_ctx;
+    /* stampa fornita dall'ospite (C99): sostituisce gli hook del VM per il frammento */
+    void (*sv_str)(void*, const char*, uint32_t) = vm->print_str;
+    void (*sv_num)(void*, double) = vm->print_num;
+    void (*sv_nl)(void*) = vm->print_newline;
+    void* sv_ctx = vm->print_ctx;
+    int use_print = (pstr || pnum || pnl);
+    if (use_print) {
+        vm->print_str = pstr ? (void(*)(void*,const char*,uint32_t))pstr : sv_str;
+        vm->print_num = pnum ? pnum : sv_num;
+        vm->print_newline = pnl ? pnl : sv_nl;
+        vm->print_ctx = pctx;
+    }
     int rc = gmb_vm_call_sync(task, (int)e->entry, argc, want_result ? &result : NULL);
+    if (use_print) { vm->print_str = sv_str; vm->print_num = sv_num; vm->print_newline = sv_nl; vm->print_ctx = sv_ctx; }
+    g_env_get_cur = sv_g; g_env_set_cur = sv_s; g_env_ctx_cur = sv_c;
+    g_call_cur = saved_call;
     vm->chunk = saved_chunk;
     vm->print_str = s_str; vm->print_num = s_num;
     vm->print_newline = s_nl; vm->print_ctx = s_ctx;
@@ -496,28 +528,32 @@ int gmb_vm_eval_text_env(gmb_task_t* task, const char* src, int as_stmt,
 
 int gmb_vm_eval_text(gmb_task_t* task, const char* src, int as_stmt, gmb_val_t* out)
 {
-    return gmb_vm_eval_text_env(task, src, as_stmt, NULL, NULL, NULL, out);
+    return gmb_vm_eval_text_env(task, src, as_stmt, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, out);
 }
 
 /* Hook per i contesti senza VM (REQUIRE): usa la task corrente del thread.
  * -2 = nessuna task (il chiamante sceglie, nessun fallback silenzioso). */
 static int eval_env_hook(const char* src, int as_stmt,
                          gmb_eval_env_get_fn get, gmb_eval_env_set_fn set,
-                         void* env, gmb_val_t* out)
+                         void* env, gmb_eval_call_fn call,
+                         gmb_eval_print_str_fn pstr, gmb_eval_print_num_fn pnum,
+                         gmb_eval_print_nl_fn pnl, void* pctx, gmb_val_t* out)
 {
     gmb_task_t* t = gmb_vm_tls_task();
     if (!t) return -2;
-    return gmb_vm_eval_text_env(t, src, as_stmt, get, set, env, out);
+    return gmb_vm_eval_text_env(t, src, as_stmt, get, set, env, call, pstr, pnum, pnl, pctx, out);
 }
 
 /* Filtri/chiavi: SEMPRE valutatore standalone (nessun locale del chiamante: i
  * nomi sono campi della riga). In-process, senza caricare libgmb_eval. */
 static int eval_filter_hook(const char* src, int as_stmt,
                             gmb_eval_env_get_fn get, gmb_eval_env_set_fn set,
-                            void* env, gmb_val_t* out)
+                            void* env, gmb_eval_call_fn call,
+                            gmb_eval_print_str_fn pstr, gmb_eval_print_num_fn pnum,
+                            gmb_eval_print_nl_fn pnl, void* pctx, gmb_val_t* out)
 {
     (void)as_stmt;
-    return gmb_vm_eval_text_standalone(src, 2, get, set, env, out);
+    return gmb_vm_eval_text_standalone(src, 2, get, set, env, call, pstr, pnum, pnl, pctx, out);
 }
 
 #if defined(__GNUC__) || defined(__clang__)
@@ -537,6 +573,29 @@ void gmb_vm_eval_cache_clear(void)
     pthread_mutex_unlock(&g_mu);
 }
 
+/* Procedure utente dal frammento (C99: FUNCTION statiche del programma emesso). */
+static int eval_external_shim(void* vmp, gmb_task_t* t, const char* name,
+                              const gmb_val_t* args, int nargs, gmb_val_t* out)
+{
+    (void)vmp; (void)t;
+    if (!g_call_cur) return -1;
+    return g_call_cur(NULL, name, args, nargs, out);
+}
+
+/* Stampa dei frammenti attraverso il runtime (staging console C99/TUI). */
+static void eval_print_str(void* ctx, const char* s, uint32_t len)
+{
+    gmb_string_t gs; (void)ctx;
+    gs.data = (char*)s; gs.length = len; gs.ref_count = 0;
+    gmb_print_string(gs);
+}
+static void eval_print_num(void* ctx, double v)
+{
+    (void)ctx;
+    gmb_print_val(gmb_make_val_double(v));
+}
+static void eval_print_nl(void* ctx) { (void)ctx; gmb_print_newline(); }
+
 /* ── Valutatore STANDALONE (nessuna task ospite) ──────────────────────────────
  * Usato dai contesti che non hanno una VM (filtri DBF/SPEED, C99Native): il
  * frammento è compilato con SOLI parametri (nessun locale del chiamante, così
@@ -545,7 +604,9 @@ void gmb_vm_eval_cache_clear(void)
  * `get`/`set`: 0 = trovato/ok, <0 = assente (valore BORROWED in lettura). */
 int gmb_vm_eval_text_standalone(const char* src, int as_stmt,
                                 gmb_eval_env_get_fn get, gmb_eval_env_set_fn set,
-                                void* env, gmb_val_t* out)
+                                void* env, gmb_eval_call_fn call,
+                                gmb_eval_print_str_fn pstr, gmb_eval_print_num_fn pnum,
+                                gmb_eval_print_nl_fn pnl, void* pctx, gmb_val_t* out)
 {
     g_err[0] = 0;
     if (out) *out = gmb_val_nil();
@@ -606,6 +667,11 @@ int gmb_vm_eval_text_standalone(const char* src, int as_stmt,
         e->s_vm = (gmb_vm_t*)calloc(1, sizeof(gmb_vm_t));
         if (!e->s_vm) { pthread_mutex_unlock(&g_mu); set_err("memoria esaurita (VM eval)"); return -1; }
         gmb_vm_init(e->s_vm, &e->merged);
+        /* stampa via runtime (staging) e chiamata alle procedure utente del programma */
+        e->s_vm->print_str = eval_print_str;
+        e->s_vm->print_num = eval_print_num;
+        e->s_vm->print_newline = eval_print_nl;
+        e->s_vm->external_call = eval_external_shim;
         e->s_task = gmb_task_create(e->s_vm->scheduler, 0);
         if (!e->s_task) {
             gmb_vm_free(e->s_vm); free(e->s_vm); e->s_vm = NULL;
@@ -639,7 +705,28 @@ int gmb_vm_eval_text_standalone(const char* src, int as_stmt,
 
     gmb_val_t result = gmb_val_nil();
     int want_result = (as_stmt != 1);
+    gmb_eval_call_fn saved_call = g_call_cur;
+    g_call_cur = call;
+    gmb_eval_env_get_fn sv_g = g_env_get_cur; gmb_eval_env_set_fn sv_s = g_env_set_cur; void* sv_c = g_env_ctx_cur;
+    g_env_get_cur = get; g_env_set_cur = set; g_env_ctx_cur = env;
+    void (*sv_str)(void*, const char*, uint32_t) = e->s_vm->print_str;
+    void (*sv_num)(void*, double) = e->s_vm->print_num;
+    void (*sv_nl)(void*) = e->s_vm->print_newline;
+    void* sv_ctx = e->s_vm->print_ctx;
+    int use_print = (pstr || pnum || pnl);
+    if (use_print) {
+        e->s_vm->print_str = pstr ? (void(*)(void*,const char*,uint32_t))pstr : sv_str;
+        e->s_vm->print_num = pnum ? pnum : sv_num;
+        e->s_vm->print_newline = pnl ? pnl : sv_nl;
+        e->s_vm->print_ctx = pctx;
+    }
     int rc = gmb_vm_call_sync(e->s_task, (int)e->entry, argc, want_result ? &result : NULL);
+    if (use_print) {
+        e->s_vm->print_str = sv_str; e->s_vm->print_num = sv_num;
+        e->s_vm->print_newline = sv_nl; e->s_vm->print_ctx = sv_ctx;
+    }
+    g_env_get_cur = sv_g; g_env_set_cur = sv_s; g_env_ctx_cur = sv_c;
+    g_call_cur = saved_call;
 
     for (int i = 0; i < argc; i++) {
         gmb_obj_byref_t* box = cells ? cells[i] : NULL;

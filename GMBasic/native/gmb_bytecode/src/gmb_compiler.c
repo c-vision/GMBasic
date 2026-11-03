@@ -3385,6 +3385,18 @@ if (!is_method) {
                 cc_byte(c, GMB_OP_MK_DICT); cc_u16(c, 0);
                 break;
             }
+            /* SNIPPET a runtime: una procedura UTENTE non presente nel frammento (es.
+             * EVAL("DoubleIt(21)") su C99, dove le FUNCTION sono C statiche) non è un
+             * errore: si emette OP_CALL_EXTERNAL (nome + argc) e il motore che esegue il
+             * frammento la risolve con il proprio callback (gmb_host_expr_call in C99). */
+            if (c->snippet_mode) {
+                for (int i = 0; i < e->nargs; i++) cc_expr(c, e->args[i]);
+                if (c->error) return;
+                int xci = cc_add_const(c, GMB_CCONST_STRING, 0, e->var);
+                if (c->error) return;
+                cc_byte(c, GMB_OP_CALL_EXTERNAL); cc_u16(c, xci); cc_byte(c, (uint8_t)e->nargs);
+                break;
+            }
             /* proc mancante / funzione ignota: MAI no-op NIL (antipattern storico compile-parity
              * che mascherava typo e builtin non supportati come NIL silenzioso — parity C#/C99Native:
              * errore esplicito a compile). Le classi e i container sono gestiti sopra. */

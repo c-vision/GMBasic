@@ -259,8 +259,8 @@ static int sx_eval(ctx_t* c, gmb_expr_t** a, int n) {
     else { sb_put(&c->out, "gmb_double_to_string("); emit_expr(c, a[0]); sb_put(&c->out, ")"); }
     sb_put(&c->out, "; if (!__ms.data) __ms = gmb_string_alloc(\"\");"
                   " gmb_val_t __mr = gmb_val_nil();"
-                  " gmb_expr_eval_ex(__ms.data, NULL, gmb_host_expr_get, gmb_host_expr_set,"
-                  " gmb_host_expr_call, &__mr); gmb_val_to_double(__mr); })");
+                  " (void)gmb_eval_env(__ms.data, 0, gmb_host_expr_get, gmb_host_expr_set,"
+                  " NULL, gmb_host_expr_call, gmb_eval_pr_str, gmb_eval_pr_num, gmb_eval_pr_nl, NULL, &__mr); gmb_val_to_double(__mr); })");
     return 1;
 }
 static int sx_htmlenc(ctx_t* c, gmb_expr_t** a, int n) { if (n < 1) return 0; sb_put(&c->out, "gmb_string_alloc(gmb_html_encode("); emit_str_operand(c, a[0]); sb_put(&c->out, ".data))"); return 1; }
@@ -4774,7 +4774,13 @@ static int db_eof(ctx_t* c, gmb_expr_t** a, int n) {
     return 1;
 }
 static int db_found(ctx_t* c, gmb_expr_t** a, int n) { return db_bit(c, a, n, "gmb_db_dbf_found"); }
-static int db_deleted(ctx_t* c, gmb_expr_t** a, int n) { return db_bit(c, a, n, "gmb_db_dbf_deleted"); }
+static int db_deleted(ctx_t* c, gmb_expr_t** a, int n) {
+    /* AREA-AWARE (come db_eof): con un'area RDD in uso DELETED() legge il marcatore RDD
+     * (`RDD DELETE` lo scrive in gmb_rdd), non l'handle DBF — prima restava sempre 0. */
+    (void)a; (void)n;
+    sb_put(&c->out, "((gmb_double_t)((gmb_rdd_used() ? gmb_rdd_deleted() : gmb_db_dbf_deleted(gmb_db_current_isam() > 0 ? gmb_db_current_isam() : gmb_db_current_dbf())) ? -1.0 : 0.0))");
+    return 1;
+}
 static int db_num1(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
     (void)a; (void)n;
     sb_put(&c->out, "((gmb_double_t)"); sb_put(&c->out, fn);
@@ -4948,29 +4954,24 @@ static int db_alias(ctx_t* c, gmb_expr_t** a, int n) {
 }
 static int db_selected(ctx_t* c, gmb_expr_t** a, int n) {
     if (n < 1) {
-        /* SELECTED() senza argomenti = numero d'area 1-based (parità C#/IL/PCode/VM-C): 1 se
-         * l'area corrente è un DBF valido con campi O un'area ISAM aperta, altrimenti 0. */
-        /* Numero d'area 1-based (parità IL/PCode): area DBF assegnata all'apertura,
-         * altrimenti area ISAM; senza area aperta → 0. */
+        /* SELECTED(): numero d'area 1-based corrente (DBF, altrimenti ISAM), 0 se nessuna.
+         * Parità IL/PCode/VM-C. */
         sb_put(&c->out, "((gmb_double_t)(gmb_db_current_area() > 0 ? gmb_db_current_area() : (gmb_db_current_isam() > 0 ? 1.0 : 0.0)))");
         return 1;
     }
-    /* ISAM/DEF SELECTED(alias): l'argomento e' un ALIAS -> identificatore nudo = STRINGA.
-     * Prima `emit_str_operand(VAR)` emetteva gmb_double_to_string(Var) (variabile!) →
-     * gmb_selected("0") = 0 (ISAM.SELECTED=0 su C99Native). */
+    /* SELECTED(alias) / SELECTED("alias"): area dell'alias. Ordine: ISAM, area DBF
+     * (gmb_db_area_of_alias), RDD. Un identificatore nudo è il NOME dell'alias (non il
+     * valore di una variabile), come nella forma legacy DBF; una stringa/espressione è
+     * valutata. Una sola valutazione dell'argomento via statement-expression. */
+    sb_put(&c->out, "({ gmb_string_t __sela = ");
     if (a[0] && a[0]->kind == GMB_EXPR_VAR && a[0]->var && !strchr(a[0]->var, '.')) {
-        sb_put(&c->out, "(gmb_db_isam_selected(\"");
-        sb_put(&c->out, a[0]->var);
-        sb_put(&c->out, "\") > 0 ? (gmb_double_t)gmb_db_isam_selected(\"");
-        sb_put(&c->out, a[0]->var);
-        sb_put(&c->out, "\") : gmb_selected(\"");
-        sb_put(&c->out, a[0]->var);
-        sb_put(&c->out, "\"))");
-        return 1;
+        sb_printf(&c->out, "gmb_string_alloc(\"%s\")", a[0]->var);
+    } else {
+        sb_put(&c->out, "(");
+        emit_str_operand(c, a[0]);
+        sb_put(&c->out, ")");
     }
-    sb_put(&c->out, "gmb_selected((");
-    emit_str_operand(c, a[0]);
-    sb_put(&c->out, ").data)");
+    sb_put(&c->out, "; (gmb_double_t)(gmb_db_isam_selected(__sela.data) > 0 ? gmb_db_isam_selected(__sela.data) : (gmb_db_area_of_alias(__sela.data) > 0 ? gmb_db_area_of_alias(__sela.data) : gmb_selected(__sela.data))); })");
     return 1;
 }
 static int db_indexord(ctx_t* c, gmb_expr_t** a, int n) {
@@ -5059,6 +5060,25 @@ static int is_integrity(ctx_t* c, gmb_expr_t** a, int n) {
     sb_put(&c->out, "gmb_db_isam_integrity_str(gmb_db_current_isam())");
     return 1;
 }
+/* ISAM.LOG([area]) → riepilogo WAL (gmb_db_isam_log_str; unica fonte:
+ * WriteAheadLog_Inspect + WalLogSummary_Format). Prima il simbolo non esisteva. */
+static int is_log(ctx_t* c, gmb_expr_t** a, int n) {
+    if (n >= 1 && a[0] && a[0]->kind == GMB_EXPR_VAR && a[0]->var && !strchr(a[0]->var, '.')) {
+        sb_put(&c->out, "gmb_db_isam_log_str(gmb_db_isam_handle_for(\"");
+        sb_put(&c->out, a[0]->var);
+        sb_put(&c->out, "\"))");
+    } else if (n >= 1 && etype(c, a[0]) == TY_STR) {
+        /* alias come STRINGA (`ISAM.LOG("X")`, o una variabile STRING): handle dall'alias — prima il
+         * gmb_string_t veniva castato a int64 → errore di compilazione C. */
+        sb_put(&c->out, "gmb_db_isam_log_str(gmb_db_isam_handle_for((");
+        emit_str_operand(c, a[0]); sb_put(&c->out, ").data))");
+    } else if (n >= 1) {
+        sb_put(&c->out, "gmb_db_isam_log_str((int64_t)("); emit_expr(c, a[0]); sb_put(&c->out, "))");
+    } else {
+        sb_put(&c->out, "gmb_db_isam_log_str(gmb_db_current_isam())");
+    }
+    return 1;
+}
 static int is_setrepl(ctx_t* c, gmb_expr_t** a, int n) {
     if (n < 1) return 0;
     sb_put(&c->out, "gmb_db_isam_set_replication_str(gmb_db_current_isam(), (");
@@ -5115,6 +5135,25 @@ static gmb_expr_t* find_dict_lit(gmb_expr_t* e, int depth) {
 }
 static int is_appendmany(ctx_t* c, gmb_expr_t** a, int n) {
     const char* vn = NULL; int i;
+    /* LISTA LETTERALE di record (`[{ID: "A"}, {ID: "B"}]`): UN append per ogni dict (la ricerca del
+     * primo dict qui sotto ne inseriva UNO solo → APPENDMANY ritornava 1). Somma dei conteggi. */
+    for (i = n - 1; i >= 0; i--) {
+        gmb_expr_t* arr = a[i];
+        int all_dict = arr && arr->kind == GMB_EXPR_CALL && arr->var && arr->nargs > 0
+                       && (strcmp(arr->var, "_array_") == 0 || strcmp(arr->var, "_list_") == 0);
+        for (int j = 0; all_dict && j < arr->nargs; j++)
+            if (!arr->args[j] || arr->args[j]->kind != GMB_EXPR_CALL || !arr->args[j]->var
+                || strcmp(arr->args[j]->var, "_dict_") != 0) all_dict = 0;
+        if (!all_dict) continue;
+        sb_put(&c->out, "((gmb_double_t)(");
+        for (int j = 0; j < arr->nargs; j++) {
+            if (j) sb_put(&c->out, " + ");
+            if (!emit_append_dict_abi(c, arr->args[j], "gmb_db_isam_fields", "gmb_db_isam_insert",
+                                      "gmb_db_current_isam")) sb_put(&c->out, "0");
+        }
+        sb_put(&c->out, "))");
+        return 1;
+    }
     /* Forma con RECORD LETTERALE ({…} o {{…}}): CSV costruito sullo schema reale della
      * tabella (gmb_db_isam_fields), come per DBF APPEND RECORD. */
     for (i = n - 1; i >= 0; i--) {
@@ -5145,6 +5184,7 @@ static int is_appendmany(ctx_t* c, gmb_expr_t** a, int n) {
 }
 static const rd_row IS_TBL[] = {
     { GMB_TOK_IsamAppendMany, is_appendmany },
+    { GMB_TOK_IsamLog, is_log },
     { GMB_TOK_IsamInfo, db_isam_info },
     { GMB_TOK_Bof, is_bof }, { GMB_TOK_Eof, is_eof }, { GMB_TOK_EofFunc, is_eof },
     { GMB_TOK_Found, is_found }, { GMB_TOK_Recno, is_recno },

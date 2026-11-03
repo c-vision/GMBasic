@@ -2845,19 +2845,38 @@ gmb_string_t* gmb_regex_split_strings(gmb_val_t reg, const char* text, gmb_int_t
  * il motore (VM/C) registra la funzione; senza motore il chiamante lo dichiara. */
 typedef int (*gmb_eval_env_get_fn)(void* env, const char* name, gmb_val_t* out);
 typedef int (*gmb_eval_env_set_fn)(void* env, const char* name, gmb_val_t in);
+/* Chiamata a PROCEDURE UTENTE dal frammento compilato a runtime (OP_CALL_EXTERNAL):
+ * in C99 le FUNCTION sono C statiche, quindi il programma emesso registra qui il suo
+ * dispatcher (gmb_host_expr_call). */
+typedef int (*gmb_eval_call_fn)(void* env, const char* name,
+                                const gmb_val_t* args, int nargs, gmb_val_t* out);
+/* Stampa del frammento: il programma ospite (C99) fornisce i propri writer, così
+ * l'output passa dallo STAGING/console del programma e non da una copia del runtime. */
+typedef void (*gmb_eval_print_str_fn)(void* ctx, const char* s, size_t len);
+typedef void (*gmb_eval_print_num_fn)(void* ctx, double v);
+typedef void (*gmb_eval_print_nl_fn)(void* ctx);
 typedef int (*gmb_eval_env_fn)(const char* src, int as_stmt,
                                gmb_eval_env_get_fn get, gmb_eval_env_set_fn set,
-                               void* env, gmb_val_t* out);
+                               void* env, gmb_eval_call_fn call,
+                               gmb_eval_print_str_fn pstr, gmb_eval_print_num_fn pnum,
+                               gmb_eval_print_nl_fn pnl, void* pctx, gmb_val_t* out);
+void gmb_eval_set_call(gmb_eval_call_fn fn);
+gmb_eval_call_fn gmb_eval_get_call(void);
+
 void gmb_eval_register_env(gmb_eval_env_fn fn);
 /* Filtri/chiavi (espressione pura, NESSUN locale del chiamante: i nomi sono
  * campi della riga). Se non c'è un motore in-process si carica libgmb_eval. */
 void gmb_eval_register_filter(gmb_eval_env_fn fn);
 int  gmb_eval_env(const char* src, int as_stmt,
                   gmb_eval_env_get_fn get, gmb_eval_env_set_fn set,
-                  void* env, gmb_val_t* out);
+                  void* env, gmb_eval_call_fn call,
+                  gmb_eval_print_str_fn pstr, gmb_eval_print_num_fn pnum,
+                  gmb_eval_print_nl_fn pnl, void* pctx, gmb_val_t* out);
 int  gmb_eval_filter_env(const char* src,
                          gmb_eval_env_get_fn get, gmb_eval_env_set_fn set,
-                         void* env, gmb_val_t* out);
+                         void* env, gmb_eval_call_fn call,
+                         gmb_eval_print_str_fn pstr, gmb_eval_print_num_fn pnum,
+                  gmb_eval_print_nl_fn pnl, void* pctx, gmb_val_t* out);
 const char* gmb_eval_last_error(void);
 #ifdef __cplusplus
 }

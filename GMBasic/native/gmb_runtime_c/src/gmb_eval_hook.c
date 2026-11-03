@@ -17,10 +17,16 @@
 
 typedef int (*eval_run_fn)(const char* src, int as_stmt,
                            gmb_eval_env_get_fn get, gmb_eval_env_set_fn set,
-                           void* env, gmb_val_t* out);
+                           void* env, gmb_eval_call_fn call,
+                           gmb_eval_print_str_fn pstr, gmb_eval_print_num_fn pnum,
+                           gmb_eval_print_nl_fn pnl, void* pctx, gmb_val_t* out);
 typedef int (*eval_abi_fn)(void);
 
 static gmb_eval_env_fn g_eval_env = NULL;
+static gmb_eval_call_fn g_eval_call = NULL;
+
+void gmb_eval_set_call(gmb_eval_call_fn fn) { g_eval_call = fn; }
+gmb_eval_call_fn gmb_eval_get_call(void) { return g_eval_call; }
 static gmb_eval_env_fn g_eval_filter = NULL;
 
 /* handle della dylib (lazy, una volta) */
@@ -71,9 +77,10 @@ static void* load_eval_lib(void)
     {
         char root[2048];
         if (gmb_paths_repo_root(root, sizeof root) && root[0]) {
-            snprintf(cand[n++], 2048, "%s/GMBasic/native/gmb_vm_c/build/%s", root, file);
-            snprintf(cand[n++], 2048, "%s/GMBasic/build/libs/%s/%s", root, gmb_libs_rid(), file);
+            /* gmb_paths_repo_root restituisce la radice del repo C (…/GMBasic). */
+            snprintf(cand[n++], 2048, "%s/native/gmb_vm_c/build/%s", root, file);
             snprintf(cand[n++], 2048, "%s/build/libs/%s/%s", root, gmb_libs_rid(), file);
+            snprintf(cand[n++], 2048, "%s/../build/libs/%s/%s", root, gmb_libs_rid(), file);
         }
     }
     {
@@ -97,18 +104,22 @@ static void* load_eval_lib(void)
 
 int gmb_eval_env(const char* src, int as_stmt,
                  gmb_eval_env_get_fn get, gmb_eval_env_set_fn set,
-                 void* env, gmb_val_t* out)
+                 void* env, gmb_eval_call_fn call,
+                 gmb_eval_print_str_fn pstr, gmb_eval_print_num_fn pnum,
+                 gmb_eval_print_nl_fn pnl, void* pctx, gmb_val_t* out)
 {
-    if (g_eval_env) return g_eval_env(src, as_stmt, get, set, env, out);
-    if (load_eval_lib() && g_run) return g_run(src, as_stmt, get, set, env, out);
+    if (g_eval_env) return g_eval_env(src, as_stmt, get, set, env, call, pstr, pnum, pnl, pctx, out);
+    if (load_eval_lib() && g_run) return g_run(src, as_stmt, get, set, env, call, pstr, pnum, pnl, pctx, out);
     return -1;
 }
 
 int gmb_eval_filter_env(const char* src,
                         gmb_eval_env_get_fn get, gmb_eval_env_set_fn set,
-                        void* env, gmb_val_t* out)
+                        void* env, gmb_eval_call_fn call,
+                        gmb_eval_print_str_fn pstr, gmb_eval_print_num_fn pnum,
+                        gmb_eval_print_nl_fn pnl, void* pctx, gmb_val_t* out)
 {
-    if (g_eval_filter) return g_eval_filter(src, 2, get, set, env, out);
-    if (load_eval_lib() && g_run) return g_run(src, 2, get, set, env, out);
+    if (g_eval_filter) return g_eval_filter(src, 2, get, set, env, call, pstr, pnum, pnl, pctx, out);
+    if (load_eval_lib() && g_run) return g_run(src, 2, get, set, env, call, pstr, pnum, pnl, pctx, out);
     return -1;
 }

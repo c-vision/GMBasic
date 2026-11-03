@@ -129,6 +129,7 @@ enum {
     OP_CLEAR_RETURN = 61,
     OP_RETURN = 62,
     OP_HALT = 63,
+    OP_CALL_EXTERNAL = 65,
     OP_GO = 66,
     OP_SEND = 67,
     OP_RECV = 68,
@@ -14898,6 +14899,30 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 else gmb_task_push_num(task, result, GMB_BT_NUMBER);
                 break;
             }
+            case OP_CALL_EXTERNAL:
+            {
+                /* Procedura UTENTE fuori dal chunk (frammenti a runtime). Operandi:
+                 * u16 const-index del nome, u8 argc. Argomenti pop-ati in ordine. */
+                int ci = gmb_vm_read_u16(vm, task);
+                int argc = gmb_vm_read_u8(vm, task);
+                const gmb_value_t* cc = gmb_chunk_const(vm->chunk, (uint32_t)ci);
+                const char* nm = (cc && cc->type == GMB_CONST_STRING) ? cc->s : "";
+                gmb_val_t av[16];
+                int n = argc > 16 ? 16 : argc;
+                memset(av, 0, sizeof av);
+                for (int i = n - 1; i >= 0; i--) {
+                    gmb_stack_entry_t e = gmb_task_pop(task);
+                    av[i] = gmb_adapter_stack_to_val(e);
+                    if (e.type == 2 && e.ref) gmb_obj_release(e.ref);
+                }
+                gmb_val_t vo = gmb_val_nil();
+                int xrc = vm->external_call ? vm->external_call(vm, task, nm, av, n, &vo) : -1;
+                for (int i = 0; i < n; i++) if (av[i].kind == GMB_TYPE_STRING) gmb_string_free(&av[i].v_string);
+                if (xrc != 0) push_val_entry(task, gmb_make_val_string_counted("MACRO ERROR: chiamata esterna non disponibile"));
+                else push_val_entry(task, vo);
+                if (vo.kind == GMB_TYPE_STRING) gmb_string_free(&vo.v_string);
+                break;
+            }
             case OP_CALL_BUILTIN:
             {
                 int func_code = gmb_vm_read_u16(vm, task);
@@ -17172,4 +17197,10 @@ int gmb_vm_run_mt(gmb_vm_t* vm)
     int ok = main->pending_exception == NULL;
     if (main->pending_exception) fprintf(stderr, "[VM ERROR] %s\n", main->pending_exception);
     return ok ? 0 : -1;
+}
+
+void gmb_vm_set_external_call(gmb_vm_t* vm,
+    int (*fn)(void*, gmb_task_t*, const char*, const gmb_val_t*, int, gmb_val_t*))
+{
+    if (vm) vm->external_call = fn;
 }
