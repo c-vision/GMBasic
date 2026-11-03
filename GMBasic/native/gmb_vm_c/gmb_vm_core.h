@@ -367,6 +367,8 @@ void gmb_vm_restore_net_hooks(gmb_vm_t* vm);
  *   0  task finito o bloccato (parcheggiato su struttura d'attesa),
  *  -1  errore (task.state = GMB_TS_FINISHED). */
 int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task);
+/* Task corrente del thread (NULL fuori da una task). */
+gmb_task_t* gmb_vm_tls_task(void);
 
 /* Chiamata SINCRONA a un indirizzo (frame nuovo, marker sync): gli argomenti sono
  * già sullo stack (argc). Usata dal driver EVAL (gmb_vm_eval.c) e dal prestito C. */

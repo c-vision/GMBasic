@@ -294,6 +294,7 @@ set(GMB_ALL_SRCS
     src/gmb_observe_test.c
     src/gmb_observe_sources.c
     src/gmb_verify_require.c
+    src/gmb_eval_hook.c
     src/gmb_artifact.c
     src/gmb_resource.c
     src/gmb_handoff.c

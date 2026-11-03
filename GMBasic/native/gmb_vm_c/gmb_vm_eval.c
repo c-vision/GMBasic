@@ -463,7 +463,8 @@ int gmb_vm_eval_text_env(gmb_task_t* task, const char* src, int as_stmt,
     const gmb_chunk_t* saved_chunk = vm->chunk;
     vm->chunk = &e->merged;
     gmb_val_t result = gmb_val_nil();
-    int rc = gmb_vm_call_sync(task, (int)e->entry, argc, as_stmt ? NULL : &result);
+    int want_result = (as_stmt != 1);
+    int rc = gmb_vm_call_sync(task, (int)e->entry, argc, want_result ? &result : NULL);
     vm->chunk = saved_chunk;
     vm->print_str = s_str; vm->print_num = s_num;
     vm->print_newline = s_nl; vm->print_ctx = s_ctx;
@@ -473,19 +474,18 @@ int gmb_vm_eval_text_env(gmb_task_t* task, const char* src, int as_stmt,
     for (int i = 0; i < argc; i++) {
         gmb_obj_byref_t* box = cells ? cells[i] : NULL;
         if (!box) continue;
-        gmb_stack_entry_t cur = gmb_byref_load(box);
+        gmb_stack_entry_t cur = gmb_byref_load(box);   /* vista BORROWED: non si rilascia */
         gmb_val_t v = gmb_adapter_stack_to_val(cur);
         if (env_set) env_set(env_ctx, e->param_names[i], v);
         else gmb_vm_dbf_field_set(e->param_names[i], v);
         if (v.kind == GMB_TYPE_STRING) gmb_string_free(&v.v_string);
-        if (cur.type == 2 && cur.ref) gmb_obj_release(cur.ref);
         gmb_obj_release((gmb_obj_t*)box);
     }
     free(cells);
     pthread_mutex_unlock(&g_mu);
 
     if (rc != 0) { set_err("esecuzione del frammento BASIC fallita"); return -1; }
-    if (out) *out = result;
+    if (out && want_result) *out = result;
     else if (result.kind == GMB_TYPE_STRING) gmb_string_free(&result.v_string);
     return 0;
 }
@@ -494,6 +494,24 @@ int gmb_vm_eval_text(gmb_task_t* task, const char* src, int as_stmt, gmb_val_t* 
 {
     return gmb_vm_eval_text_env(task, src, as_stmt, NULL, NULL, NULL, out);
 }
+
+/* Hook per i contesti senza VM (REQUIRE): usa la task corrente del thread.
+ * -2 = nessuna task (il chiamante sceglie, nessun fallback silenzioso). */
+static int eval_env_hook(const char* src, int as_stmt,
+                         gmb_eval_env_get_fn get, gmb_eval_env_set_fn set,
+                         void* env, gmb_val_t* out)
+{
+    gmb_task_t* t = gmb_vm_tls_task();
+    if (!t) return -2;
+    return gmb_vm_eval_text_env(t, src, as_stmt, get, set, env, out);
+}
+
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((constructor)) static void gmb_eval_env_register(void)
+{
+    gmb_eval_register_env(eval_env_hook);
+}
+#endif
 
 void gmb_vm_eval_cache_clear(void)
 {
