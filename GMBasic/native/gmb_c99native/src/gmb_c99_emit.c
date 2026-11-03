@@ -5042,6 +5042,28 @@ static int fn_ret_is_func(const fn_info_t* fn) {
  * Restretto alle funzioni semplici (parametri scalari, no byref/variadic/array/classe/λ —
  * le λ e le closure hanno già ctx in firma; una firma tutta numerica funziona per fortuna
  * ABI perché ctx occupa x0 e i double viaggiano nei registri d). */
+/* Lunghezza del risultato di una lambda `AS ARRAY` che ritorna una VARIABILE
+ * (`DIM rr(4) ... RETURN rr`): il frontend registra lambda_ret_arr_len solo per i letterali
+ * `RETURN {…}`. Cerca il DIM della variabile ritornata e usa la sua dimensione (2026-11-03:
+ * senza questo LEASTSQUARESFIT assumeva m=1 e restituiva un risultato sbagliato). */
+static int lambda_ret_len_from_body(fn_info_t* lf) {
+    if (!lf || !lf->stmt || !lf->stmt->func_body) return 0;
+    const char* rv = NULL;
+    for (int i = 0; i < lf->stmt->n_funcbody; i++) {
+        gmb_stmt_t* st = lf->stmt->func_body[i];
+        if (st && st->kind == GMB_STMT_RETURN && st->ret_value && st->ret_value->kind == GMB_EXPR_VAR)
+            rv = st->ret_value->var;
+    }
+    if (!rv) return 0;
+    for (int i = 0; i < lf->stmt->n_funcbody; i++) {
+        gmb_stmt_t* st = lf->stmt->func_body[i];
+        if (st && st->kind == GMB_STMT_DIM && st->dim_var && strcasecmp(st->dim_var, rv) == 0
+            && st->array_size && st->array_size->kind == GMB_EXPR_NUM)
+            return (int)(st->array_size->num + 1.0);
+    }
+    return 0;
+}
+
 static int fn_needs_fv_adapter(const fn_info_t* fn) {
     if (!fn || !fn->stmt || !fn->stmt->func_params) return 0;
     if (fn->cls_owner[0] || fn->is_lambda || fn->is_lambda_cap) return 0;
@@ -8142,7 +8164,9 @@ static int dim_arr_optimize(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init) {
             fn_info_t* lf = find_fn(c, init->args[0]->var);
             if (lf) m = lf->lambda_ret_arr_len;
         }
-        if (m <= 0) m = 1;
+        /* m non noto (lambda in variabile / RETURN di un array dinamico): il runtime fa una
+         * chiamata di probe e legge gmb_lambda_ret_len (impostato dal RETURN array). */
+        if (m < 0) m = 0;
         ind(c);
         emit_ident(c, v->name);
         sb_put(&c->out, " = ({ gmb_int_t _on = 0; double* _ox = gmb_opt_lstsq_c99(");
@@ -20085,6 +20109,10 @@ static void st_return(ctx_t* c, gmb_stmt_t* s) {
             var_t* av = (s->ret_value->kind == GMB_EXPR_VAR && s->ret_value->var) ? lookup_var(c, s->ret_value->var) : NULL;
             if (av && av->is_array) {
                 ind(c);
+                sb_put(&c->out, "gmb_lambda_ret_len_set((gmb_int_t)(");
+                emit_arr_len_of(c, av);
+                sb_put(&c->out, "));\n");
+                ind(c);
                 sb_put(&c->out, "for (int __i = 0; __i < (int)(");
                 emit_arr_len_of(c, av);
                 sb_put(&c->out, "); __i++) __out[__i] = ");
@@ -20095,6 +20123,8 @@ static void st_return(ctx_t* c, gmb_stmt_t* s) {
             }
             /* RETURN { e0, ..., en } → letterale-array: scrivi ogni elemento in __out */
             if (s->ret_value->kind == GMB_EXPR_CALL && s->ret_value->var && strcmp(s->ret_value->var, "_array_") == 0) {
+                ind(c);
+                sb_printf(&c->out, "gmb_lambda_ret_len_set(%d);\n", s->ret_value->nargs);
                 for (int __k = 0; __k < s->ret_value->nargs; __k++) {
                     ind(c);
                     sb_printf(&c->out, "__out[%d] = (gmb_double_t)(", __k);
@@ -31422,6 +31452,18 @@ static void lambda_prepass_expr(ctx_t* c, gmb_expr_t* e) {
                         (size_t)(lam0->n_lambda_params > 0 ? lam0->n_lambda_params : 1), 1);
                 lam0->lambda_params_str[i - 1] = 1;
             }
+        }
+    }
+    /* `{ |x| … }(41)`: lowering del CALLEE (lambda) e conversione della call in una
+     * chiamata al nome sintetico __lambda_N prodotto dal lowering. */
+    if (e->kind == GMB_EXPR_CALL && e->callee) {
+        lambda_prepass_expr(c, e->callee);
+        if (e->callee && e->callee->kind == GMB_EXPR_VAR && e->callee->var) {
+            if (e->var) free(e->var);
+            e->var = strdup(e->callee->var);
+            e->tk = GMB_TOK_Unknown;
+            gmb_expr_free(e->callee);
+            e->callee = NULL;
         }
     }
     if (e->left) lambda_prepass_expr(c, e->left);

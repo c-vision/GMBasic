@@ -39,6 +39,9 @@ struct gmb_expr {
     gmb_expr_t* right;         /* binario dx */
     gmb_expr_t** args;         /* argomenti chiamata */
     int nargs;
+    /* Invocazione di un VALORE callable (lambda letterale): `{ |x| … }(41)`.
+     * Se non NULL è l'espressione del callee; `var` resta NULL. */
+    gmb_expr_t* callee;
     gmb_tokenkind_t tk;        /* TokenKind di dispatch (visione 6.6): il builtin/funzione
                                 * disambiguato, quando il parser lo risolve per nome.
                                 * GMB_TOK_Unknown = non risolto (fallback al nome). */

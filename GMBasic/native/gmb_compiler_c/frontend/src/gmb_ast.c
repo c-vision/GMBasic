@@ -159,6 +159,7 @@ void gmb_expr_free(gmb_expr_t* e)
     else if (e->kind == GMB_EXPR_CALL) {
         for (int i = 0; i < e->nargs; i++) gmb_expr_free(e->args[i]);
         free(e->args);
+        gmb_expr_free(e->callee);
     }
     else if (e->kind == GMB_EXPR_LAMBDA) {
         for (int i = 0; i < e->n_lambda_params; i++) free(e->lambda_params[i]);

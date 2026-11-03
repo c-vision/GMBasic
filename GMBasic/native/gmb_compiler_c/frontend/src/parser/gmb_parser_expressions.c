@@ -663,6 +663,26 @@ gmb_expr_t* gmb_p_parse_power(gmb_parser_t* p)
     while (e && e->kind == GMB_EXPR_VAR && gmb_p_check(p, GMB_TOK_LeftBracket)) {
         e = gmb_p_parse_bracket_subscript(p, e);
     }
+    /* `{ |x| … }(41)` — invocazione diretta di un literal lambda (valore callable). */
+    if (e && e->kind == GMB_EXPR_LAMBDA && gmb_p_check(p, GMB_TOK_LeftParen)) {
+        int ln = gmb_p_cur(p)->line;
+        gmb_p_adv(p);   /* '(' */
+        gmb_expr_t** args = NULL; int na = 0, cap = 0;
+        if (!gmb_p_check(p, GMB_TOK_RightParen)) {
+            for (;;) {
+                gmb_expr_t* a = gmb_p_parse_expr(p);
+                if (!a) break;
+                if (na >= cap) { cap = cap ? cap * 2 : 4; args = (gmb_expr_t**)realloc(args, (size_t)cap * sizeof(gmb_expr_t*)); }
+                args[na++] = a;
+                if (gmb_p_match(p, GMB_TOK_Comma)) continue;
+                break;
+            }
+        }
+        if (!gmb_p_match(p, GMB_TOK_RightParen)) gmb_p_set_err(p, "lambda: attesa ')' dopo gli argomenti", ln);
+        gmb_expr_t* call = gmb_expr_call(NULL, args, na, ln);
+        call->callee = e;
+        e = call;
+    }
     /* x++ / x-- (postfix): VECCHIO valore. Vale per VARIABILE (`x`) e ACCESSO INDICIZZATO
      * (`a(i)`, `m(i,j)`): nodo `_incdec_` (prefix=0, plus, target, indici...). */
     {
