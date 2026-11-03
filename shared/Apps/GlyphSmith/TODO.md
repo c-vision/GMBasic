@@ -40,6 +40,12 @@ Verified on the four backends of the monorepo (IL, PCodeVM, VM-C, C99Native).
       `DEFAULT_CHAR` (dal modello) — cosi' BDF e PCF le emettono e il round trip resta
       idempotente (9 proprieta' prima e dopo). `FONT_TYPE` non e' una proprieta' della BDF 2.2:
       non viene emessa.
+- [x] **Import da BMP** (`bmpin`): un BMP 24-bit BI_RGB viene letto come griglia di celle —
+      campionamento a blocchi `scale`×`scale` (inchiostro = almeno un pixel non bianco),
+      ritaglio dei margini, un glifo per cella non vuota con encoding da `first`. Il `check`
+      verifica il giro completo modello → `SheetBmp` → `BmpLoad` → modello su due glifi con
+      inchiostro su tutti i bordi (148 asserzioni). Limite dichiarato: il foglio non porta le
+      metriche per glifo, quindi il box del glifo importato e' il box dell'inchiostro.
 - [x] **ASCII art** per terminale: `mini8.ascii` (`@ enc name w h` + righe `#`/`.`), riletto
       dal modo `textin` e confrontato glifo per glifo con il modello nel check.
 - [x] **Sixel** per terminali che lo supportano: `mini8.six` (stream DEC `ESC P q "1;1;w;h`,

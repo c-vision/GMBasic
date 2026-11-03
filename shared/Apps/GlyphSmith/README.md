@@ -19,7 +19,7 @@ BMP and PSF2 were impossible to emit from BASIC.
 |---|---|---|
 | **TTF / OTF** | read (import) | outline → BDF via `FONTS.TTMETRICS` / `FONTS.TTRENDER`: the app only orchestrates the codepoint loop, the threshold and the metric conversion; the parser and the rasteriser are C (`native/gmb_runtime_c/src/gmb_fonts.c`, stb_truetype) |
 | **BDF 2.1** | read + write | subset: `FONT`, `SIZE`, `FONTBOUNDINGBOX`, `STARTPROPERTIES`/`ENDPROPERTIES`, `CHARS`, and per glyph `STARTCHAR`, `ENCODING`, `SWIDTH`, `DWIDTH`, `BBX`, `BITMAP`, `ENDCHAR`. The standard 2.2 properties (`RESOLUTION_X/Y`, `FONT_ASCENT`/`FONT_DESCENT`, `DEFAULT_CHAR`) are added at load time when the source does not declare them |
-| **BMP** (24-bit) | read + write | contact sheet of every glyph, scaled by `bmp_scale`, `cells_per_row` per row; opens in Preview/Paint. The `check` mode reads the sheet back with `IO.READBYTES` and verifies header, row size and the black pixels against the model |
+| **BMP** (24-bit) | read + write | contact sheet of every glyph, scaled by `bmp_scale`, `cells_per_row` per row; opens in Preview/Paint. The `check` mode reads the sheet back with `IO.READBYTES` and verifies header, row size and the black pixels against the model. The same reader is the `bmpin` importer: a 24-bit BI_RGB bitmap becomes glyphs cell by cell (see below) |
 | **PSF2** | write | Linux console font: magic `0x72b54a86`, header 32 bytes, glyphs padded to `maxW`×`maxH` |
 | **PSF1** | write | legacy Linux console font: magic `0x36 0x04`, 256 slots of `charsize` bytes, 8 px per row; a glyph wider than 8 px is an explicit error |
 | **ASCII art** | read + write | `mini8.ascii`: one block per glyph (`@ enc name w h` then `#`/`.` rows). The `check` re-reads it with `TextLoad` and compares every glyph with the model |
@@ -51,6 +51,7 @@ or from the configuration file.
 | `edit` | `mode = "edit"` or `#DEF GLYPHSMITH_MODE_EDIT` | applies a **batch script** of editing commands, then writes the edited BDF and the exports |
 | `import` | `mode = "import"` or `#DEF GLYPHSMITH_MODE_IMPORT` | converts an outline font (`.ttf`/`.otf`) into a BDF over a codepoint range: `FONTS.TTMETRICS` for the box/metrics, `FONTS.TTRENDER` for the alpha bitmap, threshold to `0`/`1` |
 | `textin` | `mode = "textin"` or `#DEF GLYPHSMITH_MODE_TEXTIN` | reads an **ASCII art** file (`@ enc name w h` + `#`/`.` rows) into the model and writes a BDF; `[text] source` / `[text] out` |
+| `bmpin` | `mode = "bmpin"` or `#DEF GLYPHSMITH_MODE_BMPIN` | reads a **24-bit BMP** as a grid of cells and rebuilds the glyphs, then writes a BDF; `[bmpin] source`, `scale`, `cols`/`cellw`/`cellh`, `first`, `trim`, `out`. Each cell is sampled in `scale`×`scale` blocks (ink = at least one non-white pixel), the white margins are trimmed and every non-empty cell becomes a glyph with encoding `first`, `first+1`, … The sheet carries no per-glyph metrics, so the glyph box is the **ink box** |
 | `tui` | `mode = "tui"` or `#DEF GLYPHSMITH_MODE_TUI` | **interactive view** over the same model: cursor, pixel toggle, flip, bearing, undo/redo. Keys come from `[tui] keys` (one key per line) so the session is deterministic and checkable; `[tui] render = "1"` prints a frame after every key, and the session writes `[tui] out` (`tui.bdf`) on exit |
 
 Compile-time symbols win over the configuration file.
@@ -145,6 +146,7 @@ found regardless of the working directory of the runner.
 | `mini8.six` | sixel preview of the glyph `A`, re-read by the `check` |
 | `mini8.pcf` | X11 PCF font, opened by FreeType and re-read by the `check` |
 | `from_text.bdf` | BDF rebuilt from an ASCII art bitmap (`textin` mode) |
+| `from_bmp.bdf` | BDF rebuilt from a BMP cell grid (`bmpin` mode) |
 | `tui.bdf` | model as left by the TUI session (`tui` mode) |
 | `mini8.h` | C header with the bitmaps |
 | `imported.bdf` | BDF produced by the `import` mode |
