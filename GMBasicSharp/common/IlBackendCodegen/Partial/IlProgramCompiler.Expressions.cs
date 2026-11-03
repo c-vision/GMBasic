@@ -874,10 +874,12 @@ public sealed partial class IlProgramCompiler
         // sb.Length / sb.Capacity (StringBuilder, accesso a campo senza parentesi): getter CLR.
         var sbStructType = NormalizeInferredType(InferType(expr.Structure));
         if (sbStructType is StringBuilderType
-            && (expr.Field.Lexeme.Equals("LENGTH", StringComparison.OrdinalIgnoreCase)
-                || expr.Field.Lexeme.Equals("CAPACITY", StringComparison.OrdinalIgnoreCase)))
+            && (expr.Field.Lexeme.Equals(nameof(System.Text.StringBuilder.Length), StringComparison.OrdinalIgnoreCase)
+                || expr.Field.Lexeme.Equals(nameof(System.Text.StringBuilder.Capacity), StringComparison.OrdinalIgnoreCase)))
         {
-            var sbPropName = expr.Field.Lexeme.Equals("CAPACITY", StringComparison.OrdinalIgnoreCase) ? "Capacity" : "Length";
+            var sbPropName = expr.Field.Lexeme.Equals(nameof(System.Text.StringBuilder.Capacity), StringComparison.OrdinalIgnoreCase)
+                ? nameof(System.Text.StringBuilder.Capacity)
+                : nameof(System.Text.StringBuilder.Length);
             var sbLenGetter = typeof(System.Text.StringBuilder).GetProperty(sbPropName)!.GetGetMethod()!;
             EmitExpression(expr.Structure);
             _il.Emit(OpCodes.Callvirt, sbLenGetter);
