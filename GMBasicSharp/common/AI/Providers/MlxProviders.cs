@@ -786,12 +786,16 @@ internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter
         var head = _scoringHead ??= ScoringHead.TryLoad(_modelDirPath);
         var effective = head?.Apply(request) ?? request;
 
-        var labels = effective.Options.Select(o => o.Display).ToArray();
+        var labels = request.UseSlotTokens
+            ? effective.Options.Select(o => $"{o.Id}) {o.Display}").ToArray()
+            : effective.Options.Select(o => o.Display).ToArray();
+        var answer = request.UseSlotTokens
+            ? "Answer with exactly one option letter (A..P) and nothing else."
+            : "Answer with exactly one option and nothing else.";
         var instructions = string.IsNullOrWhiteSpace(request.Instructions)
             ? "You are a decision engine. Choose exactly one allowed option."
             : request.Instructions!;
-        var user = $"State:\n{request.State}\nAllowed options: {string.Join(", ", labels)}\n" +
-                   "Answer with exactly one option and nothing else.";
+        var user = $"State:\n{request.State}\nAllowed options: {string.Join(", ", labels)}\n{answer}";
         var messages = new List<(string Role, string Content)>
         {
             ("system", instructions),
@@ -816,11 +820,12 @@ internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter
                 var tokenId = option.TokenId;
                 if (tokenId is null)
                 {
-                    var ids = Encode(option.Display);
-                    if (ids.Length != 1) ids = Encode(" " + option.Display);
+                    var tokenText = request.UseSlotTokens ? option.Id : option.Display;
+                    var ids = Encode(tokenText);
+                    if (ids.Length != 1) ids = Encode(" " + tokenText);
                     if (ids.Length != 1)
                         throw new DecisionProviderException(
-                            $"local MLX: l'opzione '{option.Display}' non è un token singolo ({ids.Length} token).");
+                            $"local MLX: l'opzione '{tokenText}' non è un token singolo ({ids.Length} token).");
                     tokenId = ids[0];
                 }
                 options[i] = new MlxEngineNative.MlxDecideOption
@@ -892,12 +897,16 @@ internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter
             request.Validate();
             var head = _scoringHead ??= ScoringHead.TryLoad(_modelDirPath);
             var effective = head?.Apply(request) ?? request;
-            var labels = effective.Options.Select(o => o.Display).ToArray();
+            var labels = request.UseSlotTokens
+                ? effective.Options.Select(o => $"{o.Id}) {o.Display}").ToArray()
+                : effective.Options.Select(o => o.Display).ToArray();
+            var answer = request.UseSlotTokens
+                ? "Answer with exactly one option letter (A..P) and nothing else."
+                : "Answer with exactly one option and nothing else.";
             var instructions = string.IsNullOrWhiteSpace(request.Instructions)
                 ? "You are a decision engine. Choose exactly one allowed option."
                 : request.Instructions!;
-            var user = $"State:\n{request.State}\nAllowed options: {string.Join(", ", labels)}\n" +
-                       "Answer with exactly one option and nothing else.";
+            var user = $"State:\n{request.State}\nAllowed options: {string.Join(", ", labels)}\n{answer}";
             var prompt = _buildChatTranscript([("system", instructions), ("user", user)], addAssistantOpener: true);
             var ids = Encode(prompt);
             if (ids.Length == 0)
@@ -910,11 +919,12 @@ internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter
                 var tokenId = option.TokenId;
                 if (tokenId is null)
                 {
-                    var labelIds = Encode(option.Display);
-                    if (labelIds.Length != 1) labelIds = Encode(" " + option.Display);
+                    var tokenText = request.UseSlotTokens ? option.Id : option.Display;
+                    var labelIds = Encode(tokenText);
+                    if (labelIds.Length != 1) labelIds = Encode(" " + tokenText);
                     if (labelIds.Length != 1)
                         throw new DecisionProviderException(
-                            $"local MLX: l'opzione '{option.Display}' non è un token singolo ({labelIds.Length} token).");
+                            $"local MLX: l'opzione '{tokenText}' non è un token singolo ({labelIds.Length} token).");
                     tokenId = labelIds[0];
                 }
                 options[i] = new MlxEngineNative.MlxDecideOption

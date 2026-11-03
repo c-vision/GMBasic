@@ -37,7 +37,10 @@ public sealed record DecisionRequest(
     DecisionKind Kind,
     IReadOnlyList<DecisionOption> Options,
     string? Instructions = null,
-    TimeSpan? Timeout = null)
+    TimeSpan? Timeout = null,
+    // Verbalizer (T6/Open-Jev): l'opzione è identificata dallo SLOT (A..P), il testo è solo
+    // nel prompt. Il readout tokenizza lo slot, non la label multi-parola.
+    bool UseSlotTokens = false)
 {
     public void Validate()
     {
