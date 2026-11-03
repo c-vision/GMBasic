@@ -77,6 +77,7 @@ const char* gmb_provider_normalize_role(const char* role) {
     else if (!strcmp(lo, "3") || !strcmp(lo, "embedding")) r = "embedding";
     else if (!strcmp(lo, "4") || !strcmp(lo, "reranker")) r = "reranker";
     else if (!strcmp(lo, "5") || !strcmp(lo, "tts")) r = "tts";
+    else if (!strcmp(lo, "6") || !strcmp(lo, "decide")) r = "decide";
     snprintf(out, sizeof(out), "%s", r);
     return out;
 }
@@ -117,7 +118,8 @@ int gmb_provider_register(const char* role, const char* name, const char* kind, 
     if (!is_local_mlx && kind && *kind && !strchr(kind, ':')
         && strcasecmp(kind, "fixture") && strcasecmp(kind, "keyword")
         && strcasecmp(kind, "llamacpp")
-        && strcasecmp(kind, "mlx") && strcasecmp(kind, "local"))
+        && strcasecmp(kind, "mlx") && strcasecmp(kind, "local")
+        && strcasecmp(kind, "rules") && strcasecmp(kind, "mock"))
         return 0;
     gmb_provider_t* p = find_provider(role, name);
     if (p) { strncpy(p->kind, kind ? kind : "", 511); strncpy(p->config, config ? config : "", 511); return 1; }
@@ -235,6 +237,21 @@ const char* gmb_provider_active(const char* role) {
  * nei runtime C (gmb_agent_loop.c): `AI REGISTER <path>, AI SET ACTIVE, AI.AGENTASKSYNC` carica
  * il motore MLX embedded — parità col routing host C# (MlxLlmCompleter). Ritorna un buffer
  * statico (vivo fino alla prossima chiamata). */
+/* Kind del provider attivo per un ruolo (es. "local"/"rules"/"mock" per %DECIDE).
+ * "" se il ruolo non ha provider. */
+const char* gmb_provider_active_kind(const char* role) {
+    static char kind[512];
+    kind[0] = 0;
+    char rbuf[32];
+    snprintf(rbuf, sizeof rbuf, "%s", gmb_provider_normalize_role(role));
+    const char* name = gmb_provider_active(rbuf);
+    if (!name || !*name) return kind;
+    gmb_provider_t* p = find_provider(rbuf, name);
+    if (!p) return kind;
+    snprintf(kind, sizeof kind, "%s", p->kind);
+    return kind;
+}
+
 const char* gmb_provider_active_model_path(void) {
     ensure_defaults();
     static char out[1200];

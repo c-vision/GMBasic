@@ -1,6 +1,6 @@
 /* gmb_pconst_gen.inc — GENERATO da canonical.registry.json (gmb-registry-export).
  * Costanti globali %% per il compiler C: sostituisce/estende il sottoinsieme manuale
- * (CHAT/RERANK/BROWSER/K_*) con TUTTE le 284 costanti della superficie canonica. */
+ * (CHAT/RERANK/BROWSER/K_*) con TUTTE le 285 costanti della superficie canonica. */
     {"ABORT", 3},
     {"ABORTRETRYIGNORE", 104},
     {"ANSI", 2},
@@ -53,6 +53,7 @@
     {"DARK_SLATE_GRAY3", 116},
     {"DARK_TURQUOISE", 44},
     {"DARK_VIOLET", 92},
+    {"DECIDE", 6},
     {"DEEP_PINK4", 53},
     {"DEEP_PINK4_2", 89},
     {"DEEP_SKY_BLUE1", 39},

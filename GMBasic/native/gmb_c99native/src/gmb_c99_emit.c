@@ -23812,6 +23812,7 @@ static void emit_ai_domain_role(ctx_t* c, gmb_expr_t* e) {
         static const struct { const char* n; const char* role; } capr[] = {
             { "%CHAT", "completion" }, { "%OCR", "ocr" }, { "%AUDIO", "audio" },
             { "%EMBEDDING", "embedding" }, { "%RERANKER", "reranker" }, { "%TTS", "tts" },
+            { "%DECIDE", "decide" },
         };
         for (size_t i = 0; i < sizeof(capr) / sizeof(capr[0]); i++)
             if (strcasecmp(e->var, capr[i].n) == 0) {
@@ -24486,12 +24487,13 @@ static void emit_ai_domain(ctx_t* c, gmb_stmt_t* s) {
          * AI REGISTER "completion", "llama1b", ... registrava un provider chiamato
          * "completion" invece di "llama1b" (Bugs/(open) - AI-REGISTER-Ordine-Argomenti-
          * Alias-vs-Capability.md). */
-        if (n < 4) { c99_fail(c, s->line, "AI REGISTER: attesi (alias, capability, source, param)"); return; }
+        if (n < 3) { c99_fail(c, s->line, "AI REGISTER: attesi (alias, capability, source[, param])"); return; }
         ind(c); sb_put(&c->out, "if (gmb_provider_register(");
         emit_ai_domain_role(c, a[1]); sb_put(&c->out, ", ");
         emit_str_operand(c, a[0]); sb_put(&c->out, ".data, ");
         emit_str_operand(c, a[2]); sb_put(&c->out, ".data, ");
-        emit_str_operand(c, a[3]); sb_put(&c->out, ".data) == 0) ");
+        if (n >= 4) emit_str_operand(c, a[3]); else sb_put(&c->out, "gmb_string_alloc(\"\")");
+        sb_put(&c->out, ".data) == 0) ");
         sb_put(&c->out, "gmb_raise_error(0, \"AI REGISTER: provider non registrato (per i modelli usa AI MODEL LOAD)\", 0);\n");
         return;
     }
