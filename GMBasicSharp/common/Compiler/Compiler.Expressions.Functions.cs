@@ -940,6 +940,11 @@ public sealed partial class Compiler
         { TokenKind.GetTempDirFunc, BuiltInFunction.GETTEMPDIRFUNC },
         { TokenKind.ResolveFilePathFunc, BuiltInFunction.RESOLVEFILEPATHFUNC },
         { TokenKind.ReadBytesFunc, BuiltInFunction.READBYTESFUNC },
+        { TokenKind.WriteBytesFunc, BuiltInFunction.WRITEBYTESFUNC },
+        // FONTS: funzioni del runtime condiviso (delega a libgmb_fonts / gmb_fonts.c).
+        { TokenKind.TtRenderFunc, BuiltInFunction.TTRENDERFUNC },
+        { TokenKind.TtMetricsFunc, BuiltInFunction.TTMETRICSFUNC },
+        { TokenKind.TtGlyphsFunc, BuiltInFunction.TTGLYPHSFUNC },
         { TokenKind.ReadLinesFunc, BuiltInFunction.READLINESFUNC },
         { TokenKind.ReadFileFunc, BuiltInFunction.READFILEFUNC },
         { TokenKind.CountLinesFunc, BuiltInFunction.COUNTLINESFUNC },

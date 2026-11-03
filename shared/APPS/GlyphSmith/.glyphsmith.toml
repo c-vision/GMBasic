@@ -1,0 +1,43 @@
+# .glyphsmith.toml — GlyphSmith — configurazione della app
+# ============================================================================
+# Tutto si configura QUI (la app non riceve argv: BASIC non ha argv).
+#   [settings] mode: status | check | sheet | edit | import
+#   [source]   bdf
+#   [output]   dir, bmp_scale, cells_per_row
+#   [edit]     script   (solo in mode = "edit")
+#   [import]   font, size, first, last, threshold, out   (solo in mode = "import")
+# ============================================================================
+
+[settings]
+# fallback quando il run non porta un simbolo -DGLYPHSMITH_MODE_*
+mode = "check"
+
+[source]
+# sorgente BDF, relativa alla cartella della app
+bdf = "fixtures/mini8.bdf"
+
+[output]
+# cartella degli artefatti (creata se assente); vuota = app dir / "bin"
+dir = "bin"
+# ingrandimento dei pixel nel foglio BMP
+bmp_scale = 4
+# glifi per riga nel foglio BMP
+cells_per_row = 8
+
+[edit]
+# script di editing batch (un comando per riga), relativo alla cartella della app
+script = "edits/demo.txt"
+
+[import]
+# font outline (TrueType/OpenType) da convertire in BDF; relativo alla cartella
+# della app, oppure assoluto.
+font = "/System/Library/Fonts/Supplemental/Andale Mono.ttf"
+# corpo in pixel
+size = 16
+# intervallo di codepoint (inclusivo), limitato a 0..65535
+first = 32
+last = 126
+# soglia di copertura 0..255 sopra la quale il pixel diventa '1'
+threshold = 128
+# nome del BDF prodotto (dentro [output] dir)
+out = "imported.bdf"

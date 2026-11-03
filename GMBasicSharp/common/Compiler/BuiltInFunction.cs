@@ -879,6 +879,10 @@ public enum BuiltInFunction : ushort
     PROJECTFOLDERFUNC = 577,
     PARENTDIRFUNC = 578,
     READBYTESFUNC = 579,
+    WRITEBYTESFUNC = 604,   // IO.WRITEBYTES(path, bytes) — scrittura byte-esatta (array di byte)
+    TTRENDERFUNC = 605,     // FONTS.TTRENDER(path, size, codepoint) — bitmap alpha del glifo
+    TTMETRICSFUNC = 606,    // FONTS.TTMETRICS(path, size, codepoint) — 8 metriche
+    TTGLYPHSFUNC = 607,     // FONTS.TTGLYPHS(path) — codepoint del cmap
     READLINESFUNC = 580,
     COUNTLINESFUNC = 581,
     RESOLVEFILEPATHFUNC = 582,

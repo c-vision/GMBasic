@@ -210,6 +210,11 @@ static int tk_returns_list(gmb_tokenkind_t tk, int* elem_str) {
         case GMB_TOK_DirFunc:
         case GMB_TOK_ReadLinesFunc: *elem_str = 1; return 1;
         case GMB_TOK_ReadBytesFunc: *elem_str = 0; return 1;
+        /* FONTS (TrueType/OpenType): le tre funzioni ritornano gmb_list_t dal runtime
+         * condiviso (bitmap di byte; metriche e codepoint come numeri). */
+        case GMB_TOK_TtRenderFunc: *elem_str = 0; return 1;
+        case GMB_TOK_TtMetricsFunc: *elem_str = 0; return 1;
+        case GMB_TOK_TtGlyphsFunc: *elem_str = 0; return 1;
         /* Metodi DICT che ritornano gmb_list_t: `DIM vs = d.Values()` senza questa inferenza
          * veniva dichiarata numerica → assegnazione di gmb_list_t a double (errore cc). */
         case GMB_TOK_Keys: *elem_str = 1; return 1;
@@ -5627,6 +5632,9 @@ void emit_handle(ctx_t* c, gmb_expr_t* e, int line);
 int emit_bf_strings(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_strings_extra(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_io_files(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
+/* IO.WRITEBYTES: array di byte del C99 (double[]) + lunghezza — stessa meccanica di
+ * MMAPWRITEBYTES, quindi vive qui dove stanno lookup_var/emit_var_ref/emit_arr_len_of. */
+int emit_bf_writebytes(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_system(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_json(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int js_stringify(ctx_t* c, gmb_expr_t** a, int n);   /* JSON.STRINGIFY/TOJSON (gmb_c99_emit_builtin.c) */
@@ -5637,6 +5645,8 @@ int emit_bf_sync(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk,
 int emit_bf_graphics(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_kmeans(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_compression(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
+/* FONTS: TrueType/OpenType (TTRENDER/TTMETRICS/TTGLYPHS) — liste dal runtime condiviso. */
+int emit_bf_fonts(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_grep(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_message(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line); /* MESSAGE.DELIVERY */
 int emit_bf_context(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
@@ -6202,6 +6212,10 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_FError, emit_bf_io_files },
     { NULL, GMB_TOK_FileInput, emit_bf_io_files },
     { NULL, GMB_TOK_ReadBytesFunc, emit_bf_io_files },
+    { NULL, GMB_TOK_WriteBytesFunc, emit_bf_writebytes },
+    { NULL, GMB_TOK_TtRenderFunc, emit_bf_fonts },
+    { NULL, GMB_TOK_TtMetricsFunc, emit_bf_fonts },
+    { NULL, GMB_TOK_TtGlyphsFunc, emit_bf_fonts },
     { NULL, GMB_TOK_ReadLinesFunc, emit_bf_io_files },
     { NULL, GMB_TOK_ReadFileFunc, emit_bf_io_files },
     { NULL, GMB_TOK_CountLinesFunc, emit_bf_io_files },
@@ -28591,6 +28605,31 @@ static void st_seek(ctx_t* c, gmb_stmt_t* s) {
     } else {
         sb_put(&c->out, ", 0, 0);\n");
     }
+}
+
+/* IO.WRITEBYTES(path, buf()): scrittura byte-esatta di un array BYTE.
+ * Nel C99 gli array del linguaggio sono double[] (come per MMAPWRITEBYTES), quindi si passa
+ * puntatore + lunghezza alla funzione condivisa del runtime (§0bis). */
+int emit_bf_writebytes(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk,
+                       gmb_expr_t** args, int nargs, int line) {
+    (void)name; (void)ns; (void)tk;
+    if (nargs != 2 || !args[0] || !args[1] || !args[1]->var) {
+        c99_fail(c, line, "IO.WRITEBYTES richiede (path, array DIM di byte) (backend C99Native)");
+        return 1;
+    }
+    var_t* av = lookup_var(c, args[1]->var);
+    if (!av || !av->is_array) {
+        c99_fail(c, line, "IO.WRITEBYTES: '%s' non e' un array DIM", args[1]->var);
+        return 1;
+    }
+    sb_put(&c->out, "gmb_write_all_bytes_f64((");
+    emit_str_operand(c, args[0]);
+    sb_put(&c->out, ").data, (const double*)");
+    emit_var_ref(c, av);
+    sb_put(&c->out, ", (int)(");
+    emit_arr_len_of(c, av);
+    sb_put(&c->out, "))");
+    return 1;
 }
 
 /* MEMORYMAP comandi (2026-09-15): MMAPPOKE / MMAPWRITEBYTES.

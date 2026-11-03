@@ -14,6 +14,8 @@
 #include "llmengine_plugin.h"
 #include "gmb_finetune.h"
 #include "gmb_distill.h"   /* Stream D: AI DISTILL */
+#include <stdlib.h>   /* atof per gli argomenti numerici di FONTS */
+#include "gmb_fonts.h"  /* namespace FONTS: runtime condiviso, nessuna logica qui */
 #include "gmb_runtime.h"
 #include "gmb_llm_tok.h"
 #include "gmb_builtin_registry.h"
@@ -12229,6 +12231,83 @@ static void gmb_bf_579(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
             else { free(data); if (out) gmb_obj_release((gmb_obj_t*)out); bout->is_num = 0; bout->result_ref = NULL; }
         }
 }
+/* ---- namespace FONTS: TrueType/OpenType (FUNZIONI) ----------------------
+ * Nessuna logica qui: si delega a gmb_fonts_tt_*_list del runtime condiviso (§0bis).
+ * Argomenti: path (stringa), size (numerico), codepoint (numerico). */
+static double gmb_bf_fonts_num(gmb_stack_entry_t* args, int argc, int i, double def)
+{
+    if (i < 0 || i >= argc) return def;
+    if (args[i].type == 1) return args[i].num;
+    if (args[i].type == 2 && args[i].ref && args[i].ref->kind == GMB_OBJ_STRING)
+    {
+        const char* s = ((gmb_obj_string_t*)args[i].ref)->data;
+        if (s && *s) return atof(s);
+    }
+    return def;
+}
+static const char* gmb_bf_fonts_path(gmb_stack_entry_t* args, int argc)
+{
+    if (argc >= 1 && args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_STRING)
+        return ((gmb_obj_string_t*)args[0].ref)->data;
+    return "";
+}
+static void gmb_bf_fonts_emit_list(gmb_list_t l, gmb_builtin_out_t* bout)
+{
+    gmb_obj_shared_val_t* out = gmb_shared_list_new();
+    if (!out) { bout->is_num = 0; bout->result_ref = NULL; return; }
+    {
+        int n = (int)gmb_list_count(l);
+        for (int i = 0; i < n; i++) gmb_list_add(out->list, gmb_list_get(l, i));
+    }
+    bout->is_num = 0; bout->result_ref = (gmb_obj_t*)out; bout->result_ref_bt = GMB_BT_OBJECT;
+}
+/* TTRENDER(path, size, codepoint) -> lista di byte (alpha 0..255). */
+static void gmb_bf_605(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)func_code; (void)task;
+    gmb_bf_fonts_emit_list(
+        gmb_fonts_tt_render_list(gmb_bf_fonts_path(args, argc),
+                                 gmb_bf_fonts_num(args, argc, 1, 16.0),
+                                 (int)gmb_bf_fonts_num(args, argc, 2, 0.0)),
+        bout);
+}
+/* TTMETRICS(path, size, codepoint) -> lista di 8 numeri. */
+static void gmb_bf_606(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)func_code; (void)task;
+    gmb_bf_fonts_emit_list(
+        gmb_fonts_tt_metrics_list(gmb_bf_fonts_path(args, argc),
+                                  gmb_bf_fonts_num(args, argc, 1, 16.0),
+                                  (int)gmb_bf_fonts_num(args, argc, 2, 0.0)),
+        bout);
+}
+/* TTGLYPHS(path) -> lista di codepoint coperti dal cmap. */
+static void gmb_bf_607(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)func_code; (void)task;
+    gmb_bf_fonts_emit_list(gmb_fonts_tt_glyphs_list(gmb_bf_fonts_path(args, argc)), bout);
+}
+
+/* WRITEBYTES(path, bytes) — IO.WRITEBYTES: array di byte -> file, byte-esatto (§0bis:
+ * l'implementazione è una sola, gmb_write_all_bytes_list del runtime condiviso). */
+static void gmb_bf_604(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)func_code; (void)task;
+    const char* path = (argc >= 1 && args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_STRING)
+        ? ((gmb_obj_string_t*)args[0].ref)->data : "";
+    int rc = -1;
+    if (argc >= 2 && args[1].type == 2 && args[1].ref && args[1].ref->kind == GMB_OBJ_LIST)
+    {
+        gmb_obj_shared_val_t* sv = (gmb_obj_shared_val_t*)args[1].ref;
+        rc = gmb_write_all_bytes_list(path, *sv->list);
+    }
+    else
+    {
+        /* array assente/vuoto: il file viene comunque creato (0 byte), come WriteAllBytes. */
+        rc = gmb_write_all_bytes(path, NULL, 0);
+    }
+    bout->is_num = 1; bout->result = (double)rc;
+}
 static void gmb_bf_3806(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
@@ -18695,6 +18774,10 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 578, gmb_bf_575 },
     { 573, gmb_bf_573 },
     { 579, gmb_bf_579 },
+    { 604, gmb_bf_604 },   /* IO.WRITEBYTES */
+    { 605, gmb_bf_605 },   /* FONTS.TTRENDER */
+    { 606, gmb_bf_606 },   /* FONTS.TTMETRICS */
+    { 607, gmb_bf_607 },   /* FONTS.TTGLYPHS */
     { 580, gmb_bf_580 },
     { 581, gmb_bf_581 },
     { 3806, gmb_bf_3806 },

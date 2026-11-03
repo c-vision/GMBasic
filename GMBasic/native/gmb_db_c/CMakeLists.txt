@@ -43,6 +43,12 @@ target_include_directories(gmb_db_shared PRIVATE ../gmb_runtime_c/include)
 target_compile_definitions(gmb_db_shared PRIVATE GMB_DB_BUILD_SHARED)
 set_target_properties(gmb_db_shared PROPERTIES OUTPUT_NAME gmb_db)
 target_link_libraries(gmb_db_shared PUBLIC Threads::Threads)
+# Dopo lo split core/AI (2026-11-02) il runtime statico referenzia servizi che vivono in
+# `gmb_agent_runtime` (gmb_brain_ask_sync, gmb_agent_ask_with_tools, ...). Un dylib deve
+# risolverli a load-time: stesso idioma degli altri dylib del repo (gmb_runtime_ai, gmb_fonts).
+if(APPLE)
+    target_link_options(gmb_db_shared PRIVATE -Wl,-undefined,dynamic_lookup)
+endif()
 
 # Dummy SPEED / SET FILTER usano gmb_expr. Non aggiungere gmb_db dentro gmb_runtime_c.
 if(NOT TARGET gmb_runtime)
