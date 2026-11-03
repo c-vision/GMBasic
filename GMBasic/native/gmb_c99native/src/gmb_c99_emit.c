@@ -10928,7 +10928,12 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
     }
     /* COUNT(x) — conteggio collezione/array (parity emitter C# TokenKind.Count):
      * dict→gmb_dict_count, lista→gmb_list_count, array-var→len, altrimenti 0. */
-    if (tk == GMB_TOK_Count && nargs >= 1 && args[0]) {
+    /* LEDGER.COUNT(h) è la funzione del namespace LEDGER (numero di transazioni), NON la
+     * COUNT generica di collezioni/STRINGHE: senza questa esclusione il ramo generico
+     * emetteva il letterale 0.0 e la tabella per (namespace, TokenKind) non veniva mai
+     * raggiunta (misurato: LEDGER.COUNT=0 su C99 contro 1 su IL/PCode/VM-C). */
+    if (tk == GMB_TOK_Count && nargs >= 1 && args[0]
+        && !(ns && strcasecmp(ns, "LEDGER") == 0)) {
         var_t* cv = (args[0]->kind == GMB_EXPR_VAR && args[0]->var) ? lookup_var(c, args[0]->var) : NULL;
         if (cv && cv->gkind && gk_is_dict(cv->gkind)) {
             sb_put(&c->out, "(gmb_double_t)gmb_dict_count("); emit_ident(c, cv->name); sb_put(&c->out, ")");
