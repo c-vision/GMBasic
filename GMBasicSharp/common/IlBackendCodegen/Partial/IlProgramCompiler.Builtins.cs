@@ -1306,6 +1306,42 @@ public sealed partial class IlProgramCompiler
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.WriteBytes), typeof(string), typeof(object)));
                 EmitCoerceTypes(new LongType(), NormalizeInferredType(InferType(expr)));
                 break;
+            case TokenKind.TtRenderFunc:
+            {
+                // FONTS.TTRENDER(path, size, codepoint) -> byte[] (alpha 0..255).
+                if (expr.Args.Length != 3)
+                    throw new NotSupportedException("Backend IL: FONTS.TTRENDER richiede 3 argomenti (path, size, codepoint).");
+                EmitStringArg(expr.Args[0]);
+                EmitExpression(expr.Args[1]);
+                EmitCoerceTypes(NormalizeInferredType(InferType(expr.Args[1])), new DoubleType());
+                EmitExpression(expr.Args[2]);
+                EmitCoerceTypes(NormalizeInferredType(InferType(expr.Args[2])), new LongType());
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.TtRender), typeof(string), typeof(double), typeof(long)));
+                EmitCoerceTypes(new ArrayType(new ByteType()), NormalizeInferredType(InferType(expr)));
+                break;
+            }
+            case TokenKind.TtMetricsFunc:
+            {
+                if (expr.Args.Length != 3)
+                    throw new NotSupportedException("Backend IL: FONTS.TTMETRICS richiede 3 argomenti (path, size, codepoint).");
+                EmitStringArg(expr.Args[0]);
+                EmitExpression(expr.Args[1]);
+                EmitCoerceTypes(NormalizeInferredType(InferType(expr.Args[1])), new DoubleType());
+                EmitExpression(expr.Args[2]);
+                EmitCoerceTypes(NormalizeInferredType(InferType(expr.Args[2])), new LongType());
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.TtMetrics), typeof(string), typeof(double), typeof(long)));
+                EmitCoerceTypes(new ArrayType(new DoubleType()), NormalizeInferredType(InferType(expr)));
+                break;
+            }
+            case TokenKind.TtGlyphsFunc:
+            {
+                if (expr.Args.Length != 1)
+                    throw new NotSupportedException("Backend IL: FONTS.TTGLYPHS richiede 1 argomento (path).");
+                EmitStringArg(expr.Args[0]);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.TtGlyphs), typeof(string)));
+                EmitCoerceTypes(new ArrayType(new DoubleType()), NormalizeInferredType(InferType(expr)));
+                break;
+            }
             case TokenKind.ReadLinesFunc: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.ReadLines))); break;
             case TokenKind.ReadFileFunc: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.ReadFile))); break;
             case TokenKind.CountLinesFunc: EmitStringUnaryBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.CountLines))); break;

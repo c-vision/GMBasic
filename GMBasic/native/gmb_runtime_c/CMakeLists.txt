@@ -214,6 +214,7 @@ set(GMB_ALL_SRCS
     src/gmb_bits.c
     src/gmb_file.c
     src/gmb_file_extra.c
+    src/gmb_fonts.c        # namespace FONTS: metriche/render TrueType (stb_truetype, una sola sorgente)
     src/gmb_finetune.c
     # MODEL COMPILER LLM (save/quantize/convert) + imatrix/forward: progetto gmb_model_io (linkato sotto)
     # registry plugin + .gmbarch: progetti autonomi (LLMEngine/plugin / LLMDesc), linkati sotto
@@ -552,6 +553,27 @@ target_link_libraries(gmb_pkg PRIVATE gmb_runtime)
 set_target_properties(gmb_pkg PROPERTIES
     OUTPUT_NAME gmb_pkg
     C_VISIBILITY_PRESET default)
+
+# FONTS (TrueType/OpenType) come libreria CONDIVISA per P/Invoke (IL/PCodeVM): stesse
+# sorgenti della static (gmb_fonts.c + l'unico TU di stb_truetype), nessuna duplicazione
+# dell'algoritmo nei backend. Espone gmb_fonts_tt_* (gmb_fonts.h).
+add_library(gmb_fonts SHARED
+    src/gmb_fonts.c
+    src/stb_truetype_impl.c
+)
+target_include_directories(gmb_fonts PUBLIC include)
+target_link_libraries(gmb_fonts PRIVATE gmb_runtime)
+set_target_properties(gmb_fonts PROPERTIES
+    OUTPUT_NAME gmb_fonts
+    C_VISIBILITY_PRESET default)
+# Stessa ricetta di gmb_grep: la static gmb_runtime trascina oggetti UI/TUI con simboli
+# forniti dall'host (form/widget/window manager). Le funzioni FONTS non li usano: vengono
+# risolti a runtime, non imposti a link-time.
+if(APPLE)
+    target_link_options(gmb_fonts PRIVATE -Wl,-undefined,dynamic_lookup)
+else()
+    target_link_options(gmb_fonts PRIVATE -Wl,--allow-shlib-undefined)
+endif()
 
 # GREP engine come libreria CONDIVISA per P/Invoke (REPL C#). Stessa sorgente
 # (gmb_grep.c + gmb_matcher.c) della static; linka gmb_runtime per le dipendenze.
@@ -1051,13 +1073,18 @@ add_executable(gmb_json_selfcheck tests/gmb_json_selfcheck.c)
 target_link_libraries(gmb_json_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_json_selfcheck PRIVATE include)
 add_test(NAME gmb_json_selfcheck COMMAND gmb_json_selfcheck)
-add_executable(gmb_asr_selfcheck tests/gmb_asr_selfcheck.c)
-target_link_libraries(gmb_asr_selfcheck PRIVATE gmb_runtime)
-target_include_directories(gmb_asr_selfcheck PRIVATE include)
-add_test(NAME gmb_asr_selfcheck COMMAND gmb_asr_selfcheck)
-add_executable(gmb_asr_run tests/gmb_asr_run.c)
-target_link_libraries(gmb_asr_run PRIVATE gmb_runtime)
-target_include_directories(gmb_asr_run PRIVATE include)
+# SPLIT 2026-11-02: il modulo ASR host non vive piu' nel runtime (sta in LLMEnv). Se l'header non
+# c'e', il selfcheck non ha nulla da compilare: target CONDIZIONALE, cosi' la build non si blocca
+# su un file rimasto senza il suo modulo (nessun file cancellato: torna attivo appena l'header c'e').
+if(EXISTS "${LLMENV}/LLMEngine/asr/include/gmb_asr.h" OR EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/include/gmb_asr.h")
+    add_executable(gmb_asr_selfcheck tests/gmb_asr_selfcheck.c)
+    target_link_libraries(gmb_asr_selfcheck PRIVATE gmb_runtime)
+    target_include_directories(gmb_asr_selfcheck PRIVATE include)
+    add_test(NAME gmb_asr_selfcheck COMMAND gmb_asr_selfcheck)
+    add_executable(gmb_asr_run tests/gmb_asr_run.c)
+    target_link_libraries(gmb_asr_run PRIVATE gmb_runtime)
+    target_include_directories(gmb_asr_run PRIVATE include)
+endif()
 add_executable(gmb_pkg_manifest_selfcheck tests/gmb_pkg_manifest_selfcheck.c)
 target_link_libraries(gmb_pkg_manifest_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_pkg_manifest_selfcheck PRIVATE include)
@@ -1110,7 +1137,7 @@ target_include_directories(gmb_pkg_install_selfcheck PRIVATE include)
 add_test(NAME gmb_pkg_install_selfcheck COMMAND gmb_pkg_install_selfcheck)
 
 add_executable(gmb_pkg_pack_selfcheck tests/gmb_pkg_pack_selfcheck.c
-    src/gmb_pkg_pack.c src/gmb_pkg_glob.c)
+    src/gmb_pkg_pack.c src/gmb_pkg_glob.c src/gmb_pkg_ed25519.c)
 target_link_libraries(gmb_pkg_pack_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_pkg_pack_selfcheck PRIVATE include)
 add_test(NAME gmb_pkg_pack_selfcheck COMMAND gmb_pkg_pack_selfcheck)

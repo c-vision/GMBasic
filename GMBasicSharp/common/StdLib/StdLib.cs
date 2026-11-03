@@ -144,6 +144,7 @@ public sealed partial class StdLib : IParserRegistry
         CreateSignalNamespace();
         CreateVectorNamespace();
         CreateIONamespace();
+        CreateFontsNamespace();
         CreateCompressionNamespace();
         CreateMemoryMapNamespace();
         CreateNetNamespace();

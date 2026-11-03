@@ -1,0 +1,17 @@
+# Script di editing batch per GlyphSmith (modo "edit")
+# ============================================================================
+# Un comando per riga; indici dei glifi 0-based nell'ordine del file BDF.
+#   clear  <g>
+#   set    <g> <x> <y> <0|1>
+#   rect   <g> <x1> <y1> <x2> <y2> <0|1>     (riempimento)
+#   line   <g> <x1> <y1> <x2> <y2> <0|1>     (Bresenham)
+#   flip   <g> h|v
+#   shift  <g> <dx> <dy>
+#   clone  <src> <dst>
+# ============================================================================
+
+# cornice sul glifo 2 ("B"): dimostra line + flip + shift
+line 2 0 0 0 7 1
+line 2 7 0 7 7 1
+flip 2 h
+shift 2 0 1

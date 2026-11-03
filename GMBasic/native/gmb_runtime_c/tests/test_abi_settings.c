@@ -2,6 +2,11 @@
  * (impostazione valida, percorso obsoleto, prima esecuzione con persistenza, LLMEnv assente). Nessun modello necessario.
  * Include il .c per provare anche le funzioni statiche. Il "brew" e' un finto script nel PATH: nessuna installazione reale. */
 #include "../src/gmb_abi.c"
+/* Lo split core/AI (2026-11-02) ha spostato l'ABI `llmdesc` nella dylib `gmb_runtime_ai`: il core
+ * (`gmb_abi.c`) la include solo su _WIN32, dove non c'e' dynamic_lookup. Il test invece usa
+ * direttamente `llmdesc_abi_dir`/`llmdesc_resolve` e linka `llmdesc.c` (CMakeLists): l'header va
+ * incluso qui, esplicitamente, per tutti gli altri piattaforme. */
+#include "llmdesc.h"
 #include <assert.h>
 #include <sys/wait.h>
 
@@ -14,6 +19,14 @@ static void reset(void) { g_abi_done = 0; g_abi_busy = 0; g_abi_dir[0] = 0; }
 
 int main(void)
 {
+    /* SPLIT core/AI (2026-11-02): in produzione i tre servizi ABI li registra la dylib
+     * `gmb_runtime_ai` (constructor in gmb_ai_register.c). Il test linka `llmdesc.c`
+     * direttamente, quindi fa la stessa registrazione qui, prima di ogni uso. */
+    gmb_abi_set_llmdesc(llmdesc_abi_valid, llmdesc_abi_locate, llmdesc_set_abi_policy);
+    /* La policy ("la cartella ABI la risolve l'applicazione") la registra il constructor di
+     * gmb_abi.c, che qui gira PRIMA di questa registrazione: la si applica quindi esplicitamente,
+     * come farebbe il core quando i servizi sono gia' presenti. */
+    llmdesc_set_abi_policy(gmb_abi_dir, 1);
     /* sotto $TMPDIR (non /tmp): una cartella ABI/ dispersa in un antenato (es. /tmp/ABI) falserebbe la ricerca risalendo dalla cwd */
     char tmpl[1024]; snprintf(tmpl, sizeof tmpl, "%s/gmb_abi_test_XXXXXX", getenv("TMPDIR") ? getenv("TMPDIR") : "/tmp"); char* root = mkdtemp(tmpl);
     if (!root) return 77;

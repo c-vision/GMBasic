@@ -1181,6 +1181,26 @@ if (args.Length > 0) { try { var sizes = new List<int>(); foreach (var a in args
                 if (args.Length > 0) { try { return System.IO.File.ReadAllBytes(args[0]?.ToString() ?? ""); } catch { return Array.Empty<byte>(); } }
                 return Array.Empty<byte>();
         },
+        [BuiltInFunction.WRITEBYTESFUNC] = (task, args) =>
+        {
+                if (args.Length >= 2) return Basic.IlBackend.IlRuntime.WriteBytes(args[0]?.ToString() ?? "", args[1]);
+                return -1L;
+        },
+        // --- FONTS: TrueType/OpenType (stessa dylib del runtime, nessuna seconda implementazione) ---
+        [BuiltInFunction.TTRENDERFUNC] = (task, args) =>
+                args.Length >= 3
+                    ? Basic.IlBackend.IlRuntime.TtRender(args[0]?.ToString() ?? "",
+                          Convert.ToDouble(args[1]), Convert.ToInt64(args[2]))
+                    : Array.Empty<byte>(),
+        [BuiltInFunction.TTMETRICSFUNC] = (task, args) =>
+                args.Length >= 3
+                    ? Basic.IlBackend.IlRuntime.TtMetrics(args[0]?.ToString() ?? "",
+                          Convert.ToDouble(args[1]), Convert.ToInt64(args[2]))
+                    : Array.Empty<double>(),
+        [BuiltInFunction.TTGLYPHSFUNC] = (task, args) =>
+                args.Length >= 1
+                    ? Basic.IlBackend.IlRuntime.TtGlyphs(args[0]?.ToString() ?? "")
+                    : Array.Empty<double>(),
         [BuiltInFunction.READLINESFUNC] = (task, args) =>
         {
                 if (args.Length > 0) { try { return System.IO.File.ReadAllLines(args[0]?.ToString() ?? ""); } catch { return Array.Empty<string>(); } }

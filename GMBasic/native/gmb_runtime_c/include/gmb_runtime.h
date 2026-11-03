@@ -1986,6 +1986,21 @@ char* gmb_path_resolve_db(const char* path);
 char* gmb_path_find_folder(const char* name, int max_depth);
 char* gmb_path_resolve_file(const char* path);
 uint8_t* gmb_read_all_bytes(const char* path, size_t* len_out);
+/* --- WRITEBYTES (gmb_file.c): scrittura BYTE-ESATTA di un blocco di byte su file.
+ * Complementare di gmb_read_all_bytes: FWrite passa da fputs/UTF-8 e si ferma al primo
+ * 0x00, quindi non può produrre formati binari (BMP, PSF2, TTF). Ritorna i byte scritti,
+ * -1 su errore. La variante *_list accetta la lista di byte del runtime (array BASIC). */
+int gmb_write_all_bytes(const char* path, const uint8_t* data, size_t len);
+int gmb_write_all_bytes_list(const char* path, gmb_list_t list);
+/* Variante per gli array del backend C99Native (`DIM b(n) AS BYTE` = double[]). */
+int gmb_write_all_bytes_f64(const char* path, const double* src, int count);
+
+/* namespace FONTS (TrueType/OpenType): varianti a lista usate dai backend C.
+ * Le definizioni sono in gmb_fonts.c; le API a buffer sono in gmb_fonts.h.
+ * Dichiarate qui perché il C generato da C99Native include gmb_runtime.h. */
+gmb_list_t gmb_fonts_tt_metrics_list(const char* path, double pixel_height, int codepoint);
+gmb_list_t gmb_fonts_tt_render_list(const char* path, double pixel_height, int codepoint);
+gmb_list_t gmb_fonts_tt_glyphs_list(const char* path);
 char** gmb_read_all_lines(const char* path, int* count_out);
 long gmb_count_lines(const char* path);
 gmb_int_t gmb_val_length(gmb_val_t v);

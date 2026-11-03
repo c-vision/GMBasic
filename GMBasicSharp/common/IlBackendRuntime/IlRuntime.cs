@@ -2730,6 +2730,64 @@ public static partial class IlRuntime
         return Path.GetDirectoryName(path) ?? "";
     }
     public static byte[] ReadBytes(string path) => File.Exists(path) ? File.ReadAllBytes(path) : Array.Empty<byte>();
+
+    // --- FONTS: TrueType/OpenType (delega alla dylib del runtime C, nessuna copia dell'algoritmo) ---
+
+    /// <summary>FONTS.TTRENDER: bitmap alpha del glifo (0..255, riga per riga dall'alto).</summary>
+    public static byte[] TtRender(string path, double pixelHeight, long codepoint)
+        => Basic.Runtime.FontsNative.Render(path, pixelHeight, (int)codepoint);
+
+    /// <summary>FONTS.TTMETRICS: 8 metriche (w, h, xoff, yoff, advance, ascent, descent, linegap).</summary>
+    public static double[] TtMetrics(string path, double pixelHeight, long codepoint)
+        => Basic.Runtime.FontsNative.Metrics(path, pixelHeight, (int)codepoint);
+
+    /// <summary>FONTS.TTGLYPHS: codepoint coperti dal cmap, in ordine crescente.</summary>
+    public static double[] TtGlyphs(string path)
+        => Basic.Runtime.FontsNative.Glyphs(path);
+
+    /// <summary>WRITEBYTES(path, bytes) — scrittura BYTE-ESATTA di un array di byte su file.
+    /// Complementare di ReadBytes: FWrite passa da UTF-8 e si ferma al primo 0x00, quindi non
+    /// può produrre un BMP/PSF2 valido. Valori fuori 0..255 vengono mascherati a 8 bit.
+    /// Ritorna i byte scritti, -1 se il file non si apre.</summary>
+    public static long WriteBytes(string path, object? data)
+    {
+        byte[] bytes = EncodeToBytes(data);
+        try
+        {
+            string? dir = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
+            File.WriteAllBytes(path, bytes);
+            return bytes.Length;
+        }
+        catch { return -1; }
+    }
+
+    private static byte[] EncodeToBytes(object? data)
+    {
+        if (data is null) return Array.Empty<byte>();
+        if (data is byte[] bb) return bb;
+        if (data is string s) return System.Text.Encoding.UTF8.GetBytes(s);
+        if (data is System.Collections.IEnumerable seq)
+        {
+            var list = new System.Collections.Generic.List<byte>();
+            foreach (var item in seq) list.Add(EncodeOneByte(item));
+            return list.ToArray();
+        }
+        return CryptoBytes(data);
+    }
+
+    private static byte EncodeOneByte(object? item) => item switch
+    {
+        null => 0,
+        byte b => b,
+        sbyte sb => unchecked((byte)sb),
+        short sh => unchecked((byte)sh),
+        int i => unchecked((byte)i),
+        long l => unchecked((byte)l),
+        double d => (byte)(((long)d) & 0xFF),
+        float f => (byte)(((long)f) & 0xFF),
+        _ => 0
+    };
     public static string[] ReadLines(string path) => File.Exists(path) ? File.ReadAllLines(path) : Array.Empty<string>();
     public static string ReadFile(string path) => File.Exists(path) ? File.ReadAllText(path) : "";
     public static long CountLines(string path) => File.Exists(path) ? File.ReadLines(path).LongCount() : 0;
