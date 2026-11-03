@@ -17,6 +17,10 @@ Verified on the four backends of the monorepo (IL, PCodeVM, VM-C, C99Native).
 
 ## M3 — formats
 
+- [x] **BMP read-back**: il `check` rilegge `sheet.bmp` con `IO.READBYTES` e verifica
+      header (offset pixel, larghezza, altezza, 24 bpp, dimensione), riga multipla di 4
+      senza padding, pixel neri = `inchiostro x scale^2`, più un pixel acceso e uno spento
+      del glifo `A` letti dal file. Check deterministico: 52 -> 64 controlli.
 - [ ] **PSF1** (256/512 glyphs, 8-pixel wide) in addition to PSF2.
 - [ ] **PCF** writer (binary tables with accelerators) and **BDF v2.2** properties.
 - [ ] **ASCII art / sixel preview** for terminals, for a visual check without a GUI.

@@ -19,7 +19,7 @@ BMP and PSF2 were impossible to emit from BASIC.
 |---|---|---|
 | **TTF / OTF** | read (import) | outline → BDF via `FONTS.TTMETRICS` / `FONTS.TTRENDER`: the app only orchestrates the codepoint loop, the threshold and the metric conversion; the parser and the rasteriser are C (`native/gmb_runtime_c/src/gmb_fonts.c`, stb_truetype) |
 | **BDF 2.1** | read + write | subset: `FONT`, `SIZE`, `FONTBOUNDINGBOX`, `STARTPROPERTIES`/`ENDPROPERTIES`, `CHARS`, and per glyph `STARTCHAR`, `ENCODING`, `SWIDTH`, `DWIDTH`, `BBX`, `BITMAP`, `ENDCHAR` |
-| **BMP** (24-bit) | write | contact sheet of every glyph, scaled by `bmp_scale`, `cells_per_row` per row; opens in Preview/Paint |
+| **BMP** (24-bit) | read + write | contact sheet of every glyph, scaled by `bmp_scale`, `cells_per_row` per row; opens in Preview/Paint. The `check` mode reads the sheet back with `IO.READBYTES` and verifies header, row size and the black pixels against the model |
 | **PSF2** | write | Linux console font: magic `0x72b54a86`, header 32 bytes, glyphs padded to `maxW`×`maxH` |
 | **PBM** (P1 ASCII) | write | `P1` bitmap, one glyph per block, same layout as the BMP sheet |
 | **C header** | write | `static const unsigned char glyph_<code>[]` + metrics, ready to be `#include`d |
@@ -42,7 +42,7 @@ or from the configuration file.
 | Mode | How | What it does |
 |---|---|---|
 | `status` (default) | `[settings] mode = "status"` | banner, resolved paths, font summary, limits |
-| `check` | `mode = "check"` or `#DEF GLYPHSMITH_MODE_CHECK` | deterministic self-check: parse, metrics, ink counts, pixel probes, every editing operation, BDF round-trip, all four exports |
+| `check` | `mode = "check"` or `#DEF GLYPHSMITH_MODE_CHECK` | deterministic self-check: parse, metrics, ink counts, pixel probes, every editing operation, BDF round-trip, all four exports, **BMP read-back** (header, row size, black pixels vs model) |
 | `sheet` | `mode = "sheet"` or `#DEF GLYPHSMITH_MODE_SHEET` | writes `sheet.bmp`, `mini8.psf`, `sheet.pbm`, `mini8.h` into the output folder |
 | `edit` | `mode = "edit"` or `#DEF GLYPHSMITH_MODE_EDIT` | applies a **batch script** of editing commands, then writes the edited BDF and the exports |
 | `import` | `mode = "import"` or `#DEF GLYPHSMITH_MODE_IMPORT` | converts an outline font (`.ttf`/`.otf`) into a BDF over a codepoint range: `FONTS.TTMETRICS` for the box/metrics, `FONTS.TTRENDER` for the alpha bitmap, threshold to `0`/`1` |
