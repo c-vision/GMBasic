@@ -60,13 +60,16 @@ public sealed partial class StdLib
                 [new Parameter(-1, T(TokenKind.Identifier, "area"), new InferredType(), optionalFlag, null, false)],
                 new BitType(), TokenKind.EofFunc),
 
-            new NativeProcedureDefinition(-1, publicFuncFlag, T(TokenKind.Selected, "SELECTED"),
-                [
-                    new Parameter(-1, T(TokenKind.Identifier, "query"), new StringType(), SymbolFlags.None,
-                        null, false)
-                ],
-                new InferredType(),
+            // SELECTED: numero d'area (1-based), 0 se nessuna area. Come DBF/ISAM accetta
+            // l'alias opzionale (SPEED.SELECTED() / SPEED.SELECTED(area)) — prima era
+            // dichiarata una forma a UN argomento obbligatorio "query" (copiata da una
+            // funzione di query), per cui `SPEED.SELECTED()` non compilava sulle gambe
+            // gestite mentre C99Native la accettava (divergenza di ariità fra backend).
+            new NativeProcedureDefinition(-1, publicFuncFlag, T(TokenKind.Selected, "SELECTED"), [], new LongType(),
                 TokenKind.Selected),
+            new NativeProcedureDefinition(-1, publicFuncFlag, T(TokenKind.Selected, "SELECTED"),
+                [new Parameter(-1, T(TokenKind.Identifier, "area"), new InferredType(), optionalFlag, null, false)],
+                new LongType(), TokenKind.Selected),
 
             new NativeProcedureDefinition(-1, publicFuncFlag, T(TokenKind.SpeedSetDurability, "SETDURABILITY"),
                 [new Parameter(-1, T(TokenKind.Identifier, "mode"), new StringType(), SymbolFlags.None, null, false)],

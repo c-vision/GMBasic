@@ -137,7 +137,11 @@ unsigned char* gmb_compress_data(const char* algo, const unsigned char* data, si
     zs.next_in = (Bytef*)data;
     zs.avail_in = (uInt)len;
     zs.next_out = out;
-    zs.avail_out = (uInt)clen;
+    /* `compressBound` NON include l'overhead del wrapper (gzip: 18 byte di header/trailer):
+     * con dati poco comprimibili il bound da solo non basta e deflate tornava Z_OK
+     * (buffer pieno) → la funzione ritornava NULL e la stringa risultava vuota.
+     * Il buffer è allocato `clen + 64`, quindi si può dare al deflate tutto lo spazio. */
+    zs.avail_out = (uInt)(clen + 64);
     rc = deflate(&zs, Z_FINISH);
     deflateEnd(&zs);
     if (rc != Z_STREAM_END) { free(out); return NULL; }

@@ -140,13 +140,17 @@ public sealed partial class IlProgramCompiler
         // ON ERROR RESUME NEXT: valore ~4.6e18). Con AS DOUBLE funzionava già.
         if (f.Name.Kind is TokenKind.SqlExec)
             return new DoubleType();
-        // Builtin di configurazione DBF/ISAM/SPEED: ritornano -1/0 (double).
+        // Builtin di configurazione DBF/ISAM/SPEED che ritornano -1/0 (double).
         // NB: ALIAS() NON sta qui — ritorna una STRINGA (il nome dell'area, StandardLibrary
         // dichiara StringType e IlRuntime.DbfAlias ritorna string): con Alias in questa lista
         // il type system credeva "double" e PRINT convertiva il riferimento alla stringa in un
         // numero, stampando un indirizzo (es. 4406279896). § MiniTests/dbf/dbf_state.bas.
+        // Stessa classe di bug per SPEED.SETDURABILITY: la StdLib dichiara StringType e
+        // IlRuntime.SpeedSetDurability ritorna la modalità ("Full"), ma qui era forzato a
+        // Double → PRINT convertiva il riferimento alla stringa in un numero (5163367424)
+        // e l'assegnazione a una variabile STRING generava IL invalido.
         if (f.Name.Kind is TokenKind.DbfSetDurability or TokenKind.DbfFlushDurability
-            or TokenKind.SpeedSetDurability or TokenKind.SpeedFlushDurability
+            or TokenKind.SpeedFlushDurability
             or TokenKind.IsamSetReplication
             or TokenKind.Used
             or TokenKind.DbfBeginGroupCommit or TokenKind.DbfEndGroupCommit

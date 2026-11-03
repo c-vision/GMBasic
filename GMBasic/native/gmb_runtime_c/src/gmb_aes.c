@@ -317,16 +317,26 @@ static void poly1305_blocks(poly1305_ctx* ctx, const uint8_t* m, size_t len, int
     uint32_t s1=ctx->s1,s2=ctx->s2,s3=ctx->s3,s4=ctx->s4;
     uint32_t c;
     while (len >= 16) {
-        uint32_t b0=(uint32_t)m[0]|((uint32_t)m[1]<<8)|((uint32_t)m[2]<<16)|((uint32_t)m[3]<<24);
-        uint32_t b1=(uint32_t)m[4]|((uint32_t)m[5]<<8)|((uint32_t)m[6]<<16)|((uint32_t)m[7]<<24);
-        uint32_t b2=(uint32_t)m[8]|((uint32_t)m[9]<<8)|((uint32_t)m[10]<<16)|((uint32_t)m[11]<<24);
-        uint32_t b3=(uint32_t)m[12]|((uint32_t)m[13]<<8)|((uint32_t)m[14]<<16)|((uint32_t)m[15]<<24);
-        uint32_t b4=(uint32_t)hibit;
-        uint64_t p0 = (uint64_t)h0*r0 + (uint64_t)h1*s4 + (uint64_t)h2*s3 + (uint64_t)h3*s2 + (uint64_t)h4*s1 + b0;
-        uint64_t p1 = (uint64_t)h0*r1 + (uint64_t)h1*r0 + (uint64_t)h2*s4 + (uint64_t)h3*s3 + (uint64_t)h4*s2 + b1;
-        uint64_t p2 = (uint64_t)h0*r2 + (uint64_t)h1*r1 + (uint64_t)h2*r0 + (uint64_t)h3*s4 + (uint64_t)h4*s3 + b2;
-        uint64_t p3 = (uint64_t)h0*r3 + (uint64_t)h1*r2 + (uint64_t)h2*r1 + (uint64_t)h3*r0 + (uint64_t)h4*s4 + b3;
-        uint64_t p4 = (uint64_t)h0*r4 + (uint64_t)h1*r3 + (uint64_t)h2*r2 + (uint64_t)h3*r1 + (uint64_t)h4*r0 + b4;
+        uint32_t w0=(uint32_t)m[0]|((uint32_t)m[1]<<8)|((uint32_t)m[2]<<16)|((uint32_t)m[3]<<24);
+        uint32_t w1=(uint32_t)m[4]|((uint32_t)m[5]<<8)|((uint32_t)m[6]<<16)|((uint32_t)m[7]<<24);
+        uint32_t w2=(uint32_t)m[8]|((uint32_t)m[9]<<8)|((uint32_t)m[10]<<16)|((uint32_t)m[11]<<24);
+        uint32_t w3=(uint32_t)m[12]|((uint32_t)m[13]<<8)|((uint32_t)m[14]<<16)|((uint32_t)m[15]<<24);
+        /* Il blocco va spezzato in 5 LIMB da 26 bit (rappresentazione a 130 bit):
+         * prima si sommavano le 4 word da 32 bit ai limb, mescolando le basi. */
+        uint32_t b0 =  w0                        & 0x3ffffff;
+        uint32_t b1 = ((w0 >> 26) | (w1 <<  6)) & 0x3ffffff;
+        uint32_t b2 = ((w1 >> 20) | (w2 << 12)) & 0x3ffffff;
+        uint32_t b3 = ((w2 >> 14) | (w3 << 18)) & 0x3ffffff;
+        uint32_t b4 =  (w3 >>  8) | (uint32_t)hibit;
+        /* Poly1305: il blocco si SOMMA a h PRIMA della moltiplicazione per r
+         * (h = (h + m) * r mod 2^130-5). Prima b0..b4 erano aggiunti ai PRODOTTI
+         * (h*r + m): il tag era sbagliato su C99Native/VM-C (ChaCha20 corretto). */
+        h0 += b0; h1 += b1; h2 += b2; h3 += b3; h4 += b4;
+        uint64_t p0 = (uint64_t)h0*r0 + (uint64_t)h1*s4 + (uint64_t)h2*s3 + (uint64_t)h3*s2 + (uint64_t)h4*s1;
+        uint64_t p1 = (uint64_t)h0*r1 + (uint64_t)h1*r0 + (uint64_t)h2*s4 + (uint64_t)h3*s3 + (uint64_t)h4*s2;
+        uint64_t p2 = (uint64_t)h0*r2 + (uint64_t)h1*r1 + (uint64_t)h2*r0 + (uint64_t)h3*s4 + (uint64_t)h4*s3;
+        uint64_t p3 = (uint64_t)h0*r3 + (uint64_t)h1*r2 + (uint64_t)h2*r1 + (uint64_t)h3*r0 + (uint64_t)h4*s4;
+        uint64_t p4 = (uint64_t)h0*r4 + (uint64_t)h1*r3 + (uint64_t)h2*r2 + (uint64_t)h3*r1 + (uint64_t)h4*r0;
         c = (uint32_t)(p0>>26); h0 = (uint32_t)p0 & 0x3ffffff; p1 += c;
         c = (uint32_t)(p1>>26); h1 = (uint32_t)p1 & 0x3ffffff; p2 += c;
         c = (uint32_t)(p2>>26); h2 = (uint32_t)p2 & 0x3ffffff; p3 += c;
@@ -348,7 +358,7 @@ static void poly1305_finish(poly1305_ctx* ctx, const uint8_t key[32], uint8_t ma
     g1 = h1+c; c = g1>>26; g1 &= 0x3ffffff;
     g2 = h2+c; c = g2>>26; g2 &= 0x3ffffff;
     g3 = h3+c; c = g3>>26; g3 &= 0x3ffffff;
-    g4 = h4+c - 0x3ffffff;  /* 2^130 - 5 */
+    g4 = h4+c - (1 << 26);  /* 2^130 - 5: riferimento Poly1305 (NON 2^26-1) */
     mask = (g4 >> 31) - 1;
     g0 &= mask; g1 &= mask; g2 &= mask; g3 &= mask; g4 &= mask;
     mask = ~mask;
@@ -383,30 +393,31 @@ int gmb_poly1305_tag(const uint8_t key[32], const uint8_t* aad, size_t aadlen,
     poly1305_init(&ctx, key);
     uint8_t block[16] = {0};
 
-    /* AAD: blocchi interi + blocco parziale con pad */
+    /* AAD: blocchi interi (hibit=1: bit 2^128) + blocco parziale con pad e 0x01 */
     size_t full = aadlen & ~15;
-    if (full) poly1305_blocks(&ctx, aad, full, 0);
+    if (full) poly1305_blocks(&ctx, aad, full, 1u << 24);
     size_t rem = aadlen & 15;
     if (rem) {
         memset(block, 0, 16);
         memcpy(block, aad + full, rem);
-        poly1305_blocks(&ctx, block, 16, 0);
+        /* AEAD: pad16 a ZERI; il blocco da 16 byte è pieno → bit 2^128. */
+        poly1305_blocks(&ctx, block, 16, 1u << 24);
     }
 
-    /* CT: blocchi interi + blocco parziale con pad (hibit=0, il length è l'ultimo) */
+    /* CT: blocchi interi (hibit=1) + blocco parziale con pad e 0x01 */
     full = ctlen & ~15;
-    if (full) poly1305_blocks(&ctx, ct, full, 0);
+    if (full) poly1305_blocks(&ctx, ct, full, 1u << 24);
     rem = ctlen & 15;
     if (rem) {
         memset(block, 0, 16);
         memcpy(block, ct + full, rem);
-        poly1305_blocks(&ctx, block, 16, 0);
+        poly1305_blocks(&ctx, block, 16, 1u << 24);
     }
 
     /* length block: le64(aadlen) || le64(ctlen) */
     memset(block, 0, 16);
     for (int i = 0; i < 8; i++) { block[i] = (uint8_t)(aadlen >> (8*i)); block[8+i] = (uint8_t)(ctlen >> (8*i)); }
-    poly1305_blocks(&ctx, block, 16, 1);
+    poly1305_blocks(&ctx, block, 16, 1u << 24);
 
     poly1305_finish(&ctx, key, out);
     return 0;

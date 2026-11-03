@@ -58,7 +58,11 @@ public sealed partial class Parser
     private static Expr ParseGraphNameArg(Parser parser)
     {
         var first = parser.ParseExpression();
-        if (first is VariableExpr ve && ve.NameCleaned.Lexeme == ve.NameSuffixed.Lexeme)
+        // Nome nudo NON dichiarato → letterale (es. GRAPH BUILD mydir). Se il nome è una
+        // variabile DICHIARATA (DIM dir AS STRING), resta la VARIABILE: prima diventava il
+        // letterale "dir" e GRAPH BUILD/UPDATE usava una cartella inesistente.
+        if (first is VariableExpr ve && ve.NameCleaned.Lexeme == ve.NameSuffixed.Lexeme
+            && !parser._declaredVariableNames.Contains(ve.NameCleaned.Lexeme))
             return new StringExpr(ve.NameCleaned.Lexeme, ve.NameSuffixed);
         return first;
     }
