@@ -1,4 +1,5 @@
 ' FILE: Clipper/SchedaAnagrafica.bas
+' TAG: interattivo — il READ attende l'input (in CI: GMB_TUI_SCRIPT oppure SENDKEY).
 ' SCENARIO DIDATTICO — scheda anagrafica in stile Clipper: @ SAY, @ GET, READ.
 '
 ' Il modello Clipper separa tre momenti, ed è la ragione per cui queste tre istruzioni
