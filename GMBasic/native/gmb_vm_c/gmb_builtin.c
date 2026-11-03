@@ -12569,91 +12569,68 @@ static void gmb_bf_1202(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
 }
 static void gmb_bf_1203(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
-        {
-            if (argc >= 3 && args[0].type == 2 && args[0].ref &&
-                args[0].ref->kind == GMB_OBJ_CONCURRENTMAP)
-            {
-                gmb_concurrentmap_store((gmb_concurrentmap_t*)args[0].ref, args[1], args[2]);
-                if (args[0].type == 2 && args[0].ref) { gmb_obj_release(args[0].ref); args[0].ref = NULL; args[0].type = 0; }
-            }
-            else
-            {
-                for (int i = 1; i < argc && i < 3; i++)
-                    if (args[i].type == 2 && args[i].ref) { gmb_obj_release(args[i].ref); args[i].ref = NULL; args[i].type = 0; }
-                if (args[0].type == 2 && args[0].ref) { gmb_obj_release(args[0].ref); args[0].ref = NULL; args[0].type = 0; }
-            }
-        }
+    /* SYNCMAP.STORE(m,k,v): gmb_concurrentmap_store ADOTTA chiave e valore. Il dispatch
+     * rilascia gli argomenti a fine chiamata → vanno azzerati qui (contratto ownership),
+     * altrimenti double-free (SIGBUS) e LOAD su memoria liberata. Il RICEVENTE non si
+     * tocca: è della variabile. */
+    (void)vm; (void)func_code; (void)task;
+    if (argc >= 3 && args[0].type == 2 && args[0].ref &&
+        args[0].ref->kind == GMB_OBJ_CONCURRENTMAP)
+    {
+        gmb_concurrentmap_store((gmb_concurrentmap_t*)args[0].ref, args[1], args[2]);
+        args[1].ref = NULL; args[1].type = 0;
+        args[2].ref = NULL; args[2].type = 0;
+    }
+    bout->is_num = 1; bout->result = 0;
 }
+
 static void gmb_bf_1204(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
-        {
-            if (argc >= 2 && args[0].type == 2 && args[0].ref &&
-                args[0].ref->kind == GMB_OBJ_CONCURRENTMAP)
-            {
-                gmb_stack_entry_t e = gmb_concurrentmap_load((gmb_concurrentmap_t*)args[0].ref, args[1]);
-                if (args[0].type == 2 && args[0].ref) { gmb_obj_release(args[0].ref); args[0].ref = NULL; args[0].type = 0; }
-                if (args[1].type == 2 && args[1].ref) { gmb_obj_release(args[1].ref); args[1].ref = NULL; args[1].type = 0; }
-                if (e.type == 2 && e.ref)
-                {
-                    if (gmb_task_push_move(task, e) != 0) gmb_obj_release(e.ref);
-                    return;
-                }
-                if (e.type == 1) { push_num_entry(task, e.num, e.basic_type); return; }
-            }
-            else for (int i = 0; i < argc && i < 2; i++)
-                if (args[i].type == 2 && args[i].ref) { gmb_obj_release(args[i].ref); args[i].ref = NULL; args[i].type = 0; }
-            push_nil(task);
-            return;
-        }
+    /* SYNCMAP.LOAD: risultato via bout (come i metodi DICT/LIST), non push sul task stack.
+     * La entry è un riferimento POSSEDUTO (retain della mappa) → out.result_ref. */
+    (void)vm; (void)func_code; (void)task;
+    if (argc >= 2 && args[0].type == 2 && args[0].ref &&
+        args[0].ref->kind == GMB_OBJ_CONCURRENTMAP)
+    {
+        gmb_stack_entry_t e = gmb_concurrentmap_load((gmb_concurrentmap_t*)args[0].ref, args[1]);
+        if (e.type == 2 && e.ref) { bout->is_num = 0; bout->result_ref = e.ref; bout->result_ref_bt = e.basic_type; return; }
+        if (e.type == 1) { bout->is_num = 1; bout->result = e.num; return; }
+    }
+    bout->is_num = 0; bout->result_ref = NULL;
 }
+
 static void gmb_bf_1205(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
-        {
-            if (argc >= 2 && args[0].type == 2 && args[0].ref &&
-                args[0].ref->kind == GMB_OBJ_CONCURRENTMAP)
-            {
-                gmb_stack_entry_t e = gmb_concurrentmap_delete((gmb_concurrentmap_t*)args[0].ref, args[1]);
-                if (args[0].type == 2 && args[0].ref) { gmb_obj_release(args[0].ref); args[0].ref = NULL; args[0].type = 0; }
-                if (args[1].type == 2 && args[1].ref) { gmb_obj_release(args[1].ref); args[1].ref = NULL; args[1].type = 0; }
-                if (e.type == 2 && e.ref)
-                {
-                    if (gmb_task_push_move(task, e) != 0) gmb_obj_release(e.ref);
-                    return;
-                }
-                if (e.type == 1) { push_num_entry(task, e.num, e.basic_type); return; }
-            }
-            else for (int i = 0; i < argc && i < 2; i++)
-                if (args[i].type == 2 && args[i].ref) { gmb_obj_release(args[i].ref); args[i].ref = NULL; args[i].type = 0; }
-            push_nil(task);
-            return;
-        }
+    /* SYNCMAP.DELETE: la mappa CEDE il valore (move) → riferimento posseduto per il chiamante. */
+    (void)vm; (void)func_code; (void)task;
+    if (argc >= 2 && args[0].type == 2 && args[0].ref &&
+        args[0].ref->kind == GMB_OBJ_CONCURRENTMAP)
+    {
+        gmb_stack_entry_t e = gmb_concurrentmap_delete((gmb_concurrentmap_t*)args[0].ref, args[1]);
+        if (e.type == 2 && e.ref) { bout->is_num = 0; bout->result_ref = e.ref; bout->result_ref_bt = e.basic_type; return; }
+        if (e.type == 1) { bout->is_num = 1; bout->result = e.num; return; }
+    }
+    bout->is_num = 0; bout->result_ref = NULL;
 }
+
 static void gmb_bf_1206(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
-        {
-            if (argc >= 3 && args[0].type == 2 && args[0].ref &&
-                args[0].ref->kind == GMB_OBJ_CONCURRENTMAP)
-            {
-                gmb_stack_entry_t e = gmb_concurrentmap_load_or_store(
-                    (gmb_concurrentmap_t*)args[0].ref, args[1], args[2]);
-                if (args[0].type == 2 && args[0].ref) { gmb_obj_release(args[0].ref); args[0].ref = NULL; args[0].type = 0; }
-                if (e.type == 2 && e.ref)
-                {
-                    if (gmb_task_push_move(task, e) != 0) gmb_obj_release(e.ref);
-                    return;
-                }
-                if (e.type == 1) { push_num_entry(task, e.num, e.basic_type); return; }
-            }
-            else
-            {
-                for (int i = 1; i < argc && i < 3; i++)
-                    if (args[i].type == 2 && args[i].ref) { gmb_obj_release(args[i].ref); args[i].ref = NULL; args[i].type = 0; }
-                if (args[0].type == 2 && args[0].ref) { gmb_obj_release(args[0].ref); args[0].ref = NULL; args[0].type = 0; }
-            }
-            push_nil(task);
-            return;
-        }
+    /* SYNCMAP.LOADORSTORE: la mappa consuma SEMPRE chiave e valore proposti (li rilascia
+     * se la chiave esiste, li adotta se la inserisce) → azzerarli per il dispatch. */
+    (void)vm; (void)func_code; (void)task;
+    if (argc >= 3 && args[0].type == 2 && args[0].ref &&
+        args[0].ref->kind == GMB_OBJ_CONCURRENTMAP)
+    {
+        gmb_stack_entry_t e = gmb_concurrentmap_load_or_store(
+            (gmb_concurrentmap_t*)args[0].ref, args[1], args[2]);
+        args[1].ref = NULL; args[1].type = 0;
+        args[2].ref = NULL; args[2].type = 0;
+        if (e.type == 2 && e.ref) { bout->is_num = 0; bout->result_ref = e.ref; bout->result_ref_bt = e.basic_type; return; }
+        if (e.type == 1) { bout->is_num = 1; bout->result = e.num; return; }
+    }
+    bout->is_num = 0; bout->result_ref = NULL;
 }
+
 static void gmb_bf_1207(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {

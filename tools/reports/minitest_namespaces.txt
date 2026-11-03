@@ -13,12 +13,11 @@ ISAM                              24  22     2   si
 LLM                               61   0    61   NO
 MESSAGE                            1   0     1   NO
 RDD                               22   0    22   NO
-SYNCMAP                            4   0     4   NO
 SYSTEM                            26  23     3   si
 TORCH                             76   0    76   NO
 VECTORDB                          28   0    28   NO
 
-namespace con file canonico:  60 / 72 
-namespace completi (file + superficie):  57 / 72 
-superficie coperta:  1319 / 1829   (mancano  510 )
+namespace con file canonico:  61 / 72 
+namespace completi (file + superficie):  58 / 72 
+superficie coperta:  1323 / 1829   (mancano  506 )
 struttura base del linguaggio: /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/constructs/base.bas -> presente

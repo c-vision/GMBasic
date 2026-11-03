@@ -25,8 +25,6 @@ MANCA FILE  MESSAGE -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/
 MESSAGE                            1   0     1   NO
 MANCA FILE  RDD -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/rdd/rdd_all.bas
 RDD                               22   0    22   NO
-MANCA FILE  SYNCMAP -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/syncmap/syncmap_all.bas
-SYNCMAP                            4   0     4   NO
   MANCA SYSTEM.NEXT
   MANCA SYSTEM.SHELLCODE
   MANCA SYSTEM.SHELLOUT
@@ -36,7 +34,7 @@ TORCH                             76   0    76   NO
 MANCA FILE  VECTORDB -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/vectordb/vectordb_all.bas
 VECTORDB                          28   0    28   NO
 
-namespace con file canonico:  60 / 72 
-namespace completi (file + superficie):  57 / 72 
-superficie coperta:  1319 / 1829   (mancano  510 )
+namespace con file canonico:  61 / 72 
+namespace completi (file + superficie):  58 / 72 
+superficie coperta:  1323 / 1829   (mancano  506 )
 struttura base del linguaggio: /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/constructs/base.bas -> presente
