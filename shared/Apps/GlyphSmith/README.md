@@ -49,6 +49,7 @@ or from the configuration file.
 | `edit` | `mode = "edit"` or `#DEF GLYPHSMITH_MODE_EDIT` | applies a **batch script** of editing commands, then writes the edited BDF and the exports |
 | `import` | `mode = "import"` or `#DEF GLYPHSMITH_MODE_IMPORT` | converts an outline font (`.ttf`/`.otf`) into a BDF over a codepoint range: `FONTS.TTMETRICS` for the box/metrics, `FONTS.TTRENDER` for the alpha bitmap, threshold to `0`/`1` |
 | `textin` | `mode = "textin"` or `#DEF GLYPHSMITH_MODE_TEXTIN` | reads an **ASCII art** file (`@ enc name w h` + `#`/`.` rows) into the model and writes a BDF; `[text] source` / `[text] out` |
+| `tui` | `mode = "tui"` or `#DEF GLYPHSMITH_MODE_TUI` | **interactive view** over the same model: cursor, pixel toggle, flip, bearing, undo/redo. Keys come from `[tui] keys` (one key per line) so the session is deterministic and checkable; `[tui] render = "1"` prints a frame after every key |
 
 Compile-time symbols win over the configuration file.
 
@@ -152,7 +153,9 @@ found regardless of the working directory of the runner.
 - The import covers the **BMP** (0..0xFFFF), a single face (`.ttc` index 0) and one pixel size per
   run; hinting/antialias policy is not configurable yet (a registry option, never an environment
   variable). See `TODO.md` (M5).
-- No interactive editing yet: the mentions of `edit` are the **batch** script. TUI/GUI are M4
-  and must be views over this same model, never a second implementation.
+- The **TUI** is a view over this same model, not a second editor: it moves a cursor, toggles
+  pixels, flips, recomputes bearings and drives the same undo/redo stack. Its keys are read from
+  a script (`[tui] keys`) because a headless runner has no terminal; a real keyboard reader is
+  just another source for the same `TuiApply`. The **GUI** is still M4 (a second view, same model).
 - Limits are declared, not silent: `GS_GMAX` glyphs, `GS_ROWS` rows per glyph, `GS_BUFMAX`
   bytes per binary export. Exceeding a limit is an explicit error.

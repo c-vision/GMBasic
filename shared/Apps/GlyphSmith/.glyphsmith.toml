@@ -1,12 +1,13 @@
 # .glyphsmith.toml — GlyphSmith — configurazione della app
 # ============================================================================
 # Tutto si configura QUI (la app non riceve argv: BASIC non ha argv).
-#   [settings] mode: status | check | sheet | edit | import | textin
+#   [settings] mode: status | check | sheet | edit | import | textin | tui
 #   [source]   bdf
 #   [output]   dir, bmp_scale, cells_per_row
 #   [edit]     script   (solo in mode = "edit")
 #   [import]   font, size, first, last, threshold, out   (solo in mode = "import")
 #   [text]     source, out                              (solo in mode = "textin")
+#   [tui]      keys, render                            (solo in mode = "tui")
 # ============================================================================
 
 [settings]
@@ -49,3 +50,9 @@ out = "imported.bdf"
 source = "bin/mini8.ascii"
 # nome del BDF prodotto (dentro [output] dir)
 out = "from_text.bdf"
+
+[tui]
+# script di tasti (un tasto per riga, '#' = commento), relativo alla cartella della app
+keys = "edits/keys.txt"
+# "1" = stampa il frame dopo ogni tasto, "0" = solo quello iniziale e quello finale
+render = "0"

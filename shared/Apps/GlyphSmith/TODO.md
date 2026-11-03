@@ -37,8 +37,11 @@ Verified on the four backends of the monorepo (IL, PCodeVM, VM-C, C99Native).
 
 ## M4 — interactive editor
 
-- [ ] **TUI** (cursor, `PSET`-free cell grid, keyboard handling) with the same model:
-      the interactive front-end must be a *view* over this model, never a second one.
+- [x] **TUI** (`mode = "tui"`): cursore `l/h/j/k`, toggle del pixel con spazio, `n/p` fra i
+      glifi, `c` svuota, `x/y` flip, `b` bearing, `u/r` undo/redo; frame deterministico
+      (`TuiFrame`) e tasti da `[tui] keys`, cosi' il percorso e' verificato nel check.
+- [ ] Lettura dei tasti dal **terminale** (oggi arrivano dallo script `[tui] keys`): stesso
+      `TuiApply`, cambia solo la sorgente.
 - [ ] **GUI** window with zoom, glyph list, metrics panel (`WINDOW DEFINE`, `IMAGE*`).
 - [ ] Both front-ends must keep the `check` mode byte-identical (golden artefacts in
       `bin/`), so the headless path stays the reference.

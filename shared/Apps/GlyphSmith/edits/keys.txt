@@ -1,0 +1,22 @@
+# GlyphSmith — script di tasti per il modo "tui" (un tasto per riga)
+# l/h/j/k  cursore   spazio  toggle del pixel   n/p  glifo successivo/precedente
+# c  svuota   x/y  flip H/V   b  bearing   u/r  undo/redo
+h
+j
+l
+l
+j
+
+l
+j
+l
+
+n
+n
+p
+c
+u
+r
+b
+x
+y
