@@ -163,6 +163,14 @@ static int source_needs_full_runtime(const char* entry) {
         }
         for (size_t k = 0; k < sizeof kw / sizeof kw[0] && !need; k++)
             if (ci_word_at(p, kw[k])) need = 1;
+        /* `PRINT AI.PLUGINSLIST()`: la parola non è a inizio riga. Il punto dopo il namespace
+         * è il segnale: senza, un programma che usa funzioni AI linkava il runtime MINIMO e
+         * falliva con simboli agent/sqlite non definiti. */
+        for (size_t k = 0; k < sizeof kw / sizeof kw[0] && !need; k++) {
+            char nsdot[48];
+            snprintf(nsdot, sizeof nsdot, "%s.", kw[k]);
+            if (gmb_ci_contains(src, nsdot)) need = 1;
+        }
         while (*p && *p != '\n') p++;
         if (*p == '\n') p++;
     }
@@ -633,6 +641,67 @@ int build_project(const Options* o, const char* project, const char* entry,
                     shell_quote(cp, cq, sizeof cq);
                     strncat(libs, " ", sizeof libs - strlen(libs) - 1);
                     strncat(libs, cq, sizeof libs - strlen(libs) - 1);
+                }
+            }
+            /* AI/LLM/agente: il runtime completo referenzia agent/doc/llm. Stesso set di
+             * tools/sh/gmb_c99native_run.sh (ordine: chi USA precede chi DEFINISCE). */
+            static const char* const more[] = {
+                "native/gmbadmin/build/gmb_doc_build/libgmb_doc.a",
+                "native/gmb_vm_c/build/gmb_doc_c_build/libgmb_doc.a",
+                "native/gmbadmin/build/gmb_agent_runtime_build/libgmb_agent_runtime.a",
+                "native/gmb_vm_c/build/gmb_agent_runtime_build/libgmb_agent_runtime.a",
+                "native/gmb_runtime_c/build/gmbllm_build/libgmbllm_core.a",
+                "native/gmb_vm_c/build/gmb_runtime_c_build/gmbllm_build/libgmbllm_core.a",
+                "native/gmb_runtime_c/build/llmcodec_build/libllmcodec.a",
+                "native/gmb_vm_c/build/gmb_runtime_c_build/llmcodec_build/libllmcodec.a",
+                "native/gmb_runtime_c/build/llmengine_plugin_build/libllmengine_plugin.a",
+                "native/gmb_vm_c/build/gmb_runtime_c_build/llmengine_plugin_build/libllmengine_plugin.a",
+                "native/gmb_runtime_c/build/llmasr_build/libllm_asr.a",
+                "native/gmb_vm_c/build/gmb_runtime_c_build/llmasr_build/libllm_asr.a",
+            };
+            for (size_t i = 0; i < sizeof more / sizeof more[0]; i++) {
+                char mp[CLI_PATH];
+                snprintf(mp, sizeof mp, "%s/%s", tc.install, more[i]);
+                if (!is_file(mp)) continue;
+                char mq[CLI_PATH + 8];
+                shell_quote(mp, mq, sizeof mq);
+                strncat(libs, " ", sizeof libs - strlen(libs) - 1);
+                strncat(libs, mq, sizeof libs - strlen(libs) - 1);
+            }
+            /* codec dylib di LLMEnv (sibling del repo) + tokenizer: path esplicito + rpath. */
+            {
+                char codec[CLI_PATH];
+                snprintf(codec, sizeof codec, "%s/../LLMEnv/LLMEngine/mlx/build-gmbasic", tc.install);
+                if (is_dir(codec)) {
+                    char q[CLI_PATH + 8];
+                    shell_quote(codec, q, sizeof q);
+                    strncat(libs, " -L", sizeof libs - strlen(libs) - 1);
+                    strncat(libs, q, sizeof libs - strlen(libs) - 1);
+                    strncat(libs, " -lllmcodec_ggml -lllmcodec_mlx_affine -lllmcodec_fp8"
+                                   " -Wl,-rpath,", sizeof libs - strlen(libs) - 1);
+                    strncat(libs, q, sizeof libs - strlen(libs) - 1);
+                    char moe[CLI_PATH];
+                    snprintf(moe, sizeof moe, "%s/llmengine_moe_mlx_build/libllmengine_moe.a", codec);
+                    if (is_file(moe)) {
+                        char mq[CLI_PATH + 8];
+                        shell_quote(moe, mq, sizeof mq);
+                        strncat(libs, " ", sizeof libs - strlen(libs) - 1);
+                        strncat(libs, mq, sizeof libs - strlen(libs) - 1);
+                    }
+                }
+                const char* tok[] = {
+                    ".." "/LLMEnv/build/LLMToken/libllmtoken.dylib",
+                    ".." "/LLMEnv/build/dist/osx-arm64/libllmtoken.dylib",
+                };
+                for (size_t i = 0; i < sizeof tok / sizeof tok[0]; i++) {
+                    char tp[CLI_PATH];
+                    snprintf(tp, sizeof tp, "%s/%s", tc.install, tok[i]);
+                    if (!is_file(tp)) continue;
+                    char tq[CLI_PATH + 8];
+                    shell_quote(tp, tq, sizeof tq);
+                    strncat(libs, " ", sizeof libs - strlen(libs) - 1);
+                    strncat(libs, tq, sizeof libs - strlen(libs) - 1);
+                    break;
                 }
             }
             const char* dbcand[] = {
