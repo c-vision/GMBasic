@@ -760,6 +760,12 @@ public static partial class Numerics
     /// <example>double rate = Numerics.Rate(12, 1000, -10000); // tasso mensile di un prestito</example>
     public static double Rate(double nper, double pmt, double pv, double fv = 0, int type = 0, double guess = 0.1)
     {
+        /* guess == 0 arriva dal backend IL/PCode quando l'argomento è OMESSO
+         * (`FINANCE.RATE(n, pmt, pv)` → il compilatore passa 0.0): senza questa
+         * guardia la formula divide per rate=0 e il Newton parte da NaN →
+         * "Impossibile calcolare RATE". Allineato a gmb_fin_rate del runtime C
+         * (riferimento), che fa esattamente `if (guess == 0) guess = 0.1;`. */
+        if (guess == 0) guess = 0.1;
         double rate = guess, tol = 1e-7;
         for (var i = 0; i < 100; i++)
         {
