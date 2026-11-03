@@ -95,6 +95,32 @@ DIM g_nGlyphs AS INTEGER
 ' --- Scratch per shift/flip (nessun array passato come parametro) -----------
 DIM g_tmp(GS_ROWS) AS STRING
 
+' --- M2: clipboard di regione e cronologia undo/redo (stack limitato) -------
+CONST GS_UNDO = 4
+DIM g_clipW AS INTEGER
+DIM g_clipH AS INTEGER
+DIM g_clipRows(GS_ROWS) AS STRING
+DIM g_undoIdx(GS_UNDO) AS INTEGER
+DIM g_undoW(GS_UNDO) AS INTEGER
+DIM g_undoH(GS_UNDO) AS INTEGER
+DIM g_undoGx(GS_UNDO) AS INTEGER
+DIM g_undoGy(GS_UNDO) AS INTEGER
+DIM g_undoDw(GS_UNDO) AS INTEGER
+DIM g_undoSw(GS_UNDO) AS INTEGER
+DIM g_undoNR(GS_UNDO) AS INTEGER
+DIM g_undoRow(GS_UNDO * GS_ROWS) AS STRING
+DIM g_undoTop AS INTEGER
+DIM g_redoIdx(GS_UNDO) AS INTEGER
+DIM g_redoW(GS_UNDO) AS INTEGER
+DIM g_redoH(GS_UNDO) AS INTEGER
+DIM g_redoGx(GS_UNDO) AS INTEGER
+DIM g_redoGy(GS_UNDO) AS INTEGER
+DIM g_redoDw(GS_UNDO) AS INTEGER
+DIM g_redoSw(GS_UNDO) AS INTEGER
+DIM g_redoNR(GS_UNDO) AS INTEGER
+DIM g_redoRow(GS_UNDO * GS_ROWS) AS STRING
+DIM g_redoTop AS INTEGER
+
 ' --- Contatori dell'autocheck ----------------------------------------------
 DIM g_ok AS INTEGER
 DIM g_ko AS INTEGER
@@ -812,6 +838,346 @@ FUNCTION SameGlyph(a AS INTEGER, b AS INTEGER) AS INTEGER
 END FUNCTION
 
 ' ============================================================================
+' M2 — trasformazioni, clipboard, bearing, insert/remove, undo/redo
+' Tutte le operazioni lavorano sul modello (g_row + metriche), mai su un secondo
+' modello: cosi' i quattro backend restano identici.
+' ============================================================================
+SUB Rot90(g AS INTEGER)
+    DIM ow AS INTEGER, oh AS INTEGER, x AS INTEGER, y AS INTEGER, r AS INTEGER, s AS STRING
+    IF g >= 0 THEN
+        IF g < GS_GMAX THEN
+            ow = g_gw(g)
+            oh = g_gh(g)
+            IF ow > 0 THEN
+                IF oh > 0 THEN
+                    IF ow <= GS_ROWS THEN
+                        IF oh <= GS_ROWS THEN
+                            FOR r = 0 TO oh - 1
+                                g_tmp(r) = g_row(g * GS_ROWS + r)
+                            NEXT r
+                            g_gw(g) = oh
+                            g_gh(g) = ow
+                            g_nRows(g) = ow
+                            FOR y = 0 TO ow - 1
+                                s = ""
+                                FOR x = 0 TO oh - 1
+                                    IF MID$(g_tmp(oh - 1 - x), y + 1, 1) = "1" THEN
+                                        s = s + "1"
+                                    ELSE
+                                        s = s + "0"
+                                    END IF
+                                NEXT x
+                                g_row(g * GS_ROWS + y) = s
+                            NEXT y
+                            FOR r = ow TO GS_ROWS - 1
+                                g_row(g * GS_ROWS + r) = ""
+                            NEXT r
+                        END IF
+                    END IF
+                END IF
+            END IF
+        END IF
+    END IF
+END SUB
+
+' Shear orizzontale: la riga y si sposta di k*y pixel (k puo' essere negativo).
+SUB ShearH(g AS INTEGER, k AS INTEGER)
+    DIM w AS INTEGER, h AS INTEGER, x AS INTEGER, y AS INTEGER, dx AS INTEGER, r AS INTEGER
+    IF g >= 0 THEN
+        IF g < GS_GMAX THEN
+            w = g_gw(g)
+            h = g_gh(g)
+            FOR r = 0 TO h - 1
+                IF r < GS_ROWS THEN g_tmp(r) = g_row(g * GS_ROWS + r)
+            NEXT r
+            ClearGlyph(g)
+            FOR y = 0 TO h - 1
+                dx = k * y
+                FOR x = 0 TO w - 1
+                    IF MID$(g_tmp(y), x + 1, 1) = "1" THEN SetPx(g, x + dx, y, "1")
+                NEXT x
+            NEXT y
+        END IF
+    END IF
+END SUB
+
+SUB RegionCopy(g AS INTEGER, x1 AS INTEGER, y1 AS INTEGER, x2 AS INTEGER, y2 AS INTEGER)
+    DIM xa AS INTEGER, xb AS INTEGER, ya AS INTEGER, yb AS INTEGER
+    DIM x AS INTEGER, y AS INTEGER, s AS STRING
+    xa = x1
+    xb = x2
+    ya = y1
+    yb = y2
+    IF xa > xb THEN
+        xa = x2
+        xb = x1
+    END IF
+    IF ya > yb THEN
+        ya = y2
+        yb = y1
+    END IF
+    g_clipW = xb - xa + 1
+    g_clipH = yb - ya + 1
+    IF g_clipW < 1 THEN g_clipW = 1
+    IF g_clipH < 1 THEN g_clipH = 1
+    FOR y = 0 TO g_clipH - 1
+        s = ""
+        FOR x = 0 TO g_clipW - 1
+            IF GetPx(g, xa + x, ya + y) = 1 THEN
+                s = s + "1"
+            ELSE
+                s = s + "0"
+            END IF
+        NEXT x
+        IF y < GS_ROWS THEN g_clipRows(y) = s
+    NEXT y
+END SUB
+
+' Incolla l'inchiostro della regione (non cancella i pixel di destinazione).
+SUB RegionPaste(g AS INTEGER, x AS INTEGER, y AS INTEGER)
+    DIM cx AS INTEGER, cy AS INTEGER
+    FOR cy = 0 TO g_clipH - 1
+        FOR cx = 0 TO g_clipW - 1
+            IF cy < GS_ROWS THEN
+                IF MID$(g_clipRows(cy), cx + 1, 1) = "1" THEN SetPx(g, x + cx, y + cy, "1")
+            END IF
+        NEXT cx
+    NEXT cy
+END SUB
+
+' Ricalcola gli attributi dall'inchiostro: BBX x, DWIDTH, SWIDTH e offset verticale.
+SUB BearingRecompute(g AS INTEGER)
+    DIM w AS INTEGER, h AS INTEGER, x AS INTEGER, y AS INTEGER
+    DIM x0 AS INTEGER, y0 AS INTEGER, x1 AS INTEGER, y1 AS INTEGER, found AS INTEGER
+    found = 0
+    IF g >= 0 THEN
+        IF g < GS_GMAX THEN
+            w = g_gw(g)
+            h = g_gh(g)
+            x0 = w
+            y0 = h
+            x1 = -1
+            y1 = -1
+            FOR y = 0 TO h - 1
+                FOR x = 0 TO w - 1
+                    IF GetPx(g, x, y) = 1 THEN
+                        found = 1
+                        IF x < x0 THEN x0 = x
+                        IF y < y0 THEN y0 = y
+                        IF x > x1 THEN x1 = x
+                        IF y > y1 THEN y1 = y
+                    END IF
+                NEXT x
+            NEXT y
+            IF found = 1 THEN
+                g_gx(g) = x0
+                g_dwx(g) = x1 - x0 + 1
+                IF g_dwx(g) < 1 THEN g_dwx(g) = 1
+                g_gy(g) = y1 + 1
+                IF g_gy(g) <> 0 THEN g_gy(g) = -g_gy(g)
+                IF g_pointSize > 0 THEN g_swx(g) = INT(g_dwx(g) * 1000.0 / g_pointSize + 0.5)
+            END IF
+        END IF
+    END IF
+END SUB
+
+SUB InsertGlyph(enc AS LONG, nm AS STRING, w AS INTEGER, h AS INTEGER)
+    DIM g AS INTEGER, r AS INTEGER, i AS INTEGER, s AS STRING
+    IF g_nGlyphs >= GS_GMAX THEN Fail("troppi glifi: limite " + NumS(GS_GMAX))
+    IF w < 1 THEN w = 1
+    IF h < 1 THEN h = 1
+    IF w > 32 THEN w = 32
+    IF h > GS_ROWS THEN h = GS_ROWS
+    g = NewGlyph(nm)
+    g_enc(g) = enc
+    g_gw(g) = w
+    g_gh(g) = h
+    g_dwx(g) = w
+    g_swx(g) = w * 62
+    g_nRows(g) = h
+    s = ""
+    FOR i = 1 TO w
+        s = s + "0"
+    NEXT i
+    FOR r = 0 TO h - 1
+        g_row(g * GS_ROWS + r) = s
+    NEXT r
+    IF w > g_bbW THEN g_bbW = w
+    IF h > g_bbH THEN g_bbH = h
+    g_declChars = g_nGlyphs
+END SUB
+
+SUB RemoveGlyph(g AS INTEGER)
+    DIM i AS INTEGER, r AS INTEGER, dst AS INTEGER, src AS INTEGER
+    IF g >= 0 THEN
+        IF g < g_nGlyphs THEN
+            FOR i = g TO g_nGlyphs - 2
+                dst = i
+                src = i + 1
+                g_enc(dst) = g_enc(src)
+                g_gw(dst) = g_gw(src)
+                g_gh(dst) = g_gh(src)
+                g_gx(dst) = g_gx(src)
+                g_gy(dst) = g_gy(src)
+                g_dwx(dst) = g_dwx(src)
+                g_swx(dst) = g_swx(src)
+                g_nRows(dst) = g_nRows(src)
+                g_gname(dst) = g_gname(src)
+                FOR r = 0 TO GS_ROWS - 1
+                    g_row(dst * GS_ROWS + r) = g_row(src * GS_ROWS + r)
+                NEXT r
+            NEXT i
+            g_nGlyphs = g_nGlyphs - 1
+            FOR r = 0 TO GS_ROWS - 1
+                g_row(g_nGlyphs * GS_ROWS + r) = ""
+            NEXT r
+            g_declChars = g_nGlyphs
+        END IF
+    END IF
+END SUB
+
+' --- cronologia: stack limitato di snapshot di UN glifo (le edit di script) ---
+SUB USlotCopy(src AS INTEGER, dst AS INTEGER)
+    DIM r AS INTEGER
+    g_undoIdx(dst) = g_undoIdx(src)
+    g_undoW(dst) = g_undoW(src)
+    g_undoH(dst) = g_undoH(src)
+    g_undoGx(dst) = g_undoGx(src)
+    g_undoGy(dst) = g_undoGy(src)
+    g_undoDw(dst) = g_undoDw(src)
+    g_undoSw(dst) = g_undoSw(src)
+    g_undoNR(dst) = g_undoNR(src)
+    FOR r = 0 TO GS_ROWS - 1
+        g_undoRow(dst * GS_ROWS + r) = g_undoRow(src * GS_ROWS + r)
+    NEXT r
+END SUB
+
+SUB RSlotCopy(src AS INTEGER, dst AS INTEGER)
+    DIM r AS INTEGER
+    g_redoIdx(dst) = g_redoIdx(src)
+    g_redoW(dst) = g_redoW(src)
+    g_redoH(dst) = g_redoH(src)
+    g_redoGx(dst) = g_redoGx(src)
+    g_redoGy(dst) = g_redoGy(src)
+    g_redoDw(dst) = g_redoDw(src)
+    g_redoSw(dst) = g_redoSw(src)
+    g_redoNR(dst) = g_redoNR(src)
+    FOR r = 0 TO GS_ROWS - 1
+        g_redoRow(dst * GS_ROWS + r) = g_redoRow(src * GS_ROWS + r)
+    NEXT r
+END SUB
+
+SUB USlotFromGlyph(g AS INTEGER, slot AS INTEGER)
+    DIM r AS INTEGER
+    g_undoIdx(slot) = g
+    g_undoW(slot) = g_gw(g)
+    g_undoH(slot) = g_gh(g)
+    g_undoGx(slot) = g_gx(g)
+    g_undoGy(slot) = g_gy(g)
+    g_undoDw(slot) = g_dwx(g)
+    g_undoSw(slot) = g_swx(g)
+    g_undoNR(slot) = g_nRows(g)
+    FOR r = 0 TO GS_ROWS - 1
+        g_undoRow(slot * GS_ROWS + r) = g_row(g * GS_ROWS + r)
+    NEXT r
+END SUB
+
+SUB RSlotFromGlyph(g AS INTEGER, slot AS INTEGER)
+    DIM r AS INTEGER
+    g_redoIdx(slot) = g
+    g_redoW(slot) = g_gw(g)
+    g_redoH(slot) = g_gh(g)
+    g_redoGx(slot) = g_gx(g)
+    g_redoGy(slot) = g_gy(g)
+    g_redoDw(slot) = g_dwx(g)
+    g_redoSw(slot) = g_swx(g)
+    g_redoNR(slot) = g_nRows(g)
+    FOR r = 0 TO GS_ROWS - 1
+        g_redoRow(slot * GS_ROWS + r) = g_row(g * GS_ROWS + r)
+    NEXT r
+END SUB
+
+SUB USlotToGlyph(slot AS INTEGER)
+    DIM g AS INTEGER, r AS INTEGER
+    g = g_undoIdx(slot)
+    IF g >= 0 THEN
+        IF g < GS_GMAX THEN
+            g_gw(g) = g_undoW(slot)
+            g_gh(g) = g_undoH(slot)
+            g_gx(g) = g_undoGx(slot)
+            g_gy(g) = g_undoGy(slot)
+            g_dwx(g) = g_undoDw(slot)
+            g_swx(g) = g_undoSw(slot)
+            g_nRows(g) = g_undoNR(slot)
+            FOR r = 0 TO GS_ROWS - 1
+                g_row(g * GS_ROWS + r) = g_undoRow(slot * GS_ROWS + r)
+            NEXT r
+        END IF
+    END IF
+END SUB
+
+SUB RSlotToGlyph(slot AS INTEGER)
+    DIM g AS INTEGER, r AS INTEGER
+    g = g_redoIdx(slot)
+    IF g >= 0 THEN
+        IF g < GS_GMAX THEN
+            g_gw(g) = g_redoW(slot)
+            g_gh(g) = g_redoH(slot)
+            g_gx(g) = g_redoGx(slot)
+            g_gy(g) = g_redoGy(slot)
+            g_dwx(g) = g_redoDw(slot)
+            g_swx(g) = g_redoSw(slot)
+            g_nRows(g) = g_redoNR(slot)
+            FOR r = 0 TO GS_ROWS - 1
+                g_row(g * GS_ROWS + r) = g_redoRow(slot * GS_ROWS + r)
+            NEXT r
+        END IF
+    END IF
+END SUB
+
+' Salva lo stato del glifo PRIMA di modificarlo; azzera il ramo redo.
+SUB HistPush(g AS INTEGER)
+    DIM i AS INTEGER
+    IF g < 0 THEN g = 0
+    IF g >= GS_GMAX THEN g = GS_GMAX - 1
+    IF g_undoTop >= GS_UNDO THEN
+        FOR i = 1 TO GS_UNDO - 1
+            USlotCopy(i, i - 1)
+        NEXT i
+        g_undoTop = GS_UNDO - 1
+    END IF
+    USlotFromGlyph(g, g_undoTop)
+    g_undoTop = g_undoTop + 1
+    g_redoTop = 0
+END SUB
+
+SUB DoUndo()
+    DIM slot AS INTEGER
+    IF g_undoTop > 0 THEN
+        slot = g_undoTop - 1
+        IF g_redoTop < GS_UNDO THEN
+            RSlotFromGlyph(g_undoIdx(slot), g_redoTop)
+            g_redoTop = g_redoTop + 1
+        END IF
+        USlotToGlyph(slot)
+        g_undoTop = slot
+    END IF
+END SUB
+
+SUB DoRedo()
+    DIM slot AS INTEGER
+    IF g_redoTop > 0 THEN
+        slot = g_redoTop - 1
+        IF g_undoTop < GS_UNDO THEN
+            USlotFromGlyph(g_redoIdx(slot), g_undoTop)
+            g_undoTop = g_undoTop + 1
+        END IF
+        RSlotToGlyph(slot)
+        g_redoTop = slot
+    END IF
+END SUB
+
+' ============================================================================
 ' Serializzazione
 ' ============================================================================
 FUNCTION NumS(n AS LONG) AS STRING
@@ -1343,24 +1709,63 @@ SUB ApplyEditScript(path AS STRING)
         IF LEN(raw) > 0 AND NOT STRINGS.STARTSWITH(raw, "#") THEN
             cmd = STRINGS.UPPER(TokAt(raw, 0))
             IF cmd = "CLEAR" THEN
-                ClearGlyph(CINT(VAL(TokAt(raw, 1))))
+                g = CINT(VAL(TokAt(raw, 1)))
+                HistPush(g)
+                ClearGlyph(g)
             ELSEIF cmd = "SET" THEN
-                SetPx(CINT(VAL(TokAt(raw, 1))), CINT(VAL(TokAt(raw, 2))), CINT(VAL(TokAt(raw, 3))), InkChar(TokAt(raw, 4)))
+                g = CINT(VAL(TokAt(raw, 1)))
+                HistPush(g)
+                SetPx(g, CINT(VAL(TokAt(raw, 2))), CINT(VAL(TokAt(raw, 3))), InkChar(TokAt(raw, 4)))
             ELSEIF cmd = "RECT" THEN
-                RectFill(CINT(VAL(TokAt(raw, 1))), CINT(VAL(TokAt(raw, 2))), CINT(VAL(TokAt(raw, 3))), CINT(VAL(TokAt(raw, 4))), CINT(VAL(TokAt(raw, 5))), InkChar(TokAt(raw, 6)))
+                g = CINT(VAL(TokAt(raw, 1)))
+                HistPush(g)
+                RectFill(g, CINT(VAL(TokAt(raw, 2))), CINT(VAL(TokAt(raw, 3))), CINT(VAL(TokAt(raw, 4))), CINT(VAL(TokAt(raw, 5))), InkChar(TokAt(raw, 6)))
             ELSEIF cmd = "LINE" THEN
-                DrawLine(CINT(VAL(TokAt(raw, 1))), CINT(VAL(TokAt(raw, 2))), CINT(VAL(TokAt(raw, 3))), CINT(VAL(TokAt(raw, 4))), CINT(VAL(TokAt(raw, 5))), InkChar(TokAt(raw, 6)))
+                g = CINT(VAL(TokAt(raw, 1)))
+                HistPush(g)
+                DrawLine(g, CINT(VAL(TokAt(raw, 2))), CINT(VAL(TokAt(raw, 3))), CINT(VAL(TokAt(raw, 4))), CINT(VAL(TokAt(raw, 5))), InkChar(TokAt(raw, 6)))
             ELSEIF cmd = "FLIP" THEN
                 g = CINT(VAL(TokAt(raw, 1)))
+                HistPush(g)
                 IF STRINGS.UPPER(TokAt(raw, 2)) = "V" THEN
                     FlipV(g)
                 ELSE
                     FlipH(g)
                 END IF
             ELSEIF cmd = "SHIFT" THEN
-                ShiftGlyph(CINT(VAL(TokAt(raw, 1))), CINT(VAL(TokAt(raw, 2))), CINT(VAL(TokAt(raw, 3))))
+                g = CINT(VAL(TokAt(raw, 1)))
+                HistPush(g)
+                ShiftGlyph(g, CINT(VAL(TokAt(raw, 2))), CINT(VAL(TokAt(raw, 3))))
             ELSEIF cmd = "CLONE" THEN
-                CloneGlyph(CINT(VAL(TokAt(raw, 1))), CINT(VAL(TokAt(raw, 2))))
+                g = CINT(VAL(TokAt(raw, 2)))
+                HistPush(g)
+                CloneGlyph(CINT(VAL(TokAt(raw, 1))), g)
+            ELSEIF cmd = "ROT90" THEN
+                g = CINT(VAL(TokAt(raw, 1)))
+                HistPush(g)
+                Rot90(g)
+            ELSEIF cmd = "SHEAR" THEN
+                g = CINT(VAL(TokAt(raw, 1)))
+                HistPush(g)
+                ShearH(g, CINT(VAL(TokAt(raw, 2))))
+            ELSEIF cmd = "REGION" THEN
+                RegionCopy(CINT(VAL(TokAt(raw, 1))), CINT(VAL(TokAt(raw, 2))), CINT(VAL(TokAt(raw, 3))), CINT(VAL(TokAt(raw, 4))), CINT(VAL(TokAt(raw, 5))))
+            ELSEIF cmd = "PASTE" THEN
+                g = CINT(VAL(TokAt(raw, 1)))
+                HistPush(g)
+                RegionPaste(g, CINT(VAL(TokAt(raw, 2))), CINT(VAL(TokAt(raw, 3))))
+            ELSEIF cmd = "BEARING" THEN
+                g = CINT(VAL(TokAt(raw, 1)))
+                HistPush(g)
+                BearingRecompute(g)
+            ELSEIF cmd = "INSERT" THEN
+                InsertGlyph(CLNG(VAL(TokAt(raw, 1))), TokAt(raw, 2), CINT(VAL(TokAt(raw, 3))), CINT(VAL(TokAt(raw, 4))))
+            ELSEIF cmd = "REMOVE" THEN
+                RemoveGlyph(CINT(VAL(TokAt(raw, 1))))
+            ELSEIF cmd = "UNDO" THEN
+                DoUndo()
+            ELSEIF cmd = "REDO" THEN
+                DoRedo()
             ELSE
                 Fail("comando di editing non riconosciuto: " + raw)
             END IF
@@ -1695,6 +2100,79 @@ SUB RunCheck()
     KEq(raw(ir), 0, "BMP: 'A'(3,0) nero nel file")
     ir = 54 + (bh - 1 - y0b) * brb + x0b * 3
     KEq(raw(ir), 255, "BMP: 'A'(0,0) bianco nel file")
+
+    ' --- 8. M2: trasformazioni, clipboard, bearing, insert/remove, undo ------
+    ' I glifi di lavoro si creano qui: il fixture ne ha pochi e gli indici alti non
+    ' esistono, quindi non si assume nulla sul modello caricato.
+    DIM n0 AS INTEGER, wa AS INTEGER, wb AS INTEGER, wc AS INTEGER
+    DIM regInk AS INTEGER, yy AS INTEGER, xx2 AS INTEGER, sigLast AS STRING
+    n0 = g_nGlyphs
+    sigLast = GlyphSig(n0 - 1)
+    InsertGlyph(900, "m2a", 8, 8)
+    InsertGlyph(901, "m2b", 8, 8)
+    InsertGlyph(902, "m2c", 8, 8)
+    wa = n0
+    wb = n0 + 1
+    wc = n0 + 2
+    KEq(g_nGlyphs, n0 + 3, "M2: insert aggiunge tre glifi")
+    KEq(g_enc(wa), 900, "M2: insert conserva l'encoding")
+    KEq(g_nRows(wa), 8, "M2: insert crea le righe")
+    KEq(InkCount(wa), 0, "M2: insert nasce vuoto")
+
+    SetPx(wa, 0, 0, "1")
+    SetPx(wa, 0, 2, "1")
+    SetPx(wa, 1, 0, "1")
+    KEq(InkCount(wa), 3, "M2: pattern iniziale")
+    HistPush(wa)
+    Rot90(wa)
+    KEq(g_gw(wa), 8, "M2: rot90 larghezza = altezza precedente")
+    KEq(g_gh(wa), 8, "M2: rot90 altezza = larghezza precedente")
+    KEq(InkCount(wa), 3, "M2: rot90 conserva l'inchiostro")
+    KEq(GetPx(wa, 7, 0), 1, "M2: rot90 (0,0) -> (7,0)")
+    KEq(GetPx(wa, 0, 0), 0, "M2: rot90 libera (0,0)")
+    DoUndo()
+    KEq(GetPx(wa, 0, 0), 1, "M2: undo ripristina (0,0)")
+    KEq(GetPx(wa, 7, 0), 0, "M2: undo toglie la rotazione")
+    DoRedo()
+    KEq(GetPx(wa, 7, 0), 1, "M2: redo riapplica la rotazione")
+    DoUndo()
+
+    SetPx(wb, 1, 1, "1")
+    SetPx(wb, 2, 1, "1")
+    HistPush(wb)
+    ShearH(wb, 1)
+    KEq(GetPx(wb, 2, 1), 1, "M2: shear sposta la riga 1 di +1")
+    KEq(GetPx(wb, 1, 1), 0, "M2: shear libera l'originale")
+    KEq(InkCount(wb), 2, "M2: shear conserva l'inchiostro")
+    DoUndo()
+    KEq(GetPx(wb, 1, 1), 1, "M2: undo dello shear")
+
+    RegionCopy(wa, 0, 0, 2, 2)
+    KEq(g_clipW, 3, "M2: regione larghezza")
+    KEq(g_clipH, 3, "M2: regione altezza")
+    regInk = 0
+    FOR yy = 0 TO 2
+        FOR xx2 = 0 TO 2
+            IF GetPx(wa, xx2, yy) = 1 THEN regInk = regInk + 1
+        NEXT xx2
+    NEXT yy
+    RegionPaste(wc, 0, 0)
+    KEq(InkCount(wc), regInk, "M2: paste riproduce l'inchiostro della regione")
+    KEq(GetPx(wc, 0, 0), GetPx(wa, 0, 0), "M2: paste (0,0) coerente")
+
+    ClearGlyph(wb)
+    SetPx(wb, 2, 1, "1")
+    SetPx(wb, 5, 3, "1")
+    BearingRecompute(wb)
+    KEq(g_gx(wb), 2, "M2: bearing x = primo pixel")
+    KEq(g_dwx(wb), 4, "M2: bearing DWIDTH = larghezza inchiostrata")
+    KEq(g_gy(wb), -4, "M2: bearing y = -(ultima riga + 1)")
+
+    RemoveGlyph(wc)
+    RemoveGlyph(wb)
+    RemoveGlyph(wa)
+    KEq(g_nGlyphs, n0, "M2: remove riporta il conteggio")
+    KStr(GlyphSig(n0 - 1), sigLast, "M2: remove non altera i glifi precedenti")
 
     ' --- 7. PSF1 e ASCII art: byte e round-trip ------------------------------
     DIM p1() = IO.READBYTES(OutPath("mini8.psf1"))

@@ -7,13 +7,17 @@ Verified on the four backends of the monorepo (IL, PCodeVM, VM-C, C99Native).
 
 ## M2 — editing comfort (still headless)
 
-- [ ] **Undo/redo** with a bounded stack of glyph snapshots (`g_row` slice copy).
-- [ ] **Copy/paste of a rectangular region** between glyphs (`region` + `paste`).
-- [ ] **Rotation 90°** and **shear** (today only flip H/V and shift).
-- [ ] **Automatic bearing recompute** after editing (`DWIDTH`/`SWIDTH` from the
-      inked bounding box) with a per-font policy in the config.
-- [ ] **Glyph insertion/removal** (today the font is edited in place; `CHARS` follows
-      the model, but there is no add/delete command in the script).
+- [x] **Undo/redo** con stack limitato (`GS_UNDO` = 4 snapshot di un singolo glifo, righe +
+      metriche); ogni verbo di editing fa `HistPush` **prima** di agire. `insert`/`remove` non
+      sono undoable (cambiano la lista dei glifi: si rilancia lo script).
+- [x] **Copy/paste di regione** fra glifi: `region` (clipboard, `g_clipW/H`) + `paste`
+      (solo inchiostro, non svuota la destinazione).
+- [x] **Rotazione 90°** (`rot90`, scambio larghezza/altezza) e **shear** (`shear <g> <k>`,
+      la riga y si sposta di `k*y`).
+- [x] **Bearing automatico** (`bearing <g>`): `BBX` x, `DWIDTH`, `SWIDTH` e offset verticale
+      ricalcolati dal bounding box dell'inchiostro.
+- [x] **Inserimento/rimozione glifo** (`insert <enc> <name> <w> <h>`, `remove <g>`): la lista
+      si sposta e `CHARS` segue il modello.
 
 ## M3 — formats
 
