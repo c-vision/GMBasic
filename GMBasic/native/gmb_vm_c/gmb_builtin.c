@@ -10821,12 +10821,14 @@ void gmb_bf_449(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, 
                 /* Alias esplicito: numero d'area 1-based via gmb_db_isam_selected (ISAM) o
                  * gmb_selected (DBF/RDD). Prima l'alias era IGNORATO → ISAM.SELECTED(area)=0. */
                 int64_t ih = gmb_db_isam_selected(alias);
-                bout->result = ih > 0 ? (double)ih : (double)gmb_selected(alias);
+                int ah = gmb_db_area_of_alias(alias);
+                bout->result = ih > 0 ? (double)ih : (ah > 0 ? (double)ah : (double)gmb_selected(alias));
                 return;
             }
-            int64_t selh = gmb_db_current_dbf();
-            /* Anche un'area ISAM aperta è un'area 1-based valida (prima dava 0). */
-            bout->result = (selh > 0 && gmb_db_dbf_field_count(selh) > 0) ? 1.0
+            int ca = gmb_db_current_area();
+            /* Numero d'area 1-based (parità IL/PCode): area DBF assegnata all'apertura,
+             * altrimenti area ISAM; senza area aperta → 0. */
+            bout->result = ca > 0 ? (double)ca
                          : (gmb_db_current_isam() > 0 ? 1.0 : 0.0);
         }
 }

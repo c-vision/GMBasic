@@ -62,7 +62,8 @@ typedef struct {
     int  index_key_field[GMB_DB_MAX_INDEXES];
     int  index_key_len[GMB_DB_MAX_INDEXES];
     int  active_order; /* 0 = physical */
-    char alias[64];    /* DBF USE ... ALIAS <n>: ALIAS()/SELECTED() (C: una sola area) */
+    char alias[64];    /* DBF USE ... ALIAS <n>: ALIAS()/SELECTED() */
+    int area;          /* numero d'area 1-based (ordine di apertura), 0 = chiusa */
     int exclusive;     /* DBF SET EXCLUSIVE: flock esclusivo sul file */
     int strict_schema; /* DBF SET SCHEMA ON: validazione schema all'open */
     gmb_idx_entry_t* idx;

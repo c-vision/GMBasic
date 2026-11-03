@@ -370,6 +370,10 @@ GMB_DB_API gmb_double_t gmb_indexord_dbl(int area);
 GMB_DB_API gmb_string_t gmb_db_dbf_get_alias_str(int64_t h);
 GMB_DB_API gmb_string_t gmb_alias(int area);
 GMB_DB_API gmb_double_t gmb_selected(const char* alias);
+/* Numero d'area 1-based dell'area DBF corrente / di un alias (0 = nessuna). Ordine di
+ * apertura, parità IL/PCode; lo usa SELECTED() su VM/C e C99Native. */
+GMB_DB_API int gmb_db_current_area(void);
+GMB_DB_API int gmb_db_area_of_alias(const char* alias);
 GMB_DB_API gmb_string_t gmb_indexord(int area);
 GMB_DB_API gmb_string_t gmb_indexkey(int area);
 GMB_DB_API gmb_double_t gmb_neterr(int area);

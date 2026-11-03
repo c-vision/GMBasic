@@ -4621,7 +4621,14 @@ static const rd_row RD_TBL[] = {
     { GMB_TOK_Select, rd_select },
 };
 int emit_bf_rdd(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
-    (void)name; (void)ns; (void)line;
+    (void)name;
+    /* `SELECT` è la funzione RDD.SELECT; nella namespace DBF NON esiste: l'area si cambia
+     * col comando `DBF SELECT <alias>` e si legge con `DBF.SELECTED()`. Prima il C99
+     * accettava `DBF.SELECT(1)` come alias silenzioso di RDD.SELECT (divergenza C#/IL/PCode). */
+    if (tk == GMB_TOK_Select && ns && strcasecmp(ns, "DBF") == 0) {
+        c99_fail(c, line, "DBF.SELECT non è una funzione: usa il comando DBF SELECT o DBF.SELECTED()");
+        return 1;
+    }
     for (size_t i = 0; i < sizeof(RD_TBL) / sizeof(RD_TBL[0]); i++)
         if (RD_TBL[i].tk == tk) return RD_TBL[i].sp(c, args, nargs);
     return 0;
@@ -4943,7 +4950,9 @@ static int db_selected(ctx_t* c, gmb_expr_t** a, int n) {
     if (n < 1) {
         /* SELECTED() senza argomenti = numero d'area 1-based (parità C#/IL/PCode/VM-C): 1 se
          * l'area corrente è un DBF valido con campi O un'area ISAM aperta, altrimenti 0. */
-        sb_put(&c->out, "((gmb_double_t)((gmb_db_current_isam() > 0 || (gmb_db_current_dbf() > 0 && gmb_db_dbf_field_count(gmb_db_current_dbf()) > 0)) ? 1.0 : 0.0))");
+        /* Numero d'area 1-based (parità IL/PCode): area DBF assegnata all'apertura,
+         * altrimenti area ISAM; senza area aperta → 0. */
+        sb_put(&c->out, "((gmb_double_t)(gmb_db_current_area() > 0 ? gmb_db_current_area() : (gmb_db_current_isam() > 0 ? 1.0 : 0.0)))");
         return 1;
     }
     /* ISAM/DEF SELECTED(alias): l'argomento e' un ALIAS -> identificatore nudo = STRINGA.
