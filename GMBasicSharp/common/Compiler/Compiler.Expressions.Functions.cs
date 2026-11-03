@@ -6,22 +6,6 @@ namespace Compiler;
 
 public sealed partial class Compiler
 {
-    /// <summary>Unica ambiguità rimasta: `DBF.SELECT(...)` è una CHIAMATA, mentre `SELECT`
-    /// è anche la keyword del comando `SELECT CASE`/`DBF SELECT`. DATE/TIME sono già nel
-    /// FunctionMap per TokenKind e non richiedono una mappa separata.</summary>
-    private static readonly Dictionary<(string, string), BuiltInFunction> AmbiguousFunctionMap =
-        new(new AmbiguousNameComparer()) { { ("DBF", "SELECT"), BuiltInFunction.SELECT } };
-
-    private class AmbiguousNameComparer : IEqualityComparer<(string, string)>
-    {
-        public bool Equals((string, string) x, (string, string) y) =>
-            x.Item1.Equals(y.Item1, StringComparison.OrdinalIgnoreCase) &&
-            x.Item2.Equals(y.Item2, StringComparison.OrdinalIgnoreCase);
-        public int GetHashCode((string, string) obj) =>
-            StringComparer.OrdinalIgnoreCase.GetHashCode(obj.Item1) ^
-            StringComparer.OrdinalIgnoreCase.GetHashCode(obj.Item2);
-    }
-
     // La mappa completa delle funzioni predefinite.
     private static readonly Lazy<Dictionary<TokenKind, BuiltInFunction>> _builtInFunctionMap = new(() => new Dictionary<TokenKind, BuiltInFunction>
     {
@@ -400,10 +384,6 @@ public sealed partial class Compiler
         // --- Funzioni Data e Ora (27) ---
         { TokenKind.Now, BuiltInFunction.NOW }, { TokenKind.Today, BuiltInFunction.TODAY },
         { TokenKind.Date, BuiltInFunction.DATE_FUNC }, { TokenKind.Time, BuiltInFunction.TIME_FUNC },
-        /* F6: `DBF.SELECT(...)` è una CHIAMATA, non il comando `DBF SELECT`: il TokenKind
-         * Select è già distinto dal contesto di statement, quindi la funzione si risolve
-         * direttamente qui. Elimina AmbiguousFunctionMap (DATE/TIME erano già in mappa). */
-        { TokenKind.Select, BuiltInFunction.SELECT },
         { TokenKind.StrTime, BuiltInFunction.TIMEDOLLAR }, { TokenKind.StrDate, BuiltInFunction.STRDATE },
         { TokenKind.DateValue, BuiltInFunction.DATEVALUE }, { TokenKind.DateSerial, BuiltInFunction.DATESERIAL },
         { TokenKind.TimeSerial, BuiltInFunction.TIMESERIAL }, { TokenKind.DateAdd, BuiltInFunction.DATEADD },

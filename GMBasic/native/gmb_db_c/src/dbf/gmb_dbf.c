@@ -124,6 +124,21 @@ static void dbf_resolve_path(const char* path, char* out, int cap)
     }
 }
 
+/* Assegna il primo numero d'area 1-based libero fra le aree DBF aperte (ordine di
+ * apertura, come IL/PCode). Le aree DBF della VM/C/C99 vivono qui, non nel RDD. */
+static int dbf_area_alloc(void)
+{
+    for (int a = 1; a < GMB_DB_MAX_HANDLES; a++) {
+        int used = 0;
+        for (int64_t i = 1; i < GMB_DB_MAX_HANDLES; i++) {
+            if (g_handles[i].kind != GMB_H_DBF) continue;
+            if (g_handles[i].u.dbf.area == a) { used = 1; break; }
+        }
+        if (!used) return a;
+    }
+    return 0;
+}
+
 int64_t gmb_db_dbf_open(const char* path)
 {
     int64_t h;
@@ -137,6 +152,7 @@ int64_t gmb_db_dbf_open(const char* path)
     h = gmb_db_alloc(GMB_H_DBF);
     if (h < 0) return -1;
     hh = &g_handles[h];
+    hh->u.dbf.area = 0;
     strncpy(hh->u.dbf.path, resolved, sizeof(hh->u.dbf.path) - 1);
     hh->u.dbf.fp = NULL;
     hh->u.dbf.engine = DbfEngine_New(resolved, NULL, 0, 1, LockingStrategy_IntraProcess);
@@ -147,6 +163,7 @@ int64_t gmb_db_dbf_open(const char* path)
         return -1;
     }
     dbf_cache_meta(hh);
+    hh->u.dbf.area = dbf_area_alloc();
     /* Apertura: il cursore va sul PRIMO record (parity IL/PCode/VM: dopo un USE BOF è
      * falso e RECNO vale 1). Prima restava recno=0/bof=1 → "bof_iniziale" si invece di no
      * (§ MiniTests/dbf/dbf_state.bas). */
@@ -174,6 +191,7 @@ int gmb_db_dbf_close(int64_t h)
     }
     free(hh->u.dbf.idx);
     hh->u.dbf.idx = NULL;
+    hh->u.dbf.area = 0;
     hh->kind = GMB_H_FREE;
     /* Se questa ERA l'area corrente, torna a un'altra area DBF aperta: senza, i comandi
      * area-correnti successivi (es. DBF AGGREGATE dopo DBF CLOSE di un'area temporanea) non
@@ -1303,6 +1321,22 @@ gmb_string_t gmb_alias(int area)
     if (gmb_db_dbf_get_alias(gmb_db_current_dbf(), buf, (int)sizeof(buf)) != GMB_DB_OK || !buf[0])
         gmb_rdd_alias(buf, (int)sizeof(buf));
     return gmb_string_alloc(buf);
+}
+
+int gmb_db_current_area(void)
+{
+    int64_t h = gmb_db_current_dbf();
+    if (h <= 0) return 0;
+    gmb_handle_t* hh = gmb_db_get(h, GMB_H_DBF);
+    return hh ? hh->u.dbf.area : 0;
+}
+
+int gmb_db_area_of_alias(const char* alias)
+{
+    int64_t h = gmb_db_dbf_find_handle_by_alias(alias);
+    if (h <= 0) return 0;
+    gmb_handle_t* hh = gmb_db_get(h, GMB_H_DBF);
+    return hh ? hh->u.dbf.area : 0;
 }
 
 gmb_double_t gmb_selected(const char* alias)
