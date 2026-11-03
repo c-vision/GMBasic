@@ -21,10 +21,15 @@ Verified on the four backends of the monorepo (IL, PCodeVM, VM-C, C99Native).
       header (offset pixel, larghezza, altezza, 24 bpp, dimensione), riga multipla di 4
       senza padding, pixel neri = `inchiostro x scale^2`, più un pixel acceso e uno spento
       del glifo `A` letti dal file. Check deterministico: 52 -> 64 controlli.
-- [ ] **PSF1** (256/512 glyphs, 8-pixel wide) in addition to PSF2.
+- [x] **PSF1** (256 slots, 8-pixel wide) in addition to PSF2: `mini8.psf1`,
+      `4 + 256 * charsize` byte, magic `0x36 0x04`; il check verifica header, dimensione e un
+      byte di glifo calcolato dal modello. Un glifo piu' largo di 8 px e' un errore dichiarato.
 - [ ] **PCF** writer (binary tables with accelerators) and **BDF v2.2** properties.
-- [ ] **ASCII art / sixel preview** for terminals, for a visual check without a GUI.
-- [ ] **Import of a plain text bitmap** (`#`/`.` grid) to bootstrap new glyphs.
+- [x] **ASCII art** per terminale: `mini8.ascii` (`@ enc name w h` + righe `#`/`.`), riletto
+      dal modo `textin` e confrontato glifo per glifo con il modello nel check.
+- [ ] **Sixel preview** per terminali che lo supportano (l'ASCII art c'e').
+- [x] **Import of a plain text bitmap** (`#`/`.` grid): modo `textin`, config `[text]`
+      (`source`, `out`); `TextLoad` costruisce il modello e `BdfSave` scrive il BDF.
 
 ## M4 — interactive editor
 

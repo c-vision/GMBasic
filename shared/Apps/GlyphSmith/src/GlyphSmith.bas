@@ -58,6 +58,10 @@ DIM g_importLast AS LONG
 DIM g_importThreshold AS INTEGER
 DIM g_importOut AS STRING
 
+' --- Import da bitmap testuale (formato ASCII art prodotto dall'app) ---------
+DIM g_textSrc AS STRING
+DIM g_textOut AS STRING
+
 ' --- Intestazione del font --------------------------------------------------
 DIM g_startFont AS STRING
 DIM g_fontName AS STRING
@@ -114,6 +118,8 @@ SUB Main()
         RunEdit()
     ELSEIF mode = "IMPORT" THEN
         RunImport()
+    ELSEIF mode = "TEXTIN" THEN
+        RunTextIn()
     ELSE
         PrintStatus()
     END IF
@@ -133,6 +139,9 @@ FUNCTION ComputeMode() AS STRING
 #ENDIF
 #IFDEF GLYPHSMITH_MODE_IMPORT
     m = "IMPORT"
+#ENDIF
+#IFDEF GLYPHSMITH_MODE_TEXTIN
+    m = "TEXTIN"
 #ENDIF
     ComputeMode = m
 END FUNCTION
@@ -159,6 +168,8 @@ SUB ConfigureDefaults()
     g_importLast = 126
     g_importThreshold = 128
     g_importOut = "imported.bdf"
+    g_textSrc = "bin/mini8.ascii"
+    g_textOut = "from_text.bdf"
 END SUB
 
 SUB PrintBanner()
@@ -228,6 +239,8 @@ SUB ParseSettingsFile(path AS STRING)
                     IF section = "IMPORT" AND key = "LAST" THEN g_importLast = CLNG(VAL(val))
                     IF section = "IMPORT" AND key = "THRESHOLD" THEN g_importThreshold = CINT(VAL(val))
                     IF section = "IMPORT" AND key = "OUT" THEN g_importOut = val
+                    IF section = "TEXT" AND key = "SOURCE" THEN g_textSrc = val
+                    IF section = "TEXT" AND key = "OUT" THEN g_textOut = val
                 END IF
             END IF
         END IF
@@ -1132,16 +1145,169 @@ SUB HeaderC(path AS STRING)
     IO.FCLOSE(h)
 END SUB
 
+' --- export: PSF1 (magic 0x36 0x04, 256 slot da `charsize` byte, 8 px/riga) ----
+' PSF1 non ha header con altezza: la dimensione la decide il chiamante. Qui il charsize
+' e' l'altezza del FONTBOUNDINGBOX (o del glifo piu' alto) e ogni riga sta in un byte,
+' MSB = pixel x=0. I glifi piu' larghi di 8 px sono un errore dichiarato, non un troncamento.
+SUB Psf1Save(path AS STRING)
+    DIM hmax AS INTEGER, g AS INTEGER, r AS INTEGER, x AS INTEGER
+    DIM total AS LONG, i AS LONG, cs AS INTEGER, slot AS INTEGER
+    DIM b AS INTEGER, row AS STRING, n AS LONG
+    hmax = g_bbH
+    IF hmax < 1 THEN hmax = 1
+    FOR g = 0 TO g_nGlyphs - 1
+        IF g_gh(g) > hmax THEN hmax = g_gh(g)
+        IF g_gw(g) > 8 THEN Fail("PSF1: glifo piu' largo di 8 px (encoding " + NumS(g_enc(g)) + ")")
+    NEXT g
+    cs = hmax
+    total = 4 + 256 * cs
+    DIM buf(total - 1) AS BYTE
+    FOR i = 0 TO total - 1
+        buf(i) = 0
+    NEXT i
+    buf(0) = 54
+    buf(1) = 4
+    buf(2) = 0
+    buf(3) = ByteOf(cs, 0)
+    FOR g = 0 TO g_nGlyphs - 1
+        slot = g_enc(g)
+        IF slot >= 0 THEN
+            IF slot < 256 THEN
+                FOR r = 0 TO g_gh(g) - 1
+                    IF r < cs THEN
+                        row = RowAt(g, r)
+                        b = 0
+                        FOR x = 0 TO 7
+                            IF x < LEN(row) THEN
+                                IF MID$(row, x + 1, 1) = "1" THEN b = b + Pow2(7 - x)
+                            END IF
+                        NEXT x
+                        buf(4 + slot * cs + r) = b
+                    END IF
+                NEXT r
+            END IF
+        END IF
+    NEXT g
+    n = IO.WRITEBYTES(path, buf)
+    IF n <> total THEN Fail("scrittura PSF1 incompleta: " + path)
+END SUB
+
+' --- export: ASCII art (un blocco per glifo: '#' acceso, '.' spento) --------
+SUB AsciiSave(path AS STRING)
+    DIM h AS LONG, g AS INTEGER, r AS INTEGER, x AS INTEGER, row AS STRING, s AS STRING
+    h = IO.FCREATE(path)
+    IF h < 0 THEN Fail("creazione impossibile: " + path)
+    WText(h, "GS-ASCII 1")
+    WText(h, "FONT " + g_fontName)
+    WText(h, "SIZE " + NumS(g_bbW) + " " + NumS(g_bbH))
+    FOR g = 0 TO g_nGlyphs - 1
+        WText(h, "@ " + NumS(g_enc(g)) + " " + g_gname(g) + " " + NumS(g_gw(g)) + " " + NumS(g_gh(g)))
+        FOR r = 0 TO g_gh(g) - 1
+            row = RowAt(g, r)
+            s = ""
+            FOR x = 0 TO g_gw(g) - 1
+                IF x < LEN(row) THEN
+                    IF MID$(row, x + 1, 1) = "1" THEN
+                        s = s + "#"
+                    ELSE
+                        s = s + "."
+                    END IF
+                ELSE
+                    s = s + "."
+                END IF
+            NEXT x
+            WText(h, s)
+        NEXT r
+    NEXT g
+    IO.FCLOSE(h)
+END SUB
+
+' --- import: ASCII art (stesso formato di AsciiSave) ------------------------
+FUNCTION TextPath() AS STRING
+    IF STRINGS.STARTSWITH(g_textSrc, "/") THEN
+        TextPath = g_textSrc
+    ELSE
+        TextPath = g_appDir + "/" + g_textSrc
+    END IF
+END FUNCTION
+
+SUB TextLoad(path AS STRING)
+    DIM lines
+    DIM raw AS STRING, s AS STRING
+    DIM i AS LONG, g AS INTEGER, r AS INTEGER, x AS INTEGER
+    DIM enc AS LONG, w AS INTEGER, hh AS INTEGER
+    IF NOT IO.FILEEXISTS(path) THEN Fail("bitmap testuale assente: " + path)
+    StartModel()
+    lines = IO.READLINES(path)
+    g = -1
+    r = 0
+    FOR i = 0 TO UBOUND(lines)
+        raw = STRINGS.TRIM(lines(i))
+        IF LEN(raw) > 0 THEN
+            IF STRINGS.STARTSWITH(raw, "@ ") THEN
+                enc = CLNG(VAL(TokAt(raw, 1)))
+                w = CINT(VAL(TokAt(raw, 3)))
+                hh = CINT(VAL(TokAt(raw, 4)))
+                g = NewGlyph(TokAt(raw, 2))
+                g_enc(g) = enc
+                g_gw(g) = w
+                g_gh(g) = hh
+                g_dwx(g) = w
+                g_swx(g) = w * 62
+                g_nRows(g) = hh
+                r = 0
+                IF w > g_bbW THEN g_bbW = w
+                IF hh > g_bbH THEN g_bbH = hh
+            ELSEIF STRINGS.STARTSWITH(raw, "SIZE ") THEN
+                g_pointSize = CINT(VAL(TokAt(raw, 2)))
+            ELSEIF STRINGS.STARTSWITH(raw, "FONT ") THEN
+                g_fontName = RestAfter(raw)
+            ELSEIF g >= 0 THEN
+                IF r < GS_ROWS THEN
+                    s = ""
+                    FOR x = 0 TO LEN(raw) - 1
+                        IF MID$(raw, x + 1, 1) = "#" THEN
+                            s = s + "1"
+                        ELSE
+                            s = s + "0"
+                        END IF
+                    NEXT x
+                    g_row(g * GS_ROWS + r) = s
+                    r = r + 1
+                END IF
+            END IF
+        END IF
+    NEXT i
+    IF g_nGlyphs = 0 THEN Fail("bitmap testuale senza glifi: " + path)
+    g_declChars = g_nGlyphs
+END SUB
+
+SUB RunTextIn()
+    DIM src AS STRING
+    src = TextPath()
+    TextLoad(src)
+    EnsureOutDir()
+    BdfSave(OutPath(g_textOut))
+    PRINT "bitmap testo : "; src
+    PRINT "glifi        : "; g_nGlyphs
+    PRINT "bounding box : "; g_bbW; "x"; g_bbH
+    PRINT "bdf          : "; OutPath(g_textOut); " ("; FileSizeOf(OutPath(g_textOut)); " byte)"
+END SUB
+
 SUB SheetAll()
     DIM n AS LONG
     EnsureOutDir()
     SheetBmp(OutPath("sheet.bmp"))
     PbmSave(OutPath("sheet.pbm"))
     Psf2Save(OutPath("mini8.psf"))
+    Psf1Save(OutPath("mini8.psf1"))
+    AsciiSave(OutPath("mini8.ascii"))
     HeaderC(OutPath("mini8.h"))
     PRINT "export       : "; OutPath("sheet.bmp"); " ("; FileSizeOf(OutPath("sheet.bmp")); " byte)"
     PRINT "export       : "; OutPath("sheet.pbm"); " ("; FileSizeOf(OutPath("sheet.pbm")); " byte)"
     PRINT "export       : "; OutPath("mini8.psf"); " ("; FileSizeOf(OutPath("mini8.psf")); " byte)"
+    PRINT "export       : "; OutPath("mini8.psf1"); " ("; FileSizeOf(OutPath("mini8.psf1")); " byte)"
+    PRINT "export       : "; OutPath("mini8.ascii"); " ("; FileSizeOf(OutPath("mini8.ascii")); " byte)"
     PRINT "export       : "; OutPath("mini8.h"); " ("; FileSizeOf(OutPath("mini8.h")); " byte)"
 END SUB
 
@@ -1366,7 +1532,7 @@ END SUB
 
 SUB RunCheck()
     DIM sig AS STRING
-    DIM expBmp AS LONG, expPsf AS LONG
+    DIM expBmp AS LONG, expPsf AS LONG, expPsf1 AS LONG
     g_ok = 0
     g_ko = 0
     EnsureOutDir()
@@ -1461,6 +1627,11 @@ SUB RunCheck()
     KEq(FileSizeOf(OutPath("mini8.psf")), expPsf, "dimensione mini8.psf")
     KTrue(FileSizeOf(OutPath("mini8.h")) > 100, "mini8.h non vuoto")
     KTrue(FileSizeOf(OutPath("sheet.pbm")) > 100, "sheet.pbm non vuoto")
+    KTrue(IO.FILEEXISTS(OutPath("mini8.psf1")), "mini8.psf1 creato")
+    KTrue(IO.FILEEXISTS(OutPath("mini8.ascii")), "mini8.ascii creato")
+    expPsf1 = 4 + 256 * g_bbH
+    KEq(FileSizeOf(OutPath("mini8.psf1")), expPsf1, "dimensione mini8.psf1")
+    KTrue(FileSizeOf(OutPath("mini8.ascii")) > 100, "mini8.ascii non vuoto")
 
     ' --- 6. BMP: rilettura del foglio e confronto pixel per pixel -------------
     ' Il BMP e' l'unico formato scritto a mano: qui lo si RILEGGE con IO.READBYTES,
@@ -1524,6 +1695,32 @@ SUB RunCheck()
     KEq(raw(ir), 0, "BMP: 'A'(3,0) nero nel file")
     ir = 54 + (bh - 1 - y0b) * brb + x0b * 3
     KEq(raw(ir), 255, "BMP: 'A'(0,0) bianco nel file")
+
+    ' --- 7. PSF1 e ASCII art: byte e round-trip ------------------------------
+    DIM p1() = IO.READBYTES(OutPath("mini8.psf1"))
+    DIM xx AS INTEGER, expByte AS INTEGER, gA AS INTEGER, sig0 AS STRING, sig1 AS STRING
+    KEq(UBOUND(p1) + 1, expPsf1, "PSF1: byte totali")
+    KEq(p1(0), 54, "PSF1: magic 0x36")
+    KEq(p1(1), 4, "PSF1: magic 0x04")
+    KEq(p1(2), 0, "PSF1: mode 0")
+    KEq(p1(3), g_bbH, "PSF1: charsize = altezza BB")
+    expByte = 0
+    FOR xx = 0 TO 7
+        IF GetPx(1, xx, 0) = 1 THEN expByte = expByte + Pow2(7 - xx)
+    NEXT xx
+    KEq(p1(4 + 65 * g_bbH), expByte, "PSF1: byte di 'A' riga 0")
+
+    sig0 = ""
+    FOR gA = 0 TO g_nGlyphs - 1
+        sig0 = sig0 + NumS(g_enc(gA)) + "=" + GlyphSig(gA) + "|"
+    NEXT gA
+    TextLoad(OutPath("mini8.ascii"))
+    sig1 = ""
+    FOR gA = 0 TO g_nGlyphs - 1
+        sig1 = sig1 + NumS(g_enc(gA)) + "=" + GlyphSig(gA) + "|"
+    NEXT gA
+    KEq(g_nGlyphs, 3, "ASCII: glifi riletti")
+    KStr(sig1, sig0, "ASCII: round trip identico al modello")
 
     PRINT ""
     PRINT "controlli    : "; g_ok; " ok, "; g_ko; " falliti"

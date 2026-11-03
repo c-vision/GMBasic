@@ -1,11 +1,12 @@
 # .glyphsmith.toml — GlyphSmith — configurazione della app
 # ============================================================================
 # Tutto si configura QUI (la app non riceve argv: BASIC non ha argv).
-#   [settings] mode: status | check | sheet | edit | import
+#   [settings] mode: status | check | sheet | edit | import | textin
 #   [source]   bdf
 #   [output]   dir, bmp_scale, cells_per_row
 #   [edit]     script   (solo in mode = "edit")
 #   [import]   font, size, first, last, threshold, out   (solo in mode = "import")
+#   [text]     source, out                              (solo in mode = "textin")
 # ============================================================================
 
 [settings]
@@ -41,3 +42,10 @@ last = 126
 threshold = 128
 # nome del BDF prodotto (dentro [output] dir)
 out = "imported.bdf"
+
+[text]
+# bitmap testuale (ASCII art) da importare; relativo alla cartella della app, o assoluto.
+# Il formato e' quello prodotto dall'app stessa in [output] dir: "mini8.ascii".
+source = "bin/mini8.ascii"
+# nome del BDF prodotto (dentro [output] dir)
+out = "from_text.bdf"
