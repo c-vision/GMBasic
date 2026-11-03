@@ -308,6 +308,7 @@ set(GMB_ALL_SRCS
     src/gmb_team.c
     src/gmb_ai.c
     src/gmb_ai_decide.c
+    src/gmb_decision_head.c
     src/gmb_mcp_server.c
     src/gmb_ai_server.c
     src/gmb_brain.c
@@ -967,6 +968,12 @@ add_executable(gmb_decision_selfcheck tests/decision_selfcheck.c)
 target_link_libraries(gmb_decision_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_decision_selfcheck PRIVATE include)
 add_test(NAME gmb_decision_selfcheck COMMAND gmb_decision_selfcheck)
+
+# Testa di scoring condivisa (T3): formula z=(lp+bias)/(head_T*T_kind), confidence, artifact JSON.
+add_executable(gmb_decision_head_selfcheck tests/decision_head_selfcheck.c)
+target_link_libraries(gmb_decision_head_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_decision_head_selfcheck PRIVATE include)
+add_test(NAME gmb_decision_head_selfcheck COMMAND gmb_decision_head_selfcheck)
 
 # ── Second Brain (registry/manifest/toolchain) e pack firmato: selfcheck dedicati ──────────
 # Isolati con gmb_paths_test_override (nessuna scrittura nella config dell'utente).

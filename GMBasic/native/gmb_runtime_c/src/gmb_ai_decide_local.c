@@ -22,6 +22,7 @@
 #endif
 
 #include "gmb_ai_decide.h"
+#include "gmb_decision_head.h"
 #include <stdio.h>
 
 #if defined(_WIN32)
@@ -57,16 +58,6 @@ int gmb_ai_decide_local_run(const char* state, const char* kind,
 #define LOCAL_ERR_CAP     512
 #define LOCAL_PROMPT_CAP  131072
 #define LOCAL_TOKEN_CAP   32768
-#define LOCAL_JSON_CAP    (256 * 1024)
-
-/* Ordine canonico degli slot (stesso di DecisionSlots/ScoringHead C#). */
-static const char* const LOCAL_SLOTS[24] = {
-    "false", "true",
-    "0", "1", "2", "3", "4", "5",
-    "A", "B", "C", "D", "E", "F", "G", "H",
-    "I", "J", "K", "L", "M", "N", "O", "P",
-};
-
 typedef struct {
     int state;                       /* 0 = non init, 1 = pronto, -1 = errore */
     char err[LOCAL_ERR_CAP];
@@ -75,13 +66,9 @@ typedef struct {
     const LlmEngineLlmEngine* eng;
     LlmEngineLlmModel model_h;
     void* tok;                       /* llmtoken_handle */
-    /* scoring_head.json (opzionale): -1 = non letto, 0 = assente, 1 = caricato */
+    /* scoring_head.json (opzionale): -1 = non letto, 0 = assente, 1 = caricato. */
     int head_state;
-    int calibrated;
-    float head_T;
-    float T_kind[3];                 /* noul, choice, score */
-    float bias[24];
-    int token_id[24];                /* -1 = tokenizza l'etichetta */
+    gmb_decision_head_t head;
 } local_ctx_t;
 
 static local_ctx_t g_local;
@@ -108,9 +95,8 @@ static void expand_home(const char* in, char* out, size_t cap)
 static int slot_index(const char* key)
 {
     if (!key || !*key) return -1;
-    for (int i = 0; i < 24; i++)
-        if (strcasecmp(key, LOCAL_SLOTS[i]) == 0) return i;
-    return -1;
+    gmb_decision_option_t option = { key, key, -1, 0.0f, 1.0f };
+    return gmb_decision_head_slot(&option);
 }
 
 static void *open_engine_lib(void)
@@ -163,81 +149,6 @@ static void *open_engine_lib(void)
     return NULL;
 }
 
-/* Carica SOLO la testa di scoring (file opzionale). Non fallisce mai: un artefatto illeggibile
- * viene dichiarato assente — la decisione resta "non calibrata", mai un numero inventato. */
-static void load_scoring_head(local_ctx_t* c)
-{
-    if (c->head_state >= 0) return;
-    c->head_state = 0;
-    size_t ml = strlen(c->model);
-    if (ml > 5 && strcasecmp(c->model + ml - 5, ".gguf") == 0) return;
-
-    char path[LOCAL_MODEL_CAP + 32];
-    snprintf(path, sizeof path, "%s/scoring_head.json", c->model);
-    struct stat st;
-    if (stat(path, &st) != 0 || !S_ISREG(st.st_mode)) return;
-
-    FILE* f = fopen(path, "rb");
-    if (!f) return;
-    char* js = (char*)malloc(LOCAL_JSON_CAP);
-    if (!js) { fclose(f); return; }
-    size_t n = fread(js, 1, LOCAL_JSON_CAP - 1, f);
-    js[n] = 0;
-    fclose(f);
-
-    c->head_T = 1.0f;
-    for (int i = 0; i < 3; i++) c->T_kind[i] = 1.0f;
-    for (int i = 0; i < 24; i++) { c->bias[i] = 0.0f; c->token_id[i] = -1; }
-    c->calibrated = 1;
-
-    char* v = gmb_json_extract(js, "head_T");
-    if (v) { if (v[0] && atof(v) > 0.0) c->head_T = (float)atof(v); free(v); }
-
-    static const char* const kinds[3] = { "noul", "choice", "score" };
-    for (int k = 0; k < 3; k++) {
-        char p[64];
-        snprintf(p, sizeof p, "T_kind.%s", kinds[k]);
-        v = gmb_json_extract(js, p);
-        if (v) { if (v[0] && atof(v) > 0.0) c->T_kind[k] = (float)atof(v); free(v); }
-    }
-
-    /* bias: array posizionale (ordine canonico) oppure oggetto per etichetta. */
-    v = gmb_json_extract(js, "bias[0]");
-    int is_array = v && v[0] && strcmp(v, "null") != 0;
-    free(v);
-    for (int i = 0; i < 24; i++) {
-        char p[64];
-        if (is_array) snprintf(p, sizeof p, "bias[%d]", i);
-        else snprintf(p, sizeof p, "bias.%s", LOCAL_SLOTS[i]);
-        v = gmb_json_extract(js, p);
-        if (v) {
-            if (v[0] && strcmp(v, "null") != 0 && strcmp(v, "false") != 0)
-                c->bias[i] = (float)atof(v);
-            free(v);
-        }
-    }
-
-    /* verbalizer_ids: token id ESATTI per slot (evita la tokenizzazione dell'etichetta). */
-    for (int i = 0; i < 24; i++) {
-        char p[64];
-        snprintf(p, sizeof p, "verbalizer_ids.%s", LOCAL_SLOTS[i]);
-        v = gmb_json_extract(js, p);
-        if (v) {
-            if (v[0] && strcmp(v, "null") != 0) {
-                int id = atoi(v);
-                if (id >= 0) c->token_id[i] = id;
-            }
-            free(v);
-        }
-    }
-
-    v = gmb_json_extract(js, "calibrated");
-    if (v) { if (strcasecmp(v, "false") == 0) c->calibrated = 0; free(v); }
-
-    free(js);
-    c->head_state = 1;
-}
-
 static void close_locked(local_ctx_t* c)
 {
     if (c->eng && c->model_h) c->eng->free_model(c->model_h);
@@ -249,6 +160,7 @@ static void close_locked(local_ctx_t* c)
     c->eng = NULL;
     c->state = 0;
     c->head_state = -1;
+    gmb_decision_head_init(&c->head);
     c->model[0] = 0;
     c->err[0] = 0;
 }
@@ -305,21 +217,28 @@ static int ensure_model(char* err, size_t errcap)
     g_local.eng = eng;
     g_local.model_h = m;
     g_local.tok = tok;
-    g_local.head_state = -1;
-    g_local.calibrated = 0;
-    g_local.head_T = 1.0f;
-    for (int hi = 0; hi < 3; hi++) g_local.T_kind[hi] = 1.0f;
-    /* Sentinella -1: senza scoring head nessun token id è pre-risolto e l'etichetta va
-     * tokenizzata. (Prima lo zero statico veniva scambiato per "token 0" → readout uniforme.) */
-    for (int hi = 0; hi < 24; hi++) { g_local.bias[hi] = 0.0f; g_local.token_id[hi] = -1; }
+    gmb_decision_head_init(&g_local.head);
+    g_local.head_state = gmb_decision_head_load(model, &g_local.head);
+    if (g_local.head_state < 0) {
+        /* Artefatto presente ma illeggibile: errore esplicito (parità col provider C#),
+         * non una decisione "non calibrata" silenziosa. */
+        llmtoken_free((llmtoken_handle)g_local.tok);
+        g_local.tok = NULL;
+        eng->free_model(m);
+        dlclose(lib);
+        g_local.model_h = NULL;
+        g_local.lib = NULL;
+        g_local.eng = NULL;
+        set_err(err, errcap, "local provider: scoring_head.json illeggibile", model);
+        return -1;
+    }
     g_local.state = 1;
-    load_scoring_head(&g_local);
     return 0;
 }
 
 static int encode_one(llmtoken_handle tok, const char* label, const char* slot_key, int slot)
 {
-    if (slot >= 0 && g_local.token_id[slot] >= 0) return g_local.token_id[slot];
+    if (slot >= 0 && g_local.head.token_id[slot] >= 0) return g_local.head.token_id[slot];
     const char* text = (label && *label) ? label : slot_key;
     int32_t ids[8];
     int n = llmtoken_encode(tok, text, ids, 8);
@@ -361,10 +280,10 @@ int gmb_ai_decide_local_run(const char* state, const char* kind,
         int slot = slot_index(options[i].id);
         if (slot < 0) slot = slot_index(options[i].label);
         float bias = options[i].bias;
-        if (c->head_state == 1 && slot >= 0) bias += c->bias[slot];
+        if (c->head_state == 1 && slot >= 0) bias += c->head.bias[slot];
         float temp = options[i].temperature;
         if (c->head_state == 1 && temp > 0.999f && temp < 1.001f)
-            temp = c->T_kind[(int)kind_enum];
+            temp = c->head.T_kind[(int)kind_enum];
         if (!(temp > 0.0f)) temp = 1.0f;
         int token = encode_one(tok, options[i].label, options[i].id, slot);
         if (token < 0) {
@@ -430,7 +349,7 @@ int gmb_ai_decide_local_run(const char* state, const char* kind,
     float* prob = NULL;
     if (c->eng->append_ids(sess, ids, n_ids) == 0) {
         plan = c->eng->decide_plan_create(sess, eopt, n_options,
-                                          c->head_state == 1 ? c->head_T : 1.0f);
+                                          c->head_state == 1 ? c->head.head_T : 1.0f);
         if (plan) {
             lp = (float*)malloc((size_t)n_options * sizeof(float));
             prob = (float*)malloc((size_t)n_options * sizeof(float));
@@ -454,7 +373,7 @@ int gmb_ai_decide_local_run(const char* state, const char* kind,
                     if (conf > 1.0) conf = 1.0;
                     out->confidence = conf;
                     out->has_confidence = 1;
-                    if (c->calibrated) {
+                    if (c->head.calibrated) {
                         out->calibrated = prob[best];
                         out->has_calibrated = 1;
                     }
