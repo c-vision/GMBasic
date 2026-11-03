@@ -586,3 +586,61 @@ char* gmb_ai_decide_run_json_chain(const char* state, const char* kind,
     memcpy(res, out, (size_t)len + 1);
     return res;
 }
+
+/* ── Batch (desugare della forma AI DECIDE … END DECIDE): {nome:"<json risultato>"} ──
+ * `names_json`/`kinds_json` sono array JSON di stringhe (le label CHOICE possono contenere
+ * '|', quindi NON si usa un CSV). v1: valuta le domande in sequenza; il provider locale può
+ * condividere il prefisso in una versione successiva. */
+static int dc_sb_reserve(char** buf, size_t* cap, size_t need) {
+    if (*cap >= need) return 1;
+    size_t nc = *cap ? *cap : 512;
+    while (nc < need) nc *= 2;
+    char* nb = (char*)realloc(*buf, nc);
+    if (!nb) return 0;
+    *buf = nb; *cap = nc; return 1;
+}
+
+static int dc_sb_add(char** buf, size_t* cap, size_t* off, const char* s, size_t len) {
+    if (!dc_sb_reserve(buf, cap, *off + len + 1)) return 0;
+    memcpy(*buf + *off, s, len);
+    *off += len; (*buf)[*off] = 0;
+    return 1;
+}
+
+char* gmb_ai_decide_group_json(const char* state, const char* names_json, const char* kinds_json,
+                               const char* provider, const char* fallback) {
+    gmb_val_t nv = gmb_json_parse(names_json ? names_json : "[]");
+    gmb_val_t kv = gmb_json_parse(kinds_json ? kinds_json : "[]");
+    gmb_list_t nl = gmb_val_as_list(nv);
+    gmb_list_t kl = gmb_val_as_list(kv);
+    int n = (int)gmb_list_count(nl);
+    if (n < 1 || (int)gmb_list_count(kl) != n) {
+        const char* e = "{\"error\":\"AiDecideGroup: names/kinds disallineati\"}";
+        return strdup(e);
+    }
+    char* out = NULL; size_t cap = 0, off = 0;
+    if (!dc_sb_add(&out, &cap, &off, "{", 1)) return NULL;
+    char numbuf[64];
+    for (int i = 0; i < n; i++) {
+        gmb_string_t ns = gmb_val_to_string(gmb_list_get(nl, i));
+        gmb_string_t ks = gmb_val_to_string(gmb_list_get(kl, i));
+        if (i > 0 && !dc_sb_add(&out, &cap, &off, ",", 1)) { gmb_string_free(&ns); gmb_string_free(&ks); free(out); return NULL; }
+        if (!dc_sb_add(&out, &cap, &off, "\"", 1)) { gmb_string_free(&ns); gmb_string_free(&ks); free(out); return NULL; }
+        char esc[2048];
+        json_escape(ns.data ? ns.data : "", esc, sizeof esc);
+        if (!dc_sb_add(&out, &cap, &off, esc, strlen(esc)) ||
+            !dc_sb_add(&out, &cap, &off, "\":\"", 3)) { gmb_string_free(&ns); gmb_string_free(&ks); free(out); return NULL; }
+        char* r = (fallback && *fallback)
+            ? gmb_ai_decide_run_json_chain(state ? state : "", ks.data ? ks.data : "", provider ? provider : "", fallback)
+            : gmb_ai_decide_run_json(state ? state : "", ks.data ? ks.data : "", provider ? provider : "");
+        if (!r) r = strdup("{\"error\":\"decisione fallita\"}");
+        json_escape(r, esc, sizeof esc);
+        if (!dc_sb_add(&out, &cap, &off, esc, strlen(esc)) ||
+            !dc_sb_add(&out, &cap, &off, "\"", 1)) { free(r); gmb_string_free(&ns); gmb_string_free(&ks); free(out); return NULL; }
+        free(r);
+        gmb_string_free(&ns); gmb_string_free(&ks);
+        (void)numbuf;
+    }
+    if (!dc_sb_add(&out, &cap, &off, "}", 1)) { free(out); return NULL; }
+    return out;
+}

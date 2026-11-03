@@ -514,6 +514,7 @@ static const io_row IO_TBL[] = {
     { GMB_TOK_FileExistsFunc, io_fileexists }, { GMB_TOK_DirExistsFunc, io_direxists },
     { GMB_TOK_FError, io_ferror }, { GMB_TOK_FileInput, io_fileinput },
     { GMB_TOK_ReadBytesFunc, io_readbytes }, { GMB_TOK_ReadLinesFunc, io_readlines },
+
     { GMB_TOK_ReadFileFunc, io_readfile },
     { GMB_TOK_FreeFile, io_freefile },
     { GMB_TOK_Seek, io_seek }, { GMB_TOK_FOpen, io_fopen }, { GMB_TOK_FCreate, io_fcreate },
@@ -7329,6 +7330,16 @@ static int aiag_eval_validate(ctx_t* c, gmb_expr_t** a, int n, int line) {
 }
 static int aiag_decide(ctx_t* c, gmb_expr_t** a, int n, int line) {
     if (n < 2) { c99_fail(c, line, "AI DECIDE: attesi (state, kind)"); return 1; }
+    if (n >= 5) {
+        /* Forma batch interna: (state, names_json, kinds_json, provider, fallback). */
+        sb_put(&c->out, "gmb_string_take(gmb_ai_decide_group_json(");
+        emit_str_operand(c, a[0]); sb_put(&c->out, ".data, ");
+        emit_str_operand(c, a[1]); sb_put(&c->out, ".data, ");
+        emit_str_operand(c, a[2]); sb_put(&c->out, ".data, ");
+        emit_str_operand(c, a[3]); sb_put(&c->out, ".data, ");
+        emit_str_operand(c, a[4]); sb_put(&c->out, ".data))");
+        return 1;
+    }
     /* 4° arg = catena FALLBACK (CSV `|`): stessa funzione del runtime condiviso. */
     sb_put(&c->out, n >= 4 ? "gmb_string_take(gmb_ai_decide_run_json_chain("
                            : "gmb_string_take(gmb_ai_decide_run_json(");

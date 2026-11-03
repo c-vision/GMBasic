@@ -327,7 +327,7 @@ internal static partial class MlxTokenizerNative
 /// model. Only the actual decisions (which tool or "ANSWER", enum/boolean values, numeric
 /// digits) go through <c>llm_ai_mlx_session_generate_constrained</c>, one token at a time,
 /// restricted to the finitely many valid continuations at that point.</summary>
-internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter, ISessionStreamingCompleter, ISessionSamplingCompleter, ISessionPenaltyCompleter, ILoraAdapterCompleter, ISessionBatchCompleter, IDiskSwappableSessionCompleter, INativeToolDispatchCompleter, ILatentCompleter, ITokenizingCompleter, IDecisionCompleter, Basic.AI.Speculative.ISpeculativeTarget, Basic.AI.Speculative.ISpeculativeBatchTarget, IDisposable
+internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter, ISessionStreamingCompleter, ISessionSamplingCompleter, ISessionPenaltyCompleter, ILoraAdapterCompleter, ISessionBatchCompleter, IDiskSwappableSessionCompleter, INativeToolDispatchCompleter, ILatentCompleter, ITokenizingCompleter, IDecisionCompleter, IDecisionGroupCompleter, Basic.AI.Speculative.ISpeculativeTarget, Basic.AI.Speculative.ISpeculativeBatchTarget, IDisposable
 {
     // Generous fixed cap for the tokenizer's "query then fill" API -- large enough for any
     // realistic prompt without needing the two-call size-query dance on every request; the
@@ -871,6 +871,15 @@ internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter
         {
             DestroySession(sessionId);
         }
+    }
+
+    /// <summary>Batch di decisioni sullo stesso stato. v1: N decisioni singole (correttezza);
+    /// il prefill/KV condiviso è l'ottimizzazione successiva (stessa API).</summary>
+    public IReadOnlyList<DecisionResult> DecideGroup(IReadOnlyList<DecisionRequest> requests)
+    {
+        var all = new List<DecisionResult>(requests.Count);
+        foreach (var request in requests) all.AddRange(Decide(request));
+        return all;
     }
 
     /// <summary>Pulizia del rumore di template dall'output GREZZO del modello, PARI a quella di

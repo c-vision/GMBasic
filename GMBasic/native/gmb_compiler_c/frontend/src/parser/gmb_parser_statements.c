@@ -382,6 +382,32 @@ static char* dc_parse_fallback_csv(gmb_parser_t* p, int line, int* present) {
     return strdup(buf);
 }
 
+/* Array JSON di stringhe (le label CHOICE possono contenere '|': niente CSV). */
+static char* dc_json_array(char** items, int n) {
+    size_t cap = 64, off = 0;
+    char* out = (char*)malloc(cap);
+    if (!out) return NULL;
+    #define DC_ARR_NEED(k) do { if (off + (k) + 1 > cap) { while (off + (k) + 1 > cap) cap *= 2;         char* nb = (char*)realloc(out, cap); if (!nb) { free(out); return NULL; } out = nb; } } while (0)
+    DC_ARR_NEED(1); out[off++] = '[';
+    for (int i = 0; i < n; i++) {
+        if (i) { DC_ARR_NEED(1); out[off++] = ','; }
+        DC_ARR_NEED(1); out[off++] = '"';
+        for (const char* p = items[i] ? items[i] : ""; *p; p++) {
+            unsigned char c = (unsigned char)*p;
+            if (c == '"' || c == '\\') { DC_ARR_NEED(2); out[off++] = '\\'; out[off++] = (char)c; }
+            else if (c == '\n') { DC_ARR_NEED(2); out[off++] = '\\'; out[off++] = 'n'; }
+            else if (c == '\r') { DC_ARR_NEED(2); out[off++] = '\\'; out[off++] = 'r'; }
+            else if (c == '\t') { DC_ARR_NEED(2); out[off++] = '\\'; out[off++] = 't'; }
+            else if (c >= 0x20) { DC_ARR_NEED(1); out[off++] = (char)c; }
+        }
+        DC_ARR_NEED(1); out[off++] = '"';
+    }
+    DC_ARR_NEED(1); out[off++] = ']';
+    out[off] = 0;
+    #undef DC_ARR_NEED
+    return out;
+}
+
 #define DC_BATCH_MAX 16
 
 static gmb_stmt_t* dc_parse_batch(gmb_parser_t* p, int line) {
@@ -452,19 +478,33 @@ static gmb_stmt_t* dc_parse_batch(gmb_parser_t* p, int line) {
     }
     gmb_p_adv(p);
 
+    /* Una sola entry point per l'intero batch; ogni destinazione estrae la propria
+     * stringa dal risultato (JSON.EXTRACT) — in C l'assegnazione a DECISION auto-parsa. */
+    char* names_json = dc_json_array(names, n);
+    char* kinds_json = dc_json_array(kinds, n);
+    if (!names_json || !kinds_json) {
+        free(names_json); free(kinds_json);
+        gmb_p_set_err(p, "AI DECIDE batch: memoria", line);
+        return NULL;
+    }
+    gmb_expr_t** gargs = (gmb_expr_t**)malloc(5 * sizeof(gmb_expr_t*));
+    gargs[0] = state;
+    gargs[1] = gmb_expr_str(names_json, line);
+    gargs[2] = gmb_expr_str(kinds_json, line);
+    gargs[3] = provider ? provider : gmb_expr_str("", line);
+    gargs[4] = fb_expr ? fb_expr : gmb_expr_str("", line);
+    free(names_json); free(kinds_json);
+    gmb_expr_t* group = gmb_expr_call_typed("DECIDE", GMB_TOK_AiDecide, gargs, 5, line);
+
     gmb_stmt_t* first = NULL;
     for (int i = 0; i < n; i++) {
-        int nargs = 2 + (provider ? 1 : 0) + (fb_expr ? 1 : 0);
-        gmb_expr_t** args = (gmb_expr_t**)malloc((size_t)nargs * sizeof(gmb_expr_t*));
-        args[0] = (i == 0) ? state : gmb_expr_clone(state);
-        args[1] = gmb_expr_str(kinds[i], line);
-        int ai = 2;
-        if (provider) args[ai++] = (i == 0) ? provider : gmb_expr_clone(provider);
-        if (fb_expr) args[ai] = (i == 0) ? fb_expr : gmb_expr_clone(fb_expr);
-        gmb_expr_t* call = gmb_expr_call_typed("DECIDE", GMB_TOK_AiDecide, args, nargs, line);
+        gmb_expr_t** eargs = (gmb_expr_t**)malloc(2 * sizeof(gmb_expr_t*));
+        eargs[0] = (i == 0) ? group : gmb_expr_clone(group);
+        eargs[1] = gmb_expr_str(names[i], line);
+        gmb_expr_t* extract = gmb_expr_call_typed("EXTRACT", GMB_TOK_Extract, eargs, 2, line);
         gmb_stmt_t* a = gmb_stmt_new(GMB_STMT_ASSIGN, line);
         a->target = names[i];
-        a->value = call;
+        a->value = extract;
         if (!first) first = a; else gmb_p_queue_stmt(p, a);
     }
     return first;
