@@ -1496,6 +1496,14 @@ static int gmb_json_is_list(gmb_val_t v) {
 static gmb_val_t gmb_json_nav(gmb_val_t root, const char* path, int* ok) {
     *ok = 1;
     gmb_val_t cur = root;
+    /* `DIM x AS JSON/DECISION` può restare una STRINGA (parità IL/PCode con l'assegnazione
+     * non ancora parsata): il member access deve parsarla on-access, come fa
+     * `gmb_val_as_dict`. Senza questo, `x.Campo` numerico funzionava (gmb_val_as_dict) ma il
+     * confronto testuale `x.Campo = "true"` leggeva "" (gmb_json_path_text) → divergenza C99. */
+    if (cur.kind == GMB_TYPE_STRING && cur.v_string.data && cur.v_string.data[0] == '{') {
+        gmb_val_t pv = gmb_json_parse(cur.v_string.data);
+        if (pv.kind == GMB_TYPE_OBJECT) cur = pv;
+    }
     char seg[256];
     const char* p = path;
     while (*p) {
