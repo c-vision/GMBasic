@@ -20,7 +20,7 @@ Media I/O and DSP. The **WAV PCM16/FLOAT32** core is self-contained; the codecs 
 | **TIFF** | `mm_tiff_read`/`mm_tiff_write` (8-bit gray/RGB/RGBA + **palette**/**CMYK** in read; little/big-endian; Compression none/PackBits, single/multiple strip; **multi-IFD** via `mm_tiff_read_page`/`mm_tiff_pages`) |
 | **PNM** | `mm_pnm_read`/`mm_pnm_write` (P5 gray / P6 RGB) |
 | **QOI** | `mm_qoi_read`/`mm_qoi_write` (Quite OK Image, lossless) |
-| **WebP** | `mm_webp_read`/`mm_webp_write` — they load the **shim of the `webp` package** (self-contained, static libwebp) from the cache `~/.gmb/packages/webp/<ver>/lib/<platform>/`; **no system lib** |
+| **WebP** | `mm_webp_read`/`mm_webp_write` — they load the **shim of the `webp` package** (self-contained, static libwebp) from the cache `~/.gmbasic/packages/webp/<ver>/lib/<platform>/`; **no system lib** |
 | **Image ops** | `mm_img_resize_nn`/`_bilinear`, `mm_img_crop`, `mm_img_rotate90`, `mm_img_flip_h`/`_v`, `mm_img_to_gray`, `mm_img_to_channels`, `mm_img_invert`, `mm_img_brightness`, `mm_img_contrast`, `mm_img_threshold`, `mm_img_apply_lut`, `mm_img_blur_box`, `mm_img_blur_gaussian`, `mm_img_morph` (erode/dilate), `mm_img_dither`, `mm_img_warp_perspective`, `mm_img_sharpen`, `mm_img_sobel`, `mm_img_blend`, `mm_img_fill`, `mm_img_paste` |
 
 ## Test

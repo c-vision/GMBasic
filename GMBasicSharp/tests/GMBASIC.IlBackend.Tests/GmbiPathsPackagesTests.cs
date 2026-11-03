@@ -27,7 +27,7 @@ public class GmbiPathsPackagesTests
         try
         {
             var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            Assert.Equal(Path.Combine(home, ".gmb", "packages"), GmbiPaths.PackagesDirFor(dir, null));
+            Assert.Equal(Path.Combine(home, ".gmbasic", "packages"), GmbiPaths.PackagesDirFor(dir, null));
         }
         finally { Directory.Delete(dir, true); }
     }

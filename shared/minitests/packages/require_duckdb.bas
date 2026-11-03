@@ -1,7 +1,7 @@
 ' TAG: unsupported-c99native
 ' EXPECT: count= 3
 ' REQUIRE (package manager) + FFI DuckDB (namespace DUCKDB) su 4 backend.
-'   REQUIRE "duckdb"  risolve il pacchetto (~/.gmb/packages) e include duckdb.inc.
+'   REQUIRE "duckdb"  risolve il pacchetto (~/.gmbasic/packages) e include duckdb.inc.
 '   IMPORT DUCKDB WITH ALIAS  porta il namespace in scope -> chiamate DUCKDB.<Membro>(...).
 ' Copre: DUCKDB.AVAILABLE/OPEN/EXEC/QUERY/APPENDER/APPEND/FLUSH/CLOSEAPPENDER/CLOSE.
 ' Parità 5/5: IL, P-Code, VM/C, C99Native.

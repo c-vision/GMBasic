@@ -6,7 +6,7 @@
  *
  * NESSUNA libreria di sistema: lo shim `libgmbwebp.dylib` (libwebp STATICAMENTE linkata dentro,
  * self-contained) e' INSTALLATO col pacchetto e caricato via dlopen da
- * ~/.gmb/packages/webp/<ver>/lib/<platform>/. Se il pacchetto `webp` non e' installato,
+ * ~/.gmbasic/packages/webp/<ver>/lib/<platform>/. Se il pacchetto `webp` non e' installato,
  * le funzioni ritornano -1 (nessuna dipendenza implicita dal sistema). */
 #include "gmbmedia.h"
 #include <stdio.h>
@@ -53,12 +53,12 @@ static int mm_webp_load(void) {
         }
     }
     if (!g_h) g_h = dlopen("libgmbwebp.dylib", RTLD_LAZY);
-    /* (2) fallback legacy: pacchetto installato in ~/.gmb/packages/webp. */
+    /* (2) fallback: pacchetto installato in ~/.gmbasic/packages/webp. */
     if (!g_h) {
         struct passwd* pw = getpwuid(getuid());
         if (pw && pw->pw_dir) {
             char base[1024];
-            snprintf(base, sizeof(base), "%s/.gmb/packages/webp", pw->pw_dir);
+            snprintf(base, sizeof(base), "%s/.gmbasic/packages/webp", pw->pw_dir);
             DIR* d = opendir(base);
             if (d) {
                 static const char* relpaths[] = {
