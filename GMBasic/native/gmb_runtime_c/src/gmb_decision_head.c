@@ -27,6 +27,24 @@ void gmb_decision_head_init(gmb_decision_head_t* head) {
     head->calibrated = 0;
 }
 
+static int head_load_path(const char* path, gmb_decision_head_t* head);
+
+int gmb_decision_head_load(const char* model_dir, gmb_decision_head_t* head) {
+    if (!head) return -1;
+    if (!model_dir || !*model_dir) { gmb_decision_head_init(head); return 0; }
+    char path[1300];
+    snprintf(path, sizeof path, "%s/scoring_head.json", model_dir);
+    return head_load_path(path, head);
+}
+
+/* Artefatto di calibrazione a PATH ESPLICITO (`decideCalibration` nella config del provider):
+ * 1 = caricato, 0 = assente, -1 = presente ma illeggibile. */
+int gmb_decision_head_load_file(const char* path, gmb_decision_head_t* head) {
+    if (!head) return -1;
+    if (!path || !*path) { gmb_decision_head_init(head); return 0; }
+    return head_load_path(path, head);
+}
+
 int gmb_decision_head_slot(const gmb_decision_option_t* option) {
     if (!option) return -1;
     for (int i = 0; i < GMB_DECISION_HEAD_SLOTS; i++) {
@@ -51,13 +69,9 @@ static int head_number(const char* js, const char* path, float* out) {
     return ok;
 }
 
-int gmb_decision_head_load(const char* model_dir, gmb_decision_head_t* head) {
-    if (!head) return -1;
+/* Carica l'artefatto da un PATH ESPLICITO (usato anche da `decideCalibration`). */
+static int head_load_path(const char* path, gmb_decision_head_t* head) {
     gmb_decision_head_init(head);
-    if (!model_dir || !*model_dir) return 0;
-
-    char path[1300];
-    snprintf(path, sizeof path, "%s/scoring_head.json", model_dir);
     struct stat st;
     if (stat(path, &st) != 0 || !S_ISREG(st.st_mode)) return 0;
 

@@ -369,6 +369,13 @@ internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter
     private readonly string _modelDirPath;
     // Lazy: l'artefatto è opzionale e si legge una volta sola.
     private ScoringHead? _scoringHead;
+
+    // Decide per-modello (config del provider completion): decide=off|on|auto,
+    // decideTemplate (system override o template utente con {state}/{options}),
+    // decideCalibration (artefatto esplicito; default <model>/scoring_head.json).
+    private readonly string _decideMode;
+    private readonly string? _decideTemplate;
+    private readonly string? _decideCalibration;
     private readonly int _maxTokens;
     private readonly int _contextSize;
     private readonly int _eosTokenId;
@@ -439,6 +446,10 @@ internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter
         // Chunked prefill: dimensione massima dei token per grafo in session_append
         // (default nativo 4096 se non configurato o <=0).
         _prefillChunk = int.TryParse(descriptor.GetConfig("prefillChunk"), out var pc) && pc > 0 ? pc : 0;
+
+        _decideMode = (descriptor.GetConfig("decide") ?? "auto").Trim().ToLowerInvariant();
+        _decideTemplate = descriptor.GetConfig("decideTemplate");
+        _decideCalibration = descriptor.GetConfig("decideCalibration");
 
         // Thinking effort (DeepSeek V4.1/V4, stile --think-level di DS4): 1..100 = prefisso di
         // reasoning anteposto al system; 0/assente = disattivato. Testo identico a
@@ -770,6 +781,42 @@ internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter
         }
     }
 
+    private void EnsureDecideEnabled()
+    {
+        if (_decideMode == "off")
+            throw new DecisionProviderException(
+                $"local: decisione disabilitata per questo modello (decide=off, '{_modelName}').");
+    }
+
+    private ScoringHead? LoadScoringHead() =>
+        string.IsNullOrWhiteSpace(_decideCalibration)
+            ? ScoringHead.TryLoad(_modelDirPath)
+            : ScoringHead.TryLoadFile(_decideCalibration);
+
+    /// <summary>Prompt di decisione: default storico, oppure `decideTemplate` come system
+    /// (override completo) o come template utente se contiene `{state}`/`{options}`.</summary>
+    private (string Instructions, string User) BuildDecisionPrompt(
+        DecisionRequest request, string[] labels, string answer)
+    {
+        const string defaultSystem = "You are a decision engine. Choose exactly one allowed option.";
+        var instructions = string.IsNullOrWhiteSpace(request.Instructions)
+            ? defaultSystem : request.Instructions!;
+        var joined = string.Join(", ", labels);
+        if (!string.IsNullOrWhiteSpace(_decideTemplate)
+            && (_decideTemplate!.Contains("{state}", StringComparison.Ordinal)
+                || _decideTemplate.Contains("{options}", StringComparison.Ordinal)))
+        {
+            var user = _decideTemplate
+                .Replace("{state}", request.State, StringComparison.Ordinal)
+                .Replace("{options}", joined, StringComparison.Ordinal);
+            return (instructions, user);
+        }
+        if (!string.IsNullOrWhiteSpace(_decideTemplate))
+            instructions = _decideTemplate!;
+        return (instructions,
+            $"State:\n{request.State}\nAllowed options: {joined}\n{answer}");
+    }
+
     // ── IDecisionCompleter (JEV/SystemOne): decisione dai logits del modello locale ──
     // Prompt via chat template reale, prefill once, readout delle opzioni a token singolo
     // (ABI v8 CAP_DECIDE). Nessuna generazione: legge solo P(token_opzione) alla posizione
@@ -781,9 +828,10 @@ internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter
     public IReadOnlyList<DecisionResult> Decide(DecisionRequest request)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        EnsureDecideEnabled();
         request.Validate();
 
-        var head = _scoringHead ??= ScoringHead.TryLoad(_modelDirPath);
+        var head = _scoringHead ??= LoadScoringHead();
         var effective = head?.Apply(request) ?? request;
 
         var labels = request.UseSlotTokens
@@ -792,10 +840,7 @@ internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter
         var answer = request.UseSlotTokens
             ? "Answer with exactly one option letter (A..P) and nothing else."
             : "Answer with exactly one option and nothing else.";
-        var instructions = string.IsNullOrWhiteSpace(request.Instructions)
-            ? "You are a decision engine. Choose exactly one allowed option."
-            : request.Instructions!;
-        var user = $"State:\n{request.State}\nAllowed options: {string.Join(", ", labels)}\n{answer}";
+        var (instructions, user) = BuildDecisionPrompt(request, labels, answer);
         var messages = new List<(string Role, string Content)>
         {
             ("system", instructions),
@@ -886,6 +931,7 @@ internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter
     public IReadOnlyList<DecisionResult> DecideGroup(IReadOnlyList<DecisionRequest> requests)
     {
         if (requests.Count == 0) return [];
+        EnsureDecideEnabled();
 
         var prompts = new List<int[]>(requests.Count);
         var engineOptions = new List<MlxEngineNative.MlxDecideOption[]>(requests.Count);
@@ -895,7 +941,7 @@ internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter
         foreach (var request in requests)
         {
             request.Validate();
-            var head = _scoringHead ??= ScoringHead.TryLoad(_modelDirPath);
+            var head = _scoringHead ??= LoadScoringHead();
             var effective = head?.Apply(request) ?? request;
             var labels = request.UseSlotTokens
                 ? effective.Options.Select(o => $"{o.Id}) {o.Display}").ToArray()
@@ -903,10 +949,7 @@ internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter
             var answer = request.UseSlotTokens
                 ? "Answer with exactly one option letter (A..P) and nothing else."
                 : "Answer with exactly one option and nothing else.";
-            var instructions = string.IsNullOrWhiteSpace(request.Instructions)
-                ? "You are a decision engine. Choose exactly one allowed option."
-                : request.Instructions!;
-            var user = $"State:\n{request.State}\nAllowed options: {string.Join(", ", labels)}\n{answer}";
+            var (instructions, user) = BuildDecisionPrompt(request, labels, answer);
             var prompt = _buildChatTranscript([("system", instructions), ("user", user)], addAssistantOpener: true);
             var ids = Encode(prompt);
             if (ids.Length == 0)
