@@ -106,6 +106,11 @@ int gmb_ai_decide_local_run(const char* state, const char* kind,
                             const gmb_decision_option_t* options, int n_options,
                             gmb_decision_result_t* out, char* err, size_t errcap);
 
+/* Match deterministico di una RISPOSTA GENERATA contro il dominio (usato dall'adapter
+ * locale e da quello remoto): esatto (id/label) → numero → parola intera con label più lunga
+ * ("1" non cattura "10") → slot A..P. Ritorna l'indice, o -1 se nessuna opzione corrisponde. */
+int gmb_decision_match_text(const gmb_decision_option_t* options, int n_options, const char* text);
+
 /* P6 — provider ADAPTER (generativo): usa il MODELLO LOCALE per GENERARE la risposta e
  * riconosce l'opzione scelta (id/label esatti → numero → parola intera → slot A..P).
  * È il corrispettivo C di `AdapterDecisionProvider` (managed): per i modelli/endpoint senza

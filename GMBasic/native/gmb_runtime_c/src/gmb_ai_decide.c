@@ -376,6 +376,207 @@ static int dc_typesafe_run(const char* state, const char* kind,
     return 1;
 }
 
+/* ── P6 — adapter REMOTO (OpenAI-compatibile) ─────────────────────────────────────────────
+ * Usa il provider completion attivo quando ha `baseUrl` (endpoint remoto): POST
+ * `<baseUrl>[/chat/completions]` con i messaggi system/user, legge
+ * `choices[0].message.content` e riconosce l'opzione. Ritorna:
+ *   1 = risultato, 0 = nessun baseUrl (usa il provider locale), -1 = errore esplicito. */
+static int dc_adapter_remote_run(const char* state, const char* kind,
+                                 const gmb_decision_option_t* options, int n_options,
+                                 gmb_decision_result_t* out, char* err, size_t errcap)
+{
+    const char* cfg = gmb_provider_active_config("completion");
+    if (!cfg || !*cfg) return 0;
+    char* base = gmb_json_extract(cfg, "baseUrl");
+    if (!base || !*base) { free(base); return 0; }
+    char* api = gmb_json_extract(cfg, "apiKey");
+    char* model = gmb_json_extract(cfg, "model");
+    char* timeout_ms = gmb_json_extract(cfg, "timeoutMs");
+    if (!api) api = strdup("");
+    if (!model) model = strdup("");
+    if (!timeout_ms) timeout_ms = strdup("");
+
+    char url[2048];
+    size_t bl = strlen(base);
+    if (strstr(base, "/chat/completions"))
+        snprintf(url, sizeof url, "%s", base);
+    else
+        snprintf(url, sizeof url, "%s%s/chat/completions", base, bl && base[bl - 1] == '/' ? "" : "");
+    free(base);
+
+    char labels[4096]; labels[0] = 0;
+    for (int i = 0; i < n_options; i++) {
+        const char* lab = (options[i].label && *options[i].label) ? options[i].label : options[i].id;
+        size_t used = strlen(labels);
+        if (used >= sizeof labels) break;
+        snprintf(labels + used, sizeof labels - used, "%s%s", i ? ", " : "", lab ? lab : "");
+    }
+    size_t need = strlen(state ? state : "") + strlen(labels) + strlen(model) + 2048;
+    char* req = (char*)malloc(need);
+    if (!req) { free(api); free(model); free(timeout_ms); return -1; }
+    size_t off = 0;
+    #define DC_AD_APP(...) do { int _n = snprintf(req + off, need - off, __VA_ARGS__); \
+        if (_n < 0 || (size_t)_n >= need - off) { off = need; } else off += (size_t)_n; } while (0)
+    DC_AD_APP("{\"model\":\"");
+    if (off < need) { json_escape(model, req + off, need - off); off += strlen(req + off); }
+    DC_AD_APP("\",\"temperature\":0,\"max_tokens\":48,\"messages\":[{\"role\":\"system\",\"content\":\"");
+    if (off < need) {
+        json_escape("You are a decision engine. Choose exactly one allowed option.", req + off, need - off);
+        off += strlen(req + off);
+    }
+    DC_AD_APP("\"},{\"role\":\"user\",\"content\":\"State:\\n");
+    if (off < need) { json_escape(state ? state : "", req + off, need - off); off += strlen(req + off); }
+    DC_AD_APP("\\nAllowed options: ");
+    if (off < need) { json_escape(labels, req + off, need - off); off += strlen(req + off); }
+    DC_AD_APP("\\nAnswer with exactly one option and nothing else.\"}]}");
+    if (off >= need) {
+        free(req); free(api); free(model); free(timeout_ms);
+        if (err && errcap) snprintf(err, errcap, "adapter remoto: richiesta troppo grande");
+        return -1;
+    }
+
+    gmb_net_http_options_t opts;
+    memset(&opts, 0, sizeof opts);
+    opts.method = "POST";
+    opts.body = req;
+    opts.body_len = strlen(req);
+    opts.timeout_ms = 30000;
+    if (api && *api) opts.bearer_token = api;
+    if (timeout_ms && *timeout_ms) {
+        long t = strtol(timeout_ms, NULL, 10);
+        if (t > 0) opts.timeout_ms = t;
+    }
+    int status = 0;
+    char* body = NULL; size_t blen = 0; char* neterr = NULL; char* hdrs = NULL;
+    int rc = gmb_net_http_request(url, &opts, &status, &body, &blen, &neterr, &hdrs);
+    free(req); free(api); free(model); free(timeout_ms);
+    if (hdrs) free(hdrs);
+    if (rc != 0) {
+        if (err && errcap) snprintf(err, errcap, "adapter remoto: HTTP fallito: %s", neterr ? neterr : "rete");
+        free(body); free(neterr);
+        return -1;
+    }
+    free(neterr);
+    if (status < 200 || status >= 300) {
+        if (err && errcap) snprintf(err, errcap, "adapter remoto: HTTP %d", status);
+        free(body);
+        return -1;
+    }
+    if (!body || blen == 0) {
+        free(body);
+        if (err && errcap) snprintf(err, errcap, "adapter remoto: risposta vuota");
+        return -1;
+    }
+    char* js = (char*)malloc(blen + 1);
+    if (!js) { free(body); return -1; }
+    memcpy(js, body, blen); js[blen] = 0; free(body);
+    char* content = gmb_json_extract(js, "choices[0].message.content");
+    if (!content || !*content) { free(content); content = gmb_json_extract(js, "content"); }
+    free(js);
+    if (!content || !*content) {
+        free(content);
+        if (err && errcap) snprintf(err, errcap, "adapter remoto: risposta senza content");
+        return -1;
+    }
+    int best = gmb_decision_match_text(options, n_options, content);
+    if (best < 0) {
+        char detail[200];
+        size_t n = strlen(content);
+        if (n > 180) n = 180;
+        memcpy(detail, content, n); detail[n] = 0;
+        if (err && errcap) snprintf(err, errcap,
+            "adapter remoto: la risposta non corrisponde a un'opzione ('%s')", detail);
+        free(content);
+        return -1;
+    }
+    memset(out, 0, sizeof(*out));
+    out->kind = (kind && ieq(kind, "NOUL")) ? GMB_DECISION_NOUL
+             : (kind && strncasecmp(kind, "SCORE", 5) == 0) ? GMB_DECISION_SCORE
+             : GMB_DECISION_CHOICE;
+    out->option_id = options[best].id;
+    out->value = (options[best].label && *options[best].label) ? options[best].label : options[best].id;
+    out->probability = 1.0f;
+    free(content);
+    return 1;
+}
+
+/* ── Match deterministico di una risposta generata (provider adapter) ───────────────────── */
+static void dc_match_trim(const char* in, char* out, size_t cap) {
+    if (!out || cap == 0) return;
+    out[0] = 0;
+    if (!in) return;
+    const char* p = in;
+    while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r' || *p == '"' || *p == '\'' ||
+           *p == '(' || *p == '[' || *p == '{') p++;
+    const char* e = p + strlen(p);
+    while (e > p && (e[-1] == ' ' || e[-1] == '\t' || e[-1] == '\n' || e[-1] == '\r' ||
+                     e[-1] == '"' || e[-1] == '\'' || e[-1] == '.' || e[-1] == '!' ||
+                     e[-1] == '?' || e[-1] == ':' || e[-1] == ';' || e[-1] == ')' ||
+                     e[-1] == ']' || e[-1] == '}')) e--;
+    size_t n = (size_t)(e - p);
+    if (n >= cap) n = cap - 1;
+    memcpy(out, p, n);
+    out[n] = 0;
+}
+
+static int dc_match_alnum(char c) {
+    return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_';
+}
+
+static int dc_match_word_contains(const char* haystack, const char* needle) {
+    if (!needle || !*needle) return 0;
+    size_t nl = strlen(needle);
+    for (const char* p = haystack; *p; p++) {
+        if (strncasecmp(p, needle, nl) != 0) continue;
+        int left_ok = (p == haystack) || !dc_match_alnum(p[-1]);
+        int right_ok = !dc_match_alnum(p[nl]);
+        if (left_ok && right_ok) return 1;
+    }
+    return 0;
+}
+
+int gmb_decision_match_text(const gmb_decision_option_t* options, int n, const char* text) {
+    if (!options || n < 1 || !text) return -1;
+    char t[512];
+    dc_match_trim(text, t, sizeof t);
+    if (!t[0]) return -1;
+    for (int i = 0; i < n; i++)
+        if ((options[i].id && strcasecmp(t, options[i].id) == 0) ||
+            (options[i].label && strcasecmp(t, options[i].label) == 0))
+            return i;
+    char* end = NULL;
+    double num = strtod(t, &end);
+    if (end && end != t) {
+        while (*end == ' ' || *end == '\t') end++;
+        if (*end == 0) {
+            for (int i = 0; i < n; i++) {
+                const char* lab = (options[i].label && *options[i].label) ? options[i].label : options[i].id;
+                char* e2 = NULL;
+                if (!lab) continue;
+                double v = strtod(lab, &e2);
+                if (e2 && e2 != lab && *e2 == 0 && fabs(v - num) < 1e-9) return i;
+            }
+        }
+    }
+    int best = -1;
+    size_t best_len = 0;
+    for (int i = 0; i < n; i++) {
+        const char* lab = (options[i].label && *options[i].label) ? options[i].label : options[i].id;
+        if (!lab) continue;
+        if (dc_match_word_contains(t, lab) || (options[i].id && dc_match_word_contains(t, options[i].id))) {
+            size_t l = strlen(lab);
+            if (l > best_len) { best = i; best_len = l; }
+        }
+    }
+    if (best >= 0) return best;
+    char first = t[0];
+    for (int i = 0; i < n; i++)
+        if (options[i].id && options[i].id[1] == 0 &&
+            toupper((unsigned char)options[i].id[0]) == toupper((unsigned char)first))
+            return i;
+    return -1;
+}
+
 /* Risolve il dominio del kind in una struttura STABILE (label/custom inclusi). Una sola
  * grammatica per dispatcher, group e provider locale; `d` deve vivere quanto il dominio. */
 int gmb_decision_resolve_domain(const char* kind, gmb_decision_domain_t* d) {
@@ -498,8 +699,12 @@ char* gmb_ai_decide_run_json(const char* state, const char* kind, const char* pr
     if (effective_provider && (ieq(effective_provider, "adapter") || ieq(effective_provider, "llm"))) {
         gmb_decision_result_t adapter_result;
         char aerr[GMB_DECISION_ERR_CAP] = "";
-        if (gmb_ai_decide_local_adapter_run(state ? state : "", kind, options, n_options,
-                                            &adapter_result, aerr, sizeof aerr) != 1) {
+        int ar = dc_adapter_remote_run(state ? state : "", kind, options, n_options,
+                                       &adapter_result, aerr, sizeof aerr);
+        if (ar == 0)
+            ar = gmb_ai_decide_local_adapter_run(state ? state : "", kind, options, n_options,
+                                                &adapter_result, aerr, sizeof aerr);
+        if (ar != 1) {
             char esc[GMB_DECISION_ERR_CAP + 64];
             json_escape(aerr[0] ? aerr : "adapter non disponibile", esc, sizeof esc);
             char ebuf[GMB_DECISION_ERR_CAP + 96];
