@@ -2840,6 +2840,18 @@ gmb_val_t gmb_regex_replace_val(gmb_val_t reg, const char* text, const char* rep
 gmb_val_t gmb_regex_split_val(gmb_val_t reg, const char* text);
 gmb_string_t* gmb_regex_split_strings(gmb_val_t reg, const char* text, gmb_int_t* count);
 
+
+/* Valutatore a runtime REGISTRABILE (compilatore+VM). Vedi gmb_eval_hook.c:
+ * il motore (VM/C) registra la funzione; senza motore il chiamante lo dichiara. */
+typedef int (*gmb_eval_env_get_fn)(void* env, const char* name, gmb_val_t* out);
+typedef int (*gmb_eval_env_set_fn)(void* env, const char* name, gmb_val_t in);
+typedef int (*gmb_eval_env_fn)(const char* src, int as_stmt,
+                               gmb_eval_env_get_fn get, gmb_eval_env_set_fn set,
+                               void* env, gmb_val_t* out);
+void gmb_eval_register_env(gmb_eval_env_fn fn);
+int  gmb_eval_env(const char* src, int as_stmt,
+                  gmb_eval_env_get_fn get, gmb_eval_env_set_fn set,
+                  void* env, gmb_val_t* out);
 #ifdef __cplusplus
 }
 #endif

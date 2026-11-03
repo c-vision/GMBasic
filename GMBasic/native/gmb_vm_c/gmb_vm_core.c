@@ -6112,6 +6112,7 @@ static const vm_sys_row VM_SYS_TBL[] = {
     { GMB_SYS_DBF_BEGIN_GROUP_COMMIT, vm_sys_db },
     { GMB_SYS_DBF_END_GROUP_COMMIT, vm_sys_db },
     { GMB_SYS_DBF_CLOSE_CURRENT, vm_sys_db },
+    { GMB_SYS_DBF_CLOSE_AREA, vm_sys_db },
     /* ISAM: replicazione (107/108/109). Erano fuori dal range GMB_SYS_ISAM_USE..+N e non
      * registrate → la chiamata cadeva nel dispatch generico (numero dove serve una stringa):
      * § MiniTests/dbf/isam_replication.bas: VMC "setrepl: no". */
@@ -8610,8 +8611,12 @@ static long gmb_multidim_target(gmb_obj_shared_val_t* sv, const double* indices,
     }
 }
 
+static __thread gmb_task_t* g_tls_cur_task = NULL;
+gmb_task_t* gmb_vm_tls_task(void) { return g_tls_cur_task; }
+
 int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
 {
+    g_tls_cur_task = task;
     /* V2: budget di istruzioni per tick (quantum). Esaurito il budget il tick
      * ritorna GMB_TICK_PREEMPTED senza toccare lo stato del task: lo scheduler
      * lo riaccoda (fairness con GOMAXPROCS=1, come PCodeTickResult.Preempted). */

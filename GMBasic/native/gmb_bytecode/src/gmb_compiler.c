@@ -8016,7 +8016,10 @@ int gmb_compile_snippet(const char* src, int as_stmt, const gmb_snippet_ext_t* e
     /* espressione solo se il frammento È un'espressione (v. snip_classify) */
     int wrap_mode = 1;              /* 0 espressione, 1 statement (SUB), 2 corpo+RETURN target */
     char* assign_target = NULL;
-    if (!as_stmt) {
+    if (as_stmt == 2) {
+        /* SOLO espressione (REQUIRE/filtri): niente classificazione, `=` è uguaglianza. */
+        wrap_mode = 0;
+    } else if (!as_stmt) {
         char* cls_err = NULL;
         int cls = snip_classify(src, params, nparams, &cls_err, &assign_target);
         if (cls < 0) {

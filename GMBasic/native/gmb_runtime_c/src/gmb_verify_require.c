@@ -71,7 +71,11 @@ static int gmb_verify_require_holds(const char* require, const char* result, gmb
      * `RESULT$ = "zzz"` risultava VERO sul C e FALSO sul C# (`=` confronto) — silent-wrong su
      * un gate di accettazione. La variante filter ha `eq_is_assign=0` ed `as_stmt=0`
      * (espressione), la stessa semantica del valutatore C# (`MacroEvalExprWithLocals`). */
-    int rc = gmb_expr_eval_filter_ex(require, &env, gmb_verify_env_get, gmb_verify_env_set, NULL, &v);
+    /* Motore: COMPILATORE C + VM (in-VM quando il REQUIRE gira in una task).
+     * `=` è uguaglianza (parità filter). Senza motore → valutatore runtime. */
+    int rc = gmb_eval_env(require, 2, gmb_verify_env_get, gmb_verify_env_set, &env, &v);
+    if (rc == 0) return gmb_verify_truthy(v);
+    rc = gmb_expr_eval_filter_ex(require, &env, gmb_verify_env_get, gmb_verify_env_set, NULL, &v);
     if (rc != GMB_EXPR_OK) return 0;
     return gmb_verify_truthy(v);
 }
