@@ -1597,6 +1597,7 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
                         const gmb_token_t* rr = gmb_p_cur(p);
                         if (gmb_p_tok_is_string_type_name(rr))
                             s->func_val_ret_is_str = 1;
+                        if (rr && gmb_keyword_tok(rr) == GMB_TOK_Array) s->func_val_ret_is_arr = 1;
                     }
                 } else {
                     gmb_p_adv(p);
@@ -2319,6 +2320,7 @@ if (gmb_tk_rem_vari_in(t->kind)) {
                     const gmb_token_t* rr = gmb_p_cur(p);
                     if (gmb_p_tok_is_string_type_name(rr))
                         s->func_val_ret_is_str = 1;
+                    if (rr && gmb_keyword_tok(rr) == GMB_TOK_Array) s->func_val_ret_is_arr = 1;
                 }
             }
             /* AS (nome AS T, ...): cattura i nomi campo del ritorno in un CSV (stesso
@@ -2595,6 +2597,7 @@ if (gmb_tk_rem_vari_in(t->kind)) {
                         gmb_p_adv(p);
                         const gmb_token_t* rt = gmb_p_cur(p);
                         if (gmb_p_tok_is_string_type_name(rt)) ls->func_val_ret_is_str = 1;
+                        if (rt && gmb_keyword_tok(rt) == GMB_TOK_Array) ls->func_val_ret_is_arr = 1;
                         if (rt) gmb_p_adv(p);
                     }
                 } else {
@@ -2897,6 +2900,7 @@ if (gmb_tk_rem_vari_in(t->kind)) {
                     const gmb_token_t* rt = gmb_p_cur(p);
                     if (gmb_p_tok_is_string_type_name(rt))
                         s->func_val_ret_is_str = 1;
+                    if (rt && gmb_keyword_tok(rt) == GMB_TOK_Array) s->func_val_ret_is_arr = 1;
                     if (rt) gmb_p_adv(p);
                 }
                 if (gmb_p_match(p, GMB_TOK_Equal)) {

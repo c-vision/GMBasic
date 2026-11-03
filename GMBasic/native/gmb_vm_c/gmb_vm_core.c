@@ -3046,17 +3046,17 @@ double gmb_vm_call_closure_sync_list(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_clo
  * poi un double. Usata dal modello LM f(p[], x). */
 /* Chiamata sincrona (lista array params + lista array inputs) → riempie out (lista result).
  * Marshalling come sync_list (push_ref con GMB_BT_OBJECT). Modello LM vettoriale f(p[], x[]). */
-void gmb_vm_call_closure_sync_list2_vec(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure,
-                                        const double* p, int np, const double* xs, int nx, double* out)
+double gmb_vm_call_closure_sync_list2_vec(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure,
+                                         const double* p, int np, const double* xs, int nx, double* out)
 {
-    if (!closure) { for (int i = 0; i < nx; i++) out[i] = 0; return; }
+    if (!closure) { for (int i = 0; i < nx; i++) out[i] = 0; return 0.0; }
     gmb_obj_shared_val_t* pl = gmb_shared_list_new();
     if (pl) { for (int i = 0; i < np; i++) gmb_list_add(pl->list, gmb_make_val_double(p[i])); gmb_task_push_ref(task, (gmb_obj_t*)pl, GMB_BT_OBJECT); }
     else gmb_task_push_num(task, 0, GMB_BT_NUMBER);
     gmb_obj_shared_val_t* xl = gmb_shared_list_new();
     if (xl) { for (int i = 0; i < nx; i++) gmb_list_add(xl->list, gmb_make_val_double(xs[i])); gmb_task_push_ref(task, (gmb_obj_t*)xl, GMB_BT_OBJECT); }
     else gmb_task_push_num(task, 0, GMB_BT_NUMBER);
-    if (!push_frame(task, task->sp - 2, -2)) return;
+    if (!push_frame(task, task->sp - 2, -2)) return 0.0;
     if (closure->num_upvalues > 0 && closure->upvalues)
         for (int i = 0; i < closure->num_upvalues && i < 16; i++)
             task->frame->upvalues[i] = closure->upvalues[i];
@@ -3069,25 +3069,29 @@ void gmb_vm_call_closure_sync_list2_vec(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_
     int guard = 0;
     while (task->sync_active && guard++ < 1000000) gmb_vm_tick(vm, task);
     if (task->ip == -2) task->ip = task->sync_saved_ip;
-    /* risultato: lista (sync_result_ref di tipo GMB_OBJ_LIST) → out[] */
+    /* risultato: lista (sync_result_ref di tipo GMB_OBJ_LIST) → out[] (TUTTI gli elementi
+     * restituiti: il buffer del chiamante è dimensionato su m, 2026-11-03) */
     if (task->sync_result_ref && task->sync_result_ref->kind == GMB_OBJ_LIST)
     {
         gmb_obj_shared_val_t* rl = (gmb_obj_shared_val_t*)task->sync_result_ref;
-        for (int i = 0; i < nx && i < (int)rl->list->count; i++)
+        int cnt = (int)rl->list->count;
+        for (int i = 0; i < cnt; i++)
         { gmb_val_t v = rl->list->items[i]; out[i] = v.kind == GMB_TYPE_DOUBLE ? v.v_double : (double)v.v_int; }
+        return (double)cnt;
     }
-    else if (task->sync_result_ref) { for (int i = 0; i < nx; i++) out[i] = 0; }
+    for (int i = 0; i < nx; i++) out[i] = 0;
+    return 0.0;
 }
 
 /* Callback con RITORNO ARRAY (2026-11-02): una lista in ingresso -> out[] (f(v[]) AS ARRAY). */
-static void gmb_vm_call_closure_sync_list_vec(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure,
-                                              const double* vals, int n, double* out, int nout)
+static double gmb_vm_call_closure_sync_list_vec(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure,
+                                               const double* vals, int n, double* out, int nout)
 {
-    if (!closure) { for (int i = 0; i < nout; i++) out[i] = 0; return; }
+    if (!closure) { if (nout > 0) for (int i = 0; i < nout; i++) out[i] = 0; return 0.0; }
     gmb_obj_shared_val_t* lst = gmb_shared_list_new();
     if (lst) { for (int i = 0; i < n; i++) gmb_list_add(lst->list, gmb_make_val_double(vals[i])); gmb_task_push_ref(task, (gmb_obj_t*)lst, GMB_BT_OBJECT); }
     else gmb_task_push_num(task, 0, GMB_BT_NUMBER);
-    if (!push_frame(task, task->sp - 1, -2)) return;
+    if (!push_frame(task, task->sp - 1, -2)) return 0.0;
     if (closure->num_upvalues > 0 && closure->upvalues)
         for (int i = 0; i < closure->num_upvalues && i < 16; i++)
             task->frame->upvalues[i] = closure->upvalues[i];
@@ -3103,10 +3107,14 @@ static void gmb_vm_call_closure_sync_list_vec(gmb_vm_t* vm, gmb_task_t* task, gm
     if (task->sync_result_ref && task->sync_result_ref->kind == GMB_OBJ_LIST)
     {
         gmb_obj_shared_val_t* rl = (gmb_obj_shared_val_t*)task->sync_result_ref;
-        for (int i = 0; i < nout && i < (int)rl->list->count; i++)
+        int cnt = (int)rl->list->count;
+        if (nout > 0 && cnt > nout) cnt = nout;
+        for (int i = 0; i < cnt; i++)
         { gmb_val_t v = rl->list->items[i]; out[i] = v.kind == GMB_TYPE_DOUBLE ? v.v_double : (double)v.v_int; }
+        return (double)cnt;
     }
-    else for (int i = 0; i < nout; i++) out[i] = 0;
+    if (nout > 0) for (int i = 0; i < nout; i++) out[i] = 0;
+    return 0.0;
 }
 
 /* Chiamata sincrona (lista + lista) -> scalare. Usata dai callback FFI f(a[], b[]) AS DOUBLE
@@ -3344,10 +3352,13 @@ static void* g_ffi_cb_tramp_vv_i[2] = { (void*)gmb_ffi_cb_vv_i_0, (void*)gmb_ffi
 /* Ritorno ARRAY (2026-11-02): 144 = f(v[]) AS ARRAY, 145 = f(p[], x[]) AS ARRAY. */
 static gmb_ffi_cb_slot_t g_ffi_cb_slots_vo[2];
 static gmb_ffi_cb_slot_t g_ffi_cb_slots_vvo[2];
-static void gmb_ffi_cb_vo_0(double* v, int64_t n, double* out) { gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_vo[0]; gmb_vm_call_closure_sync_list_vec(q->vm, q->task, q->closure, v, (int)n, out, (int)n); }
-static void gmb_ffi_cb_vo_1(double* v, int64_t n, double* out) { gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_vo[1]; gmb_vm_call_closure_sync_list_vec(q->vm, q->task, q->closure, v, (int)n, out, (int)n); }
-static void gmb_ffi_cb_vvo_0(double* a, int64_t na, double* b, int64_t nb, double* out) { gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_vvo[0]; gmb_vm_call_closure_sync_list2_vec(q->vm, q->task, q->closure, a, (int)na, b, (int)nb, out); }
-static void gmb_ffi_cb_vvo_1(double* a, int64_t na, double* b, int64_t nb, double* out) { gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_vvo[1]; gmb_vm_call_closure_sync_list2_vec(q->vm, q->task, q->closure, a, (int)na, b, (int)nb, out); }
+/* Ritorno = numero di elementi scritti (2026-11-03): la callback dichiara quanti residui
+ * restituisce (gor_optb_fvv_len); prima scriveva al massimo n (lunghezza dell'input) e
+ * troncava i sistemi con m > n — e i chiamanti "void" ignorano il valore di ritorno. */
+static double gmb_ffi_cb_vo_0(double* v, int64_t n, double* out) { gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_vo[0]; return gmb_vm_call_closure_sync_list_vec(q->vm, q->task, q->closure, v, (int)n, out, 0); }
+static double gmb_ffi_cb_vo_1(double* v, int64_t n, double* out) { gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_vo[1]; return gmb_vm_call_closure_sync_list_vec(q->vm, q->task, q->closure, v, (int)n, out, 0); }
+static double gmb_ffi_cb_vvo_0(double* a, int64_t na, double* b, int64_t nb, double* out) { gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_vvo[0]; return gmb_vm_call_closure_sync_list2_vec(q->vm, q->task, q->closure, a, (int)na, b, (int)nb, out); }
+static double gmb_ffi_cb_vvo_1(double* a, int64_t na, double* b, int64_t nb, double* out) { gmb_ffi_cb_slot_t* q = &g_ffi_cb_slots_vvo[1]; return gmb_vm_call_closure_sync_list2_vec(q->vm, q->task, q->closure, a, (int)na, b, (int)nb, out); }
 static void* g_ffi_cb_tramp_vo[2] = { (void*)gmb_ffi_cb_vo_0, (void*)gmb_ffi_cb_vo_1 };
 static void* g_ffi_cb_tramp_vvo[2] = { (void*)gmb_ffi_cb_vvo_0, (void*)gmb_ffi_cb_vvo_1 };
 

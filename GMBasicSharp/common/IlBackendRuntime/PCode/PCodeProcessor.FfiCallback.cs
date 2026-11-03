@@ -45,6 +45,8 @@ internal sealed partial class PCodeProcessor
                 for (long i = 0; i < n; i++) l.Add(Marshal.ReadInt64(p, (int)(i * 8)));
                 return l;
             }
+            double OutCount(object? r)
+                => r is System.Collections.IList l2 ? l2.Count : 0.0;
             void WriteOut(IntPtr outp, object? r)
             {
                 if (r is not System.Collections.IList l) return;
@@ -68,7 +70,7 @@ internal sealed partial class PCodeProcessor
             }
             if (nArr == 1 && nSca == 0 && arrRet)
             {
-                var dv = new CbV1OutD((p, n, outp) => WriteOut(outp, CallFnSync(task, cd, Ld(p, n))));
+                var dv = new CbV1OutD((p, n, outp) => { var r1 = CallFnSync(task, cd, Ld(p, n)); WriteOut(outp, r1); return OutCount(r1); });
                 return (dv, Marshal.GetFunctionPointerForDelegate(dv));
             }
             if (nArr == 2 && nSca == 0 && !arrRet)
@@ -78,7 +80,7 @@ internal sealed partial class PCodeProcessor
             }
             if (nArr == 2 && nSca == 0 && arrRet)
             {
-                var dv = new CbV2OutD((p0, n0, p1, n1, outp) => WriteOut(outp, CallFnSync(task, cd, Ld(p0, n0), Ld(p1, n1))));
+                var dv = new CbV2OutD((p0, n0, p1, n1, outp) => { var r2 = CallFnSync(task, cd, Ld(p0, n0), Ld(p1, n1)); WriteOut(outp, r2); return OutCount(r2); });
                 return (dv, Marshal.GetFunctionPointerForDelegate(dv));
             }
             throw new InvalidOperationException($"callback vettoriale non supportato: array={nArr} scalari={nSca} ritornoArray={arrRet}");

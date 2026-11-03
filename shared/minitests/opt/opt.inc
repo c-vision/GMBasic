@@ -13,6 +13,8 @@
 '   FUNCTION(p() AS DOUBLE, x AS DOUBLE) AS DOUBLE   modello LM/CurveFit
 '   FUNCTION(p() AS DOUBLE, x() AS DOUBLE) AS ARRAY   modello LM vettoriale
 '
+' Le callback con RITORNO ARRAY dichiarano implicitamente m: il loro valore di ritorno è il
+' numero di elementi scritti in `out` (usato da LEASTSQUARESFIT per dedurre i residui).
 ' `bounds`/`ranges` sono appiattiti: 2*n valori (lo0, hi0, lo1, hi1, ...).
 ' Le varianti senza bounds usano [0, +1e30] per LINPROG (x>=0) e [-1e30, +1e30] per i
 ' minimizzatori. I SUB si invocano con `CALL OPT.NOME(...)`.
@@ -88,11 +90,6 @@ PUBLIC SUB CHOLESKYSOLVE(A() AS DOUBLE, n AS LONG, b() AS DOUBLE, out() AS DOUBL
     CALL OPTN_CHOLESKYSOLVE(A, b, n, out)
 END SUB
 
-' Alias DEPRECATO del nome storico (typo: era CHOLESOLVESOLVE). Usare CHOLESKYSOLVE.
-PUBLIC SUB CHOLESOLVESOLVE(A() AS DOUBLE, n AS LONG, b() AS DOUBLE, out() AS DOUBLE)
-    CALL OPTN_CHOLESKYSOLVE(A, b, n, out)
-END SUB
-
 ' SIMPLEX: massimizza c'x con A x <= b, x >= 0 (A m×n row-major).
 ' out(n) = soluzione, out(n+1) = obiettivo.
 PUBLIC SUB SIMPLEX(c() AS DOUBLE, n AS LONG, A() AS DOUBLE, m AS LONG, b() AS DOUBLE, out() AS DOUBLE)
@@ -113,6 +110,8 @@ END SUB
 PUBLIC SUB LINPROGB(c() AS DOUBLE, n AS LONG, A() AS DOUBLE, m AS LONG, b() AS DOUBLE, bounds() AS DOUBLE, out() AS DOUBLE)
     CALL OPTN_LINPROG(c, n, A, m, b, bounds, out)
 END SUB
+' LEASTSQUARESFIT con m DEDOTTO: la callback dichiara quanti residui restituisce.
+DECLARE SUB OPTN_LEASTSQUARESFITAUTO LIB "gmbopt" ALIAS "gor_optb_least_squares_fit_auto" (f AS FUNCTION(x() AS DOUBLE) AS ARRAY, x0() AS DOUBLE, n AS LONG, bounds() AS DOUBLE, out() AS DOUBLE)
 
 ' Uguaglianze Ae x = be (me×n) espanse in due disuguaglianze.
 PUBLIC SUB LINPROGEQ(c() AS DOUBLE, n AS LONG, A() AS DOUBLE, m AS LONG, b() AS DOUBLE, Ae() AS DOUBLE, me AS LONG, be() AS DOUBLE, out() AS DOUBLE)
@@ -343,8 +342,7 @@ END SUB
 ' builtin. Le SUB omonime (stesso nome, un argomento `out()` in più) restano
 ' per la forma esplicita con buffer. Le dimensioni del risultato sono quelle
 ' documentate per ogni funzione (out = n, n+1 per SIMPLEX, np per il fitting).
-' Eccezione: LEASTSQUARESFIT richiede il numero di residui m, che qui non è
-' deducibile → usare la SUB con `out(m-1)` o `LEASTSQUARESFITM`.
+' `LEASTSQUARESFIT` deduce m dal valore di ritorno della callback (come il builtin).
 ' ═══════════════════════════════════════════════════════════════════════════
 
 PUBLIC FUNCTION LEASTSQUARES(A() AS DOUBLE, rows AS LONG, cols AS LONG, b() AS DOUBLE) AS ARRAY OF DOUBLE
@@ -354,13 +352,6 @@ PUBLIC FUNCTION LEASTSQUARES(A() AS DOUBLE, rows AS LONG, cols AS LONG, b() AS D
 END FUNCTION
 
 PUBLIC FUNCTION CHOLESKYSOLVE(A() AS DOUBLE, n AS LONG, b() AS DOUBLE) AS ARRAY OF DOUBLE
-    DIM o(n - 1) AS DOUBLE
-    CALL CHOLESKYSOLVE(A, n, b, o)
-    RETURN o
-END FUNCTION
-
-' Alias deprecato (typo storico) della forma FUNCTION.
-PUBLIC FUNCTION CHOLESOLVESOLVE(A() AS DOUBLE, n AS LONG, b() AS DOUBLE) AS ARRAY OF DOUBLE
     DIM o(n - 1) AS DOUBLE
     CALL CHOLESKYSOLVE(A, n, b, o)
     RETURN o
@@ -523,18 +514,18 @@ PUBLIC FUNCTION BROYDEN(f AS FUNCTION(x() AS DOUBLE) AS ARRAY, x0() AS DOUBLE) A
     RETURN o
 END FUNCTION
 
-' LEASTSQUARESFIT: il numero di residui m NON è deducibile dall'array di ritorno
-' (la SUB lo ricava da UBOUND(out)); usare la SUB con out(m-1) oppure questa
-' variante esplicita.
-PUBLIC FUNCTION LEASTSQUARESFITM(f AS FUNCTION(x() AS DOUBLE) AS ARRAY, x0() AS DOUBLE, m AS LONG) AS ARRAY OF DOUBLE
-    DIM o(UBOUND(x0)) AS DOUBLE
-    DIM bnd(2 * (UBOUND(x0) + 1) - 1) AS DOUBLE
+' LEASTSQUARESFIT: m = numero di residui, dedotto dal valore di ritorno della callback
+' (stessa semantica del builtin OPTIMIZE.LEASTSQUARESFIT).
+PUBLIC FUNCTION LEASTSQUARESFIT(f AS FUNCTION(x() AS DOUBLE) AS ARRAY, x0() AS DOUBLE) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(x0) + 1
+    DIM o(n - 1) AS DOUBLE
+    DIM bnd(2 * n - 1) AS DOUBLE
     DIM big AS DOUBLE = 10.0 ^ 30
     DIM i AS LONG
-    FOR i = 0 TO UBOUND(x0)
+    FOR i = 0 TO n - 1
         bnd(2 * i) = -big : bnd(2 * i + 1) = big
     NEXT i
-    CALL OPTN_LEASTSQUARESFIT(f, x0, UBOUND(x0) + 1, m, bnd, o)
+    CALL OPTN_LEASTSQUARESFITAUTO(f, x0, n, bnd, o)
     RETURN o
 END FUNCTION
 

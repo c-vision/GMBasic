@@ -13113,9 +13113,44 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                          name, fv->func_arity, nargs);
                 return;
             }
-            sb_printf(&c->out, "((%s (*)(void*", fv->func_ret_str ? "gmb_string_t" : "gmb_double_t");
-            for (int i = 0; i < fv->func_arity; i++)
-                sb_put(&c->out, (fv->fn_str_params & (1 << i)) ? ", gmb_string_t" : ", gmb_double_t");
+            /* Argomenti ARRAY (2026-11-03): il target della callback riceve `double*` e il
+             * bound viaggia nel canale thread-local (come fanno gli adapter fv/FFI). Prima
+             * un array finiva sullo stack come gmb_val_t (lista) → C invalido. */
+            int arr_slot[16]; var_t* arr_var[16]; int arr_lit[16]; int n_arr = 0;
+            for (int i = 0; i < nargs && i < 16 && !c->error[0]; i++) {
+                var_t* av = NULL;
+                int lit = 0;
+                if (args[i] && args[i]->kind == GMB_EXPR_CALL && args[i]->var && strcmp(args[i]->var, "_array_") == 0)
+                    lit = 1;
+                else if (args[i] && args[i]->kind == GMB_EXPR_VAR) av = lookup_var(c, args[i]->var);
+                else if (args[i] && args[i]->kind == GMB_EXPR_CALL && args[i]->var && args[i]->nargs == 0)
+                    av = lookup_var(c, args[i]->var);
+                if (lit || (av && av->is_array && !av->matrix && !av->gkind && av->type != TY_STR)) {
+                    arr_slot[n_arr] = i; arr_var[n_arr] = av; arr_lit[n_arr] = lit; n_arr++;
+                }
+            }
+            if (n_arr) sb_put(&c->out, "({ ");
+            for (int k = 0; k < n_arr; k++) {
+                sb_printf(&c->out, "gmb_int_t __pb%d = gmb_lambda_bound(%d); gmb_lambda_bound_set(%d, ", k, k, k);
+                if (arr_lit[k]) sb_printf(&c->out, "(gmb_int_t)%d); ", args[arr_slot[k]]->nargs - 1);
+                else {
+                    sb_put(&c->out, "(gmb_int_t)(");
+                    emit_arr_len_of(c, arr_var[k]);
+                    sb_put(&c->out, ") - 1); ");
+                }
+            }
+            if (n_arr) {
+                sb_printf(&c->out, "%s __rf = ", fv->func_ret_str ? "gmb_string_t" : "gmb_double_t");
+                sb_printf(&c->out, "((%s (*)(void*", fv->func_ret_str ? "gmb_string_t" : "gmb_double_t");
+            } else {
+                sb_printf(&c->out, "((%s (*)(void*", fv->func_ret_str ? "gmb_string_t" : "gmb_double_t");
+            }
+            int is_arr_slot[16] = {0};
+            for (int k = 0; k < n_arr; k++) is_arr_slot[arr_slot[k]] = 1;
+            for (int i = 0; i < fv->func_arity; i++) {
+                if (is_arr_slot[i]) sb_put(&c->out, ", gmb_double_t*");
+                else sb_put(&c->out, (fv->fn_str_params & (1 << i)) ? ", gmb_string_t" : ", gmb_double_t");
+            }
             sb_put(&c->out, "))");
             emit_ident(c, fv->name);
             sb_put(&c->out, ".fn)(");
@@ -13123,11 +13158,27 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
             sb_put(&c->out, ".ctx");
             for (int i = 0; i < nargs; i++) {
                 sb_put(&c->out, ", ");
-                if ((fv->fn_str_params & (1 << i)) && etype(c, args[i]) != TY_STR)
+                if (is_arr_slot[i]) {
+                    if (args[i]->kind == GMB_EXPR_CALL && args[i]->var && strcmp(args[i]->var, "_array_") == 0) {
+                        /* letterale: compound literal C99 (durata del blocco) */
+                        sb_put(&c->out, "(gmb_double_t[]){ ");
+                        for (int k = 0; k < args[i]->nargs; k++) { if (k) sb_put(&c->out, ", "); emit_expr(c, args[i]->args[k]); }
+                        sb_put(&c->out, " }");
+                    } else {
+                        sb_put(&c->out, "(gmb_double_t*)");
+                        emit_expr(c, args[i]);
+                    }
+                }
+                else if ((fv->fn_str_params & (1 << i)) && etype(c, args[i]) != TY_STR)
                     { sb_put(&c->out, "gmb_double_to_string("); emit_expr(c, args[i]); sb_put(&c->out, ")"); }
                 else emit_expr(c, args[i]);
             }
             sb_put(&c->out, ")");
+            if (n_arr) {
+                for (int k = 0; k < n_arr; k++)
+                    sb_printf(&c->out, "; gmb_lambda_bound_set(%d, __pb%d);", k, k);
+                sb_put(&c->out, " __rf; })");
+            }
             return;
         }
     }
@@ -29902,12 +29953,14 @@ static const char* ffi_cb_native_type(int arity, int isInt, int hasRet) {
             snprintf(buf, 80, "%s (*)(gmb_double_t*, gmb_int_t, gmb_double_t)", retT);
             return buf;
         }
+        /* 144/145: il trampolino RITORNA il numero di elementi scritti (gor_optb_fvv_len,
+         * 2026-11-03) — la firma della call FFI usa `double`, non `void`. */
         if (arity == 144) {
-            snprintf(buf, 80, "void (*)(gmb_double_t*, gmb_int_t, gmb_double_t*)");
+            snprintf(buf, 80, "double (*)(gmb_double_t*, gmb_int_t, gmb_double_t*)");
             return buf;
         }
         if (arity == 145) {
-            snprintf(buf, 80, "void (*)(gmb_double_t*, gmb_int_t, gmb_double_t*, gmb_int_t, gmb_double_t*)");
+            snprintf(buf, 80, "double (*)(gmb_double_t*, gmb_int_t, gmb_double_t*, gmb_int_t, gmb_double_t*)");
             return buf;
         }
         snprintf(buf, 80, "%s (*)(gmb_double_t*, gmb_int_t)", retT);
@@ -30024,18 +30077,20 @@ static void emit_ffi_callback_pool(ctx_t* c) {
         /* Ritorno ARRAY (2026-11-02): arity 144 (1 array -> out) e 145 (2 array -> out). */
         sb_printf(&c->out, "static gmb_fn_t g_ffi_cb_slot_%s144[2];\nstatic int g_ffi_cb_inuse_%s144[2];\n", kind, kind);
         for (int slot = 0; slot < 2; slot++)
-            sb_printf(&c->out, "static void gmb_ffi_cb_%s144_%d(gmb_double_t* v, gmb_int_t n, gmb_double_t* out) { gmb_int_t pv = gmb_lambda_bound(0); gmb_fn_t f = g_ffi_cb_slot_%s144[%d]; gmb_lambda_bound_set(0, n - 1); ((void(*)(void*, gmb_double_t*, gmb_double_t*))f.fn)(f.ctx, v, out); gmb_lambda_bound_set(0, pv); }\n",
+            /* Ritorno = numero di elementi scritti (2026-11-03): `gor_optb_fvv_len` lo usa per
+             * dedurre m in LEASTSQUARESFIT; i chiamanti "void" lo ignorano. */
+            sb_printf(&c->out, "static double gmb_ffi_cb_%s144_%d(gmb_double_t* v, gmb_int_t n, gmb_double_t* out) { gmb_int_t pv = gmb_lambda_bound(0); gmb_fn_t f = g_ffi_cb_slot_%s144[%d]; gmb_lambda_bound_set(0, n - 1); ((void(*)(void*, gmb_double_t*, gmb_double_t*))f.fn)(f.ctx, v, out); gmb_lambda_bound_set(0, pv); return (double)gmb_lambda_ret_len_get(); }\n",
                 kind, slot, kind, slot);
-        sb_printf(&c->out, "static void (*g_ffi_cb_ptr_%s144[2])(gmb_double_t*, gmb_int_t, gmb_double_t*) = { gmb_ffi_cb_%s144_0, gmb_ffi_cb_%s144_1 };\n", kind, kind, kind);
-        sb_printf(&c->out, "static void (*g_ffi_cb_ptr_sub_%s144[2])(gmb_double_t*, gmb_int_t, gmb_double_t*) = { gmb_ffi_cb_%s144_0, gmb_ffi_cb_%s144_1 };\n", kind, kind, kind);
+        sb_printf(&c->out, "static double (*g_ffi_cb_ptr_%s144[2])(gmb_double_t*, gmb_int_t, gmb_double_t*) = { gmb_ffi_cb_%s144_0, gmb_ffi_cb_%s144_1 };\n", kind, kind, kind);
+        sb_printf(&c->out, "static double (*g_ffi_cb_ptr_sub_%s144[2])(gmb_double_t*, gmb_int_t, gmb_double_t*) = { gmb_ffi_cb_%s144_0, gmb_ffi_cb_%s144_1 };\n", kind, kind, kind);
         sb_printf(&c->out, "static int gmb_ffi_cb_acquire_%s144(gmb_fn_t f) { for (int s = 0; s < 2; s++) if (!g_ffi_cb_inuse_%s144[s]) { g_ffi_cb_inuse_%s144[s] = 1; g_ffi_cb_slot_%s144[s] = f; return s; } return -1; }\n", kind, kind, kind, kind);
         sb_printf(&c->out, "static void gmb_ffi_cb_release_%s144(int s) { if (s >= 0) g_ffi_cb_inuse_%s144[s] = 0; }\n", kind, kind);
         sb_printf(&c->out, "static gmb_fn_t g_ffi_cb_slot_%s145[2];\nstatic int g_ffi_cb_inuse_%s145[2];\n", kind, kind);
         for (int slot = 0; slot < 2; slot++)
-            sb_printf(&c->out, "static void gmb_ffi_cb_%s145_%d(gmb_double_t* a, gmb_int_t na, gmb_double_t* b, gmb_int_t nb, gmb_double_t* out) { gmb_int_t p0 = gmb_lambda_bound(0), p1 = gmb_lambda_bound(1); gmb_fn_t f = g_ffi_cb_slot_%s145[%d]; gmb_lambda_bound_set(0, na - 1); gmb_lambda_bound_set(1, nb - 1); ((void(*)(void*, gmb_double_t*, gmb_double_t*, gmb_double_t*))f.fn)(f.ctx, a, b, out); gmb_lambda_bound_set(0, p0); gmb_lambda_bound_set(1, p1); }\n",
+            sb_printf(&c->out, "static double gmb_ffi_cb_%s145_%d(gmb_double_t* a, gmb_int_t na, gmb_double_t* b, gmb_int_t nb, gmb_double_t* out) { gmb_int_t p0 = gmb_lambda_bound(0), p1 = gmb_lambda_bound(1); gmb_fn_t f = g_ffi_cb_slot_%s145[%d]; gmb_lambda_bound_set(0, na - 1); gmb_lambda_bound_set(1, nb - 1); ((void(*)(void*, gmb_double_t*, gmb_double_t*, gmb_double_t*))f.fn)(f.ctx, a, b, out); gmb_lambda_bound_set(0, p0); gmb_lambda_bound_set(1, p1); return (double)gmb_lambda_ret_len_get(); }\n",
                 kind, slot, kind, slot);
-        sb_printf(&c->out, "static void (*g_ffi_cb_ptr_%s145[2])(gmb_double_t*, gmb_int_t, gmb_double_t*, gmb_int_t, gmb_double_t*) = { gmb_ffi_cb_%s145_0, gmb_ffi_cb_%s145_1 };\n", kind, kind, kind);
-        sb_printf(&c->out, "static void (*g_ffi_cb_ptr_sub_%s145[2])(gmb_double_t*, gmb_int_t, gmb_double_t*, gmb_int_t, gmb_double_t*) = { gmb_ffi_cb_%s145_0, gmb_ffi_cb_%s145_1 };\n", kind, kind, kind);
+        sb_printf(&c->out, "static double (*g_ffi_cb_ptr_%s145[2])(gmb_double_t*, gmb_int_t, gmb_double_t*, gmb_int_t, gmb_double_t*) = { gmb_ffi_cb_%s145_0, gmb_ffi_cb_%s145_1 };\n", kind, kind, kind);
+        sb_printf(&c->out, "static double (*g_ffi_cb_ptr_sub_%s145[2])(gmb_double_t*, gmb_int_t, gmb_double_t*, gmb_int_t, gmb_double_t*) = { gmb_ffi_cb_%s145_0, gmb_ffi_cb_%s145_1 };\n", kind, kind, kind);
         sb_printf(&c->out, "static int gmb_ffi_cb_acquire_%s145(gmb_fn_t f) { for (int s = 0; s < 2; s++) if (!g_ffi_cb_inuse_%s145[s]) { g_ffi_cb_inuse_%s145[s] = 1; g_ffi_cb_slot_%s145[s] = f; return s; } return -1; }\n", kind, kind, kind, kind);
         sb_printf(&c->out, "static void gmb_ffi_cb_release_%s145(int s) { if (s >= 0) g_ffi_cb_inuse_%s145[s] = 0; }\n", kind, kind);
     }
