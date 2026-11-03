@@ -1,7 +1,7 @@
 ' MiniTest NAMESPACE POOL — entrambe le funzioni della superficie (PUT, GET).
 ' Semantica sync.Pool: PUT deposita, il primo GET ritira l'oggetto, il secondo
 ' (pool vuoto) ritorna il valore zero del tipo.
-' EXPECT: put=get=ok|empty=ok
+' EXPECT: put=get=ok|empty=ok|num= 42
 IMPORT CONCURRENCY
 IMPORT POOL
 
@@ -18,4 +18,11 @@ SUB Main()
   DIM p2 AS POOL
   empty = POOL.GET(p2)
   IF empty = "" THEN PRINT "empty=ok" ELSE PRINT "empty=ko"
+
+  ' Valore NUMERICO: GET restituisce il valore tipizzato (non il wrapper POOL).
+  DIM q AS POOL
+  DIM n AS LONG
+  POOL.PUT(q, 42)
+  n = POOL.GET(q)
+  PRINT "num="; n
 END SUB
