@@ -193,18 +193,25 @@ public static class CompressionUtils
         // ZipFile.Open(Create) usa FileMode.CreateNew: sovrascrivi un archivio esistente.
         if (File.Exists(zipPath)) File.Delete(zipPath);
         using var zip = ZipFile.Open(zipPath, ZipArchiveMode.Create);
+        // Radice comune = dirname PIU' CORTO fra le entry (parità gmb_zip_create del
+        // runtime C, che è il riferimento condiviso): così una singola sorgente relativa
+        // produce l'entry col NOME FILE (non col path completo) e una cartella conserva
+        // i sottopath relativi alla cartella stessa. Prima i path relativi finivano
+        // nell'archivio con tutto il percorso (IL/PCode divergevano da C99/VM-C).
+        var root = entries.Select(e => Path.GetDirectoryName(e) ?? "")
+                          .OrderBy(d => d.Length)
+                          .FirstOrDefault() ?? "";
         foreach (var f in entries)
         {
             var entryName = f;
-            if (Path.IsPathRooted(entryName))
+            if (root.Length > 0)
             {
-                // usa il nome relativo alla radice comune se possibile
-                var root = entries.Select(Path.GetDirectoryName)
-                                  .Where(d => d != null)
-                                  .OrderBy(d => d!.Length)
-                                  .FirstOrDefault();
-                if (root != null && entryName.StartsWith(root, StringComparison.OrdinalIgnoreCase))
-                    entryName = entryName[(root.Length + 1)..];
+                var prefix = root + "/";
+                var prefixWin = root + "\\";
+                if (entryName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                    entryName = entryName[prefix.Length..];
+                else if (entryName.StartsWith(prefixWin, StringComparison.OrdinalIgnoreCase))
+                    entryName = entryName[prefixWin.Length..];
             }
             zip.CreateEntryFromFile(f, entryName.Replace('\\', '/'));
         }

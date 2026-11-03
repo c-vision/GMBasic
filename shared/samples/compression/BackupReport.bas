@@ -12,6 +12,8 @@ IMPORT IO
 
 SUB Main()
     MKDIR "work"
+    RMDIR "work/backup_in", TRUE
+    RMDIR "work/backup_out", TRUE
     MKDIR "work/backup_in"
     MKDIR "work/backup_out"
 
