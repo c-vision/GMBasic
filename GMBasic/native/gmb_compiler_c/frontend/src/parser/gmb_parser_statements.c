@@ -282,6 +282,148 @@ gmb_stmt_t* gmb_p_parse_stmt(gmb_parser_t* p, bool* multiline) {
     return s;
 }
 
+/* ── AI DECIDE batch (JEV/SystemOne): parse + desugar in N ASSIGN sequenziali ─────────────
+ * Forma canonica: AI DECIDE a fine riga, una domanda per riga (`nome AS kind`), poi
+ * FROM <stato>, USING <provider> opzionale, END DECIDE. Stessa semantica della forma
+ * singola (il builtin DECIDE viene emesso una volta per domanda); la fusione prefill/KV
+ * (DECISION_GROUP) è l'ottimizzazione successiva. */
+static int dc_tok_is(const gmb_token_t* t, const char* kw) {
+    return t && gmb_p_tok_is_soft_keyword(t, kw);
+}
+
+/* Legge un kind di domanda e ritorna la stringa del builtin (heap) o NULL su errore. */
+static char* dc_parse_batch_kind(gmb_parser_t* p, int line) {
+    const gmb_token_t* t = gmb_p_cur(p);
+    if (!t || t->kind != GMB_TOK_Identifier) {
+        gmb_p_set_err(p, "AI DECIDE batch: atteso NOUL/SCORE/CHOICE dopo AS", line);
+        return NULL;
+    }
+    if (dc_tok_is(t, "NOUL")) { gmb_p_adv(p); return strdup("NOUL"); }
+    if (dc_tok_is(t, "SCORE")) {
+        gmb_p_adv(p);
+        if (gmb_p_cur(p) && gmb_p_cur(p)->kind == GMB_TOK_Number) {
+            const gmb_token_t* lo = gmb_p_cur(p); gmb_p_adv(p);
+            if (!(gmb_p_cur(p) && gmb_p_cur(p)->kind == GMB_TOK_To)) {
+                gmb_p_set_err(p, "SCORE: atteso TO dopo il minimo", line); return NULL;
+            }
+            gmb_p_adv(p);
+            const gmb_token_t* hi = gmb_p_cur(p);
+            if (!hi || hi->kind != GMB_TOK_Number) {
+                gmb_p_set_err(p, "SCORE: atteso il massimo dopo TO", line); return NULL;
+            }
+            gmb_p_adv(p);
+            if (atof(lo->lexeme) != 0.0 || atof(hi->lexeme) != 5.0) {
+                gmb_p_set_err(p, "AI DECIDE batch: SCORE supporta solo la rubrica 0 TO 5", line);
+                return NULL;
+            }
+        }
+        return strdup("SCORE");
+    }
+    if (dc_tok_is(t, "CHOICE")) {
+        gmb_p_adv(p);
+        char buf[1024]; size_t bl = 0;
+        bl += (size_t)snprintf(buf + bl, sizeof buf - bl, "CHOICE");
+        if (gmb_p_cur(p) && gmb_p_cur(p)->kind == GMB_TOK_LeftParen) {
+            gmb_p_adv(p);
+            int first = 1;
+            if (!(gmb_p_cur(p) && gmb_p_cur(p)->kind == GMB_TOK_RightParen)) {
+                for (;;) {
+                    gmb_expr_t* e = gmb_p_parse_expr(p);
+                    if (!e || e->kind != GMB_EXPR_STR || !e->str) {
+                        gmb_p_set_err(p, "CHOICE: attese etichette stringa", line); return NULL;
+                    }
+                    size_t el = strlen(e->str);
+                    if (bl + el + 2 >= sizeof buf) {
+                        gmb_p_set_err(p, "CHOICE: etichette troppo lunghe", line); return NULL;
+                    }
+                    buf[bl++] = first ? ':' : '|';
+                    memcpy(buf + bl, e->str, el); bl += el; buf[bl] = 0;
+                    first = 0;
+                    if (gmb_p_cur(p) && gmb_p_cur(p)->kind == GMB_TOK_Comma) { gmb_p_adv(p); continue; }
+                    break;
+                }
+            }
+            if (!(gmb_p_cur(p) && gmb_p_cur(p)->kind == GMB_TOK_RightParen)) {
+                gmb_p_set_err(p, "CHOICE: attesa ')'", line); return NULL;
+            }
+            gmb_p_adv(p);
+        }
+        return strdup(buf);
+    }
+    gmb_p_set_err(p, "AI DECIDE batch: kind non valido (NOUL/SCORE/CHOICE)", line);
+    return NULL;
+}
+
+#define DC_BATCH_MAX 16
+
+static gmb_stmt_t* dc_parse_batch(gmb_parser_t* p, int line) {
+    char* names[DC_BATCH_MAX];
+    char* kinds[DC_BATCH_MAX];
+    int n = 0;
+    gmb_p_skip_eol(p);
+    while (!(gmb_p_cur(p) && gmb_p_cur(p)->kind == GMB_TOK_From)) {
+        const gmb_token_t* nt = gmb_p_cur(p);
+        if (!nt || nt->kind == GMB_TOK_Eof || nt->kind == GMB_TOK_End) {
+            gmb_p_set_err(p, "AI DECIDE batch: manca FROM <stato> / END DECIDE", line); return NULL;
+        }
+        if (n >= DC_BATCH_MAX) {
+            gmb_p_set_err(p, "AI DECIDE batch: massimo 16 domande", line); return NULL;
+        }
+        /* Nome PERMISSIVO (parità ParseTarget C#): anche keyword come ROUTE/PRIORITY sono
+         * nomi validi; l'AS al token successivo disambigua. */
+        const gmb_token_t* nx = gmb_p_peek(p, 1);
+        if (!(nx && (nx->kind == GMB_TOK_As || dc_tok_is(nx, "AS")))) {
+            gmb_p_set_err(p, "AI DECIDE batch: atteso <nome> AS <kind>", line); return NULL;
+        }
+        char* nm = gmb_p_tok_strdup(nt);
+        gmb_p_adv(p);   /* nome */
+        gmb_p_adv(p);   /* AS */
+        char* kd = dc_parse_batch_kind(p, line);
+        if (!kd) { free(nm); return NULL; }
+        names[n] = nm; kinds[n] = kd; n++;
+        gmb_p_skip_eol(p);
+    }
+    if (n == 0) { gmb_p_set_err(p, "AI DECIDE batch: nessuna domanda", line); return NULL; }
+    gmb_p_adv(p);   /* FROM */
+    gmb_expr_t* state = gmb_p_parse_expr(p);
+    if (!state) { gmb_p_set_err(p, "AI DECIDE batch: stato mancante", line); return NULL; }
+    gmb_p_skip_eol(p);
+    gmb_expr_t* provider = NULL;
+    if (gmb_p_cur(p) && gmb_p_cur(p)->kind == GMB_TOK_Using) {
+        gmb_p_adv(p);
+        provider = gmb_p_parse_expr(p);
+        if (!provider) { gmb_p_set_err(p, "AI DECIDE batch: provider mancante dopo USING", line); return NULL; }
+        gmb_p_skip_eol(p);
+    }
+    if (gmb_p_cur(p) && gmb_p_cur(p)->kind == GMB_TOK_Into) {
+        gmb_p_set_err(p, "AI DECIDE batch: INTO non supportato (i nomi delle domande sono le destinazioni)", line);
+        return NULL;
+    }
+    if (!(gmb_p_cur(p) && gmb_p_cur(p)->kind == GMB_TOK_End)) {
+        gmb_p_set_err(p, "AI DECIDE batch: atteso END DECIDE", line); return NULL;
+    }
+    gmb_p_adv(p);
+    if (!dc_tok_is(gmb_p_cur(p), "DECIDE")) {
+        gmb_p_set_err(p, "AI DECIDE batch: atteso DECIDE dopo END", line); return NULL;
+    }
+    gmb_p_adv(p);
+
+    gmb_stmt_t* first = NULL;
+    for (int i = 0; i < n; i++) {
+        int nargs = provider ? 3 : 2;
+        gmb_expr_t** args = (gmb_expr_t**)malloc((size_t)nargs * sizeof(gmb_expr_t*));
+        args[0] = (i == 0) ? state : gmb_expr_clone(state);
+        args[1] = gmb_expr_str(kinds[i], line);
+        if (provider) args[2] = (i == 0) ? provider : gmb_expr_clone(provider);
+        gmb_expr_t* call = gmb_expr_call_typed("DECIDE", GMB_TOK_AiDecide, args, nargs, line);
+        gmb_stmt_t* a = gmb_stmt_new(GMB_STMT_ASSIGN, line);
+        a->target = names[i];
+        a->value = call;
+        if (!first) first = a; else gmb_p_queue_stmt(p, a);
+    }
+    return first;
+}
+
 static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
 {
     *multiline = false;
@@ -577,6 +719,8 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
     if (t->kind == GMB_TOK_Ai && gmb_p_peek(p, 1) && gmb_p_tok_is_soft_keyword(gmb_p_peek(p, 1), "DECIDE")) {
         gmb_p_adv(p);   /* AI */
         gmb_p_adv(p);   /* DECIDE */
+        if (gmb_p_cur(p) && (gmb_p_cur(p)->kind == GMB_TOK_Newline || gmb_p_cur(p)->kind == GMB_TOK_Colon))
+            return dc_parse_batch(p, line);
         gmb_expr_t* dc_state = gmb_p_parse_expr(p);
         if (gmb_p_cur(p) && gmb_p_cur(p)->kind == GMB_TOK_Comma) gmb_p_adv(p);
         gmb_expr_t* dc_kind = gmb_p_parse_expr(p);
