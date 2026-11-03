@@ -1,8 +1,9 @@
-' MiniTest DBF — SELECT commuta l'area attiva prima di JOIN.
-' A(2 rec), B(1 rec). SELECT A → JOIN A×B con FOR TA.K=TA.K (sempre true).
-' Senza SELECT A il JOIN userebbe B come primary (1×2=2 uguale, ma con altri dati
-' farebbe differenza). Con SELECT A: primary=A che ha 2 rec → 2×1=2 output.
-' EXPECT: 2
+' MiniTest DBF — DBF SELECT è un COMANDO che commuta l'area attiva.
+' A(2 record) e B(1 record): dopo SELECT A LASTREC()=2, dopo SELECT B =1.
+' Non dipende da JOIN (l'engine di JOIN è coperto da dbf_join*.bas): isola il comando
+' SELECT, così il test resta valido anche quando il valutatore di espressioni C è in
+' manutenzione.
+' EXPECT: a= 2|alias-a=A|b= 1|alias-b=B
 IMPORT DBF
 
 TYPE TA
@@ -24,8 +25,11 @@ SUB Main()
 
     DBF USE "/tmp/gmt_sw_a.dbf" ALIAS A
     DBF USE "/tmp/gmt_sw_b.dbf" ALIAS B
+
     DBF SELECT A
-    DBF JOIN WITH B TO "/tmp/gmt_sw_out.dbf" FOR A.K = A.K
-    DBF USE "/tmp/gmt_sw_out.dbf" ALIAS J
-    PRINT DBF.LASTREC()
+    PRINT "a="; DBF.LASTREC()
+    PRINT "alias-a="; DBF.ALIAS()
+    DBF SELECT B
+    PRINT "b="; DBF.LASTREC()
+    PRINT "alias-b="; DBF.ALIAS()
 END SUB
