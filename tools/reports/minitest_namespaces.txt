@@ -3,7 +3,6 @@ file canonico: shared/minitests/<ns>/<ns>_all.bas
 
 namespace                          tot  cop  manca  file
 AI                               274 269     5   si
-FONTS                              3   0     3   NO
 IO                                33  32     1   si
 ISAM                              24  22     2   si
 LLM                               61   9    52   si
@@ -11,7 +10,7 @@ RDD                               22  20     2   si
 SYSTEM                            26  23     3   si
 TORCH                             76  68     8   si
 
-namespace con file canonico:  71 / 72 
-namespace completi (file + superficie):  64 / 72 
-superficie coperta:  1753 / 1829   (mancano  76 )
+namespace con file canonico:  72 / 72 
+namespace completi (file + superficie):  65 / 72 
+superficie coperta:  1756 / 1829   (mancano  73 )
 struttura base del linguaggio: /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/constructs/base.bas -> presente

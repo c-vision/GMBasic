@@ -8,8 +8,6 @@ namespace                          tot  cop  manca  file
   MANCA AI.OBSERVATIONHASH
   MANCA AI.STARTHEALTHCHECK
 AI                               274 269     5   si
-MANCA FILE  FONTS -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/fonts/fonts_all.bas
-FONTS                              3   0     3   NO
   MANCA IO.WRITEBYTES
 IO                                33  32     1   si
   MANCA ISAM.APPENDMANY
@@ -85,7 +83,7 @@ SYSTEM                            26  23     3   si
   MANCA TORCH.TOPK
 TORCH                             76  68     8   si
 
-namespace con file canonico:  71 / 72 
-namespace completi (file + superficie):  64 / 72 
-superficie coperta:  1753 / 1829   (mancano  76 )
+namespace con file canonico:  72 / 72 
+namespace completi (file + superficie):  65 / 72 
+superficie coperta:  1756 / 1829   (mancano  73 )
 struttura base del linguaggio: /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/constructs/base.bas -> presente
