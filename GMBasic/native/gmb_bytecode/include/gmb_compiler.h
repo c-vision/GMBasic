@@ -203,6 +203,47 @@ typedef struct gmb_compiled_chunk {
 /* Compila un programma AST in un chunk serializzato (formato A1/GMBC).
  * Ritorna 0 ok (out_data/out_len allocati da malloc), -1 errore (error allocato). */
 int gmb_compile(const gmb_program_t* prog, uint8_t** out_data, size_t* out_len, char** error);
+
+/* ── Compilazione SNIPPET A RUNTIME (EVAL / & / filtri): simboli ESTERNI ────────
+ * Compila un frammento BASIC contro le tabelle di simboli del chunk OSPITE (VM/C):
+ * i nomi già presenti nell'ospite (globali, locali della procedura corrente,
+ * procedure) si risolvono sui suoi SLOT/INDIRIZZI, così il codice può essere
+ * eseguito NELLA task corrente (stesso frame, stessi globali, CALL alle proc
+ * ospiti). È il gemello C di ExternalGlobalProbe del compilatore C#: UN SOLO
+ * compilatore, nessun sottoinsieme e nessun interprete parallelo. */
+typedef struct {
+    const char* const* global_names;   /* slot -> nome (host) */
+    int global_count;
+    const char* const* local_names;    /* slot -> nome (procedura corrente host) */
+    int local_count;
+    const char* const* proc_names;     /* procedure host */
+    const uint32_t* proc_addrs;        /* indirizzi ASSOLUTI (già basati) */
+    const uint32_t* proc_arities;
+    int proc_count;
+    uint32_t consts_seed;              /* costanti già occupate dal pool host */
+    int code_base;                     /* base assoluta del codice nello spazio merged */
+} gmb_snippet_ext_t;
+
+typedef struct {
+    gmb_compiled_chunk_t chunk;        /* codice con indirizzi già basati su code_base */
+    uint32_t entry;                    /* proc wrapper __GMB_EVAL__ (già basata) */
+    /* Firma del wrapper: `SUB __GMB_EVAL__(BYREF p0, ...)`. I primi n_param_slots
+     * parametri sono locali dell'OSTITE (slot del frame del chiamante, write-through
+     * BYREF); i successivi sono nomi ignoti (campi DBF / variabili nuove), passati
+     * come celle BYREF pre/post-caricate dal record. */
+    char** param_names;
+    int* param_slots;                  /* >=0 locale ospite, -1 nome ignoto */
+    int n_params;
+    /* 1 = il frammento NON è un'espressione valida ma una SEQUENZA DI STATEMENT
+     * (`&("PRINT 42")`): compilato col wrapper SUB, eseguito per effetto. */
+    int is_stmt;
+} gmb_compiled_snippet_t;
+
+/* 0 = ok. `error` (malloc) su errore. `dimmed` va liberato con
+ * gmb_compiled_snippet_free. */
+int gmb_compile_snippet(const char* src, int as_stmt, const gmb_snippet_ext_t* ext,
+                        gmb_compiled_snippet_t* out, char** error);
+void gmb_compiled_snippet_free(gmb_compiled_snippet_t* s);
 /* Fase 1 CodeGen C: compila un .bas in chunk A1/GMBC. 0 ok (out heap) / non-zero + diag. */
 int gmb_compile_bas_file(const char* path, uint8_t** out_data, size_t* out_len, char** diag);
 /* REQUIRE (package manager): ritorna un buffer (malloc) col contenuto degli export .inc/.bas

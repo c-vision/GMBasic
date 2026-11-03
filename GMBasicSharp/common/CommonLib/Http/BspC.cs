@@ -35,7 +35,7 @@ public enum BspEngine
 public static class BspC
 {
     private const string LibName = "gmb_bsp";
-    private const int RequiredAbi = 1;
+    private const int RequiredAbi = 2;
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate int AbiFn();

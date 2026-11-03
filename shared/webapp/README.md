@@ -113,10 +113,11 @@ Il percorso C usa **lo stesso motore VM/C del managed** (dylib `libgmb_bsp`):
 3. lo **stato** (agenti/team/workflow/memoria) arriva dall'host tramite l'hook opzionale
    `gmb_state_hook`: la VM vede il registro del processo, non una copia.
 
-Il valutatore di espressioni (`gmb_expr`) resta solo come **fallback** se la dylib o il
-sidecar mancano (o per pagine fuori dal progetto); in quel caso, se la pagina usa costrutti
-non supportati, si serve il markup statico (causa su stderr, commento HTML) — mai un 500.
-I `.chunk` sono artefatti di build (gitignored).
+**Nessun fallback per il server BSP**: se il chunk A1 o `libgmb_bsp` mancano, la risposta è
+un **500 esplicito** ("BSP non compilata", causa su stderr), mai una pagina resa in modo
+diverso. `gmb_expr` non è più usato dal server BSP: resta solo per EVAL/`&`, filtri
+DB/SPEED e REQUIRE (dove è un valutatore di espressioni a runtime, non un compilatore di
+pagine). I `.chunk` sono artefatti di build (gitignored).
 
 ### Due motori, UN SOLO stato (agenti/team/workflow/memoria)
 

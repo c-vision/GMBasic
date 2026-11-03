@@ -224,6 +224,9 @@ struct gmb_stmt {
      * padding). Array parallelo a print_args, stessa dimensione (nprint). */
     int* print_comma;
     /* LET/ASSIGN */
+    int is_let;                /* 1 = forma esplicita `LET x = …` (S_eval: dichiara un
+                                * locale transiente; l'assegnazione implicita invece
+                                * scrive la variabile già esistente del chiamante) */
     char* target; gmb_expr_t* value;
     gmb_expr_t* array_index;   /* ASSIGN a elemento array: v(i) = x */
     gmb_expr_t** array_idx_extra; int n_array_idx_extra;  /* indici dalla 2ª dimensione: v(i, j, ...) = x */

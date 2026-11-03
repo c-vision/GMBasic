@@ -182,6 +182,20 @@ gmb_obj_byref_t* gmb_byref_new_local(gmb_task_t* owner, gmb_frame_t* frame, int 
     return b;
 }
 
+gmb_obj_byref_t* gmb_byref_new_cell(gmb_task_t* owner, gmb_stack_entry_t value)
+{
+    gmb_obj_byref_t* b = (gmb_obj_byref_t*)calloc(1, sizeof(gmb_obj_byref_t));
+    if (!b) return NULL;
+    b->header.refcount = 1;
+    b->header.kind = GMB_OBJ_BYREF;
+    b->header.release_fn = byref_release_fn;
+    b->owner = owner;
+    b->is_cell = 1;
+    b->cell = value;
+    if (value.type == 2 && value.ref) gmb_obj_retain(value.ref);
+    return b;
+}
+
 gmb_obj_byref_t* gmb_byref_new_global(gmb_task_t* owner, int slot)
 {
     gmb_obj_byref_t* b = (gmb_obj_byref_t*)calloc(1, sizeof(gmb_obj_byref_t));

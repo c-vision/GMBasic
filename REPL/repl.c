@@ -453,8 +453,9 @@ static void rpl_grep(const char* args)
 
 /* Esegue UNA riga di comando (usata dal loop interattivo e da BATCH). * Ritorna 1 se QUIT/EXIT, 0 altrimenti. */
 /* BSP <dir>: precompila le pagine .bsp in sidecar `<pagina>.bsp.chunk` (eseguiti dal
- * renderer nativo gmb_vm_bsp.c). Compilazione BSP->BASIC nel runtime C (`gmb_bsp_compile`),
- * poi chunk con il compilatore C: nessun C#. Usata dal comando BSP e da `-bsp <dir>`. */
+ * renderer nativo gmb_vm_bsp.c). Compilazione BSP->BASIC COMPLETA nel runtime C
+ * (`gmb_bsp_compile_full`: direttive IMPORT incluse), poi chunk col compilatore C:
+ * nessun C#. Usata dal comando BSP e da `-bsp <dir>`. */
 int rpl_bsp_compile_dir(const char* dir_in, const rpl_options_t* o)
 {
     char dir[1024];
@@ -481,23 +482,23 @@ int rpl_bsp_compile_dir(const char* dir_in, const rpl_options_t* o)
         if (!src || fread(src, 1, (size_t)n, bf) != (size_t)n) { if (src) free(src); fclose(bf); fail++; continue; }
         src[n] = 0; fclose(bf);
         char* bas = NULL;
-        int rc = gmb_bsp_compile(src, &bas);
+        /* COMPILATORE BSP COMPLETO (con le direttive IMPORT della pagina): stesso
+         * percorso del driver dei chunk. Il vecchio `gmb_bsp_compile` (sottoinsieme,
+         * senza IMPORT) rendeva le pagine con AI/HTTP diverse da quelle servite. */
+        int rc = gmb_bsp_compile_full(src, &bas);
         free(src);
         if (rc != GMB_EXPR_OK || !bas) { fail++; printf("  FAIL %s (compilazione BSP)\n", line); free(bas); continue; }
-        /* Cartella TEMPORANEA PRIVATA per il .bas generato: la discovery del compilatore
-         * scandisce la cartella dell'entry (recursivamente). Scrivendolo in /tmp si
-         * includevano .inc estranei lasciati da altre sessioni (duplicati tipo EscapeHtml). */
-        char tmpdir[] = "/tmp/gmb_bsp_XXXXXX";
-        if (!mkdtemp(tmpdir)) { free(bas); fail++; printf("  FAIL %s (tmpdir)\n", line); continue; }
+        /* BASIC TEMPORANEO accanto alla pagina: il resolver degli include inferisce la
+         * root del progetto dall'ingresso (con un .bas in /tmp non trovava gli include
+         * della pagina). Il file viene rimosso subito dopo il dump del chunk. */
         char tmp[1400], chunk[1400];
-        snprintf(tmp, sizeof(tmp), "%s/page.bas", tmpdir);
+        snprintf(tmp, sizeof(tmp), "%s.gmb_tmp.bas", line);
         snprintf(chunk, sizeof(chunk), "%s.chunk", line);
         FILE* tf = fopen(tmp, "w");
-        if (!tf) { free(bas); fail++; continue; }
+        if (!tf) { free(bas); fail++; printf("  FAIL %s (tmp)\n", line); continue; }
         fputs(bas, tf); fclose(tf); free(bas);
         int crc = rpl_gmb_dump_ex("chunk", tmp, chunk, o);
         unlink(tmp);
-        rmdir(tmpdir);
         if (crc == 0) {
             ok++;
             printf("  OK   %s (%s)\n", strrchr(line, '/') ? strrchr(line, '/') + 1 : line,

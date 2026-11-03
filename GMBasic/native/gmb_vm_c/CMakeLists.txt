@@ -106,7 +106,7 @@ add_library(gmb_vm STATIC
     gmb_builtin_tray.c
     gmb_mcp_exec.c
     gmb_uncertainty_exec.c
-    gmb_vm_expr_compile.c
+    gmb_vm_eval.c
     gmb_vm_events.c
     gmb_gpm.c
     gmb_adapter.c
@@ -119,7 +119,7 @@ add_library(gmb_vm STATIC
 # LLM (LLM TENSOR/ARCH/KERNEL…) e usa direttamente llmmodelio_* → linka gmbllm_core (che a sua
 # volta porta llmcodec/llmtoken/llmdesc in PUBLIC). ASR/DISTILL/modelio passano dal gateway.
 target_link_libraries(gmb_vm PUBLIC pthread gmb_runtime gmb_doc gmb_agent_runtime gmbllm_core ${CMAKE_DL_LIBS})
-target_include_directories(gmb_vm PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c/include ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c/src ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_doc_c/include ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_torch/include ${LLMENV}/LLMEngine/include ${LLMENV}/LLMEngine/mlx ${LLMENV}/LLMEngine/Options ${LLMENV}/LLMEngine/plugin ${LLMENV}/LLMEngine/moe/include ${CMAKE_CURRENT_SOURCE_DIR}/../../gmbllm/include ${CMAKE_CURRENT_SOURCE_DIR}/../../gmbllm/include/quant ${LLMENV}/LLMToken/include ${LLMENV}/LLMCodec/include ${LLMENV}/LLMDesc)
+target_include_directories(gmb_vm PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c/include ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_bytecode/include ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_compiler_c/include ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_compiler_c/frontend/include ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c/src ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_doc_c/include ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_torch/include ${LLMENV}/LLMEngine/include ${LLMENV}/LLMEngine/mlx ${LLMENV}/LLMEngine/Options ${LLMENV}/LLMEngine/plugin ${LLMENV}/LLMEngine/moe/include ${CMAKE_CURRENT_SOURCE_DIR}/../../gmbllm/include ${CMAKE_CURRENT_SOURCE_DIR}/../../gmbllm/include/quant ${LLMENV}/LLMToken/include ${LLMENV}/LLMCodec/include ${LLMENV}/LLMDesc)
 
 # Database su file (DBF/ISAM/SPEED/Ledger/Clipper RDD) via gmb_db: SEMPRE presente.
 # Prima era un option(GMB_HAS_COMMERCIAL_DB ... OFF) legato all'"edizione": con la rimozione
@@ -174,11 +174,6 @@ if(APPLE)
 elseif(UNIX)
     target_link_options(gmb_vm_host PRIVATE "LINKER:-u,gmb_bf_498")
 endif()
-
-add_executable(gmb_vm_expr_compile_selfcheck tests/expr_compile_selfcheck.c)
-target_link_libraries(gmb_vm_expr_compile_selfcheck PRIVATE gmb_vm gmb_runtime pthread)
-target_include_directories(gmb_vm_expr_compile_selfcheck PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c/include)
 
 # Tool-loop di AI AGENT ASK (parità AgentToolLoop.AskWithTools C#): test deterministico
 # con brain finto + registry tool. Linka gmb_runtime (gmb_agent_ask) e gmb_agent_runtime

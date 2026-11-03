@@ -27,7 +27,7 @@
 #include <stddef.h>
 
 /* Versione dell'ABI (cresce solo con cambi incompatibili). */
-int gmb_bsp_shared_abi(void) { return 1; }
+int gmb_bsp_shared_abi(void) { return 2; }
 
 /* Registra il renderer VM. Idempotente: si può chiamare a ogni richiesta. */
 void gmb_bsp_shared_init(void) { gmb_vm_bsp_register(); gmb_agent_run_code_json_set(gmb_agent_run_code);
@@ -44,7 +44,9 @@ int gmb_bsp_shared_serve(const char* dir, const char* url_path, const char* quer
     if (out_status) *out_status = 0;
     if (!dir || !url_path) return -1;
     gmb_vm_bsp_register();   /* sicuro anche se già registrato */
-    return gmb_bsp_try_serve(dir, url_path, query, host, out_html, out_status);
+    /* SOLO VM: niente gateway (evita la ricorsione dylib→gateway→dylib) e niente
+     * fallback al valutatore: se il sidecar manca, 0 → il chiamante decide. */
+    return gmb_bsp_try_serve_vm(dir, url_path, query, host, out_html, out_status);
 }
 
 /* Render diretto di una pagina già nota (nessun fallback gmb_expr): utile per

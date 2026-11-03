@@ -11,7 +11,9 @@
 #include "gmb_macro_expand.h"
 #include "gmb_members.h"
 #include "gmb_mcp_schema.h"
+#include "gmb_parser.h"
 #include "gen/gmb_registry.gen.h"
+#include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
@@ -425,6 +427,13 @@ typedef struct {
     uint32_t* lines;
     gmb_compiled_chunk_t* chunk;
     char* error;
+    /* Modalità SNIPPET (EVAL/& a runtime, vedi gmb_compile_snippet): il codice
+     * viene emesso con indirizzi assoluti già BASATI su code_base (spazio del
+     * chunk merged dell'ospite) e le prime n_ext_procs procedure sono quelle
+     * dell'ospite (indirizzi già definitivi, mai ri-basati). */
+    int code_base;
+    int n_ext_procs;
+    int snippet_mode;
     /* globals: nome -> slot */
     char** gnames; int* gslots; int gcount, gcap;
     char* dyn_names[64]; int n_dyn;
@@ -1027,12 +1036,82 @@ static void cc_coderef_register(gmb_cc_t* c, int constIdx, const char* proc)
     c->ncr++;
 }
 
+/* ── Modalità SNIPPET a runtime (EVAL/&) ─────────────────────────────────────
+ * gmb_compile_snippet compila un FRAMMENTO contro le tabelle di simboli del chunk
+ * OSPITE: globali/locali/procedure si risolvono su slot e indirizzi dell'ospite,
+ * così il codice gira NELLA task corrente. Stato in file-static (protetto dal
+ * mutex) perché gmb_compile è una pipeline unica: niente seconde implementazioni.
+ * Fuori da gmb_compile_snippet i puntatori sono NULL → comportamento invariato. */
+static const gmb_snippet_ext_t* g_snip_ext = NULL;
+static gmb_compiled_chunk_t* g_snip_out = NULL;
+static pthread_mutex_t g_snip_mu = PTHREAD_MUTEX_INITIALIZER;
+
+/* Applica i simboli esterni al contesto di compilazione (prima di compilare). */
+static void snip_seed(gmb_cc_t* c, const gmb_snippet_ext_t* ext)
+{
+    gmb_compiled_chunk_t* ch = c->chunk;
+    c->snippet_mode = 1;
+    c->code_base = ext->code_base;
+    c->n_ext_procs = ext->proc_count;
+
+    /* globali: slot dell'ospite, nessuna creazione */
+    c->gcap = ext->global_count > 0 ? ext->global_count : 1;
+    c->gnames = (char**)calloc((size_t)c->gcap, sizeof(char*));
+    c->gslots = (int*)calloc((size_t)c->gcap, sizeof(int));
+    for (int i = 0; i < ext->global_count; i++) {
+        const char* n = ext->global_names ? ext->global_names[i] : NULL;
+        c->gnames[i] = strdup(n && n[0] ? n : "__slot_vuoto__");
+        c->gslots[i] = i;
+    }
+    c->gcount = ext->global_count;
+
+    /* procedure dell'ospite: indirizzi già ASSOLUTI (mai ri-basati) */
+    if (ext->proc_count > 0) {
+        ch->proc_count = (uint32_t)ext->proc_count;
+        ch->proc_names = (char**)calloc((size_t)ext->proc_count, sizeof(char*));
+        ch->proc_addrs = (uint32_t*)calloc((size_t)ext->proc_count, sizeof(uint32_t));
+        ch->arity_count = (uint32_t)ext->proc_count;
+        ch->arity_addrs = (uint32_t*)calloc((size_t)ext->proc_count, sizeof(uint32_t));
+        ch->arity_vals = (uint32_t*)calloc((size_t)ext->proc_count, sizeof(uint32_t));
+        for (int i = 0; i < ext->proc_count; i++) {
+            ch->proc_names[i] = strdup(ext->proc_names && ext->proc_names[i] ? ext->proc_names[i] : "");
+            ch->proc_addrs[i] = ext->proc_addrs ? ext->proc_addrs[i] : 0;
+            ch->arity_addrs[i] = ch->proc_addrs[i];
+            ch->arity_vals[i] = ext->proc_arities ? ext->proc_arities[i] : 0;
+        }
+    }
+
+    /* constant pool: prenota il prefisso dell'ospite con valori che non possono
+     * mai essere deduplicati (NaN ≠ NaN) → le costanti del frammento partono da
+     * ext->consts_seed e gli indici coincidono col pool del chunk merged. */
+    if (ext->consts_seed > 0) {
+        ch->consts_len = ext->consts_seed;
+        ch->consts = (gmb_cconst_t*)calloc(ext->consts_seed, sizeof(gmb_cconst_t));
+        for (uint32_t i = 0; i < ext->consts_seed; i++) {
+            ch->consts[i].type = GMB_CCONST_DOUBLE;
+            ch->consts[i].d = NAN;
+            ch->consts[i].s = NULL;
+            ch->consts[i].tree = NULL;
+        }
+    }
+}
+
 /* ── globals ── */
 static int cc_global(gmb_cc_t* c, const char* name, int create)
 {
     for (int i = 0; i < c->gcount; i++)
         if (strcasecmp(c->gnames[i], name) == 0) return c->gslots[i];
     if (!create) return -1;
+    if (c->snippet_mode) {
+        /* Snippet a runtime: i globali sono quelli dell'OSPITE. Un nome ignoto non
+         * può creare slot (gli array globali della task sono già dimensionati): il
+         * driver lo trasforma in un locale del wrapper (campo DBF / variabile nuova)
+         * e ricompila. Il marcatore è parsato da gmb_compile_snippet. */
+        char msg[320];
+        snprintf(msg, sizeof msg, "SNIP_GLOBAL:%s", name ? name : "");
+        cc_err(c, msg);
+        return 0;
+    }
     if (c->gcount >= c->gcap) { c->gcap = c->gcap ? c->gcap * 2 : 16; c->gnames = (char**)realloc(c->gnames, (size_t)c->gcap * sizeof(char*)); c->gslots = (int*)realloc(c->gslots, (size_t)c->gcap * sizeof(int)); }
     int slot = c->gcount++;
     c->gnames[slot] = strdup(name);
@@ -4567,6 +4646,18 @@ static void cc_stmt(gmb_cc_t* c, const gmb_stmt_t* s)
     }
     case GMB_STMT_EXPR:
     case GMB_STMT_CALL: {
+        /* `&(cmd)` / `EVAL(cmd)` usato come STATEMENT: è una MACRO-COMANDO, non
+         * un'espressione → OP_EVAL_MACRO_STMT (il frammento viene compilato come
+         * sequenza di statement, senza valore di ritorno). Prima emetteva la
+         * variante EXPR anche qui: `&("PRINT 42")` / `&("X = X + 5")` finivano
+         * compilati come espressione (RETURN PRINT…, `=` come uguaglianza). */
+        if (s->expr && s->expr->kind == GMB_EXPR_CALL && s->expr->var
+            && strcmp(s->expr->var, "_macro_") == 0 && s->expr->nargs == 1) {
+            cc_expr(c, s->expr->args[0]);
+            if (c->error) return;
+            cc_byte(c, GMB_OP_EVAL_MACRO_STMT);
+            break;
+        }
         cc_expr(c, s->expr);
         if (c->error) return;
         cc_byte(c, GMB_OP_POP);
@@ -5126,7 +5217,7 @@ static void cc_stmt(gmb_cc_t* c, const gmb_stmt_t* s)
         cc_patch_add(c, call_pos, 1, s->proc_name && s->proc_name->var ? s->proc_name->var : "");
         cc_byte(c, 0);   /* arity 0 (sync.Once.Do esegue f() senza argomenti) */
         cc_byte(c, GMB_OP_ONCE_END);
-        int skip_addr = c->code_len;
+        int skip_addr = c->code_len + c->code_base;
         c->code[begin_pos + 1] = (uint8_t)((skip_addr >> 8) & 0xFF);
         c->code[begin_pos + 2] = (uint8_t)(skip_addr & 0xFF);
         break;
@@ -5142,7 +5233,7 @@ static void cc_stmt(gmb_cc_t* c, const gmb_stmt_t* s)
         cc_stmt(c, s->go_comm);
         if (c->error) return;
         cc_byte(c, GMB_OP_DEFER_RET);
-        c->code[defer_pos + 1] = (uint8_t)((body_addr >> 8) & 0xFF);
+        c->code[defer_pos + 1] = (uint8_t)(((body_addr + c->code_base) >> 8) & 0xFF);
         c->code[defer_pos + 2] = (uint8_t)(body_addr & 0xFF);
         if (c->nrel > 0 && c->reljumps[c->nrel - 1].target < 0)
             c->reljumps[c->nrel - 1].target = c->code_len;
@@ -5329,8 +5420,8 @@ static void cc_stmt(gmb_cc_t* c, const gmb_stmt_t* s)
         for (int i = 0; i < s->n_go_cases; i++) {
             gmb_go_case_t* cs = &s->go_cases[i];
             /* patch indirizzo del case */
-            c->code[cpos[i]] = (uint8_t)((c->code_len >> 8) & 0xFF);
-            c->code[cpos[i] + 1] = (uint8_t)(c->code_len & 0xFF);
+            c->code[cpos[i]] = (uint8_t)(((c->code_len + c->code_base) >> 8) & 0xFF);
+            c->code[cpos[i] + 1] = (uint8_t)((c->code_len + c->code_base) & 0xFF);
             if (cs->comm && cs->comm->kind == GMB_STMT_RECEIVE && cs->comm->receive_dest) {
                 /* RECEIVE dest: registra la destinazione come LOCAL (parità C#
                    AssignVariable→AddLocal). Prima si provava cc_local/cc_global:
@@ -5348,7 +5439,7 @@ static void cc_stmt(gmb_cc_t* c, const gmb_stmt_t* s)
         int has_default = 0;
         for (int i = 0; i < s->n_go_cases; i++) if (!s->go_cases[i].comm) { has_default = 1; break; }
         if (has_default) {
-            int def_addr = c->code_len;
+            int def_addr = c->code_len + c->code_base;
             c->code[defpos] = (uint8_t)((def_addr >> 8) & 0xFF);
             c->code[defpos + 1] = (uint8_t)(def_addr & 0xFF);
             for (int i = 0; i < s->n_go_cases; i++) {
@@ -6367,10 +6458,12 @@ static void cc_patch_all(gmb_cc_t* c)
     /* patch assoluti (etichette/procedure) */
     for (int i = 0; i < c->npatch; i++) {
         int addr = -1;
+        int external = 0;
         if (c->patches[i].kind == 0) {
             for (int l = 0; l < c->nlabels; l++)
                 if (strcasecmp(c->labels[l].name, c->patches[i].name) == 0) { addr = c->labels[l].addr; break; }
             if (addr < 0) addr = c->code_len;   /* label non trovata: salta alla fine (safe stop) */
+            addr += c->code_base;               /* snippet: spazio indirizzi del chunk merged */
         } else {
             /* Arity-aware (2026-09-07, fix overload cross-file): fra tutte le entry che
              * combaciano per nome (due o più con overload omonimi, es. Somma 2-arg e
@@ -6386,14 +6479,19 @@ static void cc_patch_all(gmb_cc_t* c)
             gmb_compiled_chunk_t* ch = c->chunk;
             int argc = c->patches[i].argc;
             int fallback_addr = -1, exact_addr = -1;
+            int fallback_ext = 0, exact_ext = 0;
             for (uint32_t p = 0; p < ch->proc_count; p++) {
                 if (strcasecmp(ch->proc_names[p], c->patches[i].name) != 0) continue;
-                if (fallback_addr < 0) fallback_addr = (int)ch->proc_addrs[p];
+                int is_ext = (int)p < c->n_ext_procs;
+                if (fallback_addr < 0) { fallback_addr = (int)ch->proc_addrs[p]; fallback_ext = is_ext; }
                 if (argc >= 0 && exact_addr < 0 && p < ch->arity_count && (int)ch->arity_vals[p] == argc)
-                    exact_addr = (int)ch->proc_addrs[p];
+                    { exact_addr = (int)ch->proc_addrs[p]; exact_ext = is_ext; }
             }
             addr = exact_addr >= 0 ? exact_addr : fallback_addr;
+            external = exact_addr >= 0 ? exact_ext : fallback_ext;
             if (addr < 0) { char m[256]; snprintf(m, sizeof(m), "procedura non trovata: %s", c->patches[i].name); cc_err(c, m); return; }
+            /* Le proc dell'OSPITE hanno indirizzi già assoluti: mai ri-basare. */
+            if (!external && c->code_base) addr += c->code_base;
         }
         int pos = c->patches[i].pos;
         c->code[pos] = (uint8_t)((addr >> 8) & 0xFF);
@@ -6402,10 +6500,13 @@ static void cc_patch_all(gmb_cc_t* c)
     /* patch code-ref: costante → indirizzo procedura */
     for (int i = 0; i < c->ncr; i++) {
         int addr = -1;
+        int external = 0;
         gmb_compiled_chunk_t* ch = c->chunk;
         for (uint32_t p = 0; p < ch->proc_count; p++)
-            if (strcasecmp(ch->proc_names[p], c->cr_names[i]) == 0) { addr = (int)ch->proc_addrs[p]; break; }
+            if (strcasecmp(ch->proc_names[p], c->cr_names[i]) == 0)
+                { addr = (int)ch->proc_addrs[p]; external = (int)p < c->n_ext_procs; break; }
         if (addr < 0) { char m[256]; snprintf(m, sizeof(m), "procedura non trovata (code-ref): %s", c->cr_names[i]); cc_err(c, m); return; }
+        if (!external && c->code_base) addr += c->code_base;
         ch->consts[c->cr_consts[i]].d = (double)addr;
     }
 }
@@ -6417,10 +6518,10 @@ static void cc_proc(gmb_cc_t* c, const gmb_stmt_t* s)
     ch->proc_names = (char**)realloc(ch->proc_names, (size_t)(ch->proc_count + 1) * sizeof(char*));
     ch->proc_addrs = (uint32_t*)realloc(ch->proc_addrs, (size_t)(ch->proc_count + 1) * sizeof(uint32_t));
     ch->proc_names[ch->proc_count] = strdup(s->func_name);
-    ch->proc_addrs[ch->proc_count] = (uint32_t)c->code_len;
+    ch->proc_addrs[ch->proc_count] = (uint32_t)(c->code_len + c->code_base);
     ch->arity_addrs = (uint32_t*)realloc(ch->arity_addrs, (size_t)(ch->arity_count + 1) * sizeof(uint32_t));
     ch->arity_vals = (uint32_t*)realloc(ch->arity_vals, (size_t)(ch->arity_count + 1) * sizeof(uint32_t));
-    ch->arity_addrs[ch->arity_count] = (uint32_t)c->code_len;
+    ch->arity_addrs[ch->arity_count] = (uint32_t)(c->code_len + c->code_base);
     ch->arity_vals[ch->arity_count] = (uint32_t)s->n_params;
     ch->arity_count++;
     ch->proc_count++;
@@ -6512,6 +6613,7 @@ int gmb_compile(const gmb_program_t* prog, uint8_t** out_data, size_t* out_len, 
     gmb_cc_t c = {0};
     c.cur_class = -1;
     c.chunk = &ch;
+    if (g_snip_ext) snip_seed(&c, g_snip_ext);
     cc_tuple_clear();
 
     /* padding 2 byte: l'indirizzo 0 è il sentinella "nessun handler/nessuna
@@ -6849,6 +6951,11 @@ int gmb_compile(const gmb_program_t* prog, uint8_t** out_data, size_t* out_len, 
 
     ch.code = c.code; ch.code_len = (uint32_t)c.code_len;
     ch.lines = c.lines;
+
+    if (g_snip_out) {            /* modalità snippet: chunk in memoria, niente serializzazione */
+        *g_snip_out = ch;
+        return 0;
+    }
 
     int rc = gmb_compiled_chunk_serialize(&ch, out_data, out_len, error);
     gmb_compiled_chunk_free(&ch);
@@ -7695,4 +7802,302 @@ int gmb_compile_bas_file(const char* path, uint8_t** out_data, size_t* out_len, 
     gmb_lex_result_free(&lx2); gmb_lex_result_free(&lx);
     free(src);
     return rc;
+}
+
+/* ── gmb_compile_snippet: frammento BASIC compilato contro l'OSPITE ────────────
+ * Usato da EVAL/& (VM/C) a runtime: il frammento è avvolto in una procedura
+ * (`__GMB_EVAL__`) e compilato con il compilatore VERO, con globali/locali/proc
+ * risolti sulle tabelle del chunk ospite. I nomi ignoti (campi DBF, variabili
+ * nuove) NON creano slot globali: vengono dichiarati locali (`DIM`) e il driver
+ * li pre/post-carica dal record attivo. Nessun interprete parallelo. */
+/* Costruisce il testo del wrapper: `stmt_mode` = sequenza di statement (SUB),
+ * altrimenti espressione (FUNCTION + RETURN). */
+static char* snip_wrap_text(const char* src, int mode, const char* ret_target,
+                            char** params, int nparams)
+{
+    size_t need = strlen(src) + 256 + (ret_target ? strlen(ret_target) + 16 : 0);
+    for (int i = 0; i < nparams; i++) need += strlen(params[i]) + 8;
+    char* w0 = (char*)malloc(need);
+    if (!w0) return NULL;
+    char* w = w0;
+    if (mode == 1) w += sprintf(w, "SUB __GMB_EVAL__(");
+    else           w += sprintf(w, "FUNCTION __GMB_EVAL__(");
+    for (int i = 0; i < nparams; i++) w += sprintf(w, "%sBYREF %s", i ? ", " : "", params[i]);
+    w += sprintf(w, ")\n");
+    if (mode == 0) {
+        w += sprintf(w, "RETURN %s\nEND FUNCTION\n", src);
+    } else if (mode == 2) {
+        w += sprintf(w, "%s\nRETURN %s\nEND FUNCTION\n", src, ret_target ? ret_target : "");
+    } else {
+        w += sprintf(w, "%s\nEND SUB\n", src);
+    }
+    return w0;
+}
+
+/* S_eval: `LET nome = …` dentro un frammento DICHIARA un locale transiente che
+ * fa shadowing sulla locale/globale del chiamante (il valore esterno non cambia).
+ * Raccolgo i target di LET per dichiararli locali nel wrapper (DIM) e NON passarli
+ * come parametri BYREF (che sarebbero write-through sul chiamante). */
+static void snip_collect_let_targets(const char* src, char*** out, int* n)
+{
+    *out = NULL; *n = 0;
+    char* wrapped = snip_wrap_text(src, 1, NULL, NULL, 0);
+    if (!wrapped) return;
+    gmb_lex_result_t lx = gmb_lexer_scan(wrapped, (long)strlen(wrapped));
+    lx.owned_src = NULL;
+    gmb_lex_result_t lx2 = gmb_macro_expand(&lx);
+    char* perr = NULL;
+    gmb_program_t prog = gmb_parse(&lx2, &perr);
+    if (!perr) {
+        for (int i = 0; i < prog.n; i++) {
+            const gmb_stmt_t* fn = prog.stmts[i];
+            if (!fn || fn->kind != GMB_STMT_FUNCTION) continue;
+            for (int j = 0; j < fn->n_funcbody; j++) {
+                const gmb_stmt_t* st = fn->func_body[j];
+                if (!st || !st->is_let || !st->target) continue;
+                int dup = 0;
+                for (int k = 0; k < *n; k++) if (strcasecmp((*out)[k], st->target) == 0) dup = 1;
+                if (dup) continue;
+                *out = (char**)realloc(*out, (size_t)(*n + 1) * sizeof(char*));
+                (*out)[(*n)++] = strdup(st->target);
+            }
+        }
+    }
+    free(perr);
+    gmb_program_free(&prog);
+    gmb_lex_result_free(&lx2);
+    gmb_lex_result_free(&lx);
+    free(wrapped);
+}
+
+/* Il testo del frammento è un'ESPRESSIONE da restituire o una sequenza di
+ * statement? Parità Clipper/C#: si prova PRIMA come corpo di SUB (il testo è
+ * codice); se il corpo è un solo statement-espressione il valore si restituisce.
+ * Se la forma-statement non è parsabile (es. `2+3` nudo) si prova come
+ * espressione (`RETURN 2+3`). Ritorna 1 espressione, 0 statement, -1 errore. */
+static int snip_classify(const char* src, char** params, int nparams, char** out_err,
+                         char** out_assign_target)
+{
+    /* 1) forma statement */
+    char* wrapped = snip_wrap_text(src, 1, NULL, params, nparams);
+    if (wrapped) {
+        gmb_lex_result_t lx = gmb_lexer_scan(wrapped, (long)strlen(wrapped));
+        lx.owned_src = NULL;
+        gmb_lex_result_t lx2 = gmb_macro_expand(&lx);
+        char* perr = NULL;
+        gmb_program_t prog = gmb_parse(&lx2, &perr);
+        int verdict = -1;
+        if (!perr) {
+            const gmb_stmt_t* fn = (prog.n > 0) ? prog.stmts[0] : NULL;
+            verdict = (fn && fn->kind == GMB_STMT_FUNCTION && fn->n_funcbody == 1
+                       && fn->func_body && fn->func_body[0]
+                       && fn->func_body[0]->kind == GMB_STMT_EXPR) ? 1 : 0;
+            /* assegnazione singola in posizione di espressione: il valore è il
+             * target assegnato (`EVAL("Y = 42")` → 42, come Clipper/C#). */
+            if (verdict == 0 && out_assign_target && fn && fn->n_funcbody == 1
+                && fn->func_body && fn->func_body[0]
+                && (fn->func_body[0]->kind == GMB_STMT_ASSIGN || fn->func_body[0]->kind == GMB_STMT_LET)
+                && fn->func_body[0]->target)
+                *out_assign_target = strdup(fn->func_body[0]->target);
+        }
+        free(perr);
+        gmb_program_free(&prog);
+        gmb_lex_result_free(&lx2);
+        gmb_lex_result_free(&lx);
+        free(wrapped);
+        if (verdict >= 0) return verdict;
+    }
+    /* 2) forma espressione (testo non parsabile come statement: `2+3`) */
+    wrapped = snip_wrap_text(src, 0, NULL, params, nparams);
+    if (!wrapped) { if (out_err) *out_err = strdup("frammento: memoria esaurita"); return -1; }
+    gmb_lex_result_t lx = gmb_lexer_scan(wrapped, (long)strlen(wrapped));
+    lx.owned_src = NULL;
+    gmb_lex_result_t lx2 = gmb_macro_expand(&lx);
+    char* perr = NULL;
+    gmb_program_t prog = gmb_parse(&lx2, &perr);
+    int verdict = perr ? -1 : 1;
+    if (perr && out_err) *out_err = perr; else free(perr);
+    gmb_program_free(&prog);
+    gmb_lex_result_free(&lx2);
+    gmb_lex_result_free(&lx);
+    free(wrapped);
+    return verdict;
+}
+
+int gmb_compile_snippet(const char* src, int as_stmt, const gmb_snippet_ext_t* ext,
+                        gmb_compiled_snippet_t* out, char** error)
+{
+    if (error) *error = NULL;
+    if (!src || !out) { if (error) *error = strdup("gmb_compile_snippet: argomenti nulli"); return -1; }
+    memset(out, 0, sizeof(*out));
+
+    char** params = NULL;
+    int* pslots = NULL;
+    int nparams = 0, pcap = 0;
+    int rc = -1;
+
+    pthread_mutex_lock(&g_snip_mu);
+
+    /* LET dichiara un locale transiente (S_eval): non è un parametro BYREF. */
+    char** let_targets = NULL;
+    int n_let = 0;
+    snip_collect_let_targets(src, &let_targets, &n_let);
+
+    /* Parametri = LOCALI dell'ospite (BYREF write-through sul frame del chiamante). */
+    for (int i = 0; i < ext->local_count; i++) {
+        const char* nm = ext->local_names ? ext->local_names[i] : NULL;
+        if (!nm || !nm[0]) continue;
+        int dup = 0;
+        for (int k = 0; k < nparams; k++) if (strcasecmp(params[k], nm) == 0) dup = 1;
+        for (int k = 0; k < n_let; k++) if (strcasecmp(let_targets[k], nm) == 0) dup = 1;
+        if (dup) continue;
+        if (nparams >= pcap) {
+            pcap = pcap ? pcap * 2 : 8;
+            params = (char**)realloc(params, (size_t)pcap * sizeof(char*));
+            pslots = (int*)realloc(pslots, (size_t)pcap * sizeof(int));
+        }
+        params[nparams] = strdup(nm);
+        pslots[nparams] = i;
+        nparams++;
+    }
+
+    /* espressione solo se il frammento È un'espressione (v. snip_classify) */
+    int wrap_mode = 1;              /* 0 espressione, 1 statement (SUB), 2 corpo+RETURN target */
+    char* assign_target = NULL;
+    if (!as_stmt) {
+        char* cls_err = NULL;
+        int cls = snip_classify(src, params, nparams, &cls_err, &assign_target);
+        if (cls < 0) {
+            if (error) *error = cls_err ? cls_err : strdup("frammento BASIC non valido");
+            else free(cls_err);
+            pthread_mutex_unlock(&g_snip_mu);
+            return -1;
+        }
+        if (cls == 1) wrap_mode = 0;
+        else if (assign_target) wrap_mode = 2;
+        else wrap_mode = 1;
+    }
+    int stmt_mode = (wrap_mode != 0);
+
+    for (int attempt = 0; attempt < 32; attempt++) {
+        char* wrapped;
+        if (n_let > 0) {
+            size_t need = strlen(src) + 512;
+            for (int i = 0; i < nparams; i++) need += strlen(params[i]) + 8;
+            for (int i = 0; i < n_let; i++) need += strlen(let_targets[i]) + 8;
+            wrapped = (char*)malloc(need);
+            if (wrapped) {
+                char* w = wrapped;
+                if (wrap_mode == 1) w += sprintf(w, "SUB __GMB_EVAL__(");
+                else                w += sprintf(w, "FUNCTION __GMB_EVAL__(");
+                for (int i = 0; i < nparams; i++) w += sprintf(w, "%sBYREF %s", i ? ", " : "", params[i]);
+                w += sprintf(w, ")\n");
+                for (int i = 0; i < n_let; i++) w += sprintf(w, "DIM %s\n", let_targets[i]);
+                if (wrap_mode == 0)      w += sprintf(w, "RETURN %s\nEND FUNCTION\n", src);
+                else if (wrap_mode == 2) w += sprintf(w, "%s\nRETURN %s\nEND FUNCTION\n", src, assign_target ? assign_target : "");
+                else                     w += sprintf(w, "%s\nEND SUB\n", src);
+            }
+        } else {
+            wrapped = snip_wrap_text(src, wrap_mode, assign_target, params, nparams);
+        }
+        if (!wrapped) break;
+
+        gmb_lex_result_t lx = gmb_lexer_scan(wrapped, (long)strlen(wrapped));
+        lx.owned_src = NULL;
+        gmb_lex_result_t lx2 = gmb_macro_expand(&lx);
+        char* perr = NULL;
+        gmb_program_t prog = gmb_parse(&lx2, &perr);
+        free(wrapped);
+
+        if (perr) {
+            if (error) *error = perr; else free(perr);
+            gmb_program_free(&prog);
+            gmb_lex_result_free(&lx2);
+            gmb_lex_result_free(&lx);
+            break;
+        }
+
+        gmb_compiled_chunk_t ch;
+        memset(&ch, 0, sizeof ch);
+        uint8_t* dummy = NULL; size_t dlen = 0;
+        char* cerr = NULL;
+        g_snip_ext = ext;
+        g_snip_out = &ch;
+        int crc = gmb_compile(&prog, &dummy, &dlen, &cerr);
+        g_snip_ext = NULL;
+        g_snip_out = NULL;
+
+        gmb_program_free(&prog);
+        gmb_lex_result_free(&lx2);
+        gmb_lex_result_free(&lx);
+
+        if (crc == 0) {
+            uint32_t entry = 0;
+            int found = 0;
+            /* Solo le procedure NUOVE (dopo quelle seminate dall'ospite): un EVAL
+             * annidato ha già un `__GMB_EVAL__` dell'ospite e non va riusato. */
+            for (uint32_t i = (uint32_t)(ext->proc_count > 0 ? ext->proc_count : 0); i < ch.proc_count; i++)
+                if (ch.proc_names[i] && strcasecmp(ch.proc_names[i], "__GMB_EVAL__") == 0)
+                    { entry = ch.proc_addrs[i]; found = 1; break; }
+            if (!found) {
+                if (error) *error = strdup("gmb_compile_snippet: wrapper non compilato");
+                gmb_compiled_chunk_free(&ch);
+                break;
+            }
+            out->chunk = ch;
+            out->entry = entry;
+            out->param_names = params;
+            out->param_slots = pslots;
+            out->n_params = nparams;
+            out->is_stmt = stmt_mode;
+            params = NULL; pslots = NULL;
+            rc = 0;
+            break;
+        }
+
+        int retried = 0;
+        if (cerr && strncmp(cerr, "SNIP_GLOBAL:", 12) == 0) {
+            const char* name = cerr + 12;
+            int dup = 0;
+            for (int i = 0; i < nparams; i++) if (strcasecmp(params[i], name) == 0) dup = 1;
+            if (!dup && name[0]) {
+                if (nparams >= pcap) {
+                    pcap = pcap ? pcap * 2 : 8;
+                    params = (char**)realloc(params, (size_t)pcap * sizeof(char*));
+                    pslots = (int*)realloc(pslots, (size_t)pcap * sizeof(int));
+                }
+                params[nparams] = strdup(name);
+                pslots[nparams] = -1;
+                nparams++;
+                retried = 1;
+            }
+        }
+        free(cerr);
+        gmb_compiled_chunk_free(&ch);
+        if (!retried) {
+            if (error) *error = strdup("compilazione del frammento BASIC fallita");
+            break;
+        }
+    }
+    pthread_mutex_unlock(&g_snip_mu);
+
+    free(assign_target);
+    for (int i = 0; i < n_let; i++) free(let_targets[i]);
+    free(let_targets);
+    if (rc != 0 && params) {
+        for (int i = 0; i < nparams; i++) free(params[i]);
+        free(params);
+        free(pslots);
+    }
+    return rc;
+}
+
+void gmb_compiled_snippet_free(gmb_compiled_snippet_t* s)
+{
+    if (!s) return;
+    gmb_compiled_chunk_free(&s->chunk);
+    for (int i = 0; i < s->n_params; i++) free(s->param_names[i]);
+    free(s->param_names);
+    free(s->param_slots);
+    memset(s, 0, sizeof(*s));
 }

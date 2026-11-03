@@ -1,4 +1,5 @@
-/* Golden BSP: HTML + <%= %> + <% FOR %> → output catturato. */
+/* Golden BSP: HTML + <%= %> + <% FOR %> + direttive → BASIC per il compilatore
+ * COMPLETO (poi VM/C). Nessun percorso "ridotto" (niente gmb_expr). */
 #include "gmb_bsp.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,26 +19,27 @@ int main(void)
     gmb_dict_t env = gmb_dict_new();
     gmb_dict_set(&env, "n", gmb_make_val_double(7));
 
-    char* html = NULL;
-    if (gmb_bsp_render("<html><%= 1+2 %></html>", &env, gmb_expr_dict_get, gmb_expr_dict_set, NULL, &html) != GMB_EXPR_OK
-        || !html || strcmp(html, "<html>3</html>") != 0)
-        fail_msg("html_expr", html ? html : "null");
-    free(html);
-
-    html = NULL;
-    if (gmb_bsp_render("<%\nFOR i = 1 TO 3\nPRINT i;\nNEXT\n%>", &env, gmb_expr_dict_get, gmb_expr_dict_set, NULL, &html) != GMB_EXPR_OK
-        || !html || strcmp(html, "123") != 0)
-        fail_msg("for_page", html ? html : "null");
-    free(html);
-
-    html = NULL;
-    if (gmb_bsp_render("<%@ IMPORT HTTP %><%= n %>", &env, gmb_expr_dict_get, gmb_expr_dict_set, NULL, &html) != GMB_EXPR_OK
-        || !html || strcmp(html, "7") != 0)
-        fail_msg("directive_skip", html ? html : "null");
-    free(html);
-
     char* bas = NULL;
-    if (gmb_bsp_compile("<b>x</b>", &bas) != GMB_EXPR_OK || !bas || !strstr(bas, "PRINT"))
+    if (gmb_bsp_compile_full("<html><%= 1+2 %></html>", &bas) != GMB_EXPR_OK
+        || !bas || !strstr(bas, "PRINT \"<html>\";")
+        || !strstr(bas, "PRINT 1+2;") || !strstr(bas, "PRINT \"</html>\";"))
+        fail_msg("html_expr", bas ? bas : "null");
+    free(bas);
+
+    bas = NULL;
+    if (gmb_bsp_compile_full("<%\nFOR i = 1 TO 3\nPRINT i;\nNEXT\n%>", &bas) != GMB_EXPR_OK
+        || !bas || !strstr(bas, "FOR i = 1 TO 3") || !strstr(bas, "NEXT"))
+        fail_msg("for_page", bas ? bas : "null");
+    free(bas);
+
+    bas = NULL;
+    if (gmb_bsp_compile_full("<%@ IMPORT HTTP %><%= n %>", &bas) != GMB_EXPR_OK
+        || !bas || !strstr(bas, "IMPORT HTTP") || !strstr(bas, "PRINT n;"))
+        fail_msg("directive_import", bas ? bas : "null");
+    free(bas);
+
+    bas = NULL;
+    if (gmb_bsp_compile_full("<b>x</b>", &bas) != GMB_EXPR_OK || !bas || !strstr(bas, "PRINT"))
         fail_msg("compile", bas ? bas : "null");
     free(bas);
 
@@ -60,8 +62,10 @@ int main(void)
             } else {
                 fputs("ok <%= q %>", pf);
                 fclose(pf);
+                /* Pagina senza chunk A1: il motore COMPLETO non può renderla e il server
+                 * risponde 500 ESPLICITO (niente fallback al valutatore/shell statica). */
                 if (!gmb_bsp_try_serve(d, "/hi.bsp", "q=ok", NULL, &page, &st)
-                    || st != 200 || !page || strcmp(page, "ok ok") != 0)
+                    || st != 500 || !page || !strstr(page, "BSP non compilata"))
                     fail_msg("try_serve_query", page ? page : "null");
                 free(page);
                 page = NULL;
