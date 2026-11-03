@@ -123,6 +123,24 @@ if(GMBLLM_TESTS)
     add_test(NAME gmbllm_decide_eval
              COMMAND gmbllm_decide_eval
                      ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/decide_calib_samples.txt)
+    # T4 — gate NUMERICO del grafo MLX della decision loss (loss+gradienti vs llm_decide_loss).
+    # Richiede i simboli mlx-c esportati dalla dylib del motore: se non c'è, il gate è saltato
+    # (la build normale non dipende dal motore MLX).
+    set(_gmbllm_mlx_lib "${LLMENV}/LLMEngine/mlx/build-gmbasic/libllm_ai_mlx.dylib")
+    if(EXISTS "${_gmbllm_mlx_lib}")
+        add_executable(gmbllm_decide_mlx_selfcheck tests/test_decide_mlx_loss.c)
+        target_link_libraries(gmbllm_decide_mlx_selfcheck PRIVATE gmbllm_train "${_gmbllm_mlx_lib}" "-framework Accelerate")
+        target_include_directories(gmbllm_decide_mlx_selfcheck PRIVATE include
+            ${LLMENV}/LLMEngine/mlx ${LLMENV}/libs/mlx-deps/mlx-c-src)
+        add_test(NAME gmbllm_decide_mlx_selfcheck COMMAND gmbllm_decide_mlx_selfcheck)
+        # CLI T4: training LoRA con la loss decisionale su un JSONL (context/options/label).
+        add_executable(gmbllm_decide_train tools/decide_train.c)
+        target_link_libraries(gmbllm_decide_train PRIVATE gmbllm "${_gmbllm_mlx_lib}" "-framework Accelerate")
+        target_include_directories(gmbllm_decide_train PRIVATE include
+            ${LLMENV}/LLMEngine/mlx ${LLMENV}/libs/mlx-deps/mlx-c-src ${LLMENV}/LLMEngine/include)
+    else()
+        message(STATUS "gmbllm: libllm_ai_mlx non trovata -> gate MLX decide-loss saltato")
+    endif()
     # modulo codec di prova usato da test_plugin (nome logico "test_id" -> libllmcodec_test_id)
     add_library(llmcodec_test_id MODULE tests/plugin_test_id.c)
     target_include_directories(llmcodec_test_id PRIVATE ${_gmbllm_test_includes})
