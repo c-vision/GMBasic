@@ -516,6 +516,7 @@ public enum SysCall : ushort
     SIGNAL_EMIT = 456,          // SIGNAL EMIT: (type, symbol, value, asset, market, timeframe)
     SIGNAL_UNSUBSCRIBE = 457,   // SIGNAL UNSUBSCRIBE: (id) — "" = tutte
     SIGNAL_PING = 458,          // SIGNAL PING: nessun argomento
+    DBF_CLOSE_AREA = 459,       // DBF CLOSE <alias|area>: chiude SOLO l'area indicata (1 arg)
 }
 
 /// <summary>

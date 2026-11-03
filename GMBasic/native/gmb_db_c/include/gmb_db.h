@@ -130,6 +130,7 @@ extern "C" {
 #define GMB_SYS_DBF_END_GROUP_COMMIT 157
 #define GMB_SYS_DBF_LUPDATE       162
 #define GMB_SYS_DBF_CLOSE_CURRENT 158
+#define GMB_SYS_DBF_CLOSE_AREA 459   /* DBF CLOSE <alias|area>: chiude SOLO l'area */
 #define GMB_SYS_SPEED_OPEN      163
 #define GMB_SYS_SPEED_USE       164
 #define GMB_SYS_SPEED_CREATE_INDEX 165
@@ -374,6 +375,8 @@ GMB_DB_API gmb_double_t gmb_selected(const char* alias);
  * apertura, parità IL/PCode; lo usa SELECTED() su VM/C e C99Native. */
 GMB_DB_API int gmb_db_current_area(void);
 GMB_DB_API int gmb_db_area_of_alias(const char* alias);
+/* Handle DBF aperto per numero d'area 1-based (0 = non trovato): DBF CLOSE <area>. */
+GMB_DB_API int64_t gmb_db_dbf_find_handle_by_area(int area);
 GMB_DB_API gmb_string_t gmb_indexord(int area);
 GMB_DB_API gmb_string_t gmb_indexkey(int area);
 GMB_DB_API gmb_double_t gmb_neterr(int area);

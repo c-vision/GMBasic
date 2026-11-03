@@ -3985,8 +3985,23 @@ public static partial class IlRuntime
     }
     public static void DbfClose(string? alias = null)
     {
-        var key = UnquoteAlias(alias) ?? _dbfCurrentAlias;
-        var h = DbfHandleFor(alias);
+        var raw = UnquoteAlias(alias);
+        string key;
+        long h;
+        // DBF CLOSE <area>: un numero è il numero d'area 1-based, non un alias (parità
+        // C99/VM-C/PCode). Prima `DBF CLOSE 2` non trovava l'alias "2" e non chiudeva nulla.
+        if (raw != null && int.TryParse(raw, out var areaNum) && areaNum > 0)
+        {
+            var areaAlias = Current.SqlDataSession.GetWorkArea(areaNum)?.Alias;
+            key = string.IsNullOrEmpty(areaAlias) ? raw : areaAlias!;
+            if (areaAlias == null || !_dbfHandles.TryGetValue(key, out h)) h = -1;
+            if (h < 0) return;
+        }
+        else
+        {
+            key = raw ?? _dbfCurrentAlias;
+            h = DbfHandleFor(alias);
+        }
         if (h >= 0) { try { Current.Database.DbfClose(h); } catch { } }
         _dbfHandles.Remove(key);
         // Chiusa l'area CORRENTE: _dbfCurrentAlias resterebbe sull'alias chiuso e
@@ -4074,7 +4089,9 @@ public static partial class IlRuntime
         {
             var session = Current.SqlDataSession;
             var explicitAlias = !string.IsNullOrWhiteSpace(alias);
-            var key = explicitAlias ? alias! : _dbfCurrentAlias;
+            // Trim: una conversione numero→stringa BASIC aggiunge lo spazio-segno
+            // (" 2"): senza trim int.TryParse/alias non trovavano l'area.
+            var key = (explicitAlias ? alias! : _dbfCurrentAlias).Trim();
             if (int.TryParse(key, out var pn) && pn > 0 && session.GetWorkArea(pn)?.Driver != null) return pn;
             if (!string.IsNullOrWhiteSpace(key))
             {

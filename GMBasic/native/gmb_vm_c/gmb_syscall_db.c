@@ -1271,6 +1271,17 @@ int i;
 {
         gmb_stack_entry_t se = gmb_task_pop(task);
         char alb2[128] = "";
+        if (se.type == 1) {
+            /* DBF SELECT <numero>: è l'AREA 1-based, non un alias. Risolve area → handle DBF;
+             * se non c'è (area RDD) seleziona l'area RDD. Prima il numero veniva letto come
+             * stringa "2" e registrato come alias → `DBF SELECT 2` non cambiava area
+             * (SELECTED() restava 1, divergenza IL/PCode/C99). */
+            int sa = (int)se.num;
+            int64_t sh = gmb_db_dbf_find_handle_by_area(sa);
+            if (sh > 0) gmb_db_set_current_dbf(sh); else (void)gmb_rdd_select(sa);
+            push_num_entry(task, 0.0, GMB_BT_NUMBER);
+            return 0;
+        }
         if (se.ref) vm_entry_str(se, alb2, (int)sizeof(alb2));
         gmb_obj_release(se.ref);
         int64_t cur = gmb_db_current_dbf();
