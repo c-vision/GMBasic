@@ -1146,6 +1146,7 @@ procedure,SPEED,FLUSHDURABILITY,SpeedFlushDurability
 procedure,SPEED,INFO,SpeedInfo
 procedure,SPEED,INFO,SpeedInfo
 procedure,SPEED,SELECTED,Selected
+procedure,SPEED,SELECTED,Selected
 procedure,SPEED,SETDURABILITY,SpeedSetDurability
 procedure,SPEED,SETDURABILITY,SpeedSetDurability
 procedure,SPEED,SETMANY,SpeedSetMany
@@ -1751,6 +1752,7 @@ constant,CONSTANTS,DARK_SLATE_GRAY2,Constant
 constant,CONSTANTS,DARK_SLATE_GRAY3,Constant
 constant,CONSTANTS,DARK_TURQUOISE,Constant
 constant,CONSTANTS,DARK_VIOLET,Constant
+constant,CONSTANTS,DECIDE,Constant
 constant,CONSTANTS,DEEP_PINK4,Constant
 constant,CONSTANTS,DEEP_PINK4_2,Constant
 constant,CONSTANTS,DEEP_SKY_BLUE1,Constant

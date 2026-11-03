@@ -10449,11 +10449,11 @@ static void gmb_bf_412(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
      * valore numerico del constant, non la stringa. Prima si leggeva solo la stringa →
      * `AI SET ACTIVE %EMBEDDING, "x"` perdeva il ruolo (e il flag embedding esplicito),
      * divergendo da IL/PCode/C99. */
-    static const char* g_cap_roles[] = { "completion", "ocr", "audio", "embedding", "reranker", "tts" };
+    static const char* g_cap_roles[] = { "completion", "ocr", "audio", "embedding", "reranker", "tts", "decide" };
     const char* role;
     if (argc >= 1 && args[0].type == GMB_BT_STRING && args[0].ref && args[0].ref->kind == GMB_OBJ_STRING)
         role = ((gmb_obj_string_t*)args[0].ref)->data;
-    else if (argc >= 1 && args[0].type == GMB_BT_NUMBER && args[0].num >= 0 && args[0].num <= 5)
+    else if (argc >= 1 && args[0].type == GMB_BT_NUMBER && args[0].num >= 0 && args[0].num <= 6)
         role = g_cap_roles[(int)args[0].num];
     else
         role = "";
@@ -16989,7 +16989,10 @@ static void gmb_bf_llmkv_c3626(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, 
 static void gmb_bf_airegister_c1510(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task) {
     (void)vm; (void)task; (void)func_code;
     const char* a0 = (argc >= 1) ? vm_builtin_sarg(args, argc, 0) : "";
-    const char* a1 = (argc >= 2) ? vm_builtin_sarg(args, argc, 1) : "";
+    /* capability puo' essere un NUMERO (%DECIDE/%CHAT…): vm_builtin_sarg rende "" per i
+     * numerici, quindi serve _any (altrimenti il ruolo finisce su "completion"). */
+    char rbuf[32];
+    const char* a1 = (argc >= 2) ? vm_builtin_sarg_any(args, argc, 1, rbuf, sizeof rbuf) : "";
     const char* a2 = (argc >= 3) ? vm_builtin_sarg(args, argc, 2) : "";
     const char* a3 = (argc >= 4) ? vm_builtin_sarg(args, argc, 3) : "";
     if (!gmb_provider_register(a1 ? a1 : "", a0 ? a0 : "", a2 ? a2 : "", a3 ? a3 : ""))

@@ -618,6 +618,11 @@ public sealed partial class StdLib
         AddConst("FAST", 1.0);
         AddConst("GOVERNED", 2.0);
 
+        // Capability DECIDE (JEV/SystemOne, append-only: valore 6). Accodata in fondo di
+        // proposito: gli id canonici delle costanti sono posizionali e questa posizione non
+        // sposta nessuna costante esistente.
+        AddConst("DECIDE", 6);
+
         RegisterBuiltinNamespace(namespaceName, [], ImmutableDictionary<string, DataType>.Empty, constants: constants);
     }
 }

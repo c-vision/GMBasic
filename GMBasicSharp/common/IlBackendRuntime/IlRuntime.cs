@@ -18237,6 +18237,18 @@ public static double TextWidth(string s)
                 };
             }
             var p = (provider ?? "").Trim().ToLowerInvariant();
+            if (p.Length == 0)
+            {
+                // Ruolo %DECIDE: provider di decisione attivo (AI REGISTER alias, %DECIDE, kind;
+                // AI SET ACTIVE %DECIDE, alias). Solo se il chiamante non ne forza uno.
+                var decideName = Basic.Providers.ProviderServer.Instance.GetActiveName(Basic.Providers.ProviderRole.Decide);
+                if (!string.IsNullOrWhiteSpace(decideName))
+                {
+                    var decideKind = Basic.Providers.ProviderServer.Instance.GetKind(decideName);
+                    if (!string.IsNullOrWhiteSpace(decideKind))
+                        p = decideKind.Trim().ToLowerInvariant();
+                }
+            }
             Basic.Decision.DecisionResult result;
             if (p == "local")
             {

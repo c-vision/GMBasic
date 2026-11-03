@@ -16975,14 +16975,14 @@
       "return": "double",
       "params": [
         {
-          "name": "angleRadians",
+          "name": "radius",
           "type": "double",
           "optional": false,
           "byRef": false,
           "array": false
         },
         {
-          "name": "radius",
+          "name": "angleDegrees",
           "type": "double",
           "optional": false,
           "byRef": false,
@@ -16997,14 +16997,14 @@
       "return": "double",
       "params": [
         {
-          "name": "angleRadians",
+          "name": "radius",
           "type": "double",
           "optional": false,
           "byRef": false,
           "array": false
         },
         {
-          "name": "radius",
+          "name": "angleDegrees",
           "type": "double",
           "optional": false,
           "byRef": false,
@@ -21415,12 +21415,19 @@
       "ns": "SPEED",
       "name": "SELECTED",
       "fn": true,
-      "return": "\u003Cinferred\u003E",
+      "return": "long",
+      "params": []
+    },
+    {
+      "ns": "SPEED",
+      "name": "SELECTED",
+      "fn": true,
+      "return": "long",
       "params": [
         {
-          "name": "query",
-          "type": "string",
-          "optional": false,
+          "name": "area",
+          "type": "\u003Cinferred\u003E",
+          "optional": true,
           "byRef": false,
           "array": false
         }

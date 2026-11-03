@@ -118,7 +118,7 @@ public sealed class ProviderServer
         // sono ruoli del registry vettoriale con factory/kind propri — qui source è il kind
         // e param il config JSON (forma legacy; vedi VectorProviderFailover/HealthCheck).
         var role = ProviderRole.FromCapabilityOrRole(capability);
-        if (role is ProviderRole.Embedding or ProviderRole.Reranker)
+        if (role is ProviderRole.Embedding or ProviderRole.Reranker or ProviderRole.Decide)
         {
             IReadOnlyDictionary<string, string>? config = null;
             if (!string.IsNullOrWhiteSpace(param))
@@ -305,6 +305,17 @@ public sealed class ProviderServer
 
     /// <summary>True se il provider è registrato (per i caller che implementano il no-op
     /// silenzioso del runtime C su provider sconosciuti — parità llm_ai_set_config).</summary>
+    /// <summary>Kind del provider registrato (es. "local"/"rules"/"mock"), o null se assente.
+    /// Usato da `AI DECIDE` senza provider esplicito per risolvere il ruolo %DECIDE.</summary>
+    public string? GetKind(string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        lock (_lock)
+        {
+            return _providers.TryGetValue(name, out var descriptor) ? descriptor.Kind : null;
+        }
+    }
+
     public bool IsRegistered(string name)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);

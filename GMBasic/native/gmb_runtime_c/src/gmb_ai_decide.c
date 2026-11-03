@@ -234,6 +234,12 @@ const char* gmb_ai_decide_active_model_path(void)
 
 char* gmb_ai_decide_run_json(const char* state, const char* kind, const char* provider_name) {
     if (!kind) return NULL;
+    /* Provider esplicito assente → ruolo %DECIDE attivo, se registrato/attivato. */
+    const char* effective_provider = provider_name;
+    if (!effective_provider || !*effective_provider) {
+        const char* decide_kind = gmb_provider_active_kind("decide");
+        if (decide_kind && *decide_kind) effective_provider = decide_kind;
+    }
     const gmb_decision_option_t* options = NULL;
     int n_options = 0;
     gmb_decision_kind_t k;
@@ -296,7 +302,7 @@ char* gmb_ai_decide_run_json(const char* state, const char* kind, const char* pr
     /* Provider locale MLX: l'inferenza vive nella dylib AI (`gmb_ai_decide_local_run`),
      * che usa il motore LLMEnv (CAP_DECIDE), il tokenizer e il chat_template reale. Un
      * fallimento è un errore JSON ESPLICITO: mai un fallback silenzioso a rules. */
-    if (provider_name && ieq(provider_name, "local")) {
+    if (effective_provider && ieq(effective_provider, "local")) {
         gmb_decision_result_t local_result;
         char lerr[GMB_DECISION_ERR_CAP] = "";
         if (gmb_ai_decide_local_run(state ? state : "", kind, options, n_options,
@@ -320,13 +326,13 @@ char* gmb_ai_decide_run_json(const char* state, const char* kind, const char* pr
         return lout;
     }
     gmb_decision_provider_t* provider = NULL;
-    if (!provider_name || !provider_name[0] || ieq(provider_name, "rules"))
+    if (!effective_provider || !effective_provider[0] || ieq(effective_provider, "rules"))
         provider = gmb_decision_provider_rules();
-    else if (ieq(provider_name, "mock"))
+    else if (ieq(effective_provider, "mock"))
         provider = gmb_decision_provider_mock(NULL, 1.0);
     if (!provider) {
         char esc[256];
-        json_escape(provider_name ? provider_name : "", esc, sizeof esc);
+        json_escape(effective_provider ? effective_provider : "", esc, sizeof esc);
         char ebuf[512];
         int en = snprintf(ebuf, sizeof ebuf,
                           "{\"error\":\"provider '%s' non valido (rules/mock/local)\"}", esc);

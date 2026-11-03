@@ -1554,6 +1554,7 @@ const char* gmb_provider_active(const char* role);
 /* Path del modello locale MLX dell'provider COMPLETION attivo (`.gguf` o cartella repo MLX),
  * oppure NULL. Auto-wire del brain MLX nei runtime C (parità routing host C#). */
 const char* gmb_provider_active_model_path(void);
+const char* gmb_provider_active_kind(const char* role);
 /* L'embedding provider è stato impostato ESPLICITAMENTE (AI SET ACTIVE %EMBEDDING)?
  * Rende legittimo il fixture embedding (il fixture DEFAULT no) — parità IlRuntime P0. */
 int gmb_provider_embedding_explicit(void);
