@@ -575,6 +575,9 @@ void gmb_set_color(int fg, int bg);
 void gmb_set_color_spec(const char* spec);
 void gmb_color_reset(void);
 void gmb_sleep_ms(int ms);
+/* Versione COOPERATIVA per il codice emesso (SLEEP): dentro un task GPM parcheggia la
+ * coroutine e libera il worker; fuori dal GPM si comporta come gmb_sleep_ms. */
+void gmb_gpm_sleep(int ms);
 /* TICK <fps>: frame limiter + pompa present (thread UI). */
 void gmb_tick_pace(double fps);
 /* Present del frame dal loop TICK (main-thread-safe). */

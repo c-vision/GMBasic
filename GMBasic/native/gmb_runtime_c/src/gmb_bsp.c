@@ -304,6 +304,79 @@ static char* bsp_dup_lit(const char* s)
     return b;
 }
 
+/* ── Dispatcher delle chiamate BASIC usate dalle pagine BSP ─────────────────────
+ * Il valutatore di espressioni non conosce i namespace: le chiamate `AI.*`/`MEMORY.*`
+ * delle pagine arrivano qui e delegano alle STESSE funzioni del runtime condiviso
+ * (§0bis), senza reimplementare nulla. `DASHBOARD.*` non è qui: sono FUNZIONI BASIC
+ * dell'include e restano eseguibili solo dal compilatore completo (le pagine servite
+ * dal motore C non le usano). */
+static gmb_val_t bsp_str_val(const char* s) { return gmb_make_val_string(s ? s : ""); }
+
+static gmb_val_t bsp_names_list(char names[][64], int n)
+{
+    gmb_list_t l = gmb_list_new();
+    for (int i = 0; i < n; i++) gmb_list_push(&l, bsp_str_val(names[i]));
+    return gmb_make_val_list_take(&l);
+}
+
+static const char* bsp_arg_cstr(const gmb_val_t* a, int n, int i)
+{
+    if (i >= n || !a) return "";
+    if (a[i].kind == GMB_TYPE_STRING && a[i].v_string.data) return a[i].v_string.data;
+    return "";
+}
+
+static int bsp_runtime_call(void* env, const char* name, const gmb_val_t* args, int nargs,
+                            gmb_val_t* out)
+{
+    (void)env;
+    if (!name || !out) return -1;
+    if (!strcasecmp(name, "AI.AGENTLIST")) {
+        char names[64][64];
+        *out = bsp_names_list(names, gmb_agent_list(names, 64));
+        return 0;
+    }
+    if (!strcasecmp(name, "AI.TEAMLIST")) {
+        char names[64][64];
+        *out = bsp_names_list(names, gmb_team_list(names, 64));
+        return 0;
+    }
+    if (!strcasecmp(name, "AI.AGENTEVENTS")) {
+        char evs[64][256];
+        int n = gmb_agent_events(evs, 64);
+        gmb_list_t l = gmb_list_new();
+        for (int i = 0; i < n; i++) gmb_list_push(&l, bsp_str_val(evs[i]));
+        *out = gmb_make_val_list_take(&l);
+        return 0;
+    }
+    if (!strcasecmp(name, "AI.AGENTGET")) {
+        *out = bsp_str_val(gmb_agent_get(bsp_arg_cstr(args, nargs, 0), bsp_arg_cstr(args, nargs, 1)));
+        return 0;
+    }
+    if (!strcasecmp(name, "AI.WORKFLOWLIST")) {
+        gmb_string_t s = gmb_workflow_list();
+        *out = bsp_str_val(s.data);
+        return 0;
+    }
+    if (!strcasecmp(name, "AI.WORKFLOWSTATUS")) {
+        gmb_string_t s = gmb_workflow_status(bsp_arg_cstr(args, nargs, 0));
+        *out = bsp_str_val(s.data);
+        return 0;
+    }
+    if (!strcasecmp(name, "AI.WORKFLOWSTEPS")) {
+        gmb_string_t s = gmb_workflow_steps(bsp_arg_cstr(args, nargs, 0));
+        *out = bsp_str_val(s.data);
+        return 0;
+    }
+    if (!strcasecmp(name, "MEMORY.LIST")) {
+        char* p = gmb_mem_list();
+        *out = bsp_str_val(p);
+        free(p);
+        return 0;
+    }
+    return -1;
+}
+
 /* Fallback STATICO di una pagina BSP: markup HTML/CSS/JS senza i blocchi <% %>.
  * Serve quando il valutatore C non esegue un costrutto della pagina (DIM array,
  * chiamate a FUNCTION dell'include, stato del runtime...): la UI resta viva perché
@@ -366,7 +439,7 @@ int gmb_bsp_try_serve(const char* dir, const char* url_path, const char* query,
 
     env = gmb_dict_new();
     bsp_seed_query(&env, query);
-    rc = gmb_bsp_render(src, &env, gmb_expr_dict_get, gmb_expr_dict_set, NULL, out_html);
+    rc = gmb_bsp_render(src, &env, gmb_expr_dict_get, gmb_expr_dict_set, bsp_runtime_call, out_html);
     gmb_dict_free(&env);
     if (rc != GMB_EXPR_OK) {
         /* Il motore di espressioni C non è un interprete BASIC completo: una pagina che

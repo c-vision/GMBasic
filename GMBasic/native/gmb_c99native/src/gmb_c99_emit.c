@@ -21876,12 +21876,12 @@ static void st_sleep(ctx_t* c, gmb_stmt_t* s) {
                 c->indent--;
                 ind(c); sb_put(&c->out, "}\n");
             }
-            ind(c); sb_put(&c->out, "gmb_sleep_ms(10);\n");
+            ind(c); sb_put(&c->out, "gmb_gpm_sleep(10);\n");
             c->indent--;
             ind(c); sb_put(&c->out, "}\n");
             return;
         }
-        ind(c); sb_put(&c->out, "gmb_sleep_ms((int)(");
+        ind(c); sb_put(&c->out, "gmb_gpm_sleep((int)(");
         emit_expr_dflt(c, s->channel, "0");
         sb_put(&c->out, "));\n");
         return;
