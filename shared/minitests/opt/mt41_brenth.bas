@@ -1,0 +1,12 @@
+' EXPECT: v= 2
+' OPTIMIZE.BRENTH — MiniTest §4.1 (parità 4 backend).
+IMPORT OPT
+IMPORT MATH
+
+FUNCTION C(x AS DOUBLE) AS DOUBLE
+    RETURN x * x * x - 8.0
+END FUNCTION
+
+SUB Main()
+    PRINT "v="; MATH.ROUND(OPT.BRENTH(C, 1.0, 3.0), 6)
+END SUB

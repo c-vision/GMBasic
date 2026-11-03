@@ -31,13 +31,85 @@ public static partial class IlRuntime
         for (var i = 0; i < rawArgs.Length; i++)
         {
             var pt = pars[i].ParameterType;
-            converted[i] = pt.IsInstanceOfType(rawArgs[i]) ? rawArgs[i] : Convert.ChangeType(rawArgs[i], pt);
+            if (pt.IsInstanceOfType(rawArgs[i])) { converted[i] = rawArgs[i]; continue; }
+            /* Parametro BYREF (le FUNCTION nominate dichiarano gli array `T[]&`): si passa
+             * il valore cosi' com'e' — DynamicInvoke lo lega per riferimento. */
+            if (pt.IsByRef && pt.GetElementType() is { } et && et.IsInstanceOfType(rawArgs[i]))
+            { converted[i] = rawArgs[i]; continue; }
+            /* Un array passato dal trampolino e' double[]; una FUNCTION nominata puo' pero'
+             * dichiarare il parametro come List(Of ...)/object() (stessa convenzione delle
+             * closure): si costruisce la collezione del tipo atteso, elemento per elemento. */
+            if (rawArgs[i] is double[] da && typeof(System.Collections.IList).IsAssignableFrom(pt))
+            {
+                var list = (System.Collections.IList)Activator.CreateInstance(pt)!;
+                foreach (var v in da) list.Add(v);
+                converted[i] = list;
+                continue;
+            }
+            converted[i] = Convert.ChangeType(rawArgs[i], pt);
         }
         return d.DynamicInvoke(converted);
     }
 
+    /// <summary>Scrive in `out` un risultato array di callback (double[] o IList boxed).</summary>
+    private static void WriteOutArray(IntPtr outp, object? r)
+    {
+        if (r is double[] a) { if (a.Length > 0) Marshal.Copy(a, 0, outp, a.Length); return; }
+        if (r is System.Collections.IList l)
+            for (var i = 0; i < l.Count; i++) Marshal.WriteInt64(outp, i * 8, BitConverter.DoubleToInt64Bits(Convert.ToDouble(l[i] ?? 0.0)));
+    }
+
     private static (Delegate KeepAlive, IntPtr Ptr) BuildIlFfiCallbackTrampoline(Delegate cb, int arity, bool isInt, bool hasReturn)
     {
+        // Callback VETTORIALE (2026-11-02): arity >= 128, descriptor = arity-128:
+        // bit0-1 nArray-1, bit2-3 nScalari, bit4 ritorno ARRAY. ABI nativa:
+        // (double* a0, int64_t n0[, double* a1, int64_t n1][, double s0[, double s1]][, double* out]).
+        if (arity >= 128)
+        {
+            var code = arity - 128;
+            var nArr = (code & 3) + 1;
+            var nSca = (code >> 2) & 3;
+            var arrRet = (code & 16) != 0;
+            double[] CopyD(IntPtr p, long n) { var a = new double[n]; if (n > 0) Marshal.Copy(p, a, 0, (int)n); return a; }
+            long[] CopyI(IntPtr p, long n) { var a = new long[n]; if (n > 0) Marshal.Copy(p, a, 0, (int)n); return a; }
+            if (nArr == 1 && nSca == 0 && !arrRet)
+            {
+                if (isInt)
+                {
+                    var dv = new CbVecI((p, n) => ToI64(InvokeFfiCallbackDelegate(cb, [CopyI(p, n)])));
+                    return (dv, Marshal.GetFunctionPointerForDelegate(dv));
+                }
+                var dv2 = new CbVecD((p, n) => ToF64(InvokeFfiCallbackDelegate(cb, [CopyD(p, n)])));
+                return (dv2, Marshal.GetFunctionPointerForDelegate(dv2));
+            }
+            if (nArr == 1 && nSca == 1 && !arrRet && !isInt)
+            {
+                var dv = new CbV1S1D((p, n, s) => ToF64(InvokeFfiCallbackDelegate(cb, [CopyD(p, n), s])));
+                return (dv, Marshal.GetFunctionPointerForDelegate(dv));
+            }
+            if (nArr == 1 && nSca == 0 && arrRet)
+            {
+                var dv = new CbV1OutD((p, n, outp) =>
+                {
+                    WriteOutArray(outp, InvokeFfiCallbackDelegate(cb, [CopyD(p, n)]));
+                });
+                return (dv, Marshal.GetFunctionPointerForDelegate(dv));
+            }
+            if (nArr == 2 && nSca == 0 && !arrRet)
+            {
+                var dv = new CbV2D((p0, n0, p1, n1) => ToF64(InvokeFfiCallbackDelegate(cb, [CopyD(p0, n0), CopyD(p1, n1)])));
+                return (dv, Marshal.GetFunctionPointerForDelegate(dv));
+            }
+            if (nArr == 2 && nSca == 0 && arrRet)
+            {
+                var dv = new CbV2OutD((p0, n0, p1, n1, outp) =>
+                {
+                    WriteOutArray(outp, InvokeFfiCallbackDelegate(cb, [CopyD(p0, n0), CopyD(p1, n1)]));
+                });
+                return (dv, Marshal.GetFunctionPointerForDelegate(dv));
+            }
+            throw new InvalidOperationException($"callback vettoriale non supportato: array={nArr} scalari={nSca} ritornoArray={arrRet}");
+        }
         Delegate d = (hasReturn, isInt, arity) switch
         {
             (true, true, 0) => new CbFnI0(() => ToI64(InvokeFfiCallbackDelegate(cb, []))),

@@ -754,7 +754,23 @@ public static class Program
             foreach (var nm in names)
             {
                 var before = n[0];
-                foreach (var d in dirsF) { CopyFrom(d, nm); if (n[0] > before) break; }
+                foreach (var d in dirsF)
+                {
+                    // layout dei pacchetti: <root>/libs/<nome>/lib<nome>.<ext>
+                    CopyFrom(Path.Combine(d, nm), nm);
+                    if (n[0] > before) break;
+                    CopyFrom(d, nm);
+                    if (n[0] > before) break;
+                    // pacchetti: <root>/libs/<nome-pacchetto>/lib<nome>.<ext> (il nome del
+                    // pacchetto può differire dal nome della lib: `opt` -> `libgmbopt`)
+                    if (Directory.Exists(d))
+                        foreach (var sub in Directory.EnumerateDirectories(d))
+                        {
+                            CopyFrom(sub, nm);
+                            if (n[0] > before) break;
+                        }
+                    if (n[0] > before) break;
+                }
                 if (n[0] == before)
                     Console.Error.WriteLine($"[libs] FFI '{nm}' non trovata (non copiata nel bundle)");
             }

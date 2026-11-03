@@ -26,6 +26,63 @@ internal sealed partial class PCodeProcessor
     /// </summary>
     private (Delegate KeepAlive, IntPtr Ptr) BuildFfiCallbackTrampoline(PCodeTask task, ClosureData cd, int arity, bool isInt, bool hasReturn)
     {
+        // Callback VETTORIALE (2026-11-02): descriptor = arity-128 (array/scalari/ritorno array).
+        if (arity >= 128)
+        {
+            var code = arity - 128;
+            var nArr = (code & 3) + 1;
+            var nSca = (code >> 2) & 3;
+            var arrRet = (code & 16) != 0;
+            List<object?> Ld(IntPtr p, long n)
+            {
+                var l = new List<object?>((int)Math.Max(0, n));
+                for (long i = 0; i < n; i++) l.Add(BitConverter.Int64BitsToDouble(Marshal.ReadInt64(p, (int)(i * 8))));
+                return l;
+            }
+            List<object?> Li(IntPtr p, long n)
+            {
+                var l = new List<object?>((int)Math.Max(0, n));
+                for (long i = 0; i < n; i++) l.Add(Marshal.ReadInt64(p, (int)(i * 8)));
+                return l;
+            }
+            void WriteOut(IntPtr outp, object? r)
+            {
+                if (r is not System.Collections.IList l) return;
+                for (var i = 0; i < l.Count; i++)
+                    Marshal.WriteInt64(outp, i * 8, BitConverter.DoubleToInt64Bits(Convert.ToDouble(l[i] ?? 0.0)));
+            }
+            if (nArr == 1 && nSca == 0 && !arrRet)
+            {
+                if (isInt)
+                {
+                    var dv = new CbVecI((p, n) => ToI64(CallFnSync(task, cd, Li(p, n))));
+                    return (dv, Marshal.GetFunctionPointerForDelegate(dv));
+                }
+                var dv2 = new CbVecD((p, n) => ToF64(CallFnSync(task, cd, Ld(p, n))));
+                return (dv2, Marshal.GetFunctionPointerForDelegate(dv2));
+            }
+            if (nArr == 1 && nSca == 1 && !arrRet && !isInt)
+            {
+                var dv = new CbV1S1D((p, n, s) => ToF64(CallFnSync(task, cd, Ld(p, n), s)));
+                return (dv, Marshal.GetFunctionPointerForDelegate(dv));
+            }
+            if (nArr == 1 && nSca == 0 && arrRet)
+            {
+                var dv = new CbV1OutD((p, n, outp) => WriteOut(outp, CallFnSync(task, cd, Ld(p, n))));
+                return (dv, Marshal.GetFunctionPointerForDelegate(dv));
+            }
+            if (nArr == 2 && nSca == 0 && !arrRet)
+            {
+                var dv = new CbV2D((p0, n0, p1, n1) => ToF64(CallFnSync(task, cd, Ld(p0, n0), Ld(p1, n1))));
+                return (dv, Marshal.GetFunctionPointerForDelegate(dv));
+            }
+            if (nArr == 2 && nSca == 0 && arrRet)
+            {
+                var dv = new CbV2OutD((p0, n0, p1, n1, outp) => WriteOut(outp, CallFnSync(task, cd, Ld(p0, n0), Ld(p1, n1))));
+                return (dv, Marshal.GetFunctionPointerForDelegate(dv));
+            }
+            throw new InvalidOperationException($"callback vettoriale non supportato: array={nArr} scalari={nSca} ritornoArray={arrRet}");
+        }
         Delegate d = (hasReturn, isInt, arity) switch
         {
             (true, true, 0) => new CbFnI0(() => ToI64(CallFnSync(task, cd))),

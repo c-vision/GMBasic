@@ -1233,8 +1233,42 @@ public sealed partial class IlProgramCompiler
         // 0-4, firma interna omogenea per kind, BYVAL. Vedi AiWiki Bugs/(open) - FFI-
         // Estensioni-Possibili-BYREF-Struct-Callback.md §3bis.
         bool IsCallbackParam(Parameter p) => !IsArrayParam(p) && !IsStringParam(p) && !IsByRefScalarParam(p) && p.DataType is FunctionPointerType;
+        // Callback vettoriale (2026-11-02): 1-2 array di DOUBLE in testa, poi 0-1 scalare
+        // DOUBLE, ritorno DOUBLE o ARRAY OF DOUBLE (ABI in virgola mobile).
+        bool IsVecElem(DataType? t) => t is DoubleType or InferredType or AnyType;
+        bool IsVecCallback(FunctionPointerType fp) =>
+            fp.ParameterTypes.Length >= 1
+            && fp.ParameterTypes[0] is ArrayType
+            && fp.ParameterTypes.TakeWhile(t => t is ArrayType).All(t => IsVecElem(((ArrayType)t).ElementType))
+            && fp.ReturnType is not VoidType
+            && (fp.ReturnType is ArrayType rat ? IsVecElem(rat.ElementType) : IsFfiDoubleType(fp.ReturnType))
+            && fp.ParameterTypes.SkipWhile(t => t is ArrayType).All(t => t is not ArrayType);
+        int VecCallbackCode(FunctionPointerType fp)
+        {
+            int nArr = 0;
+            while (nArr < fp.ParameterTypes.Length && fp.ParameterTypes[nArr] is ArrayType) nArr++;
+            int nSca = fp.ParameterTypes.Length - nArr;
+            bool arrRet = fp.ReturnType is ArrayType;
+            return (nArr - 1) | (nSca << 2) | (arrRet ? 16 : 0);
+        }
+        int CallbackArityByte(FunctionPointerType fp) =>
+            IsVecCallback(fp) ? 128 + VecCallbackCode(fp) : fp.ParameterTypes.Length;
         void ValidateCallbackForFfi(FunctionPointerType fp, string what)
         {
+            if (IsVecCallback(fp))
+            {
+                int nArr = 0;
+                while (nArr < fp.ParameterTypes.Length && fp.ParameterTypes[nArr] is ArrayType) nArr++;
+                int nSca = fp.ParameterTypes.Length - nArr;
+                if (!((nArr == 1 && nSca == 0) || (nArr == 2 && nSca == 0) || (nArr == 1 && nSca == 1)))
+                    throw new NotSupportedException(
+                        $"FFI '{symbolName}': forma di callback non supportata per {what} ({nArr} array, {nSca} scalari): ammesse: f(v()) -> scalare/array, f(a(), b()) -> scalare/array, f(v(), x) -> scalare.");
+                return;
+            }
+            if (fp.ParameterTypes.Any(t => t is ArrayType))
+                throw new NotSupportedException(
+                    $"FFI '{symbolName}': callback con array usato per {what} non supportato " +
+                    "(ammessi solo array di DOUBLE, con ritorno DOUBLE o ARRAY OF DOUBLE).");
             if (fp.ParameterTypes.Length > 4)
                 throw new NotSupportedException(
                     $"FFI '{symbolName}': il callback usato per {what} ha {fp.ParameterTypes.Length} parametri (ammessi 0-4 nella v1 del supporto callback).");
@@ -1252,7 +1286,9 @@ public sealed partial class IlProgramCompiler
                 throw new NotSupportedException(
                     $"FFI '{symbolName}': il callback usato per {what} ha una firma interna mista LONG/DOUBLE — non supportata nella v1 del supporto callback (tutti i parametri e l'eventuale ritorno dello stesso kind).");
         }
-        bool CallbackIsInt64(FunctionPointerType fp) => fp.ParameterTypes.Length > 0 ? IsI64(fp.ParameterTypes[0]) : fp.ReturnType is not VoidType && IsI64(fp.ReturnType);
+        bool CallbackIsInt64(FunctionPointerType fp) => IsVecCallback(fp)
+            ? IsI64(fp.ReturnType)
+            : fp.ParameterTypes.Length > 0 ? IsI64(fp.ParameterTypes[0]) : fp.ReturnType is not VoidType && IsI64(fp.ReturnType);
         foreach (var p in epd.Parameters)
             if (IsCallbackParam(p)) ValidateCallbackForFfi((FunctionPointerType)p.DataType!, $"il parametro '{p.Name.Lexeme}'");
         // Struct/UDT per valore (2026-09-29, parità Compiler.Expressions.cs/PCodeVM/VM-C): un
@@ -1403,7 +1439,12 @@ public sealed partial class IlProgramCompiler
         // un kind unico su tutta la firma — motivo indipendente, invariato).
         var anyHardPtr = anyArray || anyByRefScalar || anyCallbackParam || retIsString;  /* STRING-param ammessa col misto */
         var mixedScalarsOnly = !anyHardPtr && !anyUdt && kindList.Distinct().Count() > 1;
-        if (!mixedScalarsOnly && kindList.Distinct().Count() > 1)
+        // 2026-11-02: firma mista ammessa con puntatori (array/STRING/BYREF) ma NON con
+        // callback (trampolino + slot misti instabile: hang osservato) — per i callback resta
+        // la firma omogenea, con errore di compilazione esplicito.
+        var mixedKinds = kindList.Distinct().Count() > 1;
+        var mixedWithPointers = anyHardPtr && !anyUdt && mixedKinds;
+        if (!mixedScalarsOnly && !mixedWithPointers && mixedKinds)
             throw new NotSupportedException(
                 anyPtr
                     ? $"FFI '{symbolName}': un parametro array, STRING o BYREF richiede firma INT64 (dichiarare gli altri parametri/il ritorno AS LONG — il puntatore viaggia come intero)."
@@ -1437,7 +1478,9 @@ public sealed partial class IlProgramCompiler
         {
             var p = epd.Parameters[pi];
             var isPlainScalar = !IsArrayParam(p) && !IsStringParam(p) && !IsByRefScalarParam(p) && !IsCallbackParam(p) && !IsUdtParam(p);
-            if (isPlainScalar ? IsI64(p.DataType) : kind == 1) scalarKindMask |= 1 << pi;
+            if (isPlainScalar ? IsI64(p.DataType)
+                              : IsUdtParam(p) ? kind == 1
+                              : true) scalarKindMask |= 1 << pi;
         }
         // Struct/UDT (2026-09-29): un UDT tutto-DOUBLE (nessun array/STRING/BYREF a forzare
         // Int64) deve comunque passare dal path "esteso" (tipi reali per i parametri/ritorno,
@@ -1477,9 +1520,24 @@ public sealed partial class IlProgramCompiler
         {
             _il.Emit(OpCodes.Ldloc, arrLocal);
             _il.Emit(OpCodes.Ldc_I4, i);
-            EmitObjectBoxedArgument(expr.Args[i]);
+            EmitFfiCallbackArg(i, expr.Args[i]);
             _il.Emit(OpCodes.Stelem_Ref);
         }
+        // Callback FUNZIONE NOMINATA con parametri array (2026-11-02): il metodo BASIC ha gli
+        // array `T[]&` (BYREF) mentre il delegate generico Func<T[],R> e' by-value -> il CLR
+        // generava un thunk con ABI sbagliata (IndexOutOfRange/AccessViolation). Per gli argomenti
+        // di un parametro callback che sono FunctionReferenceExpr si costruisce un delegate con
+        // parametri `ref` (CbRef*), che combacia esattamente con la firma del metodo.
+        void EmitFfiCallbackArg(int pi, Expr arg)
+        {
+            if (arg is FunctionReferenceExpr fre && FfiCallbackHasArrayShape(epd.Parameters[pi].DataType))
+            {
+                EmitFfiCallbackFunctionReference(fre);
+                return;
+            }
+            EmitObjectBoxedArgument(arg);
+        }
+
         // Callback come PARAMETRO (2026-09-29): risolve OGNI slot callback di arrLocal (un vero
         // delegate CLR — EmitObjectBoxedArgument/EmitFunctionReference lo ha già messo lì) in
         // un vero puntatore nativo (trampolino), PRIMA che arrLocal sia caricato come argomento
@@ -1512,7 +1570,7 @@ public sealed partial class IlProgramCompiler
                 _il.Emit(OpCodes.Ldloc, cbArityLocal);
                 _il.Emit(OpCodes.Ldc_I4, pi);
                 var arity = pi < epd.Parameters.Length && IsCallbackParam(epd.Parameters[pi])
-                    ? ((FunctionPointerType)epd.Parameters[pi].DataType!).ParameterTypes.Length
+                    ? CallbackArityByte((FunctionPointerType)epd.Parameters[pi].DataType!)
                     : 255;
                 _il.Emit(OpCodes.Ldc_I4, arity);
                 _il.Emit(OpCodes.Stelem_I4);
@@ -1605,7 +1663,7 @@ public sealed partial class IlProgramCompiler
                 EmitUdtParamTypesArray();
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.FfiCallTypedArrUdt), typeof(string), typeof(string), typeof(object[]), typeof(int), typeof(int), typeof(int), typeof(int), typeof(int), typeof(int), typeof(Type[])));
             }
-            else if (arrayMask != 0 || stringMask != 0 || byrefScalarMask != 0)
+            else if (arrayMask != 0 || stringMask != 0 || byrefScalarMask != 0 || anyCallbackParam)
             {
                 _il.Emit(OpCodes.Ldc_I4, arrayMask);
                 _il.Emit(OpCodes.Ldc_I4, arrayElemIntMask);
@@ -1692,7 +1750,7 @@ public sealed partial class IlProgramCompiler
             EmitByRefScalarWriteback();
             EmitCallbackKeepAliveIfAny();
         }
-        else if (arrayMask != 0 || stringMask != 0 || byrefScalarMask != 0)
+        else if (arrayMask != 0 || stringMask != 0 || byrefScalarMask != 0 || anyCallbackParam)
         {
             _il.Emit(OpCodes.Ldc_I4, arrayMask);
             _il.Emit(OpCodes.Ldc_I4, arrayElemIntMask);
@@ -1737,4 +1795,42 @@ public sealed partial class IlProgramCompiler
     /// dialetti BASIC richiedono comunque un l-value per un argomento BYREF, quindi
     /// lancia esplicito invece di inventare una copia scratch silenziosa.
     /// </summary>
+
+    // ── Callback FFI nominati con parametri array (2026-11-02) ────────────────────────────
+    // Il metodo BASIC dichiara gli array come `T[]&`; il delegate generico (Func<T[],R>) è
+    // by-value. Serve un delegate con parametri `ref` che combaci ESATTAMENTE con la firma.
+    private static bool FfiCallbackHasArrayShape(DataType? t) =>
+        t is FunctionPointerType fp && fp.ParameterTypes.Length >= 1 && fp.ParameterTypes[0] is ArrayType;
+
+    private void EmitFfiCallbackFunctionReference(FunctionReferenceExpr fre)
+    {
+        // Il percorso generico (EmitFunctionReference) sceglie automaticamente il delegate
+        // `ref` quando la FUNCTION ha parametri array: qui basta delegare.
+        EmitFunctionReference(fre);
+    }
+
+    /// <summary>Delegate dedicato con parametri `ref` per una FUNCTION con array (null se la
+    /// forma non e' una di quelle coperte).</summary>
+    private Type? TryRefDelegateType(FunctionDefinition fd)
+    {
+        int nArr = fd.Parameters.Count(p => p.Flags.HasFlag(SymbolFlags.IsArray));
+        if (nArr == 0 || nArr > 2) return null;
+        int nSca = fd.Parameters.Length - nArr;
+        var retClr = DataTypeMapper.Map(NormalizeInferredType(fd.ReturnType), _types, _classTypes);
+        bool isLong = retClr == typeof(long) || retClr == typeof(int) || retClr == typeof(short);
+        bool isArr = retClr == typeof(double[]);
+        return (nArr, nSca, isLong, isArr) switch
+        {
+            (1, 0, false, false) => typeof(FfiRefCallbackTypes.CbRef1D),
+            (1, 0, true, false) => typeof(FfiRefCallbackTypes.CbRef1I),
+            (1, 1, false, false) => typeof(FfiRefCallbackTypes.CbRef1S1D),
+            (1, 1, true, false) => typeof(FfiRefCallbackTypes.CbRef1S1I),
+            (2, 0, false, false) => typeof(FfiRefCallbackTypes.CbRef2D),
+            (2, 0, true, false) => typeof(FfiRefCallbackTypes.CbRef2I),
+            (1, 0, false, true) => typeof(FfiRefCallbackTypes.CbRef1ArrD),
+            (2, 0, false, true) => typeof(FfiRefCallbackTypes.CbRef2ArrD),
+            _ => null
+        };
+    }
+
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # gmb_lib.sh — COME SI COMPILA (e si pubblica) una delle NOSTRE librerie FFI:
-# amqp, grpc, kafka, mqtt, nats, protobuf, media.
+# amqp, grpc, kafka, mqtt, nats, protobuf, media, opt.
 #
 # Le librerie vivono in `shared/libs/<nome>/` insieme al resto del condiviso: sono usate da
 # ENTRAMBI i compilatori (export BASIC `.inc`, header C, dylib per l'FFI).
@@ -27,7 +27,7 @@ LIBS="$MONO/shared/libs"
 INCLUDE="$MONO/shared/include"
 TOOLS="$MONO/tools/sh"
 
-ALL_LIBS="amqp grpc kafka mqtt nats protobuf media"
+ALL_LIBS="amqp grpc kafka mqtt nats protobuf media opt"
 
 die() { echo "gmb_lib: $*" >&2; exit 1; }
 

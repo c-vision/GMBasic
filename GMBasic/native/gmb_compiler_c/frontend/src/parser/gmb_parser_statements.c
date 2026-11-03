@@ -218,14 +218,21 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline);
  * nativa del trampolino deve avere ESATTAMENTE gmb_int_t/gmb_double_t per campo, non il
  * contratto generico "sempre gmb_double_t" di gmb_fn_t usato altrove per i delegate BASIC-a-
  * BASIC). */
-static int gmb_p_fn_sig(gmb_parser_t* p, int* strmask, int* intmask) {
-    int seg = 0, mask = 0, imask = 0;
+static int gmb_p_fn_sig(gmb_parser_t* p, int* strmask, int* intmask, int* arrmask) {
+    int seg = 0, mask = 0, imask = 0, amask = 0;
     if (gmb_p_match(p, GMB_TOK_LeftParen)) {
         if (!gmb_p_check(p, GMB_TOK_RightParen)) {
+            int depth = 0;   /* parentesi annidate: `v() AS DOUBLE` */
             for (;;) {
-                int seg_str = 0, seg_int = 0;
-                while (!gmb_p_at_end(p) && !gmb_p_check(p, GMB_TOK_Comma) && !gmb_p_check(p, GMB_TOK_RightParen)) {
+                int seg_str = 0, seg_int = 0, seg_arr = 0;
+                while (!gmb_p_at_end(p)) {
                     const gmb_token_t* tk = gmb_p_cur(p);
+                    if (depth == 0 && (gmb_p_check(p, GMB_TOK_Comma) || gmb_p_check(p, GMB_TOK_RightParen))) break;
+                    if (tk && tk->kind == GMB_TOK_LeftParen) {
+                        if (gmb_p_peek(p, 1) && gmb_p_peek(p, 1)->kind == GMB_TOK_RightParen) seg_arr = 1;
+                        depth++; gmb_p_adv(p); continue;
+                    }
+                    if (tk && tk->kind == GMB_TOK_RightParen) { if (depth > 0) depth--; gmb_p_adv(p); continue; }
                     if (tk && tk->kind == GMB_TOK_StringType) seg_str = 1;
                     if (tk && (tk->kind == GMB_TOK_Long || tk->kind == GMB_TOK_Integer
                         || tk->kind == GMB_TOK_Quad || tk->kind == GMB_TOK_Byte
@@ -236,6 +243,7 @@ static int gmb_p_fn_sig(gmb_parser_t* p, int* strmask, int* intmask) {
                 }
                 if (seg_str) mask |= (1 << seg);
                 if (seg_int) imask |= (1 << seg);
+                if (seg_arr) amask |= (1 << seg);
                 seg++;
                 if (!gmb_p_match(p, GMB_TOK_Comma)) break;
             }
@@ -244,6 +252,7 @@ static int gmb_p_fn_sig(gmb_parser_t* p, int* strmask, int* intmask) {
     }
     if (strmask) *strmask = mask;
     if (intmask) *intmask = imask;
+    if (arrmask) *arrmask = amask;
     return seg;
 }
 
@@ -1394,7 +1403,7 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
         gmb_stmt_t* dl = gmb_stmt_new(GMB_STMT_DELEGATE, line);
         const gmb_token_t* dn = gmb_p_cur(p);
         if (dn && dn->lexeme && dn->kind != GMB_TOK_Newline) { dl->func_name = gmb_p_tok_strdup(dn); gmb_p_adv(p); }
-        dl->func_val_arity = gmb_p_fn_sig(p, &dl->func_val_str_mask, NULL);
+        dl->func_val_arity = gmb_p_fn_sig(p, &dl->func_val_str_mask, NULL, NULL);
         if (gmb_p_tok_is_keyword(gmb_p_cur(p), "As") || gmb_p_check(p, GMB_TOK_As)) {
             gmb_p_adv(p);
             const gmb_token_t* rt = gmb_p_cur(p);
@@ -1505,7 +1514,8 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
                                 || ty->kind == GMB_TOK_Function)) {
                             gmb_p_adv(p);   /* FUNCTION/SUB */
                             int fn_sig_mask = 0, fn_kind_mask = 0;
-                            int fn_arity = gmb_p_fn_sig(p, &fn_sig_mask, &fn_kind_mask);
+                            int fn_arr_mask = 0;
+                            int fn_arity = gmb_p_fn_sig(p, &fn_sig_mask, &fn_kind_mask, &fn_arr_mask);
                             /* Allocazione a dimensione FISSA 16 (non s->n_params, che al
                              * momento di QUESTA prima allocazione riflette solo QUANTI
                              * parametri sono stati letti FINORA — se il parametro FUNCTION non
@@ -1520,12 +1530,14 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
                                 s->param_fn_arity = (int*)calloc(16, sizeof(int));
                                 s->param_fn_str_mask = (int*)calloc(16, sizeof(int));
                                 s->param_fn_kind_mask = (int*)calloc(16, sizeof(int));
+                                s->param_fn_arr_mask = (int*)calloc(16, sizeof(int));
                                 for (int z = 0; z < 16; z++) s->param_fn_arity[z] = -1;
                             }
                             if (s->n_params <= 16) {
                                 s->param_fn_arity[s->n_params - 1] = fn_arity;
                                 s->param_fn_str_mask[s->n_params - 1] = fn_sig_mask;
                                 s->param_fn_kind_mask[s->n_params - 1] = fn_kind_mask;
+                                s->param_fn_arr_mask[s->n_params - 1] = fn_arr_mask;
                             }
                             if (gmb_p_tok_is_keyword(gmb_p_cur(p), "As") || gmb_p_check(p, GMB_TOK_As)) {
                                 if (!s->param_fn_has_ret) s->param_fn_has_ret = (uint8_t*)calloc(16, sizeof(uint8_t));
@@ -1539,6 +1551,10 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
                                 if (gmb_p_tok_is_scalar_type_name(rtf)) {
                                     if (!s->param_fn_ret_int) s->param_fn_ret_int = (uint8_t*)calloc(16, sizeof(uint8_t));
                                     if (s->n_params <= 16) s->param_fn_ret_int[s->n_params - 1] = 1;
+                                }
+                                if (rtf && (rtf->kind == GMB_TOK_Array || gmb_p_tok_is_keyword(rtf, "Array"))) {
+                                    if (!s->param_fn_ret_arr) s->param_fn_ret_arr = (uint8_t*)calloc(16, sizeof(uint8_t));
+                                    if (s->n_params <= 16) s->param_fn_ret_arr[s->n_params - 1] = 1;
                                 }
                                 if (rtf) gmb_p_adv(p);
                             }
@@ -1563,7 +1579,7 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
                 if (gmb_keyword_tok(s->func_ret_type) == GMB_TOK_Function) {
                     gmb_p_adv(p);
                     if (gmb_p_check(p, GMB_TOK_LeftParen))
-                        s->func_val_arity = gmb_p_fn_sig(p, &s->func_val_str_mask, NULL);
+                        s->func_val_arity = gmb_p_fn_sig(p, &s->func_val_str_mask, NULL, NULL);
                     if (gmb_p_tok_is_keyword(gmb_p_cur(p), "As") || gmb_p_check(p, GMB_TOK_As)) {
                         gmb_p_adv(p);
                         const gmb_token_t* rr = gmb_p_cur(p);
@@ -2151,7 +2167,8 @@ if (gmb_tk_rem_vari_in(t->kind)) {
                                 || ty->kind == GMB_TOK_Function)) {
                             gmb_p_adv(p);   /* FUNCTION/SUB */
                             int fn_sig_mask = 0, fn_kind_mask = 0;
-                            int fn_arity = gmb_p_fn_sig(p, &fn_sig_mask, &fn_kind_mask);
+                            int fn_arr_mask = 0;
+                            int fn_arity = gmb_p_fn_sig(p, &fn_sig_mask, &fn_kind_mask, &fn_arr_mask);
                             if (!s->param_fn_arity) {
                                 s->param_fn_arity = (int*)calloc((size_t)(s->n_params > 0 ? s->n_params : 1), sizeof(int));
                                 s->param_fn_str_mask = (int*)calloc((size_t)(s->n_params > 0 ? s->n_params : 1), sizeof(int));
@@ -2159,9 +2176,12 @@ if (gmb_tk_rem_vari_in(t->kind)) {
                             }
                             if (!s->param_fn_kind_mask)
                                 s->param_fn_kind_mask = (int*)calloc((size_t)(s->n_params > 0 ? s->n_params : 1), sizeof(int));
+                            if (!s->param_fn_arr_mask)
+                                s->param_fn_arr_mask = (int*)calloc((size_t)(s->n_params > 0 ? s->n_params : 1), sizeof(int));
                             s->param_fn_arity[s->n_params - 1] = fn_arity;
                             s->param_fn_str_mask[s->n_params - 1] = fn_sig_mask;
                             s->param_fn_kind_mask[s->n_params - 1] = fn_kind_mask;
+                            s->param_fn_arr_mask[s->n_params - 1] = fn_arr_mask;
                             if (gmb_p_tok_is_keyword(gmb_p_cur(p), "As") || gmb_p_check(p, GMB_TOK_As)) {
                                 if (!s->param_fn_has_ret) s->param_fn_has_ret = (uint8_t*)calloc((size_t)(s->n_params > 0 ? s->n_params : 1), sizeof(uint8_t));
                                 s->param_fn_has_ret[s->n_params - 1] = 1;
@@ -2174,6 +2194,10 @@ if (gmb_tk_rem_vari_in(t->kind)) {
                                 if (gmb_p_tok_is_scalar_type_name(rtf)) {
                                     if (!s->param_fn_ret_int) s->param_fn_ret_int = (uint8_t*)calloc((size_t)(s->n_params > 0 ? s->n_params : 1), sizeof(uint8_t));
                                     s->param_fn_ret_int[s->n_params - 1] = 1;
+                                }
+                                if (rtf && (rtf->kind == GMB_TOK_Array || gmb_p_tok_is_keyword(rtf, "Array"))) {
+                                    if (!s->param_fn_ret_arr) s->param_fn_ret_arr = (uint8_t*)calloc((size_t)(s->n_params > 0 ? s->n_params : 1), sizeof(uint8_t));
+                                    s->param_fn_ret_arr[s->n_params - 1] = 1;
                                 }
                                 if (rtf) gmb_p_adv(p);
                             }
@@ -2277,7 +2301,7 @@ if (gmb_tk_rem_vari_in(t->kind)) {
             if (rt && rt->kind == GMB_TOK_Function) {
                 gmb_p_adv(p);
                 if (gmb_p_check(p, GMB_TOK_LeftParen))
-                    s->func_val_arity = gmb_p_fn_sig(p, &s->func_val_str_mask, NULL);
+                    s->func_val_arity = gmb_p_fn_sig(p, &s->func_val_str_mask, NULL, NULL);
                 if (gmb_p_tok_is_keyword(gmb_p_cur(p), "As") || gmb_p_check(p, GMB_TOK_As)) {
                     gmb_p_adv(p);
                     const gmb_token_t* rr = gmb_p_cur(p);
@@ -2854,7 +2878,7 @@ if (gmb_tk_rem_vari_in(t->kind)) {
                 gmb_p_adv(p);   /* FUNCTION/SUB */
                 s->dim_type = (char*)malloc(9); memcpy(s->dim_type, "FUNCTION", 9);
                 s->dim_type_tk = GMB_TOK_Function;
-                int arity = gmb_p_fn_sig(p, &s->func_val_str_mask, NULL);
+                int arity = gmb_p_fn_sig(p, &s->func_val_str_mask, NULL, NULL);
                 s->func_val_arity = arity;
                 if (gmb_p_tok_is_keyword(gmb_p_cur(p), "As") || gmb_p_check(p, GMB_TOK_As)) {
                     gmb_p_adv(p);

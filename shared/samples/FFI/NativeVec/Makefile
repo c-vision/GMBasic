@@ -7,7 +7,7 @@
 
 CC      ?= cc
 CFLAGS   = -std=c99 -Wall -Wextra -fPIC -I.
-GMB_INC  = ../../../../native/gmb_runtime_c/include
+GMB_INC  = ../../../../GMBasic/native/gmb_runtime_c/include
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
@@ -24,6 +24,11 @@ all: $(LIB_OUT)
 
 $(LIB_OUT): vec_module.c gmb_ffi.h
 	$(CC) $(CFLAGS) -I$(GMB_INC) $(LDFLAGS) -o $@ vec_module.c
+ifeq ($(UNAME_S),Darwin)
+	# macOS 14+: senza firma ad-hoc valida, dyld uccide il processo che fa dlopen
+	# ("SIGKILL (Code Signature Invalid)"). Ricostruire la lib invalida la firma.
+	codesign --force --sign - $@
+endif
 
 clean:
 	rm -f $(LIB_OUT)
