@@ -1023,6 +1023,28 @@ public sealed partial class IlProgramCompiler
             return;
         }
 
+        // GENERATOR ... YIELD: la chiamata NON esegue il corpo — crea l'iteratore (lazy) che lo
+        // eseguirà passo-passo a ogni NEXT. Args boxati in object[]; il token del metodo
+        // `Proc_<id>` è invocato dal runtime (IlRuntime.GeneratorCreate).
+        if (_program.Symbols.GetSymbol(expr.SymbolId).DeclarationNode is GeneratorDefinition
+            && _procedureMethods.TryGetValue(expr.SymbolId, out var generatorMethod))
+        {
+            _il.Emit(OpCodes.Ldtoken, generatorMethod);
+            _il.Emit(OpCodes.Ldc_I4, expr.Args.Length);
+            _il.Emit(OpCodes.Newarr, typeof(object));
+            for (var gi = 0; gi < expr.Args.Length; gi++)
+            {
+                _il.Emit(OpCodes.Dup);
+                _il.Emit(OpCodes.Ldc_I4, gi);
+                EmitExpression(expr.Args[gi]);
+                var genArgClr = DataTypeMapper.Map(NormalizeInferredType(InferType(expr.Args[gi])), _types, _classTypes);
+                if (genArgClr.IsValueType) _il.Emit(OpCodes.Box, genArgClr);
+                _il.Emit(OpCodes.Stelem_Ref);
+            }
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.GeneratorCreate), typeof(RuntimeMethodHandle), typeof(object[])));
+            return;
+        }
+
         if (!_procedureMethods.TryGetValue(expr.SymbolId, out var methodBuilder) ||
             !_procedureDefinitions.TryGetValue(expr.SymbolId, out var definition))
         {
@@ -1141,7 +1163,12 @@ public sealed partial class IlProgramCompiler
                     // stack = InvalidProgramException (MATCH con FUNCTION AS INTEGER).
                     && expr.Args[i] is not BuiltinFunctionCallExpr { Name.Kind: TokenKind.CInt or TokenKind.CByte or TokenKind.CLng or TokenKind.CDbl or TokenKind.CSng or TokenKind.CCur })
                 {
-                    var fromClr = DataTypeMapper.Map(argType, _types, _classTypes);
+                    // Una VARIABILE BIT è un int32 già numerico (-1/0/valore); solo
+                    // letterali/confronti/chiamate BIT sono bool CLR da convertire con × -1.
+                    // Senza la distinzione S(b) con b BIT passava +1 a un parametro DOUBLE.
+                    var fromClr = argType is BitType && !EmitsClrBoolValue(expr.Args[i])
+                        ? _types.Int32
+                        : DataTypeMapper.Map(argType, _types, _classTypes);
                     var toClr = DataTypeMapper.Map(paramType, _types, _classTypes);
                     IlConversion.EmitConvert(_il, _types, argType, fromClr, toClr);
                 }

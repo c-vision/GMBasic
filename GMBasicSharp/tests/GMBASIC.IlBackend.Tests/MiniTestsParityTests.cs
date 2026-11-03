@@ -42,6 +42,9 @@ public class MiniTestsParityTests
         try { Basic.IlBackend.Gpm.IlGpmV2Driver.ResetSharedPoller(); } catch { }
         try { Basic.Runtime.CGfxGraphicsService.ForceScreenOff(); } catch { }
         try { Basic.IlBackend.IlRuntime.FormReset(); } catch { }
+        // Aree DBF/ISAM e mappe alias statiche: un programma che non chiude le sue aree (alias `C`,
+        // `A`…) altrimenti le lascia risolvere al programma successivo (isam_all dopo dbf_select).
+        try { Basic.IlBackend.IlRuntime.ResetDatabaseState(); } catch { }
         try
         {
             var server = Basic.Agents.AgentServer.Instance;

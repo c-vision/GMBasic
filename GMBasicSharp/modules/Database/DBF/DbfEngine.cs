@@ -245,6 +245,10 @@ public class DbfEngine : IDisposable
 
     private bool _deletedSlotsIndexed;
 
+    /// <summary>Riuso degli slot cancellati su APPEND. Disattivato (semantica Clipper: i cancellati
+    /// si eliminano solo con PACK).</summary>
+    public static bool RecycleDeletedSlots { get; set; } = false;
+
     /// <summary>
     /// Modalità durabilità I/O (default <see cref="DbfDurabilityMode.Full"/>).
     /// </summary>
@@ -788,8 +792,11 @@ public class DbfEngine : IDisposable
                 int recNoToUse;
                 bool isRecycled;
 
-                // ponytail: free list on-delete + one-shot lazy index — no per-append O(n) scan
-                if (!TryTakeDeletedSlot(out var foundRecNo))
+                // Parità Clipper: APPEND aggiunge SEMPRE in coda; un record cancellato resta
+                // recuperabile con RECALL finché non c'è PACK (il riuso dello slot lo sovrascriveva
+                // e divergeva dal runtime C). Il riuso è attivabile solo con RecycleDeletedSlots.
+                var foundRecNo = 0;
+                if (!RecycleDeletedSlots || !TryTakeDeletedSlot(out foundRecNo))
                 {
                     recNoToUse = _txHandle.AppendRawRecord(buffer.AsSpan(0, payloadLength));
                     isRecycled = false;

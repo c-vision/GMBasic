@@ -103,7 +103,7 @@ internal sealed partial class PCodeProcessor
         },
         [BuiltInFunction.RDDSETDELETED] = (task, args) =>
         {
-                return Basic.IlBackend.IlRuntime.RddSetDeleted(ArgOr(args, 0), ArgOr(args, 1)) ? 1.0 : 0.0;
+                return Basic.IlBackend.IlRuntime.RddSetDeleted(ArgOr(args, 0), ArgOr(args, 1)) ? -1.0 : 0.0;
         },
         [BuiltInFunction.RDDDELETE] = (task, args) =>
         {

@@ -685,10 +685,10 @@ public sealed partial class IlProgramCompiler
             // ma per coerenza usiamo il label del LabelStmt quando disponibile).
             if (_namedLabels.TryGetValue(loopName, out var namedExitLabel))
             {
-                _il.Emit(OpCodes.Br, namedExitLabel);
+                _il.Emit(OpCodes.Leave, namedExitLabel);   // leave: valido anche dentro TRY/CATCH (br fuori da un handler = IL invalido)
                 return;
             }
-            _il.Emit(OpCodes.Br, exitLabel);
+            _il.Emit(OpCodes.Leave, exitLabel);
             return;
         }
         // For DO loops without explicit name, use the active loop's exit label.
@@ -706,7 +706,7 @@ public sealed partial class IlProgramCompiler
                 EmitSetStateAndLeave(dispatch2.State, dispatch2.LeaveTarget, exitLine2);
                 return;
             }
-            _il.Emit(OpCodes.Br, activeExitLabel);
+            _il.Emit(OpCodes.Leave, activeExitLabel);
             return;
         }
         // EXIT SUB / EXIT FUNCTION (non in loop): ritorna dalla procedura corrente.
@@ -780,19 +780,19 @@ public sealed partial class IlProgramCompiler
         // del LabelStmt; se il nome non è registrato (es. FOR), ripiega su _loopExitLabels.
         if (_namedLabels.TryGetValue(loopName, out var continueLabel))
         {
-            _il.Emit(OpCodes.Br, continueLabel);
+            _il.Emit(OpCodes.Leave, continueLabel);
             return;
         }
         if (_loopExitLabels.TryGetValue(loopName, out var legacyContinueLabel))
         {
-            _il.Emit(OpCodes.Br, legacyContinueLabel);
+            _il.Emit(OpCodes.Leave, legacyContinueLabel);
             return;
         }
         // Fallback: use active loop's continue label (unnamed loops)
         if (_activeLoopStack.Count > 0)
         {
             var (activeContinue, _) = _activeLoopStack.Peek();
-            _il.Emit(OpCodes.Br, activeContinue);
+            _il.Emit(OpCodes.Leave, activeContinue);
             return;
         }
         throw new NotSupportedException($"Backend IL: CONTINUE '{stmt.TargetLabel.Lexeme}' non supportato.");

@@ -140,7 +140,15 @@ public sealed partial class IlProgramCompiler
         EmitExpression(stmt.Call);
     }
     private void EmitGoExitStatement(GoExitStmt stmt) { _il.Emit(OpCodes.Ret); }
-    private void EmitYieldStatement(YieldStmt stmt) { _il.Emit(OpCodes.Nop); }
+    /// <summary>YIELD v: passa il valore (boxato) al consumatore del generatore (NEXT) e sospende il corpo
+    /// finché NEXT non lo riprende — vedi IlRuntime.GeneratorYield.</summary>
+    private void EmitYieldStatement(YieldStmt stmt)
+    {
+        EmitExpression(stmt.ValueToYield);
+        var yieldClr = DataTypeMapper.Map(NormalizeInferredType(InferType(stmt.ValueToYield)), _types, _classTypes);
+        if (yieldClr.IsValueType) _il.Emit(OpCodes.Box, yieldClr);
+        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.GeneratorYield), typeof(object)));
+    }
 
     // ── Database/Transaction ─────────────────────────────────────────
     // ISAM BEGIN TRANSACTION/COMMIT/ROLLBACK erano no-op completi: caricavano il

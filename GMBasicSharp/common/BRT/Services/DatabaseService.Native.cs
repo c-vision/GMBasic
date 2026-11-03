@@ -1707,6 +1707,7 @@ public sealed partial class DatabaseService
                 list.Add(new UdtInstance(udt, fields));
             }
             engine.AppendMany(list, engine.Evaluator);
+            drv!.SyncCursorState();   // LASTREC/RECNO riflettono i nuovi record (il P-Code lo fa nel suo handler)
             return records.Count;
         }
         catch { return 0; }

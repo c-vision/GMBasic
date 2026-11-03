@@ -212,21 +212,25 @@ int gmb_rdd_rowbuf_activate(int area, int mode)
 int gmb_rdd_rowbuf_update(int area)
 {
     rbuf_t* b = rb_of(area);
-    int i, committed = 0;
+    int i, committed = 0, failed = 0, any = 0;
     if (!b || !b->active) return 0;
     if (gmb_rdd_raw_recno() > 0 || gmb_rdd_raw_field_count() > 0)
     {
         for (i = 0; i < b->nfields; i++)
-            if (b->state[i] && gmb_rdd_raw_write(i, b->cur + (size_t)i * RB_CELL) == 0) committed = 1;
+            if (b->state[i]) { any = 1; if (gmb_rdd_raw_write(i, b->cur + (size_t)i * RB_CELL) == 0) committed = 1; else failed = 1; }
     }
     else if (g_hooks && g_hooks->active && g_hooks->active() && g_hooks->write_record)
     {
         const char* vals[RB_MAX_FIELDS];
         for (i = 0; i < b->nfields; i++) vals[i] = b->cur + (size_t)i * RB_CELL;
+        any = 1;   /* il risultato è quello dell hook (non forzato a successo) */
         committed = g_hooks->write_record(vals, b->nfields) == 0 ? 1 : 0;
     }
     for (i = 0; i < b->nfields; i++) b->state[i] = 0;
     rb_release(b);
+    /* TABLEUPDATE riesce (-1) anche senza modifiche pendenti (parità col mondo gestito: successo =
+     * buffer attivo e nessuna scrittura fallita); prima ritornava 0 se nulla era stato scritto. */
+    if (!any && !failed) committed = 1;
     return committed;
 }
 

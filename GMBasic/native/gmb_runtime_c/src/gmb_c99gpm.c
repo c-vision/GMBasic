@@ -579,12 +579,23 @@ int gmb_c99_sched_active_count(void) {
     GMB_MUTEX_UNLOCK(&g_sched.all_lock);
     return n;
 }
+/* Valore iniziale di GOMAXPROCS (stesso calcolo dei worker avviati da gmb_gpm_start). */
+static int gmp_default_workers(void) {
+    const char* env = getenv("GMBASIC_GOMAXPROCS");
+    int nw = env ? atoi(env) : 0;
+    if (nw <= 0) nw = gmb_ncpu();
+    if (nw <= 0) nw = 4;
+    if (nw > 8) nw = 8;
+    return nw;
+}
 int gmb_gomaxprocs(int n) {
     GMB_MUTEX_LOCK(&g_gmp_lock);
-    int prev = g_gomaxprocs;
+    /* Prima di gmb_gpm_start g_gomaxprocs vale 0: la query ritornava 0 invece del numero di
+     * worker che poi partono (PCode/VM-C ritornano il valore corrente). */
+    int prev = g_gomaxprocs > 0 ? g_gomaxprocs : gmp_default_workers();
     if (n > 0) {   /* n<=0 = sola query (parità Go runtime.GOMAXPROCS(0)) */
-        if (n > g_gomaxprocs) {
-            int add = n - g_gomaxprocs;
+        if (n > prev) {
+            int add = n - prev;
             for (int i = 0; i < add && g_extra_workers_n < 256; i++)
                 GMB_THREAD_CREATE(&g_extra_workers[g_extra_workers_n++], gmb_worker, NULL);
         }
@@ -1152,7 +1163,9 @@ void gmb_c99_pool_put(gmb_pool_t* p, gmb_val_t v) {
 }
 gmb_val_t gmb_c99_pool_get(gmb_pool_t* p) {
     gmb_lock(&p->lock);
-    gmb_val_t v = p->count > 0 ? p->items[--p->count] : gmb_val_nil();
+    /* Pool vuoto: valore VUOTO (stringa ""), non NIL — convertito in stringa/numero da un consumatore
+     * tipizzato dà ""/0 come sulle altre gambe (nil → "NIL" rendeva `empty = POOL.GET(p)` ≠ ""). */
+    gmb_val_t v = p->count > 0 ? p->items[--p->count] : gmb_make_val_string("");
     gmb_unlock(&p->lock);
     return v;
 }

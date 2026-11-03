@@ -651,13 +651,13 @@ public sealed partial class Compiler
     private void VisitExportToFileStatement(ExportToFileStmt stmt)
     {
         // Arg 1: EngineType (es. ISAM, DBF)
-        EmitConstant((double)stmt.EngineType.Kind);
+        EmitConstant(stmt.EngineType.Lexeme.ToUpperInvariant());
         // Arg 2: Area (Expr: #file o alias)
         VisitExpression(stmt.Area);
         // Arg 3: FilePath (Expr)
         VisitExpression(stmt.FilePath);
         // Arg 4: Format (es. CSV, JSON)
-        EmitConstant((double)stmt.Format.Kind);
+        EmitConstant(stmt.Format.Lexeme.ToUpperInvariant());
         
         // Rimosso: logica di compilazione per 'Condition' e 'IsUnsafe', che non esistono nell'AST.
 
@@ -670,10 +670,10 @@ public sealed partial class Compiler
     /// </summary>
     private void VisitImportFromFileStatement(ImportFromFileStmt stmt)
     {
-        EmitConstant((double)stmt.EngineType.Kind); // Arg 1: EngineType (es. ISAM, DBF)
+        EmitConstant(stmt.EngineType.Lexeme.ToUpperInvariant()); // Arg 1: EngineType (stringa: ISAM, DBF)
         VisitExpression(stmt.Area); // Arg 2: Area (Expr: #file o alias)
         VisitExpression(stmt.FilePath); // Arg 3: FilePath (Expr)
-        EmitConstant((double)stmt.Format.Kind); // Arg 4: Format (es. CSV, JSON)
+        EmitConstant(stmt.Format.Lexeme.ToUpperInvariant()); // Arg 4: Format (stringa: CSV, JSON)
         
         // Arg 5: IsUnsafe (boolean) - Questo campo NON ESISTE NELL'AST FORNITO, va rimosso.
         // Lo stato unsafe viene gestito dalla workarea a runtime.

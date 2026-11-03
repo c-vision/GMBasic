@@ -504,6 +504,17 @@ static int g_dbf_relations_n = 0;
 int gmb_db_dbf_set_relation(int64_t child, int64_t parent, const char* keyExpr)
 {
     int i;
+    /* `SET RELATION TO` senza chiave/figlio (Clipper): rimuove TUTTE le relazioni uscenti
+     * dall'area padre corrente — parità con ClearOutgoingRelations del C#. */
+    if (child <= 0 && parent > 0 && (!keyExpr || !keyExpr[0])) {
+        for (i = 0; i < g_dbf_relations_n; ) {
+            if (g_dbf_relations[i].parent == parent) {
+                g_dbf_relations[i] = g_dbf_relations[g_dbf_relations_n - 1];
+                g_dbf_relations_n--;
+            } else i++;
+        }
+        return GMB_DB_OK;
+    }
     if (child <= 0 || parent <= 0) return GMB_DB_ERR;
     for (i = 0; i < g_dbf_relations_n; i++) {
         if (g_dbf_relations[i].child == child) {
@@ -528,7 +539,7 @@ int gmb_db_dbf_relation_key(int64_t h, char* buf, int cap)
     if (!buf || cap <= 0) return GMB_DB_ERR;
     buf[0] = 0;
     for (i = 0; i < g_dbf_relations_n; i++)
-        if (g_dbf_relations[i].child == h) {
+        if (g_dbf_relations[i].parent == h) {   /* DBRELATION si legge dall'area PADRE */
             strncpy(buf, g_dbf_relations[i].key, (size_t)cap - 1);
             buf[cap - 1] = 0;
             return GMB_DB_OK;
@@ -1506,4 +1517,221 @@ gmb_string_t gmb_db_dbf_lupdate_str(int64_t h)
     char buf[64]; buf[0] = 0;
     gmb_db_dbf_lupdate(h, buf, sizeof(buf));
     return gmb_string_alloc(buf);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * DBF EXPORT / IMPORT (CSV, JSON) — parità con IlRuntime.ExportToFile/ImportFromFile.
+ * Formato CSV: riga di intestazione coi nomi campo, poi un record per riga, valori
+ * RFC 4180 (virgolette se contengono , " CR LF). Formato JSON: array di oggetti indentato
+ * a 2 spazi (`"campo": valore`), numeri/bool nativi, resto stringa.
+ * fmt: 0 = CSV, 1 = JSON. I record cancellati sono esportati come gli altri (parità C#).
+ * ════════════════════════════════════════════════════════════════════════ */
+static void dbfx_trim(char* s)
+{
+    char* e = s + strlen(s);
+    char* b = s;
+    while (e > s && (e[-1] == ' ' || e[-1] == '\t' || e[-1] == '\r' || e[-1] == '\n')) *--e = 0;
+    while (*b == ' ' || *b == '\t') b++;
+    if (b != s) memmove(s, b, strlen(b) + 1);
+}
+
+static void dbfx_csv_put(FILE* f, const char* v)
+{
+    int q = 0; const char* p;
+    for (p = v; *p; p++) if (*p == ',' || *p == '"' || *p == '\n' || *p == '\r') { q = 1; break; }
+    if (!q) { fputs(v, f); return; }
+    fputc('"', f);
+    for (p = v; *p; p++) { if (*p == '"') fputc('"', f); fputc(*p, f); }
+    fputc('"', f);
+}
+
+static void dbfx_json_str(FILE* f, const char* v)
+{
+    const char* p;
+    fputc('"', f);
+    for (p = v; *p; p++) {
+        unsigned char ch = (unsigned char)*p;
+        if (ch == '"') fputs("\\\"", f);
+        else if (ch == '\\') fputs("\\\\", f);
+        else if (ch == '\n') fputs("\\n", f);
+        else if (ch == '\r') fputs("\\r", f);
+        else if (ch == '\t') fputs("\\t", f);
+        else if (ch < 0x20) fprintf(f, "\\u%04x", ch);
+        else fputc((int)ch, f);
+    }
+    fputc('"', f);
+}
+
+int gmb_db_dbf_export(int64_t h, const char* path, int fmt)
+{
+    gmb_handle_t* hh = gmb_db_get(h, GMB_H_DBF);
+    FILE* f; int nf, i, first = 1;
+    if (!hh || !path || !*path) return GMB_DB_ERR;
+    nf = gmb_db_dbf_field_count(h);
+    if (nf <= 0) return GMB_DB_ERR;
+    f = fopen(path, "w");
+    if (!f) return GMB_DB_ERR;
+    if (fmt == 0) {
+        for (i = 0; i < nf; i++) {
+            char nm[64]; nm[0] = 0;
+            gmb_db_dbf_field_name(h, i, nm, (int)sizeof(nm));
+            if (i) fputc(',', f);
+            dbfx_csv_put(f, nm);
+        }
+        fputc('\n', f);
+    } else fputs("[\n", f);
+    gmb_db_dbf_gotop(h);
+    while (!gmb_db_dbf_eof(h)) {
+        if (fmt == 1) { fputs(first ? "  {\n" : ",\n  {\n", f); }
+        first = 0;
+        for (i = 0; i < nf; i++) {
+            char nm[64], txt[512]; int ty;
+            nm[0] = 0; txt[0] = 0;
+            gmb_db_dbf_field_name(h, i, nm, (int)sizeof(nm));
+            if (gmb_db_dbf_get_field(h, i, txt, (int)sizeof(txt)) != 0) txt[0] = 0;
+            dbfx_trim(txt);
+            ty = gmb_db_dbf_field_type(h, i);
+            if (fmt == 0) {
+                if (i) fputc(',', f);
+                dbfx_csv_put(f, txt);
+            } else {
+                fputs("    ", f); dbfx_json_str(f, nm); fputs(": ", f);
+                if ((ty == 'N' || ty == 'F' || ty == 'I' || ty == 'B' || ty == 'Y') && txt[0]) fputs(txt, f);
+                else if (ty == 'L') fputs((txt[0] == 'T' || txt[0] == 't' || txt[0] == 'Y' || txt[0] == 'y' || txt[0] == '1') ? "true" : "false", f);
+                else dbfx_json_str(f, txt);
+                fputs(i + 1 < nf ? ",\n" : "\n", f);
+            }
+        }
+        if (fmt == 0) fputc('\n', f); else fputs("  }", f);
+        gmb_db_dbf_skip(h, 1);
+    }
+    if (fmt == 1) fputs(first ? "]" : "\n]", f);
+    fclose(f);
+    return GMB_DB_OK;
+}
+
+/* Legge l'intero file in memoria (NUL-terminato); NULL se assente. */
+static char* dbfx_slurp(const char* path)
+{
+    FILE* f = fopen(path, "rb"); long n; char* b;
+    if (!f) return NULL;
+    fseek(f, 0, SEEK_END); n = ftell(f); fseek(f, 0, SEEK_SET);
+    if (n < 0) { fclose(f); return NULL; }
+    b = (char*)malloc((size_t)n + 1);
+    if (!b) { fclose(f); return NULL; }
+    if (n > 0 && fread(b, 1, (size_t)n, f) != (size_t)n) { free(b); fclose(f); return NULL; }
+    b[n] = 0; fclose(f);
+    if (n >= 3 && (unsigned char)b[0] == 0xEF && (unsigned char)b[1] == 0xBB && (unsigned char)b[2] == 0xBF)
+        memmove(b, b + 3, (size_t)n - 2);
+    return b;
+}
+
+/* Un record importato: nome campo → valore testuale. */
+static int dbfx_put_record(int64_t h, gmb_handle_t* hh, char names[][64], char (*vals)[512], int n)
+{
+    int i;
+    if (gmb_db_dbf_append_blank(h) != GMB_DB_OK) return GMB_DB_ERR;
+    for (i = 0; i < n; i++) {
+        int idx = dbf_field_index_public(hh, names[i]);
+        if (idx >= 0) gmb_db_dbf_replace_field(h, idx, vals[i]);
+    }
+    return GMB_DB_OK;
+}
+
+#define DBFX_MAXF 64
+static int dbfx_import_csv(int64_t h, gmb_handle_t* hh, char* s)
+{
+    static char names[DBFX_MAXF][64]; static char vals[DBFX_MAXF][512];
+    int nn = 0, nv = 0, header = 1, inq = 0, k = 0, rows = 0;
+    char cell[512];
+    for (;; s++) {
+        char ch = *s;
+        int end = (ch == 0);
+        if (inq) {
+            if (ch == '"') { if (s[1] == '"') { if (k < 511) cell[k++] = '"'; s++; } else inq = 0; }
+            else if (!end) { if (k < 511) cell[k++] = ch; }
+        } else if (ch == '"') inq = 1;
+        else if (ch == ',' || ch == '\n' || end) {
+            if (!(end && k == 0 && nv == 0)) {
+                cell[k] = 0;
+                if (header) { if (nn < DBFX_MAXF) { snprintf(names[nn], 64, "%s", cell); dbfx_trim(names[nn]); nn++; } }
+                else if (nv < DBFX_MAXF) { snprintf(vals[nv], 512, "%s", cell); nv++; }
+            }
+            k = 0;
+            if (ch == '\n' || end) {
+                if (header) header = 0;
+                else if (nv > 0) { if (dbfx_put_record(h, hh, names, vals, nv < nn ? nv : nn) == GMB_DB_OK) rows++; }
+                nv = 0;
+            }
+        } else if (ch != '\r') { if (k < 511) cell[k++] = ch; }
+        if (end) break;
+    }
+    return rows;
+}
+
+static int dbfx_import_json(int64_t h, gmb_handle_t* hh, char* s)
+{
+    static char names[DBFX_MAXF][64]; static char vals[DBFX_MAXF][512];
+    int rows = 0;
+    while (*s && *s != '{') s++;
+    while (*s == '{') {
+        int n = 0;
+        s++;
+        for (;;) {
+            char key[64]; int kl = 0; char* v = NULL; int vl = 0;
+            while (*s && *s != '"' && *s != '}') s++;
+            if (*s != '"') break;
+            s++;
+            while (*s && *s != '"') { if (kl < 63) key[kl++] = *s; s++; }
+            key[kl] = 0; if (*s == '"') s++;
+            while (*s && *s != ':') s++;
+            if (*s == ':') s++;
+            while (*s == ' ' || *s == '\t' || *s == '\n' || *s == '\r') s++;
+            if (n >= DBFX_MAXF) break;
+            v = vals[n];
+            if (*s == '"') {
+                s++;
+                while (*s && *s != '"') {
+                    char c = *s;
+                    if (c == '\\' && s[1]) {
+                        s++; c = *s;
+                        if (c == 'n') c = '\n'; else if (c == 'r') c = '\r'; else if (c == 't') c = '\t';
+                        else if (c == 'u' && s[1] && s[2] && s[3] && s[4]) {
+                            char hx[5]; memcpy(hx, s + 1, 4); hx[4] = 0;
+                            c = (char)strtol(hx, NULL, 16); s += 4;
+                        }
+                    }
+                    if (vl < 511) v[vl++] = c;
+                    s++;
+                }
+                if (*s == '"') s++;
+            } else {
+                while (*s && *s != ',' && *s != '}' && *s != '\n' && *s != '\r') { if (vl < 511) v[vl++] = *s; s++; }
+                v[vl] = 0; dbfx_trim(v); vl = (int)strlen(v);
+                if (strcmp(v, "true") == 0) { snprintf(v, 512, "T"); vl = 1; }
+                else if (strcmp(v, "false") == 0) { snprintf(v, 512, "F"); vl = 1; }
+                else if (strcmp(v, "null") == 0) { v[0] = 0; vl = 0; }
+            }
+            v[vl] = 0;
+            snprintf(names[n], 64, "%s", key); n++;
+        }
+        while (*s && *s != '}') s++;
+        if (*s == '}') s++;
+        if (n > 0 && dbfx_put_record(h, hh, names, vals, n) == GMB_DB_OK) rows++;
+        while (*s && *s != '{' && *s != ']') s++;
+    }
+    return rows;
+}
+
+int gmb_db_dbf_import(int64_t h, const char* path, int fmt)
+{
+    gmb_handle_t* hh = gmb_db_get(h, GMB_H_DBF);
+    char* buf; int rows;
+    if (!hh || !path || !*path) return GMB_DB_ERR;
+    buf = dbfx_slurp(path);
+    if (!buf) return GMB_DB_ERR;
+    rows = fmt == 1 ? dbfx_import_json(h, hh, buf) : dbfx_import_csv(h, hh, buf);
+    free(buf);
+    gmb_db_dbf_gotop(h);
+    return rows >= 0 ? GMB_DB_OK : GMB_DB_ERR;
 }

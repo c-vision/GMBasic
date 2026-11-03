@@ -1162,6 +1162,7 @@ public sealed partial class IlProgramCompiler
                 EmitBoxedArg(expr.Args[1]);
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.RddSetDeleted), typeof(object), typeof(object)));
                 _il.Emit(OpCodes.Conv_I4);
+                _il.Emit(OpCodes.Neg);   // true → -1 (verità BASIC), come PCode/C
                 _il.Emit(OpCodes.Conv_R8);
                 break;
             case TokenKind.DbfSetDurability:
@@ -1245,6 +1246,7 @@ public sealed partial class IlProgramCompiler
                 if (expr.Args.Length == 2 && expr.Args[0] is VariableExpr isaaArea) _il.Emit(OpCodes.Ldstr, isaaArea.NameCleaned.Lexeme);
                 else _il.Emit(OpCodes.Ldnull);
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.IsamAppendMany), typeof(object), typeof(string)));
+                _il.Emit(OpCodes.Conv_I8);   // StdLib: APPENDMANY → LONG; il metodo runtime ritorna double (bit riletti come int64 = 4.6e18)
                 break;
             case TokenKind.IsamApplyReplication:
                 /* La StdLib dichiara DUE forme: (replLogPath) e (fileNumber|alias, replLogPath):

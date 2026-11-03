@@ -15,6 +15,12 @@ internal sealed class IntraProcessLockManager : LockManagerBase
 {
     private readonly ConcurrentDictionary<string, ReaderWriterLockSlim> _resourceLocks = new();
 
+    // Rientranza del write-lock sullo STESSO thread: `RDD RLOCK/FLOCK` tiene il lock della risorsa e la
+    // scrittura successiva (REPLACE/APPEND → LockFile) lo richiede di nuovo. Con NoRecursion .NET lancia
+    // «Recursive write lock acquisitions not allowed» (PCode) o la scrittura veniva persa (IL, eccezione
+    // ingoiata). Profondità per (thread, risorsa): Release la decrementa, solo l'ultima esce dal lock.
+    [ThreadStatic] private static Dictionary<string, int>? _writeReentry;
+
     /// <inheritdoc />
     public override void AcquireReadLock(string resourceKey, int timeoutMilliseconds, string resourceDescription)
     {
@@ -34,6 +40,12 @@ internal sealed class IntraProcessLockManager : LockManagerBase
     {
         var rwLock =
             _resourceLocks.GetOrAdd(resourceKey, _ => new ReaderWriterLockSlim(LockRecursionPolicy.NoRecursion));
+        if (rwLock.IsWriteLockHeld)
+        {
+            var depths = _writeReentry ??= new Dictionary<string, int>();
+            depths[resourceKey] = depths.GetValueOrDefault(resourceKey) + 1;
+            return;
+        }
         AcquireWithDeadlockDetection(
             resourceKey,
             timeoutMilliseconds,
@@ -58,6 +70,11 @@ internal sealed class IntraProcessLockManager : LockManagerBase
     public override void ReleaseWriteLock(string resourceKey)
     {
         var threadId = Environment.CurrentManagedThreadId;
+        if (_writeReentry is { } depths && depths.TryGetValue(resourceKey, out var depth) && depth > 0)
+        {
+            if (depth == 1) depths.Remove(resourceKey); else depths[resourceKey] = depth - 1;
+            return;   // acquisizione rientrante: il lock esterno resta tenuto
+        }
         if (_resourceLocks.TryGetValue(resourceKey, out var rwLock) && rwLock.IsWriteLockHeld)
         {
             rwLock.ExitWriteLock();
