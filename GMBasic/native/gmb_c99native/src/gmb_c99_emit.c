@@ -10885,6 +10885,15 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                 sb_printf(&c->out, "gmb_string_alloc(\"%s\")", utn);
                 return;
             }
+            /* Variabile DIM AS BIT: TYPENAME "BIT" come IL/PCode/VM-C. In C è un double,
+             * quindi il fallthrough stampava "DOUBLE" (divergenza 4 backend). */
+            {
+                var_t* btv = lookup_var(c, args[0]->var);
+                if (btv && btv->is_bit && !btv->is_array) {
+                    sb_put(&c->out, "gmb_string_alloc(\"BIT\")");
+                    return;
+                }
+            }
         }
         if (etype(c, args[0]) == TY_STR) sb_put(&c->out, "gmb_string_alloc(\"STRING\")");
         else if (args[0]->kind == GMB_EXPR_VAR && args[0]->var && strcasecmp(args[0]->var, "NIL") == 0)
@@ -23371,7 +23380,7 @@ static void emit_mcp_executor(ctx_t* c) {
     sb_put(&c->out, "    return 0;\n}\n\n");
 }
 
-/* AI.PLUGIN.CALL su C99Native: il plugin NON porta codice — `PLUGIN.md` dichiara la PROCEDURA
+/* AI.PLUGINCALL su C99Native: il plugin NON porta codice — `PLUGIN.md` dichiara la PROCEDURA
  * (`procedures[0]`) che deve esistere NEL PROGRAMMA (parità C# `PluginRegistry.Call` →
  * `CallHandler` → `_basicProcedures`). Senza VM BASIC nel binario il dispatch è una catena di
  * confronti su funzioni C reali (stesso schema di `emit_mcp_executor`).
@@ -23381,7 +23390,7 @@ static void emit_mcp_executor(ctx_t* c) {
  * Ritorni non scalari → errore ESPLICITO, mai un risultato silenzioso. */
 static void emit_plugin_call_dispatcher(ctx_t* c) {
     sb_put(&c->out,
-        "/* AI.PLUGIN.CALL: dispatcher generato verso le procedure del programma. */\n"
+        "/* AI.PLUGINCALL: dispatcher generato verso le procedure del programma. */\n"
         "static char* __gmb_plugin_call(const char* __plugin, const char* __arg) {\n"
         "    char* __proc = gmb_plugin_procedure(__plugin);\n"
         "    if (!__proc || !*__proc) { free(__proc); return strdup(\"\"); }\n"
@@ -23402,7 +23411,7 @@ static void emit_plugin_call_dispatcher(ctx_t* c) {
                                 || (s->param_byref && s->param_byref[0])
                                 || (s->param_variadic && s->param_variadic[0]))) bad = 1;
         if (!ret_str && !ret_num) {
-            sb_put(&c->out, "        __out = strdup(\"PLUGIN: la procedura ritorna un tipo non scalare (non invocabile da AI.PLUGIN.CALL)\");\n");
+            sb_put(&c->out, "        __out = strdup(\"PLUGIN: la procedura ritorna un tipo non scalare (non invocabile da AI.PLUGINCALL)\");\n");
         } else if (bad) {
             sb_put(&c->out, "        __out = strdup(\"PLUGIN: primo parametro non supportato (array/byref/variadic)\");\n");
         } else {
@@ -29342,6 +29351,17 @@ static const char* ffi_cb_native_type(int arity, int isInt, int hasRet) {
     char* buf = bufs[bi]; bi = (bi + 1) % 4;
     const char* ct = isInt ? "gmb_int_t" : "gmb_double_t";
     const char* retT = hasRet ? ct : "void";
+    if (arity >= 128) {
+        /* Callback vettoriale (2026-11-02): descriptor = arity-128.
+         * 128: (double*, n)                   132: (double*, n, double)
+         * 129: (double*, n, double*, n2)      144/145: ritorno ARRAY (out finale) */
+        if (arity == 132) {
+            snprintf(buf, 80, "%s (*)(gmb_double_t*, gmb_int_t, gmb_double_t)", retT);
+            return buf;
+        }
+        snprintf(buf, 80, "%s (*)(gmb_double_t*, gmb_int_t)", retT);
+        return buf;
+    }
     char params[48] = "";
     for (int i = 0; i < arity; i++) {
         if (i) strncat(params, ", ", sizeof(params) - strlen(params) - 1);
@@ -29408,6 +29428,40 @@ static void emit_ffi_callback_pool(ctx_t* c) {
                 kind, arity, kind, arity, kind, arity, kind, arity);
             sb_printf(&c->out, "static void gmb_ffi_cb_release_%s%d(int s) { if (s >= 0) g_ffi_cb_inuse_%s%d[s] = 0; }\n", kind, arity, kind, arity);
         }
+        /* Callback VETTORIALE (2026-11-02, arity 128): nativo (gmb_double_t*, gmb_int_t) ->
+         * lambda BASIC `double(void*, gmb_double_t*)` (la lunghezza non serve: la lambda usa
+         * il bound catturato, stessa convenzione di gmb_opt_c99_f_vec). */
+        sb_printf(&c->out, "static gmb_fn_t g_ffi_cb_slot_%s128[2];\n", kind);
+        sb_printf(&c->out, "static int g_ffi_cb_inuse_%s128[2];\n", kind);
+        for (int slot = 0; slot < 2; slot++)
+            sb_printf(&c->out, "static %s gmb_ffi_cb_%s128_%d(gmb_double_t* v, gmb_int_t n) { gmb_int_t pv = gmb_lambda_bound(0); gmb_fn_t f = g_ffi_cb_slot_%s128[%d]; %s r; gmb_lambda_bound_set(0, n - 1); r = (%s)((gmb_double_t(*)(void*, gmb_double_t*))f.fn)(f.ctx, v); gmb_lambda_bound_set(0, pv); return r; }\n",
+                ct, kind, slot, kind, slot, ct, ct);
+        sb_printf(&c->out, "static %s (*g_ffi_cb_ptr_%s128[2])(gmb_double_t*, gmb_int_t) = { gmb_ffi_cb_%s128_0, gmb_ffi_cb_%s128_1 };\n",
+            ct, kind, kind, kind);
+        for (int slot = 0; slot < 2; slot++)
+            sb_printf(&c->out, "static void gmb_ffi_cb_sub_%s128_%d(gmb_double_t* v, gmb_int_t n) { gmb_int_t pv = gmb_lambda_bound(0); gmb_fn_t f = g_ffi_cb_slot_%s128[%d]; gmb_lambda_bound_set(0, n - 1); ((gmb_double_t(*)(void*, gmb_double_t*))f.fn)(f.ctx, v); gmb_lambda_bound_set(0, pv); }\n",
+                kind, slot, kind, slot);
+        sb_printf(&c->out, "static void (*g_ffi_cb_ptr_sub_%s128[2])(gmb_double_t*, gmb_int_t) = { gmb_ffi_cb_sub_%s128_0, gmb_ffi_cb_sub_%s128_1 };\n",
+            kind, kind, kind);
+        sb_printf(&c->out, "static int gmb_ffi_cb_acquire_%s128(gmb_fn_t f) { for (int s = 0; s < 2; s++) if (!g_ffi_cb_inuse_%s128[s]) { g_ffi_cb_inuse_%s128[s] = 1; g_ffi_cb_slot_%s128[s] = f; return s; } return -1; }\n",
+            kind, kind, kind, kind);
+        sb_printf(&c->out, "static void gmb_ffi_cb_release_%s128(int s) { if (s >= 0) g_ffi_cb_inuse_%s128[s] = 0; }\n", kind, kind);
+        /* Forma ARRAY + SCALARE (2026-11-02, arity 132). */
+        sb_printf(&c->out, "static gmb_fn_t g_ffi_cb_slot_%s132[2];\n", kind);
+        sb_printf(&c->out, "static int g_ffi_cb_inuse_%s132[2];\n", kind);
+        for (int slot = 0; slot < 2; slot++)
+            sb_printf(&c->out, "static %s gmb_ffi_cb_%s132_%d(gmb_double_t* v, gmb_int_t n, gmb_double_t s) { gmb_int_t pv = gmb_lambda_bound(0); gmb_fn_t f = g_ffi_cb_slot_%s132[%d]; %s r; gmb_lambda_bound_set(0, n - 1); r = (%s)((gmb_double_t(*)(void*, gmb_double_t*, gmb_double_t))f.fn)(f.ctx, v, s); gmb_lambda_bound_set(0, pv); return r; }\n",
+                ct, kind, slot, kind, slot, ct, ct);
+        sb_printf(&c->out, "static %s (*g_ffi_cb_ptr_%s132[2])(gmb_double_t*, gmb_int_t, gmb_double_t) = { gmb_ffi_cb_%s132_0, gmb_ffi_cb_%s132_1 };\n",
+            ct, kind, kind, kind);
+        for (int slot = 0; slot < 2; slot++)
+            sb_printf(&c->out, "static void gmb_ffi_cb_sub_%s132_%d(gmb_double_t* v, gmb_int_t n, gmb_double_t s) { gmb_int_t pv = gmb_lambda_bound(0); gmb_fn_t f = g_ffi_cb_slot_%s132[%d]; gmb_lambda_bound_set(0, n - 1); ((gmb_double_t(*)(void*, gmb_double_t*, gmb_double_t))f.fn)(f.ctx, v, s); gmb_lambda_bound_set(0, pv); }\n",
+                kind, slot, kind, slot);
+        sb_printf(&c->out, "static void (*g_ffi_cb_ptr_sub_%s132[2])(gmb_double_t*, gmb_int_t, gmb_double_t) = { gmb_ffi_cb_sub_%s132_0, gmb_ffi_cb_sub_%s132_1 };\n",
+            kind, kind, kind);
+        sb_printf(&c->out, "static int gmb_ffi_cb_acquire_%s132(gmb_fn_t f) { for (int s = 0; s < 2; s++) if (!g_ffi_cb_inuse_%s132[s]) { g_ffi_cb_inuse_%s132[s] = 1; g_ffi_cb_slot_%s132[s] = f; return s; } return -1; }\n",
+            kind, kind, kind, kind);
+        sb_printf(&c->out, "static void gmb_ffi_cb_release_%s132(int s) { if (s >= 0) g_ffi_cb_inuse_%s132[s] = 0; }\n", kind, kind);
     }
     sb_put(&c->out, "\n");
 }
@@ -29475,6 +29529,20 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
             int kindmask = s->param_fn_kind_mask ? s->param_fn_kind_mask[i] : 0;
             int hasRet = s->param_fn_has_ret ? s->param_fn_has_ret[i] : 0;
             int retInt = hasRet && s->param_fn_ret_int ? s->param_fn_ret_int[i] : 0;
+            /* Callback VETTORIALE (2026-11-02): 1-2 array in testa (+ eventuali scalari).
+             * descriptor = (nArr-1) | (nSca<<2). Native: (double*, n[, double*, n2][, double...]). */
+            if (s->param_fn_arr_mask && (s->param_fn_arr_mask[i] & 1)) {
+                int nArr = 0, nSca, code;
+                while (nArr < arity && (s->param_fn_arr_mask[i] & (1 << nArr))) nArr++;
+                if (nArr < 1) nArr = 1;
+                nSca = arity - nArr;
+                code = (nArr - 1) | (nSca << 2);
+                is_cb_param[i] = 1;
+                cb_arity[i] = 128 + code;
+                cb_kind_int[i] = retInt;
+                cb_has_ret[i] = hasRet;
+                continue;
+            }
             /* Omogeneità della firma INTERNA del callback (2026-09-29, v1): tutti i parametri
              * + l'eventuale ritorno dello stesso kind — stesso controllo di
              * Compiler.Expressions.cs/ValidateCallbackForFfi. */
@@ -29659,11 +29727,18 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn) {
     /* array/callback (nany_arr) e BYREF: puntatori "duri" il cui marshalling (copy-in/out,
      * trampolini) resta incompatibile col misto. Una STRING e' `const char*` (vedi FFI_INNER):
      * puo' coesistere con scalari misti — l'emissione sotto usa gia' il tipo C vero. */
-    int any_hard_ptr = nany_arr > 0 || nany_byref > 0;
+    /* 2026-11-02: array/BYREF non sono più "puntatori duri" per il misto: il wrapper emette
+     * il tipo C vero per slot (vedi mixed_allowed sotto). */
     int any_udt_sig = ret_udt_ci != NULL;
     for (int i = 0; i < 8 && !any_udt_sig; i++)
         if (udt_param_ci[i]) any_udt_sig = 1;
-    int mixed_allowed = !any_hard_ptr && !any_udt_sig;
+    /* 2026-11-02: firma mista ammessa con array/STRING/BYREF (il wrapper emette il tipo C VERO
+     * per ogni slot), NON con callback: trampolino + slot misti era instabile (hang osservato)
+     * → per i callback resta l'errore di compilazione esplicito. */
+    int any_cb_sig = 0;
+    for (int i = 0; i < 8; i++) if (is_cb_param[i]) { any_cb_sig = 1; break; }
+    int mixed_allowed = !any_udt_sig;
+    (void)any_cb_sig;
     if (mixed && !mixed_allowed) {
         c99_fail(c, s->line, any_ptr
                  ? "FFI '%s': un parametro array o BYREF richiede firma INT64 (dichiarare gli "
@@ -30007,6 +30082,22 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
     if (fn_ret_is_arr(fn)) sb_put(&c->out, (s->n_params || has_ctx || is_lctx || is_lamv || fn->cls_owner[0]) ? ", double* __out" : "double* __out");
     sb_put(&c->out, ") {\n");
     c->indent = 1;
+    /* Lambda con parametro ARRAY (2026-11-02): il C99 le passa `double*` senza lunghezza.
+     * Il chiamante (bridge OPTIMIZE / trampolino FFI vettoriale) pubblica il bound in
+     * gmb_lambda_bound(); qui lo si materializza in `<param>__b0` (prima non dichiarata). */
+    if ((fn->is_lambda || fn->is_lambda_cap) && !fn->cls_owner[0]) {
+        int lb_ord = 0;
+        for (int i = 0; i < s->n_params; i++) {
+            var_t* pvb = vars_find(&fn->locals, s->func_params[i]);
+            if (pvb && pvb->is_array) {
+                ind(c);
+                sb_put(&c->out, "gmb_int_t ");
+                sb_bound_ident(&c->out, s->func_params[i], 0);
+                sb_printf(&c->out, " = gmb_lambda_bound(%d);\n", lb_ord);
+                lb_ord++;
+            }
+        }
+    }
     int err_sv = c->n_err_decl;      /* jmp_buf ON ERROR di QUESTA funzione (scope funzione) */
     size_t err_pos = c->out.len;     /* prologo: le dichiarazioni si inseriscono qui a fine corpo */
     /* Metodo di classe: self deve essere un oggetto valido. `DIM c AS Cls` senza NEW è
@@ -32045,7 +32136,7 @@ int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
      * definizione è emessa più avanti (le gmb_user_* che invoca devono già esistere). */
     sb_put(&c->out, "static int __gmb_mcp_exec(void* __ctx, const char* __tool, const char* __proc,\n"
                     "                          const char* __args, char** __out, int* __err);\n\n");
-    /* AI.PLUGIN.CALL: dichiarazione anticipata del dispatcher generato (definizione dopo i
+    /* AI.PLUGINCALL: dichiarazione anticipata del dispatcher generato (definizione dopo i
      * corpi funzione, perché invoca le gmb_user_*). */
     sb_put(&c->out, "static char* __gmb_plugin_call(const char* __plugin, const char* __arg);\n\n");
 

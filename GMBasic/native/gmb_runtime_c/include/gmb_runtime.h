@@ -57,6 +57,14 @@ typedef struct gmb_fn {
     void* ctx;
 } gmb_fn_t;
 
+/* Bound (indice massimo) degli array passati alla lambda con parametri array (C99: i
+ * puntatori non portano la lunghezza). `idx` = ordine dell.array tra i parametri array della
+ * lambda (0,1,...). Il chiamante (bridge OPTIMIZE, trampolino FFI) pubblica i bound prima
+ * della chiamata. Thread-local: nessuna interferenza fra esecuzioni concorrenti. */
+#define GMB_LAMBDA_MAX_BOUNDS 4
+gmb_int_t gmb_lambda_bound(int idx);
+void gmb_lambda_bound_set(int idx, gmb_int_t b0);
+
 typedef enum {
     GMB_TYPE_NIL = 0,
     GMB_TYPE_INT = 1,
@@ -2375,7 +2383,7 @@ int gmb_plugins_scan(char names[][64], int max);
 int llmengine_plugin_match_trigger(const char* prompt);
 char* llmengine_plugin_call(const char* name, const char* arg);
 /* Prima procedura dichiarata dal plugin (`PLUGIN.md` → `procedures[0]`), heap, "" se assente.
- * Usata dal dispatcher generato di C99Native per `AI.PLUGIN.CALL` (non c'è VM nel binario). */
+ * Usata dal dispatcher generato di C99Native per `AI.PLUGINCALL` (non c'è VM nel binario). */
 char* gmb_plugin_procedure(const char* name);
 /* Hook di invocazione reale della procedura del plugin (installato dal VM/C, che ha
  * vm+task e risolve il nome con gmb_vm_proc_addr). NULL = risultato dichiarativo. */

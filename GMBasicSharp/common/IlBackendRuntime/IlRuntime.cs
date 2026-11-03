@@ -52,7 +52,7 @@ public static partial class IlRuntime
                 trim: drop => mgr.TrimCache(sid, drop));
         };
 
-        // AI.PLUGIN.CALL → PluginRegistry.Call → CallHandler → invoca la procedura BASIC
+        // AI.PLUGINCALL → PluginRegistry.Call → CallHandler → invoca la procedura BASIC
         // del plugin per nome, passando il primo argomento come primo parametro (json).
         Basic.AI.PluginRegistry.CallHandler = (name, args) =>
         {
@@ -4005,9 +4005,28 @@ public static partial class IlRuntime
         try
         {
             var session = Current.SqlDataSession;
-            var key = string.IsNullOrWhiteSpace(alias) ? _dbfCurrentAlias : alias;
+            var explicitAlias = !string.IsNullOrWhiteSpace(alias);
+            var key = explicitAlias ? alias! : _dbfCurrentAlias;
             if (int.TryParse(key, out var pn) && pn > 0 && session.GetWorkArea(pn)?.Driver != null) return pn;
-            return FindAreaByAlias(session, key);
+            if (!string.IsNullOrWhiteSpace(key))
+            {
+                for (var a = 1; a <= Basic.Databases.Rdd.DataSession.MaxWorkareas; a++)
+                {
+                    var wa = session.GetWorkArea(a);
+                    if (wa != null && string.Equals(wa.Alias, key, StringComparison.OrdinalIgnoreCase)) return a;
+                }
+                // Alias ESPLICITO sconosciuto → 0 ("0 se chiusa"). Prima FindAreaByAlias
+                // ripiegava sull'area CORRENTE: SPEED.SELECTED("T") (T = alias di TABELLA,
+                // non di work-area) dava 2 su IL contro 1/0/0 di PCode/VM-C/C99.
+                if (explicitAlias) return 0.0;
+            }
+            // Nessun alias esplicito: l'area corrente vale solo se è una work-area
+            // DBF/ISAM/RDD. Un database SPEED non è una work-area DBF: le gambe C
+            // (che non registrano SPEED nel layer delle aree) rispondono 0.
+            var current = session.GetWorkArea(session.CurrentArea);
+            if (current?.Driver is null) return 0.0;
+            if (current.Driver is Basic.Databases.Rdd.SpeedDriver) return 0.0;
+            return session.CurrentArea;
         }
         catch { return 1.0; }
     }
