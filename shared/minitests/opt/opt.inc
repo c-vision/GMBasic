@@ -552,3 +552,70 @@ PUBLIC FUNCTION CURVEFIT(f AS FUNCTION(p() AS DOUBLE, x AS DOUBLE) AS DOUBLE, xd
     CALL CURVEFIT(f, xdata, ydata, p0, o)
     RETURN o
 END FUNCTION
+
+' ── Forme JAGGED (compatibili col builtin: nessuna dimensione esplicita) ────────────────
+' Acceptano `DIM A(rows) AS ARRAY OF DOUBLE` come `OPTIMIZE.*` e appiattiscono qui dentro.
+
+PUBLIC FUNCTION LEASTSQUARES(A() AS ARRAY OF DOUBLE, b() AS DOUBLE) AS ARRAY OF DOUBLE
+    DIM rows AS LONG = UBOUND(A) + 1
+    DIM cols AS LONG = UBOUND(A(0)) + 1
+    DIM flat(rows * cols - 1) AS DOUBLE
+    DIM i AS LONG, j AS LONG
+    FOR i = 0 TO rows - 1
+        FOR j = 0 TO cols - 1
+            flat(i * cols + j) = A(i)(j)
+        NEXT j
+    NEXT i
+    DIM o(cols - 1) AS DOUBLE
+    CALL OPTN_LEASTSQUARES(flat, rows, cols, b, o)
+    RETURN o
+END FUNCTION
+
+PUBLIC FUNCTION CHOLESKYSOLVE(A() AS ARRAY OF DOUBLE, b() AS DOUBLE) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(A) + 1
+    DIM flat(n * n - 1) AS DOUBLE
+    DIM i AS LONG, j AS LONG
+    FOR i = 0 TO n - 1
+        FOR j = 0 TO n - 1
+            flat(i * n + j) = A(i)(j)
+        NEXT j
+    NEXT i
+    DIM o(n - 1) AS DOUBLE
+    CALL OPTN_CHOLESKYSOLVE(flat, b, n, o)
+    RETURN o
+END FUNCTION
+
+PUBLIC FUNCTION SIMPLEX(c() AS DOUBLE, A() AS ARRAY OF DOUBLE, b() AS DOUBLE) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(c) + 1
+    DIM m AS LONG = UBOUND(A) + 1
+    DIM flat(m * n - 1) AS DOUBLE
+    DIM i AS LONG, j AS LONG
+    FOR i = 0 TO m - 1
+        FOR j = 0 TO n - 1
+            flat(i * n + j) = A(i)(j)
+        NEXT j
+    NEXT i
+    DIM o(n) AS DOUBLE
+    CALL OPTN_SIMPLEX(c, n, flat, m, b, o)
+    RETURN o
+END FUNCTION
+
+PUBLIC FUNCTION LINPROG(c() AS DOUBLE, A() AS ARRAY OF DOUBLE, b() AS DOUBLE) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(c) + 1
+    DIM m AS LONG = UBOUND(A) + 1
+    DIM flat(m * n - 1) AS DOUBLE
+    DIM bnd(2 * n - 1) AS DOUBLE
+    DIM big AS DOUBLE = 10.0 ^ 30
+    DIM i AS LONG, j AS LONG
+    FOR i = 0 TO m - 1
+        FOR j = 0 TO n - 1
+            flat(i * n + j) = A(i)(j)
+        NEXT j
+    NEXT i
+    FOR i = 0 TO n - 1
+        bnd(2 * i) = 0.0 : bnd(2 * i + 1) = big
+    NEXT i
+    DIM o(n - 1) AS DOUBLE
+    CALL OPTN_LINPROG(c, n, flat, m, b, bnd, o)
+    RETURN o
+END FUNCTION

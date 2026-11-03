@@ -10006,6 +10006,22 @@ static void emit_arr_call_arg(ctx_t* c, fn_info_t* fn, int i, gmb_expr_t* arg, i
     }
     var_t* pv = vars_find(&fn->locals, fn->stmt->func_params[i]);
     int want_ref = pv && pv->arr_byref;
+    if (pv && pv->jagged) {
+        /* parametro JAGGED (`A() AS ARRAY OF DOUBLE`): `(double**)A, A__b0, A__cols`. */
+        if (!tv->jagged) {
+            c99_fail(c, line, "%s: il parametro '%s' richiede una matrice (DIM x(n) AS ARRAY OF DOUBLE)",
+                     fn->stmt->func_name, fn->stmt->func_params[i]);
+            return;
+        }
+        sb_put(&c->out, "(gmb_double_t**)");
+        emit_ident(c, tv->name);
+        sb_put(&c->out, ", ");
+        sb_bound_ident(&c->out, tv->name, 0);
+        sb_put(&c->out, ", ");
+        emit_ident(c, tv->name);
+        sb_put(&c->out, "__cols");
+        return;
+    }
     if (want_ref) sb_put(&c->out, "&");
     emit_ident(c, tv->name);
     sb_put(&c->out, ", ");
@@ -12222,6 +12238,20 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
         return;
     }
     if (av && av->is_array && !ns) {
+        /* JAGGED con UN indice = la RIGA (`double*`), 2026-11-03: serve a `A(i)(j)` e
+         * `UBOUND(A(i))` dentro le procedure (prima "attesi 2 indici, trovati 1"). */
+        if (av->jagged && nargs == 1) {
+            sb_put(&c->out, "(");
+            emit_ident(c, av->name);
+            sb_put(&c->out, "__b0 >= 0 ? ");
+            emit_ident(c, av->name);
+            sb_put(&c->out, "[gmb_arr_check((gmb_int_t)(");
+            emit_expr(c, args[0]);
+            sb_put(&c->out, "), 0, (gmb_int_t)(");
+            emit_ident(c, av->name);
+            sb_printf(&c->out, "__b0), %d)] : (gmb_double_t*)NULL)", line);
+            return;
+        }
         int nd = av->ndims > 0 ? av->ndims : 1;
         if (nargs != nd) {
             c99_fail(c, line, "array %s: attesi %d indici, trovati %d", name, nd, nargs);
@@ -17352,10 +17382,18 @@ static int is_json_path_member(ctx_t* c, gmb_expr_t* e, var_t** out_bv, const ch
                  if (s->print_comma && s->print_comma[i]) { ind(c); sb_put(&c->out, "gmb_print_tab_zone();\n"); }
                  continue;
              }
+             var_t* _jv_print = NULL;   /* base jagged di A(i)(j) (2026-11-03) */
              /* _idx_: risultato indicizzato (JSON/dict/lista) → gmb_val_t: PRINT tipizzato
-              * (zona numerica conservata), come le altre val boxate. */
+              * (zona numerica conservata), come le altre val boxate.
+              * ECCEZIONE (2026-11-03): base = RIGA di un array jagged (`A(i)(j)`) → è un
+              * double, non un val: si stampa come numero (altrimenti C invalido). */
              if (s->print_args[i] && s->print_args[i]->kind == GMB_EXPR_CALL
-                 && s->print_args[i]->var && strcmp(s->print_args[i]->var, "_idx_") == 0) {
+                 && s->print_args[i]->var && strcmp(s->print_args[i]->var, "_idx_") == 0
+                 && !(s->print_args[i]->nargs == 2 && s->print_args[i]->args[0]
+                      && s->print_args[i]->args[0]->kind == GMB_EXPR_CALL
+                      && s->print_args[i]->args[0]->var
+                      && (_jv_print = lookup_var(c, s->print_args[i]->args[0]->var)) != NULL
+                      && _jv_print->jagged && !_jv_print->matrix)) {
                  sb_put(&c->out, "gmb_print_val(");
                  emit_expr(c, s->print_args[i]);
                  sb_put(&c->out, ");\n");
@@ -30770,6 +30808,12 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
                 sb_bound_ident(&c->out, s->func_params[i], 0);
                 int _nd = (s->param_ndims && s->param_ndims[i] >= 2) ? s->param_ndims[i] : 1;
                 for (int _j = 1; _j < _nd; _j++) { sb_put(&c->out, ", gmb_int_t "); sb_bound_ident(&c->out, s->func_params[i], _j); }
+                /* jagged: numero di colonne (righe rettangolari, come DIM x(n) AS ARRAY OF). */
+                if (pv && pv->jagged) {
+                    sb_put(&c->out, ", gmb_int_t ");
+                    emit_ident(c, s->func_params[i]);
+                    sb_put(&c->out, "__cols");
+                }
             }
         }
     }
@@ -31420,6 +31464,10 @@ static void add_fn_info(ctx_t* c, gmb_stmt_t* s, const char* cls_owner) {
         if (p_arraylike(s, k)) {
             pv->is_array = 1;
             pv->ndims = (s->param_ndims && s->param_ndims[k] >= 2) ? s->param_ndims[k] : 1;
+            /* `A() AS ARRAY OF DOUBLE` (jagged, 2026-11-03): `gmb_double_t**` + bound di
+             * riga + numbera di colonne (`A__cols`). Prima il parametro era `double*` e il
+             * chiamante passava un `double**` (UB silenzioso con -w). */
+            if (pt && gmb_keyword_tok(pt) == GMB_TOK_Array) { pv->jagged = 1; pv->ndims = 2; }
             /* 2.8: REDIM nel body → doppia indirection (parity _byRefArrayParams oracolo) */
             for (int b = 0; b < s->n_funcbody; b++)
                 if (stmt_redim_name(s->func_body[b], s->func_params[k])) { pv->arr_byref = 1; break; }
@@ -32987,6 +33035,12 @@ int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
                 sb_bound_ident(&proto, s->func_params[k], 0);
                 int _nd = (s->param_ndims && s->param_ndims[k] >= 2) ? s->param_ndims[k] : 1;
                 for (int _j = 1; _j < _nd; _j++) { sb_put(&proto, ", gmb_int_t "); sb_bound_ident(&proto, s->func_params[k], _j); }
+                /* jagged: companion `__cols` (come nella definizione). */
+                if (pv && pv->jagged) {
+                    sb_put(&proto, ", gmb_int_t ");
+                    sb_ident(&proto, s->func_params[k]);
+                    sb_put(&proto, "__cols");
+                }
             }
         }
         if (fn_ret_is_arr(&c->fns[i]))
@@ -33071,7 +33125,11 @@ int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
              * chiamante gmb_fn_t lo pubblica nel canale thread-local (stesso meccanismo dei
              * trampolini FFI/lambda). */
             if (fa->stmt->param_is_array && fa->stmt->param_is_array[k]) {
-                sb_printf(&proto, ", gmb_lambda_bound(%d)", arr_idx++);
+                int _ba = arr_idx++;
+                sb_printf(&proto, ", gmb_lambda_bound(%d)", _ba);
+                /* parametro JAGGED: il trampolino non conosce le colonne (0 = ignote). */
+                var_t* pva2 = vars_find(&fa->locals, fa->stmt->func_params[k]);
+                if (pva2 && pva2->jagged) sb_put(&proto, ", 0");
             }
         }
         if (fa_ret_arr) sb_put(&proto, ", __out");

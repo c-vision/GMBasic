@@ -2353,6 +2353,18 @@ static int bd_lbound(ctx_t* c, gmb_expr_t** a, int n, int line) {
 }
 static int bd_ubound(ctx_t* c, gmb_expr_t** a, int n, int line) {
     if (n != 1 && n != 2) return 0;
+    /* UBOUND(A(i)) con A JAGGED (`DIM A(n) AS ARRAY OF DOUBLE` / parametro jagged):
+     * le righe sono rettangolari → il numero di colonne è `A__cols` (2026-11-03). Senza,
+     * la chiamata cadeva in "UBOUND è una funzione di libreria (SYSTEM)". */
+    if (n == 1 && a[0] && a[0]->kind == GMB_EXPR_CALL && a[0]->nargs == 1 && a[0]->var) {
+        var_t* jv = lookup_var(c, a[0]->var);
+        if (jv && jv->jagged && !jv->matrix && jv->type != TY_STR) {
+            sb_put(&c->out, "(gmb_double_t)(");
+            emit_ident(c, jv->name);
+            sb_put(&c->out, "__cols - 1)");
+            return 1;
+        }
+    }
     /* CONVERT.* Markdown AST: UBOUND(HEADINGS(doc[,level])) o UBOUND(var boxed_md) →
      * gmb_list_count(gmb_val_as_list(...)) - 1 (parity emitter C# gmb_list_count). */
     if (n == 1 && a[0]) {
