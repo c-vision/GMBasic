@@ -5,6 +5,7 @@
 #include "gmb_doc.h"
 #include "gmb_doc_internal.h"
 #include "gmb_doc_ocr.h"
+#include "gmb_runtime.h"   /* gmb_lib_path_any: risolutore unico delle librerie native */
 
 #include <dlfcn.h>
 #include <stdlib.h>
@@ -110,8 +111,22 @@ static const char* gmb_pdf_libname(void)
 
 static void* gmb_pdf_open_lib(void)
 {
-    /* NESSUNA env (Regola Primaria). Scoperta automatica: accanto al binario e risalendo
-     * i parent (Resources/libs/<rid>/...). */
+    /* PRIMA la cache canonica delle librerie native (`~/.gmbasic/libs/<rid>/`), la stessa
+     * usata da tutti gli altri loader (`gmb_lib_path`). Senza questo il backend PDF cercava
+     * solo `Resources/libs/<rid>/` risalendo dalla CWD: su C99Native/CONVERT le funzioni PDF
+     * ritornavano vuoto pur avendo libpdf_oxide in cache. */
+    {
+        char cache[2048] = "";
+        gmb_paths_libs_cache_dir(cache, sizeof cache);
+        if (cache[0])
+        {
+            char cand[4096];
+            snprintf(cand, sizeof(cand), "%s/%s", cache, gmb_pdf_libname());
+            void* h = dlopen(cand, RTLD_NOW | RTLD_LOCAL);
+            if (h) return h;
+        }
+    }
+    /* Fallback: accanto al binario e risalendo i parent (deploy offline senza cache). */
     char cwd[2048];
     if (!getcwd(cwd, sizeof(cwd))) return NULL;
     char cand[4096];

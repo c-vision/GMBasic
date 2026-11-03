@@ -18,8 +18,6 @@ MANCA FILE  CONSOLE -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/
 CONSOLE                           12   0    12   NO
 MANCA FILE  CONTROLS -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/controls/controls_all.bas
 CONTROLS                          11   0    11   NO
-MANCA FILE  CONVERT -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/convert/convert_all.bas
-CONVERT                           31   0    31   NO
 MANCA FILE  FONTS -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/fonts/fonts_all.bas
 FONTS                              3   0     3   NO
 MANCA FILE  GRAPHICS -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/graphics/graphics_all.bas
@@ -29,8 +27,6 @@ IO                                33  32     1   si
   MANCA ISAM.APPENDMANY
   MANCA ISAM.LOG
 ISAM                              24  22     2   si
-MANCA FILE  LEDGER -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/ledger/ledger_all.bas
-LEDGER                            17   0    17   NO
 MANCA FILE  LLM -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/llm/llm_all.bas
 LLM                               61   0    61   NO
 MANCA FILE  MESSAGE -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/message/message_all.bas
@@ -51,10 +47,8 @@ MANCA FILE  TRAY -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/min
 TRAY                              10   0    10   NO
 MANCA FILE  VECTORDB -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/vectordb/vectordb_all.bas
 VECTORDB                          28   0    28   NO
-MANCA FILE  CONSTANTS -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/constants/constants_all.bas
-CONSTANTS                        285   0   285   NO
 
-namespace con file canonico:  51 / 72 
-namespace completi (file + superficie):  48 / 72 
-superficie coperta:  903 / 1829   (mancano  926 )
+namespace con file canonico:  54 / 72 
+namespace completi (file + superficie):  51 / 72 
+superficie coperta:  1236 / 1829   (mancano  593 )
 struttura base del linguaggio: /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/constructs/base.bas -> presente

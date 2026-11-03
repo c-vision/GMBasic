@@ -10,12 +10,10 @@ BROWSER                           21   0    21   NO
 COMPUTER                          12   0    12   NO
 CONSOLE                           12   0    12   NO
 CONTROLS                          11   0    11   NO
-CONVERT                           31   0    31   NO
 FONTS                              3   0     3   NO
 GRAPHICS                          15   0    15   NO
 IO                                33  32     1   si
 ISAM                              24  22     2   si
-LEDGER                            17   0    17   NO
 LLM                               61   0    61   NO
 MESSAGE                            1   0     1   NO
 MOUSE                             11   0    11   NO
@@ -25,9 +23,8 @@ SYSTEM                            26  23     3   si
 TORCH                             76   0    76   NO
 TRAY                              10   0    10   NO
 VECTORDB                          28   0    28   NO
-CONSTANTS                        285   0   285   NO
 
-namespace con file canonico:  51 / 72 
-namespace completi (file + superficie):  48 / 72 
-superficie coperta:  903 / 1829   (mancano  926 )
+namespace con file canonico:  54 / 72 
+namespace completi (file + superficie):  51 / 72 
+superficie coperta:  1236 / 1829   (mancano  593 )
 struttura base del linguaggio: /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/constructs/base.bas -> presente
