@@ -111,7 +111,13 @@ double* gmb_solve_ivp_rk45(void (*f)(double, const double*, int, double*, void*)
 static void gmb_ode_c99_fn(double t, const double* y, int yd, double* dydt, void* ctx)
 {
     gmb_fn_t fn = *(const gmb_fn_t*)ctx;
+    /* Bound dell'array y per la lambda (2026-11-03): il C99 passa `double*` senza
+     * lunghezza; senza pubblicarlo `y(0)` nella lambda dava "Subscript out of range"
+     * (AnalysisMiniTest lambda_param_array_infer). */
+    gmb_int_t prev = gmb_lambda_bound(0);
+    gmb_lambda_bound_set(0, (gmb_int_t)yd - 1);
     ((void(*)(void*, double, double*, double*))fn.fn)(fn.ctx, t, (double*)y, dydt);
+    gmb_lambda_bound_set(0, prev);
 }
 
 gmb_int_t gmb_solve_ivp_c99(gmb_fn_t fn, double* y0, int n, double t0, double t1)
