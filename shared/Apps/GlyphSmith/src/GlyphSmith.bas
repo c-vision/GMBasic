@@ -1462,6 +1462,69 @@ SUB RunCheck()
     KTrue(FileSizeOf(OutPath("mini8.h")) > 100, "mini8.h non vuoto")
     KTrue(FileSizeOf(OutPath("sheet.pbm")) > 100, "sheet.pbm non vuoto")
 
+    ' --- 6. BMP: rilettura del foglio e confronto pixel per pixel -------------
+    ' Il BMP e' l'unico formato scritto a mano: qui lo si RILEGGE con IO.READBYTES,
+    ' si verificano header e riga, e si confronta il numero di pixel neri con il modello
+    ' (ogni pixel acceso occupa scale x scale pixel del foglio).
+    DIM raw() = IO.READBYTES(OutPath("sheet.bmp"))
+    DIM bw AS LONG, bh AS LONG, boff AS LONG, brb AS LONG
+    DIM sc2 AS INTEGER, cols2 AS INTEGER, cellW2 AS INTEGER, cellH2 AS INTEGER
+    DIM mw2 AS INTEGER, mh2 AS INTEGER, g2 AS INTEGER
+    DIM xr AS INTEGER, yr AS INTEGER, ir AS LONG, inkBmp AS LONG, inkModel AS LONG
+    DIM x0b AS INTEGER, y0b AS INTEGER
+
+    KEq(UBOUND(raw) + 1, expBmp, "BMP: byte riletti")
+    KEq(raw(0), 66, "BMP: firma 'B'")
+    KEq(raw(1), 77, "BMP: firma 'M'")
+    boff = raw(10) + raw(11) * 256 + raw(12) * 65536 + raw(13) * 16777216
+    bw = raw(18) + raw(19) * 256 + raw(20) * 65536 + raw(21) * 16777216
+    bh = raw(22) + raw(23) * 256 + raw(24) * 65536 + raw(25) * 16777216
+    KEq(boff, 54, "BMP: offset dei pixel")
+    KEq(bw, 120, "BMP: larghezza da header")
+    KEq(bh, 40, "BMP: altezza da header")
+    KEq(raw(28), 24, "BMP: 24 bit per pixel")
+    brb = INT((bw * 3 + 3) / 4) * 4
+    KEq(54 + brb * bh, expBmp, "BMP: dimensione coerente con l'header")
+    KEq(brb - bw * 3, 0, "BMP: riga gia' multipla di 4 (nessun padding)")
+
+    sc2 = g_bmpScale
+    IF sc2 < 1 THEN sc2 = 1
+    cols2 = g_cellsPerRow
+    IF cols2 < 1 THEN cols2 = 1
+    IF cols2 > g_nGlyphs AND g_nGlyphs > 0 THEN cols2 = g_nGlyphs
+    mw2 = 1
+    mh2 = 1
+    inkModel = 0
+    FOR g2 = 0 TO g_nGlyphs - 1
+        IF g_gw(g2) > mw2 THEN mw2 = g_gw(g2)
+        IF g_gh(g2) > mh2 THEN mh2 = g_gh(g2)
+        inkModel = inkModel + InkCount(g2) * sc2 * sc2
+    NEXT g2
+    cellW2 = (mw2 + 2) * sc2
+    cellH2 = (mh2 + 2) * sc2
+
+    ' conta i pixel neri davvero presenti nel file (BGR = 0,0,0)
+    inkBmp = 0
+    FOR yr = 0 TO bh - 1
+        FOR xr = 0 TO bw - 1
+            ir = 54 + (bh - 1 - yr) * brb + xr * 3
+            IF raw(ir) = 0 THEN
+                IF raw(ir + 1) = 0 THEN
+                    IF raw(ir + 2) = 0 THEN inkBmp = inkBmp + 1
+                END IF
+            END IF
+        NEXT xr
+    NEXT yr
+    KEq(inkBmp, inkModel, "BMP: pixel neri = inchiostro x scale^2")
+
+    ' un pixel acceso e uno spento del glifo 'A' (indice 1), letti dal file
+    x0b = cellW2 + sc2
+    y0b = sc2
+    ir = 54 + (bh - 1 - y0b) * brb + (x0b + 3 * sc2) * 3
+    KEq(raw(ir), 0, "BMP: 'A'(3,0) nero nel file")
+    ir = 54 + (bh - 1 - y0b) * brb + x0b * 3
+    KEq(raw(ir), 255, "BMP: 'A'(0,0) bianco nel file")
+
     PRINT ""
     PRINT "controlli    : "; g_ok; " ok, "; g_ko; " falliti"
     IF g_ko = 0 THEN
