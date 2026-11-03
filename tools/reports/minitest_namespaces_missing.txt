@@ -8,12 +8,6 @@ namespace                          tot  cop  manca  file
   MANCA AI.OBSERVATIONHASH
   MANCA AI.STARTHEALTHCHECK
 AI                               274 269     5   si
-MANCA FILE  ASR -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/asr/asr_all.bas
-ASR                                1   0     1   NO
-MANCA FILE  BROWSER -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/browser/browser_all.bas
-BROWSER                           21   0    21   NO
-MANCA FILE  COMPUTER -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/computer/computer_all.bas
-COMPUTER                          12   0    12   NO
 MANCA FILE  FONTS -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/fonts/fonts_all.bas
 FONTS                              3   0     3   NO
   MANCA IO.WRITEBYTES
@@ -74,8 +68,6 @@ ISAM                              24  22     2   si
   MANCA LLM.TRAINEXPORT
   MANCA LLM.VERIFY
 LLM                               61   9    52   si
-MANCA FILE  MESSAGE -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/message/message_all.bas
-MESSAGE                            1   0     1   NO
   MANCA RDD.DELETE
   MANCA RDD.RECALL
 RDD                               22  20     2   si
@@ -83,10 +75,17 @@ RDD                               22  20     2   si
   MANCA SYSTEM.SHELLCODE
   MANCA SYSTEM.SHELLOUT
 SYSTEM                            26  23     3   si
-MANCA FILE  TORCH -> /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/torch/torch_all.bas
-TORCH                             76   0    76   NO
+  MANCA TORCH.ARGSORT
+  MANCA TORCH.CLIP
+  MANCA TORCH.FROM
+  MANCA TORCH.NORMALIZE
+  MANCA TORCH.ONEHOT
+  MANCA TORCH.STANDARDIZE
+  MANCA TORCH.TOARRAY
+  MANCA TORCH.TOPK
+TORCH                             76  68     8   si
 
-namespace con file canonico:  66 / 72 
-namespace completi (file + superficie):  60 / 72 
-superficie coperta:  1650 / 1829   (mancano  179 )
+namespace con file canonico:  71 / 72 
+namespace completi (file + superficie):  64 / 72 
+superficie coperta:  1753 / 1829   (mancano  76 )
 struttura base del linguaggio: /Users/gaetano/Documents/Projects/GMBasicMonoRepo/shared/minitests/constructs/base.bas -> presente
