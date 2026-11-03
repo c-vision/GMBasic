@@ -6951,6 +6951,7 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_SpeedInfo, emit_bf_speed },
     { "ISAM", GMB_TOK_Found, emit_bf_isam },
     { "ISAM", GMB_TOK_IsamInfo, emit_bf_isam },
+    { "ISAM", GMB_TOK_IsamLog, emit_bf_isam },
     /* SPEED.SETMANY(area, records) → gmb_db_speed_set_many (gmb_c99_emit_speed.c). */
     { NULL, GMB_TOK_SpeedSetMany, emit_bf_speed },
     /* DBF/ISAM: funzioni di dominio → runtime C condiviso (emit_bf_dbf / emit_bf_isam).
@@ -8060,8 +8061,11 @@ static int dim_arr_optimize(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init) {
         int nox0 = is_brute || is_dual || is_de;
         int hasN = is_brute || is_dual;
         var_t *xx = NULL, *bb = NULL;
-        if (init->nargs < (is_min ? 3 : nox0 ? 2 : 3)) {
-            c99_fail(c, s->line, "DIM %s: OPTIMIZE (bounded) richiede x0[]/ranges[] e bounds[][]", v->name);
+        /* Bounds OPZIONALI (2026-11-03, parity con StdLib.Optimize.cs): TNC/COBYLA/SLSQP
+         * accettano (f, x0) e MINIMIZE (f, x0[, method]) — il runtime tratta NULL come
+         * illimitato. Brute/Dual/DE richiedono sempre ranges/bounds. */
+        if (init->nargs < 2) {
+            c99_fail(c, s->line, "DIM %s: OPTIMIZE richiede almeno (funzione, x0[])", v->name);
             return 1;
         }
         const char* bfn = init->tk == GMB_TOK_OptimizeTnc ? "gmb_opt_tnc_c99"
@@ -8076,7 +8080,7 @@ static int dim_arr_optimize(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init) {
          * runtime tratta bounds=NULL come illimitato — leggere args[3] fuori range causava
          * un SEGFAULT del driver C99Native (bug OptimizeSciPyParity). */
         int bArg = is_min ? 3 : nox0 ? 1 : 2;
-        int has_bounds = !is_min || init->nargs >= 4;
+        int has_bounds = nox0 || (is_min ? init->nargs >= 4 : init->nargs >= 3);
         bb = has_bounds ? lookup_var(c, init->args[bArg]->var) : NULL;
         if (has_bounds && (!bb || !bb->jagged)) {
             c99_fail(c, s->line, "DIM %s: bounds deve essere DIM ... AS ARRAY OF DOUBLE", v->name);
@@ -13380,9 +13384,9 @@ static void emit_macro_eval(ctx_t* c, gmb_expr_t* src, int line) {
     /* Contratto C#: rc != 0 → il valore macro è la stringa "MACRO ERROR: <msg>"
      * (bug ClipperMacroStaticError: C99Native rendeva <nil>). */
     sb_put(&c->out, " gmb_val_t __mr = gmb_val_nil();"
-                    " if (gmb_expr_eval_ex(__ms.data, __es, gmb_eval_local_get, gmb_eval_local_set,"
-                    " gmb_host_expr_call, &__mr) != 0) { gmb_string_t __em = gmb_string_concat("
-                    "gmb_string_alloc(\"MACRO ERROR: \"), gmb_string_alloc(gmb_expr_last_error()));"
+                    " if (gmb_eval_env(__ms.data, 0, gmb_eval_local_get, gmb_eval_local_set,"
+                    " __es, gmb_host_expr_call, gmb_eval_pr_str, gmb_eval_pr_num, gmb_eval_pr_nl, NULL, &__mr) != 0) { gmb_string_t __em = gmb_string_concat("
+                    "gmb_string_alloc(\"MACRO ERROR: \"), gmb_string_alloc(gmb_eval_last_error()));"
                     " __mr = gmb_make_val_string(__em.data ? __em.data : \"\"); } ");
     emit_eval_local_frame(c, 0); /* write-back implicite sulle locali */
     sb_put(&c->out, " gmb_expr_scope_pop(__es); gmb_string_free(&__ms); __mr; })");
@@ -20212,8 +20216,8 @@ static void st_expr(ctx_t* c, gmb_stmt_t* s) {
                 sb_put(&c->out, "; if (!__ms.data) __ms = gmb_string_alloc(\"\");"
                                 " gmb_expr_scope_t* __es = gmb_expr_scope_push(NULL); ");
                 emit_eval_local_frame(c, 1);
-                sb_put(&c->out, " gmb_expr_exec_ex(__ms.data, __es, gmb_eval_local_get,"
-                                " gmb_eval_local_set, gmb_host_expr_call); ");
+                sb_put(&c->out, " (void)gmb_eval_env(__ms.data, 1, gmb_eval_local_get,"
+                                " gmb_eval_local_set, __es, gmb_host_expr_call, gmb_eval_pr_str, gmb_eval_pr_num, gmb_eval_pr_nl, NULL, NULL); ");
                 emit_eval_local_frame(c, 0);
                 sb_put(&c->out, " gmb_expr_scope_pop(__es); gmb_string_free(&__ms); }\n");
                 return;
@@ -20249,8 +20253,8 @@ static void st_expr(ctx_t* c, gmb_stmt_t* s) {
             sb_put(&c->out, "; if (!__ms.data) __ms = gmb_string_alloc(\"\");"
                             " gmb_expr_scope_t* __es = gmb_expr_scope_push(NULL); ");
             emit_eval_local_frame(c, 1);
-            sb_put(&c->out, " gmb_expr_exec_ex(__ms.data, __es, gmb_eval_local_get,"
-                            " gmb_eval_local_set, gmb_host_expr_call); ");
+            sb_put(&c->out, " (void)gmb_eval_env(__ms.data, 1, gmb_eval_local_get,"
+                                " gmb_eval_local_set, __es, gmb_host_expr_call, gmb_eval_pr_str, gmb_eval_pr_num, gmb_eval_pr_nl, NULL, NULL); ");
             emit_eval_local_frame(c, 0);
             sb_put(&c->out, " gmb_expr_scope_pop(__es); gmb_string_free(&__ms); }\n");
         }
@@ -26873,6 +26877,26 @@ static void emit_dbf_domain(ctx_t* c, gmb_stmt_t* s) {
             if (w && (strcasecmp(w, "DATABASES") == 0 || strcasecmp(w, "ALL") == 0)) { all = 1; break; }
         }
         if (all) { ind(c); sb_put(&c->out, "(void)gmb_db_dbf_close_all();\n"); return; }
+        if (na >= 1) {
+            /* DBF CLOSE <alias|area>[, ...]: chiude l'area indicata, NON la corrente.
+             * Prima `DBF CLOSE B` chiudeva sempre la corrente (bug: dopo SELECT A,
+             * CLOSE B chiudeva A). */
+            ind(c); sb_put(&c->out, "{ int64_t _ch = 0;\n");
+            for (i = 0; i < na; i++) {
+                if (a[i] && a[i]->kind == GMB_EXPR_NUM) {
+                    ind(c); sb_put(&c->out, "  _ch = gmb_db_dbf_find_handle_by_area((int)(");
+                    emit_expr(c, a[i]); sb_put(&c->out, ")); if (_ch > 0) (void)gmb_db_dbf_close(_ch);\n");
+                } else {
+                    const char* cl = dom_ident(a[i]);
+                    const char* cv = (a[i] && a[i]->kind == GMB_EXPR_VAR) ? a[i]->var : NULL;
+                    const char* sel = cl ? cl : (cv ? cv : NULL);
+                    if (!sel || !sel[0]) continue;
+                    ind(c); sb_printf(&c->out, "  _ch = gmb_db_dbf_find_handle_by_alias(\"%s\"); if (_ch > 0) (void)gmb_db_dbf_close(_ch);\n", sel);
+                }
+            }
+            ind(c); sb_put(&c->out, "}\n");
+            return;
+        }
         ind(c); sb_put(&c->out, "if (gmb_db_current_dbf() > 0) (void)gmb_db_dbf_close(gmb_db_current_dbf()); else (void)gmb_rdd_close(0);\n"); return;
     }
     case GMB_TOK_Select:
@@ -26881,8 +26905,13 @@ static void emit_dbf_domain(ctx_t* c, gmb_stmt_t* s) {
         /* DBF SELECT <numero di area> (semantica Clipper): l'area corrente = il numero.
          * L'handle DBF in questo runtime è l'area stessa (numerazione sequenziale). */
         if (na >= 1 && a[0] && a[0]->kind == GMB_EXPR_NUM) {
-            ind(c); sb_put(&c->out, "(void)gmb_db_set_current_dbf((int)(");
-            emit_expr(c, a[0]); sb_put(&c->out, "));\n");
+            /* Il numero è l'AREA 1-based, non l'handle: l'handle di allocazione può non
+             * coincidere (CREATE/CLOSE riusano slot). Risolve l'area → handle, altrimenti
+             * area RDD. Prima `DBF SELECT 2` faceva set_current_dbf(2) su un handle
+             * qualsiasi → SELECTED() tornava 0 (divergenza IL/PCode/VM-C). */
+            ind(c); sb_put(&c->out, "{ int _sa = (int)(");
+            emit_expr(c, a[0]);
+            sb_put(&c->out, "); int64_t _sh = gmb_db_dbf_find_handle_by_area(_sa); if (_sh > 0) (void)gmb_db_set_current_dbf(_sh); else (void)gmb_rdd_select(_sa); }\n");
             return;
         }
         if (na >= 1) {
@@ -26894,7 +26923,10 @@ static void emit_dbf_domain(ctx_t* c, gmb_stmt_t* s) {
                  * seleziona entrambe (un alias è di un solo tipo; l'altra select è no-op).
                  * Senza, `DBF SELECT <alias RDD>` lasciava l'area RDD non corrente →
                  * EOF/RECNO/GO TOP andavano al DBF (bug CustomerOrdersReport.bas). */
-                ind(c); sb_printf(&c->out, "(void)gmb_db_set_current_dbf(gmb_db_dbf_find_handle_by_alias(\"%s\")); (void)gmb_rdd_select_alias(\"%s\");\n", sel, sel);
+                /* Alias sconosciuto = NO-OP (parità IL/PCode/VM-C): non azzerare l'area
+                 * corrente. Prima set_current_dbf(0) su alias inesistente faceva
+                 * SELECTED()=0 dopo un `DBF SELECT <alias errato>` (divergenza). */
+                ind(c); sb_printf(&c->out, "{ int64_t _ah = gmb_db_dbf_find_handle_by_alias(\"%s\"); if (_ah > 0) (void)gmb_db_set_current_dbf(_ah); } (void)gmb_rdd_select_alias(\"%s\");\n", sel, sel);
                 return;
             }
         }
@@ -30768,6 +30800,20 @@ static void emit_host_env(ctx_t* c, sb_t* fin) {
             sb_put(fin, "        *out = gmb_make_val_double(__r); return 0;\n    }\n");
     }
     sb_put(fin, "    return -1;\n}\n\n");
+    /* Registrazione del dispatcher per OP_CALL_EXTERNAL: il frammento compilato a
+     * runtime (gmb_eval_env → libgmb_eval) chiama qui le FUNCTION utente del programma
+     * C99 (che sono statiche). */
+    sb_put(fin, "#if defined(__GNUC__) || defined(__clang__)\n");
+    sb_put(fin, "__attribute__((constructor)) static void gmb_eval_call_register(void) { gmb_eval_set_call(gmb_host_expr_call); }\n");
+    sb_put(fin, "#endif\n\n");    /* Stampa dei frammenti attraverso il runtime del PROGRAMMA (staging/console):
+     * il valutatore può vivere in un'altra copia del runtime (libgmb_eval). */
+    sb_put(fin, "static void gmb_eval_pr_str(void* ctx, const char* s, size_t len) {\n");
+    sb_put(fin, "    gmb_string_t _s; (void)ctx; _s.data = (char*)s; _s.length = len; _s.ref_count = 0;\n");
+    sb_put(fin, "    gmb_print_string(_s);\n}\n");
+    sb_put(fin, "static void gmb_eval_pr_num(void* ctx, double v) { (void)ctx; gmb_print_val(gmb_make_val_double(v)); }\n");
+    sb_put(fin, "static void gmb_eval_pr_nl(void* ctx) { (void)ctx; gmb_print_newline(); }\n");
+
+
 
     /* S_eval: get/set locali (frame S_eval in env) → globali host per &/EVAL con cattura
      * delle locali del chiamante. File-scope, prima delle funzioni utente. */

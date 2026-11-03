@@ -28,14 +28,18 @@ typedef int (*gmb_eval_env_get_fn)(void* env, const char* name, gmb_val_t* out);
 typedef int (*gmb_eval_env_set_fn)(void* env, const char* name, gmb_val_t in);
 int gmb_vm_eval_text_env(struct gmb_task* task, const char* src, int as_stmt,
                          gmb_eval_env_get_fn get, gmb_eval_env_set_fn set,
-                         void* env, gmb_val_t* out);
+                         void* env, gmb_eval_call_fn call,
+                         gmb_eval_print_str_fn pstr, gmb_eval_print_num_fn pnum,
+                         gmb_eval_print_nl_fn pnl, void* pctx, gmb_val_t* out);
 
 /* Valutatore STANDALONE: nessuna task ospite (filtri DBF/SPEED, C99Native).
  * Compila il frammento con soli parametri ed esegue su una VM minima riusata.
  * È esportato anche da libgmb_eval (caricata su richiesta dai contesti senza VM). */
 int gmb_vm_eval_text_standalone(const char* src, int as_stmt,
                                 gmb_eval_env_get_fn get, gmb_eval_env_set_fn set,
-                                void* env, gmb_val_t* out);
+                                void* env, gmb_eval_call_fn call,
+                         gmb_eval_print_str_fn pstr, gmb_eval_print_num_fn pnum,
+                         gmb_eval_print_nl_fn pnl, void* pctx, gmb_val_t* out);
 
 const char* gmb_vm_eval_last_error(void);
 void gmb_vm_eval_cache_clear(void);

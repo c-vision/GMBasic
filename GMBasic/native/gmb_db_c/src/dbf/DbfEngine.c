@@ -5649,9 +5649,9 @@ int DbfEngine_Update(DbfEngine* self, const char* fieldsCsv, const char* exprsCs
             char valstr[128];
             int idx = eng_find_field(fields, nFields, flds[i]);
             if (idx < 0) continue;
-            int erc = gmb_eval_filter_env(exprs[i], dbf_update_get, NULL, &ctx, &v);
-            if (erc != 0) erc = gmb_expr_eval_filter_ex(exprs[i], &ctx, dbf_update_get, NULL, NULL, &v);
-            if (erc != GMB_EXPR_OK)
+            int erc = gmb_eval_filter_env(exprs[i], dbf_update_get, NULL, &ctx, NULL,
+                                           NULL, NULL, NULL, NULL, &v);
+            if (erc != 0)
                 continue;
             dbf_val_to_str(&v, valstr, (int)sizeof(valstr));
             DbfEngine_ReplaceField(self, idx, valstr);
@@ -5755,9 +5755,9 @@ int DbfEngine_UpdateOn(DbfEngine* dest, DbfEngine* src, const char* srcAlias,
                 char valstr[128];
                 int idx = eng_find_field(destFields, nDestFields, flds[i]);
                 if (idx < 0) continue;
-                int erc = gmb_eval_filter_env(exprs[i], dbf_update_on_get, NULL, &ctx, &v);
-                if (erc != 0) erc = gmb_expr_eval_filter_ex(exprs[i], &ctx, dbf_update_on_get, NULL, NULL, &v);
-                if (erc != GMB_EXPR_OK)
+                int erc = gmb_eval_filter_env(exprs[i], dbf_update_on_get, NULL, &ctx, NULL,
+                                               NULL, NULL, NULL, NULL, &v);
+                if (erc != 0)
                     continue;
                 dbf_val_to_str(&v, valstr, (int)sizeof(valstr));
                 DbfEngine_ReplaceField(dest, idx, valstr);
@@ -5879,9 +5879,9 @@ int DbfEngine_Join(DbfEngine* self, DbfEngine* other, const char* destPath, cons
         while (!other->eof) {
             if (condition && *condition) {
                 gmb_val_t v = gmb_val_nil();
-                int erc = gmb_eval_filter_env(condition, dbf_join_get, NULL, &ctx, &v);
-                if (erc != 0) erc = gmb_expr_eval_filter_ex(condition, &ctx, dbf_join_get, NULL, NULL, &v);
-                if (erc != GMB_EXPR_OK) {
+                int erc = gmb_eval_filter_env(condition, dbf_join_get, NULL, &ctx, NULL,
+                                               NULL, NULL, NULL, NULL, &v);
+                if (erc != 0) {
                     DbfEngine_SkipInternal(other, 1);
                     continue;
                 }

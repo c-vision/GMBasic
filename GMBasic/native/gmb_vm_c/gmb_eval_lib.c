@@ -18,9 +18,11 @@
 /* Stessa firma di gmb_eval_env_fn: il runtime la usa via dlsym. */
 GMB_EVAL_EXPORT int gmb_eval_run_env(const char* src, int as_stmt,
                                      gmb_eval_env_get_fn get, gmb_eval_env_set_fn set,
-                                     void* env, gmb_val_t* out)
+                                     void* env, gmb_eval_call_fn call,
+                                     gmb_eval_print_str_fn pstr, gmb_eval_print_num_fn pnum,
+                                     gmb_eval_print_nl_fn pnl, void* pctx, gmb_val_t* out)
 {
-    return gmb_vm_eval_text_standalone(src, as_stmt, get, set, env, out);
+    return gmb_vm_eval_text_standalone(src, as_stmt, get, set, env, call, pstr, pnum, pnl, pctx, out);
 }
 
 /* Versione/ABI: il runtime rifiuta una dylib con ABI diversa (mai semantica

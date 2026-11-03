@@ -51,6 +51,9 @@ enum {
     GMB_OP_CALL_FFI_T = 211,
     GMB_OP_GOTO = 59, GMB_OP_GOSUB = 60,
     GMB_OP_CLEAR_RETURN = 61, GMB_OP_RETURN = 62, GMB_OP_HALT = 63,
+    /* Chiamata a procedura UTENTE fuori dal chunk (frammenti a runtime: EVAL in C99).
+     * Operandi: u16 const-index del nome, u8 argc. Il risultato è sullo stack. */
+    GMB_OP_CALL_EXTERNAL = 65,
     GMB_OP_GO = 66, GMB_OP_SEND = 67, GMB_OP_RECV = 68,
     GMB_OP_WG_WAIT = 69, GMB_OP_WG_DONE = 70, GMB_OP_SLEEP = 71,
     GMB_OP_READ = 75, GMB_OP_RESTORE = 76,

@@ -91,6 +91,11 @@ typedef struct {
     /* Contesto opaco passato agli hook di output (es. buffer accumulatore
      * del bridge in-process gmb_vm_bridge; NULL per il host CLI). */
     void* print_ctx;
+    /* Chiamata a procedura UTENTE non presente nel chunk (frammenti a runtime:
+     * EVAL compilato in C99, dove le FUNCTION sono C statiche). NULL = non
+     * disponibile → OP_CALL_EXTERNAL produce un errore esplicito. */
+    int (*external_call)(void* vm, gmb_task_t* task, const char* name,
+                         const gmb_val_t* args, int nargs, gmb_val_t* out);
     /* Debugger di riga (NULL = nessun debug, percorso veloce invariato). */
     gmb_vm_debug_t* debug;
 /* Task main del debugger, creato da gmb_vm_debug_init e riusato tra i
@@ -367,6 +372,9 @@ void gmb_vm_restore_net_hooks(gmb_vm_t* vm);
  *   0  task finito o bloccato (parcheggiato su struttura d'attesa),
  *  -1  errore (task.state = GMB_TS_FINISHED). */
 int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task);
+/* Callback per OP_CALL_EXTERNAL (procedura utente fuori dal chunk). */
+void gmb_vm_set_external_call(gmb_vm_t* vm,
+    int (*fn)(void*, gmb_task_t*, const char*, const gmb_val_t*, int, gmb_val_t*));
 /* Task corrente del thread (NULL fuori da una task). */
 gmb_task_t* gmb_vm_tls_task(void);
 

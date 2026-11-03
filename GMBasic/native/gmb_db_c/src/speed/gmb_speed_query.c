@@ -89,9 +89,9 @@ static int sq_get(void* env, const char* name, gmb_val_t* out) {
 static gmb_val_t sq_eval(const char* expr, gmb_dict_t* row) {
     gmb_val_t res = gmb_val_nil();
     if (!expr || !expr[0]) return res;
-    int rc = gmb_eval_filter_env(expr, sq_get, NULL, row, &res);
-    if (rc != 0) rc = gmb_expr_eval_filter(expr, row, sq_get, NULL, &res);
-    if (rc != GMB_EXPR_OK)
+    int rc = gmb_eval_filter_env(expr, sq_get, NULL, row, NULL,
+                                  NULL, NULL, NULL, NULL, &res);
+    if (rc != 0)
         return gmb_val_nil();
     return res;
 }

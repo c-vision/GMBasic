@@ -204,8 +204,7 @@ double gmb_replay_auto(const char* session_id)
         gmb_val_t v = gmb_val_nil();
         /* Motore compilatore+VM quando l'evento è rieseguito dentro una task;
          * senza motore (C99/replay fuori task) valutatore runtime condiviso. */
-        int rc = gmb_eval_env(events[i], 0, NULL, NULL, NULL, &v);
-        if (rc != 0) rc = gmb_expr_eval_ex(events[i], NULL, NULL, NULL, NULL, &v);
+        int rc = gmb_eval_env(events[i], 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &v);
         char line[GMB_REPLAY_EVENT_MAX + 64];
         /* Contratto CONDIVISO col C#: "eseguito" = valutazione OK **e** valore non-NIL; un evento
          * non eseguibile è registrato come ERRORE (mai "ok" silenzioso). */

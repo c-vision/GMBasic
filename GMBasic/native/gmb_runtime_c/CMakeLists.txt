@@ -197,7 +197,6 @@ set(GMB_ALL_SRCS
     src/gmb_signal.c
     src/gmb_core.c
     src/gmb_module.c
-    src/gmb_expr.c
     src/gmb_expr_scope.c
     # Scope dinamico BASIC (DYNAMIC): catena di frame per-task, condivisa VM/C/C99Native
     src/gmb_dscope.c
@@ -1053,9 +1052,6 @@ target_link_libraries(gmb_fixtures_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_fixtures_selfcheck PRIVATE include)
 add_test(NAME gmb_fixtures_selfcheck COMMAND gmb_fixtures_selfcheck)
 
-add_executable(gmb_expr_selfcheck tests/expr_selfcheck.c)
-target_link_libraries(gmb_expr_selfcheck PRIVATE gmb_runtime)
-target_include_directories(gmb_expr_selfcheck PRIVATE include)
 
 add_executable(gmb_dscope_selfcheck tests/dscope_selfcheck.c)
 target_link_libraries(gmb_dscope_selfcheck PRIVATE gmb_runtime)
