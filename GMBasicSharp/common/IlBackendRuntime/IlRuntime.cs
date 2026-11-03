@@ -18270,6 +18270,40 @@ public static double TextWidth(string s)
         }
     }
 
+    /// <summary>Catena di fallback esplicita: prova il provider primario e poi ogni nome in
+    /// `fallback` (CSV `|`). Il primo risultato NON-errore vince; se tutti falliscono ritorna un
+    /// JSON `{"error":"tutti i provider falliti: …"}` con il motivo di ciascuno. Nessun
+    /// fallback implicito: la catena esiste solo se il programma la scrive.</summary>
+    public static string AiDecide(string state, string kind, string provider, string fallback)
+    {
+        var chain = new List<string>();
+        if (!string.IsNullOrWhiteSpace(provider)) chain.Add(provider.Trim());
+        if (!string.IsNullOrWhiteSpace(fallback))
+            chain.AddRange(fallback.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        if (chain.Count == 0) chain.Add("rules");
+
+        var errors = new List<string>();
+        foreach (var name in chain)
+        {
+            var result = AiDecide(state, kind, name);
+            if (!result.StartsWith("{\"error\"", StringComparison.Ordinal))
+                return result;
+            errors.Add($"{name}: {AiDecideErrorText(result)}");
+        }
+        var detail = string.Join(" | ", errors);
+        detail = detail.Replace("\\", "\\\\").Replace("\"", "\\\"");
+        return $"{{\"error\":\"tutti i provider falliti: {detail}\"}}";
+    }
+
+    /// <summary>Testo dell'errore da un JSON `{"error":"..."}` (o il JSON stesso se non lo è).</summary>
+    private static string AiDecideErrorText(string json)
+    {
+        const string prefix = "{\"error\":\"";
+        if (json.StartsWith(prefix, StringComparison.Ordinal) && json.EndsWith("\"}", StringComparison.Ordinal))
+            return json[prefix.Length..^2].Replace("\\\"", "\"");
+        return json;
+    }
+
     // ── AI ASKCHAIN (T1.2, 2026-09-09): anello di ragionamento concatenato via Blackboard ──
     public static string AiAskChain(string name, string prompt, string prefix)
     {

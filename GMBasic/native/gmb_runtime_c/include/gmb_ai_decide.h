@@ -74,6 +74,12 @@ int gmb_decision_result_json(const gmb_decision_result_t* result, char* out, siz
  * NULL su kind invalido/errore. Stessa forma del JSON C# (IlRuntime.AiDecide). */
 char* gmb_ai_decide_run_json(const char* state, const char* kind, const char* provider);
 
+/* Catena di fallback ESPLICITA (superficie `FALLBACK "p1","p2"`): prova `provider` e poi i
+ * nomi in `fallback_csv` (separatore `|`). Il primo risultato non-errore vince; se tutti
+ * falliscono ritorna `{"error":"tutti i provider falliti: …"}`. Nessun fallback implicito. */
+char* gmb_ai_decide_run_json_chain(const char* state, const char* kind,
+                                   const char* provider, const char* fallback_csv);
+
 /* Provider locale MLX (JEV/SystemOne), implementato in `gmb_ai_decide_local.c`: vive nella
  * dylib `gmb_runtime_ai` (non-Windows, che linka LLMEnv) o nel core (Windows) ed è invocato
  * dal dispatcher tramite il gateway. Usa il modello attivo del ruolo completion, il

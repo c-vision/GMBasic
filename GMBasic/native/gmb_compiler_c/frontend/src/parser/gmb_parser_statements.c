@@ -354,6 +354,32 @@ static char* dc_parse_batch_kind(gmb_parser_t* p, int line) {
     return NULL;
 }
 
+/* Clausola FALLBACK "p1", "p2", … (nomi stringa) → CSV `p1|p2` heap. *present=0 se assente. */
+static char* dc_parse_fallback_csv(gmb_parser_t* p, int line, int* present) {
+    *present = 0;
+    if (!dc_tok_is(gmb_p_cur(p), "FALLBACK")) return NULL;
+    *present = 1;
+    gmb_p_adv(p);
+    char buf[1024]; size_t bl = 0; buf[0] = 0; int first = 1;
+    for (;;) {
+        gmb_expr_t* e = gmb_p_parse_expr(p);
+        if (!e || e->kind != GMB_EXPR_STR || !e->str) {
+            gmb_p_set_err(p, "FALLBACK: attesi nomi provider stringa", line);
+            return NULL;
+        }
+        size_t el = strlen(e->str);
+        if (bl + el + (first ? 0 : 1) + 1 >= sizeof buf) {
+            gmb_p_set_err(p, "FALLBACK: lista troppo lunga", line);
+            return NULL;
+        }
+        if (!first) buf[bl++] = '|';
+        memcpy(buf + bl, e->str, el); bl += el; buf[bl] = 0; first = 0;
+        if (gmb_p_cur(p) && gmb_p_cur(p)->kind == GMB_TOK_Comma) { gmb_p_adv(p); continue; }
+        break;
+    }
+    return strdup(buf);
+}
+
 #define DC_BATCH_MAX 16
 
 static gmb_stmt_t* dc_parse_batch(gmb_parser_t* p, int line) {
@@ -395,6 +421,22 @@ static gmb_stmt_t* dc_parse_batch(gmb_parser_t* p, int line) {
         if (!provider) { gmb_p_set_err(p, "AI DECIDE batch: provider mancante dopo USING", line); return NULL; }
         gmb_p_skip_eol(p);
     }
+    int fb_present = 0;
+    char* fb_csv = dc_parse_fallback_csv(p, line, &fb_present);
+    if (fb_present && !fb_csv) return NULL;
+    gmb_expr_t* fb_expr = NULL;
+    if (fb_present) {
+        if (!provider) {
+            char* sep = strchr(fb_csv, '|');
+            if (sep) *sep = 0;
+            provider = gmb_expr_str(fb_csv, line);
+            if (sep) { char* rest = strdup(sep + 1); free(fb_csv); fb_csv = rest; }
+            else { free(fb_csv); fb_csv = NULL; }
+        }
+        if (fb_csv && *fb_csv) fb_expr = gmb_expr_str(fb_csv, line);
+        free(fb_csv);
+        gmb_p_skip_eol(p);
+    }
     if (gmb_p_cur(p) && gmb_p_cur(p)->kind == GMB_TOK_Into) {
         gmb_p_set_err(p, "AI DECIDE batch: INTO non supportato (i nomi delle domande sono le destinazioni)", line);
         return NULL;
@@ -410,11 +452,13 @@ static gmb_stmt_t* dc_parse_batch(gmb_parser_t* p, int line) {
 
     gmb_stmt_t* first = NULL;
     for (int i = 0; i < n; i++) {
-        int nargs = provider ? 3 : 2;
+        int nargs = 2 + (provider ? 1 : 0) + (fb_expr ? 1 : 0);
         gmb_expr_t** args = (gmb_expr_t**)malloc((size_t)nargs * sizeof(gmb_expr_t*));
         args[0] = (i == 0) ? state : gmb_expr_clone(state);
         args[1] = gmb_expr_str(kinds[i], line);
-        if (provider) args[2] = (i == 0) ? provider : gmb_expr_clone(provider);
+        int ai = 2;
+        if (provider) args[ai++] = (i == 0) ? provider : gmb_expr_clone(provider);
+        if (fb_expr) args[ai] = (i == 0) ? fb_expr : gmb_expr_clone(fb_expr);
         gmb_expr_t* call = gmb_expr_call_typed("DECIDE", GMB_TOK_AiDecide, args, nargs, line);
         gmb_stmt_t* a = gmb_stmt_new(GMB_STMT_ASSIGN, line);
         a->target = names[i];
@@ -731,12 +775,29 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
             gmb_p_adv(p);
             dc_provider = gmb_p_parse_expr(p);
         }
+        /* [ FALLBACK "p1","p2"… ]: senza provider il primo nome è il primario. */
+        int dc_fb_present = 0;
+        char* dc_fb_csv = dc_parse_fallback_csv(p, line, &dc_fb_present);
+        if (dc_fb_present && !dc_fb_csv) return NULL;
+        gmb_expr_t* dc_fb_expr = NULL;
+        if (dc_fb_present) {
+            if (!dc_provider) {
+                char* sep = strchr(dc_fb_csv, '|');
+                if (sep) *sep = 0;
+                dc_provider = gmb_expr_str(dc_fb_csv, line);
+                if (sep) { char* rest = strdup(sep + 1); free(dc_fb_csv); dc_fb_csv = rest; }
+                else { free(dc_fb_csv); dc_fb_csv = NULL; }
+            }
+            if (dc_fb_csv && *dc_fb_csv) dc_fb_expr = gmb_expr_str(dc_fb_csv, line);
+            free(dc_fb_csv);
+        }
         /* gmb_expr_call_typed salva il PUNTATORE args senza copiare → array su HEAP
          * (un array di stack diventerebbe dangling e l'emitter leggerebbe NULL/0). */
-        int dc_n = dc_provider ? 3 : 2;
+        int dc_n = 2 + (dc_provider ? 1 : 0) + (dc_fb_expr ? 1 : 0);
         gmb_expr_t** dc_args = (gmb_expr_t**)malloc((size_t)dc_n * sizeof(gmb_expr_t*));
         dc_args[0] = dc_state; dc_args[1] = dc_kind;
         if (dc_provider) dc_args[2] = dc_provider;
+        if (dc_fb_expr) dc_args[dc_n - 1] = dc_fb_expr;
         gmb_expr_t* dc_call = gmb_expr_call_typed("DECIDE", GMB_TOK_AiDecide, dc_args, dc_n, line);
         if (gmb_p_cur(p) && gmb_p_cur(p)->kind == GMB_TOK_Into) {
             gmb_p_adv(p);

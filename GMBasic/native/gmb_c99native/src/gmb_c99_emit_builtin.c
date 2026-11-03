@@ -6181,18 +6181,18 @@ static int se_sign(ctx_t* c, gmb_expr_t** a, int n) {
 }
 static int se_verify(ctx_t* c, gmb_expr_t** a, int n) {
     if (n < 3) return 0;
-    sb_put(&c->out, "((gmb_double_t)gmb_keys_verify_val((gmb_int_t)(");
+    sb_put(&c->out, "(gmb_keys_verify_val((gmb_int_t)(");
     emit_expr(c, a[2]); sb_put(&c->out, "), ");
     sg_bytes(c, a[1]); sb_put(&c->out, ", ");
-    emit_expr(c, a[0]); sb_put(&c->out, "))");
+    emit_expr(c, a[0]); sb_put(&c->out, ") ? -1.0 : 0.0)");
     return 1;
 }
 static int se_verifyraw(ctx_t* c, gmb_expr_t** a, int n) {
     if (n < 3) return 0;
-    sb_put(&c->out, "((gmb_double_t)gmb_keys_verify_raw_val(");
+    sb_put(&c->out, "(gmb_keys_verify_raw_val(");
     sg_bytes(c, a[1]); sb_put(&c->out, ", ");
     emit_expr(c, a[0]); sb_put(&c->out, ", ");
-    emit_str_operand(c, a[2]); sb_put(&c->out, ".data))");
+    emit_str_operand(c, a[2]); sb_put(&c->out, ".data) ? -1.0 : 0.0)");
     return 1;
 }
 static int se_encryptasym(ctx_t* c, gmb_expr_t** a, int n) {
@@ -7329,11 +7329,14 @@ static int aiag_eval_validate(ctx_t* c, gmb_expr_t** a, int n, int line) {
 }
 static int aiag_decide(ctx_t* c, gmb_expr_t** a, int n, int line) {
     if (n < 2) { c99_fail(c, line, "AI DECIDE: attesi (state, kind)"); return 1; }
-    sb_put(&c->out, "gmb_string_take(gmb_ai_decide_run_json(");
+    /* 4° arg = catena FALLBACK (CSV `|`): stessa funzione del runtime condiviso. */
+    sb_put(&c->out, n >= 4 ? "gmb_string_take(gmb_ai_decide_run_json_chain("
+                           : "gmb_string_take(gmb_ai_decide_run_json(");
     emit_str_operand(c, a[0]); sb_put(&c->out, ".data, ");
     emit_str_operand(c, a[1]); sb_put(&c->out, ".data, ");
     if (n >= 3) { emit_str_operand(c, a[2]); sb_put(&c->out, ".data"); }
     else sb_put(&c->out, "\"\"");
+    if (n >= 4) { sb_put(&c->out, ", "); emit_str_operand(c, a[3]); sb_put(&c->out, ".data"); }
     sb_put(&c->out, "))");
     return 1;
 }
