@@ -1741,6 +1741,31 @@ void gmb_ws_close(int64_t handle)
     net_release(handle);
 }
 
+/* send() COMPLETO su socket non-bloccante: il 101 dell'handshake WS è piccolo ma un
+ * send() singolo può scrivere solo una PARTE (o EAGAIN): il client resta in
+ * "connecting" per sempre. Qui si cicla finché tutti i byte sono usciti. */
+static int ws_send_all_raw(int fd, const char* buf, size_t len)
+{
+    size_t off = 0;
+    while (off < len)
+    {
+        int n = (int)send((gmb_net_sock_t)fd, buf + off, (int)(len - off), 0);
+        if (n > 0) { off += (size_t)n; continue; }
+#if defined(_WIN32) || defined(_WIN64)
+        int would_block = (n == SOCKET_ERROR && WSAGetLastError() == WSAEWOULDBLOCK);
+#else
+        int would_block = (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR));
+#endif
+        if (would_block)
+        {
+            if (gmb_net_wait_fd(fd, 5000) <= 0) return -1;
+            continue;
+        }
+        return -1;
+    }
+    return 0;
+}
+
 /* Handshake server WebSocket: calcola l'accept key dal Sec-WebSocket-Key e risponde 101.
    Usato dall'HTTP ROUTE upgrade. SHA1 + base64. */
 
@@ -1787,9 +1812,9 @@ int gmb_ws_server_handshake(int64_t client_socket, const char* request_headers)
         "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
         "Sec-WebSocket-Accept: %s\r\n\r\n", accept_b64);
     free(accept_b64);
-    /* client_socket è un fd TCP grezzo (da accept dell'HTTP server) — invia direttamente */
-    int sent = (int)send(client_socket, resp, strlen(resp), 0);
-    return sent < 0 ? -1 : 0; /* 0 = handshake ok (il chiamante usa != 0 come fallimento) */
+    /* client_socket è un fd TCP grezzo (da accept dell'HTTP server) — invio COMPLETO
+     * (il socket è non-bloccante: un send() parziale lasciava il client appeso). */
+    return ws_send_all_raw((int)client_socket, resp, strlen(resp));
 }
 
 /* ---- HTTP client via libcurl ---- */

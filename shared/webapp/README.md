@@ -184,7 +184,9 @@ bspConcurrentPages = "index.bsp,canvas.bsp,wasm.bsp"   # render C in parallelo (
 risposta completa). La dashboard usa **`GET /api/events/stream`** (SSE): gli eventi del log
 agente arrivano in tempo reale via `EventSource`, con **fallback automatico al polling** di
 `/api/events` se il canale cade. Verificato: tick a 400 ms di distanza e un evento generato da
-una POST arriva sul canale aperto in <1 s (3 check nel selftest).
+una POST arriva sul canale aperto in <1 s (3 check nel selftest). Ogni connessione resta aperta
+~30 s e poi **EventSource riconnette**: un client che sparisce non lascia una coroutine a
+girare per minuti (e `SLEEP` è cooperativo: nessun worker occupato).
 
 Lo streaming è implementato su **tutte e quattro le gambe** (IL, PCodeVM, VM/C, C99Native) con lo
 stesso comportamento in rete: sulla gamba nativa il protocollo è scritto **una volta sola** in C
@@ -284,6 +286,31 @@ workflow (crea → step → esegui → cancella), memory (store/load/delete), br
 handshake WebSocket, poi ripulisce ciò che ha creato e ferma la app. Lo script usa
 `webapp_up.sh`, quindi gira sul **runtime C** di default (`start csharp` per il confronto).
 
+### Click-through della UI (browser headless)
+
+I test HTTP non eseguono il JS. `tools/py/webapp_ui_cdp.py` apre la dashboard in un browser
+headless via CDP e verifica: palette (Ctrl+K + ricerca fuzzy), rail agenti, Inbox, scorciatoie
+e tab, tema persistito, **creazione agente dal form**, filtri Log salvati, **SSE live**,
+handshake **WebSocket** del canvas, zero errori JS — e lascia uno screenshot in
+`/tmp/webapp_ui.png`.
+
+Un dettaglio del browser headless: a volte il **primo** `onopen` del WebSocket non viene
+consegnato alla pagina anche se il server ha risposto **101** (verificato con gli eventi
+`Network.webSocketHandshakeResponseReceived`) e un WebSocket creato subito dopo apre. Il test
+lo riporta come **WARN** (non FAIL) solo in quel caso; se il 101 non arriva, è FAIL.
+
+```sh
+tools/py/webapp_ui_cdp.py                    # Chromium headless (default)
+tools/py/webapp_ui_cdp.py --browser obscura  # Obscura (vedi nota)
+tools/py/webapp_ui_cdp.py --cdp http://127.0.0.1:9222   # browser già avviato
+```
+
+> **Obscura 0.2.2**: si blocca sul rendering di `index.bsp` (con `<style>` + `<script>` reali
+> insieme; svuotando o togliendo uno dei due la pagina si carica, e con Chromium 149 è
+> perfetta). È un difetto del motore del browser, non della pagina: tracciato in
+> `Bugs/Obscura-Blocco-Index-BSP.md`. Per questo il default dello script è Chromium;
+> `--browser obscura` riproduce il blocco.
+
 ## Note
 
 - **BSP servite solo se montate**: il branch BSP di `HttpService.Dispatch` lavora sui file
@@ -292,8 +319,9 @@ handshake WebSocket, poi ripulisce ciò che ha creato e ferma la app. Lo script 
   `dotnet …/REPL.dll -noconsole -bsp shared/webapp/pages`). Il sidecar `<pagina>.bsp.chunk`
   è un artefatto: non va committato.
 - **SSR + live**: la tabella agenti è renderizzata lato server (funziona senza JS) e poi
-  rimpiazzata dal polling. Tutto il testo che arriva dal runtime è **escapato**
-  (`DASHBOARD.EscapeHtml`) prima di finire nell'HTML.
+  rimpiazzata dal polling. Tutto il testo che arriva dal runtime è **escapato** prima di
+  finire nell'HTML: la pagina ha l'escape inline (`& < > " '`), così l'SSR gira anche col
+  motore BSP in C (che non esegue le FUNCTION dell'include).
 - **Nessun modello cablato**: gli agenti usano il provider attivo (`AI SET ACTIVE …`); senza
   provider la chat risponde con il fallback del runtime (`(insufficient context)`).
 - **WASM**: la tab dichiara onestamente se `static/prog.wasm` esiste (404 → istruzioni),
