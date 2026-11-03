@@ -1161,12 +1161,22 @@ public sealed class PCodeScheduler : IDisposable
     {
         while (!ct.IsCancellationRequested)
         {
+            // Worker il cui P è stato rimosso da GOMAXPROCS(n) a runtime: deve USCIRE, non restare nel
+            // loop di attesa. Un worker "ritirato" ancora in Wait consumava il permesso del semaforo di un
+            // wake destinato a un task in runNext/coda locale di un P vivo (che solo quel worker può
+            // prendere): permesso perso → task mai ripreso (stallo dopo un park, es. SHELLOUT).
+            if (processorIndex >= 0 && IsProcessorRetired(processorIndex)) return null;
             try
             {
                 _workAvailable.Wait(ct);
             }
             catch (OperationCanceledException)
             {
+                return null;
+            }
+            if (processorIndex >= 0 && IsProcessorRetired(processorIndex))
+            {
+                _workAvailable.Release();   // restituisce il permesso a un worker vivo
                 return null;
             }
 
