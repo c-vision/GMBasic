@@ -796,10 +796,26 @@ public static partial class Linker
             Parameter p = parameters.Last();
             // p.DataType è il tipo dell'array (es. ArrayType(Double)).
             
-            // Caso speciale: Passaggio diretto di un singolo array
-            if (variadicArgs.Count == 1 &&
-                LinkerInferExpressionType(variadicArgs[0], context, program) is ArrayType vat &&
-                AreSameType(vat.ElementType, GetBaseType(p.DataType), context, program))
+            // Caso speciale: Passaggio diretto di un singolo array.
+            // - LETTERALE array (`F({})`, `F({1,2})`): è GIÀ l'array del parametro, non va
+            //   incapsulato un'altra volta. Il caso `F()` veniva riscritto due volte (il
+            //   secondo passaggio vedeva l'array vuoto sintetico come singolo argomento) e
+            //   diventava `{{}}` = array di UN elemento → LEN 1, FOR EACH su un elemento
+            //   spurio (valore garbage ~1e-314 su IL; Somma(vuota) in FunctionsParams).
+            // - VARIABILE array con elemento dello stesso tipo, oppure `<inferred>`
+            //   (`DIM a() = {}` non ha un tipo elemento dedotto): si passa direttamente e
+            //   il contesto ExpectedType del parametro la tipizza.
+            bool directArrayArg = false;
+            if (variadicArgs.Count == 1)
+            {
+                var singleArg = variadicArgs[0];
+                if (singleArg is ArrayLiteralExpr) directArrayArg = true;
+                else if (LinkerInferExpressionType(singleArg, context, program) is ArrayType vat &&
+                         (AreSameType(vat.ElementType, GetBaseType(p.DataType), context, program) ||
+                          vat.ElementType is InferredType))
+                    directArrayArg = true;
+            }
+            if (directArrayArg)
             {
                  // Se passiamo un array che matcha il tipo elemento, lo passiamo direttamente
                  finalBuilder.Add(RewriteSingleArgument(variadicArgs[0], p, context, program));

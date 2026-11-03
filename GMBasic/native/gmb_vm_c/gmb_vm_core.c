@@ -15009,6 +15009,12 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                         ev.type = 2;
                         ev.ref = (gmb_obj_t*)err;
                         ev.basic_type = GMB_BT_OBJECT;
+                        /* Pseudo-variabile ERR PRIMA del dispatch: `CATCH e AS ERR` carica il
+                         * GLOBALE ERR (il compilatore C# emette OP_LOAD_GLOBAL ERR). Senza,
+                         * e.Number restava vuoto e il filtro WHEN e.Number = 144 non
+                         * corrispondeva → StopIteration risaliva come errore fatale sul
+                         * chunk compilato dal C# (FunctionsYield: exit 6). */
+                        set_err_global(task, err);
                     }
                     if (try_enter_exception_handler(task, ev, err != NULL))
                     {

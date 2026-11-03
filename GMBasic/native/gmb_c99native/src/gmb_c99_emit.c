@@ -14391,6 +14391,20 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
             emit_ident(c, e->var); sb_put(&c->out, ")");
             break;
         }
+        /* Riferimento NUDO al NOME della funzione corrente dentro il suo corpo: è lo slot
+         * di ritorno (`__ret`), MAI un valore-funzione né una variabile implicita.
+         * `FUNCTION Somma(...) : Somma = A + B : PRINT Somma` stampava 0 (il nome veniva
+         * emesso come gmb_fn_t/valore funzione) — divergenza con IL/VM/C (FunctionsCall).
+         * Vale solo per le FUNCTION, non per i SUB, e solo a 0 argomenti. */
+        if (e->var && !e->nargs && c->cur_fn && !c->cur_fn->stmt->is_sub
+            && c->cur_fn->stmt->func_name
+            && strcasecmp(e->var, c->cur_fn->stmt->func_name) == 0) {
+            /* (nessun controllo lookup_var: la registrazione può aver creato una variabile
+             * omonima — dentro una FUNCTION il nome È lo slot di ritorno, come la scrittura
+             * `Somma = …`; per i SUB il ramo è escluso sopra.) */
+            sb_put(&c->out, "__ret");
+            break;
+        }
         if (e->var && !lookup_var(c, e->var)) {
             /* Riferimento nudo (mai una CALL: quella passa da GMB_EXPR_CALL/emit_call) al
              * NOME di una FUNCTION/SUB — valore funzione di prima classe (es. `RETURN

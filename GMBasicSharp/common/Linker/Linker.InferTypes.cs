@@ -593,6 +593,16 @@ public static partial class Linker
                 return declaredReturnType;
             }
 
+            /* CHIAMATA INDIRETTA di un valore FUNZIONE (`t1(…)]`, `EVAL(t1, …)` riscritto):
+             * il risultato è il ReturnType della firma del delegate. Senza, cadeva nel ramo
+             * generico (ResolvedDefinition null → InferredType) e `DIM t1 = EVAL(block,args)`
+             * perdeva il tipo: il successivo `EVAL(t1, …)` dava "target dinamico non
+             * supportato". */
+            case FunctionExpr feInd when feInd.IsIndirect
+                                       && feInd.ReturnType is not null
+                                       && feInd.ReturnType is not InferredType:
+                return feInd.ReturnType;
+
             case FunctionExpr fe:
                 if (fe.ResolvedDefinition is FunctionDefinition fd)
                 {

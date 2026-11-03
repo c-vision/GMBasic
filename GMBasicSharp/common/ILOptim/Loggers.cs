@@ -10,7 +10,13 @@ public class ConsoleLogger : ICompilationLogger
 
     public void Log(LogLevel level, ReadOnlySpan<char> msg, Exception? exception)
     {
-        SyncScopes();
+        // Diagnostica ILOptim (Warn/Error/Fatal) su STDERR: non deve sporcare l'output del
+        // programma (stdout), altrimenti la gamba IL diverge dalle altre. Vale anche per i
+        // MESSAGGI DI SCOPE ("Apply passes to …"): prima andavano sempre su stdout e un
+        // errore di un pass stampava quella riga nello stdout del programma (divergenza
+        // parity4 su lambda_nested_capture).
+        var sink = level >= LogLevel.Warn ? Console.Error : Console.Out;
+        SyncScopes(sink);
 
         Console.ForegroundColor = level switch {
             LogLevel.Trace => ConsoleColor.DarkGray,
@@ -24,10 +30,7 @@ public class ConsoleLogger : ICompilationLogger
         if (exception != null) {
             msg = msg.ToString() + "\n\n" + exception.ToString();
         }
-        // Diagnostica ILOptim (Warn/Error/Fatal) su STDERR: non deve sporcare l'output del
-        // programma (stdout), altrimenti la gamba IL diverge dalle altre (es. 'Failed to
-        // import code' su NET.CONN — net_conn.bas). Info/Trace restano su stdout.
-        var sink = level >= LogLevel.Warn ? Console.Error : Console.Out;
+        // (sink calcolato sopra: Info/Trace → stdout, Warn/Error/Fatal → stderr.)
         foreach (var line in msg.EnumerateLines()) {
             if (!line.IsEmpty) Indent(_scopeStack.Count, sink);
             sink.WriteLine(line);
@@ -35,7 +38,7 @@ public class ConsoleLogger : ICompilationLogger
         Console.ResetColor();
     }
 
-    private void SyncScopes()
+    private void SyncScopes(TextWriter sink)
     {
         int minDepth = _scopeStack.Count;
         while (minDepth > 0 && _lastScopeSyncId < _scopeStack[minDepth - 1].SyncId) {
@@ -44,14 +47,14 @@ public class ConsoleLogger : ICompilationLogger
         for (int i = minDepth; i < _scopeStack.Count; i++) {
             ref var scope = ref _scopeStack[i];
 
-            Indent(i);
+            Indent(i, sink);
             if (MinLevel == LogLevel.Trace) {
                 Console.ForegroundColor = ConsoleColor.DarkGreen;
-                Console.Write($"[{scope.Info.Name}] ");
+                sink.Write($"[{scope.Info.Name}] ");
             }
             if (scope.Message != null) {
                 Console.ForegroundColor = ConsoleColor.Gray;
-                Console.WriteLine(scope.Message);
+                sink.WriteLine(scope.Message);
             }
         }
         _lastScopeSyncId = _scopeSyncId;

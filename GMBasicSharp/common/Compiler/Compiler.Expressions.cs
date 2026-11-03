@@ -1875,7 +1875,7 @@ public sealed partial class Compiler
         EmitByte((byte)upvalues.Count);
         foreach (var upvalue in upvalues)
         {
-            EmitByte((byte)(upvalue.IsLocal ? (byte)1 : (byte)0));
+            EmitByte(upvalue.Kind);
             EmitByte((byte)(upvalue.Index));
         }
     }
@@ -2332,7 +2332,7 @@ public sealed partial class Compiler
         EmitByte((byte)upvalues.Count);
         foreach (var upvalue in upvalues)
         {
-            EmitByte((byte)(upvalue.IsLocal ? (byte)1 : (byte)0));
+            EmitByte(upvalue.Kind);
             EmitByte((byte)(upvalue.Index));
         }
     }
@@ -2370,7 +2370,25 @@ public sealed partial class Compiler
                     bareNpd.ReturnType));
                 return;
             }
-            if (bareDef is FunctionDefinition { Parameters.Length: 0 } bareFd)
+            /* Un METODO di una classe sintetica di CLOSURE (funzione locale promossa da
+             * PerformHeapPromotion: `__ClosureCtx_*`) referenziato NUDO è un VALORE
+             * (delegato bound all'istanza __context), NON una chiamata: `RETURN Incrementa`
+             * dentro CreaIncrementatore. Trattarlo come chiamata eseguiva il corpo della
+             * funzione al momento della creazione (contatore già a 101) e lasciava nella
+             * variabile FUNCTION il valore di ritorno (un numero) → la chiamata indiretta
+             * successiva saltava a un indirizzo-spazzatura/loop (FunctionsAdvanced su
+             * PCode e VM/C, exit 142). Il valore/la closure la costruisce il blocco più
+             * sotto (OP_CLOSURE con l'upvalue __context). */
+            bool isClosureCtxMethod = false;
+            if (bareDef != null && (bareDef.Flags & SymbolFlags.IsMethod) == SymbolFlags.IsMethod)
+            {
+                var bareName = NormalizeIdentifierName(expr.OriginalToken.Lexeme);
+                foreach (var kv in _procedureAddresses)
+                    if (kv.Key.EndsWith("." + bareName, StringComparison.OrdinalIgnoreCase) &&
+                        kv.Key.StartsWith("__ClosureCtx", StringComparison.OrdinalIgnoreCase))
+                    { isClosureCtxMethod = true; break; }
+            }
+            if (!isClosureCtxMethod && bareDef is FunctionDefinition { Parameters.Length: 0 } bareFd)
             {
                 VisitFunctionExpression(new FunctionExpr(expr.SymbolId, expr.OriginalToken,
                     ImmutableArray<Expr>.Empty, bareFd.ReturnType));

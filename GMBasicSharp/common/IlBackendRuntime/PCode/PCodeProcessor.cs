@@ -5562,9 +5562,19 @@ internal sealed partial class PCodeProcessor
                     capturedUpvalues = new object?[numUpvalues];
                     for (int i = 0; i < numUpvalues; i++)
                     {
-                        var isLocal = ReadU8(task) != 0;
+                        // 3 convenzioni (vedi Compiler.Upvalue.Kind): 1 = locale del frame
+                        // chiamante (box write-through per gli scalari), 2 = UPVALUE del frame
+                        // corrente (cattura TRANSITIVA lambda dentro lambda: si legge dalla
+                        // closure del frame), 0 = legacy "closure esterna sullo stack".
+                        var upKind = ReadU8(task);
+                        var isLocal = upKind == 1;
+                        var isParentUpvalue = upKind == 2;
                         var index = ReadU8(task);
-                        if (isLocal)
+                        if (isParentUpvalue)
+                        {
+                            capturedUpvalues[i] = task.Frame?.Closure?.GetUpvalue(index);
+                        }
+                        else if (isLocal)
                         {
                             var locals = task.Frame?.LocalVariables ?? task.GetLocals();
                             var slotValue = index < locals.Length ? locals[index] : null;
@@ -5579,9 +5589,17 @@ internal sealed partial class PCodeProcessor
                             // slot riusato → incremento perso. Se lo slot contiene GIÀ un ByRefBox
                             // (param BYREF / slot promosso __ClosureCtx) lo si tiene com'è (un
                             // doppio wrap romperebbe la risoluzione a un solo livello).
+                            /* Anche le STRINGHE vanno imbozzate sullo SLOT: una closure
+                             * cattura la VARIABILE, non il valore (parità IL/VM-C/C99). Con
+                             * la cattura dell'oggetto, `s = "b"` dopo la creazione sostituiva
+                             * l'oggetto nello slot e la closure continuava a vedere "a"
+                             * (lambda_nested_capture: s=b su IL/VM-C/C99, s=a su PCode).
+                             * Per le stringhe il ByRefBox è sicuro anche a frame poppato:
+                             * trattiene l'array dei locals (GC), non memoria nativa. Dict/
+                             * oggetti/array/chiusure restano condivisi per riferimento. */
                             capturedUpvalues[i] = slotValue is ByRefBox
                                 ? slotValue
-                                : (slotValue is null || slotValue.GetType().IsValueType
+                                : (slotValue is null || slotValue.GetType().IsValueType || slotValue is string
                                     ? (index < locals.Length ? new ByRefBox(locals, index) : null)
                                     : slotValue);
                         }

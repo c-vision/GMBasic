@@ -771,7 +771,7 @@ public sealed partial class Compiler
         EmitByte((byte)upvalues.Count);
         foreach (var upvalue in upvalues)
         {
-            EmitByte((byte)(upvalue.IsLocal ? (byte)1 : (byte)0));
+            EmitByte(upvalue.Kind);
             EmitByte((byte)(upvalue.Index));
         }
 

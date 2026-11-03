@@ -313,6 +313,13 @@ public sealed partial class Compiler
     {
         public byte Index;
         public bool IsLocal;
+        /// <summary>1 = locale del frame chiamante; 2 = UPVALUE del frame corrente
+        /// (cattura TRANSITIVA: lambda dentro lambda). Emesso in OP_CLOSURE al posto del
+        /// vecchio booleano (0/1) — il valore 0 resta il "frame esterno sullo stack" usato
+        /// dai riferimenti di funzione. Prima una cattura transitiva viaggiava come 0 e la
+        /// VM la interpretava come globale → la variabile del livello esterno valeva 0
+        /// (PCode/VM-C: `{|a| RETURN {|b| RETURN a+b+k}}` perdeva `k`).</summary>
+        public byte Kind;
     }
 
     private readonly Compiler? _enclosing;
