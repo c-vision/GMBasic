@@ -10,6 +10,8 @@
 #include "llmengine_mlx_diff_forward.h"
 /* PUL: la loss (CE) vive qui, sopra i logits del forward Apache. */
 mlx_array llm_train_forward_ce(llm_ai_mlx_model_handle mh, const int32_t* toks, const int32_t* tgt, const uint8_t* mask, int T, bool sum_mode, bool* ok);
+/* T4 — loss decisionale SOPRA i logits del forward (grafo autograd, gmbllm_train_decide.h). */
+#include "train/llm_train_decide.h"
 /* G5 — loss KL teacher-student (distill) sopra gli stessi logits. */
 mlx_array llm_train_forward_kl(llm_ai_mlx_model_handle mh, const int32_t* toks, const float* teacher_logits, int V, int T, float temperature, const uint8_t* mask, bool* ok);
 
@@ -82,6 +84,41 @@ static int gmbllm_dpo_loss_fn(mlx_vector_array* res, const mlx_vector_array inpu
     mlx_array_free(ce_w); mlx_array_free(ce_l); mlx_array_free(rc_w); mlx_array_free(rc_l);
     mlx_array_free(a1); mlx_array_free(a2); mlx_array_free(a); mlx_array_free(z); mlx_array_free(nz);
     mlx_array_free(e); mlx_array_free(e1); mlx_array_free(one); mlx_array_free(sp); mlx_array_free(b);
+    return ok ? 0 : 1;
+}
+
+/* payload della closure DECIDE (T4) */
+typedef struct {
+    llm_ai_mlx_model_handle mh; int layer; const char* proj;
+    const int32_t* toks; int T;
+    const int32_t* option_ids; int K; int label; int criterion;
+    const uint8_t* option_mask; float label_smoothing; float rps_weight;
+} GdecPub;
+
+/* Forward → logits [1,T,V] → loss decisionale (ultima posizione + gather opzioni) → autograd.
+ * La sessione KV creata dal forward è distrutta qui: la closure può essere chiamata più volte
+ * (value_and_grad) e non deve accumulare sessioni. */
+static int gmbllm_decide_loss_fn(mlx_vector_array* res, const mlx_vector_array input, void* payload) {
+    GdecPub* c = (GdecPub*)payload;
+    mlx_array A = mlx_array_new(), B = mlx_array_new();
+    mlx_vector_array_get(&A, input, 0);
+    mlx_vector_array_get(&B, input, 1);
+    llm_ai_mlx_diff_set_lora_mlx(c->mh, c->layer, c->proj, A, B, NULL);
+
+    bool fok = false;
+    llm_ai_mlx_session_handle sh = NULL;
+    mlx_array logits = llm_ai_mlx_diff_forward_logits(c->mh, c->toks, c->T, &sh, &fok);
+    mlx_stream st = llm_ai_mlx_diff_stream(c->mh);
+    bool ok = false;
+    mlx_array loss = mlx_array_new();
+    if (fok)
+        loss = llm_train_decide_loss_from_logits(logits, c->option_ids, c->K, c->label,
+                                                 c->criterion, c->label_smoothing, c->rps_weight,
+                                                 c->option_mask, st, &ok);
+    if (ok) mlx_vector_array_set_value(res, loss);
+    mlx_array_free(loss);
+    mlx_array_free(logits);
+    if (sh) llm_ai_mlx_destroy_session(sh);
     return ok ? 0 : 1;
 }
 
@@ -474,5 +511,104 @@ int llm_ai_mlx_train_full_fit(void* mh, const int32_t* toks, const int32_t* tgt,
     for (int i = 0; i < n; i++) { free(phost[i]); free(pdims[i]); free(pm[i]); free(pv[i]); }
     free(phost); free(pnum); free(pdims); free(pnd); free(pm); free(pv); free(names);
     mlx_vector_array_free(params);
+    return rc;
+}
+
+int llm_ai_mlx_train_decide_step(llm_ai_mlx_model_handle mh,
+                                 const int32_t* toks, int T,
+                                 const int32_t* option_ids, int K,
+                                 int label, int criterion,
+                                 const uint8_t* option_mask,
+                                 float label_smoothing, float rps_weight,
+                                 int layer, const char* proj,
+                                 const float* A, int Ar, int Ac,
+                                 const float* B, int Br, int Bc,
+                                 float* out_loss, float* out_dA, float* out_dB) {
+    if (!mh || !toks || T <= 0 || !option_ids || K < 1 || K > 16 || label < 0 || label >= K) return -1;
+    if (!A || !B || Ac <= 0 || Ar <= 0 || Br <= 0 || Bc <= 0) return -1;
+    const char* pr = proj ? proj : "v_proj";
+    llm_ai_mlx_diff_setup(mh);
+    llm_ai_mlx_model_lora_clear(mh);
+    /* A = [in,rank], B = [rank,out]: la registrazione usa (Ar, Bc), non (Ar, Br). */
+    if (llm_ai_mlx_model_lora_add(mh, layer, pr, Ac, 1.0f, A, B, Ar, Bc) != 0) return -1;
+    llm_ai_mlx_model_lora_set_enabled(mh, 1);
+    GdecPub ctx = { mh, layer, pr, toks, T, option_ids, K, label, criterion,
+                    option_mask, label_smoothing, rps_weight };
+    llm_ai_mlx_diff_set_eager_sdpa(1);
+    mlx_stream st = llm_ai_mlx_diff_stream(mh);
+    mlx_closure cl = mlx_closure_new_func_payload(gmbllm_decide_loss_fn, &ctx, NULL);
+    int sA[2] = { Ar, Ac }, sB[2] = { Br, Bc };
+    mlx_array Aa = mlx_array_new_data(A, sA, 2, MLX_FLOAT32);
+    mlx_array Ba = mlx_array_new_data(B, sB, 2, MLX_FLOAT32);
+    mlx_vector_array in = mlx_vector_array_new();
+    mlx_vector_array_append_value(in, Aa);
+    mlx_vector_array_append_value(in, Ba);
+    int rc = gmbllm_apply(cl, st, in, Ar, Ac, Br, Bc, out_loss, out_dA, out_dB);
+    mlx_vector_array_free(in);
+    mlx_closure_free(cl);
+    llm_ai_mlx_diff_set_eager_sdpa(0);
+    return rc;
+}
+
+int llm_ai_mlx_decide_train_lora(void* mh,
+                                 const llm_decide_train_sample_t* samples, int n_samples,
+                                 int criterion, float label_smoothing, float rps_weight,
+                                 int steps, float lr, int seed,
+                                 int layer, const char* proj,
+                                 int Ar, int Ac, int Br, int Bc,
+                                 float* out_loss, float* out_A, float* out_B) {
+    if (!mh || !samples || n_samples < 1 || steps < 1) return -1;
+    if (!out_A || !out_B || Ar <= 0 || Ac <= 0 || Br <= 0 || Bc <= 0) return -1;
+    const size_t nA = (size_t)Ar * (size_t)Ac, nB = (size_t)Br * (size_t)Bc;
+    float* dA = (float*)malloc(nA * sizeof(float));
+    float* dB = (float*)malloc(nB * sizeof(float));
+    float* mA = (float*)calloc(nA, sizeof(float));
+    float* vA = (float*)calloc(nA, sizeof(float));
+    float* mB = (float*)calloc(nB, sizeof(float));
+    float* vB = (float*)calloc(nB, sizeof(float));
+    if (!dA || !dB || !mA || !vA || !mB || !vB) {
+        free(dA); free(dB); free(mA); free(vA); free(mB); free(vB);
+        return -1;
+    }
+    uint64_t rng = (uint64_t)(seed > 0 ? (unsigned)seed : 1u) * 6364136223846793005ULL
+                 + 1442695040888963407ULL;
+    double acc = 0.0;
+    int nup = 0, rc = 0;
+    const float b1 = 0.9f, b2 = 0.999f, adameps = 1e-8f;
+    for (int step = 0; step < steps; step++) {
+        rng ^= rng >> 12; rng ^= rng << 25; rng ^= rng >> 27;
+        uint64_t r = rng * 2685821657736338717ULL;
+        const llm_decide_train_sample_t* s = &samples[(int)(r % (uint64_t)n_samples)];
+        float L = 0.0f;
+        if (llm_ai_mlx_train_decide_step(mh, s->tokens, s->n_tokens,
+                                         s->option_ids, s->n_options, s->label, criterion,
+                                         NULL, label_smoothing, rps_weight,
+                                         layer, proj, out_A, Ar, Ac, out_B, Br, Bc,
+                                         &L, dA, dB) != 0) {
+            rc = -1;
+            break;
+        }
+        if (isnan(L)) continue;
+        const float bc1 = 1.0f - powf(b1, (float)step + 1.0f);
+        const float bc2 = 1.0f - powf(b2, (float)step + 1.0f);
+        for (size_t k = 0; k < nA; k++) {
+            float g = dA[k];
+            mA[k] = b1 * mA[k] + (1.0f - b1) * g;
+            vA[k] = b2 * vA[k] + (1.0f - b2) * g * g;
+            float mh = mA[k] / bc1, vh = vA[k] / bc2;
+            out_A[k] -= lr * mh / (sqrtf(vh) + adameps);
+        }
+        for (size_t k = 0; k < nB; k++) {
+            float g = dB[k];
+            mB[k] = b1 * mB[k] + (1.0f - b1) * g;
+            vB[k] = b2 * vB[k] + (1.0f - b2) * g * g;
+            float mh = mB[k] / bc1, vh = vB[k] / bc2;
+            out_B[k] -= lr * mh / (sqrtf(vh) + adameps);
+        }
+        acc += (double)L;
+        nup++;
+    }
+    if (out_loss) *out_loss = nup > 0 ? (float)(acc / (double)nup) : 0.0f;
+    free(dA); free(dB); free(mA); free(vA); free(mB); free(vB);
     return rc;
 }

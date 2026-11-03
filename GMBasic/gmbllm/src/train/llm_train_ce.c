@@ -6,7 +6,10 @@
  * "produce" → PUL (ADR §4). L'engine Apache resta inference-complete (solo forward).
  * ============================================================================ */
 #include "llmengine_mlx_diff_forward.h"
+#include "llm_decide_loss.h"
+#include "train/llm_train_decide.h"
 
+#include <math.h>
 #include <mlx/c/mlx.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -161,4 +164,140 @@ int llm_train_teacher_logits(llm_ai_mlx_model_handle mh, const int32_t* toks, in
     if (sh) llm_ai_mlx_destroy_session(sh);
     mlx_array_free(lg);
     return rc;
+}
+
+/* ── T4 — loss decisionale (CE/Brier/RPS/CE+RPS) sopra i logits [1,T,V] ──────────────────────
+ * Stessa matematica di `llm_decide_loss.c`, ma interamente nel grafo MLX: il gradiente rispetto
+ * ai logits (e quindi ai pesi/LoRA) arriva da `mlx_value_and_grad`.
+ *
+ * Il gather delle opzioni è `mlx_take_axis` sull'ULTIMA posizione della sequenza: il readout
+ * del motore guarda solo il token successivo all'ultimo token di prompt, quindi non serve
+ * costruire un target per ogni posizione. Le opzioni non valide (mask) sono portate a un
+ * valore molto negativo PRIMA della softmax (parità con `softmax_masked`); un -INF letterale
+ * produrrebbe 0·(-inf)=NaN nella CE, quindi si usa -1e9 (exp underflow → p=0, y=0). */
+mlx_array llm_train_decide_loss_from_logits(mlx_array logits, const int32_t* opt_ids, int K,
+                                            int label, int criterion,
+                                            float label_smoothing, float rps_weight,
+                                            const uint8_t* opt_mask, mlx_stream st, bool* ok) {
+    if (ok) *ok = false;
+    mlx_array loss = mlx_array_new();
+    if (!opt_ids || K < 1 || K > LLM_DECIDE_LOSS_MAX) return loss;
+    if (label < 0 || label >= K) return loss;
+    if (opt_mask && !opt_mask[label]) return loss;
+    if (criterion < LLM_DECIDE_CRIT_CE || criterion > LLM_DECIDE_CRIT_CE_RPS) return loss;
+    if (mlx_array_ndim(logits) != 3) return loss;
+    const int* shp = mlx_array_shape(logits);
+    if (!shp) return loss;
+    const int T = shp[1], V = shp[2];
+    if (T < 1 || V < 1) return loss;
+
+    float eps = label_smoothing;
+    if (!(eps >= 0.0f)) eps = 0.0f;
+    if (eps > 0.5f) eps = 0.5f;
+    float rw = rps_weight;
+    if (!(rw > 0.0f)) rw = 0.5f;
+
+    float mvalid[LLM_DECIDE_LOSS_MAX];
+    float yv[LLM_DECIDE_LOSS_MAX];
+    int nval = 0;
+    for (int k = 0; k < K; k++) {
+        int valid = (!opt_mask || opt_mask[k]) ? 1 : 0;
+        mvalid[k] = valid ? 1.0f : 0.0f;
+        nval += valid;
+    }
+    if (nval < 1) return loss;
+    for (int k = 0; k < K; k++) {
+        if (!mvalid[k]) { yv[k] = 0.0f; continue; }
+        yv[k] = eps / (float)nval + ((k == label) ? (1.0f - eps) : 0.0f);
+    }
+
+    mlx_array lf = mlx_array_new(), last = mlx_array_new(), sel = mlx_array_new();
+    mlx_array z = mlx_array_new(), cond = mlx_array_new();
+    mlx_array zm = mlx_array_new(), lse = mlx_array_new(), logp = mlx_array_new();
+    mlx_array p = mlx_array_new();
+    /* mv/y sono sempre assegnati sotto (nessun return intermedio): niente new()+overwrite. */
+    mlx_array mv, y;
+    mlx_array ce = mlx_array_new(), brier = mlx_array_new(), rps = mlx_array_new();
+    mlx_array total = mlx_array_new();
+    mlx_array idx = mlx_array_new_data(opt_ids, &K, 1, MLX_INT32);
+    mlx_array half = mlx_array_new_float(0.5f);
+    mlx_array negbig = mlx_array_new_float(-1.0e9f);
+
+    bool good = mlx_astype(&lf, logits, MLX_FLOAT32, st) == 0;
+    int start[3] = { 0, T - 1, 0 }, stop[3] = { 1, T, V }, strides[3] = { 1, 1, 1 };
+    if (good) good = mlx_slice(&last, lf, start, 3, stop, 3, strides, 3, st) == 0;
+    if (good) good = mlx_take_axis(&sel, last, idx, -1, st) == 0;
+    int zsh[1] = { K };
+    if (good) good = mlx_reshape(&z, sel, zsh, 1, st) == 0;
+    mv = mlx_array_new_data(mvalid, &K, 1, MLX_FLOAT32);
+    y = mlx_array_new_data(yv, &K, 1, MLX_FLOAT32);
+    if (good) good = mlx_greater(&cond, mv, half, st) == 0;
+    if (good) good = mlx_where(&zm, cond, z, negbig, st) == 0;
+    if (good) good = mlx_logsumexp_axis(&lse, zm, -1, /*keepdims=*/true, st) == 0;
+    if (good) good = mlx_subtract(&logp, zm, lse, st) == 0;
+    if (good) good = mlx_exp(&p, logp, st) == 0;
+
+    /* CE: -Σ y·logp (le opzioni mascherate hanno y=0 e logp finito → contributo 0). */
+    if (good && (criterion == LLM_DECIDE_CRIT_CE || criterion == LLM_DECIDE_CRIT_CE_RPS)) {
+        mlx_array yl = mlx_array_new(), sm = mlx_array_new();
+        bool g = mlx_multiply(&yl, y, logp, st) == 0;
+        if (g) g = mlx_sum(&sm, yl, /*keepdims=*/false, st) == 0;
+        if (g) g = mlx_negative(&ce, sm, st) == 0;
+        good = g;
+        mlx_array_free(yl); mlx_array_free(sm);
+    }
+
+    /* Brier multi-classe: Σ (p-y)². */
+    if (good && criterion == LLM_DECIDE_CRIT_BRIER) {
+        mlx_array d = mlx_array_new(), d2 = mlx_array_new();
+        bool g = mlx_subtract(&d, p, y, st) == 0;
+        if (g) g = mlx_multiply(&d2, d, d, st) == 0;
+        if (g) g = mlx_sum(&brier, d2, /*keepdims=*/false, st) == 0;
+        good = g;
+        mlx_array_free(d); mlx_array_free(d2);
+    }
+
+    /* RPS: Σ_{k<K-1} (CDF_p[k]-CDF_y[k])² (loss ordinale per SCORE). */
+    if (good && (criterion == LLM_DECIDE_CRIT_RPS || criterion == LLM_DECIDE_CRIT_CE_RPS)) {
+        /* La CDF si accumula anche sulle opzioni mascherate (contributo 0), ma i TERMINI del
+         * RPS esistono solo per k<K-1 VALIDI (parità con `llm_decide_loss_compute`): un peso
+         * [K] azzera i termini fuori dominio, altrimenti il valore al primo indice invalido
+         * verrebbe contato più volte. */
+        float wv[LLM_DECIDE_LOSS_MAX];
+        for (int k = 0; k < K; k++) wv[k] = (k < K - 1 && mvalid[k]) ? 1.0f : 0.0f;
+        mlx_array cdfp = mlx_array_new(), cdfy = mlx_array_new();
+        mlx_array d = mlx_array_new(), d2 = mlx_array_new(), w = mlx_array_new();
+        mlx_array d2w = mlx_array_new();
+        bool g = mlx_cumsum(&cdfp, p, 0, /*reverse=*/false, /*inclusive=*/true, st) == 0;
+        if (g) g = mlx_cumsum(&cdfy, y, 0, false, true, st) == 0;
+        if (g) g = mlx_subtract(&d, cdfp, cdfy, st) == 0;
+        if (g) g = mlx_multiply(&d2, d, d, st) == 0;
+        w = mlx_array_new_data(wv, &K, 1, MLX_FLOAT32);
+        if (g) g = mlx_multiply(&d2w, d2, w, st) == 0;
+        if (g) g = mlx_sum(&rps, d2w, /*keepdims=*/false, st) == 0;
+        good = g;
+        mlx_array_free(cdfp); mlx_array_free(cdfy); mlx_array_free(d);
+        mlx_array_free(d2); mlx_array_free(w); mlx_array_free(d2w);
+    }
+
+    if (good) {
+        if (criterion == LLM_DECIDE_CRIT_CE) mlx_array_set(&total, ce);
+        else if (criterion == LLM_DECIDE_CRIT_BRIER) mlx_array_set(&total, brier);
+        else if (criterion == LLM_DECIDE_CRIT_RPS) mlx_array_set(&total, rps);
+        else {
+            mlx_array wr = mlx_array_new_float(rw), t1 = mlx_array_new();
+            bool g = mlx_multiply(&t1, rps, wr, st) == 0;
+            if (g) g = mlx_add(&total, ce, t1, st) == 0;
+            good = g;
+            mlx_array_free(wr); mlx_array_free(t1);
+        }
+    }
+    if (good) { mlx_array_set(&loss, total); if (ok) *ok = true; }
+
+    mlx_array_free(lf); mlx_array_free(last); mlx_array_free(sel); mlx_array_free(z);
+    mlx_array_free(mv); mlx_array_free(cond); mlx_array_free(zm); mlx_array_free(lse);
+    mlx_array_free(logp); mlx_array_free(p); mlx_array_free(y); mlx_array_free(ce);
+    mlx_array_free(brier); mlx_array_free(rps); mlx_array_free(total);
+    mlx_array_free(idx); mlx_array_free(half); mlx_array_free(negbig);
+    return loss;
 }
