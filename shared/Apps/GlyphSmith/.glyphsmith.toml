@@ -7,6 +7,7 @@
 #   [edit]     script   (solo in mode = "edit")
 #   [import]   font, size, first, last, threshold, out   (solo in mode = "import")
 #   [text]     source, out                              (solo in mode = "textin")
+#   [bmpin]    source, scale, cols, cellw, cellh, first, trim, out  (mode = "bmpin")
 #   [tui]      keys, render                            (solo in mode = "tui")
 # ============================================================================
 
@@ -58,3 +59,28 @@ keys = "edits/keys.txt"
 render = "0"
 # BDF scritto all'uscita (dentro [output] dir): la TUI non butta il lavoro
 out = "tui.bdf"
+
+[bmpin]
+# Foglio BMP 24-bit da importare come font (griglia di celle); relativo alla
+# cartella della app, oppure assoluto. Il formato e' quello scritto da [output]
+# (sheet.bmp) oppure una griglia compatibile: solo 24 bit, BI_RGB, non compresso.
+source = "bin/sheet.bmp"
+# pixel del BMP per pixel del glifo (il foglio scritto con bmp_scale = 4 va letto con 4)
+scale = 4
+# celle per riga: devono essere quelle con cui il foglio e' stato scritto
+# (per sheet.bmp: [output] cells_per_row). 0 = deriva da cellw.
+cols = 3
+# lato della cella in pixel del BMP; 0 = deriva da cols (cellw = larghezza / cols)
+cellw = 0
+# altezza della cella in pixel del BMP; 0 = uguale a cellw
+cellh = 0
+# encoding del primo glifo importato (poi +1 per ogni cella NON vuota: le celle
+# vuote vengono saltate, il foglio non porta gli encoding). I glifi sono alti al
+# massimo 32 righe (limite GS_ROWS).
+first = 65
+# "1" = ritaglia i margini bianchi della cella (righe/colonne tutte bianche);
+# "0" = tiene l'intera cella. Il foglio non registra le metriche per glifo:
+# con il ritaglio larghezza/altezza sono quelle dell'inchiostro.
+trim = "1"
+# nome del BDF prodotto (dentro [output] dir)
+out = "from_bmp.bdf"

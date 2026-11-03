@@ -21,6 +21,7 @@
 '                               pixel, ogni operazione, round-trip, export)
 '   -DGLYPHSMITH_MODE_SHEET     scrive gli export in <app>/bin
 '   -DGLYPHSMITH_MODE_EDIT      applica lo script batch di editing, poi salva
+'   -DGLYPHSMITH_MODE_BMPIN     importa un foglio BMP 24-bit come glifi (ritaglio)
 '
 ' RUN (dalla root del monorepo):
 '   bash tools/sh/gmb_c99native_run.sh ../shared/Apps/GlyphSmith/src/GlyphSmith.bas
@@ -61,6 +62,16 @@ DIM g_importOut AS STRING
 ' --- Import da bitmap testuale (formato ASCII art prodotto dall'app) ---------
 DIM g_textSrc AS STRING
 DIM g_textOut AS STRING
+
+' --- Import da foglio BMP (griglia di celle, ritaglio dei margini) -----------
+DIM g_bmpinSrc AS STRING
+DIM g_bmpinScale AS INTEGER
+DIM g_bmpinCols AS INTEGER
+DIM g_bmpinCellW AS INTEGER
+DIM g_bmpinCellH AS INTEGER
+DIM g_bmpinFirst AS LONG
+DIM g_bmpinTrim AS STRING
+DIM g_bmpinOut AS STRING
 
 ' --- Intestazione del font --------------------------------------------------
 DIM g_startFont AS STRING
@@ -159,6 +170,8 @@ SUB Main()
         RunImport()
     ELSEIF mode = "TEXTIN" THEN
         RunTextIn()
+    ELSEIF mode = "BMPIN" THEN
+        RunBmpIn()
     ELSEIF mode = "TUI" THEN
         RunTui()
     ELSE
@@ -183,6 +196,9 @@ FUNCTION ComputeMode() AS STRING
 #ENDIF
 #IFDEF GLYPHSMITH_MODE_TEXTIN
     m = "TEXTIN"
+#ENDIF
+#IFDEF GLYPHSMITH_MODE_BMPIN
+    m = "BMPIN"
 #ENDIF
 #IFDEF GLYPHSMITH_MODE_TUI
     m = "TUI"
@@ -214,6 +230,14 @@ SUB ConfigureDefaults()
     g_importOut = "imported.bdf"
     g_textSrc = "bin/mini8.ascii"
     g_textOut = "from_text.bdf"
+    g_bmpinSrc = "bin/sheet.bmp"
+    g_bmpinScale = 4
+    g_bmpinCols = 0
+    g_bmpinCellW = 0
+    g_bmpinCellH = 0
+    g_bmpinFirst = 32
+    g_bmpinTrim = "1"
+    g_bmpinOut = "from_bmp.bdf"
     g_tuiKeys = "edits/keys.txt"
     g_tuiRender = "0"
     g_tuiOut = "tui.bdf"
@@ -288,6 +312,14 @@ SUB ParseSettingsFile(path AS STRING)
                     IF section = "IMPORT" AND key = "OUT" THEN g_importOut = val
                     IF section = "TEXT" AND key = "SOURCE" THEN g_textSrc = val
                     IF section = "TEXT" AND key = "OUT" THEN g_textOut = val
+                    IF section = "BMPIN" AND key = "SOURCE" THEN g_bmpinSrc = val
+                    IF section = "BMPIN" AND key = "SCALE" THEN g_bmpinScale = CINT(VAL(val))
+                    IF section = "BMPIN" AND key = "COLS" THEN g_bmpinCols = CINT(VAL(val))
+                    IF section = "BMPIN" AND key = "CELLW" THEN g_bmpinCellW = CINT(VAL(val))
+                    IF section = "BMPIN" AND key = "CELLH" THEN g_bmpinCellH = CINT(VAL(val))
+                    IF section = "BMPIN" AND key = "FIRST" THEN g_bmpinFirst = CLNG(VAL(val))
+                    IF section = "BMPIN" AND key = "TRIM" THEN g_bmpinTrim = val
+                    IF section = "BMPIN" AND key = "OUT" THEN g_bmpinOut = val
                     IF section = "TUI" AND key = "KEYS" THEN g_tuiKeys = val
                     IF section = "TUI" AND key = "RENDER" THEN g_tuiRender = val
                     IF section = "TUI" AND key = "OUT" THEN g_tuiOut = val
@@ -390,7 +422,7 @@ SUB PrintStatus()
         PRINT "bounding box : "; g_bbW; "x"; g_bbH; " a "; g_bbX; ","; g_bbY
     END IF
     PRINT ""
-    PRINT "modi         : -DGLYPHSMITH_MODE_CHECK | _SHEET | _EDIT"
+    PRINT "modi         : -DGLYPHSMITH_MODE_CHECK | _SHEET | _EDIT | _IMPORT | _TEXTIN | _TUI | _BMPIN"
 END SUB
 
 FUNCTION PresenceText(p AS STRING) AS STRING
@@ -2222,6 +2254,14 @@ FUNCTION TextPath() AS STRING
     END IF
 END FUNCTION
 
+FUNCTION BmpInPath() AS STRING
+    IF STRINGS.STARTSWITH(g_bmpinSrc, "/") THEN
+        BmpInPath = g_bmpinSrc
+    ELSE
+        BmpInPath = g_appDir + "/" + g_bmpinSrc
+    END IF
+END FUNCTION
+
 SUB TextLoad(path AS STRING)
     DIM lines
     DIM raw AS STRING, s AS STRING
@@ -2283,6 +2323,167 @@ SUB RunTextIn()
     PRINT "glifi        : "; g_nGlyphs
     PRINT "bounding box : "; g_bbW; "x"; g_bbH
     PRINT "bdf          : "; OutPath(g_textOut); " ("; FileSizeOf(OutPath(g_textOut)); " byte)"
+END SUB
+
+' --- import: foglio BMP 24-bit (foglio di contatto o griglia di celle) ------
+' Legge il BMP scritto da SheetBmp (o una griglia compatibile): ogni cella e'
+' campionata a blocchi scale x scale (inchiostro = almeno un pixel non bianco nel
+' blocco), i margini bianchi vengono ritagliati e ogni cella NON vuota diventa un
+' glifo, con encoding progressivo da [bmpin] first. Il foglio non registra le
+' metriche per glifo: larghezza/altezza sono quindi quelle dell'inchiostro.
+SUB BmpLoad(path AS STRING)
+    DIM raw()
+    DIM boff AS LONG, w AS LONG, h AS LONG, comp AS LONG, rb AS LONG
+    DIM bpp AS INTEGER, scale AS INTEGER, cols AS INTEGER
+    DIM cellW AS INTEGER, cellH AS INTEGER, rowsN AS INTEGER
+    DIM r AS INTEGER, c AS INTEGER, px AS INTEGER, py AS INTEGER
+    DIM sx AS INTEGER, sy AS INTEGER, x0 AS INTEGER, y0 AS INTEGER
+    DIM xa AS LONG, ya AS LONG, ir AS LONG, isInk AS INTEGER
+    DIM gw AS INTEGER, gh AS INTEGER, nrow AS INTEGER
+    DIM row AS STRING, p AS INTEGER, minX AS INTEGER, maxX AS INTEGER
+    DIM minY AS INTEGER, maxY AS INTEGER, bx AS INTEGER, by AS INTEGER
+    DIM bw2 AS INTEGER, bh2 AS INTEGER, trim AS INTEGER
+    DIM idx AS INTEGER, enc AS LONG, anyInk AS INTEGER
+    IF NOT IO.FILEEXISTS(path) THEN Fail("BMP da importare assente: " + path)
+    raw = IO.READBYTES(path)
+    IF LEN(raw) < 54 THEN Fail("BMP troppo corto: " + path)
+    IF raw(0) <> 66 THEN Fail("BMP: firma 'B' assente: " + path)
+    IF raw(1) <> 77 THEN Fail("BMP: firma 'M' assente: " + path)
+    boff = raw(10) + raw(11) * 256 + raw(12) * 65536 + raw(13) * 16777216
+    w = raw(18) + raw(19) * 256 + raw(20) * 65536 + raw(21) * 16777216
+    h = raw(22) + raw(23) * 256 + raw(24) * 65536 + raw(25) * 16777216
+    bpp = raw(28)
+    comp = raw(30) + raw(31) * 256 + raw(32) * 65536 + raw(33) * 16777216
+    IF bpp <> 24 THEN Fail("BMP non supportato: " + NumS(bpp) + " bit (attesi 24)")
+    IF comp <> 0 THEN Fail("BMP compresso non supportato: compression " + NumS(comp))
+    IF w < 1 THEN Fail("BMP: larghezza non valida")
+    IF h < 1 THEN Fail("BMP: altezza non valida (BMP top-down non supportato)")
+    rb = INT((w * 3 + 3) / 4) * 4
+    IF boff + rb * h > LEN(raw) THEN Fail("BMP troncato: attesi " + NumS(boff + rb * h) + " byte, letti " + NumS(LEN(raw)))
+
+    scale = g_bmpinScale
+    IF scale < 1 THEN scale = 1
+    cellW = g_bmpinCellW
+    cellH = g_bmpinCellH
+    cols = g_bmpinCols
+    IF cellW < 1 THEN
+        IF cols < 1 THEN Fail("BMP: serve [bmpin] cellw oppure cols")
+        cellW = INT(w / cols)
+    END IF
+    IF cols < 1 THEN cols = INT(w / cellW)
+    IF cols < 1 THEN Fail("BMP: nessuna colonna di celle (larghezza " + NumS(w) + ", cellw " + NumS(cellW) + ")")
+    IF cellH < 1 THEN cellH = cellW
+    rowsN = INT(h / cellH)
+    IF rowsN < 1 THEN Fail("BMP: nessuna riga di celle (altezza " + NumS(h) + ", cellh " + NumS(cellH) + ")")
+    trim = 0
+    IF g_bmpinTrim = "1" THEN trim = 1
+
+    StartModel()
+    ' il foglio non porta il corpo del font: si usa l'altezza della cella in pixel
+    ' del glifo (cella / scale), cosi' SIZE e BBX restano coerenti con l'import.
+    g_pointSize = INT(cellH / scale)
+    enc = g_bmpinFirst
+    FOR r = 0 TO rowsN - 1
+        FOR c = 0 TO cols - 1
+            x0 = c * cellW
+            y0 = r * cellH
+            gw = INT(cellW / scale)
+            gh = INT(cellH / scale)
+            IF gh > GS_ROWS THEN Fail("BMP: cella alta " + NumS(gh) + " righe (limite " + NumS(GS_ROWS) + ")")
+            anyInk = 0
+            FOR py = 0 TO gh - 1
+                row = ""
+                FOR px = 0 TO gw - 1
+                    isInk = 0
+                    FOR sy = 0 TO scale - 1
+                        FOR sx = 0 TO scale - 1
+                            xa = x0 + px * scale + sx
+                            ya = y0 + py * scale + sy
+                            IF xa < w THEN
+                                IF ya < h THEN
+                                    ir = boff + (h - 1 - ya) * rb + xa * 3
+                                    IF raw(ir) < 250 THEN isInk = 1
+                                    IF raw(ir + 1) < 250 THEN isInk = 1
+                                    IF raw(ir + 2) < 250 THEN isInk = 1
+                                END IF
+                            END IF
+                        NEXT sx
+                    NEXT sy
+                    IF isInk = 1 THEN
+                        row = row + "1"
+                        anyInk = 1
+                    ELSE
+                        row = row + "0"
+                    END IF
+                NEXT px
+                g_tmp(py) = row
+            NEXT py
+            IF anyInk = 1 THEN
+                minX = gw
+                maxX = -1
+                minY = gh
+                maxY = -1
+                FOR py = 0 TO gh - 1
+                    p = INSTR(g_tmp(py), "1")
+                    IF p > 0 THEN
+                        IF p - 1 < minX THEN minX = p - 1
+                        IF py < minY THEN minY = py
+                        IF py > maxY THEN maxY = py
+                        px = gw - 1
+                        WHILE px >= 0
+                            IF MID$(g_tmp(py), px + 1, 1) = "1" THEN
+                                IF px > maxX THEN maxX = px
+                                px = -1
+                            ELSE
+                                px = px - 1
+                            END IF
+                        WEND
+                    END IF
+                NEXT py
+                IF trim = 1 THEN
+                    bx = minX
+                    by = minY
+                    bw2 = maxX - minX + 1
+                    bh2 = maxY - minY + 1
+                ELSE
+                    bx = 0
+                    by = 0
+                    bw2 = gw
+                    bh2 = gh
+                END IF
+                idx = NewGlyph(GlyphName(enc))
+                g_enc(idx) = enc
+                g_gw(idx) = bw2
+                g_gh(idx) = bh2
+                g_gx(idx) = 0
+                g_gy(idx) = 0
+                g_dwx(idx) = bw2
+                g_swx(idx) = bw2 * 62
+                g_nRows(idx) = bh2
+                FOR nrow = 0 TO bh2 - 1
+                    g_row(idx * GS_ROWS + nrow) = MID$(g_tmp(by + nrow), bx + 1, bw2)
+                NEXT nrow
+                IF bw2 > g_bbW THEN g_bbW = bw2
+                IF bh2 > g_bbH THEN g_bbH = bh2
+                enc = enc + 1
+            END IF
+        NEXT c
+    NEXT r
+    IF g_nGlyphs = 0 THEN Fail("BMP senza celle con inchiostro: " + path)
+    g_declChars = g_nGlyphs
+    g_fontName = "-glyphsmith-bmp-" + NumS(g_bbH) + "-medium-r-normal--" + NumS(g_pointSize) + "-75-75-c-0-iso10646-1"
+END SUB
+
+SUB RunBmpIn()
+    DIM src AS STRING
+    src = BmpInPath()
+    BmpLoad(src)
+    EnsureOutDir()
+    BdfSave(OutPath(g_bmpinOut))
+    PRINT "bmp sorgente : "; src
+    PRINT "glifi        : "; g_nGlyphs
+    PRINT "bounding box : "; g_bbW; "x"; g_bbH
+    PRINT "bdf          : "; OutPath(g_bmpinOut); " ("; FileSizeOf(OutPath(g_bmpinOut)); " byte)"
 END SUB
 
 SUB SheetAll()
@@ -2915,6 +3116,59 @@ SUB RunCheck()
     NEXT gA
     KEq(g_nGlyphs, 3, "ASCII: glifi riletti")
     KStr(sig1, sig0, "ASCII: round trip identico al modello")
+
+    ' --- 12. BMP: import raster (foglio costruito qui e poi riletto) -----------
+    ' Verifica il giro completo: modello -> SheetBmp -> BmpLoad -> modello. I due
+    ' glifi hanno inchiostro su tutti e quattro i bordi, quindi il ritaglio dei
+    ' margini non deve cambiare nulla. Con scale=2 ogni pixel e' un blocco 2x2.
+    DIM sc0 AS INTEGER, cl0 AS INTEGER, sigA AS STRING, sigB AS STRING
+    sc0 = g_bmpScale
+    cl0 = g_cellsPerRow
+    StartModel()
+    g_bbW = 4
+    g_bbH = 3
+    InsertGlyph(65, "ga", 4, 3)
+    InsertGlyph(66, "gb", 4, 3)
+    SetPx(0, 0, 0, "1")
+    SetPx(0, 1, 0, "1")
+    SetPx(0, 2, 0, "1")
+    SetPx(0, 3, 0, "1")
+    SetPx(0, 0, 1, "1")
+    SetPx(0, 3, 1, "1")
+    SetPx(0, 0, 2, "1")
+    SetPx(0, 1, 2, "1")
+    SetPx(0, 2, 2, "1")
+    SetPx(0, 3, 2, "1")
+    SetPx(1, 0, 0, "1")
+    SetPx(1, 3, 0, "1")
+    SetPx(1, 0, 1, "1")
+    SetPx(1, 1, 1, "1")
+    SetPx(1, 2, 1, "1")
+    SetPx(1, 3, 1, "1")
+    SetPx(1, 0, 2, "1")
+    SetPx(1, 3, 2, "1")
+    sigA = GlyphSig(0)
+    sigB = GlyphSig(1)
+    g_bmpScale = 2
+    g_cellsPerRow = 2
+    SheetBmp(OutPath("bmpin_src.bmp"))
+    KTrue(IO.FILEEXISTS(OutPath("bmpin_src.bmp")), "BMP import: foglio di prova scritto")
+    g_bmpinScale = 2
+    g_bmpinCols = 2
+    g_bmpinCellW = 12
+    g_bmpinCellH = 10
+    g_bmpinFirst = 65
+    g_bmpinTrim = "1"
+    BmpLoad(OutPath("bmpin_src.bmp"))
+    KEq(g_nGlyphs, 2, "BMP import: due celle con inchiostro")
+    KEq(g_enc(0), 65, "BMP import: encoding del primo glifo")
+    KEq(g_enc(1), 66, "BMP import: encoding del secondo glifo")
+    KEq(g_gw(0), 4, "BMP import: larghezza ritagliata")
+    KEq(g_gh(0), 3, "BMP import: altezza ritagliata")
+    KStr(GlyphSig(0), sigA, "BMP import: glifo 0 identico al modello")
+    KStr(GlyphSig(1), sigB, "BMP import: glifo 1 identico al modello")
+    g_bmpScale = sc0
+    g_cellsPerRow = cl0
 
     PRINT ""
     PRINT "controlli    : "; g_ok; " ok, "; g_ko; " falliti"
