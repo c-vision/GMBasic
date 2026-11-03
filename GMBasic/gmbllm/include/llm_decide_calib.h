@@ -33,14 +33,18 @@ typedef struct {
 typedef struct {
     float head_T;
     float T_kind[3];
+    float bias[24];            /* T4: bias per i 24 slot canonici (0 = neutro) */
+    int fit_bias;              /* 1 = il fit ha incluso i bias */
+    int bias_slots;            /* slot con almeno T_THRESHOLD campioni (bias fittato) */
     int n_questions;
     int n_kind[3];
     int cv_folds;              /* 2 oppure 1 (sotto soglia) */
     int identity;              /* 1 = T=1 per soglia */
-    float accuracy;            /* argmax: NON cambia con T (verificato) */
+    float accuracy;            /* argmax: NON cambia con T */
     double nll_before, nll_after;
     double brier_before, brier_after;
     double ece_before, ece_after;
+    double brier_bias, ece_bias;   /* dopo il fit dei bias (se fit_bias) */
     double brier_oof_before, brier_oof_after;
     double ece_oof_before, ece_oof_after;
 } llm_decide_calib_result_t;
@@ -50,6 +54,13 @@ typedef struct {
  * label fuori range). */
 int llm_decide_calib_fit(const llm_decide_sample_t* samples, int n,
                          llm_decide_calib_result_t* result, const char* out_path);
+
+/* Come `fit`, ma con flag `fit_bias` (T4): dopo la temperatura, fit dei 24 bias per slot
+ * (solo slot con >= T_THRESHOLD campioni; altri restano 0) minimizzando lo stesso Brier.
+ * Il manifest include `bias` e le metriche `brier_with_bias`/`ece_with_bias`. */
+int llm_decide_calib_fit_ex(const llm_decide_sample_t* samples, int n,
+                            llm_decide_calib_result_t* result, const char* out_path,
+                            int fit_bias);
 
 #ifdef __cplusplus
 }
