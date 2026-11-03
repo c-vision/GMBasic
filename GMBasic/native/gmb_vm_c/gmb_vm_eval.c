@@ -431,10 +431,16 @@ int gmb_vm_eval_text_env(gmb_task_t* task, const char* src, int as_stmt,
             else gmb_task_push_nil(task);
         } else {
             gmb_val_t fv = gmb_val_nil();
-            if (env_get) { if (env_get(env_ctx, e->param_names[i], &fv) != 0) fv = gmb_val_nil(); }
-            else gmb_vm_dbf_field_get(e->param_names[i], &fv);   /* assente = nil */
+            int own_fv = 0;
+            if (env_get) {
+                /* contratto env: valore BORROWED (non va liberato) */
+                if (env_get(env_ctx, e->param_names[i], &fv) != 0) fv = gmb_val_nil();
+            } else {
+                gmb_vm_dbf_field_get(e->param_names[i], &fv);   /* assente = nil */
+                own_fv = 1;
+            }
             gmb_stack_entry_t se = gmb_adapter_val_to_stack(fv);
-            if (fv.kind == GMB_TYPE_STRING) gmb_string_free(&fv.v_string);
+            if (own_fv && fv.kind == GMB_TYPE_STRING) gmb_string_free(&fv.v_string);
             gmb_obj_byref_t* box = gmb_byref_new_cell(task, se);
             if (se.type == 2 && se.ref) gmb_obj_release(se.ref);
             if (!box) { gmb_task_push_nil(task); continue; }
