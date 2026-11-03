@@ -26,7 +26,7 @@ totale file: 1191   categorie: 80
   Functions            15
   Loops                15
   Modules              15
-  System               14
+  System               15
   Analysis             12
   Collections          12
   Strings              12
@@ -34,8 +34,8 @@ totale file: 1191   categorie: 80
   Crypto               11
   Network              11
   Web                  11
-  Files                10
   Team                 10
+  Files                9
   Json                 9
   Stricts              9
   Documents            8
@@ -85,9 +85,9 @@ totale file: 1191   categorie: 80
 
 == per classificazione (un file può avere più tag) ==
   ENV          481
-  DIDATTICO    213
-  CORTO        169
-  SURFACE      44
+  DIDATTICO    214
+  CORTO        170
+  SURFACE      42
   SUPPORTO     25
   MODULO       15
   PACKAGE      7
@@ -105,7 +105,6 @@ totale file: 1191   categorie: 80
   Ai/SemapraxFullSurface.bas                                             righe=49   import=1
   Ai/TypeInfoFullCoverage.bas                                            righe=73   import=1
   AiLLM/ModelCompilerFull.bas                                            righe=69   import=1
-  Analysis/AnalysisUncoveredCoverage.bas                                 righe=66   import=2
   Bits/BitsFullCoverage.bas                                              righe=163  import=1
   Concurrency/AtomicFullCoverage.bas                                     righe=64   import=2
   Connectors/ConnectorFullCoverage.bas                                   righe=57   import=1
@@ -123,7 +122,6 @@ totale file: 1191   categorie: 80
   Documents/ConvertFullCoverage.bas                                      righe=68   import=2
   Events/OnKeyUncoveredCoverage.bas                                      righe=65   import=1
   Files/FilesFullCoverage.bas                                            righe=94   import=1
-  Files/IoUncoveredCoverage.bas                                          righe=77   import=2
   Finance/FinanceFullCoverage.bas                                        righe=20   import=1
   GameDev/JoystickUncoveredCoverage.bas                                  righe=44   import=1
   Http/HttpStreaming.bas                                                 righe=74   import=1
@@ -138,7 +136,7 @@ totale file: 1191   categorie: 80
   Trading/TradingPortfolioUncoveredCoverage.bas                          righe=50   import=1
   Workflow/WorkflowFullCoverage.bas                                      righe=25   import=1
   graphics/GraphicsUncoveredCoverage.bas                                 righe=41   import=1
-  (44 file)
+  (42 file)
 
 == EXPECT nei Sample (violazione del contratto) ==
   (0 file)
@@ -276,6 +274,7 @@ totale file: 1191   categorie: 80
   Stricts/StrictsTypelessParam.bas                                       righe=18   import=0
   Strings/TmpSubOnErr.bas                                                righe=15   import=0
   Strings/TmpVmIlCmp.bas                                                 righe=10   import=0
+  System/EnvDemo.bas                                                     righe=13   import=1
   System/SystemCommandArgs.bas                                           righe=16   import=0
   System/SystemCtypeUdt.bas                                              righe=15   import=1
   System/TypeInfoIntrospect.bas                                          righe=15   import=1
@@ -313,7 +312,7 @@ totale file: 1191   categorie: 80
   windows/SSel.bas                                                       righe=10   import=1
   windows/WSel.bas                                                       righe=9    import=1
   windows/WindowHeightWidth.bas                                          righe=15   import=1
-  (169 file)
+  (170 file)
 
 == ENV (rete/UI/modelli: oracolo non deterministico) ==
   Ai/AgentBasic.bas                                                      righe=36   import=1
@@ -807,6 +806,7 @@ totale file: 1191   categorie: 80
   Analysis/AnalysisMiniTest.bas                                          righe=40   import=2
   Analysis/AnalysisStatsDescriptive.bas                                  righe=79   import=4
   Analysis/AnalysisTests.bas                                             righe=171  import=3
+  Analysis/ControlloQualita.bas                                          righe=85   import=2
   Analysis/StatsSciPyParity.bas                                          righe=37   import=2
   Arrays/ArraysComprehensionFull.bas                                     righe=156  import=2
   Arrays/ArraysComprehensionString.bas                                   righe=48   import=2
@@ -1013,5 +1013,5 @@ totale file: 1191   categorie: 80
   graph/FinanceBrainGraph.bas                                            righe=51   import=2
   graph/GraphAgentAsk.bas                                                righe=34   import=2
   graph/GraphQueryMulti.bas                                              righe=29   import=2
-  (213 file)
+  (214 file)
 

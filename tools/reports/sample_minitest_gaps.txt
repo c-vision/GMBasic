@@ -1,6 +1,6 @@
 SAMPLE → MINITEST: casi d'uso non previsti dai canonici
 
-casi: 53   sample coinvolti: 19
+casi: 51   sample coinvolti: 18
 
 == ARITA (stessa funzione, arità diversa nel canonico) ==
   samples/Ai/AiFullSurfaceCoverage.bas                           AI.search(5)  canonico: 9
@@ -16,8 +16,6 @@ casi: 53   sample coinvolti: 19
   samples/Ai/RuntimeFullCoverage.bas                             AI.stateload(1)  canonico: 2
   samples/Ai/SemapraxFullSurface.bas                             LLM.context(2)  canonico: 1
   samples/Console/ConstantsModesCoverage.bas                     AI.searchmulti(2)  canonico: 7
-  samples/Files/IoUncoveredCoverage.bas                          IO.ferror(4)  canonico: 0
-  samples/Files/IoUncoveredCoverage.bas                          IO.readlines(2)  canonico: 1
 
 == ASSENTE (funzione non usata nel canonico) ==
   samples/Ai/AiFullSurfaceCoverage.bas                           MANUAL.md(1)
