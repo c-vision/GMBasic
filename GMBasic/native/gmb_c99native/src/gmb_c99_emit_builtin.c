@@ -7330,6 +7330,14 @@ static int aiag_eval_validate(ctx_t* c, gmb_expr_t** a, int n, int line) {
 }
 static int aiag_decide(ctx_t* c, gmb_expr_t** a, int n, int line) {
     if (n < 2) { c99_fail(c, line, "AI DECIDE: attesi (state, kind)"); return 1; }
+    if (n >= 6) {
+        /* Diagnostica: (state, kind, providers_csv, "", "", ""). */
+        sb_put(&c->out, "gmb_string_take(gmb_ai_decide_verify_json(");
+        emit_str_operand(c, a[0]); sb_put(&c->out, ".data, ");
+        emit_str_operand(c, a[1]); sb_put(&c->out, ".data, ");
+        emit_str_operand(c, a[2]); sb_put(&c->out, ".data))");
+        return 1;
+    }
     if (n >= 5) {
         /* Forma batch interna: (state, names_json, kinds_json, provider, fallback). */
         sb_put(&c->out, "gmb_string_take(gmb_ai_decide_group_json(");

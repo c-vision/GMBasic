@@ -746,6 +746,26 @@ if (parser.Match(TokenKind.Set))
     public static Stmt ParseAiDecideStatement(Parser parser, string expectedNamespace)
     {
         var tok = parser.Advance();   // DECIDE (Identifier: non è una keyword lessicale)
+        // Diagnostica: AI DECIDE VERIFY <stato>, <kind> [, "p1|p2|…"] — confronta i provider
+        // (default rules|mock) e riporta accordo/drift. Entry point a 6 argomenti.
+        if (parser.Check(TokenKind.Verify))
+        {
+            parser.Advance();
+            Expr vstate = parser.ParseExpression();
+            parser.Consume(TokenKind.Comma, "Expected ',' after AI DECIDE VERIFY state.");
+            Expr vkind = parser.ParseExpression();
+            Expr vproviders = new StringExpr("rules|mock", tok);
+            if (parser.Match(TokenKind.Comma))
+                vproviders = parser.ParseExpression();
+            var vns = new Token(TokenKind.Identifier, "AI", null, tok.Position);
+            var vname = new Token(TokenKind.AiDecide, "DECIDE", null, tok.Position);
+            var vargs = ImmutableArray.Create(vstate, vkind, vproviders,
+                new StringExpr("", tok), new StringExpr("", tok), new StringExpr("", tok));
+            var vcall = new BuiltinFunctionCallExpr(vns, vname, vargs, new StringType());
+            if (parser.Match(TokenKind.Into))
+                return new LetStmt([new Assignment(parser.ParseTarget(), vcall)], null);
+            return new ExpressionStmt(vcall);
+        }
         // Forma BATCH: `AI DECIDE` a fine riga (canonica §5.1 del piano JEV). Le domande
         // seguono una per riga (`nome AS NOUL|SCORE|CHOICE(...)`), poi `FROM <stato>`,
         // `USING <provider>` opzionale e `END DECIDE`.
