@@ -3076,6 +3076,35 @@ static void cc_expr(gmb_cc_t* c, const gmb_expr_t* e)
             cc_byte(c, GMB_OP_MK_DICT); cc_u16(c, e->nargs / 2);
             break;
         }
+        if (e->var && strcmp(e->var, "_macro_") == 0 && e->nargs >= 1) {
+            /* EVAL(block, args…) / EVAL(block): invocazione INDIRETTA di un valore
+             * callable (code block). La forma su STRINGA resta il macro-evaluator
+             * (EVAL("testo") / &testo). Con argomenti espliciti il target è sempre un
+             * block; con un solo argomento lo si decide dal tipo noto (lambda/DIM di
+             * lambda/procedura che ritorna un block) e a runtime per i valori callable. */
+            gmb_expr_t* tgt = e->args[0];
+            int is_call_args = (e->nargs > 1);
+            int target_is_block = 0;
+            if (tgt) {
+                if (tgt->kind == GMB_EXPR_LAMBDA) target_is_block = 1;
+                else if (tgt->kind == GMB_EXPR_VAR && tgt->var && cc_is_closure_var(c, tgt->var))
+                    target_is_block = 1;
+                else if (tgt->kind == GMB_EXPR_CALL && tgt->var && cc_proc_returns_closure(c, tgt->var))
+                    target_is_block = 1;
+            }
+            if (is_call_args && tgt && tgt->kind == GMB_EXPR_STR) {
+                cc_err(c, "EVAL(<stringa>) non accetta argomenti: gli argomenti sono dell'invocazione di un code block (EVAL(<block>, args...))");
+                break;
+            }
+            if (is_call_args || target_is_block) {
+                int argc = e->nargs - 1;
+                for (int i = 1; i < e->nargs; i++) { cc_expr(c, e->args[i]); if (c->error) return; }
+                cc_expr(c, tgt);
+                if (c->error) return;
+                cc_byte(c, GMB_OP_CALL_INDIRECT); cc_byte(c, (uint8_t)argc);
+                break;
+            }
+        }
         if (e->var && strcmp(e->var, "_macro_") == 0 && e->nargs == 1) {
             /* &espr come VALORE (Clipper macro/EVAL) — vedi gmb_p_parse_primary. Il
              * sorgente (tipicamente una stringa) va valutato normalmente, poi
@@ -3542,7 +3571,10 @@ if (!is_method) {
  * OP_CLOSURE promuove quegli slot a box BYREF nella VM/C. */
 static void cc_emit_lambda(gmb_cc_t* c, const gmb_expr_t* e)
 {
-    if (c->compiling_lambda) { cc_err(c, "lambda annidata non ancora supportata dal compilatore nativo"); return; }
+    /* Lambda ANNIDATA (una lambda dentro un'altra): il corpo interno viene emesso inline
+     * nel frame della lambda esterna; le catture si risolvono contro i suoi locali
+     * (is_local=1). Le catture a DUE livelli restano fuori scope (servirebbe la catena
+     * di upvalue propagata). */
     cc_byte(c, GMB_OP_JUMP_FORWARD);
     int skip_pos = c->code_len; cc_u16(c, 0);
     /* Indirizzo ASSOLUTO (base del frammento nel chunk merged): la costante
@@ -3628,7 +3660,8 @@ static void cc_nested_closure_add(gmb_cc_t* c, const char* name)
  * riferimento delle variabili esterne (parametri BYREF inclusi). */
 static void cc_emit_nested_function(gmb_cc_t* c, const gmb_stmt_t* s)
 {
-    if (c->compiling_lambda) { cc_err(c, "funzione annidata dentro una closure non ancora supportata dal compilatore nativo"); return; }
+    /* (tentativo) lambda annidata: il compilatore risolve le catture con la catena
+     * enclosing_locals; il guard storico era conservativo. */
     cc_byte(c, GMB_OP_JUMP_FORWARD);
     int skip_pos = c->code_len; cc_u16(c, 0);
     /* Indirizzo ASSOLUTO (base del frammento nel chunk merged): la costante
