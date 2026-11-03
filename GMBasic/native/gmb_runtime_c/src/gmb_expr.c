@@ -98,6 +98,7 @@ typedef struct {
     char* arena;                 /* testa della lista arena_chunk_t */
     size_t arena_used;
     size_t arena_cap;
+    int line;        /* linea corrente (1-based): IF di una riga vs IF a blocco */
     int capturing;
     char* cap;
     size_t cap_len;
@@ -160,7 +161,10 @@ static int is_id_char(int ch) { return isalnum(ch) || ch == '_' || ch == '.'; }
 static void skip_ws(ctx* c)
 {
     for (;;) {
-        while (*c->p && isspace((unsigned char)*c->p)) c->p++;
+        while (*c->p && isspace((unsigned char)*c->p)) {
+            if (*c->p == '\n') c->line++;
+            c->p++;
+        }
         /* ponytail: `'` è delimitatore di stringa Clipper/SQL, non commento VB.
          * Commenti: // e &&. Ceiling: `' resto riga` BASIC non è commento qui. */
         if (c->p[0] == '/' && c->p[1] == '/') { while (*c->p && *c->p != '\n') c->p++; continue; }
@@ -498,6 +502,7 @@ static int is_stmt_end(tok_kind k)
 static int is_print_stop(tok_kind k)
 {
     return is_stmt_end(k) || k == TK_COLON || k == TK_PRINT || k == TK_LET
+        || k == TK_DIM || k == TK_STATIC
         || k == TK_FOR || k == TK_WHILE || k == TK_IF || k == TK_END;
 }
 
@@ -513,6 +518,7 @@ static int args_grow(ctx* c, node* n, int* cap)
 }
 
 static node* parse_stmt_list(ctx* c);
+static node* parse_stmt_list_line(ctx* c, int line);
 
 static node* parse_print(ctx* c)
 {
@@ -557,14 +563,26 @@ static node* parse_stmt(ctx* c)
         }
         node* n = nd_new(c, ND_IF);
         if (!n) return nd_new(c, ND_LIT);
+        int line_then = c->line;
         n->a = parse_expr(c);
         if (!gmb_tok_accept(c, TK_THEN)) fail(c, "expected THEN");
-        n->b = parse_stmt_list(c);
-        if (gmb_tok_accept(c, TK_ELSE)) {
-            n->args = (node**)arena_alloc(c, sizeof(node*));
-            if (n->args) { n->args[0] = parse_stmt_list(c); n->nargs = 1; }
+        int body_line = c->line;
+        if (body_line > line_then) {
+            /* IF a BLOCCO: corpo fino a ELSE/ENDIF */
+            n->b = parse_stmt_list(c);
+            if (gmb_tok_accept(c, TK_ELSE)) {
+                n->args = (node**)arena_alloc(c, sizeof(node*));
+                if (n->args) { n->args[0] = parse_stmt_list(c); n->nargs = 1; }
+            }
+            gmb_tok_accept(c, TK_ENDIF);
+        } else {
+            /* IF di UNA RIGA: THEN/ELSE valgono solo sulla riga corrente */
+            n->b = parse_stmt_list_line(c, body_line);
+            if (gmb_tok_accept(c, TK_ELSE)) {
+                n->args = (node**)arena_alloc(c, sizeof(node*));
+                if (n->args) { n->args[0] = parse_stmt_list_line(c, c->line); n->nargs = 1; }
+            }
         }
-        gmb_tok_accept(c, TK_ENDIF);
         return n;
     }
     if (c->kind == TK_FOR) {
@@ -617,12 +635,26 @@ static node* parse_stmt(ctx* c)
     }
     if (c->kind == TK_DIM) {
         /* S_eval: DIM dichiara nello scope corrente (inizializzatore opzionale,
-         * clausola AS ignorata — i tipi non esistono nel valutatore; default NIL). */
+         * clausola AS ignorata — i tipi non esistono nel valutatore; default NIL).
+         * Forma ARRAY `DIM x()` / `DIM x(n)` (le pagine BSP: `DIM a() = AI.AGENTLIST()`):
+         * le parentesi sono consumate qui; l'eventuale dimensione non viene valutata
+         * (l'array è sempre dinamico, la cardinalità viene dall'inizializzatore). */
         next_tok(c);
         if (c->kind != TK_ID) { fail(c, "expected identifier"); return nd_new(c, ND_LIT); }
         node* n = nd_new(c, ND_DECL);
         if (n) snprintf(n->name, sizeof(n->name), "%s", c->text);
         next_tok(c);
+        int is_array = 0;
+        if (c->kind == TK_LP) {
+            is_array = 1;
+            int depth = 0;
+            do {
+                if (c->kind == TK_LP) depth++;
+                else if (c->kind == TK_RP) depth--;
+                next_tok(c);
+            } while (depth > 0 && c->kind != TK_EOF);
+        }
+        if (n) n->op = is_array;
         if (c->kind == TK_ID && kw_eq(c->text, "AS")) {
             next_tok(c);
             if (c->kind == TK_ID) next_tok(c);
@@ -665,6 +697,30 @@ static node* parse_stmt(ctx* c)
         c->kind = TK_ID;
     }
     return parse_expr(c);
+}
+
+/* Variante per IF di UNA RIGA: consuma solo gli statement che restano sulla stessa
+ * linea (la newline non è un token: senza questo `IF c THEN x = 1` inghiottiva le
+ * righe successive fino a ELSE/ENDIF/NEXT — le righe SSR degli agenti sparivano). */
+static node* parse_stmt_list_line(ctx* c, int line)
+{
+    while (c->kind == TK_COLON) next_tok(c);
+    if (is_stmt_end(c->kind) || c->line > line) return nd_new(c, ND_LIT);
+    node* l = parse_stmt(c);
+    while (c->kind == TK_COLON) next_tok(c);
+    if (is_stmt_end(c->kind) || c->line > line) return l;
+    node* seq = nd_new(c, ND_SEQ);
+    int cap = 4;
+    if (!seq) return l;
+    seq->args = (node**)arena_alloc(c, (size_t)cap * sizeof(node*));
+    if (!seq->args) return l;
+    seq->args[seq->nargs++] = l;
+    while (!is_stmt_end(c->kind) && !c->failed && c->line <= line) {
+        if (!args_grow(c, seq, &cap)) return seq;
+        seq->args[seq->nargs++] = parse_stmt(c);
+        while (c->kind == TK_COLON) next_tok(c);
+    }
+    return seq;
 }
 
 static node* parse_stmt_list(ctx* c)
@@ -774,9 +830,40 @@ static const char* type_letter(gmb_val_t v)
     }
 }
 
+/* x(i): se il nome è una VARIABILE (scope/env) che contiene una LISTA, è un INDICE.
+ * L'engine non aveva array: le pagine BSP con `DIM a() = AI.AGENTLIST()` non potevano
+ * leggere gli elementi. Ritorna 1 se ha risposto (anche con NIL per indice fuori range). */
+static int try_var_index(ctx* c, node* n, gmb_val_t* out)
+{
+    if (!n || n->nargs != 1) return 0;
+    gmb_val_t base = gmb_val_nil();
+    int found = 0;
+    if (c->scope && gmb_expr_scope_get(c->scope, n->name, &base)) found = 1;
+    else if (c->get && c->get(c->env, n->name, &base) == 0) found = 1;
+    if (!found || base.kind != GMB_TYPE_OBJECT || !base.v_ptr) return 0;
+    gmb_obj_t* o = (gmb_obj_t*)base.v_ptr;
+    if (!o->data || (o->type_name && strstr(o->type_name, "dict"))) return 0;
+    gmb_list_t* l = (gmb_list_t*)o->data;
+    gmb_val_t iv = eval_node(c, n->args[0]);
+    if (c->failed) { *out = gmb_val_nil(); return 1; }
+    gmb_int_t idx = gmb_val_to_int(iv);
+    if (idx < 0 || (size_t)idx >= l->count) { *out = gmb_val_nil(); return 1; }
+    *out = l->items[idx];
+    return 1;
+}
+
+static gmb_int_t val_list_count(gmb_val_t v)
+{
+    if (v.kind != GMB_TYPE_OBJECT || !v.v_ptr) return 0;
+    gmb_obj_t* o = (gmb_obj_t*)v.v_ptr;
+    if (!o->data || (o->type_name && strstr(o->type_name, "dict"))) return 0;
+    return (gmb_int_t)((gmb_list_t*)o->data)->count;
+}
+
 static gmb_val_t call_builtin(ctx* c, node* n)
 {
     const char* nm = n->name;
+    { gmb_val_t idxv; if (try_var_index(c, n, &idxv)) return idxv; }
 
     if ((kw_eq(nm, "IIF") || kw_eq(nm, "IF")) && n->nargs >= 3) {
         gmb_val_t cond = eval_node(c, n->args[0]);
@@ -809,6 +896,33 @@ static gmb_val_t call_builtin(ctx* c, node* n)
     if (kw_eq(nm, "LEN")) {
         if (na < 1) return gmb_make_val_int(0);
         return gmb_make_val_int(gmb_val_length(args[0]));
+    }
+    if (kw_eq(nm, "UBOUND")) {
+        gmb_int_t cnt = (na >= 1) ? val_list_count(args[0]) : 0;
+        return gmb_make_val_int(cnt > 0 ? cnt - 1 : -1);
+    }
+    if (kw_eq(nm, "SPLIT")) {
+        gmb_string_t src = (na >= 1 && args[0].kind == GMB_TYPE_STRING) ? args[0].v_string
+                         : gmb_val_to_string(na >= 1 ? args[0] : gmb_val_nil());
+        gmb_string_t sep = (na >= 2 && args[1].kind == GMB_TYPE_STRING) ? args[1].v_string
+                         : gmb_val_to_string(na >= 2 ? args[1] : gmb_val_nil());
+        int cnt = 0;
+        gmb_val_t* parts = gmb_str_split_list(src.data ? src.data : "", sep.data ? sep.data : "", &cnt);
+        gmb_list_t l = gmb_list_new();
+        for (int i = 0; i < cnt; i++) gmb_list_push(&l, parts[i]);
+        free(parts);
+        return gmb_make_val_list_take(&l);
+    }
+    if (kw_eq(nm, "CHR") || kw_eq(nm, "CHR$")) {
+        gmb_string_t s = gmb_chr(na ? gmb_val_to_int(args[0]) : 0);
+        return gmb_make_val_string(s.data ? s.data : "");
+    }
+    if (kw_eq(nm, "REPLACE") || kw_eq(nm, "REPLACE$")) {
+        gmb_string_t s0 = (na >= 1 && args[0].kind == GMB_TYPE_STRING) ? args[0].v_string : gmb_val_to_string(na >= 1 ? args[0] : gmb_val_nil());
+        gmb_string_t s1 = (na >= 2 && args[1].kind == GMB_TYPE_STRING) ? args[1].v_string : gmb_val_to_string(na >= 2 ? args[1] : gmb_val_nil());
+        gmb_string_t s2 = (na >= 3 && args[2].kind == GMB_TYPE_STRING) ? args[2].v_string : gmb_val_to_string(na >= 3 ? args[2] : gmb_val_nil());
+        gmb_string_t r = gmb_str_replace(s0, s1, s2);
+        return gmb_make_val_string(r.data ? r.data : "");
     }
     if (kw_eq(nm, "VAL")) {
         if (na < 1) return gmb_make_val_double(0);
@@ -914,6 +1028,8 @@ static void cap_append(ctx* c, const char* s)
  * ClipperMacroCanary: ordine giusto ma spaziatura diversa da IL/VM-C). */
 static void cap_append_num_double(ctx* c, double d)
 {
+    /* Cattura (BSP/EVAL capture): valore NUDO. Il padding " 7 " è una convenzione
+     * del solo terminale (gmb_print_*), non del testo reso in HTML. */
     char buf[64];
     if (isnan(d)) snprintf(buf, sizeof(buf), "NaN");
     else if (isinf(d)) snprintf(buf, sizeof(buf), d > 0 ? "Infinity" : "-Infinity");
@@ -922,15 +1038,7 @@ static void cap_append_num_double(ctx* c, double d)
         char* e = strchr(buf, 'e');
         if (e) { *e = 'E'; if (e[1] != '-' && e[1] != '+') { memmove(e + 2, e + 1, strlen(e + 1) + 1); e[1] = '+'; } }
     }
-    char out[80];
-    int n = 0;
-    if (d >= 0.0) out[n++] = ' ';
-    int len = (int)strlen(buf);
-    memcpy(out + n, buf, (size_t)len);
-    n += len;
-    out[n++] = ' ';
-    out[n] = '\0';
-    cap_append(c, out);
+    cap_append(c, buf);
 }
 
 static void print_one(ctx* c, gmb_val_t v)
@@ -941,13 +1049,8 @@ static void print_one(ctx* c, gmb_val_t v)
     }
     switch (v.kind) {
         case GMB_TYPE_INT: {
-            /* gmb_print_int: (i>=0?" ":"") + i + " " */
             char buf[40];
-            int n = 0;
-            if (v.v_int >= 0) buf[n++] = ' ';
-            n += snprintf(buf + n, sizeof(buf) - (size_t)n, "%lld", (long long)v.v_int);
-            if (n < (int)sizeof(buf) - 1) buf[n++] = ' ';
-            buf[n] = '\0';
+            snprintf(buf, sizeof(buf), "%lld", (long long)v.v_int);
             cap_append(c, buf);
             break;
         }
@@ -955,8 +1058,7 @@ static void print_one(ctx* c, gmb_val_t v)
             cap_append_num_double(c, v.v_double);
             break;
         case GMB_TYPE_BOOL:
-            /* gmb_print_bool: "-1 " / " 0 " */
-            cap_append(c, v.v_bool ? "-1 " : " 0 ");
+            cap_append(c, v.v_bool ? "-1" : "0");
             break;
         case GMB_TYPE_STRING:
             cap_append(c, v.v_string.data ? v.v_string.data : "");
@@ -1059,7 +1161,10 @@ static gmb_val_t eval_node(ctx* c, node* n)
         }
         case ND_DECL: {
             /* S_eval: DIM/LET dichiarano nel frame corrente (muoiono col pop). */
-            gmb_val_t v = n->a ? eval_node(c, n->a) : gmb_val_nil();
+            gmb_val_t v;
+            if (n->a) v = eval_node(c, n->a);
+            else if (n->op == 1) { gmb_list_t empty = gmb_list_new(); v = gmb_make_val_list_take(&empty); }
+            else v = gmb_val_nil();
             if (c->failed) return v;
             if (!c->scope) {
                 if (!c->set) { fail(c, "declaration without env"); return v; }
@@ -1139,6 +1244,7 @@ int gmb_expr_parse(const char* src, int as_stmt, int eq_is_assign, gmb_expr_prog
     memset(&c, 0, sizeof(c));
     c.src = src ? src : "";
     c.p = c.src;
+    c.line = 1;
     next_tok(&c);
     node* root = as_stmt ? parse_stmt_list(&c) : parse_expr(&c);
     if (eq_is_assign && !as_stmt && !c.failed && root && root->kind == ND_BIN && root->op == TK_EQ &&
@@ -1181,14 +1287,15 @@ static int run_inner(const char* src, void* env, gmb_expr_get_fn get, gmb_expr_s
     c.capturing = out_text != NULL;
     c.failed = prog.failed;
     if (prog.err[0]) snprintf(c.err, sizeof(c.err), "%s", prog.err);
-    /* S_eval: frame figlio dell'outer (EVAL annidato) o radice (EVAL top-level). */
-    c.scope = gmb_expr_scope_push(outer ? outer->scope : NULL);
+    /* S_eval: frame figlio SOLO per EVAL annidato (outer != NULL). L'esecuzione di
+     * primo livello (EVAL/macro/BSP) opera direttamente sull'env: `LET Y = 7` deve
+     * lasciare Y nel chiamante (prima finiva nello scope transiente e spariva). */
+    c.scope = outer ? gmb_expr_scope_push(outer->scope) : NULL;
     gmb_val_t v = gmb_val_nil();
     if (prc == GMB_EXPR_OK) v = eval_node(&c, prog.root);
     /* First-error-wins: undef (identificatore ignoto) solo se PRIMO fallimento. */
     int rc = (prc != GMB_EXPR_OK) ? prc : (c.failed ? (c.undef ? GMB_EXPR_ERR_UNDEF : GMB_EXPR_ERR_EVAL) : GMB_EXPR_OK);
-    gmb_expr_scope_pop(c.scope);
-    c.scope = NULL;
+    if (c.scope) { gmb_expr_scope_pop(c.scope); c.scope = NULL; }
     if (result) *result = v;
     if (out_text) {
         *out_text = c.cap ? c.cap : (char*)calloc(1, 1);
@@ -1238,18 +1345,29 @@ int gmb_expr_eval(const char* src, void* env,
     return gmb_expr_eval_ex(src, env, get, set, NULL, result);
 }
 
+/* Un filtro espone il risultato come 1/0 (non -1): i chiamanti (SPEED/DB/REQUIRE)
+ * testano la verità, ma il contratto pubblico — e i test — è numerico 1/0. */
+static void filter_normalize(gmb_val_t* v)
+{
+    if (!v) return;
+    if (v->kind == GMB_TYPE_BOOL) *v = gmb_make_val_double(v->v_bool ? 1.0 : 0.0);
+}
+
 int gmb_expr_eval_filter(const char* src, void* env,
                          gmb_expr_get_fn get, gmb_expr_set_fn set,
                          gmb_val_t* result)
 {
     gmb_val_t unused = gmb_val_nil();
+    gmb_val_t* out = result ? result : &unused;
     if (!src) src = "";
     while (*src && isspace((unsigned char)*src)) src++;
     if (!*src) {
-        if (result) *result = gmb_make_val_bool(1);
+        if (out) *out = gmb_make_val_double(1.0);
         return GMB_EXPR_OK;
     }
-    return run(src, env, get, set, NULL, 0, 0, result ? result : &unused);
+    int rc = run(src, env, get, set, NULL, 0, 0, out);
+    if (rc == GMB_EXPR_OK) filter_normalize(out);
+    return rc;
 }
 
 int gmb_expr_eval_filter_ex(const char* src, void* env,
@@ -1258,13 +1376,16 @@ int gmb_expr_eval_filter_ex(const char* src, void* env,
                             gmb_val_t* result)
 {
     gmb_val_t unused = gmb_val_nil();
+    gmb_val_t* out = result ? result : &unused;
     if (!src) src = "";
     while (*src && isspace((unsigned char)*src)) src++;
     if (!*src) {
-        if (result) *result = gmb_make_val_bool(1);
+        if (out) *out = gmb_make_val_double(1.0);
         return GMB_EXPR_OK;
     }
-    return run(src, env, get, set, call, 0, 0, result ? result : &unused);
+    int rc = run(src, env, get, set, call, 0, 0, out);
+    if (rc == GMB_EXPR_OK) filter_normalize(out);
+    return rc;
 }
 
 int gmb_expr_exec_ex(const char* src, void* env,

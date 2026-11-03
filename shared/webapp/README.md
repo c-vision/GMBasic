@@ -100,16 +100,24 @@ Misure (loopback, keep-alive, c=10, PCode): `/index.bsp` da ~190 rps a **~21.000
 "a freddo" di una pagina resta ~2 ms: host+VM costano ~0,07 ms, il resto è l'esecuzione della
 pagina (query + costruzione dell'HTML).
 
-### Su C99Native (`gmb run`): valutatore C + shell statica
+### Su C99Native (`gmb run`): SSR nativo col motore C
 
-Con il compilatore C non c'è una VM/C precompilata: le pagine passano dal valutatore di
-espressioni C (`gmb_expr`, sottoinsieme BASIC) con le direttive `<%@ ... %>` consumate e i
-commenti BASIC rimossi. `canvas.bsp` è reso **nativamente**. `index.bsp`/`wasm.bsp` usano
-costrutti fuori dal sottoinsieme (`DIM x() = AI.AGENTLIST()`, le `FUNCTION` di
-`shared/include/AgentsDashboard.inc`, `WASMBRIDGE.Info()`): in quel caso il server serve il
-**markup statico** della pagina (blocchi `<% %>` omessi) e la UI popola tutto via `/api/*`.
-Non è un 500 e non è silenzioso: la causa va su stderr e un commento HTML in testa alla
-pagina dichiara la modalità. Il percorso managed/VM/C continua a fare SSR completo.
+Con il compilatore C non c'è una VM/C precompilata: le pagine passano dal valutatore C
+(`gmb_expr`) con le direttive `<%@ ... %>` consumate e i commenti BASIC rimossi. Il
+valutatore ora copre ciò che serve all'SSR e le **tre pagine sono rese nativamente**:
+
+- **array**: `DIM a()` / `DIM a() = AI.AGENTLIST()` / `a(i)` / `UBOUND(a)` / `SPLIT(...)`;
+- **chiamate di runtime**: `AI.AGENTLIST/AGENTGET/TEAMLIST/AGENTEVENTS/WorkflowList/
+  WorkflowStatus/WorkflowSteps`, `MEMORY.LIST` (dispatcher nel runtime, stesse funzioni
+  dei backend compilati);
+- **IF di una riga vs IF a blocco** distinti per riga (prima `IF c THEN x = 1` inghiottiva
+  le righe successive), più `REPLACE$`, `CHR$`, `TRIM$`.
+
+Le pagine non usano più le `FUNCTION` di `include/AgentsDashboard.inc` (escape HTML e
+markup delle righe sono inline nella pagina): una FUNCTION BASIC non è eseguibile dal
+valutatore. Resta un **fallback statico** per costrutti fuori dal sottoinsieme: markup senza
+blocchi `<% %>`, causa su stderr e commento HTML in testa — mai un 500. Il percorso
+managed/VM/C continua a fare SSR completo con lo stesso sorgente di pagina.
 
 ### Due motori, UN SOLO stato (agenti/team/workflow/memoria)
 

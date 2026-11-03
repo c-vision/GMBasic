@@ -354,6 +354,17 @@ void gmb_yield_ticks(long long ms) { gmb_task_t* g_current = gmb_cur();
     gmb_block();
 }
 
+/* SLEEP cooperativo: dentro un task GPM PARCHEGGIA la coroutine (il worker torna a
+ * eseguire gli altri task, es. altri handler HTTP mentre uno stream SSE attende);
+ * fuori da un task (programma lineare, bootstrap) attende davvero.
+ * Prima SLEEP era `gmb_sleep_ms` anche nei worker: uno stream SSE teneva occupato un
+ * worker per tutta la durata della connessione (5 minuti nel webapp). */
+void gmb_gpm_sleep(int ms) {
+    if (ms <= 0) return;
+    if (gmb_cur()) { gmb_yield_ticks(ms); return; }
+    gmb_sleep_ms(ms);
+}
+
 int gmb_c99_sched_has_active(void) {
     int active = 0;
     GMB_MUTEX_LOCK(&g_sched.all_lock);
