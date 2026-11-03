@@ -33,6 +33,7 @@ endif()
 set(GMBLLM_CORE_SOURCES
     src/llmcodec_gguf_mlx.c      # converter MLX<->GGUF (PUL): orchestrazione via registry (read/write Apache, encode PUL)
     src/llm_decide_calib.c       # T5 PUL: fit temperatura 2 stadi (Brier) -> scoring_head.json
+    src/llm_decide_loss.c        # T4 PUL: loss decisionali (CE/Brier/RPS) + gradiente
     src/llmmodelio_mlx_merge.c   # MERGE LoRA su modello MLX (dir) — dequant/fuse/requant
     src/llmmodelio_model.c       # model compiler: quantize/convert/ablate/add/adapter/module/merge/prune + report LLM MODEL/TENSOR
     src/llmmodelio_recover.c     # RECOVER (§9.B): gate->retrain->re-eval->ACCEPT/ROLLBACK (dominio separato)
@@ -104,6 +105,10 @@ if(GMBLLM_TESTS)
     target_link_libraries(gmbllm_decide_calib_selfcheck PRIVATE gmbllm_core)
     target_include_directories(gmbllm_decide_calib_selfcheck PRIVATE include)
     add_test(NAME gmbllm_decide_calib_selfcheck COMMAND gmbllm_decide_calib_selfcheck)
+    add_executable(gmbllm_decide_loss_selfcheck tests/test_decide_loss.c)
+    target_link_libraries(gmbllm_decide_loss_selfcheck PRIVATE gmbllm_core)
+    target_include_directories(gmbllm_decide_loss_selfcheck PRIVATE include)
+    add_test(NAME gmbllm_decide_loss_selfcheck COMMAND gmbllm_decide_loss_selfcheck)
     # Tool utente: fit da file di campioni -> scoring_head.json (nessuna dipendenza MLX).
     add_executable(gmbllm_decide_calibrate tools/decide_calibrate.c)
     target_link_libraries(gmbllm_decide_calibrate PRIVATE gmbllm_core)
