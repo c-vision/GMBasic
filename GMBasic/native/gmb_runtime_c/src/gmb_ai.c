@@ -2393,7 +2393,7 @@ int llmengine_plugin_remove(const char* name) {
     llmengine_plugin_refresh();
     return 1;
 }
-/* ── AI.PLUGIN.CALL: procedura BASIC dichiarata dal plugin ────────────────────────────────
+/* ── AI.PLUGINCALL: procedura BASIC dichiarata dal plugin ────────────────────────────────
  * `PLUGIN.md` → `procedures: [Prima, Seconda]`. Ritorna la PRIMA (heap, "" se assente),
  * cioè ciò che C# usa in `PluginRegistry.Call` (`record.Procedures.First()`).
  * Serve a C99Native: non c'è una VM BASIC nel binario, quindi il transpiler genera un

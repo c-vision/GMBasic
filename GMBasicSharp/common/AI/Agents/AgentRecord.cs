@@ -69,7 +69,7 @@ public sealed class AgentRecord
             sb.AppendLine();
             sb.AppendLine("## Plugin disponibili");
             sb.AppendLine("Hai a disposizione le seguenti capacita' operative (plugin). Quando una richiesta");
-            sb.AppendLine("corrisponde a un plugin, leggi il suo PLUGIN.md e usa la capacita' (tool o AI.PLUGIN.CALL).");
+            sb.AppendLine("corrisponde a un plugin, leggi il suo PLUGIN.md e usa la capacita' (tool o AI.PLUGINCALL).");
             sb.AppendLine();
             try
             {
@@ -128,7 +128,7 @@ public sealed class AgentRecord
 
     /// <summary>Se true, il prompt di sistema dell'agente include la sezione "Plugin disponibili"
     /// (PluginRegistry.List + PLUGINS_PROMPT.md): i plugin operativi attivi con descrizione e
-    /// trigger, così l'agente può usare le loro capacità (tool o AI.PLUGIN.CALL).</summary>
+    /// trigger, così l'agente può usare le loro capacità (tool o AI.PLUGINCALL).</summary>
     public bool PluginsEnabled { get; set; }
 
     /// <summary>Streaming per-token nelle sessioni native (ISessionStreamingCompleter).

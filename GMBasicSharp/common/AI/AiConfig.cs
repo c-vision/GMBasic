@@ -103,7 +103,7 @@ public static class AiConfig
         - A plugin is an OPERATIONAL capability (web fetch, PDF, browser, report, ...): use it
           when a task matches its trigger (see the Plugin section below).
         - To use a plugin: READ its PLUGIN.md, then call its tool (if enabled) or invoke
-          AI.PLUGIN.CALL("<nome>", arg).
+          AI.PLUGINCALL("<nome>", arg).
         - Manage plugins with AI PLUGINS (LIST / ENABLE / DISABLE / REFRESH / ADD / REMOVE).
         - AUTONOMY: if you repeatedly need a capability that no plugin provides, CREATE one:
           AI PLUGINS CREATE <nome> <descrizione> (skeleton), add it (AI PLUGINS ADD <nome>),

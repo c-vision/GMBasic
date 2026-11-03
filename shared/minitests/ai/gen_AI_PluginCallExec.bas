@@ -1,5 +1,5 @@
 ' EXPECT: call=FETCHED:https://example.com|senza-proc=[]|num-arg=FETCHED:42|primo-int=NUM: 42:
-' MiniTest — AI.PLUGIN.CALL deve ESEGUIRE la procedura del PROGRAMMA (non un risultato
+' MiniTest — AI.PLUGINCALL deve ESEGUIRE la procedura del PROGRAMMA (non un risultato
 ' dichiarativo). Il plugin (`shared/plugins/web-fetch/PLUGIN.md`) dichiara
 ' `procedures: [WebFetch]`; la procedura vive QUI, non nel plugin: il `.bas` dentro la
 ' cartella del plugin è riferimento e nessun backend lo carica.

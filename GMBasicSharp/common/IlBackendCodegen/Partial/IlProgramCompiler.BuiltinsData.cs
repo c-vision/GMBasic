@@ -993,7 +993,7 @@ public sealed partial class IlProgramCompiler
     private void EmitAiPluginCallCall(BuiltinFunctionCallExpr expr)
     {
         if (expr.Args.Length is < 1 or > 2)
-            throw new NotSupportedException("Backend IL: AI.PLUGIN.CALL richiede 1 o 2 argomenti (name [, arg]).");
+            throw new NotSupportedException("Backend IL: AI.PLUGINCALL richiede 1 o 2 argomenti (name [, arg]).");
         EmitStringArg(expr.Args[0]);
         if (expr.Args.Length == 2) EmitStringArg(expr.Args[1]);
         else _il.Emit(OpCodes.Ldnull);

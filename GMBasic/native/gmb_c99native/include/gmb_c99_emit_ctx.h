@@ -22,7 +22,7 @@ typedef struct {
     int uses_net;              /* programma usa statement rete → gmb_net_init() in main */
     int uses_gpm;              /* FASE 2.6(b): programma concorrente → main via gmb_gpm_start */
     int uses_mcp;              /* registra tool MCP / serve MCP → emette l'executor generato */
-    int uses_plugincall;       /* AI.PLUGIN.CALL → emette il dispatcher verso le procedure del programma */
+    int uses_plugincall;       /* AI.PLUGINCALL → emette il dispatcher verso le procedure del programma */
     int uses_onerror;          /* FASE 2.6(c): ON ERROR/RESUME attivo → guard setjmp sui LET */
     int err_uid, res_uid;      /* contatori jmp_buf handler ON ERROR / guard RESUME NEXT */
     int err_decl_ids[64]; int n_err_decl;   /* ID jmp_buf ON ERROR da dichiarare nel prologo
