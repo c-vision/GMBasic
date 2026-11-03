@@ -43,6 +43,7 @@ public static class CollMembers
             ["Union"] = TokenKind.CollUnion,
             ["Intersect"] = TokenKind.CollIntersect,
             ["Except"] = TokenKind.CollExcept,
+            ["SymmetricExcept"] = TokenKind.CollSymmetricExcept,
             ["ToArray"] = TokenKind.CollToArray,
             ["ToList"] = TokenKind.CollToList,
             ["Push"] = TokenKind.CollPush,

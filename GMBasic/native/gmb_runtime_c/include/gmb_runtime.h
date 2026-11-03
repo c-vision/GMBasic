@@ -332,6 +332,7 @@ void gmb_list_add_at(gmb_list_t* l, gmb_int_t i, gmb_double_t delta);
 gmb_list_t gmb_set_union(gmb_list_t a, gmb_list_t b);
 gmb_list_t gmb_set_intersect(gmb_list_t a, gmb_list_t b);
 gmb_list_t gmb_set_except(gmb_list_t a, gmb_list_t b);
+gmb_list_t gmb_set_symmetric_except(gmb_list_t a, gmb_list_t b);
 gmb_bool_t gmb_dict_contains_key(gmb_dict_t d, const char* key);
 gmb_bool_t gmb_dict_remove(gmb_dict_t* d, const char* key);
 void gmb_dict_clear(gmb_dict_t* d);

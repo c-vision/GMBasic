@@ -1033,7 +1033,7 @@ public static partial class Linker
             case HashSetType hst:
                 return upperMethodName switch
                 {
-                    "UNION" or "INTERSECT" or "EXCEPT" => hst,
+                    "UNION" or "INTERSECT" or "EXCEPT" or "SYMMETRICEXCEPT" => hst,
                     "TOARRAY" => new ArrayType(hst.ElementType),
                     "TOLIST" => new ListType(hst.ElementType),
                     "TOJSON" => new JsonType(),

@@ -2572,4 +2572,7 @@ public enum TokenKind
     // ENV (2026-11-03): lettura esplicita dell'ambiente di processo (sola lettura).
     // In coda (ordinali canonici): mai inserire nel mezzo.
     EnvGet, EnvHas,
+    // Coll* (2026-11-03): SymmetricExcept di HASHSET (runtime C gmb_collection_set_op).
+    // In coda (ordinali canonici): mai inserire nel mezzo.
+    CollSymmetricExcept,
 }
