@@ -1767,6 +1767,49 @@ public sealed partial class Compiler
     /// </summary>
     private void VisitMethodCallExpression(MethodCallExpr expr)
     {
+        /* TRYGETVALUE(key, var) su contenitore chiave→valore: il P-Code non ha out-param
+         * (gli argomenti sono VALORI, niente l-value) → riscrittura equivalente
+         * `var = instance.Get(key); instance.ContainsKey(key)`. Prima la variabile out
+         * restava invariata (CollectionsModern: "Trovato key1: " senza valore). */
+        if ((expr.MethodName.Kind == TokenKind.CollTryGetValue
+             || string.Equals(expr.MethodName.Lexeme, "TryGetValue", StringComparison.OrdinalIgnoreCase))
+            && expr.Args.Length == 2 && expr.Args[1] is VariableExpr tgvDest
+            && expr.Instance is VariableExpr && !string.IsNullOrEmpty(tgvDest.NameCleaned.Lexeme))
+        {
+            /* Predicato PRIMA (resta sullo stack come valore dell'espressione), poi
+             * assegnazione della variabile out SOLO se il valore esiste. Il P-Code non
+             * ha out-param: gli argomenti sono VALORI, quindi la write-back va emessa
+             * qui (prima la variabile restava invariata). */
+            VisitExpression(expr.Instance);
+            VisitExpression(expr.Args[0]);
+            EmitConstant(1.0);
+            EmitBytes((byte)OpCode.OP_CALL_MEMBER);
+            EmitShort(AddConstant("ContainsKey"));
+            EmitByte((byte)OpCode.OP_DUP);
+            var tgvSkip = EmitJump((byte)OpCode.OP_JUMP_IF_FALSE);
+            VisitExpression(expr.Instance);
+            VisitExpression(expr.Args[0]);
+            EmitConstant(1.0);
+            EmitBytes((byte)OpCode.OP_CALL_MEMBER);
+            EmitShort(AddConstant("Get"));
+            var tgvSlot = ResolveLocal(tgvDest.NameCleaned.Lexeme);
+            if (tgvSlot != -1)
+            {
+                EmitAdjustStringForLocal(tgvSlot);
+                EmitByte((byte)OpCode.OP_STORE_LOCAL); EmitShort((ushort)tgvSlot);
+            }
+            else if (TryResolveOrRegisterGlobal(tgvDest.NameCleaned.Lexeme, out var tgvGlobal))
+            {
+                EmitAdjustStringForGlobal(tgvGlobal);
+                EmitByte((byte)OpCode.OP_STORE_GLOBAL); EmitShort((ushort)tgvGlobal);
+            }
+            else
+            {
+                EmitByte((byte)OpCode.OP_POP);
+            }
+            PatchJump(tgvSkip);
+            return;
+        }
         VisitExpression(expr.Instance);
         foreach (var arg in expr.Args) { VisitExpression(arg); }
         // If ResolvedDefinition is a base class method, emit direct call via OP_CALL_CTOR
