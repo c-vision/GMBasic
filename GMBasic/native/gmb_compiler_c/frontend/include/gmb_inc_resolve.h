@@ -90,6 +90,11 @@ int gmb_namespace_is_builtin(const char* ns);
 /* Root dell'install GMBasic (GMBASIC.sln), come la usa il resolver. 0 se non trovata. */
 int gmb_resolve_install_root(char* out, size_t cap);
 
+/* Root di LLMEnv (repo SEPARATO dei motori AI): env LLM_ROOT > accanto alla root
+ * (`<root>/../LLMEnv`, `<root>/../../LLMEnv`) > risalendo dall'eseguibile > dal CWD.
+ * Marker: `LLMCodec/include`. 0 se non trovata (il chiamante diagnostica, non inventa). */
+int gmb_resolve_llm_root(char* out, size_t cap);
+
 void gmb_string_list_free(char** items, int n);
 
 #endif /* GMB_INC_RESOLVE_H */

@@ -39,7 +39,7 @@ static int is_admin_cmd(const char* c)
     return 0;
 }
 
-static int find_admin(char* out, size_t cap)
+int gmb_cli_find_admin(char* out, size_t cap)
 {
     const char* pe = getenv("PATH");
     if (pe) {
@@ -93,7 +93,7 @@ int gmb_cli_admin_maybe(int argc, char** argv)
     if (!alias && !libs_install && !is_admin_cmd(argv[1])) return -1;
 
     char path[4096];
-    if (!find_admin(path, sizeof path)) {
+    if (!gmb_cli_find_admin(path, sizeof path)) {
         fprintf(stderr, "?gmb %s: tool `gmbadmin` non trovato. Compila GMBasic/native/gmbadmin "
                         "oppure mettilo nel PATH.\n", argv[1]);
         return 2;

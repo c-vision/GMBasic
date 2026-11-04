@@ -179,6 +179,12 @@ static int ir_walk_sln(const char* seed, char* out, size_t cap) {
         /* Repo C-only (monorepo): nessuna .sln, marker stabile del runtime condiviso. */
         snprintf(probe, sizeof probe, "%s/native/gmb_runtime_c/include/gmb_runtime.h", cur);
         if (is_file(probe)) { snprintf(out, cap, "%s", cur); return 1; }
+        /* Monorepo con `bin/` alla radice: la root dell'install è `<cur>/GMBasic`, non `<cur>`.
+         * Senza, un `gmb` invocato da `<monorepo>/bin` (o dal PATH) non trovava né gli header
+         * né le statiche del runtime lì accanto: `cc` senza -I e "libgmb_runtime.a non
+         * trovata" da qualunque cartella. */
+        snprintf(probe, sizeof probe, "%s/GMBasic/native/gmb_runtime_c/include/gmb_runtime.h", cur);
+        if (is_file(probe)) { snprintf(out, cap, "%s/GMBasic", cur); return 1; }
         char* s = strrchr(cur, '/');
         if (!s || s == cur) break;
         *s = 0;
@@ -196,6 +202,55 @@ static int ir_root(char* out, size_t cap) {
     char cwd[4096];
     if (getcwd(cwd, sizeof cwd) && ir_walk_sln(cwd, out, cap)) return 1;
     out[0] = 0; return 0;
+}
+
+/* LLMEnv è un REPO SEPARATO (motori AI, Apache-2.0), non una sottocartella del monorepo.
+ * `build_inc` gli passava due -I hardcoded (`../LLMEnv`, `../../LLMEnv`): su un client che la
+ * installa altrove — o che la riceve accanto al bundle di release — gli header AI non si
+ * trovavano e ogni programma `IMPORT AI` falliva in `cc`. Qui la root si RISOLVE, una volta. */
+static int ir_walk_llm(const char* seed, char* out, size_t cap) {
+    char cur[4096]; snprintf(cur, sizeof cur, "%s", seed);
+    for (;;) {
+        char probe[IR_PATH];
+        /* seed È già LLMEnv (`<cur>/LLMCodec/include`). */
+        /* ATTENZIONE: il marker è una CARTELLA (`LLMCodec/include`): con is_file() non
+         * veniva mai riconosciuto e `gmb build` perdeva TUTTI gli -I di LLMEnv (regressione
+         * vista subito: `llmengine_plugin.h` non trovato). */
+        snprintf(probe, sizeof probe, "%s/LLMCodec/include", cur);
+        if (is_dir(probe)) { snprintf(out, cap, "%s", cur); return 1; }
+        /* LLMEnv è una sottocartella del seed (monorepo, release con LLMEnv accanto a bin/). */
+        snprintf(probe, sizeof probe, "%s/LLMEnv/LLMCodec/include", cur);
+        if (is_dir(probe)) { snprintf(out, cap, "%s/LLMEnv", cur); return 1; }
+        char* s = strrchr(cur, '/');
+        if (!s || s == cur) break;
+        *s = 0;
+    }
+    return 0;
+}
+
+/* Root di LLMEnv: env LLM_ROOT > accanto alla root GMBasic (`../LLMEnv`, `../../LLMEnv`) >
+ * risalendo dalla dir dell'eseguibile > dal CWD. Marker: `LLMCodec/include`, la cartella che
+ * `cc` riceve come -I. 0 se non c'è: il chiamante decide (diagnostica, non path inventato). */
+int gmb_resolve_llm_root(char* out, size_t cap) {
+    if (!out || cap == 0) return 0;
+    out[0] = 0;
+    const char* e = getenv("LLM_ROOT");
+    if (e && *e) { snprintf(out, cap, "%s", e); return 1; }
+    char inst[4096];
+    if (ir_root(inst, sizeof inst) && inst[0]) {
+        static const char* rel[] = { "../LLMEnv", "../../LLMEnv" };
+        for (size_t i = 0; i < sizeof rel / sizeof rel[0]; i++) {
+            char p[IR_PATH], probe[IR_PATH];
+            snprintf(p, sizeof p, "%s/%s", inst, rel[i]);
+            snprintf(probe, sizeof probe, "%s/LLMCodec/include", p);
+            if (is_dir(probe)) { snprintf(out, cap, "%s", p); return 1; }
+        }
+    }
+    char exe[4096];
+    if (ir_exe_dir(exe, sizeof exe) && ir_walk_llm(exe, out, cap)) return 1;
+    char cwd[4096];
+    if (getcwd(cwd, sizeof cwd) && ir_walk_llm(cwd, out, cap)) return 1;
+    return 0;
 }
 
 /* ── settings (system.settings.json + app.settings.json) ───────────────────────────────────
