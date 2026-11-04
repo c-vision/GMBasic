@@ -3295,18 +3295,6 @@ int emit_bf_analysis(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t
         if (AN_TBL[i].tk == tk) return AN_TBL[i].sp(c, args, nargs);
     return 0;
 }
-/* ── dominio: optimize (delegazione §0quater) ──
- * Parity emitter C# (C99CodeEmitter.Builtin.Core.cs, NsKindRow Ns="OPTIMIZE"). I solver
- * scalari (1-D) delegano alle funzioni gmb_opt_*_c99 del runtime condiviso; la callback è
- * una λ loweringata a gmb_fn_t (stesso ABI di ANALYSIS.INTEGRATE). Le funzioni
- * multidimensionali (array-argomento) sono fuori da questo handler: gap separato. */
-static int op_call(ctx_t* c, gmb_expr_t** a, int n, const char* fn, int nreq) {
-    if (n < nreq) return 0;
-    sb_put(&c->out, fn); sb_put(&c->out, "(");
-    for (int i = 0; i < nreq; i++) { if (i) sb_put(&c->out, ", "); emit_expr(c, a[i]); }
-    sb_put(&c->out, ")"); return 1;
-}
-/* Multidim: (λ, x0[]) → double* risultato (array allocato). Parity emitter C#. */
 /* ── dominio: finance (delegazione §0quater) ── */
 static int fd_duration(ctx_t* c, gmb_expr_t** a, int n);
 static int fd_yearfrac(ctx_t* c, gmb_expr_t** a, int n);

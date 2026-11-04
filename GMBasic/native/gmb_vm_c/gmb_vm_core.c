@@ -2952,7 +2952,7 @@ static void vm_apply_bsp_seeds(gmb_vm_t* vm, gmb_task_t* main)
     vm->bsp_seed_count = 0;
 }
 
-/* ---- Chiamata sincrona di una closure BASIC dai builtin (es. OPTIMIZE.*) ----
+/* ---- Chiamata sincrona di una closure BASIC dai builtin/pacchetti FFI ----
    Esegue la closure con un argomento double e restituisce il risultato. */
 /* 1 se `sv` è un array DIMensionato (DIM A(n) / DIM A(l TO u)) e uno degli indici
  * indicati cade fuori dai limiti dichiarati. In quel caso lettura/scrittura devono
@@ -3322,7 +3322,7 @@ static void* g_ffi_cb_trampolines_i[5][2] = {
 
 /* ── Callback VETTORIALE (2026-11-02, arity 128): `FUNCTION(v() AS DOUBLE) AS DOUBLE`.
  * Il nativo chiama (double* v, int64_t n); il trampolino costruisce la lista BASIC di n
- * elementi e invoca la closure (stessa convenzione di gmb_opt_f_vec / OPTIMIZE). */
+ * elementi e invoca la closure (stessa convenzione delle callback vettoriali FFI). */
 static gmb_ffi_cb_slot_t g_ffi_cb_slots_vd[2];
 static gmb_ffi_cb_slot_t g_ffi_cb_slots_vi[2];
 static double gmb_ffi_cb_vd_0(double* v, int64_t n) { gmb_ffi_cb_slot_t* s = &g_ffi_cb_slots_vd[0]; return gmb_vm_call_closure_sync_list(s->vm, s->task, s->closure, v, (int)n); }
