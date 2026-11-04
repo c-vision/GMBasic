@@ -68,7 +68,7 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "ARRAYS.AMAX");
         r.Register(Backend.IL, "ARRAYS.AMIN");
         r.Register(Backend.IL, "AI.AnalyzeImage");
-        r.Register(Backend.IL, "MATH.Angle2d");
+        r.Register(Backend.IL, "VECTOR.Angle2d");
         r.Register(Backend.IL, "TRADING.METRICS.AnnualizedDownsideDeviation");
         r.Register(Backend.IL, "TRADING.METRICS.AnnualizedReturn");
         r.Register(Backend.IL, "TRADING.METRICS.AnnualizedTrackingError");
@@ -388,8 +388,8 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "IO.DIR");
         r.Register(Backend.IL, "IO.DirExists");
         r.Register(Backend.IL, "AI.Discover");
-        r.Register(Backend.IL, "MATH.Dist2d");
-        r.Register(Backend.IL, "MATH.Dist3d");
+        r.Register(Backend.IL, "VECTOR.Dist2d");
+        r.Register(Backend.IL, "VECTOR.Dist3d");
         r.Register(Backend.IL, "SPATIAL.DISTANCEMATRIX");
         r.Register(Backend.IL, "LLM.DistillCkpt");
         r.Register(Backend.IL, "LLM.DistillDone");
@@ -933,8 +933,8 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "CONSOLE.Point");
         r.Register(Backend.IL, "STATS.PoissonPmf");
         r.Register(Backend.IL, "LINALG.POLAR");
-        r.Register(Backend.IL, "MATH.POLAR_X");
-        r.Register(Backend.IL, "MATH.POLAR_Y");
+        r.Register(Backend.IL, "VECTOR.POLAR_X");
+        r.Register(Backend.IL, "VECTOR.POLAR_Y");
         r.Register(Backend.IL, "TRADING.PORTFOLIO.PORTFOLIOMAD");
         r.Register(Backend.IL, "TRADING.PORTFOLIO.PORTFOLIOSEMIMAD");
         r.Register(Backend.IL, "JOY.PORTS");

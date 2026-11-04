@@ -44,19 +44,17 @@ SUB Main()
     
     DIM raggio = 10.0
     DIM angoloDeg = 45.0
-    DIM angoloRad = MATH.DEG2RAD(angoloDeg)
-    
     ' Conversione Polare -> Cartesiana
-    ' x = r * cos(theta), y = r * sin(theta)
-    DIM x = MATH.POLAR_X(angoloRad, raggio)
-    DIM y = MATH.POLAR_Y(angoloRad, raggio)
+    ' Argomenti: (raggio, angolo in GRADI) — x = r·cos(θ), y = r·sin(θ)
+    DIM x = VECTOR.POLAR_X(raggio, angoloDeg)
+    DIM y = VECTOR.POLAR_Y(raggio, angoloDeg)
     
     PRINT "Raggio: "; raggio; ", Angolo: "; angoloDeg; "°"
     PRINT "Cartesiane (X, Y): ("; FORMAT(x, "0.00"); ", "; FORMAT(y, "0.00"); ")"
     
-    ' Verifica inversa: Angolo tra due punti
+    ' Verifica inversa: Angolo tra due punti (ANGLE2D ritorna GRADI)
     ' ANGLE2D(x1, y1, x2, y2)
-    DIM calcolatoDeg = MATH.RAD2DEG(MATH.ANGLE2D(0, 0, x, y))
+    DIM calcolatoDeg = VECTOR.Angle2d(0, 0, x, y)
     PRINT "Angolo ricalcolato: "; FORMAT(calcolatoDeg, "0.0"); "°"
     PRINT
 

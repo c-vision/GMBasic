@@ -887,7 +887,6 @@ procedure,LLM,TrainExport,LlmTrainExport
 procedure,LLM,Verify,LlmVerify
 procedure,MATH,Abs,Abs
 procedure,MATH,Acos,Acos
-procedure,MATH,Angle2d,Angle2d
 procedure,MATH,Asin,Asin
 procedure,MATH,Atn,Atn
 procedure,MATH,Avg,Avg
@@ -897,8 +896,6 @@ procedure,MATH,Clamp,Clamp
 procedure,MATH,Comb,Comb
 procedure,MATH,Cos,Cos
 procedure,MATH,Deg2Rad,Deg2Rad
-procedure,MATH,Dist2d,Dist2d
-procedure,MATH,Dist3d,Dist3d
 procedure,MATH,Exp,Exp
 procedure,MATH,Fact,Fact
 procedure,MATH,Fix,Fix
@@ -910,8 +907,6 @@ procedure,MATH,Log,Log
 procedure,MATH,Log10,Log10
 procedure,MATH,Max,Max
 procedure,MATH,Min,Min
-procedure,MATH,POLAR_X,PolarX
-procedure,MATH,POLAR_Y,PolarY
 procedure,MATH,Perm,Perm
 procedure,MATH,Pi,Pi
 procedure,MATH,Pythagoras,Pythagoras
@@ -1504,13 +1499,18 @@ procedure,UI,Click,UiClick
 procedure,UI,Find,UiFind
 procedure,UI,FindAll,UiFindAll
 procedure,UI,Type,UiType
+procedure,VECTOR,Angle2d,Angle2d
 procedure,VECTOR,CHEBYSHEV,VectorChebyshev
 procedure,VECTOR,COSINE,VectorCosineDistance
 procedure,VECTOR,CREATE,LinAlgVectorCreateFunc
+procedure,VECTOR,Dist2d,Dist2d
+procedure,VECTOR,Dist3d,Dist3d
 procedure,VECTOR,EUCLIDEA,Norm
 procedure,VECTOR,EuclideanDistanceSquared,EuclideanDistanceSquared
 procedure,VECTOR,MANHATTAN,VectorManhattan
 procedure,VECTOR,MINKOWSKI,VectorMinkowski
+procedure,VECTOR,POLAR_X,PolarX
+procedure,VECTOR,POLAR_Y,PolarY
 procedure,VECTOR,PRODUCT,DotProduct
 procedure,VECTORDB,AbTest,VectorDbAbTest
 procedure,VECTORDB,Baseline,VectorDbBaseline
