@@ -423,3 +423,209 @@ i64 gfx_mst_kruskal(const double *w, i64 n, i64 *eu, i64 *ev, double *ew)
     free(g.w);
     return (i64)ne;
 }
+
+/* ═══════════════════════ seconda slice: algoritmi avanzati ═══════════════════ */
+
+i64 gfx_bridges(const i64 *adj, i64 n, i64 *is_bridge)
+{
+    i64 i;
+    int *a, *b, k;
+    if (n <= 0 || adj == NULL || is_bridge == NULL) return -1;
+    a = (int *)malloc((size_t)n * (size_t)n * sizeof(int));
+    b = (int *)malloc((size_t)n * (size_t)n * sizeof(int));
+    if (a == NULL || b == NULL) { free(a); free(b); return -1; }
+    for (i = 0; i < n * n; i++) a[i] = adj[i] ? 1 : 0;
+    k = gor_bridges((int)n, a, b);
+    copy_out_i(b, is_bridge, n * n);
+    free(a);
+    free(b);
+    return (i64)k;
+}
+
+i64 gfx_articulation(const i64 *adj, i64 n, i64 *art)
+{
+    i64 i;
+    int *a, *b, k;
+    if (n <= 0 || adj == NULL || art == NULL) return -1;
+    a = (int *)malloc((size_t)n * (size_t)n * sizeof(int));
+    b = (int *)malloc((size_t)n * sizeof(int));
+    if (a == NULL || b == NULL) { free(a); free(b); return -1; }
+    for (i = 0; i < n * n; i++) a[i] = adj[i] ? 1 : 0;
+    k = gor_articulation((int)n, a, b);
+    copy_out_i(b, art, n);
+    free(a);
+    free(b);
+    return (i64)k;
+}
+
+double gfx_astar(const double *w, i64 n, const double *h, i64 s, i64 t, i64 *path, i64 *info)
+{
+    double *wn, *hn;
+    int *p, plen = 0;
+    gor_real cost;
+    if (n <= 0 || w == NULL || h == NULL || path == NULL || info == NULL) return -1.0;
+    if (s < 0 || s >= n || t < 0 || t >= n) return -1.0;
+    wn = norm_w(w, n);
+    hn = (double *)malloc((size_t)n * sizeof(double));
+    p = (int *)malloc((size_t)n * sizeof(int));
+    if (wn == NULL || hn == NULL || p == NULL) { free(wn); free(hn); free(p); return -1.0; }
+    { i64 i; for (i = 0; i < n; i++) hn[i] = h[i]; }
+    cost = gor_astar((int)n, (const gor_real *)wn, (const gor_real *)hn, (int)s, (int)t, p, &plen);
+    if (cost >= 0) copy_out_i(p, path, plen);
+    info[0] = (i64)plen;
+    info[1] = (cost >= 0) ? 1 : 0;
+    free(wn);
+    free(hn);
+    free(p);
+    return (double)cost;
+}
+
+double gfx_stoer_wagner(const double *w, i64 n)
+{
+    double *c;
+    double r;
+    if (n <= 0 || w == NULL) return 0.0;
+    c = norm_w(w, n);
+    if (c == NULL) return 0.0;
+    { i64 i; for (i = 0; i < n * n; i++) if (c[i] == GOR_FFI_INF) c[i] = 0.0; }
+    r = (double)gor_stoer_wagner((int)n, (const gor_real *)c);
+    free(c);
+    return r;
+}
+
+i64 gfx_k_shortest(const double *w, i64 n, i64 s, i64 t, i64 K, i64 *paths, i64 *plens)
+{
+    double *wn;
+    int *p, *pl, k;
+    if (n <= 0 || w == NULL || K <= 0 || paths == NULL || plens == NULL) return -1;
+    if (s < 0 || s >= n || t < 0 || t >= n) return -1;
+    wn = norm_w(w, n);
+    p = (int *)malloc((size_t)(K * n) * sizeof(int));
+    pl = (int *)malloc((size_t)K * sizeof(int));
+    if (wn == NULL || p == NULL || pl == NULL) { free(wn); free(p); free(pl); return -1; }
+    k = gor_k_shortest_yen((int)n, (const gor_real *)wn, (int)s, (int)t, (int)K, p, pl);
+    if (k > 0) {
+        i64 i, j;
+        for (i = 0; i < k; i++) {
+            plens[i] = (i64)pl[i];
+            for (j = 0; j < pl[i]; j++) paths[i * n + j] = (i64)p[i * n + j];
+        }
+    }
+    free(wn);
+    free(p);
+    free(pl);
+    return (i64)k;
+}
+
+i64 gfx_isomorphic(const i64 *adj1, i64 n1, const i64 *adj2, i64 n2, i64 *mapping)
+{
+    i64 i;
+    int *a, *b, *m, r;
+    if (n1 <= 0 || n2 <= 0 || adj1 == NULL || adj2 == NULL || mapping == NULL) return 0;
+    a = (int *)malloc((size_t)n1 * (size_t)n1 * sizeof(int));
+    b = (int *)malloc((size_t)n2 * (size_t)n2 * sizeof(int));
+    m = (int *)malloc((size_t)n1 * sizeof(int));
+    if (a == NULL || b == NULL || m == NULL) { free(a); free(b); free(m); return 0; }
+    for (i = 0; i < n1 * n1; i++) a[i] = adj1[i] ? 1 : 0;
+    for (i = 0; i < n2 * n2; i++) b[i] = adj2[i] ? 1 : 0;
+    r = gor_vf2_isomorphism((int)n1, a, (int)n2, b, m);
+    copy_out_i(m, mapping, n1);
+    free(a);
+    free(b);
+    free(m);
+    return (i64)r;
+}
+
+i64 gfx_drnl(const i64 *adj, i64 n, i64 u, i64 v, i64 *label)
+{
+    i64 i;
+    int *a, *l, k;
+    if (n <= 0 || adj == NULL || label == NULL || u < 0 || u >= n || v < 0 || v >= n) return -1;
+    a = (int *)malloc((size_t)n * (size_t)n * sizeof(int));
+    l = (int *)malloc((size_t)n * sizeof(int));
+    if (a == NULL || l == NULL) { free(a); free(l); return -1; }
+    for (i = 0; i < n * n; i++) a[i] = adj[i] ? 1 : 0;
+    (void)gor_graph_drnl((int)n, a, (int)u, (int)v, l);   /* il motore ritorna sempre 0 */
+    copy_out_i(l, label, n);
+    free(a);
+    free(l);
+    return 1;
+}
+
+i64 gfx_wl(const i64 *adj, i64 n, i64 *colors)
+{
+    i64 i;
+    int *a, *c, k;
+    if (n <= 0 || adj == NULL || colors == NULL) return -1;
+    a = (int *)malloc((size_t)n * (size_t)n * sizeof(int));
+    c = (int *)malloc((size_t)n * sizeof(int));
+    if (a == NULL || c == NULL) { free(a); free(c); return -1; }
+    for (i = 0; i < n * n; i++) a[i] = adj[i] ? 1 : 0;
+    k = gor_graph_wl((int)n, a, c);
+    copy_out_i(c, colors, n);
+    free(a);
+    free(c);
+    return (i64)k;
+}
+
+i64 gfx_min_path_cover(const i64 *adj, i64 n)
+{
+    i64 i;
+    int *a, k;
+    if (n <= 0 || adj == NULL) return -1;
+    a = (int *)malloc((size_t)n * (size_t)n * sizeof(int));
+    if (a == NULL) return -1;
+    for (i = 0; i < n * n; i++) a[i] = adj[i] ? 1 : 0;
+    k = gor_min_path_cover((int)n, a);
+    free(a);
+    return (i64)k;
+}
+
+i64 gfx_paths_time_window(const i64 *adj, i64 n, const double *start, const double *finish,
+                          double min_connect, i64 s, i64 t, i64 *paths, i64 *plens,
+                          i64 max_len, i64 max_paths)
+{
+    i64 i;
+    int *a, *p, *pl, k;
+    double *st, *en;
+    if (n <= 0 || adj == NULL || start == NULL || finish == NULL || paths == NULL || plens == NULL) return -1;
+    if (s < 0 || s >= n || t < 0 || t >= n || max_len <= 0 || max_paths <= 0) return -1;
+    a = (int *)malloc((size_t)n * (size_t)n * sizeof(int));
+    p = (int *)malloc((size_t)(max_paths * max_len) * sizeof(int));
+    pl = (int *)malloc((size_t)max_paths * sizeof(int));
+    st = (double *)malloc((size_t)n * sizeof(double));
+    en = (double *)malloc((size_t)n * sizeof(double));
+    if (a == NULL || p == NULL || pl == NULL || st == NULL || en == NULL) {
+        free(a); free(p); free(pl); free(st); free(en); return -1;
+    }
+    for (i = 0; i < n * n; i++) a[i] = adj[i] ? 1 : 0;
+    for (i = 0; i < n; i++) { st[i] = start[i]; en[i] = finish[i]; }
+    k = gor_paths_time_window((int)n, a, (const gor_real *)st, (const gor_real *)en,
+                              (gor_real)min_connect, (int)s, (int)t, p, pl,
+                              (int)max_len, (int)max_paths);
+    if (k > 0) {
+        i64 r, c;
+        for (r = 0; r < k; r++) {
+            plens[r] = (i64)pl[r];
+            for (c = 0; c < pl[r]; c++) paths[r * max_len + c] = (i64)p[r * max_len + c];
+        }
+    }
+    free(a); free(p); free(pl); free(st); free(en);
+    return (i64)k;
+}
+
+i64 gfx_bfs_direction_optimizing(const i64 *adj, i64 n, i64 src, double thr, double *dist)
+{
+    i64 i;
+    int *a, *d, k;
+    if (n <= 0 || adj == NULL || dist == NULL || src < 0 || src >= n) return -1;
+    a = (int *)malloc((size_t)n * (size_t)n * sizeof(int));
+    d = (int *)malloc((size_t)n * sizeof(int));
+    if (a == NULL || d == NULL) { free(a); free(d); return -1; }
+    for (i = 0; i < n * n; i++) a[i] = adj[i] ? 1 : 0;
+    k = gor_bfs_direction_optimizing((int)n, a, (int)src, (gor_real)thr, d);
+    for (i = 0; i < n; i++) dist[i] = (double)d[i];
+    free(a);
+    free(d);
+    return (i64)k;
+}
