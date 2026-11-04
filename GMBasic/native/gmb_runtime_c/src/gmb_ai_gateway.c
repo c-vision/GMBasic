@@ -19,6 +19,9 @@
 #include "gmb_distill.h"
 #include "gmb_ai_decide.h"
 #include "gmb_decision_head.h"
+#include "gmb_st.h"                /* gst_*: keep-alive per la dylib AI (model I/O) */
+#include "llmengine_moe_arch.h"    /* llmengine_moe_arch_family_name / role_of_tensor */
+#include "llmengine_moe_json.h"    /* llmengine_moe_slurp / json_* */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -228,6 +231,7 @@ GMB_AI_WEAK int gmb_ai_decide_local_run(const char* state, const char* kind,
     g_decide_core_anchor = (void*)&gmb_decision_head_load;
     g_decide_core_anchor = (void*)&gmb_decision_head_slot;
     g_decide_core_anchor = (void*)&gmb_decision_head_apply;
+    g_decide_core_anchor = (void*)&gmb_decision_head_load_file;   /* calibrazione per-provider (T8) */
     int (*fn)(const char*, const char*, const gmb_decision_option_t*, int,
               gmb_decision_result_t*, char*, size_t) =
         (int (*)(const char*, const char*, const gmb_decision_option_t*, int,
@@ -274,8 +278,34 @@ GMB_AI_WEAK int gmb_ai_decide_local_run_group(const char* state,
 
 /* ── Model I/O (LLM MODEL CONVERT/QUANTIZE/INSPECT) ──────────────────────── */
 
+/* KEEP-ALIVE per gli host linkati con `-Wl,-dead_strip` (gmb_vm_host): la dylib AI
+ * (`gmb_model_quantize_ex`, convert/inspect) risolve a load-time questi simboli del core
+ * (gmb_st.c, llmengine_moe_*). L'eseguibile non li usa da solo: il linker li rimuoveva e il
+ * dlopen della dylib falliva (`symbol not found in flat namespace '_gst_collect_shards'`),
+ * oppure la chiamata saltava a un simbolo nullo (SIGSEGV, exit 139 su `LLM MODEL QUANTIZE`). */
+static void* volatile g_model_io_core_anchor;
+static void model_io_keep_core_symbols(void)
+{
+    g_model_io_core_anchor = (void*)&gst_collect_shards;
+    g_model_io_core_anchor = (void*)&gst_read_header;
+    g_model_io_core_anchor = (void*)&gst_read_tensor;
+    g_model_io_core_anchor = (void*)&gst_verify_shards;
+    g_model_io_core_anchor = (void*)&gst_writer_create;
+    g_model_io_core_anchor = (void*)&gst_writer_add;
+    g_model_io_core_anchor = (void*)&gst_writer_finish;
+    g_model_io_core_anchor = (void*)&llmengine_moe_arch_family_name;
+    g_model_io_core_anchor = (void*)&llmengine_moe_role_of_tensor;
+    g_model_io_core_anchor = (void*)&llmengine_moe_slurp;
+    g_model_io_core_anchor = (void*)&llmengine_moe_json_find;
+    g_model_io_core_anchor = (void*)&llmengine_moe_json_str;
+    g_model_io_core_anchor = (void*)&llmengine_moe_json_num;
+    g_model_io_core_anchor = (void*)&llmengine_moe_json_flt;
+    g_model_io_core_anchor = (void*)&llmengine_moe_json_flag;
+}
+
 GMB_AI_WEAK int gmb_model_io_convert(const char* model_dir, const char* out_path)
 {
+    model_io_keep_core_symbols();
     int (*fn)(const char*, const char*) = (int (*)(const char*, const char*))ai_sym("gmb_model_io_convert");
     return fn ? fn(model_dir, out_path) : -1;
 }
@@ -283,6 +313,7 @@ GMB_AI_WEAK int gmb_model_io_convert(const char* model_dir, const char* out_path
 GMB_AI_WEAK int gmb_model_io_quantize(const char* src_dir, const char* out_dir, int bits, int group,
                                       const char* imatrix_path, int expert_bits)
 {
+    model_io_keep_core_symbols();
     int (*fn)(const char*, const char*, int, int, const char*, int) =
         (int (*)(const char*, const char*, int, int, const char*, int))ai_sym("gmb_model_io_quantize");
     return fn ? fn(src_dir, out_dir, bits, group, imatrix_path, expert_bits) : -1;
@@ -290,6 +321,7 @@ GMB_AI_WEAK int gmb_model_io_quantize(const char* src_dir, const char* out_dir, 
 
 GMB_AI_WEAK int gmb_model_io_inspect(const char* dir, char* out, int cap)
 {
+    model_io_keep_core_symbols();
     int (*fn)(const char*, char*, int) = (int (*)(const char*, char*, int))ai_sym("gmb_model_io_inspect");
     return fn ? fn(dir, out, cap) : -1;
 }
