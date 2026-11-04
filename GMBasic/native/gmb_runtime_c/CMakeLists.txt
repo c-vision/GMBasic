@@ -212,6 +212,7 @@ set(GMB_ALL_SRCS
     src/gmb_dbg_time.c
     src/gmb_bits.c
     src/gmb_file.c
+    src/gmb_writebytes.c
     src/gmb_file_extra.c
     src/gmb_fonts.c        # namespace FONTS: metriche/render TrueType (stb_truetype, una sola sorgente)
     src/gmb_finetune.c
