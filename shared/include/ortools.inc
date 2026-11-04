@@ -139,3 +139,55 @@ DECLARE FUNCTION JOBSHOP LIB "gmbor" ALIAS "ofx_job_shop" (route() AS LONG, dur(
 DECLARE FUNCTION TIMETABLING LIB "gmbor" ALIAS "ofx_timetabling" (conflicts() AS LONG, n AS LONG, slotOf() AS LONG) AS LONG
 ' Rostering: demand() = ndays; schedule() = nnurses*ndays; ritorna i turni non coperti.
 DECLARE FUNCTION ROSTERING LIB "gmbor" ALIAS "ofx_rostering" (demand() AS LONG, nnurses AS LONG, ndays AS LONG, maxWork AS LONG, schedule() AS LONG) AS LONG
+
+' ── META: meta-euristiche e ottimizzazione globale (12) ─────────────────────
+' Callback vettoriale `f(x() AS DOUBLE) AS DOUBLE`; x() = d valori (in/out).
+' Seed fissi dove la firma C supera gli 8 argomenti FFI.
+DECLARE FUNCTION METAHILLCLIMB LIB "gmbor" ALIAS "ofx_meta_hill_climb" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x() AS DOUBLE, d AS LONG, lo() AS DOUBLE, hi() AS DOUBLE, maxit AS LONG) AS DOUBLE
+DECLARE FUNCTION METASA LIB "gmbor" ALIAS "ofx_meta_sa" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x() AS DOUBLE, d AS LONG, lo() AS DOUBLE, hi() AS DOUBLE, maxit AS LONG, T0 AS DOUBLE, alpha AS DOUBLE) AS DOUBLE
+' tenure: 0=costante, 1=triangolare, 2=quadrata, 3=sawtooth.
+DECLARE FUNCTION METATABU LIB "gmbor" ALIAS "ofx_meta_tabu" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x() AS DOUBLE, d AS LONG, lo() AS DOUBLE, hi() AS DOUBLE, maxit AS LONG, tenure AS LONG) AS DOUBLE
+DECLARE FUNCTION METAGA LIB "gmbor" ALIAS "ofx_meta_ga" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x() AS DOUBLE, d AS LONG, lo() AS DOUBLE, hi() AS DOUBLE, pop AS LONG, maxgen AS LONG) AS DOUBLE
+DECLARE FUNCTION METAPSO LIB "gmbor" ALIAS "ofx_meta_pso" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x() AS DOUBLE, d AS LONG, lo() AS DOUBLE, hi() AS DOUBLE, swarm AS LONG, maxit AS LONG) AS DOUBLE
+DECLARE FUNCTION METADE LIB "gmbor" ALIAS "ofx_meta_de" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x() AS DOUBLE, d AS LONG, lo() AS DOUBLE, hi() AS DOUBLE, pop AS LONG, maxgen AS LONG) AS DOUBLE
+DECLARE FUNCTION METACMAES LIB "gmbor" ALIAS "ofx_meta_cmaes" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x() AS DOUBLE, d AS LONG, lo() AS DOUBLE, hi() AS DOUBLE, maxit AS LONG) AS DOUBLE
+' ES/ARS: nessun box (perturbazioni gaussiane attorno a x).
+DECLARE FUNCTION METAES LIB "gmbor" ALIAS "ofx_meta_es" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x() AS DOUBLE, d AS LONG, sigma AS DOUBLE, alpha AS DOUBLE, pop AS LONG, maxit AS LONG) AS DOUBLE
+DECLARE FUNCTION METAARS LIB "gmbor" ALIAS "ofx_meta_ars" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x() AS DOUBLE, d AS LONG, sigma AS DOUBLE, alpha AS DOUBLE, topB AS LONG, pop AS LONG, maxit AS LONG) AS DOUBLE
+DECLARE FUNCTION METAACOTSP LIB "gmbor" ALIAS "ofx_meta_aco_tsp" (dist() AS DOUBLE, n AS LONG, tour() AS LONG, ants AS LONG, maxit AS LONG) AS DOUBLE
+DECLARE FUNCTION TABUTENURE LIB "gmbor" ALIAS "ofx_tabu_tenure" (kind AS LONG, it AS LONG, n AS LONG) AS LONG
+' NSGA-II (2 obiettivi): out() = pareto[pop*d] | fv1[pop] | fv2[pop].
+DECLARE FUNCTION METANSGA2 LIB "gmbor" ALIAS "ofx_meta_nsga2" (f1 AS FUNCTION(x() AS DOUBLE) AS DOUBLE, f2 AS FUNCTION(x() AS DOUBLE) AS DOUBLE, d AS LONG, lo() AS DOUBLE, hi() AS DOUBLE, pop AS LONG, maxgen AS LONG, out() AS DOUBLE) AS LONG
+
+' ── OR-UTIL: code, inventario, MCDM, MDP, simulazione (15) ──────────────────
+' out() = L, Lq, W, Wq; ritorna rho.
+DECLARE FUNCTION QUEUEMM1 LIB "gmbor" ALIAS "ofx_queue_mm1" (lambda AS DOUBLE, mu AS DOUBLE, out() AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION QUEUEMMC LIB "gmbor" ALIAS "ofx_queue_mmc" (lambda AS DOUBLE, mu AS DOUBLE, c AS LONG, out() AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION LITTLESLAW LIB "gmbor" ALIAS "ofx_littles_law" (lambda AS DOUBLE, W AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION EOQ LIB "gmbor" ALIAS "ofx_eoq" (demand AS DOUBLE, setup AS DOUBLE, holding AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION EPQ LIB "gmbor" ALIAS "ofx_epq" (demand AS DOUBLE, setup AS DOUBLE, holding AS DOUBLE, rate AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION NEWSVENDOR LIB "gmbor" ALIAS "ofx_newsvendor" (cu AS DOUBLE, co AS DOUBLE, mean AS DOUBLE, std AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION SAFETYSTOCK LIB "gmbor" ALIAS "ofx_safety_stock" (z AS DOUBLE, sigma AS DOUBLE) AS DOUBLE
+' AHP: weights() = n; consistency(0) = rapporto di consistenza.
+DECLARE FUNCTION AHP LIB "gmbor" ALIAS "ofx_ahp" (pairwise() AS DOUBLE, n AS LONG, weights() AS DOUBLE, consistency() AS DOUBLE) AS LONG
+' TOPSIS: X() = m*n; benefit() = n; scores() = m.
+DECLARE FUNCTION TOPSIS LIB "gmbor" ALIAS "ofx_topsis" (X() AS DOUBLE, m AS LONG, n AS LONG, w() AS DOUBLE, benefit() AS LONG, scores() AS DOUBLE) AS LONG
+' MDP: out() = V[ns] | policy[ns] (policy come double); ritorna le iterazioni.
+DECLARE FUNCTION MDPVALUE LIB "gmbor" ALIAS "ofx_mdp_value" (P() AS DOUBLE, R() AS DOUBLE, ns AS LONG, na AS LONG, gamma AS DOUBLE, maxit AS LONG, out() AS DOUBLE) AS LONG
+DECLARE FUNCTION MDPPOLICY LIB "gmbor" ALIAS "ofx_mdp_policy" (P() AS DOUBLE, R() AS DOUBLE, ns AS LONG, na AS LONG, gamma AS DOUBLE, maxit AS LONG, out() AS DOUBLE) AS LONG
+' Monte Carlo: out(0) = deviazione standard.
+DECLARE FUNCTION MONTECARLO LIB "gmbor" ALIAS "ofx_montecarlo" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, d AS LONG, lo() AS DOUBLE, hi() AS DOUBLE, n AS LONG, out() AS DOUBLE) AS DOUBLE
+' CVaR: out(0) = VaR.
+DECLARE FUNCTION CVAR LIB "gmbor" ALIAS "ofx_cvar" (returns() AS DOUBLE, n AS LONG, alpha AS DOUBLE, out() AS DOUBLE) AS DOUBLE
+' DES M/M/1: out(0) = utilizzazione.
+DECLARE FUNCTION DESMM1 LIB "gmbor" ALIAS "ofx_des_mm1" (lambda AS DOUBLE, mu AS DOUBLE, ncust AS LONG, out() AS DOUBLE) AS DOUBLE
+' Chance constraint: out(0) = z.
+DECLARE FUNCTION CHANCECONSTRAINT LIB "gmbor" ALIAS "ofx_chance_constraint" (sigma() AS DOUBLE, x() AS DOUBLE, n AS LONG, alpha AS DOUBLE, out() AS DOUBLE) AS DOUBLE
+
+' ── DP: programmazione dinamica classica (3) ────────────────────────────────
+' Optimal BST: p() = n; root() = n*n (-1 se vuoto).
+DECLARE FUNCTION DPOPTIMALBST LIB "gmbor" ALIAS "ofx_dp_optimal_bst" (p() AS DOUBLE, n AS LONG, root() AS LONG) AS DOUBLE
+' Equipment replacement: opCost()/resale() = maxAge; schedule() = years.
+DECLARE FUNCTION DPEQUIPMENT LIB "gmbor" ALIAS "ofx_dp_equipment" (years AS LONG, buyCost AS DOUBLE, maxAge AS LONG, opCost() AS DOUBLE, resale() AS DOUBLE, schedule() AS LONG) AS LONG
+' Sports series: isHome() = nGames.
+DECLARE FUNCTION DPSPORTSSERIES LIB "gmbor" ALIAS "ofx_dp_sports" (nGames AS LONG, needed AS LONG, pHome AS DOUBLE, pAway AS DOUBLE, isHome() AS LONG) AS DOUBLE
