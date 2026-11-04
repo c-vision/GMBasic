@@ -790,9 +790,10 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
         v_s->expr = v_call;
         return v_s;
     }
-    /* GRAPH BUILD/UPDATE <dir>[, <out>] | GRAPH FIND PATH <from> TO <to> | GRAPH RDD <backend>
-     * — comandi legacy (parità Parser.Stmt.Graph.cs): GMB_STMT_CALL con GMB_TOK_Graph*. */
-    if (t->kind == GMB_TOK_Graph && gmb_p_peek(p, 1)) {
+    /* BRAINS BUILD/UPDATE <dir>[, <out>] | BRAINS FIND PATH <from> TO <to> | BRAINS RDD <backend>
+     * — comandi legacy dei brain (ex GRAPH, 2026-11-04; parità Parser.Stmt.Graph.cs):
+     * GMB_STMT_CALL con GMB_TOK_Graph*. */
+    if (t->kind == GMB_TOK_Brains && gmb_p_peek(p, 1)) {
         gmb_tokenkind_t gv = gmb_p_peek(p, 1)->kind;
         if (gv == GMB_TOK_Build || gv == GMB_TOK_Update) {
             gmb_p_adv(p); gmb_p_adv(p);

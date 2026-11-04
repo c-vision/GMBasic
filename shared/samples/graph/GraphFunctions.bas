@@ -5,88 +5,89 @@
 ' Tutte le funzioni ritornano JSON. I path si derivano da PROJECTFOLDER() (cartella del
 ' file .bas), mai dalla CWD di lancio.
 
-IMPORT GRAPH
+IMPORT BRAINS
 
+IMPORT AI
 ' Fixture condivisa in samples/Fixtures/graph-vault, work/ accanto al programma.
 FIXTURE$ = PROJECTFOLDER() + "/../Fixtures/graph-vault"
 WORK$ = PROJECTFOLDER() + "/work"
 IF IO.DirExists(WORK$) = 0 THEN MKDIR WORK$
 
 ' Costruisce il grafo (8 campi + edge tipizzati) — il nome del brain è il basename del vault.
-GRAPH RDD MEMORY
-GRAPH BUILD FIXTURE$, WORK$
-GRAPH FIND PATH "index.md" TO "trading/momentum.md"
-GRAPH UPDATE FIXTURE$, WORK$
+BRAINS RDD MEMORY
+BRAINS BUILD FIXTURE$, WORK$
+BRAINS FIND PATH "index.md" TO "trading/momentum.md"
+BRAINS UPDATE FIXTURE$, WORK$
 
-' GRAPH.NEIGHBORS(brain, node) — vicini diretti (outgoing+incoming).
-PRINT GRAPH.NEIGHBORS("graph-vault", "index.md")
+' BRAINS.NEIGHBORS(brain, node) — vicini diretti (outgoing+incoming).
+PRINT BRAINS.NEIGHBORS("graph-vault", "index.md")
 
-' GRAPH.PATH(brain, from, to) — percorso più corto (BFS).
-PRINT GRAPH.PATH("graph-vault", "index.md", "trading/momentum.md")
+' BRAINS.PATH(brain, from, to) — percorso più corto (BFS).
+PRINT BRAINS.PATH("graph-vault", "index.md", "trading/momentum.md")
 
-' GRAPH.PAGERANK(brain [, topK]) — PageRank (power iteration).
-PRINT GRAPH.PAGERANK("graph-vault", 3)
+' BRAINS.PAGERANK(brain [, topK]) — PageRank (power iteration).
+PRINT BRAINS.PAGERANK("graph-vault", 3)
 
-' GRAPH.CONNECTED(brain) — componenti connesse.
-PRINT GRAPH.CONNECTED("graph-vault")
+' BRAINS.CONNECTED(brain) — componenti connesse.
+PRINT BRAINS.CONNECTED("graph-vault")
 
-' GRAPH.STATS(brain) — metriche di base (nodi/edge/dangling + PageRank top).
-PRINT GRAPH.STATS("graph-vault")
+' BRAINS.STATS(brain) — metriche di base (nodi/edge/dangling + PageRank top).
+PRINT BRAINS.STATS("graph-vault")
 
-' GRAPH.STRONGLYCONNECTED(brain) — componenti fortemente connesse (Tarjan).
-PRINT GRAPH.STRONGLYCONNECTED("graph-vault")
+' BRAINS.STRONGLYCONNECTED(brain) — componenti fortemente connesse (Tarjan).
+PRINT BRAINS.STRONGLYCONNECTED("graph-vault")
 
-' GRAPH.TOPOSORT(brain) — ordinamento topologico (Kahn).
-PRINT GRAPH.TOPOSORT("graph-vault")
+' BRAINS.TOPOSORT(brain) — ordinamento topologico (Kahn).
+PRINT BRAINS.TOPOSORT("graph-vault")
 
-' GRAPH.BIPARTITE(brain) — test di bipartiteness.
-PRINT GRAPH.BIPARTITE("graph-vault")
+' BRAINS.BIPARTITE(brain) — test di bipartiteness.
+PRINT BRAINS.BIPARTITE("graph-vault")
 
-' GRAPH.BETWEENNESS(brain) — centralità betweenness (Brandes).
-PRINT GRAPH.BETWEENNESS("graph-vault")
+' BRAINS.BETWEENNESS(brain) — centralità betweenness (Brandes).
+PRINT BRAINS.BETWEENNESS("graph-vault")
 
-' GRAPH.CLUSTERING(brain, node) — coefficiente di clustering locale.
-PRINT GRAPH.CLUSTERING("graph-vault", "index.md")
+' BRAINS.CLUSTERING(brain, node) — coefficiente di clustering locale.
+PRINT BRAINS.CLUSTERING("graph-vault", "index.md")
 
-' GRAPH.DIAMETER(brain) — diametro del grafo (Floyd-Warshall).
-PRINT GRAPH.DIAMETER("graph-vault")
+' BRAINS.DIAMETER(brain) — diametro del grafo (Floyd-Warshall).
+PRINT BRAINS.DIAMETER("graph-vault")
 
-' GRAPH.MST(brain) — albero ricoprente minimo (Kruskal).
-PRINT GRAPH.MST("graph-vault")
+' BRAINS.MST(brain) — albero ricoprente minimo (Kruskal).
+PRINT BRAINS.MST("graph-vault")
 
 ' ── Export estesi (F7 P1): dot / subgraph / JSON by tag/folder / validità ──
-' GRAPH.DOT(brain) — export Graphviz (dot).
-PRINT GRAPH.DOT("graph-vault")
+' BRAINS.DOT(brain) — export Graphviz (dot).
+PRINT BRAINS.DOT("graph-vault")
 
-' GRAPH.SUBGRAPH(brain, root [, depth]) — sottografo a distanza ≤ depth dal nodo (mermaid).
-PRINT GRAPH.SUBGRAPH("graph-vault", "index.md", 1)
+' BRAINS.SUBGRAPH(brain, root [, depth]) — sottografo a distanza ≤ depth dal nodo (mermaid).
+PRINT BRAINS.SUBGRAPH("graph-vault", "index.md", 1)
 
-' GRAPH.BYTAG(brain, tag) — JSON dei nodi con quel tag + i loro edge.
-PRINT GRAPH.BYTAG("graph-vault", "strategy")
+' AI.GRAPHTAG(brain, tag) — JSON dei nodi con quel tag + i loro edge.
+PRINT AI.GRAPHTAG("graph-vault", "strategy")
 
-' GRAPH.BYFOLDER(brain, folder) — JSON dei nodi nella cartella (o sotto) + edge.
-PRINT GRAPH.BYFOLDER("graph-vault", "strategies")
+' AI.GRAPHFOLDER(brain, folder) — JSON dei nodi nella cartella (o sotto) + edge.
+PRINT AI.GRAPHFOLDER("graph-vault", "strategies")
 
-' GRAPH.ISVALID(brain) — 1 se il grafo ha almeno un nodo.
-PRINT GRAPH.ISVALID("graph-vault")
+' BRAINS.ISVALID(brain) — 1 se il grafo ha almeno un nodo.
+PRINT BRAINS.ISVALID("graph-vault")
 
 ' ── Algoritmi avanzati (2026-09-07): Dijkstra/HasCycle/Eccentricity/DFS/BFS ──
-' GRAPH.DIJKSTRA(brain, from, to) — path a costo minimo (archi pesati).
-PRINT GRAPH.DIJKSTRA("graph-vault", "index.md", "trading/momentum.md")
+' BRAINS.DIJKSTRA(brain, from, to) — path a costo minimo (archi pesati).
+PRINT BRAINS.DIJKSTRA("graph-vault", "index.md", "trading/momentum.md")
 
-' GRAPH.HASCYCLE(brain) — 1 se il grafo contiene almeno un ciclo.
-PRINT GRAPH.HASCYCLE("graph-vault")
+' BRAINS.HASCYCLE(brain) — 1 se il grafo contiene almeno un ciclo.
+PRINT BRAINS.HASCYCLE("graph-vault")
 
-' GRAPH.ECCENTRICITY(brain, node) — eccentricità del nodo (distanza massima).
-PRINT GRAPH.ECCENTRICITY("graph-vault", "index.md")
+' BRAINS.ECCENTRICITY(brain, node) — eccentricità del nodo (distanza massima).
+PRINT BRAINS.ECCENTRICITY("graph-vault", "index.md")
 
-' GRAPH.DFS(brain, root) — visita in profondità dal root.
-PRINT GRAPH.DFS("graph-vault", "index.md")
+' BRAINS.DFS(brain, root) — visita in profondità dal root.
+PRINT BRAINS.DFS("graph-vault", "index.md")
 
-' GRAPH.BFS(brain, root) — visita in ampiezza dal root.
-PRINT GRAPH.BFS("graph-vault", "index.md")
+' BRAINS.BFS(brain, root) — visita in ampiezza dal root.
+PRINT BRAINS.BFS("graph-vault", "index.md")
 
-' GRAPH.QUERYMULTI(query, brains_csv) — merge multi-brain (qui un solo brain).
-PRINT GRAPH.QUERYMULTI("momentum", "graph-vault")
+' AI.GRAPHMULTI(query, brains_csv) — merge multi-brain (qui un solo brain).
+PRINT AI.GRAPHMULTI("momentum", "graph-vault")
 
 PRINT "GraphFunctions ok"

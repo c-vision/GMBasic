@@ -99,6 +99,7 @@ static const gmb_keyword_t gmb_keywords[] = {
     GMB_KEYWORD_ENTRY("BAG", Bag),
     GMB_KEYWORD_ENTRY("CACHE", Cache),
     GMB_KEYWORD_ENTRY("GRAPH", Graph),
+    GMB_KEYWORD_ENTRY("BRAINS", Brains),
     GMB_KEYWORD_ENTRY("BUILD", Build),
     GMB_KEYWORD_ENTRY("FIND", Find),
     GMB_KEYWORD_ENTRY("VAULT", Vault),

@@ -768,6 +768,7 @@ public sealed partial class Parser
                     case TokenKind.Train: return [ParseTrainStatement(this, "TRAIN")];
                     case TokenKind.Torch: return [ParseTorchStatement(this, "TORCH")];
                     case TokenKind.Graph: return [ParseGraphStatement(this, "GRAPH")];
+                    case TokenKind.Brains: return [ParseGraphStatement(this, "BRAINS")];
                     case TokenKind.Connector: return [ParseConnectorStatement(this, "CONNECTOR")];
                 }
             }

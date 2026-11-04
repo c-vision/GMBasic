@@ -146,6 +146,7 @@ public enum TokenKind
     Bag,
     Cache,
     Graph,
+    Brains,   // namespace/command BRAINS (grafi dei brain; GRAPH resta per la teoria dei grafi)
     Timeline,
     HashRing,         // <-- (per ConsistentHash)
     RingBuffer,       // <-- (per CircularQueue)

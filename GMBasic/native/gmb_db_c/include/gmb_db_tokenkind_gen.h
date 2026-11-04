@@ -10,7 +10,7 @@
 #ifndef GMB_DB_TOKENKIND_GEN_H
 #define GMB_DB_TOKENKIND_GEN_H
 
-#define GMB_DB_TOK_TOP    482   /* TokenKind.Top */
-#define GMB_DB_TOK_BOTTOM 483   /* TokenKind.Bottom */
+#define GMB_DB_TOK_TOP    483   /* TokenKind.Top */
+#define GMB_DB_TOK_BOTTOM 484   /* TokenKind.Bottom */
 
 #endif /* GMB_DB_TOKENKIND_GEN_H */

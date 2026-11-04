@@ -1,9 +1,9 @@
 // FILE: Parser.Stmt.Graph.cs
-// Sintassi legacy GRAPH (senza parentesi): comandi del knowledge graph L5.
-//   GRAPH BUILD <wikiDir> [, backend]       costruisce/aggiorna il grafo arricchito (8 campi)
-//   GRAPH UPDATE <wikiDir> [, backend]      alias di BUILD (ricostruisce)
-//   GRAPH FIND PATH <from> TO <to>          stampa il path più corto nel grafo del brain attivo
-//   GRAPH RDD <MEMORY|JSON>                 seleziona il backend di storage (default MEMORY)
+// Sintassi BRAINS (senza parentesi): comandi del knowledge graph L5 (ex GRAPH).
+//   BRAINS BUILD <wikiDir> [, backend]       costruisce/aggiorna il grafo arricchito (8 campi)
+//   BRAINS UPDATE <wikiDir> [, backend]      alias di BUILD (ricostruisce)
+//   BRAINS FIND PATH <from> TO <to>          stampa il path più corto nel grafo del brain attivo
+//   BRAINS RDD <MEMORY|JSON>                 seleziona il backend di storage (default MEMORY)
 // I comandi usano SOLO keyword TokenKind esistenti (BUILD/FIND aggiunti per L5), niente parentesi.
 
 using System.Collections.Immutable;
@@ -12,10 +12,12 @@ namespace Basic;
 
 public sealed partial class Parser
 {
-    /// <summary>Dispatch dei comandi legacy GRAPH (dopo la keyword GRAPH, senza punto).</summary>
+    /// <summary>Dispatch dei comandi legacy BRAINS (dopo la keyword GRAPH, senza punto).</summary>
     public static Stmt ParseGraphStatement(Parser parser, string expectedNamespace)
     {
-        parser.Consume(TokenKind.Graph, "Expected 'GRAPH'.");
+        // `BRAINS BUILD/UPDATE/FIND PATH/RDD` (ex GRAPH, 2026-11-04). `GRAPH` resta il
+        // keyword del tipo/torre dei grafi: i comandi legacy dei brain ora sono BRAINS.
+        parser.Consume(TokenKind.Brains, "Expected 'BRAINS'.");
         var tok = parser.Peek();
         switch (tok.Kind)
         {
@@ -43,7 +45,7 @@ public sealed partial class Parser
         }
     }
 
-    /// <summary>GRAPH BUILD/UPDATE <dir> [, backend] — dir come stringa o nome nudo.</summary>
+    /// <summary>BRAINS BUILD/UPDATE <dir> [, backend] — dir come stringa o nome nudo.</summary>
     private static Stmt ParseGraphBuildArgs(Parser parser, TokenKind kind)
     {
         parser.Advance(); // BUILD | UPDATE
@@ -67,8 +69,8 @@ public sealed partial class Parser
         return first;
     }
 
-    /// <summary>Costruisce un comando GRAPH (BuiltinFunctionCallExpr, nessuna parentesi).</summary>
+    /// <summary>Costruisce un comando BRAINS (BuiltinFunctionCallExpr, nessuna parentesi).</summary>
     private static BuiltinFunctionCallExpr MakeGraphCommand(Token tok, TokenKind kind, Expr[] args) =>
-        new(new Token(TokenKind.Identifier, "GRAPH", null, tok.Position),
-            new Token(kind, "GRAPH", null, tok.Position), ImmutableArray.Create(args), new BitType());
+        new(new Token(TokenKind.Identifier, "BRAINS", null, tok.Position),
+            new Token(kind, "BRAINS", null, tok.Position), ImmutableArray.Create(args), new BitType());
 }

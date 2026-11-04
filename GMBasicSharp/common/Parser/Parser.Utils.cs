@@ -95,6 +95,7 @@ public sealed partial class Parser
             TokenKind.Train => true,
             TokenKind.Torch => true,
             TokenKind.Graph => true,
+            TokenKind.Brains => true,
             TokenKind.Connector => true,
             TokenKind.Message => true,
             _ => false
@@ -138,6 +139,7 @@ public sealed partial class Parser
             TokenKind.Train => "TRAIN",
             TokenKind.Torch => "TORCH",
             TokenKind.Graph => "GRAPH",
+            TokenKind.Brains => "BRAINS",
             TokenKind.Connector => "CONNECTOR",
             TokenKind.Message => "MESSAGE",
             _ => throw new ArgumentOutOfRangeException(nameof(kind), "TokenKind is not a namespace command.")
