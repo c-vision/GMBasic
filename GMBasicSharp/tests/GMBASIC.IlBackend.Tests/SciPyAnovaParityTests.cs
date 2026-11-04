@@ -127,7 +127,7 @@ public sealed class SciPyAnovaParityTests
             IlRuntime.SetCurrent(new Runtime.HeadlessRuntimeHost(Console.Out, new Runtime.RuntimeConfig()));
             var task = Task.Run(() => main.Invoke(null, null));
             if (!task.Wait(TimeSpan.FromSeconds(20)))
-                throw new TimeoutException($"ANALYSIS.ANOVA non ha completato. Output: {writer}");
+                throw new TimeoutException($"STATS.Anova non ha completato. Output: {writer}");
             task.GetAwaiter().GetResult();
             return writer.ToString();
         }

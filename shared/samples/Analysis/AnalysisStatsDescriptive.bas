@@ -16,7 +16,6 @@ REM FILE: AnalysisStatsDescriptive.bas
 ' =================================================================================================
 
 ' NOTA: ANALYSIS contiene le funzioni statistiche avanzate, STATS quelle descrittive di base.
-IMPORT ANALYSIS
 IMPORT STATS
 IMPORT JSON
 
@@ -39,25 +38,25 @@ SUB Main()
     ' --- 1. MISURE DI TENDENZA CENTRALE ---
     PRINT "--- 1. Misure di Tendenza Centrale ---"
     
-    PRINT "Media (Mean):         "; ANALYSIS.MEAN(Dataset1)
-    PRINT "Mediana (Median):     "; ANALYSIS.MEDIAN(Dataset1)
+    PRINT "Media (Mean):         "; STATS.Mean(Dataset1)
+    PRINT "Mediana (Median):     "; STATS.Median(Dataset1)
     PRINT
 
     ' --- 2. MISURE DI DISPERSIONE ---
     PRINT "--- 2. Misure di Dispersione ---"
     
-    PRINT "Varianza (Variance):  "; MATH.ROUND(ANALYSIS.VARIANCE(Dataset1), 4)
-    PRINT "Dev. Standard (StdDev): "; MATH.ROUND(ANALYSIS.STDDEV(Dataset1), 4)
+    PRINT "Varianza (Variance):  "; MATH.ROUND(STATS.Variance(Dataset1), 4)
+    PRINT "Dev. Standard (StdDev): "; MATH.ROUND(STATS.StdDev(Dataset1), 4)
     PRINT "MAD (Median Abs Dev): "; STATS.MAD(Dataset1)
     PRINT
 
     ' --- 3. MISURE DI FORMA E CORRELAZIONE ---
     PRINT "--- 3. Misure di Forma e Correlazione ---"
     
-    PRINT "Asimmetria (Skewness):"; MATH.ROUND(ANALYSIS.SKEWNESS(DatasetSkew), 4)
-    PRINT "Curtosi (Kurtosis):   "; MATH.ROUND(ANALYSIS.KURTOSIS(Dataset1), 4)
+    PRINT "Asimmetria (Skewness):"; MATH.ROUND(STATS.Skewness(DatasetSkew), 4)
+    PRINT "Curtosi (Kurtosis):   "; MATH.ROUND(STATS.Kurtosis(Dataset1), 4)
     
-    DIM Corr = ANALYSIS.CORRELATION(Dataset1, Dataset2)
+    DIM Corr = STATS.Correlation(Dataset1, Dataset2)
     PRINT "Correlazione:         "; Corr; " (Atteso: -1)"
     PRINT
 

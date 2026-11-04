@@ -40,7 +40,7 @@ internal sealed partial class PCodeProcessor
                 }
                 catch { }
             }
-            /* MATRIX.SOLVE(A, b): 2 argomenti (matrice + vettore/array) → solve lineare. */
+            /* LINALG.SOLVE(A, b): 2 argomenti (matrice + vettore/array) → solve lineare. */
             if (args.Length == 2) return LuSolve(args);
             return null;
         },

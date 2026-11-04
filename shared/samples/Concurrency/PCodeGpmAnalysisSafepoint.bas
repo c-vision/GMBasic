@@ -1,5 +1,4 @@
 ' KMEANS oltre la soglia CPU: il PCB deve parcheggiarsi senza occupare l'unico worker P.
-IMPORT ANALYSIS
 
 SUB HeavyAnalysis(WG AS WAITGROUP)
   DIM data(99999) AS DOUBLE
@@ -12,7 +11,7 @@ SUB HeavyAnalysis(WG AS WAITGROUP)
     END IF
   NEXT
 
-  DIM result = ANALYSIS.KMEANS(data, 2)
+  DIM result = MULTIVARIATE.KMeans(data, 2)
   IF result.Centroids(0) > 0 THEN
     PRINT "ANALYSIS-RESULT-OK"
   ELSE

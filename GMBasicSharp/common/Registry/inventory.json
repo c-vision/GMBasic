@@ -1,8 +1,8 @@
 {
-  "count": 1557,
-  "namespaces": 75,
-  "distinctTokenKinds": 1444,
-  "namesInMultipleNamespaces": 101,
+  "count": 1548,
+  "namespaces": 77,
+  "distinctTokenKinds": 1443,
+  "namesInMultipleNamespaces": 94,
   "namesInMultipleNamespacesSample": [
     "Run",
     "Count",
@@ -20,10 +20,10 @@
     "Register",
     "RemoveSource",
     "Search",
-    "Anova",
-    "Correlation",
-    "Kurtosis",
-    "Mad"
+    "STORE",
+    "Click",
+    "Find",
+    "Screenshot"
   ],
   "sameNsNameDifferentKinds": []
 }

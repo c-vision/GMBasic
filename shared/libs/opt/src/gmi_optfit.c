@@ -1128,7 +1128,7 @@ void gmi_opt_dual_annealing(gmi_opt_fvec_fn f, void* ctx, const double* lo, cons
 
 /* BRENT (MathNet RootFinding.Brent.TryFindRoot, parity IL CommonLib.Numerics.Brent:
  * tolerance 1e-8, maxIter 200) — distinto da BRENTH. */
-/* Adattatori C99 per quad/simpson (ANALYSIS.INTEGRATE/SIMPSON, closure BASIC): come gli
+/* Adattatori C99 per quad/simpson (NUMERICAL.Integrate/SIMPSON, closure BASIC): come gli
    altri gmi_*_c99, adattano gmi_fn_t al callback del runtime (double(*)(double,void*)). */
 
 

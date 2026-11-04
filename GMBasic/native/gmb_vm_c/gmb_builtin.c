@@ -1232,7 +1232,7 @@ static void gmb_bf_92(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_
 /* Etichetta una lista PIATTA row-major come MATRICE rows x 2 (re,im).
  * Senza i metadati ndims/dim_upper l'indicizzazione f(i,j) cade nel fallback
  * isqrt(count) di gmb_multidim_target e legge celle sbagliate: era il caso di
- * ANALYSIS.FFT/FFTCOMPLEX su VM/C (picco di frequenza su un bin inesistente,
+ * NUMERICAL.Fft/FFTCOMPLEX su VM/C (picco di frequenza su un bin inesistente,
  * mentre IL/PCode/C99 restituivano la matrice n x 2). */
 static void gmb_mark_rows2(gmb_obj_shared_val_t* sv, int rows)
 {
@@ -1518,6 +1518,30 @@ static void gmb_bf_853(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
             gmb_int_t outn = 0;
             double* r = gmb_solve_ode_ctx(gmb_vm_closure_f2, &ctx, y0, t0, t1, steps, &outn);
             gmb_vm_set_result_list(r, (int)outn, &bout->is_num, &bout->result_ref);
+        }
+}
+static void gmb_bf_1019(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)func_code;
+        {
+            gmb_obj_closure_t* cl = (args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_CLOSURE)
+                ? (gmb_obj_closure_t*)args[0].ref : NULL;
+            int n = 0;
+            double* y0 = (argc >= 2) ? gmb_vm_list_to_dbl(&args[1], &n) : NULL;
+            double t0 = argc >= 3 ? args[2].num : 0, t1 = argc >= 4 ? args[3].num : 1;
+            if (!cl || !y0 || n <= 0) { free(y0); bout->result = 0; return; }
+            gmb_closure_ctx_t ctx = { vm, task, cl };
+            int rows = 0;
+            double* traj = gmb_solve_ivp_rk45(gmb_vm_ode_fn, &ctx, y0, n, t0, t1, 1e-6, 1e-9, &rows);
+            free(y0);
+            if (!traj || rows <= 0) { free(traj); bout->result = 0; return; }
+            int cols = n + 1;
+            int64_t h = gmb_matrix_create(rows, cols);
+            for (int i = 0; i < rows; i++)
+                for (int j = 0; j < cols; j++)
+                    gmb_matrix_set(h, i, j, traj[i * cols + j]);
+            free(traj);
+            bout->result = (double)h;
         }
 }
 static void gmb_bf_854(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -7465,7 +7489,7 @@ static void gmb_bf_95(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_
                      * (DIM d(m-1,n-1)), NON una lista-di-righe. rows=dim_upper[0]+1,
                      * cols=dim_upper[1]+1. Senza questo ramo la matrice piatta veniva iterata
                      * come righe → n=0 → gmb_analysis_pca(data,m,0) → EigenValues 0,0
-                     * (bug Analysis.Pca: VMC 0,0 vs IL 8.3333,0). */
+                     * (bug MULTIVARIATE.Pca: VMC 0,0 vs IL 8.3333,0). */
                     m = (int)sv->dim_upper[0] + 1;
                     n = (int)sv->dim_upper[1] + 1;
                     for (int i = 0; i < m; i++)
@@ -7498,7 +7522,7 @@ static void gmb_bf_95(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_
             gmb_obj_shared_val_t* out = gmb_shared_dict_new();
             if (out)
             {
-                /* Canone Analysis.PcaResult (IlRuntime.Pca): dict {EigenValues, EigenVectors}
+                /* Canone MULTIVARIATE.PcaResult (IlRuntime.Pca): dict {EigenValues, EigenVectors}
                  * — prima era una List posizionale [evl, evec2] e i membri .EigenValues/.EigenVectors
                  * restavano vuoti (VMC stampava 0 vs IL 1.6266). EigenVectors = lista di n righe. */
                 gmb_obj_shared_val_t* evl = gmb_shared_list_new();
@@ -7544,7 +7568,7 @@ static void gmb_bf_89(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_
             gmb_obj_shared_val_t* out = gmb_shared_dict_new();
             if (out)
             {
-                /* Canone Analysis.AnovaResult (IlRuntime.Anova): dict ESTESO FValue/PValue/
+                /* Canone STATS.AnovaResult (IlRuntime.Anova): dict ESTESO FValue/PValue/
                  * DFBetween/DFWithin/SSBetween/SSWithin/MSBetween/MSWithin — NON una lista
                  * posizionale [f,p,ssb,ssw] (i membri .FValue etc. restavano vuoti). */
                 int dfb = k - 1;
@@ -17425,6 +17449,7 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 851, gmb_bf_851 },
     { 852, gmb_bf_852 },
     { 853, gmb_bf_853 },
+    { 1019, gmb_bf_1019 },
     { 854, gmb_bf_854 },
     { 855, gmb_bf_855 },
     { 856, gmb_bf_856 },

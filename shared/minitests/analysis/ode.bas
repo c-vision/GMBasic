@@ -1,7 +1,6 @@
-IMPORT ANALYSIS
 SUB Main()
-  PRINT ANALYSIS.INTEGRATE(FN(x) => x * x, 0, 1)
-  PRINT ANALYSIS.SIMPSON(FN(x) => x * x, 0, 1, 256)
-  DIM ys() = ANALYSIS.SOLVEODE({ |t, y| RETURN -y }, 1.0, 0.0, 1.0, 10)
+  PRINT NUMERICAL.Integrate(FN(x) => x * x, 0, 1)
+  PRINT NUMERICAL.Simpson(FN(x) => x * x, 0, 1, 256)
+  DIM ys() = NUMERICAL.SolveOde({ |t, y| RETURN -y }, 1.0, 0.0, 1.0, 10)
   PRINT ys(10)
 END SUB

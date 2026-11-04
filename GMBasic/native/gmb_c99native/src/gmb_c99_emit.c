@@ -1382,7 +1382,7 @@ static int future_index(ctx_t* c, const char* var) {
 /* (b4): `DIM x() = NS.FN(...)` con builtin array-returning (parity oracolo
  * Statements.cs DIM-array-init). Ritorna: 0 = no; 1 = 1D flat con out-len
  * (SIGNAL.CONVOLVE/CORRELATE/HANN/HAMMING/BLACKMAN + ARRAYS.AMAP/AFILTER/
- * AREVERSE/ACLONE/AUNIQUE); 2 = matrice n×2 (ANALYSIS.FFT/IFFT). */
+ * AREVERSE/ACLONE/AUNIQUE); 2 = matrice n×2 (NUMERICAL.Fft/IFFT). */
 static int dim_arr_init_kind(const gmb_expr_t* e) {
     /* comprehension letterale LISTA `[sel FOR var IN src ...]` (ctype 0, senza annotazione
      * di tipo esplicita — dict/set hanno gia' AS DICT/HASHSET OF... che li instrada al
@@ -2449,7 +2449,7 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                 }
                 if (_erxv && _erxv->vclass[0]) {
                     struct cls_info* _evci = cls_find(c, _erxv->vclass);
-                    /* La vclass può essere qualificata col namespace (Analysis.KMeansResult)
+                    /* La vclass può essere qualificata col namespace (MULTIVARIATE.KMeansResult)
                      * mentre cls_find lavora sul nome semplice: ritenta senza prefisso. */
                     if (!_evci) { const char* _d = strrchr(_erxv->vclass, '.'); if (_d) _evci = cls_find(c, _d + 1); }
                     const char* _evft = _evci ? cls_field_type_of(_evci, _erxdot + 1) : NULL;
@@ -3359,7 +3359,7 @@ static void reg_let_assign(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
             }
             /* x = <ANALYSIS/SIGNAL array-returning>(...) con x NON dichiarato: array dinamico
              * (`gmb_double_t* x` + `x_len` + `x__b0`), come il DIM `()` — il decl loop lo
-             * emette. SciPyP1Parity: `sp = ANALYSIS.SPLREP(xs, ys)`. */
+             * emette. SciPyP1Parity: `sp = NUMERICAL.Splrep(xs, ys)`. */
             if (s->value && s->value->kind == GMB_EXPR_CALL && !tv->is_array && !tv->gkind) {
                 gmb_tokenkind_t rtk = s->value->tk;
                 if (rtk == GMB_TOK_FftFreq || rtk == GMB_TOK_FftShift || rtk == GMB_TOK_IfftShift
@@ -4188,7 +4188,7 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                     v->boxed_val = 1; v->type = TY_NUM;
                 }
             }
-            /* `DIM x = ANALYSIS.<ResultFn>(...)` SENZA clausola AS: il tipo <Base>Result è
+            /* `DIM x = TIMESERIES/MULTIVARIATE/REGRESSION.<ResultFn>(...)` SENZA clausola AS: il tipo <Base>Result è
              * dedotto dal TokenKind della call (KMeans/AdfTest/Arima/HoltWinters/...). Stesso
              * set boxed del ramo AS esplicito qui sopra; senza, `HwRes.Forecast(0)` non trovava
              * un base boxed e l'emitter falliva con "funzione 'HwRes.Forecast' non definita". */
@@ -5467,7 +5467,7 @@ static void infer_aeval_expr(ctx_t* c, gmb_expr_t* e) {
             }
         }
     }
-        /* ANALYSIS.SOLVEIVP(fn, y0, t0, t1): il callback fn DEVE avere l'ABI
+        /* NUMERICAL.SolveIvp(fn, y0, t0, t1): il callback fn DEVE avere l'ABI
          * void(ctx,t,y,out) attesa da gmb_ode_c99_fn (native/gmb_runtime_c/src/gmb_ode.c) —
          * l'adapter fa un cast a quel tipo di funzione INCONDIZIONATAMENTE, quindi una λ
          * codeblock `{|t, y| RETURN -y(0)}` che il resto della pipeline emette come scalare
@@ -9024,7 +9024,7 @@ static void emit_dim_arr_init(ctx_t* c, gmb_stmt_t* s) {
     if (dim_arr_metrics1d(c, s, init)) return;
     /* KDTREE array-returning (QUERY/QUERYDIST/QUERYBALL) */
     if (dim_arr_kdtree(c, s, init)) return;
-    /* ANALYSIS.FFT/IFFT: matrice n×2 (re/im per riga) */
+    /* NUMERICAL.Fft/IFFT: matrice n×2 (re/im per riga) */
     int inv = init->tk == GMB_TOK_Ifft;
     int invc = init->tk == GMB_TOK_IfftComplex;
     if (init->tk == GMB_TOK_FftComplex || invc) {
@@ -9053,7 +9053,7 @@ static void emit_dim_arr_init(ctx_t* c, gmb_stmt_t* s) {
     }
     if (av->matrix) {
         if (!inv) {
-            c99_fail(c, s->line, "ANALYSIS.FFT su matrice non supportato (solo segnale reale 1-D)");
+            c99_fail(c, s->line, "NUMERICAL.Fft su matrice non supportato (solo segnale reale 1-D)");
             return;
         }
         static int if_uid = 0;
@@ -9194,9 +9194,9 @@ static int dim_arr_analysis1d(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init) {
     if (need) { sb_put(&c->out, ");\n"); return 1; }
     return 0;
 }
-/* `x = ANALYSIS.SPLREP(...)` con `x` IMPLICITO (non DIM'd): il C# auto-dichiara
+/* `x = NUMERICAL.Splrep(...)` con `x` IMPLICITO (non DIM'd): il C# auto-dichiara
  * `gmb_double_t* x` + `x_len` + `x__b0`. Riusa dim_arr_analysis1d dopo aver dichiarato e
- * registrato `x` come array dinamico (parità: `sp = ANALYSIS.SPLREP(xs, ys)`, SciPyP1Parity). */
+ * registrato `x` come array dinamico (parità: `sp = NUMERICAL.Splrep(xs, ys)`, SciPyP1Parity). */
 static int implicit_analysis_assign(ctx_t* c, const char* target, gmb_expr_t* value) {
     if (!target || !target[0] || strchr(target, '.') || !value || value->kind != GMB_EXPR_CALL) return 0;
     gmb_tokenkind_t tk = value->tk;
@@ -16191,7 +16191,7 @@ static void emit_arr_literal_assign(ctx_t* c, const char* target, gmb_expr_t* li
     }
     var_t* v = lookup_var(c, target);
     if (!v) v = vars_add(cur_scope(c), target, suffix_type(target));
-    /* ANALYSIS result-UDT: r = ANALYSIS.REGRESS(x, y) / KMEANS(...) → dict boxed
+    /* ANALYSIS result-UDT: r = REGRESSION.Regress(x, y) / KMEANS(...) → dict boxed
      * (parity emitter C#: gmb_linregress_flat / runtime restituiscono gmb_val_t dict). */
     if (v && v->boxed_val && value && value->kind == GMB_EXPR_CALL && value->var) {
         if (value->tk == GMB_TOK_Regress) {
@@ -18047,7 +18047,7 @@ static void st_let_assign(ctx_t* c, gmb_stmt_t* s) {
                    && lookup_var(c, s->target) && lookup_var(c, s->target)->is_array) {
             emit_arr_literal_assign(c, s->target, s->value, s->line);
         } else if (s->target && s->value && implicit_analysis_assign(c, s->target, s->value)) {
-            /* `x = ANALYSIS.SPLREP(...)` (x implicito) — dichiarato come array dinamico. */
+            /* `x = NUMERICAL.Splrep(...)` (x implicito) — dichiarato come array dinamico. */
         } else {
             emit_assignment(c, s->target, s->value, s->line, 0);
         }
@@ -18333,7 +18333,7 @@ static void emit_dict_literal(ctx_t* c, gmb_expr_t* e) {
              * puntatore+lunghezza dal canale thread-local (emit_dim_arr_init). */
             || (s->dim_init && s->dim_init->kind == GMB_EXPR_CALL && s->dim_init->var
                 && user_fn_ret_arr(c, s->dim_init->var, s->dim_init->nargs)))) {
-            /* (b4): DIM x() = SIGNAL.CONVOLVE/HANN/ANALYSIS.FFT/IFFT(...) */
+            /* (b4): DIM x() = SIGNAL.CONVOLVE/HANN/NUMERICAL.Fft/IFFT(...) */
             emit_dim_arr_init(c, s);
             return;
         }
@@ -20419,7 +20419,7 @@ static void st_return(ctx_t* c, gmb_stmt_t* s) {
                 return;
             }
             /* RETURN <espressione scalare, incluso un var non-array> su una λ ARRAY senza
-             * letterale `{...}` (es. `{|t, y| RETURN -y(0)}` passata a ANALYSIS.SOLVEIVP,
+             * letterale `{...}` (es. `{|t, y| RETURN -y(0)}` passata a NUMERICAL.SolveIvp,
              * forzata ARRAY dal pre-pass infer_aeval_expr sopra perché il callback ODE ha
              * SEMPRE ABI void(ctx,t,y,out)): trattala come vettore a UN elemento,
              * __out[0] = espr — l'unica interpretazione sensata per una λ senza annotazioni
@@ -30792,7 +30792,7 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
             emit_ident(c, v->name);
             sb_put(&c->out, " = gmb_regex_new_val(\"\");\n");
         } else if (v->boxed_val) {
-            /* (b4): variabile dict-valued (ANALYSIS.KMEANS): gmb_val_t */
+            /* (b4): variabile dict-valued (MULTIVARIATE.KMeans): gmb_val_t */
             sb_put(&c->out, "gmb_val_t ");
             emit_ident(c, v->name);
             sb_put(&c->out, " = gmb_val_nil();\n");
@@ -30812,7 +30812,7 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
             emit_ident(c, v->name);
             sb_put(&c->out, "__cols = 0;\n");
         } else if (v->matrix) {
-            /* (b4): matrice ANALYSIS.FFT/IFFT: righe double* + compagne _len/_n */
+            /* (b4): matrice NUMERICAL.Fft/IFFT: righe double* + compagne _len/_n */
             sb_put(&c->out, "gmb_double_t** ");
             emit_ident(c, v->name);
             sb_put(&c->out, " = NULL;\n");

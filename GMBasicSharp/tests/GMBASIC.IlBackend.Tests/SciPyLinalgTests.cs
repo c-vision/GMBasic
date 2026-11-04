@@ -54,10 +54,10 @@ public class SciPyLinalgTests
             IMPORT MATRIX
             SUB Main()
               h = MATRIX.CREATE(2, 2)
-              e = MATRIX.EXPM(h)
-              PRINT MATRIX.DETERMINANT(e)
+              e = LINALG.EXPM(h)
+              PRINT LINALG.DETERMINANT(e)
               k = MATRIX.KRONECKER(h, h)
-              PRINT MATRIX.DETERMINANT(k)
+              PRINT LINALG.DETERMINANT(k)
             END SUB
             """);
         try
@@ -71,7 +71,7 @@ public class SciPyLinalgTests
                 Console.SetOut(sw);
                 Basic.IlBackend.IlRuntime.SetCurrent(new Runtime.HeadlessRuntimeHost(Console.Out, new Runtime.RuntimeConfig()));
                 var r = global::Basic.IlBackend.PCode.PCodeVmRunner.Run(chunk);
-                Assert.True(r.Success, "MATRIX.EXPM/KRONECKER dispatch fallito:\n" + r.Output);
+                Assert.True(r.Success, "LINALG.EXPM/KRONECKER dispatch fallito:\n" + r.Output);
                 var nums = System.Text.RegularExpressions.Regex.Matches(r.Output, @"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?")
                     .Select(m => double.Parse(m.Value, System.Globalization.CultureInfo.InvariantCulture)).ToList();
                 Assert.True(nums.Count >= 2, $"output: {r.Output}");

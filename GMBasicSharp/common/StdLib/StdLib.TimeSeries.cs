@@ -78,6 +78,7 @@ public sealed partial class StdLib
         var quantileParam = new Parameter(-1, T(TokenKind.Identifier, "quantile"), new DoubleType(), noFlags, null, false);
         var riskFreeRateParam = new Parameter(-1, T(TokenKind.Identifier, "riskFreeRate"), new DoubleType(), noFlags, null, false);
         var targetReturnParam = new Parameter(-1, T(TokenKind.Identifier, "targetReturn"), new DoubleType(), noFlags, null, false);
+        var dataArrayParam = new Parameter(-1, T(TokenKind.Identifier, "data"), new DoubleType(), arrayFlag, null, false);
 
         var procedures = new ProcedureDefinition[]
         {
@@ -171,9 +172,50 @@ public sealed partial class StdLib
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.RollingSortino, "TSROLLSORTINO"),
                 [seriesParam, periodParam, riskFreeRateParam, targetReturnParam], doubleArr, TokenKind.RollingSortino, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.RollingMinMax, "TSROLLMINMAX"),
-                [seriesParam, periodParam], doubleMatrix, TokenKind.RollingMinMax, ExecutionKind: NativeExecutionKind.Pure)
+                [seriesParam, periodParam], doubleMatrix, TokenKind.RollingMinMax, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, SymbolFlags.IsPublic, T(TokenKind.Arima, "Arima"),
+            [
+                dataArrayParam,
+                new Parameter(-1, T(TokenKind.Identifier, "p"), new IntegerType(), SymbolFlags.None, null,
+                    false),
+                new Parameter(-1, T(TokenKind.Identifier, "d"), new IntegerType(), SymbolFlags.None, null,
+                    false),
+                new Parameter(-1, T(TokenKind.Identifier, "q"), new IntegerType(), SymbolFlags.None, null,
+                    false)
+            ], new ArimaResultType(), TokenKind.Arima),
+
+            new NativeProcedureDefinition(-1, SymbolFlags.IsPublic, T(TokenKind.HoltWinters, "HoltWinters"),
+            [
+                dataArrayParam,
+                new Parameter(-1, T(TokenKind.Identifier, "alpha"), new DoubleType(), SymbolFlags.None,
+                    null, false),
+                new Parameter(-1, T(TokenKind.Identifier, "beta"), new DoubleType(), SymbolFlags.None,
+                    null, false),
+                new Parameter(-1, T(TokenKind.Identifier, "gamma"), new DoubleType(), SymbolFlags.None,
+                    null, false),
+                new Parameter(-1, T(TokenKind.Identifier, "period"), new IntegerType(), SymbolFlags.None,
+                    null, false)
+            ], new HoltWintersResultType(), TokenKind.HoltWinters),
+
+            new NativeProcedureDefinition(-1, SymbolFlags.IsPublic, T(TokenKind.AdfTest, "AdfTest"),
+                [dataArrayParam],
+                new AdfTestResultType(), TokenKind.AdfTest),
+
+            new NativeProcedureDefinition(-1, SymbolFlags.IsPublic, T(TokenKind.YuleWalker, "YuleWalker"),
+                [dataArrayParam, new Parameter(-1, T(TokenKind.Identifier, "order"), new IntegerType(), SymbolFlags.None, null, false)],
+                new ArrayType(new DoubleType()), TokenKind.YuleWalker, ExecutionKind: NativeExecutionKind.Pure),
+
+            new NativeProcedureDefinition(-1, SymbolFlags.IsPublic, T(TokenKind.MaCoefficients, "MaCoefficients"),
+                [dataArrayParam, new Parameter(-1, T(TokenKind.Identifier, "order"), new IntegerType(), SymbolFlags.None, null, false)],
+                new ArrayType(new DoubleType()), TokenKind.MaCoefficients, ExecutionKind: NativeExecutionKind.Pure),
         };
 
-        RegisterBuiltinNamespace(namespaceName, procedures, ImmutableDictionary<string, DataType>.Empty);
+        var types = new Dictionary<string, DataType>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "ArimaResult", new ArimaResultType() },
+            { "HoltWintersResult", new HoltWintersResultType() },
+            { "AdfTestResult", new AdfTestResultType() }
+        };
+        RegisterBuiltinNamespace(namespaceName, procedures, types);
     }
 }

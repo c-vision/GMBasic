@@ -4985,1023 +4985,6 @@
       ]
     },
     {
-      "ns": "ANALYSIS",
-      "name": "AdfTest",
-      "fn": true,
-      "return": "ADFTESTRESULT",
-      "params": [
-        {
-          "name": "data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "Anova",
-      "fn": true,
-      "return": "ANOVARESULT",
-      "params": [
-        {
-          "name": "groups",
-          "type": "double[]",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "Arima",
-      "fn": true,
-      "return": "ARIMARESULT",
-      "params": [
-        {
-          "name": "data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "p",
-          "type": "int",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "d",
-          "type": "int",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "q",
-          "type": "int",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "Correlation",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "x_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "y_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "CubicSpline",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "x_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "y_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "x_new",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "CumTrapezoid",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "y_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "x_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "Differentiate",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "function",
-          "type": "CALLBACK (DOUBLE) AS DOUBLE",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "x",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "EuclideanDistanceSquared",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "x_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "y_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "Fft",
-      "fn": true,
-      "return": "double[][]",
-      "params": [
-        {
-          "name": "data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "FftComplex",
-      "fn": true,
-      "return": "double[][]",
-      "params": [
-        {
-          "name": "x_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "y_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "FftFreq",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "n",
-          "type": "int",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "d",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "FftShift",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "HoltWinters",
-      "fn": true,
-      "return": "HOLTWINTERSRESULT",
-      "params": [
-        {
-          "name": "data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "alpha",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "beta",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "gamma",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "period",
-          "type": "int",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "Ifft",
-      "fn": true,
-      "return": "double[][]",
-      "params": [
-        {
-          "name": "data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "IfftComplex",
-      "fn": true,
-      "return": "double[][]",
-      "params": [
-        {
-          "name": "x_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "y_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "IfftShift",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "Integrate",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "function",
-          "type": "CALLBACK (DOUBLE) AS DOUBLE",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "a",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "b",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "InterpolateClamp",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "x_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "y_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "x_new",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "InterpolateGeneric",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "method",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "x_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "y_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "x_new",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "InterpolateLinear",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "x_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "y_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "x_new",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "InterpolatePchip",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "x_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "y_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "x_new",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "InterpolatePolynomial",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "x_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "y_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "x_new",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "InterpolateSpline",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "x_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "y_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "x_new",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "InterpolateStep",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "x_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "y_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "x_new",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "Irfft",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "x_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "y_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "KMeans",
-      "fn": true,
-      "return": "KMEANSRESULT",
-      "params": [
-        {
-          "name": "data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "k",
-          "type": "int",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "Kurtosis",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "MaCoefficients",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "order",
-          "type": "int",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "Mad",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "Mean",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "Median",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "Pca",
-      "fn": true,
-      "return": "PCARESULT",
-      "params": [
-        {
-          "name": "data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "Regress",
-      "fn": true,
-      "return": "REGRESSIONRESULT",
-      "params": [
-        {
-          "name": "x_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "y_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "Rfft",
-      "fn": true,
-      "return": "long",
-      "params": [
-        {
-          "name": "x_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "Simpson",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "function",
-          "type": "CALLBACK (DOUBLE) AS DOUBLE",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "a",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "b",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "n",
-          "type": "int",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "Skewness",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "SolveIvp",
-      "fn": true,
-      "return": "long",
-      "params": [
-        {
-          "name": "ode_function",
-          "type": "CALLBACK (DOUBLE, ARRAY OF DOUBLE) AS ARRAY OF DOUBLE",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "y0",
-          "type": "double[]",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "t0",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "t1",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "SolveOde",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "ode_function",
-          "type": "CALLBACK (DOUBLE, DOUBLE) AS DOUBLE",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "y0",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "t0",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "t1",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "steps",
-          "type": "int",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "Splev",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "spline",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "xq",
-          "type": "double[]",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "Splrep",
-      "fn": true,
-      "return": "long",
-      "params": [
-        {
-          "name": "x_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "y_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "StdDev",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "Trapezoid",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "y_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "x_data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "Variance",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "ANALYSIS",
-      "name": "YuleWalker",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "order",
-          "type": "int",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
       "ns": "ARRAYS",
       "name": "AADD",
       "fn": true,
@@ -19016,6 +17999,43 @@
       "params": []
     },
     {
+      "ns": "MULTIVARIATE",
+      "name": "KMeans",
+      "fn": true,
+      "return": "KMEANSRESULT",
+      "params": [
+        {
+          "name": "data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "k",
+          "type": "int",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "MULTIVARIATE",
+      "name": "Pca",
+      "fn": true,
+      "return": "PCARESULT",
+      "params": [
+        {
+          "name": "data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        }
+      ]
+    },
+    {
       "ns": "MUTEX",
       "name": "TRYLOCK",
       "fn": false,
@@ -19146,6 +18166,662 @@
           "optional": false,
           "byRef": false,
           "array": false
+        }
+      ]
+    },
+    {
+      "ns": "NUMERICAL",
+      "name": "CubicSpline",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "x_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "y_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "x_new",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "NUMERICAL",
+      "name": "CumTrapezoid",
+      "fn": true,
+      "return": "double[]",
+      "params": [
+        {
+          "name": "y_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "x_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        }
+      ]
+    },
+    {
+      "ns": "NUMERICAL",
+      "name": "Differentiate",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "function",
+          "type": "CALLBACK (DOUBLE) AS DOUBLE",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "x",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "NUMERICAL",
+      "name": "Fft",
+      "fn": true,
+      "return": "double[][]",
+      "params": [
+        {
+          "name": "data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        }
+      ]
+    },
+    {
+      "ns": "NUMERICAL",
+      "name": "FftComplex",
+      "fn": true,
+      "return": "double[][]",
+      "params": [
+        {
+          "name": "x_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "y_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        }
+      ]
+    },
+    {
+      "ns": "NUMERICAL",
+      "name": "FftFreq",
+      "fn": true,
+      "return": "double[]",
+      "params": [
+        {
+          "name": "n",
+          "type": "int",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "d",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "NUMERICAL",
+      "name": "FftShift",
+      "fn": true,
+      "return": "double[]",
+      "params": [
+        {
+          "name": "data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        }
+      ]
+    },
+    {
+      "ns": "NUMERICAL",
+      "name": "Ifft",
+      "fn": true,
+      "return": "double[][]",
+      "params": [
+        {
+          "name": "data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        }
+      ]
+    },
+    {
+      "ns": "NUMERICAL",
+      "name": "IfftComplex",
+      "fn": true,
+      "return": "double[][]",
+      "params": [
+        {
+          "name": "x_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "y_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        }
+      ]
+    },
+    {
+      "ns": "NUMERICAL",
+      "name": "IfftShift",
+      "fn": true,
+      "return": "double[]",
+      "params": [
+        {
+          "name": "data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        }
+      ]
+    },
+    {
+      "ns": "NUMERICAL",
+      "name": "Integrate",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "function",
+          "type": "CALLBACK (DOUBLE) AS DOUBLE",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "a",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "b",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "NUMERICAL",
+      "name": "InterpolateClamp",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "x_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "y_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "x_new",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "NUMERICAL",
+      "name": "InterpolateGeneric",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "method",
+          "type": "string",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "x_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "y_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "x_new",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "NUMERICAL",
+      "name": "InterpolateLinear",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "x_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "y_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "x_new",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "NUMERICAL",
+      "name": "InterpolatePchip",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "x_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "y_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "x_new",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "NUMERICAL",
+      "name": "InterpolatePolynomial",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "x_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "y_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "x_new",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "NUMERICAL",
+      "name": "InterpolateSpline",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "x_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "y_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "x_new",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "NUMERICAL",
+      "name": "InterpolateStep",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "x_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "y_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "x_new",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "NUMERICAL",
+      "name": "Irfft",
+      "fn": true,
+      "return": "double[]",
+      "params": [
+        {
+          "name": "x_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "y_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        }
+      ]
+    },
+    {
+      "ns": "NUMERICAL",
+      "name": "Rfft",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "x_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        }
+      ]
+    },
+    {
+      "ns": "NUMERICAL",
+      "name": "Simpson",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "function",
+          "type": "CALLBACK (DOUBLE) AS DOUBLE",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "a",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "b",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "n",
+          "type": "int",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "NUMERICAL",
+      "name": "SolveIvp",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "ode_function",
+          "type": "CALLBACK (DOUBLE, ARRAY OF DOUBLE) AS ARRAY OF DOUBLE",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "y0",
+          "type": "double[]",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "t0",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "t1",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "NUMERICAL",
+      "name": "SolveOde",
+      "fn": true,
+      "return": "double[]",
+      "params": [
+        {
+          "name": "ode_function",
+          "type": "CALLBACK (DOUBLE, DOUBLE) AS DOUBLE",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "y0",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "t0",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "t1",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "steps",
+          "type": "int",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "NUMERICAL",
+      "name": "Splev",
+      "fn": true,
+      "return": "double[]",
+      "params": [
+        {
+          "name": "spline",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "xq",
+          "type": "double[]",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "NUMERICAL",
+      "name": "Splrep",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "x_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "y_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        }
+      ]
+    },
+    {
+      "ns": "NUMERICAL",
+      "name": "Trapezoid",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "y_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "x_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
         }
       ]
     },
@@ -19543,6 +19219,28 @@
           "optional": false,
           "byRef": false,
           "array": false
+        }
+      ]
+    },
+    {
+      "ns": "REGRESSION",
+      "name": "Regress",
+      "fn": true,
+      "return": "REGRESSIONRESULT",
+      "params": [
+        {
+          "name": "x_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "y_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
         }
       ]
     },
@@ -24338,6 +24036,122 @@
     },
     {
       "ns": "TIMESERIES",
+      "name": "AdfTest",
+      "fn": true,
+      "return": "ADFTESTRESULT",
+      "params": [
+        {
+          "name": "data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        }
+      ]
+    },
+    {
+      "ns": "TIMESERIES",
+      "name": "Arima",
+      "fn": true,
+      "return": "ARIMARESULT",
+      "params": [
+        {
+          "name": "data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "p",
+          "type": "int",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "d",
+          "type": "int",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "q",
+          "type": "int",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "TIMESERIES",
+      "name": "HoltWinters",
+      "fn": true,
+      "return": "HOLTWINTERSRESULT",
+      "params": [
+        {
+          "name": "data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "alpha",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "beta",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "gamma",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "period",
+          "type": "int",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "TIMESERIES",
+      "name": "MaCoefficients",
+      "fn": true,
+      "return": "double[]",
+      "params": [
+        {
+          "name": "data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "order",
+          "type": "int",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "TIMESERIES",
       "name": "TSAUTOCORR",
       "fn": true,
       "return": "double",
@@ -25107,6 +24921,28 @@
           "optional": false,
           "byRef": false,
           "array": true
+        }
+      ]
+    },
+    {
+      "ns": "TIMESERIES",
+      "name": "YuleWalker",
+      "fn": true,
+      "return": "double[]",
+      "params": [
+        {
+          "name": "data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "order",
+          "type": "int",
+          "optional": false,
+          "byRef": false,
+          "array": false
         }
       ]
     },
@@ -29646,6 +29482,28 @@
           "optional": false,
           "byRef": false,
           "array": false
+        }
+      ]
+    },
+    {
+      "ns": "VECTOR",
+      "name": "EuclideanDistanceSquared",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "x_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "y_data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
         }
       ]
     },

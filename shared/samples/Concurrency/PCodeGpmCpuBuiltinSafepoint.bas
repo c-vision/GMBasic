@@ -2,7 +2,6 @@
 ' Con GMBASIC_GOMAXPROCS=1, SIGNAL.CONVOLVE deve parcheggiare HeavyCpu e lasciare
 ' progredire Ticker prima di pubblicare CPU-HEAVY-DONE.
 IMPORT SIGNAL
-IMPORT ANALYSIS
 
 SUB HeavyCpu(WG AS WAITGROUP)
   DIM x(4095) AS DOUBLE
@@ -20,8 +19,8 @@ SUB HeavyCpu(WG AS WAITGROUP)
     PRINT "FAIL: CPU result"
   END IF
 
-  DIM spectrum() = ANALYSIS.FFT(x)
-  DIM restored() = ANALYSIS.IFFT(spectrum)
+  DIM spectrum() = NUMERICAL.Fft(x)
+  DIM restored() = NUMERICAL.Ifft(spectrum)
   IF restored(0, 0) > 0.999 AND restored(0, 0) < 1.001 THEN
     PRINT "CPU-IFFT-OK"
   ELSE

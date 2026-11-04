@@ -3193,3 +3193,22 @@ int gmb_cholesky_solve_jagged(const double* const* a, const double* b, int n, do
     free(flat);
     return rc;
 }
+
+/* Adattatori C99 per NUMERICAL.Integrate/Simpson (chiusure BASIC, gmb_fn_t).
+ * Vivevano in gmb_optfit.c, rimosso con l'optimizer: senza queste due funzioni
+ * il C generato da C99Native non linka (undefined gmb_quad_gk_c99/simpson_c99). */
+static double gmb_c99_fn_scalar(double x, void *ctx)
+{
+    gmb_fn_t fn = *(const gmb_fn_t *)ctx;
+    return ((double (*)(void *, double))fn.fn)(fn.ctx, x);
+}
+
+double gmb_quad_gk_c99(gmb_fn_t fn, double a, double b)
+{
+    return gmb_quad_gk(gmb_c99_fn_scalar, &fn, a, b);
+}
+
+double gmb_simpson_c99(gmb_fn_t fn, double a, double b, int n)
+{
+    return gmb_simpson_ctx(gmb_c99_fn_scalar, &fn, a, b, n);
+}
