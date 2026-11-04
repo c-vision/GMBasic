@@ -9824,7 +9824,13 @@ static void gmb_bf_413(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
 static void gmb_bf_414(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
-            const char* role = (argc >= 1 && args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_STRING) ? ((gmb_obj_string_t*)args[0].ref)->data : "";
+            /* ruolo: stringa ("completion") oppure capability numerica (%CHAT=0 … %DECIDE=6), come in 412 */
+            static const char* g_cap_roles414[] = { "completion", "ocr", "audio", "embedding", "reranker", "tts", "decide" };
+            const char* role = "";
+            if (argc >= 1 && args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_STRING)
+                role = ((gmb_obj_string_t*)args[0].ref)->data;
+            else if (argc >= 1 && args[0].type == GMB_BT_NUMBER && args[0].num >= 0 && args[0].num <= 6)
+                role = g_cap_roles414[(int)args[0].num];
             const char* n = gmb_provider_active(role);
             gmb_obj_string_t* r = gmb_str_cstr(n ? n : "");
             bout->is_num = 0; bout->result_ref = (gmb_obj_t*)r; bout->result_ref_bt = GMB_BT_STRING;

@@ -100,7 +100,7 @@ static const cc_builtin_t g_cc_builtins[] = {
     {"MATH.FORMAT",295},{"AI.OCR",684},{"AI.ACTIVE",414},
     {"AI.PROVIDERS",686},{"AI.PLUGINSLIST",1217},{"AI.TRANSCRIBE",685},{"CONVERT.FORMATS",999},
 
-    {"AI.COUNT",328},
+    {"AI.COUNT",328},{"AI.DECIDE",3817},
     /* MCP (funzioni). La tabella aveva SOLO 3 voci e una aveva il codice SBAGLIATO:
      * MCPSERVERMARKETPLACELIST=723 è in realtà BuiltInFunction.MCPSERVERDISABLE (la lista
      * marketplace è 730) → su VM/C quel comando disabilitava un server invece di elencare
@@ -3279,6 +3279,10 @@ static void cc_expr(gmb_cc_t* c, const gmb_expr_t* e)
             break;
         }
         int bcode = e->var ? cc_builtin_code(e->var) : -1;
+        /* AI DECIDE e l'estrazione dal gruppo sono emessi dal parser come chiamate tipizzate NUDE
+         * (token AiDecide / Extract): senza namespace il nome non e' in tabella → si risolve dal token. */
+        if (bcode < 0 && e->tk == GMB_TOK_AiDecide) bcode = 3817;
+        if (bcode < 0 && e->tk == GMB_TOK_Extract && !(e->ns && e->ns[0])) bcode = 3407;
         if (bcode < 0 && e->var && e->ns && e->ns[0]) {
             /* gmb_p_strip_ns ha già tolto il namespace da e->var (regola d'oro:
              * il namespace non si dispatcha mai), ma g_cc_builtins registra alcuni
@@ -4080,6 +4084,26 @@ static void cc_stmt(gmb_cc_t* c, const gmb_stmt_t* s)
     }
     case GMB_STMT_ASSIGN:
     case GMB_STMT_LET: {
+        /* Target DECISION <- AI DECIDE / estrazione dal gruppo: il runtime ritorna JSON testuale;
+         * in C99/IL l'assegnazione a DECISION auto-parsa → qui JSON.Parse esplicito (parita'). */
+        if (!s->array_index && s->target && s->value && s->value->kind == GMB_EXPR_CALL && s->value->var
+            && (strcasecmp(s->value->var, "DECIDE") == 0 || strcasecmp(s->value->var, "EXTRACT") == 0
+                || strcasecmp(s->value->var, "AI.DECIDE") == 0 || strcasecmp(s->value->var, "JSON.EXTRACT") == 0)) {
+            /* EXTRACT del gruppo: il builtin lavora su un dict, il gruppo e' testo JSON → Parse prima. */
+            if (s->value->nargs >= 1 && s->value->args[0] && s->value->args[0]->kind == GMB_EXPR_CALL
+                && s->value->args[0]->var && strcasecmp(s->value->args[0]->var, "DECIDE") == 0
+                && (strcasecmp(s->value->var, "EXTRACT") == 0 || strcasecmp(s->value->var, "JSON.EXTRACT") == 0)) {
+                gmb_expr_t** ga = (gmb_expr_t**)malloc(sizeof(gmb_expr_t*));
+                ga[0] = s->value->args[0];
+                s->value->args[0] = gmb_expr_call("JSON.Parse", ga, 1, s->line);
+            }
+            const char* dtn = cc_var_udt_get(c, s->target);
+            if (dtn && strcasecmp(dtn, "DECISION") == 0) {
+                gmb_expr_t** pa = (gmb_expr_t**)malloc(sizeof(gmb_expr_t*));
+                pa[0] = s->value;
+                ((gmb_stmt_t*)s)->value = gmb_expr_call("JSON.Parse", pa, 1, s->line);
+            }
+        }
         if (s->array_index) {
             /* Bug corretto (2026-09-02, seguito task AEVAL): "arr(i).Campo = valore" arriva
              * qui con s->target GIÀ concatenato in "arr.Campo" dal parser (vedi
@@ -4459,6 +4483,10 @@ static void cc_stmt(gmb_cc_t* c, const gmb_stmt_t* s)
             }
             break;
         }
+        /* DIM v AS DECISION: l'esito di AI DECIDE (JSON) e' un record con VALUE/PROBABILITY/...;
+         * si traccia il tipo per parsare il JSON all'assegnazione (vedi GMB_STMT_ASSIGN). */
+        if (s->dim_type && !s->dim_empty_parens && strcasecmp(s->dim_type, "DECISION") == 0)
+            cc_var_udt_set(c, s->dim_var, "DECISION");
         /* DIM v AS <Tipo> [= altravar]: <Tipo> è un TYPE registrato (UDT, campi nudi,
          * value-type) → costruisci un record dict indipendente invece dello 0.0 di
          * default generico (vedi cc_udt_register/cc_emit_udt_init). Con inizializzatore
@@ -5930,6 +5958,23 @@ static void cc_stmt(gmb_cc_t* c, const gmb_stmt_t* s)
             const char* verb = s->mutex_action;
             gmb_expr_t* a0 = (s->n_go_args >= 1) ? s->go_args[0] : NULL;
             const char* sub = (a0 && a0->kind == GMB_EXPR_VAR) ? a0->var : NULL;
+            /* AI REGISTER alias, capability, source[, param] -> 1510; AI SET ACTIVE capability, alias -> 412
+             * (prima il verbo era ignorato in silenzio: nessun provider registrato/attivato su VM/C). */
+            if (strcasecmp(verb, "REGISTER") == 0 && s->n_go_args >= 3) {
+                for (int i = 0; i < 4; i++) {
+                    if (i < s->n_go_args) { cc_expr(c, s->go_args[i]); if (c->error) return; }
+                    else { int _si = cc_add_const(c, GMB_CCONST_STRING, 0, ""); if (c->error) return;
+                           cc_byte(c, GMB_OP_PUSH_CONST); cc_u16(c, _si); }
+                }
+                cc_byte(c, GMB_OP_CALL_BUILTIN); cc_u16(c, 1510); cc_byte(c, 4); cc_byte(c, GMB_OP_POP);
+                break;
+            }
+            if (strcasecmp(verb, "SET") == 0 && sub && strcasecmp(sub, "ACTIVE") == 0 && s->n_go_args >= 3) {
+                cc_expr(c, s->go_args[1]); if (c->error) return;
+                cc_expr(c, s->go_args[2]); if (c->error) return;
+                cc_byte(c, GMB_OP_CALL_BUILTIN); cc_u16(c, 412); cc_byte(c, 2); cc_byte(c, GMB_OP_POP);
+                break;
+            }
             if (strcasecmp(verb, "WORKER") == 0 && a0) {
                 if (sub && strcasecmp(sub, "NEW") == 0 && s->n_go_args >= 2) {
                     cc_expr(c, s->go_args[1]); if (c->error) return;
