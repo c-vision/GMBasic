@@ -31,6 +31,7 @@ internal sealed partial class PCodeProcessor
         BuiltInFunction.STATS_DESCRIBE,
         BuiltInFunction.STATS_GAMMAPDF,
         BuiltInFunction.STATS_GAMMACDF,
+        BuiltInFunction.STATS_GAMMASF,
         BuiltInFunction.STATS_GAMMAPPF,
         BuiltInFunction.STATS_GAMMAISF,
         BuiltInFunction.STATS_MODE,
@@ -102,6 +103,10 @@ internal sealed partial class PCodeProcessor
         [BuiltInFunction.STATS_GAMMAPDF] = (task, args) =>
         {
                 return CommonLib.Numerics.GammaPdf(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));
+        },
+        [BuiltInFunction.STATS_GAMMASF] = (task, args) =>
+        {
+                return 1.0 - CommonLib.Numerics.GammaCdf(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));
         },
         [BuiltInFunction.STATS_GAMMACDF] = (task, args) =>
         {

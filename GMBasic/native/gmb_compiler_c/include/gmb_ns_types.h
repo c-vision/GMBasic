@@ -1110,6 +1110,7 @@ static const gmb_ns_type_row_t gmb_ns_types[] = {
     { GMB_TOK_StatsWilcoxon, 0 },
     { GMB_TOK_StatsGammaPdf, 0 },
     { GMB_TOK_StatsGammaCdf, 0 },
+    { GMB_TOK_StatsGammaSf, 0 },
     { GMB_TOK_StatsGammaPpf, 0 },
     { GMB_TOK_StatsGammaIsf, 0 },
     { GMB_TOK_StatsSkewTest, 0 },

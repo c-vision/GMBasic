@@ -533,6 +533,7 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "IO.FWrite");
         r.Register(Backend.IL, "SPECIAL.GAMMA");
         r.Register(Backend.IL, "STATS.GammaCdf");
+        r.Register(Backend.IL, "STATS.GammaSf");
         r.Register(Backend.IL, "TRADING.OPTIONS.GammaColor");
         r.Register(Backend.IL, "SPECIAL.GAMMAINC");
         r.Register(Backend.IL, "SPECIAL.GAMMAINCC");

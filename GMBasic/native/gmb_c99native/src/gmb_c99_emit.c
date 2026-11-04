@@ -2233,6 +2233,7 @@ static int is_matrix_factor_call(gmb_expr_t* e) {
 }
 
 int etype(ctx_t* c, gmb_expr_t* e) {
+    if (e && e->var && strstr(e->var, "MyBIT")) fprintf(stderr, "[dbg-etype] var=%s kind=%d tk=%d nargs=%d\n", e->var, (int)e->kind, (int)e->tk, e->nargs);
     /* LINALG.FACTOR(decomp, name): handle matrice (int64_t), non stringa.
      * GMB_TOK_Get è condiviso con POOL.Get/SyncMap.Get (stringa). */
     if (is_matrix_factor_call(e)) return TY_NUM;
@@ -3072,6 +3073,7 @@ int etype(ctx_t* c, gmb_expr_t* e) {
         if (av && e->nargs == 0 && !av->is_array && !av->gkind) return av->type;
         /* metodi collezione: X.Pop()/X.Dequeue()/X.Peek() ereditano il tipo elemento
          * (str per elem_str); X.Join(...) è sempre stringa. */
+        if (e->var && e->var[0] && strstr(e->var, "MyBIT")) fprintf(stderr, "[dbg-etype-call] var=%s ns=%s tk=%d nargs=%d\n", e->var, e->ns?e->ns:"", (int)e->tk, e->nargs);
         if (e->var) {
             const char* mdot = strchr(e->var, '.');
             if (mdot && mdot != e->var) {
@@ -3083,6 +3085,19 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                         if (gmb_member_tok(mdot + 1) == GMB_TOK_Join) return TY_STR;
                         if (gmb_member_tok(mdot + 1) == GMB_TOK_Count) return TY_NUM;
                         if (gmb_member_tok(mdot + 1) == GMB_TOK_GetNode) return TY_STR;
+                        /* BITREE (10) Query/QueryRange → double; SPARSESET (21) HasItem →
+                         * predicato -1/0 (condiviso con SparseSet/LIST). */
+                        if (cv->coll_type_code == 10
+                            && (gmb_member_tok(mdot + 1) == GMB_TOK_Query
+                                || gmb_member_tok(mdot + 1) == GMB_TOK_QueryRange
+                                || strcasecmp(mdot + 1, "Query") == 0
+                                || strcasecmp(mdot + 1, "QueryRange") == 0))
+                            return TY_NUM;
+                        if (cv->coll_type_code == 21
+                            && (gmb_member_tok(mdot + 1) == GMB_TOK_CollHasItem
+                                || strcasecmp(mdot + 1, "HasItem") == 0))
+                            return TY_NUM;
+                        if (cv->coll_type_code == 1 && gmb_member_tok(mdot + 1) == GMB_TOK_Count) return TY_NUM;
                         if (gmb_tk_in(gmb_member_tok(mdot + 1), gmb_tk_list_head, (unsigned)(sizeof(gmb_tk_list_head)/sizeof(gmb_tk_list_head[0]))))
                             /* Elementi BOXED (gmb_val_t: TREE/HEAP/BAG, markdown): il valore è un
                              * gmb_val_t nudo → TY_VAL, NON double/stringa. */
@@ -6918,6 +6933,7 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_AiLexicalEntropy, emit_bf_uncertainty },
     { NULL, GMB_TOK_AiConsistencyDetail, emit_bf_uncertainty },
     { NULL, GMB_TOK_StatsGammaCdf, emit_bf_dist },
+    { NULL, GMB_TOK_StatsGammaSf, emit_bf_dist },
     { NULL, GMB_TOK_StatsGammaPdf, emit_bf_dist },
     { NULL, GMB_TOK_StatsGammaPpf, emit_bf_dist },
     { NULL, GMB_TOK_StatsGammaIsf, emit_bf_dist },
@@ -10132,6 +10148,54 @@ static int try_emit_var_method(ctx_t* c, const char* recv, const char* m, gmb_ex
         }
     }
 
+    /* SPARSESET (21).HasItem(v): predicato di appartenenza sulla lista (parità
+     * CommonLib/PCode/VM-C). Prima non era gestito → C invalido
+     * (`gmb_val_index(list, ...)` su un gmb_list_t, CollectionsModern §12). */
+    if (v->coll_type_code == 21 && mtk == GMB_TOK_CollHasItem && n >= 1) {
+        sb_put(&c->out, "(gmb_double_t)gmb_list_contains(");
+        emit_var_ref(c, v);
+        sb_put(&c->out, ", ");
+        if (etype(c, a[0]) == TY_STR) {
+            sb_put(&c->out, "gmb_make_val_string(("); emit_expr(c, a[0]); sb_put(&c->out, ").data)");
+        } else {
+            sb_put(&c->out, "gmb_make_val_double((gmb_double_t)("); emit_expr(c, a[0]); sb_put(&c->out, "))");
+        }
+        sb_put(&c->out, ")");
+        return 1;
+    }
+    /* BITREE (10): il C99 lo rappresenta come lista dei valori sorgente; Query(idx) =
+     * somma prefissa [0..idx], QueryRange(a,b) = somma intervallo, Update(i,delta) = somma
+     * al valore i-esimo. Prima Query/Update non erano gestiti (C invalido,
+     * CollectionsModern §10). */
+    if (v->coll_type_code == 10 && n >= 1) {
+        if (mtk == GMB_TOK_Query || strcasecmp(m, "Query") == 0) {
+            sb_put(&c->out, "(gmb_double_t)gmb_list_sum_range(");
+            emit_var_ref(c, v);
+            sb_put(&c->out, ", 0, (gmb_int_t)("); emit_expr(c, a[0]); sb_put(&c->out, "))");
+            return 1;
+        }
+        if (mtk == GMB_TOK_QueryRange || strcasecmp(m, "QueryRange") == 0) {
+            if (n >= 2) {
+                sb_put(&c->out, "(gmb_double_t)gmb_list_sum_range(");
+                emit_var_ref(c, v);
+                sb_put(&c->out, ", (gmb_int_t)("); emit_expr(c, a[0]);
+                sb_put(&c->out, "), (gmb_int_t)("); emit_expr(c, a[1]); sb_put(&c->out, "))");
+                return 1;
+            }
+        }
+        if (mtk == GMB_TOK_Update || strcasecmp(m, "Update") == 0) {
+            if (n >= 2) {
+                sb_put(&c->out, "({ gmb_int_t __bi = (gmb_int_t)("); emit_expr(c, a[0]);
+                sb_put(&c->out, "); gmb_double_t __bd = (gmb_double_t)("); emit_expr(c, a[1]);
+                sb_put(&c->out, "); gmb_list_add_at(&");
+                emit_var_ref(c, v);
+                sb_put(&c->out, ", __bi, gmb_list_get(");
+                emit_var_ref(c, v);
+                sb_put(&c->out, ", __bi).v_double + __bd); (void)0; })");
+                return 1;
+            }
+        }
+    }
     if (!is_collection_method(m)) return 0;
     int is_lst = (v->gkind && gk_is_list(v->gkind)) && !v->elem_str;
     /* La LISTA vince sull'array: un HASHSET (anche `OF INTEGER`) è dichiarato `gmb_list_t`,
@@ -10188,54 +10252,6 @@ static int try_emit_var_method(ctx_t* c, const char* recv, const char* m, gmb_ex
             sb_put(&c->out, ")");
         }
         return 1;
-    }
-    /* SPARSESET (21).HasItem(v): predicato di appartenenza sulla lista (parità
-     * CommonLib/PCode/VM-C). Prima non era gestito → C invalido
-     * (`gmb_val_index(list, ...)` su un gmb_list_t, CollectionsModern §12). */
-    if (v->coll_type_code == 21 && mtk == GMB_TOK_CollHasItem && n >= 1) {
-        sb_put(&c->out, "(gmb_double_t)gmb_list_contains(");
-        emit_var_ref(c, v);
-        sb_put(&c->out, ", ");
-        if (etype(c, a[0]) == TY_STR) {
-            sb_put(&c->out, "gmb_make_val_string(("); emit_expr(c, a[0]); sb_put(&c->out, ").data)");
-        } else {
-            sb_put(&c->out, "gmb_make_val_double((gmb_double_t)("); emit_expr(c, a[0]); sb_put(&c->out, "))");
-        }
-        sb_put(&c->out, ")");
-        return 1;
-    }
-    /* BITREE (10): il C99 lo rappresenta come lista dei valori sorgente; Query(idx) =
-     * somma prefissa [0..idx], QueryRange(a,b) = somma intervallo, Update(i,delta) = somma
-     * al valore i-esimo. Prima Query/Update non erano gestiti (C invalido,
-     * CollectionsModern §10). */
-    if (v->coll_type_code == 10 && n >= 1 && !is_dyn) {
-        if (mtk == GMB_TOK_Query || strcasecmp(m, "Query") == 0) {
-            sb_put(&c->out, "(gmb_double_t)gmb_list_sum_range(");
-            emit_var_ref(c, v);
-            sb_put(&c->out, ", 0, (gmb_int_t)("); emit_expr(c, a[0]); sb_put(&c->out, "))");
-            return 1;
-        }
-        if (mtk == GMB_TOK_QueryRange || strcasecmp(m, "QueryRange") == 0) {
-            if (n >= 2) {
-                sb_put(&c->out, "(gmb_double_t)gmb_list_sum_range(");
-                emit_var_ref(c, v);
-                sb_put(&c->out, ", (gmb_int_t)("); emit_expr(c, a[0]);
-                sb_put(&c->out, "), (gmb_int_t)("); emit_expr(c, a[1]); sb_put(&c->out, "))");
-                return 1;
-            }
-        }
-        if (mtk == GMB_TOK_Update || strcasecmp(m, "Update") == 0) {
-            if (n >= 2) {
-                sb_put(&c->out, "({ gmb_int_t __bi = (gmb_int_t)("); emit_expr(c, a[0]);
-                sb_put(&c->out, "); gmb_double_t __bd = (gmb_double_t)("); emit_expr(c, a[1]);
-                sb_put(&c->out, "); gmb_list_add_at(&");
-                emit_var_ref(c, v);
-                sb_put(&c->out, ", __bi, gmb_list_get(");
-                emit_var_ref(c, v);
-                sb_put(&c->out, ", __bi).v_double + __bd); (void)0; })");
-                return 1;
-            }
-        }
     }
     if (mtk == GMB_TOK_Join) {
         if (is_dyn) {

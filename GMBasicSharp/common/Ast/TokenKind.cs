@@ -2010,7 +2010,7 @@ public enum TokenKind
     UniqueCount,
     TTest, TTestPaired, TTestOneSample, StatsAnova, Chi2Test,
     FisherExact, ShapiroWilk, NormalTest, ZTest, KolmogorovSmirnov,
-    StatsPearsonR, StatsSpearmanR, StatsLinRegress, StatsCovariance, StatsRange, StatsMax, StatsMin,
+    StatsPearsonR, StatsSpearmanR, StatsLinRegress, StatsCovariance, StatsRange, StatsMax, StatsMin, StatsGammaSf,
     StatsChi2Contingency, StatsMannWhitney, StatsWilcoxon,
     StatsGammaPdf, StatsGammaCdf, StatsGammaPpf, StatsGammaIsf,
     StatsSkewTest, StatsKurtosisTest, StatsJarqueBera,

@@ -1114,6 +1114,7 @@ static const gmb_ns_lookup_row_t gmb_ns_lookup[] = {
     { "STATS", "GammaIsf", GMB_TOK_StatsGammaIsf },
     { "STATS", "GammaPdf", GMB_TOK_StatsGammaPdf },
     { "STATS", "GammaPpf", GMB_TOK_StatsGammaPpf },
+    { "STATS", "GammaSf", GMB_TOK_StatsGammaSf },
     { "STATS", "GeometricPmf", GMB_TOK_GeometricPmf },
     { "STATS", "HypergeometricPmf", GMB_TOK_HypergeometricPmf },
     { "STATS", "Iqr", GMB_TOK_StatsIqr },

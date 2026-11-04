@@ -8218,6 +8218,8 @@ public static double TextWidth(string s)
         return hi - lo;
     }
 
+    public static double GammaSf(double shape, double scale, double x) => 1.0 - CommonLib.Numerics.GammaCdf(shape, scale, x);
+
     public static double Covariance(double[] x, double[] y)
     {
         var n = Math.Min(x.Length, y.Length);

@@ -2049,6 +2049,7 @@ double gmb_iqr(const double* a, int n);
 /* --- scipy.stats.gamma (gmb_math.c) --- */
 double gmb_gamma_pdf(double shape, double scale, double x);
 double gmb_gamma_cdf(double shape, double scale, double x);
+double gmb_gamma_sf(double shape, double scale, double x);
 double gmb_gamma_ppf(double shape, double scale, double p);
 double gmb_gamma_isf(double shape, double scale, double p);
 /* --- scipy.signal P0 (gmb_filters.c) --- */
