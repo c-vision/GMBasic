@@ -690,7 +690,6 @@ int gmb_sdl_console_pump(gmb_sdl_console_t* c)
     SDL_GetWindowSize(win, &winW, &winH);
     int quit = 0; SDL_Event e;
     while (SDL_PollEvent(&e)) {
-        if (getenv("GMB_MOUSE_DBG")) { static int _nev=0; if (_nev<200){ _nev++; fprintf(stderr, "[ev] type=%d win=%u wid=%u\n", e.type, (e.type==SDL_MOUSEMOTION)?e.motion.windowID:(e.type==SDL_MOUSEBUTTONDOWN||e.type==SDL_MOUSEBUTTONUP)?e.button.windowID:e.window.windowID, (unsigned)wid); fflush(stderr);} }
         if (e.type == SDL_QUIT) { quit = 1; continue; }
         if (e.type == SDL_WINDOWEVENT && e.window.windowID == wid) {
             if (e.window.event == SDL_WINDOWEVENT_CLOSE) quit = 1;
@@ -727,11 +726,6 @@ int gmb_sdl_console_pump(gmb_sdl_console_t* c)
         /* Eventi in PIXEL nativi (verificato dai click reali: 1102/17=64 cella valida;
          * con *rs si uscirebbe dalla griglia). Mappatura DIRETTA, cella = evento/char. */
         int lx = ex, ly = ey;
-        unsigned ew = (e.type == SDL_MOUSEMOTION) ? e.motion.windowID : e.button.windowID;
-        if (getenv("GMB_MOUSE_DBG") && (e.type == SDL_MOUSEBUTTONDOWN || e.type == SDL_MOUSEBUTTONUP))
-            fprintf(stderr, "[pump] ev=%d win=%u want=%u px(%d,%d) cw=%d ch=%d -> cell(%d,%d)\n",
-                    e.type, ew, (unsigned)wid, ex, ey, c->char_width, c->char_height,
-                    lx / c->char_width, ly / c->char_height);
         if (e.type == SDL_MOUSEBUTTONDOWN && e.button.windowID == wid) {
             if (gmb_console_statusbar_click(c, lx / c->char_width, ly / c->char_height)) continue;
         }
