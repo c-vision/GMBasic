@@ -920,6 +920,8 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "MULTIVARIATE.Pca");
         r.Register(Backend.IL, "SPATIAL.PDIST");
         r.Register(Backend.IL, "STATS.PearsonR");
+        r.Register(Backend.IL, "STATS.KendallTau");
+        r.Register(Backend.IL, "STATS.FTest");
         r.Register(Backend.IL, "STATS.Covariance");
         r.Register(Backend.IL, "STATS.Range");
         r.Register(Backend.IL, "STATS.MAX");

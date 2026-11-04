@@ -422,6 +422,8 @@ public sealed partial class IlProgramCompiler
             case TokenKind.StatsMax: EmitStatsArrayCall(expr, RuntimeMethod(nameof(IlRuntime.AMax))); break;
             case TokenKind.StatsMin: EmitStatsArrayCall(expr, RuntimeMethod(nameof(IlRuntime.AMin))); break;
             case TokenKind.StatsSpearmanR: EmitAnalysisTwoArrayCall(expr, nameof(IlRuntime.SpearmanR)); break;
+            case TokenKind.StatsKendallTau: EmitAnalysisTwoArrayCall(expr, nameof(IlRuntime.KendallTau)); break;
+            case TokenKind.StatsFTest: EmitAnalysisTwoArrayCall(expr, nameof(IlRuntime.FTest)); break;
             case TokenKind.StatsLinRegress: EmitAnalysisTwoArrayCall(expr, nameof(IlRuntime.LinRegress)); break;
             case TokenKind.StatsMannWhitney: EmitAnalysisTwoArrayCall(expr, nameof(IlRuntime.MannWhitney)); break;
             case TokenKind.StatsWilcoxon: EmitAnalysisTwoArrayCall(expr, nameof(IlRuntime.Wilcoxon)); break;

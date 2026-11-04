@@ -1113,6 +1113,8 @@ static const gmb_ns_type_row_t gmb_ns_types[] = {
     { GMB_TOK_NormalTest, 0 },
     { GMB_TOK_ZTest, 0 },
     { GMB_TOK_KolmogorovSmirnov, 0 },
+    { GMB_TOK_StatsKendallTau, 0 },
+    { GMB_TOK_StatsFTest, 0 },
     { GMB_TOK_StatsPearsonR, 0 },
     { GMB_TOK_StatsSpearmanR, 0 },
     { GMB_TOK_StatsLinRegress, 0 },

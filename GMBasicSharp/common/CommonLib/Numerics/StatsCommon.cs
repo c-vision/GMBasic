@@ -64,6 +64,48 @@ public static partial class Numerics
         return PearsonR(rx, ry);
     }
 
+    public static StatisticalTestResult KendallTau(double[] x, double[] y)
+    {
+        var n = Math.Min(x.Length, y.Length);
+        if (n < 2) return new StatisticalTestResult(double.NaN, double.NaN, double.NaN);
+        int concordant = 0, discordant = 0, tiesX = 0, tiesY = 0;
+        for (var i = 0; i < n; i++)
+            for (var j = i + 1; j < n; j++)
+            {
+                var dx = x[j] - x[i];
+                var dy = y[j] - y[i];
+                var prod = dx * dy;
+                if (prod > 0) concordant++;
+                else if (prod < 0) discordant++;
+                if (dx == 0) tiesX++;
+                if (dy == 0) tiesY++;
+            }
+        var n0 = n * (n - 1) / 2;
+        var den = Math.Sqrt((double)(n0 - tiesX) * (n0 - tiesY));
+        var tau = den > 0 ? (concordant - discordant) / den : 0.0;
+        var variance = 2.0 * (2 * n + 5) / (9.0 * n * (n - 1));
+        var p = variance > 0 ? 2.0 * NormalCdf(0, 1, -Math.Abs(tau / Math.Sqrt(variance))) : double.NaN;
+        return new StatisticalTestResult(tau, p, double.NaN);
+    }
+
+    public static StatisticalTestResult FTest(double[] x, double[] y)
+    {
+        if (x.Length < 2 || y.Length < 2)
+            return new StatisticalTestResult(double.NaN, double.NaN, double.NaN);
+        var m1 = x.Average();
+        var m2 = y.Average();
+        var v1 = x.Sum(v => (v - m1) * (v - m1)) / (x.Length - 1);
+        var v2 = y.Sum(v => (v - m2) * (v - m2)) / (y.Length - 1);
+        if (v1 <= 0 || v2 <= 0)
+            return new StatisticalTestResult(double.NaN, double.NaN, double.NaN);
+        var f = v1 / v2;
+        var df1 = x.Length - 1d;
+        var df2 = y.Length - 1d;
+        var cdf = FCdf(df1, df2, f);
+        var p = 2.0 * Math.Min(cdf, 1.0 - cdf);
+        return new StatisticalTestResult(f, p, df1);
+    }
+
     private static double[] RankData(double[] data, int n)
     {
         var idx = Enumerable.Range(0, n).ToArray();

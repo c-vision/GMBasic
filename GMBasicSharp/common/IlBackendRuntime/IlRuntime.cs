@@ -8234,6 +8234,8 @@ public static double TextWidth(string s)
 
     public static Dictionary<string, object?> PearsonR(double[] x, double[] y) => HypothesisResult(CommonLib.Numerics.PearsonR(x, y));
     public static Dictionary<string, object?> SpearmanR(double[] x, double[] y) => HypothesisResult(CommonLib.Numerics.SpearmanR(x, y));
+    public static Dictionary<string, object?> KendallTau(double[] x, double[] y) => HypothesisResult(CommonLib.Numerics.KendallTau(x, y));
+    public static Dictionary<string, object?> FTest(double[] x, double[] y) => HypothesisResult(CommonLib.Numerics.FTest(x, y));
     public static Dictionary<string, object?> Chi2Con(double[][] table) => HypothesisResult(CommonLib.Numerics.Chi2Contingency(table));
     public static Dictionary<string, object?> MannWhitney(double[] x, double[] y) => HypothesisResult(CommonLib.Numerics.MannWhitneyU(x, y));
     public static Dictionary<string, object?> Wilcoxon(double[] x, double[] y) => HypothesisResult(CommonLib.Numerics.Wilcoxon(x, y));

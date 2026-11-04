@@ -1144,6 +1144,7 @@ procedure,STATS,FIsf,FIsf
 procedure,STATS,FPdf,FPdf
 procedure,STATS,FPpf,FPpf
 procedure,STATS,FSf,StatsFSf
+procedure,STATS,FTest,StatsFTest
 procedure,STATS,Fisher,FisherExact
 procedure,STATS,GammaCdf,StatsGammaCdf
 procedure,STATS,GammaIsf,StatsGammaIsf
@@ -1154,6 +1155,7 @@ procedure,STATS,GeometricPmf,GeometricPmf
 procedure,STATS,HypergeometricPmf,HypergeometricPmf
 procedure,STATS,Iqr,StatsIqr
 procedure,STATS,JarqueBera,StatsJarqueBera
+procedure,STATS,KendallTau,StatsKendallTau
 procedure,STATS,Ks,KolmogorovSmirnov
 procedure,STATS,Kurtosis,Kurtosis
 procedure,STATS,KurtosisTest,StatsKurtosisTest
