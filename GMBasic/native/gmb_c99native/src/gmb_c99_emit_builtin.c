@@ -4065,7 +4065,7 @@ static int mx_sinm(ctx_t* c, gmb_expr_t** a, int n) { return mx_one(c, a, n, "gm
 static int mx_cosm(ctx_t* c, gmb_expr_t** a, int n) { return mx_one(c, a, n, "gmb_matrix_cosm", 1); }
 static int mx_tanm(ctx_t* c, gmb_expr_t** a, int n) { return mx_one(c, a, n, "gmb_matrix_tanm", 1); }
 static int mx_signm(ctx_t* c, gmb_expr_t** a, int n) { return mx_one(c, a, n, "gmb_matrix_signm", 1); }
-/* MATRIX.FACTOR(decomp, name): estrae un fattore da una decomposizione (EIG/SCHUR/POLAR/…).
+/* LINALG.FACTOR(decomp, name): estrae un fattore da una decomposizione (EIG/SCHUR/POLAR/…).
  * Condivide GMB_TOK_Get con POOL.Get/SyncMap.Get: n==2 con 1° arg handle decomp. */
 static int mx_factor(ctx_t* c, gmb_expr_t** a, int n) {
     if (n != 2) return 0;
