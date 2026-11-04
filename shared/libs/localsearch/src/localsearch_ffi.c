@@ -33,7 +33,7 @@ static gor_ls_score ffx_ls_bridge(const int *state, int n, void *ctx)
     return s;
 }
 
-static int run_ls(ffx_ls_cb f, const i64 *initial, i64 n, i64 shape, i64 max_steps,
+static int run_ls(ffx_ls_cb f, i64 *initial, i64 n, i64 shape, i64 max_steps,
                   i64 starts, i64 acceptor, double *out)
 {
     gor_ls_config cfg;
@@ -60,6 +60,10 @@ static int run_ls(ffx_ls_cb f, const i64 *initial, i64 n, i64 shape, i64 max_ste
     res.best_state = best;
     r = gor_ls_solve(&cfg, init, &res);
     if (r == GOR_OK) {
+        /* Lo stato MIGLIORE torna al chiamante dentro `initial` (in/out): senza questo
+         * il risultato della ricerca era inutilizzabile (il buffer best restava interno
+         * e veniva liberato). Vedi localsearch.inc. */
+        for (i = 0; i < n; i++) initial[i] = (i64)res.best_state[i];
         out[0] = (double)res.best.hard;
         out[1] = (double)res.best.soft;
         out[2] = (double)res.steps;
@@ -69,12 +73,12 @@ static int run_ls(ffx_ls_cb f, const i64 *initial, i64 n, i64 shape, i64 max_ste
     return (r == GOR_OK) ? 1 : -1;
 }
 
-i64 ofx_ls_solve(ffx_ls_cb f, const i64 *initial, i64 n, i64 shape, i64 max_steps, double *out)
+i64 ofx_ls_solve(ffx_ls_cb f, i64 *initial, i64 n, i64 shape, i64 max_steps, double *out)
 {
     return run_ls(f, initial, n, shape, max_steps, 1, 0 /* hill climbing */, out);
 }
 
-i64 ofx_ls_solve_cfg(ffx_ls_cb f, const i64 *initial, i64 n, i64 shape, i64 max_steps,
+i64 ofx_ls_solve_cfg(ffx_ls_cb f, i64 *initial, i64 n, i64 shape, i64 max_steps,
                      i64 starts, i64 acceptor, double *out)
 {
     return run_ls(f, initial, n, shape, max_steps, starts, acceptor, out);
