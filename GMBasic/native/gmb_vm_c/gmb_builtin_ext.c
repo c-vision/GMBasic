@@ -350,7 +350,11 @@ static const gmb_bf_impl_t gmb_bf_ext[] = {
     { 455, gmb_bf_446 },
     { 449, gmb_bf_449 },
     { 450, gmb_bf_450 },
-    { 451, gmb_bf_450 },
+    /* 451 NON va qui: nel namespace BuiltInFunction è ISAMLOG (ISAM.LOG) ed è
+     * implementato dal core (voce 451 -> gmb_bf_451) — la ricerca del dispatch guarda
+     * prima il core, quindi una voce qui sarebbe morta e il gate la segnala come
+     * DUPLICATO. (451 in SysCalls è TUI_SPLITTER, ma passa da OP_SYSCALL, non da
+     * questa tabella: gmb_bf_450 non lo ha mai gestito.) */
     { 452, gmb_bf_450 },
     { 453, gmb_bf_450 },
     { 457, gmb_bf_450 },
