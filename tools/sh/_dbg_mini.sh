@@ -1,0 +1,466 @@
+#!/usr/bin/env bash
+# ── MUTEX di build: i comandi di build (cc/clang/cmake/make/dotnet) prendono un lock ──
+# esclusivo su mutex.txt SOLO per la durata del SINGOLO comando, poi lo rilasciano subito
+# (lo script puo proseguire a lungo senza tenere il lock). Scadenza 15 min con heartbeat:
+# un processo in hang non blocca le altre AI. Vedi tools/gmb_with_lock.sh e Knowledge/
+# Build-Mutex-Lock-AI.md.
+if [ -z "${GMB_BUILDBIN_ON:-}" ]; then
+  export GMB_BUILDBIN_ON=1
+  GMB_BUILDBIN="$(cd "$(dirname "$0")" && pwd)/buildbin"
+  [ -d "$GMB_BUILDBIN" ] && export PATH="$GMB_BUILDBIN:$PATH"
+fi
+
+# test_minitests_c99native — esegue ogni MiniTest/ con il compilatore nativo C99
+# (C99Native): lex→parse→gmb_c99_emit (driver gmbnative) → cc col runtime
+# reale → esecuzione. PASS = genera C + cc ok + run exit 0. Complementare al gate C99
+# (C99Native) e al test di parità IL/PCode/VMC.
+# Uso: tools/sh/test_minitests_c99native
+set -u
+ROOT="$(cd "$(dirname "$0")/../../GMBasic" && pwd)"; cd "$ROOT"
+# I TOOL vivono nella radice del MONOREPO (`tools/`), non più in GMBasic/tools.
+# NB: si ricava da ROOT (assoluto) e NON da `$0`: dopo il `cd` un `$0` relativo
+# (`tools/sh/…`) non è più risolvibile — succedeva e MONO restava vuoto.
+MONO="$(cd "$ROOT/.." && pwd)"
+# llmtoken.h (gmb_distill.c lo include) vive in LLMEnv/LLMToken (radice, non include/).
+LLMENV="${LLMENV:-$HOME/Documents/Projects/LLMEnv}"
+# Include LLMEnv (post-migrazione: header rinominati gmb_* -> llmengine_*/*): gli stessi -I del
+# gate C99 (tests/GMBASIC.Backend.C99.Tests). llmtoken.h sta nella RADICE di LLMToken.
+LLM_INC="-I$LLMENV/LLMToken -I$LLMENV/LLMJinja -I$LLMENV/LLMEngine/mlx -I$LLMENV/LLMCodec/include -I$LLMENV/LLMEngine/include -I$ROOT/gmbllm/include -I$ROOT/gmbllm/include/quant -I$ROOT/gmbllm/include/train -I$ROOT/gmbllm/include/lora -I$LLMENV/LLMEngine/plugin -I$LLMENV/LLMDesc -I$LLMENV/LLMEngine/Options -I$LLMENV/LLMEngine/moe/include"
+HOST_BUILD="$ROOT/native/gmb_compiler_c/build"
+# -I del driver nativo: stessa lista di CMake (gmb_compiler_c/CMakeLists.txt:42-47).
+# Sono TUTTI flag -I: una lista di path senza -I verrebbe passata come file di input al linker.
+INC_C="-I$ROOT/native/gmb_compiler_c/include -I$ROOT/native/gmb_compiler_c/frontend/include"
+INC_C="$INC_C -I$ROOT/native/gmb_bytecode/include -I$ROOT/native/gmb_c99native/include"
+INC_RT="-I$ROOT/native/gmb_runtime_c/include"
+INC_CHART="$ROOT/native/gmb_chart/include"
+DRV="$HOST_BUILD/gmbnative"
+# gmb_chart = motore chart autonomo (native/gmb_chart): compilato insieme al runtime.
+RT_SRCS="$(echo "$ROOT"/native/gmb_runtime_c/src/*.c) $(echo "$ROOT"/native/gmb_runtime_c/src/amos/*.c) $(echo "$ROOT"/native/gmb_chart/src/*.c)"
+# SPLIT core/AI (2026-11-02): l'implementazione del provider locale DECIDE dipende da LLMEnv
+# (llmtoken/llmjinja/engine) e vive nella dylib `gmb_runtime_ai`, NON nel core. Il glob sopra la
+# includerebbe → due definizioni di `gmb_ai_decide_local_run` e riferimenti LLMEnv non linkati.
+# Il core usa il forwarder del gateway, che carica la dylib a runtime.
+RT_SRCS="$(echo $RT_SRCS | tr ' ' '\n' | grep -v '/gmb_ai_decide_local.c$' | tr '\n' ' ')"
+# Engine ASR (LLMEnv/LLMEngine/asr): gmb_asr_cmd.c (in gmb_runtime_c/src) usa i simboli gmb_asr_*,
+# le cui implementazioni NON sono più in gmb_runtime_c/src (refactor ASR) → senza, il link fallisce.
+RT_SRCS="$RT_SRCS $(echo "$LLMENV"/LLMEngine/asr/src/*.c)"
+INC_RT="$INC_RT -I$LLMENV/LLMEngine/asr/include"
+# MODEL I/O / gmoe converter (native/gmb_compiler_c/src/model/*.c): gmb_runtime_c/src/gmb_model_io.c
+# li richiama (gmb_gmoe_convert/gmb_model_quantize_ex/...). Il gate C99 li compila così (rtSrcs += model).
+RT_SRCS="$RT_SRCS $(echo "$ROOT"/native/gmb_compiler_c/src/model/*.c)"
+# CODEC: il CORE è la static lib; le IMPLEMENTAZIONI sono plugin DYLIB (come il target gmb_runtime).
+CODEC_DIR="$LLMENV/LLMEngine/mlx/build-gmbasic"
+CODEC_INC="-I$LLMENV/LLMCodec/include -I$LLMENV/LLMEngine/moe/include -I$ROOT/native/gmb_compiler_c/include"
+CODEC_LIB="$CODEC_DIR/llmcodec_mlx_build/libllmcodec.a -L$CODEC_DIR -lllmcodec_ggml -lllmcodec_mlx_affine -lllmcodec_fp8 -Wl,-rpath,$CODEC_DIR"
+# gmb_moe_runtime (prebuilt, come il gate): gmb_gmoe_convert/gmb_model_io usano gmb_moe_arch/discover/
+# model/gguf_* che non stanno in gmb_runtime_c/src. Fix 2026-09-24.
+MOE_LIB="$LLMENV/LLMEngine/mlx/build-gmbasic/llmengine_moe_mlx_build/libllmengine_moe.a"
+# CUA/browser: i backend C usano gmb_agent_runtime (C) — vedi CUA-Universal-Action-Runtime-Guida.
+# gmb_agent_runtime dipende dal motore Jinja C (gmb_chat_template.c -> gmb_jinja): va linkato.
+AGENT_SRCS="$(echo "$ROOT"/native/gmb_agent_runtime/*.c) $LLMENV/LLMJinja/llmjinja.c $LLMENV/LLMJinja/llmjinja_builtins.c"
+FRAMEWORKS=""
+if [ "$(uname)" = "Darwin" ]; then
+  FRAMEWORKS="-framework CoreGraphics -framework ApplicationServices -framework ImageIO -framework CoreServices -framework AppKit"
+fi
+
+# Il driver va RICOMPILATO se manca OPPURE se è più vecchio della libreria del compilatore
+# o del proprio sorgente. Prima si ricompilava SOLO se il binario mancava: dopo ogni modifica
+# all'emitter/parser nativo il runner riusava il binario stale in silenzio (lezione
+# erase_alias 2026-09-14, ripetuta nella sessione rag-eval — entrambe le volte sintomi
+# "simbolo non trovato"/emissioni vecchie con libreria fresca).
+# Il driver sta in native/gmb_c99native/driver/ (NON in gmb_compiler_c/driver/, path obsoleto:
+# qui il rebuild falliva con "no such file or directory" e il tool non verificava NULLA).
+DRIVER_SRC="$ROOT/native/gmb_c99native/driver/gmb_c99native_driver.c"
+
+# ── Anti-stale delle STATIC LIB precompilate, linkate BY-PATH ──────────────────
+# libgmb_compiler_c.a (frontend + gmb_bytecode + gmb_c99native: lexer/parser/emitter) e
+# libgmb_db.a non hanno dipendenza di build verso il driver: si linkano per percorso. Se i
+# sorgenti cambiano senza ricostruire la .a, il driver usa il codice VECCHIO in silenzio.
+# Caso reale 2026-10-26: modificato `gmb_c99native/src/gmb_c99_emit.c` (RUN -> gmb_shell_run),
+# il MiniTest continuava a dare output vuoto ANCHE dopo aver ricompilato il driver, perche'
+# libgmb_compiler_c.a era vecchia. Costo quando e' tutto fresco: solo la scansione dei mtime.
+newest_src_mtime() {
+  # mtime piu' recente tra sorgenti/header/CMake delle directory date (esclusi build*/tests/_deps)
+  find "$@" -type f \( -name '*.c' -o -name '*.h' -o -name '*.txt' -o -name '*.cmake' \) \
+       -not -path '*/build*' -not -path '*/tests/*' -not -path '*/_deps/*' 2>/dev/null \
+    | while IFS= read -r s; do stat -f '%m' "$s" 2>/dev/null || echo 0; done | sort -rn | head -1
+}
+# Policy del rebuild ("hard" di default):
+#   hard → se il rebuild fallisce ci si FERMA. È la scelta giusta per le lib che cambiano la
+#          semantica di OGNI test (compiler/emitter, db).
+#   soft → se il rebuild fallisce si avvisa FORTE e si prosegue con la lib esistente: le lib LLM
+#          vivono anche in LLMEnv (repo separato, editato da altre sessioni) e un suo stato
+#          intermedio rotto non deve bloccare i MiniTest che con le LLM non c'entrano nulla.
+ENSURE_POLICY=hard
+ensure_static_lib() {
+  # ensure_static_lib <lib.a> <build dir> <target cmake> <dir sorgenti...>
+  local lib="$1" build="$2" target="$3"; shift 3
+  [ -d "$build" ] || return 0
+  local newest; newest="$(newest_src_mtime "$@")"
+  [ -n "$newest" ] || newest=0
+  local lib_mtime=0
+  [ -f "$lib" ] && lib_mtime="$(stat -f '%m' "$lib" 2>/dev/null || echo 0)"
+  # nessun sorgente trovato (es. LLMEnv assente) => non si forza nulla
+  if [ -f "$lib" ] && [ "$newest" -le "$lib_mtime" ]; then return 0; fi
+  echo "build $target (static lib stale o mancante)..."
+  local log; log="$(mktemp "${TMPDIR:-/tmp}/gmb_c99native_${target}.XXXXXX")"
+  if ! cmake --build "$build" --target "$target" -j 4 >"$log" 2>&1; then
+    if [ "$ENSURE_POLICY" = "soft" ] && [ -f "$lib" ]; then
+      echo "!! build $target FALLITA: uso la lib esistente, che può essere STALE" >&2
+      echo "!!   → i risultati di questo run che toccano le LLM NON sono affidabili" >&2
+      tail -5 "$log" >&2
+      rm -f "$log"
+      return 0
+    fi
+    echo "!! build $target FALLITA — mi fermo: una lib vecchia produce falsi negativi" >&2
+    tail -15 "$log" >&2
+    rm -f "$log"
+    exit 1
+  fi
+  rm -f "$log"
+}
+ensure_static_lib "$HOST_BUILD/libgmb_compiler_c.a" "$HOST_BUILD" gmb_compiler_c \
+  "$ROOT/native/gmb_compiler_c" "$ROOT/native/gmb_c99native" "$ROOT/native/gmb_bytecode"
+ensure_static_lib "$ROOT/native/gmb_db_c/build/libgmb_db.a" "$ROOT/native/gmb_db_c/build" gmb_db \
+  "$ROOT/native/gmb_db_c"
+
+# Lib LLM precompilate, stesso problema (linkate by-path in LINK_IN): gmbllm è PUL e vive nel
+# repo; llmengine_plugin/llmdesc vivono in LLMEnv. Una .a vecchia falsa i test LLM (o fa fallire
+# il link con simboli che non esistono più). Policy soft: vedi commento sopra.
+ENSURE_POLICY=soft
+ensure_static_lib "$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm.a" \
+  "$ROOT/native/gmb_runtime_c/build" gmbllm "$ROOT/gmbllm"
+ensure_static_lib "$ROOT/native/gmb_runtime_c/build/llmengine_plugin_build/libllmengine_plugin.a" \
+  "$ROOT/native/gmb_runtime_c/build" llmengine_plugin "$LLMENV/LLMEngine/plugin"
+ensure_static_lib "$ROOT/native/gmb_runtime_c/build/llmdesc_build/libllmdesc.a" \
+  "$ROOT/native/gmb_runtime_c/build" llmdesc "$LLMENV/LLMDesc"
+ENSURE_POLICY=hard
+
+if [ ! -x "$DRV" ] || [ "$DRV" -ot "$HOST_BUILD/libgmb_compiler_c.a" ] || \
+   [ "$DRV" -ot "$DRIVER_SRC" ]; then
+  echo "build driver (stale o mancante)..."
+  cc "$DRIVER_SRC" $INC_C $INC_RT "$HOST_BUILD/libgmb_compiler_c.a" -o "$DRV" || exit 1
+fi
+
+# incExtra/ext (stesso setup del gate C99)
+# Terze parti: SOLO dalla CACHE del RID (`gmb install --runtime-only` / `--dev`). Nessun path
+# del builder: renderebbe gli eseguibili dipendenti da una cartella che esiste solo qui.
+# L'indice TSV (`<bin>.libs.txt`) è lo STESSO di `gmb_c99native_run.sh` (una sola implementazione):
+# serve al download on-demand delle lib che non stanno più nel repo (le nostre FFI, release `ffi-v1`).
+. "$MONO/tools/sh/libs_index_lib.sh"
+RID="$(li_rid)"
+li_init
+LIBS_CACHE="$HOME/.gmbasic/libs/$RID"
+ZSTD_INC="$LIBS_CACHE/include"; ZSTD_LIB="-L$LIBS_CACHE -lzstd"
+EXT=" -lcurl -lz -lbz2 -lsqlite3 $ZSTD_LIB"
+if [ -f "$LIBS_CACHE/libbrotlidec.dylib" ]; then EXT="$EXT -L$LIBS_CACHE -lbrotlidec -lbrotlienc"; fi
+if [ -f "$LIBS_CACHE/libpcre2-8.dylib" ]; then EXT="$EXT -L$LIBS_CACHE -lpcre2-8"; fi
+INC_EXTRA="-I$ROOT/native/gmb_runtime_c/src"
+if [ -d "$LIBS_CACHE/include/SDL2" ]; then INC_EXTRA="$INC_EXTRA -I$LIBS_CACHE/include"; EXT="$EXT -L$LIBS_CACHE -lSDL2 -lSDL2_ttf"; fi
+if [ -f "$LIBS_CACHE/libcrypto.dylib" ]; then EXT="$EXT -L$LIBS_CACHE -lcrypto -lssl -DHAVE_OPENSSL"; INC_EXTRA="$INC_EXTRA -I$LIBS_CACHE/include"; fi
+
+# ── broker pub/sub: lo avvia e lo ferma il GATE (vedi tools/sh/msg_broker.sh) ──────────────
+# I MiniTest tcp aprono un broker esterno: senza, falliscono con "timeout" per un prerequisito
+# che non è il codice in prova. Le porte si leggono dai `tcp://` loopback dei file selezionati.
+BROKER_STARTED=()
+broker_cleanup() {
+  local p
+  for p in ${BROKER_STARTED[@]+"${BROKER_STARTED[@]}"}; do
+    "$MONO/tools/sh/msg_broker.sh" release "$p" >/dev/null 2>&1
+  done
+}
+
+WORK="$(mktemp -d /tmp/minitests_c99native.XXXXXX)"
+trap 'broker_cleanup' EXIT
+pass=0; fail=0; skip=0
+# Il runtime C e' compilato UNA volta per invocazione in una static library, poi ogni
+# MiniTest linka solo il proprio out.c (prima il runtime veniva ricompilato per ogni test).
+# ── Cache della static library del runtime ────────────────────────────────────────────────
+# Prima il runtime (≈60 sorgenti C) veniva ricompilato a OGNI invocazione: con un sample alla
+# volta significava minuti per test. Ora la libreria è in una cache in /tmp, invalidata SOLO se
+# cambia un sorgente o gli header (hash di mtime+percorso). Il flag GMB_RT_REBUILD=1 la forza.
+RT_CACHE_DIR="${TMPDIR:-/tmp}/gmb_c99native_rt_cache"
+RT_CACHE="$RT_CACHE_DIR/librt.a"
+RT_STAMP="$RT_CACHE_DIR/src.stamp"
+# Gli HEADER contano: prima la cache era invalidata solo dai .c, quindi una modifica a un header
+# (es. gmb_runtime.h, dove vive ogni prototipo gmb_*) lasciava in cache un runtime compilato con
+# le vecchie dichiarazioni → simboli/ABI stantii in silenzio. Sono le -I usate qui sotto.
+# NB: `native/gmb_tokenizer_bpe` NON esiste più (tokenizer in LLMEnv/LLMToken, già in LLM_INC):
+# tenerlo qui non copriva nulla e lasciava fuori dallo STAMP gli header del tokenizer.
+RT_HDR_DIRS="$ROOT/native/gmb_runtime_c/include $ROOT/native/gmb_runtime_c/src $ROOT/native/gmb_chart/include $ROOT/native/gmb_agent_runtime $ROOT/native/gmb_doc_c/include $ROOT/native/gmb_db_c/include $ROOT/native/gmb_torch/include $LLMENV/LLMToken"
+RT_HDRS="$(find $RT_HDR_DIRS -type f -name '*.h' 2>/dev/null | tr '\n' ' ')"
+# STAMP = HASH DEL CONTENUTO (non mtime): una cache basata sui timestamp può servire codice che
+# nei sorgenti non esiste più — caso reale 2026-10-28: una stampa di debug `[GFX-LOAD] …`
+# (simbolo `gmb_graphics_trace_load`) rimasta in un oggetto in cache mentre nei sorgenti era già
+# stata rimossa → ogni MiniTest C99Native stampava quella traccia, invisibile con `grep` sul codice.
+# Con l'hash del contenuto, qualunque modifica (anche un revert nello stesso secondo) invalida la cache.
+STAMP="$( ( for s in $RT_SRCS $RT_HDRS; do printf '%s\n' "$s"; shasum -a 1 "$s" 2>/dev/null | cut -d' ' -f1; done ) | shasum | cut -c1-16)"
+mkdir -p "$RT_CACHE_DIR"
+if [ "${GMB_RT_REBUILD:-}" != "1" ] && [ -f "$RT_CACHE" ] && [ -f "$RT_STAMP" ] && [ "$(cat "$RT_STAMP")" = "$STAMP" ]; then
+  echo "runtime C: cache valida ($RT_CACHE)"
+  RT_LIB="$RT_CACHE"
+else
+  echo "runtime C: compilo ($(echo "$RT_SRCS" | wc -w | tr -d ' ') sorgenti)..."
+  RT_O=0; OBJS=""
+  for s in $RT_SRCS; do
+    RT_O=$((RT_O+1))
+    cc -c "$s" -o "$WORK/rt_$RT_O.o" $INC_RT -I"$INC_CHART" -I"$ROOT/native/gmb_runtime_c/build" -I"$ROOT/native/gmb_agent_runtime" -I"$ROOT/native/gmb_doc_c/include" -I"$ROOT/native/gmb_db_c/include" -I"$ROOT/native/gmb_torch/include" $LLM_INC -I"$ZSTD_INC" $CODEC_INC $INC_EXTRA -O2 -ffunction-sections -fdata-sections -w -ffp-contract=off -DHAVE_OPENSSL -DGMB_PARQUET_HAVE_ZSTD || exit 1
+    OBJS="$OBJS $WORK/rt_$RT_O.o"
+  done
+  ar rcs "$RT_CACHE.tmp" $OBJS && mv "$RT_CACHE.tmp" "$RT_CACHE"
+  echo "$STAMP" > "$RT_STAMP"
+  RT_LIB="$RT_CACHE"
+fi
+# I MiniTest cambiano posto fra i due repository: nella radice di GMBasic in quello originale,
+# in `shared/minitests` nel monorepo (fratello di `GMBasic/`). Si prende il primo che esiste,
+# così lo STESSO script vale in entrambi senza flag. GMB_MINI_ROOT forza una radice diversa.
+MINI="${GMB_MINI_ROOT:-}"
+if [ -z "$MINI" ]; then
+  for cand in "$ROOT/MiniTests" "$ROOT/../shared/minitests"; do
+    [ -d "$cand" ] && { MINI="$(cd "$cand" && pwd)"; break; }
+  done
+fi
+[ -n "$MINI" ] || {
+  echo "MiniTest non trovati: attesi in $ROOT/MiniTests o $ROOT/../shared/minitests (o in GMB_MINI_ROOT)"; exit 1;
+}
+echo "MiniTest: $MINI"
+# Rumore diagnostico del motore MLX: prefissi in UNA fonte di verità (`tests/engine_noise_prefixes.txt`
+# nel repo originale, `GMBasicSharp/tests/` nel monorepo — la stessa lista dell'xUnit).
+NOISE_FILE="${GMB_NOISE_FILE:-}"
+if [ -z "$NOISE_FILE" ]; then
+  for cand in "$ROOT/tests/engine_noise_prefixes.txt" "$ROOT/../GMBasicSharp/tests/engine_noise_prefixes.txt"; do
+    [ -f "$cand" ] && { NOISE_FILE="$cand"; break; }
+  done
+fi
+[ -n "$NOISE_FILE" ] && [ -f "$NOISE_FILE" ] || echo "attenzione: engine_noise_prefixes.txt assente, nessun filtro del rumore del motore" >&2
+
+# Filtro ambientale: come l'harness xUnit, GMB_MINI_ONLY accetta UNA o PIÙ sottostringhe
+# separate da virgola (match ANY). Prima era confrontato con la variabile INTERA: con
+# GMB_MINI_ONLY="a.bas,b.bas" nessun file corrispondeva, la gamba non eseguiva NULLA e
+# stampava `PASS=0 FAIL=0` con exit 0 — un FALSO VERDE (le altre tre gambe erano passate),
+# osservato il 2026-10-29 lanciando due file in una sola invocazione.
+ONLY_NEEDLES=()
+if [ -n "${GMB_MINI_ONLY:-}" ]; then
+  IFS=',' read -r -a _raw_needles <<< "$GMB_MINI_ONLY"
+  for _n in "${_raw_needles[@]}"; do
+    _n="${_n#"${_n%%[![:space:]]*}"}"; _n="${_n%"${_n##*[![:space:]]}"}"
+    [ -n "$_n" ] && ONLY_NEEDLES+=("$_n")
+  done
+fi
+ONLY_MATCHED=0
+
+# Broker delle porte richieste dai file selezionati (tutti, se non c'è filtro).
+BROKER_SH="$MONO/tools/sh/msg_broker.sh"
+if [ -x "$BROKER_SH" ]; then
+  if [ ${#ONLY_NEEDLES[@]} -gt 0 ]; then
+    _bports="$("$BROKER_SH" ports "${ONLY_NEEDLES[@]}" 2>/dev/null)"
+  else
+    _bports="$("$BROKER_SH" ports 2>/dev/null)"
+  fi
+  for _bp in $_bports; do
+    _bres="$("$BROKER_SH" ensure "$_bp" 2>/dev/null)" || _bres=failed
+    case "$_bres" in
+      started) BROKER_STARTED+=("$_bp"); echo "broker pub/sub avviato dal gate su :$_bp" ;;
+      already) echo "broker pub/sub già attivo su :$_bp (lo lascio a chi l'ha avviato)" ;;
+      *)       echo "attenzione: broker non avviabile su :$_bp" >&2 ;;
+    esac
+  done
+fi
+
+for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
+  # Filtro (lista di sottostringhe, match ANY): conta anche i file poi saltati per TAG, così
+  # un filtro che punta a un interattivo/heavy resta legittimo e non diventa "filtro errato".
+  if [ ${#ONLY_NEEDLES[@]} -gt 0 ]; then
+    _hit=0
+    for _n in "${ONLY_NEEDLES[@]}"; do [[ "$f" == *"$_n"* ]] && { _hit=1; break; }; done
+    [ "$_hit" = 1 ] || continue
+    ONLY_MATCHED=$((ONLY_MATCHED+1))
+  fi
+  # INTERATTIVI (marker header `' TAG: interactive`): esclusi di default; inclusi con GMB_RUN_INTERACTIVE=1.
+  if [ "${GMB_RUN_INTERACTIVE:-0}" != "1" ] && grep -q "^' TAG: interactive" "$f" 2>/dev/null; then skip=$((skip+1)); continue; fi
+  # HEAVY (marker header `' TAG: heavy`): richiede modello reale + training; escluso di default.
+  if [ "${GMB_RUN_HEAVY:-0}" != "1" ] && grep -q "^' TAG: heavy" "$f" 2>/dev/null; then skip=$((skip+1)); continue; fi
+  [ -f "$f" ] || continue
+  name="${f#$MINI/}"
+  if ! "$DRV" "$f" "$WORK/out.c" --no-exe >/dev/null 2>"$WORK/derr.txt"; then
+    # MiniTest NEGATIVO di compilazione (`' EXPECT: ERROR: ...`): il driver DEVE rifiutare il sorgente. Il testo esatto del
+    # messaggio differisce fra parser C# e parser C, quindi qui conta che l'errore ci sia (e che il driver non vada in HANG).
+    if grep -m1 -q "^' EXPECT: ERROR:" "$f" 2>/dev/null; then
+      echo "PASS $name :: (errore di compilazione atteso) $(head -1 "$WORK/derr.txt" | head -c 100)"; pass=$((pass+1)); continue
+    fi
+    # DIPENDENZA ESTERNA ASSENTE, dichiarata nel file (`' TAG: unsupported-c99native`): i test
+    # che fanno `REQUIRE "<pacchetto>"` non sono verificabili senza il pacchetto installato.
+    # SKIP DICHIARATO (contato a parte), NON un rosso: un pacchetto assente non è un difetto
+    # del backend. Il marker da solo non basta: serve ANCHE l'errore "non trovato" del driver,
+    # così un fallimento diverso resta un FAIL.
+    if grep -q "^' TAG: unsupported-c99native" "$f" 2>/dev/null && grep -q "non trovato" "$WORK/derr.txt"; then
+      echo "SKIP $name (dipendenza esterna assente: $(head -1 "$WORK/derr.txt" | head -c 90))"; skip=$((skip+1)); continue
+    fi
+    echo "FAIL $name (driver: $(head -1 "$WORK/derr.txt"))"; fail=$((fail+1)); continue
+  fi
+  # Solo i test CUA/browser/computer/agent_loop necessitano di gmb_agent_runtime: lo si linka
+  # solo se il C generato referenzia quei simboli (evita ricompilare agent_runtime per tutti).
+  # F2 multimodale (2026-09-11): AI.DOCEXTRACT chiama gmb_llm_complete -> gmb_agent_ask ->
+  # gmb_brain_ask_sync (definito in gmb_agent_runtime/gmb_agent_loop.c): senza questi
+  # sorgenti il link fallisce.
+  AGENT=""
+  # gmb_agent_run_named (AI.AGENTRUN/AGENTRUNGRAPH/AGENTRUNRAG) vive in gmb_agent_runtime
+  # (gmb_agent_loop.c) ma il C GENERATO lo nomina senza 'gmb_agent_loop' → senza questa voce
+  # il link fallisce con 'call to undeclared function'.
+  if grep -qE 'gmb_cua_|gmb_browser_|gmb_computer_|gmb_ax_|gmb_agent_loop|gmb_agent_run_named|tool_search|gmb_cdp_|gmb_desktop_|screenshot|llm_|gmb_docextract_json' "$WORK/out.c" 2>/dev/null; then
+    AGENT="$AGENT_SRCS"
+  fi
+  # B2: AI VERIFY COMPILE nel mondo C → serve il compilatore C (gmb_compile_bas_file).
+  COMPILER=""
+  # gmb_observe_test (AI OBSERVE TEST) e gmb_verify_require usano gmb_compile_bas_file
+  # come gmb_verify_run: senza libgmb_compiler_c.a il link fallisce con
+  # "undefined _gmb_compile_bas_file, referenced from _gmb_observe_test".
+  if grep -qE 'gmb_verify_run|gmb_verify_require|gmb_observe_test' "$WORK/out.c" 2>/dev/null; then
+    COMPILER="$ROOT/native/gmb_compiler_c/build/libgmb_compiler_c.a"
+  fi
+  # DB: il C generato per gli statement/funzioni DBF-ISAM usa il runtime Commercial
+  # (native/gmb_db_c + libgmb_db): include e libreria vanno aggiunti qui (i sample DB
+  # fallivano con "call to undeclared function gmb_db_dbf_*").
+  DB_LIB="$ROOT/native/gmb_db_c/build/libgmb_db.a"
+  DB_INC="-I$ROOT/native/gmb_db_c/include -I$ROOT/native/gmb_torch/include -I$ROOT/native/gmb_doc_c/include"
+  # F2 multimodale (2026-09-11): AI.DOCFIELDS/DOCEXTRACT emettono gmb_docfields_json/
+  # gmb_docextract_json che chiamano gmb_doc_extract (gmb_doc_c, fuori da librt.a) —
+  # sorgenti compilati solo se referenziati (stesso pattern del blocco AGENT sopra).
+  DOC_SRCS=""
+  # gmb_agent_ask_file (AI.AGENTASKFILE) vive in librt.a ma CHIAMA gmb_doc_extract
+  # (gmb_doc_c) per i PDF: senza i sorgenti doc il link fallisce con un simbolo mancante
+  # che punta a gmb_agent_ask_file. Anche questo caso va coperto dalla condizione.
+  if grep -qE 'gmb_doc_|gmb_docfields_json|gmb_docextract_json|gmb_agent_ask_file' "$WORK/out.c" 2>/dev/null; then
+    DOC_SRCS="$ROOT/native/gmb_doc_c/src/gmb_doc.c $ROOT/native/gmb_doc_c/src/gmb_doc_pdf.c $ROOT/native/gmb_doc_c/src/gmb_doc_ocr.c"
+  fi
+  # TORCH: il loader C (dlopen dell'host ML) NON sta in librt.a — lo script diretto
+  # (gmb_c99native_run.sh) lo compila insieme al programma. Senza questo blocco ogni
+  # MiniTest TORCH.* falliva al link con `_gmb_ml_tensor_*` indefiniti (relu: il C emesso
+  # era corretto, mancava solo gmb_torch.o). Condizionale: chi non usa TORCH non lo paga.
+  TORCH_SRCS=""
+  if grep -q 'gmb_ml_' "$WORK/out.c" 2>/dev/null; then
+    TORCH_SRCS="$ROOT/native/gmb_torch/src/gmb_torch.c"
+    [ -f "$ROOT/native/gmb_torch/src/gmb_torch_str.c" ] && TORCH_SRCS="$TORCH_SRCS $ROOT/native/gmb_torch/src/gmb_torch_str.c"
+  fi
+  # MODEL I/O + plugin/model_desc + tokenizer: `gmb_llm_model_convert` (e il resto del namespace
+  # LLM) vivono nel progetto separato gmb_model_io, che il C99Native deve linkare
+  # (il C generato per `LLM MODEL CONVERT` li chiama). Prebuilt come db/moe/codec.
+  MIO="$ROOT/native/gmb_runtime_c/build/gmbllm_build/libgmbllm.a"
+  PLG="$ROOT/native/gmb_runtime_c/build/llmengine_plugin_build/libllmengine_plugin.a"
+  MDS="$ROOT/native/gmb_runtime_c/build/llmdesc_build/libllmdesc.a"
+  TOK="$LLMENV/build/dist/osx-arm64/libllmtoken.dylib"
+  # Input e flag di link CONDIVISI fra l'eseguibile e la libreria condivisa: la lista era
+  # duplicata (due copie da tenere allineate) e la gamba LIBRARY linkava per forza un binario.
+  # Array (non stringa) perché il path di rpath può contenere spazi e perché $AGENT/$DOC_SRCS
+  # sono già liste: nello stringone i confini dei token dipendevano dallo split implicito.
+  LINK_IN=( "$RT_LIB" $AGENT $COMPILER "$DB_LIB" "$MOE_LIB" "$MIO" "$PLG" "$MDS" $DOC_SRCS $TORCH_SRCS )
+  LINK_FLAGS=( $INC_RT -I"$ROOT/native/gmb_agent_runtime" -I"$LLMENV/LLMJinja" -I"$LLMENV/LLMEngine/mlx"
+    -I"$ROOT/native/gmb_compiler_c/include" $CODEC_INC $DB_INC $LLM_INC $INC_EXTRA $FRAMEWORKS
+    -lm -w -ffp-contract=off -Wl,-dead_strip $CODEC_LIB "$TOK" -Wl,-rpath,"$(dirname "$TOK")"
+    -lcompression -lz $EXT )
+  # LIBRARY (marker header `' TAG: library`): il prodotto e' una LIBRERIA condivisa, e per
+  # contratto NON ha entry point (Guide/utente/LIBRARY-gmblib-Guide.md §1). Linkare `-o bin`
+  # falliva con `undefined _main` su un file che, per l'ABI, era corretto: il test non poteva
+  # passare su NESSUN backend-eseguibile. Il verdetto giusto e' che la dylib compili E
+  # esporti l'ABI documentata: `<lib>_init`/`<lib>_fini` (+ ctor/dtor) e `<lib>_<Proc>` per
+  # ogni PUBLIC SUB/FUNCTION.
+  if grep -q "^' TAG: library" "$f" 2>/dev/null; then
+    if ! cc "$WORK/out.c" "${LINK_IN[@]}" "${LINK_FLAGS[@]}" -shared -fPIC -o "$WORK/lib.dylib" 2>"$WORK/ccerr.txt"; then
+      echo "FAIL $name (cc -shared: $(tail -3 "$WORK/ccerr.txt" | tr '\n' ' '))"; fail=$((fail+1)); continue
+    fi
+    lib="$(awk 'toupper($1)=="LIBRARY"{n=$2; gsub(/\"/,"",n); print n; exit}' "$f")"
+    [ -n "$lib" ] || { echo "FAIL $name (ABI: nessun nome dopo LIBRARY)"; fail=$((fail+1)); continue; }
+    procs="$(awk 'toupper($1)=="PUBLIC" && (toupper($2)=="FUNCTION" || toupper($2)=="SUB"){n=$3; sub(/\(.*/,"",n); print n}' "$f")"
+    SYMS="$(nm -gU "$WORK/lib.dylib" 2>/dev/null | awk '{print $NF}')"
+    missing=""
+    for want in "_${lib}_init" "_${lib}_fini" $(for p in $procs; do echo "_${lib}_$p"; done); do
+      printf '%s\n' "$SYMS" | grep -qx "$want" || missing="$missing $want"
+    done
+    if [ -n "$missing" ]; then
+      echo "FAIL $name (ABI: simboli non esportati:$missing)"; fail=$((fail+1)); continue
+    fi
+    if printf '%s\n' "$SYMS" | grep -qx "_main"; then
+      echo "FAIL $name (ABI: una LIBRARY non deve avere main)"; fail=$((fail+1)); continue
+    fi
+    echo "PASS $name :: .gmblib '$lib' → $(echo $procs | wc -w | tr -d ' ') export ($(for p in $procs; do printf '%s ' "${lib}_$p"; done))"
+    pass=$((pass+1)); continue
+  fi
+  if ! cc "$WORK/out.c" "${LINK_IN[@]}" "${LINK_FLAGS[@]}" -o "$WORK/bin" 2>"$WORK/ccerr.txt"; then
+    echo "FAIL $name (cc: $(tail -3 "$WORK/ccerr.txt" | tr '\n' ' '))"; fail=$((fail+1)); continue
+  fi
+  # Il motore MLX (dlopen in LLM QUALITY/REGISTRY MEASURE) e' raggiungibile via loader path: senza,
+  # le gambe C sono standalone e la PPL reale darebbe `ppl=na` (divergenza vs IL). I log engine
+  # restano su stderr e vengono filtrati sotto, come gia' `LLM QUALITY:`.
+  # `<bin>.libs.txt` accanto all'eseguibile: le lib dell'indice da cui dipende + le FFI dichiarate
+  # (`DECLARE … LIB`). Il runtime C lo legge se una lib manca e la scarica (sha verificato).
+  emit_exe_libs "$WORK/bin" "$WORK/bin.libs.txt" "$WORK/out.c" 2>/dev/null || true
+  if ! (cd "$(dirname "$f")" && DYLD_LIBRARY_PATH="$ROOT/build/libs/$RID:$HOME/.gmbasic/libs/$RID${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}" "$WORK/bin" >"$WORK/out.txt" 2>&1); then
+    # TEST DI ERRORE ATTESO (marker header `' TAG: expected-error`): l'EXPECT descrive il
+    # messaggio che DEVE comparire. Serve ai MiniTest che verificano un errore esplicito
+    # (es. AI.DISCOVER su endpoint irraggiungibile): prima erano FAIL solo per l'exit != 0.
+    # PASS solo con il messaggio giusto: un errore diverso resta un FAIL.
+    if grep -q "^' TAG: expected-error" "$f" 2>/dev/null; then
+      exp_e="$(grep -m1 "^' EXPECT: " "$f" | sed "s/^' EXPECT: //" | sed -e 's/[[:space:]]*$//' -e 's/^ERROR: *//')"
+      norm_e="$(sed -E -e 's/^.*\[GMBASIC\] ERROR [0-9]+: *//' -e 's/ *\(line [0-9]+\)[[:space:]]*$//' "$WORK/out.txt" | grep -v '^[[:space:]]*$' | head -1)"
+      if [ -n "$exp_e" ] && [ -n "$norm_e" ] && [ "$norm_e" = "$exp_e" ]; then
+        echo "PASS $name :: $norm_e"; pass=$((pass+1)); continue
+      fi
+      echo "FAIL $name (expected-error: messaggio diverso da EXPECT)"
+      echo "     EXPECT:   $exp_e"
+      echo "     OTTENUTO: $norm_e"
+      fail=$((fail+1)); continue
+    fi
+    # NESSUNO skip "di comodo": anche il gap dichiarato del backend C ("non disponibile nel
+    # backend C99 headless") è un FAIL visibile — un esempio non verificabile è un gap reale,
+    # non una regressione nascosta. (Stessa direttiva del gate C99Native.)
+    echo "FAIL $name (run exit != 0): $(tail -1 "$WORK/out.txt" 2>/dev/null | head -c 120)"
+    echo "WORKDIR_KEPT=$WORK"; exit 1
+  fi
+  # ORACOLO = IL MINITEST STESSO. Ogni MiniTest dichiara il proprio output atteso con
+  #   ' EXPECT: <riga1>|<riga2>|...
+  # (righe trimmate ai due estremi, righe vuote scartate, unite da '|' — la stessa
+  # normalizzazione dell'harness xUnit). Senza questo confronto il runner verificava solo
+  # l'exit code: un comando ignorato in silenzio risultava "PASS" pur divergendo (e' cosi'
+  # che sono passati SEEK n,pos e GETFOLDERPATH = parentdir).
+  # Rumore NATIVO su stderr (fuso in out.txt): log diagnostici del motore/tokenizer, non output
+  # del programma. Già si filtrava `gmb_tokenizer_bpe_load:`; si filtrano anche i log di
+  # llmtoken_load/LLM QUALITY (percorso NLL: modello assente -> diagnostica su stderr).
+  # Rumore diagnostico del motore MLX: prefissi in UNA fonte di verita' (tests/engine_noise_prefixes.txt),
+  # condivisa con l'xUnit. Filtro per PREFISSO SPECIFICO (mai "^[" generico: ci sono output legittimi
+  # come "[-7]"/"[ 3.5]"/"[user: Ciao]").
+  NOISE_RE=""
+  [ -n "$NOISE_FILE" ] && [ -f "$NOISE_FILE" ] && \
+    NOISE_RE="$(grep -vE '^[[:space:]]*(#|$)' "$NOISE_FILE" | sed -e 's/\[/\\[/g' -e 's/\]/\\]/g' | paste -sd'|' -)"
+  NORM="$(perl -pe 's/\e\[[0-9;?]*[A-Za-z]//g' "$WORK/out.txt" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' | grep -v '^$' | grep -v '^gmb_tokenizer_bpe_load:' | grep -v '^llmtoken_load:' | grep -v '^LLM QUALITY:' | grep -v '^LLM PROFILE:')"
+  # `grep -vE "^()"` (lista vuota) scarterebbe OGNI riga: il filtro si applica solo se la lista
+  # esiste davvero. Senza questo, ogni confronto con EXPECT diventava un FAIL.
+  if [ -n "$NOISE_RE" ]; then
+    NORM="$(printf '%s\n' "$NORM" | grep -vE "^(${NOISE_RE})")"
+  fi
+  OUT="$(printf '%s\n' "$NORM" | tr '\n' '|' | sed 's/|$//')"
+  EXPECT="$(grep -m1 "^' EXPECT: " "$f" | sed "s/^' EXPECT: //" | sed -e 's/[[:space:]]*$//')"
+  if [ -n "$EXPECT" ] && [ "$OUT" != "$EXPECT" ]; then
+    echo "FAIL $name (output != EXPECT)"
+    echo "     EXPECT:   $EXPECT"
+    echo "     OTTENUTO: $OUT"
+    fail=$((fail+1)); continue
+  fi
+  # Salva il codice C generato per ispezione (verifica reale, non solo verdetto).
+  CNAME="${name##*/}"; CNAME="${CNAME%.bas}"
+  CDEST="$MONO/tools/out/c99native/$CNAME.c"
+  mkdir -p "$(dirname "$CDEST")" 2>/dev/null; cp "$WORK/out.c" "$CDEST" 2>/dev/null || true
+  echo "PASS $name :: $OUT|"
+  echo "     C generato: tools/out/c99native/$CNAME.c"
+  if [ "${GMB_C99NATIVE_SHOW_C:-0}" = "1" ]; then echo "  --- C generato ($CNAME) ---"; cat "$CDEST"; echo "  --- fine C ---"; fi
+  pass=$((pass+1))
+done
+# Filtro che non corrisponde ad ALCUN file = gate ROSSO: senza questo controllo la gamba
+# nativa riportava `PASS=0 FAIL=0` con exit 0 (falso verde) su un nome file sbagliato.
+if [ ${#ONLY_NEEDLES[@]} -gt 0 ] && [ "$ONLY_MATCHED" -eq 0 ]; then
+  echo "ERRORE: GMB_MINI_ONLY=\"$GMB_MINI_ONLY\" non corrisponde ad alcun MiniTest in $MINI" >&2
+  echo "        (la gamba C99Native non ha eseguito NULLA: filtro errato, non un esito verde)" >&2
+  exit 1
+fi
+echo "---------------------------------"
+echo "C99Native MiniTests: PASS=$pass FAIL=$fail SKIP=$skip"
+[ "$fail" -eq 0 ]

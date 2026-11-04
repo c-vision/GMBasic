@@ -11,7 +11,7 @@ if [ -z "${GMB_BUILDBIN_ON:-}" ]; then
 fi
 
 # test_minitests_c99native — esegue ogni MiniTest/ con il compilatore nativo C99
-# (C99Native): lex→parse→gmb_c99_emit (driver gmb_c99native_driver) → cc col runtime
+# (C99Native): lex→parse→gmb_c99_emit (driver gmbnative) → cc col runtime
 # reale → esecuzione. PASS = genera C + cc ok + run exit 0. Complementare al gate C99
 # (C99Native) e al test di parità IL/PCode/VMC.
 # Uso: tools/sh/test_minitests_c99native
@@ -33,7 +33,7 @@ INC_C="-I$ROOT/native/gmb_compiler_c/include -I$ROOT/native/gmb_compiler_c/front
 INC_C="$INC_C -I$ROOT/native/gmb_bytecode/include -I$ROOT/native/gmb_c99native/include"
 INC_RT="-I$ROOT/native/gmb_runtime_c/include"
 INC_CHART="$ROOT/native/gmb_chart/include"
-DRV="$HOST_BUILD/gmb_c99native_driver"
+DRV="$HOST_BUILD/gmbnative"
 # gmb_chart = motore chart autonomo (native/gmb_chart): compilato insieme al runtime.
 RT_SRCS="$(echo "$ROOT"/native/gmb_runtime_c/src/*.c) $(echo "$ROOT"/native/gmb_runtime_c/src/amos/*.c) $(echo "$ROOT"/native/gmb_chart/src/*.c)"
 # SPLIT core/AI (2026-11-02): l'implementazione del provider locale DECIDE dipende da LLMEnv
@@ -312,7 +312,10 @@ for f in "$MINI"/**/*.bas "$MINI"/*.bas; do
   fi
   # B2: AI VERIFY COMPILE nel mondo C → serve il compilatore C (gmb_compile_bas_file).
   COMPILER=""
-  if grep -q 'gmb_verify_run' "$WORK/out.c" 2>/dev/null; then
+  # gmb_observe_test (AI OBSERVE TEST) e gmb_verify_require usano gmb_compile_bas_file
+  # come gmb_verify_run: senza libgmb_compiler_c.a il link fallisce con
+  # "undefined _gmb_compile_bas_file, referenced from _gmb_observe_test".
+  if grep -qE 'gmb_verify_run|gmb_verify_require|gmb_observe_test' "$WORK/out.c" 2>/dev/null; then
     COMPILER="$ROOT/native/gmb_compiler_c/build/libgmb_compiler_c.a"
   fi
   # DB: il C generato per gli statement/funzioni DBF-ISAM usa il runtime Commercial
