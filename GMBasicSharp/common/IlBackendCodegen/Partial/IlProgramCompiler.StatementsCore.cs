@@ -816,6 +816,12 @@ public sealed partial class IlProgramCompiler
             return;
         }
 
+        /* GOSUB verso una RIGA NUMERATA di modulo da dentro una PROCEDURA (programma
+         * ibrido SUB Main + codice legacy): la riga vive in un ALTRO metodo CIL, quindi non
+         * c'è un label raggiungibile con `br`. Si chiama il runner della riga (parità
+         * C99Native lfn_num_<riga>): il RETURN della routine rientra dopo la call. */
+        if (TryEmitModuleLineRunnerCall(stmt.Target)) return;
+
         if (_gosubReturnStackLocal is null || !_gosubSites.TryGetValue(stmt, out var site))
             throw new NotSupportedException("Backend IL: sito GOSUB privo di continuazione runtime.");
 

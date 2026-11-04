@@ -1,21 +1,14 @@
 ' CLIPPER 5.3 — catture nelle lambda ANNIDATE (una lambda dentro un'altra).
 ' Ogni livello intermedio cattura per conto proprio le variabili che servono ai
-' livelli interni: parametri dell'esterno, catture del chiamante, globali e
-' parametri di funzione, a profondità arbitraria (qui 2, 3 e 4 livelli).
-'
-' Nota (limiti noti del backend IL, non delle gambe C): una cattura SOLA-LETTURA
-' poi riassegnata dal chiamante e la cattura di una STRINGA restano per VALORE su
-' IL (snapshot), e la MUTAZIONE dal livello interno (2+ livelli) va in overflow
-' aritmetico: quei casi sono coperti dalle gambe C (VM/C e C99Native, verdi) e
-' documentati in Guide/Clipper-Macro-Eval-Blocks-Compat.md. Qui si verificano le
-' forme comuni a tutti e quattro i backend.
-' EXPECT: two= 16|three= 16|four= 20|mixed= 1016|ret= 42|cnt1= 1|cnt2= 3
+' livelli interni: parametri dell'esterno, catture del chiamante, parametri di
+' funzione e globali, a profondità arbitraria (qui 2, 3 e 4 livelli).
+' EXPECT: two= 16|three= 16|four= 20|mixed= 1016|mut= 16|kmut= 21|ret= 42|ro= 42|cnt1= 1|cnt2= 3|s=b
 FUNCTION MkAdder(k AS INTEGER) AS FUNCTION(x) AS DOUBLE
   RETURN { |x| RETURN x + k }
 END FUNCTION
 
-' Closure ritornata con cattura di una LOCALE del creatore (stato accumulato tra
-' le chiamate: la cella sopravvive al ritorno del creatore).
+' Closure ritornata con cattura di una LOCALE del creatore (cella/box condivisa:
+' le chiamate successive vedono lo stato accumulato, non un puntatore morto).
 FUNCTION MkCounter() AS FUNCTION(x) AS DOUBLE
   DIM c AS INTEGER
   c = 0
@@ -46,11 +39,31 @@ SUB Main()
   DIM m1 = EVAL(mix, 1)
   DIM m2 = EVAL(m1, 2)
   PRINT "mixed="; EVAL(m2, 3)                    ' 1016
+  ' mutazione della cattura DUE livelli più in basso (write-through sul chiamante)
+  DIM bump = { |d| RETURN { |x| k = k + d + x : RETURN k } }
+  PRINT "mut="; EVAL(EVAL(bump, 5), 1)           ' 16
+  ' tre livelli: k cresce ancora 2+3+0 = 21
+  DIM bump3 = { |a| RETURN { |b| RETURN { |c| k = k + a + b + c : RETURN k } } }
+  DIM b1 = EVAL(bump3, 2)
+  DIM b2 = EVAL(b1, 3)
+  PRINT "kmut="; EVAL(b2, 0)                     ' 21
   ' closure ritornata da una FUNCTION (parametro catturato)
   DIM ad = MkAdder(7)
   PRINT "ret="; EVAL(ad, 35)                     ' 42
-  ' mutazione della cattura dentro la closure ritornata (stato persistente)
+  ' la closure cattura la VARIABILE, non il valore: la modifica del chiamante si vede
+  DIM ro AS INTEGER
+  ro = 5
+  DIM rof = { || RETURN ro }
+  ro = 42
+  PRINT "ro="; EVAL(rof)                         ' 42
+  ' stato persistente nella closure ritornata
   DIM cnt = MkCounter()
   PRINT "cnt1="; EVAL(cnt, 1)                    ' 1
   PRINT "cnt2="; EVAL(cnt, 2)                    ' 3
+  ' cattura di una STRINGA per riferimento (live, non istantanea)
+  DIM s AS STRING
+  s = "a"
+  DIM sf = { || RETURN s }
+  s = "b"
+  PRINT "s="; EVAL(sf)                           ' b
 END SUB

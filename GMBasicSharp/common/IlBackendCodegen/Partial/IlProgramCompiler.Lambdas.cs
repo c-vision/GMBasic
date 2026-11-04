@@ -69,8 +69,14 @@ public sealed partial class IlProgramCompiler
             CollectLambdaExpressions(stmts, discovered);
 
         var closureSeq = 0;
+        // Parametri di procedure E di lambda: una cattura che è un PARAMETRO (byvalue) resta
+        // per valore — la sua promozione a box ha un percorso proprio (Fase 4 / ByRef) e
+        // senza un box sorgente al call-site non è costruibile (il parametro non è un local
+        // del metodo: EmitLambdaCreation non troverebbe il box da condividere).
         var allParamSymbolIds = program.Symbols.GetAllProcedures()
-            .SelectMany(p => p.Parameters.Select(pp => pp.SymbolId)).ToHashSet();
+            .SelectMany(p => p.Parameters.Select(pp => pp.SymbolId))
+            .Concat(discovered.SelectMany(l => l.Parameters).Select(pp => pp.SymbolId))
+            .ToHashSet();
         // Bug closure_byref (2026-08-31): un simbolo può essere MUTATO da una lambda A e letto
         // in SOLA LETTURA da una lambda B (es. `somma = FN(x)=>totale+x` e
         // `inc = SUB(){ totale=totale+1 }` sullo STESSO `totale`) — calcolare le catture
@@ -84,6 +90,33 @@ public sealed partial class IlProgramCompiler
         // catturato, mai solo quelli scritti da QUELLA specifica closure).
         var globallyMutatedCaptures = discovered.SelectMany(CollectMutatedSymbols)
             .Where(s => !allParamSymbolIds.Contains(s)).ToHashSet();
+        /* CATTURE PER RIFERIMENTO (2026-11-03): una closure cattura la VARIABILE, non il
+         * valore — parità con VM/C e C99Native, dove ogni cattura vive in una cella/box.
+         * Prima SOLO le catture MUTATE ricevevano un campo ByRefBox: una variabile letta e
+         * poi RIASSEGNATA dal chiamante restava lo snapshot del valore al momento della
+         * creazione (`DIM ro=5 : f={||ro} : ro=42` → 5 invece di 42) e lo stesso per le
+         * STRINGHE (`s="a" : f={||s} : s="b"` → a). Box per tutte le catture LOCALI;
+         * parametri (percorso ByRefBox/Fase 4 proprio), globali e static restano come sono. */
+        var lambdaParamSymbolIds = discovered
+            .SelectMany(l => l.Parameters.Select(pp => pp.SymbolId))
+            .ToHashSet();
+        var boxedCaptureSymbols = discovered
+            .SelectMany(CollectLambdaCaptures)
+            .Where(id => id >= 0 && !lambdaParamSymbolIds.Contains(id))
+            .Where(id =>
+            {
+                var sym = program.Symbols.GetSymbol(id);
+                var fl = sym.Flags;
+                if (fl.HasFlag(SymbolFlags.IsConst)) return false;
+                if (fl.HasFlag(SymbolFlags.IsStaticStorage)) return false;
+                if (fl.HasFlag(SymbolFlags.IsGlobal)) return false;
+                // Parametri BYREF: percorso Fase 4 (ParameterInfo.IsBox), non questo.
+                if (fl.HasFlag(SymbolFlags.IsParameter) && fl.HasFlag(SymbolFlags.IsByRef)) return false;
+                // Array: reference type, la cattura condivide già l'oggetto.
+                if (sym.DataType is ArrayType) return false;
+                return true;
+            })
+            .ToHashSet();
         foreach (var lambda in discovered)
         {
             var captures = CollectLambdaCaptures(lambda);
@@ -93,7 +126,7 @@ public sealed partial class IlProgramCompiler
             // catture che sono PARAMETRI di una procedura (restano T: i param BYREF hanno già
             // il loro percorso box __ClosureCtx/Fase 4; i param BYVAL catturati restano
             // snapshot).
-            var mutatedCaptures = globallyMutatedCaptures;
+            var mutatedCaptures = boxedCaptureSymbols;
             var delegateType = DataTypeMapper.Map(
                 new FunctionPointerType(lambda.Parameters.Select(p => p.DataType).ToImmutableArray(), lambda.ReturnType),
                 types, classTypes);
@@ -128,7 +161,15 @@ public sealed partial class IlProgramCompiler
                     // box con la variabile del chiamante, le scritture dentro la lambda si
                     // propagano (bug closure_byref). Leggibilità/scrittura del box gestite dai
                     // rami IsByRefBoxFieldType di EmitLoadVariable/EmitStoreVariable.
-                    var mappedType = DataTypeMapper.Map(captureType, types, classTypes);
+                    /* Un PARAMETRO di LAMBDA ha ABI delegate: i numerici viaggiano come
+                     * double anche se dichiarati INTEGER/LONG. Il campo di cattura deve
+                     * avere lo STESSO tipo CLR del valore che riceve (`ldarg`), altrimenti
+                     * `stfld` scrive i BIT di un double in un campo int64 → letture
+                     * reinterpretate (mut= 4.6e18 = bit pattern di 3.0, OverflowException). */
+                    var mappedType = (lambdaParamSymbolIds.Contains(symbolId)
+                                      && IlConversion.IsNumeric(captureType))
+                        ? types.Double
+                        : DataTypeMapper.Map(captureType, types, classTypes);
                     var fieldType = mutatedCaptures.Contains(symbolId)
                         ? typeof(ByRefBox<>).MakeGenericType(mappedType)
                         : mappedType;
@@ -437,6 +478,13 @@ public sealed partial class IlProgramCompiler
             _il.Emit(OpCodes.Ldarg, boxParam.ArgIndex);
             return true;
         }
+        /* Parametro BYVAL catturato, materializzato in un ByRefBox<T> all'ingresso del
+         * metodo (vedi BoxCapturedParameters): il box è un LOCAL di questa istanza. */
+        if (_locals.TryGetValue(symbolId, out var boxedLocal) && IsByRefBoxFieldType(boxedLocal.LocalType))
+        {
+            _il.Emit(OpCodes.Ldloc, boxedLocal);
+            return true;
+        }
         return false;
     }
 
@@ -479,7 +527,7 @@ public sealed partial class IlProgramCompiler
                 // valore — la closure condivide l'identità col local/param del chiamante, così
                 // le scritture dentro la lambda si propagano (bug closure_byref).
                 if (!TryEmitBoxReference(symbolId))
-                    throw new NotSupportedException("Backend IL: campo box senza box sorgente (bug interno).");
+                    throw new NotSupportedException($"Backend IL: campo box senza box sorgente (bug interno): sym={symbolId} '{_program.Symbols.GetSymbol(symbolId).OriginalToken.Lexeme}' type={_program.Symbols.GetSymbol(symbolId).DataType} isGlobal={IsGlobalSymbol(symbolId)} isStatic={IsStaticSymbol(symbolId)} inParams={_parameters.ContainsKey(symbolId)} boxed={BoxedSymbols.Contains(symbolId)}");
             }
             else
             {

@@ -849,8 +849,38 @@ public sealed partial class Compiler
         var onErrorTargetLabels = CollectOnErrorTargetLabelNames(ctx);
         var guardedBlockJumpOffset = -1;
 
-        foreach (var lineNumber in executionOrder)
+        /* SUB Main ESISTE → il codice NUMERATO di modulo (righe 10/20/… legacy) NON viene
+         * eseguito all'avvio: resta raggiungibile via GOTO/GOSUB (è il contratto dei
+         * programmi "ibridi", vedi FunctionsMain.bas). Prima __main lo eseguiva sempre come
+         * preambolo, quindi la riga 20 stampava "ERRORE: la riga 20 non doveva essere
+         * eseguita" su PCode/VM-C (C99Native era già corretto). Le righe NON numerate
+         * (chiavi sintetiche >= 1_000_000) restano preambolo ed eseguono PRIMA di Main
+         * (DIM/assegnazioni top-level). Il blocco numerato viene emesso DOPO un RETURN,
+         * così le etichette/GOSUB restano validi ma il flusso non ci cade dentro. */
+        var hasMainProc = _procedureAddresses.ContainsKey("Main");
+        var emitOrder = executionOrder;
+        if (hasMainProc)
         {
+            var synthetic = executionOrder.Where(k => k >= 1_000_000).ToImmutableArray();
+            var legacy = executionOrder.Where(k => k < 1_000_000).ToImmutableArray();
+            if (legacy.Length > 0)
+                emitOrder = [..synthetic, ..legacy];
+        }
+        /* Il RETURN separatore va emesso appena inizia il codice numerato, ANCHE quando il
+         * modulo non ha alcuna riga sintetica (programma "solo numerato" + SUB Main: __main
+         * sarebbe tutto legacy e partirebbe come preambolo). */
+        bool legacySeparatorPending = hasMainProc && emitOrder.Any(k => k < 1_000_000);
+
+        foreach (var lineNumber in emitOrder)
+        {
+            if (legacySeparatorPending && lineNumber < 1_000_000)
+            {
+                /* Fine del codice di AVVIO di __main: il codice numerato legacy non deve
+                 * proseguire (raggiungibile solo per salto esplicito). */
+                EmitByte((byte)OpCode.OP_PUSH_NIL);
+                EmitByte((byte)OpCode.OP_RETURN);
+                legacySeparatorPending = false;
+            }
             if (!ctx.MainModule.Statements.TryGetValue(lineNumber, out var statements))
                 continue;
 
