@@ -116,6 +116,34 @@ public sealed partial class Parser
     /// normalizzando i nomi con suffisso di tipo (es. X$) prima di creare il nodo AST.
     /// Supporta array, 'lower TO upper', e flag di visibilità. Non registra simboli.
     /// </summary>
+    /// <summary>
+    /// True se la dichiarazione è certamente uno scalare: tipo primitivo esplicito oppure
+    /// inizializzatore ovviamente scalare (numero/stringa/bool/nil, anche dentro un gruppo
+    /// o un'operazione). Un nome non tipizzato senza inizializzatore resta "non scalare":
+    /// può diventare un array/lista (es. `DIM voci` + STRINGS.SPLIT) e deve shadoware.
+    /// </summary>
+    private static bool IsDefinitelyScalarDeclaration(VariableDeclaration decl)
+    {
+        if (decl.DataType is ArrayType) return false;
+        if (decl.DataType is not null and not InferredType)
+            return decl.DataType is SingleType or DoubleType or CurrencyType or StringType
+                or BitType or ByteType or SByteType or IntegerType or UIntegerType
+                or LongType or ULongType or QuadType or UQuadType
+                or DateType or TimeType or DateTimeType or TimeSpanType;
+        return IsObviouslyScalarExpr(decl.InitialValue);
+    }
+
+    private static bool IsObviouslyScalarExpr(Expr? expr) => expr switch
+    {
+        null => false,
+        NumberExpr or StringExpr or CheckedStringExpr or InterpolatedStringExpr
+            or BooleanExpr or NilExpr => true,
+        GroupingExpr g => IsObviouslyScalarExpr(g.Expression),
+        UnaryExpr u => IsObviouslyScalarExpr(u.Right),
+        BinaryExpr b => IsObviouslyScalarExpr(b.Left) && IsObviouslyScalarExpr(b.Right),
+        _ => false
+    };
+
     private ImmutableArray<VariableDeclaration> ParseDeclarationListSyntaxOnly(bool isVarDeclaration = false,
         SymbolFlags visibilityFlags = SymbolFlags.None,
         ImmutableArray<Token> attributes = default)
@@ -265,6 +293,9 @@ public sealed partial class Parser
                 _declaredVariableNames.Add(decl.NameSuffixed.Lexeme);
                 if (decl.DataType is ArrayType)
                     _declaredArrayNames.Add(decl.NameSuffixed.Lexeme);
+                // Ultima dichiarazione per nome: decide se una chiamata nuda omonima è
+                // accesso a variabile (array/non tipizzata) o builtin (scalare sicuro).
+                _declaredVariableIsScalar[decl.NameSuffixed.Lexeme] = IsDefinitelyScalarDeclaration(decl);
                 declarations.Add(decl with { SymbolId = -1 });
                 Log(
                     $"[ParseDeclarationList]   -> Parsed declaration for '{decl.NameSuffixed.Lexeme}' with flags '{decl.Flags}'.");

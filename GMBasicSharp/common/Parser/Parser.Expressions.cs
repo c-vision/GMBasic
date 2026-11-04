@@ -1373,8 +1373,14 @@ public sealed partial class Parser
                         // senza suffisso cadeva sulla procedura importata (bug scoperto
                         // scrivendo l'app DigUp). È la regola di shadowing per SCOPE, decisa
                         // dal nome dichiarato, non dal Kind del token.
-                        if (_declaredVariableNames.Contains(varExpr.NameSuffixed.Lexeme)
-                            || _declaredArrayNames.Contains(varExpr.NameSuffixed.Lexeme))
+                        // Uno SCALARE omonimo non devia il builtin (DIM amax = 5 + AMAX(v));
+                        // un array o un nome non tipizzato che può contenere una collezione
+                        // (DIM voci + STRINGS.SPLIT) invece sì. L'ultima dichiarazione vince.
+                        var declaredName = _declaredVariableNames.Contains(varExpr.NameSuffixed.Lexeme)
+                            || _declaredArrayNames.Contains(varExpr.NameSuffixed.Lexeme);
+                        var scalarShadow = _declaredVariableIsScalar.TryGetValue(
+                            varExpr.NameSuffixed.Lexeme, out var isScalar) && isScalar;
+                        if (declaredName && !scalarShadow)
                         {
                             expr = new ArrayAccessExpr(varExpr.SymbolId, varExpr.NameSuffixed, varExpr.NameCleaned, args);
                             if (Match(TokenKind.QuestionMark) && expr is ArrayAccessExpr aaeVar)
