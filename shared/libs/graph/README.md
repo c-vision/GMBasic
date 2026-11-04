@@ -31,6 +31,7 @@ Gli array `out()` sono dimensionati dal chiamante (`n` per order/comp/dist/color
 | Colorazione/clique/chiusura | `COLORING`, `MAXCLIQUE`, `TRANSITIVECLOSURE` |
 | Proprietà | `DIAMETER`, `ECCENTRICITY`, `CLUSTERING`, `SUBGRAPH` |
 | MST | `MSTKRUSKAL` |
+| Avanzati (2ª slice) | `BRIDGES`, `ARTICULATION`, `ASTAR`, `STOERWAGNER`, `KSHORTEST`, `ISOMORPHIC`, `DRNL`, `WL`, `MINPATHCOVER`, `BFSOPT` |
 | Sentinella | `ABSENT()` |
 
 ## Sorgenti (copia autonoma)

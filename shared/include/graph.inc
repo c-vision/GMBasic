@@ -81,6 +81,29 @@ DECLARE FUNCTION SUBGRAPH LIB "gmbgraph" ALIAS "gfx_subgraph" (w() AS DOUBLE, n 
 ' Kruskal: riempie eu()/ev()/ew() (capacità n-1) e ritorna il numero di archi.
 DECLARE FUNCTION MSTKRUSKAL LIB "gmbgraph" ALIAS "gfx_mst_kruskal" (w() AS DOUBLE, n AS LONG, eu() AS LONG, ev() AS LONG, ew() AS DOUBLE) AS LONG
 
+' ── Algoritmi avanzati (2ª slice) ────────────────────────────────────────────
+' Ponti (grafo non orientato): is_bridge() = n*n (0/1); ritorna #ponti.
+DECLARE FUNCTION BRIDGES LIB "gmbgraph" ALIAS "gfx_bridges" (adj() AS LONG, n AS LONG, is_bridge() AS LONG) AS LONG
+' Punti di articolazione: art() = n (0/1); ritorna il numero.
+DECLARE FUNCTION ARTICULATION LIB "gmbgraph" ALIAS "gfx_articulation" (adj() AS LONG, n AS LONG, art() AS LONG) AS LONG
+' A*: h() euristica ammissibile; path() = n; info(0)=plen, info(1)=1 se trovato.
+' Ritorna il costo del cammino o -1 se irraggiungibile.
+DECLARE FUNCTION ASTAR LIB "gmbgraph" ALIAS "gfx_astar" (w() AS DOUBLE, n AS LONG, h() AS DOUBLE, s AS LONG, t AS LONG, path() AS LONG, info() AS LONG) AS DOUBLE
+' Global min-cut (Stoer-Wagner, matrice SIMMETRICA).
+DECLARE FUNCTION STOERWAGNER LIB "gmbgraph" ALIAS "gfx_stoer_wagner" (w() AS DOUBLE, n AS LONG) AS DOUBLE
+' K cammini minimi semplici (Yen): paths() = K*n, plens() = K; ritorna K'.
+DECLARE FUNCTION KSHORTEST LIB "gmbgraph" ALIAS "gfx_k_shortest" (w() AS DOUBLE, n AS LONG, s AS LONG, t AS LONG, K AS LONG, paths() AS LONG, plens() AS LONG) AS LONG
+' Isomorfismo (VF2): mapping() = n1; 1 se isomorfi.
+DECLARE FUNCTION ISOMORPHIC LIB "gmbgraph" ALIAS "gfx_isomorphic" (adj1() AS LONG, n1 AS LONG, adj2() AS LONG, n2 AS LONG, mapping() AS LONG) AS LONG
+' DRNL (SEAL) per il link (u,v): label() = n; ritorna 1 se calcolato.
+DECLARE FUNCTION DRNL LIB "gmbgraph" ALIAS "gfx_drnl" (adj() AS LONG, n AS LONG, u AS LONG, v AS LONG, label() AS LONG) AS LONG
+' Weisfeiler-Lehman (1-WL): colors() = n; ritorna #classi.
+DECLARE FUNCTION WL LIB "gmbgraph" ALIAS "gfx_wl" (adj() AS LONG, n AS LONG, colors() AS LONG) AS LONG
+' Min path cover di un DAG.
+DECLARE FUNCTION MINPATHCOVER LIB "gmbgraph" ALIAS "gfx_min_path_cover" (adj() AS LONG, n AS LONG) AS LONG
+' BFS direction-optimizing (Beamer): dist() = n (-1 non raggiunto); ritorna #visitati.
+DECLARE FUNCTION BFSOPT LIB "gmbgraph" ALIAS "gfx_bfs_direction_optimizing" (adj() AS LONG, n AS LONG, src AS LONG, thr AS DOUBLE, dist() AS DOUBLE) AS LONG
+
 ' ── Sentinella ───────────────────────────────────────────────────────────────
 ' BASIC non ha INFINITY: per "arco assente" usare GRAPH.ABSENT() nei vettori DOUBLE.
 ' Lo shim normalizza qualunque peso >= 1e29 a INFINITY (sentinella di gmbortools).
