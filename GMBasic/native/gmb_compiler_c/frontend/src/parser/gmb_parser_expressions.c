@@ -919,6 +919,12 @@ gmb_expr_t* gmb_p_parse_primary(gmb_parser_t* p)
                 gmb_expr_t** margs = (gmb_expr_t**)malloc(2 * sizeof(gmb_expr_t*));
                 margs[0] = coll; margs[1] = mapfn;
                 e = gmb_expr_call("AMAP", margs, 2, line);
+                /* GENERATOR EXPRESSION (desugared): semanticamente è una LISTA del
+                 * linguaggio (come il List<object> delle gambe C#), non un array nativo
+                 * esplicito: marca il nodo così il DIM che lo inizializza può rispondere
+                 * TYPENAME "LIST`1" (guida Arrays §0.3). Un AMAP scritto a mano resta
+                 * ARRAY. */
+                if (e) e->is_list_literal = 1;
             }
         }
         if (!gmb_p_match(p, GMB_TOK_RightParen)) gmb_p_set_err(p, "attesa ')'", line);
@@ -1118,7 +1124,14 @@ gmb_expr_t* gmb_p_parse_primary(gmb_parser_t* p)
         }
         gmb_p_skip_eol(p);
         gmb_p_match(p, is_brace ? GMB_TOK_RightBrace : GMB_TOK_RightBracket);
-        return gmb_expr_call(is_dict ? "_dict_" : "_array_", args, na, line);
+        {
+            /* QUADRE vs GRAFFE: fuori da un DIM di array, `[ ]` è un letterale di LISTA
+             * (guide/utente/Arrays §0.2-0.3). Il flag sopravvive fino all'emitter, che
+             * sceglie gmb_list_t quando il target non dichiara un array. */
+            gmb_expr_t* lit = gmb_expr_call(is_dict ? "_dict_" : "_array_", args, na, line);
+            if (!is_dict && !is_brace) lit->is_list_literal = 1;
+            return lit;
+        }
     }
     if (t->kind == GMB_TOK_InterpolatedStringLiteral) {
         /* stringa interpolata $"...{expr}...": spezza in segmenti letterale/espressione

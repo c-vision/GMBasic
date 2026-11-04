@@ -77,6 +77,12 @@ struct gmb_expr {
     int n_comp_more;
     gmb_expr_t* comp_key;         /* dict comprehension: espressione chiave */
     int comp_ctype;               /* 0 = lista (o LINQ), 1 = dict, 2 = set */
+    int is_list_literal;          /* letterale `[ e1, .., en ]` (QUADRE) invece di `{ ... }`
+                                   * (GRAFFE): la guida (Arrays §0.2/§0.3) distingue le due
+                                   * forme — fuori da un DIM di array, `[ ]` è un letterale di
+                                   * LISTA. Il parser lo marca qui; l'emitter C99 ne deduce la
+                                   * rappresentazione (gmb_list_t) quando il target non è un
+                                   * array. 0 = graffe/dict/comprehension. */
     /* REWRITE (linker C, pari a Linker.RewriteTarget/nExpression): arricchimento risolto. */
     int  resolved_sym;            /* id del simbolo risolto (-1 = non risolto) */
     char* resolved_type;          /* tipo risolto ("" / NULL = ignoto) */

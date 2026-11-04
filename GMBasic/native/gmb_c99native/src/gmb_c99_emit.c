@@ -3420,6 +3420,21 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
              * variabile, il controllo di duplicato sotto distingue la ri-registrazione
              * dello stesso DIM da una SECONDA dichiarazione con lo stesso nome. */
             v->dim_stmt = (const void*)s;
+            /* `DIM v = [ ... ]` (QUADRE) senza tipo target e `DIM g = (sel FOR ...)`:
+             * secondo la guida (Arrays §0.3) sono LISTE del linguaggio. La rappresentazione
+             * resta l'array dinamico nativo (tutte le operazioni già a parità), ma TYPENAME
+             * deve rispondere "LIST`1" (parità IL/PCode/VM-C). Le graffe `{ ... }` e i DIM
+             * che dichiarano un array (`DIM a()` / `DIM a(n)`) restano "ARRAY". */
+            if (!s->array_size && !s->dim_empty_parens && !s->dim_type && s->dim_init) {
+                /* letterale `[ ... ]` (marker del parser) e generator expression (desugared
+                 * a AMAP con lo stesso marker): LISTA del linguaggio. */
+                if (s->dim_init->kind == GMB_EXPR_CALL && s->dim_init->var
+                    && s->dim_init->is_list_literal)
+                    v->list_semantics = 1;
+                else if (s->dim_init->kind == GMB_EXPR_COMPREHENSION
+                         && s->dim_init->comp_ctype == 0)
+                    v->list_semantics = 1;
+            }
             /* LOCAL che ombreggia una GLOBAL: la dichiarazione locale vale dal punto in cui
              * compare (scope lessicale a blocchi). Prima il pre-pass la registrava per tutta
              * la funzione e le letture precedenti vedevano la locale (0) invece della globale. */
@@ -11195,8 +11210,12 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
             return;
         }
         if (tv && tv->is_array) {
-            /* Array (T[]): TYPENAME "ARRAY" (parità IlRuntime.TypeName/IL). */
-            sb_put(&c->out, "gmb_string_alloc(\"ARRAY\")");
+            /* Array (T[]): TYPENAME "ARRAY" (parità IlRuntime.TypeName/IL).
+             * Un array che RAPPRESENTA una lista del linguaggio (letterale `[ ... ]` /
+             * generator expression senza tipo target, vedi list_semantics) risponde
+             * "LIST`1", come il List<object> delle gambe C# e la LIST tipizzata. */
+            if (tv->list_semantics) sb_put(&c->out, "gmb_string_alloc(\"LIST`1\")");
+            else sb_put(&c->out, "gmb_string_alloc(\"ARRAY\")");
             return;
         }
     }
@@ -13877,6 +13896,28 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
                     if (nvv0 && nvv0->nullable) {
                         sb_put(&c->out, nvv0->type == TY_STR ? "gmb_val_to_string(" : "gmb_val_to_double(");
                         emit_ident(c, vp0);
+                        sb_put(&c->out, ")");
+                        break;
+                    }
+                }
+            }
+        }
+        /* `.Count`/`.Length` su un ARRAY che rappresenta una LISTA del linguaggio
+         * (`DIM a = [ ... ]` / generator expression, vedi list_semantics): è la proprietà
+         * di LIST → lunghezza dell'array. Senza, il nome dotted finiva come VARIABILE
+         * implicita `a_2ECount` = 0 (silenzioso: Count 0 su 4 elementi). */
+        if (e->var) {
+            const char* cdot = strchr(e->var, '.');
+            if (cdot && cdot != e->var && !strchr(cdot + 1, '.')) {
+                size_t cbl = (size_t)(cdot - e->var);
+                char cbase[160];
+                if (cbl < sizeof(cbase)) {
+                    memcpy(cbase, e->var, cbl); cbase[cbl] = 0;
+                    var_t* cbv = lookup_var(c, cbase);
+                    if (cbv && cbv->is_array && cbv->list_semantics
+                        && (!strcasecmp(cdot + 1, "Count") || !strcasecmp(cdot + 1, "Length"))) {
+                        sb_put(&c->out, "(gmb_double_t)(");
+                        emit_arr_len_of(c, cbv);
                         sb_put(&c->out, ")");
                         break;
                     }
@@ -19686,7 +19727,21 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
             if (av->vclass[0] && fv && !fv->vclass[0])
                 snprintf(fv->vclass, sizeof(fv->vclass), "%s", av->vclass);
             int conv_arr = (fv->type == TY_STR && av->type != TY_STR);
-            if (fv->type != av->type && !conv_arr) {
+            /* NOME RIUSATO con un tipo diverso (es. `FOR EACH v IN nums` numerico e poi
+             * `FOR EACH v IN parole` stringa): in C# ogni FOR EACH ha la PROPRIA variabile;
+             * in C99 l'emitter ne dichiara UNA sola per nome e il tipo restava quello
+             * dell'ultimo uso — il ciclo numerico finiva convertito a stringa ("1 4 9",
+             * senza il separatore del PRINT numerico). Se il nome NON è un DIM esplicito,
+             * l'iterazione usa un TEMPORANEO del tipo dell'elemento e, SOLO nel corpo, il
+             * nome viene rimappato su di esso (imap) con il tipo corretto: semantica
+             * per-iterazione come C#/PCode/VM-C. Un DIM esplicito (`DIM v AS STRING`)
+             * conserva la conversione: l'utente ha davvero chiesto stringhe. */
+            int shadow = (fv->type != av->type && !fv->dim_stmt && !av->vclass[0]);
+            char shname[48]; shname[0] = 0;
+            int saved_type = fv->type;
+            static int fesh_uid = 0;
+            if (shadow) snprintf(shname, sizeof shname, "__fev%d", ++fesh_uid);
+            if (fv->type != av->type && !conv_arr && !shadow) {
                 c99_fail(c, s->line, "FOR EACH: tipo di '%s' (%s) incompatibile con elemento di '%s' (%s)",
                          s->for_var, ctype_name(fv->type), av->name, ctype_name(av->type));
                 return;
@@ -19695,6 +19750,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
             int id = ++fe_uid;
             ind(c); sb_put(&c->out, "{\n");
             c->indent++;
+            if (shadow) { ind(c); sb_printf(&c->out, "%s %s;\n", ctype_name(av->type), shname); }
             if (av->dyn_len) {
                 ind(c); sb_printf(&c->out, "for (gmb_int_t __fe%d = 0; __fe%d <= (gmb_int_t)(", id, id);
                 emit_arr_len_of(c, av);
@@ -19711,15 +19767,27 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
             }
             c->indent++;
             ind(c);
-            emit_ident(c, fv->name);
+            emit_ident(c, shadow ? shname : fv->name);
             sb_put(&c->out, " = ");
-            if (conv_arr) sb_put(&c->out, "gmb_string_concat(gmb_string_alloc(\" \"), gmb_double_to_string(");
+            if (conv_arr && !shadow) sb_put(&c->out, "gmb_string_concat(gmb_string_alloc(\" \"), gmb_double_to_string(");
             emit_var_ref(c, av);
             sb_printf(&c->out, "[__fe%d]", id);
-            if (conv_arr) sb_put(&c->out, "))");
+            if (conv_arr && !shadow) sb_put(&c->out, "))");
             sb_put(&c->out, ";\n");
+            if (shadow) {
+                if (c->n_imap < GMB_IMAP_CAP) {
+                    c->imap_name[c->n_imap] = (char*)fv->name;
+                    c->imap_expr[c->n_imap] = shname;
+                    c->n_imap++;
+                }
+                fv->type = av->type;
+            }
             emit_list(c, s->for_body, s->n_for);
             emit_num_label(c, s->for_next_bas);
+            if (shadow) {
+                if (c->n_imap > 0 && c->imap_name[c->n_imap - 1] == fv->name) c->n_imap--;
+                fv->type = saved_type;
+            }
             c->indent--;
             ind(c); sb_put(&c->out, "}\n");
             c->indent--;
