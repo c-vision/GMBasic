@@ -262,6 +262,7 @@ public sealed partial class Compiler
                 LinkedListType => 12, CircularLinkedListType => 13, BinaryHeapType { IsMaxHeap: true } => 27, BinaryHeapType => 14,
                 BagType => 15, CacheType => 16, GraphType => 17, TimelineType => 18,
                 HashRingType => 19, RingBufferType => 20, SparseSetType => 21, BPlusTreeType => 26,
+                HyperLogLogType => 30,   // 28 = STRINGBUILDER, 29 = REGEX in PCode/VM-C
                 _ => 1
             };
             EmitConstant(0.0); // 0 argomenti costruttore (OP_NEW legge count+args)
@@ -457,7 +458,7 @@ public sealed partial class Compiler
                     LinkedListType or SortedDictType or TreeType or AVLTreeType or RedBlackTreeType or
                     BinaryIndexedTreeType or TrieType or CircularLinkedListType or BinaryHeapType or
                     BagType or CacheType or GraphType or TimelineType or HashRingType or RingBufferType or
-                    SparseSetType or BPlusTreeType or StringBuilderType or RegexType)
+                    SparseSetType or BPlusTreeType or StringBuilderType or RegexType or HyperLogLogType)
                 {
                     // DIM x AS LIST OF T (senza inizializzatore) cadeva nel fallback generico
                     // OP_PUSH_NIL sotto — x restava null invece di una collezione vuota. Un
@@ -481,6 +482,7 @@ public sealed partial class Compiler
                         LinkedListType => 12, CircularLinkedListType => 13, BinaryHeapType { IsMaxHeap: true } => 27, BinaryHeapType => 14,
                         BagType => 15, CacheType => 16, GraphType => 17, TimelineType => 18,
                         HashRingType => 19, RingBufferType => 20, SparseSetType => 21, BPlusTreeType => 26,
+                HyperLogLogType => 30,   // 28 = STRINGBUILDER, 29 = REGEX in PCode/VM-C
                         StringBuilderType => 28,
                         RegexType => 29,
                         _ => 1

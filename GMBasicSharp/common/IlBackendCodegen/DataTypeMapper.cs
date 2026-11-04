@@ -131,6 +131,8 @@ public static class DataTypeMapper
         // BAG: multiset — nel backend mappa a Dictionary<T,long> (elemento→conteggio),
         // coerente con lo schema VM (Count/UniqueCount).
         BagType b => typeof(Dictionary<,>).MakeGenericType(Map(b.ElementType, types, classTypes), types.Int64),
+        // HLL: classe CommonLib reale (stima di cardinalità; mirror del runtime C gmb_hll.c).
+        HyperLogLogType => typeof(CommonLib.Collections.HyperLogLog),
         // CACHE/TIMELINE: classi CommonLib reali (TTL cache, timeline ordinata).
         CacheType c => typeof(CommonLib.Collections.Cache<,>).MakeGenericType(Map(c.KeyType, types, classTypes), Map(c.ValueType, types, classTypes)),
         TimelineType t => typeof(CommonLib.Collections.Timeline<>).MakeGenericType(Map(t.ValueType, types, classTypes)),

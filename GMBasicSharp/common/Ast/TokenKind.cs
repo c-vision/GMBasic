@@ -2540,4 +2540,8 @@ public enum TokenKind
     // Coll* (2026-11-03): SymmetricExcept di HASHSET (runtime C gmb_collection_set_op).
     // In coda (ordinali canonici): mai inserire nel mezzo.
     CollSymmetricExcept,
+    // HLL (2026-11-04): tipo contenitore HyperLogLog (stima cardinalità, runtime C
+    // condiviso gmb_hll.c + mirror managed CommonLib.Collections.HyperLogLog).
+    // In coda (ordinali canonici): mai inserire nel mezzo.
+    Hll,
 }

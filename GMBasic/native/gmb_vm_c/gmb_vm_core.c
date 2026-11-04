@@ -23,6 +23,7 @@
 #include "gmb_torch.h"
 #include "gmb_graph.h"
 #include "gmb_collections.h"
+#include "gmb_hll.h"
 #include "gmb_compress.h"
 #include "gmb_finance.h"
 #include "gmb_finetune.h"
@@ -10958,7 +10959,8 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 else if (typeCode == 3 || typeCode == 4 || typeCode == 5 ||
                          typeCode == 6 || (typeCode >= 7 && typeCode <= 16) || typeCode == 18 ||
                          typeCode == 19 || typeCode == 20 || typeCode == 21 ||
-                         typeCode == 26 || typeCode == 27)
+                         typeCode == 26 || typeCode == 27 ||
+                         typeCode == 30 /* HLL (HyperLogLog) */)
                 {
                     /* HashSet(3)/Queue(4)/Stack(5): PRIMA cadevano nel ramo "else" come LIST
                      * generica → il literal DIM hs AS HASHSET = [3,1,4,1,5] non dedupplicava
@@ -12601,6 +12603,67 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     gmb_val_t v1 = argCount >= 2 ? gmb_adapter_stack_to_val(args[1]) : gmb_val_nil();
                     int isMap = (tc == 6 || tc == 7 || tc == 8 || tc == 9 || tc == 26 || tc == 18 || tc == 19);
 
+                    if (tc == 30)
+                    {
+                        /* HLL (HyperLogLog) — runtime condiviso gmb_hll.c. Add/Count e le
+                         * operazioni specifiche (Merge/Error/Precision/Serialize/Load). */
+                        if (strcasecmp(methodName, "Add") == 0 && argCount >= 1)
+                        {
+                            gmb_coll_add(ch, v0);
+                            push_ref_entry(task, inst, GMB_BT_OBJECT);
+                        }
+                        else if (strcasecmp(methodName, "Count") == 0 || strcasecmp(methodName, "Length") == 0)
+                            push_num_entry(task, gmb_coll_hll_count(ch), GMB_BT_NUMBER);
+                        else if (strcasecmp(methodName, "Error") == 0)
+                            push_num_entry(task, gmb_coll_hll_error(ch), GMB_BT_NUMBER);
+                        else if (strcasecmp(methodName, "Precision") == 0)
+                            push_num_entry(task, (double)gmb_coll_hll_precision(ch), GMB_BT_NUMBER);
+                        else if (strcasecmp(methodName, "Merge") == 0 && argCount >= 1
+                                 && args[0].type == 2 && args[0].ref
+                                 && args[0].ref->kind == GMB_OBJ_COLLECTION)
+                        {
+                            gmb_obj_collection_t* other = (gmb_obj_collection_t*)args[0].ref;
+                            if (other->type_code != 30 || gmb_coll_hll_merge(ch, other->handle) != 0)
+                                vm_error(task, "HLL.Merge: precisioni diverse o sketch non valido");
+                            push_ref_entry(task, inst, GMB_BT_OBJECT);
+                        }
+                        else if (strcasecmp(methodName, "Serialize") == 0)
+                        {
+                            int m = 1 << gmb_coll_hll_precision(ch);
+                            int cap = GMB_HLL_SERIAL_HEADER_LEN + m;
+                            char* buf = (char*)malloc((size_t)cap);
+                            int n = buf ? gmb_coll_hll_serialize(ch, buf, (size_t)cap) : -1;
+                            /* STRINGA BINARIA: gmb_str_alloc(data, len) — MAI il percorso
+                             * val→stack (gmb_str_cstr userebbe strlen e taglierebbe al primo
+                             * NUL dei registri: `Load` riceveva dati troncati → "dati non
+                             * validi"). */
+                            if (n > 0)
+                            {
+                                gmb_obj_string_t* ss = gmb_str_alloc(buf, (uint32_t)n);
+                                if (ss) push_ref_new(task, (gmb_obj_t*)ss, GMB_BT_STRING);
+                                else push_nil(task);
+                            }
+                            else push_nil(task);
+                            free(buf);
+                        }
+                        else if (strcasecmp(methodName, "Load") == 0 && argCount >= 1 && args[0].type == 2
+                                 && args[0].ref && args[0].ref->kind == GMB_OBJ_STRING)
+                        {
+                            gmb_obj_string_t* so = (gmb_obj_string_t*)args[0].ref;
+                            if (gmb_coll_hll_load(ch, so->data, so->length) != 0)
+                                vm_error(task, "HLL.Load: dati non validi");
+                            push_ref_entry(task, inst, GMB_BT_OBJECT);
+                        }
+                        else if (strcasecmp(methodName, "Clear") == 0)
+                        {
+                            gmb_coll_clear(ch);
+                            push_ref_entry(task, inst, GMB_BT_OBJECT);
+                        }
+                        else push_nil(task);
+                        gmb_obj_release(instE.ref);
+                        for (int i = 0; i < argCount && i < 16; i++) gmb_obj_release(args[i].ref);
+                        break;
+                    }
                     if (tc == 3 && argCount == 1 && args[0].type == 2 && args[0].ref
                         && args[0].ref->kind == GMB_OBJ_COLLECTION)
                     {

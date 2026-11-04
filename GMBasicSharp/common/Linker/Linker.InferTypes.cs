@@ -938,7 +938,6 @@ public static partial class Linker
     private static DataType? InferCollectionMethodReturnType(DataType instanceType, string methodName)
     {
         var upperMethodName = methodName.ToUpperInvariant();
-
         // 1. Logica per le collezioni generiche (Priorità Alta per propagare i tipi parametrici T)
         // Interrogando prima lo switch, garantiamo che lt.ElementType o hst.ElementType 
         // vengano usati per definire il tipo di ritorno di metodi come ToArray() o ToList().
@@ -1050,6 +1049,18 @@ public static partial class Linker
                     "COUNT" => new LongType(),
                     "ADD" or "REMOVE" or "CONTAINS" => new BitType(),
                     "CLEAR" => new VoidType(),
+                    _ => null
+                };
+            case HyperLogLogType:
+                /* Tutti i metodi HLL passano dal dispatcher runtime (CollectionInvoke) che
+                 * ritorna `object`: il tipo inferito è InferredType (dinamico), così le
+                 * coercizioni/PRINT usano le conversioni val (gmb_val_to_double/to_string).
+                 * Con DoubleType/StringType il consumer emetteva conv.r8/unbox su un object
+                 * = InvalidProgram (verificato: h.Count() in PRINT). */
+                return upperMethodName switch
+                {
+                    "COUNT" or "ERROR" or "PRECISION" or "ADD" or "MERGE" or "LOAD"
+                        or "CLEAR" or "SERIALIZE" => new InferredType(),
                     _ => null
                 };
             case QueueType qt:

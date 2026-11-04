@@ -843,6 +843,10 @@ if (args.Length > 0) { try { var sizes = new List<int>(); foreach (var a in args
                             return "SORTEDDICTIONARY`2";
                         case "BinaryHeap`1": case "MaxHeap`1":
                             return "LIST`1";
+                        case "HyperLogLog":
+                            return "HLL";   /* parità C99/VM-C (gmb_collection_type_name(30)) */
+                        case "Trie": return "TRIE";
+                        case "SparseSet": return "SPARSESET";
                     }
                 }
                 return Basic.IlBackend.IlRuntime.TypeInfo(v!);
@@ -1690,7 +1694,7 @@ if (args.Length >= 2) { var file = args[0]?.ToString() ?? ""; var section = args
         {
                 // Ritorna un Dictionary invece di un double[] posizionale: RegressionResultType
                 // (dichiarato come tipo di ritorno in StdLib.Analysis.cs) fa già type-check a
-                // compile-time contro DIM RegRes AS Analysis.RegressionResult — a runtime,
+                // compile-time contro DIM RegRes AS REGRESSION.RegressionResult — a runtime,
                 // OP_LOAD_FIELD (PCodeProcessor.cs) ha già un case generico per IDictionary che
                 // risolve .Slope/.Intercept/.R2 per nome, nessun nuovo plumbing necessario (stesso
                 // fix di GMBasic, TODO AnalysisTests-ADFTEST-ARIMA-KMEANS bug #3).
@@ -1740,7 +1744,7 @@ if (args.Length >= 2) { var file = args[0]?.ToString() ?? ""; var section = args
                     // DIM matrice PCode = object[,] (multidimensionale), NON double[,] e NON
                     // IList-di-righe: va letto con GetLength/GetValue, altrimenti si iterano i
                     // singoli elementi (flat) e la matrice risulta vuota → PCA null → 0
-                    // (bug Analysis.Pca: PCode 0,0 vs IL 8.3333,0).
+                    // (bug MULTIVARIATE.Pca: PCode 0,0 vs IL 8.3333,0).
                     int rr = arr2.GetLength(0), cc = arr2.GetLength(1);
                     mat = new double[rr, cc];
                     for (int i = 0; i < rr; i++) for (int j = 0; j < cc; j++) mat[i, j] = SafeDouble(arr2.GetValue(i, j));
@@ -1759,7 +1763,7 @@ if (args.Length >= 2) { var file = args[0]?.ToString() ?? ""; var section = args
                 object RunPca()
                 {
                     var (ev, evec) = CommonLib.Numerics.PCA(mat);
-                    // Canone Analysis.PcaResult (IlRuntime.Pca): DICT {EigenValues, EigenVectors}
+                    // Canone MULTIVARIATE.PcaResult (IlRuntime.Pca): DICT {EigenValues, EigenVectors}
                     // — prima era una List posizionale [ev, evec] e i membri .EigenValues/.EigenVectors
                     // restavano vuoti (PCode stampava 0/0 vs IL 1.6266/0.0525).
                     return new Dictionary<string, object?> { ["EigenValues"] = ev, ["EigenVectors"] = evec };
@@ -1770,7 +1774,7 @@ if (args.Length >= 2) { var file = args[0]?.ToString() ?? ""; var section = args
         },
         [BuiltInFunction.ANOVA] = (task, args) =>
         {
-                // ANALYSIS.ANOVA (token ANOVA, Analysis.AnovaResult): dict ESTESO
+                // STATS.Anova (token ANOVA, STATS.AnovaResult): dict ESTESO
                 // {FValue, PValue, DFBetween, DFWithin, SSBetween, SSWithin, MSBetween,
                 // MSWithin} — IlRuntime.Anova. IlRuntime.StatsAnova (HypothesisResult con
                 // Statistic/PValue/DegreesOfFreedom) è SOLO per STATS.ANOVA (token STATSANOVA,

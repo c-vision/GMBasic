@@ -245,6 +245,12 @@ public sealed partial class IlProgramCompiler
                 _il.Emit(OpCodes.Newarr, typeof(double));
                 _il.Emit(OpCodes.Newobj, typeof(CommonLib.Collections.BinaryIndexedTree<double>).GetConstructor([typeof(double[])])!);
                 return;
+            case HyperLogLogType:
+                // HLL: classe CommonLib (mirror del runtime C gmb_hll.c), precisione default.
+                // Ordine IL: argomento (int p) PRIMA del newobj.
+                _il.Emit(OpCodes.Ldc_I4, CommonLib.Collections.HyperLogLog.DefaultPrecision);
+                _il.Emit(OpCodes.Newobj, typeof(CommonLib.Collections.HyperLogLog).GetConstructor([typeof(int)])!);
+                return;
             default:
                 // Tree/AVL/RedBlack/Graph/Bag/Heap/Circular/Doubly: SortedDictionary
                 // (chiave ordinata, come il VM) o Dictionary per Bag.

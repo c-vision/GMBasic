@@ -258,6 +258,18 @@ public record BagType(DataType ElementType) : DataType(ElementType.Position)
 }
 
 /// <summary>
+/// HLL — HyperLogLog: stima della cardinalità (numero di elementi distinti) con memoria
+/// fissa. Non conserva gli elementi (niente FOR EACH): Add/Count/Merge/Error/Precision/
+/// Serialize/Load. Precisione fissa al default (14) in questa fase.
+/// </summary>
+[JsonDerivedType(typeof(HyperLogLogType), nameof(HyperLogLogType))]
+public record HyperLogLogType() : DataType(SourcePosition.Unknown)
+{
+    public override string ToString() => "HLL";
+    public override AstNode DeepClone() => new HyperLogLogType();
+}
+
+/// <summary>
 /// Rappresenta il tipo di dato CACHE.
 /// </summary>
 [JsonDerivedType(typeof(CacheType), nameof(CacheType))]

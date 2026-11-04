@@ -84,6 +84,7 @@ static const gmb_keyword_t gmb_keywords[] = {
     GMB_KEYWORD_ENTRY("LIST", List),
     GMB_KEYWORD_ENTRY("DICT", Dict),
     GMB_KEYWORD_ENTRY("HASHSET", HashSet),
+    GMB_KEYWORD_ENTRY("HLL", Hll),
     GMB_KEYWORD_ENTRY("STACK", Stack),
     GMB_KEYWORD_ENTRY("SORTED", Sorted),
     GMB_KEYWORD_ENTRY("TREE", Tree),

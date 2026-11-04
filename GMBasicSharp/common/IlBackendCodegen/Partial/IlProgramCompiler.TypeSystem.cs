@@ -567,6 +567,8 @@ public sealed partial class IlProgramCompiler
                 or RingBufferType or AnyType or HttpRequestType or HttpResponseType
                 or HttpOptionsType or HttpHeadersType or HttpConfigType or HttpPostedDataType
                 or WebSocketType or SqlResultSetType or FetchResultType or CookieJarType
+                // HLL: metodi dispatchati a runtime (CollectionInvoke → object).
+                or HyperLogLogType
                 // JSON (es. pkgs.Count() su un JSON.PARSE): dispatch runtime CollectionInvoke
                 // → object. Senza, InferType cascava al fallback statico (ReturnType della
                 // def risolta, es. Double) e l'aritmetica `pkgs.Count() - 1` coerzava un

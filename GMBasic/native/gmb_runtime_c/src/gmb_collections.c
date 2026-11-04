@@ -6,6 +6,7 @@
  * Gli elementi sono gmb_val_t (tipo unificato condiviso con il transpiler).
  * ============================================================================ */
 #include "gmb_collections.h"
+#include "gmb_hll.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -50,6 +51,7 @@ const char* gmb_collection_type_name(int type_code)
         case 19: return "CONSISTENTHASH`1";
         case 20: return "CIRCULARQUEUE`1";
         case 21: return "SPARSESET";
+        case 30: return "HLL";
         default: return "OBJECT";
     }
 }
@@ -98,6 +100,8 @@ typedef struct gmb_collection {
     struct gmb_trie_node* trie;
     /* Cache(16): lista di coppie chiave-valore */
     struct gmb_coll_cache_entry* cache;
+    /* HLL(28): sketch HyperLogLog (runtime condiviso, gmb_hll.c). */
+    gmb_hll_t* hll;
 } gmb_collection_t;
 
 /* Trie node */
@@ -165,6 +169,11 @@ int64_t gmb_collections_create(int type_code)
         c->bit = (double*)calloc(17, sizeof(double));
         if (!c->bit) { free(c); return -1; }
     }
+    else if (type_code == 30) /* HLL (HyperLogLog) */
+    {
+        c->hll = gmb_hll_new(GMB_HLL_DEFAULT_PRECISION);
+        if (!c->hll) { free(c); return -1; }
+    }
     gmb_coll_lock(&g_lock);
     int slot = -1;
     for (int i = 0; i < GMB_COLL_MAX; i++)
@@ -187,6 +196,19 @@ void gmb_coll_apply_ctor(int64_t h, gmb_val_t* args, int n_args)
 {
     gmb_collection_t* c = coll_get(h);
     if (!c || !args) return;
+    if (c->type_code == 30) /* HLL(p): precisione opzionale (default 14) */
+    {
+        int p = GMB_HLL_DEFAULT_PRECISION;
+        if (n_args >= 1)
+        {
+            double d = (args[0].kind == GMB_TYPE_INT) ? (double)args[0].v_int
+                     : (args[0].kind == GMB_TYPE_DOUBLE) ? args[0].v_double : 0.0;
+            if (d > 0) p = (int)d;
+        }
+        if (c->hll) gmb_hll_free(c->hll);
+        c->hll = gmb_hll_new(p);
+        return;
+    }
     if (c->type_code == 19 && n_args >= 1) /* HashRing: nodo singolo (stringa) o LISTA di nodi */
     {
         gmb_val_t n = args[0];
@@ -311,6 +333,7 @@ void gmb_collections_free(int64_t h)
     }
     gmb_coll_cache_entry_t* ce = c->cache;
     while (ce) { gmb_coll_cache_entry_t* nx = ce->next; free(ce->key); gmb_val_release(ce->value); free(ce); ce = nx; }
+    if (c->hll) gmb_hll_free(c->hll);
     free(c);
     g_registry[(int)(h - 1)] = NULL;
 }
@@ -357,6 +380,8 @@ int gmb_coll_add(int64_t h, gmb_val_t v)
     /* Bag: conta duplicati (count++). LinkedList: AddLast. Heap: push. SparseSet: Add. */
     gmb_collection_t* c = coll_get(h);
     if (!c) return -1;
+    /* HLL(28): Add = inserisci l'hash nel registro (NON memorizza l'elemento). */
+    if (c->type_code == 30 && c->hll) { gmb_hll_add_val(c->hll, v); return 0; }
     if (c->type_code == 20) return gmb_coll_enqueue(h, v);
     /* STACK (5): push in TESTA (LIFO) — il letterale [a,b,c] ha 'a' in cima e l'enumerazione
      * head→tail dà [c,b,a] (parity IL/PCode). Prima: add_last → ordine di inserimento
@@ -423,6 +448,7 @@ void gmb_coll_clear(int64_t h)
 {
     gmb_collection_t* c = coll_get(h);
     if (!c) return;
+    if (c->type_code == 30 && c->hll) gmb_hll_clear(c->hll);
     coll_item_free(c->head);
     c->head = c->tail = NULL;
     c->count = 0;
@@ -438,6 +464,8 @@ int64_t gmb_coll_count(int64_t h)
 {
     gmb_collection_t* c = coll_get(h);
     if (!c) return 0;
+    /* HLL(28): stima ARROTONDATA (Count() esatto come double via gmb_coll_hll_count). */
+    if (c->type_code == 30 && c->hll) return (int64_t)gmb_hll_count(c->hll);
     if (c->type_code == 20) return c->ring_len;
     return c->count;
 }
@@ -1698,4 +1726,55 @@ gmb_list_t gmb_collection_timeline_range_list(int64_t h, double lo, double hi) {
     }
     free(arr);
     return l;
+}
+
+/* ---- HLL (typeCode 28) — API dedicata sul runtime condiviso (gmb_hll.c) ----
+ * La stima e' un double (Count()) e va esposta senza passare da gmb_coll_count
+ * (che ritorna int64_t). */
+double gmb_coll_hll_count(int64_t h)
+{
+    gmb_collection_t* c = coll_get(h);
+    if (!c || c->type_code != 30 || !c->hll) return 0.0;
+    return gmb_hll_count(c->hll);
+}
+
+double gmb_coll_hll_error(int64_t h)
+{
+    gmb_collection_t* c = coll_get(h);
+    if (!c || c->type_code != 30 || !c->hll) return 0.0;
+    return gmb_hll_error(c->hll);
+}
+
+int gmb_coll_hll_precision(int64_t h)
+{
+    gmb_collection_t* c = coll_get(h);
+    if (!c || c->type_code != 30 || !c->hll) return 0;
+    return gmb_hll_precision(c->hll);
+}
+
+int gmb_coll_hll_merge(int64_t dst, int64_t src)
+{
+    gmb_collection_t* a = coll_get(dst);
+    gmb_collection_t* b = coll_get(src);
+    if (!a || !b || a->type_code != 30 || b->type_code != 30 || !a->hll || !b->hll) return -1;
+    return gmb_hll_merge(a->hll, b->hll);
+}
+
+int gmb_coll_hll_serialize(int64_t h, char* out, size_t cap)
+{
+    gmb_collection_t* c = coll_get(h);
+    if (!c || c->type_code != 30 || !c->hll) return -1;
+    return gmb_hll_serialize(c->hll, out, cap);
+}
+
+int gmb_coll_hll_load(int64_t h, const char* data, size_t len)
+{
+    gmb_collection_t* c = coll_get(h);
+    gmb_hll_t* n;
+    if (!c || c->type_code != 30 || !c->hll) return -1;
+    n = gmb_hll_deserialize(data, len);
+    if (!n) return -1;
+    gmb_hll_free(c->hll);
+    c->hll = n;
+    return 0;
 }
