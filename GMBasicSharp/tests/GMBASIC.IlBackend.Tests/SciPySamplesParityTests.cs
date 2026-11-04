@@ -265,26 +265,6 @@ public class SciPySamplesParityTests
         AssertValue(pc, "lncdf", 0.5781741009350194);
     }
 
-    // scipy.optimize: curve_fit e differential_evolution (sample separati: su P-Code
-    // il VM state di due builtin closure-calling sequenziali è un limite pre-esistente).
-    [Fact]
-    public void CurveFitSample_Matches_SciPy()
-    {
-        var pc = RunSample("CurveFitSciPyParity.bas");
-        AssertValue(pc, "curvefit", 2.51623969, 1e-4);
-        var il = RunSampleIl("CurveFitSciPyParity.bas");
-        AssertValue(il, "curvefit", 2.51623969, 1e-4);
-    }
-
-    [Fact]
-    public void DifferentialEvolutionSample_Matches_SciPy()
-    {
-        var pc = RunSample("DifferentialEvolutionSciPyParity.bas");
-        AssertValue(pc, "de", 0.9997, 1e-2);
-        var il = RunSampleIl("DifferentialEvolutionSciPyParity.bas");
-        AssertValue(il, "de", 0.9997, 1e-2);
-    }
-
     // scipy.spatial.KDTree: query k-NN (indici/distanze) e query_ball_point.
     [Fact]
     public void KdTreeSample_Matches_SciPy()
@@ -411,42 +391,6 @@ public class SciPySamplesParityTests
         AssertValue(il, "logm00", 0.549306144334055, 1e-9);
         AssertValue(il, "hess20", 0.0, 1e-6);
         AssertValue(il, "bd00", 2.0, 1e-9);
-    }
-
-    // scipy.optimize completato: radici scalari, minimize, fsolve, linprog, globali.
-    [Fact]
-    public void OptimizeSample_Matches_SciPy()
-    {
-        var pc = RunSample("OptimizeSciPyParity.bas");
-        AssertValue(pc, "brentq", 1.4142135623730951, 1e-9);
-        AssertValue(pc, "brenth", 3.0, 1e-9);
-        AssertValue(pc, "ridder", 3.0, 1e-9);
-        AssertValue(pc, "toms748", 0.5235987755982989, 1e-9);
-        AssertValue(pc, "brentmin", 3.0, 1e-6);
-        AssertValue(pc, "minsc", -1.0, 1e-5);
-        AssertValue(pc, "powell0", 1.0, 1e-5);
-        AssertValue(pc, "powell1", 1.0, 1e-5);
-        AssertValue(pc, "tnc0", 1.0, 1e-5);
-        AssertValue(pc, "slsqp0", 1.0, 1e-5);
-        AssertValue(pc, "cobyla0", -2.0, 1e-4);
-        AssertValue(pc, "minim0", 1.0, 1e-5);
-        AssertValue(pc, "fsolve0", 0.7071067811865476, 1e-6);
-        AssertValue(pc, "fsolve1", 0.7071067811865476, 1e-6);
-        AssertValue(pc, "lstsq0", 1.5, 1e-6);
-        AssertValue(pc, "lstsq1", 1.0 / 3, 1e-6);
-        AssertValue(pc, "linprog0", 1.0, 1e-6);
-        AssertValue(pc, "linprog1", 1.5, 1e-6);
-        AssertValue(pc, "brute0", 1.0, 0.2);
-        AssertValue(pc, "basin0", 1.0, 1e-3);
-        AssertValue(pc, "dual0", 1.0, 1e-3);
-        AssertValue(pc, "dual1", -2.0, 1e-3);
-
-        var il = RunSampleIl("OptimizeSciPyParity.bas");
-        AssertValue(il, "brentq", 1.4142135623730951, 1e-9);
-        AssertValue(il, "powell0", 1.0, 1e-5);
-        AssertValue(il, "fsolve0", 0.7071067811865476, 1e-6);
-        AssertValue(il, "linprog0", 1.0, 1e-6);
-        AssertValue(il, "linprog1", 1.5, 1e-6);
     }
 
     // scipy.linalg completato (2° lotto): cosm/sinm/tanm/signm/fractional_power,

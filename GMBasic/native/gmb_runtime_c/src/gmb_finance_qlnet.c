@@ -1,7 +1,7 @@
 /* gmb_finance_qlnet.c — parità common/CommonLib/Trading/QLNet.cs:256 (PortfolioMath + cost/constraints)
  * QLNet è una libreria C# (NuGet) → NON linkabile dal runtime C. Si porta la parte
  * math pura (dot product, w'Σw, Sharpe, Markowitz/Kelly cost, vincoli) senza QLNet;
- * l'ottimizzazione usa i solver generici già presenti (gmb_opt_pso/gmb_de_minimize).
+ * l'ottimizzazione usa i solver generici già presenti (gmb_opt_pso).
  */
 #include "gmb_runtime.h"
 #include <math.h>

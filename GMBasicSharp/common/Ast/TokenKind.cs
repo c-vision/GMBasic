@@ -1064,42 +1064,6 @@ public enum TokenKind
     ZeroCouponBondValue,
     ZeroCouponBondYield,
 
-    // --- Funzioni di Ottimizzazione ---
-    Newton,
-    Brent,
-    Simplex,
-    Broyden,
-    NelderMead,
-    LeastSquares,
-    CholeskySolve,
-    GoldenSection,
-    Bfgs,
-    LBfgs,
-    ConjugateGradient,
-    LevenbergMarquardt,
-    LevenbergMarquardtVec,
-    CurveFit,              // Fit non lineare ai minimi quadrati (scipy curve_fit)
-    DifferentialEvolution, // Ottimizzazione globale (scipy differential_evolution)
-    OptimizeBrentq,        // Radice con metodo di Brent (scipy brentq)
-    OptimizeBrenth,        // Radice con Brent/secante iperbolica (scipy brenth)
-    OptimizeRidder,        // Radice con il metodo di Ridder
-    OptimizeToms748,       // Radice con Alefeld-Potra-Shi (scipy toms748)
-    OptimizeBrentMin,      // Minimizzatore scalare (scipy optimize.brent)
-    OptimizeMinimizeScalar,// Dispatcher minimizzazione scalare
-    OptimizePowell,        // Minimo multivariato, direzioni coniugate (scipy powell)
-    OptimizeTnc,           // Newton troncato vincolato (scipy tnc)
-    OptimizeCobyla,        // Ottimizzazione con approssimazione lineare (scipy cobyla)
-    OptimizeSlsqp,         // Sequential Least SQuares Programming (scipy slsqp)
-    OptimizeMinimize,      // Dispatcher minimize (nelder-mead/powell/cg/bfgs/lbfgs/tnc/cobyla/slsqp)
-    OptimizeFsolve,        // Radice di sistema non lineare (scipy fsolve)
-    OptimizeLeastSquares,  // least_squares nonlineare con bounds
-    OptimizeLinprog,       // Programmazione lineare (scipy linprog)
-    OptimizeBrute,         // Griglia esaustiva (scipy brute)
-    OptimizeBasinHopping,  // Minimo globale (scipy basinhopping)
-    OptimizeDualAnnealing, // Ricottura simulata (scipy dual_annealing)
-    Bisection,
-    Secant,
-
     // --- Funzioni di Algebra Lineare (per namespace MATRIX e VECTOR) ---
     // Nota: CREATE e MULTIPLY sono gestiti come Identifier dal parser
     // dopo un punto, quindi non servono nuovi token per MATRIX.CREATE, etc.

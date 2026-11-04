@@ -4,9 +4,9 @@
     "namespaces": 71
   },
   "enum_cs": {
-    "tokenkind_members": 2537,
+    "tokenkind_members": 2503,
     "builtinfunction_members": 0,
-    "builtinfunction_explicit_values": 1255,
+    "builtinfunction_explicit_values": 1221,
     "builtinfunction_dup_code_groups": 0,
     "builtinfunction_dup_members": 0
   },
