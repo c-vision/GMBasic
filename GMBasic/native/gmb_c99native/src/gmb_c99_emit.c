@@ -2236,6 +2236,14 @@ int etype(ctx_t* c, gmb_expr_t* e) {
         /* LINALG.FACTOR(decomp, name): handle matrice (int64_t), non stringa.
      * GMB_TOK_Get è condiviso con POOL.Get/SyncMap.Get (stringa). */
     if (is_matrix_factor_call(e)) return TY_NUM;
+    /* JSON.STRINGIFY/TOJSON: SEMPRE stringa (gmb_val_to_json ritorna gmb_string_t). Senza,
+     * quando l'argomento è una coppia/lista (es. `JSON.Stringify(tree.Min())`) il tipo
+     * ricadeva sul ramo per-istanza (TY_VAL/NUM) e PRINT emetteva
+     * gmb_print_double(<gmb_string_t>) = C non compilabile (CollectionsModern §14). */
+    if (e && e->var
+        && (strcasecmp(e->var, "Stringify") == 0 || strcasecmp(e->var, "ToJson") == 0
+            || strcasecmp(e->var, "ToJSON") == 0))
+        return TY_STR;
     /* Metodi di collezione SPECIALIZZATI che producono uno SCALARE (non un val boxed):
      *   BITREE Query/QueryRange → double
      *   SPARSESET HasItem → predicato -1/0
@@ -10195,7 +10203,8 @@ static int try_emit_var_method(ctx_t* c, const char* recv, const char* m, gmb_ex
     /* SPARSESET (21).HasItem(v): predicato di appartenenza sulla lista (parità
      * CommonLib/PCode/VM-C). Prima non era gestito → C invalido
      * (`gmb_val_index(list, ...)` su un gmb_list_t, CollectionsModern §12). */
-    if (v->coll_type_code == 21 && mtk == GMB_TOK_CollHasItem && n >= 1) {
+    if (v->coll_type_code == 21 && n >= 1
+        && (mtk == GMB_TOK_CollHasItem || strcasecmp(m, "HasItem") == 0)) {
         sb_put(&c->out, "(gmb_double_t)gmb_list_contains(");
         emit_var_ref(c, v);
         sb_put(&c->out, ", ");
@@ -11384,6 +11393,15 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                                 sb_put(&c->out, "gmb_make_val_string(gmb_val_to_json(gmb_make_val_dict(gmb_dict_copy(");
                                 sb_ident(&c->out, cv->name);
                                 sb_put(&c->out, "))).data)");
+                                return;
+                            }
+                            /* First()/Last() su map-like: prima/ultima COPPIA {Key,Value}
+                             * (parità IL/PCode/VM-C: TREE/TIMELINE.First è un KeyValuePair).
+                             * Prima non era gestito → emissione `0` (CollectionsModern §9). */
+                            if (mk == GMB_TOK_CollFirst || mk == GMB_TOK_CollLast) {
+                                sb_put(&c->out, "gmb_val_to_json(gmb_make_val_list(gmb_dict_extreme(&");
+                                sb_ident(&c->out, cv->name);
+                                sb_printf(&c->out, ", %d, 0)))", mk == GMB_TOK_CollLast ? 1 : 0);
                                 return;
                             }
                             if (gmb_tk_in(mk, gmb_tk_dict_mme, (unsigned)(sizeof(gmb_tk_dict_mme)/sizeof(gmb_tk_dict_mme[0])))) {
