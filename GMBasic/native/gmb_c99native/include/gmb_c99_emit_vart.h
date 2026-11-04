@@ -91,6 +91,12 @@ typedef struct { char* name; int type; int is_array; int ndims; int byref; int g
                   int late_local;   /* 1 = LOCAL che ombreggia una GLOBAL: dichiarato C solo dal
                                     * punto della LOCAL in poi (lookup_var lo ignora prima). */
                  int elem_byte; /* DIM x(n) AS BYTE: array di BYTE (PUT/GET #n su file BINARY = 1 byte per elemento) */
+                 int list_semantics; /* Array nativo che rappresenta una LISTA del linguaggio
+                                      * (letterale `[ ... ]` non annidato senza tipo target, o
+                                      * generator expression `(x FOR x IN c)`): TYPENAME deve
+                                      * dire "LIST`1" come per le LIST (guida Arrays §0.3),
+                                      * non "ARRAY". La rappresentazione resta l'array dinamico
+                                      * nativo (indicizzazione/LEN/FOR EACH/Add già a parità). */
                  int coll_type_code; /* typeCode BASIC della collezione dichiarata (1=LIST,2=DICT,
                                       * 3=HASHSET,...,17=GRAPH,20=RINGBUFFER,...). Disambigua
                                       * TYPENAME/VALTYPE fra tipi con la stessa rappresentazione C. */
