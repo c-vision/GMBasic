@@ -242,6 +242,20 @@ gmb_list_t gmb_list_deep_copy(gmb_list_t l) {
     return r;
 }
 
+/* Copia PROFONDA in ordine INVERSO: ToArray()/ToList() di uno STACK restituisce gli
+ * elementi dalla CIMA (LIFO) — lo storage della pila è in ordine di push. */
+gmb_list_t gmb_list_deep_copy_rev(gmb_list_t l) {
+    gmb_list_t r = gmb_list_from_doubles(NULL, 0);
+    for (size_t i = l.count; i > 0; i--) {
+        size_t k = i - 1;
+        if (l.items[k].kind == GMB_TYPE_STRING)
+            gmb_list_add(&r, gmb_make_val_string(l.items[k].v_string.data));
+        else
+            gmb_list_add(&r, l.items[k]);
+    }
+    return r;
+}
+
 gmb_list_t gmb_set_union(gmb_list_t a, gmb_list_t b) {
     gmb_list_t r = gmb_list_from_doubles(NULL, 0);
     for (size_t i = 0; i < a.count; i++) gmb_list_add(&r, a.items[i]);

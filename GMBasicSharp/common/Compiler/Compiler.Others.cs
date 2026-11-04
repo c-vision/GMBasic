@@ -452,7 +452,12 @@ public sealed partial class Compiler
         // con ForEachComprehensive.bas, sezione "Indice + valore su array").
         var collType = CompilerInferExpressionType(stmt.CollectionExpr);
         var isChannel = collType is ChannelType;
-        var isDictLike = collType is DictType or Basic.JsonType;
+        // Mappa ORDINATA/avanzata: FOR EACH k, v legge la COPPIA come per DICT (l'elemento
+        // posizionale è KeyValuePair/{Key,Value}). Prima solo DictType/JSON: su SORTED il
+        // FOR EACH a due variabili trattava l'elemento come "array" → k=indice e
+        // v=coppia stampata (sample CollectionsDictLists §3: "0 : [[Key,Alice],[Value,95]]").
+        var isDictLike = collType is DictType or Basic.JsonType or SortedDictType
+            or TreeType or AVLTreeType or RedBlackTreeType or BPlusTreeType or TimelineType;
         if (isChannel)
         {
             // FOR EACH v IN ch (parità Go for v := range ch): il loop riceve dal canale finché

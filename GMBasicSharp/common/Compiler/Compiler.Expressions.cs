@@ -580,6 +580,19 @@ public sealed partial class Compiler
             LoadVariable(new VariableTarget(-1, expr.NameSuffixed, expr.NameCleaned));
         }
 
+        /* ACCESSO SICURO su ARRAY NATIVO (`arr(9)?`, ArrayAccessExpr.IsSafe): OP_LOAD_ELEMENT
+         * lancia ERR 9 fuori dai limiti (canone: l'accesso NON sicuro deve fallire). Il `?`
+         * deve invece dare NIL → guard esplicito 0 <= i <= UBOUND(arr) (era l'unico caso
+         * rotto: liste/dict/stringhe sono già null-safe nell'opcode — sample
+         * Collections/CollectionsSafeAccess, gamba PCode in ERR 9). */
+        if (expr.IsSafe && expr.Indices.Length == 1 && expr.SymbolId >= 0
+            && _ctx is BasicProgram safeProg
+            && safeProg.Symbols.GetSymbol(expr.SymbolId).DataType is ArrayType)
+        {
+            EmitSafeArrayIndexFromStack(expr.Indices[0]);
+            return;
+        }
+
         foreach (var index in expr.Indices)
         {
             VisitExpression(index);
@@ -1608,6 +1621,7 @@ public sealed partial class Compiler
                 BinaryIndexedTreeType => 10,
                 TrieType => 11,
                 LinkedListType => 12,
+                DoublyLinkedListType => 12,   // stessa LinkedList<T> del P-Code (vedi OP_NEW 12)
                 CircularLinkedListType => 13,
                 BinaryHeapType { IsMaxHeap: true } => 27,
                 BinaryHeapType => 14,
@@ -2104,6 +2118,12 @@ public sealed partial class Compiler
     private void EmitSafeArrayIndex(VariableExpr baseExpr, Expr indexExpr)
     {
         VisitExpression(baseExpr);
+        EmitSafeArrayIndexFromStack(indexExpr);
+    }
+
+    /// <summary>Come <see cref="EmitSafeArrayIndex"/>, ma con la base GIÀ sullo stack.</summary>
+    private void EmitSafeArrayIndexFromStack(Expr indexExpr)
+    {
         AddLocal(new Token(TokenKind.Identifier, $"__safeb{_locals.Count}", null, SourcePosition.Unknown));
         var baseSlot = _locals.Count - 1;
         EmitByte((byte)OpCode.OP_STORE_LOCAL); EmitShort((ushort)baseSlot);

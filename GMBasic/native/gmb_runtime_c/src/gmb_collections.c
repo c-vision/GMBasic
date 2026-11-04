@@ -584,6 +584,41 @@ int64_t gmb_collection_set_op(int64_t ha, int64_t hb, int op)
     return out;
 }
 
+/* ---- Accesso POSIZIONALE (FOR EACH/comprehension: UBOUND + indice) ----
+ * Per le map-like (6/7/8/9/26/18/19) l'elemento è la COPPIA {Key, Value} come dict
+ * (stessa forma del KVP del dispatcher VM/C per le dict); per le altre è il valore.
+ * Indice fuori range → NIL. L'ordine è quello di iterazione (testa→coda: per STACK la
+ * testa è la cima → LIFO, come IL). */
+gmb_val_t gmb_coll_at(int64_t h, int64_t idx)
+{
+    gmb_collection_t* c = coll_get(h);
+    if (!c) return gmb_val_nil();
+    if (c->type_code == 20)   /* RingBuffer: ordine dal più vecchio */
+    {
+        if (idx < 0 || idx >= c->ring_len) return gmb_val_nil();
+        return c->ring[(c->ring_head + idx) % c->capacity];
+    }
+    if (c->type_code == 30) return gmb_val_nil();   /* HLL: nessun elemento */
+    if (idx < 0 || idx >= c->count) return gmb_val_nil();
+    {
+        gmb_coll_item_t* it = c->head;
+        for (int64_t i = 0; it && i < idx; i++) it = it->next;
+        if (!it) return gmb_val_nil();
+        {
+            int tc = c->type_code;
+            int is_map = (tc == 6 || tc == 7 || tc == 8 || tc == 9 || tc == 26 || tc == 18 || tc == 19);
+            if (is_map)
+            {
+                gmb_dict_t e = gmb_dict_new();
+                gmb_dict_set(&e, "Key", it->key);
+                gmb_dict_set(&e, "Value", it->v);
+                return gmb_make_val_dict(e);
+            }
+            return it->v;
+        }
+    }
+}
+
 /* ---- Accesso sequenziale: First/Last/RemoveLast/IndexOf ---- */
 gmb_val_t gmb_coll_first(int64_t h)
 {

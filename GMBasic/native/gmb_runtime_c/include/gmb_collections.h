@@ -53,6 +53,10 @@ gmb_val_t* gmb_coll_to_array(int64_t h, int* out_len);
  * Ritorna un NUOVO handle HashSet (o -1). */
 int64_t gmb_collection_set_op(int64_t ha, int64_t hb, int op);
 
+/* Accesso POSIZIONALE (FOR EACH/comprehension): N-esimo elemento nell'ordine di
+ * iterazione; per le map-like una coppia dict {Key,Value}. NIL se fuori range. */
+gmb_val_t gmb_coll_at(int64_t h, int64_t idx);
+
 /* Accesso sequenziale (LinkedList/Doubly/Circular): First/Last/RemoveLast/IndexOf */
 gmb_val_t gmb_coll_first(int64_t h);
 gmb_val_t gmb_coll_last(int64_t h);

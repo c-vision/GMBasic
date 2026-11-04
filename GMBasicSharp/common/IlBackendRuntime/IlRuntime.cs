@@ -7598,9 +7598,32 @@ public static partial class IlRuntime
     {
         var items = SnapshotItems(collection);
         for (var i = 0; i < items.Length; i++)
+        {
             if (Equals(items[i], value)) return i;
+            /* Uguaglianza NUMERICA fra tipi diversi: LinkedList<long> contiene boxed
+             * Int64, mentre il literal BASIC `20` arriva boxed Double → Equals(long,double)=
+             * false. Senza, IndexOf(20) dava -1 (CollectionsDictLists/Linked). */
+            if (items[i] is IConvertible && value is IConvertible
+                && IsNumericObject(items[i]) && IsNumericObject(value))
+            {
+                try
+                {
+                    if (Convert.ToDouble(items[i], System.Globalization.CultureInfo.InvariantCulture)
+                        == Convert.ToDouble(value, System.Globalization.CultureInfo.InvariantCulture))
+                        return i;
+                }
+                catch { /* non convertibile: prosegue con Equals */ }
+            }
+        }
         return -1;
     }
+
+    private static bool IsNumericObject(object? o) => o is sbyte or byte or short or ushort
+        or int or uint or long or ulong or float or double or decimal;
+
+    private static bool IsLinkedListInstance(object? o)
+        => o is not null && o.GetType().IsGenericType
+           && o.GetType().GetGenericTypeDefinition() == typeof(System.Collections.Generic.LinkedList<>);
 
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<object, int> _circularState = new();
 
@@ -7615,15 +7638,25 @@ public static partial class IlRuntime
         return items[idx % items.Length];
     }
 
-    /// <summary>Rotate(n) su una CIRCULAR list: sposta l'indice corrente di n (mod length).</summary>
+    /// <summary>Rotate(n) su una CIRCULAR list: sposta la "testa" logica di n posizioni.
+    /// ROTAZIONE FISICA (come gmb_coll_rotate della VM/C e il transpiler C99): il cursore
+    /// resta all'indice 0 e il FOR EACH riparte dalla nuova testa. Prima si teneva solo un
+    /// indice separato → Current() era giusto ma l'iterazione ripartiva dalla testa originale
+    /// (IL stampava A,B,C,D dove VM-C/C99/PCode stampano D,A,B,C).</summary>
     public static void CircularRotate(object? collection, double steps)
     {
         if (collection is null) return;
-        var count = SnapshotItems(collection).Length;
+        var items = SnapshotItems(collection);
+        var count = items.Length;
         if (count == 0) return;
-        var idx = _circularState.TryGetValue(collection, out var i) ? i : 0;
-        idx = ((idx + (int)steps) % count + count) % count;
-        _circularState[collection] = idx;
+        var m = (((int)steps % count) + count) % count;
+        if (m != 0)
+        {
+            var rotated = new object?[count];
+            for (var k = 0; k < count; k++) rotated[k] = items[(k + m) % count];
+            RewriteItems(collection, rotated);
+        }
+        _circularState[collection] = 0;
     }
 
     /// <summary>Sort() su una collection non-sortabile nativamente (LinkedList/Doubly/
@@ -14725,6 +14758,17 @@ public static double TextWidth(string s)
                 return DictEdgePair(dmax, max: true, extract: false);
             case "MIN": return CollectionMin(instance);
             case "MAX": return CollectionMax(instance);
+            // Sort()/Reverse() su LinkedList<T>: il CLR non espone i metodi (il backend IL li
+            // emette come CollectionSort/CollectionReverse; il P-Code delega qui). Senza,
+            // "metodo runtime 'Sort' non trovato su 'LinkedList`1'" (CollectionsLinked/DictLists).
+            case "SORT" when args.Length == 0 && IsLinkedListInstance(instance):
+                CollectionSort(instance); return null;
+            case "REVERSE" when args.Length == 0 && IsLinkedListInstance(instance):
+                CollectionReverse(instance); return null;
+            // IndexOf(value): LinkedList/Doubly/Circular non hanno il metodo CLR —
+            // scansione lineare con uguaglianza NUMERICA (parità con il ramo del backend IL).
+            case "INDEXOF" when args.Length == 1:
+                return CollectionIndexOf(instance, args[0]);
             // HEAP/MAXHEAP (BinaryHeap<T>): Count() = numero di elementi (non è ICollection,
             // quindi il COUNT generico sotto tornava 0).
             case "COUNT" when args.Length == 0 && instance is CommonLib.Collections.BinaryHeap<object> hbc:

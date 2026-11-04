@@ -3062,6 +3062,10 @@ int etype(ctx_t* c, gmb_expr_t* e) {
         /* lettura array: nome(i) è una CALL nell'AST; il tipo è quello dell'elemento */
         var_t* av = lookup_var(c, e->var ? e->var : "");
         if (av && av->is_array) return av->type;
+        /* DICT<...,ANY/JSON/UDT> (elem_boxed): la lettura è un gmb_val_t NUDO (percorso
+         * "dict di val") → TY_VAL, altrimenti PRINT lo passa a gmb_print_double (C non
+         * compilabile / NaN). */
+        if (av && gk_is_dict(av->gkind) && av->elem_boxed) return TY_VAL;
         if (av && (gk_is_list(av->gkind) || gk_is_dict(av->gkind))) return av->type;
         /* lettura intera variabile scalare con parentesi vuote `x()` (byte-array/digest
          * come gmb_string_t): il tipo è quello della variabile (non un indice/loop). */
@@ -4061,7 +4065,7 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                     /* Mappa con valore NON primitivo (DICT/SORTED<...,JSON>/<...,UDT>): gli
                      * elementi sono gmb_val_t, non double — usa il percorso "dict di val"
                      * (elem_boxed: gmb_dict_get/_set raw val) invece di _or_nan/make_val_double. */
-                    if (gk_is_dict(v->gkind) && s->dim_elem_class) v->elem_boxed = 1;
+                    if (gk_is_dict(v->gkind) && (s->dim_elem_class || s->dim_elem_any)) v->elem_boxed = 1;
                     if (s->dim_elem_class) snprintf(v->elem_class, sizeof(v->elem_class), "%s", s->dim_elem_class);
                     /* Contenitore a HANDLE (HEAP 14 / MAXHEAP 27 / BAG 15 / TRIE 11): è un
                      * gmb_val_t, NON un array nativo. Il ramo `dim_arr_init_kind` più sopra ha
@@ -11372,7 +11376,9 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                             return;
                         }
                         if (mk == GMB_TOK_ToArray || mk == GMB_TOK_ToList) {
-                            sb_put(&c->out, "gmb_list_deep_copy(");
+                            /* STACK: ToArray/ToList dalla CIMA (LIFO) — parità IL (Stack<T>
+                             * enumera top→bottom), VM-C e PCode. */
+                            sb_put(&c->out, cv->gkind == GK_STACK ? "gmb_list_deep_copy_rev(" : "gmb_list_deep_copy(");
                             sb_ident(&c->out, cv->name);
             sb_put(&c->out, ")");
                             return;
@@ -18131,7 +18137,14 @@ static void emit_dict_literal(ctx_t* c, gmb_expr_t* e) {
         gmb_expr_t* v = e->args[i + 1];
         /* chiavi: stringa espressa, nome letterale (identifier non-variabile → stringa),
          * o numerica convertita a stringa (es. {1: "a"}). */
-        int key_is_litname = (k->kind == GMB_EXPR_VAR && k->var && !lookup_var(c, k->var));
+        /* Chiave scritta SENZA virgolette = NOME LETTERALE (guida utente: "le chiavi stringa
+         * possono essere scritte senza virgolette se sono identificatori o keyword"). Prima si
+         * richiedeva che il nome NON fosse una variabile: se un'altra parte del programma usava
+         * lo stesso nome (es. `FOR EACH name, score IN ...` prima di `{name: ...}`), la chiave
+         * diventava un'ESPRESSIONE → `gmb_dict_set(&d, (name).data, ...)` con il valore della
+         * variabile (sample CollectionsDictLists §10: chiave "Charlie", lookup "name" vuoto).
+         * Una chiave calcolata si scrive come espressione (es. `{"k" + n: v}`), non come nome nudo. */
+        int key_is_litname = (k->kind == GMB_EXPR_VAR && k->var);
         int key_is_str = (etype(c, k) == TY_STR);
         if (!key_is_str && !key_is_litname && k->kind != GMB_EXPR_NUM) {
             c99_fail(c, e->line, "DICT literal: chiave non supportata");
@@ -19244,9 +19257,18 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                 int id = ++fel2_uid;
                 ind(c); sb_put(&c->out, "{\n");
                 c->indent++;
-                ind(c); sb_printf(&c->out, "for (gmb_int_t __fel%d = 0; __fel%d < gmb_list_count(", id, id);
-                emit_ident(c, av->name);
-                sb_printf(&c->out, "); __fel%d++) {\n", id);
+                /* STACK: lo storage è la lista in ordine di PUSH (append) mentre l'iterazione
+                 * BASIC è LIFO (dalla cima): si percorre al contrario (parità IL/VM-C/PCode:
+                 * `FOR EACH item IN stack` dà l'ultimo push per primo). */
+                if (av->gkind == GK_STACK) {
+                    ind(c); sb_printf(&c->out, "for (gmb_int_t __fel%d = (gmb_int_t)gmb_list_count(", id);
+                    emit_ident(c, av->name);
+                    sb_printf(&c->out, ") - 1; __fel%d >= 0; __fel%d--) {\n", id, id);
+                } else {
+                    ind(c); sb_printf(&c->out, "for (gmb_int_t __fel%d = 0; __fel%d < gmb_list_count(", id, id);
+                    emit_ident(c, av->name);
+                    sb_printf(&c->out, "); __fel%d++) {\n", id);
+                }
                 c->indent++;
                 ind(c);
                 emit_ident(c, lfv2->name);

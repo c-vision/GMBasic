@@ -10000,12 +10000,19 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     gmb_obj_collection_t* col = (gmb_obj_collection_t*)arrO;
                     int tce = col->type_code;
                     gmb_val_t k = isKeyStr ? gmb_make_val_string_counted(keyStr) : gmb_make_val_double(indices[0]);
-                    /* Todo Arrays-Sweep-Residui-Minori #4: stesso typeCode 6 (SortedDict)
-                     * mancante nel percorso di lettura indicizzata — controparte del fix
-                     * di scrittura in OP_STORE_ELEMENT poco sopra. */
-                    gmb_val_t v = (tce == 6 || tce == 7 || tce == 8 || tce == 9 || tce == 26 || tce == 18 || tce == 19)
-                        ? gmb_coll_kv_get(col->handle, k)
-                        : gmb_val_nil();
+                    /* FOR EACH/comprehension (OP_LOAD_ELEMENT_POSITIONAL) su una collezione a
+                     * handle: l'indice numerico è POSIZIONALE (N-esimo elemento nell'ordine di
+                     * iterazione; per le map-like la coppia {Key,Value}), NON una chiave.
+                     * Prima si faceva sempre kv_get → per SET/STACK/QUEUE/TRIE (non map)
+                     * push_nil e per le map la chiave "0"/"1"/... → FOR EACH sempre vuoto
+                     * (sample CollectionsDictLists/CollectionsLinked). */
+                    gmb_val_t v;
+                    if (op == OP_LOAD_ELEMENT_POSITIONAL && !isKeyStr)
+                        v = gmb_coll_at(col->handle, (int64_t)indices[0]);
+                    else
+                        v = (tce == 6 || tce == 7 || tce == 8 || tce == 9 || tce == 26 || tce == 18 || tce == 19)
+                            ? gmb_coll_kv_get(col->handle, k)
+                            : gmb_val_nil();
                     gmb_val_discard(k);   /* chiave temporanea */
                     gmb_stack_entry_t s = gmb_adapter_val_to_stack(v);
                     if (s.type == 2 && s.ref) push_ref_new(task, s.ref, s.basic_type);
@@ -12734,6 +12741,24 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                         }
                         else push_nil(task);
                         free(arr);
+                    }
+                    else if (isMap && strcasecmp(methodName, "Values") == 0)
+                    {
+                        /* Values() su contenitore chiave→valore a handle (SORTED/TREE/AVL/
+                         * REDBLACK/BPLUS/TIMELINE): lista dei VALORI in ordine di chiave.
+                         * Prima mancava: cadeva nel fallback → NIL (sample
+                         * CollectionsDictLists §3, gamba VM/C "Values: null"). */
+                        int n = 0;
+                        gmb_val_t* kv = gmb_coll_kv_pairs(ch, &n);
+                        gmb_obj_shared_val_t* vout = gmb_shared_list_new();
+                        if (vout && kv)
+                        {
+                            for (int i = 1; i < n; i += 2)
+                                gmb_list_add(vout->list, kv[i]);
+                            push_ref_new(task, (gmb_obj_t*)vout, GMB_BT_OBJECT);
+                        }
+                        else push_nil(task);
+                        free(kv);
                     }
                     else if (isMap && tc == 18 && strcasecmp(methodName, "GetRange") == 0 && argCount >= 2)
                     {

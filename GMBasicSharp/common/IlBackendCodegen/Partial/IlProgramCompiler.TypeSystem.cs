@@ -272,6 +272,13 @@ public sealed partial class IlProgramCompiler
         BinaryExpr b when b.Op.Kind == TokenKind.Plus &&
                            (InferType(b.Left) is StringType || InferType(b.Right) is StringType)
             => new StringType(),
+        // `??` (null-coalescing): l'emit boxa ENTRAMBI i lati in object (il sinistro può
+        // essere il risultato object di un accesso sicuro) e lascia un oggetto sullo stack.
+        // Se il tipo inferito resta DoubleType il consumatore (DIM/PRINT) tratta quel
+        // riferimento come double → garbage (il puntatore: misurato ~4.8e9 su
+        // Collections/CollectionsSafeAccess, `d["x"]? ?? -1`). Il tipo è quindi SEMPRE
+        // dinamico: il consumatore converte con ToDouble/ToString.
+        BinaryExpr b when b.Op.Kind == TokenKind.QuestionMarkQuestion => new AnyType(),
         // "+" con un operando DINAMICO (AnyType, es. campo DBF nudo late-binding `BALANCE + 1`):
         // EmitBinaryExpression usa IlRuntime.DynamicAdd, che ritorna un object BOXED (numerico
         // oppure stringa, deciso a runtime). Il tipo risultante deve quindi essere AnyType e NON
