@@ -3086,15 +3086,22 @@ static void gmb_bf_632(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
                  * gmb_coll_to_array. Materializzazione dal runtime condiviso (§0bis). */
                 int is_kv = 0;
                 gmb_list_t kvl = gmb_coll_kv_entries_to_list(col->handle, &is_kv);
-                gmb_obj_shared_val_t* outkv = gmb_shared_list_new();
-                if (outkv)
+                /* SOLO per un contenitore CHIAVE→VALORE si restituiscono le coppie. Per gli
+                 * altri (LIST/QUEUE/STACK/HASHSET/HEAP...) kvl è VUOTA e is_kv=0: prima si
+                 * usciva comunque con quella lista vuota → `hs.ToArray()` = [] (e
+                 * JSON.Stringify(hs.ToArray()) = []), mentre Count era corretto
+                 * (sample Collections/CollectionsFluent, gamba VM/C). */
+                if (is_kv)
                 {
-                    if (is_kv)
+                    gmb_obj_shared_val_t* outkv = gmb_shared_list_new();
+                    if (outkv)
+                    {
                         for (size_t i = 0; i < kvl.count; i++)
                             gmb_list_add(outkv->list, kvl.items[i]);
-                    gmb_list_free(&kvl);   /* gmb_list_add trattiene: si rilasciano gli originali */
-                    bout->is_num = 0; bout->result_ref = (gmb_obj_t*)outkv; bout->result_ref_bt = GMB_BT_OBJECT;
-                    return;   /* NON azzerare result_ref (il reset finale lo annullava → ToArray=nil) */
+                        gmb_list_free(&kvl);   /* gmb_list_add trattiene: si rilasciano gli originali */
+                        bout->is_num = 0; bout->result_ref = (gmb_obj_t*)outkv; bout->result_ref_bt = GMB_BT_OBJECT;
+                        return;   /* NON azzerare result_ref (il reset finale lo annullava → ToArray=nil) */
+                    }
                 }
                 gmb_list_free(&kvl);
                 int n = 0;
@@ -3139,6 +3146,11 @@ static void gmb_bf_634(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
                     for (size_t i = 0; i < sv->dict->count; i++)
                         gmb_dict_set(out->dict, sv->dict->items[i].key, sv->dict->items[i].value);
                     bout->is_num = 0; bout->result_ref = (gmb_obj_t*)out; bout->result_ref_bt = GMB_BT_OBJECT;
+                    /* Senza il return, il reset finale azzerava il risultato: `d.ToDict()`
+                     * valeva NIL e un successivo `c.Remove(...)` andava in errore 91
+                     * (sample Collections/CollectionsDictLists, gamba VM/C). Stesso
+                     * pattern già corretto in gmb_bf_632 per ToArray. */
+                    return;
                 }
             }
             bout->is_num = 0; bout->result_ref = NULL;

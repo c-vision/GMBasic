@@ -2735,6 +2735,19 @@ internal sealed partial class PCodeProcessor
                 {
                     if (fieldName == "Count") { task.PushRef((double)_listGet.Count); return true; }
                 }
+                /* Count come PROPRIETÀ su collezioni generiche (HASHSET<T>, QUEUE<T>,
+                 * STACK<T>): implementano ICollection<T> ma NON la ICollection non-generica,
+                 * quindi i rami sopra (IList/ICollection) non scattano → `hs.Count` dava nil
+                 * mentre `hs.Count()` funzionava (Collections/CollectionsFluent). */
+                if (fieldName == "Count" && obj is not null && obj is not string)
+                {
+                    var cp = obj.GetType().GetProperty("Count",
+                        System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                    if (cp is not null && cp.PropertyType == typeof(int) && cp.GetIndexParameters().Length == 0)
+                    {
+                        task.PushRef((double)(int)cp.GetValue(obj)!); return true;
+                    }
+                }
                 if (obj is System.Text.StringBuilder sbField)
                 {
                     task.PushRef(fieldName switch
@@ -2780,8 +2793,22 @@ internal sealed partial class PCodeProcessor
                 {
                     // Special fields: Count, Keys, Values
                     if (fieldName == "Count") { task.PushRef((double)dict.Count); return true; }
-                    if (fieldName == "Keys") { task.PushRef(dict.Keys); return true; }
-                    if (fieldName == "Values") { task.PushRef(dict.Values); return true; }
+                    /* Keys/Values: LISTA (parità IL/VM/C/C99Native). Prima si pushava la
+                     * KeyCollection/ValueCollection raw → PRINT stampava il NOME DEL TIPO CLR
+                     * ("System.Collections.Generic.Dictionary`2+KeyCollection[...]") invece di
+                     * "[uno, due]" (sample Collections/CollectionsFluent e Minitest). */
+                    if (fieldName == "Keys")
+                    {
+                        var kl = new System.Collections.Generic.List<object?>();
+                        foreach (var kk in dict.Keys) kl.Add(kk);
+                        task.PushRef(kl); return true;
+                    }
+                    if (fieldName == "Values")
+                    {
+                        var vl = new System.Collections.Generic.List<object?>();
+                        foreach (var vv in dict.Values) vl.Add(vv);
+                        task.PushRef(vl); return true;
+                    }
                     var val = dict.Contains(fieldName ?? "") ? dict[fieldName ?? ""] : null;
                     if (val == null && dict.Contains("__class__") && dict["__class__"] is System.Collections.IDictionary cd &&
                         cd.Contains("PropertyGetters") && cd["PropertyGetters"] is System.Collections.IDictionary pgs)

@@ -14766,7 +14766,33 @@ public static double TextWidth(string s)
             case "REMOVE" when args.Length >= 1 && instance is IBagMultiset brem:
                 brem.RemoveOne(args[0]); return 1.0;
             case "REMOVE" when args.Length >= 1 && instance is System.Collections.IDictionary dr:
-                dr.Remove(args[0] ?? ""); return 1.0;
+            {
+                /* BAG (Dictionary<elemento,long> = multiset): toglie UNA istanza —
+                 * decrementa la molteplicità e rimuove la chiave solo a 0 (semantica del
+                 * ramo P-Code e del runtime C). Prima cadeva nel Remove di dizionario e
+                 * cancellava TUTTE le istanze ("a" spariva da ToJson/UniqueItems:
+                 * Minitest collections/typed_containers_parity, gamba PCode). */
+                var gt = dr.GetType();
+                if (gt.IsGenericType && gt.GetGenericArguments().Length == 2
+                    && gt.GetGenericArguments()[1] == typeof(long)
+                    && dr.Contains(args[0] ?? ""))
+                {
+                    var cur = dr[args[0] ?? ""];
+                    long mult = cur is long cl ? cl : (long)Convert.ToDouble(cur);
+                    if (mult <= 1) dr.Remove(args[0] ?? "");
+                    else dr[args[0] ?? ""] = mult - 1;
+                    return -1.0;
+                }
+                /* Predicato BASIC: -1 se la chiave esisteva (rimossa), 0 se assente. Prima
+                 * tornava SEMPRE 1.0: `WHILE d.Remove(k)` non terminava mai e `PRINT
+                 * d.Remove(k)` stampava 1 sia per presente sia per assente (Minitest
+                 * collections/dict_remove_if, gamba PCode: exit 142/hang). Parità
+                 * IL/VM/C/C99Native. `IDictionary.Remove` (non generico) ritorna void →
+                 * l'esito si ricava da Contains. */
+                var had = dr.Contains(args[0] ?? "");
+                if (had) dr.Remove(args[0] ?? "");
+                return had ? -1.0 : 0.0;
+            }
             case "ADD" when args.Length >= 2 && instance is System.Collections.IDictionary da:
                 da[args[0] ?? ""] = args[1]; return 0.0;
             // F1e: SET/SETKEYVALUE su map-like boxed — semantica "set" (sovrascrive),
