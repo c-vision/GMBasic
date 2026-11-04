@@ -5280,6 +5280,11 @@ static int ds_sh3_sf(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
 }
 static int ds_weibull_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3_sf(c, a, n, "gmb_dist_weibull_cdf"); }
 static int ds_f_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3_sf(c, a, n, "gmb_dist_f_cdf"); }
+static int ds_sh3(ctx_t* c, gmb_expr_t** a, int n, const char* fn);
+static int ds_pareto_cdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_pareto_cdf"); }
+static int ds_pareto_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3_sf(c, a, n, "gmb_dist_pareto_cdf"); }
+static int ds_uniform_cdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_uniform_cdf"); }
+static int ds_uniform_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3_sf(c, a, n, "gmb_dist_uniform_cdf"); }
 static int ds_exp_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2_sf(c, a, n, "gmb_dist_exp_cdf"); }
 static int ds_student_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2_sf(c, a, n, "gmb_dist_student_t_cdf"); }
 static int ds_chisq_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2_sf(c, a, n, "gmb_dist_chi2_cdf"); }
@@ -5501,6 +5506,8 @@ static const ds_row DS_TBL[] = {
     { GMB_TOK_NormalPdf, ds_normal_pdf },
     { GMB_TOK_NormalPpf, ds_normal_ppf },
     { GMB_TOK_ParetoPdf, ds_pareto_pdf },
+    { GMB_TOK_StatsParetoCdf, ds_pareto_cdf },
+    { GMB_TOK_StatsParetoSf, ds_pareto_sf },
     { GMB_TOK_ParetoPpf, ds_pareto_ppf },
     { GMB_TOK_PoissonPmf, ds_poisson },
     { GMB_TOK_SkewedNormalPdf, ds_skewnormal },
@@ -5513,6 +5520,8 @@ static const ds_row DS_TBL[] = {
     { GMB_TOK_TriangularPpf, ds_triangular_ppf },
     { GMB_TOK_UniformPdf, ds_uniform_pdf },
     { GMB_TOK_UniformPpf, ds_uniform_ppf },
+    { GMB_TOK_StatsUniformCdf, ds_uniform_cdf },
+    { GMB_TOK_StatsUniformSf, ds_uniform_sf },
     { GMB_TOK_WeibullCdf, ds_weibull_cdf },
     { GMB_TOK_StatsWeibullSf, ds_weibull_sf },
     { GMB_TOK_WeibullPdf, ds_weibull_pdf },

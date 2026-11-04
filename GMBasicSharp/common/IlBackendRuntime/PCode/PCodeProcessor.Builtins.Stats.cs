@@ -39,6 +39,10 @@ internal sealed partial class PCodeProcessor
         BuiltInFunction.STATS_FSF,
         BuiltInFunction.STATS_NORMALSF,
         BuiltInFunction.STATS_LOGNORMALSF,
+        BuiltInFunction.STATS_PARETOCDF,
+        BuiltInFunction.STATS_PARETOSF,
+        BuiltInFunction.STATS_UNIFORMCDF,
+        BuiltInFunction.STATS_UNIFORMSF,
         BuiltInFunction.STATS_GAMMAPPF,
         BuiltInFunction.STATS_GAMMAISF,
         BuiltInFunction.STATS_MODE,
@@ -129,6 +133,22 @@ internal sealed partial class PCodeProcessor
                 var mu = SafeDouble(ArgOr(args, 1, 0.0));
                 var sd = SafeDouble(ArgOr(args, 2, 1.0));
                 return 1.0 - CommonLib.Numerics.NormalCdf(mu, sd, x);
+        },
+        [BuiltInFunction.STATS_PARETOCDF] = (task, args) =>
+        {
+                return CommonLib.Numerics.ParetoCdf(SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_UNIFORMCDF] = (task, args) =>
+        {
+                return CommonLib.Numerics.UniformCdf(SafeDouble(ArgOr(args, 1, 0.0)), SafeDouble(ArgOr(args, 2, 1.0)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_UNIFORMSF] = (task, args) =>
+        {
+                return CommonLib.Numerics.UniformSf(SafeDouble(ArgOr(args, 1, 0.0)), SafeDouble(ArgOr(args, 2, 1.0)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_PARETOSF] = (task, args) =>
+        {
+                return 1.0 - CommonLib.Numerics.ParetoCdf(SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 0)));
         },
         [BuiltInFunction.STATS_LOGNORMALSF] = (task, args) =>
         {

@@ -73,6 +73,16 @@ public static partial class Numerics
         => loc + scale * Math.Log(p / (1.0 - p));
 
     /// <summary>Quantile uniforme (scipy uniform.ppf): a + p·(b−a).</summary>
+    public static double UniformCdf(double a, double b, double x)
+    {
+        if (b <= a) return double.NaN;
+        if (x <= a) return 0.0;
+        if (x >= b) return 1.0;
+        return (x - a) / (b - a);
+    }
+
+    public static double UniformSf(double a, double b, double x) => 1.0 - UniformCdf(a, b, x);
+
     public static double UniformPpf(double p, double a, double b)
         => a + p * (b - a);
 

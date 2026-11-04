@@ -7051,6 +7051,8 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_StatsExpSf, emit_bf_dist }, { NULL, GMB_TOK_StatsStudentTSf, emit_bf_dist }, { NULL, GMB_TOK_StatsChiSquaredSf, emit_bf_dist },
     { NULL, GMB_TOK_StatsWeibullSf, emit_bf_dist }, { NULL, GMB_TOK_StatsFSf, emit_bf_dist },
     { NULL, GMB_TOK_StatsNormalSf, emit_bf_dist }, { NULL, GMB_TOK_StatsLognormalSf, emit_bf_dist },
+    { NULL, GMB_TOK_StatsParetoCdf, emit_bf_dist }, { NULL, GMB_TOK_StatsParetoSf, emit_bf_dist },
+    { NULL, GMB_TOK_StatsUniformCdf, emit_bf_dist }, { NULL, GMB_TOK_StatsUniformSf, emit_bf_dist },
     { NULL, GMB_TOK_StatsGammaPdf, emit_bf_dist },
     { NULL, GMB_TOK_StatsGammaPpf, emit_bf_dist },
     { NULL, GMB_TOK_StatsGammaIsf, emit_bf_dist },
@@ -11372,16 +11374,23 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                         sb_put(&c->out, ") ? -1.0 : 0.0)");
                         return;
                     }
-                    /* CACHE (16).TryGetValue(key, out): predicato -1/0 sulla presenza (C99 non
-                     * ha TTL). L'out-param NON viene assegnato, come su IL/PCode/VM-C: il
-                     * valore della variabile non è propagato da nessuna gamba (limite noto,
-                     * `Todo/(open) - Collezioni-Divergenze-Residue`). Prima qui l'out veniva
-                     * scritto e il sample stampava "Trovato key1: value1" solo su C99. */
+                    /* CACHE (16).TryGetValue(key, out): ASSEGNA l'out-param e restituisce il
+                     * predicato -1/0 sulla presenza (C99 non ha TTL). Stessa semantica delle
+                     * altre gambe (IL/PCode/VM-C riscrivono la chiamata in
+                     * `out = obj.Get(key); obj.ContainsKey(key)`). */
                     if (cv->coll_type_code == 16 && nargs >= 2 && args
-                        && (strcasecmp(m2, "TryGetValue") == 0 || mk == GMB_TOK_TryGetValue)) {
-                        sb_put(&c->out, "((gmb_dict_contains_key(");
+                        && (strcasecmp(m2, "TryGetValue") == 0 || mk == GMB_TOK_TryGetValue)
+                        && args[1] && args[1]->kind == GMB_EXPR_VAR && args[1]->var) {
+                        var_t* tv = lookup_var(c, args[1]->var);
+                        sb_put(&c->out, "({ gmb_val_t __tv = gmb_dict_get(");
                         sb_ident(&c->out, cv->name); sb_put(&c->out, ", (");
-                        emit_str_operand(c, args[0]); sb_put(&c->out, ").data) ? -1.0 : 0.0))");
+                        emit_str_operand(c, args[0]); sb_put(&c->out, ").data); (");
+                        emit_ident(c, args[1]->var);
+                        sb_put(&c->out, ") = ");
+                        if (tv && tv->boxed_val) sb_put(&c->out, "__tv");
+                        else if (tv && tv->type == TY_STR) sb_put(&c->out, "gmb_val_to_string(__tv)");
+                        else sb_put(&c->out, "gmb_val_to_double(__tv)");
+                        sb_put(&c->out, "; (__tv.kind == GMB_TYPE_NIL) ? 0.0 : -1.0; })");
                         return;
                     }
                     /* TIMELINE (18).GetRange(lo,hi) → lista di coppie {Key,Value} con la
