@@ -2112,7 +2112,7 @@ static int km_kmeans(ctx_t* c, gmb_expr_t** a, int n, int line) {
     if (n < 2) return 0;
     var_t* a0 = NULL;
     if (a[0]->kind != GMB_EXPR_VAR || !(a0 = lookup_var(c, a[0]->var)) || !a0->is_array) {
-        c99_fail(c, line, "ANALYSIS.KMEANS: il primo argomento deve essere un array");
+        c99_fail(c, line, "MULTIVARIATE.KMeans: il primo argomento deve essere un array");
         return 0;
     }
     sb_put(&c->out, "gmb_kmeans_result((const double*)");
@@ -3241,7 +3241,7 @@ static int an_solveivp(ctx_t* c, gmb_expr_t** a, int n) {
     return 1;
 }
 /* ADFTEST/HOLTWINTERS/ARIMA: risultato UDT boxed (gmb_val_t dict), parity col ramo
- * assegnazione (gmb_*_result). Servono al DIM: `DIM x = ANALYSIS.ADFTEST(...)`. */
+ * assegnazione (gmb_*_result). Servono al DIM: `DIM x = TIMESERIES.AdfTest(...)`. */
 static int an_adftest(ctx_t* c, gmb_expr_t** a, int n) {
     if (n < 1) return 0;
     var_t* x = NULL;

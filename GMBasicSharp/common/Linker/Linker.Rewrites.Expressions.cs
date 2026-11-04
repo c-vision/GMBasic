@@ -1054,7 +1054,7 @@ public static partial class Linker
         }
 
         // Adattamento SCALARE→ARRAY (bug Lambda-Param-Array-Indicizzato-Cross-Backend, AiWiki,
-        // trovato 2026-09-16): un callback ODE-style (es. ANALYSIS.SOLVEIVP) dichiara sempre
+        // trovato 2026-09-16): un callback ODE-style (es. NUMERICAL.SolveIvp) dichiara sempre
         // ReturnType=ArrayType — anche per uno stato a UNA componente, il chiamante nativo si
         // aspetta SEMPRE un vettore derivate (common/IlBackendRuntime/IlRuntime.cs SolveIvp:
         // Func<double,double[],double[]>). Una λ codeblock senza annotazioni esplicite (es.

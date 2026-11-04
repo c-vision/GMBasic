@@ -9,8 +9,9 @@
 '   3) a che frequenza vibra il macchinario?                   -> FFT
 '
 ' Domini: ANALYSIS + MATH. Input fissi: l'output è riproducibile.
-IMPORT ANALYSIS
 
+IMPORT MULTIVARIATE
+IMPORT STATS
 SUB Main()
     ' ── 1. ANOVA: tre linee, quattro pezzi ciascuna ──────────────────────────
     ' Se le medie delle linee fossero uguali, F sarebbe vicino a 0 e P alto.
@@ -18,8 +19,8 @@ SUB Main()
     linee(0) = {10.1, 10.3, 9.9, 10.0}     ' linea A: stretta intorno a 10
     linee(1) = {10.4, 10.6, 10.2, 10.5}    ' linea B: spostata in alto
     linee(2) = {9.7, 9.9, 9.5, 9.8}        ' linea C: spostata in basso
-    DIM aov AS ANALYSIS.AnovaResult
-    aov = ANALYSIS.ANOVA(linee)
+    DIM aov AS STATS.AnovaResult
+    aov = STATS.Anova(linee)
     PRINT "== 1. ANOVA: le linee differiscono? =="
     PRINT "F = "; MATH.ROUND(aov.FValue, 4)
     PRINT "P = "; MATH.ROUND(aov.PValue, 6)
@@ -39,8 +40,8 @@ SUB Main()
     misure(3, 0) = 23.0 : misure(3, 1) = 1.04
     misure(4, 0) = 24.0 : misure(4, 1) = 1.05
     misure(5, 0) = 25.0 : misure(5, 1) = 1.06
-    DIM pca AS ANALYSIS.PcaResult
-    pca = ANALYSIS.Pca(misure)
+    DIM pca AS MULTIVARIATE.PcaResult
+    pca = MULTIVARIATE.Pca(misure)
     PRINT "== 2. PCA: temperatura e pressione =="
     PRINT "autovalore 1 = "; MATH.ROUND(pca.EigenValues(0), 6)
     PRINT "autovalore 2 = "; MATH.ROUND(pca.EigenValues(1), 6)
@@ -56,7 +57,7 @@ SUB Main()
     FOR i = 0 TO 31
         segnale(i) = SIN(2 * MATH.PI() * 4 * i / 32.0)
     NEXT i
-    DIM spettro = ANALYSIS.FFT(segnale)
+    DIM spettro = NUMERICAL.Fft(segnale)
     PRINT "== 3. FFT: dove sta il picco? =="
     ' Si confronta il modulo della riga 4 con quello delle righe 1..3 e 5..7.
     DIM picco AS LONG
@@ -77,7 +78,7 @@ SUB Main()
     ' ── 4. Ritorno al dominio del tempo (IFFT) ───────────────────────────────
     ' La trasformata è reversibile: ricostruendo il segnale si ritrova il valore
     ' di partenza in ogni punto (qui il primo e l'ottavo).
-    DIM ricostruito = ANALYSIS.IFFT(spettro)
+    DIM ricostruito = NUMERICAL.Ifft(spettro)
     PRINT "== 4. IFFT: il segnale torna indietro =="
     PRINT "punto 0:  "; MATH.ROUND(ricostruito(0, 0), 6); " (originale "; MATH.ROUND(segnale(0), 6); ")"
     PRINT "punto 8:  "; MATH.ROUND(ricostruito(8, 0), 6); " (originale "; MATH.ROUND(segnale(8), 6); ")"

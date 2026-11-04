@@ -13,7 +13,6 @@
 ' ======================================================================================================================
 
 IMPORT ARRAYS
-IMPORT ANALYSIS
 IMPORT COLLECTIONS
 IMPORT OPTIMIZE
 
@@ -114,13 +113,13 @@ SUB Main()
     ' 5. TEST CALLBACK MATEMATICHE (ANALYSIS, OPTIMIZE)
     ' ======================================================
     PRINT "--- 5. Test Callback Fortemente Tipizzate ---"
-    ' ANALYSIS.INTEGRATE e OPTIMIZE.* si aspettano f(x AS DOUBLE) AS DOUBLE.
+    ' NUMERICAL.Integrate e OPTIMIZE.* si aspettano f(x AS DOUBLE) AS DOUBLE.
     ' Il compilatore deve iniettare il tipo DOUBLE nel parametro 'x' della lambda.
     
-    DIM Area = ANALYSIS.INTEGRATE({ |x| RETURN x * x }, 0.0, 1.0)
+    DIM Area = NUMERICAL.Integrate({ |x| RETURN x * x }, 0.0, 1.0)
     PRINT "Integrale di x^2 da 0 a 1: "; Area; " (Atteso: ~0.333)"
     
-    DIM Derivata = ANALYSIS.DIFFERENTIATE({ |x| RETURN x ^ 3 }, 2.0)
+    DIM Derivata = NUMERICAL.Differentiate({ |x| RETURN x ^ 3 }, 2.0)
     PRINT "Derivata di x^3 per x=2: "; Derivata; " (Atteso: 12)"
     
     ' Trova la radice di f(x) = x^2 - 4 (che è 2) partendo da un'ipotesi di 1.

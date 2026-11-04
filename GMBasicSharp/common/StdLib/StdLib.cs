@@ -181,7 +181,10 @@ public sealed partial class StdLib : IParserRegistry
         CreateConstantsNamespace();
         // CreateMcpNamespace();   // fusa nel namespace AI (2026-08-19): non esiste un namespace MCP
         CreateStatsNamespace();
-        CreateAnalysisNamespace();
+        CreateNumericalNamespace();
+        CreateMultivariateNamespace();
+        CreateRegressionNamespace();
+        RegisterAnalysisResultTypeSchemas();
         // CreateOptimizeNamespace();  // DEPRECATO 2026-11-03: namespace OPTIMIZE dismesso,
         // sostituito dal pacchetto FFI `OPT` (libgmbopt). Copia archiviata in
         // GMBasicMonoRepo-Deprecated/optimize/StdLib.Optimize.cs.

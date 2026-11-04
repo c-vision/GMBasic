@@ -139,16 +139,17 @@ static const cc_builtin_t g_cc_builtins[] = {
     {"AI.WORKERNEW",3559},{"AI.WORKERRUN",3560},{"AI.STATESAVE",3561},{"AI.STATELOAD",3562},
     {"AI.WORKERROUNDS",3563},{"AI.WORKERRESCUED",3564},{"AI.WORKERSPEND",3565},
     {"ALERT",699},
-    {"ANALYSIS.PCA",95},
-    {"ANALYSIS.REGRESS",91},
-    {"ANALYSIS.TRAPEZOID",851},
-    {"ANALYSIS.FFT",105},{"ANALYSIS.IFFT",106},{"ANALYSIS.KMEANS",92},
+    {"MULTIVARIATE.Pca",95},
+    {"REGRESSION.Regress",91},
+    {"NUMERICAL.Trapezoid",851},
+    {"NUMERICAL.Fft",105},{"NUMERICAL.Ifft",106},{"MULTIVARIATE.KMeans",92},
     /* Bug corretto (2026-09-02, seguito task AEVAL/ClipperCodeBlocks): la VM/C ha già
      * l'handler funzionante per queste due (gmb_bf_103/104 in gmb_builtin.c, che
      * chiamano gmb_quad_gk/differenza-centrale) ma NESSUNA delle due era mai stata
-     * registrata qui con nessun nome: ANALYSIS.INTEGRATE/DIFFERENTIATE restituivano
+     * registrata qui con nessun nome: NUMERICAL.Integrate/DIFFERENTIATE restituivano
      * sempre vuoto — stesso pattern di g_cc_builtins già visto più volte. */
-    {"ANALYSIS.INTEGRATE",103},{"ANALYSIS.DIFFERENTIATE",104},
+    {"NUMERICAL.Integrate",103},{"NUMERICAL.Differentiate",104},
+    {"NUMERICAL.SolveIvp",1019},
     {"SIGNAL.CONVOLVE",923},{"SIGNAL.CORRELATE",924},
     {"SIGNAL.HANN",925},{"SIGNAL.HAMMING",926},{"SIGNAL.BLACKMAN",927},
     {"ARRAYS.AJOIN",523},

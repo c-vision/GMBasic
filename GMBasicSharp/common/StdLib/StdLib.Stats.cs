@@ -420,6 +420,10 @@ public sealed partial class StdLib
                 [dataArrayParam], new AnyType(), TokenKind.StatsDescribe, ExecutionKind: NativeExecutionKind.Pure)
         };
         
-        RegisterBuiltinNamespace(namespaceName, procedures, ImmutableDictionary<string, DataType>.Empty);
+        var types = new Dictionary<string, DataType>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "AnovaResult", new AnovaResultType() }
+        };
+        RegisterBuiltinNamespace(namespaceName, procedures, types);
     }
 }

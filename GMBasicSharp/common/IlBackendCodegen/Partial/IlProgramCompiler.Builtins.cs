@@ -861,7 +861,7 @@ public sealed partial class IlProgramCompiler
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixFractionalPower)));
                 break;
             case TokenKind.MatrixSubspaceAngles:
-                if (expr.Args.Length != 2) throw new NotSupportedException("Backend IL: MATRIX.SUBSPACEANGLES richiede 2 handle.");
+                if (expr.Args.Length != 2) throw new NotSupportedException("Backend IL: LINALG.SUBSPACEANGLES richiede 2 handle.");
                 EmitObjectBoxedArgument(expr.Args[0]);
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.LinAlgMatrixHandle), typeof(object)));
                 EmitObjectBoxedArgument(expr.Args[1]);
@@ -886,7 +886,7 @@ public sealed partial class IlProgramCompiler
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.MatrixCirculant)));
                 break;
             case TokenKind.MatrixSolveTriangular:
-                if (expr.Args.Length != 3) throw new NotSupportedException("Backend IL: MATRIX.SOLVETRIANGULAR richiede handle, handle, lower.");
+                if (expr.Args.Length != 3) throw new NotSupportedException("Backend IL: LINALG.SOLVETRIANGULAR richiede handle, handle, lower.");
                 EmitObjectBoxedArgument(expr.Args[0]);
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.LinAlgMatrixHandle), typeof(object)));
                 EmitObjectBoxedArgument(expr.Args[1]);

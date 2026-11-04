@@ -47,6 +47,10 @@ public sealed partial class StdLib
         const SymbolFlags publicFlag = SymbolFlags.IsPublic | SymbolFlags.IsFunction;
         const SymbolFlags noFlags = SymbolFlags.None;
         const SymbolFlags optionalFlag = SymbolFlags.IsOptional;
+        var xDataParam = new Parameter(-1, T(TokenKind.Identifier, "x_data"), new DoubleType(),
+            SymbolFlags.IsArray, null, false);
+        var yDataParam = new Parameter(-1, T(TokenKind.Identifier, "y_data"), new DoubleType(),
+            SymbolFlags.IsArray, null, false);
 
         // --- Comandi (Sintassi Legacy) ---
         RegisterCommand(TokenKind.Vector, "VECTOR", namespaceName, Parser.DispatchVectorStatement);
@@ -99,7 +103,10 @@ public sealed partial class StdLib
                     new Parameter(-1, T(TokenKind.Identifier, "handle2"), new LongType(), noFlags, null, false),
                     new Parameter(-1, T(TokenKind.Identifier, "p"), new DoubleType(), noFlags, null, false)
                 ],
-                new DoubleType(), TokenKind.VectorMinkowski)
+                new DoubleType(), TokenKind.VectorMinkowski),
+            new NativeProcedureDefinition(-1, SymbolFlags.IsPublic, T(TokenKind.EuclideanDistanceSquared, "EuclideanDistanceSquared"),
+                [xDataParam, yDataParam], new DoubleType(), TokenKind.EuclideanDistanceSquared,
+                ExecutionKind: NativeExecutionKind.Pure)
         };
         
         RegisterBuiltinNamespace(namespaceName, procedures, ImmutableDictionary<string, DataType>.Empty);
