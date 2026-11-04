@@ -38,6 +38,8 @@ internal sealed partial class PCodeProcessor
         BuiltInFunction.STATS_IQR,
         BuiltInFunction.STATS_COVARIANCE,
         BuiltInFunction.STATS_RANGE,
+        BuiltInFunction.STATS_MAX,
+        BuiltInFunction.STATS_MIN,
         BuiltInFunction.TTEST,
         BuiltInFunction.TTESTPAIRED,
         BuiltInFunction.TTESTONESAMPLE,
@@ -124,6 +126,22 @@ internal sealed partial class PCodeProcessor
         [BuiltInFunction.STATS_IQR] = (task, args) =>
         {
                 return CommonLib.Numerics.Iqr(ToDoubleArr(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_MAX] = (task, args) =>
+        {
+                var a = ToDoubleArr(ArgOr(args, 0));
+                if (a.Length == 0) return 0.0;
+                double m = a[0];
+                foreach (var v in a) if (v > m) m = v;
+                return m;
+        },
+        [BuiltInFunction.STATS_MIN] = (task, args) =>
+        {
+                var a = ToDoubleArr(ArgOr(args, 0));
+                if (a.Length == 0) return 0.0;
+                double m = a[0];
+                foreach (var v in a) if (v < m) m = v;
+                return m;
         },
         [BuiltInFunction.STATS_RANGE] = (task, args) =>
         {

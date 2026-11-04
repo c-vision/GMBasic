@@ -21496,6 +21496,36 @@
     },
     {
       "ns": "STATS",
+      "name": "MAX",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "data",
+          "type": "double[]",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        }
+      ]
+    },
+    {
+      "ns": "STATS",
+      "name": "MIN",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "data",
+          "type": "double[]",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        }
+      ]
+    },
+    {
+      "ns": "STATS",
       "name": "Mad",
       "fn": true,
       "return": "double",

@@ -1159,6 +1159,8 @@ procedure,STATS,LogisticPpf,LogisticPpf
 procedure,STATS,LognormalCdf,LognormalCdf
 procedure,STATS,LognormalPdf,LognormalPdf
 procedure,STATS,LognormalPpf,LognormalPpf
+procedure,STATS,MAX,StatsMax
+procedure,STATS,MIN,StatsMin
 procedure,STATS,Mad,Mad
 procedure,STATS,MannWhitney,StatsMannWhitney
 procedure,STATS,Mean,Mean

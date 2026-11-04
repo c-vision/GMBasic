@@ -149,6 +149,7 @@ public sealed partial class Compiler
         { TokenKind.StatsPearsonR, BuiltInFunction.STATS_PEARSONR }, { TokenKind.StatsSpearmanR, BuiltInFunction.STATS_SPEARMANR },
         { TokenKind.StatsCovariance, BuiltInFunction.STATS_COVARIANCE },
         { TokenKind.StatsRange, BuiltInFunction.STATS_RANGE },
+        { TokenKind.StatsMax, BuiltInFunction.STATS_MAX }, { TokenKind.StatsMin, BuiltInFunction.STATS_MIN },
         { TokenKind.StatsLinRegress, BuiltInFunction.STATS_LINREGRESS }, { TokenKind.StatsChi2Contingency, BuiltInFunction.STATS_CHI2CON },
         { TokenKind.StatsMannWhitney, BuiltInFunction.STATS_MANNWHITNEY }, { TokenKind.StatsWilcoxon, BuiltInFunction.STATS_WILCOXON },
         { TokenKind.StatsGammaPdf, BuiltInFunction.STATS_GAMMAPDF }, { TokenKind.StatsGammaCdf, BuiltInFunction.STATS_GAMMACDF },

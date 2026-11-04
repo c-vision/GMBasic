@@ -2011,6 +2011,8 @@ static const gmb_fn_lookup_row_t gmb_fn_lookup[] = {
     { "StatsKurtosisTest", GMB_TOK_StatsKurtosisTest },
     { "StatsLinRegress", GMB_TOK_StatsLinRegress },
     { "StatsMannWhitney", GMB_TOK_StatsMannWhitney },
+    { "StatsMax", GMB_TOK_StatsMax },
+    { "StatsMin", GMB_TOK_StatsMin },
     { "StatsMode", GMB_TOK_StatsMode },
     { "StatsMoment", GMB_TOK_StatsMoment },
     { "StatsPearsonR", GMB_TOK_StatsPearsonR },

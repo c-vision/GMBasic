@@ -6868,6 +6868,7 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_StatsMoment, emit_bf_stats_arr },
     { NULL, GMB_TOK_StatsCovariance, emit_bf_stats_arr },
     { NULL, GMB_TOK_StatsRange, emit_bf_stats_arr },
+    { NULL, GMB_TOK_StatsMax, emit_bf_stats_arr }, { NULL, GMB_TOK_StatsMin, emit_bf_stats_arr },
     /* STATS test d'ipotesi (dict-returning): runtime condiviso gmb_stats.c */
     { NULL, GMB_TOK_TTest, emit_bf_stats_dict },
     { NULL, GMB_TOK_TTestPaired, emit_bf_stats_dict },
@@ -10187,6 +10188,54 @@ static int try_emit_var_method(ctx_t* c, const char* recv, const char* m, gmb_ex
             sb_put(&c->out, ")");
         }
         return 1;
+    }
+    /* SPARSESET (21).HasItem(v): predicato di appartenenza sulla lista (parità
+     * CommonLib/PCode/VM-C). Prima non era gestito → C invalido
+     * (`gmb_val_index(list, ...)` su un gmb_list_t, CollectionsModern §12). */
+    if (v->coll_type_code == 21 && mtk == GMB_TOK_CollHasItem && n >= 1) {
+        sb_put(&c->out, "(gmb_double_t)gmb_list_contains(");
+        emit_var_ref(c, v);
+        sb_put(&c->out, ", ");
+        if (etype(c, a[0]) == TY_STR) {
+            sb_put(&c->out, "gmb_make_val_string(("); emit_expr(c, a[0]); sb_put(&c->out, ").data)");
+        } else {
+            sb_put(&c->out, "gmb_make_val_double((gmb_double_t)("); emit_expr(c, a[0]); sb_put(&c->out, "))");
+        }
+        sb_put(&c->out, ")");
+        return 1;
+    }
+    /* BITREE (10): il C99 lo rappresenta come lista dei valori sorgente; Query(idx) =
+     * somma prefissa [0..idx], QueryRange(a,b) = somma intervallo, Update(i,delta) = somma
+     * al valore i-esimo. Prima Query/Update non erano gestiti (C invalido,
+     * CollectionsModern §10). */
+    if (v->coll_type_code == 10 && n >= 1 && !is_dyn) {
+        if (mtk == GMB_TOK_Query || strcasecmp(m, "Query") == 0) {
+            sb_put(&c->out, "(gmb_double_t)gmb_list_sum_range(");
+            emit_var_ref(c, v);
+            sb_put(&c->out, ", 0, (gmb_int_t)("); emit_expr(c, a[0]); sb_put(&c->out, "))");
+            return 1;
+        }
+        if (mtk == GMB_TOK_QueryRange || strcasecmp(m, "QueryRange") == 0) {
+            if (n >= 2) {
+                sb_put(&c->out, "(gmb_double_t)gmb_list_sum_range(");
+                emit_var_ref(c, v);
+                sb_put(&c->out, ", (gmb_int_t)("); emit_expr(c, a[0]);
+                sb_put(&c->out, "), (gmb_int_t)("); emit_expr(c, a[1]); sb_put(&c->out, "))");
+                return 1;
+            }
+        }
+        if (mtk == GMB_TOK_Update || strcasecmp(m, "Update") == 0) {
+            if (n >= 2) {
+                sb_put(&c->out, "({ gmb_int_t __bi = (gmb_int_t)("); emit_expr(c, a[0]);
+                sb_put(&c->out, "); gmb_double_t __bd = (gmb_double_t)("); emit_expr(c, a[1]);
+                sb_put(&c->out, "); gmb_list_add_at(&");
+                emit_var_ref(c, v);
+                sb_put(&c->out, ", __bi, gmb_list_get(");
+                emit_var_ref(c, v);
+                sb_put(&c->out, ", __bi).v_double + __bd); (void)0; })");
+                return 1;
+            }
+        }
     }
     if (mtk == GMB_TOK_Join) {
         if (is_dyn) {
@@ -19175,6 +19224,41 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                 emit_num_label(c, s->for_next_bas);
                 c->indent--;
                 ind(c); sb_put(&c->out, "}\n");
+                c->indent--;
+                ind(c); sb_put(&c->out, "}\n");
+                c->indent--;
+                ind(c); sb_put(&c->out, "}\n");
+                return;
+            }
+            /* COLLEZIONI a HANDLE (TRIE/BAG/HEAP/MAXHEAP): la var è un gmb_val_t, NON una
+             * gmb_list_t → Count e elementi passano dalle API handle (gmb_coll_count/
+             * gmb_coll_at). Prima il ramo liste emetteva gmb_list_count(<gmb_val_t>) = C
+             * non compilabile (CollectionsModern: FOR EACH su TRIE). */
+            if (av && av->coll_handle) {
+                int het = (av->coll_type_code == 11) ? TY_STR : (av->elem_str ? TY_STR : TY_NUM);
+                var_t* hfv = lookup_var(c, s->for_var);
+                if (!hfv) hfv = vars_add(cur_scope(c), s->for_var ? s->for_var : "", het);
+                static int feh_uid = 0;
+                int hid = ++feh_uid;
+                ind(c); sb_put(&c->out, "{\n");
+                c->indent++;
+                ind(c); sb_printf(&c->out, "for (gmb_int_t __feh%d = 0; __feh%d < (gmb_int_t)gmb_coll_count(", hid, hid);
+                emit_coll_handle_of(c, av);
+                sb_printf(&c->out, "); __feh%d++) {\n", hid);
+                c->indent++;
+                ind(c); sb_printf(&c->out, "gmb_val_t __fehv%d = gmb_coll_at(", hid);
+                emit_coll_handle_of(c, av);
+                sb_printf(&c->out, ", (int64_t)__feh%d);\n", hid);
+                ind(c);
+                emit_ident(c, hfv->name);
+                if (het == TY_STR)
+                    sb_printf(&c->out, " = gmb_string_alloc(__fehv%d.v_string.data ? __fehv%d.v_string.data : \"\");\n", hid, hid);
+                else if (hfv->boxed_val)
+                    sb_printf(&c->out, " = __fehv%d;\n", hid);
+                else
+                    sb_printf(&c->out, " = __fehv%d.v_double;\n", hid);
+                emit_list(c, s->for_body, s->n_for);
+                emit_num_label(c, s->for_next_bas);
                 c->indent--;
                 ind(c); sb_put(&c->out, "}\n");
                 c->indent--;

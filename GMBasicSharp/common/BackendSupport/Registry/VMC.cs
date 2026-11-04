@@ -899,6 +899,8 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "STATS.PearsonR");
         r.Register(Backend.VMC, "STATS.Covariance");
         r.Register(Backend.VMC, "STATS.Range");
+        r.Register(Backend.VMC, "STATS.MAX");
+        r.Register(Backend.VMC, "STATS.MIN");
         r.Register(Backend.VMC, "NET.PEEK");
         r.Register(Backend.VMC, "TRADING.METRICS.PERatio");
         r.Register(Backend.VMC, "STATS.Percentile");
