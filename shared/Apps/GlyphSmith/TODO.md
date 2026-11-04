@@ -88,15 +88,34 @@ Verified on the four backends of the monorepo (IL, PCodeVM, VM-C, C99Native).
       `... PIXEL` è stata provata per prima e **non è utilizzabile su questa leg**: la finestra si
       apre ma mostra la pagina grezza, senza chrome — lo stesso sample canonico
       `windows/WindowPixel.bas` resta blu e vuoto. Sul 4-backend: PCodeVM / VM-C / C99Native verdi;
-      **IL bloccato** dal bug del backend descritto qui sotto (non dall'app).
+      **IL verde** dal 2026-11-04, dopo il fix del Linker (vedi «Risolto — IL» sotto).
 - [x] Both front-ends must keep the `check` mode byte-identical (golden artefacts in
       `bin/`), so the headless path stays the reference. Verificato dopo TUI e GUI: `148 ok,
       0 falliti` + `GLYPHSMITH-CHECK-OK` su PCodeVM/VM-C/C99Native e `bin/mini8.pcf` con md5
       `a6deb85ba334e545d80f94c626fca12d` identico sulle quattro leg.
 
-## Bloccante noto — IL: `DRAW TEXT` con stringa non letterale
+## Risolto — IL: `DRAW TEXT` con stringa non letterale
 
-- [ ] Riprodotto il 2026-11-04. Sul file dell'app la leg **IL** non arriva a eseguire il check:
+- [x] **Chiuso il 2026-11-04 nel compilatore, non nell'app.** Causa: `DrawTextStmt` non era riscritto
+      dal Linker (i suoi figli `Expr` — text/x/y/rotation/color — cadevano in `_ => stmt`), quindi
+      `NumS(1)` dentro il testo restava un `ArrayAccessExpr`; `EmitArrayAccess` lo emetteva come
+      accesso a indice: la **prima** istruzione del SUB cadeva nel ramo dinamico
+      (`CollectionIndexGet`) e registrava un local per il simbolo della *procedura*, dalla
+      **seconda** quel local mandava il nodo su `GetArrayInfo` →
+      `[ILGEN] NotSupportedException: accesso a un array non DIMensionato`.
+      Fix: caso `DrawTextStmt` in `GMBasicSharp/common/Linker/Linker.Rewrites.cs` (riscrive
+      text/x/y/rotation/color come gli altri statement grafici) — **unico file toccato in GMBasic**.
+- [x] Verificato con `--define=GLYPHSMITH_MODE_CHECK`: **148 ok, 0 falliti** + `GLYPHSMITH-CHECK-OK`
+      su **IL**, **PCodeVM** e **VM/C**, con `bin/mini8.pcf` md5 `a6deb85ba334e545d80f94c626fca12d`
+      identico sulle tre leg (C99Native non toccata: il Linker è C#). Avvio GUI reale su IL: banner
+      e nessun `ILGEN` in 25 s di esecuzione.
+- [x] Riduzione del difetto (riprodotta e chiusa): funzione utente una volta → verde, due volte nello
+      stesso SUB → ILGEN; `STR$(n)` builtin due volte → verde. Con la fix passano sia `STR(n)` (una e
+      due istruzioni) sia due `DRAW TEXT` con funzione utente.
+
+### Storia (riproduzione originale, conservata)
+
+- [x] ~~Riprodotto~~ **chiuso** il 2026-11-04. Sul file dell'app la leg **IL** non arriva a eseguire il check:
       `[ILGEN] NotSupportedException: Backend IL: accesso a un array non DIMensionato`. Il difetto si
       riduce a `DRAW TEXT` con stringa **non letterale** quando un SUB ne contiene più di una:
 
@@ -112,8 +131,9 @@ Verified on the four backends of the monorepo (IL, PCodeVM, VM-C, C99Native).
       è localizzato nell'emissione IL della concatenazione usata come argomento di `DRAW TEXT`
       (`GMBasicSharp/common/IlBackendCodegen/Partial/IlProgramCompiler.Statements.Graphics.cs`,
       `EmitDrawTextStatement` → `EmitExpression(stmt.Text)`), da confermare sul dump `.il`.
-      Correzione **fuori dall'app**: richiede il permesso esplicito per toccare GMBasic (AGENTS §0).
-      Finché è aperto, GlyphSmith non passa su IL (nessun esito del check, non un check fallito).
+      Correzione **fuori dall'app**: applicata con il permesso esplicito dell'utente (AGENTS §0) nel
+      Linker, come descritto sopra.
+      ~~Finché è aperto, GlyphSmith non passa su IL~~ → ora il check passa su IL (148 ok, 0 falliti).
 
 ## M5 — TrueType / OpenType (RUNTIME, NOT BASIC)
 
