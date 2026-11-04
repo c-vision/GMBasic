@@ -12,7 +12,7 @@
   },
   "builtinfunction_dup_codes_sample": [],
   "enum_c": {
-    "tokenkind_header_members": 2679
+    "tokenkind_header_members": 2645
   },
   "c_from_name_uses_excl_impl": 4,
   "canonical_kindNames_not_in_cs_tokenkind": 0,

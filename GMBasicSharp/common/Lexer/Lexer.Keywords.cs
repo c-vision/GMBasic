@@ -1207,7 +1207,7 @@ public sealed partial class Lexer
         { "PADC", TokenKind.PadC },
         { "TAB", TokenKind.Tab },
 
-        // --- NUOVI TIPI E FUNZIONI PER ALGEBRA, STATS E OTTIMIZZAZIONE ---
+        // --- NUOVI TIPI E FUNZIONI PER ALGEBRA E STATS ---
         { "VECTORTYPE", TokenKind.VectorType },
         { "DETERMINANT", TokenKind.Determinant },
         { "TRANSPOSE", TokenKind.Transpose },
