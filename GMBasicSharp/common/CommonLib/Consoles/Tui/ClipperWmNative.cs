@@ -31,6 +31,40 @@ public static class ClipperWmNative
     [DllImport(Lib)] public static extern void gmb_window_manager_move_to(IntPtr m, int id, int x, int y);
     [DllImport(Lib)] public static extern void gmb_window_manager_resize_by(IntPtr m, int id, int dw, int dh);
     [DllImport(Lib)] public static extern int gmb_window_manager_window_z(IntPtr m, int id);
+    [DllImport(Lib)] public static extern int gmb_window_manager_window_count(IntPtr m, int desktop);
+    [DllImport(Lib)] public static extern int gmb_window_manager_window_id_at(IntPtr m, int index);
+    [DllImport(Lib)] public static extern int gmb_window_manager_current_desktop(IntPtr m);
+    [DllImport(Lib)] [return: MarshalAs(UnmanagedType.LPStr)] public static extern string gmb_window_manager_status_text(IntPtr m);
+    [DllImport(Lib)] public static extern void gmb_window_manager_set_title(IntPtr m, int id, IntPtr title);
+    [DllImport(Lib)] public static extern int gmb_window_manager_is_dragging(IntPtr m);
+    [DllImport(Lib)] public static extern int gmb_window_manager_is_resizing(IntPtr m);
+    [DllImport(Lib)] public static extern int gmb_window_manager_drag_id(IntPtr m);
+    [DllImport(Lib)] public static extern int gmb_window_manager_resize_id(IntPtr m);
+    [DllImport(Lib)] public static extern void gmb_window_manager_clear_focus(IntPtr m);
+    [DllImport(Lib)] public static extern void gmb_window_manager_work_area4(IntPtr m, int[] out4);
+    [DllImport(Lib)] public static extern int gmb_window_manager_focus_next(IntPtr m, int forward);
+    [DllImport(Lib)] public static extern int gmb_window_manager_taskbar_chip_at(IntPtr m, int x, int y);
+    [DllImport(Lib)] public static extern int gmb_window_manager_topmost_at(IntPtr m, int x, int y);
+    [DllImport(Lib)] public static extern int gmb_window_manager_has_status(IntPtr m);
+    [DllImport(Lib)] public static extern void gmb_window_manager_sync_workarea(IntPtr m, int width, int height);
+    [DllImport(Lib)] private static extern int gmb_window_manager_add_ex(IntPtr m, IntPtr name, IntPtr title,
+        int x, int y, int w, int h, int border, int frame, int shadow, int desktop);
+    [DllImport(Lib)] private static extern int gmb_window_manager_find_by_title(IntPtr m, IntPtr title);
+
+    /// <summary>Crea una finestra nel manager C (nome e titolo distinti).</summary>
+    public static int AddWindowEx(IntPtr m, string? name, string? title,
+        int x, int y, int w, int h, int border, int frame, int shadow, int desktop)
+    {
+        var n = A(name); var t = A(title);
+        try { return gmb_window_manager_add_ex(m, n, t, x, y, w, h, border, frame, shadow, desktop); }
+        finally { Free(n); Free(t); }
+    }
+
+    public static int FindByTitle(IntPtr m, string? title)
+    {
+        var t = A(title);
+        try { return gmb_window_manager_find_by_title(m, t); } finally { Free(t); }
+    }
     [DllImport(Lib)] public static extern void gmb_window_manager_raise(IntPtr m, int id);
     [DllImport(Lib)] public static extern void gmb_window_manager_deactivate(IntPtr m, int id);
     [DllImport(Lib)] public static extern int gmb_window_manager_select(IntPtr m, int id);

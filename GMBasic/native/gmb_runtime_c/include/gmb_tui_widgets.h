@@ -1693,6 +1693,19 @@ int  gmb_window_manager_window_focused(gmb_window_manager_t* m, int id);
 int  gmb_window_manager_window_desktop(gmb_window_manager_t* m, int id);
 int  gmb_window_manager_window_z(gmb_window_manager_t* m, int id);
 
+/* --- Query per il client C# (P/Invoke): lo stato vive SOLO qui, il C# non tiene copie. --- */
+int  gmb_window_manager_window_count(gmb_window_manager_t* m, int desktop);  /* desktop<=0 = tutti */
+int  gmb_window_manager_window_id_at(gmb_window_manager_t* m, int index);    /* ordine di creazione, -1 se fuori */
+int  gmb_window_manager_current_desktop(gmb_window_manager_t* m);
+const char* gmb_window_manager_status_text(gmb_window_manager_t* m);
+void gmb_window_manager_set_title(gmb_window_manager_t* m, int id, const char* title);
+int  gmb_window_manager_is_dragging(gmb_window_manager_t* m);
+int  gmb_window_manager_is_resizing(gmb_window_manager_t* m);
+int  gmb_window_manager_drag_id(gmb_window_manager_t* m);
+int  gmb_window_manager_resize_id(gmb_window_manager_t* m);
+void gmb_window_manager_clear_focus(gmb_window_manager_t* m);
+void gmb_window_manager_work_area4(gmb_window_manager_t* m, int* out4);
+
 /* ---- PrinterDialog (specchio PrinterDialog.cs) ---- */
 #define GMB_PRINTERS_MAX 16
 typedef struct gmb_printer_dialog {
