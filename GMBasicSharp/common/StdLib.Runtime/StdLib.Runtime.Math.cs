@@ -46,16 +46,19 @@ public static class MathFunctions
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ChiCdf(double freedom, double x) => CommonLib.Numerics.ChiCdf(freedom, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ChiSquaredPdf(double freedom, double x) => CommonLib.Numerics.ChiSquaredPdf(freedom, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ChiSquaredCdf(double freedom, double x) => CommonLib.Numerics.ChiSquaredCdf(freedom, x);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ChiSquaredSf(double freedom, double x) => 1.0 - CommonLib.Numerics.ChiSquaredCdf(freedom, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double BetaPdf(double a, double b, double x) => CommonLib.Numerics.BetaPdf(a, b, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double BetaCdf(double a, double b, double x) => CommonLib.Numerics.BetaCdf(a, b, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double StudentTPdf(double freedom, double x) => CommonLib.Numerics.StudentTPdf(freedom, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double StudentTCdf(double freedom, double x) => CommonLib.Numerics.StudentTCdf(freedom, x);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double StudentTSf(double freedom, double x) => 1.0 - CommonLib.Numerics.StudentTCdf(freedom, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double WeibullPdf(double shape, double scale, double x) => CommonLib.Numerics.WeibullPdf(shape, scale, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double WeibullCdf(double shape, double scale, double x) => CommonLib.Numerics.WeibullCdf(shape, scale, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double FPdf(double d1, double d2, double x) => CommonLib.Numerics.FPdf(d1, d2, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double FCdf(double d1, double d2, double x) => CommonLib.Numerics.FCdf(d1, d2, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ExponentialPdf(double rate, double x) => CommonLib.Numerics.ExponentialPdf(rate, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ExponentialCdf(double rate, double x) => CommonLib.Numerics.ExponentialCdf(rate, x);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ExponentialSf(double rate, double x) => 1.0 - CommonLib.Numerics.ExponentialCdf(rate, x);
     // Inverse CDF (ppf) e ISF — oracoli scipy.stats 1.18.
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double NormalPpf(double mean, double stdDev, double p) => CommonLib.Numerics.NormalPpf(p, mean, stdDev);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double NormalIsf(double mean, double stdDev, double p) => CommonLib.Numerics.NormalIsf(p, mean, stdDev);

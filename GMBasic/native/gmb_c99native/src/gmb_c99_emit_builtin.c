@@ -5261,6 +5261,17 @@ static int ds_sh2(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
     sb_put(&c->out, ")");
     return 1;
 }
+static int ds_sh2_sf(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
+    if (n < 2) return 0;
+    sb_put(&c->out, "(1.0 - "); sb_put(&c->out, fn); sb_put(&c->out, "(");
+    emit_expr(c, a[1]); sb_put(&c->out, ", ");
+    emit_expr(c, a[0]);
+    sb_put(&c->out, "))");
+    return 1;
+}
+static int ds_exp_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2_sf(c, a, n, "gmb_dist_exp_cdf"); }
+static int ds_student_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2_sf(c, a, n, "gmb_dist_student_t_cdf"); }
+static int ds_chisq_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2_sf(c, a, n, "gmb_dist_chi2_cdf"); }
 static int ds_sh2i(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
     if (n < 2) return 0;
     sb_put(&c->out, fn); sb_put(&c->out, "(");
@@ -5437,10 +5448,12 @@ static const ds_row DS_TBL[] = {
     { GMB_TOK_ChiCdf, ds_chi_cdf },
     { GMB_TOK_ChiPdf, ds_chi_pdf },
     { GMB_TOK_ChiSquaredCdf, ds_chisq_cdf },
+    { GMB_TOK_StatsChiSquaredSf, ds_chisq_sf }, 
     { GMB_TOK_ChiSquaredIsf, ds_chisq_isf },
     { GMB_TOK_ChiSquaredPdf, ds_chisq_pdf },
     { GMB_TOK_ChiSquaredPpf, ds_chisq_ppf },
     { GMB_TOK_ExponentialCdf, ds_exp_cdf },
+    { GMB_TOK_StatsExpSf, ds_exp_sf },
     { GMB_TOK_ExponentialIsf, ds_exp_isf },
     { GMB_TOK_ExponentialPdf, ds_exp_pdf },
     { GMB_TOK_ExponentialPpf, ds_exp_ppf },
@@ -5465,6 +5478,7 @@ static const ds_row DS_TBL[] = {
     { GMB_TOK_PoissonPmf, ds_poisson },
     { GMB_TOK_SkewedNormalPdf, ds_skewnormal },
     { GMB_TOK_StudentTCdf, ds_studentt_cdf },
+    { GMB_TOK_StatsStudentTSf, ds_student_sf },
     { GMB_TOK_StudentTIsf, ds_studentt_isf },
     { GMB_TOK_StudentTPdf, ds_studentt_pdf },
     { GMB_TOK_StudentTPpf, ds_studentt_ppf },
