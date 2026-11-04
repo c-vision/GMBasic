@@ -1163,6 +1163,7 @@ procedure,STATS,LogisticPpf,LogisticPpf
 procedure,STATS,LognormalCdf,LognormalCdf
 procedure,STATS,LognormalPdf,LognormalPdf
 procedure,STATS,LognormalPpf,LognormalPpf
+procedure,STATS,LognormalSf,StatsLognormalSf
 procedure,STATS,MAX,StatsMax
 procedure,STATS,MIN,StatsMin
 procedure,STATS,Mad,Mad
@@ -1176,6 +1177,7 @@ procedure,STATS,NormalCdf,NormalCdf
 procedure,STATS,NormalIsf,NormalIsf
 procedure,STATS,NormalPdf,NormalPdf
 procedure,STATS,NormalPpf,NormalPpf
+procedure,STATS,NormalSf,StatsNormalSf
 procedure,STATS,NormalTest,NormalTest
 procedure,STATS,ParetoPdf,ParetoPdf
 procedure,STATS,ParetoPpf,ParetoPpf

@@ -37,6 +37,8 @@ internal sealed partial class PCodeProcessor
         BuiltInFunction.STATS_CHISQUAREDSF,
         BuiltInFunction.STATS_WEIBULLSF,
         BuiltInFunction.STATS_FSF,
+        BuiltInFunction.STATS_NORMALSF,
+        BuiltInFunction.STATS_LOGNORMALSF,
         BuiltInFunction.STATS_GAMMAPPF,
         BuiltInFunction.STATS_GAMMAISF,
         BuiltInFunction.STATS_MODE,
@@ -120,6 +122,20 @@ internal sealed partial class PCodeProcessor
         [BuiltInFunction.STATS_WEIBULLSF] = (task, args) =>
         {
                 return 1.0 - CommonLib.Numerics.WeibullCdf(SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_NORMALSF] = (task, args) =>
+        {
+                var x = SafeDouble(ArgOr(args, 0));
+                var mu = SafeDouble(ArgOr(args, 1, 0.0));
+                var sd = SafeDouble(ArgOr(args, 2, 1.0));
+                return 1.0 - CommonLib.Numerics.NormalCdf(mu, sd, x);
+        },
+        [BuiltInFunction.STATS_LOGNORMALSF] = (task, args) =>
+        {
+                var x = SafeDouble(ArgOr(args, 0));
+                var mu = SafeDouble(ArgOr(args, 1, 0.0));
+                var sd = SafeDouble(ArgOr(args, 2, 1.0));
+                return 1.0 - CommonLib.Numerics.LognormalCdf(mu, sd, x);
         },
         [BuiltInFunction.STATS_FSF] = (task, args) =>
         {

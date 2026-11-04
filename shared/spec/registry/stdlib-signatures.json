@@ -21598,6 +21598,35 @@
     },
     {
       "ns": "STATS",
+      "name": "LognormalSf",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "x",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "mu",
+          "type": "double",
+          "optional": true,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "sigma",
+          "type": "double",
+          "optional": true,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "STATS",
       "name": "MAX",
       "fn": true,
       "return": "double",
@@ -21854,6 +21883,35 @@
       "params": [
         {
           "name": "p",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "mu",
+          "type": "double",
+          "optional": true,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "sigma",
+          "type": "double",
+          "optional": true,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "STATS",
+      "name": "NormalSf",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "x",
           "type": "double",
           "optional": false,
           "byRef": false,

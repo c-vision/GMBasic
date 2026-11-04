@@ -153,6 +153,11 @@ public sealed partial class StdLib
                 xParam, new Parameter(-1, T(TokenKind.Identifier, "mu"), new DoubleType(), SymbolFlags.IsOptional, null, false),
                 new Parameter(-1, T(TokenKind.Identifier, "sigma"), new DoubleType(), SymbolFlags.IsOptional, null, false)
             ], new DoubleType(), TokenKind.NormalCdf, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsNormalSf, "NormalSf"),
+            [
+                xParam, new Parameter(-1, T(TokenKind.Identifier, "mu"), new DoubleType(), SymbolFlags.IsOptional, null, false),
+                new Parameter(-1, T(TokenKind.Identifier, "sigma"), new DoubleType(), SymbolFlags.IsOptional, null, false)
+            ], new DoubleType(), TokenKind.StatsNormalSf, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.LognormalPdf, "LognormalPdf"),
             [
                 xParam, new Parameter(-1, T(TokenKind.Identifier, "mu"), new DoubleType(), SymbolFlags.IsOptional, null, false),
@@ -163,6 +168,11 @@ public sealed partial class StdLib
                 xParam, new Parameter(-1, T(TokenKind.Identifier, "mu"), new DoubleType(), SymbolFlags.IsOptional, null, false),
                 new Parameter(-1, T(TokenKind.Identifier, "sigma"), new DoubleType(), SymbolFlags.IsOptional, null, false)
             ], new DoubleType(), TokenKind.LognormalCdf, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsLognormalSf, "LognormalSf"),
+            [
+                xParam, new Parameter(-1, T(TokenKind.Identifier, "mu"), new DoubleType(), SymbolFlags.IsOptional, null, false),
+                new Parameter(-1, T(TokenKind.Identifier, "sigma"), new DoubleType(), SymbolFlags.IsOptional, null, false)
+            ], new DoubleType(), TokenKind.StatsLognormalSf, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.ChiPdf, "ChiPdf"),
                 [xParam, new Parameter(-1, T(TokenKind.Identifier, "k"), new DoubleType(), noFlags, null, false)],
                 new DoubleType(), TokenKind.ChiPdf, ExecutionKind: NativeExecutionKind.Pure),
