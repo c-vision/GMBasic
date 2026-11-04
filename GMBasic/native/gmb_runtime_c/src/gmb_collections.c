@@ -393,9 +393,13 @@ int gmb_coll_add(int64_t h, gmb_val_t v)
     if (c->type_code == 3 || c->type_code == 21)
         return gmb_coll_contains(h, v) ? 0 : gmb_coll_add_last(h, v);
     /* TRIE (11): la parola va anche nella struttura trie (StartsWith/FindAll), oltre che nella
-     * lista companion che resta l'autorità di count/FOR EACH/Contains. */
+     * lista companion che resta l'autorità di count/FOR EACH/Contains. DEDUP: una parola già
+     * presente non entra due volte (parità CommonLib.Trie/IL). */
     if (c->type_code == 11 && v.kind == GMB_TYPE_STRING && v.v_string.data)
+    {
+        if (gmb_coll_trie_contains(h, v.v_string.data)) return 0;
         trie_mirror_word(c, v.v_string.data);
+    }
     return gmb_coll_add_last(h, v);
 }
 
@@ -842,7 +846,15 @@ int gmb_coll_trie_add(int64_t h, const char* s)
     }
     int isNew = !n->is_word;
     n->is_word = 1;
-    if (isNew) c->count++;
+    if (isNew)
+    {
+        /* Lista COMPANION (autorità di Count/FOR EACH/ToArray/Contains): senza, Trie.Add
+         * aggiornava solo la struttura → Count=1 ma FOR EACH vuoto (sample
+         * CollectionsModern su VM/C/C99). add_last incrementa anche c->count. */
+        gmb_val_t wv = gmb_make_val_string_counted(s);
+        gmb_coll_add_last(h, wv);
+        gmb_val_discard(wv);
+    }
     return -1;
 }
 

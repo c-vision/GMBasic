@@ -2187,6 +2187,18 @@ internal sealed partial class PCodeProcessor
                     try { task.PushRef(idx >= 0 && idx < str.Length ? str[idx].ToString() : null); }
                     catch { task.PushRef(null); }
                 }
+                /* Collezioni enumerabili NON IList/IDictionary (CommonLib TRIE e affini):
+                 * elemento POSIZIONALE nell'ordine di enumerazione. Senza, il FOR EACH
+                 * (UBOUND + LOAD_ELEMENT_POSITIONAL) iterava correttamente ma stampava
+                 * vuoto (CollectionsModern: `FOR EACH w IN trie` → righe "  - "). */
+                else if (arr is System.Collections.IEnumerable genEnum && numIndices == 1)
+                {
+                    var gidx = Convert.ToInt32(keys[0] ?? 0);
+                    object? gitem = null;
+                    var gk = 0;
+                    foreach (var it in genEnum) { if (gk++ == gidx) { gitem = it; break; } }
+                    task.PushRef(gitem);
+                }
                 // Collection chiave→valore (RedBlackTree, Cache, BPlusTree): indexer via
                 // l'interfaccia non-generica (niente reflection — illink segue il pattern).
                 else if (arr is CommonLib.Collections.IKeyValueIndexable kvi && numIndices == 1)
@@ -2273,6 +2285,25 @@ internal sealed partial class PCodeProcessor
                     var idx = Convert.ToInt32(keys[0] ?? 0);
                     try { task.PushRef(idx >= 0 && idx < strP.Length ? strP[idx].ToString() : null); }
                     catch { task.PushRef(null); }
+                }
+                /* TRIE: la classe CommonLib NON implementa IEnumerable (le parole si leggono
+                 * con GetAllWords()): senza questo ramo il FOR EACH stampava vuoto
+                 * (CollectionsModern). */
+                else if (arr is CommonLib.Collections.Trie trieP && numIndices == 1)
+                {
+                    var tidxP = Convert.ToInt32(keys[0] ?? 0);
+                    var twP = new System.Collections.Generic.List<string>(trieP.GetAllWords());
+                    task.PushRef(tidxP >= 0 && tidxP < twP.Count ? twP[tidxP] : null);
+                }
+                /* Collezioni enumerabili NON IList/IDictionary (CommonLib e affini):
+                 * N-esimo elemento nell'ordine di enumerazione (FOR EACH/comprehension). */
+                else if (arr is System.Collections.IEnumerable genEnumP && numIndices == 1)
+                {
+                    var gidxP = Convert.ToInt32(keys[0] ?? 0);
+                    object? gitemP = null;
+                    var gkP = 0;
+                    foreach (var it in genEnumP) { if (gkP++ == gidxP) { gitemP = it; break; } }
+                    task.PushRef(gitemP);
                 }
                 else
                     task.PushRef(null);
