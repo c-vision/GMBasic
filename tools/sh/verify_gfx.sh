@@ -21,7 +21,7 @@ run_to() { # run_to <secs> <file> <marker> <cmd...>
   ( "$@" ) >"$file" 2>&1 & local p=$!
   for _ in $(seq 1 $((secs*2))); do kill -0 "$p" 2>/dev/null || break; sleep 0.5; done
   kill -9 "$p" 2>/dev/null
-  pkill -f "gmb_vm_host" 2>/dev/null; pkill -f "gmb_c99native_driver" 2>/dev/null
+  pkill -f "gmb_vm_host" 2>/dev/null; pkill -f "gmbnative" 2>/dev/null; pkill -f "gmb_c99native_driver" 2>/dev/null
   if rg -q -- "$marker" "$file"; then echo "  PASS ($marker)"; else echo "  FAIL (atteso: $marker) — log: $file"; FAIL=1; fi
 }
 
