@@ -78,7 +78,7 @@ int emit_bf_stats_dict(ctx_t* c, const char* name, const char* ns, gmb_tokenkind
     case SD_ONE_VAL:
         if (n != 1) return 0;
         /* ANOVA su matrice jagged (DIM groups(k) AS ARRAY OF DOUBLE): righe uniformi →
-         * sizes tutte uguali a groups__cols (stesso schema del ramo ANALYSIS.ANOVA). */
+         * sizes tutte uguali a groups__cols (stesso schema del ramo STATS.Anova). */
         if (tk == GMB_TOK_StatsAnova && a[0] && a[0]->kind == GMB_EXPR_VAR && a[0]->var) {
             var_t* jv = lookup_var(c, a[0]->var);
             if (jv && jv->jagged) {

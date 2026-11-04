@@ -178,7 +178,7 @@ set(GMB_ALL_SRCS
     src/gmb_brain_tools.c      # Second Brain: stats/verify/create/register/buildvault/optimize/rename/export/sign
     src/gmb_brain_tools2.c     # Second Brain: dedupe/extract/merge/convert/verify-golden/diff/doctor
     src/gmb_brain_graph.c      # Second Brain: modello grafo + export (json/stats/mermaid/graphml/html/obsidian)
-    src/gmb_fixtures.c     # fixture di mercato on demand (manifest pubblico + gmb_fetch)
+    src/gmb_fixtures.c     # fixture di mercato on demand (manifest pubblico + gmbfetch)
     src/gmb_fsutil.c       # mkdir -p / rmtree / isdir / spazio: una sola implementazione
     src/gmb_ui_stub.c   # debole, PRIMO membro: risolve i riferimenti UI del core in headless
     src/gmb_px_renderer.c   # registry renderer pixel (core); i renderer si registrano dal target UI
@@ -466,6 +466,16 @@ target_link_libraries(gmb_runtime_min_obj PRIVATE gmb_runtime_deps)
 # gmb_ui_null.c: INKEY leggeva sempre "" e i tasti non entravano mai nel gestore eventi
 # (nessun TUI/GUI/ON KEY li vedeva). Cfr. gmb_input_feeder.c.
 target_sources(gmb_runtime_min_obj PRIVATE src/gmb_tui_io.c src/gmb_gfx_input.c src/gmb_input_feeder.c)
+# gmb_tui_io.c DECODIFICA i tasti/mouse con queste due unità (mapping Clipper + sequenze
+# SGR/X10); senza di esse la variante minima resta con simboli non risolti e OGNI
+# eseguibile testuale fallisce al link (`gmb build`/`gmb run` su qualunque cartella).
+# Entrambe sono TTY-free (zero SDL/Vulkan): non riportano dentro la variante minima
+# le dipendenze grafiche che essa esiste per evitare.
+target_sources(gmb_runtime_min_obj PRIVATE src/gmb_tui_mouse.c src/gmb_tui_clipper.c)
+# Chiusura della stessa catena: il mapping Clipper usa i tipi/date/stringhe di
+# gmb_tui_datatypes.c (per nome finisce in GMB_UI_SRCS, ma è puro C senza OS/SDL:
+# "Tutto puro (no OS)" — header in include/gmb_tui_datatypes.h).
+target_sources(gmb_runtime_min_obj PRIVATE src/gmb_tui_datatypes.c)
 # GMB_ALL_SRCS è una lista esplicita: il feeder input va aggiunto anche al core completo.
 target_sources(gmb_runtime_core_obj PRIVATE src/gmb_input_feeder.c)
 # Stesso path di build della dylib AI del core completo: anche i programmi generati da
@@ -958,36 +968,33 @@ set_target_properties(gmb_boot PROPERTIES
     PREFIX "lib" OUTPUT_NAME "gmb_boot"
     LIBRARY_OUTPUT_DIRECTORY "${GMB_LIBS_OUT}")
 
-# CLI del downloader on-demand (`gmb_libs_fetch <libs.txt> <file>...`): la usa il runner C99
+# CLI del downloader on-demand (`gmblibs <libs.txt> <file>...`): la usa il runner C99
 # prima del link (il compilatore C scarica le librerie mancanti). Non va nella libreria: `main`.
-add_executable(gmb_libs_fetch tools/gmb_libs_fetch_cli.c)
-target_link_libraries(gmb_libs_fetch PRIVATE gmb_runtime)
-target_include_directories(gmb_libs_fetch PRIVATE include)
-gmb_exe_relocatable(gmb_libs_fetch)   # nessun path del builder nell'rpath (release: 0 voci assolute)
+add_executable(gmblibs tools/gmb_libs_fetch_cli.c)
+target_link_libraries(gmblibs PRIVATE gmb_runtime)
+target_include_directories(gmblibs PRIVATE include)
+gmb_exe_relocatable(gmblibs)   # nessun path del builder nell'rpath (release: 0 voci assolute)
 
-# Motore di download da riga di comando (`gmb_fetch <url> <file>`): utile per provare la
+# Motore di download da riga di comando (`gmbfetch <url> <file>`): utile per provare la
 # ripresa a mano su un asset grosso (Ctrl-C + rilancio) e per gli script di distribuzione.
-add_executable(gmb_fetch_cli tools/gmb_fetch_cli.c)
-target_link_libraries(gmb_fetch_cli PRIVATE gmb_runtime)
-target_include_directories(gmb_fetch_cli PRIVATE include)
-set_target_properties(gmb_fetch_cli PROPERTIES OUTPUT_NAME gmb_fetch)
-gmb_exe_relocatable(gmb_fetch_cli)
+add_executable(gmbfetch tools/gmb_fetch_cli.c)
+target_link_libraries(gmbfetch PRIVATE gmb_runtime)
+target_include_directories(gmbfetch PRIVATE include)
+gmb_exe_relocatable(gmbfetch)
 
 # Cervelli di un programma DISTRIBUITO: legge `<exe>.brains.txt` (+ lo snapshot di
 # brains-manifest.json accanto all'eseguibile) e li installa in `<exe>/brains`, che la
 # risoluzione consulta prima della cache. Così l'app parte senza rete.
-add_executable(gmb_brain_fetch_cli tools/gmb_brain_fetch_cli.c)
-target_link_libraries(gmb_brain_fetch_cli PRIVATE gmb_runtime)
-target_include_directories(gmb_brain_fetch_cli PRIVATE include)
-set_target_properties(gmb_brain_fetch_cli PROPERTIES OUTPUT_NAME gmb_brain_fetch)
-gmb_exe_relocatable(gmb_brain_fetch_cli)
+add_executable(gmbbrains tools/gmb_brain_fetch_cli.c)
+target_link_libraries(gmbbrains PRIVATE gmb_runtime)
+target_include_directories(gmbbrains PRIVATE include)
+gmb_exe_relocatable(gmbbrains)
 
-# Fixture di mercato on demand (`gmb_fixtures list|pull`): prima erano ~182 MB nel repo.
-add_executable(gmb_fixtures_cli tools/gmb_fixtures_cli.c)
-target_link_libraries(gmb_fixtures_cli PRIVATE gmb_runtime)
-target_include_directories(gmb_fixtures_cli PRIVATE include)
-set_target_properties(gmb_fixtures_cli PROPERTIES OUTPUT_NAME gmb_fixtures)
-gmb_exe_relocatable(gmb_fixtures_cli)
+# Fixture di mercato on demand (`gmbfixtures list|pull`): prima erano ~182 MB nel repo.
+add_executable(gmbfixtures tools/gmb_fixtures_cli.c)
+target_link_libraries(gmbfixtures PRIVATE gmb_runtime)
+target_include_directories(gmbfixtures PRIVATE include)
+gmb_exe_relocatable(gmbfixtures)
 
 add_executable(gmb_rdd_db_selfcheck tests/rdd_db_selfcheck.c)
 target_link_libraries(gmb_rdd_db_selfcheck PRIVATE gmb_runtime)
@@ -1236,10 +1243,10 @@ target_link_libraries(gmb_vm_input_drain_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_vm_input_drain_selfcheck PRIVATE include)
 add_test(NAME gmb_vm_input_drain_selfcheck COMMAND gmb_vm_input_drain_selfcheck)
 
-add_executable(gmb_imgdiff tools/gmb_imgdiff.c)
-target_link_libraries(gmb_imgdiff PRIVATE gmb_runtime)
-target_include_directories(gmb_imgdiff PRIVATE include src)
-gmb_exe_relocatable(gmb_imgdiff)
+add_executable(gmbimgdiff tools/gmb_imgdiff.c)
+target_link_libraries(gmbimgdiff PRIVATE gmb_runtime)
+target_include_directories(gmbimgdiff PRIVATE include src)
+gmb_exe_relocatable(gmbimgdiff)
 
 add_executable(gmb_audio_selfcheck tests/gmb_audio_selfcheck.c)
 target_link_libraries(gmb_audio_selfcheck PRIVATE gmb_runtime)
@@ -1408,10 +1415,10 @@ set_target_properties(gmb_ai_llm PROPERTIES
 set_target_properties(gmb_runtime PROPERTIES INSTALL_RPATH "@loader_path")
 
 # ── Theme snapshot CLI (read-only) per l'IDE: palette + stile pixel del tema.
-add_executable(gmb_theme tools/gmb_theme_cli.c src/gmb_tui_theme.c)
-target_include_directories(gmb_theme PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_compile_options(gmb_theme PRIVATE -Wall -Wextra)
-gmb_exe_relocatable(gmb_theme)
+add_executable(gmbtheme tools/gmb_theme_cli.c src/gmb_tui_theme.c)
+target_include_directories(gmbtheme PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_compile_options(gmbtheme PRIVATE -Wall -Wextra)
+gmb_exe_relocatable(gmbtheme)
 
 # Cartella ABI di LLMEnv: settings JSONC (paths.abiDir) + risoluzione alla prima esecuzione. Include il .c: prova anche le statiche.
 add_executable(test_abi_settings tests/test_abi_settings.c ${LLMENV}/LLMDesc/llmdesc.c src/gmb_paths.c)

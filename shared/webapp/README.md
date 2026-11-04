@@ -105,7 +105,7 @@ pagina (query + costruzione dell'HTML).
 Il percorso C usa **lo stesso motore VM/C del managed** (dylib `libgmb_bsp`):
 
 1. `gmb build`/`run` precompila ogni `<progetto>/pages/*.bsp` in un chunk A1
-   (`gmb_chunk_driver`, che accetta direttamente il `.bsp`: BSP → BASIC **con gli IMPORT**
+   (`gmbchunk`, che accetta direttamente il `.bsp`: BSP → BASIC **con gli IMPORT**
    → bytecode). Se il chunk è più vecchio della pagina viene rigenerato;
 2. all'avvio il runtime carica `libgmb_bsp` (dlopen) e le passa la pagina: la **VM/C**
    esegue il chunk, quindi la pagina usa **tutto il linguaggio** — `FUNCTION`/`SUB`

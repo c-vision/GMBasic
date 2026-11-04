@@ -1,7 +1,7 @@
 /* native/gmb_compiler_c/driver/gmb_chunk_driver.c — compila un .bas in chunk A1/GMBC con il
  * pipeline 100% C (lexer -> macro -> parser -> gmb_compile). Specchio minimale della
  * compilazione chunk di native/executor (gmb_compile_c_chunk), senza aggregazione progetto.
- * Uso: gmb_chunk_driver <file.bas> [out.chunk]   (default out.chunk)
+ * Uso: gmbchunk <file.bas> [out.chunk]   (default out.chunk)
  * Il chunk prodotto e' eseguibile da gmb_vm_host (gmb_vm_c): verifica E2E dei builtin/statement
  * nativi (es. AI SERVER, func_code 3505..3509).
  */

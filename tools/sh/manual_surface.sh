@@ -72,6 +72,8 @@ sanitize() {
       -e 's/cinque backend/quattro backend/g' \
       -e 's/Cinque backend/Quattro backend/g' \
       -e 's/parity5/parity4/g' \
+      -e 's|`--cache` / `GMB_PKG_CACHE` / `paths.packagesDir`|`--cache` o `paths.packagesDir`|g' \
+      -e 's/GMB_PKG_CACHE/paths.packagesDir/g' \
       -e 's/gambe/backend/g' \
       -e 's/backend[[:space:]]*\([0-9]\)/\1 backend/g' \
       -e 's/gamba/backend/g' \

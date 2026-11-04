@@ -1936,3 +1936,51 @@ int gmb_file_unlock(gmb_int_t handle, long position, long length) {
     fl.l_len = length;
     return fcntl(fd, F_SETLK, &fl) == 0;
 }
+
+/* WRITEBYTES(path, bytes): scrive un blocco di byte su file in modo BYTE-ESATTO.
+ * Perché serve: `gmb_file_write_string` usa fputs(), quindi si ferma al primo 0x00 e non
+ * può produrre formati binari (BMP, PSF2, TTF, PNG). Qui si apre in "wb" e si usa fwrite.
+ * Ritorna il numero di byte scritti, -1 se il file non si apre (path vuoto/non scrivibile). */
+int gmb_write_all_bytes(const char* path, const uint8_t* data, size_t len) {
+    if (!path || !*path) return -1;
+    FILE* f = fopen(path, "wb");
+    if (!f) return -1;
+    size_t wr = 0;
+    if (len > 0 && data) wr = fwrite(data, 1, len, f);
+    if (fclose(f) != 0) return -1;
+    return (int)wr;
+}
+
+/* Variante per gli array BASIC: la lista del runtime contiene gmb_val_t (numeri 0..255).
+ * Ogni elemento è mascherato a 8 bit, così un BYTE negativo (= -1 per BIT) non sfonda. */
+/* Variante per il backend C99Native: gli array `DIM b(n) AS BYTE` sono double[]. */
+int gmb_write_all_bytes_f64(const char* path, const double* src, int count) {
+    if (!path || !*path) return -1;
+    int n = count > 0 ? count : 0;
+    uint8_t* buf = n > 0 ? (uint8_t*)malloc((size_t)n) : NULL;
+    if (n > 0 && !buf) return -1;
+    for (int i = 0; i < n; i++) {
+        long d = (long)src[i];
+        buf[i] = (uint8_t)(d & 0xFF);
+    }
+    int rc = gmb_write_all_bytes(path, buf, (size_t)n);
+    free(buf);
+    return rc;
+}
+
+int gmb_write_all_bytes_list(const char* path, gmb_list_t list) {
+    if (!path || !*path) return -1;
+    size_t n = (size_t)(list.count > 0 ? list.count : 0);
+    uint8_t* buf = n > 0 ? (uint8_t*)malloc(n) : NULL;
+    if (n > 0 && !buf) return -1;
+    for (size_t i = 0; i < n; i++) {
+        gmb_val_t v = list.items[i];
+        long d = 0;
+        if (v.kind == GMB_TYPE_DOUBLE) d = (long)v.v_double;
+        else if (v.kind == GMB_TYPE_INT) d = (long)v.v_int;
+        buf[i] = (uint8_t)(d & 0xFF);
+    }
+    int rc = gmb_write_all_bytes(path, buf, n);
+    free(buf);
+    return rc;
+}

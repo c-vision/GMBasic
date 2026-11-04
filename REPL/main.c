@@ -6,8 +6,8 @@
 #include <unistd.h>
 
 static const char* USAGE =
-    "gmb_repl (REPL unica, C) — esegue vmc|c99; engine C# opzionale per IL/P-Code\n"
-    "USO: gmb_repl [<file.bas>] [opzioni]\n"
+    "gmbrepl (REPL unica, C) — esegue vmc|c99; engine C# opzionale per IL/P-Code\n"
+    "USO: gmbrepl [<file.bas>] [opzioni]\n"
     "Backend C: vmc (chunk -> gmb_vm_host) | c99 (C99 -> cc)\n"
     "Opzioni:\n"
     "  -noconsole  -c/-console (no SDL)  -s (system console)  -c64  -w <w> -h <h>\n"
@@ -33,7 +33,7 @@ int main(int argc, char** argv)
 {
     if (argc >= 2 && (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "-help") == 0)) { printf("%s", USAGE); return 0; }
     if (argc >= 2 && strcmp(argv[1], "--lsp") == 0) {
-        fprintf(stderr, "?-lsp: il language server e' il tool separato 'gmb_lsp' (native/lsp).\n"
+        fprintf(stderr, "?-lsp: il language server e' il tool separato 'gmblsp' (native/lsp).\n"
                         "      Avvialo come processo dal tuo editor (IDE GMBasic, VS Code).\n");
         return 2;
     }

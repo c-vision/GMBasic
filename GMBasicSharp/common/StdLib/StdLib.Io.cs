@@ -195,6 +195,14 @@ public sealed partial class StdLib
             new NativeProcedureDefinition(-1, publicFuncFlag, T(TokenKind.ReadBytesFunc, "ReadBytes"),
                 [new Parameter(-1, T(TokenKind.Identifier, "path"), new StringType(), noFlags, null, false)],
                 new ArrayType(new ByteType()), TokenKind.ReadBytesFunc),
+            // WRITEBYTES(path, bytes) — scrive un ARRAY DI BYTE su file in modo byte-esatto
+            // (binario: 0x00 e 0x80..0xFF inclusi). Complementare a READBYTES; FWrite non basta
+            // perché passa da fputs/UTF-8. Ritorna i byte scritti (-1 su errore).
+            new NativeProcedureDefinition(-1, publicFuncFlag, T(TokenKind.WriteBytesFunc, "WriteBytes"),
+                [
+                    new Parameter(-1, T(TokenKind.Identifier, "path"), new StringType(), noFlags, null, false),
+                    new Parameter(-1, T(TokenKind.Identifier, "bytes"), new ArrayType(new ByteType()), noFlags, null, false)
+                ], new LongType(), TokenKind.WriteBytesFunc),
             new NativeProcedureDefinition(-1, publicFuncFlag, T(TokenKind.ReadLinesFunc, "ReadLines"),
                 [new Parameter(-1, T(TokenKind.Identifier, "path"), new StringType(), noFlags, null, false)],
                 new ArrayType(new StringType()), TokenKind.ReadLinesFunc),

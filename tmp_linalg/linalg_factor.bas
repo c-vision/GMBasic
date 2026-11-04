@@ -1,0 +1,10 @@
+SUB Main()
+    DIM a = MATRIX.CREATE(2, 2)
+    a = MATRIX.SETVALUE(a, 0, 0, 4)
+    a = MATRIX.SETVALUE(a, 0, 1, 2)
+    a = MATRIX.SETVALUE(a, 1, 0, 2)
+    a = MATRIX.SETVALUE(a, 1, 1, 3)
+    DIM ch = LINALG.CHOLESKY(a)
+    DIM cl  AS LONG = LINALG.FACTOR(ch, "L")
+    PRINT MATRIX.GETVALUE(cl, 0, 0)
+END SUB

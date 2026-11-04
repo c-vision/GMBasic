@@ -1235,6 +1235,9 @@ public static partial class Linker
                     .Concat(n.BlockBody ?? Enumerable.Empty<AstNode>()),
                 FieldAccessExpr n => [n.Structure],
                 IndexedAccessExpr n => new AstNode[] { n.Base }.Concat(n.Indices),
+                ArrayLiteralExpr n => n.Elements,
+                ListLiteralExpr n => n.Elements,
+                DictionaryLiteralExpr n => n.Entries.SelectMany(e => new AstNode[] { e.Key, e.Value }),
                 ListComprehensionExpr n => new AstNode[] { n.OutputExpression }
                     .Concat(n.Clauses.SelectMany(c =>
                         c.ConditionExpression != null
@@ -1765,6 +1768,7 @@ public static partial class Linker
         AstRewriteContext context,
         BasicProgram program)
     {
+            Console.Error.WriteLine($"[FPENTRY] ns={bce.Namespace.Lexeme} kind={bce.Name.Kind} args={string.Join(",", bce.Args.Select(a => a.GetType().Name))} ctx={context.ExpectedType}");
         // §4.10(f) — AI.SYMBOL/IMPACT/CALLMAP: fold a link-time (grafo del programma, hook iniettato).
         if (bce.Name.Kind is TokenKind.AiSymbol or TokenKind.AiImpact or TokenKind.AiCallmap
             or TokenKind.AiRevision or TokenKind.AiContext or TokenKind.AiCheckrev or TokenKind.AiPatch or TokenKind.AiFindsymbol or TokenKind.AiRepomap
@@ -1866,8 +1870,22 @@ public static partial class Linker
                     return bce;
 
                 var rewrittenBypassArgs = ImmutableArray.CreateBuilder<Expr>(bce.Args.Length);
+                // Gli argomenti NON ereditano l'ExpectedType del call-site (che è il tipo di
+                // RITORNO): un `DIM fp AS LONG = LINALG.FRACTIONALPOWER(h, 0.5)` propagava
+                // LONG a 0.5 → CLng(0.5)=0 → potenza 0 invece di 0.5. Senza formal types
+                // (builtin non materializzato nei symbols, es. namespace non importato),
+                // l'inferenza naturale del letterale è l'unica scelta corretta.
+                // Lambda/Function: conserva l'ExpectedType del call-site (target typing dei
+                // parametri). Gli altri argomenti: niente ExpectedType, che è il tipo di
+                // RITORNO — `DIM fp AS LONG = LINALG.FRACTIONALPOWER(h, 0.5)` propagava
+                // LONG a 0.5 → CLng(0.5)=0 → potenza 0 invece di 0.5.
                 foreach (var arg in bce.Args)
-                    rewrittenBypassArgs.Add(arg is null ? arg! : RewriteExpression(arg, context, program));
+                {
+                    var argCtx = arg is LambdaExpr or FunctionExpr
+                        ? context
+                        : context with { ExpectedType = null };
+                    rewrittenBypassArgs.Add(arg is null ? arg! : RewriteExpression(arg, argCtx, program));
+                }
                 return bce with { Args = rewrittenBypassArgs.ToImmutable() };
             }
         }

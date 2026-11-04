@@ -115,8 +115,12 @@ internal class BlockState
         }
         int maxDepth = _preds[0]._stack.Count;
 
-        // We don't make any guarantees for invalid IL, this is just for good measure.
-        Debug.Assert(_preds.All(b => b._stack.Count == maxDepth));
+        // Stack incoerente fra predecessori: IL non valido o non supportato dall'importer.
+        // Prima un Debug.Assert terminava il processo ("Assertion failed"): ora si solleva
+        // un errore per-metodo, catturato da PassManager.ImportIL, che lascia il metodo
+        // NON ottimizzato (IL originale preservato) invece di uccidere il compilatore.
+        if (!_preds.All(b => b._stack.Count == maxDepth))
+            throw Error("Inconsistent evaluation stack between basic blocks.");
 
         if (maxDepth == 0) return;
 

@@ -1,9 +1,9 @@
 /* gmb_fixtures_cli.c — fixture di mercato on demand.
  *
  * Uso:
- *   gmb_fixtures list                 fixture dichiarate nel manifest + quali sono presenti
- *   gmb_fixtures pull [nome...]       scarica+estrae in shared/samples/Fixtures/<nome>/
- *   gmb_fixtures pull --all           tutte quelle dichiarate
+ *   gmbfixtures list                 fixture dichiarate nel manifest + quali sono presenti
+ *   gmbfixtures pull [nome...]       scarica+estrae in shared/samples/Fixtures/<nome>/
+ *   gmbfixtures pull --all           tutte quelle dichiarate
  *     opzioni: --dest <dir>  --version <v>  --force  --quiet
  *
  * Le fixture sono DATI DI SVILUPPO (compilatore e test): il programma distribuito non le porta.
@@ -28,9 +28,9 @@ int main(int argc, char** argv)
 
     if (strcmp(cmd, "--help") == 0 || strcmp(cmd, "-h") == 0 || strcmp(cmd, "-help") == 0) {
         fprintf(stderr,
-            "uso: gmb_fixtures list\n"
-            "     gmb_fixtures pull [nome...] [--all] [--dest dir] [--version v] [--force] [--quiet]\n"
-            "     gmb_fixtures ensure [--all] [--app app.settings.json] [--only a,b] [--quiet]\n");
+            "uso: gmbfixtures list\n"
+            "     gmbfixtures pull [nome...] [--all] [--dest dir] [--version v] [--force] [--quiet]\n"
+            "     gmbfixtures ensure [--all] [--app app.settings.json] [--only a,b] [--quiet]\n");
         return 0;
     }
     for (int i = 2; i < argc; i++) {
@@ -84,10 +84,10 @@ int main(int argc, char** argv)
         if (app_settings) n2 = gmb_fixtures_ensure_declared(app_settings, tr2, &op2, e2, sizeof e2);
         else n2 = gmb_fixtures_ensure_all(only_csv, tr2, &op2, e2, sizeof e2);
         if (n2 < 0) {
-            fprintf(stderr, "gmb_fixtures ensure: %d voci fallite%s%s\n", -n2, e2[0] ? " — " : "", e2);
+            fprintf(stderr, "gmbfixtures ensure: %d voci fallite%s%s\n", -n2, e2[0] ? " — " : "", e2);
             return 1;
         }
-        if (!quiet && n2 > 0) printf("gmb_fixtures ensure: %d fixture scaricate\n", n2);
+        if (!quiet && n2 > 0) printf("gmbfixtures ensure: %d fixture scaricate\n", n2);
         return 0;
     }
 
@@ -109,7 +109,7 @@ int main(int argc, char** argv)
         }
     }
     if (nnames == 0) {
-        fprintf(stderr, "quali fixture? indica uno o più nomi, oppure --all (vedi `gmb_fixtures list`)\n");
+        fprintf(stderr, "quali fixture? indica uno o più nomi, oppure --all (vedi `gmbfixtures list`)\n");
         return 1;
     }
 

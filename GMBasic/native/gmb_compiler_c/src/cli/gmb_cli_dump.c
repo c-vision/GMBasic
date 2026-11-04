@@ -138,7 +138,7 @@ int gmb_cli_dump_chunk(const char* file, const char* out)
 {
     char tmp[1024];
     if (!out) { snprintf(tmp, sizeof tmp, "/tmp/gmb_dump_%d.chunk", (int)getpid()); out = tmp; }
-    int rc = run_tool("gmb_chunk_driver", file, out);
+    int rc = run_tool("gmbchunk", file, out);
     if (rc == 0 && out == tmp) { printf("%s\n", out); }
     return rc;
 }
@@ -149,7 +149,7 @@ int gmb_cli_dump_c(const char* file, const char* out)
     if (!out) { snprintf(tmp, sizeof tmp, "/tmp/gmb_dump_%d.c", (int)getpid()); out = tmp; }
     char extra[64] = "--no-exe";
     if (g_gpm) snprintf(extra, sizeof extra, "--no-exe --gpm %s", g_gpm);
-    int rc = run_tool_ex("gmb_c99native_driver", file, out, extra);
+    int rc = run_tool_ex("gmbnative", file, out, extra);
     if (rc == 0 && out == tmp) { printf("%s\n", out); }
     return rc;
 }
@@ -159,7 +159,7 @@ int gmb_cli_dump_disasm(const char* file)
 {
     char chunk[1024];
     snprintf(chunk, sizeof chunk, "/tmp/gmb_disasm_%d.chunk", (int)getpid());
-    int rc = run_tool("gmb_chunk_driver", file, chunk);
+    int rc = run_tool("gmbchunk", file, chunk);
     if (rc == 0) rc = gmb_disasm_chunk_file(chunk);
     unlink(chunk);
     return rc;
@@ -175,7 +175,7 @@ int gmb_cli_eval(const char* code)
     if (!f) { fprintf(stderr, "gmb: impossibile scrivere %s\n", bas); return 1; }
     fprintf(f, "SUB Main()\n%s\nEND SUB\n", code);
     fclose(f);
-    int rc = run_tool("gmb_chunk_driver", bas, chunk);
+    int rc = run_tool("gmbchunk", bas, chunk);
     if (rc == 0) {
         char dir[1024], host[2048];
         exe_dir(dir, sizeof dir);

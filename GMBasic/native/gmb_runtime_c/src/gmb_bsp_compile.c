@@ -1,7 +1,7 @@
 /* ============================================================================
  * gmb_bsp_compile.c — traduzione .bsp (HTML + <% %>) → BASIC.
  * Estratto da gmb_bsp.c per essere linkato ANCHE dal driver dei chunk
- * (gmb_chunk_driver): così il compilatore BSP in C è COMPLETO — la pagina
+ * (gmbchunk): così il compilatore BSP in C è COMPLETO — la pagina
  * compilata viene eseguita dalla VM/C (A1), non dal valutatore di espressioni.
  * Nessuna dipendenza dal runtime: solo libc.
  * ============================================================================ */

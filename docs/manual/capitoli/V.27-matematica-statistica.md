@@ -44,7 +44,7 @@ sequenza di cui **conosci** il risultato.
 
 ## 2. Statistica descrittiva
 
-`ANALYSIS` offre media, mediana, varianza, deviazione standard, MAD, asimmetria, curtosi,
+`STATS` offre media, mediana, varianza, deviazione standard, MAD, asimmetria, curtosi,
 correlazione e quantili. Eseguito (`shared/samples/Analysis/AnalysisStatsDescriptive.bas`):
 
 ```
@@ -72,9 +72,13 @@ decisione.
 
 | Ambito | Namespace / guida | Cosa copre |
 |---|---|---|
-| matrici e algebra | `MATRIX`, `Matrix-Linalg-Manual` | prodotto, inversa, autovalori, decomposizioni |
+| matrici (struttura e comandi) | `MATRIX`, `Matrix-Linalg-Manual` | creazione, accesso, copia, slicing, prodotti, predicati |
+| algebra lineare (algoritmi) | `LINALG`, `Matrix-Linalg-Manual` | decomposizioni, risolutori, norme, funzioni matriciali |
 | vettori | `VECTOR` | norme, distanze, prodotto scalare |
-| statistica | `ANALYSIS`, `Stats-Manual` | descrittiva, test, distribuzioni |
+| statistica | `STATS`, `Stats-Manual` | descrittiva, test, distribuzioni |
+| serie temporali | `TIMESERIES` | ARIMA, GARCH, Kalman, HMM, previsione |
+| regressione e fitting | `REGRESSION`, `FITTING` | modelli lineari, curve fit |
+| multivariata e simulazione | `MULTIVARIATE`, `SIMULATION` | PCA, clustering, Monte Carlo |
 | interpolazione e curve | `AnalysisInterpReal.bas`, `CurveFitSciPyParity.bas` | interpolazione, fit |
 | FFT | `IntegrateInterpFftSciPyParity.bas` | trasformata rapida |
 | ricerca spaziale | `KdTreeAdvanced.bas`, `Spatial-Guida-Utente` | k-d tree, nearest neighbour |
@@ -138,50 +142,50 @@ si sbaglia quando si confrontano due software.
 Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
 nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
 
-- **ANALYSIS.ADFTEST(x1)** — `adf = ANALYSIS.AdfTest(d)` (shared/samples/Analysis/AnalysisMiniTest.bas:12)
-- **ANALYSIS.ANOVA(x1)** — `aov = ANALYSIS.ANOVA(g)` (shared/samples/Analysis/AnalysisUncoveredCoverage.bas:59)
-- **ANALYSIS.ARIMA(x1, x2, x3, x4)** — `DIM ArimaRes = ANALYSIS.ARIMA(SerieTemporale, 1, 1, 1)` (shared/samples/Analysis/AnalysisTests.bas:66)
-- **ANALYSIS.CORRELATION(x1, x2)** — `DIM Corr = ANALYSIS.CORRELATION(Dataset1, Dataset2)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:61)
-- **ANALYSIS.CUBICSPLINE(x1, x2, x3)** — `PRINT xn; "  "; ANALYSIS.INTERPOLATELINEAR(x, y, xn); "  "; ANALYSIS.CUBICSPLINE(x, y, xn); "  "; AN…` (shared/samples/Analysis/AnalysisInterpReal.bas:14)
-- **ANALYSIS.CUMTRAPEZOID(x1, x2)** — `DIM ct() = ANALYSIS.CUMTRAPEZOID(yy, xx)` (shared/samples/Math/IntegrateInterpFftSciPyParity.bas:15)
-- **ANALYSIS.DIFFERENTIATE(x1, x2)** — `DIM Derivata = ANALYSIS.DIFFERENTIATE(FN(x) => x*x, 2)` (shared/samples/Analysis/AnalysisTests.bas:134)
-- **ANALYSIS.EUCLIDEANDISTANCESQUARED(x1, x2)** — `PRINT "euclid: "; ANALYSIS.EUCLIDEANDISTANCESQUARED(x, y)` (shared/samples/Analysis/AnalysisInterpReal.bas:17)
-- **ANALYSIS.FFT(x1)** — `DIM FftRes() = ANALYSIS.FFT(Signal)` (shared/samples/Analysis/AnalysisTests.bas:86)
-- **ANALYSIS.FFTCOMPLEX(x1, x2)** — `DIM spettro() = ANALYSIS.FFTCOMPLEX(real, imag)` (shared/samples/Analysis/AnalysisUncoveredCoverage.bas:34)
-- **ANALYSIS.FFTFREQ(x1, x2)** — `DIM f6() = ANALYSIS.FFTFREQ(6, 1)` (shared/samples/Math/IntegrateInterpFftSciPyParity.bas:23)
-- **ANALYSIS.FFTSHIFT(x1)** — `DIM fs() = ANALYSIS.FFTSHIFT(a6)` (shared/samples/Math/IntegrateInterpFftSciPyParity.bas:26)
-- **ANALYSIS.HOLTWINTERS(x1, x2, x3, x4, x5)** — `DIM HwRes = ANALYSIS.HOLTWINTERS(SerieTemporale, 0.2, 0.1, 0.1, 10)` (shared/samples/Analysis/AnalysisTests.bas:61)
-- **ANALYSIS.IFFT(x1)** — `DIM IfftRes() = ANALYSIS.IFFT(FftRes)` (shared/samples/Analysis/AnalysisTests.bas:94)
-- **ANALYSIS.IFFTCOMPLEX(x1, x2)** — `DIM ii() = ANALYSIS.IFFTCOMPLEX(real, imag)` (shared/samples/Analysis/AnalysisUncoveredCoverage.bas:37)
-- **ANALYSIS.IFFTSHIFT(x1)** — `DIM ifs() = ANALYSIS.IFFTSHIFT(a6)` (shared/samples/Math/IntegrateInterpFftSciPyParity.bas:28)
-- **ANALYSIS.INTEGRATE(x1, x2, x3)** — `DIM Integrale = ANALYSIS.INTEGRATE(FN(x) => x*x, 0, 1)` (shared/samples/Analysis/AnalysisTests.bas:130)
-- **ANALYSIS.INTERPOLATECLAMP(x1, x2, x3)** — `DIM y_clamp = ANALYSIS.INTERPOLATECLAMP(DatiX, DatiY, x_new)` (shared/samples/Analysis/AnalysisTests.bas:111)
-- **ANALYSIS.INTERPOLATEGENERIC(x1, x2, x3, x4)** — `DIM y_gen = ANALYSIS.INTERPOLATEGENERIC("linear", DatiX, DatiY, x_new)` (shared/samples/Analysis/AnalysisTests.bas:112)
-- **ANALYSIS.INTERPOLATELINEAR(x1, x2, x3)** — `PRINT xn; "  "; ANALYSIS.INTERPOLATELINEAR(x, y, xn); "  "; ANALYSIS.CUBICSPLINE(x, y, xn); "  "; AN…` (shared/samples/Analysis/AnalysisInterpReal.bas:14)
-- **ANALYSIS.INTERPOLATEPCHIP(x1, x2, x3)** — `PRINT xn; "  "; ANALYSIS.INTERPOLATELINEAR(x, y, xn); "  "; ANALYSIS.CUBICSPLINE(x, y, xn); "  "; AN…` (shared/samples/Analysis/AnalysisInterpReal.bas:14)
-- **ANALYSIS.INTERPOLATEPOLYNOMIAL(x1, x2, x3)** — `PRINT xn; "  "; ANALYSIS.INTERPOLATELINEAR(x, y, xn); "  "; ANALYSIS.CUBICSPLINE(x, y, xn); "  "; AN…` (shared/samples/Analysis/AnalysisInterpReal.bas:14)
-- **ANALYSIS.INTERPOLATESPLINE(x1, x2, x3)** — `PRINT "spline@2.5: "; ANALYSIS.INTERPOLATESPLINE(x, y, 2.5)` (shared/samples/Analysis/AnalysisInterpReal.bas:16)
-- **ANALYSIS.INTERPOLATESTEP(x1, x2, x3)** — `PRINT xn; "  "; ANALYSIS.INTERPOLATELINEAR(x, y, xn); "  "; ANALYSIS.CUBICSPLINE(x, y, xn); "  "; AN…` (shared/samples/Analysis/AnalysisInterpReal.bas:14)
-- **ANALYSIS.IRFFT(x1, x2)** — `DIM ir() = ANALYSIS.Irfft(re, im)` (shared/samples/Analysis/AnalysisParityP0.bas:21)
-- **ANALYSIS.KMEANS(x1, x2)** — `DIM KRes = ANALYSIS.KMEANS(ClusterData, 2) ' Cerchiamo 2 cluster` (shared/samples/Analysis/AnalysisTests.bas:78)
-- **ANALYSIS.KURTOSIS(x1)** — `PRINT "Curtosi (Kurtosis):   "; MATH.ROUND(ANALYSIS.KURTOSIS(Dataset1), 4)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:59)
-- **ANALYSIS.MACOEFFICIENTS(x1, x2)** — `DIM ma() = ANALYSIS.MACOEFFICIENTS(d, 2)` (shared/samples/Analysis/AnalysisInterpReal.bas:21)
-- **ANALYSIS.MAD(x1)** — `PRINT ANALYSIS.MAD(d)` (shared/minitests/analysis/desc.bas:10)
-- **ANALYSIS.MEAN(x1)** — `PRINT "Media (Mean):         "; ANALYSIS.MEAN(Dataset1)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:43)
-- **ANALYSIS.MEDIAN(x1)** — `PRINT "Mediana (Median):     "; ANALYSIS.MEDIAN(Dataset1)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:44)
-- **ANALYSIS.PCA(x1)** — `p = ANALYSIS.Pca(data)` (shared/samples/Analysis/AnalysisMiniTest.bas:27)
-- **ANALYSIS.REGRESS(x1, x2)** — `RegRes = ANALYSIS.REGRESS(DatiX, DatiY)` (shared/samples/Analysis/AnalysisTests.bas:44)
-- **ANALYSIS.RFFT(x1)** — `DIM rf = ANALYSIS.Rfft(x)` (shared/samples/Analysis/AnalysisParityP0.bas:10)
-- **ANALYSIS.SIMPSON(x1, x2, x3, x4)** — `PRINT "simpson     ="; ANALYSIS.SIMPSON(FN(x) => x * x, 0, 1, 256)` (shared/samples/Math/IntegrateInterpFftSciPyParity.bas:13)
-- **ANALYSIS.SKEWNESS(x1)** — `PRINT "Asimmetria (Skewness):"; MATH.ROUND(ANALYSIS.SKEWNESS(DatasetSkew), 4)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:58)
-- **ANALYSIS.SOLVEIVP(x1, x2, x3, x4)** — `DIM npts = ANALYSIS.SolveIvp({|t, y| RETURN -1}, y0, 0.0, 1.0)` (shared/samples/Analysis/AnalysisParityP0.bas:15)
-- **ANALYSIS.SOLVEODE(x1, x2, x3, x4, x5)** — `DIM ys() = ANALYSIS.SOLVEODE({ |t, y| RETURN -y }, 1.0, 0.0, 1.0, 10)` (shared/samples/Math/IntegrateInterpFftSciPyParity.bas:18)
-- **ANALYSIS.SPLEV(x1, x2)** — `DIM sv() = ANALYSIS.Splev(sp, xq)` (shared/samples/Analysis/AnalysisParityP0.bas:30)
-- **ANALYSIS.SPLREP(x1, x2)** — `DIM sp = ANALYSIS.Splrep(xs, ys)` (shared/samples/Analysis/AnalysisParityP0.bas:27)
-- **ANALYSIS.STDDEV(x1)** — `PRINT "Dev. Standard (StdDev): "; MATH.ROUND(ANALYSIS.STDDEV(Dataset1), 4)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:51)
-- **ANALYSIS.TRAPEZOID(x1, x2)** — `PRINT "trapezoid   ="; ANALYSIS.TRAPEZOID(yy, xx)` (shared/samples/Math/IntegrateInterpFftSciPyParity.bas:14)
-- **ANALYSIS.VARIANCE(x1)** — `PRINT "Varianza (Variance):  "; MATH.ROUND(ANALYSIS.VARIANCE(Dataset1), 4)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:50)
-- **ANALYSIS.YULEWALKER(x1, x2)** — `DIM yw() = ANALYSIS.YULEWALKER(d, 2)` (shared/samples/Analysis/AnalysisInterpReal.bas:19)
+- **TIMESERIES.AdfTest(x1)** — `adf = TIMESERIES.AdfTest(d)` (shared/samples/Analysis/AnalysisMiniTest.bas:12)
+- **STATS.Anova(x1)** — `aov = STATS.Anova(g)` (shared/samples/Analysis/AnalysisUncoveredCoverage.bas:59)
+- **TIMESERIES.Arima(x1, x2, x3, x4)** — `DIM ArimaRes = TIMESERIES.Arima(SerieTemporale, 1, 1, 1)` (shared/samples/Analysis/AnalysisTests.bas:66)
+- **STATS.Correlation(x1, x2)** — `DIM Corr = STATS.Correlation(Dataset1, Dataset2)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:61)
+- **NUMERICAL.CubicSpline(x1, x2, x3)** — `PRINT xn; "  "; NUMERICAL.InterpolateLinear(x, y, xn); "  "; NUMERICAL.CubicSpline(x, y, xn); "  "; AN…` (shared/samples/Analysis/AnalysisInterpReal.bas:14)
+- **NUMERICAL.CumTrapezoid(x1, x2)** — `DIM ct() = NUMERICAL.CumTrapezoid(yy, xx)` (shared/samples/Math/IntegrateInterpFftSciPyParity.bas:15)
+- **NUMERICAL.Differentiate(x1, x2)** — `DIM Derivata = NUMERICAL.Differentiate(FN(x) => x*x, 2)` (shared/samples/Analysis/AnalysisTests.bas:134)
+- **VECTOR.EuclideanDistanceSquared(x1, x2)** — `PRINT "euclid: "; VECTOR.EuclideanDistanceSquared(x, y)` (shared/samples/Analysis/AnalysisInterpReal.bas:17)
+- **NUMERICAL.Fft(x1)** — `DIM FftRes() = NUMERICAL.Fft(Signal)` (shared/samples/Analysis/AnalysisTests.bas:86)
+- **NUMERICAL.FftComplex(x1, x2)** — `DIM spettro() = NUMERICAL.FftComplex(real, imag)` (shared/samples/Analysis/AnalysisUncoveredCoverage.bas:34)
+- **NUMERICAL.FftFreq(x1, x2)** — `DIM f6() = NUMERICAL.FftFreq(6, 1)` (shared/samples/Math/IntegrateInterpFftSciPyParity.bas:23)
+- **NUMERICAL.FftShift(x1)** — `DIM fs() = NUMERICAL.FftShift(a6)` (shared/samples/Math/IntegrateInterpFftSciPyParity.bas:26)
+- **TIMESERIES.HoltWinters(x1, x2, x3, x4, x5)** — `DIM HwRes = TIMESERIES.HoltWinters(SerieTemporale, 0.2, 0.1, 0.1, 10)` (shared/samples/Analysis/AnalysisTests.bas:61)
+- **NUMERICAL.Ifft(x1)** — `DIM IfftRes() = NUMERICAL.Ifft(FftRes)` (shared/samples/Analysis/AnalysisTests.bas:94)
+- **NUMERICAL.IfftComplex(x1, x2)** — `DIM ii() = NUMERICAL.IfftComplex(real, imag)` (shared/samples/Analysis/AnalysisUncoveredCoverage.bas:37)
+- **NUMERICAL.IfftShift(x1)** — `DIM ifs() = NUMERICAL.IfftShift(a6)` (shared/samples/Math/IntegrateInterpFftSciPyParity.bas:28)
+- **NUMERICAL.Integrate(x1, x2, x3)** — `DIM Integrale = NUMERICAL.Integrate(FN(x) => x*x, 0, 1)` (shared/samples/Analysis/AnalysisTests.bas:130)
+- **NUMERICAL.InterpolateClamp(x1, x2, x3)** — `DIM y_clamp = NUMERICAL.InterpolateClamp(DatiX, DatiY, x_new)` (shared/samples/Analysis/AnalysisTests.bas:111)
+- **NUMERICAL.InterpolateGeneric(x1, x2, x3, x4)** — `DIM y_gen = NUMERICAL.InterpolateGeneric("linear", DatiX, DatiY, x_new)` (shared/samples/Analysis/AnalysisTests.bas:112)
+- **NUMERICAL.InterpolateLinear(x1, x2, x3)** — `PRINT xn; "  "; NUMERICAL.InterpolateLinear(x, y, xn); "  "; NUMERICAL.CubicSpline(x, y, xn); "  "; AN…` (shared/samples/Analysis/AnalysisInterpReal.bas:14)
+- **NUMERICAL.InterpolatePchip(x1, x2, x3)** — `PRINT xn; "  "; NUMERICAL.InterpolateLinear(x, y, xn); "  "; NUMERICAL.CubicSpline(x, y, xn); "  "; AN…` (shared/samples/Analysis/AnalysisInterpReal.bas:14)
+- **NUMERICAL.InterpolatePolynomial(x1, x2, x3)** — `PRINT xn; "  "; NUMERICAL.InterpolateLinear(x, y, xn); "  "; NUMERICAL.CubicSpline(x, y, xn); "  "; AN…` (shared/samples/Analysis/AnalysisInterpReal.bas:14)
+- **NUMERICAL.InterpolateSpline(x1, x2, x3)** — `PRINT "spline@2.5: "; NUMERICAL.InterpolateSpline(x, y, 2.5)` (shared/samples/Analysis/AnalysisInterpReal.bas:16)
+- **NUMERICAL.InterpolateStep(x1, x2, x3)** — `PRINT xn; "  "; NUMERICAL.InterpolateLinear(x, y, xn); "  "; NUMERICAL.CubicSpline(x, y, xn); "  "; AN…` (shared/samples/Analysis/AnalysisInterpReal.bas:14)
+- **NUMERICAL.Irfft(x1, x2)** — `DIM ir() = NUMERICAL.Irfft(re, im)` (shared/samples/Analysis/AnalysisParityP0.bas:21)
+- **MULTIVARIATE.KMeans(x1, x2)** — `DIM KRes = MULTIVARIATE.KMeans(ClusterData, 2) ' Cerchiamo 2 cluster` (shared/samples/Analysis/AnalysisTests.bas:78)
+- **STATS.Kurtosis(x1)** — `PRINT "Curtosi (Kurtosis):   "; MATH.ROUND(STATS.Kurtosis(Dataset1), 4)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:59)
+- **TIMESERIES.MaCoefficients(x1, x2)** — `DIM ma() = TIMESERIES.MaCoefficients(d, 2)` (shared/samples/Analysis/AnalysisInterpReal.bas:21)
+- **STATS.Mad(x1)** — `PRINT STATS.Mad(d)` (shared/minitests/analysis/desc.bas:10)
+- **STATS.Mean(x1)** — `PRINT "Media (Mean):         "; STATS.Mean(Dataset1)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:43)
+- **STATS.Median(x1)** — `PRINT "Mediana (Median):     "; STATS.Median(Dataset1)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:44)
+- **MULTIVARIATE.Pca(x1)** — `p = MULTIVARIATE.Pca(data)` (shared/samples/Analysis/AnalysisMiniTest.bas:27)
+- **REGRESSION.Regress(x1, x2)** — `RegRes = REGRESSION.Regress(DatiX, DatiY)` (shared/samples/Analysis/AnalysisTests.bas:44)
+- **NUMERICAL.Rfft(x1)** — `DIM rf = NUMERICAL.Rfft(x)` (shared/samples/Analysis/AnalysisParityP0.bas:10)
+- **NUMERICAL.Simpson(x1, x2, x3, x4)** — `PRINT "simpson     ="; NUMERICAL.Simpson(FN(x) => x * x, 0, 1, 256)` (shared/samples/Math/IntegrateInterpFftSciPyParity.bas:13)
+- **STATS.Skewness(x1)** — `PRINT "Asimmetria (Skewness):"; MATH.ROUND(STATS.Skewness(DatasetSkew), 4)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:58)
+- **NUMERICAL.SolveIvp(x1, x2, x3, x4)** — `DIM npts = NUMERICAL.SolveIvp({|t, y| RETURN -1}, y0, 0.0, 1.0)` (shared/samples/Analysis/AnalysisParityP0.bas:15)
+- **NUMERICAL.SolveOde(x1, x2, x3, x4, x5)** — `DIM ys() = NUMERICAL.SolveOde({ |t, y| RETURN -y }, 1.0, 0.0, 1.0, 10)` (shared/samples/Math/IntegrateInterpFftSciPyParity.bas:18)
+- **NUMERICAL.Splev(x1, x2)** — `DIM sv() = NUMERICAL.Splev(sp, xq)` (shared/samples/Analysis/AnalysisParityP0.bas:30)
+- **NUMERICAL.Splrep(x1, x2)** — `DIM sp = NUMERICAL.Splrep(xs, ys)` (shared/samples/Analysis/AnalysisParityP0.bas:27)
+- **STATS.StdDev(x1)** — `PRINT "Dev. Standard (StdDev): "; MATH.ROUND(STATS.StdDev(Dataset1), 4)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:51)
+- **NUMERICAL.Trapezoid(x1, x2)** — `PRINT "trapezoid   ="; NUMERICAL.Trapezoid(yy, xx)` (shared/samples/Math/IntegrateInterpFftSciPyParity.bas:14)
+- **STATS.Variance(x1)** — `PRINT "Varianza (Variance):  "; MATH.ROUND(STATS.Variance(Dataset1), 4)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:50)
+- **TIMESERIES.YuleWalker(x1, x2)** — `DIM yw() = TIMESERIES.YuleWalker(d, 2)` (shared/samples/Analysis/AnalysisInterpReal.bas:19)
 - **GRAPH.BETWEENNESS(x1)** — `PRINT GRAPH.BETWEENNESS("graph-vault")` (shared/samples/graph/GraphFunctions.bas:46)
 - **GRAPH.BFS(x1, x2)** — `PRINT "bfs="; GRAPH.BFS("graph-vault", "index.md")` (shared/samples/graph/GraphAlgorithms.bas:24)
 - **GRAPH.BIPARTITE(x1)** — `PRINT GRAPH.BIPARTITE("graph-vault")` (shared/samples/graph/GraphFunctions.bas:43)
@@ -209,7 +213,7 @@ nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è 
 - **GRAPH.TOPOSORT(x1)** — `PRINT GRAPH.TOPOSORT("graph-vault")` (shared/samples/graph/GraphFunctions.bas:40)
 - **MATH.ABS(x1)** — `PRINT "ABS(-10.5): "; MATH.ABS(-10.5)` (shared/samples/Math/MathLogarithms.bas:75)
 - **MATH.ACOS(x1)** — `PRINT "Arcocoseno (ACOS) di 0:     "; MATH.ACOS(0); " (rad)"` (shared/samples/Math/MathTrigonometry.bas:48)
-- **MATH.ANGLE2D(x1, x2, x3, x4)** — `DIM calcolatoDeg = MATH.RAD2DEG(MATH.ANGLE2D(0, 0, x, y))` (shared/samples/Math/MathCombinatorics.bas:60)
+- **VECTOR.Angle2d(x1, x2, x3, x4)** — `DIM calcolatoDeg = MATH.RAD2DEG(VECTOR.Angle2d(0, 0, x, y))` (shared/samples/Math/MathCombinatorics.bas:60)
 - **MATH.ASIN(x1)** — `PRINT "Arcoseno (ASIN) di 1:       "; MATH.ASIN(1); " (rad)"` (shared/samples/Math/MathTrigonometry.bas:45)
 - **MATH.ATN(x1)** — `PRINT "ATN(1)  = "; ROUND(MATH.RAD2DEG(MATH.ATN(1)), 6); " deg"` (shared/samples/Math/MathAtnVectorAngle.bas:29)
 - **MATH.AVG()** — `PRINT "AVG = "; MATH.AVG(v)` (shared/samples/Math/MathFullCoverage.bas:19)
@@ -219,8 +223,8 @@ nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è 
 - **MATH.COMB(x1, x2)** — `PRINT "COMB("; n; ", "; k; "):   "; MATH.COMB(n, k)` (shared/samples/Math/MathCombinatorics.bas:40)
 - **MATH.COS(x1)** — `PRINT "Coseno (COS):     "; MATH.COS(angle_rad)` (shared/samples/Math/MathTrigonometry.bas:34)
 - **MATH.DEG2RAD(x1)** — `DIM angoloRad = MATH.DEG2RAD(angoloDeg)` (shared/samples/Math/MathCombinatorics.bas:48)
-- **MATH.DIST2D(x1, x2, x3, x4)** — `830 PRINT "DIST2D(0, 0, 3, 4) =", DIST2D(0, 0, 3, 4); "(Atteso: 5)"` (shared/samples/Types/TypesConversions.bas:137)
-- **MATH.DIST3D(x1, x2, x3, x4, x5, x6)** — `840 PRINT "DIST3D(0, 0, 0, 1, 2, 2) =", DIST3D(0, 0, 0, 1, 2, 2); "(Atteso: 3)"` (shared/samples/Types/TypesConversions.bas:138)
+- **VECTOR.Dist2d(x1, x2, x3, x4)** — `830 PRINT "DIST2D(0, 0, 3, 4) =", DIST2D(0, 0, 3, 4); "(Atteso: 5)"` (shared/samples/Types/TypesConversions.bas:137)
+- **VECTOR.Dist3d(x1, x2, x3, x4, x5, x6)** — `840 PRINT "DIST3D(0, 0, 0, 1, 2, 2) =", DIST3D(0, 0, 0, 1, 2, 2); "(Atteso: 3)"` (shared/samples/Types/TypesConversions.bas:138)
 - **MATH.EXP(x1)** — `DIM ModelFunc = FN(params() AS DOUBLE, x AS DOUBLE) AS DOUBLE => params(0) * Math.Exp(params(1) * x)` (shared/samples/Optimization/OptimizationTests.bas:134)
 - **MATH.FACT(x1)** — `PRINT "FACT("; n; "):      "; MATH.FACT(n)` (shared/samples/Math/MathCombinatorics.bas:32)
 - **MATH.FIX(x1)** — `PRINT "  FIX(num):      "; MATH.FIX(num_pos)` (shared/samples/Math/MathLogarithms.bas:57)
@@ -232,12 +236,12 @@ nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è 
 - **MATH.LOG10(x1)** — `PRINT "LOG10(1000):                "; MATH.LOG10(1000); " (Atteso: 3)"` (shared/samples/Math/MathLogarithms.bas:38)
 - **MATH.MAX()** — `GmbStats = "mean=" + STR$(STATS.MEAN(n)) + " max=" + STR$(MATH.MAX(n[0], n[1], n[2])) + " min=" + ST…` (shared/samples/Ai/McpCapabilityServer.bas:51)
 - **MATH.MIN()** — `PRINT "MIN(3, 1, 4, 1, 5, 9): "; MATH.MIN(3, 1, 4, 1, 5, 9) ' Atteso: 1` (shared/samples/Math/MathExtended.bas:44)
-- **MATH.POLAR_X(x1, x2)** — `DIM x = MATH.POLAR_X(angoloRad, raggio)` (shared/samples/Math/MathCombinatorics.bas:52)
-- **MATH.POLAR_Y(x1, x2)** — `DIM y = MATH.POLAR_Y(angoloRad, raggio)` (shared/samples/Math/MathCombinatorics.bas:53)
+- **VECTOR.POLAR_X(x1, x2)** — `DIM x = VECTOR.POLAR_X(angoloRad, raggio)` (shared/samples/Math/MathCombinatorics.bas:52)
+- **VECTOR.POLAR_Y(x1, x2)** — `DIM y = VECTOR.POLAR_Y(angoloRad, raggio)` (shared/samples/Math/MathCombinatorics.bas:53)
 - **MATH.PERM(x1, x2)** — `PRINT "PERM("; n; ", "; k; "):   "; MATH.PERM(n, k)` (shared/samples/Math/MathCombinatorics.bas:36)
 - **MATH.PI()** — `SerieStagionale(si) = (si * 0.1) + SIN(si * 2 * MATH.PI() / 12) * 5 + (MATH.RND() - 0.5)` (shared/samples/TimeSeries/TimeSeriesAdvanced.bas:64)
 - **MATH.PYTHAGORAS(x1, x2)** — `820 PRINT "PYTHAGORAS(3, 4) =", PYTHAGORAS(3, 4); "(Atteso: 5)"` (shared/samples/Types/TypesConversions.bas:136)
-- **MATH.RAD2DEG(x1)** — `DIM calcolatoDeg = MATH.RAD2DEG(MATH.ANGLE2D(0, 0, x, y))` (shared/samples/Math/MathCombinatorics.bas:60)
+- **MATH.RAD2DEG(x1)** — `DIM calcolatoDeg = MATH.RAD2DEG(VECTOR.Angle2d(0, 0, x, y))` (shared/samples/Math/MathCombinatorics.bas:60)
 - **MATH.RANGE()** — `PRINT "MATH.RANGE — Sequenze numeriche"` (shared/samples/Math/RangeDemo.bas:13)
 - **MATH.RND()** — `Prices(i) = Prices(i-1) * (1 + (MATH.RND() - 0.5) * 0.02)` (shared/samples/TimeSeries/TimeSeriesTests.bas:35)
 - **MATH.ROUND(x1)** — `PRINT "Prezzo["; lastIdx; "]:     "; MATH.ROUND(Prices(lastIdx), 2)` (shared/samples/TimeSeries/TimeSeriesTests.bas:50)
@@ -258,7 +262,7 @@ nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è 
 - **MATRIX.ASCSV(x1)** — `PRINT "ASCSV="; MATRIX.ASCSV(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:58)
 - **MATRIX.ASJSON(x1)** — `PRINT "ASJSON="; MATRIX.ASJSON(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:59)
 - **MATRIX.BLOCKDIAG(x1, x2)** — `bd = MATRIX.BLOCKDIAG(h, h)` (shared/samples/Math/MatrixFunctionsSciPyParity.bas:28)
-- **MATRIX.CHOLESKY(x1)** — `DIM ch = MATRIX.CHOLESKY(a)` (shared/samples/Matrix/MatrixDecompositions.bas:32)
+- **LINALG.CHOLESKY(x1)** — `DIM ch = LINALG.CHOLESKY(a)` (shared/samples/Matrix/MatrixDecompositions.bas:32)
 - **MATRIX.CIRCULANT(x1)** — `cc = MATRIX.CIRCULANT(c1)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:50)
 - **MATRIX.CLONEMATRIX(x1)** — `DIM cloned = MATRIX.CLONEMATRIX(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:61)
 - **MATRIX.COLMEANS(x1)** — `DIM meansByColumn() = MATRIX.COLMEANS(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:14)
@@ -267,21 +271,21 @@ nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è 
 - **MATRIX.COLVARIANCES(x1)** — `DIM variancesByColumn() = MATRIX.COLVARIANCES(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:16)
 - **MATRIX.CONCATCOLS(x1, x2)** — `DIM columnsJoined = MATRIX.CONCATCOLS(m, m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:41)
 - **MATRIX.CONCATROWS(x1, x2)** — `DIM rowsJoined = MATRIX.CONCATROWS(m, m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:40)
-- **MATRIX.COND(x1)** — `PRINT "cond     ="; MATRIX.COND(g)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:38)
-- **MATRIX.COSM(x1)** — `c = MATRIX.COSM(h)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:12)
+- **LINALG.COND(x1)** — `PRINT "cond     ="; LINALG.COND(g)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:38)
+- **LINALG.COSM(x1)** — `c = LINALG.COSM(h)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:12)
 - **MATRIX.CREATE(x1, x2)** — `h = MATRIX.CREATE(2, 2)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:8)
-- **MATRIX.DETERMINANT(x1)** — `PRINT "det(expm(I)) ="; MATRIX.DETERMINANT(e)` (shared/samples/Math/MatrixFuncSciPyParity.bas:10)
-- **MATRIX.EIG(x1)** — `ed = MATRIX.EIG(h)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:63)
-- **MATRIX.EVD(x1)** — `DIM evd = MATRIX.EVD(a)` (shared/samples/Matrix/MatrixDecompositions.bas:38)
-- **MATRIX.EXPM(x1)** — `e = MATRIX.EXPM(h)` (shared/samples/Math/MatrixFuncSciPyParity.bas:9)
-- **MATRIX.FACTOR(x1, x2)** — `pu = MATRIX.FACTOR(pol, "U")` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:34)
-- **MATRIX.FRACTIONALPOWER(x1, x2)** — `fp = MATRIX.FRACTIONALPOWER(h, 0.5)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:20)
-- **MATRIX.FROBENIUSNORM(x1)** — `PRINT "FROBENIUS="; MATRIX.FROBENIUSNORM(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:26)
+- **LINALG.DETERMINANT(x1)** — `PRINT "det(expm(I)) ="; LINALG.DETERMINANT(e)` (shared/samples/Math/MatrixFuncSciPyParity.bas:10)
+- **LINALG.EIG(x1)** — `ed = LINALG.EIG(h)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:63)
+- **LINALG.EVD(x1)** — `DIM evd = LINALG.EVD(a)` (shared/samples/Matrix/MatrixDecompositions.bas:38)
+- **LINALG.EXPM(x1)** — `e = LINALG.EXPM(h)` (shared/samples/Math/MatrixFuncSciPyParity.bas:9)
+- **LINALG.FACTOR(x1, x2)** — `pu = LINALG.FACTOR(pol, "U")` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:34)
+- **LINALG.FRACTIONALPOWER(x1, x2)** — `fp = LINALG.FRACTIONALPOWER(h, 0.5)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:20)
+- **LINALG.FROBENIUSNORM(x1)** — `PRINT "FROBENIUS="; LINALG.FROBENIUSNORM(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:26)
 - **MATRIX.GETVALUE(x1, x2, x3)** — `FOR k = 0 TO 4: re(k) = MATRIX.GETVALUE(rf, k, 0): im(k) = MATRIX.GETVALUE(rf, k, 1): NEXT` (shared/samples/Analysis/AnalysisMiniTest.bas:20)
 - **MATRIX.HANKEL(x1, x2)** — `hk = MATRIX.HANKEL(c1, r1)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:48)
-- **MATRIX.HESSENBERG(x1)** — `hh = MATRIX.HESSENBERG(h3)` (shared/samples/Math/MatrixFunctionsSciPyParity.bas:24)
-- **MATRIX.INFINITYNORM(x1)** — `PRINT "INFINITYNORM="; MATRIX.INFINITYNORM(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:28)
-- **MATRIX.INVERSE(x1)** — `DIM inv = MATRIX.INVERSE(a)` (shared/samples/Matrix/MatrixDecompositions.bas:22)
+- **LINALG.HESSENBERG(x1)** — `hh = LINALG.HESSENBERG(h3)` (shared/samples/Math/MatrixFunctionsSciPyParity.bas:24)
+- **LINALG.INFINITYNORM(x1)** — `PRINT "INFINITYNORM="; LINALG.INFINITYNORM(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:28)
+- **LINALG.INVERSE(x1)** — `DIM inv = LINALG.INVERSE(a)` (shared/samples/Matrix/MatrixDecompositions.bas:22)
 - **MATRIX.ISLOWERTRIANGULAR(x1)** — `PRINT "LOWER="; MATRIX.ISLOWERTRIANGULAR(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:32)
 - **MATRIX.ISORTHOGONAL(x1)** — `PRINT "ORTHOGONAL="; MATRIX.ISORTHOGONAL(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:30)
 - **MATRIX.ISSYMMETRIC(x1)** — `PRINT "SYMMETRIC="; MATRIX.ISSYMMETRIC(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:29)
@@ -289,38 +293,38 @@ nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è 
 - **MATRIX.KRONECKER(x1, x2)** — `k = MATRIX.KRONECKER(h, h)` (shared/samples/Math/MatrixFuncSciPyParity.bas:11)
 - **MATRIX.LOADCSV(x1)** — `DIM csvMatrix = MATRIX.LOADCSV("samples/Fixtures/MatrixIdentity.csv")` (shared/samples/Matrix/MatrixCommonLibSimd.bas:70)
 - **MATRIX.LOADJSON(x1)** — `DIM jsonMatrix = MATRIX.LOADJSON("samples/Fixtures/MatrixIdentity.json")` (shared/samples/Matrix/MatrixCommonLibSimd.bas:71)
-- **MATRIX.LOGM(x1)** — `l = MATRIX.LOGM(h)` (shared/samples/Math/MatrixFunctionsSciPyParity.bas:15)
-- **MATRIX.LU(x1)** — `DIM lu = MATRIX.LU(a)` (shared/samples/Matrix/MatrixDecompositions.bas:41)
+- **LINALG.LOGM(x1)** — `l = LINALG.LOGM(h)` (shared/samples/Math/MatrixFunctionsSciPyParity.bas:15)
+- **LINALG.LU(x1)** — `DIM lu = LINALG.LU(a)` (shared/samples/Matrix/MatrixDecompositions.bas:41)
 - **MATRIX.MAXVALUE(x1)** — `PRINT "MAXVALUE="; MATRIX.MAXVALUE(rowsBroadcast)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:54)
 - **MATRIX.MINVALUE(x1)** — `PRINT "MINVALUE="; MATRIX.MINVALUE(rowsBroadcast)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:55)
 - **MATRIX.MULTIPLY(x1, x2)** — `DIM mul = MATRIX.MULTIPLY(a, a)` (shared/samples/Matrix/MatrixDecompositions.bas:28)
 - **MATRIX.MULTIPLYLEFTVECTOR(x1, x2)** — `DIM leftProduct() = MATRIX.MULTIPLYLEFTVECTOR(m, columnVector)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:63)
 - **MATRIX.MULTIPLYVECTOR(x1, x2)** — `DIM rightProduct() = MATRIX.MULTIPLYVECTOR(m, rowVector)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:62)
-- **MATRIX.NORM(x1)** — `PRINT "norm="; MATH.ROUND(MATRIX.NORM(a), 6)` (shared/samples/Matrix/MatrixDecompositions.bas:19)
-- **MATRIX.NUCLEARNORM(x1)** — `PRINT "nuc      ="; MATRIX.NUCLEARNORM(g)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:39)
-- **MATRIX.NULLSPACE(x1)** — `DIM ns = MATRIX.NULLSPACE(a)` (shared/samples/Matrix/MatrixDecompositions.bas:87)
-- **MATRIX.ONENORM(x1)** — `PRINT "ONENORM="; MATRIX.ONENORM(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:27)
-- **MATRIX.ORTH(x1)** — `o = MATRIX.ORTH(g)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:28)
-- **MATRIX.PINVERSE(x1)** — `p = MATRIX.PINVERSE(h)` (shared/samples/Math/MatrixFunctionsSciPyParity.bas:33)
-- **MATRIX.POLAR(x1)** — `pol = MATRIX.POLAR(g)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:33)
-- **MATRIX.QR(x1)** — `DIM qr = MATRIX.QR(a)` (shared/samples/Matrix/MatrixDecompositions.bas:44)
-- **MATRIX.RANK(x1)** — `PRINT "rank="; MATRIX.RANK(a)` (shared/samples/Matrix/MatrixDecompositions.bas:18)
+- **LINALG.NORM(x1)** — `PRINT "norm="; MATH.ROUND(LINALG.NORM(a), 6)` (shared/samples/Matrix/MatrixDecompositions.bas:19)
+- **LINALG.NUCLEARNORM(x1)** — `PRINT "nuc      ="; LINALG.NUCLEARNORM(g)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:39)
+- **LINALG.NULLSPACE(x1)** — `DIM ns = LINALG.NULLSPACE(a)` (shared/samples/Matrix/MatrixDecompositions.bas:87)
+- **LINALG.ONENORM(x1)** — `PRINT "ONENORM="; LINALG.ONENORM(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:27)
+- **LINALG.ORTH(x1)** — `o = LINALG.ORTH(g)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:28)
+- **LINALG.PINVERSE(x1)** — `p = LINALG.PINVERSE(h)` (shared/samples/Math/MatrixFunctionsSciPyParity.bas:33)
+- **LINALG.POLAR(x1)** — `pol = LINALG.POLAR(g)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:33)
+- **LINALG.QR(x1)** — `DIM qr = LINALG.QR(a)` (shared/samples/Matrix/MatrixDecompositions.bas:44)
+- **LINALG.RANK(x1)** — `PRINT "rank="; LINALG.RANK(a)` (shared/samples/Matrix/MatrixDecompositions.bas:18)
 - **MATRIX.RESHAPE(x1, x2, x3)** — `DIM reshaped = MATRIX.RESHAPE(m, 1, 9)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:39)
 - **MATRIX.ROWCOUNT(x1)** — `PRINT "welchrows ="; MATRIX.ROWCOUNT(w)` (shared/samples/Math/SciPyP1Parity.bas:14)
 - **MATRIX.ROWMEANS(x1)** — `DIM meansByRow() = MATRIX.ROWMEANS(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:13)
 - **MATRIX.ROWSUMS(x1)** — `DIM sumsByRow() = MATRIX.ROWSUMS(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:11)
 - **MATRIX.ROWVARIANCES(x1)** — `DIM variancesByRow() = MATRIX.ROWVARIANCES(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:15)
-- **MATRIX.SCHUR(x1)** — `sd = MATRIX.SCHUR(h)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:70)
+- **LINALG.SCHUR(x1)** — `sd = LINALG.SCHUR(h)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:70)
 - **MATRIX.SETVALUE(x1, x2, x3, x4)** — `h = MATRIX.SETVALUE(h, 0, 0, 2) : h = MATRIX.SETVALUE(h, 0, 1, 1)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:9)
-- **MATRIX.SIGNM(x1)** — `sg = MATRIX.SIGNM(h)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:18)
-- **MATRIX.SINM(x1)** — `s = MATRIX.SINM(h)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:14)
+- **LINALG.SIGNM(x1)** — `sg = LINALG.SIGNM(h)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:18)
+- **LINALG.SINM(x1)** — `s = LINALG.SINM(h)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:14)
 - **MATRIX.SLICE(x1, x2, x3, x4, x5)** — `DIM sliced = MATRIX.SLICE(m, 0, 2, 0, 2)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:38)
-- **MATRIX.SOLVE(x1, x2)** — `DIM xs() = MATRIX.SOLVE(a, b)` (shared/samples/Matrix/MatrixDecompositions.bas:95)
-- **MATRIX.SOLVETRIANGULAR(x1, x2, x3)** — `DIM vb() = MATRIX.SOLVETRIANGULAR(L, b, 1)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:59)
-- **MATRIX.SQRTM(x1)** — `s = MATRIX.SQRTM(h)` (shared/samples/Math/MatrixFunctionsSciPyParity.bas:11)
-- **MATRIX.SUBSPACEANGLES(x1, x2)** — `DIM ang() = MATRIX.SUBSPACEANGLES(h, g)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:30)
-- **MATRIX.SVD(x1)** — `DIM svd = MATRIX.SVD(a)` (shared/samples/Matrix/MatrixDecompositions.bas:35)
-- **MATRIX.TANM(x1)** — `tn = MATRIX.TANM(h)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:16)
+- **LINALG.SOLVE(x1, x2)** — `DIM xs() = LINALG.SOLVE(a, b)` (shared/samples/Matrix/MatrixDecompositions.bas:95)
+- **LINALG.SOLVETRIANGULAR(x1, x2, x3)** — `DIM vb() = LINALG.SOLVETRIANGULAR(L, b, 1)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:59)
+- **LINALG.SQRTM(x1)** — `s = LINALG.SQRTM(h)` (shared/samples/Math/MatrixFunctionsSciPyParity.bas:11)
+- **LINALG.SUBSPACEANGLES(x1, x2)** — `DIM ang() = LINALG.SUBSPACEANGLES(h, g)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:30)
+- **LINALG.SVD(x1)** — `DIM svd = LINALG.SVD(a)` (shared/samples/Matrix/MatrixDecompositions.bas:35)
+- **LINALG.TANM(x1)** — `tn = LINALG.TANM(h)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:16)
 - **MATRIX.TOEPLITZ(x1, x2)** — `tp = MATRIX.TOEPLITZ(c1, r1)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:45)
 - **MATRIX.TRACE(x1)** — `PRINT "trace="; MATH.ROUND(MATRIX.TRACE(a), 6)` (shared/samples/Matrix/MatrixDecompositions.bas:17)
 - **MATRIX.TRANSPOSE(x1)** — `DIM tr = MATRIX.TRANSPOSE(a)` (shared/samples/Matrix/MatrixDecompositions.bas:26)
@@ -373,7 +377,7 @@ nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è 
 - **STATS.CHISQUAREDISF(x1, x2)** — `PRINT "chi2isf  ="; STATS.CHISQUAREDISF(0.05, 5)` (shared/samples/Math/StatsInverseSciPyParity.bas:21)
 - **STATS.CHISQUAREDPDF(x1, x2)** — `PRINT "CHISQUAREDPDF(1,2): "; FORMAT(STATS.CHISQUAREDPDF(1,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:145)
 - **STATS.CHISQUAREDPPF(x1, x2)** — `PRINT "chi2ppf  ="; STATS.CHISQUAREDPPF(0.95, 5)` (shared/samples/Math/StatsInverseSciPyParity.bas:13)
-- **STATS.CORRELATION(x1, x2)** — `DIM Corr = ANALYSIS.CORRELATION(Dataset1, Dataset2)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:61)
+- **STATS.CORRELATION(x1, x2)** — `DIM Corr = STATS.Correlation(Dataset1, Dataset2)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:61)
 - **STATS.DESCRIBE(x1)** — `r = STATS.DESCRIBE(v)` (shared/samples/Math/StatsSciPyParityP0.bas:61)
 - **STATS.EXPONENTIALCDF(x1, x2)** — `PRINT "EXPONENTIALCDF(1,2): "; FORMAT(STATS.EXPONENTIALCDF(1,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:156)
 - **STATS.EXPONENTIALISF(x1, x2)** — `PRINT "expisf   ="; STATS.EXPONENTIALISF(0.05, 0.5)` (shared/samples/Math/StatsInverseSciPyParity.bas:23)
@@ -582,68 +586,68 @@ ABS(espressione)
 ## 1. Riferimento funzioni
 | NOME | SINTASSI / ESEMPIO | DESCRIZIONE |
 |---|---|---|
-| `ADFTEST` | `ANALYSIS.AdfTest()` | Test Dickey-Fuller aumentato. |
-| `ANOVA` | `ANALYSIS.Anova(groups)` | Analisi varianza. |
-| `ARIMA` | `ANALYSIS.Arima(1, 1, 1)` | Modello ARIMA. |
-| `CORRELATION` | `ANALYSIS.Correlation()` | Correlazione. |
-| `CUBICSPLINE` | `ANALYSIS.CubicSpline(x, y, x_new)` | Spline cubica not-a-knot. |
-| `CUMTRAPEZOID` | `ANALYSIS.CumTrapezoid(y, x)` | Integrale trapezoidale cumulativo. |
-| `DIFFERENTIATE` | `ANALYSIS.Differentiate(1)` | Derivazione numerica. |
-| `EUCLIDEANDISTANCESQUARED` | `ANALYSIS.EuclideanDistanceSquared()` | Distanza euclidea quadrata. |
-| `FFT` | `ANALYSIS.Fft()` | Trasformata Fourier. |
-| `FFTCOMPLEX` | `ANALYSIS.FftComplex()` | FFT complessa. |
-| `FFTFREQ` | `ANALYSIS.FftFreq(n, d)` | Frequenze discrete FFT. |
-| `FFTSHIFT` | `ANALYSIS.FftShift(x)` | Frequenza zero al centro. |
-| `HOLTWINTERS` | `ANALYSIS.HoltWinters(1, 1, 1, 1)` | Previsione Holt-Winters. |
-| `IFFT` | `ANALYSIS.Ifft()` | FFT inversa. |
-| `IFFTCOMPLEX` | `ANALYSIS.IfftComplex()` | IFFT complessa. |
-| `IFFTSHIFT` | `ANALYSIS.IfftShift(x)` | Inverso di FftShift. |
-| `INTEGRATE` | `ANALYSIS.Integrate(1, 1)` | Integrazione numerica. |
-| `INTERPOLATECLAMP` | `ANALYSIS.InterpolateClamp(1)` | Interp. clamp. |
-| `INTERPOLATEGENERIC` | `ANALYSIS.InterpolateGeneric("s", 1)` | Interp. generica. |
-| `INTERPOLATELINEAR` | `ANALYSIS.InterpolateLinear(1)` | Interpolazione lineare. |
-| `INTERPOLATEPCHIP` | `ANALYSIS.InterpolatePchip(1)` | Interp. PCHIP. |
-| `INTERPOLATEPOLYNOMIAL` | `ANALYSIS.InterpolatePolynomial(1)` | Interp. polinomiale. |
-| `INTERPOLATESPLINE` | `ANALYSIS.InterpolateSpline(1)` | Interpolazione spline. |
-| `INTERPOLATESTEP` | `ANALYSIS.InterpolateStep(1)` | Interp. a gradino. |
-| `IRFFT` | `ANALYSIS.Irfft(re, im)` | FFT reale inversa. |
-| `RFFT` | `ANALYSIS.Rfft(x)` | FFT reale (componenti non negative). |
-| `SPLEV` | `ANALYSIS.Splev(spline, xq)` | Valuta spline cubica. |
-| `SPLREP` | `ANALYSIS.Splrep(x, y)` | Spline cubica interpolante (not-a-knot). |
-| `KMEANS` | `ANALYSIS.KMeans(1)` | Clustering K-means. |
-| `KURTOSIS` | `ANALYSIS.Kurtosis()` | Curtosi. |
-| `MACOEFFICIENTS` | `ANALYSIS.MaCoefficients(1)` | Coefficienti MA. |
-| `MAD` | `ANALYSIS.Mad()` | Deviazione media assoluta. |
-| `MEAN` | `ANALYSIS.Mean()` | Media aritmetica. |
-| `MEDIAN` | `ANALYSIS.Median()` | Mediana. |
-| `PCA` | `ANALYSIS.Pca()` | Analisi componenti principali. |
-| `REGRESS` | `ANALYSIS.Regress()` | Regressione lineare. |
-| `SIMPSON` | `ANALYSIS.Simpson(fn, a, b, n)` | Simpson composita. |
-| `SOLVEIVP` | `ANALYSIS.SolveIvp(fn, y0, t0, t1)` | ODE adattiva RK45 (scipy solve_ivp). |
-| `SOLVEODE` | `ANALYSIS.SolveOde(fn, y0, t0, t1, s)` | Solutore ODE 1o ordine (RK4). |
-| `SKEWNESS` | `ANALYSIS.Skewness()` | Asimmetria. |
-| `STDDEV` | `ANALYSIS.StdDev()` | Deviazione standard. |
-| `TRAPEZOID` | `ANALYSIS.Trapezoid(y, x)` | Integrale trapezoidale. |
-| `VARIANCE` | `ANALYSIS.Variance()` | Varianza. |
-| `YULEWALKER` | `ANALYSIS.YuleWalker(1)` | Stima Yule-Walker. |
+| `ADFTEST` | `TIMESERIES.AdfTest()` | Test Dickey-Fuller aumentato. |
+| `ANOVA` | `STATS.Anova(groups)` | Analisi varianza. |
+| `ARIMA` | `TIMESERIES.Arima(1, 1, 1)` | Modello ARIMA. |
+| `CORRELATION` | `STATS.Correlation()` | Correlazione. |
+| `CUBICSPLINE` | `NUMERICAL.CubicSpline(x, y, x_new)` | Spline cubica not-a-knot. |
+| `CUMTRAPEZOID` | `NUMERICAL.CumTrapezoid(y, x)` | Integrale trapezoidale cumulativo. |
+| `DIFFERENTIATE` | `NUMERICAL.Differentiate(1)` | Derivazione numerica. |
+| `EUCLIDEANDISTANCESQUARED` | `VECTOR.EuclideanDistanceSquared()` | Distanza euclidea quadrata. |
+| `FFT` | `NUMERICAL.Fft()` | Trasformata Fourier. |
+| `FFTCOMPLEX` | `NUMERICAL.FftComplex()` | FFT complessa. |
+| `FFTFREQ` | `NUMERICAL.FftFreq(n, d)` | Frequenze discrete FFT. |
+| `FFTSHIFT` | `NUMERICAL.FftShift(x)` | Frequenza zero al centro. |
+| `HOLTWINTERS` | `TIMESERIES.HoltWinters(1, 1, 1, 1)` | Previsione Holt-Winters. |
+| `IFFT` | `NUMERICAL.Ifft()` | FFT inversa. |
+| `IFFTCOMPLEX` | `NUMERICAL.IfftComplex()` | IFFT complessa. |
+| `IFFTSHIFT` | `NUMERICAL.IfftShift(x)` | Inverso di FftShift. |
+| `INTEGRATE` | `NUMERICAL.Integrate(1, 1)` | Integrazione numerica. |
+| `INTERPOLATECLAMP` | `NUMERICAL.InterpolateClamp(1)` | Interp. clamp. |
+| `INTERPOLATEGENERIC` | `NUMERICAL.InterpolateGeneric("s", 1)` | Interp. generica. |
+| `INTERPOLATELINEAR` | `NUMERICAL.InterpolateLinear(1)` | Interpolazione lineare. |
+| `INTERPOLATEPCHIP` | `NUMERICAL.InterpolatePchip(1)` | Interp. PCHIP. |
+| `INTERPOLATEPOLYNOMIAL` | `NUMERICAL.InterpolatePolynomial(1)` | Interp. polinomiale. |
+| `INTERPOLATESPLINE` | `NUMERICAL.InterpolateSpline(1)` | Interpolazione spline. |
+| `INTERPOLATESTEP` | `NUMERICAL.InterpolateStep(1)` | Interp. a gradino. |
+| `IRFFT` | `NUMERICAL.Irfft(re, im)` | FFT reale inversa. |
+| `RFFT` | `NUMERICAL.Rfft(x)` | FFT reale (componenti non negative). |
+| `SPLEV` | `NUMERICAL.Splev(spline, xq)` | Valuta spline cubica. |
+| `SPLREP` | `NUMERICAL.Splrep(x, y)` | Spline cubica interpolante (not-a-knot). |
+| `KMEANS` | `MULTIVARIATE.KMeans(1)` | Clustering K-means. |
+| `KURTOSIS` | `STATS.Kurtosis()` | Curtosi. |
+| `MACOEFFICIENTS` | `TIMESERIES.MaCoefficients(1)` | Coefficienti MA. |
+| `MAD` | `STATS.Mad()` | Deviazione media assoluta. |
+| `MEAN` | `STATS.Mean()` | Media aritmetica. |
+| `MEDIAN` | `STATS.Median()` | Mediana. |
+| `PCA` | `MULTIVARIATE.Pca()` | Analisi componenti principali. |
+| `REGRESS` | `REGRESSION.Regress()` | Regressione lineare. |
+| `SIMPSON` | `NUMERICAL.Simpson(fn, a, b, n)` | Simpson composita. |
+| `SOLVEIVP` | `NUMERICAL.SolveIvp(fn, y0, t0, t1)` | ODE adattiva RK45 (scipy solve_ivp). |
+| `SOLVEODE` | `NUMERICAL.SolveOde(fn, y0, t0, t1, s)` | Solutore ODE 1o ordine (RK4). |
+| `SKEWNESS` | `STATS.Skewness()` | Asimmetria. |
+| `STDDEV` | `STATS.StdDev()` | Deviazione standard. |
+| `TRAPEZOID` | `NUMERICAL.Trapezoid(y, x)` | Integrale trapezoidale. |
+| `VARIANCE` | `STATS.Variance()` | Varianza. |
+| `YULEWALKER` | `TIMESERIES.YuleWalker(1)` | Stima Yule-Walker. |
 
 ## 2. Esempio completo
 
-' scipy.integrate / scipy.interpolate / scipy.fft (ANALYSIS)
+' scipy.integrate / scipy.interpolate / scipy.fft (NUMERICAL)
 ' Oracoli: quad/simpson x^2 = 1/3, trapezoid(y,x)=9.5,
 '          cumulative_trapezoid=[0.5,3,9.5], solve_ivp e^-t,
 '          CubicSpline not-a-knot @1.5 = 1.3125, fftfreq(6)
-IMPORT ANALYSIS
+IMPORT NUMERICAL
 
 SUB Main()
   DIM yy(3) AS DOUBLE = {0, 1, 4, 9}
   DIM xx(3) AS DOUBLE = {0, 1, 2, 3}
   DIM yy2(3) AS DOUBLE = {0, 0.5, 2, 1.5}
 
-  PRINT "integrate   ="; ANALYSIS.INTEGRATE(FN(x) => x * x, 0, 1)
-  PRINT "simpson     ="; ANALYSIS.SIMPSON(FN(x) => x * x, 0, 1, 256)
-  PRINT "trapezoid   ="; ANALYSIS.TRAPEZOID(yy, xx)
-  DIM ct() = ANALYSIS.CUMTRAPEZOID(yy, xx)
+  PRINT "integrate   ="; NUMERICAL.Integrate(FN(x) => x * x, 0, 1)
+  PRINT "simpson     ="; NUMERICAL.Simpson(FN(x) => x * x, 0, 1, 256)
+  PRINT "trapezoid   ="; NUMERICAL.Trapezoid(yy, xx)
+  DIM ct() = NUMERICAL.CumTrapezoid(yy, xx)
   PRINT "cumtrap     ="; ct(0); ct(1); ct(2)
 
 
@@ -683,7 +687,7 @@ SUB Main()
 0.25 -0.3                MACOEFFICIENTS(x, 2)
 
 
-### Tranche 3 — integrazione/ODE con λ (2026-09-07, commit dell'altra AI `30eb8ef16` + commit ANALYSIS)
+### Tranche 3 — integrazione/ODE con λ (2026-09-07, commit dell'altra AI `30eb8ef16` + commit ANALYSIS storico)
 
 0.333333333333333   INTEGRATE(FN(x)=>x*x, 0, 1)     (scipy quad x²=1/3)
 0.333333333333333   SIMPSON(FN(x)=>x*x, 0, 1, 256)  (Simpson composita)
@@ -697,8 +701,8 @@ SUB Main()
 0.99968777644033  r.R2
 
 
-DIM r AS Analysis.RegressionResult
-r = ANALYSIS.REGRESS(x, y)
+DIM r AS REGRESSION.RegressionResult
+r = REGRESSION.Regress(x, y)
 PRINT r.Slope; r.Intercept; r.R2
 
 
@@ -1072,7 +1076,7 @@ END SUB
 | `ARGMIN` | `MATRIX.ARGMIN()` | ARGMIN di MATRIX. |
 | `ASCSV` | `MATRIX.ASCSV()` | ASCSV di MATRIX. |
 | `ASJSON` | `MATRIX.ASJSON()` | ASJSON di MATRIX. |
-| `CHOLESKY` | `MATRIX.CHOLESKY(1)` | CHOLESKY di MATRIX. |
+| `CHOLESKY` | `LINALG.CHOLESKY(1)` | CHOLESKY di MATRIX. |
 | `CLONEMATRIX` | `MATRIX.CLONEMATRIX()` | CLONEMATRIX di MATRIX. |
 | `COLMEANS` | `MATRIX.COLMEANS()` | COLMEANS di MATRIX. |
 | `COLSUMS` | `MATRIX.COLSUMS()` | COLSUMS di MATRIX. |
@@ -1081,65 +1085,65 @@ END SUB
 | `CONCATCOLS` | `MATRIX.CONCATCOLS(1)` | CONCATCOLS di MATRIX. |
 | `CONCATROWS` | `MATRIX.CONCATROWS(1)` | CONCATROWS di MATRIX. |
 | `CREATE` | `MATRIX.CREATE(1, 1)` | CREATE di MATRIX. |
-| `DETERMINANT` | `MATRIX.DETERMINANT(1)` | DETERMINANT di MATRIX. |
-| `EVD` | `MATRIX.EVD(1)` | EVD di MATRIX. |
-| `FACTOR` | `MATRIX.FACTOR(decompositionobject, "s")` | FACTOR di MATRIX. |
-| `FROBENIUSNORM` | `MATRIX.FROBENIUSNORM()` | FROBENIUSNORM di MATRIX. |
-| `INFINITYNORM` | `MATRIX.INFINITYNORM()` | INFINITYNORM di MATRIX. |
-| `INVERSE` | `MATRIX.INVERSE(1)` | INVERSE di MATRIX. |
+| `DETERMINANT` | `LINALG.DETERMINANT(1)` | DETERMINANT di MATRIX. |
+| `EVD` | `LINALG.EVD(1)` | EVD di MATRIX. |
+| `FACTOR` | `LINALG.FACTOR(decompositionobject, "s")` | FACTOR di MATRIX. |
+| `FROBENIUSNORM` | `LINALG.FROBENIUSNORM()` | FROBENIUSNORM di MATRIX. |
+| `INFINITYNORM` | `LINALG.INFINITYNORM()` | INFINITYNORM di MATRIX. |
+| `INVERSE` | `LINALG.INVERSE(1)` | INVERSE di MATRIX. |
 | `ISLOWERTRIANGULAR` | `MATRIX.ISLOWERTRIANGULAR()` | ISLOWERTRIANGULAR di MATRIX. |
 | `ISORTHOGONAL` | `MATRIX.ISORTHOGONAL()` | ISORTHOGONAL di MATRIX. |
 | `ISSYMMETRIC` | `MATRIX.ISSYMMETRIC()` | ISSYMMETRIC di MATRIX. |
 | `ISUPPERTRIANGULAR` | `MATRIX.ISUPPERTRIANGULAR()` | ISUPPERTRIANGULAR di MATRIX. |
 | `LOADCSV` | `MATRIX.LOADCSV("file.txt")` | LOADCSV di MATRIX. |
 | `LOADJSON` | `MATRIX.LOADJSON("file.txt")` | LOADJSON di MATRIX. |
-| `LU` | `MATRIX.LU(1)` | LU di MATRIX. |
+| `LU` | `LINALG.LU(1)` | LU di MATRIX. |
 | `MATRIX` | `MATRIX MATRIX` | MATRIX di MATRIX. |
 | `MAXVALUE` | `MATRIX.MAXVALUE()` | MAXVALUE di MATRIX. |
 | `MINVALUE` | `MATRIX.MINVALUE()` | MINVALUE di MATRIX. |
 | `MULTIPLY` | `MATRIX.MULTIPLY(1, 1)` | MULTIPLY di MATRIX. |
 | `MULTIPLYLEFTVECTOR` | `MATRIX.MULTIPLYLEFTVECTOR(42)` | MULTIPLYLEFTVECTOR di MATRIX. |
 | `MULTIPLYVECTOR` | `MATRIX.MULTIPLYVECTOR(42)` | MULTIPLYVECTOR di MATRIX. |
-| `NORM` | `MATRIX.NORM(1)` | NORM di MATRIX. |
-| `ONENORM` | `MATRIX.ONENORM()` | ONENORM di MATRIX. |
-| `PINVERSE` | `MATRIX.PINVERSE(1)` | PINVERSE di MATRIX. |
-| `QR` | `MATRIX.QR(1)` | QR di MATRIX. |
-| `RANK` | `MATRIX.RANK(1)` | RANK di MATRIX. |
+| `NORM` | `LINALG.NORM(1)` | NORM di MATRIX. |
+| `ONENORM` | `LINALG.ONENORM()` | ONENORM di MATRIX. |
+| `PINVERSE` | `LINALG.PINVERSE(1)` | PINVERSE di MATRIX. |
+| `QR` | `LINALG.QR(1)` | QR di MATRIX. |
+| `RANK` | `LINALG.RANK(1)` | RANK di MATRIX. |
 | `RESHAPE` | `MATRIX.RESHAPE(1, 1)` | RESHAPE di MATRIX. |
 | `ROWCOUNT` | `MATRIX.ROWCOUNT()` | ROWCOUNT di MATRIX. |
 | `ROWMEANS` | `MATRIX.ROWMEANS()` | ROWMEANS di MATRIX. |
 | `ROWSUMS` | `MATRIX.ROWSUMS()` | ROWSUMS di MATRIX. |
 | `ROWVARIANCES` | `MATRIX.ROWVARIANCES()` | ROWVARIANCES di MATRIX. |
 | `SLICE` | `MATRIX.SLICE(1, 1, 1, 1)` | SLICE di MATRIX. |
-| `SOLVE` | `MATRIX.SOLVE(1, 1)` | SOLVE di MATRIX. |
-| `SVD` | `MATRIX.SVD(1)` | SVD di MATRIX. |
+| `SOLVE` | `LINALG.SOLVE(1, 1)` | SOLVE di MATRIX. |
+| `SVD` | `LINALG.SVD(1)` | SVD di MATRIX. |
 | `TRACE` | `MATRIX.TRACE(1)` | TRACE di MATRIX. |
 | `TRANSPOSE` | `MATRIX.TRANSPOSE(1)` | TRANSPOSE di MATRIX. |
-| `EXPM` | `MATRIX.EXPM(h)` | Esponenziale di matrice (handle). |
+| `EXPM` | `LINALG.EXPM(h)` | Esponenziale di matrice (handle). |
 | `KRONECKER` | `MATRIX.KRONECKER(h1, h2)` | Prodotto di Kronecker A⊗B. |
-| `SQRTM` | `MATRIX.SQRTM(h)` | Radice quadrata di matrice, scipy.linalg.sqrtm. |
-| `LOGM` | `MATRIX.LOGM(h)` | Logaritmo naturale di matrice, scipy.linalg.logm. |
-| `HESSENBERG` | `MATRIX.HESSENBERG(h)` | Forma di Hessenberg superiore (Householder). |
+| `SQRTM` | `LINALG.SQRTM(h)` | Radice quadrata di matrice, scipy.linalg.sqrtm. |
+| `LOGM` | `LINALG.LOGM(h)` | Logaritmo naturale di matrice, scipy.linalg.logm. |
+| `HESSENBERG` | `LINALG.HESSENBERG(h)` | Forma di Hessenberg superiore (Householder). |
 | `BLOCKDIAG` | `MATRIX.BLOCKDIAG(h1, h2)` | Matrice diagonale a blocchi, scipy.linalg.block_diag. |
-| `NULLSPACE` | `MATRIX.NULLSPACE(h)` | Base del kernel, scipy.linalg.null_space. |
+| `NULLSPACE` | `LINALG.NULLSPACE(h)` | Base del kernel, scipy.linalg.null_space. |
 | `SETVALUE` | `MATRIX.SETVALUE(h, r, c, v)` | Scrive v alla riga r, colonna c (0-based). |
 | `GETVALUE` | `MATRIX.GETVALUE(h, r, c)` | Legge l'elemento riga r, colonna c (0-based). |
-| `COSM` | `MATRIX.COSM(h)` | Coseno di matrice, scipy.linalg.cosm. |
-| `SINM` | `MATRIX.SINM(h)` | Seno di matrice, scipy.linalg.sinm. |
-| `TANM` | `MATRIX.TANM(h)` | Tangente di matrice, scipy.linalg.tanm. |
-| `SIGNM` | `MATRIX.SIGNM(h)` | Segno di matrice, scipy.linalg.signm. |
-| `FRACTIONALPOWER` | `MATRIX.FRACTIONALPOWER(h, p)` | Potenza frazionaria, scipy.linalg.fractional_matrix_power. |
-| `ORTH` | `MATRIX.ORTH(h)` | Base ortonormale del range, scipy.linalg.orth. |
-| `SUBSPACEANGLES` | `MATRIX.SUBSPACEANGLES(h1, h2)` | Angoli tra sottospazi, scipy.linalg.subspace_angles. |
-| `POLAR` | `MATRIX.POLAR(h)` | Decomp. polare A=U·P (fattori U/P), scipy.linalg.polar. |
-| `COND` | `MATRIX.COND(h)` | Numero di condizionamento (norma 2). |
-| `NUCLEARNORM` | `MATRIX.NUCLEARNORM(h)` | Norma nucleare (somma valori singolari). |
+| `COSM` | `LINALG.COSM(h)` | Coseno di matrice, scipy.linalg.cosm. |
+| `SINM` | `LINALG.SINM(h)` | Seno di matrice, scipy.linalg.sinm. |
+| `TANM` | `LINALG.TANM(h)` | Tangente di matrice, scipy.linalg.tanm. |
+| `SIGNM` | `LINALG.SIGNM(h)` | Segno di matrice, scipy.linalg.signm. |
+| `FRACTIONALPOWER` | `LINALG.FRACTIONALPOWER(h, p)` | Potenza frazionaria, scipy.linalg.fractional_matrix_power. |
+| `ORTH` | `LINALG.ORTH(h)` | Base ortonormale del range, scipy.linalg.orth. |
+| `SUBSPACEANGLES` | `LINALG.SUBSPACEANGLES(h1, h2)` | Angoli tra sottospazi, scipy.linalg.subspace_angles. |
+| `POLAR` | `LINALG.POLAR(h)` | Decomp. polare A=U·P (fattori U/P), scipy.linalg.polar. |
+| `COND` | `LINALG.COND(h)` | Numero di condizionamento (norma 2). |
+| `NUCLEARNORM` | `LINALG.NUCLEARNORM(h)` | Norma nucleare (somma valori singolari). |
 | `TOEPLITZ` | `MATRIX.TOEPLITZ(c[], r[])` | Matrice di Toeplitz, scipy.linalg.toeplitz. |
 | `HANKEL` | `MATRIX.HANKEL(c[], r[])` | Matrice di Hankel, scipy.linalg.hankel. |
 | `CIRCULANT` | `MATRIX.CIRCULANT(c[])` | Matrice circolante, scipy.linalg.circulant. |
-| `SOLVETRIANGULAR` | `MATRIX.SOLVETRIANGULAR(hA, b[], lower)` | Risolve sistema triangolare. |
-| `EIG` | `MATRIX.EIG(h)` | Autovalori/autovettori generali (fattori DREAL/DIMAG/VRREAL/VRIMAG). |
-| `SCHUR` | `MATRIX.SCHUR(h)` | Real Schur form (fattori T/Z). |
+| `SOLVETRIANGULAR` | `LINALG.SOLVETRIANGULAR(hA, b[], lower)` | Risolve sistema triangolare. |
+| `EIG` | `LINALG.EIG(h)` | Autovalori/autovettori generali (fattori DREAL/DIMAG/VRREAL/VRIMAG). |
+| `SCHUR` | `LINALG.SCHUR(h)` | Real Schur form (fattori T/Z). |
 
 ## 2. Esempio completo
 
@@ -1152,9 +1156,9 @@ SUB Main()
   h = MATRIX.SETVALUE(h, 0, 0, 2) : h = MATRIX.SETVALUE(h, 0, 1, 1)
   h = MATRIX.SETVALUE(h, 1, 0, 1) : h = MATRIX.SETVALUE(h, 1, 1, 2)
 
-  DIM s = MATRIX.SQRTM(h)                    ' sqrtm diag 1.3660
+  DIM s = LINALG.SQRTM(h)                    ' sqrtm diag 1.3660
   PRINT "sqrtm00  ="; MATRIX.GETVALUE(s, 0, 0)
-  DIM l = MATRIX.LOGM(h)                     ' logm diag 0.5493
+  DIM l = LINALG.LOGM(h)                     ' logm diag 0.5493
   PRINT "logm11   ="; MATRIX.GETVALUE(l, 1, 1)
 
   ' Hessenberg di una 3x3: Hh[2,0] deve essere ~0

@@ -1,6 +1,6 @@
 /* Notebook/main.c — entry point del notebook server (C).
  *
- *   gmb_notebook [--port N] [--autosave <file.json>]
+ *   gmbnotebook [--port N] [--autosave <file.json>]
  *
  * Default: porta 8030 su 127.0.0.1 (come il NotebookServer della vecchia REPL C#).
  */
@@ -12,9 +12,9 @@
 
 static void usage(void)
 {
-    printf("gmb_notebook — notebook server di GMBASIC (C)\n"
+    printf("gmbnotebook — notebook server di GMBASIC (C)\n"
            "\n"
-           "uso: gmb_notebook [--port N] [--autosave <file.json>]\n"
+           "uso: gmbnotebook [--port N] [--autosave <file.json>]\n"
            "\n"
            "  --port N            porta HTTP su 127.0.0.1 (default 8030)\n"
            "  --autosave <file>   a ogni cella scrive lì lo snapshot delle variabili (JSON)\n"
@@ -38,11 +38,11 @@ int main(int argc, char** argv)
         if (!strncmp(argv[i], "--port=", 7)) { port = atoi(argv[i] + 7); continue; }
         if (!strcmp(argv[i], "--autosave") && i + 1 < argc) { autosave = argv[++i]; continue; }
         if (!strncmp(argv[i], "--autosave=", 11)) { autosave = argv[i] + 11; continue; }
-        fprintf(stderr, "?gmb_notebook: argomento sconosciuto '%s' (usa --help)\n", argv[i]);
+        fprintf(stderr, "?gmbnotebook: argomento sconosciuto '%s' (usa --help)\n", argv[i]);
         return 2;
     }
     if (port <= 0 || port > 65535) {
-        fprintf(stderr, "?gmb_notebook: porta non valida (%d)\n", port);
+        fprintf(stderr, "?gmbnotebook: porta non valida (%d)\n", port);
         return 2;
     }
     return nb_server_run(port, autosave);

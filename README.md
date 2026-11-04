@@ -54,7 +54,7 @@ in the **releases** of two companion repos and are downloaded **only when needed
 The other two repos never need to be cloned: the commands below fetch from their releases. From a
 checkout, build the C tools once (`GMBasic/native/gmb_compiler_c`, `GMBasic/native/gmbadmin`) and
 use `gmb …` — the whole administrative surface is **C** (there is no C# CLI any more). The
-**interactive REPL is the C binary** `REPL/build/gmb_repl` (see `REPL/README.md`).
+**interactive REPL is the C binary** `REPL/build/gmbrepl` (see `REPL/README.md`).
 
 ### First time — the four commands that actually matter
 
@@ -147,10 +147,10 @@ Tre programmi separati, un compito ciascuno:
 
 | programma | cos'è |
 |---|---|
-| `REPL/build/gmb_repl` | **REPL interattiva** e runner del mondo C (canonica): `RUN`, `EVAL`, `AST`, `DASM`, `COMPILE`, `IDE`, package/fixtures. Nessuna dipendenza dal mondo C#. |
+| `REPL/build/gmbrepl` | **REPL interattiva** e runner del mondo C (canonica): `RUN`, `EVAL`, `AST`, `DASM`, `COMPILE`, `IDE`, package/fixtures. Nessuna dipendenza dal mondo C#. |
 | `GMBasicSharp/CompilerCli` → `gmbcs` | **CLI headless dell'engine C#**: `check`, `dump ast\|pcode\|il\|disasm`, `build --target il\|pcode`, `run`/`eval --engine il\|pcode`, `debug`. |
 | `GMBasic/native/gmbadmin` → `gmbadmin` | **CLI amministrativo in C** (front unico `gmb`): pacchetti, brain/toolchain, libs, setup, daemon, rag/graph, grep, hf/mlx. |
-| `Notebook/build/gmb_notebook` | **notebook server** (C): sessione BASIC con stato via HTTP su 127.0.0.1 (`/execute`, `/vars`, `/reset`). |
+| `Notebook/build/gmbnotebook` | **notebook server** (C): sessione BASIC con stato via HTTP su 127.0.0.1 (`/execute`, `/vars`, `/reset`). |
 
 ```sh
 # PCodeVM — P-Code virtual machine written in C# (in-process, no native code)
@@ -162,7 +162,7 @@ dotnet run --project GMBasicSharp/CompilerCli -- build --target il <file.bas>
 
 # VM/C — P-Code executed by the external gmb_vm_host (REPL C)
 cmake -S GMBasic/native/gmb_vm_c -B GMBasic/native/gmb_vm_c/build && cmake --build GMBasic/native/gmb_vm_c/build
-REPL/build/gmb_repl <file.bas>
+REPL/build/gmbrepl <file.bas>
 dotnet run --project tools/runners/GMBASIC.Conformance -- vmtest <file.bas>
 ```
 

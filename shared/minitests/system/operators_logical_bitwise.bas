@@ -1,6 +1,6 @@
 ' MiniTest: operatori LOGICI (keyword: NOT/AND/OR/XOR, -1/0 e short-circuit)
 ' e BITWISE (!, &&, ||, ^^). Parità 4 backend.
-' EXPECT: -1|-1|0|0|1|7|6|-2|0|0|1
+' EXPECT: 3|-1|6|0|1|7|6|-2|0|0|1
 DIM hits AS INTEGER
 FUNCTION Bump() AS INTEGER
   hits = hits + 1

@@ -1,4 +1,4 @@
-/* gmb_fixtures.c — fixture di mercato on demand (manifest + gmb_fetch + estrazione).
+/* gmb_fixtures.c — fixture di mercato on demand (manifest + gmbfetch + estrazione).
  *
  * Le fixture sono DATI DI SVILUPPO: servono al compilatore e ai test, non al programma
  * distribuito (che non porta `samples/`). Per questo vivono in `shared/samples/Fixtures/<nome>/`

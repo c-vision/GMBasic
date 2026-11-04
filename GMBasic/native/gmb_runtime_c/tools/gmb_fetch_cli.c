@@ -1,6 +1,6 @@
 /* gmb_fetch_cli.c — riga di comando del motore di download (gmb_fetch.h).
  *
- * Serve a tre cose: provare il motore a mano (`gmb_fetch <url> <file>`), dare un comando
+ * Serve a tre cose: provare il motore a mano (`gmbfetch <url> <file>`), dare un comando
  * concreto a chi deve scaricare un asset grosso (un cervello da 1,4 GB) senza riscriverne la
  * politica, e verificare la ripresa: si interrompe con Ctrl-C e si rilancia lo stesso comando,
  * che riparte dall'.incomplete.
@@ -9,7 +9,7 @@
  * arriva da un FILE con --token-file.
  *
  * Uso:
- *   gmb_fetch <url> <destinazione> [--sha <64hex>] [--size <byte>] [--token-file <file>]
+ *   gmbfetch <url> <destinazione> [--sha <64hex>] [--size <byte>] [--token-file <file>]
  *              [--restart] [--quiet] [--verify-only]
  *
  * Exit: 0 = ok; altrimenti il codice del motore (vedi gmb_fetch_strerror).
@@ -36,7 +36,7 @@ static void on_progress(void* u, long long done, long long total, double rate, l
 static void usage(void)
 {
     fprintf(stderr,
-        "uso: gmb_fetch <url> <destinazione> [--sha <64hex>] [--size <byte>]\n"
+        "uso: gmbfetch <url> <destinazione> [--sha <64hex>] [--size <byte>]\n"
         "                [--token-file <file>] [--restart] [--quiet] [--verify-only]\n");
 }
 
@@ -88,13 +88,13 @@ int main(int argc, char** argv)
 
     const gmb_fetch_transport* tr = gmb_fetch_transport_curl();
     if (!tr) {
-        fprintf(stderr, "gmb_fetch: runtime compilato senza libcurl (nessun trasporto HTTP)\n");
+        fprintf(stderr, "gmbfetch: runtime compilato senza libcurl (nessun trasporto HTTP)\n");
         return GMB_FETCH_E_NO_TRANSPORT;
     }
 
     char* token = token_file ? read_token_file(token_file) : NULL;
     if (token_file && !token) {
-        fprintf(stderr, "gmb_fetch: impossibile leggere il token da %s\n", token_file);
+        fprintf(stderr, "gmbfetch: impossibile leggere il token da %s\n", token_file);
         return GMB_FETCH_E_ARG;
     }
 
@@ -119,7 +119,7 @@ int main(int argc, char** argv)
     if (rc == GMB_FETCH_OK) {
         if (!quiet) printf("ok: %s\n", dest);
     } else {
-        fprintf(stderr, "gmb_fetch: %s%s%s\n", gmb_fetch_strerror(rc),
+        fprintf(stderr, "gmbfetch: %s%s%s\n", gmb_fetch_strerror(rc),
                 err[0] ? " — " : "", err);
     }
 

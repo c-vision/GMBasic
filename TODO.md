@@ -67,7 +67,7 @@ tracked files). These remain:
 
 ## 6. Una sola REPL (in C) che pilota il compilatore C — il C# è opzionale ed eliminabile
 
-**Obiettivo.** Una sola REPL, binario **C** alla root del monorepo (`REPL/`, oggi `gmb_repl`),
+**Obiettivo.** Una sola REPL, binario **C** alla root del monorepo (`REPL/`, oggi `gmbrepl`),
 che pilota **il compilatore C** tramite le sue opzioni. Non perde nessuna funzione utile al mondo C.
 
 **Regole non negoziabili**
@@ -154,7 +154,7 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
       `gmb_preprocess_*` rimossi; `gmb_executor_native` **non è più linkato** dalla REPL.
       I `-D` viaggiano come `-D name=val` al CLI (nuova opzione `gmb dump/eval -D`).
 - [x] **F2c — LSP come tool separato** (2026-11-01): `native/lsp/` (main + gmb_lsp.c) →
-      eseguibile **`gmb_lsp`** (LSP/JSON-RPC su stdio), costruito dal progetto del compilatore.
+      eseguibile **`gmblsp`** (LSP/JSON-RPC su stdio), costruito dal progetto del compilatore.
       La REPL **non linka più `gmb_compiler_c`** e `--lsp` rimanda al tool.
       Client: le IDE GMBasic e VS Code (o qualunque editor LSP).
 - [x] **Decisione nome `EVAL`** (2026-11-01): `EVAL` = valutazione di uno **snippet BASIC**
@@ -193,7 +193,7 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
       `#0 __main`), `c` → programma completo. Con `--engine=c` resta `gmb_vm_host --debug`.
 - [x] **F5 — Prova di eliminabilità** (2026-11-01): in un **worktree separato** (nessun file
       del checkout condiviso toccato, AGENTS §7.6) con `GMBasicSharp/` **rimosso**, si sono
-      costruiti `gmb_repl`, `gmb` (compilatore C) e `gmb_vm_host` e la suite è risultata verde:
+      costruiti `gmbrepl`, `gmb` (compilatore C) e `gmb_vm_host` e la suite è risultata verde:
       `RUN` (vmc) → `ciao 42`, `EVAL` → `42`, `AST`, `DASM`, `COMPILE`, `FIXTURES`, `SETUP`,
       `TRUST`, `CACHE`; `IL`/`PCODE` dichiarano "engine C# non disponibile" (nessun finto
       successo). Riproducibile con `tools/sh/repl_no_csharp_proof.sh`. Nota: la gamba `-c99`
@@ -202,13 +202,13 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
       dispatcher (non si lasciano a metà).
 - [x] **F6a — sorgenti in `REPL/`** (2026-11-01): i 29 file C (`.c/.h` + `CMakeLists.txt`)
       sono stati spostati con `git mv` da `GMBasic/native/repl/` a **`REPL/`**, che ora è
-      autoconsistente (`cmake -S REPL -B REPL/build && cmake --build REPL/build --target gmb_repl`).
+      autoconsistente (`cmake -S REPL -B REPL/build && cmake --build REPL/build --target gmbrepl`).
       Aggiornati: `tools/sh/repl_engine_parity.sh`, `tools/sh/repl_no_csharp_proof.sh`,
       `REPL/README.md`, README root, manuale I.2. `GMBasic/native/repl/` non esiste più.
       Verificato: build OK da `REPL/`, `RUN`/`EVAL` OK, parità engine PASS.
 - [x] **F6b — REPL C# ELIMINATA, CLI conservato** (2026-11-01): split fatto.
       - `GMBasicSharp/Cli` (assembly **`gmb`**): i 7 `Cli*.cs` + `ConsoleProgressBar`/`RagGraphFlags`,
-        con un `Program.cs` che NON apre più una REPL interattiva (dice di usare `gmb_repl`) e
+        con un `Program.cs` che NON apre più una REPL interattiva (dice di usare `gmbrepl`) e
         delega i file a `gmbcs run` (`-pcode` → `--engine pcode`, `-m` → `build --target il`).
       - `GMBasicSharp/CompilerCli` (`gmbcs`): invariato, `Program` pubblico per il delega.
       - `GMBasicSharp/REPL/` **rimossa** (`git rm -r`: ReplEngine, IDE C#, HelpForm, console,
@@ -216,7 +216,7 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
       - Documentazione/script aggiornati: README root, `tools/sh/webapp_up.sh` (usa `gmbcs`),
         `shared/Apps/*`, `shared/webapp/*`, manuale locale.
       - Il server `NOTEBOOK` è stato **ripristinato in C** come progetto autonomo alla root:
-        **`Notebook/`** (`gmb_notebook`, HTTP su 127.0.0.1, stesso protocollo `/execute`,
+        **`Notebook/`** (`gmbnotebook`, HTTP su 127.0.0.1, stesso protocollo `/execute`,
         `/vars`, `/reset`, `/health`, `/shutdown`, stato di sessione via valutatore runtime).
         Vedi `Notebook/README.md`.
       - Resta aperto il build NativeAOT `-n` (F4c): oggi il nativo canonico è `gmb build`.
@@ -276,11 +276,11 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
         revoke/password/user create|setkey|status|list), `keygen` (Ed25519 su dir, `--pem` ECDSA).
       - [x] **F9c.2** — servizi e dati: `fixtures`, `brain`, `grep`, `convert/convfmt`,
         `libs status|ensure|check|publish`, `setup LIBS|OCR|TORCH|BROWSER|OBSCURA|ALL`
-        (manifest in `shared/settings/`, `gmb_fetch` con ripresa+sha256), `daemon`
+        (manifest in `shared/settings/`, `gmbfetch` con ripresa+sha256), `daemon`
         install/start/stop/restart/status/logs/list/uninstall (launchd; il job lancia `gmb run`,
         non più `dotnet REPL.dll`), `rag build/update/status/query` (chunking condiviso, `--prune`
         con `gmb_rag_list_sources`), `graph build/update/status` (`gmb_graph_build`),
-        `hf`/`mlx` (HF API + `gmb_fetch`, token da `~/.cache/huggingface/token`).
+        `hf`/`mlx` (HF API + `gmbfetch`, token da `~/.cache/huggingface/token`).
         Verificato end-to-end: pkg su manifest di prova, pack firmato + `pkg verify` (firma OK),
         graph build 3 nodi, rag build (errore esplicito senza provider di embedding) / dry-run /
         query, daemon install+start (running) + logs + uninstall, setup BROWSER/OBSCURA/TORCH
@@ -358,7 +358,7 @@ STEP TRACE UNWATCH WATCH (debug via `gmb_vm_host --debug-interactive`).
           (`libs prune` rimuove i file fuori manifest). **Windows**: niente `dynamic_lookup` →
           lo split non c'è, le sorgenti AI restano nel core. **Linux**: i consumer esportano i
           simboli del core (`-Wl,--export-dynamic`).
-          Verificato: `libgmb_runtime.a` ha **0** simboli LLMEnv; `gmb_repl` e `gmbadmin`
+          Verificato: `libgmb_runtime.a` ha **0** simboli LLMEnv; `gmbrepl` e `gmbadmin`
           **non hanno più alcuna dylib LLM** (tolto anche il `-llmtoken` inutile da
           `gmb_agent_runtime`: `gmb_brain_mlx.c` la carica a runtime via dlopen);
           `LLM.TOKENS` eseguito da un programma in `/tmp` (fuori dal checkout) carica la dylib

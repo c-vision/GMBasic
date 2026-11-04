@@ -42,7 +42,7 @@ public static class BrainInstaller
     /// AiConfig.BrainsDefaultDir). Rollback completo se la validazione fallisce.
     ///
     /// <para>Con <paramref name="destDir"/> nullo (produzione) il TRASFERIMENTO e l'ESTRAZIONE li
-    /// fa il runtime C (<c>gmb_brains_install_source</c>: gmb_fetch con resume+sha, zip-slip
+    /// fa il runtime C (<c>gmb_brains_install_source</c>: gmbfetch con resume+sha, zip-slip
     /// safe, cache <c>~/.gmbasic/brains/&lt;nome&gt;/&lt;versione&gt;</c>), così VM/C e C99Native
     /// installano lo stesso cervello con lo stesso codice. Qui restano la VALIDAZIONE forte
     /// (format, nome, checksum per-file) sui file installati e la registrazione.</para>
@@ -226,7 +226,7 @@ public static class BrainInstaller
                 invalid = $"il manifest dichiara il nome '{manifest.Name}', ma è stato richiesto '{name}'";
             /* checksum e per-file sono OPZIONALI: un cervello artigianale (o di terze parti) ha
              * spesso solo rag/<nome>.db. La garanzia d'integrità di un cervello DISTRIBUITO è lo
-             * sha256 dell'ASSET nel manifest dei cervelli, verificato da gmb_fetch prima di
+             * sha256 dell'ASSET nel manifest dei cervelli, verificato da gmbfetch prima di
              * estrarre; il manifest interno è una firma in più, e quando è presente si verifica. */
             else if (manifest.Checksum is not null && !manifest.VerifySelfChecksum())
                 invalid = "checksum del manifest non valido (zip manomesso/corrotto)";

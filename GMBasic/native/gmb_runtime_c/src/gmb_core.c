@@ -585,6 +585,10 @@ static __thread const char* g_err_description = "";
 static __thread long g_err_line = 0;
 static __thread jmp_buf* g_err_jmp = NULL;
 static __thread jmp_buf* g_err_resume = NULL;
+/* Modalità ON ERROR RESUME NEXT (1 = attiva). I guard per-istruzione installano solo il
+ * jmp_buf di ripresa; questa flag dice a gmb_raise_error se usarlo. ON ERROR RESUME NEXT
+ * la attiva, ON ERROR GOTO 0 la disattiva. */
+static __thread int g_err_resume_mode = 0;
 /* Eccezione UTENTE (THROW NEW <Classe>): valore boxed che viaggia con l'errore. Lo slot è
  * "owned" dallo stato finché il CATCH non lo preleva (gmb_err_take_value, move). */
 static __thread gmb_val_t g_err_value;
@@ -615,16 +619,30 @@ int gmb_val_is_class(gmb_val_t v, const char* name) {
 jmp_buf* gmb_err_set_handler(jmp_buf* buf) {
     jmp_buf* prev = g_err_jmp;
     g_err_jmp = buf;
+    /* ON ERROR GOTO 0: disattiva anche la modalità RESUME NEXT (altrimenti gli errori
+     * successivi continuerebbero a essere ripresi dai guard per-istruzione). */
+    if (buf == NULL) g_err_resume_mode = 0;
     return prev;
 }
 
 void gmb_err_set_resume(jmp_buf* buf) { g_err_resume = buf; }
 jmp_buf* gmb_err_resume_jmp(void) { return g_err_resume; }
 
-/* RESUME NEXT: riprende dall'istruzione successiva a quella fallita — longjmp al
- * jmp_buf registrato dal codegen PRIMA dell'istruzione fallibile. */
+/* RESUME NEXT: ATTIVA la modalità e lascia che sia gmb_raise_error a longjmpare al
+ * jmp_buf del guard dell'istruzione fallita (installato dal codegen). Prima questa
+ * funzione faceva longjmp SUBITO al guard corrente: alla riga `ON ERROR RESUME NEXT`
+ * nessun guard è attivo, quindi era un no-op e l'errore successivo terminava il
+ * processo (C99Native) invece di riprendere. */
 void gmb_err_resume_next(void) {
+    /* Due casi:
+     *  - ON ERROR RESUME NEXT (setup): nessun guard per-istruzione attivo → attiva la
+     *    modalità e lascia che sia gmb_raise_error a longjmpare al guard della prossima
+     *    istruzione fallita;
+     *  - RESUME NEXT dentro un handler ON ERROR GOTO: il guard dell'istruzione fallita è
+     *    ancora attivo (il longjmp all'handler non lo ha ripulito) → riprende subito dopo
+     *    quell'istruzione, come prima. */
     if (g_err_resume) longjmp(*g_err_resume, 1);
+    g_err_resume_mode = 1;
 }
 
 /* Descrizione canonica di un codice d'errore (catalogo condiviso dalle gambe C): serve quando
@@ -690,6 +708,11 @@ static void gmb_raise_error_impl(int number, const char* description, long line,
     if (!keep_value) gmb_err_clear_value();
     if (g_err_jmp) {
         longjmp(*g_err_jmp, number);
+    }
+    /* ON ERROR RESUME NEXT: nessun handler GOTO attivo, ma un guard per-istruzione
+     * installato dal codegen → riprende dopo l'istruzione fallita. */
+    if (g_err_resume_mode && g_err_resume) {
+        longjmp(*g_err_resume, 1);
     }
     fprintf(stderr, "[GMBASIC] ERROR %d: %s (line %ld)\n", number,
             g_err_description, line);

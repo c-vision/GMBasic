@@ -1665,7 +1665,7 @@ void gmb_fft(double* re, double* im, int n, int inverse)
         }
         /* Normalizzazione INVERSE 1/n: il ramo radix-2 la applica (sotto), il Bluestein la
          * ometteva → gmb_fft(inverse=1) su n non potenza di 2 tornava il valore GREZZO scalato
-         * di n (es. ANALYSIS.IFFT di un segnale a 9 elementi: round-trip 1.0 → 9.0). Il /m
+         * di n (es. NUMERICAL.Ifft di un segnale a 9 elementi: round-trip 1.0 → 9.0). Il /m
          * interno è la normalizzazione della CONVOLUZIONE (necessaria e corretta in entrambe le
          * direzioni); la 1/n è la normalizzazione della DFT inversa e va aggiunta QUI. */
         if (inverse) for (int k = 0; k < n; k++) { re[k] /= n; im[k] /= n; }
@@ -1702,7 +1702,7 @@ void gmb_fft(double* re, double* im, int n, int inverse)
     if (inverse) for (int i = 0; i < n; i++) { re[i] /= n; im[i] /= n; }
 }
 
-/* FFT su segnale reale → matrice n×2 (col0 re, col1 im) per `DIM x() = ANALYSIS.FFT(sig)`.
+/* FFT su segnale reale → matrice n×2 (col0 re, col1 im) per `DIM x() = NUMERICAL.Fft(sig)`.
    Inverse applica 1/n (round-trip ricostruisce il segnale). */
 double* gmb_yule_walker(const double* acf, int n, int p, gmb_int_t* out_len)
 {
@@ -2487,7 +2487,7 @@ void gmb_analysis_anova(const double* groups, int* groupSizes, int k, double* f,
     *f = fv; *p = pv; *ssb = ssbV; *ssw = sswV;
 }
 
-/* ANALYSIS.PCA → Analysis.PcaResult (dict {EigenValues, EigenVectors}) da matrice
+/* MULTIVARIATE.Pca → MULTIVARIATE.PcaResult (dict {EigenValues, EigenVectors}) da matrice
  * RETTANGOLARE flat (k osservazioni × n variabili, row-major). Canone IlRuntime.Pca
  * (power iteration, stessa gmb_analysis_pca). */
 gmb_val_t gmb_pca_result_rect(const double* data, int k, int n)

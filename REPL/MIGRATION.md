@@ -8,10 +8,10 @@ Programmi attuali:
 
 | programma | ruolo |
 |---|---|
-| `REPL/build/gmb_repl` | REPL canonica (C) — comandi, IDE, console, package/fixtures |
+| `REPL/build/gmbrepl` | REPL canonica (C) — comandi, IDE, console, package/fixtures |
 | `GMBasicSharp/CompilerCli` → `gmbcs` | engine C# headless: `check`, `dump ast\|pcode\|il\|disasm`, `prginfo`, `build`, `run`, `eval`, `debug`, `aibench` |
 | `GMBasic/native/gmbadmin` → `gmbadmin` | **CLI amministrativo C** (front unico `gmb`): pacchetti, pack/publish/login/register/admin, **brain/toolchain completo**, libs, setup, daemon, rag/graph, grep, convert/convfmt, hf/mlx |
-| `Notebook/build/gmb_notebook` | notebook server (C): sessione BASIC via HTTP su 127.0.0.1 |
+| `Notebook/build/gmbnotebook` | notebook server (C): sessione BASIC via HTTP su 127.0.0.1 |
 
 ## 1. Comandi della REPL (70 nella mappa C#)
 
@@ -24,11 +24,11 @@ Comandi riportati nel mondo C o instradati (vedi commit F3/F6b):
 | comando | dove |
 |---|---|
 | `FIXTURES` | runtime C `gmb_fixtures_*` (anche `gmb fixtures`, tool C `gmbadmin`) |
-| `SETUP` | **C**: `gmb setup LIBS\|OCR\|TORCH\|BROWSER\|OBSCURA\|ALL` (manifest + `gmb_fetch`) |
+| `SETUP` | **C**: `gmb setup LIBS\|OCR\|TORCH\|BROWSER\|OBSCURA\|ALL` (manifest + `gmbfetch`) |
 | `LLM` | runtime C (AIPATH) |
 | `ADD`/`REMOVE`/`BUMP`/`RESTORE`/`UPDATE`/`ROLLBACK`/`TRUST`/`CACHE` | **`gmbadmin pkg …`** (tool C, runtime `gmb_pkg_*`; la REPL non linka più gmb_pkg) |
 | `AIBENCH` | `gmbcs aibench` |
-| `HF`/`MLX` | `gmb hf` / `gmb mlx` — **C** (HF API + `gmb_fetch`, token da `~/.cache/huggingface/token`) |
+| `HF`/`MLX` | `gmb hf` / `gmb mlx` — **C** (HF API + `gmbfetch`, token da `~/.cache/huggingface/token`) |
 | `RAG` | `gmb rag build/update/status/query` — **C** (`gmb_rag_index_source`/`search`, `--prune` con `gmb_rag_list_sources`) |
 | `GRAPH` | **C**: `gmb graph build/update/status` (`gmb_graph_build`); REPL `rpl_graph_build` resta per il comando interattivo |
 | `BRAIN …` | **C**: `gmbadmin brain` (install/uninstall/resolve/stats/verify/create/register/buildvault/optimize/rename/backup/export/sign/dedupe/extract/merge/convert/diff/doctor/forget) |
@@ -43,18 +43,18 @@ Comandi riportati nel mondo C o instradati (vedi commit F3/F6b):
 
 | flag (C#) | stato attuale |
 |---|---|
-| `-noconsole`, `-c`/`-console`, `--sdl`, `-s`, `-c64` | `gmb_repl` (console System/Standard/SDL/C64) |
-| `-size W,H`, `-font nome,size`, `-w`, `-h` | `gmb_repl` |
-| `--pcode` | `gmb_repl` (C: vmc default; engine C#: P-Code) |
-| `--ast` | **implementato**: `gmb_repl <file> --ast` (e `gmb <file> --ast` via `gmbcs dump ast`) |
+| `-noconsole`, `-c`/`-console`, `--sdl`, `-s`, `-c64` | `gmbrepl` (console System/Standard/SDL/C64) |
+| `-size W,H`, `-font nome,size`, `-w`, `-h` | `gmbrepl` |
+| `--pcode` | `gmbrepl` (C: vmc default; engine C#: P-Code) |
+| `--ast` | **implementato**: `gmbrepl <file> --ast` (e `gmb <file> --ast` via `gmbcs dump ast`) |
 | `-repl` | **implementato**: dopo il file resta nella REPL |
 | `--dump-il` | **implementato** con `--engine=csharp` (esegue e produce il dump IL) |
 | `-bsp <dir>` | **implementato** in C (`rpl_bsp_compile_dir`) |
 | `-D name=val` | REPL → `gmb`/`gmbcs`; CLI → `gmbcs` |
 | `--il-module <dll>` | solo con `--engine=csharp` (inoltrato a `gmbcs`); senza engine: errore esplicito |
-| `-e`/`-executor` | `gmb_repl -e` (log settings) |
+| `-e`/`-executor` | `gmbrepl -e` (log settings) |
 | `-gpm[:mode]` / `GPM <mode>` | **implementato**: `auto|always|linear` passa a `gmb --gpm` (emissione C99). `auto` = rilevamento (default effettivo), `always` = forza lo scheduler (`gmb_gpm_start` sempre), `linear` = percorso diretto se lineare (mai crash) |
-| `--run <cmd>` | `gmb_repl --run <cmd>` |
+| `--run <cmd>` | `gmbrepl --run <cmd>` |
 | `-m`/`--managed` | **engine C#**: `gmbcs run --engine il` (con `--engine=csharp`); senza engine, errore esplicito. `gmb <file> -m` equivalente |
 | `-n`/`--native` | **engine C#**: `gmbcs run --engine native` (NativeAOT via `IlProgramCompiler.CompileNative` + ilc, poi esegue); `gmbcs build --target native` per il solo binario. `gmb <file> -n` equivalente |
 | `-full` | **implementato**: `gmbcs build --target il --full` (copia il runtime .NET accanto all'eseguibile; `gmb <file> -full` lo inoltra). `--all` disattiva il filtro ClosureSlim |
@@ -82,7 +82,7 @@ vengono ignorati: il CLI stampa un errore esplicito con il programma giusto da u
 | engine C# IL (managed) | `gmbcs run <file> --engine il` (o `gmb <file>`) |
 | engine C# P-Code | `gmbcs run <file> --engine pcode` (o `gmb <file> -pcode`) |
 | debug engine C# | `gmbcs debug <file> --break N …` |
-| mondo C (VMC/C99) | `gmb_repl <file>` / `gmb run --project <dir>` |
+| mondo C (VMC/C99) | `gmbrepl <file>` / `gmb run --project <dir>` |
 
 ## 5. Aperti (tracciati, mai silenziosi)
 

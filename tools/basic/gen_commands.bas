@@ -1,9 +1,9 @@
-' gen_commands.bas — genera COMMANDS.TXT (port BASIC di docs/comparison/gen_commands.py).
+' gen_commands.bas — genera COMMANDS.TXT (port BASIC del vecchio gen_commands.py, ritirato).
 '
 ' Fonti (nessun Python, nessuna variabile d'ambiente):
-'   1. docs/comparison/recon-stdlib.md  — elenco canonico dei simboli (prodotto da
+'   1. tools/reports/recon-stdlib.md  — elenco canonico dei simboli (prodotto da
 '      tools/basic/recon_stdlib.bas): sezioni 5-8 = funzioni/comandi/tipi/costanti.
-'   2. docs/comparison/command_desc.tsv — catalogo sintassi+descrizione (prodotto da
+'   2. tools/reports/command_desc.tsv — catalogo sintassi+descrizione (prodotto da
 '      tools/basic/gen_command_desc.bas).
 '   3. COMMANDS.TXT corrente            — testo CURATO a mano (vince sul catalogo quando
 '      non è un segnaposto) e APPENDICE delle collezioni (blocco informativo, non contato).
@@ -687,12 +687,12 @@ FUNCTION Main() AS INTEGER
   IF LEN(outfile) = 0 THEN outfile = g_root + "/COMMANDS.TXT"
 
   BuildBoxes()
-  LoadRecon(g_root + "/docs/comparison/recon-stdlib.md")
+  LoadRecon(g_root + "/tools/reports/recon-stdlib.md")
   IF fn_n = 0 THEN
     PRINT "recon-stdlib.md assente o vuoto: lanciare prima tools/basic/recon_stdlib.bas"
     RETURN 2
   END IF
-  LoadCatalog(g_root + "/docs/comparison/command_desc.tsv")
+  LoadCatalog(g_root + "/tools/reports/command_desc.tsv")
   ' Il testo CURATO e l'appendice si leggono SEMPRE da COMMANDS.TXT nella root, non dal
   ' percorso di output (con --out il file di destinazione può non esistere).
   LoadOld(g_root + "/COMMANDS.TXT")

@@ -333,7 +333,7 @@ int main(void)
 
     /* 13) INDICE di un programma distribuito: `<exe>/brains.txt` + snapshot del manifest in
      *     `<exe>/settings/` → installazione in `<exe>/brains/<nome>/<versione>` (prima della
-     *     cache nell'ordine di ricerca). È ciò che fa `gmb_brain_fetch`. */
+     *     cache nell'ordine di ricerca). È ciò che fa `gmbbrains`. */
     {
         char exedir[1200], settdir[1300], mpath2[1400], index[1400], want[1500], outb[1200], errb[512];
         snprintf(exedir, sizeof exedir, "%s/exe", g_dir);

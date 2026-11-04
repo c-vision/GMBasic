@@ -9,9 +9,9 @@ protocollo JSON.
 
 ```bash
 cmake -S Notebook -B Notebook/build
-cmake --build Notebook/build --target gmb_notebook
-Notebook/build/gmb_notebook                 # 127.0.0.1:8030
-Notebook/build/gmb_notebook --port 8040 --autosave /tmp/nb-vars.json
+cmake --build Notebook/build --target gmbnotebook
+Notebook/build/gmbnotebook                 # 127.0.0.1:8030
+Notebook/build/gmbnotebook --port 8040 --autosave /tmp/nb-vars.json
 ```
 
 Dipende solo dal runtime C condiviso (`GMBasic/native/gmb_runtime_c`): nessuna dipendenza

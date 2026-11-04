@@ -31,7 +31,7 @@ cmake -S "$wt/GMBasic/native/gmb_runtime_c" -B "$wt/GMBasic/native/gmb_runtime_c
       -DCMAKE_BUILD_TYPE=Release >"$logdir/rt-conf.log" 2>&1 || { echo "?config runtime"; tail -20 "$logdir/rt-conf.log"; exit 1; }
 cmake -S "$wt/REPL" -B "$wt/REPL/build" \
       -DCMAKE_BUILD_TYPE=Release >"$logdir/repl-conf.log" 2>&1 || { echo "?config repl"; tail -20 "$logdir/repl-conf.log"; exit 1; }
-cmake --build "$wt/REPL/build" --target gmb_repl -j4 >"$logdir/repl-build.log" 2>&1 \
+cmake --build "$wt/REPL/build" --target gmbrepl -j4 >"$logdir/repl-build.log" 2>&1 \
     || { echo "?build repl"; tail -30 "$logdir/repl-build.log"; exit 1; }
 
 cmake -S "$wt/GMBasic/native/gmb_compiler_c" -B "$wt/GMBasic/native/gmb_compiler_c/build" \
@@ -56,7 +56,7 @@ EOF
 cd "$wt" || exit 1
 out=$(printf 'RUN %s\nEVAL PRINT 6*7\nAST %s\nDASM %s\nCOMPILE %s\nFIXTURES LIST\nSETUP\nTRUST LIST\nCACHE LIST\nIL %s\nPCODE %s\nQUIT\n' \
       "$sample" "$sample" "$sample" "$sample" "$sample" "$sample" \
-      | ./REPL/build/gmb_repl -s 2>&1 \
+      | ./REPL/build/gmbrepl -s 2>&1 \
       | sed -E 's/\x1b\[[0-9;?]*[A-Za-z]//g')
 rc=$?
 printf '%s\n' "$out" > "$logdir/suite.txt"

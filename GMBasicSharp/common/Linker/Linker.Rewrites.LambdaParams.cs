@@ -65,6 +65,48 @@ public static partial class Linker
 
         var nodes = bodyNodes.ToList();
 
+        // Uso INDICIZZATO dentro la lambda: `y(0)` → il parametro è un ARRAY (elemento Double
+        // per default). Senza, una lambda ODE non annotata (`FN(t, y) => {-y(0)}`) restava
+        // con y scalare e il backend IL generava una firma delegate incompatibile con
+        // SolveIvp (Func<double,double[],double[]>) → InvalidProgramException. Il parametro
+        // può essere già stato tipizzato Double dal target typing: l'uso indicizzato è
+        // evidenza più forte e lo promuove ad array.
+        void UnifyArray(int paramIndex)
+        {
+            var param = parameters[paramIndex];
+            if (param.DataType is not (InferredType or DoubleType)) return;
+            var updated = param with { DataType = new ArrayType(new DoubleType()) };
+            parameters[paramIndex] = updated;
+            effectiveLambdaScope[updated.OriginalName.Lexeme] = updated.DataType;
+            if (updated.SymbolId >= 0)
+            {
+                program.Symbols.UpdateSymbolType(updated.SymbolId, updated.DataType);
+                program.Symbols.UpdateSymbolDeclaration(updated.SymbolId, updated);
+            }
+        }
+
+        foreach (var aae in FindAllNodesOfType<ArrayAccessExpr>(nodes))
+        {
+            int pi = -1;
+            if (aae.SymbolId >= 0 && paramBySymbol.TryGetValue(aae.SymbolId, out var bySym))
+                pi = bySym;
+            else
+            {
+                for (var i = 0; i < parameters.Count; i++)
+                {
+                    if (string.Equals(parameters[i].OriginalName.Lexeme, aae.NameCleaned.Lexeme,
+                            StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(parameters[i].OriginalName.Lexeme, aae.NameSuffixed.Lexeme,
+                            StringComparison.OrdinalIgnoreCase))
+                    {
+                        pi = i;
+                        break;
+                    }
+                }
+            }
+            if (pi >= 0) UnifyArray(pi);
+        }
+
         // Builtin: la definizione nativa si risolve per namespace + BuiltinKind (stessa via
         // di InferGenericPolymorphicReturnType).
         foreach (var bce in FindAllNodesOfType<BuiltinFunctionCallExpr>(nodes))

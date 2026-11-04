@@ -30,12 +30,13 @@ Index with one note per tool: `AiWiki/01-Projects/GMBasic/Guide/Tools/Tools-Indi
 The launchers of the C# harnesses (whose projects stay in `GMBasicSharp/`) are in `sh/`; their
 reference table is [`KIT-README.md`](KIT-README.md).
 
-The monorepo documentation (not the tools') lives in **a single** folder: `docs/` at the root,
-index in [`docs/README.md`](../docs/README.md). There are no nested `docs/` (`shared/docs`,
-`GMBasic/docs`, `ClipperLib/docs` were consolidated on 2026-10-29). Inside `docs/`:
-`Sync-GMBasic-Monorepo.md` (sync log, watermark in [`data/base_commit.txt`](data/base_commit.txt)),
-`gmb_env_audit.tsv` (`GMB_*` env audit), `comparison/` (audit reports and manifests),
-`ClipperLib/` (Clipper 5.3 reference and checks).
+`docs/` at the root is **not** the documentation folder: it is reserved for the **printed manual**
+and is currently empty (the Clipper 5.3 / controls reference moved to the vault, `Guide/ClipperLib-*`).
+The **reports produced by the tools** are in [`reports/`](reports/):
+`audit-backends.md`, `audit-stdlib.md`, `recon-stdlib.{md,json}`, `command_desc.tsv`, `manifests/`,
+`gmb_env_audit.tsv` (`GMB_*` env audit). The monorepo documentation and the sync log live in the
+vault (`AiWiki/01-Projects/GMBasicMonoRepo`); the sync watermark is
+[`data/base_commit.txt`](data/base_commit.txt).
 
 `audit/` e `registry-export/` sono progetti .NET **allineati al monorepo**: i `ProjectReference`
 puntano a `GMBasicSharp/`, `ResolveRoot()`/`FindMonorepoRoot()` trovano la root da qualunque

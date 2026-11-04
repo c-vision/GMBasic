@@ -30,7 +30,7 @@ static inline bool rect_contains(gmb_rect_t r, int x, int y)
 }
 
 /* ---- Theme (specchio Theme.cs) ---- */
-typedef struct gmb_theme {
+typedef struct gmbtheme {
     gmb_cell_color_t desktop_bg, window_bg, title_focus, title_blur, title_fg, border,
                      ctrl_fg, close_fg, text, dim, accent, active_bg, shadow;
     /* estensioni (0,0,0 = deriva dai colori base) */
@@ -1534,7 +1534,7 @@ typedef struct gmb_repl_cmd {
     char description[128];
     gmb_repl_handler_t handler;
 } gmb_repl_cmd_t;
-typedef struct gmb_repl {
+typedef struct gmbrepl {
     char prompt[64];
     gmb_repl_cmd_t commands[GMB_REPL_MAX_CMDS];
     int commands_count;

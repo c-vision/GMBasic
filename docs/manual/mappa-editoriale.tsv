@@ -1,0 +1,238 @@
+area	file	byte	righe	h1	h2	esempi	esempi_ok	ns	c99b	fiveb	percorsi	parity5
+utente	ABS-Guida-Utente	2128	50	ABS — Guida utente (valore assoluto)	4	2	2		3	0	0	0
+utente	AI-AGENT-CodeGen-Guida-Utente	1189	29	Guida utente — Codegen AI (AI AGENT CODE / FIX)	3	3	1		0	0	0	0
+utente	AI-Distill-Guida-Utente	9885	174	GMBasic — `AI DISTILL` — Self-Distillation lm_head-only	5	3	2	LLM IO	0	0	0	0
+utente	AI-Documenti-Guide	2612	57	GMBasic — Documenti strutturati (AI.DOCFIELDS, AI.DOCEXTRACT)	4	3	3	AI CONVERT	0	0	0	0
+utente	AI-Immagini-Guide	5785	120	GMBasic — Immagini: manipolazione e visione (AI.IMAGE*, AI.OCR)	6	15	13	AI PNG	0	0	0	0
+utente	AI-Memory-Guide	4968	141	AI Memoria — Manuale Utente	4	1	1	MEMORY AI	0	0	0	0
+utente	AI-Namespace-Manual	61873	1016	GMBasic — Namespace AI — Hub per umani	10	67	55	AI LLM	10	0	0	0
+utente	AI-OCR-Audio-Guide	4684	126	AI OCR e Audio — Manuale Utente	6	2	2	AI CONVERT	0	0	0	0
+utente	AI-Providers-Guide	20159	429	Guida AI Providers — GMBasic / GM-Basic / GMBasicAI	11	8	8	PROVIDER AI	4	0	0	0
+utente	AI-RAG-Guide	14170	285	AI Vector & RAG — Manuale Utente	6	9	9	AI VECTORDB	0	0	0	0
+utente	AI-SemanticGraph-Guida-Utente	14382	309	Guida utente — LLM.SYMBOL / LLM.IMPACT / LLM.CALLMAP (GMB Semantic Graph, lato programma)	10	19	18	LLM AI	4	0	0	2
+utente	AI-Skills-Plugins-MCP-Guide	26498	465	AI Skill, Plugin, MCP e Connettori — Manuale Utente	8	18	14	AI PLUGIN	5	0	0	0
+utente	AMQP-Guida-Utente	2232	51	AMQP — Guida utente (libreria interna)	7	2	1	CHIEDERE AMQP	0	0	0	0
+utente	ASR-Qwen3-ASR-Guida-Utente	6196	107	ASR Qwen3-ASR — Guida utente (engine nativo C)	7	3	3	ASR AI	0	0	0	0
+utente	ATOMIC-Guida-Utente	4963	142	GMBASIC — Guida al namespace ATOMIC	6	5	5	ATOMIC PASS	0	0	0	2
+utente	AgentIngestion-Guide	3017	67	GMBasic — L3 Ingestion / Skills / Guardrails	5	1	1	B3 AI	0	0	0	0
+utente	Agents-Dashboard-Guida-Utente	1033	25	Guida utente — Dashboard agent (web)	3	0	0		0	0	0	0
+utente	Agents-Manual	29132	523	GMBasic (unificato) — Manuale utente: Agenti	9	20	20	AI T1	4	0	0	0
+utente	Analysis-Manual	13301	267	GMBasic (unificato) — Analysis Manual (namespace ANALYSIS)	4	14	14	ANALYSIS STATS	10	0	0	0
+utente	Arrays-Guida-Utente	20790	399	ARRAYS — Guida Utente	9	39	37	P2 P1	4	0	0	0
+utente	BITS-Guida-Utente	7894	124	BITS — Guida Utente (namespace `BITS`)	7	5	5	BITS	4	0	0	0
+utente	BSP-Guide	11184	291	BASIC Scripting Pages (.bsp) — Guida completa	12	2	0	BASIC STRINGS	0	0	0	0
+utente	Blockchain-Guida-Utente	3053	71	Blockchain — Guida Utente	5	4	4	BLOCKCHAIN HD	0	0	0	0
+utente	Brain-Toolchain-Guide	8281	112	Guida — Brain Toolchain (`BRAIN …` nella REPL, `gmb brain …` nella CLI)	8	0	0	AI GRAPH	0	0	0	0
+utente	Browser-Automation-Guida-Completa	20711	380	Browser Automation GMBASIC — Guida Completa	11	8	7	BROWSER PLUGIN	3	1	0	0
+utente	Browser-Automation-Plugin	14782	221	Browser Automation — Manuale Utente	8	18	17	AI D1	0	1	0	0
+utente	CLI-Flags	15274	222	CLI Flags — GMBasic (unificato)	7	1	0	REPL MB	0	0	0	0
+utente	COMPRESSION-Guida-Utente	4174	99	COMPRESSION — Guida utente	3	14	14	COMPRESSION	0	0	0	0
+utente	CONVERT-User-Manual	19350	491	CONVERT — Manuale Utente	11	6	6	CONVERT AST	5	0	0	1
+utente	CandleChart-Controllo-Guida-Utente	4367	94	CandleChart — Controllo Utente interattivo (BASIC)	6	3	2	UC GC	0	0	0	1
+utente	Class-Static-Fields-Guida-Utente	5015	132	Guida Utente — Campi `STATIC` di CLASS	8	2	2	STATIC SELF	8	0	0	0
+utente	Classes-User-Manual	27411	829	Manuale Utente — Classi e Programmazione a Oggetti in GMBasic	13	2	2	SELF BASE	0	0	0	0
+utente	Clipper-Controls-Reference	5607	221	Clipper Controls — Reference Completa	6	0	0	WINDOW KEY	0	0	0	0
+utente	Clipper-Macro-Eval-Blocks-Guida-Utente	6121	136	Macro `&`, `EVAL` e code block — Guida Utente (compatibilità Clipper 5.3)	9	6	6		0	0	0	0
+utente	Clipper-TUI-Manual	23014	607	GMBasic (unificato) — Clipper TUI Reference Manual	12	20	19	KEY WINDOW	0	0	0	0
+utente	Compiler-CLI-Guide	5134	115	CLI del compilatore C (`gmb`)	7	2	0	TODO SSL	0	0	0	0
+utente	Concorrenza-GPM-Guida-Utente	8666	176	Guida utente — Concorrenza (GPM)	7	8	8	SYNCMAP CONCURRENCY	5	0	0	0
+utente	ContextMenu-Controllo-Guida-Utente	3060	89	ContextMenu — Menù contestuale (popup)	5	2	2		0	0	0	0
+utente	Controlli-Pixel-Proprieta-Metodi-Guida-Utente	22842	540	Controlli: famiglia unica `CONTROLS` — proprietà, eventi, metodi CONTROL — Guida utente	10	18	18		0	0	0	0
+utente	Controlli-Utente-Base-Control	8914	213	CONTROLS — Base formale `Control`	4	8	8	VB6 BASIC	4	3	0	0
+utente	Controlli-Utente-Composizione	2061	61	CONTROLS — Composizione annidata (`PARENT`)	5	2	2	VB6	0	0	0	0
+utente	Controlli-Utente-Struttura	6428	116	Controlli Utente — struttura della libreria `Controls/` (namespace `CustomControls`)	7	13	3	README	0	0	0	0
+utente	Controlli-Utente-UserControl	2910	75	Controlli utente (UserControl) — guida utente	6	2	2	P0	0	0	0	0
+utente	Controls-CHART-Guida-Utente	2272	74	CONTROLS CHART — Guida Utente	7	2	2	TUI CHART	0	0	0	0
+utente	Convert-Setup-User-Manual	10381	269	GMBasic — Manuale Utente: Documenti (CONVERT) e Componenti runtime (SETUP)	9	4	4	CONVERT OCR	0	0	0	0
+utente	Costanti-Globali-Guida-Utente	9402	361	Guida utente — Costanti globali (`%NOME`)	12	4	3	BROWSER JOY	0	0	0	0
+utente	DBF-Guida-Utente	13936	234	DBF — Guida utente (databases xBase, namespace `DBF`)	12	22	21	DBF ISAM	0	0	0	0
+utente	DBF-Guide	8676	319	DBF — Manuale Utente Completo	13	3	3	DBF SQL	0	0	0	0
+utente	DOEVENTS-Guida-Utente	3434	118	Guida Utente — Comando `DOEVENTS`	6	3	3		0	0	0	0
+utente	DOM-Guida-Utente	2721	65	DOM (HTML/XML) — Guida utente	4	3	2	DOM	0	0	0	0
+utente	DYNAMIC-Guida-Utente	2625	70	DYNAMIC — guida utente (scope dinamico Clipper/xBase)	5	2	2		0	0	0	0
+utente	DataGrid-Controllo-Guida-Utente	4912	114	DataGrid — Controllo Utente avanzato e personalizzabile (BASIC)	6	2	2	SELF	0	0	0	0
+utente	DataOra-Guida-Utente	1826	39	Data e ora correnti — Guida utente	2	2	2		0	0	0	0
+utente	Dbf-UpdateOn-Guida-Utente	2592	67	`DBF UPDATE ON <key> FROM <alias> REPLACE …`	6	2	2		0	0	0	0
+utente	Defer-Guida-Utente	7588	183	Guida Utente — `DEFER`	9	2	2	RETURN FIFO	11	0	0	0
+utente	DirectCast-Guida-Utente	3272	74	DIRECTCAST — Guida utente (conversione esplicita di tipo)	5	2	2	IL	3	0	0	0
+utente	DuckDB-Guida-Utente	5739	134	DuckDB — Guida utente (FFI via package manager)	6	2	2	DUCKDB DOUBLE	0	0	0	0
+utente	FFI-Guida-Utente	6690	139	FFI (DECLARE ... LIB) — Guida utente	9	3	3	BASIC UDT	0	0	0	0
+utente	FUNCTION-Main-ExitCode-Guida-Utente	3078	135	Guida Utente — `FUNCTION Main() AS INTEGER` e codice di uscita del processo	6	1	0		0	0	0	0
+utente	Finestre-Eventi-Guida-Utente	4228	109	Guida utente — Finestre e gestione eventi	8	2	2	MOUSE VM	4	0	0	0
+utente	Funzioni-Matematiche-Guida-Utente	3266	73	Funzioni matematiche — Guida utente (famiglia numerica)	5	4	4		4	0	0	0
+utente	GET-Guida-Utente	7102	153	@SAY / @GET / READ — Guida utente (Clipper/xBase)	9	10	10		1	0	0	0
+utente	GET-Tipi-Guida-Utente	4415	99	@GET con TYPE — guida utente	6	7	5		0	0	0	0
+utente	GMBasic-Modelli-AI-Locali	7794	174	GMBasic — Configurazione modelli AI locali	9	0	0	AI MLX	0	0	0	0
+utente	GMBasicIDE-Guida-Utente	4833	150	GMBasicIDE — Guida utente	8	1	0	THIRD_PARTY_NOTICES NOTICE	0	0	0	0
+utente	GREP-Guida-Utente	6081	150	GREP — Guida utente	6	7	7	GREP JSON	0	0	0	0
+utente	Goto-Gosub-OnError-Guide	6270	131	GOTO, GOSUB e ON ERROR — Guida Completa	4	0	0	GMBASIC	0	0	0	0
+utente	Graph-Guida-Utente	8266	164	GRAPH — Guida Utente	9	10	10	GRAPH IO	0	0	0	0
+utente	Graphics-Guide	17897	431	Graphics — Manuale Utente Completo	13	22	22	GRAPHICS TTF	6	1	0	0
+utente	HTTP-Streaming-Guida-Utente	11211	262	HTTP in streaming (`HTTPRESPONSE` — StartStream / Write / Flush / EndStream)	10	6	6	JSON	0	0	0	0
+utente	Http-FetchInto-Guida-Utente	8531	186	FETCH … INTO Callback — guida utente	9	5	5	CONCURRENCY HTTP	4	0	0	0
+utente	IO-Guida-Utente	13308	276	IO — Guida Utente	9	21	21	IO MEMORYMAP	3	0	0	0
+utente	ISAM-Guida-Utente	7599	158	ISAM — Guida utente (databases B+Tree, namespace `ISAM`)	12	3	2	ISAM CONVERSIONS	0	0	0	0
+utente	ISAM-Guide	6596	234	ISAM — Manuale Utente Completo	12	2	2	ISAM SQL	0	0	0	0
+utente	Joy-Guida-Utente	904	29	JOY — Guida Utente	2	0	0	JOY	0	0	0	0
+utente	Json-Guida-Utente	7391	136	JSON — Guida Utente	6	29	29	JSON	6	0	0	0
+utente	KV-Quant-Hetero-KV-Guida-Utente	6291	136	KV-quant e Hetero-KV — Guida d'uso	8	0	0	FP16 KV	0	0	0	0
+utente	Kafka-Guida-Utente	2281	50	Kafka — Guida utente (libreria interna)	7	2	1	KAFKA CHIEDERE	0	0	0	0
+utente	KdTree-Manual	1903	55	GMBasic (unificato) — KdTree Manual (namespace KDTREE)	4	3	3	KDTREE	0	0	0	2
+utente	LEDGER-Guide	6191	232	LEDGER — Manuale Utente Completo	10	3	3	LEDGER DATETIME	0	0	0	0
+utente	LIBRARY-gmblib-Guide	9426	206	Produrre una libreria condivisa (`.gmblib`) da BASIC	8	3	2	MODULE	4	0	0	0
+utente	LLM-Arch-ModelCompiler-Guida-Utente	76436	1099	LLM — Model Compiler e Arch (`LLM ARCH`, `LLM POLICY`, verbi) — Guida utente	17	47	43	LLM F32	0	2	0	4
+utente	LLM-Server-OpenAI-Compatibile	12200	172	LLM Server OpenAI-compatible — Guida (due versioni C/C#)	8	6	6	JSON STOP	3	1	0	0
+utente	LLM-Tensor-Compare-Dense-Guida-Utente	6510	147	LLM TENSOR COMPARE / DENSE — Guida utente	4	3	3	RIFERIMENTO Q2_K	0	0	0	0
+utente	LLM-Tokens-Guida-Utente	10253	203	LLM — verbi come **valore** (funzioni + comandi con `INTO`)	13	8	6	LLM INTO	0	0	0	0
+utente	LLVM-Modifica-LLM-Flusso-Completo-Guida-Utente	33720	613	Modificare un LLM — flusso completo (la pipeline più complessa) — Guida utente	20	22	21	LLM AI	0	0	0	0
+utente	Load-Balancing-Guida-Utente	10997	165	Load balancing (`netlb`) — Guida utente	7	3	3	NETLB README	3	0	0	0
+utente	Loops-FOR-Guida-Utente	7862	182	Guida utente — Cicli `FOR … NEXT`	7	5	5		0	0	0	0
+utente	MQTT-Guida-Utente	2186	51	MQTT — Guida utente (libreria interna)	7	2	1	MQTT CHIEDERE	0	0	0	0
+utente	MarketDepth-Controllo-Guida-Utente	4095	112	MarketDepth / DOM — Controllo Utente (trading)	7	2	2	MOUSE	0	0	0	0
+utente	Matrix-Linalg-Manual	13143	216	GMBasic (unificato) — Matrix & Linalg Manual (namespace MATRIX)	5	8	8	MATRIX ARRAYS	5	0	0	2
+utente	Messaging-Guida-Utente	3083	69	MESSAGE — Guida utente (messaging generico, event-driven)	5	1	1		0	0	0	0
+utente	Modulo-Livello-TopLevel-Guida-Utente	1953	52	Guida utente — codice di livello modulo (top-level) e `SUB Main`	4	2	2		0	1	0	0
+utente	MongoDB-Guida-Utente	3401	63	MongoDB — Guida utente (pacchetto `mongo`)	5	2	2	MONGO	0	0	0	0
+utente	Mvc-Http-Guida-Utente	3292	91	Guida utente — MVC HTTP (controller e rotte)	5	3	3	SELF MVC	0	0	0	0
+utente	NATS-Guida-Utente	2191	51	NATS — Guida utente (libreria interna)	7	2	1	NATS CHIEDERE	0	0	0	0
+utente	Net-Guida-Utente	2802	58	NET — Sommario	5	1	1	NET	4	0	0	1
+utente	Notebook-User-Guide	7355	228	Notebook GMBASIC — Guida utente	8	2	0		0	0	0	0
+utente	NullConditionalAccess-Guida-Utente	6205	138	Guida Utente — Null-Conditional Access (`?.`)	7	2	2	TYPE NIL	7	0	0	0
+utente	Optimize-Manual	7866	132	GMBasic (unificato) — Optimize Manual (namespace OPTIMIZE)	3	0	0	OPTIMIZE DOUBLE	0	0	0	0
+utente	OrderTicket-Controllo-Guida-Utente	2573	66	OrderTicket — Controllo Utente order ticket (BASIC)	5	3	2	MOUSE GC	0	0	0	0
+utente	PANEL-Guida-Utente	1864	58	PANEL — guida utente	5	2	2		0	0	0	0
+utente	Package-Manager-Guida-Utente	33802	573	GM-BASIC — Package Manager (Guida completa)	20	4	2	REPL MIOPKG	0	0	0	0
+utente	PackageManager-Manual	35370	515	GMBasic Package Manager — Manuale completo	18	8	5	GMBASIC SYSTEM	4	0	0	0
+utente	PackageManager-Publish-Contributor-Guide	15062	379	Guida completa — Pubblicare pacchetti ESTERNI (contributor) su GMBasic	11	3	1	REPL URL	0	0	0	0
+utente	PackageManager-Publish-Ufficiali-Guide	21907	567	Guida completa — Pubblicare pacchetti UFFICIALI su GMBasic	10	2	1	REPL VM	0	0	0	0
+utente	PackageManager-User-Guide	10885	300	GMBasic Packages — Guida Utente (manuale per chi usa i pacchetti)	8	2	1	URL REPL	0	0	0	0
+utente	Palette-Colore-Guida-Utente	1311	32	Guida utente — Palette colore	5	1	1		0	0	0	0
+utente	Paths-Config-User-Guide	20320	323	Percorsi dati e configurazione di GMBasic — Manuale Utente	11	1	1	JSON SYSTEM	0	0	0	0
+utente	PetsciiControlChars	1918	40	PETSCII$ Control Character Decoder	6	1	1		0	0	0	0
+utente	Polimorfismo-Guida-Utente	6307	144	Guida Utente — Polimorfismo dei comandi in GMBasic	6	0	0	GRAPHICS CONSOLE	4	0	0	0
+utente	Protobuf-Guida-Utente	2242	51	Protobuf — Guida utente (libreria interna)	7	2	1	PROTOBUF CHIEDERE	0	0	0	0
+utente	RDD-Guide	8705	247	RDD — Manuale Utente Completo	11	4	4	RDD SQL	3	0	0	0
+utente	REPL-Commands-Reference	52389	650	REPL Commands Reference	19	9	2	SYSTEM AI	0	0	0	0
+utente	Rag-Eval-Guida-Utente	11444	254	Rag-Eval — Guida Utente (VECTORDB, R1+R2+R3)	8	6	6	VECTORDB R2	4	0	0	0
+utente	RecursiveMAS-Manual	8493	146	RecursiveMAS — Manuale GMBasic	8	8	8	AI VM	4	0	0	0
+utente	Redis-Guida-Utente	6695	123	Redis — Guida utente (FFI via package manager)	7	2	2	REDIS BASIC	4	0	0	0
+utente	SPEED-Guide	8992	263	SPEED — Manuale Utente Completo	10	5	5	SPEED SQL	0	0	0	0
+utente	SPLITTER-CONTEXTMENU-Builtin-Guida-Utente	3816	87	SPLITTER e CONTEXTMENU — controlli BUILT-IN (namespace CONTROLS)	7	4	4		0	0	0	0
+utente	SQL-Guide	24942	517	SQL — Manuale Utente Completo (aggiornato)	13	32	32	SQL AI	0	0	0	0
+utente	STYLE-Guida-Utente	3085	79	STYLE — Guida utente (stile dei controlli)	5	2	2		0	0	0	0
+utente	STYLE-primary-Guida-Utente	1159	40	STYLE "primary" — guida utente	3	2	2		0	0	0	0
+utente	Second-Brain-Guide	56855	1002	Il Second Brain di GMBasic — Manuale Utente	16	4	4	AI GRAPH	5	0	0	0
+utente	Security-Best-Practices	6435	139	Security Best Practices — GMBasic (2026-09-02)	9	5	5	CRYPTOGRAPHY STRINGS	0	0	0	0
+utente	Security-Middleware-Reference	4525	95	Security Middleware & HTTP CONFIG — Reference (GMBasic)	6	5	5	HTTP STRINGS	0	0	0	0
+utente	Segmented-Controllo-Guida-Utente	2584	63	Segmented — Controllo Utente toggle-group (BASIC)	5	2	2	GC	0	0	0	2
+utente	SelectCase-IS-Comparazione-Guida-Utente	5567	173	Guida Utente — SELECT CASE: clausola `CASE IS <op> <valore>`	8	4	4	MATCH	5	0	0	0
+utente	SelfConsistency-Guida-Utente	10465	256	Guida utente — Self-Consistency / Semantic Entropy	14	3	3	AI VECTOR	0	0	0	0
+utente	Signal-Manual	3344	75	GMBasic (unificato) — Signal Manual (namespace SIGNAL)	3	0	0	SIGNAL TIMESERIES	0	0	0	0
+utente	Signals-Guida-Utente	4712	88	SIGNAL — Guida utente (segnali trading, event-driven)	7	3	3	AND	0	0	0	0
+utente	Sintassi-Base-Guida-Utente	6608	130	Guida utente — Sintassi di base (grammatica)	9	10	10	SELF FUNCTION	0	0	0	0
+utente	SoundEnhanced	3321	93	SOUND Enhanced — Waveform + ADSR + Pulse Width + Multi-Voice + Filter	10	1	1		0	0	0	0
+utente	Spatial-Manual	2061	59	GMBasic (unificato) — Spatial Manual (namespace SPATIAL)	3	0	0	SPATIAL MATRIX	0	0	0	0
+utente	Special-Manual	4339	91	GMBasic (unificato) — Special Manual (namespace SPECIAL)	3	1	1	SPECIAL	0	0	0	0
+utente	Splitter-Controllo-Guida-Utente	3520	91	Splitter — Controllo Utente (due pannelli con barra trascinabile)	6	2	2	MOUSE	0	0	0	0
+utente	Stats-Manual	13576	228	GMBasic (unificato) — Stats Manual (namespace STATS)	5	2	2	STATS MATH	5	0	0	1
+utente	Stringhe-Guida-Utente	10917	232	Guida utente — Stringhe	10	14	14	STRINGS STRINGS_ISLENGTH	0	0	0	0
+utente	System-Guida-Utente	15645	319	System — Guida Utente	7	18	18	SYSTEM DATETIME	7	0	0	0
+utente	System-SYS-Memoria-Guida-Utente	2486	65	Guida utente — `SYSTEM.SYS(...)`: info di sistema e memoria	5	2	2	SYSTEM	0	1	0	0
+utente	TBROWSE-Sort-Filter-Guida-Utente	5565	111	TBROWSE — Ordinamento e filtro	5	4	4		0	0	0	0
+utente	TBrowse-Reference	2497	72	TBrowse — Reference Clipper 5.3	1	0	0		0	0	0	0
+utente	TEXTMODE-Guida-Utente	7628	192	Guida Utente — Comando `TEXTMODE` e costanti di modalità console	9	2	2	STYLE TEXTMODE	4	0	0	0
+utente	THEME-Guida-Utente	1888	67	THEME — Guida utente (temi visivi)	5	1	0		0	0	0	0
+utente	TRAIN-Namespace-Guide	30089	627	Addestrare un modello con `TRAIN` — guida pratica	9	6	6	LLM IO	0	0	0	0
+utente	TYPEINFO-Riflessione-Guida-Utente	8756	175	TYPEINFO — Riflessione + tipi nullable (guida utente)	5	28	28	TYPEINFO SYSTEM	5	0	0	0
+utente	TimeSeries-Guida-Utente	3250	90	TimeSeries — Guida Utente	7	1	1		0	0	0	0
+utente	Torch-Manual	24926	607	GMBasic (unificato) — Torch Reference Manual (namespace TORCH)	12	5	5	TORCH MODEL	0	0	0	0
+utente	Trading-Guida-Utente	10279	240	GMBASIC — TRADING: Guida Utente	7	16	16	TRADING TM	0	0	0	0
+utente	Trading-Minori-Controlli-Guida-Utente	2253	57	Controlli di trading "minori" — UserControl (BASIC)	6	3	2	UC	0	0	0	1
+utente	Tray-Guida-Utente	5158	111	GMBasic — Guida Utente: namespace `TRAY` (icona nella barra del SO)	7	2	2	BASIC	0	0	0	0
+utente	Types-NamedTuple-Guida-Utente	5785	167	Guida Utente — Named Tuple Fields	8	9	9	GMBASIC AGENTS	0	0	0	0
+utente	VECTORDB-Guide	6323	163	VECTORDB — Manuale Utente Completo	9	2	2	VECTORDB VECTOR	3	0	0	0
+utente	Variables-Scope-Guida-Utente	4556	108	Guida utente — Scope e variabili	6	7	7	ARRAYS	0	0	0	0
+utente	Vector-Manual	3572	72	GMBasic (unificato) — Vector Manual (namespace VECTOR)	3	8	8	VECTOR DOUBLE	0	6	0	0
+utente	WINDOW-SHOW-HIDE-Guida-Utente	3413	88	WINDOW SHOW / WINDOW HIDE — Guida utente	5	3	3	BASIC	0	0	0	0
+utente	Watchlist-Controllo-Guida-Utente	4107	112	Watchlist — Controllo Utente (trading)	8	2	2	MOUSE	0	0	0	0
+utente	Workflow-Guida-Utente	1064	28	Guida utente — Workflow (AI WORKFLOW)	3	2	2	AI	0	0	0	0
+utente	XOR-AND-OR-SWAP-Guida-Utente	5112	152	Guida Utente — Operatori `XOR` / `AND` / `OR` e comando `SWAP`	4	6	6		4	0	0	0
+utente	gRPC-Guida-Utente	2119	48	gRPC — Guida utente (libreria interna)	7	2	1	GRPC CHIEDERE	0	0	0	0
+guide	AgentCodeGen-Guide	4880	116	GMBasic — L2 Brain / CodeGen	6	3	1	AI B2	0	0	0	0
+guide	AgentL5-Guide	3739	75	GMBasic — L5 Distributed / Web / Strict	6	1	1	B5 AI	0	0	0	0
+guide	C99-GPM-Technical-Manual	39137	934	C99 GPM — Manuale Tecnico Completo	15	0	0	PASS OS	1	0	0	0
+guide	CUA-Universal-Action-Runtime-Guida	23418	367	CUA — Universal Action Runtime: guida completa	15	33	29	AI COMPUTER	4	0	0	0
+guide	Clipper-Macro-Eval-Blocks-Compat	13046	180	CLIPPER 5.3 — compatibilità MACRO `&`, `EVAL`, CODE BLOCK `{ |p| ... }`	4	6	6		6	2	0	1
+guide	ClipperLib-Clipper-5.3-Reference	16142	318	Clipper 5.3 Emulation — Technical Reference	14	0	0	K_F1 ESC	0	0	0	0
+guide	ClipperLib-Controls-Reference	65740	2549	ClipperLib Controls Documentation	16	0	0	RGB K_F1	0	0	0	0
+guide	Collezioni-Guida-Utente	25280	864	GMBASIC — Guida alle Collections	23	14	14	JSON LIST	4	0	0	0
+guide	Commands-Generation-Guide	18060	303	GMBasic — Guida alla generazione di COMMANDS.txt e uso dei tool BASIC	6	3	0	COMMANDS CLIP	0	0	2	0
+guide	Compression-Guida-Utente	3479	121	GMBASIC — Guida al namespace COMPRESSION	6	1	1	IO COMPRESSION	0	0	0	0
+guide	Connector-Runtime-Guida-Utente	38576	948	Connector Runtime — Guida Utente	13	14	14	AI SYSTEM	4	0	0	0
+guide	Console-Architecture-Details	7036	154	Console Architecture — 4 Modalità Operative	9	0	0	CONSOLE COMMANDS	0	0	1	0
+guide	Console-Architecture	2894	52	Console e Modalità Video — GMBasic (unificato) V10	6	0	0	CONSOLE COMMANDS	0	0	1	0
+guide	Conversion-Guida-Utente	7826	231	GMBASIC — Guida alle Conversioni	5	9	9	IL MATH	4	0	0	0
+guide	Cross-Repo-Independence-Rule	4134	84	⛔ Regola — Indipendenza: si lavora SOLO nel monorepo	4	0	0	README COMMANDS	0	0	0	0
+guide	Cross-Repo-Verification-Rule	4100	82	Verification Rule — come si verifica, nel monorepo	4	2	0	DD AI	0	0	0	0
+guide	Cryptography-Guida-Utente	10719	246	GMBASIC — Guida a CRYPTOGRAPHY (encoding e hash)	9	22	22	PEM CONVERSIONS	9	0	0	0
+guide	Database-Guida-Utente	18640	331	Database — Guida Utente (DBF · ISAM · IO · RDD · LEDGER)	10	31	28	DBF IO	0	0	0	2
+guide	Datetime-Guida-Utente	11385	270	Datetime — Guida Utente	7	18	18	DATETIME JSON	0	0	0	0
+guide	Debug-Error-Workflow	7622	156	Debug & Error Workflow — GMBasic (legacy GPM / VM/C)	4	0	0	GMBASIC STORICA	0	0	0	0
+guide	Debug-Unificato-E-Backend	6264	126	Debug Unificato e Flag Backend — GMBasic	4	3	2	GMBASIC	1	0	0	0
+guide	Direttiva-Sintassi-AGENTS	7830	181	GMBasic — Direttiva Sintassi del Linguaggio	6	1	1	DBF AI	0	0	0	0
+guide	Document-Processing	6116	130	GMBasic — Document Processing (CONVERT, PDFOxide, Markdown AST)	9	4	4	CONVERT AI	0	0	0	0
+guide	Embedded-LLM-Infrastruttura-Guida	42300	570	GMBasic — Infrastruttura LLM Embedded	12	0	0	MLX QSA	0	0	0	0
+guide	Event-System-Plan	4761	121	Event System — Piano Completo	4	2	2	KEY GRID	0	0	0	0
+guide	Executor-Architecture	10870	215	Executor — Architettura e REPL	12	1	0		0	0	0	0
+guide	FFI-Guida-Utente	41647	707	GMBASIC — Guida al Foreign Function Interface (FFI)	15	29	28	FM FFI	5	0	0	0
+guide	Finance-Guida-Utente	7570	296	GMBASIC — Guida alle funzioni FINANCE	6	0	0	FINANCE MATH	0	0	0	0
+guide	GM-Basic-BRT-Reference-Card	9768	192	BRT Reference Card	6	1	0	GMBC C99	0	0	0	0
+guide	GM-Basic-IDE-LookAndFeel-Review	9104	181	GMBasic IDE — Look&Feel Review (da 3 progetti di riferimento)	9	0	0	TODO SUB	0	0	0	0
+guide	Generatori-Guida-Utente	6591	370	GMBASIC — Guida ai Generatori	11	0	0		0	0	0	0
+guide	Grammar	9644	338	Riferimento Grammatica GM-BASIC V10	14	6	6	WHILE THEN	0	0	0	0
+guide	Graphic-Test-Runners	8071	169	GMBasic — Runner Grafici di Test (headless / visible)	8	6	5	RISOLTO MOUSE	0	0	0	0
+guide	Graphify-Integration	2694	67	Graphify Integration — GMBasic (unificato)	5	0	0	SKILL GRAPH_REPORT	0	0	0	0
+guide	Http-Mvc-Programmer-Manual	35343	818	Manuale del Programmatore — HTTP & MVC in GMBasic	13	11	10	SELF MVC	0	0	0	0
+guide	IL-Graphics-Input	3604	83	Input grafico IL — INKEY, X, Ctrl+C	4	1	1	SDL GPM	0	0	0	0
+guide	ImplicitLineNumbers	3604	68	Numeri di Riga Impliciti (Synthetic Keys + ExecutionOrder)	4	2	2		0	0	0	0
+guide	LLM-Server-Guida	12471	219	LLM Server (C e C#) — Guida d'uso: da BASIC e per l'utente	8	6	6	PATH JSON	0	0	0	0
+guide	Line-Number-Spec	10764	264	Line Number Specification — GMBasic (unificato)	9	1	1	NAMESPACE MATHUTILS	0	0	0	0
+guide	Loop-Fixes-Architecture	11801	215	Loop Architecture — GPM Executor (legacy C#, D1)	9	1	0	SCHEDULER GPM	0	0	0	0
+guide	Math-Guida-Utente	5771	164	Math — Guida Utente	11	4	4	STATS	4	0	0	0
+guide	Modelli-IA-Locali	11468	204	Modelli IA Locali — Ricognizione completa (2026-08-31)	8	1	1	CONVERT AI	0	0	0	0
+guide	Mvc-Routing-Conventions	7364	142	MVC — Routing Conventions e Pattern (GMBasic)	7	3	3	SELF JSON	0	0	0	0
+guide	Options-Guida-Utente	9073	192	Options — Guida utente (configurare i parametri)	7	2	2	AI LLM	0	0	0	0
+guide	OutputCapture	1973	39	Output Capture (TeeWriter + CAPTURE Command)	3	0	0		0	0	0	0
+guide	PCodeVM-GPM-User-Manual	44113	1345	GMBasic — Manuale Utente GPM nella PCodeVM (parità Go)	27	45	45	ATOMIC CONTEXT	0	0	0	0
+guide	PRG-Format	3066	94	PRG Format — P-CODE Program File	7	2	0		0	0	0	0
+guide	Palette-System	7610	146	Palette System — Architecture & Commands	7	0	0	GRAPHICS PALETTE	0	0	0	0
+guide	PrecompilerMultiTarget	1831	55	Precompiler Multi-Target #IFDEF	7	1	1		0	0	0	0
+guide	Repo-Legacy-Referenza	4341	65	Archivi storici — nessuna relazione col monorepo	5	0	0		0	0	0	0
+guide	Resources-Native-Libs-SDL	6680	120	Resources — Librerie Native SDL: problemi e soluzione	8	0	0	SDL3 SDL2	0	0	0	0
+guide	SQL-ILBackend-RealDB-Testing	8841	99	SQL IlBackend — test contro database reali (SQLite + PostgreSQL)	8	9	9	RDD ADO	0	0	0	0
+guide	Setup-Infrastructure	5543	91	Infrastruttura — Download on-demand (`gmb setup`) e repo remoto `GMBasicModules`	5	0	0	RID	0	0	0	0
+guide	Signal-Guida-Utente	3278	105	GMBASIC — Guida al namespace SIGNAL	7	1	1	SIGNAL	0	0	0	0
+guide	Spatial-Guida-Utente	3195	111	GMBASIC — Guida a SPATIAL (distanze e inviluppo convesso)	7	1	1	SPATIAL MATRIX	0	0	0	0
+guide	Stats-Guida-Utente	2664	108	GMBASIC — Guida alle Statistiche (STATS)	4	0	0	STATS AR	0	0	0	0
+guide	Strings	12150	365	Strings — Manuale Utente Completo	12	12	12	STRINGS	5	0	0	0
+guide	Test-Exec-Usage	9458	286	Test-Exec — Guida Completa all'Uso (⚠️ LEGACY)	9	4	3	GMBASIC BASIC	0	0	0	0
+guide	Test-Guide-C99-OpenSSL	3797	73	Test della gamba C — **C99Native** (con OpenSSL)	5	2	2	GMBASIC C99	3	0	0	0
+guide	Test-Index-and-Runners	31225	423	GMBasic — Indice dei Test e Runner (Mappa test_* → backend → flusso)	9	13	8	GMBASIC AI	2	0	0	0
+guide	Test-Procedure-AST-DASM	4861	108	Test Procedure — AST fonte di verità (D5) / DASM legacy	7	3	2	GMBASIC LINQ	0	0	0	0
+guide	Test-Procedure	5676	122	Procedura Test GMBasic	8	1	0	GMBASIC VIETATI	1	0	0	0
+guide	Test-Run-All-Guide	6318	132	GMBasic — `test_run_all` — Runner unificato per classi di esecuzione	7	0	0	OBBLIGATORIO IL	0	0	0	0
+guide	Test-Runner-Implementation	11751	212	Test Runner — Dettaglio Implementativo (Conformance)	11	5	3	GMBASIC C1C4	0	0	0	0
+guide	Test-Sample-Classification	15213	243	GMBasic — Classificazione dei Sample BASIC per Esecuzione Automatica	8	58	58	GMBASIC AI	0	0	0	0
+guide	Testing-Guide	12330	205	GMBasic — Guida Completa ai Test Runtime	9	3	1	GMBASIC CLS	2	0	0	0
+guide	Torch-Guida-Utente	6426	196	GMBASIC — Guida a TORCH (tensori e machine learning)	10	4	4	TORCH JSON	0	0	0	0
+guide	Trading-Bonds-Guida-Utente	6198	200	GMBASIC — Guida a TRADING.BONDS	9	1	1	BND DATETIME	0	1	0	0
+guide	Trading-Guida-Utente	8492	201	Trading — Guida Utente (azioni ed equity)	8	8	8	TRADING STATS	5	0	0	0
+guide	Trig-Guida-Utente	1452	55	Trig — Guida Utente	5	6	6		0	0	0	0
+guide	VM-C-GPM-Technical-Manual	32920	882	VM/C — GPM (Goroutine-Processor-Machine) — Manuale Tecnico Completo	16	6	1	STORICO SCOPO	0	0	0	0
+guide	VM-C-Opcode-Spec	22905	370	VM/C — Specifica ufficiale (opcode, syscall, builtin)	7	0	0	TRY FOR	3	0	0	0
+guide	Variables-Scope-Spec	25812	453		0	3	3	VB SELF	0	0	0	0
+guide	WebDashboard-Guide	36438	680	GMBasic — Guida Utente: WEBAPP Agents Dashboard + Canvas + WASM	13	10	3	AI V1	4	0	0	0
+guide	Window-Management-Event-System	4087	106	Window Management & Event System	3	0	0	WINDOW KEY	0	0	0	0
+guide	Workflow-Guide	8485	201	GMBasic — Manuale Workflow	9	2	2	AI MLX	0	1	0	0
+guide	WorkflowDag-Guide	2747	70	GMBasic — L4 WorkflowEngine DAG	4	1	1	B4 AI	0	0	0	0
+guide	_Index	57564	434	GMBasic — Indice Guide e Manuali (repo unificato)	9	38	8	AI LLM	3	2	0	1

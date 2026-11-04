@@ -679,7 +679,7 @@ int gmbadmin_libs_index(int argc, char** argv)
     return rc == 0 ? 0 : 1;
 }
 
-/* ── hf / mlx: download modelli (HF API + gmb_fetch) ─────────────────────── */
+/* ── hf / mlx: download modelli (HF API + gmbfetch) ─────────────────────── */
 
 static int token_from_cache(char* out, size_t cap)
 {
