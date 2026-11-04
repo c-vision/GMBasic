@@ -1,5 +1,5 @@
 ' FILE: opt.inc — binding FFI delle 34 funzioni del namespace OPTIMIZE (pacchetto `opt`).
-' Uso: IMPORT OPT; la dylib è `libgmbopt` (pacchetto shared/libs/opt).
+' Uso: IMPORT OPTIMIZE; la dylib è `libgmbopt` (pacchetto shared/libs/opt).
 '
 ' Differenza rispetto al builtin OPTIMIZE: i risultati ARRAY si scrivono in un
 ' buffer `out()` fornito dal chiamante (l'ABI FFI non restituisce array composti).
@@ -19,7 +19,7 @@
 ' Le varianti senza bounds usano [0, +1e30] per LINPROG (x>=0) e [-1e30, +1e30] per i
 ' minimizzatori. I SUB si invocano con `CALL OPT.NOME(...)`.
 
-NAMESPACE OPT
+NAMESPACE OPTIMIZE
 
 ' ═══════════════════════════════════════════════════════════════════════════
 ' Binding nativi (uso interno)

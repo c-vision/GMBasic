@@ -1,5 +1,5 @@
 REM FILE: 05-Fitting.bas — OPT (FFI): curve fitting (Levenberg-Marquardt).
-IMPORT OPT
+IMPORT OPTIMIZE
 IMPORT MATH
 
 SUB Main()
@@ -16,10 +16,10 @@ SUB Main()
     p0(0) = 0.5 : p0(1) = 0.5
     DIM fit(1) AS DOUBLE
 
-    CALL OPT.LEVENBERGMARQUARDT(model, p0, xs, ys, fit)
+    CALL OPTIMIZE.LEVENBERGMARQUARDT(model, p0, xs, ys, fit)
     PRINT "LEVENBERGMARQUARDT    a,b ="; fit(0); ","; fit(1)
-    CALL OPT.LEVENBERGMARQUARDTVEC(vmodel, p0, xs, ys, fit)
+    CALL OPTIMIZE.LEVENBERGMARQUARDTVEC(vmodel, p0, xs, ys, fit)
     PRINT "LEVENBERGMARQUARDTVEC a,b ="; fit(0); ","; fit(1)
-    CALL OPT.CURVEFIT(model, xs, ys, p0, fit)
+    CALL OPTIMIZE.CURVEFIT(model, xs, ys, p0, fit)
     PRINT "CURVEFIT              a,b ="; fit(0); ","; fit(1)
 END SUB

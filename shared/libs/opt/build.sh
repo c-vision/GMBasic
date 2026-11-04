@@ -8,4 +8,4 @@ bash "$MONO/tools/sh/gmb_lib.sh" build opt
 # BASIC solo per i MiniTest (l'originale resta in shared/include/opt.inc).
 # NB: NIENTE copia sotto shared/samples/include/ — il loader risolve l'inc canonico e una
 # seconda copia faceva "simbolo ... già dichiarato" (2026-11-03).
-cp -f "$MONO/shared/include/opt.inc" "$MONO/shared/minitests/opt/opt.inc"
+cp -f "$MONO/shared/include/optimize.inc" "$MONO/shared/minitests/opt/optimize.inc"

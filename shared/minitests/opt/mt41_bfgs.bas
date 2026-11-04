@@ -1,6 +1,6 @@
 ' EXPECT: v= 1 , 1
 ' OPTIMIZE.BFGS — MiniTest §4.1 (parità 4 backend).
-IMPORT OPT
+IMPORT OPTIMIZE
 IMPORT MATH
 
 FUNCTION Rosen(x() AS DOUBLE) AS DOUBLE
@@ -11,6 +11,6 @@ SUB Main()
     DIM x0(1) AS DOUBLE
     x0(0) = 0.0 : x0(1) = 0.0
     DIM o(1) AS DOUBLE
-    CALL OPT.BFGS(Rosen, x0, o)
+    CALL OPTIMIZE.BFGS(Rosen, x0, o)
     PRINT "v="; MATH.ROUND(o(0), 2); ","; MATH.ROUND(o(1), 2)
 END SUB

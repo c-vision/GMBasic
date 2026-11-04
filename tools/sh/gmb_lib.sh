@@ -31,6 +31,15 @@ ALL_LIBS="amqp grpc kafka mqtt nats protobuf media opt"
 
 die() { echo "gmb_lib: $*" >&2; exit 1; }
 
+# Nome dell'export BASIC di un pacchetto (default `<lib>.inc`). Il pacchetto `opt` espone il
+# namespace OPTIMIZE → `optimize.inc` (2026-11-03, riuso del namespace del builtin dismesso).
+inc_name() {
+  case "$1" in
+    opt) echo "optimize.inc" ;;
+    *)   echo "$1.inc" ;;
+  esac
+}
+
 rid() {
   case "$(uname -s)-$(uname -m)" in
     Darwin-arm64)  echo osx-arm64 ;;
@@ -83,7 +92,8 @@ sync_sources() {
   local lib="$1"
   local dir="$LIBS/$lib"
   mkdir -p "$INCLUDE"
-  [ -f "$dir/$lib.inc" ] && mv -f "$dir/$lib.inc" "$INCLUDE/$lib.inc"
+  local incn; incn="$(inc_name "$lib")"
+  [ -f "$dir/$incn" ] && mv -f "$dir/$incn" "$INCLUDE/$incn"
   for h in "$dir"/gmb"$lib"*.h; do
     [ -f "$h" ] || continue
     cp -f "$h" "$INCLUDE/"
@@ -97,7 +107,8 @@ check_one() {
   local E; E="$(ext)"
   local bin="$LIBS/$lib/libgmb$lib.$E"
   [ -f "$bin" ] || die "binario assente: $bin"
-  [ -f "$INCLUDE/$lib.inc" ] || echo "  ATTENZIONE: manca l'export BASIC $INCLUDE/$lib.inc" >&2
+  local incn; incn="$(inc_name "$lib")"
+  [ -f "$INCLUDE/$incn" ] || echo "  ATTENZIONE: manca l'export BASIC $INCLUDE/$incn" >&2
   if [ "$(uname -s)" = "Darwin" ]; then
     otool -D "$bin" | tail -n +2 | grep -q "^@rpath/libgmb$lib\.$E$" \
       || die "$bin: install_name non è @rpath/libgmb$lib.$E (non sarebbe distribuibile)"

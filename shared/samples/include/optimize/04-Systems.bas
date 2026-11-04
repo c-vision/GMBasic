@@ -1,5 +1,5 @@
 REM FILE: 04-Systems.bas — OPT (FFI): sistemi non lineari e minimi quadrati.
-IMPORT OPT
+IMPORT OPTIMIZE
 
 SUB Main()
     ' x^2 + y^2 = 4, x = y  ->  (sqrt(2), sqrt(2))
@@ -7,9 +7,9 @@ SUB Main()
     DIM x0(1) AS DOUBLE
     x0(0) = 1.0 : x0(1) = 0.0
     DIM out(1) AS DOUBLE
-    CALL OPT.FSOLVE(sys, x0, out)
+    CALL OPTIMIZE.FSOLVE(sys, x0, out)
     PRINT "FSOLVE  ="; out(0); ","; out(1)
-    CALL OPT.BROYDEN(sys, x0, out)
+    CALL OPTIMIZE.BROYDEN(sys, x0, out)
     PRINT "BROYDEN ="; out(0); ","; out(1)
 
     ' minimi quadrati non lineari: residui y = a + b*x (m=5) -> (1, 2)
@@ -17,6 +17,6 @@ SUB Main()
     DIM p0(1) AS DOUBLE
     p0(0) = 0.0 : p0(1) = 0.0
     DIM r(4) AS DOUBLE
-    CALL OPT.LEASTSQUARESFIT(res, p0, r)
+    CALL OPTIMIZE.LEASTSQUARESFIT(res, p0, r)
     PRINT "LEASTSQUARESFIT ="; r(0); ","; r(1)
 END SUB
