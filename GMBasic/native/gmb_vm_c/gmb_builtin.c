@@ -8330,7 +8330,7 @@ static void gmb_bf_127(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
             }
             else if (out && argc >= 2 && args[0].type != 2)
             {
-                /* MATRIX.SOLVE(handle, array): matrice come HANDLE + vettore raw array.
+                /* LINALG.SOLVE(handle, array): matrice come HANDLE + vettore raw array.
                  * Costruisce il vettore b come matrice n×1, risolve con gmb_matrix_lu_solve
                  * e ritorna la colonna soluzione come lista (parità IL/C99Native). */
                 int64_t hA = (int64_t)args[0].num;

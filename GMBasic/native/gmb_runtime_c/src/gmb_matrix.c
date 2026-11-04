@@ -919,7 +919,7 @@ int64_t gmb_matrix_decomp_get_factor(int64_t decomp, int idx)
     return -1;
 }
 
-/* Estrazione fattori per NOME (MATRIX.FACTOR(h, "U") ecc.). */
+/* Estrazione fattori per NOME (LINALG.FACTOR(h, "U") ecc.). */
 int64_t gmb_matrix_decomp_get_factor_named(int64_t decomp, const char* name)
 {
     gmb_decomp_t* d = dget(decomp);

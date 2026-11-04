@@ -2209,7 +2209,7 @@ static int ci_istr(const char* s, const char* needle)
     return 0;
 }
 
-/* LINALG.FACTOR(decomp, name) / MATRIX.FACTOR(decomp, name): handle matrice.
+/* LINALG.FACTOR(decomp, name): handle matrice.
  * Il parser non conserva il namespace in e->ns (var = "LINALG.FACTOR"), e args[0] può
  * essere una VAR che contiene la decomposizione: il riconoscimento è sul nome completo. */
 static int is_matrix_factor_call(gmb_expr_t* e) {
@@ -2233,7 +2233,7 @@ static int is_matrix_factor_call(gmb_expr_t* e) {
 }
 
 int etype(ctx_t* c, gmb_expr_t* e) {
-    /* LINALG.FACTOR(decomp, name) / MATRIX.FACTOR: handle matrice (int64_t), non stringa.
+    /* LINALG.FACTOR(decomp, name): handle matrice (int64_t), non stringa.
      * GMB_TOK_Get è condiviso con POOL.Get/SyncMap.Get (stringa). */
     if (is_matrix_factor_call(e)) return TY_NUM;
     /* ── Regole in TESTA (vincono su ogni ramo successivo) — dict in una VARIABILE ────────
@@ -3631,7 +3631,7 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                     v->gkind = GK_CONTEXT;
                 else if (s->dim_init->tk == GMB_TOK_ContextDone)
                     v->gkind = GK_CHAN;
-                /* LINALG.FACTOR / MATRIX.FACTOR(decomp, name): handle matrice (int64_t). */
+                /* LINALG.FACTOR(decomp, name): handle matrice (int64_t). */
                 if (is_matrix_factor_call(s->dim_init)) {
                     v->matrix_handle = 1; v->type = TY_NUM;
                 }

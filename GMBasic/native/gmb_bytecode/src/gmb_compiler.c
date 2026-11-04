@@ -219,7 +219,7 @@ static const cc_builtin_t g_cc_builtins[] = {
     {"MATH.RND",27},
     {"MATH.ROUND",12},
     {"MATH.SIN",29},
-    {"MATRIX.DETERMINANT",266},
+    {"LINALG.DETERMINANT",266},
     {"MUTEX.TRYLOCK",1207},
     {"SYNCMAP.LOAD",1204},{"SYNCMAP.DELETE",1205},{"SYNCMAP.LOADORSTORE",1206},
     {"POOL.GET",1201},
