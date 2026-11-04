@@ -22,3 +22,18 @@ add_executable(gmb_notebook
 
 target_link_libraries(gmb_notebook PRIVATE gmb_runtime gmb_agent_runtime)
 target_include_directories(gmb_notebook PRIVATE ../GMBasic/native/gmb_runtime_c/include)
+
+# Esecuzione delle celle = P-CODE: libgmb_eval porta il COMPILATORE C (gmb_compile_snippet)
+# e la VM/C; la cella è compilata in chunk A1/GMBC ed eseguita dalla VM (nessun valutatore
+# di espressioni separato, nessun gmb_expr). Artefatto della build di native/gmb_vm_c: se
+# manca, il notebook NON si configura (errore esplicito, niente stub).
+set(GMB_EVAL_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../GMBasic/native/gmb_vm_c/build/libgmb_eval.dylib")
+if(NOT EXISTS "${GMB_EVAL_LIB}")
+    message(FATAL_ERROR
+        "libgmb_eval assente (${GMB_EVAL_LIB}): costruisci prima native/gmb_vm_c — "
+        "cmake --build GMBasic/native/gmb_vm_c/build --target gmb_eval")
+endif()
+target_link_libraries(gmb_notebook PRIVATE "${GMB_EVAL_LIB}")
+set_target_properties(gmb_notebook PROPERTIES
+    BUILD_RPATH "${CMAKE_CURRENT_SOURCE_DIR}/../GMBasic/native/gmb_vm_c/build"
+    INSTALL_RPATH "${CMAKE_CURRENT_SOURCE_DIR}/../GMBasic/native/gmb_vm_c/build")

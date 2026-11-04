@@ -1,7 +1,7 @@
 /* Notebook/notebook_kernel.h — kernel di una sessione notebook (C).
  *
- * Una sessione = un dict di variabili + il valutatore BASIC del runtime C
- * (`gmb_expr_exec_capture`, lo stesso usato dalle macro &/EVAL): celle successive
+ * Una sessione = un dict di variabili; ogni cella è compilata in chunk A1/GMBC dal
+ * compilatore C e eseguita dalla VM/C (P-CODE, via libgmb_eval): le celle successive
  * condividono lo stato, come il kernel della vecchia REPL C#.
  */
 #ifndef GMB_NOTEBOOK_KERNEL_H
