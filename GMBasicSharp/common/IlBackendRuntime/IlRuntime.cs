@@ -14503,6 +14503,9 @@ public static double TextWidth(string s)
         // BAG: Count() è la MOLTEPLICITÀ TOTALE, non il numero di chiavi (il codegen emette
         // CollectionCount per .Count(), quindi la correzione va qui e non nel dispatch).
         if (collection is IBagMultiset bag) return bag.TotalCount();
+        // HLL: non implementa ICollection (non conserva gli elementi) — Count() è la STIMA
+        // della cardinalità (parità gmb_coll_hll_count).
+        if (collection is CommonLib.Collections.HyperLogLog hll) return hll.Count();
         if (collection is System.Collections.ICollection c) return c.Count;
         if (collection is System.Array a) return a.Length;
         if (collection is string s) return s.Length;

@@ -944,6 +944,18 @@ public sealed partial class IlProgramCompiler
             return;
         }
 
+        // HLL: `.Count` senza parentesi. Non è un campo né una property CLR (Count() è un
+        // METODO che stima la cardinalità) → dispatch runtime, senza passare dalla
+        // risoluzione campo/property (che lancia "impossibile risolvere il campo").
+        if (NormalizeInferredType(InferType(expr.Structure)) is HyperLogLogType
+            && expr.Field.Lexeme.Equals("Count", StringComparison.OrdinalIgnoreCase))
+        {
+            EmitExpression(expr.Structure);
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.CollectionCount), typeof(object)));
+            _il.Emit(OpCodes.Conv_R8);
+            return;
+        }
+
         var fieldSymbolId = expr.FieldSymbolId >= 0
             ? expr.FieldSymbolId
             : ResolveFieldOrPropertySymbolIdByName(InferType(expr.Structure), expr.Field.Lexeme);
