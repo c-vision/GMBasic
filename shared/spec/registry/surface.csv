@@ -1146,6 +1146,7 @@ procedure,STATS,GammaCdf,StatsGammaCdf
 procedure,STATS,GammaIsf,StatsGammaIsf
 procedure,STATS,GammaPdf,StatsGammaPdf
 procedure,STATS,GammaPpf,StatsGammaPpf
+procedure,STATS,GammaSf,StatsGammaSf
 procedure,STATS,GeometricPmf,GeometricPmf
 procedure,STATS,HypergeometricPmf,HypergeometricPmf
 procedure,STATS,Iqr,StatsIqr

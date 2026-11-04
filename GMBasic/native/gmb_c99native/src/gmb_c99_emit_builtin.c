@@ -5313,6 +5313,7 @@ static int ds_dir3(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
     return 1;
 }
 static int ds_gamma_cdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_dir3(c, a, n, "gmb_gamma_cdf"); }
+static int ds_gamma_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_dir3(c, a, n, "gmb_gamma_sf"); }
 static int ds_gamma_pdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_dir3(c, a, n, "gmb_gamma_pdf"); }
 static int ds_gamma_ppf(ctx_t* c, gmb_expr_t** a, int n) { return ds_dir3(c, a, n, "gmb_gamma_ppf"); }
 static int ds_gamma_isf(ctx_t* c, gmb_expr_t** a, int n) { return ds_dir3(c, a, n, "gmb_gamma_isf"); }
@@ -5475,6 +5476,7 @@ static const ds_row DS_TBL[] = {
     { GMB_TOK_WeibullPdf, ds_weibull_pdf },
     { GMB_TOK_WeibullPpf, ds_weibull_ppf },
     { GMB_TOK_StatsGammaCdf, ds_gamma_cdf },
+    { GMB_TOK_StatsGammaSf, ds_gamma_sf },
     { GMB_TOK_StatsGammaPdf, ds_gamma_pdf },
     { GMB_TOK_StatsGammaPpf, ds_gamma_ppf },
     { GMB_TOK_StatsGammaIsf, ds_gamma_isf },

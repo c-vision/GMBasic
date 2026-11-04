@@ -229,6 +229,8 @@ public static partial class Numerics
         if (x < 0) return 0;
         return SpecialFunctions.GammaLowerRegularized(shape, x / scale);
     }
+    /// <summary>Funzione di sopravvivenza Gamma (1 - CDF).</summary>
+    public static double GammaSf(double shape, double scale, double x) => 1.0 - GammaCdf(shape, scale, x);
 
     /// <summary>scipy.stats.gamma.ppf — inversa della CDF via bisezione robusta.</summary>
     public static double GammaPpf(double shape, double scale, double p)

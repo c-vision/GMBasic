@@ -1265,6 +1265,11 @@ double gmb_gamma_cdf(double shape, double scale, double x)
     if (x < 0) return 0;
     return gmb_gamma_p(shape, x / scale);
 }
+
+double gmb_gamma_sf(double shape, double scale, double x)
+{
+    return 1.0 - gmb_gamma_cdf(shape, scale, x);
+}
 double gmb_gamma_ppf(double shape, double scale, double p)
 {
     if (p <= 0) return 0;
