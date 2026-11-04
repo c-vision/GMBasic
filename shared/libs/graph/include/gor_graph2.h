@@ -42,13 +42,6 @@ int gor_graph_wl(int n, const int *adj, int *colors);
 /* Min path cover di un DAG (da AirScheduling): numero minimo di cammini che
  * coprono tutti i nodi = n - massimo matching bipartito del DAG. adj n×n. */
 int gor_min_path_cover(int n, const int *adj);
-/* Enumerazione di cammini con finestre temporali (da AirlineSchedule): l'arco
- * u->v e' percorribile se end[u] + min_connect <= start[v]. Cammini da s a t.
- * paths: max_paths × max_len (indici nodi), path_len[k] = lunghezza. Ritorna il
- * numero di cammini trovati (fino a max_paths). */
-int gor_paths_time_window(int n, const int *adj, const gor_real *start,
-                          const gor_real *end, gor_real min_connect, int s, int t,
-                          int *paths, int *path_len, int max_len, int max_paths);
 /* Double-Radius Node Labeling (DRNL, SEAL) per il link (u,v): distanze BFS da u
  * e v, label = 1 + min(dx,dy) + (d/2)((d/2)+(d%2)-1) con d=dx+dy.
  * label[n] (0 se irraggiungibile). Ritorna il numero di etichette distinte. */
