@@ -71,22 +71,49 @@ Verified on the four backends of the monorepo (IL, PCodeVM, VM-C, C99Native).
       progetto** (headless: `GMBASIC_HEADLESS=1`, feeder di console spento), non per difetto.
       Resta da fare solo il cablaggio lato app: nel `mode = "tui"` reale, quando `[tui] keys` è
       vuoto, leggere da `INKEY()` (stessa `TuiApply`).
-- [x] **GUI** (`mode = "gui"`): finestra PIXEL (`SCREEN 12` + `WINDOW DEFINE ... PIXEL`),
-      griglia del glifo zoomata (`zoom`), pannello metriche (`enc`, `bbx`, `dwx`) e cambio glifo
-      con `n`/`p`, ESC/`q` per uscire. È una **seconda vista** sullo stesso modello: i tasti
-      passano da `TuiApply`. Si chiude da sola dopo `[gui] frames` e stampa marker deterministici
-      (`GUI-READY`, `GUI-FRAME n`, `GUI-EXIT`) per la verifica. Disegno con `LINE ... "B"/"BF"`:
-      `IMAGEPUT` non serve (nessuna immagine da caricare). **Verificato il flusso di controllo** su
-      VM/C: `GUI-READY` → `GUI-FRAME n` → uscita su ESC iniettato dall'host (`GUI-EXIT`), exit 0.
-      **La resa NON è verificata**: in questo ambiente il backend grafico risponde
-      `[gmb_gfx] present_start: video=0 video_driver=none` e `CreateWindow FAILED: No available
-      video device`, quindi la finestra va guardata da una sessione desktop (Terminal.app) con
-      `mode = "gui"`. Manca anche un gate a pixel (`test_graphics_*`) nel repo: è una voce aperta
-      di ServiceConsole, non di questa app.
+- [x] **GUI** (`mode = "gui"`): **canvas sulla pagina grafica** (`SCREEN 12`), non una WINDOW:
+      barra del titolo, glifo zoomato (`zoom`), pannello metriche (`enc`, `bbox`, `offset`, `dwidth`)
+      e legenda; cambio glifo con `n`/`p`, ESC/`q` per uscire. Il layout si calcola da `TEXTHEIGHT()`
+      (il font di sistema è scalato dalla render-scale: con costanti fisse titolo e pannello si
+      sovrapponevano, visto nel primo frame). Disegno con `LINE ... "B"/"BF"` + `DRAW TEXT`.
+      `frames = 0` = finestra interattiva; `frames > 0` = si chiude da sola dopo n frame (16 ms l'uno)
+      e lascia i marker deterministici `GUI-READY` / `GUI-FRAME n` / `GUI-EXIT` in `bin/gui.log` —
+      **non** su stdout: con una finestra grafica attiva `PRINT` finisce nel buffer di celle, che il
+      present non compone (stdout muto oltre a `ESC[2J`). **Gate a pixel**: `POINT(x,y)` rilegge barra
+      del titolo, sfondo e inchiostro del glifo e scrive `GUI-PIXELS title=4 bg=1 ink=15 ok=1`;
+      l'ultimo frame si salva in `bin/gui.png` (`SAVE SCREEN`), così la resa si ispeziona senza
+      catturare il desktop. **Verificato**: `present_start: video=1 video_driver=cocoa`,
+      `renderer=metal`, 640x480 logici / 1280x960 drawable; dal `gui.png` si vede il frame completo
+      (titolo, glifo `A`, metriche, legenda); 200/200 `GUI-FRAME` + `GUI-EXIT`, exit 0. La WINDOW
+      `... PIXEL` è stata provata per prima e **non è utilizzabile su questa leg**: la finestra si
+      apre ma mostra la pagina grezza, senza chrome — lo stesso sample canonico
+      `windows/WindowPixel.bas` resta blu e vuoto. Sul 4-backend: PCodeVM / VM-C / C99Native verdi;
+      **IL bloccato** dal bug del backend descritto qui sotto (non dall'app).
 - [x] Both front-ends must keep the `check` mode byte-identical (golden artefacts in
       `bin/`), so the headless path stays the reference. Verificato dopo TUI e GUI: `148 ok,
-      0 falliti` + `GLYPHSMITH-CHECK-OK` su IL/PCodeVM/VM-C/C99Native e `bin/mini8.pcf` con md5
+      0 falliti` + `GLYPHSMITH-CHECK-OK` su PCodeVM/VM-C/C99Native e `bin/mini8.pcf` con md5
       `a6deb85ba334e545d80f94c626fca12d` identico sulle quattro leg.
+
+## Bloccante noto — IL: `DRAW TEXT` con stringa non letterale
+
+- [ ] Riprodotto il 2026-11-04. Sul file dell'app la leg **IL** non arriva a eseguire il check:
+      `[ILGEN] NotSupportedException: Backend IL: accesso a un array non DIMensionato`. Il difetto si
+      riduce a `DRAW TEXT` con stringa **non letterale** quando un SUB ne contiene più di una:
+
+      DIM n AS INTEGER
+      n = 7
+      DRAW TEXT "a " + STR(n), 10, 10
+      DRAW TEXT "b " + STR(n), 10, 30     ' IL: InvalidProgramException
+
+      Stringhe letterali → verde. Con `STR(n)` fallisce anche **una sola** istruzione
+      (`InvalidProgramException`); con una funzione utente (`NumS`) una passa e **due** falliscono in
+      ILGEN (`NotSupportedException`): il discriminante è la stringa non letterale, non il numero di
+      righe. Il sospetto
+      è localizzato nell'emissione IL della concatenazione usata come argomento di `DRAW TEXT`
+      (`GMBasicSharp/common/IlBackendCodegen/Partial/IlProgramCompiler.Statements.Graphics.cs`,
+      `EmitDrawTextStatement` → `EmitExpression(stmt.Text)`), da confermare sul dump `.il`.
+      Correzione **fuori dall'app**: richiede il permesso esplicito per toccare GMBasic (AGENTS §0).
+      Finché è aperto, GlyphSmith non passa su IL (nessun esito del check, non un check fallito).
 
 ## M5 — TrueType / OpenType (RUNTIME, NOT BASIC)
 

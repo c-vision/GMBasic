@@ -89,10 +89,10 @@ out = "from_bmp.bdf"
 [gui]
 # ingrandimento del pixel nella griglia disegnata nella finestra
 zoom = 8
-# frame disegnati prima di uscire da soli: rende il percorso verificabile senza
-# chiudere la finestra a mano (marker GUI-READY / GUI-FRAME n / GUI-EXIT).
-# Con ESC o 'q' si esce prima; 'n'/'p' cambiano glifo (INKEY: serve un backend
-# con lettura tastiera, oggi VM/C).
-frames = 2
+# frame disegnati prima di uscire da soli. 0 = finestra INTERATTIVA (si esce con
+# ESC o 'q'): e' il valore normale per un uso umano. Un valore > 0 fa chiudere la
+# app da sola dopo n frame (marker GUI-READY / GUI-FRAME n / GUI-EXIT), che e' il
+# modo giusto per un test automatico: con 0 un run senza display non terminerebbe.
+frames = 0
 # glifo mostrato all'apertura (indice nel modello)
 glyph = 0
