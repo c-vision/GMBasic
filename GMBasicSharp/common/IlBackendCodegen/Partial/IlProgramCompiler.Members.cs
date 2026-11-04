@@ -1289,7 +1289,7 @@ public sealed partial class IlProgramCompiler
             // GET → linker: dt.ValueType (es. Integer) — il runtime restituisce object:
             // unbox al tipo CLR atteso dal consumatore (Conv_R8/Stloc su object = IL invalido).
             var callClr = DataTypeMapper.Map(NormalizeInferredType(InferType(expr)), _types, _classTypes);
-            if (callClr.IsValueType) _il.Emit(OpCodes.Unbox_Any, callClr);
+            if (callClr.IsValueType && callClr != typeof(void)) _il.Emit(OpCodes.Unbox_Any, callClr);
             return true;
         }
         var methodName = instanceType is LinkedListType or DoublyLinkedListType
@@ -1305,22 +1305,12 @@ public sealed partial class IlProgramCompiler
                 ? nameof(HashSet<int>.SymmetricExceptWith)
             : expr.MethodName.Lexeme;
         var method = ResolveNativeCollectionMethod(collectionType, methodName, expr.Args);
-        // F1 Incongruenze: membri di collection con TokenKind Coll* NON risolvibili come
-        // metodo CLR (Set/Get su dict, Front/Back/IsEmpty/AddUnique/AddAfter/AddBefore su
-        // list/queue, MaxPair/MinPair su dict) → dispatch RUNTIME per kind. Prima: il
-        // fall-through CLR sollevava NotSupportedException (il membro esisteva solo nella
-        // VM/C). L'errore esplicito resta per i membri che né CLR né IlRuntime conoscono.
-        if (method is null && CollMembers.IsCollMember(expr.MethodName.Kind))
-        {
-            _il.Emit(OpCodes.Ldc_I4, (int)expr.MethodName.Kind);
-            EmitExpression(expr.Instance);
-            EmitKvArgsBoxed(expr);
-            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.CollectionInvokeByKind), typeof(int), typeof(object), typeof(object[])));
-            var callClr2 = DataTypeMapper.Map(NormalizeInferredType(InferType(expr)), _types, _classTypes);
-            if (callClr2.IsValueType) _il.Emit(OpCodes.Unbox_Any, callClr2);
-            return true;
-        }
-        // IndexOf su collection senza metodo CLR (LinkedList/Doubly/Circular): helper runtime.
+        // ---- Membri SENZA metodo CLR equivalente: helper runtime dedicati. VANNO PRIMA del
+        // dispatch generico per-kind: Sort/Reverse/Current/Rotate/IndexOf sono TUTTI membri
+        // Coll*, quindi il ramo generico li catturava e questi rami erano irraggiungibili
+        // (effetto misurato: `LinkedList.Sort()` finiva in CollectionInvokeByKind, che non
+        // conosce il metodo → `unbox.any void` = InvalidProgramException; sample
+        // CollectionsDictLists §8/§9 e CollectionsLinked).
         if (method is null && CollMembers.Is(expr.MethodName, TokenKind.CollSort) && expr.Args.Length == 0)
         {
             EmitExpression(expr.Instance);
@@ -1355,6 +1345,24 @@ public sealed partial class IlProgramCompiler
             var iClr = DataTypeMapper.Map(NormalizeInferredType(InferType(expr.Args[0])), _types, _classTypes);
             if (iClr.IsValueType) _il.Emit(OpCodes.Box, iClr);
             _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.CollectionIndexOf), typeof(object), typeof(object)));
+            return true;
+        }
+        // F1 Incongruenze: membri di collection con TokenKind Coll* NON risolvibili come
+        // metodo CLR (Set/Get su dict, Front/Back/IsEmpty/AddUnique/AddAfter/AddBefore su
+        // list/queue, MaxPair/MinPair su dict) → dispatch RUNTIME per kind. Prima: il
+        // fall-through CLR sollevava NotSupportedException (il membro esisteva solo nella
+        // VM/C). L'errore esplicito resta per i membri che né CLR né IlRuntime conoscono.
+        if (method is null && CollMembers.IsCollMember(expr.MethodName.Kind))
+        {
+            _il.Emit(OpCodes.Ldc_I4, (int)expr.MethodName.Kind);
+            EmitExpression(expr.Instance);
+            EmitKvArgsBoxed(expr);
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.CollectionInvokeByKind), typeof(int), typeof(object), typeof(object[])));
+            var callClr2 = DataTypeMapper.Map(NormalizeInferredType(InferType(expr)), _types, _classTypes);
+            // unbox.any SOLO per un valore: un metodo void (Sort/Rotate/...) mappa a
+            // System.Void, che è IsValueType → unbox.any void = IL INVALIDO (JIT:
+            // InvalidProgramException). Difesa in profondità dopo i rami dedicati sopra.
+            if (callClr2.IsValueType && callClr2 != typeof(void)) _il.Emit(OpCodes.Unbox_Any, callClr2);
             return true;
         }
         if (method is null)

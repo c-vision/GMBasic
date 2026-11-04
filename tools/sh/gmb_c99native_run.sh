@@ -82,7 +82,10 @@ cd "$ROOT"
 # faceva fallire la risoluzione dei simboli (es. SPEED.SETDURABILITY).
 BUILD_DIR="$ROOT/native/gmb_compiler_c/build"
 if [ -d "$BUILD_DIR" ]; then
-  cmake --build "$BUILD_DIR" --target gmb_c99native_driver -j4 >/dev/null 2>&1 || true
+  # Nome CORRENTE del driver: gmbnative (rename 2026-11-04, AGENTS §nomi-tool).
+  # Fallback al nome ritirato gmb_c99native_driver per i tree non ancora rigenerati.
+  cmake --build "$BUILD_DIR" --target gmbnative -j4 >/dev/null 2>&1 \
+    || cmake --build "$BUILD_DIR" --target gmb_c99native_driver -j4 >/dev/null 2>&1 || true
 fi
 # RUNTIME C: ricostruzione INCREMENTALE prima del link. Le sorgenti del runtime compaiono in DUE
 # build tree (`gmb_runtime_c/build` e `gmb_vm_c/build/gmb_runtime_c_build`) e il link poteva
@@ -93,8 +96,14 @@ RT_DIR="$ROOT/native/gmb_runtime_c/build"
 if [ -d "$RT_DIR" ]; then
   cmake --build "$RT_DIR" --target gmb_runtime gmb_runtime_min -j4 >/dev/null 2>&1 || true
 fi
-BIN="tools/gmb_c99native_driver"
-BUILT="native/gmb_compiler_c/build/gmb_c99native_driver"
+BIN="tools/gmbnative"
+BUILT="native/gmb_compiler_c/build/gmbnative"
+# Fallback al nome ritirato (gmb_c99native_driver) SOLO se il nome corrente non esiste:
+# il tree condiviso può avere build non ancora rigenerate col rename.
+if [ ! -x "$BUILT" ]; then
+  BIN="tools/gmb_c99native_driver"
+  BUILT="native/gmb_compiler_c/build/gmb_c99native_driver"
+fi
 if [ -x "$BUILT" ] && { [ ! -x "$BIN" ] || [ "$BUILT" -nt "$BIN" ]; }; then
   BIN="$BUILT"
 fi

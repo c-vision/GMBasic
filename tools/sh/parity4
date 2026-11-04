@@ -181,7 +181,9 @@ if has_leg vmc;  then run_leg vmc  dotnet run --project "$HARNESS_DIR/test_vmrun
 if has_leg c99n; then
   # gmb_c99native_run.sh sceglie il driver PIÙ RECENTE fra tools/ e il build del
   # compilatore (la copia in tools/ diventa stantia dopo ogni modifica nativa).
-  if [ -x tools/gmb_c99native_driver ] || [ -x native/gmb_compiler_c/build/gmb_c99native_driver ]; then
+  # Nome corrente del driver: gmbnative; fallback al nome ritirato gmb_c99native_driver.
+  if [ -x tools/gmbnative ] || [ -x native/gmb_compiler_c/build/gmbnative ] \
+     || [ -x tools/gmb_c99native_driver ] || [ -x native/gmb_compiler_c/build/gmb_c99native_driver ]; then
     run_leg c99n bash "$MONOREPO/tools/sh/gmb_c99native_run.sh" "$FILE" p4
   else
     echo "  c99n: SKIP (nessun driver: tools/ né build del compilatore)"
@@ -307,7 +309,7 @@ if [ "$LIB_MODE" = "1" ]; then
       echo "  FAIL ${l%_lib} (LIBRARY) rc=$(cat "$OUT/$BASE.$l.rc" 2>/dev/null)"; fail=1
     fi
   done
-  if [ -x native/gmb_compiler_c/build/gmb_c99native_driver ]; then
+  if [ -x native/gmb_compiler_c/build/gmbnative ] || [ -x native/gmb_compiler_c/build/gmb_c99native_driver ]; then
     run_leg c99n_lib bash "$MONOREPO/tools/sh/gmb_c99native_run.sh" "$FILE" p4lib
     if [ "$(cat "$OUT/$BASE.c99n_lib.rc" 2>/dev/null || echo 1)" = "0" ]; then
       echo "  OK   c99n (lib condivisa costruita)"

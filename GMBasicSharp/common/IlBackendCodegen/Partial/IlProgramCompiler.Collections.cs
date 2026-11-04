@@ -81,7 +81,13 @@ public sealed partial class IlProgramCompiler
         }
         // Aggiorna anche dictType col tipo (possibilmente promosso) così concreteType/Add
         // combaciano (per un DICT; per TREE/AVL/... resta il dizionario ordinato).
-        if (dictType is not (TreeType or AVLTreeType or RedBlackTreeType or BPlusTreeType))
+        // ATTENZIONE: SORTED<...> deve restare SORTED — ricostruirlo come DictType emetteva
+        // un Dictionary<K,V> in una variabile dichiarata SortedDictionary<K,V> →
+        // InvalidCastException "Dictionary`2 -> SortedDictionary`2" (sample CollectionsBasics
+        // §3B, DictExtended/DictLists/Linked).
+        if (dictType is SortedDictType)
+            dictType = new SortedDictType(keyType, valueType);
+        else if (dictType is not (TreeType or AVLTreeType or RedBlackTreeType or BPlusTreeType))
             dictType = new DictType(keyType, valueType);
         var keyClrType = DataTypeMapper.Map(keyType, _types, _classTypes);
         var valueClrType = DataTypeMapper.Map(valueType, _types, _classTypes);

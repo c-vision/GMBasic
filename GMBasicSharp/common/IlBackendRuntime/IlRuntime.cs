@@ -7559,17 +7559,46 @@ public static partial class IlRuntime
         throw new InvalidOperationException("CollectionIndexSet: collezione non indicizzabile.");
     }
 
+    /// <summary>Istantanea degli elementi di una collection. Serve perché il backend IL
+    /// rappresenta LINKEDLIST/DOUBLYLINKEDLIST come <c>LinkedList&lt;T&gt;</c>: NON implementa
+    /// <c>IList</c> (né ha un indicizzatore), quindi gli helper in-place basati su IList non
+    /// la toccavano affatto (Sort/Reverse/IndexOf no-op silenziosi su DOUBLYLINKEDLIST).</summary>
+    private static object?[] SnapshotItems(object? collection)
+    {
+        if (collection is not System.Collections.IEnumerable en) return [];
+        var items = new System.Collections.Generic.List<object?>();
+        foreach (var item in en) items.Add(item);
+        return items.ToArray();
+    }
+
+    /// <summary>Riscrive gli elementi nella STESSA istanza: IList in-place; per
+    /// <c>LinkedList&lt;T&gt;</c> (e ogni altro contenitore con Clear/AddLast) ricostruisce via
+    /// riflessione (il tipo generico T non è noto a compile time).</summary>
+    private static void RewriteItems(object? collection, object?[] items)
+    {
+        if (collection is null) return;
+        if (collection is System.Collections.IList list)
+        {
+            for (var i = 0; i < items.Length; i++) list[i] = items[i];
+            return;
+        }
+        var type = collection.GetType();
+        var clear = type.GetMethod("Clear", Type.EmptyTypes);
+        if (clear is null) return;
+        clear.Invoke(collection, null);
+        var elemType = type.IsGenericType ? type.GetGenericArguments()[0] : typeof(object);
+        var add = type.GetMethod("AddLast", [elemType]) ?? type.GetMethod("Add", [elemType]);
+        if (add is null) return;
+        foreach (var item in items) add.Invoke(collection, [item]);
+    }
+
     /// <summary>IndexOf(value) su una collection (LinkedList/Doubly/Circular): il CLR non ha
     /// Enumerable.IndexOf — scansione lineare (Object.Equals) come la VM.</summary>
     public static double CollectionIndexOf(object? collection, object? value)
     {
-        if (collection is not System.Collections.IEnumerable en) return -1;
-        var idx = 0;
-        foreach (var item in en)
-        {
-            if (Equals(item, value)) return idx;
-            idx++;
-        }
+        var items = SnapshotItems(collection);
+        for (var i = 0; i < items.Length; i++)
+            if (Equals(items[i], value)) return i;
         return -1;
     }
 
@@ -7579,42 +7608,42 @@ public static partial class IlRuntime
     /// istanza, default 0).</summary>
     public static object? CircularCurrent(object? collection)
     {
-        if (collection is not System.Collections.IList list || list.Count == 0) return null;
+        if (collection is null) return null;
+        var items = SnapshotItems(collection);
+        if (items.Length == 0) return null;
         var idx = _circularState.TryGetValue(collection, out var i) ? i : 0;
-        return list[idx % list.Count];
+        return items[idx % items.Length];
     }
 
     /// <summary>Rotate(n) su una CIRCULAR list: sposta l'indice corrente di n (mod length).</summary>
     public static void CircularRotate(object? collection, double steps)
     {
-        if (collection is not System.Collections.IList list || list.Count == 0) return;
+        if (collection is null) return;
+        var count = SnapshotItems(collection).Length;
+        if (count == 0) return;
         var idx = _circularState.TryGetValue(collection, out var i) ? i : 0;
-        idx = ((idx + (int)steps) % list.Count + list.Count) % list.Count;
+        idx = ((idx + (int)steps) % count + count) % count;
         _circularState[collection] = idx;
     }
 
     /// <summary>Sort() su una collection non-sortabile nativamente (LinkedList/Doubly/
-    /// Circular): estrae gli elementi, ordina, ricostruisce (IList).</summary>
+    /// Circular): estrae gli elementi, ordina, ricostruisce nella stessa istanza.</summary>
     public static void CollectionSort(object? collection)
     {
-        if (collection is not System.Collections.IList list) return;
-        var arr = new object?[list.Count];
-        for (var i = 0; i < list.Count; i++) arr[i] = list[i];
-        Array.Sort(arr, (a, b) => Comparer<object?>.Default.Compare(a, b));
-        for (var i = 0; i < arr.Length; i++) list[i] = arr[i];
+        var items = SnapshotItems(collection);
+        if (items.Length == 0) return;
+        Array.Sort(items, (a, b) => Comparer<object?>.Default.Compare(a, b));
+        RewriteItems(collection, items);
     }
 
-    /// <summary>Reverse() su una collection (LinkedList/Doubly/Circular): IList in-place.</summary>
+    /// <summary>Reverse() su una collection (LinkedList/Doubly/Circular): in-place o
+    /// ricostruita (LinkedList&lt;T&gt; non è IList).</summary>
     public static void CollectionReverse(object? collection)
     {
-        if (collection is not System.Collections.IList list) return;
-        var n = list.Count;
-        for (var i = 0; i < n / 2; i++)
-        {
-            var tmp = list[i];
-            list[i] = list[n - 1 - i];
-            list[n - 1 - i] = tmp;
-        }
+        var items = SnapshotItems(collection);
+        if (items.Length == 0) return;
+        Array.Reverse(items);
+        RewriteItems(collection, items);
     }
 
     // --- Importato da GMBasic (COMPRESSION, altra cat6) ---
@@ -14930,6 +14959,26 @@ public static double TextWidth(string s)
                 var hn = instance.GetType().GetMethod("HasNode", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
                     ?? throw new NotSupportedException($"Backend IL: AddNodeConsistent richiede Graph.HasNode, assente su '{instance.GetType().Name}'.");
                 return (bool)hn.Invoke(instance, new[] { args[0] })!;
+            }
+        }
+        /* FIRST/LAST su collezioni enumerabili NON-map: l'ELEMENTO di testa/coda — PRIMA del
+         * fallback-property. LinkedList<T> espone le PROPRIETÀ First/Last che ritornano un
+         * LinkedListNode<T>: il fallback le trovava e restituiva il NODO, che poi finiva in
+         * WritePrinter come stringa → AccessViolationException (sample CollectionsDictLists
+         * §7/§8, CollectionsLinked). Per i dizionari resta il comportamento a valle. */
+        if (args.Length == 0 && instance is System.Collections.IEnumerable seqFL
+            && instance is not System.Collections.IDictionary && instance is not string)
+        {
+            var wantLast = methodName.Equals("Last", StringComparison.OrdinalIgnoreCase)
+                        || methodName.Equals("Back", StringComparison.OrdinalIgnoreCase);
+            var isFL = methodName.Equals("First", StringComparison.OrdinalIgnoreCase)
+                    || methodName.Equals("Front", StringComparison.OrdinalIgnoreCase) || wantLast;
+            if (isFL)
+            {
+                object? first = null, last = null;
+                var any = false;
+                foreach (var it in seqFL) { if (!any) { first = it; any = true; } last = it; }
+                return any ? (wantLast ? last : first) : null;
             }
         }
         var t = instance.GetType();
