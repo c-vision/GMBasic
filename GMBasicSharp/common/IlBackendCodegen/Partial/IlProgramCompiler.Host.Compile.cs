@@ -449,6 +449,9 @@ public sealed partial class IlProgramCompiler
             .Concat(AllModuleDeclarations(program).OfType<GeneratorDefinition>()
                 .Select(g => new FunctionDefinition(g.SymbolId, g.Name, g.Parameters, new VoidType(), g.Body, g.Flags)))
             .ToImmutableArray();
+        // Handler evento con target = LABEL (locale o di modulo): metodo sintetico, così
+        // `ON WINDOW … GOSUB FinestraChiusa` funziona anche su IL (parità con C99/VM-C/PCode).
+        procedureDefinitions = AddEventLabelHandlerDefinitions(program, procedureDefinitions);
         foreach (var definition in procedureDefinitions)
         {
             var returnClrType = definition.ReturnType is VoidType ? types.Void : MapProcedureType(definition.ReturnType, types, classTypes);
