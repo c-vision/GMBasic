@@ -514,6 +514,15 @@ public class WindowManager
         return id >= 0 ? id : null;
     }
 
+    /// <summary>Cerca l'ID della finestra per NOME BASIC (`WINDOW DEFINE nome ...`),
+    /// distinto dal titolo. Serve al re-DEFINE: la finestra si aggiorna, non si duplica.</summary>
+    public int? FindByName(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return null;
+        var id = CommonLib.Consoles.Tui.ClipperWmNative.FindByName(_c, name);
+        return id >= 0 ? id : null;
+    }
+
     /// <summary>Imposta il titolo della finestra focalizzata (WINDOW SET TITLE).</summary>
     public int? SetFocusedTitle(string title)
     {
