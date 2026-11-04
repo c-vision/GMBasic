@@ -8,14 +8,14 @@ TYPE R
   V AS STRING * 20
 END TYPE
 SUB Main()
-  MKDIR "bin"
-  KILL "bin/zzlm.isdb"
-  ISAM OPEN "bin/zzlm.isdb" OF R ALIAS X INDEXED BY ID
+  MKDIR "work"
+  KILL "work/zzlm.isdb"
+  ISAM OPEN "work/zzlm.isdb" OF R ALIAS X INDEXED BY ID
   DIM n AS LONG
   n = ISAM.APPENDMANY([{ID: "A", V: "uno"}, {ID: "B", V: "due"}, {ID: "C", V: "tre"}])
   PRINT "n="; n; " last="; ISAM.LASTREC()
   PRINT "log="; (INSTR(ISAM.LOG("X"), "wal_path:") > 0)
   PRINT "log0="; (INSTR(ISAM.LOG(), "wal_exists:") > 0)
   ISAM CLOSE
-  KILL "bin/zzlm.isdb"
+  KILL "work/zzlm.isdb"
 END SUB

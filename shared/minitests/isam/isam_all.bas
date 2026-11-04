@@ -1,7 +1,9 @@
 ' MiniTest NAMESPACE ISAM — 22/24 funzioni della superficie; LOG e APPENDMANY sono in isam_log_appendmany.bas
 ' (parità 4 gambe dal 2026-11-03).
-' Self-contained: il file .isdb viene creato in bin/ dal test (nessuna fixture).
-' Replica: log in bin/, SHIP/RECV su porta 0 (fuori range) per non aprire socket.
+' Self-contained: il file .isdb viene creato in work/ dal test (nessuna fixture).
+' Replica: log in work/, SHIP/RECV su porta 0 (fuori range) per non aprire socket.
+' NB: work/ e non bin/ — sulle gambe managed (IL/PCode/VM-C) la cwd e' la RADICE del repo,
+' quindi "bin/" finiva nella cartella dei binari di release; work/ e' la cartella dei dati.
 ' EXPECT: used=-1|selected>0=-1|lastrec= 2|recsize>0=-1|bof= 0|eof= 0|recno= 1|indexord>=0=-1|indexkey_len>=0=-1|filter_alias=[]|filter_empty=-1|relation_empty=-1|deleted= 0|found= 0|found2=-1|appendmany= 2|appendmany_lit= 2|log_n>0=-1|log_path=-1|log_exists=-1|rlock=-1|flock=-1|info>0=-1|integrity>0=-1|setrepl>0=-1|apply>=-1=-1|follow>=-1=-1|ship= 0|recv= 0
 IMPORT ISAM
 IMPORT IO
@@ -14,7 +16,7 @@ END TYPE
 
 SUB Stato()
   DIM p AS STRING
-  p = "bin/isam_all.isdb"
+  p = "work/isam_all.isdb"
   KILL p
   ISAM OPEN p OF R ALIAS X INDEXED BY ID
 
@@ -62,7 +64,7 @@ END SUB
 
 SUB Replica()
   DIM p AS STRING
-  p = "bin/isam_rpl.isdb"
+  p = "work/isam_rpl.isdb"
   KILL p
   ISAM OPEN p OF R ALIAS Y INDEXED BY ID
   DIM rec AS R
@@ -70,7 +72,7 @@ SUB Replica()
   ISAM APPEND Y, rec
 
   DIM lp AS STRING
-  lp = ISAM.SETREPLICATION("Y", "bin/isam_rpl.log")
+  lp = ISAM.SETREPLICATION("Y", "work/isam_rpl.log")
   PRINT "setrepl>0="; (LEN(lp) > 0)
   PRINT "apply>=-1="; (ISAM.APPLYREPLICATION("Y", lp) >= -1)
   PRINT "follow>=-1="; (ISAM.FOLLOWREPLICATION(lp) >= -1)
@@ -80,7 +82,7 @@ SUB Replica()
 END SUB
 
 SUB Main()
-  MKDIR "bin"
+  MKDIR "work"
   Stato()
   Replica()
 END SUB
