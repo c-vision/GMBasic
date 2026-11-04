@@ -1406,24 +1406,6 @@ static int dim_arr_init_kind(const gmb_expr_t* e) {
         { GMB_TOK_ASort, 1, 1 }, { GMB_TOK_APad, 1, 2 }, { GMB_TOK_AClone, 1, 1 }, { GMB_TOK_AUnique, 1, 1 },
         { GMB_TOK_GetCursorPos, 1, 0 }, { GMB_TOK_GetTextMetrics, 1, 0 }, { GMB_TOK_GetPaletteColor, 1, 1 },
         { GMB_TOK_JarqueBeraTest, 1, 1 },
-        { GMB_TOK_NelderMead, 1, 2 },
-        { GMB_TOK_Bfgs, 1, 2 },
-        { GMB_TOK_LBfgs, 1, 2 },
-        { GMB_TOK_Broyden, 1, 2 },
-        { GMB_TOK_ConjugateGradient, 1, 2 },
-        { GMB_TOK_OptimizePowell, 1, 2 },
-        { GMB_TOK_OptimizeFsolve, 1, 2 },
-        { GMB_TOK_LevenbergMarquardt, 1, 4 },
-        { GMB_TOK_LevenbergMarquardtVec, 1, 4 },
-        { GMB_TOK_CurveFit, 1, 4 },
-        { GMB_TOK_OptimizeBasinHopping, 1, 2 },
-        { GMB_TOK_OptimizeTnc, 1, 2 }, { GMB_TOK_OptimizeCobyla, 1, 2 },
-        { GMB_TOK_OptimizeSlsqp, 1, 2 }, { GMB_TOK_OptimizeMinimize, 1, 2 },
-        { GMB_TOK_OptimizeBrute, 1, 2 }, { GMB_TOK_OptimizeDualAnnealing, 1, 2 },
-        { GMB_TOK_DifferentialEvolution, 1, 2 },
-        { GMB_TOK_OptimizeLeastSquares, 1, 2 },
-        { GMB_TOK_CholeskySolve, 1, 2 }, { GMB_TOK_LeastSquares, 1, 2 },
-        { GMB_TOK_Simplex, 1, 3 }, { GMB_TOK_OptimizeLinprog, 1, 3 },
         { GMB_TOK_Solve, 1, 2 }, { GMB_TOK_MatrixSolveTriangular, 1, 3 },
         { GMB_TOK_KdTreeQuery, 1, 3 }, { GMB_TOK_KdTreeQueryDist, 1, 3 },
         { GMB_TOK_KdTreeQueryBall, 1, 3 },
@@ -3220,24 +3202,8 @@ static int dlg_lookup(ctx_t* c, const char* ty, int* arity, int* strm, int* rets
         }
     return 0;
 }
-/* Builtin che RESTITUISCONO un array double* (gestiti da dim_arr_optimize): servono anche
- * per l'assegnazione a una variabile esistente (`a = OPTIMIZE.X(...)`, 2026-11-03). */
 static int is_param_of_cur(ctx_t* c, const char* name);
 static int user_fn_ret_arr(ctx_t* c, const char* name, int nargs);
-static int is_opt_array_call_tk(gmb_tokenkind_t tk) {
-    switch (tk) {
-    case GMB_TOK_NelderMead: case GMB_TOK_Bfgs: case GMB_TOK_LBfgs: case GMB_TOK_Broyden:
-    case GMB_TOK_ConjugateGradient: case GMB_TOK_OptimizePowell: case GMB_TOK_OptimizeFsolve:
-    case GMB_TOK_LevenbergMarquardt: case GMB_TOK_LevenbergMarquardtVec: case GMB_TOK_CurveFit:
-    case GMB_TOK_OptimizeBasinHopping: case GMB_TOK_OptimizeTnc: case GMB_TOK_OptimizeCobyla:
-    case GMB_TOK_OptimizeSlsqp: case GMB_TOK_OptimizeMinimize: case GMB_TOK_OptimizeBrute:
-    case GMB_TOK_OptimizeDualAnnealing: case GMB_TOK_DifferentialEvolution:
-    case GMB_TOK_OptimizeLeastSquares: case GMB_TOK_LeastSquares: case GMB_TOK_CholeskySolve:
-    case GMB_TOK_Simplex: case GMB_TOK_OptimizeLinprog:
-        return 1;
-    default: return 0;
-    }
-}
 
 static void reg_let_assign(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
  {
@@ -3299,14 +3265,11 @@ static void reg_let_assign(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
                 && !tv->coll_handle && !tv->gkind && !tv->boxed_val) {
                 tv->is_array = 1; tv->dyn_len = 1; tv->ndims = 1; tv->type = TY_STR;
             }
-            /* a = OPTIMIZE.<array-returning>(...) su una variabile esistente (anche DIM fissa):
-             * l'assegnazione SOSTITUISCE l'array come su IL/VM-C → la var diventa dinamica
-             * (double* + _len). Prima C99 falliva con "'OPTIMIZE.X' non definita".
-             * Vale anche per `a = <FUNCTION utente AS ARRAY OF …>(...)` (2026-11-03). */
+            /* a = <FUNCTION utente AS ARRAY OF …>(...): l'assegnazione SOSTITUISCE l'array
+             * (parità IL/VM-C) → la var diventa dinamica (`double*` + `_len`). */
             if (s->value && s->value->kind == GMB_EXPR_CALL
-                && (is_opt_array_call_tk(s->value->tk)
-                    || (s->value->var && !strchr(s->value->var, '.')
-                        && user_fn_ret_arr(c, s->value->var, s->value->nargs)))
+                && s->value->var && !strchr(s->value->var, '.')
+                && user_fn_ret_arr(c, s->value->var, s->value->nargs)
                 && !tv->coll_handle && !tv->gkind && !tv->boxed_val && !tv->vclass[0]
                 && !is_param_of_cur(c, s->target)) {
                 tv->is_array = 1; tv->dyn_len = 1; tv->ndims = 1; tv->matrix = 0; tv->jagged = 0;
@@ -5874,7 +5837,6 @@ int emit_bf_bits(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk,
 int emit_bf_metrics(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_analysis(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_vector(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
-int emit_bf_optimize(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_finance(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_finance_defaults(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_matrix(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
@@ -7471,21 +7433,6 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_ComputerScreenRecordStop, emit_bf_cua }, { NULL, GMB_TOK_ComputerScreenRecordStatus, emit_bf_cua },
     { NULL, GMB_TOK_ComputerDoubleClick, emit_bf_cua }, { NULL, GMB_TOK_ComputerHotKey, emit_bf_cua },
     { NULL, GMB_TOK_AgentRun, emit_bf_cua },
-    /* OPTIMIZE scalari (parity emitter C# Ns="OPTIMIZE"): callback λ → gmb_fn_t, solver
-     * gmb_opt_*_c99 nel runtime condiviso. */
-    { "OPTIMIZE", GMB_TOK_Newton, emit_bf_optimize },
-    { "OPTIMIZE", GMB_TOK_OptimizeBrentq, emit_bf_optimize },
-    { "OPTIMIZE", GMB_TOK_Brent, emit_bf_optimize },
-    { "OPTIMIZE", GMB_TOK_OptimizeBrenth, emit_bf_optimize },
-    { "OPTIMIZE", GMB_TOK_OptimizeRidder, emit_bf_optimize },
-    { "OPTIMIZE", GMB_TOK_OptimizeToms748, emit_bf_optimize },
-    { "OPTIMIZE", GMB_TOK_OptimizeBrentMin, emit_bf_optimize },
-    { "OPTIMIZE", GMB_TOK_Bisection, emit_bf_optimize },
-    { "OPTIMIZE", GMB_TOK_Secant, emit_bf_optimize },
-    { "OPTIMIZE", GMB_TOK_GoldenSection, emit_bf_optimize },
-    { "OPTIMIZE", GMB_TOK_OptimizeMinimizeScalar, emit_bf_optimize },
-    { "OPTIMIZE", GMB_TOK_NelderMead, emit_bf_optimize },
-    { "OPTIMIZE", GMB_TOK_Bfgs, emit_bf_optimize },
 };
 #define GMB_BF_COMPOSITE_COUNT (sizeof(gmb_bf_composite)/sizeof(gmb_bf_composite[0]))
 
@@ -8168,418 +8115,6 @@ static int dim_arr_kdtree(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init);
 static int an1d_arr(ctx_t* c, gmb_expr_t* a, var_t** out);
 /* DIM x() = OPTIMIZE.<multidim>(f, x0[]): punto ottimo (array double* allocato + _len).
  * Parity emitter C# Statements.Declaration.cs (NELDERMEAD/BFGS/…) e C99 runtime. */
-static int dim_arr_optimize(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init) {
-    if (c->error[0] || !init || init->kind != GMB_EXPR_CALL || !init->var) return 0;
-    /* OMONIMO UTENTE (forma drop-in di opt.inc: `FUNCTION BFGS(f,x0)` accanto alla SUB):
-     * vince la funzione utente, stesso ordine di emit_call (find_fn_arity prima del builtin).
-     * Senza, `DIM x() = OPT.CHOLESKYSOLVE(A, n, b)` finiva nel builtin con arità sbagliata. */
-    if (user_fn_ret_arr(c, init->var, init->nargs)) return 0;
-    var_t* v = lookup_var(c, s->dim_var);
-    if (!v) return 0;
-    var_t* av = NULL;
-    const char* fn = NULL;
-    if (init->tk == GMB_TOK_NelderMead) fn = "gmb_opt_nelder_mead_c99";
-    else if (init->tk == GMB_TOK_Bfgs) fn = "gmb_opt_bfgs_c99";
-    else if (init->tk == GMB_TOK_LBfgs) fn = "gmb_opt_lbfgs_c99";
-    else if (init->tk == GMB_TOK_Broyden) fn = "gmb_opt_broyden_c99";
-    if (fn)
-    {
-        if (init->nargs < 2 || !an1d_arr(c, init->args[1], &av)) {
-            c99_fail(c, s->line, "DIM %s: OPTIMIZE (multidim) richiede (f, x0[])", v->name);
-            return 1;
-        }
-        ind(c);
-        emit_ident(c, v->name);
-        sb_put(&c->out, " = ({ double* _nm = (double*)calloc((size_t)(");
-        emit_arr_len_of(c, av);
-        sb_printf(&c->out, ") + 1, sizeof(double)); %s(", fn);
-        emit_expr(c, init->args[0]);
-        sb_put(&c->out, ", (double*)");
-        emit_var_ref(c, av);
-        sb_put(&c->out, ", (int)(");
-        emit_arr_len_of(c, av);
-        sb_put(&c->out, "), _nm); ");
-        emit_ident(c, v->name);
-        sb_put(&c->out, "_len = (int)(");
-        emit_arr_len_of(c, av);
-        sb_put(&c->out, "); _nm; });\n");
-        return 1;
-    }
-    if (init->tk == GMB_TOK_ConjugateGradient || init->tk == GMB_TOK_OptimizePowell || init->tk == GMB_TOK_OptimizeFsolve)
-    {
-        const char* cfn = (init->tk == GMB_TOK_ConjugateGradient) ? "gmb_opt_cg_c99"
-                        : (init->tk == GMB_TOK_OptimizeFsolve) ? "gmb_opt_fsolve_c99" : "gmb_opt_powell_c99";
-        if (init->nargs < 2 || !an1d_arr(c, init->args[1], &av)) {
-            c99_fail(c, s->line, "DIM %s: OPTIMIZE (multidim) richiede (f, x0[])", v->name);
-            return 1;
-        }
-        ind(c);
-        emit_ident(c, v->name);
-        sb_printf(&c->out, " = ({ gmb_int_t _cgn = 0; double* _cgx = %s(", cfn);
-        emit_expr(c, init->args[0]);
-        sb_put(&c->out, ", (double*)");
-        emit_var_ref(c, av);
-        sb_put(&c->out, ", (int)(");
-        emit_arr_len_of(c, av);
-        sb_put(&c->out, "), &_cgn); ");
-        emit_ident(c, v->name);
-        sb_put(&c->out, "_len = _cgn; _cgx; });\n");
-        return 1;
-    }
-    if (init->tk == GMB_TOK_LevenbergMarquardt || init->tk == GMB_TOK_LevenbergMarquardtVec || init->tk == GMB_TOK_CurveFit)
-    {
-        int is_vec = (init->tk == GMB_TOK_LevenbergMarquardtVec);
-        int is_cf = (init->tk == GMB_TOK_CurveFit);
-        /* LM/LMV: (f, p0, x, y) → p0=1 x=2 y=3; CURVEFIT: (f, x, y, p0) → x=1 y=2 p0=3 */
-        var_t *ax = NULL, *ay = NULL, *ap = NULL;
-        if (init->nargs < 4
-            || !an1d_arr(c, init->args[is_cf ? 1 : 2], &ax)
-            || !an1d_arr(c, init->args[is_cf ? 2 : 3], &ay)
-            || !an1d_arr(c, init->args[is_cf ? 3 : 1], &ap)) {
-            c99_fail(c, s->line, "DIM %s: OPTIMIZE.LM/LMV/CURVEFIT richiede (f, p0[], x[], y[])", v->name);
-            return 1;
-        }
-        ind(c);
-        emit_ident(c, v->name);
-        if (is_vec) {
-            /* LMVEC: gmb_opt_lmfit_vec_c99(fn, xs, ys, n, p0, np, outn) — n unico per xs/ys */
-            sb_put(&c->out, " = ({ gmb_int_t _lmn = 0; double* _lmx = gmb_opt_lmfit_vec_c99(");
-            emit_expr(c, init->args[0]);
-            sb_put(&c->out, ", (const double*)");
-            emit_var_ref(c, ax);
-            sb_put(&c->out, ", (const double*)");
-            emit_var_ref(c, ay);
-            sb_put(&c->out, ", (int)(");
-            emit_arr_len_of(c, ax);
-            sb_put(&c->out, "), (const double*)");
-            emit_var_ref(c, ap);
-            sb_put(&c->out, ", (int)(");
-            emit_arr_len_of(c, ap);
-            sb_put(&c->out, "), &_lmn); ");
-        } else {
-            sb_printf(&c->out, " = ({ gmb_int_t _lmn = 0; double* _lmx = %s(", is_vec ? "gmb_opt_lmfit_vec_c99" : "gmb_opt_lmfit_c99");
-            emit_expr(c, init->args[0]);
-            sb_put(&c->out, ", (const double*)");
-            emit_var_ref(c, ax);
-            sb_put(&c->out, ", (int)(");
-            emit_arr_len_of(c, ax);
-            sb_put(&c->out, "), (const double*)");
-            emit_var_ref(c, ay);
-            sb_put(&c->out, ", (int)(");
-            emit_arr_len_of(c, ay);
-            sb_put(&c->out, "), (const double*)");
-            emit_var_ref(c, ap);
-            sb_put(&c->out, ", (int)(");
-            emit_arr_len_of(c, ap);
-            sb_put(&c->out, "), &_lmn); ");
-        }
-        emit_ident(c, v->name);
-        sb_put(&c->out, "_len = _lmn; _lmx; });\n");
-        return 1;
-    }
-    if (init->tk == GMB_TOK_OptimizeBasinHopping)
-    {
-        var_t *av = NULL;
-        if (init->nargs < 2 || !an1d_arr(c, init->args[1], &av)) {
-            c99_fail(c, s->line, "DIM %s: OPTIMIZE.BASINHOPPING richiede (f, x0[][, niter])", v->name);
-            return 1;
-        }
-        ind(c);
-        emit_ident(c, v->name);
-        sb_put(&c->out, " = ({ gmb_int_t _bn = 0; double* _bx = gmb_opt_basin_c99(");
-        emit_expr(c, init->args[0]);
-        sb_put(&c->out, ", (double*)");
-        emit_var_ref(c, av);
-        sb_put(&c->out, ", (int)(");
-        emit_arr_len_of(c, av);
-        sb_put(&c->out, "), (int)(");
-        if (init->nargs >= 3) emit_expr(c, init->args[2]); else sb_put(&c->out, "50");
-        sb_put(&c->out, "), &_bn); ");
-        emit_ident(c, v->name);
-        sb_put(&c->out, "_len = _bn; _bx; });\n");
-        return 1;
-    }
-    /* Bounded/globali con bounds jagged double** (Tnc/Cobyla/Slsqp/Minimize/Brute/Dual/DE):
-     * `DIM x() = OPTIMIZE.<bnd>(f, x0[], bounds[][])`. */
-    if (init->tk == GMB_TOK_OptimizeTnc || init->tk == GMB_TOK_OptimizeCobyla
-        || init->tk == GMB_TOK_OptimizeSlsqp || init->tk == GMB_TOK_OptimizeMinimize
-        || init->tk == GMB_TOK_OptimizeBrute || init->tk == GMB_TOK_OptimizeDualAnnealing
-        || init->tk == GMB_TOK_DifferentialEvolution)
-    {
-        int is_min = init->tk == GMB_TOK_OptimizeMinimize;
-        int is_brute = init->tk == GMB_TOK_OptimizeBrute;
-        int is_dual = init->tk == GMB_TOK_OptimizeDualAnnealing;
-        int is_de = init->tk == GMB_TOK_DifferentialEvolution;
-        /* Brute/Dual/DE non hanno x0: il primo array è ranges/bounds. */
-        int nox0 = is_brute || is_dual || is_de;
-        int hasN = is_brute || is_dual;
-        var_t *xx = NULL, *bb = NULL;
-        /* Bounds OPZIONALI (2026-11-03, parity con StdLib.Optimize.cs): TNC/COBYLA/SLSQP
-         * accettano (f, x0) e MINIMIZE (f, x0[, method]) — il runtime tratta NULL come
-         * illimitato. Brute/Dual/DE richiedono sempre ranges/bounds. */
-        if (init->nargs < 2) {
-            c99_fail(c, s->line, "DIM %s: OPTIMIZE richiede almeno (funzione, x0[])", v->name);
-            return 1;
-        }
-        const char* bfn = init->tk == GMB_TOK_OptimizeTnc ? "gmb_opt_tnc_c99"
-                    : init->tk == GMB_TOK_OptimizeCobyla ? "gmb_opt_cobyla_c99"
-                    : init->tk == GMB_TOK_OptimizeSlsqp ? "gmb_opt_slsqp_c99"
-                    : init->tk == GMB_TOK_OptimizeMinimize ? "gmb_opt_minimize_c99"
-                    : init->tk == GMB_TOK_OptimizeBrute ? "gmb_opt_brute_c99"
-                    : init->tk == GMB_TOK_OptimizeDualAnnealing ? "gmb_opt_dual_c99"
-                    : "gmb_opt_de_c99";
-        /* bounds: Tnc/Cobyla/Slsqp → args[2]; Minimize → args[3]; Brute/Dual/DE → args[1].
-         * MINIMIZE accetta anche la forma a 3 argomenti (f, x0, metodo) SENZA bounds: il
-         * runtime tratta bounds=NULL come illimitato — leggere args[3] fuori range causava
-         * un SEGFAULT del driver C99Native (bug OptimizeSciPyParity). */
-        int bArg = is_min ? 3 : nox0 ? 1 : 2;
-        int has_bounds = nox0 || (is_min ? init->nargs >= 4 : init->nargs >= 3);
-        bb = has_bounds ? lookup_var(c, init->args[bArg]->var) : NULL;
-        if (has_bounds && (!bb || !bb->jagged)) {
-            c99_fail(c, s->line, "DIM %s: bounds deve essere DIM ... AS ARRAY OF DOUBLE", v->name);
-            return 1;
-        }
-        if (!nox0 && !an1d_arr(c, init->args[1], &xx)) {
-            c99_fail(c, s->line, "DIM %s: OPTIMIZE (bounded) richiede x0[]", v->name);
-            return 1;
-        }
-        ind(c);
-        emit_ident(c, v->name);
-        sb_printf(&c->out, " = ({ gmb_int_t _on = 0; double* _ox = %s(", bfn);
-        emit_expr(c, init->args[0]);
-        if (nox0) {
-            /* Brute/Dual/DE: (fn, ranges/bounds, n[, N], &outn) */
-            sb_put(&c->out, ", (gmb_double_t**)");
-            emit_var_ref(c, bb);
-            sb_put(&c->out, ", (int)(");
-            emit_arr_len_of(c, bb);
-            sb_put(&c->out, ")");
-            if (hasN) {
-                sb_put(&c->out, ", (int)(");
-                if (init->nargs >= 3) emit_expr(c, init->args[2]); else sb_put(&c->out, is_dual ? "1000" : "20");
-            sb_put(&c->out, ")");
-            }
-        } else {
-            /* Tnc/Cobyla/Slsqp/Minimize: (fn, x0, n[, method], bounds, &outn) */
-            sb_put(&c->out, ", (gmb_double_t*)");
-            emit_var_ref(c, xx);
-            sb_put(&c->out, ", (int)(");
-            emit_arr_len_of(c, xx);
-            sb_put(&c->out, ")");
-            if (is_min) {
-                sb_put(&c->out, ", ");
-                if (init->nargs >= 3) emit_str_operand(c, init->args[2]); else sb_put(&c->out, "gmb_string_alloc(\"nelder-mead\")");
-            }
-            sb_put(&c->out, ", (gmb_double_t**)");
-            if (has_bounds) emit_var_ref(c, bb); else sb_put(&c->out, "NULL");
-        }
-        sb_put(&c->out, ", &_on); ");
-        emit_ident(c, v->name);
-        sb_put(&c->out, "_len = _on; _ox; });\n");
-        return 1;
-    }
-    /* LeastSquaresFit: DIM x() = OPTIMIZE.LEASTSQUARESFIT(fn, x0[, bounds[][]]). */
-    if (init->tk == GMB_TOK_OptimizeLeastSquares) {
-        var_t* x0 = NULL;
-        if (init->nargs < 2 || !an1d_arr(c, init->args[1], &x0)) {
-            c99_fail(c, s->line, "DIM %s: OPTIMIZE.LEASTSQUARESFIT richiede (fn, x0[])", v->name);
-            return 1;
-        }
-        var_t* bnd = NULL;
-        if (init->nargs >= 3 && init->args[2]->kind == GMB_EXPR_VAR) {
-            bnd = lookup_var(c, init->args[2]->var);
-            if (bnd && !bnd->jagged) bnd = NULL;
-        }
-        int m = 0;
-        if (init->args[0]->kind == GMB_EXPR_VAR) {
-            fn_info_t* lf = find_fn(c, init->args[0]->var);
-            if (lf) m = lf->lambda_ret_arr_len;
-        }
-        /* m non noto (lambda in variabile / RETURN di un array dinamico): il runtime fa una
-         * chiamata di probe e legge gmb_lambda_ret_len (impostato dal RETURN array). */
-        if (m < 0) m = 0;
-        ind(c);
-        emit_ident(c, v->name);
-        sb_put(&c->out, " = ({ gmb_int_t _on = 0; double* _ox = gmb_opt_lstsq_c99(");
-        emit_expr(c, init->args[0]);
-        sb_put(&c->out, ", (gmb_double_t*)");
-        emit_var_ref(c, x0);
-        sb_put(&c->out, ", (int)(");
-        emit_arr_len_of(c, x0);
-        sb_printf(&c->out, "), (int)(%d), ", m);
-        if (bnd) { sb_put(&c->out, "(gmb_double_t**)"); emit_var_ref(c, bnd); }
-        else sb_put(&c->out, "NULL");
-        sb_put(&c->out, ", &_on); ");
-        emit_ident(c, v->name);
-        sb_put(&c->out, "_len = _on; _ox; });\n");
-        return 1;
-    }
-    /* LeastSquares lineare: DIM x() = OPTIMIZE.LEASTSQUARES(A[][], b[]). */
-    if (init->tk == GMB_TOK_LeastSquares) {
-        var_t *A = NULL, *b = NULL;
-        if (init->nargs < 2 || !an1d_arr(c, init->args[0], &A) || !A->jagged
-            || !an1d_arr(c, init->args[1], &b)) {
-            c99_fail(c, s->line, "DIM %s: OPTIMIZE.LEASTSQUARES richiede (A[][], b[])", v->name);
-            return 1;
-        }
-        ind(c);
-        emit_ident(c, v->name);
-        sb_printf(&c->out, " = ({ int _lsc = (int)(");
-        emit_ident(c, A->name); sb_put(&c->out, "__cols); ");
-        sb_put(&c->out, "double* _lsx = (double*)calloc((size_t)_lsc + 1, sizeof(double)); ");
-        sb_put(&c->out, "gmb_opt_lin_lstsq((const double* const*)");
-        emit_var_ref(c, A);
-        sb_put(&c->out, ", (const double*)");
-        emit_var_ref(c, b);
-        sb_put(&c->out, ", (int)(");
-        emit_arr_len_of(c, A);
-        sb_put(&c->out, "), _lsc, _lsx); ");
-        emit_ident(c, v->name);
-        sb_put(&c->out, "_len = _lsc; _lsx; });\n");
-        return 1;
-    }
-    /* CholeskySolve: DIM x() = OPTIMIZE.CHOLESKYSOLVE(A[][], b[]). */
-    if (init->tk == GMB_TOK_CholeskySolve) {
-        var_t *A = NULL, *b = NULL;
-        if (init->nargs < 2 || !an1d_arr(c, init->args[0], &A) || !A->jagged
-            || !an1d_arr(c, init->args[1], &b)) {
-            c99_fail(c, s->line, "DIM %s: OPTIMIZE.CHOLESKYSOLVE richiede (A[][], b[])", v->name);
-            return 1;
-        }
-        ind(c);
-        emit_ident(c, v->name);
-        sb_put(&c->out, " = ({ double* _csx = (double*)calloc((size_t)(");
-        emit_arr_len_of(c, A);
-        sb_put(&c->out, ") + 1, sizeof(double)); gmb_cholesky_solve_jagged((const double* const*)");
-        emit_var_ref(c, A);
-        sb_put(&c->out, ", (const double*)");
-        emit_var_ref(c, b);
-        sb_put(&c->out, ", (int)(");
-        emit_arr_len_of(c, A);
-        sb_put(&c->out, "), _csx); ");
-        emit_ident(c, v->name);
-        sb_put(&c->out, "_len = (int)(");
-        emit_arr_len_of(c, A);
-        sb_put(&c->out, "); _csx; });\n");
-        return 1;
-    }
-    /* Simplex: DIM x() = OPTIMIZE.SIMPLEX(c[], A[][], b[]). `c` può essere un array
-     * literal inline ({-1,-1}) → compound literal C99. */
-    if (init->tk == GMB_TOK_Simplex) {
-        var_t *cv = NULL, *A = NULL, *b = NULL;
-        int sc_lit = 0;
-        if (init->nargs < 3 || !an1d_arr(c, init->args[1], &A) || !A->jagged
-            || !an1d_arr(c, init->args[2], &b)) {
-            c99_fail(c, s->line, "DIM %s: OPTIMIZE.SIMPLEX richiede (c[], A[][], b[])", v->name);
-            return 1;
-        }
-        if (init->args[0]->kind == GMB_EXPR_VAR) {
-            cv = lookup_var(c, init->args[0]->var);
-            if (!cv || !cv->is_array) {
-                c99_fail(c, s->line, "DIM %s: SIMPLEX c[] non è un array", v->name);
-                return 1;
-            }
-        } else if (init->args[0]->kind == GMB_EXPR_CALL && init->args[0]->var
-                   && strcmp(init->args[0]->var, "_array_") == 0) {
-            sc_lit = init->args[0]->nargs;
-        } else {
-            c99_fail(c, s->line, "DIM %s: SIMPLEX c[] non supportato", v->name);
-            return 1;
-        }
-        ind(c);
-        emit_ident(c, v->name);
-        sb_put(&c->out, " = ({ gmb_int_t _sxn = 0; double* _sxx = gmb_opt_simplex_c99((const double*)");
-        if (cv) emit_var_ref(c, cv);
-        else {
-            sb_put(&c->out, "(const double[]){");
-            for (int i = 0; i < init->args[0]->nargs && !c->error[0]; i++) {
-                if (i) sb_put(&c->out, ", ");
-                emit_expr(c, init->args[0]->args[i]);
-            }
-            sb_put(&c->out, "}");
-        }
-        sb_put(&c->out, ", (int)(");
-        if (cv) emit_arr_len_of(c, cv); else sb_printf(&c->out, "%d", sc_lit);
-        sb_put(&c->out, "), (const double* const*)");
-        emit_var_ref(c, A);
-        sb_put(&c->out, ", (const double*)");
-        emit_var_ref(c, b);
-        sb_put(&c->out, ", (int)(");
-        emit_arr_len_of(c, A);
-        sb_put(&c->out, "), &_sxn); ");
-        emit_ident(c, v->name);
-        sb_put(&c->out, "_len = _sxn; _sxx; });\n");
-        return 1;
-    }
-    /* Linprog: DIM x() = OPTIMIZE.LINPROG(c[], A_ub[][], b_ub[, A_eq[][], b_eq[, bounds[][] ]]).
-     * `c` può essere un array literal inline ({-1,-1}) → compound literal C99. */
-    if (init->tk == GMB_TOK_OptimizeLinprog) {
-        var_t *A = NULL, *b = NULL;
-        int c_lit = 0;
-        if (init->nargs < 3 || !an1d_arr(c, init->args[1], &A) || !A->jagged
-            || !an1d_arr(c, init->args[2], &b)) {
-            c99_fail(c, s->line, "DIM %s: OPTIMIZE.LINPROG richiede (c[], A_ub[][], b_ub[])", v->name);
-            return 1;
-        }
-        var_t* cv = NULL;
-        if (init->args[0]->kind == GMB_EXPR_VAR) {
-            cv = lookup_var(c, init->args[0]->var);
-            if (!cv || !cv->is_array) {
-                c99_fail(c, s->line, "DIM %s: LINPROG c[] non è un array", v->name);
-                return 1;
-            }
-        } else if (init->args[0]->kind == GMB_EXPR_CALL && init->args[0]->var
-                   && strcmp(init->args[0]->var, "_array_") == 0) {
-            c_lit = init->args[0]->nargs;
-        } else {
-            c99_fail(c, s->line, "DIM %s: LINPROG c[] non supportato", v->name);
-            return 1;
-        }
-        var_t *Aeq = NULL, *beq = NULL, *bnd = NULL;
-        if (init->nargs >= 4 && init->args[3]->kind == GMB_EXPR_VAR) {
-            Aeq = lookup_var(c, init->args[3]->var);
-            if (Aeq && !Aeq->jagged) Aeq = NULL;
-        }
-        if (init->nargs >= 5) beq = lookup_var(c, init->args[4]->var);
-        if (init->nargs >= 6 && init->args[5]->kind == GMB_EXPR_VAR) {
-            bnd = lookup_var(c, init->args[5]->var);
-            if (bnd && !bnd->jagged) bnd = NULL;
-        }
-        ind(c);
-        emit_ident(c, v->name);
-        sb_put(&c->out, " = ({ gmb_int_t _lpn = 0; double* _lpx = gmb_opt_linprog_c99((const double*)");
-        if (cv) emit_var_ref(c, cv);
-        else {
-            sb_put(&c->out, "(const double[]){");
-            for (int i = 0; i < init->args[0]->nargs && !c->error[0]; i++) {
-                if (i) sb_put(&c->out, ", ");
-                emit_expr(c, init->args[0]->args[i]);
-            }
-            sb_put(&c->out, "}");
-        }
-        sb_put(&c->out, ", (int)(");
-        if (cv) emit_arr_len_of(c, cv); else sb_printf(&c->out, "%d", c_lit);
-        sb_put(&c->out, "), (const double**)");
-        emit_var_ref(c, A);
-        sb_put(&c->out, ", (const double*)");
-        emit_var_ref(c, b);
-        sb_put(&c->out, ", (int)(");
-        emit_arr_len_of(c, A);
-        sb_put(&c->out, "), ");
-        if (Aeq) { sb_put(&c->out, "(const double**)"); emit_var_ref(c, Aeq); } else sb_put(&c->out, "NULL");
-        sb_put(&c->out, ", ");
-        if (beq) { sb_put(&c->out, "(const double*)"); emit_var_ref(c, beq); } else sb_put(&c->out, "NULL");
-        sb_put(&c->out, ", (int)(");
-        if (beq) emit_arr_len_of(c, beq); else sb_put(&c->out, "0");
-        sb_put(&c->out, "), ");
-        if (bnd) { sb_put(&c->out, "(const double**)"); emit_var_ref(c, bnd); } else sb_put(&c->out, "NULL");
-        sb_put(&c->out, ", &_lpn); ");
-        emit_ident(c, v->name);
-        sb_put(&c->out, "_len = _lpn; _lpx; });\n");
-        return 1;
-    }
-    return 0;
-}
 static void emit_dict_key(ctx_t* c, gmb_expr_t* e);   /* definita più sotto in questo file */
 /* ============================================================================
  * Comprehension `[sel FOR var IN src (FOR var2 IN src2)* (IF where)?]` (lista),
@@ -8830,7 +8365,6 @@ static void emit_dim_arr_init(ctx_t* c, gmb_stmt_t* s) {
         }
         return;
     }
-    if (dim_arr_optimize(c, s, init)) return;
     /* DIM x() = <FUNCTION utente AS ARRAY OF …>(...) (2026-11-03): la chiamata passa
      * __out=NULL e la funzione alloca; puntatore e lunghezza arrivano dal canale
      * thread-local. `emit_expr` emette già `({ call(..., NULL); gmb_lambda_ret_ptr_get(); })`. */
@@ -17675,36 +17209,28 @@ static void res_guard_end(ctx_t* c, int res_guard) {
 
 static void st_let_assign(ctx_t* c, gmb_stmt_t* s) {
 {
-        /* a = OPTIMIZE.<array-returning>(...) → stesso percorso del DIM `x() = …`
+        /* a = <FUNCTION utente AS ARRAY OF …>(...) → stesso percorso del DIM `x() = …`
          * (l'assegnazione sostituisce l'array; var promossa a dyn_len dal pre-pass).
          * Su un PARAMETRO la promozione è disattivata (rappresentazione fissata dalla
          * firma): errore esplicito invece di C invalido. */
         if (s->target && !s->array_index && s->value && s->value->kind == GMB_EXPR_CALL
-            && (is_opt_array_call_tk(s->value->tk)
-                || (s->value->var && user_fn_ret_arr(c, s->value->var, s->value->nargs)))) {
+            && s->value->var && user_fn_ret_arr(c, s->value->var, s->value->nargs)) {
             if (is_param_of_cur(c, s->target)) {
-                c99_fail(c, s->line, "%s: assegnazione di un builtin che ritorna un array a un "
+                c99_fail(c, s->line, "%s: assegnazione di una funzione che ritorna un array a un "
                          "parametro array non supportata (usare una variabile locale)", s->target);
                 return;
             }
             var_t* atv = lookup_var(c, s->target);
             if (atv && atv->is_array && atv->dyn_len) {
-                /* FUNZIONE utente AS ARRAY: la call passa __out=NULL e pubblica
-                 * puntatore+lunghezza nel canale thread-local. */
-                if (!is_opt_array_call_tk(s->value->tk)) {
-                    ind(c);
-                    emit_ident(c, atv->name);
-                    sb_put(&c->out, " = ");
-                    emit_expr(c, s->value);
-                    sb_put(&c->out, ";\n");
-                    ind(c);
-                    emit_ident(c, atv->name);
-                    sb_put(&c->out, "_len = gmb_lambda_ret_len_get();\n");
-                    return;
-                }
-                gmb_stmt_t shim = *s;
-                shim.dim_var = s->target;
-                if (dim_arr_optimize(c, &shim, s->value)) return;
+                ind(c);
+                emit_ident(c, atv->name);
+                sb_put(&c->out, " = ");
+                emit_expr(c, s->value);
+                sb_put(&c->out, ";\n");
+                ind(c);
+                emit_ident(c, atv->name);
+                sb_put(&c->out, "_len = gmb_lambda_ret_len_get();\n");
+                return;
             }
         }
         /* ON ERROR/RESUME attivo (parity oracolo C#): guard setjmp per-istruzione.
