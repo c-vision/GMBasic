@@ -316,6 +316,16 @@ public sealed class ProviderServer
         }
     }
 
+    /// <summary>Ruolo canonico (es. "decide") del provider registrato, o null se assente.</summary>
+    public string? GetRole(string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        lock (_lock)
+        {
+            return _providers.TryGetValue(name, out var descriptor) ? descriptor.Role : null;
+        }
+    }
+
     public bool IsRegistered(string name)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);

@@ -781,11 +781,29 @@ internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter
         }
     }
 
+    // Valori effettivi: il profilo `%DECIDE verbalizer` (se attivo sul thread) vince sulla config
+    // del provider completion.
+    private string EffectiveDecideMode =>
+        (DecideProfile.Current?.Mode ?? _decideMode).Trim().ToLowerInvariant();
+    private string? EffectiveDecideTemplate => DecideProfile.Current?.Template ?? _decideTemplate;
+    private string? EffectiveDecideCalibration => DecideProfile.Current?.Calibration ?? _decideCalibration;
+
     private void EnsureDecideEnabled()
     {
-        if (_decideMode == "off")
+        if (EffectiveDecideMode == "off")
             throw new DecisionProviderException(
                 $"local: decisione disabilitata per questo modello (decide=off, '{_modelName}').");
+    }
+
+    // Testa di scoring per profilo: la chiave è il path di calibrazione ("" = default del modello).
+    private readonly ConcurrentDictionary<string, ScoringHead?> _profileHeads = new();
+
+    private ScoringHead? GetScoringHead()
+    {
+        var profile = DecideProfile.Current;
+        if (profile?.Calibration is not { } path)
+            return _scoringHead ??= LoadScoringHead();
+        return _profileHeads.GetOrAdd(path, p => ScoringHead.TryLoadFile(p));
     }
 
     private ScoringHead? LoadScoringHead() =>
@@ -802,17 +820,18 @@ internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter
         var instructions = string.IsNullOrWhiteSpace(request.Instructions)
             ? defaultSystem : request.Instructions!;
         var joined = string.Join(", ", labels);
-        if (!string.IsNullOrWhiteSpace(_decideTemplate)
-            && (_decideTemplate!.Contains("{state}", StringComparison.Ordinal)
-                || _decideTemplate.Contains("{options}", StringComparison.Ordinal)))
+        var tpl = EffectiveDecideTemplate;
+        if (!string.IsNullOrWhiteSpace(tpl)
+            && (tpl.Contains("{state}", StringComparison.Ordinal)
+                || tpl.Contains("{options}", StringComparison.Ordinal)))
         {
-            var user = _decideTemplate
+            var user = tpl
                 .Replace("{state}", request.State, StringComparison.Ordinal)
                 .Replace("{options}", joined, StringComparison.Ordinal);
             return (instructions, user);
         }
-        if (!string.IsNullOrWhiteSpace(_decideTemplate))
-            instructions = _decideTemplate!;
+        if (!string.IsNullOrWhiteSpace(tpl))
+            instructions = tpl;
         return (instructions,
             $"State:\n{request.State}\nAllowed options: {joined}\n{answer}");
     }
@@ -845,7 +864,7 @@ internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter
         EnsureDecideEnabled();
         request.Validate();
 
-        var head = _scoringHead ??= LoadScoringHead();
+        var head = GetScoringHead();
         var effective = head?.Apply(request) ?? request;
 
         var labels = request.UseSlotTokens
@@ -955,7 +974,7 @@ internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter
         foreach (var request in requests)
         {
             request.Validate();
-            var head = _scoringHead ??= LoadScoringHead();
+            var head = GetScoringHead();
             var effective = head?.Apply(request) ?? request;
             var labels = request.UseSlotTokens
                 ? effective.Options.Select(o => $"{o.Id}) {o.Display}").ToArray()

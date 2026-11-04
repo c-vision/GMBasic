@@ -136,6 +136,9 @@ int gmb_ai_decide_local_run_group(const char* state, const gmb_decision_domain_t
  * l'oggetto del core sia linkato e che la dylib abbia un entry point stabile. */
 const char* gmb_ai_decide_active_model_path(void);
 
+/* 1 se la decisione in corso usa un provider `%DECIDE` di kind `verbalizer` (profilo da applicare). */
+int gmb_ai_decide_profile_active(void);
+
 #ifdef __cplusplus
 }
 #endif

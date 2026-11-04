@@ -233,6 +233,15 @@ const char* gmb_ai_decide_active_model_path(void)
     return gmb_provider_active_model_path();
 }
 
+/* Il decisore in corso e' un provider `%DECIDE` di kind `verbalizer`? Il provider locale applica la
+ * config di quel provider (decide/decideTemplate/decideCalibration) SOLO in questo caso: una chiamata
+ * `USING "local"` usa sempre la config del modello completion, anche se un verbalizer e' attivo. */
+static __thread int g_decide_profile_on;
+int gmb_ai_decide_profile_active(void)
+{
+    return g_decide_profile_on;
+}
+
 /* ── Provider REMOTO TypeSafe (JEV): POST JSON, risposta con la decisione già calcolata ── */
 static int dc_typesafe_run(const char* state, const char* kind,
                            const gmb_decision_option_t* options, int n_options,
@@ -656,7 +665,7 @@ int gmb_decision_resolve_domain(const char* kind, gmb_decision_domain_t* d) {
     return -1;
 }
 
-char* gmb_ai_decide_run_json(const char* state, const char* kind, const char* provider_name) {
+static char* dc_run_json_inner(const char* state, const char* kind, const char* provider_name) {
     if (!kind) return NULL;
     /* Provider esplicito assente → ruolo %DECIDE attivo, se registrato/attivato. */
     const char* effective_provider = provider_name;
@@ -664,6 +673,7 @@ char* gmb_ai_decide_run_json(const char* state, const char* kind, const char* pr
         const char* decide_kind = gmb_provider_active_kind("decide");
         if (decide_kind && *decide_kind) effective_provider = decide_kind;
     }
+    g_decide_profile_on = effective_provider && ieq(effective_provider, "verbalizer");
     gmb_decision_domain_t dom;
     if (gmb_decision_resolve_domain(kind, &dom) != 0) return NULL;
     const gmb_decision_option_t* options = dom.options;
@@ -727,7 +737,7 @@ char* gmb_ai_decide_run_json(const char* state, const char* kind, const char* pr
     /* Provider locale MLX: l'inferenza vive nella dylib AI (`gmb_ai_decide_local_run`),
      * che usa il motore LLMEnv (CAP_DECIDE), il tokenizer e il chat_template reale. Un
      * fallimento è un errore JSON ESPLICITO: mai un fallback silenzioso a rules. */
-    if (effective_provider && ieq(effective_provider, "local")) {
+    if (effective_provider && (ieq(effective_provider, "local") || ieq(effective_provider, "verbalizer"))) {
         gmb_decision_result_t local_result;
         char lerr[GMB_DECISION_ERR_CAP] = "";
         if (gmb_ai_decide_local_run(state ? state : "", kind, options, n_options,
@@ -779,6 +789,43 @@ char* gmb_ai_decide_run_json(const char* state, const char* kind, const char* pr
     if (!out) return NULL;
     memcpy(out, buffer, n + 1);
     return out;
+}
+
+/* Provider `%DECIDE` registrato con nome proprio (`AI REGISTER "jev", %DECIDE, "verbalizer", {...}`):
+ * `AI DECIDE ... USING "jev"` ne usa il kind e, per i kind con profilo (verbalizer), il provider
+ * locale legge decide/decideTemplate/decideCalibration dalla sua config: l'alias viene reso attivo
+ * per la durata della chiamata e il precedente ripristinato. */
+typedef struct { char prev[64]; int swapped; } dc_alias_t;
+
+static int dc_is_builtin_kind(const char* p) {
+    return ieq(p, "rules") || ieq(p, "mock") || ieq(p, "local") || ieq(p, "typesafe")
+        || ieq(p, "adapter") || ieq(p, "llm") || ieq(p, "verbalizer");
+}
+
+/* Ritorna il provider effettivo da passare alla logica interna (kind dell'alias, o l'input). */
+static const char* dc_alias_enter(const char* provider, dc_alias_t* a) {
+    a->prev[0] = 0; a->swapped = 0;
+    if (!provider || !*provider || dc_is_builtin_kind(provider)) return provider;
+    const char* role = gmb_provider_role_name(provider);
+    if (!role || strcmp(role, "decide") != 0) return provider;
+    const char* cur = gmb_provider_active("decide");
+    snprintf(a->prev, sizeof a->prev, "%s", cur ? cur : "");
+    if (gmb_provider_set_active("decide", provider)) a->swapped = 1;
+    const char* k = gmb_provider_kind(provider);
+    return (k && *k) ? k : provider;
+}
+
+static void dc_alias_leave(dc_alias_t* a) {
+    if (a->swapped && a->prev[0]) gmb_provider_set_active("decide", a->prev);
+}
+
+char* gmb_ai_decide_run_json(const char* state, const char* kind, const char* provider_name) {
+    dc_alias_t al;
+    const char* eff = dc_alias_enter(provider_name, &al);
+    char* r = dc_run_json_inner(state, kind, eff);
+    g_decide_profile_on = 0;
+    dc_alias_leave(&al);
+    return r;
 }
 
 /* Catena esplicita: il primo provider che non risponde `{"error":…}` vince. */
@@ -864,7 +911,7 @@ static int dc_sb_add(char** buf, size_t* cap, size_t* off, const char* s, size_t
     return 1;
 }
 
-static char* dc_group_build(const char* state, const char* names_json, const char* kinds_json,
+static char* dc_group_build_inner(const char* state, const char* names_json, const char* kinds_json,
                             const char* provider, const char* fallback) {
     gmb_val_t nv = gmb_json_parse(names_json ? names_json : "[]");
     gmb_val_t kv = gmb_json_parse(kinds_json ? kinds_json : "[]");
@@ -893,9 +940,10 @@ static char* dc_group_build(const char* state, const char* names_json, const cha
         const char* dk = gmb_provider_active_kind("decide");
         if (dk && *dk) eff = dk;
     }
+    g_decide_profile_on = eff && ieq(eff, "verbalizer");
     const char* group_off = getenv("GMB_DECIDE_GROUP_OFF");
     int allow_group = !(group_off && *group_off && strcmp(group_off, "0") != 0);
-    if (allow_group && (!fallback || !*fallback) && eff && ieq(eff, "local") && n <= 32) {
+    if (allow_group && (!fallback || !*fallback) && eff && (ieq(eff, "local") || ieq(eff, "verbalizer")) && n <= 32) {
         gmb_decision_domain_t* doms = (gmb_decision_domain_t*)calloc((size_t)n, sizeof(*doms));
         gmb_decision_result_t* res = (gmb_decision_result_t*)calloc((size_t)n, sizeof(*res));
         int okall = doms && res;
@@ -960,6 +1008,16 @@ static char* dc_group_build(const char* state, const char* names_json, const cha
     for (int i = 0; i < n; i++) { gmb_string_free(&names[i]); gmb_string_free(&kinds[i]); }
     free(names); free(kinds);
     return out;
+}
+
+static char* dc_group_build(const char* state, const char* names_json, const char* kinds_json,
+                            const char* provider, const char* fallback) {
+    dc_alias_t al;
+    const char* eff = dc_alias_enter(provider, &al);
+    char* r = dc_group_build_inner(state, names_json, kinds_json, eff, fallback);
+    g_decide_profile_on = 0;
+    dc_alias_leave(&al);
+    return r;
 }
 
 /* Il desugar del batch emette UNA chiamata per ogni destinazione (EXTRACT dal gruppo): senza

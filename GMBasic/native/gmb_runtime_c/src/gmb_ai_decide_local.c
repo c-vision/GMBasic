@@ -94,6 +94,8 @@ typedef struct {
     char decide_mode[16];
     char decide_template[4096];
     char decide_calibration[LOCAL_MODEL_CAP];
+    /* Calibrazione con cui e' stata caricata `head` (il profilo %DECIDE verbalizer puo' cambiarla). */
+    char head_cal[LOCAL_MODEL_CAP];
     /* Prefix-cache MLX (opzionale): simboli risolti dalla dylib del motore. */
     int (*save_prefix)(void* mh, const char* name, void* sh);
     /* Riuso PER NOME (deterministico): ignora la radix e quindi i prefissi più lunghi rimasti
@@ -200,6 +202,24 @@ static void close_locked(local_ctx_t* c)
     c->append_reuse_prefix = NULL;
 }
 
+/* Provider `%DECIDE` di kind `verbalizer` (AI REGISTER "jev", %DECIDE, "verbalizer", {...}): la sua
+ * config sovrascrive decide/decideTemplate/decideCalibration del modello completion, cosi' lo stesso
+ * modello puo' avere piu' decisori con template/calibrazione diversi. Modalita' `on` se non indicata. */
+static void load_verbalizer_profile(local_ctx_t* c) {
+    if (!gmb_ai_decide_profile_active()) return;
+    const char* dk = gmb_provider_active_kind("decide");
+    if (!dk || strcasecmp(dk, "verbalizer") != 0) return;
+    snprintf(c->decide_mode, sizeof c->decide_mode, "on");
+    const char* cfg = gmb_provider_active_config("decide");
+    if (!cfg || !*cfg) return;
+    char* v = gmb_json_extract(cfg, "decide");
+    if (v) { if (*v && strcmp(v, "null") != 0) snprintf(c->decide_mode, sizeof c->decide_mode, "%s", v); free(v); }
+    v = gmb_json_extract(cfg, "decideTemplate");
+    if (v) { if (*v && strcmp(v, "null") != 0) snprintf(c->decide_template, sizeof c->decide_template, "%s", v); free(v); }
+    v = gmb_json_extract(cfg, "decideCalibration");
+    if (v) { if (*v && strcmp(v, "null") != 0) { expand_home(v, c->decide_calibration, sizeof c->decide_calibration); } free(v); }
+}
+
 /* Legge le chiavi decide* dalla config del provider completion attivo (JSON di AI REGISTER).
  * `gmb_json_extract` è un simbolo del core (ancorato dal gateway). Assente => default auto. */
 static void load_decide_config(local_ctx_t* c) {
@@ -214,6 +234,7 @@ static void load_decide_config(local_ctx_t* c) {
     if (v) { if (*v && strcmp(v, "null") != 0) snprintf(c->decide_template, sizeof c->decide_template, "%s", v); free(v); }
     v = gmb_json_extract(cfg, "decideCalibration");
     if (v) { if (*v && strcmp(v, "null") != 0) { expand_home(v, c->decide_calibration, sizeof c->decide_calibration); } free(v); }
+    load_verbalizer_profile(c);
 }
 
 /* Apre/riusa il modello attivo. Ritorna 0 ok / -1 con motivo in err. */
@@ -234,7 +255,23 @@ static int ensure_model(char* err, size_t errcap)
     char model[LOCAL_MODEL_CAP];
     expand_home(active, model, sizeof model);
 
-    if (g_local.state == 1 && strcmp(g_local.model, model) == 0) return 0;
+    if (g_local.state == 1 && strcmp(g_local.model, model) == 0) {
+        if (strcmp(g_local.head_cal, g_local.decide_calibration) != 0) {
+            gmb_decision_head_t nh;
+            gmb_decision_head_init(&nh);
+            int st = g_local.decide_calibration[0]
+                ? gmb_decision_head_load_file(g_local.decide_calibration, &nh)
+                : gmb_decision_head_load(model, &nh);
+            if (st < 0) {
+                set_err(err, errcap, "local provider: scoring_head.json illeggibile", model);
+                return -1;
+            }
+            g_local.head = nh;
+            g_local.head_state = st;
+            snprintf(g_local.head_cal, sizeof g_local.head_cal, "%s", g_local.decide_calibration);
+        }
+        return 0;
+    }
     if (g_local.state == 1) close_locked(&g_local);
 
     void* lib = open_engine_lib();
@@ -295,6 +332,7 @@ static int ensure_model(char* err, size_t errcap)
         set_err(err, errcap, "local provider: scoring_head.json illeggibile", model);
         return -1;
     }
+    snprintf(g_local.head_cal, sizeof g_local.head_cal, "%s", g_local.decide_calibration);
     g_local.state = 1;
     return 0;
 }
