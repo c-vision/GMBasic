@@ -120,7 +120,7 @@ int gmb_provider_register(const char* role, const char* name, const char* kind, 
         && strcasecmp(kind, "llamacpp")
         && strcasecmp(kind, "mlx") && strcasecmp(kind, "local")
         && strcasecmp(kind, "rules") && strcasecmp(kind, "mock")
-        && strcasecmp(kind, "typesafe"))
+        && strcasecmp(kind, "typesafe") && strcasecmp(kind, "verbalizer"))
         return 0;
     gmb_provider_t* p = find_provider(role, name);
     if (p) { strncpy(p->kind, kind ? kind : "", 511); strncpy(p->config, config ? config : "", 511); return 1; }
@@ -226,8 +226,11 @@ const char* gmb_provider_active(const char* role) {
         }
     for (int k = 0; k < n; k++) {
         if (g_providers[idx[k]].status == 1) {
+            /* Il pin si sposta SOLO dentro il ruolo: azzerarlo anche negli altri ruoli faceva
+             * perdere il completion attivo non appena si interrogava un ruolo con provider
+             * registrati (es. %DECIDE), e il provider locale non trovava più il modello. */
             for (int i = 0; i < g_provider_count; i++)
-                g_providers[i].active = (i == idx[k] && strcmp(g_providers[i].role, role) == 0);
+                if (strcmp(g_providers[i].role, role) == 0) g_providers[i].active = (i == idx[k]);
             strncpy(name, g_providers[idx[k]].name, 63); name[63] = 0; return name;
         }
     }
@@ -255,7 +258,7 @@ const char* gmb_provider_active_kind(const char* role) {
 
 /* Config JSON del provider attivo per un ruolo ("" se assente). */
 const char* gmb_provider_active_config(const char* role) {
-    static char cfg[512];
+    static char cfg[8192];
     cfg[0] = 0;
     char rbuf[32];
     snprintf(rbuf, sizeof rbuf, "%s", gmb_provider_normalize_role(role));
@@ -758,6 +761,11 @@ int gmb_provider_set_status_name(const char* name, const char* status) {
     return 1;
 }
 
+/* Ruolo canonico (es. "decide") del provider registrato con quel nome, "" se assente. */
+const char* gmb_provider_role_name(const char* name) {
+    gmb_provider_t* p = find_provider("", name);
+    return p ? p->role : "";
+}
 const char* gmb_provider_kind(const char* name) {
     gmb_provider_t* p = find_provider("", name);
     return p ? p->kind : "";

@@ -1783,6 +1783,7 @@ int gmb_provider_set_status_name(const char* name, const char* status);
 const char* gmb_provider_status_name(const char* name);
 char* gmb_ai_info_fmt(const char* name);
 const char* gmb_provider_kind(const char* name);
+const char* gmb_provider_role_name(const char* name);
  int gmb_provider_run_healthcheck(void);
  int gmb_provider_set_priority(const char* role, const char* name, int pri);
  double gmb_provider_priority_name(const char* name);

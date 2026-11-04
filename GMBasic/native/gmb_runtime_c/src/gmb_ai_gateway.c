@@ -213,6 +213,7 @@ GMB_AI_WEAK int gmb_ai_decide_local_run(const char* state, const char* kind,
      * rimuoverebbe → salto a simbolo nullo. I riferimenti volatile qui sotto li ancorano. */
     static void* volatile g_decide_core_anchor;
     g_decide_core_anchor = (void*)&gmb_ai_decide_active_model_path;
+    g_decide_core_anchor = (void*)&gmb_ai_decide_profile_active;
     g_decide_core_anchor = (void*)&gmb_json_extract;
     /* Import dell'intera dylib AI (non solo di DECIDE): sono simboli del core usati dai suoi
      * moduli (ABI/llmdesc, rid, paths) e senza ancora dead_strip li rimuove dall'eseguibile

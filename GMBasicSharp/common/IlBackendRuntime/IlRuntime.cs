@@ -18160,6 +18160,54 @@ public static double TextWidth(string s)
     // DECISION<T> e il provider locale MLX (ABI v8 CAP_DECIDE) sono il passo successivo.
     public static string AiDecide(string state, string kind) => AiDecide(state, kind, "");
 
+    /// <summary>Risolve il nome di provider di `AI DECIDE` nel kind effettivo. Vuoto → provider
+    /// `%DECIDE` attivo; un alias registrato col ruolo `%DECIDE` (`USING "jev"`) → il suo kind; il
+    /// nome `verbalizer` → il `%DECIDE` attivo se è di quel kind. Per il kind `verbalizer` ritorna
+    /// anche il profilo (decide/decideTemplate/decideCalibration) preso dalla config di QUEL provider,
+    /// così lo stesso modello può avere più decisori con template/calibrazione diversi.</summary>
+    private static string ResolveDecideProvider(string? provider, out string? decideName,
+        out Basic.Decision.DecideProfile? profile)
+    {
+        var server = Basic.Providers.ProviderServer.Instance;
+        decideName = null;
+        profile = null;
+        var requested = (provider ?? "").Trim();
+        var p = requested.ToLowerInvariant();
+        if (p.Length == 0)
+        {
+            decideName = server.GetActiveName(Basic.Providers.ProviderRole.Decide);
+        }
+        else if (p == "verbalizer")
+        {
+            var active = server.GetActiveName(Basic.Providers.ProviderRole.Decide);
+            if (!string.IsNullOrWhiteSpace(active)
+                && string.Equals(server.GetKind(active), "verbalizer", StringComparison.OrdinalIgnoreCase))
+                decideName = active;
+        }
+        else if (p is not ("rules" or "mock" or "local" or "typesafe" or "adapter" or "llm")
+                 && string.Equals(server.GetRole(requested), Basic.Providers.ProviderRole.Decide,
+                     StringComparison.Ordinal))
+        {
+            decideName = requested;
+        }
+        if (!string.IsNullOrWhiteSpace(decideName))
+        {
+            var decideKind = server.GetKind(decideName);
+            if (!string.IsNullOrWhiteSpace(decideKind))
+                p = decideKind.Trim().ToLowerInvariant();
+        }
+        if (p == "verbalizer")
+        {
+            var cfg = string.IsNullOrWhiteSpace(decideName)
+                ? new Dictionary<string, string>()
+                : server.GetConfigMap(decideName);
+            profile = Basic.Decision.DecideProfile.FromConfig(cfg);
+            // Il verbalizer è un decisore esplicito: modalità `on` salvo `decide` nella sua config.
+            profile = profile with { Mode = profile.Mode ?? "on" };
+        }
+        return p;
+    }
+
     public static string AiDecide(string state, string kind, string provider)
     {
         try
@@ -18199,20 +18247,10 @@ public static double TextWidth(string s)
                     _ => throw new ArgumentException($"kind '{kind}' non valido (NOUL/SCORE/CHOICE[:labels])"),
                 };
             }
-            var p = (provider ?? "").Trim().ToLowerInvariant();
-            string? decideName = null;
-            if (p.Length == 0)
-            {
-                // Ruolo %DECIDE: provider di decisione attivo (AI REGISTER alias, %DECIDE, kind;
-                // AI SET ACTIVE %DECIDE, alias). Solo se il chiamante non ne forza uno.
-                decideName = Basic.Providers.ProviderServer.Instance.GetActiveName(Basic.Providers.ProviderRole.Decide);
-                if (!string.IsNullOrWhiteSpace(decideName))
-                {
-                    var decideKind = Basic.Providers.ProviderServer.Instance.GetKind(decideName);
-                    if (!string.IsNullOrWhiteSpace(decideKind))
-                        p = decideKind.Trim().ToLowerInvariant();
-                }
-            }
+            // Ruolo %DECIDE (AI REGISTER alias, %DECIDE, kind; AI SET ACTIVE %DECIDE, alias) oppure alias
+            // %DECIDE esplicito (USING "alias"); kind `verbalizer` porta con sé il profilo di decisione.
+            var p = ResolveDecideProvider(provider, out var decideName, out var decideProfile);
+            using var decideProfileScope = Basic.Decision.DecideProfile.Push(decideProfile);
             Basic.Decision.DecisionResult result;
             if (p == "typesafe")
             {
@@ -18245,7 +18283,7 @@ public static double TextWidth(string s)
                     return "{\"error\":\"adapter: nessun provider di completion attivo\"}";
                 result = new Basic.Decision.AdapterDecisionProvider(adapterCompleter).Evaluate(request)[0];
             }
-            else if (p == "local")
+            else if (p is "local" or "verbalizer")
             {
                 // Provider locale MLX: richiede un completer attivo che implementi
                 // IDecisionCompleter (MlxLlmCompleter). Senza modello attivo → errore JSON
@@ -18363,20 +18401,10 @@ public static double TextWidth(string s)
             return obj.ToJsonString();
         }
 
-        var p = (provider ?? "").Trim().ToLowerInvariant();
-        if (p.Length == 0)
-        {
-            var decideName = Basic.Providers.ProviderServer.Instance.GetActiveName(
-                Basic.Providers.ProviderRole.Decide);
-            if (!string.IsNullOrWhiteSpace(decideName))
-            {
-                var decideKind = Basic.Providers.ProviderServer.Instance.GetKind(decideName);
-                if (!string.IsNullOrWhiteSpace(decideKind))
-                    p = decideKind.Trim().ToLowerInvariant();
-            }
-        }
+        var p = ResolveDecideProvider(provider, out _, out var groupProfile);
+        using var groupProfileScope = Basic.Decision.DecideProfile.Push(groupProfile);
 
-        var canGroup = p == "local" && string.IsNullOrWhiteSpace(fallback);
+        var canGroup = p is "local" or "verbalizer" && string.IsNullOrWhiteSpace(fallback);
         if (canGroup)
         {
             Basic.AI.Rag.ILlmCompleter? completer = null;

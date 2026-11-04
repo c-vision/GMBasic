@@ -144,6 +144,39 @@ public interface IDecisionCompleter
     IReadOnlyList<DecisionResult> Decide(DecisionRequest request);
 }
 
+/// <summary>Profilo di decisione di un provider `%DECIDE` di kind `verbalizer`: sovrascrive, per
+/// la sola chiamata in corso, le chiavi `decide`/`decideTemplate`/`decideCalibration` che altrimenti
+/// il completer legge dal provider completion. Lo stesso modello può così avere più decisori
+/// (template/calibrazione diversi) registrati con nomi diversi.</summary>
+public sealed record DecideProfile(string? Mode, string? Template, string? Calibration)
+{
+    [ThreadStatic] private static DecideProfile? _current;
+
+    /// <summary>Profilo attivo sul thread corrente, o null (config del provider completion).</summary>
+    public static DecideProfile? Current => _current;
+
+    /// <summary>Profilo da una config di provider `%DECIDE` (chiavi come in AI REGISTER).</summary>
+    public static DecideProfile FromConfig(IReadOnlyDictionary<string, string> cfg)
+    {
+        static string? Get(IReadOnlyDictionary<string, string> c, string k)
+            => c.TryGetValue(k, out var v) && !string.IsNullOrWhiteSpace(v) ? v : null;
+        return new DecideProfile(Get(cfg, "decide"), Get(cfg, "decideTemplate"), Get(cfg, "decideCalibration"));
+    }
+
+    /// <summary>Attiva il profilo sul thread fino al Dispose.</summary>
+    public static IDisposable Push(DecideProfile? profile)
+    {
+        var previous = _current;
+        _current = profile;
+        return new Scope(previous);
+    }
+
+    private sealed class Scope(DecideProfile? previous) : IDisposable
+    {
+        public void Dispose() => _current = previous;
+    }
+}
+
 /// <summary>Capability opzionale: un provider che sa valutare PIÙ domande sullo stesso stato
 /// in un solo giro (prefill/KV condiviso). Il runtime la usa per la forma batch di AI DECIDE;
 /// se non disponibile, il batch resta una sequenza di decisioni singole.</summary>
