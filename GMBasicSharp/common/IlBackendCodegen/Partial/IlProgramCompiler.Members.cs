@@ -1063,6 +1063,18 @@ public sealed partial class IlProgramCompiler
 
     private bool TryEmitNativeCollectionProperty(PropertyAccessExpr expr)
     {
+        // HLL: `.Count` senza parentesi. La classe CommonLib non espone una PROPRIETÀ Count
+        // (è un metodo che stima la cardinalità) e HLL non è una collezione generica
+        // (CollectionElementType non si applica): dispatch runtime esplicito.
+        if (NormalizeInferredType(InferType(expr.Instance)) is HyperLogLogType)
+        {
+            if (!CollMembers.Is(expr.PropertyName, TokenKind.CollCount))
+                throw new NotSupportedException($"Backend IL: proprietà HLL '{expr.PropertyName.Lexeme}' non supportata.");
+            EmitExpression(expr.Instance);
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.CollectionCount), typeof(object)));
+            _il.Emit(OpCodes.Conv_R8);
+            return true;
+        }
         if (!TryGetNativeCollectionType(InferType(expr.Instance), out var collectionType)) return false;
         if (!CollMembers.Is(expr.PropertyName, TokenKind.CollCount))
             throw new NotSupportedException($"Backend IL: proprietà collection '{expr.PropertyName.Lexeme}' non ancora supportata.");

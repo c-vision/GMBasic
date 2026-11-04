@@ -946,6 +946,11 @@ private bool TryInferNativeCollectionIndexType(IndexedAccessExpr expr, out DataT
             if (prop is null) throw new NotSupportedException($"Backend IL: campo REGEXMATCH '{fieldName}' non trovato.");
             return prop.PropertyType == typeof(string) ? new StringType() : new DoubleType();
         }
+        // HLL: `.Count`/`.Length` senza parentesi → stima della cardinalità (numerico). Non è
+        // un campo/property CLR: senza questo caso la risoluzione lanciava
+        // "impossibile risolvere il campo/proprietà 'Count'".
+        if (NormalizeInferredType(InferType(fa.Structure)) is HyperLogLogType)
+            return new DoubleType();
         // Campo su oggetto DINAMICO (AnyType/Http/WebSocket...): il valore resta object —
         // i metodi (Remove/Add/First) passano dal dispatch runtime CollectionInvoke.
         if (NormalizeInferredType(InferType(fa.Structure)) is AnyType or HttpRequestType or HttpResponseType

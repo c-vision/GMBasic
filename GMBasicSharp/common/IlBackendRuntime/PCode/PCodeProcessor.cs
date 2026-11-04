@@ -2739,6 +2739,12 @@ internal sealed partial class PCodeProcessor
                  * STACK<T>): implementano ICollection<T> ma NON la ICollection non-generica,
                  * quindi i rami sopra (IList/ICollection) non scattano → `hs.Count` dava nil
                  * mentre `hs.Count()` funzionava (Collections/CollectionsFluent). */
+                if (obj is CommonLib.Collections.HyperLogLog hllGet
+                    && (fieldName == "Count" || fieldName == "Length"))
+                {
+                    task.PushRef(hllGet.Count());
+                    return true;
+                }
                 if (fieldName == "Count" && obj is not null && obj is not string)
                 {
                     var cp = obj.GetType().GetProperty("Count",
@@ -3668,7 +3674,11 @@ internal sealed partial class PCodeProcessor
                 // vecchio switch PCode SOLO se il metodo non è noto (NotSupportedException).
                 // Le due gambe condividono così la stessa semantica (Add/Remove/Keys/Min/Max/
                 // Trie/Bag/Graph/...), senza duplicare 76 casi.
-                if (instance is System.Collections.IList || instance is System.Collections.IDictionary)
+                if (instance is System.Collections.IList || instance is System.Collections.IDictionary
+                    // HLL: NON è IList/IDictionary (non conserva gli elementi) ma va dispatchato
+                    // dal dispatcher condiviso (prima finiva nella reflection generica, che
+                    // ingoiava le eccezioni: `Load("garbage")` non segnalava nulla).
+                    || instance is CommonLib.Collections.HyperLogLog)
                 {
                     try
                     {

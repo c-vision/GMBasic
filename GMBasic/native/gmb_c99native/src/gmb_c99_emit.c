@@ -10011,9 +10011,11 @@ static int try_emit_var_method(ctx_t* c, const char* recv, const char* m, gmb_ex
                 return 1;
             }
             if (strcasecmp(hm, "Merge") == 0 && n >= 1) {
+                /* Precisioni diverse (o argomento non-HLL) → ERRORE ESPLICITO, come IL/PCode
+                 * (ArgumentException) e VM/C (vm_error): mai un merge silenziosamente perso. */
                 sb_put(&c->out, "({ if (gmb_coll_hll_merge("); emit_coll_handle_of(c, v);
                 sb_put(&c->out, ", gmb_val_collection_handle("); emit_expr(c, a[0]);
-                sb_put(&c->out, ")) != 0) { /* precisioni diverse */ } (void)0; })");
+                sb_put(&c->out, ")) != 0) gmb_raise_error(5, \"HLL.Merge: richiede due sketch con la stessa precisione\", 0L); (void)0; })");
                 return 1;
             }
             if (strcasecmp(hm, "Serialize") == 0) {
@@ -10024,9 +10026,11 @@ static int try_emit_var_method(ctx_t* c, const char* recv, const char* m, gmb_ex
                 return 1;
             }
             if (strcasecmp(hm, "Load") == 0 && n >= 1) {
+                /* Formato non valido / precisione diversa → ERRORE ESPLICITO (parità con
+                 * IL/PCode/VM-C): prima il risultato era scartato (no-op silenzioso). */
                 sb_put(&c->out, "({ gmb_string_t __hs = "); emit_expr(c, a[0]);
-                sb_put(&c->out, "; (void)gmb_coll_hll_load("); emit_coll_handle_of(c, v);
-                sb_put(&c->out, ", __hs.data, (size_t)__hs.length); (void)0; })");
+                sb_put(&c->out, "; if (gmb_coll_hll_load("); emit_coll_handle_of(c, v);
+                sb_put(&c->out, ", __hs.data, (size_t)__hs.length) != 0) gmb_raise_error(5, \"HLL.Load: dati non validi o precisione diversa\", 0L); (void)0; })");
                 return 1;
             }
             if (strcasecmp(hm, "Clear") == 0) {
@@ -13761,6 +13765,20 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
                 if (cl < sizeof(cp)) {
                     memcpy(cp, e->var, cl); cp[cl] = 0;
                     var_t* cv = lookup_var(c, cp);
+                    /* Contenitori a HANDLE (HLL/HEAP/BAG/TRIE): la var è un gmb_val_t, non una
+                     * gmb_list_t → `.Count` deve passare dall'API handle (prima emetteva
+                     * gmb_list_count(<gmb_val_t>) = C non compilabile). */
+                    if (cv && cv->coll_handle) {
+                        sb_put(&c->out, "(gmb_double_t)");
+                        if (cv->coll_type_code == 30) {
+                            sb_put(&c->out, "gmb_coll_hll_count(");
+                        } else {
+                            sb_put(&c->out, "gmb_coll_count(");
+                        }
+                        emit_coll_handle_of(c, cv);
+                        sb_put(&c->out, ")");
+                        break;
+                    }
                     if (cv && cv->gkind && (gk_is_list(cv->gkind) || gk_is_dict(cv->gkind))) {
                         if (gk_is_dict(cv->gkind)) sb_put(&c->out, "gmb_dict_count(");
                         else sb_put(&c->out, "gmb_list_count(");

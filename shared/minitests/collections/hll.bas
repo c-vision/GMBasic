@@ -4,7 +4,7 @@
 ' la stringa "1" è un valore DIVERSO dal numero 1) e l'accuratezza su 10.000 valori
 ' distinti (linear counting / HLL: valore deterministico perché l'hash è fisso).
 '
-' EXPECT: p=14|e=0.008125|c0=0|c2=2|cNum=2|cStr=2|rt=2|clr=0|big=9973|mrg=9973|t=HLL|e1=OK
+' EXPECT: p=14|e=0.008125|c0=0|c2=2|cp=2|cNum=2|cStr=2|rt=2|clr=0|big=9973|mrg=9973|t=HLL|e1=OK
 IMPORT COLLECTIONS
 
 SUB Main()
@@ -16,6 +16,8 @@ SUB Main()
   ' Add: i duplicati non contano
   h.Add("a") : h.Add("b") : h.Add("a")
   PRINT "c2="; h.Count()
+  ' forma di PROPRIETÀ (senza parentesi): stesso valore di Count()
+  PRINT "cp="; h.Count
 
   ' Payload canonico: numero 1 e 1.0 = stesso valore; 2 distinto
   DIM hn AS HLL
