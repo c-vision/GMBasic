@@ -253,6 +253,7 @@ assorbita (non si stampa due volte).
 
 - `Graphics-Guide` — capitolo
 - `Graph-Guida-Utente` — sezione
+- `Graph-FFI-Guida-Utente` — sezione
 - `Joy-Guida-Utente` — sezione
 - `SoundEnhanced` — sezione
 

@@ -128,6 +128,31 @@ nulla sul comportamento — meglio dichiararlo che simulare una verifica che non
 
 
 
+
+<!-- BEGIN DOMAIN TABLE -->
+## Tavola sinottica del dominio
+
+Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
+nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
+
+- **CHART.CREATE(x1)** — `h = CHART.CREATE("Disegni", "tempo", "prezzo")` (shared/samples/graphics/ChartDrawDemo.bas:31)
+- **GRAPHICS.C2PX(x1)** — `PRINT "C2PX(10)    = "; C2PX(10)` (shared/samples/graphics/CoordsAndTextGaps.bas:12)
+- **GRAPHICS.C2PY(x1)** — `PRINT "C2PY(5)     = "; C2PY(5)` (shared/samples/graphics/CoordsAndTextGaps.bas:13)
+- **GRAPHICS.CELL(x1, x2, x3)** — `PRINT "cell="; GRAPHICS.CELL(0, 0, 0)` (shared/minitests/graphics/graphics_all.bas:16)
+- **GRAPHICS.CELLSTR(x1, x2)** — `PRINT "cellstr=["; GRAPHICS.CELLSTR(0, 0); "]"` (shared/minitests/graphics/graphics_all.bas:17)
+- **GRAPHICS.COLLIDE(x1)** — `PRINT "collide="; GRAPHICS.COLLIDE(1, 2)` (shared/minitests/graphics/graphics_all.bas:19)
+- **GRAPHICS.COLLIDEBATCH(x1, x2, x3, x4)** — `CB = COLLIDEBATCH(X, Y, 14, 14)` (shared/samples/graphics/GraphicsPlanesExplode.bas:73)
+- **GRAPHICS.P2CX(x1)** — `PRINT "P2CX(160)   = "; P2CX(160)` (shared/samples/graphics/CoordsAndTextGaps.bas:14)
+- **GRAPHICS.P2CY(x1)** — `PRINT "P2CY(80)    = "; P2CY(80)` (shared/samples/graphics/CoordsAndTextGaps.bas:15)
+- **GRAPHICS.POINT(x1, x2)** — `PRINT "point="; GRAPHICS.POINT(1, 2)` (shared/minitests/graphics/graphics_all.bas:15)
+- **GRAPHICS.RGB(x1, x2, x3)** — `CLS RGB(0, 0, 255)` (shared/samples/Clipper/WindowPixelColorTest.bas:12)
+- **GRAPHICS.SCREEN()** — `PRINT "screen="; GRAPHICS.SCREEN()` (shared/minitests/graphics/graphics_all.bas:18)
+- **GRAPHICS.SCREENINFO()** — `70 PRINT "ModeID    : "; SCREENINFO().ModeID` (shared/samples/graphics/GraphicsShowModes.bas:47)
+- **GRAPHICS.SCREENS()** — `20 NUM_SCREENS = SCREENS()` (shared/samples/graphics/GraphicsShowModes.bas:43)
+- **GRAPHICS.TEXTHEIGHT()** — `DIM th = TEXTHEIGHT()          ' altezza logica del font corrente` (shared/samples/windows/WindowDemo.bas:14)
+- **GRAPHICS.TEXTWIDTH(x1)** — `LOCATE Y, (640 - TEXTWIDTH(Text$)) / 2` (shared/samples/graphics/GraphicsDrawTextures.bas:205)
+<!-- END DOMAIN TABLE -->
+
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
 ## Riferimento completo: comandi, funzioni, parametri
@@ -521,6 +546,91 @@ PRINT BRAINS.QueryMulti("momentum")
 
 ## Vedi anche
 
+### Graph-FFI-Guida-Utente
+
+*Fonte: `Graph-FFI-Guida-Utente`*
+
+
+IMPORT GRAPH
+
+
+## 1. Convenzioni
+
+## 2. `graph.inc` — 33 funzioni
+| Funzione | Firma | Parametri |
+|---|---|---|
+| `DEGREE` | `FUNCTION DEGREE(adj() AS LONG, n AS LONG, v AS LONG)` AS LONG | Grado (out+in, archi non orientati) del nodo v; -1 se v non esiste. |
+| `HASCYCLE` | `FUNCTION HASCYCLE(adj() AS LONG, n AS LONG)` AS LONG | 1 se il grafo ORIENTATO ha un ciclo (Kahn: nodi processati < n). |
+| `ISBIPARTITE` | `FUNCTION ISBIPARTITE(adj() AS LONG, n AS LONG)` AS LONG | 1 se il grafo (non orientato) è bipartito. |
+| `BFS` | `FUNCTION BFS(adj() AS LONG, n AS LONG, src AS LONG, order() AS LONG)` AS LONG | BFS da src: riempie order() e ritorna il numero di nodi visitati (-1 errore). |
+| `DFS` | `FUNCTION DFS(adj() AS LONG, n AS LONG, src AS LONG, order() AS LONG)` AS LONG | BFS da src: riempie order() e ritorna il numero di nodi visitati (-1 errore). |
+| `TOPOSORT` | `FUNCTION TOPOSORT(adj() AS LONG, n AS LONG, order() AS LONG)` AS LONG | Ordinamento topologico di un DAG: 1 ok (order() = nodi), 0 se c'è un ciclo. |
+| `COMPONENTS` | `FUNCTION COMPONENTS(adj() AS LONG, n AS LONG, comp() AS LONG)` AS LONG | Componenti (debolmente) connesse: comp(i) = id componente; ritorna #componenti. |
+| `SCC` | `FUNCTION SCC(adj() AS LONG, n AS LONG, comp() AS LONG)` AS LONG | Componenti fortemente connesse (Tarjan): comp(i) = id; ritorna #componenti. |
+| `DIJKSTRA` | `FUNCTION DIJKSTRA(w() AS DOUBLE, n AS LONG, src AS LONG, dist() AS DOUBLE, prev() AS LONG)` AS LONG | Dijkstra (pesi non negativi): dist() e prev() (-1 = nessun padre). 1 ok. |
+| `BELLMANFORD` | `FUNCTION BELLMANFORD(w() AS DOUBLE, n AS LONG, src AS LONG, dist() AS DOUBLE, prev() AS LONG)` AS LONG | Bellman-Ford (pesi negativi ammessi). 1 ok, GOR_ERR_NOCONV (4) se ciclo negativo. |
+| `FLOYDWARSHALL` | `FUNCTION FLOYDWARSHALL(w() AS DOUBLE, n AS LONG, dist() AS DOUBLE)` AS LONG | Floyd-Warshall: dist() è n*n. 1 ok. |
+| `PAGERANK` | `FUNCTION PAGERANK(w() AS DOUBLE, n AS LONG, rank() AS DOUBLE, damping AS DOUBLE, iters AS LONG)` AS LONG | PageRank (damping tipico 0.85, iters 50..100). rank() = n. |
+| `BETWEENNESS` | `FUNCTION BETWEENNESS(w() AS DOUBLE, n AS LONG, bc() AS DOUBLE)` AS DOUBLE | Betweenness (Brandes, archi non pesati): bc() = n; ritorna il valore massimo. |
+| `CLOSENESS` | `FUNCTION CLOSENESS(adj() AS LONG, n AS LONG, cc() AS DOUBLE)` AS LONG | Closeness centrality (BFS non pesato): cc() = n. |
+| `LOUVAIN` | `FUNCTION LOUVAIN(w() AS DOUBLE, n AS LONG, comm() AS LONG, resolution AS DOUBLE)` AS LONG | Louvain (un livello): comm() = n; ritorna #community. |
+| `COLORING` | `FUNCTION COLORING(adj() AS LONG, n AS LONG, color() AS LONG)` AS LONG | Colorazione DSATUR: color() = 0..k-1; ritorna k. |
+| `MAXCLIQUE` | `FUNCTION MAXCLIQUE(adj() AS LONG, n AS LONG, clique() AS LONG)` AS LONG | Clique massima (Bron-Kerbosch): clique() = n; ritorna la dimensione. |
+| `TRANSITIVECLOSURE` | `FUNCTION TRANSITIVECLOSURE(adj() AS LONG, n AS LONG, out() AS LONG)` AS LONG | Chiusura transitiva (Warshall): out() = n*n, 0/1. |
+| `DIAMETER` | `FUNCTION DIAMETER(w() AS DOUBLE, n AS LONG)` AS DOUBLE | Diametro pesato (Floyd-Warshall). 0 se n<2 o nessuna coppia raggiungibile. |
+| `ECCENTRICITY` | `FUNCTION ECCENTRICITY(w() AS DOUBLE, n AS LONG, v AS LONG)` AS DOUBLE | Eccentricità del nodo v; -1 se v fuori range. |
+| `CLUSTERING` | `FUNCTION CLUSTERING(adj() AS LONG, n AS LONG, v AS LONG)` AS DOUBLE | Coefficiente di clustering locale di v (archi non orientati). |
+| `SUBGRAPH` | `FUNCTION SUBGRAPH(w() AS DOUBLE, n AS LONG, nodes() AS LONG, k AS LONG, out() AS DOUBLE)` AS LONG | Sottografo indotto dai nodi nodes(0..k-1): out() = k*k; 0 = GOR_OK. |
+| `MSTKRUSKAL` | `FUNCTION MSTKRUSKAL(w() AS DOUBLE, n AS LONG, eu() AS LONG, ev() AS LONG, ew() AS DOUBLE)` AS LONG | Kruskal: riempie eu()/ev()/ew() (capacità n-1) e ritorna il numero di archi. |
+| `BRIDGES` | `FUNCTION BRIDGES(adj() AS LONG, n AS LONG, is_bridge() AS LONG)` AS LONG | Ponti (grafo non orientato): is_bridge() = n*n (0/1); ritorna #ponti. |
+| `ARTICULATION` | `FUNCTION ARTICULATION(adj() AS LONG, n AS LONG, art() AS LONG)` AS LONG | Punti di articolazione: art() = n (0/1); ritorna il numero. |
+| `ASTAR` | `FUNCTION ASTAR(w() AS DOUBLE, n AS LONG, h() AS DOUBLE, s AS LONG, t AS LONG, path() AS LONG, info() AS LONG)` AS DOUBLE | Ritorna il costo del cammino o -1 se irraggiungibile. |
+| `STOERWAGNER` | `FUNCTION STOERWAGNER(w() AS DOUBLE, n AS LONG)` AS DOUBLE | Global min-cut (Stoer-Wagner, matrice SIMMETRICA). |
+| `KSHORTEST` | `FUNCTION KSHORTEST(w() AS DOUBLE, n AS LONG, s AS LONG, t AS LONG, K AS LONG, paths() AS LONG, plens() AS LONG)` AS LONG | K cammini minimi semplici (Yen): paths() = K*n, plens() = K; ritorna K'. |
+| `ISOMORPHIC` | `FUNCTION ISOMORPHIC(adj1() AS LONG, n1 AS LONG, adj2() AS LONG, n2 AS LONG, mapping() AS LONG)` AS LONG | Isomorfismo (VF2): mapping() = n1; 1 se isomorfi. |
+| `DRNL` | `FUNCTION DRNL(adj() AS LONG, n AS LONG, u AS LONG, v AS LONG, label() AS LONG)` AS LONG | DRNL (SEAL) per il link (u,v): label() = n; ritorna 1 se calcolato. |
+| `WL` | `FUNCTION WL(adj() AS LONG, n AS LONG, colors() AS LONG)` AS LONG | Weisfeiler-Lehman (1-WL): colors() = n; ritorna #classi. |
+| `MINPATHCOVER` | `FUNCTION MINPATHCOVER(adj() AS LONG, n AS LONG)` AS LONG | Min path cover di un DAG. |
+| `BFSOPT` | `FUNCTION BFSOPT(adj() AS LONG, n AS LONG, src AS LONG, thr AS DOUBLE, dist() AS DOUBLE)` AS LONG | BFS direction-optimizing (Beamer): dist() = n (-1 non raggiunto); ritorna #visitati. |
+
+## 3. `flow.inc` — 10 funzioni (stesso namespace, dylib `gmbflow`)
+| Funzione | Firma | Parametri |
+|---|---|---|
+| `MAXFLOW` | `FUNCTION MAXFLOW(cap() AS DOUBLE, n AS LONG, s AS LONG, t AS LONG)` AS DOUBLE | Max-flow (Edmonds-Karp): capacità cap(i*n+j); ritorna il valore (-1 errore). |
+| `MINCUT` | `FUNCTION MINCUT(cap() AS DOUBLE, n AS LONG, s AS LONG, t AS LONG, side() AS LONG)` AS DOUBLE | Min-cut: side() = 0 lato sorgente, 1 lato pozzo; ritorna il valore del taglio. |
+| `DINIC` | `FUNCTION DINIC(cap() AS DOUBLE, n AS LONG, s AS LONG, t AS LONG)` AS DOUBLE | Dinic (max-flow veloce): ritorna il valore. |
+| `MINCOSTFLOW` | `FUNCTION MINCOSTFLOW(cap() AS DOUBLE, cost() AS DOUBLE, n AS LONG, s AS LONG, t AS LONG, flowValue() AS DOUBLE)` AS DOUBLE | Costo minimo per il max-flow; flowValue(0) riceve il valore del flusso. |
+| `BIPARTITEMATCH` | `FUNCTION BIPARTITEMATCH(adj() AS LONG, nL AS LONG, nR AS LONG, matchL() AS LONG, matchR() AS LONG)` AS LONG | Matching bipartito massimo (Kuhn): adj() = nL*nR; ritorna la cardinalità. |
+| `GENERALMATCH` | `FUNCTION GENERALMATCH(adj() AS LONG, n AS LONG, match() AS LONG)` AS LONG | Matching massimo su grafo generale (blossom): match() = n; ritorna la cardinalità. |
+| `WEIGHTEDMATCH` | `FUNCTION WEIGHTEDMATCH(w() AS DOUBLE, n AS LONG, match() AS LONG)` AS DOUBLE | Matching pesato (euristica greedy + local search): ritorna il peso totale. |
+| `CIRCULATION` | `FUNCTION CIRCULATION(lower() AS DOUBLE, upper() AS DOUBLE, n AS LONG, b() AS DOUBLE, flow() AS DOUBLE)` AS LONG | Circolazione ammissibile con lower/upper e domanda netta b(): 1 se ammissibile. |
+| `GOMORYHU` | `FUNCTION GOMORYHU(w() AS DOUBLE, n AS LONG, parent() AS LONG, weight() AS DOUBLE)` AS LONG | Gomory-Hu tree: parent() = n, weight() = n; ritorna n-1. |
+| `MULTICOMMODITY` | `FUNCTION MULTICOMMODITY(cap() AS DOUBLE, n AS LONG, ncomm AS LONG, commodities() AS DOUBLE, flow() AS DOUBLE)` AS DOUBLE | Multi-commodity flow (greedy): commodities() = ncomm*3 (src, dst, demand); flow() = n*n. |
+
+## 4. Esempio minimo
+
+IMPORT GRAPH
+
+INF = GRAPH.ABSENT()
+DIM w(8) AS DOUBLE          ' 3 nodi: 0-1 (1), 1-2 (2), 0-2 assente
+w(0)=0 : w(1)=1 : w(2)=INF
+w(3)=1 : w(4)=0 : w(5)=2
+w(6)=INF : w(7)=2 : w(8)=0
+
+DIM dist(2) AS DOUBLE
+DIM prev(2) AS LONG
+PRINT GRAPH.DIJKSTRA(w, 3, 0, dist, prev)   ' 1 (successo)
+PRINT dist(2)                                ' 3  (0 -> 1 -> 2)
+
+
+## 5. Protocollo §4.1 — esito
+| Superficie | MiniTest | Funzioni | IL | PCode | VM/C | C99Native |
+|---|---|---|---|---|---|---|
+| `graph.inc` | `graphffi/graph_core.bas`, `graph_weighted.bas`, `graph_advanced.bas` | 33 | ✓ | ✓ | ✓ | ✓ |
+| `flow.inc` | `flowffi/flow_core.bas` | 10 | ✓ | ✓ | ✓ | ✓ |
+
+## 6. Riferimenti
+
 ### Joy-Guida-Utente
 
 *Fonte: `Joy-Guida-Utente`*
@@ -605,27 +715,3 @@ FILTER voice, type, cutoff, resonance
 ## Gap residui (vs Commodore V2)
 
 <!-- END SURFACE -->
-
-<!-- BEGIN DOMAIN TABLE -->
-## Tavola sinottica del dominio
-
-Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
-nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
-
-- **CHART.CREATE(x1)** — `h = CHART.CREATE("Disegni", "tempo", "prezzo")` (shared/samples/graphics/ChartDrawDemo.bas:31)
-- **GRAPHICS.C2PX(x1)** — `PRINT "C2PX(10)    = "; C2PX(10)` (shared/samples/graphics/CoordsAndTextGaps.bas:12)
-- **GRAPHICS.C2PY(x1)** — `PRINT "C2PY(5)     = "; C2PY(5)` (shared/samples/graphics/CoordsAndTextGaps.bas:13)
-- **GRAPHICS.CELL(x1, x2, x3)** — `PRINT "cell="; GRAPHICS.CELL(0, 0, 0)` (shared/minitests/graphics/graphics_all.bas:16)
-- **GRAPHICS.CELLSTR(x1, x2)** — `PRINT "cellstr=["; GRAPHICS.CELLSTR(0, 0); "]"` (shared/minitests/graphics/graphics_all.bas:17)
-- **GRAPHICS.COLLIDE(x1)** — `PRINT "collide="; GRAPHICS.COLLIDE(1, 2)` (shared/minitests/graphics/graphics_all.bas:19)
-- **GRAPHICS.COLLIDEBATCH(x1, x2, x3, x4)** — `CB = COLLIDEBATCH(X, Y, 14, 14)` (shared/samples/graphics/GraphicsPlanesExplode.bas:73)
-- **GRAPHICS.P2CX(x1)** — `PRINT "P2CX(160)   = "; P2CX(160)` (shared/samples/graphics/CoordsAndTextGaps.bas:14)
-- **GRAPHICS.P2CY(x1)** — `PRINT "P2CY(80)    = "; P2CY(80)` (shared/samples/graphics/CoordsAndTextGaps.bas:15)
-- **GRAPHICS.POINT(x1, x2)** — `PRINT "point="; GRAPHICS.POINT(1, 2)` (shared/minitests/graphics/graphics_all.bas:15)
-- **GRAPHICS.RGB(x1, x2, x3)** — `CLS RGB(0, 0, 255)` (shared/samples/Clipper/WindowPixelColorTest.bas:12)
-- **GRAPHICS.SCREEN()** — `PRINT "screen="; GRAPHICS.SCREEN()` (shared/minitests/graphics/graphics_all.bas:18)
-- **GRAPHICS.SCREENINFO()** — `70 PRINT "ModeID    : "; SCREENINFO().ModeID` (shared/samples/graphics/GraphicsShowModes.bas:47)
-- **GRAPHICS.SCREENS()** — `20 NUM_SCREENS = SCREENS()` (shared/samples/graphics/GraphicsShowModes.bas:43)
-- **GRAPHICS.TEXTHEIGHT()** — `DIM th = TEXTHEIGHT()          ' altezza logica del font corrente` (shared/samples/windows/WindowDemo.bas:14)
-- **GRAPHICS.TEXTWIDTH(x1)** — `LOCATE Y, (640 - TEXTWIDTH(Text$)) / 2` (shared/samples/graphics/GraphicsDrawTextures.bas:205)
-<!-- END DOMAIN TABLE -->
