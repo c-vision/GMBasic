@@ -188,6 +188,6 @@ DECLARE FUNCTION CHANCECONSTRAINT LIB "gmbor" ALIAS "ofx_chance_constraint" (sig
 ' Optimal BST: p() = n; root() = n*n (-1 se vuoto).
 DECLARE FUNCTION DPOPTIMALBST LIB "gmbor" ALIAS "ofx_dp_optimal_bst" (p() AS DOUBLE, n AS LONG, root() AS LONG) AS DOUBLE
 ' Equipment replacement: opCost()/resale() = maxAge; schedule() = years.
-DECLARE FUNCTION DPEQUIPMENT LIB "gmbor" ALIAS "ofx_dp_equipment" (years AS LONG, buyCost AS DOUBLE, maxAge AS LONG, opCost() AS DOUBLE, resale() AS DOUBLE, schedule() AS LONG) AS LONG
+DECLARE FUNCTION DPEQUIPMENT LIB "gmbor" ALIAS "ofx_dp_equipment" (years AS LONG, buyCost AS DOUBLE, maxAge AS LONG, opCost() AS DOUBLE, resale() AS DOUBLE, schedule() AS LONG) AS DOUBLE
 ' Sports series: isHome() = nGames.
 DECLARE FUNCTION DPSPORTSSERIES LIB "gmbor" ALIAS "ofx_dp_sports" (nGames AS LONG, needed AS LONG, pHome AS DOUBLE, pAway AS DOUBLE, isHome() AS LONG) AS DOUBLE
