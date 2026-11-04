@@ -972,6 +972,22 @@ public sealed partial class Lexer
             while (char.IsDigit(PeekChar())) AdvanceChar();
         }
 
+        // Esponente decimale (2026-11-04, parità col frontend C — gmb_lexer.c):
+        // `1E30`, `1.5e-3`, `2.0E+9`. Senza questo, il `E30` restava un identificatore e
+        // l'assegnazione veniva TRONCATA in silenzio (`x = 1.0E30` → 1) oppure falliva con
+        // "Token 'E30' inatteso", a seconda del contesto: PCode/IL/VM-C divergevano dal
+        // backend nativo C99 (che già accettava gli esponenti).
+        if (PeekChar() is 'e' or 'E')
+        {
+            var signOffset = PeekCharAtOffset(1) is '+' or '-' ? 1 : 0;
+            if (char.IsDigit(PeekCharAtOffset(1 + signOffset)))
+            {
+                AdvanceChar();                        // 'e' / 'E'
+                if (signOffset == 1) AdvanceChar();   // segno
+                while (char.IsDigit(PeekChar())) AdvanceChar();
+            }
+        }
+
         // Ottiene il testo del numero e tenta di parsarlo
         var lexeme = GetLexeme();
         if (double.TryParse(lexeme, NumberStyles.Float, CultureInfo.InvariantCulture, out var valueDecimal))
