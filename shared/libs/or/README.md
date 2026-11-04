@@ -10,9 +10,9 @@ copiato qui. Binding BASIC: `shared/include/ortools.inc` (`IMPORT OPTIMIZE`).
 - matrici dense row-major;
 - output scalari singoli come array di 1 (`nChosen()`, `uncovered()`, ...);
 - dove la firma C supera 8 argomenti, i parametri di servizio sono compattati o fissati:
-  - `SET_COVER_SA`: `t0=1.0`, `alpha=0.995`;
-  - `SET_COVER_GRASP`/`SET_COVER_RGRASP`/`KMEANS`: seed fisso;
-  - `SET_COVER_RGRASP`: `alphas()` = `[nalpha, a0, a1, ...]`.
+  - `SETCOVERSA`: `t0=1.0`, `alpha=0.995`;
+  - `SETCOVERGRASP`/`SETCOVERRGRASP`/`KMEANS`: seed fisso;
+  - `SETCOVERRGRASP`: `alphas()` = `[nalpha, a0, a1, ...]`.
 
 ## Build
 ```sh

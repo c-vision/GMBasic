@@ -7,29 +7,29 @@ SUB Main()
   DIM p() = {3, 1, 2}
   DIM due() = {3, 2, 4}
   DIM ord(2) AS LONG
-  PRINT "spt="; FORMAT(OPTIMIZE.SCHED_SPT(p, 3, ord), "#.0");
-  PRINT "|edd="; FORMAT(OPTIMIZE.SCHED_EDD(p, due, 3, ord), "#.000");
-  PRINT "|moore="; OPTIMIZE.SCHED_MOORE(p, due, 3, ord);
+  PRINT "spt="; FORMAT(OPTIMIZE.SCHEDSPT(p, 3, ord), "#.0");
+  PRINT "|edd="; FORMAT(OPTIMIZE.SCHEDEDD(p, due, 3, ord), "#.000");
+  PRINT "|moore="; OPTIMIZE.SCHEDMOORE(p, due, 3, ord);
 
   ' intervalli [0,1], [1,2], [0,2] -> max 2 non sovrapposti, 2 risorse
   DIM st() = {0, 1, 0}
   DIM en() = {1, 2, 2}
   DIM sel(2) AS LONG
-  PRINT "|imax="; OPTIMIZE.INTERVAL_MAX(st, en, 3, sel);
-  PRINT "|ipart="; OPTIMIZE.INTERVAL_PARTITION(st, en, 3);
+  PRINT "|imax="; OPTIMIZE.INTERVALMAX(st, en, 3, sel);
+  PRINT "|ipart="; OPTIMIZE.INTERVALPARTITION(st, en, 3);
 
   ' Johnson 2 macchine: p1={2,1}, p2={1,2}
   DIM p1() = {2, 1}
   DIM p2() = {1, 2}
   DIM seq(1) AS LONG
-  PRINT "|johnson="; FORMAT(OPTIMIZE.FLOWSHOP_JOHNSON(p1, p2, 2, seq), "#.0");
+  PRINT "|johnson="; FORMAT(OPTIMIZE.FLOWSHOPJOHNSON(p1, p2, 2, seq), "#.0");
 
-  ' PARALLEL_LPT: p={1,2,3}, m=2 -> Cmax 3
+  ' PARALLELLPT: p={1,2,3}, m=2 -> Cmax 3
   DIM lp() = {1, 2, 3}
   DIM asg(2) AS LONG
-  PRINT "|lpt="; FORMAT(OPTIMIZE.PARALLEL_LPT(lp, 3, 2, asg), "#.0");
+  PRINT "|lpt="; FORMAT(OPTIMIZE.PARALLELLPT(lp, 3, 2, asg), "#.0");
 
-  ' PROJECT_CPM: 3 task, dur {1,2,3}; task2 dipende da 0 e 1 -> progetto 5
+  ' PROJECTCPM: 3 task, dur {1,2,3}; task2 dipende da 0 e 1 -> progetto 5
   DIM dur() = {1, 2, 3}
   DIM preds(5) AS LONG
   FOR i = 0 TO 5
@@ -40,7 +40,7 @@ SUB Main()
   DIM est(2) AS DOUBLE
   DIM lst(2) AS DOUBLE
   DIM slack(2) AS DOUBLE
-  PRINT "|cpm="; FORMAT(OPTIMIZE.PROJECT_CPM(dur, preds, 3, 2, est, lst, slack), "#.0");
+  PRINT "|cpm="; FORMAT(OPTIMIZE.PROJECTCPM(dur, preds, 3, 2, est, lst, slack), "#.0");
 
   ' timetabling: triangolo di conflitti -> 3 slot
   DIM conf(8) AS LONG
