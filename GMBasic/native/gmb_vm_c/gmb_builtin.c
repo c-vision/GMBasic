@@ -7409,58 +7409,7 @@ static void gmb_bf_185(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
             }
             else { bout->is_num = 0; bout->result_ref = NULL; }
         }
-}
-static void gmb_bf_257(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-        {
-            double a[64] = {0}, b[8] = {0};
-            int n = 0;
-            if (args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_LIST)
-            {
-                gmb_obj_shared_val_t* sv = (gmb_obj_shared_val_t*)args[0].ref;
-                
-                if (sv->list->count > 0 && sv->list->items[0].kind == GMB_TYPE_OBJECT &&
-                    sv->list->items[0].v_ptr && ((gmb_obj_t*)sv->list->items[0].v_ptr)->kind == GMB_OBJ_LIST)
-                {
-                    n = (int)sv->list->count;
-                    for (int r = 0; r < n && r < 8; r++)
-                    {
-                        gmb_val_t rowv = sv->list->items[r];
-                        gmb_obj_shared_val_t* rl = (gmb_obj_shared_val_t*)rowv.v_ptr;
-                        for (int c = 0; c < (int)rl->list->count && c < 8; c++) { gmb_val_t v = rl->list->items[c]; a[r*8+c] = v.kind==GMB_TYPE_DOUBLE?v.v_double:v.kind==GMB_TYPE_INT?(double)v.v_int:0; }
-                    }
-                }
-                else
-                {
-                    
-                    int total = (int)sv->list->count;
-                    int rows = (int)sqrt((double)total);
-                    int cols = rows;
-                    if (rows*rows != total) { rows = total; cols = 1; }
-                    n = rows;
-                    for (int i = 0; i < total && i < 64; i++)
-                    {
-                        gmb_val_t v = sv->list->items[i];
-                        a[(i/cols)*8 + (i%cols)] = v.kind==GMB_TYPE_DOUBLE?v.v_double:v.kind==GMB_TYPE_INT?(double)v.v_int:0;
-                    }
-                }
-            }
-            if (argc >= 2 && args[1].type == 2 && args[1].ref && args[1].ref->kind == GMB_OBJ_LIST)
-            { gmb_obj_shared_val_t* sv=(gmb_obj_shared_val_t*)args[1].ref; for(int i=0;i<(int)sv->list->count&&i<8;i++){gmb_val_t v=sv->list->items[i];b[i]=v.kind==GMB_TYPE_DOUBLE?v.v_double:v.kind==GMB_TYPE_INT?(double)v.v_int:0;} }
-            double x[8] = {0};
-            
-            double an[64] = {0};
-            for (int i = 0; i < n; i++) for (int j = 0; j < n; j++) an[i*n+j] = a[i*8+j];
-            gmb_obj_shared_val_t* out = gmb_shared_list_new();
-            if (out && n > 0 && gmb_cholesky_solve(an, b, n, x))
-            {
-                for (int i = 0; i < n; i++) gmb_list_add(out->list, gmb_make_val_double(x[i]));
-                bout->is_num = 0; bout->result_ref = (gmb_obj_t*)out; bout->result_ref_bt = GMB_BT_OBJECT;
-            }
-            else { if (out) gmb_obj_release((gmb_obj_t*)out); bout->is_num = 0; bout->result_ref = NULL; }
-        }
-}
-static void gmb_bf_107(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+}static void gmb_bf_107(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
             double re[256] = {0}, im[256] = {0};
@@ -15894,7 +15843,7 @@ void gmb_bf_benchmark_c1257(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int
     bout->is_num = 0; bout->result_ref = (gmb_obj_t*)s; bout->result_ref_bt = GMB_BT_STRING;
 }
 /* AI.BRAININSTALL/AI.BRAINUNINSTALL — il cervello è un DATO: manifest + download on demand
- * (gmb_fetch) + estrazione, tutto nel runtime C condiviso (gmb_brains.c). Prima qui c'era un
+ * (gmbfetch) + estrazione, tutto nel runtime C condiviso (gmb_brains.c). Prima qui c'era un
  * errore esplicito ("richiede BrainInstaller") perché la logica viveva solo nel C#: ora IL,
  * PCodeVM, VM/C e C99Native installano lo STESSO cervello con lo STESSO codice. */
 static void gmb_bf_brain_install_c1280(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -17962,7 +17911,6 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 190, gmb_bf_184 },
     { 192, gmb_bf_184 },
     { 185, gmb_bf_185 },
-    { 257, gmb_bf_257 },
     { 107, gmb_bf_107 },
     { 108, gmb_bf_107 },
     { 95, gmb_bf_95 },
@@ -18037,7 +17985,6 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 3816, gmb_bf_3816 },   /* LENB (BuiltInFunction.LENB): BYTE UTF-8 */
     { 670, gmb_bf_670 },
     { 127, gmb_bf_127 },
-    { 256, gmb_bf_127 },
     { 515, gmb_bf_515 },
     { 516, gmb_bf_515 },
     { 519, gmb_bf_515 },
