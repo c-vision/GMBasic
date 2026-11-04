@@ -1179,8 +1179,10 @@ procedure,STATS,NormalPdf,NormalPdf
 procedure,STATS,NormalPpf,NormalPpf
 procedure,STATS,NormalSf,StatsNormalSf
 procedure,STATS,NormalTest,NormalTest
+procedure,STATS,ParetoCdf,StatsParetoCdf
 procedure,STATS,ParetoPdf,ParetoPdf
 procedure,STATS,ParetoPpf,ParetoPpf
+procedure,STATS,ParetoSf,StatsParetoSf
 procedure,STATS,PearsonR,StatsPearsonR
 procedure,STATS,Percentile,Percentile
 procedure,STATS,PoissonPmf,PoissonPmf
@@ -1201,8 +1203,10 @@ procedure,STATS,TTestOneSample,TTestOneSample
 procedure,STATS,TTestPaired,TTestPaired
 procedure,STATS,TriangularPdf,TriangularPdf
 procedure,STATS,TriangularPpf,TriangularPpf
+procedure,STATS,UniformCdf,StatsUniformCdf
 procedure,STATS,UniformPdf,UniformPdf
 procedure,STATS,UniformPpf,UniformPpf
+procedure,STATS,UniformSf,StatsUniformSf
 procedure,STATS,Variance,Variance
 procedure,STATS,WeibullCdf,WeibullCdf
 procedure,STATS,WeibullPdf,WeibullPdf

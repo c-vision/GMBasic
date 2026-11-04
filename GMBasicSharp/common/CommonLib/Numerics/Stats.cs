@@ -509,6 +509,13 @@ public static partial class Numerics
     /// <param name="x">Punto in cui valutare la PDF.</param>
     /// <returns>La densità di probabilità, oppure 0 se parametri non validi o x &lt; scale.</returns>
     /// <example>double pdf = Numerics.ParetoPdf(1.0, 2.0, 2.0);</example>
+    public static double ParetoCdf(double scale, double shape, double x)
+    {
+        if (scale <= 0 || shape <= 0) return double.NaN;
+        if (x <= scale) return 0.0;
+        return 1.0 - Math.Pow(scale / x, shape);
+    }
+
     public static double ParetoPdf(double scale, double shape, double x)
     {
         if (scale <= 0 || shape <= 0) return 0.0;

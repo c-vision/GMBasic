@@ -80,9 +80,13 @@ public static class MathFunctions
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double WeibullPpf(double shape, double scale, double p) => CommonLib.Numerics.WeibullPpf(p, shape, scale);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double LogisticPpf(double location, double scale, double p) => CommonLib.Numerics.LogisticPpf(p, location, scale);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double UniformPpf(double min, double max, double p) => CommonLib.Numerics.UniformPpf(p, min, max);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double UniformCdf(double a, double b, double x) => CommonLib.Numerics.UniformCdf(a, b, x);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double UniformSf(double a, double b, double x) => CommonLib.Numerics.UniformSf(a, b, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ParetoPpf(double scale, double shape, double p) => CommonLib.Numerics.ParetoPpf(p, scale, shape);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double TriangularPpf(double min, double mode, double max, double p) => CommonLib.Numerics.TriangularPpf(p, min, mode, max);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ParetoPdf(double scale, double shape, double x) => CommonLib.Numerics.ParetoPdf(scale, shape, x);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ParetoCdf(double scale, double shape, double x) => CommonLib.Numerics.ParetoCdf(scale, shape, x);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ParetoSf(double scale, double shape, double x) => 1.0 - CommonLib.Numerics.ParetoCdf(scale, shape, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double LogisticPdf(double mean, double scale, double x) => CommonLib.Numerics.LogisticPdf(mean, scale, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double TriangularPdf(double min, double mode, double max, double x) => CommonLib.Numerics.TriangularPdf(min, mode, max, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double UniformPdf(double min, double max, double x) => CommonLib.Numerics.UniformPdf(min, max, x);

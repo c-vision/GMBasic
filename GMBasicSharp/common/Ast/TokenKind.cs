@@ -2012,6 +2012,7 @@ public enum TokenKind
     FisherExact, ShapiroWilk, NormalTest, ZTest, KolmogorovSmirnov,
     StatsPearsonR, StatsSpearmanR, StatsLinRegress, StatsCovariance, StatsRange, StatsMax, StatsMin, StatsGammaSf,
     StatsExpSf, StatsStudentTSf, StatsChiSquaredSf, StatsWeibullSf, StatsFSf, StatsNormalSf, StatsLognormalSf,
+    StatsParetoCdf, StatsParetoSf, StatsUniformCdf, StatsUniformSf,
     StatsChi2Contingency, StatsMannWhitney, StatsWilcoxon,
     StatsGammaPdf, StatsGammaCdf, StatsGammaPpf, StatsGammaIsf,
     StatsSkewTest, StatsKurtosisTest, StatsJarqueBera,

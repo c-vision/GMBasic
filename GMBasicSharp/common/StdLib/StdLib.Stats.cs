@@ -251,6 +251,16 @@ public sealed partial class StdLib
                 xParam, new Parameter(-1, T(TokenKind.Identifier, "scale"), new DoubleType(), noFlags, null, false),
                 new Parameter(-1, T(TokenKind.Identifier, "shape"), new DoubleType(), noFlags, null, false)
             ], new DoubleType(), TokenKind.ParetoPdf, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsParetoCdf, "ParetoCdf"),
+            [
+                xParam, new Parameter(-1, T(TokenKind.Identifier, "scale"), new DoubleType(), noFlags, null, false),
+                new Parameter(-1, T(TokenKind.Identifier, "shape"), new DoubleType(), noFlags, null, false)
+            ], new DoubleType(), TokenKind.StatsParetoCdf, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsParetoSf, "ParetoSf"),
+            [
+                xParam, new Parameter(-1, T(TokenKind.Identifier, "scale"), new DoubleType(), noFlags, null, false),
+                new Parameter(-1, T(TokenKind.Identifier, "shape"), new DoubleType(), noFlags, null, false)
+            ], new DoubleType(), TokenKind.StatsParetoSf, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.LogisticPdf, "LogisticPdf"),
             [
                 xParam, new Parameter(-1, T(TokenKind.Identifier, "location"), new DoubleType(), noFlags, null, false),
@@ -332,6 +342,14 @@ public sealed partial class StdLib
                 [pParam, new Parameter(-1, T(TokenKind.Identifier, "a"), new DoubleType(), SymbolFlags.IsOptional, null, false),
                  new Parameter(-1, T(TokenKind.Identifier, "b"), new DoubleType(), SymbolFlags.IsOptional, null, false)],
                 new DoubleType(), TokenKind.UniformPpf, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsUniformCdf, "UniformCdf"),
+                [xParam, new Parameter(-1, T(TokenKind.Identifier, "a"), new DoubleType(), noFlags, null, false),
+                 new Parameter(-1, T(TokenKind.Identifier, "b"), new DoubleType(), noFlags, null, false)],
+                new DoubleType(), TokenKind.StatsUniformCdf, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsUniformSf, "UniformSf"),
+                [xParam, new Parameter(-1, T(TokenKind.Identifier, "a"), new DoubleType(), noFlags, null, false),
+                 new Parameter(-1, T(TokenKind.Identifier, "b"), new DoubleType(), noFlags, null, false)],
+                new DoubleType(), TokenKind.StatsUniformSf, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.ParetoPpf, "ParetoPpf"),
                 [pParam, new Parameter(-1, T(TokenKind.Identifier, "scale"), new DoubleType(), noFlags, null, false),
                  new Parameter(-1, T(TokenKind.Identifier, "shape"), new DoubleType(), noFlags, null, false)],

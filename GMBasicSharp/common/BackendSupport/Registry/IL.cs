@@ -541,6 +541,10 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "STATS.FSf");
         r.Register(Backend.IL, "STATS.NormalSf");
         r.Register(Backend.IL, "STATS.LognormalSf");
+        r.Register(Backend.IL, "STATS.ParetoCdf");
+        r.Register(Backend.IL, "STATS.ParetoSf");
+        r.Register(Backend.IL, "STATS.UniformCdf");
+        r.Register(Backend.IL, "STATS.UniformSf");
         r.Register(Backend.IL, "TRADING.OPTIONS.GammaColor");
         r.Register(Backend.IL, "SPECIAL.GAMMAINC");
         r.Register(Backend.IL, "SPECIAL.GAMMAINCC");

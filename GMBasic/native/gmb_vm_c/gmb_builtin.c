@@ -687,6 +687,20 @@ static void gmb_bf_1000_c1000(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, i
     gmb_val_t r = gmb_pearsonr(xv, yv);
     gmb_vm_set_dict_result_owned(r, &bout->is_num, &bout->result_ref, &bout->result_ref_bt);
 }
+static void gmb_bf_1046(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task;
+        double a = argc >= 2 ? args[1].num : 0, b = argc >= 3 ? args[2].num : 1;
+        double c = gmb_dist_uniform_cdf(a, b, args[0].num);
+        bout->result = func_code == 1047 ? 1.0 - c : c;
+}
+static void gmb_bf_1044(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task;
+        double sc = argc >= 2 ? args[1].num : 1, sh = argc >= 3 ? args[2].num : 1;
+        double c = gmb_dist_pareto_cdf(sc, sh, args[0].num);
+        bout->result = func_code == 1045 ? 1.0 - c : c;
+}
 static void gmb_bf_1036(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         (void)vm; (void)task; (void)func_code;
@@ -17482,6 +17496,10 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 1041, gmb_bf_71 },
     { 1042, gmb_bf_57 },
     { 1043, gmb_bf_59 },
+    { 1044, gmb_bf_1044 },
+    { 1045, gmb_bf_1044 },
+    { 1046, gmb_bf_1046 },
+    { 1047, gmb_bf_1046 },
     { 1015, gmb_bf_1013 },
     { 1017, gmb_bf_1017 },
     { 1018, gmb_bf_1018 },
