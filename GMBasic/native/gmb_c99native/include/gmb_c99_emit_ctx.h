@@ -41,6 +41,11 @@ typedef struct {
     char json_chans[16][64]; int n_json_chans;   /* canali aperti con JSON OPEN ... AS #h (nome della variabile handle): INPUT # legge l'intero documento */
     int future_is_str[16];                      /* 2.6(m): future con risultato stringa (await estrae v_string) */
     char mod_labels[16][64]; int mod_label_idx[16]; int n_mod_labels;
+    /* Handler evento con LABEL LOCALE a una procedura (es. `ON WINDOW CLOSE GOSUB FinestraChiusa`
+     * con le label dentro SUB Main): il runtime invoca una funzione senza contesto, quindi per
+     * ognuna si emette una funzione sintetica `gmb_user_lfnev_<fn>_<label>` con il blocco del
+     * label e le locali della procedura (fresche, come il task spawnato dalla VM/C). */
+    int evh_fn[16]; char evh_fn_name[16][64]; char evh_label[16][64]; int n_evh;
     int mod_lines[64]; int n_mod_lines;      /* bas_line delle righe di modulo (ibrido) */
     int nummod_tv[16]; int n_nummod;         /* GOSUB numerici da funzione → routine modulo */
     int uses_gosub;            /* 2.6(s): almeno un GOSUB → stack condiviso a file scope */

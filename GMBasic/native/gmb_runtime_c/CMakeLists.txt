@@ -1194,6 +1194,13 @@ add_executable(gmb_win_events_selfcheck tests/gmb_win_events_selfcheck.c)
 target_link_libraries(gmb_win_events_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_win_events_selfcheck PRIVATE include)
 add_test(NAME gmb_win_events_selfcheck COMMAND gmb_win_events_selfcheck)
+
+# Tastiera → finestra focalizzata (tui_key_focus_sync): il tasto non deve andare al controllo
+# di una finestra di sfondo quando la finestra attiva è un'altra.
+add_executable(gmb_tui_focus_selftest tests/gmb_tui_focus_selftest.c)
+target_link_libraries(gmb_tui_focus_selftest PRIVATE gmb_runtime)
+target_include_directories(gmb_tui_focus_selftest PRIVATE include)
+add_test(NAME gmb_tui_focus_selftest COMMAND gmb_tui_focus_selftest)
 add_executable(gmb_tui_events_selfcheck tests/gmb_tui_events_selfcheck.c)
 target_link_libraries(gmb_tui_events_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_tui_events_selfcheck PRIVATE include)
