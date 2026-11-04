@@ -538,6 +538,10 @@ static void vm_pixel_ctrl(gmb_vm_t* vm, gmb_task_t* task)
 }
 static gmb_vm_t* g_ctrl_vm = NULL;
 static gmb_task_t* g_ctrl_task = NULL;
+/* Contesto per i thunk degli EVENTI FINESTRA (ON WINDOW …): vm/task correnti mentre il
+ * runtime innalza l'evento (syscall WINDOW_ACTION, frame/pump). */
+static gmb_vm_t* g_win_ev_vm = NULL;
+static gmb_task_t* g_win_ev_task = NULL;
 static double vm_ctrl_thunk(void)
 {
     if (g_ctrl_vm && g_ctrl_task)
@@ -556,7 +560,7 @@ static void vm_uc_paint(void* inst, gmb_gfx_context_t* g)
     gmb_vm_invoke_paint(g_ctrl_vm, g_ctrl_task, (gmb_obj_t*)inst, (double)hh);
     gmb_gfxctx_close(hh);
 }
-static void vm_form_frame(gmb_vm_t* vm, gmb_task_t* task) { int ms = (int)tui_pop_num(task); g_ctrl_vm = vm; g_ctrl_task = task; gmb_ui_frame(ms); g_ctrl_vm = NULL; g_ctrl_task = NULL; }
+static void vm_form_frame(gmb_vm_t* vm, gmb_task_t* task) { int ms = (int)tui_pop_num(task); g_ctrl_vm = vm; g_ctrl_task = task; g_win_ev_vm = vm; g_win_ev_task = task; gmb_ui_frame(ms); g_ctrl_vm = NULL; g_ctrl_task = NULL; g_win_ev_vm = NULL; g_win_ev_task = NULL; }
 static void vm_form_closed(gmb_vm_t* vm, gmb_task_t* task) { (void)vm; tui_push_num(task, gmb_form_closed() ? 1.0 : 0.0, GMB_BT_BOOL); }
 static void vm_form_close(gmb_vm_t* vm, gmb_task_t* task) { (void)vm; (void)task; gmb_form_request_close(); }
 static void vm_form_ctrl_get(gmb_vm_t* vm, gmb_task_t* task)
@@ -673,14 +677,109 @@ static void vm_key_pressed(gmb_vm_t* vm, gmb_task_t* task)      { (void)vm; tui_
 static void vm_form_set_event_id(gmb_vm_t* vm, gmb_task_t* task)
 {
     /* stack: [handle, evIndex, actionType, targetAddr] (target ultimo pushato).
-     * Il dispatch nativo VM->sub (rientranza) non e' ancora implementato: no-op come
-     * ON_WINDOW_EVENT (301). Si popano tutti i valori per mantenere lo stack allineato. */
+     * Registrazione in gmb_vm_control_register (spawn del task all'address) + thunk C che
+     * rientra nel VM quando il runtime innalza l'evento (vm_ctrl_thunk). */
     (void)vm; int target = (int)tui_pop_num(task);
     int actionType = (int)tui_pop_num(task);
     int evIndex = (int)tui_pop_num(task);
     int h = (int)tui_pop_num(task);
     gmb_vm_control_register(h, evIndex, actionType, target);
     gmb_form_set_event_id(h, evIndex, actionType == 0 ? NULL : (gmb_form_cb)vm_ctrl_thunk);
+}
+
+/* ---- ON WINDOW <ev> [OF <handle>] <azione> (syscall ON_WINDOW_EVENT) ----
+ * Il runtime condiviso (gmb_console.c) ha la tabella per (finestra, evento) con function
+ * pointer: qui si registra un thunk che, quando il window manager innalza l'evento
+ * (gmb_winstmt_action / WINDOW n CLOSE|MINIMIZE|RESTORE|ACTIVATE, click sulla barra), legge
+ * il contesto del firing e spawna il task all'indirizzo target — stessa semantica di
+ * gmb_vm_control_fire, mai invocazione inline fuori dal task. */
+#define GMB_WIN_EV_CAP 32
+typedef struct { int handle; int kind; int target_addr; int used; } gmb_win_ev_t;
+static gmb_win_ev_t g_win_ev[GMB_WIN_EV_CAP];
+static int g_win_ev_n = 0;
+
+/* WindowEventKind (Ast/Graphics.cs): Close=0, Resize=1, Quit=2, Move=3, Focus=4,
+ * Minimize=5, Restore=6, Open=7, Paste=8. Nomi = quelli innalzati dal runtime. */
+static const char* gmb_vm_win_ev_name(int kind)
+{
+    switch (kind)
+    {
+        case 0: return "CLOSE";
+        case 1: return "RESIZE";
+        case 2: return "QUIT";
+        case 3: return "MOVE";
+        case 4: return "FOCUS";
+        case 5: return "MINIMIZE";
+        case 6: return "RESTORE";
+        case 7: return "OPEN";
+        case 8: return "PASTE";
+        default: return NULL;
+    }
+}
+
+static double vm_win_thunk(void)
+{
+    int win = -1; const char* ev = NULL;
+    gmb_window_firing(&win, &ev);
+    if (!ev || !g_win_ev_vm || !g_win_ev_task || !g_win_ev_vm->scheduler) return 0;
+    /* Tutte le registrazioni che combaciano: quella per handle E la wildcard (handle -1,
+     * `ON WINDOW <ev> <azione>` senza OF). Prima si usciva al primo match: la wildcard non
+     * scattava mai se esisteva anche un handler specifico. */
+    for (int i = 0; i < g_win_ev_n; i++)
+        if (g_win_ev[i].used && g_win_ev[i].kind >= 0 &&
+            (g_win_ev[i].handle < 0 || g_win_ev[i].handle == win) &&
+            strcmp(gmb_vm_win_ev_name(g_win_ev[i].kind) ? gmb_vm_win_ev_name(g_win_ev[i].kind) : "", ev) == 0)
+        {
+            gmb_task_t* go = gmb_task_create(g_win_ev_vm->scheduler, g_win_ev[i].target_addr);
+            if (!go) continue;
+            go->vm_ctx = g_win_ev_vm;
+            go->globals_nums = g_win_ev_task->globals_nums;
+            go->globals_refs = g_win_ev_task->globals_refs;
+            go->globals_types = g_win_ev_task->globals_types;
+            go->globals_basic = g_win_ev_task->globals_basic;
+            go->globals_count = g_win_ev_task->globals_count;
+            go->cancellation_requested = g_win_ev_task->cancellation_requested;
+            gmb_sched_enqueue(g_win_ev_vm->scheduler, go);
+        }
+    return 0;
+}
+
+static void vm_win_ev_register(int handle, int kind, int action, int target_addr)
+{
+    const char* ev = gmb_vm_win_ev_name(kind);
+    if (!ev) return;
+    for (int i = 0; i < g_win_ev_n; i++)
+        if (g_win_ev[i].used && g_win_ev[i].handle == handle && g_win_ev[i].kind == kind)
+        {
+            if (action == 0) { g_win_ev[i].used = 0; gmb_window_register_event_of_cb(handle, ev, NULL); return; }
+            g_win_ev[i].target_addr = target_addr;
+            gmb_window_register_event_of_cb(handle, ev, (gmb_form_cb)vm_win_thunk);
+            return;
+        }
+    if (action == 0) { gmb_window_register_event_of_cb(handle, ev, NULL); return; }
+    if (g_win_ev_n >= GMB_WIN_EV_CAP) return;
+    g_win_ev[g_win_ev_n++] = (gmb_win_ev_t){ handle, kind, target_addr, 1 };
+    gmb_window_register_event_of_cb(handle, ev, (gmb_form_cb)vm_win_thunk);
+}
+
+/* Contesto per i thunk finestra durante i punti che innalzano eventi (WINDOW … ACTION,
+ * frame/pump): NULL = nessun handler eseguito. Esportato per gmb_vm_console.c. */
+void gmb_vm_tui_event_ctx(gmb_vm_t* vm, gmb_task_t* task)
+{
+    g_win_ev_vm = vm; g_win_ev_task = task;
+}
+
+static void vm_on_window_event(gmb_vm_t* vm, gmb_task_t* task)
+{
+    /* stack: [handle, eventKind, actionType, targetAddr] — target ultimo pushato → primo
+     * poppato (ordine di Compiler.OnKey.cs VisitOnWindowStatementC). */
+    int target = (int)tui_pop_num(task);
+    int actionType = (int)tui_pop_num(task);
+    int kind = (int)tui_pop_num(task);
+    int handle = (int)tui_pop_num(task);
+    g_win_ev_vm = vm; g_win_ev_task = task;
+    vm_win_ev_register(handle, kind, actionType, target);
+    g_win_ev_vm = NULL; g_win_ev_task = NULL;
 }
 
 void gmb_vm_exec_tui_syscall(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
@@ -699,6 +798,7 @@ void gmb_vm_exec_tui_syscall(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
     }
     switch (code)
     {
+        case GMB_SC_ON_WINDOW_EVENT: vm_on_window_event(vm, task); return;
         case 400: vm_pixel_ctrl(vm, task); return;
         case 401: vm_form_frame(vm, task); return;
         case 402: vm_form_closed(vm, task); return;

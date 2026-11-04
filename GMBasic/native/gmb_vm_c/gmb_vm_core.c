@@ -4973,7 +4973,7 @@ static void vm_sys_headless_big(gmb_vm_t* vm, gmb_task_t* task, int code, int ar
     gmb_stack_entry_t a[4];
     int n = argc > 4 ? 4 : argc;
     vm_pop_args_ordered(task, a, n);
-    if (code == GMB_SC_SYNC_PROCESS || code == GMB_SC_ON_WINDOW_EVENT || code == GMB_SC_WINDOW_SHADOW) push_num_entry(task, -1.0, GMB_BT_NUMBER);
+    if (code == GMB_SC_SYNC_PROCESS || code == GMB_SC_WINDOW_SHADOW) push_num_entry(task, -1.0, GMB_BT_NUMBER);
     else push_num_entry(task, 0.0, GMB_BT_NUMBER);
 }
 
@@ -5968,23 +5968,25 @@ static const vm_sys_row VM_SYS_TBL[] = {
     { GMB_SC_TILEMAP_CMD, vm_sys_headless_big },
     { GMB_SC_TICK_PROCESS, vm_sys_headless_big },
     { GMB_SC_SYNC_PROCESS, vm_sys_headless_big },
-    { GMB_SC_ON_WINDOW_EVENT, vm_sys_headless_big },
-    /* WINDOW 302-314 (WINDOW_ACTION..WINDOW_SHADOW, enum C#): al delegate TUI che
-     * dispatcha i vm_winstmt_* (modello gmb_winstmt: stato+render). Caption/Sendkey
-     * veri sono 321/322 (sotto). */
-    { GMB_SC_WINDOW_ACTION, vm_sys_delegate_tui },
-    { GMB_SC_WINDOW_DEFINE, vm_sys_delegate_tui },
-    { GMB_SC_WINDOW_APPEND, vm_sys_delegate_tui },
-    { GMB_SC_WINDOW_SET_CONTENT, vm_sys_delegate_tui },
-    { GMB_SC_WINDOW_CLEAR, vm_sys_delegate_tui },
-    { GMB_SC_WINDOW_SCROLL, vm_sys_delegate_tui },
-    { GMB_SC_WINDOW_EDIT, vm_sys_delegate_tui },
-    { GMB_SC_WINDOW_SELECT, vm_sys_delegate_tui },
-    { GMB_SC_WINDOW_THEME, vm_sys_delegate_tui },
-    { GMB_SC_WINDOW_DESKTOP, vm_sys_delegate_tui },
-    { GMB_SC_WINDOW_MOVE_DESKTOP, vm_sys_delegate_tui },
-    { GMB_SC_WINDOW_FRAME, vm_sys_delegate_tui },
-    { GMB_SC_WINDOW_SHADOW, vm_sys_delegate_tui },
+    { GMB_SC_ON_WINDOW_EVENT, vm_sys_delegate_tui },
+    /* WINDOW 304-316 (WINDOW_ACTION..WINDOW_SHADOW, enum C#): i handler `vm_winstmt_*`
+     * vivono nella tabella CONSOLE (gmb_vm_console.c), quindi il delegate giusto è
+     * `console`. Con `tui` finivano nel ramo "sconosciuti" del TUI (consume_all): WINDOW
+     * DEFINE/ACTION erano MORTI sulla VM/C (nessuna finestra creata, nessun evento).
+     * Caption/Sendkey veri sono 321/322 (sotto). */
+    { GMB_SC_WINDOW_ACTION, vm_sys_delegate_console },
+    { GMB_SC_WINDOW_DEFINE, vm_sys_delegate_console },
+    { GMB_SC_WINDOW_APPEND, vm_sys_delegate_console },
+    { GMB_SC_WINDOW_SET_CONTENT, vm_sys_delegate_console },
+    { GMB_SC_WINDOW_CLEAR, vm_sys_delegate_console },
+    { GMB_SC_WINDOW_SCROLL, vm_sys_delegate_console },
+    { GMB_SC_WINDOW_EDIT, vm_sys_delegate_console },
+    { GMB_SC_WINDOW_SELECT, vm_sys_delegate_console },
+    { GMB_SC_WINDOW_THEME, vm_sys_delegate_console },
+    { GMB_SC_WINDOW_DESKTOP, vm_sys_delegate_console },
+    { GMB_SC_WINDOW_MOVE_DESKTOP, vm_sys_delegate_console },
+    { GMB_SC_WINDOW_FRAME, vm_sys_delegate_console },
+    { GMB_SC_WINDOW_SHADOW, vm_sys_delegate_console },
     /* CONSOLE_CAPTION=323 / CONSOLE_SENDKEY=324 / CONSOLE_SCROLLMODE=325
      * (valori enum C# REALI; prima 321/322/323 — drift +2). */
     { GMB_SC_CONSOLE_CAPTION, vm_sys_delegate_console },

@@ -74,6 +74,10 @@ gmb_window_manager_t* gmb_vm_tui_static_wm(void);
 /* Inietta una stringa di tasti nella typeahead (test/host). */
 void gmb_vm_tui_inject_keys(gmb_vm_t* vm, const char* s);
 
+/* Contesto (vm, task) per i thunk degli eventi finestra: va impostato attorno a ogni punto
+ * che può innalzare un evento (WINDOW … ACTION, frame/pump). NULL = nessun handler eseguito. */
+void gmb_vm_tui_event_ctx(gmb_vm_t* vm, gmb_task_t* task);
+
 /* Imposta un hook di render custom (default: gmb_render_screen → stdout). */
 void gmb_vm_tui_set_render(gmb_vm_t* vm, void (*render)(gmb_screen_buffer_t*, void*), void* ctx);
 

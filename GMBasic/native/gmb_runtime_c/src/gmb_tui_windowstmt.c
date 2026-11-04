@@ -296,6 +296,7 @@ void gmb_winstmt_select(const char* name)
         for (int i = 0; i < GMB_WINSTMT_MAX; i++) {
             if (!g_ws[i].used || g_ws[i].id < 0) continue;
             gmb_managed_window_t* mw = gmb_window_manager_get(m, g_ws[i].id);
+            if (mw && mw->focused) gmb_window_fire(g_ws[i].id, "DEACTIVATE");
             if (mw) mw->focused = false;
         }
         m->focus = -1;
@@ -304,7 +305,10 @@ void gmb_winstmt_select(const char* name)
     }
     gmb_winstmt_t* w = ws_find(name);
     if (!w || w->id < 0) return;
+    /* FOCUS sul nuovo attivo (WindowEventKind.Focus), poi la selezione vera. */
+    gmb_window_fire(w->id, "FOCUS");
     gmb_window_manager_select(m, w->id);
+    gmb_window_manager_raise(m, w->id);
     gmb_winstmt_render_all();
 }
 
@@ -393,7 +397,6 @@ void gmb_winstmt_shadow(const char* name, int on)
 }
 
 extern void gmb_window_fire(int win, const char* ev);
-extern void gmb_window_fire(int, const char*);
 void gmb_winstmt_action(const char* name, const char* action)
 {
     gmb_winstmt_t* w = ws_find(name);
@@ -401,6 +404,9 @@ void gmb_winstmt_action(const char* name, const char* action)
     int _win = w->id;
     gmb_window_manager_t* m = gmb_window_manager_static();
     if (strcmp(action, "Activate") == 0) {
+        /* FOCUS è il nome canonico (WindowEventKind.Focus = 4, Parser: `ON WINDOW FOCUS`);
+         * ACTIVATE resta per compatibilità delle registrazioni storiche. */
+        gmb_window_fire(_win, "FOCUS");
         gmb_window_fire(_win, "ACTIVATE");
         gmb_window_manager_select(m, w->id);
         gmb_window_manager_raise(m, w->id);
@@ -783,13 +789,6 @@ void gmb_winstmt_handle_mouse_px(int lx, int ly, int type, int button, int cw, i
     if (cw <= 0) cw = 8; if (ch <= 0) ch = 16;
     gmb_window_manager_t* m = gmb_window_manager_static();
     (void)button;
-    if (getenv("GMB_MOUSE_DBG")) {
-        fprintf(stderr, "[px] lx=%d ly=%d type=%d cw=%d ch=%d workW=%d workH=%d count=%d\n", lx, ly, type, cw, ch, workW, workH, m->count);
-        for (int _i = 0; _i < m->count; _i++)
-            fprintf(stderr, "[wm] id=%d rect=(%d,%d,%d,%d) z=%d min=%d\n", m->windows[_i].id,
-                    m->windows[_i].rect.x, m->windows[_i].rect.y, m->windows[_i].rect.w, m->windows[_i].rect.h,
-                    m->windows[_i].z, m->windows[_i].minimized);
-    }
         /* Stato orfano: una finestra in drag/resize non piu' esistente (chiusa durante il
          * trascinamento, oppure UP perso col cursore fuori finestra) mandava il ramo MOVE a
          * ritornare SEMPRE, assorbendo per sempre i movimenti: l'altra finestra non riceveva
@@ -861,6 +860,7 @@ void gmb_winstmt_handle_mouse_px(int lx, int ly, int type, int button, int cw, i
                 if (!top || w->z > top->z) top = w;
         }
         if (!top) return;
+        gmb_window_fire(top->id, "FOCUS");
         gmb_window_fire(top->id, "ACTIVATE");
         gmb_window_manager_raise(m, top->id);
         gmb_winstmt_t* gw = NULL;
@@ -874,22 +874,18 @@ void gmb_winstmt_handle_mouse_px(int lx, int ly, int type, int button, int cw, i
             int close0 = wx + 2 * cw, close1 = wx + 5 * cw;
             int max0 = wx + ww - 3 * cw, max1 = wx + ww;
             int min0 = wx + ww - 6 * cw, min1 = wx + ww - 3 * cw;
-            if (getenv("GMB_MOUSE_DBG"))
-                fprintf(stderr, "[mm] id=%d lx=%d wx=%d ww=%d close[%d,%d) min[%d,%d) max[%d,%d)\n",
-                        top->id, lx, wx, ww, close0, close1, min0, min1, max0, max1);
-            if (lx >= close0 && lx < close1) { int _tid = top->id; if(getenv("GMB_MOUSE_DBG")) fprintf(stderr,"[act] CLOSE id=%d lx=%d\n", _tid, lx); gmb_window_fire(_tid, "CLOSE"); gmb_window_manager_remove(m, _tid); if (gw) { gw->closed = true; gw->used = false; gw->id = -1; } ws_forget_window(_tid);
+            if (lx >= close0 && lx < close1) { int _tid = top->id; gmb_window_fire(_tid, "CLOSE"); gmb_window_manager_remove(m, _tid); if (gw) { gw->closed = true; gw->used = false; gw->id = -1; } ws_forget_window(_tid);
                 /* Ridisegna SUBITO: se era l'ultima finestra, il pump (gate count>0) non
                  * ridisegnerebbe e resterebbe a schermo la finestra "fantasma" (chiusa). */
                 ws_repaint_desktop(); gmb_winstmt_render_all(); }
             else if (lx >= max0 && lx < max1)
             {
-                if(getenv("GMB_MOUSE_DBG")) fprintf(stderr,"[act] ZOOM id=%d lx=%d\n", top->id, lx);
                 gmb_window_fire(top->id, "RESIZE");
                 if (gw && gw->maximized) { top->rect = top->restore_rect; gw->maximized = false; }
                 else { top->restore_rect = top->rect; top->rect.x = 0; top->rect.y = 0;
                        top->rect.w = workW / cw; top->rect.h = workH / ch; if (gw) gw->maximized = true; }
             }
-            else if (lx >= min0 && lx < min1) { if(getenv("GMB_MOUSE_DBG")) fprintf(stderr,"[act] MIN id=%d lx=%d\n", top->id, lx); gmb_window_fire(top->id, "MINIMIZE"); top->minimized = true; top->min_order = ++s_min_seq; if (gw) gw->minimized = true; }
+            else if (lx >= min0 && lx < min1) { gmb_window_fire(top->id, "MINIMIZE"); top->minimized = true; top->min_order = ++s_min_seq; if (gw) gw->minimized = true; }
             else { s_drag_id = top->id; s_drag_dx = relx; s_drag_dy = rely; }
             return;
         }

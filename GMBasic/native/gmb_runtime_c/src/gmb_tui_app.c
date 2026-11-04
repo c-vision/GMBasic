@@ -194,8 +194,15 @@ void gmb_event_dispatcher_register_key(gmb_event_dispatcher_t* d, int combo,
 void gmb_event_dispatcher_register_window(gmb_event_dispatcher_t* d, int kind,
                                           void (*fn)(void* ctx), void* ctx)
 {
+    gmb_event_dispatcher_register_window_h(d, kind, -1, fn, ctx);
+}
+
+void gmb_event_dispatcher_register_window_h(gmb_event_dispatcher_t* d, int kind, int handle,
+                                            void (*fn)(void* ctx), void* ctx)
+{
     if (d->win_count >= GMB_DISPATCH_MAX || !fn) return;
     d->win_kinds[d->win_count] = kind;
+    d->win_handles[d->win_count] = handle;
     d->win_actions[d->win_count] = fn;
     d->win_ctxs[d->win_count] = ctx;
     d->win_count++;
@@ -227,8 +234,13 @@ int gmb_event_dispatcher_dispatch_key(gmb_event_dispatcher_t* d, int combo)
 
 void gmb_event_dispatcher_dispatch_window(gmb_event_dispatcher_t* d, int kind)
 {
+    gmb_event_dispatcher_dispatch_window_h(d, kind, -1);
+}
+
+void gmb_event_dispatcher_dispatch_window_h(gmb_event_dispatcher_t* d, int kind, int handle)
+{
     for (int i = 0; i < d->win_count; i++)
-        if (d->win_kinds[i] == kind)
+        if (d->win_kinds[i] == kind && (d->win_handles[i] < 0 || d->win_handles[i] == handle))
             d->win_actions[i](d->win_ctxs[i]);
 }
 
@@ -262,11 +274,17 @@ void gmb_event_dispatcher_unregister_key(gmb_event_dispatcher_t* d, int combo)
 
 void gmb_event_dispatcher_unregister_window(gmb_event_dispatcher_t* d, int kind)
 {
+    gmb_event_dispatcher_unregister_window_h(d, kind, -1);
+}
+
+void gmb_event_dispatcher_unregister_window_h(gmb_event_dispatcher_t* d, int kind, int handle)
+{
     int w = 0;
     for (int i = 0; i < d->win_count; i++)
     {
-        if (d->win_kinds[i] == kind) continue;
+        if (d->win_kinds[i] == kind && d->win_handles[i] == handle) continue;
         d->win_kinds[w] = d->win_kinds[i];
+        d->win_handles[w] = d->win_handles[i];
         d->win_actions[w] = d->win_actions[i];
         d->win_ctxs[w] = d->win_ctxs[i];
         w++;
@@ -856,6 +874,31 @@ void gmb_tui_refresh_window(void)
     }
 }
 
+/* Tastiera → finestra FOCALIZZATA. Il focus dei controlli è un indice globale
+ * (g_reg_focus): quando la finestra attiva cambia (click, SELECT, WINDOW … ACTIVATE) il
+ * controllo in focus può appartenere a una finestra di sfondo e continuare a ricevere i
+ * tasti. Qui il focus si sposta sul primo controllo eleggibile della finestra attiva.
+ * I controlli senza container (top-level) restano eleggibili sempre. */
+static void tui_key_focus_sync(void)
+{
+    if (g_reg_n <= 0) return;
+    extern const char* gmb_winstmt_active(void);
+    const char* act = gmb_winstmt_active();
+    if (!act) act = "";
+    gmb_control_t* cur = (g_reg_focus >= 0 && g_reg_focus < g_reg_n) ? g_reg_ctrl[g_reg_focus] : NULL;
+    if (cur && (!cur->container[0] || strcmp(cur->container, act) == 0)) return;
+    for (int i = 0; i < g_reg_n; i++)
+    {
+        gmb_control_t* cc = g_reg_ctrl[i];
+        if (!cc) continue;
+        if (!cc->container[0] || strcmp(cc->container, act) == 0)
+        {
+            if (i != g_reg_focus) { g_reg_focus = i; gmb_tui_fire(i, 4); }  /* GOTFOCUS */
+            return;
+        }
+    }
+}
+
 /* Applica un tasto ai controlli (fuoco/tab/ESC/host-key). Condivisa tra typeahead e tty. */
 static void tui_process_key(int k)
 {
@@ -887,6 +930,7 @@ static void tui_process_key(int k)
         return;
     }
     if (k == 27) { extern void gmb_form_request_close(void); gmb_form_request_close(); return; } /* ESC = quit host */
+    tui_key_focus_sync();   /* tastiera → finestra focalizzata (mai al controllo di una finestra di sfondo) */
     if (g_reg_focus >= 0 && g_reg_focus < g_reg_n)
     {
         int f = g_reg_focus;

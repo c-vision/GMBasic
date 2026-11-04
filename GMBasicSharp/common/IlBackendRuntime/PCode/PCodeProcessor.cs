@@ -251,12 +251,12 @@ internal sealed partial class PCodeProcessor
         _tuiWindowEventsSubscribed = true;
         try
         {
-            _tuiWindows.WindowOpened += (_ , _) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(7);   // Open
-            _tuiWindows.WindowClosed += (_ , _) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(0);   // Close
-            _tuiWindows.WindowMoved += (_ , _) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(3);    // Move
-            _tuiWindows.WindowFocused += (_ , _) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(4);  // Focus
-            _tuiWindows.WindowMinimized += (_ , _) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(5);// Minimize
-            _tuiWindows.WindowRestored += (_ , _) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(6); // Restore
+            _tuiWindows.WindowOpened += (_ , e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(7, e.Id);   // Open
+            _tuiWindows.WindowClosed += (_ , e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(0, e.Id);   // Close
+            _tuiWindows.WindowMoved += (_ , e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(3, e.Id);    // Move
+            _tuiWindows.WindowFocused += (_ , e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(4, e.Id);  // Focus
+            _tuiWindows.WindowMinimized += (_ , e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(5, e.Id);// Minimize
+            _tuiWindows.WindowRestored += (_ , e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(6, e.Id); // Restore
         }
         catch { }
     }

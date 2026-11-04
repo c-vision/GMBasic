@@ -357,7 +357,10 @@ int action = task->sp > 0 ? (int)tui_pop_num(task) : 0;
 /* WINDOW SHOW(6)/HIDE(7): form globale (nome vuoto) = visibilita' dello screen. */
 if (action == 6 || action == 7) { gmb_winstmt_show(action == 6 ? 1 : 0); return; }
 static const char* acts[] = { "Activate", "Deactivate", "Release", "Close", "Minimize", "Restore" };
+/* Contesto per i thunk di ON WINDOW: questa azione può innalzare FOCUS/CLOSE/MINIMIZE/… */
+gmb_vm_tui_event_ctx(vm, task);
 gmb_winstmt_action(name, (action >= 0 && action < 6) ? acts[action] : "Activate");
+gmb_vm_tui_event_ctx(NULL, NULL);
 
 }
 /* WINDOW_APPEND (304): push text, name → pop name, text. */
