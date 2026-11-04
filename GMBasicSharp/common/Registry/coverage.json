@@ -933,36 +933,6 @@
     {
       "id": 89,
       "ns": "AI",
-      "name": "GRAPHFOLDER",
-      "kind": "GraphByFolder",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 90,
-      "ns": "AI",
-      "name": "GRAPHMULTI",
-      "kind": "GraphQueryMulti",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 91,
-      "ns": "AI",
-      "name": "GRAPHTAG",
-      "kind": "GraphByTag",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 92,
-      "ns": "AI",
       "name": "GenTest",
       "kind": "AiVectorGenTest",
       "IL": false,
@@ -971,7 +941,7 @@
       "C99Native": false
     },
     {
-      "id": 93,
+      "id": 90,
       "ns": "AI",
       "name": "GetBase",
       "kind": "AiGetBase",
@@ -981,7 +951,7 @@
       "C99Native": false
     },
     {
-      "id": 94,
+      "id": 91,
       "ns": "AI",
       "name": "GetDefault",
       "kind": "AiGetDefault",
@@ -991,7 +961,7 @@
       "C99Native": false
     },
     {
-      "id": 95,
+      "id": 92,
       "ns": "AI",
       "name": "GetKey",
       "kind": "AiGetKey",
@@ -1001,7 +971,7 @@
       "C99Native": false
     },
     {
-      "id": 96,
+      "id": 93,
       "ns": "AI",
       "name": "GetModel",
       "kind": "AiGetModel",
@@ -1011,7 +981,7 @@
       "C99Native": false
     },
     {
-      "id": 97,
+      "id": 94,
       "ns": "AI",
       "name": "GetTemp",
       "kind": "AiGetTemp",
@@ -1021,7 +991,7 @@
       "C99Native": false
     },
     {
-      "id": 98,
+      "id": 95,
       "ns": "AI",
       "name": "GoalAgent",
       "kind": "AiGoalAgent",
@@ -1031,7 +1001,7 @@
       "C99Native": false
     },
     {
-      "id": 99,
+      "id": 96,
       "ns": "AI",
       "name": "GoalClear",
       "kind": "AiGoalClear",
@@ -1041,7 +1011,7 @@
       "C99Native": false
     },
     {
-      "id": 100,
+      "id": 97,
       "ns": "AI",
       "name": "GoalGet",
       "kind": "AiGoalGet",
@@ -1051,7 +1021,7 @@
       "C99Native": false
     },
     {
-      "id": 101,
+      "id": 98,
       "ns": "AI",
       "name": "GoalSet",
       "kind": "AiGoalSet",
@@ -1061,7 +1031,7 @@
       "C99Native": false
     },
     {
-      "id": 102,
+      "id": 99,
       "ns": "AI",
       "name": "GoalStatus",
       "kind": "AiGoalStatus",
@@ -1071,7 +1041,7 @@
       "C99Native": false
     },
     {
-      "id": 103,
+      "id": 100,
       "ns": "AI",
       "name": "GoalTick",
       "kind": "AiGoalTick",
@@ -1081,7 +1051,7 @@
       "C99Native": false
     },
     {
-      "id": 104,
+      "id": 101,
       "ns": "AI",
       "name": "Handoff",
       "kind": "AiHandoff",
@@ -1091,7 +1061,7 @@
       "C99Native": false
     },
     {
-      "id": 105,
+      "id": 102,
       "ns": "AI",
       "name": "HandoffClear",
       "kind": "AiHandoffClear",
@@ -1101,7 +1071,7 @@
       "C99Native": false
     },
     {
-      "id": 106,
+      "id": 103,
       "ns": "AI",
       "name": "HandoffComplete",
       "kind": "AiHandoffComplete",
@@ -1111,7 +1081,7 @@
       "C99Native": false
     },
     {
-      "id": 107,
+      "id": 104,
       "ns": "AI",
       "name": "HandoffList",
       "kind": "AiHandoffList",
@@ -1121,7 +1091,7 @@
       "C99Native": false
     },
     {
-      "id": 108,
+      "id": 105,
       "ns": "AI",
       "name": "HandoffStatus",
       "kind": "AiHandoffStatus",
@@ -1131,7 +1101,7 @@
       "C99Native": false
     },
     {
-      "id": 109,
+      "id": 106,
       "ns": "AI",
       "name": "HashEdit",
       "kind": "AiHashEdit",
@@ -1141,7 +1111,7 @@
       "C99Native": false
     },
     {
-      "id": 110,
+      "id": 107,
       "ns": "AI",
       "name": "HashLine",
       "kind": "AiHashLine",
@@ -1151,7 +1121,7 @@
       "C99Native": false
     },
     {
-      "id": 111,
+      "id": 108,
       "ns": "AI",
       "name": "HashVerify",
       "kind": "AiHashVerify",
@@ -1161,7 +1131,7 @@
       "C99Native": false
     },
     {
-      "id": 112,
+      "id": 109,
       "ns": "AI",
       "name": "HealthCheckInterval",
       "kind": "ProviderHealthCheckInterval",
@@ -1171,7 +1141,7 @@
       "C99Native": false
     },
     {
-      "id": 113,
+      "id": 110,
       "ns": "AI",
       "name": "HfRepo",
       "kind": "AiHfRepo",
@@ -1181,7 +1151,7 @@
       "C99Native": false
     },
     {
-      "id": 114,
+      "id": 111,
       "ns": "AI",
       "name": "HookEvents",
       "kind": "AiHookEvents",
@@ -1191,7 +1161,7 @@
       "C99Native": false
     },
     {
-      "id": 115,
+      "id": 112,
       "ns": "AI",
       "name": "HookFire",
       "kind": "AiHookFire",
@@ -1201,7 +1171,7 @@
       "C99Native": false
     },
     {
-      "id": 116,
+      "id": 113,
       "ns": "AI",
       "name": "HookList",
       "kind": "AiHookList",
@@ -1211,7 +1181,7 @@
       "C99Native": false
     },
     {
-      "id": 117,
+      "id": 114,
       "ns": "AI",
       "name": "HookRegister",
       "kind": "AiHookRegister",
@@ -1221,7 +1191,7 @@
       "C99Native": false
     },
     {
-      "id": 118,
+      "id": 115,
       "ns": "AI",
       "name": "HookUnregister",
       "kind": "AiHookUnregister",
@@ -1231,7 +1201,7 @@
       "C99Native": false
     },
     {
-      "id": 119,
+      "id": 116,
       "ns": "AI",
       "name": "ImageClassify",
       "kind": "AiImageClassify",
@@ -1241,7 +1211,7 @@
       "C99Native": false
     },
     {
-      "id": 120,
+      "id": 117,
       "ns": "AI",
       "name": "ImageCompare",
       "kind": "AiImageCompare",
@@ -1251,7 +1221,7 @@
       "C99Native": false
     },
     {
-      "id": 121,
+      "id": 118,
       "ns": "AI",
       "name": "ImageConvert",
       "kind": "AiImageConvert",
@@ -1261,7 +1231,7 @@
       "C99Native": false
     },
     {
-      "id": 122,
+      "id": 119,
       "ns": "AI",
       "name": "ImageCrop",
       "kind": "AiImageCrop",
@@ -1271,7 +1241,7 @@
       "C99Native": false
     },
     {
-      "id": 123,
+      "id": 120,
       "ns": "AI",
       "name": "ImageDetect",
       "kind": "AiImageDetect",
@@ -1281,7 +1251,7 @@
       "C99Native": false
     },
     {
-      "id": 124,
+      "id": 121,
       "ns": "AI",
       "name": "ImageEmbed",
       "kind": "AiImageEmbed",
@@ -1291,7 +1261,7 @@
       "C99Native": false
     },
     {
-      "id": 125,
+      "id": 122,
       "ns": "AI",
       "name": "ImageInfo",
       "kind": "AiImageInfo",
@@ -1301,7 +1271,7 @@
       "C99Native": false
     },
     {
-      "id": 126,
+      "id": 123,
       "ns": "AI",
       "name": "ImageResize",
       "kind": "AiImageResize",
@@ -1311,7 +1281,7 @@
       "C99Native": false
     },
     {
-      "id": 127,
+      "id": 124,
       "ns": "AI",
       "name": "IndexMeta",
       "kind": "AiVectorIndexMeta",
@@ -1321,7 +1291,7 @@
       "C99Native": false
     },
     {
-      "id": 128,
+      "id": 125,
       "ns": "AI",
       "name": "IndexText",
       "kind": "AiVectorIndexText",
@@ -1331,7 +1301,7 @@
       "C99Native": false
     },
     {
-      "id": 129,
+      "id": 126,
       "ns": "AI",
       "name": "Info",
       "kind": "AiInfo",
@@ -1341,7 +1311,7 @@
       "C99Native": false
     },
     {
-      "id": 130,
+      "id": 127,
       "ns": "AI",
       "name": "IngestWeb",
       "kind": "AiIngestWeb",
@@ -1351,7 +1321,7 @@
       "C99Native": false
     },
     {
-      "id": 131,
+      "id": 128,
       "ns": "AI",
       "name": "KgAddEdge",
       "kind": "AiKgAddEdge",
@@ -1361,7 +1331,7 @@
       "C99Native": false
     },
     {
-      "id": 132,
+      "id": 129,
       "ns": "AI",
       "name": "KgAddNode",
       "kind": "AiKgAddNode",
@@ -1371,7 +1341,7 @@
       "C99Native": false
     },
     {
-      "id": 133,
+      "id": 130,
       "ns": "AI",
       "name": "KgQuery",
       "kind": "AiKgQuery",
@@ -1381,7 +1351,7 @@
       "C99Native": false
     },
     {
-      "id": 134,
+      "id": 131,
       "ns": "AI",
       "name": "LexicalEntropy",
       "kind": "AiLexicalEntropy",
@@ -1391,7 +1361,7 @@
       "C99Native": false
     },
     {
-      "id": 135,
+      "id": 132,
       "ns": "AI",
       "name": "LinkDangling",
       "kind": "LinkDangling",
@@ -1401,7 +1371,7 @@
       "C99Native": false
     },
     {
-      "id": 136,
+      "id": 133,
       "ns": "AI",
       "name": "LinkJson",
       "kind": "LinkJson",
@@ -1411,7 +1381,7 @@
       "C99Native": false
     },
     {
-      "id": 137,
+      "id": 134,
       "ns": "AI",
       "name": "LinksOut",
       "kind": "LinksOut",
@@ -1421,7 +1391,7 @@
       "C99Native": false
     },
     {
-      "id": 138,
+      "id": 135,
       "ns": "AI",
       "name": "List",
       "kind": "AiList",
@@ -1431,7 +1401,7 @@
       "C99Native": false
     },
     {
-      "id": 139,
+      "id": 136,
       "ns": "AI",
       "name": "ListCollections",
       "kind": "AiVectorListCollections",
@@ -1441,7 +1411,7 @@
       "C99Native": false
     },
     {
-      "id": 140,
+      "id": 137,
       "ns": "AI",
       "name": "Load",
       "kind": "ProviderLoad",
@@ -1451,7 +1421,7 @@
       "C99Native": false
     },
     {
-      "id": 141,
+      "id": 138,
       "ns": "AI",
       "name": "LoadDocuments",
       "kind": "AiVectorLoadDocuments",
@@ -1461,7 +1431,7 @@
       "C99Native": false
     },
     {
-      "id": 142,
+      "id": 139,
       "ns": "AI",
       "name": "McpCall",
       "kind": "McpCall",
@@ -1471,7 +1441,7 @@
       "C99Native": false
     },
     {
-      "id": 143,
+      "id": 140,
       "ns": "AI",
       "name": "McpListTools",
       "kind": "McpListTools",
@@ -1481,7 +1451,7 @@
       "C99Native": false
     },
     {
-      "id": 144,
+      "id": 141,
       "ns": "AI",
       "name": "McpListToolsServer",
       "kind": "McpListToolsServer",
@@ -1491,7 +1461,7 @@
       "C99Native": false
     },
     {
-      "id": 145,
+      "id": 142,
       "ns": "AI",
       "name": "McpPrompts",
       "kind": "McpPrompts",
@@ -1501,7 +1471,7 @@
       "C99Native": false
     },
     {
-      "id": 146,
+      "id": 143,
       "ns": "AI",
       "name": "McpResources",
       "kind": "McpResources",
@@ -1511,7 +1481,7 @@
       "C99Native": false
     },
     {
-      "id": 147,
+      "id": 144,
       "ns": "AI",
       "name": "McpServerList",
       "kind": "McpServerList",
@@ -1521,7 +1491,7 @@
       "C99Native": false
     },
     {
-      "id": 148,
+      "id": 145,
       "ns": "AI",
       "name": "McpServerMarketplaceList",
       "kind": "McpServerMarketplaceList",
@@ -1531,7 +1501,7 @@
       "C99Native": false
     },
     {
-      "id": 149,
+      "id": 146,
       "ns": "AI",
       "name": "McpServerStatus",
       "kind": "McpServerStatus",
@@ -1541,7 +1511,7 @@
       "C99Native": false
     },
     {
-      "id": 150,
+      "id": 147,
       "ns": "AI",
       "name": "MemoryAsk",
       "kind": "MemoryAsk",
@@ -1551,7 +1521,7 @@
       "C99Native": false
     },
     {
-      "id": 151,
+      "id": 148,
       "ns": "AI",
       "name": "MemoryConsolidate",
       "kind": "MemoryConsolidate",
@@ -1561,7 +1531,7 @@
       "C99Native": false
     },
     {
-      "id": 152,
+      "id": 149,
       "ns": "AI",
       "name": "MemoryRank",
       "kind": "MemoryRank",
@@ -1571,7 +1541,7 @@
       "C99Native": false
     },
     {
-      "id": 153,
+      "id": 150,
       "ns": "AI",
       "name": "MetricGet",
       "kind": "AiMetricGet",
@@ -1581,7 +1551,7 @@
       "C99Native": false
     },
     {
-      "id": 154,
+      "id": 151,
       "ns": "AI",
       "name": "MetricList",
       "kind": "AiMetricList",
@@ -1591,7 +1561,7 @@
       "C99Native": false
     },
     {
-      "id": 155,
+      "id": 152,
       "ns": "AI",
       "name": "MetricRecord",
       "kind": "AiMetricRecord",
@@ -1601,7 +1571,7 @@
       "C99Native": false
     },
     {
-      "id": 156,
+      "id": 153,
       "ns": "AI",
       "name": "MetricReset",
       "kind": "AiMetricReset",
@@ -1611,7 +1581,7 @@
       "C99Native": false
     },
     {
-      "id": 157,
+      "id": 154,
       "ns": "AI",
       "name": "NoteExists",
       "kind": "NoteExists",
@@ -1621,7 +1591,7 @@
       "C99Native": false
     },
     {
-      "id": 158,
+      "id": 155,
       "ns": "AI",
       "name": "NoteFolder",
       "kind": "NoteFolder",
@@ -1631,7 +1601,7 @@
       "C99Native": false
     },
     {
-      "id": 159,
+      "id": 156,
       "ns": "AI",
       "name": "NoteGet",
       "kind": "NoteGet",
@@ -1641,7 +1611,7 @@
       "C99Native": false
     },
     {
-      "id": 160,
+      "id": 157,
       "ns": "AI",
       "name": "NoteLink",
       "kind": "AiNoteLink",
@@ -1651,7 +1621,7 @@
       "C99Native": false
     },
     {
-      "id": 161,
+      "id": 158,
       "ns": "AI",
       "name": "NoteSetAlias",
       "kind": "AiNoteSetAlias",
@@ -1661,7 +1631,7 @@
       "C99Native": false
     },
     {
-      "id": 162,
+      "id": 159,
       "ns": "AI",
       "name": "NoteTags",
       "kind": "NoteTags",
@@ -1671,7 +1641,7 @@
       "C99Native": false
     },
     {
-      "id": 163,
+      "id": 160,
       "ns": "AI",
       "name": "NoteTitle",
       "kind": "NoteTitle",
@@ -1681,7 +1651,7 @@
       "C99Native": false
     },
     {
-      "id": 164,
+      "id": 161,
       "ns": "AI",
       "name": "NoteUnlink",
       "kind": "AiNoteUnlink",
@@ -1691,7 +1661,7 @@
       "C99Native": false
     },
     {
-      "id": 165,
+      "id": 162,
       "ns": "AI",
       "name": "NoteWordCount",
       "kind": "NoteWordCount",
@@ -1701,7 +1671,7 @@
       "C99Native": false
     },
     {
-      "id": 166,
+      "id": 163,
       "ns": "AI",
       "name": "OCR",
       "kind": "AiOcr",
@@ -1711,7 +1681,7 @@
       "C99Native": false
     },
     {
-      "id": 167,
+      "id": 164,
       "ns": "AI",
       "name": "Observation",
       "kind": "AiObservationGet",
@@ -1721,7 +1691,7 @@
       "C99Native": false
     },
     {
-      "id": 168,
+      "id": 165,
       "ns": "AI",
       "name": "ObservationCount",
       "kind": "AiObservationCount",
@@ -1731,7 +1701,7 @@
       "C99Native": false
     },
     {
-      "id": 169,
+      "id": 166,
       "ns": "AI",
       "name": "ObservationFile",
       "kind": "AiObservationFile",
@@ -1741,7 +1711,7 @@
       "C99Native": false
     },
     {
-      "id": 170,
+      "id": 167,
       "ns": "AI",
       "name": "ObservationHash",
       "kind": "AiObservationHash",
@@ -1751,7 +1721,7 @@
       "C99Native": false
     },
     {
-      "id": 171,
+      "id": 168,
       "ns": "AI",
       "name": "ObservationLatest",
       "kind": "AiObservationLatest",
@@ -1761,7 +1731,7 @@
       "C99Native": false
     },
     {
-      "id": 172,
+      "id": 169,
       "ns": "AI",
       "name": "ObservationList",
       "kind": "AiObservationList",
@@ -1771,7 +1741,7 @@
       "C99Native": false
     },
     {
-      "id": 173,
+      "id": 170,
       "ns": "AI",
       "name": "Option",
       "kind": "AiOption",
@@ -1781,7 +1751,7 @@
       "C99Native": false
     },
     {
-      "id": 174,
+      "id": 171,
       "ns": "AI",
       "name": "OrchLoad",
       "kind": "AiOrchLoad",
@@ -1791,7 +1761,7 @@
       "C99Native": false
     },
     {
-      "id": 175,
+      "id": 172,
       "ns": "AI",
       "name": "OrchSave",
       "kind": "AiOrchSave",
@@ -1801,7 +1771,7 @@
       "C99Native": false
     },
     {
-      "id": 176,
+      "id": 173,
       "ns": "AI",
       "name": "PlanAdd",
       "kind": "AiPlanAdd",
@@ -1811,7 +1781,7 @@
       "C99Native": false
     },
     {
-      "id": 177,
+      "id": 174,
       "ns": "AI",
       "name": "PlanApprove",
       "kind": "AiPlanApprove",
@@ -1821,7 +1791,7 @@
       "C99Native": false
     },
     {
-      "id": 178,
+      "id": 175,
       "ns": "AI",
       "name": "PlanClear",
       "kind": "AiPlanClear",
@@ -1831,7 +1801,7 @@
       "C99Native": false
     },
     {
-      "id": 179,
+      "id": 176,
       "ns": "AI",
       "name": "PlanDefine",
       "kind": "AiPlanDefine",
@@ -1841,7 +1811,7 @@
       "C99Native": false
     },
     {
-      "id": 180,
+      "id": 177,
       "ns": "AI",
       "name": "PlanList",
       "kind": "AiPlanList",
@@ -1851,7 +1821,7 @@
       "C99Native": false
     },
     {
-      "id": 181,
+      "id": 178,
       "ns": "AI",
       "name": "PlanRun",
       "kind": "AiPlanRun",
@@ -1861,7 +1831,7 @@
       "C99Native": false
     },
     {
-      "id": 182,
+      "id": 179,
       "ns": "AI",
       "name": "PlanStatus",
       "kind": "AiPlanStatus",
@@ -1871,7 +1841,7 @@
       "C99Native": false
     },
     {
-      "id": 183,
+      "id": 180,
       "ns": "AI",
       "name": "PluginCall",
       "kind": "AiPluginCall",
@@ -1881,7 +1851,7 @@
       "C99Native": false
     },
     {
-      "id": 184,
+      "id": 181,
       "ns": "AI",
       "name": "PluginList",
       "kind": "AiPluginList",
@@ -1891,7 +1861,7 @@
       "C99Native": false
     },
     {
-      "id": 185,
+      "id": 182,
       "ns": "AI",
       "name": "PluginsInfo",
       "kind": "AiPluginInfo",
@@ -1901,7 +1871,7 @@
       "C99Native": false
     },
     {
-      "id": 186,
+      "id": 183,
       "ns": "AI",
       "name": "PluginsList",
       "kind": "AiPluginsList",
@@ -1911,7 +1881,7 @@
       "C99Native": false
     },
     {
-      "id": 187,
+      "id": 184,
       "ns": "AI",
       "name": "Priority",
       "kind": "AiPriority",
@@ -1921,7 +1891,7 @@
       "C99Native": false
     },
     {
-      "id": 188,
+      "id": 185,
       "ns": "AI",
       "name": "Providers",
       "kind": "AiKeys",
@@ -1931,7 +1901,7 @@
       "C99Native": false
     },
     {
-      "id": 189,
+      "id": 186,
       "ns": "AI",
       "name": "PurgeDeprecated",
       "kind": "AiVectorPurgeDeprecated",
@@ -1941,7 +1911,7 @@
       "C99Native": false
     },
     {
-      "id": 190,
+      "id": 187,
       "ns": "AI",
       "name": "QaAnswer",
       "kind": "QaAnswer",
@@ -1951,7 +1921,7 @@
       "C99Native": false
     },
     {
-      "id": 191,
+      "id": 188,
       "ns": "AI",
       "name": "RagContext",
       "kind": "AiVectorRagContext",
@@ -1961,7 +1931,7 @@
       "C99Native": false
     },
     {
-      "id": 192,
+      "id": 189,
       "ns": "AI",
       "name": "RagContextMulti",
       "kind": "AiRagContextMulti",
@@ -1971,7 +1941,7 @@
       "C99Native": false
     },
     {
-      "id": 193,
+      "id": 190,
       "ns": "AI",
       "name": "Register",
       "kind": "ProviderRegister",
@@ -1981,7 +1951,7 @@
       "C99Native": false
     },
     {
-      "id": 194,
+      "id": 191,
       "ns": "AI",
       "name": "RemoveSource",
       "kind": "AiVectorRemoveSource",
@@ -1991,7 +1961,7 @@
       "C99Native": false
     },
     {
-      "id": 195,
+      "id": 192,
       "ns": "AI",
       "name": "ReplayClear",
       "kind": "AiReplayClear",
@@ -2001,7 +1971,7 @@
       "C99Native": false
     },
     {
-      "id": 196,
+      "id": 193,
       "ns": "AI",
       "name": "ReplayGet",
       "kind": "AiReplayGet",
@@ -2011,7 +1981,7 @@
       "C99Native": false
     },
     {
-      "id": 197,
+      "id": 194,
       "ns": "AI",
       "name": "ReplayList",
       "kind": "AiReplayList",
@@ -2021,7 +1991,7 @@
       "C99Native": false
     },
     {
-      "id": 198,
+      "id": 195,
       "ns": "AI",
       "name": "ReplayRecord",
       "kind": "AiReplayRecord",
@@ -2031,7 +2001,7 @@
       "C99Native": false
     },
     {
-      "id": 199,
+      "id": 196,
       "ns": "AI",
       "name": "ReplayRun",
       "kind": "AiReplayRun",
@@ -2041,7 +2011,7 @@
       "C99Native": false
     },
     {
-      "id": 200,
+      "id": 197,
       "ns": "AI",
       "name": "ReplayStart",
       "kind": "AiReplayStart",
@@ -2051,7 +2021,7 @@
       "C99Native": false
     },
     {
-      "id": 201,
+      "id": 198,
       "ns": "AI",
       "name": "ReplayStop",
       "kind": "AiReplayStop",
@@ -2061,7 +2031,7 @@
       "C99Native": false
     },
     {
-      "id": 202,
+      "id": 199,
       "ns": "AI",
       "name": "Rerank",
       "kind": "AiVectorRerank",
@@ -2071,7 +2041,7 @@
       "C99Native": false
     },
     {
-      "id": 203,
+      "id": 200,
       "ns": "AI",
       "name": "ResetFailed",
       "kind": "ProviderResetFailed",
@@ -2081,7 +2051,7 @@
       "C99Native": false
     },
     {
-      "id": 204,
+      "id": 201,
       "ns": "AI",
       "name": "ResourceAvailable",
       "kind": "AiResourceAvailable",
@@ -2091,7 +2061,7 @@
       "C99Native": false
     },
     {
-      "id": 205,
+      "id": 202,
       "ns": "AI",
       "name": "ResourceGet",
       "kind": "AiResourceGet",
@@ -2101,7 +2071,7 @@
       "C99Native": false
     },
     {
-      "id": 206,
+      "id": 203,
       "ns": "AI",
       "name": "ResourceList",
       "kind": "AiResourceList",
@@ -2111,7 +2081,7 @@
       "C99Native": false
     },
     {
-      "id": 207,
+      "id": 204,
       "ns": "AI",
       "name": "ResourceSet",
       "kind": "AiResourceSet",
@@ -2121,7 +2091,7 @@
       "C99Native": false
     },
     {
-      "id": 208,
+      "id": 205,
       "ns": "AI",
       "name": "ResourceSwarmSize",
       "kind": "AiResourceSwarmSize",
@@ -2131,7 +2101,7 @@
       "C99Native": false
     },
     {
-      "id": 209,
+      "id": 206,
       "ns": "AI",
       "name": "Resume",
       "kind": "AiResume",
@@ -2141,7 +2111,7 @@
       "C99Native": false
     },
     {
-      "id": 210,
+      "id": 207,
       "ns": "AI",
       "name": "Rotate",
       "kind": "AiRotate",
@@ -2151,7 +2121,7 @@
       "C99Native": false
     },
     {
-      "id": 211,
+      "id": 208,
       "ns": "AI",
       "name": "RulesAdd",
       "kind": "AiRulesAdd",
@@ -2161,7 +2131,7 @@
       "C99Native": false
     },
     {
-      "id": 212,
+      "id": 209,
       "ns": "AI",
       "name": "RulesClear",
       "kind": "AiRulesClear",
@@ -2171,7 +2141,7 @@
       "C99Native": false
     },
     {
-      "id": 213,
+      "id": 210,
       "ns": "AI",
       "name": "RulesFor",
       "kind": "AiRulesFor",
@@ -2181,7 +2151,7 @@
       "C99Native": false
     },
     {
-      "id": 214,
+      "id": 211,
       "ns": "AI",
       "name": "RulesList",
       "kind": "AiRulesList",
@@ -2191,7 +2161,7 @@
       "C99Native": false
     },
     {
-      "id": 215,
+      "id": 212,
       "ns": "AI",
       "name": "RulesRemove",
       "kind": "AiRulesRemove",
@@ -2201,7 +2171,7 @@
       "C99Native": false
     },
     {
-      "id": 216,
+      "id": 213,
       "ns": "AI",
       "name": "RunHealthCheck",
       "kind": "ProviderRunHealthCheck",
@@ -2211,7 +2181,7 @@
       "C99Native": false
     },
     {
-      "id": 217,
+      "id": 214,
       "ns": "AI",
       "name": "Save",
       "kind": "ProviderSave",
@@ -2221,7 +2191,7 @@
       "C99Native": false
     },
     {
-      "id": 218,
+      "id": 215,
       "ns": "AI",
       "name": "Search",
       "kind": "AiVectorSearch",
@@ -2231,7 +2201,7 @@
       "C99Native": false
     },
     {
-      "id": 219,
+      "id": 216,
       "ns": "AI",
       "name": "SearchMulti",
       "kind": "AiSearchMulti",
@@ -2241,7 +2211,7 @@
       "C99Native": false
     },
     {
-      "id": 220,
+      "id": 217,
       "ns": "AI",
       "name": "SetActive",
       "kind": "ProviderSetActive",
@@ -2251,7 +2221,7 @@
       "C99Native": false
     },
     {
-      "id": 221,
+      "id": 218,
       "ns": "AI",
       "name": "SetCredits",
       "kind": "ProviderSetCredits",
@@ -2261,7 +2231,7 @@
       "C99Native": false
     },
     {
-      "id": 222,
+      "id": 219,
       "ns": "AI",
       "name": "SetPriority",
       "kind": "ProviderSetPriority",
@@ -2271,7 +2241,7 @@
       "C99Native": false
     },
     {
-      "id": 223,
+      "id": 220,
       "ns": "AI",
       "name": "SetStatus",
       "kind": "ProviderSetStatus",
@@ -2281,7 +2251,7 @@
       "C99Native": false
     },
     {
-      "id": 224,
+      "id": 221,
       "ns": "AI",
       "name": "SetWeight",
       "kind": "ProviderSetWeight",
@@ -2291,7 +2261,7 @@
       "C99Native": false
     },
     {
-      "id": 225,
+      "id": 222,
       "ns": "AI",
       "name": "ShareDecrypt",
       "kind": "ShareDecrypt",
@@ -2301,7 +2271,7 @@
       "C99Native": false
     },
     {
-      "id": 226,
+      "id": 223,
       "ns": "AI",
       "name": "ShareEncrypt",
       "kind": "ShareEncrypt",
@@ -2311,7 +2281,7 @@
       "C99Native": false
     },
     {
-      "id": 227,
+      "id": 224,
       "ns": "AI",
       "name": "SignNote",
       "kind": "SignNote",
@@ -2321,7 +2291,7 @@
       "C99Native": false
     },
     {
-      "id": 228,
+      "id": 225,
       "ns": "AI",
       "name": "SkillsList",
       "kind": "AiSkillsList",
@@ -2331,7 +2301,7 @@
       "C99Native": false
     },
     {
-      "id": 229,
+      "id": 226,
       "ns": "AI",
       "name": "SkillsPaths",
       "kind": "AiSkillsPaths",
@@ -2341,7 +2311,7 @@
       "C99Native": false
     },
     {
-      "id": 230,
+      "id": 227,
       "ns": "AI",
       "name": "SkillsPrompt",
       "kind": "AiSkillsPrompt",
@@ -2351,7 +2321,7 @@
       "C99Native": false
     },
     {
-      "id": 231,
+      "id": 228,
       "ns": "AI",
       "name": "StartHealthCheck",
       "kind": "ProviderStartHealthCheck",
@@ -2361,7 +2331,7 @@
       "C99Native": false
     },
     {
-      "id": 232,
+      "id": 229,
       "ns": "AI",
       "name": "StateLoad",
       "kind": "AiStateLoad",
@@ -2371,7 +2341,7 @@
       "C99Native": false
     },
     {
-      "id": 233,
+      "id": 230,
       "ns": "AI",
       "name": "Status",
       "kind": "AiStatus",
@@ -2381,7 +2351,7 @@
       "C99Native": false
     },
     {
-      "id": 234,
+      "id": 231,
       "ns": "AI",
       "name": "StopHealthCheck",
       "kind": "ProviderStopHealthCheck",
@@ -2391,7 +2361,7 @@
       "C99Native": false
     },
     {
-      "id": 235,
+      "id": 232,
       "ns": "AI",
       "name": "SuggestTags",
       "kind": "SuggestTags",
@@ -2401,7 +2371,7 @@
       "C99Native": false
     },
     {
-      "id": 236,
+      "id": 233,
       "ns": "AI",
       "name": "SyncFolder",
       "kind": "AiSyncFolder",
@@ -2411,7 +2381,7 @@
       "C99Native": false
     },
     {
-      "id": 237,
+      "id": 234,
       "ns": "AI",
       "name": "Synthesize",
       "kind": "AiSynthesize",
@@ -2421,7 +2391,7 @@
       "C99Native": false
     },
     {
-      "id": 238,
+      "id": 235,
       "ns": "AI",
       "name": "TaskAssign",
       "kind": "AiTaskAssign",
@@ -2431,7 +2401,7 @@
       "C99Native": false
     },
     {
-      "id": 239,
+      "id": 236,
       "ns": "AI",
       "name": "TaskClear",
       "kind": "AiTaskClear",
@@ -2441,7 +2411,7 @@
       "C99Native": false
     },
     {
-      "id": 240,
+      "id": 237,
       "ns": "AI",
       "name": "TaskDefine",
       "kind": "AiTaskDefine",
@@ -2451,7 +2421,7 @@
       "C99Native": false
     },
     {
-      "id": 241,
+      "id": 238,
       "ns": "AI",
       "name": "TaskDepends",
       "kind": "AiTaskDepends",
@@ -2461,7 +2431,7 @@
       "C99Native": false
     },
     {
-      "id": 242,
+      "id": 239,
       "ns": "AI",
       "name": "TaskList",
       "kind": "AiTaskList",
@@ -2471,7 +2441,7 @@
       "C99Native": false
     },
     {
-      "id": 243,
+      "id": 240,
       "ns": "AI",
       "name": "TaskMetrics",
       "kind": "AiTaskMetrics",
@@ -2481,7 +2451,7 @@
       "C99Native": false
     },
     {
-      "id": 244,
+      "id": 241,
       "ns": "AI",
       "name": "TaskRun",
       "kind": "AiTaskRun",
@@ -2491,7 +2461,7 @@
       "C99Native": false
     },
     {
-      "id": 245,
+      "id": 242,
       "ns": "AI",
       "name": "TaskStatus",
       "kind": "AiTaskStatus",
@@ -2501,7 +2471,7 @@
       "C99Native": false
     },
     {
-      "id": 246,
+      "id": 243,
       "ns": "AI",
       "name": "TeamAgents",
       "kind": "TeamAgents",
@@ -2511,7 +2481,7 @@
       "C99Native": false
     },
     {
-      "id": 247,
+      "id": 244,
       "ns": "AI",
       "name": "TeamLatent",
       "kind": "TeamLatent",
@@ -2521,7 +2491,7 @@
       "C99Native": false
     },
     {
-      "id": 248,
+      "id": 245,
       "ns": "AI",
       "name": "TeamLinkInfo",
       "kind": "TeamLinkInfo",
@@ -2531,7 +2501,7 @@
       "C99Native": false
     },
     {
-      "id": 249,
+      "id": 246,
       "ns": "AI",
       "name": "TeamList",
       "kind": "TeamList",
@@ -2541,7 +2511,7 @@
       "C99Native": false
     },
     {
-      "id": 250,
+      "id": 247,
       "ns": "AI",
       "name": "TeamOnStream",
       "kind": "TeamOnStream",
@@ -2551,7 +2521,7 @@
       "C99Native": false
     },
     {
-      "id": 251,
+      "id": 248,
       "ns": "AI",
       "name": "TeamRecursion",
       "kind": "TeamRecursion",
@@ -2561,7 +2531,7 @@
       "C99Native": false
     },
     {
-      "id": 252,
+      "id": 249,
       "ns": "AI",
       "name": "TeamRunStart",
       "kind": "TeamRunStart",
@@ -2571,7 +2541,7 @@
       "C99Native": false
     },
     {
-      "id": 253,
+      "id": 250,
       "ns": "AI",
       "name": "TeamRunWait",
       "kind": "TeamRunWait",
@@ -2581,7 +2551,7 @@
       "C99Native": false
     },
     {
-      "id": 254,
+      "id": 251,
       "ns": "AI",
       "name": "TeamRuntimeStats",
       "kind": "TeamRuntimeStats",
@@ -2591,7 +2561,7 @@
       "C99Native": false
     },
     {
-      "id": 255,
+      "id": 252,
       "ns": "AI",
       "name": "TeamTrainStatus",
       "kind": "TeamTrainStatus",
@@ -2601,7 +2571,7 @@
       "C99Native": false
     },
     {
-      "id": 256,
+      "id": 253,
       "ns": "AI",
       "name": "Test",
       "kind": "ProviderTest",
@@ -2611,7 +2581,7 @@
       "C99Native": false
     },
     {
-      "id": 257,
+      "id": 254,
       "ns": "AI",
       "name": "Transcribe",
       "kind": "AiTranscribe",
@@ -2621,7 +2591,7 @@
       "C99Native": false
     },
     {
-      "id": 258,
+      "id": 255,
       "ns": "AI",
       "name": "Unregister",
       "kind": "ProviderUnregister",
@@ -2631,7 +2601,7 @@
       "C99Native": false
     },
     {
-      "id": 259,
+      "id": 256,
       "ns": "AI",
       "name": "VaultAddFolder",
       "kind": "AiVaultAddFolder",
@@ -2641,7 +2611,7 @@
       "C99Native": false
     },
     {
-      "id": 260,
+      "id": 257,
       "ns": "AI",
       "name": "VaultCount",
       "kind": "AiVaultCount",
@@ -2651,7 +2621,7 @@
       "C99Native": false
     },
     {
-      "id": 261,
+      "id": 258,
       "ns": "AI",
       "name": "VaultFolders",
       "kind": "AiVaultFolders",
@@ -2661,7 +2631,7 @@
       "C99Native": false
     },
     {
-      "id": 262,
+      "id": 259,
       "ns": "AI",
       "name": "VaultInfo",
       "kind": "AiVaultInfo",
@@ -2671,7 +2641,7 @@
       "C99Native": false
     },
     {
-      "id": 263,
+      "id": 260,
       "ns": "AI",
       "name": "VaultList",
       "kind": "AiVaultList",
@@ -2681,7 +2651,7 @@
       "C99Native": false
     },
     {
-      "id": 264,
+      "id": 261,
       "ns": "AI",
       "name": "VaultPolicy",
       "kind": "AiVaultPolicy",
@@ -2691,7 +2661,7 @@
       "C99Native": false
     },
     {
-      "id": 265,
+      "id": 262,
       "ns": "AI",
       "name": "VaultRemoveFolder",
       "kind": "AiVaultRemoveFolder",
@@ -2701,7 +2671,7 @@
       "C99Native": false
     },
     {
-      "id": 266,
+      "id": 263,
       "ns": "AI",
       "name": "VaultSetFolderProps",
       "kind": "AiVaultSetFolderProps",
@@ -2711,7 +2681,7 @@
       "C99Native": false
     },
     {
-      "id": 267,
+      "id": 264,
       "ns": "AI",
       "name": "VaultWatch",
       "kind": "AiVaultWatch",
@@ -2721,7 +2691,7 @@
       "C99Native": false
     },
     {
-      "id": 268,
+      "id": 265,
       "ns": "AI",
       "name": "VerifyNote",
       "kind": "VerifyNote",
@@ -2731,7 +2701,7 @@
       "C99Native": false
     },
     {
-      "id": 269,
+      "id": 266,
       "ns": "AI",
       "name": "VideoFrame",
       "kind": "AiVideoFrame",
@@ -2741,7 +2711,7 @@
       "C99Native": false
     },
     {
-      "id": 270,
+      "id": 267,
       "ns": "AI",
       "name": "VideoInfo",
       "kind": "AiVideoInfo",
@@ -2751,7 +2721,7 @@
       "C99Native": false
     },
     {
-      "id": 271,
+      "id": 268,
       "ns": "AI",
       "name": "VideoSnapshot",
       "kind": "AiVideoSnapshot",
@@ -2761,7 +2731,7 @@
       "C99Native": false
     },
     {
-      "id": 272,
+      "id": 269,
       "ns": "AI",
       "name": "Weight",
       "kind": "AiWeight",
@@ -2771,7 +2741,7 @@
       "C99Native": false
     },
     {
-      "id": 273,
+      "id": 270,
       "ns": "AI",
       "name": "WorkerRescued",
       "kind": "AiWorkerRescued",
@@ -2781,7 +2751,7 @@
       "C99Native": false
     },
     {
-      "id": 274,
+      "id": 271,
       "ns": "AI",
       "name": "WorkerRounds",
       "kind": "AiWorkerRounds",
@@ -2791,7 +2761,7 @@
       "C99Native": false
     },
     {
-      "id": 275,
+      "id": 272,
       "ns": "AI",
       "name": "WorkerSpend",
       "kind": "AiWorkerSpend",
@@ -2801,7 +2771,7 @@
       "C99Native": false
     },
     {
-      "id": 276,
+      "id": 273,
       "ns": "AI",
       "name": "WorkflowList",
       "kind": "WorkflowList",
@@ -2811,7 +2781,7 @@
       "C99Native": false
     },
     {
-      "id": 277,
+      "id": 274,
       "ns": "AI",
       "name": "WorkflowStatus",
       "kind": "WorkflowStatus",
@@ -2821,7 +2791,7 @@
       "C99Native": false
     },
     {
-      "id": 278,
+      "id": 275,
       "ns": "AI",
       "name": "WorkflowSteps",
       "kind": "WorkflowSteps",
@@ -2831,7 +2801,7 @@
       "C99Native": false
     },
     {
-      "id": 279,
+      "id": 276,
       "ns": "ANALYSIS",
       "name": "AdfTest",
       "kind": "AdfTest",
@@ -2841,7 +2811,7 @@
       "C99Native": false
     },
     {
-      "id": 280,
+      "id": 277,
       "ns": "ANALYSIS",
       "name": "Anova",
       "kind": "Anova",
@@ -2851,7 +2821,7 @@
       "C99Native": false
     },
     {
-      "id": 281,
+      "id": 278,
       "ns": "ANALYSIS",
       "name": "Arima",
       "kind": "Arima",
@@ -2861,7 +2831,7 @@
       "C99Native": false
     },
     {
-      "id": 282,
+      "id": 279,
       "ns": "ANALYSIS",
       "name": "Correlation",
       "kind": "Correlation",
@@ -2871,7 +2841,7 @@
       "C99Native": false
     },
     {
-      "id": 283,
+      "id": 280,
       "ns": "ANALYSIS",
       "name": "CubicSpline",
       "kind": "CubicSpline",
@@ -2881,7 +2851,7 @@
       "C99Native": false
     },
     {
-      "id": 284,
+      "id": 281,
       "ns": "ANALYSIS",
       "name": "CumTrapezoid",
       "kind": "CumTrapezoid",
@@ -2891,7 +2861,7 @@
       "C99Native": false
     },
     {
-      "id": 285,
+      "id": 282,
       "ns": "ANALYSIS",
       "name": "Differentiate",
       "kind": "Differentiate",
@@ -2901,7 +2871,7 @@
       "C99Native": false
     },
     {
-      "id": 286,
+      "id": 283,
       "ns": "ANALYSIS",
       "name": "EuclideanDistanceSquared",
       "kind": "EuclideanDistanceSquared",
@@ -2911,7 +2881,7 @@
       "C99Native": false
     },
     {
-      "id": 287,
+      "id": 284,
       "ns": "ANALYSIS",
       "name": "Fft",
       "kind": "Fft",
@@ -2921,7 +2891,7 @@
       "C99Native": false
     },
     {
-      "id": 288,
+      "id": 285,
       "ns": "ANALYSIS",
       "name": "FftComplex",
       "kind": "FftComplex",
@@ -2931,7 +2901,7 @@
       "C99Native": false
     },
     {
-      "id": 289,
+      "id": 286,
       "ns": "ANALYSIS",
       "name": "FftFreq",
       "kind": "FftFreq",
@@ -2941,7 +2911,7 @@
       "C99Native": false
     },
     {
-      "id": 290,
+      "id": 287,
       "ns": "ANALYSIS",
       "name": "FftShift",
       "kind": "FftShift",
@@ -2951,7 +2921,7 @@
       "C99Native": false
     },
     {
-      "id": 291,
+      "id": 288,
       "ns": "ANALYSIS",
       "name": "HoltWinters",
       "kind": "HoltWinters",
@@ -2961,7 +2931,7 @@
       "C99Native": false
     },
     {
-      "id": 292,
+      "id": 289,
       "ns": "ANALYSIS",
       "name": "Ifft",
       "kind": "Ifft",
@@ -2971,7 +2941,7 @@
       "C99Native": false
     },
     {
-      "id": 293,
+      "id": 290,
       "ns": "ANALYSIS",
       "name": "IfftComplex",
       "kind": "IfftComplex",
@@ -2981,7 +2951,7 @@
       "C99Native": false
     },
     {
-      "id": 294,
+      "id": 291,
       "ns": "ANALYSIS",
       "name": "IfftShift",
       "kind": "IfftShift",
@@ -2991,7 +2961,7 @@
       "C99Native": false
     },
     {
-      "id": 295,
+      "id": 292,
       "ns": "ANALYSIS",
       "name": "Integrate",
       "kind": "Integrate",
@@ -3001,7 +2971,7 @@
       "C99Native": false
     },
     {
-      "id": 296,
+      "id": 293,
       "ns": "ANALYSIS",
       "name": "InterpolateClamp",
       "kind": "InterpolateClamp",
@@ -3011,7 +2981,7 @@
       "C99Native": false
     },
     {
-      "id": 297,
+      "id": 294,
       "ns": "ANALYSIS",
       "name": "InterpolateGeneric",
       "kind": "InterpolateGeneric",
@@ -3021,7 +2991,7 @@
       "C99Native": false
     },
     {
-      "id": 298,
+      "id": 295,
       "ns": "ANALYSIS",
       "name": "InterpolateLinear",
       "kind": "InterpolateLinear",
@@ -3031,7 +3001,7 @@
       "C99Native": false
     },
     {
-      "id": 299,
+      "id": 296,
       "ns": "ANALYSIS",
       "name": "InterpolatePchip",
       "kind": "InterpolatePchip",
@@ -3041,7 +3011,7 @@
       "C99Native": false
     },
     {
-      "id": 300,
+      "id": 297,
       "ns": "ANALYSIS",
       "name": "InterpolatePolynomial",
       "kind": "InterpolatePolynomial",
@@ -3051,7 +3021,7 @@
       "C99Native": false
     },
     {
-      "id": 301,
+      "id": 298,
       "ns": "ANALYSIS",
       "name": "InterpolateSpline",
       "kind": "InterpolateSpline",
@@ -3061,7 +3031,7 @@
       "C99Native": false
     },
     {
-      "id": 302,
+      "id": 299,
       "ns": "ANALYSIS",
       "name": "InterpolateStep",
       "kind": "InterpolateStep",
@@ -3071,7 +3041,7 @@
       "C99Native": false
     },
     {
-      "id": 303,
+      "id": 300,
       "ns": "ANALYSIS",
       "name": "Irfft",
       "kind": "FftIrfft",
@@ -3081,7 +3051,7 @@
       "C99Native": false
     },
     {
-      "id": 304,
+      "id": 301,
       "ns": "ANALYSIS",
       "name": "KMeans",
       "kind": "KMeans",
@@ -3091,7 +3061,7 @@
       "C99Native": false
     },
     {
-      "id": 305,
+      "id": 302,
       "ns": "ANALYSIS",
       "name": "Kurtosis",
       "kind": "Kurtosis",
@@ -3101,7 +3071,7 @@
       "C99Native": false
     },
     {
-      "id": 306,
+      "id": 303,
       "ns": "ANALYSIS",
       "name": "MaCoefficients",
       "kind": "MaCoefficients",
@@ -3111,7 +3081,7 @@
       "C99Native": false
     },
     {
-      "id": 307,
+      "id": 304,
       "ns": "ANALYSIS",
       "name": "Mad",
       "kind": "Mad",
@@ -3121,7 +3091,7 @@
       "C99Native": false
     },
     {
-      "id": 308,
+      "id": 305,
       "ns": "ANALYSIS",
       "name": "Mean",
       "kind": "Mean",
@@ -3131,7 +3101,7 @@
       "C99Native": false
     },
     {
-      "id": 309,
+      "id": 306,
       "ns": "ANALYSIS",
       "name": "Median",
       "kind": "Median",
@@ -3141,7 +3111,7 @@
       "C99Native": false
     },
     {
-      "id": 310,
+      "id": 307,
       "ns": "ANALYSIS",
       "name": "Pca",
       "kind": "Pca",
@@ -3151,7 +3121,7 @@
       "C99Native": false
     },
     {
-      "id": 311,
+      "id": 308,
       "ns": "ANALYSIS",
       "name": "Regress",
       "kind": "Regress",
@@ -3161,7 +3131,7 @@
       "C99Native": false
     },
     {
-      "id": 312,
+      "id": 309,
       "ns": "ANALYSIS",
       "name": "Rfft",
       "kind": "FftRfft",
@@ -3171,7 +3141,7 @@
       "C99Native": false
     },
     {
-      "id": 313,
+      "id": 310,
       "ns": "ANALYSIS",
       "name": "Simpson",
       "kind": "Simpson",
@@ -3181,7 +3151,7 @@
       "C99Native": false
     },
     {
-      "id": 314,
+      "id": 311,
       "ns": "ANALYSIS",
       "name": "Skewness",
       "kind": "Skewness",
@@ -3191,7 +3161,7 @@
       "C99Native": false
     },
     {
-      "id": 315,
+      "id": 312,
       "ns": "ANALYSIS",
       "name": "SolveIvp",
       "kind": "SolveIvp",
@@ -3201,7 +3171,7 @@
       "C99Native": false
     },
     {
-      "id": 316,
+      "id": 313,
       "ns": "ANALYSIS",
       "name": "SolveOde",
       "kind": "SolveOde",
@@ -3211,7 +3181,7 @@
       "C99Native": false
     },
     {
-      "id": 317,
+      "id": 314,
       "ns": "ANALYSIS",
       "name": "Splev",
       "kind": "InterpSplev",
@@ -3221,7 +3191,7 @@
       "C99Native": false
     },
     {
-      "id": 318,
+      "id": 315,
       "ns": "ANALYSIS",
       "name": "Splrep",
       "kind": "InterpSplrep",
@@ -3231,7 +3201,7 @@
       "C99Native": false
     },
     {
-      "id": 319,
+      "id": 316,
       "ns": "ANALYSIS",
       "name": "StdDev",
       "kind": "StdDev",
@@ -3241,7 +3211,7 @@
       "C99Native": false
     },
     {
-      "id": 320,
+      "id": 317,
       "ns": "ANALYSIS",
       "name": "Trapezoid",
       "kind": "Trapezoid",
@@ -3251,7 +3221,7 @@
       "C99Native": false
     },
     {
-      "id": 321,
+      "id": 318,
       "ns": "ANALYSIS",
       "name": "Variance",
       "kind": "Variance",
@@ -3261,7 +3231,7 @@
       "C99Native": false
     },
     {
-      "id": 322,
+      "id": 319,
       "ns": "ANALYSIS",
       "name": "YuleWalker",
       "kind": "YuleWalker",
@@ -3271,7 +3241,7 @@
       "C99Native": false
     },
     {
-      "id": 323,
+      "id": 320,
       "ns": "ARRAYS",
       "name": "AADD",
       "kind": "AAdd",
@@ -3281,7 +3251,7 @@
       "C99Native": false
     },
     {
-      "id": 324,
+      "id": 321,
       "ns": "ARRAYS",
       "name": "ABINARYSEARCH",
       "kind": "ABinarySearch",
@@ -3291,7 +3261,7 @@
       "C99Native": false
     },
     {
-      "id": 325,
+      "id": 322,
       "ns": "ARRAYS",
       "name": "ACHUNK",
       "kind": "AChunk",
@@ -3301,7 +3271,7 @@
       "C99Native": false
     },
     {
-      "id": 326,
+      "id": 323,
       "ns": "ARRAYS",
       "name": "ACLONE",
       "kind": "AClone",
@@ -3311,7 +3281,7 @@
       "C99Native": false
     },
     {
-      "id": 327,
+      "id": 324,
       "ns": "ARRAYS",
       "name": "ACOPY",
       "kind": "ACopy",
@@ -3321,7 +3291,7 @@
       "C99Native": false
     },
     {
-      "id": 328,
+      "id": 325,
       "ns": "ARRAYS",
       "name": "ACOUNT",
       "kind": "ACount",
@@ -3331,7 +3301,7 @@
       "C99Native": false
     },
     {
-      "id": 329,
+      "id": 326,
       "ns": "ARRAYS",
       "name": "ADEL",
       "kind": "ADel",
@@ -3341,7 +3311,7 @@
       "C99Native": false
     },
     {
-      "id": 330,
+      "id": 327,
       "ns": "ARRAYS",
       "name": "AEVAL",
       "kind": "AEval",
@@ -3351,7 +3321,7 @@
       "C99Native": false
     },
     {
-      "id": 331,
+      "id": 328,
       "ns": "ARRAYS",
       "name": "AFILL",
       "kind": "AFill",
@@ -3361,7 +3331,7 @@
       "C99Native": false
     },
     {
-      "id": 332,
+      "id": 329,
       "ns": "ARRAYS",
       "name": "AFILTER",
       "kind": "AFilter",
@@ -3371,7 +3341,7 @@
       "C99Native": false
     },
     {
-      "id": 333,
+      "id": 330,
       "ns": "ARRAYS",
       "name": "AFLAT",
       "kind": "AFlat",
@@ -3381,7 +3351,7 @@
       "C99Native": false
     },
     {
-      "id": 334,
+      "id": 331,
       "ns": "ARRAYS",
       "name": "AINS",
       "kind": "AIns",
@@ -3391,7 +3361,7 @@
       "C99Native": false
     },
     {
-      "id": 335,
+      "id": 332,
       "ns": "ARRAYS",
       "name": "AJOIN",
       "kind": "AJoin",
@@ -3401,7 +3371,7 @@
       "C99Native": false
     },
     {
-      "id": 336,
+      "id": 333,
       "ns": "ARRAYS",
       "name": "AMAP",
       "kind": "AMap",
@@ -3411,7 +3381,7 @@
       "C99Native": false
     },
     {
-      "id": 337,
+      "id": 334,
       "ns": "ARRAYS",
       "name": "AMAX",
       "kind": "AMax",
@@ -3421,7 +3391,7 @@
       "C99Native": false
     },
     {
-      "id": 338,
+      "id": 335,
       "ns": "ARRAYS",
       "name": "AMIN",
       "kind": "AMin",
@@ -3431,7 +3401,7 @@
       "C99Native": false
     },
     {
-      "id": 339,
+      "id": 336,
       "ns": "ARRAYS",
       "name": "APAD",
       "kind": "APad",
@@ -3441,7 +3411,7 @@
       "C99Native": false
     },
     {
-      "id": 340,
+      "id": 337,
       "ns": "ARRAYS",
       "name": "AREDUCE",
       "kind": "AReduce",
@@ -3451,7 +3421,7 @@
       "C99Native": false
     },
     {
-      "id": 341,
+      "id": 338,
       "ns": "ARRAYS",
       "name": "AREVERSE",
       "kind": "AReverse",
@@ -3461,7 +3431,7 @@
       "C99Native": false
     },
     {
-      "id": 342,
+      "id": 339,
       "ns": "ARRAYS",
       "name": "ASCAN",
       "kind": "AScan",
@@ -3471,7 +3441,7 @@
       "C99Native": false
     },
     {
-      "id": 343,
+      "id": 340,
       "ns": "ARRAYS",
       "name": "ASHUFFLE",
       "kind": "AShuffle",
@@ -3481,7 +3451,7 @@
       "C99Native": false
     },
     {
-      "id": 344,
+      "id": 341,
       "ns": "ARRAYS",
       "name": "ASORT",
       "kind": "ASort",
@@ -3491,7 +3461,7 @@
       "C99Native": false
     },
     {
-      "id": 345,
+      "id": 342,
       "ns": "ARRAYS",
       "name": "ASUM",
       "kind": "ASum",
@@ -3501,7 +3471,7 @@
       "C99Native": false
     },
     {
-      "id": 346,
+      "id": 343,
       "ns": "ARRAYS",
       "name": "ATOKENS",
       "kind": "ATokens",
@@ -3511,7 +3481,7 @@
       "C99Native": false
     },
     {
-      "id": 347,
+      "id": 344,
       "ns": "ARRAYS",
       "name": "AUNIQUE",
       "kind": "AUnique",
@@ -3521,7 +3491,7 @@
       "C99Native": false
     },
     {
-      "id": 348,
+      "id": 345,
       "ns": "ARRAYS",
       "name": "AZIP",
       "kind": "AZip",
@@ -3531,7 +3501,7 @@
       "C99Native": false
     },
     {
-      "id": 349,
+      "id": 346,
       "ns": "ASR",
       "name": "RECOGNIZE",
       "kind": "AsrTranscribe",
@@ -3541,7 +3511,7 @@
       "C99Native": false
     },
     {
-      "id": 350,
+      "id": 347,
       "ns": "ATOMIC",
       "name": "COMPARESWAP",
       "kind": "AtomicCompareSwap",
@@ -3551,7 +3521,7 @@
       "C99Native": false
     },
     {
-      "id": 351,
+      "id": 348,
       "ns": "ATOMIC",
       "name": "FETCHVALUE",
       "kind": "AtomicFetchValue",
@@ -3561,7 +3531,7 @@
       "C99Native": false
     },
     {
-      "id": 352,
+      "id": 349,
       "ns": "ATOMIC",
       "name": "INCREMENT",
       "kind": "AtomicIncrement",
@@ -3571,7 +3541,7 @@
       "C99Native": false
     },
     {
-      "id": 353,
+      "id": 350,
       "ns": "ATOMIC",
       "name": "STORE",
       "kind": "AtomicStore",
@@ -3581,7 +3551,7 @@
       "C99Native": false
     },
     {
-      "id": 354,
+      "id": 351,
       "ns": "ATOMIC",
       "name": "SWAP",
       "kind": "AtomicSwap",
@@ -3591,7 +3561,7 @@
       "C99Native": false
     },
     {
-      "id": 355,
+      "id": 352,
       "ns": "AUTH",
       "name": "JWTCREATE",
       "kind": "JwtCreate",
@@ -3601,7 +3571,7 @@
       "C99Native": false
     },
     {
-      "id": 356,
+      "id": 353,
       "ns": "AUTH",
       "name": "JWTPAYLOAD",
       "kind": "JwtPayload",
@@ -3611,7 +3581,7 @@
       "C99Native": false
     },
     {
-      "id": 357,
+      "id": 354,
       "ns": "AUTH",
       "name": "JWTVERIFY",
       "kind": "JwtVerify",
@@ -3621,7 +3591,7 @@
       "C99Native": false
     },
     {
-      "id": 358,
+      "id": 355,
       "ns": "BITS",
       "name": "BITCLEAR",
       "kind": "BitClear",
@@ -3631,7 +3601,7 @@
       "C99Native": false
     },
     {
-      "id": 359,
+      "id": 356,
       "ns": "BITS",
       "name": "BITCOUNT",
       "kind": "BitCount",
@@ -3641,7 +3611,7 @@
       "C99Native": false
     },
     {
-      "id": 360,
+      "id": 357,
       "ns": "BITS",
       "name": "BITDEINTERLEAVE",
       "kind": "BitDeinterleave",
@@ -3651,7 +3621,7 @@
       "C99Native": false
     },
     {
-      "id": 361,
+      "id": 358,
       "ns": "BITS",
       "name": "BITFIELD",
       "kind": "BitField",
@@ -3661,7 +3631,7 @@
       "C99Native": false
     },
     {
-      "id": 362,
+      "id": 359,
       "ns": "BITS",
       "name": "BITGET",
       "kind": "BitGet",
@@ -3671,7 +3641,7 @@
       "C99Native": false
     },
     {
-      "id": 363,
+      "id": 360,
       "ns": "BITS",
       "name": "BITINTERLEAVE",
       "kind": "BitInterleave",
@@ -3681,7 +3651,7 @@
       "C99Native": false
     },
     {
-      "id": 364,
+      "id": 361,
       "ns": "BITS",
       "name": "BITREVERSE",
       "kind": "BitReverse",
@@ -3691,7 +3661,7 @@
       "C99Native": false
     },
     {
-      "id": 365,
+      "id": 362,
       "ns": "BITS",
       "name": "BITROTATEL",
       "kind": "BitRotateLeft",
@@ -3701,7 +3671,7 @@
       "C99Native": false
     },
     {
-      "id": 366,
+      "id": 363,
       "ns": "BITS",
       "name": "BITROTATER",
       "kind": "BitRotateRight",
@@ -3711,7 +3681,7 @@
       "C99Native": false
     },
     {
-      "id": 367,
+      "id": 364,
       "ns": "BITS",
       "name": "BITSCANFWD",
       "kind": "BitScanFwd",
@@ -3721,7 +3691,7 @@
       "C99Native": false
     },
     {
-      "id": 368,
+      "id": 365,
       "ns": "BITS",
       "name": "BITSCANREV",
       "kind": "BitScanRev",
@@ -3731,7 +3701,7 @@
       "C99Native": false
     },
     {
-      "id": 369,
+      "id": 366,
       "ns": "BITS",
       "name": "BITSET",
       "kind": "BitSet",
@@ -3741,7 +3711,7 @@
       "C99Native": false
     },
     {
-      "id": 370,
+      "id": 367,
       "ns": "BITS",
       "name": "BITTEST",
       "kind": "BitTest",
@@ -3751,7 +3721,7 @@
       "C99Native": false
     },
     {
-      "id": 371,
+      "id": 368,
       "ns": "BITS",
       "name": "BITTOGGLE",
       "kind": "BitToggle",
@@ -3761,7 +3731,7 @@
       "C99Native": false
     },
     {
-      "id": 372,
+      "id": 369,
       "ns": "BITS",
       "name": "BYTESWAP",
       "kind": "ByteSwap",
@@ -3771,7 +3741,7 @@
       "C99Native": false
     },
     {
-      "id": 373,
+      "id": 370,
       "ns": "BITS",
       "name": "FROMGRAY",
       "kind": "FromGray",
@@ -3781,7 +3751,7 @@
       "C99Native": false
     },
     {
-      "id": 374,
+      "id": 371,
       "ns": "BITS",
       "name": "GRAYCODE",
       "kind": "GrayCode",
@@ -3791,7 +3761,7 @@
       "C99Native": false
     },
     {
-      "id": 375,
+      "id": 372,
       "ns": "BITS",
       "name": "HAMMINGDIST",
       "kind": "HammingDist",
@@ -3801,7 +3771,7 @@
       "C99Native": false
     },
     {
-      "id": 376,
+      "id": 373,
       "ns": "BITS",
       "name": "ISPOW2",
       "kind": "IsPow2",
@@ -3811,7 +3781,7 @@
       "C99Native": false
     },
     {
-      "id": 377,
+      "id": 374,
       "ns": "BITS",
       "name": "NEXTPOW2",
       "kind": "NextPow2",
@@ -3821,7 +3791,7 @@
       "C99Native": false
     },
     {
-      "id": 378,
+      "id": 375,
       "ns": "BITS",
       "name": "PARITY",
       "kind": "BitParity",
@@ -3831,7 +3801,7 @@
       "C99Native": false
     },
     {
-      "id": 379,
+      "id": 376,
       "ns": "BLOCKCHAIN",
       "name": "ABIDECODE",
       "kind": "AbiDecode",
@@ -3841,7 +3811,7 @@
       "C99Native": false
     },
     {
-      "id": 380,
+      "id": 377,
       "ns": "BLOCKCHAIN",
       "name": "ABIENCODE",
       "kind": "AbiEncode",
@@ -3851,7 +3821,7 @@
       "C99Native": false
     },
     {
-      "id": 381,
+      "id": 378,
       "ns": "BLOCKCHAIN",
       "name": "BASE32DECODE",
       "kind": "Base32Decode",
@@ -3861,7 +3831,7 @@
       "C99Native": false
     },
     {
-      "id": 382,
+      "id": 379,
       "ns": "BLOCKCHAIN",
       "name": "BASE32ENCODE",
       "kind": "Base32Encode",
@@ -3871,7 +3841,7 @@
       "C99Native": false
     },
     {
-      "id": 383,
+      "id": 380,
       "ns": "BLOCKCHAIN",
       "name": "BASE58DECODE",
       "kind": "Base58Decode",
@@ -3881,7 +3851,7 @@
       "C99Native": false
     },
     {
-      "id": 384,
+      "id": 381,
       "ns": "BLOCKCHAIN",
       "name": "BASE58ENCODE",
       "kind": "Base58Encode",
@@ -3891,7 +3861,7 @@
       "C99Native": false
     },
     {
-      "id": 385,
+      "id": 382,
       "ns": "BLOCKCHAIN",
       "name": "BLAKE2B256",
       "kind": "Blake2b256",
@@ -3901,7 +3871,7 @@
       "C99Native": false
     },
     {
-      "id": 386,
+      "id": 383,
       "ns": "BLOCKCHAIN",
       "name": "BLOCKDIFFICULTY",
       "kind": "BlockDifficulty",
@@ -3911,7 +3881,7 @@
       "C99Native": false
     },
     {
-      "id": 387,
+      "id": 384,
       "ns": "BLOCKCHAIN",
       "name": "BTCADDRFROMPUB",
       "kind": "BtcAddressFromPub",
@@ -3921,7 +3891,7 @@
       "C99Native": false
     },
     {
-      "id": 388,
+      "id": 385,
       "ns": "BLOCKCHAIN",
       "name": "CONTRACT",
       "kind": "Contract",
@@ -3931,7 +3901,7 @@
       "C99Native": false
     },
     {
-      "id": 389,
+      "id": 386,
       "ns": "BLOCKCHAIN",
       "name": "DERIVEKEY",
       "kind": "DeriveKey",
@@ -3941,7 +3911,7 @@
       "C99Native": false
     },
     {
-      "id": 390,
+      "id": 387,
       "ns": "BLOCKCHAIN",
       "name": "ETHADDRCHECKSUM",
       "kind": "EthAddressChecksum",
@@ -3951,7 +3921,7 @@
       "C99Native": false
     },
     {
-      "id": 391,
+      "id": 388,
       "ns": "BLOCKCHAIN",
       "name": "ETHADDRFROMPUB",
       "kind": "EthAddressFromPub",
@@ -3961,7 +3931,7 @@
       "C99Native": false
     },
     {
-      "id": 392,
+      "id": 389,
       "ns": "BLOCKCHAIN",
       "name": "GENERATEMNEMONIC",
       "kind": "GenerateMnemonic",
@@ -3971,7 +3941,7 @@
       "C99Native": false
     },
     {
-      "id": 393,
+      "id": 390,
       "ns": "BLOCKCHAIN",
       "name": "GETPUBLICKEY",
       "kind": "GetPublicKey",
@@ -3981,7 +3951,7 @@
       "C99Native": false
     },
     {
-      "id": 394,
+      "id": 391,
       "ns": "BLOCKCHAIN",
       "name": "KECCAK256",
       "kind": "Keccak256",
@@ -3991,7 +3961,7 @@
       "C99Native": false
     },
     {
-      "id": 395,
+      "id": 392,
       "ns": "BLOCKCHAIN",
       "name": "MNEMONICTOSEED",
       "kind": "MnemonicToSeed",
@@ -4001,7 +3971,7 @@
       "C99Native": false
     },
     {
-      "id": 396,
+      "id": 393,
       "ns": "BLOCKCHAIN",
       "name": "RIPEMD160",
       "kind": "RipeMd160",
@@ -4011,7 +3981,7 @@
       "C99Native": false
     },
     {
-      "id": 397,
+      "id": 394,
       "ns": "BLOCKCHAIN",
       "name": "RLPENCODE",
       "kind": "RlpEncode",
@@ -4021,7 +3991,7 @@
       "C99Native": false
     },
     {
-      "id": 398,
+      "id": 395,
       "ns": "BLOCKCHAIN",
       "name": "SECP256K1SIGN",
       "kind": "EcdsaSecp256k1Sign",
@@ -4031,7 +4001,7 @@
       "C99Native": false
     },
     {
-      "id": 399,
+      "id": 396,
       "ns": "BLOCKCHAIN",
       "name": "STRKECCAK256",
       "kind": "StrKeccak256",
@@ -4041,7 +4011,7 @@
       "C99Native": false
     },
     {
-      "id": 400,
+      "id": 397,
       "ns": "BLOCKCHAIN",
       "name": "STRRIPEMD160",
       "kind": "StrRipeMd160",
@@ -4051,7 +4021,7 @@
       "C99Native": false
     },
     {
-      "id": 401,
+      "id": 398,
       "ns": "BLOCKCHAIN",
       "name": "VARINTDECODE",
       "kind": "VarIntDecode",
@@ -4061,7 +4031,7 @@
       "C99Native": false
     },
     {
-      "id": 402,
+      "id": 399,
       "ns": "BLOCKCHAIN",
       "name": "VARINTENCODE",
       "kind": "VarIntEncode",
@@ -4071,7 +4041,7 @@
       "C99Native": false
     },
     {
-      "id": 403,
+      "id": 400,
       "ns": "BRAINS",
       "name": "Betweenness",
       "kind": "GraphBetweenness",
@@ -4081,7 +4051,7 @@
       "C99Native": false
     },
     {
-      "id": 404,
+      "id": 401,
       "ns": "BRAINS",
       "name": "Bfs",
       "kind": "GraphBfs",
@@ -4091,7 +4061,7 @@
       "C99Native": false
     },
     {
-      "id": 405,
+      "id": 402,
       "ns": "BRAINS",
       "name": "Bipartite",
       "kind": "GraphBipartite",
@@ -4101,7 +4071,27 @@
       "C99Native": false
     },
     {
-      "id": 406,
+      "id": 403,
+      "ns": "BRAINS",
+      "name": "ByFolder",
+      "kind": "GraphByFolder",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 404,
+      "ns": "BRAINS",
+      "name": "ByTag",
+      "kind": "GraphByTag",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 405,
       "ns": "BRAINS",
       "name": "Clustering",
       "kind": "GraphClustering",
@@ -4111,7 +4101,7 @@
       "C99Native": false
     },
     {
-      "id": 407,
+      "id": 406,
       "ns": "BRAINS",
       "name": "Connected",
       "kind": "GraphConnected",
@@ -4121,7 +4111,7 @@
       "C99Native": false
     },
     {
-      "id": 408,
+      "id": 407,
       "ns": "BRAINS",
       "name": "Dfs",
       "kind": "GraphDfs",
@@ -4131,7 +4121,7 @@
       "C99Native": false
     },
     {
-      "id": 409,
+      "id": 408,
       "ns": "BRAINS",
       "name": "Diameter",
       "kind": "GraphDiameter",
@@ -4141,7 +4131,7 @@
       "C99Native": false
     },
     {
-      "id": 410,
+      "id": 409,
       "ns": "BRAINS",
       "name": "Dijkstra",
       "kind": "GraphDijkstra",
@@ -4151,7 +4141,7 @@
       "C99Native": false
     },
     {
-      "id": 411,
+      "id": 410,
       "ns": "BRAINS",
       "name": "Dot",
       "kind": "GraphDot",
@@ -4161,7 +4151,7 @@
       "C99Native": false
     },
     {
-      "id": 412,
+      "id": 411,
       "ns": "BRAINS",
       "name": "Eccentricity",
       "kind": "GraphEccentricity",
@@ -4171,7 +4161,7 @@
       "C99Native": false
     },
     {
-      "id": 413,
+      "id": 412,
       "ns": "BRAINS",
       "name": "HasCycle",
       "kind": "GraphHasCycle",
@@ -4181,7 +4171,7 @@
       "C99Native": false
     },
     {
-      "id": 414,
+      "id": 413,
       "ns": "BRAINS",
       "name": "IsValid",
       "kind": "GraphIsValid",
@@ -4191,7 +4181,7 @@
       "C99Native": false
     },
     {
-      "id": 415,
+      "id": 414,
       "ns": "BRAINS",
       "name": "Louvain",
       "kind": "GraphLouvain",
@@ -4201,7 +4191,7 @@
       "C99Native": false
     },
     {
-      "id": 416,
+      "id": 415,
       "ns": "BRAINS",
       "name": "MaxFlow",
       "kind": "GraphMaxFlow",
@@ -4211,7 +4201,7 @@
       "C99Native": false
     },
     {
-      "id": 417,
+      "id": 416,
       "ns": "BRAINS",
       "name": "Mst",
       "kind": "GraphMst",
@@ -4221,7 +4211,7 @@
       "C99Native": false
     },
     {
-      "id": 418,
+      "id": 417,
       "ns": "BRAINS",
       "name": "Neighbors",
       "kind": "GraphNeighbors",
@@ -4231,7 +4221,7 @@
       "C99Native": false
     },
     {
-      "id": 419,
+      "id": 418,
       "ns": "BRAINS",
       "name": "PageRank",
       "kind": "GraphPageRank",
@@ -4241,10 +4231,20 @@
       "C99Native": false
     },
     {
-      "id": 420,
+      "id": 419,
       "ns": "BRAINS",
       "name": "Path",
       "kind": "GraphPath",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 420,
+      "ns": "BRAINS",
+      "name": "QueryMulti",
+      "kind": "GraphQueryMulti",
       "IL": false,
       "PCodeVM": false,
       "VMC": false,

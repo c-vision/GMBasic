@@ -2,18 +2,20 @@
 // Namespace BRAINS — funzioni qualificate per i grafi dei knowledge base (brain).
 // Ex namespace GRAPH (rinominato 2026-11-04): il nome GRAPH è riservato alla TEORIA DEI GRAFI
 // (pacchetto FFI gmbgraph / graph.inc). Le funzioni wiki-only (ByTag/ByFolder/QueryMulti)
-// sono in AI (AI.GRAPHTAG / AI.GRAPHFOLDER / AI.GRAPHMULTI).
-// I comandi legacy (GRAPH BUILD/UPDATE/STATUS) restano in REPL/CLI (non BASIC) —
+// restano qui: interrogano il grafo di un cervello, non sono funzioni AI.
+// I comandi legacy (BRAINS BUILD/UPDATE/STATUS) restano in REPL/CLI (non BASIC) —
 // questo file registra solo le FUNZIONI qualificate.
 
 /* ==== GMB-STDLIB-AUDIT-BEGIN ====
  * FILE: Brains — namespace 'BRAINS'
- * 22 funzioni | 0 comandi | 0 tipi | 0 costanti
+ * 25 funzioni | 0 comandi | 0 tipi | 0 costanti
  *
- * FUNZIONI (22):
+ * FUNZIONI (25):
  *   Betweenness
  *   Bfs
  *   Bipartite
+ *   ByFolder
+ *   ByTag
  *   Clustering
  *   Connected
  *   Dfs
@@ -29,6 +31,7 @@
  *   Neighbors
  *   PageRank
  *   Path
+ *   QueryMulti
  *   Stats
  *   StronglyConnected
  *   Subgraph
@@ -49,6 +52,9 @@ public sealed partial class StdLib
 
         var procedures = new ProcedureDefinition[]
         {
+            new NativeProcedureDefinition(-1, pub, T(TokenKind.GraphQueryMulti, "QueryMulti"),
+                [P("query", false), P("brains", true)], new StringType(),
+                TokenKind.GraphQueryMulti, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, pub, T(TokenKind.GraphNeighbors, "Neighbors"),
                 [P("brain", false), P("node", false)], new StringType(),
                 TokenKind.GraphNeighbors, ExecutionKind: NativeExecutionKind.Pure),
@@ -115,6 +121,12 @@ public sealed partial class StdLib
             new NativeProcedureDefinition(-1, pub, T(TokenKind.GraphSubgraph, "Subgraph"),
                 [P("brain", false), P("root", false), new Parameter(-1, T(TokenKind.Identifier, "depth"), new IntegerType(), SymbolFlags.IsOptional, null, false)], new StringType(),
                 TokenKind.GraphSubgraph, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, pub, T(TokenKind.GraphByTag, "ByTag"),
+                [P("brain", false), P("tag", false)], new StringType(),
+                TokenKind.GraphByTag, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, pub, T(TokenKind.GraphByFolder, "ByFolder"),
+                [P("brain", false), P("folder", false)], new StringType(),
+                TokenKind.GraphByFolder, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, pub, T(TokenKind.GraphIsValid, "IsValid"),
                 [P("brain", false)], new DoubleType(),
                 TokenKind.GraphIsValid, ExecutionKind: NativeExecutionKind.Pure),

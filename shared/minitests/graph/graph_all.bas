@@ -1,4 +1,4 @@
-' MiniTest NAMESPACE BRAINS — 22 simboli + 3 AI.GRAPH* (ex GRAPH) + i comandi BRAINS del dominio.
+' MiniTest NAMESPACE BRAINS — 25 simboli (inclusi BYTAG/BYFOLDER/QUERYMULTI) + i comandi BRAINS del dominio.
 '
 ' Superficie (shared/spec/registry/surface.csv): BETWEENNESS, BFS, BIPARTITE,
 ' BYFOLDER, BYTAG, CLUSTERING, CONNECTED, DFS, DIAMETER, DIJKSTRA, DOT, ECCENTRICITY,
@@ -11,7 +11,6 @@
 ' non un'applicazione. Si asseriscono FATTI (status e campi), non il JSON intero.
 ' EXPECT: built=-1|neighbors=-1|path=-1|pagerank=-1|connected=-1|stats=-1|strongly=-1|toposort=-1|bipartite=-1|betweenness=-1|clustering=-1|diameter=-1|mst=-1|dot=-1|subgraph=-1|bytag=-1|byfolder=-1|isvalid=-1|hascycle=-1|dijkstra=-1|eccentricity=-1|dfs=-1|bfs=-1|querymulti=-1|louvain=-1|maxflow=-1
 IMPORT BRAINS
-IMPORT AI
 IMPORT IO
 
 SUB Main()
@@ -59,9 +58,9 @@ SUB Main()
   PRINT "dot="; (LEFT(r, 7) = "digraph")
   r = BRAINS.SUBGRAPH("graph-vault", "index.md", 1)
   PRINT "subgraph="; (LEFT(r, 8) = "graph TD")
-  r = AI.GRAPHTAG("graph-vault", "strategy")
+  r = BRAINS.BYTAG("graph-vault", "strategy")
   PRINT "bytag="; (INSTR(r, "strategy") > 0 AND INSTR(r, "count") > 0)
-  r = AI.GRAPHFOLDER("graph-vault", "strategies")
+  r = BRAINS.BYFOLDER("graph-vault", "strategies")
   PRINT "byfolder="; (INSTR(r, "strategies") > 0 AND INSTR(r, "count") > 0)
   r = BRAINS.ISVALID("graph-vault")
   PRINT "isvalid="; (r = "1")
@@ -75,7 +74,7 @@ SUB Main()
   PRINT "dfs="; (INSTR(r, "Success") > 0 AND INSTR(r, "order") > 0)
   r = BRAINS.BFS("graph-vault", "index.md")
   PRINT "bfs="; (INSTR(r, "Success") > 0 AND INSTR(r, "order") > 0)
-  r = AI.GRAPHMULTI("momentum", "graph-vault")
+  r = BRAINS.QUERYMULTI("momentum", "graph-vault")
   PRINT "querymulti="; (INSTR(r, "Success") > 0 AND INSTR(r, "brainCount") > 0 AND INSTR(r, "momentum") > 0)
   r = BRAINS.LOUVAIN("graph-vault")
   PRINT "louvain="; (INSTR(r, "Success") > 0 AND INSTR(r, "communities") > 0)

@@ -3,9 +3,9 @@
 
 /* ==== GMB-STDLIB-AUDIT-BEGIN ====
  * FILE: AI — namespace 'AI'
- * 264 funzioni | 0 comandi | 0 tipi | 0 costanti
+ * 261 funzioni | 0 comandi | 0 tipi | 0 costanti
  *
- * FUNZIONI (264):
+ * FUNZIONI (261):
  *   Active
  *   AgentAskFile
  *   AgentAskSync
@@ -92,9 +92,6 @@
  *   GoalSet
  *   GoalStatus
  *   GoalTick
- *   GRAPHFOLDER
- *   GRAPHMULTI
- *   GRAPHTAG
  *   Handoff
  *   HandoffClear
  *   HandoffComplete
@@ -624,11 +621,6 @@ public sealed partial class StdLib
             new NativeProcedureDefinition(-1, pub, T(TokenKind.AiWorkerRescued, "WorkerRescued"), [], new DoubleType(), TokenKind.AiWorkerRescued, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, pub, T(TokenKind.AiWorkerSpend, "WorkerSpend"), [], new DoubleType(), TokenKind.AiWorkerSpend, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, pub, T(TokenKind.AiStateLoad, "StateLoad"), [P("worker", false), P("key", false)], new StringType(), TokenKind.AiStateLoad, ExecutionKind: NativeExecutionKind.Pure),
-            // Grafi dei brain (ex namespace GRAPH, 2026-11-04): query wiki-only spostate qui
-            // perché non sono algoritmi di teoria dei grafi. Il namespace BRAINS ha gli algoritmi.
-            new NativeProcedureDefinition(-1, pub, T(TokenKind.GraphQueryMulti, "GRAPHMULTI"), [P("query", false), P("brains", true)], new StringType(), TokenKind.GraphQueryMulti, ExecutionKind: NativeExecutionKind.Pure),
-            new NativeProcedureDefinition(-1, pub, T(TokenKind.GraphByTag, "GRAPHTAG"), [P("brain", false), P("tag", false)], new StringType(), TokenKind.GraphByTag, ExecutionKind: NativeExecutionKind.Pure),
-            new NativeProcedureDefinition(-1, pub, T(TokenKind.GraphByFolder, "GRAPHFOLDER"), [P("brain", false), P("folder", false)], new StringType(), TokenKind.GraphByFolder, ExecutionKind: NativeExecutionKind.Pure),
             // §4.10 SEMAPRAX — GMB Semantic Graph: SPOSTATO nel namespace LLM
             // (LLM.SYMBOL/IMPACT/CALLMAP/REVISION/CONTEXT/CHECKREV/PATCH/FINDSYMBOL/REPOMAP).
             // La superficie è una feature di COMPILATORE (lato programma) → asse LLM.

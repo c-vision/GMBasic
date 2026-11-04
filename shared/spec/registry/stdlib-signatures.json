@@ -1675,72 +1675,6 @@
     },
     {
       "ns": "AI",
-      "name": "GRAPHFOLDER",
-      "fn": true,
-      "return": "string",
-      "params": [
-        {
-          "name": "brain",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "folder",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "AI",
-      "name": "GRAPHMULTI",
-      "fn": true,
-      "return": "string",
-      "params": [
-        {
-          "name": "query",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "brains",
-          "type": "string",
-          "optional": true,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "AI",
-      "name": "GRAPHTAG",
-      "fn": true,
-      "return": "string",
-      "params": [
-        {
-          "name": "brain",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "tag",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "AI",
       "name": "GenTest",
       "fn": true,
       "return": "string",
@@ -7748,6 +7682,50 @@
     },
     {
       "ns": "BRAINS",
+      "name": "ByFolder",
+      "fn": true,
+      "return": "string",
+      "params": [
+        {
+          "name": "brain",
+          "type": "string",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "folder",
+          "type": "string",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "BRAINS",
+      "name": "ByTag",
+      "fn": true,
+      "return": "string",
+      "params": [
+        {
+          "name": "brain",
+          "type": "string",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "tag",
+          "type": "string",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "BRAINS",
       "name": "Clustering",
       "fn": true,
       "return": "string",
@@ -8043,6 +8021,28 @@
           "name": "to",
           "type": "string",
           "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "BRAINS",
+      "name": "QueryMulti",
+      "fn": true,
+      "return": "string",
+      "params": [
+        {
+          "name": "query",
+          "type": "string",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "brains",
+          "type": "string",
+          "optional": true,
           "byRef": false,
           "array": false
         }
