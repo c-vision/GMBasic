@@ -709,41 +709,6 @@ public sealed partial class IlProgramCompiler
             case TokenKind.FftFreq: EmitAnalysisIntDoubleCall(expr, nameof(IlRuntime.FftFreq)); break;
             case TokenKind.FftShift: EmitAnalysisArrayCall(expr, nameof(IlRuntime.FftShift)); break;
             case TokenKind.IfftShift: EmitAnalysisArrayCall(expr, nameof(IlRuntime.IfftShift)); break;
-            // --- OPTIMIZATION (porting blocco — parità VM PCodeProcessor.Builtins) ---
-            case TokenKind.Newton: EmitOptimizeScalarCall(expr, nameof(IlRuntime.Newton), 2); break;
-            case TokenKind.Brent: EmitOptimizeScalarCall(expr, nameof(IlRuntime.Brent), 3); break;
-            case TokenKind.Bisection: EmitOptimizeScalarCall(expr, nameof(IlRuntime.Bisection), 3); break;
-            case TokenKind.Secant: EmitOptimizeScalarCall(expr, nameof(IlRuntime.Secant), 3); break;
-            case TokenKind.GoldenSection: EmitOptimizeScalarCall(expr, nameof(IlRuntime.GoldenSection), 3); break;
-            case TokenKind.Broyden: EmitOptimizeBroydenCall(expr); break;
-            case TokenKind.NelderMead: EmitOptimizeVecCall(expr, nameof(IlRuntime.NelderMead)); break;
-            case TokenKind.Bfgs: EmitOptimizeVecCall(expr, nameof(IlRuntime.Bfgs)); break;
-            case TokenKind.LBfgs: EmitOptimizeVecCall(expr, nameof(IlRuntime.LBfgs)); break;
-            case TokenKind.ConjugateGradient: EmitOptimizeVecCall(expr, nameof(IlRuntime.ConjugateGradient)); break;
-            case TokenKind.LevenbergMarquardt: EmitOptimizeLMCall(expr, nameof(IlRuntime.LevenbergMarquardt)); break;
-            case TokenKind.CurveFit: EmitOptimizeLMCall(expr, nameof(IlRuntime.CurveFit)); break;
-            case TokenKind.DifferentialEvolution: EmitOptimizeDECall(expr); break;
-            case TokenKind.OptimizeBrentq: EmitOptimizeScalarCall(expr, nameof(IlRuntime.Brentq), 3); break;
-            case TokenKind.OptimizeBrenth: EmitOptimizeScalarCall(expr, nameof(IlRuntime.Brenth), 3); break;
-            case TokenKind.OptimizeRidder: EmitOptimizeScalarCall(expr, nameof(IlRuntime.Ridder), 3); break;
-            case TokenKind.OptimizeToms748: EmitOptimizeScalarCall(expr, nameof(IlRuntime.Toms748), 3); break;
-            case TokenKind.OptimizeBrentMin: EmitOptimizeScalarCall(expr, nameof(IlRuntime.BrentMin), 3); break;
-            case TokenKind.OptimizeMinimizeScalar: EmitOptimizeMinScalarCall(expr); break;
-            case TokenKind.OptimizePowell: EmitOptimizeVecCall(expr, nameof(IlRuntime.Powell)); break;
-            case TokenKind.OptimizeTnc: EmitOptimizeOptVecCall(expr, nameof(IlRuntime.Tnc), 2); break;
-            case TokenKind.OptimizeCobyla: EmitOptimizeOptVecCall(expr, nameof(IlRuntime.Cobyla), 2); break;
-            case TokenKind.OptimizeSlsqp: EmitOptimizeOptVecCall(expr, nameof(IlRuntime.Slsqp), 2); break;
-            case TokenKind.OptimizeMinimize: EmitOptimizeMinimizeCall(expr); break;
-            case TokenKind.OptimizeFsolve: EmitOptimizeVecVecCall(expr, nameof(IlRuntime.Fsolve), 1); break;
-            case TokenKind.OptimizeLeastSquares: EmitOptimizeVecVecCall(expr, nameof(IlRuntime.LeastSquaresOpt), 2); break;
-            case TokenKind.OptimizeLinprog: EmitOptimizeLinprogCall(expr); break;
-            case TokenKind.OptimizeBrute: EmitOptimizeGlobalCall(expr, nameof(IlRuntime.Brute), 20, jagged: true); break;
-            case TokenKind.OptimizeBasinHopping: EmitOptimizeGlobalCall(expr, nameof(IlRuntime.BasinHopping), 50, jagged: false); break;
-            case TokenKind.OptimizeDualAnnealing: EmitOptimizeGlobalCall(expr, nameof(IlRuntime.DualAnnealing), 1000, jagged: true); break;
-            case TokenKind.LevenbergMarquardtVec: EmitOptimizeLMCall(expr, nameof(IlRuntime.LevenbergMarquardtVec)); break;
-            case TokenKind.LeastSquares: EmitOptimizeLeastSquaresCall(expr); break;
-            case TokenKind.Simplex: EmitOptimizeSimplexCall(expr); break;
-            case TokenKind.CholeskySolve: EmitOptimizeCholeskyCall(expr); break;
             // --- Importato da GMBasic (CONSOLE-GRAFICA: SCREEN/POINT; headless = 0/-1) ---
             case TokenKind.Screen: EmitNoArgBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.Screen))); break;
             case TokenKind.Point:
