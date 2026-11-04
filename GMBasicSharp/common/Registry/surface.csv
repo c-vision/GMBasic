@@ -1131,6 +1131,7 @@ procedure,STATS,ChiSquaredIsf,ChiSquaredIsf
 procedure,STATS,ChiSquaredPdf,ChiSquaredPdf
 procedure,STATS,ChiSquaredPpf,ChiSquaredPpf
 procedure,STATS,Correlation,Correlation
+procedure,STATS,Covariance,StatsCovariance
 procedure,STATS,Describe,StatsDescribe
 procedure,STATS,ExponentialCdf,ExponentialCdf
 procedure,STATS,ExponentialIsf,ExponentialIsf
@@ -1175,6 +1176,7 @@ procedure,STATS,ParetoPpf,ParetoPpf
 procedure,STATS,PearsonR,StatsPearsonR
 procedure,STATS,Percentile,Percentile
 procedure,STATS,PoissonPmf,PoissonPmf
+procedure,STATS,RANGE,StatsRange
 procedure,STATS,Shapiro,ShapiroWilk
 procedure,STATS,SkewTest,StatsSkewTest
 procedure,STATS,SkewedNormalPdf,SkewedNormalPdf

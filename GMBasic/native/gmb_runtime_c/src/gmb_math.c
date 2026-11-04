@@ -412,6 +412,23 @@ gmb_string_t gmb_rand_crypto_bytes_val(int count) {
     return r;
 }
 
+double gmb_range_arr(const double* a, int n) {
+    if (!a || n <= 0) return 0;
+    double lo = a[0], hi = a[0];
+    for (int i = 1; i < n; i++) { if (a[i] < lo) lo = a[i]; if (a[i] > hi) hi = a[i]; }
+    return hi - lo;
+}
+
+double gmb_covariance(const double* x, const double* y, int n) {
+    if (n < 2) return 0;
+    double mx = 0, my = 0;
+    for (int i = 0; i < n; i++) { mx += x[i]; my += y[i]; }
+    mx /= n; my /= n;
+    double sxy = 0;
+    for (int i = 0; i < n; i++) sxy += (x[i] - mx) * (y[i] - my);
+    return sxy / (double)(n - 1);
+}
+
 double gmb_correlation(const double* x, const double* y, int n) {
     if (n < 2) return 0;
     double mx = 0, my = 0;

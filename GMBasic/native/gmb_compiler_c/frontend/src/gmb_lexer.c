@@ -1024,6 +1024,7 @@ static const gmb_keyword_t gmb_keywords[] = {
     GMB_KEYWORD_ENTRY("GAMMAPPF", StatsGammaPpf),
     GMB_KEYWORD_ENTRY("GAMMAISF", StatsGammaIsf),
     GMB_KEYWORD_ENTRY("CORRELATION", Correlation),
+    GMB_KEYWORD_ENTRY("COVARIANCE", StatsCovariance),
     GMB_KEYWORD_ENTRY("FFT", Fft),
     GMB_KEYWORD_ENTRY("FFTINV", Ifft),
     GMB_KEYWORD_ENTRY("FFTC", FftComplex),

@@ -1233,6 +1233,7 @@ public sealed partial class Lexer
         { "MAD", TokenKind.Mad },
         { "PERCENTILE", TokenKind.Percentile },
         { "CORRELATION", TokenKind.Correlation },
+        { "COVARIANCE", TokenKind.StatsCovariance },
         { "FFT", TokenKind.Fft },                 // Trasformata di Fourier (real input)
         { "FFTINV", TokenKind.Ifft },             // Trasformata inversa di Fourier (real input)
         { "FFTC", TokenKind.FftComplex },         // FFT su dati reali + immaginari (due array)

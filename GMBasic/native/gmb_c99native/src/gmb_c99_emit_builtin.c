@@ -2618,6 +2618,18 @@ static int sa_correlation(ctx_t* c, gmb_expr_t** a, int n) {
     sb_put(&c->out, ", (int)("); emit_arr_len_of(c, xv); sb_put(&c->out, "))");
     return 1;
 }
+static int sa_covariance(ctx_t* c, gmb_expr_t** a, int n) {
+    if (n != 2) return 0;
+    if (!a[0] || a[0]->kind != GMB_EXPR_VAR || !a[1] || a[1]->kind != GMB_EXPR_VAR) return 0;
+    var_t* xv = lookup_var(c, a[0]->var);
+    var_t* yv = lookup_var(c, a[1]->var);
+    if (!xv || !yv || !xv->is_array || !yv->is_array || xv->matrix || yv->matrix) return 0;
+    sb_put(&c->out, "gmb_covariance("); emit_var_ref(c, xv);
+    sb_put(&c->out, ", "); emit_var_ref(c, yv);
+    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, xv); sb_put(&c->out, "))");
+    return 1;
+}
+static int sa_range(ctx_t* c, gmb_expr_t** a, int n) { return sa_stat(c, a, n, "gmb_range_arr"); }
 static int sa_amax(ctx_t* c, gmb_expr_t** a, int n) { return sa_stat(c, a, n, "gmb_max_arr"); }
 static int sa_amin(ctx_t* c, gmb_expr_t** a, int n) { return sa_stat(c, a, n, "gmb_min_arr"); }
 static int sa_asum(ctx_t* c, gmb_expr_t** a, int n) { return sa_stat(c, a, n, "gmb_sum_arr"); }
@@ -2670,6 +2682,8 @@ static const sa_row SA_TBL[] = {
     { GMB_TOK_Skewness, sa_skewness }, { GMB_TOK_Correlation, sa_correlation },
     { GMB_TOK_Percentile, sa_percentile },
     { GMB_TOK_StatsMode, sa_mode }, { GMB_TOK_StatsIqr, sa_iqr }, { GMB_TOK_StatsMoment, sa_moment },
+    { GMB_TOK_StatsCovariance, sa_covariance },
+    { GMB_TOK_StatsRange, sa_range },
 };
 int emit_bf_stats_arr(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
     (void)name; (void)ns; (void)line;

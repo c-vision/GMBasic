@@ -897,6 +897,8 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "MULTIVARIATE.Pca");
         r.Register(Backend.C99Native, "SPATIAL.PDIST");
         r.Register(Backend.C99Native, "STATS.PearsonR");
+        r.Register(Backend.C99Native, "STATS.Covariance");
+        r.Register(Backend.C99Native, "STATS.Range");
         r.Register(Backend.C99Native, "NET.PEEK");
         r.Register(Backend.C99Native, "TRADING.METRICS.PERatio");
         r.Register(Backend.C99Native, "STATS.Percentile");

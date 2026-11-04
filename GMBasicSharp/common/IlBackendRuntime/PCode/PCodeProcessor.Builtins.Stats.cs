@@ -36,6 +36,8 @@ internal sealed partial class PCodeProcessor
         BuiltInFunction.STATS_MODE,
         BuiltInFunction.STATS_MOMENT,
         BuiltInFunction.STATS_IQR,
+        BuiltInFunction.STATS_COVARIANCE,
+        BuiltInFunction.STATS_RANGE,
         BuiltInFunction.TTEST,
         BuiltInFunction.TTESTPAIRED,
         BuiltInFunction.TTESTONESAMPLE,
@@ -122,6 +124,27 @@ internal sealed partial class PCodeProcessor
         [BuiltInFunction.STATS_IQR] = (task, args) =>
         {
                 return CommonLib.Numerics.Iqr(ToDoubleArr(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_RANGE] = (task, args) =>
+        {
+                var a = ToDoubleArr(ArgOr(args, 0));
+                if (a.Length == 0) return 0.0;
+                double lo = a[0], hi = a[0];
+                foreach (var v in a) { if (v < lo) lo = v; if (v > hi) hi = v; }
+                return hi - lo;
+        },
+        [BuiltInFunction.STATS_COVARIANCE] = (task, args) =>
+        {
+                var x = ToDoubleArr(ArgOr(args, 0));
+                var y = ToDoubleArr(ArgOr(args, 1));
+                var n = Math.Min(x.Length, y.Length);
+                if (n < 2) return 0.0;
+                double mx = 0, my = 0;
+                for (var i = 0; i < n; i++) { mx += x[i]; my += y[i]; }
+                mx /= n; my /= n;
+                double sxy = 0;
+                for (var i = 0; i < n; i++) sxy += (x[i] - mx) * (y[i] - my);
+                return sxy / (n - 1);
         },
         [BuiltInFunction.TTEST] = (task, args) =>
         {
