@@ -97,6 +97,16 @@ void gmb_winstmt_mouse_script_pump(void);
 /* reset (test) */
 void gmb_winstmt_reset(void);
 
+/* ==== API finestre PIXEL per il client C# (stato nel runtime C) ====
+ * Coordinate in PIXEL LOGICI, layout identico al compositor (title 24, padding 6,
+ * pulsanti a destra, bordo resize 4). Prima queste capacità esistevano solo nella
+ * classe C# GfxWindowManager. */
+void gmb_winstmt_pixel_client_rect(const char* name, int* out4);
+int  gmb_winstmt_pixel_control_at(const char* name, int x, int y);   /* 1=close 2=min 3=max */
+int  gmb_winstmt_pixel_resize_edge_at(const char* name, int x, int y); /* N=1 S=2 E=4 W=8 */
+int  gmb_winstmt_pixel_taskbar_chip_at(int x, int y);                 /* id o -1 */
+void gmb_winstmt_set_colors(const char* name, unsigned int body, unsigned int fg, unsigned int title);
+
 #ifdef __cplusplus
 }
 #endif

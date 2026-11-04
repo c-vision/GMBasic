@@ -911,7 +911,8 @@ enum {
     GMB_MWF_BORDER, GMB_MWF_FRAME_STYLE, GMB_MWF_SHADOW, GMB_MWF_FOCUSED,
     GMB_MWF_MINIMIZED, GMB_MWF_DESKTOP, GMB_MWF_CURSOR_LINE, GMB_MWF_CURSOR_COL,
     GMB_MWF_SCROLL, GMB_MWF_LINES_COUNT, GMB_MWF_CLOSABLE, GMB_MWF_DRAGGABLE, GMB_MWF_ID,
-    GMB_MWF_RX, GMB_MWF_RY, GMB_MWF_RW, GMB_MWF_RH, GMB_MWF_EDITABLE
+    GMB_MWF_RX, GMB_MWF_RY, GMB_MWF_RW, GMB_MWF_RH, GMB_MWF_EDITABLE,
+    GMB_MWF_BODY_COLOR, GMB_MWF_FG_COLOR, GMB_MWF_TITLE_COLOR, GMB_MWF_PIXEL
 };
 int gmb_managed_window_get_int(const gmb_managed_window_t* w, int field)
 {
@@ -941,6 +942,10 @@ int gmb_managed_window_get_int(const gmb_managed_window_t* w, int field)
         case GMB_MWF_RW: return w->restore_rect.w;
         case GMB_MWF_RH: return w->restore_rect.h;
         case GMB_MWF_EDITABLE: return w->editable ? 1 : 0;
+        case GMB_MWF_BODY_COLOR: return (int)w->body_color;
+        case GMB_MWF_FG_COLOR: return (int)w->fg_color;
+        case GMB_MWF_TITLE_COLOR: return (int)w->title_color;
+        case GMB_MWF_PIXEL: return w->pixel;
     }
     return 0;
 }
@@ -970,6 +975,10 @@ void gmb_managed_window_set_int(gmb_managed_window_t* w, int field, int v)
         case GMB_MWF_RW: w->restore_rect.w = v; break;
         case GMB_MWF_RH: w->restore_rect.h = v; break;
         case GMB_MWF_EDITABLE: w->editable = v != 0; break;
+        case GMB_MWF_BODY_COLOR: w->body_color = (unsigned int)v; break;
+        case GMB_MWF_FG_COLOR: w->fg_color = (unsigned int)v; break;
+        case GMB_MWF_TITLE_COLOR: w->title_color = (unsigned int)v; break;
+        case GMB_MWF_PIXEL: w->pixel = v != 0; break;
     }
 }
 /* field 0 = title, 1 = name */

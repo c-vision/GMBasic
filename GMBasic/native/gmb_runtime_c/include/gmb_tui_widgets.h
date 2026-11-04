@@ -1589,6 +1589,11 @@ typedef struct gmb_managed_window {
     int scroll_offset;
     int cursor_line;
     int cursor_col;
+    /* --- Finestre PIXEL (graphics screen) --- */
+    int pixel;               /* 1 = finestra PIXEL: rect in PIXEL LOGICI, resa dal compositor gfx */
+    unsigned int body_color; /* 0 = colore del tema */
+    unsigned int fg_color;
+    unsigned int title_color;
 } gmb_managed_window_t;
 gmb_rect_t gmb_managed_window_content_rect(const gmb_managed_window_t* w);
 gmb_rect_t gmb_managed_window_titlebar_rect(const gmb_managed_window_t* w);

@@ -276,12 +276,17 @@ int gmb_winstmt_define(const char* name, const char* title,
     int _rw = right - left + 1;
     if (_rw < _minw) _rw = _minw;
     gmb_rect_t rect = gmb_rect_new(left, top, _rw, bottom - top + 1);
+    /* Finestre PIXEL: FROM/TO sono estremi in PIXEL logici (larghezza = right-left, come
+     * GfxWindowManager/IL). Le TUI restano in celle (inclusive: right-left+1). */
+    if (w->pixel) { rect.w = right - left; rect.h = bottom - top; if (rect.w < 16) rect.w = 16; if (rect.h < 24) rect.h = 24; }
     gmb_window_manager_t* m = gmb_window_manager_static();
     if (w->id >= 0) {
         gmb_managed_window_t* mw = gmb_window_manager_get(m, w->id);
-        if (mw) { mw->rect = rect; snprintf(mw->title, sizeof(mw->title), "%s", w->title); }
+        if (mw) { mw->rect = rect; snprintf(mw->title, sizeof(mw->title), "%s", w->title); mw->pixel = w->pixel; }
     } else {
         w->id = gmb_window_manager_add(m, w->title, rect);
+        gmb_managed_window_t* mw = gmb_window_manager_get(m, w->id);
+        if (mw) { snprintf(mw->name, sizeof(mw->name), "%s", name ? name : ""); mw->pixel = w->pixel; }
     }
     ws_draw(w);
     return w->id;
@@ -690,16 +695,24 @@ void gmb_winstmt_compose_all_pixel(void)
             if (g_ws[i].used && g_ws[i].id == mw->id) { w = &g_ws[i]; break; }
         if (!w || w->closed || mw->minimized) continue;
         if (w->desktop != g_ws_desktop) continue;
-        int x = mw->rect.x * cw, y = mw->rect.y * ch, ww = mw->rect.w * cw, hh = mw->rect.h * ch;
+        /* Finestre PIXEL: rect già in PIXEL LOGICI (WINDOW DEFINE … PIXEL, parità C#).
+         * Finestre TUI mostrate su schermo grafico: rect in celle → conversione. */
+        int x, y, ww, hh;
+        if (mw->pixel) { x = mw->rect.x; y = mw->rect.y; ww = mw->rect.w; hh = mw->rect.h; }
+        else { x = mw->rect.x * cw; y = mw->rect.y * ch; ww = mw->rect.w * cw; hh = mw->rect.h * ch; }
         if (ww < 16) ww = 16;
         if (hh < 24) hh = 24;
         int isFocus = mw->focused;
         int titleh = GMB_WIN_TITLE_H; if (titleh > hh / 2) titleh = hh / 2;
+        /* Colori per-finestra (parità PixelWindow.BodyColor/FgColor/TitleColor): 0 = tema. */
+        unsigned int col_body = mw->body_color ? mw->body_color : GMB_COL_BODY;
+        unsigned int col_title = mw->title_color ? mw->title_color
+                                 : (isFocus ? GMB_COL_TITLE_TOPF : GMB_COL_TITLE_TOP);
+        unsigned int col_title2 = mw->title_color ? mw->title_color
+                                  : (isFocus ? GMB_COL_TITLE_BOTF : GMB_COL_TITLE_BOT);
         if (s_drag_id < 0 && s_resize_id < 0) gmb_gfx_drop_shadow(x, y, ww, hh, 3, GMB_COL_SHADOW, 10);
-        gmb_gfx_fill_rounded_rect(x, y, ww, hh, GMB_WIN_RADIUS, GMB_COL_BODY);
-        gmb_gfx_gradient_rect(x, y, ww, titleh,
-                              isFocus ? GMB_COL_TITLE_TOPF : GMB_COL_TITLE_TOP,
-                              isFocus ? GMB_COL_TITLE_BOTF : GMB_COL_TITLE_BOT, 1);
+        gmb_gfx_fill_rounded_rect(x, y, ww, hh, GMB_WIN_RADIUS, col_body);
+        gmb_gfx_gradient_rect(x, y, ww, titleh, col_title, col_title2, 1);
         gmb_gfx_stroke_rounded_rect(x, y, ww, hh, GMB_WIN_RADIUS,
                                     isFocus ? GMB_COL_BORDER : GMB_COL_BORDER_DIM);
         if (isFocus)
@@ -751,7 +764,8 @@ void gmb_winstmt_compose_all_pixel(void)
                 {
                     int idx = w->scroll_top + r;
                     if (idx >= w->line_count) break;
-                    wm_text(w->lines[idx], crx, cry + r * ch, GMB_COL_TEXT);
+                    wm_text(w->lines[idx], crx, cry + r * ch,
+                            mw->fg_color ? mw->fg_color : GMB_COL_TEXT);
                 }
             }
         }
@@ -776,7 +790,99 @@ void gmb_winstmt_compose_all_pixel(void)
             wm_text(ttl, cx + 8, barY + 3 + (ch2 - ch) / 2, GMB_COL_CHIP_TEXT);
             cx += GMB_CHIP_W + GMB_CHIP_GAP;
         }
+        /* STATUSBAR "testo" (parità PixelWindow/taskbar C#: testo dopo i chip). Prima il
+         * runtime C disegnava solo i chip → il testo impostato da STATUSBAR con schermo
+         * grafico non appariva (capacità presente solo in C#). */
+        if (m->status_text[0])
+            wm_text(m->status_text, cx + 6, barY + 3 + (GMB_TASKBAR_H - 6 - ch) / 2, GMB_COL_CHIP_TEXT);
     }
+}
+
+/* ===== API pixel per il client C# (stato nel runtime C) =====
+ * Geometria delle finistre PIXEL: coordinate in PIXEL LOGICI; layout identico al compositor
+ * (title 24 px, padding client 6 px, pulsanti a destra, bordo resize 4 px). */
+
+void gmb_winstmt_pixel_client_rect(const char* name, int* out4)
+{
+    if (!out4) return;
+    out4[0] = out4[1] = out4[2] = out4[3] = 0;
+    gmb_winstmt_t* w = ws_find(name);
+    if (!w || w->id < 0) return;
+    gmb_managed_window_t* mw = gmb_window_manager_get(gmb_window_manager_static(), w->id);
+    if (!mw) return;
+    int titleh = GMB_WIN_TITLE_H; if (titleh > mw->rect.h / 2) titleh = mw->rect.h / 2;
+    out4[0] = mw->rect.x + GMB_WIN_PAD;
+    out4[1] = mw->rect.y + titleh;
+    out4[2] = mw->rect.w - 2 * GMB_WIN_PAD;
+    out4[3] = mw->rect.h - titleh - GMB_WIN_PAD;
+}
+
+/* 1 = close, 2 = minimize, 3 = maximize (0 = nessuno). */
+int gmb_winstmt_pixel_control_at(const char* name, int x, int y)
+{
+    gmb_winstmt_t* w = ws_find(name);
+    if (!w || w->id < 0) return 0;
+    gmb_managed_window_t* mw = gmb_window_manager_get(gmb_window_manager_static(), w->id);
+    if (!mw || mw->minimized) return 0;
+    if (y < mw->rect.y || y >= mw->rect.y + GMB_WIN_TITLE_H || mw->rect.w < 40) return 0;
+    int closeX = mw->rect.x + mw->rect.w - 24;
+    int maxX = closeX - 24;
+    int minX = maxX - 24;
+    if (x >= closeX && x < closeX + 20) return 1;
+    if (x >= maxX && x < maxX + 20) return 3;
+    if (x >= minX && x < minX + 20) return 2;
+    return 0;
+}
+
+/* Bitmask bordi (N=1 S=2 E=4 W=8) per il resize in pixel; 0 se non sul bordo. */
+int gmb_winstmt_pixel_resize_edge_at(const char* name, int x, int y)
+{
+    gmb_winstmt_t* w = ws_find(name);
+    if (!w || w->id < 0) return 0;
+    gmb_managed_window_t* mw = gmb_window_manager_get(gmb_window_manager_static(), w->id);
+    if (!mw || mw->minimized) return 0;
+    const int edge = 4;
+    int onE = (x >= mw->rect.x + mw->rect.w - edge && x <= mw->rect.x + mw->rect.w + edge);
+    int onS = (y >= mw->rect.y + mw->rect.h - edge && y <= mw->rect.y + mw->rect.h + edge);
+    int onW = (x >= mw->rect.x - edge && x <= mw->rect.x + edge);
+    int onN = (y >= mw->rect.y - edge && y <= mw->rect.y + edge) && y < mw->rect.y + GMB_WIN_TITLE_H;
+    return (onN ? 1 : 0) | (onS ? 2 : 0) | (onE ? 4 : 0) | (onW ? 8 : 0);
+}
+
+/* Chip taskbar pixel in (x,y): layout del compositor (chip da sinistra, minimizzate per z). */
+int gmb_winstmt_pixel_taskbar_chip_at(int x, int y)
+{
+    gmb_window_manager_t* m = gmb_window_manager_static();
+    int H = (int)(gmb_gfx_height() * (gmb_gfx_render_scale() < 1.0f ? 1.0f : gmb_gfx_render_scale()) + 0.5f);
+    int barY = H - GMB_TASKBAR_H;
+    if (y < barY || y >= H) return -1;
+    int cx = GMB_CHIP_GAP;
+    for (int z = 0; z < m->count; z++) {
+        /* minimizzate in ordine di z crescente (come il render) */
+        gmb_managed_window_t* best = NULL;
+        for (int i = 0; i < m->count; i++) {
+            gmb_managed_window_t* c = &m->windows[i];
+            if (!c->minimized || !c->pixel) continue;
+            int rank = 0;
+            for (int j = 0; j < m->count; j++)
+                if (m->windows[j].minimized && m->windows[j].pixel && m->windows[j].z < c->z) rank++;
+            if (rank == z) { best = c; break; }
+        }
+        if (!best) break;
+        if (x >= cx && x < cx + GMB_CHIP_W) return best->id;
+        cx += GMB_CHIP_W + GMB_CHIP_GAP;
+    }
+    return -1;
+}
+
+/* Imposta i colori di una finestra pixel (0 = tema). usato da COLOR/API. */
+void gmb_winstmt_set_colors(const char* name, unsigned int body, unsigned int fg, unsigned int title)
+{
+    gmb_winstmt_t* w = ws_find(name);
+    if (!w || w->id < 0) return;
+    gmb_managed_window_t* mw = gmb_window_manager_get(gmb_window_manager_static(), w->id);
+    if (!mw) return;
+    mw->body_color = body; mw->fg_color = fg; mw->title_color = title;
 }
 
 

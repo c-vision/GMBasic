@@ -246,7 +246,6 @@ set(GMB_ALL_SRCS
     src/gmb_semver.c
     src/gmb_math.c
     src/gmb_iowatch.c
-    src/gmb_optfit.c
     src/gmb_opt_pso.c
     src/gmb_regex_extra.c
     src/gmb_grep.c
@@ -1201,6 +1200,13 @@ add_executable(gmb_tui_focus_selftest tests/gmb_tui_focus_selftest.c)
 target_link_libraries(gmb_tui_focus_selftest PRIVATE gmb_runtime)
 target_include_directories(gmb_tui_focus_selftest PRIVATE include)
 add_test(NAME gmb_tui_focus_selftest COMMAND gmb_tui_focus_selftest)
+
+# Finestre PIXEL: capacità portate dal C# GfxWindowManager al runtime C (colori per-finestra,
+# client rect in pixel, hit-test titlebar/bordi, chip taskbar).
+add_executable(gmb_pixel_wm_selftest tests/gmb_pixel_wm_selftest.c)
+target_link_libraries(gmb_pixel_wm_selftest PRIVATE gmb_runtime)
+target_include_directories(gmb_pixel_wm_selftest PRIVATE include)
+add_test(NAME gmb_pixel_wm_selftest COMMAND gmb_pixel_wm_selftest)
 add_executable(gmb_tui_events_selfcheck tests/gmb_tui_events_selfcheck.c)
 target_link_libraries(gmb_tui_events_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_tui_events_selfcheck PRIVATE include)
