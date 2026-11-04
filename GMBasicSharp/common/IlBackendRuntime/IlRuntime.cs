@@ -14697,6 +14697,106 @@ public static double TextWidth(string s)
         return new object?[] { k, v };
     }
 
+    /// <summary>Istanza di CommonLib.Collections.Timeline&lt;T&gt;?</summary>
+    private static bool IsTimelineInstance(object? o)
+        => o is not null
+           && o.GetType().Name.StartsWith("Timeline", StringComparison.Ordinal)
+           && o.GetType().Namespace?.StartsWith("CommonLib.Collections", StringComparison.Ordinal) == true;
+
+    /// <summary>Istanza di CommonLib.Collections.Graph&lt;T&gt;?</summary>
+    private static bool IsGraphInstance(object? o)
+        => o is not null
+           && o.GetType().Name.StartsWith("Graph", StringComparison.Ordinal)
+           && o.GetType().Namespace?.StartsWith("CommonLib.Collections", StringComparison.Ordinal) == true;
+
+    /// <summary>Data seriale BASIC (OADate) di una chiave temporale.</summary>
+    private static double DateSerialOf(object? key) => key switch
+    {
+        DateTimeOffset dto => dto.DateTime.ToOADate(),
+        DateTime dt => dt.ToOADate(),
+        null => 0.0,
+        _ => SafeDouble(key)
+    };
+
+    private static object? ReadKv(object? kv, string prop)
+        => kv is null ? null : kv.GetType().GetProperty(prop)?.GetValue(kv);
+
+    /// <summary>Prima/ultima voce di una Timeline come {"Key":&lt;seriale&gt;,"Value":...}.</summary>
+    private static object? TimelineEdge(object timeline, bool last)
+    {
+        var mi = timeline.GetType().GetMethod(last ? "Last" : "First");
+        if (mi is null) return null;
+        object? kv;
+        try { kv = mi.Invoke(timeline, null); }
+        catch (System.Reflection.TargetInvocationException) { return null; }
+        if (kv is null) return null;
+        return new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            ["Key"] = DateSerialOf(ReadKv(kv, "Key")),
+            ["Value"] = ReadKv(kv, "Value")
+        };
+    }
+
+    /// <summary>GetRange(lo,hi) di una Timeline: lista di {"Key":seriale,"Value":...}.</summary>
+    private static object? TimelineRange(object timeline, object? lo, object? hi)
+    {
+        var mi = timeline.GetType().GetMethod("GetRange");
+        if (mi is null) return null;
+        var ptype = mi.GetParameters()[0].ParameterType;
+        object ConvertArg(object? a)
+        {
+            /* L'argomento può arrivare già come DateTime (il compilatore converte DateSerial
+             * per il parametro DateTimeOffset) oppure come numero seriale. */
+            if (a is DateTime dtArg)
+                return ptype == typeof(DateTimeOffset) ? new DateTimeOffset(dtArg) : dtArg;
+            if (a is DateTimeOffset dtoArg)
+                return ptype == typeof(DateTime) ? dtoArg.DateTime : dtoArg;
+            var serial = Convert.ToDouble(a, System.Globalization.CultureInfo.InvariantCulture);
+            if (ptype == typeof(DateTimeOffset)) return new DateTimeOffset(DateTime.FromOADate(serial));
+            if (ptype == typeof(DateTime)) return DateTime.FromOADate(serial);
+            return Convert.ChangeType(a, ptype, System.Globalization.CultureInfo.InvariantCulture)!;
+        }
+        object? res;
+        try { res = mi.Invoke(timeline, [ConvertArg(lo), ConvertArg(hi)]); }
+        catch (System.Reflection.TargetInvocationException) { return null; }
+        var rows = new List<Dictionary<string, object?>>();
+        if (res is System.Collections.IEnumerable en)
+            foreach (var kv in en)
+                rows.Add(new Dictionary<string, object?>(StringComparer.Ordinal)
+                {
+                    ["Key"] = DateSerialOf(ReadKv(kv, "Key")),
+                    ["Value"] = ReadKv(kv, "Value")
+                });
+        return rows;
+    }
+
+    /// <summary>Dijkstra di un Graph&lt;T&gt; come lista di record {"node","dist"}
+    /// (ordinata per nome nodo: forma canonica condivisa con il runtime C).</summary>
+    private static object? GraphDijkstraRows(object graph, object? start)
+    {
+        var mi = graph.GetType().GetMethod("Dijkstra");
+        if (mi is null || start is null) return null;
+        var ptype = mi.GetParameters()[0].ParameterType;
+        object arg;
+        try { arg = Convert.ChangeType(start, ptype, System.Globalization.CultureInfo.InvariantCulture)!; }
+        catch { arg = start; }
+        object? res;
+        try { res = mi.Invoke(graph, [arg]); }
+        catch (System.Reflection.TargetInvocationException) { return null; }
+        var rows = new List<Dictionary<string, object?>>();
+        if (res is System.Collections.IDictionary dist)
+            foreach (System.Collections.DictionaryEntry e in dist)
+                rows.Add(new Dictionary<string, object?>(StringComparer.Ordinal)
+                {
+                    ["node"] = Convert.ToString(e.Key, System.Globalization.CultureInfo.InvariantCulture),
+                    ["dist"] = SafeDouble(e.Value)
+                });
+        rows.Sort((a, b) => string.CompareOrdinal(
+            Convert.ToString(a["node"], System.Globalization.CultureInfo.InvariantCulture),
+            Convert.ToString(b["node"], System.Globalization.CultureInfo.InvariantCulture)));
+        return rows;
+    }
+
     /// <summary>F1: MaxPair/MinPair su IDictionary — chiave con valore max (true) o min
     /// (false). Confronto numerico se i valori sono numerici, stringa (ordinale) altrimenti.
     /// Parità semantica PCode/VMC (nessun backend la aveva prima).</summary>
@@ -14784,6 +14884,22 @@ public static double TextWidth(string s)
         // Add/Remove — dispatch specializzato sul tipo reale (Dictionary per Tree/AVL/Bag/...).
         switch (methodName.ToUpperInvariant())
         {
+            /* TIMELINE: First/Last/GetRange sono KeyValuePair<DateTimeOffset,T> nel CLR, che
+             * il serializzatore rende come {"Key":{},...} / stringhe ISO (IL) o come lista
+             * [k,v] (PCode): 4 forme diverse. Forma CANONICA unica (uguale a VM/C e C99):
+             * {"Key":<data seriale>, "Value":<valore>} — la chiave è il numero OADate che
+             * il BASIC usa in DateSerial. */
+            case "FIRST" when args.Length == 0 && IsTimelineInstance(instance):
+                return TimelineEdge(instance!, last: false);
+            case "LAST" when args.Length == 0 && IsTimelineInstance(instance):
+                return TimelineEdge(instance!, last: true);
+            case "GETRANGE" when args.Length == 2 && IsTimelineInstance(instance):
+                return TimelineRange(instance!, args[0], args[1]);
+            /* GRAPH.Dijkstra: nel CLR torna Dictionary<nodo,dist> (IL stampava una mappa
+             * {"A":0,...}, PCode una lista di KeyValuePair, VM/C e C99 una lista di record).
+             * Forma CANONICA unica: lista di {"node","dist"} ordinata per nome nodo. */
+            case "DIJKSTRA" when args.Length == 1 && IsGraphInstance(instance):
+                return GraphDijkstraRows(instance!, args[0]);
             // TREE/AVL/REDBLACK (IDictionary ordinato): Min/Max = COPPIA [chiave,valore]
             // della prima/ultima voce, come il P-Code (OP_CALL_MEMBER). Prima finivano in
             // CollectionMin/Max, che lavora sui VALORI e torna un double: TREE<STRING,INTEGER>
@@ -14832,6 +14948,16 @@ public static double TextWidth(string s)
             // BIT (Fenwick) materializzato come IDictionary (chiave=indice, valore=numero):
             // Query(idx) somma prefissa [0..idx], QueryRange(a,b) somma l'intervallo,
             // Update(idx,delta) somma un delta al valore esistente.
+            /* BITREE (BinaryIndexedTree<T> CommonLib): Query/QueryRange/Update non sono
+             * IDictionary → senza questi casi la riflessione non trovava nulla e si
+             * stampava 0 (CollectionsModern §10: IL 0/0/10 vs 6/9/19 delle altre gambe). */
+            case "QUERY" when args.Length == 1 && instance is CommonLib.Collections.BinaryIndexedTree<double> bitQ:
+                return bitQ.Query(Convert.ToInt32(args[0] ?? 0));
+            case "QUERYRANGE" when args.Length == 2 && instance is CommonLib.Collections.BinaryIndexedTree<double> bitQR:
+                return bitQR.QueryRange(Convert.ToInt32(args[0] ?? 0), Convert.ToInt32(args[1] ?? 0));
+            case "UPDATE" when args.Length == 2 && instance is CommonLib.Collections.BinaryIndexedTree<double> bitU:
+                bitU.Update(Convert.ToInt32(args[0] ?? 0), SafeDouble(args[1]));
+                return null;
             case "QUERY" when args.Length == 1 && instance is System.Collections.IDictionary qry:
                 return BitQuery(qry, 0.0, Convert.ToDouble(args[0]));
             case "QUERYRANGE" when args.Length == 2 && instance is System.Collections.IDictionary qrg:
@@ -14998,7 +15124,12 @@ public static double TextWidth(string s)
             // CACHE/collection chiave→valore (CommonLib IKeyValueIndexable): Keys/Values/
             // ContainsKey/Get via interfaccia non generica (niente reflection per nome).
             case "KEYS" when instance is CommonLib.Collections.IKeyValueIndexable kc:
-                return kc.Entries().Select(kv => kv.Key).ToArray();
+                /* Ordine CANONICO per nome chiave (C99/VM/C ordinano; Cache ha un
+                 * ConcurrentDictionary → ordine di hash instabile). */
+                return kc.Entries().Select(kv => kv.Key)
+                    .OrderBy(k => Convert.ToString(k, System.Globalization.CultureInfo.InvariantCulture),
+                             StringComparer.Ordinal)
+                    .ToArray();
             case "VALUES" when instance is CommonLib.Collections.IKeyValueIndexable vc:
                 return vc.Entries().Select(kv => kv.Value).ToArray();
             case "CONTAINSKEY" when instance is CommonLib.Collections.IKeyValueIndexable ck && args.Length >= 1:
@@ -19569,9 +19700,11 @@ public static double TextWidth(string s)
                 break;
             }
             case System.Collections.IEnumerable en: foreach (var v in en) result.Add(v); break;
-            // TRIE (non implementa IEnumerable): itera le parole in ordine (GetAllWords).
+            // TRIE (non implementa IEnumerable): FOR EACH/ToArray in ordine di INSERIMENTO
+            // (parità VM/C e C99, dove l'autorità è la lista companion del runtime C).
+            // L'ordine alfabetico/DFS resta GetAllWords (FindAll/StartsWith).
             case CommonLib.Collections.Trie trie:
-                foreach (var w in trie.GetAllWords()) result.Add(w);
+                foreach (var w in trie.Words) result.Add(w);
                 break;
             default: result.Add(collection); break;
         }

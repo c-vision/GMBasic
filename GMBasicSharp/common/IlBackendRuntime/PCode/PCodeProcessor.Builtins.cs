@@ -365,6 +365,19 @@ private static double[] ToDoubleArr(object? arg) => Basic.IlBackend.RuntimeFlatt
                     return 0.0; // String: 0-based
                 if (args.Length > 0 && args[0] is System.Collections.IDictionary)
                     return 0.0; // Dictionary: 0-based
+                /* Collezioni CommonLib (TRIE/BAG/HEAP/...): LBOUND 0 (0-based). Senza,
+                 * il fallback restituiva 1.0 → FOR EACH saltava il PRIMO elemento
+                 * (CollectionsModern: Trie "CAR" mancante su PCode). */
+                if (args.Length > 0 && args[0] is not null)
+                {
+                    var t0 = args[0]!.GetType();
+                    if (t0.Namespace?.StartsWith("CommonLib.Collections") == true
+                        || t0.Name.StartsWith("ConsistentHash") || t0.Name.StartsWith("Graph")
+                        || t0.Name.StartsWith("Timeline") || t0.Name.StartsWith("BinaryHeap")
+                        || t0.Name.StartsWith("Trie") || t0.Name.StartsWith("Cache")
+                        || t0.Name.StartsWith("SparseSet"))
+                        return 0.0;
+                }
                 // IList (List<object>, es. DIM x = [] + .Add(), o il risultato di AFILTER/
                 // AMAP/ecc.) mancava qui — cadeva nel fallback "1.0" mentre UBOUND per lo
                 // stesso IList restituisce sempre list.Count-1 (0-based, vedi sopra). Un FOR
@@ -375,6 +388,12 @@ private static double[] ToDoubleArr(object? arg) => Basic.IlBackend.RuntimeFlatt
                 // 16 prodotti) il conteggio sbagliato si nota subito.
                 if (args.Length > 0 && args[0] is System.Collections.IList)
                     return 0.0; // List: 0-based, come UBOUND
+                /* QUALSIASI collezione enumerabile (HASHSET/SORTEDSET/QUEUE/STACK/
+                 * LinkedList/...): 0-based, coerente con UBOUND. Senza, il FOR EACH
+                 * partiva da 1 e saltava il PRIMO elemento (CollectionsDictLists:
+                 * SetA/Queue/Stack con una riga in meno solo su PCode). */
+                if (args.Length > 0 && args[0] is System.Collections.IEnumerable && args[0] is not string)
+                    return 0.0;
                 return 1.0; // Default 1-based (vero Array VB-style dichiarato senza LBOUND esplicito)
             }
         },

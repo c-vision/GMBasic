@@ -466,6 +466,13 @@ char** gmb_graph_dfs(int64_t h, const char* start, int* out_len)
 }
 
 /* ---- Dijkstra (stessa semantica C#: distanze iniziali +inf, priority) ---- */
+static int graph_dist_cmp(const void* a, const void* b)
+{
+    const gmb_graph_dist_t* x = (const gmb_graph_dist_t*)a;
+    const gmb_graph_dist_t* y = (const gmb_graph_dist_t*)b;
+    return strcmp(x->node ? x->node : "", y->node ? y->node : "");
+}
+
 gmb_graph_dist_t* gmb_graph_dijkstra(int64_t h, const char* start, int* out_len)
 {
     *out_len = 0;
@@ -513,6 +520,10 @@ gmb_graph_dist_t* gmb_graph_dijkstra(int64_t h, const char* start, int* out_len)
         int k = 0;
         for (int i = 0; i < n; i++)
             if (dist[i] < 1e307) { out[k].node = nodes[i]->name; out[k].dist = dist[i]; k++; }
+        /* ordine CANONICO per nome nodo (identico su VM/C e C99, e alla forma
+         * {"node","dist"} ordinata di IL/PCode: CollectionsModern §8). */
+        if (k > 1)
+            qsort(out, (size_t)k, sizeof(gmb_graph_dist_t), graph_dist_cmp);
         *out_len = k;
     }
     free(dist);

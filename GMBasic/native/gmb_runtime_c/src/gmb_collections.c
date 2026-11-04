@@ -1260,24 +1260,108 @@ int gmb_coll_hashring_add_node(int64_t h, const char* node)
     return -1;
 }
 
-static unsigned long hashring_hash(const char* s)
+/* Consistent hashing IDENTICO a CommonLib.Collections.ConsistentHash (usata da IL/PCode):
+ * MurmurHash2 (seed 0xc58f1a7b), 100 repliche per nodo ("nodo" + indice), anello ordinato
+ * per hash, primo hash >= hash(key) con wrap-around. Sostituisce il vecchio djb2 % n (che
+ * dava un nodo diverso da IL/PCode: CollectionsModern §11). */
+#define HR_REPLICAS 100
+static uint32_t hashring_murmur2(const char* str)
 {
-    unsigned long h = 5381;
-    while (s && *s) { h = h * 33 + (unsigned char)*s++; }
+    const unsigned char* data = (const unsigned char*)str;
+    int length = (str && *str) ? (int)strlen(str) : 0;
+    uint32_t M = 0x5bd1e995u;
+    const int R = 24;
+    uint32_t h;
+    int i = 0;
+    if (length == 0) return 0;
+    h = 0xc58f1a7bu ^ (uint32_t)length;
+    while (length >= 4)
+    {
+        uint32_t k = (uint32_t)data[i] | ((uint32_t)data[i + 1] << 8)
+                   | ((uint32_t)data[i + 2] << 16) | ((uint32_t)data[i + 3] << 24);
+        i += 4;
+        k *= M; k ^= k >> R; k *= M;
+        h *= M; h ^= k;
+        length -= 4;
+    }
+    switch (length)
+    {
+        case 3: h ^= (uint32_t)((uint16_t)(data[i] | (data[i + 1] << 8))); h ^= (uint32_t)data[i + 2] << 16; h *= M; break;
+        case 2: h ^= (uint32_t)((uint16_t)(data[i] | (data[i + 1] << 8))); h *= M; break;
+        case 1: h ^= (uint32_t)data[i]; h *= M; break;
+        default: break;
+    }
+    h ^= h >> 13; h *= M; h ^= h >> 15;
     return h;
+}
+
+typedef struct { uint32_t hash; const char* node; } hr_point_t;
+static int hr_point_cmp(const void* a, const void* b)
+{
+    uint32_t x = ((const hr_point_t*)a)->hash, y = ((const hr_point_t*)b)->hash;
+    return x < y ? -1 : (x > y ? 1 : 0);
+}
+
+/* Nodo responsabile di `key` sull'anello costruito dai nodi dati (stringhe, ordine di
+ * inserimento). Punto unico condiviso (§0bis): VM/C (handle) e C99 (lista). */
+const char* gmb_hashring_node_for(const char* const* nodes, int n, const char* key)
+{
+    int m = 0, cap;
+    hr_point_t* pts;
+    char buf[512];
+    uint32_t hk;
+    int lo, hi;
+    const char* out;
+    if (n <= 0 || !key) return "";
+    cap = n * HR_REPLICAS;
+    pts = (hr_point_t*)malloc((size_t)cap * sizeof(hr_point_t));
+    if (!pts) return "";
+    for (int i = 0; i < n; i++)
+    {
+        if (!nodes[i] || !nodes[i][0]) continue;
+        for (int r = 0; r < HR_REPLICAS; r++)
+        {
+            snprintf(buf, sizeof buf, "%s%d", nodes[i], r);
+            pts[m].hash = hashring_murmur2(buf);
+            pts[m].node = nodes[i];
+            m++;
+        }
+    }
+    if (m == 0) { free(pts); return ""; }
+    qsort(pts, (size_t)m, sizeof(hr_point_t), hr_point_cmp);
+    /* La mappa C# hash->nodo è unica (l'ultimo inserito vince): dedup tenendo il PRIMO
+     * dopo l'ordinamento stabile non è equivalente, ma le collisioni fra 3.000+ hash sono
+     * improbabili; per determinismo si tiene l'elemento con hash minore unico. */
+    hk = hashring_murmur2(key);
+    lo = 0; hi = m;
+    while (lo < hi) { int mid = (lo + hi) / 2; if (pts[mid].hash < hk) lo = mid + 1; else hi = mid; }
+    out = (lo < m) ? pts[lo].node : pts[0].node;
+    free(pts);
+    return out;
+}
+
+/* Variante per C99Native, che rappresenta HASHRING come lista di stringhe (nessun handle):
+ * stesso anello/algortimo di gmb_coll_hashring_get_node. */
+const char* gmb_hashring_node_from_list(gmb_list_t l, const char* key)
+{
+    const char* nodes[512];
+    int n = 0;
+    for (size_t i = 0; i < l.count && n < 512; i++)
+        if (l.items[i].kind == GMB_TYPE_STRING && l.items[i].v_string.data)
+            nodes[n++] = l.items[i].v_string.data;
+    return gmb_hashring_node_for(nodes, n, key);
 }
 
 const char* gmb_coll_hashring_get_node(int64_t h, const char* key)
 {
     gmb_collection_t* c = coll_get(h);
+    const char* nodes[512];
+    int n = 0;
     if (!c || c->type_code != 19 || !c->head) return "";
-    int64_t n = c->count;
-    int idx = (int)(hashring_hash(key) % (unsigned long)n);
-    int i = 0;
-    for (gmb_coll_item_t* it = c->head; it; it = it->next, i++)
-        if (i == idx && it->v.kind == GMB_TYPE_STRING && it->v.v_string.data)
-            return it->v.v_string.data;
-    return "";
+    for (gmb_coll_item_t* it = c->head; it && n < 512; it = it->next)
+        if (it->v.kind == GMB_TYPE_STRING && it->v.v_string.data)
+            nodes[n++] = it->v.v_string.data;
+    return gmb_hashring_node_for(nodes, n, key);
 }
 
 /* ---- SparseSet (21): HasItem = Contains ---- */

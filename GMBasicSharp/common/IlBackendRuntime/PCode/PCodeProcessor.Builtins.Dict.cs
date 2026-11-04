@@ -32,8 +32,10 @@ internal sealed partial class PCodeProcessor
             _ = task;
             if (args.Length >= 1 && args[0] is System.Collections.IDictionary dkk) { return dkk.Keys.Cast<object>().ToArray(); }
             // Collection chiave→valore (Cache/RedBlack/BPlusTree, non IDictionary).
+            // Ordine CANONICO per nome chiave: Cache usa un ConcurrentDictionary (ordine di
+            // hash instabile) mentre C99/VM/C restituiscono le chiavi ordinate.
             if (args.Length >= 1 && args[0] is CommonLib.Collections.IKeyValueIndexable kvi)
-                return kvi.Entries().Select(kv => kv.Key).ToArray();
+                return SortedEntries(kvi).Select(kv => kv.Key).ToArray();
             return null;
         },
         [BuiltInFunction.DICT_VALUES] = (self, task, args) =>
@@ -42,7 +44,7 @@ internal sealed partial class PCodeProcessor
             if (args.Length >= 1 && args[0] is System.Collections.IDictionary ddv) { return ddv.Values.Cast<object>().ToArray(); }
             // Collection chiave→valore (Cache/RedBlack/BPlusTree).
             if (args.Length >= 1 && args[0] is CommonLib.Collections.IKeyValueIndexable kvi2)
-                return kvi2.Entries().Select(kv => kv.Value).ToArray();
+                return SortedEntries(kvi2).Select(kv => kv.Value).ToArray();
             return null;
         },
         [BuiltInFunction.DICT_ADD] = (self, task, args) =>
@@ -55,6 +57,17 @@ internal sealed partial class PCodeProcessor
             return null;
         },
     };
+
+    /// <summary>Voci di una collezione chiave→valore ordinate per nome chiave (ordine
+    /// canonico delle gambe C: Keys/Values deterministici).</summary>
+    private static List<KeyValuePair<object?, object?>> SortedEntries(CommonLib.Collections.IKeyValueIndexable kvi)
+    {
+        var list = kvi.Entries().ToList();
+        list.Sort((a, b) => string.CompareOrdinal(
+            Convert.ToString(a.Key, System.Globalization.CultureInfo.InvariantCulture),
+            Convert.ToString(b.Key, System.Globalization.CultureInfo.InvariantCulture)));
+        return list;
+    }
 
     private object? ExecuteBuiltInDict(PCodeTask task, BuiltInFunction fn, object?[] args)
         => DICTDispatch.TryGetValue(fn, out var handler)

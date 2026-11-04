@@ -323,6 +323,10 @@ gmb_list_t gmb_dict_values(gmb_dict_t d);
 gmb_list_t gmb_dict_values_sorted(gmb_dict_t d);
 gmb_dict_t gmb_dict_copy(gmb_dict_t d);
 gmb_list_t gmb_dict_extreme(gmb_dict_t* d, int want_max, int remove);
+/* Estremo come VAL dict {Key,Value} (TIMELINE.First/Last canonico) e range di entry con
+ * chiave numerica in [lo,hi] come lista di coppie {Key,Value}. */
+gmb_val_t gmb_dict_edge_pair_val(gmb_dict_t d, int want_max);
+gmb_val_t gmb_dict_entries_between(gmb_dict_t d, double lo, double hi);
 gmb_list_t gmb_dict_to_kvp(gmb_dict_t d);
 gmb_list_t gmb_list_shallow_copy(gmb_list_t l);
 gmb_list_t gmb_list_deep_copy(gmb_list_t l);

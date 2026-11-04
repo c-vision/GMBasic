@@ -123,6 +123,12 @@ gmb_val_t* gmb_coll_timeline_range(int64_t h, double lo, double hi, int* out_len
 
 /* HashRing (19): nodi come lista di stringhe; GetNode(key) → nodo via hash */
 int gmb_coll_hashring_add_node(int64_t h, const char* node);
+/* Nodo responsabile per `key` sull'anello dei nodi dati (stessa implementazione della
+ * classe CommonLib usata da IL/PCode). Usata anche da C99, che rappresenta HASHRING come
+ * lista di stringhe. Ritorna "" se non ci sono nodi. */
+const char* gmb_hashring_node_for(const char* const* nodes, int n, const char* key);
+/* Come sopra ma sui nodi di una LISTA (C99Native rappresenta HASHRING come lista). */
+const char* gmb_hashring_node_from_list(gmb_list_t l, const char* key);
 const char* gmb_coll_hashring_get_node(int64_t h, const char* key);
 
 /* SparseSet (21): HasItem = Contains */

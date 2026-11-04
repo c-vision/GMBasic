@@ -86,6 +86,10 @@ struct gmb_expr {
     /* REWRITE (linker C, pari a Linker.RewriteTarget/nExpression): arricchimento risolto. */
     int  resolved_sym;            /* id del simbolo risolto (-1 = non risolto) */
     char* resolved_type;          /* tipo risolto ("" / NULL = ignoto) */
+    /* Accesso SICURO `expr?` (coll[key]? / arr(i)?): su chiave/indice mancante il valore è
+     * NIL invece di un errore. Il parser marca l'espressione; l'emitter C99 stampa vuoto
+     * per il NaN-sentinella e `??` sceglie il fallback. */
+    int is_safe;
 };
 
 gmb_expr_t* gmb_expr_num(double v, int line);
