@@ -321,6 +321,7 @@ assorbita (non si stampa due volte).
 - `Matrix-Linalg-Manual` — sezione
 - `Optimize-Manual` — sezione
 - `Optimize-OR-Guida-Utente` — sezione
+- `Optimize-ORTools-Guida-Utente` — sezione
 - `Spatial-Guida-Utente` — sezione
 - `Special-Manual` — sezione
 - `Stats-Manual` — sezione

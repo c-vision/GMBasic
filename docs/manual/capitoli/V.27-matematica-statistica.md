@@ -166,7 +166,31 @@ rilassamento che ha prodotto il bound migliore e può non rispettare i vincoli. 
 rispetto all'ottimo intero è il gap di dualità, e si riduce aumentando le iterazioni
 (`09-Lagrangian.bas` confronta 10 e 200 iterazioni con l'ottimo calcolato per forza bruta).
 
-### 7.4 Esempio minimo
+### 7.4 Ricerca operativa completa (`ortools.inc`, 106 funzioni)
+
+Se il problema è classico — imballare, assegnare, trasportare, coprire, localizzare,
+sequenziare, instradare, simulare code, decidere con più criteri — la risposta è già scritta
+in `ortools.inc`: 106 funzioni divise per dominio (`PACK`, `ASSIGN`, `COVER`, `CP`, `ROUTING`,
+`SCHED`, `META`, `UTIL`, `DP`). Le convenzioni sono quelle del paragrafo precedente e una in
+più conta: **tutte le euristiche sono deterministiche**, perché nessuna usa il tempo come
+seed; due esecuzioni sullo stesso input danno lo stesso risultato su tutti e quattro i
+backend. È ciò che rende confrontabili due algoritmi sullo stesso problema e che permette di
+usare queste funzioni in un test automatico.
+
+Il valore di ritorno è sempre l'oggetto del problema (costo, makespan, numero di contenitori
+o di rotte, `-1`/`0` per errore), mentre la **soluzione** — l'assegnamento, il giro, la
+sequenza, i moltiplicatori — si legge da un array `out()` che il chiamante dimensiona: `n`
+per un vettore di decisioni, `m*n` per un piano di trasporto, `pop*d` più il fronte per
+NSGA-II. Non ci sono struct da costruire: l'ABI FFI non le restituisce, e questo è il motivo
+per cui anche le funzioni più articolate (`PROJECTPERT`, `VRPTIMEWINDOWS`, `METANSGA2`) restano
+chiamabili da BASIC in una riga.
+
+Tre trappole sono documentate dai test: `TSPHKBOUND` restituisce un **lower bound** e non un
+giro; `CHANCECONSTRAINT` interpreta `alpha` come **coda** della distribuzione (0.05, non
+0.95); `TSPDFJ` vuole un `tour()` già inizializzato perché è un MIP con tagli, non un
+costruttivo.
+
+### 7.5 Esempio minimo
 
 ```basic
 IMPORT OPTIMIZE
@@ -213,6 +237,187 @@ PRINT out(1), init(0), init(1), init(2), init(3)      ' 14  0 1 2 3
 
 
 
+
+
+<!-- BEGIN DOMAIN TABLE -->
+## Tavola sinottica del dominio
+
+Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
+nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
+
+- **MATH.ABS(x1)** — `PRINT "ABS(-10.5): "; MATH.ABS(-10.5)` (shared/samples/Math/MathLogarithms.bas:74)
+- **MATH.ACOS(x1)** — `PRINT "Arcocoseno (ACOS) di 0:     "; MATH.ACOS(0); " (rad)"` (shared/samples/Math/MathTrigonometry.bas:47)
+- **MATH.ASIN(x1)** — `PRINT "Arcoseno (ASIN) di 1:       "; MATH.ASIN(1); " (rad)"` (shared/samples/Math/MathTrigonometry.bas:44)
+- **MATH.ATN(x1)** — `PRINT "ATN(1)  = "; ROUND(MATH.RAD2DEG(MATH.ATN(1)), 6); " deg"` (shared/samples/Math/MathAtnVectorAngle.bas:28)
+- **MATH.AVG()** — `media = MATH.AVG(risparmi)` (shared/samples/Math/PianificazioneRisparmi.bas:19)
+- **MATH.COSH(x1)** — `PRINT "Coseno Iperbolico (COSH) di 1:  "; MATH.COSH(1)` (shared/samples/Math/MathTrigonometry.bas:63)
+- **MATH.CEILING(x1)** — `PRINT "  CEILING(num):  "; MATH.CEILING(num_pos)` (shared/samples/Math/MathLogarithms.bas:59)
+- **MATH.CLAMP(x1, x2, x3)** — `PRINT "CLAMP(150, 0, 100): "; MATH.CLAMP(val, 0, 100); " (Atteso 100)"` (shared/samples/Math/MathCombinatorics.bas:70)
+- **MATH.COMB(x1, x2)** — `PRINT "COMB("; n; ", "; k; "):   "; MATH.COMB(n, k)` (shared/samples/Math/MathCombinatorics.bas:39)
+- **MATH.COS(x1)** — `PRINT "Coseno (COS):     "; MATH.COS(angle_rad)` (shared/samples/Math/MathTrigonometry.bas:33)
+- **MATH.DEG2RAD(x1)** — `DIM angle_rad = MATH.DEG2RAD(angle_deg)` (shared/samples/Math/MathTrigonometry.bas:27)
+- **MATH.EXP(x1)** — `ys(0) = 1.0 : ys(1) = MATH.EXP(0.5) : ys(2) = MATH.EXP(1.0) : ys(3) = MATH.EXP(1.5) : ys(4) = MATH.E…` (shared/samples/include/optimize/05-Fitting.bas:9)
+- **MATH.FACT(x1)** — `PRINT "FACT("; n; "):      "; MATH.FACT(n)` (shared/samples/Math/MathCombinatorics.bas:31)
+- **MATH.FIX(x1)** — `PRINT "  FIX(num):      "; MATH.FIX(num_pos)` (shared/samples/Math/MathLogarithms.bas:56)
+- **MATH.FLOOR(x1)** — `PRINT "  FLOOR(num):    "; MATH.FLOOR(num_pos)` (shared/samples/Math/MathLogarithms.bas:58)
+- **MATH.HYPOT(x1, x2)** — `PRINT "HYPOT(3, 4):        "; MATH.HYPOT(3, 4)` (shared/samples/Math/MathCombinatorics.bas:66)
+- **MATH.INT(x1)** — `PRINT "  INT(num):      "; MATH.INT(num_pos)` (shared/samples/Math/MathLogarithms.bas:57)
+- **MATH.ISNUMERIC(x1)** — `IF MATH.ISNUMERIC(Input) THEN` (shared/samples/Types/TypesAny.bas:91)
+- **MATH.LOG(x1)** — `PRINT "LOG(e):                     "; MATH.LOG(e); " (Atteso: 1)"` (shared/samples/Math/MathLogarithms.bas:34)
+- **MATH.LOG10(x1)** — `PRINT "LOG10(1000):                "; MATH.LOG10(1000); " (Atteso: 3)"` (shared/samples/Math/MathLogarithms.bas:37)
+- **MATH.MAX()** — `GmbStats = "mean=" + STR$(STATS.MEAN(n)) + " max=" + STR$(MATH.MAX(n[0], n[1], n[2])) + " min=" + ST…` (shared/samples/Ai/McpCapabilityServer.bas:51)
+- **MATH.MIN()** — `PRINT "MIN(3, 1, 4, 1, 5, 9): "; MATH.MIN(3, 1, 4, 1, 5, 9) ' Atteso: 1` (shared/samples/Math/MathExtended.bas:43)
+- **MATH.PERM(x1, x2)** — `PRINT "PERM("; n; ", "; k; "):   "; MATH.PERM(n, k)` (shared/samples/Math/MathCombinatorics.bas:35)
+- **MATH.PI()** — `SerieStagionale(si) = (si * 0.1) + SIN(si * 2 * MATH.PI() / 12) * 5 + (MATH.RND() - 0.5)` (shared/samples/TimeSeries/TimeSeriesAdvanced.bas:63)
+- **MATH.PYTHAGORAS(x1, x2)** — `820 PRINT "PYTHAGORAS(3, 4) =", PYTHAGORAS(3, 4); "(Atteso: 5)"` (shared/samples/Types/TypesConversions.bas:135)
+- **MATH.RAD2DEG(x1)** — `PRINT "ATN(1)  = "; ROUND(MATH.RAD2DEG(MATH.ATN(1)), 6); " deg"` (shared/samples/Math/MathAtnVectorAngle.bas:28)
+- **MATH.RANGE()** — `PRINT "MATH.RANGE — Sequenze numeriche"` (shared/samples/Math/RangeDemo.bas:12)
+- **MATH.RND()** — `Prices(i) = Prices(i-1) * (1 + (MATH.RND() - 0.5) * 0.02)` (shared/samples/TimeSeries/TimeSeriesTests.bas:34)
+- **MATH.ROUND(x1)** — `PRINT "scostamento: "; MATH.ROUND(scostamento, 2); " EUR"` (shared/samples/Databases/ContabilitaPasticceria.bas:69)
+- **MATH.SINH(x1)** — `PRINT "Seno Iperbolico (SINH) di 1:    "; MATH.SINH(1)` (shared/samples/Math/MathTrigonometry.bas:62)
+- **MATH.SGN(x1)** — `PRINT "SGN(-10.5): "; MATH.SGN(-10.5)` (shared/samples/Math/MathLogarithms.bas:75)
+- **MATH.SIN(x1)** — `PRINT "Seno (SIN):       "; MATH.SIN(angle_rad)` (shared/samples/Math/MathTrigonometry.bas:32)
+- **MATH.SQR(x1)** — `PRINT "SQR(25):                    "; MATH.SQR(25); " (Atteso: 5)"` (shared/samples/Math/MathLogarithms.bas:43)
+- **MATH.SUM()** — `SPEED SELECT Clienti.Nome AS NomeCliente, SUM(Ordini.Importo) AS TotaleImporto INTO ris() OF Risulta…` (shared/samples/Databases/DbSpeedFullTests.bas:261)
+- **MATH.TANH(x1)** — `PRINT "Tangente Iperbolica (TANH) di 1: "; MATH.TANH(1)` (shared/samples/Math/MathTrigonometry.bas:64)
+- **MATH.TAN(x1)** — `PRINT "Tangente (TAN):   "; MATH.TAN(angle_rad)` (shared/samples/Math/MathTrigonometry.bas:34)
+- **MATH.TRUNC(x1)** — `PRINT "  TRUNC(num, 2): "; MATH.TRUNC(num_pos, 2)` (shared/samples/Math/MathLogarithms.bas:55)
+- **MATRIX.ABOVEMASK(x1, x2)** — `DIM flatMask() = MATRIX.ABOVEMASK(rowsBroadcast, 15.0)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:51)
+- **MATRIX.ABOVEMATRIX(x1, x2)** — `DIM matrixMask() = MATRIX.ABOVEMATRIX(rowsBroadcast, 15.0)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:52)
+- **MATRIX.ADDCOLVECTOR(x1, x2)** — `DIM columnsBroadcast = MATRIX.ADDCOLVECTOR(m, columnVector)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:42)
+- **MATRIX.ADDROWVECTOR(x1, x2)** — `DIM rowsBroadcast = MATRIX.ADDROWVECTOR(m, rowVector)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:41)
+- **MATRIX.ARGMAX(x1)** — `DIM amax() = MATRIX.ARGMAX(m)` (shared/samples/Arrays/MatrixArgmaxShadow.bas:20)
+- **MATRIX.ARGMIN(x1)** — `DIM amin() = MATRIX.ARGMIN(m)` (shared/samples/Arrays/MatrixArgmaxShadow.bas:21)
+- **MATRIX.ASCSV(x1)** — `PRINT "ASCSV="; MATRIX.ASCSV(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:57)
+- **MATRIX.ASJSON(x1)** — `PRINT "ASJSON="; MATRIX.ASJSON(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:58)
+- **MATRIX.BLOCKDIAG(x1, x2)** — `bd = MATRIX.BLOCKDIAG(h, h)` (shared/samples/Math/MatrixFunctionsSciPyParity.bas:27)
+- **MATRIX.CIRCULANT(x1)** — `cc = MATRIX.CIRCULANT(c1)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:49)
+- **MATRIX.CLONEMATRIX(x1)** — `DIM cloned = MATRIX.CLONEMATRIX(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:60)
+- **MATRIX.COLMEANS(x1)** — `DIM meansByColumn() = MATRIX.COLMEANS(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:13)
+- **MATRIX.COLSUMS(x1)** — `DIM sumsByColumn() = MATRIX.COLSUMS(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:11)
+- **MATRIX.COLUMNCOUNT(x1)** — `PRINT "COLUMNCOUNT="; MATRIX.COLUMNCOUNT(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:64)
+- **MATRIX.COLVARIANCES(x1)** — `DIM variancesByColumn() = MATRIX.COLVARIANCES(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:15)
+- **MATRIX.CONCATCOLS(x1, x2)** — `DIM columnsJoined = MATRIX.CONCATCOLS(m, m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:40)
+- **MATRIX.CONCATROWS(x1, x2)** — `DIM rowsJoined = MATRIX.CONCATROWS(m, m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:39)
+- **MATRIX.CREATE(x1, x2)** — `h = MATRIX.CREATE(2, 2)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:7)
+- **MATRIX.GETVALUE(x1, x2, x3)** — `FOR k = 0 TO 4: re(k) = MATRIX.GETVALUE(rf, k, 0): im(k) = MATRIX.GETVALUE(rf, k, 1): NEXT` (shared/samples/Analysis/AnalysisMiniTest.bas:20)
+- **MATRIX.HANKEL(x1, x2)** — `hk = MATRIX.HANKEL(c1, r1)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:47)
+- **MATRIX.ISLOWERTRIANGULAR(x1)** — `PRINT "LOWER="; MATRIX.ISLOWERTRIANGULAR(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:31)
+- **MATRIX.ISORTHOGONAL(x1)** — `PRINT "ORTHOGONAL="; MATRIX.ISORTHOGONAL(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:29)
+- **MATRIX.ISSYMMETRIC(x1)** — `PRINT "SYMMETRIC="; MATRIX.ISSYMMETRIC(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:28)
+- **MATRIX.ISUPPERTRIANGULAR(x1)** — `PRINT "UPPER="; MATRIX.ISUPPERTRIANGULAR(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:30)
+- **MATRIX.KRONECKER(x1, x2)** — `k = MATRIX.KRONECKER(h, h)` (shared/samples/Math/MatrixFuncSciPyParity.bas:10)
+- **MATRIX.LOADCSV(x1)** — `DIM csvMatrix = MATRIX.LOADCSV("samples/Fixtures/MatrixIdentity.csv")` (shared/samples/Matrix/MatrixCommonLibSimd.bas:69)
+- **MATRIX.LOADJSON(x1)** — `DIM jsonMatrix = MATRIX.LOADJSON("samples/Fixtures/MatrixIdentity.json")` (shared/samples/Matrix/MatrixCommonLibSimd.bas:70)
+- **MATRIX.MAXVALUE(x1)** — `PRINT "MAXVALUE="; MATRIX.MAXVALUE(rowsBroadcast)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:53)
+- **MATRIX.MINVALUE(x1)** — `PRINT "MINVALUE="; MATRIX.MINVALUE(rowsBroadcast)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:54)
+- **MATRIX.MULTIPLY(x1, x2)** — `DIM mul = MATRIX.MULTIPLY(a, a)` (shared/samples/Matrix/MatrixDecompositions.bas:26)
+- **MATRIX.MULTIPLYLEFTVECTOR(x1, x2)** — `DIM leftProduct() = MATRIX.MULTIPLYLEFTVECTOR(m, columnVector)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:62)
+- **MATRIX.MULTIPLYVECTOR(x1, x2)** — `DIM rightProduct() = MATRIX.MULTIPLYVECTOR(m, rowVector)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:61)
+- **MATRIX.RESHAPE(x1, x2, x3)** — `DIM reshaped = MATRIX.RESHAPE(m, 1, 9)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:38)
+- **MATRIX.ROWCOUNT(x1)** — `PRINT "welchrows ="; MATRIX.ROWCOUNT(w)` (shared/samples/Math/SciPyP1Parity.bas:12)
+- **MATRIX.ROWMEANS(x1)** — `DIM meansByRow() = MATRIX.ROWMEANS(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:12)
+- **MATRIX.ROWSUMS(x1)** — `DIM sumsByRow() = MATRIX.ROWSUMS(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:10)
+- **MATRIX.ROWVARIANCES(x1)** — `DIM variancesByRow() = MATRIX.ROWVARIANCES(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:14)
+- **MATRIX.SETVALUE(x1, x2, x3, x4)** — `h = MATRIX.SETVALUE(h, 0, 0, 2) : h = MATRIX.SETVALUE(h, 0, 1, 1)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:8)
+- **MATRIX.SLICE(x1, x2, x3, x4, x5)** — `DIM sliced = MATRIX.SLICE(m, 0, 2, 0, 2)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:37)
+- **MATRIX.TOEPLITZ(x1, x2)** — `tp = MATRIX.TOEPLITZ(c1, r1)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:44)
+- **MATRIX.TRACE(x1)** — `PRINT "trace="; MATH.ROUND(MATRIX.TRACE(a), 6)` (shared/samples/Matrix/MatrixDecompositions.bas:15)
+- **MATRIX.TRANSPOSE(x1)** — `DIM tr = MATRIX.TRANSPOSE(a)` (shared/samples/Matrix/MatrixDecompositions.bas:24)
+- **STATS.ANOVA(x1)** — `result = STATS.ANOVA(groups)` (shared/samples/Analysis/StatsSciPyParity.bas:22)
+- **STATS.BERNOULLIPMF(x1, x2)** — `PRINT "BERNOULLIPMF(1,0.5): "; FORMAT(STATS.BERNOULLIPMF(1,0.5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:154)
+- **STATS.BETACDF(x1, x2, x3)** — `PRINT "BETACDF(0.5,2,2): "; FORMAT(STATS.BETACDF(0.5,2,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:140)
+- **STATS.BETAPDF(x1, x2, x3)** — `PRINT "BETAPDF(0.5,2,2): "; FORMAT(STATS.BETAPDF(0.5,2,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:139)
+- **STATS.BETAPPF(x1, x2, x3)** — `PRINT "betappf  ="; STATS.BETAPPF(0.5, 2, 3)` (shared/samples/Math/StatsInverseSciPyParity.bas:15)
+- **STATS.BINOMIALPMF(x1, x2, x3)** — `PRINT "BINOMIALPMF(3,10,0.5): "; FORMAT(STATS.BINOMIALPMF(3,10,0.5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:155)
+- **STATS.CHI2(x1, x2)** — `DIM chi2 = STATS.CHI2(observed, expected)` (shared/samples/Analysis/StatsCategoricalTests.bas:10)
+- **STATS.CHI2CON(x1)** — `r = STATS.CHI2CON(tb)` (shared/samples/Math/StatsSciPyParityP0.bas:32)
+- **STATS.CHICDF(x1, x2)** — `PRINT "CHICDF(1,2):   "; FORMAT(STATS.CHICDF(1,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:136)
+- **STATS.CHIPDF(x1, x2)** — `PRINT "CHIPDF(1,2):   "; FORMAT(STATS.CHIPDF(1,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:135)
+- **STATS.CHIPPF(x1, x2)** — `PRINT "chippf   ="; STATS.CHIPPF(0.9, 7)` (shared/samples/Math/StatsInverseSciPyParity.bas:13)
+- **STATS.CHISQUAREDCDF(x1, x2)** — `PRINT "CHISQUAREDCDF(1,2): "; FORMAT(STATS.CHISQUAREDCDF(1,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:138)
+- **STATS.CHISQUAREDISF(x1, x2)** — `PRINT "chi2isf  ="; STATS.CHISQUAREDISF(0.05, 5)` (shared/samples/Math/StatsInverseSciPyParity.bas:20)
+- **STATS.CHISQUAREDPDF(x1, x2)** — `PRINT "CHISQUAREDPDF(1,2): "; FORMAT(STATS.CHISQUAREDPDF(1,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:137)
+- **STATS.CHISQUAREDPPF(x1, x2)** — `PRINT "chi2ppf  ="; STATS.CHISQUAREDPPF(0.95, 5)` (shared/samples/Math/StatsInverseSciPyParity.bas:12)
+- **STATS.CHISQUAREDSF(x1, x2)** — `PRINT "chi="; MATH.ROUND(STATS.ChiSquaredSf(3.841459, 1), 6)` (shared/minitests/stats/sf_extra.bas:5)
+- **STATS.CORRELATION(x1, x2)** — `DIM Corr = STATS.Correlation(Dataset1, Dataset2)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:59)
+- **STATS.COVARIANCE(x1, x2)** — `PRINT "cov="; MATH.ROUND(STATS.Covariance(x, y), 6)` (shared/minitests/stats/covariance.bas:6)
+- **STATS.DESCRIBE(x1)** — `r = STATS.DESCRIBE(v)` (shared/samples/Math/StatsSciPyParityP0.bas:60)
+- **STATS.EXPONENTIALCDF(x1, x2)** — `PRINT "EXPONENTIALCDF(1,2): "; FORMAT(STATS.EXPONENTIALCDF(1,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:148)
+- **STATS.EXPONENTIALISF(x1, x2)** — `PRINT "expisf   ="; STATS.EXPONENTIALISF(0.05, 0.5)` (shared/samples/Math/StatsInverseSciPyParity.bas:22)
+- **STATS.EXPONENTIALPDF(x1, x2)** — `PRINT "EXPONENTIALPDF(1,2): "; FORMAT(STATS.EXPONENTIALPDF(1,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:147)
+- **STATS.EXPONENTIALPPF(x1, x2)** — `PRINT "expppf   ="; STATS.EXPONENTIALPPF(0.9, 0.5)` (shared/samples/Math/StatsInverseSciPyParity.bas:16)
+- **STATS.EXPONENTIALSF(x1, x2)** — `PRINT "exp="; MATH.ROUND(STATS.ExponentialSf(2, 1.0), 6)` (shared/minitests/stats/sf_extra.bas:3)
+- **STATS.FCDF(x1, x2, x3)** — `PRINT "FCDF(1,5,10):  "; FORMAT(STATS.FCDF(1,5,10), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:146)
+- **STATS.FISF(x1, x2, x3)** — `PRINT "fisf     ="; STATS.FISF(0.05, 3, 8)` (shared/samples/Math/StatsInverseSciPyParity.bas:21)
+- **STATS.FPDF(x1, x2, x3)** — `PRINT "FPDF(1,5,10):  "; FORMAT(STATS.FPDF(1,5,10), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:145)
+- **STATS.FPPF(x1, x2, x3)** — `PRINT "fppf     ="; STATS.FPPF(0.95, 3, 8)` (shared/samples/Math/StatsInverseSciPyParity.bas:14)
+- **STATS.FSF(x1, x2, x3)** — `PRINT "f="; MATH.ROUND(STATS.FSf(1.0, 5, 10), 6)` (shared/minitests/stats/sf_weibull_f.bas:4)
+- **STATS.FISHER(x1, x2, x3, x4)** — `DIM fisher = STATS.FISHER(8, 2, 1, 5)` (shared/samples/Analysis/StatsCategoricalTests.bas:14)
+- **STATS.GAMMACDF(x1, x2, x3)** — `PRINT "gammacdf="; STATS.GAMMACDF(2, 3, 4)` (shared/samples/Math/StatsCdfPdfSciPyParity.bas:15)
+- **STATS.GAMMAISF(x1, x2, x3)** — `PRINT "gammaisf ="; MATH.ROUND(STATS.GAMMAISF(2, 1, 0.05), 9)` (shared/samples/Math/StatsInverseSciPyParity.bas:23)
+- **STATS.GAMMAPDF(x1, x2, x3)** — `PRINT "gammapdf="; STATS.GAMMAPDF(2, 3, 4)` (shared/samples/Math/StatsCdfPdfSciPyParity.bas:16)
+- **STATS.GAMMAPPF(x1, x2, x3)** — `PRINT "gppf="; MATH.ROUND(STATS.GammaPpf(2, 1, 0.5), 6)` (shared/minitests/stats/stats_all.bas:222)
+- **STATS.GAMMASF(x1, x2, x3)** — `DIM sf = STATS.GammaSf(2, 1, x)` (shared/minitests/stats/gamma_sf.bas:4)
+- **STATS.GEOMETRICPMF(x1, x2)** — `PRINT "GEOMETRICPMF(3,0.5): "; FORMAT(STATS.GEOMETRICPMF(3,0.5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:157)
+- **STATS.HYPERGEOMETRICPMF(x1, x2, x3, x4)** — `PRINT "HYPERGEOMETRICPMF(2,5,10,20): "; FORMAT(STATS.HYPERGEOMETRICPMF(2,20,10,5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:159)
+- **STATS.IQR(x1)** — `PRINT "iqr      ="; MATH.ROUND(STATS.IQR(x), 6)` (shared/samples/Math/StatsSciPyParityP0.bas:20)
+- **STATS.JARQUEBERA(x1)** — `r = STATS.JARQUEBERA(z)` (shared/samples/Math/StatsSciPyParityP0.bas:58)
+- **STATS.KS(x1, x2)** — `result = STATS.KS(x, y)` (shared/samples/Analysis/StatsSciPyParity.bas:34)
+- **STATS.KURTOSIS(x1)** — `PRINT "Curtosi (Kurtosis):   "; MATH.ROUND(STATS.Kurtosis(Dataset1), 4)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:57)
+- **STATS.KURTOSISTEST(x1)** — `r = STATS.KURTOSISTEST(z)` (shared/samples/Math/StatsSciPyParityP0.bas:56)
+- **STATS.LINREGRESS(x1, x2)** — `r = STATS.LINREGRESS(x, y)` (shared/samples/Math/StatsSciPyParityP0.bas:48)
+- **STATS.LOGISTICPDF(x1, x2, x3)** — `PRINT "LOGISTICPDF(0,0,1): "; FORMAT(STATS.LOGISTICPDF(0,0,1), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:150)
+- **STATS.LOGISTICPPF(x1, x2, x3)** — `PRINT "logippf  ="; STATS.LOGISTICPPF(0.5, 0, 1)` (shared/samples/Math/StatsInverseSciPyParity.bas:24)
+- **STATS.LOGNORMALCDF(x1)** — `PRINT "LOGNORMALCDF(1): "; FORMAT(STATS.LOGNORMALCDF(1), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:134)
+- **STATS.LOGNORMALPDF(x1)** — `PRINT "LOGNORMALPDF(1): "; FORMAT(STATS.LOGNORMALPDF(1), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:133)
+- **STATS.LOGNORMALPPF(x1)** — `PRINT "logppf   ="; STATS.LOGNORMALPPF(0.9, 1, 0.5)` (shared/samples/Math/StatsInverseSciPyParity.bas:18)
+- **STATS.MAX(x1)** — `PRINT "max="; STATS.MAX(x)` (shared/minitests/stats/max_min.bas:4)
+- **STATS.MIN(x1)** — `PRINT "min="; STATS.MIN(x)` (shared/minitests/stats/max_min.bas:5)
+- **STATS.MAD(x1)** — `PRINT "MAD (Median Abs Dev): "; STATS.MAD(Dataset1)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:50)
+- **STATS.MANNWHITNEY(x1, x2)** — `r = STATS.MANNWHITNEY(x, y)` (shared/samples/Math/StatsSciPyParityP0.bas:50)
+- **STATS.MEAN(x1)** — `PRINT "Media (Mean):         "; STATS.Mean(Dataset1)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:41)
+- **STATS.MEDIAN(x1)** — `PRINT "Mediana (Median):     "; STATS.Median(Dataset1)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:42)
+- **STATS.MODE(x1)** — `PRINT "mode="; STATS.Mode(a)` (shared/minitests/stats/stats_all.bas:226)
+- **STATS.MOMENT(x1, x2)** — `PRINT "STATS.MOMENT — momenti del campione 1..10"` (shared/samples/Analysis/StatsMoment.bas:25)
+- **STATS.NEGATIVEBINOMIALPMF(x1, x2, x3)** — `PRINT "NEGATIVEBINOMIALPMF(3,5,0.5): "; FORMAT(STATS.NEGATIVEBINOMIALPMF(3,5,0.5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:158)
+- **STATS.NORMALCDF(x1)** — `PRINT "NORMALCDF(0):  "; FORMAT(STATS.NORMALCDF(0), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:132)
+- **STATS.NORMALISF(x1)** — `PRINT "normisf  ="; STATS.NORMALISF(0.025, 0, 1)` (shared/samples/Math/StatsInverseSciPyParity.bas:19)
+- **STATS.NORMALPDF(x1)** — `PRINT "STATS.NORMALPDF(0):  "; FORMAT(STATS.NORMALPDF(0), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:131)
+- **STATS.NORMALPPF(x1)** — `PRINT "normppf  ="; STATS.NORMALPPF(0.975, 1, 2)` (shared/samples/Math/StatsInverseSciPyParity.bas:9)
+- **STATS.NORMALTEST(x1)** — `result = STATS.NORMALTEST(normal)` (shared/samples/Analysis/StatsSciPyParity.bas:30)
+- **STATS.PARETOPDF(x1, x2, x3)** — `PRINT "PARETOPDF(1,2,3): "; FORMAT(STATS.PARETOPDF(1,2,3), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:149)
+- **STATS.PARETOPPF(x1, x2, x3)** — `PRINT "paretoppf="; STATS.PARETOPPF(0.9, 3, 2)` (shared/samples/Math/StatsInverseSciPyParity.bas:25)
+- **STATS.PEARSONR(x1, x2)** — `r = STATS.PEARSONR(x, y)` (shared/samples/Math/StatsSciPyParityP0.bas:44)
+- **STATS.PERCENTILE(x1, x2)** — `DIM P90 = STATS.PERCENTILE(Dataset1, 0.90)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:67)
+- **STATS.POISSONPMF(x1, x2)** — `PRINT "POISSONPMF(3,2): "; FORMAT(STATS.POISSONPMF(3,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:156)
+- **STATS.RANGE(x1)** — `PRINT "range="; STATS.RANGE(x)` (shared/minitests/stats/range.bas:5)
+- **STATS.SHAPIRO(x1)** — `result = STATS.SHAPIRO(normal)` (shared/samples/Analysis/StatsSciPyParity.bas:28)
+- **STATS.SKEWTEST(x1)** — `r = STATS.SKEWTEST(z)` (shared/samples/Math/StatsSciPyParityP0.bas:54)
+- **STATS.SKEWEDNORMALPDF(x1)** — `PRINT "SKEWEDNORMALPDF(0): "; FORMAT(STATS.SKEWEDNORMALPDF(0), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:153)
+- **STATS.SKEWNESS(x1)** — `PRINT "Asimmetria (Skewness):"; MATH.ROUND(STATS.Skewness(DatasetSkew), 4)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:56)
+- **STATS.SPEARMANR(x1, x2)** — `r = STATS.SPEARMANR(x, y)` (shared/samples/Math/StatsSciPyParityP0.bas:46)
+- **STATS.STDDEV(x1)** — `PRINT "Dev. Standard (StdDev): "; MATH.ROUND(STATS.StdDev(Dataset1), 4)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:49)
+- **STATS.STUDENTTCDF(x1, x2)** — `PRINT "STUDENTTCDF(0,5): "; FORMAT(STATS.STUDENTTCDF(0,5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:142)
+- **STATS.STUDENTTISF(x1, x2)** — `PRINT "tisf     ="; STATS.STUDENTTISF(0.025, 10)` (shared/samples/Math/StatsInverseSciPyParity.bas:11)
+- **STATS.STUDENTTPDF(x1, x2)** — `PRINT "STUDENTTPDF(0,5): "; FORMAT(STATS.STUDENTTPDF(0,5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:141)
+- **STATS.STUDENTTPPF(x1, x2)** — `PRINT "tppf     ="; STATS.STUDENTTPPF(0.975, 10)` (shared/samples/Math/StatsInverseSciPyParity.bas:10)
+- **STATS.STUDENTTSF(x1, x2)** — `PRINT "stud="; MATH.ROUND(STATS.StudentTSf(1.959964, 1000), 6)` (shared/minitests/stats/sf_extra.bas:4)
+- **STATS.TTEST(x1, x2)** — `DIM result = STATS.TTEST(x, y)` (shared/samples/Analysis/StatsSciPyParity.bas:16)
+- **STATS.TTESTONESAMPLE(x1, x2)** — `result = STATS.TTESTONESAMPLE(x, 5.0)` (shared/samples/Analysis/StatsSciPyParity.bas:20)
+- **STATS.TTESTPAIRED(x1, x2)** — `result = STATS.TTESTPAIRED(x, paired)` (shared/samples/Analysis/StatsSciPyParity.bas:18)
+- **STATS.TRIANGULARPDF(x1)** — `PRINT "TRIANGULARPDF(0.5): "; FORMAT(STATS.TRIANGULARPDF(0.5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:151)
+- **STATS.TRIANGULARPPF(x1)** — `PRINT "trianppf ="; STATS.TRIANGULARPPF(0.5, 0, 1, 0.5)` (shared/samples/Math/StatsInverseSciPyParity.bas:26)
+- **STATS.UNIFORMPDF(x1)** — `PRINT "UNIFORMPDF(0.5):  "; FORMAT(STATS.UNIFORMPDF(0.5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:152)
+- **STATS.UNIFORMPPF(x1)** — `PRINT "unifppf  ="; STATS.UNIFORMPPF(0.5, 0, 1)` (shared/samples/Math/StatsInverseSciPyParity.bas:27)
+- **STATS.VARIANCE(x1)** — `PRINT "Varianza (Variance):  "; MATH.ROUND(STATS.Variance(Dataset1), 4)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:48)
+- **STATS.WEIBULLCDF(x1, x2, x3)** — `PRINT "WEIBULLCDF(1,2,3): "; FORMAT(STATS.WEIBULLCDF(1,2,3), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:144)
+- **STATS.WEIBULLPDF(x1, x2, x3)** — `PRINT "WEIBULLPDF(1,2,3): "; FORMAT(STATS.WEIBULLPDF(1,2,3), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:143)
+- **STATS.WEIBULLPPF(x1, x2, x3)** — `PRINT "weibppf  ="; STATS.WEIBULLPPF(0.8, 1.5, 2)` (shared/samples/Math/StatsInverseSciPyParity.bas:17)
+- **STATS.WEIBULLSF(x1, x2, x3)** — `PRINT "weib="; MATH.ROUND(STATS.WeibullSf(1.0, 2, 1), 6)` (shared/minitests/stats/sf_weibull_f.bas:3)
+- **STATS.WILCOXON(x1, x2)** — `r = STATS.WILCOXON(x, y)` (shared/samples/Math/StatsSciPyParityP0.bas:52)
+- **STATS.ZTEST(x1, x2, x3)** — `result = STATS.ZTEST(x, 5.0, 2.0)` (shared/samples/Analysis/StatsSciPyParity.bas:32)
+<!-- END DOMAIN TABLE -->
 
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
@@ -1224,6 +1429,183 @@ r(1..nx)  = x(0..nx-1) — la soluzione del subproblema
 
 ## 7. Riferimenti
 
+### Optimize-ORTools-Guida-Utente
+
+*Fonte: `Optimize-ORTools-Guida-Utente`*
+
+
+IMPORT OPTIMIZE
+
+
+## 1. Convenzioni (valgono per tutto il pacchetto)
+
+## 2. Le funzioni, per dominio
+
+### PACK (9)
+| Funzione | Firma | Parametri |
+|---|---|---|
+| `BINPACKING` | `FUNCTION BINPACKING(items() AS DOUBLE, n AS LONG, cap AS DOUBLE, algo AS LONG, binOf() AS LONG) AS LONG` | items, n, cap, algo, binOf — algo: 0=NF, 1=FF, 2=BF, 3=WF, 4=FFD, 5=BFD; binOf() = n. |
+| `BINPACKINGLB` | `FUNCTION BINPACKINGLB(items() AS DOUBLE, n AS LONG, cap AS DOUBLE) AS LONG` | items, n, cap —  |
+| `KNAPSACKFRACTIONAL` | `FUNCTION KNAPSACKFRACTIONAL(w() AS DOUBLE, v() AS DOUBLE, n AS LONG, cap AS DOUBLE, x() AS DOUBLE) AS DOUBLE` | w, v, n, cap, x — Knapsack frazionario: x() = n (0..1). |
+| `KNAPSACK01` | `FUNCTION KNAPSACK01(w() AS DOUBLE, v() AS DOUBLE, n AS LONG, cap AS LONG, take() AS LONG) AS DOUBLE` | w, v, n, cap, take — 0/1 knapsack (capacità intera): take() = n. |
+| `KNAPSACK01MITM` | `FUNCTION KNAPSACK01MITM(w() AS DOUBLE, v() AS DOUBLE, n AS LONG, cap AS DOUBLE, take() AS LONG) AS DOUBLE` | w, v, n, cap, take —  |
+| `KNAPSACKUNBOUNDED` | `FUNCTION KNAPSACKUNBOUNDED(w() AS DOUBLE, v() AS DOUBLE, n AS LONG, cap AS LONG, counts() AS LONG) AS DOUBLE` | w, v, n, cap, counts —  |
+| `SUBSETSUM` | `FUNCTION SUBSETSUM(items() AS DOUBLE, n AS LONG, target AS DOUBLE, take() AS LONG) AS LONG` | items, n, target, take —  |
+| `CUTTINGSTOCK` | `FUNCTION CUTTINGSTOCK(pieces() AS DOUBLE, n AS LONG, stock AS DOUBLE, pattern() AS LONG) AS LONG` | pieces, n, stock, pattern —  |
+| `BINPACKING3D` | `FUNCTION BINPACKING3D(items() AS DOUBLE, n AS LONG, W AS DOUBLE, H AS DOUBLE, D AS DOUBLE, binOf() AS LONG) AS LONG` | items, n, W, H, D, binOf —  |
+
+### ASSIGN (9)
+| Funzione | Firma | Parametri |
+|---|---|---|
+| `ASSIGNHUNGARIAN` | `FUNCTION ASSIGNHUNGARIAN(cost() AS DOUBLE, n AS LONG, m AS LONG, assign() AS LONG) AS DOUBLE` | cost, n, m, assign —  |
+| `ASSIGNAUCTION` | `FUNCTION ASSIGNAUCTION(cost() AS DOUBLE, n AS LONG, m AS LONG, assign() AS LONG, eps AS DOUBLE) AS DOUBLE` | cost, n, m, assign, eps —  |
+| `ASSIGNBOTTLENECK` | `FUNCTION ASSIGNBOTTLENECK(cost() AS DOUBLE, n AS LONG, assign() AS LONG) AS DOUBLE` | cost, n, assign —  |
+| `STABLEMARRIAGE` | `FUNCTION STABLEMARRIAGE(prefMen() AS LONG, prefWomen() AS LONG, n AS LONG, matchMen() AS LONG) AS LONG` | prefMen, prefWomen, n, matchMen — Gale-Shapley: prefMen()/prefWomen() = n*n; matchMen() = n; 1 se ok. |
+| `TRANSPORTVAM` | `FUNCTION TRANSPORTVAM(supply() AS DOUBLE, demand() AS DOUBLE, cost() AS DOUBLE, m AS LONG, n AS LONG, x() AS DOUBLE) AS DOUBLE` | supply, demand, cost, m, n, x — Trasporto: supply(m), demand(n), cost(m*n), x(m*n) = piano. |
+| `TRANSPORTNORTHWEST` | `FUNCTION TRANSPORTNORTHWEST(supply() AS DOUBLE, demand() AS DOUBLE, cost() AS DOUBLE, m AS LONG, n AS LONG, x() AS DOUBLE) AS DOUBLE` | supply, demand, cost, m, n, x —  |
+| `TRANSPORTLEASTCOST` | `FUNCTION TRANSPORTLEASTCOST(supply() AS DOUBLE, demand() AS DOUBLE, cost() AS DOUBLE, m AS LONG, n AS LONG, x() AS DOUBLE) AS DOUBLE` | supply, demand, cost, m, n, x —  |
+| `TRANSPORTMODI` | `FUNCTION TRANSPORTMODI(supply() AS DOUBLE, demand() AS DOUBLE, cost() AS DOUBLE, m AS LONG, n AS LONG, x() AS DOUBLE, maxit AS LONG) AS DOUBLE` | supply, demand, cost, m, n, x, maxit —  |
+| `ASSIGNQAPTABU` | `FUNCTION ASSIGNQAPTABU(A() AS DOUBLE, B() AS DOUBLE, n AS LONG, p() AS LONG, maxit AS LONG, seed AS LONG) AS DOUBLE` | A, B, n, p, maxit, seed — QAP tabu: A/B n*n, p() = n (permutazione), seed LONG. |
+
+### COVER (14)
+| Funzione | Firma | Parametri |
+|---|---|---|
+| `SETCOVER` | `FUNCTION SETCOVER(elem() AS LONG, cost() AS DOUBLE, m AS LONG, n AS LONG, chosen() AS LONG, nChosen() AS LONG) AS DOUBLE` | elem, cost, m, n, chosen, nChosen — elem() = m*n (elemento i in insieme j); chosen() = n; nChosen(0) = quanti. |
+| `SETCOVERSOFT` | `FUNCTION SETCOVERSOFT(elem() AS LONG, cost() AS DOUBLE, m AS LONG, n AS LONG, chosen() AS LONG, pen AS DOUBLE, uncovered() AS LONG) AS DOUBLE` | elem, cost, m, n, chosen, pen, uncovered — chosen() booleano in ingresso; uncovered(0) in uscita. |
+| `SETCOVERPRICING` | `FUNCTION SETCOVERPRICING(y() AS DOUBLE, m AS LONG, baseCost AS DOUBLE, costPerElem AS DOUBLE, chosenSet() AS LONG) AS DOUBLE` | y, m, baseCost, costPerElem, chosenSet —  |
+| `SETCOVERSA` | `FUNCTION SETCOVERSA(elem() AS LONG, cost() AS DOUBLE, m AS LONG, n AS LONG, pen AS DOUBLE, maxit AS LONG, seed AS LONG, chosen() AS LONG) AS DOUBLE` | elem, cost, m, n, pen, maxit, seed, chosen — Simulated annealing (t0=1.0, alpha=0.995 fissati nello shim). |
+| `SETCOVERLOCAL` | `FUNCTION SETCOVERLOCAL(elem() AS LONG, cost() AS DOUBLE, m AS LONG, n AS LONG, chosen() AS LONG, nChosen() AS LONG, maxit AS LONG) AS DOUBLE` | elem, cost, m, n, chosen, nChosen, maxit —  |
+| `SETCOVERGRASP` | `FUNCTION SETCOVERGRASP(elem() AS LONG, cost() AS DOUBLE, m AS LONG, n AS LONG, alpha AS DOUBLE, maxit AS LONG, chosen() AS LONG, nChosen() AS LONG) AS DOUBLE` | elem, cost, m, n, alpha, maxit, chosen, nChosen — GRASP (seed fisso 12345 nello shim). |
+| `SETCOVERRGRASP` | `FUNCTION SETCOVERRGRASP(elem() AS LONG, cost() AS DOUBLE, m AS LONG, n AS LONG, alphas() AS DOUBLE, maxit AS LONG, chosen() AS LONG, nChosen() AS LONG) AS DOUBLE` | elem, cost, m, n, alphas, maxit, chosen, nChosen — Reactive GRASP: alphas() = [nalpha, a0, a1, ...] (nalpha compatto in testa; seed fisso). |
+| `MAXCOVERAGE` | `FUNCTION MAXCOVERAGE(elem() AS LONG, m AS LONG, n AS LONG, k AS LONG, chosen() AS LONG, nChosen() AS LONG) AS LONG` | elem, m, n, k, chosen, nChosen —  |
+| `PMEDIAN` | `FUNCTION PMEDIAN(dist() AS DOUBLE, n AS LONG, p AS LONG, medians() AS LONG, assign() AS LONG, maxit AS LONG) AS DOUBLE` | dist, n, p, medians, assign, maxit — p-median: dist(n*n); medians(p), assign(n). |
+| `PCENTER` | `FUNCTION PCENTER(dist() AS DOUBLE, n AS LONG, p AS LONG, medians() AS LONG) AS DOUBLE` | dist, n, p, medians —  |
+| `VERTEXCOVER` | `FUNCTION VERTEXCOVER(edges() AS LONG, n AS LONG, ne AS LONG, cover() AS LONG) AS LONG` | edges, n, ne, cover — Vertex cover: edges() = 2*ne; cover() = n. |
+| `HITTINGSET` | `FUNCTION HITTINGSET(elem() AS LONG, m AS LONG, n AS LONG, chosen() AS LONG, nChosen() AS LONG) AS LONG` | elem, m, n, chosen, nChosen —  |
+| `FACILITYLOCATION` | `FUNCTION FACILITYLOCATION(openCost() AS DOUBLE, connCost() AS DOUBLE, m AS LONG, n AS LONG, open() AS LONG) AS DOUBLE` | openCost, connCost, m, n, open —  |
+| `KMEANS` | `FUNCTION KMEANS(points() AS DOUBLE, n AS LONG, dim AS LONG, k AS LONG, centroids() AS DOUBLE, labels() AS LONG, maxit AS LONG) AS DOUBLE` | points, n, dim, k, centroids, labels, maxit — k-means: points(n*dim), centroids(k*dim), labels(n); seed fisso nello shim. |
+
+### CP (3)
+| Funzione | Firma | Parametri |
+|---|---|---|
+| `SATDPLL` | `FUNCTION SATDPLL(clauses() AS LONG, clauseStart() AS LONG, clauseLen() AS LONG, nvars AS LONG, nclauses AS LONG, assignment() AS LONG) AS LONG` | clauses, clauseStart, clauseLen, nvars, nclauses, assignment — clauses() flat; clauseStart()/clauseLen() = nclauses; assignment() = nvars; 1 = SATDPLL. |
+| `CPALLDIFF` | `FUNCTION CPALLDIFF(dom() AS LONG, n AS LONG, D AS LONG, sol() AS LONG) AS LONG` | dom, n, D, sol — dom() = n*D; sol() = n. |
+| `CPBINARY` | `FUNCTION CPBINARY(dom() AS LONG, allowed() AS LONG, n AS LONG, D AS LONG, sol() AS LONG) AS LONG` | dom, allowed, n, D, sol —  |
+
+### ROUTING (24)
+| Funzione | Firma | Parametri |
+|---|---|---|
+| `TSPNEAREST` | `FUNCTION TSPNEAREST(dist() AS DOUBLE, n AS LONG, tour() AS LONG) AS DOUBLE` | dist, n, tour — supererebbe gli 8 argomenti FFI. |
+| `TSP2OPT` | `FUNCTION TSP2OPT(dist() AS DOUBLE, n AS LONG, tour() AS LONG, maxit AS LONG) AS DOUBLE` | dist, n, tour, maxit —  |
+| `TSPTOURCOST` | `FUNCTION TSPTOURCOST(dist() AS DOUBLE, n AS LONG, tour() AS LONG) AS DOUBLE` | dist, n, tour —  |
+| `TSPEXTRAMILEAGE` | `FUNCTION TSPEXTRAMILEAGE(dist() AS DOUBLE, n AS LONG, tour() AS LONG) AS DOUBLE` | dist, n, tour —  |
+| `TSPGRASP` | `FUNCTION TSPGRASP(dist() AS DOUBLE, n AS LONG, tour() AS LONG, maxit AS LONG) AS DOUBLE` | dist, n, tour, maxit — GRASP: alpha=0.3 e seed fissi nello shim. |
+| `TSPVNS` | `FUNCTION TSPVNS(dist() AS DOUBLE, n AS LONG, tour() AS LONG, maxit AS LONG) AS DOUBLE` | dist, n, tour, maxit —  |
+| `TSP3OPT` | `FUNCTION TSP3OPT(dist() AS DOUBLE, n AS LONG, tour() AS LONG, maxit AS LONG) AS DOUBLE` | dist, n, tour, maxit —  |
+| `TSPSA` | `FUNCTION TSPSA(dist() AS DOUBLE, n AS LONG, tour() AS LONG, T0 AS DOUBLE, cooling AS DOUBLE, iters AS LONG) AS DOUBLE` | dist, n, tour, T0, cooling, iters —  |
+| `TSPTABU` | `FUNCTION TSPTABU(dist() AS DOUBLE, n AS LONG, tour() AS LONG, maxit AS LONG, tenureKind AS LONG) AS DOUBLE` | dist, n, tour, maxit, tenureKind — tenure_kind: 0=costante, 1=triangolare, 2=quadrata, 3=sawtooth. |
+| `TSPONETREE` | `FUNCTION TSPONETREE(dist() AS DOUBLE, n AS LONG, root AS LONG, edges() AS LONG) AS DOUBLE` | dist, n, root, edges —  |
+| `TSPHKBOUND` | `FUNCTION TSPHKBOUND(dist() AS DOUBLE, n AS LONG, maxit AS LONG, pi() AS DOUBLE) AS DOUBLE` | dist, n, maxit, pi —  |
+| `TSPSUBTOURS` | `FUNCTION TSPSUBTOURS(succ() AS LONG, n AS LONG, comp() AS LONG, sizes() AS LONG) AS LONG` | succ, n, comp, sizes — succ()/comp()/sizes() = n; ritorna il numero di sottotour. |
+| `TSPDFJ` | `FUNCTION TSPDFJ(dist() AS DOUBLE, n AS LONG, tour() AS LONG, maxcuts AS LONG) AS DOUBLE` | dist, n, tour, maxcuts —  |
+| `TSPERX` | `FUNCTION TSPERX(p1() AS LONG, p2() AS LONG, n AS LONG, child() AS LONG) AS LONG` | p1, p2, n, child — ERX: p1()/p2()/child() = n; ritorna 1. |
+| `TSPGA` | `FUNCTION TSPGA(dist() AS DOUBLE, n AS LONG, tour() AS LONG, pop AS LONG, gens AS LONG) AS DOUBLE` | dist, n, tour, pop, gens —  |
+| `TSPOROPT` | `FUNCTION TSPOROPT(dist() AS DOUBLE, n AS LONG, tour() AS LONG, maxit AS LONG) AS DOUBLE` | dist, n, tour, maxit —  |
+| `TSPDOUBLETREE` | `FUNCTION TSPDOUBLETREE(dist() AS DOUBLE, n AS LONG, tour() AS LONG) AS DOUBLE` | dist, n, tour —  |
+| `TSPHELDKARP` | `FUNCTION TSPHELDKARP(dist() AS DOUBLE, n AS LONG, tour() AS LONG) AS DOUBLE` | dist, n, tour —  |
+| `VRPCLARKEWRIGHT` | `FUNCTION VRPCLARKEWRIGHT(dist() AS DOUBLE, demand() AS DOUBLE, n AS LONG, cap AS DOUBLE, depot AS LONG, routeOf() AS LONG, total() AS DOUBLE) AS LONG` | dist, demand, n, cap, depot, routeOf, total — CVRP: dist (n+1)x(n+1) col deposito; demand() = n; routeOf() = n; total(0). |
+| `VRPTIMEWINDOWS` | `FUNCTION VRPTIMEWINDOWS(dist() AS DOUBLE, demand() AS DOUBLE, n AS LONG, cap AS DOUBLE, depot AS LONG, tw() AS DOUBLE, routeOf() AS LONG, total() AS DOUBLE) AS LONG` | dist, demand, n, cap, depot, tw, routeOf, total — VRPTIMEWINDOWS: tw() = ready[n] / due[n] / service[n] (11 parametri C compattati). |
+| `VRPMULTIDEPOT` | `FUNCTION VRPMULTIDEPOT(dist() AS DOUBLE, demand() AS DOUBLE, n AS LONG, ndepots AS LONG, cap AS DOUBLE, routeOf() AS LONG, total() AS DOUBLE) AS LONG` | dist, demand, n, ndepots, cap, routeOf, total — VRPMULTIDEPOT: depositi agli indici 0..ndepots-1. |
+| `VRPPICKUPDELIVERY` | `FUNCTION VRPPICKUPDELIVERY(dist() AS DOUBLE, demand() AS DOUBLE, nreq AS LONG, cap AS DOUBLE, pickup() AS LONG, delivery() AS LONG, route() AS LONG, total() AS DOUBLE) AS LONG` | dist, demand, nreq, cap, pickup, delivery, route, total — VRPPICKUPDELIVERY: pickup()/delivery() = nreq; route() = 2*nreq; total(0). |
+| `ARCROUTING` | `FUNCTION ARCROUTING(w() AS DOUBLE, n AS LONG, euler() AS LONG, elen() AS LONG) AS DOUBLE` | w, n, euler, elen — Arc routing (Chinese postman): euler() = n*n+2; elen(0) = lunghezza. |
+| `METAACOTSP` | `FUNCTION METAACOTSP(dist() AS DOUBLE, n AS LONG, tour() AS LONG, ants AS LONG, maxit AS LONG) AS DOUBLE` | dist, n, tour, ants, maxit —  |
+
+### SCHED (16)
+| Funzione | Firma | Parametri |
+|---|---|---|
+| `SCHEDSPT` | `FUNCTION SCHEDSPT(p() AS DOUBLE, n AS LONG, order() AS LONG) AS DOUBLE` | p, n, order —  |
+| `SCHEDWSPT` | `FUNCTION SCHEDWSPT(p() AS DOUBLE, w() AS DOUBLE, n AS LONG, order() AS LONG) AS DOUBLE` | p, w, n, order —  |
+| `SCHEDEDD` | `FUNCTION SCHEDEDD(p() AS DOUBLE, due() AS DOUBLE, n AS LONG, order() AS LONG) AS DOUBLE` | p, due, n, order —  |
+| `SCHEDMOORE` | `FUNCTION SCHEDMOORE(p() AS DOUBLE, due() AS DOUBLE, n AS LONG, order() AS LONG) AS LONG` | p, due, n, order — Min #tardivi (Moore-Hodgson): ritorna il numero di job tardivi; order() = n. |
+| `SCHEDLAWLER` | `FUNCTION SCHEDLAWLER(p() AS DOUBLE, due() AS DOUBLE, n AS LONG, order() AS LONG) AS DOUBLE` | p, due, n, order —  |
+| `FLOWSHOPJOHNSON` | `FUNCTION FLOWSHOPJOHNSON(p1() AS DOUBLE, p2() AS DOUBLE, n AS LONG, seq() AS LONG) AS DOUBLE` | p1, p2, n, seq — Flow shop: seq() = n. |
+| `FLOWSHOPNEH` | `FUNCTION FLOWSHOPNEH(p() AS DOUBLE, n AS LONG, m AS LONG, seq() AS LONG) AS DOUBLE` | p, n, m, seq — FLOWSHOPNEH: p() = n*m (job i, macchina k = p(i*m+k)). |
+| `FLOWSHOPJOHNSON3` | `FUNCTION FLOWSHOPJOHNSON3(p1() AS DOUBLE, p2() AS DOUBLE, p3() AS DOUBLE, n AS LONG, seq() AS LONG) AS DOUBLE` | p1, p2, p3, n, seq —  |
+| `FLOWSHOPCDS` | `FUNCTION FLOWSHOPCDS(p() AS DOUBLE, n AS LONG, m AS LONG, seq() AS LONG) AS DOUBLE` | p, n, m, seq —  |
+| `PARALLELLPT` | `FUNCTION PARALLELLPT(p() AS DOUBLE, n AS LONG, m AS LONG, assign() AS LONG) AS DOUBLE` | p, n, m, assign —  |
+| `PROJECTCPM` | `FUNCTION PROJECTCPM(dur() AS DOUBLE, preds() AS LONG, n AS LONG, npred AS LONG, est() AS DOUBLE, lst() AS DOUBLE, slack() AS DOUBLE) AS DOUBLE` | dur, preds, n, npred, est, lst, slack — PROJECTCPM: preds() = n*npred (predecessori, -1 padding); est()/lst()/slack() = n. |
+| `PROJECTPERT` | `FUNCTION PROJECTPERT(to() AS DOUBLE, tm() AS DOUBLE, tp() AS DOUBLE, preds() AS LONG, n AS LONG, npred AS LONG, est() AS DOUBLE, variance() AS DOUBLE) AS DOUBLE` | to, tm, tp, preds, n, npred, est, variance — PROJECTPERT: to()/tm()/tp() = n; est()/variance() = n. |
+| `PROJECTRCPSP` | `FUNCTION PROJECTRCPSP(dur() AS DOUBLE, preds() AS LONG, n AS LONG, npred AS LONG, demand() AS DOUBLE, capacity() AS DOUBLE, nr AS LONG, start() AS LONG) AS DOUBLE` | dur, preds, n, npred, demand, capacity, nr, start — PROJECTRCPSP: demand() = n*nr; capacity() = nr; start() = n. |
+| `JOBSHOP` | `FUNCTION JOBSHOP(route() AS LONG, dur() AS DOUBLE, njobs AS LONG, nmach AS LONG, start() AS LONG) AS DOUBLE` | route, dur, njobs, nmach, start — Job shop: route()/dur()/start() = njobs*nmach. |
+| `ROSTERING` | `FUNCTION ROSTERING(demand() AS LONG, nnurses AS LONG, ndays AS LONG, maxWork AS LONG, schedule() AS LONG) AS LONG` | demand, nnurses, ndays, maxWork, schedule — Rostering: demand() = ndays; schedule() = nnurses*ndays; ritorna i turni non coperti. |
+| `LITTLESLAW` | `FUNCTION LITTLESLAW(lambda AS DOUBLE, W AS DOUBLE) AS DOUBLE` | lambda, W —  |
+
+### META (11)
+| Funzione | Firma | Parametri |
+|---|---|---|
+| `METAHILLCLIMB` | `FUNCTION METAHILLCLIMB(f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x() AS DOUBLE, d AS LONG, lo() AS DOUBLE, hi() AS DOUBLE, maxit AS LONG) AS DOUBLE` | f FUNCTION(x ), x, d, lo, hi, maxit — Seed fissi dove la firma C supera gli 8 argomenti FFI. |
+| `METASA` | `FUNCTION METASA(f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x() AS DOUBLE, d AS LONG, lo() AS DOUBLE, hi() AS DOUBLE, maxit AS LONG, T0 AS DOUBLE, alpha AS DOUBLE) AS DOUBLE` | f FUNCTION(x ), x, d, lo, hi, maxit, T0, alpha —  |
+| `METATABU` | `FUNCTION METATABU(f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x() AS DOUBLE, d AS LONG, lo() AS DOUBLE, hi() AS DOUBLE, maxit AS LONG, tenure AS LONG) AS DOUBLE` | f FUNCTION(x ), x, d, lo, hi, maxit, tenure — tenure: 0=costante, 1=triangolare, 2=quadrata, 3=sawtooth. |
+| `METAGA` | `FUNCTION METAGA(f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x() AS DOUBLE, d AS LONG, lo() AS DOUBLE, hi() AS DOUBLE, pop AS LONG, maxgen AS LONG) AS DOUBLE` | f FUNCTION(x ), x, d, lo, hi, pop, maxgen —  |
+| `METAPSO` | `FUNCTION METAPSO(f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x() AS DOUBLE, d AS LONG, lo() AS DOUBLE, hi() AS DOUBLE, swarm AS LONG, maxit AS LONG) AS DOUBLE` | f FUNCTION(x ), x, d, lo, hi, swarm, maxit —  |
+| `METADE` | `FUNCTION METADE(f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x() AS DOUBLE, d AS LONG, lo() AS DOUBLE, hi() AS DOUBLE, pop AS LONG, maxgen AS LONG) AS DOUBLE` | f FUNCTION(x ), x, d, lo, hi, pop, maxgen —  |
+| `METACMAES` | `FUNCTION METACMAES(f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x() AS DOUBLE, d AS LONG, lo() AS DOUBLE, hi() AS DOUBLE, maxit AS LONG) AS DOUBLE` | f FUNCTION(x ), x, d, lo, hi, maxit —  |
+| `METAES` | `FUNCTION METAES(f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x() AS DOUBLE, d AS LONG, sigma AS DOUBLE, alpha AS DOUBLE, pop AS LONG, maxit AS LONG) AS DOUBLE` | f FUNCTION(x ), x, d, sigma, alpha, pop, maxit — ES/ARS: nessun box (perturbazioni gaussiane attorno a x). |
+| `METAARS` | `FUNCTION METAARS(f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x() AS DOUBLE, d AS LONG, sigma AS DOUBLE, alpha AS DOUBLE, topB AS LONG, pop AS LONG, maxit AS LONG) AS DOUBLE` | f FUNCTION(x ), x, d, sigma, alpha, topB, pop, maxit —  |
+| `TABUTENURE` | `FUNCTION TABUTENURE(kind AS LONG, it AS LONG, n AS LONG) AS LONG` | kind, it, n —  |
+| `METANSGA2` | `FUNCTION METANSGA2(f1 AS FUNCTION(x() AS DOUBLE) AS DOUBLE, f2 AS FUNCTION(x() AS DOUBLE) AS DOUBLE, d AS LONG, lo() AS DOUBLE, hi() AS DOUBLE, pop AS LONG, maxgen AS LONG, out() AS DOUBLE) AS LONG` | f1 FUNCTION(x ), f2 FUNCTION(x ), d, lo, hi, pop, maxgen, out — NSGA-II (2 obiettivi): out() = pareto[pop*d] / fv1[pop] / fv2[pop]. |
+
+### UTIL (17)
+| Funzione | Firma | Parametri |
+|---|---|---|
+| `INTERVALMAX` | `FUNCTION INTERVALMAX(start() AS DOUBLE, finish() AS DOUBLE, n AS LONG, selected() AS LONG) AS LONG` | start, finish, n, selected — Intervalli: selected()/start()/end() = n. |
+| `INTERVALPARTITION` | `FUNCTION INTERVALPARTITION(start() AS DOUBLE, finish() AS DOUBLE, n AS LONG) AS LONG` | start, finish, n —  |
+| `TIMETABLING` | `FUNCTION TIMETABLING(conflicts() AS LONG, n AS LONG, slotOf() AS LONG) AS LONG` | conflicts, n, slotOf — Timetabling: conflicts() = n*n; slotOf() = n. |
+| `QUEUEMM1` | `FUNCTION QUEUEMM1(lambda AS DOUBLE, mu AS DOUBLE, out() AS DOUBLE) AS DOUBLE` | lambda, mu, out — out() = L, Lq, W, Wq; ritorna rho. |
+| `QUEUEMMC` | `FUNCTION QUEUEMMC(lambda AS DOUBLE, mu AS DOUBLE, c AS LONG, out() AS DOUBLE) AS DOUBLE` | lambda, mu, c, out —  |
+| `EOQ` | `FUNCTION EOQ(demand AS DOUBLE, setup AS DOUBLE, holding AS DOUBLE) AS DOUBLE` | demand, setup, holding —  |
+| `EPQ` | `FUNCTION EPQ(demand AS DOUBLE, setup AS DOUBLE, holding AS DOUBLE, rate AS DOUBLE) AS DOUBLE` | demand, setup, holding, rate —  |
+| `NEWSVENDOR` | `FUNCTION NEWSVENDOR(cu AS DOUBLE, co AS DOUBLE, mean AS DOUBLE, std AS DOUBLE) AS DOUBLE` | cu, co, mean, std —  |
+| `SAFETYSTOCK` | `FUNCTION SAFETYSTOCK(z AS DOUBLE, sigma AS DOUBLE) AS DOUBLE` | z, sigma —  |
+| `AHP` | `FUNCTION AHP(pairwise() AS DOUBLE, n AS LONG, weights() AS DOUBLE, consistency() AS DOUBLE) AS LONG` | pairwise, n, weights, consistency — AHP: weights() = n; consistency(0) = rapporto di consistenza. |
+| `TOPSIS` | `FUNCTION TOPSIS(X() AS DOUBLE, m AS LONG, n AS LONG, w() AS DOUBLE, benefit() AS LONG, scores() AS DOUBLE) AS LONG` | X, m, n, w, benefit, scores — TOPSIS: X() = m*n; benefit() = n; scores() = m. |
+| `MDPVALUE` | `FUNCTION MDPVALUE(P() AS DOUBLE, R() AS DOUBLE, ns AS LONG, na AS LONG, gamma AS DOUBLE, maxit AS LONG, out() AS DOUBLE) AS LONG` | P, R, ns, na, gamma, maxit, out — MDP: out() = V[ns] / policy[ns] (policy come double); ritorna le iterazioni. |
+| `MDPPOLICY` | `FUNCTION MDPPOLICY(P() AS DOUBLE, R() AS DOUBLE, ns AS LONG, na AS LONG, gamma AS DOUBLE, maxit AS LONG, out() AS DOUBLE) AS LONG` | P, R, ns, na, gamma, maxit, out —  |
+| `MONTECARLO` | `FUNCTION MONTECARLO(f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, d AS LONG, lo() AS DOUBLE, hi() AS DOUBLE, n AS LONG, out() AS DOUBLE) AS DOUBLE` | f FUNCTION(x ), d, lo, hi, n, out — Monte Carlo: out(0) = deviazione standard. |
+| `CVAR` | `FUNCTION CVAR(returns() AS DOUBLE, n AS LONG, alpha AS DOUBLE, out() AS DOUBLE) AS DOUBLE` | returns, n, alpha, out — CVaR: out(0) = VaR. |
+| `DESMM1` | `FUNCTION DESMM1(lambda AS DOUBLE, mu AS DOUBLE, ncust AS LONG, out() AS DOUBLE) AS DOUBLE` | lambda, mu, ncust, out — DES M/M/1: out(0) = utilizzazione. |
+| `CHANCECONSTRAINT` | `FUNCTION CHANCECONSTRAINT(sigma() AS DOUBLE, x() AS DOUBLE, n AS LONG, alpha AS DOUBLE, out() AS DOUBLE) AS DOUBLE` | sigma, x, n, alpha, out — Chance constraint: out(0) = z. |
+
+### DP (3)
+| Funzione | Firma | Parametri |
+|---|---|---|
+| `DPOPTIMALBST` | `FUNCTION DPOPTIMALBST(p() AS DOUBLE, n AS LONG, root() AS LONG) AS DOUBLE` | p, n, root — Optimal BST: p() = n; root() = n*n (-1 se vuoto). |
+| `DPEQUIPMENT` | `FUNCTION DPEQUIPMENT(years AS LONG, buyCost AS DOUBLE, maxAge AS LONG, opCost() AS DOUBLE, resale() AS DOUBLE, schedule() AS LONG) AS DOUBLE` | years, buyCost, maxAge, opCost, resale, schedule — Equipment replacement: opCost()/resale() = maxAge; schedule() = years. |
+| `DPSPORTSSERIES` | `FUNCTION DPSPORTSSERIES(nGames AS LONG, needed AS LONG, pHome AS DOUBLE, pAway AS DOUBLE, isHome() AS LONG) AS DOUBLE` | nGames, needed, pHome, pAway, isHome — Sports series: isHome() = nGames. |
+
+## 3. Esempio completo
+
+## 4. Protocollo §4.1 — esito
+| Superficie | MiniTest | Funzioni | IL | PCode | VM/C | C99Native |
+|---|---|---|---|---|---|---|
+| pack + assign | `minitests/orffi/pack_assign2.bas` | 13 | ✓ | ✓ | ✓ | ✓ |
+| cover + cp | `minitests/orffi/cover2.bas` | 12 | ✓ | ✓ | ✓ | ✓ |
+| routing | `minitests/orffi/routing2.bas` | 13/14 | ✓ | ✓ | ✓ | ✓ |
+| sched | `minitests/orffi/sched2.bas` | 8 | ✓ | ✓ | ✓ | ✓ |
+| meta + util + dp | `minitests/orffi/meta_util_dp2.bas` | 17 | ✓ | ✓ | ✓ | ✓ |
+
+## 5. Difetti trovati dal protocollo
+| Difetto | Esito |
+|---|---|
+| `CPBINARY` leggeva `allowed[]` oltre l'allocazione (lo shim convertiva `n*n` valori invece di `n*n*D*D`) | **corretto** nello shim: il vincolo binario funziona su 4 backend |
+| `DPEQUIPMENT` dichiarata `AS LONG` ma restituisce un costo `DOUBLE` (valore troncato, es. `-1342177280`) | **corretto** in `ortools.inc` (`AS DOUBLE`); controllo automatico su tutte e 106 le dichiarazioni: unica discrepanza |
+| `TSPERX` restituisce un figlio corretto ma **corrompe l'heap** (SIGBUS nella backend nativa dopo la chiamata) | **aperto**, escluso dal MiniTest: `Bugs/(open) - OR-TSPERX-Corruzione-Heap.md` |
+| `SUBSETSUM` restituisce l'esito giusto ma `take()` non ricostruisce una combinazione che somma al target | **aperto**: `Bugs/(open) - OR-SubsetSum-Ricostruzione.md` |
+
+## 6. Note pratiche
+
+## 7. Riferimenti
+
 ### Spatial-Guida-Utente
 
 *Fonte: `Spatial-Guida-Utente`*
@@ -1638,183 +2020,3 @@ END SUB
 ## 4. Vedi anche
 
 <!-- END SURFACE -->
-
-<!-- BEGIN DOMAIN TABLE -->
-## Tavola sinottica del dominio
-
-Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
-nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
-
-- **MATH.ABS(x1)** — `PRINT "ABS(-10.5): "; MATH.ABS(-10.5)` (shared/samples/Math/MathLogarithms.bas:74)
-- **MATH.ACOS(x1)** — `PRINT "Arcocoseno (ACOS) di 0:     "; MATH.ACOS(0); " (rad)"` (shared/samples/Math/MathTrigonometry.bas:47)
-- **MATH.ASIN(x1)** — `PRINT "Arcoseno (ASIN) di 1:       "; MATH.ASIN(1); " (rad)"` (shared/samples/Math/MathTrigonometry.bas:44)
-- **MATH.ATN(x1)** — `PRINT "ATN(1)  = "; ROUND(MATH.RAD2DEG(MATH.ATN(1)), 6); " deg"` (shared/samples/Math/MathAtnVectorAngle.bas:28)
-- **MATH.AVG()** — `media = MATH.AVG(risparmi)` (shared/samples/Math/PianificazioneRisparmi.bas:19)
-- **MATH.COSH(x1)** — `PRINT "Coseno Iperbolico (COSH) di 1:  "; MATH.COSH(1)` (shared/samples/Math/MathTrigonometry.bas:63)
-- **MATH.CEILING(x1)** — `PRINT "  CEILING(num):  "; MATH.CEILING(num_pos)` (shared/samples/Math/MathLogarithms.bas:59)
-- **MATH.CLAMP(x1, x2, x3)** — `PRINT "CLAMP(150, 0, 100): "; MATH.CLAMP(val, 0, 100); " (Atteso 100)"` (shared/samples/Math/MathCombinatorics.bas:70)
-- **MATH.COMB(x1, x2)** — `PRINT "COMB("; n; ", "; k; "):   "; MATH.COMB(n, k)` (shared/samples/Math/MathCombinatorics.bas:39)
-- **MATH.COS(x1)** — `PRINT "Coseno (COS):     "; MATH.COS(angle_rad)` (shared/samples/Math/MathTrigonometry.bas:33)
-- **MATH.DEG2RAD(x1)** — `DIM angle_rad = MATH.DEG2RAD(angle_deg)` (shared/samples/Math/MathTrigonometry.bas:27)
-- **MATH.EXP(x1)** — `ys(0) = 1.0 : ys(1) = MATH.EXP(0.5) : ys(2) = MATH.EXP(1.0) : ys(3) = MATH.EXP(1.5) : ys(4) = MATH.E…` (shared/samples/include/optimize/05-Fitting.bas:9)
-- **MATH.FACT(x1)** — `PRINT "FACT("; n; "):      "; MATH.FACT(n)` (shared/samples/Math/MathCombinatorics.bas:31)
-- **MATH.FIX(x1)** — `PRINT "  FIX(num):      "; MATH.FIX(num_pos)` (shared/samples/Math/MathLogarithms.bas:56)
-- **MATH.FLOOR(x1)** — `PRINT "  FLOOR(num):    "; MATH.FLOOR(num_pos)` (shared/samples/Math/MathLogarithms.bas:58)
-- **MATH.HYPOT(x1, x2)** — `PRINT "HYPOT(3, 4):        "; MATH.HYPOT(3, 4)` (shared/samples/Math/MathCombinatorics.bas:66)
-- **MATH.INT(x1)** — `PRINT "  INT(num):      "; MATH.INT(num_pos)` (shared/samples/Math/MathLogarithms.bas:57)
-- **MATH.ISNUMERIC(x1)** — `IF MATH.ISNUMERIC(Input) THEN` (shared/samples/Types/TypesAny.bas:91)
-- **MATH.LOG(x1)** — `PRINT "LOG(e):                     "; MATH.LOG(e); " (Atteso: 1)"` (shared/samples/Math/MathLogarithms.bas:34)
-- **MATH.LOG10(x1)** — `PRINT "LOG10(1000):                "; MATH.LOG10(1000); " (Atteso: 3)"` (shared/samples/Math/MathLogarithms.bas:37)
-- **MATH.MAX()** — `GmbStats = "mean=" + STR$(STATS.MEAN(n)) + " max=" + STR$(MATH.MAX(n[0], n[1], n[2])) + " min=" + ST…` (shared/samples/Ai/McpCapabilityServer.bas:51)
-- **MATH.MIN()** — `PRINT "MIN(3, 1, 4, 1, 5, 9): "; MATH.MIN(3, 1, 4, 1, 5, 9) ' Atteso: 1` (shared/samples/Math/MathExtended.bas:43)
-- **MATH.PERM(x1, x2)** — `PRINT "PERM("; n; ", "; k; "):   "; MATH.PERM(n, k)` (shared/samples/Math/MathCombinatorics.bas:35)
-- **MATH.PI()** — `SerieStagionale(si) = (si * 0.1) + SIN(si * 2 * MATH.PI() / 12) * 5 + (MATH.RND() - 0.5)` (shared/samples/TimeSeries/TimeSeriesAdvanced.bas:63)
-- **MATH.PYTHAGORAS(x1, x2)** — `820 PRINT "PYTHAGORAS(3, 4) =", PYTHAGORAS(3, 4); "(Atteso: 5)"` (shared/samples/Types/TypesConversions.bas:135)
-- **MATH.RAD2DEG(x1)** — `PRINT "ATN(1)  = "; ROUND(MATH.RAD2DEG(MATH.ATN(1)), 6); " deg"` (shared/samples/Math/MathAtnVectorAngle.bas:28)
-- **MATH.RANGE()** — `PRINT "MATH.RANGE — Sequenze numeriche"` (shared/samples/Math/RangeDemo.bas:12)
-- **MATH.RND()** — `Prices(i) = Prices(i-1) * (1 + (MATH.RND() - 0.5) * 0.02)` (shared/samples/TimeSeries/TimeSeriesTests.bas:34)
-- **MATH.ROUND(x1)** — `PRINT "scostamento: "; MATH.ROUND(scostamento, 2); " EUR"` (shared/samples/Databases/ContabilitaPasticceria.bas:69)
-- **MATH.SINH(x1)** — `PRINT "Seno Iperbolico (SINH) di 1:    "; MATH.SINH(1)` (shared/samples/Math/MathTrigonometry.bas:62)
-- **MATH.SGN(x1)** — `PRINT "SGN(-10.5): "; MATH.SGN(-10.5)` (shared/samples/Math/MathLogarithms.bas:75)
-- **MATH.SIN(x1)** — `PRINT "Seno (SIN):       "; MATH.SIN(angle_rad)` (shared/samples/Math/MathTrigonometry.bas:32)
-- **MATH.SQR(x1)** — `PRINT "SQR(25):                    "; MATH.SQR(25); " (Atteso: 5)"` (shared/samples/Math/MathLogarithms.bas:43)
-- **MATH.SUM()** — `SPEED SELECT Clienti.Nome AS NomeCliente, SUM(Ordini.Importo) AS TotaleImporto INTO ris() OF Risulta…` (shared/samples/Databases/DbSpeedFullTests.bas:261)
-- **MATH.TANH(x1)** — `PRINT "Tangente Iperbolica (TANH) di 1: "; MATH.TANH(1)` (shared/samples/Math/MathTrigonometry.bas:64)
-- **MATH.TAN(x1)** — `PRINT "Tangente (TAN):   "; MATH.TAN(angle_rad)` (shared/samples/Math/MathTrigonometry.bas:34)
-- **MATH.TRUNC(x1)** — `PRINT "  TRUNC(num, 2): "; MATH.TRUNC(num_pos, 2)` (shared/samples/Math/MathLogarithms.bas:55)
-- **MATRIX.ABOVEMASK(x1, x2)** — `DIM flatMask() = MATRIX.ABOVEMASK(rowsBroadcast, 15.0)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:51)
-- **MATRIX.ABOVEMATRIX(x1, x2)** — `DIM matrixMask() = MATRIX.ABOVEMATRIX(rowsBroadcast, 15.0)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:52)
-- **MATRIX.ADDCOLVECTOR(x1, x2)** — `DIM columnsBroadcast = MATRIX.ADDCOLVECTOR(m, columnVector)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:42)
-- **MATRIX.ADDROWVECTOR(x1, x2)** — `DIM rowsBroadcast = MATRIX.ADDROWVECTOR(m, rowVector)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:41)
-- **MATRIX.ARGMAX(x1)** — `DIM amax() = MATRIX.ARGMAX(m)` (shared/samples/Arrays/MatrixArgmaxShadow.bas:20)
-- **MATRIX.ARGMIN(x1)** — `DIM amin() = MATRIX.ARGMIN(m)` (shared/samples/Arrays/MatrixArgmaxShadow.bas:21)
-- **MATRIX.ASCSV(x1)** — `PRINT "ASCSV="; MATRIX.ASCSV(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:57)
-- **MATRIX.ASJSON(x1)** — `PRINT "ASJSON="; MATRIX.ASJSON(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:58)
-- **MATRIX.BLOCKDIAG(x1, x2)** — `bd = MATRIX.BLOCKDIAG(h, h)` (shared/samples/Math/MatrixFunctionsSciPyParity.bas:27)
-- **MATRIX.CIRCULANT(x1)** — `cc = MATRIX.CIRCULANT(c1)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:49)
-- **MATRIX.CLONEMATRIX(x1)** — `DIM cloned = MATRIX.CLONEMATRIX(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:60)
-- **MATRIX.COLMEANS(x1)** — `DIM meansByColumn() = MATRIX.COLMEANS(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:13)
-- **MATRIX.COLSUMS(x1)** — `DIM sumsByColumn() = MATRIX.COLSUMS(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:11)
-- **MATRIX.COLUMNCOUNT(x1)** — `PRINT "COLUMNCOUNT="; MATRIX.COLUMNCOUNT(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:64)
-- **MATRIX.COLVARIANCES(x1)** — `DIM variancesByColumn() = MATRIX.COLVARIANCES(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:15)
-- **MATRIX.CONCATCOLS(x1, x2)** — `DIM columnsJoined = MATRIX.CONCATCOLS(m, m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:40)
-- **MATRIX.CONCATROWS(x1, x2)** — `DIM rowsJoined = MATRIX.CONCATROWS(m, m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:39)
-- **MATRIX.CREATE(x1, x2)** — `h = MATRIX.CREATE(2, 2)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:7)
-- **MATRIX.GETVALUE(x1, x2, x3)** — `FOR k = 0 TO 4: re(k) = MATRIX.GETVALUE(rf, k, 0): im(k) = MATRIX.GETVALUE(rf, k, 1): NEXT` (shared/samples/Analysis/AnalysisMiniTest.bas:20)
-- **MATRIX.HANKEL(x1, x2)** — `hk = MATRIX.HANKEL(c1, r1)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:47)
-- **MATRIX.ISLOWERTRIANGULAR(x1)** — `PRINT "LOWER="; MATRIX.ISLOWERTRIANGULAR(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:31)
-- **MATRIX.ISORTHOGONAL(x1)** — `PRINT "ORTHOGONAL="; MATRIX.ISORTHOGONAL(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:29)
-- **MATRIX.ISSYMMETRIC(x1)** — `PRINT "SYMMETRIC="; MATRIX.ISSYMMETRIC(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:28)
-- **MATRIX.ISUPPERTRIANGULAR(x1)** — `PRINT "UPPER="; MATRIX.ISUPPERTRIANGULAR(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:30)
-- **MATRIX.KRONECKER(x1, x2)** — `k = MATRIX.KRONECKER(h, h)` (shared/samples/Math/MatrixFuncSciPyParity.bas:10)
-- **MATRIX.LOADCSV(x1)** — `DIM csvMatrix = MATRIX.LOADCSV("samples/Fixtures/MatrixIdentity.csv")` (shared/samples/Matrix/MatrixCommonLibSimd.bas:69)
-- **MATRIX.LOADJSON(x1)** — `DIM jsonMatrix = MATRIX.LOADJSON("samples/Fixtures/MatrixIdentity.json")` (shared/samples/Matrix/MatrixCommonLibSimd.bas:70)
-- **MATRIX.MAXVALUE(x1)** — `PRINT "MAXVALUE="; MATRIX.MAXVALUE(rowsBroadcast)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:53)
-- **MATRIX.MINVALUE(x1)** — `PRINT "MINVALUE="; MATRIX.MINVALUE(rowsBroadcast)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:54)
-- **MATRIX.MULTIPLY(x1, x2)** — `DIM mul = MATRIX.MULTIPLY(a, a)` (shared/samples/Matrix/MatrixDecompositions.bas:26)
-- **MATRIX.MULTIPLYLEFTVECTOR(x1, x2)** — `DIM leftProduct() = MATRIX.MULTIPLYLEFTVECTOR(m, columnVector)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:62)
-- **MATRIX.MULTIPLYVECTOR(x1, x2)** — `DIM rightProduct() = MATRIX.MULTIPLYVECTOR(m, rowVector)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:61)
-- **MATRIX.RESHAPE(x1, x2, x3)** — `DIM reshaped = MATRIX.RESHAPE(m, 1, 9)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:38)
-- **MATRIX.ROWCOUNT(x1)** — `PRINT "welchrows ="; MATRIX.ROWCOUNT(w)` (shared/samples/Math/SciPyP1Parity.bas:12)
-- **MATRIX.ROWMEANS(x1)** — `DIM meansByRow() = MATRIX.ROWMEANS(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:12)
-- **MATRIX.ROWSUMS(x1)** — `DIM sumsByRow() = MATRIX.ROWSUMS(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:10)
-- **MATRIX.ROWVARIANCES(x1)** — `DIM variancesByRow() = MATRIX.ROWVARIANCES(m)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:14)
-- **MATRIX.SETVALUE(x1, x2, x3, x4)** — `h = MATRIX.SETVALUE(h, 0, 0, 2) : h = MATRIX.SETVALUE(h, 0, 1, 1)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:8)
-- **MATRIX.SLICE(x1, x2, x3, x4, x5)** — `DIM sliced = MATRIX.SLICE(m, 0, 2, 0, 2)` (shared/samples/Matrix/MatrixCommonLibSimd.bas:37)
-- **MATRIX.TOEPLITZ(x1, x2)** — `tp = MATRIX.TOEPLITZ(c1, r1)` (shared/samples/Math/MatrixFunctionsSciPyParity2.bas:44)
-- **MATRIX.TRACE(x1)** — `PRINT "trace="; MATH.ROUND(MATRIX.TRACE(a), 6)` (shared/samples/Matrix/MatrixDecompositions.bas:15)
-- **MATRIX.TRANSPOSE(x1)** — `DIM tr = MATRIX.TRANSPOSE(a)` (shared/samples/Matrix/MatrixDecompositions.bas:24)
-- **STATS.ANOVA(x1)** — `result = STATS.ANOVA(groups)` (shared/samples/Analysis/StatsSciPyParity.bas:22)
-- **STATS.BERNOULLIPMF(x1, x2)** — `PRINT "BERNOULLIPMF(1,0.5): "; FORMAT(STATS.BERNOULLIPMF(1,0.5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:154)
-- **STATS.BETACDF(x1, x2, x3)** — `PRINT "BETACDF(0.5,2,2): "; FORMAT(STATS.BETACDF(0.5,2,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:140)
-- **STATS.BETAPDF(x1, x2, x3)** — `PRINT "BETAPDF(0.5,2,2): "; FORMAT(STATS.BETAPDF(0.5,2,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:139)
-- **STATS.BETAPPF(x1, x2, x3)** — `PRINT "betappf  ="; STATS.BETAPPF(0.5, 2, 3)` (shared/samples/Math/StatsInverseSciPyParity.bas:15)
-- **STATS.BINOMIALPMF(x1, x2, x3)** — `PRINT "BINOMIALPMF(3,10,0.5): "; FORMAT(STATS.BINOMIALPMF(3,10,0.5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:155)
-- **STATS.CHI2(x1, x2)** — `DIM chi2 = STATS.CHI2(observed, expected)` (shared/samples/Analysis/StatsCategoricalTests.bas:10)
-- **STATS.CHI2CON(x1)** — `r = STATS.CHI2CON(tb)` (shared/samples/Math/StatsSciPyParityP0.bas:32)
-- **STATS.CHICDF(x1, x2)** — `PRINT "CHICDF(1,2):   "; FORMAT(STATS.CHICDF(1,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:136)
-- **STATS.CHIPDF(x1, x2)** — `PRINT "CHIPDF(1,2):   "; FORMAT(STATS.CHIPDF(1,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:135)
-- **STATS.CHIPPF(x1, x2)** — `PRINT "chippf   ="; STATS.CHIPPF(0.9, 7)` (shared/samples/Math/StatsInverseSciPyParity.bas:13)
-- **STATS.CHISQUAREDCDF(x1, x2)** — `PRINT "CHISQUAREDCDF(1,2): "; FORMAT(STATS.CHISQUAREDCDF(1,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:138)
-- **STATS.CHISQUAREDISF(x1, x2)** — `PRINT "chi2isf  ="; STATS.CHISQUAREDISF(0.05, 5)` (shared/samples/Math/StatsInverseSciPyParity.bas:20)
-- **STATS.CHISQUAREDPDF(x1, x2)** — `PRINT "CHISQUAREDPDF(1,2): "; FORMAT(STATS.CHISQUAREDPDF(1,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:137)
-- **STATS.CHISQUAREDPPF(x1, x2)** — `PRINT "chi2ppf  ="; STATS.CHISQUAREDPPF(0.95, 5)` (shared/samples/Math/StatsInverseSciPyParity.bas:12)
-- **STATS.CHISQUAREDSF(x1, x2)** — `PRINT "chi="; MATH.ROUND(STATS.ChiSquaredSf(3.841459, 1), 6)` (shared/minitests/stats/sf_extra.bas:5)
-- **STATS.CORRELATION(x1, x2)** — `DIM Corr = STATS.Correlation(Dataset1, Dataset2)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:59)
-- **STATS.COVARIANCE(x1, x2)** — `PRINT "cov="; MATH.ROUND(STATS.Covariance(x, y), 6)` (shared/minitests/stats/covariance.bas:6)
-- **STATS.DESCRIBE(x1)** — `r = STATS.DESCRIBE(v)` (shared/samples/Math/StatsSciPyParityP0.bas:60)
-- **STATS.EXPONENTIALCDF(x1, x2)** — `PRINT "EXPONENTIALCDF(1,2): "; FORMAT(STATS.EXPONENTIALCDF(1,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:148)
-- **STATS.EXPONENTIALISF(x1, x2)** — `PRINT "expisf   ="; STATS.EXPONENTIALISF(0.05, 0.5)` (shared/samples/Math/StatsInverseSciPyParity.bas:22)
-- **STATS.EXPONENTIALPDF(x1, x2)** — `PRINT "EXPONENTIALPDF(1,2): "; FORMAT(STATS.EXPONENTIALPDF(1,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:147)
-- **STATS.EXPONENTIALPPF(x1, x2)** — `PRINT "expppf   ="; STATS.EXPONENTIALPPF(0.9, 0.5)` (shared/samples/Math/StatsInverseSciPyParity.bas:16)
-- **STATS.EXPONENTIALSF(x1, x2)** — `PRINT "exp="; MATH.ROUND(STATS.ExponentialSf(2, 1.0), 6)` (shared/minitests/stats/sf_extra.bas:3)
-- **STATS.FCDF(x1, x2, x3)** — `PRINT "FCDF(1,5,10):  "; FORMAT(STATS.FCDF(1,5,10), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:146)
-- **STATS.FISF(x1, x2, x3)** — `PRINT "fisf     ="; STATS.FISF(0.05, 3, 8)` (shared/samples/Math/StatsInverseSciPyParity.bas:21)
-- **STATS.FPDF(x1, x2, x3)** — `PRINT "FPDF(1,5,10):  "; FORMAT(STATS.FPDF(1,5,10), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:145)
-- **STATS.FPPF(x1, x2, x3)** — `PRINT "fppf     ="; STATS.FPPF(0.95, 3, 8)` (shared/samples/Math/StatsInverseSciPyParity.bas:14)
-- **STATS.FSF(x1, x2, x3)** — `PRINT "f="; MATH.ROUND(STATS.FSf(1.0, 5, 10), 6)` (shared/minitests/stats/sf_weibull_f.bas:4)
-- **STATS.FISHER(x1, x2, x3, x4)** — `DIM fisher = STATS.FISHER(8, 2, 1, 5)` (shared/samples/Analysis/StatsCategoricalTests.bas:14)
-- **STATS.GAMMACDF(x1, x2, x3)** — `PRINT "gammacdf="; STATS.GAMMACDF(2, 3, 4)` (shared/samples/Math/StatsCdfPdfSciPyParity.bas:15)
-- **STATS.GAMMAISF(x1, x2, x3)** — `PRINT "gammaisf ="; MATH.ROUND(STATS.GAMMAISF(2, 1, 0.05), 9)` (shared/samples/Math/StatsInverseSciPyParity.bas:23)
-- **STATS.GAMMAPDF(x1, x2, x3)** — `PRINT "gammapdf="; STATS.GAMMAPDF(2, 3, 4)` (shared/samples/Math/StatsCdfPdfSciPyParity.bas:16)
-- **STATS.GAMMAPPF(x1, x2, x3)** — `PRINT "gppf="; MATH.ROUND(STATS.GammaPpf(2, 1, 0.5), 6)` (shared/minitests/stats/stats_all.bas:222)
-- **STATS.GAMMASF(x1, x2, x3)** — `DIM sf = STATS.GammaSf(2, 1, x)` (shared/minitests/stats/gamma_sf.bas:4)
-- **STATS.GEOMETRICPMF(x1, x2)** — `PRINT "GEOMETRICPMF(3,0.5): "; FORMAT(STATS.GEOMETRICPMF(3,0.5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:157)
-- **STATS.HYPERGEOMETRICPMF(x1, x2, x3, x4)** — `PRINT "HYPERGEOMETRICPMF(2,5,10,20): "; FORMAT(STATS.HYPERGEOMETRICPMF(2,20,10,5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:159)
-- **STATS.IQR(x1)** — `PRINT "iqr      ="; MATH.ROUND(STATS.IQR(x), 6)` (shared/samples/Math/StatsSciPyParityP0.bas:20)
-- **STATS.JARQUEBERA(x1)** — `r = STATS.JARQUEBERA(z)` (shared/samples/Math/StatsSciPyParityP0.bas:58)
-- **STATS.KS(x1, x2)** — `result = STATS.KS(x, y)` (shared/samples/Analysis/StatsSciPyParity.bas:34)
-- **STATS.KURTOSIS(x1)** — `PRINT "Curtosi (Kurtosis):   "; MATH.ROUND(STATS.Kurtosis(Dataset1), 4)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:57)
-- **STATS.KURTOSISTEST(x1)** — `r = STATS.KURTOSISTEST(z)` (shared/samples/Math/StatsSciPyParityP0.bas:56)
-- **STATS.LINREGRESS(x1, x2)** — `r = STATS.LINREGRESS(x, y)` (shared/samples/Math/StatsSciPyParityP0.bas:48)
-- **STATS.LOGISTICPDF(x1, x2, x3)** — `PRINT "LOGISTICPDF(0,0,1): "; FORMAT(STATS.LOGISTICPDF(0,0,1), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:150)
-- **STATS.LOGISTICPPF(x1, x2, x3)** — `PRINT "logippf  ="; STATS.LOGISTICPPF(0.5, 0, 1)` (shared/samples/Math/StatsInverseSciPyParity.bas:24)
-- **STATS.LOGNORMALCDF(x1)** — `PRINT "LOGNORMALCDF(1): "; FORMAT(STATS.LOGNORMALCDF(1), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:134)
-- **STATS.LOGNORMALPDF(x1)** — `PRINT "LOGNORMALPDF(1): "; FORMAT(STATS.LOGNORMALPDF(1), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:133)
-- **STATS.LOGNORMALPPF(x1)** — `PRINT "logppf   ="; STATS.LOGNORMALPPF(0.9, 1, 0.5)` (shared/samples/Math/StatsInverseSciPyParity.bas:18)
-- **STATS.MAX(x1)** — `PRINT "max="; STATS.MAX(x)` (shared/minitests/stats/max_min.bas:4)
-- **STATS.MIN(x1)** — `PRINT "min="; STATS.MIN(x)` (shared/minitests/stats/max_min.bas:5)
-- **STATS.MAD(x1)** — `PRINT "MAD (Median Abs Dev): "; STATS.MAD(Dataset1)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:50)
-- **STATS.MANNWHITNEY(x1, x2)** — `r = STATS.MANNWHITNEY(x, y)` (shared/samples/Math/StatsSciPyParityP0.bas:50)
-- **STATS.MEAN(x1)** — `PRINT "Media (Mean):         "; STATS.Mean(Dataset1)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:41)
-- **STATS.MEDIAN(x1)** — `PRINT "Mediana (Median):     "; STATS.Median(Dataset1)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:42)
-- **STATS.MODE(x1)** — `PRINT "mode="; STATS.Mode(a)` (shared/minitests/stats/stats_all.bas:226)
-- **STATS.MOMENT(x1, x2)** — `PRINT "STATS.MOMENT — momenti del campione 1..10"` (shared/samples/Analysis/StatsMoment.bas:25)
-- **STATS.NEGATIVEBINOMIALPMF(x1, x2, x3)** — `PRINT "NEGATIVEBINOMIALPMF(3,5,0.5): "; FORMAT(STATS.NEGATIVEBINOMIALPMF(3,5,0.5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:158)
-- **STATS.NORMALCDF(x1)** — `PRINT "NORMALCDF(0):  "; FORMAT(STATS.NORMALCDF(0), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:132)
-- **STATS.NORMALISF(x1)** — `PRINT "normisf  ="; STATS.NORMALISF(0.025, 0, 1)` (shared/samples/Math/StatsInverseSciPyParity.bas:19)
-- **STATS.NORMALPDF(x1)** — `PRINT "STATS.NORMALPDF(0):  "; FORMAT(STATS.NORMALPDF(0), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:131)
-- **STATS.NORMALPPF(x1)** — `PRINT "normppf  ="; STATS.NORMALPPF(0.975, 1, 2)` (shared/samples/Math/StatsInverseSciPyParity.bas:9)
-- **STATS.NORMALTEST(x1)** — `result = STATS.NORMALTEST(normal)` (shared/samples/Analysis/StatsSciPyParity.bas:30)
-- **STATS.PARETOPDF(x1, x2, x3)** — `PRINT "PARETOPDF(1,2,3): "; FORMAT(STATS.PARETOPDF(1,2,3), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:149)
-- **STATS.PARETOPPF(x1, x2, x3)** — `PRINT "paretoppf="; STATS.PARETOPPF(0.9, 3, 2)` (shared/samples/Math/StatsInverseSciPyParity.bas:25)
-- **STATS.PEARSONR(x1, x2)** — `r = STATS.PEARSONR(x, y)` (shared/samples/Math/StatsSciPyParityP0.bas:44)
-- **STATS.PERCENTILE(x1, x2)** — `DIM P90 = STATS.PERCENTILE(Dataset1, 0.90)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:67)
-- **STATS.POISSONPMF(x1, x2)** — `PRINT "POISSONPMF(3,2): "; FORMAT(STATS.POISSONPMF(3,2), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:156)
-- **STATS.RANGE(x1)** — `PRINT "range="; STATS.RANGE(x)` (shared/minitests/stats/range.bas:5)
-- **STATS.SHAPIRO(x1)** — `result = STATS.SHAPIRO(normal)` (shared/samples/Analysis/StatsSciPyParity.bas:28)
-- **STATS.SKEWTEST(x1)** — `r = STATS.SKEWTEST(z)` (shared/samples/Math/StatsSciPyParityP0.bas:54)
-- **STATS.SKEWEDNORMALPDF(x1)** — `PRINT "SKEWEDNORMALPDF(0): "; FORMAT(STATS.SKEWEDNORMALPDF(0), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:153)
-- **STATS.SKEWNESS(x1)** — `PRINT "Asimmetria (Skewness):"; MATH.ROUND(STATS.Skewness(DatasetSkew), 4)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:56)
-- **STATS.SPEARMANR(x1, x2)** — `r = STATS.SPEARMANR(x, y)` (shared/samples/Math/StatsSciPyParityP0.bas:46)
-- **STATS.STDDEV(x1)** — `PRINT "Dev. Standard (StdDev): "; MATH.ROUND(STATS.StdDev(Dataset1), 4)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:49)
-- **STATS.STUDENTTCDF(x1, x2)** — `PRINT "STUDENTTCDF(0,5): "; FORMAT(STATS.STUDENTTCDF(0,5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:142)
-- **STATS.STUDENTTISF(x1, x2)** — `PRINT "tisf     ="; STATS.STUDENTTISF(0.025, 10)` (shared/samples/Math/StatsInverseSciPyParity.bas:11)
-- **STATS.STUDENTTPDF(x1, x2)** — `PRINT "STUDENTTPDF(0,5): "; FORMAT(STATS.STUDENTTPDF(0,5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:141)
-- **STATS.STUDENTTPPF(x1, x2)** — `PRINT "tppf     ="; STATS.STUDENTTPPF(0.975, 10)` (shared/samples/Math/StatsInverseSciPyParity.bas:10)
-- **STATS.STUDENTTSF(x1, x2)** — `PRINT "stud="; MATH.ROUND(STATS.StudentTSf(1.959964, 1000), 6)` (shared/minitests/stats/sf_extra.bas:4)
-- **STATS.TTEST(x1, x2)** — `DIM result = STATS.TTEST(x, y)` (shared/samples/Analysis/StatsSciPyParity.bas:16)
-- **STATS.TTESTONESAMPLE(x1, x2)** — `result = STATS.TTESTONESAMPLE(x, 5.0)` (shared/samples/Analysis/StatsSciPyParity.bas:20)
-- **STATS.TTESTPAIRED(x1, x2)** — `result = STATS.TTESTPAIRED(x, paired)` (shared/samples/Analysis/StatsSciPyParity.bas:18)
-- **STATS.TRIANGULARPDF(x1)** — `PRINT "TRIANGULARPDF(0.5): "; FORMAT(STATS.TRIANGULARPDF(0.5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:151)
-- **STATS.TRIANGULARPPF(x1)** — `PRINT "trianppf ="; STATS.TRIANGULARPPF(0.5, 0, 1, 0.5)` (shared/samples/Math/StatsInverseSciPyParity.bas:26)
-- **STATS.UNIFORMPDF(x1)** — `PRINT "UNIFORMPDF(0.5):  "; FORMAT(STATS.UNIFORMPDF(0.5), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:152)
-- **STATS.UNIFORMPPF(x1)** — `PRINT "unifppf  ="; STATS.UNIFORMPPF(0.5, 0, 1)` (shared/samples/Math/StatsInverseSciPyParity.bas:27)
-- **STATS.VARIANCE(x1)** — `PRINT "Varianza (Variance):  "; MATH.ROUND(STATS.Variance(Dataset1), 4)` (shared/samples/Analysis/AnalysisStatsDescriptive.bas:48)
-- **STATS.WEIBULLCDF(x1, x2, x3)** — `PRINT "WEIBULLCDF(1,2,3): "; FORMAT(STATS.WEIBULLCDF(1,2,3), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:144)
-- **STATS.WEIBULLPDF(x1, x2, x3)** — `PRINT "WEIBULLPDF(1,2,3): "; FORMAT(STATS.WEIBULLPDF(1,2,3), "0.0000")` (shared/samples/Analysis/AnalysisTests.bas:143)
-- **STATS.WEIBULLPPF(x1, x2, x3)** — `PRINT "weibppf  ="; STATS.WEIBULLPPF(0.8, 1.5, 2)` (shared/samples/Math/StatsInverseSciPyParity.bas:17)
-- **STATS.WEIBULLSF(x1, x2, x3)** — `PRINT "weib="; MATH.ROUND(STATS.WeibullSf(1.0, 2, 1), 6)` (shared/minitests/stats/sf_weibull_f.bas:3)
-- **STATS.WILCOXON(x1, x2)** — `r = STATS.WILCOXON(x, y)` (shared/samples/Math/StatsSciPyParityP0.bas:52)
-- **STATS.ZTEST(x1, x2, x3)** — `result = STATS.ZTEST(x, 5.0, 2.0)` (shared/samples/Analysis/StatsSciPyParity.bas:32)
-<!-- END DOMAIN TABLE -->
