@@ -189,6 +189,12 @@ if(APPLE)
 elseif(UNIX)
     target_link_options(gmb_vm_host PRIVATE "LINKER:-u,gmb_bf_498")
 endif()
+# rpath RILOCABILE: l'host è nel PATH del client e viene lanciato dalla REPL (`gmb_native_exec`),
+# quindi il binario deve caricare libllmtoken/libgmb_tray/SDL2 senza path del builder. Prima
+# l'rpath portava `/Users/<nome>/.gmbasic/libs/<rid>` e `…/gmb_runtime_c_build/llmtoken_build`:
+# copiato in un bundle non partiva. Vedi gmb_exe_relocatable (native/cmake/GmbRid.cmake).
+include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/GmbRid.cmake)
+gmb_exe_relocatable(gmb_vm_host)
 
 # Tool-loop di AI AGENT ASK (parità AgentToolLoop.AskWithTools C#): test deterministico
 # con brain finto + registry tool. Linka gmb_runtime (gmb_agent_ask) e gmb_agent_runtime

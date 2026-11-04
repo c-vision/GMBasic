@@ -4,24 +4,27 @@
 # (variabili persistenti tra le celle). È il ripristino in **C** del `NotebookServer`
 # che viveva nella REPL C# (eliminata, F6b): stesso protocollo JSON.
 cmake_minimum_required(VERSION 3.10)
-project(gmb_notebook C)
+project(gmbnotebook C)
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
+
+# RID + rpath rilocabile (una sola ricetta: native/cmake/GmbRid.cmake).
+include(${CMAKE_CURRENT_SOURCE_DIR}/../GMBasic/native/cmake/GmbRid.cmake)
 
 # Runtime C condiviso (valutatore espressioni/statement, dict, JSON): stessa sorgente
 # del mondo C, nessuna dipendenza da C#.
 add_subdirectory(../GMBasic/native/executor executor)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../GMBasic/native/gmb_agent_runtime gmb_agent_runtime_build)
 
-add_executable(gmb_notebook
+add_executable(gmbnotebook
     main.c
     notebook_kernel.c
     notebook_server.c
 )
 
-target_link_libraries(gmb_notebook PRIVATE gmb_runtime gmb_agent_runtime)
-target_include_directories(gmb_notebook PRIVATE ../GMBasic/native/gmb_runtime_c/include)
+target_link_libraries(gmbnotebook PRIVATE gmb_runtime gmb_agent_runtime)
+target_include_directories(gmbnotebook PRIVATE ../GMBasic/native/gmb_runtime_c/include)
 
 # Esecuzione delle celle = P-CODE: libgmb_eval porta il COMPILATORE C (gmb_compile_snippet)
 # e la VM/C; la cella è compilata in chunk A1/GMBC ed eseguita dalla VM (nessun valutatore
@@ -33,7 +36,9 @@ if(NOT EXISTS "${GMB_EVAL_LIB}")
         "libgmb_eval assente (${GMB_EVAL_LIB}): costruisci prima native/gmb_vm_c — "
         "cmake --build GMBasic/native/gmb_vm_c/build --target gmb_eval")
 endif()
-target_link_libraries(gmb_notebook PRIVATE "${GMB_EVAL_LIB}")
-set_target_properties(gmb_notebook PROPERTIES
-    BUILD_RPATH "${CMAKE_CURRENT_SOURCE_DIR}/../GMBasic/native/gmb_vm_c/build"
-    INSTALL_RPATH "${CMAKE_CURRENT_SOURCE_DIR}/../GMBasic/native/gmb_vm_c/build")
+target_link_libraries(gmbnotebook PRIVATE "${GMB_EVAL_LIB}")
+# libgmb_eval è linkata per path ASSOLUTO (artefatto della build di gmb_vm_c), ma il suo
+# install_name è `@rpath/libgmb_eval.dylib`: l'rpath deve quindi essere RELATIVO, non la
+# directory assoluta del checkout (che finiva cucita nel binario e non esisteva altrove).
+# `gmb_exe_relocatable` include già `../GMBasic/native/gmb_vm_c/build` e `libs/<rid>/`.
+gmb_exe_relocatable(gmbnotebook)
