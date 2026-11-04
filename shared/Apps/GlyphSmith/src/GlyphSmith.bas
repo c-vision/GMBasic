@@ -78,6 +78,7 @@ DIM g_bmpinOut AS STRING
 DIM g_guiZoom AS INTEGER
 DIM g_guiFrames AS INTEGER
 DIM g_guiGlyph AS INTEGER
+DIM g_guiLog AS LONG
 
 ' --- Intestazione del font --------------------------------------------------
 DIM g_startFont AS STRING
@@ -2514,26 +2515,37 @@ END SUB
 ' un leg senza finestre la finestra non compare e restano i marker di testo.
 SUB RunGui()
     DIM f AS INTEGER, nf AS INTEGER, zoom AS INTEGER
-    DIM k AS STRING, quit AS INTEGER, prev AS INTEGER
+    DIM k AS STRING, quit AS INTEGER, prev AS INTEGER, shot AS STRING
     LoadBdf(BdfPath())
     IF g_nGlyphs < 1 THEN Fail("GUI: nessun glifo")
     zoom = g_guiZoom
     IF zoom < 1 THEN zoom = 1
     nf = g_guiFrames
-    IF nf < 1 THEN nf = 1
+    ' frames = 0 → finestra INTERATTIVA (si esce con ESC/q); >0 → si chiude da sola
+    ' dopo nf frame (percorso deterministico per il check e per i sample).
+    IF nf < 0 THEN nf = 0
     IF g_guiGlyph < 0 THEN g_guiGlyph = 0
     IF g_guiGlyph > g_nGlyphs - 1 THEN g_guiGlyph = g_nGlyphs - 1
 
+    ' Canvas sulla PAGINA grafica (SCREEN 12) e non una WINDOW: su C99Native il
+    ' compositor delle finestre non presenta la chrome (finestra blu vuota anche
+    ' per il sample canonico Windows/WindowPixel.bas), mentre la pagina grafica
+    ' viene presentata dal main thread (gmb_tui_present_gfx). Tutto il disegno
+    ' passa quindi da qui, con primitive + DRAW TEXT.
     SCREEN 12
-    WINDOW DEFINE GsMain FROM 20, 20 TO 240, 360 TITLE "GlyphSmith" PIXEL
-    WINDOW SELECT GsMain
-    PRINT "GUI-READY glyphs="; g_nGlyphs; " zoom="; zoom
+    COLOR 15, 1
+    CLS
+    g_guiLog = 0
+    GuiLog("GUI-READY glyphs=" + NumS(g_nGlyphs) + " zoom=" + NumS(zoom))
     f = 0
     quit = 0
-    WHILE f < nf AND quit = 0
+    WHILE (nf = 0 OR f < nf) AND quit = 0
         f = f + 1
         GuiDraw(g_guiGlyph, zoom)
-        PRINT "GUI-FRAME "; f; " glyph="; g_guiGlyph; " enc="; g_enc(g_guiGlyph); " box="; g_gw(g_guiGlyph); "x"; g_gh(g_guiGlyph)
+        ' Gate a pixel: una volta per run si rilegge dal framebuffer ciò che il
+        ' disegno ha appena scritto (POINT), cosi' la resa non si verifica "a occhio".
+        IF f = 1 THEN GuiPixels(g_guiGlyph, zoom)
+        GuiLog("GUI-FRAME " + NumS(f) + " glyph=" + NumS(g_guiGlyph) + " enc=" + NumS(g_enc(g_guiGlyph)) + " box=" + NumS(g_gw(g_guiGlyph)) + "x" + NumS(g_gh(g_guiGlyph)))
         k = INKEY()
         IF LEN(k) > 0 THEN
             IF k = CHR$(27) THEN quit = 1
@@ -2549,18 +2561,55 @@ SUB RunGui()
                 g_guiGlyph = prev
             END IF
         END IF
+        ' Cadenza del frame: senza attesa la finestra vive pochi millisecondi (un lampo
+        ' non guardabile e non catturabile). 16 ms = ~60 fps.
+        SLEEP 16
     WEND
-    WINDOW SELECT 0
+    GuiLog("GUI-EXIT frames=" + NumS(f) + " glyph=" + NumS(g_guiGlyph))
+    ' Un run deterministico (frames > 0) lascia anche il frame su disco: e' la
+    ' prova visiva, senza dipendere da una cattura del desktop.
+    IF nf > 0 THEN
+        shot = OutPath("gui.png")
+        SAVE SCREEN shot
+        GuiLog("GUI-SHOT " + shot)
+    END IF
+    GuiLogClose()
     PRINT "GUI-EXIT frames="; f; " glyph="; g_guiGlyph
 END SUB
 
 ' Disegno del frame: griglia zoomata del glifo corrente + metriche. Coordinate
 ' relative al client della finestra selezionata (come i sample WINDOW ... PIXEL).
+' Disegno del frame sul canvas grafico: barra del titolo, griglia zoomata del
+' glifo, pannello delle metriche e legenda dei tasti. Tutto con primitive
+' (LINE / DRAW TEXT): la cella di testo di PRINT non viene composta su questa
+' leg, quindi il pannello NON puo' essere fatto di PRINT.
+' Altezza di una riga di testo nel frame: il font di sistema e' scalato dalla
+' render-scale (2x su Retina), quindi il layout NON puo' usare costanti fisse —
+' altrimenti titolo e pannello si sovrappongono (visto davvero nel primo frame).
+FUNCTION GuiTextH() AS INTEGER
+    DIM h AS INTEGER
+    h = TEXTHEIGHT()
+    IF h < 1 THEN h = 8
+    GuiTextH = h
+END FUNCTION
+
+FUNCTION GuiBarH() AS INTEGER
+    GuiBarH = GuiTextH() * 2 + 12
+END FUNCTION
+
 SUB GuiDraw(gcur AS INTEGER, zoom AS INTEGER)
-    DIM px AS INTEGER, py AS INTEGER, ox AS INTEGER, oy AS INTEGER
+    DIM px AS INTEGER, py AS INTEGER, ox AS INTEGER, oy AS INTEGER, lx AS INTEGER
+    DIM th AS INTEGER, barh AS INTEGER, ly AS INTEGER
+    th = GuiTextH()
+    barh = GuiBarH()
     CLS
-    ox = 12
-    oy = 12
+    LINE (0, 0)-(639, barh), 4, "BF"
+    COLOR 15, 4
+    DRAW TEXT "GlyphSmith - " + LEFT$(g_fontName, 24), 8, 6
+    DRAW TEXT "glifo " + NumS(gcur) + " di " + NumS(g_nGlyphs - 1) + "   enc " + NumS(g_enc(gcur)), 8, 6 + th
+    COLOR 15, 1
+    ox = 24
+    oy = barh + 16
     FOR py = 0 TO g_gh(gcur) - 1
         FOR px = 0 TO g_gw(gcur) - 1
             IF GetPx(gcur, px, py) = 1 THEN
@@ -2568,13 +2617,67 @@ SUB GuiDraw(gcur AS INTEGER, zoom AS INTEGER)
             END IF
         NEXT px
     NEXT py
-    LINE (ox - 2, oy - 2)-(ox + g_gw(gcur) * zoom + 1, oy + g_gh(gcur) * zoom + 1), 7, "B"
-    PRINT "glifo "; gcur; " di "; g_nGlyphs - 1
-    PRINT "enc   "; g_enc(gcur)
-    PRINT "bbx   "; g_gw(gcur); "x"; g_gh(gcur); " a "; g_gx(gcur); ","; g_gy(gcur)
-    PRINT "dwx   "; g_dwx(gcur)
-    PRINT "n p   glifo precedente / successivo"
-    PRINT "esc q esci"
+    LINE (ox - 1, oy - 1)-(ox + g_gw(gcur) * zoom, oy + g_gh(gcur) * zoom), 8, "B"
+    lx = ox + g_gw(gcur) * zoom + 28
+    IF lx < 360 THEN lx = 360
+    ly = oy
+    COLOR 14, 1
+    DRAW TEXT "bbox   " + NumS(g_gw(gcur)) + " x " + NumS(g_gh(gcur)), lx, ly
+    DRAW TEXT "offset " + NumS(g_gx(gcur)) + " , " + NumS(g_gy(gcur)), lx, ly + th + 4
+    DRAW TEXT "dwidth " + NumS(g_dwx(gcur)), lx, ly + 2 * (th + 4)
+    ' Legenda in basso a sinistra: non puo' collidere con il pannello metriche.
+    COLOR 7, 1
+    DRAW TEXT "n / p  glifo successivo / precedente", 12, 479 - 2 * (th + 4) - 6
+    DRAW TEXT "esc / q  esci", 12, 479 - (th + 4) - 6
+END SUB
+
+' Marker della GUI su FILE: con una finestra grafica attiva PRINT finisce nel
+' buffer di celle, che il present non compone (stdout muto oltre a ESC[2J).
+' Il file rende il percorso verificabile in modo deterministico a finestra aperta.
+SUB GuiLog(s AS STRING)
+    DIM h AS LONG
+    IF g_guiLog = 0 THEN
+        EnsureOutDir()
+        h = IO.FCREATE(OutPath("gui.log"))
+        IF h >= 0 THEN g_guiLog = h
+    END IF
+    IF g_guiLog > 0 THEN IO.FWRITE(g_guiLog, s + CHR$(10))
+END SUB
+
+' Gate a PIXEL del frame: rilegge dal framebuffer gli stessi punti che il disegno
+' ha appena scritto (POINT), quindi verifica la RESA e non solo che il codice sia
+' stato eseguito. ok=1 se barra del titolo, sfondo e inchiostro del glifo sono i
+' colori attesi; -1 = punto non disponibile (nessuna pagina grafica).
+SUB GuiPixels(gcur AS INTEGER, zoom AS INTEGER)
+    DIM px AS INTEGER, py AS INTEGER, ox AS INTEGER, oy AS INTEGER
+    DIM title AS INTEGER, bg AS INTEGER, ink AS INTEGER
+    DIM fx AS INTEGER, fy AS INTEGER, found AS INTEGER, ok AS INTEGER
+    ox = 24
+    oy = GuiBarH() + 16
+    POINT(5, 5), title
+    POINT(639, 479), bg
+    found = 0
+    ink = -1
+    FOR py = 0 TO g_gh(gcur) - 1
+        FOR px = 0 TO g_gw(gcur) - 1
+            IF found = 0 AND GetPx(gcur, px, py) = 1 THEN
+                fx = ox + px * zoom + zoom / 2
+                fy = oy + py * zoom + zoom / 2
+                POINT(fx, fy), ink
+                found = 1
+            END IF
+        NEXT px
+    NEXT py
+    ok = 0
+    IF title = 4 AND bg = 1 AND ink = 15 THEN ok = 1
+    GuiLog("GUI-PIXELS title=" + NumS(title) + " bg=" + NumS(bg) + " ink=" + NumS(ink) + " ok=" + NumS(ok))
+END SUB
+
+SUB GuiLogClose()
+    IF g_guiLog > 0 THEN
+        IO.FCLOSE(g_guiLog)
+        g_guiLog = 0
+    END IF
 END SUB
 
 SUB SheetAll()
