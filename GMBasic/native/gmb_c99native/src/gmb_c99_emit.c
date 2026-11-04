@@ -491,6 +491,7 @@ static void dbf_field_imap_ensure_as(ctx_t* c, const char* key, const char* fiel
              field, field);
     c->imap_name[c->n_imap] = (char*)key;
     c->imap_expr[c->n_imap] = strdup(dx);
+    c->imap_type[c->n_imap] = -1;
     c->n_imap++;
 }
 
@@ -521,6 +522,7 @@ static void dbf_field_imap_ensure(ctx_t* c, const char* name) {
              name, name);
     c->imap_name[c->n_imap] = (char*)name;
     c->imap_expr[c->n_imap] = strdup(dx);
+    c->imap_type[c->n_imap] = -1;
     c->n_imap++;
 }
 
@@ -757,7 +759,11 @@ static char* sb_ident_to(char* dst, const char* name) {
 }
 void emit_ident(ctx_t* c, const char* name) {
     for (int i = 0; i < c->n_imap; i++)
-        if (strcasecmp(c->imap_name[i], name) == 0) { sb_put(&c->out, c->imap_expr[i]); return; }
+        {
+            char _nb[160]; const char* _nn = norm_var(name, _nb, sizeof _nb);
+            char _vb[160]; const char* _vn = norm_var(c->imap_name[i], _vb, sizeof _vb);
+            if (strcasecmp(_vn, _nn) == 0) { sb_put(&c->out, c->imap_expr[i]); return; }
+        }
     sb_ident(&c->out, name);
 }
 static const char* ctype_name(int ty) { return ty == TY_STR ? "gmb_string_t" : (ty == TY_VAL ? "gmb_val_t" : "gmb_double_t"); }
@@ -2232,10 +2238,54 @@ static int is_matrix_factor_call(gmb_expr_t* e) {
     return 0;
 }
 
+/* Tipo esplicito di un nome mappato via imap (TY_NUM/TY_STR), -1 se non mappato. */
+/* Confronto NOMI imap: il suffisso di tipo non fa parte del nome (norm_var), quindi
+ * `v` e `v$` sono la STESSA variabile BASIC. */
+static int imap_type_of(ctx_t* c, const char* name) {
+    if (!name || strchr(name, '.')) return -1;
+    char nb[160]; const char* nn = norm_var(name, nb, sizeof nb);
+    for (int i = c->n_imap - 1; i >= 0; i--) {
+        if (c->imap_type[i] < 0 || !c->imap_name[i]) continue;
+        char vb[160]; const char* vn = norm_var(c->imap_name[i], vb, sizeof vb);
+        if (strcasecmp(vn, nn) == 0) return c->imap_type[i];
+    }
+    return -1;
+}
+
 int etype(ctx_t* c, gmb_expr_t* e) {
+    /* Variabile di ciclo mappata su un TEMP NASCOSTO con tipo esplicito (FOR EACH su
+     * elemento di tipo diverso dal tipo statico della variabile: `item` numerico usato
+     * anche come `item$`, o `v` stringa che itera valori numerici di un DICT): il tipo è
+     * quello dell'ELEMENTO, altrimenti PRINT emetteva gmb_print_string(<double>). */
+    if (e && e->kind == GMB_EXPR_VAR && e->var && !strchr(e->var, '.')) {
+        int _it = imap_type_of(c, e->var);
+        if (_it >= 0) return _it;
+    }
         /* LINALG.FACTOR(decomp, name): handle matrice (int64_t), non stringa.
      * GMB_TOK_Get è condiviso con POOL.Get/SyncMap.Get (stringa). */
     if (is_matrix_factor_call(e)) return TY_NUM;
+    /* Metodi di collezione la cui emissione produce un VAL (lista/coppia) o una STRINGA:
+     *   GetNode → stringa; Min/Max/ExtractMin/ExtractMax/First/Last/GetRange (map-like) → VAL
+     * Senza, PRINT emetteva gmb_print_double(<gmb_val_t/list>) = C invalido. */
+    if (e && e->kind == GMB_EXPR_CALL && e->var) {
+        const char* _vd0 = strrchr(e->var, '.');
+        if (_vd0 && _vd0 != e->var) {
+            const char* _mn0 = _vd0 + 1;
+            if (strcasecmp(_mn0, "GetNode") == 0) return TY_STR;
+            if (strcasecmp(_mn0, "Min") == 0 || strcasecmp(_mn0, "Max") == 0
+                || strcasecmp(_mn0, "ExtractMin") == 0 || strcasecmp(_mn0, "ExtractMax") == 0
+                || strcasecmp(_mn0, "First") == 0 || strcasecmp(_mn0, "Last") == 0
+                || strcasecmp(_mn0, "GetRange") == 0)
+            {
+                char _vb0[160]; size_t _vl0 = (size_t)(_vd0 - e->var);
+                if (_vl0 < sizeof(_vb0)) {
+                    memcpy(_vb0, e->var, _vl0); _vb0[_vl0] = 0;
+                    var_t* _vv0 = lookup_var(c, _vb0);
+                    if (_vv0 && _vv0->gkind && gk_is_dict(_vv0->gkind)) return TY_VAL;
+                }
+            }
+        }
+    }
     /* JSON.STRINGIFY/TOJSON: SEMPRE stringa (gmb_val_to_json ritorna gmb_string_t). Senza,
      * quando l'argomento è una coppia/lista (es. `JSON.Stringify(tree.Min())`) il tipo
      * ricadeva sul ramo per-istanza (TY_VAL/NUM) e PRINT emetteva
@@ -3135,7 +3185,8 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                                         if (cv && cv->gkind && gk_is_list(cv->gkind)) {
                         if (gmb_member_tok(mdot + 1) == GMB_TOK_Join) return TY_STR;
                         if (gmb_member_tok(mdot + 1) == GMB_TOK_Count) return TY_NUM;
-                        if (gmb_member_tok(mdot + 1) == GMB_TOK_GetNode) return TY_STR;
+                        if (gmb_member_tok(mdot + 1) == GMB_TOK_GetNode
+                            || strcasecmp(mdot + 1, "GetNode") == 0) return TY_STR;
                         /* BITREE (10) Query/QueryRange → double; SPARSESET (21) HasItem →
                          * predicato -1/0 (condiviso con SparseSet/LIST). */
                         if (cv->coll_type_code == 10
@@ -4104,7 +4155,19 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                      * CircularQueue C#/P-Code). Resta su gmb_list_t (come gli altri
                      * gkind=GK_LIST di C99Native) ma con ring_cap: Enqueue sovrascrive il
                      * più vecchio a buffer pieno e Capacity() ritorna la capienza. */
-                    case GMB_TOK_RingBuffer: v->gkind = GK_LIST; v->ring_cap = 64; v->coll_type_code = 20; break;
+                    case GMB_TOK_RingBuffer: {
+                        v->gkind = GK_LIST; v->ring_cap = 64; v->coll_type_code = 20;
+                        /* NEW RINGBUFFER(n): la capacità reale viene dal ctor (CALL
+                         * COLLNEWINIT:RINGBUFFER con argomento numerico). Prima restava il
+                         * default 64 e l'eviction non scattava (CollectionsModern §12). */
+                        if (s->dim_init && s->dim_init->kind == GMB_EXPR_CALL && s->dim_init->var
+                            && strncmp(s->dim_init->var, "COLLNEWINIT:RINGBUFFER", 22) == 0
+                            && s->dim_init->nargs >= 1 && s->dim_init->args[0]
+                            && s->dim_init->args[0]->kind == GMB_EXPR_NUM
+                            && s->dim_init->args[0]->num > 0)
+                            v->ring_cap = (int)s->dim_init->args[0]->num;
+                        break;
+                    }
                     case GMB_TOK_Dict: v->gkind = GK_DICT; v->coll_type_code = 2; break;
                     case GMB_TOK_Sorted: v->gkind = GK_SORTED; v->coll_type_code = 6; break;
                     case GMB_TOK_Tree: v->gkind = GK_SORTED; v->coll_type_code = 7; break;
@@ -6987,6 +7050,7 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_StatsGammaSf, emit_bf_dist },
     { NULL, GMB_TOK_StatsExpSf, emit_bf_dist }, { NULL, GMB_TOK_StatsStudentTSf, emit_bf_dist }, { NULL, GMB_TOK_StatsChiSquaredSf, emit_bf_dist },
     { NULL, GMB_TOK_StatsWeibullSf, emit_bf_dist }, { NULL, GMB_TOK_StatsFSf, emit_bf_dist },
+    { NULL, GMB_TOK_StatsNormalSf, emit_bf_dist }, { NULL, GMB_TOK_StatsLognormalSf, emit_bf_dist },
     { NULL, GMB_TOK_StatsGammaPdf, emit_bf_dist },
     { NULL, GMB_TOK_StatsGammaPpf, emit_bf_dist },
     { NULL, GMB_TOK_StatsGammaIsf, emit_bf_dist },
@@ -10206,7 +10270,7 @@ static int try_emit_var_method(ctx_t* c, const char* recv, const char* m, gmb_ex
      * (`gmb_val_index(list, ...)` su un gmb_list_t, CollectionsModern §12). */
     if (v->coll_type_code == 21 && n >= 1
         && (mtk == GMB_TOK_CollHasItem || strcasecmp(m, "HasItem") == 0)) {
-        sb_put(&c->out, "(gmb_double_t)gmb_list_contains(");
+        sb_put(&c->out, "(gmb_list_contains(");
         emit_var_ref(c, v);
         sb_put(&c->out, ", ");
         if (etype(c, a[0]) == TY_STR) {
@@ -10214,7 +10278,7 @@ static int try_emit_var_method(ctx_t* c, const char* recv, const char* m, gmb_ex
         } else {
             sb_put(&c->out, "gmb_make_val_double((gmb_double_t)("); emit_expr(c, a[0]); sb_put(&c->out, "))");
         }
-        sb_put(&c->out, ")");
+        sb_put(&c->out, ") ? -1.0 : 0.0)");
         return 1;
     }
     /* BITREE (10): il C99 lo rappresenta come lista dei valori sorgente; Query(idx) =
@@ -10243,9 +10307,7 @@ static int try_emit_var_method(ctx_t* c, const char* recv, const char* m, gmb_ex
                 sb_put(&c->out, "); gmb_double_t __bd = (gmb_double_t)("); emit_expr(c, a[1]);
                 sb_put(&c->out, "); gmb_list_add_at(&");
                 emit_var_ref(c, v);
-                sb_put(&c->out, ", __bi, gmb_list_get(");
-                emit_var_ref(c, v);
-                sb_put(&c->out, ", __bi).v_double + __bd); (void)0; })");
+                sb_put(&c->out, ", __bi, __bd); (void)0; })");
                 return 1;
             }
         }
@@ -11142,8 +11204,43 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
         if (nargs >= 1 && args[0] && args[0]->kind == GMB_EXPR_CALL && args[0]->var
             && strcmp(args[0]->var, "_array_") == 0)
             emit_list_literal(c, args[0]);
-        else
-            sb_put(&c->out, "gmb_list_new()");
+        else if (nargs >= 1 && args[0] && args[0]->kind == GMB_EXPR_VAR && args[0]->var) {
+            /* NEW <Coll>(<var>): copia gli elementi dalla sorgente (es. HASHRING(Servers)).
+             * Prima l'argomento era ignorato → collezione VUOTA. */
+            var_t* niv = lookup_var(c, args[0]->var);
+            if (niv && niv->is_array && niv->type == TY_STR) {
+                sb_put(&c->out, "gmb_list_from_strings(");
+                emit_var_ref(c, niv);
+                sb_put(&c->out, ", (gmb_int_t)(");
+                emit_arr_len_of(c, niv);
+                sb_put(&c->out, "))");
+            } else if (niv && niv->is_array) {
+                sb_put(&c->out, "gmb_list_from_double_array(");
+                emit_var_ref(c, niv);
+                sb_put(&c->out, ", (gmb_int_t)(");
+                emit_arr_len_of(c, niv);
+                sb_put(&c->out, "))");
+            } else if (niv && niv->gkind && gk_is_list(niv->gkind)) {
+                sb_put(&c->out, "gmb_list_deep_copy(");
+                emit_var_ref(c, niv);
+                sb_put(&c->out, ")");
+            } else {
+                sb_put(&c->out, "gmb_list_new()");
+            }
+        }
+        else {
+            /* tipo del contenitore dal nome COLLNEWINIT:<Tipo>: le mappe (DICT/SORTED/TREE/
+             * AVL/REDBLACK/BPLUS/CACHE/TIMELINE) sono gmb_dict_t, il resto lista. Prima un
+             * `NEW BPLUSTREE<...>(3)` emetteva gmb_list_new() in una var gmb_dict_t
+             * (CollectionsModern §14). */
+            const char* tname = name + 12;
+            int map_like = 0;
+            static const char* const mnames[] = { "DICT", "SORTED", "TREE", "AVLTREE", "REDBLACK",
+                                                  "BPLUSTREE", "CACHE", "TIMELINE", NULL };
+            for (int mi = 0; mnames[mi]; mi++)
+                if (strcasecmp(tname, mnames[mi]) == 0) { map_like = 1; break; }
+            sb_put(&c->out, map_like ? "gmb_dict_new()" : "gmb_list_new()");
+        }
         return;
     }
     /* JSON tipizzato: myJson.membro[idx] → testo dell'elemento array */
@@ -11232,10 +11329,90 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                 if (cv && cv->gkind && (gk_is_list(cv->gkind) || gk_is_dict(cv->gkind) || cv->gkind == GK_GRAPH)) {
                     const char* m2 = cd2 + 1;
                     int mk = gmb_member_tok(m2);
+                    if (strstr(name, "MyTimeline") || strstr(name, "MyBPTree") || strstr(name, "MyRing")) fprintf(stderr, "[dbg-coll] name=%s cv=%s gkind=%d tc=%d mk=%d nargs=%d m2=%s\n", name, cv->name, cv->gkind, cv->coll_type_code, mk, nargs, m2);
                     int is_list_fam = gk_is_list(cv->gkind);
                     int is_str_el = cv->elem_str;
                     int is_set = cv->gkind == GK_SET;
                     int is_sorted = cv->gkind == GK_SORTED;
+                    /* HASHRING (19, rappresentato come lista di stringhe): AddNode dedup +
+                     * GetNode con l'anello CONDIVISO (gmb_hashring_node_from_list: stesso
+                     * algoritmo MurmurHash2 della CommonLib usata da IL/PCode). */
+                    if (cv->coll_type_code == 19) {
+                        if (strcasecmp(m2, "GetNode") == 0 && args && nargs >= 1) {
+                            sb_put(&c->out, "gmb_string_alloc((char*)gmb_hashring_node_from_list(");
+                            emit_var_ref(c, cv);
+                            sb_put(&c->out, ", (");
+                            emit_str_operand(c, args[0]);
+                            sb_put(&c->out, ").data))");
+                            return;
+                        }
+                        if (strcasecmp(m2, "AddNode") == 0 && args && nargs >= 1) {
+                            sb_put(&c->out, "({ gmb_val_t __hn = gmb_make_val_string((");
+                            emit_str_operand(c, args[0]);
+                            sb_put(&c->out, ").data); if (!gmb_list_contains(");
+                            emit_var_ref(c, cv);
+                            sb_put(&c->out, ", __hn)) gmb_list_add(&");
+                            emit_var_ref(c, cv);
+                            sb_put(&c->out, ", __hn); (void)0; })");
+                            return;
+                        }
+                    }
+                    /* SPARSESET (21).HasItem(v): appartenenza sulla lista (CommonLib/
+                     * PCode/VM-C). Il TokenKind può non coincidere: match anche per nome. */
+                    if (cv->coll_type_code == 21 && nargs >= 1 && args
+                        && (mk == GMB_TOK_CollHasItem || strcasecmp(m2, "HasItem") == 0)) {
+                        /* predicato BASIC: -1 (vero) / 0 (falso), non 1/0. */
+                        sb_put(&c->out, "(gmb_list_contains(");
+                        emit_var_ref(c, cv);
+                        sb_put(&c->out, ", ");
+                        if (etype(c, args[0]) == TY_STR) {
+                            sb_put(&c->out, "gmb_make_val_string(("); emit_expr(c, args[0]); sb_put(&c->out, ").data)");
+                        } else {
+                            sb_put(&c->out, "gmb_make_val_double((gmb_double_t)("); emit_expr(c, args[0]); sb_put(&c->out, "))");
+                        }
+                        sb_put(&c->out, ") ? -1.0 : 0.0)");
+                        return;
+                    }
+                    /* CACHE (16).TryGetValue(key, out): predicato -1/0 sulla presenza (C99 non
+                     * ha TTL). L'out-param NON viene assegnato, come su IL/PCode/VM-C: il
+                     * valore della variabile non è propagato da nessuna gamba (limite noto,
+                     * `Todo/(open) - Collezioni-Divergenze-Residue`). Prima qui l'out veniva
+                     * scritto e il sample stampava "Trovato key1: value1" solo su C99. */
+                    if (cv->coll_type_code == 16 && nargs >= 2 && args
+                        && (strcasecmp(m2, "TryGetValue") == 0 || mk == GMB_TOK_TryGetValue)) {
+                        sb_put(&c->out, "((gmb_dict_contains_key(");
+                        sb_ident(&c->out, cv->name); sb_put(&c->out, ", (");
+                        emit_str_operand(c, args[0]); sb_put(&c->out, ").data) ? -1.0 : 0.0))");
+                        return;
+                    }
+                    /* TIMELINE (18).GetRange(lo,hi) → lista di coppie {Key,Value} con la
+                     * chiave entro l'intervallo (C99: dict con chiavi-serial). */
+                    if (cv->coll_type_code == 18 && nargs >= 2 && args
+                        && strcasecmp(m2, "GetRange") == 0) {
+                        sb_put(&c->out, "gmb_dict_entries_between(");
+                        sb_ident(&c->out, cv->name);
+                        sb_put(&c->out, ", (gmb_double_t)("); emit_expr(c, args[0]);
+                        sb_put(&c->out, "), (gmb_double_t)("); emit_expr(c, args[1]);
+                        sb_put(&c->out, "))");
+                        return;
+                    }
+                    /* First()/Last() su map-like (TIMELINE/TREE/...): prima/ultima COPPIA
+                     * {Key,Value} (gmb_dict_extreme). Il TokenKind di "First" non è
+                     * GMB_TOK_CollFirst in tutte le tabelle: match anche per nome. */
+                    if (!is_list_fam && nargs == 0
+                        && (mk == GMB_TOK_CollFirst || mk == GMB_TOK_CollLast
+                            || strcasecmp(m2, "First") == 0 || strcasecmp(m2, "Last") == 0)) {
+                        int isLast = (mk == GMB_TOK_CollLast || strcasecmp(m2, "Last") == 0);
+                        if (cv->coll_type_code == 18) {
+                            /* TIMELINE.First/Last = coppia {Key,Value} (parità IL/VM-C) */
+                            sb_printf(&c->out, "gmb_dict_edge_pair_val(%s, %d)", cv->name, isLast ? 1 : 0);
+                        } else {
+                            sb_put(&c->out, "gmb_val_to_json(gmb_make_val_list(gmb_dict_extreme(&");
+                            sb_ident(&c->out, cv->name);
+                            sb_printf(&c->out, ", %d, 0)))", isLast ? 1 : 0);
+                        }
+                        return;
+                    }
                     /* ── GRAPH (handle runtime condiviso gmb_graph_*, parity VM/C) ── */
                     if (cv->gkind == GK_GRAPH) {
                         if (mk == GMB_TOK_AddNode) {
@@ -11408,9 +11585,9 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                             if (gmb_tk_in(mk, gmb_tk_dict_mme, (unsigned)(sizeof(gmb_tk_dict_mme)/sizeof(gmb_tk_dict_mme[0])))) {
                                 int ismax = mk == GMB_TOK_Max || mk == GMB_TOK_ExtractMax;
                                 int remove = mk == GMB_TOK_ExtractMin || mk == GMB_TOK_ExtractMax;
-                                sb_put(&c->out, "gmb_val_to_json(gmb_make_val_list(gmb_dict_extreme(&");
+                                sb_put(&c->out, "gmb_make_val_list(gmb_dict_extreme(&");
                                 sb_ident(&c->out, cv->name);
-                                sb_printf(&c->out, ", %d, %d)))", ismax ? 1 : 0, remove ? 1 : 0);
+                                sb_printf(&c->out, ", %d, %d))", ismax ? 1 : 0, remove ? 1 : 0);
                                 return;
                             }
                             if (mk == GMB_TOK_ToArray) {
@@ -11473,7 +11650,8 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                                 return;
                             }
                         }
-                        if (nargs == 2 && (mk == GMB_TOK_Add || mk == GMB_TOK_Set || mk == GMB_TOK_CollSet || mk == GMB_TOK_CollSetKeyValue)) {
+                        if (nargs >= 2 && (mk == GMB_TOK_Set || mk == GMB_TOK_CollSet || mk == GMB_TOK_CollSetKeyValue
+                                           || (mk == GMB_TOK_Add && nargs == 2))) {
                             /* F1 Incongruenze: d.set(k,v)/d.SetKeyValue(k,v) — stessa semantica
                              * di Add(k,v) (sovrascrive). Prima: solo Add era gestito, il set
                              * emetteva `0` (no-op silenzioso, chiave mai scritta). */
@@ -17472,8 +17650,11 @@ static int is_json_path_member(ctx_t* c, gmb_expr_t* e, var_t** out_bv, const ch
                      sb_putn(&c->out, p, 1);
                  }
                  sb_put(&c->out, "\")");
-             } else if (print_class_field_str(c, s->print_args[i]) || expr_value_is_str(c, s->print_args[i]) || etype(c, s->print_args[i]) == TY_STR
-                        || (s->print_args[i] && s->print_args[i]->kind == GMB_EXPR_CALL && s->print_args[i]->tk == GMB_TOK_AsrTranscribe)) {
+             } else if ((s->print_args[i]->kind == GMB_EXPR_VAR && s->print_args[i]->var
+                        && imap_type_of(c, s->print_args[i]->var) == TY_NUM)
+                       ? 0
+                       : (print_class_field_str(c, s->print_args[i]) || expr_value_is_str(c, s->print_args[i]) || etype(c, s->print_args[i]) == TY_STR
+                        || (s->print_args[i] && s->print_args[i]->kind == GMB_EXPR_CALL && s->print_args[i]->tk == GMB_TOK_AsrTranscribe))) {
                 sb_put(&c->out, "gmb_print_string(");
                 emit_expr(c, s->print_args[i]);
             } else if (s->print_args[i]->kind == GMB_EXPR_VAR && s->print_args[i]->var
@@ -19146,12 +19327,53 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                     else sb_put(&c->out, "gmb_dict_keys(");
                     emit_ident(c, av->name);
                     sb_put(&c->out, ");\n");
+                    int etv0 = av->elem_str ? TY_STR : TY_NUM;
+                    int key_tmp = (keys_only || pair)
+                        && !(kv->type == TY_STR && !kv->gkind && !kv->vclass[0] && !kv->is_array);
+                    int val_tmp = pair
+                        && !(vv->type == etv0 && !vv->gkind && !vv->vclass[0]
+                             && !vv->is_array && !vv->boxed_val);
+                    int pushed_key = 0, pushed_val = 0;
+                    {
+                        if (key_tmp) {
+                            ind(c); sb_printf(&c->out, "gmb_string_t __fek%d;\n", id);
+                            if (c->n_imap < GMB_IMAP_CAP) {
+                                char* tex0 = (char*)malloc(24);
+                                snprintf(tex0, 24, "__fek%d", id);
+                                c->imap_name[c->n_imap] = kv->name;
+                                c->imap_expr[c->n_imap] = tex0;
+                                c->imap_type[c->n_imap] = TY_STR;
+                                c->n_imap++;
+                                pushed_key = 1;
+                            }
+                        }
+                        if (val_tmp) {
+                            ind(c); sb_printf(&c->out, "%s __fev%d;\n",
+                                              etv0 == TY_STR ? "gmb_string_t" : "gmb_double_t", id);
+                            if (c->n_imap < GMB_IMAP_CAP) {
+                                char* tex1 = (char*)malloc(24);
+                                snprintf(tex1, 24, "__fev%d", id);
+                                c->imap_name[c->n_imap] = vv->name;
+                                c->imap_expr[c->n_imap] = tex1;
+                                c->imap_type[c->n_imap] = etv0;
+                                c->n_imap++;
+                                pushed_val = 1;
+                            }
+                        }
+                    }
                     ind(c); sb_printf(&c->out, "for (gmb_int_t __fei%d = 0; __fei%d < gmb_list_count(__fkp); __fei%d++) {\n", id, id, id);
                     c->indent++;
                     if (keys_only || pair) {
-                        ind(c);
-                        emit_ident(c, kv->name);
-                        sb_printf(&c->out, " = gmb_string_alloc(gmb_list_get(__fkp, __fei%d).v_string.data);\n", id);
+                        /* La CHIAVE è sempre stringa (parità IL/PCode): se la variabile ha un
+                         * tipo statico diverso (es. `k` numerica da un altro uso), il corpo usa
+                         * un temp nascosto via imap e la variabile viene riallineata a fine loop. */
+                        if (kv->type == TY_STR && !kv->gkind && !kv->vclass[0] && !kv->is_array) {
+                            ind(c);
+                            emit_ident(c, kv->name);
+                            sb_printf(&c->out, " = gmb_string_alloc(gmb_list_get(__fkp, __fei%d).v_string.data);\n", id);
+                        } else {
+                            ind(c); sb_printf(&c->out, "__fek%d = gmb_string_alloc(gmb_list_get(__fkp, __fei%d).v_string.data);\n", id, id);
+                        }
                     }
                     if (entry_only) {
                         /* KeyValuePair {Key,Value} come gmb_val_t dict: e.Key/e.Value passano da
@@ -19166,15 +19388,31 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                         sb_printf(&c->out, " = gmb_make_val_dict(__kvd%d);\n", id);
                     }
                     if (pair) {
-                        ind(c);
-                        emit_ident(c, vv->name);
-                        sb_put(&c->out, " = ");
-                        if (av->elem_str) sb_put(&c->out, "gmb_string_alloc(gmb_dict_get(");
-                        else sb_put(&c->out, "gmb_dict_get(");
-                        emit_ident(c, av->name);
-                        sb_printf(&c->out, ", gmb_list_get(__fkp, __fei%d).v_string.data", id);
-                        if (av->elem_str) sb_put(&c->out, ").v_string.data);\n");
-                        else sb_put(&c->out, ").v_double;\n");
+                        int etv = av->elem_str ? TY_STR : TY_NUM;
+                        if (vv->type == etv && !vv->gkind && !vv->vclass[0] && !vv->is_array
+                            && !vv->boxed_val) {
+                            ind(c);
+                            emit_ident(c, vv->name);
+                            sb_put(&c->out, " = ");
+                            if (av->elem_str) sb_put(&c->out, "gmb_string_alloc(gmb_dict_get(");
+                            else sb_put(&c->out, "gmb_val_to_double(gmb_dict_get(");
+                            emit_ident(c, av->name);
+                            sb_printf(&c->out, ", gmb_list_get(__fkp, __fei%d).v_string.data", id);
+                            if (av->elem_str) sb_put(&c->out, ").v_string.data);\n");
+                            else sb_put(&c->out, "));\n");
+                        } else {
+                            /* tipo diverso (es. `v` stringa che itera valori numerici):
+                             * temp nascosto tipizzato (dichiarato PRIMA del for, così resta
+                             * in scope per il riallineamento dopo il ciclo) + imap. */
+                            ind(c); sb_printf(&c->out, "__fev%d = ", id);
+                            if (av->elem_str) sb_printf(&c->out, "gmb_string_alloc(gmb_dict_get(");
+                            else sb_printf(&c->out, "gmb_dict_get(");
+                            emit_ident(c, av->name);
+                            sb_printf(&c->out, ", gmb_list_get(__fkp, __fei%d).v_string.data", id);
+                            if (av->elem_str) sb_put(&c->out, ").v_string.data);\n");
+                            else sb_put(&c->out, ").v_double;\n");
+                            (void)etv;
+                        }
                     }
                     if (values_only) {
                         ind(c);
@@ -19191,6 +19429,29 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                     emit_num_label(c, s->for_next_bas);
                     c->indent--;
                     ind(c); sb_put(&c->out, "}\n");
+                    /* pop degli imap temporanei del FOR EACH a coppie + riallineamento delle
+                     * variabili BASIC all'ultimo valore (conversione se il tipo statico è
+                     * diverso da quello dell'elemento). */
+                    if (pushed_val) {
+                        free((void*)c->imap_expr[c->n_imap - 1]);
+                        c->n_imap--;
+                        ind(c);
+                        emit_ident(c, vv->name);
+                        sb_put(&c->out, " = ");
+                        if (vv->type == TY_STR)
+                            sb_printf(&c->out, "gmb_string_alloc(gmb_double_to_string(__fev%d).data);\n", id);
+                        else
+                            sb_printf(&c->out, "(gmb_double_t)atof(__fev%d.data ? __fev%d.data : \"\");\n", id, id);
+                    }
+                    if (pushed_key) {
+                        free((void*)c->imap_expr[c->n_imap - 1]);
+                        c->n_imap--;
+                        if (kv->type != TY_STR || kv->gkind || kv->vclass[0] || kv->is_array) {
+                            ind(c);
+                            emit_ident(c, kv->name);
+                            sb_printf(&c->out, " = (gmb_double_t)atof(__fek%d.data ? __fek%d.data : \"\");\n", id, id);
+                        }
+                    }
                     c->indent--;
                     ind(c); sb_put(&c->out, "}\n");
                     return;
@@ -19369,6 +19630,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                         snprintf(ex, 24, "__mde%d", id);
                         c->imap_name[c->n_imap] = s->for_var;
                         c->imap_expr[c->n_imap] = ex;
+                        c->imap_type[c->n_imap] = -1;
                         c->n_imap++;
                     }
                     emit_list(c, s->for_body, s->n_for);
@@ -19413,15 +19675,29 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                 var_t* lfv2 = lookup_var(c, s->for_var);
                 if (!lfv2) lfv2 = vars_add(cur_scope(c), s->for_var ? s->for_var : "", et);
                 int conv_str = (lfv2->type == TY_STR && et == TY_NUM);
-                if (lfv2->type != et && !conv_str) {
-                    c99_fail(c, s->line, "FOR EACH: tipo di '%s' (%s) incompatibile con elemento di LIST '%s' (%s)",
-                             s->for_var, ctype_name(lfv2->type), av->name, ctype_name(et));
-                    return;
-                }
+                /* TIPO DIVERSO dall'elemento (es. `item` dichiarata STRING da un altro loop
+                 * `item$`, o `v` stringa che itera i valori numerici di un DICT): la variabile
+                 * BASIC resta quella, ma DENTRO il ciclo il nome è mappato (imap) su un temp
+                 * nascosto del tipo dell'elemento — così PRINT usa il formato giusto
+                 * (`  1` numerico, non `1` stringa). Prima conv_str convertiva in stringa. */
+                int mismatch = (lfv2->type != et);
                 static int fel2_uid = 0;
                 int id = ++fel2_uid;
                 ind(c); sb_put(&c->out, "{\n");
                 c->indent++;
+                char tmpn[64];
+                const char* target = lfv2->name;
+                if (mismatch) {
+                    snprintf(tmpn, sizeof(tmpn), "__felv%d", id);
+                    ind(c); sb_printf(&c->out, "%s %s;\n", et == TY_STR ? "gmb_string_t" : "gmb_double_t", tmpn);
+                    if (c->n_imap < GMB_IMAP_CAP) {
+                        c->imap_name[c->n_imap] = lfv2->name;
+                        c->imap_expr[c->n_imap] = strdup(tmpn);
+                        c->imap_type[c->n_imap] = et;
+                        c->n_imap++;
+                    }
+                    target = tmpn;
+                }
                 /* STACK: lo storage è la lista in ordine di PUSH (append) mentre l'iterazione
                  * BASIC è LIFO (dalla cima): si percorre al contrario (parità IL/VM-C/PCode:
                  * `FOR EACH item IN stack` dà l'ultimo push per primo). */
@@ -19435,32 +19711,50 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                     sb_printf(&c->out, "); __fel%d++) {\n", id);
                 }
                 c->indent++;
-                ind(c);
-                emit_ident(c, lfv2->name);
-                sb_put(&c->out, " = ");
-                if (et == TY_STR)
-                    sb_printf(&c->out, "gmb_string_alloc(gmb_list_get(");
-                else if (conv_str)
-                    sb_printf(&c->out, "gmb_string_alloc(gmb_double_to_string(gmb_list_get(");
-                else if (lfv2->boxed_val)
-                    /* var promossa a gmb_val_t da un ALTRO FOR EACH sullo stesso nome (es.
-                     * `v` riusato in `FOR EACH k, v IN dict`): il double va boxato. */
-                    sb_printf(&c->out, "gmb_make_val_double(gmb_list_get(");
-                else
-                    sb_printf(&c->out, "gmb_list_get(");
-                emit_ident(c, av->name);
-                if (et == TY_STR)
-                    sb_printf(&c->out, ", __fel%d).v_string.data);\n", id);
-                else if (conv_str)
-                    sb_printf(&c->out, ", __fel%d).v_double).data);\n", id);
-                else if (lfv2->boxed_val)
-                    sb_printf(&c->out, ", __fel%d).v_double);\n", id);
-                else
-                    sb_printf(&c->out, ", __fel%d).v_double;\n", id);
+                {
+                    ind(c);
+                    sb_put(&c->out, target);
+                    sb_put(&c->out, " = ");
+                    if (et == TY_STR)
+                        sb_printf(&c->out, "gmb_string_alloc(gmb_list_get(");
+                    else if (conv_str && !mismatch)
+                        sb_printf(&c->out, "gmb_string_alloc(gmb_double_to_string(gmb_list_get(");
+                    else if (lfv2->boxed_val && !mismatch)
+                        /* var promossa a gmb_val_t da un ALTRO FOR EACH sullo stesso nome (es.
+                         * `v` riusato in `FOR EACH k, v IN dict`): il double va boxato. */
+                        sb_printf(&c->out, "gmb_make_val_double(gmb_list_get(");
+                    else
+                        sb_printf(&c->out, "gmb_list_get(");
+                    emit_ident(c, av->name);
+                    if (et == TY_STR)
+                        sb_printf(&c->out, ", __fel%d).v_string.data);\n", id);
+                    else if (conv_str && !mismatch)
+                        sb_printf(&c->out, ", __fel%d).v_double).data);\n", id);
+                    else if (lfv2->boxed_val && !mismatch)
+                        sb_printf(&c->out, ", __fel%d).v_double);\n", id);
+                    else
+                        sb_printf(&c->out, ", __fel%d).v_double;\n", id);
+                }
                 emit_list(c, s->for_body, s->n_for);
+                if (mismatch && c->n_imap > 0 && c->imap_name[c->n_imap - 1] == lfv2->name) {
+                    free((void*)c->imap_expr[c->n_imap - 1]);
+                    c->n_imap--;
+                }
                 emit_num_label(c, s->for_next_bas);
                 c->indent--;
                 ind(c); sb_put(&c->out, "}\n");
+                /* il valore dell'ULTIMA iterazione resta nella variabile BASIC (conversione
+                 * esplicita se il tipo statico è diverso da quello dell'elemento). Emesso
+                 * DENTRO il blocco esterno: il temp nascosto è dichiarato lì. */
+                if (mismatch) {
+                    ind(c);
+                    emit_ident(c, lfv2->name);
+                    sb_put(&c->out, " = ");
+                    if (lfv2->type == TY_STR)
+                        sb_printf(&c->out, "gmb_string_alloc(gmb_double_to_string(__felv%d).data);\n", id);
+                    else
+                        sb_printf(&c->out, "(gmb_double_t)atof(__felv%d.data ? __felv%d.data : \"\");\n", id, id);
+                }
                 c->indent--;
                 ind(c); sb_put(&c->out, "}\n");
                 return;
@@ -19496,6 +19790,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                                     snprintf(ex, 24, "__mde%d", id);
                                     c->imap_name[c->n_imap] = s->for_var;
                                     c->imap_expr[c->n_imap] = ex;
+                                    c->imap_type[c->n_imap] = -1;
                                     c->n_imap++;
                                 }
                                 emit_list(c, s->for_body, s->n_for);
@@ -19707,6 +20002,7 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                 if (c->n_imap < GMB_IMAP_CAP) {
                     c->imap_name[c->n_imap] = (char*)fv->name;
                     c->imap_expr[c->n_imap] = shname;
+                    c->imap_type[c->n_imap] = -1;
                     c->n_imap++;
                 }
                 fv->type = av->type;
@@ -31098,6 +31394,7 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
             sprintf(ex, "(*%s)", cn);
             c->imap_name[c->n_imap] = v->name;
             c->imap_expr[c->n_imap] = ex;
+            c->imap_type[c->n_imap] = -1;
             c->n_imap++;
         }
     }
@@ -31121,6 +31418,7 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
             if (deref) strcat(ex, ")");
             c->imap_name[c->n_imap] = v->name;
             c->imap_expr[c->n_imap] = ex;
+            c->imap_type[c->n_imap] = -1;
             c->n_imap++;
         }
     }
@@ -31141,6 +31439,7 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
             if (v->cap_ref) strcat(ex, ")");
             c->imap_name[c->n_imap] = v->name;
             c->imap_expr[c->n_imap] = ex;
+            c->imap_type[c->n_imap] = -1;
             c->n_imap++;
         }
     }

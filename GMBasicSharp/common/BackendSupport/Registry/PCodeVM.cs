@@ -534,6 +534,8 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "STATS.ChiSquaredSf");
         r.Register(Backend.PCodeVM, "STATS.WeibullSf");
         r.Register(Backend.PCodeVM, "STATS.FSf");
+        r.Register(Backend.PCodeVM, "STATS.NormalSf");
+        r.Register(Backend.PCodeVM, "STATS.LognormalSf");
         r.Register(Backend.PCodeVM, "TRADING.OPTIONS.GammaColor");
         r.Register(Backend.PCodeVM, "SPECIAL.GAMMAINC");
         r.Register(Backend.PCodeVM, "SPECIAL.GAMMAINCC");

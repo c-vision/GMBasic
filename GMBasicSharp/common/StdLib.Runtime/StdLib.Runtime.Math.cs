@@ -40,8 +40,10 @@ public static class MathFunctions
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double NormalPdf(double mean, double stdDev, double x) => CommonLib.Numerics.NormalPdf(mean, stdDev, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double NormalCdf(double mean, double stdDev, double x) => CommonLib.Numerics.NormalCdf(mean, stdDev, x);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double NormalSf(double mean, double sd, double x) => 1.0 - CommonLib.Numerics.NormalCdf(mean, sd, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double LognormalPdf(double mu, double sigma, double x) => CommonLib.Numerics.LognormalPdf(mu, sigma, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double LognormalCdf(double mu, double sigma, double x) => CommonLib.Numerics.LognormalCdf(mu, sigma, x);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double LognormalSf(double mu, double sigma, double x) => 1.0 - CommonLib.Numerics.LognormalCdf(mu, sigma, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ChiPdf(double freedom, double x) => CommonLib.Numerics.ChiPdf(freedom, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ChiCdf(double freedom, double x) => CommonLib.Numerics.ChiCdf(freedom, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ChiSquaredPdf(double freedom, double x) => CommonLib.Numerics.ChiSquaredPdf(freedom, x);

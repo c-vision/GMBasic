@@ -5315,6 +5315,19 @@ static int ds_sh3nm(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
     sb_put(&c->out, ")");
     return 1;
 }
+static int ds_sh3nm_sf(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
+    if (n < 1) return 0;
+    sb_put(&c->out, "(1.0 - "); sb_put(&c->out, fn); sb_put(&c->out, "(");
+    if (n >= 2) emit_expr(c, a[1]); else sb_put(&c->out, "0");
+    sb_put(&c->out, ", ");
+    if (n >= 3) emit_expr(c, a[2]); else sb_put(&c->out, "1");
+    sb_put(&c->out, ", ");
+    emit_expr(c, a[0]);
+    sb_put(&c->out, "))");
+    return 1;
+}
+static int ds_normal_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3nm_sf(c, a, n, "gmb_dist_normal_cdf"); }
+static int ds_lognormal_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3nm_sf(c, a, n, "gmb_dist_lognormal_cdf"); }
 static int ds_sh3i(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
     if (n < 3) return 0;
     sb_put(&c->out, fn); sb_put(&c->out, "(");
@@ -5478,10 +5491,12 @@ static const ds_row DS_TBL[] = {
     { GMB_TOK_LogisticPdf, ds_logistic_pdf },
     { GMB_TOK_LogisticPpf, ds_logistic_ppf },
     { GMB_TOK_LognormalCdf, ds_lognormal_cdf },
+    { GMB_TOK_StatsLognormalSf, ds_lognormal_sf },
     { GMB_TOK_LognormalPdf, ds_lognormal_pdf },
     { GMB_TOK_LognormalPpf, ds_lognormal_ppf },
     { GMB_TOK_NegativeBinomialPmf, ds_negbinom },
     { GMB_TOK_NormalCdf, ds_normal_cdf },
+    { GMB_TOK_StatsNormalSf, ds_normal_sf },
     { GMB_TOK_NormalIsf, ds_normal_isf },
     { GMB_TOK_NormalPdf, ds_normal_pdf },
     { GMB_TOK_NormalPpf, ds_normal_ppf },

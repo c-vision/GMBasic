@@ -494,7 +494,9 @@ static void gmb_bf_57(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_
 {
         {
             double mean = argc >= 2 ? args[1].num : 0, sd = argc >= 3 ? args[2].num : 1;
-            bout->result = func_code == 57 ? gmb_dist_normal_pdf(mean, sd, args[0].num) : gmb_dist_normal_cdf(mean, sd, args[0].num);
+            bout->result = func_code == 57 ? gmb_dist_normal_pdf(mean, sd, args[0].num)
+                         : func_code == 1042 ? 1.0 - gmb_dist_normal_cdf(mean, sd, args[0].num)
+                         : gmb_dist_normal_cdf(mean, sd, args[0].num);
         }
 }
 static void gmb_bf_61(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -542,7 +544,9 @@ static void gmb_bf_59(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_
 {
         {
             double mu = argc >= 2 ? args[1].num : 0, sigma = argc >= 3 ? args[2].num : 1;
-            bout->result = func_code == 59 ? gmb_dist_lognormal_pdf(mu, sigma, args[0].num) : gmb_dist_lognormal_cdf(mu, sigma, args[0].num);
+            bout->result = func_code == 59 ? gmb_dist_lognormal_pdf(mu, sigma, args[0].num)
+                         : func_code == 1043 ? 1.0 - gmb_dist_lognormal_cdf(mu, sigma, args[0].num)
+                         : gmb_dist_lognormal_cdf(mu, sigma, args[0].num);
         }
 }
 static void gmb_bf_71(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -17476,6 +17480,8 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 1039, gmb_bf_61 },
     { 1040, gmb_bf_69 },
     { 1041, gmb_bf_71 },
+    { 1042, gmb_bf_57 },
+    { 1043, gmb_bf_59 },
     { 1015, gmb_bf_1013 },
     { 1017, gmb_bf_1017 },
     { 1018, gmb_bf_1018 },

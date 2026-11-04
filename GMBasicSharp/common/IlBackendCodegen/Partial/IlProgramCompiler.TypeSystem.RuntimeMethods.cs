@@ -152,6 +152,8 @@ public sealed partial class IlProgramCompiler
     private static readonly MethodInfo IlRuntimeChiSquaredSfMethod = typeof(Basic.StdLibRuntime.MathFunctions).GetMethod(nameof(Basic.StdLibRuntime.MathFunctions.ChiSquaredSf))!;
     private static readonly MethodInfo IlRuntimeWeibullSfMethod = typeof(Basic.StdLibRuntime.MathFunctions).GetMethod(nameof(Basic.StdLibRuntime.MathFunctions.WeibullSf))!;
     private static readonly MethodInfo IlRuntimeFSfMethod = typeof(Basic.StdLibRuntime.MathFunctions).GetMethod(nameof(Basic.StdLibRuntime.MathFunctions.FSf))!;
+    private static readonly MethodInfo IlRuntimeNormalSfMethod = typeof(Basic.StdLibRuntime.MathFunctions).GetMethod(nameof(Basic.StdLibRuntime.MathFunctions.NormalSf))!;
+    private static readonly MethodInfo IlRuntimeLognormalSfMethod = typeof(Basic.StdLibRuntime.MathFunctions).GetMethod(nameof(Basic.StdLibRuntime.MathFunctions.LognormalSf))!;
     private static readonly MethodInfo IlRuntimeParetoPdfMethod = typeof(Basic.StdLibRuntime.MathFunctions).GetMethod(nameof(Basic.StdLibRuntime.MathFunctions.ParetoPdf))!;
     private static readonly MethodInfo IlRuntimeLogisticPdfMethod = typeof(Basic.StdLibRuntime.MathFunctions).GetMethod(nameof(Basic.StdLibRuntime.MathFunctions.LogisticPdf))!;
     private static readonly MethodInfo IlRuntimeTriangularPdfMethod = typeof(Basic.StdLibRuntime.MathFunctions).GetMethod(nameof(Basic.StdLibRuntime.MathFunctions.TriangularPdf))!;
