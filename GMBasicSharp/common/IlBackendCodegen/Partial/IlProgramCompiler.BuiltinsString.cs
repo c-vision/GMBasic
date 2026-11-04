@@ -1196,43 +1196,6 @@ public sealed partial class IlProgramCompiler
     private void EmitTsFilterCall(BuiltinFunctionCallExpr expr, string methodName, int nArgs)
     { if (expr.Args.Length != nArgs) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede {nArgs} argomenti."); EmitDoubleArrayArgument(expr.Args[0]); for (var i = 1; i < nArgs; i++) EmitDoubleArgument(expr.Args[i]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
 
-    private void EmitOptimizeScalarCall(BuiltinFunctionCallExpr expr, string methodName, int nArgs)
-    { if (expr.Args.Length != nArgs) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede {nArgs} argomenti (funzione, ...)."); EmitExpression(expr.Args[0]); for (var i = 1; i < nArgs; i++) EmitDoubleArgument(expr.Args[i]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
-    private void EmitOptimizeBroydenCall(BuiltinFunctionCallExpr expr)
-    {
-        if (expr.Args.Length != 2) throw new NotSupportedException("Backend IL: BROYDEN richiede 2 argomenti (funzione vettoriale, initialGuess).");
-        // Callback con return SCALARE (Rosenbrock) → overload scalare-return (parità VM).
-        var cbType = NormalizeInferredType(InferType(expr.Args[0]));
-        var isScalarReturn = cbType is FunctionPointerType fptB && fptB.ReturnType is not ArrayType;
-        // FUNCTION nominata con parametro array: il delegate è `ref` (CbRef1ArrD) e va adattato
-        // alla Func<double[],double[]> attesa (2026-11-03: la chiamata diretta passava il
-        // delegate sbagliato → InvalidProgram/IndexOutOfRange su IL).
-        EmitOptimizeCallback(expr.Args[0], isScalarReturn ? typeof(Func<double[], double>) : typeof(Func<double[], double[]>));
-        EmitDoubleArrayArgument(expr.Args[1]);
-        _il.Emit(OpCodes.Call, isScalarReturn
-            ? RuntimeMethod(nameof(IlRuntime.Broyden), typeof(Func<double[], double>), typeof(double[]))
-            : RuntimeMethod(nameof(IlRuntime.Broyden), typeof(Func<double[], double[]>), typeof(double[])));
-    }
-
-    /// <summary>Argomento callback di un builtin OPTIMIZE (2026-11-03): se è una FUNCTION
-    /// nominata con parametri array, EmitExpression produce un delegate con parametri `ref`;
-    /// qui lo si adatta alla Func&lt;&gt; attesa dal builtin.</summary>
-    private void EmitOptimizeCallback(Expr arg, Type expected)
-    {
-        EmitExpression(arg);
-        if (arg is not FunctionReferenceExpr fr) return;
-        if (_program.Symbols.GetSymbol(fr.SymbolId).DeclarationNode is not FunctionDefinition fd) return;
-        if (TryRefDelegateType(fd) is not { } refDel) return;
-        string mname;
-        Type target;
-        if (refDel == typeof(FfiRefCallbackTypes.CbRef1ArrD)) { mname = nameof(IlRuntime.OptVecVecFromRef); target = typeof(Func<double[], double[]>); }
-        else if (refDel == typeof(FfiRefCallbackTypes.CbRef1S1D) || refDel == typeof(FfiRefCallbackTypes.CbRef1S1I)) { mname = nameof(IlRuntime.OptModelFromRef); target = typeof(Func<double[], double, double>); }
-        else if (refDel == typeof(FfiRefCallbackTypes.CbRef2ArrD)) { mname = nameof(IlRuntime.OptVModelFromRef); target = typeof(Func<double[], double[], double[]>); }
-        else { mname = nameof(IlRuntime.OptVecFromRef); target = typeof(Func<double[], double>); }
-        if (target != expected) return;
-        _il.Emit(OpCodes.Call, RuntimeMethod(mname, refDel));
-    }
-
     /// <summary>Adatta un delegate `ref` (FfiRefCallbackTypes) alla <c>Func&lt;&gt;</c> che un
     /// parametro <c>AS FUNCTION</c> di una procedura utente si aspetta (2026-11-03). Il
     /// chiamante ha già lasciato il delegate sullo stack.</summary>
