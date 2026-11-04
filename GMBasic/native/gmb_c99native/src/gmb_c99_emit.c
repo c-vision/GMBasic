@@ -8092,7 +8092,7 @@ static int is_byval_arr_param(ctx_t* c, const char* name) {
 }
 
 /* 1 se <name> è un QUALSIASI parametro della funzione corrente (anche array BYVAL):
- * un parametro NON viene promosso a variabile dinamica da `p = OPTIMIZE.X(...)` perché la
+ * un parametro NON viene promosso a variabile dinamica da `p = <builtin>(...)` perché la
  * sua rappresentazione (puntatore + bound compagna) è fissata dalla firma. */
 static int is_param_of_cur(ctx_t* c, const char* name) {
     if (!c->cur_fn || !c->cur_fn->stmt || !name) return 0;
@@ -8113,8 +8113,6 @@ static int dim_arr_console1d(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init);
 static int dim_arr_metrics1d(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init);
 static int dim_arr_kdtree(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init);
 static int an1d_arr(ctx_t* c, gmb_expr_t* a, var_t** out);
-/* DIM x() = OPTIMIZE.<multidim>(f, x0[]): punto ottimo (array double* allocato + _len).
- * Parity emitter C# Statements.Declaration.cs (NELDERMEAD/BFGS/…) e C99 runtime. */
 static void emit_dict_key(ctx_t* c, gmb_expr_t* e);   /* definita più sotto in questo file */
 /* ============================================================================
  * Comprehension `[sel FOR var IN src (FOR var2 IN src2)* (IF where)?]` (lista),
@@ -30468,7 +30466,7 @@ static void emit_function(ctx_t* c, fn_info_t* fn) {
     sb_put(&c->out, ") {\n");
     c->indent = 1;
     /* Lambda con parametro ARRAY (2026-11-02): il C99 le passa `double*` senza lunghezza.
-     * Il chiamante (bridge OPTIMIZE / trampolino FFI vettoriale) pubblica il bound in
+     * Il chiamante (trampolino FFI vettoriale) pubblica il bound in
      * gmb_lambda_bound(); qui lo si materializza in `<param>__b0` (prima non dichiarata). */
     if ((fn->is_lambda || fn->is_lambda_cap) && !fn->cls_owner[0]) {
         int lb_ord = 0;

@@ -274,7 +274,7 @@ struct gmb_stmt {
      * Vedi AiWiki Bugs/(open) - FFI-Estensioni-Possibili-BYREF-Struct-Callback.md §3bis. */
     int* param_fn_kind_mask;
     /* Callback FFI (2026-11-02): bit i = 1 se il parametro i della FIRMA interna del callback
-     * e' un ARRAY (`v() AS DOUBLE`) — forma "vettoriale" dell'obiettivo OPTIMIZE. Il nativo
+     * e' un ARRAY (`v() AS DOUBLE`) — forma "vettoriale" della callback FFI. Il nativo
      * riceve (double*, int64_t) e il trampolino ricostruisce l'array BASIC. */
     int* param_fn_arr_mask;
     /* Callback FFI (2026-09-29): 1 se il RITORNO della firma interna del callback è INTERO
