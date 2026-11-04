@@ -1,5 +1,5 @@
 ' OPTIMIZE (FFI or) — pack/assign/cover/cp: prima slice di OR combinatoria.
-' EXPECT: bins= 2 |lb= 2 |knap=22.0|hung=5.0|transp=20.0|setcover=2.0: 2 |pcenter=1.0|kmeans=1.0:11.0|sat= 1 |alldiff= 1 
+' EXPECT: bins= 2 |lb= 2 |knap=22.0|hung=5.0|transp=20.0|setcover=2.0: 2 |pcenter=1.0|kmeans=1.0:11.0|sat= 1 |alldiff= 1||sat2= 1 |alldiff2= 1
 IMPORT OPTIMIZE
 
 SUB Main()
@@ -70,5 +70,16 @@ SUB Main()
   NEXT i
   DIM sol(3) AS LONG
   PRINT "|alldiff="; OPTIMIZE.CPALLDIFF(dom, 3, 3, sol)
+
+  ' regressione (bug FFI IL, 2026-11-04): array NON tipizzati (double) verso parametri AS LONG
+  ' -> il marshalling IL deve convertire (prima passava i bit IEEE-754 al nativo).
+  DIM cl2() = {1, 2, -1, 2}
+  DIM cs2() = {0, 2}
+  DIM ln2() = {2, 2}
+  DIM asat2(2) AS LONG
+  PRINT "|sat2="; OPTIMIZE.SATDPLL(cl2, cs2, ln2, 2, 2, asat2);
+  DIM dom2() = {0, 1, 2, 0, 1, 2, 0, 1, 2}
+  DIM sol2(3) AS LONG
+  PRINT "|alldiff2="; OPTIMIZE.CPALLDIFF(dom2, 3, 3, sol2)
   PRINT ""
 END SUB

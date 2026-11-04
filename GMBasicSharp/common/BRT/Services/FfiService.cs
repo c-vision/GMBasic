@@ -530,6 +530,11 @@ public class FfiService : IFfiService
         var scratchIsInt = new bool[n];
         var scratchBuf = new Array?[n];
         var scratchOrig = new object[n][];
+        // Array CLR TIPIZZATO (double[]/long[]/ulong[]) con kind dell'elemento DIVERSO da
+        // quello dichiarato dal parametro FFI: copy-in/copy-out convertito (2026-11-04, AiWiki
+        // Bugs/(solved) - FFI-Array-Tipizzato-LONG-IL.md).
+        var typedScratch = new Array?[n];
+        var typedOrig = new Array?[n];
         try
         {
             for (var i = 0; i < n; i++)
@@ -596,6 +601,34 @@ public class FfiService : IFfiService
                     case double[] or long[] or ulong[]:
                     {
                         var arr = (Array)args[i]!;
+                        /* KIND dell'elemento (2026-11-04): `arrayElemIntMask` dice se il
+                         * parametro nativo è `int64_t*` o `double*`. Un array BASIC non
+                         * tipizzato (`DIM a() = {...}`) è SEMPRE `double[]` anche quando il
+                         * parametro dichiarato è `AS LONG`: pinnarlo direttamente passava i bit
+                         * IEEE-754 al nativo, che li rileggeva come int64 (bug: SAT → -1,
+                         * ALLDIFF → 0 su IL, mentre C99/PCode/VM-C convertivano). Stessa cosa
+                         * al contrario per un `DIM c(n) AS LONG` verso un parametro double.
+                         * Qui si converte in uno scratch del tipo GIUSTO e — nel copy-out —
+                         * si riportano le eventuali scritture del nativo nell'array originale. */
+                        var wantInt = (arrayElemIntMask & (1 << i)) != 0;
+                        var arrIsInt64 = arr is long[] or ulong[];
+                        if (wantInt != arrIsInt64)
+                        {
+                            var buf = wantInt
+                                ? (Array)new long[arr.Length]
+                                : new double[arr.Length];
+                            for (var j = 0; j < arr.Length; j++)
+                            {
+                                var v = arr.GetValue(j);
+                                if (wantInt) ((long[])buf)[j] = Convert.ToInt64(v ?? 0L);
+                                else ((double[])buf)[j] = Convert.ToDouble(v ?? 0.0);
+                            }
+                            typedScratch[i] = buf;
+                            typedOrig[i] = arr;
+                            handles[i] = GCHandle.Alloc(buf, GCHandleType.Pinned);
+                            dArgs[i] = handles[i].AddrOfPinnedObject();
+                            break;
+                        }
                         handles[i] = GCHandle.Alloc(arr, GCHandleType.Pinned);
                         dArgs[i] = handles[i].AddrOfPinnedObject();
                         break;
@@ -626,10 +659,30 @@ public class FfiService : IFfiService
             // elementi boxati originali — copre sia input che output senza distinguerli.
             for (var i = 0; i < n; i++)
             {
-                if (scratchBuf[i] is not { } buf) continue;
-                var orig = scratchOrig[i];
-                for (var j = 0; j < orig.Length; j++)
-                    orig[j] = scratchIsInt[i] ? ((long[])buf).GetValue(j) : ((double[])buf).GetValue(j);
+                if (scratchBuf[i] is { } buf)
+                {
+                    var orig = scratchOrig[i];
+                    for (var j = 0; j < orig.Length; j++)
+                        orig[j] = scratchIsInt[i] ? ((long[])buf).GetValue(j) : ((double[])buf).GetValue(j);
+                }
+                /* Copy-out degli array CLR tipizzati passati via scratch convertito: il nativo
+                 * può aver scritto (array BYREF di output) — riporta i valori nell'array del
+                 * chiamante, che è lo stesso oggetto visto da BASIC. */
+                if (typedScratch[i] is { } tbuf)
+                {
+                    switch (typedOrig[i])
+                    {
+                        case double[] dorig:
+                            for (var j = 0; j < dorig.Length; j++) dorig[j] = Convert.ToDouble(tbuf.GetValue(j));
+                            break;
+                        case long[] lorig:
+                            for (var j = 0; j < lorig.Length; j++) lorig[j] = Convert.ToInt64(tbuf.GetValue(j));
+                            break;
+                        case ulong[] uorig:
+                            for (var j = 0; j < uorig.Length; j++) uorig[j] = Convert.ToUInt64(tbuf.GetValue(j));
+                            break;
+                    }
+                }
             }
             // BYREF scalare: DynamicInvoke ha già aggiornato dArgs[i] con il valore OUT (per un
             // parametro CLR ref, .NET scrive il risultato nello stesso slot dell'array passato) —
