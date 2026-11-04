@@ -16166,42 +16166,6 @@
     },
     {
       "ns": "MATH",
-      "name": "Angle2d",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "x1",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "y1",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "x2",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "y2",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATH",
       "name": "Asin",
       "fn": true,
       "return": "double",
@@ -16356,92 +16320,6 @@
       "params": [
         {
           "name": "degrees",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATH",
-      "name": "Dist2d",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "x1",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "y1",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "x2",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "y2",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATH",
-      "name": "Dist3d",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "x1",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "y1",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "z1",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "x2",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "y2",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "z2",
           "type": "double",
           "optional": false,
           "byRef": false,
@@ -16618,50 +16496,6 @@
           "optional": false,
           "byRef": false,
           "array": true
-        }
-      ]
-    },
-    {
-      "ns": "MATH",
-      "name": "POLAR_X",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "radius",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "angleDegrees",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATH",
-      "name": "POLAR_Y",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "radius",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "angleDegrees",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
         }
       ]
     },
@@ -29392,6 +29226,42 @@
     },
     {
       "ns": "VECTOR",
+      "name": "Angle2d",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "x1",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "y1",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "x2",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "y2",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "VECTOR",
       "name": "CHEBYSHEV",
       "fn": true,
       "return": "double",
@@ -29465,6 +29335,92 @@
           "name": "w",
           "type": "double",
           "optional": true,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "VECTOR",
+      "name": "Dist2d",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "x1",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "y1",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "x2",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "y2",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "VECTOR",
+      "name": "Dist3d",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "x1",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "y1",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "z1",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "x2",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "y2",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "z2",
+          "type": "double",
+          "optional": false,
           "byRef": false,
           "array": false
         }
@@ -29551,6 +29507,50 @@
         },
         {
           "name": "p",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "VECTOR",
+      "name": "POLAR_X",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "radius",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "angleDegrees",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "VECTOR",
+      "name": "POLAR_Y",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "radius",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "angleDegrees",
           "type": "double",
           "optional": false,
           "byRef": false,

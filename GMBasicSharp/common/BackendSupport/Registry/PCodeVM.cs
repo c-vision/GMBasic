@@ -68,7 +68,7 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "ARRAYS.AMAX");
         r.Register(Backend.PCodeVM, "ARRAYS.AMIN");
         r.Register(Backend.PCodeVM, "AI.AnalyzeImage");
-        r.Register(Backend.PCodeVM, "MATH.Angle2d");
+        r.Register(Backend.PCodeVM, "VECTOR.Angle2d");
         r.Register(Backend.PCodeVM, "TRADING.METRICS.AnnualizedDownsideDeviation");
         r.Register(Backend.PCodeVM, "TRADING.METRICS.AnnualizedReturn");
         r.Register(Backend.PCodeVM, "TRADING.METRICS.AnnualizedTrackingError");
@@ -384,8 +384,8 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "IO.DIR");
         r.Register(Backend.PCodeVM, "IO.DirExists");
         r.Register(Backend.PCodeVM, "AI.Discover");
-        r.Register(Backend.PCodeVM, "MATH.Dist2d");
-        r.Register(Backend.PCodeVM, "MATH.Dist3d");
+        r.Register(Backend.PCodeVM, "VECTOR.Dist2d");
+        r.Register(Backend.PCodeVM, "VECTOR.Dist3d");
         r.Register(Backend.PCodeVM, "SPATIAL.DISTANCEMATRIX");
         r.Register(Backend.PCodeVM, "LLM.DistillCkpt");
         r.Register(Backend.PCodeVM, "LLM.DistillDone");
@@ -922,8 +922,8 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "CONSOLE.Point");
         r.Register(Backend.PCodeVM, "STATS.PoissonPmf");
         r.Register(Backend.PCodeVM, "LINALG.POLAR");
-        r.Register(Backend.PCodeVM, "MATH.POLAR_X");
-        r.Register(Backend.PCodeVM, "MATH.POLAR_Y");
+        r.Register(Backend.PCodeVM, "VECTOR.POLAR_X");
+        r.Register(Backend.PCodeVM, "VECTOR.POLAR_Y");
         r.Register(Backend.PCodeVM, "TRADING.PORTFOLIO.PORTFOLIOMAD");
         r.Register(Backend.PCodeVM, "TRADING.PORTFOLIO.PORTFOLIOSEMIMAD");
         r.Register(Backend.PCodeVM, "JOY.PORTS");

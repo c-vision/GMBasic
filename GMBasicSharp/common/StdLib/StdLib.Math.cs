@@ -4,12 +4,11 @@
 
 /* ==== GMB-STDLIB-AUDIT-BEGIN ====
  * FILE: Math — namespace 'MATH'
- * 42 funzioni | 0 comandi | 0 tipi | 0 costanti
+ * 37 funzioni | 0 comandi | 0 tipi | 0 costanti
  *
- * FUNZIONI (42):
+ * FUNZIONI (37):
  *   Abs
  *   Acos
- *   Angle2d
  *   Asin
  *   Atn
  *   Avg
@@ -19,8 +18,6 @@
  *   Comb
  *   Cos
  *   Deg2Rad
- *   Dist2d
- *   Dist3d
  *   Exp
  *   Fact
  *   Fix
@@ -32,8 +29,6 @@
  *   Log10
  *   Max
  *   Min
- *   POLAR_X
- *   POLAR_Y
  *   Perm
  *   Pi
  *   Pythagoras
@@ -73,8 +68,7 @@ public sealed partial class StdLib
         const SymbolFlags optionalFlag = SymbolFlags.IsOptional;
 
         var procedures = new ProcedureDefinition[]
-        {
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Rnd, "Rnd"),
+        {            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Rnd, "Rnd"),
                 [new Parameter(-1, T(TokenKind.Identifier, "range"), new DoubleType(), optionalFlag, null, false)],
                 new DoubleType(),
                 TokenKind.Rnd),
@@ -235,39 +229,6 @@ public sealed partial class StdLib
                 new Parameter(-1, T(TokenKind.Identifier, "a"), new DoubleType(), noFlags, null, false),
                 new Parameter(-1, T(TokenKind.Identifier, "b"), new DoubleType(), noFlags, null, false)
             ], new DoubleType(), TokenKind.Pythagoras),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Dist2d, "Dist2d"),
-            [
-                new Parameter(-1, T(TokenKind.Identifier, "x1"), new DoubleType(), noFlags, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "y1"), new DoubleType(), noFlags, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "x2"), new DoubleType(), noFlags, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "y2"), new DoubleType(), noFlags, null, false)
-            ], new DoubleType(), TokenKind.Dist2d),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Dist3d, "Dist3d"),
-            [
-                new Parameter(-1, T(TokenKind.Identifier, "x1"), new DoubleType(), noFlags, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "y1"), new DoubleType(), noFlags, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "z1"), new DoubleType(), noFlags, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "x2"), new DoubleType(), noFlags, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "y2"), new DoubleType(), noFlags, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "z2"), new DoubleType(), noFlags, null, false)
-            ], new DoubleType(), TokenKind.Dist3d),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.PolarX, "POLAR_X"),
-            [
-                new Parameter(-1, T(TokenKind.Identifier, "radius"), new DoubleType(), noFlags, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "angleDegrees"), new DoubleType(), noFlags, null, false)
-            ], new DoubleType(), TokenKind.PolarX),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.PolarY, "POLAR_Y"),
-            [
-                new Parameter(-1, T(TokenKind.Identifier, "radius"), new DoubleType(), noFlags, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "angleDegrees"), new DoubleType(), noFlags, null, false)
-            ], new DoubleType(), TokenKind.PolarY),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Angle2d, "Angle2d"),
-            [
-                new Parameter(-1, T(TokenKind.Identifier, "x1"), new DoubleType(), noFlags, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "y1"), new DoubleType(), noFlags, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "x2"), new DoubleType(), noFlags, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "y2"), new DoubleType(), noFlags, null, false)
-            ], new DoubleType(), TokenKind.Angle2d),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Fact, "Fact"),
                 [new Parameter(-1, T(TokenKind.Identifier, "n"), new UQuadType(), noFlags, null, false)],
                 new UQuadType(),

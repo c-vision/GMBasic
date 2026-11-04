@@ -4,15 +4,20 @@
 
 /* ==== GMB-STDLIB-AUDIT-BEGIN ====
  * FILE: Vector — namespace 'VECTOR'
- * 7 funzioni | 9 comandi | 0 tipi | 0 costanti
+ * 13 funzioni | 9 comandi | 0 tipi | 0 costanti
  *
- * FUNZIONI (7):
+ * FUNZIONI (13):
+ *   Angle2d
  *   CHEBYSHEV
  *   COSINE
  *   CREATE
+ *   Dist2d
+ *   Dist3d
  *   EUCLIDEA
  *   MANHATTAN
  *   MINKOWSKI
+ *   POLAR_X
+ *   POLAR_Y
  *   PRODUCT
  * COMANDI (9):
  *   ADD
@@ -106,7 +111,40 @@ public sealed partial class StdLib
                 new DoubleType(), TokenKind.VectorMinkowski),
             new NativeProcedureDefinition(-1, SymbolFlags.IsPublic, T(TokenKind.EuclideanDistanceSquared, "EuclideanDistanceSquared"),
                 [xDataParam, yDataParam], new DoubleType(), TokenKind.EuclideanDistanceSquared,
-                ExecutionKind: NativeExecutionKind.Pure)
+                ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Dist2d, "Dist2d"),
+            [
+                new Parameter(-1, T(TokenKind.Identifier, "x1"), new DoubleType(), noFlags, null, false),
+                new Parameter(-1, T(TokenKind.Identifier, "y1"), new DoubleType(), noFlags, null, false),
+                new Parameter(-1, T(TokenKind.Identifier, "x2"), new DoubleType(), noFlags, null, false),
+                new Parameter(-1, T(TokenKind.Identifier, "y2"), new DoubleType(), noFlags, null, false)
+            ], new DoubleType(), TokenKind.Dist2d),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Dist3d, "Dist3d"),
+            [
+                new Parameter(-1, T(TokenKind.Identifier, "x1"), new DoubleType(), noFlags, null, false),
+                new Parameter(-1, T(TokenKind.Identifier, "y1"), new DoubleType(), noFlags, null, false),
+                new Parameter(-1, T(TokenKind.Identifier, "z1"), new DoubleType(), noFlags, null, false),
+                new Parameter(-1, T(TokenKind.Identifier, "x2"), new DoubleType(), noFlags, null, false),
+                new Parameter(-1, T(TokenKind.Identifier, "y2"), new DoubleType(), noFlags, null, false),
+                new Parameter(-1, T(TokenKind.Identifier, "z2"), new DoubleType(), noFlags, null, false)
+            ], new DoubleType(), TokenKind.Dist3d),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.PolarX, "POLAR_X"),
+            [
+                new Parameter(-1, T(TokenKind.Identifier, "radius"), new DoubleType(), noFlags, null, false),
+                new Parameter(-1, T(TokenKind.Identifier, "angleDegrees"), new DoubleType(), noFlags, null, false)
+            ], new DoubleType(), TokenKind.PolarX),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.PolarY, "POLAR_Y"),
+            [
+                new Parameter(-1, T(TokenKind.Identifier, "radius"), new DoubleType(), noFlags, null, false),
+                new Parameter(-1, T(TokenKind.Identifier, "angleDegrees"), new DoubleType(), noFlags, null, false)
+            ], new DoubleType(), TokenKind.PolarY),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Angle2d, "Angle2d"),
+            [
+                new Parameter(-1, T(TokenKind.Identifier, "x1"), new DoubleType(), noFlags, null, false),
+                new Parameter(-1, T(TokenKind.Identifier, "y1"), new DoubleType(), noFlags, null, false),
+                new Parameter(-1, T(TokenKind.Identifier, "x2"), new DoubleType(), noFlags, null, false),
+                new Parameter(-1, T(TokenKind.Identifier, "y2"), new DoubleType(), noFlags, null, false)
+            ], new DoubleType(), TokenKind.Angle2d),
         };
         
         RegisterBuiltinNamespace(namespaceName, procedures, ImmutableDictionary<string, DataType>.Empty);
