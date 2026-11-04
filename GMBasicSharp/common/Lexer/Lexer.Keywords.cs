@@ -175,6 +175,7 @@ public sealed partial class Lexer
         { "LIST", TokenKind.List },
         { "DICT", TokenKind.Dict },
         { "HASHSET", TokenKind.HashSet },
+        { "HLL", TokenKind.Hll },
         { "STACK", TokenKind.Stack },
         { "SORTED", TokenKind.Sorted },
         { "TREE", TokenKind.Tree },

@@ -1390,7 +1390,7 @@ public sealed partial class Compiler
                             or SortedDictType or TreeType or AVLTreeType or RedBlackTreeType or BinaryIndexedTreeType
                             or TrieType or CircularLinkedListType or BinaryHeapType or BagType or CacheType or
                             GraphType or TimelineType or HashRingType or RingBufferType or SparseSetType or BPlusTreeType
-                            or StringBuilderType or RegexType)
+                            or StringBuilderType or RegexType or HyperLogLogType)
                         { needsInit = true; break; }
                         if (decl.InitialValue != null)
                         { needsInit = true; break; }

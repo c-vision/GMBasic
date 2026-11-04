@@ -67,6 +67,16 @@ void gmb_coll_reverse(int64_t h);
 gmb_val_t gmb_coll_current(int64_t h);
 void gmb_coll_rotate(int64_t h, int n);
 
+/* ---- HLL (typeCode 28, HyperLogLog — gmb_hll.c) ----
+ * Add/Count/Clear passano dalle API comuni (gmb_coll_add/count/clear); queste
+ * espongono la stima double e le operazioni specifiche dello sketch. */
+double gmb_coll_hll_count(int64_t h);
+double gmb_coll_hll_error(int64_t h);
+int    gmb_coll_hll_precision(int64_t h);
+int    gmb_coll_hll_merge(int64_t dst, int64_t src);        /* 0 ok, -1 precisioni diverse */
+int    gmb_coll_hll_serialize(int64_t h, char* out, size_t cap);   /* len o -1 */
+int    gmb_coll_hll_load(int64_t h, const char* data, size_t len);  /* 0 ok, -1 formato */
+
 /* Bag (15): UniqueItems (valori distinti in una nuova lista) */
 gmb_val_t* gmb_coll_bag_unique_items(int64_t h, int* out_len);
 

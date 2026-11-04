@@ -1115,6 +1115,8 @@ public sealed partial class IlProgramCompiler
             or BinaryIndexedTreeType or TrieType or BPlusTreeType or GraphType or HashRingType
             or SparseSetType or BinaryHeapType or BagType or CacheType or TimelineType
             or RingBufferType
+            // HLL: classe CommonLib, metodi Add/Count/Merge/Error/Precision/Serialize/Load.
+            or HyperLogLogType
             // HttpRequest/HttpResponse (server HTTP): metodi come SetCookie/SendJSON
             // dispatchati a runtime sul tipo reale (il VM li gestisce in OP_CALL_MEMBER).
             or HttpRequestType or HttpResponseType or HttpOptionsType or HttpHeadersType

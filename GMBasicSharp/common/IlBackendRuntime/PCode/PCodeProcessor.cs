@@ -2981,6 +2981,9 @@ internal sealed partial class PCodeProcessor
                     // Sensa, la variabile restava null e TYPENAME(direcast(reg,REGEX)) dava NIL
                     // invece di REGEXWRAPPER (divergenza su TypesDirectCast.bas §3).
                     29 => new Basic.RegexNative.RegexWrapper(),
+                    // 30 = HLL (HyperLogLog): stima di cardinalità (CommonLib, mirror del
+                    // runtime C gmb_hll.c). Member dispatch: fallback reflection + CollectionInvoke.
+                    30 => new CommonLib.Collections.HyperLogLog(),
                     // NEW HTTPOPTIONS: rappresentato come Dictionary<string,object?> (stesso
                     // modello "duck-typed" gia' usato per UDT/istanze di classe — vedi
                     // OP_NEW_UDT_INSTANCE), popolato con gli stessi default di

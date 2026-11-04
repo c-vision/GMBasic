@@ -2293,7 +2293,7 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                 var_t* _rv = lookup_var(c, _rcv);
                 if (_rv && _rv->gkind) {
                     const char* _m = _dot + 1;
-                    if (!strcasecmp(_m, "Join")) return TY_STR;
+                    if (!strcasecmp(_m, "Join") || !strcasecmp(_m, "Serialize")) return TY_STR;
                     /* Metodi NUMERICI dei contenitori: senza, etype ricadeva su TY_VAL e PRINT
                      * emetteva gmb_print_val(<int>) = C invalido (CollectionsMembersExtra:
                      * `PRINT u.UniqueCount()`; dict_remove_if: `PRINT d.Remove(k)`). */
@@ -2305,7 +2305,8 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                         || !strcasecmp(_m, "StartsWith") || !strcasecmp(_m, "ContainsKey")
                         || !strcasecmp(_m, "Remove") || !strcasecmp(_m, "GetInDegree")
                         || !strcasecmp(_m, "NodeCount") || !strcasecmp(_m, "HasNode")
-                        || !strcasecmp(_m, "HasEdge"))
+                        || !strcasecmp(_m, "HasEdge")
+                        || !strcasecmp(_m, "Precision") || !strcasecmp(_m, "Error"))
                     {
                         /* Eccezioni per i contenitori a HANDLE: UniqueCount/StartsWith sono
                          * emessi come gmb_val_t (gmb_make_val_double) — TY_NUM faceva
@@ -4043,6 +4044,15 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                     case GMB_TOK_Cache: v->gkind = GK_SORTED; v->coll_type_code = 16; break;
                     case GMB_TOK_Timeline: v->gkind = GK_SORTED; v->coll_type_code = 18; break;
                     default: coll_matched = 0; break;
+                }
+                /* HLL: nome di tipo non-keyword nel parser C (dim_type_tk = 0) →
+                 * riconoscimento per NOME (il tipo si risolve qui, mai per il lexeme altrove:
+                 * unica eccezione documentata, il C# ha il TokenKind dedicato). */
+                if (!coll_matched && s->dim_type && strcasecmp(s->dim_type, "HLL") == 0) {
+                    v->gkind = GK_LIST;
+                    v->coll_type_code = 30;
+                    v->coll_handle = 1;
+                    coll_matched = 1;
                 }
                 if (coll_matched) {
                     int forced_str = dtk == GMB_TOK_Trie || dtk == GMB_TOK_Graph;
@@ -9979,6 +9989,52 @@ static int try_emit_var_method(ctx_t* c, const char* recv, const char* m, gmb_ex
      * TRIE lavora sul prefisso. Prima erano emessi come lista/array (`H.Add` → gmb_array_resize
      * con `H_len` mai dichiarato; `B.Count("a")` → membro+indice su una lista) = 18 errori C. */
     if (v->coll_handle) {
+        /* HLL (typeCode 30): metodi per NOME (Merge/Error/Precision/Serialize/Load non hanno
+         * un TokenKind dedicato; Add/Count lo hanno ma il contratto HLL è specifico). */
+        if (v->coll_type_code == 30) {
+            const char* hm = m ? m : "";
+            if (mtk == GMB_TOK_Add && n >= 1) {
+                sb_put(&c->out, "((void)gmb_coll_add("); emit_coll_handle_of(c, v);
+                sb_put(&c->out, ", "); emit_coll_handle_arg(c, a[0]); sb_put(&c->out, "), 0.0)");
+                return 1;
+            }
+            if (mtk == GMB_TOK_Count || strcasecmp(hm, "Count") == 0 || strcasecmp(hm, "Length") == 0) {
+                sb_put(&c->out, "gmb_coll_hll_count("); emit_coll_handle_of(c, v); sb_put(&c->out, ")");
+                return 1;
+            }
+            if (strcasecmp(hm, "Error") == 0) {
+                sb_put(&c->out, "gmb_coll_hll_error("); emit_coll_handle_of(c, v); sb_put(&c->out, ")");
+                return 1;
+            }
+            if (strcasecmp(hm, "Precision") == 0) {
+                sb_put(&c->out, "(gmb_double_t)gmb_coll_hll_precision("); emit_coll_handle_of(c, v); sb_put(&c->out, ")");
+                return 1;
+            }
+            if (strcasecmp(hm, "Merge") == 0 && n >= 1) {
+                sb_put(&c->out, "({ if (gmb_coll_hll_merge("); emit_coll_handle_of(c, v);
+                sb_put(&c->out, ", gmb_val_collection_handle("); emit_expr(c, a[0]);
+                sb_put(&c->out, ")) != 0) { /* precisioni diverse */ } (void)0; })");
+                return 1;
+            }
+            if (strcasecmp(hm, "Serialize") == 0) {
+                /* Ritorna una STRINGA (gmb_string_t, binaria): etype = TY_STR. */
+                sb_put(&c->out, "({ char __hb[17 + (1 << 18)]; int __hn = gmb_coll_hll_serialize(");
+                emit_coll_handle_of(c, v);
+                sb_put(&c->out, ", __hb, sizeof __hb); __hn > 0 ? gmb_string_from_bytes(__hb, (gmb_int_t)__hn) : gmb_string_alloc(\"\"); })");
+                return 1;
+            }
+            if (strcasecmp(hm, "Load") == 0 && n >= 1) {
+                sb_put(&c->out, "({ gmb_string_t __hs = "); emit_expr(c, a[0]);
+                sb_put(&c->out, "; (void)gmb_coll_hll_load("); emit_coll_handle_of(c, v);
+                sb_put(&c->out, ", __hs.data, (size_t)__hs.length); (void)0; })");
+                return 1;
+            }
+            if (strcasecmp(hm, "Clear") == 0) {
+                sb_put(&c->out, "((void)gmb_coll_clear("); emit_coll_handle_of(c, v); sb_put(&c->out, "), 0.0)");
+                return 1;
+            }
+            return 0;
+        }
         if (!coll_handle_supports(v, mtk, n)) return 0;
         switch ((int)mtk) {
         case GMB_TOK_Add:

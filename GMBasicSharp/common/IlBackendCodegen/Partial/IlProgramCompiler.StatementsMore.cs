@@ -683,7 +683,7 @@ public sealed partial class IlProgramCompiler
             else if (declaredType is RingBufferType or TreeType or AVLTreeType or RedBlackTreeType
                 or TrieType or BPlusTreeType or GraphType or HashRingType or SparseSetType
                 or BinaryHeapType or BagType or CacheType or TimelineType or BinaryIndexedTreeType
-                or CircularLinkedListType or DoublyLinkedListType)
+                or CircularLinkedListType or DoublyLinkedListType or HyperLogLogType)
                 EmitNewAdvancedCollection(declaredType);
             else
                 EmitDefaultValue(declaredType);
@@ -783,7 +783,8 @@ public sealed partial class IlProgramCompiler
         // e ogni metodo era un no-op silenzioso (bug scoperto verificando Cache con TTL).
         if (declaration.DataType is CacheType or TimelineType or TrieType or SparseSetType
             or RingBufferType or TreeType or AVLTreeType or RedBlackTreeType or BinaryIndexedTreeType
-            or BPlusTreeType or GraphType or HashRingType or BinaryHeapType or BagType or CircularLinkedListType or DoublyLinkedListType)
+            or BPlusTreeType or GraphType or HashRingType or BinaryHeapType or BagType or CircularLinkedListType or DoublyLinkedListType
+            or HyperLogLogType)
         {
             // NB: usa il tipo del SYMBOL (ValueType già risolto, es. Timeline<string>), non
             // declaration.DataType: il tipo dichiarato nel nodo può avere il ValueType NON

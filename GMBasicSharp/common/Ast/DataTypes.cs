@@ -64,6 +64,7 @@ namespace Basic;
 [JsonDerivedType(typeof(CircularLinkedListType), nameof(CircularLinkedListType))]
 [JsonDerivedType(typeof(BinaryHeapType), nameof(BinaryHeapType))]
 [JsonDerivedType(typeof(BagType), nameof(BagType))]
+[JsonDerivedType(typeof(HyperLogLogType), nameof(HyperLogLogType))]
 [JsonDerivedType(typeof(CacheType), nameof(CacheType))]
 [JsonDerivedType(typeof(GraphType), nameof(GraphType))]
 [JsonDerivedType(typeof(TimelineType), nameof(TimelineType))]

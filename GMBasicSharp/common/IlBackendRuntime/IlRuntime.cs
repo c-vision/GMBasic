@@ -115,7 +115,7 @@ public static partial class IlRuntime
     // Handle delle DECOMPOSIZIONI (LU/QR/SVD/… e spline di SPLREP): spazio SEPARATO da
     // matrici/vettori, come nel mondo C (PCode `_nextLinearDecompositionId`, VM/C e C99Native).
     // Prima condivideva `_nextLinAlgHandle` → SPLREP consumava un id matrice e SOLVEIVP
-    // otteneva un handle diverso da PCode/VM-C/C99Native (bug Analysis.SolveIvp: IL 3 vs 2).
+    // otteneva un handle diverso da PCode/VM-C/C99Native (bug NUMERICAL.SolveIvp: IL 3 vs 2).
     private static long _nextDecompHandle;
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<long, double[,]> LinAlgMatrices = new();
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<long, double[]> LinAlgVectors = new();
@@ -1206,7 +1206,7 @@ public static partial class IlRuntime
         return sign * determinant;
     }
 
-    // MATRIX.PINVERSE(handle) - Pseudoinversa Moore-Penrose
+    // LINALG.PINVERSE(handle) - Pseudoinversa Moore-Penrose
     public static long MatrixPseudoInverse(long handle)
     {
         var matrix = Matrix(handle);
@@ -1232,7 +1232,7 @@ public static partial class IlRuntime
         return StoreMatrix(result.ToArray());
     }
 
-    // MATRIX.RANK(handle) - Rango matrice
+    // LINALG.RANK(handle) - Rango matrice
     public static long MatrixRank(long handle)
     {
         var matrix = Matrix(handle);
@@ -1286,7 +1286,7 @@ public static partial class IlRuntime
         return trace;
     }
 
-    // MATRIX.NORM(handle) - Norma L2 (valore singolare massimo)
+    // LINALG.NORM(handle) - Norma L2 (valore singolare massimo)
     public static double MatrixNorm(long handle)
     {
         var matrix = Matrix(handle);
@@ -2544,6 +2544,8 @@ public static partial class IlRuntime
             // "BAGMULTISET`1" era una divergenza solo IL (minitest
             // collections/collection_typename_valtype).
             case IBagMultiset: return "DICTIONARY`2";
+            // HLL: nome BASIC (parità C99/VM-C, gmb_collection_type_name(30)).
+            case CommonLib.Collections.HyperLogLog: return "HLL";
             default:
                 // UDT: nome BASIC dal registro (parità PCode/VM-C) invece del nome CLR "UDT_540".
                 if (UdtTypeNames.TryGetValue(value.GetType().FullName ?? "", out var bn)) return bn;
@@ -14640,6 +14642,29 @@ public static double TextWidth(string s)
     public static object? CollectionInvoke(object? instance, string methodName, object?[] args)
     {
         if (instance is null) return null;
+        /* HLL (HyperLogLog): metodi per nome — Add/Count/Merge/Error/Precision/Serialize/
+         * Load/Clear. Il dispatcher condiviso evita la reflection e garantisce la stessa
+         * semantica su IL e PCode (e il mirror del runtime C gmb_hll.c). */
+        if (instance is CommonLib.Collections.HyperLogLog hll)
+        {
+            switch (methodName.ToUpperInvariant())
+            {
+                case "ADD": if (args.Length >= 1) hll.Add(args[0]); return null;
+                case "COUNT" or "LENGTH": return hll.Count();
+                case "ERROR": return hll.Error();
+                case "PRECISION": return (double)hll.Precision();
+                case "MERGE":
+                    if (args.Length >= 1 && args[0] is CommonLib.Collections.HyperLogLog other)
+                        hll.Merge(other);
+                    return null;
+                case "SERIALIZE": return hll.Serialize();
+                case "LOAD":
+                    if (args.Length >= 1 && args[0] is string blob) hll.Load(blob);
+                    return null;
+                case "CLEAR": hll.Clear(); return null;
+                default: return null;
+            }
+        }
         // HTTPREQUEST seminata come dict (chiave "__httpRequest"): i metodi BASIC della
         // req (ParseForm/ParseMultipartForm) girano sull'istanza reale — UNICA logica shared
         // col PCodeVM (PCodeHttpRequestDictInvoke, §0bis). Come nel PCode, qualunque altro

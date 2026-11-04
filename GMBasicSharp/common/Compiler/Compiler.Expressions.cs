@@ -1612,6 +1612,7 @@ public sealed partial class Compiler
                 BinaryHeapType { IsMaxHeap: true } => 27,
                 BinaryHeapType => 14,
                 BagType => 15,
+                HyperLogLogType => 30,   // 28 = STRINGBUILDER, 29 = REGEX in PCode/VM-C
                 CacheType => 16,
                 GraphType => 17,
                 TimelineType => 18,

@@ -344,6 +344,7 @@ set(GMB_ALL_SRCS
     src/gmb_graph_alg.c
     src/gmb_dag.c
     src/gmb_collections.c
+    src/gmb_hll.c          # HyperLogLog (stima cardinalità) — runtime condiviso (§0bis)
     # FFI moduli nativi (gmb_ffi.h/.c — marshalling copy-in/copy-out per pacchetti)
     src/gmb_ffi.c
     # FFI dl condiviso (dlopen/dlsym + preload pacchetti): usato da C99, VM/C e host IL

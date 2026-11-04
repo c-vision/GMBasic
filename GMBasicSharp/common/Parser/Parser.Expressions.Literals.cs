@@ -162,6 +162,7 @@ public sealed partial class Parser
                 TokenKind.Heap => ParseHeapType(isMaxHeap: false),
                 TokenKind.MaxHeap => ParseHeapType(isMaxHeap: true),
                 TokenKind.Bag => ParseBagType(),
+                TokenKind.Hll => new HyperLogLogType(),
                 TokenKind.Cache => ParseCacheType(),
                 TokenKind.Graph => ParseGraphType(),
                 TokenKind.Timeline => ParseTimelineType(),
@@ -301,7 +302,7 @@ public sealed partial class Parser
     {
         return kind switch
         {
-            TokenKind.Array or TokenKind.List or TokenKind.Dict or TokenKind.HashSet
+            TokenKind.Array or TokenKind.List or TokenKind.Dict or TokenKind.HashSet or TokenKind.Hll
                 or TokenKind.Queue or TokenKind.Stack or TokenKind.Sorted or TokenKind.Tree
                 or TokenKind.AVLTree or TokenKind.RedBlack or TokenKind.BITree or TokenKind.Trie
                 or TokenKind.LinkedList or TokenKind.DoublyLinkedList or TokenKind.Circular

@@ -2668,9 +2668,11 @@ typedef enum gmb_tokenkind {
     GMB_TOK_EnvHas,
     GMB_TOK_CollSymmetricExcept,
     GMB_TOK_Brains,
+    /* HLL (2026-11-04): tipo contenitore HyperLogLog (stima cardinalità). */
+    GMB_TOK_Hll,
 } gmb_tokenkind_t;
 
-#define GMB_TOK_COUNT 2646
+#define GMB_TOK_COUNT 2647
 
 /* 2026-09-09 (direttiva 2026-09-08): gmb_tokenkind_name()/gmb_tokenkind_from_name() e la
  * tabella gmb_token_names[] sono state RIMOSSE — dispatch solo per TokenKind; la risoluzione
