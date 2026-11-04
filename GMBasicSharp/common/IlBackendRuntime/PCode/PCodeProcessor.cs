@@ -2598,6 +2598,15 @@ internal sealed partial class PCodeProcessor
                     foreach (var elem in elements)
                         if (elem != null) qu.Enqueue(elem);
                 }
+                /* LINKEDLIST/DOUBLYLINKEDLIST (OP_NEW typeCode 12 → LinkedList<object?>):
+                 * nessun ramo sopra la copriva (non è IList) → il letterale
+                 * `DIM L AS LINKEDLIST<STRING> = ["B"]` restava VUOTO (CollectionsLinked:
+                 * "SLL.Count= 0" finché non si aggiungeva a mano). */
+                else if (arr is System.Collections.Generic.LinkedList<object?> llInit)
+                {
+                    foreach (var elem in elements)
+                        llInit.AddLast(elem);
+                }
                 // BinaryIndexedTree: il costruttore prende il source ARRAY (non c'è Add) —
                 // ricreata con i dati dell'inizializzatore ([1,2,3,4,5] → source).
                 else if (arr is CommonLib.Collections.BinaryIndexedTree<double>)
@@ -3691,6 +3700,25 @@ internal sealed partial class PCodeProcessor
                     }
                 }
 
+                /* CIRCULAR (typeCode 13 → List<object?>): Current()/Rotate(n) sono helper
+                 * BASIC, non metodi CLR — senza questo ramo erano no-op silenziosi
+                 * (CollectionsLinked: "Current:" vuoto, Rotate inerte). Stessi helper
+                 * condivisi con IL (stato per istanza + rotazione FISICA della lista:
+                 * stesso ordine di iterazione di VM-C/C99). */
+                if (instance is System.Collections.IList circInst && methodName != null)
+                {
+                    if (methodName.Equals("Current", StringComparison.OrdinalIgnoreCase) && argCount == 0)
+                    {
+                        task.PushRef(IlRuntime.CircularCurrent(instance));
+                        return true;
+                    }
+                    if (methodName.Equals("Rotate", StringComparison.OrdinalIgnoreCase) && argCount >= 1)
+                    {
+                        IlRuntime.CircularRotate(instance, Convert.ToDouble(args[0] ?? 0.0));
+                        task.PushRef(null);
+                        return true;
+                    }
+                }
                 int? methodAddr = null;
                 // Check IList FIRST (collections like List<T>)
                 if (instance is System.Collections.IList iList)
@@ -4197,6 +4225,19 @@ internal sealed partial class PCodeProcessor
                     && methodName != null)
                 {
                     var instType = instance!.GetType();
+                    /* LINKEDLIST/DOUBLYLINKEDLIST: nel P-Code sono
+                     * System.Collections.Generic.LinkedList<T> — NON IList/IDictionary, quindi
+                     * non entravano né nel dispatcher condiviso né nel blocco CommonLib (il
+                     * namespace è System.Collections.Generic): AddFirst/AddLast/Count/First/
+                     * Last/Remove finivano nel PushRef(null) = no-op silenziosi (sample
+                     * CollectionsLinked: "SLL.Count= 0", liste vuote). Delega al dispatcher
+                     * condiviso di IlRuntime (stessa semantica di IL/VM-C/C99). */
+                    if (instType.IsGenericType
+                        && instType.GetGenericTypeDefinition() == typeof(System.Collections.Generic.LinkedList<>))
+                    {
+                        task.PushRef(IlRuntime.CollectionInvoke(instance, methodName!, args));
+                        return true;
+                    }
                     if (instType == null) { task.PushRef(null); return true; }
                     if (instType.Namespace?.StartsWith("CommonLib.Collections") == true ||
                         instType.Name.StartsWith("ConsistentHash") ||

@@ -3076,6 +3076,8 @@ if (gmb_tk_rem_vari_in(t->kind)) {
                                 if (ntypes == want) {
                                     if (gtk->kind == GMB_TOK_StringType)
                                         s->dim_elem_str = 1;
+                                    else if (gtk->kind == GMB_TOK_Any)
+                                        s->dim_elem_any = 1;   /* valore dinamico: gmb_val_t */
                                     else if (!gm_parser_prim_len(gtk->lexeme, gtk->length) && !s->dim_elem_class) {
                                         /* want==1: elem UDT di LIST<...>; want==2: tipo VALORE di
                                          * una mappa (DICT<...,JSON>/<...,UDT>) — un valore non
@@ -3108,6 +3110,8 @@ if (gmb_tk_rem_vari_in(t->kind)) {
                                 if (ntypes == want) {
                                     if (otk->kind == GMB_TOK_StringType)
                                         s->dim_elem_str = 1;
+                                    else if (otk->kind == GMB_TOK_Any)
+                                        s->dim_elem_any = 1;   /* valore dinamico: gmb_val_t */
                                     else if (!gm_parser_prim_len(otk->lexeme, otk->length) && !s->dim_elem_class) {
                                         /* see ramo generico sopra: want==2 = valore mappa non
                                          * primitivo → percorso "dict di val" (gmb_val_t). */

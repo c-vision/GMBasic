@@ -2538,6 +2538,16 @@ static void gmb_bf_32(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_
                 gmb_obj_string_t* sobj = (gmb_obj_string_t*)args[0].ref;
                 bout->result = func_code == 33 ? 0.0 : (double)((gmb_int_t)sobj->length - 1);
             }
+            else if (argc >= 1 && args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_COLLECTION)
+            {
+                /* LBOUND/UBOUND su una COLLEZIONE a handle (SET/LIST-like e map-like:
+                 * SORTED/TREE/AVL/REDBLACK/TRIPLE/BAG/HEAP/...): 0 / count-1 (parità
+                 * IL/PCode). Senza questo ramo UBOUND valeva -1 → il FOR EACH emesso dal
+                 * compilatore (UBOUND + LOAD_ELEMENT_POSITIONAL) iterava ZERO volte in
+                 * silenzio (sample CollectionsDictLists/CollectionsLinked su VM/C). */
+                int64_t cn = gmb_coll_count(((gmb_obj_collection_t*)args[0].ref)->handle);
+                bout->result = func_code == 33 ? 0.0 : (cn > 0 ? (double)(cn - 1) : -1.0);
+            }
             else if (argc >= 1 && args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_DICT)
             {
                 /* LBOUND/UBOUND su DICT: 0 / count-1 (parità IL/PCode). Il FOR EACH/comprehension

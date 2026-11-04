@@ -259,7 +259,7 @@ public sealed partial class Compiler
                 ListType => 1, DictType => 2, HashSetType => 3, QueueType => 4,
                 StackType => 5, SortedDictType => 6, TreeType => 7, AVLTreeType => 8,
                 RedBlackTreeType => 9, BinaryIndexedTreeType => 10, TrieType => 11,
-                LinkedListType => 12, CircularLinkedListType => 13, BinaryHeapType { IsMaxHeap: true } => 27, BinaryHeapType => 14,
+                LinkedListType => 12, DoublyLinkedListType => 12, CircularLinkedListType => 13, BinaryHeapType { IsMaxHeap: true } => 27, BinaryHeapType => 14,
                 BagType => 15, CacheType => 16, GraphType => 17, TimelineType => 18,
                 HashRingType => 19, RingBufferType => 20, SparseSetType => 21, BPlusTreeType => 26,
                 HyperLogLogType => 30,   // 28 = STRINGBUILDER, 29 = REGEX in PCode/VM-C
@@ -317,7 +317,7 @@ public sealed partial class Compiler
             ListType or SortedDictType or TreeType or AVLTreeType or RedBlackTreeType or
             BinaryIndexedTreeType or TrieType or CircularLinkedListType or BinaryHeapType or
             BagType or CacheType or GraphType or TimelineType or HashRingType or RingBufferType or
-            SparseSetType or BPlusTreeType or LinkedListType;
+            SparseSetType or BPlusTreeType or LinkedListType or DoublyLinkedListType;
 
     /// <summary>True per i tipi scalari NUMERICI (default 0.0): usato per il fill degli array
     /// numerici DIM senza inizializzatore (parità IL/C99, vedi VisitDeclarationStatement).
@@ -479,7 +479,7 @@ public sealed partial class Compiler
                         ListType => 1, DictType => 2, HashSetType => 3, QueueType => 4,
                         StackType => 5, SortedDictType => 6, TreeType => 7, AVLTreeType => 8,
                         RedBlackTreeType => 9, BinaryIndexedTreeType => 10, TrieType => 11,
-                        LinkedListType => 12, CircularLinkedListType => 13, BinaryHeapType { IsMaxHeap: true } => 27, BinaryHeapType => 14,
+                        LinkedListType => 12, DoublyLinkedListType => 12, CircularLinkedListType => 13, BinaryHeapType { IsMaxHeap: true } => 27, BinaryHeapType => 14,
                         BagType => 15, CacheType => 16, GraphType => 17, TimelineType => 18,
                         HashRingType => 19, RingBufferType => 20, SparseSetType => 21, BPlusTreeType => 26,
                 HyperLogLogType => 30,   // 28 = STRINGBUILDER, 29 = REGEX in PCode/VM-C

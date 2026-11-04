@@ -335,6 +335,7 @@ struct gmb_stmt {
     char* dim_elem_class;      /* collections: DIM v AS LIST OF <Classe> / LIST<Classe>: elem UDT */
     int dim_chan_cap;          /* DIM v AS CHANNEL(N): capacita' (-1 = default) */
     int dim_elem_str;          /* DIM v AS CHANNEL OF STRING: 1 = elemento stringa */
+    int dim_elem_any;          /* DIM v AS DICT<...,ANY>: valore DINAMICO (gmb_val_t, non double) */
     int dim_fixed_len;         /* DIM v AS STRING * N: lunghezza fissa (0 = non fissa) */
     int func_val_arity;        /* DIM v AS FUNCTION(...) AS <ret>: numero di parametri della firma */
     int func_val_str_mask;     /* DIM v AS FUNCTION(...): bit i = 1 se il parametro i della firma è AS STRING */

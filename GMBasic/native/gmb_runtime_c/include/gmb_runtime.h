@@ -326,6 +326,8 @@ gmb_list_t gmb_dict_extreme(gmb_dict_t* d, int want_max, int remove);
 gmb_list_t gmb_dict_to_kvp(gmb_dict_t d);
 gmb_list_t gmb_list_shallow_copy(gmb_list_t l);
 gmb_list_t gmb_list_deep_copy(gmb_list_t l);
+/* Copia profonda in ordine inverso (ToArray/ToList di uno STACK: LIFO dalla cima). */
+gmb_list_t gmb_list_deep_copy_rev(gmb_list_t l);
 gmb_double_t gmb_list_starts_with(gmb_list_t l, const char* pref);
 gmb_list_t gmb_list_find_all(gmb_list_t l, const char* pref);
 gmb_int_t gmb_list_unique_count(gmb_list_t l);
