@@ -1358,13 +1358,12 @@ int js_stringify(ctx_t* c, gmb_expr_t** a, int n) {   /* §0quater: usata anche 
                         }
                         return 1;
                     }
-                    if (ck == 1 && mk == GMB_TOK_ToJson) {
-                        sb_put(&c->out, "gmb_val_to_json(gmb_make_val_dict(gmb_bag_counts(");
-                        emit_ident(c, kv->name);
-                        sb_put(&c->out, ")))");
-                        return 1;
-                    }
-                    if (ck == 2 && (mk == GMB_TOK_ToDict || mk == GMB_TOK_ToJson)) {
+                    /* NB: `ToJson()` NON entra qui. Ritorna il TESTO JSON (gmb_string_t,
+                     * parità IL/PCode/VM/C: TYPENAME=STRING) → JSON.STRINGIFY(d.ToJson()) è la
+                     * stringa RE-CODIFICATA (quotata), non la serializzazione dell'oggetto.
+                     * Prima C99 trattava ToJson come ToDict e stampava l'oggetto nudo
+                     * (Collections/CollectionsDictLists: "Original ToJson" senza virgolette). */
+                    if (ck == 2 && mk == GMB_TOK_ToDict) {
                         sb_put(&c->out, "gmb_val_to_json(gmb_make_val_dict(");
                         emit_ident(c, kv->name);
                         sb_put(&c->out, "))");

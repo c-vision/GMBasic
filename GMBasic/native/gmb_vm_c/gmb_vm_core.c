@@ -11110,6 +11110,74 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                         push_num_entry(task, n, GMB_BT_NUMBER);
                         break;
                     }
+                    /* METODI-ZERO-ARG in forma di PROPRIETÀ (`q.Peek`, `s.Pop`, `q.Dequeue`:
+                     * la guida Collezioni §5/§6 li scrive così). Il compilatore emette
+                     * OP_LOAD_FIELD (FieldAccess senza parentesi) e qui cadevano in `push_nil`:
+                     * la VM/C stampava vuoto dove IL/PCode eseguono il metodo
+                     * (sample Collections/CollectionsFluent). Stesse primitive del ramo
+                     * OP_CALL_MEMBER (parità di semantica, inclusa la mutazione). */
+                    else if (strcmp(fieldName, "Peek") == 0)
+                    {
+                        gmb_val_t r = gmb_list_peek(*((gmb_obj_shared_val_t*)obj)->list);
+                        gmb_stack_entry_t rs = gmb_adapter_val_to_stack(r);
+                        gmb_obj_release(objE.ref);
+                        if (rs.type == 2 && rs.ref) push_ref_new(task, rs.ref, rs.basic_type);
+                        else if (rs.type == 1) push_num_entry(task, rs.num, rs.basic_type);
+                        else push_nil(task);
+                        break;
+                    }
+                    else if (strcmp(fieldName, "Pop") == 0)
+                    {
+                        gmb_val_t r = gmb_list_pop(((gmb_obj_shared_val_t*)obj)->list);
+                        gmb_stack_entry_t rs = gmb_adapter_val_to_stack(r);
+                        gmb_val_release(r);   /* pop cede il riferimento della lista: rs ne ha preso uno suo */
+                        gmb_obj_release(objE.ref);
+                        if (rs.type == 2 && rs.ref) push_ref_new(task, rs.ref, rs.basic_type);
+                        else if (rs.type == 1) push_num_entry(task, rs.num, rs.basic_type);
+                        else push_nil(task);
+                        break;
+                    }
+                    else if (strcasecmp(fieldName, "Dequeue") == 0)
+                    {
+                        gmb_val_t r = gmb_list_dequeue(((gmb_obj_shared_val_t*)obj)->list);
+                        gmb_stack_entry_t rs = gmb_adapter_val_to_stack(r);
+                        gmb_val_release(r);   /* dequeue cede il riferimento della lista: rs ne ha preso uno suo */
+                        gmb_obj_release(objE.ref);
+                        if (rs.type == 2 && rs.ref) push_ref_new(task, rs.ref, rs.basic_type);
+                        else if (rs.type == 1) push_num_entry(task, rs.num, rs.basic_type);
+                        else push_nil(task);
+                        break;
+                    }
+                    else if (strcmp(fieldName, "Front") == 0 || strcmp(fieldName, "First") == 0
+                             || strcmp(fieldName, "Back") == 0 || strcmp(fieldName, "Last") == 0)
+                    {
+                        int back = (strcmp(fieldName, "Back") == 0 || strcmp(fieldName, "Last") == 0);
+                        gmb_val_t r = back ? gmb_list_last(*((gmb_obj_shared_val_t*)obj)->list)
+                                           : gmb_list_first(*((gmb_obj_shared_val_t*)obj)->list);
+                        gmb_stack_entry_t rs = gmb_adapter_val_to_stack(r);
+                        gmb_obj_release(objE.ref);
+                        if (rs.type == 2 && rs.ref) push_ref_new(task, rs.ref, rs.basic_type);
+                        else if (rs.type == 1) push_num_entry(task, rs.num, rs.basic_type);
+                        else push_nil(task);
+                        break;
+                    }
+                    else if (strcmp(fieldName, "IsEmpty") == 0)
+                    {
+                        double n = gmb_list_count(*((gmb_obj_shared_val_t*)obj)->list) == 0 ? 1.0 : 0.0;
+                        gmb_obj_release(objE.ref);
+                        push_num_entry(task, n, GMB_BT_BOOL);
+                        break;
+                    }
+                    else if (strcmp(fieldName, "ToArray") == 0 || strcmp(fieldName, "ToList") == 0)
+                    {
+                        gmb_list_t c = gmb_list_deep_copy(*((gmb_obj_shared_val_t*)obj)->list);
+                        gmb_obj_shared_val_t* oc = vm_wrap_runtime_list(&c);
+                        gmb_list_free(&c);
+                        gmb_obj_release(objE.ref);
+                        if (oc) push_ref_new(task, (gmb_obj_t*)oc, GMB_BT_OBJECT);
+                        else push_nil(task);
+                        break;
+                    }
                     /* List.Add non si implementa qui (è CALL_MEMBER) */
                     gmb_obj_release(objE.ref);
                     push_nil(task);
@@ -11127,6 +11195,31 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                                    : (double)gmb_dict_count(*((gmb_obj_shared_val_t*)obj)->dict);
                         gmb_obj_release(objE.ref);
                         push_num_entry(task, n, GMB_BT_NUMBER);
+                        break;
+                    }
+                    /* `dict.Keys` / `dict.Values` in forma di PROPRIETÀ (guida Collezioni
+                     * §7; il sample passa per PRINT): lista degli elementi, come il ramo
+                     * OP_CALL_MEMBER con parentesi (prima usciva NIL → "Dict keys:" vuoto). */
+                    if (strcmp(fieldName, "Keys") == 0)
+                    {
+                        gmb_obj_shared_val_t* ko = gmb_shared_list_new();
+                        if (ko)
+                        {
+                            vm_list_fill_keys(ko, *((gmb_obj_shared_val_t*)obj)->dict);
+                            gmb_obj_release(objE.ref);
+                            push_ref_new(task, (gmb_obj_t*)ko, GMB_BT_OBJECT);
+                        }
+                        else { gmb_obj_release(objE.ref); push_nil(task); }
+                        break;
+                    }
+                    if (strcmp(fieldName, "Values") == 0)
+                    {
+                        gmb_list_t vv = gmb_dict_values(*((gmb_obj_shared_val_t*)obj)->dict);
+                        gmb_obj_shared_val_t* vo = vm_wrap_runtime_list(&vv);
+                        gmb_list_free(&vv);
+                        gmb_obj_release(objE.ref);
+                        if (vo) push_ref_new(task, (gmb_obj_t*)vo, GMB_BT_OBJECT);
+                        else push_nil(task);
                         break;
                     }
                     /* V4f: property getter (specchio OP_LOAD_FIELD C#): se il campo non è
@@ -11191,6 +11284,89 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                         double n = (double)gmb_coll_capacity(ch);
                         gmb_obj_release(objE.ref);
                         push_num_entry(task, n, GMB_BT_NUMBER);
+                        break;
+                    }
+                    /* Metodi-zero-arg in forma di PROPRIETÀ (`q.Peek`, `s.Pop`, `q.Dequeue`,
+                     * `dict.Keys`, `set.ToArray`) sui contenitori a HANDLE (QUEUE/STACK/
+                     * HASHSET/RB/AVL/... — sono gmb_obj_collection_t, non GMB_OBJ_LIST):
+                     * prima cadevano in push_nil. Stessi helper del ramo OP_CALL_MEMBER. */
+                    else if (strcasecmp(fieldName, "Dequeue") == 0 || strcasecmp(fieldName, "Pop") == 0)
+                    {
+                        int tc = col->type_code;
+                        (void)tc;
+                        gmb_val_t r = gmb_coll_dequeue(ch);
+                        push_val_entry(task, r);
+                        gmb_val_release(r);
+                        gmb_obj_release(objE.ref);
+                        break;
+                    }
+                    else if (strcasecmp(fieldName, "Peek") == 0 || strcasecmp(fieldName, "Front") == 0
+                             || strcasecmp(fieldName, "Back") == 0)
+                    {
+                        int tc = col->type_code;
+                        gmb_val_t r;
+                        if (strcasecmp(fieldName, "Back") == 0) r = gmb_coll_last(ch);
+                        else if (tc == 14 || tc == 27) r = gmb_coll_heap_peek(ch);
+                        else r = gmb_coll_peek(ch);
+                        push_val_entry(task, r);
+                        gmb_obj_release(objE.ref);
+                        break;
+                    }
+                    else if (strcasecmp(fieldName, "IsEmpty") == 0)
+                    {
+                        double n = gmb_coll_count(ch) == 0 ? 1.0 : 0.0;
+                        gmb_obj_release(objE.ref);
+                        push_num_entry(task, n, GMB_BT_BOOL);
+                        break;
+                    }
+                    else if (strcasecmp(fieldName, "ToArray") == 0 || strcasecmp(fieldName, "ToList") == 0)
+                    {
+                        /* Stesso schema del ramo OP_CALL_MEMBER: contenitore chiave→valore →
+                         * lista di dict {Key,Value}; altrimenti lista dei valori. */
+                        int is_kv = 0;
+                        gmb_list_t kvl = gmb_coll_kv_entries_to_list(ch, &is_kv);
+                        gmb_obj_shared_val_t* out = gmb_shared_list_new();
+                        if (!out) { gmb_list_free(&kvl); gmb_obj_release(objE.ref); push_nil(task); break; }
+                        if (is_kv)
+                        {
+                            for (size_t i = 0; i < kvl.count; i++) gmb_list_add(out->list, kvl.items[i]);
+                            gmb_list_free(&kvl);
+                        }
+                        else
+                        {
+                            gmb_list_free(&kvl);
+                            int n = 0;
+                            gmb_val_t* arr = gmb_coll_to_array(ch, &n);
+                            if (arr) for (int i = 0; i < n; i++) gmb_list_add(out->list, arr[i]);
+                            free(arr);
+                        }
+                        gmb_obj_release(objE.ref);
+                        push_ref_new(task, (gmb_obj_t*)out, GMB_BT_OBJECT);
+                        break;
+                    }
+                    else if (strcasecmp(fieldName, "Keys") == 0)
+                    {
+                        int n = 0;
+                        gmb_val_t* arr = gmb_coll_kv_keys(ch, &n);
+                        gmb_obj_shared_val_t* out = gmb_shared_list_new();
+                        if (out && arr)
+                        {
+                            for (int i = 0; i < n; i++) gmb_list_add(out->list, arr[i]);
+                            gmb_obj_release(objE.ref);
+                            push_ref_new(task, (gmb_obj_t*)out, GMB_BT_OBJECT);
+                        }
+                        else { gmb_obj_release(objE.ref); push_nil(task); }
+                        free(arr);
+                        break;
+                    }
+                    else if (strcasecmp(fieldName, "Values") == 0)
+                    {
+                        gmb_list_t vv = gmb_collection_to_list(gmb_make_val_obj((gmb_obj_t*)obj));
+                        gmb_obj_shared_val_t* vo = vm_wrap_runtime_list(&vv);
+                        gmb_list_free(&vv);
+                        gmb_obj_release(objE.ref);
+                        if (vo) push_ref_new(task, (gmb_obj_t*)vo, GMB_BT_OBJECT);
+                        else push_nil(task);
                         break;
                     }
                     gmb_obj_release(objE.ref);
@@ -11364,6 +11540,31 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                         int idx = (int)args[0].num;
                         if (idx >= 0 && (size_t)idx < sv->list->count)
                             gmb_list_remove_at(sv->list, idx);
+                    }
+                    /* Insert(index, value): mancava del tutto nel ramo LIST di OP_CALL_MEMBER
+                     * (esisteva solo nel ramo STRINGBUILDER) → `l.Insert(0, "alpha")` era un
+                     * NO-OP silenzioso sulla VM/C (sample Collections/CollectionsDictLists:
+                     * la lista "iniziale" usciva senza l'elemento inserito). */
+                    else if (strcmp(methodName, "Insert") == 0 && argCount >= 2)
+                    {
+                        gmb_int_t idx = (gmb_int_t)args[0].num;
+                        if (idx < 0) idx = 0;
+                        if ((size_t)idx > sv->list->count) idx = (gmb_int_t)sv->list->count;
+                        gmb_list_insert(sv->list, idx, gmb_adapter_stack_to_val_borrowed(args[1]));
+                        push_ref_entry(task, inst, GMB_BT_OBJECT);
+                    }
+                    /* Remove(value): rimuove la PRIMA occorrenza e ritorna -1/0 (parità IL:
+                     * List.Remove → bool BASIC). Mancava nel ramo LIST (solo il
+                     * Remove(pos,len) dello StringBuilder era implementato). */
+                    else if (strcmp(methodName, "Remove") == 0 && argCount >= 1)
+                    {
+                        gmb_int_t rix = gmb_list_index_of(*sv->list, gmb_adapter_stack_to_val_borrowed(args[0]));
+                        if (rix >= 0)
+                        {
+                            gmb_list_remove_at(sv->list, rix);
+                            push_num_entry(task, -1.0, GMB_BT_BOOL);
+                        }
+                        else push_num_entry(task, 0.0, GMB_BT_BOOL);
                     }
                     else if (strcmp(methodName, "Clear") == 0)
                     {

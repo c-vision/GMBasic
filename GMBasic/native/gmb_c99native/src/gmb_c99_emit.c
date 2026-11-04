@@ -618,6 +618,32 @@ static int regex_list_member(ctx_t* c, const char* var, var_t** out_v, int* out_
     return 0;
 }
 
+/* True se l'espressione è un MEMBRO di collezione che produce un `gmb_list_t`
+ * (Keys/Values/ToArray/ToList e le operazioni insiemistiche di HASHSET): il PRINT non deve
+ * avvolgerla in gmb_print_val (che vuole un gmb_val_t) ma stamparla come LISTA "[a, b]".
+ * Prima `PRINT d.Keys`/`d.Keys()` non compilava proprio: gmb_print_val(<gmb_list_t>) →
+ * "passing 'gmb_list_t' to parameter of type 'gmb_val_t' (backend C99Native). */
+static int expr_is_coll_list_value(ctx_t* c, gmb_expr_t* e) {
+    if (!e || e->kind != GMB_EXPR_CALL || !e->var) return 0;
+    const char* dot = strrchr(e->var, '.');
+    if (!dot || dot == e->var || strchr(dot + 1, '.')) return 0;
+    char base[160]; size_t bl = (size_t)(dot - e->var);
+    if (bl >= sizeof(base)) return 0;
+    memcpy(base, e->var, bl); base[bl] = 0;
+    var_t* bv = lookup_var(c, base);
+    if (!bv) return 0;
+    int is_coll = bv->is_array
+        || (bv->gkind && (gk_is_list(bv->gkind) || gk_is_dict(bv->gkind) || bv->gkind == GK_GRAPH));
+    if (!is_coll) return 0;
+    gmb_tokenkind_t mtk = gmb_member_tok(dot + 1);
+    if (mtk == GMB_TOK_Keys || mtk == GMB_TOK_Values
+        || mtk == GMB_TOK_ToArray || mtk == GMB_TOK_ToList) return 1;
+    if (bv->gkind == GK_SET
+        && gmb_tk_in(mtk, gmb_tk_list_setops,
+                     (unsigned)(sizeof(gmb_tk_list_setops) / sizeof(gmb_tk_list_setops[0])))) return 1;
+    return 0;
+}
+
 int etype(ctx_t* c, gmb_expr_t* e);   /* forward: usata qui sotto + emit_str_operand */
 static int comp_src_is_str(ctx_t* c, gmb_expr_t* src);   /* forward: sorgente FOR di una comprehension produce stringhe */
 void emit_num_operand(ctx_t* c, gmb_expr_t* e) {
@@ -2268,8 +2294,38 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                 if (_rv && _rv->gkind) {
                     const char* _m = _dot + 1;
                     if (!strcasecmp(_m, "Join")) return TY_STR;
+                    /* Metodi NUMERICI dei contenitori: senza, etype ricadeva su TY_VAL e PRINT
+                     * emetteva gmb_print_val(<int>) = C invalido (CollectionsMembersExtra:
+                     * `PRINT u.UniqueCount()`; dict_remove_if: `PRINT d.Remove(k)`). */
                     if (!strcasecmp(_m, "Contains") || !strcasecmp(_m, "IndexOf")
-                        || !strcasecmp(_m, "Count") || !strcasecmp(_m, "Length")) return TY_NUM;
+                        || !strcasecmp(_m, "Count") || !strcasecmp(_m, "Length")
+                        || !strcasecmp(_m, "UniqueCount") || !strcasecmp(_m, "IsEmpty")
+                        || !strcasecmp(_m, "Max") || !strcasecmp(_m, "Min")
+                        || !strcasecmp(_m, "Sum") || !strcasecmp(_m, "Capacity")
+                        || !strcasecmp(_m, "StartsWith") || !strcasecmp(_m, "ContainsKey")
+                        || !strcasecmp(_m, "Remove") || !strcasecmp(_m, "GetInDegree")
+                        || !strcasecmp(_m, "NodeCount") || !strcasecmp(_m, "HasNode")
+                        || !strcasecmp(_m, "HasEdge"))
+                    {
+                        /* Eccezioni per i contenitori a HANDLE: UniqueCount/StartsWith sono
+                         * emessi come gmb_val_t (gmb_make_val_double) — TY_NUM faceva
+                         * avvolgere il valore in gmb_print_double(<val>) = C invalido
+                         * (typed_containers_parity). */
+                        if (_rv->coll_handle
+                            && (!strcasecmp(_m, "UniqueCount") || !strcasecmp(_m, "StartsWith")))
+                            return TY_VAL;
+                        return TY_NUM;
+                    }
+                    /* Peek/Front/Back/First/Last/Extract/Dequeue/Pop: sui contenitori a
+                     * HANDLE (HEAP/MAXHEAP/BAG/TRIE) il runtime ritorna un gmb_val_t
+                     * (gmb_print_val, non gmb_print_double: "passing 'gmb_val_t' to parameter
+                     * of incompatible type 'gmb_double_t'" su typed_containers_parity);
+                     * sulle LISTE/QUEUE/STACK il tipo è quello dell'ELEMENTO. */
+                    if (!strcasecmp(_m, "Peek") || !strcasecmp(_m, "Front") || !strcasecmp(_m, "Back")
+                        || !strcasecmp(_m, "First") || !strcasecmp(_m, "Last")
+                        || !strcasecmp(_m, "Extract") || !strcasecmp(_m, "Dequeue")
+                        || !strcasecmp(_m, "Pop"))
+                        return _rv->coll_handle ? TY_VAL : (_rv->elem_str ? TY_STR : TY_NUM);
                 }
             }
         }
@@ -10032,6 +10088,23 @@ static int try_emit_var_method(ctx_t* c, const char* recv, const char* m, gmb_ex
             sb_put(&c->out, "_len - 1] = (gmb_double_t)(");
             emit_expr(c, a[0]);
             sb_put(&c->out, "); })");
+        } else if (v->gkind == GK_SET) {
+            /* HASHSET: `Add` DEDUPLICA (semantica di insieme, parità IL/PCode/VM-C che sul
+             * front-end emettono AddUnique). Prima questo ramo — che vince su quello di
+             * emit_call, dove il controllo `is_set` esiste — emetteva un `gmb_list_add` nudo:
+             * `DIM s AS HASHSET OF INTEGER` + Add(10),Add(20),Add(10) dava Count 3 e
+             * ToArray [10,20,10] su C99 contro 2/[10,20] sugli altri backend
+             * (sample Collections/CollectionsFluent). Elemento in un temporaneo per non
+             * valutarlo due volte (l'espressione può avere effetti collaterali). */
+            static int set_add_uid = 0;
+            int sid = ++set_add_uid;
+            sb_printf(&c->out, "({ gmb_val_t __sa%d = ", sid);
+            emit_make_val(c, v, a[0]);
+            sb_put(&c->out, "; if (!gmb_list_contains(");
+            emit_var_ref(c, v);
+            sb_printf(&c->out, ", __sa%d)) gmb_list_add(&", sid);
+            emit_var_ref(c, v);
+            sb_printf(&c->out, ", __sa%d); (void)0; })", sid);
         } else {
             sb_put(&c->out, "gmb_list_add(&"); emit_var_ref(c, v); sb_put(&c->out, ", ");
             {
@@ -11121,10 +11194,21 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                                 sb_put(&c->out, "gmb_dict_count("); sb_ident(&c->out, cv->name); sb_put(&c->out, ")");
                                 return;
                             }
-                            if (mk == GMB_TOK_ToDict || mk == GMB_TOK_ToJson) {
+                            if (mk == GMB_TOK_ToDict) {
                                 sb_put(&c->out, "gmb_dict_copy(");
                                 sb_ident(&c->out, cv->name);
             sb_put(&c->out, ")");
+                                return;
+                            }
+                            if (mk == GMB_TOK_ToJson) {
+                                /* `d.ToJson()` ritorna il TESTO JSON (gmb_string_t), non una
+                                 * copia del dict: parità IL/PCode/VM/C, dove TYPENAME è STRING
+                                 * e JSON.STRINGIFY(d.ToJson()) dà la stringa quotata
+                                 * (Collections/CollectionsDictLists: su C99 usciva
+                                 * l'oggetto — JSON.STRINGIFY non lo quotava). */
+                                sb_put(&c->out, "gmb_make_val_string(gmb_val_to_json(gmb_make_val_dict(gmb_dict_copy(");
+                                sb_ident(&c->out, cv->name);
+                                sb_put(&c->out, "))).data)");
                                 return;
                             }
                             if (gmb_tk_in(mk, gmb_tk_dict_mme, (unsigned)(sizeof(gmb_tk_dict_mme)/sizeof(gmb_tk_dict_mme[0])))) {
@@ -13667,9 +13751,13 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
                         }
                     }
                     if (pv && pv->gkind && gk_is_dict(pv->gkind) && gmb_member_tok(pdot + 1) == GMB_TOK_Keys) {
-                        sb_put(&c->out, "gmb_list_join(gmb_dict_keys(");
+                        /* `dict.Keys` in forma di PROPRIETÀ (guida Collezioni §7): parità con
+                         * IL/PCode/VM-C, che restituiscono una LISTA → la forma stampabile è
+                         * "[a, b]" (prima era il testo joined "a, b": sample
+                         * Collections/CollectionsFluent, gamba C99). */
+                        sb_put(&c->out, "gmb_val_to_display(gmb_make_val_list(gmb_dict_keys_typed(");
                         sb_ident(&c->out, pv->name);
-                        sb_put(&c->out, "), \", \")");
+                        sb_put(&c->out, ")))");
                         break;
                     }
                 }
@@ -17124,6 +17212,13 @@ static int is_json_path_member(ctx_t* c, gmb_expr_t* e, var_t** out_bv, const ch
              } else if (_is_bf) {
                  sb_put(&c->out, "gmb_print_val(");
                  emit_boxed_field_val(c, _bfv, _bfi);
+             } else if (expr_is_coll_list_value(c, s->print_args[i])) {
+                 /* Membro di collezione che RITORNA una lista (Keys/Values/ToArray/ToList,
+                  * set-ops): stampala come lista "[a, b]" (parità IL/PCode), non con
+                  * gmb_print_val(gmb_list_t) — C invalido. */
+                 sb_put(&c->out, "gmb_print_string(gmb_val_to_display(gmb_make_val_list(");
+                 emit_expr(c, s->print_args[i]);
+                 sb_put(&c->out, "))");
              } else if (etype(c, s->print_args[i]) == TY_VAL) {
                   /* TY_VAL (getter RDD/dinamico) → display tipizzato (numero → " 42", stringa → testo). */
                   sb_put(&c->out, "gmb_print_val(");
@@ -33256,6 +33351,13 @@ int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
         }
         if (gv->gkind) {
             /* collections globali (file scope {0}; il DIM a runtime le popola) */
+            /* Contenitore TIPIZZATO a HANDLE (HEAP/MAXHEAP/BAG/TRIE) — anche in forma
+             * `DIM b AS BAG<STRING>` senza inizializzatore: è un gmb_val_t boxed, NON una
+             * gmb_list_t. Senza questo controllo la dichiarazione a file scope usava
+             * gmb_list_t (sb_var_ctype per i LOCALI era già corretta) → C invalido:
+             * "assigning to 'gmb_list_t' from incompatible type 'gmb_val_t'"
+             * (Collections/CollectionsGraphMissing). */
+            if (gv->coll_handle) { sb_put(&fin, "static gmb_val_t "); sb_ident(&fin, gv->name); sb_put(&fin, " = {0};\n"); continue; }
             if (gk_is_list(gv->gkind)) { sb_put(&fin, "static gmb_list_t "); sb_ident(&fin, gv->name); sb_put(&fin, " = {0};\n"); continue; }
             if (gk_is_dict(gv->gkind)) { sb_put(&fin, "static gmb_dict_t "); sb_ident(&fin, gv->name); sb_put(&fin, " = {0};\n"); continue; }
             /* FASE 2.6(b): oggetto sync GPM globale (file scope NULL, allocato dal DIM) */
