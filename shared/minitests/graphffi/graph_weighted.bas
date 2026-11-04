@@ -1,5 +1,5 @@
 ' GRAPH (FFI) — percorsi pesati, centralità, MST, colorazione/clique/chiusura.
-' EXPECT: dij= 1 :3.0: 1 |fw= 1 :3.0|diam=3.0|ecc0=3.0|mst= 2 :3.0|clu=0.0|col= 2 |clq= 2 |tc= 1 : 1 |sub= 0 :-1 |pr= 1 :1.000|btw=-1 |clo= 1 :-1 |lv= 1 
+' EXPECT: dij= 1 :3.0: 1 |fw= 1 :3.0|bf= 1 :2.0: 3 :1.0|diam=3.0|ecc0=3.0|mst= 2 :3.0|clu=0.0|col= 2 |clq= 2 |tc= 1 : 1 |sub= 0 :-1 |pr= 1 :1.000|btw=-1 |clo= 1 :-1 |lv= 1 
 IMPORT GRAPH
 
 SUB Main()
@@ -18,6 +18,17 @@ SUB Main()
   DIM fw(8) AS DOUBLE
   r = GRAPH.FLOYDWARSHALL(w, 3, fw)
   PRINT "|fw="; r; ":"; FORMAT(fw(2), "#.0");
+
+  ' Bellman-Ford con un arco NEGATIVO (1->3 = -3), nessun ciclo negativo.
+  ' Grafo: 0->1=4 · 1->2=5 · 1->3=-3 · 2->3=2 · 3->2=1  =>  dist = 0, 4, 2 (via 3), 1
+  DIM nb(15) AS DOUBLE
+  FOR i = 0 TO 15 : nb(i) = INF : NEXT i
+  nb(0)=0 : nb(5)=0 : nb(10)=0 : nb(15)=0
+  nb(1)=4 : nb(6)=5 : nb(7)=-3 : nb(11)=2 : nb(14)=1
+  DIM bd(3) AS DOUBLE
+  DIM bp(3) AS LONG
+  r = GRAPH.BELLMANFORD(nb, 4, 0, bd, bp)
+  PRINT "|bf="; r; ":"; FORMAT(bd(2), "#.0"); ":"; bp(2); ":"; FORMAT(bd(3), "#.0");
 
   PRINT "|diam="; FORMAT(GRAPH.DIAMETER(w, 3), "#.0");
   PRINT "|ecc0="; FORMAT(GRAPH.ECCENTRICITY(w, 3, 0), "#.0");
