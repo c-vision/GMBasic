@@ -756,49 +756,6 @@ int gor_min_path_cover(int n, const int *adj)
     return n - matching;
 }
 
-/* ===================== Cammini con finestre temporali (da AirlineSchedule) ===================== */
-
-static int ptw_dfs(int n, const int *adj, const gor_real *start, const gor_real *end,
-                   gor_real mc, int u, int t, char *used, int *cur, int curlen,
-                   int *paths, int *path_len, int max_len, int max_paths, int *found)
-{
-    int v;
-    if (u == t) {
-        if (*found < max_paths) {
-            int i, L = curlen < max_len ? curlen : max_len;
-            for (i = 0; i < L; i++) paths[(size_t)(*found) * max_len + i] = cur[i];
-            path_len[*found] = curlen;
-            (*found)++;
-        }
-        return 1;
-    }
-    if (curlen >= max_len) return 0;
-    for (v = 0; v < n; v++) {
-        if (!adj[(size_t)u * n + v] || used[v]) continue;
-        if (end[u] + mc > start[v]) continue;   /* connessione non ammissibile */
-        used[v] = 1; cur[curlen] = v;
-        ptw_dfs(n, adj, start, end, mc, v, t, used, cur, curlen + 1, paths, path_len, max_len, max_paths, found);
-        used[v] = 0;
-    }
-    return 0;
-}
-
-int gor_paths_time_window(int n, const int *adj, const gor_real *start,
-                          const gor_real *end, gor_real min_connect, int s, int t,
-                          int *paths, int *path_len, int max_len, int max_paths)
-{
-    char *used;
-    int *cur, found = 0;
-    if (n < 1 || !adj || !start || !end || !paths || !path_len || max_len < 1 || max_paths < 1) return 0;
-    if (s < 0 || s >= n || t < 0 || t >= n) return 0;
-    used = (char *)calloc((size_t)n, 1);
-    cur = (int *)malloc((size_t)max_len * sizeof(int));
-    if (!used || !cur) { free(used); free(cur); return 0; }
-    used[s] = 1; cur[0] = s;
-    ptw_dfs(n, adj, start, end, min_connect, s, t, used, cur, 1, paths, path_len, max_len, max_paths, &found);
-    free(used); free(cur);
-    return found;
-}
 
 /* Closeness centrality (unweighted BFS over nonzero edges). */
 void gor_closeness(int n, const gor_real *adj, gor_real *cc)
