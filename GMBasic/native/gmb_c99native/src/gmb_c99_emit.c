@@ -22745,6 +22745,15 @@ static void st_on_window(ctx_t* c, gmb_stmt_t* s) {
             emit_event_target(c, s->target_label);
             sb_put(&c->out, ");\n");
         }
+        else if (s->target_label) {
+            /* Senza OF: la registrazione vale per OGNI finestra (handle -1, wildcard nel
+             * runtime). Prima restava solo la tabella per NOME, che il runtime C non può
+             * invocare → l'handler non scattava mai. */
+            ind(c);
+            sb_printf(&c->out, "gmb_window_register_event_of_cb(-1, \"%s\", ", ev);
+            emit_event_target(c, s->target_label);
+            sb_put(&c->out, ");\n");
+        }
         if (s->target_label) {
             ind(c);
             sb_printf(&c->out, "gmb_window_register_event(\"%s\", \"%s\");\n", ev, s->target_label);
