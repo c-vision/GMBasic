@@ -544,7 +544,11 @@ i64 ofx_cp_binary(const i64 *dom, const i64 *allowed, i64 n, i64 D, i64 *sol)
     int r;
     if (n <= 0 || D <= 0 || dom == NULL || allowed == NULL || sol == NULL) return -1;
     d = to_iarr(dom, n * D);
-    a = to_iarr(allowed, n * n);
+    /* allowed[] e' n*n*D*D: gor_cp_binary lo indicizza come
+     * allowed[((j*n + i)*D*D) + v_j*D + v_i] (coppie di variabili x valori). Con n*n
+     * il buffer era troppo corto e il motore leggeva fuori allocazione -> nessuna
+     * soluzione (0) su C99/VM-C/PCode, esito casuale su IL (2026-11-04). */
+    a = to_iarr(allowed, n * n * D * D);
     s = (int *)malloc((size_t)n * sizeof(int));
     if (d == NULL || a == NULL || s == NULL) { free(d); free(a); free(s); return -1; }
     r = gor_cp_binary((int)n, (int)D, d, a, s);
