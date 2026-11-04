@@ -17,7 +17,13 @@ public sealed partial class Parser
     {
         // `BRAINS BUILD/UPDATE/FIND PATH/RDD` (ex GRAPH, 2026-11-04). `GRAPH` resta il
         // keyword del tipo/torre dei grafi: i comandi legacy dei brain ora sono BRAINS.
-        parser.Consume(TokenKind.Brains, "Expected 'BRAINS'.");
+        // Se arriva la keyword GRAPH (con `IMPORT GRAPH` il namespace è "incluso" e questo
+        // dispatch viene raggiunto) il messaggio lo dice esplicitamente: prima era un
+        // "Expected 'BRAINS'" che non spiegava perché il vecchio `GRAPH BUILD` non andava.
+        parser.Consume(TokenKind.Brains, expectedNamespace == "GRAPH"
+            ? "GRAPH non è più un comando dei brain: usa BRAINS BUILD/UPDATE/FIND PATH/RDD. "
+              + "OPTIMIZE/GRAPH sono ora i namespace dei pacchetti FFI (IMPORT GRAPH)."
+            : "Expected 'BRAINS'.");
         var tok = parser.Peek();
         switch (tok.Kind)
         {
