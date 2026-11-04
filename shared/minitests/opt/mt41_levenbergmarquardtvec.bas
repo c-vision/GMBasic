@@ -1,7 +1,6 @@
 ' EXPECT: v= 1 , 0.5
 ' OPTIMIZE.LEVENBERGMARQUARDTVEC — MiniTest §4.1 (parità 4 backend).
 IMPORT OPTIMIZE
-IMPORT MATH
 
 FUNCTION VModel(p() AS DOUBLE, x() AS DOUBLE) AS ARRAY OF DOUBLE
     RETURN {p(0) * MATH.EXP(p(1) * x(0)), p(0) * MATH.EXP(p(1) * x(1)), p(0) * MATH.EXP(p(1) * x(2)), p(0) * MATH.EXP(p(1) * x(3)), p(0) * MATH.EXP(p(1) * x(4))}

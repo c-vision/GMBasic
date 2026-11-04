@@ -9,7 +9,6 @@
 '   ANNUALIZEDDOWNSIDEDEVIATION, OMEGARATIO, ULCERINDEX.
 ' =================================================================================================
 IMPORT TRADING.METRICS AS TM
-IMPORT MATH
 
 SUB Main()
     CLS

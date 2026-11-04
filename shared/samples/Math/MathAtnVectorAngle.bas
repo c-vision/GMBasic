@@ -18,7 +18,6 @@
 ' minitests/mutex/trylock.bas, minitests/io/io_handles.bas, minitests/misc/log.bas
 ' =================================================================================================
 
-IMPORT MATH
 IMPORT STRINGS
 IMPORT MUTEX
 IMPORT IO

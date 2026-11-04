@@ -6,7 +6,6 @@
 ' RANGE(start, end, step)  → passo step (negativo per sequenze decrescenti)
 ' Si usa in FOR EACH (iterazione) e con LEN/UBOUND se assegnata a una variabile.
 ' =================================================================================================
-IMPORT MATH
 
 SUB Main()
     CLS

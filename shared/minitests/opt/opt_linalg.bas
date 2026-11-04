@@ -1,7 +1,6 @@
 ' EXPECT: ls= 1 , 2|chol= 1.75 , 1.5|simplex= 0 , 4 , 12|linprog= 2 , 2|linprogb= 2 , 2|linprogeq= 2 , 2
 ' OPTIMIZE via FFI — algebra e programmazione lineare (4 funzioni + varianti).
 IMPORT OPTIMIZE
-IMPORT MATH
 
 SUB Main()
     ' A 3x2 (row-major): righe (1,1) (1,2) (1,3); y = 2 + x  ->  (2, 1)? no: y = a + b x

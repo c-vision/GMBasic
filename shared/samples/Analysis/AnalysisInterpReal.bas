@@ -2,7 +2,6 @@
 ' Dati lineari y=2x (i metodi che preservano le rette danno valori esatti) + serie
 ' per YuleWalker/MaCoefficients. Compagno del MiniTest analysis_interp_real.bas.
 IMPORT ANALYSIS
-IMPORT MATH
 
 SUB Main()
     DIM x() = {0, 1, 2, 3, 4}

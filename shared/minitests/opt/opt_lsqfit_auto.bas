@@ -2,7 +2,6 @@
 ' LEASTSQUARESFIT drop-in: m dedotto dal valore di ritorno della callback (m=4 > n=2,
 ' quindi il vecchio troncamento a n su VM-C darebbe un risultato diverso).
 IMPORT OPTIMIZE
-IMPORT MATH
 FUNCTION Res(p() AS DOUBLE) AS ARRAY OF DOUBLE
     RETURN {p(0) + p(1) - 2.0, 2.0 * p(0) + p(1) - 3.1, 3.0 * p(0) + p(1) - 5.0, 4.0 * p(0) + p(1) - 7.2}
 END FUNCTION

@@ -20,7 +20,6 @@
 ' Questo sample dimostra entrambi con una gerarchia "Pagamento" e una factory.
 ' =================================================================================================
 
-IMPORT MATH
 
 ' --- Gerarchia: forme di pagamento ---
 PUBLIC ABSTRACT CLASS Pagamento

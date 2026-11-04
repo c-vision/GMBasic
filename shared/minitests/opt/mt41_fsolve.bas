@@ -1,7 +1,6 @@
 ' EXPECT: v= 1.4142 , 1.4142
 ' OPTIMIZE.FSOLVE — MiniTest §4.1 (parità 4 backend).
 IMPORT OPTIMIZE
-IMPORT MATH
 
 FUNCTION Sys(v() AS DOUBLE) AS ARRAY OF DOUBLE
     RETURN {v(0) * v(0) + v(1) * v(1) - 4.0, v(0) - v(1)}

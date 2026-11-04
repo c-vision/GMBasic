@@ -25,7 +25,6 @@
 ' =================================================================================================
 
 IMPORT TRADING.BACKTESTS AS BT
-IMPORT MATH
 IMPORT JSON
 
 SUB Main()

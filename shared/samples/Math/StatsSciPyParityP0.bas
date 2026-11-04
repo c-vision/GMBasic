@@ -2,7 +2,6 @@
 ' Oracoli: scipy.stats 1.18. Risultati in `r` riusato (DIM una volta: il C99Native
 ' tipizza il boxed solo da DIM); input riusati per restare compatto.
 IMPORT STATS
-IMPORT MATH
 
 SUB Main()
   DIM x(4) AS DOUBLE = {2, 4, 5, 7, 9}

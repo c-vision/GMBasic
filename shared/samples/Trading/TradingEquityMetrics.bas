@@ -7,7 +7,6 @@
 '  - DividendYield(dividend, price) → rendimento da dividendo (%)
 ' =================================================================================================
 IMPORT TRADING.METRICS AS TM
-IMPORT MATH
 
 SUB Main()
     PRINT "TRADING.METRICS — valutazione azionaria"

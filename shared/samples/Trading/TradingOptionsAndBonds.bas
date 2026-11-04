@@ -25,7 +25,6 @@ IMPORT TRADING.BONDS AS BND
 ' CORREZIONE: Cambiato l'alias da GEN a TRD per evitare collisione con la keyword GENERATOR.
 IMPORT TRADING AS TRD
 IMPORT DATETIME AS DT
-IMPORT MATH
 
 SUB Main()
     CLS

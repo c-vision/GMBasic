@@ -2,7 +2,6 @@
 ' (scipy: chi2_contingency(correction=False) = 0.793651/0.372998).
 ' EXPECT: chi2= 0.793651|p= 0.372998|df= 1
 IMPORT STATS
-IMPORT MATH
 SUB Main()
   DIM tb(1) AS ARRAY OF DOUBLE
   tb(0) = {10, 20}

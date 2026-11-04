@@ -11,7 +11,6 @@
 ' non un'applicazione. Serie deterministica 1..10 (e 1..20 per i filtri).
 ' EXPECT: autocorr= 0.7|volatility= 0.268853|difference= 9 | 1|ema= 10 | 9.001953|ma= 8 | 9|minmax= 2 | 10|returns= 9 | 0.111111|deseasonalize= 10 | 0.5|lowpass= 0.1311|highpass= 0.505|bandpass= 0.0675|bandstop= 0.6389|rollmean= 8 | 9|rollcorr= 8 | 0.981981|rollcov= 8 | 1.5|rollquantile= 8 | 9|rollmedian= 8 | 9|rollmad= 8 | 1|rollautocorr= 8 | 0|rolldelta= 9 | 1|rollkurtosis= 6 |-1.2|rollskewness= 8 | 0|rollstddev= 8 | 0.816497|rollzscore= 8 | 1.224745|rollsharpe= 8 | 11.022704|rollsortino= 8 | 0|rollminmax= 1 , 3|rollregression= 1|rollregressionsingle= 1|decompose= 3|covmatrix= 1|outliers= 0
 IMPORT TIMESERIES
-IMPORT MATH
 
 SUB Main()
   DIM s(9) AS DOUBLE = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}

@@ -1,7 +1,6 @@
 ' EXPECT: BR= 1.414214 , 3|FS= 1.414214 , 3
 ' Port FFI di optimize/systems.bas.
 IMPORT OPTIMIZE
-IMPORT MATH
 SUB Main()
   DIM Sys = FN(v() AS DOUBLE) AS ARRAY OF DOUBLE => {v(0) ^ 2 - 2, v(1) - 3}
   DIM Guess(1) AS DOUBLE = {1.0, 0.0}

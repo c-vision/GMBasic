@@ -1,6 +1,5 @@
 REM FILE: 02-Minimizers.bas — OPT (FFI): minimizzazione multivariata.
 IMPORT OPTIMIZE
-IMPORT MATH
 
 SUB Main()
     ' Rosenbrock: minimo (1,1)

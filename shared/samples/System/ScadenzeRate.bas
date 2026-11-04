@@ -8,7 +8,6 @@
 '
 ' Domini: DATETIME + MATH. Nessuna funzione "adesso": output deterministico.
 IMPORT DATETIME
-IMPORT MATH
 
 ' Una data cade nel fine settimana? (DOW: 1=domenica .. 7=sabato; BIT canonico -1/0)
 FUNCTION NelWeekend(d AS DATETIME) AS LONG

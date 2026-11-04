@@ -1,7 +1,6 @@
 ' EXPECT: v= 0.47
 ' OPTIMIZE.BRUTE — MiniTest §4.1 (parità 4 backend).
 IMPORT OPTIMIZE
-IMPORT MATH
 
 FUNCTION H(x() AS DOUBLE) AS DOUBLE
     RETURN (x(0) - 0.5) * (x(0) - 0.5)

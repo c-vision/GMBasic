@@ -1,7 +1,6 @@
 ' MiniTest: STATS.ANOVA — analisi della varianza a una via (oracolo scipy 1.18).
 ' EXPECT: f= 4.8|p= 0.070988|df= 6
 IMPORT STATS
-IMPORT MATH
 
 SUB Main()
   DIM groups(1) AS ARRAY OF DOUBLE

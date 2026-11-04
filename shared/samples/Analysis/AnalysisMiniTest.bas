@@ -2,7 +2,6 @@
 ' Dimostra ANALYSIS functions coperte dai MiniTest: AdfTest, Irfft, Pca,
 ' Rfft, SolveIvp, Splev, Splrep. Output in work/.
 IMPORT ANALYSIS
-IMPORT MATRIX
 
 SUB Main()
   ' AdfTest su trend lineare (non stazionario)

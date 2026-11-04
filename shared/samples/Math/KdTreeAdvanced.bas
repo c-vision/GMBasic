@@ -15,7 +15,6 @@
 '   ball_med= 2
 '   nearest3d= 0
 IMPORT KDTREE
-IMPORT MATH
 
 SUB Main()
     ' ── Setup albero 2D (5 punti) ──

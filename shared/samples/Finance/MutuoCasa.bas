@@ -13,7 +13,6 @@
 '
 ' Domini: FINANCE + MATH. Input fissi: output riproducibile.
 IMPORT FINANCE
-IMPORT MATH
 
 ' Rata mensile: il tasso annuo viene diviso per 12 e la durata è in mesi.
 FUNCTION RataMensile(capitale AS DOUBLE, tassoAnnuo AS DOUBLE, anni AS LONG) AS DOUBLE

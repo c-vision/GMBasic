@@ -11,7 +11,6 @@
 ' - Statistica: Skewness, Kurtosis, JarqueBera.
 ' =================================================================================================
 IMPORT TRADING.METRICS AS TM
-IMPORT MATH
 
 SUB Main()
     CLS

@@ -2,7 +2,6 @@
 ' (`MATRIX.ROWCOUNT(0)` → "Handle matrice non valido"): lì l'argomento è un HANDLE (LongType),
 ' che il generatore non può distinguere da un numero. Qui si usano matrici VERE.
 ' EXPECT: rowcount:  2|colcount:  2|max:  3|min:  0|frobenius:  3.74165738677394|onenorm:  5|infnorm:  3|symmetric: no|upper: si|lower: no|orthogonal: no|csv: [1,2|0,3|]|symmetric2: si|clone:  3|reshape_rows:  1|reshape_cols:  4|slice:  1|concatrows:  4|concatcols:  4
-IMPORT MATRIX
 
 SUB Main()
     ' A = [[1,2],[0,3]]  (triangolare superiore, non simmetrica)
@@ -14,9 +13,9 @@ SUB Main()
     PRINT "colcount: "; MATRIX.COLUMNCOUNT(h)
     PRINT "max: "; MATRIX.MAXVALUE(h)
     PRINT "min: "; MATRIX.MINVALUE(h)
-    PRINT "frobenius: "; MATRIX.FROBENIUSNORM(h)
-    PRINT "onenorm: "; MATRIX.ONENORM(h)
-    PRINT "infnorm: "; MATRIX.INFINITYNORM(h)
+    PRINT "frobenius: "; LINALG.FROBENIUSNORM(h)
+    PRINT "onenorm: "; LINALG.ONENORM(h)
+    PRINT "infnorm: "; LINALG.INFINITYNORM(h)
 
     IF MATRIX.ISSYMMETRIC(h) THEN PRINT "symmetric: si" ELSE PRINT "symmetric: no"
     IF MATRIX.ISUPPERTRIANGULAR(h) THEN PRINT "upper: si" ELSE PRINT "upper: no"

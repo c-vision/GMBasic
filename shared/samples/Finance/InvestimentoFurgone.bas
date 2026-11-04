@@ -12,7 +12,6 @@
 ' Domini: FINANCE + DATETIME + MATH. Input fissi: output riproducibile.
 IMPORT FINANCE
 IMPORT DATETIME
-IMPORT MATH
 
 SUB Main()
     DIM costo AS DOUBLE

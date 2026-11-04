@@ -9,7 +9,6 @@
 ' - Funzioni di Conversione Base: (Già in TypesConversions.bas, ma richiamate per completezza).
 ' =================================================================================================
 
-IMPORT MATH
 IMPORT CONVERSIONS
 
 SUB Main()

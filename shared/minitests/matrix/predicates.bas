@@ -1,5 +1,4 @@
 ' EXPECT: sym=-1|orth=-1|upper=-1|lower=-1|nsym= 0|nupper= 0|nlower= 0
-IMPORT MATRIX
 SUB Main()
   DIM idn = MATRIX.CREATE(3, 3)
   idn = MATRIX.SETVALUE(idn, 0, 0, 1) : idn = MATRIX.SETVALUE(idn, 1, 1, 1) : idn = MATRIX.SETVALUE(idn, 2, 2, 1)

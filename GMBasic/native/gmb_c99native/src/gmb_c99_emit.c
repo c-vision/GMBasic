@@ -2183,7 +2183,33 @@ static int ci_istr(const char* s, const char* needle)
     return 0;
 }
 
+/* LINALG.FACTOR(decomp, name) / MATRIX.FACTOR(decomp, name): handle matrice.
+ * Il parser non conserva il namespace in e->ns (var = "LINALG.FACTOR"), e args[0] può
+ * essere una VAR che contiene la decomposizione: il riconoscimento è sul nome completo. */
+static int is_matrix_factor_call(gmb_expr_t* e) {
+    if (!e || e->kind != GMB_EXPR_CALL || e->nargs != 2) return 0;
+    if (e->tk == GMB_TOK_LinAlgDecompGetFactorFunc) return 1;
+    if (e->var && e->var[0]) {
+        const char* dot = strrchr(e->var, '.');
+        if (dot && !strcasecmp(dot + 1, "FACTOR")
+            && (strncasecmp(e->var, "LINALG.", 7) == 0 || strncasecmp(e->var, "MATRIX.", 7) == 0))
+            return 1;
+    }
+    if (e->tk == GMB_TOK_Get
+        && ((e->ns && (!strcasecmp(e->ns, "LINALG") || !strcasecmp(e->ns, "MATRIX")))
+            || (e->args[0] && e->args[0]->kind == GMB_EXPR_CALL
+                && (e->args[0]->tk == GMB_TOK_Cholesky || e->args[0]->tk == GMB_TOK_Lu
+                    || e->args[0]->tk == GMB_TOK_Qr || e->args[0]->tk == GMB_TOK_Svd
+                    || e->args[0]->tk == GMB_TOK_Evd || e->args[0]->tk == GMB_TOK_MatrixEig
+                    || e->args[0]->tk == GMB_TOK_MatrixSchur || e->args[0]->tk == GMB_TOK_MatrixPolar))))
+        return 1;
+    return 0;
+}
+
 int etype(ctx_t* c, gmb_expr_t* e) {
+    /* LINALG.FACTOR(decomp, name) / MATRIX.FACTOR: handle matrice (int64_t), non stringa.
+     * GMB_TOK_Get è condiviso con POOL.Get/SyncMap.Get (stringa). */
+    if (is_matrix_factor_call(e)) return TY_NUM;
     /* ── Regole in TESTA (vincono su ogni ramo successivo) — dict in una VARIABILE ────────
      * `DIM hh AS HTTPHEADERS : hh = req.Headers : hh.Get("X")`:
      *  - `<base>.Get("k")` su una variabile boxed (HTTPHEADERS/HTTPOPTIONS/…) è una STRINGA
@@ -3369,7 +3395,7 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                 }
                 return;
             }
-            if (!s->array_size && s->dim_init && etype(c, s->dim_init) == TY_STR) ty = TY_STR;
+            if (!s->array_size && !s->dim_type && s->dim_init && etype(c, s->dim_init) == TY_STR) ty = TY_STR;
             /* `DIM v = {"a","b",...}` (letterale array di stringhe) → array dinamico STRING */
             if (!s->array_size && s->dim_init && s->dim_init->kind == GMB_EXPR_CALL
                 && s->dim_init->var && strcmp(s->dim_init->var, "_array_") == 0
@@ -3549,16 +3575,8 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                     v->gkind = GK_CONTEXT;
                 else if (s->dim_init->tk == GMB_TOK_ContextDone)
                     v->gkind = GK_CHAN;
-                /* MATRIX.FACTOR(decomp, name): ritorna un handle matrice (int64_t), non una
-                 * stringa — GMB_TOK_Get è condiviso con POOL.Get/SyncMap.Get (stringa). */
-                else if (s->dim_init->tk == GMB_TOK_Get && s->dim_init->nargs == 2
-                    && (s->dim_init->ns_tk == GMB_TOK_Matrix
-                        || (s->dim_init->ns && strcasecmp(s->dim_init->ns, "MATRIX") == 0)
-                        || (s->dim_init->args[0]->kind == GMB_EXPR_CALL
-                            && (s->dim_init->args[0]->tk == GMB_TOK_MatrixEig
-                                || s->dim_init->args[0]->tk == GMB_TOK_MatrixSchur
-                                || s->dim_init->args[0]->tk == GMB_TOK_MatrixPolar))))
-                {
+                /* LINALG.FACTOR / MATRIX.FACTOR(decomp, name): handle matrice (int64_t). */
+                if (is_matrix_factor_call(s->dim_init)) {
                     v->matrix_handle = 1; v->type = TY_NUM;
                 }
                 /* MATRIX handle: `DIM h = MATRIX.<fn>(…)` con fn che ritorna un handle → int64_t. */
@@ -3604,7 +3622,7 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                     || s->dim_init->tk == GMB_TOK_MatrixAddColVector
                     || s->dim_init->tk == GMB_TOK_MatrixAddRowVector
                     || s->dim_init->tk == GMB_TOK_MemoryMap)
-                    v->matrix_handle = 1;
+                    { v->matrix_handle = 1; v->type = TY_NUM; }
             }
             if (s->array_size) { v->is_array = 1; v->ndims = 1 + s->n_dim_extra; }
             else {
@@ -4561,7 +4579,7 @@ static int prop_let_assign(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
                     }
                 }
             }
-            if (v && !v->gkind && v->type != TY_STR && etype(c, s->value) == TY_STR) { v->type = TY_STR; changed = 1; }
+            if (v && !v->gkind && !s->dim_type && !v->matrix_handle && v->type != TY_STR && etype(c, s->value) == TY_STR) { v->type = TY_STR; changed = 1; }
             /* assegnamento del risultato di una FUNCTION ... AS FUNCTION() → valore funzione */
             if (v && !v->gkind && s->value && s->value->kind == GMB_EXPR_CALL && s->value->var) {
                 fn_info_t* f = find_fn(c, s->value->var);
@@ -4603,7 +4621,7 @@ static int prop_dim(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
         if (s->dim_var && !s->array_size && s->dim_init) {
             var_t* v = vars_find(scope, s->dim_var);
             if (!v) v = vars_find(&c->globals, s->dim_var);
-            if (v && !v->gkind && v->type != TY_STR && etype(c, s->dim_init) == TY_STR) { v->type = TY_STR; changed = 1; }
+            if (v && !v->gkind && !s->dim_type && !v->matrix_handle && v->type != TY_STR && etype(c, s->dim_init) == TY_STR) { v->type = TY_STR; changed = 1; }
             /* DIM v = MakeCounter() (AS FUNCTION) → variabile funzione di prima classe */
             if (v && !v->gkind && s->dim_init->kind == GMB_EXPR_CALL && s->dim_init->var) {
                 fn_info_t* f = find_fn(c, s->dim_init->var);

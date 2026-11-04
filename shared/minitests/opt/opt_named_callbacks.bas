@@ -1,7 +1,6 @@
 ' EXPECT: nm= 1 , 1|bfgs= 1 , 1|fit= 1 , 0.5|root= 1.414 , 1.414
 ' OPT via FFI con CALLBACK NOMINATI (non lambda) su tutti i 4 backend.
 IMPORT OPTIMIZE
-IMPORT MATH
 
 FUNCTION Rosen(x() AS DOUBLE) AS DOUBLE
     RETURN 100.0 * (x(1) - x(0) * x(0)) * (x(1) - x(0) * x(0)) + (1.0 - x(0)) * (1.0 - x(0))

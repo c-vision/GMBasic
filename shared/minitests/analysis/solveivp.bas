@@ -5,8 +5,6 @@
 ' dy/dt = -1, y(0)=1, t∈[0,1] → traiettoria 2×2 (t, y); y_finale ≈ 0.
 ' EXPECT: rows= 2|cols= 2|yend= 0
 IMPORT ANALYSIS
-IMPORT MATRIX
-IMPORT MATH
 SUB Main()
   DIM y0(0) AS DOUBLE = {1}
   DIM h = ANALYSIS.SOLVEIVP(FN(t AS DOUBLE, y() AS DOUBLE) AS ARRAY OF DOUBLE => {-1}, y0, 0.0, 1.0)

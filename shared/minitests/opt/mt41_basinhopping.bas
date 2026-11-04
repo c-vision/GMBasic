@@ -1,7 +1,6 @@
 ' EXPECT: v= 1 ,-2
 ' OPTIMIZE.BASINHOPPING — MiniTest §4.1 (parità 4 backend).
 IMPORT OPTIMIZE
-IMPORT MATH
 
 FUNCTION Quad(x() AS DOUBLE) AS DOUBLE
     RETURN (x(0) - 1.0) * (x(0) - 1.0) + (x(1) + 2.0) * (x(1) + 2.0)

@@ -3,7 +3,6 @@
 ' NOTA: ARGMAX/ARGMIN hanno una collisione preesistente lato IL con AMAX/AMIN
 ' (vedi Bugs/ se tracciato) — non testati qui.
 ' EXPECT: rowsums:  3 , 3|colsums:  1 , 5|rowmeans:  1.5 , 1.5|colmeans:  0.5 , 2.5|rowvar:  0.25 , 2.25|colvar:  0.25 , 0.25
-IMPORT MATRIX
 
 SUB Main()
     a = MATRIX.CREATE(2, 2)

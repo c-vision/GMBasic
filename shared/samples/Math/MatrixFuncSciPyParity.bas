@@ -2,12 +2,11 @@
 ' Oracolo: scipy.linalg.expm / numpy.kron 1.18.
 '   expm(I2) = e·I2  → det = e^2 ≈ 7.389056
 '   kron(I2,I2) = I4 → det = 1
-IMPORT MATRIX
 
 SUB Main()
   h = MATRIX.CREATE(2, 2)
-  e = MATRIX.EXPM(h)
-  PRINT "det(expm(I)) ="; MATRIX.DETERMINANT(e)
+  e = LINALG.EXPM(h)
+  PRINT "det(expm(I)) ="; LINALG.DETERMINANT(e)
   k = MATRIX.KRONECKER(h, h)
-  PRINT "det(kron(I,I)) ="; MATRIX.DETERMINANT(k)
+  PRINT "det(kron(I,I)) ="; LINALG.DETERMINANT(k)
 END SUB

@@ -17,7 +17,6 @@
 '
 ' Domini: CONSOLE (COLOR) + stringhe + MATH. Output deterministico, nessun input.
 IMPORT CONSOLE
-IMPORT MATH
 
 ' Riga interna del riquadro: "║" + testo allineato a sinistra + "║".
 FUNCTION RigaBox(testo AS STRING, larghezza AS LONG) AS STRING

@@ -6,7 +6,6 @@
 '   = rendimento_asset - [riskfree + beta * (rendimento_benchmark - riskfree)]
 ' =================================================================================================
 IMPORT TRADING.METRICS AS TM
-IMPORT MATH
 
 SUB Main()
     CLS

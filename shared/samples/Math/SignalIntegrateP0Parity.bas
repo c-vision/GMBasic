@@ -2,7 +2,6 @@
 ' Oracoli: scipy 1.18.
 IMPORT SIGNAL
 IMPORT ANALYSIS
-IMPORT MATRIX
 
 SUB Main()
   ' firwin(11, 0.2, 'lowpass', 'hann') → tap centrale 0.4 (DC gain 2·fc)

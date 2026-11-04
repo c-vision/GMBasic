@@ -1,7 +1,6 @@
 ' EXPECT: v= 1 , 1
 ' OPTIMIZE.LBFGS — MiniTest §4.1 (parità 4 backend).
 IMPORT OPTIMIZE
-IMPORT MATH
 
 FUNCTION Rosen(x() AS DOUBLE) AS DOUBLE
     RETURN 100.0 * (x(1) - x(0) * x(0)) * (x(1) - x(0) * x(0)) + (1.0 - x(0)) * (1.0 - x(0))

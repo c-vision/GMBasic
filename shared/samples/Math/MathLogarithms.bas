@@ -13,7 +13,6 @@
 ' - Arrotondamento: ROUND, TRUNC, FIX, INT, FLOOR, CEILING.
 ' =================================================================================================
 
-IMPORT MATH
 IMPORT CONVERSIONS
 
 SUB Main()

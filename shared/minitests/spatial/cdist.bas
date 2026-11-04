@@ -1,7 +1,6 @@
 ' MiniTest: SPATIAL.CDIST (parita' 4 backend).
 ' EXPECT: 1  1|4.472136  4.242641
 IMPORT SPATIAL
-IMPORT MATRIX
 SUB Main()
   DIM X(1) AS ARRAY OF DOUBLE
   X(0) = {0, 0}

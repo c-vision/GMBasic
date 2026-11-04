@@ -1,6 +1,5 @@
 REM FILE: 05-Fitting.bas — OPT (FFI): curve fitting (Levenberg-Marquardt).
 IMPORT OPTIMIZE
-IMPORT MATH
 
 SUB Main()
     ' dati esatti y = 1 * exp(0.5 * x)

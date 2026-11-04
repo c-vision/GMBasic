@@ -1,6 +1,4 @@
 ' EXPECT: anglen= 2|angle0= 0
-IMPORT MATRIX
-IMPORT MATH
 IMPORT SYSTEM
 SUB Main()
   DIM h = MATRIX.CREATE(2,2)
@@ -9,7 +7,7 @@ SUB Main()
   DIM g = MATRIX.CREATE(2,2)
   g = MATRIX.SETVALUE(g,0,0,1) : g = MATRIX.SETVALUE(g,0,1,2)
   g = MATRIX.SETVALUE(g,1,0,2) : g = MATRIX.SETVALUE(g,1,1,3)
-  DIM ang() = MATRIX.SUBSPACEANGLES(h, g)
+  DIM ang() = LINALG.SUBSPACEANGLES(h, g)
   PRINT "anglen="; UBOUND(ang)+1
   PRINT "angle0="; MATH.ROUND(ang(0),6)
 END SUB

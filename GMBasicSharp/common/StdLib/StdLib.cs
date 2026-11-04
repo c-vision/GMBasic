@@ -141,6 +141,7 @@ public sealed partial class StdLib : IParserRegistry
         CreateDateTimeNamespace();
         CreateMathNamespace();
         CreateMatrixNamespace();
+        CreateLinalgNamespace();
         CreateSpecialNamespace();
         CreateSignalNamespace();
         CreateVectorNamespace();

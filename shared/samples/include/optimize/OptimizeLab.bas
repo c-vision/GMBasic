@@ -2,7 +2,6 @@ REM FILE: OptimizeLab.bas — pacchetto `opt` (FFI): usa TUTTE le 34 funzioni di
 REM Scenario: calibrazione di un modello di crescita, sistema di equilibrio, allocazione
 REM ottima con minimizzatori e programmazione lineare. Output deterministico (4 backend).
 IMPORT OPTIMIZE
-IMPORT MATH
 
 ' ── modelli / obiettivi (FUNCTION NOMINATE: testano anche i callback nominati) ──────────
 FUNCTION Crescita(p() AS DOUBLE, x AS DOUBLE) AS DOUBLE

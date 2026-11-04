@@ -1,6 +1,4 @@
 ' EXPECT: hk= 4
-IMPORT MATRIX
-IMPORT MATH
 SUB Main()
   DIM c(2), r(2)
   c(0)=1 : c(1)=2 : c(2)=3
