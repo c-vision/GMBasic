@@ -106,64 +106,6 @@ embedding. La citazione sopra è l'**unico** output reale disponibile, e dice es
 
 
 
-<!-- BEGIN DOMAIN TABLE -->
-## Tavola sinottica del dominio
-
-Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
-nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
-
-- **GREP.COUNT(x1, x2)** — `PRINT "txt  = "; GREP.COUNT("needle", fx + "/text.txt")` (shared/samples/Grep/GrepFormats.bas:10)
-- **GREP.FILES(x1, x2)** — `f = GREP.FILES("needle", fx + "/outer.zip")` (shared/samples/Grep/GrepFormats.bas:18)
-- **GREP.MATCHES(x1, x2)** — `hit = GREP.MATCHES("needle_inner", fx + "/outer.zip")` (shared/samples/Grep/GrepFormats.bas:22)
-- **KDTREE.CREATE(x1, x2)** — `h = KDTREE.CREATE(flat, 2)` (shared/samples/Math/KdTreeAdvanced.bas:24)
-- **KDTREE.QUERY(x1, x2, x3)** — `DIM nn() = KDTREE.QUERY(h, q1, 1)` (shared/samples/Math/KdTreeAdvanced.bas:28)
-- **KDTREE.QUERYBALL(x1, x2, x3)** — `DIM bs() = KDTREE.QUERYBALL(h, q1, 0.5)` (shared/samples/Math/KdTreeAdvanced.bas:40)
-- **KDTREE.QUERYDIST(x1, x2, x3)** — `DIM kd() = KDTREE.QUERYDIST(h, q1, 3)` (shared/samples/Math/KdTreeAdvanced.bas:36)
-- **MEMORYMAP.MEMORYMAP(x1)** — `OPEN filePath FOR BINARY AS #1 LEN = 1 ' Lunghezza minima, MEMORYMAP.MEMORYMAP può estenderlo` (shared/samples/Files/FilesMemoryMap.bas:77)
-- **MEMORYMAP.MMAPPEEK(x1, x2)** — `PRINT "--- 4. Test MEMORYMAP.MMAPPEEK (Lettura singoli byte) ---"` (shared/samples/Files/FilesMemoryMap.bas:101)
-- **MEMORYMAP.MMAPREADBYTES(x1, x2, x3)** — `PRINT "--- 6. Test MEMORYMAP.MMAPREADBYTES (Lettura blocco di byte) ---"` (shared/samples/Files/FilesMemoryMap.bas:128)
-- **SPATIAL.CDIST(x1, x2, x3)** — `cdm = SPATIAL.CDIST(X, Y, "euclidean")` (shared/samples/Math/SciPyP1Parity.bas:47)
-- **SPATIAL.CONVEXHULL(x1)** — `DIM hull() = SPATIAL.CONVEXHULL(pts)` (shared/samples/Math/SciPyP1Parity.bas:68)
-- **SPATIAL.DISTANCEMATRIX(x1, x2)** — `dm = SPATIAL.DISTANCEMATRIX(X, Y)` (shared/samples/Math/SciPyP1Parity.bas:49)
-- **SPATIAL.PDIST(x1, x2)** — `DIM pd() = SPATIAL.PDIST(X, "euclidean")` (shared/samples/Math/SciPyP1Parity.bas:45)
-- **TOOL.REGISTER(x1, x2)** — `PRINT TOOL.REGISTER("", "")` (shared/minitests/tool/gen_TOOL_Register.bas:5)
-- **TOOL.SEARCH(x1)** — `tb = TOOL.SEARCH("browser")` (shared/samples/cua/CuaDiagnostics.bas:34)
-- **VECTOR.CHEBYSHEV(x1, x2)** — `PRINT "chebyshev  ="; VECTOR.CHEBYSHEV(h1, h2)` (shared/samples/Math/VectorDistanceSciPyParity.bas:11)
-- **VECTOR.COSINE(x1, x2)** — `PRINT "cosine     ="; VECTOR.COSINE(h1, h2)` (shared/samples/Math/VectorDistanceSciPyParity.bas:12)
-- **VECTOR.CREATE(x1, x2, x3)** — `h1 = VECTOR.CREATE(1, 2, 3)` (shared/samples/Math/VectorDistanceSciPyParity.bas:8)
-- **VECTOR.EUCLIDEA(x1)** — `DIM eu = VECTOR.EUCLIDEA(v)         : PRINT "euclidea   ok"` (shared/samples/Math/VectorMiniTest.bas:14)
-- **VECTOR.MANHATTAN(x1, x2)** — `PRINT "manhattan  ="; VECTOR.MANHATTAN(h1, h2)` (shared/samples/Math/VectorDistanceSciPyParity.bas:10)
-- **VECTOR.MINKOWSKI(x1, x2, x3)** — `PRINT "minkowski  ="; VECTOR.MINKOWSKI(h1, h2, 3)` (shared/samples/Math/VectorDistanceSciPyParity.bas:13)
-- **VECTOR.PRODUCT(x1, x2)** — `DIM dp = VECTOR.PRODUCT(h1, h2)     : PRINT "dot        ok"` (shared/samples/Math/VectorMiniTest.bas:12)
-- **VECTORDB.ABTEST(x1, x2)** — `DIM ab$ = VECTORDB.ABTEST(va$, vb$)` (shared/samples/VectorDB/RagEvalAdvanced.bas:88)
-- **VECTORDB.BASELINE(x1)** — `DIM bl$ = VECTORDB.BASELINE(sample$)` (shared/samples/VectorDB/RagEvalAdvanced.bas:63)
-- **VECTORDB.CALIBRATE(x1)** — `DIM cal$ = VECTORDB.CALIBRATE(cases$)` (shared/samples/VectorDB/RagEvalAdvanced.bas:41)
-- **VECTORDB.COMPARE(x1)** — `DIM cmp$ = VECTORDB.COMPARE(cfg$)` (shared/samples/VectorDB/RagEvalAdvanced.bas:94)
-- **VECTORDB.COMPLETENESS(x1, x2)** — `PRINT "buona completeness= " + STR(MATH.ROUND(VECTORDB.COMPLETENESS("che cosa gestisce il motore", b…` (shared/samples/VectorDB/RagEvalMetrics.bas:42)
-- **VECTORDB.COUNT(x1, x2)** — `PRINT "knowledge count: "; VECTORDB.COUNT("AdminDb", "knowledge")` (shared/samples/Databases/VectorDbAdmin.bas:41)
-- **VECTORDB.DIAGNOSE(x1)** — `DIM diag1$ = VECTORDB.DIAGNOSE(eval1$)` (shared/samples/VectorDB/RagEvalAdvanced.bas:16)
-- **VECTORDB.DIAGNOSEREPORT()** — `DIM report$ = VECTORDB.DIAGNOSEREPORT()` (shared/samples/VectorDB/RagEvalAdvanced.bas:33)
-- **VECTORDB.DRIFT(x1, x2)** — `DIM psi = VECTORDB.DRIFT(b2$, w2$)` (shared/samples/VectorDB/RagEvalAdvanced.bas:74)
-- **VECTORDB.EMBED(x1)** — `dims = AI.EMBED("hello world", 8)` (shared/samples/Ai/SqlVecSearch.bas:24)
-- **VECTORDB.ENSURECOLLECTION(x1, x2)** — `VECTORDB.ENSURECOLLECTION(":memory:", "gentest_docs", 8)` (shared/samples/VectorDB/RagEvalE2eGentest.bas:27)
-- **VECTORDB.EVALDIFF(x1, x2)** — `DIM diff$ = VECTORDB.EVALDIFF(base$, curr$)` (shared/samples/VectorDB/RagEvalAdvanced.bas:56)
-- **VECTORDB.EVALGATE(x1, x2)** — `DIM gate$ = VECTORDB.EVALGATE(base$, curr$)` (shared/samples/VectorDB/RagEvalAdvanced.bas:50)
-- **VECTORDB.FAITHFULNESS(x1, x2)** — `PRINT "buona faithfulness= " + STR(MATH.ROUND(VECTORDB.FAITHFULNESS(ctx$, buona$), 4))` (shared/samples/VectorDB/RagEvalMetrics.bas:40)
-- **VECTORDB.GENTEST(x1, x2, x3)** — `DIM result$ = VECTORDB.GENTEST("gentest_docs", 3, "simple")` (shared/samples/VectorDB/RagEvalE2eGentest.bas:44)
-- **VECTORDB.HALLUCINATION(x1, x2)** — `IF VECTORDB.HALLUCINATION(ctx$, buona$) = 0 THEN` (shared/samples/VectorDB/RagEvalMetrics.bas:43)
-- **VECTORDB.INDEXMETA(x1, x2, x3, x4)** — `VECTORDB.INDEXMETA("work/vsq8fp.db", "docs", "rete", "la rete neurale apprende dai dati", "{""tema""…` (shared/samples/VectorDB/VectordbSq8.bas:16)
-- **VECTORDB.INDEXTEXT(x1, x2, x3, x4)** — `VECTORDB.INDEXTEXT(":memory:", "gentest_docs", "d1", "Rome is the capital city of Italy. It was foun…` (shared/samples/VectorDB/RagEvalE2eGentest.bas:29)
-- **VECTORDB.LISTCOLLECTIONS(x1)** — `DIM colls$ = VECTORDB.LISTCOLLECTIONS("AdminDb")` (shared/samples/Databases/VectorDbAdmin.bas:26)
-- **VECTORDB.LOADDOCUMENTS(x1, x2, x3)** — `n = AI.LOADDOCUMENTS("kb", "docs", docPath$, "*.txt", "")` (shared/samples/Ai/AgentIngestionDemo.bas:37)
-- **VECTORDB.MRR(x1, x2)** — `PRINT "q1 mrr= " + STR(MATH.ROUND(VECTORDB.MRR(r1$, i1$), 4))` (shared/samples/VectorDB/RagEvalMetrics.bas:25)
-- **VECTORDB.NDCGAT(x1, x2, x3)** — `PRINT "q1 ndcg@2= " + STR(MATH.ROUND(VECTORDB.NDCGAT(r1$, i1$, 2), 4))` (shared/samples/VectorDB/RagEvalMetrics.bas:26)
-- **VECTORDB.PRECISIONAT(x1, x2, x3)** — `PRINT "q1 p@2= " + STR(MATH.ROUND(VECTORDB.PRECISIONAT(r1$, i1$, 2), 4))` (shared/samples/VectorDB/RagEvalMetrics.bas:23)
-- **VECTORDB.PURGEDEPRECATED(x1, x2)** — `PRINT "=== VECTORDB.PURGEDEPRECATED ==="` (shared/samples/VectorDB/VectordbPurgeDeprecated.bas:10)
-- **VECTORDB.RECALLAT(x1, x2, x3)** — `PRINT "q1 r@2= " + STR(MATH.ROUND(VECTORDB.RECALLAT(r1$, i1$, 2), 4))` (shared/samples/VectorDB/RagEvalMetrics.bas:24)
-- **VECTORDB.RELEVANCE(x1, x2)** — `PRINT "buona relevance= " + STR(MATH.ROUND(VECTORDB.RELEVANCE("che cosa gestisce il motore", buona$)…` (shared/samples/VectorDB/RagEvalMetrics.bas:41)
-- **VECTORDB.REMOVESOURCE(x1, x2, x3)** — `VECTORDB.REMOVESOURCE("work/vsq8fp.db", "docs", "rete")` (shared/samples/VectorDB/VectordbSq8.bas:35)
-- **VECTORDB.SEARCH(x1, x2, x3, x4)** — `DIM ris2$ = VECTORDB.SEARCH("AdminDb", "knowledge", "retrieval e generazione", 2)` (shared/samples/Databases/VectorDbAdmin.bas:59)
-<!-- END DOMAIN TABLE -->
 
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
@@ -679,10 +621,10 @@ DIM cmp$ = VECTORDB.COMPARE(cfg$)
 ### Knowledge Graph (L5)
 | Comando | Significato |
 |---|---|
-| `GRAPH BUILD dir [, outputDir]` | costruisce il grafo arricchito (8 campi) |
-| `GRAPH UPDATE dir [, outputDir]` | ricostruisce |
-| `GRAPH FIND PATH from TO to` | path più corto (stampa) |
-| `GRAPH RDD MEMORY\|JSON\|SQLITE` | backend del grafo |
+| `BRAINS BUILD dir [, outputDir]` | costruisce il grafo arricchito (8 campi) |
+| `BRAINS UPDATE dir [, outputDir]` | ricostruisce |
+| `BRAINS FIND PATH from TO to` | path più corto (stampa) |
+| `BRAINS RDD MEMORY\|JSON\|SQLITE` | backend del grafo |
 | `GRAPH VIEW [-g dir] [-n nome]` | apre nel browser il viewer interattivo `graph.html` |
 | `GRAPH WATCH <wikiDir> [-g dir] [-n nome]` | auto-rebuild del grafo a ogni modifica .md (watchdog) |
 | `GRAPH UNWATCH <wikiDir>` | ferma il watchdog |
@@ -690,29 +632,29 @@ DIM cmp$ = VECTORDB.COMPARE(cfg$)
 | `GRAPH ENRICH SEMANTIC <wikiDir> [-g dir] [-n nome] [--max N]` | l'LLM (anche modello locale) deduce relazioni implicite tra le note |
 | Funzione | Ritorna |
 |---|---|
-| `GRAPH.NEIGHBORS(brain, nota)` | vicini diretti |
-| `GRAPH.PATH(brain, da, a)` | cammino più corto |
-| `GRAPH.PAGERANK(brain [, topK])` | ranking |
-| `GRAPH.CONNECTED(brain)` | componenti connesse |
-| `GRAPH.STATS(brain)` | nodi/edge/dangling/community/top |
-| `GRAPH.STRONGLYCONNECTED(brain)` | SCC |
-| `GRAPH.TOPOSORT(brain)` | ordinamento topologico |
-| `GRAPH.BIPARTITE(brain)` | test bipartiteness |
-| `GRAPH.BETWEENNESS(brain)` | centralità |
-| `GRAPH.CLUSTERING(brain, nota)` | clustering locale |
-| `GRAPH.DIAMETER(brain)` | diametro |
-| `GRAPH.MST(brain)` | albero ricoprente minimo |
-| `GRAPH.QUERYMULTI(query [, brains])` | ricerca multi-brain graph |
-| `GRAPH.DOT(brain)` | export Graphviz |
-| `GRAPH.SUBGRAPH(brain, root [, depth])` | sottografo mermaid |
-| `GRAPH.BYTAG(brain, tag)` | JSON per tag |
-| `GRAPH.BYFOLDER(brain, folder)` | JSON per cartella |
-| `GRAPH.ISVALID(brain)` | 1 se ha nodi |
-| `GRAPH.DIJKSTRA(brain, da, a)` | path a costo minimo (archi pesati) |
-| `GRAPH.HASCYCLE(brain)` | 1 se ha un ciclo |
-| `GRAPH.ECCENTRICITY(brain, nota)` | eccentricità del nodo |
-| `GRAPH.DFS(brain, root)` | visita in profondità |
-| `GRAPH.BFS(brain, root)` | visita in ampiezza |
+| `BRAINS.Neighbors(brain, nota)` | vicini diretti |
+| `BRAINS.Path(brain, da, a)` | cammino più corto |
+| `BRAINS.PageRank(brain [, topK])` | ranking |
+| `BRAINS.Connected(brain)` | componenti connesse |
+| `BRAINS.Stats(brain)` | nodi/edge/dangling/community/top |
+| `BRAINS.StronglyConnected(brain)` | SCC |
+| `BRAINS.TopoSort(brain)` | ordinamento topologico |
+| `BRAINS.Bipartite(brain)` | test bipartiteness |
+| `BRAINS.Betweenness(brain)` | centralità |
+| `BRAINS.Clustering(brain, nota)` | clustering locale |
+| `BRAINS.Diameter(brain)` | diametro |
+| `BRAINS.Mst(brain)` | albero ricoprente minimo |
+| `BRAINS.QueryMulti(query [, brains])` | ricerca multi-brain graph |
+| `BRAINS.Dot(brain)` | export Graphviz |
+| `BRAINS.Subgraph(brain, root [, depth])` | sottografo mermaid |
+| `BRAINS.ByTag(brain, tag)` | JSON per tag |
+| `BRAINS.ByFolder(brain, folder)` | JSON per cartella |
+| `BRAINS.IsValid(brain)` | 1 se ha nodi |
+| `BRAINS.Dijkstra(brain, da, a)` | path a costo minimo (archi pesati) |
+| `BRAINS.HasCycle(brain)` | 1 se ha un ciclo |
+| `BRAINS.Eccentricity(brain, nota)` | eccentricità del nodo |
+| `BRAINS.Dfs(brain, root)` | visita in profondità |
+| `BRAINS.Bfs(brain, root)` | visita in ampiezza |
 | `AI.AGENTRUNGRAPH(nome, prompt [, rounds])` | un agente esplora il grafo con i tool `graph.*` |
 | `AI.AGENTRUNRAG(nome, prompt [, rounds])` | un agente interroga i brain RAG con i tool `rag.*` (speculare a `AGENTRUNGRAPH`; senza provider/brain → errore esplicito) |
 
@@ -761,7 +703,7 @@ DIM cmp$ = VECTORDB.COMPARE(cfg$)
 | REPL | CLI |
 |---|---|
 | `BRAIN USE/DETACH/LIST/INFO/INSTALL/EXPORT/SIGN` | `gmb brain use\|detach\|list\|info\|install\|export\|sign` |
-| `GRAPH BUILD <dir>` · `RAG BUILD <dir>` | `gmb graph build <dir>` · `gmb rag build <dir>` |
+| `BRAINS BUILD <dir>` · `RAG BUILD <dir>` | `gmb graph build <dir>` · `gmb rag build <dir>` |
 
 ## 1. Concetti in 60 secondi
 | Termine | Significato |
@@ -777,9 +719,9 @@ DIM cmp$ = VECTORDB.COMPARE(cfg$)
 1. AI VAULT CREATE    → registri una cartella come vault
 2. AI NOTE CREATE     → scrivi note (frontmatter + wikilink)
 3. AI INGEST FILE     → importi documenti (testo, PDF, OCR, audio)
-4. GRAPH BUILD        → costruisci il grafo delle relazioni
+4. BRAINS BUILD        → costruisci il grafo delle relazioni
 5. AI BRAIN USE       → colleghi il brain (o più brain)
-6. AI.QAANSWER / GRAPH.QUERYMULTI → fai domande e interroghi le relazioni
+6. AI.QAANSWER / BRAINS.QueryMulti → fai domande e interroghi le relazioni
 
 
 ## 2. Vault: la tua libreria di note
@@ -921,7 +863,7 @@ PRINT AI.LINKSOUT("wiki", "alpha.md")   ' include il link manuale
 | forma | file nel pacchetto | a cosa serve |
 |---|---|---|
 | `rag` | `rag/<nome>.db` | ricerca semantica (`AI.SEARCHMULTI`, `AI.RAGCONTEXT…`) |
-| `graph` | `graphs/<nome>.json` | knowledge graph (`GRAPH.QUERY`, `GRAPH.QUERYMULTI`, path/community/pagerank) |
+| `graph` | `graphs/<nome>.json` | knowledge graph (`BRAINS.QueryMulti`, path/community/pagerank) |
 
 ~/.gmbasic/brains/<nome>/<versione>/
 ├── brain.manifest.json          (files + sha256 di OGNI forma)
@@ -1011,46 +953,46 @@ PRINT AIVECTOR.SEARCH("wiki", "collezione", "momentum", 5, TRUE, NULL, %RERANK_O
 ### Comandi legacy `GRAPH`
 | Comando | Cosa fa |
 |---|---|
-| `GRAPH BUILD cartella [, outputDir]` | costruisce il grafo arricchito (8 campi + relazioni pesate) |
-| `GRAPH UPDATE cartella [, outputDir]` | ricostruisce |
-| `GRAPH FIND PATH "a" TO "b"` | cammino più corto tra due note |
-| `GRAPH RDD MEMORY\|JSON\|SQLITE` | backend del grafo (in memoria, su file JSON o in un database SQLite `.graph.db`) |
+| `BRAINS BUILD cartella [, outputDir]` | costruisce il grafo arricchito (8 campi + relazioni pesate) |
+| `BRAINS UPDATE cartella [, outputDir]` | ricostruisce |
+| `BRAINS FIND PATH "a" TO "b"` | cammino più corto tra due note |
+| `BRAINS RDD MEMORY\|JSON\|SQLITE` | backend del grafo (in memoria, su file JSON o in un database SQLite `.graph.db`) |
 
-GRAPH RDD MEMORY
-GRAPH BUILD "../Fixtures/graph-vault"
-GRAPH FIND PATH "index.md" TO "trading/momentum.md"
+BRAINS RDD MEMORY
+BRAINS BUILD "../Fixtures/graph-vault"
+BRAINS FIND PATH "index.md" TO "trading/momentum.md"
 
 
-### Funzioni `GRAPH.*`
+### Funzioni `BRAINS.*`
 | Funzione | Ritorna |
 |---|---|
-| `GRAPH.NEIGHBORS(brain, nota)` | vicini diretti di una nota |
-| `GRAPH.PATH(brain, da, a)` | cammino più corto (BFS) |
-| `GRAPH.PAGERANK(brain [, topK])` | ranking di importanza dei nodi |
-| `GRAPH.CONNECTED(brain)` | componenti connesse |
-| `GRAPH.STATS(brain)` | nodi/relazioni/dangling + top PageRank |
-| `GRAPH.STRONGLYCONNECTED(brain)` | componenti fortemente connesse |
-| `GRAPH.TOPOSORT(brain)` | ordinamento topologico |
-| `GRAPH.BIPARTITE(brain)` | test di bipartiteness |
-| `GRAPH.BETWEENNESS(brain)` | centralità di betweenness |
-| `GRAPH.CLUSTERING(brain, nota)` | coefficiente di clustering |
-| `GRAPH.DIAMETER(brain)` | diametro del grafo |
-| `GRAPH.MST(brain)` | albero ricoprente minimo |
-| `GRAPH.QUERYMULTI(query [, brains])` | ricerca su più brain graph uniti |
-| `GRAPH.DOT(brain)` | export Graphviz (dot) |
-| `GRAPH.SUBGRAPH(brain, root [, depth])` | sottografo a distanza ≤ depth dal nodo (mermaid) |
-| `GRAPH.BYTAG(brain, tag)` | JSON dei nodi con quel tag + i loro edge |
-| `GRAPH.BYFOLDER(brain, folder)` | JSON dei nodi nella cartella (o sotto) + edge |
-| `GRAPH.ISVALID(brain)` | 1 se il grafo ha almeno un nodo |
+| `BRAINS.Neighbors(brain, nota)` | vicini diretti di una nota |
+| `BRAINS.Path(brain, da, a)` | cammino più corto (BFS) |
+| `BRAINS.PageRank(brain [, topK])` | ranking di importanza dei nodi |
+| `BRAINS.Connected(brain)` | componenti connesse |
+| `BRAINS.Stats(brain)` | nodi/relazioni/dangling + top PageRank |
+| `BRAINS.StronglyConnected(brain)` | componenti fortemente connesse |
+| `BRAINS.TopoSort(brain)` | ordinamento topologico |
+| `BRAINS.Bipartite(brain)` | test di bipartiteness |
+| `BRAINS.Betweenness(brain)` | centralità di betweenness |
+| `BRAINS.Clustering(brain, nota)` | coefficiente di clustering |
+| `BRAINS.Diameter(brain)` | diametro del grafo |
+| `BRAINS.Mst(brain)` | albero ricoprente minimo |
+| `BRAINS.QueryMulti(query [, brains])` | ricerca su più brain graph uniti |
+| `BRAINS.Dot(brain)` | export Graphviz (dot) |
+| `BRAINS.Subgraph(brain, root [, depth])` | sottografo a distanza ≤ depth dal nodo (mermaid) |
+| `BRAINS.ByTag(brain, tag)` | JSON dei nodi con quel tag + i loro edge |
+| `BRAINS.ByFolder(brain, folder)` | JSON dei nodi nella cartella (o sotto) + edge |
+| `BRAINS.IsValid(brain)` | 1 se il grafo ha almeno un nodo |
 
-GRAPH BUILD "../Fixtures/graph-vault"
-PRINT GRAPH.NEIGHBORS("graph-vault", "index.md")
-PRINT GRAPH.PAGERANK("graph-vault", 3)
-PRINT GRAPH.PATH("graph-vault", "index.md", "trading/momentum.md")
-PRINT GRAPH.QUERYMULTI("momentum", "graph-vault,strategies")
-PRINT GRAPH.DOT("graph-vault")
-PRINT GRAPH.BYTAG("graph-vault", "strategy")
-PRINT GRAPH.BYFOLDER("graph-vault", "strategies")
+BRAINS BUILD "../Fixtures/graph-vault"
+PRINT BRAINS.Neighbors("graph-vault", "index.md")
+PRINT BRAINS.PageRank("graph-vault", 3)
+PRINT BRAINS.Path("graph-vault", "index.md", "trading/momentum.md")
+PRINT BRAINS.QueryMulti("momentum", "graph-vault,strategies")
+PRINT BRAINS.Dot("graph-vault")
+PRINT BRAINS.ByTag("graph-vault", "strategy")
+PRINT BRAINS.ByFolder("graph-vault", "strategies")
 
 
 ### 7bis. Visualizzare il grafo — viewer interattivo (2026-09-06)
@@ -1160,7 +1102,7 @@ BRAIN LIST / INFO nome    ' elenco / dettagli
 BRAIN INSTALL nome, file.zip
 BRAIN EXPORT nome         ' esporta come zip
 BRAIN SIGN nome           ' firma e verifica il brain (probe minimi graph/vectordb)
-GRAPH BUILD <cartella>    ' costruisci il grafo (scrive .json/.graphml/.mermaid/.stats.json/.report.md/.html)
+BRAINS BUILD <cartella>    ' costruisci il grafo (scrive .json/.graphml/.mermaid/.stats.json/.report.md/.html)
 GRAPH VIEW                ' apri il viewer interattivo del grafo nel browser
 GRAPH WATCH <cartella>    ' auto-rebuild del grafo a ogni modifica .md (UNWATCH per fermare)
 GRAPH EXPORT OBSIDIAN     ' esporta il grafo come vault Obsidian navigabile
@@ -1194,8 +1136,8 @@ AI NOTE CREATE "strategia.md", "Usiamo momentum e mean reversion. Vedi [[rischio
 
 ' 3. Costruisci il grafo (le relazioni tra le note). Il nome del brain è il basename
 '    della cartella: qui "Appunti".
-GRAPH RDD MEMORY
-GRAPH BUILD "/Users/gaetano/Appunti"
+BRAINS RDD MEMORY
+BRAINS BUILD "/Users/gaetano/Appunti"
 
 ' 4. Collega il brain
 AI BRAIN USE "Appunti"
@@ -1336,3 +1278,68 @@ PRINT AI RAG SEARCH ":memory:", "products", "notebook", 3
 ## Riferimenti
 
 <!-- END SURFACE -->
+
+<!-- BEGIN DOMAIN TABLE -->
+## Tavola sinottica del dominio
+
+Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
+nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
+
+- **GREP.COUNT(x1, x2)** — `PRINT "txt  = "; GREP.COUNT("needle", fx + "/text.txt")` (shared/samples/Grep/GrepFormats.bas:10)
+- **GREP.FILES(x1, x2)** — `f = GREP.FILES("needle", fx + "/outer.zip")` (shared/samples/Grep/GrepFormats.bas:18)
+- **GREP.MATCHES(x1, x2)** — `hit = GREP.MATCHES("needle_inner", fx + "/outer.zip")` (shared/samples/Grep/GrepFormats.bas:22)
+- **KDTREE.CREATE(x1, x2)** — `h = KDTREE.CREATE(flat, 2)` (shared/samples/Math/KdTreeAdvanced.bas:23)
+- **KDTREE.QUERY(x1, x2, x3)** — `DIM nn() = KDTREE.QUERY(h, q1, 1)` (shared/samples/Math/KdTreeAdvanced.bas:27)
+- **KDTREE.QUERYBALL(x1, x2, x3)** — `DIM bs() = KDTREE.QUERYBALL(h, q1, 0.5)` (shared/samples/Math/KdTreeAdvanced.bas:39)
+- **KDTREE.QUERYDIST(x1, x2, x3)** — `DIM kd() = KDTREE.QUERYDIST(h, q1, 3)` (shared/samples/Math/KdTreeAdvanced.bas:35)
+- **MEMORYMAP.MEMORYMAP(x1)** — `OPEN filePath FOR BINARY AS #1 LEN = 1 ' Lunghezza minima, MEMORYMAP.MEMORYMAP può estenderlo` (shared/samples/Files/FilesMemoryMap.bas:77)
+- **MEMORYMAP.MMAPPEEK(x1, x2)** — `PRINT "--- 4. Test MEMORYMAP.MMAPPEEK (Lettura singoli byte) ---"` (shared/samples/Files/FilesMemoryMap.bas:101)
+- **MEMORYMAP.MMAPREADBYTES(x1, x2, x3)** — `PRINT "--- 6. Test MEMORYMAP.MMAPREADBYTES (Lettura blocco di byte) ---"` (shared/samples/Files/FilesMemoryMap.bas:128)
+- **SPATIAL.CDIST(x1, x2, x3)** — `cdm = SPATIAL.CDIST(X, Y, "euclidean")` (shared/samples/Math/SciPyP1Parity.bas:45)
+- **SPATIAL.CONVEXHULL(x1)** — `DIM hull() = SPATIAL.CONVEXHULL(pts)` (shared/samples/Math/SciPyP1Parity.bas:66)
+- **SPATIAL.DISTANCEMATRIX(x1, x2)** — `dm = SPATIAL.DISTANCEMATRIX(X, Y)` (shared/samples/Math/SciPyP1Parity.bas:47)
+- **SPATIAL.PDIST(x1, x2)** — `DIM pd() = SPATIAL.PDIST(X, "euclidean")` (shared/samples/Math/SciPyP1Parity.bas:43)
+- **TOOL.REGISTER(x1, x2)** — `PRINT TOOL.REGISTER("", "")` (shared/minitests/tool/gen_TOOL_Register.bas:5)
+- **TOOL.SEARCH(x1)** — `tb = TOOL.SEARCH("browser")` (shared/samples/cua/CuaDiagnostics.bas:34)
+- **VECTOR.ANGLE2D(x1, x2, x3, x4)** — `DIM calcolatoDeg = VECTOR.Angle2d(0, 0, x, y)` (shared/samples/Math/MathCombinatorics.bas:57)
+- **VECTOR.CHEBYSHEV(x1, x2)** — `PRINT "chebyshev  ="; VECTOR.CHEBYSHEV(h1, h2)` (shared/samples/Math/VectorDistanceSciPyParity.bas:11)
+- **VECTOR.COSINE(x1, x2)** — `PRINT "cosine     ="; VECTOR.COSINE(h1, h2)` (shared/samples/Math/VectorDistanceSciPyParity.bas:12)
+- **VECTOR.CREATE(x1, x2, x3)** — `h1 = VECTOR.CREATE(1, 2, 3)` (shared/samples/Math/VectorDistanceSciPyParity.bas:8)
+- **VECTOR.DIST2D(x1, x2, x3, x4)** — `830 PRINT "DIST2D(0, 0, 3, 4) =", DIST2D(0, 0, 3, 4); "(Atteso: 5)"` (shared/samples/Types/TypesConversions.bas:136)
+- **VECTOR.DIST3D(x1, x2, x3, x4, x5, x6)** — `840 PRINT "DIST3D(0, 0, 0, 1, 2, 2) =", DIST3D(0, 0, 0, 1, 2, 2); "(Atteso: 3)"` (shared/samples/Types/TypesConversions.bas:137)
+- **VECTOR.EUCLIDEA(x1)** — `DIM eu = VECTOR.EUCLIDEA(v)         : PRINT "euclidea   ok"` (shared/samples/Math/VectorMiniTest.bas:14)
+- **VECTOR.EUCLIDEANDISTANCESQUARED(x1, x2)** — `PRINT "euclid: "; VECTOR.EuclideanDistanceSquared(x, y)` (shared/samples/Analysis/AnalysisInterpReal.bas:15)
+- **VECTOR.MANHATTAN(x1, x2)** — `PRINT "manhattan  ="; VECTOR.MANHATTAN(h1, h2)` (shared/samples/Math/VectorDistanceSciPyParity.bas:10)
+- **VECTOR.MINKOWSKI(x1, x2, x3)** — `PRINT "minkowski  ="; VECTOR.MINKOWSKI(h1, h2, 3)` (shared/samples/Math/VectorDistanceSciPyParity.bas:13)
+- **VECTOR.POLAR_X(x1, x2)** — `DIM x = VECTOR.POLAR_X(raggio, angoloDeg)` (shared/samples/Math/MathCombinatorics.bas:49)
+- **VECTOR.POLAR_Y(x1, x2)** — `DIM y = VECTOR.POLAR_Y(raggio, angoloDeg)` (shared/samples/Math/MathCombinatorics.bas:50)
+- **VECTOR.PRODUCT(x1, x2)** — `DIM dp = VECTOR.PRODUCT(h1, h2)     : PRINT "dot        ok"` (shared/samples/Math/VectorMiniTest.bas:12)
+- **VECTORDB.ABTEST(x1, x2)** — `DIM ab$ = VECTORDB.ABTEST(va$, vb$)` (shared/samples/VectorDB/RagEvalAdvanced.bas:88)
+- **VECTORDB.BASELINE(x1)** — `DIM bl$ = VECTORDB.BASELINE(sample$)` (shared/samples/VectorDB/RagEvalAdvanced.bas:63)
+- **VECTORDB.CALIBRATE(x1)** — `DIM cal$ = VECTORDB.CALIBRATE(cases$)` (shared/samples/VectorDB/RagEvalAdvanced.bas:41)
+- **VECTORDB.COMPARE(x1)** — `DIM cmp$ = VECTORDB.COMPARE(cfg$)` (shared/samples/VectorDB/RagEvalAdvanced.bas:94)
+- **VECTORDB.COMPLETENESS(x1, x2)** — `PRINT "buona completeness= " + STR(MATH.ROUND(VECTORDB.COMPLETENESS("che cosa gestisce il motore", b…` (shared/samples/VectorDB/RagEvalMetrics.bas:42)
+- **VECTORDB.COUNT(x1, x2)** — `PRINT "knowledge count: "; VECTORDB.COUNT("AdminDb", "knowledge")` (shared/samples/Databases/VectorDbAdmin.bas:41)
+- **VECTORDB.DIAGNOSE(x1)** — `DIM diag1$ = VECTORDB.DIAGNOSE(eval1$)` (shared/samples/VectorDB/RagEvalAdvanced.bas:16)
+- **VECTORDB.DIAGNOSEREPORT()** — `DIM report$ = VECTORDB.DIAGNOSEREPORT()` (shared/samples/VectorDB/RagEvalAdvanced.bas:33)
+- **VECTORDB.DRIFT(x1, x2)** — `DIM psi = VECTORDB.DRIFT(b2$, w2$)` (shared/samples/VectorDB/RagEvalAdvanced.bas:74)
+- **VECTORDB.EMBED(x1)** — `DIM e = VECTORDB.EMBED("memoria gerarchica", 8)` (shared/minitests/vectordb/vectordb_all.bas:333)
+- **VECTORDB.ENSURECOLLECTION(x1, x2)** — `VECTORDB.ENSURECOLLECTION(":memory:", "gentest_docs", 8)` (shared/samples/VectorDB/RagEvalE2eGentest.bas:27)
+- **VECTORDB.EVALDIFF(x1, x2)** — `DIM diff$ = VECTORDB.EVALDIFF(base$, curr$)` (shared/samples/VectorDB/RagEvalAdvanced.bas:56)
+- **VECTORDB.EVALGATE(x1, x2)** — `DIM gate$ = VECTORDB.EVALGATE(base$, curr$)` (shared/samples/VectorDB/RagEvalAdvanced.bas:50)
+- **VECTORDB.FAITHFULNESS(x1, x2)** — `PRINT "buona faithfulness= " + STR(MATH.ROUND(VECTORDB.FAITHFULNESS(ctx$, buona$), 4))` (shared/samples/VectorDB/RagEvalMetrics.bas:40)
+- **VECTORDB.GENTEST(x1, x2, x3)** — `DIM result$ = VECTORDB.GENTEST("gentest_docs", 3, "simple")` (shared/samples/VectorDB/RagEvalE2eGentest.bas:44)
+- **VECTORDB.HALLUCINATION(x1, x2)** — `IF VECTORDB.HALLUCINATION(ctx$, buona$) = 0 THEN` (shared/samples/VectorDB/RagEvalMetrics.bas:43)
+- **VECTORDB.INDEXMETA(x1, x2, x3, x4)** — `VECTORDB.INDEXMETA("work/vsq8fp.db", "docs", "rete", "la rete neurale apprende dai dati", "{""tema""…` (shared/samples/VectorDB/VectordbSq8.bas:16)
+- **VECTORDB.INDEXTEXT(x1, x2, x3, x4)** — `VECTORDB.INDEXTEXT(":memory:", "gentest_docs", "d1", "Rome is the capital city of Italy. It was foun…` (shared/samples/VectorDB/RagEvalE2eGentest.bas:29)
+- **VECTORDB.LISTCOLLECTIONS(x1)** — `DIM colls$ = VECTORDB.LISTCOLLECTIONS("AdminDb")` (shared/samples/Databases/VectorDbAdmin.bas:26)
+- **VECTORDB.LOADDOCUMENTS(x1, x2, x3)** — `PRINT "load>=-1="; (VECTORDB.LOADDOCUMENTS("work/vdb_all.db", "cdocs", "work/docs", "*.txt") >= -1)` (shared/minitests/vectordb/vectordb_all.bas:344)
+- **VECTORDB.MRR(x1, x2)** — `PRINT "q1 mrr= " + STR(MATH.ROUND(VECTORDB.MRR(r1$, i1$), 4))` (shared/samples/VectorDB/RagEvalMetrics.bas:25)
+- **VECTORDB.NDCGAT(x1, x2, x3)** — `PRINT "q1 ndcg@2= " + STR(MATH.ROUND(VECTORDB.NDCGAT(r1$, i1$, 2), 4))` (shared/samples/VectorDB/RagEvalMetrics.bas:26)
+- **VECTORDB.PRECISIONAT(x1, x2, x3)** — `PRINT "q1 p@2= " + STR(MATH.ROUND(VECTORDB.PRECISIONAT(r1$, i1$, 2), 4))` (shared/samples/VectorDB/RagEvalMetrics.bas:23)
+- **VECTORDB.PURGEDEPRECATED(x1, x2)** — `PRINT "=== VECTORDB.PURGEDEPRECATED ==="` (shared/samples/VectorDB/VectordbPurgeDeprecated.bas:10)
+- **VECTORDB.RECALLAT(x1, x2, x3)** — `PRINT "q1 r@2= " + STR(MATH.ROUND(VECTORDB.RECALLAT(r1$, i1$, 2), 4))` (shared/samples/VectorDB/RagEvalMetrics.bas:24)
+- **VECTORDB.RELEVANCE(x1, x2)** — `PRINT "buona relevance= " + STR(MATH.ROUND(VECTORDB.RELEVANCE("che cosa gestisce il motore", buona$)…` (shared/samples/VectorDB/RagEvalMetrics.bas:41)
+- **VECTORDB.REMOVESOURCE(x1, x2, x3)** — `VECTORDB.REMOVESOURCE("work/vsq8fp.db", "docs", "rete")` (shared/samples/VectorDB/VectordbSq8.bas:35)
+- **VECTORDB.SEARCH(x1, x2, x3, x4)** — `DIM ris2$ = VECTORDB.SEARCH("AdminDb", "knowledge", "retrieval e generazione", 2)` (shared/samples/Databases/VectorDbAdmin.bas:59)
+<!-- END DOMAIN TABLE -->

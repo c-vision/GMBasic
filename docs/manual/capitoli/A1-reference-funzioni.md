@@ -9,19 +9,19 @@
 #### `AGENT.Run` — arita 1-2
 
 ```basic
-AGENT.RUN   ' dal codice del progetto: shared/minitests/agent/gen_AGENT_Run.bas:1
+AGENT.RUN   ' dal codice del progetto: shared/minitests/agent/agent_all.bas:3
 ```
 
 #### `AI.Active` — arita 1-1
 
 ```basic
-AI.ACTIVE   ' dal codice del progetto: shared/minitests/vectordb/probe_emb.bas:4
+AI.ACTIVE   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:11
 ```
 
 #### `AI.AgentAskFile` — arita 2-3
 
 ```basic
-AI.AGENTASKFILE   ' dal codice del progetto: shared/minitests/ai/gen_AI_AgentAskFile.bas:5
+AI.AGENTASKFILE   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:17
 ```
 
 #### `AI.AgentAskSync` — arita 2-2
@@ -33,13 +33,13 @@ AI.AGENTASKSYNC   ' dal codice del progetto: shared/minitests/llm/llm_surgery_ex
 #### `AI.AgentCode` — arita 1-2
 
 ```basic
-AI.AGENTCODE   ' dal codice del progetto: shared/minitests/ai/gen_AI_AgentCode.bas:5
+AI.AGENTCODE   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:19
 ```
 
 #### `AI.AgentEvents` — arita 0-0
 
 ```basic
-AI.AGENTEVENTS   ' dal codice del progetto: shared/minitests/ai/gen_AI_AgentEvents.bas:5
+AI.AGENTEVENTS   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:20
 ```
 
 #### `AI.AgentFix` — arita 1-2
@@ -57,13 +57,13 @@ AI.AGENTGET   ' dal codice del progetto: shared/minitests/misc/router_category_d
 #### `AI.AgentList` — arita 0-0
 
 ```basic
-AI.AGENTLIST   ' dal codice del progetto: shared/minitests/ai/gen_AI_AgentList.bas:5
+AI.AGENTLIST   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:23
 ```
 
 #### `AI.AgentPause` — arita 1-1
 
 ```basic
-AI.AGENTPAUSE   ' dal codice del progetto: shared/minitests/ai/gen_AI_AgentPause.bas:5
+AI.AGENTPAUSE   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:24
 ```
 
 #### `AI.AgentQueueClear` — arita 1-1
@@ -75,19 +75,19 @@ AI.AGENTQUEUECLEAR   ' dal codice del progetto: shared/minitests/ai/gen_AI_Agent
 #### `AI.AgentQueueStats` — arita 1-1
 
 ```basic
-AI.AGENTQUEUESTATS   ' dal codice del progetto: shared/minitests/ai/gen_AI_AgentQueueStats.bas:5
+AI.AGENTQUEUESTATS   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:26
 ```
 
 #### `AI.AgentReceive` — arita 1-1
 
 ```basic
-AI.AGENTRECEIVE   ' dal codice del progetto: shared/minitests/ai/gen_AI_AgentReceive.bas:4
+AI.AGENTRECEIVE   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:27
 ```
 
 #### `AI.AgentResume` — arita 1-1
 
 ```basic
-AI.AGENTRESUME   ' dal codice del progetto: shared/minitests/ai/gen_AI_AgentResume.bas:5
+AI.AGENTRESUME   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:28
 ```
 
 #### `AI.AgentRun` — arita 2-3
@@ -99,19 +99,19 @@ AI.AGENTRUN   ' dal codice del progetto: shared/minitests/ai/gen_AI_AgentRun.bas
 #### `AI.AgentRunCode` — arita 2-3
 
 ```basic
-AI.AGENTRUNCODE   ' dal codice del progetto: shared/minitests/ai/ai_agentruncode.bas:2
+AI.AGENTRUNCODE   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:30
 ```
 
 #### `AI.AgentRunGraph` — arita 2-3
 
 ```basic
-AI.AGENTRUNGRAPH   ' dal codice del progetto: shared/minitests/ai/gen_AI_AgentRunGraph.bas:5
+AI.AGENTRUNGRAPH   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:31
 ```
 
 #### `AI.AgentRunRag` — arita 2-3
 
 ```basic
-AI.AGENTRUNRAG   ' dal codice del progetto: shared/minitests/ai/gen_AI_AgentRunRag.bas:5
+AI.AGENTRUNRAG   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:32
 ```
 
 #### `AI.AgentSend` — arita 3-4
@@ -129,7 +129,7 @@ AI.AGENTSTATUS   ' dal codice del progetto: shared/minitests/ai/gen_AI_AgentStat
 #### `AI.AgentStop` — arita 1-1
 
 ```basic
-AI.AGENTSTOP   ' dal codice del progetto: shared/minitests/ai/gen_AI_AgentStop.bas:5
+AI.AGENTSTOP   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:35
 ```
 
 #### `AI.AgentSwarm` — arita 3-4
@@ -141,7 +141,7 @@ AI.AGENTSWARM   ' dal codice del progetto: shared/minitests/misc/swarm_domain.ba
 #### `AI.AnalyzeImage` — arita 1-2
 
 ```basic
-AI.ANALYZEIMAGE   ' dal codice del progetto: shared/minitests/ai/gen_AI_AnalyzeImage.bas:5
+AI.ANALYZEIMAGE   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:37
 ```
 
 #### `AI.ArtifactGet` — arita 1-1
@@ -183,19 +183,19 @@ AI.ASK   ' dal codice del progetto: shared/minitests/ai/ai_ask.bas:1
 #### `AI.AskChain` — arita 2-3
 
 ```basic
-AI.ASKCHAIN   ' dal codice del progetto: shared/minitests/ai/ai_askchain.bas:1
+AI.ASKCHAIN   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:44
 ```
 
 #### `AI.AskMulti` — arita 1-4
 
 ```basic
-AI.ASKMULTI   ' dal codice del progetto: shared/minitests/ai/ai_askmulti.bas:1
+AI.ASKMULTI   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:45
 ```
 
 #### `AI.Backlinks` — arita 2-2
 
 ```basic
-AI.BACKLINKS   ' dal codice del progetto: shared/minitests/ai/gen_AI_Backlinks.bas:5
+AI.BACKLINKS   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:46
 ```
 
 #### `AI.BlackboardRead` — arita 1-1
@@ -213,7 +213,7 @@ AI.BLACKBOARDWAIT   ' dal codice del progetto: shared/minitests/misc/blackboard_
 #### `AI.BlackboardWrite` — arita 2-2
 
 ```basic
-AI.BLACKBOARDWRITE   ' dal codice del progetto: shared/minitests/ai/gen_AI_BlackboardWrite.bas:5
+AI.BLACKBOARDWRITE   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:49
 ```
 
 #### `AI.BrainDetach` — arita 1-1
@@ -231,7 +231,7 @@ AI.BRAININFO   ' dal codice del progetto: shared/minitests/ai/gen_AI_BrainInfo.b
 #### `AI.BrainInstall` — arita 1-2
 
 ```basic
-AI.BRAININSTALL   ' dal codice del progetto: shared/samples/Ai/AiBrainGaps.bas:2
+AI.BRAININSTALL   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:52
 ```
 
 #### `AI.BrainList` — arita 0-0
@@ -243,7 +243,7 @@ AI.BRAINLIST   ' dal codice del progetto: shared/minitests/ai/gen_AI_BrainList.b
 #### `AI.BrainUninstall` — arita 1-1
 
 ```basic
-AI.BRAINUNINSTALL   ' dal codice del progetto: shared/samples/Ai/AiBrainGaps.bas:2
+AI.BRAINUNINSTALL   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:54
 ```
 
 #### `AI.BrainUse` — arita 1-1
@@ -255,13 +255,13 @@ AI.BRAINUSE   ' dal codice del progetto: shared/minitests/ai/gen_AI_BrainUse.bas
 #### `AI.BrainUsed` — arita 0-0
 
 ```basic
-AI.BRAINUSED   ' dal codice del progetto: shared/minitests/ai/gen_AI_BrainUsed.bas:5
+AI.BRAINUSED   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:56
 ```
 
 #### `AI.BrainVaultBuild` — arita 1-1
 
 ```basic
-AI.BRAINVAULTBUILD   ' dal codice del progetto: shared/minitests/ai/gen_AI_BrainVaultBuild.bas:5
+AI.BRAINVAULTBUILD   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:57
 ```
 
 #### `AI.BrainVaultQuery` — arita 1-2
@@ -279,67 +279,67 @@ AI.BRAINVAULTWRITE   ' dal codice del progetto: shared/minitests/ai/gen_AI_Brain
 #### `AI.CONNECTORCALL` — arita 3-3
 
 ```basic
-AI.CONNECTORCALL   ' dal codice del progetto: shared/minitests/connector/call.bas:5
+AI.CONNECTORCALL   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:60
 ```
 
 #### `AI.CONNECTORLIST` — arita 0-0
 
 ```basic
-AI.CONNECTORLIST   ' dal codice del progetto: shared/minitests/connector/list.bas:4
+AI.CONNECTORLIST   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:61
 ```
 
 #### `AI.CONNECTORMARKETPLACEGET` — arita 1-1
 
 ```basic
-AI.CONNECTORMARKETPLACEGET   ' dal codice del progetto: shared/minitests/connector/marketplaceget.bas:4
+AI.CONNECTORMARKETPLACEGET   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:62
 ```
 
 #### `AI.CONNECTORMARKETPLACELIST` — arita 0-0
 
 ```basic
-AI.CONNECTORMARKETPLACELIST   ' dal codice del progetto: shared/minitests/connector/marketplace.bas:4
+AI.CONNECTORMARKETPLACELIST   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:63
 ```
 
 #### `AI.CONNECTORPOLICYGET` — arita 2-2
 
 ```basic
-AI.CONNECTORPOLICYGET   ' dal codice del progetto: shared/minitests/connector/basic.bas:7
+AI.CONNECTORPOLICYGET   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:64
 ```
 
 #### `AI.CONNECTORPROMPTS` — arita 1-1
 
 ```basic
-AI.CONNECTORPROMPTS   ' dal codice del progetto: shared/minitests/connector/basic.bas:10
+AI.CONNECTORPROMPTS   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:65
 ```
 
 #### `AI.CONNECTORRESOURCES` — arita 1-1
 
 ```basic
-AI.CONNECTORRESOURCES   ' dal codice del progetto: shared/minitests/connector/resources.bas:4
+AI.CONNECTORRESOURCES   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:66
 ```
 
 #### `AI.CONNECTORSEARCH` — arita 1-1
 
 ```basic
-AI.CONNECTORSEARCH   ' dal codice del progetto: shared/minitests/connector/basic.bas:6
+AI.CONNECTORSEARCH   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:67
 ```
 
 #### `AI.CONNECTORSECRETGET` — arita 2-2
 
 ```basic
-AI.CONNECTORSECRETGET   ' dal codice del progetto: shared/minitests/connector/basic.bas:8
+AI.CONNECTORSECRETGET   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:68
 ```
 
 #### `AI.CONNECTORSTATUS` — arita 1-1
 
 ```basic
-AI.CONNECTORSTATUS   ' dal codice del progetto: shared/minitests/connector/status.bas:4
+AI.CONNECTORSTATUS   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:69
 ```
 
 #### `AI.CONNECTORTOOLS` — arita 1-1
 
 ```basic
-AI.CONNECTORTOOLS   ' dal codice del progetto: shared/minitests/connector/basic.bas:5
+AI.CONNECTORTOOLS   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:70
 ```
 
 #### `AI.CategoryAuto` — arita 1-1
@@ -393,7 +393,7 @@ AI.CHANNELSUBSCRIBE   ' dal codice del progetto: shared/minitests/ai/gen_AI_Chan
 #### `AI.ChannelUnsubscribe` — arita 2-2
 
 ```basic
-AI.CHANNELUNSUBSCRIBE   ' dal codice del progetto: shared/minitests/ai/gen_AI_ChannelUnsubscribe.bas:5
+AI.CHANNELUNSUBSCRIBE   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:79
 ```
 
 #### `AI.Checkpoint` — arita 2-2
@@ -417,7 +417,7 @@ AI.CHECKPOINTLIST   ' dal codice del progetto: shared/minitests/misc/checkpoint_
 #### `AI.Configure` — arita 3-3
 
 ```basic
-AI.CONFIGURE   ' dal codice del progetto: shared/minitests/ai/provider_admin.bas:16
+AI.CONFIGURE   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:83
 ```
 
 #### `AI.Consistency` — arita 1-2
@@ -435,7 +435,7 @@ AI.CONSISTENCYDETAIL   ' dal codice del progetto: shared/minitests/ai/consistenc
 #### `AI.ContextBudget` — arita 1-1
 
 ```basic
-AI.CONTEXTBUDGET   ' dal codice del progetto: shared/minitests/ai/context_engine_policy.bas:45
+AI.CONTEXTBUDGET   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:86
 ```
 
 #### `AI.ContextHash` — arita 1-1
@@ -447,13 +447,13 @@ AI.CONTEXTHASH   ' dal codice del progetto: shared/minitests/ai/ai_context_hash.
 #### `AI.ContextOverflow` — arita 1-1
 
 ```basic
-AI.CONTEXTOVERFLOW   ' dal codice del progetto: shared/minitests/ai/gen_AI_ContextOverflow.bas:5
+AI.CONTEXTOVERFLOW   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:88
 ```
 
 #### `AI.ContextUsed` — arita 1-1
 
 ```basic
-AI.CONTEXTUSED   ' dal codice del progetto: shared/minitests/ai/context_engine.bas:15
+AI.CONTEXTUSED   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:89
 ```
 
 #### `AI.ContextValid` — arita 2-2
@@ -465,7 +465,7 @@ AI.CONTEXTVALID   ' dal codice del progetto: shared/minitests/ai/ai_context_hash
 #### `AI.ContextView` — arita 1-1
 
 ```basic
-AI.CONTEXTVIEW   ' dal codice del progetto: shared/minitests/ai/context_engine.bas:21
+AI.CONTEXTVIEW   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:91
 ```
 
 #### `AI.ContextViewDebug` — arita 1-1
@@ -477,19 +477,19 @@ AI.CONTEXTVIEWDEBUG   ' dal codice del progetto: shared/minitests/ai/context_vie
 #### `AI.Count` — arita 2-2
 
 ```basic
-AI.COUNT   ' dal codice del progetto: shared/minitests/ai/gen_AI_Count.bas:5
+AI.COUNT   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:93
 ```
 
 #### `AI.Credits` — arita 1-1
 
 ```basic
-AI.CREDITS   ' dal codice del progetto: shared/minitests/ai/gen_AI_Credits.bas:5
+AI.CREDITS   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:94
 ```
 
 #### `AI.Discover` — arita 4-5
 
 ```basic
-AI.DISCOVER   ' dal codice del progetto: shared/minitests/ai/gen_AI_Discover.bas:2
+AI.DISCOVER   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:95
 ```
 
 #### `AI.DocExtract` — arita 2-2
@@ -525,7 +525,7 @@ AI.ENSURECOLLECTION   ' dal codice del progetto: shared/minitests/ai/ensurecolle
 #### `AI.Fail` — arita 1-1
 
 ```basic
-AI.FAIL   ' dal codice del progetto: shared/minitests/ai/provider_admin.bas:14
+AI.FAIL   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:101
 ```
 
 #### `AI.FleetStats` — arita 0-0
@@ -537,37 +537,37 @@ AI.FLEETSTATS   ' dal codice del progetto: shared/minitests/misc/metrics_domain.
 #### `AI.GenTest` — arita 3-3
 
 ```basic
-AI.GENTEST   ' nel codice a nome nudo: shared/minitests/vectordb/gentest.bas:17
+AI.GENTEST   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:103
 ```
 
 #### `AI.GetBase` — arita 1-1
 
 ```basic
-AI.GETBASE   ' dal codice del progetto: shared/minitests/ai/gen_AI_GetBase.bas:4
+AI.GETBASE   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:104
 ```
 
 #### `AI.GetDefault` — arita 0-0
 
 ```basic
-AI.GETDEFAULT   ' dal codice del progetto: shared/minitests/ai/gen_AI_GetDefault.bas:5
+AI.GETDEFAULT   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:105
 ```
 
 #### `AI.GetKey` — arita 1-1
 
 ```basic
-AI.GETKEY   ' dal codice del progetto: shared/minitests/ai/gen_AI_GetKey.bas:4
+AI.GETKEY   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:106
 ```
 
 #### `AI.GetModel` — arita 1-1
 
 ```basic
-AI.GETMODEL   ' dal codice del progetto: shared/minitests/ai/gen_AI_GetModel.bas:4
+AI.GETMODEL   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:107
 ```
 
 #### `AI.GetTemp` — arita 1-1
 
 ```basic
-AI.GETTEMP   ' dal codice del progetto: shared/minitests/ai/gen_AI_GetTemp.bas:4
+AI.GETTEMP   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:108
 ```
 
 #### `AI.GoalAgent` — arita 1-1
@@ -657,13 +657,13 @@ AI.HASHVERIFY   ' dal codice del progetto: shared/minitests/misc/hashline_domain
 #### `AI.HealthCheckInterval` — arita 0-0
 
 ```basic
-AI.HEALTHCHECKINTERVAL   ' dal codice del progetto: shared/minitests/ai/provider_admin.bas:11
+AI.HEALTHCHECKINTERVAL   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:123
 ```
 
 #### `AI.HfRepo` — arita 0-0
 
 ```basic
-AI.HFREPO   ' dal codice del progetto: shared/minitests/ai/gen_AI_HfRepo.bas:4
+AI.HFREPO   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:124
 ```
 
 #### `AI.HookEvents` — arita 0-0
@@ -699,43 +699,43 @@ AI.HOOKUNREGISTER   ' dal codice del progetto: shared/minitests/misc/hook_domain
 #### `AI.ImageClassify` — arita 2-2
 
 ```basic
-AI.IMAGECLASSIFY   ' dal codice del progetto: shared/minitests/ai/gen_AI_ImageClassify.bas:5
+AI.IMAGECLASSIFY   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:130
 ```
 
 #### `AI.ImageCompare` — arita 2-2
 
 ```basic
-AI.IMAGECOMPARE   ' dal codice del progetto: shared/minitests/ai/gen_AI_ImageCompare.bas:5
+AI.IMAGECOMPARE   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:131
 ```
 
 #### `AI.ImageConvert` — arita 2-2
 
 ```basic
-AI.IMAGECONVERT   ' dal codice del progetto: shared/minitests/ai/gen_AI_ImageConvert.bas:5
+AI.IMAGECONVERT   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:132
 ```
 
 #### `AI.ImageCrop` — arita 6-6
 
 ```basic
-AI.IMAGECROP   ' dal codice del progetto: shared/minitests/ai/gen_AI_ImageCrop.bas:5
+AI.IMAGECROP   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:133
 ```
 
 #### `AI.ImageDetect` — arita 1-1
 
 ```basic
-AI.IMAGEDETECT   ' dal codice del progetto: shared/minitests/ai/gen_AI_ImageDetect.bas:5
+AI.IMAGEDETECT   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:134
 ```
 
 #### `AI.ImageEmbed` — arita 1-1
 
 ```basic
-AI.IMAGEEMBED   ' dal codice del progetto: shared/minitests/ai/gen_AI_ImageEmbed.bas:5
+AI.IMAGEEMBED   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:135
 ```
 
 #### `AI.ImageInfo` — arita 1-1
 
 ```basic
-AI.IMAGEINFO   ' dal codice del progetto: shared/minitests/ai/gen_AI_ImageInfo.bas:5
+AI.IMAGEINFO   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:136
 ```
 
 #### `AI.ImageResize` — arita 4-4
@@ -753,13 +753,13 @@ AI.INDEXMETA   ' dal codice del progetto: shared/minitests/ai/indexmeta_filter_s
 #### `AI.IndexText` — arita 4-4
 
 ```basic
-AI.INDEXTEXT   ' dal codice del progetto: shared/minitests/ai/indextext_outcomes.bas:8
+AI.INDEXTEXT   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:139
 ```
 
 #### `AI.Info` — arita 1-1
 
 ```basic
-AI.INFO   ' dal codice del progetto: shared/minitests/ai/gen_AI_Info.bas:5
+AI.INFO   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:140
 ```
 
 #### `AI.IngestWeb` — arita 2-3
@@ -771,19 +771,19 @@ AI.INGESTWEB   ' dal codice del progetto: shared/minitests/ai/gen_AI_IngestWeb.b
 #### `AI.KgAddEdge` — arita 2-2
 
 ```basic
-AI.KGADDEDGE   ' dal codice del progetto: shared/minitests/ai/gen_AI_KgAddEdge.bas:5
+AI.KGADDEDGE   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:142
 ```
 
 #### `AI.KgAddNode` — arita 1-1
 
 ```basic
-AI.KGADDNODE   ' dal codice del progetto: shared/minitests/ai/gen_AI_KgAddNode.bas:5
+AI.KGADDNODE   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:143
 ```
 
 #### `AI.KgQuery` — arita 1-1
 
 ```basic
-AI.KGQUERY   ' dal codice del progetto: shared/minitests/ai/gen_AI_KgQuery.bas:5
+AI.KGQUERY   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:144
 ```
 
 #### `AI.LexicalEntropy` — arita 1-1
@@ -813,67 +813,67 @@ AI.LINKSOUT   ' dal codice del progetto: shared/minitests/misc/ai_linkjson_graph
 #### `AI.List` — arita 1-1
 
 ```basic
-AI.LIST   ' dal codice del progetto: shared/minitests/ai/ai_list.bas:1
+AI.LIST   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:12
 ```
 
 #### `AI.ListCollections` — arita 1-1
 
 ```basic
-AI.LISTCOLLECTIONS   ' dal codice del progetto: shared/samples/Databases/VectorDbBasic.bas:44
+AI.LISTCOLLECTIONS   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:150
 ```
 
 #### `AI.Load` — arita 1-1
 
 ```basic
-AI.LOAD   ' dal codice del progetto: shared/samples/Ai/ProviderConfig.bas:19
+AI.LOAD   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:151
 ```
 
 #### `AI.LoadDocuments` — arita 3-5
 
 ```basic
-AI.LOADDOCUMENTS   ' dal codice del progetto: shared/minitests/ai/gen_AI_LoadDocuments.bas:5
+AI.LOADDOCUMENTS   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:152
 ```
 
 #### `AI.McpCall` — arita 3-3
 
 ```basic
-AI.MCPCALL   ' dal codice del progetto: shared/minitests/ai/gen_AI_McpCall.bas:5
+AI.MCPCALL   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:153
 ```
 
 #### `AI.McpListTools` — arita 0-0
 
 ```basic
-AI.MCPLISTTOOLS   ' dal codice del progetto: shared/minitests/ai/mcp_register_agent.bas:8
+AI.MCPLISTTOOLS   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:154
 ```
 
 #### `AI.McpListToolsServer` — arita 1-1
 
 ```basic
-AI.MCPLISTTOOLSSERVER   ' dal codice del progetto: shared/minitests/ai/gen_AI_McpListToolsServer.bas:5
+AI.MCPLISTTOOLSSERVER   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:155
 ```
 
 #### `AI.McpPrompts` — arita 0-0
 
 ```basic
-AI.MCPPROMPTS   ' dal codice del progetto: shared/minitests/ai/mcp_register_agent.bas:2
+AI.MCPPROMPTS   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:156
 ```
 
 #### `AI.McpResources` — arita 0-0
 
 ```basic
-AI.MCPRESOURCES   ' dal codice del progetto: shared/minitests/ai/gen_AI_McpResources.bas:5
+AI.MCPRESOURCES   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:157
 ```
 
 #### `AI.McpServerList` — arita 0-0
 
 ```basic
-AI.MCPSERVERLIST   ' dal codice del progetto: shared/minitests/ai/ai_envreads.bas:1
+AI.MCPSERVERLIST   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:158
 ```
 
 #### `AI.McpServerMarketplaceList` — arita 0-0
 
 ```basic
-AI.MCPSERVERMARKETPLACELIST   ' dal codice del progetto: shared/minitests/ai/ai_envreads.bas:8
+AI.MCPSERVERMARKETPLACELIST   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:159
 ```
 
 #### `AI.McpServerStatus` — arita 1-1
@@ -897,7 +897,7 @@ AI.MEMORYCONSOLIDATE   ' dal codice del progetto: shared/minitests/ai/gen_AI_Mem
 #### `AI.MemoryRank` — arita 1-2
 
 ```basic
-AI.MEMORYRANK   ' dal codice del progetto: shared/minitests/ai/ai_envreads.bas:10
+AI.MEMORYRANK   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:163
 ```
 
 #### `AI.MetricGet` — arita 2-2
@@ -969,7 +969,7 @@ AI.NOTETITLE   ' dal codice del progetto: shared/minitests/misc/note_domain.bas:
 #### `AI.NoteUnlink` — arita 3-3
 
 ```basic
-AI.NOTEUNLINK   ' dal codice del progetto: shared/minitests/ai/gen_AI_NoteUnlink.bas:5
+AI.NOTEUNLINK   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:175
 ```
 
 #### `AI.NoteWordCount` — arita 2-2
@@ -981,13 +981,13 @@ AI.NOTEWORDCOUNT   ' dal codice del progetto: shared/minitests/misc/note_domain.
 #### `AI.OCR` — arita 1-3
 
 ```basic
-AI.OCR   ' dal codice del progetto: shared/minitests/ai/gen_AI_OCR.bas:5
+AI.OCR   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:177
 ```
 
 #### `AI.Observation` — arita 1-1
 
 ```basic
-AI.OBSERVATION   ' dal codice del progetto: shared/minitests/ai/ai_obs_context_coverage.bas:7
+AI.OBSERVATION   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:178
 ```
 
 #### `AI.ObservationCount` — arita 0-0
@@ -1017,13 +1017,13 @@ AI.OBSERVATIONLATEST   ' dal codice del progetto: shared/minitests/ai/gen_AI_Obs
 #### `AI.ObservationList` — arita 0-0
 
 ```basic
-AI.OBSERVATIONLIST   ' dal codice del progetto: shared/minitests/ai/ai_obs_context_coverage.bas:10
+AI.OBSERVATIONLIST   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:183
 ```
 
 #### `AI.Option` — arita 1-1
 
 ```basic
-AI.OPTION   ' dal codice del progetto: shared/minitests/ai/ai_option.bas:1
+AI.OPTION   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:184
 ```
 
 #### `AI.OrchLoad` — arita 0-1
@@ -1089,25 +1089,25 @@ AI.PLUGINCALL   ' dal codice del progetto: shared/minitests/ai/gen_AI_PluginCall
 #### `AI.PluginList` — arita 0-0
 
 ```basic
-AI.PLUGINLIST   ' dal codice del progetto: shared/minitests/ai/gen_AI_PluginList.bas:5
+AI.PLUGINLIST   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:195
 ```
 
 #### `AI.PluginsInfo` — arita 1-1
 
 ```basic
-AI.PLUGINSINFO   ' dal codice del progetto: shared/minitests/ai/gen_AI_PluginsInfo.bas:4
+AI.PLUGINSINFO   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:196
 ```
 
 #### `AI.PluginsList` — arita 0-0
 
 ```basic
-AI.PLUGINSLIST   ' dal codice del progetto: shared/minitests/ai/gen_AI_PluginsList.bas:5
+AI.PLUGINSLIST   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:197
 ```
 
 #### `AI.Priority` — arita 1-1
 
 ```basic
-AI.PRIORITY   ' dal codice del progetto: shared/minitests/ai/gen_AI_Priority.bas:5
+AI.PRIORITY   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:198
 ```
 
 #### `AI.Providers` — arita 0-0
@@ -1119,13 +1119,13 @@ AI.PROVIDERS   ' dal codice del progetto: shared/minitests/misc/ai_ns_probe.bas:
 #### `AI.PurgeDeprecated` — arita 2-2
 
 ```basic
-AI.PURGEDEPRECATED   ' dal codice del progetto: shared/minitests/ai/removesource_purge.bas:16
+AI.PURGEDEPRECATED   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:200
 ```
 
 #### `AI.QaAnswer` — arita 2-3
 
 ```basic
-AI.QAANSWER   ' dal codice del progetto: shared/minitests/ai/gen_AI_QaAnswer.bas:5
+AI.QAANSWER   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:201
 ```
 
 #### `AI.RagContext` — arita 3-6
@@ -1137,19 +1137,19 @@ AI.RAGCONTEXT   ' dal codice del progetto: shared/minitests/ai/ai_ragcontext.bas
 #### `AI.RagContextMulti` — arita 1-4
 
 ```basic
-AI.RAGCONTEXTMULTI   ' dal codice del progetto: shared/minitests/ai/gen_AI_RagContextMulti.bas:4
+AI.RAGCONTEXTMULTI   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:203
 ```
 
 #### `AI.Register` — arita 4-4
 
 ```basic
-AI.REGISTER   ' dal codice del progetto: shared/minitests/ai/provider_admin.bas:4
+AI.REGISTER   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:204
 ```
 
 #### `AI.RemoveSource` — arita 3-3
 
 ```basic
-AI.REMOVESOURCE   ' dal codice del progetto: shared/minitests/ai/removesource_purge.bas:14
+AI.REMOVESOURCE   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:205
 ```
 
 #### `AI.ReplayClear` — arita 0-0
@@ -1179,7 +1179,7 @@ AI.REPLAYRECORD   ' dal codice del progetto: shared/minitests/misc/replay_domain
 #### `AI.ReplayRun` — arita 2-2
 
 ```basic
-AI.REPLAYRUN   ' dal codice del progetto: shared/minitests/ai/gen_AI_ReplayRun.bas:5
+AI.REPLAYRUN   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:210
 ```
 
 #### `AI.ReplayStart` — arita 1-1
@@ -1203,7 +1203,7 @@ AI.RERANK   ' dal codice del progetto: shared/minitests/ai/gen_AI_Rerank.bas:5
 #### `AI.ResetFailed` — arita 1-1
 
 ```basic
-AI.RESETFAILED   ' dal codice del progetto: shared/minitests/ai/provider_admin.bas:15
+AI.RESETFAILED   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:214
 ```
 
 #### `AI.ResourceAvailable` — arita 1-1
@@ -1245,7 +1245,7 @@ AI.RESUME   ' dal codice del progetto: shared/minitests/misc/persistence_domain.
 #### `AI.Rotate` — arita 1-1
 
 ```basic
-AI.ROTATE   ' dal codice del progetto: shared/minitests/ai/ai_rotate.bas:1
+AI.ROTATE   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:221
 ```
 
 #### `AI.RulesAdd` — arita 2-2
@@ -1281,13 +1281,13 @@ AI.RULESREMOVE   ' dal codice del progetto: shared/minitests/misc/rules_domain.b
 #### `AI.RunHealthCheck` — arita 0-0
 
 ```basic
-AI.RUNHEALTHCHECK   ' dal codice del progetto: shared/minitests/ai/provider_admin.bas:12
+AI.RUNHEALTHCHECK   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:227
 ```
 
 #### `AI.Save` — arita 1-1
 
 ```basic
-AI.SAVE   ' dal codice del progetto: shared/minitests/ai/provider_admin.bas:17
+AI.SAVE   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:228
 ```
 
 #### `AI.Search` — arita 4-9
@@ -1305,43 +1305,43 @@ AI.SEARCHMULTI   ' dal codice del progetto: shared/minitests/ai/gen_AI_SearchMul
 #### `AI.SetActive` — arita 2-2
 
 ```basic
-AI.SETACTIVE   ' dal codice del progetto: shared/minitests/ai/provider_admin.bas:5
+AI.SETACTIVE   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:231
 ```
 
 #### `AI.SetCredits` — arita 2-2
 
 ```basic
-AI.SETCREDITS   ' dal codice del progetto: shared/minitests/ai/provider_admin.bas:7
+AI.SETCREDITS   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:232
 ```
 
 #### `AI.SetPriority` — arita 2-2
 
 ```basic
-AI.SETPRIORITY   ' dal codice del progetto: shared/minitests/ai/provider_admin.bas:8
+AI.SETPRIORITY   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:233
 ```
 
 #### `AI.SetStatus` — arita 2-2
 
 ```basic
-AI.SETSTATUS   ' dal codice del progetto: shared/minitests/ai/provider_admin.bas:6
+AI.SETSTATUS   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:234
 ```
 
 #### `AI.SetWeight` — arita 2-2
 
 ```basic
-AI.SETWEIGHT   ' dal codice del progetto: shared/minitests/ai/provider_admin.bas:9
+AI.SETWEIGHT   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:235
 ```
 
 #### `AI.ShareDecrypt` — arita 2-2
 
 ```basic
-AI.SHAREDECRYPT   ' dal codice del progetto: shared/minitests/ai/gen_AI_ShareDecrypt.bas:5
+AI.SHAREDECRYPT   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:236
 ```
 
 #### `AI.ShareEncrypt` — arita 2-2
 
 ```basic
-AI.SHAREENCRYPT   ' dal codice del progetto: shared/minitests/ai/ai_shareencrypt.bas:1
+AI.SHAREENCRYPT   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:237
 ```
 
 #### `AI.SignNote` — arita 2-2
@@ -1353,7 +1353,7 @@ AI.SIGNNOTE   ' dal codice del progetto: shared/minitests/ai/gen_AI_SignNote.bas
 #### `AI.SkillsList` — arita 0-0
 
 ```basic
-AI.SKILLSLIST   ' dal codice del progetto: shared/minitests/ai/gen_AI_SkillsList.bas:5
+AI.SKILLSLIST   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:240
 ```
 
 #### `AI.SkillsPaths` — arita 0-0
@@ -1365,13 +1365,13 @@ AI.SKILLSPATHS   ' dal codice del progetto: shared/minitests/ai/gen_AI_SkillsPat
 #### `AI.SkillsPrompt` — arita 0-0
 
 ```basic
-AI.SKILLSPROMPT   ' dal codice del progetto: shared/minitests/ai/ai_envreads.bas:9
+AI.SKILLSPROMPT   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:243
 ```
 
 #### `AI.StartHealthCheck` — arita 1-1
 
 ```basic
-AI.STARTHEALTHCHECK   ' dal codice del progetto: shared/minitests/ai/provider_admin.bas:10
+AI.STARTHEALTHCHECK   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:244
 ```
 
 #### `AI.StateLoad` — arita 2-2
@@ -1383,19 +1383,19 @@ AI.STATELOAD   ' dal codice del progetto: shared/minitests/ai/require_eval.bas:1
 #### `AI.Status` — arita 1-1
 
 ```basic
-AI.STATUS   ' dal codice del progetto: shared/minitests/ai/gen_AI_Status.bas:5
+AI.STATUS   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:246
 ```
 
 #### `AI.StopHealthCheck` — arita 0-0
 
 ```basic
-AI.STOPHEALTHCHECK   ' dal codice del progetto: shared/minitests/ai/provider_admin.bas:13
+AI.STOPHEALTHCHECK   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:247
 ```
 
 #### `AI.SuggestTags` — arita 1-1
 
 ```basic
-AI.SUGGESTTAGS   ' dal codice del progetto: shared/minitests/ai/gen_AI_SuggestTags.bas:5
+AI.SUGGESTTAGS   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:248
 ```
 
 #### `AI.SyncFolder` — arita 2-4
@@ -1413,7 +1413,7 @@ AI.SYNTHESIZE   ' dal codice del progetto: shared/minitests/ai/gen_AI_Synthesize
 #### `AI.TaskAssign` — arita 2-2
 
 ```basic
-AI.TASKASSIGN   ' dal codice del progetto: shared/minitests/ai/gen_AI_TaskAssign.bas:5
+AI.TASKASSIGN   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:251
 ```
 
 #### `AI.TaskClear` — arita 0-0
@@ -1497,7 +1497,7 @@ AI.TEAMRECURSION   ' dal codice del progetto: shared/minitests/misc/team_domain.
 #### `AI.TeamRunStart` — arita 2-2
 
 ```basic
-AI.TEAMRUNSTART   ' dal codice del progetto: shared/minitests/ai/gen_AI_TeamRunStart.bas:5
+AI.TEAMRUNSTART   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:265
 ```
 
 #### `AI.TeamRunWait` — arita 1-1
@@ -1509,7 +1509,7 @@ AI.TEAMRUNWAIT   ' dal codice del progetto: shared/minitests/ai/gen_AI_TeamRunWa
 #### `AI.TeamRuntimeStats` — arita 1-1
 
 ```basic
-AI.TEAMRUNTIMESTATS   ' dal codice del progetto: shared/minitests/ai/gen_AI_TeamRuntimeStats.bas:5
+AI.TEAMRUNTIMESTATS   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:267
 ```
 
 #### `AI.TeamTrainStatus` — arita 1-1
@@ -1521,19 +1521,19 @@ AI.TEAMTRAINSTATUS   ' dal codice del progetto: shared/minitests/ai/gen_AI_TeamT
 #### `AI.Test` — arita 2-2
 
 ```basic
-AI.TEST   ' dal codice del progetto: shared/minitests/ai/provider_admin.bas:18
+AI.TEST   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:269
 ```
 
 #### `AI.Transcribe` — arita 1-1
 
 ```basic
-AI.TRANSCRIBE   ' dal codice del progetto: shared/minitests/ai/gen_AI_Transcribe.bas:5
+AI.TRANSCRIBE   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:270
 ```
 
 #### `AI.Unregister` — arita 1-1
 
 ```basic
-AI.UNREGISTER   ' dal codice del progetto: shared/minitests/ai/provider_admin.bas:19
+AI.UNREGISTER   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:271
 ```
 
 #### `AI.VaultAddFolder` — arita 2-3
@@ -1557,13 +1557,13 @@ AI.VAULTFOLDERS   ' dal codice del progetto: shared/minitests/misc/vaultfolder_d
 #### `AI.VaultInfo` — arita 1-1
 
 ```basic
-AI.VAULTINFO   ' dal codice del progetto: shared/minitests/ai/gen_AI_VaultInfo.bas:4
+AI.VAULTINFO   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:275
 ```
 
 #### `AI.VaultList` — arita 0-0
 
 ```basic
-AI.VAULTLIST   ' dal codice del progetto: shared/minitests/ai/gen_AI_VaultList.bas:5
+AI.VAULTLIST   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:276
 ```
 
 #### `AI.VaultPolicy` — arita 1-1
@@ -1587,25 +1587,25 @@ AI.VAULTSETFOLDERPROPS   ' dal codice del progetto: shared/minitests/ai/gen_AI_V
 #### `AI.VaultWatch` — arita 2-2
 
 ```basic
-AI.VAULTWATCH   ' dal codice del progetto: shared/minitests/ai/gen_AI_VaultWatch.bas:5
+AI.VAULTWATCH   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:280
 ```
 
 #### `AI.VerifyNote` — arita 3-3
 
 ```basic
-AI.VERIFYNOTE   ' dal codice del progetto: shared/minitests/ai/gen_AI_VerifyNote.bas:5
+AI.VERIFYNOTE   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:281
 ```
 
 #### `AI.VideoFrame` — arita 3-3
 
 ```basic
-AI.VIDEOFRAME   ' dal codice del progetto: shared/minitests/ai/ai_videoframe.bas:1
+AI.VIDEOFRAME   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:282
 ```
 
 #### `AI.VideoInfo` — arita 1-1
 
 ```basic
-AI.VIDEOINFO   ' dal codice del progetto: shared/minitests/ai/ai_videoinfo.bas:1
+AI.VIDEOINFO   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:283
 ```
 
 #### `AI.VideoSnapshot` — arita 2-2
@@ -1617,7 +1617,7 @@ AI.VIDEOSNAPSHOT   ' dal codice del progetto: shared/minitests/ai/gen_AI_VideoSn
 #### `AI.Weight` — arita 1-1
 
 ```basic
-AI.WEIGHT   ' dal codice del progetto: shared/minitests/ai/gen_AI_Weight.bas:5
+AI.WEIGHT   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:285
 ```
 
 #### `AI.WorkerRescued` — arita 0-0
@@ -1641,7 +1641,7 @@ AI.WORKERSPEND   ' dal codice del progetto: shared/minitests/ai/worker.bas:32
 #### `AI.WorkflowList` — arita 0-0
 
 ```basic
-AI.WORKFLOWLIST   ' dal codice del progetto: shared/minitests/ai/gen_AI_WorkflowList.bas:4
+AI.WORKFLOWLIST   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:289
 ```
 
 #### `AI.WorkflowStatus` — arita 1-1
@@ -1653,271 +1653,7 @@ AI.WORKFLOWSTATUS   ' dal codice del progetto: shared/minitests/ai/gen_AI_Workfl
 #### `AI.WorkflowSteps` — arita 1-1
 
 ```basic
-AI.WORKFLOWSTEPS   ' dal codice del progetto: shared/minitests/ai/gen_AI_WorkflowSteps.bas:4
-```
-
-#### `TIMESERIES.AdfTest` — arita 1-1
-
-```basic
-TIMESERIES.AdfTest   ' dal codice del progetto: shared/minitests/analysis/analysis_all.bas:120
-```
-
-#### `STATS.Anova` — arita 1-1
-
-```basic
-STATS.Anova   ' dal codice del progetto: shared/minitests/analysis/anova.bas:9
-```
-
-#### `TIMESERIES.Arima` — arita 4-4
-
-```basic
-TIMESERIES.Arima   ' dal codice del progetto: shared/minitests/analysis/arima_hw.bas:5
-```
-
-#### `STATS.Correlation` — arita 2-2
-
-```basic
-STATS.Correlation   ' dal codice del progetto: shared/minitests/analysis/desc.bas:12
-```
-
-#### `NUMERICAL.CubicSpline` — arita 3-3
-
-```basic
-NUMERICAL.CubicSpline   ' dal codice del progetto: shared/minitests/analysis/num.bas:6
-```
-
-#### `NUMERICAL.CumTrapezoid` — arita 2-2
-
-```basic
-NUMERICAL.CumTrapezoid   ' dal codice del progetto: shared/minitests/analysis/arr.bas:5
-```
-
-#### `NUMERICAL.Differentiate` — arita 2-2
-
-```basic
-NUMERICAL.Differentiate   ' dal codice del progetto: shared/minitests/analysis/differentiate.bas:5
-```
-
-#### `VECTOR.EuclideanDistanceSquared` — arita 2-2
-
-```basic
-VECTOR.EuclideanDistanceSquared   ' dal codice del progetto: shared/minitests/analysis/num.bas:13
-```
-
-#### `NUMERICAL.Fft` — arita 1-1
-
-```basic
-NUMERICAL.Fft   ' dal codice del progetto: shared/minitests/analysis/fft_ifft.bas:6
-```
-
-#### `NUMERICAL.FftComplex` — arita 2-2
-
-```basic
-NUMERICAL.FftComplex   ' dal codice del progetto: shared/minitests/analysis/fftc.bas:5
-```
-
-#### `NUMERICAL.FftFreq` — arita 2-2
-
-```basic
-NUMERICAL.FftFreq   ' dal codice del progetto: shared/minitests/analysis/arr.bas:7
-```
-
-#### `NUMERICAL.FftShift` — arita 1-1
-
-```basic
-NUMERICAL.FftShift   ' dal codice del progetto: shared/minitests/analysis/arr.bas:9
-```
-
-#### `TIMESERIES.HoltWinters` — arita 5-5
-
-```basic
-TIMESERIES.HoltWinters   ' dal codice del progetto: shared/minitests/analysis/arima_hw.bas:11
-```
-
-#### `NUMERICAL.Ifft` — arita 1-1
-
-```basic
-NUMERICAL.Ifft   ' dal codice del progetto: shared/minitests/analysis/fft_ifft.bas:8
-```
-
-#### `NUMERICAL.IfftComplex` — arita 2-2
-
-```basic
-NUMERICAL.IfftComplex   ' dal codice del progetto: shared/minitests/analysis/fftc.bas:7
-```
-
-#### `NUMERICAL.IfftShift` — arita 1-1
-
-```basic
-NUMERICAL.IfftShift   ' dal codice del progetto: shared/minitests/analysis/arr.bas:11
-```
-
-#### `NUMERICAL.Integrate` — arita 3-3
-
-```basic
-NUMERICAL.Integrate   ' dal codice del progetto: shared/minitests/analysis/ode.bas:3
-```
-
-#### `NUMERICAL.InterpolateClamp` — arita 3-3
-
-```basic
-NUMERICAL.InterpolateClamp   ' dal codice del progetto: shared/minitests/analysis/num.bas:11
-```
-
-#### `NUMERICAL.InterpolateGeneric` — arita 4-4
-
-```basic
-NUMERICAL.InterpolateGeneric   ' dal codice del progetto: shared/minitests/analysis/num.bas:12
-```
-
-#### `NUMERICAL.InterpolateLinear` — arita 3-3
-
-```basic
-NUMERICAL.InterpolateLinear   ' dal codice del progetto: shared/minitests/analysis/num.bas:7
-```
-
-#### `NUMERICAL.InterpolatePchip` — arita 3-3
-
-```basic
-NUMERICAL.InterpolatePchip   ' dal codice del progetto: shared/minitests/analysis/num.bas:10
-```
-
-#### `NUMERICAL.InterpolatePolynomial` — arita 3-3
-
-```basic
-NUMERICAL.InterpolatePolynomial   ' dal codice del progetto: shared/minitests/analysis/num.bas:9
-```
-
-#### `NUMERICAL.InterpolateSpline` — arita 3-3
-
-```basic
-NUMERICAL.InterpolateSpline   ' dal codice del progetto: shared/minitests/analysis/analysis_interp_real.bas:16
-```
-
-#### `NUMERICAL.InterpolateStep` — arita 3-3
-
-```basic
-NUMERICAL.InterpolateStep   ' dal codice del progetto: shared/minitests/analysis/num.bas:8
-```
-
-#### `NUMERICAL.Irfft` — arita 2-2
-
-```basic
-NUMERICAL.Irfft   ' dal codice del progetto: shared/minitests/analysis/analysis_all.bas:203
-```
-
-#### `MULTIVARIATE.KMeans` — arita 2-2
-
-```basic
-MULTIVARIATE.KMeans   ' dal codice del progetto: shared/minitests/analysis/udt.bas:12
-```
-
-#### `STATS.Kurtosis` — arita 1-1
-
-```basic
-STATS.Kurtosis   ' dal codice del progetto: shared/minitests/analysis/desc.bas:9
-```
-
-#### `TIMESERIES.MaCoefficients` — arita 2-2
-
-```basic
-TIMESERIES.MaCoefficients   ' dal codice del progetto: shared/minitests/analysis/arr.bas:15
-```
-
-#### `STATS.Mad` — arita 1-1
-
-```basic
-STATS.Mad   ' dal codice del progetto: shared/minitests/analysis/desc.bas:10
-```
-
-#### `STATS.Mean` — arita 1-1
-
-```basic
-STATS.Mean   ' dal codice del progetto: shared/minitests/analysis/desc.bas:4
-```
-
-#### `STATS.Median` — arita 1-1
-
-```basic
-STATS.Median   ' dal codice del progetto: shared/minitests/analysis/desc.bas:5
-```
-
-#### `MULTIVARIATE.Pca` — arita 1-1
-
-```basic
-MULTIVARIATE.Pca   ' dal codice del progetto: shared/minitests/analysis/pca.bas:10
-```
-
-#### `REGRESSION.Regress` — arita 2-2
-
-```basic
-REGRESSION.Regress   ' dal codice del progetto: shared/minitests/analysis/udt.bas:6
-```
-
-#### `NUMERICAL.Rfft` — arita 1-1
-
-```basic
-NUMERICAL.Rfft   ' dal codice del progetto: shared/minitests/analysis/rfft.bas:7
-```
-
-#### `NUMERICAL.Simpson` — arita 4-4
-
-```basic
-NUMERICAL.Simpson   ' dal codice del progetto: shared/minitests/analysis/ode.bas:4
-```
-
-#### `STATS.Skewness` — arita 1-1
-
-```basic
-STATS.Skewness   ' dal codice del progetto: shared/minitests/analysis/desc.bas:8
-```
-
-#### `NUMERICAL.SolveIvp` — arita 4-4
-
-```basic
-NUMERICAL.SolveIvp   ' dal codice del progetto: shared/minitests/analysis/solveivp.bas:1
-```
-
-#### `NUMERICAL.SolveOde` — arita 5-5
-
-```basic
-NUMERICAL.SolveOde   ' dal codice del progetto: shared/minitests/analysis/ode.bas:5
-```
-
-#### `NUMERICAL.Splev` — arita 2-2
-
-```basic
-NUMERICAL.Splev   ' dal codice del progetto: shared/minitests/analysis/splev.bas:8
-```
-
-#### `NUMERICAL.Splrep` — arita 2-2
-
-```basic
-NUMERICAL.Splrep   ' dal codice del progetto: shared/minitests/analysis/splev.bas:6
-```
-
-#### `STATS.StdDev` — arita 1-1
-
-```basic
-STATS.StdDev   ' dal codice del progetto: shared/minitests/analysis/desc.bas:6
-```
-
-#### `NUMERICAL.Trapezoid` — arita 2-2
-
-```basic
-NUMERICAL.Trapezoid   ' dal codice del progetto: shared/minitests/analysis/num.bas:5
-```
-
-#### `STATS.Variance` — arita 1-1
-
-```basic
-STATS.Variance   ' dal codice del progetto: shared/minitests/analysis/desc.bas:7
-```
-
-#### `TIMESERIES.YuleWalker` — arita 2-2
-
-```basic
-TIMESERIES.YuleWalker   ' dal codice del progetto: shared/minitests/analysis/arr.bas:13
+AI.WORKFLOWSTEPS   ' dal codice del progetto: shared/minitests/ai/ai_all.bas:291
 ```
 
 #### `ARRAYS.AADD` — arita 2-2
@@ -2259,7 +1995,7 @@ BITS.PARITY   ' dal codice del progetto: shared/minitests/bits/bits_all.bas:26
 #### `BLOCKCHAIN.ABIDECODE` — arita 2-2
 
 ```basic
-BLOCKCHAIN.ABIDECODE   ' dal codice del progetto: shared/samples/Crypto/CryptoFullCoverage.bas:16
+BLOCKCHAIN.ABIDECODE   ' dal codice del progetto: shared/samples/Crypto/CryptoFullCoverage.bas:17
 ```
 
 #### `BLOCKCHAIN.ABIENCODE` — arita 1-2
@@ -2301,13 +2037,13 @@ BLOCKCHAIN.BLAKE2B256   ' nel codice a nome nudo: shared/minitests/blockchain/bl
 #### `BLOCKCHAIN.BLOCKDIFFICULTY` — arita 2-2
 
 ```basic
-BLOCKCHAIN.BLOCKDIFFICULTY   ' nel codice a nome nudo: shared/minitests/blockchain/blockchain_all.bas:78
+BLOCKCHAIN.BLOCKDIFFICULTY   ' nel codice a nome nudo: shared/minitests/blockchain/blockchain_all.bas:79
 ```
 
 #### `BLOCKCHAIN.BTCADDRFROMPUB` — arita 1-2
 
 ```basic
-BLOCKCHAIN.BTCADDRFROMPUB   ' nel codice a nome nudo: shared/minitests/blockchain/blockchain_all.bas:102
+BLOCKCHAIN.BTCADDRFROMPUB   ' nel codice a nome nudo: shared/minitests/blockchain/blockchain_all.bas:103
 ```
 
 #### `BLOCKCHAIN.CONTRACT` — arita 2-4
@@ -2325,7 +2061,7 @@ BLOCKCHAIN.DERIVEKEY   ' dal codice del progetto: shared/samples/Crypto/CryptoWa
 #### `BLOCKCHAIN.ETHADDRCHECKSUM` — arita 1-1
 
 ```basic
-BLOCKCHAIN.ETHADDRCHECKSUM   ' nel codice a nome nudo: shared/minitests/blockchain/blockchain_all.bas:96
+BLOCKCHAIN.ETHADDRCHECKSUM   ' nel codice a nome nudo: shared/minitests/blockchain/blockchain_all.bas:97
 ```
 
 #### `BLOCKCHAIN.ETHADDRFROMPUB` — arita 1-1
@@ -2373,7 +2109,7 @@ BLOCKCHAIN.RLPENCODE   ' nel codice a nome nudo: shared/minitests/blockchain/blo
 #### `BLOCKCHAIN.SECP256K1SIGN` — arita 2-2
 
 ```basic
-BLOCKCHAIN.SECP256K1SIGN   ' nel codice a nome nudo: shared/minitests/blockchain/blockchain_all.bas:109
+BLOCKCHAIN.SECP256K1SIGN   ' nel codice a nome nudo: shared/minitests/blockchain/blockchain_all.bas:110
 ```
 
 #### `BLOCKCHAIN.STRKECCAK256` — arita 1-1
@@ -2400,6 +2136,156 @@ BLOCKCHAIN.VARINTDECODE   ' nel codice a nome nudo: shared/minitests/blockchain/
 BLOCKCHAIN.VARINTENCODE   ' nel codice a nome nudo: shared/minitests/blockchain/blockchain_all.bas:29
 ```
 
+#### `BRAINS.Betweenness` — arita 1-1
+
+```basic
+BRAINS.BETWEENNESS   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:49
+```
+
+#### `BRAINS.Bfs` — arita 2-2
+
+```basic
+BRAINS.BFS   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:75
+```
+
+#### `BRAINS.Bipartite` — arita 1-1
+
+```basic
+BRAINS.BIPARTITE   ' dal codice del progetto: shared/minitests/graph/gen_GRAPH_Bipartite.bas:5
+```
+
+#### `BRAINS.ByFolder` — arita 2-2
+
+```basic
+BRAINS.BYFOLDER   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:63
+```
+
+#### `BRAINS.ByTag` — arita 2-2
+
+```basic
+BRAINS.BYTAG   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:61
+```
+
+#### `BRAINS.Clustering` — arita 2-2
+
+```basic
+BRAINS.CLUSTERING   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:51
+```
+
+#### `BRAINS.Connected` — arita 1-1
+
+```basic
+BRAINS.CONNECTED   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:39
+```
+
+#### `BRAINS.Dfs` — arita 2-2
+
+```basic
+BRAINS.DFS   ' dal codice del progetto: shared/minitests/graph/gen_GRAPH_Dfs.bas:5
+```
+
+#### `BRAINS.Diameter` — arita 1-1
+
+```basic
+BRAINS.DIAMETER   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:53
+```
+
+#### `BRAINS.Dijkstra` — arita 3-3
+
+```basic
+BRAINS.DIJKSTRA   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:69
+```
+
+#### `BRAINS.Dot` — arita 1-1
+
+```basic
+BRAINS.DOT   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:57
+```
+
+#### `BRAINS.Eccentricity` — arita 2-2
+
+```basic
+BRAINS.ECCENTRICITY   ' dal codice del progetto: shared/minitests/graph/gen_GRAPH_Eccentricity.bas:5
+```
+
+#### `BRAINS.HasCycle` — arita 1-1
+
+```basic
+BRAINS.HASCYCLE   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:67
+```
+
+#### `BRAINS.IsValid` — arita 1-1
+
+```basic
+BRAINS.ISVALID   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:65
+```
+
+#### `BRAINS.Louvain` — arita 1-1
+
+```basic
+BRAINS.LOUVAIN   ' dal codice del progetto: shared/minitests/graph/louvain_maxflow.bas:2
+```
+
+#### `BRAINS.MaxFlow` — arita 3-3
+
+```basic
+BRAINS.MAXFLOW   ' dal codice del progetto: shared/minitests/graph/louvain_maxflow.bas:2
+```
+
+#### `BRAINS.Mst` — arita 1-1
+
+```basic
+BRAINS.MST   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:55
+```
+
+#### `BRAINS.Neighbors` — arita 2-2
+
+```basic
+BRAINS.NEIGHBORS   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:33
+```
+
+#### `BRAINS.PageRank` — arita 1-2
+
+```basic
+BRAINS.PAGERANK   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:37
+```
+
+#### `BRAINS.Path` — arita 3-3
+
+```basic
+BRAINS.PATH   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:35
+```
+
+#### `BRAINS.QueryMulti` — arita 1-2
+
+```basic
+BRAINS.QUERYMULTI   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:77
+```
+
+#### `BRAINS.Stats` — arita 1-1
+
+```basic
+BRAINS.STATS   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:41
+```
+
+#### `BRAINS.StronglyConnected` — arita 1-1
+
+```basic
+BRAINS.STRONGLYCONNECTED   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:43
+```
+
+#### `BRAINS.Subgraph` — arita 2-3
+
+```basic
+BRAINS.SUBGRAPH   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:59
+```
+
+#### `BRAINS.TopoSort` — arita 1-1
+
+```basic
+BRAINS.TOPOSORT   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:45
+```
+
 #### `BROWSER.AccessTree` — arita 0-0
 
 ```basic
@@ -2409,7 +2295,7 @@ BROWSER.ACCESSTREE   ' dal codice del progetto: shared/minitests/browser/browser
 #### `BROWSER.Auth` — arita 2-2
 
 ```basic
-BROWSER.AUTH   ' dal codice del progetto: shared/minitests/browser/gen_BROWSER_Auth.bas:6
+BROWSER.AUTH   ' dal codice del progetto: shared/minitests/browser/browser_all.bas:11
 ```
 
 #### `BROWSER.ClearCookies` — arita 0-0
@@ -2421,7 +2307,7 @@ BROWSER.CLEARCOOKIES   ' dal codice del progetto: shared/minitests/browser/brows
 #### `BROWSER.Click` — arita 1-1
 
 ```basic
-BROWSER.CLICK   ' dal codice del progetto: shared/minitests/tool/gen_TOOL_Search.bas:1
+BROWSER.CLICK   ' dal codice del progetto: shared/minitests/browser/browser_all.bas:18
 ```
 
 #### `BROWSER.Console` — arita 0-1
@@ -2439,7 +2325,7 @@ BROWSER.EVALUATE   ' dal codice del progetto: shared/minitests/browser/browser_m
 #### `BROWSER.Fill` — arita 2-2
 
 ```basic
-BROWSER.FILL   ' dal codice del progetto: shared/minitests/arrays/array_nome_builtin.bas:1
+BROWSER.FILL   ' dal codice del progetto: shared/minitests/browser/browser_all.bas:21
 ```
 
 #### `BROWSER.Find` — arita 1-2
@@ -2481,19 +2367,19 @@ BROWSER.NAVIGATE   ' dal codice del progetto: shared/minitests/browser/browser_m
 #### `BROWSER.NetLog` — arita 0-1
 
 ```basic
-BROWSER.NETLOG   ' dal codice del progetto: shared/minitests/browser/gen_BROWSER_NetLog.bas:5
+BROWSER.NETLOG   ' dal codice del progetto: shared/minitests/browser/browser_all.bas:28
 ```
 
 #### `BROWSER.Observe` — arita 0-1
 
 ```basic
-BROWSER.OBSERVE   ' dal codice del progetto: shared/minitests/browser/gen_BROWSER_Observe.bas:5
+BROWSER.OBSERVE   ' dal codice del progetto: shared/minitests/browser/browser_all.bas:29
 ```
 
 #### `BROWSER.Screenshot` — arita 0-1
 
 ```basic
-BROWSER.SCREENSHOT   ' nel codice a nome nudo: shared/minitests/ai/observe_screen.bas:18
+BROWSER.SCREENSHOT   ' dal codice del progetto: shared/minitests/browser/browser_all.bas:30
 ```
 
 #### `BROWSER.SetCookie` — arita 2-3
@@ -2505,7 +2391,7 @@ BROWSER.SETCOOKIE   ' dal codice del progetto: shared/minitests/browser/browser_
 #### `BROWSER.SetHeader` — arita 2-2
 
 ```basic
-BROWSER.SETHEADER   ' nel codice a nome nudo: shared/minitests/http/http_fetchresult_headers.bas:13
+BROWSER.SETHEADER   ' dal codice del progetto: shared/minitests/browser/browser_all.bas:32
 ```
 
 #### `BROWSER.SetUserAgent` — arita 1-1
@@ -2919,7 +2805,7 @@ CONTROLS.MOUSEPRESSED   ' dal codice del progetto: shared/minitests/controls/con
 #### `CONVERSIONS.Bin` — arita 1-1
 
 ```basic
-CONVERSIONS.BIN   ' dal codice del progetto: shared/samples/Math/MathExtended.bas:54
+CONVERSIONS.BIN   ' dal codice del progetto: shared/samples/Math/MathExtended.bas:53
 ```
 
 #### `CONVERSIONS.CByte` — arita 1-1
@@ -2967,13 +2853,13 @@ CONVERSIONS.CSTR   ' dal codice del progetto: shared/minitests/clipper/dbf_bare_
 #### `CONVERSIONS.Hex` — arita 1-1
 
 ```basic
-CONVERSIONS.HEX   ' dal codice del progetto: shared/samples/Math/MathExtended.bas:52
+CONVERSIONS.HEX   ' dal codice del progetto: shared/samples/Math/MathExtended.bas:51
 ```
 
 #### `CONVERSIONS.Oct` — arita 1-1
 
 ```basic
-CONVERSIONS.OCT   ' dal codice del progetto: shared/samples/Math/MathExtended.bas:53
+CONVERSIONS.OCT   ' dal codice del progetto: shared/samples/Math/MathExtended.bas:52
 ```
 
 #### `CONVERSIONS.Val` — arita 1-1
@@ -3627,7 +3513,7 @@ DATETIME.YEAR   ' dal codice del progetto: shared/minitests/datetime/ymd.bas:3
 #### `DBF.ALIAS` — arita 0-1
 
 ```basic
-DBF.ALIAS   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:42
+DBF.ALIAS   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:47
 ```
 
 #### `DBF.APPENDMANY` — arita 1-1
@@ -3663,31 +3549,31 @@ DBF.APPLYREPLICATION   ' dal codice del progetto: shared/minitests/dbf/dbf_repli
 #### `DBF.BEGINGROUPCOMMIT` — arita 0-0
 
 ```basic
-DBF.BEGINGROUPCOMMIT   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:106
+DBF.BEGINGROUPCOMMIT   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:112
 ```
 
 #### `DBF.BEGINGROUPCOMMIT` — arita 0-1
 
 ```basic
-DBF.BEGINGROUPCOMMIT   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:106
+DBF.BEGINGROUPCOMMIT   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:112
 ```
 
 #### `DBF.BEGINGROUPCOMMIT` — arita 0-1
 
 ```basic
-DBF.BEGINGROUPCOMMIT   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:106
+DBF.BEGINGROUPCOMMIT   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:112
 ```
 
 #### `DBF.BOF` — arita 0-0
 
 ```basic
-DBF.BOF   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:53
+DBF.BOF   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:59
 ```
 
 #### `DBF.DBFILTER` — arita 0-1
 
 ```basic
-DBF.DBFILTER   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:49
+DBF.DBFILTER   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:54
 ```
 
 #### `DBF.DBRELATION` — arita 0-1
@@ -3699,25 +3585,25 @@ DBF.DBRELATION   ' dal codice del progetto: shared/minitests/dbf/dbf_index_relat
 #### `DBF.DELETED` — arita 0-1
 
 ```basic
-DBF.DELETED   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:47
+DBF.DELETED   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:52
 ```
 
 #### `DBF.ENDGROUPCOMMIT` — arita 0-0
 
 ```basic
-DBF.ENDGROUPCOMMIT   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:107
+DBF.ENDGROUPCOMMIT   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:113
 ```
 
 #### `DBF.ENDGROUPCOMMIT` — arita 0-1
 
 ```basic
-DBF.ENDGROUPCOMMIT   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:107
+DBF.ENDGROUPCOMMIT   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:113
 ```
 
 #### `DBF.ENDGROUPCOMMIT` — arita 0-1
 
 ```basic
-DBF.ENDGROUPCOMMIT   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:107
+DBF.ENDGROUPCOMMIT   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:113
 ```
 
 #### `DBF.EOF` — arita 0-0
@@ -3729,31 +3615,31 @@ DBF.EOF   ' dal codice del progetto: shared/minitests/dbf/dbf_bit_replace.bas:32
 #### `DBF.FIELDNAME` — arita 1-2
 
 ```basic
-DBF.FIELDNAME   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:46
+DBF.FIELDNAME   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:51
 ```
 
 #### `DBF.FLOCK` — arita 0-1
 
 ```basic
-DBF.FLOCK   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:102
+DBF.FLOCK   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:108
 ```
 
 #### `DBF.FLUSHDURABILITY` — arita 0-0
 
 ```basic
-DBF.FLUSHDURABILITY   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:105
+DBF.FLUSHDURABILITY   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:111
 ```
 
 #### `DBF.FLUSHDURABILITY` — arita 0-1
 
 ```basic
-DBF.FLUSHDURABILITY   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:105
+DBF.FLUSHDURABILITY   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:111
 ```
 
 #### `DBF.FLUSHDURABILITY` — arita 0-1
 
 ```basic
-DBF.FLUSHDURABILITY   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:105
+DBF.FLUSHDURABILITY   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:111
 ```
 
 #### `DBF.FOLLOWREPLICATION` — arita 0-0
@@ -3771,7 +3657,7 @@ DBF.FOLLOWREPLICATION   ' dal codice del progetto: shared/minitests/dbf/dbf_repl
 #### `DBF.FOUND` — arita 0-0
 
 ```basic
-DBF.FOUND   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:130
+DBF.FOUND   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:136
 ```
 
 #### `DBF.INDEXKEY` — arita 0-1
@@ -3795,7 +3681,7 @@ DBF.LASTREC   ' dal codice del progetto: shared/minitests/dbf/dbf_join_multimatc
 #### `DBF.LOOKUP` — arita 4-4
 
 ```basic
-DBF.LOOKUP   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:112
+DBF.LOOKUP   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:118
 ```
 
 #### `DBF.LUPDATE` — arita 0-0
@@ -3807,73 +3693,73 @@ DBF.LUPDATE   ' dal codice del progetto: shared/minitests/dbf/dbf_replication.ba
 #### `DBF.NETERR` — arita 0-0
 
 ```basic
-DBF.NETERR   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:48
+DBF.NETERR   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:53
 ```
 
 #### `DBF.RECNO` — arita 0-0
 
 ```basic
-DBF.RECNO   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:44
+DBF.RECNO   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:49
 ```
 
 #### `DBF.RECSIZE` — arita 0-1
 
 ```basic
-DBF.RECSIZE   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:45
+DBF.RECSIZE   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:50
 ```
 
 #### `DBF.REPLICATIONRECV` — arita 1-1
 
 ```basic
-DBF.REPLICATIONRECV   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:194
+DBF.REPLICATIONRECV   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:200
 ```
 
 #### `DBF.REPLICATIONRECV` — arita 2-2
 
 ```basic
-DBF.REPLICATIONRECV   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:194
+DBF.REPLICATIONRECV   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:200
 ```
 
 #### `DBF.REPLICATIONSHIP` — arita 2-2
 
 ```basic
-DBF.REPLICATIONSHIP   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:193
+DBF.REPLICATIONSHIP   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:199
 ```
 
 #### `DBF.REPLICATIONSHIP` — arita 3-3
 
 ```basic
-DBF.REPLICATIONSHIP   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:193
+DBF.REPLICATIONSHIP   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:199
 ```
 
 #### `DBF.RLOCK` — arita 0-1
 
 ```basic
-DBF.RLOCK   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:101
+DBF.RLOCK   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:107
 ```
 
-#### `DBF.SELECTED` — arita 0-0
+#### `DBF.SELECTED` — arita 0-1
 
 ```basic
-DBF.SELECTED   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:41
+DBF.SELECTED   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:46
 ```
 
 #### `DBF.SETDURABILITY` — arita 1-1
 
 ```basic
-DBF.SETDURABILITY   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:104
+DBF.SETDURABILITY   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:110
 ```
 
 #### `DBF.SETDURABILITY` — arita 2-2
 
 ```basic
-DBF.SETDURABILITY   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:104
+DBF.SETDURABILITY   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:110
 ```
 
 #### `DBF.SETDURABILITY` — arita 2-2
 
 ```basic
-DBF.SETDURABILITY   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:104
+DBF.SETDURABILITY   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:110
 ```
 
 #### `DBF.SETREPLICATION` — arita 1-1
@@ -3897,43 +3783,55 @@ DBF.SETREPLICATION   ' dal codice del progetto: shared/minitests/dbf/dbf_replica
 #### `DBF.USED` — arita 0-1
 
 ```basic
-DBF.USED   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:40
+DBF.USED   ' dal codice del progetto: shared/minitests/dbf/dbf_all.bas:45
+```
+
+#### `ENV.ENV` — arita 1-1
+
+```basic
+' ENV.ENV(...) — esempio sintetico: firma con arita 1-1, nessun uso nel corpus ne nelle guide
+```
+
+#### `ENV.HAS` — arita 1-1
+
+```basic
+ENV.HAS   ' dal codice del progetto: shared/minitests/system/env_read.bas:1
 ```
 
 #### `FINANCE.CUMIPMT` — arita 6-6
 
 ```basic
-FINANCE.CUMIPMT   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:26
+FINANCE.CUMIPMT   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:27
 ```
 
 #### `FINANCE.CUMPRINC` — arita 6-6
 
 ```basic
-FINANCE.CUMPRINC   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:27
+FINANCE.CUMPRINC   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:28
 ```
 
 #### `FINANCE.DAYS360` — arita 2-3
 
 ```basic
-FINANCE.DAYS360   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:52
+FINANCE.DAYS360   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:53
 ```
 
 #### `FINANCE.DB` — arita 5-5
 
 ```basic
-FINANCE.DB   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:32
+FINANCE.DB   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:33
 ```
 
 #### `FINANCE.DDB` — arita 5-5
 
 ```basic
-FINANCE.DDB   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:33
+FINANCE.DDB   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:34
 ```
 
 #### `FINANCE.FV` — arita 3-5
 
 ```basic
-FINANCE.FV   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:20
+FINANCE.FV   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:21
 ```
 
 #### `FINANCE.FVEXT` — arita 3-5
@@ -3945,31 +3843,31 @@ FINANCE.FVEXT   ' dal codice del progetto: shared/minitests/finance/fvext.bas:3
 #### `FINANCE.IRR` — arita 1-2
 
 ```basic
-FINANCE.IRR   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:40
+FINANCE.IRR   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:41
 ```
 
 #### `FINANCE.MIRR` — arita 3-3
 
 ```basic
-FINANCE.MIRR   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:41
+FINANCE.MIRR   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:42
 ```
 
 #### `FINANCE.MNPV` — arita 2-2
 
 ```basic
-FINANCE.MNPV   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:39
+FINANCE.MNPV   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:40
 ```
 
 #### `FINANCE.NPER` — arita 3-5
 
 ```basic
-FINANCE.NPER   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:22
+FINANCE.NPER   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:23
 ```
 
 #### `FINANCE.NPEREXT` — arita 3-5
 
 ```basic
-FINANCE.NPEREXT   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:23
+FINANCE.NPEREXT   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:24
 ```
 
 #### `FINANCE.NPV` — arita 1-2
@@ -3999,7 +3897,7 @@ FINANCE.PV   ' dal codice del progetto: shared/minitests/finance/pv.bas:3
 #### `FINANCE.PVEXT` — arita 3-5
 
 ```basic
-FINANCE.PVEXT   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:19
+FINANCE.PVEXT   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:20
 ```
 
 #### `FINANCE.RATE` — arita 3-6
@@ -4011,31 +3909,31 @@ FINANCE.RATE   ' dal codice del progetto: shared/minitests/finance/rate.bas:3
 #### `FINANCE.SLN` — arita 3-3
 
 ```basic
-FINANCE.SLN   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:30
+FINANCE.SLN   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:31
 ```
 
 #### `FINANCE.SYD` — arita 4-4
 
 ```basic
-FINANCE.SYD   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:31
+FINANCE.SYD   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:32
 ```
 
 #### `FINANCE.XIRR` — arita 2-3
 
 ```basic
-FINANCE.XIRR   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:48
+FINANCE.XIRR   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:49
 ```
 
 #### `FINANCE.XNPV` — arita 3-3
 
 ```basic
-FINANCE.XNPV   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:49
+FINANCE.XNPV   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:50
 ```
 
 #### `FINANCE.YEARFRAC` — arita 2-3
 
 ```basic
-FINANCE.YEARFRAC   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:54
+FINANCE.YEARFRAC   ' dal codice del progetto: shared/minitests/finance/finance_all.bas:55
 ```
 
 #### `FONTS.TTGLYPHS` — arita 1-1
@@ -4054,156 +3952,6 @@ FONTS.TTMETRICS   ' dal codice del progetto: shared/minitests/fonts/tt_functions
 
 ```basic
 FONTS.TTRENDER   ' dal codice del progetto: shared/minitests/fonts/tt_functions.bas:1
-```
-
-#### `GRAPH.Betweenness` — arita 1-1
-
-```basic
-GRAPH.BETWEENNESS   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:49
-```
-
-#### `GRAPH.Bfs` — arita 2-2
-
-```basic
-GRAPH.BFS   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:75
-```
-
-#### `GRAPH.Bipartite` — arita 1-1
-
-```basic
-GRAPH.BIPARTITE   ' dal codice del progetto: shared/minitests/graph/gen_GRAPH_Bipartite.bas:5
-```
-
-#### `GRAPH.ByFolder` — arita 2-2
-
-```basic
-GRAPH.BYFOLDER   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:63
-```
-
-#### `GRAPH.ByTag` — arita 2-2
-
-```basic
-GRAPH.BYTAG   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:61
-```
-
-#### `GRAPH.Clustering` — arita 2-2
-
-```basic
-GRAPH.CLUSTERING   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:51
-```
-
-#### `GRAPH.Connected` — arita 1-1
-
-```basic
-GRAPH.CONNECTED   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:39
-```
-
-#### `GRAPH.Dfs` — arita 2-2
-
-```basic
-GRAPH.DFS   ' dal codice del progetto: shared/minitests/graph/gen_GRAPH_Dfs.bas:5
-```
-
-#### `GRAPH.Diameter` — arita 1-1
-
-```basic
-GRAPH.DIAMETER   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:53
-```
-
-#### `GRAPH.Dijkstra` — arita 3-3
-
-```basic
-GRAPH.DIJKSTRA   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:69
-```
-
-#### `GRAPH.Dot` — arita 1-1
-
-```basic
-GRAPH.DOT   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:57
-```
-
-#### `GRAPH.Eccentricity` — arita 2-2
-
-```basic
-GRAPH.ECCENTRICITY   ' dal codice del progetto: shared/minitests/graph/gen_GRAPH_Eccentricity.bas:5
-```
-
-#### `GRAPH.HasCycle` — arita 1-1
-
-```basic
-GRAPH.HASCYCLE   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:67
-```
-
-#### `GRAPH.IsValid` — arita 1-1
-
-```basic
-GRAPH.ISVALID   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:65
-```
-
-#### `GRAPH.Louvain` — arita 1-1
-
-```basic
-GRAPH.LOUVAIN   ' dal codice del progetto: shared/minitests/graph/louvain_maxflow.bas:2
-```
-
-#### `GRAPH.MaxFlow` — arita 3-3
-
-```basic
-GRAPH.MAXFLOW   ' dal codice del progetto: shared/minitests/graph/louvain_maxflow.bas:2
-```
-
-#### `GRAPH.Mst` — arita 1-1
-
-```basic
-GRAPH.MST   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:55
-```
-
-#### `GRAPH.Neighbors` — arita 2-2
-
-```basic
-GRAPH.NEIGHBORS   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:33
-```
-
-#### `GRAPH.PageRank` — arita 1-2
-
-```basic
-GRAPH.PAGERANK   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:37
-```
-
-#### `GRAPH.Path` — arita 3-3
-
-```basic
-GRAPH.PATH   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:35
-```
-
-#### `GRAPH.QueryMulti` — arita 1-2
-
-```basic
-GRAPH.QUERYMULTI   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:77
-```
-
-#### `GRAPH.Stats` — arita 1-1
-
-```basic
-GRAPH.STATS   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:41
-```
-
-#### `GRAPH.StronglyConnected` — arita 1-1
-
-```basic
-GRAPH.STRONGLYCONNECTED   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:43
-```
-
-#### `GRAPH.Subgraph` — arita 2-3
-
-```basic
-GRAPH.SUBGRAPH   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:59
-```
-
-#### `GRAPH.TopoSort` — arita 1-1
-
-```basic
-GRAPH.TOPOSORT   ' dal codice del progetto: shared/minitests/graph/graph_all.bas:45
 ```
 
 #### `GRAPHICS.C2PX` — arita 1-2
@@ -4557,7 +4305,7 @@ IO.TEMPFILE   ' dal codice del progetto: shared/minitests/io/tempdir_names.bas:1
 #### `IO.WriteBytes` — arita 2-2
 
 ```basic
-IO.WRITEBYTES   ' dal codice del progetto: shared/minitests/io/writebytes.bas:1
+IO.WRITEBYTES   ' dal codice del progetto: shared/minitests/io/io_all.bas:83
 ```
 
 #### `ISAM.APPENDMANY` — arita 1-1
@@ -4605,37 +4353,37 @@ ISAM.BOF   ' dal codice del progetto: shared/minitests/dbf/isam_protocol41.bas:7
 #### `ISAM.DBFILTER` — arita 0-1
 
 ```basic
-ISAM.DBFILTER   ' dal codice del progetto: shared/minitests/isam/isam_all.bas:37
+ISAM.DBFILTER   ' dal codice del progetto: shared/minitests/isam/isam_all.bas:39
 ```
 
 #### `ISAM.DBFILTER` — arita 0-1
 
 ```basic
-ISAM.DBFILTER   ' dal codice del progetto: shared/minitests/isam/isam_all.bas:37
+ISAM.DBFILTER   ' dal codice del progetto: shared/minitests/isam/isam_all.bas:39
 ```
 
 #### `ISAM.DBRELATION` — arita 0-1
 
 ```basic
-ISAM.DBRELATION   ' dal codice del progetto: shared/minitests/isam/isam_all.bas:38
+ISAM.DBRELATION   ' dal codice del progetto: shared/minitests/isam/isam_all.bas:41
 ```
 
 #### `ISAM.DBRELATION` — arita 0-1
 
 ```basic
-ISAM.DBRELATION   ' dal codice del progetto: shared/minitests/isam/isam_all.bas:38
+ISAM.DBRELATION   ' dal codice del progetto: shared/minitests/isam/isam_all.bas:41
 ```
 
 #### `ISAM.DELETED` — arita 0-1
 
 ```basic
-ISAM.DELETED   ' dal codice del progetto: shared/minitests/isam/isam_all.bas:39
+ISAM.DELETED   ' dal codice del progetto: shared/minitests/isam/isam_all.bas:42
 ```
 
 #### `ISAM.DELETED` — arita 0-1
 
 ```basic
-ISAM.DELETED   ' dal codice del progetto: shared/minitests/isam/isam_all.bas:39
+ISAM.DELETED   ' dal codice del progetto: shared/minitests/isam/isam_all.bas:42
 ```
 
 #### `ISAM.EOF` — arita 0-1
@@ -4671,25 +4419,25 @@ ISAM.FOUND   ' dal codice del progetto: shared/minitests/dbf/isam_protocol41.bas
 #### `ISAM.INDEXKEY` — arita 0-1
 
 ```basic
-ISAM.INDEXKEY   ' dal codice del progetto: shared/minitests/isam/isam_all.bas:36
+ISAM.INDEXKEY   ' dal codice del progetto: shared/minitests/isam/isam_all.bas:38
 ```
 
 #### `ISAM.INDEXKEY` — arita 0-1
 
 ```basic
-ISAM.INDEXKEY   ' dal codice del progetto: shared/minitests/isam/isam_all.bas:36
+ISAM.INDEXKEY   ' dal codice del progetto: shared/minitests/isam/isam_all.bas:38
 ```
 
 #### `ISAM.INDEXORD` — arita 0-1
 
 ```basic
-ISAM.INDEXORD   ' dal codice del progetto: shared/minitests/isam/isam_all.bas:35
+ISAM.INDEXORD   ' dal codice del progetto: shared/minitests/isam/isam_all.bas:37
 ```
 
 #### `ISAM.INDEXORD` — arita 0-1
 
 ```basic
-ISAM.INDEXORD   ' dal codice del progetto: shared/minitests/isam/isam_all.bas:35
+ISAM.INDEXORD   ' dal codice del progetto: shared/minitests/isam/isam_all.bas:37
 ```
 
 #### `ISAM.INFO` — arita 0-1
@@ -4725,13 +4473,13 @@ ISAM.LASTREC   ' dal codice del progetto: shared/minitests/dbf/isam_commands.bas
 #### `ISAM.LOG` — arita 0-1
 
 ```basic
-ISAM.LOG   ' nel codice a nome nudo: shared/minitests/misc/explog.bas:4
+ISAM.LOG   ' dal codice del progetto: shared/minitests/isam/isam_all.bas:52
 ```
 
 #### `ISAM.LOG` — arita 0-1
 
 ```basic
-ISAM.LOG   ' nel codice a nome nudo: shared/minitests/misc/explog.bas:4
+ISAM.LOG   ' dal codice del progetto: shared/minitests/isam/isam_all.bas:52
 ```
 
 #### `ISAM.RECNO` — arita 0-1
@@ -4803,7 +4551,7 @@ ISAM.SETREPLICATION   ' dal codice del progetto: shared/minitests/dbf/isam_repli
 #### `ISAM.USED` — arita 0-1
 
 ```basic
-ISAM.USED   ' dal codice del progetto: shared/minitests/isam/isam_all.bas:27
+ISAM.USED   ' dal codice del progetto: shared/minitests/isam/isam_all.bas:29
 ```
 
 #### `JOY.AVAILABLE` — arita 1-1
@@ -4869,7 +4617,7 @@ JSON.READVALUE   ' dal codice del progetto: shared/minitests/json/json_all.bas:6
 #### `JSON.Stringify` — arita 1-1
 
 ```basic
-JSON.STRINGIFY   ' dal codice del progetto: shared/minitests/isam/isam_all.bas:45
+JSON.STRINGIFY   ' dal codice del progetto: shared/minitests/isam/isam_all.bas:59
 ```
 
 #### `JSON.ToJson` — arita 1-1
@@ -4887,7 +4635,7 @@ JSON.TOOBJECT   ' dal codice del progetto: shared/minitests/types/udt_json_list.
 #### `KDTREE.CREATE` — arita 2-2
 
 ```basic
-KDTREE.CREATE   ' dal codice del progetto: shared/minitests/kdtree/query.bas:8
+KDTREE.CREATE   ' dal codice del progetto: shared/minitests/kdtree/query.bas:7
 ```
 
 #### `KDTREE.QUERY` — arita 3-3
@@ -4899,13 +4647,13 @@ KDTREE.QUERY   ' dal codice del progetto: shared/minitests/kdtree/query.bas:1
 #### `KDTREE.QUERYBALL` — arita 3-3
 
 ```basic
-KDTREE.QUERYBALL   ' dal codice del progetto: shared/minitests/kdtree/query.bas:14
+KDTREE.QUERYBALL   ' dal codice del progetto: shared/minitests/kdtree/query.bas:13
 ```
 
 #### `KDTREE.QUERYDIST` — arita 3-3
 
 ```basic
-KDTREE.QUERYDIST   ' dal codice del progetto: shared/minitests/kdtree/query.bas:12
+KDTREE.QUERYDIST   ' dal codice del progetto: shared/minitests/kdtree/query.bas:11
 ```
 
 #### `LEDGER.ACCOUNTS` — arita 1-2
@@ -5010,238 +4758,436 @@ LEDGER.VALIDATE   ' dal codice del progetto: shared/minitests/ledger/ledger_curs
 LEDGER.VARIANCE   ' dal codice del progetto: shared/minitests/ledger/ledger_cursor_detail.bas:46
 ```
 
+#### `LINALG.CHOLESKY` — arita 1-1
+
+```basic
+LINALG.CHOLESKY   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:243
+```
+
+#### `LINALG.COND` — arita 1-1
+
+```basic
+LINALG.COND   ' dal codice del progetto: shared/minitests/matrix/handles.bas:10
+```
+
+#### `LINALG.COSM` — arita 1-1
+
+```basic
+LINALG.COSM   ' dal codice del progetto: shared/minitests/matrix/handles2.bas:8
+```
+
+#### `LINALG.DETERMINANT` — arita 1-1
+
+```basic
+LINALG.DETERMINANT   ' dal codice del progetto: shared/minitests/matrix/handles.bas:6
+```
+
+#### `LINALG.EIG` — arita 1-1
+
+```basic
+LINALG.EIG   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:225
+```
+
+#### `LINALG.EVD` — arita 1-1
+
+```basic
+LINALG.EVD   ' dal codice del progetto: shared/minitests/matrix/gen_MATRIX_EVD.bas:6
+```
+
+#### `LINALG.EXPM` — arita 1-1
+
+```basic
+LINALG.EXPM   ' dal codice del progetto: shared/minitests/matrix/handles.bas:19
+```
+
+#### `LINALG.FACTOR` — arita 2-2
+
+```basic
+LINALG.FACTOR   ' dal codice del progetto: shared/minitests/matrix/schur.bas:6
+```
+
+#### `LINALG.FRACTIONALPOWER` — arita 2-2
+
+```basic
+LINALG.FRACTIONALPOWER   ' dal codice del progetto: shared/minitests/matrix/gen_MATRIX_FRACTIONALPOWER.bas:6
+```
+
+#### `LINALG.FROBENIUSNORM` — arita 1-1
+
+```basic
+LINALG.FROBENIUSNORM   ' dal codice del progetto: shared/minitests/matrix/slice.bas:6
+```
+
+#### `LINALG.HESSENBERG` — arita 1-1
+
+```basic
+LINALG.HESSENBERG   ' dal codice del progetto: shared/minitests/matrix/handles2.bas:6
+```
+
+#### `LINALG.INFINITYNORM` — arita 1-1
+
+```basic
+LINALG.INFINITYNORM   ' dal codice del progetto: shared/minitests/matrix/matrix_ops.bas:18
+```
+
+#### `LINALG.INVERSE` — arita 1-1
+
+```basic
+LINALG.INVERSE   ' dal codice del progetto: shared/minitests/matrix/handles.bas:11
+```
+
+#### `LINALG.LOGM` — arita 1-1
+
+```basic
+LINALG.LOGM   ' dal codice del progetto: shared/minitests/matrix/handles.bas:17
+```
+
+#### `LINALG.LU` — arita 1-1
+
+```basic
+LINALG.LU   ' dal codice del progetto: shared/minitests/matrix/gen_MATRIX_LU.bas:6
+```
+
+#### `LINALG.NORM` — arita 1-1
+
+```basic
+LINALG.NORM   ' dal codice del progetto: shared/minitests/matrix/handles.bas:9
+```
+
+#### `LINALG.NUCLEARNORM` — arita 1-1
+
+```basic
+LINALG.NUCLEARNORM   ' dal codice del progetto: shared/minitests/matrix/gen_MATRIX_NUCLEARNORM.bas:6
+```
+
+#### `LINALG.NULLSPACE` — arita 1-1
+
+```basic
+LINALG.NULLSPACE   ' dal codice del progetto: shared/minitests/matrix/gen_MATRIX_NULLSPACE.bas:6
+```
+
+#### `LINALG.ONENORM` — arita 1-1
+
+```basic
+LINALG.ONENORM   ' dal codice del progetto: shared/minitests/matrix/matrix_ops.bas:17
+```
+
+#### `LINALG.ORTH` — arita 1-1
+
+```basic
+LINALG.ORTH   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:169
+```
+
+#### `LINALG.PINVERSE` — arita 1-1
+
+```basic
+LINALG.PINVERSE   ' dal codice del progetto: shared/minitests/matrix/pinv.bas:7
+```
+
+#### `LINALG.POLAR` — arita 1-1
+
+```basic
+LINALG.POLAR   ' dal codice del progetto: shared/minitests/matrix/polar.bas:6
+```
+
+#### `LINALG.QR` — arita 1-1
+
+```basic
+LINALG.QR   ' dal codice del progetto: shared/minitests/matrix/gen_MATRIX_QR.bas:6
+```
+
+#### `LINALG.RANK` — arita 1-1
+
+```basic
+LINALG.RANK   ' dal codice del progetto: shared/minitests/matrix/handles.bas:8
+```
+
+#### `LINALG.SCHUR` — arita 1-1
+
+```basic
+LINALG.SCHUR   ' dal codice del progetto: shared/minitests/matrix/schur.bas:6
+```
+
+#### `LINALG.SIGNM` — arita 1-1
+
+```basic
+LINALG.SIGNM   ' dal codice del progetto: shared/minitests/matrix/handles2.bas:12
+```
+
+#### `LINALG.SINM` — arita 1-1
+
+```basic
+LINALG.SINM   ' dal codice del progetto: shared/minitests/matrix/handles2.bas:10
+```
+
+#### `LINALG.SOLVE` — arita 2-2
+
+```basic
+LINALG.SOLVE   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:352
+```
+
+#### `LINALG.SOLVETRIANGULAR` — arita 3-3
+
+```basic
+LINALG.SOLVETRIANGULAR   ' dal codice del progetto: shared/minitests/matrix/gen_MATRIX_SOLVETRIANGULAR.bas:8
+```
+
+#### `LINALG.SQRTM` — arita 1-1
+
+```basic
+LINALG.SQRTM   ' dal codice del progetto: shared/minitests/matrix/handles.bas:15
+```
+
+#### `LINALG.SUBSPACEANGLES` — arita 2-2
+
+```basic
+LINALG.SUBSPACEANGLES   ' dal codice del progetto: shared/minitests/matrix/gen_MATRIX_SUBSPACEANGLES.bas:10
+```
+
+#### `LINALG.SVD` — arita 1-1
+
+```basic
+LINALG.SVD   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:385
+```
+
+#### `LINALG.TANM` — arita 1-1
+
+```basic
+LINALG.TANM   ' dal codice del progetto: shared/minitests/matrix/tanm.bas:6
+```
+
 #### `LLM.Arch` — arita 1-4
 
 ```basic
-LLM.ARCH   ' dal codice del progetto: shared/minitests/llm/llm_surface_value.bas:2
+LLM.ARCH   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:30
 ```
 
 #### `LLM.BenchResult` — arita 1-1
 
 ```basic
-LLM.BENCHRESULT   ' dal codice del progetto: shared/minitests/ai/gen_AI_BenchResult.bas:6
+LLM.BENCHRESULT   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:31
 ```
 
 #### `LLM.CacheStats` — arita 1-1
 
 ```basic
-LLM.CACHESTATS   ' dal codice del progetto: shared/minitests/ai/gen_AI_CacheStats.bas:6
+LLM.CACHESTATS   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:32
 ```
 
 #### `LLM.Callmap` — arita 1-1
 
 ```basic
-LLM.CALLMAP   ' dal codice del progetto: shared/minitests/llm/llm_callmap_self.bas:9
+LLM.CALLMAP   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:23
 ```
 
 #### `LLM.CheckRev` — arita 1-1
 
 ```basic
-LLM.CHECKREV   ' dal codice del progetto: shared/minitests/ai/ai_checkrev.bas:7
+LLM.CHECKREV   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:33
 ```
 
 #### `LLM.Commit` — arita 0-0
 
 ```basic
-LLM.COMMIT   ' dal codice del progetto: shared/minitests/llm/llm_verify_commit.bas:3
+LLM.COMMIT   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:34
 ```
 
 #### `LLM.Context` — arita 1-2
 
 ```basic
-LLM.CONTEXT   ' dal codice del progetto: shared/minitests/ai/ai_context.bas:13
+LLM.CONTEXT   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:21
 ```
 
 #### `LLM.DatasetStats` — arita 1-1
 
 ```basic
-LLM.DATASETSTATS   ' dal codice del progetto: shared/minitests/train/train_dataset_stats.bas:1
+LLM.DATASETSTATS   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:35
 ```
 
 #### `LLM.DecodeStats` — arita 1-1
 
 ```basic
-LLM.DECODESTATS   ' dal codice del progetto: shared/minitests/ai/gen_AI_DecodeStats.bas:6
+LLM.DECODESTATS   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:36
 ```
 
 #### `LLM.Detokenize` — arita 2-2
 
 ```basic
-LLM.DETOKENIZE   ' dal codice del progetto: shared/minitests/llm/llm_surface_value.bas:2
+LLM.DETOKENIZE   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:37
 ```
 
 #### `LLM.DistillCkpt` — arita 0-0
 
 ```basic
-LLM.DISTILLCKPT   ' dal codice del progetto: shared/minitests/ai/distill_train.bas:12
+LLM.DISTILLCKPT   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:38
 ```
 
 #### `LLM.DistillDone` — arita 0-0
 
 ```basic
-LLM.DISTILLDONE   ' dal codice del progetto: shared/minitests/ai/distill_train.bas:11
+LLM.DISTILLDONE   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:39
 ```
 
 #### `LLM.DistillEvalAccept` — arita 1-1
 
 ```basic
-LLM.DISTILLEVALACCEPT   ' dal codice del progetto: shared/minitests/ai/distill_eval.bas:10
+LLM.DISTILLEVALACCEPT   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:40
 ```
 
 #### `LLM.DistillEvalPass` — arita 1-1
 
 ```basic
-LLM.DISTILLEVALPASS   ' dal codice del progetto: shared/minitests/ai/distill_eval.bas:9
+LLM.DISTILLEVALPASS   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:41
 ```
 
 #### `LLM.DistillEvalTok` — arita 1-1
 
 ```basic
-LLM.DISTILLEVALTOK   ' dal codice del progetto: shared/minitests/ai/distill_eval.bas:2
+LLM.DISTILLEVALTOK   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:42
 ```
 
 #### `LLM.DistillHold` — arita 0-0
 
 ```basic
-LLM.DISTILLHOLD   ' dal codice del progetto: shared/minitests/ai/distill_train.bas:10
+LLM.DISTILLHOLD   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:43
 ```
 
 #### `LLM.DistillLoss` — arita 0-0
 
 ```basic
-LLM.DISTILLLOSS   ' dal codice del progetto: shared/minitests/ai/distill_train.bas:2
+LLM.DISTILLLOSS   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:44
 ```
 
 #### `LLM.DistillSampleDone` — arita 0-0
 
 ```basic
-LLM.DISTILLSAMPLEDONE   ' dal codice del progetto: shared/minitests/ai/distill_sample.bas:3
+LLM.DISTILLSAMPLEDONE   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:45
 ```
 
 #### `LLM.DistillSampleFail` — arita 0-0
 
 ```basic
-LLM.DISTILLSAMPLEFAIL   ' dal codice del progetto: shared/minitests/ai/distill_sample.bas:3
+LLM.DISTILLSAMPLEFAIL   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:46
 ```
 
 #### `LLM.DistillSampleN` — arita 0-0
 
 ```basic
-LLM.DISTILLSAMPLEN   ' dal codice del progetto: shared/minitests/ai/distill_sample.bas:2
+LLM.DISTILLSAMPLEN   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:47
 ```
 
 #### `LLM.DistillStatus` — arita 0-0
 
 ```basic
-LLM.DISTILLSTATUS   ' dal codice del progetto: shared/minitests/ai/distill_build.bas:21
+LLM.DISTILLSTATUS   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:48
 ```
 
 #### `LLM.EvalGate` — arita 2-2
 
 ```basic
-LLM.EVALGATE   ' dal codice del progetto: shared/minitests/train/train_eval_gate.bas:1
+LLM.EVALGATE   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:49
 ```
 
 #### `LLM.FileOutline` — arita 1-1
 
 ```basic
-LLM.FILEOUTLINE   ' dal codice del progetto: shared/minitests/ai/ai_fileoutline.bas:2
+LLM.FILEOUTLINE   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:19
 ```
 
 #### `LLM.FindSymbol` — arita 1-1
 
 ```basic
-LLM.FINDSYMBOL   ' dal codice del progetto: shared/minitests/ai/ai_findsymbol.bas:10
+LLM.FINDSYMBOL   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:18
 ```
 
 #### `LLM.FinetuneBaseHold` — arita 0-0
 
 ```basic
-LLM.FINETUNEBASEHOLD   ' dal codice del progetto: shared/minitests/llm/llm_finetune_state.bas:11
+LLM.FINETUNEBASEHOLD   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:50
 ```
 
 #### `LLM.FinetuneBaseTrain` — arita 0-0
 
 ```basic
-LLM.FINETUNEBASETRAIN   ' dal codice del progetto: shared/minitests/llm/llm_finetune_state.bas:10
+LLM.FINETUNEBASETRAIN   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:51
 ```
 
 #### `LLM.FinetuneCkpt` — arita 0-0
 
 ```basic
-LLM.FINETUNECKPT   ' dal codice del progetto: shared/minitests/llm/llm_lora_apply_state.bas:13
+LLM.FINETUNECKPT   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:52
 ```
 
 #### `LLM.FinetuneDemoChanged` — arita 0-0
 
 ```basic
-LLM.FINETUNEDEMOCHANGED   ' dal codice del progetto: shared/minitests/llm/llm_finetune_state.bas:14
+LLM.FINETUNEDEMOCHANGED   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:53
 ```
 
 #### `LLM.FinetuneDone` — arita 0-0
 
 ```basic
-LLM.FINETUNEDONE   ' dal codice del progetto: shared/minitests/llm/llm_lora_apply_state.bas:14
+LLM.FINETUNEDONE   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:54
 ```
 
 #### `LLM.FinetuneGreedy` — arita 0-0
 
 ```basic
-LLM.FINETUNEGREEDY   ' dal codice del progetto: shared/minitests/llm/llm_finetune_state.bas:12
+LLM.FINETUNEGREEDY   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:55
 ```
 
 #### `LLM.FinetuneGreedyAfter` — arita 0-0
 
 ```basic
-LLM.FINETUNEGREEDYAFTER   ' dal codice del progetto: shared/minitests/llm/llm_finetune_state.bas:13
+LLM.FINETUNEGREEDYAFTER   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:56
 ```
 
 #### `LLM.FinetuneHold` — arita 0-0
 
 ```basic
-LLM.FINETUNEHOLD   ' dal codice del progetto: shared/minitests/llm/llm_finetune_state.bas:9
+LLM.FINETUNEHOLD   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:57
 ```
 
 #### `LLM.FinetuneLoss` — arita 0-0
 
 ```basic
-LLM.FINETUNELOSS   ' dal codice del progetto: shared/minitests/llm/llm_finetune_error_state.bas:15
+LLM.FINETUNELOSS   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:58
 ```
 
 #### `LLM.FinetuneStatus` — arita 0-0
 
 ```basic
-LLM.FINETUNESTATUS   ' dal codice del progetto: shared/minitests/llm/llm_lora_apply_state.bas:15
+LLM.FINETUNESTATUS   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:59
 ```
 
 #### `LLM.Impact` — arita 1-2
 
 ```basic
-LLM.IMPACT   ' dal codice del progetto: shared/minitests/ai/ai_impact.bas:13
+LLM.IMPACT   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:20
 ```
 
 #### `LLM.Inspect` — arita 1-1
 
 ```basic
-LLM.INSPECT   ' dal codice del progetto: shared/minitests/llm/llm_inspect.bas:2
+LLM.INSPECT   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:22
 ```
 
 #### `LLM.Kernel` — arita 1-4
 
 ```basic
-LLM.KERNEL   ' dal codice del progetto: shared/minitests/llm/llm_surface_value.bas:3
+LLM.KERNEL   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:60
 ```
 
 #### `LLM.Kv` — arita 1-4
 
 ```basic
-LLM.KV   ' dal codice del progetto: shared/minitests/llm/llm_surface_value.bas:3
+LLM.KV   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:61
 ```
 
 #### `LLM.LoraList` — arita 0-0
 
 ```basic
-LLM.LORALIST   ' dal codice del progetto: shared/minitests/train/train_lora_list.bas:1
+LLM.LORALIST   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:62
 ```
 
 #### `LLM.LoraLoad` — arita 2-2
@@ -5259,7 +5205,7 @@ LLM.LORASAVE   ' dal codice del progetto: shared/minitests/misc/surface_missing_
 #### `LLM.Module` — arita 1-4
 
 ```basic
-LLM.MODULE   ' dal codice del progetto: shared/minitests/llm/llm_surface_value.bas:3
+LLM.MODULE   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:65
 ```
 
 #### `LLM.Patch` — arita 1-1
@@ -5271,229 +5217,211 @@ LLM.PATCH   ' dal codice del progetto: shared/minitests/ai/ai_patch.bas:10
 #### `LLM.Policy` — arita 1-4
 
 ```basic
-LLM.POLICY   ' dal codice del progetto: shared/minitests/llm/llm_surface_value.bas:2
+LLM.POLICY   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:69
 ```
 
 #### `LLM.PrefillStats` — arita 1-1
 
 ```basic
-LLM.PREFILLSTATS   ' dal codice del progetto: shared/minitests/ai/gen_AI_PrefillStats.bas:6
+LLM.PREFILLSTATS   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:70
 ```
 
 #### `LLM.RepoMap` — arita 0-0
 
 ```basic
-LLM.REPOMAP   ' dal codice del progetto: shared/minitests/ai/ai_repomap.bas:10
+LLM.REPOMAP   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:15
 ```
 
 #### `LLM.Revision` — arita 0-0
 
 ```basic
-LLM.REVISION   ' dal codice del progetto: shared/minitests/ai/ai_revision_context.bas:13
+LLM.REVISION   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:16
 ```
 
 #### `LLM.RunStop` — arita 1-1
 
 ```basic
-LLM.RUNSTOP   ' dal codice del progetto: shared/minitests/train/train_stop_export_gate.bas:7
+LLM.RUNSTOP   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:71
 ```
 
 #### `LLM.RunsClear` — arita 0-0
 
 ```basic
-LLM.RUNSCLEAR   ' dal codice del progetto: shared/minitests/train/train_runs_clear.bas:1
+LLM.RUNSCLEAR   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:72
 ```
 
 #### `LLM.RunsCount` — arita 0-0
 
 ```basic
-LLM.RUNSCOUNT   ' dal codice del progetto: shared/minitests/train/train_runs_query.bas:1
+LLM.RUNSCOUNT   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:73
 ```
 
 #### `LLM.RunsItem` — arita 1-1
 
 ```basic
-LLM.RUNSITEM   ' dal codice del progetto: shared/minitests/train/train_runs_show.bas:1
+LLM.RUNSITEM   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:74
 ```
 
 #### `LLM.RunsJson` — arita 0-0
 
 ```basic
-LLM.RUNSJSON   ' dal codice del progetto: shared/minitests/train/train_runs_query.bas:9
+LLM.RUNSJSON   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:75
 ```
 
 #### `LLM.StreamStats` — arita 1-1
 
 ```basic
-LLM.STREAMSTATS   ' dal codice del progetto: shared/minitests/ai/llm_streamstats.bas:1
+LLM.STREAMSTATS   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:76
 ```
 
 #### `LLM.Symbol` — arita 1-1
 
 ```basic
-LLM.SYMBOL   ' dal codice del progetto: shared/minitests/ai/ai_symbol.bas:9
+LLM.SYMBOL   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:17
 ```
 
 #### `LLM.Tensor` — arita 1-4
 
 ```basic
-LLM.TENSOR   ' dal codice del progetto: shared/minitests/llm/llm_surface_value.bas:2
+LLM.TENSOR   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:77
 ```
 
 #### `LLM.TokenCount` — arita 2-2
 
 ```basic
-LLM.TOKENCOUNT   ' dal codice del progetto: shared/minitests/llm/llm_surface_value.bas:2
+LLM.TOKENCOUNT   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:78
 ```
 
 #### `LLM.Tokens` — arita 2-2
 
 ```basic
-LLM.TOKENS   ' dal codice del progetto: shared/minitests/llm/llm_surface_value.bas:2
+LLM.TOKENS   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:79
 ```
 
 #### `LLM.TrainConfig` — arita 0-0
 
 ```basic
-LLM.TRAINCONFIG   ' dal codice del progetto: shared/minitests/train/train_registry_commands.bas:8
+LLM.TRAINCONFIG   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:80
 ```
 
 #### `LLM.TrainConfigSet` — arita 2-2
 
 ```basic
-LLM.TRAINCONFIGSET   ' dal codice del progetto: shared/minitests/train/train_config_set.bas:1
+LLM.TRAINCONFIGSET   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:81
 ```
 
 #### `LLM.TrainExport` — arita 1-2
 
 ```basic
-LLM.TRAINEXPORT   ' dal codice del progetto: shared/minitests/train/train_stop_export_gate.bas:6
+LLM.TRAINEXPORT   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:82
 ```
 
 #### `LLM.Verify` — arita 0-0
 
 ```basic
-LLM.VERIFY   ' dal codice del progetto: shared/minitests/llm/llm_verify_commit.bas:3
+LLM.VERIFY   ' dal codice del progetto: shared/minitests/llm/llm_all.bas:83
 ```
 
 #### `MATH.Abs` — arita 1-1
 
 ```basic
-MATH.ABS   ' dal codice del progetto: shared/samples/Math/MathLogarithms.bas:75
+MATH.ABS   ' dal codice del progetto: shared/samples/Math/MathLogarithms.bas:74
 ```
 
 #### `MATH.Acos` — arita 1-1
 
 ```basic
-MATH.ACOS   ' dal codice del progetto: shared/samples/Math/MathTrigonometry.bas:48
-```
-
-#### `VECTOR.Angle2d` — arita 4-4
-
-```basic
-VECTOR.Angle2d   ' dal codice del progetto: shared/samples/Math/MathCombinatorics.bas:58
+MATH.ACOS   ' dal codice del progetto: shared/samples/Math/MathTrigonometry.bas:47
 ```
 
 #### `MATH.Asin` — arita 1-1
 
 ```basic
-MATH.ASIN   ' dal codice del progetto: shared/samples/Math/MathTrigonometry.bas:45
+MATH.ASIN   ' dal codice del progetto: shared/samples/Math/MathTrigonometry.bas:44
 ```
 
 #### `MATH.Atn` — arita 1-2
 
 ```basic
-MATH.ATN   ' dal codice del progetto: shared/minitests/math/math_atn.bas:15
+MATH.ATN   ' dal codice del progetto: shared/minitests/math/math_atn.bas:14
 ```
 
 #### `MATH.Avg` — arita 0-1
 
 ```basic
-MATH.AVG   ' dal codice del progetto: shared/samples/Math/MathFullCoverage.bas:19
+MATH.AVG   ' dal codice del progetto: shared/samples/Math/PianificazioneRisparmi.bas:5
 ```
 
 #### `MATH.COSH` — arita 1-1
 
 ```basic
-MATH.COSH   ' dal codice del progetto: shared/samples/Math/MathTrigonometry.bas:64
+MATH.COSH   ' dal codice del progetto: shared/samples/Math/MathTrigonometry.bas:63
 ```
 
 #### `MATH.Ceiling` — arita 1-1
 
 ```basic
-MATH.CEILING   ' dal codice del progetto: shared/samples/Math/MathLogarithms.bas:60
+MATH.CEILING   ' dal codice del progetto: shared/samples/Math/MathLogarithms.bas:59
 ```
 
 #### `MATH.Clamp` — arita 3-3
 
 ```basic
-MATH.CLAMP   ' dal codice del progetto: shared/samples/Math/MathCombinatorics.bas:71
+MATH.CLAMP   ' dal codice del progetto: shared/samples/Math/MathCombinatorics.bas:70
 ```
 
 #### `MATH.Comb` — arita 2-2
 
 ```basic
-MATH.COMB   ' dal codice del progetto: shared/samples/Math/MathCombinatorics.bas:40
+MATH.COMB   ' dal codice del progetto: shared/samples/Math/MathCombinatorics.bas:39
 ```
 
 #### `MATH.Cos` — arita 1-1
 
 ```basic
-MATH.COS   ' dal codice del progetto: shared/samples/Math/MathTrigonometry.bas:34
+MATH.COS   ' dal codice del progetto: shared/samples/Math/MathTrigonometry.bas:33
 ```
 
 #### `MATH.Deg2Rad` — arita 1-1
 
 ```basic
-MATH.DEG2RAD   ' dal codice del progetto: shared/samples/Math/MathTrigonometry.bas:28
-```
-
-#### `VECTOR.Dist2d` — arita 4-4
-
-```basic
-VECTOR.Dist2d   ' nel codice a nome nudo: shared/minitests/math/math_all.bas:45
-```
-
-#### `VECTOR.Dist3d` — arita 6-6
-
-```basic
-VECTOR.Dist3d   ' nel codice a nome nudo: shared/minitests/math/math_all.bas:45
+MATH.DEG2RAD   ' dal codice del progetto: shared/samples/Math/MathTrigonometry.bas:27
 ```
 
 #### `MATH.Exp` — arita 1-1
 
 ```basic
-MATH.EXP   ' dal codice del progetto: shared/minitests/opt/opt_systems.bas:30
+MATH.EXP   ' dal codice del progetto: shared/minitests/opt/opt_systems.bas:29
 ```
 
 #### `MATH.Fact` — arita 1-1
 
 ```basic
-MATH.FACT   ' dal codice del progetto: shared/samples/Math/MathCombinatorics.bas:32
+MATH.FACT   ' dal codice del progetto: shared/samples/Math/MathCombinatorics.bas:31
 ```
 
 #### `MATH.Fix` — arita 1-1
 
 ```basic
-MATH.FIX   ' dal codice del progetto: shared/samples/Math/MathLogarithms.bas:57
+MATH.FIX   ' dal codice del progetto: shared/samples/Math/MathLogarithms.bas:56
 ```
 
 #### `MATH.Floor` — arita 1-1
 
 ```basic
-MATH.FLOOR   ' dal codice del progetto: shared/samples/Math/MathLogarithms.bas:59
+MATH.FLOOR   ' dal codice del progetto: shared/samples/Math/MathLogarithms.bas:58
 ```
 
 #### `MATH.Hypot` — arita 2-2
 
 ```basic
-MATH.HYPOT   ' dal codice del progetto: shared/samples/Math/MathCombinatorics.bas:67
+MATH.HYPOT   ' dal codice del progetto: shared/samples/Math/MathCombinatorics.bas:66
 ```
 
 #### `MATH.Int` — arita 1-1
 
 ```basic
-MATH.INT   ' dal codice del progetto: shared/samples/Math/MathLogarithms.bas:58
+MATH.INT   ' dal codice del progetto: shared/samples/Math/MathLogarithms.bas:57
 ```
 
 #### `MATH.IsNumeric` — arita 1-1
@@ -5505,13 +5433,13 @@ MATH.ISNUMERIC   ' dal codice del progetto: shared/samples/Types/TypesAny.bas:91
 #### `MATH.Log` — arita 1-1
 
 ```basic
-MATH.LOG   ' dal codice del progetto: shared/samples/Math/MathLogarithms.bas:35
+MATH.LOG   ' dal codice del progetto: shared/samples/Math/MathLogarithms.bas:34
 ```
 
 #### `MATH.Log10` — arita 1-1
 
 ```basic
-MATH.LOG10   ' dal codice del progetto: shared/samples/Math/MathLogarithms.bas:38
+MATH.LOG10   ' dal codice del progetto: shared/samples/Math/MathLogarithms.bas:37
 ```
 
 #### `MATH.Max` — arita 0-1
@@ -5523,25 +5451,13 @@ MATH.MAX   ' dal codice del progetto: shared/samples/Ai/McpCapabilityServer.bas:
 #### `MATH.Min` — arita 0-1
 
 ```basic
-MATH.MIN   ' dal codice del progetto: shared/samples/Math/MathExtended.bas:44
-```
-
-#### `VECTOR.POLAR_X` — arita 2-2
-
-```basic
-VECTOR.POLAR_X   ' dal codice del progetto: shared/samples/Math/MathCombinatorics.bas:50
-```
-
-#### `VECTOR.POLAR_Y` — arita 2-2
-
-```basic
-VECTOR.POLAR_Y   ' dal codice del progetto: shared/samples/Math/MathCombinatorics.bas:51
+MATH.MIN   ' dal codice del progetto: shared/samples/Math/MathExtended.bas:43
 ```
 
 #### `MATH.Perm` — arita 2-2
 
 ```basic
-MATH.PERM   ' dal codice del progetto: shared/samples/Math/MathCombinatorics.bas:36
+MATH.PERM   ' dal codice del progetto: shared/samples/Math/MathCombinatorics.bas:35
 ```
 
 #### `MATH.Pi` — arita 0-0
@@ -5553,55 +5469,55 @@ MATH.PI   ' dal codice del progetto: shared/minitests/math/pi.bas:1
 #### `MATH.Pythagoras` — arita 2-2
 
 ```basic
-MATH.PYTHAGORAS   ' nel codice a nome nudo: shared/minitests/math/math_all.bas:41
+MATH.PYTHAGORAS   ' nel codice a nome nudo: shared/minitests/math/math_all.bas:40
 ```
 
 #### `MATH.Rad2Deg` — arita 1-1
 
 ```basic
-MATH.RAD2DEG   ' dal codice del progetto: shared/samples/Math/MathAtnVectorAngle.bas:29
+MATH.RAD2DEG   ' dal codice del progetto: shared/samples/Math/MathAtnVectorAngle.bas:28
 ```
 
 #### `MATH.Range` — arita 0-1
 
 ```basic
-MATH.RANGE   ' dal codice del progetto: shared/minitests/math/range.bas:4
+MATH.RANGE   ' dal codice del progetto: shared/minitests/math/range.bas:3
 ```
 
 #### `MATH.Rnd` — arita 0-1
 
 ```basic
-MATH.RND   ' dal codice del progetto: shared/samples/TimeSeries/TimeSeriesTests.bas:35
+MATH.RND   ' dal codice del progetto: shared/samples/TimeSeries/TimeSeriesTests.bas:34
 ```
 
 #### `MATH.Round` — arita 1-2
 
 ```basic
-MATH.ROUND   ' dal codice del progetto: shared/minitests/kdtree/query.bas:13
+MATH.ROUND   ' dal codice del progetto: shared/minitests/kdtree/query.bas:12
 ```
 
 #### `MATH.SINH` — arita 1-1
 
 ```basic
-MATH.SINH   ' dal codice del progetto: shared/samples/Math/MathTrigonometry.bas:63
+MATH.SINH   ' dal codice del progetto: shared/samples/Math/MathTrigonometry.bas:62
 ```
 
 #### `MATH.Sgn` — arita 1-1
 
 ```basic
-MATH.SGN   ' dal codice del progetto: shared/samples/Math/MathLogarithms.bas:76
+MATH.SGN   ' dal codice del progetto: shared/samples/Math/MathLogarithms.bas:75
 ```
 
 #### `MATH.Sin` — arita 1-1
 
 ```basic
-MATH.SIN   ' dal codice del progetto: shared/samples/Math/MathTrigonometry.bas:33
+MATH.SIN   ' dal codice del progetto: shared/samples/Math/MathTrigonometry.bas:32
 ```
 
 #### `MATH.Sqr` — arita 1-1
 
 ```basic
-MATH.SQR   ' dal codice del progetto: shared/samples/Math/MathLogarithms.bas:44
+MATH.SQR   ' dal codice del progetto: shared/samples/Math/MathLogarithms.bas:43
 ```
 
 #### `MATH.Sum` — arita 0-1
@@ -5613,469 +5529,271 @@ MATH.SUM   ' nel codice a nome nudo: shared/minitests/types/class_array_member.b
 #### `MATH.TANH` — arita 1-1
 
 ```basic
-MATH.TANH   ' dal codice del progetto: shared/samples/Math/MathTrigonometry.bas:65
+MATH.TANH   ' dal codice del progetto: shared/samples/Math/MathTrigonometry.bas:64
 ```
 
 #### `MATH.Tan` — arita 1-1
 
 ```basic
-MATH.TAN   ' dal codice del progetto: shared/samples/Math/MathTrigonometry.bas:35
+MATH.TAN   ' dal codice del progetto: shared/samples/Math/MathTrigonometry.bas:34
 ```
 
 #### `MATH.Trunc` — arita 1-2
 
 ```basic
-MATH.TRUNC   ' dal codice del progetto: shared/samples/Math/MathLogarithms.bas:56
+MATH.TRUNC   ' dal codice del progetto: shared/samples/Math/MathLogarithms.bas:55
 ```
 
 #### `MATRIX.ABOVEMASK` — arita 2-2
 
 ```basic
-MATRIX.ABOVEMASK   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:129
+MATRIX.ABOVEMASK   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:127
 ```
 
 #### `MATRIX.ABOVEMATRIX` — arita 2-2
 
 ```basic
-MATRIX.ABOVEMATRIX   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:131
+MATRIX.ABOVEMATRIX   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:129
 ```
 
 #### `MATRIX.ADDCOLVECTOR` — arita 2-2
 
 ```basic
-MATRIX.ADDCOLVECTOR   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:137
+MATRIX.ADDCOLVECTOR   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:135
 ```
 
 #### `MATRIX.ADDROWVECTOR` — arita 2-2
 
 ```basic
-MATRIX.ADDROWVECTOR   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:139
+MATRIX.ADDROWVECTOR   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:137
 ```
 
 #### `MATRIX.ARGMAX` — arita 1-1
 
 ```basic
-MATRIX.ARGMAX   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:407
+MATRIX.ARGMAX   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:405
 ```
 
 #### `MATRIX.ARGMIN` — arita 1-1
 
 ```basic
-MATRIX.ARGMIN   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:134
+MATRIX.ARGMIN   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:132
 ```
 
 #### `MATRIX.ASCSV` — arita 1-1
 
 ```basic
-MATRIX.ASCSV   ' dal codice del progetto: shared/minitests/matrix/matrix_ops.bas:26
+MATRIX.ASCSV   ' dal codice del progetto: shared/minitests/matrix/matrix_ops.bas:25
 ```
 
 #### `MATRIX.ASJSON` — arita 1-1
 
 ```basic
-MATRIX.ASJSON   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:147
+MATRIX.ASJSON   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:145
 ```
 
 #### `MATRIX.BLOCKDIAG` — arita 2-2
 
 ```basic
-MATRIX.BLOCKDIAG   ' dal codice del progetto: shared/minitests/matrix/gen_MATRIX_BLOCKDIAG.bas:8
-```
-
-#### `LINALG.CHOLESKY` — arita 1-1
-
-```basic
-LINALG.CHOLESKY   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:245
+MATRIX.BLOCKDIAG   ' dal codice del progetto: shared/minitests/matrix/gen_MATRIX_BLOCKDIAG.bas:6
 ```
 
 #### `MATRIX.CIRCULANT` — arita 1-1
 
 ```basic
-MATRIX.CIRCULANT   ' dal codice del progetto: shared/minitests/matrix/gen_MATRIX_CIRCULANT.bas:7
+MATRIX.CIRCULANT   ' dal codice del progetto: shared/minitests/matrix/gen_MATRIX_CIRCULANT.bas:5
 ```
 
 #### `MATRIX.CLONEMATRIX` — arita 1-1
 
 ```basic
-MATRIX.CLONEMATRIX   ' dal codice del progetto: shared/minitests/matrix/matrix_ops.bas:38
+MATRIX.CLONEMATRIX   ' dal codice del progetto: shared/minitests/matrix/matrix_ops.bas:37
 ```
 
 #### `MATRIX.COLMEANS` — arita 1-1
 
 ```basic
-MATRIX.COLMEANS   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:113
+MATRIX.COLMEANS   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:111
 ```
 
 #### `MATRIX.COLSUMS` — arita 1-1
 
 ```basic
-MATRIX.COLSUMS   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:109
+MATRIX.COLSUMS   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:107
 ```
 
 #### `MATRIX.COLUMNCOUNT` — arita 1-1
 
 ```basic
-MATRIX.COLUMNCOUNT   ' dal codice del progetto: shared/minitests/analysis/solveivp.bas:15
+MATRIX.COLUMNCOUNT   ' dal codice del progetto: shared/minitests/analysis/solveivp.bas:12
 ```
 
 #### `MATRIX.COLVARIANCES` — arita 1-1
 
 ```basic
-MATRIX.COLVARIANCES   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:117
+MATRIX.COLVARIANCES   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:115
 ```
 
 #### `MATRIX.CONCATCOLS` — arita 2-2
 
 ```basic
-MATRIX.CONCATCOLS   ' dal codice del progetto: shared/minitests/matrix/matrix_ops.bas:52
+MATRIX.CONCATCOLS   ' dal codice del progetto: shared/minitests/matrix/matrix_ops.bas:51
 ```
 
 #### `MATRIX.CONCATROWS` — arita 2-2
 
 ```basic
-MATRIX.CONCATROWS   ' dal codice del progetto: shared/minitests/matrix/matrix_ops.bas:50
-```
-
-#### `LINALG.COND` — arita 1-1
-
-```basic
-LINALG.COND   ' dal codice del progetto: shared/minitests/matrix/handles.bas:12
-```
-
-#### `LINALG.COSM` — arita 1-1
-
-```basic
-LINALG.COSM   ' dal codice del progetto: shared/minitests/matrix/handles2.bas:10
+MATRIX.CONCATROWS   ' dal codice del progetto: shared/minitests/matrix/matrix_ops.bas:49
 ```
 
 #### `MATRIX.CREATE` — arita 2-2
 
 ```basic
-MATRIX.CREATE   ' dal codice del progetto: shared/minitests/matrix/gen_MATRIX_SOLVETRIANGULAR.bas:5
-```
-
-#### `LINALG.DETERMINANT` — arita 1-1
-
-```basic
-LINALG.DETERMINANT   ' dal codice del progetto: shared/minitests/matrix/handles.bas:8
-```
-
-#### `LINALG.EIG` — arita 1-1
-
-```basic
-LINALG.EIG   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:227
-```
-
-#### `LINALG.EVD` — arita 1-1
-
-```basic
-LINALG.EVD   ' dal codice del progetto: shared/minitests/matrix/gen_MATRIX_EVD.bas:8
-```
-
-#### `LINALG.EXPM` — arita 1-1
-
-```basic
-LINALG.EXPM   ' dal codice del progetto: shared/minitests/matrix/handles.bas:21
-```
-
-#### `LINALG.FACTOR` — arita 2-2
-
-```basic
-LINALG.FACTOR   ' dal codice del progetto: shared/minitests/matrix/schur.bas:8
-```
-
-#### `LINALG.FRACTIONALPOWER` — arita 2-2
-
-```basic
-LINALG.FRACTIONALPOWER   ' dal codice del progetto: shared/minitests/matrix/gen_MATRIX_FRACTIONALPOWER.bas:8
-```
-
-#### `LINALG.FROBENIUSNORM` — arita 1-1
-
-```basic
-LINALG.FROBENIUSNORM   ' dal codice del progetto: shared/minitests/matrix/slice.bas:8
+MATRIX.CREATE   ' dal codice del progetto: shared/minitests/matrix/gen_MATRIX_SOLVETRIANGULAR.bas:3
 ```
 
 #### `MATRIX.GETVALUE` — arita 3-3
 
 ```basic
-MATRIX.GETVALUE   ' dal codice del progetto: shared/minitests/analysis/solveivp.bas:16
+MATRIX.GETVALUE   ' dal codice del progetto: shared/minitests/analysis/solveivp.bas:13
 ```
 
 #### `MATRIX.HANKEL` — arita 2-2
 
 ```basic
-MATRIX.HANKEL   ' dal codice del progetto: shared/minitests/matrix/gen_MATRIX_HANKEL.bas:8
-```
-
-#### `LINALG.HESSENBERG` — arita 1-1
-
-```basic
-LINALG.HESSENBERG   ' dal codice del progetto: shared/minitests/matrix/handles2.bas:8
-```
-
-#### `LINALG.INFINITYNORM` — arita 1-1
-
-```basic
-LINALG.INFINITYNORM   ' dal codice del progetto: shared/minitests/matrix/matrix_ops.bas:19
-```
-
-#### `LINALG.INVERSE` — arita 1-1
-
-```basic
-LINALG.INVERSE   ' dal codice del progetto: shared/minitests/matrix/handles.bas:13
+MATRIX.HANKEL   ' dal codice del progetto: shared/minitests/matrix/gen_MATRIX_HANKEL.bas:6
 ```
 
 #### `MATRIX.ISLOWERTRIANGULAR` — arita 1-1
 
 ```basic
-MATRIX.ISLOWERTRIANGULAR   ' dal codice del progetto: shared/minitests/matrix/matrix_ops.bas:23
+MATRIX.ISLOWERTRIANGULAR   ' dal codice del progetto: shared/minitests/matrix/matrix_ops.bas:22
 ```
 
 #### `MATRIX.ISORTHOGONAL` — arita 1-1
 
 ```basic
-MATRIX.ISORTHOGONAL   ' dal codice del progetto: shared/minitests/matrix/matrix_ops.bas:24
+MATRIX.ISORTHOGONAL   ' dal codice del progetto: shared/minitests/matrix/matrix_ops.bas:23
 ```
 
 #### `MATRIX.ISSYMMETRIC` — arita 1-1
 
 ```basic
-MATRIX.ISSYMMETRIC   ' dal codice del progetto: shared/minitests/matrix/matrix_ops.bas:21
+MATRIX.ISSYMMETRIC   ' dal codice del progetto: shared/minitests/matrix/matrix_ops.bas:20
 ```
 
 #### `MATRIX.ISUPPERTRIANGULAR` — arita 1-1
 
 ```basic
-MATRIX.ISUPPERTRIANGULAR   ' dal codice del progetto: shared/minitests/matrix/matrix_ops.bas:22
+MATRIX.ISUPPERTRIANGULAR   ' dal codice del progetto: shared/minitests/matrix/matrix_ops.bas:21
 ```
 
 #### `MATRIX.KRONECKER` — arita 2-2
 
 ```basic
-MATRIX.KRONECKER   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:294
+MATRIX.KRONECKER   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:292
 ```
 
 #### `MATRIX.LOADCSV` — arita 1-1
 
 ```basic
-MATRIX.LOADCSV   ' dal codice del progetto: shared/minitests/matrix/gen_MATRIX_LOADCSV.bas:5
+MATRIX.LOADCSV   ' dal codice del progetto: shared/minitests/matrix/gen_MATRIX_LOADCSV.bas:3
 ```
 
 #### `MATRIX.LOADJSON` — arita 1-1
 
 ```basic
-MATRIX.LOADJSON   ' dal codice del progetto: shared/minitests/matrix/gen_MATRIX_LOADJSON.bas:5
-```
-
-#### `LINALG.LOGM` — arita 1-1
-
-```basic
-LINALG.LOGM   ' dal codice del progetto: shared/minitests/matrix/handles.bas:19
-```
-
-#### `LINALG.LU` — arita 1-1
-
-```basic
-LINALG.LU   ' dal codice del progetto: shared/minitests/matrix/gen_MATRIX_LU.bas:8
+MATRIX.LOADJSON   ' dal codice del progetto: shared/minitests/matrix/gen_MATRIX_LOADJSON.bas:3
 ```
 
 #### `MATRIX.MAXVALUE` — arita 1-1
 
 ```basic
-MATRIX.MAXVALUE   ' dal codice del progetto: shared/minitests/matrix/matrix_ops.bas:15
+MATRIX.MAXVALUE   ' dal codice del progetto: shared/minitests/matrix/matrix_ops.bas:14
 ```
 
 #### `MATRIX.MINVALUE` — arita 1-1
 
 ```basic
-MATRIX.MINVALUE   ' dal codice del progetto: shared/minitests/matrix/matrix_ops.bas:16
+MATRIX.MINVALUE   ' dal codice del progetto: shared/minitests/matrix/matrix_ops.bas:15
 ```
 
 #### `MATRIX.MULTIPLY` — arita 2-2
 
 ```basic
-MATRIX.MULTIPLY   ' dal codice del progetto: shared/minitests/matrix/handles.bas:15
+MATRIX.MULTIPLY   ' dal codice del progetto: shared/minitests/matrix/handles.bas:13
 ```
 
 #### `MATRIX.MULTIPLYLEFTVECTOR` — arita 2-2
 
 ```basic
-MATRIX.MULTIPLYLEFTVECTOR   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:144
+MATRIX.MULTIPLYLEFTVECTOR   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:142
 ```
 
 #### `MATRIX.MULTIPLYVECTOR` — arita 2-2
 
 ```basic
-MATRIX.MULTIPLYVECTOR   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:142
-```
-
-#### `LINALG.NORM` — arita 1-1
-
-```basic
-LINALG.NORM   ' dal codice del progetto: shared/minitests/matrix/handles.bas:11
-```
-
-#### `LINALG.NUCLEARNORM` — arita 1-1
-
-```basic
-LINALG.NUCLEARNORM   ' dal codice del progetto: shared/minitests/matrix/gen_MATRIX_NUCLEARNORM.bas:8
-```
-
-#### `LINALG.NULLSPACE` — arita 1-1
-
-```basic
-LINALG.NULLSPACE   ' dal codice del progetto: shared/minitests/matrix/gen_MATRIX_NULLSPACE.bas:8
-```
-
-#### `LINALG.ONENORM` — arita 1-1
-
-```basic
-LINALG.ONENORM   ' dal codice del progetto: shared/minitests/matrix/matrix_ops.bas:18
-```
-
-#### `LINALG.ORTH` — arita 1-1
-
-```basic
-LINALG.ORTH   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:171
-```
-
-#### `LINALG.PINVERSE` — arita 1-1
-
-```basic
-LINALG.PINVERSE   ' dal codice del progetto: shared/minitests/matrix/pinv.bas:9
-```
-
-#### `LINALG.POLAR` — arita 1-1
-
-```basic
-LINALG.POLAR   ' dal codice del progetto: shared/minitests/matrix/polar.bas:8
-```
-
-#### `LINALG.QR` — arita 1-1
-
-```basic
-LINALG.QR   ' dal codice del progetto: shared/minitests/matrix/gen_MATRIX_QR.bas:8
-```
-
-#### `LINALG.RANK` — arita 1-1
-
-```basic
-LINALG.RANK   ' dal codice del progetto: shared/minitests/matrix/handles.bas:10
+MATRIX.MULTIPLYVECTOR   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:140
 ```
 
 #### `MATRIX.RESHAPE` — arita 3-3
 
 ```basic
-MATRIX.RESHAPE   ' dal codice del progetto: shared/minitests/matrix/matrix_ops.bas:41
+MATRIX.RESHAPE   ' dal codice del progetto: shared/minitests/matrix/matrix_ops.bas:40
 ```
 
 #### `MATRIX.ROWCOUNT` — arita 1-1
 
 ```basic
-MATRIX.ROWCOUNT   ' dal codice del progetto: shared/minitests/analysis/solveivp.bas:13
+MATRIX.ROWCOUNT   ' dal codice del progetto: shared/minitests/analysis/solveivp.bas:10
 ```
 
 #### `MATRIX.ROWMEANS` — arita 1-1
 
 ```basic
-MATRIX.ROWMEANS   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:111
+MATRIX.ROWMEANS   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:109
 ```
 
 #### `MATRIX.ROWSUMS` — arita 1-1
 
 ```basic
-MATRIX.ROWSUMS   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:107
+MATRIX.ROWSUMS   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:105
 ```
 
 #### `MATRIX.ROWVARIANCES` — arita 1-1
 
 ```basic
-MATRIX.ROWVARIANCES   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:115
-```
-
-#### `LINALG.SCHUR` — arita 1-1
-
-```basic
-LINALG.SCHUR   ' dal codice del progetto: shared/minitests/matrix/schur.bas:8
+MATRIX.ROWVARIANCES   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:113
 ```
 
 #### `MATRIX.SETVALUE` — arita 4-4
 
 ```basic
-MATRIX.SETVALUE   ' dal codice del progetto: shared/minitests/matrix/gen_MATRIX_SOLVETRIANGULAR.bas:6
-```
-
-#### `LINALG.SIGNM` — arita 1-1
-
-```basic
-LINALG.SIGNM   ' dal codice del progetto: shared/minitests/matrix/handles2.bas:14
-```
-
-#### `LINALG.SINM` — arita 1-1
-
-```basic
-LINALG.SINM   ' dal codice del progetto: shared/minitests/matrix/handles2.bas:12
+MATRIX.SETVALUE   ' dal codice del progetto: shared/minitests/matrix/gen_MATRIX_SOLVETRIANGULAR.bas:4
 ```
 
 #### `MATRIX.SLICE` — arita 5-5
 
 ```basic
-MATRIX.SLICE   ' dal codice del progetto: shared/minitests/matrix/slice.bas:7
-```
-
-#### `LINALG.SOLVE` — arita 2-2
-
-```basic
-LINALG.SOLVE   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:354
-```
-
-#### `LINALG.SOLVETRIANGULAR` — arita 3-3
-
-```basic
-LINALG.SOLVETRIANGULAR   ' dal codice del progetto: shared/minitests/matrix/gen_MATRIX_SOLVETRIANGULAR.bas:10
-```
-
-#### `LINALG.SQRTM` — arita 1-1
-
-```basic
-LINALG.SQRTM   ' dal codice del progetto: shared/minitests/matrix/handles.bas:17
-```
-
-#### `LINALG.SUBSPACEANGLES` — arita 2-2
-
-```basic
-LINALG.SUBSPACEANGLES   ' dal codice del progetto: shared/minitests/matrix/gen_MATRIX_SUBSPACEANGLES.bas:12
-```
-
-#### `LINALG.SVD` — arita 1-1
-
-```basic
-LINALG.SVD   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:387
-```
-
-#### `LINALG.TANM` — arita 1-1
-
-```basic
-LINALG.TANM   ' dal codice del progetto: shared/minitests/matrix/tanm.bas:8
+MATRIX.SLICE   ' dal codice del progetto: shared/minitests/matrix/slice.bas:5
 ```
 
 #### `MATRIX.TOEPLITZ` — arita 2-2
 
 ```basic
-MATRIX.TOEPLITZ   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:397
+MATRIX.TOEPLITZ   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:395
 ```
 
 #### `MATRIX.TRACE` — arita 1-1
 
 ```basic
-MATRIX.TRACE   ' dal codice del progetto: shared/minitests/matrix/handles.bas:9
+MATRIX.TRACE   ' dal codice del progetto: shared/minitests/matrix/handles.bas:7
 ```
 
 #### `MATRIX.TRANSPOSE` — arita 1-1
 
 ```basic
-MATRIX.TRANSPOSE   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:409
+MATRIX.TRANSPOSE   ' dal codice del progetto: shared/minitests/matrix/matrix_all.bas:407
 ```
 
 #### `MEMORY.DELETE` — arita 1-1
@@ -6129,7 +5847,7 @@ MEMORYMAP.MMAPREADBYTES   ' dal codice del progetto: shared/minitests/memorymap/
 #### `MESSAGE.DELIVERY` — arita 1-1
 
 ```basic
-MESSAGE.DELIVERY   ' dal codice del progetto: shared/minitests/messaging/message_delivery_parity.bas:1
+MESSAGE.DELIVERY   ' dal codice del progetto: shared/minitests/message/message_all.bas:12
 ```
 
 #### `MOUSE.BUTTON` — arita 0-1
@@ -6204,6 +5922,18 @@ MOUSE.X   ' dal codice del progetto: shared/minitests/mouse/mouse_all.bas:8
 MOUSE.Y   ' dal codice del progetto: shared/minitests/analysis/lambda_param_array_infer.bas:2
 ```
 
+#### `MULTIVARIATE.KMeans` — arita 2-2
+
+```basic
+MULTIVARIATE.KMEANS   ' dal codice del progetto: shared/minitests/analysis/udt.bas:13
+```
+
+#### `MULTIVARIATE.Pca` — arita 1-1
+
+```basic
+MULTIVARIATE.PCA   ' dal codice del progetto: shared/minitests/analysis/pca.bas:10
+```
+
 #### `MUTEX.TRYLOCK` — arita 1-1
 
 ```basic
@@ -6258,208 +5988,160 @@ NET.REMOTEIP   ' dal codice del progetto: shared/minitests/net/net_remoteip.bas:
 NET.REMOTEPORT   ' dal codice del progetto: shared/minitests/net/net_remoteport.bas:4
 ```
 
-#### `OPTIMIZE.BasinHopping` — arita 2-3
+#### `NUMERICAL.CubicSpline` — arita 3-3
 
 ```basic
-OPTIMIZE.BASINHOPPING   ' dal codice del progetto: shared/minitests/optimize/global.bas:7
+NUMERICAL.CUBICSPLINE   ' dal codice del progetto: shared/minitests/analysis/num.bas:5
 ```
 
-#### `OPTIMIZE.Bfgs` — arita 2-2
+#### `NUMERICAL.CumTrapezoid` — arita 2-2
 
 ```basic
-OPTIMIZE.BFGS   ' dal codice del progetto: shared/minitests/optimize/optimize_all.bas:64
+NUMERICAL.CUMTRAPEZOID   ' dal codice del progetto: shared/minitests/analysis/arr.bas:4
 ```
 
-#### `OPTIMIZE.Bisection` — arita 3-3
+#### `NUMERICAL.Differentiate` — arita 2-2
 
 ```basic
-OPTIMIZE.BISECTION   ' dal codice del progetto: shared/minitests/misc/optimize.bas:6
+NUMERICAL.DIFFERENTIATE   ' dal codice del progetto: shared/minitests/analysis/differentiate.bas:3
 ```
 
-#### `OPTIMIZE.Brent` — arita 3-3
+#### `NUMERICAL.Fft` — arita 1-1
 
 ```basic
-OPTIMIZE.BRENT   ' dal codice del progetto: shared/minitests/optimize/scalar.bas:5
+NUMERICAL.FFT   ' dal codice del progetto: shared/minitests/analysis/fft_ifft.bas:4
 ```
 
-#### `OPTIMIZE.BrentMin` — arita 3-3
+#### `NUMERICAL.FftComplex` — arita 2-2
 
 ```basic
-OPTIMIZE.BRENTMIN   ' dal codice del progetto: shared/minitests/optimize/scalar.bas:13
+NUMERICAL.FFTCOMPLEX   ' dal codice del progetto: shared/minitests/analysis/fftc.bas:4
 ```
 
-#### `OPTIMIZE.Brenth` — arita 3-3
+#### `NUMERICAL.FftFreq` — arita 2-2
 
 ```basic
-OPTIMIZE.BRENTH   ' dal codice del progetto: shared/minitests/optimize/scalar.bas:9
+NUMERICAL.FFTFREQ   ' dal codice del progetto: shared/minitests/analysis/arr.bas:6
 ```
 
-#### `OPTIMIZE.Brentq` — arita 3-3
+#### `NUMERICAL.FftShift` — arita 1-1
 
 ```basic
-OPTIMIZE.BRENTQ   ' dal codice del progetto: shared/minitests/optimize/scalar.bas:8
+NUMERICAL.FFTSHIFT   ' dal codice del progetto: shared/minitests/analysis/arr.bas:8
 ```
 
-#### `OPTIMIZE.Broyden` — arita 2-2
+#### `NUMERICAL.Ifft` — arita 1-1
 
 ```basic
-OPTIMIZE.BROYDEN   ' dal codice del progetto: shared/minitests/optimize/systems.bas:12
+NUMERICAL.IFFT   ' dal codice del progetto: shared/minitests/analysis/fft_ifft.bas:6
 ```
 
-#### `OPTIMIZE.Brute` — arita 2-3
+#### `NUMERICAL.IfftComplex` — arita 2-2
 
 ```basic
-OPTIMIZE.BRUTE   ' dal codice del progetto: shared/minitests/optimize/bounded.bas:20
+NUMERICAL.IFFTCOMPLEX   ' dal codice del progetto: shared/minitests/analysis/fftc.bas:6
 ```
 
-#### `OPTIMIZE.CholeskySolve` — arita 2-2
+#### `NUMERICAL.IfftShift` — arita 1-1
 
 ```basic
-OPTIMIZE.CHOLESKYSOLVE   ' dal codice del progetto: shared/minitests/optimize/linalg.bas:13
+NUMERICAL.IFFTSHIFT   ' dal codice del progetto: shared/minitests/analysis/arr.bas:10
 ```
 
-#### `OPTIMIZE.Cobyla` — arita 2-3
+#### `NUMERICAL.Integrate` — arita 3-3
 
 ```basic
-OPTIMIZE.COBYLA   ' dal codice del progetto: shared/minitests/optimize/bounded.bas:11
+NUMERICAL.INTEGRATE   ' dal codice del progetto: shared/minitests/analysis/ode.bas:2
 ```
 
-#### `OPTIMIZE.ConjugateGradient` — arita 2-2
+#### `NUMERICAL.InterpolateClamp` — arita 3-3
 
 ```basic
-OPTIMIZE.CONJUGATEGRADIENT   ' dal codice del progetto: shared/minitests/optimize/optimize_all.bas:74
+NUMERICAL.INTERPOLATECLAMP   ' dal codice del progetto: shared/minitests/analysis/num.bas:10
 ```
 
-#### `OPTIMIZE.CurveFit` — arita 4-4
+#### `NUMERICAL.InterpolateGeneric` — arita 4-4
 
 ```basic
-OPTIMIZE.CURVEFIT   ' dal codice del progetto: shared/minitests/optimize/curvefit.bas:11
+NUMERICAL.INTERPOLATEGENERIC   ' dal codice del progetto: shared/minitests/analysis/num.bas:11
 ```
 
-#### `OPTIMIZE.DifferentialEvolution` — arita 2-2
+#### `NUMERICAL.InterpolateLinear` — arita 3-3
 
 ```basic
-OPTIMIZE.DIFFERENTIALEVOLUTION   ' dal codice del progetto: shared/minitests/optimize/bounded.bas:22
+NUMERICAL.INTERPOLATELINEAR   ' dal codice del progetto: shared/minitests/analysis/num.bas:6
 ```
 
-#### `OPTIMIZE.DualAnnealing` — arita 2-3
+#### `NUMERICAL.InterpolatePchip` — arita 3-3
 
 ```basic
-OPTIMIZE.DUALANNEALING   ' dal codice del progetto: shared/minitests/optimize/bounded.bas:24
+NUMERICAL.INTERPOLATEPCHIP   ' dal codice del progetto: shared/minitests/analysis/num.bas:9
 ```
 
-#### `OPTIMIZE.Fsolve` — arita 2-2
+#### `NUMERICAL.InterpolatePolynomial` — arita 3-3
 
 ```basic
-OPTIMIZE.FSOLVE   ' dal codice del progetto: shared/minitests/optimize/systems.bas:14
+NUMERICAL.INTERPOLATEPOLYNOMIAL   ' dal codice del progetto: shared/minitests/analysis/num.bas:8
 ```
 
-#### `OPTIMIZE.GoldenSection` — arita 3-3
+#### `NUMERICAL.InterpolateSpline` — arita 3-3
 
 ```basic
-OPTIMIZE.GOLDENSECTION   ' dal codice del progetto: shared/minitests/optimize/scalar.bas:12
+NUMERICAL.INTERPOLATESPLINE   ' dal codice del progetto: shared/minitests/analysis/analysis_interp_real.bas:14
 ```
 
-#### `OPTIMIZE.LBfgs` — arita 2-2
+#### `NUMERICAL.InterpolateStep` — arita 3-3
 
 ```basic
-OPTIMIZE.LBFGS   ' dal codice del progetto: shared/minitests/optimize/optimize_all.bas:66
+NUMERICAL.INTERPOLATESTEP   ' dal codice del progetto: shared/minitests/analysis/num.bas:7
 ```
 
-#### `OPTIMIZE.LeastSquares` — arita 2-2
+#### `NUMERICAL.Irfft` — arita 2-2
 
 ```basic
-OPTIMIZE.LEASTSQUARES   ' dal codice del progetto: shared/minitests/optimize/linalg.bas:8
+NUMERICAL.IRFFT   ' dal codice del progetto: shared/minitests/analysis/analysis_all.bas:204
 ```
 
-#### `OPTIMIZE.LeastSquaresFit` — arita 2-3
+#### `NUMERICAL.Rfft` — arita 1-1
 
 ```basic
-OPTIMIZE.LEASTSQUARESFIT   ' dal codice del progetto: shared/minitests/optimize/linalg.bas:23
+NUMERICAL.RFFT   ' dal codice del progetto: shared/minitests/analysis/rfft.bas:5
 ```
 
-#### `OPTIMIZE.LevenbergMarquardt` — arita 4-4
+#### `NUMERICAL.Simpson` — arita 4-4
 
 ```basic
-OPTIMIZE.LEVENBERGMARQUARDT   ' dal codice del progetto: shared/minitests/optimize/curvefit.bas:9
+NUMERICAL.SIMPSON   ' dal codice del progetto: shared/minitests/analysis/ode.bas:3
 ```
 
-#### `OPTIMIZE.LevenbergMarquardtVec` — arita 4-4
+#### `NUMERICAL.SolveIvp` — arita 4-4
 
 ```basic
-OPTIMIZE.LEVENBERGMARQUARDTVEC   ' dal codice del progetto: shared/minitests/optimize/lmvec.bas:11
+NUMERICAL.SOLVEIVP   ' dal codice del progetto: shared/minitests/analysis/solveivp.bas:1
 ```
 
-#### `OPTIMIZE.Linprog` — arita 1-6
+#### `NUMERICAL.SolveOde` — arita 5-5
 
 ```basic
-OPTIMIZE.LINPROG   ' dal codice del progetto: shared/minitests/optimize/linalg.bas:18
+NUMERICAL.SOLVEODE   ' dal codice del progetto: shared/minitests/analysis/ode.bas:4
 ```
 
-#### `OPTIMIZE.Minimize` — arita 2-4
+#### `NUMERICAL.Splev` — arita 2-2
 
 ```basic
-OPTIMIZE.MINIMIZE   ' dal codice del progetto: shared/minitests/optimize/bounded.bas:15
+NUMERICAL.SPLEV   ' dal codice del progetto: shared/minitests/analysis/splev.bas:7
 ```
 
-#### `OPTIMIZE.MinimizeScalar` — arita 3-4
+#### `NUMERICAL.Splrep` — arita 2-2
 
 ```basic
-OPTIMIZE.MINIMIZESCALAR   ' dal codice del progetto: shared/minitests/optimize/scalar.bas:14
+NUMERICAL.SPLREP   ' dal codice del progetto: shared/minitests/analysis/splev.bas:5
 ```
 
-#### `OPTIMIZE.NelderMead` — arita 2-2
+#### `NUMERICAL.Trapezoid` — arita 2-2
 
 ```basic
-OPTIMIZE.NELDERMEAD   ' dal codice del progetto: shared/minitests/optimize/optimize_all.bas:62
-```
-
-#### `OPTIMIZE.Newton` — arita 2-2
-
-```basic
-OPTIMIZE.NEWTON   ' dal codice del progetto: shared/minitests/misc/optimize.bas:4
-```
-
-#### `OPTIMIZE.Powell` — arita 2-2
-
-```basic
-OPTIMIZE.POWELL   ' dal codice del progetto: shared/minitests/optimize/optimize_all.bas:68
-```
-
-#### `OPTIMIZE.Ridder` — arita 3-3
-
-```basic
-OPTIMIZE.RIDDER   ' dal codice del progetto: shared/minitests/optimize/scalar.bas:10
-```
-
-#### `OPTIMIZE.Secant` — arita 3-3
-
-```basic
-OPTIMIZE.SECANT   ' dal codice del progetto: shared/minitests/misc/optimize.bas:8
-```
-
-#### `OPTIMIZE.Simplex` — arita 3-3
-
-```basic
-OPTIMIZE.SIMPLEX   ' dal codice del progetto: shared/minitests/optimize/linalg.bas:20
-```
-
-#### `OPTIMIZE.Slsqp` — arita 2-3
-
-```basic
-OPTIMIZE.SLSQP   ' dal codice del progetto: shared/minitests/optimize/bounded.bas:13
-```
-
-#### `OPTIMIZE.Tnc` — arita 2-3
-
-```basic
-OPTIMIZE.TNC   ' dal codice del progetto: shared/minitests/optimize/bounded.bas:9
-```
-
-#### `OPTIMIZE.Toms748` — arita 3-3
-
-```basic
-OPTIMIZE.TOMS748   ' dal codice del progetto: shared/minitests/optimize/scalar.bas:11
+NUMERICAL.TRAPEZOID   ' dal codice del progetto: shared/minitests/analysis/num.bas:4
 ```
 
 #### `POOL.GET` — arita 1-1
@@ -6606,6 +6288,12 @@ RDD.TODAY   ' dal codice del progetto: shared/minitests/dbf/rdd_fields.bas:30
 RDD.VALTYPE   ' dal codice del progetto: shared/minitests/dbf/rdd_fields.bas:28
 ```
 
+#### `REGRESSION.Regress` — arita 2-2
+
+```basic
+REGRESSION.REGRESS   ' dal codice del progetto: shared/minitests/analysis/udt.bas:7
+```
+
 #### `SIGNAL.BLACKMAN` — arita 1-1
 
 ```basic
@@ -6723,19 +6411,19 @@ SPATIAL.CDIST   ' dal codice del progetto: shared/minitests/spatial/cdist.bas:1
 #### `SPATIAL.CONVEXHULL` — arita 1-1
 
 ```basic
-SPATIAL.CONVEXHULL   ' dal codice del progetto: shared/minitests/spatial/spatial_all.bas:25
+SPATIAL.CONVEXHULL   ' dal codice del progetto: shared/minitests/spatial/spatial_all.bas:24
 ```
 
 #### `SPATIAL.DISTANCEMATRIX` — arita 2-2
 
 ```basic
-SPATIAL.DISTANCEMATRIX   ' dal codice del progetto: shared/minitests/spatial/spatial_all.bas:36
+SPATIAL.DISTANCEMATRIX   ' dal codice del progetto: shared/minitests/spatial/spatial_all.bas:35
 ```
 
 #### `SPATIAL.PDIST` — arita 2-2
 
 ```basic
-SPATIAL.PDIST   ' dal codice del progetto: shared/minitests/spatial/spatial_all.bas:45
+SPATIAL.PDIST   ' dal codice del progetto: shared/minitests/spatial/spatial_all.bas:44
 ```
 
 #### `SPECIAL.BESSELI` — arita 2-2
@@ -7017,7 +6705,7 @@ SQL.TOCSV   ' dal codice del progetto: shared/minitests/sql/sqldf2.bas:14
 #### `STATS.Anova` — arita 1-1
 
 ```basic
-STATS.ANOVA   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:29
+STATS.ANOVA   ' dal codice del progetto: shared/minitests/analysis/anova.bas:8
 ```
 
 #### `STATS.BernoulliPmf` — arita 2-2
@@ -7035,13 +6723,13 @@ STATS.BETACDF   ' dal codice del progetto: shared/minitests/stats/gen_STATS_Beta
 #### `STATS.BetaPdf` — arita 3-3
 
 ```basic
-STATS.BETAPDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:242
+STATS.BETAPDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:241
 ```
 
 #### `STATS.BetaPpf` — arita 3-3
 
 ```basic
-STATS.BETAPPF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:243
+STATS.BETAPPF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:242
 ```
 
 #### `STATS.BinomialPmf` — arita 3-3
@@ -7053,19 +6741,19 @@ STATS.BINOMIALPMF   ' dal codice del progetto: shared/minitests/stats/gen_STATS_
 #### `STATS.Chi2` — arita 2-2
 
 ```basic
-STATS.CHI2   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:39
+STATS.CHI2   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:38
 ```
 
 #### `STATS.Chi2Con` — arita 1-1
 
 ```basic
-STATS.CHI2CON   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:49
+STATS.CHI2CON   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:48
 ```
 
 #### `STATS.ChiCdf` — arita 2-2
 
 ```basic
-STATS.CHICDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:245
+STATS.CHICDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:244
 ```
 
 #### `STATS.ChiPdf` — arita 2-2
@@ -7077,49 +6765,61 @@ STATS.CHIPDF   ' dal codice del progetto: shared/minitests/stats/gen_STATS_ChiPd
 #### `STATS.ChiPpf` — arita 2-2
 
 ```basic
-STATS.CHIPPF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:247
+STATS.CHIPPF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:246
 ```
 
 #### `STATS.ChiSquaredCdf` — arita 2-2
 
 ```basic
-STATS.CHISQUAREDCDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:248
+STATS.CHISQUAREDCDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:247
 ```
 
 #### `STATS.ChiSquaredIsf` — arita 2-2
 
 ```basic
-STATS.CHISQUAREDISF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:249
+STATS.CHISQUAREDISF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:248
 ```
 
 #### `STATS.ChiSquaredPdf` — arita 2-2
 
 ```basic
-STATS.CHISQUAREDPDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:250
+STATS.CHISQUAREDPDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:249
 ```
 
 #### `STATS.ChiSquaredPpf` — arita 2-2
 
 ```basic
-STATS.CHISQUAREDPPF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:251
+STATS.CHISQUAREDPPF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:250
+```
+
+#### `STATS.ChiSquaredSf` — arita 2-2
+
+```basic
+STATS.CHISQUAREDSF   ' dal codice del progetto: shared/minitests/stats/sf_extra.bas:5
 ```
 
 #### `STATS.Correlation` — arita 2-2
 
 ```basic
-STATS.CORRELATION   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:214
+STATS.CORRELATION   ' dal codice del progetto: shared/minitests/analysis/desc.bas:11
+```
+
+#### `STATS.Covariance` — arita 2-2
+
+```basic
+STATS.COVARIANCE   ' dal codice del progetto: shared/minitests/stats/covariance.bas:6
 ```
 
 #### `STATS.Describe` — arita 1-1
 
 ```basic
-STATS.DESCRIBE   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:14
+STATS.DESCRIBE   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:13
 ```
 
 #### `STATS.ExponentialCdf` — arita 2-2
 
 ```basic
-STATS.EXPONENTIALCDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:252
+STATS.EXPONENTIALCDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:251
 ```
 
 #### `STATS.ExponentialIsf` — arita 2-2
@@ -7131,25 +6831,31 @@ STATS.EXPONENTIALISF   ' dal codice del progetto: shared/minitests/stats/gen_STA
 #### `STATS.ExponentialPdf` — arita 2-2
 
 ```basic
-STATS.EXPONENTIALPDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:254
+STATS.EXPONENTIALPDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:253
 ```
 
 #### `STATS.ExponentialPpf` — arita 2-2
 
 ```basic
-STATS.EXPONENTIALPPF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:255
+STATS.EXPONENTIALPPF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:254
+```
+
+#### `STATS.ExponentialSf` — arita 2-2
+
+```basic
+STATS.EXPONENTIALSF   ' dal codice del progetto: shared/minitests/stats/sf_extra.bas:3
 ```
 
 #### `STATS.FCdf` — arita 3-3
 
 ```basic
-STATS.FCDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:256
+STATS.FCDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:255
 ```
 
 #### `STATS.FIsf` — arita 3-3
 
 ```basic
-STATS.FISF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:257
+STATS.FISF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:256
 ```
 
 #### `STATS.FPdf` — arita 3-3
@@ -7167,49 +6873,55 @@ STATS.FPPF   ' dal codice del progetto: shared/minitests/stats/gen_STATS_FPpf.ba
 #### `STATS.Fisher` — arita 4-4
 
 ```basic
-STATS.FISHER   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:188
+STATS.FISHER   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:187
 ```
 
 #### `STATS.GammaCdf` — arita 3-3
 
 ```basic
-STATS.GAMMACDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:221
+STATS.GAMMACDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:220
 ```
 
 #### `STATS.GammaIsf` — arita 3-3
 
 ```basic
-STATS.GAMMAISF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:224
+STATS.GAMMAISF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:223
 ```
 
 #### `STATS.GammaPdf` — arita 3-3
 
 ```basic
-STATS.GAMMAPDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:222
+STATS.GAMMAPDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:221
 ```
 
 #### `STATS.GammaPpf` — arita 3-3
 
 ```basic
-STATS.GAMMAPPF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:223
+STATS.GAMMAPPF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:222
+```
+
+#### `STATS.GammaSf` — arita 3-3
+
+```basic
+STATS.GAMMASF   ' dal codice del progetto: shared/minitests/stats/gamma_sf.bas:4
 ```
 
 #### `STATS.GeometricPmf` — arita 2-2
 
 ```basic
-STATS.GEOMETRICPMF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:264
+STATS.GEOMETRICPMF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:263
 ```
 
 #### `STATS.HypergeometricPmf` — arita 4-4
 
 ```basic
-STATS.HYPERGEOMETRICPMF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:265
+STATS.HYPERGEOMETRICPMF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:264
 ```
 
 #### `STATS.Iqr` — arita 1-1
 
 ```basic
-STATS.IQR   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:226
+STATS.IQR   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:225
 ```
 
 #### `STATS.JarqueBera` — arita 1-1
@@ -7221,31 +6933,31 @@ STATS.JARQUEBERA   ' dal codice del progetto: shared/minitests/stats/jarquebera.
 #### `STATS.Ks` — arita 2-2
 
 ```basic
-STATS.KS   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:129
+STATS.KS   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:128
 ```
 
 #### `STATS.Kurtosis` — arita 1-1
 
 ```basic
-STATS.KURTOSIS   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:205
+STATS.KURTOSIS   ' dal codice del progetto: shared/minitests/analysis/desc.bas:8
 ```
 
 #### `STATS.KurtosisTest` — arita 1-1
 
 ```basic
-STATS.KURTOSISTEST   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:112
+STATS.KURTOSISTEST   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:111
 ```
 
 #### `STATS.LinRegress` — arita 2-2
 
 ```basic
-STATS.LINREGRESS   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:77
+STATS.LINREGRESS   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:76
 ```
 
 #### `STATS.LogisticPdf` — arita 3-3
 
 ```basic
-STATS.LOGISTICPDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:266
+STATS.LOGISTICPDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:265
 ```
 
 #### `STATS.LogisticPpf` — arita 3-3
@@ -7263,25 +6975,37 @@ STATS.LOGNORMALCDF   ' dal codice del progetto: shared/minitests/stats/gen_STATS
 #### `STATS.LognormalPdf` — arita 1-3
 
 ```basic
-STATS.LOGNORMALPDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:269
+STATS.LOGNORMALPDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:268
 ```
 
 #### `STATS.LognormalPpf` — arita 1-3
 
 ```basic
-STATS.LOGNORMALPPF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:270
+STATS.LOGNORMALPPF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:269
+```
+
+#### `STATS.MAX` — arita 1-1
+
+```basic
+STATS.MAX   ' dal codice del progetto: shared/minitests/stats/max_min.bas:4
+```
+
+#### `STATS.MIN` — arita 1-1
+
+```basic
+STATS.MIN   ' dal codice del progetto: shared/minitests/stats/max_min.bas:5
 ```
 
 #### `STATS.Mad` — arita 1-1
 
 ```basic
-STATS.MAD   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:206
+STATS.MAD   ' dal codice del progetto: shared/minitests/analysis/desc.bas:9
 ```
 
 #### `STATS.MannWhitney` — arita 2-2
 
 ```basic
-STATS.MANNWHITNEY   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:138
+STATS.MANNWHITNEY   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:137
 ```
 
 #### `STATS.Mean` — arita 1-1
@@ -7293,43 +7017,43 @@ STATS.MEAN   ' dal codice del progetto: shared/minitests/strings/split_dynamic.b
 #### `STATS.Median` — arita 1-1
 
 ```basic
-STATS.MEDIAN   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:197
+STATS.MEDIAN   ' dal codice del progetto: shared/minitests/analysis/desc.bas:4
 ```
 
 #### `STATS.Mode` — arita 1-1
 
 ```basic
-STATS.MODE   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:227
+STATS.MODE   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:226
 ```
 
 #### `STATS.Moment` — arita 2-2
 
 ```basic
-STATS.MOMENT   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:228
+STATS.MOMENT   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:227
 ```
 
 #### `STATS.NegativeBinomialPmf` — arita 3-3
 
 ```basic
-STATS.NEGATIVEBINOMIALPMF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:290
+STATS.NEGATIVEBINOMIALPMF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:289
 ```
 
 #### `STATS.NormalCdf` — arita 1-3
 
 ```basic
-STATS.NORMALCDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:233
+STATS.NORMALCDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:232
 ```
 
 #### `STATS.NormalIsf` — arita 1-3
 
 ```basic
-STATS.NORMALISF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:272
+STATS.NORMALISF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:271
 ```
 
 #### `STATS.NormalPdf` — arita 1-3
 
 ```basic
-STATS.NORMALPDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:234
+STATS.NORMALPDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:233
 ```
 
 #### `STATS.NormalPpf` — arita 1-3
@@ -7341,19 +7065,19 @@ STATS.NORMALPPF   ' dal codice del progetto: shared/minitests/stats/gen_STATS_No
 #### `STATS.NormalTest` — arita 1-1
 
 ```basic
-STATS.NORMALTEST   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:88
+STATS.NORMALTEST   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:87
 ```
 
 #### `STATS.ParetoPdf` — arita 3-3
 
 ```basic
-STATS.PARETOPDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:275
+STATS.PARETOPDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:274
 ```
 
 #### `STATS.ParetoPpf` — arita 3-3
 
 ```basic
-STATS.PARETOPPF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:276
+STATS.PARETOPPF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:275
 ```
 
 #### `STATS.PearsonR` — arita 2-2
@@ -7365,13 +7089,19 @@ STATS.PEARSONR   ' dal codice del progetto: shared/minitests/stats/pearsonr.bas:
 #### `STATS.Percentile` — arita 2-2
 
 ```basic
-STATS.PERCENTILE   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:215
+STATS.PERCENTILE   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:214
 ```
 
 #### `STATS.PoissonPmf` — arita 2-2
 
 ```basic
-STATS.POISSONPMF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:277
+STATS.POISSONPMF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:276
+```
+
+#### `STATS.RANGE` — arita 1-1
+
+```basic
+STATS.RANGE   ' dal codice del progetto: shared/minitests/stats/range.bas:5
 ```
 
 #### `STATS.Shapiro` — arita 1-1
@@ -7383,109 +7113,115 @@ STATS.SHAPIRO   ' dal codice del progetto: shared/minitests/stats/shapiro.bas:1
 #### `STATS.SkewTest` — arita 1-1
 
 ```basic
-STATS.SKEWTEST   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:104
+STATS.SKEWTEST   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:103
 ```
 
 #### `STATS.SkewedNormalPdf` — arita 1-4
 
 ```basic
-STATS.SKEWEDNORMALPDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:289
+STATS.SKEWEDNORMALPDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:288
 ```
 
 #### `STATS.Skewness` — arita 1-1
 
 ```basic
-STATS.SKEWNESS   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:213
+STATS.SKEWNESS   ' dal codice del progetto: shared/minitests/analysis/desc.bas:7
 ```
 
 #### `STATS.SpearmanR` — arita 2-2
 
 ```basic
-STATS.SPEARMANR   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:68
+STATS.SPEARMANR   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:67
 ```
 
 #### `STATS.StdDev` — arita 1-1
 
 ```basic
-STATS.STDDEV   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:198
+STATS.STDDEV   ' dal codice del progetto: shared/minitests/analysis/desc.bas:5
 ```
 
 #### `STATS.StudentTCdf` — arita 2-2
 
 ```basic
-STATS.STUDENTTCDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:278
+STATS.STUDENTTCDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:277
 ```
 
 #### `STATS.StudentTIsf` — arita 2-2
 
 ```basic
-STATS.STUDENTTISF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:279
+STATS.STUDENTTISF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:278
 ```
 
 #### `STATS.StudentTPdf` — arita 2-2
 
 ```basic
-STATS.STUDENTTPDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:280
+STATS.STUDENTTPDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:279
 ```
 
 #### `STATS.StudentTPpf` — arita 2-2
 
 ```basic
-STATS.STUDENTTPPF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:281
+STATS.STUDENTTPPF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:280
+```
+
+#### `STATS.StudentTSf` — arita 2-2
+
+```basic
+STATS.STUDENTTSF   ' dal codice del progetto: shared/minitests/stats/sf_extra.bas:4
 ```
 
 #### `STATS.TTest` — arita 2-2
 
 ```basic
-STATS.TTEST   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:164
+STATS.TTEST   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:163
 ```
 
 #### `STATS.TTestOneSample` — arita 2-2
 
 ```basic
-STATS.TTESTONESAMPLE   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:172
+STATS.TTESTONESAMPLE   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:171
 ```
 
 #### `STATS.TTestPaired` — arita 2-2
 
 ```basic
-STATS.TTESTPAIRED   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:181
+STATS.TTESTPAIRED   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:180
 ```
 
 #### `STATS.TriangularPdf` — arita 1-4
 
 ```basic
-STATS.TRIANGULARPDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:282
+STATS.TRIANGULARPDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:281
 ```
 
 #### `STATS.TriangularPpf` — arita 1-4
 
 ```basic
-STATS.TRIANGULARPPF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:283
+STATS.TRIANGULARPPF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:282
 ```
 
 #### `STATS.UniformPdf` — arita 1-3
 
 ```basic
-STATS.UNIFORMPDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:284
+STATS.UNIFORMPDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:283
 ```
 
 #### `STATS.UniformPpf` — arita 1-3
 
 ```basic
-STATS.UNIFORMPPF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:285
+STATS.UNIFORMPPF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:284
 ```
 
 #### `STATS.Variance` — arita 1-1
 
 ```basic
-STATS.VARIANCE   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:199
+STATS.VARIANCE   ' dal codice del progetto: shared/minitests/analysis/desc.bas:6
 ```
 
 #### `STATS.WeibullCdf` — arita 3-3
 
 ```basic
-STATS.WEIBULLCDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:286
+STATS.WEIBULLCDF   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:285
 ```
 
 #### `STATS.WeibullPdf` — arita 3-3
@@ -7503,13 +7239,13 @@ STATS.WEIBULLPPF   ' dal codice del progetto: shared/minitests/stats/gen_STATS_W
 #### `STATS.Wilcoxon` — arita 2-2
 
 ```basic
-STATS.WILCOXON   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:147
+STATS.WILCOXON   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:146
 ```
 
 #### `STATS.ZTest` — arita 3-3
 
 ```basic
-STATS.ZTEST   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:155
+STATS.ZTEST   ' dal codice del progetto: shared/minitests/stats/stats_all.bas:154
 ```
 
 #### `STRINGS.Asc` — arita 1-1
@@ -7551,7 +7287,7 @@ STRINGS.ENDSWITH   ' nel codice a nome nudo: shared/minitests/strings/strings_al
 #### `STRINGS.Format` — arita 2-2
 
 ```basic
-STRINGS.FORMAT   ' nel codice a nome nudo: shared/minitests/strings/strings_all.bas:49
+STRINGS.FORMAT   ' nel codice a nome nudo: shared/minitests/mathprogffi/mathprog_core.bas:16
 ```
 
 #### `STRINGS.HTMLENCODE` — arita 1-1
@@ -7851,13 +7587,13 @@ SYSTEM.COMMANDCOUNT   ' dal codice del progetto: shared/minitests/system/command
 #### `SYSTEM.CTYPE` — arita 2-2
 
 ```basic
-SYSTEM.CTYPE   ' dal codice del progetto: shared/minitests/system/system_all.bas:24
+SYSTEM.CTYPE   ' dal codice del progetto: shared/minitests/system/system_all.bas:54
 ```
 
 #### `SYSTEM.Count` — arita 2-2
 
 ```basic
-SYSTEM.COUNT   ' dal codice del progetto: shared/minitests/system/system_all.bas:28
+SYSTEM.COUNT   ' dal codice del progetto: shared/minitests/system/system_all.bas:58
 ```
 
 #### `SYSTEM.EMPTY` — arita 1-1
@@ -7869,7 +7605,7 @@ SYSTEM.EMPTY   ' dal codice del progetto: shared/samples/System/SystemLowLevel.b
 #### `SYSTEM.GOMAXPROCS` — arita 0-1
 
 ```basic
-SYSTEM.GOMAXPROCS   ' dal codice del progetto: shared/minitests/system/runtime.bas:10
+SYSTEM.GOMAXPROCS   ' dal codice del progetto: shared/minitests/system/system_gomaxprocs_park.bas:25
 ```
 
 #### `SYSTEM.IIF` — arita 3-3
@@ -7899,7 +7635,7 @@ SYSTEM.NUMGOROUTINE   ' dal codice del progetto: shared/minitests/system/runtime
 #### `SYSTEM.Next` — arita 1-1
 
 ```basic
-SYSTEM.NEXT   ' dal codice del progetto: shared/samples/System/SystemNextGenerator.bas:2
+SYSTEM.NEXT   ' dal codice del progetto: shared/minitests/system/system_all.bas:4
 ```
 
 #### `SYSTEM.SHELLCODE` — arita 1-1
@@ -7959,7 +7695,7 @@ SYSTEM.TYPENAME   ' dal codice del progetto: shared/minitests/system/system_udt_
 #### `SYSTEM.UBOUND` — arita 1-2
 
 ```basic
-SYSTEM.UBOUND   ' dal codice del progetto: shared/samples/Ai/AiImageEmbed.bas:17
+SYSTEM.UBOUND   ' dal codice del progetto: shared/minitests/fonts/fonts_list_forms.bas:17
 ```
 
 #### `SYSTEM.UDTALIGNED` — arita 1-1
@@ -7986,6 +7722,30 @@ SYSTEM.VALTYPE   ' dal codice del progetto: shared/minitests/dbf/bare_currency_y
 SYSTEM.VARPTR   ' dal codice del progetto: shared/minitests/system/system_lowlevel_ti_strti_ptr.bas:14
 ```
 
+#### `TIMESERIES.AdfTest` — arita 1-1
+
+```basic
+TIMESERIES.ADFTEST   ' dal codice del progetto: shared/minitests/analysis/analysis_all.bas:121
+```
+
+#### `TIMESERIES.Arima` — arita 4-4
+
+```basic
+TIMESERIES.ARIMA   ' dal codice del progetto: shared/minitests/analysis/arima_hw.bas:5
+```
+
+#### `TIMESERIES.HoltWinters` — arita 5-5
+
+```basic
+TIMESERIES.HOLTWINTERS   ' dal codice del progetto: shared/minitests/analysis/arima_hw.bas:11
+```
+
+#### `TIMESERIES.MaCoefficients` — arita 2-2
+
+```basic
+TIMESERIES.MACOEFFICIENTS   ' dal codice del progetto: shared/minitests/analysis/arr.bas:14
+```
+
 #### `TIMESERIES.TSAUTOCORR` — arita 2-2
 
 ```basic
@@ -7995,25 +7755,25 @@ TIMESERIES.TSAUTOCORR   ' dal codice del progetto: shared/minitests/timeseries/g
 #### `TIMESERIES.TSBANDPASS` — arita 4-4
 
 ```basic
-TIMESERIES.TSBANDPASS   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:44
+TIMESERIES.TSBANDPASS   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:43
 ```
 
 #### `TIMESERIES.TSBANDSTOP` — arita 4-4
 
 ```basic
-TIMESERIES.TSBANDSTOP   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:46
+TIMESERIES.TSBANDSTOP   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:45
 ```
 
 #### `TIMESERIES.TSCOVARIANCEMATRIX` — arita 1-1
 
 ```basic
-TIMESERIES.TSCOVARIANCEMATRIX   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:94
+TIMESERIES.TSCOVARIANCEMATRIX   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:93
 ```
 
 #### `TIMESERIES.TSDECOMPOSE` — arita 2-2
 
 ```basic
-TIMESERIES.TSDECOMPOSE   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:88
+TIMESERIES.TSDECOMPOSE   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:87
 ```
 
 #### `TIMESERIES.TSDESEASONALIZE` — arita 2-2
@@ -8025,7 +7785,7 @@ TIMESERIES.TSDESEASONALIZE   ' dal codice del progetto: shared/minitests/timeser
 #### `TIMESERIES.TSDIFFERENCE` — arita 2-2
 
 ```basic
-TIMESERIES.TSDIFFERENCE   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:26
+TIMESERIES.TSDIFFERENCE   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:25
 ```
 
 #### `TIMESERIES.TSEMA` — arita 2-2
@@ -8037,19 +7797,19 @@ TIMESERIES.TSEMA   ' dal codice del progetto: shared/minitests/timeseries/gen_TI
 #### `TIMESERIES.TSHIGHPASS` — arita 3-3
 
 ```basic
-TIMESERIES.TSHIGHPASS   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:42
+TIMESERIES.TSHIGHPASS   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:41
 ```
 
 #### `TIMESERIES.TSLOWPASS` — arita 3-3
 
 ```basic
-TIMESERIES.TSLOWPASS   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:40
+TIMESERIES.TSLOWPASS   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:39
 ```
 
 #### `TIMESERIES.TSMA` — arita 2-2
 
 ```basic
-TIMESERIES.TSMA   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:30
+TIMESERIES.TSMA   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:29
 ```
 
 #### `TIMESERIES.TSMINMAX` — arita 1-1
@@ -8061,25 +7821,25 @@ TIMESERIES.TSMINMAX   ' dal codice del progetto: shared/minitests/timeseries/gen
 #### `TIMESERIES.TSOUTLIERS` — arita 2-2
 
 ```basic
-TIMESERIES.TSOUTLIERS   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:97
+TIMESERIES.TSOUTLIERS   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:96
 ```
 
 #### `TIMESERIES.TSRETURNS` — arita 1-1
 
 ```basic
-TIMESERIES.TSRETURNS   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:34
+TIMESERIES.TSRETURNS   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:33
 ```
 
 #### `TIMESERIES.TSROLLAUTOCORR` — arita 3-3
 
 ```basic
-TIMESERIES.TSROLLAUTOCORR   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:62
+TIMESERIES.TSROLLAUTOCORR   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:61
 ```
 
 #### `TIMESERIES.TSROLLCORR` — arita 3-3
 
 ```basic
-TIMESERIES.TSROLLCORR   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:52
+TIMESERIES.TSROLLCORR   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:51
 ```
 
 #### `TIMESERIES.TSROLLCOVARIANCE` — arita 3-3
@@ -8091,13 +7851,13 @@ TIMESERIES.TSROLLCOVARIANCE   ' dal codice del progetto: shared/minitests/timese
 #### `TIMESERIES.TSROLLDELTA` — arita 2-2
 
 ```basic
-TIMESERIES.TSROLLDELTA   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:64
+TIMESERIES.TSROLLDELTA   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:63
 ```
 
 #### `TIMESERIES.TSROLLKURTOSIS` — arita 2-2
 
 ```basic
-TIMESERIES.TSROLLKURTOSIS   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:66
+TIMESERIES.TSROLLKURTOSIS   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:65
 ```
 
 #### `TIMESERIES.TSROLLMAD` — arita 2-2
@@ -8121,25 +7881,25 @@ TIMESERIES.TSROLLMEDIAN   ' dal codice del progetto: shared/minitests/timeseries
 #### `TIMESERIES.TSROLLMINMAX` — arita 2-2
 
 ```basic
-TIMESERIES.TSROLLMINMAX   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:80
+TIMESERIES.TSROLLMINMAX   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:79
 ```
 
 #### `TIMESERIES.TSROLLQUANTILE` — arita 3-3
 
 ```basic
-TIMESERIES.TSROLLQUANTILE   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:56
+TIMESERIES.TSROLLQUANTILE   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:55
 ```
 
 #### `TIMESERIES.TSROLLREGRESSION` — arita 3-3
 
 ```basic
-TIMESERIES.TSROLLREGRESSION   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:83
+TIMESERIES.TSROLLREGRESSION   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:82
 ```
 
 #### `TIMESERIES.TSROLLREGRESSIONSINGLE` — arita 2-2
 
 ```basic
-TIMESERIES.TSROLLREGRESSIONSINGLE   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:85
+TIMESERIES.TSROLLREGRESSIONSINGLE   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:84
 ```
 
 #### `TIMESERIES.TSROLLSHARPE` — arita 3-3
@@ -8169,13 +7929,19 @@ TIMESERIES.TSROLLSTDDEV   ' dal codice del progetto: shared/minitests/timeseries
 #### `TIMESERIES.TSROLLZSCORE` — arita 2-2
 
 ```basic
-TIMESERIES.TSROLLZSCORE   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:72
+TIMESERIES.TSROLLZSCORE   ' dal codice del progetto: shared/minitests/timeseries/timeseries_all.bas:71
 ```
 
 #### `TIMESERIES.TSVOLATILITY` — arita 1-1
 
 ```basic
 TIMESERIES.TSVOLATILITY   ' dal codice del progetto: shared/minitests/timeseries/gen_TIMESERIES_TSVOLATILITY.bas:1
+```
+
+#### `TIMESERIES.YuleWalker` — arita 2-2
+
+```basic
+TIMESERIES.YULEWALKER   ' dal codice del progetto: shared/minitests/analysis/arr.bas:12
 ```
 
 #### `TOOL.Register` — arita 2-2
@@ -8241,7 +8007,7 @@ TORCH.BLEU   ' dal codice del progetto: shared/minitests/torch/bleu_rouge.bas:1
 #### `TORCH.CLIP` — arita 3-3
 
 ```basic
-TORCH.CLIP   ' dal codice del progetto: shared/minitests/torch/clip.bas:1
+TORCH.CLIP   ' dal codice del progetto: shared/minitests/torch/torch_all.bas:30
 ```
 
 #### `TORCH.CONCAT` — arita 2-2
@@ -8277,7 +8043,7 @@ TORCH.DEVICEOF   ' dal codice del progetto: shared/minitests/torch/info.bas:11
 #### `TORCH.DIV` — arita 2-2
 
 ```basic
-TORCH.DIV   ' dal codice del progetto: shared/minitests/torch/arith.bas:11
+TORCH.DIV   ' dal codice del progetto: shared/minitests/torch/torch_all.bas:54
 ```
 
 #### `TORCH.DTYPE` — arita 1-1
@@ -8367,7 +8133,7 @@ TORCH.LOSSCROSSENTROPY   ' dal codice del progetto: shared/minitests/torch/lossc
 #### `TORCH.LOSSMSE` — arita 2-2
 
 ```basic
-TORCH.LOSSMSE   ' dal codice del progetto: shared/minitests/torch/loss.bas:9
+TORCH.LOSSMSE   ' dal codice del progetto: shared/minitests/torch/torch_all.bas:69
 ```
 
 #### `TORCH.MATMUL` — arita 2-2
@@ -8487,7 +8253,7 @@ TORCH.NORMALIZE   ' dal codice del progetto: shared/minitests/torch/normalize.ba
 #### `TORCH.ONEHOT` — arita 2-2
 
 ```basic
-TORCH.ONEHOT   ' dal codice del progetto: shared/minitests/torch/onehot.bas:1
+TORCH.ONEHOT   ' dal codice del progetto: shared/minitests/torch/torch_all.bas:33
 ```
 
 #### `TORCH.ONES` — arita 2-2
@@ -8631,7 +8397,7 @@ TORCH.TOARRAY   ' dal codice del progetto: shared/minitests/torch/shape_ops.bas:
 #### `TORCH.TOPK` — arita 2-2
 
 ```basic
-TORCH.TOPK   ' dal codice del progetto: shared/minitests/torch/topk.bas:1
+TORCH.TOPK   ' dal codice del progetto: shared/minitests/torch/torch_all.bas:37
 ```
 
 #### `TORCH.TRANSPOSE` — arita 1-1
@@ -9288,22 +9054,40 @@ UI.FINDALL   ' dal codice del progetto: shared/minitests/ui/findall_type.bas:10
 UI.TYPE   ' dal codice del progetto: shared/minitests/ui/findall_type.bas:11
 ```
 
+#### `VECTOR.Angle2d` — arita 4-4
+
+```basic
+VECTOR.ANGLE2D   ' dal codice del progetto: shared/samples/Math/MathCombinatorics.bas:57
+```
+
 #### `VECTOR.CHEBYSHEV` — arita 2-2
 
 ```basic
-VECTOR.CHEBYSHEV   ' dal codice del progetto: shared/minitests/vector/vector_all.bas:10
+VECTOR.CHEBYSHEV   ' dal codice del progetto: shared/minitests/vector/vector_all.bas:9
 ```
 
 #### `VECTOR.COSINE` — arita 2-2
 
 ```basic
-VECTOR.COSINE   ' dal codice del progetto: shared/minitests/vector/vector_all.bas:16
+VECTOR.COSINE   ' dal codice del progetto: shared/minitests/vector/vector_all.bas:15
 ```
 
 #### `VECTOR.CREATE` — arita 3-4
 
 ```basic
-VECTOR.CREATE   ' dal codice del progetto: shared/minitests/vector/vector_all.bas:8
+VECTOR.CREATE   ' dal codice del progetto: shared/minitests/vector/vector_all.bas:7
+```
+
+#### `VECTOR.Dist2d` — arita 4-4
+
+```basic
+VECTOR.DIST2D   ' nel codice a nome nudo: shared/minitests/math/math_all.bas:44
+```
+
+#### `VECTOR.Dist3d` — arita 6-6
+
+```basic
+VECTOR.DIST3D   ' nel codice a nome nudo: shared/minitests/math/math_all.bas:44
 ```
 
 #### `VECTOR.EUCLIDEA` — arita 1-1
@@ -9312,22 +9096,40 @@ VECTOR.CREATE   ' dal codice del progetto: shared/minitests/vector/vector_all.ba
 VECTOR.EUCLIDEA   ' dal codice del progetto: shared/minitests/vector/euclidea.bas:5
 ```
 
+#### `VECTOR.EuclideanDistanceSquared` — arita 2-2
+
+```basic
+VECTOR.EUCLIDEANDISTANCESQUARED   ' dal codice del progetto: shared/minitests/analysis/num.bas:12
+```
+
 #### `VECTOR.MANHATTAN` — arita 2-2
 
 ```basic
-VECTOR.MANHATTAN   ' dal codice del progetto: shared/minitests/vector/vector_all.bas:27
+VECTOR.MANHATTAN   ' dal codice del progetto: shared/minitests/vector/vector_all.bas:26
 ```
 
 #### `VECTOR.MINKOWSKI` — arita 3-3
 
 ```basic
-VECTOR.MINKOWSKI   ' dal codice del progetto: shared/minitests/vector/vector_all.bas:33
+VECTOR.MINKOWSKI   ' dal codice del progetto: shared/minitests/vector/vector_all.bas:32
+```
+
+#### `VECTOR.POLAR_X` — arita 2-2
+
+```basic
+VECTOR.POLAR_X   ' dal codice del progetto: shared/samples/Math/MathCombinatorics.bas:49
+```
+
+#### `VECTOR.POLAR_Y` — arita 2-2
+
+```basic
+VECTOR.POLAR_Y   ' dal codice del progetto: shared/samples/Math/MathCombinatorics.bas:50
 ```
 
 #### `VECTOR.PRODUCT` — arita 2-2
 
 ```basic
-VECTOR.PRODUCT   ' dal codice del progetto: shared/minitests/vector/vector_all.bas:39
+VECTOR.PRODUCT   ' dal codice del progetto: shared/minitests/vector/vector_all.bas:38
 ```
 
 #### `VECTORDB.AbTest` — arita 2-2
@@ -9387,13 +9189,13 @@ VECTORDB.DRIFT   ' dal codice del progetto: shared/minitests/vectordb/vectordb_a
 #### `VECTORDB.Embed` — arita 1-2
 
 ```basic
-VECTORDB.EMBED   ' dal codice del progetto: shared/minitests/vectordb/probe_emb.bas:8
+VECTORDB.EMBED   ' dal codice del progetto: shared/minitests/vectordb/vectordb_all.bas:333
 ```
 
 #### `VECTORDB.EnsureCollection` — arita 2-4
 
 ```basic
-VECTORDB.ENSURECOLLECTION   ' dal codice del progetto: shared/minitests/vectordb/probe_emb.bas:7
+VECTORDB.ENSURECOLLECTION   ' dal codice del progetto: shared/minitests/vectordb/vectordb_all.bas:297
 ```
 
 #### `VECTORDB.EvalDiff` — arita 2-2
@@ -9417,7 +9219,7 @@ VECTORDB.FAITHFULNESS   ' dal codice del progetto: shared/minitests/vectordb/vec
 #### `VECTORDB.GenTest` — arita 3-3
 
 ```basic
-VECTORDB.GENTEST   ' dal codice del progetto: shared/minitests/vectordb/gentest.bas:17
+VECTORDB.GENTEST   ' dal codice del progetto: shared/minitests/vectordb/vectordb_all.bas:352
 ```
 
 #### `VECTORDB.Hallucination` — arita 2-2
@@ -9429,7 +9231,7 @@ VECTORDB.HALLUCINATION   ' dal codice del progetto: shared/minitests/vectordb/ha
 #### `VECTORDB.IndexMeta` — arita 4-5
 
 ```basic
-VECTORDB.INDEXMETA   ' dal codice del progetto: shared/minitests/vectordb/vectordb_all.bas:349
+VECTORDB.INDEXMETA   ' dal codice del progetto: shared/minitests/vectordb/vectordb_all.bas:348
 ```
 
 #### `VECTORDB.IndexText` — arita 4-4
@@ -9441,13 +9243,13 @@ VECTORDB.INDEXTEXT   ' dal codice del progetto: shared/minitests/vectordb/vector
 #### `VECTORDB.ListCollections` — arita 1-1
 
 ```basic
-VECTORDB.LISTCOLLECTIONS   ' dal codice del progetto: shared/minitests/vectordb/vectordb_all.bas:348
+VECTORDB.LISTCOLLECTIONS   ' dal codice del progetto: shared/minitests/vectordb/vectordb_all.bas:347
 ```
 
 #### `VECTORDB.LoadDocuments` — arita 3-5
 
 ```basic
-VECTORDB.LOADDOCUMENTS   ' dal codice del progetto: shared/minitests/vectordb/vectordb_all.bas:346
+VECTORDB.LOADDOCUMENTS   ' dal codice del progetto: shared/minitests/vectordb/vectordb_all.bas:344
 ```
 
 #### `VECTORDB.Mrr` — arita 2-2
@@ -9489,7 +9291,7 @@ VECTORDB.RELEVANCE   ' dal codice del progetto: shared/minitests/vectordb/releva
 #### `VECTORDB.RemoveSource` — arita 3-3
 
 ```basic
-VECTORDB.REMOVESOURCE   ' dal codice del progetto: shared/minitests/vectordb/vectordb_all.bas:350
+VECTORDB.REMOVESOURCE   ' dal codice del progetto: shared/minitests/vectordb/vectordb_all.bas:349
 ```
 
 #### `VECTORDB.Search` — arita 4-9

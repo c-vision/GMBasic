@@ -579,7 +579,7 @@ gmb <file.bas> [flags]
 | **cervello (brain)** | un nome che raggruppa artefatti: `rag/<nome>.db` (indice vettoriale) e/o `graphs/<nome>.json` (+ export) |
 | **mode** | `rag`, `graph` o `both` — `BRAIN STATS` mostra `available` |
 | **registrare** | censisce il cervello in `config/brains.json` (senza, è usabile con `BRAIN USE` ma non compare in `LIST/INFO/STATS`) |
-| **collegare (attach)** | `BRAIN USE <nome>`: da lì in poi `AI.SEARCHMULTI`/`GRAPH.QUERYMULTI` lo interrogano |
+| **collegare (attach)** | `BRAIN USE <nome>`: da lì in poi `AI.SEARCHMULTI`/`BRAINS.QueryMulti` lo interrogano |
 | **scope** | la catena `CALL → TASK → AGENT → SESSION → PROCESS` che decide *quali* cervelli vede un agente/una sessione (`BRAIN SCOPE`, `BRAIN RESOLVE`) |
 
 ## 1. Ciclo di vita

@@ -89,7 +89,7 @@ significa «usa il default», che è quello documentato qui sotto.
 | `pluginsDir` | `<monorepo>/shared/plugins` (fallback `<root>/plugins`) | plugin operativi |
 | `logsDir` | `ai-logs/` | log degli agenti |
 | `ragDir` | `rag/` | database vettoriali costruiti da `RAG BUILD` |
-| `graphsDir` | `graphs/` | export di `GRAPH BUILD` |
+| `graphsDir` | `graphs/` | export di `BRAINS BUILD` |
 | `brainsDir` | `brains/` | cervelli installati da `BRAIN INSTALL` |
 | `brainsExportsDir` | `brains-exports/` | export `.gmbrain` |
 | `libsDir` | `libs-runtime/` | componenti runtime scaricati on-demand (`torch/ml`, Chromium, OCR), in `<libsDir>/<componente>/<rid>/` |
@@ -336,7 +336,7 @@ fastllm chat ds4 --opt context=8192 --opt temp=0.7
 | `shared/plugins/` | `pluginsDir` | i **plugin operativi** (browser, pdf, markdown, mcp-tool, fs-scoped...) |
 | `ai-logs/` | `logsDir` | i **log degli agenti AI** (`AI LOG WRITE/WRITELINE`) — git-ignorata |
 | `~/.gmbasic/rag/` | `ragDir` | i **database RAG** costruiti da `RAG BUILD` (`<nome>.db`) — **cache utente**: sono dati PRODOTTI dal compilatore, non stanno nel checkout |
-| `~/.gmbasic/graphs/` | `graphsDir` | gli **export dei knowledge graph** di `GRAPH BUILD` (`.graphml`, `.mermaid`, `.json`, `.stats.json`) — cache utente |
+| `~/.gmbasic/graphs/` | `graphsDir` | gli **export dei knowledge graph** di `BRAINS BUILD` (`.graphml`, `.mermaid`, `.json`, `.stats.json`) — cache utente |
 | `brains/` | `brainsDir` | i **cervelli installati** (`BRAIN INSTALL`): `<name>/rag/...`, `<name>/graphs/...` |
 | `brains-exports/` | `brainsExportsDir` | gli **export** di `BRAIN EXPORT` (zip `.gmbrain`) |
 | `~/.gmbasic/libs/` | `libsDir` | i **componenti runtime scaricati on-demand**: `ml/<rid>/` (libtorch), `chromium/<rid>/` (browser), `obscura/<rid>/`, `ocr/<rid>/` — fuori dal repo |
@@ -376,7 +376,7 @@ ANTHROPIC_APIKEY=
   "pluginsDir":   "plugins",            // plugin operativi
   "logsDir":      "ai-logs",            // log agenti AI
   "ragDir":       null,                 // null → ~/.gmbasic/rag (database RAG; i builder scrivono qui)
-  "graphsDir":    null,                 // null → ~/.gmbasic/graphs (export GRAPH BUILD)
+  "graphsDir":    null,                 // null → ~/.gmbasic/graphs (export BRAINS BUILD)
   "brainsDir":    "brains",             // cervelli installati
   "brainsExportsDir": "brains-exports", // export BRAIN EXPORT
   "libsDir":      null,                 // null → ~/.gmbasic/libs (componenti torch/chromium/ocr)

@@ -127,29 +127,6 @@ nulla sul comportamento — meglio dichiararlo che simulare una verifica che non
 
 
 
-<!-- BEGIN DOMAIN TABLE -->
-## Tavola sinottica del dominio
-
-Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
-nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
-
-- **CHART.CREATE(x1)** — `h = CHART.CREATE("Disegni", "tempo", "prezzo")` (shared/samples/graphics/ChartDrawDemo.bas:31)
-- **GRAPHICS.C2PX(x1)** — `PRINT "C2PX(10)    = "; C2PX(10)` (shared/samples/graphics/CoordsAndTextGaps.bas:12)
-- **GRAPHICS.C2PY(x1)** — `PRINT "C2PY(5)     = "; C2PY(5)` (shared/samples/graphics/CoordsAndTextGaps.bas:13)
-- **GRAPHICS.CELL(x1, x2, x3)** — `PRINT GRAPHICS.CELL(0, 0, 0)` (shared/minitests/graphics/scalars.bas:4)
-- **GRAPHICS.CELLSTR(x1, x2)** — `PRINT "[" + GRAPHICS.CELLSTR(0, 0) + "]"` (shared/minitests/graphics/scalars.bas:5)
-- **GRAPHICS.COLLIDE(x1)** — `PRINT GRAPHICS.COLLIDE(1, 2)` (shared/minitests/graphics/scalars.bas:7)
-- **GRAPHICS.COLLIDEBATCH(x1, x2, x3, x4)** — `CB = COLLIDEBATCH(X, Y, 14, 14)` (shared/samples/graphics/GraphicsPlanesExplode.bas:73)
-- **GRAPHICS.P2CX(x1)** — `PRINT "P2CX(160)   = "; P2CX(160)` (shared/samples/graphics/CoordsAndTextGaps.bas:14)
-- **GRAPHICS.P2CY(x1)** — `PRINT "P2CY(80)    = "; P2CY(80)` (shared/samples/graphics/CoordsAndTextGaps.bas:15)
-- **GRAPHICS.POINT(x1, x2)** — `PRINT GRAPHICS.POINT(1, 2)` (shared/minitests/graphics/scalars.bas:3)
-- **GRAPHICS.RGB(x1, x2, x3)** — `CLS RGB(0, 0, 255)` (shared/samples/Clipper/WindowPixelColorTest.bas:12)
-- **GRAPHICS.SCREEN()** — `PRINT GRAPHICS.SCREEN()` (shared/minitests/graphics/scalars.bas:6)
-- **GRAPHICS.SCREENINFO()** — `70 PRINT "ModeID    : "; SCREENINFO().ModeID` (shared/samples/graphics/GraphicsShowModes.bas:47)
-- **GRAPHICS.SCREENS()** — `20 NUM_SCREENS = SCREENS()` (shared/samples/graphics/GraphicsShowModes.bas:43)
-- **GRAPHICS.TEXTHEIGHT()** — `DIM th = TEXTHEIGHT()          ' altezza logica del font corrente` (shared/samples/windows/WindowDemo.bas:14)
-- **GRAPHICS.TEXTWIDTH(x1)** — `LOCATE Y, (640 - TEXTWIDTH(Text$)) / 2` (shared/samples/graphics/GraphicsDrawTextures.bas:206)
-<!-- END DOMAIN TABLE -->
 
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
@@ -473,69 +450,69 @@ FIXTURE$ = PROJECTFOLDER() + "/../Fixtures/graph-vault"
 WORK$ = PROJECTFOLDER() + "/work"
 IF IO.DirExists(WORK$) = 0 THEN MKDIR WORK$
 
-GRAPH RDD MEMORY                     ' backend di storage: MEMORY | JSON | SQLITE
-GRAPH BUILD FIXTURE$, WORK$          ' costruisce il grafo, nome brain = basename del vault
-GRAPH UPDATE FIXTURE$, WORK$         ' alias di BUILD (ricostruisce)
-GRAPH FIND PATH "index.md" TO "trading/momentum.md"   ' path più corto nel grafo attivo
+BRAINS RDD MEMORY                     ' backend di storage: MEMORY | JSON | SQLITE
+BRAINS BUILD FIXTURE$, WORK$          ' costruisce il grafo, nome brain = basename del vault
+BRAINS UPDATE FIXTURE$, WORK$         ' alias di BUILD (ricostruisce)
+BRAINS FIND PATH "index.md" TO "trading/momentum.md"   ' path più corto nel grafo attivo
 
 | Comando | Note |
 |---|---|
-| `GRAPH RDD <MEMORY\|JSON\|SQLITE>` | seleziona il backend; `ISAM`/`DBF` → errore esplicito |
-| `GRAPH BUILD <dir>[, <out>]` | costruisce il grafo arricchito e lo rende attivo |
-| `GRAPH UPDATE <dir>[, <out>]` | alias di `BUILD` |
-| `GRAPH FIND PATH <from> TO <to>` | path più corto (BFS) nel grafo attivo |
+| `BRAINS RDD <MEMORY\|JSON\|SQLITE>` | seleziona il backend; `ISAM`/`DBF` → errore esplicito |
+| `BRAINS BUILD <dir>[, <out>]` | costruisce il grafo arricchito e lo rende attivo |
+| `BRAINS UPDATE <dir>[, <out>]` | alias di `BUILD` |
+| `BRAINS FIND PATH <from> TO <to>` | path più corto (BFS) nel grafo attivo |
 
 ## 2. Query single-brain
 | Funzione | Ritorno | Note |
 |---|---|---|
-| `GRAPH.NEIGHBORS(brain, node)` | JSON | vicini diretti (out+in) |
-| `GRAPH.PATH(brain, from, to)` | JSON | cammino minimo (BFS) |
-| `GRAPH.PAGERANK(brain [, topK])` | JSON | PageRank (power iteration) |
-| `GRAPH.CONNECTED(brain)` | JSON | componenti connesse |
-| `GRAPH.STRONGLYCONNECTED(brain)` | JSON | SCC (Tarjan) |
-| `GRAPH.TOPOSORT(brain)` | JSON | ordinamento topologico (Kahn) |
-| `GRAPH.BIPARTITE(brain)` | JSON | bipartiteness |
-| `GRAPH.BETWEENNESS(brain)` | JSON | centralità betweenness (Brandes) |
-| `GRAPH.CLUSTERING(brain, node)` | JSON | coefficiente di clustering locale |
-| `GRAPH.DIAMETER(brain)` | JSON | diametro (Floyd-Warshall) |
-| `GRAPH.MST(brain)` | JSON | albero ricoprente minimo (Kruskal) |
-| `GRAPH.STATS(brain)` | JSON | metriche base + PageRank top |
-| `GRAPH.ISVALID(brain)` | `1`/`0` | 1 se almeno un nodo (brain assente → 0) |
-| `GRAPH.HASCYCLE(brain)` | `1`/`0` | 1 se contiene un ciclo (brain assente → 0) |
-| `GRAPH.ECCENTRICITY(brain, node)` | JSON | eccentricità del nodo |
-| `GRAPH.DFS(brain, root)` | JSON | visita in profondità |
-| `GRAPH.BFS(brain, root)` | JSON | visita in ampiezza |
-| `GRAPH.DIJKSTRA(brain, from, to)` | JSON | cammino a costo minimo (archi pesati) |
-| `GRAPH.LOUVAIN(brain)` | JSON | community detection (Louvain) |
-| `GRAPH.MAXFLOW(brain, from, to)` | JSON | flusso massimo (Edmonds-Karp) |
+| `BRAINS.Neighbors(brain, node)` | JSON | vicini diretti (out+in) |
+| `BRAINS.Path(brain, from, to)` | JSON | cammino minimo (BFS) |
+| `BRAINS.PageRank(brain [, topK])` | JSON | PageRank (power iteration) |
+| `BRAINS.Connected(brain)` | JSON | componenti connesse |
+| `BRAINS.StronglyConnected(brain)` | JSON | SCC (Tarjan) |
+| `BRAINS.TopoSort(brain)` | JSON | ordinamento topologico (Kahn) |
+| `BRAINS.Bipartite(brain)` | JSON | bipartiteness |
+| `BRAINS.Betweenness(brain)` | JSON | centralità betweenness (Brandes) |
+| `BRAINS.Clustering(brain, node)` | JSON | coefficiente di clustering locale |
+| `BRAINS.Diameter(brain)` | JSON | diametro (Floyd-Warshall) |
+| `BRAINS.Mst(brain)` | JSON | albero ricoprente minimo (Kruskal) |
+| `BRAINS.Stats(brain)` | JSON | metriche base + PageRank top |
+| `BRAINS.IsValid(brain)` | `1`/`0` | 1 se almeno un nodo (brain assente → 0) |
+| `BRAINS.HasCycle(brain)` | `1`/`0` | 1 se contiene un ciclo (brain assente → 0) |
+| `BRAINS.Eccentricity(brain, node)` | JSON | eccentricità del nodo |
+| `BRAINS.Dfs(brain, root)` | JSON | visita in profondità |
+| `BRAINS.Bfs(brain, root)` | JSON | visita in ampiezza |
+| `BRAINS.Dijkstra(brain, from, to)` | JSON | cammino a costo minimo (archi pesati) |
+| `BRAINS.Louvain(brain)` | JSON | community detection (Louvain) |
+| `BRAINS.MaxFlow(brain, from, to)` | JSON | flusso massimo (Edmonds-Karp) |
 
 ## 2bis. Community detection e flusso massimo (dettaglio)
 
-### `GRAPH.LOUVAIN(brain)`
+### `BRAINS.Louvain(brain)`
 
-### `GRAPH.MAXFLOW(brain, from, to)`
+### `BRAINS.MaxFlow(brain, from, to)`
 
 IMPORT GRAPH
-' ... GRAPH BUILD <fixture>, <work> ...
-PRINT GRAPH.LOUVAIN("graph-vault")
-PRINT GRAPH.MAXFLOW("graph-vault", "index.md", "airline/load-factor.md")
+' ... BRAINS BUILD <fixture>, <work> ...
+PRINT BRAINS.Louvain("graph-vault")
+PRINT BRAINS.MaxFlow("graph-vault", "index.md", "airline/load-factor.md")
 
 
 ## 3. Export estesi
 
-PRINT GRAPH.DOT("graph-vault")                        ' Graphviz (dot)
-PRINT GRAPH.SUBGRAPH("graph-vault", "index.md", 1)    ' mermaid, distanza ≤ depth
-PRINT GRAPH.BYTAG("graph-vault", "strategy")          ' nodi con tag + edge
-PRINT GRAPH.BYFOLDER("graph-vault", "strategies")     ' nodi della cartella + edge
+PRINT BRAINS.Dot("graph-vault")                        ' Graphviz (dot)
+PRINT BRAINS.Subgraph("graph-vault", "index.md", 1)    ' mermaid, distanza ≤ depth
+PRINT BRAINS.ByTag("graph-vault", "strategy")          ' nodi con tag + edge
+PRINT BRAINS.ByFolder("graph-vault", "strategies")     ' nodi della cartella + edge
 
 
-## 4. Query multi-brain — `GRAPH.QUERYMULTI`
+## 4. Query multi-brain — `BRAINS.QueryMulti`
 
 ' brains espliciti: lista separata da virgole (CSV)
-PRINT GRAPH.QUERYMULTI("momentum", "graph-vault,strategies")
-PRINT GRAPH.QUERYMULTI("index", "graph-vault")
+PRINT BRAINS.QueryMulti("momentum", "graph-vault,strategies")
+PRINT BRAINS.QueryMulti("index", "graph-vault")
 ' senza brains: usa tutti i brain collegati (AI BRAIN USE)
-PRINT GRAPH.QUERYMULTI("momentum")
+PRINT BRAINS.QueryMulti("momentum")
 
 
 ## 5. Verifiche sui quattro backend
@@ -628,3 +605,27 @@ FILTER voice, type, cutoff, resonance
 ## Gap residui (vs Commodore V2)
 
 <!-- END SURFACE -->
+
+<!-- BEGIN DOMAIN TABLE -->
+## Tavola sinottica del dominio
+
+Ogni riga riporta la firma canonica (dal registry) e il primo uso reale trovato
+nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è dichiarato.
+
+- **CHART.CREATE(x1)** — `h = CHART.CREATE("Disegni", "tempo", "prezzo")` (shared/samples/graphics/ChartDrawDemo.bas:31)
+- **GRAPHICS.C2PX(x1)** — `PRINT "C2PX(10)    = "; C2PX(10)` (shared/samples/graphics/CoordsAndTextGaps.bas:12)
+- **GRAPHICS.C2PY(x1)** — `PRINT "C2PY(5)     = "; C2PY(5)` (shared/samples/graphics/CoordsAndTextGaps.bas:13)
+- **GRAPHICS.CELL(x1, x2, x3)** — `PRINT "cell="; GRAPHICS.CELL(0, 0, 0)` (shared/minitests/graphics/graphics_all.bas:16)
+- **GRAPHICS.CELLSTR(x1, x2)** — `PRINT "cellstr=["; GRAPHICS.CELLSTR(0, 0); "]"` (shared/minitests/graphics/graphics_all.bas:17)
+- **GRAPHICS.COLLIDE(x1)** — `PRINT "collide="; GRAPHICS.COLLIDE(1, 2)` (shared/minitests/graphics/graphics_all.bas:19)
+- **GRAPHICS.COLLIDEBATCH(x1, x2, x3, x4)** — `CB = COLLIDEBATCH(X, Y, 14, 14)` (shared/samples/graphics/GraphicsPlanesExplode.bas:73)
+- **GRAPHICS.P2CX(x1)** — `PRINT "P2CX(160)   = "; P2CX(160)` (shared/samples/graphics/CoordsAndTextGaps.bas:14)
+- **GRAPHICS.P2CY(x1)** — `PRINT "P2CY(80)    = "; P2CY(80)` (shared/samples/graphics/CoordsAndTextGaps.bas:15)
+- **GRAPHICS.POINT(x1, x2)** — `PRINT "point="; GRAPHICS.POINT(1, 2)` (shared/minitests/graphics/graphics_all.bas:15)
+- **GRAPHICS.RGB(x1, x2, x3)** — `CLS RGB(0, 0, 255)` (shared/samples/Clipper/WindowPixelColorTest.bas:12)
+- **GRAPHICS.SCREEN()** — `PRINT "screen="; GRAPHICS.SCREEN()` (shared/minitests/graphics/graphics_all.bas:18)
+- **GRAPHICS.SCREENINFO()** — `70 PRINT "ModeID    : "; SCREENINFO().ModeID` (shared/samples/graphics/GraphicsShowModes.bas:47)
+- **GRAPHICS.SCREENS()** — `20 NUM_SCREENS = SCREENS()` (shared/samples/graphics/GraphicsShowModes.bas:43)
+- **GRAPHICS.TEXTHEIGHT()** — `DIM th = TEXTHEIGHT()          ' altezza logica del font corrente` (shared/samples/windows/WindowDemo.bas:14)
+- **GRAPHICS.TEXTWIDTH(x1)** — `LOCATE Y, (640 - TEXTWIDTH(Text$)) / 2` (shared/samples/graphics/GraphicsDrawTextures.bas:205)
+<!-- END DOMAIN TABLE -->

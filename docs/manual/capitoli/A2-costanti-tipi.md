@@ -296,7 +296,7 @@
 
 ### `%ABORT` — valore `3`
 
-*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:29`*
+*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:30`*
 
 ```basic
 PRINT "  %ABORT"; TAB(24); %ABORT
@@ -304,7 +304,7 @@ PRINT "  %ABORT"; TAB(24); %ABORT
 
 ### `%ABORTRETRYIGNORE` — valore `104`
 
-*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:37`*
+*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:38`*
 
 ```basic
 PRINT "  %ABORTRETRYIGNORE"; TAB(24); %ABORTRETRYIGNORE
@@ -320,7 +320,7 @@ PRINT "  %ABORTRETRYIGNORE"; TAB(24); %ABORTRETRYIGNORE
 
 ### `%AQUA` — valore `14`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:49`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:50`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "AQUA" : ci(cnt) = %AQUA
@@ -328,7 +328,7 @@ cnt = cnt + 1 : cn(cnt) = "AQUA" : ci(cnt) = %AQUA
 
 ### `%AQUAMARINE1` — valore `86`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:10`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:11`*
 
 ```basic
 ' USO: COLOR ColorIndex("AQUAMARINE1") — oppure COLOR %AQUAMARINE1.
@@ -336,7 +336,7 @@ cnt = cnt + 1 : cn(cnt) = "AQUA" : ci(cnt) = %AQUA
 
 ### `%AQUAMARINE1_2` — valore `122`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:157`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:158`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "AQUAMARINE1_2" : ci(cnt) = %AQUAMARINE1_2
@@ -344,7 +344,7 @@ cnt = cnt + 1 : cn(cnt) = "AQUAMARINE1_2" : ci(cnt) = %AQUAMARINE1_2
 
 ### `%AQUAMARINE3` — valore `79`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:114`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:115`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "AQUAMARINE3" : ci(cnt) = %AQUAMARINE3
@@ -368,7 +368,7 @@ AI AGENT SET "agent1" BROWSER %AUTO
 
 ### `%BLACK` — valore `0`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:35`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:36`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "BLACK" : ci(cnt) = %BLACK
@@ -376,7 +376,7 @@ cnt = cnt + 1 : cn(cnt) = "BLACK" : ci(cnt) = %BLACK
 
 ### `%BLUE` — valore `12`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:47`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:48`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "BLUE" : ci(cnt) = %BLUE
@@ -384,7 +384,7 @@ cnt = cnt + 1 : cn(cnt) = "BLUE" : ci(cnt) = %BLUE
 
 ### `%BLUE1` — valore `21`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:56`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:57`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "BLUE1" : ci(cnt) = %BLUE1
@@ -392,7 +392,7 @@ cnt = cnt + 1 : cn(cnt) = "BLUE1" : ci(cnt) = %BLUE1
 
 ### `%BLUE3` — valore `19`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:54`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:55`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "BLUE3" : ci(cnt) = %BLUE3
@@ -400,7 +400,7 @@ cnt = cnt + 1 : cn(cnt) = "BLUE3" : ci(cnt) = %BLUE3
 
 ### `%BLUE3_2` — valore `20`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:55`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:56`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "BLUE3_2" : ci(cnt) = %BLUE3_2
@@ -408,7 +408,7 @@ cnt = cnt + 1 : cn(cnt) = "BLUE3_2" : ci(cnt) = %BLUE3_2
 
 ### `%BLUE_VIOLET` — valore `57`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:92`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:93`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "BLUE_VIOLET" : ci(cnt) = %BLUE_VIOLET
@@ -424,7 +424,7 @@ cnt = cnt + 1 : cn(cnt) = "BLUE_VIOLET" : ci(cnt) = %BLUE_VIOLET
 
 ### `%CADET_BLUE` — valore `72`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:107`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:108`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "CADET_BLUE" : ci(cnt) = %CADET_BLUE
@@ -432,7 +432,7 @@ cnt = cnt + 1 : cn(cnt) = "CADET_BLUE" : ci(cnt) = %CADET_BLUE
 
 ### `%CADET_BLUE_2` — valore `73`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:108`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:109`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "CADET_BLUE_2" : ci(cnt) = %CADET_BLUE_2
@@ -448,7 +448,7 @@ cnt = cnt + 1 : cn(cnt) = "CADET_BLUE_2" : ci(cnt) = %CADET_BLUE_2
 
 ### `%CENTER` — valore `1`
 
-*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:94`*
+*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:95`*
 
 ```basic
 PRINT "  %CENTER"; TAB(24); %CENTER
@@ -456,7 +456,7 @@ PRINT "  %CENTER"; TAB(24); %CENTER
 
 ### `%CHARTREUSE1` — valore `118`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:153`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:154`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "CHARTREUSE1" : ci(cnt) = %CHARTREUSE1
@@ -464,7 +464,7 @@ cnt = cnt + 1 : cn(cnt) = "CHARTREUSE1" : ci(cnt) = %CHARTREUSE1
 
 ### `%CHARTREUSE2` — valore `82`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:117`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:118`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "CHARTREUSE2" : ci(cnt) = %CHARTREUSE2
@@ -472,7 +472,7 @@ cnt = cnt + 1 : cn(cnt) = "CHARTREUSE2" : ci(cnt) = %CHARTREUSE2
 
 ### `%CHARTREUSE2_2` — valore `112`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:147`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:148`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "CHARTREUSE2_2" : ci(cnt) = %CHARTREUSE2_2
@@ -480,7 +480,7 @@ cnt = cnt + 1 : cn(cnt) = "CHARTREUSE2_2" : ci(cnt) = %CHARTREUSE2_2
 
 ### `%CHARTREUSE3` — valore `70`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:105`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:106`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "CHARTREUSE3" : ci(cnt) = %CHARTREUSE3
@@ -488,7 +488,7 @@ cnt = cnt + 1 : cn(cnt) = "CHARTREUSE3" : ci(cnt) = %CHARTREUSE3
 
 ### `%CHARTREUSE3_2` — valore `76`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:111`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:112`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "CHARTREUSE3_2" : ci(cnt) = %CHARTREUSE3_2
@@ -496,7 +496,7 @@ cnt = cnt + 1 : cn(cnt) = "CHARTREUSE3_2" : ci(cnt) = %CHARTREUSE3_2
 
 ### `%CHARTREUSE4` — valore `64`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:99`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:100`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "CHARTREUSE4" : ci(cnt) = %CHARTREUSE4
@@ -528,7 +528,7 @@ PRINT "start="; BROWSER.START(%CHROMIUM, 9255, "demo-userX")
 
 ### `%CLOSED` — valore `-1`
 
-*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:39`*
+*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:40`*
 
 ```basic
 PRINT "  %CLOSED"; TAB(24); %CLOSED
@@ -536,7 +536,7 @@ PRINT "  %CLOSED"; TAB(24); %CLOSED
 
 ### `%CORNFLOWER_BLUE` — valore `69`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:104`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:105`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "CORNFLOWER_BLUE" : ci(cnt) = %CORNFLOWER_BLUE
@@ -544,7 +544,7 @@ cnt = cnt + 1 : cn(cnt) = "CORNFLOWER_BLUE" : ci(cnt) = %CORNFLOWER_BLUE
 
 ### `%CYAN1` — valore `51`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:86`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:87`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "CYAN1" : ci(cnt) = %CYAN1
@@ -552,7 +552,7 @@ cnt = cnt + 1 : cn(cnt) = "CYAN1" : ci(cnt) = %CYAN1
 
 ### `%CYAN2` — valore `50`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:85`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:86`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "CYAN2" : ci(cnt) = %CYAN2
@@ -560,7 +560,7 @@ cnt = cnt + 1 : cn(cnt) = "CYAN2" : ci(cnt) = %CYAN2
 
 ### `%CYAN3` — valore `43`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:78`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:79`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "CYAN3" : ci(cnt) = %CYAN3
@@ -568,7 +568,7 @@ cnt = cnt + 1 : cn(cnt) = "CYAN3" : ci(cnt) = %CYAN3
 
 ### `%DARK_BLUE` — valore `18`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:53`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:54`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "DARK_BLUE" : ci(cnt) = %DARK_BLUE
@@ -576,7 +576,7 @@ cnt = cnt + 1 : cn(cnt) = "DARK_BLUE" : ci(cnt) = %DARK_BLUE
 
 ### `%DARK_CYAN` — valore `36`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:71`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:72`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "DARK_CYAN" : ci(cnt) = %DARK_CYAN
@@ -584,7 +584,7 @@ cnt = cnt + 1 : cn(cnt) = "DARK_CYAN" : ci(cnt) = %DARK_CYAN
 
 ### `%DARK_GREEN` — valore `22`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:57`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:58`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "DARK_GREEN" : ci(cnt) = %DARK_GREEN
@@ -592,7 +592,7 @@ cnt = cnt + 1 : cn(cnt) = "DARK_GREEN" : ci(cnt) = %DARK_GREEN
 
 ### `%DARK_MAGENTA` — valore `90`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:125`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:126`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "DARK_MAGENTA" : ci(cnt) = %DARK_MAGENTA
@@ -600,7 +600,7 @@ cnt = cnt + 1 : cn(cnt) = "DARK_MAGENTA" : ci(cnt) = %DARK_MAGENTA
 
 ### `%DARK_MAGENTA_2` — valore `91`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:126`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:127`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "DARK_MAGENTA_2" : ci(cnt) = %DARK_MAGENTA_2
@@ -608,7 +608,7 @@ cnt = cnt + 1 : cn(cnt) = "DARK_MAGENTA_2" : ci(cnt) = %DARK_MAGENTA_2
 
 ### `%DARK_OLIVE_GREEN3` — valore `107`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:142`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:143`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "DARK_OLIVE_GREEN3" : ci(cnt) = %DARK_OLIVE_GREEN3
@@ -616,7 +616,7 @@ cnt = cnt + 1 : cn(cnt) = "DARK_OLIVE_GREEN3" : ci(cnt) = %DARK_OLIVE_GREEN3
 
 ### `%DARK_OLIVE_GREEN3_2` — valore `113`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:148`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:149`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "DARK_OLIVE_GREEN3_2" : ci(cnt) = %DARK_OLIVE_GREEN3_2
@@ -624,7 +624,7 @@ cnt = cnt + 1 : cn(cnt) = "DARK_OLIVE_GREEN3_2" : ci(cnt) = %DARK_OLIVE_GREEN3_2
 
 ### `%DARK_RED` — valore `52`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:87`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:88`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "DARK_RED" : ci(cnt) = %DARK_RED
@@ -632,7 +632,7 @@ cnt = cnt + 1 : cn(cnt) = "DARK_RED" : ci(cnt) = %DARK_RED
 
 ### `%DARK_RED_2` — valore `88`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:123`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:124`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "DARK_RED_2" : ci(cnt) = %DARK_RED_2
@@ -640,7 +640,7 @@ cnt = cnt + 1 : cn(cnt) = "DARK_RED_2" : ci(cnt) = %DARK_RED_2
 
 ### `%DARK_SEA_GREEN` — valore `108`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:143`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:144`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "DARK_SEA_GREEN" : ci(cnt) = %DARK_SEA_GREEN
@@ -648,7 +648,7 @@ cnt = cnt + 1 : cn(cnt) = "DARK_SEA_GREEN" : ci(cnt) = %DARK_SEA_GREEN
 
 ### `%DARK_SEA_GREEN3` — valore `115`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:150`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:151`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "DARK_SEA_GREEN3" : ci(cnt) = %DARK_SEA_GREEN3
@@ -656,7 +656,7 @@ cnt = cnt + 1 : cn(cnt) = "DARK_SEA_GREEN3" : ci(cnt) = %DARK_SEA_GREEN3
 
 ### `%DARK_SEA_GREEN4` — valore `65`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:100`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:101`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "DARK_SEA_GREEN4" : ci(cnt) = %DARK_SEA_GREEN4
@@ -664,7 +664,7 @@ cnt = cnt + 1 : cn(cnt) = "DARK_SEA_GREEN4" : ci(cnt) = %DARK_SEA_GREEN4
 
 ### `%DARK_SEA_GREEN4_2` — valore `71`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:106`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:107`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "DARK_SEA_GREEN4_2" : ci(cnt) = %DARK_SEA_GREEN4_2
@@ -672,7 +672,7 @@ cnt = cnt + 1 : cn(cnt) = "DARK_SEA_GREEN4_2" : ci(cnt) = %DARK_SEA_GREEN4_2
 
 ### `%DARK_SLATE_GRAY1` — valore `123`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:158`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:159`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "DARK_SLATE_GRAY1" : ci(cnt) = %DARK_SLATE_GRAY1
@@ -680,7 +680,7 @@ cnt = cnt + 1 : cn(cnt) = "DARK_SLATE_GRAY1" : ci(cnt) = %DARK_SLATE_GRAY1
 
 ### `%DARK_SLATE_GRAY2` — valore `87`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:122`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:123`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "DARK_SLATE_GRAY2" : ci(cnt) = %DARK_SLATE_GRAY2
@@ -688,7 +688,7 @@ cnt = cnt + 1 : cn(cnt) = "DARK_SLATE_GRAY2" : ci(cnt) = %DARK_SLATE_GRAY2
 
 ### `%DARK_SLATE_GRAY3` — valore `116`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:151`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:152`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "DARK_SLATE_GRAY3" : ci(cnt) = %DARK_SLATE_GRAY3
@@ -696,7 +696,7 @@ cnt = cnt + 1 : cn(cnt) = "DARK_SLATE_GRAY3" : ci(cnt) = %DARK_SLATE_GRAY3
 
 ### `%DARK_TURQUOISE` — valore `44`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:79`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:80`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "DARK_TURQUOISE" : ci(cnt) = %DARK_TURQUOISE
@@ -704,7 +704,7 @@ cnt = cnt + 1 : cn(cnt) = "DARK_TURQUOISE" : ci(cnt) = %DARK_TURQUOISE
 
 ### `%DARK_VIOLET` — valore `92`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:127`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:128`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "DARK_VIOLET" : ci(cnt) = %DARK_VIOLET
@@ -712,15 +712,15 @@ cnt = cnt + 1 : cn(cnt) = "DARK_VIOLET" : ci(cnt) = %DARK_VIOLET
 
 ### `%DECIDE` — valore `6`
 
-*uso reale in `shared/minitests/constants/constants_all.bas:59`*
+*uso reale in `shared/samples/AiLLM/DecideVerbalizer.bas:1`*
 
 ```basic
-PRINT "DECIDE="; %DECIDE
+' DecideVerbalizer.bas — provider %DECIDE distinguibile: kind "verbalizer".
 ```
 
 ### `%DEEP_PINK4` — valore `53`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:88`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:89`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "DEEP_PINK4" : ci(cnt) = %DEEP_PINK4
@@ -728,7 +728,7 @@ cnt = cnt + 1 : cn(cnt) = "DEEP_PINK4" : ci(cnt) = %DEEP_PINK4
 
 ### `%DEEP_PINK4_2` — valore `89`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:124`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:125`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "DEEP_PINK4_2" : ci(cnt) = %DEEP_PINK4_2
@@ -736,7 +736,7 @@ cnt = cnt + 1 : cn(cnt) = "DEEP_PINK4_2" : ci(cnt) = %DEEP_PINK4_2
 
 ### `%DEEP_SKY_BLUE1` — valore `39`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:74`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:75`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "DEEP_SKY_BLUE1" : ci(cnt) = %DEEP_SKY_BLUE1
@@ -744,7 +744,7 @@ cnt = cnt + 1 : cn(cnt) = "DEEP_SKY_BLUE1" : ci(cnt) = %DEEP_SKY_BLUE1
 
 ### `%DEEP_SKY_BLUE2` — valore `38`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:73`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:74`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "DEEP_SKY_BLUE2" : ci(cnt) = %DEEP_SKY_BLUE2
@@ -752,7 +752,7 @@ cnt = cnt + 1 : cn(cnt) = "DEEP_SKY_BLUE2" : ci(cnt) = %DEEP_SKY_BLUE2
 
 ### `%DEEP_SKY_BLUE3` — valore `31`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:66`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:67`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "DEEP_SKY_BLUE3" : ci(cnt) = %DEEP_SKY_BLUE3
@@ -760,7 +760,7 @@ cnt = cnt + 1 : cn(cnt) = "DEEP_SKY_BLUE3" : ci(cnt) = %DEEP_SKY_BLUE3
 
 ### `%DEEP_SKY_BLUE3_2` — valore `32`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:67`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:68`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "DEEP_SKY_BLUE3_2" : ci(cnt) = %DEEP_SKY_BLUE3_2
@@ -768,7 +768,7 @@ cnt = cnt + 1 : cn(cnt) = "DEEP_SKY_BLUE3_2" : ci(cnt) = %DEEP_SKY_BLUE3_2
 
 ### `%DEEP_SKY_BLUE4` — valore `23`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:58`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:59`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "DEEP_SKY_BLUE4" : ci(cnt) = %DEEP_SKY_BLUE4
@@ -776,7 +776,7 @@ cnt = cnt + 1 : cn(cnt) = "DEEP_SKY_BLUE4" : ci(cnt) = %DEEP_SKY_BLUE4
 
 ### `%DEEP_SKY_BLUE4_2` — valore `24`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:59`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:60`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "DEEP_SKY_BLUE4_2" : ci(cnt) = %DEEP_SKY_BLUE4_2
@@ -784,7 +784,7 @@ cnt = cnt + 1 : cn(cnt) = "DEEP_SKY_BLUE4_2" : ci(cnt) = %DEEP_SKY_BLUE4_2
 
 ### `%DEEP_SKY_BLUE4_3` — valore `25`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:60`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:61`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "DEEP_SKY_BLUE4_3" : ci(cnt) = %DEEP_SKY_BLUE4_3
@@ -792,7 +792,7 @@ cnt = cnt + 1 : cn(cnt) = "DEEP_SKY_BLUE4_3" : ci(cnt) = %DEEP_SKY_BLUE4_3
 
 ### `%DODGER_BLUE1` — valore `33`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:68`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:69`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "DODGER_BLUE1" : ci(cnt) = %DODGER_BLUE1
@@ -800,7 +800,7 @@ cnt = cnt + 1 : cn(cnt) = "DODGER_BLUE1" : ci(cnt) = %DODGER_BLUE1
 
 ### `%DODGER_BLUE2` — valore `27`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:62`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:63`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "DODGER_BLUE2" : ci(cnt) = %DODGER_BLUE2
@@ -808,7 +808,7 @@ cnt = cnt + 1 : cn(cnt) = "DODGER_BLUE2" : ci(cnt) = %DODGER_BLUE2
 
 ### `%DODGER_BLUE3` — valore `26`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:61`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:62`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "DODGER_BLUE3" : ci(cnt) = %DODGER_BLUE3
@@ -816,7 +816,7 @@ cnt = cnt + 1 : cn(cnt) = "DODGER_BLUE3" : ci(cnt) = %DODGER_BLUE3
 
 ### `%DOUBLE` — valore `2`
 
-*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:42`*
+*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:43`*
 
 ```basic
 PRINT "  %DOUBLE"; TAB(24); %DOUBLE
@@ -832,7 +832,7 @@ AI REGISTER "llama1b-emb", %EMBEDDING, "mlx", "{""modelDir"":""~/ai/Models/Llama
 
 ### `%FAST` — valore `1`
 
-*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:89`*
+*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:90`*
 
 ```basic
 PRINT "  %FAST"; TAB(24); %FAST
@@ -872,7 +872,7 @@ PRINT "%FILE_RENAMED  = "; %FILE_RENAMED
 
 ### `%FUCHSIA` — valore `13`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:48`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:49`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "FUCHSIA" : ci(cnt) = %FUCHSIA
@@ -880,7 +880,7 @@ cnt = cnt + 1 : cn(cnt) = "FUCHSIA" : ci(cnt) = %FUCHSIA
 
 ### `%GOVERNED` — valore `2`
 
-*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:90`*
+*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:91`*
 
 ```basic
 PRINT "  %GOVERNED"; TAB(24); %GOVERNED
@@ -888,7 +888,7 @@ PRINT "  %GOVERNED"; TAB(24); %GOVERNED
 
 ### `%GRAY` — valore `8`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:43`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:44`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GRAY" : ci(cnt) = %GRAY
@@ -896,7 +896,7 @@ cnt = cnt + 1 : cn(cnt) = "GRAY" : ci(cnt) = %GRAY
 
 ### `%GRAY0` — valore `16`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:51`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:52`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GRAY0" : ci(cnt) = %GRAY0
@@ -904,7 +904,7 @@ cnt = cnt + 1 : cn(cnt) = "GRAY0" : ci(cnt) = %GRAY0
 
 ### `%GRAY11` — valore `235`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:162`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:163`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GRAY11" : ci(cnt) = %GRAY11
@@ -912,7 +912,7 @@ cnt = cnt + 1 : cn(cnt) = "GRAY11" : ci(cnt) = %GRAY11
 
 ### `%GRAY15` — valore `236`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:163`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:164`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GRAY15" : ci(cnt) = %GRAY15
@@ -920,7 +920,7 @@ cnt = cnt + 1 : cn(cnt) = "GRAY15" : ci(cnt) = %GRAY15
 
 ### `%GRAY19` — valore `237`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:164`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:165`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GRAY19" : ci(cnt) = %GRAY19
@@ -928,7 +928,7 @@ cnt = cnt + 1 : cn(cnt) = "GRAY19" : ci(cnt) = %GRAY19
 
 ### `%GRAY2` — valore `232`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:159`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:160`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GRAY2" : ci(cnt) = %GRAY2
@@ -936,7 +936,7 @@ cnt = cnt + 1 : cn(cnt) = "GRAY2" : ci(cnt) = %GRAY2
 
 ### `%GRAY23` — valore `238`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:165`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:166`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GRAY23" : ci(cnt) = %GRAY23
@@ -944,7 +944,7 @@ cnt = cnt + 1 : cn(cnt) = "GRAY23" : ci(cnt) = %GRAY23
 
 ### `%GRAY27` — valore `239`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:166`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:167`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GRAY27" : ci(cnt) = %GRAY27
@@ -952,7 +952,7 @@ cnt = cnt + 1 : cn(cnt) = "GRAY27" : ci(cnt) = %GRAY27
 
 ### `%GRAY3` — valore `233`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:160`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:161`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GRAY3" : ci(cnt) = %GRAY3
@@ -960,7 +960,7 @@ cnt = cnt + 1 : cn(cnt) = "GRAY3" : ci(cnt) = %GRAY3
 
 ### `%GRAY30` — valore `240`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:167`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:168`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GRAY30" : ci(cnt) = %GRAY30
@@ -968,7 +968,7 @@ cnt = cnt + 1 : cn(cnt) = "GRAY30" : ci(cnt) = %GRAY30
 
 ### `%GRAY35` — valore `241`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:168`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:169`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GRAY35" : ci(cnt) = %GRAY35
@@ -976,7 +976,7 @@ cnt = cnt + 1 : cn(cnt) = "GRAY35" : ci(cnt) = %GRAY35
 
 ### `%GRAY37` — valore `59`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:94`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:95`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GRAY37" : ci(cnt) = %GRAY37
@@ -984,7 +984,7 @@ cnt = cnt + 1 : cn(cnt) = "GRAY37" : ci(cnt) = %GRAY37
 
 ### `%GRAY39` — valore `242`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:169`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:170`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GRAY39" : ci(cnt) = %GRAY39
@@ -992,7 +992,7 @@ cnt = cnt + 1 : cn(cnt) = "GRAY39" : ci(cnt) = %GRAY39
 
 ### `%GRAY42` — valore `243`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:170`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:171`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GRAY42" : ci(cnt) = %GRAY42
@@ -1000,7 +1000,7 @@ cnt = cnt + 1 : cn(cnt) = "GRAY42" : ci(cnt) = %GRAY42
 
 ### `%GRAY46` — valore `244`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:171`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:172`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GRAY46" : ci(cnt) = %GRAY46
@@ -1008,7 +1008,7 @@ cnt = cnt + 1 : cn(cnt) = "GRAY46" : ci(cnt) = %GRAY46
 
 ### `%GRAY50` — valore `245`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:172`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:173`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GRAY50" : ci(cnt) = %GRAY50
@@ -1016,7 +1016,7 @@ cnt = cnt + 1 : cn(cnt) = "GRAY50" : ci(cnt) = %GRAY50
 
 ### `%GRAY53` — valore `102`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:137`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:138`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GRAY53" : ci(cnt) = %GRAY53
@@ -1024,7 +1024,7 @@ cnt = cnt + 1 : cn(cnt) = "GRAY53" : ci(cnt) = %GRAY53
 
 ### `%GRAY54` — valore `246`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:173`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:174`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GRAY54" : ci(cnt) = %GRAY54
@@ -1032,7 +1032,7 @@ cnt = cnt + 1 : cn(cnt) = "GRAY54" : ci(cnt) = %GRAY54
 
 ### `%GRAY58` — valore `247`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:174`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:175`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GRAY58" : ci(cnt) = %GRAY58
@@ -1040,7 +1040,7 @@ cnt = cnt + 1 : cn(cnt) = "GRAY58" : ci(cnt) = %GRAY58
 
 ### `%GRAY62` — valore `248`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:175`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:176`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GRAY62" : ci(cnt) = %GRAY62
@@ -1048,7 +1048,7 @@ cnt = cnt + 1 : cn(cnt) = "GRAY62" : ci(cnt) = %GRAY62
 
 ### `%GRAY66` — valore `249`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:176`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:177`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GRAY66" : ci(cnt) = %GRAY66
@@ -1056,7 +1056,7 @@ cnt = cnt + 1 : cn(cnt) = "GRAY66" : ci(cnt) = %GRAY66
 
 ### `%GRAY7` — valore `234`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:161`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:162`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GRAY7" : ci(cnt) = %GRAY7
@@ -1064,7 +1064,7 @@ cnt = cnt + 1 : cn(cnt) = "GRAY7" : ci(cnt) = %GRAY7
 
 ### `%GRAY70` — valore `250`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:177`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:178`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GRAY70" : ci(cnt) = %GRAY70
@@ -1072,7 +1072,7 @@ cnt = cnt + 1 : cn(cnt) = "GRAY70" : ci(cnt) = %GRAY70
 
 ### `%GRAY74` — valore `251`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:178`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:179`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GRAY74" : ci(cnt) = %GRAY74
@@ -1080,7 +1080,7 @@ cnt = cnt + 1 : cn(cnt) = "GRAY74" : ci(cnt) = %GRAY74
 
 ### `%GRAY78` — valore `252`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:179`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:180`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GRAY78" : ci(cnt) = %GRAY78
@@ -1088,7 +1088,7 @@ cnt = cnt + 1 : cn(cnt) = "GRAY78" : ci(cnt) = %GRAY78
 
 ### `%GRAY82` — valore `253`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:180`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:181`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GRAY82" : ci(cnt) = %GRAY82
@@ -1096,7 +1096,7 @@ cnt = cnt + 1 : cn(cnt) = "GRAY82" : ci(cnt) = %GRAY82
 
 ### `%GRAY85` — valore `254`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:181`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:182`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GRAY85" : ci(cnt) = %GRAY85
@@ -1104,7 +1104,7 @@ cnt = cnt + 1 : cn(cnt) = "GRAY85" : ci(cnt) = %GRAY85
 
 ### `%GRAY89` — valore `255`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:182`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:183`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GRAY89" : ci(cnt) = %GRAY89
@@ -1112,7 +1112,7 @@ cnt = cnt + 1 : cn(cnt) = "GRAY89" : ci(cnt) = %GRAY89
 
 ### `%GREEN` — valore `2`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:37`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:38`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GREEN" : ci(cnt) = %GREEN
@@ -1120,7 +1120,7 @@ cnt = cnt + 1 : cn(cnt) = "GREEN" : ci(cnt) = %GREEN
 
 ### `%GREEN1` — valore `46`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:81`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:82`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GREEN1" : ci(cnt) = %GREEN1
@@ -1128,7 +1128,7 @@ cnt = cnt + 1 : cn(cnt) = "GREEN1" : ci(cnt) = %GREEN1
 
 ### `%GREEN3` — valore `34`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:69`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:70`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GREEN3" : ci(cnt) = %GREEN3
@@ -1136,7 +1136,7 @@ cnt = cnt + 1 : cn(cnt) = "GREEN3" : ci(cnt) = %GREEN3
 
 ### `%GREEN3_2` — valore `40`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:75`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:76`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GREEN3_2" : ci(cnt) = %GREEN3_2
@@ -1144,7 +1144,7 @@ cnt = cnt + 1 : cn(cnt) = "GREEN3_2" : ci(cnt) = %GREEN3_2
 
 ### `%GREEN4` — valore `28`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:63`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:64`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "GREEN4" : ci(cnt) = %GREEN4
@@ -1152,7 +1152,7 @@ cnt = cnt + 1 : cn(cnt) = "GREEN4" : ci(cnt) = %GREEN4
 
 ### `%IGNORE` — valore `5`
 
-*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:31`*
+*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:32`*
 
 ```basic
 PRINT "  %IGNORE"; TAB(24); %IGNORE
@@ -1216,7 +1216,7 @@ PRINT "%JOYRIGHT   = "; %JOYRIGHT
 
 ### `%K_1` — valore `49`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:91`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:92`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_1" : kc(knum) = %K_1
@@ -1224,7 +1224,7 @@ knum = knum + 1 : kn(knum) = "K_1" : kc(knum) = %K_1
 
 ### `%K_2` — valore `50`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:92`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:93`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_2" : kc(knum) = %K_2
@@ -1232,7 +1232,7 @@ knum = knum + 1 : kn(knum) = "K_2" : kc(knum) = %K_2
 
 ### `%K_3` — valore `51`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:93`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:94`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_3" : kc(knum) = %K_3
@@ -1240,7 +1240,7 @@ knum = knum + 1 : kn(knum) = "K_3" : kc(knum) = %K_3
 
 ### `%K_4` — valore `52`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:94`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:95`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_4" : kc(knum) = %K_4
@@ -1248,7 +1248,7 @@ knum = knum + 1 : kn(knum) = "K_4" : kc(knum) = %K_4
 
 ### `%K_5` — valore `53`
 
-*uso reale in `shared/samples/Events/OnKeyUncoveredCoverage.bas:39`*
+*uso reale in `shared/samples/Events/OnKeyUncoveredCoverage.bas:40`*
 
 ```basic
 PRINT "%K_5 = "; %K_5; " (53)"
@@ -1256,7 +1256,7 @@ PRINT "%K_5 = "; %K_5; " (53)"
 
 ### `%K_6` — valore `54`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:96`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:97`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_6" : kc(knum) = %K_6
@@ -1264,7 +1264,7 @@ knum = knum + 1 : kn(knum) = "K_6" : kc(knum) = %K_6
 
 ### `%K_7` — valore `55`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:97`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:98`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_7" : kc(knum) = %K_7
@@ -1272,7 +1272,7 @@ knum = knum + 1 : kn(knum) = "K_7" : kc(knum) = %K_7
 
 ### `%K_8` — valore `56`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:98`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:99`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_8" : kc(knum) = %K_8
@@ -1304,7 +1304,7 @@ knum = knum + 1 : kn(knum) = "K_8" : kc(knum) = %K_8
 
 ### `%K_B` — valore `66`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:65`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:66`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_B" : kc(knum) = %K_B
@@ -1312,7 +1312,7 @@ knum = knum + 1 : kn(knum) = "K_B" : kc(knum) = %K_B
 
 ### `%K_BS` — valore `8`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:60`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:61`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_BS" : kc(knum) = %K_BS
@@ -1320,7 +1320,7 @@ knum = knum + 1 : kn(knum) = "K_BS" : kc(knum) = %K_BS
 
 ### `%K_C` — valore `67`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:66`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:67`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_C" : kc(knum) = %K_C
@@ -1336,7 +1336,7 @@ knum = knum + 1 : kn(knum) = "K_C" : kc(knum) = %K_C
 
 ### `%K_CTRL_BRK` — valore `-1`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:116`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:117`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_CTRL_BRK" : kc(knum) = %K_CTRL_BRK
@@ -1352,7 +1352,7 @@ knum = knum + 1 : kn(knum) = "K_CTRL_BRK" : kc(knum) = %K_CTRL_BRK
 
 ### `%K_D` — valore `68`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:67`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:68`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_D" : kc(knum) = %K_D
@@ -1360,7 +1360,7 @@ knum = knum + 1 : kn(knum) = "K_D" : kc(knum) = %K_D
 
 ### `%K_DEL` — valore `46`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:56`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:57`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_DEL" : kc(knum) = %K_DEL
@@ -1368,7 +1368,7 @@ knum = knum + 1 : kn(knum) = "K_DEL" : kc(knum) = %K_DEL
 
 ### `%K_DOWN` — valore `40`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:48`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:49`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_DOWN" : kc(knum) = %K_DOWN
@@ -1376,7 +1376,7 @@ knum = knum + 1 : kn(knum) = "K_DOWN" : kc(knum) = %K_DOWN
 
 ### `%K_E` — valore `69`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:68`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:69`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_E" : kc(knum) = %K_E
@@ -1384,7 +1384,7 @@ knum = knum + 1 : kn(knum) = "K_E" : kc(knum) = %K_E
 
 ### `%K_END` — valore `35`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:52`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:53`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_END" : kc(knum) = %K_END
@@ -1392,7 +1392,7 @@ knum = knum + 1 : kn(knum) = "K_END" : kc(knum) = %K_END
 
 ### `%K_ENTER` — valore `13`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:59`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:60`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_ENTER" : kc(knum) = %K_ENTER
@@ -1408,7 +1408,7 @@ ON KEY(%K_ESC) GOSUB DoQuit
 
 ### `%K_F` — valore `70`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:69`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:70`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_F" : kc(knum) = %K_F
@@ -1424,7 +1424,7 @@ ON KEY(%K_F1) GOSUB ShowHelp
 
 ### `%K_F10` — valore `121`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:44`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:45`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_F10" : kc(knum) = %K_F10
@@ -1432,7 +1432,7 @@ knum = knum + 1 : kn(knum) = "K_F10" : kc(knum) = %K_F10
 
 ### `%K_F11` — valore `122`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:45`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:46`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_F11" : kc(knum) = %K_F11
@@ -1448,7 +1448,7 @@ PRINT "%K_F12      = "; %K_F12
 
 ### `%K_F2` — valore `113`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:36`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:37`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_F2" : kc(knum) = %K_F2
@@ -1456,7 +1456,7 @@ knum = knum + 1 : kn(knum) = "K_F2" : kc(knum) = %K_F2
 
 ### `%K_F3` — valore `114`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:37`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:38`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_F3" : kc(knum) = %K_F3
@@ -1464,7 +1464,7 @@ knum = knum + 1 : kn(knum) = "K_F3" : kc(knum) = %K_F3
 
 ### `%K_F4` — valore `115`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:38`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:39`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_F4" : kc(knum) = %K_F4
@@ -1472,7 +1472,7 @@ knum = knum + 1 : kn(knum) = "K_F4" : kc(knum) = %K_F4
 
 ### `%K_F5` — valore `116`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:39`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:40`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_F5" : kc(knum) = %K_F5
@@ -1480,7 +1480,7 @@ knum = knum + 1 : kn(knum) = "K_F5" : kc(knum) = %K_F5
 
 ### `%K_F6` — valore `117`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:40`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:41`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_F6" : kc(knum) = %K_F6
@@ -1488,7 +1488,7 @@ knum = knum + 1 : kn(knum) = "K_F6" : kc(knum) = %K_F6
 
 ### `%K_F7` — valore `118`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:41`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:42`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_F7" : kc(knum) = %K_F7
@@ -1496,7 +1496,7 @@ knum = knum + 1 : kn(knum) = "K_F7" : kc(knum) = %K_F7
 
 ### `%K_F8` — valore `119`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:42`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:43`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_F8" : kc(knum) = %K_F8
@@ -1504,7 +1504,7 @@ knum = knum + 1 : kn(knum) = "K_F8" : kc(knum) = %K_F8
 
 ### `%K_F9` — valore `120`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:43`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:44`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_F9" : kc(knum) = %K_F9
@@ -1512,7 +1512,7 @@ knum = knum + 1 : kn(knum) = "K_F9" : kc(knum) = %K_F9
 
 ### `%K_G` — valore `71`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:70`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:71`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_G" : kc(knum) = %K_G
@@ -1520,7 +1520,7 @@ knum = knum + 1 : kn(knum) = "K_G" : kc(knum) = %K_G
 
 ### `%K_H` — valore `72`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:71`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:72`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_H" : kc(knum) = %K_H
@@ -1528,7 +1528,7 @@ knum = knum + 1 : kn(knum) = "K_H" : kc(knum) = %K_H
 
 ### `%K_HOME` — valore `36`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:51`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:52`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_HOME" : kc(knum) = %K_HOME
@@ -1536,7 +1536,7 @@ knum = knum + 1 : kn(knum) = "K_HOME" : kc(knum) = %K_HOME
 
 ### `%K_I` — valore `73`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:72`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:73`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_I" : kc(knum) = %K_I
@@ -1544,7 +1544,7 @@ knum = knum + 1 : kn(knum) = "K_I" : kc(knum) = %K_I
 
 ### `%K_INS` — valore `45`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:55`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:56`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_INS" : kc(knum) = %K_INS
@@ -1552,7 +1552,7 @@ knum = knum + 1 : kn(knum) = "K_INS" : kc(knum) = %K_INS
 
 ### `%K_J` — valore `74`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:73`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:74`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_J" : kc(knum) = %K_J
@@ -1560,7 +1560,7 @@ knum = knum + 1 : kn(knum) = "K_J" : kc(knum) = %K_J
 
 ### `%K_K` — valore `75`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:74`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:75`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_K" : kc(knum) = %K_K
@@ -1568,7 +1568,7 @@ knum = knum + 1 : kn(knum) = "K_K" : kc(knum) = %K_K
 
 ### `%K_L` — valore `76`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:75`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:76`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_L" : kc(knum) = %K_L
@@ -1576,7 +1576,7 @@ knum = knum + 1 : kn(knum) = "K_L" : kc(knum) = %K_L
 
 ### `%K_LEFT` — valore `37`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:49`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:50`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_LEFT" : kc(knum) = %K_LEFT
@@ -1584,7 +1584,7 @@ knum = knum + 1 : kn(knum) = "K_LEFT" : kc(knum) = %K_LEFT
 
 ### `%K_M` — valore `77`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:76`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:77`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_M" : kc(knum) = %K_M
@@ -1592,7 +1592,7 @@ knum = knum + 1 : kn(knum) = "K_M" : kc(knum) = %K_M
 
 ### `%K_N` — valore `78`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:77`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:78`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_N" : kc(knum) = %K_N
@@ -1600,7 +1600,7 @@ knum = knum + 1 : kn(knum) = "K_N" : kc(knum) = %K_N
 
 ### `%K_N0` — valore `96`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:100`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:101`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_N0" : kc(knum) = %K_N0
@@ -1608,7 +1608,7 @@ knum = knum + 1 : kn(knum) = "K_N0" : kc(knum) = %K_N0
 
 ### `%K_N1` — valore `97`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:101`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:102`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_N1" : kc(knum) = %K_N1
@@ -1616,7 +1616,7 @@ knum = knum + 1 : kn(knum) = "K_N1" : kc(knum) = %K_N1
 
 ### `%K_N2` — valore `98`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:102`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:103`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_N2" : kc(knum) = %K_N2
@@ -1624,7 +1624,7 @@ knum = knum + 1 : kn(knum) = "K_N2" : kc(knum) = %K_N2
 
 ### `%K_N3` — valore `99`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:103`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:104`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_N3" : kc(knum) = %K_N3
@@ -1632,7 +1632,7 @@ knum = knum + 1 : kn(knum) = "K_N3" : kc(knum) = %K_N3
 
 ### `%K_N4` — valore `100`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:104`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:105`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_N4" : kc(knum) = %K_N4
@@ -1640,7 +1640,7 @@ knum = knum + 1 : kn(knum) = "K_N4" : kc(knum) = %K_N4
 
 ### `%K_N5` — valore `101`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:105`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:106`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_N5" : kc(knum) = %K_N5
@@ -1648,7 +1648,7 @@ knum = knum + 1 : kn(knum) = "K_N5" : kc(knum) = %K_N5
 
 ### `%K_N6` — valore `102`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:106`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:107`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_N6" : kc(knum) = %K_N6
@@ -1656,7 +1656,7 @@ knum = knum + 1 : kn(knum) = "K_N6" : kc(knum) = %K_N6
 
 ### `%K_N7` — valore `103`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:107`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:108`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_N7" : kc(knum) = %K_N7
@@ -1664,7 +1664,7 @@ knum = knum + 1 : kn(knum) = "K_N7" : kc(knum) = %K_N7
 
 ### `%K_N8` — valore `104`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:108`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:109`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_N8" : kc(knum) = %K_N8
@@ -1672,7 +1672,7 @@ knum = knum + 1 : kn(knum) = "K_N8" : kc(knum) = %K_N8
 
 ### `%K_N9` — valore `105`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:109`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:110`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_N9" : kc(knum) = %K_N9
@@ -1680,7 +1680,7 @@ knum = knum + 1 : kn(knum) = "K_N9" : kc(knum) = %K_N9
 
 ### `%K_NADD` — valore `107`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:113`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:114`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_NADD" : kc(knum) = %K_NADD
@@ -1688,7 +1688,7 @@ knum = knum + 1 : kn(knum) = "K_NADD" : kc(knum) = %K_NADD
 
 ### `%K_NDEC` — valore `110`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:114`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:115`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_NDEC" : kc(knum) = %K_NDEC
@@ -1696,7 +1696,7 @@ knum = knum + 1 : kn(knum) = "K_NDEC" : kc(knum) = %K_NDEC
 
 ### `%K_NDIV` — valore `111`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:110`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:111`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_NDIV" : kc(knum) = %K_NDIV
@@ -1704,7 +1704,7 @@ knum = knum + 1 : kn(knum) = "K_NDIV" : kc(knum) = %K_NDIV
 
 ### `%K_NMUL` — valore `106`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:111`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:112`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_NMUL" : kc(knum) = %K_NMUL
@@ -1712,7 +1712,7 @@ knum = knum + 1 : kn(knum) = "K_NMUL" : kc(knum) = %K_NMUL
 
 ### `%K_NSUB` — valore `109`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:112`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:113`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_NSUB" : kc(knum) = %K_NSUB
@@ -1720,7 +1720,7 @@ knum = knum + 1 : kn(knum) = "K_NSUB" : kc(knum) = %K_NSUB
 
 ### `%K_O` — valore `79`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:78`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:79`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_O" : kc(knum) = %K_O
@@ -1728,7 +1728,7 @@ knum = knum + 1 : kn(knum) = "K_O" : kc(knum) = %K_O
 
 ### `%K_P` — valore `80`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:79`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:80`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_P" : kc(knum) = %K_P
@@ -1736,7 +1736,7 @@ knum = knum + 1 : kn(knum) = "K_P" : kc(knum) = %K_P
 
 ### `%K_PAUSE` — valore `19`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:62`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:63`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_PAUSE" : kc(knum) = %K_PAUSE
@@ -1744,7 +1744,7 @@ knum = knum + 1 : kn(knum) = "K_PAUSE" : kc(knum) = %K_PAUSE
 
 ### `%K_PGDN` — valore `34`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:54`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:55`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_PGDN" : kc(knum) = %K_PGDN
@@ -1752,7 +1752,7 @@ knum = knum + 1 : kn(knum) = "K_PGDN" : kc(knum) = %K_PGDN
 
 ### `%K_PGUP` — valore `33`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:53`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:54`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_PGUP" : kc(knum) = %K_PGUP
@@ -1760,7 +1760,7 @@ knum = knum + 1 : kn(knum) = "K_PGUP" : kc(knum) = %K_PGUP
 
 ### `%K_PRTSC` — valore `44`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:63`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:64`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_PRTSC" : kc(knum) = %K_PRTSC
@@ -1768,7 +1768,7 @@ knum = knum + 1 : kn(knum) = "K_PRTSC" : kc(knum) = %K_PRTSC
 
 ### `%K_Q` — valore `81`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:80`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:81`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_Q" : kc(knum) = %K_Q
@@ -1776,7 +1776,7 @@ knum = knum + 1 : kn(knum) = "K_Q" : kc(knum) = %K_Q
 
 ### `%K_R` — valore `82`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:81`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:82`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_R" : kc(knum) = %K_R
@@ -1784,7 +1784,7 @@ knum = knum + 1 : kn(knum) = "K_R" : kc(knum) = %K_R
 
 ### `%K_RIGHT` — valore `39`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:50`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:51`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_RIGHT" : kc(knum) = %K_RIGHT
@@ -1792,7 +1792,7 @@ knum = knum + 1 : kn(knum) = "K_RIGHT" : kc(knum) = %K_RIGHT
 
 ### `%K_S` — valore `83`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:82`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:83`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_S" : kc(knum) = %K_S
@@ -1808,7 +1808,7 @@ knum = knum + 1 : kn(knum) = "K_S" : kc(knum) = %K_S
 
 ### `%K_SHIFT_TAB` — valore `-1`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:117`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:118`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_SHIFT_TAB" : kc(knum) = %K_SHIFT_TAB
@@ -1816,7 +1816,7 @@ knum = knum + 1 : kn(knum) = "K_SHIFT_TAB" : kc(knum) = %K_SHIFT_TAB
 
 ### `%K_SPC` — valore `32`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:61`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:62`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_SPC" : kc(knum) = %K_SPC
@@ -1824,7 +1824,7 @@ knum = knum + 1 : kn(knum) = "K_SPC" : kc(knum) = %K_SPC
 
 ### `%K_T` — valore `84`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:83`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:84`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_T" : kc(knum) = %K_T
@@ -1832,7 +1832,7 @@ knum = knum + 1 : kn(knum) = "K_T" : kc(knum) = %K_T
 
 ### `%K_TAB` — valore `9`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:58`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:59`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_TAB" : kc(knum) = %K_TAB
@@ -1840,7 +1840,7 @@ knum = knum + 1 : kn(knum) = "K_TAB" : kc(knum) = %K_TAB
 
 ### `%K_U` — valore `85`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:84`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:85`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_U" : kc(knum) = %K_U
@@ -1856,7 +1856,7 @@ knum = knum + 1 : kn(knum) = "K_U" : kc(knum) = %K_U
 
 ### `%K_V` — valore `86`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:85`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:86`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_V" : kc(knum) = %K_V
@@ -1864,7 +1864,7 @@ knum = knum + 1 : kn(knum) = "K_V" : kc(knum) = %K_V
 
 ### `%K_W` — valore `87`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:86`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:87`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_W" : kc(knum) = %K_W
@@ -1880,7 +1880,7 @@ knum = knum + 1 : kn(knum) = "K_W" : kc(knum) = %K_W
 
 ### `%K_Y` — valore `89`
 
-*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:88`*
+*uso reale in `shared/samples/Console/ConstantsKeysCoverage.bas:89`*
 
 ```basic
 knum = knum + 1 : kn(knum) = "K_Y" : kc(knum) = %K_Y
@@ -1896,7 +1896,7 @@ knum = knum + 1 : kn(knum) = "K_Y" : kc(knum) = %K_Y
 
 ### `%LEFT` — valore `0`
 
-*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:93`*
+*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:94`*
 
 ```basic
 PRINT "  %LEFT"; TAB(24); %LEFT
@@ -1904,7 +1904,7 @@ PRINT "  %LEFT"; TAB(24); %LEFT
 
 ### `%LIGHT_GREEN` — valore `119`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:154`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:155`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "LIGHT_GREEN" : ci(cnt) = %LIGHT_GREEN
@@ -1912,7 +1912,7 @@ cnt = cnt + 1 : cn(cnt) = "LIGHT_GREEN" : ci(cnt) = %LIGHT_GREEN
 
 ### `%LIGHT_GREEN_2` — valore `120`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:155`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:156`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "LIGHT_GREEN_2" : ci(cnt) = %LIGHT_GREEN_2
@@ -1920,7 +1920,7 @@ cnt = cnt + 1 : cn(cnt) = "LIGHT_GREEN_2" : ci(cnt) = %LIGHT_GREEN_2
 
 ### `%LIGHT_PINK4` — valore `95`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:130`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:131`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "LIGHT_PINK4" : ci(cnt) = %LIGHT_PINK4
@@ -1928,7 +1928,7 @@ cnt = cnt + 1 : cn(cnt) = "LIGHT_PINK4" : ci(cnt) = %LIGHT_PINK4
 
 ### `%LIGHT_SEA_GREEN` — valore `37`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:72`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:73`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "LIGHT_SEA_GREEN" : ci(cnt) = %LIGHT_SEA_GREEN
@@ -1936,7 +1936,7 @@ cnt = cnt + 1 : cn(cnt) = "LIGHT_SEA_GREEN" : ci(cnt) = %LIGHT_SEA_GREEN
 
 ### `%LIGHT_SKY_BLUE3` — valore `109`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:144`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:145`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "LIGHT_SKY_BLUE3" : ci(cnt) = %LIGHT_SKY_BLUE3
@@ -1944,7 +1944,7 @@ cnt = cnt + 1 : cn(cnt) = "LIGHT_SKY_BLUE3" : ci(cnt) = %LIGHT_SKY_BLUE3
 
 ### `%LIGHT_SKY_BLUE3_2` — valore `110`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:145`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:146`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "LIGHT_SKY_BLUE3_2" : ci(cnt) = %LIGHT_SKY_BLUE3_2
@@ -1952,7 +1952,7 @@ cnt = cnt + 1 : cn(cnt) = "LIGHT_SKY_BLUE3_2" : ci(cnt) = %LIGHT_SKY_BLUE3_2
 
 ### `%LIGHT_SLATE_BLUE` — valore `105`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:140`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:141`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "LIGHT_SLATE_BLUE" : ci(cnt) = %LIGHT_SLATE_BLUE
@@ -1960,7 +1960,7 @@ cnt = cnt + 1 : cn(cnt) = "LIGHT_SLATE_BLUE" : ci(cnt) = %LIGHT_SLATE_BLUE
 
 ### `%LIGHT_SLATE_GRAY` — valore `103`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:138`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:139`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "LIGHT_SLATE_GRAY" : ci(cnt) = %LIGHT_SLATE_GRAY
@@ -1968,7 +1968,7 @@ cnt = cnt + 1 : cn(cnt) = "LIGHT_SLATE_GRAY" : ci(cnt) = %LIGHT_SLATE_GRAY
 
 ### `%LIME` — valore `10`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:45`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:46`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "LIME" : ci(cnt) = %LIME
@@ -1976,7 +1976,7 @@ cnt = cnt + 1 : cn(cnt) = "LIME" : ci(cnt) = %LIME
 
 ### `%MAROON` — valore `1`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:36`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:37`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "MAROON" : ci(cnt) = %MAROON
@@ -1984,7 +1984,7 @@ cnt = cnt + 1 : cn(cnt) = "MAROON" : ci(cnt) = %MAROON
 
 ### `%MEDIUM_PURPLE` — valore `104`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:139`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:140`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "MEDIUM_PURPLE" : ci(cnt) = %MEDIUM_PURPLE
@@ -1992,7 +1992,7 @@ cnt = cnt + 1 : cn(cnt) = "MEDIUM_PURPLE" : ci(cnt) = %MEDIUM_PURPLE
 
 ### `%MEDIUM_PURPLE3` — valore `97`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:132`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:133`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "MEDIUM_PURPLE3" : ci(cnt) = %MEDIUM_PURPLE3
@@ -2000,7 +2000,7 @@ cnt = cnt + 1 : cn(cnt) = "MEDIUM_PURPLE3" : ci(cnt) = %MEDIUM_PURPLE3
 
 ### `%MEDIUM_PURPLE3_2` — valore `98`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:133`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:134`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "MEDIUM_PURPLE3_2" : ci(cnt) = %MEDIUM_PURPLE3_2
@@ -2008,7 +2008,7 @@ cnt = cnt + 1 : cn(cnt) = "MEDIUM_PURPLE3_2" : ci(cnt) = %MEDIUM_PURPLE3_2
 
 ### `%MEDIUM_PURPLE4` — valore `60`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:95`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:96`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "MEDIUM_PURPLE4" : ci(cnt) = %MEDIUM_PURPLE4
@@ -2016,7 +2016,7 @@ cnt = cnt + 1 : cn(cnt) = "MEDIUM_PURPLE4" : ci(cnt) = %MEDIUM_PURPLE4
 
 ### `%MEDIUM_SPRING_GREEN` — valore `49`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:84`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:85`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "MEDIUM_SPRING_GREEN" : ci(cnt) = %MEDIUM_SPRING_GREEN
@@ -2024,7 +2024,7 @@ cnt = cnt + 1 : cn(cnt) = "MEDIUM_SPRING_GREEN" : ci(cnt) = %MEDIUM_SPRING_GREEN
 
 ### `%MEDIUM_TURQUOISE` — valore `80`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:115`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:116`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "MEDIUM_TURQUOISE" : ci(cnt) = %MEDIUM_TURQUOISE
@@ -2032,7 +2032,7 @@ cnt = cnt + 1 : cn(cnt) = "MEDIUM_TURQUOISE" : ci(cnt) = %MEDIUM_TURQUOISE
 
 ### `%NAVY` — valore `4`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:39`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:40`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "NAVY" : ci(cnt) = %NAVY
@@ -2040,7 +2040,7 @@ cnt = cnt + 1 : cn(cnt) = "NAVY" : ci(cnt) = %NAVY
 
 ### `%NAVY_BLUE` — valore `17`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:52`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:53`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "NAVY_BLUE" : ci(cnt) = %NAVY_BLUE
@@ -2048,7 +2048,7 @@ cnt = cnt + 1 : cn(cnt) = "NAVY_BLUE" : ci(cnt) = %NAVY_BLUE
 
 ### `%NO` — valore `7`
 
-*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:33`*
+*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:34`*
 
 ```basic
 PRINT "  %NO"; TAB(24); %NO
@@ -2056,7 +2056,7 @@ PRINT "  %NO"; TAB(24); %NO
 
 ### `%NONE` — valore `0`
 
-*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:40`*
+*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:41`*
 
 ```basic
 PRINT "  %NONE"; TAB(24); %NONE
@@ -2088,7 +2088,7 @@ btnClicked = CONFIRM("Click Me") = %OK
 
 ### `%OKCANCEL` — valore `101`
 
-*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:19`*
+*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:20`*
 
 ```basic
 ' USO: ALERT("msg", %OKCANCEL) — AI.SEARCHMULTI(..., %RERANK_KEYWORD)
@@ -2096,7 +2096,7 @@ btnClicked = CONFIRM("Click Me") = %OK
 
 ### `%OLIVE` — valore `3`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:38`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:39`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "OLIVE" : ci(cnt) = %OLIVE
@@ -2104,7 +2104,7 @@ cnt = cnt + 1 : cn(cnt) = "OLIVE" : ci(cnt) = %OLIVE
 
 ### `%ORANGE4` — valore `58`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:93`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:94`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "ORANGE4" : ci(cnt) = %ORANGE4
@@ -2112,7 +2112,7 @@ cnt = cnt + 1 : cn(cnt) = "ORANGE4" : ci(cnt) = %ORANGE4
 
 ### `%ORANGE4_2` — valore `94`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:129`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:130`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "ORANGE4_2" : ci(cnt) = %ORANGE4_2
@@ -2120,7 +2120,7 @@ cnt = cnt + 1 : cn(cnt) = "ORANGE4_2" : ci(cnt) = %ORANGE4_2
 
 ### `%PALE_GREEN1` — valore `121`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:156`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:157`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "PALE_GREEN1" : ci(cnt) = %PALE_GREEN1
@@ -2128,7 +2128,7 @@ cnt = cnt + 1 : cn(cnt) = "PALE_GREEN1" : ci(cnt) = %PALE_GREEN1
 
 ### `%PALE_GREEN3` — valore `77`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:112`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:113`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "PALE_GREEN3" : ci(cnt) = %PALE_GREEN3
@@ -2136,7 +2136,7 @@ cnt = cnt + 1 : cn(cnt) = "PALE_GREEN3" : ci(cnt) = %PALE_GREEN3
 
 ### `%PALE_GREEN3_2` — valore `114`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:149`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:150`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "PALE_GREEN3_2" : ci(cnt) = %PALE_GREEN3_2
@@ -2144,7 +2144,7 @@ cnt = cnt + 1 : cn(cnt) = "PALE_GREEN3_2" : ci(cnt) = %PALE_GREEN3_2
 
 ### `%PALE_TURQUOISE4` — valore `66`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:101`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:102`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "PALE_TURQUOISE4" : ci(cnt) = %PALE_TURQUOISE4
@@ -2152,7 +2152,7 @@ cnt = cnt + 1 : cn(cnt) = "PALE_TURQUOISE4" : ci(cnt) = %PALE_TURQUOISE4
 
 ### `%PLUM4` — valore `96`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:131`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:132`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "PLUM4" : ci(cnt) = %PLUM4
@@ -2160,7 +2160,7 @@ cnt = cnt + 1 : cn(cnt) = "PLUM4" : ci(cnt) = %PLUM4
 
 ### `%PURPLE` — valore `5`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:40`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:41`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "PURPLE" : ci(cnt) = %PURPLE
@@ -2168,7 +2168,7 @@ cnt = cnt + 1 : cn(cnt) = "PURPLE" : ci(cnt) = %PURPLE
 
 ### `%PURPLE1` — valore `93`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:128`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:129`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "PURPLE1" : ci(cnt) = %PURPLE1
@@ -2176,7 +2176,7 @@ cnt = cnt + 1 : cn(cnt) = "PURPLE1" : ci(cnt) = %PURPLE1
 
 ### `%PURPLE3` — valore `56`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:91`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:92`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "PURPLE3" : ci(cnt) = %PURPLE3
@@ -2184,7 +2184,7 @@ cnt = cnt + 1 : cn(cnt) = "PURPLE3" : ci(cnt) = %PURPLE3
 
 ### `%PURPLE4` — valore `54`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:89`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:90`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "PURPLE4" : ci(cnt) = %PURPLE4
@@ -2192,7 +2192,7 @@ cnt = cnt + 1 : cn(cnt) = "PURPLE4" : ci(cnt) = %PURPLE4
 
 ### `%PURPLE4_2` — valore `55`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:90`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:91`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "PURPLE4_2" : ci(cnt) = %PURPLE4_2
@@ -2200,7 +2200,7 @@ cnt = cnt + 1 : cn(cnt) = "PURPLE4_2" : ci(cnt) = %PURPLE4_2
 
 ### `%RECEIVED` — valore `1`
 
-*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:84`*
+*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:85`*
 
 ```basic
 PRINT "  %RECEIVED"; TAB(24); %RECEIVED
@@ -2208,7 +2208,7 @@ PRINT "  %RECEIVED"; TAB(24); %RECEIVED
 
 ### `%RED` — valore `9`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:44`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:45`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "RED" : ci(cnt) = %RED
@@ -2216,7 +2216,7 @@ cnt = cnt + 1 : cn(cnt) = "RED" : ci(cnt) = %RED
 
 ### `%RERANKER` — valore `4`
 
-*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:70`*
+*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:71`*
 
 ```basic
 PRINT "  %RERANKER"; TAB(24); %RERANKER
@@ -2224,7 +2224,7 @@ PRINT "  %RERANKER"; TAB(24); %RERANKER
 
 ### `%RERANK_KEYWORD` — valore `1`
 
-*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:19`*
+*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:20`*
 
 ```basic
 ' USO: ALERT("msg", %OKCANCEL) — AI.SEARCHMULTI(..., %RERANK_KEYWORD)
@@ -2232,7 +2232,7 @@ PRINT "  %RERANKER"; TAB(24); %RERANKER
 
 ### `%RERANK_OFF` — valore `0`
 
-*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:74`*
+*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:75`*
 
 ```basic
 PRINT "  %RERANK_OFF"; TAB(24); %RERANK_OFF
@@ -2240,7 +2240,7 @@ PRINT "  %RERANK_OFF"; TAB(24); %RERANK_OFF
 
 ### `%RERANK_ONNX` — valore `2`
 
-*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:76`*
+*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:77`*
 
 ```basic
 PRINT "  %RERANK_ONNX"; TAB(24); %RERANK_ONNX
@@ -2248,7 +2248,7 @@ PRINT "  %RERANK_ONNX"; TAB(24); %RERANK_ONNX
 
 ### `%RETRY` — valore `4`
 
-*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:30`*
+*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:31`*
 
 ```basic
 PRINT "  %RETRY"; TAB(24); %RETRY
@@ -2256,7 +2256,7 @@ PRINT "  %RETRY"; TAB(24); %RETRY
 
 ### `%RETRYCANCEL` — valore `105`
 
-*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:38`*
+*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:39`*
 
 ```basic
 PRINT "  %RETRYCANCEL"; TAB(24); %RETRYCANCEL
@@ -2264,7 +2264,7 @@ PRINT "  %RETRYCANCEL"; TAB(24); %RETRYCANCEL
 
 ### `%RIGHT` — valore `2`
 
-*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:95`*
+*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:96`*
 
 ```basic
 PRINT "  %RIGHT"; TAB(24); %RIGHT
@@ -2272,7 +2272,7 @@ PRINT "  %RIGHT"; TAB(24); %RIGHT
 
 ### `%ROUNDED` — valore `3`
 
-*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:43`*
+*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:44`*
 
 ```basic
 PRINT "  %ROUNDED"; TAB(24); %ROUNDED
@@ -2280,7 +2280,7 @@ PRINT "  %ROUNDED"; TAB(24); %ROUNDED
 
 ### `%ROYAL_BLUE1` — valore `63`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:98`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:99`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "ROYAL_BLUE1" : ci(cnt) = %ROYAL_BLUE1
@@ -2296,7 +2296,7 @@ cnt = cnt + 1 : cn(cnt) = "ROYAL_BLUE1" : ci(cnt) = %ROYAL_BLUE1
 
 ### `%SEA_GREEN1` — valore `84`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:119`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:120`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "SEA_GREEN1" : ci(cnt) = %SEA_GREEN1
@@ -2304,7 +2304,7 @@ cnt = cnt + 1 : cn(cnt) = "SEA_GREEN1" : ci(cnt) = %SEA_GREEN1
 
 ### `%SEA_GREEN1_2` — valore `85`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:120`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:121`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "SEA_GREEN1_2" : ci(cnt) = %SEA_GREEN1_2
@@ -2312,7 +2312,7 @@ cnt = cnt + 1 : cn(cnt) = "SEA_GREEN1_2" : ci(cnt) = %SEA_GREEN1_2
 
 ### `%SEA_GREEN2` — valore `83`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:118`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:119`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "SEA_GREEN2" : ci(cnt) = %SEA_GREEN2
@@ -2320,7 +2320,7 @@ cnt = cnt + 1 : cn(cnt) = "SEA_GREEN2" : ci(cnt) = %SEA_GREEN2
 
 ### `%SEA_GREEN3` — valore `78`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:113`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:114`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "SEA_GREEN3" : ci(cnt) = %SEA_GREEN3
@@ -2328,7 +2328,7 @@ cnt = cnt + 1 : cn(cnt) = "SEA_GREEN3" : ci(cnt) = %SEA_GREEN3
 
 ### `%SILVER` — valore `7`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:42`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:43`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "SILVER" : ci(cnt) = %SILVER
@@ -2336,7 +2336,7 @@ cnt = cnt + 1 : cn(cnt) = "SILVER" : ci(cnt) = %SILVER
 
 ### `%SINGLE` — valore `1`
 
-*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:41`*
+*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:42`*
 
 ```basic
 PRINT "  %SINGLE"; TAB(24); %SINGLE
@@ -2344,7 +2344,7 @@ PRINT "  %SINGLE"; TAB(24); %SINGLE
 
 ### `%SKY_BLUE1` — valore `117`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:152`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:153`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "SKY_BLUE1" : ci(cnt) = %SKY_BLUE1
@@ -2352,7 +2352,7 @@ cnt = cnt + 1 : cn(cnt) = "SKY_BLUE1" : ci(cnt) = %SKY_BLUE1
 
 ### `%SKY_BLUE2` — valore `111`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:146`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:147`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "SKY_BLUE2" : ci(cnt) = %SKY_BLUE2
@@ -2360,7 +2360,7 @@ cnt = cnt + 1 : cn(cnt) = "SKY_BLUE2" : ci(cnt) = %SKY_BLUE2
 
 ### `%SKY_BLUE3` — valore `74`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:109`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:110`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "SKY_BLUE3" : ci(cnt) = %SKY_BLUE3
@@ -2368,7 +2368,7 @@ cnt = cnt + 1 : cn(cnt) = "SKY_BLUE3" : ci(cnt) = %SKY_BLUE3
 
 ### `%SLATE_BLUE1` — valore `99`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:134`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:135`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "SLATE_BLUE1" : ci(cnt) = %SLATE_BLUE1
@@ -2376,7 +2376,7 @@ cnt = cnt + 1 : cn(cnt) = "SLATE_BLUE1" : ci(cnt) = %SLATE_BLUE1
 
 ### `%SLATE_BLUE3` — valore `61`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:96`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:97`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "SLATE_BLUE3" : ci(cnt) = %SLATE_BLUE3
@@ -2384,7 +2384,7 @@ cnt = cnt + 1 : cn(cnt) = "SLATE_BLUE3" : ci(cnt) = %SLATE_BLUE3
 
 ### `%SLATE_BLUE3_2` — valore `62`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:97`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:98`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "SLATE_BLUE3_2" : ci(cnt) = %SLATE_BLUE3_2
@@ -2392,7 +2392,7 @@ cnt = cnt + 1 : cn(cnt) = "SLATE_BLUE3_2" : ci(cnt) = %SLATE_BLUE3_2
 
 ### `%SPRING_GREEN1` — valore `48`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:83`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:84`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "SPRING_GREEN1" : ci(cnt) = %SPRING_GREEN1
@@ -2400,7 +2400,7 @@ cnt = cnt + 1 : cn(cnt) = "SPRING_GREEN1" : ci(cnt) = %SPRING_GREEN1
 
 ### `%SPRING_GREEN2` — valore `42`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:77`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:78`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "SPRING_GREEN2" : ci(cnt) = %SPRING_GREEN2
@@ -2408,7 +2408,7 @@ cnt = cnt + 1 : cn(cnt) = "SPRING_GREEN2" : ci(cnt) = %SPRING_GREEN2
 
 ### `%SPRING_GREEN2_2` — valore `47`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:82`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:83`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "SPRING_GREEN2_2" : ci(cnt) = %SPRING_GREEN2_2
@@ -2416,7 +2416,7 @@ cnt = cnt + 1 : cn(cnt) = "SPRING_GREEN2_2" : ci(cnt) = %SPRING_GREEN2_2
 
 ### `%SPRING_GREEN3` — valore `35`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:70`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:71`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "SPRING_GREEN3" : ci(cnt) = %SPRING_GREEN3
@@ -2424,7 +2424,7 @@ cnt = cnt + 1 : cn(cnt) = "SPRING_GREEN3" : ci(cnt) = %SPRING_GREEN3
 
 ### `%SPRING_GREEN3_2` — valore `41`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:76`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:77`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "SPRING_GREEN3_2" : ci(cnt) = %SPRING_GREEN3_2
@@ -2432,7 +2432,7 @@ cnt = cnt + 1 : cn(cnt) = "SPRING_GREEN3_2" : ci(cnt) = %SPRING_GREEN3_2
 
 ### `%SPRING_GREEN4` — valore `29`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:64`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:65`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "SPRING_GREEN4" : ci(cnt) = %SPRING_GREEN4
@@ -2440,7 +2440,7 @@ cnt = cnt + 1 : cn(cnt) = "SPRING_GREEN4" : ci(cnt) = %SPRING_GREEN4
 
 ### `%STEEL_BLUE` — valore `67`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:102`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:103`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "STEEL_BLUE" : ci(cnt) = %STEEL_BLUE
@@ -2448,7 +2448,7 @@ cnt = cnt + 1 : cn(cnt) = "STEEL_BLUE" : ci(cnt) = %STEEL_BLUE
 
 ### `%STEEL_BLUE1` — valore `75`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:110`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:111`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "STEEL_BLUE1" : ci(cnt) = %STEEL_BLUE1
@@ -2456,7 +2456,7 @@ cnt = cnt + 1 : cn(cnt) = "STEEL_BLUE1" : ci(cnt) = %STEEL_BLUE1
 
 ### `%STEEL_BLUE1_2` — valore `81`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:116`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:117`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "STEEL_BLUE1_2" : ci(cnt) = %STEEL_BLUE1_2
@@ -2464,7 +2464,7 @@ cnt = cnt + 1 : cn(cnt) = "STEEL_BLUE1_2" : ci(cnt) = %STEEL_BLUE1_2
 
 ### `%STEEL_BLUE3` — valore `68`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:103`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:104`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "STEEL_BLUE3" : ci(cnt) = %STEEL_BLUE3
@@ -2480,7 +2480,7 @@ cnt = cnt + 1 : cn(cnt) = "STEEL_BLUE3" : ci(cnt) = %STEEL_BLUE3
 
 ### `%TEAL` — valore `6`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:41`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:42`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "TEAL" : ci(cnt) = %TEAL
@@ -2488,7 +2488,7 @@ cnt = cnt + 1 : cn(cnt) = "TEAL" : ci(cnt) = %TEAL
 
 ### `%TTS` — valore `5`
 
-*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:71`*
+*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:72`*
 
 ```basic
 PRINT "  %TTS"; TAB(24); %TTS
@@ -2496,7 +2496,7 @@ PRINT "  %TTS"; TAB(24); %TTS
 
 ### `%TURQUOISE2` — valore `45`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:80`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:81`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "TURQUOISE2" : ci(cnt) = %TURQUOISE2
@@ -2504,7 +2504,7 @@ cnt = cnt + 1 : cn(cnt) = "TURQUOISE2" : ci(cnt) = %TURQUOISE2
 
 ### `%TURQUOISE4` — valore `30`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:65`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:66`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "TURQUOISE4" : ci(cnt) = %TURQUOISE4
@@ -2512,7 +2512,7 @@ cnt = cnt + 1 : cn(cnt) = "TURQUOISE4" : ci(cnt) = %TURQUOISE4
 
 ### `%WHEAT4` — valore `101`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:136`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:137`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "WHEAT4" : ci(cnt) = %WHEAT4
@@ -2520,7 +2520,7 @@ cnt = cnt + 1 : cn(cnt) = "WHEAT4" : ci(cnt) = %WHEAT4
 
 ### `%WHITE` — valore `15`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:50`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:51`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "WHITE" : ci(cnt) = %WHITE
@@ -2528,7 +2528,7 @@ cnt = cnt + 1 : cn(cnt) = "WHITE" : ci(cnt) = %WHITE
 
 ### `%YELLOW` — valore `11`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:46`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:47`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "YELLOW" : ci(cnt) = %YELLOW
@@ -2536,7 +2536,7 @@ cnt = cnt + 1 : cn(cnt) = "YELLOW" : ci(cnt) = %YELLOW
 
 ### `%YELLOW4` — valore `100`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:135`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:136`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "YELLOW4" : ci(cnt) = %YELLOW4
@@ -2544,7 +2544,7 @@ cnt = cnt + 1 : cn(cnt) = "YELLOW4" : ci(cnt) = %YELLOW4
 
 ### `%YELLOW4_2` — valore `106`
 
-*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:141`*
+*uso reale in `shared/samples/Console/ConstantsColorsCoverage.bas:142`*
 
 ```basic
 cnt = cnt + 1 : cn(cnt) = "YELLOW4_2" : ci(cnt) = %YELLOW4_2
@@ -2552,7 +2552,7 @@ cnt = cnt + 1 : cn(cnt) = "YELLOW4_2" : ci(cnt) = %YELLOW4_2
 
 ### `%YES` — valore `6`
 
-*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:32`*
+*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:33`*
 
 ```basic
 PRINT "  %YES"; TAB(24); %YES
@@ -2560,7 +2560,7 @@ PRINT "  %YES"; TAB(24); %YES
 
 ### `%YESNO` — valore `102`
 
-*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:35`*
+*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:36`*
 
 ```basic
 PRINT "  %YESNO"; TAB(24); %YESNO
@@ -2568,7 +2568,7 @@ PRINT "  %YESNO"; TAB(24); %YESNO
 
 ### `%YESNOCANCEL` — valore `103`
 
-*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:36`*
+*uso reale in `shared/samples/Console/ConstantsModesCoverage.bas:37`*
 
 ```basic
 PRINT "  %YESNOCANCEL"; TAB(24); %YESNOCANCEL
@@ -3282,7 +3282,7 @@ END TYPE
 ```
 
 ```basic
-117:    DIM u AS MyUdt
+116:    DIM u AS MyUdt
 ```
 
 ### `N2`
@@ -3756,6 +3756,16 @@ END TYPE
 33:    DIM a AS TAddetti
 ```
 
+### `TArea`
+
+*definizione da `shared/minitests/dbf/dbf_selected_area.bas`*
+
+```basic
+TYPE TArea
+    K AS STRING * 3
+END TYPE
+```
+
 ### `TB`
 
 *definizione da `shared/minitests/dbf/dbf_select.bas`*
@@ -3842,6 +3852,33 @@ END TYPE
 
 ```basic
 17:    DIM r AS Tcliente
+```
+
+### `TCliente`
+
+*definizione da `shared/samples/Databases/AnagraficaClienti.bas`*
+
+```basic
+TYPE TCliente
+    Nome AS STRING * 20
+    Citta AS STRING * 15
+    Saldo AS DOUBLE
+END TYPE
+```
+
+```basic
+25:    DIM r AS TCliente
+```
+
+### `TClienti`
+
+*definizione da `shared/samples/Databases/SelectAreas.bas`*
+
+```basic
+TYPE TClienti
+    ID AS STRING * 4
+    NOME AS STRING * 12
+END TYPE
 ```
 
 ### `TD`
@@ -3982,6 +4019,17 @@ TYPE TORD
 END TYPE
 ```
 
+### `TOrdini`
+
+*definizione da `shared/samples/Databases/SelectAreas.bas`*
+
+```basic
+TYPE TOrdini
+    CID AS STRING * 4
+    DESCR AS STRING * 12
+END TYPE
+```
+
 ### `TPROD`
 
 *definizione da `shared/samples/Databases/DbfJoinSelectAdvanced.bas`*
@@ -4051,6 +4099,17 @@ END TYPE
 ```basic
 TYPE TRec
     Name AS STRING * 20
+END TYPE
+```
+
+### `TReport`
+
+*definizione da `shared/minitests/dbf/dbf_all.bas`*
+
+```basic
+TYPE TReport
+  ID AS INTEGER
+  Nome AS STRING * 10
 END TYPE
 ```
 
@@ -4229,7 +4288,7 @@ TYPE Vector2D
 ```
 
 ```basic
-122:    DIM v1 AS Vector2D = NEW Vector2D(3, 4)
+121:    DIM v1 AS Vector2D = NEW Vector2D(3, 4)
 ```
 
 ### `Vendita`
@@ -4280,351 +4339,3 @@ END TYPE
 83:  DIM wa AS WithArray : PRINT SIZEOF(wa)
 ```
 
-
-<!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
-
-## Riferimento completo: comandi, funzioni, parametri
-
-> Sezione generata dalle guide del progetto per questo capitolo: contiene **tutte**
-> le superfici documentate, non una selezione. La prosa dei capitoli precedenti le
-> spiega; qui stanno i dettagli — parametri, varianti, esempi d'uso.
-
-### Costanti-Globali-Guida-Utente
-
-*Fonte: `Costanti-Globali-Guida-Utente`*
-
-
-## Palette colore ANSI-256
-| Costante | Valore | Note |
-|---|---|---|
-| `%BLACK` | 0 |  |
-| `%MAROON` | 1 |  |
-| `%GREEN` | 2 |  |
-| `%OLIVE` | 3 |  |
-| `%NAVY` | 4 |  |
-| `%PURPLE` | 5 |  |
-| `%TEAL` | 6 |  |
-| `%SILVER` | 7 |  |
-| `%GRAY` | 8 |  |
-| `%RED` | 9 |  |
-| `%LIME` | 10 |  |
-| `%YELLOW` | 11 |  |
-| `%BLUE` | 12 |  |
-| `%FUCHSIA` | 13 |  |
-| `%AQUA` | 14 |  |
-| `%WHITE` | 15 |  |
-| `%GRAY0` | 16 |  |
-| `%NAVY_BLUE` | 17 |  |
-| `%DARK_BLUE` | 18 |  |
-| `%BLUE3` | 19 |  |
-| `%BLUE3_2` | 20 |  |
-| `%BLUE1` | 21 |  |
-| `%DARK_GREEN` | 22 |  |
-| `%DEEP_SKY_BLUE4` | 23 |  |
-| `%DEEP_SKY_BLUE4_2` | 24 |  |
-| `%DEEP_SKY_BLUE4_3` | 25 |  |
-| `%DODGER_BLUE3` | 26 |  |
-| `%DODGER_BLUE2` | 27 |  |
-| `%GREEN4` | 28 |  |
-| `%SPRING_GREEN4` | 29 |  |
-| `%TURQUOISE4` | 30 |  |
-| `%DEEP_SKY_BLUE3` | 31 |  |
-| `%DEEP_SKY_BLUE3_2` | 32 |  |
-| `%DODGER_BLUE1` | 33 |  |
-| `%GREEN3` | 34 |  |
-| `%SPRING_GREEN3` | 35 |  |
-| `%DARK_CYAN` | 36 |  |
-| `%LIGHT_SEA_GREEN` | 37 |  |
-| `%DEEP_SKY_BLUE2` | 38 |  |
-| `%DEEP_SKY_BLUE1` | 39 |  |
-| `%GREEN3_2` | 40 |  |
-| `%SPRING_GREEN3_2` | 41 |  |
-| `%SPRING_GREEN2` | 42 |  |
-| `%CYAN3` | 43 |  |
-| `%DARK_TURQUOISE` | 44 |  |
-| `%TURQUOISE2` | 45 |  |
-| `%GREEN1` | 46 |  |
-| `%SPRING_GREEN2_2` | 47 |  |
-| `%SPRING_GREEN1` | 48 |  |
-| `%MEDIUM_SPRING_GREEN` | 49 |  |
-| `%CYAN2` | 50 |  |
-| `%CYAN1` | 51 |  |
-| `%DARK_RED` | 52 |  |
-| `%DEEP_PINK4` | 53 |  |
-| `%PURPLE4` | 54 |  |
-| `%PURPLE4_2` | 55 |  |
-| `%PURPLE3` | 56 |  |
-| `%BLUE_VIOLET` | 57 |  |
-| `%ORANGE4` | 58 |  |
-| `%GRAY37` | 59 |  |
-| `%MEDIUM_PURPLE4` | 60 |  |
-| `%SLATE_BLUE3` | 61 |  |
-| `%SLATE_BLUE3_2` | 62 |  |
-| `%ROYAL_BLUE1` | 63 |  |
-| `%CHARTREUSE4` | 64 |  |
-| `%DARK_SEA_GREEN4` | 65 |  |
-| `%PALE_TURQUOISE4` | 66 |  |
-| `%STEEL_BLUE` | 67 |  |
-| `%STEEL_BLUE3` | 68 |  |
-| `%CORNFLOWER_BLUE` | 69 |  |
-| `%CHARTREUSE3` | 70 |  |
-| `%DARK_SEA_GREEN4_2` | 71 |  |
-| `%CADET_BLUE` | 72 |  |
-| `%CADET_BLUE_2` | 73 |  |
-| `%SKY_BLUE3` | 74 |  |
-| `%STEEL_BLUE1` | 75 |  |
-| `%CHARTREUSE3_2` | 76 |  |
-| `%PALE_GREEN3` | 77 |  |
-| `%SEA_GREEN3` | 78 |  |
-| `%AQUAMARINE3` | 79 |  |
-| `%MEDIUM_TURQUOISE` | 80 |  |
-| `%STEEL_BLUE1_2` | 81 |  |
-| `%CHARTREUSE2` | 82 |  |
-| `%SEA_GREEN2` | 83 |  |
-| `%SEA_GREEN1` | 84 |  |
-| `%SEA_GREEN1_2` | 85 |  |
-| `%AQUAMARINE1` | 86 |  |
-| `%DARK_SLATE_GRAY2` | 87 |  |
-| `%DARK_RED_2` | 88 |  |
-| `%DEEP_PINK4_2` | 89 |  |
-| `%DARK_MAGENTA` | 90 |  |
-| `%DARK_MAGENTA_2` | 91 |  |
-| `%DARK_VIOLET` | 92 |  |
-| `%PURPLE1` | 93 |  |
-| `%ORANGE4_2` | 94 |  |
-| `%LIGHT_PINK4` | 95 |  |
-| `%PLUM4` | 96 |  |
-| `%MEDIUM_PURPLE3` | 97 |  |
-| `%MEDIUM_PURPLE3_2` | 98 |  |
-| `%SLATE_BLUE1` | 99 |  |
-| `%YELLOW4` | 100 |  |
-| `%WHEAT4` | 101 |  |
-| `%GRAY53` | 102 |  |
-| `%LIGHT_SLATE_GRAY` | 103 |  |
-| `%MEDIUM_PURPLE` | 104 |  |
-| `%LIGHT_SLATE_BLUE` | 105 |  |
-| `%YELLOW4_2` | 106 |  |
-| `%DARK_OLIVE_GREEN3` | 107 |  |
-| `%DARK_SEA_GREEN` | 108 |  |
-| `%LIGHT_SKY_BLUE3` | 109 |  |
-| `%LIGHT_SKY_BLUE3_2` | 110 |  |
-| `%SKY_BLUE2` | 111 |  |
-| `%CHARTREUSE2_2` | 112 |  |
-| `%DARK_OLIVE_GREEN3_2` | 113 |  |
-| `%PALE_GREEN3_2` | 114 |  |
-| `%DARK_SEA_GREEN3` | 115 |  |
-| `%DARK_SLATE_GRAY3` | 116 |  |
-| `%SKY_BLUE1` | 117 |  |
-| `%CHARTREUSE1` | 118 |  |
-| `%LIGHT_GREEN` | 119 |  |
-| `%LIGHT_GREEN_2` | 120 |  |
-| `%PALE_GREEN1` | 121 |  |
-| `%AQUAMARINE1_2` | 122 |  |
-| `%DARK_SLATE_GRAY1` | 123 |  |
-| `%GRAY2` | 232 |  |
-| `%GRAY3` | 233 |  |
-| `%GRAY7` | 234 |  |
-| `%GRAY11` | 235 |  |
-| `%GRAY15` | 236 |  |
-| `%GRAY19` | 237 |  |
-| `%GRAY23` | 238 |  |
-| `%GRAY27` | 239 |  |
-| `%GRAY30` | 240 |  |
-| `%GRAY35` | 241 |  |
-| `%GRAY39` | 242 |  |
-| `%GRAY42` | 243 |  |
-| `%GRAY46` | 244 |  |
-| `%GRAY50` | 245 |  |
-| `%GRAY54` | 246 |  |
-| `%GRAY58` | 247 |  |
-| `%GRAY62` | 248 |  |
-| `%GRAY66` | 249 |  |
-| `%GRAY70` | 250 |  |
-| `%GRAY74` | 251 |  |
-| `%GRAY78` | 252 |  |
-| `%GRAY82` | 253 |  |
-| `%GRAY85` | 254 |  |
-| `%GRAY89` | 255 |  |
-
-## Tasti (`%K_*`)
-| Costante | Valore | Note |
-|---|---|---|
-| `%K_F1` | F1 |  |
-| `%K_F2` | F2 |  |
-| `%K_F3` | F3 |  |
-| `%K_F4` | F4 |  |
-| `%K_F5` | F5 |  |
-| `%K_F6` | F6 |  |
-| `%K_F7` | F7 |  |
-| `%K_F8` | F8 |  |
-| `%K_F9` | F9 |  |
-| `%K_F10` | F10 |  |
-| `%K_F11` | F11 |  |
-| `%K_F12` | F12 |  |
-| `%K_UP` | UpArrow |  |
-| `%K_DOWN` | DownArrow |  |
-| `%K_LEFT` | LeftArrow |  |
-| `%K_RIGHT` | RightArrow |  |
-| `%K_HOME` | Home |  |
-| `%K_END` | End |  |
-| `%K_PGUP` | PageUp |  |
-| `%K_PGDN` | PageDown |  |
-| `%K_INS` | Insert |  |
-| `%K_DEL` | Delete |  |
-| `%K_ESC` | Escape |  |
-| `%K_TAB` | Tab |  |
-| `%K_ENTER` | Enter |  |
-| `%K_BS` | Backspace |  |
-| `%K_SPC` | Spacebar |  |
-| `%K_PAUSE` | Pause |  |
-| `%K_PRTSC` | PrintScreen |  |
-| `%K_A` | A |  |
-| `%K_B` | B |  |
-| `%K_C` | C |  |
-| `%K_D` | D |  |
-| `%K_E` | E |  |
-| `%K_F` | F |  |
-| `%K_G` | G |  |
-| `%K_H` | H |  |
-| `%K_I` | I |  |
-| `%K_J` | J |  |
-| `%K_K` | K |  |
-| `%K_L` | L |  |
-| `%K_M` | M |  |
-| `%K_N` | N |  |
-| `%K_O` | O |  |
-| `%K_P` | P |  |
-| `%K_Q` | Q |  |
-| `%K_R` | R |  |
-| `%K_S` | S |  |
-| `%K_T` | T |  |
-| `%K_U` | U |  |
-| `%K_V` | V |  |
-| `%K_W` | W |  |
-| `%K_X` | X |  |
-| `%K_Y` | Y |  |
-| `%K_Z` | Z |  |
-| `%K_0` | D0 |  |
-| `%K_1` | D1 |  |
-| `%K_2` | D2 |  |
-| `%K_3` | D3 |  |
-| `%K_4` | D4 |  |
-| `%K_5` | D5 |  |
-| `%K_6` | D6 |  |
-| `%K_7` | D7 |  |
-| `%K_8` | D8 |  |
-| `%K_9` | D9 |  |
-| `%K_N0` | NumPad0 |  |
-| `%K_N1` | NumPad1 |  |
-| `%K_N2` | NumPad2 |  |
-| `%K_N3` | NumPad3 |  |
-| `%K_N4` | NumPad4 |  |
-| `%K_N5` | NumPad5 |  |
-| `%K_N6` | NumPad6 |  |
-| `%K_N7` | NumPad7 |  |
-| `%K_N8` | NumPad8 |  |
-| `%K_N9` | NumPad9 |  |
-| `%K_NDIV` | Divide |  |
-| `%K_NMUL` | Multiply |  |
-| `%K_NSUB` | Subtract |  |
-| `%K_NADD` | Add |  |
-| `%K_NDEC` | Decimal |  |
-| `%K_CTRL_C` | -1.0 |  |
-| `%K_CTRL_BRK` | -1.0 |  |
-| `%K_SHIFT_TAB` | -1.0 |  |
-| `%K_ALT` | modificatore Alt |  |
-| `%K_SHIFT` | modificatore Shift |  |
-| `%K_CTRL` | modificatore Control |  |
-
-## Set di pulsanti (MSGBOX/ALERT/CONFIRM) e stili finestra
-| Costante | Valore | Note |
-|---|---|---|
-| `%OK` | 1 | `ALERT("msg", %OK)` — pulsante singolo |
-| `%CANCEL` | 2 |  |
-| `%ABORT` | 3 |  |
-| `%RETRY` | 4 |  |
-| `%IGNORE` | 5 |  |
-| `%YES` | 6 |  |
-| `%NO` | 7 |  |
-| `%OKCANCEL` | 101 | `CONFIRM("msg?", %OKCANCEL)` |
-| `%YESNO` | 102 | `CONFIRM("msg?", %YESNO)` |
-| `%YESNOCANCEL` | 103 |  |
-| `%ABORTRETRYIGNORE` | 104 | `ALERT("msg", %ABORTRETRYIGNORE)` |
-| `%RETRYCANCEL` | 105 |  |
-| `%CLOSED` | -1 |  |
-| `%NONE` | 0 |  |
-| `%SINGLE` | 1 |  |
-| `%DOUBLE` | 2 |  |
-| `%ROUNDED` | 3 |  |
-
-## Modalità console (`CONSOLE n`)
-| Costante | Valore | Note |
-|---|---|---|
-| `%SDL` | 0 | `CONSOLE %SDL` |
-| `%C64` | 1 | `CONSOLE %C64` |
-| `%ANSI` | 2 | `CONSOLE %ANSI` |
-| `%SYSTEM` | 3 | `CONSOLE %SYSTEM` |
-
-## Joypad (`JOY.*`)
-| Costante | Valore | Note |
-|---|---|---|
-| `%JOYUP` | 1 |  |
-| `%JOYDOWN` | 2 |  |
-| `%JOYLEFT` | 4 |  |
-| `%JOYRIGHT` | 8 |  |
-| `%JOYFIRE` | 16 |  |
-| `%JOYBUTTON2` | 32 |  |
-
-## Eventi file (`ON FILE`)
-| Costante | Valore | Note |
-|---|---|---|
-| `%FILE_CREATED` | 1 | evento `ON FILE` |
-| `%FILE_DELETED` | 2 | evento `ON FILE` |
-| `%FILE_CHANGED` | 4 | evento `ON FILE` |
-| `%FILE_RENAMED` | 8 | evento `ON FILE` |
-
-## Capability AI (provider e ruoli registry)
-| Costante | Valore | Note |
-|---|---|---|
-| `%CHAT` | 0 | `AI SET ACTIVE %CHAT, nome` |
-| `%OCR` | 1 | capability OCR |
-| `%AUDIO` | 2 | capability audio |
-| `%EMBEDDING` | 3 | ruolo registry embedding |
-| `%RERANKER` | 4 | ruolo registry reranker |
-| `%TTS` | 5 | capability sintesi vocale |
-
-## Reranker del retrieval RAG
-| Costante | Valore | Note |
-|---|---|---|
-| `%RERANK_OFF` | 0 | `AI.SEARCHMULTI(..., %RERANK_OFF)` disattiva il reranker |
-| `%RERANK_KEYWORD` | 1 | default del retrieval RAG (KeywordReranker) |
-| `%RERANK_ONNX` | 2 | cross-encoder (riservato) |
-
-## Motore browser (`BROWSER.START`)
-| Costante | Valore | Note |
-|---|---|---|
-| `%AUTO` | 0 | `BROWSER.START(..., %AUTO)` |
-| `%CHROMIUM` | 1 | `BROWSER.START(..., %CHROMIUM)` |
-| `%OBSCURA` | 2 | `BROWSER.START(..., %OBSCURA)` |
-
-## Flag ricezione canale (`RECEIVE ... OK`)
-| Costante | Valore | Note |
-|---|---|---|
-| `%RECEIVED` | 1 | `RECEIVE v FROM ch OK %RECEIVED` — valore letto |
-| `%CHCLOSED` | 0 | canale chiuso e svuotato |
-| `%K_PRTSC` | PrintScreen |  |
-
-## Profili governance
-| Costante | Valore | Note |
-|---|---|---|
-| `%FAST` | 1.0 | profilo governance (G4) |
-| `%GOVERNED` | 2.0 | profilo governance (G4) |
-
-## Allineamento testo box
-| Costante | Valore | Note |
-|---|---|---|
-| `%LEFT` | 0 | allineamento testo box |
-| `%CENTER` | 1 | allineamento testo box |
-| `%RIGHT` | 2 | allineamento testo box |
-
-<!-- END SURFACE -->
