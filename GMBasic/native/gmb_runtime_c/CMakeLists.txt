@@ -962,6 +962,7 @@ set_target_properties(gmb_boot PROPERTIES
 add_executable(gmb_libs_fetch tools/gmb_libs_fetch_cli.c)
 target_link_libraries(gmb_libs_fetch PRIVATE gmb_runtime)
 target_include_directories(gmb_libs_fetch PRIVATE include)
+gmb_exe_relocatable(gmb_libs_fetch)   # nessun path del builder nell'rpath (release: 0 voci assolute)
 
 # Motore di download da riga di comando (`gmb_fetch <url> <file>`): utile per provare la
 # ripresa a mano su un asset grosso (Ctrl-C + rilancio) e per gli script di distribuzione.
@@ -969,6 +970,7 @@ add_executable(gmb_fetch_cli tools/gmb_fetch_cli.c)
 target_link_libraries(gmb_fetch_cli PRIVATE gmb_runtime)
 target_include_directories(gmb_fetch_cli PRIVATE include)
 set_target_properties(gmb_fetch_cli PROPERTIES OUTPUT_NAME gmb_fetch)
+gmb_exe_relocatable(gmb_fetch_cli)
 
 # Cervelli di un programma DISTRIBUITO: legge `<exe>.brains.txt` (+ lo snapshot di
 # brains-manifest.json accanto all'eseguibile) e li installa in `<exe>/brains`, che la
@@ -977,12 +979,14 @@ add_executable(gmb_brain_fetch_cli tools/gmb_brain_fetch_cli.c)
 target_link_libraries(gmb_brain_fetch_cli PRIVATE gmb_runtime)
 target_include_directories(gmb_brain_fetch_cli PRIVATE include)
 set_target_properties(gmb_brain_fetch_cli PROPERTIES OUTPUT_NAME gmb_brain_fetch)
+gmb_exe_relocatable(gmb_brain_fetch_cli)
 
 # Fixture di mercato on demand (`gmb_fixtures list|pull`): prima erano ~182 MB nel repo.
 add_executable(gmb_fixtures_cli tools/gmb_fixtures_cli.c)
 target_link_libraries(gmb_fixtures_cli PRIVATE gmb_runtime)
 target_include_directories(gmb_fixtures_cli PRIVATE include)
 set_target_properties(gmb_fixtures_cli PROPERTIES OUTPUT_NAME gmb_fixtures)
+gmb_exe_relocatable(gmb_fixtures_cli)
 
 add_executable(gmb_rdd_db_selfcheck tests/rdd_db_selfcheck.c)
 target_link_libraries(gmb_rdd_db_selfcheck PRIVATE gmb_runtime)
@@ -1234,6 +1238,7 @@ add_test(NAME gmb_vm_input_drain_selfcheck COMMAND gmb_vm_input_drain_selfcheck)
 add_executable(gmb_imgdiff tools/gmb_imgdiff.c)
 target_link_libraries(gmb_imgdiff PRIVATE gmb_runtime)
 target_include_directories(gmb_imgdiff PRIVATE include src)
+gmb_exe_relocatable(gmb_imgdiff)
 
 add_executable(gmb_audio_selfcheck tests/gmb_audio_selfcheck.c)
 target_link_libraries(gmb_audio_selfcheck PRIVATE gmb_runtime)
@@ -1405,6 +1410,7 @@ set_target_properties(gmb_runtime PROPERTIES INSTALL_RPATH "@loader_path")
 add_executable(gmb_theme tools/gmb_theme_cli.c src/gmb_tui_theme.c)
 target_include_directories(gmb_theme PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_options(gmb_theme PRIVATE -Wall -Wextra)
+gmb_exe_relocatable(gmb_theme)
 
 # Cartella ABI di LLMEnv: settings JSONC (paths.abiDir) + risoluzione alla prima esecuzione. Include il .c: prova anche le statiche.
 add_executable(test_abi_settings tests/test_abi_settings.c ${LLMENV}/LLMDesc/llmdesc.c src/gmb_paths.c)
