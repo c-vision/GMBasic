@@ -254,7 +254,7 @@ typedef struct gmb_str_job {
 } gmb_str_job_t;
 int vm_try_park_str(gmb_vm_t* vm, gmb_task_t* task, gmb_str_job_t* j);
 int vm_try_park_sql_exec(gmb_vm_t* vm, gmb_task_t* task, const char* alias, const char* sql, const char* const* params, int n);
-typedef struct { gmb_vm_t* vm; gmb_task_t* task; gmb_obj_closure_t* closure; int last_vec_count; } gmb_opt_ctx_t;
+typedef struct { gmb_vm_t* vm; gmb_task_t* task; gmb_obj_closure_t* closure; int last_vec_count; } gmb_vm_closure_ctx_t;
 typedef struct { gmb_vm_t* vm; gmb_task_t* task; gmb_obj_closure_t* cl; } gmb_closure_ctx_t;
 double gmb_vm_closure_f(double x, void* c);
 double gmb_vm_closure_f2(double t, double y, void* c);

@@ -1153,21 +1153,6 @@ double gmb_stddev(const double* a, int n);
 double gmb_skewness(const double* a, int n);
 double gmb_kurtosis(const double* a, int n);
 double gmb_mad(const double* a, int n);
-double gmb_opt_newton(double (*fn)(double, void*), double guess, double tol, int max_iter, void* ctx);
-double gmb_opt_bisection(double (*fn)(double, void*), double lo, double hi, double tol, int max_iter, void* ctx);
-double gmb_opt_brent(double (*fn)(double, void*), double lo, double hi, double tol, int max_iter, void* ctx);
-double gmb_opt_golden(double (*fn)(double, void*), double lo, double hi, double tol, int max_iter, void* ctx);
-double gmb_opt_secant(double (*fn)(double, void*), double x0, double x1, double tol, int max_iter, void* ctx);
-void gmb_opt_nelder_mead(double (*fn)(const double*, int, void*), double* start, int n, double tol, int max_iter, void* ctx, double* out);
-void gmb_opt_nelder_mead_c99(gmb_fn_t fn, double* start, int n, double* out);
-void gmb_opt_bfgs_c99(gmb_fn_t fn, double* start, int n, double* out);
-void gmb_opt_cg(double (*fn)(const double*, int, void*), double* start, int n, double tol, int max_iter, void* ctx, double* out);
-void gmb_opt_lbfgs(double (*fn)(const double*, int, void*), double* start, int n, double tol, int memory, int max_iter, void* ctx, double* out);
-void gmb_opt_lbfgs_c99(gmb_fn_t fn, double* start, int n, double* out);
-void gmb_opt_broyden_c99(gmb_fn_t fn, double* x0, int n, double* out);
-int gmb_opt_lin_lstsq(const double* const* a, const double* b, int rows, int cols, double* x);
-double* gmb_opt_simplex_c99(const double* c, int n, const double* const* aub, const double* bub, int mub, gmb_int_t* outn);
-void gmb_opt_bfgs(double (*fn)(const double*, int, void*), double* start, int n, double tol, int max_iter, void* ctx, double* out);
 gmb_string_t gmb_str_join_list(gmb_val_t* items, int count, const char* sep);
 gmb_val_t* gmb_str_split_list(const char* s, const char* sep, int* count_out);
 gmb_string_t* gmb_str_split_strings(const char* s, const char* sep, int* count_out);
@@ -2031,10 +2016,6 @@ void gmb_de_minimize(double (*fn)(const double*, int, void*), void* ctx,
 void gmb_opt_pso(const double* returns, int nSim, int nAssets, double alpha, int objective,
                  int swarmSize, int maxIter, double* out);
 /* --- C99 bridge per i builtin optimize closure-based (gmb_fn_t = lambda transpilata) --- */
-double* gmb_opt_de_c99(gmb_fn_t fn, gmb_double_t** bounds, int n, gmb_int_t* outn);
-double* gmb_opt_lmfit_c99(gmb_fn_t fn, const double* x, int nx, const double* y, int ny,
-                          const double* p0, int np, gmb_int_t* outn);
-double* gmb_opt_lmfit_vec_c99(gmb_fn_t fn, const double* xs, const double* ys, int n, const double* p0, int np, gmb_int_t* outn);
 /* --- KDTree (gmb_kdtree.c): scipy.spatial.KDTree --- */
 gmb_int_t gmb_kdtree_create(const double* flat, int n, int m);
 int gmb_kdtree_query(gmb_int_t h, const double* q, int k, int* out_idx);
@@ -2044,46 +2025,9 @@ double* gmb_kdtree_query_indices_alloc(gmb_int_t h, const double* q, int k, gmb_
 double* gmb_kdtree_query_dists_alloc(gmb_int_t h, const double* q, int k, gmb_int_t* outn);
 double* gmb_kdtree_query_ball_alloc(gmb_int_t h, const double* q, double r, gmb_int_t* outn);
 /* --- scipy.optimize completato (gmb_optfit.c) --- */
-double gmb_opt_brentq(double (*fn)(double, void*), void* ctx, double a, double b);
-double gmb_opt_brenth(double (*fn)(double, void*), void* ctx, double a, double b);
-double gmb_opt_ridder(double (*fn)(double, void*), void* ctx, double a, double b);
-double gmb_opt_toms748(double (*fn)(double, void*), void* ctx, double a, double b);
-double gmb_opt_brentmin(double (*fn)(double, void*), void* ctx, double lower, double upper);
-void gmb_opt_powell(double (*fn)(const double*, int, void*), void* ctx, const double* x0, int n, double* out);
-void gmb_opt_tnc(double (*fn)(const double*, int, void*), void* ctx, const double* x0, int n, const double* lo, const double* hi, double* out);
-void gmb_opt_cobyla(double (*fn)(const double*, int, void*), void* ctx, const double* x0, int n, const double* lo, const double* hi, double* out);
-void gmb_opt_slsqp(double (*fn)(const double*, int, void*), void* ctx, const double* x0, int n, const double* lo, const double* hi, double* out);
-void gmb_opt_fsolve(void (*fn)(const double*, int, double*, void*), void* ctx, const double* x0, int n, double* out);
-void gmb_opt_broyden(void (*fn)(const double*, int, double*, void*), void* ctx, const double* x0, int n, double* out);
-void gmb_opt_least_squares(void (*fn)(const double*, int, double*, void*), void* ctx, const double* x0, int n, int m, const double* lo, const double* hi, double* out);
-void gmb_opt_linprog(const double* c, int n, const double** aub, const double* bub, int mub,
-                     const double** aeq, const double* beq, int meq,
-                     const double* lo, const double* hi, double* out);
-void gmb_opt_brute(double (*fn)(const double*, int, void*), void* ctx, const double* lo, const double* hi, int n, int N, double* out);
-void gmb_opt_basin_hopping(double (*fn)(const double*, int, void*), void* ctx, const double* x0, int n, int niter, double* out);
-void gmb_opt_dual_annealing(double (*fn)(const double*, int, void*), void* ctx, const double* lo, const double* hi, int n, int maxiter, double* out);
 /* --- Bridge C99 optimize (957-973) --- */
-double gmb_opt_brentq_c99(gmb_fn_t fn, double a, double b);
-double gmb_opt_brent_c99(gmb_fn_t fn, double a, double b);
 double gmb_quad_gk_c99(gmb_fn_t fn, double a, double b);
 double gmb_simpson_c99(gmb_fn_t fn, double a, double b, int n);
-double gmb_opt_brenth_c99(gmb_fn_t fn, double a, double b);
-double gmb_opt_ridder_c99(gmb_fn_t fn, double a, double b);
-double gmb_opt_toms748_c99(gmb_fn_t fn, double a, double b);
-double gmb_opt_brentmin_c99(gmb_fn_t fn, double a, double b);
-double gmb_opt_bisection_c99(gmb_fn_t fn, double a, double b);
-double gmb_opt_secant_c99(gmb_fn_t fn, double a, double b);
-double gmb_opt_golden_c99(gmb_fn_t fn, double a, double b);
-double* gmb_opt_cg_c99(gmb_fn_t fn, const double* x0, int n, gmb_int_t* outn);
-double gmb_opt_minscalar_c99(gmb_fn_t fn, double a, double b, gmb_string_t method);
-double* gmb_opt_powell_c99(gmb_fn_t fn, double* x0, int n, gmb_int_t* outn);
-double* gmb_opt_tnc_c99(gmb_fn_t fn, double* x0, int n, gmb_double_t** bounds, gmb_int_t* outn);
-double* gmb_opt_cobyla_c99(gmb_fn_t fn, double* x0, int n, gmb_double_t** bounds, gmb_int_t* outn);
-double* gmb_opt_slsqp_c99(gmb_fn_t fn, double* x0, int n, gmb_double_t** bounds, gmb_int_t* outn);
-double* gmb_opt_minimize_c99(gmb_fn_t fn, double* x0, int n, gmb_string_t method, gmb_double_t** bounds, gmb_int_t* outn);
-double* gmb_opt_brute_c99(gmb_fn_t fn, gmb_double_t** ranges, int n, int N, gmb_int_t* outn);
-double* gmb_opt_basin_c99(gmb_fn_t fn, double* x0, int n, int niter, gmb_int_t* outn);
-double* gmb_opt_dual_c99(gmb_fn_t fn, gmb_double_t** bounds, int n, int maxiter, gmb_int_t* outn);
 /* --- scipy.stats P0 (gmb_stats.c) --- */
 gmb_val_t gmb_pearsonr(gmb_val_t x, gmb_val_t y);
 gmb_val_t gmb_spearmanr(gmb_val_t x, gmb_val_t y);
@@ -2153,11 +2097,6 @@ gmb_int_t gmb_distance_matrix_c99(gmb_double_t** X, int nx, int dx, gmb_double_t
 double* gmb_convex_hull_c99(gmb_double_t** X, int n, gmb_int_t* outn);
 double* gmb_find_peaks_alloc(const double* x, int n, double distance, gmb_int_t* outn);
 /* --- Bridge C99 vettore→vettore (fsolve/least_squares/solve_ivp) --- */
-double gmb_opt_newton_c99(gmb_fn_t fn, double guess);
-double* gmb_opt_fsolve_c99(gmb_fn_t fn, double* x0, int n, gmb_int_t* outn);
-double* gmb_opt_lstsq_c99(gmb_fn_t fn, double* x0, int n, int m, gmb_double_t** bounds, gmb_int_t* outn);
-double* gmb_opt_linprog_c99(const double* c, int n, const double** aub, const double* bub, int mub,
-    const double** aeq, const double* beq, int meq, const double** bounds, gmb_int_t* outn);
 gmb_int_t gmb_solve_ivp_c99(gmb_fn_t fn, double* y0, int n, double t0, double t1);
 gmb_val_t gmb_anova_flat(const double* data, const int* sizes, int k);
 gmb_val_t gmb_anova_jagged(const double* const* rows, const int* sizes, int k);

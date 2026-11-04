@@ -3675,59 +3675,7 @@ double gmb_vm_call_proc_sync_num(gmb_vm_t* vm, gmb_task_t* task, const char* nam
         args[i].basic_type = GMB_BT_NUMBER;
     }
     return vm_call_addr_sync_args(vm, task, addr, args, n);
-}
-
-static double gmb_opt_f_scalar(double x, void* ctx) {    gmb_opt_ctx_t* c = (gmb_opt_ctx_t*)ctx;
-    return gmb_vm_call_closure_sync(c->vm, c->task, c->closure, x);
-}
-static double gmb_opt_f_vec(const double* v, int n, void* ctx) {
-    gmb_opt_ctx_t* c = (gmb_opt_ctx_t*)ctx;
-    return gmb_vm_call_closure_sync_list(c->vm, c->task, c->closure, v, n);
-}
-
-double gmb_opt_newton_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double guess, double tol, int max_iter)
-{ gmb_opt_ctx_t ctx = { vm, task, c }; return gmb_opt_newton(gmb_opt_f_scalar, guess, tol, max_iter, &ctx); }
-double gmb_opt_bisect_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double lo, double hi, double tol, int max_iter)
-{ gmb_opt_ctx_t ctx = { vm, task, c }; return gmb_opt_bisection(gmb_opt_f_scalar, lo, hi, tol, max_iter, &ctx); }
-double gmb_opt_brent_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double lo, double hi, double tol, int max_iter)
-{ gmb_opt_ctx_t ctx = { vm, task, c }; return gmb_opt_brent(gmb_opt_f_scalar, lo, hi, tol, max_iter, &ctx); }
-double gmb_opt_golden_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double lo, double hi, double tol, int max_iter)
-{ gmb_opt_ctx_t ctx = { vm, task, c }; return gmb_opt_golden(gmb_opt_f_scalar, lo, hi, tol, max_iter, &ctx); }
-double gmb_opt_secant_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double x0, double x1, double tol, int max_iter)
-{ gmb_opt_ctx_t ctx = { vm, task, c }; return gmb_opt_secant(gmb_opt_f_scalar, x0, x1, tol, max_iter, &ctx); }
-void gmb_opt_nm_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double* start, int n, double tol, int max_iter, double* out)
-{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_opt_nelder_mead(gmb_opt_f_vec, start, n, tol, max_iter, &ctx, out); }
-void gmb_opt_bfgs_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double* start, int n, double tol, int max_iter, double* out)
-{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_opt_bfgs(gmb_opt_f_vec, start, n, tol, max_iter, &ctx, out); }
-void gmb_opt_cg_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double* start, int n, double tol, int max_iter, double* out)
-{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_opt_cg(gmb_opt_f_vec, start, n, tol, max_iter, &ctx, out); }
-void gmb_opt_lbfgs_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double* start, int n, double tol, int max_iter, double* out)
-{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_opt_lbfgs(gmb_opt_f_vec, start, n, tol, max_iter, 1000, &ctx, out); }
-
-/* Bridge modello curve_fit: closure (params, x) → y — params come LISTA (stesso
- * marshalling di sync_list), x scalare. */
-static double gmb_opt_lm_model(const double* p, int np, double x, void* ctx)
-{
-    gmb_opt_ctx_t* c = (gmb_opt_ctx_t*)ctx;
-    return gmb_vm_call_closure_sync_list2(c->vm, c->task, c->closure, p, np, x);
-}
-/* Bridge modello vettoriale curve_fit: closure (params[], inputs[]) → vector<previsioni>. */
-static void gmb_opt_lm_model_vec(const double* p, int np, const double* x, int nx, double* out, void* ctx)
-{
-    gmb_opt_ctx_t* c = (gmb_opt_ctx_t*)ctx;
-    gmb_vm_call_closure_sync_list2_vec(c->vm, c->task, c->closure, p, np, x, nx, out);
-}
-void gmb_opt_lmfit_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c,
-                       const double* x, const double* y, int nx, const double* p0, int np, double* out)
-{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_lm_fit(gmb_opt_lm_model, &ctx, x, y, nx, p0, np, 200, 1e-8, out); }
-void gmb_opt_lmfit_vec_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c,
-                           const double* x, const double* y, int nx, const double* p0, int np, double* out)
-{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_lm_fit_vec(gmb_opt_lm_model_vec, &ctx, x, y, nx, p0, np, 200, 1e-8, out); }
-void gmb_opt_de_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c,
-                    const double* lo, const double* hi, int n, double* out)
-{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_de_minimize(gmb_opt_f_vec, &ctx, lo, hi, n, 0, 1000, 1e-6, out); }
-
-double* gmb_vm_groups_to_flat(const gmb_stack_entry_t* a, int* k, int** sizes)
+}double* gmb_vm_groups_to_flat(const gmb_stack_entry_t* a, int* k, int** sizes)
 {
     *k = 0; *sizes = NULL;
     if (!a || a->type != 2 || !a->ref || a->ref->kind != GMB_OBJ_LIST) return NULL;
@@ -3798,33 +3746,9 @@ double* gmb_vm_jagged_to_flat(const gmb_stack_entry_t* a, int* nrows, int* ncols
             }
     }
     return flat;
-}
-
-/* Adapter vettore→vettore: chiama la closure con lista e rilegge la lista risultato. */
-static void gmb_opt_f_vec_vec(const double* v, int n, double* out, void* ctx)
+}void gmb_vm_ode_fn(double t, const double* y, int yd, double* dydt, void* c)
 {
-    gmb_opt_ctx_t* c = (gmb_opt_ctx_t*)ctx;
-    (void)gmb_vm_call_closure_sync_list(c->vm, c->task, c->closure, v, n);
-    gmb_obj_t* ref = c->task->sync_result_ref;
-    c->last_vec_count = 0;
-    if (ref && ref->kind == GMB_OBJ_LIST)
-    {
-        gmb_obj_shared_val_t* rl = (gmb_obj_shared_val_t*)ref;
-        int cnt = (int)(rl->list ? rl->list->count : 0);
-        c->last_vec_count = cnt;
-        for (int i = 0; i < cnt && i < 128; i++)
-        {
-            gmb_val_t it = rl->list->items[i];
-            out[i] = it.kind == GMB_TYPE_DOUBLE ? it.v_double : it.kind == GMB_TYPE_INT ? (double)it.v_int : 0;
-        }
-    }
-    else
-        for (int i = 0; i < n && i < 128; i++) out[i] = 0;
-}
-
-void gmb_vm_ode_fn(double t, const double* y, int yd, double* dydt, void* c)
-{
-    gmb_opt_ctx_t* o = (gmb_opt_ctx_t*)c;
+    gmb_vm_closure_ctx_t* o = (gmb_vm_closure_ctx_t*)c;
     gmb_obj_shared_val_t* lst = gmb_shared_list_new();
     if (lst) for (int i = 0; i < yd; i++) gmb_list_add(lst->list, gmb_make_val_double(y[i]));
     gmb_val_t yv = lst ? gmb_make_val_list(*lst->list) : gmb_make_val_double(0);
@@ -3855,34 +3779,7 @@ void gmb_vm_ode_fn(double t, const double* y, int yd, double* dydt, void* c)
         if (yd >= 1) dydt[0] = o->task->sync_result;
         for (int i = 1; i < yd; i++) dydt[i] = 0;
     }
-}
-
-/* Estrae lo/hi da un argomento bounds (lista di [lo,hi]). Ritorna n (0 se assente). */
-int gmb_opt_extract_bounds(const gmb_stack_entry_t* arg, double* lo, double* hi, int max)
-{
-    if (!arg || arg->type != 2 || !arg->ref || arg->ref->kind != GMB_OBJ_LIST) return 0;
-    gmb_obj_shared_val_t* bl = (gmb_obj_shared_val_t*)arg->ref;
-    if (!bl->list) return 0;
-    int n = (int)bl->list->count;
-    if (n > max) n = max;
-    for (int i = 0; i < n; i++)
-    {
-        lo[i] = 0; hi[i] = 1;
-        gmb_val_t rowv = bl->list->items[i];
-        gmb_obj_shared_val_t* rl = NULL;
-        if ((rowv.kind == GMB_TYPE_OBJECT || rowv.kind == GMB_TYPE_ARRAY) && rowv.v_ptr)
-            rl = (gmb_obj_shared_val_t*)rowv.v_ptr;
-        if (rl && rl->list && rl->list->count >= 2)
-        {
-            gmb_val_t a = rl->list->items[0], b = rl->list->items[1];
-            lo[i] = a.kind == GMB_TYPE_DOUBLE ? a.v_double : a.kind == GMB_TYPE_INT ? (double)a.v_int : 0;
-            hi[i] = b.kind == GMB_TYPE_DOUBLE ? b.v_double : b.kind == GMB_TYPE_INT ? (double)b.v_int : 0;
-        }
-    }
-    return n;
-}
-
-gmb_val_t gmb_vm_arg_list(const gmb_stack_entry_t* a)
+}gmb_val_t gmb_vm_arg_list(const gmb_stack_entry_t* a)
 {
     gmb_val_t v;
     memset(&v, 0, sizeof(v));
@@ -3988,67 +3885,7 @@ void gmb_vm_set_dict_result_owned(gmb_val_t r, int* is_num, gmb_obj_t** result_r
     *is_num = 0;
     *result_ref = (gmb_obj_t*)out;
     *result_ref_bt = GMB_BT_OBJECT;
-}
-
-
-/* ---- scipy.optimize completato (957-973): wrapper _ctx ---- */
-double gmb_opt_brentq_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double a, double b)
-{ gmb_opt_ctx_t ctx = { vm, task, c }; return gmb_opt_brentq(gmb_opt_f_scalar, &ctx, a, b); }
-double gmb_opt_brenth_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double a, double b)
-{ gmb_opt_ctx_t ctx = { vm, task, c }; return gmb_opt_brenth(gmb_opt_f_scalar, &ctx, a, b); }
-double gmb_opt_ridder_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double a, double b)
-{ gmb_opt_ctx_t ctx = { vm, task, c }; return gmb_opt_ridder(gmb_opt_f_scalar, &ctx, a, b); }
-double gmb_opt_toms748_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double a, double b)
-{ gmb_opt_ctx_t ctx = { vm, task, c }; return gmb_opt_toms748(gmb_opt_f_scalar, &ctx, a, b); }
-double gmb_opt_brentmin_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double a, double b)
-{ gmb_opt_ctx_t ctx = { vm, task, c }; return gmb_opt_brentmin(gmb_opt_f_scalar, &ctx, a, b); }
-double gmb_opt_minscalar_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double a, double b, const char* method)
-{
-    gmb_opt_ctx_t ctx = { vm, task, c };
-    if (method && strcasecmp(method, "golden") == 0) return gmb_opt_golden(gmb_opt_f_scalar, a, b, 1e-9, 200, &ctx);
-    return gmb_opt_brentmin(gmb_opt_f_scalar, &ctx, a, b);
-}
-void gmb_opt_powell_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* x0, int n, double* out)
-{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_opt_powell(gmb_opt_f_vec, &ctx, x0, n, out); }
-void gmb_opt_tnc_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* x0, int n, const double* lo, const double* hi, double* out)
-{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_opt_tnc(gmb_opt_f_vec, &ctx, x0, n, lo, hi, out); }
-void gmb_opt_cobyla_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* x0, int n, const double* lo, const double* hi, double* out)
-{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_opt_cobyla(gmb_opt_f_vec, &ctx, x0, n, lo, hi, out); }
-void gmb_opt_slsqp_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* x0, int n, const double* lo, const double* hi, double* out)
-{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_opt_slsqp(gmb_opt_f_vec, &ctx, x0, n, lo, hi, out); }
-void gmb_opt_minimize_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* x0, int n, const char* method, const double* lo, const double* hi, double* out)
-{
-    gmb_opt_ctx_t ctx = { vm, task, c };
-    if (method && strcasecmp(method, "powell") == 0) { gmb_opt_powell(gmb_opt_f_vec, &ctx, x0, n, out); return; }
-    if (method && strcasecmp(method, "tnc") == 0) { gmb_opt_tnc(gmb_opt_f_vec, &ctx, x0, n, lo, hi, out); return; }
-    if (method && strcasecmp(method, "cobyla") == 0) { gmb_opt_cobyla(gmb_opt_f_vec, &ctx, x0, n, lo, hi, out); return; }
-    if (method && strcasecmp(method, "slsqp") == 0) { gmb_opt_slsqp(gmb_opt_f_vec, &ctx, x0, n, lo, hi, out); return; }
-    if (method && strcasecmp(method, "bfgs") == 0) { gmb_opt_bfgs(gmb_opt_f_vec, (double*)x0, n, 1e-7, 500, &ctx, out); return; }
-    if (method && strcasecmp(method, "cg") == 0) { gmb_opt_bfgs(gmb_opt_f_vec, (double*)x0, n, 1e-7, 500, &ctx, out); return; }
-    if (method && (strcasecmp(method, "lbfgs") == 0 || strcasecmp(method, "l-bfgs") == 0)) { gmb_opt_bfgs(gmb_opt_f_vec, (double*)x0, n, 1e-7, 500, &ctx, out); return; }
-    gmb_opt_nelder_mead(gmb_opt_f_vec, (double*)x0, n, 1e-7, 500, &ctx, out);
-}
-void gmb_opt_fsolve_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* x0, int n, double* out)
-{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_opt_fsolve(gmb_opt_f_vec_vec, &ctx, x0, n, out); }
-void gmb_opt_broyden_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* x0, int n, double* out)
-{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_opt_broyden(gmb_opt_f_vec_vec, &ctx, x0, n, out); }
-void gmb_opt_lstsq_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* x0, int n, const double* lo, const double* hi, double* out)
-{
-    gmb_opt_ctx_t ctx = { vm, task, c, 0 };
-    double probe[128];
-    gmb_opt_f_vec_vec(x0, n, probe, &ctx);
-    int m = ctx.last_vec_count;
-    if (m <= 0) m = n;
-    gmb_opt_least_squares(gmb_opt_f_vec_vec, &ctx, x0, n, m, lo, hi, out);
-}
-void gmb_opt_brute_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* lo, const double* hi, int n, int N, double* out)
-{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_opt_brute(gmb_opt_f_vec, &ctx, lo, hi, n, N, out); }
-void gmb_opt_basin_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* x0, int n, int niter, double* out)
-{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_opt_basin_hopping(gmb_opt_f_vec, &ctx, x0, n, niter, out); }
-void gmb_opt_dual_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* lo, const double* hi, int n, int maxiter, double* out)
-{ gmb_opt_ctx_t ctx = { vm, task, c }; gmb_opt_dual_annealing(gmb_opt_f_vec, &ctx, lo, hi, n, maxiter, out); }
-
-void gmb_vm_free(gmb_vm_t* vm)
+}void gmb_vm_free(gmb_vm_t* vm)
 {
     vm_release_bsp_seeds(vm);   /* BSP: semi mai applicati (run non eseguita) */
     vm_release_dynamic_scope(vm);
