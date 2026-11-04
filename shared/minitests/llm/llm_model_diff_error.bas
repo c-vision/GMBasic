@@ -2,8 +2,9 @@
 ' EXPECT: caught
 IMPORT LLM
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
   ON ERROR GOTO H
-  LLM MODEL DIFF "work/no_a.gguf", "work/no_b.gguf", "work/rep.txt"
+  LLM MODEL DIFF GMBWORK$ + "/no_a.gguf", GMBWORK$ + "/no_b.gguf", GMBWORK$ + "/rep.txt"
   PRINT "no_err"
   GOTO D
 H:

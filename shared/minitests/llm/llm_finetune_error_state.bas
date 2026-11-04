@@ -4,8 +4,9 @@
 ' EXPECT: ft_caught=1|ckpt_empty=-1|done= 0|loss=-1|status_err=-1
 IMPORT LLM
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
   TRY
-    TRAIN FINETUNE "work/no_model"
+    TRAIN FINETUNE GMBWORK$ + "/no_model"
     PRINT "ft_caught=0"
   CATCH
     PRINT "ft_caught=1"

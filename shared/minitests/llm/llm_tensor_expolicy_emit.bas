@@ -3,6 +3,7 @@
 ' opzione `expolicy`) — §9.A EXPERT_RESIDENCY_POLICY. Parità 4 backend (params + risultato).
 IMPORT LLM
 SUB Main()
+  CHDIR PROJECTFOLDER()
   MKDIR "work"
   LLM TENSOR EXPOLICY "../../samples/Fixtures/models/tiny_moe.gguf", "work/expolicy.json"
 END SUB

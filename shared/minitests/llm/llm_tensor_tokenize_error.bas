@@ -2,8 +2,9 @@
 ' EXPECT: caught
 IMPORT LLM
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
   ON ERROR GOTO H
-  LLM TENSOR TOKENIZE "work/no_model", "ciao"
+  LLM TENSOR TOKENIZE GMBWORK$ + "/no_model", "ciao"
   PRINT "no_err"
   GOTO D
 H:

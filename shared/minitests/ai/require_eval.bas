@@ -9,6 +9,7 @@
 IMPORT AI
 
 SUB Main()
+  CHDIR PROJECTFOLDER()
     ' ── 1) `=` è UGUAGLIANZA: la risposta NON è "zzz" → audit rifiutato, nessun verificato ──
     AI WORKER NEW "wev1", "{""workspace"":""work/wev1"",""budget"":4000}"
     AI WORKER LOOP "VERIFY", 2 REQUIRE "RESULT$ = ""zzz"""

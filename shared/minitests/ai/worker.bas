@@ -4,6 +4,7 @@ IMPORT AI
 IMPORT STRINGS
 
 SUB Main()
+  CHDIR PROJECTFOLDER()
     ' AI WORKER NEW name, {opts}
     AI WORKER NEW "w1", "{""workspace"":""work/w1"",""budget"":16000}"
     IF AI.WORKERROUNDS() >= 0 THEN

@@ -2,8 +2,9 @@
 ' EXPECT: caught
 IMPORT LLM
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
   ON ERROR GOTO H
-  LLM TENSOR INSPECT "work/no.gmbllm"
+  LLM TENSOR INSPECT GMBWORK$ + "/no.gmbllm"
   PRINT "no_err"
   GOTO D
 H:

@@ -15,14 +15,15 @@
 ' EXPECT: start|full=[ok]|accept-ranges=[bytes]|r206=[ok]|suffix=[ok]|resume=[ok]|416=[ok]|304=[ok]|etag-miss=[ok]|route=[route-ok]
 IMPORT HTTP
 
-DIM g_dir AS STRING = "work/static_range"
-DIM g_file AS STRING = "work/static_range/big.txt"
+DIM g_dir AS STRING = GMBWORK$ + "/static_range"
+DIM g_file AS STRING = GMBWORK$ + "/static_range/big.txt"
 
 SUB MakeHandler(req AS HTTPREQUEST, res AS HTTPRESPONSE)
   res.Send("route-ok")
 END SUB
 
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
   IF IO.DirExists(g_dir) = 0 THEN MKDIR g_dir
 
   ' 70.000 byte in 70 righe da 1000: oltre i 64 KB del vecchio buffer singolo.

@@ -4,6 +4,7 @@
 ' Il file viene ricreato (troncato) a ogni chiamata: una scrittura piu' corta accorcia il file.
 ' EXPECT: n= 4|ub= 3|size= 4|n1= 1|size1= 1|err=-1
 IMPORT IO
+  CHDIR PROJECTFOLDER()
 
 ON ERROR RESUME NEXT
 MKDIR "work"

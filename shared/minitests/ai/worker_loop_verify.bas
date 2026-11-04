@@ -14,6 +14,7 @@
 IMPORT AI
 
 SUB Main()
+  CHDIR PROJECTFOLDER()
     ' ── 1) audit SODDISFATTO (la risposta-errore esplicita è lunga > 5) → VERIFICATO ───────
     AI WORKER NEW "wv1", "{""workspace"":""work/wv1"",""budget"":4000}"
     AI STATE SAVE "wv1", "notes", "greedy algorithm"

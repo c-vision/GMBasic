@@ -3,8 +3,9 @@
 ' EXPECT: caught
 IMPORT LLM
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
   ON ERROR GOTO H
-  TRAIN LORA APPLY "work/no_ckpt"
+  TRAIN LORA APPLY GMBWORK$ + "/no_ckpt"
   PRINT "no_err"
   GOTO D
 H:

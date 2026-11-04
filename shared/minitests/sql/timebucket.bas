@@ -5,14 +5,15 @@ IMPORT SQL
 IMPORT IO
 
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
     ON ERROR RESUME NEXT
-    IF IO.FILEEXISTS("work/test_tb.db") THEN KILL "work/test_tb.db"
-    IF IO.FILEEXISTS("work/test_tb.db-wal") THEN KILL "work/test_tb.db-wal"
-    IF IO.FILEEXISTS("work/test_tb.db-shm") THEN KILL "work/test_tb.db-shm"
-    RMDIR "work", TRUE
+    IF IO.FILEEXISTS(GMBWORK$ + "/test_tb.db") THEN KILL GMBWORK$ + "/test_tb.db"
+    IF IO.FILEEXISTS(GMBWORK$ + "/test_tb.db-wal") THEN KILL GMBWORK$ + "/test_tb.db-wal"
+    IF IO.FILEEXISTS(GMBWORK$ + "/test_tb.db-shm") THEN KILL GMBWORK$ + "/test_tb.db-shm"
+    RMDIR GMBWORK$, TRUE
     ON ERROR GOTO 0
-    MKDIR "work"
-    SQL OPEN "work/test_tb.db" ALIAS TB
+    MKDIR GMBWORK$
+    SQL OPEN GMBWORK$ + "/test_tb.db" ALIAS TB
     SQL EXEC TB, "CREATE TABLE ticks(ts INTEGER, price INTEGER, vol INTEGER)"
     SQL EXEC TB, "INSERT INTO ticks VALUES (0,10,100),(60,12,200),(120,11,150),(300,20,50),(360,18,75),(420,22,125),(-60,9,10)"
     DIM rs AS SQLRESULTSET

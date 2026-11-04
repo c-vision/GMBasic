@@ -83,6 +83,7 @@ SUB TestToObject()
 END SUB
 
 SUB Main()
+  CHDIR PROJECTFOLDER()
   MKDIR "work"
   TestParseExtract()
   TestStringify()

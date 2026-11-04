@@ -3,8 +3,9 @@
 ' EXPECT: caught
 IMPORT LLM
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
   ON ERROR GOTO H
-  TRAIN LORA MERGE "work/no_base", "work/no_adapter", "work/out"
+  TRAIN LORA MERGE GMBWORK$ + "/no_base", GMBWORK$ + "/no_adapter", GMBWORK$ + "/out"
   PRINT "no_err"
   GOTO D
 H:

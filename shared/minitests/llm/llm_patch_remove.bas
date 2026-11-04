@@ -5,6 +5,7 @@
 ' EXPECT: LLM MAKEPATCH: base=../../samples/Fixtures/models/tiny_moe.gguf target=work/tgt.gguf patch=work/delta.gmbpatch tensori_delta=2/13 rimossi=12|LLM APPLYPATCH: base=../../samples/Fixtures/models/tiny_moe.gguf patch=work/delta.gmbpatch out=work/rebuilt.gguf|LLM TENSOR QUANTERROR 'work/rebuilt.gguf' vs 'work/tgt.gguf': numeric=13 quant=0 only=0 rel_l2=0 max_abs=0
 IMPORT LLM
 SUB Main()
+  CHDIR PROJECTFOLDER()
   LLM MODEL REMOVE "../../samples/Fixtures/models/tiny_moe.gguf", "work/tgt.gguf", 0
   LLM MAKEPATCH "../../samples/Fixtures/models/tiny_moe.gguf", "work/tgt.gguf", "work/delta.gmbpatch"
   LLM APPLYPATCH "../../samples/Fixtures/models/tiny_moe.gguf", "work/delta.gmbpatch", "work/rebuilt.gguf"

@@ -3,11 +3,12 @@
 ' NOME$ valeva 0.
 ' EXPECT: ID= 101 Nome=[Mario Rossi] Saldo= 123.45 Attivo=-1|ID= 102 Nome=[Anna "Neri"] Saldo=-50 Attivo= 0
 IMPORT IO
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
 
 DIM F$
-F$ = "work/input_file_string_implicit.txt"
+F$ = GMBWORK$ + "/input_file_string_implicit.txt"
 ON ERROR RESUME NEXT
-MKDIR "work"
+MKDIR GMBWORK$
 ON ERROR GOTO 0
 OPEN F$ FOR OUTPUT AS #1
 WRITE #1, 101, "Mario Rossi", 123.45, TRUE

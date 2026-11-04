@@ -2,9 +2,10 @@
 ' EXPECT: caught
 IMPORT LLM
 SUB Main()
-  MKDIR "work"
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
+  MKDIR GMBWORK$
   ON ERROR GOTO H
-  LLM TENSOR AUTOGATE "work/no_model.gguf", "work/no.txt"
+  LLM TENSOR AUTOGATE GMBWORK$ + "/no_model.gguf", GMBWORK$ + "/no.txt"
   PRINT "no_err"
   GOTO D
 H:

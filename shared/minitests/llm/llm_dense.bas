@@ -5,6 +5,7 @@
 IMPORT LLM
 
 SUB Main()
+  CHDIR PROJECTFOLDER()
   ON ERROR GOTO H
   LLM TENSOR DENSE "../../samples/Fixtures/models/tiny_moe.gguf", "work/dense.gguf", "0"
   PRINT "OK"

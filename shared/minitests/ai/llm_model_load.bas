@@ -4,6 +4,7 @@
 ' EXPECT: load_ok|bad_err|resident_ok|done
 IMPORT LLM
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
   ON ERROR GOTO E1
   LLM MODEL LOAD "m", "../../samples/Fixtures/models/tiny_moe.gguf"
   PRINT "load_ok"
@@ -13,7 +14,7 @@ E1:
   PRINT "load_err"
 N1:
   ON ERROR GOTO E2
-  LLM MODEL LOAD "m", "work/does-not-exist.gguf"
+  LLM MODEL LOAD "m", GMBWORK$ + "/does-not-exist.gguf"
   PRINT "bad_ok"
   GOTO N2
 E2:

@@ -5,12 +5,13 @@
 IMPORT AI
 
 SUB Main()
-    DIM v AS STRING = "work/linkjson-vault"
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
+    DIM v AS STRING = GMBWORK$ + "/linkjson-vault"
     IF IO.DirExists(v) = 0 THEN MKDIR v
     ' Root come LETTERALE: `ParseAiVaultCreateArgs` usa ParseNameAsString, che converte un
     ' identificatore nel letterale del suo NOME (`v` → "v") — passare la variabile rendeva
     ' il test non deterministico (vault registrato da run precedenti con root diverse).
-    AI VAULT CREATE "ljtest", "work/linkjson-vault"
+    AI VAULT CREATE "ljtest", GMBWORK$ + "/linkjson-vault"
     AI VAULT INDEX "ljtest"
     AI NOTE CREATE "n1.md", "hello world", "alpha,beta"
     AI NOTE CREATE "n2.md", "seconda nota"

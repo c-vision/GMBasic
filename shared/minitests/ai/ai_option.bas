@@ -4,6 +4,7 @@
 ' EXPECT: set=ok|get=work/modeldir|rt=OK
 IMPORT AI WITH ALIAS
 SUB Main()
+  CHDIR PROJECTFOLDER()
   AI SET OPTION "moe_swap_dir", "work/modeldir"
   PRINT "set=ok"
   PRINT "get="; AI.Option("moe_swap_dir")

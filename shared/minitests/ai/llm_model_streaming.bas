@@ -4,8 +4,9 @@
 ' EXPECT: load_err|ss_err|done
 IMPORT LLM
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
   ON ERROR GOTO OnErr
-  LLM MODEL LOAD "m", "work/does-not-exist.gguf"
+  LLM MODEL LOAD "m", GMBWORK$ + "/does-not-exist.gguf"
   PRINT "loaded"
   GOTO Fine
 OnErr:

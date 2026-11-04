@@ -3,7 +3,8 @@
 ' EXPECT: quantize-opts-ok
 IMPORT LLM
 SUB Main()
-  MKDIR "work"
-  LLM MODEL QUANTIZE "../../samples/Fixtures/models/tiny_f16", "work/q4mlx_opts", 4, 64, "", 6
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
+  MKDIR GMBWORK$
+  LLM MODEL QUANTIZE "../../samples/Fixtures/models/tiny_f16", GMBWORK$ + "/q4mlx_opts", 4, 64, "", 6
   PRINT "quantize-opts-ok"
 END SUB

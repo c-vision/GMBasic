@@ -10,11 +10,12 @@ TYPE SRow
 END TYPE
 
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
   ON ERROR RESUME NEXT
-  RMDIR "work/sm_db", TRUE
-  MKDIR "work"
+  RMDIR GMBWORK$ + "/sm_db", TRUE
+  MKDIR GMBWORK$
   ON ERROR GOTO 0
-  SPEED OPEN "work/sm_db" ALIAS SmDb
+  SPEED OPEN GMBWORK$ + "/sm_db" ALIAS SmDb
   SPEED USE "Rows" FROM SmDb OF SRow ALIAS SmTbl INDEXED BY ID
   DIM batch AS LIST OF SRow
   batch = NEW LIST OF SRow {}

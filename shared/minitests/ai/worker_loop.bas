@@ -8,6 +8,7 @@
 IMPORT AI
 
 SUB Main()
+  CHDIR PROJECTFOLDER()
     ' ── 1) loop con provider assente: si ferma al PRIMO round con errore esplicito ────
     AI WORKER NEW "wl1", "{""workspace"":""work/wl1"",""budget"":4000}"
     AI STATE SAVE "wl1", "notes", "greedy algorithm: scambio locale ottimo"

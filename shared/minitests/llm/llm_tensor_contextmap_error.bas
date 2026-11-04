@@ -2,8 +2,9 @@
 ' EXPECT: caught
 IMPORT LLM
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
   ON ERROR GOTO H
-  LLM TENSOR CONTEXTMAP "work/no.gguf", "8192"
+  LLM TENSOR CONTEXTMAP GMBWORK$ + "/no.gguf", "8192"
   PRINT "no_err"
   GOTO D
 H:

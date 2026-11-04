@@ -4,11 +4,12 @@ IMPORT SQL
 IMPORT IO
 
 SUB Main()
-    MKDIR "work"
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
+    MKDIR GMBWORK$
     ON ERROR RESUME NEXT
-    IF IO.FILEEXISTS("work/n.parquet") THEN KILL "work/n.parquet"
+    IF IO.FILEEXISTS(GMBWORK$ + "/n.parquet") THEN KILL GMBWORK$ + "/n.parquet"
     ON ERROR GOTO 0
-    COPY "../../samples/Fixtures/parquet_nested.parquet" TO "work/n.parquet"
+    COPY "../../samples/Fixtures/parquet_nested.parquet" TO GMBWORK$ + "/n.parquet"
     DIM q$ = CHR(34)
     SQL OPEN ":memory:" ALIAS M
     SQL EXEC M, "CREATE VIRTUAL TABLE t USING parquet(name='work/n.parquet')"

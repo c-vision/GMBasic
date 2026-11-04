@@ -8,14 +8,15 @@ TYPE Riga
 END TYPE
 
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
   ' Stato di test IDEMPOTENTE: senza `MKDIR "work"` l'apertura "work/gaps_db" fallisce sul
   ' lato C (il C# crea la cartella da sé) e i 4 controlli di durability non stampano nulla
   ' → il gate dava VMC rosso solo quando work/ era assente. Stessa forma di set_filter.bas.
   ON ERROR RESUME NEXT
-  RMDIR "work/gaps_db", TRUE
+  RMDIR GMBWORK$ + "/gaps_db", TRUE
   ON ERROR GOTO 0
-  MKDIR "work"
-  SPEED OPEN "work/gaps_db" ALIAS G
+  MKDIR GMBWORK$
+  SPEED OPEN GMBWORK$ + "/gaps_db" ALIAS G
   SPEED USE "T" FROM G OF Riga ALIAS T INDEXED BY ID
   IF UPPER(SPEED.SETDURABILITY("FULL")) = "FULL" THEN PRINT "setdur: si"
   IF SPEED.FLUSHDURABILITY() THEN PRINT "flush: si"

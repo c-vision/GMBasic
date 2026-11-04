@@ -4,7 +4,8 @@
 IMPORT AI
 
 SUB Main()
-  DIM v AS STRING = "work/note-vault"
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
+  DIM v AS STRING = GMBWORK$ + "/note-vault"
   IF IO.DirExists(v) = 0 THEN MKDIR v
   AI VAULT CREATE "nv", v
   AI VAULT INDEX "nv"

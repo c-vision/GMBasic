@@ -6,15 +6,16 @@ IMPORT IO
 IMPORT CONVERT
 
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
   ON ERROR RESUME NEXT
-  KILL "work/cb_in/a.md"
-  MKDIR "work"
-  MKDIR "work/cb_in"
+  KILL GMBWORK$ + "/cb_in/a.md"
+  MKDIR GMBWORK$
+  MKDIR GMBWORK$ + "/cb_in"
   ON ERROR GOTO 0
   DIM h AS LONG
-  h = IO.FCREATE("work/cb_in/a.csv")
+  h = IO.FCREATE(GMBWORK$ + "/cb_in/a.csv")
   IO.FWRITE(h, "a,b" + CHR(10) + "1,2" + CHR(10))
   IO.FCLOSE(h)
-  CONVBAT "work/cb_in", "md", 0 INTO r$
+  CONVBAT GMBWORK$ + "/cb_in", "md", 0 INTO r$
   IF INSTR(r$, "a.csv") > 0 AND INSTR(r$, "| a b |") > 0 THEN PRINT "convbat-ok" ELSE PRINT "convbat-ko"
 END SUB

@@ -8,9 +8,10 @@ IMPORT RDD
 IMPORT IO
 
 SUB Main()
-  MKDIR "work"
-  COPY "../../samples/Fixtures/rdd_mini.dbf" TO "work/rdd_all.dbf"
-  RDD USE "work/rdd_all.dbf" ALIAS R
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
+  MKDIR GMBWORK$
+  COPY "../../samples/Fixtures/rdd_mini.dbf" TO GMBWORK$ + "/rdd_all.dbf"
+  RDD USE GMBWORK$ + "/rdd_all.dbf" ALIAS R
 
   PRINT "recno="; RDD.RECNO()
   PRINT "bof="; RDD.BOF()
@@ -42,5 +43,5 @@ SUB Main()
   PRINT "replaced="; RDD.GETFIELD(1, 3)
 
   RDD CLOSE 1
-  KILL "work/rdd_all.dbf"
+  KILL GMBWORK$ + "/rdd_all.dbf"
 END SUB

@@ -3,6 +3,7 @@
 ' EXPECT: caught
 IMPORT AI
 SUB Main()
+  CHDIR PROJECTFOLDER()
   MKDIR "work"
   ON ERROR GOTO H
   TRAIN DISTILL TRAIN "work/no.bin", "{""model"":""work/no_model"",""teacher"":""work/no_teacher"",""ckpt"":""work/kl""}"

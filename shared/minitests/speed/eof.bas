@@ -11,11 +11,12 @@ TYPE SRow
 END TYPE
 
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
   ON ERROR RESUME NEXT
-  RMDIR "work/eof_db", TRUE
+  RMDIR GMBWORK$ + "/eof_db", TRUE
   ON ERROR GOTO 0
-  MKDIR "work"
-  SPEED OPEN "work/eof_db" ALIAS MioDb
+  MKDIR GMBWORK$
+  SPEED OPEN GMBWORK$ + "/eof_db" ALIAS MioDb
   SPEED USE "Items" FROM MioDb OF SRow ALIAS T INDEXED BY ID, Name
 
   DIM rec AS SRow

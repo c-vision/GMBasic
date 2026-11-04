@@ -2,15 +2,16 @@
 ' (config.json + model.safetensors) e il round-trip MLX->GGUF (LLM MODEL CONVERT) regge.
 IMPORT LLM
 SUB Main()
-  MKDIR "work"
-  LLM MODEL SAVE "../../samples/Fixtures/models/tiny_moe.gguf", "work/tiny_emit.mlx"
-  IF IO.FILEEXISTS("work/tiny_emit.mlx/config.json") AND IO.FILEEXISTS("work/tiny_emit.mlx/model.safetensors") THEN
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
+  MKDIR GMBWORK$
+  LLM MODEL SAVE "../../samples/Fixtures/models/tiny_moe.gguf", GMBWORK$ + "/tiny_emit.mlx"
+  IF IO.FILEEXISTS(GMBWORK$ + "/tiny_emit.mlx/config.json") AND IO.FILEEXISTS(GMBWORK$ + "/tiny_emit.mlx/model.safetensors") THEN
     PRINT "emitter-mlx: config+safetensors scritti"
   ELSE
     PRINT "emitter-mlx: FALLITO"
   END IF
-  LLM MODEL CONVERT "work/tiny_emit.mlx", "work/tiny_emit_rt.gguf", "GGUF"
-  IF IO.FILEEXISTS("work/tiny_emit_rt.gguf") THEN
+  LLM MODEL CONVERT GMBWORK$ + "/tiny_emit.mlx", GMBWORK$ + "/tiny_emit_rt.gguf", "GGUF"
+  IF IO.FILEEXISTS(GMBWORK$ + "/tiny_emit_rt.gguf") THEN
     PRINT "round-trip: mlx->gguf ok"
   ELSE
     PRINT "round-trip: FALLITO"

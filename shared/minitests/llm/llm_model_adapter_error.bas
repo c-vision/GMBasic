@@ -2,8 +2,9 @@
 ' EXPECT: caught
 IMPORT LLM
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
   ON ERROR GOTO H
-  LLM MODEL ADAPTER "work/no_base.gguf", "work/no_lora.safetensors", "work/out.gguf", "1"
+  LLM MODEL ADAPTER GMBWORK$ + "/no_base.gguf", GMBWORK$ + "/no_lora.safetensors", GMBWORK$ + "/out.gguf", "1"
   PRINT "no_err"
   GOTO D
 H:

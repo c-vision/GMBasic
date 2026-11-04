@@ -7,6 +7,7 @@
 IMPORT AI
 
 SUB Main()
+  CHDIR PROJECTFOLDER()
     ' ── 1) invocazione pulita: senza provider → errore esplicito + rescue ────────────
     AI WORKER NEW "w1", "{""workspace"":""work/wi"",""budget"":1000}"
     AI STATE SAVE "w1", "notes", "greedy algorithm"

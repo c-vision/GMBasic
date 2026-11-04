@@ -2,8 +2,9 @@
 ' EXPECT: caught
 IMPORT LLM
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
   ON ERROR GOTO H
-  LLM COMPILE "work/no_model.gguf", "work/out.gmbllm"
+  LLM COMPILE GMBWORK$ + "/no_model.gguf", GMBWORK$ + "/out.gmbllm"
   PRINT "no_err"
   GOTO D
 H:
