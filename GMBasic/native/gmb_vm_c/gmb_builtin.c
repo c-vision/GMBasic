@@ -525,7 +525,9 @@ static void gmb_bf_67(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_
 static void gmb_bf_69(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
-            bout->result = func_code == 69 ? gmb_dist_weibull_pdf(args[1].num, args[2].num, args[0].num) : gmb_dist_weibull_cdf(args[1].num, args[2].num, args[0].num);
+            bout->result = func_code == 69 ? gmb_dist_weibull_pdf(args[1].num, args[2].num, args[0].num)
+                         : func_code == 1040 ? 1.0 - gmb_dist_weibull_cdf(args[1].num, args[2].num, args[0].num)
+                         : gmb_dist_weibull_cdf(args[1].num, args[2].num, args[0].num);
         }
 }
 static void gmb_bf_73(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -546,7 +548,9 @@ static void gmb_bf_59(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_
 static void gmb_bf_71(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
-            bout->result = func_code == 71 ? gmb_dist_f_pdf(args[1].num, args[2].num, args[0].num) : gmb_dist_f_cdf(args[1].num, args[2].num, args[0].num);
+            bout->result = func_code == 71 ? gmb_dist_f_pdf(args[1].num, args[2].num, args[0].num)
+                         : func_code == 1041 ? 1.0 - gmb_dist_f_cdf(args[1].num, args[2].num, args[0].num)
+                         : gmb_dist_f_cdf(args[1].num, args[2].num, args[0].num);
         }
 }
 static void gmb_bf_75(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -17470,6 +17474,8 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 1037, gmb_bf_73 },
     { 1038, gmb_bf_67 },
     { 1039, gmb_bf_61 },
+    { 1040, gmb_bf_69 },
+    { 1041, gmb_bf_71 },
     { 1015, gmb_bf_1013 },
     { 1017, gmb_bf_1017 },
     { 1018, gmb_bf_1018 },

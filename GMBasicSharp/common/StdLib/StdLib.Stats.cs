@@ -207,6 +207,11 @@ public sealed partial class StdLib
                 xParam, new Parameter(-1, T(TokenKind.Identifier, "shape"), new DoubleType(), noFlags, null, false),
                 new Parameter(-1, T(TokenKind.Identifier, "scale"), new DoubleType(), noFlags, null, false)
             ], new DoubleType(), TokenKind.WeibullCdf, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsWeibullSf, "WeibullSf"),
+            [
+                xParam, new Parameter(-1, T(TokenKind.Identifier, "shape"), new DoubleType(), noFlags, null, false),
+                new Parameter(-1, T(TokenKind.Identifier, "scale"), new DoubleType(), noFlags, null, false)
+            ], new DoubleType(), TokenKind.StatsWeibullSf, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.FPdf, "FPdf"),
             [
                 xParam, new Parameter(-1, T(TokenKind.Identifier, "d1"), new DoubleType(), noFlags, null, false),
@@ -217,6 +222,11 @@ public sealed partial class StdLib
                 xParam, new Parameter(-1, T(TokenKind.Identifier, "d1"), new DoubleType(), noFlags, null, false),
                 new Parameter(-1, T(TokenKind.Identifier, "d2"), new DoubleType(), noFlags, null, false)
             ], new DoubleType(), TokenKind.FCdf, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsFSf, "FSf"),
+            [
+                xParam, new Parameter(-1, T(TokenKind.Identifier, "d1"), new DoubleType(), noFlags, null, false),
+                new Parameter(-1, T(TokenKind.Identifier, "d2"), new DoubleType(), noFlags, null, false)
+            ], new DoubleType(), TokenKind.StatsFSf, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.ExponentialPdf, "ExponentialPdf"),
                 [xParam, new Parameter(-1, T(TokenKind.Identifier, "rate"), new DoubleType(), noFlags, null, false)],
                 new DoubleType(), TokenKind.ExponentialPdf, ExecutionKind: NativeExecutionKind.Pure),

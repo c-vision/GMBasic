@@ -21081,6 +21081,35 @@
     },
     {
       "ns": "STATS",
+      "name": "FSf",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "x",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "d1",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "d2",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "STATS",
       "name": "Fisher",
       "fn": true,
       "return": "ANY",
@@ -22505,6 +22534,35 @@
       "params": [
         {
           "name": "p",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "shape",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "scale",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "STATS",
+      "name": "WeibullSf",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "x",
           "type": "double",
           "optional": false,
           "byRef": false,

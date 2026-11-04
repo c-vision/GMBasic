@@ -5269,6 +5269,17 @@ static int ds_sh2_sf(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
     sb_put(&c->out, "))");
     return 1;
 }
+static int ds_sh3_sf(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
+    if (n < 3) return 0;
+    sb_put(&c->out, "(1.0 - "); sb_put(&c->out, fn); sb_put(&c->out, "(");
+    emit_expr(c, a[1]); sb_put(&c->out, ", ");
+    emit_expr(c, a[2]); sb_put(&c->out, ", ");
+    emit_expr(c, a[0]);
+    sb_put(&c->out, "))");
+    return 1;
+}
+static int ds_weibull_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3_sf(c, a, n, "gmb_dist_weibull_cdf"); }
+static int ds_f_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3_sf(c, a, n, "gmb_dist_f_cdf"); }
 static int ds_exp_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2_sf(c, a, n, "gmb_dist_exp_cdf"); }
 static int ds_student_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2_sf(c, a, n, "gmb_dist_student_t_cdf"); }
 static int ds_chisq_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2_sf(c, a, n, "gmb_dist_chi2_cdf"); }
@@ -5458,6 +5469,7 @@ static const ds_row DS_TBL[] = {
     { GMB_TOK_ExponentialPdf, ds_exp_pdf },
     { GMB_TOK_ExponentialPpf, ds_exp_ppf },
     { GMB_TOK_FCdf, ds_f_cdf },
+    { GMB_TOK_StatsFSf, ds_f_sf },
     { GMB_TOK_FIsf, ds_f_isf },
     { GMB_TOK_FPdf, ds_f_pdf },
     { GMB_TOK_FPpf, ds_f_ppf },
@@ -5487,6 +5499,7 @@ static const ds_row DS_TBL[] = {
     { GMB_TOK_UniformPdf, ds_uniform_pdf },
     { GMB_TOK_UniformPpf, ds_uniform_ppf },
     { GMB_TOK_WeibullCdf, ds_weibull_cdf },
+    { GMB_TOK_StatsWeibullSf, ds_weibull_sf },
     { GMB_TOK_WeibullPdf, ds_weibull_pdf },
     { GMB_TOK_WeibullPpf, ds_weibull_ppf },
     { GMB_TOK_StatsGammaCdf, ds_gamma_cdf },

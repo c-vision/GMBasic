@@ -1143,6 +1143,7 @@ procedure,STATS,FCdf,FCdf
 procedure,STATS,FIsf,FIsf
 procedure,STATS,FPdf,FPdf
 procedure,STATS,FPpf,FPpf
+procedure,STATS,FSf,StatsFSf
 procedure,STATS,Fisher,FisherExact
 procedure,STATS,GammaCdf,StatsGammaCdf
 procedure,STATS,GammaIsf,StatsGammaIsf
@@ -1204,6 +1205,7 @@ procedure,STATS,Variance,Variance
 procedure,STATS,WeibullCdf,WeibullCdf
 procedure,STATS,WeibullPdf,WeibullPdf
 procedure,STATS,WeibullPpf,WeibullPpf
+procedure,STATS,WeibullSf,StatsWeibullSf
 procedure,STATS,Wilcoxon,StatsWilcoxon
 procedure,STATS,ZTest,ZTest
 procedure,STRINGS,Asc,Asc

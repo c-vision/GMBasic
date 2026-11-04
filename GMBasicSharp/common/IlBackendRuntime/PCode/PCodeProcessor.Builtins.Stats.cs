@@ -35,6 +35,8 @@ internal sealed partial class PCodeProcessor
         BuiltInFunction.STATS_EXPSF,
         BuiltInFunction.STATS_STUDENTSF,
         BuiltInFunction.STATS_CHISQUAREDSF,
+        BuiltInFunction.STATS_WEIBULLSF,
+        BuiltInFunction.STATS_FSF,
         BuiltInFunction.STATS_GAMMAPPF,
         BuiltInFunction.STATS_GAMMAISF,
         BuiltInFunction.STATS_MODE,
@@ -114,6 +116,14 @@ internal sealed partial class PCodeProcessor
         [BuiltInFunction.STATS_STUDENTSF] = (task, args) =>
         {
                 return 1.0 - CommonLib.Numerics.StudentTCdf(SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_WEIBULLSF] = (task, args) =>
+        {
+                return 1.0 - CommonLib.Numerics.WeibullCdf(SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_FSF] = (task, args) =>
+        {
+                return 1.0 - CommonLib.Numerics.FCdf(SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 0)));
         },
         [BuiltInFunction.STATS_CHISQUAREDSF] = (task, args) =>
         {
