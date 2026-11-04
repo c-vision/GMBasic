@@ -5,7 +5,7 @@
 
 Pacchetto FFI della superficie BASIC `OPTIMIZE.*` (34 funzioni). Il motore numerico è lo
 stesso di `gmbsuite/gmbortools` (`gmi_opt`, `gmi_optfit`, `simplex`, `gor_opt_api`), copiato
-qui per essere autonomo. Il binding BASIC è `shared/include/opt.inc` (`IMPORT OPT`).
+qui per essere autonomo. Il binding BASIC è `shared/include/optimize.inc` (`IMPORT OPTIMIZE`).
 
 ## Perché una superficie diversa da `OPTIMIZE.*`
 
@@ -14,7 +14,7 @@ fornito dal chiamante, e le matrici sono **piatte row-major** con dimensioni esp
 (`A(), m, n`). I callback sono **lambda** (`FN ...`): è la forma che funziona su tutti e
 quattro i backend (IL, PCodeVM, VM/C, C99Native).
 
-## API (`shared/include/opt.inc`, namespace `OPT`)
+## API (`shared/include/optimize.inc`, namespace `OPTIMIZE`)
 
 | Gruppo | Funzioni |
 |---|---|
