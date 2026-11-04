@@ -183,18 +183,25 @@ int find_driver(Toolchain* tc, const char* argv0) {
      * quando il driver è trovato accanto al CLI nel build del repo. */
     (void)gmb_resolve_install_root(tc->install, sizeof tc->install);
 
-    char self[CLI_PATH];
-    snprintf(self, sizeof self, "%s", argv0 ? argv0 : "");
-    char dir[CLI_PATH]; path_dir(self, dir, sizeof dir);
+    /* Cartella dell'ESEGUIBILE, non di argv[0]: invocato dal PATH (`gmb`, senza `/`) argv[0]
+     * non contiene alcuna directory, quindi i companion accanto al binario (`gmbnative`,
+     * `gmbchunk`) restavano invisibili e `gmb build` rispondeva "gmbnative non trovato"
+     * pur avendo il tool lì accanto. */
+    char dir[CLI_PATH];
+    if (!gmb_exe_dir(dir, sizeof dir) || !dir[0]) {
+        char self[CLI_PATH];
+        snprintf(self, sizeof self, "%s", argv0 ? argv0 : "");
+        path_dir(self, dir, sizeof dir);
+    }
 
     char cand[CLI_PATH];
-    snprintf(cand, sizeof cand, "%s/gmb_c99native_driver", dir[0] ? dir : ".");
+    snprintf(cand, sizeof cand, "%s/gmbnative", dir[0] ? dir : ".");
     if (is_file(cand)) { snprintf(tc->driver, sizeof tc->driver, "%s", cand); return 1; }
 
     if (!tc->install[0]) return 0;
-    snprintf(cand, sizeof cand, "%s/native/gmb_compiler_c/build/gmb_c99native_driver", tc->install);
+    snprintf(cand, sizeof cand, "%s/native/gmb_compiler_c/build/gmbnative", tc->install);
     if (is_file(cand)) { snprintf(tc->driver, sizeof tc->driver, "%s", cand); return 1; }
-    snprintf(cand, sizeof cand, "%s/tools/gmb_c99native_driver", tc->install);
+    snprintf(cand, sizeof cand, "%s/tools/gmbnative", tc->install);
     if (is_file(cand)) { snprintf(tc->driver, sizeof tc->driver, "%s", cand); return 1; }
     return 0;
 }
@@ -208,12 +215,16 @@ static int add_inc(char* buf, size_t cap, const char* dir) {
     return 1;
 }
 
-/* Ricetta degli -I per compilare il C emesso: quella di tools/gmb_c99native_run.sh (il C
- * generato include gli header del runtime e di LLMEnv). Una sola copia, usata sia da
- * `build` sia da `minitests`: due ricette divergenti darebbero verdetti diversi. */
-void build_inc(char* inc, size_t cap, const char* install) {
-    inc[0] = 0;
-    const char* rel[] = {
+#define CLI_MAX_INC 32
+
+/* Elenco degli -I REALI (solo cartelle esistenti), in ordine di priorità: runtime e domini
+ * dell'install → LLMEnv (root RISOLTA, non un path hardcoded) → header terze parti (cache
+ * `dev`). UNA sola implementazione: la usano il link (`build_inc`) E `gmb doctor`, che
+ * altrimenti potrebbe dichiarare "a posto" un ambiente con cui `cc` non compila. */
+int gmb_cli_inc_dirs(const char* install, char (*out)[CLI_PATH], int max) {
+    int n = 0;
+    if (!install || !*install || !out || max <= 0) return 0;
+    static const char* rel[] = {
         "native/gmb_runtime_c/include", "native/gmb_runtime_c/src",
         "native/gmb_chart/include", "native/gmb_compiler_c/include",
         "native/gmb_db_c/include", "native/gmb_torch/include",
@@ -221,27 +232,26 @@ void build_inc(char* inc, size_t cap, const char* install) {
         "gmbllm/include", "gmbllm/include/quant",
         "gmbllm/include/train", "gmbllm/include/lora",
     };
-    for (size_t i = 0; i < sizeof rel / sizeof rel[0]; i++) {
+    for (size_t i = 0; i < sizeof rel / sizeof rel[0] && n < max; i++) {
         char p[CLI_PATH];
         snprintf(p, sizeof p, "%s/%s", install, rel[i]);
-        add_inc(inc, cap, p);
+        if (is_dir(p)) snprintf(out[n++], CLI_PATH, "%s", p);
     }
-    /* LLMEnv è accanto al repo (sorgente unica dei motori AI). */
-    const char* llmrel[] = {
+    /* LLMEnv: repo SEPARATO. Prima erano due -I hardcoded (`../LLMEnv`, `../../LLMEnv`):
+     * su un client che la installa altrove, o che la riceve accanto al bundle, gli header
+     * AI non si trovavano. `LLM_ROOT` (env) vince; altrimenti si scopre. */
+    static const char* llmrel[] = {
         "LLMCodec/include", "LLMJinja", "LLMEngine/moe/include", "LLMEngine/asr/include",
         "LLMEngine/mlx", "LLMEngine/include", "LLMEngine/Options", "LLMEngine/plugin",
         "LLMDesc", "LLMToken/include",
     };
-    for (size_t i = 0; i < sizeof llmrel / sizeof llmrel[0]; i++) {
-        char p[CLI_PATH];
-        snprintf(p, sizeof p, "%s/../LLMEnv/%s", install, llmrel[i]);
-        add_inc(inc, cap, p);
-    }
-    /* Monorepo: LLMEnv è accanto al workspace (GMBasic/../../LLMEnv). */
-    for (size_t i = 0; i < sizeof llmrel / sizeof llmrel[0]; i++) {
-        char p[CLI_PATH];
-        snprintf(p, sizeof p, "%s/../../LLMEnv/%s", install, llmrel[i]);
-        add_inc(inc, cap, p);
+    char llm[CLI_PATH];
+    if (gmb_resolve_llm_root(llm, sizeof llm) && llm[0]) {
+        for (size_t i = 0; i < sizeof llmrel / sizeof llmrel[0] && n < max; i++) {
+            char p[CLI_PATH];
+            snprintf(p, sizeof p, "%s/%s", llm, llmrel[i]);
+            if (is_dir(p)) snprintf(out[n++], CLI_PATH, "%s", p);
+        }
     }
     {
         /* header delle terze parti: gruppo `dev` della cache (`gmb install --dev`). */
@@ -249,9 +259,23 @@ void build_inc(char* inc, size_t cap, const char* install) {
         if (gmb_cache_libdir(cache, sizeof cache)) {
             char inc2[CLI_PATH];
             snprintf(inc2, sizeof inc2, "%s/include", cache);
-            add_inc(inc, cap, inc2);
+            if (is_dir(inc2) && n < max) snprintf(out[n++], CLI_PATH, "%s", inc2);
         }
     }
+    return n;
+}
+
+/* Ricetta degli -I per compilare il C emesso: quella di tools/gmb_c99native_run.sh (il C
+ * generato include gli header del runtime e di LLMEnv). Una sola copia, usata sia da
+ * `build` sia da `minitests`: due ricette divergenti darebbero verdetti diversi. */
+void build_inc(char* inc, size_t cap, const char* install) {
+    inc[0] = 0;
+    /* 32 × 4096 = 128 KB: heap, non stack (build_inc è chiamata da main). */
+    char (*dirs)[CLI_PATH] = (char (*)[CLI_PATH])malloc((size_t)CLI_MAX_INC * CLI_PATH);
+    if (!dirs) return;
+    int n = gmb_cli_inc_dirs(install, dirs, CLI_MAX_INC);
+    for (int i = 0; i < n; i++) add_inc(inc, cap, dirs[i]);
+    free(dirs);
 }
 
 /* Prodotto di un sorgente LIBRARY: una libreria condivisa (.gmblib), non un eseguibile.
@@ -373,7 +397,7 @@ int build_project(const Options* o, const char* project, const char* entry,
     Toolchain tc; memset(&tc, 0, sizeof tc);
     if (!find_driver(&tc, o->argv0)) {
         diag_add(diags, 1, "driver-missing", entry, 0,
-                 "gmb_c99native_driver non trovato (build native/gmb_compiler_c)");
+                 "gmbnative non trovato (build native/gmb_compiler_c)");
         return 5;
     }
 

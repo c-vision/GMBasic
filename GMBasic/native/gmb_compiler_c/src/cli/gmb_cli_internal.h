@@ -123,6 +123,14 @@ int  gmb_parse_extra_arg(Options* o, const char* a, int argc, char** argv, int* 
 /* ── comandi e helper di progetto (definiti in gmb_cli_project.c) ──────────────────────── */
 int find_driver(Toolchain* tc, const char* argv0);
 void build_inc(char* inc, size_t cap, const char* install);
+/* Elenco degli -I esistenti (runtime, LLMEnv risolta, header terze parti): la stessa lista
+ * che `build_inc` passa a `cc`. `gmb doctor` la usa per dire cosa manca davvero. */
+int  gmb_cli_inc_dirs(const char* install, char (*out)[CLI_PATH], int max);
+
+/* `gmb doctor [--fix] [--json] [--llm-repo <url>]`: diagnosi dell'ambiente (GMBASIC_ROOT,
+ * LLM_ROOT, companion, statiche, dylib, header, cc, cache) e installazione di ciò che è
+ * scaricabile (LLMEnv, librerie native, gmbcs). */
+int  gmb_cli_doctor(int argc, char** argv);
 void run_check(const Options* o, const char* project, const char* entry,
                DiagList* diags, int* out_sources, int* out_modules);
 /* Testo di aiuto del CLI. */
@@ -130,9 +138,13 @@ void gmb_cli_usage(void);
 
 /* Engine: -1 = resta sull'engine C; altrimenti exit code (con csharp esegue gmbcs). */
 int gmb_cli_engine_maybe(int argc, char** argv);
+/* Trova `gmbcs` (PATH, checkout di sviluppo, dir dell'eseguibile). 1 se trovato. */
+int gmb_cli_find_gmbcs(const char* explicit_path, char* out, size_t cap);
 
 /* Comandi admin: -1 = non è admin (prosegui); altrimenti exec di `gmbadmin`. */
 int gmb_cli_admin_maybe(int argc, char** argv);
+/* Trova il tool `gmbadmin` (PATH, build del checkout, dir dell'eseguibile). 1 se trovato. */
+int gmb_cli_find_admin(char* out, size_t cap);
 
 /* Precompila le pagine BSP del progetto (`<progetto>/pages/*.bsp` → `.chunk` A1) per il
  * motore BSP COMPLETO in C (VM/C). 0 = fatto/senza pagine (non fa fallire la build). */

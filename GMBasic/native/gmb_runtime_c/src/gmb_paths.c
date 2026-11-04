@@ -193,6 +193,11 @@ static int pr_walk_to_sln(const char* seed)
          * non trovava più la cache (`~/.gmb/packages`, vuota) e il loader FFI falliva. */
         snprintf(probe, sizeof(probe), "%s/native/gmb_runtime_c/include/gmb_runtime.h", cur);
         if (access(probe, F_OK) == 0) { snprintf(g_pr_root, sizeof(g_pr_root), "%s", cur); return 1; }
+        /* Release/monorepo con `bin/` alla radice: la root è `<cur>/GMBasic`, non `<cur>`.
+         * Stessa regola di ir_walk_sln nel frontend: senza, un programma eseguito da
+         * `<zip>/bin` non trovava settings, cache e packages e ricadeva sulla CWD. */
+        snprintf(probe, sizeof(probe), "%s/GMBasic/native/gmb_runtime_c/include/gmb_runtime.h", cur);
+        if (access(probe, F_OK) == 0) { snprintf(g_pr_root, sizeof(g_pr_root), "%s/GMBasic", cur); return 1; }
         /* Monorepo con la .slnx dentro GMBasicSharp/: root = <monorepo>/GMBasic. */
         snprintf(probe, sizeof(probe), "%s/GMBasicSharp/GMBasicSharp.slnx", cur);
         if (access(probe, F_OK) == 0) {
@@ -311,6 +316,75 @@ int gmb_paths_repo_root(char* out, size_t cap)
     if (!g_pr_loaded) pr_load();
     snprintf(out, cap, "%s", g_pr_root);
     return g_pr_root[0] ? 1 : 0;
+}
+
+/* ── Root di LLMEnv (repo SEPARATO: motori AI, Apache-2.0) ────────────────────────────────
+ * ORDINE: env `LLM_ROOT` > `paths.llmRoot` (registry delle opzioni, system/app.settings.json)
+ * > accanto alla root dell'install (`<root>/../LLMEnv`, `<root>/../../LLMEnv`) > risalendo
+ * dalla dir dell'ESEGUIBILE > dalla CWD.
+ * MARKER: `LLMCodec/include`, cioè la cartella che il link passa a `cc` come -I.
+ * Esiste perché il runtime la usava come path RELATIVO hardcoded: su un client che installa
+ * LLMEnv altrove (o che la riceve accanto al bundle di release) gli header AI non c'erano. */
+static int pr_llm_candidate(const char* dir, char* out, size_t cap)
+{
+    char probe[4096];
+    snprintf(probe, sizeof(probe), "%s/LLMCodec/include", dir);
+    if (access(probe, F_OK) != 0) return 0;
+    snprintf(out, cap, "%s", dir);
+    return 1;
+}
+
+static int pr_walk_llm(const char* seed, char* out, size_t cap)
+{
+    char cur[2048];
+    snprintf(cur, sizeof(cur), "%s", seed);
+    for (;;)
+    {
+        if (pr_llm_candidate(cur, out, cap)) return 1;               /* cur È LLMEnv */
+        char probe[4096];
+        snprintf(probe, sizeof(probe), "%s/LLMEnv", cur);
+        if (pr_llm_candidate(probe, out, cap)) return 1;             /* cur/LLMEnv */
+        char* slash = strrchr(cur, '/');
+        if (!slash || slash == cur) break;
+        *slash = '\0';
+    }
+    return 0;
+}
+
+int gmb_paths_llm_root(char* out, size_t cap)
+{
+    if (!out || cap == 0) return 0;
+    out[0] = '\0';
+    if (!g_pr_loaded) pr_load();
+    const char* env = getenv("LLM_ROOT");
+    if (env && *env) { snprintf(out, cap, "%s", env); return 1; }
+    {
+        char v[1024];
+        if (pr_paths_value("llmRoot", v, sizeof(v)) && v[0])
+        {
+            char ex[2048];
+            pr_expand(v, ex, sizeof(ex));
+            if (ex[0] == '/') snprintf(out, cap, "%s", ex);
+            else snprintf(out, cap, "%s/%s", g_pr_root, ex);
+            return 1;
+        }
+    }
+    {
+        static const char* rel[] = { "../LLMEnv", "../../LLMEnv" };
+        for (size_t i = 0; i < sizeof rel / sizeof rel[0]; i++)
+        {
+            char p[4096];
+            snprintf(p, sizeof(p), "%s/%s", g_pr_root, rel[i]);
+            if (pr_llm_candidate(p, out, cap)) return 1;
+        }
+    }
+    {
+        char exe[2048];
+        if (pr_exe_dir(exe, sizeof(exe)) && pr_walk_llm(exe, out, cap)) return 1;
+        char cwd[2048];
+        if (getcwd(cwd, sizeof(cwd)) && pr_walk_llm(cwd, out, cap)) return 1;
+    }
+    return 0;
 }
 
 /* ── Cartella `Resources/` CONDIVISA dei due mondi ────────────────────────────────────────────

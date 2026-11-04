@@ -18,7 +18,7 @@
  * Il front è questo CLI C. Con `--engine=csharp` lo STESSO argv (tolti --engine e
  * --csharp-cli) viene eseguito da `gmbcs`, che accetta lo stesso contratto
  * (--project/--entry/--out/...). Nessuna traduzione di parametri. */
-static int find_csharp_cli(const char* explicit_path, char* out, size_t cap)
+int gmb_cli_find_gmbcs(const char* explicit_path, char* out, size_t cap)
 {
     if (explicit_path && *explicit_path) {
         if (access(explicit_path, X_OK) == 0) { snprintf(out, cap, "%s", explicit_path); return 1; }
@@ -88,7 +88,7 @@ int gmb_cli_engine_maybe(int argc, char** argv)
         }
         if (eng && (strcmp(eng, "csharp") == 0 || strcmp(eng, "cs") == 0)) {
             char path[4096];
-            if (!find_csharp_cli(cli, path, sizeof path)) {
+            if (!gmb_cli_find_gmbcs(cli, path, sizeof path)) {
                 fprintf(stderr, "?gmb: engine C# (gmbcs) non trovato. Compila GMBasicSharp/CompilerCli "
                                 "oppure passa --csharp-cli <path>.\n");
                 return 2;

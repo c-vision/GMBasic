@@ -13,6 +13,10 @@ void gmb_cli_usage(void) {
         "     gmb eval \"<istruzioni>\"                          compila ed esegue uno snippet\n"
         "     gmb minitests [--root <dir>] [--filter <substr>] [--all] [--json]\n"
         "                   [--driver <exe>] [--cc <cc>] [--baseline <json>]\n"
+        "     gmb doctor [--fix] [--json] [--llm-repo <url>]   ambiente: root, LLMEnv, tool, lib\n"
+        "  doctor  verifica GMBASIC_ROOT e LLM_ROOT, i companion, le statiche/dylib, gli header\n"
+        "          (-I), cc, la cache delle librerie e i settings; --fix installa ciò che manca\n"
+        "          (LLMEnv via git, librerie via `gmbadmin libs ensure`, gmbcs via dotnet)\n"
         "  check  valida il progetto: entry, NAMESPACE dei moduli, IMPORT risolti\n"
         "  build  emette il C e linka l'eseguibile in <progetto>/bin\n"
         "  --libs[=SEL]  bundle di distribuzione in <out>/libs/<rid>/: senza SEL copia la\n"
@@ -36,5 +40,7 @@ void gmb_cli_usage(void) {
         "Comandi amministrativi (tool C `gmbadmin`, stesso argv; `gmbadmin --help` per l'elenco):\n"
         "  gmb pkg … · pack · publish · login/logout/register/admin · keygen\n"
         "  gmb fixtures … · libs … · setup … · brain … (toolchain completo) · daemon …\n"
+        "  due sole env di PERCORSO: GMBASIC_ROOT (install GMBasic) e LLM_ROOT (LLMEnv);\n"
+        "  ogni altra regolazione passa da system.settings.json (sezione paths).\n"
         "  gmb rag … · graph … · grep · convert/convfmt · hf · mlx\n");
 }

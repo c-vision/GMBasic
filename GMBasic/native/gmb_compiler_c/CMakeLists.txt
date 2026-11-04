@@ -54,14 +54,14 @@ target_include_directories(gmb_compiler_c PUBLIC
 # ── Driver dei due back-end (output in build/ come prima, per gmbsuite) ───────────────
 # Driver C99Native (.bas -> C): usato da tools/sh/gmb_c99native_run.sh, tools/test_mcp_e2e.sh
 # e da gmbsuite gbt_build.c. Senza target CMake il binario restava STALE dopo le modifiche.
-add_executable(gmb_c99native_driver "${CMAKE_CURRENT_SOURCE_DIR}/../gmb_c99native/driver/gmb_c99native_driver.c")
-target_link_libraries(gmb_c99native_driver PRIVATE gmb_compiler_c)
-target_compile_options(gmb_c99native_driver PRIVATE -Wall -Wextra)
+add_executable(gmbnative "${CMAKE_CURRENT_SOURCE_DIR}/../gmb_c99native/driver/gmb_c99native_driver.c")
+target_link_libraries(gmbnative PRIVATE gmb_compiler_c)
+target_compile_options(gmbnative PRIVATE -Wall -Wextra)
 
 # ── CLI di PROGETTO (O7): `gmb check|build|run --project <dir>`. Linka SOLO il front-end
 # (la discovery `gmb_inc_resolve`, la stessa del compilatore: niente copie nel CLI). È il
 # contratto a processo che l'IDE userà (D4); il driver C99Native lo cerca accanto al binario.
-add_executable(gmb src/cli/gmb_cli.c src/cli/gmb_cli_project.c src/cli/gmb_cli_dump.c src/cli/gmb_cli_engine.c src/cli/gmb_cli_usage.c src/cli/gmb_cli_admin.c src/cli/gmb_cli_file.c src/cli/gmb_cli_deploy.c src/cli/gmb_cli_args.c src/cli/gmb_cli_bsp.c
+add_executable(gmb src/cli/gmb_cli.c src/cli/gmb_cli_project.c src/cli/gmb_cli_dump.c src/cli/gmb_cli_engine.c src/cli/gmb_cli_usage.c src/cli/gmb_cli_admin.c src/cli/gmb_cli_file.c src/cli/gmb_cli_deploy.c src/cli/gmb_cli_args.c src/cli/gmb_cli_bsp.c src/cli/gmb_cli_doctor.c
                ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_bytecode/src/gmb_disasm.c
                ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_vm_c/gmb_chunk.c
                $<TARGET_OBJECTS:gmb_frontend>)   # split per la soglia 1200 righe (§0quater)
@@ -75,22 +75,22 @@ target_compile_options(gmb PRIVATE -Wall -Wextra)
 
 # ── Language Server (LSP) come TOOL SEPARATO (F2c): serve le IDE e VS Code.
 # Prima viveva dentro la REPL (flag --lsp) e la costringeva a linkare il front-end.
-add_executable(gmb_lsp
+add_executable(gmblsp
                "${CMAKE_CURRENT_SOURCE_DIR}/../lsp/main.c"
                "${CMAKE_CURRENT_SOURCE_DIR}/../lsp/gmb_lsp.c")
-target_link_libraries(gmb_lsp PRIVATE gmb_compiler_c)
-target_include_directories(gmb_lsp PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/frontend/include")
-target_compile_options(gmb_lsp PRIVATE -Wall -Wextra)
+target_link_libraries(gmblsp PRIVATE gmb_compiler_c)
+target_include_directories(gmblsp PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/frontend/include")
+target_compile_options(gmblsp PRIVATE -Wall -Wextra)
 
 # ── Driver chunk A1/GMBC (.bas -> bytecode VM/C): usato da tools/test_mcp_e2e.sh e da
-# gmbsuite. Stesso problema del gmb_c99native_driver: senza target CMake il binario
+# gmbsuite. Stesso problema del gmbnative: senza target CMake il binario
 # restava STALE dopo ogni modifica a parser/emitter.
-add_executable(gmb_chunk_driver "${CMAKE_CURRENT_SOURCE_DIR}/../gmb_bytecode/driver/gmb_chunk_driver.c"
+add_executable(gmbchunk "${CMAKE_CURRENT_SOURCE_DIR}/../gmb_bytecode/driver/gmb_chunk_driver.c"
                "${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c/src/gmb_bsp_compile.c")
-target_include_directories(gmb_chunk_driver PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c/include"
+target_include_directories(gmbchunk PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c/src")
-target_link_libraries(gmb_chunk_driver PRIVATE gmb_compiler_c "-lc++" m pthread)
-target_compile_options(gmb_chunk_driver PRIVATE -Wall -Wextra)
+target_link_libraries(gmbchunk PRIVATE gmb_compiler_c "-lc++" m pthread)
+target_compile_options(gmbchunk PRIVATE -Wall -Wextra)
 
 # ── Model compiler: conversione checkpoint MoE (safetensors/MLX) -> container GGUF ──
 # Modulo DEL COMPILATORE (non tool esterno). Linka il runtime MoE per il writer del container;

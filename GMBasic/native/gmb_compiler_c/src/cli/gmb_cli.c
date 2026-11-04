@@ -682,7 +682,7 @@ static int run_minitests(const Options* o) {
         snprintf(driver, sizeof driver, "%s", o->driver);
         (void)gmb_resolve_install_root(tc.install, sizeof tc.install);
     } else if (!find_driver(&tc, o->argv0)) {
-        fprintf(stderr, "gmb minitests: gmb_c99native_driver non trovato "
+        fprintf(stderr, "gmb minitests: gmbnative non trovato "
                         "(build native/gmb_compiler_c o --driver <exe>)\n");
         return 1;
     } else {
@@ -975,7 +975,6 @@ static int run_minitests(const Options* o) {
 
 /* ── main ────────────────────────────────────────────────────────────────────────────── */
 
-
 int main(int argc, char** argv) {
     Options o; memset(&o, 0, sizeof o);
     o.argv0 = argv[0];
@@ -1038,6 +1037,7 @@ int main(int argc, char** argv) {
         gmb_cli_reset_defines();
         return rc;
     }
+    if (!strcmp(o.command, "doctor")) return gmb_cli_doctor(argc, argv);
     if (strcmp(o.command, "check") && strcmp(o.command, "build") && strcmp(o.command, "run")
         && strcmp(o.command, "minitests")) {
         fprintf(stderr, "gmb: comando sconosciuto '%s'\n", o.command);

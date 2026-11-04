@@ -2663,6 +2663,10 @@ int  gmb_shell_run(const char* command);             /* RUN "cmd": esegue, outpu
  * in root, i componenti runtime scaricati nella CACHE (<cache>/<comp>/<rid>), la cache in /tmp.
  * Ogni valore può essere assoluto o relativo alla root; ~ è espanso. --- */
 int   gmb_paths_repo_root(char* out, size_t cap);              /* 1 se trovata root, 0 altrimenti */
+/* Root di LLMEnv (repo SEPARATO dei motori AI): env `LLM_ROOT` > `paths.llmRoot` >
+ * accanto alla root (`<root>/../LLMEnv`, `<root>/../../LLMEnv`) > risalendo dall'eseguibile
+ * > dal CWD. Marker: `LLMCodec/include`. 1 se trovata. */
+int   gmb_paths_llm_root(char* out, size_t cap);
 /* HOOK TEST-ONLY: overrides delle directory (selfcheck del runtime). `key` è la chiave
  * "paths.*" ("configDir", "ragDir", "graphsDir", "brainsDir", "brainsExportsDir",
  * "brainsCacheDir"); `dir` NULL rimuove l'override, `key` NULL li rimuove tutti.
