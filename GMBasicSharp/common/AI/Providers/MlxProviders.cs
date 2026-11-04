@@ -817,6 +817,20 @@ internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter
             $"State:\n{request.State}\nAllowed options: {joined}\n{answer}");
     }
 
+    /// <summary>Il readout delle opzioni legge la distribuzione della PRIMA posizione di risposta. Nei modelli
+    /// con thinking (Qwen3, R1, ...) quella posizione aspetta `&lt;think&gt;`: le lettere A..P lì sono rumore
+    /// (osservato: sempre A, 1/6 su domande banali). Si chiude quindi il blocco di ragionamento: se il template
+    /// ha già aperto `&lt;think&gt;\n` lo si chiude, altrimenti, se il vocabolario ha i token think, si aggiunge
+    /// il blocco vuoto (stessa forma di enable_thinking=false). Gli altri modelli restano invariati.</summary>
+    private string CloseThinkingForDecision(string prompt)
+    {
+        if (prompt.EndsWith("</think>\n\n", StringComparison.Ordinal)) return prompt;
+        if (prompt.EndsWith("<think>\n", StringComparison.Ordinal)) return prompt + "</think>\n\n";
+        if (Encode("<think>").Length == 1 && Encode("</think>").Length == 1)
+            return prompt + "<think>\n\n</think>\n\n";
+        return prompt;
+    }
+
     // ── IDecisionCompleter (JEV/SystemOne): decisione dai logits del modello locale ──
     // Prompt via chat template reale, prefill once, readout delle opzioni a token singolo
     // (ABI v8 CAP_DECIDE). Nessuna generazione: legge solo P(token_opzione) alla posizione
@@ -846,7 +860,7 @@ internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter
             ("system", instructions),
             ("user", user),
         };
-        var prompt = _buildChatTranscript(messages, addAssistantOpener: true);
+        var prompt = CloseThinkingForDecision(_buildChatTranscript(messages, addAssistantOpener: true));
         var promptIds = Encode(prompt);
         if (promptIds.Length == 0)
             throw new DecisionProviderException("local MLX: prompt di decisione vuoto.");
@@ -950,7 +964,7 @@ internal sealed class MlxLlmCompleter : ILlmCompleter, ISessionAwareLlmCompleter
                 ? "Answer with exactly one option letter (A..P) and nothing else."
                 : "Answer with exactly one option and nothing else.";
             var (instructions, user) = BuildDecisionPrompt(request, labels, answer);
-            var prompt = _buildChatTranscript([("system", instructions), ("user", user)], addAssistantOpener: true);
+            var prompt = CloseThinkingForDecision(_buildChatTranscript([("system", instructions), ("user", user)], addAssistantOpener: true));
             var ids = Encode(prompt);
             if (ids.Length == 0)
                 throw new DecisionProviderException("local MLX: prompt di decisione vuoto.");

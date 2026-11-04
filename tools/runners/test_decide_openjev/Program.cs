@@ -1,5 +1,6 @@
 // test_decide_openjev — valuta il decision engine locale su un dataset Open-Jev (MIT).
-// Uso: test_decide_openjev <model_dir> <test.jsonl> [max_items]
+// Uso: test_decide_openjev <model_dir> <test.jsonl> [max_items] [samples_out]
+// samples_out (opz.): scrive i campioni `1 n label logprob...` per gmbllm_decide_calibrate / decide_eval.
 // Righe: {"context":"…","options":["…"],"label":N}. Le opzioni sono multi-parola: si usa il
 // verbalizer A..P (prompt "A) testo…", readout sul token dello slot) e si confronta l'indice.
 using System.Globalization;
@@ -16,6 +17,8 @@ if (args.Length < 2)
 var modelDir = args[0];
 var path = args[1];
 var maxItems = args.Length > 2 && int.TryParse(args[2], out var m) && m > 0 ? m : 0;
+var samplesOut = args.Length > 3 ? args[3] : null;
+var samplesW = samplesOut is null ? null : new StreamWriter(samplesOut);
 
 ProviderServer.Instance.ResetAll();
 ProviderServer.Instance.Register(ProviderRole.Completion, "local", "mlx",
@@ -57,6 +60,7 @@ foreach (var line in File.ReadLines(path))
     for (var i = 1; i < probs.Length; i++) if (probs[i] > probs[best]) best = i;
 
     total++;
+    samplesW?.WriteLine("1 " + options.Count + " " + label + " " + string.Join(" ", probs.Select(p => Math.Log(Math.Max(p, 1e-300)).ToString("R", CultureInfo.InvariantCulture))));
     if (best == label) correct++;
     for (var k = 0; k < probs.Length; k++)
     {
@@ -74,6 +78,7 @@ foreach (var line in File.ReadLines(path))
     if (maxItems > 0 && total >= maxItems) break;
 }
 
+samplesW?.Dispose();
 if (total == 0)
 {
     Console.Error.WriteLine("nessun item valido");
