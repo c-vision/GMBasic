@@ -27,7 +27,7 @@ LIBS="$MONO/shared/libs"
 INCLUDE="$MONO/shared/include"
 TOOLS="$MONO/tools/sh"
 
-ALL_LIBS="amqp grpc kafka mqtt nats protobuf media opt graph"
+ALL_LIBS="amqp grpc kafka mqtt nats protobuf media opt graph flow"
 
 die() { echo "gmb_lib: $*" >&2; exit 1; }
 
