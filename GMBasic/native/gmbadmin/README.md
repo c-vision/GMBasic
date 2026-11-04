@@ -78,7 +78,7 @@ option `paths.torchLocal` (system/app settings) → **auto-detect** dei venv (`~
 `lib/libtorch*`. I file dichiarati `source=local` vengono copiati da lì; solo il resto va in
 rete (url/archivio, sha256 verificato).
 Manifest in `shared/settings/` (`chromium-manifest.json`, `obscura-manifest.json`,
-`ml-manifest.json`), download via `gmb_fetch` (ripresa + sha256 + rename atomico), estrazione
+`ml-manifest.json`), download via `gmbfetch` (ripresa + sha256 + rename atomico), estrazione
 zip/`tar`. `OCR` fa parte del bundle LIBS (tesseract).
 
 ### RAG e grafo
@@ -105,7 +105,7 @@ gmb daemon list · uninstall <name> [--purge]
 ```
 Registry `~/.gmbasic/daemons/<name>/` (`manifest.json` + `logs/`), plist
 `~/Library/LaunchAgents/it.gmb.<name>.plist`, label `it.gmb.<name>`. Il job lancia
-**`gmb_repl <file.bas>`** (REPL/runner C): non c'è più alcuna dipendenza da `dotnet REPL.dll`.
+**`gmbrepl <file.bas>`** (REPL/runner C): non c'è più alcuna dipendenza da `dotnet REPL.dll`.
 La REPL risolve `gmb` e `gmb_vm_host` anche da una CWD arbitraria (PATH + dir dell'eseguibile),
 così il job launchd funziona con qualunque `WorkingDirectory`.
 
@@ -114,7 +114,7 @@ così il job launchd funziona con qualunque `WorkingDirectory`.
 gmb hf  <repo> [--file F|pattern] [--dest D] [--token T] [--quiet]
 gmb mlx <repo> [--dest D] [--token T] [--quiet]      # intero repo
 ```
-Elenco file da `https://huggingface.co/api/models/<repo>`, download con `gmb_fetch`
+Elenco file da `https://huggingface.co/api/models/<repo>`, download con `gmbfetch`
 (ripresa/stall-retry), token da `--token` o `~/.cache/huggingface/token`.
 
 ### Second Brain (toolchain completo, C)

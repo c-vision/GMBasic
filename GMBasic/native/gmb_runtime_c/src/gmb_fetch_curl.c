@@ -1,4 +1,4 @@
-/* gmb_fetch_curl.c — trasporto HTTP del motore gmb_fetch (libcurl di sistema).
+/* gmb_fetch_curl.c — trasporto HTTP del motore gmbfetch (libcurl di sistema).
  *
  * Questo file è SOLO trasporto: prende un fd già posizionato su `from`, chiede `Range` se serve,
  * scrive i byte, e dichiara cosa ha visto (206/200, Content-Range, byte scritti). La politica

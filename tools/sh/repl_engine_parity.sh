@@ -18,7 +18,7 @@ set -u
 here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$here/../.." && pwd)
 
-repl=${GMB_REPL:-$root/REPL/build/gmb_repl}
+repl=${GMB_REPL:-$root/REPL/build/gmbrepl}
 gmbcs=${GMB_CSHARP_CLI:-$root/GMBasicSharp/CompilerCli/bin/Debug/net10.0/gmbcs}
 file=${1:-}
 if [ -z "$file" ]; then

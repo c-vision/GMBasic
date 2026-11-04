@@ -2060,9 +2060,20 @@ public sealed partial class Compiler
                 break;
             case NullConditionalKind.Index:
             {
+                var indices = expr.Arguments ?? ImmutableArray<Expr>.Empty;
+                /* ARRAY NATIVO: OP_LOAD_ELEMENT lancia ERR 9 fuori dai limiti (canone, parità
+                 * IL/VM-C/C99). Per l'accesso SICURO `arr(i)?` serve quindi un guard esplicito
+                 * (0 <= i <= UBOUND), altrimenti anche il `?` esplodeva con "Subscript out of
+                 * range" (sample Collections/CollectionsSafeAccess). Liste/dict/stringhe sono
+                 * già null-safe nell'opcode: nessun guard. */
+                if (indices.Length == 1 && expr.Expression is VariableExpr bve
+                    && SymbolDataType(bve) is ArrayType)
+                {
+                    EmitSafeArrayIndex(bve, indices[0]);
+                    break;
+                }
                 // Stessa convenzione di VisitIndexedAccessExpression: base, poi indici.
                 VisitExpression(expr.Expression);
-                var indices = expr.Arguments ?? ImmutableArray<Expr>.Empty;
                 foreach (var index in indices)
                     VisitExpression(index);
                 EmitBytes((byte)OpCode.OP_LOAD_ELEMENT, (byte)indices.Length);
@@ -2082,6 +2093,56 @@ public sealed partial class Compiler
                 break;
             }
         }
+    }
+
+    /// <summary>
+    /// `arr(i)?` su un ARRAY NATIVO: valuta base e indice UNA volta in due local temporanee,
+    /// parte da NIL e legge l'elemento solo se `0 <= i <= UBOUND(arr)`. Evita l'ERR 9
+    /// dell'OP_LOAD_ELEMENT (che resta il comportamento dell'accesso NON sicuro) senza
+    /// introdurre nuovi opcode/builtin: usa solo confronti, salti e UBOUND.
+    /// </summary>
+    private void EmitSafeArrayIndex(VariableExpr baseExpr, Expr indexExpr)
+    {
+        VisitExpression(baseExpr);
+        AddLocal(new Token(TokenKind.Identifier, $"__safeb{_locals.Count}", null, SourcePosition.Unknown));
+        var baseSlot = _locals.Count - 1;
+        EmitByte((byte)OpCode.OP_STORE_LOCAL); EmitShort((ushort)baseSlot);
+
+        VisitExpression(indexExpr);
+        AddLocal(new Token(TokenKind.Identifier, $"__safei{_locals.Count}", null, SourcePosition.Unknown));
+        var idxSlot = _locals.Count - 1;
+        EmitByte((byte)OpCode.OP_STORE_LOCAL); EmitShort((ushort)idxSlot);
+
+        EmitByte((byte)OpCode.OP_PUSH_NIL);
+        AddLocal(new Token(TokenKind.Identifier, $"__safer{_locals.Count}", null, SourcePosition.Unknown));
+        var resSlot = _locals.Count - 1;
+        EmitByte((byte)OpCode.OP_STORE_LOCAL); EmitShort((ushort)resSlot);
+
+        var endLabel = GenerateCompilerLabel("SAFEIDX_END");
+        // i < 0 → NIL
+        EmitByte((byte)OpCode.OP_LOAD_LOCAL); EmitShort((ushort)idxSlot);
+        EmitConstant(0.0);
+        EmitByte((byte)OpCode.OP_CMP_LT);
+        var jLow = EmitJump((byte)OpCode.OP_JUMP_IF_TRUE);
+        _jumpsToPatch.Add((jLow, endLabel));
+        // i > UBOUND(base) → NIL
+        EmitByte((byte)OpCode.OP_LOAD_LOCAL); EmitShort((ushort)idxSlot);
+        EmitByte((byte)OpCode.OP_LOAD_LOCAL); EmitShort((ushort)baseSlot);
+        EmitByte((byte)OpCode.OP_CALL_BUILTIN);
+        EmitShort((ushort)BuiltInFunction.UBOUND);
+        EmitByte((byte)1);
+        EmitByte((byte)OpCode.OP_CMP_GT);
+        var jHigh = EmitJump((byte)OpCode.OP_JUMP_IF_TRUE);
+        _jumpsToPatch.Add((jHigh, endLabel));
+        // res = base[i]
+        EmitByte((byte)OpCode.OP_LOAD_LOCAL); EmitShort((ushort)baseSlot);
+        EmitByte((byte)OpCode.OP_LOAD_LOCAL); EmitShort((ushort)idxSlot);
+        EmitBytes((byte)OpCode.OP_LOAD_ELEMENT, 1);
+        EmitByte((byte)OpCode.OP_STORE_LOCAL); EmitShort((ushort)resSlot);
+
+        _labels[endLabel.Lexeme] = _chunk.Code.Count;
+        _isReachable = true;
+        EmitByte((byte)OpCode.OP_LOAD_LOCAL); EmitShort((ushort)resSlot);
     }
 
 /// <summary>

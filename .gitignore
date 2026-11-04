@@ -51,7 +51,7 @@ shared/samples/Fixtures/option_chains/
 shared/samples/Fixtures/rates/
 shared/samples/Fixtures/darkpool/
 
-# Lock del motore di download (gmb_fetch) accanto ai file scaricati: stato transitorio.
+# Lock del motore di download (gmbfetch) accanto ai file scaricati: stato transitorio.
 **/.locks/
 
 # INDICI GENERATI di skills/plugins: OUTPUT rigenerabili (`AI SKILLS REFRESH` /
@@ -120,3 +120,6 @@ TestResults/
 # resta versionato: fa parte del REPL, non delle due IDE.
 /GMBasicIDE/
 /GMBasicTuiIde/
+
+# manuale cartaceo: materiale locale del libro, non tracciato
+docs/manual/

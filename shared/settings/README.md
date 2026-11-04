@@ -7,7 +7,7 @@ Single point of the configurations that the two worlds (C# and C) read in the sa
 |---|---|---|
 | `system.settings.json` | compiler + runtime (`pr_load`, `GmbiPaths`) | global defaults: `paths`, `consoleConfiguration`, `engine`, `compiler`, `importFolders`, `defaultNamespaces` |
 | `fixtures-manifest.json` | `gmb_fixtures_ensure*`, compiler, REPL, CLI | large feeds downloaded on demand (release `fixtures-v1`) |
-| `brains-manifest.json` | `gmb_brains`, `gmb_brain_fetch`, bundle | distributed brains: version, `rag`/`graph` shapes, repo/tag/asset, sha256 |
+| `brains-manifest.json` | `gmb_brains`, `gmbbrains`, bundle | distributed brains: version, `rag`/`graph` shapes, repo/tag/asset, sha256 |
 | `libs-manifest.json` + `libs-index-<rid>.tsv` | `LibsResolver` (C#), `gmb_libs_ensure` (C) | bundle of the native libraries per RID |
 | `ml-manifest.json` | `ModelDownload` / ML components | models and components (torch, mlx) |
 | `chromium-manifest.json` | `browser` plugin | Chromium builds per RID |

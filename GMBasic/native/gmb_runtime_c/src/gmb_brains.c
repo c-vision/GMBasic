@@ -2,7 +2,7 @@
  *
  * UN CERVELLO È UN PACCHETTO DI DATI. Vive in una directory (`rag/<nome>.db`,
  * `graphs/<nome>.json`, `brain.manifest.json`) e si distribuisce come asset di release
- * (`contentType: "brain"`), scaricato con `gmb_fetch` (streaming + resume + sha).
+ * (`contentType: "brain"`), scaricato con `gmbfetch` (streaming + resume + sha).
  *
  * PERCHÉ LA RISOLUZIONE STA QUI E NON NEL C#: gli agenti (C#) e i 4 backend (IL, PCodeVM,
  * VM/C, C99Native) devono vedere GLI STESSI cervelli. Una sola funzione — `gmb_brain_lookup` —
@@ -970,7 +970,7 @@ int gmb_brains_install_to(const char* manifest_path, const char* name, const cha
 
 /* ── indice accanto all'eseguibile (`<exe>.brains.txt`) ────────────────────────────────────
  * Formato TSV, una voce per riga: `<nome>	<versione>` (# = commento, versione vuota = latest).
- * `gmb brain fetch <dir>` (binario `gmb_brain_fetch`) installa ogni voce in
+ * `gmb brain fetch <dir>` (binario `gmbbrains`) installa ogni voce in
  * `<dir>/brains/<nome>/<versione>`, che la risoluzione consulta PRIMA della cache: il programma
  * distribuito trova i suoi cervelli senza rete. Il manifest usato è quello accanto all'eseguibile
  * (`<dir>/settings/brains-manifest.json`, copiato dal bundle) e, se manca, quello di sistema. */
@@ -1095,7 +1095,7 @@ int gmb_brains_emit_index(const char* app_settings, const char* manifest_path, c
     int cnt = (int)gmb_list_count(l);
     FILE* out = fopen(out_path, "wb");
     if (!out) { gmb_val_release(root); if (m) gmb_pkg_manifest_free(m); return GMB_BRAIN_E_IO; }
-    fprintf(out, "# cervelli del programma (nome<TAB>versione) — `gmb_brain_fetch <exe|dir>`\n");
+    fprintf(out, "# cervelli del programma (nome<TAB>versione) — `gmbbrains <exe|dir>`\n");
     int written = 0;
     for (int i = 0; i < cnt; i++) {
         gmb_val_t v = gmb_list_get(l, i);

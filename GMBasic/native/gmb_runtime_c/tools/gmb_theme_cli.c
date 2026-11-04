@@ -1,5 +1,5 @@
 /* gmb_theme_cli.c — snapshot JSON read-only del tema GMBasic per l'IDE.
- * Uso: gmb_theme [--name vb6] [--list] [--json]
+ * Uso: gmbtheme [--name vb6] [--list] [--json]
  * Non linka il compilatore: espone solo palette e stile pixel. */
 #include "gmb_tui_widgets.h"
 #include <stdio.h>
@@ -18,7 +18,7 @@ static const char* names[] = {
 int main(int argc, char** argv)
 {
     if (argc >= 2 && (!strcmp(argv[1], "-help") || !strcmp(argv[1], "--help") || !strcmp(argv[1], "-h"))) {
-        printf("uso: gmb_theme [--list] [--name <tema>]\n"
+        printf("uso: gmbtheme [--list] [--name <tema>]\n"
                "  --list        elenca i temi disponibili (JSON)\n"
                "  --name NOME   emette il tema NOME in JSON (default: turbo)\n"
                "  senza argomenti: emette il tema di default in JSON\n");

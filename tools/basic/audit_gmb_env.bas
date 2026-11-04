@@ -1,6 +1,6 @@
 ' audit_gmb_env.bas — audit delle variabili d'ambiente GMB_* (niente Python).
 ' Per ogni nome: classe (funzionamento/diagnostica), numero letture e primi 8 lettori.
-' Output: docs/gmb_env_audit.tsv + riepilogo. Uso (da GMBasic/): eseguire tools/basic/audit_gmb_env.bas
+' Output: tools/reports/gmb_env_audit.tsv + riepilogo. Uso (da GMBasic/): eseguire tools/basic/audit_gmb_env.bas
 IMPORT IO
 IMPORT GREP
 
@@ -117,8 +117,8 @@ FUNCTION Main() AS INTEGER
     nroots = 2
     roots(1) = broot + "/GMBasicSharp"
   END IF
-  tsv = broot + "/docs/gmb_env_audit.tsv"
-  IF NOT IO.DIREXISTS(broot + "/docs") THEN MKDIR broot + "/docs"
+  tsv = broot + "/tools/reports/gmb_env_audit.tsv"
+  IF NOT IO.DIREXISTS(broot + "/tools/reports") THEN MKDIR broot + "/tools/reports"
   g_n = 0
   FOR ri = 0 TO nroots - 1
   files$ = GREP.FILES("GMB_", roots(ri))

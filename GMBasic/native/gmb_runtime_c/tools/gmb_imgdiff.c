@@ -1,5 +1,5 @@
 /* gmb_imgdiff.c — confronto pixel di screenshot (PNG via runtime, BMP minimale).
- * Uso: gmb_imgdiff <a> <b> [tolleranza_pct=0.5]
+ * Uso: gmbimgdiff <a> <b> [tolleranza_pct=0.5]
  * Stampa "IMGDIFF total=N diff=M pct=P" e esce 0 se pct <= tolleranza.
  * Confronta solo RGB (l'alpha può differire tra encoder BMP/PNG). */
 #include "gmb_graphics_internal.h"
@@ -87,14 +87,14 @@ int main(int argc, char** argv)
 {
     if (argc >= 2 && (!strcmp(argv[1], "-help") || !strcmp(argv[1], "--help") || !strcmp(argv[1], "-h")))
     {
-        printf("uso: gmb_imgdiff <a.png|bmp> <b.png|bmp> [tolleranza_pct=0.5]\n"
+        printf("uso: gmbimgdiff <a.png|bmp> <b.png|bmp> [tolleranza_pct=0.5]\n"
                "  confronta due immagini e stampa la differenza percentuale;\n"
                "  con una immagine a 2x l'altra (HiDPI) quella grande viene campionata.\n");
         return 0;
     }
     if (argc < 3)
     {
-        printf("uso: gmb_imgdiff <a.png|bmp> <b.png|bmp> [tolleranza_pct=0.5]\n");
+        printf("uso: gmbimgdiff <a.png|bmp> <b.png|bmp> [tolleranza_pct=0.5]\n");
         return 2;
     }
     double tol = argc > 3 ? atof(argv[3]) : 0.5;

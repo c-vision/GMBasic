@@ -486,7 +486,7 @@ public enum TokenKind
     LinAlgSvdFunc, // LINALG.SVD() (funzione)
     LinAlgEvdFunc, // LINALG.EVD() (funzione)
     LinAlgCholeskyFunc, // LINALG.CHOLESKY() (funzione)
-    LinAlgDecompGetFactorFunc, // MATRIX.FACTOR(decompHandle, factorName$) (funzione)
+    LinAlgDecompGetFactorFunc, // LINALG.FACTOR(decompHandle, factorName$) (funzione)
 
     // --- Comandi per Vettori (Padre e Sotto-keywords) ---
     Vector, // Keyword 'VECTOR'

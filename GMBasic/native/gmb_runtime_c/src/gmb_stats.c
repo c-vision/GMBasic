@@ -274,7 +274,7 @@ gmb_val_t gmb_anova(gmb_val_t groups_val) {
         "DegreesOfFreedom", gmb_make_val_double(df_within));
 }
 
-/* ANALYSIS.ANOVA → Analysis.AnovaResult: dict ESTESO (canone IlRuntime.Anova) con
+/* STATS.Anova → STATS.AnovaResult: dict ESTESO (canone IlRuntime.Anova) con
  * FValue, PValue, DFBetween, DFWithin, SSBetween, SSWithin, MSBetween, MSWithin — i
  * membri del tipo UDT (gmb_anova qui sopra è il dict HypothesisResult di STATS.ANOVA,
  * che ha solo Statistic/PValue/DegreesOfFreedom). */
@@ -794,14 +794,14 @@ gmb_val_t gmb_linregress(gmb_val_t x, gmb_val_t y)
     double r = sstot > 0 ? (slope >= 0 ? 1 : -1) * sqrt(ss / sstot < 1 ? 1 - ss / sstot : 0) : 0;
     /* "R2" = coefficiente di determinazione = r² (canone CommonLib.Numerics.LinearRegression
      * `rSquared`, IlRuntime.Regress). Prima vi si metteva `r` (il coefficiente di correlazione
-     * SIGNED): ANALYSIS.REGRESS stampava 0.9998 (r) invece di 0.9996 (r²). */
+     * SIGNED): REGRESSION.Regress stampava 0.9998 (r) invece di 0.9996 (r²). */
     double r2 = r * r;
     free(a); free(b);
     return gmb_make_dict(6,
         "Slope", gmb_make_val_double(slope),
         "Intercept", gmb_make_val_double(intercept),
         "R", gmb_make_val_double(r),
-        /* STATS.LINREGRESS espone "R" (IlRuntime.LinRegress); ANALYSIS.REGRESS espone
+        /* STATS.LINREGRESS espone "R" (IlRuntime.LinRegress); REGRESSION.Regress espone
          * "R2" (IlRuntime.Regress) — stesso runtime condiviso: entrambe le chiavi. */
         "R2", gmb_make_val_double(r2),
         "PValue", gmb_make_val_double(p),
@@ -1153,8 +1153,8 @@ gmb_val_t gmb_anova_jagged(const double* const* rows, const int* sizes, int k)
     return r;
 }
 
-/* ANALYSIS.ANOVA da array PIATTO (data = gruppi concatenati, sizes[i] per gruppo):
- * dict ESTESO Analysis.AnovaResult (canone IlRuntime.Anova), come gmb_anova_result ma
+/* STATS.Anova da array PIATTO (data = gruppi concatenati, sizes[i] per gruppo):
+ * dict ESTESO STATS.AnovaResult (canone IlRuntime.Anova), come gmb_anova_result ma
  * da puntatori (emissione emitter C# su matrice jagged). gmb_anova_flat è il dict
  * HypothesisResult di STATS.ANOVA. */
 gmb_val_t gmb_anova_result_flat(const double* data, const int* sizes, int k)

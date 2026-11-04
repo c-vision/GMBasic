@@ -21,8 +21,8 @@ Lo stato pre-monorepo è stato sanato. Verificato in questo albero:
 - `ResolveRoot()` cerca `GMBasicSharp/common/Ast/TokenKind.cs` risalendo da CWD/assembly: trova la
   root del monorepo da qualunque directory;
 - `RepoRoot` = `GMBasicSharp/..`, `NativeRoot` = `<monorepo>/GMBasic/native`, `SharedRoot` =
-  `<monorepo>/shared`; i default di output sono `docs/comparison/manifests` e
-  `docs/comparison/audit-backends.md` sotto la root del monorepo;
+  `<monorepo>/shared`; i default di output sono `tools/reports/manifests` e
+  `tools/reports/audit-backends.md` sotto la root del monorepo;
 - `dotnet build tools/audit/audit.csproj` → 0 errori; `--list-backends` e
   `--pcodevm --json <file>` girano e producono il manifest;
 - `test_retired_flags.sh` è stato riallineato al monorepo (root a `../..`, niente `.sln` finto):
@@ -47,5 +47,5 @@ do not produce files; the script is now monorepo-aware (7/7 PASS on 2026-11-01).
 AGENTS.md §12 points to it as the canonical audit infrastructure: every new command/function must
 be implemented so that the audit counts it. The dispatch recognition logic
 (by name, by `HashSet<BuiltInFunction>{...}`, by `case SysCall.FORM_*`, by `vm_form_*`) is
-knowledge to preserve: `docs/Sync-GMBasic-Monorepo.md` notes that it must be replicated in any
+knowledge to preserve: la nota del vault `Memory/Sync-GMBasic-Monorepo-2026-10-26.md` dice che
 C rewrite of the audit, otherwise the 12 false gaps are reproduced.

@@ -1,4 +1,4 @@
-/* gmb_fetch_selfcheck.c — motore gmb_fetch, provato OFFLINE con un trasporto finto.
+/* gmb_fetch_selfcheck.c — motore gmbfetch, provato OFFLINE con un trasporto finto.
  *
  * Il trasporto è il confine del sistema: sostituendolo con uno che dichiara intestazioni e byte
  * prestabiliti si può dimostrare in modo deterministico ciò che con la rete sarebbe casuale —

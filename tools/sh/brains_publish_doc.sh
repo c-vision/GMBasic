@@ -7,7 +7,7 @@
 # dalla fonte unica dei metadati, `shared/settings/brains-manifest.json`, e li committa nel repo.
 #
 # La tabella è GENERATA: non si modifica a mano. `sha256` e `size` sono quelli dell'asset
-# pubblicato (gli stessi che il motore `gmb_fetch` verifica prima di estrarre).
+# pubblicato (gli stessi che il motore `gmbfetch` verifica prima di estrarre).
 #
 # USO
 #   tools/sh/brains_publish_doc.sh            genera e PUBBLICA (commit + push su main)

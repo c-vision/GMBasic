@@ -3,7 +3,7 @@
  *
  * Un cervello è una directory con i suoi file (`rag/<nome>.db`, `graphs/<nome>.json`,
  * `brain.manifest.json`) e si installa come un pacchetto: `contentType: "brain"`, asset di
- * release, **download on demand** con `gmb_fetch` (streaming + resume + sha).
+ * release, **download on demand** con `gmbfetch` (streaming + resume + sha).
  *
  * DOVE SI TROVA UN CERVELLO (ordine, identico ai pacchetti):
  *   1. `<progetto>/vendor/brains/<nome>/<versione>/`   (pin offline, accanto al programma)
@@ -97,7 +97,7 @@ int gmb_brains_fetch_index(const char* index_path, const char* dest_root, const 
 /* Scrive l'indice leggendo i cervelli DICHIARATI dal programma (`"brains": ["nome"|"nome@ver"]`
  * nel suo app.settings.json); la versione, se assente, è `latest` del manifest. Nessuna
  * dichiarazione → nessun file (ritorna 0). Usata dal bundle (shell C99 e C#) e da
- * `gmb_brain_fetch --emit-index`. */
+ * `gmbbrains --emit-index`. */
 int gmb_brains_emit_index(const char* app_settings, const char* manifest_path, const char* out_path);
 
 /* Installazione da una SORGENTE esplicita — semantica di `AI BRAIN INSTALL nome, sorgente`:

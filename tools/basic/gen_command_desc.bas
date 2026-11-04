@@ -668,7 +668,7 @@ SUB LoadRecon()
   DIM p AS STRING, txt AS STRING, l AS STRING
   DIM f$() AS STRING, ns AS STRING, nm AS STRING, d AS STRING
   DIM i AS LONG, j AS LONG, k AS LONG, sec AS LONG, got AS LONG, cs AS LONG
-  p = FindUp("docs/comparison/recon-stdlib.json")
+  p = FindUp("tools/reports/recon-stdlib.json")
   IF LEN(p) = 0 OR NOT FILEEXISTS(p) THEN EXIT SUB
   txt = IO.READFILE(p)
   ls$ = SPLIT(txt, CHR$(10))
@@ -1024,7 +1024,7 @@ FUNCTION Main() AS INTEGER
   IF LEN(g_std) = 0 THEN g_std = FindUp("common/StdLib/StdLib.AI.cs")
   IF LEN(g_std) > 0 THEN g_std = IO.PARENTDIR(g_std)
   IF LEN(out) = 0 THEN
-    out = FindUp("docs/comparison/command_desc.tsv")
+    out = FindUp("tools/reports/command_desc.tsv")
   END IF
   IF LEN(commands) = 0 THEN commands = FindUp("COMMANDS.TXT")
   g_cmd = commands

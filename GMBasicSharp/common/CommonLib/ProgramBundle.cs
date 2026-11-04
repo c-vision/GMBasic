@@ -100,7 +100,7 @@ public static class ProgramBundle
         //    `settings/brains-manifest.json`: `gmb_paths_brains_manifest` lo legge PRIMA di
         //    quello del checkout, quindi il programma distribuito sa cosa può scaricare.
         //    L'indice `<exe>.brains.txt` elenca i cervelli DICHIARATI dal programma
-        //    (`"brains": ["nome[@versione]"]` nel suo app.settings.json): `gmb_brain_fetch`
+        //    (`"brains": ["nome[@versione]"]` nel suo app.settings.json): `gmbbrains`
         //    li porta in `<exe>/brains`, dove la risoluzione li trova senza rete.
         try
         {

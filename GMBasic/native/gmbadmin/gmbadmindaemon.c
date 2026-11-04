@@ -1,7 +1,7 @@
 /* gmbadmindaemon.c — `gmb daemon …` in C (servizi BASIC come job launchd su macOS).
  *
  * Porting C di CliDaemon.cs. Il vecchio front C# lanciava `dotnet REPL.dll`, rimosso con
- * la migrazione: qui il job lancia la **REPL C** (`gmb_repl <file.bas>`), così il daemon non
+ * la migrazione: qui il job lancia la **REPL C** (`gmbrepl <file.bas>`), così il daemon non
  * dipende più dal mondo C#.
  *
  *   gmb daemon install <name> <file.bas> [--port N] [--no-start]
@@ -67,8 +67,8 @@ static int uid_num(void)
     return (int)getuid();
 }
 
-/* Percorso della REPL C (`gmb_repl [<file.bas>]`): è il runner dei job launchd.
- * Ordine: PATH, poi i sibling del checkout (REPL/build/gmb_repl). */
+/* Percorso della REPL C (`gmbrepl [<file.bas>]`): è il runner dei job launchd.
+ * Ordine: PATH, poi i sibling del checkout (REPL/build/gmbrepl). */
 static int find_gmb(char* out, size_t cap)
 {
     const char* pe = getenv("PATH");
@@ -76,7 +76,7 @@ static int find_gmb(char* out, size_t cap)
         char tmp[4096];
         snprintf(tmp, sizeof tmp, "%s", pe);
         for (char* d = strtok(tmp, ":"); d; d = strtok(NULL, ":")) {
-            snprintf(out, cap, "%s/gmb_repl", d);
+            snprintf(out, cap, "%s/gmbrepl", d);
             if (access(out, X_OK) == 0) return 1;
         }
     }
@@ -99,10 +99,10 @@ static int find_gmb(char* out, size_t cap)
         if (sl) {
             *sl = 0;
             static const char* rel[] = {
-                "../../../REPL/build/gmb_repl",
-                "../../../../REPL/build/gmb_repl",
-                "../../../../../REPL/build/gmb_repl",
-                "../../REPL/build/gmb_repl",
+                "../../../REPL/build/gmbrepl",
+                "../../../../REPL/build/gmbrepl",
+                "../../../../../REPL/build/gmbrepl",
+                "../../REPL/build/gmbrepl",
                 NULL
             };
             char cand[4600];
@@ -285,7 +285,7 @@ static int daemon_install(int argc, char** argv)
 
     char gmb_raw[4096], gmb[4096];
     if (!find_gmb(gmb_raw, sizeof gmb_raw)) {
-        fprintf(stderr, "?daemon install: REPL C `gmb_repl` non trovata (compila REPL/ o mettila nel PATH)\n");
+        fprintf(stderr, "?daemon install: REPL C `gmbrepl` non trovata (compila REPL/ o mettila nel PATH)\n");
         return 2;
     }
     if (realpath(gmb_raw, gmb) == NULL) snprintf(gmb, sizeof gmb, "%s", gmb_raw);
@@ -524,7 +524,7 @@ int gmbadmin_daemon(int argc, char** argv)
     if (!strcmp(sub, "list") || !strcmp(sub, "help") || !strcmp(sub, "--help") || !strcmp(sub, "-h")) {
         if (!strcmp(sub, "list")) return daemon_list();
         printf("uso: gmb daemon <install|start|stop|restart|status|logs|list|uninstall> …\n"
-               "  install <name> <file.bas> [--port N] [--no-start]  → job launchd (gmb_repl)\n"
+               "  install <name> <file.bas> [--port N] [--no-start]  → job launchd (gmbrepl)\n"
                "  start|stop|restart|status <name> · logs <name> [--follow]\n"
                "  uninstall <name> [--purge] · list\n");
         return 0;

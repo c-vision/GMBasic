@@ -5,7 +5,7 @@
  * globali del core) e `gmb_expr` è un valutatore ridotto. Per il BSP "completo"
  * (FUNCTION/SUB degli include, classi, tutto il linguaggio) si carica la dylib
  * `libgmb_bsp` (la stessa usata dal client C# via P/Invoke): la pagina viene
- * precompilata in un chunk A1 dal compilatore C (gmb_chunk_driver, `.bsp` → chunk)
+ * precompilata in un chunk A1 dal compilatore C (gmbchunk, `.bsp` → chunk)
  * ed eseguita dalla VM C, con lo stato (agenti/team/workflow/memoria) fornito
  * dall'host tramite l'hook OPZIONALE `gmb_state_hook`.
  *

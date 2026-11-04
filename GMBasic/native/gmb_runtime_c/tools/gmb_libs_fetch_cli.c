@@ -1,7 +1,7 @@
 /* gmb_libs_fetch_cli.c — CLI del downloader on-demand, usata dal runner C99 PRIMA del link
  * («il compilatore C deve scaricare»). Non sta nella libreria: `main` colliderebbe.
  *
- *   gmb_libs_fetch <libs.txt> <file> [<file>…]
+ *   gmblibs <libs.txt> <file> [<file>…]
  *     scarica nella cache (~/.gmbasic/libs/<rid>/) e stampa il path di ogni file procurato.
  */
 #include <stdio.h>

@@ -106,8 +106,9 @@ public sealed partial class StdLib
                 [new Parameter(-1, T(TokenKind.Identifier, "area"), new InferredType(), optionalFlag, null, false)],
                 new StringType(), TokenKind.Alias),
 
-            new NativeProcedureDefinition(-1, publicFuncFlag, T(TokenKind.Selected, "SELECTED"), [], new LongType(),
-                TokenKind.Selected),
+            new NativeProcedureDefinition(-1, publicFuncFlag, T(TokenKind.Selected, "SELECTED"),
+                [new Parameter(-1, T(TokenKind.Identifier, "area"), new InferredType(), optionalFlag, null, false)],
+                new LongType(), TokenKind.Selected),
 
             new NativeProcedureDefinition(-1, publicFuncFlag, T(TokenKind.Used, "USED"),
                 [new Parameter(-1, T(TokenKind.Identifier, "area"), new InferredType(), optionalFlag, null, false)],

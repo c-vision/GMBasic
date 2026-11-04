@@ -169,7 +169,7 @@ gmb_stack_entry_t gmb_adapter_val_to_stack(gmb_val_t v)
              * (kind==0 per coincidenza, non una vera stringa) veniva scambiato per una
              * GMB_OBJ_STRING, "corto-circuitando" il ramo is_list/dict sotto (mai
              * raggiunto). Sintomo osservato: una λ codeblock con parametro ARRAY passata a
-             * ANALYSIS.SOLVEIVP riceveva `y` come oggetto malformato — l'indicizzazione
+             * NUMERICAL.SolveIvp riceveva `y` come oggetto malformato — l'indicizzazione
              * y(0) leggeva sempre NIL (contatore/lunghezza letti dai campi sbagliati di
              * gmb_obj_string_t invece che dal gmb_list_t reale). Le VERE stringhe
              * (gmb_str_alloc, gmb_vm_value.c) non impostano MAI type_name (calloc + nessun

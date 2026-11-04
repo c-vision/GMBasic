@@ -14,8 +14,8 @@
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
-DRV="$ROOT/native/gmb_compiler_c/build/gmb_c99native_driver"
-[ -x "$DRV" ] || { echo "driver mancante: $DRV (build: cmake --build native/gmb_compiler_c/build --target gmb_c99native_driver)"; exit 1; }
+DRV="$ROOT/native/gmb_compiler_c/build/gmbnative"
+[ -x "$DRV" ] || { echo "driver mancante: $DRV (build: cmake --build native/gmb_compiler_c/build --target gmbnative)"; exit 1; }
 
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT

@@ -31,7 +31,7 @@ continua a funzionare identica per il mondo C.
       l'admin (pacchetti/brain/libs/setup/daemon/rag/graph/grep/hf/mlx) è **C** in
       `GMBasic/native/gmbadmin` (front unico `gmb`). Questa cartella è l'unica REPL.
 - [x] **Sorgenti qui** (F6, 2026-11-01): tutti i `.c/.h` e il `CMakeLists.txt` vivono in
-      `REPL/`; build `cmake -S REPL -B REPL/build && cmake --build REPL/build --target gmb_repl`.
+      `REPL/`; build `cmake -S REPL -B REPL/build && cmake --build REPL/build --target gmbrepl`.
       `GMBasic/native/repl/` non esiste più.
 
 ## Contratto con i compilatori

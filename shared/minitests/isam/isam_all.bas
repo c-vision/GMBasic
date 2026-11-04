@@ -2,7 +2,7 @@
 ' (parità 4 gambe dal 2026-11-03).
 ' Self-contained: il file .isdb viene creato in bin/ dal test (nessuna fixture).
 ' Replica: log in bin/, SHIP/RECV su porta 0 (fuori range) per non aprire socket.
-' EXPECT: used=-1|selected>0=-1|lastrec= 2|recsize>0=-1|bof= 0|eof= 0|recno= 1|indexord>=0=-1|indexkey_len>=0=-1|filter_empty=-1|relation_empty=-1|deleted= 0|found= 0|found2=-1|appendmany= 2|appendmany_lit= 2|log_n>0=-1|log_path=-1|log_exists=-1|rlock=-1|flock=-1|info>0=-1|integrity>0=-1|setrepl>0=-1|apply>=-1=-1|follow>=-1=-1|ship= 0|recv= 0
+' EXPECT: used=-1|selected>0=-1|lastrec= 2|recsize>0=-1|bof= 0|eof= 0|recno= 1|indexord>=0=-1|indexkey_len>=0=-1|filter_alias=[]|filter_empty=-1|relation_empty=-1|deleted= 0|found= 0|found2=-1|appendmany= 2|appendmany_lit= 2|log_n>0=-1|log_path=-1|log_exists=-1|rlock=-1|flock=-1|info>0=-1|integrity>0=-1|setrepl>0=-1|apply>=-1=-1|follow>=-1=-1|ship= 0|recv= 0
 IMPORT ISAM
 IMPORT IO
 IMPORT JSON
@@ -34,6 +34,7 @@ SUB Stato()
   PRINT "recno="; ISAM.RECNO()
   PRINT "indexord>=0="; (ISAM.INDEXORD() >= 0)
   PRINT "indexkey_len>=0="; (LEN(ISAM.INDEXKEY()) >= 0)
+  PRINT "filter_alias=["; ISAM.DBFILTER("X"); "]"   ' caso d uso: area per ALIAS (dai Sample)
   PRINT "filter_empty="; (LEN(ISAM.DBFILTER()) = 0)
   PRINT "relation_empty="; (LEN(ISAM.DBRELATION()) = 0)
   PRINT "deleted="; ISAM.DELETED()

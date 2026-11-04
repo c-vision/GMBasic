@@ -90,7 +90,7 @@ tools/sh/harness.sh pcode shared/Apps/<AppName>/src/<AppName>.bas
 tools/sh/harness.sh vmc   shared/Apps/<AppName>/src/<AppName>.bas
 
 # Release: NativeAOT executable (REPL is the only executable project)
-REPL/build/gmb_repl shared/Apps/<AppName>/src/<AppName>.bas
+REPL/build/gmbrepl shared/Apps/<AppName>/src/<AppName>.bas
 
 # C99Native (C frontend + emitter → `cc` → execution)
 bash tools/sh/gmb_c99native_run.sh ../shared/Apps/<AppName>/src/<AppName>.bas   # path relative to GMBasic/

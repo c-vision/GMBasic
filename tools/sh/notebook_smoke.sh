@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
-# tools/sh/notebook_smoke.sh — smoke test del notebook server C (`gmb_notebook`).
+# tools/sh/notebook_smoke.sh — smoke test del notebook server C (`gmbnotebook`).
 #
 #   tools/sh/notebook_smoke.sh [porta]
 #
-# Avvia Notebook/build/gmb_notebook su 127.0.0.1, esegue le celle, verifica stato e /vars,
+# Avvia Notebook/build/gmbnotebook su 127.0.0.1, esegue le celle, verifica stato e /vars,
 # resetta, spegne. Exit 0 = tutto ok. Non è una suite: tocca un solo processo locale.
 set -u
 
 here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$here/../.." && pwd)
 port=${1:-8049}
-bin="$root/Notebook/build/gmb_notebook"
+bin="$root/Notebook/build/gmbnotebook"
 log=$(mktemp /tmp/gmb_notebook_smoke.XXXXXX)
 
-[ -x "$bin" ] || { echo "?gmb_notebook non costruito: $bin" >&2; echo "  cmake -S Notebook -B Notebook/build && cmake --build Notebook/build --target gmb_notebook" >&2; exit 2; }
+[ -x "$bin" ] || { echo "?gmbnotebook non costruito: $bin" >&2; echo "  cmake -S Notebook -B Notebook/build && cmake --build Notebook/build --target gmbnotebook" >&2; exit 2; }
 
 "$bin" --port "$port" >"$log" 2>&1 &
 pid=$!

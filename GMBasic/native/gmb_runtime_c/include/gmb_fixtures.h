@@ -3,7 +3,7 @@
  *
  * Le fixture grandi (markets, option_chains, rates, darkpool) NON stanno in git: sono asset
  * PUBBLICI della release `fixtures-v1` di c-vision/GMBasicModules e si scaricano con
- * `gmb fixtures pull` (motore gmb_fetch: streaming + resume + sha256) in
+ * `gmb fixtures pull` (motore gmbfetch: streaming + resume + sha256) in
  * `<progetto>/shared/samples/Fixtures/<nome>/` — il percorso che il codice legge SEMPRE
  * (AGENTS §11.4). Le fixture piccole restano versionate.
  *

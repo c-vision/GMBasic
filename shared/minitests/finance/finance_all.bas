@@ -7,7 +7,7 @@
 ' Scopo: verificare che i 4 backend supportino la STESSA versione del namespace,
 ' non un'applicazione. Tutti i risultati sono arrotondati (ROUND) per non dipendere
 ' dall'ultimo bit delle librerie matematiche.
-' EXPECT: pmt=-88.85|pmtext=-87.97|pv= 1125.51|pvext= 1136.76|fv= 1268.25|fvext= 1280.93|nper= 10.59|nperext= 10.478145|rate= 0.029229|cumipmt= 198.73|cumprinc=-1264.92|sln= 300|syd1= 450 |syd2= 300|db= 3690|ddb= 4000|npvVar= 11307.29|npvArr= 1188.44|mnpv= 1188.44|irr= 0.163406|mirr= 0.140507|xirr= 0.163241|xnpv= 1305.05|days360= 30|days360eu= 28|yf0= 0.25|yf1= 0.248634|yf2= 0.252778|yf3= 0.249315
+' EXPECT: pmt=-88.85|pmtext=-87.97|pv3= 1125.51|pv= 1125.51|pvext= 1136.76|fv= 1268.25|fvext= 1280.93|nper= 10.59|nperext= 10.478145|rate= 0.029229|cumipmt= 198.73|cumprinc=-1264.92|sln= 300|syd1= 450 |syd2= 300|db= 3690|ddb= 4000|npvVar= 11307.29|npvArr= 1188.44|mnpv= 1188.44|irr= 0.163406|mirr= 0.140507|xirr= 0.163241|xnpv= 1305.05|days360= 30|days360eu= 28|yf0= 0.25|yf1= 0.248634|yf2= 0.252778|yf3= 0.249315
 IMPORT FINANCE
 IMPORT DATETIME
 
@@ -15,6 +15,7 @@ SUB Main()
   ' ── prestiti: rate, interessi, capitale ──────────────────────────────────
   PRINT "pmt="; ROUND(FINANCE.PMT(0.01, 12, 1000), 2)
   PRINT "pmtext="; ROUND(FINANCE.PMTEXT(0.01, 12, 1000, 0, 1), 2)
+  PRINT "pv3="; ROUND(FINANCE.PV(0.01, 12, -100), 2)   ' fv opzionale (dai Sample)
   PRINT "pv="; ROUND(FINANCE.PV(0.01, 12, -100, 0), 2)
   PRINT "pvext="; ROUND(FINANCE.PVEXT(0.01, 12, -100, 0, 1), 2)
   PRINT "fv="; ROUND(FINANCE.FV(0.01, 12, -100, 0), 2)

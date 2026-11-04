@@ -17,10 +17,10 @@ typedef struct { char* name; int type; int is_array; int ndims; int byref; int g
                                        * esterna): a NEXT resta visibile (parità IL). */
                  int has_blo;  /* canone 1-based 2026-09-30: DIM con TO ha emesso `<ident>__blo`
                                 * (lower bound) — FOR EACH/LBOUND lo leggono solo se presente */
-                 int matrix;   /* (b4): matrice n×m di righe double* (ANALYSIS.FFT/IFFT) */
+                 int matrix;   /* (b4): matrice n×m di righe double* (NUMERICAL.Fft/IFFT) */
                  int jagged;   /* (b4): DIM x(n) AS ARRAY OF <tipo> → double** (righe) */
                  int matrix_handle; /* DIM h = MATRIX.CREATE(r,c): handle int64_t (gmb_matrix_*) */
-                 int boxed_val; /* (b4): variabile gmb_val_t (dict-valued, es. ANALYSIS.KMEANS) */
+                 int boxed_val; /* (b4): variabile gmb_val_t (dict-valued, es. MULTIVARIATE.KMeans) */
                   int rgba_obj; /* DIM/param AS RGBA → dict boxed {Red,Green,Blue,Alpha} (gmb_val_t);
                                 * membri .Red/.Green/.Blue/.Alpha numerici, COLOR usa il dict. */
                   int sb_builder; /* DIM v AS STRINGBUILDER → gmb_stringbuilder_t* (gmb_sb_*) */

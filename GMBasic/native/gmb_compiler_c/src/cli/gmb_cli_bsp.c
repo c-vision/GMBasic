@@ -1,7 +1,7 @@
 /* gmb_cli_bsp.c — precompilazione delle pagine BSP del progetto.
  *
  * Il motore BSP COMPLETO in C esegue la pagina con la VM/C a partire da un chunk A1
- * (`<pagina>.bsp.chunk`) prodotto dal compilatore C (`gmb_chunk_driver`, che accetta
+ * (`<pagina>.bsp.chunk`) prodotto dal compilatore C (`gmbchunk`, che accetta
  * direttamente un `.bsp`). Questo passo avviene in `gmb build`/`run`: se il chunk
  * manca o è più vecchio della pagina, viene rigenerato. Se il driver non c'è o la
  * compilazione fallisce, si avvisa e si prosegue: il runtime usa il valutatore di
@@ -64,7 +64,7 @@ int gmb_cli_precompile_bsp(const char* project)
 
     char tdir[CLI_PATH], tool[CLI_PATH + 40];
     int have_tool = self_dir(tdir, sizeof tdir);
-    snprintf(tool, sizeof tool, "%s/gmb_chunk_driver", tdir);
+    snprintf(tool, sizeof tool, "%s/gmbchunk", tdir);
     if (have_tool && access(tool, X_OK) != 0) have_tool = 0;
 
     int warned = 0, compiled = 0;
@@ -79,7 +79,7 @@ int gmb_cli_precompile_bsp(const char* project)
         if (stat(chunk, &sc) == 0 && sc.st_mtime >= sp.st_mtime) continue;  /* fresco */
         if (!have_tool) {
             if (!warned)
-                fprintf(stderr, "gmb: gmb_chunk_driver non trovato accanto a gmb: le pagine BSP "
+                fprintf(stderr, "gmb: gmbchunk non trovato accanto a gmb: le pagine BSP "
                                 "useranno il valutatore (non il compilatore completo)\n");
             warned = 1;
             continue;

@@ -16,7 +16,7 @@
 '
 ' Struttura: sezioni indipendenti (fixture e file distinti), così ogni funzione è
 ' verificata nello scenario che le altre gambe già coprono. Path ASSOLUTI in /tmp.
-' EXPECT: used=-1|selected= 1|alias=D|lastrec= 2|recno= 2|recsize>0=-1|field1=ID|deleted0= 0|neterr= 0|filter0=-1|relation0=-1|indexord0= 0|indexkey0=-1|bof0= 0|recno_top= 1|recno_skip= 2|eof_bottom= 0|eof_after=-1|deleted1=-1|deleted2= 0|get1=1|ALICE|lastrec_blank= 2|get2=2|BOB|rlock=-1|flock=-1|neterr2= 0|setdur=-1|flushdur=-1|groupbegin=-1|groupend=-1|filter0=-1|filter1=-1|lookup=A2|indexord>=-1|found=-1|recno= 2|indexkey_len>=-1|found_noord= 0|relation_called=si|setrepl=-1|appendmany= 2|lastrec= 2|lupdate=-1|apply=-1|follow=-1|ship0= 0|recv0= 0|copy= 2|appendfrom= 4|sort_exists=-1|total_exists=-1|join= 2|update= 2|validate_ok=-1|tx_ok=-1|pack= 1|zap= 0|export=-1|list=-1|aggregate=-1|rf_exists=-1|rf_alfa=-1|rf_beta=-1
+' EXPECT: used=-1|selected= 1|alias=D|lastrec= 2|recno= 2|recsize>0=-1|field1=ID|deleted0= 0|neterr= 0|filter_alias=[]|filter0=-1|relation0=-1|indexord0= 0|indexkey0=-1|bof0= 0|recno_top= 1|recno_skip= 2|eof_bottom= 0|eof_after=-1|deleted1=-1|deleted2= 0|get1=1|ALICE|lastrec_blank= 2|get2=2|BOB|rlock=-1|flock=-1|neterr2= 0|setdur=-1|flushdur=-1|groupbegin=-1|groupend=-1|filter0=-1|filter1=-1|lookup=A2|indexord>=-1|found=-1|recno= 2|indexkey_len>=-1|found_noord= 0|relation_called=si|setrepl=-1|appendmany= 2|lastrec= 2|lupdate=-1|apply=-1|follow=-1|ship0= 0|recv0= 0|copy= 2|appendfrom= 4|sort_exists=-1|total_exists=-1|join= 2|update= 2|validate_ok=-1|tx_ok=-1|pack= 1|zap= 0|export=-1|list=-1|aggregate=-1|rf_exists=-1|rf_alfa=-1|rf_beta=-1
 IMPORT DBF
 IMPORT IO
 
@@ -51,6 +51,7 @@ SUB Stato()
   PRINT "field1="; DBF.FIELDNAME(1, "D")
   PRINT "deleted0="; DBF.DELETED()
   PRINT "neterr="; DBF.NETERR()
+  PRINT "filter_alias=["; DBF.DBFILTER("D"); "]"   ' caso d uso: area per ALIAS (dai Sample)
   PRINT "filter0="; (LEN(DBF.DBFILTER()) = 0)
   PRINT "relation0="; (LEN(DBF.DBRELATION()) = 0)
   PRINT "indexord0="; DBF.INDEXORD()

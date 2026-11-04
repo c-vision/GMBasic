@@ -1,6 +1,6 @@
-' recon_stdlib.bas — ricognizione della StdLib (port BASIC di docs/comparison/recon_stdlib.py).
+' recon_stdlib.bas — ricognizione della StdLib (port BASIC del vecchio recon_stdlib.py, ritirato).
 '
-' Scansiona GMBasicSharp/common/StdLib/StdLib.*.cs e produce, in docs/comparison/:
+' Scansiona GMBasicSharp/common/StdLib/StdLib.*.cs e produce, in tools/reports/:
 '   recon-stdlib.json   dati strutturati, chiave canonica (NAMESPACE, NOME)
 '   recon-stdlib.md     report globale (sintesi, per-namespace, polimorfici, elenchi)
 '   audit-stdlib.md     audit per namespace (Comandi/Funzioni+ritorno/Tipi/Costanti)
@@ -15,7 +15,7 @@
 '   tools/basic/recon_stdlib.bas                  genera/aggiorna i tre report
 '   tools/basic/recon_stdlib.bas --check          exit 1 se i report a disco divergono
 '   tools/basic/recon_stdlib.bas --headers        aggiorna anche gli header nei .cs
-'   tools/basic/recon_stdlib.bas --out-dir DIR    cartella di output (default docs/comparison)
+'   tools/basic/recon_stdlib.bas --out-dir DIR    cartella di output (default tools/reports)
 
 IMPORT IO
 IMPORT GREP
@@ -1197,7 +1197,7 @@ FUNCTION Main() AS INTEGER
   ELSE
     g_std = g_root + "/common/StdLib"
   END IF
-  IF LEN(outdir) = 0 THEN outdir = g_root + "/docs/comparison"
+  IF LEN(outdir) = 0 THEN outdir = g_root + "/tools/reports"
   g_out = outdir
 
   ' elenco file: solo StdLib.*.cs, ordine alfabetico (deterministico)

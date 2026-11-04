@@ -108,7 +108,10 @@ void gmb_browse_sort(gmb_browse_t* b, int col, int desc) { gmb_ui_null_warn("gmb
 int gmb_browse_sort_col(const gmb_browse_t* b) { gmb_ui_null_warn("gmb_browse_sort_col"); return 0; }
 int gmb_browse_sort_dir(const gmb_browse_t* b) { gmb_ui_null_warn("gmb_browse_sort_dir"); return 0; }
 int gmb_browse_sortkeys(const gmb_browse_t* b, char* out, int cap) { gmb_ui_null_warn("gmb_browse_sortkeys"); return 0; }
-gmb_clipper_state_t* gmb_clipper_global_state(void) { gmb_ui_null_warn("gmb_clipper_global_state"); return NULL; }
+/* gmb_clipper_global_state NON è uno stub: la variante minima include il clipper VERO
+ * (src/gmb_tui_clipper.c) perché gmb_tui_io.c ne usa il mapping dei tasti. Uno stub NULL
+ * qui sarebbe un simbolo duplicato al link (ld: duplicate symbol _gmb_clipper_global_state)
+ * e, soprattutto, farebbe leggere i tasti al mapping finto. */
 gmb_rect_t gmb_managed_window_content_rect(const gmb_managed_window_t* w) { gmb_ui_null_warn("gmb_managed_window_content_rect"); gmb_rect_t z; memset(&z,0,sizeof z); return z; }
 void gmb_spinner_set_preset(gmb_spinner_t* s, const char* name) { gmb_ui_null_warn("gmb_spinner_set_preset"); }
 gmb_widget_style_t gmb_widget_style_current(void) { gmb_ui_null_warn("gmb_widget_style_current"); gmb_widget_style_t z; memset(&z,0,sizeof z); return z; }

@@ -1354,7 +1354,7 @@ internal static class Program
             foreach (Match m in Regex.Matches(txt, @"(?<![>\w.])tk\s*==\s*GMB_TOK_([A-Za-z0-9_]+)"))
                 tok.Add(m.Groups[1].Value);
             // 1quater) dispatch sul TokenKind dell'espressione corrente `value->tk == GMB_TOK_X`
-            //   (ANALYSIS.ARIMA/REGRESS/HOLTWINTERS/ADFTEST/PCA in gmb_c99_emit.c).
+            //   (TIMESERIES.Arima/REGRESS/HOLTWINTERS/ADFTEST/PCA in gmb_c99_emit.c).
             foreach (Match m in Regex.Matches(txt, @"\bvalue\s*->\s*tk\s*==\s*GMB_TOK_([A-Za-z0-9_]+)"))
                 tok.Add(m.Groups[1].Value);
             // 2) dispatcher per NOME nel percorso DIM/assign del C99Native (array-returning e

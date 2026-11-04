@@ -299,7 +299,7 @@ SUB Main()
     RETURN
   END IF
 
-  ' 1) corpus: README/AGENTS + docs (implemented/audit, backend-dispatch, comparison)
+  ' 1) corpus: README/AGENTS + report dei tool (tools/reports)
   corpus = ReadText(repo + "/README.md")
   chunk = ReadText(repo + "/AGENTS.md")
   IF LEN(chunk) > 0 THEN
@@ -307,9 +307,9 @@ SUB Main()
     nFiles = 1
   END IF
   DIM dirs(3) AS STRING
-  dirs(0) = "/docs/implemented/audit"
-  dirs(1) = "/docs/implemented/audit/backend-dispatch"
-  dirs(2) = "/docs/comparison"
+  dirs(0) = "/tools/reports"
+  dirs(1) = "/tools/reports/manifests"
+  dirs(2) = "/tools/reports"
   FOR k = 0 TO 2
     DIM files$ = IO.DIR(repo + dirs(k) + "/*.md")
     FOR i = 0 TO UBOUND(files$)
