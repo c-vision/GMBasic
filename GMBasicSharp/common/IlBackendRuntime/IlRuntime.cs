@@ -15074,13 +15074,43 @@ public static double TextWidth(string s)
             }
         }
         var t = instance.GetType();
-        var gProp = t.GetProperty(methodName, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase);
+        System.Reflection.PropertyInfo? gProp = null;
+        if (args.Length == 0)
+        {
+            try
+            {
+                gProp = t.GetProperty(methodName, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase);
+            }
+            catch (System.Reflection.AmbiguousMatchException)
+            {
+                /* Più property con lo stesso nome a meno del case: prendi la prima
+                 * senza indicizzatore (le indexer hanno parametri e non sono "letture"). */
+                gProp = t.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+                    .FirstOrDefault(pp => pp.GetIndexParameters().Length == 0
+                        && pp.Name.Equals(methodName, StringComparison.OrdinalIgnoreCase)
+                        && pp.CanRead);
+            }
+        }
         if (gProp != null && args.Length == 0)
         {
             var gPropGet = gProp.GetGetMethod();
             if (gPropGet != null) return gPropGet.Invoke(instance, null);
         }
-        var m = t.GetMethod(methodName, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase)
+        /* Selezione DETERMINISTICA dell'overload. `Type.GetMethod(nome, flags)` lancia
+         * AmbiguousMatchException quando il tipo ha PIÙ overload con lo stesso nome a meno
+         * del case, anche se la chiamata BASIC ha arità non ambigua: `t.Sort()` su
+         * List<object> trovava `Sort()` e `Sort(Comparison<object>)` → [P-CODE ERROR]
+         * "Ambiguous match found" (minitest collections/list_methods_parity). Si filtra per
+         * ARITÀ (più i parametri opzionali) come fa il dispatcher PCode, preferendo
+         * l'overload con il minor numero di parametri compatibile. */
+        var m = t.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+            .Where(mm => mm.Name.Equals(methodName, StringComparison.OrdinalIgnoreCase)
+                         && !mm.IsSpecialName
+                         && mm.GetParameters().Length >= args.Length
+                         && (mm.GetParameters().Length == args.Length
+                             || mm.GetParameters().Skip(args.Length).All(pp => pp.IsOptional)))
+            .OrderBy(mm => mm.GetParameters().Length)
+            .FirstOrDefault()
             ?? throw new NotSupportedException($"Backend IL: metodo runtime '{methodName}' non trovato su '{t.Name}'.");
         try
         {
