@@ -11329,7 +11329,6 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                 if (cv && cv->gkind && (gk_is_list(cv->gkind) || gk_is_dict(cv->gkind) || cv->gkind == GK_GRAPH)) {
                     const char* m2 = cd2 + 1;
                     int mk = gmb_member_tok(m2);
-                    if (strstr(name, "MyTimeline") || strstr(name, "MyBPTree") || strstr(name, "MyRing")) fprintf(stderr, "[dbg-coll] name=%s cv=%s gkind=%d tc=%d mk=%d nargs=%d m2=%s\n", name, cv->name, cv->gkind, cv->coll_type_code, mk, nargs, m2);
                     int is_list_fam = gk_is_list(cv->gkind);
                     int is_str_el = cv->elem_str;
                     int is_set = cv->gkind == GK_SET;
