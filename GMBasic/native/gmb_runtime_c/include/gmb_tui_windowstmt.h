@@ -106,6 +106,8 @@ int  gmb_winstmt_pixel_control_at(const char* name, int x, int y);   /* 1=close 
 int  gmb_winstmt_pixel_resize_edge_at(const char* name, int x, int y); /* N=1 S=2 E=4 W=8 */
 int  gmb_winstmt_pixel_taskbar_chip_at(int x, int y);                 /* id o -1 */
 void gmb_winstmt_set_colors(const char* name, unsigned int body, unsigned int fg, unsigned int title);
+/* Mouse sulle finestre PIXEL (kind: 0=down 1=release 2=move), coordinate LOGICHE. */
+int  gmb_winstmt_pixel_handle_mouse(int kind, int x, int y);
 
 #ifdef __cplusplus
 }

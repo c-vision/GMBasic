@@ -1,19 +1,18 @@
 // FILE: CommonGraphics.Graphics.GfxWindowManager.cs
-// Fase F2 del piano Window-Pixel-Based: compositor di finestre PIXEL su schermo grafico.
-// Ogni finestra è un PixelWindow con rect in PIXEL LOGICI (x,y,w,h), titlebar, bordo
-// arrotondato, ombra, z-order, stato (Floating/Snapped/Maximized/Minimized). La macchina
-// a stati (focus, drag, resize, snap, min/max/close) replica ClipperLib.WindowManager ma
-// in pixel-space. Il rendering avviene sul buffer della pagina attiva via i primitivi
-// Gfx* (GfxWindowCanvas) — tutto headless-safe (renderer software incluso).
 //
-// NOTA architetturale: il WindowManager cell-based (ClipperLib) resta il default; questo
-// è il manager SEPARATO usato dalle finestre con clausola PIXEL in WINDOW DEFINE.
+// Window manager PIXEL — <b>proxy P/Invoke</b> sul runtime C.
+//
+// Lo stato (finestre, z-order, focus, id, desktop, drag/resize, colori, contenuto) vive
+// SOLO in C: `gmb_window_manager_static()` (rect/ordine/stato) + il modello `gmb_winstmt_*`
+// (DEFINE, compositor, hit-test, mouse). Questa classe non tiene nessuna lista né uno stato
+// duplicato: la vecchia implementazione C# (777 righe con stato e renderer propri) è
+// archiviata in GMBasicMonoRepo-Deprecated/CommonGraphics/Graphics/GfxWindowManager.cs.
+//
+// La geometria è in PIXEL LOGICI (title 24, padding client 6, pulsanti a destra, bordo
+// resize 4 px) come nel vecchio compositor: le API C espongono esattamente questi valori.
 
-using System.Runtime.InteropServices;
 using Basic;
 using SDL2;
-
-// ReSharper disable InconsistentNaming
 
 namespace CommonGraphics.Graphics;
 
@@ -24,104 +23,183 @@ public enum GfxWindowState
     SnappedLeft,
     SnappedRight,
     Maximized,
-    Minimized,
+    Tiled,
+    Minimized
 }
 
-/// <summary>Zona di snap per una finestra pixel.</summary>
+/// <summary>Zona di snap pixel: metà sinistra o destra.</summary>
 public enum GfxSnapZone
 {
     Left,
-    Right,
+    Right
 }
 
-/// <summary>Finestra pixel gestita dal GfxWindowManager.</summary>
+/// <summary>Finestra pixel: binding sottile sulla finestra C (gmb_managed_window_t).</summary>
 public sealed class PixelWindow
 {
-    public int Id { get; set; }
-    public string Name { get; set; } = "";
-    public string Title { get; set; } = "";
-    public int X { get; set; }
-    public int Y { get; set; }
-    public int W { get; set; }
-    public int H { get; set; }
-    public int Z { get; set; }
-    public GfxWindowState State { get; set; } = GfxWindowState.Floating;
-    /// <summary>Desktop virtuale di appartenenza (1-based, default 1). Parità col
-    /// WindowManager TUI (ClipperLib.Controls): le finestre di altri desktop non vengono
-    /// renderizzate né colpite da hit-test finché SwitchDesktop non ci porta lì.</summary>
-    public int Desktop { get; set; } = 1;
-    public int RestoreX, RestoreY, RestoreW, RestoreH;
-    public bool Focused { get; set; }
-    public bool Shadow { get; set; } = true;
-    public int BorderRadius { get; set; } = 6;
-    public bool Closable { get; set; } = true;
-    public bool Draggable { get; set; } = true;
-    public bool Resizable { get; set; } = true;
+    // 0 = istanza STACCATA (snapshot locale, es. SAVESCREEN). != 0 → tutte le proprietà
+    // leggono/scrivono la finestra C.
+    internal IntPtr C;
 
-    // ── Colori (ARGB). Default = tema scuro attuale; COLOR fg,bg con finestra attiva li cambia. ──
-    /// <summary>Colore di sfondo del corpo della finestra (0xAARRGGBB).</summary>
-    public uint BodyColor { get; set; } = 0xFF14161C;
-    /// <summary>Colore del testo del contenuto (0xAARRGGBB).</summary>
-    public uint FgColor { get; set; } = 0xFFD0D6E0;
-    /// <summary>Colore del titolo nella titlebar (0xAARRGGBB).</summary>
-    public uint TitleColor { get; set; } = 0xFFD6DCE6;
+    private int _id, _x, _y, _w, _h, _z, _state, _desktop = 1, _scroll, _curLine, _curCol;
+    private int _rx, _ry, _rw, _rh, _radius = 6;
+    private bool _minimized, _focused, _closable = true, _draggable = true, _resizable = true, _shadow = true;
+    private uint _bodyColor = 0xFF14161C, _fgColor = 0xFFD0D6E0, _titleColor = 0xFFD6DCE6;
+    private string _title = "", _name = "";
+    private List<string> _localLines = [];
 
-    // ── Contenuto (buffer testo, come ManagedWindow.Lines) ──
-    public List<string> Lines { get; set; } = [];
-    public int ScrollOffset { get; set; }
-    public bool Editable { get; set; }
-    public int CursorLine { get; set; }
-    public int CursorCol { get; set; }
+    // id dei campi del binding C (gmb_tui_windowmanager.c: enum GMB_MWF_*)
+    private const int F_X = 0, F_Y = 1, F_W = 2, F_H = 3, F_Z = 4, F_STATE = 5,
+        F_SHADOW = 8, F_FOCUSED = 9, F_MINIMIZED = 10, F_DESKTOP = 11,
+        F_CURSOR_LINE = 12, F_CURSOR_COL = 13, F_SCROLL = 14, F_CLOSABLE = 16,
+        F_DRAGGABLE = 17, F_ID = 18, F_RX = 19, F_RY = 20, F_RW = 21, F_RH = 22,
+        F_EDITABLE = 23, F_BODY_COLOR = 24, F_FG_COLOR = 25, F_TITLE_COLOR = 26,
+        F_PIXEL = 27, F_RADIUS = 28, F_RESIZABLE = 29;
 
-    /// <summary>Altezza titlebar in pixel logici.</summary>
+    private int Get(int f, int local) => C != IntPtr.Zero ? GfxWmNative.GetInt(C, f) : local;
+    private void Set(int f, int v) { if (C != IntPtr.Zero) GfxWmNative.SetInt(C, f, v); }
+
+    public int Id { get => Get(F_ID, _id); set => _id = value; }
+    public string Name
+    {
+        get => C != IntPtr.Zero ? GfxWmNative.GetStr(C, 1) : _name;
+        set { _name = value ?? ""; if (C != IntPtr.Zero) GfxWmNative.SetStr(C, 1, _name); }
+    }
+    public string Title
+    {
+        get => C != IntPtr.Zero ? GfxWmNative.GetStr(C, 0) : _title;
+        set { _title = value ?? ""; if (C != IntPtr.Zero) GfxWmNative.SetStr(C, 0, _title); }
+    }
+    public int X { get => Get(F_X, _x); set { _x = value; Set(F_X, value); } }
+    public int Y { get => Get(F_Y, _y); set { _y = value; Set(F_Y, value); } }
+    public int W { get => Get(F_W, _w); set { _w = value; Set(F_W, value); } }
+    public int H { get => Get(F_H, _h); set { _h = value; Set(F_H, value); } }
+    public int Z { get => Get(F_Z, _z); set { _z = value; Set(F_Z, value); } }
+
+    /// <summary>Stato: mappato fra GfxWindowState (C#) e stati C (0 floating, 1 maximized,
+    /// 2 minimized, 3 snapped-left, 4 snapped-right, 5 tiled).</summary>
+    public GfxWindowState State
+    {
+        get
+        {
+            if (Get(F_MINIMIZED, _minimized ? 1 : 0) != 0) return GfxWindowState.Minimized;
+            return Get(F_STATE, _state) switch
+            {
+                1 => GfxWindowState.Maximized,
+                3 => GfxWindowState.SnappedLeft,
+                4 => GfxWindowState.SnappedRight,
+                5 => GfxWindowState.Tiled,
+                _ => GfxWindowState.Floating,
+            };
+        }
+        set
+        {
+            _state = (int)value;
+            if (C == IntPtr.Zero) { _minimized = value == GfxWindowState.Minimized; return; }
+            Set(F_MINIMIZED, value == GfxWindowState.Minimized ? 1 : 0);
+            Set(F_STATE, value switch
+            {
+                GfxWindowState.Maximized => 1,
+                GfxWindowState.SnappedLeft => 3,
+                GfxWindowState.SnappedRight => 4,
+                GfxWindowState.Tiled => 5,
+                _ => 0,
+            });
+        }
+    }
+
+    public int RestoreX { get => Get(F_RX, _rx); set { _rx = value; Set(F_RX, value); } }
+    public int RestoreY { get => Get(F_RY, _ry); set { _ry = value; Set(F_RY, value); } }
+    public int RestoreW { get => Get(F_RW, _rw); set { _rw = value; Set(F_RW, value); } }
+    public int RestoreH { get => Get(F_RH, _rh); set { _rh = value; Set(F_RH, value); } }
+    public bool Focused { get => Get(F_FOCUSED, _focused ? 1 : 0) != 0; set { _focused = value; Set(F_FOCUSED, value ? 1 : 0); } }
+    public bool Shadow { get => Get(F_SHADOW, _shadow ? 1 : 0) != 0; set { _shadow = value; Set(F_SHADOW, value ? 1 : 0); } }
+    public int BorderRadius { get => Get(F_RADIUS, _radius); set { _radius = value; Set(F_RADIUS, value); } }
+    public bool Closable { get => Get(F_CLOSABLE, _closable ? 1 : 0) != 0; set { _closable = value; Set(F_CLOSABLE, value ? 1 : 0); } }
+    public bool Draggable { get => Get(F_DRAGGABLE, _draggable ? 1 : 0) != 0; set { _draggable = value; Set(F_DRAGGABLE, value ? 1 : 0); } }
+    public bool Resizable { get => Get(F_RESIZABLE, _resizable ? 1 : 0) != 0; set { _resizable = value; Set(F_RESIZABLE, value ? 1 : 0); } }
+    public int Desktop { get => Get(F_DESKTOP, _desktop); set { _desktop = value; Set(F_DESKTOP, value); } }
+
+    /// <summary>Colori per-finestra (ARGB). 0 = colore del tema.</summary>
+    public uint BodyColor { get => (uint)Get(F_BODY_COLOR, (int)_bodyColor); set { _bodyColor = value; Set(F_BODY_COLOR, (int)value); } }
+    public uint FgColor { get => (uint)Get(F_FG_COLOR, (int)_fgColor); set { _fgColor = value; Set(F_FG_COLOR, (int)value); } }
+    public uint TitleColor { get => (uint)Get(F_TITLE_COLOR, (int)_titleColor); set { _titleColor = value; Set(F_TITLE_COLOR, (int)value); } }
+
+    public List<string> Lines
+    {
+        get
+        {
+            if (C == IntPtr.Zero) return _localLines;
+            var n = GfxWmNative.LinesCount(C);
+            var list = new List<string>(n);
+            for (var i = 0; i < n; i++) list.Add(GfxWmNative.GetLine(C, i));
+            return list;
+        }
+        set
+        {
+            _localLines = value?.ToList() ?? [];
+            if (C == IntPtr.Zero) return;
+            GfxWmNative.LinesClear(C);
+            foreach (var line in _localLines) GfxWmNative.LineInsert(C, GfxWmNative.LinesCount(C), line);
+        }
+    }
+
+    public int ScrollOffset { get => Get(F_SCROLL, _scroll); set { _scroll = value; Set(F_SCROLL, value); } }
+    public bool Editable { get => Get(F_EDITABLE, _editable ? 1 : 0) != 0; set { _editable = value; Set(F_EDITABLE, value ? 1 : 0); } }
+    private bool _editable;
+    public int CursorLine { get => Get(F_CURSOR_LINE, _curLine); set { _curLine = value; Set(F_CURSOR_LINE, value); } }
+    public int CursorCol { get => Get(F_CURSOR_COL, _curCol); set { _curCol = value; Set(F_CURSOR_COL, value); } }
+
     public int TitleHeight => 24;
-
-    /// <summary>Margine interno (padding) del client area in pixel logici.</summary>
     public int ClientPadding => 6;
 
-    /// <summary>Rettangolo client (esclusi titlebar e bordo).</summary>
+    /// <summary>Rettangolo client in pixel logici (title 24, padding 6): dal C.</summary>
     public (int x, int y, int w, int h) ClientRect
     {
         get
         {
-            var pad = ClientPadding;
-            return (X + pad, Y + TitleHeight, W - 2 * pad, H - TitleHeight - pad);
+            if (C != IntPtr.Zero)
+            {
+                var r = new int[4];
+                GfxWmNative.gmb_managed_window_client_rect_px(C, r);
+                return (r[0], r[1], r[2], r[3]);
+            }
+            return (X + ClientPadding, Y + TitleHeight, W - 2 * ClientPadding, H - TitleHeight - ClientPadding);
         }
     }
 
     public void AppendLine(string line)
     {
         var cr = ClientRect;
-        var wasAtBottom = ScrollOffset + cr.h >= Lines.Count || Lines.Count == 0;
-        Lines.Add(line ?? "");
-        if (wasAtBottom && Lines.Count > cr.h / 16)
-            ScrollOffset = Lines.Count - cr.h / 16;
+        var rowH = Math.Max(1, GfxWindowManager.CharHeight());
+        var wasAtBottom = ScrollOffset + cr.h >= Lines.Count * rowH || Lines.Count == 0;
+        if (C != IntPtr.Zero) GfxWmNative.LineInsert(C, GfxWmNative.LinesCount(C), line ?? "");
+        else _localLines.Add(line ?? "");
+        if (wasAtBottom && Lines.Count > Math.Max(1, cr.h / rowH))
+            ScrollOffset = Lines.Count - Math.Max(1, cr.h / rowH);
     }
 
-    /// <summary>Scrive un testo alla riga/colonna RELATIVA del client area (0-based).
-    /// Colonna e riga sono in caratteri (layout colonne/righe nel client area).</summary>
     public string SayAt(int row, int col, string text)
     {
         var cr = ClientRect;
-        var charW = GfxWindowManager.CharWidth();
-        var charH = GfxWindowManager.CharHeight();
-        if (charW <= 0) charW = 8;
-        if (charH <= 0) charH = 16;
+        var charW = Math.Max(1, GfxWindowManager.CharWidth());
+        var charH = Math.Max(1, GfxWindowManager.CharHeight());
         var maxCols = Math.Max(1, cr.w / charW);
-        var maxRows = Math.Max(1, cr.h / charH);
         var absRow = ScrollOffset + row;
-        while (Lines.Count <= absRow) Lines.Add("");
-        var line = Lines[absRow];
+        var lines = Lines;
+        while (lines.Count <= absRow) lines.Add("");
+        var line = lines[absRow];
         var start = Math.Max(0, Math.Min(col, maxCols - 1));
         if (line.Length < start) line = line.PadRight(start);
         var n = Math.Min(text?.Length ?? 0, maxCols - start);
         var piece = (text ?? "")[..n];
         line = line.Remove(start, Math.Min(piece.Length, line.Length - start)).Insert(start, piece);
-        Lines[absRow] = line;
+        lines[absRow] = line;
+        if (C != IntPtr.Zero) GfxWmNative.LineSet(C, absRow, line);
+        else _localLines = lines;
         return line;
     }
 
-    /// <summary>Disegna un box (bordi) nel buffer con coordinate relative al client area.</summary>
     public void BoxAt(int top, int left, int bottom, int right, string? border)
     {
         var b = (border ?? "single") switch { "double" => "╔═╗║║╚═╝", "none" => "", _ => "┌─┐││└─┘" };
@@ -142,7 +220,7 @@ public sealed class PixelWindow
         SayAt(bottom, right, b[7].ToString());
     }
 
-    /// <summary>Snapshot del buffer (SAVESCREEN sulla finestra pixel).</summary>
+    /// <summary>Snapshot STACCATO (SAVESCREEN sulla finestra pixel).</summary>
     public PixelWindow Snapshot() => new()
     {
         Id = Id, Name = Name, Title = Title, X = X, Y = Y, W = W, H = H, Z = Z,
@@ -153,7 +231,6 @@ public sealed class PixelWindow
         Editable = Editable, CursorLine = CursorLine, CursorCol = CursorCol,
     };
 
-    /// <summary>Ripristina lo snapshot del buffer (RESTORESCREEN sulla finestra pixel).</summary>
     public void RestoreFrom(PixelWindow snap)
     {
         Lines = [.. snap.Lines];
@@ -164,614 +241,214 @@ public sealed class PixelWindow
     }
 }
 
-/// <summary>Compositor di finestre pixel sul buffer della pagina grafica attiva.</summary>
+/// <summary>Compositor di finestre pixel: proxy sul runtime C (nessuno stato locale).</summary>
 public sealed class GfxWindowManager
 {
-    private readonly List<PixelWindow> windows = [];
-    private int? focus;
-    private int? active;
-    private int nextId = 1;
-    private int nextZ = 1;
-    private int workW = 640;
-    private int workH = 480;
-    private (int id, int offX, int offY)? dragState;
-    private (int id, int sx, int sy, int sw, int sh, string edge)? resizeState;
+    private static IntPtr M => GfxWmNative.gmb_window_manager_static();
 
-    public int ScreenW { get => workW; set => workW = Math.Max(1, value); }
-    public int ScreenH { get => workH; set => workH = Math.Max(1, value); }
+    public GfxWindowManager()
+    {
+        // Finestre pixel e TUI convivono nel manager C: si distinguono per il flag `pixel`.
+    }
 
-    // ── Virtual Desktops ─────────────────────────────────────────
-    /// <summary>Desktop virtuale attivo (1-based, default 1). Parità TUI.</summary>
-    public int CurrentDesktop { get; private set; } = 1;
+    public int ScreenW
+    {
+        get { var r = new int[4]; GfxWmNative.gmb_window_manager_work_area4(M, r); return r[2]; }
+        set => GfxWmNative.SyncWorkArea(Math.Max(1, value), ScreenH);
+    }
 
-    /// <summary>Cambia desktop attivo: le window filtrate ricadono sul nuovo desktop e il
-    /// focus/active si riallineano alla finestra visibile più alta (se il vecchio focus
-    /// non è sul desktop nuovo).</summary>
+    public int ScreenH
+    {
+        get { var r = new int[4]; GfxWmNative.gmb_window_manager_work_area4(M, r); return r[3]; }
+        set => GfxWmNative.SyncWorkArea(ScreenW, Math.Max(1, value));
+    }
+
+    public int CurrentDesktop => GfxWmNative.gmb_window_manager_current_desktop(M);
+
     public void SwitchDesktop(int desktop)
     {
-        CurrentDesktop = Math.Max(1, desktop);
-        if (focus is int fid && Get(fid) is { } fw && fw.Desktop != CurrentDesktop)
-        {
-            focus = windows.Where(w => w.Desktop == CurrentDesktop && w.State != GfxWindowState.Minimized)
-                           .OrderByDescending(w => w.Z).FirstOrDefault()?.Id;
-            active = focus;
-            foreach (var w in windows)
-                w.Focused = w.Id == focus;
-        }
+        var d = Math.Max(1, desktop);
+        GfxWmNative.gmb_window_manager_switch_desktop(M, d);
+        GfxWmNative.gmb_winstmt_desktop(d);
     }
 
-    /// <summary>Sposta una finestra su un desktop virtuale (se non è sul desktop attivo,
-    /// perde il focus/active come nel TUI).</summary>
     public void MoveWindowToDesktop(int id, int desktop)
+        => GfxWmNative.gmb_window_manager_move_to_desktop(M, id, Math.Max(1, desktop));
+
+    /// <summary>Finestre PIXEL (tutte, come la vecchia lista `windows`).</summary>
+    public IReadOnlyList<PixelWindow> Windows
     {
-        if (Get(id) is not { } w) return;
-        w.Desktop = Math.Max(1, desktop);
-        if (w.Desktop != CurrentDesktop && focus == id)
+        get
         {
-            focus = windows.Where(x => x.Desktop == CurrentDesktop && x.State != GfxWindowState.Minimized)
-                           .OrderByDescending(x => x.Z).FirstOrDefault()?.Id;
-            active = focus;
-            foreach (var x in windows)
-                x.Focused = x.Id == focus;
+            var list = new List<PixelWindow>();
+            var total = GfxWmNative.gmb_window_manager_window_count(M, 0);
+            for (var i = 0; i < total; i++)
+            {
+                var id = GfxWmNative.gmb_window_manager_window_id_at(M, i);
+                var w = Get(id);
+                if (w is not null) list.Add(w);
+            }
+            return list;
         }
     }
 
-    public IReadOnlyList<PixelWindow> Windows => windows;
-
-    /// <summary>Id della finestra attiva (viewport output corrente), o null.</summary>
-    public int? ActiveId => active;
-
-    // ── CRUD ─────────────────────────────────────────────────────
+    public int? ActiveId => FocusedId;
 
     public int AddWindow(string name, string title, int x, int y, int w, int h, bool shadow = true)
     {
-        var id = nextId++;
-        var win = new PixelWindow
+        var id = GfxWmNative.Define(name, title, x, y, Math.Max(16, w), Math.Max(24, h), shadow);
+        if (id < 0) return -1;
+        if (Get(id) is { } win)
         {
-            Id = id,
-            Name = name,
-            Title = title,
-            X = x,
-            Y = y,
-            W = Math.Max(16, w),
-            H = Math.Max(24, h),
-            Z = nextZ++,
-            State = GfxWindowState.Floating,
-            RestoreX = x,
-            RestoreY = y,
-            RestoreW = Math.Max(16, w),
-            RestoreH = Math.Max(24, h),
-            Shadow = shadow,
-        };
-        windows.Add(win);
-        focus = id;
-        active = id;
-        win.Focused = true;
+            win.Closable = true;
+            win.Draggable = true;
+            win.Resizable = true;
+            win.BorderRadius = 6;
+        }
+        GfxWmNative.gmb_window_manager_raise(M, id);
         return id;
     }
 
-    public PixelWindow? Get(int id) => windows.Find(w => w.Id == id);
-    public PixelWindow? Find(string name) => windows.Find(w =>
-        w.Name.Equals(name, StringComparison.OrdinalIgnoreCase)
-        || w.Title.Equals(name, StringComparison.OrdinalIgnoreCase));
-
-    public int? FocusedId => focus;
-
-    /// <summary>Finestre ordinate per z (dalla più bassa alla più alta), SOLO quelle del
-    /// desktop corrente (finestre di altri desktop non sono visibili).</summary>
-    public List<PixelWindow> ZOrdered => [.. windows.Where(w => w.Desktop == CurrentDesktop).OrderBy(w => w.Z)];
-
-    /// <summary>Il desktop corrente ha finestre non minimizzate (per far mostrare la
-    /// taskbar anche senza minimizzate, se un desktop è vuoto).</summary>
-    public int WindowCount => windows.Count(w => w.Desktop == CurrentDesktop);
-
-    public PixelWindow? TopmostAt(int x, int y) =>
-        windows
-            .Where(w => w.Desktop == CurrentDesktop && w.State != GfxWindowState.Minimized && x >= w.X && x < w.X + w.W && y >= w.Y && y < w.Y + w.H)
-            .OrderByDescending(w => w.Z)
-            .FirstOrDefault();
-
-    public void Raise(int id)
+    public PixelWindow? Get(int id)
     {
-        var w = Get(id);
-        if (w == null) return;
-        w.Z = nextZ++;
-        w.Focused = true;
-        focus = id;
-        active = id;
+        var ptr = GfxWmNative.gmb_window_manager_get(M, id);
+        if (ptr == IntPtr.Zero) return null;
+        if (GfxWmNative.GetInt(ptr, 27 /* F_PIXEL */) == 0) return null;   // finestra TUI
+        return new PixelWindow { C = ptr };
     }
+
+    public PixelWindow? Find(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return null;
+        var id = GfxWmNative.Id(name);
+        var w = id >= 0 ? Get(id) : null;
+        if (w is not null) return w;
+        // fallback per titolo
+        foreach (var p in Windows)
+            if (string.Equals(p.Title, name, StringComparison.OrdinalIgnoreCase)) return p;
+        return null;
+    }
+
+    public int? FocusedId
+    {
+        get
+        {
+            var id = GfxWmNative.gmb_window_manager_focused(M);
+            if (id < 0) return null;
+            return GfxWmNative.GetInt(GfxWmNative.gmb_window_manager_get(M, id), 27) != 0 ? id : null;
+        }
+    }
+
+    public List<PixelWindow> ZOrdered =>
+        [.. Windows.Where(w => w.Desktop == CurrentDesktop).OrderBy(w => w.Z)];
+
+    public int WindowCount => Windows.Count(w => w.Desktop == CurrentDesktop);
+
+    public PixelWindow? TopmostAt(int x, int y)
+    {
+        var id = GfxWmNative.gmb_window_manager_topmost_at(M, x, y);
+        return id >= 0 ? Get(id) : null;
+    }
+
+    public void Raise(int id) => GfxWmNative.gmb_window_manager_raise(M, id);
 
     public void Select(int? id)
     {
-        active = id;
-        if (id is int nid && Get(nid) is { } w)
-        {
-            focus = nid;
-            w.Focused = true;
-        }
+        if (id is int nid) GfxWmNative.gmb_window_manager_select(M, nid);
+        else GfxWmNative.gmb_window_manager_clear_focus(M);
     }
 
     public void Close(int id)
     {
-        windows.RemoveAll(w => w.Id == id);
-        if (focus == id)
-        {
-            focus = windows.Count > 0 ? windows.MaxBy(w => w.Z)?.Id : null;
-            active = focus;
-        }
+        var wasFocused = FocusedId == id;
+        GfxWmNative.gmb_window_manager_remove(M, id);
+        if (wasFocused) { /* il C azzera il focus: nessuna finestra attiva */ }
     }
 
-    // ── Azioni stato ──────────────────────────────────────────────
-
-    public void MoveTo(int id, int x, int y)
-    {
-        var w = Get(id);
-        if (w == null) return;
-        w.X = Math.Clamp(x, 0, Math.Max(0, workW - w.W));
-        w.Y = Math.Clamp(y, 0, Math.Max(0, workH - w.H));
-        if (w.State == GfxWindowState.Floating)
-        {
-            w.RestoreX = w.X;
-            w.RestoreY = w.Y;
-        }
-    }
+    public void MoveTo(int id, int x, int y) => GfxWmNative.gmb_window_manager_move_to(M, id, x, y);
 
     public void ResizeTo(int id, int wNew, int hNew)
     {
         var w = Get(id);
-        if (w == null) return;
-        w.W = Math.Max(16, wNew);
-        w.H = Math.Max(24, hNew);
+        if (w is null) return;
+        GfxWmNative.gmb_window_manager_resize_by(M, id, Math.Max(16, wNew) - w.W, Math.Max(24, hNew) - w.H);
     }
 
     public void Snap(int id, GfxSnapZone zone)
-    {
-        var w = Get(id);
-        if (w == null) return;
-        if (w.State != GfxWindowState.Floating)
-        {
-            w.RestoreX = w.X; w.RestoreY = w.Y; w.RestoreW = w.W; w.RestoreH = w.H;
-        }
-        var half = workW / 2;
-        if (zone == GfxSnapZone.Left)
-        {
-            w.X = 0; w.Y = 0; w.W = half; w.H = workH;
-            w.State = GfxWindowState.SnappedLeft;
-        }
-        else
-        {
-            w.X = half; w.Y = 0; w.W = workW - half; w.H = workH;
-            w.State = GfxWindowState.SnappedRight;
-        }
-    }
+        => GfxWmNative.gmb_window_manager_snap_zone(M, id, zone == GfxSnapZone.Left ? 0 : 1);
 
-    public void MaximizeToggle(int id)
-    {
-        var w = Get(id);
-        if (w == null) return;
-        if (w.State == GfxWindowState.Maximized)
-        {
-            w.X = w.RestoreX; w.Y = w.RestoreY; w.W = w.RestoreW; w.H = w.RestoreH;
-            w.State = GfxWindowState.Floating;
-        }
-        else
-        {
-            w.RestoreX = w.X; w.RestoreY = w.Y; w.RestoreW = w.W; w.RestoreH = w.H;
-            w.X = 0; w.Y = 0; w.W = workW; w.H = workH;
-            w.State = GfxWindowState.Maximized;
-        }
-    }
+    public void MaximizeToggle(int id) => GfxWmNative.gmb_window_manager_maximize_toggle(M, id);
 
-    public void Minimize(int id)
-    {
-        var w = Get(id);
-        if (w == null) return;
-        w.State = GfxWindowState.Minimized;
-        w.Focused = false;
-        if (focus == id)
-        {
-            focus = windows.Where(x => x.State != GfxWindowState.Minimized).MaxBy(x => x.Z)?.Id;
-            active = focus;
-        }
-    }
+    public void Minimize(int id) => GfxWmNative.gmb_window_manager_minimize(M, id);
 
     public void Restore(int id)
     {
         var w = Get(id);
-        if (w == null) return;
-        if (w.State == GfxWindowState.Minimized)
-        {
-            w.State = GfxWindowState.Floating;
-            Raise(id);
-        }
+        if (w is null || w.State != GfxWindowState.Minimized) return;
+        GfxWmNative.gmb_window_manager_restore(M, id);
+        GfxWmNative.gmb_window_manager_unminimize(M, id);
+        Raise(id);
     }
 
-    // ── Drag / Resize ─────────────────────────────────────────────
+    public bool IsDragging => GfxWmNative.gmb_window_manager_is_dragging(M) != 0;
 
-    public bool IsDragging => dragState.HasValue;
-
-    public void StartDrag(int id, int x, int y)
-    {
-        var w = Get(id);
-        if (w is { Draggable: true, State: GfxWindowState.Floating })
-            dragState = (id, x - w.X, y - w.Y);
-    }
-
-    public void UpdateDrag(int x, int y)
-    {
-        if (dragState is not { } ds) return;
-        var w = Get(ds.id);
-        if (w == null) { dragState = null; return; }
-        w.X = Math.Clamp(x - ds.offX, 0, Math.Max(0, workW - w.W));
-        w.Y = Math.Clamp(y - ds.offY, 0, Math.Max(0, workH - w.H));
-    }
-
-    public void EndDrag() => dragState = null;
+    public void StartDrag(int id, int x, int y) => GfxWmNative.gmb_window_manager_start_drag(M, id, x, y);
+    public void UpdateDrag(int x, int y) => GfxWmNative.gmb_window_manager_update_drag(M, x, y);
+    public void EndDrag() => GfxWmNative.gmb_window_manager_end_drag(M);
 
     public void StartResize(int id, int x, int y, string edge)
     {
         var w = Get(id);
-        if (w == null || !w.Resizable || w.State != GfxWindowState.Floating) return;
-        resizeState = (id, x, y, w.W, w.H, edge);
+        if (w is null || !w.Resizable || w.State != GfxWindowState.Floating) return;
+        GfxWmNative.StartResize(M, id, x, y, edge);
     }
 
-    public void UpdateResize(int x, int y)
-    {
-        if (resizeState is not { } rs) return;
-        var w = Get(rs.id);
-        if (w == null) { resizeState = null; return; }
-        var dx = x - rs.sx;
-        var dy = y - rs.sy;
-        var nw = rs.sw;
-        var nh = rs.sh;
-        if (rs.edge.Contains('e')) nw = Math.Max(16, rs.sw + dx);
-        if (rs.edge.Contains('s')) nh = Math.Max(24, rs.sh + dy);
-        if (rs.edge.Contains('w')) { nw = Math.Max(16, rs.sw - dx); w.X = w.X + (rs.sw - nw); }
-        if (rs.edge.Contains('n')) { nh = Math.Max(24, rs.sh - dy); w.Y = w.Y + (rs.sh - nh); }
-        w.X = Math.Clamp(w.X, 0, Math.Max(0, workW - w.W));
-        w.Y = Math.Clamp(w.Y, 0, Math.Max(0, workH - w.H));
-        w.W = nw;
-        w.H = nh;
-        w.State = GfxWindowState.Floating;
-    }
+    public void UpdateResize(int x, int y) => GfxWmNative.gmb_window_manager_update_resize(M, x, y);
+    public void EndResize() => GfxWmNative.gmb_window_manager_end_resize(M);
 
-    public void EndResize() => resizeState = null;
+    /// <summary>Controllo titlebar sotto il punto: "close" / "maximize" / "minimize" / null (C).</summary>
+    public string? ControlAt(PixelWindow w, int x, int y) =>
+        GfxWmNative.ControlAt(w.Name, x, y) switch
+        {
+            1 => "close",
+            2 => "minimize",
+            3 => "maximize",
+            _ => null
+        };
 
-    /// <summary>Quale controllo titlebar si trova in (x,y): null / Minimize / Maximize / Close.</summary>
-    public string? ControlAt(PixelWindow w, int x, int y)
-    {
-        if (y < w.Y || y >= w.Y + w.TitleHeight || w.W < 40) return null;
-        var closeX = w.X + w.W - 24;
-        var maxX = closeX - 24;
-        var minX = maxX - 24;
-        if (x >= closeX && x < closeX + 20) return "close";
-        if (x >= maxX && x < maxX + 20) return "maximize";
-        if (x >= minX && x < minX + 20) return "minimize";
-        return null;
-    }
-
-    /// <summary>Bordo di resize sotto il cursore: null / "e" / "s" / "w" / "n" / "se" / ...</summary>
+    /// <summary>Bordo di resize sotto il cursore: "n"/"s"/"e"/"w"/"ne"/... o null (C).</summary>
     public string? ResizeEdgeAt(PixelWindow w, int x, int y)
     {
         if (!w.Resizable || w.State != GfxWindowState.Floating) return null;
-        const int edge = 4;
-        var onE = Math.Abs(x - (w.X + w.W)) <= edge;
-        var onS = Math.Abs(y - (w.Y + w.H)) <= edge;
-        var onW = Math.Abs(x - w.X) <= edge;
-        var onN = Math.Abs(y - w.Y) <= edge && y < w.Y + w.TitleHeight;
-        if (onN && onE) return "ne";
-        if (onN && onW) return "nw";
-        if (onS && onE) return "se";
-        if (onS && onW) return "sw";
-        if (onS) return "s";
-        if (onE) return "e";
-        if (onW) return "w";
-        return null;
-    }
-
-    /// <summary>Gestisce un evento mouse (coordinate LOGICHE schermo). True se consumato.</summary>
-    public bool HandleMouse(int kind, int x, int y)
-    {
-        switch (kind)
+        return GfxWmNative.ResizeEdgeAt(w.Name, x, y) switch
         {
-            case 0: // down (left)
-            {
-                // Taskbar sempre in primo piano: un chip minimizzato intercetta il click
-                // prima di qualunque finestra sottostante.
-                if (TaskbarChipAt(x, y) is { } chipId) { Restore(chipId); return true; }
-                var w = TopmostAt(x, y);
-                if (w == null) { active = null; return false; }
-                Raise(w.Id);
-                var ctrl = ControlAt(w, x, y);
-                if (ctrl == "close") { Close(w.Id); return true; }
-                if (ctrl == "maximize") { MaximizeToggle(w.Id); return true; }
-                if (ctrl == "minimize") { Minimize(w.Id); return true; }
-                if (y < w.Y + w.TitleHeight && w.Draggable && w.State == GfxWindowState.Floating)
-                {
-                    StartDrag(w.Id, x, y);
-                    return true;
-                }
-                var edge = ResizeEdgeAt(w, x, y);
-                if (edge != null) { StartResize(w.Id, x, y, edge); return true; }
-                return true;
-            }
-            case 1: // release
-                EndDrag();
-                EndResize();
-                return false;
-            case 2: // move / drag
-                if (IsDragging) { UpdateDrag(x, y); return true; }
-                if (resizeState.HasValue) { UpdateResize(x, y); return true; }
-                return false;
-            default:
-                return false;
-        }
+            1 => "n", 2 => "s", 4 => "e", 8 => "w",
+            5 => "ne", 9 => "nw", 6 => "se", 10 => "sw",
+            _ => null
+        };
     }
 
-    // ── Rendering ─────────────────────────────────────────────────
+    /// <summary>Gestisce un evento mouse (coordinate LOGICHE). True se consumato (C).</summary>
+    public bool HandleMouse(int kind, int x, int y) => GfxWmNative.gmb_winstmt_pixel_handle_mouse(kind, x, y) != 0;
 
-    private const uint CWindowBg = 0xFF14161C;
-    private const uint CTitleTop = 0xFF23262F;
-    private const uint CTitleBot = 0xFF16181F;
-    private const uint CTitleTopFocus = 0xFF2B3350;
-    private const uint CTitleBotFocus = 0xFF1A1E2E;
-    private const uint CBorder = 0xFF3A4258;
-    private const uint CTitleText = 0xFFD6DCE6;
-    private const uint CText = 0xFFD0D6E0;
-    private const uint CClose = 0xFFFF5F57;
-    private const uint CMinimizeDot = 0xFFFFBD2E;
-    private const uint CMaximizeDot = 0xFF28C940;
-    private const uint CShadow = 0x8A000000;
-    private const uint CAccent = 0xFF6CB6FF;
-    private const uint CScrollTrack = 0xFF1E2129;
-    private const uint CScrollThumb = 0xFF3A4258;
-    private const uint CTaskbarBg = 0xFF0E1016;
-    private const uint CTaskbarChip = 0xFF262A35;
-    private const uint CTaskbarChipFocus = 0xFF33394A;
-    private const uint CTaskbarText = 0xFFD0D6E0;
+    /// <summary>Composita tutte le finestre pixel (desktop + taskbar) sul buffer grafico (C).</summary>
+    public void Render() => GfxWmNative.gmb_winstmt_render_all();
 
-    private const int TaskbarHeight = 28;
-    private const int TaskbarChipWidth = 130;
-    private const int TaskbarChipGap = 6;
+    public void SetStatusBar(string text) => GfxWmNative.SetStatusBar(M, text);
 
-    /// <summary>Composita tutte le finestre (z-order) sul buffer della pagina attiva.
-    /// DEVE essere chiamata sul main thread SDL (via coda GPM). Ripristina PRIMA lo sfondo
-    /// pulito (catturato una volta alla prima chiamata): senza questo, spostare/chiudere
-    /// una finestra lasciava i vecchi pixel impressi sullo schermo (nessun redraw completo,
-    /// ogni frame si accumulava sul precedente).</summary>
-    public void Render()
-    {
-        var g = GraphicsManager.Instance;
-        g.GfxCaptureBackgroundIfNeeded();
-        g.GfxRestoreBackground();
-        foreach (var w in ZOrdered)
-            RenderWindow(w);
-        RenderTaskbar(g);
-    }
+    public bool HasStatusText => GfxWmNative.HasStatus(M);
 
-    /// <summary>Testo impostato da STATUSBAR "text" quando nessuna finestra è attiva —
-    /// condiviso con la riga della taskbar (stesso schema di ClipperLib.Controls.
-    /// WindowManager.SetStatusBar: un solo canale invece di due che non si conoscono).</summary>
-    private string _statusText = "";
-    public void SetStatusBar(string text) => _statusText = text ?? "";
-    public bool HasStatusText => !string.IsNullOrEmpty(_statusText);
-
-    /// <summary>Barra in basso: testo STATUSBAR a sinistra + un "chip" per ogni finestra
-    /// minimizzata a destra (unico modo per farla ricomparire con un click, oltre al comando
-    /// WINDOW ... RESTORE). Disegnata PER ULTIMA: resta sempre sopra le finestre, come una
-    /// vera taskbar OS.</summary>
-    private void RenderTaskbar(GraphicsManager g)
-    {
-        var minimized = windows.Where(w => w.State == GfxWindowState.Minimized).OrderBy(w => w.Z).ToList();
-        // Indicatore desktop in alto a destra della barra — parità
-        // WindowManager.RenderStatusBar del TUI ([D1*] [D2]). Completo a destra,
-        // i chip finiscono a sinistra (layout deterministico: niente sovrapposizione).
-        var maxDesktop = Math.Max(CurrentDesktop,
-            windows.Count > 0 ? windows.Max(w => w.Desktop) : 1);
-        string dtStr = "";
-        if (maxDesktop > 1)
-        {
-            for (var d = 1; d <= maxDesktop; d++)
-                dtStr += d == CurrentDesktop ? $"[D{d}*] " : $"[D{d}] ";
-        }
-        var status = _statusText;
-        if (!string.IsNullOrEmpty(dtStr)) status = dtStr + status;
-        if (minimized.Count == 0 && string.IsNullOrEmpty(status)) return;
-        var barY = workH - TaskbarHeight;
-        g.GfxRoundedRect(0, barY, workW, TaskbarHeight, 0, CTaskbarBg, filled: true);
-        var x = TaskbarChipGap;
-        foreach (var w in minimized)
-        {
-            var isFocus = w.Focused;
-            g.GfxRoundedRect(x, barY + 3, TaskbarChipWidth, TaskbarHeight - 6, 4,
-                isFocus ? CTaskbarChipFocus : CTaskbarChip, filled: true);
-            var title = string.IsNullOrEmpty(w.Title) ? w.Name : w.Title;
-            if (title.Length > 18) title = title[..18] + "…";
-            g.DrawWindowText(title, x + 8, barY + 7, CTaskbarText);
-            x += TaskbarChipWidth + TaskbarChipGap;
-        }
-        if (!string.IsNullOrEmpty(status))
-            g.DrawWindowText(status, x + 6, barY + 7, CTaskbarText);
-    }
-
-    /// <summary>Id della finestra il cui chip in taskbar si trova in (x,y), o null. Stesso
-    /// layout deterministico di RenderTaskbar (nessuno stato extra da tenere sincronizzato).</summary>
-    private int? TaskbarChipAt(int x, int y)
-    {
-        var barY = workH - TaskbarHeight;
-        if (y < barY || y >= workH) return null;
-        var minimized = windows.Where(w => w.State == GfxWindowState.Minimized).OrderBy(w => w.Z).ToList();
-        var cx = TaskbarChipGap;
-        foreach (var w in minimized)
-        {
-            if (x >= cx && x < cx + TaskbarChipWidth) return w.Id;
-            cx += TaskbarChipWidth + TaskbarChipGap;
-        }
-        return null;
-    }
-
-    private void RenderWindow(PixelWindow w)
-    {
-        if (w.State == GfxWindowState.Minimized) return;
-        var g = GraphicsManager.Instance;
-        var isFocus = w.Focused;
-
-        // Ombra
-        if (w.Shadow)
-            g.GfxDropShadow(w.X, w.Y, w.W, w.H, 3, CShadow, 10);
-
-        // Corpo finestra (colore configurabile via COLOR fg,bg con finestra attiva)
-        g.GfxRoundedRect(w.X, w.Y, w.W, w.H, w.BorderRadius, w.BodyColor, filled: true);
-
-        // Titlebar: gradiente
-        g.GfxGradientRect(w.X, w.Y, w.W, w.TitleHeight, isFocus ? CTitleTopFocus : CTitleTop,
-            isFocus ? CTitleBotFocus : CTitleBot, vertical: true);
-
-        // Bordo (copre anche il perimetro della titlebar, angoli arrotondati inclusi).
-        g.GfxRoundedRect(w.X, w.Y, w.W, w.H, w.BorderRadius, isFocus ? CBorder : (CBorder & 0x00FFFFFFu) | 0x88000000u, filled: false);
-
-        // Focus ring: contorno esterno evidenziato (doppio bordo) per la finestra focalizzata
-        // — parità col bordo doppio delle finestre TUI attive (WindowManager: DOUBLE border).
-        if (isFocus)
-            g.GfxRoundedRect(w.X - 2, w.Y - 2, w.W + 4, w.H + 4, w.BorderRadius + 2,
-                (CBorder & 0x00FFFFFFu) | 0x40000000u, filled: false);
-
-        // Titolo (centrato nella titlebar) — colore configurabile via COLOR fg,bg
-        var titleY = w.Y + w.TitleHeight / 2;
-        if (!string.IsNullOrEmpty(w.Title))
-        {
-            var tw = GfxTextWidth(w.Title);
-            var cx = w.X + (w.W - tw) / 2;
-            g.DrawWindowText(w.Title, Math.Max(w.X + 4, cx), titleY - 8, w.TitleColor);
-        }
-
-        // Pulsanti titlebar (forme vettoriali)
-        RenderTitleControls(g, w, isFocus);
-
-        // Contenuto (buffer testo)
-        RenderContent(g, w);
-
-        // Cursore editing
-        if (w.Editable && w.Focused && w.Lines.Count > 0)
-        {
-            var cr = w.ClientRect;
-            var lineH = GfxTextHeight();
-            var visY = w.CursorLine - w.ScrollOffset;
-            if (visY >= 0 && visY < cr.h / Math.Max(1, lineH))
-            {
-                var cy = cr.y + visY * lineH;
-                var cx = cr.x + Math.Min(w.CursorCol, 40) * GfxCharWidth();
-                g.DrawWindowText("_", cx, cy + lineH - 4, CAccent);
-            }
-        }
-    }
-
-    /// <summary>Pulsanti titlebar in stile "traffic light" macOS: 3 cerchi pieni
-    /// anti-aliasing (chiuso/rosso, minimizza/giallo, massimizza/verde) con il simbolo
-    /// (×/−/+) SEMPRE visibile sopra (non solo in hover come nel vero macOS — scelta
-    /// esplicita per leggibilità, dato che qui non c'è tracciamento del mouse per finestra).</summary>
-    private void RenderTitleControls(GraphicsManager g, PixelWindow w, bool isFocus)
-    {
-        var y = w.Y + w.TitleHeight / 2;
-        var closeX = w.X + w.W - 24;
-        var maxX = closeX - 24;
-        var minX = maxX - 24;
-        const int d = 12;
-        var alphaFactor = isFocus ? 1.0 : 0.35;
-        var iconColor = ApplyAlphaFactor(0xFF000000u, alphaFactor * 0.5);
-
-        g.GfxFilledCircle(minX + 7, y, d, ApplyAlphaFactor(CMinimizeDot, alphaFactor));
-        g.GfxRoundedRect(minX + 4, y - 1, 6, 2, 1, iconColor, filled: true);
-
-        g.GfxFilledCircle(maxX + 7, y, d, ApplyAlphaFactor(CMaximizeDot, alphaFactor));
-        g.GfxRoundedRect(maxX + 4, y - 1, 6, 2, 1, iconColor, filled: true);
-        g.GfxRoundedRect(maxX + 6, y - 3, 2, 6, 1, iconColor, filled: true);
-
-        g.GfxFilledCircle(closeX + 7, y, d, ApplyAlphaFactor(CClose, alphaFactor));
-        DrawCross(g, closeX + 7, y, 3, iconColor);
-    }
-
-    /// <summary>Disegna una "×" vettoriale (due segmenti diagonali) come sequenza di piccoli
-    /// cerchi pieni anti-aliasing lungo le due diagonali — evita di dipendere dal font per
-    /// un glifo leggibile a 12px, e non serve un primitivo di linea ruotata.</summary>
-    private static void DrawCross(GraphicsManager g, int cx, int cy, int half, uint color)
-    {
-        const int steps = 5;
-        for (var i = -steps; i <= steps; i++)
-        {
-            var t = i / (double)steps;
-            var dx = (int)Math.Round(t * half);
-            g.GfxFilledCircle(cx + dx, cy + dx, 2, color);
-            g.GfxFilledCircle(cx + dx, cy - dx, 2, color);
-        }
-    }
-
-    /// <summary>Scala il canale alpha di un colore ARGB per un fattore 0..1 (es. attenuare i
-    /// pulsanti titlebar quando la finestra non ha il focus).</summary>
-    private static uint ApplyAlphaFactor(uint rgba, double factor)
-    {
-        var a = (byte)Math.Clamp((int)Math.Round(((rgba >> 24) & 0xFF) * factor), 0, 255);
-        return ((uint)a << 24) | (rgba & 0x00FFFFFFu);
-    }
-
-    private void RenderContent(GraphicsManager g, PixelWindow w)
-    {
-        var cr = w.ClientRect;
-        if (cr.w <= 0 || cr.h <= 0) return;
-        var lineH = GfxTextHeight();
-        var charW = GfxCharWidth();
-        if (lineH <= 0) lineH = 16;
-        if (charW <= 0) charW = 8;
-        var maxRows = cr.h / lineH;
-        var maxCols = cr.w / charW;
-        if (maxRows <= 0 || maxCols <= 0) return;
-
-        for (var row = 0; row < maxRows; row++)
-        {
-            var idx = w.ScrollOffset + row;
-            if (idx >= w.Lines.Count) break;
-            var line = w.Lines[idx] ?? "";
-            if (line.Length > maxCols) line = line[..maxCols];
-            if (line.Length == 0) continue;
-            g.DrawWindowText(line, cr.x, cr.y + row * lineH, w.FgColor);
-        }
-
-        // Scrollbar verticale se il buffer è più alto della viewport
-        if (w.Lines.Count > maxRows)
-        {
-            var barX = cr.x + cr.w - 4;
-            var barH = cr.h;
-            g.GfxRoundedRect(barX, cr.y, 3, barH, 2, CScrollTrack, filled: true);
-            var page = maxRows;
-            var maxOff = Math.Max(0, w.Lines.Count - page);
-            var thumbH = Math.Max(6, (int)Math.Round(barH * (double)page / w.Lines.Count));
-            var start = maxOff > 0 ? (int)Math.Round(w.ScrollOffset * (double)(barH - thumbH) / maxOff) : 0;
-            g.GfxRoundedRect(barX, cr.y + start, 3, thumbH, 2, CScrollThumb, filled: true);
-        }
-    }
-
-    /// <summary>Larghezza testo logica (font corrente).</summary>
-    private static int GfxTextWidth(string text)
-    {
-        try { return (int)GraphicsManager.Instance.TextWidthInternal(text); }
-        catch { return text.Length * 8; }
-    }
-
-    private static int GfxTextHeight()
-    {
-        try { return (int)GraphicsManager.Instance.TextHeightInternal(); }
-        catch { return 16; }
-    }
-
-    private static int GfxCharWidth()
+    /// <summary>Larghezza carattere corrente (per layout colonne nel client area).</summary>
+    public static int CharWidth()
     {
         try { return (int)GraphicsManager.Instance.TextWidthInternal(" "); }
         catch { return 8; }
     }
 
-    /// <summary>Larghezza carattere corrente (per layout colonne nel client area).</summary>
-    public static int CharWidth() => GfxCharWidth();
-
     /// <summary>Altezza riga corrente (per layout righe nel client area).</summary>
-    public static int CharHeight() => GfxTextHeight();
+    public static int CharHeight()
+    {
+        try { return (int)GraphicsManager.Instance.TextHeightInternal(); }
+        catch { return 16; }
+    }
 }

@@ -1556,7 +1556,9 @@ int  gmb_repl_load_history(gmb_repl_t* r, const char* path);
 bool gmb_repl_dispatch(gmb_repl_t* r, const char* line);
 
 /* ---- WindowManager (specchio WindowManager.cs) ---- */
-enum { GMB_WSTATE_FLOATING = 0, GMB_WSTATE_MAXIMIZED, GMB_WSTATE_MINIMIZED };
+enum { GMB_WSTATE_FLOATING = 0, GMB_WSTATE_MAXIMIZED, GMB_WSTATE_MINIMIZED,
+       /* stati usati dalle finestre PIXEL (parità GfxWindowState C#) */
+       GMB_WSTATE_SNAPPED_LEFT = 3, GMB_WSTATE_SNAPPED_RIGHT = 4, GMB_WSTATE_TILED = 5 };
 enum { GMB_WM_BORDER_SINGLE = 0, GMB_WM_BORDER_DOUBLE, GMB_WM_BORDER_ROUNDED, GMB_WM_BORDER_NONE };
 typedef struct gmb_tile_grid {
     int rows;
@@ -1589,6 +1591,8 @@ typedef struct gmb_managed_window {
     int scroll_offset;
     int cursor_line;
     int cursor_col;
+    int radius;              /* raggio angoli (0 = default del tema) */
+    int resizable;           /* finestra PIXEL: bordo trascinabile per il resize */
     /* --- Finestre PIXEL (graphics screen) --- */
     int pixel;               /* 1 = finestra PIXEL: rect in PIXEL LOGICI, resa dal compositor gfx */
     unsigned int body_color; /* 0 = colore del tema */
@@ -1625,6 +1629,8 @@ int  gmb_window_manager_add(gmb_window_manager_t* m, const char* title, gmb_rect
 int  gmb_window_manager_add_ex(gmb_window_manager_t* m, const char* name, const char* title, gmb_rect_t rect, int border, int frame_style, int shadow, int desktop);
 int  gmb_managed_window_control_at(const gmb_managed_window_t* w, int x, int y);
 int  gmb_managed_window_resize_edge_at(const gmb_managed_window_t* w, int x, int y);
+/* Client rect in pixel logici (title 24, padding 6) di una finestra PIXEL. */
+void gmb_managed_window_client_rect_px(const gmb_managed_window_t* w, int* out4);
 int  gmb_managed_window_get_int(const gmb_managed_window_t* w, int field);
 void gmb_managed_window_set_int(gmb_managed_window_t* w, int field, int v);
 const char* gmb_managed_window_get_str(const gmb_managed_window_t* w, int field);
