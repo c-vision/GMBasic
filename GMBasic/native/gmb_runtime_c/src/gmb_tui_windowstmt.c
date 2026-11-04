@@ -885,6 +885,71 @@ void gmb_winstmt_set_colors(const char* name, unsigned int body, unsigned int fg
     mw->body_color = body; mw->fg_color = fg; mw->title_color = title;
 }
 
+/* Mouse sulle finestre PIXEL (coordinate LOGICHE). kind: 0=down, 1=release, 2=move.
+ * Porting 1:1 di GfxWindowManager.HandleMouse: chip taskbar → restore, topmost → raise,
+ * pulsanti titlebar → azione, titlebar → drag, bordi → resize. Ritorna 1 se consumato. */
+int gmb_winstmt_pixel_handle_mouse(int kind, int x, int y)
+{
+    gmb_window_manager_t* m = gmb_window_manager_static();
+    if (!m) return 0;
+    if (kind == 0)
+    {
+        int chip = gmb_winstmt_pixel_taskbar_chip_at(x, y);
+        if (chip >= 0)
+        {
+            gmb_managed_window_t* cw = gmb_window_manager_get(m, chip);
+            if (cw) { cw->minimized = false; cw->state = GMB_WSTATE_FLOATING; }
+            gmb_window_manager_raise(m, chip);
+            return 1;
+        }
+        int top = -1, bestz = -1;
+        for (int i = 0; i < m->count; i++)
+        {
+            gmb_managed_window_t* w = &m->windows[i];
+            if (!w->pixel || w->minimized) continue;
+            if (w->desktop != m->current_desktop) continue;
+            if (x >= w->rect.x && x < w->rect.x + w->rect.w &&
+                y >= w->rect.y && y < w->rect.y + w->rect.h && w->z > bestz)
+            { top = w->id; bestz = w->z; }
+        }
+        if (top < 0) { gmb_window_manager_clear_focus(m); return 0; }
+        gmb_window_manager_raise(m, top);
+        gmb_managed_window_t* w = gmb_window_manager_get(m, top);
+        if (!w) return 0;
+        int ctrl = gmb_winstmt_pixel_control_at(w->name, x, y);
+        if (ctrl == 1) { gmb_window_manager_remove(m, top); return 1; }
+        if (ctrl == 3) { gmb_window_manager_maximize_toggle(m, top); return 1; }
+        if (ctrl == 2) { gmb_window_manager_minimize(m, top); return 1; }
+        if (y < w->rect.y + GMB_WIN_TITLE_H && w->draggable && w->state == GMB_WSTATE_FLOATING)
+        { gmb_window_manager_start_drag(m, top, x, y); return 1; }
+        int e = gmb_winstmt_pixel_resize_edge_at(w->name, x, y);
+        if (e)
+        {
+            char ea[3] = { 0, 0, 0 }; int n = 0;
+            if (e & 1) { ea[n++] = 'n'; }
+            if (e & 2) { ea[n++] = 's'; }
+            if (e & 4) { ea[n++] = 'e'; }
+            if (e & 8) { ea[n++] = 'w'; }
+            gmb_window_manager_start_resize(m, top, x, y, ea);
+            return 1;
+        }
+        return 1;
+    }
+    if (kind == 1)
+    {
+        gmb_window_manager_end_drag(m);
+        gmb_window_manager_end_resize(m);
+        return 0;
+    }
+    if (kind == 2)
+    {
+        if (gmb_window_manager_is_dragging(m)) { gmb_window_manager_update_drag(m, x, y); return 1; }
+        if (gmb_window_manager_is_resizing(m)) { gmb_window_manager_update_resize(m, x, y); return 1; }
+        return 0;
+    }
+    return 0;
+}
+
 
 /* ===== Mouse sulle finestre (main thread, chiamato dal present) ===== */
 

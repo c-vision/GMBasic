@@ -199,8 +199,8 @@ void gmb_window_manager_snap_zone(gmb_window_manager_t* m, int id, int zone)
     gmb_managed_window_t* w = gmb_window_manager_get(m, id);
     if (!w) return;
     int half = m->work_area.w / 2;
-    if (zone == 0) { gmb_rect_t r = { m->work_area.x, m->work_area.y, half, m->work_area.h }; w->rect = r; }
-    else if (zone == 1) { gmb_rect_t r = { m->work_area.x + half, m->work_area.y, m->work_area.w - half, m->work_area.h }; w->rect = r; }
+    if (zone == 0) { gmb_rect_t r = { m->work_area.x, m->work_area.y, half, m->work_area.h }; w->rect = r; w->state = GMB_WSTATE_SNAPPED_LEFT; }
+    else if (zone == 1) { gmb_rect_t r = { m->work_area.x + half, m->work_area.y, m->work_area.w - half, m->work_area.h }; w->rect = r; w->state = GMB_WSTATE_SNAPPED_RIGHT; }
 }
 
 void gmb_window_manager_cascade(gmb_window_manager_t* m, int offset_x, int offset_y)
@@ -713,6 +713,7 @@ static void wm_titlebar(gmb_screen_buffer_t* b, gmb_rect_t r, gmb_cell_color_t f
 static void wm_render_window(gmb_screen_buffer_t* b, gmb_managed_window_t* w, const gmb_theme_t* th, int desktop)
 {
     if (w->minimized || w->desktop != desktop) return;
+    if (w->pixel) return;   /* finestra PIXEL: la disegna il compositor gfx, non il renderer a celle */
     gmb_rect_t r = w->rect;
     int focused = w->focused;
     gmb_cell_color_t frame = focused ? th->border : th->dim;
@@ -905,6 +906,19 @@ int gmb_window_manager_add_ex(gmb_window_manager_t* m, const char* name, const c
     return id;
 }
 
+/* Client rect in pixel logici di una finestra PIXEL (title 24, padding 6). */
+void gmb_managed_window_client_rect_px(const gmb_managed_window_t* w, int* out4)
+{
+    if (!out4) return;
+    out4[0] = out4[1] = out4[2] = out4[3] = 0;
+    if (!w) return;
+    int titleh = 24; if (titleh > w->rect.h / 2) titleh = w->rect.h / 2;
+    out4[0] = w->rect.x + 6;
+    out4[1] = w->rect.y + titleh;
+    out4[2] = w->rect.w - 12;
+    out4[3] = w->rect.h - titleh - 6;
+}
+
 /* ---- Accessor generici per il binding C# (evita decine di P/Invoke per-campo) ---- */
 enum {
     GMB_MWF_X=0, GMB_MWF_Y, GMB_MWF_W, GMB_MWF_H, GMB_MWF_Z, GMB_MWF_STATE,
@@ -912,7 +926,8 @@ enum {
     GMB_MWF_MINIMIZED, GMB_MWF_DESKTOP, GMB_MWF_CURSOR_LINE, GMB_MWF_CURSOR_COL,
     GMB_MWF_SCROLL, GMB_MWF_LINES_COUNT, GMB_MWF_CLOSABLE, GMB_MWF_DRAGGABLE, GMB_MWF_ID,
     GMB_MWF_RX, GMB_MWF_RY, GMB_MWF_RW, GMB_MWF_RH, GMB_MWF_EDITABLE,
-    GMB_MWF_BODY_COLOR, GMB_MWF_FG_COLOR, GMB_MWF_TITLE_COLOR, GMB_MWF_PIXEL
+    GMB_MWF_BODY_COLOR, GMB_MWF_FG_COLOR, GMB_MWF_TITLE_COLOR, GMB_MWF_PIXEL, GMB_MWF_RADIUS,
+    GMB_MWF_RESIZABLE
 };
 int gmb_managed_window_get_int(const gmb_managed_window_t* w, int field)
 {
@@ -946,6 +961,8 @@ int gmb_managed_window_get_int(const gmb_managed_window_t* w, int field)
         case GMB_MWF_FG_COLOR: return (int)w->fg_color;
         case GMB_MWF_TITLE_COLOR: return (int)w->title_color;
         case GMB_MWF_PIXEL: return w->pixel;
+        case GMB_MWF_RADIUS: return w->radius;
+        case GMB_MWF_RESIZABLE: return w->resizable;
     }
     return 0;
 }
@@ -979,6 +996,8 @@ void gmb_managed_window_set_int(gmb_managed_window_t* w, int field, int v)
         case GMB_MWF_FG_COLOR: w->fg_color = (unsigned int)v; break;
         case GMB_MWF_TITLE_COLOR: w->title_color = (unsigned int)v; break;
         case GMB_MWF_PIXEL: w->pixel = v != 0; break;
+        case GMB_MWF_RADIUS: w->radius = v; break;
+        case GMB_MWF_RESIZABLE: w->resizable = v != 0; break;
     }
 }
 /* field 0 = title, 1 = name */
