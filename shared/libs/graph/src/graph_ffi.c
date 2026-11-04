@@ -581,39 +581,6 @@ i64 gfx_min_path_cover(const i64 *adj, i64 n)
     return (i64)k;
 }
 
-i64 gfx_paths_time_window(const i64 *adj, i64 n, const double *start, const double *finish,
-                          double min_connect, i64 s, i64 t, i64 *paths, i64 *plens,
-                          i64 max_len, i64 max_paths)
-{
-    i64 i;
-    int *a, *p, *pl, k;
-    double *st, *en;
-    if (n <= 0 || adj == NULL || start == NULL || finish == NULL || paths == NULL || plens == NULL) return -1;
-    if (s < 0 || s >= n || t < 0 || t >= n || max_len <= 0 || max_paths <= 0) return -1;
-    a = (int *)malloc((size_t)n * (size_t)n * sizeof(int));
-    p = (int *)malloc((size_t)(max_paths * max_len) * sizeof(int));
-    pl = (int *)malloc((size_t)max_paths * sizeof(int));
-    st = (double *)malloc((size_t)n * sizeof(double));
-    en = (double *)malloc((size_t)n * sizeof(double));
-    if (a == NULL || p == NULL || pl == NULL || st == NULL || en == NULL) {
-        free(a); free(p); free(pl); free(st); free(en); return -1;
-    }
-    for (i = 0; i < n * n; i++) a[i] = adj[i] ? 1 : 0;
-    for (i = 0; i < n; i++) { st[i] = start[i]; en[i] = finish[i]; }
-    k = gor_paths_time_window((int)n, a, (const gor_real *)st, (const gor_real *)en,
-                              (gor_real)min_connect, (int)s, (int)t, p, pl,
-                              (int)max_len, (int)max_paths);
-    if (k > 0) {
-        i64 r, c;
-        for (r = 0; r < k; r++) {
-            plens[r] = (i64)pl[r];
-            for (c = 0; c < pl[r]; c++) paths[r * max_len + c] = (i64)p[r * max_len + c];
-        }
-    }
-    free(a); free(p); free(pl); free(st); free(en);
-    return (i64)k;
-}
-
 i64 gfx_bfs_direction_optimizing(const i64 *adj, i64 n, i64 src, double thr, double *dist)
 {
     i64 i;
