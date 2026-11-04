@@ -1136,6 +1136,12 @@ public sealed partial class IlProgramCompiler
         }
 
         var boxArgPositions = GetByRefCapturedParamPositions(_program).GetValueOrDefault(definition.SymbolId);
+        /* Array con KIND dell'elemento diverso dal parametro (2026-11-04): si passa una copia
+         * convertita e si ricopia indietro dopo la Call. Elenco riempito mentre si emettono gli
+         * argomenti, consumato subito dopo la chiamata. */
+        static bool ElemIsInt(DataType t) => t is LongType or IntegerType or QuadType
+            or ByteType or SByteType or ULongType or UIntegerType or UQuadType;
+        var arrayKindFix = new System.Collections.Generic.List<(System.Reflection.Emit.LocalBuilder tmp, System.Reflection.Emit.LocalBuilder orig, System.Type tmpType, bool wantInt)>();
         for (var i = 0; i < expr.Args.Length; i++)
         {
             var paramDef = definition.Parameters[i];
@@ -1168,6 +1174,23 @@ public sealed partial class IlProgramCompiler
                     _il.Emit(OpCodes.Stloc, tmpArr);
                     _il.Emit(OpCodes.Ldloca, tmpArr);
                 }
+                else if (NormalizeInferredType(paramDef.DataType) is ArrayType pbArr
+                         && NormalizeInferredType(InferType(expr.Args[i])) is ArrayType abArr
+                         && ElemIsInt(abArr.ElementType) != ElemIsInt(pbArr.ElementType)
+                         && expr.Args[i] is not (LambdaExpr or FunctionReferenceExpr))
+                {
+                    /* BYREF con elemento di kind diverso: temp convertito + copy-back dopo la Call */
+                    var tmpClr = DataTypeMapper.Map(pbArr, _types, _classTypes);
+                    var origObj = _il.DeclareLocal(typeof(object));
+                    var tmpArr = _il.DeclareLocal(tmpClr);
+                    EmitExpression(expr.Args[i]);
+                    _il.Emit(OpCodes.Stloc, origObj);
+                    _il.Emit(OpCodes.Ldloc, origObj);
+                    _il.Emit(OpCodes.Call, RuntimeMethod(ElemIsInt(pbArr.ElementType) ? nameof(IlRuntime.ToLongArray) : nameof(IlRuntime.ToDoubleArray), typeof(object)));
+                    _il.Emit(OpCodes.Stloc, tmpArr);
+                    _il.Emit(OpCodes.Ldloca, tmpArr);
+                    arrayKindFix.Add((tmpArr, origObj, tmpClr, ElemIsInt(pbArr.ElementType)));
+                }
                 else
                 {
                     EmitAddressOf(expr.Args[i]);
@@ -1178,6 +1201,22 @@ public sealed partial class IlProgramCompiler
                 var paramType = NormalizeInferredType(paramDef.DataType);
                 if (paramType is AnyType)
                     EmitObjectBoxedArgument(expr.Args[i]);
+                else if (paramType is ArrayType pArr
+                         && NormalizeInferredType(InferType(expr.Args[i])) is ArrayType aArr
+                         && ElemIsInt(aArr.ElementType) != ElemIsInt(pArr.ElementType)
+                         && expr.Args[i] is not (LambdaExpr or FunctionReferenceExpr))
+                {
+                    var tmpClr = DataTypeMapper.Map(pArr, _types, _classTypes);
+                    var origObj = _il.DeclareLocal(typeof(object));
+                    var tmpArr = _il.DeclareLocal(tmpClr);
+                    EmitExpression(expr.Args[i]);
+                    _il.Emit(OpCodes.Stloc, origObj);
+                    _il.Emit(OpCodes.Ldloc, origObj);
+                    _il.Emit(OpCodes.Call, RuntimeMethod(ElemIsInt(pArr.ElementType) ? nameof(IlRuntime.ToLongArray) : nameof(IlRuntime.ToDoubleArray), typeof(object)));
+                    _il.Emit(OpCodes.Stloc, tmpArr);
+                    _il.Emit(OpCodes.Ldloc, tmpArr);
+                    arrayKindFix.Add((tmpArr, origObj, tmpClr, ElemIsInt(pArr.ElementType)));
+                }
                 else
                 {
                     EmitExpression(expr.Args[i]);
@@ -1244,6 +1283,20 @@ public sealed partial class IlProgramCompiler
 
         if (methodBuilder.IsStatic) _il.Emit(OpCodes.Call, methodBuilder);
         else _il.Emit(OpCodes.Callvirt, methodBuilder);
+
+        if (arrayKindFix.Count > 0)
+        {
+            var hasRet = methodBuilder.ReturnType != typeof(void);
+            System.Reflection.Emit.LocalBuilder? res = hasRet ? _il.DeclareLocal(methodBuilder.ReturnType) : null;
+            if (res != null) _il.Emit(OpCodes.Stloc, res);
+            foreach (var p in arrayKindFix)
+            {
+                _il.Emit(OpCodes.Ldloc, p.orig);
+                _il.Emit(OpCodes.Ldloc, p.tmp);
+                _il.Emit(OpCodes.Call, RuntimeMethod(p.wantInt ? nameof(IlRuntime.CopyBackLong) : nameof(IlRuntime.CopyBackDouble), typeof(object), p.tmpType));
+            }
+            if (res != null) _il.Emit(OpCodes.Ldloc, res);
+        }
     }
 
     private void EmitFfiCall(FunctionExpr expr, ExternalProcedureDefinition epd)
