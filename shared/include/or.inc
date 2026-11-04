@@ -72,3 +72,40 @@ DECLARE FUNCTION SAT LIB "gmbor" ALIAS "ofx_sat" (clauses() AS LONG, clauseStart
 ' dom() = n*D; sol() = n.
 DECLARE FUNCTION ALLDIFF LIB "gmbor" ALIAS "ofx_alldiff" (dom() AS LONG, n AS LONG, D AS LONG, sol() AS LONG) AS LONG
 DECLARE FUNCTION CPBINARY LIB "gmbor" ALIAS "ofx_cp_binary" (dom() AS LONG, allowed() AS LONG, n AS LONG, D AS LONG, sol() AS LONG) AS LONG
+
+' ── ROUTING: TSP / VRP / PDP / arc routing (23) ──────────────────────────────
+' Turistica: tour() = n (ordine di visita); dist() = n*n. Seed fissi dove la firma C
+' supererebbe gli 8 argomenti FFI.
+DECLARE FUNCTION TSPNN LIB "gmbor" ALIAS "ofx_tsp_nn" (dist() AS DOUBLE, n AS LONG, tour() AS LONG) AS DOUBLE
+DECLARE FUNCTION TSP2OPT LIB "gmbor" ALIAS "ofx_tsp_2opt" (dist() AS DOUBLE, n AS LONG, tour() AS LONG, maxit AS LONG) AS DOUBLE
+DECLARE FUNCTION TSPTOURCOST LIB "gmbor" ALIAS "ofx_tsp_tour_cost" (dist() AS DOUBLE, n AS LONG, tour() AS LONG) AS DOUBLE
+DECLARE FUNCTION TSPEXTRAMILEAGE LIB "gmbor" ALIAS "ofx_tsp_extra_mileage" (dist() AS DOUBLE, n AS LONG, tour() AS LONG) AS DOUBLE
+' GRASP: alpha=0.3 e seed fissi nello shim.
+DECLARE FUNCTION TSPGRASP LIB "gmbor" ALIAS "ofx_tsp_grasp" (dist() AS DOUBLE, n AS LONG, tour() AS LONG, maxit AS LONG) AS DOUBLE
+DECLARE FUNCTION TSPVNS LIB "gmbor" ALIAS "ofx_tsp_vns" (dist() AS DOUBLE, n AS LONG, tour() AS LONG, maxit AS LONG) AS DOUBLE
+DECLARE FUNCTION TSP3OPT LIB "gmbor" ALIAS "ofx_tsp_3opt" (dist() AS DOUBLE, n AS LONG, tour() AS LONG, maxit AS LONG) AS DOUBLE
+DECLARE FUNCTION TSPSA LIB "gmbor" ALIAS "ofx_tsp_sa" (dist() AS DOUBLE, n AS LONG, tour() AS LONG, T0 AS DOUBLE, cooling AS DOUBLE, iters AS LONG) AS DOUBLE
+' tenure_kind: 0=costante, 1=triangolare, 2=quadrata, 3=sawtooth.
+DECLARE FUNCTION TSPTABU LIB "gmbor" ALIAS "ofx_tsp_tabu" (dist() AS DOUBLE, n AS LONG, tour() AS LONG, maxit AS LONG, tenureKind AS LONG) AS DOUBLE
+DECLARE FUNCTION TSPONETREE LIB "gmbor" ALIAS "ofx_tsp_one_tree" (dist() AS DOUBLE, n AS LONG, root AS LONG, edges() AS LONG) AS DOUBLE
+DECLARE FUNCTION TSPHKBOUND LIB "gmbor" ALIAS "ofx_tsp_hk_bound" (dist() AS DOUBLE, n AS LONG, maxit AS LONG, pi() AS DOUBLE) AS DOUBLE
+' succ()/comp()/sizes() = n; ritorna il numero di sottotour.
+DECLARE FUNCTION TSPSUBTOURS LIB "gmbor" ALIAS "ofx_tsp_subtours" (succ() AS LONG, n AS LONG, comp() AS LONG, sizes() AS LONG) AS LONG
+DECLARE FUNCTION TSPDFJ LIB "gmbor" ALIAS "ofx_tsp_dfj" (dist() AS DOUBLE, n AS LONG, tour() AS LONG, maxcuts AS LONG) AS DOUBLE
+' ERX: p1()/p2()/child() = n; ritorna 1.
+DECLARE FUNCTION TSPERX LIB "gmbor" ALIAS "ofx_tsp_erx" (p1() AS LONG, p2() AS LONG, n AS LONG, child() AS LONG) AS LONG
+DECLARE FUNCTION TSPGA LIB "gmbor" ALIAS "ofx_tsp_ga" (dist() AS DOUBLE, n AS LONG, tour() AS LONG, pop AS LONG, gens AS LONG) AS DOUBLE
+DECLARE FUNCTION TSPOROPT LIB "gmbor" ALIAS "ofx_tsp_or_opt" (dist() AS DOUBLE, n AS LONG, tour() AS LONG, maxit AS LONG) AS DOUBLE
+DECLARE FUNCTION TSPDOUBLETREE LIB "gmbor" ALIAS "ofx_tsp_double_tree" (dist() AS DOUBLE, n AS LONG, tour() AS LONG) AS DOUBLE
+DECLARE FUNCTION TSPHELDKARP LIB "gmbor" ALIAS "ofx_tsp_held_karp" (dist() AS DOUBLE, n AS LONG, tour() AS LONG) AS DOUBLE
+
+' CVRP: dist (n+1)x(n+1) col deposito; demand() = n; routeOf() = n; total(0).
+DECLARE FUNCTION VRPCLARKEWRIGHT LIB "gmbor" ALIAS "ofx_vrp_clarke_wright" (dist() AS DOUBLE, demand() AS DOUBLE, n AS LONG, cap AS DOUBLE, depot AS LONG, routeOf() AS LONG, total() AS DOUBLE) AS LONG
+' VRPTW: tw() = ready[n] | due[n] | service[n] (11 parametri C compattati).
+DECLARE FUNCTION VRPTW LIB "gmbor" ALIAS "ofx_vrp_time_windows" (dist() AS DOUBLE, demand() AS DOUBLE, n AS LONG, cap AS DOUBLE, depot AS LONG, tw() AS DOUBLE, routeOf() AS LONG, total() AS DOUBLE) AS LONG
+' MDVRP: depositi agli indici 0..ndepots-1.
+DECLARE FUNCTION MDVRP LIB "gmbor" ALIAS "ofx_mdvrp" (dist() AS DOUBLE, demand() AS DOUBLE, n AS LONG, ndepots AS LONG, cap AS DOUBLE, routeOf() AS LONG, total() AS DOUBLE) AS LONG
+' PDP: pickup()/delivery() = nreq; route() = 2*nreq; total(0).
+DECLARE FUNCTION PDP LIB "gmbor" ALIAS "ofx_pdp" (dist() AS DOUBLE, demand() AS DOUBLE, nreq AS LONG, cap AS DOUBLE, pickup() AS LONG, delivery() AS LONG, route() AS LONG, total() AS DOUBLE) AS LONG
+' Arc routing (Chinese postman): euler() = n*n+2; elen(0) = lunghezza.
+DECLARE FUNCTION ARCROUTING LIB "gmbor" ALIAS "ofx_arc_routing" (w() AS DOUBLE, n AS LONG, euler() AS LONG, elen() AS LONG) AS DOUBLE
