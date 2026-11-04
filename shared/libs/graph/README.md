@@ -7,8 +7,8 @@ dense, motore `gmbortools` (`gor_graph`, `gor_graph2`, `gor_graph3`) copiato qui
 autonomo. Binding BASIC: `shared/include/graph.inc` (`IMPORT GRAPH`).
 
 > I grafi dei **brain** (conoscenza/wiki) NON sono qui: sono nel namespace builtin `BRAINS`
-> (`BRAINS.BFS`, …), con le funzioni wiki-only in `AI.GRAPHTAG` / `AI.GRAPHFOLDER` /
-> `AI.GRAPHMULTI`. La separazione è del 2026-11-04: il vecchio builtin `GRAPH` è stato
+> (`BRAINS.BFS`, …), con le funzioni wiki-only in `BRAINS.BYTAG` / `BRAINS.BYFOLDER` /
+> `BRAINS.QUERYMULTI`. La separazione è del 2026-11-04: il vecchio builtin `GRAPH` è stato
 > rinominato `BRAINS` per liberare `GRAPH` alla teoria dei grafi.
 
 ## Rappresentazione

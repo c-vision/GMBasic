@@ -10,7 +10,7 @@
 ' `n` è il lato della matrice (numero di nodi).
 '
 ' I grafi dei cervelli (wiki/brain) NON sono qui: sono nel namespace BRAINS
-' (BRAINS.BFS/NEIGHBORS/PATH...), con le funzioni wiki-only in AI.GRAPHTAG/AI.GRAPHFOLDER/AI.GRAPHMULTI.
+' (BRAINS.BFS/NEIGHBORS/PATH...), con le funzioni wiki-only in BRAINS.BYTAG/BRAINS.BYFOLDER/BRAINS.QUERYMULTI.
 '
 ' Gli array `out()` vanno dimensionati dal chiamante:
 '   - order()/comp()/prev()/color()/comm()/clique(): n

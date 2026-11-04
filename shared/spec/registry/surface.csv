@@ -87,9 +87,6 @@ procedure,AI,Enrich,Enrich
 procedure,AI,EnsureCollection,AiVectorEnsureCollection
 procedure,AI,Fail,ProviderMarkFailed
 procedure,AI,FleetStats,AiFleetStats
-procedure,AI,GRAPHFOLDER,GraphByFolder
-procedure,AI,GRAPHMULTI,GraphQueryMulti
-procedure,AI,GRAPHTAG,GraphByTag
 procedure,AI,GenTest,AiVectorGenTest
 procedure,AI,GetBase,AiGetBase
 procedure,AI,GetDefault,AiGetDefault
@@ -404,6 +401,8 @@ procedure,BLOCKCHAIN,VARINTENCODE,VarIntEncode
 procedure,BRAINS,Betweenness,GraphBetweenness
 procedure,BRAINS,Bfs,GraphBfs
 procedure,BRAINS,Bipartite,GraphBipartite
+procedure,BRAINS,ByFolder,GraphByFolder
+procedure,BRAINS,ByTag,GraphByTag
 procedure,BRAINS,Clustering,GraphClustering
 procedure,BRAINS,Connected,GraphConnected
 procedure,BRAINS,Dfs,GraphDfs
@@ -419,6 +418,7 @@ procedure,BRAINS,Mst,GraphMst
 procedure,BRAINS,Neighbors,GraphNeighbors
 procedure,BRAINS,PageRank,GraphPageRank
 procedure,BRAINS,Path,GraphPath
+procedure,BRAINS,QueryMulti,GraphQueryMulti
 procedure,BRAINS,Stats,GraphStats
 procedure,BRAINS,StronglyConnected,GraphStronglyConnected
 procedure,BRAINS,Subgraph,GraphSubgraph

@@ -6,8 +6,6 @@
 ' file .bas), mai dalla CWD di lancio.
 
 IMPORT BRAINS
-
-IMPORT AI
 ' Fixture condivisa in samples/Fixtures/graph-vault, work/ accanto al programma.
 FIXTURE$ = PROJECTFOLDER() + "/../Fixtures/graph-vault"
 WORK$ = PROJECTFOLDER() + "/work"
@@ -62,11 +60,11 @@ PRINT BRAINS.DOT("graph-vault")
 ' BRAINS.SUBGRAPH(brain, root [, depth]) — sottografo a distanza ≤ depth dal nodo (mermaid).
 PRINT BRAINS.SUBGRAPH("graph-vault", "index.md", 1)
 
-' AI.GRAPHTAG(brain, tag) — JSON dei nodi con quel tag + i loro edge.
-PRINT AI.GRAPHTAG("graph-vault", "strategy")
+' BRAINS.BYTAG(brain, tag) — JSON dei nodi con quel tag + i loro edge.
+PRINT BRAINS.BYTAG("graph-vault", "strategy")
 
-' AI.GRAPHFOLDER(brain, folder) — JSON dei nodi nella cartella (o sotto) + edge.
-PRINT AI.GRAPHFOLDER("graph-vault", "strategies")
+' BRAINS.BYFOLDER(brain, folder) — JSON dei nodi nella cartella (o sotto) + edge.
+PRINT BRAINS.BYFOLDER("graph-vault", "strategies")
 
 ' BRAINS.ISVALID(brain) — 1 se il grafo ha almeno un nodo.
 PRINT BRAINS.ISVALID("graph-vault")
@@ -87,7 +85,7 @@ PRINT BRAINS.DFS("graph-vault", "index.md")
 ' BRAINS.BFS(brain, root) — visita in ampiezza dal root.
 PRINT BRAINS.BFS("graph-vault", "index.md")
 
-' AI.GRAPHMULTI(query, brains_csv) — merge multi-brain (qui un solo brain).
-PRINT AI.GRAPHMULTI("momentum", "graph-vault")
+' BRAINS.QUERYMULTI(query, brains_csv) — merge multi-brain (qui un solo brain).
+PRINT BRAINS.QUERYMULTI("momentum", "graph-vault")
 
 PRINT "GraphFunctions ok"

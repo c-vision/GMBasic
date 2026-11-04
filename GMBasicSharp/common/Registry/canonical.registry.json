@@ -973,41 +973,8 @@
     },
     {
       "ns": "AI",
-      "name": "GRAPHFOLDER",
-      "id": 89,
-      "tokenKind": 1310,
-      "kindName": "GraphByFolder",
-      "fn": true,
-      "arityMin": 2,
-      "arityMax": 2,
-      "pure": true
-    },
-    {
-      "ns": "AI",
-      "name": "GRAPHMULTI",
-      "id": 90,
-      "tokenKind": 1285,
-      "kindName": "GraphQueryMulti",
-      "fn": true,
-      "arityMin": 1,
-      "arityMax": 2,
-      "pure": true
-    },
-    {
-      "ns": "AI",
-      "name": "GRAPHTAG",
-      "id": 91,
-      "tokenKind": 1309,
-      "kindName": "GraphByTag",
-      "fn": true,
-      "arityMin": 2,
-      "arityMax": 2,
-      "pure": true
-    },
-    {
-      "ns": "AI",
       "name": "GenTest",
-      "id": 92,
+      "id": 89,
       "tokenKind": 1150,
       "kindName": "AiVectorGenTest",
       "fn": true,
@@ -1018,7 +985,7 @@
     {
       "ns": "AI",
       "name": "GetBase",
-      "id": 93,
+      "id": 90,
       "tokenKind": 1789,
       "kindName": "AiGetBase",
       "fn": true,
@@ -1029,7 +996,7 @@
     {
       "ns": "AI",
       "name": "GetDefault",
-      "id": 94,
+      "id": 91,
       "tokenKind": 1736,
       "kindName": "AiGetDefault",
       "fn": true,
@@ -1040,7 +1007,7 @@
     {
       "ns": "AI",
       "name": "GetKey",
-      "id": 95,
+      "id": 92,
       "tokenKind": 1785,
       "kindName": "AiGetKey",
       "fn": true,
@@ -1051,7 +1018,7 @@
     {
       "ns": "AI",
       "name": "GetModel",
-      "id": 96,
+      "id": 93,
       "tokenKind": 1783,
       "kindName": "AiGetModel",
       "fn": true,
@@ -1062,7 +1029,7 @@
     {
       "ns": "AI",
       "name": "GetTemp",
-      "id": 97,
+      "id": 94,
       "tokenKind": 1787,
       "kindName": "AiGetTemp",
       "fn": true,
@@ -1073,7 +1040,7 @@
     {
       "ns": "AI",
       "name": "GoalAgent",
-      "id": 98,
+      "id": 95,
       "tokenKind": 1450,
       "kindName": "AiGoalAgent",
       "fn": true,
@@ -1084,7 +1051,7 @@
     {
       "ns": "AI",
       "name": "GoalClear",
-      "id": 99,
+      "id": 96,
       "tokenKind": 1451,
       "kindName": "AiGoalClear",
       "fn": true,
@@ -1095,7 +1062,7 @@
     {
       "ns": "AI",
       "name": "GoalGet",
-      "id": 100,
+      "id": 97,
       "tokenKind": 1447,
       "kindName": "AiGoalGet",
       "fn": true,
@@ -1106,7 +1073,7 @@
     {
       "ns": "AI",
       "name": "GoalSet",
-      "id": 101,
+      "id": 98,
       "tokenKind": 1446,
       "kindName": "AiGoalSet",
       "fn": true,
@@ -1117,7 +1084,7 @@
     {
       "ns": "AI",
       "name": "GoalStatus",
-      "id": 102,
+      "id": 99,
       "tokenKind": 1448,
       "kindName": "AiGoalStatus",
       "fn": true,
@@ -1128,7 +1095,7 @@
     {
       "ns": "AI",
       "name": "GoalTick",
-      "id": 103,
+      "id": 100,
       "tokenKind": 1449,
       "kindName": "AiGoalTick",
       "fn": true,
@@ -1139,7 +1106,7 @@
     {
       "ns": "AI",
       "name": "Handoff",
-      "id": 104,
+      "id": 101,
       "tokenKind": 1436,
       "kindName": "AiHandoff",
       "fn": true,
@@ -1150,7 +1117,7 @@
     {
       "ns": "AI",
       "name": "HandoffClear",
-      "id": 105,
+      "id": 102,
       "tokenKind": 1440,
       "kindName": "AiHandoffClear",
       "fn": true,
@@ -1161,7 +1128,7 @@
     {
       "ns": "AI",
       "name": "HandoffComplete",
-      "id": 106,
+      "id": 103,
       "tokenKind": 1437,
       "kindName": "AiHandoffComplete",
       "fn": true,
@@ -1172,7 +1139,7 @@
     {
       "ns": "AI",
       "name": "HandoffList",
-      "id": 107,
+      "id": 104,
       "tokenKind": 1439,
       "kindName": "AiHandoffList",
       "fn": true,
@@ -1183,7 +1150,7 @@
     {
       "ns": "AI",
       "name": "HandoffStatus",
-      "id": 108,
+      "id": 105,
       "tokenKind": 1438,
       "kindName": "AiHandoffStatus",
       "fn": true,
@@ -1194,7 +1161,7 @@
     {
       "ns": "AI",
       "name": "HashEdit",
-      "id": 109,
+      "id": 106,
       "tokenKind": 1465,
       "kindName": "AiHashEdit",
       "fn": true,
@@ -1205,7 +1172,7 @@
     {
       "ns": "AI",
       "name": "HashLine",
-      "id": 110,
+      "id": 107,
       "tokenKind": 1464,
       "kindName": "AiHashLine",
       "fn": true,
@@ -1216,7 +1183,7 @@
     {
       "ns": "AI",
       "name": "HashVerify",
-      "id": 111,
+      "id": 108,
       "tokenKind": 1466,
       "kindName": "AiHashVerify",
       "fn": true,
@@ -1227,7 +1194,7 @@
     {
       "ns": "AI",
       "name": "HealthCheckInterval",
-      "id": 112,
+      "id": 109,
       "tokenKind": 1172,
       "kindName": "ProviderHealthCheckInterval",
       "fn": true,
@@ -1238,7 +1205,7 @@
     {
       "ns": "AI",
       "name": "HfRepo",
-      "id": 113,
+      "id": 110,
       "tokenKind": 1381,
       "kindName": "AiHfRepo",
       "fn": true,
@@ -1249,7 +1216,7 @@
     {
       "ns": "AI",
       "name": "HookEvents",
-      "id": 114,
+      "id": 111,
       "tokenKind": 1424,
       "kindName": "AiHookEvents",
       "fn": true,
@@ -1260,7 +1227,7 @@
     {
       "ns": "AI",
       "name": "HookFire",
-      "id": 115,
+      "id": 112,
       "tokenKind": 1425,
       "kindName": "AiHookFire",
       "fn": true,
@@ -1271,7 +1238,7 @@
     {
       "ns": "AI",
       "name": "HookList",
-      "id": 116,
+      "id": 113,
       "tokenKind": 1423,
       "kindName": "AiHookList",
       "fn": true,
@@ -1282,7 +1249,7 @@
     {
       "ns": "AI",
       "name": "HookRegister",
-      "id": 117,
+      "id": 114,
       "tokenKind": 1421,
       "kindName": "AiHookRegister",
       "fn": true,
@@ -1293,7 +1260,7 @@
     {
       "ns": "AI",
       "name": "HookUnregister",
-      "id": 118,
+      "id": 115,
       "tokenKind": 1422,
       "kindName": "AiHookUnregister",
       "fn": true,
@@ -1304,7 +1271,7 @@
     {
       "ns": "AI",
       "name": "ImageClassify",
-      "id": 119,
+      "id": 116,
       "tokenKind": 2277,
       "kindName": "AiImageClassify",
       "fn": true,
@@ -1315,7 +1282,7 @@
     {
       "ns": "AI",
       "name": "ImageCompare",
-      "id": 120,
+      "id": 117,
       "tokenKind": 2275,
       "kindName": "AiImageCompare",
       "fn": true,
@@ -1326,7 +1293,7 @@
     {
       "ns": "AI",
       "name": "ImageConvert",
-      "id": 121,
+      "id": 118,
       "tokenKind": 2270,
       "kindName": "AiImageConvert",
       "fn": true,
@@ -1337,7 +1304,7 @@
     {
       "ns": "AI",
       "name": "ImageCrop",
-      "id": 122,
+      "id": 119,
       "tokenKind": 2269,
       "kindName": "AiImageCrop",
       "fn": true,
@@ -1348,7 +1315,7 @@
     {
       "ns": "AI",
       "name": "ImageDetect",
-      "id": 123,
+      "id": 120,
       "tokenKind": 2276,
       "kindName": "AiImageDetect",
       "fn": true,
@@ -1359,7 +1326,7 @@
     {
       "ns": "AI",
       "name": "ImageEmbed",
-      "id": 124,
+      "id": 121,
       "tokenKind": 2274,
       "kindName": "AiImageEmbed",
       "fn": true,
@@ -1370,7 +1337,7 @@
     {
       "ns": "AI",
       "name": "ImageInfo",
-      "id": 125,
+      "id": 122,
       "tokenKind": 2267,
       "kindName": "AiImageInfo",
       "fn": true,
@@ -1381,7 +1348,7 @@
     {
       "ns": "AI",
       "name": "ImageResize",
-      "id": 126,
+      "id": 123,
       "tokenKind": 2268,
       "kindName": "AiImageResize",
       "fn": true,
@@ -1392,7 +1359,7 @@
     {
       "ns": "AI",
       "name": "IndexMeta",
-      "id": 127,
+      "id": 124,
       "tokenKind": 1142,
       "kindName": "AiVectorIndexMeta",
       "fn": true,
@@ -1403,7 +1370,7 @@
     {
       "ns": "AI",
       "name": "IndexText",
-      "id": 128,
+      "id": 125,
       "tokenKind": 1138,
       "kindName": "AiVectorIndexText",
       "fn": true,
@@ -1414,7 +1381,7 @@
     {
       "ns": "AI",
       "name": "Info",
-      "id": 129,
+      "id": 126,
       "tokenKind": 1731,
       "kindName": "AiInfo",
       "fn": true,
@@ -1425,7 +1392,7 @@
     {
       "ns": "AI",
       "name": "IngestWeb",
-      "id": 130,
+      "id": 127,
       "tokenKind": 1265,
       "kindName": "AiIngestWeb",
       "fn": true,
@@ -1436,7 +1403,7 @@
     {
       "ns": "AI",
       "name": "KgAddEdge",
-      "id": 131,
+      "id": 128,
       "tokenKind": 1210,
       "kindName": "AiKgAddEdge",
       "fn": true,
@@ -1447,7 +1414,7 @@
     {
       "ns": "AI",
       "name": "KgAddNode",
-      "id": 132,
+      "id": 129,
       "tokenKind": 1209,
       "kindName": "AiKgAddNode",
       "fn": true,
@@ -1458,7 +1425,7 @@
     {
       "ns": "AI",
       "name": "KgQuery",
-      "id": 133,
+      "id": 130,
       "tokenKind": 1211,
       "kindName": "AiKgQuery",
       "fn": true,
@@ -1469,7 +1436,7 @@
     {
       "ns": "AI",
       "name": "LexicalEntropy",
-      "id": 134,
+      "id": 131,
       "tokenKind": 2308,
       "kindName": "AiLexicalEntropy",
       "fn": true,
@@ -1480,7 +1447,7 @@
     {
       "ns": "AI",
       "name": "LinkDangling",
-      "id": 135,
+      "id": 132,
       "tokenKind": 1327,
       "kindName": "LinkDangling",
       "fn": true,
@@ -1491,7 +1458,7 @@
     {
       "ns": "AI",
       "name": "LinkJson",
-      "id": 136,
+      "id": 133,
       "tokenKind": 1328,
       "kindName": "LinkJson",
       "fn": true,
@@ -1502,7 +1469,7 @@
     {
       "ns": "AI",
       "name": "LinksOut",
-      "id": 137,
+      "id": 134,
       "tokenKind": 1325,
       "kindName": "LinksOut",
       "fn": true,
@@ -1513,7 +1480,7 @@
     {
       "ns": "AI",
       "name": "List",
-      "id": 138,
+      "id": 135,
       "tokenKind": 1769,
       "kindName": "AiList",
       "fn": true,
@@ -1524,7 +1491,7 @@
     {
       "ns": "AI",
       "name": "ListCollections",
-      "id": 139,
+      "id": 136,
       "tokenKind": 1148,
       "kindName": "AiVectorListCollections",
       "fn": true,
@@ -1535,7 +1502,7 @@
     {
       "ns": "AI",
       "name": "Load",
-      "id": 140,
+      "id": 137,
       "tokenKind": 1162,
       "kindName": "ProviderLoad",
       "fn": true,
@@ -1546,7 +1513,7 @@
     {
       "ns": "AI",
       "name": "LoadDocuments",
-      "id": 141,
+      "id": 138,
       "tokenKind": 1147,
       "kindName": "AiVectorLoadDocuments",
       "fn": true,
@@ -1557,7 +1524,7 @@
     {
       "ns": "AI",
       "name": "McpCall",
-      "id": 142,
+      "id": 139,
       "tokenKind": 1233,
       "kindName": "McpCall",
       "fn": true,
@@ -1568,7 +1535,7 @@
     {
       "ns": "AI",
       "name": "McpListTools",
-      "id": 143,
+      "id": 140,
       "tokenKind": 1219,
       "kindName": "McpListTools",
       "fn": true,
@@ -1579,7 +1546,7 @@
     {
       "ns": "AI",
       "name": "McpListToolsServer",
-      "id": 144,
+      "id": 141,
       "tokenKind": 1232,
       "kindName": "McpListToolsServer",
       "fn": true,
@@ -1590,7 +1557,7 @@
     {
       "ns": "AI",
       "name": "McpPrompts",
-      "id": 145,
+      "id": 142,
       "tokenKind": 1221,
       "kindName": "McpPrompts",
       "fn": true,
@@ -1601,7 +1568,7 @@
     {
       "ns": "AI",
       "name": "McpResources",
-      "id": 146,
+      "id": 143,
       "tokenKind": 1220,
       "kindName": "McpResources",
       "fn": true,
@@ -1612,7 +1579,7 @@
     {
       "ns": "AI",
       "name": "McpServerList",
-      "id": 147,
+      "id": 144,
       "tokenKind": 1228,
       "kindName": "McpServerList",
       "fn": true,
@@ -1623,7 +1590,7 @@
     {
       "ns": "AI",
       "name": "McpServerMarketplaceList",
-      "id": 148,
+      "id": 145,
       "tokenKind": 1230,
       "kindName": "McpServerMarketplaceList",
       "fn": true,
@@ -1634,7 +1601,7 @@
     {
       "ns": "AI",
       "name": "McpServerStatus",
-      "id": 149,
+      "id": 146,
       "tokenKind": 1229,
       "kindName": "McpServerStatus",
       "fn": true,
@@ -1645,7 +1612,7 @@
     {
       "ns": "AI",
       "name": "MemoryAsk",
-      "id": 150,
+      "id": 147,
       "tokenKind": 1246,
       "kindName": "MemoryAsk",
       "fn": true,
@@ -1656,7 +1623,7 @@
     {
       "ns": "AI",
       "name": "MemoryConsolidate",
-      "id": 151,
+      "id": 148,
       "tokenKind": 1333,
       "kindName": "MemoryConsolidate",
       "fn": true,
@@ -1667,7 +1634,7 @@
     {
       "ns": "AI",
       "name": "MemoryRank",
-      "id": 152,
+      "id": 149,
       "tokenKind": 1332,
       "kindName": "MemoryRank",
       "fn": true,
@@ -1678,7 +1645,7 @@
     {
       "ns": "AI",
       "name": "MetricGet",
-      "id": 153,
+      "id": 150,
       "tokenKind": 1460,
       "kindName": "AiMetricGet",
       "fn": true,
@@ -1689,7 +1656,7 @@
     {
       "ns": "AI",
       "name": "MetricList",
-      "id": 154,
+      "id": 151,
       "tokenKind": 1461,
       "kindName": "AiMetricList",
       "fn": true,
@@ -1700,7 +1667,7 @@
     {
       "ns": "AI",
       "name": "MetricRecord",
-      "id": 155,
+      "id": 152,
       "tokenKind": 1459,
       "kindName": "AiMetricRecord",
       "fn": true,
@@ -1711,7 +1678,7 @@
     {
       "ns": "AI",
       "name": "MetricReset",
-      "id": 156,
+      "id": 153,
       "tokenKind": 1463,
       "kindName": "AiMetricReset",
       "fn": true,
@@ -1722,7 +1689,7 @@
     {
       "ns": "AI",
       "name": "NoteExists",
-      "id": 157,
+      "id": 154,
       "tokenKind": 1323,
       "kindName": "NoteExists",
       "fn": true,
@@ -1733,7 +1700,7 @@
     {
       "ns": "AI",
       "name": "NoteFolder",
-      "id": 158,
+      "id": 155,
       "tokenKind": 1324,
       "kindName": "NoteFolder",
       "fn": true,
@@ -1744,7 +1711,7 @@
     {
       "ns": "AI",
       "name": "NoteGet",
-      "id": 159,
+      "id": 156,
       "tokenKind": 1319,
       "kindName": "NoteGet",
       "fn": true,
@@ -1755,7 +1722,7 @@
     {
       "ns": "AI",
       "name": "NoteLink",
-      "id": 160,
+      "id": 157,
       "tokenKind": 1261,
       "kindName": "AiNoteLink",
       "fn": true,
@@ -1766,7 +1733,7 @@
     {
       "ns": "AI",
       "name": "NoteSetAlias",
-      "id": 161,
+      "id": 158,
       "tokenKind": 1263,
       "kindName": "AiNoteSetAlias",
       "fn": true,
@@ -1777,7 +1744,7 @@
     {
       "ns": "AI",
       "name": "NoteTags",
-      "id": 162,
+      "id": 159,
       "tokenKind": 1321,
       "kindName": "NoteTags",
       "fn": true,
@@ -1788,7 +1755,7 @@
     {
       "ns": "AI",
       "name": "NoteTitle",
-      "id": 163,
+      "id": 160,
       "tokenKind": 1320,
       "kindName": "NoteTitle",
       "fn": true,
@@ -1799,7 +1766,7 @@
     {
       "ns": "AI",
       "name": "NoteUnlink",
-      "id": 164,
+      "id": 161,
       "tokenKind": 1262,
       "kindName": "AiNoteUnlink",
       "fn": true,
@@ -1810,7 +1777,7 @@
     {
       "ns": "AI",
       "name": "NoteWordCount",
-      "id": 165,
+      "id": 162,
       "tokenKind": 1322,
       "kindName": "NoteWordCount",
       "fn": true,
@@ -1821,7 +1788,7 @@
     {
       "ns": "AI",
       "name": "OCR",
-      "id": 166,
+      "id": 163,
       "tokenKind": 1724,
       "kindName": "AiOcr",
       "fn": true,
@@ -1832,7 +1799,7 @@
     {
       "ns": "AI",
       "name": "Observation",
-      "id": 167,
+      "id": 164,
       "tokenKind": 2120,
       "kindName": "AiObservationGet",
       "fn": true,
@@ -1843,7 +1810,7 @@
     {
       "ns": "AI",
       "name": "ObservationCount",
-      "id": 168,
+      "id": 165,
       "tokenKind": 2122,
       "kindName": "AiObservationCount",
       "fn": true,
@@ -1854,7 +1821,7 @@
     {
       "ns": "AI",
       "name": "ObservationFile",
-      "id": 169,
+      "id": 166,
       "tokenKind": 2124,
       "kindName": "AiObservationFile",
       "fn": true,
@@ -1865,7 +1832,7 @@
     {
       "ns": "AI",
       "name": "ObservationHash",
-      "id": 170,
+      "id": 167,
       "tokenKind": 2121,
       "kindName": "AiObservationHash",
       "fn": true,
@@ -1876,7 +1843,7 @@
     {
       "ns": "AI",
       "name": "ObservationLatest",
-      "id": 171,
+      "id": 168,
       "tokenKind": 2119,
       "kindName": "AiObservationLatest",
       "fn": true,
@@ -1887,7 +1854,7 @@
     {
       "ns": "AI",
       "name": "ObservationList",
-      "id": 172,
+      "id": 169,
       "tokenKind": 2123,
       "kindName": "AiObservationList",
       "fn": true,
@@ -1898,7 +1865,7 @@
     {
       "ns": "AI",
       "name": "Option",
-      "id": 173,
+      "id": 170,
       "tokenKind": 1383,
       "kindName": "AiOption",
       "fn": true,
@@ -1909,7 +1876,7 @@
     {
       "ns": "AI",
       "name": "OrchLoad",
-      "id": 174,
+      "id": 171,
       "tokenKind": 1472,
       "kindName": "AiOrchLoad",
       "fn": true,
@@ -1920,7 +1887,7 @@
     {
       "ns": "AI",
       "name": "OrchSave",
-      "id": 175,
+      "id": 172,
       "tokenKind": 1471,
       "kindName": "AiOrchSave",
       "fn": true,
@@ -1931,7 +1898,7 @@
     {
       "ns": "AI",
       "name": "PlanAdd",
-      "id": 176,
+      "id": 173,
       "tokenKind": 1416,
       "kindName": "AiPlanAdd",
       "fn": true,
@@ -1942,7 +1909,7 @@
     {
       "ns": "AI",
       "name": "PlanApprove",
-      "id": 177,
+      "id": 174,
       "tokenKind": 1417,
       "kindName": "AiPlanApprove",
       "fn": true,
@@ -1953,7 +1920,7 @@
     {
       "ns": "AI",
       "name": "PlanClear",
-      "id": 178,
+      "id": 175,
       "tokenKind": 1474,
       "kindName": "AiPlanClear",
       "fn": true,
@@ -1964,7 +1931,7 @@
     {
       "ns": "AI",
       "name": "PlanDefine",
-      "id": 179,
+      "id": 176,
       "tokenKind": 1415,
       "kindName": "AiPlanDefine",
       "fn": true,
@@ -1975,7 +1942,7 @@
     {
       "ns": "AI",
       "name": "PlanList",
-      "id": 180,
+      "id": 177,
       "tokenKind": 1419,
       "kindName": "AiPlanList",
       "fn": true,
@@ -1986,7 +1953,7 @@
     {
       "ns": "AI",
       "name": "PlanRun",
-      "id": 181,
+      "id": 178,
       "tokenKind": 1420,
       "kindName": "AiPlanRun",
       "fn": true,
@@ -1997,7 +1964,7 @@
     {
       "ns": "AI",
       "name": "PlanStatus",
-      "id": 182,
+      "id": 179,
       "tokenKind": 1418,
       "kindName": "AiPlanStatus",
       "fn": true,
@@ -2008,7 +1975,7 @@
     {
       "ns": "AI",
       "name": "PluginCall",
-      "id": 183,
+      "id": 180,
       "tokenKind": 1833,
       "kindName": "AiPluginCall",
       "fn": true,
@@ -2019,7 +1986,7 @@
     {
       "ns": "AI",
       "name": "PluginList",
-      "id": 184,
+      "id": 181,
       "tokenKind": 1835,
       "kindName": "AiPluginList",
       "fn": true,
@@ -2030,7 +1997,7 @@
     {
       "ns": "AI",
       "name": "PluginsInfo",
-      "id": 185,
+      "id": 182,
       "tokenKind": 1834,
       "kindName": "AiPluginInfo",
       "fn": true,
@@ -2041,7 +2008,7 @@
     {
       "ns": "AI",
       "name": "PluginsList",
-      "id": 186,
+      "id": 183,
       "tokenKind": 1812,
       "kindName": "AiPluginsList",
       "fn": true,
@@ -2052,7 +2019,7 @@
     {
       "ns": "AI",
       "name": "Priority",
-      "id": 187,
+      "id": 184,
       "tokenKind": 1775,
       "kindName": "AiPriority",
       "fn": true,
@@ -2063,7 +2030,7 @@
     {
       "ns": "AI",
       "name": "Providers",
-      "id": 188,
+      "id": 185,
       "tokenKind": 1726,
       "kindName": "AiKeys",
       "fn": true,
@@ -2074,7 +2041,7 @@
     {
       "ns": "AI",
       "name": "PurgeDeprecated",
-      "id": 189,
+      "id": 186,
       "tokenKind": 1144,
       "kindName": "AiVectorPurgeDeprecated",
       "fn": true,
@@ -2085,7 +2052,7 @@
     {
       "ns": "AI",
       "name": "QaAnswer",
-      "id": 190,
+      "id": 187,
       "tokenKind": 1335,
       "kindName": "QaAnswer",
       "fn": true,
@@ -2096,7 +2063,7 @@
     {
       "ns": "AI",
       "name": "RagContext",
-      "id": 191,
+      "id": 188,
       "tokenKind": 1139,
       "kindName": "AiVectorRagContext",
       "fn": true,
@@ -2107,7 +2074,7 @@
     {
       "ns": "AI",
       "name": "RagContextMulti",
-      "id": 192,
+      "id": 189,
       "tokenKind": 1283,
       "kindName": "AiRagContextMulti",
       "fn": true,
@@ -2118,7 +2085,7 @@
     {
       "ns": "AI",
       "name": "Register",
-      "id": 193,
+      "id": 190,
       "tokenKind": 1153,
       "kindName": "ProviderRegister",
       "fn": true,
@@ -2129,7 +2096,7 @@
     {
       "ns": "AI",
       "name": "RemoveSource",
-      "id": 194,
+      "id": 191,
       "tokenKind": 1143,
       "kindName": "AiVectorRemoveSource",
       "fn": true,
@@ -2140,7 +2107,7 @@
     {
       "ns": "AI",
       "name": "ReplayClear",
-      "id": 195,
+      "id": 192,
       "tokenKind": 1457,
       "kindName": "AiReplayClear",
       "fn": true,
@@ -2151,7 +2118,7 @@
     {
       "ns": "AI",
       "name": "ReplayGet",
-      "id": 196,
+      "id": 193,
       "tokenKind": 1455,
       "kindName": "AiReplayGet",
       "fn": true,
@@ -2162,7 +2129,7 @@
     {
       "ns": "AI",
       "name": "ReplayList",
-      "id": 197,
+      "id": 194,
       "tokenKind": 1456,
       "kindName": "AiReplayList",
       "fn": true,
@@ -2173,7 +2140,7 @@
     {
       "ns": "AI",
       "name": "ReplayRecord",
-      "id": 198,
+      "id": 195,
       "tokenKind": 1453,
       "kindName": "AiReplayRecord",
       "fn": true,
@@ -2184,7 +2151,7 @@
     {
       "ns": "AI",
       "name": "ReplayRun",
-      "id": 199,
+      "id": 196,
       "tokenKind": 1458,
       "kindName": "AiReplayRun",
       "fn": true,
@@ -2195,7 +2162,7 @@
     {
       "ns": "AI",
       "name": "ReplayStart",
-      "id": 200,
+      "id": 197,
       "tokenKind": 1452,
       "kindName": "AiReplayStart",
       "fn": true,
@@ -2206,7 +2173,7 @@
     {
       "ns": "AI",
       "name": "ReplayStop",
-      "id": 201,
+      "id": 198,
       "tokenKind": 1454,
       "kindName": "AiReplayStop",
       "fn": true,
@@ -2217,7 +2184,7 @@
     {
       "ns": "AI",
       "name": "Rerank",
-      "id": 202,
+      "id": 199,
       "tokenKind": 1149,
       "kindName": "AiVectorRerank",
       "fn": true,
@@ -2228,7 +2195,7 @@
     {
       "ns": "AI",
       "name": "ResetFailed",
-      "id": 203,
+      "id": 200,
       "tokenKind": 1167,
       "kindName": "ProviderResetFailed",
       "fn": true,
@@ -2239,7 +2206,7 @@
     {
       "ns": "AI",
       "name": "ResourceAvailable",
-      "id": 204,
+      "id": 201,
       "tokenKind": 1434,
       "kindName": "AiResourceAvailable",
       "fn": true,
@@ -2250,7 +2217,7 @@
     {
       "ns": "AI",
       "name": "ResourceGet",
-      "id": 205,
+      "id": 202,
       "tokenKind": 1432,
       "kindName": "AiResourceGet",
       "fn": true,
@@ -2261,7 +2228,7 @@
     {
       "ns": "AI",
       "name": "ResourceList",
-      "id": 206,
+      "id": 203,
       "tokenKind": 1433,
       "kindName": "AiResourceList",
       "fn": true,
@@ -2272,7 +2239,7 @@
     {
       "ns": "AI",
       "name": "ResourceSet",
-      "id": 207,
+      "id": 204,
       "tokenKind": 1431,
       "kindName": "AiResourceSet",
       "fn": true,
@@ -2283,7 +2250,7 @@
     {
       "ns": "AI",
       "name": "ResourceSwarmSize",
-      "id": 208,
+      "id": 205,
       "tokenKind": 1435,
       "kindName": "AiResourceSwarmSize",
       "fn": true,
@@ -2294,7 +2261,7 @@
     {
       "ns": "AI",
       "name": "Resume",
-      "id": 209,
+      "id": 206,
       "tokenKind": 1468,
       "kindName": "AiResume",
       "fn": true,
@@ -2305,7 +2272,7 @@
     {
       "ns": "AI",
       "name": "Rotate",
-      "id": 210,
+      "id": 207,
       "tokenKind": 1767,
       "kindName": "AiRotate",
       "fn": true,
@@ -2316,7 +2283,7 @@
     {
       "ns": "AI",
       "name": "RulesAdd",
-      "id": 211,
+      "id": 208,
       "tokenKind": 1441,
       "kindName": "AiRulesAdd",
       "fn": true,
@@ -2327,7 +2294,7 @@
     {
       "ns": "AI",
       "name": "RulesClear",
-      "id": 212,
+      "id": 209,
       "tokenKind": 1445,
       "kindName": "AiRulesClear",
       "fn": true,
@@ -2338,7 +2305,7 @@
     {
       "ns": "AI",
       "name": "RulesFor",
-      "id": 213,
+      "id": 210,
       "tokenKind": 1442,
       "kindName": "AiRulesFor",
       "fn": true,
@@ -2349,7 +2316,7 @@
     {
       "ns": "AI",
       "name": "RulesList",
-      "id": 214,
+      "id": 211,
       "tokenKind": 1443,
       "kindName": "AiRulesList",
       "fn": true,
@@ -2360,7 +2327,7 @@
     {
       "ns": "AI",
       "name": "RulesRemove",
-      "id": 215,
+      "id": 212,
       "tokenKind": 1444,
       "kindName": "AiRulesRemove",
       "fn": true,
@@ -2371,7 +2338,7 @@
     {
       "ns": "AI",
       "name": "RunHealthCheck",
-      "id": 216,
+      "id": 213,
       "tokenKind": 1173,
       "kindName": "ProviderRunHealthCheck",
       "fn": true,
@@ -2382,7 +2349,7 @@
     {
       "ns": "AI",
       "name": "Save",
-      "id": 217,
+      "id": 214,
       "tokenKind": 1161,
       "kindName": "ProviderSave",
       "fn": true,
@@ -2393,7 +2360,7 @@
     {
       "ns": "AI",
       "name": "Search",
-      "id": 218,
+      "id": 215,
       "tokenKind": 1146,
       "kindName": "AiVectorSearch",
       "fn": true,
@@ -2404,7 +2371,7 @@
     {
       "ns": "AI",
       "name": "SearchMulti",
-      "id": 219,
+      "id": 216,
       "tokenKind": 1282,
       "kindName": "AiSearchMulti",
       "fn": true,
@@ -2415,7 +2382,7 @@
     {
       "ns": "AI",
       "name": "SetActive",
-      "id": 220,
+      "id": 217,
       "tokenKind": 1156,
       "kindName": "ProviderSetActive",
       "fn": true,
@@ -2426,7 +2393,7 @@
     {
       "ns": "AI",
       "name": "SetCredits",
-      "id": 221,
+      "id": 218,
       "tokenKind": 1177,
       "kindName": "ProviderSetCredits",
       "fn": true,
@@ -2437,7 +2404,7 @@
     {
       "ns": "AI",
       "name": "SetPriority",
-      "id": 222,
+      "id": 219,
       "tokenKind": 1164,
       "kindName": "ProviderSetPriority",
       "fn": true,
@@ -2448,7 +2415,7 @@
     {
       "ns": "AI",
       "name": "SetStatus",
-      "id": 223,
+      "id": 220,
       "tokenKind": 1168,
       "kindName": "ProviderSetStatus",
       "fn": true,
@@ -2459,7 +2426,7 @@
     {
       "ns": "AI",
       "name": "SetWeight",
-      "id": 224,
+      "id": 221,
       "tokenKind": 1174,
       "kindName": "ProviderSetWeight",
       "fn": true,
@@ -2470,7 +2437,7 @@
     {
       "ns": "AI",
       "name": "ShareDecrypt",
-      "id": 225,
+      "id": 222,
       "tokenKind": 1340,
       "kindName": "ShareDecrypt",
       "fn": true,
@@ -2481,7 +2448,7 @@
     {
       "ns": "AI",
       "name": "ShareEncrypt",
-      "id": 226,
+      "id": 223,
       "tokenKind": 1339,
       "kindName": "ShareEncrypt",
       "fn": true,
@@ -2492,7 +2459,7 @@
     {
       "ns": "AI",
       "name": "SignNote",
-      "id": 227,
+      "id": 224,
       "tokenKind": 1337,
       "kindName": "SignNote",
       "fn": true,
@@ -2503,7 +2470,7 @@
     {
       "ns": "AI",
       "name": "SkillsList",
-      "id": 228,
+      "id": 225,
       "tokenKind": 1805,
       "kindName": "AiSkillsList",
       "fn": true,
@@ -2514,7 +2481,7 @@
     {
       "ns": "AI",
       "name": "SkillsPaths",
-      "id": 229,
+      "id": 226,
       "tokenKind": 1806,
       "kindName": "AiSkillsPaths",
       "fn": true,
@@ -2525,7 +2492,7 @@
     {
       "ns": "AI",
       "name": "SkillsPrompt",
-      "id": 230,
+      "id": 227,
       "tokenKind": 1804,
       "kindName": "AiSkillsPrompt",
       "fn": true,
@@ -2536,7 +2503,7 @@
     {
       "ns": "AI",
       "name": "StartHealthCheck",
-      "id": 231,
+      "id": 228,
       "tokenKind": 1170,
       "kindName": "ProviderStartHealthCheck",
       "fn": true,
@@ -2547,7 +2514,7 @@
     {
       "ns": "AI",
       "name": "StateLoad",
-      "id": 232,
+      "id": 229,
       "tokenKind": 2342,
       "kindName": "AiStateLoad",
       "fn": true,
@@ -2558,7 +2525,7 @@
     {
       "ns": "AI",
       "name": "Status",
-      "id": 233,
+      "id": 230,
       "tokenKind": 1781,
       "kindName": "AiStatus",
       "fn": true,
@@ -2569,7 +2536,7 @@
     {
       "ns": "AI",
       "name": "StopHealthCheck",
-      "id": 234,
+      "id": 231,
       "tokenKind": 1171,
       "kindName": "ProviderStopHealthCheck",
       "fn": true,
@@ -2580,7 +2547,7 @@
     {
       "ns": "AI",
       "name": "SuggestTags",
-      "id": 235,
+      "id": 232,
       "tokenKind": 1336,
       "kindName": "SuggestTags",
       "fn": true,
@@ -2591,7 +2558,7 @@
     {
       "ns": "AI",
       "name": "SyncFolder",
-      "id": 236,
+      "id": 233,
       "tokenKind": 1264,
       "kindName": "AiSyncFolder",
       "fn": true,
@@ -2602,7 +2569,7 @@
     {
       "ns": "AI",
       "name": "Synthesize",
-      "id": 237,
+      "id": 234,
       "tokenKind": 2273,
       "kindName": "AiSynthesize",
       "fn": true,
@@ -2613,7 +2580,7 @@
     {
       "ns": "AI",
       "name": "TaskAssign",
-      "id": 238,
+      "id": 235,
       "tokenKind": 1411,
       "kindName": "AiTaskAssign",
       "fn": true,
@@ -2624,7 +2591,7 @@
     {
       "ns": "AI",
       "name": "TaskClear",
-      "id": 239,
+      "id": 236,
       "tokenKind": 1473,
       "kindName": "AiTaskClear",
       "fn": true,
@@ -2635,7 +2602,7 @@
     {
       "ns": "AI",
       "name": "TaskDefine",
-      "id": 240,
+      "id": 237,
       "tokenKind": 1409,
       "kindName": "AiTaskDefine",
       "fn": true,
@@ -2646,7 +2613,7 @@
     {
       "ns": "AI",
       "name": "TaskDepends",
-      "id": 241,
+      "id": 238,
       "tokenKind": 1410,
       "kindName": "AiTaskDepends",
       "fn": true,
@@ -2657,7 +2624,7 @@
     {
       "ns": "AI",
       "name": "TaskList",
-      "id": 242,
+      "id": 239,
       "tokenKind": 1413,
       "kindName": "AiTaskList",
       "fn": true,
@@ -2668,7 +2635,7 @@
     {
       "ns": "AI",
       "name": "TaskMetrics",
-      "id": 243,
+      "id": 240,
       "tokenKind": 2356,
       "kindName": "AiTaskMetrics",
       "fn": true,
@@ -2679,7 +2646,7 @@
     {
       "ns": "AI",
       "name": "TaskRun",
-      "id": 244,
+      "id": 241,
       "tokenKind": 1414,
       "kindName": "AiTaskRun",
       "fn": true,
@@ -2690,7 +2657,7 @@
     {
       "ns": "AI",
       "name": "TaskStatus",
-      "id": 245,
+      "id": 242,
       "tokenKind": 1412,
       "kindName": "AiTaskStatus",
       "fn": true,
@@ -2701,7 +2668,7 @@
     {
       "ns": "AI",
       "name": "TeamAgents",
-      "id": 246,
+      "id": 243,
       "tokenKind": 1357,
       "kindName": "TeamAgents",
       "fn": true,
@@ -2712,7 +2679,7 @@
     {
       "ns": "AI",
       "name": "TeamLatent",
-      "id": 247,
+      "id": 244,
       "tokenKind": 1395,
       "kindName": "TeamLatent",
       "fn": true,
@@ -2723,7 +2690,7 @@
     {
       "ns": "AI",
       "name": "TeamLinkInfo",
-      "id": 248,
+      "id": 245,
       "tokenKind": 1393,
       "kindName": "TeamLinkInfo",
       "fn": true,
@@ -2734,7 +2701,7 @@
     {
       "ns": "AI",
       "name": "TeamList",
-      "id": 249,
+      "id": 246,
       "tokenKind": 1356,
       "kindName": "TeamList",
       "fn": true,
@@ -2745,7 +2712,7 @@
     {
       "ns": "AI",
       "name": "TeamOnStream",
-      "id": 250,
+      "id": 247,
       "tokenKind": 1399,
       "kindName": "TeamOnStream",
       "fn": true,
@@ -2756,7 +2723,7 @@
     {
       "ns": "AI",
       "name": "TeamRecursion",
-      "id": 251,
+      "id": 248,
       "tokenKind": 1394,
       "kindName": "TeamRecursion",
       "fn": true,
@@ -2767,7 +2734,7 @@
     {
       "ns": "AI",
       "name": "TeamRunStart",
-      "id": 252,
+      "id": 249,
       "tokenKind": 1397,
       "kindName": "TeamRunStart",
       "fn": true,
@@ -2778,7 +2745,7 @@
     {
       "ns": "AI",
       "name": "TeamRunWait",
-      "id": 253,
+      "id": 250,
       "tokenKind": 1398,
       "kindName": "TeamRunWait",
       "fn": true,
@@ -2789,7 +2756,7 @@
     {
       "ns": "AI",
       "name": "TeamRuntimeStats",
-      "id": 254,
+      "id": 251,
       "tokenKind": 1396,
       "kindName": "TeamRuntimeStats",
       "fn": true,
@@ -2800,7 +2767,7 @@
     {
       "ns": "AI",
       "name": "TeamTrainStatus",
-      "id": 255,
+      "id": 252,
       "tokenKind": 1392,
       "kindName": "TeamTrainStatus",
       "fn": true,
@@ -2811,7 +2778,7 @@
     {
       "ns": "AI",
       "name": "Test",
-      "id": 256,
+      "id": 253,
       "tokenKind": 1163,
       "kindName": "ProviderTest",
       "fn": true,
@@ -2822,7 +2789,7 @@
     {
       "ns": "AI",
       "name": "Transcribe",
-      "id": 257,
+      "id": 254,
       "tokenKind": 1725,
       "kindName": "AiTranscribe",
       "fn": true,
@@ -2833,7 +2800,7 @@
     {
       "ns": "AI",
       "name": "Unregister",
-      "id": 258,
+      "id": 255,
       "tokenKind": 1160,
       "kindName": "ProviderUnregister",
       "fn": true,
@@ -2844,7 +2811,7 @@
     {
       "ns": "AI",
       "name": "VaultAddFolder",
-      "id": 259,
+      "id": 256,
       "tokenKind": 1258,
       "kindName": "AiVaultAddFolder",
       "fn": true,
@@ -2855,7 +2822,7 @@
     {
       "ns": "AI",
       "name": "VaultCount",
-      "id": 260,
+      "id": 257,
       "tokenKind": 1254,
       "kindName": "AiVaultCount",
       "fn": true,
@@ -2866,7 +2833,7 @@
     {
       "ns": "AI",
       "name": "VaultFolders",
-      "id": 261,
+      "id": 258,
       "tokenKind": 1253,
       "kindName": "AiVaultFolders",
       "fn": true,
@@ -2877,7 +2844,7 @@
     {
       "ns": "AI",
       "name": "VaultInfo",
-      "id": 262,
+      "id": 259,
       "tokenKind": 1252,
       "kindName": "AiVaultInfo",
       "fn": true,
@@ -2888,7 +2855,7 @@
     {
       "ns": "AI",
       "name": "VaultList",
-      "id": 263,
+      "id": 260,
       "tokenKind": 1255,
       "kindName": "AiVaultList",
       "fn": true,
@@ -2899,7 +2866,7 @@
     {
       "ns": "AI",
       "name": "VaultPolicy",
-      "id": 264,
+      "id": 261,
       "tokenKind": 1257,
       "kindName": "AiVaultPolicy",
       "fn": true,
@@ -2910,7 +2877,7 @@
     {
       "ns": "AI",
       "name": "VaultRemoveFolder",
-      "id": 265,
+      "id": 262,
       "tokenKind": 1259,
       "kindName": "AiVaultRemoveFolder",
       "fn": true,
@@ -2921,7 +2888,7 @@
     {
       "ns": "AI",
       "name": "VaultSetFolderProps",
-      "id": 266,
+      "id": 263,
       "tokenKind": 1260,
       "kindName": "AiVaultSetFolderProps",
       "fn": true,
@@ -2932,7 +2899,7 @@
     {
       "ns": "AI",
       "name": "VaultWatch",
-      "id": 267,
+      "id": 264,
       "tokenKind": 1256,
       "kindName": "AiVaultWatch",
       "fn": true,
@@ -2943,7 +2910,7 @@
     {
       "ns": "AI",
       "name": "VerifyNote",
-      "id": 268,
+      "id": 265,
       "tokenKind": 1338,
       "kindName": "VerifyNote",
       "fn": true,
@@ -2954,7 +2921,7 @@
     {
       "ns": "AI",
       "name": "VideoFrame",
-      "id": 269,
+      "id": 266,
       "tokenKind": 2280,
       "kindName": "AiVideoFrame",
       "fn": true,
@@ -2965,7 +2932,7 @@
     {
       "ns": "AI",
       "name": "VideoInfo",
-      "id": 270,
+      "id": 267,
       "tokenKind": 2279,
       "kindName": "AiVideoInfo",
       "fn": true,
@@ -2976,7 +2943,7 @@
     {
       "ns": "AI",
       "name": "VideoSnapshot",
-      "id": 271,
+      "id": 268,
       "tokenKind": 2281,
       "kindName": "AiVideoSnapshot",
       "fn": true,
@@ -2987,7 +2954,7 @@
     {
       "ns": "AI",
       "name": "Weight",
-      "id": 272,
+      "id": 269,
       "tokenKind": 1777,
       "kindName": "AiWeight",
       "fn": true,
@@ -2998,7 +2965,7 @@
     {
       "ns": "AI",
       "name": "WorkerRescued",
-      "id": 273,
+      "id": 270,
       "tokenKind": 2344,
       "kindName": "AiWorkerRescued",
       "fn": true,
@@ -3009,7 +2976,7 @@
     {
       "ns": "AI",
       "name": "WorkerRounds",
-      "id": 274,
+      "id": 271,
       "tokenKind": 2343,
       "kindName": "AiWorkerRounds",
       "fn": true,
@@ -3020,7 +2987,7 @@
     {
       "ns": "AI",
       "name": "WorkerSpend",
-      "id": 275,
+      "id": 272,
       "tokenKind": 2345,
       "kindName": "AiWorkerSpend",
       "fn": true,
@@ -3031,7 +2998,7 @@
     {
       "ns": "AI",
       "name": "WorkflowList",
-      "id": 276,
+      "id": 273,
       "tokenKind": 1349,
       "kindName": "WorkflowList",
       "fn": true,
@@ -3042,7 +3009,7 @@
     {
       "ns": "AI",
       "name": "WorkflowStatus",
-      "id": 277,
+      "id": 274,
       "tokenKind": 1350,
       "kindName": "WorkflowStatus",
       "fn": true,
@@ -3053,7 +3020,7 @@
     {
       "ns": "AI",
       "name": "WorkflowSteps",
-      "id": 278,
+      "id": 275,
       "tokenKind": 1351,
       "kindName": "WorkflowSteps",
       "fn": true,
@@ -3064,7 +3031,7 @@
     {
       "ns": "ANALYSIS",
       "name": "AdfTest",
-      "id": 279,
+      "id": 276,
       "tokenKind": 726,
       "kindName": "AdfTest",
       "fn": true,
@@ -3075,7 +3042,7 @@
     {
       "ns": "ANALYSIS",
       "name": "Anova",
-      "id": 280,
+      "id": 277,
       "tokenKind": 721,
       "kindName": "Anova",
       "fn": true,
@@ -3086,7 +3053,7 @@
     {
       "ns": "ANALYSIS",
       "name": "Arima",
-      "id": 281,
+      "id": 278,
       "tokenKind": 722,
       "kindName": "Arima",
       "fn": true,
@@ -3097,7 +3064,7 @@
     {
       "ns": "ANALYSIS",
       "name": "Correlation",
-      "id": 282,
+      "id": 279,
       "tokenKind": 718,
       "kindName": "Correlation",
       "fn": true,
@@ -3108,7 +3075,7 @@
     {
       "ns": "ANALYSIS",
       "name": "CubicSpline",
-      "id": 283,
+      "id": 280,
       "tokenKind": 745,
       "kindName": "CubicSpline",
       "fn": true,
@@ -3119,7 +3086,7 @@
     {
       "ns": "ANALYSIS",
       "name": "CumTrapezoid",
-      "id": 284,
+      "id": 281,
       "tokenKind": 743,
       "kindName": "CumTrapezoid",
       "fn": true,
@@ -3130,7 +3097,7 @@
     {
       "ns": "ANALYSIS",
       "name": "Differentiate",
-      "id": 285,
+      "id": 282,
       "tokenKind": 736,
       "kindName": "Differentiate",
       "fn": true,
@@ -3141,7 +3108,7 @@
     {
       "ns": "ANALYSIS",
       "name": "EuclideanDistanceSquared",
-      "id": 286,
+      "id": 283,
       "tokenKind": 1980,
       "kindName": "EuclideanDistanceSquared",
       "fn": true,
@@ -3152,7 +3119,7 @@
     {
       "ns": "ANALYSIS",
       "name": "Fft",
-      "id": 287,
+      "id": 284,
       "tokenKind": 737,
       "kindName": "Fft",
       "fn": true,
@@ -3163,7 +3130,7 @@
     {
       "ns": "ANALYSIS",
       "name": "FftComplex",
-      "id": 288,
+      "id": 285,
       "tokenKind": 739,
       "kindName": "FftComplex",
       "fn": true,
@@ -3174,7 +3141,7 @@
     {
       "ns": "ANALYSIS",
       "name": "FftFreq",
-      "id": 289,
+      "id": 286,
       "tokenKind": 746,
       "kindName": "FftFreq",
       "fn": true,
@@ -3185,7 +3152,7 @@
     {
       "ns": "ANALYSIS",
       "name": "FftShift",
-      "id": 290,
+      "id": 287,
       "tokenKind": 747,
       "kindName": "FftShift",
       "fn": true,
@@ -3196,7 +3163,7 @@
     {
       "ns": "ANALYSIS",
       "name": "HoltWinters",
-      "id": 291,
+      "id": 288,
       "tokenKind": 725,
       "kindName": "HoltWinters",
       "fn": true,
@@ -3207,7 +3174,7 @@
     {
       "ns": "ANALYSIS",
       "name": "Ifft",
-      "id": 292,
+      "id": 289,
       "tokenKind": 738,
       "kindName": "Ifft",
       "fn": true,
@@ -3218,7 +3185,7 @@
     {
       "ns": "ANALYSIS",
       "name": "IfftComplex",
-      "id": 293,
+      "id": 290,
       "tokenKind": 740,
       "kindName": "IfftComplex",
       "fn": true,
@@ -3229,7 +3196,7 @@
     {
       "ns": "ANALYSIS",
       "name": "IfftShift",
-      "id": 294,
+      "id": 291,
       "tokenKind": 748,
       "kindName": "IfftShift",
       "fn": true,
@@ -3240,7 +3207,7 @@
     {
       "ns": "ANALYSIS",
       "name": "Integrate",
-      "id": 295,
+      "id": 292,
       "tokenKind": 735,
       "kindName": "Integrate",
       "fn": true,
@@ -3251,7 +3218,7 @@
     {
       "ns": "ANALYSIS",
       "name": "InterpolateClamp",
-      "id": 296,
+      "id": 293,
       "tokenKind": 733,
       "kindName": "InterpolateClamp",
       "fn": true,
@@ -3262,7 +3229,7 @@
     {
       "ns": "ANALYSIS",
       "name": "InterpolateGeneric",
-      "id": 297,
+      "id": 294,
       "tokenKind": 734,
       "kindName": "InterpolateGeneric",
       "fn": true,
@@ -3273,7 +3240,7 @@
     {
       "ns": "ANALYSIS",
       "name": "InterpolateLinear",
-      "id": 298,
+      "id": 295,
       "tokenKind": 728,
       "kindName": "InterpolateLinear",
       "fn": true,
@@ -3284,7 +3251,7 @@
     {
       "ns": "ANALYSIS",
       "name": "InterpolatePchip",
-      "id": 299,
+      "id": 296,
       "tokenKind": 731,
       "kindName": "InterpolatePchip",
       "fn": true,
@@ -3295,7 +3262,7 @@
     {
       "ns": "ANALYSIS",
       "name": "InterpolatePolynomial",
-      "id": 300,
+      "id": 297,
       "tokenKind": 730,
       "kindName": "InterpolatePolynomial",
       "fn": true,
@@ -3306,7 +3273,7 @@
     {
       "ns": "ANALYSIS",
       "name": "InterpolateSpline",
-      "id": 301,
+      "id": 298,
       "tokenKind": 729,
       "kindName": "InterpolateSpline",
       "fn": true,
@@ -3317,7 +3284,7 @@
     {
       "ns": "ANALYSIS",
       "name": "InterpolateStep",
-      "id": 302,
+      "id": 299,
       "tokenKind": 732,
       "kindName": "InterpolateStep",
       "fn": true,
@@ -3328,7 +3295,7 @@
     {
       "ns": "ANALYSIS",
       "name": "Irfft",
-      "id": 303,
+      "id": 300,
       "tokenKind": 1889,
       "kindName": "FftIrfft",
       "fn": true,
@@ -3339,7 +3306,7 @@
     {
       "ns": "ANALYSIS",
       "name": "KMeans",
-      "id": 304,
+      "id": 301,
       "tokenKind": 724,
       "kindName": "KMeans",
       "fn": true,
@@ -3350,7 +3317,7 @@
     {
       "ns": "ANALYSIS",
       "name": "Kurtosis",
-      "id": 305,
+      "id": 302,
       "tokenKind": 717,
       "kindName": "Kurtosis",
       "fn": true,
@@ -3361,7 +3328,7 @@
     {
       "ns": "ANALYSIS",
       "name": "MaCoefficients",
-      "id": 306,
+      "id": 303,
       "tokenKind": 1979,
       "kindName": "MaCoefficients",
       "fn": true,
@@ -3372,7 +3339,7 @@
     {
       "ns": "ANALYSIS",
       "name": "Mad",
-      "id": 307,
+      "id": 304,
       "tokenKind": 720,
       "kindName": "Mad",
       "fn": true,
@@ -3383,7 +3350,7 @@
     {
       "ns": "ANALYSIS",
       "name": "Mean",
-      "id": 308,
+      "id": 305,
       "tokenKind": 712,
       "kindName": "Mean",
       "fn": true,
@@ -3394,7 +3361,7 @@
     {
       "ns": "ANALYSIS",
       "name": "Median",
-      "id": 309,
+      "id": 306,
       "tokenKind": 713,
       "kindName": "Median",
       "fn": true,
@@ -3405,7 +3372,7 @@
     {
       "ns": "ANALYSIS",
       "name": "Pca",
-      "id": 310,
+      "id": 307,
       "tokenKind": 727,
       "kindName": "Pca",
       "fn": true,
@@ -3416,7 +3383,7 @@
     {
       "ns": "ANALYSIS",
       "name": "Regress",
-      "id": 311,
+      "id": 308,
       "tokenKind": 723,
       "kindName": "Regress",
       "fn": true,
@@ -3427,7 +3394,7 @@
     {
       "ns": "ANALYSIS",
       "name": "Rfft",
-      "id": 312,
+      "id": 309,
       "tokenKind": 1888,
       "kindName": "FftRfft",
       "fn": true,
@@ -3438,7 +3405,7 @@
     {
       "ns": "ANALYSIS",
       "name": "Simpson",
-      "id": 313,
+      "id": 310,
       "tokenKind": 741,
       "kindName": "Simpson",
       "fn": true,
@@ -3449,7 +3416,7 @@
     {
       "ns": "ANALYSIS",
       "name": "Skewness",
-      "id": 314,
+      "id": 311,
       "tokenKind": 716,
       "kindName": "Skewness",
       "fn": true,
@@ -3460,7 +3427,7 @@
     {
       "ns": "ANALYSIS",
       "name": "SolveIvp",
-      "id": 315,
+      "id": 312,
       "tokenKind": 1877,
       "kindName": "SolveIvp",
       "fn": true,
@@ -3471,7 +3438,7 @@
     {
       "ns": "ANALYSIS",
       "name": "SolveOde",
-      "id": 316,
+      "id": 313,
       "tokenKind": 744,
       "kindName": "SolveOde",
       "fn": true,
@@ -3482,7 +3449,7 @@
     {
       "ns": "ANALYSIS",
       "name": "Splev",
-      "id": 317,
+      "id": 314,
       "tokenKind": 1883,
       "kindName": "InterpSplev",
       "fn": true,
@@ -3493,7 +3460,7 @@
     {
       "ns": "ANALYSIS",
       "name": "Splrep",
-      "id": 318,
+      "id": 315,
       "tokenKind": 1882,
       "kindName": "InterpSplrep",
       "fn": true,
@@ -3504,7 +3471,7 @@
     {
       "ns": "ANALYSIS",
       "name": "StdDev",
-      "id": 319,
+      "id": 316,
       "tokenKind": 715,
       "kindName": "StdDev",
       "fn": true,
@@ -3515,7 +3482,7 @@
     {
       "ns": "ANALYSIS",
       "name": "Trapezoid",
-      "id": 320,
+      "id": 317,
       "tokenKind": 742,
       "kindName": "Trapezoid",
       "fn": true,
@@ -3526,7 +3493,7 @@
     {
       "ns": "ANALYSIS",
       "name": "Variance",
-      "id": 321,
+      "id": 318,
       "tokenKind": 714,
       "kindName": "Variance",
       "fn": true,
@@ -3537,7 +3504,7 @@
     {
       "ns": "ANALYSIS",
       "name": "YuleWalker",
-      "id": 322,
+      "id": 319,
       "tokenKind": 1978,
       "kindName": "YuleWalker",
       "fn": true,
@@ -3548,7 +3515,7 @@
     {
       "ns": "ARRAYS",
       "name": "AADD",
-      "id": 323,
+      "id": 320,
       "tokenKind": 1043,
       "kindName": "AAdd",
       "fn": true,
@@ -3559,7 +3526,7 @@
     {
       "ns": "ARRAYS",
       "name": "ABINARYSEARCH",
-      "id": 324,
+      "id": 321,
       "tokenKind": 1060,
       "kindName": "ABinarySearch",
       "fn": true,
@@ -3570,7 +3537,7 @@
     {
       "ns": "ARRAYS",
       "name": "ACHUNK",
-      "id": 325,
+      "id": 322,
       "tokenKind": 1065,
       "kindName": "AChunk",
       "fn": true,
@@ -3581,7 +3548,7 @@
     {
       "ns": "ARRAYS",
       "name": "ACLONE",
-      "id": 326,
+      "id": 323,
       "tokenKind": 1047,
       "kindName": "AClone",
       "fn": true,
@@ -3592,7 +3559,7 @@
     {
       "ns": "ARRAYS",
       "name": "ACOPY",
-      "id": 327,
+      "id": 324,
       "tokenKind": 1055,
       "kindName": "ACopy",
       "fn": true,
@@ -3603,7 +3570,7 @@
     {
       "ns": "ARRAYS",
       "name": "ACOUNT",
-      "id": 328,
+      "id": 325,
       "tokenKind": 1057,
       "kindName": "ACount",
       "fn": true,
@@ -3614,7 +3581,7 @@
     {
       "ns": "ARRAYS",
       "name": "ADEL",
-      "id": 329,
+      "id": 326,
       "tokenKind": 1045,
       "kindName": "ADel",
       "fn": true,
@@ -3625,7 +3592,7 @@
     {
       "ns": "ARRAYS",
       "name": "AEVAL",
-      "id": 330,
+      "id": 327,
       "tokenKind": 1053,
       "kindName": "AEval",
       "fn": true,
@@ -3636,7 +3603,7 @@
     {
       "ns": "ARRAYS",
       "name": "AFILL",
-      "id": 331,
+      "id": 328,
       "tokenKind": 1054,
       "kindName": "AFill",
       "fn": true,
@@ -3647,7 +3614,7 @@
     {
       "ns": "ARRAYS",
       "name": "AFILTER",
-      "id": 332,
+      "id": 329,
       "tokenKind": 1050,
       "kindName": "AFilter",
       "fn": true,
@@ -3658,7 +3625,7 @@
     {
       "ns": "ARRAYS",
       "name": "AFLAT",
-      "id": 333,
+      "id": 330,
       "tokenKind": 1066,
       "kindName": "AFlat",
       "fn": true,
@@ -3669,7 +3636,7 @@
     {
       "ns": "ARRAYS",
       "name": "AINS",
-      "id": 334,
+      "id": 331,
       "tokenKind": 1044,
       "kindName": "AIns",
       "fn": true,
@@ -3680,7 +3647,7 @@
     {
       "ns": "ARRAYS",
       "name": "AJOIN",
-      "id": 335,
+      "id": 332,
       "tokenKind": 1061,
       "kindName": "AJoin",
       "fn": true,
@@ -3691,7 +3658,7 @@
     {
       "ns": "ARRAYS",
       "name": "AMAP",
-      "id": 336,
+      "id": 333,
       "tokenKind": 1049,
       "kindName": "AMap",
       "fn": true,
@@ -3702,7 +3669,7 @@
     {
       "ns": "ARRAYS",
       "name": "AMAX",
-      "id": 337,
+      "id": 334,
       "tokenKind": 1062,
       "kindName": "AMax",
       "fn": true,
@@ -3713,7 +3680,7 @@
     {
       "ns": "ARRAYS",
       "name": "AMIN",
-      "id": 338,
+      "id": 335,
       "tokenKind": 1063,
       "kindName": "AMin",
       "fn": true,
@@ -3724,7 +3691,7 @@
     {
       "ns": "ARRAYS",
       "name": "APAD",
-      "id": 339,
+      "id": 336,
       "tokenKind": 1067,
       "kindName": "APad",
       "fn": true,
@@ -3735,7 +3702,7 @@
     {
       "ns": "ARRAYS",
       "name": "AREDUCE",
-      "id": 340,
+      "id": 337,
       "tokenKind": 1051,
       "kindName": "AReduce",
       "fn": true,
@@ -3746,7 +3713,7 @@
     {
       "ns": "ARRAYS",
       "name": "AREVERSE",
-      "id": 341,
+      "id": 338,
       "tokenKind": 1059,
       "kindName": "AReverse",
       "fn": true,
@@ -3757,7 +3724,7 @@
     {
       "ns": "ARRAYS",
       "name": "ASCAN",
-      "id": 342,
+      "id": 339,
       "tokenKind": 1048,
       "kindName": "AScan",
       "fn": true,
@@ -3768,7 +3735,7 @@
     {
       "ns": "ARRAYS",
       "name": "ASHUFFLE",
-      "id": 343,
+      "id": 340,
       "tokenKind": 1058,
       "kindName": "AShuffle",
       "fn": true,
@@ -3779,7 +3746,7 @@
     {
       "ns": "ARRAYS",
       "name": "ASORT",
-      "id": 344,
+      "id": 341,
       "tokenKind": 1046,
       "kindName": "ASort",
       "fn": true,
@@ -3790,7 +3757,7 @@
     {
       "ns": "ARRAYS",
       "name": "ASUM",
-      "id": 345,
+      "id": 342,
       "tokenKind": 1064,
       "kindName": "ASum",
       "fn": true,
@@ -3801,7 +3768,7 @@
     {
       "ns": "ARRAYS",
       "name": "ATOKENS",
-      "id": 346,
+      "id": 343,
       "tokenKind": 1056,
       "kindName": "ATokens",
       "fn": true,
@@ -3812,7 +3779,7 @@
     {
       "ns": "ARRAYS",
       "name": "AUNIQUE",
-      "id": 347,
+      "id": 344,
       "tokenKind": 1052,
       "kindName": "AUnique",
       "fn": true,
@@ -3823,7 +3790,7 @@
     {
       "ns": "ARRAYS",
       "name": "AZIP",
-      "id": 348,
+      "id": 345,
       "tokenKind": 1068,
       "kindName": "AZip",
       "fn": true,
@@ -3834,7 +3801,7 @@
     {
       "ns": "ASR",
       "name": "RECOGNIZE",
-      "id": 349,
+      "id": 346,
       "tokenKind": 2487,
       "kindName": "AsrTranscribe",
       "fn": true,
@@ -3845,7 +3812,7 @@
     {
       "ns": "ATOMIC",
       "name": "COMPARESWAP",
-      "id": 350,
+      "id": 347,
       "tokenKind": 2058,
       "kindName": "AtomicCompareSwap",
       "fn": false,
@@ -3856,7 +3823,7 @@
     {
       "ns": "ATOMIC",
       "name": "FETCHVALUE",
-      "id": 351,
+      "id": 348,
       "tokenKind": 2056,
       "kindName": "AtomicFetchValue",
       "fn": false,
@@ -3867,7 +3834,7 @@
     {
       "ns": "ATOMIC",
       "name": "INCREMENT",
-      "id": 352,
+      "id": 349,
       "tokenKind": 2055,
       "kindName": "AtomicIncrement",
       "fn": false,
@@ -3878,7 +3845,7 @@
     {
       "ns": "ATOMIC",
       "name": "STORE",
-      "id": 353,
+      "id": 350,
       "tokenKind": 2057,
       "kindName": "AtomicStore",
       "fn": true,
@@ -3889,7 +3856,7 @@
     {
       "ns": "ATOMIC",
       "name": "SWAP",
-      "id": 354,
+      "id": 351,
       "tokenKind": 2059,
       "kindName": "AtomicSwap",
       "fn": false,
@@ -3900,7 +3867,7 @@
     {
       "ns": "AUTH",
       "name": "JWTCREATE",
-      "id": 355,
+      "id": 352,
       "tokenKind": 1013,
       "kindName": "JwtCreate",
       "fn": true,
@@ -3911,7 +3878,7 @@
     {
       "ns": "AUTH",
       "name": "JWTPAYLOAD",
-      "id": 356,
+      "id": 353,
       "tokenKind": 1015,
       "kindName": "JwtPayload",
       "fn": true,
@@ -3922,7 +3889,7 @@
     {
       "ns": "AUTH",
       "name": "JWTVERIFY",
-      "id": 357,
+      "id": 354,
       "tokenKind": 1014,
       "kindName": "JwtVerify",
       "fn": true,
@@ -3933,7 +3900,7 @@
     {
       "ns": "BITS",
       "name": "BITCLEAR",
-      "id": 358,
+      "id": 355,
       "tokenKind": 2364,
       "kindName": "BitClear",
       "fn": true,
@@ -3944,7 +3911,7 @@
     {
       "ns": "BITS",
       "name": "BITCOUNT",
-      "id": 359,
+      "id": 356,
       "tokenKind": 2361,
       "kindName": "BitCount",
       "fn": true,
@@ -3955,7 +3922,7 @@
     {
       "ns": "BITS",
       "name": "BITDEINTERLEAVE",
-      "id": 360,
+      "id": 357,
       "tokenKind": 2379,
       "kindName": "BitDeinterleave",
       "fn": true,
@@ -3966,7 +3933,7 @@
     {
       "ns": "BITS",
       "name": "BITFIELD",
-      "id": 361,
+      "id": 358,
       "tokenKind": 2367,
       "kindName": "BitField",
       "fn": true,
@@ -3977,7 +3944,7 @@
     {
       "ns": "BITS",
       "name": "BITGET",
-      "id": 362,
+      "id": 359,
       "tokenKind": 2362,
       "kindName": "BitGet",
       "fn": true,
@@ -3988,7 +3955,7 @@
     {
       "ns": "BITS",
       "name": "BITINTERLEAVE",
-      "id": 363,
+      "id": 360,
       "tokenKind": 2378,
       "kindName": "BitInterleave",
       "fn": true,
@@ -3999,7 +3966,7 @@
     {
       "ns": "BITS",
       "name": "BITREVERSE",
-      "id": 364,
+      "id": 361,
       "tokenKind": 2368,
       "kindName": "BitReverse",
       "fn": true,
@@ -4010,7 +3977,7 @@
     {
       "ns": "BITS",
       "name": "BITROTATEL",
-      "id": 365,
+      "id": 362,
       "tokenKind": 2369,
       "kindName": "BitRotateLeft",
       "fn": true,
@@ -4021,7 +3988,7 @@
     {
       "ns": "BITS",
       "name": "BITROTATER",
-      "id": 366,
+      "id": 363,
       "tokenKind": 2370,
       "kindName": "BitRotateRight",
       "fn": true,
@@ -4032,7 +3999,7 @@
     {
       "ns": "BITS",
       "name": "BITSCANFWD",
-      "id": 367,
+      "id": 364,
       "tokenKind": 2374,
       "kindName": "BitScanFwd",
       "fn": true,
@@ -4043,7 +4010,7 @@
     {
       "ns": "BITS",
       "name": "BITSCANREV",
-      "id": 368,
+      "id": 365,
       "tokenKind": 2375,
       "kindName": "BitScanRev",
       "fn": true,
@@ -4054,7 +4021,7 @@
     {
       "ns": "BITS",
       "name": "BITSET",
-      "id": 369,
+      "id": 366,
       "tokenKind": 2363,
       "kindName": "BitSet",
       "fn": true,
@@ -4065,7 +4032,7 @@
     {
       "ns": "BITS",
       "name": "BITTEST",
-      "id": 370,
+      "id": 367,
       "tokenKind": 2366,
       "kindName": "BitTest",
       "fn": true,
@@ -4076,7 +4043,7 @@
     {
       "ns": "BITS",
       "name": "BITTOGGLE",
-      "id": 371,
+      "id": 368,
       "tokenKind": 2365,
       "kindName": "BitToggle",
       "fn": true,
@@ -4087,7 +4054,7 @@
     {
       "ns": "BITS",
       "name": "BYTESWAP",
-      "id": 372,
+      "id": 369,
       "tokenKind": 2376,
       "kindName": "ByteSwap",
       "fn": true,
@@ -4098,7 +4065,7 @@
     {
       "ns": "BITS",
       "name": "FROMGRAY",
-      "id": 373,
+      "id": 370,
       "tokenKind": 2372,
       "kindName": "FromGray",
       "fn": true,
@@ -4109,7 +4076,7 @@
     {
       "ns": "BITS",
       "name": "GRAYCODE",
-      "id": 374,
+      "id": 371,
       "tokenKind": 2371,
       "kindName": "GrayCode",
       "fn": true,
@@ -4120,7 +4087,7 @@
     {
       "ns": "BITS",
       "name": "HAMMINGDIST",
-      "id": 375,
+      "id": 372,
       "tokenKind": 2377,
       "kindName": "HammingDist",
       "fn": true,
@@ -4131,7 +4098,7 @@
     {
       "ns": "BITS",
       "name": "ISPOW2",
-      "id": 376,
+      "id": 373,
       "tokenKind": 2381,
       "kindName": "IsPow2",
       "fn": true,
@@ -4142,7 +4109,7 @@
     {
       "ns": "BITS",
       "name": "NEXTPOW2",
-      "id": 377,
+      "id": 374,
       "tokenKind": 2380,
       "kindName": "NextPow2",
       "fn": true,
@@ -4153,7 +4120,7 @@
     {
       "ns": "BITS",
       "name": "PARITY",
-      "id": 378,
+      "id": 375,
       "tokenKind": 2373,
       "kindName": "BitParity",
       "fn": true,
@@ -4164,7 +4131,7 @@
     {
       "ns": "BLOCKCHAIN",
       "name": "ABIDECODE",
-      "id": 379,
+      "id": 376,
       "tokenKind": 1042,
       "kindName": "AbiDecode",
       "fn": true,
@@ -4175,7 +4142,7 @@
     {
       "ns": "BLOCKCHAIN",
       "name": "ABIENCODE",
-      "id": 380,
+      "id": 377,
       "tokenKind": 1041,
       "kindName": "AbiEncode",
       "fn": true,
@@ -4186,7 +4153,7 @@
     {
       "ns": "BLOCKCHAIN",
       "name": "BASE32DECODE",
-      "id": 381,
+      "id": 378,
       "tokenKind": 1027,
       "kindName": "Base32Decode",
       "fn": true,
@@ -4197,7 +4164,7 @@
     {
       "ns": "BLOCKCHAIN",
       "name": "BASE32ENCODE",
-      "id": 382,
+      "id": 379,
       "tokenKind": 1026,
       "kindName": "Base32Encode",
       "fn": true,
@@ -4208,7 +4175,7 @@
     {
       "ns": "BLOCKCHAIN",
       "name": "BASE58DECODE",
-      "id": 383,
+      "id": 380,
       "tokenKind": 1025,
       "kindName": "Base58Decode",
       "fn": true,
@@ -4219,7 +4186,7 @@
     {
       "ns": "BLOCKCHAIN",
       "name": "BASE58ENCODE",
-      "id": 384,
+      "id": 381,
       "tokenKind": 1024,
       "kindName": "Base58Encode",
       "fn": true,
@@ -4230,7 +4197,7 @@
     {
       "ns": "BLOCKCHAIN",
       "name": "BLAKE2B256",
-      "id": 385,
+      "id": 382,
       "tokenKind": 1023,
       "kindName": "Blake2b256",
       "fn": true,
@@ -4241,7 +4208,7 @@
     {
       "ns": "BLOCKCHAIN",
       "name": "BLOCKDIFFICULTY",
-      "id": 386,
+      "id": 383,
       "tokenKind": 1034,
       "kindName": "BlockDifficulty",
       "fn": true,
@@ -4252,7 +4219,7 @@
     {
       "ns": "BLOCKCHAIN",
       "name": "BTCADDRFROMPUB",
-      "id": 387,
+      "id": 384,
       "tokenKind": 1033,
       "kindName": "BtcAddressFromPub",
       "fn": true,
@@ -4263,7 +4230,7 @@
     {
       "ns": "BLOCKCHAIN",
       "name": "CONTRACT",
-      "id": 388,
+      "id": 385,
       "tokenKind": 1040,
       "kindName": "Contract",
       "fn": true,
@@ -4274,7 +4241,7 @@
     {
       "ns": "BLOCKCHAIN",
       "name": "DERIVEKEY",
-      "id": 389,
+      "id": 386,
       "tokenKind": 1038,
       "kindName": "DeriveKey",
       "fn": true,
@@ -4285,7 +4252,7 @@
     {
       "ns": "BLOCKCHAIN",
       "name": "ETHADDRCHECKSUM",
-      "id": 390,
+      "id": 387,
       "tokenKind": 1032,
       "kindName": "EthAddressChecksum",
       "fn": true,
@@ -4296,7 +4263,7 @@
     {
       "ns": "BLOCKCHAIN",
       "name": "ETHADDRFROMPUB",
-      "id": 391,
+      "id": 388,
       "tokenKind": 1031,
       "kindName": "EthAddressFromPub",
       "fn": true,
@@ -4307,7 +4274,7 @@
     {
       "ns": "BLOCKCHAIN",
       "name": "GENERATEMNEMONIC",
-      "id": 392,
+      "id": 389,
       "tokenKind": 1036,
       "kindName": "GenerateMnemonic",
       "fn": true,
@@ -4318,7 +4285,7 @@
     {
       "ns": "BLOCKCHAIN",
       "name": "GETPUBLICKEY",
-      "id": 393,
+      "id": 390,
       "tokenKind": 1039,
       "kindName": "GetPublicKey",
       "fn": true,
@@ -4329,7 +4296,7 @@
     {
       "ns": "BLOCKCHAIN",
       "name": "KECCAK256",
-      "id": 394,
+      "id": 391,
       "tokenKind": 969,
       "kindName": "Keccak256",
       "fn": true,
@@ -4340,7 +4307,7 @@
     {
       "ns": "BLOCKCHAIN",
       "name": "MNEMONICTOSEED",
-      "id": 395,
+      "id": 392,
       "tokenKind": 1037,
       "kindName": "MnemonicToSeed",
       "fn": true,
@@ -4351,7 +4318,7 @@
     {
       "ns": "BLOCKCHAIN",
       "name": "RIPEMD160",
-      "id": 396,
+      "id": 393,
       "tokenKind": 968,
       "kindName": "RipeMd160",
       "fn": true,
@@ -4362,7 +4329,7 @@
     {
       "ns": "BLOCKCHAIN",
       "name": "RLPENCODE",
-      "id": 397,
+      "id": 394,
       "tokenKind": 1028,
       "kindName": "RlpEncode",
       "fn": true,
@@ -4373,7 +4340,7 @@
     {
       "ns": "BLOCKCHAIN",
       "name": "SECP256K1SIGN",
-      "id": 398,
+      "id": 395,
       "tokenKind": 1035,
       "kindName": "EcdsaSecp256k1Sign",
       "fn": true,
@@ -4384,7 +4351,7 @@
     {
       "ns": "BLOCKCHAIN",
       "name": "STRKECCAK256",
-      "id": 399,
+      "id": 396,
       "tokenKind": 982,
       "kindName": "StrKeccak256",
       "fn": true,
@@ -4395,7 +4362,7 @@
     {
       "ns": "BLOCKCHAIN",
       "name": "STRRIPEMD160",
-      "id": 400,
+      "id": 397,
       "tokenKind": 981,
       "kindName": "StrRipeMd160",
       "fn": true,
@@ -4406,7 +4373,7 @@
     {
       "ns": "BLOCKCHAIN",
       "name": "VARINTDECODE",
-      "id": 401,
+      "id": 398,
       "tokenKind": 1030,
       "kindName": "VarIntDecode",
       "fn": true,
@@ -4417,7 +4384,7 @@
     {
       "ns": "BLOCKCHAIN",
       "name": "VARINTENCODE",
-      "id": 402,
+      "id": 399,
       "tokenKind": 1029,
       "kindName": "VarIntEncode",
       "fn": true,
@@ -4428,7 +4395,7 @@
     {
       "ns": "BRAINS",
       "name": "Betweenness",
-      "id": 403,
+      "id": 400,
       "tokenKind": 1294,
       "kindName": "GraphBetweenness",
       "fn": true,
@@ -4439,7 +4406,7 @@
     {
       "ns": "BRAINS",
       "name": "Bfs",
-      "id": 404,
+      "id": 401,
       "tokenKind": 1302,
       "kindName": "GraphBfs",
       "fn": true,
@@ -4450,7 +4417,7 @@
     {
       "ns": "BRAINS",
       "name": "Bipartite",
-      "id": 405,
+      "id": 402,
       "tokenKind": 1293,
       "kindName": "GraphBipartite",
       "fn": true,
@@ -4460,8 +4427,30 @@
     },
     {
       "ns": "BRAINS",
+      "name": "ByFolder",
+      "id": 403,
+      "tokenKind": 1310,
+      "kindName": "GraphByFolder",
+      "fn": true,
+      "arityMin": 2,
+      "arityMax": 2,
+      "pure": true
+    },
+    {
+      "ns": "BRAINS",
+      "name": "ByTag",
+      "id": 404,
+      "tokenKind": 1309,
+      "kindName": "GraphByTag",
+      "fn": true,
+      "arityMin": 2,
+      "arityMax": 2,
+      "pure": true
+    },
+    {
+      "ns": "BRAINS",
       "name": "Clustering",
-      "id": 406,
+      "id": 405,
       "tokenKind": 1295,
       "kindName": "GraphClustering",
       "fn": true,
@@ -4472,7 +4461,7 @@
     {
       "ns": "BRAINS",
       "name": "Connected",
-      "id": 407,
+      "id": 406,
       "tokenKind": 1289,
       "kindName": "GraphConnected",
       "fn": true,
@@ -4483,7 +4472,7 @@
     {
       "ns": "BRAINS",
       "name": "Dfs",
-      "id": 408,
+      "id": 407,
       "tokenKind": 1301,
       "kindName": "GraphDfs",
       "fn": true,
@@ -4494,7 +4483,7 @@
     {
       "ns": "BRAINS",
       "name": "Diameter",
-      "id": 409,
+      "id": 408,
       "tokenKind": 1296,
       "kindName": "GraphDiameter",
       "fn": true,
@@ -4505,7 +4494,7 @@
     {
       "ns": "BRAINS",
       "name": "Dijkstra",
-      "id": 410,
+      "id": 409,
       "tokenKind": 1298,
       "kindName": "GraphDijkstra",
       "fn": true,
@@ -4516,7 +4505,7 @@
     {
       "ns": "BRAINS",
       "name": "Dot",
-      "id": 411,
+      "id": 410,
       "tokenKind": 1307,
       "kindName": "GraphDot",
       "fn": true,
@@ -4527,7 +4516,7 @@
     {
       "ns": "BRAINS",
       "name": "Eccentricity",
-      "id": 412,
+      "id": 411,
       "tokenKind": 1300,
       "kindName": "GraphEccentricity",
       "fn": true,
@@ -4538,7 +4527,7 @@
     {
       "ns": "BRAINS",
       "name": "HasCycle",
-      "id": 413,
+      "id": 412,
       "tokenKind": 1299,
       "kindName": "GraphHasCycle",
       "fn": true,
@@ -4549,7 +4538,7 @@
     {
       "ns": "BRAINS",
       "name": "IsValid",
-      "id": 414,
+      "id": 413,
       "tokenKind": 1311,
       "kindName": "GraphIsValid",
       "fn": true,
@@ -4560,7 +4549,7 @@
     {
       "ns": "BRAINS",
       "name": "Louvain",
-      "id": 415,
+      "id": 414,
       "tokenKind": 2476,
       "kindName": "GraphLouvain",
       "fn": true,
@@ -4571,7 +4560,7 @@
     {
       "ns": "BRAINS",
       "name": "MaxFlow",
-      "id": 416,
+      "id": 415,
       "tokenKind": 2477,
       "kindName": "GraphMaxFlow",
       "fn": true,
@@ -4582,7 +4571,7 @@
     {
       "ns": "BRAINS",
       "name": "Mst",
-      "id": 417,
+      "id": 416,
       "tokenKind": 1297,
       "kindName": "GraphMst",
       "fn": true,
@@ -4593,7 +4582,7 @@
     {
       "ns": "BRAINS",
       "name": "Neighbors",
-      "id": 418,
+      "id": 417,
       "tokenKind": 1286,
       "kindName": "GraphNeighbors",
       "fn": true,
@@ -4604,7 +4593,7 @@
     {
       "ns": "BRAINS",
       "name": "PageRank",
-      "id": 419,
+      "id": 418,
       "tokenKind": 1288,
       "kindName": "GraphPageRank",
       "fn": true,
@@ -4615,12 +4604,23 @@
     {
       "ns": "BRAINS",
       "name": "Path",
-      "id": 420,
+      "id": 419,
       "tokenKind": 1287,
       "kindName": "GraphPath",
       "fn": true,
       "arityMin": 3,
       "arityMax": 3,
+      "pure": true
+    },
+    {
+      "ns": "BRAINS",
+      "name": "QueryMulti",
+      "id": 420,
+      "tokenKind": 1285,
+      "kindName": "GraphQueryMulti",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 2,
       "pure": true
     },
     {

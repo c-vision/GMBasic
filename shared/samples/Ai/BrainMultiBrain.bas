@@ -5,7 +5,7 @@
 ' disponibili su tutte e 5 le gambe: RAGCONTEXTMULTI/ASKMULTI mancano su VM/C, NOTEGET su C99).
 '
 ' Copre: AI BRAIN USE (multi-attach) · AI.BRAINUSED/BRAINLIST/BRAININFO · AI.SEARCHMULTI ·
-' AI.GRAPHMULTI · AI AGENT CREATE/SET brains/GET/DELETE (livello AGENT dello scope) ·
+' BRAINS.QUERYMULTI · AI AGENT CREATE/SET brains/GET/DELETE (livello AGENT dello scope) ·
 ' AI VAULT CREATE + AI NOTE CREATE/NOTEEXISTS (vault esplicito) · AI BRAIN DETACH.
 '
 ' Richiede i cervelli costruiti (`gmb rag build` / `gmb graph build`): usa airline e trading se
@@ -54,9 +54,9 @@ no_rag:
     PRINT "search:skip"
 dopo_rag:
 
-    ' ── 4. Grafo dei cervelli collegati (AI.GRAPHMULTI) ──
+    ' ── 4. Grafo dei cervelli collegati (BRAINS.QUERYMULTI) ──
     ON ERROR GOTO no_graph
-    PRINT "graph:"; LEN(AI.GRAPHMULTI("risk parity")) > 0
+    PRINT "graph:"; LEN(BRAINS.QUERYMULTI("risk parity")) > 0
     GOTO dopo_graph
 no_graph:
     PRINT "graph:skip"
