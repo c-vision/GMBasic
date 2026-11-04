@@ -11384,13 +11384,14 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                         var_t* tv = lookup_var(c, args[1]->var);
                         sb_put(&c->out, "({ gmb_val_t __tv = gmb_dict_get(");
                         sb_ident(&c->out, cv->name); sb_put(&c->out, ", (");
-                        emit_str_operand(c, args[0]); sb_put(&c->out, ").data); (");
+                        emit_str_operand(c, args[0]);
+                        sb_put(&c->out, ").data); if (__tv.kind != GMB_TYPE_NIL) { (");
                         emit_ident(c, args[1]->var);
                         sb_put(&c->out, ") = ");
                         if (tv && tv->boxed_val) sb_put(&c->out, "__tv");
                         else if (tv && tv->type == TY_STR) sb_put(&c->out, "gmb_val_to_string(__tv)");
                         else sb_put(&c->out, "gmb_val_to_double(__tv)");
-                        sb_put(&c->out, "; (__tv.kind == GMB_TYPE_NIL) ? 0.0 : -1.0; })");
+                        sb_put(&c->out, "; } (__tv.kind == GMB_TYPE_NIL) ? 0.0 : -1.0; })");
                         return;
                     }
                     /* TIMELINE (18).GetRange(lo,hi) → lista di coppie {Key,Value} con la

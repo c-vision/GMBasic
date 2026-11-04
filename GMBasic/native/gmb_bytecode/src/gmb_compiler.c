@@ -3407,6 +3407,39 @@ if (!is_method) {
                             }
                         }
                         if (is_method) {
+                            /* TRYGETVALUE(key, var) su contenitore chiave→valore: il bytecode
+                             * non ha out-param (gli argomenti sono VALORI) → predicato
+                             * ContainsKey (resta sullo stack) e assegnazione `var =
+                             * obj.Get(key)` SOLO se esiste (DUP + JUMP_IF_FALSE). Prima la
+                             * variabile out restava invariata (parità IL/PCode/C99). */
+                            if (!strcasecmp(dot + 1, "TryGetValue") && e->nargs == 2
+                                && e->args[1] && e->args[1]->kind == GMB_EXPR_VAR && e->args[1]->var
+                                && !strchr(e->args[1]->var, '.')) {
+                                int ca, ck, ga, gc, skip_jmp;
+                                cc_load_target(c, mbase);
+                                cc_expr(c, e->args[0]);
+                                if (c->error) return;
+                                ca = cc_add_const(c, GMB_CCONST_DOUBLE, 1.0, NULL);
+                                ck = cc_add_const(c, GMB_CCONST_STRING, 0, "ContainsKey");
+                                if (c->error) return;
+                                cc_byte(c, GMB_OP_PUSH_CONST); cc_u16(c, ca);
+                                cc_byte(c, GMB_OP_CALL_MEMBER); cc_u16(c, ck);
+                                cc_byte(c, GMB_OP_DUP);
+                                cc_reljump(c, GMB_OP_JUMP_IF_FALSE, -1);
+                                skip_jmp = c->nrel - 1;
+                                cc_load_target(c, mbase);
+                                cc_expr(c, e->args[0]);
+                                if (c->error) return;
+                                ga = cc_add_const(c, GMB_CCONST_DOUBLE, 1.0, NULL);
+                                gc = cc_add_const(c, GMB_CCONST_STRING, 0, "Get");
+                                if (c->error) return;
+                                cc_byte(c, GMB_OP_PUSH_CONST); cc_u16(c, ga);
+                                cc_byte(c, GMB_OP_CALL_MEMBER); cc_u16(c, gc);
+                                cc_store_target(c, e->args[1]->var, e->line);
+                                if (c->reljumps[skip_jmp].target < 0)
+                                    c->reljumps[skip_jmp].target = c->code_len;
+                                break;
+                            }
                             cc_load_target(c, mbase);
                             for (int i = 0; i < e->nargs; i++) cc_expr(c, e->args[i]);
                             int ai = cc_add_const(c, GMB_CCONST_DOUBLE, (double)e->nargs, NULL);

@@ -14697,6 +14697,25 @@ public static double TextWidth(string s)
         return new object?[] { k, v };
     }
 
+    /// <summary>TRYGETVALUE con out-param: predicato + valore (usato dal backend IL per
+    /// propagare la variabile out; PCode/VM/C riscrivono in Get+ContainsKey).</summary>
+    public static bool CollectionTryGetValueOut(object? instance, object? key, out object? value)
+    {
+        value = null;
+        if (instance is null) return false;
+        if (instance is CommonLib.Collections.IKeyValueIndexable kvi && kvi.TryGetValue(key, out var v))
+        {
+            value = v;
+            return true;
+        }
+        if (instance is System.Collections.IDictionary d && key is not null && d.Contains(key))
+        {
+            value = d[key];
+            return true;
+        }
+        return false;
+    }
+
     /// <summary>Istanza di CommonLib.Collections.Timeline&lt;T&gt;?</summary>
     private static bool IsTimelineInstance(object? o)
         => o is not null
@@ -15133,7 +15152,8 @@ public static double TextWidth(string s)
             case "VALUES" when instance is CommonLib.Collections.IKeyValueIndexable vc:
                 return vc.Entries().Select(kv => kv.Value).ToArray();
             case "CONTAINSKEY" when instance is CommonLib.Collections.IKeyValueIndexable ck && args.Length >= 1:
-                return ck.TryGetValue(args[0], out _) ? 1.0 : 0.0;
+                /* Convenzione BASIC -1/0 (parità PCode/VM-C/C99: prima IL stampava 1). */
+                return ck.TryGetValue(args[0], out _) ? -1.0 : 0.0;
             case "GET" when instance is CommonLib.Collections.IKeyValueIndexable gk && args.Length >= 1:
                 return gk.TryGetValue(args[0], out var gkv) ? gkv : null;
             // GET(key) su IDictionary boxed (BPlusTree/RedBlack/...): lookup per chiave.

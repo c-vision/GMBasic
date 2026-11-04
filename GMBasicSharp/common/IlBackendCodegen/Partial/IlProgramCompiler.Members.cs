@@ -1117,8 +1117,82 @@ public sealed partial class IlProgramCompiler
         }
     }
 
+    /// <summary>TRYGETVALUE(key, var) su una collezione: il predicato È il valore
+    /// dell'espressione, ma la variabile out deve ricevere il valore. Il runtime non può
+    /// scriverla (gli argomenti sono boxed per valore), quindi qui si emette
+    /// `CollectionTryGetValueOut(instance, key, out tmp)` + conversione + store della
+    /// variabile (locale o globale) SOLO se il valore esiste. Restituisce true se ha emesso
+    /// (e lascia il bool BOXATO sullo stack, come il dispatcher originale).</summary>
+    private bool TryEmitCollectionTryGetValueOut(MethodCallExpr expr)
+    {
+        if (expr.MethodName.Kind != TokenKind.CollTryGetValue
+            && !string.Equals(expr.MethodName.Lexeme, "TryGetValue", StringComparison.OrdinalIgnoreCase)) return false;
+        if (expr.Args.Length != 2 || expr.Args[1] is not VariableExpr dest) return false;
+        var hasLocal = _locals.TryGetValue(dest.SymbolId, out var destLocal);
+        if (!hasLocal && !IsGlobalSymbol(dest.SymbolId) && !_capturedFields.ContainsKey(dest.SymbolId)) return false;
+
+        var clr = hasLocal ? destLocal!.LocalType
+                : IsGlobalSymbol(dest.SymbolId) ? GlobalClrType(dest.SymbolId)
+                : typeof(object);
+
+        var tmp = _il.DeclareLocal(_types.Object);
+        var flag = _il.DeclareLocal(typeof(bool));
+        var skip = _il.DefineLabel();
+
+        EmitExpression(expr.Instance);
+        EmitExpression(expr.Args[0]);
+        _il.Emit(OpCodes.Ldloca, tmp);
+        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.CollectionTryGetValueOut),
+            typeof(object), typeof(object), typeof(object).MakeByRefType()));
+        _il.Emit(OpCodes.Stloc, flag);
+        /* La variabile out si assegna SOLO se il valore esiste (out-param "non trovato":
+         * variabile invariata), come la riscrittura di PCode/VM/C. */
+        _il.Emit(OpCodes.Ldloc, flag);
+        _il.Emit(OpCodes.Brfalse, skip);
+
+        void EmitConvertedValue()
+        {
+            _il.Emit(OpCodes.Ldloc, tmp);
+            if (clr == typeof(string))
+            {
+                _il.Emit(OpCodes.Call, typeof(Convert).GetMethod(nameof(Convert.ToString), [typeof(object)])!);
+            }
+            else if (clr == _types.Object)
+            {
+                /* già object */
+            }
+            else if (clr.IsValueType)
+            {
+                _il.Emit(OpCodes.Call, _types.IlRuntimeToDoubleMethod);
+                IlConversion.EmitConvert(_il, _types, new DoubleType(), _types.Double, clr);
+            }
+            else
+            {
+                _il.Emit(OpCodes.Castclass, clr);
+            }
+        }
+
+        if (hasLocal)
+        {
+            EmitConvertedValue();
+            _il.Emit(OpCodes.Stloc, destLocal!);
+        }
+        else
+        {
+            EmitStoreVariable(dest.SymbolId, EmitConvertedValue);
+        }
+        _il.MarkLabel(skip);
+        /* Il valore dell'espressione è OBJECT (come il dispatcher CollectionInvoke
+         * originale): il bool va boxato, altrimenti PRINT/conversioni ricevono int32 grezzo
+         * → InvalidProgram. */
+        _il.Emit(OpCodes.Ldloc, flag);
+        _il.Emit(OpCodes.Box, typeof(bool));
+        return true;
+    }
+
     private bool TryEmitNativeCollectionMethodCall(MethodCallExpr expr)
     {
+        if (TryEmitCollectionTryGetValueOut(expr)) return true;
         var instanceType = InferType(expr.Instance);
         // AnyType + tipi strutture avanzate (Tree/AVL/Trie/Heap/Bag/Cache/Timeline/Ring/
         // Graph/HashRing/SparseSet/BPlusTree — mappati a object nel DataTypeMapper): il
