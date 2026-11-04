@@ -59,6 +59,11 @@ endif()
 set(GMB_LIBS_OUT    "${CMAKE_CURRENT_LIST_DIR}/../../build/libs/${GMB_RID}")
 set(GMB_PLUGINS_OUT "${CMAKE_CURRENT_LIST_DIR}/../../build/plugins/${GMB_RID}")
 
+# Cartella di QUESTO file, catturata adesso. Dentro una function() CMAKE_CURRENT_LIST_DIR punta
+# al CMakeLists CHIAMANTE (quindi a `gmb_runtime_c/`): il POST_BUILD cercava lì
+# GmbLinkCacheLibs.cmake e falliva con "script non trovato" su ogni eseguibile.
+set(GMB_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}")
+
 # ── gmb_exe_relocatable(<target>) ─────────────────────────────────────────────────────────
 # Rende un ESEGUIBILE rilocabile: l'rpath contiene SOLO percorsi relativi all'eseguibile
 # (@loader_path / $ORIGIN). Nessun path del builder, quindi nessun `/Users/<nome>/...` e
@@ -101,10 +106,16 @@ function(gmb_exe_relocatable _target)
         BUILD_WITH_INSTALL_RPATH TRUE
         INSTALL_RPATH "${_rpath}")
     if(NOT WIN32)
+        # Il symlink lo crea uno script idempotente: `cmake -E create_symlink` NON sovrascrive,
+        # quindi al secondo eseguibile della stessa cartella (e a ogni build successiva) il
+        # POST_BUILD moriva con `File exists` e faceva fallire il target. Lo script non tocca
+        # nulla se la destinazione esiste già (in release `bin/libs/<rid>/` è una cartella vera).
         add_custom_command(TARGET ${_target} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${_target}>/libs"
-            COMMAND ${CMAKE_COMMAND} -E create_symlink "$ENV{HOME}/.gmbasic/libs/${GMB_RID}"
-                    "$<TARGET_FILE_DIR:${_target}>/libs/${GMB_RID}"
+            COMMAND ${CMAKE_COMMAND}
+                    "-DLINK_SRC=$ENV{HOME}/.gmbasic/libs/${GMB_RID}"
+                    "-DLINK_DST=$<TARGET_FILE_DIR:${_target}>/libs/${GMB_RID}"
+                    -P "${GMB_CMAKE_DIR}/GmbLinkCacheLibs.cmake"
             COMMENT "rpath rilocabile: libs/${GMB_RID} -> cache utente (solo sviluppo)")
     endif()
 endfunction()
