@@ -200,7 +200,7 @@ static const char* resolve_vm_host(void)
 }
 
 /* Versione PUBBLICA del resolver (decl. in executor.h). Il REPL (repl/vmc_runner.c) aveva una
- * copia `extern` di `gmb_resolve_vm_host` MAI definita (introdotta in 461c92a52) -> gmb_repl
+ * copia `extern` di `gmb_resolve_vm_host` MAI definita (introdotta in 461c92a52) -> gmbrepl
  * non linkava da allora. `resolve_vm_host` era static e serviva solo a gmb_native_exec:
  * ora e' esposta, cosi' esiste UNA sola risoluzione (env GMBASIC_VM_HOST -> GMBASIC_REPO_ROOT
  * -> repo root). Ritorna NULL se non trovato. */
@@ -229,7 +229,7 @@ static int gmb_import_needs_local_files(const char* main_src)
         "PROVIDER","SIGNAL","SPATIAL","SPECIAL","SPEED","STATS","STRINGS","SYNCMAP",
         "TIMESERIES","TRADING","TRADING.BACKTESTS","TRADING.BONDS","TRADING.METRICS",
         "TRADING.OPTIONS","TRADING.PORTFOLIO","TYPEINFO","VECTORDB","WINDOWS",
-        "GRAPH","VAULT","NOTE","INGEST","AGENT","BROWSER","COMPUTER","TOOL","UI", NULL
+        "GRAPH","BRAINS","VAULT","NOTE","INGEST","AGENT","BROWSER","COMPUTER","TOOL","UI", NULL
     };
     const char* s = main_src;
     while (*s)

@@ -16,7 +16,7 @@ SUB Main()
   FIXTURE$ = PROJECTFOLDER() + "/../Fixtures/graph-vault"
   WORK$ = PROJECTFOLDER() + "/work"
   IF IO.DirExists(WORK$) = 0 THEN MKDIR WORK$
-  GRAPH BUILD FIXTURE$, WORK$
+  BRAINS BUILD FIXTURE$, WORK$
 
   ' 2) agente
   AI AGENT CREATE "graph-agent"

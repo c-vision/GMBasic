@@ -166,7 +166,7 @@ public sealed partial class StdLib : IParserRegistry
         CreateConvertNamespace();
         CreateAiNamespace();
         CreateLlmNamespace();
-        CreateGraphNamespace();
+        CreateBrainsNamespace();
         CreateVectorDbNamespace();
         CreateSqlNamespace();
         CreateGrepNamespace();

@@ -190,6 +190,7 @@ public sealed partial class Lexer
         { "BAG", TokenKind.Bag },
         { "CACHE", TokenKind.Cache },
         { "GRAPH", TokenKind.Graph },
+        { "BRAINS", TokenKind.Brains },
         { "BUILD", TokenKind.Build },
         { "FIND", TokenKind.Find },
         { "AUTO", TokenKind.Auto },

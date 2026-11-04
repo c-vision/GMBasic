@@ -82,6 +82,7 @@ static const char* const gmb_ns_names[] = {
     "WINDOWS",
     /* Second Brain (2026-09-01): namespace autonomi AI/GRAPH/VAULT/NOTE/INGEST. */
     "GRAPH",
+    "BRAINS",
     "VAULT",
     "NOTE",
     "INGEST",

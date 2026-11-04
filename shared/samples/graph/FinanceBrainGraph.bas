@@ -6,7 +6,7 @@
 '   gmb graph build ~/Documents/AiFinanceWiki --name finance
 ' poi collegato con `gmb brain use finance`.
 '
-' Il grafo ha ~17118 nodi (note .md) e ~83k edge (wikilink), 1883 community. GRAPH.QUERYMULTI
+' Il grafo ha ~17118 nodi (note .md) e ~83k edge (wikilink), 1883 community. AI.GRAPHMULTI
 ' trova i nodi che matchano la query e restituisce i vicini con provenance brain. Estrazione
 ' reale delle relazioni tra concetti del dominio (Black-Scholes, opzioni, volatility).
 '
@@ -14,7 +14,7 @@
 ' embedding: file ~170KB medi). Per il retrieval semantico usa il brain airline o un RAG su
 ' sottoinsieme. NON va in CI (dipende dal brain locale costruito).
 
-IMPORT GRAPH
+IMPORT BRAINS
 IMPORT AI WITH ALIAS
 
 SUB Main()
@@ -29,16 +29,16 @@ SUB Main()
     PRINT "brain usati: "; used$
     PRINT
 
-    ' GRAPH.QUERYMULTI(query [, brains]) — trova i nodi (match su path/titolo) e i vicini.
-    DIM g1$ = GRAPH.QUERYMULTI("BlackScholes", "finance")
+    ' AI.GRAPHMULTI(query [, brains]) — trova i nodi (match su path/titolo) e i vicini.
+    DIM g1$ = AI.GRAPHMULTI("BlackScholes", "finance")
     PRINT "G1 Black-Scholes ->"; LEFT$(g1$, 500)
     PRINT
 
-    DIM g2$ = GRAPH.QUERYMULTI("options derivatives", "finance")
+    DIM g2$ = AI.GRAPHMULTI("options derivatives", "finance")
     PRINT "G2 options ->"; LEFT$(g2$, 500)
     PRINT
 
-    DIM g3$ = GRAPH.QUERYMULTI("volatility greeks", "finance")
+    DIM g3$ = AI.GRAPHMULTI("volatility greeks", "finance")
     PRINT "G3 volatility ->"; LEFT$(g3$, 500)
     PRINT
 
