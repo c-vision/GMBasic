@@ -44,7 +44,7 @@ rispondono con un **errore esplicito** (non supportate nel notebook C — vedi s
 | `/execute`, `/vars`, `/reset`, `/health`, `/shutdown` | **presenti** |
 | `/cells`, `/order`, `/runall` | **presenti** (in C) |
 | `%md` | **presente** |
-| compilazione per-cell P-Code + cache per cella | sostituita dal **valutatore BASIC del runtime** (assegnazioni, PRINT, IF, FOR, WHILE, espressioni); non compila SUB/FUNCTION |
+| compilazione per-cell P-Code + cache per cella | **presente**: ogni cella è compilata in chunk A1/GMBC dal compilatore C (`gmb_compile_snippet`) ed eseguita dalla VM/C, con cache del frammento |
 | `%sql` (SQLite in-memory), `%vdb` (VectorDB) | **non supportate** → errore esplicito |
 | `%ai` e `POST /ai` (SSE) | **non supportati** → errore esplicito (usare AI.* in BASIC o il server del mondo C#) |
 | `%chart` | **non supportato** → errore esplicito |
@@ -62,13 +62,13 @@ curl -s 127.0.0.1:8030/vars
 
 ## Cosa esegue una cella
 
-Il valutatore BASIC del runtime C (`gmb_expr_exec_capture`, lo stesso delle macro `&`/`EVAL`):
-assegnazioni, `PRINT`, `LET`, `IF/THEN/ELSE`, `FOR/NEXT`, `WHILE/WEND`, espressioni e
-funzioni del runtime. Lo stato è il dict della sessione (`gmb_expr_dict_get/set`).
-
-**Limite dichiarato (Fase 1)**: una cella non può **definire** `SUB`/`FUNCTION` (il
-valutatore interpreta statement, non compila moduli). Per le celle-espressione viene
-restituito anche `value` (valutato una seconda volta: nessun effetto collaterale).
+P-CODE: il sorgente della cella passa dal **compilatore C** (`gmb_compile_snippet`, dentro
+`libgmb_eval`) e diventa un chunk A1/GMBC eseguito dalla **VM/C**
+(`gmb_vm_eval_text_standalone`) — la stessa pipeline di `gmb`, della REPL e di `gmb_vm_host`,
+non un interprete di statement separato. Lo stato è il dict della sessione: il frammento
+legge e scrive i nomi con i callback dell'ambiente (`nb_env_get`/`nb_env_set`, BYREF
+write-through), quindi le celle successive vedono i valori precedenti e `GET /vars` li elenca.
+Una cella-espressione restituisce anche `value` (valore tipizzato, compilato come espressione).
 Le richieste sono servite **in serie** da un solo kernel (una sessione = un processo),
 come nel server C#.
 

@@ -1,18 +1,15 @@
 /* Notebook/notebook_kernel.c — kernel di una sessione notebook (C).
  *
- * Esecuzione di una cella: `gmb_expr_exec_capture` del runtime C (valutatore BASIC
- * condiviso con le macro &/EVAL): supporta assegnazioni, PRINT, IF/THEN/ELSE, FOR/NEXT,
- * WHILE/WEND, LET, chiamate a funzione. Lo stato della sessione è il dict passato come
- * ambiente (`gmb_expr_dict_get/set`): le celle successive vedono le variabili precedenti.
- *
- * Limite dichiarato (Fase 1): niente SUB/FUNCTION definite in cella (il valutatore è un
- * interprete di statement, non un compilatore di moduli). Per un'espressione pura il
- * server restituisce anche `value` (valutata di nuovo: nessun effetto collaterale).
+ * Esecuzione di una cella: P-CODE. Il frammento BASIC è compilato dal COMPILATORE C
+ * (gmb_compile_snippet, dentro libgmb_eval) in chunk A1/GMBC ed eseguito dalla VM/C
+ * (`gmb_vm_eval_text_standalone`): stessa pipeline di `gmb`/REPL/VM, nessun valutatore
+ * di espressioni separato e nessun `gmb_expr`. Lo stato della sessione sono le variabili
+ * del dict, lette/scritte dal frammento via `nb_env_get`/`nb_env_set` (BYREF write-through):
+ * le celle successive vedono i valori precedenti.
  */
 #include "notebook_kernel.h"
 
 #include "gmb_runtime.h"
-#include "gmb_expr.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,6 +17,17 @@
 #include <strings.h>
 #include <ctype.h>
 #include <time.h>
+
+/* gmb_vm_eval.h (native/gmb_vm_c): firma identica. Il notebook linka SOLO la dylib del
+ * valutatore p-code (libgmb_eval = compilatore C + VM/C), non l'intera VM, quindi non si
+ * include quel header (tira dentro gmb_gpm.h/gmb_chunk.h); le due funzioni usate sono
+ * dichiarate qui e sono quelle esportate dalla dylib (gmb_vm_eval.c). */
+int gmb_vm_eval_text_standalone(const char* src, int as_stmt,
+                                gmb_eval_env_get_fn get, gmb_eval_env_set_fn set,
+                                void* env, gmb_eval_call_fn call,
+                                gmb_eval_print_str_fn pstr, gmb_eval_print_num_fn pnum,
+                                gmb_eval_print_nl_fn pnl, void* pctx, gmb_val_t* out);
+const char* gmb_vm_eval_last_error(void);
 
 #define NB_MAX_CELLS 256
 
@@ -300,40 +308,107 @@ static double ms_since(const struct timespec* t0)
     return (double)(t1.tv_sec - t0->tv_sec) * 1000.0 + (double)(t1.tv_nsec - t0->tv_nsec) / 1e6;
 }
 
+/* ── esecuzione P-CODE ────────────────────────────────────────────────────
+ * Buffer di cattura dell'output del frammento (hook PRINT della VM). */
+
+typedef struct {
+    char* p;
+    size_t cap;
+    size_t len;
+} nb_cap_t;
+
+static void nb_cap_putn(nb_cap_t* c, const char* s, size_t n)
+{
+    if (!s) return;
+    if (c->len + n + 1 > c->cap) {
+        size_t nc = c->cap * 2 + n + 64;
+        char* np = (char*)realloc(c->p, nc);
+        if (!np) return;
+        c->p = np;
+        c->cap = nc;
+    }
+    memcpy(c->p + c->len, s, n);
+    c->len += n;
+    c->p[c->len] = 0;
+}
+
+static void nb_cap_str(void* ctx, const char* s, size_t len)
+{
+    nb_cap_putn((nb_cap_t*)ctx, s, len);
+}
+
+/* Stessa resa del PRINT dell'host VM/C (gmb_vm_host: "%.17g"). */
+static void nb_cap_num(void* ctx, double v)
+{
+    char tmp[64];
+    snprintf(tmp, sizeof(tmp), "%.17g", v);
+    nb_cap_putn((nb_cap_t*)ctx, tmp, strlen(tmp));
+}
+
+static void nb_cap_nl(void* ctx)
+{
+    nb_cap_putn((nb_cap_t*)ctx, "\n", 1);
+}
+
+/* Ambiente della sessione: i nomi ignoti del frammento sono le variabili del dict
+ * (contratto: valore BORROWED in lettura, 0 = ok; assente = nil). */
+static int nb_env_get(void* env, const char* name, gmb_val_t* out)
+{
+    nb_kernel_t* k = (nb_kernel_t*)env;
+    *out = gmb_dict_get_ci(k->env, name);
+    return 0;
+}
+
+static int nb_env_set(void* env, const char* name, gmb_val_t in)
+{
+    nb_kernel_t* k = (nb_kernel_t*)env;
+    gmb_dict_set(&k->env, name, in);
+    return 0;
+}
+
 int nb_kernel_exec(nb_kernel_t* k, const char* source, nb_result_t* r)
 {
     memset(r, 0, sizeof(*r));
     r->output = strdup("");
+    const char* src = source ? source : "";
 
     struct timespec t0;
     clock_gettime(CLOCK_MONOTONIC, &t0);
 
-    char* cap = NULL;
-    int rc = gmb_expr_exec_capture(source ? source : "", &k->env,
-                                   gmb_expr_dict_get, gmb_expr_dict_set, NULL, &cap);
+    nb_cap_t cap;
+    memset(&cap, 0, sizeof cap);
+    gmb_val_t val = gmb_val_nil();
+    int as_stmt = looks_like_expression(src) ? 0 : 1;
+    int rc = gmb_vm_eval_text_standalone(src, as_stmt, nb_env_get, nb_env_set, k, NULL,
+                                         nb_cap_str, nb_cap_num, nb_cap_nl, &cap, &val);
+    /* `x = 5` non è un'espressione valida: si riesegue come STATEMENT. Il tentativo
+     * fallito si ferma in compilazione (nessuna esecuzione, nessun output). */
+    if (rc != 0 && as_stmt == 0 && cap.len == 0) {
+        as_stmt = 1;
+        rc = gmb_vm_eval_text_standalone(src, 1, nb_env_get, nb_env_set, k, NULL,
+                                         nb_cap_str, nb_cap_num, nb_cap_nl, &cap, &val);
+    }
     r->exec_ms = ms_since(&t0);
 
-    if (rc != GMB_EXPR_OK) {
-        const char* err = gmb_expr_last_error();
+    if (rc != 0) {
+        const char* err = gmb_vm_eval_last_error();
         r->ok = 0;
         r->error = strdup(err && *err ? err : "errore di esecuzione");
-        free(cap);
+        free(cap.p);
         return 1;
     }
 
     free(r->output);
-    r->output = cap ? cap : strdup("");
+    r->output = cap.p ? cap.p : strdup("");
     r->ok = 1;
     k->cells++;
 
-    if (looks_like_expression(source)) {
-        gmb_val_t v;
-        if (gmb_expr_eval(source, &k->env, gmb_expr_dict_get, gmb_expr_dict_set, &v) == GMB_EXPR_OK) {
-            jbuf_t b;
-            jb_init(&b, 128);
-            val_to_json(v, &b);
-            r->value_json = b.p;
-        }
+    if (!as_stmt) {
+        jbuf_t b;
+        jb_init(&b, 128);
+        val_to_json(val, &b);
+        r->value_json = b.p;
+        if (val.kind == GMB_TYPE_STRING) gmb_string_free(&val.v_string);
     }
     return 0;
 }

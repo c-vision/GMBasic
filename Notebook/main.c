@@ -25,11 +25,15 @@ static void usage(void)
 
 int main(int argc, char** argv)
 {
+    if (argc >= 2 && (!strcmp(argv[1], "-help") || !strcmp(argv[1], "--help") || !strcmp(argv[1], "-h"))) {
+        usage();
+        return 0;
+    }
     int port = 8030;
     const char* autosave = NULL;
 
     for (int i = 1; i < argc; i++) {
-        if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) { usage(); return 0; }
+        if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help") || !strcmp(argv[i], "-help")) { usage(); return 0; }
         if (!strcmp(argv[i], "--port") && i + 1 < argc) { port = atoi(argv[++i]); continue; }
         if (!strncmp(argv[i], "--port=", 7)) { port = atoi(argv[i] + 7); continue; }
         if (!strcmp(argv[i], "--autosave") && i + 1 < argc) { autosave = argv[++i]; continue; }
