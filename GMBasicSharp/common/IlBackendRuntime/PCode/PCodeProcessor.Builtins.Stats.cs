@@ -43,6 +43,8 @@ internal sealed partial class PCodeProcessor
         BuiltInFunction.STATS_PARETOSF,
         BuiltInFunction.STATS_UNIFORMCDF,
         BuiltInFunction.STATS_UNIFORMSF,
+        BuiltInFunction.STATS_KENDALLTAU,
+        BuiltInFunction.STATS_FTEST,
         BuiltInFunction.STATS_GAMMAPPF,
         BuiltInFunction.STATS_GAMMAISF,
         BuiltInFunction.STATS_MODE,
@@ -141,6 +143,14 @@ internal sealed partial class PCodeProcessor
         [BuiltInFunction.STATS_UNIFORMCDF] = (task, args) =>
         {
                 return CommonLib.Numerics.UniformCdf(SafeDouble(ArgOr(args, 1, 0.0)), SafeDouble(ArgOr(args, 2, 1.0)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_KENDALLTAU] = (task, args) =>
+        {
+                return HypothesisResult(CommonLib.Numerics.KendallTau(ToDoubleArr(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1))));
+        },
+        [BuiltInFunction.STATS_FTEST] = (task, args) =>
+        {
+                return HypothesisResult(CommonLib.Numerics.FTest(ToDoubleArr(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1))));
         },
         [BuiltInFunction.STATS_UNIFORMSF] = (task, args) =>
         {

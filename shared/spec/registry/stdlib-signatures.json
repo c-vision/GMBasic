@@ -21110,6 +21110,28 @@
     },
     {
       "ns": "STATS",
+      "name": "FTest",
+      "fn": true,
+      "return": "ANY",
+      "params": [
+        {
+          "name": "data",
+          "type": "double[]",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "data2",
+          "type": "double[]",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        }
+      ]
+    },
+    {
+      "ns": "STATS",
       "name": "Fisher",
       "fn": true,
       "return": "ANY",
@@ -21370,6 +21392,28 @@
       "params": [
         {
           "name": "data",
+          "type": "double[]",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        }
+      ]
+    },
+    {
+      "ns": "STATS",
+      "name": "KendallTau",
+      "fn": true,
+      "return": "ANY",
+      "params": [
+        {
+          "name": "data",
+          "type": "double[]",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "data2",
           "type": "double[]",
           "optional": false,
           "byRef": false,

@@ -420,6 +420,10 @@ public sealed partial class StdLib
                 ExecutionKind: NativeExecutionKind.Pure),
 
             // --- scipy.stats P0: correlazione, test, Gamma, descrittive ---
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsKendallTau, "KendallTau"),
+                [dataArrayParam, dataArray2Param], new AnyType(), TokenKind.StatsKendallTau),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsFTest, "FTest"),
+                [dataArrayParam, dataArray2Param], new AnyType(), TokenKind.StatsFTest),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsPearsonR, "PearsonR"),
                 [dataArrayParam, dataArray2Param], new AnyType(), TokenKind.StatsPearsonR,
                 ExecutionKind: NativeExecutionKind.Pure),

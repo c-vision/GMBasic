@@ -767,6 +767,52 @@ gmb_val_t gmb_spearmanr(gmb_val_t x, gmb_val_t y)
     return gmb_make_dict(3, "Statistic", gmb_make_val_double(r), "PValue", gmb_make_val_double(p), "DegreesOfFreedom", gmb_make_val_double(n - 2));
 }
 
+gmb_val_t gmb_kendalltau(gmb_val_t x, gmb_val_t y)
+{
+    int nx = 0, ny = 0;
+    double* a = gmb_stats_to_arr(&x, &nx);
+    double* b = gmb_stats_to_arr(&y, &ny);
+    int n = nx < ny ? nx : ny;
+    int conc = 0, disc = 0, tx = 0, ty = 0;
+    for (int i = 0; i < n; i++)
+        for (int j = i + 1; j < n; j++) {
+            double dx = a[j] - a[i], dy = b[j] - b[i];
+            double pr = dx * dy;
+            if (pr > 0) conc++; else if (pr < 0) disc++;
+            if (dx == 0) tx++;
+            if (dy == 0) ty++;
+        }
+    int n0 = n * (n - 1) / 2;
+    double den = sqrt((double)(n0 - tx) * (double)(n0 - ty));
+    double tau = den > 0 ? (double)(conc - disc) / den : 0.0;
+    double v = n > 1 ? (2.0 * (2 * n + 5)) / (9.0 * n * (n - 1)) : NAN;
+    double p = v > 0 ? 2.0 * gmb_dist_normal_cdf(0.0, 1.0, -fabs(tau / sqrt(v))) : NAN;
+    free(a); free(b);
+    return gmb_make_dict(3, "Statistic", gmb_make_val_double(tau), "PValue", gmb_make_val_double(p), "DegreesOfFreedom", gmb_make_val_double(NAN));
+}
+gmb_val_t gmb_ftest(gmb_val_t x, gmb_val_t y)
+{
+    int nx = 0, ny = 0;
+    double* a = gmb_stats_to_arr(&x, &nx);
+    double* b = gmb_stats_to_arr(&y, &ny);
+    int n1 = nx, n2 = ny;
+    if (n1 < 2 || n2 < 2) { free(a); free(b); return gmb_make_dict(3, "Statistic", gmb_make_val_double(NAN), "PValue", gmb_make_val_double(NAN), "DegreesOfFreedom", gmb_make_val_double(NAN)); }
+    double m1 = 0, m2 = 0;
+    for (int i = 0; i < n1; i++) m1 += a[i];
+    for (int i = 0; i < n2; i++) m2 += b[i];
+    m1 /= n1; m2 /= n2;
+    double v1 = 0, v2 = 0;
+    for (int i = 0; i < n1; i++) v1 += (a[i] - m1) * (a[i] - m1);
+    for (int i = 0; i < n2; i++) v2 += (b[i] - m2) * (b[i] - m2);
+    v1 /= (n1 - 1); v2 /= (n2 - 1);
+    free(a); free(b);
+    if (v1 <= 0 || v2 <= 0) return gmb_make_dict(3, "Statistic", gmb_make_val_double(NAN), "PValue", gmb_make_val_double(NAN), "DegreesOfFreedom", gmb_make_val_double(NAN));
+    double f = v1 / v2, df1 = (double)(n1 - 1), df2 = (double)(n2 - 1);
+    double cdf = gmb_dist_f_cdf(df1, df2, f);
+    double p = 2.0 * (cdf < 0.5 ? cdf : 1.0 - cdf);
+    return gmb_make_dict(3, "Statistic", gmb_make_val_double(f), "PValue", gmb_make_val_double(p), "DegreesOfFreedom", gmb_make_val_double(df1));
+}
+
 gmb_val_t gmb_linregress(gmb_val_t x, gmb_val_t y)
 {
     int nx = 0, ny = 0;
@@ -923,6 +969,17 @@ gmb_val_t gmb_spearmanr_flat(const double* x, int nx, const double* y, int ny)
 {
     gmb_val_t xl = gmb_stats_list_from_arr(x, nx), yl = gmb_stats_list_from_arr(y, ny);
     return gmb_spearmanr(xl, yl);
+}
+
+gmb_val_t gmb_kendalltau_flat(const double* x, int nx, const double* y, int ny)
+{
+    gmb_val_t xl = gmb_stats_list_from_arr(x, nx), yl = gmb_stats_list_from_arr(y, ny);
+    return gmb_kendalltau(xl, yl);
+}
+gmb_val_t gmb_ftest_flat(const double* x, int nx, const double* y, int ny)
+{
+    gmb_val_t xl = gmb_stats_list_from_arr(x, nx), yl = gmb_stats_list_from_arr(y, ny);
+    return gmb_ftest(xl, yl);
 }
 gmb_val_t gmb_linregress_flat(const double* x, int nx, const double* y, int ny)
 {
