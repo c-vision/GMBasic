@@ -448,6 +448,18 @@ public sealed partial class IlProgramCompiler
             EmitExpression(stmt.Value);
             EmitReturnValueConversion(stmt.Value);
         }
+        else if (_currentReturnType is not null and not VoidType)
+        {
+            // RETURN senza valore dentro una FUNCTION (o un SUB-USATA-COPRECEDURA che
+            // dichiara un tipo): il metodo CIL NON è void, quindi un `ret` nudo lascia lo
+            // stack vuoto → IL malformato ("stack underflow", ILOptim/verificatore). Si
+            // restituisce il return-slot (assegnazione `NomeFunzione = …`) o il default,
+            // parità C99Native (`return __ret;`), VM/C e P-Code.
+            if (_currentReturnSymbolId >= 0 && _procedureDefinitions.ContainsKey(_currentReturnSymbolId))
+                EmitLoadVariable(_currentReturnSymbolId);
+            else
+                EmitDefaultValue(_currentReturnType);
+        }
         if (_activeTryScopes.Count > 0 || _currentDefers.Count > 0)
         {
             // RETURN dentro un TRY/FINALLY (`ret` grezzo in una protected region è IL

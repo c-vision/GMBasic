@@ -28,10 +28,6 @@ SUB OnMin2()
     b = 1
 END SUB
 
-SUB OnAnyMin()
-    anyr = 1
-END SUB
-
 SUB OnFocus1()
     f1 = 1
 END SUB
@@ -42,7 +38,7 @@ FUNCTION Main() AS INTEGER
 
     ON WINDOW MINIMIZE OF 1 GOSUB OnMin1
     ON WINDOW MINIMIZE OF 2 GOSUB OnMin2
-    ON WINDOW MINIMIZE GOSUB OnAnyMin        ' senza OF: vale per OGNI finestra
+    ON WINDOW MINIMIZE GOSUB AnyMin          ' senza OF + LABEL LOCALE (non SUB): vale per OGNI finestra
     ON WINDOW FOCUS OF 1 GOSUB OnFocus1
 
     WINDOW w2 MINIMIZE                       ' solo handle 2
@@ -61,4 +57,11 @@ FUNCTION Main() AS INTEGER
     END IF
     PRINT "win-no"
     RETURN 1
+
+' Handler evento su LABEL LOCALE (dentro la FUNCTION, dopo il RETURN): nessuna gamba può
+' saltarci dentro, quindi il compilatore emette una funzione/metodo sintetico (C99:
+' gmb_user_lfnev_*, IL: Proc_<id> sintetico, P-Code/VM-C: salto all'indirizzo).
+AnyMin:
+    anyr = 1
+    RETURN
 END FUNCTION

@@ -5925,11 +5925,40 @@ static void st_message(ctx_t* c, gmb_stmt_t* s)
         sb_put(&c->out, "));\n");
     }
 }
-/* Bersaglio-C di un evento: label di MODULO -> funzione lfn_<nome> (parity _moduleNamedLabels);
- * altrimenti SUB -> gmb_user_<nome>. */
+/* Bersaglio-C di un evento: label di MODULO -> wrapper lfnev_<nome> (chiama lfn_<nome>,
+ * generato nel programma ibrido); altrimenti SUB -> gmb_user_<nome>. */
+static int event_target_is_mod_label(ctx_t* c, const char* name)
+{
+    if (!name || !*name) return 0;
+    for (int m = 0; m < c->n_mod_labels; m++)
+        if (strcasecmp(name, c->mod_labels[m]) == 0) return 1;
+    return 0;
+}
+/* Indice in c->evh_* se `name` è un LABEL LOCALE della funzione in emissione usato come
+ * handler evento (funzione sintetica gmb_user_lfnev_<fn>_<label>), altrimenti -1. */
+static int event_target_local_label(ctx_t* c, const char* name)
+{
+    if (!name || !*name || !c->cur_fn || !c->cur_fn->stmt || !c->cur_fn->stmt->func_name) return -1;
+    for (int k = 0; k < c->n_evh; k++)
+        if (strcasecmp(c->evh_fn_name[k], c->cur_fn->stmt->func_name) == 0
+            && strcasecmp(c->evh_label[k], name) == 0) return k;
+    return -1;
+}
 static void emit_event_target(ctx_t* c, const char* name)
 {
     if (!name || !*name) { sb_put(&c->out, "0"); return; }
+    int lk = event_target_local_label(c, name);
+    if (lk >= 0) {
+        sb_put(&c->out, "(gmb_form_cb)gmb_user_lfnev_");
+        sb_ident(&c->out, c->evh_fn_name[lk]);
+        sb_put(&c->out, "_");
+        sb_ident(&c->out, c->evh_label[lk]);
+        return;
+    }
+    if (event_target_is_mod_label(c, name)) {
+        sb_put(&c->out, "(gmb_form_cb)lfnev_"); sb_ident(&c->out, name);
+        return;
+    }
     sb_put(&c->out, "(gmb_form_cb)gmb_user_"); sb_ident(&c->out, name);
 }
 static int event_target_is_sub(ctx_t* c, const char* name)
@@ -5947,8 +5976,10 @@ static int event_target_is_sub(ctx_t* c, const char* name)
 }
 static void st_on_control_event(ctx_t* c, gmb_stmt_t* s)
 {
-    if (s->flag != 2 && s->target_label && !event_target_is_sub(c, s->target_label))
-    { c99_fail(c, s->line, "Evento controllo: il gestore deve essere una SUB (non un label)"); return; }
+    if (s->flag != 2 && s->target_label && !event_target_is_sub(c, s->target_label)
+        && !event_target_is_mod_label(c, s->target_label)
+        && event_target_local_label(c, s->target_label) < 0)
+    { c99_fail(c, s->line, "Evento controllo: handler non risolvibile (SUB, label di modulo o label locale)"); return; }
     c99_mark_tui(c);
     ind(c);
     sb_put(&c->out, "gmb_form_set_event_id((int)(");
@@ -22803,8 +22834,10 @@ static void st_on_mouse(ctx_t* c, gmb_stmt_t* s) {
 static void st_on_window(ctx_t* c, gmb_stmt_t* s) {
 /* ON WINDOW <EVENTO> [OF <handle|nome>] {GOSUB|GOTO} <handler> | STOP — evento come NOME. */
         const char* ev = (s->mutex_action && s->mutex_action[0]) ? s->mutex_action : "CLOSE";
-        if (s->target_label && !event_target_is_sub(c, s->target_label))
-        { c99_fail(c, s->line, "Evento finestra: il gestore deve essere una SUB (non un label)"); return; }
+        if (s->target_label && !event_target_is_sub(c, s->target_label)
+            && !event_target_is_mod_label(c, s->target_label)
+            && event_target_local_label(c, s->target_label) < 0)
+        { c99_fail(c, s->line, "Evento finestra: handler non risolvibile (SUB, label di modulo o label locale)"); return; }
         if (s->target_label && s->of_expr) {
             ind(c);
             sb_put(&c->out, "gmb_window_register_event_of_cb((int)(");
@@ -32851,10 +32884,34 @@ int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
         }
     }
 
+    /* 3c-bis. Handler evento con LABEL LOCALE a una procedura (pattern `ON WINDOW CLOSE GOSUB
+     * FinestraChiusa` con la label dentro SUB Main): il runtime invoca una funzione senza
+     * contesto, quindi per ogni (procedura, label) si emette una funzione sintetica con il
+     * blocco del label e le locali della procedura (fresche, come il task spawnato dalla VM/C). */
+    c->n_evh = 0;
+    for (int i = 0; i < c->nfn && c->n_evh < 16; i++) {
+        gmb_stmt_t* f = c->fns[i].stmt;
+        if (!f || f->is_ffi || !f->func_body || f->n_funcbody <= 0) continue;
+        for (int b = 0; b < f->n_funcbody && c->n_evh < 16; b++) {
+            gmb_stmt_t* s = f->func_body[b];
+            if (!s || !s->target_label || !s->target_label[0]) continue;
+            if (s->kind != GMB_STMT_ON_WINDOW && s->kind != GMB_STMT_ON_CONTROL_EVENT) continue;
+            if (s->kind == GMB_STMT_ON_CONTROL_EVENT && s->flag == 2) continue;   /* STOP */
+            if (!label_in_body(f->func_body, f->n_funcbody, s->target_label)) continue;
+            int dup = 0;
+            for (int k = 0; k < c->n_evh; k++)
+                if (c->evh_fn[k] == i && strcasecmp(c->evh_label[k], s->target_label) == 0) { dup = 1; break; }
+            if (dup) continue;
+            c->evh_fn[c->n_evh] = i;
+            snprintf(c->evh_fn_name[c->n_evh], 64, "%s", f->func_name ? f->func_name : "fn");
+            snprintf(c->evh_label[c->n_evh], 64, "%s", s->target_label);
+            c->n_evh++;
+        }
+    }
+
     /* 3d. Funzioni lanciate con GO FUNCTION INTO → ERROR nel body solleva (frame
      * propagation, parity PCodeVM): il wrapper gmb_gofn_* lo cattura col setjmp. */
     for (int i = 0; i < prog->n; i++) gofn_err_scan(c, prog->stmts[i]);
-
     /* 3e. c->fns è cresciuto (module + metodi + λ sintetiche): riallinea i parent dei figli */
     repair_parents(c);
 
@@ -33153,6 +33210,25 @@ int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
         sb_put(&proto, "(void);\n");
     }
     if (c->n_mod_labels) sb_put(&proto, "\n");
+    /* Eventi (ON WINDOW / ON <ev> CONTROL) con handler = label di modulo: il runtime invoca
+     * un `double (*)(void)`, quindi ogni label ha un wrapper che chiama lfn_<nome> e torna 0. */
+    if (find_fn(c, "Main")) {
+        for (int m = 0; m < c->n_mod_labels; m++) {
+            sb_put(&proto, "static double lfnev_");
+            sb_ident(&proto, c->mod_labels[m]);
+            sb_put(&proto, "(void);\n");
+        }
+        if (c->n_mod_labels) sb_put(&proto, "\n");
+    }
+    /* Handler evento con LABEL LOCALE: funzione sintetica per (procedura, label). */
+    for (int k = 0; k < c->n_evh; k++) {
+        sb_put(&proto, "static gmb_double_t gmb_user_lfnev_");
+        sb_ident(&proto, c->evh_fn_name[k]);
+        sb_put(&proto, "_");
+        sb_ident(&proto, c->evh_label[k]);
+        sb_put(&proto, "(void);\n");
+    }
+    if (c->n_evh) sb_put(&proto, "\n");
     for (int q = 0; q < c->n_nummod; q++) {
         sb_put(&proto, "static void lfn_num_");
         sb_printf(&proto, "%d", c->nummod_tv[q]);
@@ -33228,6 +33304,58 @@ int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
     /* 5a. generatori: step function delle GENERATOR (mirror emitter C# EmitGenerator) */
     for (int i = 0; i < c->nfn && !c->error[0]; i++)
         if (c->fns[i].stmt->is_generator) emit_generator_def(c, &c->fns[i]);
+
+    /* 5a-bis. Handler evento con LABEL LOCALE: una funzione sintetica per (procedura, label)
+     * che esegue il blocco del label con le locali FRESCHE della procedura (zero-init), come il
+     * task che la VM/C spawna all'indirizzo del label. Senza questo, `ON WINDOW …
+     * GOSUB <label locale>` non era richiamabile dal runtime (nessuna funzione C). */
+    for (int k = 0; k < c->n_evh && !c->error[0]; k++) {
+        fn_info_t* of = &c->fns[c->evh_fn[k]];
+        gmb_stmt_t* f = of->stmt;
+        if (!f || !f->func_body) continue;
+        int start = -1;
+        for (int b = 0; b < f->n_funcbody; b++) {
+            gmb_stmt_t* s = f->func_body[b];
+            if (s && s->kind == GMB_STMT_LABEL && s->target_label
+                && strcmp(s->target_label, c->evh_label[k]) == 0) { start = b; break; }
+        }
+        if (start < 0) continue;
+        int end = f->n_funcbody;
+        for (int b = start + 1; b < f->n_funcbody; b++) {
+            gmb_stmt_t* s = f->func_body[b];
+            if (!s) continue;
+            if (s->kind == GMB_STMT_LABEL || s->kind == GMB_STMT_END
+                || (s->kind == GMB_STMT_RETURN && !s->ret_value)) { end = b + 1; break; }
+        }
+        char nm[160];
+        snprintf(nm, sizeof(nm), "lfnev_%s_%s", c->evh_fn_name[k], c->evh_label[k]);
+        gmb_stmt_t fcopy = *f;
+        fcopy.func_name = nm;
+        fcopy.func_params = NULL; fcopy.n_params = 0;
+        fcopy.func_body = &f->func_body[start];
+        fcopy.n_funcbody = end - start;
+        fcopy.func_ret_type = NULL;         /* numerico (gmb_double_t) */
+        fcopy.func_ret_fixed_len = 0;
+        fcopy.fn_ret_n = 0;
+        fcopy.func_val_ret_is_arr = 0;
+        fn_info_t syn = *of;
+        syn.stmt = &fcopy;
+        syn.n_params = 0;
+        syn.parent = NULL; syn.parent_i = -1; syn.n_cap = 0;
+        syn.is_lambda = 0; syn.is_lambda_cap = 0; syn.cls_owner[0] = 0;
+        /* locali in COPIA: l'emissione può aggiungere variabili implicite e non deve
+         * riallocare l'array condiviso con la funzione originale. */
+        if (of->locals.n > 0 && of->locals.v) {
+            syn.locals.v = (var_t*)malloc(sizeof(var_t) * (size_t)of->locals.n);
+            if (!syn.locals.v) { c99_fail(c, 0, "memoria esaurita (handler evento)"); break; }
+            memcpy(syn.locals.v, of->locals.v, sizeof(var_t) * (size_t)of->locals.n);
+            syn.locals.n = of->locals.n;
+            syn.locals.cap = of->locals.n;
+        }
+        emit_function(c, &syn);
+        free(syn.locals.v);
+    }
+
     /* 2.6(s): i siti GOSUB top-level (lfn_ + modulo/Main) accumulano da zero */
     c->n_gosub_sites = 0;
 
@@ -33257,6 +33385,14 @@ int gmb_c99_emit(const gmb_program_t* prog, char** out_src, char** error) {
             }
             c->indent = 0;
             sb_put(&c->out, "}\n\n");
+        }
+        /* 5b-bis. Wrapper evento per i label di modulo: il runtime invoca `double (*)(void)`. */
+        for (int m = 0; m < c->n_mod_labels && !c->error[0]; m++) {
+            sb_put(&c->out, "static double lfnev_");
+            sb_ident(&c->out, c->mod_labels[m]);
+            sb_put(&c->out, "(void) { lfn_");
+            sb_ident(&c->out, c->mod_labels[m]);
+            sb_put(&c->out, "(); return 0; }\n\n");
         }
         /* 5c. routine NUMERICHE di modulo raggiunte da GOSUB in funzioni (ibrido) */
         for (int q = 0; q < c->n_nummod && !c->error[0]; q++) {
