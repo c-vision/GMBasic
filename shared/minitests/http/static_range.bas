@@ -11,12 +11,12 @@
 '       di poter riprendere);
 '   (g) una route normale continua a funzionare (il Range non tocca le risposte dinamiche).
 '
-' Il file è generato dal test in bin/ (gitignored) e cancellato alla fine.
+' Il file è generato dal test in work/ (gitignored) e cancellato alla fine.
 ' EXPECT: start|full=[ok]|accept-ranges=[bytes]|r206=[ok]|suffix=[ok]|resume=[ok]|416=[ok]|304=[ok]|etag-miss=[ok]|route=[route-ok]
 IMPORT HTTP
 
-DIM g_dir AS STRING = "bin/static_range"
-DIM g_file AS STRING = "bin/static_range/big.txt"
+DIM g_dir AS STRING = "work/static_range"
+DIM g_file AS STRING = "work/static_range/big.txt"
 
 SUB MakeHandler(req AS HTTPREQUEST, res AS HTTPRESPONSE)
   res.Send("route-ok")

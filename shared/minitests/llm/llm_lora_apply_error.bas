@@ -4,7 +4,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  TRAIN LORA APPLY "bin/no_ckpt"
+  TRAIN LORA APPLY "work/no_ckpt"
   PRINT "no_err"
   GOTO D
 H:

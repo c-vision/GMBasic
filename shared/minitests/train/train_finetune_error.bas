@@ -5,7 +5,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  TRAIN FINETUNE "bin/no_model"
+  TRAIN FINETUNE "work/no_model"
   PRINT "no_err"
   GOTO D
 H:

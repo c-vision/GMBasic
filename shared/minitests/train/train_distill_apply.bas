@@ -4,7 +4,7 @@
 IMPORT AI
 SUB Main()
   ON ERROR GOTO H
-  TRAIN DISTILL APPLY "bin/no_ckpt", { "model": "bin/no_model" }
+  TRAIN DISTILL APPLY "work/no_ckpt", { "model": "work/no_model" }
   PRINT "no_err"
   GOTO D
 H:

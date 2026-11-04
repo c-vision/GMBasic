@@ -5,20 +5,20 @@ IMPORT SQL
 IMPORT IO
 
 SUB Main()
-    MKDIR "bin"
+    MKDIR "work"
     ON ERROR RESUME NEXT
-    IF IO.FILEEXISTS("bin/app.parquet") THEN KILL "bin/app.parquet"
-    IF IO.FILEEXISTS("bin/appn.parquet") THEN KILL "bin/appn.parquet"
+    IF IO.FILEEXISTS("work/app.parquet") THEN KILL "work/app.parquet"
+    IF IO.FILEEXISTS("work/appn.parquet") THEN KILL "work/appn.parquet"
     ON ERROR GOTO 0
-    COPY "../../samples/Fixtures/pq_multirg.parquet" TO "bin/app.parquet"
-    COPY "../../samples/Fixtures/parquet_nested.parquet" TO "bin/appn.parquet"
+    COPY "../../samples/Fixtures/pq_multirg.parquet" TO "work/app.parquet"
+    COPY "../../samples/Fixtures/parquet_nested.parquet" TO "work/appn.parquet"
 
     SQL OPEN ":memory:" ALIAS A
     ' flat: aggiungi un record
-    SQL EXEC A, "CREATE VIRTUAL TABLE f USING parquet(name='bin/app.parquet')"
+    SQL EXEC A, "CREATE VIRTUAL TABLE f USING parquet(name='work/app.parquet')"
     SQL EXEC A, "INSERT INTO f VALUES (2000,'zz',7,9.99)"
     ' nested: due record (lista 1 elem; lista 2 elem + struct senza zip + map vuota)
-    SQL EXEC A, "CREATE VIRTUAL TABLE g USING parquet(name='bin/appn.parquet')"
+    SQL EXEC A, "CREATE VIRTUAL TABLE g USING parquet(name='work/appn.parquet')"
     DIM q AS STRING
     q = CHR(34)
     SQL EXEC A, "INSERT INTO g VALUES (50,'[" + q + "n" + q + "]','[5]','{" + q + "city" + q + ":" + q + "x" + q + "}','{" + q + "k" + q + ":" + q + "v" + q + "}')"
@@ -38,13 +38,13 @@ SUB Main()
 
     ' RIAPERTURA: rilegge dal disco (valida il file scritto, non i jrows in memoria)
     SQL OPEN ":memory:" ALIAS B
-    SQL EXEC B, "CREATE VIRTUAL TABLE f2 USING parquet(name='bin/app.parquet')"
+    SQL EXEC B, "CREATE VIRTUAL TABLE f2 USING parquet(name='work/app.parquet')"
     SQL QUERY B, rs, "SELECT COUNT(*) AS n, SUM(id) AS s FROM f2"
     IF SQL.FETCH(rs) THEN
         PRINT "flat reopen n="; rs("n"); " sum="; rs("s")
     END IF
     SQL CLOSE RESULTSET rs
-    SQL EXEC B, "CREATE VIRTUAL TABLE g2 USING parquet(name='bin/appn.parquet')"
+    SQL EXEC B, "CREATE VIRTUAL TABLE g2 USING parquet(name='work/appn.parquet')"
     SQL QUERY B, rs, "SELECT id, tags, prices, info, attrs FROM g2 ORDER BY id"
     DO WHILE SQL.FETCH(rs)
         PRINT "nest "; rs("id"); " tags="; rs("tags"); " prices="; rs("prices"); " info="; rs("info"); " attrs="; rs("attrs")

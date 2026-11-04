@@ -1,16 +1,16 @@
-' MiniTest RDD — comandi e funzioni su area DBF (fixture rdd_mini.dbf copiata in bin/):
+' MiniTest RDD — comandi e funzioni su area DBF (fixture rdd_mini.dbf copiata in work/):
 ' BOF, BUFFER, CTOD, CURVAL, DELETE, DTOC, EOF, FLOAT, FLOCK, FOUND, GETFIELD,
 ' GETFLDSTATE, OLDVAL, RECALL, RECNO, REPLACE, RLOCK, SETDELETED, TABLEREVERT,
 ' TABLEUPDATE, TODAY, VALTYPE. DELETE/RECALL/REPLACE sono COMANDI (sintassi legacy):
-' il file di lavoro è una copia della fixture in bin/, la fixture resta read-only.
+' il file di lavoro è una copia della fixture in work/, la fixture resta read-only.
 ' EXPECT: recno= 1|bof= 0|eof= 0|found= 0|valtype=DBF|f1= 1|f2=ALICE|fs= 0|old=|rlock=-1|flock=-1|buffer=-1|update=-1|revert= 0|setdeleted=-1|ctod=2026-01-15|today_len= 10|float= 12.5|cur= 49.99|deleted=-1|recalled= 0|replaced= 999.5
 IMPORT RDD
 IMPORT IO
 
 SUB Main()
-  MKDIR "bin"
-  COPY "../../samples/Fixtures/rdd_mini.dbf" TO "bin/rdd_all.dbf"
-  RDD USE "bin/rdd_all.dbf" ALIAS R
+  MKDIR "work"
+  COPY "../../samples/Fixtures/rdd_mini.dbf" TO "work/rdd_all.dbf"
+  RDD USE "work/rdd_all.dbf" ALIAS R
 
   PRINT "recno="; RDD.RECNO()
   PRINT "bof="; RDD.BOF()
@@ -42,5 +42,5 @@ SUB Main()
   PRINT "replaced="; RDD.GETFIELD(1, 3)
 
   RDD CLOSE 1
-  KILL "bin/rdd_all.dbf"
+  KILL "work/rdd_all.dbf"
 END SUB

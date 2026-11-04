@@ -4,11 +4,11 @@ IMPORT SQL
 IMPORT IO
 
 SUB Main()
-    MKDIR "bin"
+    MKDIR "work"
     ON ERROR RESUME NEXT
-    IF IO.FILEEXISTS("bin/w.csv") THEN KILL "bin/w.csv"
+    IF IO.FILEEXISTS("work/w.csv") THEN KILL "work/w.csv"
     ON ERROR GOTO 0
-    OPEN "bin/w.csv" FOR OUTPUT AS #1
+    OPEN "work/w.csv" FOR OUTPUT AS #1
     PRINT #1, "id,name,price"
     PRINT #1, "1,alice,10.5"
     PRINT #1, "2,bob,20"
@@ -16,7 +16,7 @@ SUB Main()
     CLOSE #1
 
     SQL OPEN ":memory:" ALIAS M
-    SQL EXEC M, "CREATE VIRTUAL TABLE t USING csv(name='bin/w.csv')"
+    SQL EXEC M, "CREATE VIRTUAL TABLE t USING csv(name='work/w.csv')"
     SQL EXEC M, "INSERT INTO t VALUES (4,'dave','8')"
     SQL EXEC M, "UPDATE t SET price='99' WHERE name='alice'"
     SQL EXEC M, "DELETE FROM t WHERE id=2"

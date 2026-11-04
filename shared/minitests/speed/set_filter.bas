@@ -15,10 +15,10 @@ END TYPE
 SUB Main()
   DIM rec AS SRow
   ON ERROR RESUME NEXT
-  RMDIR "bin/sm_sf_num", TRUE
+  RMDIR "work/sm_sf_num", TRUE
   ON ERROR GOTO 0
-  MKDIR "bin"
-  SPEED OPEN "bin/sm_sf_num" ALIAS SmDb
+  MKDIR "work"
+  SPEED OPEN "work/sm_sf_num" ALIAS SmDb
   SPEED USE "Items" FROM SmDb OF SRow ALIAS T INDEXED BY ID, Name
 
   rec.ID = 1 : rec.Name = "Alpha" : SPEED PUT T, rec

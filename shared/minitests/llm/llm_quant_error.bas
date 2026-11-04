@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM QUANT "bin/no.gguf", "bin/out.gguf"
+  LLM QUANT "work/no.gguf", "work/out.gguf"
   PRINT "no_err"
   GOTO D
 H:

@@ -2,7 +2,7 @@
 ' Bugs/(open) - ISAM-RDD-Gap-Backend-C.md. Non ha EXPECT: non entra nel corpus.
 ' Self-contained: il file .isdb viene creato in work/ dal test (nessuna fixture).
 ' Replica: log in work/, SHIP/RECV su porta 0 (fuori range) per non aprire socket.
-' NB: work/ e non bin/ — sulle gambe managed (IL/PCode/VM-C) la cwd e' la RADICE del repo.
+' NB: work/ e non work/ — sulle gambe managed (IL/PCode/VM-C) la cwd e' la RADICE del repo.
 ' (nessun EXPECT: sonda diagnostica)
 IMPORT ISAM
 IMPORT IO

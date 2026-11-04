@@ -12,9 +12,9 @@ SUB TestPdf()
   PRINT "mdlen="; LEN(CONVERT.MARKDOWN(h))
   PRINT "htmllen="; LEN(CONVERT.HTML(h))
   PRINT "metalen="; LEN(CONVERT.METADATA(h))
-  PRINT "render="; CONVERT.RENDER(h, 0, 100, "bin/out.png")
+  PRINT "render="; CONVERT.RENDER(h, 0, 100, "work/out.png")
   PRINT "search="; LEN(CONVERT.SEARCH(h, "the"))
-  PRINT "images="; CONVERT.IMAGES(h, 0, "bin")
+  PRINT "images="; CONVERT.IMAGES(h, 0, "work")
   PRINT "close="; CONVERT.CLOSE(h)
 
   PRINT "extract="; LEN(CONVERT.EXTRACT("../../samples/Fixtures/sample.pdf"))
@@ -70,20 +70,20 @@ SUB TestMarkdown()
 END SUB
 
 SUB TestBatchWeb()
-  MKDIR "bin"
-  MKDIR "bin/batch_in"
+  MKDIR "work"
+  MKDIR "work/batch_in"
   DIM h AS LONG
-  h = IO.FCREATE("bin/batch_in/a.csv")
+  h = IO.FCREATE("work/batch_in/a.csv")
   IO.FWRITE(h, "a,b" + CHR(10) + "1,2" + CHR(10))
   IO.FCLOSE(h)
   DIM r AS STRING
-  r = CONVERT.BATCH("bin/batch_in", "md", 0)
+  r = CONVERT.BATCH("work/batch_in", "md", 0)
   IF INSTR(r, "a.csv") > 0 AND INSTR(r, "| a b |") > 0 THEN PRINT "batch-ok" ELSE PRINT "batch-ko"
   PRINT "web="; CONVERT.WEB("http://127.0.0.1:1/x")
 END SUB
 
 SUB Main()
-  MKDIR "bin"
+  MKDIR "work"
   TestPdf()
   TestMarkdown()
   TestBatchWeb()

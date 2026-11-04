@@ -4,7 +4,7 @@
 IMPORT AI
 SUB Main()
   ON ERROR GOTO H
-  TRAIN DISTILL SAMPLE "bin/no_prompts.jsonl", { "model": "bin/no_model", "out": "bin/no_ds" }
+  TRAIN DISTILL SAMPLE "work/no_prompts.jsonl", { "model": "work/no_model", "out": "work/no_ds" }
   PRINT "no_err"
   GOTO D
 H:

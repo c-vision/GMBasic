@@ -329,29 +329,29 @@ VECTORDB.ENSURECOLLECTION(":memory:", "pd_smoke", 4)
 END SUB
 
 SUB TestStorage()
-  KILL "bin/vdb_all.db"
+  KILL "work/vdb_all.db"
   DIM e = VECTORDB.EMBED("memoria gerarchica", 8)
   PRINT "embed_n="; UBOUND(e) + 1
-  PRINT "collection>0="; (VECTORDB.ENSURECOLLECTION("bin/vdb_all.db", "cdocs", 8) > 0)
-  MKDIR "bin/docs"
+  PRINT "collection>0="; (VECTORDB.ENSURECOLLECTION("work/vdb_all.db", "cdocs", 8) > 0)
+  MKDIR "work/docs"
   DIM h AS LONG
-  h = IO.FCREATE("bin/docs/d1.txt")
+  h = IO.FCREATE("work/docs/d1.txt")
   IO.FWRITE(h, "il motore gestisce la memoria gerarchica")
   IO.FCLOSE(h)
-  h = IO.FCREATE("bin/docs/d2.txt")
+  h = IO.FCREATE("work/docs/d2.txt")
   IO.FWRITE(h, "il compilatore emette codice nativo")
   IO.FCLOSE(h)
-  PRINT "load>=-1="; (VECTORDB.LOADDOCUMENTS("bin/vdb_all.db", "cdocs", "bin/docs", "*.txt") >= -1)
-  PRINT "indexed>=0="; (VECTORDB.COUNT("bin/vdb_all.db", "cdocs") >= 0)
-  PRINT "search>0="; (LEN(VECTORDB.SEARCH("bin/vdb_all.db", "cdocs", "memoria", 1)) > 0)
-  PRINT "list_has="; (INSTR(VECTORDB.LISTCOLLECTIONS("bin/vdb_all.db"), "cdocs") > 0)
-  PRINT "meta>=0="; (VECTORDB.INDEXMETA("bin/vdb_all.db", "cdocs", "m1", "nota", "{}") >= 0)
-  PRINT "remove>=0="; (VECTORDB.REMOVESOURCE("bin/vdb_all.db", "cdocs", "d1") >= 0)
-  VECTORDB.ENSURECOLLECTION("bin/vdb_gt.db", "bin/vdb_gt.db", 8)
-  VECTORDB.INDEXTEXT("bin/vdb_gt.db", "bin/vdb_gt.db", "g1", "Rome is the capital of Italy.")
-  PRINT "gentest>0="; (LEN(VECTORDB.GENTEST("bin/vdb_gt.db", 1, "simple")) > 0)
-  KILL "bin/vdb_gt.db"
-  KILL "bin/vdb_all.db"
+  PRINT "load>=-1="; (VECTORDB.LOADDOCUMENTS("work/vdb_all.db", "cdocs", "work/docs", "*.txt") >= -1)
+  PRINT "indexed>=0="; (VECTORDB.COUNT("work/vdb_all.db", "cdocs") >= 0)
+  PRINT "search>0="; (LEN(VECTORDB.SEARCH("work/vdb_all.db", "cdocs", "memoria", 1)) > 0)
+  PRINT "list_has="; (INSTR(VECTORDB.LISTCOLLECTIONS("work/vdb_all.db"), "cdocs") > 0)
+  PRINT "meta>=0="; (VECTORDB.INDEXMETA("work/vdb_all.db", "cdocs", "m1", "nota", "{}") >= 0)
+  PRINT "remove>=0="; (VECTORDB.REMOVESOURCE("work/vdb_all.db", "cdocs", "d1") >= 0)
+  VECTORDB.ENSURECOLLECTION("work/vdb_gt.db", "work/vdb_gt.db", 8)
+  VECTORDB.INDEXTEXT("work/vdb_gt.db", "work/vdb_gt.db", "g1", "Rome is the capital of Italy.")
+  PRINT "gentest>0="; (LEN(VECTORDB.GENTEST("work/vdb_gt.db", 1, "simple")) > 0)
+  KILL "work/vdb_gt.db"
+  KILL "work/vdb_all.db"
 END SUB
 
 SUB Main()

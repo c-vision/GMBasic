@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM COMPILE "bin/no_model.gguf", "bin/out.gmbllm"
+  LLM COMPILE "work/no_model.gguf", "work/out.gmbllm"
   PRINT "no_err"
   GOTO D
 H:

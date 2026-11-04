@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM TENSOR POLICYIR "bin/no.gguf"
+  LLM TENSOR POLICYIR "work/no.gguf"
   PRINT "no_err"
   GOTO D
 H:

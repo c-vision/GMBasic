@@ -4,7 +4,7 @@
 IMPORT AI
 SUB Main()
   ON ERROR GOTO H
-  TRAIN DISTILL EVAL "bin/no.jsonl", { "model": "bin/no_model", "out": "bin/no_ev" }
+  TRAIN DISTILL EVAL "work/no.jsonl", { "model": "work/no_model", "out": "work/no_ev" }
   PRINT "no_err"
   GOTO D
 H:

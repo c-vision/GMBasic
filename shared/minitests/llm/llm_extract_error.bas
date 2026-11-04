@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM EXTRACT "bin/no.gguf", "bin/out.gguf", 0, 0
+  LLM EXTRACT "work/no.gguf", "work/out.gguf", 0, 0
   PRINT "no_err"
   GOTO D
 H:

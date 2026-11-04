@@ -4,7 +4,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  TRAIN LORA SAVE "bin/no_model", "bin/out"
+  TRAIN LORA SAVE "work/no_model", "work/out"
   PRINT "no_err"
   GOTO D
 H:

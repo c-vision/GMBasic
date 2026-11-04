@@ -16,11 +16,11 @@ END TYPE
 
 SUB Main()
   ON ERROR RESUME NEXT
-  RMDIR "bin/validate_db", TRUE
+  RMDIR "work/validate_db", TRUE
   ON ERROR GOTO 0
-  MKDIR "bin"
+  MKDIR "work"
   PRINT "pre="; SPEED.VALIDATE()
-  SPEED OPEN "bin/validate_db" ALIAS V
+  SPEED OPEN "work/validate_db" ALIAS V
   SPEED USE "T" FROM V OF Riga ALIAS T INDEXED BY ID
   PRINT "v0="; SPEED.VALIDATE()
   PRINT "v1="; SPEED.VALIDATE("V")

@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM TENSOR COST "bin/no.gguf"
+  LLM TENSOR COST "work/no.gguf"
   PRINT "no_err"
   GOTO D
 H:

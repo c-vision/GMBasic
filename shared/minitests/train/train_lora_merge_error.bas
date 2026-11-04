@@ -4,7 +4,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  TRAIN LORA MERGE "bin/no_base", "bin/no_adapter", "bin/out"
+  TRAIN LORA MERGE "work/no_base", "work/no_adapter", "work/out"
   PRINT "no_err"
   GOTO D
 H:

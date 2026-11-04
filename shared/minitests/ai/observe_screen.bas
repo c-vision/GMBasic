@@ -6,7 +6,7 @@
 '   2. cattura FALLITA (path in una cartella non creabile): il comando solleva un errore ESPLICITO
 '      catturabile con ON ERROR (prima ritornava -1 in silenzio: bug chiuso il 2026-09-16) e
 '      l'osservazione NON viene registrata (delta = 0).
-' EXPECT: shot= bin/obs_screen.png|delta=  1|file= bin/obs_screen.png|hash= si|err= catturato|delta2=  0
+' EXPECT: shot= work/obs_screen.png|delta=  1|file= work/obs_screen.png|hash= si|err= catturato|delta2=  0
 IMPORT AI
 
 SUB Main()
@@ -14,12 +14,12 @@ SUB Main()
     DIM c1 AS DOUBLE
     DIM r AS STRING
 
-    ' 1) cattura riuscita (la cartella bin/ viene creata dal runtime se manca)
-    r = COMPUTER.SCREENSHOT("bin/obs_screen.png")
+    ' 1) cattura riuscita (la cartella work/ viene creata dal runtime se manca)
+    r = COMPUTER.SCREENSHOT("work/obs_screen.png")
     PRINT "shot= "; r
 
     c0 = AI.OBSERVATIONCOUNT()
-    AI OBSERVE SCREEN "bin/obs_screen.png"
+    AI OBSERVE SCREEN "work/obs_screen.png"
     c1 = AI.OBSERVATIONCOUNT()
     PRINT "delta= "; c1 - c0
     PRINT "file= "; AI.OBSERVATIONFILE$(c1)

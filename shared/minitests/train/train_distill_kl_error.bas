@@ -3,9 +3,9 @@
 ' EXPECT: caught
 IMPORT AI
 SUB Main()
-  MKDIR "bin"
+  MKDIR "work"
   ON ERROR GOTO H
-  TRAIN DISTILL TRAIN "bin/no.bin", "{""model"":""bin/no_model"",""teacher"":""bin/no_teacher"",""ckpt"":""bin/kl""}"
+  TRAIN DISTILL TRAIN "work/no.bin", "{""model"":""work/no_model"",""teacher"":""work/no_teacher"",""ckpt"":""work/kl""}"
   PRINT "no_err"
   GOTO D
 H:

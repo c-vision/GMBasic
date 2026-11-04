@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM MODEL DIFF "bin/no_a.gguf", "bin/no_b.gguf", "bin/rep.txt"
+  LLM MODEL DIFF "work/no_a.gguf", "work/no_b.gguf", "work/rep.txt"
   PRINT "no_err"
   GOTO D
 H:

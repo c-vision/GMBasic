@@ -15,14 +15,14 @@ IMPORT AI
 
 SUB Main()
     ' ── 1) audit SODDISFATTO (la risposta-errore esplicita è lunga > 5) → VERIFICATO ───────
-    AI WORKER NEW "wv1", "{""workspace"":""bin/wv1"",""budget"":4000}"
+    AI WORKER NEW "wv1", "{""workspace"":""work/wv1"",""budget"":4000}"
     AI STATE SAVE "wv1", "notes", "greedy algorithm"
     AI WORKER LOOP "ANALYZE", 3 REQUIRE "LEN(RESULT$) > 5"
     PRINT "len5= "; AI.STATELOAD("wv1", "verified")
     IF INSTR(AI.STATELOAD("wv1", "best"), "provider") > 0 THEN PRINT "audit5= si|best5= si" ELSE PRINT "audit5= no|best5= no"
 
     ' ── 2) audit RIFIUTATO dalla risposta-errore → stop esplicito -2 (nessun rework a vuoto) ─
-    AI WORKER NEW "wv2", "{""workspace"":""bin/wv2"",""budget"":4000}"
+    AI WORKER NEW "wv2", "{""workspace"":""work/wv2"",""budget"":4000}"
     AI WORKER LOOP "VERIFY", 3 REQUIRE "LEN(RESULT$) > 500"
     PRINT "len500= no"
     DIM e2 AS STRING

@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM TENSOR MPLAN "bin/no.gguf", "5"
+  LLM TENSOR MPLAN "work/no.gguf", "5"
   PRINT "no_err"
   GOTO D
 H:

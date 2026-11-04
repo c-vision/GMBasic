@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM TENSOR INSPECT "bin/no.gmbllm"
+  LLM TENSOR INSPECT "work/no.gmbllm"
   PRINT "no_err"
   GOTO D
 H:

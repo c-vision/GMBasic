@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM PROFILE "bin/no.gguf", "bin/out.txt"
+  LLM PROFILE "work/no.gguf", "work/out.txt"
   PRINT "no_err"
   GOTO D
 H:

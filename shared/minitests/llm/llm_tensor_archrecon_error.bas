@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM TENSOR ARCHRECON "bin/no.gguf"
+  LLM TENSOR ARCHRECON "work/no.gguf"
   PRINT "no_err"
   GOTO D
 H:

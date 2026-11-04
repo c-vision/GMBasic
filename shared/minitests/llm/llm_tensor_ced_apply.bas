@@ -3,10 +3,10 @@
 ' Parità 4 backend (stessa logica del runtime).
 IMPORT LLM
 SUB Main()
-  MKDIR "bin"
-  COPY "../../samples/Fixtures/models/tiny_moe.gguf" TO "bin/z.gguf"
-  LLM MODEL ABLATE "bin/z.gguf", "bin/z2.gguf", "blk.0.ffn_gate_exps"
-  LLM TENSOR CED "bin/z2.gguf", "on"
-  LLM TENSOR COMPILE "bin/z2.gguf", "bin/z2.gmbllm"
+  MKDIR "work"
+  COPY "../../samples/Fixtures/models/tiny_moe.gguf" TO "work/z.gguf"
+  LLM MODEL ABLATE "work/z.gguf", "work/z2.gguf", "blk.0.ffn_gate_exps"
+  LLM TENSOR CED "work/z2.gguf", "on"
+  LLM TENSOR COMPILE "work/z2.gguf", "work/z2.gmbllm"
   PRINT "ced-apply: done"
 END SUB

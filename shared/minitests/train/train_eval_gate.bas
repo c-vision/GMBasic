@@ -4,6 +4,6 @@
 IMPORT AI
 IMPORT LLM
 SUB Main()
-  TRAIN EVAL GATE "bin/no_ref", "bin/no_cand"
-  PRINT IIF(INSTR(LLM.EVALGATE("bin/a", "bin/b"), "ERROR") > 0, "ok", "no")
+  TRAIN EVAL GATE "work/no_ref", "work/no_cand"
+  PRINT IIF(INSTR(LLM.EVALGATE("work/a", "work/b"), "ERROR") > 0, "ok", "no")
 END SUB

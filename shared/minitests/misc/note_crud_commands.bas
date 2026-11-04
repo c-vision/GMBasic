@@ -9,8 +9,8 @@
 IMPORT AI
 
 SUB Main()
-  IF IO.DirExists("bin/note-crud-vault") = 0 THEN MKDIR "bin/note-crud-vault"
-  AI VAULT CREATE "nv", "bin/note-crud-vault"
+  IF IO.DirExists("work/note-crud-vault") = 0 THEN MKDIR "work/note-crud-vault"
+  AI VAULT CREATE "nv", "work/note-crud-vault"
   AI VAULT INDEX "nv"
   AI NOTE CREATE "n1.md", "hello world", "alpha,beta"
 

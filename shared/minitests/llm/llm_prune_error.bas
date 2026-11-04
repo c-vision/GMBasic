@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM PRUNE "bin/no.gguf", "bin/out.gguf", 4
+  LLM PRUNE "work/no.gguf", "work/out.gguf", 4
   PRINT "no_err"
   GOTO D
 H:

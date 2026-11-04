@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM MODEL VALIDATE "bin/no.gguf", "bin/rep.txt"
+  LLM MODEL VALIDATE "work/no.gguf", "work/rep.txt"
   PRINT "no_err"
   GOTO D
 H:

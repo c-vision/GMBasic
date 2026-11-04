@@ -13,7 +13,7 @@ E1:
   PRINT "load_err"
 N1:
   ON ERROR GOTO E2
-  LLM MODEL LOAD "m", "bin/does-not-exist.gguf"
+  LLM MODEL LOAD "m", "work/does-not-exist.gguf"
   PRINT "bad_ok"
   GOTO N2
 E2:

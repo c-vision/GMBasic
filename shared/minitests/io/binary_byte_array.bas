@@ -6,9 +6,9 @@
 IMPORT IO
 
 DIM FILE_BIN$
-FILE_BIN$ = "bin/binary_byte_array.dat"
+FILE_BIN$ = "work/binary_byte_array.dat"
 ON ERROR RESUME NEXT
-MKDIR "bin"
+MKDIR "work"
 KILL FILE_BIN$
 ON ERROR GOTO 0
 

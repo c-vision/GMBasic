@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM TENSOR QUANTIR "bin/no.gguf"
+  LLM TENSOR QUANTIR "work/no.gguf"
   PRINT "no_err"
   GOTO D
 H:
