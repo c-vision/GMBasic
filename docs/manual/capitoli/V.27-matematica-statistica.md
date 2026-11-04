@@ -190,7 +190,25 @@ giro; `CHANCECONSTRAINT` interpreta `alpha` come **coda** della distribuzione (0
 0.95); `TSPDFJ` vuole un `tour()` già inizializzato perché è un MIP con tagli, non un
 costruttivo.
 
-### 7.5 Esempio minimo
+### 7.5 LP avanzata e pianificazione aeronautica
+
+Due pacchetti completano il quadro. **`mathprog`** espone l'analisi fine della programmazione
+lineare: `LPREVISED` (simplesso revised con base in ingresso/uscita), `LPDUAL` (variabili
+duali), `LPREDUCEDCOSTS` (costi ridotti rispetto ai duali), `LPALTERNATE` (ottimo alternativo),
+`LPBOUNDS` (la stessa LP con bounds per variabile), `GOMORYCUT` (taglio da una riga
+frazionaria del tableau) e le due matheuristiche `MATHHARDFIXING` / `MATHLOCALBRANCHING` per
+il problema intero. **`aviation`** modella una giornata operativa di una compagnia: `AVFLEET`
+(assegnazione flotte), `AVCREWPAIRING` (equipaggi), `AVRECOVERY` (disruption), 
+`AVCREWRESCHED` (ri-assegnazione), `AVHUB` (hub location con economia `alpha`) e
+`AVTAILCONTINUITY` (rotazione degli aeromobili).
+
+I due mondi hanno la stessa forma mentale: una matrice dei costi, un vettore di decisioni che
+si legge da `out()`, un valore di ritorno che è l'obiettivo. Cambia il segno dei vincoli —
+`LPREVISED`/`LPDUAL`/`LPALTERNATE` lavorano su **uguaglianze** (`A x = b`) come `LPSOLVE`,
+mentre `LPBOUNDS` lavora su disuguaglianze con bounds — ed è la prima cosa da controllare
+quando una soluzione "non torna".
+
+### 7.6 Esempio minimo
 
 ```basic
 IMPORT OPTIMIZE
@@ -418,6 +436,7 @@ nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è 
 - **STATS.WILCOXON(x1, x2)** — `r = STATS.WILCOXON(x, y)` (shared/samples/Math/StatsSciPyParityP0.bas:52)
 - **STATS.ZTEST(x1, x2, x3)** — `result = STATS.ZTEST(x, 5.0, 2.0)` (shared/samples/Analysis/StatsSciPyParity.bas:32)
 <!-- END DOMAIN TABLE -->
+
 
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
@@ -1428,6 +1447,36 @@ r(1..nx)  = x(0..nx-1) — la soluzione del subproblema
 ## 6. Limiti e note
 
 ## 7. Riferimenti
+
+## 8. `mathprog` e `aviation` — la 2ª fascia (14 funzioni)
+
+### 8.1 `mathprog`: analisi della LP e matheuristica (8)
+| Funzione | Firma | Parametri |
+|---|---|---|
+| `LPREVISED` | `FUNCTION LPREVISED(A() AS DOUBLE, b() AS DOUBLE, c() AS DOUBLE, basis() AS LONG, x() AS DOUBLE, m AS LONG, n AS LONG)` AS LONG | Revised simplex da base ammissibile basis() = m; x() = n. |
+| `LPBOUNDS` | `FUNCTION LPBOUNDS(A() AS DOUBLE, bounds() AS DOUBLE, c() AS DOUBLE, x() AS DOUBLE, m AS LONG, n AS LONG)` AS LONG | LP con bound: bounds() = s[m] / b[m] / l[n] / u[n] (i bound possono essere ±1e30). |
+| `LPDUAL` | `FUNCTION LPDUAL(A() AS DOUBLE, b() AS DOUBLE, c() AS DOUBLE, basis() AS LONG, x() AS DOUBLE, m AS LONG, n AS LONG)` AS LONG | Dual simplex da base dual-ammissibile basis() = m; x() = n. |
+| `LPREDUCEDCOSTS` | `FUNCTION LPREDUCEDCOSTS(A() AS DOUBLE, c() AS DOUBLE, y() AS DOUBLE, red() AS DOUBLE, m AS LONG, n AS LONG)` AS LONG | Costi ridotti red() = n dati i duali y() = m. |
+| `LPALTERNATE` | `FUNCTION LPALTERNATE(A() AS DOUBLE, b() AS DOUBLE, c() AS DOUBLE, x2() AS DOUBLE, m AS LONG, n AS LONG, z2() AS DOUBLE)` AS LONG | Ottimo alternativo: x2() = n, z2(0) = valore; 1 se esiste, 0 se unico. |
+| `MATHHARDFIXING` | `FUNCTION MATHHARDFIXING(A() AS DOUBLE, b() AS DOUBLE, c() AS DOUBLE, intIdx() AS LONG, x() AS DOUBLE, info() AS DOUBLE, m AS LONG, n AS LONG)` AS LONG | Matheuristic hard fixing: info(0)=fixFrac (in), info(1)=rounds (in), info(2)=obj (out). |
+| `MATHLOCALBRANCHING` | `FUNCTION MATHLOCALBRANCHING(A() AS DOUBLE, b() AS DOUBLE, c() AS DOUBLE, intIdx() AS LONG, x() AS DOUBLE, info() AS DOUBLE, m AS LONG, n AS LONG)` AS LONG | Matheuristic local branching: info(0)=kStart (in), info(1)=rounds (in), info(2)=obj (out). |
+| `GOMORYCUT` | `FUNCTION GOMORYCUT(tabrow() AS DOUBLE, ncols AS LONG, rhsCol AS LONG, cut() AS DOUBLE)` AS LONG | Taglio di Gomory da una riga del tableau: tabrow() = ncols; cut() = ncols+1. |
+
+### 8.2 `aviation`: pianificazione operativa (6)
+| Funzione | Firma | Parametri |
+|---|---|---|
+| `AVFLEET` | `FUNCTION AVFLEET(profit() AS DOUBLE, capacity() AS DOUBLE, demand() AS DOUBLE, avail() AS LONG, nf AS LONG, nt AS LONG, assign() AS LONG)` AS DOUBLE | Fleet assignment: profit() = nf*nt; avail() = nt; assign() = nf. |
+| `AVCREWPAIRING` | `FUNCTION AVCREWPAIRING(voli() AS LONG, cost() AS DOUBLE, nf AS LONG, np AS LONG, chosen() AS LONG, nChosen() AS LONG)` AS DOUBLE | Crew pairing: voli() = nf*np; chosen() = np; nChosen(0) = quanti. |
+| `AVRECOVERY` | `FUNCTION AVRECOVERY(delayCost() AS DOUBLE, nf AS LONG, na AS LONG, assign() AS LONG)` AS DOUBLE | Recovery: delayCost() = nf*na; assign() = nf. |
+| `AVCREWRESCHED` | `FUNCTION AVCREWRESCHED(cost() AS DOUBLE, available() AS LONG, ncrew AS LONG, nf AS LONG, assign() AS LONG)` AS DOUBLE | Crew rescheduling: cost() = ncrew*nf; available() = ncrew; assign() = ncrew. |
+| `AVHUB` | `FUNCTION AVHUB(dist() AS DOUBLE, flow() AS DOUBLE, n AS LONG, p AS LONG, alpha AS DOUBLE, hubs() AS LONG)` AS DOUBLE | Hub location (p-hub median): dist()/flow() = n*n; hubs() = p. |
+| `AVTAILCONTINUITY` | `FUNCTION AVTAILCONTINUITY(cost() AS DOUBLE, na AS LONG, nf AS LONG, assign() AS LONG)` AS DOUBLE | Tail continuity: cost() = na*nf; assign() = na. |
+
+### 8.3 Esito §4.1
+| Superficie | MiniTest | Funzioni | IL | PCode | VM/C | C99Native |
+|---|---|---|---|---|---|---|
+| mathprog (2ª fascia) | `mathprogffi/mathprog2.bas` | 8 | ✓ | ✓ | ✓ | ✓ |
+| aviation (2ª fascia) | `aviationffi/aviation2.bas` | 6 | ✓ | ✓ | ✓ | ✓ |
 
 ### Optimize-ORTools-Guida-Utente
 
