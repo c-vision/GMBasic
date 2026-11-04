@@ -323,6 +323,16 @@ public sealed partial class Parser
     /// </summary>
     private readonly HashSet<string> _declaredArrayNames = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Ultima dichiarazione vista per nome: true se è uno SCALARE "sicuro" (tipo primitivo
+    /// esplicito, oppure inizializzatore chiaramente scalare come un numero/stringa/bool).
+    /// Serve a non far deviare le chiamate al builtin per uno scalare omonimo
+    /// (`DIM amax = 5` + `AMAX(v)`), mantenendo lo shadowing per nomi non tipizzati che
+    /// possono contenere array (`DIM voci` riempita da STRINGS.SPLIT). Bug AMAX/ARGMIN
+    /// shadow su VM-C: prima ogni variabile dichiarata shadowava il builtin.
+    /// </summary>
+    private readonly Dictionary<string, bool> _declaredVariableIsScalar = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Variabili dichiarate AS JSON (o AS DECISION, alias di JSON): `AI DECIDE ... INTO d`
     /// va avvolto in JSON.PARSE, così `d.VALUE/.PROBABILITY/.CONFIDENCE` funzionano davvero
     /// (senza, IL/PCode conservavano la stringa JSON e il membro tornava vuoto).</summary>
