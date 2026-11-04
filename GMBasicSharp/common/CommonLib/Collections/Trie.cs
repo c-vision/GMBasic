@@ -66,6 +66,12 @@ public class Trie
     /// </summary>
     public int Count => _count;
 
+    /// <summary>Parole nell'ordine di INSERIMENTO (autorità per FOR EACH/ToArray, come la
+    /// lista companion del runtime C: VM/C e C99Native iterano in quest'ordine). L'ordine
+    /// alfabetico/DFS resta quello di <see cref="GetAllWords"/> (FindAll/StartsWith).</summary>
+    private readonly List<string> _insertion = new();
+    public IReadOnlyList<string> Words => _insertion;
+
     /// <summary>
     /// Aggiunge una stringa al Trie. Se la stringa è già presente, il metodo non ha alcun effetto.
     /// L'operazione attraversa l'albero carattere per carattere, creando nuovi nodi se necessario,
@@ -98,6 +104,7 @@ public class Trie
 
         current.IsEndOfWord = true;
         _count++;
+        _insertion.Add(word);
         return true;
     }
 
@@ -265,6 +272,7 @@ public class Trie
     /// </summary>
     public void Clear()
     {
+        _insertion.Clear();
         _root.Children.Clear();
         _count = 0;
     }

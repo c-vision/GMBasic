@@ -105,7 +105,11 @@ typedef struct {
     /* imap: nome BASIC → espressione C (catture, celle by-ref, campi DBF late-bound,
      * variabili di ciclo). 256: fino a 16 catture per 16 livelli di annidamento. */
     #define GMB_IMAP_CAP 256
-    const char* imap_name[GMB_IMAP_CAP]; const char* imap_expr[GMB_IMAP_CAP]; int n_imap;
+    const char* imap_name[GMB_IMAP_CAP]; const char* imap_expr[GMB_IMAP_CAP];
+    /* Tipo del valore mappato (TY_NUM/TY_STR, -1 = usa il normale lookup della var):
+     * usato dal FOR EACH quando la variabile ha un tipo statico diverso dall'elemento
+     * (temp nascosto tipizzato: la variabile BASIC resta quella, il VALORE è dell'elemento). */
+    int imap_type[GMB_IMAP_CAP]; int n_imap;
     /* DBF GET <var>: nomi dei RECORD VAR (vista del record corrente). `<var>.<campo>` legge il
      * campo dell'area corrente via late binding (parità Clipper DBF GET). */
     const char* recvar_name[16]; int n_recvar;

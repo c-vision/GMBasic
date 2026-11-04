@@ -220,6 +220,37 @@ gmb_list_t gmb_dict_to_kvp(gmb_dict_t d) {
     return r;
 }
 
+/* Coppia {Key, Value} dell'estremo (min/max) come VAL (dict): forma canonica di
+ * TIMELINE.First()/Last() in tutte le gambe (Key numerica per le date seriali). */
+gmb_val_t gmb_dict_edge_pair_val(gmb_dict_t d, int want_max) {
+    gmb_list_t r = gmb_dict_extreme(&d, want_max, 0);
+    gmb_val_t k = r.count > 0 ? r.items[0] : gmb_val_nil();
+    gmb_val_t v = r.count > 1 ? r.items[1] : gmb_val_nil();
+    gmb_dict_t o = gmb_dict_new();
+    gmb_dict_set(&o, "Key", k);
+    gmb_dict_set(&o, "Value", v);
+    gmb_list_free(&r);
+    return gmb_make_val_dict_take(&o);
+}
+
+/* Entry con CHIAVE NUMERICA in [lo, hi] come lista di coppie {Key,Value}
+ * (TIMELINE.GetRange nel modello C99: le chiavi sono le date seriali). */
+gmb_val_t gmb_dict_entries_between(gmb_dict_t d, double lo, double hi) {
+    gmb_list_t r = gmb_list_new();
+    gmb_list_t ks = gmb_dict_keys_sorted(d);
+    for (gmb_int_t i = 0; i < (gmb_int_t)ks.count; i++) {
+        const char* key = ks.items[i].v_string.data ? ks.items[i].v_string.data : "";
+        double kv = atof(key);
+        if (kv < lo || kv > hi) continue;
+        gmb_dict_t o = gmb_dict_new();
+        gmb_dict_set(&o, "Key", gmb_dict_key_val(key));
+        gmb_dict_set(&o, "Value", gmb_dict_get(d, key));
+        gmb_list_add(&r, gmb_make_val_dict_take(&o));
+    }
+    gmb_list_free(&ks);
+    return gmb_make_val_list_take(&r);
+}
+
 /* Valori ordinati per chiave (SORTED) — chiavi alfabetiche, valori allineati. */
 gmb_list_t gmb_dict_values_sorted(gmb_dict_t d) {
     gmb_list_t l = gmb_list_new();
@@ -1482,6 +1513,9 @@ gmb_double_t gmb_dict_get_or_nan(gmb_dict_t d, const char* key) {
     gmb_val_t v = p->value;
     if (v.kind == GMB_TYPE_DOUBLE) return v.v_double;
     if (v.kind == GMB_TYPE_INT) return (gmb_double_t)v.v_int;
+    /* BOOL (TRUE/FALSE nei dict letterali, REDBLACK<STRING,BOOLEAN>): -1/0, non NaN
+     * (prima `.v_double` su un BOOL dava valori spazzatura / NaN — CollectionsModern §3). */
+    if (v.kind == GMB_TYPE_BOOL) return v.v_bool ? -1.0 : 0.0;
     return (gmb_double_t)(0.0 / 0.0);
 }
 

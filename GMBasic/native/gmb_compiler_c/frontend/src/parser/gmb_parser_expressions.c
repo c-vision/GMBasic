@@ -361,7 +361,21 @@ gmb_expr_t* gmb_p_parse_expr(gmb_parser_t* p)
         args[0] = gmb_expr_var(nm, ln); args[1] = rhs;
         return gmb_expr_call("_assign_", args, 2, ln);
     }
-    return gmb_p_parse_or(p);
+    {
+        gmb_expr_t* e = gmb_p_parse_or(p);
+        /* `a ?? b` — coalescing: se a è NIL usa b (right-assoc). Prima il token era
+         * lessato (GMB_TOK_QuestionMarkQuestion) ma NESSUN punto del parser lo consumava:
+         * `x = d[k]? ?? -1` ignorava il fallback (CollectionsSafeAccess). */
+        while (gmb_p_cur(p) && gmb_p_cur(p)->kind == GMB_TOK_QuestionMarkQuestion) {
+            int ln = gmb_p_cur(p)->line;
+            gmb_p_adv(p);
+            gmb_expr_t* r = gmb_p_parse_expr(p);
+            gmb_expr_t** ca = (gmb_expr_t**)malloc(2 * sizeof(gmb_expr_t*));
+            ca[0] = e; ca[1] = r;
+            e = gmb_expr_call("_coalesce_", ca, 2, ln);
+        }
+        return e;
+    }
 }
 
 gmb_expr_t* gmb_p_parse_or(gmb_parser_t* p)
@@ -807,9 +821,21 @@ gmb_expr_t* gmb_p_parse_primary(gmb_parser_t* p)
         gmb_p_adv(p);
         char buf[512]; int l = t->length < 511 ? t->length : 511;
         memcpy(buf, t->lexeme, (size_t)l); buf[l] = 0;
-        /* rimuovi le virgolette esterne */
+        /* rimuovi i delimitatori esterni: "..." oppure `...` (raw string). Senza il
+         * secondo caso i backtick restavano nel valore (`{"user":...}`) e JSON.Parse
+         * falliva → <nil> su C99Native (CollectionsModern §16). */
         size_t bl = strlen(buf);
-        if (bl >= 2 && buf[0] == '"' && buf[bl - 1] == '"') { memmove(buf, buf + 1, bl - 2); buf[bl - 2] = 0; bl -= 2; }
+        int raw = 0;
+        if (bl >= 6 && buf[0] == '"' && buf[1] == '"' && buf[2] == '"'
+            && buf[bl - 1] == '"' && buf[bl - 2] == '"' && buf[bl - 3] == '"') {
+            /* raw triple-quote """...""" (nessun escape, nessuna interpretazione) */
+            memmove(buf, buf + 3, bl - 6); buf[bl - 6] = 0; bl -= 6; raw = 1;
+        }
+        else if (bl >= 2 && buf[0] == '"' && buf[bl - 1] == '"') { memmove(buf, buf + 1, bl - 2); buf[bl - 2] = 0; bl -= 2; }
+        else if (bl >= 2 && buf[0] == '`' && buf[bl - 1] == '`') {
+            memmove(buf, buf + 1, bl - 2); buf[bl - 2] = 0; bl -= 2; raw = 1;
+        }
+        if (raw) return gmb_expr_str(buf, line);
         /* unescape BASIC "" -> " (parità col lexer C#; es. SET LINK outer, "{""hidden"":64}") */
         char out[512]; int o = 0;
         for (size_t i = 0; i < bl && o < 510; i++) {
@@ -1362,6 +1388,9 @@ gmb_expr_t* gmb_p_parse_primary(gmb_parser_t* p)
             gmb_p_adv(p);
             gmb_expr_t* init = NULL;
             if (gmb_p_check(p, GMB_TOK_LeftBracket)) init = gmb_p_parse_expr(p);
+            /* NEW HASHRING<STRING>(Servers): argomento NON letterale (variabile/espressione).
+             * Prima veniva ignorato (col nuovo oggetto si perdeva la lista dei nodi). */
+            else if (!gmb_p_check(p, GMB_TOK_RightParen)) init = gmb_p_parse_expr(p);
             { int depth = 1; while (!gmb_p_at_end(p) && depth > 0) {
                 if (gmb_p_check(p, GMB_TOK_LeftParen)) depth++;
                 else if (gmb_p_check(p, GMB_TOK_RightParen)) depth--;
@@ -1724,17 +1753,19 @@ gmb_expr_t* gmb_p_parse_primary(gmb_parser_t* p)
              * indice) invece dell'elemento. Ora parsa l'indice e produce la stessa CALL
              * "membro"(idx) del caso a parentesi tonde (cc_expr member+index). */
             if (gmb_p_check(p, GMB_TOK_LeftBracket)) {
-                gmb_expr_t** bargs = NULL; int bn = 0, bc = 0;
+                gmb_expr_t** bargs = NULL; int bn = 0, bc = 0, bsafe = 0;
                 while (gmb_p_match(p, GMB_TOK_LeftBracket)) {
                     gmb_expr_t* bidx = gmb_p_parse_expr(p);
                     gmb_p_match(p, GMB_TOK_RightBracket);
-                    gmb_p_match(p, GMB_TOK_QuestionMark);
+                    if (gmb_p_match(p, GMB_TOK_QuestionMark)) bsafe = 1;
                     if (bidx) {
                         if (bn >= bc) { bc = bc ? bc * 2 : 4; bargs = (gmb_expr_t**)realloc(bargs, (size_t)bc * sizeof(gmb_expr_t*)); }
                         bargs[bn++] = bidx;
                     }
                 }
-                return gmb_expr_call(strdup(name), bargs, bn, line);
+                gmb_expr_t* bcall = gmb_expr_call(strdup(name), bargs, bn, line);
+                bcall->is_safe = bsafe;
+                return bcall;
             }
         }
         /* QUERY["key"]: QUERY è una keyword riservata dynamic-scope per le pagine BSP (mai
@@ -1774,6 +1805,7 @@ gmb_expr_t* gmb_p_parse_primary(gmb_parser_t* p)
          * inutilizzabile la sintassi moderna a quadre per array/list/dict). */
         {
             int any_br = 0;
+            int safe_br = 0;   /* arr[i]? — accesso sicuro */
             gmb_expr_t** iargs = NULL; int ni = 0, ci = 0;
             while (gmb_p_check(p, GMB_TOK_LeftBracket)) {
                 any_br = 1;
@@ -1816,7 +1848,7 @@ gmb_expr_t* gmb_p_parse_primary(gmb_parser_t* p)
                     }
                 }
                 gmb_p_match(p, GMB_TOK_RightBracket);
-                if (gmb_p_match(p, GMB_TOK_QuestionMark)) { /* d["x"]? — null-check Clipper */ }
+                if (gmb_p_match(p, GMB_TOK_QuestionMark)) safe_br = 1;   /* d["x"]? */
                 /* un solo gruppo a quadre per ora (multi-gruppo raro: [a][b] non mappato) */
                 break;
             }
@@ -1825,6 +1857,7 @@ gmb_expr_t* gmb_p_parse_primary(gmb_parser_t* p)
                 if (ct3 == (int)GMB_TOK_Unknown) ct3 = -1;
                 gmb_expr_t* cbr = ct3 >= 0 ? gmb_expr_call_typed(name, (gmb_tokenkind_t)ct3, iargs, ni, line)
                                            : gmb_expr_call(name, iargs, ni, line);
+                if (safe_br) { cbr->is_safe = 1; safe_br = 0; }
                 /* gruppi a quadre SUCCESSIVI al primo: arr[i]["k"] → _idx_(base, idx) annidato
                  * (parità _idx_ dell'emitter, stesso schema del ramo QUERY). Prima il 2°/…
                  * gruppo era NON mappato → il '[' restava → condizione IF "atteso THEN". */
@@ -1901,7 +1934,7 @@ gmb_expr_t* gmb_p_parse_primary(gmb_parser_t* p)
                 ct2 = (int)t->kind;
             gmb_expr_t* call = ct2 >= 0 ? gmb_expr_call_typed(name, (gmb_tokenkind_t)ct2, args, na, line)
                                         : gmb_expr_call(name, args, na, line);
-            if (gmb_p_match(p, GMB_TOK_QuestionMark)) { /* arr(9)? — null-check */ }
+            if (gmb_p_match(p, GMB_TOK_QuestionMark)) call->is_safe = 1;   /* arr(9)? */
             /* risultato di chiamata indicizzato: FROMHEX(s)(0) → _idx_(call, 0).
              * CATENA: cj("a")(0)("b")("c") → _idx_ annidati (prima solo un livello →
              * parse error, es. AiServerDemo/LlmServerChatDemo: JSON annidato). */

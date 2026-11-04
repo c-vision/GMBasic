@@ -12160,6 +12160,24 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
      * _assign_(x, expr)). La forma statement è gestita da st_expr/st_assign; qui la usa
      * un corpo λ (`FN() => count := count + 1`, FunctionsClosures.bas): produce il valore
      * assegnato (parity emitter C#: `(x = e, x)`). */
+    /* `a ?? b` (parser → _coalesce_(a,b)): se a è NIL usa b. Su numerico il NIL è il
+     * NaN-sentinella degli accessi safe (IS NIL usa lo stesso test, parità gambe). */
+    if (name && strcasecmp(name, "_coalesce_") == 0 && nargs == 2) {
+        if (etype(c, args[0]) == TY_STR) {
+            sb_put(&c->out, "({ gmb_string_t _co = (");
+            emit_expr(c, args[0]);
+            sb_put(&c->out, "); (_co.data == NULL) ? (");
+            emit_expr(c, args[1]);
+            sb_put(&c->out, ") : _co; })");
+        } else {
+            sb_put(&c->out, "({ gmb_double_t _co = (gmb_double_t)(");
+            emit_expr(c, args[0]);
+            sb_put(&c->out, "); isnan(_co) ? (gmb_double_t)(");
+            emit_expr(c, args[1]);
+            sb_put(&c->out, ") : _co; })");
+        }
+        return;
+    }
     if (name && strcasecmp(name, "_assign_") == 0 && nargs == 2) {
         gmb_expr_t* tgt = args[0];
         if (tgt && tgt->kind == GMB_EXPR_VAR) {
@@ -17428,6 +17446,15 @@ static int is_json_path_member(ctx_t* c, gmb_expr_t* e, var_t** out_bv, const ch
              var_t* _rlv = NULL; int _rlk = 0;
             var_t* _pv = NULL;
              int _is_bf = is_boxed_field(c, s->print_args[i], &_bfv, &_bfi);
+             /* Accesso SICURO `coll[k]?` / `arr(i)?`: NIL (NaN sentinella) → stampa VUOTO,
+              * come le altre gambe (prima usciva "NaN"). */
+             if (s->print_args[i] && s->print_args[i]->is_safe) {
+                 sb_put(&c->out, "({ gmb_double_t _sv = (gmb_double_t)(");
+                 emit_expr(c, s->print_args[i]);
+                 sb_put(&c->out, "); if (!isnan(_sv)) gmb_print_double(_sv); });\n");
+                 if (s->print_comma && s->print_comma[i]) { ind(c); sb_put(&c->out, "gmb_print_tab_zone();\n"); }
+                 continue;
+             }
              /* F1-followup (2026-09-11): AI.EMBED ritorna double* (senza lunghezza) → in
               * PRINT costruisci la lista con la lunghezza e stampala come "[a, b]"
               * (parità IL/PCode). Prima: gmb_print_double(double*) → errore cc. */

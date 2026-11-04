@@ -12562,7 +12562,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                                 if (d)
                                 {
                                     gmb_dict_set(d->dict, "node", gmb_make_val_string_counted(ds[i].node));
-                                    gmb_dict_set(d->dict, "distance", gmb_make_val_double(ds[i].dist));
+                                    gmb_dict_set(d->dict, "dist", gmb_make_val_double(ds[i].dist));
                                     gmb_list_add(out->list, gmb_make_val_obj((gmb_obj_t*)d));
                                 }
                             }

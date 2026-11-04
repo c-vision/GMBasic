@@ -564,6 +564,24 @@ public sealed partial class IlProgramCompiler
                     _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.NewHashRing), typeof(System.Collections.IEnumerable), typeof(int)));
                     return;
                 }
+                if (expr.ParsedType is BinaryIndexedTreeType && expr.ConstructorArgs is { Length: 1 })
+                {
+                    // NEW BITREE<T>([1,2,3,4,5]): il ctor CommonLib vuole double[] — prima
+                    // si cadeva nel default (SortedDictionary vuoto) e Query restava 0
+                    // (CollectionsModern §10: IL 0/0/10 vs 6/9/19 delle altre gambe).
+                    var bitArg = expr.ConstructorArgs.Value[0];
+                    if (bitArg is ListLiteralExpr bitList) EmitTypedArrayLiteral(bitList.Elements, new DoubleType());
+                    else if (bitArg is ArrayLiteralExpr bitArr) EmitTypedArrayLiteral(bitArr.Elements, new DoubleType());
+                    else
+                    {
+                        EmitExpression(bitArg);
+                        var bitClr = DataTypeMapper.Map(NormalizeInferredType(InferType(bitArg)), _types, _classTypes);
+                        if (bitClr != typeof(double[])) IlConversion.EmitConvert(_il, _types, NormalizeInferredType(InferType(bitArg)), bitClr, typeof(double[]));
+                    }
+                    _il.Emit(OpCodes.Newobj, typeof(CommonLib.Collections.BinaryIndexedTree<double>)
+                        .GetConstructor([typeof(double[])])!);
+                    return;
+                }
                 if (expr.ParsedType is SparseSetType && expr.ConstructorArgs is { Length: 2 })
                 {
                     var spClr = DataTypeMapper.Map(expr.ParsedType, _types, _classTypes);

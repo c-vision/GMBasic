@@ -2292,11 +2292,23 @@ internal sealed partial class PCodeProcessor
                 else if (arr is CommonLib.Collections.Trie trieP && numIndices == 1)
                 {
                     var tidxP = Convert.ToInt32(keys[0] ?? 0);
-                    var twP = new System.Collections.Generic.List<string>(trieP.GetAllWords());
+                    var twP = trieP.Words;
                     task.PushRef(tidxP >= 0 && tidxP < twP.Count ? twP[tidxP] : null);
                 }
                 /* Collezioni enumerabili NON IList/IDictionary (CommonLib e affini):
                  * N-esimo elemento nell'ordine di enumerazione (FOR EACH/comprehension). */
+                /* Collezioni chiave→valore CommonLib (RedBlackTree/Cache/BPlusTree) che NON
+                 * implementano IEnumerable non-generica: N-esima entry nell'ordine di
+                 * Entries() (per RedBlack/BPlus è l'ordine ordinato). Prima il FOR EACH a due
+                 * variabili leggeva nil ("  -  ->" su CollectionsModern §3). */
+                else if (arr is CommonLib.Collections.IKeyValueIndexable kviPos && numIndices == 1)
+                {
+                    var kidxP = Convert.ToInt32(keys[0] ?? 0);
+                    object? kitemP = null;
+                    var kk = 0;
+                    foreach (var it in kviPos.Entries()) { if (kk++ == kidxP) { kitemP = it; break; } }
+                    task.PushRef(kitemP);
+                }
                 else if (arr is System.Collections.IEnumerable genEnumP && numIndices == 1)
                 {
                     var gidxP = Convert.ToInt32(keys[0] ?? 0);
@@ -2900,6 +2912,15 @@ internal sealed partial class PCodeProcessor
                     else if (fieldName == "Value") task.PushRef(de.Value);
                     else task.PushRef(null);
                 }
+                /* Elemento di FOR EACH su RedBlackTree/BPlusTree/... = KeyValuePair<,> boxed:
+                 * senza questo ramo `FOR EACH k, v IN rb` assegnava nil a entrambe le
+                 * variabili ("  -  ->" su CollectionsModern §3). */
+                else if (obj is not null && (fieldName == "Key" || fieldName == "Value")
+                         && obj.GetType().IsGenericType
+                         && obj.GetType().GetGenericTypeDefinition() == typeof(System.Collections.Generic.KeyValuePair<,>))
+                {
+                    task.PushRef(obj.GetType().GetProperty(fieldName!)?.GetValue(obj));
+                }
                 // Accesso campo su una STRINGA JSON (es. risultato di JSON.ToJson/ToObject su un
                 // UDT, che il PCode serializza in testo): parsa e leggi il campo — parità del
                 // backend IL (IlRuntime.JsonFieldGet gestisce il caso string).
@@ -3102,9 +3123,11 @@ internal sealed partial class PCodeProcessor
                     16 => new CommonLib.Collections.Cache<object, object?>(),
                     17 => new CommonLib.Collections.Graph<object>(),
                     18 => new CommonLib.Collections.Timeline<object>(),
+                    // 100 repliche = default di CommonLib (e valore usato da IL/VM-C):
+                    // con 1 il GetNode dava un nodo diverso (CollectionsModern §11).
                     19 => ctorCount >= 1 && ctorArgs[0] is System.Collections.IEnumerable nodeList
-                        ? new CommonLib.Collections.ConsistentHash<object>(nodeList.Cast<object>(), 1)
-                        : new CommonLib.Collections.ConsistentHash<object>(Array.Empty<object>(), 1),
+                        ? new CommonLib.Collections.ConsistentHash<object>(nodeList.Cast<object>(), 100)
+                        : new CommonLib.Collections.ConsistentHash<object>(Array.Empty<object>(), 100),
                     20 => ctorCount >= 1 ? new CommonLib.Collections.CircularQueue<object>(ToInt(ctorArgs[0], 64))
                         : new CommonLib.Collections.CircularQueue<object>(64),
                     21 => ctorCount >= 2
@@ -4090,9 +4113,15 @@ internal sealed partial class PCodeProcessor
                      }
                      if (upName == "KEYS" && argCount == 0)
                      {
+                         /* Ordine CANONICO per nome chiave (C99/VM/C usano le chiavi
+                          * ordinate; ConcurrentDictionary di Cache dà un ordine di hash
+                          * instabile: "Keys" dava key2,key1 solo sul PCode). */
                          var keys = new System.Collections.Generic.List<object?>();
                          foreach (var kv in kvi.Entries())
                              keys.Add(kv.Key);
+                         keys.Sort((a, b) => string.CompareOrdinal(
+                             Convert.ToString(a, System.Globalization.CultureInfo.InvariantCulture),
+                             Convert.ToString(b, System.Globalization.CultureInfo.InvariantCulture)));
                          task.PushRef(keys); return true;
                      }
                      if (upName == "CONTAINSKEY" && argCount == 1)
@@ -4115,8 +4144,21 @@ internal sealed partial class PCodeProcessor
                              : kvi2.TryGetMax(out maxk, out maxv);
                          if (ok)
                          {
-                             // BPlusTree non ha un Remove pubblico — Extract restituisce la coppia
-                             // (min/max) senza rimuovere (limite della classe CommonLib).
+                             /* EXTRACT* rimuove la voce (DictEdgePair con extract=true nel
+                              * dispatcher condiviso, come IL/VM/C/C99): prima restituiva la
+                              * coppia senza rimuovere ("Nuovo Max" restava zulu). */
+                             if (upName is "EXTRACTMIN" or "EXTRACTMAX")
+                             {
+                                 /* Rimuove davvero la voce (BPlusTree.Delete): prima
+                                  * restituiva la coppia lasciandola nell'albero
+                                  * ("Nuovo Max" restava [zulu,30]). */
+                                 var del = instance!.GetType().GetMethod("Delete",
+                                     System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                                 if (del != null)
+                                     del.Invoke(instance, new[] { upName == "EXTRACTMIN" ? mink : maxk });
+                                 var kvx = new System.Collections.Generic.List<object?> { upName == "EXTRACTMIN" ? mink : maxk, upName == "EXTRACTMIN" ? minv : maxv };
+                                 task.PushRef(kvx); return true;
+                             }
                              var kv = new System.Collections.Generic.List<object?> { upName is "MIN" or "EXTRACTMIN" ? mink : maxk, upName is "MIN" or "EXTRACTMIN" ? minv : maxv };
                              task.PushRef(kv); return true;
                          }
@@ -4283,6 +4325,16 @@ internal sealed partial class PCodeProcessor
                         instType.Name.StartsWith("Trie") ||
                         instType.Name.StartsWith("BPlusTree"))
                     {
+                        /* Timeline/Graph: forme canoniche nel dispatcher condiviso
+                         * ({"Key":seriale,"Value":...} e lista {"node","dist"} ordinata). */
+                        if (((upName is "FIRST" or "LAST" or "GETRANGE")
+                             && instType.Name.StartsWith("Timeline", StringComparison.Ordinal))
+                            || (upName == "DIJKSTRA"
+                                && instType.Name.StartsWith("Graph", StringComparison.Ordinal)))
+                        {
+                            task.PushRef(IlRuntime.CollectionInvoke(instance, methodName!, args));
+                            return true;
+                        }
                         // GRAPH.GetNeighbors(node) → lista di record {node, weight} — parità
                         // col runtime C (gmb_graph_neighbors_val) e con IL/C99/VM-C. La
                         // riflessione generica rendeva l'IEnumerable<KeyValuePair> come lista
