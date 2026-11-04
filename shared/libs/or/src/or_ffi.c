@@ -1,10 +1,10 @@
 /*
  * or_ffi.c — shim ABI piatto per il binding BASIC del namespace OPTIMIZE (dominio OR).
  *
- * Copre pack / assign / cover / cp (prima slice di or.inc). gmbortools usa int/double;
+ * Copre pack / assign / cover / cp (prima slice di ortools.inc). gmbortools usa int/double;
  * l'FFI di GMBasic passa LONG come int64, array LONG come int64* e array DOUBLE come double*.
  * Dove la firma C supera gli 8 argomenti FFI, i parametri "di servizio" sono compattati
- * o fissati nello shim (documentato in or.inc).
+ * o fissati nello shim (documentato in ortools.inc).
  */
 #include "gor_assign.h"
 #include "gor_cover.h"

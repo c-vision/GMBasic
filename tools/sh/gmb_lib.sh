@@ -36,6 +36,7 @@ die() { echo "gmb_lib: $*" >&2; exit 1; }
 inc_name() {
   case "$1" in
     opt) echo "optimize.inc" ;;
+    or)  echo "ortools.inc" ;;
     *)   echo "$1.inc" ;;
   esac
 }

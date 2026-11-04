@@ -19,26 +19,26 @@ SUB Main()
   FOR i = 0 TO 3
     tour(i) = i
   NEXT i
-  PRINT "nn="; FORMAT(OPTIMIZE.TSPNN(d, 4, tour), "#.000");
-  PRINT "|2opt="; FORMAT(OPTIMIZE.TSP2OPT(d, 4, tour, 50), "#.000");
-  PRINT "|cost="; FORMAT(OPTIMIZE.TSPTOURCOST(d, 4, tour), "#.000");
+  PRINT "nn="; FORMAT(OPTIMIZE.TSP_NEAREST(d, 4, tour), "#.000");
+  PRINT "|2opt="; FORMAT(OPTIMIZE.TSP_2OPT(d, 4, tour, 50), "#.000");
+  PRINT "|cost="; FORMAT(OPTIMIZE.TSP_TOUR_COST(d, 4, tour), "#.000");
 
   DIM t2(3) AS LONG
   FOR i = 0 TO 3
     t2(i) = i
   NEXT i
-  PRINT "|hk="; FORMAT(OPTIMIZE.TSPHELDKARP(d, 4, t2), "#.000");
-  PRINT "|dt="; FORMAT(OPTIMIZE.TSPDOUBLETREE(d, 4, t2), "#.000");
+  PRINT "|hk="; FORMAT(OPTIMIZE.TSP_HELD_KARP(d, 4, t2), "#.000");
+  PRINT "|dt="; FORMAT(OPTIMIZE.TSP_DOUBLE_TREE(d, 4, t2), "#.000");
 
   DIM edges(7) AS LONG
-  PRINT "|1tree="; FORMAT(OPTIMIZE.TSPONETREE(d, 4, 0, edges), "#.000");
+  PRINT "|1tree="; FORMAT(OPTIMIZE.TSP_ONE_TREE(d, 4, 0, edges), "#.000");
 
   ' sottotour del ciclo 0->1->2->0
   DIM succ(2) AS LONG
   succ(0)=1 : succ(1)=2 : succ(2)=0
   DIM comp(2) AS LONG
   DIM sizes(2) AS LONG
-  PRINT "|subtours="; OPTIMIZE.TSPSUBTOURS(succ, 3, comp, sizes);
+  PRINT "|subtours="; OPTIMIZE.TSP_SUBTOURS(succ, 3, comp, sizes);
 
   ' VRP: 3 clienti su una linea, deposito 0, cap 3 -> 1 rotta, distanza 6
   DIM vd(15) AS DOUBLE
@@ -51,13 +51,13 @@ SUB Main()
   dem(0)=1 : dem(1)=1 : dem(2)=1
   DIM rof(2) AS LONG
   DIM tot(0) AS DOUBLE
-  PRINT "|vrp="; OPTIMIZE.VRPCLARKEWRIGHT(vd, dem, 3, 3.0, 0, rof, tot); ":"; FORMAT(tot(0), "#.0");
+  PRINT "|vrp="; OPTIMIZE.VRP_CLARKE_WRIGHT(vd, dem, 3, 3.0, 0, rof, tot); ":"; FORMAT(tot(0), "#.0");
 
   ' arc routing: ciclo orientato 0->1->2->0 (peso 1)
   DIM w(8) AS DOUBLE
   w(1)=1 : w(5)=1 : w(6)=1
   DIM euler(10) AS LONG
   DIM elen(0) AS LONG
-  PRINT "|arc="; FORMAT(OPTIMIZE.ARCROUTING(w, 3, euler, elen), "#.0"); ":"; elen(0)
+  PRINT "|arc="; FORMAT(OPTIMIZE.ARC_ROUTING(w, 3, euler, elen), "#.0"); ":"; elen(0)
   PRINT ""
 END SUB
