@@ -245,7 +245,6 @@ set(GMB_ALL_SRCS
     # SemVer 2.0 + range matching — riferimento C del Package Manager (§"backend di riferimento è C")
     src/gmb_semver.c
     src/gmb_math.c
-    src/gmb_optfit.c
     src/gmb_iowatch.c
     src/gmb_opt_pso.c
     src/gmb_regex_extra.c
