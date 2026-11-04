@@ -1,5 +1,5 @@
 // test_decide_openjev — valuta il decision engine locale su un dataset Open-Jev (MIT).
-// Uso: test_decide_openjev <model_dir> <test.jsonl> [max_items] [samples_out]
+// Uso: test_decide_openjev <model_dir> <test.jsonl> [max_items] [samples_out] [scoring_head.json]
 // samples_out (opz.): scrive i campioni `1 n label logprob...` per gmbllm_decide_calibrate / decide_eval.
 // Righe: {"context":"…","options":["…"],"label":N}. Le opzioni sono multi-parola: si usa il
 // verbalizer A..P (prompt "A) testo…", readout sul token dello slot) e si confronta l'indice.
@@ -17,8 +17,9 @@ if (args.Length < 2)
 var modelDir = args[0];
 var path = args[1];
 var maxItems = args.Length > 2 && int.TryParse(args[2], out var m) && m > 0 ? m : 0;
-var samplesOut = args.Length > 3 ? args[3] : null;
+var samplesOut = args.Length > 3 && args[3].Length > 0 ? args[3] : null;
 var samplesW = samplesOut is null ? null : new StreamWriter(samplesOut);
+var headPath = args.Length > 4 ? args[4] : null;
 
 ProviderServer.Instance.ResetAll();
 ProviderServer.Instance.Register(ProviderRole.Completion, "local", "mlx",
@@ -27,7 +28,8 @@ ProviderServer.Instance.Register(ProviderRole.Completion, "local", "mlx",
         ["modelDir"] = modelDir,
         ["maxTokens"] = "32",
         ["temperature"] = "0",
-    });
+    }.Concat(headPath is null ? [] : [new KeyValuePair<string, string>("decideCalibration", headPath)])
+     .ToDictionary(kv => kv.Key, kv => kv.Value));
 ProviderServer.Instance.SetActive(ProviderRole.Completion, "local");
 var completer = ProviderServer.Instance.GetActiveCompletion();
 if (completer is not IDecisionCompleter decision)
