@@ -284,37 +284,6 @@ void gmb_vm_call_closure_sync_entry(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_clos
 void gmb_vm_call_closure_sync2_entry(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure, gmb_val_t a, gmb_val_t b);
 void gmb_vm_call_closure_sync_entry0(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* closure);
 void gmb_vm_ode_fn(double t, const double* y, int yd, double* dydt, void* c);
-int gmb_opt_extract_bounds(const gmb_stack_entry_t* arg, double* lo, double* hi, int max);
-/* Prototipi ottimizzatori (gmb_opt_*_ctx, definiti in gmb_vm_core.c — esposti per gmb_builtin.c). */
-double gmb_opt_newton_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double guess, double tol, int max_iter);
-double gmb_opt_bisect_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double lo, double hi, double tol, int max_iter);
-double gmb_opt_brent_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double lo, double hi, double tol, int max_iter);
-double gmb_opt_golden_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double lo, double hi, double tol, int max_iter);
-double gmb_opt_secant_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double x0, double x1, double tol, int max_iter);
-void gmb_opt_nm_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double* start, int n, double tol, int max_iter, double* out);
-void gmb_opt_bfgs_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double* start, int n, double tol, int max_iter, double* out);
-void gmb_opt_cg_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double* start, int n, double tol, int max_iter, double* out);
-void gmb_opt_lbfgs_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double* start, int n, double tol, int max_iter, double* out);
-void gmb_opt_broyden_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* x0, int n, double* out);
-void gmb_opt_lmfit_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* x, const double* y, int nx, const double* p0, int np, double* out);
-void gmb_opt_lmfit_vec_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* x, const double* y, int nx, const double* p0, int np, double* out);
-void gmb_opt_de_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* lo, const double* hi, int n, double* out);
-double gmb_opt_brentq_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double a, double b);
-double gmb_opt_brenth_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double a, double b);
-double gmb_opt_ridder_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double a, double b);
-double gmb_opt_toms748_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double a, double b);
-double gmb_opt_brentmin_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double a, double b);
-double gmb_opt_minscalar_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, double a, double b, const char* method);
-void gmb_opt_powell_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* x0, int n, double* out);
-void gmb_opt_tnc_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* x0, int n, const double* lo, const double* hi, double* out);
-void gmb_opt_cobyla_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* x0, int n, const double* lo, const double* hi, double* out);
-void gmb_opt_slsqp_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* x0, int n, const double* lo, const double* hi, double* out);
-void gmb_opt_minimize_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* x0, int n, const char* method, const double* lo, const double* hi, double* out);
-void gmb_opt_fsolve_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* x0, int n, double* out);
-void gmb_opt_lstsq_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* x0, int n, const double* lo, const double* hi, double* out);
-void gmb_opt_brute_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* lo, const double* hi, int n, int N, double* out);
-void gmb_opt_basin_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* x0, int n, int niter, double* out);
-void gmb_opt_dual_ctx(gmb_vm_t* vm, gmb_task_t* task, gmb_obj_closure_t* c, const double* lo, const double* hi, int n, int maxiter, double* out);
 
 /* Helper condivise dei builtin (esposte per gmb_builtin.c, refactor 6.5.2). */
 gmb_val_t gmb_vm_arg_list(const gmb_stack_entry_t* a);
