@@ -6986,6 +6986,7 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_StatsGammaCdf, emit_bf_dist },
     { NULL, GMB_TOK_StatsGammaSf, emit_bf_dist },
     { NULL, GMB_TOK_StatsExpSf, emit_bf_dist }, { NULL, GMB_TOK_StatsStudentTSf, emit_bf_dist }, { NULL, GMB_TOK_StatsChiSquaredSf, emit_bf_dist },
+    { NULL, GMB_TOK_StatsWeibullSf, emit_bf_dist }, { NULL, GMB_TOK_StatsFSf, emit_bf_dist },
     { NULL, GMB_TOK_StatsGammaPdf, emit_bf_dist },
     { NULL, GMB_TOK_StatsGammaPpf, emit_bf_dist },
     { NULL, GMB_TOK_StatsGammaIsf, emit_bf_dist },

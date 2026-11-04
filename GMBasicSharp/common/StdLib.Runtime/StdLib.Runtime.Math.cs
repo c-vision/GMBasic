@@ -54,8 +54,10 @@ public static class MathFunctions
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double StudentTSf(double freedom, double x) => 1.0 - CommonLib.Numerics.StudentTCdf(freedom, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double WeibullPdf(double shape, double scale, double x) => CommonLib.Numerics.WeibullPdf(shape, scale, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double WeibullCdf(double shape, double scale, double x) => CommonLib.Numerics.WeibullCdf(shape, scale, x);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double WeibullSf(double shape, double scale, double x) => 1.0 - CommonLib.Numerics.WeibullCdf(shape, scale, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double FPdf(double d1, double d2, double x) => CommonLib.Numerics.FPdf(d1, d2, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double FCdf(double d1, double d2, double x) => CommonLib.Numerics.FCdf(d1, d2, x);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double FSf(double d1, double d2, double x) => 1.0 - CommonLib.Numerics.FCdf(d1, d2, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ExponentialPdf(double rate, double x) => CommonLib.Numerics.ExponentialPdf(rate, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ExponentialCdf(double rate, double x) => CommonLib.Numerics.ExponentialCdf(rate, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ExponentialSf(double rate, double x) => 1.0 - CommonLib.Numerics.ExponentialCdf(rate, x);
