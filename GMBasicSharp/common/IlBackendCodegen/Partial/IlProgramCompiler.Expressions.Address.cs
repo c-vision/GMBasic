@@ -22,6 +22,14 @@ public sealed partial class IlProgramCompiler
     {
         switch (expr)
         {
+            /* Parametro catturato e materializzato in ByRefBox<T> (BoxCapturedParameters):
+             * l'indirizzo del VALORE è il campo Value, non il box (passare `ldloca` del box
+             * darebbe un ByRefBox<T>& a un callee che si aspetta T&). */
+            case VariableExpr v when _locals.TryGetValue(v.SymbolId, out var boxedParamLocal)
+                                      && IsByRefBoxFieldType(boxedParamLocal.LocalType):
+                _il.Emit(OpCodes.Ldloc, boxedParamLocal);
+                _il.Emit(OpCodes.Ldflda, boxedParamLocal.LocalType.GetField("Value")!);
+                return;
             case VariableExpr v when _parameters.TryGetValue(v.SymbolId, out var param):
                 if (param.IsByRef)
                     _il.Emit(OpCodes.Ldarg, param.ArgIndex); // già un indirizzo (T&): inoltrato as-is (es. un parametro-array forwarded BYREF a una call annidata)

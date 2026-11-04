@@ -77,13 +77,32 @@ public sealed partial class IlProgramCompiler
         // fonde/inserisce righe sintetiche): marcare lo stesso label due volte è un
         // InvalidProgramException ("Label defined multiple times", GraphicsFullGfxTest) e
         // ri-emettere la riga duplicherebbe l'esecuzione — skip della seconda occorrenza.
+        /* SUB Main ESISTE → il codice NUMERATO di modulo (righe legacy 10/20/…, chiavi <
+         * 1_000_000: vedi Parser.Statements.SyntheticLineBase) NON si esegue all'avvio:
+         * resta raggiungibile via GOTO/GOSUB (contratto dei programmi "ibridi", vedi
+         * FunctionsMain.bas). Le righe NON numerate restano preambolo ed eseguono prima di
+         * Main.
+         * Come si salta un blocco numerato SENZA perdere l'etichetta GOSUB: si emette un
+         * `br <dopo>` PRIMA di marcare il label della riga; il flusso sequenziale (avvio)
+         * salta il blocco, mentre un GOTO/GOSUB che punta al label atterra DOPO il br ed
+         * esegue il blocco. (Emettere il blocco DOPO il ret dell'entry rompeva il
+         * meccanismo GOSUB dell'IL: il salto spinge la continuazione e fa ret al driver.) */
+        var hasMainEntry = _trailingMainCall is not null;
         var seenEntryLines = new HashSet<int>();
         foreach (var lineNumber in mainModule.ExecutionOrder)
         {
             if (!seenEntryLines.Add(lineNumber)) continue;
+            var skipLegacy = hasMainEntry && lineNumber < 1_000_000;
+            var afterLegacy = default(System.Reflection.Emit.Label);
+            if (skipLegacy)
+            {
+                afterLegacy = _il.DefineLabel();
+                _il.Emit(OpCodes.Br, afterLegacy);
+            }
             _il.MarkLabel(_lineLabels[lineNumber]);
             foreach (var stmt in mainModule.Statements[lineNumber])
                 EmitStatement(stmt);
+            if (skipLegacy) _il.MarkLabel(afterLegacy);
         }
 
         if (needsOnErrorProcedures)
@@ -135,6 +154,9 @@ public sealed partial class IlProgramCompiler
                 "Backend IL: ON ERROR in un metodo non-top-level (classe) non ancora supportato — il dispatch a chunk è collegato solo a SUB/FUNCTION top-level.");
         foreach (var stmt in body) PreScanLabels(stmt);
         PreScanRedefinedTypes(body);
+        // Parametri catturati da una lambda del corpo → ByRefBox<T> all'ingresso (vedi
+        // IlProgramCompiler.ParamBoxes.cs): la closure deve condividere la VARIABILE.
+        BoxCapturedParameters(body);
         _missingLineExitLabel = _il.DefineLabel();
         foreach (var stmt in body) EmitStatement(stmt);
         // Il ret difensivo serve SOLO se il corpo non termina con un EndProcedureStmt
@@ -197,6 +219,8 @@ public sealed partial class IlProgramCompiler
         _localByName.Clear();
         // Scope dinamico: apre un frame se la procedura dichiara DYNAMIC (no-op altrimenti).
         EmitDynamicScopeEnter(body);
+        // Parametri catturati da una lambda del corpo → ByRefBox<T> (parità con i locali).
+        BoxCapturedParameters(body);
         var stateLocal = _il.DeclareLocal(_types.Int32);
         var errorHandlerTargetLocal = _il.DeclareLocal(_types.Int32);
         var errorLineLocal = _il.DeclareLocal(_types.Int32);

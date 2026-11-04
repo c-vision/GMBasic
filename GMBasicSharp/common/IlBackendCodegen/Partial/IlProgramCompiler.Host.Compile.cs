@@ -1000,6 +1000,15 @@ public sealed partial class IlProgramCompiler
         }
         Func<int, Basic.DataType?> trampolineSymbolType = sym => program.Symbols.GetSymbol(sym).DataType;
 
+        /* Runner delle righe NUMERATE legacy raggiunte da GOSUB dentro una procedura
+         * (programmi ibridi SUB Main + codice numerato): un salto CIL non attraversa i
+         * metodi, quindi ogni riga-target diventa un metodo (parità C99Native
+         * lfn_num_<riga>). Da preparare DOPO le lambda (i runner possono contenerne) e
+         * PRIMA dei corpi delle procedure (che le chiamano). */
+        mainCompiler.PrepareModuleLineRunners(program.MainModule, programType, types,
+            procedureMethods, procedureDefinitionsBySymbol, classTypes, classFields,
+            classFieldArrays, classConstructors, classProperties, classOperators, lambdaInfos);
+
         foreach (var definition in procedureDefinitions)
         {
             // Procedure LOCALI con CATTURA (uso di un simbolo di uno scope ANCESTRO): le

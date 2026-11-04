@@ -206,10 +206,28 @@ public sealed partial class IlProgramCompiler
             // (campo closure ByRefBox<T>) e EmitLambdaCreation (passa il box). Escluse le
             // variabili globali/statiche (già condivise via bag) e i parametri (che hanno il
             // loro percorso box dedicato Fase 4).
-            foreach (var lambdaExpr in FindAllNodesGeneric<LambdaExpr>(body.Value.Cast<AstNode>()))
+            /* Le lambda si raccolgono con il walker GENERICO (WalkAst), non con
+             * FindAllNodesGeneric: quest'ultimo scende solo nei figli che sono già AstNode,
+             * e un `PRINT ... EVAL({ |x| ... })` ha l'espressione dentro un PrintArg (NON
+             * AstNode) — la lambda restava invisibile e la sua cattura non veniva boxata
+             * (→ "campo box senza box sorgente" in EmitLambdaCreation). */
+            var lambdasInBody = new List<LambdaExpr>();
+            CollectLambdaExpressions(body.Value, lambdasInBody);
+            foreach (var lambdaExpr in lambdasInBody)
                 foreach (var mutSym in CollectMutatedSymbols(lambdaExpr))
                     if (!IsGlobalSymbol(mutSym) && !IsStaticSymbol(mutSym) && !_parameters.ContainsKey(mutSym))
                         result.Add(mutSym);
+            /* Catture LOCALI delle lambda (anche in SOLA LETTURA): per-riferimento come le
+             * mutate — il local diventa un ByRefBox e la closure ne condivide il valore
+             * (parità VM/C/C99). Senza, una variabile riassegnata dopo la creazione della
+             * lambda restava lo snapshot (ro=5, s=a). Parametri/globali/static esclusi:
+             * hanno percorsi dedicati. */
+            foreach (var lambdaExpr in lambdasInBody)
+                foreach (var capSym in CollectLambdaCaptures(lambdaExpr))
+                    if (capSym >= 0 && !IsGlobalSymbol(capSym) && !IsStaticSymbol(capSym)
+                        && !_parameters.ContainsKey(capSym)
+                        && !_program.Symbols.GetSymbol(capSym).Flags.HasFlag(SymbolFlags.IsConst))
+                        result.Add(capSym);
             }
             _boxedSymbolsCache = result;
             return result;
