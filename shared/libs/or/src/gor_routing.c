@@ -931,10 +931,12 @@ gor_real gor_tsp_tabu(int n, const gor_real *dist, int *tour, int maxit,
 
 /* ===================== TSP: edge recombination crossover (da SiMoM0/TSP) ===================== */
 
-static void erx_add(int *adj, int *cnt, int a, int b)
+static void erx_add(int *adj, int *cnt, int n, int a, int b)
 {
     int k;
-    if (a == b || a < 0 || b < 0) return;
+    /* Guardia su ENTRAMBI gli estremi: senza `a < n` un genitore malformato (o un tour non
+     * permutazione) scriveva fuori da adj/cnt (2026-11-04, heap corruption → SIGBUS). */
+    if (a == b || a < 0 || b < 0 || a >= n || b >= n) return;
     for (k = 0; k < cnt[a]; k++) if (adj[(size_t)a * 4 + k] == b) return;
     if (cnt[a] < 4) { adj[(size_t)a * 4 + cnt[a]] = b; cnt[a]++; }
 }
@@ -954,10 +956,10 @@ void gor_tsp_erx(int n, const int *p1, const int *p2, int *child,
     if (!adj || !cnt || !rem || !used) { free(adj); free(cnt); free(rem); free(used); return; }
     /* archi dei due genitori (tour ciclici) */
     for (i = 0; i < n; i++) {
-        erx_add(adj, cnt, p1[i], p1[(i + 1) % n]);
-        erx_add(adj, cnt, p1[i], p1[(i - 1 + n) % n]);
-        erx_add(adj, cnt, p2[i], p2[(i + 1) % n]);
-        erx_add(adj, cnt, p2[i], p2[(i - 1 + n) % n]);
+        erx_add(adj, cnt, n, p1[i], p1[(i + 1) % n]);
+        erx_add(adj, cnt, n, p1[i], p1[(i - 1 + n) % n]);
+        erx_add(adj, cnt, n, p2[i], p2[(i + 1) % n]);
+        erx_add(adj, cnt, n, p2[i], p2[(i - 1 + n) % n]);
     }
     for (i = 0; i < n; i++) rem[i] = cnt[i];
     cur = p1[0];
@@ -972,6 +974,7 @@ void gor_tsp_erx(int n, const int *p1, const int *p2, int *child,
         }
         for (k = 0; k < cnt[cur]; k++) {
             int v = adj[(size_t)cur * 4 + k];
+            if (v < 0 || v >= n) continue;      /* mai indicizzare used[] con un nodo invalido */
             if (!used[v] && rem[v] < bestc) { bestc = rem[v]; best = v; }
         }
         if (best >= 0) pick = best;
@@ -983,6 +986,7 @@ void gor_tsp_erx(int n, const int *p1, const int *p2, int *child,
             pick = (int)((ta_next(&s) % (unsigned long long)cntfree));
             for (i = 0; i < n; i++) { if (!used[i]) { if (pick == 0) { pick = i; break; } pick--; } }
         }
+        if (pick < 0 || pick >= n) break;       /* niente scritture con indici invalidi */
         child[t] = pick;
         used[pick] = 1;
         cur = pick;

@@ -2,7 +2,7 @@
 ' TSPEXTRAMILEAGE, TSPGRASP, TSPVNS, TSP3OPT, TSPSA, TSPTABU, TSPHKBOUND, TSPDFJ, TSPERX,
 ' TSPGA, TSPOROPT, VRPTIMEWINDOWS, VRPMULTIDEPOT, VRPPICKUPDELIVERY.
 ' Istanze piccole con distanze intere (|i-j|): costo del giro ottimo = 8.
-' EXPECT: extra=8.0: 1 |grasp=8.0: 1 |vns=8.0: 1 |3opt=8.0: 1 |sa=8.0: 1 |tabu=8.0: 1 |hk=7.9:-1 |dfj=8.0: 1 |oropt=8.0: 1 |ga=8.0: 1 |erx=skipvrptw= 2 :10.0: 0  1 |mdvrp= 1 :6.0: 0  0 |pdp= 1 :4.0: 1  2  1  1 :-1
+' EXPECT: extra=8.0: 1 |grasp=8.0: 1 |vns=8.0: 1 |3opt=8.0: 1 |sa=8.0: 1 |tabu=8.0: 1 |hk=7.9:-1 |dfj=8.0: 1 |oropt=8.0: 1 |ga=8.0: 1 |erx= 1 : 1 :-1|vrptw= 2 :10.0: 0  1 |mdvrp= 1 :6.0: 0  0 |pdp= 1 :4.0: 1  2  1  1 :-1
 IMPORT OPTIMIZE
 
 FUNCTION IsPerm(t() AS LONG, n AS LONG) AS LONG
@@ -70,10 +70,7 @@ SUB Main()
     p1(i) = i
     p2(i) = 4 - i
   NEXT i
-  ' TSPERX: risultato corretto ma corrompe l'heap (SIGBUS in una malloc successiva, solo
-  ' nella gamba nativa) -> escluso dal test finché non è corretto.
-  ' Vedi `(open) - OR-TSPERX-Corruzione-Heap.md`.
-  PRINT "|erx=skip";
+  PRINT "|erx="; OPTIMIZE.TSPERX(p1, p2, 5, ch); ":"; IsPerm(ch, 5); ":"; (Lung(ch, 5, d) >= 8.0)
 
   ' ── VRP: finestre temporali, multi-deposito, pickup&delivery ──────────────────────
   ' VRPTW: n = NUMERO DI CLIENTI (il deposito è l'indice 0), dist (n+1)x(n+1)

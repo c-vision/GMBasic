@@ -184,11 +184,31 @@ int gor_subset_sum(int n, const gor_real *items, gor_real target, int *take)
         for (c = cap; c >= wi; c--) if (dp[c - wi]) dp[c] = 1;
     }
     if (take && dp[cap]) {
-        int c2 = cap;
+        /* Ricostruzione con tabella per PREFISSO di item: la versione precedente usava il DP
+         * globale e sceglieva item la cui somma residua non era raggiungibile con i soli item
+         * ancora disponibili (es. target 9 su {3,34,4,12,5,2} dava 5+2=7). La tabella 2D costa
+         * n*(cap+1) byte; oltre 64 MB si rinuncia alla ricostruzione (l'esito 0/1 resta). */
+        size_t rows = (size_t)n + 1u, cols = (size_t)cap + 1u;
+        unsigned char *d2 = NULL;
+        if (rows * cols <= 64u * 1024u * 1024u) d2 = (unsigned char *)calloc(rows * cols, 1);
         for (i = 0; i < n; i++) take[i] = 0;
-        for (i = n - 1; i >= 0; i--) {
-            int wi = (int)(items[i] + 0.5);
-            if (c2 >= wi && dp[c2 - wi]) { take[i] = 1; c2 -= wi; }
+        if (d2 != NULL) {
+            d2[0] = 1;
+            for (i = 0; i < n; i++) {
+                int wi = (int)(items[i] + 0.5);
+                unsigned char *prev = d2 + (size_t)i * cols;
+                unsigned char *cur_row = d2 + (size_t)(i + 1) * cols;
+                for (c = 0; c <= cap; c++) {
+                    cur_row[c] = prev[c];
+                    if (!cur_row[c] && c >= wi && prev[c - wi]) cur_row[c] = 1;
+                }
+            }
+            c = cap;
+            for (i = n - 1; i >= 0 && c > 0; i--) {
+                int wi = (int)(items[i] + 0.5);
+                if (c >= wi && d2[(size_t)i * cols + (size_t)(c - wi)]) { take[i] = 1; c -= wi; }
+            }
+            free(d2);
         }
     }
     {

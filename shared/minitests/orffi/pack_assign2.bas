@@ -2,7 +2,7 @@
 ' KNAPSACKFRACTIONAL, KNAPSACK01MITM, KNAPSACKUNBOUNDED, SUBSETSUM, CUTTINGSTOCK,
 ' BINPACKING3D, ASSIGNAUCTION, ASSIGNBOTTLENECK, STABLEMARRIAGE, TRANSPORTNORTHWEST,
 ' TRANSPORTLEASTCOST, TRANSPORTMODI, ASSIGNQAPTABU.
-' EXPECT: frac=240.0|mitm=220.0: 0  1  1 |unb=24.0: 1  2 |ss= 1 : 1 |cut= 2 : 1 |bp3d= 1 : 0|auct=2.0: 1 |bott=1.0: 1 |marry= 1 : 1 |nw=20.0|lc=20.0|modi=20.0|qap=12.0: 1
+' EXPECT: frac=240.0|mitm=220.0: 0  1  1 |unb=24.0: 1  2 |ss= 1 :9|cut= 2 : 1 |bp3d= 1 : 0|auct=2.0: 1 |bott=1.0: 1 |marry= 1 : 1 |nw=20.0|lc=20.0|modi=20.0|qap=12.0: 1
 IMPORT OPTIMIZE
 
 ' TRUE se t() è una permutazione di 0..n-1.
@@ -40,13 +40,11 @@ SUB Main()
   items(0)=3 : items(1)=34 : items(2)=4 : items(3)=12 : items(4)=5 : items(5)=2
   DIM take(5) AS LONG
   r = OPTIMIZE.SUBSETSUM(items, 6, 9.0, take)
-  ok = 1
+  s = 0
   FOR i = 0 TO 5
-    IF take(i) <> 0 AND take(i) <> 1 THEN ok = 0
+    IF take(i) <> 0 THEN s = s + items(i)
   NEXT i
-  ' NOTA: take() NON ricostruisce una combinazione che somma a target (bug noto, nota
-  ' `(open) - OR-SubsetSum-Ricostruzione.md`); qui si verifica solo l'esito e la forma.
-  PRINT "|ss="; r; ":"; ok;
+  PRINT "|ss="; r; ":"; FORMAT(s, "#");
 
   DIM pc(2) AS DOUBLE
   pc(0)=5 : pc(1)=7 : pc(2)=9
