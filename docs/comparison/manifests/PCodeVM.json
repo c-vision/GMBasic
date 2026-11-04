@@ -3,10 +3,10 @@
   "superficie": "BuiltInFunction (enum, funzioni)",
   "file_enum": "common/Compiler/BuiltInFunction.cs",
   "file_dispatch": "common/IlBackendRuntime/PCode/PCodeProcessor.Builtins.cs",
-  "totale": 1743,
-  "implementate": 1655,
+  "totale": 1716,
+  "implementate": 1628,
   "non_coperte": 88,
-  "percentuale": 95,
+  "percentuale": 94.9,
   "non_coperte_lista": [
     "AICALLMAP",
     "AICONTEXT",

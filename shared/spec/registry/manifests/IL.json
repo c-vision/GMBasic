@@ -1,8 +1,8 @@
 {
   "backend": "IL",
   "superficie": "TokenKind (funzioni mappate dal Compiler)",
-  "totale": 1763,
-  "implementate": 1686,
+  "totale": 1747,
+  "implementate": 1670,
   "non_coperte": 77,
   "percentuale": 95.6,
   "non_coperte_lista": [
@@ -83,8 +83,5 @@
     "CollUniqueItems",
     "CollUpdate",
     "CollValues"
-  ],
-  "nomi_canoniche": 0,
-  "nomi_implementate": 0,
-  "nomi_non_coperte_lista": []
+  ]
 }

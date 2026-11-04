@@ -966,6 +966,10 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "MATRIX.RANK");
         r.Register(Backend.C99Native, "FINANCE.RATE");
         r.Register(Backend.C99Native, "IO.ReadBytes");
+        r.Register(Backend.C99Native, "IO.WriteBytes");
+        r.Register(Backend.C99Native, "FONTS.TTRENDER");
+        r.Register(Backend.C99Native, "FONTS.TTMETRICS");
+        r.Register(Backend.C99Native, "FONTS.TTGLYPHS");
         r.Register(Backend.C99Native, "IO.ReadFile");
         r.Register(Backend.C99Native, "IO.ReadLines");
         r.Register(Backend.C99Native, "JSON.ReadSection");

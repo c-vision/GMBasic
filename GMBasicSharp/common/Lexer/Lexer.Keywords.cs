@@ -1327,20 +1327,6 @@ public sealed partial class Lexer
         { "SVD", TokenKind.Svd },
         { "EVD", TokenKind.Evd },
         { "CHOLESKY", TokenKind.Cholesky },
-        { "NEWTON", TokenKind.Newton },
-        { "BRENT", TokenKind.Brent },
-        { "SIMPLEX", TokenKind.Simplex },
-        { "CHOLESKYSSOLVE", TokenKind.CholeskySolve },
-        { "BROYDEN", TokenKind.Broyden },
-        { "NELDERMEAD", TokenKind.NelderMead },
-        { "SECANT", TokenKind.Secant },
-        { "GOLDENSECTION", TokenKind.GoldenSection },
-        { "BFGS", TokenKind.Bfgs },
-        { "LBFGS", TokenKind.LBfgs },
-        { "LEASTSQUARES", TokenKind.LeastSquares },
-        { "LEVENBERGMARQUARDT", TokenKind.LevenbergMarquardt },
-        { "LEVENBERGMARQUARDTVEC", TokenKind.LevenbergMarquardtVec },
-        { "CONJUGATEGRADIENT", TokenKind.ConjugateGradient },
 
         // ========================================================================
         // --- KEYWORD PER FUNZIONI CRITTOGRAFICHE (HASHING) ---

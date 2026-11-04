@@ -53,7 +53,7 @@ public static partial class IlRuntime
 
     /// <summary>Scrive in `out` un risultato array di callback (double[] o IList boxed).</summary>
     /// <summary>Numero di elementi scritti in `out` (2026-11-03): il valore di ritorno del
-    /// trampolino è il "m" dedotto da LEASTSQUARESFIT (i chiamanti void lo ignorano).</summary>
+    /// trampolino è la lunghezza scritta dalla callback che ritorna array (i chiamanti void la ignorano).</summary>
     private static double OutLength(object? r)
         => r switch { double[] a => a.Length, System.Collections.IList l => l.Count, _ => 0.0 };
 

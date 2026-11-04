@@ -1819,13 +1819,6 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
                     ArgN(1, 0), ArgN(2, 1), ArgN(3, -1), ArgN(4, -1), ArgN(5, 1), ArgN(6, 0));
             }
         
-        
-            // --- Optimize: minimizzazione/root-finding multivariata. Firma del parametro
-            // funzione CORRETTA in StdLib.Optimize.cs da scalare a vettoriale (era
-            // FunctionPointerType([Double],Double), non poteva rappresentare una funzione di più
-            // variabili — nessuna di queste era mai dispatchata, nessuna firma preesistente da
-            // rompere). L'array BASIC passato alla closure è un List<object?> di double boxed,
-            // stessa convenzione di ritorno usata da GETRANGE/TOLIST.
         },
         [BuiltInFunction.CONFIRM] = (task, args) =>
         {
@@ -1839,13 +1832,6 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
                     ArgN(1, 0), ArgN(2, 1), ArgN(3, -1), ArgN(4, -1), ArgN(5, 1), ArgN(6, 0));
             }
         
-        
-            // --- Optimize: minimizzazione/root-finding multivariata. Firma del parametro
-            // funzione CORRETTA in StdLib.Optimize.cs da scalare a vettoriale (era
-            // FunctionPointerType([Double],Double), non poteva rappresentare una funzione di più
-            // variabili — nessuna di queste era mai dispatchata, nessuna firma preesistente da
-            // rompere). L'array BASIC passato alla closure è un List<object?> di double boxed,
-            // stessa convenzione di ritorno usata da GETRANGE/TOLIST.
         },
         [BuiltInFunction.IFFT] = (task, args) =>
         {

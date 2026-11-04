@@ -8427,222 +8427,27 @@ public static double TextWidth(string s)
     // ── OPTIMIZATION ────────────────────────────────────────────────────
     // Wrapper parità VM (PCodeProcessor.Builtins): callback BASIC → delegate,
     // guess/input → Vector MathNet, risultati vettoriali → double[].
-    public static double Newton(Func<double, double> f, double guess)
-    {
-        const double h = 1e-6;
-        (double, double) FAndDf(double x)
-        {
-            var fx = f(x);
-            var dfx = (f(x + h) - f(x - h)) / (2 * h);
-            return (fx, dfx);
-        }
-        return CommonLib.Numerics.NewtonRaphson(FAndDf, guess, 1e-8, 200);
-    }
 
-    public static double Brent(Func<double, double> f, double lo, double hi) => CommonLib.Numerics.Brent(f, lo, hi, 1e-8, 200);
-    public static double Bisection(Func<double, double> f, double a, double b) => CommonLib.Numerics.Bisection(f, a, b, 1e-8, 200);
-    public static double Secant(Func<double, double> f, double x0, double x1) => CommonLib.Numerics.Secant(f, x0, x1, 1e-8, 200);
-    public static double GoldenSection(Func<double, double> f, double a, double b) => CommonLib.Numerics.GoldenSection(f, a, b, 1e-8, 200);
-
-    /// <summary>Adatta un callback SCALARE (FN(x AS DOUBLE)) a una minimizzazione vettoriale:
-    /// estrae v[0] e chiama il delegate scalare — come la VM (SafeDouble sulla lista passata
-    /// alla closure). Senza questo ponte il delegate Func&lt;double,double&gt; sullo stack
-    /// non combacia con la firma Func&lt;double[],double&gt; del wrapper.</summary>
-    public static Func<double[], double> VectorizeScalar(Func<double, double> f)
-        => v => v.Length == 0 ? double.NaN : f(v[0]);
-
-    public static double[] Broyden(Func<double[], double[]> f, double[] guess)
-    {
-        var v0 = MathNet.Numerics.LinearAlgebra.Vector<double>.Build.DenseOfArray(guess);
-        MathNet.Numerics.LinearAlgebra.Vector<double> BdF(MathNet.Numerics.LinearAlgebra.Vector<double> v)
-            => MathNet.Numerics.LinearAlgebra.Vector<double>.Build.DenseOfArray(f(v.ToArray()));
-        var r = CommonLib.Numerics.Broyden(BdF, v0, 1e-8, 200);
-        return r.ToArray();
-    }
 
     // Overload scalare-return (parità VM: OptVec sul return della closure → [risultato]):
     // un campione può passare una funzione SCALARE (Rosenbrock) a BROYDEN — la VM lo
     // tollera (OptVec(double) = [double]).
-    public static double[] Broyden(Func<double[], double> f, double[] guess)
-    {
-        var v0 = MathNet.Numerics.LinearAlgebra.Vector<double>.Build.DenseOfArray(guess);
-        MathNet.Numerics.LinearAlgebra.Vector<double> BdF(MathNet.Numerics.LinearAlgebra.Vector<double> v)
-            => MathNet.Numerics.LinearAlgebra.Vector<double>.Build.DenseOfArray(new[] { f(v.ToArray()) });
-        var r = CommonLib.Numerics.Broyden(BdF, v0, 1e-8, 200);
-        return r.ToArray();
-    }
 
-    public static double[] NelderMead(Func<double[], double> f, double[] guess)
-    {
-        var v0 = MathNet.Numerics.LinearAlgebra.Vector<double>.Build.DenseOfArray(guess);
-        double NmF(MathNet.Numerics.LinearAlgebra.Vector<double> v) => f(v.ToArray());
-        var r = CommonLib.Numerics.NelderMead(NmF, v0, 1e-6, 500);
-        return r.MinimizingPoint.ToArray();
-    }
 
-    public static double[] Bfgs(Func<double[], double> f, double[] guess)
-    {
-        var v0 = MathNet.Numerics.LinearAlgebra.Vector<double>.Build.DenseOfArray(guess);
-        double BgF(MathNet.Numerics.LinearAlgebra.Vector<double> v) => f(v.ToArray());
-        var r = CommonLib.Numerics.Bfgs(BgF, v0, 1e-6, 200);
-        return r.MinimizingPoint.ToArray();
-    }
 
-    public static double[] LBfgs(Func<double[], double> f, double[] guess)
-    {
-        var v0 = MathNet.Numerics.LinearAlgebra.Vector<double>.Build.DenseOfArray(guess);
-        double LbF(MathNet.Numerics.LinearAlgebra.Vector<double> v) => f(v.ToArray());
-        var r = CommonLib.Numerics.LBfgs(LbF, v0, 1e-6, 200);
-        return r.MinimizingPoint.ToArray();
-    }
 
-    public static double[] ConjugateGradient(Func<double[], double> f, double[] guess)
-    {
-        var v0 = MathNet.Numerics.LinearAlgebra.Vector<double>.Build.DenseOfArray(guess);
-        double CgF(MathNet.Numerics.LinearAlgebra.Vector<double> v) => f(v.ToArray());
-        var r = CommonLib.Numerics.ConjugateGradient(CgF, v0, 1e-6, 200);
-        return r.MinimizingPoint.ToArray();
-    }
 
-    public static double[] LevenbergMarquardt(Func<double[], double, double> f, double[] guess, double[] inputs, double[] targets)
-    {
-        var p0 = MathNet.Numerics.LinearAlgebra.Vector<double>.Build.DenseOfArray(guess);
-        var xs = MathNet.Numerics.LinearAlgebra.Vector<double>.Build.DenseOfArray(inputs);
-        var ys = MathNet.Numerics.LinearAlgebra.Vector<double>.Build.DenseOfArray(targets);
-        double LmF(MathNet.Numerics.LinearAlgebra.Vector<double> p, double x) => f(p.ToArray(), x);
-        var r = CommonLib.Numerics.LevenbergMarquardt(LmF, p0, xs, ys, 1e-8, 200);
-        return r.ToArray();
-    }
 
-    public static double[] LevenbergMarquardtVec(Func<double[], double[], double[]> f, double[] guess, double[] inputs, double[] targets)    {
-        var p0 = MathNet.Numerics.LinearAlgebra.Vector<double>.Build.DenseOfArray(guess);
-        var xs = MathNet.Numerics.LinearAlgebra.Vector<double>.Build.DenseOfArray(inputs);
-        var ys = MathNet.Numerics.LinearAlgebra.Vector<double>.Build.DenseOfArray(targets);
-        MathNet.Numerics.LinearAlgebra.Vector<double> LvF(MathNet.Numerics.LinearAlgebra.Vector<double> p, MathNet.Numerics.LinearAlgebra.Vector<double> x)
-            => MathNet.Numerics.LinearAlgebra.Vector<double>.Build.DenseOfArray(f(p.ToArray(), x.ToArray()));
-        var r = CommonLib.Numerics.LevenbergMarquardtVec(LvF, p0, xs, ys, 1e-8, 200);
-        return r.ToArray();
-    }
 
     // scipy.optimize.curve_fit / differential_evolution.
-    public static double[] CurveFit(Func<double[], double, double> f, double[] xdata, double[] ydata, double[] p0)
-        => CommonLib.Numerics.CurveFit(f ?? ((_, _) => 0), xdata ?? Array.Empty<double>(), ydata ?? Array.Empty<double>(), p0 ?? Array.Empty<double>());
-
-    public static double[] DifferentialEvolution(Func<double[], double> f, double[][] bounds)
-    {
-        var b = bounds ?? Array.Empty<double[]>();
-        var n = b.Length;
-        var rect = new double[n, 2];
-        for (var i = 0; i < n; i++)
-        {
-            if (b[i] != null && b[i].Length >= 2) { rect[i, 0] = b[i][0]; rect[i, 1] = b[i][1]; }
-            else { rect[i, 0] = 0; rect[i, 1] = 1; }
-        }
-        return CommonLib.Numerics.DifferentialEvolution(f ?? (_ => 0), rect);
-    }
 
     // ---- scipy.optimize completato (957-973) ----
     private static global::MathNet.Numerics.LinearAlgebra.Vector<double> OptVec(Func<double[], double> f, double[] p)
         => global::MathNet.Numerics.LinearAlgebra.Double.DenseVector.OfArray(p);
 
-    public static double Brentq(Func<double, double> f, double a, double b)
-        => CommonLib.Numerics.Brentq(f ?? (_ => 0), a, b);
-    public static double Brenth(Func<double, double> f, double a, double b)
-        => CommonLib.Numerics.Brenth(f ?? (_ => 0), a, b);
-    public static double Ridder(Func<double, double> f, double a, double b)
-        => CommonLib.Numerics.Ridder(f ?? (_ => 0), a, b);
-    public static double Toms748(Func<double, double> f, double a, double b)
-        => CommonLib.Numerics.Toms748(f ?? (_ => 0), a, b);
-    public static double BrentMin(Func<double, double> f, double a, double b)
-        => CommonLib.Numerics.BrentMinimize(f ?? (_ => 0), a, b);
-    public static double MinimizeScalar(Func<double, double> f, double a, double b, string method)
-        => CommonLib.Numerics.MinimizeScalar(f ?? (_ => 0), a, b, method ?? "brent");
-    public static double[] Powell(Func<double[], double> f, double[] x0)
-        => CommonLib.Numerics.PowellMinimize(Vf(f), Dense(x0));
-    public static double[] Tnc(Func<double[], double> f, double[] x0, double[][] bounds)
-        => CommonLib.Numerics.TruncatedNewton(Vf(f), Dense(x0), ToRect(bounds));
-    public static double[] Cobyla(Func<double[], double> f, double[] x0, double[][] bounds)
-        => CommonLib.Numerics.CobylaMinimize(Vf(f), Dense(x0), ToRect(bounds));
-    public static double[] Slsqp(Func<double[], double> f, double[] x0, double[][] bounds)
-        => CommonLib.Numerics.SlsqpMinimize(Vf(f), Dense(x0), ToRect(bounds));
-    public static double[] Minimize(Func<double[], double> f, double[] x0, string method, double[][] bounds)
-        => CommonLib.Numerics.Minimize(Vf(f), Dense(x0), method ?? "nelder-mead", ToRect(bounds));
-    public static double[] Fsolve(Func<double[], double[]> f, double[] x0)
-        => CommonLib.Numerics.Fsolve(Vv(f), Dense(x0));
-    public static double[] LeastSquaresOpt(Func<double[], double[]> r, double[] x0, double[][] bounds)
-        => CommonLib.Numerics.LeastSquaresNonlinear(Vv(r), Dense(x0), ToRect(bounds));
-    public static double[] LinProg(double[] c, double[][] aUb, double[] bUb, double[][] aEq, double[] bEq, double[][] bounds)
-        => CommonLib.Numerics.LinProg(c ?? Array.Empty<double>(), aUb, bUb, aEq, bEq, ToRect(bounds));
-    public static double[] Brute(Func<double[], double> f, double[][] ranges, int n)
-        => CommonLib.Numerics.Brute(Vf(f), ToRect(ranges)!, n > 1 ? n : 20);
-    public static double[] BasinHopping(Func<double[], double> f, double[] x0, int niter)
-        => CommonLib.Numerics.BasinHopping(Vf(f), Dense(x0), niter > 0 ? niter : 50, null);
-    public static double[] DualAnnealing(Func<double[], double> f, double[][] bounds, int maxiter)
-        => CommonLib.Numerics.DualAnnealing(Vf(f), ToRect(bounds)!, maxiter > 0 ? maxiter : 1000, null);
 
-    private static global::MathNet.Numerics.LinearAlgebra.Vector<double> Dense(double[] v)
-        => global::MathNet.Numerics.LinearAlgebra.Double.DenseVector.OfArray(v);
 
-    private static Func<global::MathNet.Numerics.LinearAlgebra.Vector<double>, double> Vf(Func<double[], double> f)
-        => v => f(v.ToArray());
 
-    private static Func<global::MathNet.Numerics.LinearAlgebra.Vector<double>, global::MathNet.Numerics.LinearAlgebra.Vector<double>> Vv(Func<double[], double[]> f)
-        => v => global::MathNet.Numerics.LinearAlgebra.Double.DenseVector.OfArray(f(v.ToArray()));
-
-    private static double[,]? ToRect(double[][]? b)
-    {
-        if (b == null || b.Length == 0) return null;
-        var r = new double[b.Length, 2];
-        for (var i = 0; i < b.Length; i++)
-        {
-            if (b[i] != null && b[i].Length >= 2) { r[i, 0] = b[i][0]; r[i, 1] = b[i][1]; }
-            else { r[i, 0] = 0; r[i, 1] = 1; }
-        }
-        return r;
-    }
-
-    public static double[] LeastSquares(double[][] A, double[] b)
-    {
-        var rows = A.Length;
-        var cols = A[0].Length;
-        var m = MathNet.Numerics.LinearAlgebra.Matrix<double>.Build.Dense(rows, cols, (r, c) => A[r][c]);
-        return CommonLib.Numerics.LeastSquares(m, MathNet.Numerics.LinearAlgebra.Vector<double>.Build.DenseOfArray(b)).ToArray();
-    }
-
-    public static double[] Simplex(double[] c, double[][] A, double[] b)
-    {
-        // Assembla il tableau (come la VM): righe vincoli + riga obiettivo, ultima colonna RHS.
-        var m = A.Length;
-        var n = c.Length;
-        var tableau = new double[m + 1, n + m + 1];
-        for (var i = 0; i < m; i++)
-        {
-            for (var j = 0; j < n; j++) tableau[i, j] = A[i][j];
-            tableau[i, n + i] = 1.0; // variabile slack
-            tableau[i, n + m] = b[i];
-        }
-        for (var j = 0; j < n; j++) tableau[m, j] = c[j];
-        var sol = CommonLib.Numerics.Simplex(tableau, true);
-        if (sol.Length > 0) sol[sol.Length - 1] = -sol[sol.Length - 1]; // come la VM
-        return sol;
-    }
-
-    public static double[]? CholeskySolve(double[][] A, double[] b)
-    {
-        try
-        {
-            var n = A.Length;
-            var cA = new double[n, n];
-            for (var i = 0; i < n; i++)
-                for (var j = 0; j < n; j++) cA[i, j] = A[i][j];
-            var cX = CommonLib.Numerics.CholeskySolve(cA, b);
-            if (cX == null) return null;
-            var res = new double[cX.Length];
-            Array.Copy(cX, res, cX.Length);
-            return res;
-        }
-        catch { return null; }
-    }
 
     public static void Add(object? coll, object? value, object? key)
     {

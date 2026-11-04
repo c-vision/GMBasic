@@ -59,7 +59,7 @@ typedef struct gmb_fn {
 
 /* Bound (indice massimo) degli array passati alla lambda con parametri array (C99: i
  * puntatori non portano la lunghezza). `idx` = ordine dell.array tra i parametri array della
- * lambda (0,1,...). Il chiamante (bridge OPTIMIZE, trampolino FFI) pubblica i bound prima
+ * lambda (0,1,...). Il chiamante (trampolino FFI) pubblica i bound prima
  * della chiamata. Thread-local: nessuna interferenza fra esecuzioni concorrenti. */
 #define GMB_LAMBDA_MAX_BOUNDS 4
 gmb_int_t gmb_lambda_bound(int idx);
@@ -2001,21 +2001,11 @@ gmb_int_t gmb_val_length(gmb_val_t v);
 void* gmb_ffi_dl_open(const char* path);      /* dlopen + estensioni + match basename */
 void* gmb_ffi_dl_sym(void* lib, const char* name);
 void  gmb_ffi_dl_preload(const char* abs_path); /* registra una lib di pacchetto risolta */
-/* --- scipy.optimize (gmb_optfit.c): curve_fit (LM) e differential_evolution --- */
-void gmb_lm_fit(double (*model)(const double*, int, double, void*), void* ctx,
-                const double* x, const double* y, int nx,
-                const double* p0, int np, int maxiter, double tol, double* out);
-void gmb_lm_fit_vec(void (*vmodel)(const double*, int, const double*, int, double*, void*), void* vctx,
-                    const double* x, const double* y, int nx, const double* p0, int np, int maxiter, double tol, double* out);
-void gmb_de_minimize(double (*fn)(const double*, int, void*), void* ctx,
-                     const double* lo, const double* hi, int n,
-                     int np, int maxiter, double tol, double* out);
 /* --- Trading PsoOptimizer (common/CommonLib/Trading/PsoOptimizer.cs:307) ---
  * returns: matrice [periodi x asset] row-major; objective 0=CVaR 1=CDaR.
  * out: pesi ottimali (somma 1, non negativi). Deterministico (seed fisso). */
 void gmb_opt_pso(const double* returns, int nSim, int nAssets, double alpha, int objective,
                  int swarmSize, int maxIter, double* out);
-/* --- C99 bridge per i builtin optimize closure-based (gmb_fn_t = lambda transpilata) --- */
 /* --- KDTree (gmb_kdtree.c): scipy.spatial.KDTree --- */
 gmb_int_t gmb_kdtree_create(const double* flat, int n, int m);
 int gmb_kdtree_query(gmb_int_t h, const double* q, int k, int* out_idx);
@@ -2024,8 +2014,7 @@ int gmb_kdtree_query_ball(gmb_int_t h, const double* q, double r, int max_out, i
 double* gmb_kdtree_query_indices_alloc(gmb_int_t h, const double* q, int k, gmb_int_t* outn);
 double* gmb_kdtree_query_dists_alloc(gmb_int_t h, const double* q, int k, gmb_int_t* outn);
 double* gmb_kdtree_query_ball_alloc(gmb_int_t h, const double* q, double r, gmb_int_t* outn);
-/* --- scipy.optimize completato (gmb_optfit.c) --- */
-/* --- Bridge C99 optimize (957-973) --- */
+/* --- Bridge C99 di quadratura (gmb_fn_t = lambda transpilata) --- */
 double gmb_quad_gk_c99(gmb_fn_t fn, double a, double b);
 double gmb_simpson_c99(gmb_fn_t fn, double a, double b, int n);
 /* --- scipy.stats P0 (gmb_stats.c) --- */
@@ -2605,7 +2594,7 @@ int   gmb_brain_use(const char* names);
 int   gmb_brain_detach(const char* name);
 char* gmb_brain_used_csv(void);
 /* AI BRAIN INSTALL nome, sorgente / AI BRAIN UNINSTALL nome (1 = ok, 0 = errore esplicito su
- * stderr). La logica vive in gmb_brains.c: manifest + gmb_fetch, condivisa dai 4 backend. */
+ * stderr). La logica vive in gmb_brains.c: manifest + gmbfetch, condivisa dai 4 backend. */
 gmb_double_t gmb_brain_install(const char* name, const char* source);
 gmb_double_t gmb_brain_uninstall(const char* name);
 /* ── INGEST (AI INGEST FILE/FOLDER, porting Ingestor — §0bis) ──
