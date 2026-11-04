@@ -108,7 +108,82 @@ varianti che cambiano da paese a paese. Le guide `Finance-Guida-Utente` e
 `FinanceAPRAlgorithm.bas` documentano anche **quale** convenzione è implementata — è la parte che
 si sbaglia quando si confrontano due software.
 
-## 7. Errori frequenti
+## 7. Ricerca operativa: ricerca locale, coni, rilassamento lagrangiano
+
+Il namespace `OPTIMIZE` non contiene solo ottimizzazione numerica di funzione (`SIMPLEX`,
+`BFGS`, minimi quadrati). Tre pacchetti FFI coprono la **ricerca operativa** e i **metodi di
+punto interno**: `libgmblocalsearch`, `libgmbconic`, `libgmblagrangian`. Sono superfici
+progettate per un ciclo di soluzione scritto in BASIC: si fornisce lo stato iniziale, una
+callback che misura la soluzione, e il motore restituisce la soluzione migliore e i
+moltiplicatori. Con `IMPORT OPTIMIZE` sono visibili tutte insieme.
+
+### 7.1 Ricerca locale (`LS*`)
+
+Il motore lavora su uno **stato vettoriale di interi** e applica mosse elementari
+(ricollocamento, scambio, 2-opt): è la struttura tipica di TSP, scheduling, assegnamento.
+`shape` decide quali mosse sono legali — `0` per una permutazione di `0..n-1`, `1` per
+un'assegnazione di valori piccoli. `LSNEAREST` e `LSCHEAPEST` costruiscono una soluzione
+iniziale da una matrice delle distanze (rispettivamente vicino più prossimo e inserimento
+più economico); `LSSOLVE` e `LSSOLVECFG` la migliorano, il secondo con partenze multiple e
+un criterio di accettazione selezionabile (hill climbing, late acceptance, tabu, simulated
+annealing, great deluge, step-counting, record-to-record). `LSNOWMS` fornisce l'orologio di
+CPU per fissare un budget di tempo.
+
+Due dettagli contano più della firma:
+
+- **il motore massimizza**. Un problema di minimo (un costo, una distanza) si scrive
+  restituendo il valore **negato**: dimenticarlo produce giri peggiori a ogni iterazione;
+- **`initial()` è in ingresso e in uscita**: al ritorno (esito `1`) contiene lo stato
+  migliore trovato, non il punto di partenza. È il modo con cui si legge la soluzione.
+
+L'ammissibilità non è un canale separato: il motore confronta solo il punteggio `soft`, quindi
+un vincolo violato si rappresenta con una penalità dentro il punteggio.
+
+### 7.2 Coni esponenziale e potenza (`EXPCONE*`)
+
+Questi generatori sono i mattoni di un solver di punto interno per problemi conici: dato un
+punto interno, producono barriera, gradiente, Hessiana, la verifica di appartenenza al cono
+duale, il punto di scaling duale, le metriche di complementarità e la **scalatura NT**
+(`Theta = inv(Thin)`, vettore `rt`, e la gap come `scale`). Il punto è il vettore `(t,u,v)`;
+`kind` sceglie il cono (`0` esponenziale, `1` potenza, `2` potenza ruotata) e `alpha` — usato
+solo dai coni di potenza — ne cambia il generatore. Un punto fuori dal cono non è un errore
+silenzioso: le funzioni restituiscono `-1` e non scrivono risultati parziali.
+
+La verifica di correttezza non richiede un solver: si confrontano gradiente e Hessiana con
+differenze finite centrali della barriera e si controlla la convessità con i criteri di
+Sylvester (`08-Conic.bas` fa esattamente questo, e verifica che `scale` coincida con la gap
+delle metriche NT).
+
+### 7.3 Rilassamento lagrangiano (`LAGRANGIANSUBGRADIENT`)
+
+Per `min f(x)` soggetto a `A x >= b` e `x` in un insieme `X`, i vincoli vengono spostati nella
+funzione obiettivo con moltiplicatori `lambda >= 0` e aggiornati lungo il subgradiente
+`b - A x`, con passo di Polyak. Il subproblema su `X` lo risolve il chiamante: la callback
+restituisce **un solo vettore** che contiene il valore ottimo del subproblema e la soluzione
+`x` (il motore ha bisogno di entrambi, e l'ABI FFI ammette un solo valore di ritorno).
+Il risultato è un **lower bound** valido — non una soluzione: la `x` restituita è il punto del
+rilassamento che ha prodotto il bound migliore e può non rispettare i vincoli. Il divario
+rispetto all'ottimo intero è il gap di dualità, e si riduce aumentando le iterazioni
+(`09-Lagrangian.bas` confronta 10 e 200 iterazioni con l'ottimo calcolato per forza bruta).
+
+### 7.4 Esempio minimo
+
+```basic
+IMPORT OPTIMIZE
+
+FUNCTION Score(state() AS DOUBLE) AS DOUBLE      ' massimizza: somma pesata
+  s = 0
+  FOR i = 0 TO UBOUND(state) : s = s + i * state(i) : NEXT i
+  RETURN s
+END FUNCTION
+
+DIM init(3) AS LONG = {3, 2, 1, 0}
+DIM out(2) AS DOUBLE
+PRINT OPTIMIZE.LSSOLVE(Score, init, 4, 0, 200, out)   ' 1
+PRINT out(1), init(0), init(1), init(2), init(3)      ' 14  0 1 2 3
+```
+
+## 8. Errori frequenti
 
 | Sintomo | Causa | Correzione |
 |---|---|---|
@@ -118,7 +193,7 @@ si sbaglia quando si confrontano due software.
 | `NaN` in un risultato | dominio non valido (log di 0, sqrt negativo) | valida l'input prima |
 | confronto fra double che fallisce | uguaglianza esatta | usa una tolleranza |
 
-## 8. Dove andare adesso
+## 9. Dove andare adesso
 
 - **V.28** — le stesse formule applicate a serie temporali e trading.
 - **V.31** — TORCH, quando la matematica diventa tensori.
@@ -447,6 +522,8 @@ nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è 
 - **STATS.ZTEST(x1, x2, x3)** — `result = STATS.ZTEST(x, 5.0, 2.0)` (shared/samples/Analysis/StatsSciPyParity.bas:33)
 <!-- END DOMAIN TABLE -->
 
+
+
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
 ## Riferimento completo: comandi, funzioni, parametri
@@ -582,6 +659,14 @@ ABS(espressione)
 
 *Fonte: `Analysis-Manual`*
 
+| Namespace | Contenuto |
+|---|---|
+| `NUMERICAL` | FFT/IFFT/RFFT/IRFFT, ODE (`SolveOde`/`SolveIvp`), integrali, interpolazione/spline, derivazione |
+| `TIMESERIES` | `Arima`, `HoltWinters`, `AdfTest`, `MaCoefficients`, `YuleWalker` |
+| `MULTIVARIATE` | `Pca`, `KMeans` |
+| `REGRESSION` | `Regress` |
+| `STATS` | descrittive e test già presenti (`Mean`, `Median`, `Variance`, `Anova`, …) |
+| `VECTOR` | `EuclideanDistanceSquared` |
 
 ## 1. Riferimento funzioni
 | NOME | SINTASSI / ESEMPIO | DESCRIZIONE |
@@ -633,11 +718,11 @@ ABS(espressione)
 
 ## 2. Esempio completo
 
-' scipy.integrate / scipy.interpolate / scipy.fft (NUMERICAL)
+' scipy.integrate / scipy.interpolate / scipy.fft (ANALYSIS)
 ' Oracoli: quad/simpson x^2 = 1/3, trapezoid(y,x)=9.5,
 '          cumulative_trapezoid=[0.5,3,9.5], solve_ivp e^-t,
 '          CubicSpline not-a-knot @1.5 = 1.3125, fftfreq(6)
-IMPORT NUMERICAL
+IMPORT ANALYSIS
 
 SUB Main()
   DIM yy(3) AS DOUBLE = {0, 1, 4, 9}
@@ -687,7 +772,7 @@ SUB Main()
 0.25 -0.3                MACOEFFICIENTS(x, 2)
 
 
-### Tranche 3 — integrazione/ODE con λ (2026-09-07, commit dell'altra AI `30eb8ef16` + commit ANALYSIS storico)
+### Tranche 3 — integrazione/ODE con λ (2026-09-07, commit dell'altra AI `30eb8ef16` + commit ANALYSIS)
 
 0.333333333333333   INTEGRATE(FN(x)=>x*x, 0, 1)     (scipy quad x²=1/3)
 0.333333333333333   SIMPSON(FN(x)=>x*x, 0, 1, 256)  (Simpson composita)
@@ -1064,6 +1149,10 @@ END SUB
 
 *Fonte: `Matrix-Linalg-Manual`*
 
+| Namespace | Responsabilità | Esempi |
+|---|---|---|
+| `MATRIX` | struttura, accesso e comandi sulle matrici: creazione, lettura/scrittura, copia, slicing, concatenazione, prodotti, predicati, I/O | `CREATE`, `GETVALUE`, `SETVALUE`, `MULTIPLY`, `TRANSPOSE`, `ROWCOUNT` |
+| `LINALG` | algoritmi di algebra lineare: decomposizioni, risolutori, norme, funzioni matriciali | `SVD`, `EIG`, `LU`, `QR`, `SOLVE`, `INVERSE`, `NORM`, `EXPM` |
 
 ## 1. Riferimento funzioni
 | NOME | SINTASSI / ESEMPIO | DESCRIZIONE |
@@ -1076,7 +1165,7 @@ END SUB
 | `ARGMIN` | `MATRIX.ARGMIN()` | ARGMIN di MATRIX. |
 | `ASCSV` | `MATRIX.ASCSV()` | ASCSV di MATRIX. |
 | `ASJSON` | `MATRIX.ASJSON()` | ASJSON di MATRIX. |
-| `CHOLESKY` | `LINALG.CHOLESKY(1)` | CHOLESKY di MATRIX. |
+| `CHOLESKY` | `LINALG.CHOLESKY(1)` | CHOLESKY di LINALG. |
 | `CLONEMATRIX` | `MATRIX.CLONEMATRIX()` | CLONEMATRIX di MATRIX. |
 | `COLMEANS` | `MATRIX.COLMEANS()` | COLMEANS di MATRIX. |
 | `COLSUMS` | `MATRIX.COLSUMS()` | COLSUMS di MATRIX. |
@@ -1085,38 +1174,38 @@ END SUB
 | `CONCATCOLS` | `MATRIX.CONCATCOLS(1)` | CONCATCOLS di MATRIX. |
 | `CONCATROWS` | `MATRIX.CONCATROWS(1)` | CONCATROWS di MATRIX. |
 | `CREATE` | `MATRIX.CREATE(1, 1)` | CREATE di MATRIX. |
-| `DETERMINANT` | `LINALG.DETERMINANT(1)` | DETERMINANT di MATRIX. |
-| `EVD` | `LINALG.EVD(1)` | EVD di MATRIX. |
-| `FACTOR` | `LINALG.FACTOR(decompositionobject, "s")` | FACTOR di MATRIX. |
-| `FROBENIUSNORM` | `LINALG.FROBENIUSNORM()` | FROBENIUSNORM di MATRIX. |
-| `INFINITYNORM` | `LINALG.INFINITYNORM()` | INFINITYNORM di MATRIX. |
-| `INVERSE` | `LINALG.INVERSE(1)` | INVERSE di MATRIX. |
+| `DETERMINANT` | `LINALG.DETERMINANT(1)` | DETERMINANT di LINALG. |
+| `EVD` | `LINALG.EVD(1)` | EVD di LINALG. |
+| `FACTOR` | `LINALG.FACTOR(decompositionobject, "s")` | FACTOR di LINALG. |
+| `FROBENIUSNORM` | `LINALG.FROBENIUSNORM()` | FROBENIUSNORM di LINALG. |
+| `INFINITYNORM` | `LINALG.INFINITYNORM()` | INFINITYNORM di LINALG. |
+| `INVERSE` | `LINALG.INVERSE(1)` | INVERSE di LINALG. |
 | `ISLOWERTRIANGULAR` | `MATRIX.ISLOWERTRIANGULAR()` | ISLOWERTRIANGULAR di MATRIX. |
 | `ISORTHOGONAL` | `MATRIX.ISORTHOGONAL()` | ISORTHOGONAL di MATRIX. |
 | `ISSYMMETRIC` | `MATRIX.ISSYMMETRIC()` | ISSYMMETRIC di MATRIX. |
 | `ISUPPERTRIANGULAR` | `MATRIX.ISUPPERTRIANGULAR()` | ISUPPERTRIANGULAR di MATRIX. |
 | `LOADCSV` | `MATRIX.LOADCSV("file.txt")` | LOADCSV di MATRIX. |
 | `LOADJSON` | `MATRIX.LOADJSON("file.txt")` | LOADJSON di MATRIX. |
-| `LU` | `LINALG.LU(1)` | LU di MATRIX. |
+| `LU` | `LINALG.LU(1)` | LU di LINALG. |
 | `MATRIX` | `MATRIX MATRIX` | MATRIX di MATRIX. |
 | `MAXVALUE` | `MATRIX.MAXVALUE()` | MAXVALUE di MATRIX. |
 | `MINVALUE` | `MATRIX.MINVALUE()` | MINVALUE di MATRIX. |
 | `MULTIPLY` | `MATRIX.MULTIPLY(1, 1)` | MULTIPLY di MATRIX. |
 | `MULTIPLYLEFTVECTOR` | `MATRIX.MULTIPLYLEFTVECTOR(42)` | MULTIPLYLEFTVECTOR di MATRIX. |
 | `MULTIPLYVECTOR` | `MATRIX.MULTIPLYVECTOR(42)` | MULTIPLYVECTOR di MATRIX. |
-| `NORM` | `LINALG.NORM(1)` | NORM di MATRIX. |
-| `ONENORM` | `LINALG.ONENORM()` | ONENORM di MATRIX. |
-| `PINVERSE` | `LINALG.PINVERSE(1)` | PINVERSE di MATRIX. |
-| `QR` | `LINALG.QR(1)` | QR di MATRIX. |
-| `RANK` | `LINALG.RANK(1)` | RANK di MATRIX. |
+| `NORM` | `LINALG.NORM(1)` | NORM di LINALG. |
+| `ONENORM` | `LINALG.ONENORM()` | ONENORM di LINALG. |
+| `PINVERSE` | `LINALG.PINVERSE(1)` | PINVERSE di LINALG. |
+| `QR` | `LINALG.QR(1)` | QR di LINALG. |
+| `RANK` | `LINALG.RANK(1)` | RANK di LINALG. |
 | `RESHAPE` | `MATRIX.RESHAPE(1, 1)` | RESHAPE di MATRIX. |
 | `ROWCOUNT` | `MATRIX.ROWCOUNT()` | ROWCOUNT di MATRIX. |
 | `ROWMEANS` | `MATRIX.ROWMEANS()` | ROWMEANS di MATRIX. |
 | `ROWSUMS` | `MATRIX.ROWSUMS()` | ROWSUMS di MATRIX. |
 | `ROWVARIANCES` | `MATRIX.ROWVARIANCES()` | ROWVARIANCES di MATRIX. |
 | `SLICE` | `MATRIX.SLICE(1, 1, 1, 1)` | SLICE di MATRIX. |
-| `SOLVE` | `LINALG.SOLVE(1, 1)` | SOLVE di MATRIX. |
-| `SVD` | `LINALG.SVD(1)` | SVD di MATRIX. |
+| `SOLVE` | `LINALG.SOLVE(1, 1)` | SOLVE di LINALG. |
+| `SVD` | `LINALG.SVD(1)` | SVD di LINALG. |
 | `TRACE` | `MATRIX.TRACE(1)` | TRACE di MATRIX. |
 | `TRANSPOSE` | `MATRIX.TRANSPOSE(1)` | TRANSPOSE di MATRIX. |
 | `EXPM` | `LINALG.EXPM(h)` | Esponenziale di matrice (handle). |
@@ -1148,7 +1237,6 @@ END SUB
 ## 2. Esempio completo
 
 ' scipy.linalg: sqrtm, logm, hessenberg, block_diag (oracolo scipy 1.18)
-IMPORT MATRIX
 
 SUB Main()
   ' A = [[2,1],[1,2]]
@@ -1163,6 +1251,7 @@ SUB Main()
 
   ' Hessenberg di una 3x3: Hh[2,0] deve essere ~0
   DIM h3 = MATRIX.CREATE(3, 3)
+  h3 = MATRIX.SETVALUE(h3, 0, 0, 1) : h3 = MATRIX.SETVALUE(h3, 0, 1, 2) : h3 = MATRIX.SETVALUE(h3, 0, 2, 3)
 
 
 ## 3. Note e limitazioni
@@ -1235,6 +1324,215 @@ SUB Main()
 
 
 ## 3. Note e limitazioni
+
+### Optimize-OR-Guida-Utente
+
+*Fonte: `Optimize-OR-Guida-Utente`*
+
+
+IMPORT OPTIMIZE
+
+| Pacchetto | `.inc` | dylib | Funzioni |
+|---|---|---|---|
+| localsearch | `shared/include/localsearch.inc` | `libgmblocalsearch` | 5 |
+| conic | `shared/include/conic.inc` | `libgmbconic` | 7 |
+| lagrangian | `shared/include/lagrangian.inc` | `libgmblagrangian` | 1 |
+
+## 1. Convenzioni comuni
+
+## 2. `localsearch` — motore di ricerca locale (`LS*`)
+
+### 2.1 `LSSOLVE` — discesa semplice, una partenza
+
+DECLARE FUNCTION LSSOLVE LIB "gmblocalsearch" ALIAS "ofx_ls_solve" (
+    eval AS FUNCTION(state() AS DOUBLE) AS DOUBLE,
+    initial() AS LONG, n AS LONG, shape AS LONG, maxSteps AS LONG,
+    out() AS DOUBLE) AS LONG
+
+| Parametro | Tipo | Significato |
+|---|---|---|
+| `eval` | callback | `FUNCTION(state() AS DOUBLE) AS DOUBLE`: punteggio **soft** dello stato (più alto = meglio). Lo stato arriva 0-based (`state(0..n-1)`). |
+| `initial()` | `LONG(n)` **IN/OUT** | In ingresso il punto di partenza; in uscita (esito `1`) lo **stato migliore trovato**. |
+| `n` | `LONG` | Dimensione dello stato (> 0). |
+| `shape` | `LONG` | `0` = permutazione di `0..n-1` (mosse relocate/swap/2-opt); `1` = assegnazione (valori `0..1`). |
+| `maxSteps` | `LONG` | Budget di passi (> 0). Non c'è limite di tempo: il time-box si fa col chiamante. |
+| `out()` | `DOUBLE(3)` | `out(0)` = hard (sempre `0`), `out(1)` = soft migliore, `out(2)` = passi eseguiti. |
+
+FUNCTION Score(state() AS DOUBLE) AS DOUBLE
+  s = 0
+  FOR i = 0 TO UBOUND(state) : s = s + i * state(i) : NEXT i
+  RETURN s                      ' massimizzo la somma pesata
+END FUNCTION
+
+DIM init(3) AS LONG = {3, 2, 1, 0}
+DIM out(2) AS DOUBLE
+r = OPTIMIZE.LSSOLVE(Score, init, 4, 0, 200, out)
+' r = 1 · out(1) = 14 · init ora contiene {0,1,2,3}
+
+
+### 2.2 `LSSOLVECFG` — partenze multiple e acceptor
+
+DECLARE FUNCTION LSSOLVECFG LIB "gmblocalsearch" ALIAS "ofx_ls_solve_cfg" (
+    eval AS FUNCTION(state() AS DOUBLE) AS DOUBLE,
+    initial() AS LONG, n AS LONG, shape AS LONG, maxSteps AS LONG,
+    starts AS LONG, acceptor AS LONG, out() AS DOUBLE) AS LONG
+
+| Parametro | Tipo | Significato |
+|---|---|---|
+| `starts` | `LONG` | Numero di partenze indipendenti (`<= 0` → 1). Ogni partenza usa un seed derivato (`seed + s*0x9E3779B97F4A7C15`) → **deterministico**. |
+| `acceptor` | `LONG` | Criterio di accettazione della mossa peggiorante: `0` hill climbing, `1` late acceptance, `2` entity tabu, `3` simulated annealing, `4` great deluge, `5` step-counting HC, `6` record-to-record. |
+
+### 2.3 `LSNEAREST` — costruttiva nearest neighbour
+
+DECLARE FUNCTION LSNEAREST LIB "gmblocalsearch" ALIAS "ofx_ls_nearest" (
+    dist() AS DOUBLE, n AS LONG, start AS LONG, perm() AS LONG) AS LONG
+
+| Parametro | Tipo | Significato |
+|---|---|---|
+| `dist()` | `DOUBLE(n*n)` | Matrice delle distanze row-major (`dist(i*n+j)`). |
+| `n` | `LONG` | Numero di nodi. |
+| `start` | `LONG` | Nodo di partenza, in `[0, n)`. |
+| `perm()` | `LONG(n)` | **Uscita**: ordine di visita (permutazione di `0..n-1`), `perm(0) = start`. |
+
+### 2.4 `LSCHEAPEST` — costruttiva cheapest insertion
+
+DECLARE FUNCTION LSCHEAPEST LIB "gmblocalsearch" ALIAS "ofx_ls_cheapest" (
+    dist() AS DOUBLE, n AS LONG, perm() AS LONG) AS LONG
+
+
+### 2.5 `LSNOWMS` — orologio CPU
+
+DECLARE FUNCTION LSNOWMS LIB "gmblocalsearch" ALIAS "ofx_ls_now_ms" () AS DOUBLE
+
+
+### 2.6 Esempio completo
+
+cheapest= 1 :92: 1 |nearest= 1 :148: 1
+|hc= 1 :86:-1 : 1
+|la= 1 :88: 1
+|sa= 1 :86: 1
+|migliora=-1 :-1
+|clock=-1 -1
+|tour=
+ 0  1  2  3  6  7  4  5 |cost=86
+
+
+## 3. `conic` — coni esponenziale e potenza (`EXPCONE*`)
+| `kind` | Cono | Dominio (punto interno) |
+|---|---|---|
+| `0` | `PEXP` (esponenziale primale) | `t >= u*EXP(v/u)`, `u > 0` |
+| `1` | `PPOW` (potenza primale) | `t^(2α) * u^(2(1-α)) - v² > 0`, `t,u > 0` |
+| `2` | `RPOW` (potenza ruotata) | `2 * t^(2α) * u^(2(1-α)) - v² > 0`, `t,u > 0` |
+
+### 3.1 `EXPCONEBARRIER` — valore della barriera
+
+DECLARE FUNCTION EXPCONEBARRIER LIB "gmbconic" ALIAS "ofx_expcone_barrier" (
+    kind AS LONG, alpha AS DOUBLE, x() AS DOUBLE, f() AS DOUBLE) AS LONG
+
+| Parametro | Tipo | Significato |
+|---|---|---|
+| `kind` | `LONG` | `0` PEXP, `1` PPOW, `2` RPOW. |
+| `alpha` | `DOUBLE` | Esponente del generatore di potenza, in `(0,1)`; ignorato per `PEXP`. |
+| `x()` | `DOUBLE(3)` | Punto `(t,u,v)`. |
+| `f()` | `DOUBLE(1)` | **Uscita**: valore della barriera `f(x)` (negativo all'interno). |
+
+### 3.2 `EXPCONEGRAD` — gradiente
+
+DECLARE FUNCTION EXPCONEGRAD LIB "gmbconic" ALIAS "ofx_expcone_grad" (
+    kind AS LONG, alpha AS DOUBLE, x() AS DOUBLE, g() AS DOUBLE) AS LONG
+
+
+### 3.3 `EXPCONEHESS` — Hessiana
+
+DECLARE FUNCTION EXPCONEHESS LIB "gmbconic" ALIAS "ofx_expcone_hess" (
+    kind AS LONG, alpha AS DOUBLE, x() AS DOUBLE, H() AS DOUBLE) AS LONG
+
+
+### 3.4 `EXPCONEDUALIN` — membership nel cono duale
+
+DECLARE FUNCTION EXPCONEDUALIN LIB "gmbconic" ALIAS "ofx_expcone_dual_in" (
+    kind AS LONG, alpha AS DOUBLE, s() AS DOUBLE) AS LONG
+
+
+### 3.5 `EXPCONEDUALPOINT` — punto di scaling duale
+
+DECLARE FUNCTION EXPCONEDUALPOINT LIB "gmbconic" ALIAS "ofx_expcone_dual_point" (
+    kind AS LONG, alpha AS DOUBLE, s() AS DOUBLE, W() AS DOUBLE) AS LONG
+
+
+### 3.6 `EXPCONENTMETRICS` — metriche NT
+
+DECLARE FUNCTION EXPCONENTMETRICS LIB "gmbconic" ALIAS "ofx_expcone_nt_metrics" (
+    kind AS LONG, alpha AS DOUBLE, z() AS DOUBLE, s() AS DOUBLE, m() AS DOUBLE) AS LONG
+
+| Indice | Metrica | Significato |
+|---|---|---|
+| `m(0)` | `GAP` | `z's` (gap di dualità) |
+| `m(1)` | `CONDZ` | condizionamento lato primale |
+| `m(2)` | `CONDS` | condizionamento lato duale |
+| `m(3)` | `REL` | misura relativa di complementarità |
+| `m(4)` | `MZ` | norma/peso primale |
+| `m(5)` | `MS` | norma/peso duale |
+| `m(6)` | `WN` | norma del punto di scaling (deve essere > 0) |
+
+### 3.7 `EXPCONESCALING` — scalatura NT completa
+
+DECLARE FUNCTION EXPCONESCALING LIB "gmbconic" ALIAS "ofx_expcone_scaling" (
+    kind AS LONG, alpha AS DOUBLE, z() AS DOUBLE, s() AS DOUBLE,
+    smu AS DOUBLE, out() AS DOUBLE) AS LONG
+
+| Parametro | Tipo | Significato |
+|---|---|---|
+| `z()` | `DOUBLE(3)` | Punto primale interno. |
+| `s()` | `DOUBLE(3)` | Punto duale interno. |
+| `smu` | `DOUBLE` | Parametro di centralità del passo. |
+| `out()` | `DOUBLE(28)` | `Theta(9)` \| `Thin(9)` \| `rt(9)` \| `scale`, tutti row-major. |
+
+### 3.8 Esempio completo
+
+## 4. `lagrangian` — rilassamento lagrangiano con subgradiente
+
+min f(x)   s.t.   A x >= b,   x in X
+
+
+DECLARE FUNCTION LAGRANGIANSUBGRADIENT LIB "gmblagrangian" ALIAS "ofx_lagr_subgradient" (
+    sub AS FUNCTION(lam() AS DOUBLE) AS ARRAY,
+    A() AS DOUBLE, b() AS DOUBLE, m AS LONG, nx AS LONG, maxit AS LONG,
+    out() AS DOUBLE) AS DOUBLE
+
+| Parametro | Tipo | Significato |
+|---|---|---|
+| `sub` | callback | `FUNCTION(lam() AS DOUBLE) AS ARRAY OF DOUBLE`: riceve i moltiplicatori `lam(0..m-1)` e risolve il subproblema su `X`. |
+| `A()` | `DOUBLE(m*nx)` | Matrice dei vincoli rilassati, row-major. |
+| `b()` | `DOUBLE(m)` | Termini noti dei vincoli. |
+| `m` | `LONG` | Numero di vincoli rilassati (> 0). |
+| `nx` | `LONG` | Dimensione di `x` (> 0). |
+| `maxit` | `LONG` | Iterazioni massime (`<= 0` → 100). |
+| `out()` | `DOUBLE(1+m+nx)` | `out(0)` = miglior lower bound; `out(1..m)` = `lambda`; `out(1+m..m+nx)` = `x` del subproblema migliore. |
+
+### 4.1 Contratto della callback (importante)
+
+r(0)      = valore ottimo del subproblema (min su X di f(x) + lambda'(b - A x))
+r(1..nx)  = x(0..nx-1) — la soluzione del subproblema
+
+
+### 4.2 Esempio completo
+
+## 5. Protocollo §4.1 — esito 4 backend
+| Superficie | MiniTest | Funzioni coperte | IL | PCode | VM/C | C99Native |
+|---|---|---|---|---|---|---|
+| `LS*` | `minitests/localsearchffi/ls_core.bas` | `LSSOLVE`, `LSSOLVECFG` (7 acceptor), `LSNEAREST`, `LSCHEAPEST`, `LSNOWMS` | ✓ | ✓ | ✓ | ✓ |
+| `EXPCONE*` | `minitests/conicffi/conic_core.bas` | barriera/gradiente/Hessiana sui 3 coni, `DUALIN`, `DUALPOINT`, `METRICS`, `SCALING`, domini e `alpha` fuori range | ✓ | ✓ | ✓ | ✓ |
+| `LAGRANGIANSUBGRADIENT` | `minitests/lagrangianffi/lagr_core.bas` | 2 istanze (`m=2/nx=2`, `m=1/nx=3`), `maxit<=0` (default 100), layout di `out()` | ✓ | ✓ | ✓ | ✓ |
+| Sample | Funzioni | Output | Parità |
+|---|---|---|---|
+| `shared/samples/include/optimize/07-LocalSearch.bas` | 5/5 | 9 righe | `parity4` PASS (4 backend) |
+| `shared/samples/include/optimize/08-Conic.bas` | 7/7 | 14 righe | `parity4` PASS (4 backend) |
+| `shared/samples/include/optimize/09-Lagrangian.bas` | 1/1 | 7 righe | `parity4` PASS (4 backend) |
+
+## 6. Limiti e note
+
+## 7. Riferimenti
 
 ### Spatial-Guida-Utente
 

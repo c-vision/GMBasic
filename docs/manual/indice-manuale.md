@@ -320,6 +320,7 @@ assorbita (non si stampa due volte).
 - `KdTree-Manual` — sezione
 - `Matrix-Linalg-Manual` — sezione
 - `Optimize-Manual` — sezione
+- `Optimize-OR-Guida-Utente` — sezione
 - `Spatial-Guida-Utente` — sezione
 - `Special-Manual` — sezione
 - `Stats-Manual` — sezione

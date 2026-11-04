@@ -11,8 +11,10 @@
 NAMESPACE OPTIMIZE
 
 ' LSSOLVE: hill climbing, 1 partenza. out() = hard, soft, steps.
+' ATTENZIONE (contratto IN/OUT): initial() è il punto di partenza in INGRESSO e riceve in
+' USCITA lo stato migliore trovato (solo con esito 1). Il motore MASSIMIZZA soft.
 DECLARE FUNCTION LSSOLVE LIB "gmblocalsearch" ALIAS "ofx_ls_solve" (eval AS FUNCTION(state() AS DOUBLE) AS DOUBLE, initial() AS LONG, n AS LONG, shape AS LONG, maxSteps AS LONG, out() AS DOUBLE) AS LONG
-' LSSOLVECFG: sceglie partenze e acceptor.
+' LSSOLVECFG: sceglie partenze e acceptor (stesso contratto IN/OUT su initial()).
 DECLARE FUNCTION LSSOLVECFG LIB "gmblocalsearch" ALIAS "ofx_ls_solve_cfg" (eval AS FUNCTION(state() AS DOUBLE) AS DOUBLE, initial() AS LONG, n AS LONG, shape AS LONG, maxSteps AS LONG, starts AS LONG, acceptor AS LONG, out() AS DOUBLE) AS LONG
 ' Costruttive su matrice distanza n*n: perm() = n.
 DECLARE FUNCTION LSNEAREST LIB "gmblocalsearch" ALIAS "ofx_ls_nearest" (dist() AS DOUBLE, n AS LONG, start AS LONG, perm() AS LONG) AS LONG
