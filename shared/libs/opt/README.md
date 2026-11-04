@@ -48,7 +48,7 @@ tools/sh/gmb_lib.sh check opt     # install_name @rpath + file attesi
 
 - Motore C: `gmbsuite/gmbortools` → `make test-optb` (38 check: tutte le 34 funzioni).
 - BASIC 4 backend: `tools/sh/test_minitests_parity.sh opt/opt_` (4 file).
-- Esempi: `shared/samples/include/opt/01-Scalar.bas` … `06-Linear.bas`.
+- Esempi: `shared/samples/include/optimize/01-Scalar.bas` … `06-Linear.bas`.
 
 ## Note
 
