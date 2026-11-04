@@ -6,6 +6,10 @@
 int main(int argc, char** argv) {
     const char* model = NULL, *out = NULL; int verbose = 1;
     for (int i = 1; i < argc; ++i) {
+        if (!strcmp(argv[i], "-help") || !strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
+            fprintf(stderr, "uso: %s --model DIR --out DIR [--quiet]\n", argv[0]);
+            return 0;
+        }
         if (!strcmp(argv[i], "--model") && i + 1 < argc) model = argv[++i];
         else if (!strcmp(argv[i], "--out") && i + 1 < argc) out = argv[++i];
         else if (!strcmp(argv[i], "--quiet")) verbose = 0;

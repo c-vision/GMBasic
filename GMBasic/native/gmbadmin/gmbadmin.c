@@ -40,7 +40,7 @@ int main(int argc, char** argv)
 {
     if (argc < 2) { usage(); return 2; }
     const char* cmd = argv[1];
-    if (!strcmp(cmd, "-h") || !strcmp(cmd, "--help") || !strcmp(cmd, "help")) { usage(); return 0; }
+    if (!strcmp(cmd, "-h") || !strcmp(cmd, "--help") || !strcmp(cmd, "-help") || !strcmp(cmd, "help")) { usage(); return 0; }
 
     if (!strcmp(cmd, "pkg"))      return gmbadmin_pkg(argc, argv);
     if (!strcmp(cmd, "fixtures")) return gmbadmin_fixtures(argc, argv);

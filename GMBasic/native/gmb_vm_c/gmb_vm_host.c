@@ -140,9 +140,19 @@ int main(int argc, char** argv)
 {
     signal(SIGTERM, gmb_vm_host_on_term);
     signal(SIGINT, gmb_vm_host_on_term);
+    if (argc >= 2 && (!strcmp(argv[1], "-help") || !strcmp(argv[1], "--help") || !strcmp(argv[1], "-h")))
+    {
+        fprintf(stderr,
+            "Uso: %s <file.chunk> [--mt] [--debug-interactive]\n"
+            "  esegue il bytecode A1/GMBC con la VM/C (host esterno);\n"
+            "  --mt                 scheduler multi-thread\n"
+            "  --debug-interactive  avvia il server di debug per REPL/IDE\n",
+            argv[0]);
+        return gmb_vm_host_exit(0);
+    }
     if (argc < 2)
     {
-        fprintf(stderr, "Uso: %s <file.chunk> [--mt]\n", argv[0]);
+        fprintf(stderr, "Uso: %s <file.chunk> [--mt] [--debug-interactive]\n", argv[0]);
         return gmb_vm_host_exit(2);
     }
 

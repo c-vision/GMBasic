@@ -418,6 +418,12 @@ static int pkg_cache_is_dir(const char* p)
 }
 
 int main(int argc, char** argv) {
+    if (argc >= 2 && (!strcmp(argv[1], "-help") || !strcmp(argv[1], "--help") || !strcmp(argv[1], "-h"))) {
+        fprintf(stderr,
+            "uso: %s <file.bas> [out.c] [--exe <bin>] [--no-exe] [-I dir] [--obj f] [--lib f]\n",
+            argv[0]);
+        return 0;
+    }
     if (argc < 2) {
         fprintf(stderr,
             "uso: %s <file.bas> [out.c] [--exe <bin>] [--no-exe] [-I dir] [--obj f] [--lib f]\n"

@@ -17,6 +17,12 @@ int main(int argc, char** argv) {
     uint32_t bits = 4, group = 64, expert_bits = 0, bits_lo = 4, bits_hi = 8; int verbose = 1;
     double auto_bpw = 0.0;
     for (int i = 1; i < argc; ++i) {
+        if (!strcmp(argv[i], "-help") || !strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
+            fprintf(stderr, "uso: %s --model DIR --out DIR [--bits N --group G --imatrix REPORT --expert-bits M]\n"
+                            "     %s --model DIR --out DIR --auto-bpw BPW [--bits-lo A --bits-hi B --group G --quiet]\n",
+                    argv[0], argv[0]);
+            return 0;
+        }
         if (!strcmp(argv[i], "--model") && i + 1 < argc) model = argv[++i];
         else if (!strcmp(argv[i], "--out") && i + 1 < argc) out = argv[++i];
         else if (!strcmp(argv[i], "--bits") && i + 1 < argc) bits = (uint32_t)strtoul(argv[++i], NULL, 10);

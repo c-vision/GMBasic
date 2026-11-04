@@ -72,7 +72,7 @@ int main(int argc, char** argv)
         else if (strcmp(a, "--restart") == 0) restart = 1;
         else if (strcmp(a, "--quiet") == 0) quiet = 1;
         else if (strcmp(a, "--verify-only") == 0) verify_only = 1;
-        else if (strcmp(a, "--help") == 0 || strcmp(a, "-h") == 0) { usage(); return 0; }
+        else if (strcmp(a, "--help") == 0 || strcmp(a, "-h") == 0 || strcmp(a, "-help") == 0) { usage(); return 0; }
         else if (!url) url = a;
         else if (!dest) dest = a;
         else { usage(); return 1; }

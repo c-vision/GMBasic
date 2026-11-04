@@ -204,7 +204,7 @@ public static class Program
 
     private static int Run(string[] args)
     {
-        if (args.Length == 0 || args[0] is "-h" or "--help" or "help") { Usage(); return args.Length == 0 ? 2 : 0; }
+        if (args.Length == 0 || args[0] is "-h" or "--help" or "-help" or "help") { Usage(); return args.Length == 0 ? 2 : 0; }
         if (args[0] is "-v" or "--version") { Console.WriteLine(Version); return 0; }
 
         var list = new List<string>(args);

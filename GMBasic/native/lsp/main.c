@@ -17,7 +17,7 @@ int main(int argc, char** argv)
         printf("gmb_lsp 1.0.0 (GMBASIC language server, C)\n");
         return 0;
     }
-    if (argc >= 2 && (!strcmp(argv[1], "--help") || !strcmp(argv[1], "-h"))) {
+    if (argc >= 2 && (!strcmp(argv[1], "--help") || !strcmp(argv[1], "-h") || !strcmp(argv[1], "-help"))) {
         printf("uso: gmb_lsp   — language server LSP/JSON-RPC su stdio\n"
                "  (Content-Length framing; initialize/didOpen/didChange/completion/hover)\n"
                "Client: IDE GMBasic, VS Code o qualunque editor LSP.\n");

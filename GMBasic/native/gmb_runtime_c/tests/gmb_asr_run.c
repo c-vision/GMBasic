@@ -10,7 +10,22 @@
 static const char* piece_fn(int id, void* ctx) { return gmb_asr_tok_decode((GmbAsrTok*)ctx, id); }
 
 int main(int argc, char** argv) {
-    if (argc < 3) { fprintf(stderr, "uso: %s <model_dir> <file.wav> [seg_sec]\n", argv[0]); return 2; }
+    if (argc >= 2 && (!strcmp(argv[1], "-help") || !strcmp(argv[1], "--help") || !strcmp(argv[1], "-h"))) {
+        fprintf(stderr,
+            "uso: %s <model_dir> <file.wav> [seg_sec]\n"
+            "     %s <model_dir> --enc <testo>                    # tokenizza e ritokenizza (senza audio)\n"
+            "     %s <model_dir> --stream <file.wav> [chunk_sec]  # trascrizione in streaming\n",
+            argv[0], argv[0], argv[0]);
+        return 0;
+    }
+    if (argc < 3) {
+        fprintf(stderr,
+            "uso: %s <model_dir> <file.wav> [seg_sec]\n"
+            "     %s <model_dir> --enc <testo>\n"
+            "     %s <model_dir> --stream <file.wav> [chunk_sec]\n",
+            argv[0], argv[0], argv[0]);
+        return 2;
+    }
     if (argc >= 4 && !strcmp(argv[2], "--enc")) {
         GmbAsrTok* t = gmb_asr_tok_load(argv[1]);
         if (!t) { fprintf(stderr, "load tokenizer fallito\n"); return 1; }
