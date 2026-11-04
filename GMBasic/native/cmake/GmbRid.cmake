@@ -59,4 +59,54 @@ endif()
 set(GMB_LIBS_OUT    "${CMAKE_CURRENT_LIST_DIR}/../../build/libs/${GMB_RID}")
 set(GMB_PLUGINS_OUT "${CMAKE_CURRENT_LIST_DIR}/../../build/plugins/${GMB_RID}")
 
+# ── gmb_exe_relocatable(<target>) ─────────────────────────────────────────────────────────
+# Rende un ESEGUIBILE rilocabile: l'rpath contiene SOLO percorsi relativi all'eseguibile
+# (@loader_path / $ORIGIN). Nessun path del builder, quindi nessun `/Users/<nome>/...` e
+# nessun `$HOME/.gmbasic/libs/<rid>` cucito dentro: un binario copiato in un bundle (o su
+# un'altra macchina con un altro utente) carica le stesse dylib. Con
+# BUILD_WITH_INSTALL_RPATH TRUE CMake NON aggiunge più le directory assolute delle librerie
+# linkate (era il meccanismo che infilava la cache e build/libs/<rid> negli eseguibili).
+#
+# Ordine delle voci (dyld/ld.so SALTANO quelle che non esistono, quindi le varianti delle
+# due profondità dell'albero convivono):
+#  1. accanto all'eseguibile                        bundle con le dylib in bin/
+#  2. libs/<rid>/ accanto all'eseguibile            bundle "pulito": bin/libs/<rid>/
+#  3. ../GMBasic/build/libs/<rid>                   checkout: nostre dylib (da bin/)
+#  4. ../../GMBasic/build/libs/<rid>                checkout: da <progetto>/build/
+#  5. ../../build/libs/<rid>                        checkout: da native/gmb_vm_c/build/
+#  6. ../GMBasic/native/gmb_vm_c/build             checkout: libgmb_eval, libllmcodec_*
+#  7. ../../GMBasic/native/gmb_vm_c/build           idem, da <progetto>/build/
+#  8. gmb_runtime_c_build/llmtoken_build            checkout: libllmtoken (sottoprogetto)
+#
+# In SVILUPPO le terze parti (SDL2, OpenSSL, …) non stanno nel repo ma nella cache utente:
+# `libs/<rid>` accanto all'eseguibile è creata come SYMLINK alla cache a ogni build. In
+# RELEASE quella stessa cartella contiene le dylib vere (nessun symlink, nessuna dipendenza
+# dalla macchina che ha compilato).
+function(gmb_exe_relocatable _target)
+    if(WIN32)
+        set(_rpath "")
+    else()
+        set(_o "${GMB_RPATH_ORIGIN}")
+        set(_rpath
+            "${_o}"
+            "${_o}/libs/${GMB_RID}"
+            "${_o}/../GMBasic/build/libs/${GMB_RID}"
+            "${_o}/../../GMBasic/build/libs/${GMB_RID}"
+            "${_o}/../../build/libs/${GMB_RID}"
+            "${_o}/../GMBasic/native/gmb_vm_c/build"
+            "${_o}/../../GMBasic/native/gmb_vm_c/build"
+            "${_o}/gmb_runtime_c_build/llmtoken_build")
+    endif()
+    set_target_properties(${_target} PROPERTIES
+        BUILD_WITH_INSTALL_RPATH TRUE
+        INSTALL_RPATH "${_rpath}")
+    if(NOT WIN32)
+        add_custom_command(TARGET ${_target} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${_target}>/libs"
+            COMMAND ${CMAKE_COMMAND} -E create_symlink "$ENV{HOME}/.gmbasic/libs/${GMB_RID}"
+                    "$<TARGET_FILE_DIR:${_target}>/libs/${GMB_RID}"
+            COMMENT "rpath rilocabile: libs/${GMB_RID} -> cache utente (solo sviluppo)")
+    endif()
+endfunction()
+
 message(STATUS "GmbRid: RID di build ${GMB_RID} (cross=${CMAKE_OSX_ARCHITECTURES}) → artefatti in ${GMB_LIBS_OUT}")

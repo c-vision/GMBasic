@@ -692,12 +692,14 @@ endif()
 
 gmb_need_lib(GMB_CRYPTO_LIB crypto libcrypto.3.dylib libcrypto)
 target_link_libraries(gmb_runtime_deps INTERFACE ${GMB_CRYPTO_LIB})
-# rpath verso la DIRECTORY della libcrypto: i dylib hanno install_name `@rpath/libcrypto.3.dylib`,
-# quindi un consumer (gmb_vm_host, driver C99) senza questo rpath muore all'avvio.
-get_filename_component(_gmb_crypto_dir "${GMB_CRYPTO_LIB}" DIRECTORY)
-if(APPLE AND _gmb_crypto_dir)
-    target_link_options(gmb_runtime_deps INTERFACE "LINKER:-rpath,${_gmb_crypto_dir}")
-endif()
+# NIENTE `-rpath,<directory della libcrypto>` qui. Quella directory è `~/.gmbasic/libs/<rid>`
+# (o `build/libs/<rid>`): un path ASSOLUTO per-utente che questo INTERFACE propagava a OGNI
+# consumer (gmb_vm_host, gmbrepl, gmbnotebook, driver C99) — ed era l'ultima voce assoluta nei
+# tre eseguibili della release, che così non caricavano su un'altra macchina. La libcrypto ha
+# install_name `@rpath/libcrypto.3.dylib` e i consumer la risolvono con l'rpath RILOCABILE di
+# `gmb_exe_relocatable()` (`@loader_path/libs/<rid>`: symlink alla cache in sviluppo, dylib
+# vere nel bundle). Gli eseguibili di solo sviluppo continuano a trovarla perché CMake aggiunge
+# da sé la directory della libreria linkata all'rpath del build tree.
 target_compile_definitions(gmb_runtime_deps INTERFACE HAVE_OPENSSL=1)
 
 gmb_need_lib(GMB_SSL_LIB ssl libssl.3.dylib libssl)

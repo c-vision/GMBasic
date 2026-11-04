@@ -13,8 +13,9 @@ int gmb_native_exec(const char* bas_file, gmb_exec_backend_t backend);
 /* Compila .bas -> chunk via pipeline C (vmc). c99: generazione sorgente ancora C# (divergenza). */
 int gmb_native_compile(const char* bas_file, const char* out_path, gmb_exec_backend_t backend);
 
-/* Risolve il percorso del binario gmb_vm_host (host della VM/C): env GMBASIC_VM_HOST ->
- * GMBASIC_REPO_ROOT -> repo root. NULL se non trovato. Unica sorgente (executor.c). */
+/* Risolve il percorso del binario gmb_vm_host (host della VM/C) per POSIZIONE, senza env:
+ * `<root>/bin/gmb_vm_host` (release) -> `<root>/native/gmb_vm_c/build/gmb_vm_host`
+ * (checkout), con la root dal runtime. NULL se non trovato. Unica sorgente (executor.c). */
 const char* gmb_resolve_vm_host(void);
 
 #endif

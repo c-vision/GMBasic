@@ -9,7 +9,7 @@
 #include "gmb_parser.h"
 #include "gmb_compiler.h"
 #include "gmb_c99_emit.h"
-#include "gmb_runtime.h"     /* gmb_paths_libs_cache_dir / gmb_libs_rid */
+#include "gmb_runtime.h"     /* gmb_paths_repo_root / gmb_paths_llm_root */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,43 +24,18 @@ static int run_process(const char* cmd)
     return WIFEXITED(rc) ? WEXITSTATUS(rc) : 1;
 }
 
-/* Radice del repo C (= `GMBasic/`). Dopo il passaggio al MONOREPO il marker storico
- * `GMBASIC.sln` non esiste più in `GMBasic/`: la ricerca falliva e `gmb_vm_host` non veniva
- * trovato (RUN/COMPILE/debug -> "gmb_vm_host non trovato"). Ordine:
- *   1) GMBASIC_REPO_ROOT (harness/build);
- *   2) antenato della CWD che contiene `native/gmb_vm_c` (radice del repo C);
- *   3) antenato della CWD che contiene `GMBasic/native/gmb_vm_c` (radice del monorepo);
- *   4) fallback: CWD. */
+/* Radice del repo C (= `GMBasic/`). UNA sola risoluzione: `gmb_paths_repo_root` del runtime
+ * (cammina dalla dir dell'ESEGUIBILE e dal CWD, riconosce il monorepo e il layout della
+ * release: `<cur>/GMBasic`, `<cur>/bin` accanto a `GMBasic/`). Qui non si legge alcuna env:
+ * `GMBASIC_REPO_ROOT` era l'ultima env di percorso oltre a GMBASIC_ROOT/LLM_ROOT e le due
+ * regole di AGENTS la vietano (parametri solo dal registro, non da getenv). Se il runtime non
+ * trova la root, fallback alla CWD (comportamento storico, nessun path inventato). */
 static void resolve_repo_root(char* out, size_t cap)
 {
-    const char* env = getenv("GMBASIC_REPO_ROOT");
-    if (env && *env) { snprintf(out, cap, "%s", env); return; }
+    if (gmb_paths_repo_root(out, cap) && out[0]) return;
     char start[2048];
-    if (!getcwd(start, sizeof(start))) { snprintf(out, cap, "."); return; }
-    for (int variant = 0; variant < 2; variant++)
-    {
-        char base[2048];
-        snprintf(base, sizeof(base), "%s", start);
-        for (;;)
-        {
-            char probe[4096];
-            if (variant == 0)
-                snprintf(probe, sizeof(probe), "%s/native/gmb_vm_c", base);
-            else
-                snprintf(probe, sizeof(probe), "%s/GMBasic/native/gmb_vm_c", base);
-            if (access(probe, F_OK) == 0)
-            {
-                if (variant == 0) snprintf(out, cap, "%s", base);
-                else snprintf(out, cap, "%s/GMBasic", base);
-                return;
-            }
-            char* slash = strrchr(base, '/');
-            if (!slash) break;
-            *slash = 0;
-            if (!*base) break;
-        }
-    }
-    snprintf(out, cap, "%s", start);
+    if (!getcwd(start, sizeof(start))) snprintf(out, cap, ".");
+    else snprintf(out, cap, "%s", start);
 }
 
 /* Risolve le direttive `IMPORT <Ns>` del modulo principale: per ogni namespace con un file
@@ -186,24 +161,29 @@ static char* gmb_resolve_imports(const char* main_src, const char* bas_file)
     return merged;
 }
 
+/* `gmb_vm_host` per POSIZIONE, mai per env: `<root>/bin` (release, accanto al resto dei
+ * binari) e `<root>/native/gmb_vm_c/build` (checkout di sviluppo). `root` viene dalla stessa
+ * `gmb_paths_repo_root` di tutto il resto, quindi un `gmb`/`gmbrepl` invocato da qualunque
+ * cartella trova l'host. NULL se non c'è: il chiamante diagnostica. */
 static const char* resolve_vm_host(void)
 {
     static char path[2048];
-    const char* env = getenv("GMBASIC_VM_HOST");
-    if (env && access(env, X_OK) == 0) return env;
-    snprintf(path, sizeof(path), "%s/native/gmb_vm_c/build/gmb_vm_host", getenv("GMBASIC_REPO_ROOT") ? getenv("GMBASIC_REPO_ROOT") : ".");
-    if (access(path, X_OK) == 0) return path;
     char root[2048];
     resolve_repo_root(root, sizeof(root));
-    snprintf(path, sizeof(path), "%s/native/gmb_vm_c/build/gmb_vm_host", root);
-    return access(path, X_OK) == 0 ? path : NULL;
+    static const char* rel[] = { "bin/gmb_vm_host", "native/gmb_vm_c/build/gmb_vm_host" };
+    for (size_t i = 0; i < sizeof rel / sizeof rel[0]; i++)
+    {
+        snprintf(path, sizeof(path), "%s/%s", root, rel[i]);
+        if (access(path, X_OK) == 0) return path;
+    }
+    return NULL;
 }
 
 /* Versione PUBBLICA del resolver (decl. in executor.h). Il REPL (repl/vmc_runner.c) aveva una
  * copia `extern` di `gmb_resolve_vm_host` MAI definita (introdotta in 461c92a52) -> gmbrepl
  * non linkava da allora. `resolve_vm_host` era static e serviva solo a gmb_native_exec:
- * ora e' esposta, cosi' esiste UNA sola risoluzione (env GMBASIC_VM_HOST -> GMBASIC_REPO_ROOT
- * -> repo root). Ritorna NULL se non trovato. */
+ * ora e' esposta, cosi' esiste UNA sola risoluzione (root del runtime -> bin/ o build/).
+ * Ritorna NULL se non trovato. */
 const char* gmb_resolve_vm_host(void) { return resolve_vm_host(); }
 
 
@@ -415,6 +395,16 @@ int gmb_native_compile(const char* bas_file, const char* out_path, gmb_exec_back
     return gmb_emit_c99_source(bas_file, out_path);
 }
 
+/* Aggiunge `-I"dir"` / `-L"dir"` solo se il percorso esiste: una flag su un path assente
+ * non serve e un errore di battitura silenzioso ancora meno. */
+static void c99_add_flag(char* out, size_t cap, const char* flag, const char* dir)
+{
+    size_t used = strlen(out);
+    if (access(dir, F_OK) != 0) return;
+    if (used + strlen(flag) + strlen(dir) + 4 > cap) return;
+    snprintf(out + used, cap - used, " %s\"%s\"", flag, dir);
+}
+
 int gmb_native_exec(const char* bas_file, gmb_exec_backend_t backend)
 {
     if (backend == GMB_EXEC_VMC) {
@@ -422,14 +412,19 @@ int gmb_native_exec(const char* bas_file, gmb_exec_backend_t backend)
         snprintf(chunk, sizeof(chunk), "/tmp/gmb_exec_%ld.chunk", (long)getpid());
         if (gmb_native_compile(bas_file, chunk, GMB_EXEC_VMC) != 0) return 2;
         const char* host = resolve_vm_host();
-        if (!host) { fprintf(stderr, "?gmb_vm_host non trovato (GMBASIC_VM_HOST o build native/gmb_vm_c)\n"); return -1; }
+        if (!host) { fprintf(stderr, "?gmb_vm_host non trovato (atteso in <root>/bin o <root>/native/gmb_vm_c/build; `gmb doctor`)\n"); return -1; }
         char cmd[4096];
         snprintf(cmd, sizeof(cmd), "\"%s\" \"%s\"", host, chunk);
         int rc = run_process(cmd);
         unlink(chunk);
         return rc;
     }
-    /* c99 */
+    /* c99: il C emesso + la SOLA libreria del runtime. Nient'altro.
+     * `libgmb_runtime.a` è un ARCHIVIO STATICO: entra nell'eseguibile solo ciò che il
+     * programma referenzia, quindi `PRINT 1+1` non trascina chart/doc/agent/AI né SDL2,
+     * crypto, curl, brotli. Prima questo ramo ricompilava TUTTE le
+     * `native/gmb_runtime_c/src/*.c` (più le ASR di LLMEnv) e linkava a forza 12 librerie:
+     * un programma di due righe usciva dipendente da tutto e non partiva senza LLMEnv. */
     char cfile[2048], bindir[2048];
     snprintf(cfile, sizeof(cfile), "/tmp/gmb_exec_%ld.c", (long)getpid());
     snprintf(bindir, sizeof(bindir), "/tmp/gmb_exec_%ld", (long)getpid());
@@ -437,55 +432,98 @@ int gmb_native_exec(const char* bas_file, gmb_exec_backend_t backend)
     if (gmb_native_compile(bas_file, cfile, GMB_EXEC_C99) != 0) return 2;
     char root[2048];
     resolve_repo_root(root, sizeof(root));
-    /* Link completo (specchio di ReplEngine.cs:660-685): SDL2, brotli, openssl@3.
-     * I pkgCcFlags dei pacchetti c-ffi/binaries[c99] non sono ancora risolti in C. */
+    /* Dove sta l'archivio: build del runtime nel checkout, `lib/` accanto ai binari nella
+     * release. Cercato per posizione, come `gmb_vm_host`: nessuna env. */
+    char libdir[2048];
+    libdir[0] = 0;
+    {
+        static const char* rel[] = { "native/gmb_runtime_c/build", "lib", "native/gmb_runtime_c" };
+        for (size_t i = 0; i < sizeof rel / sizeof rel[0]; i++)
+        {
+            char p[2048];
+            snprintf(p, sizeof p, "%s/%s/libgmb_runtime.a", root, rel[i]);
+            if (access(p, F_OK) == 0) { snprintf(libdir, sizeof libdir, "%s/%s", root, rel[i]); break; }
+        }
+    }
+    if (!libdir[0])
+    {
+        fprintf(stderr, "?libgmb_runtime.a non trovata in <root>/native/gmb_runtime_c/build: "
+                        "compila il runtime (`gmb doctor`)\n");
+        unlink(cfile);
+        return 2;
+    }
     char cmd[8192];
-    /* Engine ASR (LLMEnv/LLMEngine/asr, target CMake `llm_asr`): dopo il refactor ASR le gmb_asr_*
-     * NON sono più in gmb_runtime_c/src, ma gmb_asr_cmd.c (in quel glob) le referenzia → si compila
-     * qui insieme al runtime, con la sua include-dir (stesso fix del gate C99). */
-    char llmenv[2048];
+    /* -I: le SOLE directory dei 46 header che il prologo del C emesso include davvero
+     * (contate con l'emitter, non copiate dalla CLI): runtime 37, agent 4, torch 2,
+     * db/doc/gmbllm 1 ciascuno. Niente LLMEnv, niente header ASR/MLX, niente cache: qui si
+     * compila UN file generato, il resto non serve — e una lista più lunga sarebbe una
+     * seconda ricetta che diverge da `gmb_cli_inc_dirs`. */
+    char inc[1200] = {0};
     {
-        const char *e = getenv("LLMENV");
-        if (e && *e) {
-            snprintf(llmenv, sizeof llmenv, "%s", e);
-        } else {
-            snprintf(llmenv, sizeof llmenv, "%s/../LLMEnv", root);
-            if (access(llmenv, F_OK) != 0) {
-                const char *h = getenv("HOME");
-                snprintf(llmenv, sizeof llmenv, "%s/Documents/Projects/LLMEnv", h ? h : ".");
-            }
+        static const char* rel[] = {
+            "native/gmb_runtime_c/include", "native/gmb_agent_runtime",
+            "native/gmb_torch/include", "native/gmb_db_c/include",
+            "native/gmb_doc_c/include", "gmbllm/include",
+        };
+        char p[2048];
+        for (size_t i = 0; i < sizeof rel / sizeof rel[0]; i++)
+        {
+            snprintf(p, sizeof p, "%s/%s", root, rel[i]);
+            c99_add_flag(inc, sizeof inc, "-I", p);
         }
     }
-    /* Header e librerie delle terze parti: SOLO dalla cache del RID (mai dir del builder). */
-    char cacheinc[1200] = {0}, cachelib[1200] = {0};
+    /* Una sola directory di LLMEnv: `gmbllm/include/llmmodelio_model.h` (nel prologo)
+     * include `llmengine_plugin.h` che sta in `LLMEngine/plugin` — misurato con `cc -M`
+     * sulla chiusura transitiva, non copiato dalla lista della CLI. Root da
+     * `gmb_paths_llm_root` (mai un path cablato, mai una env). */
     {
-        char cache[1024];
+        char llmenv[2048];
+        if (gmb_paths_llm_root(llmenv, sizeof llmenv) && llmenv[0])
+        {
+            char p[2048];
+            snprintf(p, sizeof p, "%s/LLMEngine/plugin", llmenv);
+            c99_add_flag(inc, sizeof inc, "-I", p);
+        }
+        else
+            fprintf(stderr, "?LLMEnv non trovata (header `llmengine_plugin.h` del C emesso): "
+                            "`gmb doctor`\n");
+    }
+    /* -L: archivio del runtime + il chart (build annidata accanto, se c'è) + la cache del RID
+     * per le terze parti. Gli archivi sono STATICI: `-lgmb_chart` non porta dentro nulla se il
+     * programma non lo chiama. */
+    char libs[1600] = {0};
+    c99_add_flag(libs, sizeof libs, "-L", libdir);
+    {
+        char chart[2048];
+        snprintf(chart, sizeof chart, "%s/native/gmb_runtime_c/build/gmb_chart_build", root);
+        if (access(chart, F_OK) == 0 && strstr(libs, chart) == NULL)
+        {
+            c99_add_flag(libs, sizeof libs, "-L", chart);
+            if (strlen(libs) + 16 < sizeof libs) strcat(libs, " -lgmb_chart");
+        }
+        char cache[1024], cache_rid[1200];
+        cache[0] = 0;
         gmb_paths_libs_cache_dir(cache, sizeof cache);
-        if (cache[0]) {
-            snprintf(cacheinc, sizeof cacheinc, "%s/%s/include", cache, gmb_libs_rid());
-            snprintf(cachelib, sizeof cachelib, "%s/%s", cache, gmb_libs_rid());
+        if (cache[0])
+        {
+            snprintf(cache_rid, sizeof cache_rid, "%s/%s", cache, gmb_libs_rid());
+            c99_add_flag(libs, sizeof libs, "-L", cache_rid);
+            /* rpath per l'eseguibile TEMPORANEO in /tmp: senza, dyld non trova
+             * `@rpath/libSDL2.dylib`. Non finisce in nessun binario di release. */
+            c99_add_flag(libs, sizeof libs, "-Wl,-rpath,", cache_rid);
         }
     }
+    /* Librerie esterne effettivamente referenziate dai membri del runtime trascinati dentro
+     * (`nm`/link: SDL2, SDL2_ttf, zlib — niente crypto/curl/brotli/sqlite/pcre2 per un
+     * programma che non li usa). `-lz` è di sistema, le SDL vengono dalla cache del RID. */
     snprintf(cmd, sizeof(cmd),
-        "cc \"%s\" %s/native/gmb_runtime_c/src/*.c %s/LLMEngine/asr/src/*.c -I\"%s/native/gmb_runtime_c/include\""
-        " -I\"%s/LLMEngine/asr/include\""
-        " -I\"%s/native/gmb_agent_runtime\""
-        " -I\"%s/native/gmb_torch/include\" -I\"%s\""
-        " -lm -lz -lbz2 -lsqlite3 -lcurl -lpcre2-8 -L\"%s\" -lSDL2"
-        " -lbrotlienc -lbrotlidec -lbrotlicommon"
-        " -lcrypto -lssl"
-        " -o \"%s/prog\"",
-        cfile, root, llmenv, root, llmenv, root, root,
-        cacheinc, cachelib,                       /* header (dev) e librerie (runtime) dalla cache */
-        bindir);
-    if (getenv("GMBASIC_DEBUG")) fprintf(stderr, "[cc] %s\n", cmd);
+        "cc \"%s\"%s%s -lgmb_runtime -lz -lSDL2 -lSDL2_ttf -lm -o \"%s/prog\"",
+        cfile, inc, libs, bindir);
     int rc = run_process(cmd);
-    int keep_c = getenv("GMBASIC_KEEP_C") != NULL;
-    if (keep_c) fprintf(stderr, "[keep] %s\n", cfile);
-    if (rc != 0) { if (!keep_c) unlink(cfile); return 3; }
+    if (rc != 0) { unlink(cfile); return 3; }
     snprintf(cmd, sizeof(cmd), "\"%s/prog\"", bindir);
     rc = run_process(cmd);
-    if (!keep_c) unlink(cfile);
+    unlink(cfile);
     snprintf(cmd, sizeof(cmd), "rm -rf \"%s\"", bindir);
     run_process(cmd);
     return rc;
