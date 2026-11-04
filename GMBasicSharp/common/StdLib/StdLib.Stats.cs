@@ -132,6 +132,10 @@ public sealed partial class StdLib
                 [dataArrayParam, dataArray2Param], new DoubleType(), TokenKind.StatsCovariance),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsRange, "RANGE"),
                 [dataArrayParam], new DoubleType(), TokenKind.StatsRange),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsMax, "MAX"),
+                [dataArrayParam], new DoubleType(), TokenKind.StatsMax),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsMin, "MIN"),
+                [dataArrayParam], new DoubleType(), TokenKind.StatsMin),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Percentile, "Percentile"),
             [
                 dataArrayParam, new Parameter(-1, T(TokenKind.Identifier, "p"), new DoubleType(), noFlags, null, false)

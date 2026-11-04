@@ -2684,6 +2684,7 @@ static const sa_row SA_TBL[] = {
     { GMB_TOK_StatsMode, sa_mode }, { GMB_TOK_StatsIqr, sa_iqr }, { GMB_TOK_StatsMoment, sa_moment },
     { GMB_TOK_StatsCovariance, sa_covariance },
     { GMB_TOK_StatsRange, sa_range },
+    { GMB_TOK_StatsMax, sa_amax }, { GMB_TOK_StatsMin, sa_amin },
 };
 int emit_bf_stats_arr(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
     (void)name; (void)ns; (void)line;

@@ -232,6 +232,8 @@ public enum BuiltInFunction : ushort
     STATS_DESCRIBE = 1016,
     STATS_COVARIANCE = 1032,
     STATS_RANGE = 1033,
+    STATS_MAX = 1034,
+    STATS_MIN = 1035,
     SIGNAL_FIRWIN = 1017,
     SIGNAL_FINDPEAKS = 1018,
     SOLVE_IVP = 1019,
