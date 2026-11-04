@@ -15720,6 +15720,543 @@
       ]
     },
     {
+      "ns": "LINALG",
+      "name": "CHOLESKY",
+      "fn": true,
+      "return": "CHOLESKYDECOMPOSITION",
+      "params": [
+        {
+          "name": "handle",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "COND",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "handle",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "COSM",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "handle",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "DETERMINANT",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "handle",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "EIG",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "handle",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "EVD",
+      "fn": true,
+      "return": "EVDDECOMPOSITION",
+      "params": [
+        {
+          "name": "handle",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "EXPM",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "handle",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "FACTOR",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "decompositionObject",
+          "type": "\u003Cinferred\u003E",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "factorName",
+          "type": "string",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "FRACTIONALPOWER",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "handle",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "p",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "FROBENIUSNORM",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "data",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "HESSENBERG",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "handle",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "INFINITYNORM",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "data",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "INVERSE",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "handle",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "LOGM",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "handle",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "LU",
+      "fn": true,
+      "return": "LUDECOMPOSITION",
+      "params": [
+        {
+          "name": "handle",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "NORM",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "handle",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "NUCLEARNORM",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "handle",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "NULLSPACE",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "handle",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "ONENORM",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "data",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "ORTH",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "handle",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "PINVERSE",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "handle",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "POLAR",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "handle",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "QR",
+      "fn": true,
+      "return": "QRDECOMPOSITION",
+      "params": [
+        {
+          "name": "handle",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "RANK",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "handle",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "SCHUR",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "handle",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "SIGNM",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "handle",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "SINM",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "handle",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "SOLVE",
+      "fn": true,
+      "return": "double[]",
+      "params": [
+        {
+          "name": "matrixHandle",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "vectorHandle",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "SOLVETRIANGULAR",
+      "fn": true,
+      "return": "double[]",
+      "params": [
+        {
+          "name": "handleA",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "handleB",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "lower",
+          "type": "bool",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "SQRTM",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "handle",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "SUBSPACEANGLES",
+      "fn": true,
+      "return": "double[]",
+      "params": [
+        {
+          "name": "handle1",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "handle2",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "SVD",
+      "fn": true,
+      "return": "SVDDECOMPOSITION",
+      "params": [
+        {
+          "name": "handle",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "LINALG",
+      "name": "TANM",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "handle",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
       "ns": "LLM",
       "name": "Arch",
       "fn": true,
@@ -17562,21 +18099,6 @@
     },
     {
       "ns": "MATRIX",
-      "name": "CHOLESKY",
-      "fn": true,
-      "return": "CHOLESKYDECOMPOSITION",
-      "params": [
-        {
-          "name": "handle",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
       "name": "CIRCULANT",
       "fn": true,
       "return": "long",
@@ -17711,36 +18233,6 @@
     },
     {
       "ns": "MATRIX",
-      "name": "COND",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "handle",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
-      "name": "COSM",
-      "fn": true,
-      "return": "long",
-      "params": [
-        {
-          "name": "handle",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
       "name": "CREATE",
       "fn": true,
       "return": "long",
@@ -17754,125 +18246,6 @@
         },
         {
           "name": "cols",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
-      "name": "DETERMINANT",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "handle",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
-      "name": "EIG",
-      "fn": true,
-      "return": "long",
-      "params": [
-        {
-          "name": "handle",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
-      "name": "EVD",
-      "fn": true,
-      "return": "EVDDECOMPOSITION",
-      "params": [
-        {
-          "name": "handle",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
-      "name": "EXPM",
-      "fn": true,
-      "return": "long",
-      "params": [
-        {
-          "name": "handle",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
-      "name": "FACTOR",
-      "fn": true,
-      "return": "long",
-      "params": [
-        {
-          "name": "decompositionObject",
-          "type": "\u003Cinferred\u003E",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "factorName",
-          "type": "string",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
-      "name": "FRACTIONALPOWER",
-      "fn": true,
-      "return": "long",
-      "params": [
-        {
-          "name": "handle",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "p",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
-      "name": "FROBENIUSNORM",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "data",
           "type": "long",
           "optional": false,
           "byRef": false,
@@ -17925,51 +18298,6 @@
         {
           "name": "r",
           "type": "double[]",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
-      "name": "HESSENBERG",
-      "fn": true,
-      "return": "long",
-      "params": [
-        {
-          "name": "handle",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
-      "name": "INFINITYNORM",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "data",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
-      "name": "INVERSE",
-      "fn": true,
-      "return": "long",
-      "params": [
-        {
-          "name": "handle",
-          "type": "long",
           "optional": false,
           "byRef": false,
           "array": false
@@ -18090,36 +18418,6 @@
     },
     {
       "ns": "MATRIX",
-      "name": "LOGM",
-      "fn": true,
-      "return": "long",
-      "params": [
-        {
-          "name": "handle",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
-      "name": "LU",
-      "fn": true,
-      "return": "LUDECOMPOSITION",
-      "params": [
-        {
-          "name": "handle",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
       "name": "MAXVALUE",
       "fn": true,
       "return": "double",
@@ -18208,141 +18506,6 @@
         {
           "name": "values",
           "type": "double[]",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
-      "name": "NORM",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "handle",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
-      "name": "NUCLEARNORM",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "handle",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
-      "name": "NULLSPACE",
-      "fn": true,
-      "return": "long",
-      "params": [
-        {
-          "name": "handle",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
-      "name": "ONENORM",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "data",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
-      "name": "ORTH",
-      "fn": true,
-      "return": "long",
-      "params": [
-        {
-          "name": "handle",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
-      "name": "PINVERSE",
-      "fn": true,
-      "return": "long",
-      "params": [
-        {
-          "name": "handle",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
-      "name": "POLAR",
-      "fn": true,
-      "return": "long",
-      "params": [
-        {
-          "name": "handle",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
-      "name": "QR",
-      "fn": true,
-      "return": "QRDECOMPOSITION",
-      "params": [
-        {
-          "name": "handle",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
-      "name": "RANK",
-      "fn": true,
-      "return": "long",
-      "params": [
-        {
-          "name": "handle",
-          "type": "long",
           "optional": false,
           "byRef": false,
           "array": false
@@ -18440,21 +18603,6 @@
     },
     {
       "ns": "MATRIX",
-      "name": "SCHUR",
-      "fn": true,
-      "return": "long",
-      "params": [
-        {
-          "name": "handle",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
       "name": "SETVALUE",
       "fn": true,
       "return": "long",
@@ -18483,36 +18631,6 @@
         {
           "name": "value",
           "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
-      "name": "SIGNM",
-      "fn": true,
-      "return": "long",
-      "params": [
-        {
-          "name": "handle",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
-      "name": "SINM",
-      "fn": true,
-      "return": "long",
-      "params": [
-        {
-          "name": "handle",
-          "type": "long",
           "optional": false,
           "byRef": false,
           "array": false
@@ -18555,124 +18673,6 @@
         },
         {
           "name": "colEnd",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
-      "name": "SOLVE",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "matrixHandle",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "vectorHandle",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
-      "name": "SOLVETRIANGULAR",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "handleA",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "handleB",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "lower",
-          "type": "bool",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
-      "name": "SQRTM",
-      "fn": true,
-      "return": "long",
-      "params": [
-        {
-          "name": "handle",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
-      "name": "SUBSPACEANGLES",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "handle1",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "handle2",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
-      "name": "SVD",
-      "fn": true,
-      "return": "SVDDECOMPOSITION",
-      "params": [
-        {
-          "name": "handle",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "MATRIX",
-      "name": "TANM",
-      "fn": true,
-      "return": "long",
-      "params": [
-        {
-          "name": "handle",
           "type": "long",
           "optional": false,
           "byRef": false,

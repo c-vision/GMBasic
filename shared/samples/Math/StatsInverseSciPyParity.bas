@@ -4,7 +4,6 @@
 ' (CommonLib.GammaPpf, tolleranza 1e-10) e gmb_gammaincinv del runtime C (esatto
 ' come scipy) → arrotondato a 9 decimali come gli altri residui GAMMAPPF/SHAPIRO.
 IMPORT STATS
-IMPORT MATH
 
 SUB Main()
   PRINT "normppf  ="; STATS.NORMALPPF(0.975, 1, 2)

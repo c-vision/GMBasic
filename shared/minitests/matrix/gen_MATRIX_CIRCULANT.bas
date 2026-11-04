@@ -1,6 +1,4 @@
 ' EXPECT: c01= 3
-IMPORT MATRIX
-IMPORT MATH
 SUB Main()
   DIM c(2)
   c(0)=1 : c(1)=2 : c(2)=3

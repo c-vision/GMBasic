@@ -1,7 +1,6 @@
 ' EXPECT: fsolve= 1.4142 , 1.4142|broyden= 1.4142 , 1.4142|lsfit= 1 , 2|lm= 1 , 0.5|lmvec= 1 , 0.5|curvefit= 1 , 0.5
 ' OPTIMIZE via FFI — sistemi e curve fitting (6 funzioni).
 IMPORT OPTIMIZE
-IMPORT MATH
 
 SUB Main()
     ' sistema: x^2 + y^2 = 4, x = y  ->  (sqrt2, sqrt2)

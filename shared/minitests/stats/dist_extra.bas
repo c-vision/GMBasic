@@ -1,6 +1,5 @@
 ' EXPECT: gcdf= 0.800852|gpdf= 0.149361|gppf= 1.678347|gisf= 1.678347|iqr= 2|mode= 1|moment= 2
 IMPORT STATS
-IMPORT MATH
 SUB Main()
   PRINT "gcdf="; MATH.ROUND(STATS.GammaCdf(2, 1, 3), 6)
   PRINT "gpdf="; MATH.ROUND(STATS.GammaPdf(2, 1, 3), 6)

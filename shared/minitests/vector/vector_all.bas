@@ -2,7 +2,6 @@
 ' Derivato dai MiniTest per-funzione (stessi input e oracoli).
 ' EXPECT: cheb= 5|cos= 0.007417|eucl= 5|manh= 12|mink= 6|dot= 40
 IMPORT VECTOR
-IMPORT MATH
 
 SUB T_cheb()
   h1 = VECTOR.CREATE(1, 2, 3)

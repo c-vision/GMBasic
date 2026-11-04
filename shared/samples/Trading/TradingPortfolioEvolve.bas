@@ -3,7 +3,6 @@
 ' TRADING.PORTFOLIO.EVOLVE — ottimizzazione con Differential Evolution (GA parametri opzionali)
 ' =================================================================================================
 IMPORT TRADING.PORTFOLIO AS TP
-IMPORT MATH
 
 SUB Main()
     CLS

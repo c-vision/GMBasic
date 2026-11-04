@@ -18,7 +18,6 @@
 ' Domini: CONTROLS + MATH. Output deterministico (i valori mostrati sono quelli noti
 ' al programma: la scheda dimostra il flusso dei controlli, non l'input umano).
 IMPORT CONTROLS
-IMPORT MATH
 
 SUB Main()
     ' Valori dell'ordine (in un'applicazione arriverebbero dai controlli).

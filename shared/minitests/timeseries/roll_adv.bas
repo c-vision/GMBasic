@@ -2,7 +2,6 @@
 ' TSCOVARIANCEMATRIX/TSOUTLIERS (matrice = array di array, m(i)(j)).
 ' EXPECT: rr= 1|rs= 1.5|mm= 1 , 4|cv= 1|dec= 3|out= 0
 IMPORT TIMESERIES AS TS
-IMPORT MATH
 SUB Main()
   DIM s(5) AS DOUBLE = {1,2,4,3,5,7}
   DIM d(1) AS ARRAY OF DOUBLE

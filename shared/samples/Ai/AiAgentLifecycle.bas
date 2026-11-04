@@ -12,7 +12,6 @@
 ' (AGENTRECEIVE) sono verificati con proprietà stabili.
 ' =================================================================================================
 IMPORT AI
-IMPORT MATH
 
 SUB Main()
     ' NB: niente CLS — emette un escape ANSI solo sulle gambe C (gmb_cls) e non su IL/PCode

@@ -2,7 +2,6 @@
 ' La forma canonica per passare punti/matrici è JAGGED: DIM X(n) AS ARRAY OF DOUBLE
 ' con X(i) = {x, y}.
 IMPORT SPATIAL
-IMPORT MATRIX
 
 SUB Main()
   ' --- insieme di punti 2D: quadrato + punto interno ---

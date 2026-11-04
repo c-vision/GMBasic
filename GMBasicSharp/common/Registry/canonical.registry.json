@@ -9200,9 +9200,372 @@
       "pure": false
     },
     {
+      "ns": "LINALG",
+      "name": "CHOLESKY",
+      "id": 837,
+      "tokenKind": 377,
+      "kindName": "LinAlgCholeskyFunc",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": false
+    },
+    {
+      "ns": "LINALG",
+      "name": "COND",
+      "id": 838,
+      "tokenKind": 2036,
+      "kindName": "MatrixCond",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": false
+    },
+    {
+      "ns": "LINALG",
+      "name": "COSM",
+      "id": 839,
+      "tokenKind": 2028,
+      "kindName": "MatrixCosm",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": false
+    },
+    {
+      "ns": "LINALG",
+      "name": "DETERMINANT",
+      "id": 840,
+      "tokenKind": 895,
+      "kindName": "Determinant",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": false
+    },
+    {
+      "ns": "LINALG",
+      "name": "EIG",
+      "id": 841,
+      "tokenKind": 2042,
+      "kindName": "MatrixEig",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": false
+    },
+    {
+      "ns": "LINALG",
+      "name": "EVD",
+      "id": 842,
+      "tokenKind": 376,
+      "kindName": "LinAlgEvdFunc",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": false
+    },
+    {
+      "ns": "LINALG",
+      "name": "EXPM",
+      "id": 843,
+      "tokenKind": 640,
+      "kindName": "MatrixExp",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": false
+    },
+    {
+      "ns": "LINALG",
+      "name": "FACTOR",
+      "id": 844,
+      "tokenKind": 378,
+      "kindName": "LinAlgDecompGetFactorFunc",
+      "fn": true,
+      "arityMin": 2,
+      "arityMax": 2,
+      "pure": false
+    },
+    {
+      "ns": "LINALG",
+      "name": "FRACTIONALPOWER",
+      "id": 845,
+      "tokenKind": 2032,
+      "kindName": "MatrixFractionalPower",
+      "fn": true,
+      "arityMin": 2,
+      "arityMax": 2,
+      "pure": false
+    },
+    {
+      "ns": "LINALG",
+      "name": "FROBENIUSNORM",
+      "id": 846,
+      "tokenKind": 1987,
+      "kindName": "MatrixFrobeniusNorm",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": true
+    },
+    {
+      "ns": "LINALG",
+      "name": "HESSENBERG",
+      "id": 847,
+      "tokenKind": 2025,
+      "kindName": "MatrixHessenberg",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": false
+    },
+    {
+      "ns": "LINALG",
+      "name": "INFINITYNORM",
+      "id": 848,
+      "tokenKind": 1989,
+      "kindName": "MatrixInfinityNorm",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": true
+    },
+    {
+      "ns": "LINALG",
+      "name": "INVERSE",
+      "id": 849,
+      "tokenKind": 371,
+      "kindName": "LinAlgInverseFunc",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": false
+    },
+    {
+      "ns": "LINALG",
+      "name": "LOGM",
+      "id": 850,
+      "tokenKind": 2024,
+      "kindName": "MatrixLogm",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": false
+    },
+    {
+      "ns": "LINALG",
+      "name": "LU",
+      "id": 851,
+      "tokenKind": 373,
+      "kindName": "LinAlgLuFunc",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": false
+    },
+    {
+      "ns": "LINALG",
+      "name": "NORM",
+      "id": 852,
+      "tokenKind": 2022,
+      "kindName": "MatrixNorm",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": false
+    },
+    {
+      "ns": "LINALG",
+      "name": "NUCLEARNORM",
+      "id": 853,
+      "tokenKind": 2037,
+      "kindName": "MatrixNuclearNorm",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": false
+    },
+    {
+      "ns": "LINALG",
+      "name": "NULLSPACE",
+      "id": 854,
+      "tokenKind": 2020,
+      "kindName": "MatrixNullSpace",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": false
+    },
+    {
+      "ns": "LINALG",
+      "name": "ONENORM",
+      "id": 855,
+      "tokenKind": 1988,
+      "kindName": "MatrixOneNorm",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": true
+    },
+    {
+      "ns": "LINALG",
+      "name": "ORTH",
+      "id": 856,
+      "tokenKind": 2033,
+      "kindName": "MatrixOrth",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": false
+    },
+    {
+      "ns": "LINALG",
+      "name": "PINVERSE",
+      "id": 857,
+      "tokenKind": 2015,
+      "kindName": "MatrixPseudoInverse",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": false
+    },
+    {
+      "ns": "LINALG",
+      "name": "POLAR",
+      "id": 858,
+      "tokenKind": 2035,
+      "kindName": "MatrixPolar",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": false
+    },
+    {
+      "ns": "LINALG",
+      "name": "QR",
+      "id": 859,
+      "tokenKind": 374,
+      "kindName": "LinAlgQrFunc",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": false
+    },
+    {
+      "ns": "LINALG",
+      "name": "RANK",
+      "id": 860,
+      "tokenKind": 2016,
+      "kindName": "MatrixRank",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": false
+    },
+    {
+      "ns": "LINALG",
+      "name": "SCHUR",
+      "id": 861,
+      "tokenKind": 2043,
+      "kindName": "MatrixSchur",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": false
+    },
+    {
+      "ns": "LINALG",
+      "name": "SIGNM",
+      "id": 862,
+      "tokenKind": 2031,
+      "kindName": "MatrixSignm",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": false
+    },
+    {
+      "ns": "LINALG",
+      "name": "SINM",
+      "id": 863,
+      "tokenKind": 2029,
+      "kindName": "MatrixSinm",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": false
+    },
+    {
+      "ns": "LINALG",
+      "name": "SOLVE",
+      "id": 864,
+      "tokenKind": 771,
+      "kindName": "Solve",
+      "fn": true,
+      "arityMin": 2,
+      "arityMax": 2,
+      "pure": false
+    },
+    {
+      "ns": "LINALG",
+      "name": "SOLVETRIANGULAR",
+      "id": 865,
+      "tokenKind": 2041,
+      "kindName": "MatrixSolveTriangular",
+      "fn": true,
+      "arityMin": 3,
+      "arityMax": 3,
+      "pure": false
+    },
+    {
+      "ns": "LINALG",
+      "name": "SQRTM",
+      "id": 866,
+      "tokenKind": 2023,
+      "kindName": "MatrixSqrt",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": false
+    },
+    {
+      "ns": "LINALG",
+      "name": "SUBSPACEANGLES",
+      "id": 867,
+      "tokenKind": 2034,
+      "kindName": "MatrixSubspaceAngles",
+      "fn": true,
+      "arityMin": 2,
+      "arityMax": 2,
+      "pure": false
+    },
+    {
+      "ns": "LINALG",
+      "name": "SVD",
+      "id": 868,
+      "tokenKind": 375,
+      "kindName": "LinAlgSvdFunc",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": false
+    },
+    {
+      "ns": "LINALG",
+      "name": "TANM",
+      "id": 869,
+      "tokenKind": 2030,
+      "kindName": "MatrixTanm",
+      "fn": true,
+      "arityMin": 1,
+      "arityMax": 1,
+      "pure": false
+    },
+    {
       "ns": "LLM",
       "name": "Arch",
-      "id": 837,
+      "id": 870,
       "tokenKind": 2472,
       "kindName": "LlmArchOut",
       "fn": true,
@@ -9213,7 +9576,7 @@
     {
       "ns": "LLM",
       "name": "BenchResult",
-      "id": 838,
+      "id": 871,
       "tokenKind": 1832,
       "kindName": "AiBenchResult",
       "fn": true,
@@ -9224,7 +9587,7 @@
     {
       "ns": "LLM",
       "name": "CacheStats",
-      "id": 839,
+      "id": 872,
       "tokenKind": 1151,
       "kindName": "AiCacheStats",
       "fn": true,
@@ -9235,7 +9598,7 @@
     {
       "ns": "LLM",
       "name": "Callmap",
-      "id": 840,
+      "id": 873,
       "tokenKind": 2448,
       "kindName": "AiCallmap",
       "fn": true,
@@ -9246,7 +9609,7 @@
     {
       "ns": "LLM",
       "name": "CheckRev",
-      "id": 841,
+      "id": 874,
       "tokenKind": 2451,
       "kindName": "AiCheckrev",
       "fn": true,
@@ -9257,7 +9620,7 @@
     {
       "ns": "LLM",
       "name": "Commit",
-      "id": 842,
+      "id": 875,
       "tokenKind": 2457,
       "kindName": "LlmCommit",
       "fn": true,
@@ -9268,7 +9631,7 @@
     {
       "ns": "LLM",
       "name": "Context",
-      "id": 843,
+      "id": 876,
       "tokenKind": 2450,
       "kindName": "AiContext",
       "fn": true,
@@ -9279,7 +9642,7 @@
     {
       "ns": "LLM",
       "name": "DatasetStats",
-      "id": 844,
+      "id": 877,
       "tokenKind": 2424,
       "kindName": "LlmDatasetStats",
       "fn": true,
@@ -9290,7 +9653,7 @@
     {
       "ns": "LLM",
       "name": "DecodeStats",
-      "id": 845,
+      "id": 878,
       "tokenKind": 1820,
       "kindName": "AiDecodeStats",
       "fn": true,
@@ -9301,7 +9664,7 @@
     {
       "ns": "LLM",
       "name": "Detokenize",
-      "id": 846,
+      "id": 879,
       "tokenKind": 2469,
       "kindName": "LlmDetokenize",
       "fn": true,
@@ -9312,7 +9675,7 @@
     {
       "ns": "LLM",
       "name": "DistillCkpt",
-      "id": 847,
+      "id": 880,
       "tokenKind": 2154,
       "kindName": "AiDistillCkpt",
       "fn": true,
@@ -9323,7 +9686,7 @@
     {
       "ns": "LLM",
       "name": "DistillDone",
-      "id": 848,
+      "id": 881,
       "tokenKind": 2155,
       "kindName": "AiDistillDone",
       "fn": true,
@@ -9334,7 +9697,7 @@
     {
       "ns": "LLM",
       "name": "DistillEvalAccept",
-      "id": 849,
+      "id": 882,
       "tokenKind": 2148,
       "kindName": "AiDistillEvalAcc",
       "fn": true,
@@ -9345,7 +9708,7 @@
     {
       "ns": "LLM",
       "name": "DistillEvalPass",
-      "id": 850,
+      "id": 883,
       "tokenKind": 2147,
       "kindName": "AiDistillEvalPass",
       "fn": true,
@@ -9356,7 +9719,7 @@
     {
       "ns": "LLM",
       "name": "DistillEvalTok",
-      "id": 851,
+      "id": 884,
       "tokenKind": 2146,
       "kindName": "AiDistillEvalTok",
       "fn": true,
@@ -9367,7 +9730,7 @@
     {
       "ns": "LLM",
       "name": "DistillHold",
-      "id": 852,
+      "id": 885,
       "tokenKind": 2153,
       "kindName": "AiDistillHold",
       "fn": true,
@@ -9378,7 +9741,7 @@
     {
       "ns": "LLM",
       "name": "DistillLoss",
-      "id": 853,
+      "id": 886,
       "tokenKind": 2152,
       "kindName": "AiDistillLoss",
       "fn": true,
@@ -9389,7 +9752,7 @@
     {
       "ns": "LLM",
       "name": "DistillSampleDone",
-      "id": 854,
+      "id": 887,
       "tokenKind": 2144,
       "kindName": "AiDistillSampleDone",
       "fn": true,
@@ -9400,7 +9763,7 @@
     {
       "ns": "LLM",
       "name": "DistillSampleFail",
-      "id": 855,
+      "id": 888,
       "tokenKind": 2143,
       "kindName": "AiDistillSampleFail",
       "fn": true,
@@ -9411,7 +9774,7 @@
     {
       "ns": "LLM",
       "name": "DistillSampleN",
-      "id": 856,
+      "id": 889,
       "tokenKind": 2142,
       "kindName": "AiDistillSampleN",
       "fn": true,
@@ -9422,7 +9785,7 @@
     {
       "ns": "LLM",
       "name": "DistillStatus",
-      "id": 857,
+      "id": 890,
       "tokenKind": 2140,
       "kindName": "AiDistillStatus",
       "fn": true,
@@ -9433,7 +9796,7 @@
     {
       "ns": "LLM",
       "name": "EvalGate",
-      "id": 858,
+      "id": 891,
       "tokenKind": 2432,
       "kindName": "LlmEvalGate",
       "fn": true,
@@ -9444,7 +9807,7 @@
     {
       "ns": "LLM",
       "name": "FileOutline",
-      "id": 859,
+      "id": 892,
       "tokenKind": 2455,
       "kindName": "AiFileoutline",
       "fn": true,
@@ -9455,7 +9818,7 @@
     {
       "ns": "LLM",
       "name": "FindSymbol",
-      "id": 860,
+      "id": 893,
       "tokenKind": 2453,
       "kindName": "AiFindsymbol",
       "fn": true,
@@ -9466,7 +9829,7 @@
     {
       "ns": "LLM",
       "name": "FinetuneBaseHold",
-      "id": 861,
+      "id": 894,
       "tokenKind": 2285,
       "kindName": "AiFinetuneBaseHold",
       "fn": true,
@@ -9477,7 +9840,7 @@
     {
       "ns": "LLM",
       "name": "FinetuneBaseTrain",
-      "id": 862,
+      "id": 895,
       "tokenKind": 2284,
       "kindName": "AiFinetuneBaseTrain",
       "fn": true,
@@ -9488,7 +9851,7 @@
     {
       "ns": "LLM",
       "name": "FinetuneCkpt",
-      "id": 863,
+      "id": 896,
       "tokenKind": 2163,
       "kindName": "AiFinetuneCkpt",
       "fn": true,
@@ -9499,7 +9862,7 @@
     {
       "ns": "LLM",
       "name": "FinetuneDemoChanged",
-      "id": 864,
+      "id": 897,
       "tokenKind": 2283,
       "kindName": "AiFinetuneDemoChanged",
       "fn": true,
@@ -9510,7 +9873,7 @@
     {
       "ns": "LLM",
       "name": "FinetuneDone",
-      "id": 865,
+      "id": 898,
       "tokenKind": 2164,
       "kindName": "AiFinetuneDone",
       "fn": true,
@@ -9521,7 +9884,7 @@
     {
       "ns": "LLM",
       "name": "FinetuneGreedy",
-      "id": 866,
+      "id": 899,
       "tokenKind": 2165,
       "kindName": "AiFinetuneGreedy",
       "fn": true,
@@ -9532,7 +9895,7 @@
     {
       "ns": "LLM",
       "name": "FinetuneGreedyAfter",
-      "id": 867,
+      "id": 900,
       "tokenKind": 2282,
       "kindName": "AiFinetuneGreedyAfter",
       "fn": true,
@@ -9543,7 +9906,7 @@
     {
       "ns": "LLM",
       "name": "FinetuneHold",
-      "id": 868,
+      "id": 901,
       "tokenKind": 2162,
       "kindName": "AiFinetuneHold",
       "fn": true,
@@ -9554,7 +9917,7 @@
     {
       "ns": "LLM",
       "name": "FinetuneLoss",
-      "id": 869,
+      "id": 902,
       "tokenKind": 2161,
       "kindName": "AiFinetuneLoss",
       "fn": true,
@@ -9565,7 +9928,7 @@
     {
       "ns": "LLM",
       "name": "FinetuneStatus",
-      "id": 870,
+      "id": 903,
       "tokenKind": 2160,
       "kindName": "AiFinetuneStatus",
       "fn": true,
@@ -9576,7 +9939,7 @@
     {
       "ns": "LLM",
       "name": "Impact",
-      "id": 871,
+      "id": 904,
       "tokenKind": 2447,
       "kindName": "AiImpact",
       "fn": true,
@@ -9587,7 +9950,7 @@
     {
       "ns": "LLM",
       "name": "Inspect",
-      "id": 872,
+      "id": 905,
       "tokenKind": 2458,
       "kindName": "LlmInspect",
       "fn": true,
@@ -9598,7 +9961,7 @@
     {
       "ns": "LLM",
       "name": "Kernel",
-      "id": 873,
+      "id": 906,
       "tokenKind": 2474,
       "kindName": "LlmKernelOut",
       "fn": true,
@@ -9609,7 +9972,7 @@
     {
       "ns": "LLM",
       "name": "Kv",
-      "id": 874,
+      "id": 907,
       "tokenKind": 2475,
       "kindName": "LlmKvOut",
       "fn": true,
@@ -9620,7 +9983,7 @@
     {
       "ns": "LLM",
       "name": "LoraList",
-      "id": 875,
+      "id": 908,
       "tokenKind": 2425,
       "kindName": "LlmLoraList",
       "fn": true,
@@ -9631,7 +9994,7 @@
     {
       "ns": "LLM",
       "name": "LoraLoad",
-      "id": 876,
+      "id": 909,
       "tokenKind": 2427,
       "kindName": "LlmLoraLoad",
       "fn": true,
@@ -9642,7 +10005,7 @@
     {
       "ns": "LLM",
       "name": "LoraSave",
-      "id": 877,
+      "id": 910,
       "tokenKind": 2426,
       "kindName": "LlmLoraSave",
       "fn": true,
@@ -9653,7 +10016,7 @@
     {
       "ns": "LLM",
       "name": "Module",
-      "id": 878,
+      "id": 911,
       "tokenKind": 2473,
       "kindName": "LlmModuleOut",
       "fn": true,
@@ -9664,7 +10027,7 @@
     {
       "ns": "LLM",
       "name": "Patch",
-      "id": 879,
+      "id": 912,
       "tokenKind": 2452,
       "kindName": "AiPatch",
       "fn": true,
@@ -9675,7 +10038,7 @@
     {
       "ns": "LLM",
       "name": "Policy",
-      "id": 880,
+      "id": 913,
       "tokenKind": 2471,
       "kindName": "LlmPolicyOut",
       "fn": true,
@@ -9686,7 +10049,7 @@
     {
       "ns": "LLM",
       "name": "PrefillStats",
-      "id": 881,
+      "id": 914,
       "tokenKind": 1819,
       "kindName": "AiPrefillStats",
       "fn": true,
@@ -9697,7 +10060,7 @@
     {
       "ns": "LLM",
       "name": "RepoMap",
-      "id": 882,
+      "id": 915,
       "tokenKind": 2454,
       "kindName": "AiRepomap",
       "fn": true,
@@ -9708,7 +10071,7 @@
     {
       "ns": "LLM",
       "name": "Revision",
-      "id": 883,
+      "id": 916,
       "tokenKind": 2449,
       "kindName": "AiRevision",
       "fn": true,
@@ -9719,7 +10082,7 @@
     {
       "ns": "LLM",
       "name": "RunStop",
-      "id": 884,
+      "id": 917,
       "tokenKind": 2431,
       "kindName": "LlmRunStop",
       "fn": true,
@@ -9730,7 +10093,7 @@
     {
       "ns": "LLM",
       "name": "RunsClear",
-      "id": 885,
+      "id": 918,
       "tokenKind": 2420,
       "kindName": "LlmRunsClear",
       "fn": true,
@@ -9741,7 +10104,7 @@
     {
       "ns": "LLM",
       "name": "RunsCount",
-      "id": 886,
+      "id": 919,
       "tokenKind": 2419,
       "kindName": "LlmRunsCount",
       "fn": true,
@@ -9752,7 +10115,7 @@
     {
       "ns": "LLM",
       "name": "RunsItem",
-      "id": 887,
+      "id": 920,
       "tokenKind": 2423,
       "kindName": "LlmRunsItem",
       "fn": true,
@@ -9763,7 +10126,7 @@
     {
       "ns": "LLM",
       "name": "RunsJson",
-      "id": 888,
+      "id": 921,
       "tokenKind": 2418,
       "kindName": "LlmRunsJson",
       "fn": true,
@@ -9774,7 +10137,7 @@
     {
       "ns": "LLM",
       "name": "StreamStats",
-      "id": 889,
+      "id": 922,
       "tokenKind": 2292,
       "kindName": "AiStreamStats",
       "fn": true,
@@ -9785,7 +10148,7 @@
     {
       "ns": "LLM",
       "name": "Symbol",
-      "id": 890,
+      "id": 923,
       "tokenKind": 2446,
       "kindName": "AiSymbol",
       "fn": true,
@@ -9796,7 +10159,7 @@
     {
       "ns": "LLM",
       "name": "Tensor",
-      "id": 891,
+      "id": 924,
       "tokenKind": 2470,
       "kindName": "LlmTensorValue",
       "fn": true,
@@ -9807,7 +10170,7 @@
     {
       "ns": "LLM",
       "name": "TokenCount",
-      "id": 892,
+      "id": 925,
       "tokenKind": 2467,
       "kindName": "LlmTokenCount",
       "fn": true,
@@ -9818,7 +10181,7 @@
     {
       "ns": "LLM",
       "name": "Tokens",
-      "id": 893,
+      "id": 926,
       "tokenKind": 2468,
       "kindName": "LlmTokens",
       "fn": true,
@@ -9829,7 +10192,7 @@
     {
       "ns": "LLM",
       "name": "TrainConfig",
-      "id": 894,
+      "id": 927,
       "tokenKind": 2421,
       "kindName": "LlmTrainConfig",
       "fn": true,
@@ -9840,7 +10203,7 @@
     {
       "ns": "LLM",
       "name": "TrainConfigSet",
-      "id": 895,
+      "id": 928,
       "tokenKind": 2422,
       "kindName": "LlmTrainConfigSet",
       "fn": true,
@@ -9851,7 +10214,7 @@
     {
       "ns": "LLM",
       "name": "TrainExport",
-      "id": 896,
+      "id": 929,
       "tokenKind": 2430,
       "kindName": "LlmTrainExport",
       "fn": true,
@@ -9862,7 +10225,7 @@
     {
       "ns": "LLM",
       "name": "Verify",
-      "id": 897,
+      "id": 930,
       "tokenKind": 2456,
       "kindName": "LlmVerify",
       "fn": true,
@@ -9873,7 +10236,7 @@
     {
       "ns": "MATH",
       "name": "Abs",
-      "id": 898,
+      "id": 931,
       "tokenKind": 592,
       "kindName": "Abs",
       "fn": true,
@@ -9884,7 +10247,7 @@
     {
       "ns": "MATH",
       "name": "Acos",
-      "id": 899,
+      "id": 932,
       "tokenKind": 654,
       "kindName": "Acos",
       "fn": true,
@@ -9895,7 +10258,7 @@
     {
       "ns": "MATH",
       "name": "Angle2d",
-      "id": 900,
+      "id": 933,
       "tokenKind": 666,
       "kindName": "Angle2d",
       "fn": true,
@@ -9906,7 +10269,7 @@
     {
       "ns": "MATH",
       "name": "Asin",
-      "id": 901,
+      "id": 934,
       "tokenKind": 653,
       "kindName": "Asin",
       "fn": true,
@@ -9917,7 +10280,7 @@
     {
       "ns": "MATH",
       "name": "Atn",
-      "id": 902,
+      "id": 935,
       "tokenKind": 594,
       "kindName": "Atn",
       "fn": true,
@@ -9928,7 +10291,7 @@
     {
       "ns": "MATH",
       "name": "Avg",
-      "id": 903,
+      "id": 936,
       "tokenKind": 538,
       "kindName": "Avg",
       "fn": true,
@@ -9939,7 +10302,7 @@
     {
       "ns": "MATH",
       "name": "COSH",
-      "id": 904,
+      "id": 937,
       "tokenKind": 607,
       "kindName": "Cosh",
       "fn": true,
@@ -9950,7 +10313,7 @@
     {
       "ns": "MATH",
       "name": "Ceiling",
-      "id": 905,
+      "id": 938,
       "tokenKind": 586,
       "kindName": "Ceiling",
       "fn": true,
@@ -9961,7 +10324,7 @@
     {
       "ns": "MATH",
       "name": "Clamp",
-      "id": 906,
+      "id": 939,
       "tokenKind": 660,
       "kindName": "Clamp",
       "fn": true,
@@ -9972,7 +10335,7 @@
     {
       "ns": "MATH",
       "name": "Comb",
-      "id": 907,
+      "id": 940,
       "tokenKind": 669,
       "kindName": "Comb",
       "fn": true,
@@ -9983,7 +10346,7 @@
     {
       "ns": "MATH",
       "name": "Cos",
-      "id": 908,
+      "id": 941,
       "tokenKind": 596,
       "kindName": "Cos",
       "fn": true,
@@ -9994,7 +10357,7 @@
     {
       "ns": "MATH",
       "name": "Deg2Rad",
-      "id": 909,
+      "id": 942,
       "tokenKind": 656,
       "kindName": "Deg2Rad",
       "fn": true,
@@ -10005,7 +10368,7 @@
     {
       "ns": "MATH",
       "name": "Dist2d",
-      "id": 910,
+      "id": 943,
       "tokenKind": 662,
       "kindName": "Dist2d",
       "fn": true,
@@ -10016,7 +10379,7 @@
     {
       "ns": "MATH",
       "name": "Dist3d",
-      "id": 911,
+      "id": 944,
       "tokenKind": 663,
       "kindName": "Dist3d",
       "fn": true,
@@ -10027,7 +10390,7 @@
     {
       "ns": "MATH",
       "name": "Exp",
-      "id": 912,
+      "id": 945,
       "tokenKind": 597,
       "kindName": "Exp",
       "fn": true,
@@ -10038,7 +10401,7 @@
     {
       "ns": "MATH",
       "name": "Fact",
-      "id": 913,
+      "id": 946,
       "tokenKind": 668,
       "kindName": "Fact",
       "fn": true,
@@ -10049,7 +10412,7 @@
     {
       "ns": "MATH",
       "name": "Fix",
-      "id": 914,
+      "id": 947,
       "tokenKind": 582,
       "kindName": "Fix",
       "fn": true,
@@ -10060,7 +10423,7 @@
     {
       "ns": "MATH",
       "name": "Floor",
-      "id": 915,
+      "id": 948,
       "tokenKind": 583,
       "kindName": "Floor",
       "fn": true,
@@ -10071,7 +10434,7 @@
     {
       "ns": "MATH",
       "name": "Hypot",
-      "id": 916,
+      "id": 949,
       "tokenKind": 661,
       "kindName": "Hypot",
       "fn": true,
@@ -10082,7 +10445,7 @@
     {
       "ns": "MATH",
       "name": "Int",
-      "id": 917,
+      "id": 950,
       "tokenKind": 60,
       "kindName": "Int",
       "fn": true,
@@ -10093,7 +10456,7 @@
     {
       "ns": "MATH",
       "name": "IsNumeric",
-      "id": 918,
+      "id": 951,
       "tokenKind": 591,
       "kindName": "IsNumeric",
       "fn": true,
@@ -10104,7 +10467,7 @@
     {
       "ns": "MATH",
       "name": "Log",
-      "id": 919,
+      "id": 952,
       "tokenKind": 599,
       "kindName": "Log",
       "fn": true,
@@ -10115,7 +10478,7 @@
     {
       "ns": "MATH",
       "name": "Log10",
-      "id": 920,
+      "id": 953,
       "tokenKind": 652,
       "kindName": "Log10",
       "fn": true,
@@ -10126,7 +10489,7 @@
     {
       "ns": "MATH",
       "name": "Max",
-      "id": 921,
+      "id": 954,
       "tokenKind": 659,
       "kindName": "Max",
       "fn": true,
@@ -10137,7 +10500,7 @@
     {
       "ns": "MATH",
       "name": "Min",
-      "id": 922,
+      "id": 955,
       "tokenKind": 658,
       "kindName": "Min",
       "fn": true,
@@ -10148,7 +10511,7 @@
     {
       "ns": "MATH",
       "name": "POLAR_X",
-      "id": 923,
+      "id": 956,
       "tokenKind": 664,
       "kindName": "PolarX",
       "fn": true,
@@ -10159,7 +10522,7 @@
     {
       "ns": "MATH",
       "name": "POLAR_Y",
-      "id": 924,
+      "id": 957,
       "tokenKind": 665,
       "kindName": "PolarY",
       "fn": true,
@@ -10170,7 +10533,7 @@
     {
       "ns": "MATH",
       "name": "Perm",
-      "id": 925,
+      "id": 958,
       "tokenKind": 670,
       "kindName": "Perm",
       "fn": true,
@@ -10181,7 +10544,7 @@
     {
       "ns": "MATH",
       "name": "Pi",
-      "id": 926,
+      "id": 959,
       "tokenKind": 657,
       "kindName": "Pi",
       "fn": true,
@@ -10192,7 +10555,7 @@
     {
       "ns": "MATH",
       "name": "Pythagoras",
-      "id": 927,
+      "id": 960,
       "tokenKind": 667,
       "kindName": "Pythagoras",
       "fn": true,
@@ -10203,7 +10566,7 @@
     {
       "ns": "MATH",
       "name": "Rad2Deg",
-      "id": 928,
+      "id": 961,
       "tokenKind": 655,
       "kindName": "Rad2Deg",
       "fn": true,
@@ -10214,7 +10577,7 @@
     {
       "ns": "MATH",
       "name": "Range",
-      "id": 929,
+      "id": 962,
       "tokenKind": 949,
       "kindName": "Range",
       "fn": true,
@@ -10225,7 +10588,7 @@
     {
       "ns": "MATH",
       "name": "Rnd",
-      "id": 930,
+      "id": 963,
       "tokenKind": 600,
       "kindName": "Rnd",
       "fn": true,
@@ -10236,7 +10599,7 @@
     {
       "ns": "MATH",
       "name": "Round",
-      "id": 931,
+      "id": 964,
       "tokenKind": 584,
       "kindName": "Round",
       "fn": true,
@@ -10247,7 +10610,7 @@
     {
       "ns": "MATH",
       "name": "SINH",
-      "id": 932,
+      "id": 965,
       "tokenKind": 606,
       "kindName": "Sinh",
       "fn": true,
@@ -10258,7 +10621,7 @@
     {
       "ns": "MATH",
       "name": "Sgn",
-      "id": 933,
+      "id": 966,
       "tokenKind": 601,
       "kindName": "Sgn",
       "fn": true,
@@ -10269,7 +10632,7 @@
     {
       "ns": "MATH",
       "name": "Sin",
-      "id": 934,
+      "id": 967,
       "tokenKind": 602,
       "kindName": "Sin",
       "fn": true,
@@ -10280,7 +10643,7 @@
     {
       "ns": "MATH",
       "name": "Sqr",
-      "id": 935,
+      "id": 968,
       "tokenKind": 603,
       "kindName": "Sqr",
       "fn": true,
@@ -10291,7 +10654,7 @@
     {
       "ns": "MATH",
       "name": "Sum",
-      "id": 936,
+      "id": 969,
       "tokenKind": 537,
       "kindName": "Sum",
       "fn": true,
@@ -10302,7 +10665,7 @@
     {
       "ns": "MATH",
       "name": "TANH",
-      "id": 937,
+      "id": 970,
       "tokenKind": 608,
       "kindName": "Tanh",
       "fn": true,
@@ -10313,7 +10676,7 @@
     {
       "ns": "MATH",
       "name": "Tan",
-      "id": 938,
+      "id": 971,
       "tokenKind": 605,
       "kindName": "Tan",
       "fn": true,
@@ -10324,7 +10687,7 @@
     {
       "ns": "MATH",
       "name": "Trunc",
-      "id": 939,
+      "id": 972,
       "tokenKind": 585,
       "kindName": "Trunc",
       "fn": true,
@@ -10335,7 +10698,7 @@
     {
       "ns": "MATRIX",
       "name": "ABOVEMASK",
-      "id": 940,
+      "id": 973,
       "tokenKind": 2004,
       "kindName": "MatrixAboveMask",
       "fn": true,
@@ -10346,7 +10709,7 @@
     {
       "ns": "MATRIX",
       "name": "ABOVEMATRIX",
-      "id": 941,
+      "id": 974,
       "tokenKind": 2005,
       "kindName": "MatrixAboveMatrix",
       "fn": true,
@@ -10357,7 +10720,7 @@
     {
       "ns": "MATRIX",
       "name": "ADDCOLVECTOR",
-      "id": 942,
+      "id": 975,
       "tokenKind": 2001,
       "kindName": "MatrixAddColVector",
       "fn": true,
@@ -10368,7 +10731,7 @@
     {
       "ns": "MATRIX",
       "name": "ADDROWVECTOR",
-      "id": 943,
+      "id": 976,
       "tokenKind": 2000,
       "kindName": "MatrixAddRowVector",
       "fn": true,
@@ -10379,7 +10742,7 @@
     {
       "ns": "MATRIX",
       "name": "ARGMAX",
-      "id": 944,
+      "id": 977,
       "tokenKind": 1994,
       "kindName": "MatrixArgMax",
       "fn": true,
@@ -10390,7 +10753,7 @@
     {
       "ns": "MATRIX",
       "name": "ARGMIN",
-      "id": 945,
+      "id": 978,
       "tokenKind": 1995,
       "kindName": "MatrixArgMin",
       "fn": true,
@@ -10401,7 +10764,7 @@
     {
       "ns": "MATRIX",
       "name": "ASCSV",
-      "id": 946,
+      "id": 979,
       "tokenKind": 2006,
       "kindName": "MatrixAsCsv",
       "fn": true,
@@ -10412,7 +10775,7 @@
     {
       "ns": "MATRIX",
       "name": "ASJSON",
-      "id": 947,
+      "id": 980,
       "tokenKind": 2007,
       "kindName": "MatrixAsJson",
       "fn": true,
@@ -10423,7 +10786,7 @@
     {
       "ns": "MATRIX",
       "name": "BLOCKDIAG",
-      "id": 948,
+      "id": 981,
       "tokenKind": 2019,
       "kindName": "MatrixBlockDiag",
       "fn": true,
@@ -10433,19 +10796,8 @@
     },
     {
       "ns": "MATRIX",
-      "name": "CHOLESKY",
-      "id": 949,
-      "tokenKind": 377,
-      "kindName": "LinAlgCholeskyFunc",
-      "fn": true,
-      "arityMin": 1,
-      "arityMax": 1,
-      "pure": false
-    },
-    {
-      "ns": "MATRIX",
       "name": "CIRCULANT",
-      "id": 950,
+      "id": 982,
       "tokenKind": 2040,
       "kindName": "MatrixCirculant",
       "fn": true,
@@ -10456,7 +10808,7 @@
     {
       "ns": "MATRIX",
       "name": "CLONEMATRIX",
-      "id": 951,
+      "id": 983,
       "tokenKind": 2010,
       "kindName": "MatrixClone",
       "fn": true,
@@ -10467,7 +10819,7 @@
     {
       "ns": "MATRIX",
       "name": "COLMEANS",
-      "id": 952,
+      "id": 984,
       "tokenKind": 1984,
       "kindName": "MatrixColMeans",
       "fn": true,
@@ -10478,7 +10830,7 @@
     {
       "ns": "MATRIX",
       "name": "COLSUMS",
-      "id": 953,
+      "id": 985,
       "tokenKind": 1982,
       "kindName": "MatrixColSums",
       "fn": true,
@@ -10489,7 +10841,7 @@
     {
       "ns": "MATRIX",
       "name": "COLUMNCOUNT",
-      "id": 954,
+      "id": 986,
       "tokenKind": 2009,
       "kindName": "MatrixColumnCount",
       "fn": true,
@@ -10500,7 +10852,7 @@
     {
       "ns": "MATRIX",
       "name": "COLVARIANCES",
-      "id": 955,
+      "id": 987,
       "tokenKind": 1986,
       "kindName": "MatrixColVariances",
       "fn": true,
@@ -10511,7 +10863,7 @@
     {
       "ns": "MATRIX",
       "name": "CONCATCOLS",
-      "id": 956,
+      "id": 988,
       "tokenKind": 1999,
       "kindName": "MatrixConcatCols",
       "fn": true,
@@ -10522,7 +10874,7 @@
     {
       "ns": "MATRIX",
       "name": "CONCATROWS",
-      "id": 957,
+      "id": 989,
       "tokenKind": 1998,
       "kindName": "MatrixConcatRows",
       "fn": true,
@@ -10532,30 +10884,8 @@
     },
     {
       "ns": "MATRIX",
-      "name": "COND",
-      "id": 958,
-      "tokenKind": 2036,
-      "kindName": "MatrixCond",
-      "fn": true,
-      "arityMin": 1,
-      "arityMax": 1,
-      "pure": false
-    },
-    {
-      "ns": "MATRIX",
-      "name": "COSM",
-      "id": 959,
-      "tokenKind": 2028,
-      "kindName": "MatrixCosm",
-      "fn": true,
-      "arityMin": 1,
-      "arityMax": 1,
-      "pure": false
-    },
-    {
-      "ns": "MATRIX",
       "name": "CREATE",
-      "id": 960,
+      "id": 990,
       "tokenKind": 368,
       "kindName": "LinAlgMatrixCreateFunc",
       "fn": true,
@@ -10565,85 +10895,8 @@
     },
     {
       "ns": "MATRIX",
-      "name": "DETERMINANT",
-      "id": 961,
-      "tokenKind": 895,
-      "kindName": "Determinant",
-      "fn": true,
-      "arityMin": 1,
-      "arityMax": 1,
-      "pure": false
-    },
-    {
-      "ns": "MATRIX",
-      "name": "EIG",
-      "id": 962,
-      "tokenKind": 2042,
-      "kindName": "MatrixEig",
-      "fn": true,
-      "arityMin": 1,
-      "arityMax": 1,
-      "pure": false
-    },
-    {
-      "ns": "MATRIX",
-      "name": "EVD",
-      "id": 963,
-      "tokenKind": 376,
-      "kindName": "LinAlgEvdFunc",
-      "fn": true,
-      "arityMin": 1,
-      "arityMax": 1,
-      "pure": false
-    },
-    {
-      "ns": "MATRIX",
-      "name": "EXPM",
-      "id": 964,
-      "tokenKind": 640,
-      "kindName": "MatrixExp",
-      "fn": true,
-      "arityMin": 1,
-      "arityMax": 1,
-      "pure": false
-    },
-    {
-      "ns": "MATRIX",
-      "name": "FACTOR",
-      "id": 965,
-      "tokenKind": 378,
-      "kindName": "LinAlgDecompGetFactorFunc",
-      "fn": true,
-      "arityMin": 2,
-      "arityMax": 2,
-      "pure": false
-    },
-    {
-      "ns": "MATRIX",
-      "name": "FRACTIONALPOWER",
-      "id": 966,
-      "tokenKind": 2032,
-      "kindName": "MatrixFractionalPower",
-      "fn": true,
-      "arityMin": 2,
-      "arityMax": 2,
-      "pure": false
-    },
-    {
-      "ns": "MATRIX",
-      "name": "FROBENIUSNORM",
-      "id": 967,
-      "tokenKind": 1987,
-      "kindName": "MatrixFrobeniusNorm",
-      "fn": true,
-      "arityMin": 1,
-      "arityMax": 1,
-      "pure": true
-    },
-    {
-      "ns": "MATRIX",
       "name": "GETVALUE",
-      "id": 968,
+      "id": 991,
       "tokenKind": 2027,
       "kindName": "MatrixGetValue",
       "fn": true,
@@ -10654,7 +10907,7 @@
     {
       "ns": "MATRIX",
       "name": "HANKEL",
-      "id": 969,
+      "id": 992,
       "tokenKind": 2039,
       "kindName": "MatrixHankel",
       "fn": true,
@@ -10664,41 +10917,8 @@
     },
     {
       "ns": "MATRIX",
-      "name": "HESSENBERG",
-      "id": 970,
-      "tokenKind": 2025,
-      "kindName": "MatrixHessenberg",
-      "fn": true,
-      "arityMin": 1,
-      "arityMax": 1,
-      "pure": false
-    },
-    {
-      "ns": "MATRIX",
-      "name": "INFINITYNORM",
-      "id": 971,
-      "tokenKind": 1989,
-      "kindName": "MatrixInfinityNorm",
-      "fn": true,
-      "arityMin": 1,
-      "arityMax": 1,
-      "pure": true
-    },
-    {
-      "ns": "MATRIX",
-      "name": "INVERSE",
-      "id": 972,
-      "tokenKind": 371,
-      "kindName": "LinAlgInverseFunc",
-      "fn": true,
-      "arityMin": 1,
-      "arityMax": 1,
-      "pure": false
-    },
-    {
-      "ns": "MATRIX",
       "name": "ISLOWERTRIANGULAR",
-      "id": 973,
+      "id": 993,
       "tokenKind": 1993,
       "kindName": "MatrixIsLowerTriangular",
       "fn": true,
@@ -10709,7 +10929,7 @@
     {
       "ns": "MATRIX",
       "name": "ISORTHOGONAL",
-      "id": 974,
+      "id": 994,
       "tokenKind": 1991,
       "kindName": "MatrixIsOrthogonal",
       "fn": true,
@@ -10720,7 +10940,7 @@
     {
       "ns": "MATRIX",
       "name": "ISSYMMETRIC",
-      "id": 975,
+      "id": 995,
       "tokenKind": 1990,
       "kindName": "MatrixIsSymmetric",
       "fn": true,
@@ -10731,7 +10951,7 @@
     {
       "ns": "MATRIX",
       "name": "ISUPPERTRIANGULAR",
-      "id": 976,
+      "id": 996,
       "tokenKind": 1992,
       "kindName": "MatrixIsUpperTriangular",
       "fn": true,
@@ -10742,7 +10962,7 @@
     {
       "ns": "MATRIX",
       "name": "KRONECKER",
-      "id": 977,
+      "id": 997,
       "tokenKind": 641,
       "kindName": "MatrixKron",
       "fn": true,
@@ -10753,7 +10973,7 @@
     {
       "ns": "MATRIX",
       "name": "LOADCSV",
-      "id": 978,
+      "id": 998,
       "tokenKind": 2013,
       "kindName": "MatrixLoadCsv",
       "fn": true,
@@ -10764,7 +10984,7 @@
     {
       "ns": "MATRIX",
       "name": "LOADJSON",
-      "id": 979,
+      "id": 999,
       "tokenKind": 2014,
       "kindName": "MatrixLoadJson",
       "fn": true,
@@ -10774,30 +10994,8 @@
     },
     {
       "ns": "MATRIX",
-      "name": "LOGM",
-      "id": 980,
-      "tokenKind": 2024,
-      "kindName": "MatrixLogm",
-      "fn": true,
-      "arityMin": 1,
-      "arityMax": 1,
-      "pure": false
-    },
-    {
-      "ns": "MATRIX",
-      "name": "LU",
-      "id": 981,
-      "tokenKind": 373,
-      "kindName": "LinAlgLuFunc",
-      "fn": true,
-      "arityMin": 1,
-      "arityMax": 1,
-      "pure": false
-    },
-    {
-      "ns": "MATRIX",
       "name": "MAXVALUE",
-      "id": 982,
+      "id": 1000,
       "tokenKind": 2002,
       "kindName": "MatrixMaxValue",
       "fn": true,
@@ -10808,7 +11006,7 @@
     {
       "ns": "MATRIX",
       "name": "MINVALUE",
-      "id": 983,
+      "id": 1001,
       "tokenKind": 2003,
       "kindName": "MatrixMinValue",
       "fn": true,
@@ -10819,7 +11017,7 @@
     {
       "ns": "MATRIX",
       "name": "MULTIPLY",
-      "id": 984,
+      "id": 1002,
       "tokenKind": 372,
       "kindName": "LinAlgMultiplyFunc",
       "fn": true,
@@ -10830,7 +11028,7 @@
     {
       "ns": "MATRIX",
       "name": "MULTIPLYLEFTVECTOR",
-      "id": 985,
+      "id": 1003,
       "tokenKind": 2012,
       "kindName": "MatrixMultiplyLeftVector",
       "fn": true,
@@ -10841,7 +11039,7 @@
     {
       "ns": "MATRIX",
       "name": "MULTIPLYVECTOR",
-      "id": 986,
+      "id": 1004,
       "tokenKind": 2011,
       "kindName": "MatrixMultiplyVector",
       "fn": true,
@@ -10851,107 +11049,8 @@
     },
     {
       "ns": "MATRIX",
-      "name": "NORM",
-      "id": 987,
-      "tokenKind": 2022,
-      "kindName": "MatrixNorm",
-      "fn": true,
-      "arityMin": 1,
-      "arityMax": 1,
-      "pure": false
-    },
-    {
-      "ns": "MATRIX",
-      "name": "NUCLEARNORM",
-      "id": 988,
-      "tokenKind": 2037,
-      "kindName": "MatrixNuclearNorm",
-      "fn": true,
-      "arityMin": 1,
-      "arityMax": 1,
-      "pure": false
-    },
-    {
-      "ns": "MATRIX",
-      "name": "NULLSPACE",
-      "id": 989,
-      "tokenKind": 2020,
-      "kindName": "MatrixNullSpace",
-      "fn": true,
-      "arityMin": 1,
-      "arityMax": 1,
-      "pure": false
-    },
-    {
-      "ns": "MATRIX",
-      "name": "ONENORM",
-      "id": 990,
-      "tokenKind": 1988,
-      "kindName": "MatrixOneNorm",
-      "fn": true,
-      "arityMin": 1,
-      "arityMax": 1,
-      "pure": true
-    },
-    {
-      "ns": "MATRIX",
-      "name": "ORTH",
-      "id": 991,
-      "tokenKind": 2033,
-      "kindName": "MatrixOrth",
-      "fn": true,
-      "arityMin": 1,
-      "arityMax": 1,
-      "pure": false
-    },
-    {
-      "ns": "MATRIX",
-      "name": "PINVERSE",
-      "id": 992,
-      "tokenKind": 2015,
-      "kindName": "MatrixPseudoInverse",
-      "fn": true,
-      "arityMin": 1,
-      "arityMax": 1,
-      "pure": false
-    },
-    {
-      "ns": "MATRIX",
-      "name": "POLAR",
-      "id": 993,
-      "tokenKind": 2035,
-      "kindName": "MatrixPolar",
-      "fn": true,
-      "arityMin": 1,
-      "arityMax": 1,
-      "pure": false
-    },
-    {
-      "ns": "MATRIX",
-      "name": "QR",
-      "id": 994,
-      "tokenKind": 374,
-      "kindName": "LinAlgQrFunc",
-      "fn": true,
-      "arityMin": 1,
-      "arityMax": 1,
-      "pure": false
-    },
-    {
-      "ns": "MATRIX",
-      "name": "RANK",
-      "id": 995,
-      "tokenKind": 2016,
-      "kindName": "MatrixRank",
-      "fn": true,
-      "arityMin": 1,
-      "arityMax": 1,
-      "pure": false
-    },
-    {
-      "ns": "MATRIX",
       "name": "RESHAPE",
-      "id": 996,
+      "id": 1005,
       "tokenKind": 1997,
       "kindName": "MatrixReshape",
       "fn": true,
@@ -10962,7 +11061,7 @@
     {
       "ns": "MATRIX",
       "name": "ROWCOUNT",
-      "id": 997,
+      "id": 1006,
       "tokenKind": 2008,
       "kindName": "MatrixRowCount",
       "fn": true,
@@ -10973,7 +11072,7 @@
     {
       "ns": "MATRIX",
       "name": "ROWMEANS",
-      "id": 998,
+      "id": 1007,
       "tokenKind": 1983,
       "kindName": "MatrixRowMeans",
       "fn": true,
@@ -10984,7 +11083,7 @@
     {
       "ns": "MATRIX",
       "name": "ROWSUMS",
-      "id": 999,
+      "id": 1008,
       "tokenKind": 1981,
       "kindName": "MatrixRowSums",
       "fn": true,
@@ -10995,7 +11094,7 @@
     {
       "ns": "MATRIX",
       "name": "ROWVARIANCES",
-      "id": 1000,
+      "id": 1009,
       "tokenKind": 1985,
       "kindName": "MatrixRowVariances",
       "fn": true,
@@ -11005,19 +11104,8 @@
     },
     {
       "ns": "MATRIX",
-      "name": "SCHUR",
-      "id": 1001,
-      "tokenKind": 2043,
-      "kindName": "MatrixSchur",
-      "fn": true,
-      "arityMin": 1,
-      "arityMax": 1,
-      "pure": false
-    },
-    {
-      "ns": "MATRIX",
       "name": "SETVALUE",
-      "id": 1002,
+      "id": 1010,
       "tokenKind": 2026,
       "kindName": "MatrixSetValue",
       "fn": true,
@@ -11027,102 +11115,14 @@
     },
     {
       "ns": "MATRIX",
-      "name": "SIGNM",
-      "id": 1003,
-      "tokenKind": 2031,
-      "kindName": "MatrixSignm",
-      "fn": true,
-      "arityMin": 1,
-      "arityMax": 1,
-      "pure": false
-    },
-    {
-      "ns": "MATRIX",
-      "name": "SINM",
-      "id": 1004,
-      "tokenKind": 2029,
-      "kindName": "MatrixSinm",
-      "fn": true,
-      "arityMin": 1,
-      "arityMax": 1,
-      "pure": false
-    },
-    {
-      "ns": "MATRIX",
       "name": "SLICE",
-      "id": 1005,
+      "id": 1011,
       "tokenKind": 1996,
       "kindName": "MatrixSlice",
       "fn": true,
       "arityMin": 5,
       "arityMax": 5,
       "pure": true
-    },
-    {
-      "ns": "MATRIX",
-      "name": "SOLVE",
-      "id": 1006,
-      "tokenKind": 771,
-      "kindName": "Solve",
-      "fn": true,
-      "arityMin": 2,
-      "arityMax": 2,
-      "pure": false
-    },
-    {
-      "ns": "MATRIX",
-      "name": "SOLVETRIANGULAR",
-      "id": 1007,
-      "tokenKind": 2041,
-      "kindName": "MatrixSolveTriangular",
-      "fn": true,
-      "arityMin": 3,
-      "arityMax": 3,
-      "pure": false
-    },
-    {
-      "ns": "MATRIX",
-      "name": "SQRTM",
-      "id": 1008,
-      "tokenKind": 2023,
-      "kindName": "MatrixSqrt",
-      "fn": true,
-      "arityMin": 1,
-      "arityMax": 1,
-      "pure": false
-    },
-    {
-      "ns": "MATRIX",
-      "name": "SUBSPACEANGLES",
-      "id": 1009,
-      "tokenKind": 2034,
-      "kindName": "MatrixSubspaceAngles",
-      "fn": true,
-      "arityMin": 2,
-      "arityMax": 2,
-      "pure": false
-    },
-    {
-      "ns": "MATRIX",
-      "name": "SVD",
-      "id": 1010,
-      "tokenKind": 375,
-      "kindName": "LinAlgSvdFunc",
-      "fn": true,
-      "arityMin": 1,
-      "arityMax": 1,
-      "pure": false
-    },
-    {
-      "ns": "MATRIX",
-      "name": "TANM",
-      "id": 1011,
-      "tokenKind": 2030,
-      "kindName": "MatrixTanm",
-      "fn": true,
-      "arityMin": 1,
-      "arityMax": 1,
-      "pure": false
     },
     {
       "ns": "MATRIX",

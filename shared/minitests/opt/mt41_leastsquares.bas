@@ -1,7 +1,6 @@
 ' EXPECT: v= 1 , 2
 ' OPTIMIZE.LEASTSQUARES — MiniTest §4.1 (parità 4 backend).
 IMPORT OPTIMIZE
-IMPORT MATH
 
 ' A 3x2 (1,1) (1,2) (1,3); y = 1 + 2x
 

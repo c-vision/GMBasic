@@ -1,7 +1,6 @@
 ' EXPECT: v= 2 , 2
 ' OPTIMIZE.LINPROG — MiniTest §4.1 (parità 4 backend).
 IMPORT OPTIMIZE
-IMPORT MATH
 
 ' min -x-y s.t. x+y<=4, x<=2  -> (2,2)
 

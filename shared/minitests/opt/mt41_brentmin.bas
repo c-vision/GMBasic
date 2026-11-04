@@ -1,7 +1,6 @@
 ' EXPECT: v= 1
 ' OPTIMIZE.BRENTMIN — MiniTest §4.1 (parità 4 backend).
 IMPORT OPTIMIZE
-IMPORT MATH
 
 FUNCTION P(x AS DOUBLE) AS DOUBLE
     RETURN (x - 1.0) * (x - 1.0)

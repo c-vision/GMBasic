@@ -1,7 +1,6 @@
 ' EXPECT: v= 1.414214
 ' OPTIMIZE.BRENT — MiniTest §4.1 (parità 4 backend).
 IMPORT OPTIMIZE
-IMPORT MATH
 
 FUNCTION F(x AS DOUBLE) AS DOUBLE
     RETURN x * x - 2.0

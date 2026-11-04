@@ -6,7 +6,6 @@
 ' e confronto con un obiettivo. Mostra anche come si combinano MATH e FINANCE.
 '
 ' Domini: MATH + FINANCE + base. Output deterministico, nessun I/O.
-IMPORT MATH
 IMPORT FINANCE
 
 SUB Main()

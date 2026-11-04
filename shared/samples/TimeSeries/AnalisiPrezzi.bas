@@ -7,7 +7,6 @@
 '
 ' Domini: TIMESERIES + MATH + base.
 IMPORT TIMESERIES
-IMPORT MATH
 
 SUB Main()
     ' 24 prezzi giornalieri: trend crescente con oscillazione regolare.

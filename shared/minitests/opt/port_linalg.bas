@@ -1,7 +1,6 @@
 ' EXPECT: lstsq= 1.5   0.3333|chol= 1.75   1.5|linprog= 1   1.5|simplex= 0   0|lsfit= 1.5   0.3333
 ' Port FFI di optimize/linalg.bas.
 IMPORT OPTIMIZE
-IMPORT MATH
 SUB Main()
   ' stessa matrice del sample: A righe (1,1) (2,1) (3,1) e b = (2,3,5)
   DIM Aj(2) AS ARRAY OF DOUBLE

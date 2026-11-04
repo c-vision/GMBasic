@@ -2,7 +2,6 @@
 ' MULTIPLYVECTOR/MULTIPLYLEFTVECTOR/ASJSON con matrici VERE.
 ' A = [[1,2],[0,3]]; v = [10,20].
 ' EXPECT: abovemask:  0 ,-1 , 0 ,-1|abovematrix:  0 ,-1 , 0 ,-1|argmin:  1 , 0|addcol:  11|addrow:  11|mulvec:  50 , 60|mulleft:  10 , 80|asjson: [[1,2],[0,3]]
-IMPORT MATRIX
 
 SUB Main()
     a = MATRIX.CREATE(2, 2)

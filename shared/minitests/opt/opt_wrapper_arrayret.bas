@@ -4,7 +4,6 @@
 ' thread-local), l'inoltro di una callback con parametri array e l'assegnazione
 ' a un array esistente.
 IMPORT OPTIMIZE
-IMPORT MATH
 FUNCTION Ros(p() AS DOUBLE) AS DOUBLE
     RETURN (1 - p(0)) ^ 2 + 100 * (p(1) - p(0) * p(0)) ^ 2
 END FUNCTION

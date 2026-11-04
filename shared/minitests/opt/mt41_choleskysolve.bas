@@ -1,7 +1,6 @@
 ' EXPECT: v= 1.75 , 1.5
 ' OPTIMIZE.CHOLESOLVVE — MiniTest §4.1 (parità 4 backend).
 IMPORT OPTIMIZE
-IMPORT MATH
 
 ' matrice SPD 2x2
 

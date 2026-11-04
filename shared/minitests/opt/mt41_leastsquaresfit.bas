@@ -1,7 +1,6 @@
 ' EXPECT: v= 1 , 2
 ' OPTIMIZE.LEASTSQUARESFIT — MiniTest §4.1 (parità 4 backend).
 IMPORT OPTIMIZE
-IMPORT MATH
 
 FUNCTION Res(v() AS DOUBLE) AS ARRAY OF DOUBLE
     RETURN {v(0) - 1.0, v(0) + v(1) - 3.0, v(0) + 2.0 * v(1) - 5.0, v(0) + 3.0 * v(1) - 7.0, v(0) + 4.0 * v(1) - 9.0}

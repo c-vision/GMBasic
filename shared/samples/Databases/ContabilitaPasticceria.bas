@@ -16,7 +16,6 @@
 ' Domini: LEDGER + IO + MATH. File di lavoro in work/ (cancellati a fine scenario).
 IMPORT LEDGER
 IMPORT IO
-IMPORT MATH
 
 SUB Main()
     MKDIR "work"

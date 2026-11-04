@@ -1,7 +1,6 @@
 ' EXPECT: v= 2
 ' OPTIMIZE.RIDDER — MiniTest §4.1 (parità 4 backend).
 IMPORT OPTIMIZE
-IMPORT MATH
 
 FUNCTION C(x AS DOUBLE) AS DOUBLE
     RETURN x * x * x - 8.0

@@ -38,7 +38,6 @@
 
 ' Importa i namespace necessari per CINT e TRUNC
 IMPORT CONVERSIONS
-IMPORT MATH
 
 1 CLS
 2 PRINT "╔═════════════════════════════════════════════════════════════════════════╗"

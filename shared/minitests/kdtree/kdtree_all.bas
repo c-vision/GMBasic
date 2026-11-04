@@ -2,7 +2,6 @@
 ' Derivato dai MiniTest per-funzione (stessi input e oracoli).
 ' EXPECT: q= 1 , 0|d= 1 , 2.2361|b= 1
 IMPORT KDTREE
-IMPORT MATH
 
 SUB T_kd()
   DIM flat(9) AS DOUBLE = {2,3, 5,4, 9,6, 4,7, 8,1}

@@ -42,7 +42,6 @@
 '
 ' =================================================================================================
 
-IMPORT MATH
 
 ' Definizione di un Tipo Definito dall'Utente (UDT) avanzato.
 ' Un UDT in GM-BASIC si comporta come uno 'struct' in C#, incapsulando dati e logica.

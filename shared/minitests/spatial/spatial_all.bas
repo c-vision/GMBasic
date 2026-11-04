@@ -2,7 +2,6 @@
 ' Derivato dai MiniTest per-funzione (stessi input e oracoli).
 ' EXPECT: 1  1|4.472136  4.242641|0  1  2  3|1  4.242641|5  10  5
 IMPORT SPATIAL
-IMPORT MATRIX
 
 SUB T_cd()
   DIM X(1) AS ARRAY OF DOUBLE

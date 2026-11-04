@@ -1,7 +1,6 @@
 ' EXPECT: LM= 1.0016 , 0.9996|CF= 1.0016 , 0.9996
 ' Port FFI di optimize/curvefit.bas.
 IMPORT OPTIMIZE
-IMPORT MATH
 SUB Main()
   DIM DataX(4) AS DOUBLE = {0, 1, 2, 3, 4}
   DIM DataY(4) AS DOUBLE = {1.0, 2.7, 7.4, 20.1, 54.6}

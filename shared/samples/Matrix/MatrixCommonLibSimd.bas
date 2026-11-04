@@ -1,12 +1,11 @@
 REM FILE: MatrixCommonLibSimd.bas
 REM Copertura delle riduzioni e proprieta CommonLib.Numerics.SimdMatrix.
 
-IMPORT MATRIX
 
 SUB Main()
     DIM m = MATRIX.CREATE(3, 3)
     PRINT "HANDLE="; m
-    PRINT "DET="; MATRIX.DETERMINANT(m)
+    PRINT "DET="; LINALG.DETERMINANT(m)
 
     DIM sumsByRow() = MATRIX.ROWSUMS(m)
     DIM sumsByColumn() = MATRIX.COLSUMS(m)
@@ -23,9 +22,9 @@ SUB Main()
     PRINT "COLMEANS="; meansByColumn(0); ","; meansByColumn(1); ","; meansByColumn(2)
     PRINT "ROWVARIANCES="; variancesByRow(0); ","; variancesByRow(1); ","; variancesByRow(2)
     PRINT "COLVARIANCES="; variancesByColumn(0); ","; variancesByColumn(1); ","; variancesByColumn(2)
-    PRINT "FROBENIUS="; MATRIX.FROBENIUSNORM(m)
-    PRINT "ONENORM="; MATRIX.ONENORM(m)
-    PRINT "INFINITYNORM="; MATRIX.INFINITYNORM(m)
+    PRINT "FROBENIUS="; LINALG.FROBENIUSNORM(m)
+    PRINT "ONENORM="; LINALG.ONENORM(m)
+    PRINT "INFINITYNORM="; LINALG.INFINITYNORM(m)
     PRINT "SYMMETRIC="; MATRIX.ISSYMMETRIC(m)
     PRINT "ORTHOGONAL="; MATRIX.ISORTHOGONAL(m)
     PRINT "UPPER="; MATRIX.ISUPPERTRIANGULAR(m)
@@ -42,12 +41,12 @@ SUB Main()
     DIM rowsBroadcast = MATRIX.ADDROWVECTOR(m, rowVector)
     DIM columnsBroadcast = MATRIX.ADDCOLVECTOR(m, columnVector)
 
-    PRINT "SLICE_NORM="; MATRIX.FROBENIUSNORM(sliced)
-    PRINT "RESHAPE_NORM="; MATRIX.FROBENIUSNORM(reshaped)
-    PRINT "CONCATROWS_NORM="; MATRIX.FROBENIUSNORM(rowsJoined)
-    PRINT "CONCATCOLS_NORM="; MATRIX.FROBENIUSNORM(columnsJoined)
-    PRINT "ADDROWVECTOR_NORM="; MATRIX.FROBENIUSNORM(rowsBroadcast)
-    PRINT "ADDCOLVECTOR_NORM="; MATRIX.FROBENIUSNORM(columnsBroadcast)
+    PRINT "SLICE_NORM="; LINALG.FROBENIUSNORM(sliced)
+    PRINT "RESHAPE_NORM="; LINALG.FROBENIUSNORM(reshaped)
+    PRINT "CONCATROWS_NORM="; LINALG.FROBENIUSNORM(rowsJoined)
+    PRINT "CONCATCOLS_NORM="; LINALG.FROBENIUSNORM(columnsJoined)
+    PRINT "ADDROWVECTOR_NORM="; LINALG.FROBENIUSNORM(rowsBroadcast)
+    PRINT "ADDCOLVECTOR_NORM="; LINALG.FROBENIUSNORM(columnsBroadcast)
 
     DIM flatMask() = MATRIX.ABOVEMASK(rowsBroadcast, 15.0)
     DIM matrixMask() = MATRIX.ABOVEMATRIX(rowsBroadcast, 15.0)
@@ -63,12 +62,12 @@ SUB Main()
     DIM leftProduct() = MATRIX.MULTIPLYLEFTVECTOR(m, columnVector)
     PRINT "ROWCOUNT="; MATRIX.ROWCOUNT(m)
     PRINT "COLUMNCOUNT="; MATRIX.COLUMNCOUNT(m)
-    PRINT "CLONE_NORM="; MATRIX.FROBENIUSNORM(cloned)
+    PRINT "CLONE_NORM="; LINALG.FROBENIUSNORM(cloned)
     PRINT "MULTIPLYVECTOR="; rightProduct(0); ","; rightProduct(1); ","; rightProduct(2)
     PRINT "MULTIPLYLEFTVECTOR="; leftProduct(0); ","; leftProduct(1); ","; leftProduct(2)
 
     DIM csvMatrix = MATRIX.LOADCSV("samples/Fixtures/MatrixIdentity.csv")
     DIM jsonMatrix = MATRIX.LOADJSON("samples/Fixtures/MatrixIdentity.json")
-    PRINT "LOADCSV_NORM="; MATRIX.FROBENIUSNORM(csvMatrix)
-    PRINT "LOADJSON_NORM="; MATRIX.FROBENIUSNORM(jsonMatrix)
+    PRINT "LOADCSV_NORM="; LINALG.FROBENIUSNORM(csvMatrix)
+    PRINT "LOADJSON_NORM="; LINALG.FROBENIUSNORM(jsonMatrix)
 END SUB

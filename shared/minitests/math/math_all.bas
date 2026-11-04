@@ -8,7 +8,6 @@
 ' Scopo: verificare che i 4 backend supportino la STESSA versione del namespace,
 ' non un'applicazione. I valori trascendenti sono arrotondati con ROUND.
 ' EXPECT: abs= 5 |sgn=-1 , 0 , 1|fact= 120 |comb= 10 |perm= 20|ceil= 3 |floor= 2 |fix=-2|int=-3 |trunc=-2 |round= 3|clamp= 3 |max= 7 |min= 3|sum= 6 |avg= 3|sumArr= 10 |avgArr= 2.5 |maxArr= 4 |minArr= 1|pi=-1|rangeN= 5 |r0= 1 |r4= 5|rnd=-1|sin= 0 |cos= 1 |tan= 0|asin= 1.570796 |acos= 0 |atn= 0.785398|sinh= 0 |cosh= 1 |tanh= 0|exp= 1 |log= 0 |log10= 2|sqr= 3 |hypot= 5 |pyth= 5|deg2rad= 3.1415926536 |rad2deg= 180|dist2d= 5 |dist3d= 5|angle2d= 0 |polarx= 2 |polary= 0 |angle90= 90|isnum=-1 | 0
-IMPORT MATH
 
 SUB Main()
   ' ── aritmetica e combinatoria ────────────────────────────────────────────

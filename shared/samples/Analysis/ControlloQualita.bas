@@ -10,7 +10,6 @@
 '
 ' Domini: ANALYSIS + MATH. Input fissi: l'output è riproducibile.
 IMPORT ANALYSIS
-IMPORT MATH
 
 SUB Main()
     ' ── 1. ANOVA: tre linee, quattro pezzi ciascuna ──────────────────────────

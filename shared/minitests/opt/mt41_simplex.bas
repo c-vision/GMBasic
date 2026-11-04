@@ -1,7 +1,6 @@
 ' EXPECT: v= 0 , 4 , 12
 ' OPTIMIZE.SIMPLEX — MiniTest §4.1 (parità 4 backend).
 IMPORT OPTIMIZE
-IMPORT MATH
 
 ' max 2x+3y s.t. x+y<=4, x<=2 -> (0,4) obj 12
 

@@ -41,7 +41,6 @@
 
 ' Importa esplicitamente i namespace, anche se MATH è di default.
 IMPORT CONVERSIONS
-IMPORT MATH
 
 1 CLS
 2 PRINT "╔═════════════════════════════════════════════════════════════════════════╗"

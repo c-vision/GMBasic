@@ -1,7 +1,6 @@
 ' EXPECT: tnc= 1   1|cobyla=-0.958   0.926|slsqp= 1   1|minimize= 1   1|brute= 1.05  -1.95|de= 1  -2|dual= 1  -2
 ' Port FFI di optimize/bounded.bas (stesso EXPECT del builtin).
 IMPORT OPTIMIZE
-IMPORT MATH
 SUB Main()
   DIM x0(1) AS DOUBLE = {-1.2, 1.0}
   DIM bd(3) AS DOUBLE

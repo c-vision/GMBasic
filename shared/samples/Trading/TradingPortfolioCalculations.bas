@@ -16,7 +16,6 @@ REM FILE: TradingPortfolioCalculations.bas
 ' CORREZIONE: Modificato l'import per usare un alias breve e non ambiguo 'TP'.
 IMPORT TRADING.PORTFOLIO AS TP
 IMPORT TRADING
-IMPORT MATH
 
 SUB Main()
     CLS

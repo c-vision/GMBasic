@@ -8412,6 +8412,336 @@
     },
     {
       "id": 837,
+      "ns": "LINALG",
+      "name": "CHOLESKY",
+      "kind": "LinAlgCholeskyFunc",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 838,
+      "ns": "LINALG",
+      "name": "COND",
+      "kind": "MatrixCond",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 839,
+      "ns": "LINALG",
+      "name": "COSM",
+      "kind": "MatrixCosm",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 840,
+      "ns": "LINALG",
+      "name": "DETERMINANT",
+      "kind": "Determinant",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 841,
+      "ns": "LINALG",
+      "name": "EIG",
+      "kind": "MatrixEig",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 842,
+      "ns": "LINALG",
+      "name": "EVD",
+      "kind": "LinAlgEvdFunc",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 843,
+      "ns": "LINALG",
+      "name": "EXPM",
+      "kind": "MatrixExp",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 844,
+      "ns": "LINALG",
+      "name": "FACTOR",
+      "kind": "LinAlgDecompGetFactorFunc",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 845,
+      "ns": "LINALG",
+      "name": "FRACTIONALPOWER",
+      "kind": "MatrixFractionalPower",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 846,
+      "ns": "LINALG",
+      "name": "FROBENIUSNORM",
+      "kind": "MatrixFrobeniusNorm",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 847,
+      "ns": "LINALG",
+      "name": "HESSENBERG",
+      "kind": "MatrixHessenberg",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 848,
+      "ns": "LINALG",
+      "name": "INFINITYNORM",
+      "kind": "MatrixInfinityNorm",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 849,
+      "ns": "LINALG",
+      "name": "INVERSE",
+      "kind": "LinAlgInverseFunc",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 850,
+      "ns": "LINALG",
+      "name": "LOGM",
+      "kind": "MatrixLogm",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 851,
+      "ns": "LINALG",
+      "name": "LU",
+      "kind": "LinAlgLuFunc",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 852,
+      "ns": "LINALG",
+      "name": "NORM",
+      "kind": "MatrixNorm",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 853,
+      "ns": "LINALG",
+      "name": "NUCLEARNORM",
+      "kind": "MatrixNuclearNorm",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 854,
+      "ns": "LINALG",
+      "name": "NULLSPACE",
+      "kind": "MatrixNullSpace",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 855,
+      "ns": "LINALG",
+      "name": "ONENORM",
+      "kind": "MatrixOneNorm",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 856,
+      "ns": "LINALG",
+      "name": "ORTH",
+      "kind": "MatrixOrth",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 857,
+      "ns": "LINALG",
+      "name": "PINVERSE",
+      "kind": "MatrixPseudoInverse",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 858,
+      "ns": "LINALG",
+      "name": "POLAR",
+      "kind": "MatrixPolar",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 859,
+      "ns": "LINALG",
+      "name": "QR",
+      "kind": "LinAlgQrFunc",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 860,
+      "ns": "LINALG",
+      "name": "RANK",
+      "kind": "MatrixRank",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 861,
+      "ns": "LINALG",
+      "name": "SCHUR",
+      "kind": "MatrixSchur",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 862,
+      "ns": "LINALG",
+      "name": "SIGNM",
+      "kind": "MatrixSignm",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 863,
+      "ns": "LINALG",
+      "name": "SINM",
+      "kind": "MatrixSinm",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 864,
+      "ns": "LINALG",
+      "name": "SOLVE",
+      "kind": "Solve",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 865,
+      "ns": "LINALG",
+      "name": "SOLVETRIANGULAR",
+      "kind": "MatrixSolveTriangular",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 866,
+      "ns": "LINALG",
+      "name": "SQRTM",
+      "kind": "MatrixSqrt",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 867,
+      "ns": "LINALG",
+      "name": "SUBSPACEANGLES",
+      "kind": "MatrixSubspaceAngles",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 868,
+      "ns": "LINALG",
+      "name": "SVD",
+      "kind": "LinAlgSvdFunc",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 869,
+      "ns": "LINALG",
+      "name": "TANM",
+      "kind": "MatrixTanm",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 870,
       "ns": "LLM",
       "name": "Arch",
       "kind": "LlmArchOut",
@@ -8421,7 +8751,7 @@
       "C99Native": false
     },
     {
-      "id": 838,
+      "id": 871,
       "ns": "LLM",
       "name": "BenchResult",
       "kind": "AiBenchResult",
@@ -8431,7 +8761,7 @@
       "C99Native": false
     },
     {
-      "id": 839,
+      "id": 872,
       "ns": "LLM",
       "name": "CacheStats",
       "kind": "AiCacheStats",
@@ -8441,7 +8771,7 @@
       "C99Native": false
     },
     {
-      "id": 840,
+      "id": 873,
       "ns": "LLM",
       "name": "Callmap",
       "kind": "AiCallmap",
@@ -8451,7 +8781,7 @@
       "C99Native": false
     },
     {
-      "id": 841,
+      "id": 874,
       "ns": "LLM",
       "name": "CheckRev",
       "kind": "AiCheckrev",
@@ -8461,7 +8791,7 @@
       "C99Native": false
     },
     {
-      "id": 842,
+      "id": 875,
       "ns": "LLM",
       "name": "Commit",
       "kind": "LlmCommit",
@@ -8471,7 +8801,7 @@
       "C99Native": false
     },
     {
-      "id": 843,
+      "id": 876,
       "ns": "LLM",
       "name": "Context",
       "kind": "AiContext",
@@ -8481,7 +8811,7 @@
       "C99Native": false
     },
     {
-      "id": 844,
+      "id": 877,
       "ns": "LLM",
       "name": "DatasetStats",
       "kind": "LlmDatasetStats",
@@ -8491,7 +8821,7 @@
       "C99Native": false
     },
     {
-      "id": 845,
+      "id": 878,
       "ns": "LLM",
       "name": "DecodeStats",
       "kind": "AiDecodeStats",
@@ -8501,7 +8831,7 @@
       "C99Native": false
     },
     {
-      "id": 846,
+      "id": 879,
       "ns": "LLM",
       "name": "Detokenize",
       "kind": "LlmDetokenize",
@@ -8511,7 +8841,7 @@
       "C99Native": false
     },
     {
-      "id": 847,
+      "id": 880,
       "ns": "LLM",
       "name": "DistillCkpt",
       "kind": "AiDistillCkpt",
@@ -8521,7 +8851,7 @@
       "C99Native": false
     },
     {
-      "id": 848,
+      "id": 881,
       "ns": "LLM",
       "name": "DistillDone",
       "kind": "AiDistillDone",
@@ -8531,7 +8861,7 @@
       "C99Native": false
     },
     {
-      "id": 849,
+      "id": 882,
       "ns": "LLM",
       "name": "DistillEvalAccept",
       "kind": "AiDistillEvalAcc",
@@ -8541,7 +8871,7 @@
       "C99Native": false
     },
     {
-      "id": 850,
+      "id": 883,
       "ns": "LLM",
       "name": "DistillEvalPass",
       "kind": "AiDistillEvalPass",
@@ -8551,7 +8881,7 @@
       "C99Native": false
     },
     {
-      "id": 851,
+      "id": 884,
       "ns": "LLM",
       "name": "DistillEvalTok",
       "kind": "AiDistillEvalTok",
@@ -8561,7 +8891,7 @@
       "C99Native": false
     },
     {
-      "id": 852,
+      "id": 885,
       "ns": "LLM",
       "name": "DistillHold",
       "kind": "AiDistillHold",
@@ -8571,7 +8901,7 @@
       "C99Native": false
     },
     {
-      "id": 853,
+      "id": 886,
       "ns": "LLM",
       "name": "DistillLoss",
       "kind": "AiDistillLoss",
@@ -8581,7 +8911,7 @@
       "C99Native": false
     },
     {
-      "id": 854,
+      "id": 887,
       "ns": "LLM",
       "name": "DistillSampleDone",
       "kind": "AiDistillSampleDone",
@@ -8591,7 +8921,7 @@
       "C99Native": false
     },
     {
-      "id": 855,
+      "id": 888,
       "ns": "LLM",
       "name": "DistillSampleFail",
       "kind": "AiDistillSampleFail",
@@ -8601,7 +8931,7 @@
       "C99Native": false
     },
     {
-      "id": 856,
+      "id": 889,
       "ns": "LLM",
       "name": "DistillSampleN",
       "kind": "AiDistillSampleN",
@@ -8611,7 +8941,7 @@
       "C99Native": false
     },
     {
-      "id": 857,
+      "id": 890,
       "ns": "LLM",
       "name": "DistillStatus",
       "kind": "AiDistillStatus",
@@ -8621,7 +8951,7 @@
       "C99Native": false
     },
     {
-      "id": 858,
+      "id": 891,
       "ns": "LLM",
       "name": "EvalGate",
       "kind": "LlmEvalGate",
@@ -8631,7 +8961,7 @@
       "C99Native": false
     },
     {
-      "id": 859,
+      "id": 892,
       "ns": "LLM",
       "name": "FileOutline",
       "kind": "AiFileoutline",
@@ -8641,7 +8971,7 @@
       "C99Native": false
     },
     {
-      "id": 860,
+      "id": 893,
       "ns": "LLM",
       "name": "FindSymbol",
       "kind": "AiFindsymbol",
@@ -8651,7 +8981,7 @@
       "C99Native": false
     },
     {
-      "id": 861,
+      "id": 894,
       "ns": "LLM",
       "name": "FinetuneBaseHold",
       "kind": "AiFinetuneBaseHold",
@@ -8661,7 +8991,7 @@
       "C99Native": false
     },
     {
-      "id": 862,
+      "id": 895,
       "ns": "LLM",
       "name": "FinetuneBaseTrain",
       "kind": "AiFinetuneBaseTrain",
@@ -8671,7 +9001,7 @@
       "C99Native": false
     },
     {
-      "id": 863,
+      "id": 896,
       "ns": "LLM",
       "name": "FinetuneCkpt",
       "kind": "AiFinetuneCkpt",
@@ -8681,7 +9011,7 @@
       "C99Native": false
     },
     {
-      "id": 864,
+      "id": 897,
       "ns": "LLM",
       "name": "FinetuneDemoChanged",
       "kind": "AiFinetuneDemoChanged",
@@ -8691,7 +9021,7 @@
       "C99Native": false
     },
     {
-      "id": 865,
+      "id": 898,
       "ns": "LLM",
       "name": "FinetuneDone",
       "kind": "AiFinetuneDone",
@@ -8701,7 +9031,7 @@
       "C99Native": false
     },
     {
-      "id": 866,
+      "id": 899,
       "ns": "LLM",
       "name": "FinetuneGreedy",
       "kind": "AiFinetuneGreedy",
@@ -8711,7 +9041,7 @@
       "C99Native": false
     },
     {
-      "id": 867,
+      "id": 900,
       "ns": "LLM",
       "name": "FinetuneGreedyAfter",
       "kind": "AiFinetuneGreedyAfter",
@@ -8721,7 +9051,7 @@
       "C99Native": false
     },
     {
-      "id": 868,
+      "id": 901,
       "ns": "LLM",
       "name": "FinetuneHold",
       "kind": "AiFinetuneHold",
@@ -8731,7 +9061,7 @@
       "C99Native": false
     },
     {
-      "id": 869,
+      "id": 902,
       "ns": "LLM",
       "name": "FinetuneLoss",
       "kind": "AiFinetuneLoss",
@@ -8741,7 +9071,7 @@
       "C99Native": false
     },
     {
-      "id": 870,
+      "id": 903,
       "ns": "LLM",
       "name": "FinetuneStatus",
       "kind": "AiFinetuneStatus",
@@ -8751,7 +9081,7 @@
       "C99Native": false
     },
     {
-      "id": 871,
+      "id": 904,
       "ns": "LLM",
       "name": "Impact",
       "kind": "AiImpact",
@@ -8761,7 +9091,7 @@
       "C99Native": false
     },
     {
-      "id": 872,
+      "id": 905,
       "ns": "LLM",
       "name": "Inspect",
       "kind": "LlmInspect",
@@ -8771,7 +9101,7 @@
       "C99Native": false
     },
     {
-      "id": 873,
+      "id": 906,
       "ns": "LLM",
       "name": "Kernel",
       "kind": "LlmKernelOut",
@@ -8781,7 +9111,7 @@
       "C99Native": false
     },
     {
-      "id": 874,
+      "id": 907,
       "ns": "LLM",
       "name": "Kv",
       "kind": "LlmKvOut",
@@ -8791,7 +9121,7 @@
       "C99Native": false
     },
     {
-      "id": 875,
+      "id": 908,
       "ns": "LLM",
       "name": "LoraList",
       "kind": "LlmLoraList",
@@ -8801,7 +9131,7 @@
       "C99Native": false
     },
     {
-      "id": 876,
+      "id": 909,
       "ns": "LLM",
       "name": "LoraLoad",
       "kind": "LlmLoraLoad",
@@ -8811,7 +9141,7 @@
       "C99Native": false
     },
     {
-      "id": 877,
+      "id": 910,
       "ns": "LLM",
       "name": "LoraSave",
       "kind": "LlmLoraSave",
@@ -8821,7 +9151,7 @@
       "C99Native": false
     },
     {
-      "id": 878,
+      "id": 911,
       "ns": "LLM",
       "name": "Module",
       "kind": "LlmModuleOut",
@@ -8831,7 +9161,7 @@
       "C99Native": false
     },
     {
-      "id": 879,
+      "id": 912,
       "ns": "LLM",
       "name": "Patch",
       "kind": "AiPatch",
@@ -8841,7 +9171,7 @@
       "C99Native": false
     },
     {
-      "id": 880,
+      "id": 913,
       "ns": "LLM",
       "name": "Policy",
       "kind": "LlmPolicyOut",
@@ -8851,7 +9181,7 @@
       "C99Native": false
     },
     {
-      "id": 881,
+      "id": 914,
       "ns": "LLM",
       "name": "PrefillStats",
       "kind": "AiPrefillStats",
@@ -8861,7 +9191,7 @@
       "C99Native": false
     },
     {
-      "id": 882,
+      "id": 915,
       "ns": "LLM",
       "name": "RepoMap",
       "kind": "AiRepomap",
@@ -8871,7 +9201,7 @@
       "C99Native": false
     },
     {
-      "id": 883,
+      "id": 916,
       "ns": "LLM",
       "name": "Revision",
       "kind": "AiRevision",
@@ -8881,7 +9211,7 @@
       "C99Native": false
     },
     {
-      "id": 884,
+      "id": 917,
       "ns": "LLM",
       "name": "RunStop",
       "kind": "LlmRunStop",
@@ -8891,7 +9221,7 @@
       "C99Native": false
     },
     {
-      "id": 885,
+      "id": 918,
       "ns": "LLM",
       "name": "RunsClear",
       "kind": "LlmRunsClear",
@@ -8901,7 +9231,7 @@
       "C99Native": false
     },
     {
-      "id": 886,
+      "id": 919,
       "ns": "LLM",
       "name": "RunsCount",
       "kind": "LlmRunsCount",
@@ -8911,7 +9241,7 @@
       "C99Native": false
     },
     {
-      "id": 887,
+      "id": 920,
       "ns": "LLM",
       "name": "RunsItem",
       "kind": "LlmRunsItem",
@@ -8921,7 +9251,7 @@
       "C99Native": false
     },
     {
-      "id": 888,
+      "id": 921,
       "ns": "LLM",
       "name": "RunsJson",
       "kind": "LlmRunsJson",
@@ -8931,7 +9261,7 @@
       "C99Native": false
     },
     {
-      "id": 889,
+      "id": 922,
       "ns": "LLM",
       "name": "StreamStats",
       "kind": "AiStreamStats",
@@ -8941,7 +9271,7 @@
       "C99Native": false
     },
     {
-      "id": 890,
+      "id": 923,
       "ns": "LLM",
       "name": "Symbol",
       "kind": "AiSymbol",
@@ -8951,7 +9281,7 @@
       "C99Native": false
     },
     {
-      "id": 891,
+      "id": 924,
       "ns": "LLM",
       "name": "Tensor",
       "kind": "LlmTensorValue",
@@ -8961,7 +9291,7 @@
       "C99Native": false
     },
     {
-      "id": 892,
+      "id": 925,
       "ns": "LLM",
       "name": "TokenCount",
       "kind": "LlmTokenCount",
@@ -8971,7 +9301,7 @@
       "C99Native": false
     },
     {
-      "id": 893,
+      "id": 926,
       "ns": "LLM",
       "name": "Tokens",
       "kind": "LlmTokens",
@@ -8981,7 +9311,7 @@
       "C99Native": false
     },
     {
-      "id": 894,
+      "id": 927,
       "ns": "LLM",
       "name": "TrainConfig",
       "kind": "LlmTrainConfig",
@@ -8991,7 +9321,7 @@
       "C99Native": false
     },
     {
-      "id": 895,
+      "id": 928,
       "ns": "LLM",
       "name": "TrainConfigSet",
       "kind": "LlmTrainConfigSet",
@@ -9001,7 +9331,7 @@
       "C99Native": false
     },
     {
-      "id": 896,
+      "id": 929,
       "ns": "LLM",
       "name": "TrainExport",
       "kind": "LlmTrainExport",
@@ -9011,7 +9341,7 @@
       "C99Native": false
     },
     {
-      "id": 897,
+      "id": 930,
       "ns": "LLM",
       "name": "Verify",
       "kind": "LlmVerify",
@@ -9021,7 +9351,7 @@
       "C99Native": false
     },
     {
-      "id": 898,
+      "id": 931,
       "ns": "MATH",
       "name": "Abs",
       "kind": "Abs",
@@ -9031,7 +9361,7 @@
       "C99Native": false
     },
     {
-      "id": 899,
+      "id": 932,
       "ns": "MATH",
       "name": "Acos",
       "kind": "Acos",
@@ -9041,7 +9371,7 @@
       "C99Native": false
     },
     {
-      "id": 900,
+      "id": 933,
       "ns": "MATH",
       "name": "Angle2d",
       "kind": "Angle2d",
@@ -9051,7 +9381,7 @@
       "C99Native": false
     },
     {
-      "id": 901,
+      "id": 934,
       "ns": "MATH",
       "name": "Asin",
       "kind": "Asin",
@@ -9061,7 +9391,7 @@
       "C99Native": false
     },
     {
-      "id": 902,
+      "id": 935,
       "ns": "MATH",
       "name": "Atn",
       "kind": "Atn",
@@ -9071,7 +9401,7 @@
       "C99Native": false
     },
     {
-      "id": 903,
+      "id": 936,
       "ns": "MATH",
       "name": "Avg",
       "kind": "Avg",
@@ -9081,7 +9411,7 @@
       "C99Native": false
     },
     {
-      "id": 904,
+      "id": 937,
       "ns": "MATH",
       "name": "COSH",
       "kind": "Cosh",
@@ -9091,7 +9421,7 @@
       "C99Native": false
     },
     {
-      "id": 905,
+      "id": 938,
       "ns": "MATH",
       "name": "Ceiling",
       "kind": "Ceiling",
@@ -9101,7 +9431,7 @@
       "C99Native": false
     },
     {
-      "id": 906,
+      "id": 939,
       "ns": "MATH",
       "name": "Clamp",
       "kind": "Clamp",
@@ -9111,7 +9441,7 @@
       "C99Native": false
     },
     {
-      "id": 907,
+      "id": 940,
       "ns": "MATH",
       "name": "Comb",
       "kind": "Comb",
@@ -9121,7 +9451,7 @@
       "C99Native": false
     },
     {
-      "id": 908,
+      "id": 941,
       "ns": "MATH",
       "name": "Cos",
       "kind": "Cos",
@@ -9131,7 +9461,7 @@
       "C99Native": false
     },
     {
-      "id": 909,
+      "id": 942,
       "ns": "MATH",
       "name": "Deg2Rad",
       "kind": "Deg2Rad",
@@ -9141,7 +9471,7 @@
       "C99Native": false
     },
     {
-      "id": 910,
+      "id": 943,
       "ns": "MATH",
       "name": "Dist2d",
       "kind": "Dist2d",
@@ -9151,7 +9481,7 @@
       "C99Native": false
     },
     {
-      "id": 911,
+      "id": 944,
       "ns": "MATH",
       "name": "Dist3d",
       "kind": "Dist3d",
@@ -9161,7 +9491,7 @@
       "C99Native": false
     },
     {
-      "id": 912,
+      "id": 945,
       "ns": "MATH",
       "name": "Exp",
       "kind": "Exp",
@@ -9171,7 +9501,7 @@
       "C99Native": false
     },
     {
-      "id": 913,
+      "id": 946,
       "ns": "MATH",
       "name": "Fact",
       "kind": "Fact",
@@ -9181,7 +9511,7 @@
       "C99Native": false
     },
     {
-      "id": 914,
+      "id": 947,
       "ns": "MATH",
       "name": "Fix",
       "kind": "Fix",
@@ -9191,7 +9521,7 @@
       "C99Native": false
     },
     {
-      "id": 915,
+      "id": 948,
       "ns": "MATH",
       "name": "Floor",
       "kind": "Floor",
@@ -9201,7 +9531,7 @@
       "C99Native": false
     },
     {
-      "id": 916,
+      "id": 949,
       "ns": "MATH",
       "name": "Hypot",
       "kind": "Hypot",
@@ -9211,7 +9541,7 @@
       "C99Native": false
     },
     {
-      "id": 917,
+      "id": 950,
       "ns": "MATH",
       "name": "Int",
       "kind": "Int",
@@ -9221,7 +9551,7 @@
       "C99Native": false
     },
     {
-      "id": 918,
+      "id": 951,
       "ns": "MATH",
       "name": "IsNumeric",
       "kind": "IsNumeric",
@@ -9231,7 +9561,7 @@
       "C99Native": false
     },
     {
-      "id": 919,
+      "id": 952,
       "ns": "MATH",
       "name": "Log",
       "kind": "Log",
@@ -9241,7 +9571,7 @@
       "C99Native": false
     },
     {
-      "id": 920,
+      "id": 953,
       "ns": "MATH",
       "name": "Log10",
       "kind": "Log10",
@@ -9251,7 +9581,7 @@
       "C99Native": false
     },
     {
-      "id": 921,
+      "id": 954,
       "ns": "MATH",
       "name": "Max",
       "kind": "Max",
@@ -9261,7 +9591,7 @@
       "C99Native": false
     },
     {
-      "id": 922,
+      "id": 955,
       "ns": "MATH",
       "name": "Min",
       "kind": "Min",
@@ -9271,7 +9601,7 @@
       "C99Native": false
     },
     {
-      "id": 923,
+      "id": 956,
       "ns": "MATH",
       "name": "POLAR_X",
       "kind": "PolarX",
@@ -9281,7 +9611,7 @@
       "C99Native": false
     },
     {
-      "id": 924,
+      "id": 957,
       "ns": "MATH",
       "name": "POLAR_Y",
       "kind": "PolarY",
@@ -9291,7 +9621,7 @@
       "C99Native": false
     },
     {
-      "id": 925,
+      "id": 958,
       "ns": "MATH",
       "name": "Perm",
       "kind": "Perm",
@@ -9301,7 +9631,7 @@
       "C99Native": false
     },
     {
-      "id": 926,
+      "id": 959,
       "ns": "MATH",
       "name": "Pi",
       "kind": "Pi",
@@ -9311,7 +9641,7 @@
       "C99Native": false
     },
     {
-      "id": 927,
+      "id": 960,
       "ns": "MATH",
       "name": "Pythagoras",
       "kind": "Pythagoras",
@@ -9321,7 +9651,7 @@
       "C99Native": false
     },
     {
-      "id": 928,
+      "id": 961,
       "ns": "MATH",
       "name": "Rad2Deg",
       "kind": "Rad2Deg",
@@ -9331,7 +9661,7 @@
       "C99Native": false
     },
     {
-      "id": 929,
+      "id": 962,
       "ns": "MATH",
       "name": "Range",
       "kind": "Range",
@@ -9341,7 +9671,7 @@
       "C99Native": false
     },
     {
-      "id": 930,
+      "id": 963,
       "ns": "MATH",
       "name": "Rnd",
       "kind": "Rnd",
@@ -9351,7 +9681,7 @@
       "C99Native": false
     },
     {
-      "id": 931,
+      "id": 964,
       "ns": "MATH",
       "name": "Round",
       "kind": "Round",
@@ -9361,7 +9691,7 @@
       "C99Native": false
     },
     {
-      "id": 932,
+      "id": 965,
       "ns": "MATH",
       "name": "SINH",
       "kind": "Sinh",
@@ -9371,7 +9701,7 @@
       "C99Native": false
     },
     {
-      "id": 933,
+      "id": 966,
       "ns": "MATH",
       "name": "Sgn",
       "kind": "Sgn",
@@ -9381,7 +9711,7 @@
       "C99Native": false
     },
     {
-      "id": 934,
+      "id": 967,
       "ns": "MATH",
       "name": "Sin",
       "kind": "Sin",
@@ -9391,7 +9721,7 @@
       "C99Native": false
     },
     {
-      "id": 935,
+      "id": 968,
       "ns": "MATH",
       "name": "Sqr",
       "kind": "Sqr",
@@ -9401,7 +9731,7 @@
       "C99Native": false
     },
     {
-      "id": 936,
+      "id": 969,
       "ns": "MATH",
       "name": "Sum",
       "kind": "Sum",
@@ -9411,7 +9741,7 @@
       "C99Native": false
     },
     {
-      "id": 937,
+      "id": 970,
       "ns": "MATH",
       "name": "TANH",
       "kind": "Tanh",
@@ -9421,7 +9751,7 @@
       "C99Native": false
     },
     {
-      "id": 938,
+      "id": 971,
       "ns": "MATH",
       "name": "Tan",
       "kind": "Tan",
@@ -9431,7 +9761,7 @@
       "C99Native": false
     },
     {
-      "id": 939,
+      "id": 972,
       "ns": "MATH",
       "name": "Trunc",
       "kind": "Trunc",
@@ -9441,7 +9771,7 @@
       "C99Native": false
     },
     {
-      "id": 940,
+      "id": 973,
       "ns": "MATRIX",
       "name": "ABOVEMASK",
       "kind": "MatrixAboveMask",
@@ -9451,7 +9781,7 @@
       "C99Native": false
     },
     {
-      "id": 941,
+      "id": 974,
       "ns": "MATRIX",
       "name": "ABOVEMATRIX",
       "kind": "MatrixAboveMatrix",
@@ -9461,7 +9791,7 @@
       "C99Native": false
     },
     {
-      "id": 942,
+      "id": 975,
       "ns": "MATRIX",
       "name": "ADDCOLVECTOR",
       "kind": "MatrixAddColVector",
@@ -9471,7 +9801,7 @@
       "C99Native": false
     },
     {
-      "id": 943,
+      "id": 976,
       "ns": "MATRIX",
       "name": "ADDROWVECTOR",
       "kind": "MatrixAddRowVector",
@@ -9481,7 +9811,7 @@
       "C99Native": false
     },
     {
-      "id": 944,
+      "id": 977,
       "ns": "MATRIX",
       "name": "ARGMAX",
       "kind": "MatrixArgMax",
@@ -9491,7 +9821,7 @@
       "C99Native": false
     },
     {
-      "id": 945,
+      "id": 978,
       "ns": "MATRIX",
       "name": "ARGMIN",
       "kind": "MatrixArgMin",
@@ -9501,7 +9831,7 @@
       "C99Native": false
     },
     {
-      "id": 946,
+      "id": 979,
       "ns": "MATRIX",
       "name": "ASCSV",
       "kind": "MatrixAsCsv",
@@ -9511,7 +9841,7 @@
       "C99Native": false
     },
     {
-      "id": 947,
+      "id": 980,
       "ns": "MATRIX",
       "name": "ASJSON",
       "kind": "MatrixAsJson",
@@ -9521,7 +9851,7 @@
       "C99Native": false
     },
     {
-      "id": 948,
+      "id": 981,
       "ns": "MATRIX",
       "name": "BLOCKDIAG",
       "kind": "MatrixBlockDiag",
@@ -9531,17 +9861,7 @@
       "C99Native": false
     },
     {
-      "id": 949,
-      "ns": "MATRIX",
-      "name": "CHOLESKY",
-      "kind": "LinAlgCholeskyFunc",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 950,
+      "id": 982,
       "ns": "MATRIX",
       "name": "CIRCULANT",
       "kind": "MatrixCirculant",
@@ -9551,7 +9871,7 @@
       "C99Native": false
     },
     {
-      "id": 951,
+      "id": 983,
       "ns": "MATRIX",
       "name": "CLONEMATRIX",
       "kind": "MatrixClone",
@@ -9561,7 +9881,7 @@
       "C99Native": false
     },
     {
-      "id": 952,
+      "id": 984,
       "ns": "MATRIX",
       "name": "COLMEANS",
       "kind": "MatrixColMeans",
@@ -9571,7 +9891,7 @@
       "C99Native": false
     },
     {
-      "id": 953,
+      "id": 985,
       "ns": "MATRIX",
       "name": "COLSUMS",
       "kind": "MatrixColSums",
@@ -9581,7 +9901,7 @@
       "C99Native": false
     },
     {
-      "id": 954,
+      "id": 986,
       "ns": "MATRIX",
       "name": "COLUMNCOUNT",
       "kind": "MatrixColumnCount",
@@ -9591,7 +9911,7 @@
       "C99Native": false
     },
     {
-      "id": 955,
+      "id": 987,
       "ns": "MATRIX",
       "name": "COLVARIANCES",
       "kind": "MatrixColVariances",
@@ -9601,7 +9921,7 @@
       "C99Native": false
     },
     {
-      "id": 956,
+      "id": 988,
       "ns": "MATRIX",
       "name": "CONCATCOLS",
       "kind": "MatrixConcatCols",
@@ -9611,7 +9931,7 @@
       "C99Native": false
     },
     {
-      "id": 957,
+      "id": 989,
       "ns": "MATRIX",
       "name": "CONCATROWS",
       "kind": "MatrixConcatRows",
@@ -9621,27 +9941,7 @@
       "C99Native": false
     },
     {
-      "id": 958,
-      "ns": "MATRIX",
-      "name": "COND",
-      "kind": "MatrixCond",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 959,
-      "ns": "MATRIX",
-      "name": "COSM",
-      "kind": "MatrixCosm",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 960,
+      "id": 990,
       "ns": "MATRIX",
       "name": "CREATE",
       "kind": "LinAlgMatrixCreateFunc",
@@ -9651,77 +9951,7 @@
       "C99Native": false
     },
     {
-      "id": 961,
-      "ns": "MATRIX",
-      "name": "DETERMINANT",
-      "kind": "Determinant",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 962,
-      "ns": "MATRIX",
-      "name": "EIG",
-      "kind": "MatrixEig",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 963,
-      "ns": "MATRIX",
-      "name": "EVD",
-      "kind": "LinAlgEvdFunc",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 964,
-      "ns": "MATRIX",
-      "name": "EXPM",
-      "kind": "MatrixExp",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 965,
-      "ns": "MATRIX",
-      "name": "FACTOR",
-      "kind": "LinAlgDecompGetFactorFunc",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 966,
-      "ns": "MATRIX",
-      "name": "FRACTIONALPOWER",
-      "kind": "MatrixFractionalPower",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 967,
-      "ns": "MATRIX",
-      "name": "FROBENIUSNORM",
-      "kind": "MatrixFrobeniusNorm",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 968,
+      "id": 991,
       "ns": "MATRIX",
       "name": "GETVALUE",
       "kind": "MatrixGetValue",
@@ -9731,7 +9961,7 @@
       "C99Native": false
     },
     {
-      "id": 969,
+      "id": 992,
       "ns": "MATRIX",
       "name": "HANKEL",
       "kind": "MatrixHankel",
@@ -9741,37 +9971,7 @@
       "C99Native": false
     },
     {
-      "id": 970,
-      "ns": "MATRIX",
-      "name": "HESSENBERG",
-      "kind": "MatrixHessenberg",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 971,
-      "ns": "MATRIX",
-      "name": "INFINITYNORM",
-      "kind": "MatrixInfinityNorm",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 972,
-      "ns": "MATRIX",
-      "name": "INVERSE",
-      "kind": "LinAlgInverseFunc",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 973,
+      "id": 993,
       "ns": "MATRIX",
       "name": "ISLOWERTRIANGULAR",
       "kind": "MatrixIsLowerTriangular",
@@ -9781,7 +9981,7 @@
       "C99Native": false
     },
     {
-      "id": 974,
+      "id": 994,
       "ns": "MATRIX",
       "name": "ISORTHOGONAL",
       "kind": "MatrixIsOrthogonal",
@@ -9791,7 +9991,7 @@
       "C99Native": false
     },
     {
-      "id": 975,
+      "id": 995,
       "ns": "MATRIX",
       "name": "ISSYMMETRIC",
       "kind": "MatrixIsSymmetric",
@@ -9801,7 +10001,7 @@
       "C99Native": false
     },
     {
-      "id": 976,
+      "id": 996,
       "ns": "MATRIX",
       "name": "ISUPPERTRIANGULAR",
       "kind": "MatrixIsUpperTriangular",
@@ -9811,7 +10011,7 @@
       "C99Native": false
     },
     {
-      "id": 977,
+      "id": 997,
       "ns": "MATRIX",
       "name": "KRONECKER",
       "kind": "MatrixKron",
@@ -9821,7 +10021,7 @@
       "C99Native": false
     },
     {
-      "id": 978,
+      "id": 998,
       "ns": "MATRIX",
       "name": "LOADCSV",
       "kind": "MatrixLoadCsv",
@@ -9831,7 +10031,7 @@
       "C99Native": false
     },
     {
-      "id": 979,
+      "id": 999,
       "ns": "MATRIX",
       "name": "LOADJSON",
       "kind": "MatrixLoadJson",
@@ -9841,27 +10041,7 @@
       "C99Native": false
     },
     {
-      "id": 980,
-      "ns": "MATRIX",
-      "name": "LOGM",
-      "kind": "MatrixLogm",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 981,
-      "ns": "MATRIX",
-      "name": "LU",
-      "kind": "LinAlgLuFunc",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 982,
+      "id": 1000,
       "ns": "MATRIX",
       "name": "MAXVALUE",
       "kind": "MatrixMaxValue",
@@ -9871,7 +10051,7 @@
       "C99Native": false
     },
     {
-      "id": 983,
+      "id": 1001,
       "ns": "MATRIX",
       "name": "MINVALUE",
       "kind": "MatrixMinValue",
@@ -9881,7 +10061,7 @@
       "C99Native": false
     },
     {
-      "id": 984,
+      "id": 1002,
       "ns": "MATRIX",
       "name": "MULTIPLY",
       "kind": "LinAlgMultiplyFunc",
@@ -9891,7 +10071,7 @@
       "C99Native": false
     },
     {
-      "id": 985,
+      "id": 1003,
       "ns": "MATRIX",
       "name": "MULTIPLYLEFTVECTOR",
       "kind": "MatrixMultiplyLeftVector",
@@ -9901,7 +10081,7 @@
       "C99Native": false
     },
     {
-      "id": 986,
+      "id": 1004,
       "ns": "MATRIX",
       "name": "MULTIPLYVECTOR",
       "kind": "MatrixMultiplyVector",
@@ -9911,97 +10091,7 @@
       "C99Native": false
     },
     {
-      "id": 987,
-      "ns": "MATRIX",
-      "name": "NORM",
-      "kind": "MatrixNorm",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 988,
-      "ns": "MATRIX",
-      "name": "NUCLEARNORM",
-      "kind": "MatrixNuclearNorm",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 989,
-      "ns": "MATRIX",
-      "name": "NULLSPACE",
-      "kind": "MatrixNullSpace",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 990,
-      "ns": "MATRIX",
-      "name": "ONENORM",
-      "kind": "MatrixOneNorm",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 991,
-      "ns": "MATRIX",
-      "name": "ORTH",
-      "kind": "MatrixOrth",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 992,
-      "ns": "MATRIX",
-      "name": "PINVERSE",
-      "kind": "MatrixPseudoInverse",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 993,
-      "ns": "MATRIX",
-      "name": "POLAR",
-      "kind": "MatrixPolar",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 994,
-      "ns": "MATRIX",
-      "name": "QR",
-      "kind": "LinAlgQrFunc",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 995,
-      "ns": "MATRIX",
-      "name": "RANK",
-      "kind": "MatrixRank",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 996,
+      "id": 1005,
       "ns": "MATRIX",
       "name": "RESHAPE",
       "kind": "MatrixReshape",
@@ -10011,7 +10101,7 @@
       "C99Native": false
     },
     {
-      "id": 997,
+      "id": 1006,
       "ns": "MATRIX",
       "name": "ROWCOUNT",
       "kind": "MatrixRowCount",
@@ -10021,7 +10111,7 @@
       "C99Native": false
     },
     {
-      "id": 998,
+      "id": 1007,
       "ns": "MATRIX",
       "name": "ROWMEANS",
       "kind": "MatrixRowMeans",
@@ -10031,7 +10121,7 @@
       "C99Native": false
     },
     {
-      "id": 999,
+      "id": 1008,
       "ns": "MATRIX",
       "name": "ROWSUMS",
       "kind": "MatrixRowSums",
@@ -10041,7 +10131,7 @@
       "C99Native": false
     },
     {
-      "id": 1000,
+      "id": 1009,
       "ns": "MATRIX",
       "name": "ROWVARIANCES",
       "kind": "MatrixRowVariances",
@@ -10051,17 +10141,7 @@
       "C99Native": false
     },
     {
-      "id": 1001,
-      "ns": "MATRIX",
-      "name": "SCHUR",
-      "kind": "MatrixSchur",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 1002,
+      "id": 1010,
       "ns": "MATRIX",
       "name": "SETVALUE",
       "kind": "MatrixSetValue",
@@ -10071,90 +10151,10 @@
       "C99Native": false
     },
     {
-      "id": 1003,
-      "ns": "MATRIX",
-      "name": "SIGNM",
-      "kind": "MatrixSignm",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 1004,
-      "ns": "MATRIX",
-      "name": "SINM",
-      "kind": "MatrixSinm",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 1005,
+      "id": 1011,
       "ns": "MATRIX",
       "name": "SLICE",
       "kind": "MatrixSlice",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 1006,
-      "ns": "MATRIX",
-      "name": "SOLVE",
-      "kind": "Solve",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 1007,
-      "ns": "MATRIX",
-      "name": "SOLVETRIANGULAR",
-      "kind": "MatrixSolveTriangular",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 1008,
-      "ns": "MATRIX",
-      "name": "SQRTM",
-      "kind": "MatrixSqrt",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 1009,
-      "ns": "MATRIX",
-      "name": "SUBSPACEANGLES",
-      "kind": "MatrixSubspaceAngles",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 1010,
-      "ns": "MATRIX",
-      "name": "SVD",
-      "kind": "LinAlgSvdFunc",
-      "IL": false,
-      "PCodeVM": false,
-      "VMC": false,
-      "C99Native": false
-    },
-    {
-      "id": 1011,
-      "ns": "MATRIX",
-      "name": "TANM",
-      "kind": "MatrixTanm",
       "IL": false,
       "PCodeVM": false,
       "VMC": false,

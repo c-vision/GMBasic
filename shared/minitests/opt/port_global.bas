@@ -1,7 +1,6 @@
 ' EXPECT: B= 3
 ' Port FFI di optimize/global.bas.
 IMPORT OPTIMIZE
-IMPORT MATH
 SUB Main()
   DIM f = FN(x() AS DOUBLE) AS DOUBLE => (x(0) - 3) ^ 2 + 1
   DIM X0(0) AS DOUBLE = {10.0}

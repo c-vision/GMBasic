@@ -26,7 +26,6 @@
 
 ' Importa i nuovi namespace che sostituiscono il vecchio LINALG
 IMPORT VECTOR
-IMPORT MATRIX
 IMPORT GRAPHICS
 IMPORT CONSOLE
 IMPORT STRINGS

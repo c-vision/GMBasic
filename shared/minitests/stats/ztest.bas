@@ -1,7 +1,6 @@
 ' MiniTest: STATS.ZTEST — z-test un campione (formula normale esatta).
 ' EXPECT: z= 0.447214|p= 0.654721
 IMPORT STATS
-IMPORT MATH
 SUB Main()
   DIM x = {2.0, 4.0, 5.0, 7.0, 9.0}
   DIM r = STATS.ZTEST(x, 5.0, 2.0)

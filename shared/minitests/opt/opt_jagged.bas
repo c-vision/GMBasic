@@ -1,7 +1,6 @@
 ' EXPECT: lstsq= 1.5  ,  0.3333|chol= 1.75  ,  1.5|simplex= 0  ,  0|lp= 1  ,  1.5
 ' Forme JAGGED: stesse matrici del builtin (ARRAY OF ARRAY), nessuna dimensione esplicita.
 IMPORT OPTIMIZE
-IMPORT MATH
 SUB Main()
     DIM A(2) AS ARRAY OF DOUBLE
     A(0) = {1.0, 1.0} : A(1) = {2.0, 1.0} : A(2) = {3.0, 1.0}

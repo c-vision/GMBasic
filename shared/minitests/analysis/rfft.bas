@@ -1,6 +1,5 @@
 ' EXPECT: rfft_ok= 1
 IMPORT ANALYSIS
-IMPORT MATRIX
 SUB Main()
   DIM x(7) AS DOUBLE
   FOR i = 0 TO 7: x(i) = COS(2 * 3.141592653589793 * i / 8): NEXT

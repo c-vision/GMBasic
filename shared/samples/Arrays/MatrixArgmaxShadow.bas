@@ -2,7 +2,6 @@
 ' Una variabile-array dichiarata ha la priorita sul builtin omonimo: amax(0) legge
 ' l'elemento, non chiama AMAX. Verde su 4 backend (IL/PCodeVM/VM-C/C99Native,
 ' parity4 PASS).
-IMPORT MATRIX
 IMPORT ARRAYS
 
 SUB Main()

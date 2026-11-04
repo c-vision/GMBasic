@@ -2,7 +2,6 @@
 ' Fasi: 100/200/500/1000 sprite con doppio buffer corretto (SCREENSET WorkPage + SYNC barriera).
 ' La scala è adattiva (100/SQR(n)): gli sprite restano leggibili a tutti i conteggi.
 IMPORT VECTOR
-IMPORT MATRIX
 IMPORT GRAPHICS
 IMPORT CONSOLE
 IMPORT STRINGS

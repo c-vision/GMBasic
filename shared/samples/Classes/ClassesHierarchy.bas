@@ -49,7 +49,6 @@
 '
 ' =================================================================================================
 
-IMPORT MATH
 
 ' --- CLASSE BASE: Definisce le proprietà e i comportamenti comuni di una forma geometrica. ---
 PUBLIC CLASS Forma

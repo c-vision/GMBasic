@@ -1,7 +1,6 @@
 ' MiniTest: STATS.CHI2 — adattamento chi-quadrato (oracolo scipy 1.18).
 ' EXPECT: chi2= 0.5|p= 0.992123
 IMPORT STATS
-IMPORT MATH
 SUB Main()
   DIM observed = {16.0, 18.0, 16.0, 14.0, 12.0, 12.0}
   DIM expected = {16.0, 16.0, 16.0, 16.0, 12.0, 12.0}

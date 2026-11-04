@@ -1,7 +1,6 @@
 ' EXPECT: NM= 1 , 1|BF= 0.999997 , 0.999995|LB= 0.999997 , 0.999994|PW= 0.249913 , 0.040301|CG= 0 , 0
 ' Port FFI di optimize/multidim.bas.
 IMPORT OPTIMIZE
-IMPORT MATH
 SUB Main()
   DIM Rosen = FN(v() AS DOUBLE) AS DOUBLE => (1 - v(0)) ^ 2 + 100 * (v(1) - v(0) ^ 2) ^ 2
   DIM G(1) AS DOUBLE = {0.0, 0.0}

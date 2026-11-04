@@ -2,7 +2,6 @@
 ' OPTIMIZE via FFI — minimizzazione multivariata e globali (13 funzioni).
 ' I callback sono lambda (`FN ...`): forma supportata su tutti e 4 i backend.
 IMPORT OPTIMIZE
-IMPORT MATH
 
 SUB Main()
     DIM rosen = FN(x() AS DOUBLE) AS DOUBLE => 100.0 * (x(1) - x(0) * x(0)) * (x(1) - x(0) * x(0)) + (1.0 - x(0)) * (1.0 - x(0))

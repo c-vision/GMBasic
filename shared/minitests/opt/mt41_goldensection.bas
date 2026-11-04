@@ -1,7 +1,6 @@
 ' EXPECT: v= 2
 ' OPTIMIZE.GOLDENSECTION — MiniTest §4.1 (parità 4 backend).
 IMPORT OPTIMIZE
-IMPORT MATH
 
 FUNCTION G(x AS DOUBLE) AS DOUBLE
     RETURN (x - 2.0) * (x - 2.0)
