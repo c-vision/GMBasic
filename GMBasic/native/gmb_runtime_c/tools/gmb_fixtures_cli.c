@@ -26,7 +26,7 @@ int main(int argc, char** argv)
     const char* names[32];
     int nnames = 0;
 
-    if (strcmp(cmd, "--help") == 0 || strcmp(cmd, "-h") == 0) {
+    if (strcmp(cmd, "--help") == 0 || strcmp(cmd, "-h") == 0 || strcmp(cmd, "-help") == 0) {
         fprintf(stderr,
             "uso: gmb_fixtures list\n"
             "     gmb_fixtures pull [nome...] [--all] [--dest dir] [--version v] [--force] [--quiet]\n"

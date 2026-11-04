@@ -31,7 +31,7 @@ static const char* USAGE =
 
 int main(int argc, char** argv)
 {
-    if (argc >= 2 && (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)) { printf("%s", USAGE); return 0; }
+    if (argc >= 2 && (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "-help") == 0)) { printf("%s", USAGE); return 0; }
     if (argc >= 2 && strcmp(argv[1], "--lsp") == 0) {
         fprintf(stderr, "?-lsp: il language server e' il tool separato 'gmb_lsp' (native/lsp).\n"
                         "      Avvialo come processo dal tuo editor (IDE GMBasic, VS Code).\n");

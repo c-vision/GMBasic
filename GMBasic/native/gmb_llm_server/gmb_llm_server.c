@@ -1085,7 +1085,17 @@ static void handle(int fd, const char* req) {
 }
 
 int main(int argc, char** argv) {
-    if (argc < 2) { fprintf(stderr, "uso: %s <modelDir> [port]\n", argv[0]); return 2; }
+    if (argc >= 2 && (!strcmp(argv[1], "-help") || !strcmp(argv[1], "--help") || !strcmp(argv[1], "-h"))) {
+        fprintf(stderr,
+            "uso: %s <modelDir> [port]\n"
+            "  serve un modello via HTTP (default porta 8020)\n",
+            argv[0]);
+        return 0;
+    }
+    if (argc < 2) {
+        fprintf(stderr, "uso: %s <modelDir> [port]\n", argv[0]);
+        return 2;
+    }
     const char* dir = argv[1];
     int port = argc > 2 ? atoi(argv[2]) : 8020;
     signal(SIGPIPE, SIG_IGN);

@@ -44,14 +44,22 @@ static int run_exec(const char* exe)
 #endif
 }
 
+static void usage(const char* a0) {
+    fprintf(stderr,
+        "uso: %s <libs.txt> <file> [<file>...]\n"
+        "     %s --exec <eseguibile>     # procura le sue lib (accanto all'exe) e lo esegue\n"
+        "  formato libs.txt: nome<TAB>sha256<TAB>size<TAB>url\n", a0, a0);
+}
+
 int main(int argc, char** argv)
 {
+    if (argc >= 2 && (!strcmp(argv[1], "-help") || !strcmp(argv[1], "--help") || !strcmp(argv[1], "-h"))) {
+        usage(argv[0]);
+        return 0;
+    }
     if (argc >= 3 && strcmp(argv[1], "--exec") == 0) return run_exec(argv[2]);
     if (argc < 3) {
-        fprintf(stderr,
-            "uso: %s <libs.txt> <file> [<file>...]\n"
-            "     %s --exec <eseguibile>     # procura le sue lib (accanto all'exe) e lo esegue\n"
-            "  formato libs.txt: nome<TAB>sha256<TAB>size<TAB>url\n", argv[0], argv[0]);
+        usage(argv[0]);
         return 2;
     }
     int rc = 0;

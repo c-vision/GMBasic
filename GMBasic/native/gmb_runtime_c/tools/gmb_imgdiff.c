@@ -85,6 +85,13 @@ static int load(const char* path, img_t* out)
 
 int main(int argc, char** argv)
 {
+    if (argc >= 2 && (!strcmp(argv[1], "-help") || !strcmp(argv[1], "--help") || !strcmp(argv[1], "-h")))
+    {
+        printf("uso: gmb_imgdiff <a.png|bmp> <b.png|bmp> [tolleranza_pct=0.5]\n"
+               "  confronta due immagini e stampa la differenza percentuale;\n"
+               "  con una immagine a 2x l'altra (HiDPI) quella grande viene campionata.\n");
+        return 0;
+    }
     if (argc < 3)
     {
         printf("uso: gmb_imgdiff <a.png|bmp> <b.png|bmp> [tolleranza_pct=0.5]\n");

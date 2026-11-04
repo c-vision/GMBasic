@@ -60,7 +60,7 @@ int main(int argc, char** argv)
         if (strcmp(argv[i], "--only") == 0 && i + 1 < argc) only = argv[++i];
         else if (strcmp(argv[i], "--token-file") == 0 && i + 1 < argc) token_file = argv[++i];
         else if (strcmp(argv[i], "--quiet") == 0) quiet = 1;
-        else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
+        else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "-help") == 0) {
             fprintf(stderr, "uso: gmb_brain_fetch <eseguibile|cartella> [--only <nome>] [--token-file <file>] [--quiet]\n"
                             "     gmb_brain_fetch --emit-index <app.settings.json> <brains-manifest.json> <out.brains.txt>\n");
             return 0;

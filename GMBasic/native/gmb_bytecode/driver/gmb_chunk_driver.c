@@ -24,7 +24,18 @@ static int pkg_cache_is_dir(const char* p)
 }
 
 int main(int argc, char** argv) {
-    if (argc < 2) { fprintf(stderr, "uso: %s <file.bas> [out.chunk] [--map map.json]\n", argv[0]); return 2; }
+    if (argc >= 2 && (!strcmp(argv[1], "-help") || !strcmp(argv[1], "--help") || !strcmp(argv[1], "-h"))) {
+        fprintf(stderr,
+            "uso: %s <file.bas> [out.chunk] [--map map.json]\n"
+            "  compila il sorgente in bytecode A1/GMBC per la VM/C;\n"
+            "  una pagina .bsp viene prima espansa in BASIC completo (con IMPORT).\n",
+            argv[0]);
+        return 0;
+    }
+    if (argc < 2) {
+        fprintf(stderr, "uso: %s <file.bas> [out.chunk] [--map map.json]\n", argv[0]);
+        return 2;
+    }
     const char* in = argv[1];
     const char* out = (argc > 2 && strcmp(argv[2], "--map") != 0) ? argv[2] : "out.chunk";
     const char* map_path = NULL;

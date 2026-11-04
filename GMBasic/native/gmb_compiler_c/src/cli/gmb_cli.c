@@ -980,7 +980,7 @@ int main(int argc, char** argv) {
     Options o; memset(&o, 0, sizeof o);
     o.argv0 = argv[0];
     if (argc < 2) { gmb_cli_usage(); return 2; }
-    if (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help") || !strcmp(argv[1], "help")) {
+    if (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help") || !strcmp(argv[1], "-help") || !strcmp(argv[1], "help")) {
         gmb_cli_usage();
         return 0;
     }
