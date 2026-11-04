@@ -5754,7 +5754,22 @@ internal sealed partial class PCodeProcessor
                     break;
                 }
                 EnsureTuiWindows();
-                try { _tuiWindows!.AddWindow(title, new ClipperLib.Clipper.ScreenRect((int)left, (int)top, (int)(right - left), (int)(bottom - top))); } catch { }
+                try
+                {
+                    var r = new ClipperLib.Clipper.ScreenRect((int)left, (int)top, (int)(right - left), (int)(bottom - top));
+                    // Re-DEFINE: la finestra con lo stesso titolo/nome si aggiorna, non si duplica
+                    // (parità runtime C, C99Native e VM/C).
+                    if (_tuiWindows!.FindByTitle(title) is int eid && _tuiWindows.Get(eid) is { } ew)
+                    {
+                        ew.Rect = r;
+                        RenderTuiWindowsForPCode();
+                    }
+                    else
+                    {
+                        _tuiWindows!.AddWindow(title, r);
+                    }
+                }
+                catch { }
                 break;
             }
             case SysCall.WINDOW_APPEND:

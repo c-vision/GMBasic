@@ -50,6 +50,7 @@ public static class ClipperWmNative
     [DllImport(Lib)] private static extern int gmb_window_manager_add_ex(IntPtr m, IntPtr name, IntPtr title,
         int x, int y, int w, int h, int border, int frame, int shadow, int desktop);
     [DllImport(Lib)] private static extern int gmb_window_manager_find_by_title(IntPtr m, IntPtr title);
+    [DllImport(Lib)] private static extern int gmb_window_manager_find_by_name(IntPtr m, IntPtr name);
 
     /// <summary>Crea una finestra nel manager C (nome e titolo distinti).</summary>
     public static int AddWindowEx(IntPtr m, string? name, string? title,
@@ -64,6 +65,12 @@ public static class ClipperWmNative
     {
         var t = A(title);
         try { return gmb_window_manager_find_by_title(m, t); } finally { Free(t); }
+    }
+
+    public static int FindByName(IntPtr m, string? name)
+    {
+        var n = A(name);
+        try { return gmb_window_manager_find_by_name(m, n); } finally { Free(n); }
     }
     [DllImport(Lib)] public static extern void gmb_window_manager_raise(IntPtr m, int id);
     [DllImport(Lib)] public static extern void gmb_window_manager_deactivate(IntPtr m, int id);

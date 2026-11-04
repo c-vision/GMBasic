@@ -125,6 +125,18 @@ int gmb_window_manager_find_by_title(gmb_window_manager_t* m, const char* title)
     return -1;
 }
 
+/* Nome BASIC della finestra (`WINDOW DEFINE nome ...`): distinto dal titolo. Serve a
+ * riconoscere un re-DEFINE dello stesso nome → si aggiorna la finestra, non se ne crea
+ * una seconda (parità con gmb_winstmt_define). */
+int gmb_window_manager_find_by_name(gmb_window_manager_t* m, const char* name)
+{
+    if (!name || name[0] == 0) return -1;
+    for (int i = 0; i < m->count; i++)
+        if (m->windows[i].name[0] && wm_title_iequals(m->windows[i].name, name))
+            return m->windows[i].id;
+    return -1;
+}
+
 void gmb_window_manager_move_by(gmb_window_manager_t* m, int id, int dx, int dy)
 {
     gmb_managed_window_t* w = gmb_window_manager_get(m, id);

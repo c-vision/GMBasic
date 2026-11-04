@@ -37,6 +37,9 @@ FUNCTION Main() AS INTEGER
     ' Handlers PRIMA del DEFINE: OPEN deve arrivare alla finestra appena creata.
     ON WINDOW OPEN OF 1 GOSUB OnOpen1
     WINDOW DEFINE w1 FROM 0, 0 TO 8, 30 TITLE "w1"
+    ' Re-DEFINE dello stesso nome: aggiorna la finestra, non ne crea una seconda e non
+    ' innalza un secondo OPEN (handle 1 e 2 restano quelli della prima creazione).
+    WINDOW DEFINE w1 FROM 1, 0 TO 9, 30 TITLE "w1"
     WINDOW DEFINE w2 FROM 10, 0 TO 18, 30 TITLE "w2"
 
     ON WINDOW MINIMIZE OF 1 GOSUB OnMin1

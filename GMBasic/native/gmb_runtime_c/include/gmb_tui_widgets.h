@@ -1648,6 +1648,7 @@ int  gmb_window_manager_topmost_at(gmb_window_manager_t* m, int x, int y);
 void gmb_window_manager_raise(gmb_window_manager_t* m, int id);
 void gmb_window_manager_deactivate(gmb_window_manager_t* m, int id);
 int  gmb_window_manager_find_by_title(gmb_window_manager_t* m, const char* title);
+int  gmb_window_manager_find_by_name(gmb_window_manager_t* m, const char* name);
 void gmb_window_manager_move_by(gmb_window_manager_t* m, int id, int dx, int dy);
 void gmb_window_manager_move_to(gmb_window_manager_t* m, int id, int x, int y);
 void gmb_window_manager_resize_by(gmb_window_manager_t* m, int id, int dw, int dh);

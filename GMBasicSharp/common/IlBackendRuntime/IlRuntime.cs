@@ -17264,6 +17264,16 @@ public static double TextWidth(string s)
                 return;
             }
             var wm = TuiWindows;
+            // Re-DEFINE dello stesso nome BASIC: aggiorna la finestra esistente (come il
+            // runtime C e C99Native) e non innalza un secondo OPEN.
+            if (wm.FindByName(name) is int existingId && wm.Get(existingId) is { } existingWin)
+            {
+                existingWin.Rect = new ClipperLib.Clipper.ScreenRect(left, top,
+                    Math.Max(1, right - left), Math.Max(1, bottom - top));
+                existingWin.Title = string.IsNullOrEmpty(title) ? name : title;
+                RenderTuiWindows();
+                return;
+            }
             var id2 = wm.AddWindow(string.IsNullOrEmpty(title) ? name : title,
                 new ClipperLib.Clipper.ScreenRect(left, top, Math.Max(1, right - left), Math.Max(1, bottom - top)));
             if (id2 >= 0 && wm.Get(id2) is { } win)
