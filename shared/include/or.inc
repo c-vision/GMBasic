@@ -109,3 +109,33 @@ DECLARE FUNCTION MDVRP LIB "gmbor" ALIAS "ofx_mdvrp" (dist() AS DOUBLE, demand()
 DECLARE FUNCTION PDP LIB "gmbor" ALIAS "ofx_pdp" (dist() AS DOUBLE, demand() AS DOUBLE, nreq AS LONG, cap AS DOUBLE, pickup() AS LONG, delivery() AS LONG, route() AS LONG, total() AS DOUBLE) AS LONG
 ' Arc routing (Chinese postman): euler() = n*n+2; elen(0) = lunghezza.
 DECLARE FUNCTION ARCROUTING LIB "gmbor" ALIAS "ofx_arc_routing" (w() AS DOUBLE, n AS LONG, euler() AS LONG, elen() AS LONG) AS DOUBLE
+
+' ── SCHEDULING: macchina singola, flow shop, progetto, job shop (18) ─────────
+DECLARE FUNCTION SCHEDSPT LIB "gmbor" ALIAS "ofx_sched_spt" (p() AS DOUBLE, n AS LONG, order() AS LONG) AS DOUBLE
+DECLARE FUNCTION SCHEDWSPT LIB "gmbor" ALIAS "ofx_sched_wspt" (p() AS DOUBLE, w() AS DOUBLE, n AS LONG, order() AS LONG) AS DOUBLE
+DECLARE FUNCTION SCHEDEDD LIB "gmbor" ALIAS "ofx_sched_edd" (p() AS DOUBLE, due() AS DOUBLE, n AS LONG, order() AS LONG) AS DOUBLE
+' Min #tardivi (Moore-Hodgson): ritorna il numero di job tardivi; order() = n.
+DECLARE FUNCTION SCHEDMOORE LIB "gmbor" ALIAS "ofx_sched_moore" (p() AS DOUBLE, due() AS DOUBLE, n AS LONG, order() AS LONG) AS LONG
+DECLARE FUNCTION SCHEDLAWLER LIB "gmbor" ALIAS "ofx_sched_lawler" (p() AS DOUBLE, due() AS DOUBLE, n AS LONG, order() AS LONG) AS DOUBLE
+' Intervalli: selected()/start()/end() = n.
+DECLARE FUNCTION INTERVALMAX LIB "gmbor" ALIAS "ofx_interval_max" (start() AS DOUBLE, finish() AS DOUBLE, n AS LONG, selected() AS LONG) AS LONG
+DECLARE FUNCTION INTERVALPARTITION LIB "gmbor" ALIAS "ofx_interval_partition" (start() AS DOUBLE, finish() AS DOUBLE, n AS LONG) AS LONG
+' Flow shop: seq() = n.
+DECLARE FUNCTION JOHNSON LIB "gmbor" ALIAS "ofx_johnson" (p1() AS DOUBLE, p2() AS DOUBLE, n AS LONG, seq() AS LONG) AS DOUBLE
+' NEH: p() = n*m (job i, macchina k = p(i*m+k)).
+DECLARE FUNCTION NEH LIB "gmbor" ALIAS "ofx_neh" (p() AS DOUBLE, n AS LONG, m AS LONG, seq() AS LONG) AS DOUBLE
+DECLARE FUNCTION JOHNSON3 LIB "gmbor" ALIAS "ofx_johnson3" (p1() AS DOUBLE, p2() AS DOUBLE, p3() AS DOUBLE, n AS LONG, seq() AS LONG) AS DOUBLE
+DECLARE FUNCTION CDS LIB "gmbor" ALIAS "ofx_cds" (p() AS DOUBLE, n AS LONG, m AS LONG, seq() AS LONG) AS DOUBLE
+DECLARE FUNCTION LPT LIB "gmbor" ALIAS "ofx_lpt" (p() AS DOUBLE, n AS LONG, m AS LONG, assign() AS LONG) AS DOUBLE
+' CPM: preds() = n*npred (predecessori, -1 padding); est()/lst()/slack() = n.
+DECLARE FUNCTION CPM LIB "gmbor" ALIAS "ofx_cpm" (dur() AS DOUBLE, preds() AS LONG, n AS LONG, npred AS LONG, est() AS DOUBLE, lst() AS DOUBLE, slack() AS DOUBLE) AS DOUBLE
+' PERT: to()/tm()/tp() = n; est()/variance() = n.
+DECLARE FUNCTION PERT LIB "gmbor" ALIAS "ofx_pert" (to() AS DOUBLE, tm() AS DOUBLE, tp() AS DOUBLE, preds() AS LONG, n AS LONG, npred AS LONG, est() AS DOUBLE, variance() AS DOUBLE) AS DOUBLE
+' RCPSP: demand() = n*nr; capacity() = nr; start() = n.
+DECLARE FUNCTION RCPSP LIB "gmbor" ALIAS "ofx_rcpsp" (dur() AS DOUBLE, preds() AS LONG, n AS LONG, npred AS LONG, demand() AS DOUBLE, capacity() AS DOUBLE, nr AS LONG, start() AS LONG) AS DOUBLE
+' Job shop: route()/dur()/start() = njobs*nmach.
+DECLARE FUNCTION JOBSHOP LIB "gmbor" ALIAS "ofx_job_shop" (route() AS LONG, dur() AS DOUBLE, njobs AS LONG, nmach AS LONG, start() AS LONG) AS DOUBLE
+' Timetabling: conflicts() = n*n; slotOf() = n.
+DECLARE FUNCTION TIMETABLING LIB "gmbor" ALIAS "ofx_timetabling" (conflicts() AS LONG, n AS LONG, slotOf() AS LONG) AS LONG
+' Rostering: demand() = ndays; schedule() = nnurses*ndays; ritorna i turni non coperti.
+DECLARE FUNCTION ROSTERING LIB "gmbor" ALIAS "ofx_rostering" (demand() AS LONG, nnurses AS LONG, ndays AS LONG, maxWork AS LONG, schedule() AS LONG) AS LONG
