@@ -3306,76 +3306,7 @@ static int op_call(ctx_t* c, gmb_expr_t** a, int n, const char* fn, int nreq) {
     for (int i = 0; i < nreq; i++) { if (i) sb_put(&c->out, ", "); emit_expr(c, a[i]); }
     sb_put(&c->out, ")"); return 1;
 }
-static int op_newton(ctx_t* c, gmb_expr_t** a, int n)      { return op_call(c, a, n, "gmb_opt_newton_c99", 2); }
-static int op_brentq(ctx_t* c, gmb_expr_t** a, int n)      { return op_call(c, a, n, "gmb_opt_brentq_c99", 3); }
-static int op_brent(ctx_t* c, gmb_expr_t** a, int n)       { return op_call(c, a, n, "gmb_opt_brent_c99", 3); }
-static int op_brenth(ctx_t* c, gmb_expr_t** a, int n)      { return op_call(c, a, n, "gmb_opt_brenth_c99", 3); }
-static int op_ridder(ctx_t* c, gmb_expr_t** a, int n)      { return op_call(c, a, n, "gmb_opt_ridder_c99", 3); }
-static int op_toms748(ctx_t* c, gmb_expr_t** a, int n)     { return op_call(c, a, n, "gmb_opt_toms748_c99", 3); }
-static int op_brentmin(ctx_t* c, gmb_expr_t** a, int n)    { return op_call(c, a, n, "gmb_opt_brentmin_c99", 3); }
-static int op_bisection(ctx_t* c, gmb_expr_t** a, int n)   { return op_call(c, a, n, "gmb_opt_bisection_c99", 3); }
-static int op_secant(ctx_t* c, gmb_expr_t** a, int n)      { return op_call(c, a, n, "gmb_opt_secant_c99", 3); }
-static int op_golden(ctx_t* c, gmb_expr_t** a, int n)      { return op_call(c, a, n, "gmb_opt_golden_c99", 3); }
-static int op_minscalar(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 3) return 0;
-    sb_put(&c->out, "gmb_opt_minscalar_c99(");
-    emit_expr(c, a[0]); sb_put(&c->out, ", "); emit_expr(c, a[1]); sb_put(&c->out, ", "); emit_expr(c, a[2]);
-    sb_put(&c->out, ", ");
-    if (n > 3) emit_str_operand(c, a[3]); else sb_put(&c->out, "gmb_string_alloc(\"brent\")");
-    sb_put(&c->out, ")"); return 1;
-}
 /* Multidim: (λ, x0[]) → double* risultato (array allocato). Parity emitter C#. */
-static int op_nelder_mead(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 2 || !a[1] || a[1]->kind != GMB_EXPR_VAR || !a[1]->var) return 0;
-    var_t* av = lookup_var(c, a[1]->var);
-    if (!(av && av->is_array)) return 0;
-    sb_put(&c->out, "({ double* _nm = (double*)calloc((size_t)(");
-    emit_arr_len_of(c, av);
-    sb_put(&c->out, ") + 1, sizeof(double)); gmb_opt_nelder_mead_c99(");
-    emit_expr(c, a[0]);
-    sb_put(&c->out, ", (double*)");
-    emit_var_ref(c, av);
-    sb_put(&c->out, ", (int)(");
-    emit_arr_len_of(c, av);
-    sb_put(&c->out, "), _nm); _nm; })");
-    return 1;
-}
-static int op_bfgs(ctx_t* c, gmb_expr_t** a, int n) {
-    if (n < 2 || !a[1] || a[1]->kind != GMB_EXPR_VAR || !a[1]->var) return 0;
-    var_t* av = lookup_var(c, a[1]->var);
-    if (!(av && av->is_array)) return 0;
-    sb_put(&c->out, "({ double* _nm = (double*)calloc((size_t)(");
-    emit_arr_len_of(c, av);
-    sb_put(&c->out, ") + 1, sizeof(double)); gmb_opt_bfgs_c99(");
-    emit_expr(c, a[0]);
-    sb_put(&c->out, ", (double*)");
-    emit_var_ref(c, av);
-    sb_put(&c->out, ", (int)(");
-    emit_arr_len_of(c, av);
-    sb_put(&c->out, "), _nm); _nm; })");
-    return 1;
-}
-static const sa_row OP_TBL[] = {
-    { GMB_TOK_Newton, op_newton },
-    { GMB_TOK_OptimizeBrentq, op_brentq },
-    { GMB_TOK_Brent, op_brent },
-    { GMB_TOK_OptimizeBrenth, op_brenth },
-    { GMB_TOK_OptimizeRidder, op_ridder },
-    { GMB_TOK_OptimizeToms748, op_toms748 },
-    { GMB_TOK_OptimizeBrentMin, op_brentmin },
-    { GMB_TOK_Bisection, op_bisection },
-    { GMB_TOK_Secant, op_secant },
-    { GMB_TOK_GoldenSection, op_golden },
-    { GMB_TOK_OptimizeMinimizeScalar, op_minscalar },
-    { GMB_TOK_NelderMead, op_nelder_mead },
-    { GMB_TOK_Bfgs, op_bfgs },
-};
-int emit_bf_optimize(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
-    (void)name; (void)ns; (void)line;
-    for (size_t i = 0; i < sizeof(OP_TBL) / sizeof(OP_TBL[0]); i++)
-        if (OP_TBL[i].tk == tk) return OP_TBL[i].sp(c, args, nargs);
-    return 0;
-}
 /* ── dominio: finance (delegazione §0quater) ── */
 static int fd_duration(ctx_t* c, gmb_expr_t** a, int n);
 static int fd_yearfrac(ctx_t* c, gmb_expr_t** a, int n);
