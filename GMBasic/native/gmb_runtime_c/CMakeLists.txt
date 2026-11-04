@@ -1079,13 +1079,15 @@ add_test(NAME gmb_json_selfcheck COMMAND gmb_json_selfcheck)
 # SPLIT 2026-11-02: il modulo ASR host non vive piu' nel runtime (sta in LLMEnv). Se l'header non
 # c'e', il selfcheck non ha nulla da compilare: target CONDIZIONALE, cosi' la build non si blocca
 # su un file rimasto senza il suo modulo (nessun file cancellato: torna attivo appena l'header c'e').
-if(EXISTS "${LLMENV}/LLMEngine/asr/include/gmb_asr.h" OR EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/include/gmb_asr.h")
+# Il gate segue il rename 2026-10-31 di LLMEnv (`gmb_asr.h` -> `llm_asr.h`): prima cercava il nome
+# vecchio, che non esiste piu', e i due harness restavano spenti.
+if(EXISTS "${LLMENV}/LLMEngine/asr/include/llm_asr.h" OR EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/include/llm_asr.h")
     add_executable(gmb_asr_selfcheck tests/gmb_asr_selfcheck.c)
-    target_link_libraries(gmb_asr_selfcheck PRIVATE gmb_runtime)
+    target_link_libraries(gmb_asr_selfcheck PRIVATE gmb_runtime llm_asr)
     target_include_directories(gmb_asr_selfcheck PRIVATE include)
     add_test(NAME gmb_asr_selfcheck COMMAND gmb_asr_selfcheck)
     add_executable(gmb_asr_run tests/gmb_asr_run.c)
-    target_link_libraries(gmb_asr_run PRIVATE gmb_runtime)
+    target_link_libraries(gmb_asr_run PRIVATE gmb_runtime llm_asr)
     target_include_directories(gmb_asr_run PRIVATE include)
 endif()
 add_executable(gmb_pkg_manifest_selfcheck tests/gmb_pkg_manifest_selfcheck.c)
