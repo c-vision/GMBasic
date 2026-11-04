@@ -410,6 +410,31 @@ static int local_build_prompt(local_ctx_t* c, const char* state,
     return rc;
 }
 
+/* Il readout legge la distribuzione della PRIMA posizione di risposta. Nei modelli con thinking
+ * (Qwen3, R1, ...) quella posizione aspetta `<think>`: le lettere/opzioni li' sono rumore (osservato:
+ * sempre l'opzione A, 1/6 su domande banali). Si chiude il blocco di ragionamento: se il template ha
+ * gia' aperto `<think>\n` lo si chiude, altrimenti, se il vocabolario ha i token think (singoli),
+ * si aggiunge il blocco vuoto (come enable_thinking=false). Gli altri modelli restano invariati.
+ * Parita' con MlxLlmCompleter.CloseThinkingForDecision (C#). Solo per il readout, non per l'adapter. */
+static void local_close_thinking(local_ctx_t* c, char* prompt, size_t cap)
+{
+    size_t len = strlen(prompt);
+    static const char k_close[] = "</think>\n\n";
+    static const char k_open[]  = "<think>\n";
+    static const char k_empty[] = "<think>\n\n</think>\n\n";
+    const char* add = NULL;
+    if (len >= sizeof k_close - 1 && strcmp(prompt + len - (sizeof k_close - 1), k_close) == 0) return;
+    if (len >= sizeof k_open - 1 && strcmp(prompt + len - (sizeof k_open - 1), k_open) == 0) {
+        add = k_close;
+    } else {
+        int32_t t[8];
+        llmtoken_handle tok = (llmtoken_handle)c->tok;
+        if (llmtoken_encode(tok, "<think>", t, 8) == 1 && llmtoken_encode(tok, "</think>", t, 8) == 1)
+            add = k_empty;
+    }
+    if (add && len + strlen(add) + 1 <= cap) memcpy(prompt + len, add, strlen(add) + 1);
+}
+
 static void local_fill_result(local_ctx_t* c, gmb_decision_kind_t kind_enum,
                               const gmb_decision_option_t* eff, int n_options,
                               const float* prob, gmb_decision_result_t* out)
@@ -472,6 +497,7 @@ int gmb_ai_decide_local_run(const char* state, const char* kind,
         free(prompt); free(ids);
         return -1;
     }
+    local_close_thinking(c, prompt, LOCAL_PROMPT_CAP);
     int n_ids = llmtoken_encode((llmtoken_handle)c->tok, prompt, ids, LOCAL_TOKEN_CAP);
     free(prompt);
     if (n_ids <= 0 || n_ids >= LOCAL_TOKEN_CAP) {
@@ -664,6 +690,7 @@ int gmb_ai_decide_local_run_group(const char* state, const gmb_decision_domain_t
         if (local_build_prompt(c, state, ei, domains[i].n_options,
                                prompt, LOCAL_PROMPT_CAP, err, errcap) != 0)
             goto done;
+        local_close_thinking(c, prompt, LOCAL_PROMPT_CAP);
         int n = llmtoken_encode(tok, prompt, tmp, LOCAL_TOKEN_CAP);
         if (n <= 0 || n >= LOCAL_TOKEN_CAP) {
             set_err(err, errcap, "local provider: tokenizzazione del prompt fallita", NULL);
