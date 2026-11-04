@@ -8210,6 +8210,26 @@ public static double TextWidth(string s)
     public static Dictionary<string, object?> ZTest(double[] sample, double populationMean, double standardDeviation) => HypothesisResult(CommonLib.Numerics.ZTestOneSample(sample, populationMean, standardDeviation));
     public static Dictionary<string, object?> KolmogorovSmirnov(double[] first, double[] second) => HypothesisResult(CommonLib.Numerics.KolmogorovSmirnovTwoSample(first, second));
     // ---- scipy.stats P0 (1000-1016) ----
+    public static double Range(double[] a)
+    {
+        if (a.Length == 0) return 0;
+        double lo = a[0], hi = a[0];
+        foreach (var v in a) { if (v < lo) lo = v; if (v > hi) hi = v; }
+        return hi - lo;
+    }
+
+    public static double Covariance(double[] x, double[] y)
+    {
+        var n = Math.Min(x.Length, y.Length);
+        if (n < 2) return 0;
+        double mx = 0, my = 0;
+        for (var i = 0; i < n; i++) { mx += x[i]; my += y[i]; }
+        mx /= n; my /= n;
+        double sxy = 0;
+        for (var i = 0; i < n; i++) sxy += (x[i] - mx) * (y[i] - my);
+        return sxy / (n - 1);
+    }
+
     public static Dictionary<string, object?> PearsonR(double[] x, double[] y) => HypothesisResult(CommonLib.Numerics.PearsonR(x, y));
     public static Dictionary<string, object?> SpearmanR(double[] x, double[] y) => HypothesisResult(CommonLib.Numerics.SpearmanR(x, y));
     public static Dictionary<string, object?> Chi2Con(double[][] table) => HypothesisResult(CommonLib.Numerics.Chi2Contingency(table));
@@ -14571,6 +14591,20 @@ public static double TextWidth(string s)
         if (collection is System.Collections.ICollection c) return c.Count;
         if (collection is System.Array a) return a.Length;
         if (collection is string s) return s.Length;
+        /* Collezioni CommonLib con Count come PROPRIETÀ ma non ICollection (TRIE, e in
+         * generale le strutture dedicate): senza, `.Count()` rispondeva 0 su IL mentre le
+         * altre gambe davano il valore (CollectionsModern: Trie.Count 0 vs 4). */
+        if (collection is not null)
+        {
+            var cntProp = collection.GetType().GetProperty("Count",
+                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+            if (cntProp is not null && cntProp.GetIndexParameters().Length == 0)
+            {
+                var cv = cntProp.GetValue(collection);
+                if (cv is int ic) return ic;
+                if (cv is long lc) return lc;
+            }
+        }
         return 0.0;
     }
 
@@ -14777,6 +14811,10 @@ public static double TextWidth(string s)
             // ["a","b","a","c","a"].Count() dava 3 invece di 5).
             case "COUNT" when args.Length == 0 && instance is IBagMultiset bcnt:
                 return bcnt.TotalCount();
+            // TRIE: Count è una PROPRIETÀ CommonLib (non ICollection) → il Count generico
+            // tornava 0 (CollectionsModern: "Trie.Count= 0" su IL, 4 sulle altre gambe).
+            case "COUNT" or "LENGTH" when args.Length == 0 && instance is CommonLib.Collections.Trie trieCnt:
+                return (double)trieCnt.Count;
             // BAG.Count(item): molteplicità dell'elemento (Dictionary<item,conteggio>).
             case "COUNT" when args.Length >= 1 && instance is System.Collections.IDictionary dcount:
                 return dcount.Contains(args[0] ?? "") ? Convert.ToDouble(dcount[args[0] ?? ""]) : 0.0;

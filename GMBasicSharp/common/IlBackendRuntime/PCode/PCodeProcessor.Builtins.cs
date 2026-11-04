@@ -336,6 +336,21 @@ private static double[] ToDoubleArr(object? arg) => Basic.IlBackend.RuntimeFlatt
                         return (double)(str.Length - 1);
                     if (args.Length > 0 && args[0] is System.Collections.IDictionary dict)
                         return (double)(dict.Count - 1);
+                    /* Collezioni CommonLib (TRIE/BAG/HEAP/GRAPH/...): NON IList/IDictionary.
+                     * Senza, UBOUND=-1 → il FOR EACH (UBOUND + LOAD_ELEMENT_POSITIONAL emesso
+                     * dal compilatore) iterava ZERO volte in silenzio (CollectionsModern:
+                     * `FOR EACH w IN trie` non stampava nulla su PCode). */
+                    if (args.Length > 0 && args[0] is not null)
+                    {
+                        var cntProp = args[0]!.GetType().GetProperty("Count",
+                            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                        if (cntProp is not null && cntProp.GetIndexParameters().Length == 0)
+                        {
+                            var cv = cntProp.GetValue(args[0]);
+                            if (cv is int ci2) return (double)(ci2 - 1);
+                            if (cv is long cl2) return (double)(cl2 - 1);
+                        }
+                    }
                 }
                 return 0.0;
             }
