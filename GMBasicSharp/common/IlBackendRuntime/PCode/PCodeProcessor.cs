@@ -254,6 +254,7 @@ internal sealed partial class PCodeProcessor
             _tuiWindows.WindowOpened += (_ , e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(7, e.Id);   // Open
             _tuiWindows.WindowClosed += (_ , e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(0, e.Id);   // Close
             _tuiWindows.WindowMoved += (_ , e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(3, e.Id);    // Move
+            _tuiWindows.WindowResized += (_ , e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(1, e.Id);  // Resize
             _tuiWindows.WindowFocused += (_ , e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(4, e.Id);  // Focus
             _tuiWindows.WindowMinimized += (_ , e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(5, e.Id);// Minimize
             _tuiWindows.WindowRestored += (_ , e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(6, e.Id); // Restore

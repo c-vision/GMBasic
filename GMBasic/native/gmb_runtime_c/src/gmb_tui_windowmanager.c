@@ -2,6 +2,7 @@
  * gmb_tui_windowmanager.c — WindowManager.cs (specchio ClipperLib/Controls).
  * ============================================================================ */
 #include "gmb_tui_widgets.h"
+#include "gmb_runtime.h"   /* gmb_window_fire: eventi MOVE/RESIZE per-handle */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -127,12 +128,12 @@ int gmb_window_manager_find_by_title(gmb_window_manager_t* m, const char* title)
 void gmb_window_manager_move_by(gmb_window_manager_t* m, int id, int dx, int dy)
 {
     gmb_managed_window_t* w = gmb_window_manager_get(m, id);
-    if (w) { w->rect.x += dx; w->rect.y += dy; }
+    if (w) { w->rect.x += dx; w->rect.y += dy; gmb_window_fire(id, "MOVE"); }
 }
 void gmb_window_manager_move_to(gmb_window_manager_t* m, int id, int x, int y)
 {
     gmb_managed_window_t* w = gmb_window_manager_get(m, id);
-    if (w) { w->rect.x = x; w->rect.y = y; }
+    if (w) { w->rect.x = x; w->rect.y = y; gmb_window_fire(id, "MOVE"); }
 }
 void gmb_window_manager_resize_by(gmb_window_manager_t* m, int id, int dw, int dh)
 {
@@ -143,6 +144,7 @@ void gmb_window_manager_resize_by(gmb_window_manager_t* m, int id, int dw, int d
         w->rect.h += dh;
         if (w->rect.w < 1) w->rect.w = 1;
         if (w->rect.h < 1) w->rect.h = 1;
+        gmb_window_fire(id, "RESIZE");
     }
 }
 
@@ -450,6 +452,7 @@ bool gmb_window_manager_update_resize(gmb_window_manager_t* m, int x, int y)
     if (rx + rw > wr) rw = wr - rx;
     if (ry + rh > wb) rh = wb - ry;
     w->rect.x = rx; w->rect.y = ry; w->rect.w = rw; w->rect.h = rh;
+    gmb_window_fire(w->id, "RESIZE");
     return true;
 }
 void gmb_window_manager_end_resize(gmb_window_manager_t* m)

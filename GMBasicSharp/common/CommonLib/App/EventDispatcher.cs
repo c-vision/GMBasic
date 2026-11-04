@@ -147,7 +147,18 @@ public sealed class EventDispatcher
         if (action is null) return;
         lock (_lock)
         {
-            if (_d == IntPtr.Zero) { _winFb.Add((kind, handle, action)); return; }
+            if (_d == IntPtr.Zero)
+            {
+                /* Una sola registrazione per (evento, handle): la successiva sostituisce
+                 * la precedente — stessa semantica delle gambe native (tabella per
+                 * (finestra, evento) in gmb_console.c / VM/C). */
+                _winFb.RemoveAll(h => h.Kind == kind && h.Handle == handle);
+                _winFb.Add((kind, handle, action));
+                return;
+            }
+            for (int i = _winHandles.Count - 1; i >= 0; i--)
+                if (_winHandles[i].Kind == kind && _winHandles[i].Handle == handle)
+                { _winHandles[i].H.Free(); _winHandles.RemoveAt(i); }
             var h = GCHandle.Alloc(action);
             _winHandles.Add((kind, handle, h));
             gmb_event_dispatcher_register_window_h(D(), kind, handle, _winTrampPtr, GCHandle.ToIntPtr(h));

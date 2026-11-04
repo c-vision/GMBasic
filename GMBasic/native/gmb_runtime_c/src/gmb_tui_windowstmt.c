@@ -260,6 +260,7 @@ int gmb_winstmt_define(const char* name, const char* title,
     if (bottom < top) { int t = top; top = bottom; bottom = t; }
     gmb_winstmt_t* w = ws_slot(name);
     if (!w) return -1;
+    int created = (w->id < 0);   /* finestra creata adesso (non un re-DEFINE) */
     w->frame = (flags & GMB_WINSTMT_DOUBLE) ? GMB_WM_BORDER_DOUBLE
              : (flags & GMB_WINSTMT_ROUNDED) ? GMB_WM_BORDER_ROUNDED
              : GMB_WM_BORDER_SINGLE;
@@ -285,10 +286,14 @@ int gmb_winstmt_define(const char* name, const char* title,
         if (mw) { mw->rect = rect; snprintf(mw->title, sizeof(mw->title), "%s", w->title); mw->pixel = w->pixel; }
     } else {
         w->id = gmb_window_manager_add(m, w->title, rect);
+        created = 1;
         gmb_managed_window_t* mw = gmb_window_manager_get(m, w->id);
         if (mw) { snprintf(mw->name, sizeof(mw->name), "%s", name ? name : ""); mw->pixel = w->pixel; }
     }
     ws_draw(w);
+    /* OPEN: la finestra è appena stata creata → evento all'handle (parità IL/PCode, che lo
+     * innalzano su AddWindow). Solo alla creazione, non a ogni DEFINE della stessa finestra. */
+    if (created) gmb_window_fire(w->id, "OPEN");
     return w->id;
 }
 
@@ -436,8 +441,13 @@ void gmb_winstmt_action(const char* name, const char* action)
         gmb_window_fire(_win, "MINIMIZE");
         gmb_window_manager_minimize(m, w->id);
     } else if (strcmp(action, "Restore") == 0) {
-        gmb_window_fire(_win, "RESTORE");
-        gmb_window_manager_restore(m, w->id);
+        /* RESTORE su una finestra non minimizzata è un no-op (parità IL/PCode: nessun
+         * evento). Prima innalzava RESTORE comunque → conteggio eventi divergente. */
+        gmb_managed_window_t* _mw = gmb_window_manager_get(m, w->id);
+        if (_mw && _mw->minimized) {
+            gmb_window_fire(_win, "RESTORE");
+            gmb_window_manager_restore(m, w->id);
+        }
     }
     /* Ridisegna su desktop pulito (parità IL RenderTuiWindows): la finestra
      * chiusa/minimizzata sparisce invece di lasciare pixel residui. */

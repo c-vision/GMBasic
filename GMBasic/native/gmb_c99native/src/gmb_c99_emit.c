@@ -22385,6 +22385,17 @@ static void st_on_window(ctx_t* c, gmb_stmt_t* s) {
             ind(c);
             sb_printf(&c->out, "gmb_window_register_event(\"%s\", \"%s\");\n", ev, s->target_label);
         } else {
+            /* STOP: toglie la callback per (handle,evento) — con OF quella specifica, senza OF
+             * la wildcard -1. Prima si rimuoveva solo la tabella per NOME → l'handler per
+             * handle continuava a scattare (bug: STOP ignorato sulle gambe native). */
+            ind(c);
+            if (s->of_expr) {
+                sb_put(&c->out, "gmb_window_register_event_of_cb((int)(");
+                emit_expr(c, s->of_expr);
+                sb_printf(&c->out, "), \"%s\", NULL);\n", ev);
+            } else {
+                sb_printf(&c->out, "gmb_window_register_event_of_cb(-1, \"%s\", NULL);\n", ev);
+            }
             ind(c);
             sb_printf(&c->out, "gmb_window_unregister_event(\"%s\");\n", ev);
         }

@@ -201,6 +201,15 @@ void gmb_event_dispatcher_register_window_h(gmb_event_dispatcher_t* d, int kind,
                                             void (*fn)(void* ctx), void* ctx)
 {
     if (d->win_count >= GMB_DISPATCH_MAX || !fn) return;
+    /* Una sola registrazione per (evento, handle): la successiva sostituisce la
+     * precedente (parità tabella runtime C e VM/C). */
+    for (int i = 0; i < d->win_count; i++)
+        if (d->win_kinds[i] == kind && d->win_handles[i] == handle)
+        {
+            d->win_actions[i] = fn;
+            d->win_ctxs[i] = ctx;
+            return;
+        }
     d->win_kinds[d->win_count] = kind;
     d->win_handles[d->win_count] = handle;
     d->win_actions[d->win_count] = fn;
