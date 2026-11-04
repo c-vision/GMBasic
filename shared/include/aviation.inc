@@ -1,0 +1,44 @@
+' ⛔ DIVIETO ASSOLUTO — NON modificare GMBasic (nessun file, nessun commit, nulla) senza
+' PERMESSO ESPLICITO dell'utente. GMBasic è un progetto SEPARATO: se serve una modifica,
+' FERMARSI e CHIEDERE.
+'
+' aviation.inc — namespace OPTIMIZE: dominio aviation (pacchetto FFI gmbaviation).
+' Revenue management, fleet/crew/tail/slot assignment, recovery, ULD, hub/Steiner.
+' Nomi BASIC senza underscore; array out dimensionati dal chiamante.
+
+NAMESPACE OPTIMIZE
+
+' ── revenue management ──────────────────────────────────────────────────────
+' EMSR-b: fares()/demandMean()/demandStd() = n (dalla classe più alta); protection() = n.
+DECLARE FUNCTION AVEMSRB LIB "gmbaviation" ALIAS "ofx_av_emsr_b" (fares() AS DOUBLE, demandMean() AS DOUBLE, demandStd() AS DOUBLE, n AS LONG, capacity AS DOUBLE, protection() AS DOUBLE) AS DOUBLE
+' Overbooking (newsvendor): bookings(0) = totale vendibile.
+DECLARE FUNCTION AVOVERBOOKING LIB "gmbaviation" ALIAS "ofx_av_overbooking" (capacity AS DOUBLE, fare AS DOUBLE, denied AS DOUBLE, showProb AS DOUBLE, showStd AS DOUBLE, bookings() AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION AVBIDPRICE LIB "gmbaviation" ALIAS "ofx_av_bid_price" (capacity AS DOUBLE, demand AS DOUBLE, fareLow AS DOUBLE, fareHigh AS DOUBLE) AS DOUBLE
+
+' ── assegnazioni ────────────────────────────────────────────────────────────
+' Fleet assignment: profit() = nf*nt; avail() = nt; assign() = nf.
+DECLARE FUNCTION AVFLEET LIB "gmbaviation" ALIAS "ofx_av_fleet" (profit() AS DOUBLE, capacity() AS DOUBLE, demand() AS DOUBLE, avail() AS LONG, nf AS LONG, nt AS LONG, assign() AS LONG) AS DOUBLE
+' Crew pairing: voli() = nf*np; chosen() = np; nChosen(0) = quanti.
+DECLARE FUNCTION AVCREWPAIRING LIB "gmbaviation" ALIAS "ofx_av_crew_pairing" (voli() AS LONG, cost() AS DOUBLE, nf AS LONG, np AS LONG, chosen() AS LONG, nChosen() AS LONG) AS DOUBLE
+' Tail assignment: cost() = na*nf; assign() = na.
+DECLARE FUNCTION AVTAILASSIGNMENT LIB "gmbaviation" ALIAS "ofx_av_tail_assignment" (cost() AS DOUBLE, na AS LONG, nf AS LONG, assign() AS LONG) AS DOUBLE
+' Slot allocation: bid() = na*ns; alloc() = na.
+DECLARE FUNCTION AVSLOT LIB "gmbaviation" ALIAS "ofx_av_slot" (bid() AS DOUBLE, na AS LONG, ns AS LONG, alloc() AS LONG) AS DOUBLE
+' Recovery: delayCost() = nf*na; assign() = nf.
+DECLARE FUNCTION AVRECOVERY LIB "gmbaviation" ALIAS "ofx_av_recovery" (delayCost() AS DOUBLE, nf AS LONG, na AS LONG, assign() AS LONG) AS DOUBLE
+' ULD packing: items() = 3*n (w,h,d); uldOf() = n.
+DECLARE FUNCTION AVULD LIB "gmbaviation" ALIAS "ofx_av_uld" (items() AS DOUBLE, n AS LONG, W AS DOUBLE, H AS DOUBLE, D AS DOUBLE, uldOf() AS LONG) AS LONG
+
+' ── aviation avanzato ───────────────────────────────────────────────────────
+' Aircraft routing: flights() = nf*4 (dep, arr, origin, dest); routeOf() = nf.
+DECLARE FUNCTION AVAIRCRAFTROUTING LIB "gmbaviation" ALIAS "ofx_av_aircraft_routing" (flights() AS DOUBLE, nf AS LONG, minTurn AS DOUBLE, routeOf() AS LONG) AS LONG
+' Crew rescheduling: cost() = ncrew*nf; available() = ncrew; assign() = ncrew.
+DECLARE FUNCTION AVCREWRESCHED LIB "gmbaviation" ALIAS "ofx_av_crew_resched" (cost() AS DOUBLE, available() AS LONG, ncrew AS LONG, nf AS LONG, assign() AS LONG) AS DOUBLE
+' Hub location (p-hub median): dist()/flow() = n*n; hubs() = p.
+DECLARE FUNCTION AVHUB LIB "gmbaviation" ALIAS "ofx_av_hub" (dist() AS DOUBLE, flow() AS DOUBLE, n AS LONG, p AS LONG, alpha AS DOUBLE, hubs() AS LONG) AS DOUBLE
+' Steiner: w() = n*n (1e30 = assente); terminals() = nt; inTree() = n*n.
+DECLARE FUNCTION AVSTEINER LIB "gmbaviation" ALIAS "ofx_av_steiner" (w() AS DOUBLE, n AS LONG, terminals() AS LONG, nt AS LONG, inTree() AS LONG) AS DOUBLE
+' Tail continuity: cost() = na*nf; assign() = na.
+DECLARE FUNCTION AVTAILCONTINUITY LIB "gmbaviation" ALIAS "ofx_av_tail_continuity" (cost() AS DOUBLE, na AS LONG, nf AS LONG, assign() AS LONG) AS DOUBLE
+' Column generation: voli() = nf*np; chosen() = np; nChosen(0) = quante.
+DECLARE FUNCTION AVCOLUMNGEN LIB "gmbaviation" ALIAS "ofx_av_column_gen" (voli() AS LONG, cost() AS DOUBLE, nf AS LONG, np AS LONG, chosen() AS LONG, nChosen() AS LONG, maxiter AS LONG) AS DOUBLE
