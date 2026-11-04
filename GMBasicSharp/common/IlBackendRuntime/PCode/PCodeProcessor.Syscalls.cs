@@ -6195,15 +6195,16 @@ internal sealed partial class PCodeProcessor
             case SysCall.ON_WINDOW_EVENT:
             {
                 // Ordine di push dal compilatore (Compiler.OnKey.cs, VisitOnWindowStatementC):
-                // eventKind, actionType, target — 3 valori, il target e' l'ultimo pushato quindi
-                // il primo poppato.
+                // handle, eventKind, actionType, target — 4 valori, il target e' l'ultimo pushato
+                // quindi il primo poppato. handle = -1 quando manca la clausola OF.
                 var targetRaw = task.Sp > 0 ? task.PopRef() : null;
                 var actionType = PopInt(task);
-                var eventKind = PopInt(task); // 0=Resize, 1=Quit (WindowEventKind in Ast/Graphics.cs)
+                var eventKind = PopInt(task); // 0=Close, 1=Resize, … (WindowEventKind in Ast/Graphics.cs)
+                var windowHandle = PopInt(task); // -1 = qualunque finestra
 
                 if (actionType == 0) // STOP: disattiva l'handler per questo evento.
                 {
-                    CommonLib.App.EventDispatcher.Instance.UnregisterWindow(eventKind);
+                    CommonLib.App.EventDispatcher.Instance.UnregisterWindow(eventKind, windowHandle);
                     break;
                 }
 
@@ -6211,7 +6212,7 @@ internal sealed partial class PCodeProcessor
                 {
                     var targetAddr = Convert.ToInt32(targetRaw);
                     var globals2 = task.Globals;
-                    CommonLib.App.EventDispatcher.Instance.RegisterWindow(eventKind, () => FireWindowEvent(targetAddr, globals2));
+                    CommonLib.App.EventDispatcher.Instance.RegisterWindow(eventKind, windowHandle, () => FireWindowEvent(targetAddr, globals2));
                     EnsureWindowEventsSubscribed();
                 }
                 break;

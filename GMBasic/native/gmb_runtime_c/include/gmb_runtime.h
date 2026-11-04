@@ -2836,6 +2836,8 @@ void gmb_window_register_event(const char* event_kind, const char* handler);
 /* Eventi finestra per HANDLE con callback (function pointer); win=0 = finestra SDL. */
 void gmb_window_register_event_of_cb(int win, const char* ev, double (*cb)(void));
 void gmb_window_fire(int win, const char* ev);
+/* Contesto dell'evento finestra in corso (window, event-name): valido DURANTE la callback. */
+void gmb_window_firing(int* out_win, const char** out_ev);
 void gmb_window_reset_events(void);
 void gmb_window_unregister_event(const char* event_kind);
 

@@ -152,10 +152,16 @@ public sealed partial class Compiler
 
     private void VisitOnWindowStatementC(OnWindowStmt stmt)
     {
-        // 1. Tipo di evento finestra: WindowEventKind.Resize=0, Quit=1 (vedi Ast/Graphics.cs).
+        // 1. Handle della finestra (clausola OF) — -1 = qualunque finestra. È il PRIMO valore
+        // pushato, quindi l'ULTIMO poppato dal runtime (ordine: handle, eventKind, actionType,
+        // target).
+        if (stmt.Of is null) EmitConstant(-1.0);
+        else VisitExpression(stmt.Of);   // il runtime converte (PopInt) — nessun opcode Conv nel p-code
+
+        // 2. Tipo di evento finestra: WindowEventKind (Ast/Graphics.cs).
         EmitConstant((double)(int)stmt.EventKind);
 
-        // 2. Azione e target.
+        // 3. Azione e target.
         switch (stmt.Action)
         {
             case StopAction:
@@ -193,9 +199,9 @@ public sealed partial class Compiler
                 throw new NotSupportedException($"P-CODE VM: azione ON WINDOW '{stmt.Action.GetType().Name}' non supportata.");
         }
 
-        // 3. Emette il SysCall (stack: eventKind, actionType, target — 3 valori).
+        // 4. Emette il SysCall (stack: handle, eventKind, actionType, target — 4 valori).
         EmitByte((byte)OpCode.OP_SYSCALL);
         EmitSysCall(SysCall.ON_WINDOW_EVENT);
-        EmitByte((byte)3);
+        EmitByte((byte)4);
     }
 }

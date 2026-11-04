@@ -316,13 +316,15 @@ public static partial class IlRuntime
         try
         {
             var g = CommonGraphics.Graphics.GraphicsManager.Instance;
+            // Handle 0 = finestra SDL (le finestre virtuali hanno id 1..N): `ON WINDOW ... OF 0`
+            // intercetta gli eventi dello schermo grafico.
             g.WindowCloseRequested += () =>
             {
-                try { CommonLib.App.EventDispatcher.Instance.DispatchWindow(0); } catch { }
+                try { CommonLib.App.EventDispatcher.Instance.DispatchWindow(0, 0); } catch { }
             };
             g.WindowResized += () =>
             {
-                try { CommonLib.App.EventDispatcher.Instance.DispatchWindow(1); } catch { }
+                try { CommonLib.App.EventDispatcher.Instance.DispatchWindow(1, 0); } catch { }
             };
         }
         catch { }
@@ -17199,12 +17201,12 @@ public static double TextWidth(string s)
                     _tuiWindowEventsSubscribed = true;
                     try
                     {
-                        _tuiWindows.WindowOpened += (_, _) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(7);
-                        _tuiWindows.WindowClosed += (_, _) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(0);
-                        _tuiWindows.WindowMoved += (_, _) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(3);
-                        _tuiWindows.WindowFocused += (_, _) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(4);
-                        _tuiWindows.WindowMinimized += (_, _) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(5);
-                        _tuiWindows.WindowRestored += (_, _) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(6);
+                        _tuiWindows.WindowOpened += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(7, e.Id);
+                        _tuiWindows.WindowClosed += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(0, e.Id);
+                        _tuiWindows.WindowMoved += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(3, e.Id);
+                        _tuiWindows.WindowFocused += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(4, e.Id);
+                        _tuiWindows.WindowMinimized += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(5, e.Id);
+                        _tuiWindows.WindowRestored += (_, e) => CommonLib.App.EventDispatcher.Instance.DispatchWindow(6, e.Id);
                     }
                     catch { }
                 }
@@ -17693,10 +17695,10 @@ public static double TextWidth(string s)
         CommonLib.App.EventDispatcher.Instance.RegisterMouse(kind, (_, _) => handler());
     public static void UnregisterMouseHandler(int kind) =>
         CommonLib.App.EventDispatcher.Instance.UnregisterMouse(kind);
-    public static void RegisterWindowHandler(int kind, Action handler) =>
-        CommonLib.App.EventDispatcher.Instance.RegisterWindow(kind, handler);
-    public static void UnregisterWindowHandler(int kind) =>
-        CommonLib.App.EventDispatcher.Instance.UnregisterWindow(kind);
+    /// <summary>ON WINDOW ... STOP: rimuove l'handler per (evento, finestra); handle = -1 →
+    /// qualunque finestra (forma senza OF).</summary>
+    public static void UnregisterWindowHandler(int kind, int handle) =>
+        CommonLib.App.EventDispatcher.Instance.UnregisterWindow(kind, handle);
 
     /// <summary>ON MOUSE ... GOSUB &lt;handler&gt;: come RegisterKeyHandlerBySymbol — la SUB
     /// gira come TASK GPM (SpawnGoSub), mai sul thread del dispatcher esterno.</summary>
@@ -17709,15 +17711,15 @@ public static double TextWidth(string s)
         CommonLib.App.EventDispatcher.Instance.RegisterMouse(kind, (_, _) => handler());
     }
 
-    /// <summary>ON WINDOW ... GOSUB &lt;handler&gt;: come RegisterKeyHandlerBySymbol — la SUB
-    /// gira come TASK GPM (SpawnGoSub), mai sul thread del dispatcher esterno.</summary>
-    public static void RegisterWindowHandlerBySymbol(int kind, int symbolId)
+    /// <summary>ON WINDOW <ev> OF <handle> ... GOSUB/CALL: la registrazione vale solo per la
+    /// finestra indicata (handle = -1 → qualunque finestra). Il dispatch è un TASK GPM.</summary>
+    public static void RegisterWindowHandlerBySymbol(int kind, int handle, int symbolId)
     {
         var method = FindProcedureMethodIn(Assembly.GetCallingAssembly(), symbolId, paramTypes: null);
         Action handler = method is null
             ? NoopHandler
             : () => DispatchHandlerAsGpmOrDirect(symbolId, method, null);
-        CommonLib.App.EventDispatcher.Instance.RegisterWindow(kind, handler);
+        CommonLib.App.EventDispatcher.Instance.RegisterWindow(kind, handle, handler);
     }
 
     /// <summary>Dispatch di un handler di evento (ON KEY/MOUSE/WINDOW) come TASK GPM quando

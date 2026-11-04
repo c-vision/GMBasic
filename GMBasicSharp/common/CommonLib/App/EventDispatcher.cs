@@ -32,11 +32,15 @@ public sealed class EventDispatcher
     [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
     private static extern void gmb_event_dispatcher_register_window(IntPtr d, int kind, IntPtr fn, IntPtr ctx);
     [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+    private static extern void gmb_event_dispatcher_register_window_h(IntPtr d, int kind, int handle, IntPtr fn, IntPtr ctx);
+    [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
     private static extern void gmb_event_dispatcher_register_mouse(IntPtr d, int kind, IntPtr fn, IntPtr ctx);
     [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
     private static extern int gmb_event_dispatcher_dispatch_key(IntPtr d, int combo);
     [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
     private static extern void gmb_event_dispatcher_dispatch_window(IntPtr d, int kind);
+    [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+    private static extern void gmb_event_dispatcher_dispatch_window_h(IntPtr d, int kind, int handle);
     [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
     private static extern void gmb_event_dispatcher_dispatch_mouse(IntPtr d, int kind, int x, int y);
     [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
@@ -45,6 +49,8 @@ public sealed class EventDispatcher
     private static extern void gmb_event_dispatcher_unregister_key(IntPtr d, int combo);
     [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
     private static extern void gmb_event_dispatcher_unregister_window(IntPtr d, int kind);
+    [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+    private static extern void gmb_event_dispatcher_unregister_window_h(IntPtr d, int kind, int handle);
     [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
     private static extern void gmb_event_dispatcher_unregister_mouse(IntPtr d, int kind);
 
@@ -82,12 +88,12 @@ public sealed class EventDispatcher
 
     private readonly object _lock = new();
     private readonly List<(int Combo, GCHandle H)> _keyHandles = new();
-    private readonly List<(int Kind, GCHandle H)> _winHandles = new();
+    private readonly List<(int Kind, int Handle, GCHandle H)> _winHandles = new();
     private readonly List<(int Kind, GCHandle H)> _mouseHandles = new();
 
     // Fallback managed (solo se la dylib non è caricabile → dispatcher C assente).
     private readonly List<(KeyCombination Combo, Action Action)> _keyFb = new();
-    private readonly List<(int Kind, Action Action)> _winFb = new();
+    private readonly List<(int Kind, int Handle, Action Action)> _winFb = new();
     private readonly List<(int Kind, Action<int, int> Action)> _mouseFb = new();
 
     // Additivi (non nel dispatcher C).
@@ -132,26 +138,32 @@ public sealed class EventDispatcher
         }
     }
 
-    public void RegisterWindow(int kind, Action action)
+    public void RegisterWindow(int kind, Action action) => RegisterWindow(kind, -1, action);
+
+    /// <summary>ON WINDOW &lt;ev&gt; OF &lt;handle&gt;: la registrazione vale solo per quella
+    /// finestra. handle = -1 → qualunque finestra (forma senza OF).</summary>
+    public void RegisterWindow(int kind, int handle, Action action)
     {
         if (action is null) return;
         lock (_lock)
         {
-            if (_d == IntPtr.Zero) { _winFb.Add((kind, action)); return; }
+            if (_d == IntPtr.Zero) { _winFb.Add((kind, handle, action)); return; }
             var h = GCHandle.Alloc(action);
-            _winHandles.Add((kind, h));
-            gmb_event_dispatcher_register_window(D(), kind, _winTrampPtr, GCHandle.ToIntPtr(h));
+            _winHandles.Add((kind, handle, h));
+            gmb_event_dispatcher_register_window_h(D(), kind, handle, _winTrampPtr, GCHandle.ToIntPtr(h));
         }
     }
 
-    public void UnregisterWindow(int kind)
+    public void UnregisterWindow(int kind) => UnregisterWindow(kind, -1);
+
+    public void UnregisterWindow(int kind, int handle)
     {
         lock (_lock)
         {
-            if (_d == IntPtr.Zero) { _winFb.RemoveAll(h => h.Kind == kind); return; }
+            if (_d == IntPtr.Zero) { _winFb.RemoveAll(h => h.Kind == kind && h.Handle == handle); return; }
             for (int i = _winHandles.Count - 1; i >= 0; i--)
-                if (_winHandles[i].Kind == kind) { _winHandles[i].H.Free(); _winHandles.RemoveAt(i); }
-            gmb_event_dispatcher_unregister_window(D(), kind);
+                if (_winHandles[i].Kind == kind && _winHandles[i].Handle == handle) { _winHandles[i].H.Free(); _winHandles.RemoveAt(i); }
+            gmb_event_dispatcher_unregister_window_h(D(), kind, handle);
         }
     }
 
@@ -214,17 +226,21 @@ public sealed class EventDispatcher
         }
     }
 
-    public void DispatchWindow(int kind)
+    public void DispatchWindow(int kind) => DispatchWindow(kind, -1);
+
+    /// <summary>Inoltra un evento finestra con l'HANDLE della finestra che l'ha prodotto
+    /// (le registrazioni senza OF, handle -1, valgono per tutte).</summary>
+    public void DispatchWindow(int kind, int handle)
     {
         lock (_lock)
         {
             if (_d == IntPtr.Zero)
             {
-                var acts = _winFb.Where(h => h.Kind == kind).Select(h => h.Action).ToList();
+                var acts = _winFb.Where(h => h.Kind == kind && (h.Handle < 0 || h.Handle == handle)).Select(h => h.Action).ToList();
                 foreach (var a in acts) { try { a(); } catch { } }
                 return;
             }
-            gmb_event_dispatcher_dispatch_window(D(), kind);
+            gmb_event_dispatcher_dispatch_window_h(D(), kind, handle);
         }
     }
 

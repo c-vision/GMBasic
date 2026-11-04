@@ -434,9 +434,9 @@ internal sealed partial class PCodeProcessor
             {
                 // WindowEventKind (Ast/Graphics.cs): Close=0, Resize=1, Quit=2, ...
                 if (e.window.windowEvent == SDL2.SDL.SDL_WindowEventID.SDL_WINDOWEVENT_RESIZED)
-                    CommonLib.App.EventDispatcher.Instance.DispatchWindow(1); // Resize
+                    CommonLib.App.EventDispatcher.Instance.DispatchWindow(1, 0); // Resize (handle 0 = finestra SDL)
                 else if (e.window.windowEvent == SDL2.SDL.SDL_WindowEventID.SDL_WINDOWEVENT_CLOSE)
-                    CommonLib.App.EventDispatcher.Instance.DispatchWindow(0); // Close
+                    CommonLib.App.EventDispatcher.Instance.DispatchWindow(0, 0); // Close (handle 0 = finestra SDL)
             };
             mgr.TextInputEvent += e =>
             {
@@ -445,7 +445,7 @@ internal sealed partial class PCodeProcessor
                 string txt;
                 unsafe { txt = System.Text.Encoding.UTF8.GetString(new ReadOnlySpan<byte>(e.text.text, 32)); }
                 if (txt.TrimEnd('\0').Length > 1)
-                    CommonLib.App.EventDispatcher.Instance.DispatchWindow(8);
+                    CommonLib.App.EventDispatcher.Instance.DispatchWindow(8, 0);
             };
         }
         catch { }

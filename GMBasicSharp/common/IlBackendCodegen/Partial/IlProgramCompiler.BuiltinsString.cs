@@ -285,10 +285,19 @@ public sealed partial class IlProgramCompiler
     }
     private void EmitOnWindowStatement(OnWindowStmt stmt)
     {
+        // ON WINDOW <EV> [OF <handle>] <azione>: il handle (o -1 = qualunque finestra) viaggia
+        // fino al runtime, che filtra sulla finestra che ha prodotto l'evento.
+        void EmitWindowHandle()
+        {
+            if (stmt.Of is null) _il.Emit(OpCodes.Ldc_I4_M1);
+            else EmitInt32Argument(stmt.Of);
+        }
+
         switch (stmt.Action)
         {
             case StopAction:
                 _il.Emit(OpCodes.Ldc_I4, (int)stmt.EventKind);
+                EmitWindowHandle();
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.UnregisterWindowHandler)));
                 break;
             case CallAction callAction:
@@ -296,6 +305,7 @@ public sealed partial class IlProgramCompiler
                     throw new NotSupportedException("Backend IL: azione ON WINDOW CALL non valida: attesa una chiamata a procedura.");
                 // SymbolId → dispatch come TASK GPM (mai sul thread del dispatcher esterno).
                 _il.Emit(OpCodes.Ldc_I4, (int)stmt.EventKind);
+                EmitWindowHandle();
                 _il.Emit(OpCodes.Ldc_I4, callExpr.SymbolId);
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.RegisterWindowHandlerBySymbol)));
                 break;
@@ -306,6 +316,7 @@ public sealed partial class IlProgramCompiler
                 // handler no-op.
                 var windowSymbolId = ResolveWindowGosubSymbolId(gosubAction);
                 _il.Emit(OpCodes.Ldc_I4, (int)stmt.EventKind);
+                EmitWindowHandle();
                 _il.Emit(OpCodes.Ldc_I4, windowSymbolId);
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.RegisterWindowHandlerBySymbol)));
                 break;

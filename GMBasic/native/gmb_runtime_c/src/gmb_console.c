@@ -1416,6 +1416,15 @@ void gmb_window_unregister_event(const char* event_kind) {
  * invocabili dal runtime C (nessun risolutore nome->funzione). win=0 = finestra SDL. */
 static struct { int win; char ev[64]; gmb_form_cb cb; } g_win_cb[GMB_MAX_EVENT_HANDLERS];
 static int g_win_cb_n = 0;
+/* Contesto dell'evento IN CORSO (parità gmb_form_firing_control per i controlli): i callback
+ * C non ricevono argomenti, quindi chi ha bisogno di sapere (finestra, evento) lo legge qui
+ * durante l'invocazione. */
+static int g_win_firing_win = -1;
+static const char* g_win_firing_ev = NULL;
+void gmb_window_firing(int* out_win, const char** out_ev) {
+    if (out_win) *out_win = g_win_firing_win;
+    if (out_ev) *out_ev = g_win_firing_ev;
+}
 void gmb_window_register_event_of_cb(int win, const char* ev, gmb_form_cb cb) {
     if (!ev) return;
     for (int i = 0; i < g_win_cb_n; i++)
@@ -1428,8 +1437,14 @@ void gmb_window_register_event_of_cb(int win, const char* ev, gmb_form_cb cb) {
 }
 void gmb_window_fire(int win, const char* ev) {
     if (!ev) return;
+    int prev_win = g_win_firing_win;
+    const char* prev_ev = g_win_firing_ev;
+    g_win_firing_win = win; g_win_firing_ev = ev;
+    /* win < 0 = registrazione SENZA `OF` (ON WINDOW <ev> <azione>): vale per ogni finestra. */
     for (int i = 0; i < g_win_cb_n; i++)
-        if (g_win_cb[i].win == win && strcmp(g_win_cb[i].ev, ev) == 0 && g_win_cb[i].cb) g_win_cb[i].cb();
+        if ((g_win_cb[i].win == win || g_win_cb[i].win < 0) &&
+            strcmp(g_win_cb[i].ev, ev) == 0 && g_win_cb[i].cb) g_win_cb[i].cb();
+    g_win_firing_win = prev_win; g_win_firing_ev = prev_ev;
 }
 void gmb_window_reset_events(void) { g_win_cb_n = 0; }
 

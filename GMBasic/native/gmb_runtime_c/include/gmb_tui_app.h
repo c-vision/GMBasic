@@ -69,6 +69,9 @@ typedef struct gmb_event_dispatcher {
     void (*key_actions[GMB_DISPATCH_MAX])(void* ctx);
     void* key_ctxs[GMB_DISPATCH_MAX];
     int win_kinds[GMB_DISPATCH_MAX];
+    /* handle della finestra per la registrazione (ON WINDOW <ev> OF <handle>):
+     * -1 = qualunque finestra (forma senza OF, comportamento storico). */
+    int win_handles[GMB_DISPATCH_MAX];
     void (*win_actions[GMB_DISPATCH_MAX])(void* ctx);
     void* win_ctxs[GMB_DISPATCH_MAX];
     int win_count;
@@ -84,15 +87,22 @@ void gmb_event_dispatcher_register_key(gmb_event_dispatcher_t* d, int combo,
                                        void (*fn)(void* ctx), void* ctx);
 void gmb_event_dispatcher_register_window(gmb_event_dispatcher_t* d, int kind,
                                           void (*fn)(void* ctx), void* ctx);
+/* Variante con HANDLE (ON WINDOW <ev> OF <h>): handle=-1 = qualunque finestra. */
+void gmb_event_dispatcher_register_window_h(gmb_event_dispatcher_t* d, int kind, int handle,
+                                            void (*fn)(void* ctx), void* ctx);
 void gmb_event_dispatcher_register_mouse(gmb_event_dispatcher_t* d, int kind,
                                          void (*fn)(void* ctx, int x, int y), void* ctx);
 int  gmb_event_dispatcher_dispatch_key(gmb_event_dispatcher_t* d, int combo);
 void gmb_event_dispatcher_dispatch_window(gmb_event_dispatcher_t* d, int kind);
+/* Variante con HANDLE: invoca le registrazioni per (kind, handle) e quelle wildcard (-1). */
+void gmb_event_dispatcher_dispatch_window_h(gmb_event_dispatcher_t* d, int kind, int handle);
 void gmb_event_dispatcher_dispatch_mouse(gmb_event_dispatcher_t* d, int kind, int x, int y);
 /* has / unregister (rispecchiano HasKeyHandler/Unregister* del lato C#) */
 int  gmb_event_dispatcher_has_key(gmb_event_dispatcher_t* d, int combo);
 void gmb_event_dispatcher_unregister_key(gmb_event_dispatcher_t* d, int combo);
 void gmb_event_dispatcher_unregister_window(gmb_event_dispatcher_t* d, int kind);
+/* Variante con HANDLE: rimuove solo le registrazioni di quella finestra (-1 = wildcard). */
+void gmb_event_dispatcher_unregister_window_h(gmb_event_dispatcher_t* d, int kind, int handle);
 void gmb_event_dispatcher_unregister_mouse(gmb_event_dispatcher_t* d, int kind);
 
 #ifdef __cplusplus
