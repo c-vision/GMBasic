@@ -492,17 +492,77 @@ int gmb_window_manager_focus_next(gmb_window_manager_t* m, int forward)
 int gmb_window_manager_taskbar_chip_at(gmb_window_manager_t* m, int x, int y)
 {
     if (!m) return -1;
-    int chip_w = 20, gap = 1;
-    int i = 0;
-    for (int iw = 0; iw < m->count; iw++) {
-        gmb_managed_window_t* w = &m->windows[iw];
-        if (w->minimized || w->desktop != m->current_desktop) continue;
-        int cx = m->work_area.x + i * (chip_w + gap);
-        if (x >= cx && x < cx + chip_w && y >= m->work_area.y + m->work_area.h - 1)
-            return w->id;
-        i++;
+    /* Stesso layout del render (gmb_window_manager_render): chip delle finestre MINIMIZZATE
+     * del desktop corrente, accodati da DESTRA, larghezza = lunghezza della label. */
+    int W = m->work_area.w;
+    if (W <= 0) return -1;
+    if (y != m->work_area.y + m->work_area.h - 1) return -1;
+    int x2 = W;
+    for (int pass = 0; pass < m->count; pass++) {
+        /* z-order crescente, come il render */
+        gmb_managed_window_t* w = NULL;
+        for (int i = 0; i < m->count; i++) {
+            gmb_managed_window_t* c = &m->windows[i];
+            if (c->desktop != m->current_desktop || !c->minimized) continue;
+            int already = 0;
+            for (int j = 0; j < i; j++) {
+                gmb_managed_window_t* d = &m->windows[j];
+                if (d->desktop != m->current_desktop || !d->minimized) continue;
+                if (d->z <= c->z) already++;   /* conta i precedenti con z minore */
+            }
+            if (already == pass) { w = c; break; }
+        }
+        if (!w) break;
+        char label[32];
+        const char* t = w->title;
+        int tl = (int)strlen(t); if (tl > 14) tl = 14;
+        snprintf(label, sizeof(label), " %.*s ", tl, t);
+        int ll = (int)strlen(label);
+        int x0 = x2 - ll;
+        if (x0 < 1) break;
+        if (x >= x0 && x < x2) return w->id;
+        x2 = x0 - 1;
     }
     return -1;
+}
+
+/* ---- Query per il client C# (P/Invoke). Lo stato vive SOLO in C. ---- */
+int gmb_window_manager_window_count(gmb_window_manager_t* m, int desktop)
+{
+    if (!m) return 0;
+    int n = 0;
+    for (int i = 0; i < m->count; i++)
+        if (desktop <= 0 || m->windows[i].desktop == desktop) n++;
+    return n;
+}
+int gmb_window_manager_window_id_at(gmb_window_manager_t* m, int index)
+{
+    if (!m || index < 0 || index >= m->count) return -1;
+    return m->windows[index].id;
+}
+int gmb_window_manager_current_desktop(gmb_window_manager_t* m) { return m ? m->current_desktop : 1; }
+const char* gmb_window_manager_status_text(gmb_window_manager_t* m) { return m ? m->status_text : ""; }
+void gmb_window_manager_set_title(gmb_window_manager_t* m, int id, const char* title)
+{
+    gmb_managed_window_t* w = gmb_window_manager_get(m, id);
+    if (w && title) snprintf(w->title, sizeof(w->title), "%s", title);
+}
+int gmb_window_manager_is_dragging(gmb_window_manager_t* m) { return m && m->drag_id >= 0; }
+int gmb_window_manager_is_resizing(gmb_window_manager_t* m) { return m && m->resize_id >= 0; }
+int gmb_window_manager_drag_id(gmb_window_manager_t* m) { return m ? m->drag_id : -1; }
+int gmb_window_manager_resize_id(gmb_window_manager_t* m) { return m ? m->resize_id : -1; }
+void gmb_window_manager_clear_focus(gmb_window_manager_t* m)
+{
+    if (!m) return;
+    m->focus = -1;
+    for (int i = 0; i < m->count; i++) m->windows[i].focused = false;
+}
+void gmb_window_manager_work_area4(gmb_window_manager_t* m, int* out4)
+{
+    if (!out4) return;
+    if (!m) { out4[0] = 0; out4[1] = 0; out4[2] = 80; out4[3] = 24; return; }
+    out4[0] = m->work_area.x; out4[1] = m->work_area.y;
+    out4[2] = m->work_area.w; out4[3] = m->work_area.h;
 }
 
 /* ============================================================================
