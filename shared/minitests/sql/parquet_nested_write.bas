@@ -4,14 +4,14 @@ IMPORT SQL
 IMPORT IO
 
 SUB Main()
-    MKDIR "bin"
+    MKDIR "work"
     ON ERROR RESUME NEXT
-    IF IO.FILEEXISTS("bin/n.parquet") THEN KILL "bin/n.parquet"
+    IF IO.FILEEXISTS("work/n.parquet") THEN KILL "work/n.parquet"
     ON ERROR GOTO 0
-    COPY "../../samples/Fixtures/parquet_nested.parquet" TO "bin/n.parquet"
+    COPY "../../samples/Fixtures/parquet_nested.parquet" TO "work/n.parquet"
     DIM q$ = CHR(34)
     SQL OPEN ":memory:" ALIAS M
-    SQL EXEC M, "CREATE VIRTUAL TABLE t USING parquet(name='bin/n.parquet')"
+    SQL EXEC M, "CREATE VIRTUAL TABLE t USING parquet(name='work/n.parquet')"
     SQL EXEC M, "UPDATE t SET tags='[" + q$ + "x" + q$ + "," + q$ + "y" + q$ + "," + q$ + "z" + q$ + "]' WHERE id=1"
     SQL EXEC M, "UPDATE t SET info='{" + q$ + "city" + q$ + ":" + q$ + "naples" + q$ + "," + q$ + "zip" + q$ + ":999}' WHERE id=2"
     SQL EXEC M, "INSERT INTO t VALUES (3,'[" + q$ + "p" + q$ + "]','[9]','{" + q$ + "city" + q$ + ":" + q$ + "turin" + q$ + "," + q$ + "zip" + q$ + ":7}','{" + q$ + "k" + q$ + ":" + q$ + "v" + q$ + "}')"
@@ -25,7 +25,7 @@ SUB Main()
     SQL CLOSE M
     ' RIAPERTURA: rilegge il file su disco (non i jrows in memoria) -> intercetta file corrotti
     SQL OPEN ":memory:" ALIAS M2
-    SQL EXEC M2, "CREATE VIRTUAL TABLE t2 USING parquet(name='bin/n.parquet')"
+    SQL EXEC M2, "CREATE VIRTUAL TABLE t2 USING parquet(name='work/n.parquet')"
     SQL QUERY M2, rs, "SELECT id, tags, prices, info, attrs FROM t2 ORDER BY id"
     DO WHILE SQL.FETCH(rs)
         PRINT "reopen "; rs("id"); " tags="; rs("tags"); " prices="; rs("prices"); " info="; rs("info"); " attrs="; rs("attrs")

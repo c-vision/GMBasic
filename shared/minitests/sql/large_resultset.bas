@@ -6,13 +6,13 @@ IMPORT IO
 
 SUB Main()
     ON ERROR RESUME NEXT
-    IF IO.FILEEXISTS("bin/lrs.db") THEN KILL "bin/lrs.db"
-    IF IO.FILEEXISTS("bin/lrs.db-wal") THEN KILL "bin/lrs.db-wal"
-    IF IO.FILEEXISTS("bin/lrs.db-shm") THEN KILL "bin/lrs.db-shm"
-    RMDIR "bin", TRUE
+    IF IO.FILEEXISTS("work/lrs.db") THEN KILL "work/lrs.db"
+    IF IO.FILEEXISTS("work/lrs.db-wal") THEN KILL "work/lrs.db-wal"
+    IF IO.FILEEXISTS("work/lrs.db-shm") THEN KILL "work/lrs.db-shm"
+    RMDIR "work", TRUE
     ON ERROR GOTO 0
-    MKDIR "bin"
-    SQL OPEN "bin/lrs.db" ALIAS L
+    MKDIR "work"
+    SQL OPEN "work/lrs.db" ALIAS L
     SQL EXEC L, "CREATE TABLE big(n INTEGER, s TEXT)"
     SQL EXEC L, "WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM c WHERE x<4200) INSERT INTO big(n,s) SELECT x, printf('%0600d', x) FROM c"
 

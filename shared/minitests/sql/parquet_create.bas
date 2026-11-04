@@ -4,12 +4,12 @@ IMPORT SQL
 IMPORT IO
 
 SUB Main()
-    MKDIR "bin"
+    MKDIR "work"
     ON ERROR RESUME NEXT
-    IF IO.FILEEXISTS("bin/c.parquet") THEN KILL "bin/c.parquet"
+    IF IO.FILEEXISTS("work/c.parquet") THEN KILL "work/c.parquet"
     ON ERROR GOTO 0
     SQL OPEN ":memory:" ALIAS M
-    SQL EXEC M, "CREATE VIRTUAL TABLE t USING parquet(name='bin/c.parquet', schema='id LONG, name TEXT, price DOUBLE, ratio FLOAT, flag BOOL, qty INT32')"
+    SQL EXEC M, "CREATE VIRTUAL TABLE t USING parquet(name='work/c.parquet', schema='id LONG, name TEXT, price DOUBLE, ratio FLOAT, flag BOOL, qty INT32')"
     SQL EXEC M, "INSERT INTO t VALUES (1,'alice',10.5,0.5,1,100)"
     SQL EXEC M, "INSERT INTO t VALUES (2,'bob',20,1.5,0,200)"
     SQL EXEC M, "INSERT INTO t VALUES (3,'carol',15.25,2.5,1,300)"

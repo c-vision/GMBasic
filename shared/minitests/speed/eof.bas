@@ -12,10 +12,10 @@ END TYPE
 
 SUB Main()
   ON ERROR RESUME NEXT
-  RMDIR "bin/eof_db", TRUE
+  RMDIR "work/eof_db", TRUE
   ON ERROR GOTO 0
-  MKDIR "bin"
-  SPEED OPEN "bin/eof_db" ALIAS MioDb
+  MKDIR "work"
+  SPEED OPEN "work/eof_db" ALIAS MioDb
   SPEED USE "Items" FROM MioDb OF SRow ALIAS T INDEXED BY ID, Name
 
   DIM rec AS SRow

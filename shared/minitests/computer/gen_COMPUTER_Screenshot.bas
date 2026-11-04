@@ -1,4 +1,4 @@
-' EXPECT: bin/screenshot.png
+' EXPECT: work/screenshot.png
 IMPORT COMPUTER
 
 SUB Main()

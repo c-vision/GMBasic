@@ -7,7 +7,7 @@ IMPORT SQL
 IMPORT IO
 
 SUB Main()
-  MKDIR "bin"
+  MKDIR "work"
   SQL OPEN ":memory:" ALIAS m
 
   PRINT "exec_create>=0="; (SQL.EXEC("m", "CREATE TABLE t(id INTEGER, name TEXT)") >= 0)
@@ -26,22 +26,22 @@ SUB Main()
   PRINT "fetch2="; (SQL.FETCH(rs) <> 0)
   PRINT "id2="; rs("id")
   PRINT "fetch3="; (SQL.FETCH(rs) <> 0)
-  PRINT "tocsv>=0="; (SQL.TOCSV(rs, "bin/sql_all.csv") >= 0)
+  PRINT "tocsv>=0="; (SQL.TOCSV(rs, "work/sql_all.csv") >= 0)
   SQL CLOSE RESULTSET rs
-  DIM lines = IO.READLINES("bin/sql_all.csv")
+  DIM lines = IO.READLINES("work/sql_all.csv")
   PRINT "csv_lines="; UBOUND(lines) + 1
-  KILL "bin/sql_all.csv"
+  KILL "work/sql_all.csv"
 
   DIM h AS LONG
-  h = IO.FCREATE("bin/sql_all_in.csv")
+  h = IO.FCREATE("work/sql_all_in.csv")
   IO.FWRITE(h, "id,name" + CHR(10) + "1,x" + CHR(10) + "2,y" + CHR(10))
   IO.FCLOSE(h)
-  PRINT "fromcsv>=0="; (SQL.FROMCSV("m", "imp", "bin/sql_all_in.csv") >= 0)
+  PRINT "fromcsv>=0="; (SQL.FROMCSV("m", "imp", "work/sql_all_in.csv") >= 0)
   DIM rs2 AS SQLRESULTSET
   SQL QUERY m, rs2, "SELECT COUNT(*) AS n FROM imp"
   IF SQL.FETCH(rs2) <> 0 THEN PRINT "imported="; rs2("n")
   SQL CLOSE RESULTSET rs2
-  KILL "bin/sql_all_in.csv"
+  KILL "work/sql_all_in.csv"
 
   SQL CLOSE m
 END SUB

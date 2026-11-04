@@ -5,11 +5,11 @@
 IMPORT VECTORDB
 
 SUB Main()
-    DIM e2 = VECTORDB.ENSURECOLLECTION("bin/sq8p.db", "c")
-    DIM e3 = VECTORDB.ENSURECOLLECTION("bin/sq8p.db", "c", 8)
-    DIM e4 = VECTORDB.ENSURECOLLECTION("bin/sq8p.db", "c", 8, "sq8")
-    DIM ex = VECTORDB.ENSURECOLLECTION("bin/sq8p.db", "c", 8, "xyz")
-    DIM eu = VECTORDB.ENSURECOLLECTION("bin/sq8p.db", "c", 8, "SQ8")
+    DIM e2 = VECTORDB.ENSURECOLLECTION("work/sq8p.db", "c")
+    DIM e3 = VECTORDB.ENSURECOLLECTION("work/sq8p.db", "c", 8)
+    DIM e4 = VECTORDB.ENSURECOLLECTION("work/sq8p.db", "c", 8, "sq8")
+    DIM ex = VECTORDB.ENSURECOLLECTION("work/sq8p.db", "c", 8, "xyz")
+    DIM eu = VECTORDB.ENSURECOLLECTION("work/sq8p.db", "c", 8, "SQ8")
     PRINT IIF(e2 = -1, 1, 0)
     PRINT IIF(e3 = -1, 1, 0)
     PRINT IIF(e4 = -1, 1, 0)

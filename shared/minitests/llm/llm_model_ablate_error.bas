@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM MODEL ABLATE "bin/no.gguf", "bin/out.gguf", "mlp"
+  LLM MODEL ABLATE "work/no.gguf", "work/out.gguf", "mlp"
   PRINT "no_err"
   GOTO D
 H:

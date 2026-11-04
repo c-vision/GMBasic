@@ -10,9 +10,9 @@ END TYPE
 
 SUB Main()
   DIM g AS Grande, h AS Grande
-  DIM path AS STRING = "bin/random_udt_toolong.dat"
+  DIM path AS STRING = "work/random_udt_toolong.dat"
   ON ERROR RESUME NEXT
-  MKDIR "bin"
+  MKDIR "work"
   KILL path
   ON ERROR GOTO 0
   g.A = 7 : g.Nome = "troppo lungo"

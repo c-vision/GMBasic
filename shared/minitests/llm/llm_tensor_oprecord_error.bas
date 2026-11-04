@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM TENSOR OPRECORD "bin/no.gguf", "bin/op.json"
+  LLM TENSOR OPRECORD "work/no.gguf", "work/op.json"
   PRINT "no_err"
   GOTO D
 H:

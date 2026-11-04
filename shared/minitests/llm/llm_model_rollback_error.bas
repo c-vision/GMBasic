@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM MODEL ROLLBACK "bin/ckpt", "nope", "bin/out.gguf"
+  LLM MODEL ROLLBACK "work/ckpt", "nope", "work/out.gguf"
   PRINT "no_err"
   GOTO D
 H:

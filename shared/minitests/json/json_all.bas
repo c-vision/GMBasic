@@ -38,33 +38,33 @@ SUB TestLoad()
   DIM q AS STRING
   q = CHR(34)
   DIM h AS LONG
-  h = IO.FCREATE("bin/json_load.json")
+  h = IO.FCREATE("work/json_load.json")
   IO.FWRITE(h, "{" + q + "name" + q + ": " + q + "Ada" + q + ", " + q + "age" + q + ": 36}")
   IO.FCLOSE(h)
-  DIM o AS JSON = JSON.LOAD("bin/json_load.json")
+  DIM o AS JSON = JSON.LOAD("work/json_load.json")
   PRINT "loadname="; o.name
   PRINT "loadage="; o.age
-  KILL "bin/json_load.json"
+  KILL "work/json_load.json"
 END SUB
 
 SUB TestReadSection()
   DIM h AS LONG
-  h = IO.FCREATE("bin/json_rs.ini")
+  h = IO.FCREATE("work/json_rs.ini")
   IO.FWRITE(h, "[net]" + CHR(10) + "host=example.com" + CHR(10) + "port=8080" + CHR(10))
   IO.FCLOSE(h)
-  DIM sec = JSON.READSECTION("bin/json_rs.ini", "net")
+  DIM sec = JSON.READSECTION("work/json_rs.ini", "net")
   PRINT "host="; sec.host
   PRINT "port="; sec.port
-  KILL "bin/json_rs.ini"
+  KILL "work/json_rs.ini"
 
   DIM h2 AS LONG
-  h2 = IO.FCREATE("bin/json_rv.ini")
+  h2 = IO.FCREATE("work/json_rv.ini")
   IO.FWRITE(h2, "[sec]" + CHR(10) + "key=42" + CHR(10))
   IO.FCLOSE(h2)
-  PRINT "def="; JSON.READVALUE("bin/nofile.ini", "nosection", "nokey", "fallback")
-  PRINT "val="; JSON.READVALUE("bin/json_rv.ini", "sec", "key", "")
-  PRINT "val2="; JSON.READVALUE("bin/json_rv.ini", "sec", "missing", "dflt")
-  KILL "bin/json_rv.ini"
+  PRINT "def="; JSON.READVALUE("work/nofile.ini", "nosection", "nokey", "fallback")
+  PRINT "val="; JSON.READVALUE("work/json_rv.ini", "sec", "key", "")
+  PRINT "val2="; JSON.READVALUE("work/json_rv.ini", "sec", "missing", "dflt")
+  KILL "work/json_rv.ini"
 END SUB
 
 SUB TestToObject()
@@ -83,7 +83,7 @@ SUB TestToObject()
 END SUB
 
 SUB Main()
-  MKDIR "bin"
+  MKDIR "work"
   TestParseExtract()
   TestStringify()
   TestLoad()

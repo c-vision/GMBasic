@@ -7,7 +7,7 @@ SUB Main()
   LLM MODEL LOAD "m", "../../samples/Fixtures/models/tiny_moe.gguf"
   PRINT "load_ok"
   ON ERROR GOTO E1
-  LLM MODEL TRACE "m", "bin/llm_model_trace.moetrace"
+  LLM MODEL TRACE "m", "work/llm_model_trace.moetrace"
   PRINT "trace_on_ok"
   GOTO N1
 E1:

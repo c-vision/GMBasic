@@ -4,14 +4,14 @@
 IMPORT AI
 SUB Main()
   ON ERROR GOTO H1
-  TRAIN LORA SAVE "bin/no_ckpt", "bin/no_out.safetensors"
+  TRAIN LORA SAVE "work/no_ckpt", "work/no_out.safetensors"
   PRINT "no_err1"
   GOTO A2
 H1:
   PRINT "caught"
 A2:
   ON ERROR GOTO H2
-  TRAIN LORA LOAD "bin/no_adapter.safetensors", "bin/no_out"
+  TRAIN LORA LOAD "work/no_adapter.safetensors", "work/no_out"
   PRINT "no_err2"
   GOTO D
 H2:

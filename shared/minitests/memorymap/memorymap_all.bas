@@ -4,9 +4,9 @@
 IMPORT MEMORYMAP
 IMPORT IO
 SUB Main()
-  MKDIR "bin"
+  MKDIR "work"
   DIM p AS STRING
-  p = "bin/mmap_all.dat"
+  p = "work/mmap_all.dat"
   KILL p
   DIM h AS LONG
   h = MEMORYMAP.MEMORYMAP(p)

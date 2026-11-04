@@ -5,9 +5,9 @@ IMPORT RDD
 IMPORT IO
 
 SUB Main()
-  MKDIR "bin"
-  COPY "../../samples/Fixtures/rdd_mini.dbf" TO "bin/rdd_all.dbf"
-  RDD USE "bin/rdd_all.dbf" ALIAS R
+  MKDIR "work"
+  COPY "../../samples/Fixtures/rdd_mini.dbf" TO "work/rdd_all.dbf"
+  RDD USE "work/rdd_all.dbf" ALIAS R
 
   ' --- comandi ---
   RDD GO TOP

@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM TENSOR CONTEXT "bin/no.gguf"
+  LLM TENSOR CONTEXT "work/no.gguf"
   PRINT "no_err"
   GOTO D
 H:

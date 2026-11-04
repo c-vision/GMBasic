@@ -2,9 +2,9 @@
 ' EXPECT: caught
 IMPORT AI
 SUB Main()
-  MKDIR "bin"
+  MKDIR "work"
   ON ERROR GOTO H
-  TRAIN GRPO "bin/no_model", "{""dataset"":""bin/no.bin"",""ckpt"":""bin/g"",""steps"":2,""group"":2}"
+  TRAIN GRPO "work/no_model", "{""dataset"":""work/no.bin"",""ckpt"":""work/g"",""steps"":2,""group"":2}"
   PRINT "no_err"
   GOTO D
 H:

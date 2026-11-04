@@ -18,11 +18,11 @@ END TYPE
 
 SUB Main()
   ON ERROR RESUME NEXT
-  RMDIR "bin/speed_all_db", TRUE
+  RMDIR "work/speed_all_db", TRUE
   ON ERROR GOTO 0
-  MKDIR "bin"
+  MKDIR "work"
 
-  SPEED OPEN "bin/speed_all_db" ALIAS V
+  SPEED OPEN "work/speed_all_db" ALIAS V
   SPEED USE "T" FROM V OF Riga ALIAS T INDEXED BY ID
 
   DIM r AS Riga

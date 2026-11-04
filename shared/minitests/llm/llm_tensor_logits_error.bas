@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM TENSOR LOGITS "bin/no_dir", "ping"
+  LLM TENSOR LOGITS "work/no_dir", "ping"
   PRINT "no_err"
   GOTO D
 H:

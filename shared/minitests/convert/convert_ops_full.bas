@@ -4,11 +4,11 @@
 IMPORT CONVERT
 
 SUB Main()
-    MKDIR "bin"
+    MKDIR "work"
     DIM h = CONVERT.OPEN("../../samples/Fixtures/sample.pdf")
-    PRINT "render="; CONVERT.RENDER(h, 0, 100, "bin/out.png")
+    PRINT "render="; CONVERT.RENDER(h, 0, 100, "work/out.png")
     PRINT "search="; LEN(CONVERT.SEARCH(h, "the"))
-    PRINT "images="; CONVERT.IMAGES(h, 0, "bin")
+    PRINT "images="; CONVERT.IMAGES(h, 0, "work")
     PRINT "extract="; LEN(CONVERT.EXTRACT("../../samples/Fixtures/sample.pdf"))
     PRINT "extractengine="; CONVERT.EXTRACTENGINE("../../samples/Fixtures/sample.pdf")
     PRINT "tohtml="; LEN(CONVERT.TOHTML("../../samples/Fixtures/sample.pdf"))

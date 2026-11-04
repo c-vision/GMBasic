@@ -5,7 +5,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO OnErr
-  LLM MODEL LOAD "m", "bin/does-not-exist.gguf"
+  LLM MODEL LOAD "m", "work/does-not-exist.gguf"
   PRINT "loaded"
   GOTO Fine
 OnErr:

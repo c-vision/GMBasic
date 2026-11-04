@@ -10,7 +10,7 @@ TYPE Riga
 END TYPE
 
 SUB Main()
-  SPEED OPEN "bin/close_db" ALIAS MioDb
+  SPEED OPEN "work/close_db" ALIAS MioDb
   SPEED USE "T" FROM MioDb OF Riga ALIAS Tbl INDEXED BY ID
   DIM r AS Riga
   r.ID = 1 : r.Nome = "Anna"
@@ -20,7 +20,7 @@ SUB Main()
   SPEED CLOSE
   PRINT "closed: si"
 
-  SPEED OPEN "bin/close_db" ALIAS MioDb2
+  SPEED OPEN "work/close_db" ALIAS MioDb2
   SPEED USE "T" FROM MioDb2 OF Riga ALIAS Tbl2 INDEXED BY ID
   PRINT "reopen: si"
 

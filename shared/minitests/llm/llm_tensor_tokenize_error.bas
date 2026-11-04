@@ -3,7 +3,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  LLM TENSOR TOKENIZE "bin/no_model", "ciao"
+  LLM TENSOR TOKENIZE "work/no_model", "ciao"
   PRINT "no_err"
   GOTO D
 H:

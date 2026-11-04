@@ -4,7 +4,7 @@
 IMPORT LLM
 SUB Main()
   ON ERROR GOTO H
-  TRAIN QUALITY "bin/no_model", "ciao", "bin/q.txt"
+  TRAIN QUALITY "work/no_model", "ciao", "work/q.txt"
   PRINT "no_err"
   GOTO D
 H:
