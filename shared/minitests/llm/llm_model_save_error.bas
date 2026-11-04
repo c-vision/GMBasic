@@ -2,8 +2,9 @@
 ' EXPECT: caught
 IMPORT LLM
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
   ON ERROR GOTO H
-  LLM MODEL SAVE "work/no.gguf", "work/out.gguf"
+  LLM MODEL SAVE GMBWORK$ + "/no.gguf", GMBWORK$ + "/out.gguf"
   PRINT "no_err"
   GOTO D
 H:

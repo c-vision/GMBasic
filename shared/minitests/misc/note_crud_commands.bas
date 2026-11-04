@@ -9,8 +9,9 @@
 IMPORT AI
 
 SUB Main()
-  IF IO.DirExists("work/note-crud-vault") = 0 THEN MKDIR "work/note-crud-vault"
-  AI VAULT CREATE "nv", "work/note-crud-vault"
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
+  IF IO.DirExists(GMBWORK$ + "/note-crud-vault") = 0 THEN MKDIR GMBWORK$ + "/note-crud-vault"
+  AI VAULT CREATE "nv", GMBWORK$ + "/note-crud-vault"
   AI VAULT INDEX "nv"
   AI NOTE CREATE "n1.md", "hello world", "alpha,beta"
 

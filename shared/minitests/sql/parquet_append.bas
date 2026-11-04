@@ -5,13 +5,14 @@ IMPORT SQL
 IMPORT IO
 
 SUB Main()
-    MKDIR "work"
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
+    MKDIR GMBWORK$
     ON ERROR RESUME NEXT
-    IF IO.FILEEXISTS("work/app.parquet") THEN KILL "work/app.parquet"
-    IF IO.FILEEXISTS("work/appn.parquet") THEN KILL "work/appn.parquet"
+    IF IO.FILEEXISTS(GMBWORK$ + "/app.parquet") THEN KILL GMBWORK$ + "/app.parquet"
+    IF IO.FILEEXISTS(GMBWORK$ + "/appn.parquet") THEN KILL GMBWORK$ + "/appn.parquet"
     ON ERROR GOTO 0
-    COPY "../../samples/Fixtures/pq_multirg.parquet" TO "work/app.parquet"
-    COPY "../../samples/Fixtures/parquet_nested.parquet" TO "work/appn.parquet"
+    COPY "../../samples/Fixtures/pq_multirg.parquet" TO GMBWORK$ + "/app.parquet"
+    COPY "../../samples/Fixtures/parquet_nested.parquet" TO GMBWORK$ + "/appn.parquet"
 
     SQL OPEN ":memory:" ALIAS A
     ' flat: aggiungi un record

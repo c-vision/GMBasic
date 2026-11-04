@@ -3,7 +3,8 @@
 ' EXPECT: quant-auto-ok
 IMPORT LLM
 SUB Main()
-  MKDIR "work"
-  LLM QUANT "../../samples/Fixtures/models/tiny_big_moe.gguf", "work/auto.gguf", 4.5
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
+  MKDIR GMBWORK$
+  LLM QUANT "../../samples/Fixtures/models/tiny_big_moe.gguf", GMBWORK$ + "/auto.gguf", 4.5
   PRINT "quant-auto-ok"
 END SUB

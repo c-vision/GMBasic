@@ -5,14 +5,15 @@ IMPORT SQL
 IMPORT IO
 
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
     ON ERROR RESUME NEXT
-    IF IO.FILEEXISTS("work/lrs.db") THEN KILL "work/lrs.db"
-    IF IO.FILEEXISTS("work/lrs.db-wal") THEN KILL "work/lrs.db-wal"
-    IF IO.FILEEXISTS("work/lrs.db-shm") THEN KILL "work/lrs.db-shm"
-    RMDIR "work", TRUE
+    IF IO.FILEEXISTS(GMBWORK$ + "/lrs.db") THEN KILL GMBWORK$ + "/lrs.db"
+    IF IO.FILEEXISTS(GMBWORK$ + "/lrs.db-wal") THEN KILL GMBWORK$ + "/lrs.db-wal"
+    IF IO.FILEEXISTS(GMBWORK$ + "/lrs.db-shm") THEN KILL GMBWORK$ + "/lrs.db-shm"
+    RMDIR GMBWORK$, TRUE
     ON ERROR GOTO 0
-    MKDIR "work"
-    SQL OPEN "work/lrs.db" ALIAS L
+    MKDIR GMBWORK$
+    SQL OPEN GMBWORK$ + "/lrs.db" ALIAS L
     SQL EXEC L, "CREATE TABLE big(n INTEGER, s TEXT)"
     SQL EXEC L, "WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM c WHERE x<4200) INSERT INTO big(n,s) SELECT x, printf('%0600d', x) FROM c"
 

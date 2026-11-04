@@ -5,9 +5,10 @@ IMPORT SQL
 IMPORT IO
 
 SUB Main()
-    MKDIR "work"
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
+    MKDIR GMBWORK$
     ON ERROR RESUME NEXT
-    IF IO.FILEEXISTS("work/pq.parquet") THEN KILL "work/pq.parquet"
+    IF IO.FILEEXISTS(GMBWORK$ + "/pq.parquet") THEN KILL GMBWORK$ + "/pq.parquet"
     ON ERROR GOTO 0
     SQL OPEN ":memory:" ALIAS M
     SQL EXEC M, "CREATE VIRTUAL TABLE t USING parquet(name='work/pq.parquet', schema='id LONG, name TEXT, price DOUBLE')"
@@ -23,7 +24,7 @@ SUB Main()
     LOOP
     SQL CLOSE RESULTSET rs
     ' Nested (list/struct) scrivibile: copia la fixture e modifica via SQL.
-    COPY "../../samples/Fixtures/parquet_nested.parquet" TO "work/nested.parquet"
+    COPY "../../samples/Fixtures/parquet_nested.parquet" TO GMBWORK$ + "/nested.parquet"
     SQL EXEC M, "CREATE VIRTUAL TABLE nt USING parquet(name='work/nested.parquet')"
     DIM q$ = CHR(34)
     SQL EXEC M, "UPDATE nt SET tags='[" + q$ + "x" + q$ + "," + q$ + "y" + q$ + "]' WHERE id=1"

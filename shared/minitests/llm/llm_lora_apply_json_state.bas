@@ -5,6 +5,7 @@
 ' EXPECT: la2_caught=1|la2_no_opt_err=-1
 IMPORT LLM
 SUB Main()
+  CHDIR PROJECTFOLDER()
   TRY
     TRAIN LORA APPLY "work/no_ckpt", "{""model"":""work/no_model"",""dataset"":""work/no_ds.bin""}"
     PRINT "la2_caught=0"

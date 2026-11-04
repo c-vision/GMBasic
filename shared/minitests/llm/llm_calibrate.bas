@@ -4,5 +4,6 @@
 ' EXPECT: LLM CALIBRATE: model=../../samples/Fixtures/models/tiny_moe.gguf dataset=../../samples/Fixtures/models/tiny_tokens.bin imatrix=work/calib.imatrix.gguf tokens=16
 IMPORT LLM
 SUB Main()
+  CHDIR PROJECTFOLDER()
   LLM CALIBRATE "../../samples/Fixtures/models/tiny_moe.gguf", "../../samples/Fixtures/models/tiny_tokens.bin", "work/calib.imatrix.gguf"
 END SUB

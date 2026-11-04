@@ -4,10 +4,11 @@
 ' EXPECT: load_ok|trace_on_ok|trace_off_ok|done
 IMPORT LLM
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
   LLM MODEL LOAD "m", "../../samples/Fixtures/models/tiny_moe.gguf"
   PRINT "load_ok"
   ON ERROR GOTO E1
-  LLM MODEL TRACE "m", "work/llm_model_trace.moetrace"
+  LLM MODEL TRACE "m", GMBWORK$ + "/llm_model_trace.moetrace"
   PRINT "trace_on_ok"
   GOTO N1
 E1:

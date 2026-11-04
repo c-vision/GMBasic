@@ -14,6 +14,7 @@
 IMPORT AI
 
 SUB Main()
+  CHDIR PROJECTFOLDER()
     ' ── A) nessun task nel grafo → niente da fare (esito 1, nessuna invocazione) ────────────
     AI WORKER NEW "m0", "{""workspace"":""work/wm0"",""budget"":4000}"
     AI WORKER MANAGE , 2

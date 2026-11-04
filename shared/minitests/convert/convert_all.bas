@@ -83,6 +83,7 @@ SUB TestBatchWeb()
 END SUB
 
 SUB Main()
+  CHDIR PROJECTFOLDER()
   MKDIR "work"
   TestPdf()
   TestMarkdown()

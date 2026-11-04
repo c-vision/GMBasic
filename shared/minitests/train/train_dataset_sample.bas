@@ -3,8 +3,9 @@
 ' EXPECT: caught
 IMPORT AI
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
   ON ERROR GOTO H
-  TRAIN DATASET SAMPLE "work/no.jsonl", { "model": "work/no_model", "out": "work/no_smp" }
+  TRAIN DATASET SAMPLE GMBWORK$ + "/no.jsonl", { "model": GMBWORK$ + "/no_model", "out": GMBWORK$ + "/no_smp" }
   PRINT "no_err"
   GOTO D
 H:

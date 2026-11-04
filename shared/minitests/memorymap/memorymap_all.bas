@@ -4,9 +4,10 @@
 IMPORT MEMORYMAP
 IMPORT IO
 SUB Main()
-  MKDIR "work"
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
+  MKDIR GMBWORK$
   DIM p AS STRING
-  p = "work/mmap_all.dat"
+  p = GMBWORK$ + "/mmap_all.dat"
   KILL p
   DIM h AS LONG
   h = MEMORYMAP.MEMORYMAP(p)

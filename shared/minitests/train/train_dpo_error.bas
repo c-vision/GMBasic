@@ -3,8 +3,9 @@
 ' EXPECT: caught
 IMPORT AI
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
   ON ERROR GOTO H
-  TRAIN DPO "work/no_model", { "chosen": "work/no_c.bin", "rejected": "work/no_r.bin" }
+  TRAIN DPO GMBWORK$ + "/no_model", { "chosen": GMBWORK$ + "/no_c.bin", "rejected": GMBWORK$ + "/no_r.bin" }
   PRINT "no_err"
   GOTO D
 H:

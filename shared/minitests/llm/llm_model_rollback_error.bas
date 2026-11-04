@@ -2,8 +2,9 @@
 ' EXPECT: caught
 IMPORT LLM
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
   ON ERROR GOTO H
-  LLM MODEL ROLLBACK "work/ckpt", "nope", "work/out.gguf"
+  LLM MODEL ROLLBACK GMBWORK$ + "/ckpt", "nope", GMBWORK$ + "/out.gguf"
   PRINT "no_err"
   GOTO D
 H:

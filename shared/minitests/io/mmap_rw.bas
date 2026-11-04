@@ -8,11 +8,12 @@ IMPORT IO
 IMPORT MEMORYMAP
 
 SUB Main()
-    MKDIR "work"
-    DIM f = IO.FCREATE("work/mmap_rw.dat")
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
+    MKDIR GMBWORK$
+    DIM f = IO.FCREATE(GMBWORK$ + "/mmap_rw.dat")
     IO.FWRITE(f, "hello")
     IO.FCLOSE(f)
-    DIM mm = IO.MEMORYMAP("work/mmap_rw.dat")
+    DIM mm = IO.MEMORYMAP(GMBWORK$ + "/mmap_rw.dat")
 
     ' --- MMAPPOKE: scrittura di un singolo byte ---
     MMAPPOKE mm, 0, 65

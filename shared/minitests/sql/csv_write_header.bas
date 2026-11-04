@@ -4,11 +4,12 @@ IMPORT SQL
 IMPORT IO
 
 SUB Main()
-    MKDIR "work"
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
+    MKDIR GMBWORK$
     ON ERROR RESUME NEXT
-    IF IO.FILEEXISTS("work/nh.csv") THEN KILL "work/nh.csv"
+    IF IO.FILEEXISTS(GMBWORK$ + "/nh.csv") THEN KILL GMBWORK$ + "/nh.csv"
     ON ERROR GOTO 0
-    OPEN "work/nh.csv" FOR OUTPUT AS #1
+    OPEN GMBWORK$ + "/nh.csv" FOR OUTPUT AS #1
     PRINT #1, "1,alice"
     PRINT #1, "2,bob"
     CLOSE #1

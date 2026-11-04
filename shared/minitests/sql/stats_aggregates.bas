@@ -5,12 +5,13 @@ IMPORT SQL
 IMPORT IO
 
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
     ON ERROR RESUME NEXT
-    IF IO.FILEEXISTS("work/st.db") THEN KILL "work/st.db"
-    RMDIR "work", TRUE
+    IF IO.FILEEXISTS(GMBWORK$ + "/st.db") THEN KILL GMBWORK$ + "/st.db"
+    RMDIR GMBWORK$, TRUE
     ON ERROR GOTO 0
-    MKDIR "work"
-    SQL OPEN "work/st.db" ALIAS S
+    MKDIR GMBWORK$
+    SQL OPEN GMBWORK$ + "/st.db" ALIAS S
     SQL EXEC S, "CREATE TABLE sv(x REAL)"
     SQL EXEC S, "INSERT INTO sv VALUES (2),(4),(4),(4),(5),(5),(7),(9)"
     DIM rs AS SQLRESULTSET

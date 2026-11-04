@@ -27,11 +27,12 @@ TYPE RisultatoJoin
 END TYPE
 
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
   ON ERROR RESUME NEXT
-  RMDIR "work/sel_db", TRUE
-  MKDIR "work"
+  RMDIR GMBWORK$ + "/sel_db", TRUE
+  MKDIR GMBWORK$
   ON ERROR GOTO 0
-  SPEED OPEN "work/sel_db" ALIAS SelDb
+  SPEED OPEN GMBWORK$ + "/sel_db" ALIAS SelDb
   SPEED USE "Clienti" FROM SelDb OF Cliente ALIAS Clienti INDEXED BY ID
   SPEED USE "Ordini" FROM SelDb OF Ordine ALIAS Ordini INDEXED BY ID_Ordine
   DIM c AS Cliente

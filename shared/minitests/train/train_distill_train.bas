@@ -3,8 +3,9 @@
 ' EXPECT: caught
 IMPORT AI
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
   ON ERROR GOTO H
-  TRAIN DISTILL TRAIN "work/no_ds.bin", { "model": "work/no_model", "out": "work/no_dt" }
+  TRAIN DISTILL TRAIN GMBWORK$ + "/no_ds.bin", { "model": GMBWORK$ + "/no_model", "out": GMBWORK$ + "/no_dt" }
   PRINT "no_err"
   GOTO D
 H:

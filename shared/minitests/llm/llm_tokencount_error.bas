@@ -2,5 +2,6 @@
 ' EXPECT: rc=-1
 IMPORT LLM
 SUB Main()
+  CHDIR PROJECTFOLDER()
   PRINT "rc="; LLM.TOKENCOUNT("work/no_model", "ciao")
 END SUB

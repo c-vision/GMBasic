@@ -17,12 +17,13 @@ TYPE Riga
 END TYPE
 
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
   ON ERROR RESUME NEXT
-  RMDIR "work/speed_all_db", TRUE
+  RMDIR GMBWORK$ + "/speed_all_db", TRUE
   ON ERROR GOTO 0
-  MKDIR "work"
+  MKDIR GMBWORK$
 
-  SPEED OPEN "work/speed_all_db" ALIAS V
+  SPEED OPEN GMBWORK$ + "/speed_all_db" ALIAS V
   SPEED USE "T" FROM V OF Riga ALIAS T INDEXED BY ID
 
   DIM r AS Riga

@@ -2,6 +2,7 @@
 ' EXPECT: caught
 IMPORT AI
 SUB Main()
+  CHDIR PROJECTFOLDER()
   MKDIR "work"
   ON ERROR GOTO H
   TRAIN FINETUNE "work/no_model", "{""full"":1,""dataset"":""work/no.bin"",""ckpt"":""work/k"",""steps"":2}"

@@ -7,6 +7,7 @@
 IMPORT VECTORDB
 IMPORT IO
 SUB Main()
+  CHDIR PROJECTFOLDER()
   MKDIR "work"
   PRINT "lc="; VECTORDB.ListCollections("work/lc-oracolo")
 END SUB

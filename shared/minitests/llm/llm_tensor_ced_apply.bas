@@ -3,10 +3,11 @@
 ' Parità 4 backend (stessa logica del runtime).
 IMPORT LLM
 SUB Main()
-  MKDIR "work"
-  COPY "../../samples/Fixtures/models/tiny_moe.gguf" TO "work/z.gguf"
-  LLM MODEL ABLATE "work/z.gguf", "work/z2.gguf", "blk.0.ffn_gate_exps"
-  LLM TENSOR CED "work/z2.gguf", "on"
-  LLM TENSOR COMPILE "work/z2.gguf", "work/z2.gmbllm"
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
+  MKDIR GMBWORK$
+  COPY "../../samples/Fixtures/models/tiny_moe.gguf" TO GMBWORK$ + "/z.gguf"
+  LLM MODEL ABLATE GMBWORK$ + "/z.gguf", GMBWORK$ + "/z2.gguf", "blk.0.ffn_gate_exps"
+  LLM TENSOR CED GMBWORK$ + "/z2.gguf", "on"
+  LLM TENSOR COMPILE GMBWORK$ + "/z2.gguf", GMBWORK$ + "/z2.gmbllm"
   PRINT "ced-apply: done"
 END SUB

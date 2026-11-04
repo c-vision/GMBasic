@@ -14,6 +14,7 @@ SUB Worker(wg AS WAITGROUP)
 END SUB
 
 SUB Main
+  CHDIR PROJECTFOLDER()
   DIM wg AS WAITGROUP
   GO SUB Worker(wg) IN wg
   WAIT wg

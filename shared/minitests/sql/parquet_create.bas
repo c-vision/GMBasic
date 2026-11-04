@@ -4,9 +4,10 @@ IMPORT SQL
 IMPORT IO
 
 SUB Main()
-    MKDIR "work"
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
+    MKDIR GMBWORK$
     ON ERROR RESUME NEXT
-    IF IO.FILEEXISTS("work/c.parquet") THEN KILL "work/c.parquet"
+    IF IO.FILEEXISTS(GMBWORK$ + "/c.parquet") THEN KILL GMBWORK$ + "/c.parquet"
     ON ERROR GOTO 0
     SQL OPEN ":memory:" ALIAS M
     SQL EXEC M, "CREATE VIRTUAL TABLE t USING parquet(name='work/c.parquet', schema='id LONG, name TEXT, price DOUBLE, ratio FLOAT, flag BOOL, qty INT32')"

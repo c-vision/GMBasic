@@ -5,9 +5,10 @@ IMPORT RDD
 IMPORT IO
 
 SUB Main()
-  MKDIR "work"
-  COPY "../../samples/Fixtures/rdd_mini.dbf" TO "work/rdd_all.dbf"
-  RDD USE "work/rdd_all.dbf" ALIAS R
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
+  MKDIR GMBWORK$
+  COPY "../../samples/Fixtures/rdd_mini.dbf" TO GMBWORK$ + "/rdd_all.dbf"
+  RDD USE GMBWORK$ + "/rdd_all.dbf" ALIAS R
 
   ' --- comandi ---
   RDD GO TOP

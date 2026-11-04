@@ -16,7 +16,7 @@ END TYPE
 
 SUB Stato()
   DIM p AS STRING
-  p = "work/isam_all.isdb"
+  p = GMBWORK$ + "/isam_all.isdb"
   KILL p
   ISAM OPEN p OF R ALIAS X INDEXED BY ID
 
@@ -64,7 +64,7 @@ END SUB
 
 SUB Replica()
   DIM p AS STRING
-  p = "work/isam_rpl.isdb"
+  p = GMBWORK$ + "/isam_rpl.isdb"
   KILL p
   ISAM OPEN p OF R ALIAS Y INDEXED BY ID
   DIM rec AS R
@@ -72,7 +72,7 @@ SUB Replica()
   ISAM APPEND Y, rec
 
   DIM lp AS STRING
-  lp = ISAM.SETREPLICATION("Y", "work/isam_rpl.log")
+  lp = ISAM.SETREPLICATION("Y", GMBWORK$ + "/isam_rpl.log")
   PRINT "setrepl>0="; (LEN(lp) > 0)
   PRINT "apply>=-1="; (ISAM.APPLYREPLICATION("Y", lp) >= -1)
   PRINT "follow>=-1="; (ISAM.FOLLOWREPLICATION(lp) >= -1)
@@ -82,7 +82,8 @@ SUB Replica()
 END SUB
 
 SUB Main()
-  MKDIR "work"
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
+  MKDIR GMBWORK$
   Stato()
   Replica()
 END SUB

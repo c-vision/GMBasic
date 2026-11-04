@@ -2,6 +2,7 @@
 ' EXPECT: caught
 IMPORT AI
 SUB Main()
+  CHDIR PROJECTFOLDER()
   MKDIR "work"
   ON ERROR GOTO H
   TRAIN GRPO "work/no_model", "{""dataset"":""work/no.bin"",""ckpt"":""work/g"",""steps"":2,""group"":2}"

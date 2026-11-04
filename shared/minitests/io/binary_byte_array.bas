@@ -4,11 +4,12 @@
 ' numerico: prima il linker lo restringeva a BYTE (local uint8 su IL, indici errati / overflow a 255).
 ' EXPECT: pos= 11|b4= 40 b10= 100|ofs= 20  30  40|tail= 0  0|size= 11|big= 300
 IMPORT IO
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
 
 DIM FILE_BIN$
-FILE_BIN$ = "work/binary_byte_array.dat"
+FILE_BIN$ = GMBWORK$ + "/binary_byte_array.dat"
 ON ERROR RESUME NEXT
-MKDIR "work"
+MKDIR GMBWORK$
 KILL FILE_BIN$
 ON ERROR GOTO 0
 

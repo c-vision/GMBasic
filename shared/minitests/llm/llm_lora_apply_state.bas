@@ -4,8 +4,9 @@
 ' EXPECT: la_caught=1|ckpt_empty=-1|done= 0|status_err=-1
 IMPORT LLM
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
   TRY
-    TRAIN LORA APPLY "work/no_ckpt"
+    TRAIN LORA APPLY GMBWORK$ + "/no_ckpt"
     PRINT "la_caught=0"
   CATCH
     PRINT "la_caught=1"

@@ -2,8 +2,9 @@
 ' EXPECT: caught
 IMPORT LLM
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
   ON ERROR GOTO H
-  LLM PROFILE "work/no.gguf", "work/out.txt"
+  LLM PROFILE GMBWORK$ + "/no.gguf", GMBWORK$ + "/out.txt"
   PRINT "no_err"
   GOTO D
 H:

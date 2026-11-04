@@ -7,6 +7,7 @@ IMPORT SQL
 IMPORT IO
 
 SUB Main()
+  CHDIR PROJECTFOLDER()
   MKDIR "work"
   SQL OPEN ":memory:" ALIAS m
 

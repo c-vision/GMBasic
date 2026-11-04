@@ -7,6 +7,7 @@
 ' EXPECT: a= 1|b= 2|c= 3|deep= 4
 IMPORT LLM
 SUB Main()
+  CHDIR PROJECTFOLDER()
   step = 0
   ON ERROR GOTO H1
   TRAIN FINETUNE "work/no_model"

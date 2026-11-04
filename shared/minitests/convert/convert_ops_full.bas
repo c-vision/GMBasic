@@ -4,6 +4,7 @@
 IMPORT CONVERT
 
 SUB Main()
+  CHDIR PROJECTFOLDER()
     MKDIR "work"
     DIM h = CONVERT.OPEN("../../samples/Fixtures/sample.pdf")
     PRINT "render="; CONVERT.RENDER(h, 0, 100, "work/out.png")

@@ -3,6 +3,7 @@
 ' L'output JSON include l'array "layers" (piano esecutivo per-layer, §9.A M10 EXECUTION PLANNER).
 IMPORT LLM
 SUB Main()
+  CHDIR PROJECTFOLDER()
   MKDIR "work"
   LLM TENSOR EXECPLAN "../../samples/Fixtures/models/tiny_moe.gguf", "work/plan.json"
 END SUB

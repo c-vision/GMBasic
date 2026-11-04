@@ -8,14 +8,15 @@ TYPE R
   V AS STRING * 20
 END TYPE
 SUB Main()
-  MKDIR "work"
-  KILL "work/zzlm.isdb"
-  ISAM OPEN "work/zzlm.isdb" OF R ALIAS X INDEXED BY ID
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
+  MKDIR GMBWORK$
+  KILL GMBWORK$ + "/zzlm.isdb"
+  ISAM OPEN GMBWORK$ + "/zzlm.isdb" OF R ALIAS X INDEXED BY ID
   DIM n AS LONG
   n = ISAM.APPENDMANY([{ID: "A", V: "uno"}, {ID: "B", V: "due"}, {ID: "C", V: "tre"}])
   PRINT "n="; n; " last="; ISAM.LASTREC()
   PRINT "log="; (INSTR(ISAM.LOG("X"), "wal_path:") > 0)
   PRINT "log0="; (INSTR(ISAM.LOG(), "wal_exists:") > 0)
   ISAM CLOSE
-  KILL "work/zzlm.isdb"
+  KILL GMBWORK$ + "/zzlm.isdb"
 END SUB

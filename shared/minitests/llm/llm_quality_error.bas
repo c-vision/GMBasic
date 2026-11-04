@@ -2,8 +2,9 @@
 ' EXPECT: caught
 IMPORT LLM
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
   ON ERROR GOTO H
-  TRAIN EVAL "work/no_model", "ciao", "work/q.txt"
+  TRAIN EVAL GMBWORK$ + "/no_model", "ciao", GMBWORK$ + "/q.txt"
   PRINT "no_err"
   GOTO D
 H:

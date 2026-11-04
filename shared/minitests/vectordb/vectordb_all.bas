@@ -355,6 +355,7 @@ SUB TestStorage()
 END SUB
 
 SUB Main()
+  CHDIR PROJECTFOLDER()
   AI SET ACTIVE %EMBEDDING, "fixture-embedding"
   T0_abtest()
   T1_baseline()

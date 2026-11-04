@@ -15,6 +15,7 @@ SUB Work()
 END SUB
 
 SUB Main()
+  CHDIR PROJECTFOLDER()
     Work()
     PRINT "main"
 END SUB

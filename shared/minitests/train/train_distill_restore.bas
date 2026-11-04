@@ -2,8 +2,9 @@
 ' EXPECT: caught
 IMPORT AI
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
   ON ERROR GOTO H
-  TRAIN DISTILL RESTORE "work/no_backup"
+  TRAIN DISTILL RESTORE GMBWORK$ + "/no_backup"
   PRINT "no_err"
   GOTO D
 H:

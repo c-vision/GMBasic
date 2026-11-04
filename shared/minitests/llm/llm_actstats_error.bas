@@ -2,8 +2,9 @@
 ' EXPECT: caught
 IMPORT LLM
 SUB Main()
+  DIM GMBWORK$ AS STRING = PROJECTFOLDER() + "/work"
   ON ERROR GOTO H
-  LLM ACTIVATIONSTATS "work/no_model", "work/no_tokens.bin"
+  LLM ACTIVATIONSTATS GMBWORK$ + "/no_model", GMBWORK$ + "/no_tokens.bin"
   PRINT "no_err"
   GOTO D
 H:
