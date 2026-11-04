@@ -1148,6 +1148,8 @@ gmb_string_t gmb_rand_bytes_val(int count);
 /* RANDOMCRYPTOBYTES(n) → byte[] da sorgente crittografica (/dev/urandom). */
 gmb_string_t gmb_rand_crypto_bytes_val(int count);
 double gmb_correlation(const double* x, const double* y, int n);
+double gmb_covariance(const double* x, const double* y, int n);
+double gmb_range_arr(const double* a, int n);
 double gmb_mean(const double* a, int n);
 double gmb_median(const double* a, int n);
 double gmb_variance(const double* a, int n);

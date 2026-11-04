@@ -417,6 +417,8 @@ public sealed partial class IlProgramCompiler
             case TokenKind.ZTest: EmitStatsArrayTwoScalarCall(expr, nameof(IlRuntime.ZTest)); break;
             case TokenKind.KolmogorovSmirnov: EmitAnalysisTwoArrayCall(expr, nameof(IlRuntime.KolmogorovSmirnov)); break;
             case TokenKind.StatsPearsonR: EmitAnalysisTwoArrayCall(expr, nameof(IlRuntime.PearsonR)); break;
+            case TokenKind.StatsCovariance: EmitAnalysisTwoArrayCall(expr, nameof(IlRuntime.Covariance)); break;
+            case TokenKind.StatsRange: EmitAnalysisArrayCall(expr, nameof(IlRuntime.StatsRange)); break;
             case TokenKind.StatsSpearmanR: EmitAnalysisTwoArrayCall(expr, nameof(IlRuntime.SpearmanR)); break;
             case TokenKind.StatsLinRegress: EmitAnalysisTwoArrayCall(expr, nameof(IlRuntime.LinRegress)); break;
             case TokenKind.StatsMannWhitney: EmitAnalysisTwoArrayCall(expr, nameof(IlRuntime.MannWhitney)); break;

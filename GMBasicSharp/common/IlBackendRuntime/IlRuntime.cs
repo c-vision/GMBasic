@@ -8210,7 +8210,7 @@ public static double TextWidth(string s)
     public static Dictionary<string, object?> ZTest(double[] sample, double populationMean, double standardDeviation) => HypothesisResult(CommonLib.Numerics.ZTestOneSample(sample, populationMean, standardDeviation));
     public static Dictionary<string, object?> KolmogorovSmirnov(double[] first, double[] second) => HypothesisResult(CommonLib.Numerics.KolmogorovSmirnovTwoSample(first, second));
     // ---- scipy.stats P0 (1000-1016) ----
-    public static double Range(double[] a)
+    public static double StatsRange(double[] a)
     {
         if (a.Length == 0) return 0;
         double lo = a[0], hi = a[0];

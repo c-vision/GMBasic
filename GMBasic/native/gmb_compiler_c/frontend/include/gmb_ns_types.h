@@ -1039,6 +1039,8 @@ static const gmb_ns_type_row_t gmb_ns_types[] = {
     { GMB_TOK_Skewness, 0 },
     { GMB_TOK_Kurtosis, 0 },
     { GMB_TOK_Correlation, 0 },
+    { GMB_TOK_StatsCovariance, 0 },
+    { GMB_TOK_StatsRange, 0 },
     { GMB_TOK_Percentile, 0 },
     { GMB_TOK_Mad, 0 },
     { GMB_TOK_NormalPdf, 0 },

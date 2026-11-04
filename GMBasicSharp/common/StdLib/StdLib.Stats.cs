@@ -128,6 +128,10 @@ public sealed partial class StdLib
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Skewness, "Skewness"), [dataArrayParam], new DoubleType(), TokenKind.Skewness),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Kurtosis, "Kurtosis"), [dataArrayParam], new DoubleType(), TokenKind.Kurtosis),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Correlation, "Correlation"), [dataArrayParam, dataArray2Param], new DoubleType(), TokenKind.Correlation),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsCovariance, "Covariance"),
+                [dataArrayParam, dataArray2Param], new DoubleType(), TokenKind.StatsCovariance),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsRange, "RANGE"),
+                [dataArrayParam], new DoubleType(), TokenKind.StatsRange),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Percentile, "Percentile"),
             [
                 dataArrayParam, new Parameter(-1, T(TokenKind.Identifier, "p"), new DoubleType(), noFlags, null, false)

@@ -6866,6 +6866,8 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_StatsMode, emit_bf_stats_arr },
     { NULL, GMB_TOK_StatsIqr, emit_bf_stats_arr },
     { NULL, GMB_TOK_StatsMoment, emit_bf_stats_arr },
+    { NULL, GMB_TOK_StatsCovariance, emit_bf_stats_arr },
+    { NULL, GMB_TOK_StatsRange, emit_bf_stats_arr },
     /* STATS test d'ipotesi (dict-returning): runtime condiviso gmb_stats.c */
     { NULL, GMB_TOK_TTest, emit_bf_stats_dict },
     { NULL, GMB_TOK_TTestPaired, emit_bf_stats_dict },
