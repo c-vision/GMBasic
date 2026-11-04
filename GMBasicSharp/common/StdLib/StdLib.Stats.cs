@@ -175,6 +175,9 @@ public sealed partial class StdLib
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.ChiSquaredCdf, "ChiSquaredCdf"),
                 [xParam, new Parameter(-1, T(TokenKind.Identifier, "k"), new DoubleType(), noFlags, null, false)],
                 new DoubleType(), TokenKind.ChiSquaredCdf, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsChiSquaredSf, "ChiSquaredSf"),
+                [xParam, new Parameter(-1, T(TokenKind.Identifier, "k"), new DoubleType(), noFlags, null, false)],
+                new DoubleType(), TokenKind.StatsChiSquaredSf, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.BetaPdf, "BetaPdf"),
             [
                 xParam, new Parameter(-1, T(TokenKind.Identifier, "alpha"), new DoubleType(), noFlags, null, false),
@@ -191,6 +194,9 @@ public sealed partial class StdLib
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StudentTCdf, "StudentTCdf"),
                 [xParam, new Parameter(-1, T(TokenKind.Identifier, "nu"), new DoubleType(), noFlags, null, false)],
                 new DoubleType(), TokenKind.StudentTCdf, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsStudentTSf, "StudentTSf"),
+                [xParam, new Parameter(-1, T(TokenKind.Identifier, "nu"), new DoubleType(), noFlags, null, false)],
+                new DoubleType(), TokenKind.StatsStudentTSf, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.WeibullPdf, "WeibullPdf"),
             [
                 xParam, new Parameter(-1, T(TokenKind.Identifier, "shape"), new DoubleType(), noFlags, null, false),
@@ -217,6 +223,9 @@ public sealed partial class StdLib
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.ExponentialCdf, "ExponentialCdf"),
                 [xParam, new Parameter(-1, T(TokenKind.Identifier, "rate"), new DoubleType(), noFlags, null, false)],
                 new DoubleType(), TokenKind.ExponentialCdf, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsExpSf, "ExponentialSf"),
+                [xParam, new Parameter(-1, T(TokenKind.Identifier, "rate"), new DoubleType(), noFlags, null, false)],
+                new DoubleType(), TokenKind.StatsExpSf, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.ParetoPdf, "ParetoPdf"),
             [
                 xParam, new Parameter(-1, T(TokenKind.Identifier, "scale"), new DoubleType(), noFlags, null, false),

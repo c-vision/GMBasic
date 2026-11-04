@@ -2233,10 +2233,31 @@ static int is_matrix_factor_call(gmb_expr_t* e) {
 }
 
 int etype(ctx_t* c, gmb_expr_t* e) {
-    if (e && e->var && strstr(e->var, "MyBIT")) fprintf(stderr, "[dbg-etype] var=%s kind=%d tk=%d nargs=%d\n", e->var, (int)e->kind, (int)e->tk, e->nargs);
-    /* LINALG.FACTOR(decomp, name): handle matrice (int64_t), non stringa.
+        /* LINALG.FACTOR(decomp, name): handle matrice (int64_t), non stringa.
      * GMB_TOK_Get è condiviso con POOL.Get/SyncMap.Get (stringa). */
     if (is_matrix_factor_call(e)) return TY_NUM;
+    /* Metodi di collezione SPECIALIZZATI che producono uno SCALARE (non un val boxed):
+     *   BITREE Query/QueryRange → double
+     *   SPARSESET HasItem → predicato -1/0
+     *   CACHE/DICT TryGetValue(key, out) → predicato -1/0
+     * Devono stare QUI (regole in testa): più sotto le regole per-istanza
+     * (`base.Membro(args)` su val/boxed) ritornano TY_VAL e vincevano → PRINT emetteva
+     * gmb_print_val(<double/int>) = C invalido (CollectionsModern §7/§10/§12). */
+    if (e && e->kind == GMB_EXPR_CALL && e->var && e->nargs >= 1) {
+        const char* _qd = strrchr(e->var, '.');
+        if (_qd && _qd != e->var) {
+            if (strcasecmp(_qd + 1, "Query") == 0 || strcasecmp(_qd + 1, "QueryRange") == 0) {
+                char _qb[160]; size_t _ql = (size_t)(_qd - e->var);
+                if (_ql < sizeof(_qb)) {
+                    memcpy(_qb, e->var, _ql); _qb[_ql] = 0;
+                    var_t* _qv = lookup_var(c, _qb);
+                    if (!_qv || _qv->gkind != GK_HTTPREQ) return TY_NUM;
+                }
+            }
+            if (strcasecmp(_qd + 1, "HasItem") == 0 || strcasecmp(_qd + 1, "TryGetValue") == 0)
+                return TY_NUM;
+        }
+    }
     /* ── Regole in TESTA (vincono su ogni ramo successivo) — dict in una VARIABILE ────────
      * `DIM hh AS HTTPHEADERS : hh = req.Headers : hh.Get("X")`:
      *  - `<base>.Get("k")` su una variabile boxed (HTTPHEADERS/HTTPOPTIONS/…) è una STRINGA
@@ -2765,6 +2786,29 @@ int etype(ctx_t* c, gmb_expr_t* e) {
     }
     case GMB_EXPR_UNARY: return TY_NUM;
     case GMB_EXPR_CALL: {
+        /* Metodi di collezione la cui emissione produce un NUMERO (parità con
+         * try_emit_var_method, che non è raggiunto da questo ramo di etype):
+         *   BITREE Query/QueryRange → double
+         *   SPARSESET/LIST/SET HasItem → predicato -1/0
+         *   TRYGETVALUE(key, out) → predicato -1/0 (condizione/IF)
+         * Prima restavano TY_VAL → PRINT emetteva gmb_print_val(<double/int>) = C invalido
+         * (CollectionsModern §10/§12, §7 CACHE). */
+        if (e->var && e->nargs >= 1) {
+            const char* qdot = strrchr(e->var, '.');
+            if (qdot && qdot != e->var) {
+                char qbase[160]; size_t qbl = (size_t)(qdot - e->var);
+                if (qbl < sizeof(qbase)) {
+                    memcpy(qbase, e->var, qbl); qbase[qbl] = 0;
+                    var_t* qv = lookup_var(c, qbase);
+                    if ((strcasecmp(qdot + 1, "Query") == 0 || strcasecmp(qdot + 1, "QueryRange") == 0)
+                        && (!qv || qv->gkind != GK_HTTPREQ))
+                        return TY_NUM;
+                    if (strcasecmp(qdot + 1, "HasItem") == 0
+                        || strcasecmp(qdot + 1, "TryGetValue") == 0)
+                        return TY_NUM;
+                }
+            }
+        }
         /* `x.VALUE` su nullable (forma CALL 0-arg): tipo della base. */
         if (e->nargs == 0 && e->var) {
             const char* vd = strrchr(e->var, '.');
@@ -3073,15 +3117,14 @@ int etype(ctx_t* c, gmb_expr_t* e) {
         if (av && e->nargs == 0 && !av->is_array && !av->gkind) return av->type;
         /* metodi collezione: X.Pop()/X.Dequeue()/X.Peek() ereditano il tipo elemento
          * (str per elem_str); X.Join(...) è sempre stringa. */
-        if (e->var && e->var[0] && strstr(e->var, "MyBIT")) fprintf(stderr, "[dbg-etype-call] var=%s ns=%s tk=%d nargs=%d\n", e->var, e->ns?e->ns:"", (int)e->tk, e->nargs);
-        if (e->var) {
+                if (e->var) {
             const char* mdot = strchr(e->var, '.');
             if (mdot && mdot != e->var) {
                 char mp[160]; size_t mpl = (size_t)(mdot - e->var);
                 if (mpl < sizeof(mp)) {
                     memcpy(mp, e->var, mpl); mp[mpl] = 0;
                     var_t* cv = lookup_var(c, mp);
-                    if (cv && cv->gkind && gk_is_list(cv->gkind)) {
+                                        if (cv && cv->gkind && gk_is_list(cv->gkind)) {
                         if (gmb_member_tok(mdot + 1) == GMB_TOK_Join) return TY_STR;
                         if (gmb_member_tok(mdot + 1) == GMB_TOK_Count) return TY_NUM;
                         if (gmb_member_tok(mdot + 1) == GMB_TOK_GetNode) return TY_STR;
@@ -6934,6 +6977,7 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_AiConsistencyDetail, emit_bf_uncertainty },
     { NULL, GMB_TOK_StatsGammaCdf, emit_bf_dist },
     { NULL, GMB_TOK_StatsGammaSf, emit_bf_dist },
+    { NULL, GMB_TOK_StatsExpSf, emit_bf_dist }, { NULL, GMB_TOK_StatsStudentTSf, emit_bf_dist }, { NULL, GMB_TOK_StatsChiSquaredSf, emit_bf_dist },
     { NULL, GMB_TOK_StatsGammaPdf, emit_bf_dist },
     { NULL, GMB_TOK_StatsGammaPpf, emit_bf_dist },
     { NULL, GMB_TOK_StatsGammaIsf, emit_bf_dist },
@@ -17181,7 +17225,7 @@ static int is_json_path_member(ctx_t* c, gmb_expr_t* e, var_t** out_bv, const ch
           * scartato (parità il/pcode/vmc/c99). gmb_raise_error fa stage_end(0). */
          ind(c); sb_put(&c->out, "gmb_print_stage_begin();\n");
          for (int i = 0; i < s->nprint; i++) {
-             ind(c);
+                          ind(c);
              var_t* _bfv = NULL; int _bfi = 0;
              var_t* _jpv = NULL; const char* _jpm = NULL;
              var_t* _rlv = NULL; int _rlk = 0;

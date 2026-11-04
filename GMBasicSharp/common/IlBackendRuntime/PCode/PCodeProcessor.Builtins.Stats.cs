@@ -32,6 +32,9 @@ internal sealed partial class PCodeProcessor
         BuiltInFunction.STATS_GAMMAPDF,
         BuiltInFunction.STATS_GAMMACDF,
         BuiltInFunction.STATS_GAMMASF,
+        BuiltInFunction.STATS_EXPSF,
+        BuiltInFunction.STATS_STUDENTSF,
+        BuiltInFunction.STATS_CHISQUAREDSF,
         BuiltInFunction.STATS_GAMMAPPF,
         BuiltInFunction.STATS_GAMMAISF,
         BuiltInFunction.STATS_MODE,
@@ -103,6 +106,18 @@ internal sealed partial class PCodeProcessor
         [BuiltInFunction.STATS_GAMMAPDF] = (task, args) =>
         {
                 return CommonLib.Numerics.GammaPdf(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));
+        },
+        [BuiltInFunction.STATS_EXPSF] = (task, args) =>
+        {
+                return 1.0 - CommonLib.Numerics.ExponentialCdf(SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_STUDENTSF] = (task, args) =>
+        {
+                return 1.0 - CommonLib.Numerics.StudentTCdf(SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_CHISQUAREDSF] = (task, args) =>
+        {
+                return 1.0 - CommonLib.Numerics.ChiSquaredCdf(SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 0)));
         },
         [BuiltInFunction.STATS_GAMMASF] = (task, args) =>
         {

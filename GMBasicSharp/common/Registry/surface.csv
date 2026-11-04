@@ -1130,6 +1130,7 @@ procedure,STATS,ChiSquaredCdf,ChiSquaredCdf
 procedure,STATS,ChiSquaredIsf,ChiSquaredIsf
 procedure,STATS,ChiSquaredPdf,ChiSquaredPdf
 procedure,STATS,ChiSquaredPpf,ChiSquaredPpf
+procedure,STATS,ChiSquaredSf,StatsChiSquaredSf
 procedure,STATS,Correlation,Correlation
 procedure,STATS,Covariance,StatsCovariance
 procedure,STATS,Describe,StatsDescribe
@@ -1137,6 +1138,7 @@ procedure,STATS,ExponentialCdf,ExponentialCdf
 procedure,STATS,ExponentialIsf,ExponentialIsf
 procedure,STATS,ExponentialPdf,ExponentialPdf
 procedure,STATS,ExponentialPpf,ExponentialPpf
+procedure,STATS,ExponentialSf,StatsExpSf
 procedure,STATS,FCdf,FCdf
 procedure,STATS,FIsf,FIsf
 procedure,STATS,FPdf,FPdf
@@ -1190,6 +1192,7 @@ procedure,STATS,StudentTCdf,StudentTCdf
 procedure,STATS,StudentTIsf,StudentTIsf
 procedure,STATS,StudentTPdf,StudentTPdf
 procedure,STATS,StudentTPpf,StudentTPpf
+procedure,STATS,StudentTSf,StatsStudentTSf
 procedure,STATS,TTest,TTest
 procedure,STATS,TTestOneSample,TTestOneSample
 procedure,STATS,TTestPaired,TTestPaired
