@@ -3,14 +3,14 @@
 ' di una funzione utente chiamata come espressione su C99 (__out=NULL + canale
 ' thread-local), l'inoltro di una callback con parametri array e l'assegnazione
 ' a un array esistente.
-IMPORT OPT
+IMPORT OPTIMIZE
 IMPORT MATH
 FUNCTION Ros(p() AS DOUBLE) AS DOUBLE
     RETURN (1 - p(0)) ^ 2 + 100 * (p(1) - p(0) * p(0)) ^ 2
 END FUNCTION
 FUNCTION MyBFGS(f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, x0() AS DOUBLE) AS ARRAY OF DOUBLE
     DIM o(UBOUND(x0)) AS DOUBLE
-    CALL OPT.BFGS(f, x0, o)
+    CALL OPTIMIZE.BFGS(f, x0, o)
     RETURN o
 END FUNCTION
 FUNCTION Tripla(v() AS DOUBLE) AS ARRAY OF DOUBLE

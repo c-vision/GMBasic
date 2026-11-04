@@ -1,6 +1,6 @@
 ' EXPECT: fsolve= 1.4142 , 1.4142|broyden= 1.4142 , 1.4142|lsfit= 1 , 2|lm= 1 , 0.5|lmvec= 1 , 0.5|curvefit= 1 , 0.5
 ' OPTIMIZE via FFI — sistemi e curve fitting (6 funzioni).
-IMPORT OPT
+IMPORT OPTIMIZE
 IMPORT MATH
 
 SUB Main()
@@ -10,9 +10,9 @@ SUB Main()
     x0(0) = 1.0 : x0(1) = 0.0
     DIM out(1) AS DOUBLE
 
-    CALL OPT.FSOLVE(sys, x0, out)
+    CALL OPTIMIZE.FSOLVE(sys, x0, out)
     PRINT "fsolve="; MATH.ROUND(out(0), 4); ","; MATH.ROUND(out(1), 4)
-    CALL OPT.BROYDEN(sys, x0, out)
+    CALL OPTIMIZE.BROYDEN(sys, x0, out)
     PRINT "broyden="; MATH.ROUND(out(0), 4); ","; MATH.ROUND(out(1), 4)
 
     ' minimi quadrati non lineari: y = a + b*x  (residui m=5, parametri n=2)
@@ -20,7 +20,7 @@ SUB Main()
     DIM p0(1) AS DOUBLE
     p0(0) = 0.0 : p0(1) = 0.0
     DIM r5(4) AS DOUBLE
-    CALL OPT.LEASTSQUARESFIT(res, p0, r5)
+    CALL OPTIMIZE.LEASTSQUARESFIT(res, p0, r5)
     PRINT "lsfit="; MATH.ROUND(r5(0), 4); ","; MATH.ROUND(r5(1), 4)
 
     ' curve fitting y = a * exp(b*x) sui dati esatti
@@ -33,10 +33,10 @@ SUB Main()
     DIM q0(1) AS DOUBLE
     q0(0) = 0.5 : q0(1) = 0.5
     DIM fit(1) AS DOUBLE
-    CALL OPT.LEVENBERGMARQUARDT(model, q0, xs, ys, fit)
+    CALL OPTIMIZE.LEVENBERGMARQUARDT(model, q0, xs, ys, fit)
     PRINT "lm="; MATH.ROUND(fit(0), 4); ","; MATH.ROUND(fit(1), 4)
-    CALL OPT.LEVENBERGMARQUARDTVEC(vmodel, q0, xs, ys, fit)
+    CALL OPTIMIZE.LEVENBERGMARQUARDTVEC(vmodel, q0, xs, ys, fit)
     PRINT "lmvec="; MATH.ROUND(fit(0), 4); ","; MATH.ROUND(fit(1), 4)
-    CALL OPT.CURVEFIT(model, xs, ys, q0, fit)
+    CALL OPTIMIZE.CURVEFIT(model, xs, ys, q0, fit)
     PRINT "curvefit="; MATH.ROUND(fit(0), 4); ","; MATH.ROUND(fit(1), 4)
 END SUB

@@ -1,6 +1,6 @@
 ' EXPECT: v= 1 , 0.5
 ' OPTIMIZE.CURVEFIT — MiniTest §4.1 (parità 4 backend).
-IMPORT OPT
+IMPORT OPTIMIZE
 IMPORT MATH
 
 FUNCTION Model(p() AS DOUBLE, x AS DOUBLE) AS DOUBLE
@@ -15,6 +15,6 @@ SUB Main()
     DIM p0(1) AS DOUBLE
     p0(0) = 0.5 : p0(1) = 0.5
     DIM o(1) AS DOUBLE
-    CALL OPT.CURVEFIT(Model, x, y, p0, o)
+    CALL OPTIMIZE.CURVEFIT(Model, x, y, p0, o)
     PRINT "v="; MATH.ROUND(o(0), 3); ","; MATH.ROUND(o(1), 3)
 END SUB

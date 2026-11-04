@@ -1,18 +1,18 @@
 ' EXPECT: newton= 1.4142135623731|bisection= 1.41421356237288|brent= 1.41421356237314|secant= 1.4142135623731|golden= 1.99999999999519|brentq= 2|brenth= 2|ridder= 2|toms748= 2|brentmin= 1|minscalar= 1|minscalarG= 1.0000000000058
 ' OPTIMIZE via FFI — 1D: radici e minimo scalare (11 funzioni).
-IMPORT OPT
+IMPORT OPTIMIZE
 
 SUB Main()
-    PRINT "newton="; OPT.NEWTON(FN(x AS DOUBLE) AS DOUBLE => x * x - 2.0, 1.0)
-    PRINT "bisection="; OPT.BISECTION(FN(x AS DOUBLE) AS DOUBLE => x * x - 2.0, 1.0, 2.0)
-    PRINT "brent="; OPT.BRENT(FN(x AS DOUBLE) AS DOUBLE => x * x - 2.0, 1.0, 2.0)
-    PRINT "secant="; OPT.SECANT(FN(x AS DOUBLE) AS DOUBLE => x * x - 2.0, 1.0, 2.0)
-    PRINT "golden="; OPT.GOLDENSECTION(FN(x AS DOUBLE) AS DOUBLE => (x - 2.0) * (x - 2.0), 0.0, 5.0)
-    PRINT "brentq="; OPT.BRENTQ(FN(x AS DOUBLE) AS DOUBLE => x * x * x - 8.0, 1.0, 3.0)
-    PRINT "brenth="; OPT.BRENTH(FN(x AS DOUBLE) AS DOUBLE => x * x * x - 8.0, 1.0, 3.0)
-    PRINT "ridder="; OPT.RIDDER(FN(x AS DOUBLE) AS DOUBLE => x * x * x - 8.0, 1.0, 3.0)
-    PRINT "toms748="; OPT.TOMS748(FN(x AS DOUBLE) AS DOUBLE => x * x * x - 8.0, 1.0, 3.0)
-    PRINT "brentmin="; OPT.BRENTMIN(FN(x AS DOUBLE) AS DOUBLE => (x - 1.0) * (x - 1.0), 0.0, 3.0)
-    PRINT "minscalar="; OPT.MINIMIZESCALAR(FN(x AS DOUBLE) AS DOUBLE => (x - 1.0) * (x - 1.0), 0.0, 3.0)
-    PRINT "minscalarG="; OPT.MINIMIZESCALARM(FN(x AS DOUBLE) AS DOUBLE => (x - 1.0) * (x - 1.0), 0.0, 3.0, "golden")
+    PRINT "newton="; OPTIMIZE.NEWTON(FN(x AS DOUBLE) AS DOUBLE => x * x - 2.0, 1.0)
+    PRINT "bisection="; OPTIMIZE.BISECTION(FN(x AS DOUBLE) AS DOUBLE => x * x - 2.0, 1.0, 2.0)
+    PRINT "brent="; OPTIMIZE.BRENT(FN(x AS DOUBLE) AS DOUBLE => x * x - 2.0, 1.0, 2.0)
+    PRINT "secant="; OPTIMIZE.SECANT(FN(x AS DOUBLE) AS DOUBLE => x * x - 2.0, 1.0, 2.0)
+    PRINT "golden="; OPTIMIZE.GOLDENSECTION(FN(x AS DOUBLE) AS DOUBLE => (x - 2.0) * (x - 2.0), 0.0, 5.0)
+    PRINT "brentq="; OPTIMIZE.BRENTQ(FN(x AS DOUBLE) AS DOUBLE => x * x * x - 8.0, 1.0, 3.0)
+    PRINT "brenth="; OPTIMIZE.BRENTH(FN(x AS DOUBLE) AS DOUBLE => x * x * x - 8.0, 1.0, 3.0)
+    PRINT "ridder="; OPTIMIZE.RIDDER(FN(x AS DOUBLE) AS DOUBLE => x * x * x - 8.0, 1.0, 3.0)
+    PRINT "toms748="; OPTIMIZE.TOMS748(FN(x AS DOUBLE) AS DOUBLE => x * x * x - 8.0, 1.0, 3.0)
+    PRINT "brentmin="; OPTIMIZE.BRENTMIN(FN(x AS DOUBLE) AS DOUBLE => (x - 1.0) * (x - 1.0), 0.0, 3.0)
+    PRINT "minscalar="; OPTIMIZE.MINIMIZESCALAR(FN(x AS DOUBLE) AS DOUBLE => (x - 1.0) * (x - 1.0), 0.0, 3.0)
+    PRINT "minscalarG="; OPTIMIZE.MINIMIZESCALARM(FN(x AS DOUBLE) AS DOUBLE => (x - 1.0) * (x - 1.0), 0.0, 3.0, "golden")
 END SUB

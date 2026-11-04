@@ -15,7 +15,7 @@
 IMPORT ARRAYS
 IMPORT ANALYSIS
 IMPORT COLLECTIONS
-IMPORT OPT
+IMPORT OPTIMIZE
 
 SUB Main()
 
@@ -114,7 +114,7 @@ SUB Main()
     ' 5. TEST CALLBACK MATEMATICHE (ANALYSIS, OPTIMIZE)
     ' ======================================================
     PRINT "--- 5. Test Callback Fortemente Tipizzate ---"
-    ' ANALYSIS.INTEGRATE e OPT.* si aspettano f(x AS DOUBLE) AS DOUBLE.
+    ' ANALYSIS.INTEGRATE e OPTIMIZE.* si aspettano f(x AS DOUBLE) AS DOUBLE.
     ' Il compilatore deve iniettare il tipo DOUBLE nel parametro 'x' della lambda.
     
     DIM Area = ANALYSIS.INTEGRATE({ |x| RETURN x * x }, 0.0, 1.0)
@@ -124,7 +124,7 @@ SUB Main()
     PRINT "Derivata di x^3 per x=2: "; Derivata; " (Atteso: 12)"
     
     ' Trova la radice di f(x) = x^2 - 4 (che è 2) partendo da un'ipotesi di 1.
-    DIM Radice = OPT.NEWTON({ |x| RETURN x^2 - 4 }, 1.0)
+    DIM Radice = OPTIMIZE.NEWTON({ |x| RETURN x^2 - 4 }, 1.0)
     PRINT "Radice di x^2 - 4 (via Newton): "; Radice; " (Atteso: ~2.0)"
     PRINT
 
