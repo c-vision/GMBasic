@@ -302,8 +302,12 @@ double left = task->sp > 0 ? tui_pop_num(task) : 0;
 double top = task->sp > 0 ? tui_pop_num(task) : 0;
 char title[128] = "";
 if (task->sp > 0) snprintf(title, sizeof(title), "%s", tui_pop_str(task));
+/* Contesto per i thunk di ON WINDOW: DEFINE innalza OPEN → il thunk deve poter spawnare
+ * il task dell'handler (altrimenti l'evento OPEN si perde sulla VM/C). */
+gmb_vm_tui_event_ctx(vm, task);
 gmb_winstmt_define(title, title, (int)top, (int)left, (int)bottom, (int)right,
                    pixel != 0 ? GMB_WINSTMT_PIXEL : 0);
+gmb_vm_tui_event_ctx(NULL, NULL);
 
 }
 static void vm_console_210(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {

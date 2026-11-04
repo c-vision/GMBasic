@@ -310,28 +310,51 @@ public sealed partial class IlProgramCompiler
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.RegisterWindowHandlerBySymbol)));
                 break;
             case GosubAction gosubAction:
-                // ON WINDOW ... GOSUB <handler>: SymbolId → dispatch come TASK GPM. In esecuzione
-                // headless/sequenziale l'evento finestra non scatta mai (coerente con VMC/C99).
-                // Se il target è una label di riga/modulo (non una procedura), symbolId=-1 →
-                // handler no-op.
-                var windowSymbolId = ResolveWindowGosubSymbolId(gosubAction);
-                _il.Emit(OpCodes.Ldc_I4, (int)stmt.EventKind);
-                EmitWindowHandle();
-                _il.Emit(OpCodes.Ldc_I4, windowSymbolId);
-                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.RegisterWindowHandlerBySymbol)));
+                EmitWindowHandlerSymbol(gosubAction, stmt.EventKind, stmt.Of);
+                break;
+            case GotoAction gotoAction:
+                // Nel contesto di un handler di evento GOTO e GOSUB coincidono: non esiste un
+                // punto di ritorno nel codice interrotto, quindi entrambi registrano il
+                // SymbolId ed eseguono il blocco come task GPM (parità VM/C e C99Native).
+                EmitWindowHandlerSymbol(gotoAction, stmt.EventKind, stmt.Of);
                 break;
             default:
-                throw new NotSupportedException("Backend IL: ON WINDOW supporta solo STOP e CALL (GOTO/GOSUB non supportati).");
+                throw new NotSupportedException("Backend IL: azione ON WINDOW non supportata.");
         }
     }
 
-    /// <summary>SymbolId della procedura (Proc_&lt;id&gt;) per un handler GOSUB (ON KEY/MOUSE/
-    /// WINDOW), o -1 se la label non corrisponde a una procedura senza parametri. Risolto a
-    /// RUNTIME (vedi IlRuntime.RegisterKeyHandlerBySymbol) per evitare ldftn su MethodBuilder
-    /// non ancora CreateType → InvalidProgramException sullo stepper.</summary>
-    private int ResolveWindowGosubSymbolId(GosubAction action)
+    /// <summary>Registra un handler ON WINDOW il cui target è un nome (SUB o label), via
+    /// SymbolId: il runtime lo invoca come task GPM. Condiviso da GOSUB e GOTO.</summary>
+    private void EmitWindowHandlerSymbol(OnKeyAction action, WindowEventKind kind, Expr? of)
     {
-        var name = action.TargetLabel.Lexeme;
+        var label = action switch
+        {
+            GosubAction g => g.TargetLabel,
+            GotoAction go => go.TargetLabel,
+            _ => throw new NotSupportedException("Backend IL: azione ON WINDOW non valida.")
+        };
+        // Se il target è una label di riga/modulo (non una procedura), symbolId=-1 →
+        // handler no-op.
+        var windowSymbolId = ResolveWindowHandlerSymbolId(label);
+        _il.Emit(OpCodes.Ldc_I4, (int)kind);
+        if (of is null) _il.Emit(OpCodes.Ldc_I4_M1);
+        else EmitInt32Argument(of);
+        _il.Emit(OpCodes.Ldc_I4, windowSymbolId);
+        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.RegisterWindowHandlerBySymbol)));
+    }
+
+    /// <summary>Compatibilità: gli altri emettitori di handler evento (ON KEY/MOUSE,
+    /// MESSAGE, SPRITE) risolvono per GOSUB.</summary>
+    private int ResolveWindowGosubSymbolId(GosubAction action) =>
+        ResolveWindowHandlerSymbolId(action.TargetLabel);
+
+    /// <summary>SymbolId della procedura (Proc_&lt;id&gt;) per un handler GOSUB/GOTO (ON KEY/
+    /// MOUSE/WINDOW), o -1 se la label non corrisponde a una procedura senza parametri.
+    /// Risolto a RUNTIME (vedi IlRuntime.RegisterKeyHandlerBySymbol) per evitare ldftn su
+    /// MethodBuilder non ancora CreateType → InvalidProgramException sullo stepper.</summary>
+    private int ResolveWindowHandlerSymbolId(Token labelToken)
+    {
+        var name = labelToken.Lexeme;
         foreach (var (sid, def) in _procedureDefinitions)
         {
             if (def.Parameters.Length != 0) continue;

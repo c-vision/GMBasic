@@ -441,7 +441,6 @@ public class WindowManager
             w.Draggable = true;
         }
         OnWindowOpened(Args(id));
-        OnWindowFocused(Args(id));
         return id;
     }
 
@@ -490,9 +489,10 @@ public class WindowManager
     public void Raise(int id)
     {
         if (Get(id) is null) return;
-        var wasFocused = Focused;
         CommonLib.Consoles.Tui.ClipperWmNative.gmb_window_manager_raise(_c, id);
-        if (wasFocused != id) OnWindowFocused(Args(id));
+        /* FOCUS a ogni raise (parità runtime C: `WINDOW … ACTIVATE`/click innalzano sempre
+         * "FOCUS" per la finestra, non solo al cambio di focus). */
+        OnWindowFocused(Args(id));
     }
 
     public void RemoveWindow(int id) => Close(id);
@@ -660,7 +660,7 @@ public class WindowManager
         if (ev.Cancel) return;
         CommonLib.Consoles.Tui.ClipperWmNative.gmb_window_manager_remove(_c, id);
         OnWindowClosed(Args(id));
-        if (Focused is int nid) OnWindowFocused(Args(nid));
+        /* Nessun focus-transfer alla chiusura (semantica C: focus = -1). */
     }
 
     public bool IsMinimized(int id) => Get(id)?.Minimized ?? false;
