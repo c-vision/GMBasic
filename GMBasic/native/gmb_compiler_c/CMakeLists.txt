@@ -61,18 +61,17 @@ target_compile_options(gmb_c99native_driver PRIVATE -Wall -Wextra)
 # ── CLI di PROGETTO (O7): `gmb check|build|run --project <dir>`. Linka SOLO il front-end
 # (la discovery `gmb_inc_resolve`, la stessa del compilatore: niente copie nel CLI). È il
 # contratto a processo che l'IDE userà (D4); il driver C99Native lo cerca accanto al binario.
-add_executable(gmb_cli src/cli/gmb_cli.c src/cli/gmb_cli_project.c src/cli/gmb_cli_dump.c src/cli/gmb_cli_engine.c src/cli/gmb_cli_usage.c src/cli/gmb_cli_admin.c src/cli/gmb_cli_file.c src/cli/gmb_cli_deploy.c src/cli/gmb_cli_args.c src/cli/gmb_cli_bsp.c
+add_executable(gmb src/cli/gmb_cli.c src/cli/gmb_cli_project.c src/cli/gmb_cli_dump.c src/cli/gmb_cli_engine.c src/cli/gmb_cli_usage.c src/cli/gmb_cli_admin.c src/cli/gmb_cli_file.c src/cli/gmb_cli_deploy.c src/cli/gmb_cli_args.c src/cli/gmb_cli_bsp.c
                ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_bytecode/src/gmb_disasm.c
                ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_vm_c/gmb_chunk.c
                $<TARGET_OBJECTS:gmb_frontend>)   # split per la soglia 1200 righe (§0quater)
 # RID di build: il CLI cerca librerie/header nella CACHE (`~/.gmbasic/libs/<rid>/`).
 # Una sola mappatura (GmbRid.cmake), passata come costante al compilatore.
-target_compile_definitions(gmb_cli PRIVATE GMB_RID_STR="${GMB_RID}")
-target_include_directories(gmb_cli PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/frontend/include"
+target_compile_definitions(gmb PRIVATE GMB_RID_STR="${GMB_RID}")
+target_include_directories(gmb PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/frontend/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/../gmb_bytecode/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/../gmb_vm_c")
-target_compile_options(gmb_cli PRIVATE -Wall -Wextra)
-set_target_properties(gmb_cli PROPERTIES OUTPUT_NAME gmb)
+target_compile_options(gmb PRIVATE -Wall -Wextra)
 
 # ── Language Server (LSP) come TOOL SEPARATO (F2c): serve le IDE e VS Code.
 # Prima viveva dentro la REPL (flag --lsp) e la costringeva a linkare il front-end.

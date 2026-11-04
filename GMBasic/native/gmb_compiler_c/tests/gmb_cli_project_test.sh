@@ -17,7 +17,7 @@ set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 GMB="$ROOT/native/gmb_compiler_c/build/gmb"
-[ -x "$GMB" ] || { echo "CLI mancante: $GMB (build: cmake --build native/gmb_compiler_c/build --target gmb_cli)"; exit 1; }
+[ -x "$GMB" ] || { echo "CLI mancante: $GMB (build: cmake --build native/gmb_compiler_c/build --target gmb)"; exit 1; }
 
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT

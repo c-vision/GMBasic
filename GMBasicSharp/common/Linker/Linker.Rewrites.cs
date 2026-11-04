@@ -4882,6 +4882,22 @@ public static partial class Linker
                 ScopeId = s.ScopeId
             },
             LocalProcedureStmt s => s with { Procedure = RewriteProcedure(s.Procedure, context, program) },
+            // DRAW TEXT: i suoi figli Expr (text/x/y/rotation/color) cadevano in `_ => stmt`
+            // senza riscrittura (stessa famiglia della "Fase D"/CONTROL): una chiamata a
+            // FUNCTION utente dentro il testo (`DRAW TEXT "a " + NumS(1), x, y`) restava un
+            // ArrayAccessExpr. Il backend IL la emetteva come accesso a indice: la PRIMA
+            // occorrenza cadeva nel ramo dinamico (CollectionIndexGet) e registrava un local
+            // per il simbolo della procedura, la SECONDA nello stesso SUB trovava quel local
+            // e finiva su GetArrayInfo -> "accesso a un array non DIMensionato".
+            DrawTextStmt s => s with
+            {
+                Text = RewriteExpression(s.Text, context, program),
+                X = RewriteExpression(s.X, context, program),
+                Y = RewriteExpression(s.Y, context, program),
+                Rotation = s.Rotation != null ? RewriteExpression(s.Rotation, context, program) : null,
+                Color = s.Color != null ? RewriteExpression(s.Color, context, program) : null,
+                ScopeId = s.ScopeId
+            },
             PrintStmt s => s with
             {
                 Arguments =
