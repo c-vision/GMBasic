@@ -1,7 +1,8 @@
 ' EXPECT: y0= 1|y4= 2.74172
+IMPORT TIMESERIESX
 SUB Main()
   DIM z() = {1, 2, 3, 4, 5}
-  DIM y() = TIMESERIES.TSKALMAN1D(z, 1.0, 1.0, 0.01, 1.0)
+  DIM y() = TIMESERIESX.TSKALMAN1D(z, 1.0, 1.0, 0.01, 1.0)
   PRINT "y0="; MATH.ROUND(y(0), 6)
   PRINT "y4="; MATH.ROUND(y(4), 6)
 END SUB
