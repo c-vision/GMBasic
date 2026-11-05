@@ -196,6 +196,7 @@ sinusoidale, PNG, rilettura e blit). MiniTest: `graphics/canvas_core.bas`.
 
 
 
+
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
 ## Riferimento completo: comandi, funzioni, parametri
@@ -410,6 +411,33 @@ ok = GFX2D.TRANSPOSE(a(), 4, 4, o)
 ok = GFX2D.THRESHOLD(a(), 4, 4, 7.5, 0, 1, o)
 DIM d(15) AS DOUBLE
 ok = GFX2D.DRAWLINE(d(), 4, 4, 0, 0, 3, 3, 2.5)  ' disegno su array
+
+
+## 4quinquies. Geometria 3D via FFI (`GFX3D`)
+| Gruppo | Funzioni |
+|---|---|
+| matrici/camera | `PERSPECTIVE`, `ORTHO`, `LOOKAT`, `CAMERAVIEW`, `CAMERAPROJECTION`, `CAMERAVIEWPROJECTION`, `DECOMPOSESRT` |
+| AABB/frustum | `AABBFROMPOINTS`, `AABBMERGE`, `AABBCENTER`, `AABBEXTENTS`, `AABBTESTPOINT`, `AABBINTERSECT`, `FRUSTUMFROM`, `FRUSTUMTESTPOINT`, `FRUSTUMTESTAABB` |
+| raggi | `RAYSPHERE`, `RAYPLANE`, `RAYTRIANGLE`, `RAYAABB`, `RAYBOX`, `RAYREFLECT`, `RAYREFRACT`, `SHADEPHONG` |
+| intersezioni | `SPHERESPHERE`, `SPHEREBOX`, `SPHEREPLANE`, `SEGMENTPLANE`, `SEGMENTSPHERE`, `SEGMENTTRIANGLE`, `TRIANGLETRIANGLE`, `VOLUMERENDER` |
+| mesh (handle) | `MESHSPHERE`, `MESHBOX`, `MESHPLANE`, `MESHCYLINDER`, `MESHNV`, `MESHNT`, `MESHPOS`, `MESHTRI`, `MESHFREE` |
+| raster (handle) | `RASTERNEW`, `RASTERFREE`, `RASTERCLEAR`, `RASTERGET`, `RASTERTRI`, `RASTERCLIPNEAR` |
+
+IMPORT GFX3D
+DIM m(15) AS DOUBLE
+ok = GFX3D.PERSPECTIVE(1.5707963, 1.5, 0.1, 100, m)
+
+DIM ray(5) AS DOUBLE, sph(3) AS DOUBLE, t(1) AS DOUBLE
+ray(0)=0 : ray(1)=0 : ray(2)=5 : ray(3)=0 : ray(4)=0 : ray(5)=-1
+sph(0)=0 : sph(1)=0 : sph(2)=0 : sph(3)=1
+PRINT GFX3D.RAYSPHERE(ray(), sph(), t)      ' 1, t=4
+
+h = GFX3D.MESHBOX(1, 1, 1)                  ' handle; vedi MESHNV/MESHNT/MESHPOS/MESHTRI
+ok = GFX3D.MESHFREE(h)
+
+r = GFX3D.RASTERNEW(64, 64)                 ' z-buffer RGB float
+ok = GFX3D.RASTERCLEAR(r, 1.0)
+ok = GFX3D.RASTERTRI(r, p(), c())           ' p() e c() = 9 valori (3 vertici RGB)
 
 
 ## 5. Viewport e finestre
