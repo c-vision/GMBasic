@@ -834,3 +834,28 @@ double* gmb_ts_stationary_bootstrap(const double* x, int n, int window, int seed
     }
     *out_len = n; return out;
 }
+
+/* Sample entropy (gmbstats gs_entropy_sample). */
+static double gmb_ts_entropy_dist(const double* x, int i, int j, int m)
+{
+    double d = 0;
+    for (int k = 0; k < m; k++) { double v = fabs(x[i+k] - x[j+k]); if (v > d) d = v; }
+    return d;
+}
+double gmb_ts_sample_entropy(const double* x, int n, int m, double r)
+{
+    if (!x || n < m + 1 || m < 1 || r <= 0) return NAN;
+    double B = 0, A = 0;
+    for (int i = 0; i < n - m; i++)
+        for (int j = 0; j < n - m; j++) {
+            if (i == j) continue;
+            if (gmb_ts_entropy_dist(x, i, j, m) <= r) B += 1;
+        }
+    for (int i = 0; i < n - m - 1; i++)
+        for (int j = 0; j < n - m - 1; j++) {
+            if (i == j) continue;
+            if (gmb_ts_entropy_dist(x, i, j, m + 1) <= r) A += 1;
+        }
+    if (B == 0 || A == 0) return NAN;
+    return -log(A / B);
+}

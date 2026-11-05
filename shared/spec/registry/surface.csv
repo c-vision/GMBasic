@@ -1350,6 +1350,7 @@ procedure,TIMESERIES,TSROLLSKEWNESS,RollingSkewness
 procedure,TIMESERIES,TSROLLSORTINO,RollingSortino
 procedure,TIMESERIES,TSROLLSTDDEV,RollingStdDev
 procedure,TIMESERIES,TSROLLZSCORE,RollingZScore
+procedure,TIMESERIES,TSSAMPEN,TsSampleEntropy
 procedure,TIMESERIES,TSSTATIONARYBOOTSTRAP,TsStationaryBootstrap
 procedure,TIMESERIES,TSVOLATILITY,Volatility
 procedure,TIMESERIES,YuleWalker,YuleWalker

@@ -2023,6 +2023,7 @@ public enum TokenKind
     TsGarch11,
     TsKalman1D,
     TsStationaryBootstrap,
+    TsSampleEntropy,
     StatsChi2Contingency, StatsMannWhitney, StatsWilcoxon,
     StatsGammaPdf, StatsGammaCdf, StatsGammaPpf, StatsGammaIsf,
     StatsSkewTest, StatsKurtosisTest, StatsJarqueBera,
