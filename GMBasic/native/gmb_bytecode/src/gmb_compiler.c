@@ -86,6 +86,13 @@ static const cc_builtin_t g_cc_builtins[] = {
     {"MID",301},{"LEFT",299},{"RIGHT",300},{"TRIM",314},{"LTRIM",315},{"RTRIM",316},
     {"REPLACE",317},{"REPLACE$",317},
     {"INSTR",302},{"JOIN",322},{"SPLIT",321},{"UPPER",307},{"LOWER",306},{"ROUND",12},{"FLOOR",11},
+    /* UCASE/LCASE = ALIAS Clipper di UPPER/LOWER (stesse procedure; nel registry
+     * canonico sono STRINGS.UCASE / STRINGS.LCASE). Il C# le risolveva, il P-Code/VM-C
+     * no: `LCASE(x)`/`LCASE$(x)` finivano in "simbolo non trovato", e con esse non
+     * compilava più `IMPORT PKGTOOLS` (shared/include/PkgTools.inc:81 usa `LCASE$`).
+     * Basta il nome SENZA '$': cc_builtin_code normalizza gia' il suffisso (STR$→STR),
+     * quindi queste due voci coprono anche LCASE$/UCASE$. */
+    {"UCASE",307},{"LCASE",306},
     {"CEIL",0},{"LEN$",25},
     {"RDD.FLOCK",471},{"RDD.CURVAL",745},{"RDD.BUFFER",724},{"PROVIDER.SETPRIORITY",420},
     {"SQL.LASTINSERTROWID",443},{"SYSTEM.NUMCPU",1209},{"TIMESERIAL",277},{"DATE",293},
