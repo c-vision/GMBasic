@@ -850,6 +850,7 @@ nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è 
 - **SQL.TOCSV(x1, x2)** — `PRINT "tocsv="; SQL.TOCSV(rs, "work/dataframe.csv")` (shared/samples/Databases/SqlDataframe.bas:28)
 <!-- END DOMAIN TABLE -->
 
+
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
 ## Riferimento completo: comandi, funzioni, parametri
@@ -857,6 +858,46 @@ nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è 
 > Sezione generata dalle guide del progetto per questo capitolo: contiene **tutte**
 > le superfici documentate, non una selezione. La prosa dei capitoli precedenti le
 > spiega; qui stanno i dettagli — parametri, varianti, esempi d'uso.
+
+### HDF5-Guida-Utente
+
+*Fonte: `HDF5-Guida-Utente`*
+
+
+REQUIRE "hdf5"
+IMPORT HDF5
+
+
+## 1. Modello
+
+## 2. Convenzioni FFI
+
+## 3. Funzioni (19)
+| Funzione | Parametri | Ritorno | Note |
+|---|---|---|---|
+| `H5CREATE` | path STRING | LONG | Crea (o tronca) un file HDF5. Ritorna l'handle, 0 su errore. |
+| `H5OPEN` | path STRING | LONG | Apre un file HDF5 esistente in lettura/scrittura. Ritorna l'handle, 0 su errore. |
+| `H5CLOSE` | h LONG | LONG | Chiude il file e libera l'handle. 0 = ok. |
+| `H5WRITEF64` | h LONG, name STRING, rank LONG, dims() LONG, data() DOUBLE | LONG | dataset F64: rank 1..8, dims() = rank valori, data() = prodotto(dims) valori. |
+| `H5WRITEI64` | h LONG, name STRING, rank LONG, dims() LONG, data() LONG | LONG | dataset I64 (interi a 64 bit). |
+| `H5WRITEF64C` | h LONG, name STRING, rank LONG, dims() LONG, data() DOUBLE, compress LONG | LONG | dataset F64 con compressione deflate+shuffle (compress 0..9, 0 = nessuna). |
+| `H5MAKEGROUP` | h LONG, path STRING | LONG | crea un gruppo (anche annidato: "serie/2026"). |
+| `H5WRITEATTRSTR` | h LONG, obj STRING, attr STRING, val STRING | LONG | attributo stringa su un oggetto (dataset o gruppo). |
+| `H5WRITEATTRF64` | h LONG, obj STRING, attr STRING, val DOUBLE | LONG | attributo numerico (double) su un oggetto. |
+| `H5COUNT` | h LONG | LONG | numero di oggetti (dataset + gruppi) del file, in ordine di creazione. |
+| `H5NAME` | h LONG, k LONG | STRING | nome completo dell'oggetto k-esimo. |
+| `H5KIND` | h LONG, k LONG | LONG | tipo dell'oggetto k-esimo: 0 = dataset, 1 = gruppo, 2 = altro. |
+| `H5SIZE` | h LONG, name STRING | LONG | dimensione (numero di elementi) del dataset: serve a dimensionare out(). |
+| `H5READF64` | h LONG, name STRING, out() DOUBLE, dims() LONG, nelem() LONG | LONG | legge un dataset F64 in out() (>= H5SIZE); dims() = rank dimensioni, nelem(0) = elementi. |
+| `H5READI64` | h LONG, name STRING, out() LONG, dims() LONG, nelem() LONG | LONG | legge un dataset I64 in out(). |
+| `H5READDBL` | h LONG, name STRING, out() DOUBLE, dims() LONG, nelem() LONG | LONG | legge QUALSIASI dataset numerico convertendolo in double. |
+| `H5READSTR` | h LONG, name STRING | STRING | primo elemento di un dataset di stringhe. |
+| `H5READATTRSTR` | h LONG, obj STRING, attr STRING | STRING | attributo stringa. |
+| `H5VERSION` |  | STRING | versione della libreria HDF5 sottostante. |
+
+## 4. Esempio
+
+## 5. Limiti
 
 ### DBF-Guida-Utente
 
@@ -868,6 +909,47 @@ nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è 
 ### `DBF CREATE <path> FROM TYPE <Tipo>`
 
 ### `DBF USE <path> [ALIAS <alias>] [AS <Tipo>]`
+
+### `DBF SELECT <alias> | <area>` — comando
+| Parametro | Tipo | Significato |
+|---|---|---|
+| `<alias>` | identificatore nudo o stringa | alias registrato con `DBF USE … ALIAS`, case-insensitive |
+| `<area>` | numero/espressione numerica | numero d'area 1-based (1 = prima area aperta) |
+
+DBF USE "clienti.dbf" ALIAS Clienti     ' area 1
+DBF USE "ordini.dbf"  ALIAS Ordini      ' area 2 (corrente)
+DBF SELECT Clienti                      ' comando: corrente = Clienti (area 1)
+PRINT DBF.ALIAS(); DBF.SELECTED()       ' Clienti 1
+DBF SELECT 2                            ' forma numerica: corrente = Ordini (area 2)
+
+
+### `DBF.SELECTED([alias|area])` — funzione
+| Parametro | Tipo | Significato |
+|---|---|---|
+| *(nessuno)* | — | area **corrente** |
+| `<alias>` | stringa o identificatore nudo | area dell'alias (un identificatore nudo è **sempre** il nome dell'alias, anche se esiste una variabile omonima) |
+| `<area>` | numero/espressione numerica | restituisce il numero se quell'area è aperta, altrimenti `0` |
+
+DBF USE "clienti.dbf" ALIAS Clienti
+DBF USE "ordini.dbf"  ALIAS Ordini
+PRINT DBF.SELECTED()            ' 2  (area corrente = ultima aperta)
+PRINT DBF.SELECTED("Clienti")   ' 1
+PRINT DBF.SELECTED(Clienti)     ' 1  (identificatore nudo = alias)
+PRINT DBF.SELECTED(9)           ' 0  (area non aperta)
+DBF SELECT Clienti
+PRINT DBF.SELECTED()            ' 1
+
+
+### `DBF CLOSE [<alias>|<area>[, …]]` · `DBF CLOSE DATABASES|ALL`
+
+DBF USE "clienti.dbf" ALIAS Clienti     ' area 1
+DBF USE "ordini.dbf"  ALIAS Ordini      ' area 2
+DBF SELECT Clienti
+DBF CLOSE Ordini                        ' chiude SOLO Ordini (area 2)
+PRINT DBF.SELECTED()                    ' 1 (Clienti resta corrente)
+DBF CLOSE                               ' chiude l'area corrente (Clienti)
+PRINT DBF.SELECTED()                    ' 0
+
 
 ## 2. Dati: APPEND / REPLACE / GET
 
@@ -944,6 +1026,7 @@ nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è 
 | `COPY`/`APPEND`/`SORT`/`TOTAL … FOR` | `dbf_file_ops_for.bas` | ✓ | ✓ | ✓ | ✓ | ✓ |
 | campo `BIT` numerico `-1`/`0` | `dbf_bit_replace.bas` | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `DBF GET <var>` late-binding | `dbf_get_var.bas` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `DBF SELECT` (comando) + `DBF.SELECTED()` (area 1-based) | `dbf_selected_area.bas` | ✓ | ✓ | ✓ | ✓ | ✓ |
 
 ## Riferimenti
 
@@ -993,6 +1076,11 @@ PRINT ISAM.REPLICATIONRECV(0)                  ' 0: porta fuori range, nessun ac
 ### `LEDGER EDIT` — modifica di una transazione
 
 LEDGER EDIT <handle> ID <id> WITH <data>, "<descrizione>" { "<conto>": <importo>, … } INTO <var>
+
+
+### `LEDGER DELETE` — annulla una transazione
+
+LEDGER DELETE <handle> ID <id>
 
 
 ## 4. IO — file e percorsi (29 funzioni)
@@ -1073,26 +1161,12 @@ PRINT DBF.LASTREC()
 DBF JOIN WITH C TO "empty.dbf" FOR O.ID = "NEVER"   ' 0 match
 
 
-### 2quater. DBF SELECT (comando) / DBF.SELECTED() (funzione)
+### 2quater. DBF SELECT (commutazione area attiva)
 
-`DBF SELECT <alias>` e `DBF SELECT <n>` sono **comandi** che commutano l'area corrente
-(alias o numero d'area 1-based); un alias/area non aperta è un no-op. `DBF.SELECTED()` è una
-**funzione**: numero d'area corrente, `DBF.SELECTED("alias")` area dell'alias,
-`DBF.SELECTED(n)` l'area `n` se aperta (altrimenti 0). Un identificatore nudo è sempre un
-alias, non una variabile. `DBF CLOSE <alias|area>` chiude solo quell'area; `DBF CLOSE` nudo
-la corrente. `DBF.SELECT(...)` non esiste come funzione.
-
-```basic
 DBF USE "ordini.dbf" ALIAS O
-DBF USE "clienti.dbf" ALIAS C   ' current = C (area 2)
-DBF SELECT O                     ' current = O (area 1, primary del JOIN)
-PRINT DBF.SELECTED()             ' 1
+DBF USE "clienti.dbf" ALIAS C   ' current = C
+DBF SELECT O                     ' current = O (primary del JOIN)
 DBF JOIN WITH C TO "join.dbf" FOR O.IDCLI = C.ID
-DBF CLOSE C                      ' chiude solo C; O resta corrente
-```
-
-MiniTest: `shared/minitests/dbf/dbf_selected_area.bas`, `dbf_select.bas`. Sample:
-`shared/samples/Databases/SelectAreas.bas`.
 
 
 ### Dbf-UpdateOn-Guida-Utente
@@ -2234,51 +2308,15 @@ DBF USE "clienti.dbf" ALIAS Clienti EXCLUSIVE NEW INDEX "by_cogn.ntx"
 DBF.USE("clienti.dbf", FALSE, ["by_cogn.ntx"], "Clienti", "Cliente")
 
 
-### `DBF SELECT <alias> | <area>` (comando) / `DBF.SELECTED([alias|area])` (funzione)
+### `DBF.SELECT area` / `DBF.SELECT(n%)`
 
-`DBF SELECT` è un **comando**: commuta l'area corrente sull'alias o sul numero d'area
-(1-based) indicato; un alias/area non aperta è un no-op. `DBF.SELECTED()` è una **funzione**:
-restituisce il numero d'area 1-based corrente (`0` se nessuna), quello dell'alias passato
-(`0` se chiusa) o `n` se l'area `n` è aperta. Non cambia l'area corrente. Un identificatore
-nudo è **sempre** il nome dell'alias (anche se esiste una variabile omonima); per passare un
-numero d'area usare un letterale o un'espressione. `DBF.SELECT(...)` **non esiste** come
-funzione: su C99Native l'emissione fallisce con un errore esplicito, su IL/PCode/VM-C il
-simbolo non viene risolto.
-
-| Forma | Parametro | Risultato |
-|---|---|---|
-| `DBF SELECT <alias>` | alias (identificatore o stringa), case-insensitive | area corrente = area dell'alias |
-| `DBF SELECT <n>` | numero/espressione numerica, 1-based | area corrente = area `n` |
-| `DBF.SELECTED()` | — | area corrente (0 = nessuna) |
-| `DBF.SELECTED("<alias>")` / `DBF.SELECTED(alias)` | alias | area dell'alias (0 = chiusa) |
-| `DBF.SELECTED(n)` | numero/espressione | `n` se l'area `n` è aperta, altrimenti 0 |
-
-I numeri d'area sono assegnati in **ordine di apertura** (prima area libera) e riusati dopo
-una chiusura. `DBF.ALIAS()` segue l'area corrente dopo `DBF SELECT`.
-
-```basic
-DBF USE "clienti.dbf" ALIAS Clienti   ' area 1
-DBF USE "ordini.dbf"  ALIAS Ordini    ' area 2 (corrente)
 DBF SELECT Clienti
-PRINT DBF.SELECTED()                  ' 1
-PRINT DBF.SELECTED("Ordini")          ' 2
-PRINT DBF.SELECTED(9)                 ' 0
-DBF SELECT 2                          ' forma numerica: corrente = Ordini
-```
-
-Verifica 4 backend: `shared/minitests/dbf/dbf_selected_area.bas` (PASS su
-IL/PCode/VM-C/C99Native). Sample: `shared/samples/Databases/SelectAreas.bas`.
+DBF.SELECT(2)
 
 
-### `DBF.CLOSE [<alias|area> [, ...] | DATABASES | ALL]`
-
-`DBF CLOSE` nudo chiude **solo l'area corrente**; `DBF CLOSE <alias>`/`<area>` chiude **solo**
-l'area indicata (anche se non è la corrente); un alias/area non aperta è un no-op.
-`CLOSE DATABASES`/`CLOSE ALL` chiudono tutte le aree. Dopo la chiusura dell'area corrente,
-la corrente passa alla prima area ancora aperta (o 0).
+### `DBF.CLOSE [area [, ...] | DATABASES]`
 
 DBF CLOSE Clienti
-DBF CLOSE 2
 DBF CLOSE DATABASES
 DBF.CLOSE("Clienti", "Ordini")
 
@@ -2326,7 +2364,7 @@ DBF.LIST("Nome, Citta", "Saldo > 0")
 | `DBF.EOF()` / `DBF.BOF()` | `BOOLEAN` fine/inizio file |
 | `DBF.FOUND()` | `BOOLEAN` dopo `SEEK` |
 | `DBF.RECNO()` / `DBF.RECCOUNT()` / `DBF.LASTREC()` | `LONG` posizione / totale |
-| `DBF.SELECTED([alias$\|area#])` | `LONG` numero d'area 1-based (corrente, alias o area; 0 se nessuna/chiusa) |
+| `DBF.SELECTED([alias$])` | `LONG` numero dell'area corrente (1-based; 0 se nessuna) |
 | `DBF.ALIAS([alias$])` | `STRING` alias dell'area |
 | `DBF.USED([alias$])` | `BOOLEAN` area aperta e utilizzabile |
 | `DBF.DELETED()` | `BOOLEAN` record corrente marcato cancellato |
