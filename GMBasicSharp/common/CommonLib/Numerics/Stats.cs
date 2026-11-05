@@ -362,6 +362,45 @@ public static partial class Numerics
         return x < 0 ? 0.0 : ChiSquared.CDF(freedom, x);
     }
 
+
+    public static double NcBetaPdf(double a, double b, double nc, double x)
+    {
+        if (a <= 0 || b <= 0 || nc < 0) return double.NaN;
+        double half = nc * 0.5, w = Math.Exp(-half), sum = 0;
+        for (var j = 0; j < 300; j++) { sum += w * BetaPdf(a + j, b, x); w *= half / (j + 1.0); }
+        return sum;
+    }
+
+    public static double NcBetaCdf(double a, double b, double nc, double x)
+    {
+        if (a <= 0 || b <= 0 || nc < 0) return double.NaN;
+        if (x <= 0) return 0;
+        if (x >= 1) return 1;
+        double half = nc * 0.5, w = Math.Exp(-half), sum = 0;
+        for (var j = 0; j < 300; j++) { sum += w * BetaCdf(a + j, b, x); w *= half / (j + 1.0); }
+        return Math.Min(1.0, sum);
+    }
+
+    public static double NcBetaSf(double a, double b, double nc, double x) => 1.0 - NcBetaCdf(a, b, nc, x);
+
+    public static double NcGammaPdf(double shape, double nc, double x)
+    {
+        if (shape <= 0 || nc < 0) return double.NaN;
+        double half = nc * 0.5, w = Math.Exp(-half), sum = 0;
+        for (var j = 0; j < 300; j++) { sum += w * GammaPdf(shape + j, 1.0, x); w *= half / (j + 1.0); }
+        return sum;
+    }
+
+    public static double NcGammaCdf(double shape, double nc, double x)
+    {
+        if (shape <= 0 || nc < 0) return double.NaN;
+        if (x <= 0) return 0;
+        double half = nc * 0.5, w = Math.Exp(-half), sum = 0;
+        for (var j = 0; j < 300; j++) { sum += w * GammaCdf(shape + j, 1.0, x); w *= half / (j + 1.0); }
+        return Math.Min(1.0, sum);
+    }
+
+    public static double NcGammaSf(double shape, double nc, double x) => 1.0 - NcGammaCdf(shape, nc, x);
     public static double NcChi2Pdf(double df, double nc, double x)
     {
         if (df <= 0 || nc < 0 || x < 0) return double.NaN;

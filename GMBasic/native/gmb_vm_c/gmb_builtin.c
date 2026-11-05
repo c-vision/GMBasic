@@ -695,6 +695,22 @@ static void gmb_bf_1064(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
         (void)vm; (void)task; (void)func_code;
         bout->result = gmb_dist_chi_isf(argc >= 2 ? args[1].num : 1, args[0].num);
 }
+static void gmb_bf_1081(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task;
+        double a = argc >= 2 ? args[1].num : 1, b = argc >= 3 ? args[2].num : 1, nc = argc >= 4 ? args[3].num : 0;
+        bout->result = func_code == 1081 ? gmb_dist_nc_beta_pdf(a, b, nc, args[0].num)
+                      : func_code == 1082 ? gmb_dist_nc_beta_cdf(a, b, nc, args[0].num)
+                      : gmb_dist_nc_beta_sf(a, b, nc, args[0].num);
+}
+static void gmb_bf_1084(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task;
+        double shape = argc >= 2 ? args[1].num : 1, nc = argc >= 3 ? args[2].num : 0;
+        bout->result = func_code == 1084 ? gmb_dist_nc_gamma_pdf(shape, nc, args[0].num)
+                      : func_code == 1085 ? gmb_dist_nc_gamma_cdf(shape, nc, args[0].num)
+                      : gmb_dist_nc_gamma_sf(shape, nc, args[0].num);
+}
 static void gmb_bf_1078(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         (void)vm; (void)task;
@@ -17749,6 +17765,12 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 1078, gmb_bf_1078 },
     { 1079, gmb_bf_1078 },
     { 1080, gmb_bf_1078 },
+    { 1081, gmb_bf_1081 },
+    { 1082, gmb_bf_1081 },
+    { 1083, gmb_bf_1081 },
+    { 1084, gmb_bf_1084 },
+    { 1085, gmb_bf_1084 },
+    { 1086, gmb_bf_1084 },
     { 1015, gmb_bf_1013 },
     { 1017, gmb_bf_1017 },
     { 1018, gmb_bf_1018 },

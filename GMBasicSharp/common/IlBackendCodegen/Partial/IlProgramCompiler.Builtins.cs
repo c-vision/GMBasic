@@ -467,6 +467,12 @@ public sealed partial class IlProgramCompiler
             case TokenKind.StatsNcChi2Pdf: EmitOptionalParamsCall(expr, IlRuntimeNcChi2PdfMethod, 3, 1.0, 0.0); break;
             case TokenKind.StatsNcChi2Cdf: EmitOptionalParamsCall(expr, IlRuntimeNcChi2CdfMethod, 3, 1.0, 0.0); break;
             case TokenKind.StatsNcChi2Sf: EmitOptionalParamsCall(expr, IlRuntimeNcChi2SfMethod, 3, 1.0, 0.0); break;
+            case TokenKind.StatsNcBetaPdf: EmitOptionalParamsCall(expr, IlRuntimeNcBetaPdfMethod, 4, 1.0, 1.0, 0.0); break;
+            case TokenKind.StatsNcBetaCdf: EmitOptionalParamsCall(expr, IlRuntimeNcBetaCdfMethod, 4, 1.0, 1.0, 0.0); break;
+            case TokenKind.StatsNcBetaSf: EmitOptionalParamsCall(expr, IlRuntimeNcBetaSfMethod, 4, 1.0, 1.0, 0.0); break;
+            case TokenKind.StatsNcGammaPdf: EmitOptionalParamsCall(expr, IlRuntimeNcGammaPdfMethod, 3, 1.0, 1.0, 0.0); break;
+            case TokenKind.StatsNcGammaCdf: EmitOptionalParamsCall(expr, IlRuntimeNcGammaCdfMethod, 3, 1.0, 1.0, 0.0); break;
+            case TokenKind.StatsNcGammaSf: EmitOptionalParamsCall(expr, IlRuntimeNcGammaSfMethod, 3, 1.0, 1.0, 0.0); break;
             case TokenKind.StatsGammaPpf: EmitTripleScalarCall(expr, nameof(IlRuntime.GammaPpf)); break;
             case TokenKind.StatsGammaIsf: EmitTripleScalarCall(expr, nameof(IlRuntime.GammaIsf)); break;
             case TokenKind.AMax: EmitStatsArrayCall(expr, RuntimeMethod(nameof(IlRuntime.AMax))); break;
