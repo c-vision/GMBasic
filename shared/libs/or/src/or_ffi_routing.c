@@ -14,7 +14,7 @@ static int *to_iarr(const i64 *a, i64 n)
     i64 i;
     int *r;
     if (n <= 0 || a == NULL) return NULL;
-    r = (int *)malloc((size_t)n * sizeof(int));
+    r = (int *)calloc((size_t)n, sizeof(int));
     if (r == NULL) return NULL;
     for (i = 0; i < n; i++) r[i] = (int)a[i];
     return r;
@@ -33,7 +33,7 @@ double ofx_tsp_nn(const double *dist, i64 n, i64 *tour)
 {
     int *t; double r;
     if (n <= 0 || dist == NULL || tour == NULL) return -1.0;
-    t = (int *)malloc((size_t)n * sizeof(int));
+    t = (int *)calloc((size_t)n, sizeof(int));
     if (t == NULL) return -1.0;
     r = (double)gor_tsp_nn((int)n, (const gor_real *)dist, t);
     out_iarr(t, tour, n);
@@ -45,7 +45,7 @@ double ofx_tsp_2opt(const double *dist, i64 n, i64 *tour, i64 maxit)
 {
     int *t; double r;
     if (n <= 0 || dist == NULL || tour == NULL) return -1.0;
-    t = (int *)malloc((size_t)n * sizeof(int));
+    t = (int *)calloc((size_t)n, sizeof(int));
     if (t == NULL) return -1.0;
     { i64 i; for (i = 0; i < n; i++) t[i] = (int)tour[i]; }
     r = (double)gor_tsp_2opt((int)n, (const gor_real *)dist, t, (int)maxit);
@@ -69,7 +69,7 @@ double ofx_tsp_extra_mileage(const double *dist, i64 n, i64 *tour)
 {
     int *t; double r;
     if (n <= 0 || dist == NULL || tour == NULL) return -1.0;
-    t = (int *)malloc((size_t)n * sizeof(int));
+    t = (int *)calloc((size_t)n, sizeof(int));
     if (t == NULL) return -1.0;
     r = (double)gor_tsp_extra_mileage((int)n, (const gor_real *)dist, t);
     out_iarr(t, tour, n);
@@ -81,7 +81,7 @@ double ofx_tsp_grasp(const double *dist, i64 n, i64 *tour, i64 maxit)
 {
     int *t; double r;
     if (n <= 0 || dist == NULL || tour == NULL) return -1.0;
-    t = (int *)malloc((size_t)n * sizeof(int));
+    t = (int *)calloc((size_t)n, sizeof(int));
     if (t == NULL) return -1.0;
     r = (double)gor_tsp_grasp((int)n, (const gor_real *)dist, t, (int)maxit, 0.3, 12345ULL);
     out_iarr(t, tour, n);
@@ -93,7 +93,7 @@ double ofx_tsp_vns(const double *dist, i64 n, i64 *tour, i64 maxit)
 {
     int *t; double r;
     if (n <= 0 || dist == NULL || tour == NULL) return -1.0;
-    t = (int *)malloc((size_t)n * sizeof(int));
+    t = (int *)calloc((size_t)n, sizeof(int));
     if (t == NULL) return -1.0;
     { i64 i; for (i = 0; i < n; i++) t[i] = (int)tour[i]; }
     r = (double)gor_tsp_vns((int)n, (const gor_real *)dist, t, (int)maxit);
@@ -106,7 +106,7 @@ double ofx_tsp_3opt(const double *dist, i64 n, i64 *tour, i64 maxit)
 {
     int *t; double r;
     if (n <= 0 || dist == NULL || tour == NULL) return -1.0;
-    t = (int *)malloc((size_t)n * sizeof(int));
+    t = (int *)calloc((size_t)n, sizeof(int));
     if (t == NULL) return -1.0;
     { i64 i; for (i = 0; i < n; i++) t[i] = (int)tour[i]; }
     r = (double)gor_tsp_3opt((int)n, (const gor_real *)dist, t, (int)maxit);
@@ -119,7 +119,7 @@ double ofx_tsp_sa(const double *dist, i64 n, i64 *tour, double t0, double coolin
 {
     int *t; double r;
     if (n <= 0 || dist == NULL || tour == NULL) return -1.0;
-    t = (int *)malloc((size_t)n * sizeof(int));
+    t = (int *)calloc((size_t)n, sizeof(int));
     if (t == NULL) return -1.0;
     { i64 i; for (i = 0; i < n; i++) t[i] = (int)tour[i]; }
     r = (double)gor_tsp_sa((int)n, (const gor_real *)dist, t, (gor_real)t0,
@@ -133,7 +133,7 @@ double ofx_tsp_tabu(const double *dist, i64 n, i64 *tour, i64 maxit, i64 tenure_
 {
     int *t; double r;
     if (n <= 0 || dist == NULL || tour == NULL) return -1.0;
-    t = (int *)malloc((size_t)n * sizeof(int));
+    t = (int *)calloc((size_t)n, sizeof(int));
     if (t == NULL) return -1.0;
     { i64 i; for (i = 0; i < n; i++) t[i] = (int)tour[i]; }
     r = (double)gor_tsp_tabu((int)n, (const gor_real *)dist, t, (int)maxit,
@@ -166,8 +166,8 @@ i64 ofx_tsp_subtours(const i64 *succ, i64 n, i64 *comp, i64 *sizes)
     int *s, *c, *sz; int r;
     if (n <= 0 || succ == NULL || comp == NULL || sizes == NULL) return -1;
     s = to_iarr(succ, n);
-    c = (int *)malloc((size_t)n * sizeof(int));
-    sz = (int *)malloc((size_t)n * sizeof(int));
+    c = (int *)calloc((size_t)n, sizeof(int));
+    sz = (int *)calloc((size_t)n, sizeof(int));
     if (s == NULL || c == NULL || sz == NULL) { free(s); free(c); free(sz); return -1; }
     r = gor_tsp_subtours((int)n, s, c, sz);
     out_iarr(c, comp, n);
@@ -180,7 +180,7 @@ double ofx_tsp_dfj(const double *dist, i64 n, i64 *tour, i64 maxcuts)
 {
     int *t; double r;
     if (n <= 0 || dist == NULL || tour == NULL) return -1.0;
-    t = (int *)malloc((size_t)n * sizeof(int));
+    t = (int *)calloc((size_t)n, sizeof(int));
     if (t == NULL) return -1.0;
     r = (double)gor_tsp_dfj((int)n, (const gor_real *)dist, t, (int)maxcuts);
     out_iarr(t, tour, n);
@@ -194,7 +194,7 @@ i64 ofx_tsp_erx(const i64 *p1, const i64 *p2, i64 n, i64 *child)
     if (n <= 0 || p1 == NULL || p2 == NULL || child == NULL) return 0;
     a = to_iarr(p1, n);
     b = to_iarr(p2, n);
-    c = (int *)malloc((size_t)n * sizeof(int));
+    c = (int *)calloc((size_t)n, sizeof(int));
     if (a == NULL || b == NULL || c == NULL) { free(a); free(b); free(c); return 0; }
     gor_tsp_erx((int)n, a, b, c, 12345ULL);
     out_iarr(c, child, n);
@@ -206,7 +206,7 @@ double ofx_tsp_ga(const double *dist, i64 n, i64 *tour, i64 pop, i64 gens)
 {
     int *t; double r;
     if (n <= 0 || dist == NULL || tour == NULL) return -1.0;
-    t = (int *)malloc((size_t)n * sizeof(int));
+    t = (int *)calloc((size_t)n, sizeof(int));
     if (t == NULL) return -1.0;
     r = (double)gor_tsp_ga((int)n, (const gor_real *)dist, t, (int)pop, (int)gens, 12345ULL);
     out_iarr(t, tour, n);
@@ -218,7 +218,7 @@ double ofx_tsp_or_opt(const double *dist, i64 n, i64 *tour, i64 maxit)
 {
     int *t; double r;
     if (n <= 0 || dist == NULL || tour == NULL) return -1.0;
-    t = (int *)malloc((size_t)n * sizeof(int));
+    t = (int *)calloc((size_t)n, sizeof(int));
     if (t == NULL) return -1.0;
     { i64 i; for (i = 0; i < n; i++) t[i] = (int)tour[i]; }
     r = (double)gor_tsp_or_opt((int)n, (const gor_real *)dist, t, (int)maxit);
@@ -231,7 +231,7 @@ double ofx_tsp_double_tree(const double *dist, i64 n, i64 *tour)
 {
     int *t; double r;
     if (n <= 0 || dist == NULL || tour == NULL) return -1.0;
-    t = (int *)malloc((size_t)n * sizeof(int));
+    t = (int *)calloc((size_t)n, sizeof(int));
     if (t == NULL) return -1.0;
     r = (double)gor_tsp_double_tree((int)n, (const gor_real *)dist, t);
     out_iarr(t, tour, n);
@@ -243,7 +243,7 @@ double ofx_tsp_held_karp(const double *dist, i64 n, i64 *tour)
 {
     int *t; double r;
     if (n <= 0 || dist == NULL || tour == NULL) return -1.0;
-    t = (int *)malloc((size_t)n * sizeof(int));
+    t = (int *)calloc((size_t)n, sizeof(int));
     if (t == NULL) return -1.0;
     r = (double)gor_tsp_held_karp((int)n, (const gor_real *)dist, t);
     out_iarr(t, tour, n);
@@ -260,7 +260,7 @@ i64 ofx_vrp_clarke_wright(const double *dist, const double *demand, i64 n, doubl
     gor_real tot = 0.0;
     int k;
     if (n <= 0 || dist == NULL || demand == NULL || route_of == NULL) return -1;
-    r = (int *)malloc((size_t)n * sizeof(int));
+    r = (int *)calloc((size_t)n, sizeof(int));
     if (r == NULL) return -1;
     k = gor_vrp_clarke_wright((int)n, (const gor_real *)dist, (const gor_real *)demand,
                               (gor_real)cap, (int)depot, r, &tot);
@@ -278,7 +278,7 @@ i64 ofx_vrp_time_windows(const double *dist, const double *demand, i64 n, double
     gor_real tot = 0.0;
     int k;
     if (n <= 0 || dist == NULL || demand == NULL || tw == NULL || route_of == NULL) return -1;
-    r = (int *)malloc((size_t)n * sizeof(int));
+    r = (int *)calloc((size_t)n, sizeof(int));
     if (r == NULL) return -1;
     k = gor_vrp_time_windows((int)n, (const gor_real *)dist, (const gor_real *)demand,
                              (gor_real)cap, (int)depot, (const gor_real *)tw,
@@ -297,7 +297,9 @@ i64 ofx_mdvrp(const double *dist, const double *demand, i64 n, i64 ndepots, doub
     gor_real tot = 0.0;
     int k;
     if (n <= 0 || ndepots <= 0 || dist == NULL || demand == NULL || route_of == NULL) return -1;
-    r = (int *)malloc((size_t)n * sizeof(int));
+    /* calloc: `gor_mdvrp` scrive route_of solo per i clienti VISITATI; i depositi (0..ndepots-1)
+     * restavano con il contenuto del malloc (garbage copiato in BASIC). 2026-11-04. */
+    r = (int *)calloc((size_t)n, sizeof(int));
     if (r == NULL) return -1;
     k = gor_mdvrp((int)n, (int)ndepots, (const gor_real *)dist, (const gor_real *)demand,
                   (gor_real)cap, r, &tot);
@@ -317,7 +319,7 @@ i64 ofx_pdp(const double *dist, const double *demand, i64 nreq, double cap,
         route == NULL) return -1;
     p = to_iarr(pickup, nreq);
     d = to_iarr(delivery, nreq);
-    r = (int *)malloc((size_t)(2 * nreq) * sizeof(int));
+    r = (int *)calloc((size_t)(2 * nreq), sizeof(int));
     if (p == NULL || d == NULL || r == NULL) { free(p); free(d); free(r); return -1; }
     k = gor_pdp((int)nreq, (const gor_real *)dist, (const gor_real *)demand, (gor_real)cap,
                 p, d, r, &tot);
