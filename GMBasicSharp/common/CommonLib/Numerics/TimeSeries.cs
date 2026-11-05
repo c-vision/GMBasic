@@ -943,6 +943,18 @@ public static partial class Numerics
         return Math.Log(patterns.Count) / Math.Log(npat);
     }
 
+    public static double[] BmaWeights(double[] ic)
+    {
+        var n = ic.Length;
+        if (n == 0) return Array.Empty<double>();
+        var minic = ic.Min();
+        var w = new double[n];
+        double sum = 0;
+        for (var i = 0; i < n; i++) { w[i] = Math.Exp(-0.5 * (ic[i] - minic)); sum += w[i]; }
+        if (sum > 0) for (var i = 0; i < n; i++) w[i] /= sum;
+        return w;
+    }
+
     public static double LzComplexity(double[] x)
     {
         var n = x.Length;

@@ -2318,6 +2318,8 @@ static const gmb_fn_lookup_row_t gmb_fn_lookup[] = {
     { "TSBANDPASS", GMB_TOK_TsBandPass },
     { "TsBandStop", GMB_TOK_TsBandStop },
     { "TSBANDSTOP", GMB_TOK_TsBandStop },
+    { "TsBmaWeights", GMB_TOK_TsBmaWeights },
+    { "TSBMAWEIGHTS", GMB_TOK_TsBmaWeights },
     { "TSCOVARIANCEMATRIX", GMB_TOK_TimeSeriesCovarianceMatrix },
     { "TSDECOMPOSE", GMB_TOK_Decompose },
     { "TSDESEASONALIZE", GMB_TOK_Deseasonalize },

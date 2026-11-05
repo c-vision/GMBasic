@@ -2152,6 +2152,7 @@ public static partial class IlRuntime
     public static double ApproxEntropy(double[] x, long m, double r) => CommonLib.Numerics.ApproxEntropy(x, (int)m, r);
     public static double PermEntropy(double[] x, long m, long lag) => CommonLib.Numerics.PermEntropy(x, (int)m, (int)lag);
     public static double LzComplexity(double[] x) => CommonLib.Numerics.LzComplexity(x);
+    public static double[] BmaWeights(double[] ic) => CommonLib.Numerics.BmaWeights(ic);
 
     public static Dictionary<string, object?> TsOuFit(double[] x, double dt)
     {
