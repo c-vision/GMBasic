@@ -346,8 +346,6 @@ namespace Basic.IlBackend.Gpm;
                 catch (Exception ex)
                 {
                     task.PendingException = ex;
-                    if (Environment.GetEnvironmentVariable("GMB_DEBUG_V2") == "1")
-                        System.Console.Error.WriteLine($"[V2TASK] proc {task.Frame?.OwnerProcedure} ex={ex} --- {ex.StackTrace}");
                     HandleFinishedV2(task);
                     lock (failureLock)
                         failure.Value ??= new InvalidOperationException(
@@ -437,10 +435,10 @@ namespace Basic.IlBackend.Gpm;
                             lastDispatch = d;
                             lastDispatchChange = Environment.TickCount64;
                         }
-                        else if (Environment.TickCount64 - lastDispatchChange > 3000 && scheduler.HasActiveTasks
-                            && Environment.GetEnvironmentVariable("GMB_DEBUG_V2") == "1")
+                        else if (Environment.TickCount64 - lastDispatchChange > 3000 && scheduler.HasActiveTasks)
                         {
-                            System.Console.Error.WriteLine($"[STUCK] 3s senza progresso: disp={d} qg={scheduler.GlobalQueueDepth} ql={scheduler.LocalQueueDepth} permits={scheduler.WorkPermitCount} tasks=[{string.Join(";", scheduler.GetTasks().Select(tt => { var f = tt.CurrentIlFrame as IlActivationFrame; var aw = f?.Await switch { IlChannelReceiveAwait r => r.DebugState, IlChannelSendAwait s => s.DebugState, null => "null", var x => x.GetType().Name }; return $"t{tt.Id}:{tt.State}:inq={tt.InQueue}:exec={tt.Executing}:wp={tt.WakePending}:wait={tt.DebugPendingWait}:proc={f?.ProcedureId}:pc={f?.Pc}:aw={aw}:owner={tt.Frame?.OwnerProcedure}"; }))}]");
+                            // Orologio di progresso del coordinatore: si riazzera ogni 3s di
+                            // quiete, cosi' un blocco resta rilevabile dai watchdog.
                             lastDispatchChange = Environment.TickCount64;
                         }
                     }
@@ -475,18 +473,6 @@ namespace Basic.IlBackend.Gpm;
                             postCancel = new CancellationTokenSource(TimeSpan.FromSeconds(5));
                             token.Set(postCancel.Token);
                             var tasksNow = scheduler.GetTasks();
-                            if (Environment.GetEnvironmentVariable("GMB_DEBUG_V2") == "1")
-                                System.Console.Error.WriteLine($"[CANCEL] {tasksNow.Count} task: [{string.Join(";", tasksNow.Select(tt =>
-                                {
-                                    var aw = (tt.CurrentIlFrame as IlActivationFrame)?.Await;
-                                    var chDbg = aw switch
-                                    {
-                                        IlChannelSendAwait sa => sa.DebugState,
-                                        IlChannelReceiveAwait ra => ra.DebugState,
-                                        _ => "-"
-                                    };
-                                    return $"t{tt.Id}:{tt.State}:{aw?.GetType().Name ?? "noaw"}:{(tt.CurrentIlFrame as IlActivationFrame)?.Pc}:{chDbg}";
-                                }))}]");
                             foreach (var tt in tasksNow)
                             {
                                 tt.CancellationRequested = true;
@@ -507,8 +493,6 @@ namespace Basic.IlBackend.Gpm;
                     }
                     Thread.Sleep(5);
                 }
-                if (Environment.GetEnvironmentVariable("GMB_DEBUG_V2") == "1")
-                    System.Console.Error.WriteLine($"[COORD] uscita: HasActiveTasks={scheduler.HasActiveTasks} shutdown={shutdown.IsCancellationRequested} tasks=[{string.Join(";", scheduler.GetTasks().Select(tt => $"t{tt.Id}:{tt.State}"))}]");
             }
             finally
             {
@@ -575,12 +559,8 @@ namespace Basic.IlBackend.Gpm;
                         // valore sta nella transizione, non sullo stack del task come PCodeVM).
                         if (task.FutureToResolve is { } fut && t.Value is not null)
                         {
-                            if (Environment.GetEnvironmentVariable("GMB_DEBUG_V2") == "1")
-                                System.Console.Error.WriteLine($"[FUT] task {task.Id} resolve future val={t.Value}");
                             fut.Resolve(t.Value, task.Scheduler);
                         }
-                        else if (Environment.GetEnvironmentVariable("GMB_DEBUG_V2") == "1" && task.FutureToResolve is not null)
-                            System.Console.Error.WriteLine($"[FUT] task {task.Id} ROOT RETURN ma value NULL (FutureToResolve set, val={t.Value})");
                         _current = null;
                         return IlGpmStepResult.Finished;
                     }
@@ -720,8 +700,6 @@ namespace Basic.IlBackend.Gpm;
                 {
                     if (_current is null) return IlGpmStepResult.Finished;
                     var frame = _current;
-                    if (Environment.GetEnvironmentVariable("GMB_DEBUG_V2") == "1")
-                        System.Console.Error.WriteLine($"[THROW] proc {frame.ProcedureId} pc={frame.Pc} onErr={frame.OnError.IsSet}/{frame.OnError.TargetPc} ex={t.Exception?.GetType().Name}");
 
                     // ON ERROR (modalità BASIC) prima dell'unwind delle regioni TRY: un handler
                     // installato cattura l'errore e salta al suo blocco (o RESUME NEXT lo ignora).

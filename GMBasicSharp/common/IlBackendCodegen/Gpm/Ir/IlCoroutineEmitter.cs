@@ -119,15 +119,12 @@ public static class IlCoroutineEmitter
                 emitter.Emit("StepV2_" + def.SymbolId);
                 if (isEntry) emitter.Emit("StepV2_Main"); // alias entry → ProcedureId -1 (convenzione flat)
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // L'emissione v2 è ADDITIVA e opzionale (G2 in corso): qualunque procedura
                 // che non si lascia emettere in v2 NON deve MAI rompere la compilazione del
                 // percorso flat. Si salta: la procedura girerà sul path flat, senza StepV2_*.
                 // Il gate v2 è separato e copre solo il sottoinsieme emettibile.
-                if (Environment.GetEnvironmentVariable("GMB_DEBUG_V2") == "1")
-                    throw new InvalidOperationException(
-                        $"StepV2 per '{def.OriginalName.Lexeme}' fallito: {ex.Message} --- {ex.StackTrace}", ex);
             }
         }
     }
