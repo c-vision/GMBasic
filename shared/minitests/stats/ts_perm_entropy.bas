@@ -1,0 +1,8 @@
+' EXPECT: perm= 0.898244
+SUB Main()
+  DIM x(59) AS DOUBLE
+  FOR i = 0 TO 59
+    x(i) = SIN(i * 0.2)
+  NEXT i
+  PRINT "perm="; MATH.ROUND(TIMESERIES.TSENTROPYPERM(x, 3, 1), 6)
+END SUB

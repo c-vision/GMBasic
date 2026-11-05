@@ -873,3 +873,36 @@ double gmb_ts_approx_entropy(const double* x, int n, int m, double r)
     if (B == 0 || A == 0) return NAN;
     return log(B / (double)(n - m + 1)) - log(A / (double)(n - m));
 }
+
+/* Permutation entropy (gmbstats gs_entropy_perm): diversità di pattern ordinali. */
+double gmb_ts_perm_entropy(const double* x, int n, int m, int lag)
+{
+    if (!x || m < 2 || lag < 1 || n < m * lag) return NAN;
+    int* seen = (int*)malloc((size_t)m * (size_t)n * sizeof(int));
+    int* order = (int*)malloc((size_t)m * sizeof(int));
+    int* seq = (int*)malloc((size_t)m * sizeof(int));
+    if (!seen || !order || !seq) { free(seen); free(order); free(seq); return NAN; }
+    int cnt = 0;
+    for (int i = 0; i <= n - m * lag; i++) {
+        for (int k = 0; k < m; k++) order[k] = k;
+        for (int j = 0; j < m; j++)
+            for (int k = j + 1; k < m; k++)
+                if (x[i + order[k] * lag] < x[i + order[j] * lag]) { int t = order[j]; order[j] = order[k]; order[k] = t; }
+        for (int j = 0; j < m; j++) seq[j] = order[j];
+        int is_new = 1;
+        for (int j = 0; j < cnt && is_new; j++) {
+            int same = 1;
+            for (int q = 0; q < m; q++) if (seen[q * n + j] != seq[q]) { same = 0; break; }
+            if (same) is_new = 0;
+        }
+        if (is_new) {
+            for (int j = 0; j < m; j++) seen[j * n + cnt] = seq[j];
+            cnt++;
+        }
+    }
+    free(seen); free(order); free(seq);
+    if (cnt <= 1) return 0.0;
+    int npat = 1;
+    for (int q = 2; q <= m; q++) npat *= q;
+    return log((double)cnt) / log((double)npat);
+}

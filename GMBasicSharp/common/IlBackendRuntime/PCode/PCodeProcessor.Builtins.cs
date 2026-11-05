@@ -4897,6 +4897,10 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         {
                 return Basic.IlBackend.IlRuntime.ApproxEntropy(ToDoubleArr(ArgOr(args, 0)), (long)SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));
         },
+        [BuiltInFunction.TS_PERM_ENTROPY] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.PermEntropy(ToDoubleArr(ArgOr(args, 0)), (long)SafeDouble(ArgOr(args, 1)), (long)SafeDouble(ArgOr(args, 2)));
+        },
         [BuiltInFunction.VOLGA] = (task, args) =>
         {
                 // Runtime comune (IlRuntime): stessa logica — unica implementazione.
