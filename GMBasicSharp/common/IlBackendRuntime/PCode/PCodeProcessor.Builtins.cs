@@ -4869,6 +4869,10 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         {
                 return Basic.IlBackend.IlRuntime.TsHurst(ToDoubleArr(ArgOr(args, 0)));
         },
+        [BuiltInFunction.TS_FRACDIFF] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.FracDiff(ToDoubleArr(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)));
+        },
         [BuiltInFunction.VOLGA] = (task, args) =>
         {
                 // Runtime comune (IlRuntime): stessa logica — unica implementazione.

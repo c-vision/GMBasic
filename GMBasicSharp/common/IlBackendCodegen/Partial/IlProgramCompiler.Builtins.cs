@@ -599,6 +599,7 @@ public sealed partial class IlProgramCompiler
             case TokenKind.Returns: EmitTimeSeriesArrayOnlyCall(expr, nameof(IlRuntime.Returns)); break;
             case TokenKind.Volatility: EmitTimeSeriesArrayOnlyCall(expr, nameof(IlRuntime.Volatility)); break;
             case TokenKind.TsHurst: EmitTimeSeriesArrayOnlyCall(expr, nameof(IlRuntime.TsHurst)); break;
+            case TokenKind.TsFracDiff: EmitTsFilterCall(expr, nameof(IlRuntime.FracDiff), 2); break;
             case TokenKind.Autocorrelation: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.Autocorrelation)); break;
             case TokenKind.Deseasonalize: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.Deseasonalize)); break;
             case TokenKind.Decompose: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.Decompose)); break;

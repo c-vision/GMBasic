@@ -881,6 +881,23 @@ public static partial class Numerics
     }
 
     /// <summary>Hurst exponent via DFA (gmbstats gs_hurst_dfa).</summary>
+    public static double[] FracDiff(double[] x, double d)
+    {
+        if (d < 0) return Array.Empty<double>();
+        var n = x.Length;
+        var w = new double[n];
+        var outv = new double[n];
+        w[0] = 1.0;
+        for (var k = 1; k < n; k++) w[k] = -w[k - 1] * (d - k + 1) / k;
+        for (var i = 0; i < n; i++)
+        {
+            double sum = 0;
+            for (var k = 0; k <= i; k++) sum += w[k] * x[i - k];
+            outv[i] = sum;
+        }
+        return outv;
+    }
+
     public static double HurstDfa(double[] x, int minBox = 4)
     {
         var n = x.Length;
