@@ -24,6 +24,7 @@
 
 extern gmb_gfx_ctx_t g_gfx;
 extern float g_gfx_scale;
+extern float gmb_gfx_scale_eff(void);
 extern int g_font_loaded;
 static char g_font_path[512] = {0};
 const char* gmb_gfx_font_path(void) { return g_font_path; }
@@ -33,7 +34,7 @@ static TTF_Font* g_ttf = NULL;
 static int g_font_logical_size = 12;
 int gmb_gfx_font_logical_size(void) { return g_font_logical_size; }
 static int g_ttf_inited = 0;
-static float gfx_sc(void) { return g_gfx_scale > 0.0f ? g_gfx_scale : 1.0f; }
+static float gfx_sc(void) { return gmb_gfx_scale_eff(); }
 static int gfx_resolve_font_path(const char* name, char* out, int cap);
 int gmb_gfx_text_height_logical(void);
 int gmb_gfx_text_width_logical(const char* text);

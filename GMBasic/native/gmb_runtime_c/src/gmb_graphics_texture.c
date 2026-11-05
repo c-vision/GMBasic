@@ -1,5 +1,6 @@
 /* gmb_graphics_texture.c — texture/PNG/sprite texture (estratto da gmb_graphics.c per evitare monolite) */
 #include "gmb_graphics.h"
+extern float gmb_gfx_scale_eff(void);
 #include "gmb_graphics_internal.h"
 #include <stdlib.h>
 #include <string.h>
@@ -398,7 +399,7 @@ void gmb_gfx_draw_texture(int id, int x, int y, double rotation, double scale_x,
     y -= dh / 2;
     /* Coordinate/size LOGICHE → NATIVE (renderScale): anche le texture devono scalare,
      * altrimenti su Retina gli sprite restano nel quarto in alto a sinistra. */
-    { float s = g_gfx_scale > 0.0f ? g_gfx_scale : 1.0f;
+    { float s = gmb_gfx_scale_eff();
       if (s != 1.0f) { x = (int)lround((double)x * s); y = (int)lround((double)y * s);
                        dw = (int)lround((double)dw * s); dh = (int)lround((double)dh * s); } }
     if (dw < 1) dw = 1;
@@ -558,7 +559,7 @@ void gmb_gfx_draw_texture_frame(int id, int frame, int x, int y)
     if (per_row <= 0) per_row = 1;
     int fx = (frame % per_row) * t->cell_w;
     int fy = (frame / per_row) * t->cell_h;
-    float s = g_gfx_scale > 0.0f ? g_gfx_scale : 1.0f;
+    float s = gmb_gfx_scale_eff();
     int cw = (int)lround((double)t->cell_w * s);
     int ch = (int)lround((double)t->cell_h * s);
     if (cw < 1) cw = 1;
@@ -597,7 +598,7 @@ void gmb_gfx_draw_pixel_buffer(int width, int height, const uint32_t* pixels)
     /* Buffer LOGICO → pagina NATIVA (renderScale): un gradiente 320x240 su Retina
      * deve occupare 640x480 nativi (= 320x240 logici), non un quarto della pagina
      * in alto a sinistra. Nearest (pixel-art/buffer). */
-    float s = g_gfx_scale > 0.0f ? g_gfx_scale : 1.0f;
+    float s = gmb_gfx_scale_eff();
     int dw = (int)lround((double)width * s);
     int dh = (int)lround((double)height * s);
     if (dw < 1) dw = width;

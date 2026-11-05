@@ -564,6 +564,15 @@ void put_pixel(gmb_gfx_page_t* p, int x, int y, uint32_t c)
  * PAINT non scalavano: su Retina (scale 2) il disegno finiva nel quarto in alto a
  * sinistra (bug Mandelbrot). Non-static: usata anche dalle primitive in
  * gmb_graphics_primitive.c. */
+/* Scala da applicare a un'operazione di disegno: su un canvas è sempre 1 (pixel 1:1),
+ * altrimenti la render-scale del display. Usata da primitivi/testo/immagini: la sola
+ * gmb_gfx_scale_pt non basta perché alcuni scalano il raggio o il font direttamente. */
+float gmb_gfx_scale_eff(void)
+{
+    if (g_gfx.canvas_active) return 1.0f;
+    return g_gfx_scale > 0.0f ? g_gfx_scale : 1.0f;
+}
+
 void gmb_gfx_scale_pt(int* x, int* y)
 {
     /* Su canvas le coordinate sono 1:1 (niente render-scale del display): il contenuto
