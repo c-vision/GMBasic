@@ -443,6 +443,10 @@ public static class Orchestrator
         // Inversione della mappa Path->ID.
         program.FileIdToPathMap = program.GetFileIdMap().ToImmutableDictionary(kvp => kvp.Value, kvp => kvp.Key);
 
+        // Un `IMPORT` che non risolve a nessun modulo/built-in è un ERRORE, non un silenzio:
+        // qui i sorgenti di progetto, i pacchetti REQUIRE e i moduli IL esterni sono già noti.
+        EnsureImportsResolved(program, programRootDirectory);
+
         Log("[Orchestrator] Pre-processing (discovery e tokenizzazione) completato.");
         global::Basic.Linker.ApplySemanticPatches(program);   /* §4.10 write-side (post-link) */
         return program;
@@ -697,6 +701,50 @@ public static class Orchestrator
             if (!Parser.IsStructuralKeyword(token.Kind)) return Advance();
             throw new BasicException(token,
                 $"'{token.Lexeme}' è una keyword strutturale e non può essere usata come nome.");
+        }
+    }
+
+    // ==================================================================================
+    // --- VALIDAZIONE DEGLI IMPORT: un `IMPORT` senza modulo è un ERRORE ---
+    // ==================================================================================
+
+    /// <summary>Un `IMPORT &lt;Ns&gt;` deve risolvere a qualcosa: un file compilato che dichiara
+    /// `NAMESPACE &lt;Ns&gt;`, un namespace built-in della StdLib, un namespace di default dei settings,
+    /// uno esposto da un modulo IL esterno (`--il-module`) o uno dei namespace base del linguaggio.
+    ///
+    /// PERCHÉ: un import irrisolvibile veniva IGNORATO. Il programma compilava senza il modulo e
+    /// falliva molto dopo ("Nessuna funzione pubblica ..."), oppure funzionava per caso quando il
+    /// simbolo non veniva mai usato. Caso reale: `gmbcs` copiato fuori dal checkout, senza
+    /// `shared/include/`, dichiarava `OK` un programma con `IMPORT PKGTOOLS` e poi sbagliava la
+    /// chiamata a `PKGTOOLS.BASENAME(...)`.</summary>
+    private static void EnsureImportsResolved(BasicProgram program, string programRootDirectory)
+    {
+        var declared = BuildNamespaceMap(program.PreprocessedFiles.Keys);
+        var stdLib = StdLib.Instance;
+        var baseNamespaces = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            { "SYSTEM", "CONSOLE", "CONSTANTS", "TRAIN", "GMB" };
+        string? searchRoots = null;   // calcolato solo se serve (e solo per il messaggio)
+
+        foreach (var (filePath, imports) in program.ImportsByFile)
+        {
+            foreach (var import in imports)
+            {
+                var ns = import.NamespaceName.Lexeme;
+                if (string.IsNullOrWhiteSpace(ns)) continue;
+                if (declared.ContainsKey(ns)) continue;
+                if (baseNamespaces.Contains(ns)) continue;
+                if (program.Settings.DefaultNamespaces.Contains(ns, StringComparer.OrdinalIgnoreCase)) continue;
+                if (stdLib.BuiltinNamespaceNames.Contains(ns)) continue;
+                if (stdLib.ExternalModuleNames.Contains(ns)) continue;
+                if (stdLib.BuiltinProcedures.ContainsKey(ns) || stdLib.BuiltinTypes.ContainsKey(ns)
+                    || stdLib.BuiltinGlobals.ContainsKey(ns) || stdLib.BuiltinConstants.ContainsKey(ns)) continue;
+
+                searchRoots ??= string.Join(", ", global::Basic.Pipeline.ModuleDiscovery.ResolveSearchFolders(
+                    program.Settings.Compiler.SearchFolders, programRootDirectory));
+                throw new BasicException(ErrorCode.FileNotFound, import.NamespaceName.Position,
+                    $"modulo non trovato: IMPORT {ns} ({Path.GetFileName(filePath)}) — nessun file dichiara " +
+                    $"'NAMESPACE {ns}' e non è un namespace built-in. Cartelle di ricerca: {searchRoots}");
+            }
         }
     }
 

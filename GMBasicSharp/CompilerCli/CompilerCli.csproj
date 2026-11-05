@@ -14,6 +14,26 @@
          Superficie: check, dump ast|pcode|il|disasm, run, eval.
          È l'engine OPZIONALE della REPL C: quando GMBasicSharp verrà eliminato,
          questo progetto sparisce con esso e la REPL resta completa (F5). -->
+    <!-- DATI CHE SERVONO A RUNTIME, copiati accanto all'eseguibile dalla build.
+         Senza questi file `gmbcs` funziona SOLO dentro il checkout (li risolve da
+         `{install}/../shared/...`): fuori dal repo un `IMPORT` di un modulo di
+         `shared/include/` resta irrisolvibile e `gmbcsc check` non se ne accorgeva.
+         - export BASIC -> `<exe>/include/` (voce relativa `include` di compiler.searchFolders,
+           cercata nella root dell'install = dir dell'eseguibile fuori da un checkout);
+         - settings del compilatore -> `<exe>/system.settings.json` (posizione di
+           DISTRIBUZIONE letta da CommonLib.SettingsLoader, dopo la copia locale del progetto).
+         PreserveNewest: a ogni build la copia si riallinea al canonico versionato. -->
+    <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)../../shared/include')">
+        <None Include="$(MSBuildThisFileDirectory)../../shared/include/*.inc"
+              Link="include/%(Filename)%(Extension)"
+              CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+    <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)../../shared/settings/system.settings.json')">
+        <None Include="$(MSBuildThisFileDirectory)../../shared/settings/system.settings.json"
+              Link="system.settings.json"
+              CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
     <ItemGroup>
         <ProjectReference Include="..\Executor\Executor.csproj" />
         <ProjectReference Include="..\common\Ast\Ast.csproj" />
