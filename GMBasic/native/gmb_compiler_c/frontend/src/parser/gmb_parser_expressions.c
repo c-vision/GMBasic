@@ -18,6 +18,23 @@ static gmb_tokenkind_t gmb_p_dollar_alias(const char* n)
     if (!n) return GMB_TOK_Unknown;
     if (strcasecmp(n, "TIME$") == 0 || strcasecmp(n, "TI$") == 0) return GMB_TOK_StrTime;
     if (strcasecmp(n, "DATE$") == 0) return GMB_TOK_StrDate;
+    /* Grafia legacy con '$' di una funzione builtin (`LCASE$` → LCASE/Lower, `LEFT$` → Left):
+     * il '$' è il tipo di ritorno, il nome canonico è quello senza. Stesso criterio del
+     * linker C# (Linker.Rewrites: `if (bareNm.EndsWith('$')) bareNm = bareNm[..^1]`).
+     * Senza questo, `LCASE$(x)`/`UCASE$(x)` restavano identificatori sconosciuti → il C99
+     * falliva con "funzione non definita" e non compilava più `IMPORT PKGTOOLS`
+     * (shared/include/PkgTools.inc:81 usa `LCASE$(kind)`). TIME$/DATE$ sono già usciti
+     * sopra perché il nome senza '$' NON è il loro equivalente (TIME$ = STRTIME). */
+    size_t ln = strlen(n);
+    if (ln > 1 && n[ln - 1] == '$') {
+        char base[128];
+        if (ln - 1 < sizeof(base)) {
+            memcpy(base, n, ln - 1);
+            base[ln - 1] = 0;
+            gmb_tokenkind_t t = gmb_fn_tok(base);
+            if (t != GMB_TOK_Unknown) return t;
+        }
+    }
     return GMB_TOK_Unknown;
 }
 gmb_expr_t* gmb_p_parse_power(gmb_parser_t* p);

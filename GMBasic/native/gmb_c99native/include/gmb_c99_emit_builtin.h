@@ -183,7 +183,7 @@ static const gmb_emitted_builtin_t gmb_emitted_builtins[] = {
     { "KEBAB", GMB_TOK_Kebab },
     { "LASTINSERTROWID", GMB_TOK_Unknown },
     { "LBOUND", GMB_TOK_LBound },
-    { "LCASE", GMB_TOK_Unknown },
+    { "LCASE", GMB_TOK_Lower },   /* alias Clipper di LOWER (parità C#/P-Code) */
     { "LEFT", GMB_TOK_Left },
     { "LEN", GMB_TOK_Len },
     { "LINENUMBER", GMB_TOK_LineNumber },
@@ -324,7 +324,7 @@ static const gmb_emitted_builtin_t gmb_emitted_builtins[] = {
     { "TRIM", GMB_TOK_Trim },
     { "TRUNC", GMB_TOK_Trunc },
     { "UBOUND", GMB_TOK_UBound },
-    { "UCASE", GMB_TOK_Unknown },
+    { "UCASE", GMB_TOK_Upper },   /* alias Clipper di UPPER (parità C#/P-Code) */
     { "UNBROTLI", GMB_TOK_Unbrotli },
     { "UNBZIP", GMB_TOK_Unknown },
     { "UNBZIP2", GMB_TOK_Unbzip2 },
