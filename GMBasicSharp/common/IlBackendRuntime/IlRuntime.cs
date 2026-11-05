@@ -2229,6 +2229,13 @@ public static partial class IlRuntime
             ["LogLikelihood"] = r.LogLikelihood
         };
     }
+    public static double RmtLambdaPlus(double n, double T, double sigma2) => CommonLib.Numerics.RmtLambdaPlus((int)n, (int)T, sigma2);
+    public static double RmtLambdaMinus(double n, double T, double sigma2) => CommonLib.Numerics.RmtLambdaMinus((int)n, (int)T, sigma2);
+    public static double RmtCoherence(double[] v) => CommonLib.Numerics.RmtCoherence(v);
+    public static double RmtSpectralNorm(double[] A, long n) => CommonLib.Numerics.RmtSpectralNorm(A, (int)n);
+    public static double RmtDavisKahan(double eNorm, double gap) => CommonLib.Numerics.RmtDavisKahan(eNorm, gap);
+    public static double RmtPrincipalAngle(double[] u, double[] v) => CommonLib.Numerics.RmtPrincipalAngle(u, v);
+    public static double RmtTightness(double observed, double bound) => CommonLib.Numerics.RmtTightness(observed, bound);
     public static double MvGaussPdf(double[] x, double[] loc, double[] cov) => CommonLib.Numerics.MvGaussPdf(x, loc, cov);
     public static double MvStudentPdf(double[] x, double[] loc, double[] cov, double nu) => CommonLib.Numerics.MvStudentPdf(x, loc, cov, nu);
     public static double CopulaClaytonCdf(double u, double v, double theta) => CommonLib.Numerics.CopulaClaytonCdf(u, v, theta);

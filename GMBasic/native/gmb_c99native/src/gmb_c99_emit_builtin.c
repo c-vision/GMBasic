@@ -5931,6 +5931,41 @@ static int mv_copula3(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
     sb_put(&c->out, "), (double)("); emit_expr(c, a[2]); sb_put(&c->out, "))");
     return 1;
 }
+static int mv_scalar3(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
+    if (n < 3) return 0;
+    sb_put(&c->out, fn); sb_put(&c->out, "((int)("); emit_expr(c, a[0]);
+    sb_put(&c->out, "), (int)("); emit_expr(c, a[1]);
+    sb_put(&c->out, "), (double)("); emit_expr(c, a[2]); sb_put(&c->out, "))");
+    return 1;
+}
+static int mv_coherence(ctx_t* c, gmb_expr_t** a, int n) {
+    var_t* v;
+    if (n < 1 || !mv_arr(c, a[0], &v)) return 0;
+    sb_put(&c->out, "gmb_mv_rmt_coherence((const double*)"); emit_var_ref(c, v);
+    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, v); sb_put(&c->out, "))");
+    return 1;
+}
+static int mv_spectral_norm(ctx_t* c, gmb_expr_t** a, int n) {
+    var_t* v;
+    if (n < 2 || !mv_arr(c, a[0], &v)) return 0;
+    sb_put(&c->out, "gmb_mv_rmt_spectral_norm((const double*)"); emit_var_ref(c, v);
+    sb_put(&c->out, ", (int)("); emit_expr(c, a[1]); sb_put(&c->out, "))");
+    return 1;
+}
+static int mv_two_scalar(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
+    if (n < 2) return 0;
+    sb_put(&c->out, fn); sb_put(&c->out, "((double)("); emit_expr(c, a[0]);
+    sb_put(&c->out, "), (double)("); emit_expr(c, a[1]); sb_put(&c->out, "))");
+    return 1;
+}
+static int mv_principal_angle(ctx_t* c, gmb_expr_t** a, int n) {
+    var_t *u, *v;
+    if (n < 2 || !mv_arr(c, a[0], &u) || !mv_arr(c, a[1], &v)) return 0;
+    sb_put(&c->out, "gmb_mv_rmt_principal_angle((const double*)"); emit_var_ref(c, u);
+    sb_put(&c->out, ", (const double*)"); emit_var_ref(c, v);
+    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, u); sb_put(&c->out, "))");
+    return 1;
+}
 int emit_bf_mv(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
     (void)name; (void)ns; (void)line;
     if (tk == GMB_TOK_MvGaussPdf) return mv_gauss_pdf(c, args, nargs);
@@ -5938,6 +5973,13 @@ int emit_bf_mv(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, g
     if (tk == GMB_TOK_CopulaClaytonCdf) return mv_copula3(c, args, nargs, "gmb_copula_clayton_cdf");
     if (tk == GMB_TOK_CopulaGumbelCdf) return mv_copula3(c, args, nargs, "gmb_copula_gumbel_cdf");
     if (tk == GMB_TOK_CopulaFrankCdf) return mv_copula3(c, args, nargs, "gmb_copula_frank_cdf");
+    if (tk == GMB_TOK_RmtLambdaPlus) return mv_scalar3(c, args, nargs, "gmb_mv_rmt_lambda_plus");
+    if (tk == GMB_TOK_RmtLambdaMinus) return mv_scalar3(c, args, nargs, "gmb_mv_rmt_lambda_minus");
+    if (tk == GMB_TOK_RmtCoherence) return mv_coherence(c, args, nargs);
+    if (tk == GMB_TOK_RmtSpectralNorm) return mv_spectral_norm(c, args, nargs);
+    if (tk == GMB_TOK_RmtDavisKahan) return mv_two_scalar(c, args, nargs, "gmb_mv_rmt_davis_kahan");
+    if (tk == GMB_TOK_RmtPrincipalAngle) return mv_principal_angle(c, args, nargs);
+    if (tk == GMB_TOK_RmtTightness) return mv_two_scalar(c, args, nargs, "gmb_mv_rmt_tightness");
     return 0;
 }
 int emit_bf_ts(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {

@@ -4913,6 +4913,34 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         {
                 return Basic.IlBackend.IlRuntime.TsGarch11(ToDoubleArr(ArgOr(args, 0)));
         },
+        [BuiltInFunction.MULTIVARIATE_RMTLAMBDAPLUS] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.RmtLambdaPlus(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));
+        },
+        [BuiltInFunction.MULTIVARIATE_RMTLAMBDAMINUS] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.RmtLambdaMinus(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));
+        },
+        [BuiltInFunction.MULTIVARIATE_RMTCOHERENCE] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.RmtCoherence(ToDoubleArr(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.MULTIVARIATE_RMTSPECTRALNORM] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.RmtSpectralNorm(ToDoubleArr(ArgOr(args, 0)), (long)SafeDouble(ArgOr(args, 1)));
+        },
+        [BuiltInFunction.MULTIVARIATE_RMTDAVISKAHAN] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.RmtDavisKahan(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)));
+        },
+        [BuiltInFunction.MULTIVARIATE_RMTPRINCIPALANGLE] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.RmtPrincipalAngle(ToDoubleArr(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1)));
+        },
+        [BuiltInFunction.MULTIVARIATE_RMTTIGHTNESS] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.RmtTightness(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)));
+        },
         [BuiltInFunction.MULTIVARIATE_MVGAUSSPDF] = (task, args) =>
         {
                 return Basic.IlBackend.IlRuntime.MvGaussPdf(ToDoubleArr(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1)), ToDoubleArr(ArgOr(args, 2)));

@@ -557,6 +557,114 @@ public static partial class Numerics
         return Math.Min(1.0, s);
     }
 
+
+    // ── Random Matrix Theory (parità gs_spectral.c) ─────────────────────────────────
+
+    private static void RmtJacobi(int n, double[] A, double[] eval, double[] evec)
+    {
+        int i, j, k, sweep;
+        Array.Clear(evec);
+        for (i = 0; i < n; i++) evec[i * n + i] = 1.0;
+        for (sweep = 0; sweep < 100; sweep++)
+        {
+            double off = 0.0, diag = 0.0;
+            for (i = 0; i < n; i++)
+            {
+                diag += A[i * n + i] * A[i * n + i];
+                for (j = i + 1; j < n; j++) off += A[i * n + j] * A[i * n + j];
+            }
+            if (off <= 1e-30 * (diag + 1e-300)) break;
+            for (i = 0; i < n; i++)
+                for (j = i + 1; j < n; j++)
+                {
+                    var apq = A[i * n + j];
+                    if (Math.Abs(apq) < 1e-300) continue;
+                    var app = A[i * n + i];
+                    var aqq = A[j * n + j];
+                    var tau = (aqq - app) / (2.0 * apq);
+                    var t = (tau >= 0 ? 1.0 : -1.0) / (Math.Abs(tau) + Math.Sqrt(1.0 + tau * tau));
+                    var c = 1.0 / Math.Sqrt(1.0 + t * t);
+                    var sn = t * c;
+                    for (k = 0; k < n; k++)
+                    {
+                        var aik = A[i * n + k];
+                        var ajk = A[j * n + k];
+                        A[i * n + k] = c * aik - sn * ajk;
+                        A[j * n + k] = sn * aik + c * ajk;
+                    }
+                    for (k = 0; k < n; k++)
+                    {
+                        var aki = A[k * n + i];
+                        var akj = A[k * n + j];
+                        A[k * n + i] = c * aki - sn * akj;
+                        A[k * n + j] = sn * aki + c * akj;
+                    }
+                    for (k = 0; k < n; k++)
+                    {
+                        var vik = evec[k * n + i];
+                        var vjk = evec[k * n + j];
+                        evec[k * n + i] = c * vik - sn * vjk;
+                        evec[k * n + j] = sn * vik + c * vjk;
+                    }
+                    A[i * n + j] = 0.0; A[j * n + i] = 0.0;
+                }
+        }
+        for (i = 0; i < n; i++) eval[i] = A[i * n + i];
+    }
+
+    public static double RmtLambdaPlus(int n, int T, double sigma2)
+    {
+        if (n < 1 || T < 1 || sigma2 < 0.0) return double.NaN;
+        var r = Math.Sqrt((double)n / T);
+        return sigma2 * (1.0 + r) * (1.0 + r);
+    }
+
+    public static double RmtLambdaMinus(int n, int T, double sigma2)
+    {
+        if (n < 1 || T < 1 || sigma2 < 0.0) return double.NaN;
+        var r = Math.Sqrt((double)n / T);
+        return sigma2 * (1.0 - r) * (1.0 - r);
+    }
+
+    public static double RmtCoherence(double[] v)
+    {
+        var n = v.Length;
+        if (n < 1) return double.NaN;
+        double mx = 0.0;
+        for (var i = 0; i < n; i++) { var a = Math.Abs(v[i]); if (a > mx) mx = a; }
+        return n * mx * mx;
+    }
+
+    public static double RmtSpectralNorm(double[] A, int n)
+    {
+        if (n < 1 || A.Length < n * n) return double.NaN;
+        var W = (double[])A.Clone();
+        var eval = new double[n];
+        var evec = new double[n * n];
+        RmtJacobi(n, W, eval, evec);
+        double mx = 0.0;
+        for (var i = 0; i < n; i++) { var a = Math.Abs(eval[i]); if (a > mx) mx = a; }
+        return mx;
+    }
+
+    public static double RmtDavisKahan(double eNorm, double gap)
+        => gap <= 0.0 ? double.NaN : Math.Abs(eNorm) / gap;
+
+    public static double RmtPrincipalAngle(double[] u, double[] v)
+    {
+        var n = Math.Min(u.Length, v.Length);
+        if (n < 1) return double.NaN;
+        double nu = 0.0, nv = 0.0, dot = 0.0;
+        for (var i = 0; i < n; i++) { nu += u[i] * u[i]; nv += v[i] * v[i]; dot += u[i] * v[i]; }
+        if (nu <= 0.0 || nv <= 0.0) return double.NaN;
+        var c = Math.Abs(dot) / Math.Sqrt(nu * nv);
+        if (c > 1.0) c = 1.0;
+        return Math.Acos(c);
+    }
+
+    public static double RmtTightness(double observed, double bound)
+        => bound <= 0.0 ? 0.0 : Math.Abs(observed) / bound;
+
     private static bool MvPrepare(double[] x, double[] loc, double[] cov, out double halfLogdet, out double q)
     {
         halfLogdet = 0; q = 0;

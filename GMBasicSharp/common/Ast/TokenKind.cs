@@ -866,6 +866,7 @@ public enum TokenKind
     Arima,                // Modello ARIMA per serie temporali
     Regress,              // Regressione lineare/multipla
     MvGaussPdf, MvStudentPdf, CopulaClaytonCdf, CopulaGumbelCdf, CopulaFrankCdf,
+    RmtLambdaPlus, RmtLambdaMinus, RmtCoherence, RmtSpectralNorm, RmtDavisKahan, RmtPrincipalAngle, RmtTightness,
     KMeans,               // Clustering K-means
     HoltWinters,          // Predizione serie temporali con Holt-Winters
     AdfTest,              // Test di Dickey-Fuller aumentato (stazionarietà)

@@ -923,6 +923,13 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "MULTIVARIATE.CopulaClaytonCdf");
         r.Register(Backend.C99Native, "MULTIVARIATE.CopulaGumbelCdf");
         r.Register(Backend.C99Native, "MULTIVARIATE.CopulaFrankCdf");
+        r.Register(Backend.C99Native, "MULTIVARIATE.RMTLAMBDAPLUS");
+        r.Register(Backend.C99Native, "MULTIVARIATE.RMTLAMBDAMINUS");
+        r.Register(Backend.C99Native, "MULTIVARIATE.RMTCOHERENCE");
+        r.Register(Backend.C99Native, "MULTIVARIATE.RMTSPECTRALNORM");
+        r.Register(Backend.C99Native, "MULTIVARIATE.RMTDAVISKAHAN");
+        r.Register(Backend.C99Native, "MULTIVARIATE.RMTPRINCIPALANGLE");
+        r.Register(Backend.C99Native, "MULTIVARIATE.RMTTIGHTNESS");
         r.Register(Backend.C99Native, "SPATIAL.PDIST");
         r.Register(Backend.C99Native, "STATS.PearsonR");
         r.Register(Backend.C99Native, "STATS.KendallTau");

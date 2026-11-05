@@ -719,6 +719,19 @@ static void gmb_bf_1090(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
                       : func_code == 1091 ? gmb_dist_nc_t_cdf(df, nc, args[0].num)
                       : gmb_dist_nc_t_sf(df, nc, args[0].num);
 }
+static void gmb_bf_3849(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task;
+        switch (func_code) {
+        case 3849: bout->result = gmb_mv_rmt_lambda_plus(argc >= 1 ? (int)args[0].num : 1, argc >= 2 ? (int)args[1].num : 1, argc >= 3 ? args[2].num : 1.0); break;
+        case 3850: bout->result = gmb_mv_rmt_lambda_minus(argc >= 1 ? (int)args[0].num : 1, argc >= 2 ? (int)args[1].num : 1, argc >= 3 ? args[2].num : 1.0); break;
+        case 3851: { int n = 0; double* v = gmb_vm_list_to_dbl(&args[0], &n); bout->result = gmb_mv_rmt_coherence(v, n); free(v); break; }
+        case 3852: { int n = 0; double* A = gmb_vm_list_to_dbl(&args[0], &n); bout->result = gmb_mv_rmt_spectral_norm(A, (int)(argc >= 2 ? args[1].num : 1)); free(A); break; }
+        case 3853: bout->result = gmb_mv_rmt_davis_kahan(args[0].num, argc >= 2 ? args[1].num : 0.0); break;
+        case 3854: { int nu = 0, nv = 0; double* u = gmb_vm_list_to_dbl(&args[0], &nu); double* v = gmb_vm_list_to_dbl(&args[1], &nv); bout->result = gmb_mv_rmt_principal_angle(u, v, nu < nv ? nu : nv); free(u); free(v); break; }
+        default:   bout->result = gmb_mv_rmt_tightness(args[0].num, argc >= 2 ? args[1].num : 0.0); break;
+        }
+}
 static void gmb_bf_1095(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         (void)vm; (void)task;
@@ -18041,6 +18054,13 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 1093, gmb_bf_1093 },
     { 1094, gmb_bf_1093 },
     { 1095, gmb_bf_1095 },
+    { 3849, gmb_bf_3849 },
+    { 3850, gmb_bf_3849 },
+    { 3851, gmb_bf_3849 },
+    { 3852, gmb_bf_3849 },
+    { 3853, gmb_bf_3849 },
+    { 3854, gmb_bf_3849 },
+    { 3855, gmb_bf_3849 },
     { 1096, gmb_bf_1095 },
     { 1097, gmb_bf_1097 },
     { 1098, gmb_bf_1097 },
