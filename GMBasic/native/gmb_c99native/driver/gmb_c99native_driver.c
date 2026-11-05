@@ -5,6 +5,7 @@
 #include "gmb_c99_emit.h"
 #include "gmb_compiler.h"
 #include "gmb_inc_resolve.h"
+#include "gmb_cc_defaults.h"   /* ricetta UNICA di -I e statiche (condivisa col CLI `gmb build`) */
 #include "gmb_symtab.h"
 #include "gmb_types.h"
 #include "gmb_rewrite.h"
@@ -112,9 +113,11 @@ static int default_out_path(const char* in, const char* ext, char* buf, size_t n
 
 /* Le liste sono globali perche' le funzioni di push sono helper: tenerle in main
  * costringerebbe a passare 6 parametri per una push. Nessun thread: il driver e' mono-thread. */
-static const char* incs_arr[64];
+/* Capienze: 128 include perché ai `-I` dell'utente si accodano quelli della ricetta
+ * (fino a 32), e ai `--lib` le statiche del runtime. Oltre il cap la push ignora. */
+static const char* incs_arr[128];
 static const char* objs_arr[128];
-static const char* libs_arr[64];
+static const char* libs_arr[96];
 
 /* Valore di un'opzione nelle DUE forme accettate: `--opt valore` e `--opt=valore`.
  * Le due forme servono: gli script passano `--cflags "-O3"`, ma chi digita a mano (e il
@@ -157,9 +160,61 @@ static const char* next_value(int argc, char** argv, int* i)
 
 /* Push con capienza: le liste sono accodate e silenziosamente IGNORATE oltre il cap
  * (il comando risultante sarebbe incoerente: meglio perdere una include che mentire). */
-static void incs_push(int* n, const char* v) { if (*n < 64 && v && *v) incs_arr[(*n)++] = v; }
+static void incs_push(int* n, const char* v) { if (*n < 128 && v && *v) incs_arr[(*n)++] = v; }
 static void objs_push(int* n, const char* v) { if (*n < 128 && v && *v) objs_arr[(*n)++] = v; }
-static void libs_push(int* n, const char* v) { if (*n < 64 && v && *v) libs_arr[(*n)++] = v; }
+static void libs_push(int* n, const char* v) { if (*n < 96 && v && *v) libs_arr[(*n)++] = v; }
+
+/* ── Default di toolchain: -I e statiche del runtime, scoperti dalla ROOT dell'installazione ──
+ *
+ * PERCHÉ ESISTE. Il driver vive in `<root>/bin` e il C che emette include gli header del
+ * runtime: senza `-I`, `bin/gmbnative prog.bas --exe prog` moriva con
+ *     fatal error: 'gmb_runtime.h' file not found
+ * e, aggiunti gli `-I`, con "Undefined symbols" perché nessuno linkava il runtime. La ricetta
+ * NON è scritta qui: `gmb_cc_defaults.c` (front-end) è la copia UNICA, condivisa col CLI
+ * `gmb build` — due ricette divergenti darebbero verdetti diversi sullo stesso sorgente.
+ *
+ * PRECEDENZA: i `-I` dell'utente restano PRIMA (vincono sul default). Se il chiamante passa
+ * `--lib`/`--obj` il lib-set è SUO e non si aggiunge nulla: è quello che fa
+ * tools/sh/gmb_c99native_run.sh, che sceglie `--no-exe` e linka da sé il set completo.
+ * 1 se la root è stata trovata (i default applicati), 0 se manca (si prosegue senza). */
+static int apply_toolchain_defaults(const char* in, int* ninc, int* nlib, int nobj)
+{
+    char inst[4096];
+    static char incbuf[32][GMB_CC_PATH];
+    static char rt[GMB_CC_PATH], ch[GMB_CC_PATH], ld[GMB_CC_PATH];
+    int n, need_full;
+
+    if (!gmb_resolve_install_root(inst, sizeof inst) || !inst[0]) {
+        fprintf(stderr, "attenzione: root dell'installazione non trovata: nessun -I di default "
+                        "(passa -I/--lib espliciti)\n");
+        return 0;
+    }
+    n = gmb_cc_inc_dirs(inst, incbuf, 32);
+    for (int i = 0; i < n; i++) incs_push(ninc, incbuf[i]);
+    if (*nlib > 0 || nobj > 0) return 1;      /* lib-set fornito dal chiamante */
+
+    need_full = gmb_cc_source_needs_full_runtime(in);
+    if (!gmb_cc_runtime_lib(inst, need_full, rt, sizeof rt)) {
+        fprintf(stderr, "runtime C non trovato in %s: linka con --lib esplicito, oppure usa "
+                        "`gmb build` / tools/sh/gmb_c99native_run.sh\n", inst);
+        return 1;
+    }
+    libs_push(nlib, rt);
+    if (gmb_cc_chart_lib(inst, ch, sizeof ch)) libs_push(nlib, ch);
+    if (gmb_cc_llmdesc_lib(inst, ld, sizeof ld)) libs_push(nlib, ld);
+    /* Stessa riga di sistema del link MINIMO di tools/gmb_c99native_run.sh: senza, il link
+     * del solo PRINT fallisce su zlib/bz2/curl. */
+    libs_push(nlib, "-lz");
+    libs_push(nlib, "-lbz2");
+    libs_push(nlib, "-lcurl");
+#if defined(__APPLE__)
+    libs_push(nlib, "-lcompression");
+#endif
+    if (need_full)
+        fprintf(stderr, "nota: il programma usa UI/AI/DB e il driver linka il lib-set BASE; se il "
+                        "link segnala simboli mancanti compilalo con `gmb build` (lib-set completo)\n");
+    return 1;
+}
 
 /* ── §6/§7: rewrite nel path + semantic graph/diff come tooling CLI ───────────────
  * Il grafo e la symbol table vivono in C (gmb_symtab/gmb_types/gmb_rewrite/gmb_semgraph):
@@ -431,7 +486,8 @@ int main(int argc, char** argv) {
             "          [--gpm auto|always|linear]\n"
                         "[--line-map <file.json>] [--semgraph] [--semgraph-diff <base.bas>]\n"
             "  di default emette il C e poi COMPILA/LINKA l'eseguibile; --no-exe ferma al solo C;\n"
-            "  --exe <bin> sceglie il nome. Ogni opzione accetta anche --opt=valore.\n", argv[0]);
+            "  --exe <bin> sceglie il nome. Ogni opzione accetta anche --opt=valore.\n"
+            "  -I e statiche del runtime, se non indicate, si scoprono dalla root dell'installazione.\n", argv[0]);
         return 2;
     }
     const char* in = argv[1];
@@ -663,6 +719,8 @@ int main(int argc, char** argv) {
             }
             bin = bin_buf;
         }
+        /* Default di compilazione/link: solo quando il chiamante non li ha dati. */
+        (void)apply_toolchain_defaults(in, &ninc, &nlib, nobj);
         if (build_exe(cc, out, bin, incs_arr, ninc, objs_arr, nobj, libs_arr, nlib,
                       cflags, defines, ldflags) != 0) {
             free(csrc); gmb_typereg_free(&tr); gmb_symtab_free(&st); gmb_program_free(&prog); gmb_lex_result_free(&lx2); gmb_lex_result_free(&lx); free(src);
