@@ -1076,6 +1076,8 @@ static const gmb_ns_type_row_t gmb_ns_types[] = {
     { GMB_TOK_StatsParetoCdf, 0 },
     { GMB_TOK_StatsParetoSf, 0 },
     { GMB_TOK_LogisticPdf, 0 },
+    { GMB_TOK_StatsLogisticCdf, 0 },
+    { GMB_TOK_StatsLogisticSf, 0 },
     { GMB_TOK_TriangularPdf, 0 },
     { GMB_TOK_UniformPdf, 0 },
     { GMB_TOK_SkewedNormalPdf, 0 },

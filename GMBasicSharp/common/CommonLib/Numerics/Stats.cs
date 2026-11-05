@@ -537,6 +537,14 @@ public static partial class Numerics
     /// <returns>La densità di probabilità.</returns>
     /// <exception cref="ArgumentOutOfRangeException">Se scale ≤ 0.</exception>
     /// <example>double pdf = Numerics.LogisticPdf(0, 1, 0.5);</example>
+    public static double LogisticCdf(double mu, double s, double x)
+    {
+        if (s <= 0) return double.NaN;
+        return 1.0 / (1.0 + Math.Exp(-(x - mu) / s));
+    }
+
+    public static double LogisticSf(double mu, double s, double x) => 1.0 - LogisticCdf(mu, s, x);
+
     public static double LogisticPdf(double mean, double scale, double x)
     {
         if (scale <= 0) throw new ArgumentOutOfRangeException(nameof(scale));

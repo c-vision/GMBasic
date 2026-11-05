@@ -274,6 +274,16 @@ public sealed partial class StdLib
                 xParam, new Parameter(-1, T(TokenKind.Identifier, "location"), new DoubleType(), noFlags, null, false),
                 new Parameter(-1, T(TokenKind.Identifier, "scale"), new DoubleType(), noFlags, null, false)
             ], new DoubleType(), TokenKind.LogisticPdf, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsLogisticCdf, "LogisticCdf"),
+            [
+                xParam, new Parameter(-1, T(TokenKind.Identifier, "location"), new DoubleType(), SymbolFlags.IsOptional, null, false),
+                new Parameter(-1, T(TokenKind.Identifier, "scale"), new DoubleType(), SymbolFlags.IsOptional, null, false)
+            ], new DoubleType(), TokenKind.StatsLogisticCdf, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsLogisticSf, "LogisticSf"),
+            [
+                xParam, new Parameter(-1, T(TokenKind.Identifier, "location"), new DoubleType(), SymbolFlags.IsOptional, null, false),
+                new Parameter(-1, T(TokenKind.Identifier, "scale"), new DoubleType(), SymbolFlags.IsOptional, null, false)
+            ], new DoubleType(), TokenKind.StatsLogisticSf, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.TriangularPdf, "TriangularPdf"),
             [
                 xParam, new Parameter(-1, T(TokenKind.Identifier, "a"), new DoubleType(), SymbolFlags.IsOptional, null, false),

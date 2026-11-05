@@ -47,6 +47,8 @@ internal sealed partial class PCodeProcessor
         BuiltInFunction.STATS_FTEST,
         BuiltInFunction.STATS_BETASF,
         BuiltInFunction.STATS_CHISF,
+        BuiltInFunction.STATS_LOGISTICCDF,
+        BuiltInFunction.STATS_LOGISTICSF,
         BuiltInFunction.STATS_GAMMAPPF,
         BuiltInFunction.STATS_GAMMAISF,
         BuiltInFunction.STATS_MODE,
@@ -153,6 +155,14 @@ internal sealed partial class PCodeProcessor
         [BuiltInFunction.STATS_BETASF] = (task, args) =>
         {
                 return 1.0 - CommonLib.Numerics.BetaCdf(SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_LOGISTICCDF] = (task, args) =>
+        {
+                return CommonLib.Numerics.LogisticCdf(SafeDouble(ArgOr(args, 1, 0.0)), SafeDouble(ArgOr(args, 2, 1.0)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_LOGISTICSF] = (task, args) =>
+        {
+                return CommonLib.Numerics.LogisticSf(SafeDouble(ArgOr(args, 1, 0.0)), SafeDouble(ArgOr(args, 2, 1.0)), SafeDouble(ArgOr(args, 0)));
         },
         [BuiltInFunction.STATS_CHISF] = (task, args) =>
         {

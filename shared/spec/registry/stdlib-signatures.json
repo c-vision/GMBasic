@@ -21548,6 +21548,35 @@
     },
     {
       "ns": "STATS",
+      "name": "LogisticCdf",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "x",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "location",
+          "type": "double",
+          "optional": true,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "scale",
+          "type": "double",
+          "optional": true,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "STATS",
       "name": "LogisticPdf",
       "fn": true,
       "return": "double",
@@ -21599,6 +21628,35 @@
           "name": "scale",
           "type": "double",
           "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "STATS",
+      "name": "LogisticSf",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "x",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "location",
+          "type": "double",
+          "optional": true,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "scale",
+          "type": "double",
+          "optional": true,
           "byRef": false,
           "array": false
         }
