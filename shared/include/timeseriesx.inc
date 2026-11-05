@@ -369,3 +369,94 @@ PUBLIC FUNCTION TSBANDSTOP(series() AS DOUBLE, wn1 AS DOUBLE, wn2 AS DOUBLE, ord
     CALL RXF_BANDSTOP(series, n, wn1, wn2, order, o)
     RETURN o
 END FUNCTION
+
+' ═══════════════════════════════════════════════════════════════════════════
+' Famiglia avanzata: Hurst, frazionale, Granger, GARCH, Kalman, bootstrap,
+' entropie, Lyapunov, OU, BMA. I risultati composti sono array piatti.
+' ═══════════════════════════════════════════════════════════════════════════
+DECLARE FUNCTION AXF_HURST LIB "gmbstats" ALIAS "ofx_ts_hurst" (x() AS DOUBLE, n AS LONG) AS DOUBLE
+DECLARE FUNCTION AXF_FRACDIFF LIB "gmbstats" ALIAS "ofx_ts_fracdiff" (x() AS DOUBLE, n AS LONG, d AS DOUBLE, out() AS DOUBLE) AS LONG
+DECLARE FUNCTION AXF_GRANGER LIB "gmbstats" ALIAS "ofx_ts_granger" (x() AS DOUBLE, y() AS DOUBLE, n AS LONG, p AS LONG, out() AS DOUBLE) AS LONG
+DECLARE FUNCTION AXF_GARCH11 LIB "gmbstats" ALIAS "ofx_ts_garch11" (x() AS DOUBLE, n AS LONG, out() AS DOUBLE) AS LONG
+DECLARE FUNCTION AXF_KALMAN1D LIB "gmbstats" ALIAS "ofx_ts_kalman1d" (z() AS DOUBLE, n AS LONG, a AS DOUBLE, h AS DOUBLE, q AS DOUBLE, r AS DOUBLE, out() AS DOUBLE) AS LONG
+DECLARE FUNCTION AXF_BOOTSTRAP LIB "gmbstats" ALIAS "ofx_ts_bootstrap" (x() AS DOUBLE, n AS LONG, window AS LONG, seed AS LONG, out() AS DOUBLE) AS LONG
+DECLARE FUNCTION AXF_SAMPEN LIB "gmbstats" ALIAS "ofx_ts_sampen" (x() AS DOUBLE, n AS LONG, m AS LONG, r AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION AXF_APPROXENT LIB "gmbstats" ALIAS "ofx_ts_approxent" (x() AS DOUBLE, n AS LONG, m AS LONG, r AS DOUBLE) AS DOUBLE
+DECLARE FUNCTION AXF_PERM LIB "gmbstats" ALIAS "ofx_ts_perm" (x() AS DOUBLE, n AS LONG, m AS LONG, lag AS LONG) AS DOUBLE
+DECLARE FUNCTION AXF_LZ LIB "gmbstats" ALIAS "ofx_ts_lz" (x() AS DOUBLE, n AS LONG) AS DOUBLE
+DECLARE FUNCTION AXF_LYAP LIB "gmbstats" ALIAS "ofx_ts_lyap" (x() AS DOUBLE, n AS LONG, m AS LONG, tau AS LONG) AS DOUBLE
+DECLARE FUNCTION AXF_OUFIT LIB "gmbstats" ALIAS "ofx_ts_oufit" (x() AS DOUBLE, n AS LONG, dt AS DOUBLE, out() AS DOUBLE) AS LONG
+DECLARE FUNCTION AXF_BMA LIB "gmbstats" ALIAS "ofx_ts_bma" (ic() AS DOUBLE, m AS LONG, out() AS DOUBLE) AS LONG
+
+PUBLIC FUNCTION TSHURST(series() AS DOUBLE) AS DOUBLE
+    RETURN AXF_HURST(series, UBOUND(series) + 1)
+END FUNCTION
+
+PUBLIC FUNCTION TSFRACDIFF(series() AS DOUBLE, d AS DOUBLE) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(series) + 1
+    DIM o(n - 1) AS DOUBLE
+    CALL AXF_FRACDIFF(series, n, d, o)
+    RETURN o
+END FUNCTION
+
+' out(3) = statistic, pvalue, degrees_of_freedom.
+PUBLIC FUNCTION TSGRANGER(x() AS DOUBLE, y() AS DOUBLE, p AS LONG) AS ARRAY OF DOUBLE
+    DIM o(2) AS DOUBLE
+    CALL AXF_GRANGER(x, y, UBOUND(x) + 1, p, o)
+    RETURN o
+END FUNCTION
+
+' out(3) = omega, alpha, beta.
+PUBLIC FUNCTION TSGARCH11(series() AS DOUBLE) AS ARRAY OF DOUBLE
+    DIM o(2) AS DOUBLE
+    CALL AXF_GARCH11(series, UBOUND(series) + 1, o)
+    RETURN o
+END FUNCTION
+
+PUBLIC FUNCTION TSKALMAN1D(z() AS DOUBLE, a AS DOUBLE, h AS DOUBLE, q AS DOUBLE, r AS DOUBLE) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(z) + 1
+    DIM o(n - 1) AS DOUBLE
+    CALL AXF_KALMAN1D(z, n, a, h, q, r, o)
+    RETURN o
+END FUNCTION
+
+PUBLIC FUNCTION TSSTATIONARYBOOTSTRAP(series() AS DOUBLE, window AS LONG, seed AS LONG) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(series) + 1
+    DIM o(n - 1) AS DOUBLE
+    CALL AXF_BOOTSTRAP(series, n, window, seed, o)
+    RETURN o
+END FUNCTION
+
+PUBLIC FUNCTION TSSAMPEN(series() AS DOUBLE, m AS LONG, r AS DOUBLE) AS DOUBLE
+    RETURN AXF_SAMPEN(series, UBOUND(series) + 1, m, r)
+END FUNCTION
+
+PUBLIC FUNCTION TSAPPROXENTROPY(series() AS DOUBLE, m AS LONG, r AS DOUBLE) AS DOUBLE
+    RETURN AXF_APPROXENT(series, UBOUND(series) + 1, m, r)
+END FUNCTION
+
+PUBLIC FUNCTION TSENTROPYPERM(series() AS DOUBLE, m AS LONG, lag AS LONG) AS DOUBLE
+    RETURN AXF_PERM(series, UBOUND(series) + 1, m, lag)
+END FUNCTION
+
+PUBLIC FUNCTION TSENTROPYLZ(series() AS DOUBLE) AS DOUBLE
+    RETURN AXF_LZ(series, UBOUND(series) + 1)
+END FUNCTION
+
+PUBLIC FUNCTION TSLYAPUNOV(series() AS DOUBLE, m AS LONG, tau AS LONG) AS DOUBLE
+    RETURN AXF_LYAP(series, UBOUND(series) + 1, m, tau)
+END FUNCTION
+
+' out(5) = theta, mu, sigma, phi, half_life.
+PUBLIC FUNCTION TSOUFIT(series() AS DOUBLE, dt AS DOUBLE) AS ARRAY OF DOUBLE
+    DIM o(4) AS DOUBLE
+    CALL AXF_OUFIT(series, UBOUND(series) + 1, dt, o)
+    RETURN o
+END FUNCTION
+
+PUBLIC FUNCTION TSBMAWEIGHTS(ic() AS DOUBLE) AS ARRAY OF DOUBLE
+    DIM m AS LONG = UBOUND(ic) + 1
+    DIM o(m - 1) AS DOUBLE
+    CALL AXF_BMA(ic, m, o)
+    RETURN o
+END FUNCTION
