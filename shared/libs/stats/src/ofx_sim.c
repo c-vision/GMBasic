@@ -39,12 +39,13 @@ double ofx_sim_binomial(double n_in, double p)
     return c;
 }
 
-void ofx_sim_particle_filter(const double* obs, int T, const double* par,
-                             int N, double seed, double* out_mean, double* out_var)
+/* out: 2*T valori — out[0..T-1] = mean filtrata, out[T..2T-1] = varianza. */
+void ofx_sim_particle_filter(const double* obs, int T, double a, double q, double r,
+                             int N, double seed, double* out)
 {
     gs_rng rng = gs_rng_make((unsigned long long)seed);
-    if (!obs || !par || !out_mean || !out_var || T < 1 || N < 2) return;
-    gs_particle_filter(obs, T, par[0], par[1], par[2], N, &rng, out_mean, out_var);
+    if (!obs || !out || T < 1 || N < 2) return;
+    gs_particle_filter(obs, T, a, q, r, N, &rng, out, out + T);
 }
 
 typedef double (*ofx_sim_fv)(const double* x, int64_t n);

@@ -10,6 +10,7 @@ PUBLIC DECLARE FUNCTION SIMEXP LIB "gmbstats" ALIAS "ofx_sim_exponential" (rate 
 PUBLIC DECLARE FUNCTION SIMBERNOULLI LIB "gmbstats" ALIAS "ofx_sim_bernoulli" (p AS DOUBLE) AS DOUBLE
 PUBLIC DECLARE FUNCTION SIMBINOMIAL LIB "gmbstats" ALIAS "ofx_sim_binomial" (n AS DOUBLE, p AS DOUBLE) AS DOUBLE
 
-PUBLIC DECLARE SUB PARTICLEFILTER LIB "gmbstats" ALIAS "ofx_sim_particle_filter" (obs() AS DOUBLE, T AS LONG, par() AS DOUBLE, N AS LONG, seed AS DOUBLE, mean() AS DOUBLE, var() AS DOUBLE)
+' out(2*T): prima meta' media filtrata, seconda meta' varianza. T = dimensione di obs.
+PUBLIC DECLARE SUB PARTICLEFILTER LIB "gmbstats" ALIAS "ofx_sim_particle_filter" (obs() AS DOUBLE, T AS LONG, a AS DOUBLE, q AS DOUBLE, r AS DOUBLE, N AS LONG, seed AS DOUBLE, out() AS DOUBLE)
 
 PUBLIC DECLARE FUNCTION TPE LIB "gmbstats" ALIAS "ofx_sim_tpe" (f AS FUNCTION(x() AS DOUBLE) AS DOUBLE, lo() AS DOUBLE, hi() AS DOUBLE, d AS LONG, nIter AS LONG, nInit AS LONG, seed AS DOUBLE, out() AS DOUBLE) AS DOUBLE

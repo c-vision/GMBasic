@@ -2,17 +2,14 @@
 IMPORT SIMULATION
 SUB Main()
   DIM obs(19) AS DOUBLE
-  DIM m(19) AS DOUBLE
-  DIM v(19) AS DOUBLE
-  DIM par(2) AS DOUBLE
-  par(0) = 0.9: par(1) = 0.1: par(2) = 0.1
+  DIM out(39) AS DOUBLE
   FOR i = 0 TO 19
     obs(i) = 1.0 + 0.5 * SIN(i * 0.4) + 0.1 * COS(i * 1.3)
   NEXT i
-  SIMULATION.PARTICLEFILTER(obs, 20, par, 200, 12345, m, v)
-  PRINT "m0="; MATH.ROUND(m(0), 6)
-  PRINT "m1="; MATH.ROUND(m(1), 6)
-  PRINT "m19="; MATH.ROUND(m(19), 6)
-  PRINT "v0="; MATH.ROUND(v(0), 6)
-  PRINT "v19="; MATH.ROUND(v(19), 6)
+  SIMULATION.PARTICLEFILTER(obs, 20, 0.9, 0.1, 0.1, 200, 12345, out)
+  PRINT "m0="; MATH.ROUND(out(0), 6)
+  PRINT "m1="; MATH.ROUND(out(1), 6)
+  PRINT "m19="; MATH.ROUND(out(19), 6)
+  PRINT "v0="; MATH.ROUND(out(20), 6)
+  PRINT "v19="; MATH.ROUND(out(39), 6)
 END SUB
