@@ -136,7 +136,7 @@ int gmb_ai_decide_local_run_group(const char* state, const gmb_decision_domain_t
  * l'oggetto del core sia linkato e che la dylib abbia un entry point stabile. */
 const char* gmb_ai_decide_active_model_path(void);
 
-/* P/Invoke (IL/PCode → libgmb_clm): `AI DECIDE` col provider `clm` con la config del provider passata
+/* P/Invoke (IL/PCode → libgmbclm): `AI DECIDE` col provider `clm` con la config del provider passata
  * ESPLICITAMENTE (JSON: baseUrl/apiKey/timeoutMs/instructions, oppure head/encoder per il locale).
  * Ritorna il JSON del risultato o `{"error":"…"}` (heap: libera con gmb_ai_decide_free_json). */
 char* gmb_ai_decide_clm_run_json(const char* state, const char* kind, const char* config_json);

@@ -1,7 +1,7 @@
 // AI/Decision/NativeClm.cs
 //
 // Provider `clm` (Contrastive Language Models) del primitivo `AI DECIDE`, via P/Invoke sul runtime C
-// condiviso (libgmb_clm ← native/gmb_runtime_c: gmb_decision_clm.c + gmb_ai_decide.c). Direzione
+// condiviso (libgmbclm ← native/gmb_runtime_c: gmb_decision_clm.c + gmb_ai_decide.c). Direzione
 // unica C# → C: il C# CONSUMA la fonte C (wire /v1/systemone, prosa dello stato, head di
 // proiezione, encoder MLX last-token) e non ne tiene una copia. La config del provider %DECIDE
 // (che vive nel registry C#) viene passata in JSON: baseUrl/apiKey/timeoutMs/instructions per il
@@ -15,7 +15,7 @@ namespace Basic.Decision;
 
 public static class NativeClm
 {
-    private const string Lib = "gmb_clm";
+    private const string Lib = "gmbclm";
 
     static NativeClm() => AiNativeResolver.EnsureRegistered(typeof(NativeClm).Assembly);
 
@@ -60,7 +60,7 @@ public static class NativeClm
         try { p = RunNative(state, kind, cfg.ToJsonString()); }
         catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
         {
-            return new JsonObject { ["error"] = "clm: libgmb_clm non caricabile (" + ex.GetType().Name + ")" }.ToJsonString();
+            return new JsonObject { ["error"] = "clm: libgmbclm non caricabile (" + ex.GetType().Name + ")" }.ToJsonString();
         }
         if (p == IntPtr.Zero) return "{\"error\":\"clm: memoria esaurita\"}";
         try { return Marshal.PtrToStringUTF8(p) ?? ""; }

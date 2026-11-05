@@ -6,9 +6,9 @@ using Xunit;
 
 namespace AI.Tests;
 
-/// <summary>Provider `clm` via P/Invoke su libgmb_clm (runtime C condiviso): il C# consuma la fonte C.
+/// <summary>Provider `clm` via P/Invoke su libgmbclm (runtime C condiviso): il C# consuma la fonte C.
 /// Server HTTP locale che risponde con la forma REALE di clm-serve ({"model","answers":{qid:…},"usage"}).
-/// Richiede libgmb_clm raggiungibile (DYLD_LIBRARY_PATH o cartella libs): se manca il test FALLISCE.
+/// Richiede libgmbclm raggiungibile (DYLD_LIBRARY_PATH o cartella libs): se manca il test FALLISCE.
 /// I golden di prosa/richiesta/risposta sono nel selfcheck C (gmb_decision_clm_selfcheck).</summary>
 [Trait("Category", "Native")]
 public sealed class NativeClmTests
