@@ -923,6 +923,7 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "STATS.KendallTau");
         r.Register(Backend.IL, "STATS.FTest");
         r.Register(Backend.IL, "STATS.Kruskal");
+        r.Register(Backend.IL, "STATS.ChiIsf");
         r.Register(Backend.IL, "STATS.BetaSf");
         r.Register(Backend.IL, "STATS.ChiSf");
         r.Register(Backend.IL, "STATS.LogisticCdf");

@@ -106,6 +106,7 @@ public static partial class Numerics
         else xStd = 1.0 - Math.Sqrt((1.0 - c) * (1.0 - p));
         return min + (max - min) * xStd;
     }
+    public static double ChiIsf(double p, double k) => ChiPpf(1.0 - p, k);
     public static double BetaIsf(double p, double a, double b) => BetaPpf(1.0 - p, a, b);
     public static double LogisticIsf(double p, double loc, double scale) => LogisticPpf(1.0 - p, loc, scale);
     public static double LognormalIsf(double p, double mu, double sd) => LognormalPpf(1.0 - p, mu, sd);

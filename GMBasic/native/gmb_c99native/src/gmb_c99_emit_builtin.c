@@ -5309,6 +5309,7 @@ static int ds_weibull_isf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a,
 static int ds_uniform_isf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_uniform_isf"); }
 static int ds_pareto_isf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_pareto_isf"); }
 static int ds_beta_isf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_beta_isf"); }
+static int ds_chi_isf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2(c, a, n, "gmb_dist_chi_isf"); }
 static int ds_logistic_isf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_logistic_isf"); }
 static int ds_lognormal_isf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_lognormal_isf"); }
 static int ds_triangular_isf(ctx_t* c, gmb_expr_t** a, int n) { return ds_shtri(c, a, n, "gmb_dist_triangular_isf"); }
@@ -5555,6 +5556,7 @@ static const ds_row DS_TBL[] = {
     { GMB_TOK_StatsUniformIsf, ds_uniform_isf },
     { GMB_TOK_StatsParetoIsf, ds_pareto_isf },
     { GMB_TOK_StatsBetaIsf, ds_beta_isf },
+    { GMB_TOK_StatsChiIsf, ds_chi_isf },
     { GMB_TOK_StatsLogisticIsf, ds_logistic_isf },
     { GMB_TOK_StatsLognormalIsf, ds_lognormal_isf },
     { GMB_TOK_StatsTriangularIsf, ds_triangular_isf },

@@ -72,6 +72,7 @@ internal sealed partial class PCodeProcessor
         BuiltInFunction.TTESTONESAMPLE,
         BuiltInFunction.STATSANOVA,
         BuiltInFunction.STATS_KRUSKAL,
+        BuiltInFunction.STATS_CHIISF,
         BuiltInFunction.CHI2TEST,
         BuiltInFunction.FISHEREXACT,
         BuiltInFunction.SHAPIROWILK,
@@ -317,6 +318,10 @@ internal sealed partial class PCodeProcessor
         [BuiltInFunction.TTESTONESAMPLE] = (task, args) =>
         {
                 return HypothesisResult(CommonLib.Numerics.TTestOneSample(ToDoubleArr(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1))));
+        },
+        [BuiltInFunction.STATS_CHIISF] = (task, args) =>
+        {
+                return CommonLib.Numerics.ChiIsf(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)));
         },
         [BuiltInFunction.STATS_KRUSKAL] = (task, args) =>
         {
