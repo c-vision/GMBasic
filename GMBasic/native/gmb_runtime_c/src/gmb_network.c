@@ -18,7 +18,7 @@
 #include <ws2tcpip.h>
 #include <windows.h>
 #include <pthread.h>   /* winpthreads: fornita dal toolchain (thread del server HTTP) */
-#include <poll.h>      /* shim shared/include/win32/poll.h → WSAPoll */
+#include <poll.h>      /* shim GMBasic/native/win32shim/include/poll.h → WSAPoll */
 typedef SOCKET gmb_net_sock_t;
 #define GMB_NET_SOCK_OK(s) ((s) != INVALID_SOCKET)
 #define GMB_NET_SOCK_INVALID ((int64_t)-1)

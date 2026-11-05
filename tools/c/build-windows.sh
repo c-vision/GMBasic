@@ -28,7 +28,7 @@
 #   - `zig rc` serve come CMAKE_RC_COMPILER (senza, freetype/SDL si fermano su windres);
 #   - le lib statiche di pcre2/curl vogliono `PCRE2_STATIC` / `CURL_STATICLIB`, altrimenti
 #     gli header dichiarano `__declspec(dllimport)` e il link cerca una DLL che non esiste;
-#   - `shared/include/win32` va force-incluso (`-include gmb_win32.h`) e messo in `-I`;
+#   - `GMBasic/native/win32shim/include` va force-incluso (`-include gmb_win32.h`) e messo in `-I`;
 #   - le librerie di sistema Win32 (winmm, setupapi, imm32, dinput8, dxguid, crypt32, …) non
 #     sono deducibili: senza, il link di gmb_gfx/gmb_pkg si ferma su simboli "dllimport".
 set -eu
@@ -64,7 +64,7 @@ case "$TRIPLE" in
   *) echo "triple non Windows: $TRIPLE" >&2; exit 2 ;;
 esac
 
-WINC="$PWD/shared/include/win32"
+WINC="$PWD/GMBasic/native/win32shim/include"
 RID_LIBS="$DEPS/$RID"
 # La cache RID del progetto tiene gli archivi PIATTI accanto a include/ (`<rid>/*.a`);
 # l'output di build-deps.sh ha invece `<dir>/lib`. Si accettano entrambi.

@@ -7,8 +7,8 @@
 #
 # CONTRATTO DI BUILD (normalizzato — prima ogni progetto faceva a modo suo):
 #   sorgenti      shared/libs/<nome>/src/*.c
-#   header        shared/libs/<nome>/include/*.h        (interni del progetto)
-#                 shared/include/gmb<nome>.h            (PUBBLICI, cercati dal compilatore)
+#   header        shared/libs/<nome>/include/*.h        (interni E pubblici: unica sorgente)
+#                 shared/include/                       (SOLO export BASIC .inc, nessun .h)
 #   export BASIC  shared/include/<nome>.inc             (PUBBLICI, risolti da IMPORT)
 #   binario       shared/libs/<nome>/libgmb<nome>.<ext> (dove l'FFI lo cerca)
 #
@@ -84,25 +84,29 @@ build_one() {
           -I"$dir/include" -I"$dir/src" -I"$INCLUDE" \
           $srcs -o "$out" -lm -ldl ;;
   esac
-  # Gli export BASIC e gli header PUBBLICI vivono in shared/include (sorgente, in git).
+  # Gli export BASIC vivono in shared/include (sorgente, in git); gli header C restano in
+  # shared/libs/<nome>/include, che è l'unica sorgente (shared/include è solo BASIC).
   sync_sources "$lib"
 }
 
-# Sposta/copia gli export e gli header pubblici in shared/include (una sola posizione).
+# Porta l'export BASIC in shared/include (unica posizione). Gli header C NON si copiano più:
+# la loro sede è shared/libs/<nome>/include, e `check` verifica che shared/include resti puro.
 sync_sources() {
   local lib="$1"
   local dir="$LIBS/$lib"
   mkdir -p "$INCLUDE"
   local incn; incn="$(inc_name "$lib")"
   [ -f "$dir/$incn" ] && mv -f "$dir/$incn" "$INCLUDE/$incn"
-  for h in "$dir"/gmb"$lib"*.h; do
-    [ -f "$h" ] || continue
-    cp -f "$h" "$INCLUDE/"
-  done
   return 0
 }
 
 # ── check ─────────────────────────────────────────────────────────────────────────────────────
+# Invariante: shared/include contiene SOLO export BASIC (.inc), nessun header C.
+check_include_purity() {
+  local bad; bad="$(find "$INCLUDE" -name '*.h' -print -quit)"
+  [ -z "$bad" ] || die "shared/include deve contenere solo .inc: trovato $bad"
+}
+
 check_one() {
   local lib="$1"
   local E; E="$(ext)"
@@ -110,6 +114,11 @@ check_one() {
   [ -f "$bin" ] || die "binario assente: $bin"
   local incn; incn="$(inc_name "$lib")"
   [ -f "$INCLUDE/$incn" ] || echo "  ATTENZIONE: manca l'export BASIC $INCLUDE/$incn" >&2
+  case " amqp grpc kafka media mqtt nats protobuf " in
+    *" $lib "*)
+      find "$LIBS/$lib/include" -maxdepth 1 -name 'gmb*.h' -print -quit | grep -q . \
+        || die "header pubblico assente: $LIBS/$lib/include/gmb$lib.h (deve stare nella lib)" ;;
+  esac
   if [ "$(uname -s)" = "Darwin" ]; then
     otool -D "$bin" | tail -n +2 | grep -q "^@rpath/libgmb$lib\.$E$" \
       || die "$bin: install_name non è @rpath/libgmb$lib.$E (non sarebbe distribuibile)"
@@ -150,6 +159,7 @@ case "${1:-}" in
     ;;
   check)
     shift
+    check_include_purity
     if [ "${1:-}" = "all" ] || [ -z "${1:-}" ]; then
       for l in $ALL_LIBS; do check_one "$l" || exit 1; done
     else

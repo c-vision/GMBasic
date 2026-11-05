@@ -14,6 +14,9 @@ distribute.
 
 ## POSIX→Win32 layer
 
+In the repo these headers live in `GMBasic/native/win32shim/include/` (not in `shared/include/`,
+which holds only BASIC `.inc` exports); the Windows source zip packs them as `include/win32/`.
+
 The sources are the same as on macOS/Linux (no `#if _WIN32`): on Windows you build with
 `-include include/win32/gmb_win32.h` and `-I include/win32`, where these live
 
@@ -94,5 +97,5 @@ Two things were needed outside the runtime and are documented here because they 
    cJSON. Measured: `llmtoken.dll` exported 78 symbols (all cJSON, zero `llmtoken_*`).
    Fix in LLMEnv: `CJSON_HIDE_SYMBOLS` on the cjson target → 193 exports.
 2. **`fork()` does not exist**: the HTTP selfcheck now uses a thread; `posix_spawn` is there
-   (`shared/include/win32/spawn.h`) but `fork` is not — if needed, it is rewritten as a thread or
+   (`GMBasic/native/win32shim/include/spawn.h`) but `fork` is not — if needed, it is rewritten as a thread or
    process.
