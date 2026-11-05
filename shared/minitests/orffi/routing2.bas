@@ -2,7 +2,7 @@
 ' TSPEXTRAMILEAGE, TSPGRASP, TSPVNS, TSP3OPT, TSPSA, TSPTABU, TSPHKBOUND, TSPDFJ, TSPERX,
 ' TSPGA, TSPOROPT, VRPTIMEWINDOWS, VRPMULTIDEPOT, VRPPICKUPDELIVERY.
 ' Istanze piccole con distanze intere (|i-j|): costo del giro ottimo = 8.
-' EXPECT: extra=8.0: 1 |grasp=8.0: 1 |vns=8.0: 1 |3opt=8.0: 1 |sa=8.0: 1 |tabu=8.0: 1 |hk=7.9:-1 |dfj=8.0: 1 |oropt=8.0: 1 |ga=8.0: 1 |erx= 1 : 1 :-1|vrptw= 2 :10.0: 0  1 |mdvrp= 1 :-1 -1 :-1 -1 |pdp= 1 :4.0: 1  2  1  1 :-1
+' EXPECT: extra=8.0: 1 |grasp=8.0: 1 |vns=8.0: 1 |3opt=8.0: 1 |sa=8.0: 1 |tabu=8.0: 1 |hk=7.9:-1 |dfj=8.0: 1 |oropt=8.0: 1 |ga=8.0: 1 |erx= 1 : 1 :-1|vrptw= 2 :10.0: 0  1 |mdvrp= 1 :6.0: 0  0 |pdp= 1 :4.0: 1  2  1  1 :-1
 IMPORT OPTIMIZE
 
 FUNCTION IsPerm(t() AS LONG, n AS LONG) AS LONG
@@ -89,12 +89,8 @@ SUB Main()
 
   DIM ro2(4) AS LONG
   DIM tot2(0) AS DOUBLE
-  ' MDVRP: il TOTALE non e' stabile fra backend/esecuzioni (6.0 e 4.0 sulla stessa istanza ->
-  ' `(open) - OR-MDVRP-Totale-Non-Deterministico.md`). Si verificano le parti stabili:
-  ' almeno una rotta, totale finito e plausibile, assegnazione definita per ogni cliente.
   PRINT "|mdvrp="; OPTIMIZE.VRPMULTIDEPOT(d, dem, 5, 2, 3.0, ro2, tot2); ":";
-  PRINT (tot2(0) >= 3.0); (tot2(0) <= 8.0); ":";
-  PRINT (ro2(0) >= 0); (ro2(4) >= 0);
+  PRINT FORMAT(tot2(0), "#.0"); ":"; ro2(0); ro2(1);
 
   ' PDP: pickup()/delivery() = flag 0/1 per nodo (nodi 1..2*nreq), route() = 2*nreq
   DIM demp(4) AS DOUBLE
