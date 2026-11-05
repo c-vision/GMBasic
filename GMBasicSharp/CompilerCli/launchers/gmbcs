@@ -1,0 +1,5 @@
+#!/bin/sh
+# gmbcs — launcher POSIX, copiato dalla build in <repo>/bin/gmbcs.
+# L'app .NET (93 assembly + include/*.inc + system.settings.json) sta in gmbcs-app/.
+# dirname "$0": funziona anche se bin/ viene spostata o il launcher invocato da un'altra cwd.
+exec "$(dirname "$0")/gmbcs-app/gmbcs" "$@"
