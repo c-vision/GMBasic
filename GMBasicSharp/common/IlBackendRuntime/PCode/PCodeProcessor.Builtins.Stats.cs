@@ -45,6 +45,8 @@ internal sealed partial class PCodeProcessor
         BuiltInFunction.STATS_UNIFORMSF,
         BuiltInFunction.STATS_KENDALLTAU,
         BuiltInFunction.STATS_FTEST,
+        BuiltInFunction.STATS_BETASF,
+        BuiltInFunction.STATS_CHISF,
         BuiltInFunction.STATS_GAMMAPPF,
         BuiltInFunction.STATS_GAMMAISF,
         BuiltInFunction.STATS_MODE,
@@ -147,6 +149,14 @@ internal sealed partial class PCodeProcessor
         [BuiltInFunction.STATS_KENDALLTAU] = (task, args) =>
         {
                 return HypothesisResult(CommonLib.Numerics.KendallTau(ToDoubleArr(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1))));
+        },
+        [BuiltInFunction.STATS_BETASF] = (task, args) =>
+        {
+                return 1.0 - CommonLib.Numerics.BetaCdf(SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_CHISF] = (task, args) =>
+        {
+                return 1.0 - CommonLib.Numerics.ChiCdf(SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 0)));
         },
         [BuiltInFunction.STATS_FTEST] = (task, args) =>
         {

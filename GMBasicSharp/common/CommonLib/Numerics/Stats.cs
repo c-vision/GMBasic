@@ -331,6 +331,9 @@ public static partial class Numerics
         if (freedom <= 0) throw new ArgumentOutOfRangeException(nameof(freedom));
         return x < 0 ? 0.0 : Chi.CDF(freedom, x);
     }
+    /// <summary>Funzione di sopravvivenza Chi (1 - CDF).</summary>
+    public static double ChiSf(double k, double x) => 1.0 - ChiCdf(k, x);
+
 
     /// <summary>
     /// Calcola la funzione di densità di probabilità (PDF) della distribuzione chi-quadro (χ²).
@@ -389,6 +392,9 @@ public static partial class Numerics
         if (x >= 1) return 1.0;
         return Beta.CDF(a, b, x);
     }
+    /// <summary>Funzione di sopravvivenza Beta (1 - CDF).</summary>
+    public static double BetaSf(double a, double b, double x) => 1.0 - BetaCdf(a, b, x);
+
 
     /// <summary>
     /// Calcola la funzione di densità di probabilità (PDF) della distribuzione t di Student.

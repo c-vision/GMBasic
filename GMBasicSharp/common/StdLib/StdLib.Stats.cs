@@ -179,6 +179,9 @@ public sealed partial class StdLib
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.ChiCdf, "ChiCdf"),
                 [xParam, new Parameter(-1, T(TokenKind.Identifier, "k"), new DoubleType(), noFlags, null, false)],
                 new DoubleType(), TokenKind.ChiCdf, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsChiSf, "ChiSf"),
+                [xParam, new Parameter(-1, T(TokenKind.Identifier, "k"), new DoubleType(), noFlags, null, false)],
+                new DoubleType(), TokenKind.StatsChiSf, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.ChiSquaredPdf, "ChiSquaredPdf"),
                 [xParam, new Parameter(-1, T(TokenKind.Identifier, "k"), new DoubleType(), noFlags, null, false)],
                 new DoubleType(), TokenKind.ChiSquaredPdf, ExecutionKind: NativeExecutionKind.Pure),
@@ -198,6 +201,11 @@ public sealed partial class StdLib
                 xParam, new Parameter(-1, T(TokenKind.Identifier, "alpha"), new DoubleType(), noFlags, null, false),
                 new Parameter(-1, T(TokenKind.Identifier, "beta"), new DoubleType(), noFlags, null, false)
             ], new DoubleType(), TokenKind.BetaCdf, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsBetaSf, "BetaSf"),
+            [
+                xParam, new Parameter(-1, T(TokenKind.Identifier, "alpha"), new DoubleType(), noFlags, null, false),
+                new Parameter(-1, T(TokenKind.Identifier, "beta"), new DoubleType(), noFlags, null, false)
+            ], new DoubleType(), TokenKind.StatsBetaSf, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StudentTPdf, "StudentTPdf"),
                 [xParam, new Parameter(-1, T(TokenKind.Identifier, "nu"), new DoubleType(), noFlags, null, false)],
                 new DoubleType(), TokenKind.StudentTPdf, ExecutionKind: NativeExecutionKind.Pure),

@@ -1120,12 +1120,14 @@ procedure,STATS,BernoulliPmf,BernoulliPmf
 procedure,STATS,BetaCdf,BetaCdf
 procedure,STATS,BetaPdf,BetaPdf
 procedure,STATS,BetaPpf,BetaPpf
+procedure,STATS,BetaSf,StatsBetaSf
 procedure,STATS,BinomialPmf,BinomialPmf
 procedure,STATS,Chi2,Chi2Test
 procedure,STATS,Chi2Con,StatsChi2Contingency
 procedure,STATS,ChiCdf,ChiCdf
 procedure,STATS,ChiPdf,ChiPdf
 procedure,STATS,ChiPpf,ChiPpf
+procedure,STATS,ChiSf,StatsChiSf
 procedure,STATS,ChiSquaredCdf,ChiSquaredCdf
 procedure,STATS,ChiSquaredIsf,ChiSquaredIsf
 procedure,STATS,ChiSquaredPdf,ChiSquaredPdf

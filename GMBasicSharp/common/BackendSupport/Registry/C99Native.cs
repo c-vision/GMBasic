@@ -911,6 +911,8 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "STATS.PearsonR");
         r.Register(Backend.C99Native, "STATS.KendallTau");
         r.Register(Backend.C99Native, "STATS.FTest");
+        r.Register(Backend.C99Native, "STATS.BetaSf");
+        r.Register(Backend.C99Native, "STATS.ChiSf");
         r.Register(Backend.C99Native, "STATS.Covariance");
         r.Register(Backend.C99Native, "STATS.Range");
         r.Register(Backend.C99Native, "STATS.MAX");

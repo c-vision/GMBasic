@@ -5285,6 +5285,8 @@ static int ds_pareto_cdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, 
 static int ds_pareto_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3_sf(c, a, n, "gmb_dist_pareto_cdf"); }
 static int ds_uniform_cdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_uniform_cdf"); }
 static int ds_uniform_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3_sf(c, a, n, "gmb_dist_uniform_cdf"); }
+static int ds_beta_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3_sf(c, a, n, "gmb_dist_beta_cdf"); }
+static int ds_chi_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2_sf(c, a, n, "gmb_dist_chi_cdf"); }
 static int ds_exp_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2_sf(c, a, n, "gmb_dist_exp_cdf"); }
 static int ds_student_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2_sf(c, a, n, "gmb_dist_student_t_cdf"); }
 static int ds_chisq_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2_sf(c, a, n, "gmb_dist_chi2_cdf"); }
@@ -5470,11 +5472,13 @@ static int ds_weibull_ppf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a,
 static const ds_row DS_TBL[] = {
     { GMB_TOK_BernoulliPmf, ds_bernoulli },
     { GMB_TOK_BetaCdf, ds_beta_cdf },
+    { GMB_TOK_StatsBetaSf, ds_beta_sf },
     { GMB_TOK_BetaPdf, ds_beta_pdf },
     { GMB_TOK_BetaPpf, ds_beta_ppf },
     { GMB_TOK_BinomialPmf, ds_binomial },
     { GMB_TOK_ChiPpf, ds_chi_ppf },
     { GMB_TOK_ChiCdf, ds_chi_cdf },
+    { GMB_TOK_StatsChiSf, ds_chi_sf },
     { GMB_TOK_ChiPdf, ds_chi_pdf },
     { GMB_TOK_ChiSquaredCdf, ds_chisq_cdf },
     { GMB_TOK_StatsChiSquaredSf, ds_chisq_sf }, 
