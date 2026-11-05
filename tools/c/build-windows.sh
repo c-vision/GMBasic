@@ -36,7 +36,8 @@ set -eu
 RID="win-arm64"
 TRIPLE="aarch64-windows-gnu"
 ARCH="arm64"
-BUILD="$PWD/GMBasic/build/cmake-$RID"
+BUILD=""                               # default: GMBasic/build/cmake-<rid>, calcolato DOPO il parsing
+RID_SET=0; TRIPLE_SET=0
 DEPS="$PWD/GMBasic/build/libs"          # contiene <rid>/{include,lib} (cache RID del progetto)
 ZIG_BIN="${ZIG:-$HOME/ai/tools/zig-aarch64-macos-0.17.0/zig}"
 RUNTIME_SRC="$PWD/GMBasic/native/gmb_runtime_c"
@@ -45,8 +46,8 @@ CONFIG_ONLY=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --rid)        RID="$2"; shift 2 ;;
-    --triple)     TRIPLE="$2"; shift 2 ;;
+    --rid)        RID="$2"; RID_SET=1; shift 2 ;;
+    --triple)     TRIPLE="$2"; TRIPLE_SET=1; shift 2 ;;
     --arch)       ARCH="$2"; shift 2 ;;
     --build)      BUILD="$2"; shift 2 ;;
     --deps)       DEPS="$2"; shift 2 ;;
@@ -63,6 +64,24 @@ case "$TRIPLE" in
   x86_64-windows-gnu)  ARCH="amd64" ;;
   *) echo "triple non Windows: $TRIPLE" >&2; exit 2 ;;
 esac
+
+# RID e TRIPLE devono descrivere lo stesso target. Se ne passi uno solo, l'altro si deriva; se li
+# passi entrambi e non coincidono ci si ferma (prima `--rid win-x64` senza `--triple` compilava per
+# ARM64 ma etichettava x64, e riusava la cartella di build dell'altro target).
+case "$TRIPLE" in aarch64-windows-gnu) WANT_RID="win-arm64" ;; x86_64-windows-gnu) WANT_RID="win-x64" ;; esac
+if [ "$RID_SET" = 1 ] && [ "$TRIPLE_SET" = 0 ]; then
+  case "$RID" in
+    win-arm64) TRIPLE="aarch64-windows-gnu"; ARCH="arm64" ;;
+    win-x64)   TRIPLE="x86_64-windows-gnu";  ARCH="amd64" ;;
+    *) echo "rid non Windows: $RID (attesi win-arm64|win-x64)" >&2; exit 2 ;;
+  esac
+  WANT_RID="$RID"
+fi
+if [ "$RID_SET" = 0 ]; then RID="$WANT_RID"; fi
+if [ "$RID" != "$WANT_RID" ]; then
+  echo "rid '$RID' incoerente col triple '$TRIPLE' (atteso $WANT_RID)" >&2; exit 2
+fi
+[ -n "$BUILD" ] || BUILD="$PWD/GMBasic/build/cmake-$RID"
 
 WINC="$PWD/GMBasic/native/win32shim/include"
 RID_LIBS="$DEPS/$RID"
