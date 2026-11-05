@@ -851,6 +851,47 @@ nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è 
 <!-- END DOMAIN TABLE -->
 
 
+## HDF5: dataset numerici multidimensionali
+
+HDF5 non è un motore di database e non sostituisce DBF/ISAM/SPEED: è un **formato di scambio**
+per array multidimensionali, con gruppi, dataset tipizzati e attributi. In GMBasic si usa come
+archivio di risultati numerici (serie di barre, matrici di rendimenti, griglie di parametri) che
+poi vengono riletti da BASIC o da altri strumenti.
+
+Il modello è gerarchico: un file contiene **gruppi** (anche annidati) e **dataset**; ogni
+oggetto può portare **attributi** scalari (stringa o numero). HDF5 non crea i gruppi intermedi:
+per scrivere `barre/ohlc` il gruppo `barre` deve esistere, altrimenti la scrittura fallisce con
+`-1`. I dataset si dichiarano con tipo (`F64` o `I64`) e un rango di 1–8 dimensioni; la
+compressione è **deflate + shuffle** (`H5WRITEF64C`, livello 0–9).
+
+Due dettagli contano quando si legge: le funzioni tipizzate (`H5READF64`, `H5READI64`)
+rifiutano il tipo sbagliato, mentre `H5READDBL` converte **qualsiasi** dataset numerico in
+double ed è la scelta giusta per dati di provenienza eterogenea; e `out()` va dimensionato
+prima con `H5SIZE(file, nome)`, perché una lettura non può sapere quanto spazio ha il vettore
+del chiamante. L'enumerazione (`H5COUNT`/`H5NAME`/`H5KIND`) usa `H5Ovisit3` con indice per
+nome: l'ordine può cambiare fra build diverse di HDF5, quindi non è una base stabile per la
+logica del programma.
+
+La dylib HDF5 inclusa nel pacchetto è la **stessa build 1.14.6** che il runtime GMBasic
+pubblica: la VM/C precarica le librerie del runtime, quindi una build differente verrebbe
+usata solo da alcuni backend e `H5VERSION` divergerebbe. Con la build allineata la versione
+riportata è identica su IL, PCode, VM/C e C99 nativo.
+
+Il pacchetto disattiva i diagnostici testuali che HDF5 scriverebbe su console a ogni errore
+(`H5Eset_auto2` sullo stack di default, eseguito al caricamento della dylib): l'esito di ogni
+chiamata si legge dal solo codice di ritorno — `0` per l'esito positivo, un valore negativo per
+gli errori, con la stessa semantica su tutti e quattro i backend. In questo modo un programma
+che sonda l'esistenza di un dataset (`H5SIZE` / `H5READDBL` su un nome assente) non sporca
+l'output, cosa che rende i test di parità confrontabili riga per riga.
+
+Esempio completo: `packages/hdf5/1.0.0/samples/Hdf5Demo.bas` (barre OHLC, volumi interi,
+rendimenti compressi, gruppo di metadati, attributi, elenco degli oggetti e rilettura tipizzata
+e type-agnostica). MiniTest: `minitests/hdf5ffi/{h5_roundtrip,h5_errors}.bas`.
+
+
+
+
+
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
 ## Riferimento completo: comandi, funzioni, parametri
@@ -895,9 +936,57 @@ IMPORT HDF5
 | `H5READATTRSTR` | h LONG, obj STRING, attr STRING | STRING | attributo stringa. |
 | `H5VERSION` |  | STRING | versione della libreria HDF5 sottostante. |
 
-## 4. Esempio
+### 3.1 Parametri in dettaglio
+| Parametro | Tipo | Significato |
+|---|---|---|
+| `h` | `LONG` | handle del file aperto (`H5CREATE`/`H5OPEN`). `0` = errore: tutte le funzioni che lo ricevono falliscono con `-1` (tranne `H5CLOSE(0)` che è un no-op e torna `0`). |
+| `path` | `STRING` | percorso del file (`H5CREATE`/`H5OPEN`) o nome del gruppo (`H5MAKEGROUP`). Nei nomi HDF5 la `/` separa i livelli. |
+| `name` | `STRING` | nome completo dell'oggetto nel file, es. `"barre/ohlc"`. Deve esistere già alla lettura. |
+| `rank` | `LONG` | numero di dimensioni del dataset, `1..8`. `dims()` deve avere almeno `rank` elementi. |
+| `dims()` | `LONG` | dimensioni del dataset: `dims(0)` è la più esterna. Il numero di valori dati è `dims(0)*...*dims(rank-1)`. |
+| `data()` / `out()` | `DOUBLE` o `LONG` | nel write contiene i valori da scrivere; nel read è il buffer di uscita, dimensionato **almeno** a `H5SIZE(h, name)` elementi. Il tipo dell'array BASIC deve corrispondere al dataset (`H5READF64`/`H5READDBL` → `DOUBLE`, `H5READI64` → `LONG`). |
+| `nelem()` | `LONG` | array di **un** elemento: in uscita riceve il numero di elementi effettivamente letti (utile per verificare che il buffer fosse sufficiente). |
+| `compress` | `LONG` | livello **deflate** `0..9` (`0` = nessuna compressione); la compressione è sempre abbinata a *shuffle*. |
+| `obj` | `STRING` | nome dell'oggetto su cui si scrive/legge l'attributo (dataset o gruppo). |
+| `attr` | `STRING` | nome dell'attributo, es. `"unit"`, `"symbol"`. |
+| `val` | `STRING` / `DOUBLE` | valore scalare dell'attributo. |
+| `k` | `LONG` | indice `0..H5COUNT(h)-1` nell'enumerazione degli oggetti. Fuori range: `H5NAME` → stringa vuota, `H5KIND` → `2` (altro). |
 
-## 5. Limiti
+## 4. Errori
+| Codice | Significato | Esempio |
+|---|---|---|
+| `0` | esito positivo | `H5WRITEF64`, `H5READF64`, `H5CLOSE` |
+| `-1` | handle o argomento non valido, dataset assente, **tipo inatteso** | `H5READF64(h, "conti", ...)` su un dataset I64; `H5SIZE(h, "inesistente")` |
+| handle `0` | `H5CREATE`/`H5OPEN` non riusciti | percorso non scrivibile o file assente in `H5OPEN` |
+
+## 5. Esempio
+
+REQUIRE "hdf5"
+IMPORT HDF5
+
+fh = HDF5.H5CREATE("serie.h5")
+DIM d(1) AS LONG : d(0) = 2 : d(1) = 3
+DIM v(5) AS DOUBLE
+FOR i = 0 TO 5 : v(i) = i + 0.5 : NEXT i
+ok = HDF5.H5WRITEF64(fh, "serie", 2, d, v)      ' 0 = ok
+CALL HDF5.H5CLOSE(fh)
+
+fh = HDF5.H5OPEN("serie.h5")
+PRINT HDF5.H5SIZE(fh, "serie")                   ' 6
+DIM out(5) AS DOUBLE
+DIM dims(7) AS LONG
+DIM n(0) AS LONG
+ok = HDF5.H5READF64(fh, "serie", out, dims, n)   ' 0 = ok
+
+
+## 6. Protocollo §4.1 — esito
+| Funzioni | MiniTest | IL | PCode | VM/C | C99Native |
+|---|---|---|---|---|---|
+| 19 | `hdf5ffi/h5_roundtrip.bas`, `hdf5ffi/h5_errors.bas` | ✓ | ✓ | ✓ | ✓ |
+
+## 7. Riferimenti
+
+## 8. Limiti
 
 ### DBF-Guida-Utente
 
