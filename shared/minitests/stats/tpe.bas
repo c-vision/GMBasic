@@ -9,7 +9,7 @@ SUB Main()
   DIM out(1) AS DOUBLE
   lo(0) = -5: lo(1) = -5
   hi(0) = 5: hi(1) = 5
-  fb = SIMULATION.TPE(Obj, lo, hi, 2, 20, 8, 12345, out)
+  fb = SIMULATION.TPE(Obj, lo, hi, 20, 8, 12345, out)
   PRINT "x0="; MATH.ROUND(out(0), 6)
   PRINT "x1="; MATH.ROUND(out(1), 6)
   PRINT "f="; MATH.ROUND(fb, 6)

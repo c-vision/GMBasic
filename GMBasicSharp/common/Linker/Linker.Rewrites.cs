@@ -2095,10 +2095,15 @@ public static partial class Linker
                 .FirstOrDefault(m => m.Name.Lexeme.Equals(memberName, StringComparison.OrdinalIgnoreCase));
             if (baseMethod != null)
             {
-                var rewrittenBaseArgs = mce.Args.Select(a => RewriteExpression(a, context, program)).ToImmutableArray();
+                // Come i metodi risolti più sotto: contesto per-parametro, non quello esterno.
+                var baseArgs = RewriteArgumentsWithContext(mce.Args, baseMethod.Procedure.Parameters,
+                    baseMethod.Procedure, context, program);
+                if (!baseArgs.HasValue)
+                    throw CreateError(mce.MethodName,
+                        $"Gli argomenti forniti non sono validi per il metodo '{memberName}' della classe base.");
                 return mce with
                 {
-                    ResolvedDefinition = baseMethod.Procedure, Instance = rewrittenInstance, Args = rewrittenBaseArgs
+                    ResolvedDefinition = baseMethod.Procedure, Instance = rewrittenInstance, Args = baseArgs.Value
                 };
             }
         }
@@ -2114,9 +2119,14 @@ public static partial class Linker
             if (aliasMap.TryGetValue(ve.NameCleaned.Lexeme, out nsName) ||
                 program.Namespaces.Contains(ve.NameCleaned.Lexeme))
             {
-                var rewrittenNsArgs = mce.Args.Select(a => RewriteExpression(a, context, program)).ToImmutableArray();
-                return ResolveQualifiedCall(nsName ?? ve.NameCleaned.Lexeme, memberName, rewrittenNsArgs, program,
-                    mce.MethodName);
+                // Gli argomenti vanno riscritti col tipo del PARAMETRO della funzione
+                // risolta, non col contesto esterno della chiamata: dentro
+                // `MATH.ROUND(ZZ.VARIANCE(a, 1), 6)` (ROUND.value è CURRENCY) il letterale
+                // `1` diventava CCUR(1) invece di CLNG(1) — un argomento del tipo sbagliato
+                // per ZZ.VARIANCE (su IL, box Decimal come Int64 → 0). Stessa ragione per
+                // RewriteUnresolvedCall (chiamate risolte durante il link).
+                return ResolveQualifiedCall(nsName ?? ve.NameCleaned.Lexeme, memberName, mce.Args, program,
+                    mce.MethodName, context);
             }
         }
 
@@ -2375,7 +2385,8 @@ public static partial class Linker
     /// Helper per risolvere e riscrivere una chiamata a funzione qualificata (statica).
     /// </summary>
     private static Expr ResolveQualifiedCall(string namespaceName, string functionName,
-        ImmutableArray<Expr> args, BasicProgram program, Token errorToken)
+        ImmutableArray<Expr> args, BasicProgram program, Token errorToken,
+        AstRewriteContext? argContext = null)
     {
         var allProcsInNs = program.GetProceduresForNamespace(namespaceName).ToList();
 
@@ -2390,6 +2401,18 @@ public static partial class Linker
             {
                 var proc = procCandidates[0];
                 var nsToken = new Token(TokenKind.Identifier, namespaceName, null, errorToken.Position);
+
+                // Con argContext gli argomenti arrivano GREZZI: vanno riscritti col tipo del
+                // parametro (ExpectedType) prima di costruire il nodo. Senza, sono già
+                // riscritti dal chiamante (es. array fluent methods con un argomento sintetico).
+                if (argContext is { } ctx)
+                {
+                    var mapped = RewriteArgumentsWithContext(args, proc.Parameters, proc, ctx, program);
+                    if (!mapped.HasValue)
+                        throw CreateError(errorToken,
+                            $"Gli argomenti forniti non sono validi per la funzione '{functionName}' del namespace '{namespaceName}'.");
+                    args = mapped.Value;
+                }
 
                 // Se è una nativa, usa BuiltinFunctionCallExpr
                 if (proc is NativeProcedureDefinition npd)
@@ -3580,7 +3603,13 @@ public static partial class Linker
                 }
                 else
                 {
-                    finalArgsBuilder.Add(RewriteExpression(arg, context, program));
+                    // Il contesto va riportato al TIPO DEL PARAMETRO, non lasciato quello
+                    // dell'espressione che contiene la chiamata: un `F(a, 1)` dentro
+                    // `MATH.ROUND(F(a, 1), 6)` (ROUND.value è CURRENCY) promuoveva il
+                    // letterale `1` a CCUR(1) invece che a CLNG(1) — argomento del tipo
+                    // sbagliato per `F` (su IL: box Decimal come Int64 → 0). Stesso helper
+                    // usato da RewriteArgumentsWithContext per le chiamate già risolte.
+                    finalArgsBuilder.Add(RewriteSingleArgument(arg, param, context, program));
                 }
             }
 
