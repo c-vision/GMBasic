@@ -5287,6 +5287,8 @@ static int ds_uniform_cdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a,
 static int ds_uniform_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3_sf(c, a, n, "gmb_dist_uniform_cdf"); }
 static int ds_beta_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3_sf(c, a, n, "gmb_dist_beta_cdf"); }
 static int ds_chi_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2_sf(c, a, n, "gmb_dist_chi_cdf"); }
+static int ds_logistic_cdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_logistic_cdf"); }
+static int ds_logistic_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3_sf(c, a, n, "gmb_dist_logistic_cdf"); }
 static int ds_exp_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2_sf(c, a, n, "gmb_dist_exp_cdf"); }
 static int ds_student_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2_sf(c, a, n, "gmb_dist_student_t_cdf"); }
 static int ds_chisq_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2_sf(c, a, n, "gmb_dist_chi2_cdf"); }
@@ -5498,6 +5500,8 @@ static const ds_row DS_TBL[] = {
     { GMB_TOK_GeometricPmf, ds_geometric },
     { GMB_TOK_HypergeometricPmf, ds_hypergeom },
     { GMB_TOK_LogisticPdf, ds_logistic_pdf },
+    { GMB_TOK_StatsLogisticCdf, ds_logistic_cdf },
+    { GMB_TOK_StatsLogisticSf, ds_logistic_sf },
     { GMB_TOK_LogisticPpf, ds_logistic_ppf },
     { GMB_TOK_LognormalCdf, ds_lognormal_cdf },
     { GMB_TOK_StatsLognormalSf, ds_lognormal_sf },

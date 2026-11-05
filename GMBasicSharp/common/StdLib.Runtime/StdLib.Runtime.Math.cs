@@ -80,6 +80,8 @@ public static class MathFunctions
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ExponentialPpf(double rate, double p) => CommonLib.Numerics.ExponentialPpf(p, rate);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ExponentialIsf(double rate, double p) => CommonLib.Numerics.ExponentialIsf(p, rate);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double WeibullPpf(double shape, double scale, double p) => CommonLib.Numerics.WeibullPpf(p, shape, scale);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double LogisticCdf(double location, double scale, double x) => CommonLib.Numerics.LogisticCdf(location, scale, x);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double LogisticSf(double location, double scale, double x) => CommonLib.Numerics.LogisticSf(location, scale, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double LogisticPpf(double location, double scale, double p) => CommonLib.Numerics.LogisticPpf(p, location, scale);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double UniformPpf(double min, double max, double p) => CommonLib.Numerics.UniformPpf(p, min, max);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double UniformCdf(double a, double b, double x) => CommonLib.Numerics.UniformCdf(a, b, x);

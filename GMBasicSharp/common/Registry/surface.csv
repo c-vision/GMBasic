@@ -1162,8 +1162,10 @@ procedure,STATS,Ks,KolmogorovSmirnov
 procedure,STATS,Kurtosis,Kurtosis
 procedure,STATS,KurtosisTest,StatsKurtosisTest
 procedure,STATS,LinRegress,StatsLinRegress
+procedure,STATS,LogisticCdf,StatsLogisticCdf
 procedure,STATS,LogisticPdf,LogisticPdf
 procedure,STATS,LogisticPpf,LogisticPpf
+procedure,STATS,LogisticSf,StatsLogisticSf
 procedure,STATS,LognormalCdf,LognormalCdf
 procedure,STATS,LognormalPdf,LognormalPdf
 procedure,STATS,LognormalPpf,LognormalPpf
