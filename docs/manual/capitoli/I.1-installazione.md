@@ -452,6 +452,26 @@ gmbcs run   <file> [--engine il|pcode|native]
 gmbcs eval  "<istruzioni>" [--engine il|pcode]
 gmbcs debug <file> [--break N]… [--step]      # debugger P-Code, comandi su stdin
 
+### Cosa la build copia accanto all'eseguibile
+
+`bin/<Configuration>/<tfm>/` è **autosufficiente**: il `.csproj` copia accanto a `gmbcs`
+
+| cartella/file | origine | perché |
+|---|---|---|
+| `include/*.inc` | `shared/include/` | export BASIC dei moduli di sistema (`IMPORT PKGTOOLS`, `GRAPH`, …): la voce relativa `include` di `compiler.searchFolders` è cercata nella root dell'install (fuori dal checkout = la cartella dell'eseguibile) |
+| `system.settings.json` | `shared/settings/` | posizione di **distribuzione** dei settings (`CommonLib.SettingsLoader`), usata quando il progetto non ha una copia locale |
+
+Senza queste copie `gmbcs` funziona **solo** dentro il checkout (le risolve da
+`{install}/../shared/...`); `CopyToOutputDirectory=PreserveNewest` riallinea le copie a ogni build.
+
+### `IMPORT` non risolto è un errore
+
+Un `IMPORT <Ns>` che non corrisponde a nessun file compilato con `NAMESPACE <Ns>`, a un namespace
+built-in, a `defaultNamespaces`, a un modulo IL esterno (`--il-module`) né alla base
+`{SYSTEM, CONSOLE, CONSTANTS, TRAIN, GMB}` fa fallire la compilazione (rc=1) con
+`modulo non trovato: IMPORT <Ns>` e l'elenco delle cartelle di ricerca. Prima veniva ignorato:
+il programma compilava senza il modulo e falliva molto più tardi (oppure funzionava per caso,
+se il simbolo non veniva mai usato).
 
 ### Parità fra i due engine
 | caso | ramo C | ramo C# |
