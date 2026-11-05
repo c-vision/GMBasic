@@ -906,3 +906,41 @@ double gmb_ts_perm_entropy(const double* x, int n, int m, int lag)
     for (int q = 2; q <= m; q++) npat *= q;
     return log((double)cnt) / log((double)npat);
 }
+
+/* Ornstein-Uhlenbeck fit (gmbstats gs_ou_fit). */
+gmb_val_t gmb_ts_ou_fit_flat(const double* x, int n, double dt)
+{
+    gmb_dict_t d = gmb_dict_new();
+    if (!x || n < 3 || dt <= 0) {
+        gmb_dict_set(&d, "Theta", gmb_make_val_double(NAN));
+        gmb_dict_set(&d, "Mu", gmb_make_val_double(NAN));
+        gmb_dict_set(&d, "Sigma", gmb_make_val_double(NAN));
+        gmb_dict_set(&d, "Phi", gmb_make_val_double(NAN));
+        gmb_dict_set(&d, "HalfLife", gmb_make_val_double(NAN));
+        return gmb_make_val_dict_take(&d);
+    }
+    double mean_x = 0, mean_y = 0, sxx = 0, sxy = 0, sse = 0;
+    int cnt = 0;
+    for (int i = 1; i < n; i++) {
+        double xv = x[i-1], yv = x[i], dx, dy, inv;
+        cnt++; dx = xv - mean_x; dy = yv - mean_y; inv = 1.0 / cnt;
+        mean_x += dx * inv; mean_y += dy * inv;
+        sxx += dx * (xv - mean_x); sxy += dx * (yv - mean_y);
+    }
+    double phi = sxx > 0 ? sxy / sxx : NAN;
+    double alpha = mean_y - phi * mean_x;
+    double logphi = phi > 0 && phi < 1 ? log(phi) : NAN;
+    double omphi = -expm1(logphi);
+    double mu = alpha / omphi;
+    double theta = -logphi / dt;
+    for (int i = 1; i < n; i++) { double r = x[i] - alpha - phi * x[i-1]; sse += r * r; }
+    double vf = -expm1(2 * logphi) / (2 * theta);
+    double iv = sse / cnt;
+    double sigma = sqrt(iv / vf);
+    gmb_dict_set(&d, "Theta", gmb_make_val_double(theta));
+    gmb_dict_set(&d, "Mu", gmb_make_val_double(mu));
+    gmb_dict_set(&d, "Sigma", gmb_make_val_double(sigma));
+    gmb_dict_set(&d, "Phi", gmb_make_val_double(phi));
+    gmb_dict_set(&d, "HalfLife", gmb_make_val_double(log(2.0) / theta));
+    return gmb_make_val_dict_take(&d);
+}

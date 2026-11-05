@@ -2153,6 +2153,7 @@ double* gmb_ts_stationary_bootstrap(const double* x, int n, int window, int seed
 double gmb_ts_sample_entropy(const double* x, int n, int m, double r);
 double gmb_ts_approx_entropy(const double* x, int n, int m, double r);
 double gmb_ts_perm_entropy(const double* x, int n, int m, int lag);
+gmb_val_t gmb_ts_ou_fit_flat(const double* x, int n, double dt);
 gmb_double_t** gmb_ts_covariance_obs(const double* const* obs, int n_obs, int n_vars);
 /* MOUSE getters (MOUSE.BUTTON/WHEEL/DBLCLICK/PRESENT/MIDDLE): stato mouse TUI corrente
  * (0 in headless). Implementati in gmb_tui_clipper.c, condivisi da VM/C,

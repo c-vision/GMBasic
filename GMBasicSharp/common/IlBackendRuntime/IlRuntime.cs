@@ -2151,6 +2151,11 @@ public static partial class IlRuntime
     public static double SampleEntropy(double[] x, long m, double r) => CommonLib.Numerics.SampleEntropy(x, (int)m, r);
     public static double ApproxEntropy(double[] x, long m, double r) => CommonLib.Numerics.ApproxEntropy(x, (int)m, r);
     public static double PermEntropy(double[] x, long m, long lag) => CommonLib.Numerics.PermEntropy(x, (int)m, (int)lag);
+    public static Dictionary<string, object?> TsOuFit(double[] x, double dt)
+    {
+        var (theta, mu, sigma, phi, halfLife) = CommonLib.Numerics.OuFit(x, dt);
+        return new Dictionary<string, object?> { ["Theta"] = theta, ["Mu"] = mu, ["Sigma"] = sigma, ["Phi"] = phi, ["HalfLife"] = halfLife };
+    }
 
     public static Dictionary<string, object?> TsGarch11(double[] r)
     {

@@ -272,6 +272,7 @@ public enum BuiltInFunction : ushort
     TS_SAMPLE_ENTROPY = 1071,
     TS_APPROX_ENTROPY = 1072,
     TS_PERM_ENTROPY = 1073,
+    TS_OU_FIT = 1074,
     SIGNAL_FIRWIN = 1017,
     SIGNAL_FINDPEAKS = 1018,
     SOLVE_IVP = 1019,

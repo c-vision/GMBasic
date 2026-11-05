@@ -1333,6 +1333,7 @@ procedure,TIMESERIES,TSKALMAN1D,TsKalman1D
 procedure,TIMESERIES,TSLOWPASS,TsLowPass
 procedure,TIMESERIES,TSMA,MovingAverage
 procedure,TIMESERIES,TSMINMAX,TimeSeriesMinMax
+procedure,TIMESERIES,TSOUFIT,TsOuFit
 procedure,TIMESERIES,TSOUTLIERS,Outliers
 procedure,TIMESERIES,TSRETURNS,Returns
 procedure,TIMESERIES,TSROLLAUTOCORR,RollingAutocorrelation

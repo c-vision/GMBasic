@@ -35,7 +35,7 @@ static void sd_flat(ctx_t* c, var_t* v) {
 }
 
 enum { SD_TWO_VAL, SD_ONE_VAL, SD_ONE_VAL_MU, SD_FOUR_INT, SD_VAL_MU_SIG,
-       SD_TWO_FLAT, SD_TWO_FLAT_LONG, SD_ONE_FLAT, SD_CHI2CON };
+       SD_TWO_FLAT, SD_TWO_FLAT_LONG, SD_ONE_FLAT, SD_ONE_FLAT_DOUBLE, SD_CHI2CON };
 typedef struct { gmb_tokenkind_t tk; int kind; const char* fn; } sd_row;
 
 static const sd_row SD_TBL[] = {
@@ -56,6 +56,7 @@ static const sd_row SD_TBL[] = {
     { GMB_TOK_StatsKruskal, SD_ONE_VAL, "gmb_kruskal" },
     { GMB_TOK_TsGranger, SD_TWO_FLAT_LONG, "gmb_ts_granger_flat" },
     { GMB_TOK_TsGarch11, SD_ONE_FLAT, "gmb_ts_garch11_flat" },
+    { GMB_TOK_TsOuFit, SD_ONE_FLAT_DOUBLE, "gmb_ts_ou_fit_flat" },
     { GMB_TOK_StatsLinRegress, SD_TWO_FLAT, "gmb_linregress_flat" },
     { GMB_TOK_StatsMannWhitney, SD_TWO_FLAT, "gmb_mannwhitney_flat" },
     { GMB_TOK_StatsWilcoxon, SD_TWO_FLAT, "gmb_wilcoxon_flat" },
@@ -130,6 +131,11 @@ int emit_bf_stats_dict(ctx_t* c, const char* name, const char* ns, gmb_tokenkind
     case SD_ONE_FLAT:
         if (n != 1 || !sd_var(c, a[0], &x)) return 0;
         sb_put(&c->out, row->fn); sb_put(&c->out, "("); sd_flat(c, x); sb_put(&c->out, ")");
+        return 1;
+    case SD_ONE_FLAT_DOUBLE:
+        if (n != 2 || !sd_var(c, a[0], &x)) return 0;
+        sb_put(&c->out, row->fn); sb_put(&c->out, "("); sd_flat(c, x);
+        sb_put(&c->out, ", "); emit_expr(c, a[1]); sb_put(&c->out, ")");
         return 1;
     case SD_CHI2CON:
         if (n != 1 || !a[0] || a[0]->kind != GMB_EXPR_VAR || !a[0]->var) return 0;

@@ -25326,6 +25326,28 @@
     },
     {
       "ns": "TIMESERIES",
+      "name": "TSOUFIT",
+      "fn": true,
+      "return": "ANY",
+      "params": [
+        {
+          "name": "series",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "dt",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "TIMESERIES",
       "name": "TSOUTLIERS",
       "fn": true,
       "return": "long[]",

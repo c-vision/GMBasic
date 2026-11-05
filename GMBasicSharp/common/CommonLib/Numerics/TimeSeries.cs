@@ -943,6 +943,34 @@ public static partial class Numerics
         return Math.Log(patterns.Count) / Math.Log(npat);
     }
 
+    public static (double Theta, double Mu, double Sigma, double Phi, double HalfLife) OuFit(double[] x, double dt)
+    {
+        var n = x.Length;
+        if (n < 3 || dt <= 0) return (double.NaN, double.NaN, double.NaN, double.NaN, double.NaN);
+        double meanX = 0, meanY = 0, sxx = 0, sxy = 0, sse = 0;
+        var cnt = 0;
+        for (var i = 1; i < n; i++)
+        {
+            double xv = x[i - 1], yv = x[i];
+            cnt++;
+            var dx = xv - meanX;
+            var dy = yv - meanY;
+            var inv = 1.0 / cnt;
+            meanX += dx * inv; meanY += dy * inv;
+            sxx += dx * (xv - meanX); sxy += dx * (yv - meanY);
+        }
+        var phi = sxx > 0 ? sxy / sxx : double.NaN;
+        var alpha = meanY - phi * meanX;
+        var logphi = phi > 0 && phi < 1 ? Math.Log(phi) : double.NaN;
+        var omphi = -(Math.Exp(logphi) - 1.0);
+        var mu = alpha / omphi;
+        var theta = -logphi / dt;
+        for (var i = 1; i < n; i++) { var r = x[i] - alpha - phi * x[i - 1]; sse += r * r; }
+        var vf = -(Math.Exp(2 * logphi) - 1.0) / (2 * theta);
+        var sigma = Math.Sqrt(sse / cnt / vf);
+        return (theta, mu, sigma, phi, Math.Log(2.0) / theta);
+    }
+
     public static double[] StationaryBootstrap(double[] x, int window, int seed)
     {
         var n = x.Length;
