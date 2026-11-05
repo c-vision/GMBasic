@@ -602,6 +602,56 @@ public static partial class Numerics
         return (mean, varArr);
     }
 
+    // ── GMM EM 1D (parità gs_gmm_em_1d) ──────────────────────────────────────────────
+
+    public static (double[] Mu, double[] Variance, double[] Weight) GmmEm1D(double[] x, int k, int iters)
+    {
+        var n = x.Length;
+        if (n < 2 || k < 1) return (Array.Empty<double>(), Array.Empty<double>(), Array.Empty<double>());
+        var mu = new double[k];
+        var varArr = new double[k];
+        var w = new double[k];
+        var gam = new double[n * k];
+        int i, j, it;
+        var gmin = x[0];
+        var gmax = x[0];
+        double gmean = 0.0;
+        for (i = 0; i < n; i++) { gmean += x[i]; if (x[i] < gmin) gmin = x[i]; if (x[i] > gmax) gmax = x[i]; }
+        gmean /= n;
+        double gvar = 0.0;
+        for (i = 0; i < n; i++) gvar += (x[i] - gmean) * (x[i] - gmean);
+        gvar /= n;
+        if (gvar <= 0.0) gvar = 1e-6;
+        for (j = 0; j < k; j++) { mu[j] = gmin + (gmax - gmin) * (j + 0.5) / k; varArr[j] = gvar; w[j] = 1.0 / k; }
+        for (it = 0; it < iters; it++)
+        {
+            for (i = 0; i < n; i++)
+            {
+                double tot = 0.0;
+                for (j = 0; j < k; j++)
+                {
+                    var dd = x[i] - mu[j];
+                    var g = w[j] / Math.Sqrt(2.0 * Math.PI * varArr[j]) * Math.Exp(-0.5 * dd * dd / varArr[j]);
+                    gam[i * k + j] = g; tot += g;
+                }
+                if (tot <= 0.0) tot = 1e-300;
+                for (j = 0; j < k; j++) gam[i * k + j] /= tot;
+            }
+            for (j = 0; j < k; j++)
+            {
+                double nk = 0, mk = 0, vk = 0;
+                for (i = 0; i < n; i++) nk += gam[i * k + j];
+                if (nk < 1e-12) { w[j] = 1e-12; continue; }
+                for (i = 0; i < n; i++) mk += gam[i * k + j] * x[i];
+                mk /= nk;
+                for (i = 0; i < n; i++) { var dd = x[i] - mk; vk += gam[i * k + j] * dd * dd; }
+                vk /= nk;
+                mu[j] = mk; varArr[j] = vk > 1e-12 ? vk : 1e-12; w[j] = nk / n;
+            }
+        }
+        return (mu, varArr, w);
+    }
+
     // ── SVM multiclasse (parità gs_svm_multiclass) ──────────────────────────────────
 
     public static (double[] W, int Classes, int Features) SvmFit(double[][] X, double[] y,

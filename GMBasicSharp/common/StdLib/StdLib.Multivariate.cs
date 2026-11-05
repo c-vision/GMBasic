@@ -24,6 +24,11 @@ public sealed partial class StdLib
             new NativeProcedureDefinition(-1, SymbolFlags.IsPublic, T(TokenKind.Pca, "Pca"),
                 [dataArrayParam], new PcaResultType(),
                 TokenKind.Pca),
+            new NativeProcedureDefinition(-1, SymbolFlags.IsPublic, T(TokenKind.MvGmm, "GMMEM1D"),
+                [new Parameter(-1, T(TokenKind.Identifier, "x"), new DoubleType(), arrayFlag, null, false),
+                 new Parameter(-1, T(TokenKind.Identifier, "k"), new LongType(), SymbolFlags.None, null, false),
+                 new Parameter(-1, T(TokenKind.Identifier, "iters"), new LongType(), SymbolFlags.None, null, false)],
+                new GmmResultType(), TokenKind.MvGmm),
             new NativeProcedureDefinition(-1, SymbolFlags.IsPublic, T(TokenKind.MvSvmFit, "SVMFIT"),
                 [new Parameter(-1, T(TokenKind.Identifier, "X"), new DoubleType(), arrayFlag, null, false),
                  new Parameter(-1, T(TokenKind.Identifier, "y"), new DoubleType(), arrayFlag, null, false),
@@ -95,6 +100,7 @@ public sealed partial class StdLib
             { "PcaResult", new PcaResultType() },
             { "GpResult", new GpResultType() },
             { "SvmResult", new SvmResultType() },
+            { "GmmResult", new GmmResultType() },
         };
 
         RegisterBuiltinNamespace(namespaceName, procedures, types);

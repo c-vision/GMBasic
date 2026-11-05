@@ -2229,6 +2229,11 @@ public static partial class IlRuntime
             ["LogLikelihood"] = r.LogLikelihood
         };
     }
+    public static Dictionary<string, object?> GmmEm1D(double[] x, long k, long iters)
+    {
+        var r = CommonLib.Numerics.GmmEm1D(x, (int)k, (int)iters);
+        return new Dictionary<string, object?> { ["Mu"] = r.Mu, ["Variance"] = r.Variance, ["Weight"] = r.Weight };
+    }
     public static Dictionary<string, object?> SvmFit(double[][] X, double[] y, long k, double C, long maxIter)
     {
         var r = CommonLib.Numerics.SvmFit(X, y, (int)k, C, (int)maxIter);

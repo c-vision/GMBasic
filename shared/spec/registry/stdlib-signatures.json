@@ -17921,6 +17921,35 @@
     },
     {
       "ns": "MULTIVARIATE",
+      "name": "GMMEM1D",
+      "fn": true,
+      "return": "GMMRESULT",
+      "params": [
+        {
+          "name": "x",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "k",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "iters",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "MULTIVARIATE",
       "name": "GPRREGRESS",
       "fn": true,
       "return": "GPRESULT",

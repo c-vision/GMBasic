@@ -1151,6 +1151,7 @@ gmb_val_t gmb_mv_gp_regress(const double* x, const double* y, int n, const doubl
 void gmb_mv_svm_fit(const double* X, const double* y, int n, int d, int k, double C, int max_iter, double* W);
 int gmb_mv_svm_predict(const double* W, const double* x, int d, int k);
 gmb_val_t gmb_mv_svm_fit_dict(const double* X, const double* y, int n, int d, int k, double C, int max_iter);
+gmb_val_t gmb_mv_gmm_em_1d(const double* x, int n, int k, int iters);
 double gmb_special_zeta(double s);
 double gmb_special_zeta_hurwitz(double s, double a);
 double gmb_special_polygamma(double n, double x);

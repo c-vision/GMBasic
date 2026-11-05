@@ -933,6 +933,7 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "MULTIVARIATE.GPRREGRESS");
         r.Register(Backend.C99Native, "MULTIVARIATE.SVMFIT");
         r.Register(Backend.C99Native, "MULTIVARIATE.SVMPREDICT");
+        r.Register(Backend.C99Native, "MULTIVARIATE.GMMEM1D");
         r.Register(Backend.C99Native, "SPATIAL.PDIST");
         r.Register(Backend.C99Native, "STATS.PearsonR");
         r.Register(Backend.C99Native, "STATS.KendallTau");

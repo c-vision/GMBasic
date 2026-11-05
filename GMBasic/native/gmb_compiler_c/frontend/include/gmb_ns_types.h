@@ -921,6 +921,7 @@ static const gmb_ns_type_row_t gmb_ns_types[] = {
     { GMB_TOK_MouseMiddle, 0 },
     { GMB_TOK_KMeans, 0 },
     { GMB_TOK_Pca, 0 },
+    { GMB_TOK_MvGmm, 0 },
     { GMB_TOK_MvSvmFit, 0 },
     { GMB_TOK_MvSvmPredict, 0 },
     { GMB_TOK_MvGpr, 0 },

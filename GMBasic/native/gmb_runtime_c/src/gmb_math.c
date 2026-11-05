@@ -3987,3 +3987,56 @@ gmb_val_t gmb_mv_svm_fit_dict(const double* X, const double* y, int n, int d, in
     gmb_dict_set(&dict, "Features", gmb_make_val_double(d));
     return gmb_make_val_dict_take(&dict);
 }
+
+/* --- GMM EM 1D (port di gs_gmm_em_1d) --- */
+gmb_val_t gmb_mv_gmm_em_1d(const double* x, int n, int k, int iters)
+{
+    double *mu, *var, *w, *gam, gmin, gmax, gmean = 0.0, gvar = 0.0;
+    int i, j, it;
+    gmb_dict_t d;
+    gmb_val_t mv, vv, wv;
+    if (!x || n < 2 || k < 1) return gmb_mv_nan_dict();
+    mu = (double*)malloc((size_t)k * sizeof(double));
+    var = (double*)malloc((size_t)k * sizeof(double));
+    w = (double*)malloc((size_t)k * sizeof(double));
+    gam = (double*)malloc((size_t)n * k * sizeof(double));
+    if (!mu || !var || !w || !gam) { free(mu); free(var); free(w); free(gam); return gmb_mv_nan_dict(); }
+    gmin = gmax = x[0];
+    for (i = 0; i < n; i++) { gmean += x[i]; if (x[i] < gmin) gmin = x[i]; if (x[i] > gmax) gmax = x[i]; }
+    gmean /= n;
+    for (i = 0; i < n; i++) gvar += (x[i]-gmean)*(x[i]-gmean);
+    gvar /= n;
+    if (gvar <= 0.0) gvar = 1e-6;
+    for (j = 0; j < k; j++) { mu[j] = gmin + (gmax-gmin)*(j+0.5)/k; var[j] = gvar; w[j] = 1.0/k; }
+    for (it = 0; it < iters; it++) {
+        for (i = 0; i < n; i++) {
+            double tot = 0.0;
+            for (j = 0; j < k; j++) {
+                double dd = x[i]-mu[j];
+                double g = w[j]/sqrt(2.0*3.141592653589793*var[j]) * exp(-0.5*dd*dd/var[j]);
+                gam[i*k+j] = g; tot += g;
+            }
+            if (tot <= 0.0) tot = 1e-300;
+            for (j = 0; j < k; j++) gam[i*k+j] /= tot;
+        }
+        for (j = 0; j < k; j++) {
+            double nk = 0, mk = 0, vk = 0;
+            for (i = 0; i < n; i++) nk += gam[i*k+j];
+            if (nk < 1e-12) { w[j] = 1e-12; continue; }
+            for (i = 0; i < n; i++) mk += gam[i*k+j]*x[i];
+            mk /= nk;
+            for (i = 0; i < n; i++) { double dd = x[i]-mk; vk += gam[i*k+j]*dd*dd; }
+            vk /= nk;
+            mu[j] = mk; var[j] = vk > 1e-12 ? vk : 1e-12; w[j] = nk/n;
+        }
+    }
+    mv = gmb_make_val_list(gmb_list_from_doubles(mu, k));
+    vv = gmb_make_val_list(gmb_list_from_doubles(var, k));
+    wv = gmb_make_val_list(gmb_list_from_doubles(w, k));
+    free(mu); free(var); free(w); free(gam);
+    d = gmb_dict_new();
+    gmb_dict_set(&d, "Mu", mv);
+    gmb_dict_set(&d, "Variance", vv);
+    gmb_dict_set(&d, "Weight", wv);
+    return gmb_make_val_dict_take(&d);
+}

@@ -966,6 +966,7 @@ static const gmb_ns_lookup_row_t gmb_ns_lookup[] = {
     { "MULTIVARIATE", "CopulaClaytonCdf", GMB_TOK_CopulaClaytonCdf },
     { "MULTIVARIATE", "CopulaFrankCdf", GMB_TOK_CopulaFrankCdf },
     { "MULTIVARIATE", "CopulaGumbelCdf", GMB_TOK_CopulaGumbelCdf },
+    { "MULTIVARIATE", "GMMEM1D", GMB_TOK_MvGmm },
     { "MULTIVARIATE", "GPRREGRESS", GMB_TOK_MvGpr },
     { "MULTIVARIATE", "KMeans", GMB_TOK_KMeans },
     { "MULTIVARIATE", "MvGaussPdf", GMB_TOK_MvGaussPdf },

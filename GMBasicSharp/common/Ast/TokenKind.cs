@@ -867,7 +867,7 @@ public enum TokenKind
     Regress,              // Regressione lineare/multipla
     MvGaussPdf, MvStudentPdf, CopulaClaytonCdf, CopulaGumbelCdf, CopulaFrankCdf,
     RmtLambdaPlus, RmtLambdaMinus, RmtCoherence, RmtSpectralNorm, RmtDavisKahan, RmtPrincipalAngle, RmtTightness,
-    MvGpr, MvSvmFit, MvSvmPredict,
+    MvGpr, MvSvmFit, MvSvmPredict, MvGmm,
     KMeans,               // Clustering K-means
     HoltWinters,          // Predizione serie temporali con Holt-Winters
     AdfTest,              // Test di Dickey-Fuller aumentato (stazionarietà)

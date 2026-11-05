@@ -965,7 +965,7 @@ private bool TryInferNativeCollectionIndexType(IndexedAccessExpr expr, out DataT
             or SqlResultSetType or WebSocketType or PortfolioResultType or FetchResultType
             or RebalanceStrategyType or BacktestResultType
             or AnovaResultType or RegressionResultType or PcaResultType or KMeansResultType
-            or ArimaResultType or HoltWintersResultType or AdfTestResultType or HmmResultType or JohansenResultType or GpResultType or SvmResultType)
+            or ArimaResultType or HoltWintersResultType or AdfTestResultType or HmmResultType or JohansenResultType or GpResultType or SvmResultType or GmmResultType)
             return new AnyType();
         // Campo su base con tipo STATICO non-UDF (es. MODES(I).Active con MODES Double
         // assegnato da SCREENS() — test di sintassi GraphicsShowModes): il P-Code lo accetta

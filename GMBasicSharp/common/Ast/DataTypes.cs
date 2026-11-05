@@ -85,6 +85,7 @@ namespace Basic;
 [JsonDerivedType(typeof(JohansenResultType), nameof(JohansenResultType))]
 [JsonDerivedType(typeof(GpResultType), nameof(GpResultType))]
 [JsonDerivedType(typeof(SvmResultType), nameof(SvmResultType))]
+[JsonDerivedType(typeof(GmmResultType), nameof(GmmResultType))]
 [JsonDerivedType(typeof(LuDecompositionType), nameof(LuDecompositionType))]
 [JsonDerivedType(typeof(QrDecompositionType), nameof(QrDecompositionType))]
 [JsonDerivedType(typeof(SvdDecompositionType), nameof(SvdDecompositionType))]
@@ -918,6 +919,16 @@ public record PcaResultType(Token? SourceToken = null)
     /// </summary>
     public override string ToString() => "PCARESULT";
 
+    public override AstNode DeepClone() => this with { };
+}
+
+/// <summary>
+/// Rappresenta il tipo di dato per il risultato di un GMM 1D (EM).
+/// </summary>
+public record GmmResultType(Token? SourceToken = null)
+    : DataType(SourceToken?.Position ?? SourcePosition.Unknown)
+{
+    public override string ToString() => "GMMRESULT";
     public override AstNode DeepClone() => this with { };
 }
 
