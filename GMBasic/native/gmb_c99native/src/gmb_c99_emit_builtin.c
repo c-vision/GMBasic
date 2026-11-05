@@ -6164,6 +6164,63 @@ int emit_bf_fit(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, 
 }
 
 /* ── dominio: SIMULATION (RNG deterministico) ── */
+/* ── dominio: VECTOR (operazioni su handle) ── */
+int emit_bf_vecop(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
+    (void)name; (void)ns; (void)line;
+    if (tk == GMB_TOK_VGet) {
+        if (nargs < 2) return 0;
+        sb_put(&c->out, "({ double _vg = 0; gmb_vector_get((int64_t)("); emit_expr(c, args[0]);
+        sb_put(&c->out, "), (int)("); emit_expr(c, args[1]); sb_put(&c->out, "), &_vg); _vg; })");
+        return 1;
+    }
+    if (tk == GMB_TOK_VAngle) {
+        if (nargs < 2) return 0;
+        sb_put(&c->out, "gmb_vector_angle_h((int64_t)("); emit_expr(c, args[0]);
+        sb_put(&c->out, "), (int64_t)("); emit_expr(c, args[1]); sb_put(&c->out, "))");
+        return 1;
+    }
+    if (tk == GMB_TOK_VDist) {
+        if (nargs < 2) return 0;
+        sb_put(&c->out, "gmb_vector_distance_h((int64_t)("); emit_expr(c, args[0]);
+        sb_put(&c->out, "), (int64_t)("); emit_expr(c, args[1]); sb_put(&c->out, "))");
+        return 1;
+    }
+    if (tk == GMB_TOK_VScale) {
+        if (nargs < 2) return 0;
+        sb_put(&c->out, "(double)gmb_vector_op((int64_t)("); emit_expr(c, args[0]);
+        sb_put(&c->out, "), -1, (double)("); emit_expr(c, args[1]); sb_put(&c->out, "), 0, 4)");
+        return 1;
+    }
+    if (tk == GMB_TOK_VNorm) {
+        if (nargs < 1) return 0;
+        sb_put(&c->out, "(double)gmb_vector_op((int64_t)("); emit_expr(c, args[0]);
+        sb_put(&c->out, "), -1, 0, 0, 5)");
+        return 1;
+    }
+    if (tk == GMB_TOK_VLerp) {
+        if (nargs < 3) return 0;
+        sb_put(&c->out, "(double)gmb_vector_op((int64_t)("); emit_expr(c, args[0]);
+        sb_put(&c->out, "), (int64_t)("); emit_expr(c, args[1]);
+        sb_put(&c->out, "), 0, (double)("); emit_expr(c, args[2]); sb_put(&c->out, "), 6)");
+        return 1;
+    }
+    {
+        int op = -1;
+        if (tk == GMB_TOK_VAdd) op = 0;
+        else if (tk == GMB_TOK_VSub) op = 1;
+        else if (tk == GMB_TOK_VMul) op = 2;
+        else if (tk == GMB_TOK_VDiv) op = 3;
+        else if (tk == GMB_TOK_VCross) op = 7;
+        else if (tk == GMB_TOK_VMin) op = 8;
+        else if (tk == GMB_TOK_VMax) op = 9;
+        if (op < 0) return 0;
+        if (nargs < 2) return 0;
+        sb_put(&c->out, "(double)gmb_vector_op((int64_t)("); emit_expr(c, args[0]);
+        sb_put(&c->out, "), (int64_t)("); emit_expr(c, args[1]);
+        sb_printf(&c->out, "), 0, 0, %d)", op);
+        return 1;
+    }
+}
 int emit_bf_sim(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
     (void)name; (void)ns; (void)line;
     if (tk == GMB_TOK_SimSeed) {

@@ -4957,6 +4957,58 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         {
                 return Basic.IlBackend.IlRuntime.BoostScore(ToDoubleArr(ArgOr(args, 0)), ToJaggedArr(ArgOr(args, 1)), ToDoubleArr(ArgOr(args, 2)));
         },
+        [BuiltInFunction.VECTOR_VGET] = (task, args) =>
+        {
+                return VecGetP(args);
+        },
+        [BuiltInFunction.VECTOR_VADD] = (task, args) =>
+        {
+                return VecOpP(args, 0);
+        },
+        [BuiltInFunction.VECTOR_VSUB] = (task, args) =>
+        {
+                return VecOpP(args, 1);
+        },
+        [BuiltInFunction.VECTOR_VMUL] = (task, args) =>
+        {
+                return VecOpP(args, 2);
+        },
+        [BuiltInFunction.VECTOR_VDIV] = (task, args) =>
+        {
+                return VecOpP(args, 3);
+        },
+        [BuiltInFunction.VECTOR_VSCALE] = (task, args) =>
+        {
+                return VecScaleP(args);
+        },
+        [BuiltInFunction.VECTOR_VNORM] = (task, args) =>
+        {
+                return VecNormP(args);
+        },
+        [BuiltInFunction.VECTOR_VLERP] = (task, args) =>
+        {
+                return VecLerpP(args);
+        },
+        [BuiltInFunction.VECTOR_VCROSS] = (task, args) =>
+        {
+                return VecOpP(args, 7);
+        },
+        [BuiltInFunction.VECTOR_VANGLE] = (task, args) =>
+        {
+                return VecAngleP(args);
+        },
+        [BuiltInFunction.VECTOR_VDIST] = (task, args) =>
+        {
+                return VecDistP(args);
+        },
+        [BuiltInFunction.VECTOR_VMIN] = (task, args) =>
+        {
+                return VecOpP(args, 8);
+        },
+        [BuiltInFunction.VECTOR_VMAX] = (task, args) =>
+        {
+                return VecOpP(args, 9);
+        },
         [BuiltInFunction.SIM_TPE] = (task, args) =>
         {
                 if (args.Length >= 6 && args[0] is ClosureData tf)

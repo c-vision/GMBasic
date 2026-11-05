@@ -1,5 +1,5 @@
 {
-  "total_canonical": 1797,
+  "total_canonical": 1810,
   "scope": "DECLARED by BackendSupport/Registry (name-match; NON misurato su dispatch reali)",
   "declared_per_backend": {
     "IL": 0,
@@ -16512,6 +16512,136 @@
     },
     {
       "id": 1647,
+      "ns": "VECTOR",
+      "name": "VADD",
+      "kind": "VAdd",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 1648,
+      "ns": "VECTOR",
+      "name": "VANGLE",
+      "kind": "VAngle",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 1649,
+      "ns": "VECTOR",
+      "name": "VCROSS",
+      "kind": "VCross",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 1650,
+      "ns": "VECTOR",
+      "name": "VDIST",
+      "kind": "VDist",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 1651,
+      "ns": "VECTOR",
+      "name": "VDIV",
+      "kind": "VDiv",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 1652,
+      "ns": "VECTOR",
+      "name": "VGET",
+      "kind": "VGet",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 1653,
+      "ns": "VECTOR",
+      "name": "VLERP",
+      "kind": "VLerp",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 1654,
+      "ns": "VECTOR",
+      "name": "VMAX",
+      "kind": "VMax",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 1655,
+      "ns": "VECTOR",
+      "name": "VMIN",
+      "kind": "VMin",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 1656,
+      "ns": "VECTOR",
+      "name": "VMUL",
+      "kind": "VMul",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 1657,
+      "ns": "VECTOR",
+      "name": "VNORM",
+      "kind": "VNorm",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 1658,
+      "ns": "VECTOR",
+      "name": "VSCALE",
+      "kind": "VScale",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 1659,
+      "ns": "VECTOR",
+      "name": "VSUB",
+      "kind": "VSub",
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
+    },
+    {
+      "id": 1660,
       "ns": "VECTORDB",
       "name": "AbTest",
       "kind": "VectorDbAbTest",
@@ -16521,7 +16651,7 @@
       "C99Native": false
     },
     {
-      "id": 1648,
+      "id": 1661,
       "ns": "VECTORDB",
       "name": "Baseline",
       "kind": "VectorDbBaseline",
@@ -16531,7 +16661,7 @@
       "C99Native": false
     },
     {
-      "id": 1649,
+      "id": 1662,
       "ns": "VECTORDB",
       "name": "Calibrate",
       "kind": "VectorDbCalibrate",
@@ -16541,7 +16671,7 @@
       "C99Native": false
     },
     {
-      "id": 1650,
+      "id": 1663,
       "ns": "VECTORDB",
       "name": "Compare",
       "kind": "VectorDbCompare",
@@ -16551,7 +16681,7 @@
       "C99Native": false
     },
     {
-      "id": 1651,
+      "id": 1664,
       "ns": "VECTORDB",
       "name": "Completeness",
       "kind": "VectorDbCompleteness",
@@ -16561,7 +16691,7 @@
       "C99Native": false
     },
     {
-      "id": 1652,
+      "id": 1665,
       "ns": "VECTORDB",
       "name": "Count",
       "kind": "AiVectorCountEmbeddings",
@@ -16571,7 +16701,7 @@
       "C99Native": false
     },
     {
-      "id": 1653,
+      "id": 1666,
       "ns": "VECTORDB",
       "name": "Diagnose",
       "kind": "VectorDbDiagnose",
@@ -16581,7 +16711,7 @@
       "C99Native": false
     },
     {
-      "id": 1654,
+      "id": 1667,
       "ns": "VECTORDB",
       "name": "DiagnoseReport",
       "kind": "VectorDbDiagnoseReport",
@@ -16591,7 +16721,7 @@
       "C99Native": false
     },
     {
-      "id": 1655,
+      "id": 1668,
       "ns": "VECTORDB",
       "name": "Drift",
       "kind": "VectorDbDrift",
@@ -16601,7 +16731,7 @@
       "C99Native": false
     },
     {
-      "id": 1656,
+      "id": 1669,
       "ns": "VECTORDB",
       "name": "Embed",
       "kind": "AiVectorEmbed",
@@ -16611,7 +16741,7 @@
       "C99Native": false
     },
     {
-      "id": 1657,
+      "id": 1670,
       "ns": "VECTORDB",
       "name": "EnsureCollection",
       "kind": "AiVectorEnsureCollection",
@@ -16621,7 +16751,7 @@
       "C99Native": false
     },
     {
-      "id": 1658,
+      "id": 1671,
       "ns": "VECTORDB",
       "name": "EvalDiff",
       "kind": "VectorDbEvalDiff",
@@ -16631,7 +16761,7 @@
       "C99Native": false
     },
     {
-      "id": 1659,
+      "id": 1672,
       "ns": "VECTORDB",
       "name": "EvalGate",
       "kind": "VectorDbEvalGate",
@@ -16641,7 +16771,7 @@
       "C99Native": false
     },
     {
-      "id": 1660,
+      "id": 1673,
       "ns": "VECTORDB",
       "name": "Faithfulness",
       "kind": "VectorDbFaithfulness",
@@ -16651,7 +16781,7 @@
       "C99Native": false
     },
     {
-      "id": 1661,
+      "id": 1674,
       "ns": "VECTORDB",
       "name": "GenTest",
       "kind": "AiVectorGenTest",
@@ -16661,7 +16791,7 @@
       "C99Native": false
     },
     {
-      "id": 1662,
+      "id": 1675,
       "ns": "VECTORDB",
       "name": "Hallucination",
       "kind": "VectorDbHallucination",
@@ -16671,7 +16801,7 @@
       "C99Native": false
     },
     {
-      "id": 1663,
+      "id": 1676,
       "ns": "VECTORDB",
       "name": "IndexMeta",
       "kind": "AiVectorIndexMeta",
@@ -16681,7 +16811,7 @@
       "C99Native": false
     },
     {
-      "id": 1664,
+      "id": 1677,
       "ns": "VECTORDB",
       "name": "IndexText",
       "kind": "AiVectorIndexText",
@@ -16691,7 +16821,7 @@
       "C99Native": false
     },
     {
-      "id": 1665,
+      "id": 1678,
       "ns": "VECTORDB",
       "name": "ListCollections",
       "kind": "AiVectorListCollections",
@@ -16701,7 +16831,7 @@
       "C99Native": false
     },
     {
-      "id": 1666,
+      "id": 1679,
       "ns": "VECTORDB",
       "name": "LoadDocuments",
       "kind": "AiVectorLoadDocuments",
@@ -16711,7 +16841,7 @@
       "C99Native": false
     },
     {
-      "id": 1667,
+      "id": 1680,
       "ns": "VECTORDB",
       "name": "Mrr",
       "kind": "VectorDbMrr",
@@ -16721,7 +16851,7 @@
       "C99Native": false
     },
     {
-      "id": 1668,
+      "id": 1681,
       "ns": "VECTORDB",
       "name": "NdcgAt",
       "kind": "VectorDbNdcgAt",
@@ -16731,7 +16861,7 @@
       "C99Native": false
     },
     {
-      "id": 1669,
+      "id": 1682,
       "ns": "VECTORDB",
       "name": "PrecisionAt",
       "kind": "VectorDbPrecisionAt",
@@ -16741,7 +16871,7 @@
       "C99Native": false
     },
     {
-      "id": 1670,
+      "id": 1683,
       "ns": "VECTORDB",
       "name": "PurgeDeprecated",
       "kind": "AiVectorPurgeDeprecated",
@@ -16751,7 +16881,7 @@
       "C99Native": false
     },
     {
-      "id": 1671,
+      "id": 1684,
       "ns": "VECTORDB",
       "name": "RecallAt",
       "kind": "VectorDbRecallAt",
@@ -16761,7 +16891,7 @@
       "C99Native": false
     },
     {
-      "id": 1672,
+      "id": 1685,
       "ns": "VECTORDB",
       "name": "Relevance",
       "kind": "VectorDbRelevance",
@@ -16771,7 +16901,7 @@
       "C99Native": false
     },
     {
-      "id": 1673,
+      "id": 1686,
       "ns": "VECTORDB",
       "name": "RemoveSource",
       "kind": "AiVectorRemoveSource",
@@ -16781,7 +16911,7 @@
       "C99Native": false
     },
     {
-      "id": 1674,
+      "id": 1687,
       "ns": "VECTORDB",
       "name": "Search",
       "kind": "AiVectorSearch",
@@ -16791,7 +16921,7 @@
       "C99Native": false
     },
     {
-      "id": 1675,
+      "id": 1688,
       "ns": "WINDOWS",
       "name": "DESKTOP",
       "kind": "WindowDesktop",
@@ -16801,7 +16931,7 @@
       "C99Native": false
     },
     {
-      "id": 1676,
+      "id": 1689,
       "ns": "WINDOWS",
       "name": "HEIGHT",
       "kind": "WindowHeight",
@@ -16811,7 +16941,7 @@
       "C99Native": false
     },
     {
-      "id": 1677,
+      "id": 1690,
       "ns": "WINDOWS",
       "name": "THEME",
       "kind": "WindowTheme",
@@ -16821,7 +16951,7 @@
       "C99Native": false
     },
     {
-      "id": 1678,
+      "id": 1691,
       "ns": "WINDOWS",
       "name": "WIDTH",
       "kind": "WindowWidth",
@@ -16831,7 +16961,7 @@
       "C99Native": false
     },
     {
-      "id": 1679,
+      "id": 1692,
       "ns": "WINDOWS",
       "name": "WINDOWCLOSED",
       "kind": "Identifier",
@@ -16841,7 +16971,7 @@
       "C99Native": false
     },
     {
-      "id": 1680,
+      "id": 1693,
       "ns": "WINDOWS",
       "name": "X",
       "kind": "WindowX",
@@ -16851,7 +16981,7 @@
       "C99Native": false
     },
     {
-      "id": 1681,
+      "id": 1694,
       "ns": "WINDOWS",
       "name": "Y",
       "kind": "WindowY",

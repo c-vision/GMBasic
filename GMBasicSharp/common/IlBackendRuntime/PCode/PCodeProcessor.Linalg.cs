@@ -244,6 +244,102 @@ internal sealed partial class PCodeProcessor
         return HandleOf(newId);
     }
 
+    private global::MathNet.Numerics.LinearAlgebra.Vector<double>? VecById(object?[] args, int i)
+    {
+        var id = ToLongHandle(args, i);
+        return _linVectors.TryGetValue(id, out var v) ? v : null;
+    }
+
+    private object? VecGetP(object?[] args)
+    {
+        var v = VecById(args, 0);
+        var idx = (int)SafeDouble(args.Length > 1 ? args[1] : null);
+        if (v is null || idx < 0 || idx >= v.Count) return null;
+        return v[idx];
+    }
+
+    private object? VecOpP(object?[] args, int op)
+    {
+        var a = VecById(args, 0); var b = VecById(args, 1);
+        if (a is null || b is null) return null;
+        var r = new double[4];
+        for (var i = 0; i < 4; i++)
+        {
+            var x = a[i]; var y = b[i];
+            r[i] = op switch
+            {
+                0 => x + y, 1 => x - y, 2 => x * y, 3 => y != 0.0 ? x / y : 0.0,
+                8 => x < y ? x : y, 9 => x > y ? x : y, _ => x,
+            };
+        }
+        if (op == 7)
+        {
+            r[0] = a[1] * b[2] - a[2] * b[1];
+            r[1] = a[2] * b[0] - a[0] * b[2];
+            r[2] = a[0] * b[1] - a[1] * b[0];
+            r[3] = 0.0;
+        }
+        var newId = Interlocked.Increment(ref _nextLinearVectorId);
+        _linVectors[newId] = global::MathNet.Numerics.LinearAlgebra.Vector<double>.Build.Dense(r);
+        return HandleOf(newId);
+    }
+
+    private object? VecScaleP(object?[] args)
+    {
+        var a = VecById(args, 0);
+        if (a is null) return null;
+        var s = SafeDouble(args.Length > 1 ? args[1] : null);
+        var r = new double[4];
+        for (var i = 0; i < 4; i++) r[i] = a[i] * s;
+        var newId = Interlocked.Increment(ref _nextLinearVectorId);
+        _linVectors[newId] = global::MathNet.Numerics.LinearAlgebra.Vector<double>.Build.Dense(r);
+        return HandleOf(newId);
+    }
+
+    private object? VecNormP(object?[] args)
+    {
+        var a = VecById(args, 0);
+        if (a is null) return null;
+        var n = a.L2Norm();
+        var r = new double[4];
+        for (var i = 0; i < 4; i++) r[i] = n > 0.0 ? a[i] / n : a[i];
+        var newId = Interlocked.Increment(ref _nextLinearVectorId);
+        _linVectors[newId] = global::MathNet.Numerics.LinearAlgebra.Vector<double>.Build.Dense(r);
+        return HandleOf(newId);
+    }
+
+    private object? VecLerpP(object?[] args)
+    {
+        var a = VecById(args, 0); var b = VecById(args, 1);
+        if (a is null || b is null) return null;
+        var t = SafeDouble(args.Length > 2 ? args[2] : null);
+        var r = new double[4];
+        for (var i = 0; i < 4; i++) r[i] = a[i] + (b[i] - a[i]) * t;
+        var newId = Interlocked.Increment(ref _nextLinearVectorId);
+        _linVectors[newId] = global::MathNet.Numerics.LinearAlgebra.Vector<double>.Build.Dense(r);
+        return HandleOf(newId);
+    }
+
+    private object? VecAngleP(object?[] args)
+    {
+        var a = VecById(args, 0); var b = VecById(args, 1);
+        if (a is null || b is null) return null;
+        var na = a.L2Norm(); var nb = b.L2Norm();
+        if (na <= 0.0 || nb <= 0.0) return null;
+        var c = Math.Abs(a.DotProduct(b)) / (na * nb);
+        if (c > 1.0) c = 1.0;
+        return Math.Acos(c);
+    }
+
+    private object? VecDistP(object?[] args)
+    {
+        var a = VecById(args, 0); var b = VecById(args, 1);
+        if (a is null || b is null) return null;
+        double s = 0;
+        for (var i = 0; i < 4; i++) { var d = a[i] - b[i]; s += d * d; }
+        return Math.Sqrt(s);
+    }
+
     private object? LuVectorCreate(object?[] args)
     {
         var x = ToDouble(args, 0);

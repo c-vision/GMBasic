@@ -1523,6 +1523,66 @@ public static partial class IlRuntime
         return Math.Sqrt(Vector(handle).Sum(value => value * value));
     }
 
+    public static double VGet(long h, long i) => Vector(h)[(int)i];
+    public static double VAngle(long a, long b) => VectorAngleH(a, b);
+    public static double VDist(long a, long b) => VectorDistanceH(a, b);
+    public static long VAdd(long a, long b) => VectorOp(a, b, 0, 0, 0);
+    public static long VSub(long a, long b) => VectorOp(a, b, 0, 0, 1);
+    public static long VMul(long a, long b) => VectorOp(a, b, 0, 0, 2);
+    public static long VDiv(long a, long b) => VectorOp(a, b, 0, 0, 3);
+    public static long VScale(long a, double s) => VectorOp(a, -1, s, 0, 4);
+    public static long VNormV(long a) => VectorOp(a, -1, 0, 0, 5);
+    public static long VLerp(long a, long b, double t) => VectorOp(a, b, 0, t, 6);
+    public static long VCross(long a, long b) => VectorOp(a, b, 0, 0, 7);
+    public static long VMin(long a, long b) => VectorOp(a, b, 0, 0, 8);
+    public static long VMax(long a, long b) => VectorOp(a, b, 0, 0, 9);
+    public static long VectorOp(long ah, long bh, double s, double t, int op)
+    {
+        var a = Vector(ah);
+        var b = bh >= 0 ? Vector(bh) : new double[4];
+        var r = new double[4];
+        for (var i = 0; i < 4; i++)
+        {
+            var x = a[i]; var y = i < b.Length ? b[i] : 0.0;
+            r[i] = op switch
+            {
+                0 => x + y, 1 => x - y, 2 => x * y, 3 => y != 0.0 ? x / y : 0.0,
+                4 => x * s, 6 => x + (y - x) * t, 8 => x < y ? x : y,
+                9 => x > y ? x : y, 10 => Math.Abs(x), _ => x,
+            };
+        }
+        if (op == 5)
+        {
+            var n = Math.Sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2] + a[3] * a[3]);
+            for (var i = 0; i < 4; i++) r[i] = n > 0.0 ? a[i] / n : a[i];
+        }
+        if (op == 7)
+        {
+            r[0] = a[1] * b[2] - a[2] * b[1];
+            r[1] = a[2] * b[0] - a[0] * b[2];
+            r[2] = a[0] * b[1] - a[1] * b[0];
+            r[3] = 0.0;
+        }
+        return StoreVector(r);
+    }
+    public static double VectorAngleH(long ah, long bh)
+    {
+        var a = Vector(ah); var b = Vector(bh);
+        double dot = 0, na = 0, nb = 0;
+        for (var i = 0; i < 4; i++) { dot += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
+        if (na <= 0.0 || nb <= 0.0) return double.NaN;
+        var c = Math.Abs(dot) / Math.Sqrt(na * nb);
+        if (c > 1.0) c = 1.0;
+        return Math.Acos(c);
+    }
+    public static double VectorDistanceH(long ah, long bh)
+    {
+        var a = Vector(ah); var b = Vector(bh);
+        double s = 0;
+        for (var i = 0; i < 4; i++) { var d = a[i] - b[i]; s += d * d; }
+        return Math.Sqrt(s);
+    }
+
     // Metriche di distanza tra vettori (scipy.spatial.distance) — handle → CommonLib
     public static double VectorManhattan(long a, long b) => CommonLib.Numerics.VectorManhattan(Vector(a), Vector(b));
     public static double VectorChebyshev(long a, long b) => CommonLib.Numerics.VectorChebyshev(Vector(a), Vector(b));

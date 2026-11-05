@@ -6089,6 +6089,7 @@ int emit_bf_ts(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, g
 int emit_bf_mv(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_fit(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_sim(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
+int emit_bf_vecop(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_tool(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_encoding(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 
@@ -7682,6 +7683,19 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_SimExponential, emit_bf_sim },
     { NULL, GMB_TOK_SimBernoulli, emit_bf_sim },
     { NULL, GMB_TOK_SimBinomial, emit_bf_sim },
+    { NULL, GMB_TOK_VGet, emit_bf_vecop },
+    { NULL, GMB_TOK_VAdd, emit_bf_vecop },
+    { NULL, GMB_TOK_VSub, emit_bf_vecop },
+    { NULL, GMB_TOK_VMul, emit_bf_vecop },
+    { NULL, GMB_TOK_VDiv, emit_bf_vecop },
+    { NULL, GMB_TOK_VScale, emit_bf_vecop },
+    { NULL, GMB_TOK_VNorm, emit_bf_vecop },
+    { NULL, GMB_TOK_VLerp, emit_bf_vecop },
+    { NULL, GMB_TOK_VCross, emit_bf_vecop },
+    { NULL, GMB_TOK_VAngle, emit_bf_vecop },
+    { NULL, GMB_TOK_VDist, emit_bf_vecop },
+    { NULL, GMB_TOK_VMin, emit_bf_vecop },
+    { NULL, GMB_TOK_VMax, emit_bf_vecop },
     { NULL, GMB_TOK_SimParticle, emit_bf_sim },
     { NULL, GMB_TOK_MvBoostPredict, emit_bf_mv },
     { NULL, GMB_TOK_MvBoostScore, emit_bf_mv },

@@ -33226,6 +33226,292 @@
       ]
     },
     {
+      "ns": "VECTOR",
+      "name": "VADD",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "a",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "b",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "VECTOR",
+      "name": "VANGLE",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "a",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "b",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "VECTOR",
+      "name": "VCROSS",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "a",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "b",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "VECTOR",
+      "name": "VDIST",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "a",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "b",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "VECTOR",
+      "name": "VDIV",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "a",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "b",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "VECTOR",
+      "name": "VGET",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "handle",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "index",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "VECTOR",
+      "name": "VLERP",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "a",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "b",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "t",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "VECTOR",
+      "name": "VMAX",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "a",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "b",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "VECTOR",
+      "name": "VMIN",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "a",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "b",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "VECTOR",
+      "name": "VMUL",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "a",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "b",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "VECTOR",
+      "name": "VNORM",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "handle",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "VECTOR",
+      "name": "VSCALE",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "handle",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "s",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "VECTOR",
+      "name": "VSUB",
+      "fn": true,
+      "return": "long",
+      "params": [
+        {
+          "name": "a",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "b",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
       "ns": "VECTORDB",
       "name": "AbTest",
       "fn": true,
