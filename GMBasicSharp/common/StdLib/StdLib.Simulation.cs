@@ -30,9 +30,20 @@ public sealed partial class StdLib
                 [pParam], new DoubleType(), TokenKind.SimBernoulli),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.SimBinomial, "SIMBINOMIAL"),
                 [nParam, pParam], new DoubleType(), TokenKind.SimBinomial),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.SimParticle, "PARTICLEFILTER"),
+                [new Parameter(-1, T(TokenKind.Identifier, "obs"), new DoubleType(), SymbolFlags.IsArray, null, false),
+                 new Parameter(-1, T(TokenKind.Identifier, "a"), new DoubleType(), noFlags, null, false),
+                 new Parameter(-1, T(TokenKind.Identifier, "q"), new DoubleType(), noFlags, null, false),
+                 new Parameter(-1, T(TokenKind.Identifier, "r"), new DoubleType(), noFlags, null, false),
+                 new Parameter(-1, T(TokenKind.Identifier, "N"), new DoubleType(), noFlags, null, false),
+                 new Parameter(-1, T(TokenKind.Identifier, "seed"), new DoubleType(), noFlags, null, false)],
+                new ParticleResultType(), TokenKind.SimParticle),
         };
 
-        var types = new Dictionary<string, DataType>(StringComparer.OrdinalIgnoreCase);
+        var types = new Dictionary<string, DataType>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "ParticleResult", new ParticleResultType() },
+        };
         RegisterBuiltinNamespace(namespaceName, procedures, types);
     }
 }

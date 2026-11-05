@@ -65,6 +65,12 @@ public sealed partial class StdLib
             { "EigenVectors", new ArrayType(new ArrayType(new DoubleType())) }
         });
 
+        RegisterTypeSchema(typeof(ParticleResultType), new Dictionary<string, DataType>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "Mean", new ArrayType(new DoubleType()) },
+            { "Variance", new ArrayType(new DoubleType()) }
+        });
+
         RegisterTypeSchema(typeof(PolyFitResultType), new Dictionary<string, DataType>(StringComparer.OrdinalIgnoreCase)
         {
             { "Coef", new ArrayType(new DoubleType()) },

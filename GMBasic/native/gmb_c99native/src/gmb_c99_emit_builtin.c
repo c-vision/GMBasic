@@ -6118,6 +6118,17 @@ int emit_bf_sim(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, 
         sb_put(&c->out, "), (double)("); emit_expr(c, args[1]); sb_put(&c->out, "))");
         return 1;
     }
+    if (tk == GMB_TOK_SimParticle) {
+        var_t* ov;
+        if (nargs < 6 || !mv_arr(c, args[0], &ov)) return 0;
+        sb_put(&c->out, "gmb_sim_particle_filter((const double*)"); emit_var_ref(c, ov);
+        sb_put(&c->out, ", (int)("); emit_arr_len_of(c, ov);
+        sb_put(&c->out, ")");
+        for (int i = 1; i < 4; i++) { sb_put(&c->out, ", (double)("); emit_expr(c, args[i]); sb_put(&c->out, ")"); }
+        sb_put(&c->out, ", (int)("); emit_expr(c, args[4]);
+        sb_put(&c->out, "), (double)("); emit_expr(c, args[5]); sb_put(&c->out, "))");
+        return 1;
+    }
     return 0;
 }
 int emit_bf_ts(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {

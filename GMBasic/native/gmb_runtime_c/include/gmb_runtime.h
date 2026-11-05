@@ -1166,6 +1166,7 @@ double gmb_sim_normal(void);
 double gmb_sim_exponential(double rate);
 double gmb_sim_bernoulli(double p);
 double gmb_sim_binomial(double n, double p);
+gmb_val_t gmb_sim_particle_filter(const double* obs, int T, double a, double q, double r, int N, double seed);
 double gmb_special_zeta(double s);
 double gmb_special_zeta_hurwitz(double s, double a);
 double gmb_special_polygamma(double n, double x);

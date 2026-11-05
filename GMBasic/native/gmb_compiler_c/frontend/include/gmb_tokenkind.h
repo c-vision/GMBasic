@@ -2790,9 +2790,10 @@ typedef enum gmb_tokenkind {
     GMB_TOK_SimExponential,
     GMB_TOK_SimBernoulli,
     GMB_TOK_SimBinomial,
+    GMB_TOK_SimParticle,
 } gmb_tokenkind_t;
 
-#define GMB_TOK_COUNT 2767
+#define GMB_TOK_COUNT 2768
 
 /* 2026-09-09 (direttiva 2026-09-08): gmb_tokenkind_name()/gmb_tokenkind_from_name() e la
  * tabella gmb_token_names[] sono state RIMOSSE — dispatch solo per TokenKind; la risoluzione

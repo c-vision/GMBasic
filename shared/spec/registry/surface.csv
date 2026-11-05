@@ -1087,6 +1087,7 @@ procedure,SIGNAL,LFILTER,SignalLfilter
 procedure,SIGNAL,RESAMPLE,SignalResample
 procedure,SIGNAL,SAVGOLFILTER,SignalSavgolFilter
 procedure,SIGNAL,WELCH,SignalWelch
+procedure,SIMULATION,PARTICLEFILTER,SimParticle
 procedure,SIMULATION,SIMBERNOULLI,SimBernoulli
 procedure,SIMULATION,SIMBINOMIAL,SimBinomial
 procedure,SIMULATION,SIMEXP,SimExponential

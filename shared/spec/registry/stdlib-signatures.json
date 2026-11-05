@@ -20135,6 +20135,56 @@
     },
     {
       "ns": "SIMULATION",
+      "name": "PARTICLEFILTER",
+      "fn": true,
+      "return": "PARTICLERESULT",
+      "params": [
+        {
+          "name": "obs",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "a",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "q",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "r",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "N",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "seed",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "SIMULATION",
       "name": "SIMBERNOULLI",
       "fn": true,
       "return": "double",

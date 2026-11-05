@@ -719,6 +719,21 @@ static void gmb_bf_1090(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
                       : func_code == 1091 ? gmb_dist_nc_t_cdf(df, nc, args[0].num)
                       : gmb_dist_nc_t_sf(df, nc, args[0].num);
 }
+static void gmb_bf_3872(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task; (void)func_code;
+        int n = 0;
+        double* obs = gmb_vm_list_to_dbl(&args[0], &n);
+        gmb_val_t r = gmb_sim_particle_filter(obs, n,
+                argc >= 2 ? args[1].num : 1.0,
+                argc >= 3 ? args[2].num : 0.1,
+                argc >= 4 ? args[3].num : 0.1,
+                (int)(argc >= 5 ? args[4].num : 100),
+                argc >= 6 ? args[5].num : 1.0);
+        free(obs);
+        bout->result = 0;
+        gmb_vm_set_dict_result_owned(r, &bout->is_num, &bout->result_ref, &bout->result_ref_bt);
+}
 static void gmb_bf_3866(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         (void)vm; (void)task;
@@ -18184,6 +18199,7 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 3869, gmb_bf_3866 },
     { 3870, gmb_bf_3866 },
     { 3871, gmb_bf_3866 },
+    { 3872, gmb_bf_3872 },
     { 3858, gmb_bf_3858 },
     { 3850, gmb_bf_3849 },
     { 3851, gmb_bf_3849 },

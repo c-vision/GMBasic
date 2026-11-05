@@ -2229,6 +2229,11 @@ public static partial class IlRuntime
             ["LogLikelihood"] = r.LogLikelihood
         };
     }
+    public static Dictionary<string, object?> ParticleFilter(double[] obs, double a, double q, double r, double N, double seed)
+    {
+        var res = CommonLib.Numerics.ParticleFilter(obs, a, q, r, (int)N, seed);
+        return new Dictionary<string, object?> { ["Mean"] = res.Mean, ["Variance"] = res.Variance };
+    }
     public static double SimSeed(double seed) => CommonLib.Numerics.SimSeed(seed);
     public static double SimUniform() => CommonLib.Numerics.SimUniform();
     public static double SimNormal() => CommonLib.Numerics.SimNormal();

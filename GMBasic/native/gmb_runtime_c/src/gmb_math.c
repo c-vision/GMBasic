@@ -4201,3 +4201,60 @@ double gmb_sim_binomial(double n_in, double p)
     for (i = 0; i < n; i++) if (gmb_sim_next_double() < p) c += 1.0;
     return c;
 }
+
+/* --- Particle filter bootstrap (x_t=a*x_{t-1}+N(0,q); y_t=x_t+N(0,r)) --- */
+gmb_val_t gmb_sim_particle_filter(const double* obs, int T, double a, double q, double r,
+                                  int N, double seed)
+{
+    double *part, *w, *cdf, *mean, *var, m, v;
+    gmb_dict_t d;
+    int t, i;
+    gmb_sim_seed((unsigned long long)seed);
+    if (!obs || T < 1 || N < 2) return gmb_mv_nan_dict();
+    part = (double*)malloc((size_t)N * sizeof(double));
+    w = (double*)malloc((size_t)N * sizeof(double));
+    cdf = (double*)malloc((size_t)N * sizeof(double));
+    mean = (double*)malloc((size_t)T * sizeof(double));
+    var = (double*)malloc((size_t)T * sizeof(double));
+    if (!part || !w || !cdf || !mean || !var) {
+        free(part); free(w); free(cdf); free(mean); free(var);
+        return gmb_mv_nan_dict();
+    }
+    for (i = 0; i < N; i++) part[i] = obs[0] + sqrt(r) * gmb_sim_normal();
+    for (t = 0; t < T; t++) {
+        double wsum = 0.0;
+        for (i = 0; i < N; i++) {
+            if (t > 0) part[i] = a * part[i] + sqrt(q) * gmb_sim_normal();
+            { double dd = obs[t] - part[i]; w[i] = exp(-0.5 * dd * dd / r); }
+            wsum += w[i];
+        }
+        if (wsum <= 0.0) wsum = 1e-300;
+        for (i = 0; i < N; i++) w[i] /= wsum;
+        m = 0.0; for (i = 0; i < N; i++) m += w[i] * part[i];
+        v = 0.0; for (i = 0; i < N; i++) { double dd = part[i] - m; v += w[i] * dd * dd; }
+        mean[t] = m; var[t] = v;
+        {
+            double acc = 0.0;
+            for (i = 0; i < N; i++) { acc += w[i]; cdf[i] = acc; }
+            if (acc > 0.0) for (i = 0; i < N; i++) cdf[i] /= acc;
+        }
+        {
+            double* np = (double*)malloc((size_t)N * sizeof(double));
+            if (np) {
+                for (i = 0; i < N; i++) {
+                    double u = gmb_sim_uniform();
+                    int lo = 0, hi = N - 1, mid;
+                    while (lo < hi) { mid = (lo + hi) / 2; if (cdf[mid] < u) lo = mid + 1; else hi = mid; }
+                    np[i] = part[lo];
+                }
+                memcpy(part, np, (size_t)N * sizeof(double));
+                free(np);
+            }
+        }
+    }
+    d = gmb_dict_new();
+    gmb_dict_set(&d, "Mean", gmb_make_val_list(gmb_list_from_doubles(mean, T)));
+    gmb_dict_set(&d, "Variance", gmb_make_val_list(gmb_list_from_doubles(var, T)));
+    free(part); free(w); free(cdf); free(mean); free(var);
+    return gmb_make_val_dict_take(&d);
+}
