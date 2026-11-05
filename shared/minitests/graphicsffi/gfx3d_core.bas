@@ -1,4 +1,4 @@
-' EXPECT: persp= 0 : 0.666666666666667 , 1 ,-1 , 0|look= 0 : 1 , 1 ,-5|aabb= 0 :-1 ,-1 , 0 , 1 , 2 , 2|center= 0 : 0 , 0.5 , 1|raysph= 1 : 4|raypl= 1 : 5|raytri= 1 : 5|reflect= 0 : 0 , 0 , 1|phong= 0 : 0.5 , 0.5 , 0.5|decomp= 1 : 1 , 1 , 1 : 1 : 0|mesh= 1 : 8 : 12 : 0 :-0.5 ,-0.5 ,-0.5 : 0 : 0 , 1 , 2|mfree= 0|raster= 1 : 0|rtri= 0|rget= 0 : 0.285714285714286 , 0.214285714285714 , 0.5|rfree= 0
+' EXPECT: persp= 0 : 0.666666666666667 , 1 ,-1 , 0|look= 0 : 1 , 1 ,-5|aabb= 0 :-1 ,-1 , 0 , 1 , 2 , 2|center= 0 : 0 , 0.5 , 1|raysph= 1 : 4|raypl= 1 : 5|raytri= 1 : 5|reflect= 0 : 0 , 0 , 1|phong= 0 : 0.5 , 0.5 , 0.5|decomp= 1 : 1 , 1 , 1 : 1 : 0|mesh= 1 : 8 : 12 : 0 :-0.5 ,-0.5 ,-0.5 : 0 : 0 , 1 , 2|mfree= 0|raster= 1 : 0|rtri= 0|rget= 0 : 0.285714285714286 , 0.214285714285714 , 0.5|rfree= 0|surf= 1 : 4 : 2|sfree= 0|dda= 1 : 2 , 0 , 0 , 1.5
 ' FFI gmbgraphics: GFX3D — geometria, raggi/intersezioni, mesh, raster software.
 ' Solo calcolo: nessun display, parità 4 backend.
 IMPORT GFX3D
@@ -85,4 +85,15 @@ SUB Main()
   r0 = col3(0) : r1 = col3(1) : r2 = col3(2)
   PRINT r0; ","; r1; ","; r2
   PRINT "rfree="; GFX3D.RASTERFREE(rh)
+  DIM zs(3) AS DOUBLE, hit(5) AS DOUBLE
+  zs(0) = 0 : zs(1) = 1 : zs(2) = 1 : zs(3) = 2
+  DIM sh AS LONG
+  sh = GFX3D.MESHSURFACE(zs(), 2, 2, 1, 1, 1)
+  PRINT "surf="; sh; ":"; GFX3D.MESHNV(sh); ":"; GFX3D.MESHNT(sh)
+  PRINT "sfree="; GFX3D.MESHFREE(sh)
+
+  DIM gmap(15) AS DOUBLE
+  gmap(2) = 1 : gmap(6) = 1 : gmap(10) = 1 : gmap(14) = 1
+  PRINT "dda="; GFX3D.RAYCASTDDA(gmap(), 4, 4, 0.5, 0.5, 1, 0, hit); ":";
+  PRINT hit(1); ","; hit(2); ","; hit(3); ","; hit(4)
 END SUB

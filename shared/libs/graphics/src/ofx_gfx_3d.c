@@ -396,3 +396,31 @@ int ofx_gfx_raster_clip_near(const double* tri, double znear, double* out)
     if (!tri || !out) return -1;
     return gm_raster_clip_near(tri, znear, out);
 }
+
+/* ── superficie: mesh da campo di altezza + raycast DDA (gfx3d.inc) ──────── */
+
+#include "gm_gfx_surface.h"
+
+int ofx_gfx_mesh_surface(const double* z, int nx, int ny, double sx, double sy, double zscale)
+{
+    if (!z || nx < 2 || ny < 2) return 0;
+    gm_mesh m = { 0, NULL, 0, NULL };
+    if (gm_mesh_surface(z, nx, ny, sx, sy, zscale, &m) != 0) return 0;
+    return mesh_store(m);
+}
+
+/* Raycasting su griglia: max 256 passi (fisso). hit() = [hit,map_x,map_y,side,perp_dist,wall_x]. */
+int ofx_gfx_raycast_dda(const double* grid, int rows, int cols, double px, double py,
+                        double dx, double dy, double* out)
+{
+    if (!grid || !out || rows <= 0 || cols <= 0) return -1;
+    int* g = (int*)malloc(sizeof(int) * (size_t)rows * (size_t)cols);
+    if (!g) return -1;
+    for (int i = 0; i < rows * cols; i++) g[i] = (grid[i] != 0.0) ? 1 : 0;
+    gm_raycast_hit h;
+    int rc = gm_raycast_dda(g, rows, cols, px, py, dx, dy, 256, &h);
+    free(g);
+    out[0] = h.hit; out[1] = h.map_x; out[2] = h.map_y;
+    out[3] = h.side; out[4] = h.perp_dist; out[5] = h.wall_x;
+    return rc;
+}

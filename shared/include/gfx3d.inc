@@ -77,3 +77,9 @@ DECLARE FUNCTION RASTERCLEAR LIB "gmbgraphics" ALIAS "ofx_gfx_raster_clear" (h A
 DECLARE FUNCTION RASTERGET LIB "gmbgraphics" ALIAS "ofx_gfx_raster_get" (h AS LONG, x AS LONG, y AS LONG, out() AS DOUBLE) AS LONG
 DECLARE FUNCTION RASTERTRI LIB "gmbgraphics" ALIAS "ofx_gfx_raster_tri" (h AS LONG, p() AS DOUBLE, c() AS DOUBLE) AS LONG
 DECLARE FUNCTION RASTERCLIPNEAR LIB "gmbgraphics" ALIAS "ofx_gfx_raster_clip_near" (tri() AS DOUBLE, znear AS DOUBLE, out() AS DOUBLE) AS LONG
+
+' ── superfici e raycasting su griglia ─────────────────────────────────────
+' Mesh da campo di altezza z(nx*ny) su [0,sx]x[0,sy], altezza z*zscale (handle).
+DECLARE FUNCTION MESHSURFACE LIB "gmbgraphics" ALIAS "ofx_gfx_mesh_surface" (z() AS DOUBLE, nx AS LONG, ny AS LONG, sx AS DOUBLE, sy AS DOUBLE, zscale AS DOUBLE) AS LONG
+' DDA su griglia rows*cols (grid() piatto, !=0 solido). hit() = [hit,map_x,map_y,side,perp_dist,wall_x].
+DECLARE FUNCTION RAYCASTDDA LIB "gmbgraphics" ALIAS "ofx_gfx_raycast_dda" (grid() AS DOUBLE, rows AS LONG, cols AS LONG, px AS DOUBLE, py AS DOUBLE, dx AS DOUBLE, dy AS DOUBLE, hit() AS DOUBLE) AS LONG

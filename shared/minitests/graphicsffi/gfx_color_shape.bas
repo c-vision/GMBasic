@@ -1,4 +1,4 @@
-' EXPECT: rgb2hsv= 0 : 209.882352941176 , 1 , 1|hsv2rgb= 0 : 0 , 128 , 255|mix= 0 : 128 , 128 , 128|light= 0 : 72 , 72 , 255|dark= 0 : 136 , 136 , 136|poly_in= 1  poly_out= 0|circ= 1  rect= 1  tri= 1|area= 100  cent= 0 : 5 , 5|closest= 0 : 5 , 0
+' EXPECT: rgb2hsv= 0 : 209.882352941176 , 1 , 1|hsv2rgb= 0 : 0 , 128 , 255|mix= 0 : 128 , 128 , 128|light= 0 : 72 , 72 , 255|dark= 0 : 136 , 136 , 136|cmap= 0 : 128 , 255 , 128|poly_in= 1  poly_out= 0|circ= 1  rect= 1  tri= 1|area= 100  cent= 0 : 5 , 5|closest= 0 : 5 , 0
 ' FFI gmbgraphics: GFXCOLOR (conversioni/mix/HSL) e GFXSHAPE (hit-test/area/centroide).
 ' Solo calcolo: nessun display, parità 4 backend.
 IMPORT GFXCOLOR
@@ -20,6 +20,9 @@ SUB Main()
   PRINT o(0); ","; o(1); ","; o(2)
 
   PRINT "dark="; GFXCOLOR.DARKEN(200, 200, 200, 0.25, o); ":";
+  PRINT o(0); ","; o(1); ","; o(2)
+
+  PRINT "cmap="; GFXCOLOR.COLORMAP(0.5, o); ":";
   PRINT o(0); ","; o(1); ","; o(2)
 
   DIM p(7)
