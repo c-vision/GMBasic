@@ -941,6 +941,7 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "MULTIVARIATE.RMTDAVISKAHAN");
         r.Register(Backend.IL, "MULTIVARIATE.RMTPRINCIPALANGLE");
         r.Register(Backend.IL, "MULTIVARIATE.RMTTIGHTNESS");
+        r.Register(Backend.IL, "MULTIVARIATE.GPRREGRESS");
         r.Register(Backend.IL, "SPATIAL.PDIST");
         r.Register(Backend.IL, "STATS.PearsonR");
         r.Register(Backend.IL, "STATS.KendallTau");

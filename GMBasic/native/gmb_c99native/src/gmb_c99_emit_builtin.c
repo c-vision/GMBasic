@@ -5931,6 +5931,18 @@ static int mv_copula3(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
     sb_put(&c->out, "), (double)("); emit_expr(c, a[2]); sb_put(&c->out, "))");
     return 1;
 }
+static int mv_gp(ctx_t* c, gmb_expr_t** a, int n) {
+    var_t *x, *y, *xs;
+    if (n < 5 || !mv_arr(c, a[0], &x) || !mv_arr(c, a[1], &y) || !mv_arr(c, a[2], &xs)) return 0;
+    sb_put(&c->out, "gmb_mv_gp_regress((const double*)"); emit_var_ref(c, x);
+    sb_put(&c->out, ", (const double*)"); emit_var_ref(c, y);
+    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, x);
+    sb_put(&c->out, "), (const double*)"); emit_var_ref(c, xs);
+    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, xs);
+    sb_put(&c->out, "), (double)("); emit_expr(c, a[3]);
+    sb_put(&c->out, "), (double)("); emit_expr(c, a[4]); sb_put(&c->out, "))");
+    return 1;
+}
 static int mv_scalar3(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
     if (n < 3) return 0;
     sb_put(&c->out, fn); sb_put(&c->out, "((int)("); emit_expr(c, a[0]);
@@ -5980,6 +5992,7 @@ int emit_bf_mv(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, g
     if (tk == GMB_TOK_RmtDavisKahan) return mv_two_scalar(c, args, nargs, "gmb_mv_rmt_davis_kahan");
     if (tk == GMB_TOK_RmtPrincipalAngle) return mv_principal_angle(c, args, nargs);
     if (tk == GMB_TOK_RmtTightness) return mv_two_scalar(c, args, nargs, "gmb_mv_rmt_tightness");
+    if (tk == GMB_TOK_MvGpr) return mv_gp(c, args, nargs);
     return 0;
 }
 int emit_bf_ts(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {

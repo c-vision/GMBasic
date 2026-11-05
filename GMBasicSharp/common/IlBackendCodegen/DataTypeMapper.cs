@@ -215,7 +215,7 @@ public static class DataTypeMapper
         CookieJarType => typeof(CommonLib.Http.CookieJar),
         // Tipi risultato ANALYSIS (Anova/Regress/Pca/KMeans/Arima/HoltWinters → dict campi)
         AnovaResultType or RegressionResultType or PcaResultType or KMeansResultType
-            or ArimaResultType or HoltWintersResultType or AdfTestResultType or HmmResultType or JohansenResultType => typeof(Dictionary<string, object>),
+            or ArimaResultType or HoltWintersResultType or AdfTestResultType or HmmResultType or JohansenResultType or GpResultType => typeof(Dictionary<string, object>),
         PortfolioResultType or RebalanceStrategyType or BacktestResultType or PortfolioConstraintsType or GaParametersType => typeof(Dictionary<string, object>),
         _ => throw new NotSupportedIlDataTypeException(dataType)
     };

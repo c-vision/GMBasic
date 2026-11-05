@@ -3846,3 +3846,90 @@ double gmb_mv_rmt_tightness(double observed, double bound)
     if (bound <= 0.0) return 0.0;
     return fabs(observed) / bound;
 }
+
+/* --- Gaussian Process regression (MULTIVARIATE), port di gs_gp_regression --- */
+static int gmb_mv_solve(int n, double* A, double* b, double* x)
+{
+    int i, j, k, piv;
+    for (i = 0; i < n; i++) {
+        piv = i;
+        for (j = i + 1; j < n; j++) if (fabs(A[j*n+i]) > fabs(A[piv*n+i])) piv = j;
+        if (fabs(A[piv*n+i]) < 1e-300) return 0;
+        if (piv != i) {
+            for (k = 0; k < n; k++) { double t = A[i*n+k]; A[i*n+k] = A[piv*n+k]; A[piv*n+k] = t; }
+            { double t = b[i]; b[i] = b[piv]; b[piv] = t; }
+        }
+        for (j = i + 1; j < n; j++) {
+            double f = A[j*n+i] / A[i*n+i];
+            for (k = i; k < n; k++) A[j*n+k] -= f * A[i*n+k];
+            b[j] -= f * b[i];
+        }
+    }
+    for (i = n - 1; i >= 0; i--) {
+        double s = b[i];
+        for (j = i + 1; j < n; j++) s -= A[i*n+j] * x[j];
+        x[i] = s / A[i*n+i];
+    }
+    return 1;
+}
+static gmb_val_t gmb_mv_nan_dict(void)
+{
+    gmb_dict_t d = gmb_dict_new();
+    gmb_dict_set(&d, "Mean", gmb_make_val_double(NAN));
+    gmb_dict_set(&d, "Variance", gmb_make_val_double(NAN));
+    return gmb_make_val_dict_take(&d);
+}
+gmb_val_t gmb_mv_gp_regress(const double* x, const double* y, int n,
+                            const double* xs, int m, double l2, double noise)
+{
+    double *K, *alpha, *kx, *v, *A, *sol;
+    double* mean;
+    double* var;
+    gmb_dict_t d;
+    int i, j, q;
+    gmb_val_t meanv, varv;
+    if (!x || !y || !xs || n < 1 || m < 1 || l2 <= 0.0) return gmb_mv_nan_dict();
+    K = (double*)malloc((size_t)n * n * sizeof(double));
+    alpha = (double*)malloc((size_t)n * sizeof(double));
+    kx = (double*)malloc((size_t)n * sizeof(double));
+    v = (double*)malloc((size_t)n * sizeof(double));
+    A = (double*)malloc((size_t)n * n * sizeof(double));
+    sol = (double*)malloc((size_t)n * sizeof(double));
+    mean = (double*)malloc((size_t)m * sizeof(double));
+    var = (double*)malloc((size_t)m * sizeof(double));
+    if (!K || !alpha || !kx || !v || !A || !sol || !mean || !var) {
+        free(K); free(alpha); free(kx); free(v); free(A); free(sol); free(mean); free(var);
+        return gmb_mv_nan_dict();
+    }
+    for (i = 0; i < n; i++)
+        for (j = 0; j < n; j++) {
+            double dd = x[i] - x[j];
+            K[i*n+j] = exp(-0.5 * dd * dd / l2) + (i == j ? noise : 0.0);
+        }
+    for (i = 0; i < n; i++) alpha[i] = y[i];
+    memcpy(A, K, (size_t)n * n * sizeof(double));
+    if (!gmb_mv_solve(n, A, alpha, v)) {
+        free(K); free(alpha); free(kx); free(v); free(A); free(mean); free(var);
+        return gmb_mv_nan_dict();
+    }
+    /* alpha ora e' la soluzione in v; ricopiamola in alpha */
+    memcpy(alpha, v, (size_t)n * sizeof(double));
+    for (q = 0; q < m; q++) {
+        double mu = 0.0, kv;
+        for (i = 0; i < n; i++) { double dd = xs[q] - x[i]; kx[i] = exp(-0.5 * dd * dd / l2); mu += kx[i] * alpha[i]; }
+        for (i = 0; i < n; i++) v[i] = kx[i];
+        memcpy(A, K, (size_t)n * n * sizeof(double));
+        if (!gmb_mv_solve(n, A, v, sol)) { mean[q] = mu; var[q] = noise; continue; }
+        kv = 1.0 + noise;
+        for (i = 0; i < n; i++) kv -= kx[i] * sol[i];
+        mean[q] = mu;
+        var[q] = kv > 0.0 ? kv : 0.0;
+    }
+    meanv = gmb_make_val_list(gmb_list_from_doubles(mean, m));
+    varv = gmb_make_val_list(gmb_list_from_doubles(var, m));
+    d = gmb_dict_new();
+    gmb_dict_set(&d, "Mean", meanv);
+    gmb_dict_set(&d, "Variance", varv);
+    free(K); free(alpha); free(kx); free(v); free(A); free(sol); free(mean); free(var);
+    return gmb_make_val_dict_take(&d);
+}

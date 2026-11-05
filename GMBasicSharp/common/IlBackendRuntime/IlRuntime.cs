@@ -2229,6 +2229,11 @@ public static partial class IlRuntime
             ["LogLikelihood"] = r.LogLikelihood
         };
     }
+    public static Dictionary<string, object?> GpRegress(double[] x, double[] y, double[] xs, double l2, double noise)
+    {
+        var r = CommonLib.Numerics.GpRegress(x, y, xs, l2, noise);
+        return new Dictionary<string, object?> { ["Mean"] = r.Mean, ["Variance"] = r.Variance };
+    }
     public static double RmtLambdaPlus(double n, double T, double sigma2) => CommonLib.Numerics.RmtLambdaPlus((int)n, (int)T, sigma2);
     public static double RmtLambdaMinus(double n, double T, double sigma2) => CommonLib.Numerics.RmtLambdaMinus((int)n, (int)T, sigma2);
     public static double RmtCoherence(double[] v) => CommonLib.Numerics.RmtCoherence(v);

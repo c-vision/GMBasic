@@ -4913,6 +4913,10 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         {
                 return Basic.IlBackend.IlRuntime.TsGarch11(ToDoubleArr(ArgOr(args, 0)));
         },
+        [BuiltInFunction.MULTIVARIATE_MVGPR] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.GpRegress(ToDoubleArr(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1)), ToDoubleArr(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4)));
+        },
         [BuiltInFunction.MULTIVARIATE_RMTLAMBDAPLUS] = (task, args) =>
         {
                 return Basic.IlBackend.IlRuntime.RmtLambdaPlus(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));

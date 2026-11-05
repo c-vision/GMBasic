@@ -558,6 +558,50 @@ public static partial class Numerics
     }
 
 
+    // ── Gaussian Process regression (parità gs_gp_regression) ──────────────────────
+
+    public static (double[] Mean, double[] Variance) GpRegress(double[] x, double[] y, double[] xs,
+        double l2, double noise)
+    {
+        var n = x.Length;
+        var m = xs.Length;
+        if (n < 1 || m < 1 || l2 <= 0.0 || y.Length < n)
+            return (new[] { double.NaN }, new[] { double.NaN });
+        var K = new double[n * n];
+        var alpha = new double[n];
+        var kx = new double[n];
+        var v = new double[n];
+        var sol = new double[n];
+        var A = new double[n * n];
+        var mean = new double[m];
+        var varArr = new double[m];
+        int i, j, q;
+        for (i = 0; i < n; i++)
+            for (j = 0; j < n; j++)
+            {
+                var dd = x[i] - x[j];
+                K[i * n + j] = Math.Exp(-0.5 * dd * dd / l2) + (i == j ? noise : 0.0);
+            }
+        for (i = 0; i < n; i++) alpha[i] = y[i];
+        Array.Copy(K, A, n * n);
+        if (!InferSolve(n, A, alpha, v))
+            return (new[] { double.NaN }, new[] { double.NaN });
+        Array.Copy(v, alpha, n);
+        for (q = 0; q < m; q++)
+        {
+            double mu = 0.0, kv;
+            for (i = 0; i < n; i++) { var dd = xs[q] - x[i]; kx[i] = Math.Exp(-0.5 * dd * dd / l2); mu += kx[i] * alpha[i]; }
+            for (i = 0; i < n; i++) v[i] = kx[i];
+            Array.Copy(K, A, n * n);
+            if (!InferSolve(n, A, v, sol)) { mean[q] = mu; varArr[q] = noise; continue; }
+            kv = 1.0 + noise;
+            for (i = 0; i < n; i++) kv -= kx[i] * sol[i];
+            mean[q] = mu;
+            varArr[q] = kv > 0.0 ? kv : 0.0;
+        }
+        return (mean, varArr);
+    }
+
     // ── Random Matrix Theory (parità gs_spectral.c) ─────────────────────────────────
 
     private static void RmtJacobi(int n, double[] A, double[] eval, double[] evec)
