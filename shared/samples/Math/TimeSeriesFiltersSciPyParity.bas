@@ -1,6 +1,6 @@
 ' Wrapper TIMESERIES sui filtri SIGNAL: design Butterworth + applicazione in un colpo.
 ' Oracoli: SciPy 1.18 (lfilter di butter(2, wn) su impulso).
-IMPORT TIMESERIES
+IMPORT TIMESERIESX
 
 SUB Main()
   DIM x(9) AS DOUBLE = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0}

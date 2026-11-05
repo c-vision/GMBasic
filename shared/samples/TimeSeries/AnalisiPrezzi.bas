@@ -6,7 +6,7 @@
 ' per capire direzione e persistenza del movimento. Il report è deterministico.
 '
 ' Domini: TIMESERIES + MATH + base.
-IMPORT TIMESERIES
+IMPORT TIMESERIESX
 
 SUB Main()
     ' 24 prezzi giornalieri: trend crescente con oscillazione regolare.

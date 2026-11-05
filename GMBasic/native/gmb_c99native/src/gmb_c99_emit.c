@@ -1389,7 +1389,10 @@ static int future_index(ctx_t* c, const char* var) {
  * Statements.cs DIM-array-init). Ritorna: 0 = no; 1 = 1D flat con out-len
  * (SIGNAL.CONVOLVE/CORRELATE/HANN/HAMMING/BLACKMAN + ARRAYS.AMAP/AFILTER/
  * AREVERSE/ACLONE/AUNIQUE); 2 = matrice n×2 (NUMERICAL.Fft/IFFT). */
-static int dim_arr_init_kind(const gmb_expr_t* e) {
+static int user_fn_ret_arr(ctx_t* c, const char* name, int nargs);
+static int user_fn_exists(ctx_t* c, const char* name, int nargs);
+
+static int dim_arr_init_kind(ctx_t* c, const gmb_expr_t* e) {
     /* comprehension letterale LISTA `[sel FOR var IN src ...]` (ctype 0, senza annotazione
      * di tipo esplicita — dict/set hanno gia' AS DICT/HASHSET OF... che li instrada al
      * ramo GK_DICT/GK_SET generico altrove): array nativo dinamico, stesso trattamento di
@@ -1397,6 +1400,12 @@ static int dim_arr_init_kind(const gmb_expr_t* e) {
      * C99Native-Comprehension-DictParam-ChiaviNumeriche (AiWiki). */
     if (e && e->kind == GMB_EXPR_COMPREHENSION && e->comp_ctype == 0) return 1;
     if (!e || e->kind != GMB_EXPR_CALL || !e->var) return 0;
+    /* Una FUNCTION UTENTE (anche un wrapper .inc in un namespace) che ritorna
+     * AS ARRAY OF … è sempre un array 1-D con out-len (ABI void + __out), MAI una
+     * matrice builtin: il nome può coincidere con un TokenKind storico (es.
+     * TSROLLMINMAX) ma il token non deve più dettare la forma del risultato. */
+    if (user_fn_exists(c, e->var, e->nargs))
+        return user_fn_ret_arr(c, e->var, e->nargs) ? 1 : 0;
     /* kind per DispatchToken (chiave canonica — mai lexeme): 1 = array 1-D con out-len,
      * 2 = matrice n×2 (FFT/IFFT). Solo i token qui elencati sono gestiti in emit_dim_arr_init. */
     static const struct { gmb_tokenkind_t tk; int kind; int minargs; } k[] = {
@@ -3821,7 +3830,7 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
             }
             if (s->array_size) { v->is_array = 1; v->ndims = 1 + s->n_dim_extra; }
             else {
-                int arik = dim_arr_init_kind(s->dim_init);
+                int arik = dim_arr_init_kind(c, s->dim_init);
                 if (arik) {
                     if (is_nested_array_literal(s->dim_init)) {
                         /* DIM nested = {{...}} → gmb_list_t di sotto-liste (parity IL:
@@ -3993,6 +4002,7 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
              * tale QUI (l'assegnazione in corpo emette x = calloc... + x_len/x_n; senza, 'x' restava
              * scalare → x_len/x_n undeclared). */
                 if (s->dim_init && s->dim_init->kind == GMB_EXPR_CALL
+                && !(s->dim_init->var && user_fn_ret_arr(c, s->dim_init->var, s->dim_init->nargs))
                 && (s->dim_init->tk == GMB_TOK_Decompose || s->dim_init->tk == GMB_TOK_RollingRegression
                     || s->dim_init->tk == GMB_TOK_RollingRegressionSingle || s->dim_init->tk == GMB_TOK_RollingMinMax
                     || s->dim_init->tk == GMB_TOK_TimeSeriesCovarianceMatrix)) {
@@ -5063,6 +5073,17 @@ static fn_info_t* find_fn(ctx_t* c, const char* name) {
  * es. PrintMessage globale vs MATHUTILS.PrintMessage). Seconda passata senza il
  * vincolo di namespace (fallback: comportamento per-nome). Ritorna NULL se nessun
  * omonimo accetta nargs (il chiamante emette l'errore forte). */
+static fn_info_t* find_fn_arity(ctx_t* c, const char* name, int nargs, const char* ns);
+
+/* 1 se esiste una FUNCTION/SUB utente con questo nome (e arità) — anche con ritorno
+ * SCALARE: serve a non instradare i nomi migrati a FFI sui rami builtin-per-TokenKind. */
+static int user_fn_exists(ctx_t* c, const char* name, int nargs) {
+    if (!c || !name || !name[0]) return 0;
+    const char* dot = strrchr(name, '.');
+    if (dot && dot[1]) name = dot + 1;
+    return find_fn_arity(c, name, nargs, NULL) != NULL;
+}
+
 static fn_info_t* find_fn_arity(ctx_t* c, const char* name, int nargs, const char* ns) {
     const char* want = ns ? ns : "";
     fn_info_t* enc = NULL;   /* exact arity + ns match */
@@ -10838,6 +10859,16 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
      * PROTOBUF.PARSE -> gmb_json_parse). Azzera tk → si prosegue al percorso user-fn
      * (find_fn_arity sotto), saltando i rami builtin-per-tk. */
     if (ns && ns[0] && find_fn_arity(c, name, nargs, ns)) tk = GMB_TOK_Unknown;
+    /* Stesso principio per le chiamate QUALIFICATE arrivate con nome dottato e ns vuoto
+     * (`TIMESERIESX.TSOUTLIERS`): una funzione UTENTE/FFI con quel nome (e arità) vince
+     * sempre sul TokenKind storico del lexer. Senza, i nomi migrati a FFI (TSOUTLIERS,
+     * TSROLLMINMAX, ...) venivano emessi come builtin per `tk` anche se il simbolo del
+     * namespace è la funzione .inc. */
+    if (name && name[0]) {
+        const char* ndot = strrchr(name, '.');
+        const char* bare = ndot ? ndot + 1 : name;
+        if (find_fn_arity(c, bare, nargs, NULL)) tk = GMB_TOK_Unknown;
+    }
     /* DIRECTCAST(expr, Tipo): il frontend lo lascia come call untyped; estrae il puntatore
      * grezzo da un val OBJECT (ANY) → target STRINGBUILDER (gmb_stringbuilder_t*). */
     if (tk == GMB_TOK_DirectCast && nargs >= 1) {
@@ -18992,7 +19023,7 @@ static void emit_dict_literal(ctx_t* c, gmb_expr_t* e) {
             }
             return;
         }
-        if (!s->array_size && (dim_arr_init_kind(s->dim_init)
+        if (!s->array_size && (dim_arr_init_kind(c, s->dim_init)
             /* FUNZIONE utente che ritorna AS ARRAY OF … (2026-11-03): array dinamico con
              * puntatore+lunghezza dal canale thread-local (emit_dim_arr_init). */
             || (s->dim_init && s->dim_init->kind == GMB_EXPR_CALL && s->dim_init->var

@@ -70,3 +70,302 @@ PUBLIC SUB JOHANSEN(Y() AS ARRAY OF DOUBLE, lags AS LONG, out() AS DOUBLE)
     NEXT i
     CALL TXF_JOHANSEN(flat, nvars, periods, lags, out)
 END SUB
+
+' ═══════════════════════════════════════════════════════════════════════════
+' Famiglia rolling/trasformazioni. Le funzioni che restituiscono serie hanno
+' la STESSA forma del builtin (array di n-w+1 valori per le finestre mobili).
+' ═══════════════════════════════════════════════════════════════════════════
+DECLARE SUB RXF_MA LIB "gmbstats" ALIAS "ofx_ts_ma" (x() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
+DECLARE SUB RXF_EMA LIB "gmbstats" ALIAS "ofx_ts_ema" (x() AS DOUBLE, n AS LONG, period AS LONG, out() AS DOUBLE)
+DECLARE SUB RXF_MINMAX LIB "gmbstats" ALIAS "ofx_ts_minmax" (x() AS DOUBLE, n AS LONG, out() AS DOUBLE)
+DECLARE FUNCTION RXF_AUTOCORR LIB "gmbstats" ALIAS "ofx_ts_autocorr" (x() AS DOUBLE, n AS LONG, lag AS LONG) AS DOUBLE
+DECLARE FUNCTION RXF_VOLATILITY LIB "gmbstats" ALIAS "ofx_ts_volatility" (x() AS DOUBLE, n AS LONG) AS DOUBLE
+DECLARE FUNCTION RXF_DIFFERENCE LIB "gmbstats" ALIAS "ofx_ts_difference" (x() AS DOUBLE, n AS LONG, order AS LONG, out() AS DOUBLE) AS LONG
+DECLARE SUB RXF_RETURNS LIB "gmbstats" ALIAS "ofx_ts_returns" (x() AS DOUBLE, n AS LONG, out() AS DOUBLE)
+DECLARE SUB RXF_DESEASONALIZE LIB "gmbstats" ALIAS "ofx_ts_deseasonalize" (x() AS DOUBLE, n AS LONG, period AS LONG, out() AS DOUBLE)
+DECLARE SUB RXF_DECOMPOSE LIB "gmbstats" ALIAS "ofx_ts_decompose" (x() AS DOUBLE, n AS LONG, period AS LONG, trend() AS DOUBLE, seasonal() AS DOUBLE, resid() AS DOUBLE)
+DECLARE SUB RXF_COVMATRIX LIB "gmbstats" ALIAS "ofx_ts_covmatrix" (data() AS DOUBLE, nobs AS LONG, m AS LONG, out() AS DOUBLE)
+DECLARE FUNCTION RXF_OUTLIERS LIB "gmbstats" ALIAS "ofx_ts_outliers" (x() AS DOUBLE, n AS LONG, threshold AS DOUBLE, idx() AS LONG) AS LONG
+
+DECLARE SUB RXF_ROLL_MEAN LIB "gmbstats" ALIAS "ofx_roll_mean" (x() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
+DECLARE SUB RXF_ROLL_STD LIB "gmbstats" ALIAS "ofx_roll_std" (x() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
+DECLARE SUB RXF_ROLL_SKEW LIB "gmbstats" ALIAS "ofx_roll_skew" (x() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
+DECLARE SUB RXF_ROLL_KURT LIB "gmbstats" ALIAS "ofx_roll_kurt" (x() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
+DECLARE SUB RXF_ROLL_MEDIAN LIB "gmbstats" ALIAS "ofx_roll_median" (x() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
+DECLARE SUB RXF_ROLL_QUANTILE LIB "gmbstats" ALIAS "ofx_roll_quantile" (x() AS DOUBLE, n AS LONG, w AS LONG, q AS DOUBLE, out() AS DOUBLE)
+DECLARE SUB RXF_ROLL_SHARPE LIB "gmbstats" ALIAS "ofx_roll_sharpe" (x() AS DOUBLE, n AS LONG, w AS LONG, rf AS DOUBLE, out() AS DOUBLE)
+DECLARE SUB RXF_ROLL_MAD LIB "gmbstats" ALIAS "ofx_roll_mad" (x() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
+DECLARE SUB RXF_ROLL_ZSCORE LIB "gmbstats" ALIAS "ofx_roll_zscore" (x() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
+DECLARE SUB RXF_ROLL_AUTOCORR LIB "gmbstats" ALIAS "ofx_roll_autocorr" (x() AS DOUBLE, n AS LONG, w AS LONG, lag AS LONG, out() AS DOUBLE)
+DECLARE SUB RXF_ROLL_COV LIB "gmbstats" ALIAS "ofx_roll_cov" (x() AS DOUBLE, y() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
+DECLARE SUB RXF_ROLL_CORR LIB "gmbstats" ALIAS "ofx_roll_corr" (x() AS DOUBLE, y() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
+DECLARE SUB RXF_ROLL_REGRESSION LIB "gmbstats" ALIAS "ofx_roll_regression" (x() AS DOUBLE, y() AS DOUBLE, n AS LONG, w AS LONG, slope() AS DOUBLE, intercept() AS DOUBLE)
+DECLARE SUB RXF_ROLL_REGRESSION_SINGLE LIB "gmbstats" ALIAS "ofx_roll_regression_single" (y() AS DOUBLE, n AS LONG, w AS LONG, slope() AS DOUBLE, intercept() AS DOUBLE)
+DECLARE SUB RXF_ROLL_DELTA LIB "gmbstats" ALIAS "ofx_roll_delta" (x() AS DOUBLE, n AS LONG, w AS LONG, out() AS DOUBLE)
+DECLARE SUB RXF_ROLL_SORTINO LIB "gmbstats" ALIAS "ofx_roll_sortino" (x() AS DOUBLE, n AS LONG, w AS LONG, rf AS DOUBLE, target AS DOUBLE, out() AS DOUBLE)
+DECLARE SUB RXF_ROLL_MINMAX LIB "gmbstats" ALIAS "ofx_roll_minmax" (x() AS DOUBLE, n AS LONG, w AS LONG, mn() AS DOUBLE, mx() AS DOUBLE)
+
+DECLARE FUNCTION RXF_LOWPASS LIB "gmbstats" ALIAS "ofx_ts_lowpass" (x() AS DOUBLE, n AS LONG, wn AS DOUBLE, order AS LONG, out() AS DOUBLE) AS LONG
+DECLARE FUNCTION RXF_HIGHPASS LIB "gmbstats" ALIAS "ofx_ts_highpass" (x() AS DOUBLE, n AS LONG, wn AS DOUBLE, order AS LONG, out() AS DOUBLE) AS LONG
+DECLARE FUNCTION RXF_BANDPASS LIB "gmbstats" ALIAS "ofx_ts_bandpass" (x() AS DOUBLE, n AS LONG, w1 AS DOUBLE, w2 AS DOUBLE, order AS LONG, out() AS DOUBLE) AS LONG
+DECLARE FUNCTION RXF_BANDSTOP LIB "gmbstats" ALIAS "ofx_ts_bandstop" (x() AS DOUBLE, n AS LONG, w1 AS DOUBLE, w2 AS DOUBLE, order AS LONG, out() AS DOUBLE) AS LONG
+
+' ── trasformazioni ─────────────────────────────────────────────────────────
+PUBLIC FUNCTION TSEMA(series() AS DOUBLE, period AS LONG) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(series) + 1
+    DIM o(n - 1) AS DOUBLE
+    CALL RXF_EMA(series, n, period, o)
+    RETURN o
+END FUNCTION
+
+PUBLIC FUNCTION TSMINMAX(series() AS DOUBLE) AS ARRAY OF DOUBLE
+    DIM o(1) AS DOUBLE
+    CALL RXF_MINMAX(series, UBOUND(series) + 1, o)
+    RETURN o
+END FUNCTION
+
+PUBLIC FUNCTION TSAUTOCORR(series() AS DOUBLE, lag AS LONG) AS DOUBLE
+    RETURN RXF_AUTOCORR(series, UBOUND(series) + 1, lag)
+END FUNCTION
+
+PUBLIC FUNCTION TSVOLATILITY(series() AS DOUBLE) AS DOUBLE
+    RETURN RXF_VOLATILITY(series, UBOUND(series) + 1)
+END FUNCTION
+
+PUBLIC FUNCTION TSDIFFERENCE(series() AS DOUBLE, order AS LONG) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(series) + 1
+    DIM o(n - order - 1) AS DOUBLE
+    CALL RXF_DIFFERENCE(series, n, order, o)
+    RETURN o
+END FUNCTION
+
+PUBLIC FUNCTION TSRETURNS(series() AS DOUBLE) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(series) + 1
+    DIM o(n - 2) AS DOUBLE
+    CALL RXF_RETURNS(series, n, o)
+    RETURN o
+END FUNCTION
+
+PUBLIC FUNCTION TSDESEASONALIZE(series() AS DOUBLE, period AS LONG) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(series) + 1
+    DIM o(n - 1) AS DOUBLE
+    CALL RXF_DESEASONALIZE(series, n, period, o)
+    RETURN o
+END FUNCTION
+
+' TSDECOMPOSE: array piatto di 3*n valori, righe contigue [trend | stagionalita' | residuo].
+PUBLIC FUNCTION TSDECOMPOSE(series() AS DOUBLE, period AS LONG) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(series) + 1
+    DIM tr(n - 1) AS DOUBLE
+    DIM se(n - 1) AS DOUBLE
+    DIM re(n - 1) AS DOUBLE
+    CALL RXF_DECOMPOSE(series, n, period, tr, se, re)
+    DIM o((3 * n) - 1) AS DOUBLE
+    FOR i = 0 TO n - 1
+        o(i) = tr(i)
+        o(n + i) = se(i)
+        o(2 * n + i) = re(i)
+    NEXT i
+    RETURN o
+END FUNCTION
+
+' Matrice di covarianza: input jagged (osservazioni x variabili), output m*m row-major.
+PUBLIC FUNCTION TSCOVARIANCEMATRIX(data() AS ARRAY OF DOUBLE) AS ARRAY OF DOUBLE
+    DIM nobs AS LONG = UBOUND(data) + 1
+    DIM m AS LONG = UBOUND(data(0)) + 1
+    DIM flat((nobs * m) - 1) AS DOUBLE
+    FOR i = 0 TO nobs - 1
+        FOR j = 0 TO m - 1
+            flat(i * m + j) = data(i)(j)
+        NEXT j
+    NEXT i
+    DIM o((m * m) - 1) AS DOUBLE
+    CALL RXF_COVMATRIX(flat, nobs, m, o)
+    RETURN o
+END FUNCTION
+
+' Outlier Z-score: scrive gli indici in out() e ritorna quanti ne ha trovati.
+PUBLIC FUNCTION TSOUTLIERS(series() AS DOUBLE, threshold AS DOUBLE, out() AS LONG) AS LONG
+    DIM c AS LONG
+    c = RXF_OUTLIERS(series, UBOUND(series) + 1, threshold, out)
+    RETURN c
+END FUNCTION
+
+' ── rolling ────────────────────────────────────────────────────────────────
+PUBLIC FUNCTION TSMA(series() AS DOUBLE, period AS LONG) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(series) + 1
+    DIM o(n - period) AS DOUBLE
+    CALL RXF_MA(series, n, period, o)
+    RETURN o
+END FUNCTION
+
+PUBLIC FUNCTION TSROLLMEAN(series() AS DOUBLE, period AS LONG) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(series) + 1
+    DIM o(n - period) AS DOUBLE
+    CALL RXF_ROLL_MEAN(series, n, period, o)
+    RETURN o
+END FUNCTION
+
+PUBLIC FUNCTION TSROLLSTDDEV(series() AS DOUBLE, period AS LONG) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(series) + 1
+    DIM o(n - period) AS DOUBLE
+    CALL RXF_ROLL_STD(series, n, period, o)
+    RETURN o
+END FUNCTION
+
+PUBLIC FUNCTION TSROLLSKEWNESS(series() AS DOUBLE, period AS LONG) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(series) + 1
+    DIM o(n - period) AS DOUBLE
+    CALL RXF_ROLL_SKEW(series, n, period, o)
+    RETURN o
+END FUNCTION
+
+PUBLIC FUNCTION TSROLLKURTOSIS(series() AS DOUBLE, period AS LONG) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(series) + 1
+    DIM o(n - period) AS DOUBLE
+    CALL RXF_ROLL_KURT(series, n, period, o)
+    RETURN o
+END FUNCTION
+
+PUBLIC FUNCTION TSROLLMEDIAN(series() AS DOUBLE, period AS LONG) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(series) + 1
+    DIM o(n - period) AS DOUBLE
+    CALL RXF_ROLL_MEDIAN(series, n, period, o)
+    RETURN o
+END FUNCTION
+
+PUBLIC FUNCTION TSROLLQUANTILE(series() AS DOUBLE, period AS LONG, quantile AS DOUBLE) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(series) + 1
+    DIM o(n - period) AS DOUBLE
+    CALL RXF_ROLL_QUANTILE(series, n, period, quantile, o)
+    RETURN o
+END FUNCTION
+
+PUBLIC FUNCTION TSROLLSHARPE(series() AS DOUBLE, period AS LONG, riskFreeRate AS DOUBLE) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(series) + 1
+    DIM o(n - period) AS DOUBLE
+    CALL RXF_ROLL_SHARPE(series, n, period, riskFreeRate, o)
+    RETURN o
+END FUNCTION
+
+PUBLIC FUNCTION TSROLLMAD(series() AS DOUBLE, period AS LONG) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(series) + 1
+    DIM o(n - period) AS DOUBLE
+    CALL RXF_ROLL_MAD(series, n, period, o)
+    RETURN o
+END FUNCTION
+
+PUBLIC FUNCTION TSROLLZSCORE(series() AS DOUBLE, period AS LONG) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(series) + 1
+    DIM o(n - period) AS DOUBLE
+    CALL RXF_ROLL_ZSCORE(series, n, period, o)
+    RETURN o
+END FUNCTION
+
+PUBLIC FUNCTION TSROLLAUTOCORR(series() AS DOUBLE, period AS LONG, lag AS LONG) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(series) + 1
+    DIM o(n - period) AS DOUBLE
+    CALL RXF_ROLL_AUTOCORR(series, n, period, lag, o)
+    RETURN o
+END FUNCTION
+
+PUBLIC FUNCTION TSROLLCOVARIANCE(series() AS DOUBLE, series2() AS DOUBLE, period AS LONG) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(series) + 1
+    DIM o(n - period) AS DOUBLE
+    CALL RXF_ROLL_COV(series, series2, n, period, o)
+    RETURN o
+END FUNCTION
+
+PUBLIC FUNCTION TSROLLCORR(series() AS DOUBLE, series2() AS DOUBLE, period AS LONG) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(series) + 1
+    DIM o(n - period) AS DOUBLE
+    CALL RXF_ROLL_CORR(series, series2, n, period, o)
+    RETURN o
+END FUNCTION
+
+' TSROLLREGRESSION: array piatto 2*cnt interleaved {slope0, intercept0, slope1, ...}.
+PUBLIC FUNCTION TSROLLREGRESSION(series() AS DOUBLE, series2() AS DOUBLE, period AS LONG) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(series) + 1
+    DIM cnt AS LONG = n - period + 1
+    DIM sl(cnt - 1) AS DOUBLE
+    DIM ic(cnt - 1) AS DOUBLE
+    CALL RXF_ROLL_REGRESSION(series, series2, n, period, sl, ic)
+    DIM o((2 * cnt) - 1) AS DOUBLE
+    FOR i = 0 TO cnt - 1
+        o(2 * i) = sl(i)
+        o(2 * i + 1) = ic(i)
+    NEXT i
+    RETURN o
+END FUNCTION
+
+PUBLIC FUNCTION TSROLLREGRESSIONSINGLE(series() AS DOUBLE, period AS LONG) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(series) + 1
+    DIM cnt AS LONG = n - period + 1
+    DIM sl(cnt - 1) AS DOUBLE
+    DIM ic(cnt - 1) AS DOUBLE
+    CALL RXF_ROLL_REGRESSION_SINGLE(series, n, period, sl, ic)
+    DIM o((2 * cnt) - 1) AS DOUBLE
+    FOR i = 0 TO cnt - 1
+        o(2 * i) = sl(i)
+        o(2 * i + 1) = ic(i)
+    NEXT i
+    RETURN o
+END FUNCTION
+
+PUBLIC FUNCTION TSROLLDELTA(series() AS DOUBLE, period AS LONG) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(series) + 1
+    DIM o(n - period) AS DOUBLE
+    CALL RXF_ROLL_DELTA(series, n, period, o)
+    RETURN o
+END FUNCTION
+
+PUBLIC FUNCTION TSROLLSORTINO(series() AS DOUBLE, period AS LONG, riskFreeRate AS DOUBLE, targetReturn AS DOUBLE) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(series) + 1
+    DIM o(n - period) AS DOUBLE
+    CALL RXF_ROLL_SORTINO(series, n, period, riskFreeRate, targetReturn, o)
+    RETURN o
+END FUNCTION
+
+' TSROLLMINMAX: array piatto 2*cnt interleaved {min0, max0, min1, ...}.
+PUBLIC FUNCTION TSROLLMINMAX(series() AS DOUBLE, period AS LONG) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(series) + 1
+    DIM cnt AS LONG = n - period + 1
+    DIM mn(cnt - 1) AS DOUBLE
+    DIM mx(cnt - 1) AS DOUBLE
+    CALL RXF_ROLL_MINMAX(series, n, period, mn, mx)
+    DIM o((2 * cnt) - 1) AS DOUBLE
+    FOR i = 0 TO cnt - 1
+        o(2 * i) = mn(i)
+        o(2 * i + 1) = mx(i)
+    NEXT i
+    RETURN o
+END FUNCTION
+
+' ── filtri Butterworth ─────────────────────────────────────────────────────
+PUBLIC FUNCTION TSLOWPASS(series() AS DOUBLE, wn AS DOUBLE, order AS LONG) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(series) + 1
+    DIM o(n - 1) AS DOUBLE
+    CALL RXF_LOWPASS(series, n, wn, order, o)
+    RETURN o
+END FUNCTION
+
+PUBLIC FUNCTION TSHIGHPASS(series() AS DOUBLE, wn AS DOUBLE, order AS LONG) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(series) + 1
+    DIM o(n - 1) AS DOUBLE
+    CALL RXF_HIGHPASS(series, n, wn, order, o)
+    RETURN o
+END FUNCTION
+
+PUBLIC FUNCTION TSBANDPASS(series() AS DOUBLE, wn1 AS DOUBLE, wn2 AS DOUBLE, order AS LONG) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(series) + 1
+    DIM o(n - 1) AS DOUBLE
+    CALL RXF_BANDPASS(series, n, wn1, wn2, order, o)
+    RETURN o
+END FUNCTION
+
+PUBLIC FUNCTION TSBANDSTOP(series() AS DOUBLE, wn1 AS DOUBLE, wn2 AS DOUBLE, order AS LONG) AS ARRAY OF DOUBLE
+    DIM n AS LONG = UBOUND(series) + 1
+    DIM o(n - 1) AS DOUBLE
+    CALL RXF_BANDSTOP(series, n, wn1, wn2, order, o)
+    RETURN o
+END FUNCTION
