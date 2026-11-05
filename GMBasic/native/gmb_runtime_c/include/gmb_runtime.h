@@ -2209,6 +2209,7 @@ gmb_val_t gmb_ts_kpss_flat(const double* series, int n, int bandwidth, int deter
 gmb_val_t gmb_ts_qlr_flat(const double* l_beta, int n_beta, double l0, double kappa_hat);
 gmb_val_t gmb_ts_dfgls_flat(const double* series, int n, int lags, int deterministic);
 gmb_val_t gmb_ts_engle_granger_flat(const double* Y, int n, int k, int dependent, int lags, int with_constant);
+gmb_val_t gmb_ts_johansen_flat(const double* Y, int n_obs, int k, int lags);
 double* gmb_ts_bma_weights(const double* ic, int n, int* out_len);
 gmb_double_t** gmb_ts_covariance_obs(const double* const* obs, int n_obs, int n_vars);
 /* MOUSE getters (MOUSE.BUTTON/WHEEL/DBLCLICK/PRESENT/MIDDLE): stato mouse TUI corrente

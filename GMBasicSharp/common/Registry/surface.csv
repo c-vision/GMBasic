@@ -1361,6 +1361,7 @@ procedure,TIMESERIES,HMMFIT,TsHmmFit
 procedure,TIMESERIES,HMMFORWARD,TsHmmForward
 procedure,TIMESERIES,HMMVITERBI,TsHmmViterbi
 procedure,TIMESERIES,HoltWinters,HoltWinters
+procedure,TIMESERIES,JOHANSEN,TsJohansen
 procedure,TIMESERIES,KPSS,TsKpss
 procedure,TIMESERIES,MaCoefficients,MaCoefficients
 procedure,TIMESERIES,QLR,TsQlr

@@ -994,6 +994,205 @@ public static partial class Numerics
         return sxx > 0 ? sxy / sxx : 0;
     }
 
+    // ── Johansen (parità gs_infer.c, eigensolver Jacobi) ────────────────────────────
+
+    private static bool JohCholesky(int n, double[] A, double[] L)
+    {
+        int i, j, k;
+        Array.Clear(L);
+        for (i = 0; i < n; i++)
+            for (j = 0; j <= i; j++)
+            {
+                var s = A[i * n + j];
+                for (k = 0; k < j; k++) s -= L[i * n + k] * L[j * n + k];
+                if (i == j) { if (s <= 0) return false; L[i * n + j] = Math.Sqrt(s); }
+                else L[i * n + j] = s / L[j * n + j];
+            }
+        return true;
+    }
+
+    private static void JohLowerSolve(int n, int ncol, double[] L, double[] B, double[] X)
+    {
+        int i, j, c;
+        for (c = 0; c < ncol; c++)
+            for (i = 0; i < n; i++)
+            {
+                var s = B[i * ncol + c];
+                for (j = 0; j < i; j++) s -= L[i * n + j] * X[j * ncol + c];
+                X[i * ncol + c] = s / L[i * n + i];
+            }
+    }
+
+    private static void JohEigSym(int n, double[] A, double[] eval)
+    {
+        int i, j, k, sweep;
+        for (sweep = 0; sweep < 100; sweep++)
+        {
+            double off = 0.0, diag = 0.0;
+            for (i = 0; i < n; i++)
+            {
+                diag += A[i * n + i] * A[i * n + i];
+                for (j = i + 1; j < n; j++) off += A[i * n + j] * A[i * n + j];
+            }
+            if (off <= 1e-30 * (diag + 1e-300)) break;
+            for (i = 0; i < n; i++)
+                for (j = i + 1; j < n; j++)
+                {
+                    var apq = A[i * n + j];
+                    if (Math.Abs(apq) < 1e-300) continue;
+                    var app = A[i * n + i];
+                    var aqq = A[j * n + j];
+                    var tau = (aqq - app) / (2.0 * apq);
+                    var t = (tau >= 0 ? 1.0 : -1.0) / (Math.Abs(tau) + Math.Sqrt(1.0 + tau * tau));
+                    var c = 1.0 / Math.Sqrt(1.0 + t * t);
+                    var sn = t * c;
+                    for (k = 0; k < n; k++)
+                    {
+                        var aik = A[i * n + k];
+                        var ajk = A[j * n + k];
+                        A[i * n + k] = c * aik - sn * ajk;
+                        A[j * n + k] = sn * aik + c * ajk;
+                    }
+                    for (k = 0; k < n; k++)
+                    {
+                        var aki = A[k * n + i];
+                        var akj = A[k * n + j];
+                        A[k * n + i] = c * aki - sn * akj;
+                        A[k * n + j] = sn * aki + c * akj;
+                    }
+                    A[i * n + j] = 0.0; A[j * n + i] = 0.0;
+                }
+        }
+        for (i = 0; i < n; i++) eval[i] = A[i * n + i];
+        for (i = 1; i < n; i++)
+        {
+            var v = eval[i];
+            j = i - 1;
+            while (j >= 0 && eval[j] > v) { eval[j + 1] = eval[j]; j--; }
+            eval[j + 1] = v;
+        }
+    }
+
+    private static void JohResidualize(int rows, int ncol, int nreg, double[] Y, double[] X, double[] R)
+    {
+        int c, i, j;
+        var beta = new double[nreg];
+        var Xc = new double[rows * nreg];
+        var yc = new double[rows];
+        for (c = 0; c < ncol; c++)
+        {
+            for (i = 0; i < rows; i++)
+            {
+                for (j = 0; j < nreg; j++) Xc[i * nreg + j] = X[i * nreg + j];
+                yc[i] = Y[i * ncol + c];
+            }
+            if (!InferOls(rows, nreg, Xc, yc, beta, out _, -1, out _)) { for (i = 0; i < rows; i++) R[i * ncol + c] = 0; continue; }
+            for (i = 0; i < rows; i++)
+            {
+                double f = 0.0;
+                for (j = 0; j < nreg; j++) f += X[i * nreg + j] * beta[j];
+                R[i * ncol + c] = Y[i * ncol + c] - f;
+            }
+        }
+    }
+
+    public static (double[] EigenValues, double[] TraceStatistic, double[] MaxStatistic, int Observations, int Lags)
+        Johansen(double[][] Y, int lags)
+    {
+        var nObs = Y.Length;
+        var k = nObs > 0 ? Y[0].Length : 0;
+        var rows = nObs - lags - 1;
+        var cc = k * lags + 1;
+        if (k < 1 || k > 32 || lags < 0 || rows <= k + cc)
+            return (Array.Empty<double>(), Array.Empty<double>(), Array.Empty<double>(), 0, lags);
+        var D = new double[rows * k];
+        var Lv = new double[rows * k];
+        var COV = new double[rows * cc];
+        var Dr = new double[rows * k];
+        var Lr = new double[rows * k];
+        var S00 = new double[k * k];
+        var S01 = new double[k * k];
+        var S11 = new double[k * k];
+        var W = new double[k * k];
+        var P = new double[k * k];
+        var Lc = new double[k * k];
+        var half = new double[k * k];
+        var halfT = new double[k * k];
+        var sym = new double[k * k];
+        var eval = new double[k];
+        int i, j, r, row, l, v;
+        for (row = 0; row < rows; row++)
+        {
+            var t = lags + 1 + row;
+            for (v = 0; v < k; v++)
+            {
+                D[row * k + v] = Y[t][v] - Y[t - 1][v];
+                Lv[row * k + v] = Y[t - 1][v];
+            }
+            for (l = 1; l <= lags; l++)
+                for (v = 0; v < k; v++)
+                    COV[row * cc + (l - 1) * k + v] = Y[t - l][v] - Y[t - l - 1][v];
+            COV[row * cc + cc - 1] = 1.0;
+        }
+        JohResidualize(rows, k, cc, D, COV, Dr);
+        JohResidualize(rows, k, cc, Lv, COV, Lr);
+        for (i = 0; i < k; i++)
+            for (j = 0; j < k; j++)
+            {
+                double s00 = 0, s01 = 0, s11 = 0;
+                for (row = 0; row < rows; row++)
+                {
+                    s00 += Dr[row * k + i] * Dr[row * k + j];
+                    s01 += Dr[row * k + i] * Lr[row * k + j];
+                    s11 += Lr[row * k + i] * Lr[row * k + j];
+                }
+                S00[i * k + j] = s00 / rows;
+                S01[i * k + j] = s01 / rows;
+                S11[i * k + j] = s11 / rows;
+            }
+        var col = new double[k];
+        var sol = new double[k];
+        for (j = 0; j < k; j++)
+        {
+            var cm = (double[])S00.Clone();
+            for (i = 0; i < k; i++) col[i] = S01[i * k + j];
+            if (!InferSolve(k, cm, col, sol))
+                return (Array.Empty<double>(), Array.Empty<double>(), Array.Empty<double>(), 0, lags);
+            for (i = 0; i < k; i++) W[i * k + j] = sol[i];
+        }
+        for (i = 0; i < k; i++)
+            for (j = 0; j < k; j++)
+            {
+                double s = 0.0;
+                for (v = 0; v < k; v++) s += S01[v * k + i] * W[v * k + j];
+                P[i * k + j] = s;
+            }
+        Array.Copy(S11, Lc, k * k);
+        if (!JohCholesky(k, S11, Lc))
+            return (Array.Empty<double>(), Array.Empty<double>(), Array.Empty<double>(), 0, lags);
+        JohLowerSolve(k, k, Lc, P, half);
+        for (i = 0; i < k; i++) for (j = 0; j < k; j++) halfT[i * k + j] = half[j * k + i];
+        JohLowerSolve(k, k, Lc, halfT, sym);
+        JohEigSym(k, sym, eval);
+        for (i = 0; i < k; i++)
+        {
+            var lam = eval[i];
+            if (lam < 0.0) lam = 0.0;
+            if (lam > 1.0 - 1e-15) lam = 1.0 - 1e-15;
+            eval[i] = lam;
+        }
+        var traceS = new double[k];
+        var maxS = new double[k];
+        for (r = 0; r < k; r++)
+        {
+            double tot = 0.0;
+            for (i = r; i < k; i++) tot += -Math.Log(1.0 - eval[i]);
+            traceS[r] = rows * tot;
+            maxS[r] = rows * -Math.Log(1.0 - eval[r]);
+        }
+        return (eval, traceS, maxS, rows, lags);
+    }
+
     // ── nucleo ADF + OLS (parità gs_infer.c) ────────────────────────────────────────
 
     private static bool InferSolve(int n, double[] A, double[] b, double[] x)

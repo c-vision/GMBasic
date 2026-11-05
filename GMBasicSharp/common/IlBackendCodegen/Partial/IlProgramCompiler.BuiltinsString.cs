@@ -624,6 +624,8 @@ public sealed partial class IlProgramCompiler
     { if (expr.Args.Length != 3) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 3 argomenti."); EmitDoubleArgument(expr.Args[0]); EmitDoubleArrayArgument(expr.Args[1]); EmitDoubleArgument(expr.Args[2]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
     private void EmitTimeSeriesThreeArrayCall(BuiltinFunctionCallExpr expr, string methodName)
     { if (expr.Args.Length != 3) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 3 argomenti."); for (var i = 0; i < 3; i++) EmitDoubleArrayArgument(expr.Args[i]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
+    private void EmitAnalysisMatrixLongCall(BuiltinFunctionCallExpr expr, string methodName)
+    { if (expr.Args.Length != 2) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 2 argomenti."); EmitDoubleArrayArrayArgument(expr.Args[0]); EmitInt64Argument(expr.Args[1]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
     private void EmitAnalysisMatrixLongLongLongCall(BuiltinFunctionCallExpr expr, string methodName)
     { if (expr.Args.Length != 4) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 4 argomenti."); EmitDoubleArrayArrayArgument(expr.Args[0]); EmitInt64Argument(expr.Args[1]); EmitInt64Argument(expr.Args[2]); EmitInt64Argument(expr.Args[3]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
     private void EmitAnalysisMatrixLongLongCall(BuiltinFunctionCallExpr expr, string methodName)

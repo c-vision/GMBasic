@@ -1328,6 +1328,7 @@ static const gmb_ns_lookup_row_t gmb_ns_lookup[] = {
     { "TIMESERIES", "HMMFORWARD", GMB_TOK_TsHmmForward },
     { "TIMESERIES", "HMMVITERBI", GMB_TOK_TsHmmViterbi },
     { "TIMESERIES", "HoltWinters", GMB_TOK_HoltWinters },
+    { "TIMESERIES", "JOHANSEN", GMB_TOK_TsJohansen },
     { "TIMESERIES", "KPSS", GMB_TOK_TsKpss },
     { "TIMESERIES", "MaCoefficients", GMB_TOK_MaCoefficients },
     { "TIMESERIES", "QLR", GMB_TOK_TsQlr },

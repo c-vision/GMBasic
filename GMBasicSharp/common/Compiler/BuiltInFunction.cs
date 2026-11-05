@@ -326,6 +326,7 @@ public enum BuiltInFunction : ushort
     TS_QLR = 3845,
     TS_DFGLS = 3846,
     TS_ENGLEGRANGER = 3847,
+    TS_JOHANSEN = 3848,
     SIGNAL_FIRWIN = 1017,
     SIGNAL_FINDPEAKS = 1018,
     SOLVE_IVP = 1019,

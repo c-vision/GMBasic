@@ -1845,6 +1845,7 @@ public sealed partial class Parser
             AdfTestResultType => "ADFTESTRESULT",
             PcaResultType => "PCARESULT",
             HmmResultType => "HMMRESULT",
+            JohansenResultType => "JOHANSENRESULT",
             LuDecompositionType => "LUDECOMPOSITION",
             QrDecompositionType => "QRDECOMPOSITION",
             SvdDecompositionType => "SVDDECOMPOSITION",
