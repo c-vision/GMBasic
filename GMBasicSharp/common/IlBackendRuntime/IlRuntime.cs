@@ -2146,6 +2146,8 @@ public static partial class IlRuntime
     public static double[] Returns(double[] data) => Basic.StdLibRuntime.TimeSeriesFunctions.Returns(data);
     public static double TsHurst(double[] data) => CommonLib.Numerics.HurstDfa(data);
     public static double[] FracDiff(double[] data, double d) => CommonLib.Numerics.FracDiff(data, d);
+    public static double[] Kalman1D(double[] z, double a, double h, double q, double r) => CommonLib.Numerics.Kalman1D(z, a, h, q, r);
+
     public static Dictionary<string, object?> TsGarch11(double[] r)
     {
         var (omega, alpha, beta) = CommonLib.Numerics.Garch11(r);
@@ -18628,25 +18630,14 @@ public static double TextWidth(string s)
             }
             else if (p == "clm")
             {
-                // Provider CLM (contratto SystemOne, wire /v1/systemone): config dal %DECIDE attivo.
-                // Senza baseUrl il percorso locale (encoder MLX + head) non è cablato → errore esplicito.
+                // Provider CLM (contratto SystemOne): il C# CONSUMA il runtime C via P/Invoke (libgmb_clm);
+                // la config del %DECIDE attivo si passa in JSON. Risposta già nella forma di AI DECIDE.
                 decideName ??= Basic.Providers.ProviderServer.Instance.GetActiveName(
                     Basic.Providers.ProviderRole.Decide);
                 if (string.IsNullOrWhiteSpace(decideName))
                     return "{\"error\":\"clm: nessun provider %DECIDE attivo con config (baseUrl)\"}";
-                var clmCfg = Basic.Providers.ProviderServer.Instance.GetConfigMap(decideName);
-                clmCfg.TryGetValue("baseUrl", out var clmUrl);
-                if (string.IsNullOrWhiteSpace(clmUrl))
-                    return clmCfg.ContainsKey("head")
-                        ? "{\"error\":\"clm: percorso locale non disponibile: encoder MLX last-token non collegato (usa baseUrl)\"}"
-                        : "{\"error\":\"clm: baseUrl mancante nel config del provider %DECIDE\"}";
-                clmCfg.TryGetValue("apiKey", out var clmKey);
-                clmCfg.TryGetValue("instructions", out var clmInstr);
-                var clmTimeout = TimeSpan.FromSeconds(15);
-                if (clmCfg.TryGetValue("timeoutMs", out var clmTo) && int.TryParse(clmTo, out var clmMs) && clmMs > 0)
-                    clmTimeout = TimeSpan.FromMilliseconds(clmMs);
-                result = new Basic.Decision.ClmDecisionProvider(clmUrl, clmKey, clmInstr, clmTimeout)
-                    .Evaluate(request)[0];
+                return Basic.Decision.NativeClm.Run(state ?? "", raw,
+                    Basic.Providers.ProviderServer.Instance.GetConfigMap(decideName));
             }
             else if (p is "adapter" or "llm")
             {

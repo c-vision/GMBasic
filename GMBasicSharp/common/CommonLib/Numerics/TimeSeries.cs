@@ -881,6 +881,25 @@ public static partial class Numerics
     }
 
     /// <summary>Hurst exponent via DFA (gmbstats gs_hurst_dfa).</summary>
+    public static double[] Kalman1D(double[] z, double a, double h, double q, double r)
+    {
+        var n = z.Length;
+        if (n == 0) return Array.Empty<double>();
+        var outv = new double[n];
+        var x = z[0];
+        var p = 1.0;
+        for (var k = 0; k < n; k++)
+        {
+            var xp = a * x;
+            var pp = a * p * a + q;
+            var gain = pp * h / (h * pp * h + r);
+            x = xp + gain * (z[k] - h * xp);
+            p = (1.0 - gain * h) * pp;
+            outv[k] = x;
+        }
+        return outv;
+    }
+
     public static (double Omega, double Alpha, double Beta) Garch11(double[] r)
     {
         var n = r.Length;

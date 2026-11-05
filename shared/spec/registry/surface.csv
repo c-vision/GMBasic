@@ -1327,6 +1327,7 @@ procedure,TIMESERIES,TSGARCH11,TsGarch11
 procedure,TIMESERIES,TSGRANGER,TsGranger
 procedure,TIMESERIES,TSHIGHPASS,TsHighPass
 procedure,TIMESERIES,TSHURST,TsHurst
+procedure,TIMESERIES,TSKALMAN1D,TsKalman1D
 procedure,TIMESERIES,TSLOWPASS,TsLowPass
 procedure,TIMESERIES,TSMA,MovingAverage
 procedure,TIMESERIES,TSMINMAX,TimeSeriesMinMax

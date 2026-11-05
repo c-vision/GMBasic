@@ -25159,6 +25159,49 @@
     },
     {
       "ns": "TIMESERIES",
+      "name": "TSKALMAN1D",
+      "fn": true,
+      "return": "double[]",
+      "params": [
+        {
+          "name": "series",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "a",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "h",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "q",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "r",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "TIMESERIES",
       "name": "TSLOWPASS",
       "fn": true,
       "return": "double[]",
