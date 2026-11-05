@@ -2,7 +2,7 @@
 ' ACCOUNTS, ADD, BALANCE, BOF, COUNT, EDIT, EOF, FOUND, GET, IMPORT, LASTREC, OPEN,
 ' PLOT, RECNO, REGISTER, VALIDATE, VARIANCE. Due sezioni indipendenti (file .dat distinti
 ' in /tmp), derivate dai MiniTest per-funzione; nessuna dipendenza da sample.
-' EXPECT: count:  1|lastrec:  1|accounts:  2|balance_q>=0=-1|balance:  2|register:  2|import:  0|plot: si|found:  0|recno:  0|bof: -1|eof: -1|found:  0|validate: -1|get:  2|variance: -100|afterDelete:  1
+' EXPECT: count:  1|lastrec:  1|accounts:  2|balance_q>=0=-1|balance:  2|register:  2|import:  0|plot: si|found:  0|recno:  0|bof: -1|eof: -1|found:  0|validate: -1|get:  2|variance: -100|afterDelete:  0
 IMPORT LEDGER
 IMPORT IO
 

@@ -3,7 +3,7 @@
 ' (che copre COUNT/LASTREC/ACCOUNTS/BALANCE/REGISTER/IMPORT/PLOT/ADD/EDIT/CLOSE).
 ' Path assoluti in /tmp: la CWD e' la cartella del file su tutte le gambe; stato
 ' azzerato prima del run (file/.idx/csv).
-' EXPECT: recno:  0|bof: -1|eof: -1|found:  0|validate: -1|get:  2|variance: ok|afterDelete:  1
+' EXPECT: recno:  0|bof: -1|eof: -1|found:  0|validate: -1|get:  2|variance: ok|afterDelete:  0
 IMPORT LEDGER
 IMPORT IO
 

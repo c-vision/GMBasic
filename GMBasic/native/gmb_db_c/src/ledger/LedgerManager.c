@@ -1641,62 +1641,234 @@ int LedgerManager_GetTransaction(LedgerContext* ctx, int64_t txId, LedgerEntry* 
     return GMB_DB_OK;
 }
 
-int LedgerManager_DeleteTransaction(LedgerContext* ctx, int64_t txId)
+/* ── Editing del journal (DELETE/EDIT in place) ─────────────────────────────────
+ * Il journal è una sequenza di blocchi a offset noti nell'indice. DELETE marca il
+ * blocco come storno (`YYYY-MM-DD * desc`, convenzione Ledger standard) e lo toglie
+ * dall'indice attivo; EDIT sostituisce il blocco mantenendo lo STESSO id. In entrambi
+ * i casi gli offset dei blocchi successivi vengono riallineati. Lo storno resta nel
+ * journal (storia) ma non è mai una transazione: Rebuild/Pack lo ignorano. */
+
+static long ledger_path_len(const char* path)
 {
-    LedgerEntry got[GMB_LEDGER_MAX_POSTINGS];
-    char text[GMB_LEDGER_TX_TEXT];
-    char amt[128];
-    int n = 0, i, pos;
-    long newOffset;
-    double rate;
-    if (!ctx) return 0;
-    pthread_mutex_lock(&ctx->Lock);
-    if (LedgerManager_GetTransaction(ctx, txId, got, GMB_LEDGER_MAX_POSTINGS, &n) != GMB_DB_OK || n < 1) {
-        pthread_mutex_unlock(&ctx->Lock);
-        return 0;
-    }
-    pos = snprintf(text, sizeof(text), "%04d-%02d-%02d * %s",
-                   got[0].DateY, got[0].DateM, got[0].DateD,
-                   got[0].Description ? got[0].Description : "");
-    if (pos < 0 || pos >= (int)sizeof(text)) {
-        pthread_mutex_unlock(&ctx->Lock);
-        return 0;
-    }
-    for (i = 0; i < n; i++) {
-        int used;
-        rate = got[i].ExchangeRate == 0.0 ? 1.0 : got[i].ExchangeRate;
-        if (LedgerManager_FormatAmountForJournal(GmbDecimal_Neg(got[i].Amount), got[i].Currency, rate, amt, (int)sizeof(amt))
-            != GMB_DB_OK) {
-            pthread_mutex_unlock(&ctx->Lock);
-            return 0;
-        }
-        used = snprintf(text + pos, sizeof(text) - (size_t)pos, "\n    %s      %s", got[i].Account, amt);
-        if (used < 0 || used >= (int)sizeof(text) - pos) {
-            pthread_mutex_unlock(&ctx->Lock);
-            return 0;
-        }
-        pos += used;
-    }
-    if (ledger_append_journal_text(ctx->JournalFilePath, text, &newOffset) != GMB_DB_OK) {
-        pthread_mutex_unlock(&ctx->Lock);
-        return 0;
-    }
-    (void)newOffset;
-    ctx->IsDirty = 1;
-    pthread_mutex_unlock(&ctx->Lock);
-    return 1;
+    FILE* f;
+    long n;
+    if (!path) return -1;
+    f = fopen(path, "rb");
+    if (!f) return -1;
+    if (fseek(f, 0, SEEK_END) != 0) { fclose(f); return -1; }
+    n = ftell(f);
+    fclose(f);
+    return n;
 }
 
-/* C#: LedgerManager.UpdateTransaction (EDIT) — delete + re-add bilanciato.
- * Ritorna il nuovo transaction id (>= 1) o < 0 in errore. Parità C#:
- * if (!IsBalanced) throw; if (!DeleteTransaction) return -1; return AddTransaction(...). */
+static int ledger_read_range(const char* path, long off, char* buf, long len)
+{
+    FILE* f;
+    if (!path || !buf || len < 0) return GMB_DB_ARG;
+    f = fopen(path, "rb");
+    if (!f) return GMB_DB_ERR;
+    if (fseek(f, off, SEEK_SET) != 0) { fclose(f); return GMB_DB_ERR; }
+    if (len > 0 && (long)fread(buf, 1, (size_t)len, f) != len) { fclose(f); return GMB_DB_ERR; }
+    fclose(f);
+    return GMB_DB_OK;
+}
+
+/* 1 se l'header del blocco è uno STORNO: `YYYY-MM-DD * ...`. */
+static int ledger_header_is_void(const char* line)
+{
+    char tmp[512];
+    char* t;
+    char* p;
+    int y = 0, m = 0, d = 0;
+    if (!line) return 0;
+    snprintf(tmp, sizeof(tmp), "%s", line);
+    t = ledger_trim_inplace(tmp);
+    if (!t[0]) return 0;
+    p = t;
+    while (*p && !isspace((unsigned char)*p)) p++;
+    if (*p) { *p = 0; p++; }
+    if (!ledger_parse_date(t, &y, &m, &d)) return 0;
+    while (*p && isspace((unsigned char)*p)) p++;
+    return *p == '*' && (p[1] == 0 || isspace((unsigned char)p[1]));
+}
+
+/* Fine del blocco che inizia a `start`: inizio del blocco indicizzato successivo o EOF. */
+static long ledger_block_end(const LedgerContext* ctx, long start, long fileLen)
+{
+    long end = fileLen;
+    int i;
+    for (i = 0; i < ctx->nIndex; i++) {
+        long off = ctx->indexRecs[i].FileOffset;
+        if (off > start && off < end) end = off;
+    }
+    return end;
+}
+
+/* Testo del blocco (header + postings), senza BOM né newline finale. */
+static int ledger_build_tx_text(int year, int month, int day, const char* description,
+                                LedgerEntry* entries, int n, char* text, int cap)
+{
+    char amt[128];
+    int pos, i;
+    if (!text || cap < 32 || !description || !entries || n < 1) return GMB_DB_ARG;
+    pos = snprintf(text, (size_t)cap, "%04d-%02d-%02d %s", year, month, day, description);
+    if (pos < 0 || pos >= cap) return GMB_DB_ERR;
+    for (i = 0; i < n; i++) {
+        int used;
+        if (!entries[i].Account) return GMB_DB_ARG;
+        if (LedgerManager_FormatAmountForJournal(entries[i].Amount, entries[i].Currency,
+                                                 entries[i].ExchangeRate == 0.0 ? 1.0 : entries[i].ExchangeRate,
+                                                 amt, (int)sizeof(amt)) != GMB_DB_OK)
+            return GMB_DB_ERR;
+        used = snprintf(text + pos, (size_t)(cap - pos), "\n    %s      %s", entries[i].Account, amt);
+        if (used < 0 || used >= cap - pos) return GMB_DB_ERR;
+        pos += used;
+    }
+    return GMB_DB_OK;
+}
+
+/* Riscrive il journal sostituendo i byte [start,end) con `repl` (replLen; 0 = rimozione).
+ * Gli offset > end sono spostati di delta; il record `fixedId` (il blocco riscritto)
+ * resta a `start`. La cache viene svuotata (cambiano gli offset). */
+static int ledger_rewrite_journal(LedgerContext* ctx, long start, long end,
+                                  const char* repl, long replLen, int64_t fixedId)
+{
+    FILE* f;
+    char* in;
+    char* out;
+    long len, outLen, delta, i, nTail;
+    char tmpPath[PATH_MAX];
+    int rc = GMB_DB_OK;
+    if (!ctx || start < 0 || end < start || replLen < 0) return GMB_DB_ARG;
+    len = ledger_path_len(ctx->JournalFilePath);
+    if (len < 0 || end > len) return GMB_DB_ERR;
+    in = (char*)malloc((size_t)len + 1);
+    if (!in) return GMB_DB_ERR;
+    if (ledger_read_range(ctx->JournalFilePath, 0, in, len) != GMB_DB_OK) { free(in); return GMB_DB_ERR; }
+    nTail = len - end;
+    outLen = start + replLen + nTail;
+    out = (char*)malloc((size_t)outLen + 1);
+    if (!out) { free(in); return GMB_DB_ERR; }
+    memcpy(out, in, (size_t)start);
+    if (replLen > 0 && repl) memcpy(out + start, repl, (size_t)replLen);
+    if (nTail > 0) memcpy(out + start + replLen, in + end, (size_t)nTail);
+    free(in);
+    snprintf(tmpPath, sizeof(tmpPath), "%s.tmp", ctx->JournalFilePath);
+    f = fopen(tmpPath, "wb");
+    if (!f) { free(out); return GMB_DB_ERR; }
+    if (outLen > 0 && fwrite(out, 1, (size_t)outLen, f) != (size_t)outLen) rc = GMB_DB_ERR;
+    if (rc == GMB_DB_OK && fflush(f) != 0) rc = GMB_DB_ERR;
+    fclose(f);
+    free(out);
+    if (rc != GMB_DB_OK || rename(tmpPath, ctx->JournalFilePath) != 0) {
+        unlink(tmpPath);
+        return GMB_DB_ERR;
+    }
+    delta = replLen - (end - start);
+    for (i = 0; i < ctx->nIndex; i++) {
+        if (ctx->indexIds[i] == fixedId) continue;
+        if (ctx->indexRecs[i].FileOffset >= end) ctx->indexRecs[i].FileOffset += delta;
+    }
+    ledger_cache_clear(ctx);
+    return GMB_DB_OK;
+}
+
+int LedgerManager_DeleteTransaction(LedgerContext* ctx, int64_t txId)
+{
+    LedgerIndexRecord rec;
+    char* block = NULL;
+    char* marked = NULL;
+    long fileLen, end, blen, i, nl, insPos = -1, h;
+    int rc = 0, alreadyVoid = 0;
+    if (!ctx) return 0;
+    pthread_mutex_lock(&ctx->Lock);
+    if (!LedgerManager_TryGetIndex(ctx, txId, &rec) || rec.FileOffset < 0) goto done;
+    fileLen = ledger_path_len(ctx->JournalFilePath);
+    if (fileLen < 0) goto done;
+    end = ledger_block_end(ctx, rec.FileOffset, fileLen);
+    blen = end - rec.FileOffset;
+    if (blen <= 0) goto done;
+    block = (char*)malloc((size_t)blen + 1);
+    if (!block || ledger_read_range(ctx->JournalFilePath, rec.FileOffset, block, blen) != GMB_DB_OK) goto done;
+    block[blen] = 0;
+    for (nl = 0; nl < blen && block[nl] != '\n'; nl++) { }
+    /* posizione subito dopo la DATA (il primo spazio dell'header) */
+    h = 0;
+    if (blen > 2 && (unsigned char)block[0] == 0xEF && (unsigned char)block[1] == 0xBB
+        && (unsigned char)block[2] == 0xBF) h = 3;
+    for (i = h; i < nl; i++) {
+        if (block[i] == ' ' || block[i] == '\t') { insPos = i + 1; break; }
+    }
+    if (insPos < 0) goto done;
+    for (i = insPos; i < nl && (block[i] == ' ' || block[i] == '\t'); i++) { }
+    if (i < nl && block[i] == '*') alreadyVoid = 1;
+    if (!alreadyVoid) {
+        marked = (char*)malloc((size_t)blen + 3);
+        if (!marked) goto done;
+        memcpy(marked, block, (size_t)insPos);
+        marked[insPos] = '*';
+        marked[insPos + 1] = ' ';
+        memcpy(marked + insPos + 2, block + insPos, (size_t)(blen - insPos));
+        if (ledger_rewrite_journal(ctx, rec.FileOffset, end, marked, blen + 2, txId) != GMB_DB_OK) goto done;
+    }
+    /* rimuove l'id dall'indice ATTIVO (lo storno resta nel journal come storia ma non
+     * è una transazione: COUNT/VARIANCE/BALANCE/REGISTER non lo vedono). */
+    for (i = 0; i < ctx->nIndex; i++) {
+        if (ctx->indexIds[i] == txId) {
+            memmove(&ctx->indexIds[i], &ctx->indexIds[i + 1],
+                    (size_t)(ctx->nIndex - i - 1) * sizeof(int64_t));
+            memmove(&ctx->indexRecs[i], &ctx->indexRecs[i + 1],
+                    (size_t)(ctx->nIndex - i - 1) * sizeof(LedgerIndexRecord));
+            ctx->nIndex--;
+            break;
+        }
+    }
+    ctx->IsDirty = 1;
+    rc = 1;
+done:
+    free(block);
+    free(marked);
+    pthread_mutex_unlock(&ctx->Lock);
+    return rc;
+}
+
+/* EDIT: sostituisce il blocco del journal MANTENENDO lo stesso id (guida §LEDGER EDIT
+ * "preserva id e categoria"). Prima era delete+add: nuovo id e COUNT incrementato. */
 int64_t LedgerManager_UpdateTransaction(LedgerContext* ctx, int64_t txId, int year, int month, int day,
                                         const char* description, LedgerEntry* entries, int n)
 {
+    LedgerIndexRecord rec;
+    char text[GMB_LEDGER_TX_TEXT];
+    char* repl = NULL;
+    long fileLen, end, tlen, rlen;
+    int64_t rc = -1;
+    static const char kBom[3] = { (char)0xEF, (char)0xBB, (char)0xBF };
     if (!ctx || !entries || n < 1) return GMB_DB_ARG;
     if (!LedgerManager_IsTransactionBalanced(entries, n)) return GMB_DB_ERR;
-    if (!LedgerManager_DeleteTransaction(ctx, txId)) return -1;
-    return LedgerManager_AddTransaction(ctx, year, month, day, description, entries, n);
+    pthread_mutex_lock(&ctx->Lock);
+    if (!LedgerManager_TryGetIndex(ctx, txId, &rec) || rec.FileOffset < 0) goto done;
+    fileLen = ledger_path_len(ctx->JournalFilePath);
+    if (fileLen < 0) goto done;
+    end = ledger_block_end(ctx, rec.FileOffset, fileLen);
+    if (end <= rec.FileOffset) goto done;
+    if (ledger_build_tx_text(year, month, day, description, entries, n, text, (int)sizeof(text)) != GMB_DB_OK)
+        goto done;
+    tlen = (long)strlen(text);
+    rlen = 3 + tlen + 1;
+    repl = (char*)malloc((size_t)rlen + 1);
+    if (!repl) goto done;
+    memcpy(repl, kBom, 3);
+    memcpy(repl + 3, text, (size_t)tlen);
+    repl[3 + tlen] = '\n';
+    if (ledger_rewrite_journal(ctx, rec.FileOffset, end, repl, rlen, txId) != GMB_DB_OK) goto done;
+    if (ledger_index_put(ctx, txId, rec.FileOffset, year * 10000 + month * 100 + day) != GMB_DB_OK)
+        goto done;
+    ctx->IsDirty = 1;
+    rc = txId;
+done:
+    free(repl);
+    pthread_mutex_unlock(&ctx->Lock);
+    return rc;
 }
 
 static int ledger_line_has_date(const char* line)
@@ -1772,6 +1944,8 @@ int LedgerManager_RebuildIndexFromFile(const char* journalPath, LedgerContext* c
          * we skip BOM before the digit check so every header is found. */
         if (t[0] && strchr(";#%*", t[0]) == NULL && isdigit((unsigned char)t[0])
             && ledger_parse_date(t, &y, &m, &d)) {
+            /* Blocco di STORNO (`date * …`): non è una transazione attiva. */
+            if (ledger_header_is_void(t)) { currentOffset = ftell(f); continue; }
             if (ledger_index_put(ctx, ++txId, currentOffset, y * 10000 + m * 100 + d) != GMB_DB_OK) {
                 fclose(f);
                 return GMB_DB_ERR;
@@ -1832,6 +2006,8 @@ int LedgerManager_PackJournal(LedgerContext* ctx)
             char* t = block;
             while (*t && isspace((unsigned char)*t)) t++;
             if (!*t) continue;
+            /* Compaction: gli storni non sono transazioni → non copiati né indicizzati. */
+            if (ledger_header_is_void(t)) continue;
         }
         /* ponytail: Flush per blocco così FileOffset è reale. C# legge BaseStream.Position
          * senza Flush (buffer StreamWriter → offset spesso 0). */
@@ -2705,44 +2881,45 @@ int LedgerManager_SelfCheck(void)
     }
     fclose(f);
     text[jlen] = 0;
-    if (!strstr(text, " * seed") || !strstr(text, "    Cash      -100")) {
+    /* DELETE = storno IN PLACE (`date * …`) + rimozione dall'indice attivo: il blocco
+     * originale resta nel journal con gli importi NON negati, e lo storno non è una
+     * transazione. */
+    if (!strstr(text, "2026-08-20 * seed") || !strstr(text, "    Cash      100")) {
         free(text);
         LedgerContext_Dispose(ctx);
         return -41;
     }
     free(text);
 
+    if (LedgerManager_IndexCount(ctx) != 1
+        || LedgerManager_GetTransaction(ctx, 1, got, 4, &gn) != GMB_DB_ERR) {
+        LedgerContext_Dispose(ctx);
+        return -41;
+    }
+
     if (LedgerManager_PackJournal(ctx) != GMB_DB_OK) {
         LedgerContext_Dispose(ctx);
         return -42;
     }
-    if (LedgerContext_IsDirty(ctx) || LedgerManager_IndexCount(ctx) != 3) {
+    /* PACK scarta gli storni: resta solo "follow" (rinumerato 1). */
+    if (LedgerContext_IsDirty(ctx) || LedgerManager_IndexCount(ctx) != 1) {
         LedgerContext_Dispose(ctx);
         return -43;
     }
-    if (!LedgerManager_TryGetIndex(ctx, 1, &rec) || rec.Date != 0
-        || !LedgerManager_TryGetIndex(ctx, 3, &rec) || rec.Date != 0) {
+    if (!LedgerManager_TryGetIndex(ctx, 1, &rec) || rec.Date != 0) {
         LedgerContext_Dispose(ctx);
         return -44;
     }
     gn = 0;
     if (LedgerManager_GetTransaction(ctx, 1, got, 4, &gn) != GMB_DB_OK || gn != 2
-        || !got[0].Description || strcmp(got[0].Description, "seed") != 0
-        || fabs(GmbDecimal_ToDouble(got[0].Amount) - 100.0) >= 0.0001) {
+        || !got[0].Description || strcmp(got[0].Description, "follow") != 0) {
         LedgerContext_Dispose(ctx);
         return -45;
     }
     gn = 0;
-    if (LedgerManager_GetTransaction(ctx, 2, got, 4, &gn) != GMB_DB_OK || gn != 2
-        || !got[0].Description || strcmp(got[0].Description, "follow") != 0) {
+    if (LedgerManager_GetTransaction(ctx, 2, got, 4, &gn) != GMB_DB_ERR) {
         LedgerContext_Dispose(ctx);
         return -46;
-    }
-    gn = 0;
-    if (LedgerManager_GetTransaction(ctx, 3, got, 4, &gn) != GMB_DB_OK || gn != 2
-        || got[0].Status != '*' || fabs(GmbDecimal_ToDouble(got[0].Amount) + 100.0) >= 0.0001) {
-        LedgerContext_Dispose(ctx);
-        return -47;
     }
     f = fopen(journal, "rb");
     if (!f) {
@@ -2783,10 +2960,8 @@ int LedgerManager_SelfCheck(void)
         return -52;
     }
     if (LedgerManager_RebuildIndexFromFile(journal, reopen) != GMB_DB_OK
-        || LedgerManager_IndexCount(reopen) != 3
-        || !LedgerManager_TryGetIndex(reopen, 1, &rec) || rec.Date != 20260820
-        || !LedgerManager_TryGetIndex(reopen, 2, &rec) || rec.Date != 20260821
-        || !LedgerManager_TryGetIndex(reopen, 3, &rec) || rec.Date != 20260820) {
+        || LedgerManager_IndexCount(reopen) != 1
+        || !LedgerManager_TryGetIndex(reopen, 1, &rec) || rec.Date != 20260821) {
         LedgerContext_Dispose(reopen);
         LedgerContext_Dispose(ctx);
         return -53;

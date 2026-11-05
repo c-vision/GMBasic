@@ -87,20 +87,35 @@ public sealed partial class LedgerManager
         index.Clear();
         if (!File.Exists(journalPath)) return;
 
-        long currentOffset = 0;
+        /* Scansione BYTE-oriented: gli offset devono essere posizioni reali nel file.
+         * Con StreamReader + reader.BaseStream.Position gli offset erano sfalsati dal
+         * buffer di lettura (le transazioni dalla seconda in poi sparivano/duplicavano). */
+        var bytes = File.ReadAllBytes(journalPath);
         long transactionIdCounter = 0;
-        using var stream = new FileStream(journalPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-        using var reader = new StreamReader(stream, Encoding.UTF8);
-        while (reader.ReadLine() is { } line)
+        var pos = 0;
+        while (pos < bytes.Length)
         {
-            if (!string.IsNullOrWhiteSpace(line) && !";#%*".Contains(line[0]) && char.IsDigit(line[0]))
+            var nl = Array.IndexOf(bytes, (byte)'\n', pos);
+            var lineEnd = nl < 0 ? bytes.Length : nl;
+            var line = Encoding.UTF8.GetString(bytes, pos, lineEnd - pos);
+            var clean = line.TrimStart().TrimStart('\uFEFF');
+            if (IsJournalHeaderLine(clean) && !HeaderIsVoid(clean))
             {
-                var dateAsInt = ParseDateFromTransactionText(line);
-                index[++transactionIdCounter] = new LedgerIndexRecord(currentOffset, dateAsInt);
+                var dateAsInt = ParseDateFromTransactionText(clean);
+                index[++transactionIdCounter] = new LedgerIndexRecord(pos, dateAsInt);
             }
-
-            currentOffset = reader.BaseStream.Position;
+            pos = nl < 0 ? bytes.Length : nl + 1;
         }
+    }
+
+    /// <summary>True se la riga è l'header di un blocco (`YYYY-MM-DD …`).</summary>
+    private static bool IsJournalHeaderLine(string line)
+    {
+        if (string.IsNullOrEmpty(line) || !char.IsDigit(line[0])) return false;
+        var sp = line.IndexOf(' ');
+        var token = sp < 0 ? line : line[..sp];
+        return DateOnly.TryParseExact(token, "yyyy-MM-dd", CultureInfo.InvariantCulture,
+            DateTimeStyles.None, out _);
     }
 
     /// <summary>
@@ -414,7 +429,11 @@ public sealed partial class LedgerManager
 
         while ((line = reader.ReadLine()) != null)
         {
-            var trimmedLine = line.Trim();
+            /* Il journal ha un BOM per OGNI blocco (StreamWriter creato per ogni append):
+             * senza TrimStart('\uFEFF') l'header successivo non era riconosciuto come
+             * inizio-blocco e veniva accorpato al precedente (PACK perdeva le transazioni
+             * dalla seconda in poi). */
+            var trimmedLine = line.Trim().TrimStart('\uFEFF');
             if (string.IsNullOrEmpty(trimmedLine)) break;
             if (char.IsDigit(trimmedLine[0]) && DateOnly.TryParse(trimmedLine.Split(' ')[0], out _))
             {
@@ -503,6 +522,49 @@ public sealed partial class LedgerManager
         }
     }
 
+    /// <summary>True se la riga di header è uno STORNO (`YYYY-MM-DD * …`).</summary>
+    private static bool HeaderIsVoid(string line)
+    {
+        var t = line.Trim().TrimStart('\uFEFF');
+        var parts = t.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length >= 2 && parts[1] == "*";
+    }
+
+    /// <summary>Inizio del blocco indicizzato successivo (o fine file).</summary>
+    private static long BlockEnd(LedgerContext context, long start, long fileLength)
+    {
+        var end = fileLength;
+        foreach (var kv in context.TransactionIndex)
+            if (kv.Value.FileOffset > start && kv.Value.FileOffset < end)
+                end = kv.Value.FileOffset;
+        return end;
+    }
+
+    /// <summary>Riscrive il journal sostituendo [start,end) con <paramref name="replacement"/>
+    /// (vuoto = rimozione) e riallinea gli offset dei blocchi successivi. Il blocco
+    /// <paramref name="fixedId"/> resta a <paramref name="start"/>. Svuota la cache.</summary>
+    private static void RewriteJournalRange(LedgerContext context, long start, long end,
+        byte[]? replacement, long fixedId)
+    {
+        var bytes = File.ReadAllBytes(context.JournalFilePath);
+        var repl = replacement ?? [];
+        var outBytes = new byte[start + repl.Length + (bytes.Length - end)];
+        Buffer.BlockCopy(bytes, 0, outBytes, 0, (int)start);
+        if (repl.Length > 0) Buffer.BlockCopy(repl, 0, outBytes, (int)start, repl.Length);
+        Buffer.BlockCopy(bytes, (int)end, outBytes, (int)(start + repl.Length), (int)(bytes.Length - end));
+        var tmp = context.JournalFilePath + ".tmp";
+        File.WriteAllBytes(tmp, outBytes);
+        File.Move(tmp, context.JournalFilePath, true);
+        var delta = repl.Length - (end - start);
+        foreach (var key in context.TransactionIndex.Keys)
+        {
+            var rec = context.TransactionIndex[key];
+            if (key != fixedId && rec.FileOffset >= end)
+                context.TransactionIndex[key] = rec with { FileOffset = rec.FileOffset + delta };
+        }
+        context.TransactionCache.Clear();
+    }
+
     /// <summary>
     /// Elimina una transazione dal journal (la marca come cancellata).
     /// </summary>
@@ -512,33 +574,34 @@ public sealed partial class LedgerManager
         try
         {
             if (!context.TransactionIndex.TryGetValue(transactionId, out var record)) return false;
-            var entries = GetTransaction(context, transactionId);
-            if (entries.Length == 0) return false;
-
-            var dateStr = entries[0].Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-            var desc = entries[0].Description ?? "";
-            var sb = new StringBuilder();
-            sb.Append(dateStr).Append(" * ").Append(desc);
-            foreach (var entry in entries)
+            var fileLen = new FileInfo(context.JournalFilePath).Length;
+            var end = BlockEnd(context, record.FileOffset, fileLen);
+            if (end <= record.FileOffset) return false;
+            var bytes = File.ReadAllBytes(context.JournalFilePath);
+            var startOffset = (int)record.FileOffset;
+            var headerEnd = Array.IndexOf(bytes, (byte)'\n', startOffset);
+            if (headerEnd < 0) headerEnd = bytes.Length;
+            var p = startOffset;
+            if (bytes.Length >= p + 3 && bytes[p] == 0xEF && bytes[p + 1] == 0xBB && bytes[p + 2] == 0xBF) p += 3;
+            var insertAt = -1;
+            for (var i = p; i < headerEnd; i++)
+                if (bytes[i] == (byte)' ' || bytes[i] == (byte)'\t') { insertAt = i + 1; break; }
+            if (insertAt < 0) return false;
+            var q = insertAt;
+            while (q < headerEnd && (bytes[q] == (byte)' ' || bytes[q] == (byte)'\t')) q++;
+            /* Già storno: nulla da fare nel journal (caso difensivo). */
+            if (!(q < headerEnd && bytes[q] == (byte)'*'))
             {
-                sb.AppendLine().Append("    ").Append(entry.Account);
-                sb.Append("      ").Append(FormatAmountForJournal(-entry.Amount, entry.Currency, entry.ExchangeRate));
+                var repl = new byte[end - startOffset + 2];
+                Buffer.BlockCopy(bytes, startOffset, repl, 0, insertAt - startOffset);
+                repl[insertAt - startOffset] = (byte)'*';
+                repl[insertAt - startOffset + 1] = (byte)' ';
+                Buffer.BlockCopy(bytes, insertAt, repl, insertAt - startOffset + 2, (int)end - insertAt);
+                RewriteJournalRange(context, record.FileOffset, end, repl, transactionId);
             }
-
-            var voidText = sb.ToString();
-            using (var fs = new FileStream(context.JournalFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite))
-            using (var writer = new StreamWriter(fs, Encoding.UTF8))
-            {
-                var newOffset = fs.Length;
-                if (newOffset > 0)
-                {
-                    fs.Seek(-1, SeekOrigin.End);
-                    if (fs.ReadByte() != '\n') writer.WriteLine();
-                    newOffset = fs.Position;
-                }
-                writer.WriteLine(voidText);
-                writer.Flush();
-            }
+            /* Lo storno resta nel journal (storia) ma NON è una transazione attiva:
+             * COUNT/VARIANCE/BALANCE/REGISTER non lo vedono, Rebuild/Pack lo ignorano. */
+            context.TransactionIndex.TryRemove(transactionId, out _);
             context.IsDirty = true;
             return true;
         }
@@ -549,17 +612,43 @@ public sealed partial class LedgerManager
     }
 
     /// <summary>
-    /// Modifica una transazione esistente: scrive lo storno (void) della vecchia e aggiunge la
-    /// nuova con la data/descrizione/postings forniti. Ritorna il nuovo id transazione, o -1 se
-    /// la transazione non esiste o i nuovi postings non sono bilanciati.
+    /// Modifica una transazione esistente SOSTITUENDOLA nello stesso id (guida §LEDGER EDIT:
+    /// "preserva id e categoria"). Prima era delete+add con un nuovo id e COUNT incrementato.
     /// </summary>
     public static long UpdateTransaction(LedgerContext context, long transactionId, DateOnly date,
         string description, List<LedgerEntry> entries)
     {
         if (!IsTransactionBalanced(entries))
             throw new InvalidOperationException($"La transazione del {date:yyyy-MM-dd} ('{description}') non è bilanciata.");
-        if (!DeleteTransaction(context, transactionId)) return -1;
-        return AddTransaction(context, date, description, entries);
+        context.Lock.Wait();
+        try
+        {
+            if (!context.TransactionIndex.TryGetValue(transactionId, out var record)) return -1;
+            var fileLen = new FileInfo(context.JournalFilePath).Length;
+            var end = BlockEnd(context, record.FileOffset, fileLen);
+            if (end <= record.FileOffset) return -1;
+            var sb = new StringBuilder();
+            sb.Append(date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)).Append(' ').Append(description);
+            foreach (var entry in entries)
+            {
+                sb.AppendLine().Append("    ").Append(entry.Account);
+                sb.Append("      ").Append(FormatAmountForJournal(entry.Amount, entry.Currency, entry.ExchangeRate));
+            }
+            sb.AppendLine();
+            var bytes = File.ReadAllBytes(context.JournalFilePath);
+            var p = (int)record.FileOffset;
+            var hasBom = bytes.Length >= p + 3 && bytes[p] == 0xEF && bytes[p + 1] == 0xBB && bytes[p + 2] == 0xBF;
+            var text = (hasBom ? "\uFEFF" : "") + sb;
+            RewriteJournalRange(context, record.FileOffset, end, Encoding.UTF8.GetBytes(text), transactionId);
+            var dateAsInt = date.Year * 10000 + date.Month * 100 + date.Day;
+            context.TransactionIndex[transactionId] = new LedgerIndexRecord(record.FileOffset, dateAsInt);
+            context.IsDirty = true;
+            return transactionId;
+        }
+        finally
+        {
+            context.Lock.Release();
+        }
     }
 
     /// <summary>
@@ -570,29 +659,40 @@ public sealed partial class LedgerManager
         context.Lock.Wait();
         try
         {
+            var bytes = File.ReadAllBytes(context.JournalFilePath);
+            var blocks = SplitJournalBlocks(bytes);
             var tempPath = context.JournalFilePath + ".packed";
             var index = new ConcurrentDictionary<long, LedgerIndexRecord>();
             long nextId = 1;
             long offset = 0;
-
-            using (var reader = new StreamReader(context.JournalFilePath, Encoding.UTF8))
-            using (var writer = new StreamWriter(tempPath, false, Encoding.UTF8))
+            using (var outStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
             {
-                string? block;
-                while ((block = ReadTransactionBlockAsText(reader)) != null)
+                var first = true;
+                foreach (var block in blocks)
                 {
-                    if (string.IsNullOrWhiteSpace(block)) continue;
-                    writer.Write(block);
-                    if (!block.EndsWith('\n')) writer.WriteLine();
+                    /* Compaction: gli storni non sono transazioni → non copiati né indicizzati. */
+                    if (block.IsVoid) continue;
+                    var start = block.Start;
+                    /* BOM solo all'inizio del file compattato. */
+                    if (!first && bytes.Length >= start + 3
+                        && bytes[start] == 0xEF && bytes[start + 1] == 0xBB && bytes[start + 2] == 0xBF)
+                        start += 3;
+                    var len = block.End - start;
+                    if (len <= 0) continue;
+                    outStream.Write(bytes, start, len);
+                    if (bytes[block.End - 1] != (byte)'\n') outStream.WriteByte((byte)'\n');
+                    outStream.Flush();
                     index[nextId] = new LedgerIndexRecord(offset, 0);
-                    offset = writer.BaseStream.Position;
+                    offset = outStream.Position;
                     nextId++;
+                    first = false;
                 }
-                writer.Flush();
+                outStream.Flush();
             }
 
             File.Move(tempPath, context.JournalFilePath, true);
             context.TransactionIndex.Clear();
+            context.TransactionCache.Clear();
             foreach (var kv in index) context.TransactionIndex[kv.Key] = kv.Value;
 
             var indexFile = context.IndexFilePath;
@@ -604,6 +704,31 @@ public sealed partial class LedgerManager
         {
             context.Lock.Release();
         }
+    }
+
+    /// <summary>Blocchi del journal come intervalli di byte [Start,End) + flag storno.</summary>
+    private static List<(int Start, int End, bool IsVoid)> SplitJournalBlocks(byte[] bytes)
+    {
+        var starts = new List<int>();
+        var voids = new List<bool>();
+        var pos = 0;
+        while (pos < bytes.Length)
+        {
+            var nl = Array.IndexOf(bytes, (byte)'\n', pos);
+            var lineEnd = nl < 0 ? bytes.Length : nl;
+            var line = Encoding.UTF8.GetString(bytes, pos, lineEnd - pos);
+            var clean = line.TrimStart().TrimStart('\uFEFF');
+            if (IsJournalHeaderLine(clean))
+            {
+                starts.Add(pos);
+                voids.Add(HeaderIsVoid(clean));
+            }
+            pos = nl < 0 ? bytes.Length : nl + 1;
+        }
+        var result = new List<(int, int, bool)>(starts.Count);
+        for (var i = 0; i < starts.Count; i++)
+            result.Add((starts[i], i + 1 < starts.Count ? starts[i + 1] : bytes.Length, voids[i]));
+        return result;
     }
 
     #endregion

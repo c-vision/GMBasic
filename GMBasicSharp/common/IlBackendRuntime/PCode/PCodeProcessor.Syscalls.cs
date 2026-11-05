@@ -4812,9 +4812,7 @@ internal sealed partial class PCodeProcessor
                 try
                 {
                     var dateVal = rawArgs[1];
-                    DateOnly date = dateVal is DateTime dt ? DateOnly.FromDateTime(dt) :
-                                    dateVal is DateOnly dto ? dto :
-                                    DateOnly.TryParse(dateVal?.ToString(), out var dp) ? dp : DateOnly.MinValue;
+                    DateOnly date = LedgerDateOnly(dateVal);
                     var desc = rawArgs[2]?.ToString() ?? "";
                     var entries = new List<LedgerEntry>();
                     // Modern syntax: postings as a single DICT argument
@@ -4924,9 +4922,7 @@ internal sealed partial class PCodeProcessor
                     var txIdRaw = rawArgs[1];
                     var txId = txIdRaw is double dd ? (long)dd : txIdRaw is int ii ? (long)ii : 0L;
                     var dateVal = rawArgs[2];
-                    DateOnly date = dateVal is DateTime dt ? DateOnly.FromDateTime(dt) :
-                                    dateVal is DateOnly dto ? dto :
-                                    DateOnly.TryParse(dateVal?.ToString(), out var dp) ? dp : DateOnly.MinValue;
+                    DateOnly date = LedgerDateOnly(dateVal);
                     var desc = rawArgs[3]?.ToString() ?? "";
                     var entries = new List<LedgerEntry>();
                     for (int i = 4; i + 1 < rawArgs.Count; i += 2)
@@ -6852,4 +6848,30 @@ internal sealed partial class PCodeProcessor
         }
         _fileWatchCallbacks?.Clear();
     }
+
+    /// <summary>Converte l'argomento data di LEDGER ADD/EDIT in DateOnly: DateTime/
+    /// DateOnly, oppure SERIALE OADate (le variabili DATE del BASIC viaggiano come
+    /// double) oppure stringa "yyyy-MM-dd". Prima un seriale cadeva su
+    /// DateOnly.MinValue → transazione con data 0001-01-01 solo sul PCode.</summary>
+    private static DateOnly LedgerDateOnly(object? value)
+    {
+        switch (value)
+        {
+            case DateTime dt: return DateOnly.FromDateTime(dt);
+            case DateOnly dto: return dto;
+            case double d: return DateOnly.FromDateTime(DateTime.FromOADate(d));
+            case int i: return DateOnly.FromDateTime(DateTime.FromOADate(i));
+            case long l: return DateOnly.FromDateTime(DateTime.FromOADate(l));
+        }
+        var text = value?.ToString();
+        if (DateOnly.TryParse(text, System.Globalization.CultureInfo.InvariantCulture,
+                              System.Globalization.DateTimeStyles.None, out var parsed))
+            return parsed;
+        if (double.TryParse(text, System.Globalization.NumberStyles.Any,
+                            System.Globalization.CultureInfo.InvariantCulture, out var serial)
+            && serial > 0 && serial < 2958466)
+            return DateOnly.FromDateTime(DateTime.FromOADate(serial));
+        return DateOnly.MinValue;
+    }
+
 }
