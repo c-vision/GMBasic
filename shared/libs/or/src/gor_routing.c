@@ -820,7 +820,10 @@ gor_real gor_tsp_ga(int n, const gor_real *dist, int *tour, int pop, int gens,
     if (n < 4 || !dist || !tour) return 0.0;
     if (pop < 4) pop = 50;
     if (gens < 1) gens = 100;
-    popu = (int *)malloc((size_t)pop * n * sizeof(int));
+    /* La popolazione ospita `pop` genitori PIU' `pop/2` figli, scritti a indice `pop + k`
+     * (vedi il ciclo di crossover sotto): con `pop * n` int la scrittura dei figli usciva
+     * dall'allocazione — risultati casuali e tour invalidi (2026-11-04). */
+    popu = (int *)malloc((size_t)(pop + pop / 2) * n * sizeof(int));
     cost = (gor_real *)malloc((size_t)(pop + pop) * sizeof(gor_real));
     fits = (int *)malloc((size_t)(pop + pop) * sizeof(int));
     tmp = (int *)malloc((size_t)n * sizeof(int));

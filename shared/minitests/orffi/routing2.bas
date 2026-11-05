@@ -2,7 +2,7 @@
 ' TSPEXTRAMILEAGE, TSPGRASP, TSPVNS, TSP3OPT, TSPSA, TSPTABU, TSPHKBOUND, TSPDFJ, TSPERX,
 ' TSPGA, TSPOROPT, VRPTIMEWINDOWS, VRPMULTIDEPOT, VRPPICKUPDELIVERY.
 ' Istanze piccole con distanze intere (|i-j|): costo del giro ottimo = 8.
-' EXPECT: extra=8.0: 1 |grasp=8.0: 1 |vns=8.0: 1 |3opt=8.0: 1 |sa=8.0: 1 |tabu=8.0: 1 |hk=7.9:-1 |dfj=8.0: 1 |oropt=8.0: 1 |ga=skip|erx= 1 : 1 :-1|vrptw= 2 :10.0: 0  1 |mdvrp= 1 :6.0: 0  0 |pdp= 1 :4.0: 1  2  1  1 :-1
+' EXPECT: extra=8.0: 1 |grasp=8.0: 1 |vns=8.0: 1 |3opt=8.0: 1 |sa=8.0: 1 |tabu=8.0: 1 |hk=7.9:-1 |dfj=8.0: 1 |oropt=8.0: 1 |ga=8.0: 1 |erx= 1 : 1 :-1|vrptw= 2 :10.0: 0  1 |mdvrp= 1 :6.0: 0  0 |pdp= 1 :4.0: 1  2  1  1 :-1
 IMPORT OPTIMIZE
 
 FUNCTION IsPerm(t() AS LONG, n AS LONG) AS LONG
@@ -59,12 +59,8 @@ SUB Main()
   PRINT "|dfj="; FORMAT(OPTIMIZE.TSPDFJ(d, 5, t, 10), "#.0"); ":"; IsPerm(t, 5);
   FOR i = 0 TO 4 : t(i) = i : NEXT i
   PRINT "|oropt="; FORMAT(OPTIMIZE.TSPOROPT(d, 5, t, 60), "#.0"); ":"; IsPerm(t, 5);
-  ' TSPGA: risultato NON deterministico (a volte 8.0, a volte 0.0 con tour invalido) e'
-  ' sospetta scrittura fuori allocazione in gor_tsp_ga (fits/cost dimensionati pop+pop ma
-  ' nchild puo' superare pop). Vedi `(open) - OR-TSPGA-Non-Deterministico.md`: escluso dal
-  ' confronto esatto finche' non e' corretto.
   FOR i = 0 TO 4 : t(i) = i : NEXT i
-  PRINT "|ga=skip";
+  PRINT "|ga="; FORMAT(OPTIMIZE.TSPGA(d, 5, t, 12, 30), "#.0"); ":"; IsPerm(t, 5);
 
   ' ERX: crossover di due genitori -> figlio permutazione
   DIM p1(4) AS LONG
