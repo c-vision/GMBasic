@@ -186,7 +186,8 @@ public sealed partial class StdLib : IParserRegistry
         CreateMultivariateNamespace();
         // FITTING: namespace LIBERATO — ri-esposto via FFI (shared/include/fitting.inc, libgmbstats).
         // CreateFittingNamespace();
-        CreateSimulationNamespace();
+        // SIMULATION: namespace LIBERATO — ri-esposto via FFI (shared/include/simulation.inc, libgmbstats).
+        // CreateSimulationNamespace();
         CreateRegressionNamespace();
         RegisterAnalysisResultTypeSchemas();
         // CreateOptimizeNamespace();  // DEPRECATO 2026-11-03: namespace OPTIMIZE dismesso,
