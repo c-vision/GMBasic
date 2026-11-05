@@ -1210,6 +1210,72 @@ gmb_val_t gmb_anova_jagged(const double* const* rows, const int* sizes, int k)
     return r;
 }
 
+gmb_val_t gmb_kruskal_flat(const double* data, const int* sizes, int k)
+{
+    if (!data || !sizes || k < 2) return gmb_make_error("KRUSKAL richiede almeno 2 gruppi");
+    int total = 0;
+    for (int i = 0; i < k; i++) total += sizes[i] > 0 ? sizes[i] : 0;
+    if (total <= 0) return gmb_make_error("KRUSKAL: gruppi vuoti");
+    double* copy = (double*)malloc((size_t)total * sizeof(double));
+    double* ranks = (double*)malloc((size_t)total * sizeof(double));
+    if (!copy || !ranks) { free(copy); free(ranks); return gmb_make_error("KRUSKAL oom"); }
+    for (int i = 0; i < total; i++) copy[i] = data[i];
+    gmb_stats_rank_sum(copy, total, ranks);
+    double h = 0;
+    int off = 0;
+    for (int g = 0; g < k; g++) {
+        double rsum = 0;
+        for (int i = 0; i < sizes[g]; i++) rsum += ranks[off++];
+        if (sizes[g] > 0) h += rsum * rsum / sizes[g];
+    }
+    h = 12.0 / (total * (double)(total + 1)) * h - 3.0 * (double)(total + 1);
+    double df = (double)(k - 1);
+    double p = 1.0 - gmb_dist_chi2_cdf(df, h);
+    free(copy); free(ranks);
+    return gmb_make_dict(3, "Statistic", gmb_make_val_double(h), "PValue", gmb_make_val_double(p), "DegreesOfFreedom", gmb_make_val_double(df));
+}
+gmb_val_t gmb_kruskal_jagged(const double* const* rows, const int* sizes, int k)
+{
+    if (!rows || !sizes || k < 2) return gmb_make_error("KRUSKAL richiede almeno 2 gruppi");
+    int total = 0;
+    for (int i = 0; i < k; i++) total += sizes[i] > 0 ? sizes[i] : 0;
+    if (total <= 0) return gmb_make_error("KRUSKAL: gruppi vuoti");
+    double* data = (double*)malloc((size_t)total * sizeof(double));
+    if (!data) return gmb_make_error("KRUSKAL oom");
+    int pos = 0;
+    for (int i = 0; i < k; i++)
+        for (int j = 0; j < sizes[i]; j++)
+            data[pos++] = rows[i][j];
+    gmb_val_t r = gmb_kruskal_flat(data, sizes, k);
+    free(data);
+    return r;
+}
+gmb_val_t gmb_kruskal(gmb_val_t groups_val)
+{
+    gmb_list_t groups = gmb_val_as_list(groups_val);
+    int k = gmb_list_count(groups);
+    if (k < 2) return gmb_make_error("KRUSKAL richiede almeno 2 gruppi");
+    int total = 0;
+    int* sizes = (int*)malloc(sizeof(int) * (size_t)k);
+    if (!sizes) return gmb_make_error("KRUSKAL oom");
+    for (int i = 0; i < k; i++) {
+        gmb_list_t g = gmb_val_as_list(gmb_list_get(groups, i));
+        sizes[i] = gmb_list_count(g);
+        total += sizes[i];
+    }
+    double* data = (double*)malloc(sizeof(double) * (size_t)(total ? total : 1));
+    if (!data) { free(sizes); return gmb_make_error("KRUSKAL oom"); }
+    int pos = 0;
+    for (int i = 0; i < k; i++) {
+        gmb_list_t g = gmb_val_as_list(gmb_list_get(groups, i));
+        int n = gmb_list_count(g);
+        for (int j = 0; j < n; j++) data[pos++] = gmb_val_to_double(gmb_list_get(g, j));
+    }
+    gmb_val_t r = gmb_kruskal_flat(data, sizes, k);
+    free(data); free(sizes);
+    return r;
+}
+
 /* STATS.Anova da array PIATTO (data = gruppi concatenati, sizes[i] per gruppo):
  * dict ESTESO STATS.AnovaResult (canone IlRuntime.Anova), come gmb_anova_result ma
  * da puntatori (emissione emitter C# su matrice jagged). gmb_anova_flat è il dict

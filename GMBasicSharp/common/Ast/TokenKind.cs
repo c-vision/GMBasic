@@ -2016,6 +2016,7 @@ public enum TokenKind
     StatsKendallTau, StatsFTest, StatsBetaSf, StatsChiSf, StatsLogisticCdf, StatsLogisticSf,
     StatsTriangularCdf, StatsTriangularSf, StatsWeibullIsf, StatsUniformIsf, StatsParetoIsf,
     StatsBetaIsf, StatsLogisticIsf, StatsLognormalIsf, StatsTriangularIsf,
+    StatsKruskal,
     StatsChi2Contingency, StatsMannWhitney, StatsWilcoxon,
     StatsGammaPdf, StatsGammaCdf, StatsGammaPpf, StatsGammaIsf,
     StatsSkewTest, StatsKurtosisTest, StatsJarqueBera,

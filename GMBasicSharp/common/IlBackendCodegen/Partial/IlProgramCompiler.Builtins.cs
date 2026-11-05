@@ -410,6 +410,7 @@ public sealed partial class IlProgramCompiler
             case TokenKind.TTestPaired: EmitAnalysisTwoArrayCall(expr, nameof(IlRuntime.TTestPaired)); break;
             case TokenKind.TTestOneSample: EmitAnalysisArrayScalarCall(expr, nameof(IlRuntime.TTestOneSample)); break;
             case TokenKind.StatsAnova: EmitAnalysisMatrixCall(expr, nameof(IlRuntime.StatsAnova)); break;
+            case TokenKind.StatsKruskal: EmitAnalysisMatrixCall(expr, nameof(IlRuntime.StatsKruskal)); break;
             case TokenKind.Chi2Test: EmitAnalysisTwoArrayCall(expr, nameof(IlRuntime.Chi2Test)); break;
             case TokenKind.FisherExact: EmitStatsFourScalarCall(expr, nameof(IlRuntime.FisherExact)); break;
             case TokenKind.ShapiroWilk: EmitAnalysisArrayCall(expr, nameof(IlRuntime.ShapiroWilk)); break;
