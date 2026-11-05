@@ -1347,16 +1347,9 @@ procedure,SYSTEM,VALTYPE,ValType
 procedure,SYSTEM,VARPTR,VarPtr
 procedure,TIMESERIES,AdfTest,AdfTest
 procedure,TIMESERIES,Arima,Arima
-procedure,TIMESERIES,DFGLS,TsDfgls
-procedure,TIMESERIES,ENGLEGRANGER,TsEngleGranger
 procedure,TIMESERIES,HMMFIT,TsHmmFit
-procedure,TIMESERIES,HMMFORWARD,TsHmmForward
-procedure,TIMESERIES,HMMVITERBI,TsHmmViterbi
 procedure,TIMESERIES,HoltWinters,HoltWinters
-procedure,TIMESERIES,JOHANSEN,TsJohansen
-procedure,TIMESERIES,KPSS,TsKpss
 procedure,TIMESERIES,MaCoefficients,MaCoefficients
-procedure,TIMESERIES,QLR,TsQlr
 procedure,TIMESERIES,TSAPPROXENTROPY,TsApproxEntropy
 procedure,TIMESERIES,TSAUTOCORR,Autocorrelation
 procedure,TIMESERIES,TSBANDPASS,TsBandPass
