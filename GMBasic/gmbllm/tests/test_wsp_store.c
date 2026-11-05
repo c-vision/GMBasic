@@ -1,5 +1,5 @@
 /* test_wsp_store.c — selfcheck del Weight Store (W1 WSP). Oracolo sintetico + opzionale modello reale.
- * Uso:  test_wsp_store [dir_modello [n_tensori_attesi [byte_totali_attesi]]]  */
+ * Uso:  test_wsp_store [dir_modello [n_attesi [byte_attesi [file_roundtrip_out]]]]  */
 #define _POSIX_C_SOURCE 200809L
 #define _DARWIN_C_SOURCE 1
 #define _DEFAULT_SOURCE 1
@@ -144,9 +144,82 @@ static void real_model(const char *dir, long want_n, long long want_bytes) {
     llmwsp_store_close(s);
 }
 
+/* Round-trip: store -> writer -> store; ogni tensore con stesso sha256, copertura completa. */
+static void roundtrip(const char *src, const char *outp) {
+    llmwsp_store *a = NULL, *b = NULL; char err[256];
+    if (llmwsp_store_open(src, &a, err, sizeof err) < 0) { CHECK(0, "rt open src: %s", err); return; }
+    size_t n = llmwsp_store_count(a);
+    llmwsp_wspec *sp = (llmwsp_wspec *)calloc(n ? n : 1, sizeof *sp);
+    for (size_t i = 0; i < n; i++) {
+        const llmwsp_tensor *t = llmwsp_store_at(a, i);
+        sp[i].name = t->name; sp[i].dtype = t->dtype; sp[i].ndim = t->ndim;
+        for (int d = 0; d < t->ndim; d++) sp[i].shape[d] = t->shape[d];
+    }
+    llmwsp_writer *w = NULL;
+    CHECK(llmwsp_writer_open(outp, sp, n, &w, err, sizeof err) == 0, "writer open: %s", err);
+    if (w) {
+        for (size_t i = 0; i < n; i++) if (llmwsp_writer_copy(w, a, llmwsp_store_at(a, i)) < 0) { CHECK(0, "copy %zu", i); break; }
+        CHECK(llmwsp_writer_close(w, err, sizeof err) == 0, "writer close: %s", err);
+    }
+    CHECK(llmwsp_store_open(outp, &b, err, sizeof err) == 0, "rt open out: %s", err);
+    if (b) {
+        CHECK(llmwsp_store_count(b) == n, "rt count");
+        CHECK(llmwsp_store_total_bytes(b) == llmwsp_store_total_bytes(a), "rt bytes");
+        CHECK(llmwsp_store_check_coverage(b, err, sizeof err) == 0, "rt coverage: %s", err);
+        int bad = 0;
+        for (size_t i = 0; i < n && !bad; i++) {
+            const llmwsp_tensor *ta = llmwsp_store_at(a, i), *tb = llmwsp_store_find(b, ta->name);
+            char ha[65], hb[65];
+            if (!tb || tb->ndim != ta->ndim || strcmp(tb->dtype, ta->dtype) != 0 ||
+                llmwsp_tensor_sha256(a, ta, ha) < 0 || llmwsp_tensor_sha256(b, tb, hb) < 0 || strcmp(ha, hb) != 0) {
+                CHECK(0, "rt tensore diverso: %s", ta->name); bad = 1;
+            }
+        }
+        llmwsp_store_close(b);
+    }
+    llmwsp_store_close(a); free(sp);
+}
+
+static void writer_errors(const char *dir) {
+    char p[300], err[256]; llmwsp_writer *w = NULL;
+    snprintf(p, sizeof p, "%s/w.safetensors", dir);
+    llmwsp_wspec sp[2] = {{"a", "F32", 1, {2}}, {"b", "U8", 2, {2, 2}}};
+    CHECK(llmwsp_writer_open(p, sp, 2, &w, err, sizeof err) == 0, "w open");
+    unsigned char z[16] = {0};
+    CHECK(llmwsp_writer_append(w, z, 8) == 0 && llmwsp_writer_append(w, z, 3) == 0, "append ok");
+    CHECK(llmwsp_writer_close(w, err, sizeof err) < 0 && strstr(err, "b"), "incompleto deve fallire (%s)", err);
+    CHECK(llmwsp_writer_open(p, sp, 2, &w, err, sizeof err) == 0, "w open 2");
+    CHECK(llmwsp_writer_append(w, z, 12) == 0 && llmwsp_writer_append(w, z, 1) < 0, "byte in eccesso rifiutati");
+    llmwsp_writer_close(w, err, sizeof err);
+    llmwsp_wspec dup[2] = {{"a", "F32", 0, {0}}, {"a", "F32", 0, {0}}};
+    CHECK(llmwsp_writer_open(p, dup, 2, &w, err, sizeof err) < 0, "duplicato rifiutato");
+    llmwsp_wspec bd[1] = {{"a", "XX9", 0, {0}}};
+    CHECK(llmwsp_writer_open(p, bd, 1, &w, err, sizeof err) < 0, "dtype ignoto rifiutato");
+    /* tensore vuoto in mezzo */
+    llmwsp_wspec em[3] = {{"a", "U8", 1, {2}}, {"e", "F32", 2, {0, 5}}, {"c", "U8", 1, {1}}};
+    CHECK(llmwsp_writer_open(p, em, 3, &w, err, sizeof err) == 0 && llmwsp_writer_append(w, z, 3) == 0 &&
+          llmwsp_writer_close(w, err, sizeof err) == 0, "vuoto in mezzo: %s", err);
+    llmwsp_store *s = NULL;
+    CHECK(llmwsp_store_open(p, &s, err, sizeof err) == 0 && llmwsp_store_count(s) == 3 &&
+          llmwsp_store_check_coverage(s, err, sizeof err) == 0, "rilettura vuoto");
+    llmwsp_store_close(s);
+}
+
 int main(int argc, char **argv) {
     synthetic();
-    if (argc > 1) real_model(argv[1], argc > 2 ? atol(argv[2]) : 0, argc > 3 ? atoll(argv[3]) : 0);
+    {
+        char d[] = "/tmp/wsp_wr_XXXXXX";
+        if (mkdtemp(d)) {
+            writer_errors(d);
+            char p[300], q[300]; snprintf(p, sizeof p, "%s/w.safetensors", d); snprintf(q, sizeof q, "%s/rt.safetensors", d);
+            roundtrip(p, q);
+        }
+    }
+    if (argc > 1) {
+        real_model(argv[1], argc > 2 ? atol(argv[2]) : 0, argc > 3 ? atoll(argv[3]) : 0);
+        const char *out = argc > 4 ? argv[4] : NULL;
+        if (out) { roundtrip(argv[1], out); printf("round-trip su %s: RSS max %ld MB\n", out, rss_kb() / 1024); }
+    }
     printf(fails ? "WSP STORE: %d FALLITI\n" : "WSP STORE: OK\n", fails);
     return fails != 0;
 }

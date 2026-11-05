@@ -413,6 +413,8 @@ int llmwsp_tensor_sha256(const llmwsp_store *s, const llmwsp_tensor *t, char hex
 typedef struct { uint64_t off, n; } iv;
 static int cmp_iv(const void *a, const void *b) {
     uint64_t x = ((const iv *)a)->off, y = ((const iv *)b)->off;
+    if (x != y) return x < y ? -1 : 1;
+    x = ((const iv *)a)->n; y = ((const iv *)b)->n;   /* a parità di offset prima i tensori vuoti */
     return x < y ? -1 : x > y;
 }
 
@@ -442,4 +444,138 @@ int llmwsp_store_check_coverage(const llmwsp_store *s, char *err, size_t errcap)
         free(v);
     }
     return viol;
+}
+
+/* ---------------------------------------------------------------- writer a streaming */
+struct llmwsp_writer {
+    FILE     *f;
+    size_t    n, cur;
+    uint64_t *nbytes;      /* per tensore */
+    char    **names;
+    char    **dtypes;
+    int      *ndim;
+    int64_t (*shape)[LLMWSP_MAX_DIMS];
+    uint64_t  got;         /* byte ricevuti dal tensore corrente */
+};
+
+static void wr_free(llmwsp_writer *w) {
+    if (!w) return;
+    for (size_t i = 0; i < w->n; i++) { if (w->names) free(w->names[i]); if (w->dtypes) free(w->dtypes[i]); }
+    free(w->names); free(w->dtypes); free(w->ndim); free(w->shape); free(w->nbytes);
+    if (w->f) fclose(w->f);
+    free(w);
+}
+
+static void wr_skip_empty(llmwsp_writer *w) { while (w->cur < w->n && w->nbytes[w->cur] == 0) w->cur++; }
+
+typedef struct { char *p; size_t n, cap; } sb;
+static int sb_put(sb *b, const char *s, size_t n) {
+    if (b->n + n + 1 > b->cap) {
+        size_t nc = b->cap ? b->cap : 4096;
+        while (nc < b->n + n + 1) nc *= 2;
+        char *np = (char *)realloc(b->p, nc);
+        if (!np) return -1;
+        b->p = np; b->cap = nc;
+    }
+    memcpy(b->p + b->n, s, n); b->n += n; b->p[b->n] = 0;
+    return 0;
+}
+static int sb_str(sb *b, const char *s) { return sb_put(b, s, strlen(s)); }
+
+int llmwsp_writer_open(const char *path, const llmwsp_wspec *spec, size_t n, llmwsp_writer **out, char *err, size_t errcap) {
+    if (err && errcap) err[0] = 0;
+    *out = NULL;
+    llmwsp_writer *w = (llmwsp_writer *)calloc(1, sizeof *w);
+    if (!w) return -1;
+    w->n = n;
+    w->nbytes = (uint64_t *)calloc(n ? n : 1, sizeof(uint64_t));
+    w->names = (char **)calloc(n ? n : 1, sizeof(char *));
+    w->dtypes = (char **)calloc(n ? n : 1, sizeof(char *));
+    w->ndim = (int *)calloc(n ? n : 1, sizeof(int));
+    w->shape = (int64_t (*)[LLMWSP_MAX_DIMS])calloc(n ? n : 1, sizeof *w->shape);
+    if (!w->nbytes || !w->names || !w->dtypes || !w->ndim || !w->shape) { wr_free(w); return -1; }
+    sb h = {0};
+    sb_str(&h, "{\"__metadata__\":{\"format\":\"pt\"}");
+    uint64_t off = 0;
+    for (size_t i = 0; i < n; i++) {
+        size_t es = llmwsp_dtype_size(spec[i].dtype);
+        if (!es || spec[i].ndim < 0 || spec[i].ndim > LLMWSP_MAX_DIMS || !spec[i].name) {
+            seterr(err, errcap, "specifica non valida per il tensore %s%s", spec[i].name, ""); free(h.p); wr_free(w); return -1;
+        }
+        for (size_t k = 0; k < i; k++)
+            if (strcmp(w->names[k], spec[i].name) == 0) { seterr(err, errcap, "nome duplicato: %s%s", spec[i].name, ""); free(h.p); wr_free(w); return -1; }
+        uint64_t el = 1;
+        for (int d = 0; d < spec[i].ndim; d++) {
+            if (spec[i].shape[d] < 0) { seterr(err, errcap, "forma negativa: %s%s", spec[i].name, ""); free(h.p); wr_free(w); return -1; }
+            el *= (uint64_t)spec[i].shape[d]; w->shape[i][d] = spec[i].shape[d];
+        }
+        w->ndim[i] = spec[i].ndim; w->nbytes[i] = el * es;
+        w->names[i] = strdup(spec[i].name); w->dtypes[i] = strdup(spec[i].dtype);
+        char tmp[64];
+        sb_str(&h, ",\"");
+        for (const char *q = spec[i].name; *q; q++) { if (*q == '"' || *q == '\\') sb_put(&h, "\\", 1); sb_put(&h, q, 1); }
+        sb_str(&h, "\":{\"dtype\":\""); sb_str(&h, spec[i].dtype); sb_str(&h, "\",\"shape\":[");
+        for (int d = 0; d < spec[i].ndim; d++) { snprintf(tmp, sizeof tmp, "%s%lld", d ? "," : "", (long long)spec[i].shape[d]); sb_str(&h, tmp); }
+        snprintf(tmp, sizeof tmp, "],\"data_offsets\":[%llu,%llu]}", (unsigned long long)off, (unsigned long long)(off + w->nbytes[i]));
+        sb_str(&h, tmp);
+        off += w->nbytes[i];
+    }
+    sb_str(&h, "}");
+    while (h.n % 8) sb_put(&h, " ", 1);          /* padding a 8 byte, come fa la libreria di riferimento */
+    w->f = fopen(path, "wb");
+    if (!w->f) { seterr(err, errcap, "impossibile creare %s%s", path, ""); free(h.p); wr_free(w); return -1; }
+    unsigned char lb[8];
+    for (int i = 0; i < 8; i++) lb[i] = (unsigned char)((uint64_t)h.n >> (8 * i));
+    if (fwrite(lb, 1, 8, w->f) != 8 || fwrite(h.p, 1, h.n, w->f) != h.n) { seterr(err, errcap, "scrittura header fallita: %s%s", path, ""); free(h.p); wr_free(w); return -1; }
+    free(h.p);
+    wr_skip_empty(w);
+    *out = w;
+    return 0;
+}
+
+int llmwsp_writer_append(llmwsp_writer *w, const void *buf, size_t n) {
+    const unsigned char *p = (const unsigned char *)buf;
+    while (n) {
+        if (w->cur >= w->n) return -1;                   /* byte in eccesso */
+        uint64_t room = w->nbytes[w->cur] - w->got;
+        size_t k = n < room ? n : (size_t)room;
+        if (fwrite(p, 1, k, w->f) != k) return -1;
+        p += k; n -= k; w->got += k;
+        if (w->got == w->nbytes[w->cur]) { w->cur++; w->got = 0; wr_skip_empty(w); }
+    }
+    return 0;
+}
+
+int llmwsp_writer_copy(llmwsp_writer *w, const llmwsp_store *s, const llmwsp_tensor *t) {
+    if (t->nbytes == 0) {                                  /* tensore vuoto: già saltato in apertura */
+        for (size_t k = 0; k < w->n; k++) if (w->nbytes[k] == 0 && strcmp(w->names[k], t->name) == 0) return 0;
+        return -1;
+    }
+    if (w->cur >= w->n || w->got != 0) return -1;
+    size_t i = w->cur;
+    if (strcmp(w->names[i], t->name) != 0 || strcmp(w->dtypes[i], t->dtype) != 0 || w->ndim[i] != t->ndim ||
+        w->nbytes[i] != t->nbytes) return -1;
+    for (int d = 0; d < t->ndim; d++) if (w->shape[i][d] != t->shape[d]) return -1;
+    enum { CH = 1 << 20 };
+    unsigned char *buf = (unsigned char *)malloc(CH);
+    if (!buf) return -1;
+    for (uint64_t off = 0; off < t->nbytes;) {
+        uint64_t n = t->nbytes - off; if (n > CH) n = CH;
+        if (llmwsp_read_bytes(s, t, off, n, buf) < 0 || llmwsp_writer_append(w, buf, (size_t)n) < 0) { free(buf); return -1; }
+        off += n;
+    }
+    free(buf);
+    return 0;
+}
+
+int llmwsp_writer_close(llmwsp_writer *w, char *err, size_t errcap) {
+    int rc = 0;
+    if (err && errcap) err[0] = 0;
+    if (w->cur < w->n) {
+        seterr(err, errcap, "tensore incompleto: %s%s", w->names[w->cur], "");
+        rc = -1;
+    }
+    if (fflush(w->f) != 0) { if (!rc) seterr(err, errcap, "flush fallito%s%s", "", ""); rc = -1; }
+    wr_free(w);
+    return rc;
 }
