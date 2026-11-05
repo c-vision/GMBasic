@@ -872,10 +872,15 @@ del chiamante. L'enumerazione (`H5COUNT`/`H5NAME`/`H5KIND`) usa `H5Ovisit3` con 
 nome: l'ordine può cambiare fra build diverse di HDF5, quindi non è una base stabile per la
 logica del programma.
 
-La dylib HDF5 inclusa nel pacchetto è la **stessa build 1.14.6** che il runtime GMBasic
-pubblica: la VM/C precarica le librerie del runtime, quindi una build differente verrebbe
-usata solo da alcuni backend e `H5VERSION` divergerebbe. Con la build allineata la versione
-riportata è identica su IL, PCode, VM/C e C99 nativo.
+Il pacchetto include **HDF5 2.2.0** (l'ultima versione) con le sue dipendenze (`libsz.2` e
+`libaec.0`, per szip) e le rende relocabili (`@rpath` + `@loader_path`). Un dettaglio non ovvio: la dylib non si
+chiama `libhdf5.dylib`. Il runtime GMBasic pubblica in `~/.gmbasic/libs` una libhdf5 1.14.6 con
+install-name `@rpath/libhdf5.dylib` e la VM/C la precarica; poiché dyld deduplica le immagini per
+install-name, con il nome standard la VM/C avrebbe riusato la 1.14.6 mentre gli altri backend
+avrebbero caricato la 2.2.0 — `H5VERSION` divergente (verificato). Battezzando la copia
+`@rpath/libhdf5.320.dylib` (il soname della serie 2.x) e sfruttando il binding a due livelli di
+Mach-O, le chiamate dello shim sono legate alla nostra copia: la versione riportata è **2.2.0 su
+IL, PCode, VM/C e C99 nativo**.
 
 Il pacchetto disattiva i diagnostici testuali che HDF5 scriverebbe su console a ogni errore
 (`H5Eset_auto2` sullo stack di default, eseguito al caricamento della dylib): l'esito di ogni
@@ -887,6 +892,8 @@ l'output, cosa che rende i test di parità confrontabili riga per riga.
 Esempio completo: `packages/hdf5/1.0.0/samples/Hdf5Demo.bas` (barre OHLC, volumi interi,
 rendimenti compressi, gruppo di metadati, attributi, elenco degli oggetti e rilettura tipizzata
 e type-agnostica). MiniTest: `minitests/hdf5ffi/{h5_roundtrip,h5_errors}.bas`.
+
+
 
 
 
