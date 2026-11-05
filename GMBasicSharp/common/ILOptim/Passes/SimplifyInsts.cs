@@ -142,7 +142,7 @@ public partial class SimplifyInsts : IMethodPass
         if (inst.Value is UnaryInst sub && sub.Op == inst.Op && 
             inst.Op is UnaryOp.Neg or UnaryOp.Not or UnaryOp.FNeg
         ) {
-            return sub;
+            return sub.Value;   // op(op(x)) -> x (NON `sub`, che è op(x): perdeva il segno)
         }
         return ConstFolding.FoldUnary(inst.Op, inst.Value);
     }
