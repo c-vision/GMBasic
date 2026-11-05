@@ -881,6 +881,55 @@ public static partial class Numerics
     }
 
     /// <summary>Hurst exponent via DFA (gmbstats gs_hurst_dfa).</summary>
+    public static (double Omega, double Alpha, double Beta) Garch11(double[] r)
+    {
+        var n = r.Length;
+        if (n < 5) return (double.NaN, double.NaN, double.NaN);
+        double Nll(double[] p)
+        {
+            double w = p[0], al = p[1], be = p[2], s2 = r[0] * r[0], ll = 0;
+            if (s2 <= 0) s2 = 1e-6;
+            for (var t = 1; t < n; t++)
+            {
+                s2 = w + al * r[t - 1] * r[t - 1] + be * s2;
+                if (s2 < 1e-12) s2 = 1e-12;
+                ll += Math.Log(s2) + r[t] * r[t] / s2;
+            }
+            return 0.5 * ll;
+        }
+        var p = new double[3];
+        var v = r.Sum(x => x * x) / n;
+        p[0] = 0.1 * v; p[1] = 0.1; p[2] = 0.8;
+        const double h = 1e-5;
+        var step = 0.05;
+        for (var it = 0; it < 2000; it++)
+        {
+            var f0 = Nll(p);
+            var grad = new double[3];
+            double gn = 0;
+            for (var i = 0; i < 3; i++)
+            {
+                var save = p[i];
+                p[i] = save + h;
+                grad[i] = (Nll(p) - f0) / h;
+                p[i] = save;
+                gn += grad[i] * grad[i];
+            }
+            gn = Math.Sqrt(gn);
+            if (gn < 1e-10) break;
+            var np = new double[3];
+            for (var i = 0; i < 3; i++) np[i] = p[i] - step * grad[i] / gn;
+            if (np[0] < 1e-8) np[0] = 1e-8;
+            if (np[1] < 0) np[1] = 0;
+            if (np[2] < 0) np[2] = 0;
+            if (np[1] + np[2] > 0.999) { var ss = 0.999 / (np[1] + np[2]); np[1] *= ss; np[2] *= ss; }
+            if (Nll(np) < f0) { p[0] = np[0]; p[1] = np[1]; p[2] = np[2]; step *= 1.05; }
+            else step *= 0.5;
+            if (step < 1e-12) break;
+        }
+        return (p[0], p[1], p[2]);
+    }
+
     private static double[] SolveLinear(int n, double[] a, double[] b)
     {
         for (var i = 0; i < n; i++)

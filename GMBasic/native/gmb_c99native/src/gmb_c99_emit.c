@@ -1518,7 +1518,7 @@ static int dim_val_init_kind(const gmb_expr_t* e) {
         || e->tk == GMB_TOK_StatsKurtosisTest || e->tk == GMB_TOK_StatsJarqueBera
         || e->tk == GMB_TOK_StatsDescribe || e->tk == GMB_TOK_StatsChi2Contingency
         || e->tk == GMB_TOK_StatsKendallTau || e->tk == GMB_TOK_StatsFTest
-        || e->tk == GMB_TOK_StatsKruskal || e->tk == GMB_TOK_TsGranger) return 2;
+        || e->tk == GMB_TOK_StatsKruskal || e->tk == GMB_TOK_TsGranger || e->tk == GMB_TOK_TsGarch11) return 2;
     /* letterale tupla (a, b, ...) → gmb_val_tuple, gmb_val_t boxed (vedi emit_tuple_lit). */
     if (strcmp(e->var, "_tuple_lit_") == 0) return 1;
     /* Costruttori COLLEZIONE/oggetto che emettono GIÀ un gmb_val_t: NEW LIST/DICT/SET/…
@@ -2524,9 +2524,16 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                         if (_ml2 < sizeof(_mb2)) {
                             memcpy(_mb2, e->var, _ml2); _mb2[_ml2] = 0;
                             var_t* _mv2 = lookup_var(c, _mb2);
-                            if (_mv2 && !_mv2->gkind && !_mv2->is_array
-                                && (_mv2->boxed_val || _mv2->vclass[0]))
-                                return TY_NUM;
+                            if (_mv2 && !_mv2->gkind && !_mv2->is_array) {
+                                /* base UDT/CLASSE: l'emissione produce un double
+                                 * (gmb_val_to_double(gmb_val_index(...))) → TY_NUM.
+                                 * base BOXED JSON/ANY: l'emissione è gmb_val_member_or_index
+                                 * (un gmb_val_t) → TY_VAL, così concatenazioni/PRINT/assegnazioni
+                                 * lo convertono correttamente (prima "passing 'gmb_val_t' to
+                                 * gmb_double_t" su DbLedgerModernTests). */
+                                if (_mv2->vclass[0]) return TY_NUM;
+                                if (_mv2->boxed_val) return TY_VAL;
+                            }
                         }
                     }
                 }
@@ -5971,9 +5978,11 @@ void emit_str_operand(ctx_t* c, gmb_expr_t* a) {
         sb_put(&c->out, ")");
         return;
     }
-    /* TY_VAL (getter RDD/dinamico): in contesto STRINGA → gmb_val_to_string. */
+    /* TY_VAL (getter RDD/dinamico): in contesto STRINGA → gmb_val_to_string (NIL → "",
+     * come nelle gambe managed: una concatenazione con un JSON null non deve produrre
+     * "<nil>"). */
     if (a && etype(c, a) == TY_VAL) {
-        sb_put(&c->out, "gmb_val_to_string(");
+        sb_put(&c->out, "gmb_val_to_string_or_empty(");
         emit_expr(c, a);
         sb_put(&c->out, ")");
         return;
@@ -7016,6 +7025,7 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_StatsKendallTau, emit_bf_stats_dict }, { NULL, GMB_TOK_StatsFTest, emit_bf_stats_dict },
     { NULL, GMB_TOK_StatsKruskal, emit_bf_stats_dict },
     { NULL, GMB_TOK_TsGranger, emit_bf_stats_dict },
+    { NULL, GMB_TOK_TsGarch11, emit_bf_stats_dict },
     { NULL, GMB_TOK_StatsSpearmanR, emit_bf_stats_dict },
     { NULL, GMB_TOK_StatsLinRegress, emit_bf_stats_dict },
     { NULL, GMB_TOK_StatsMannWhitney, emit_bf_stats_dict },
@@ -16410,10 +16420,13 @@ static void emit_arr_literal_assign(ctx_t* c, const char* target, gmb_expr_t* li
                     int fstr = cls_field_is_str(fo, fchain);
                     int vt = etype(c, value);
                     int json_num = (!fstr && vt == TY_STR && is_json_index_member_call(c, value));
-                    /* RHS DINAMICO (val — es. campo di un elemento JSON `tmp(i).Status`) verso un
-                     * campo STRING: coercizione (non errore). Prima "tipo incompatibile (attesa
-                     * stringa)" (DbLedgerModernTests). */
-                    int json_str = (fstr && vt == TY_VAL);
+                    /* RHS DINAMICO: val boxed (gmb_val_t) oppure membro di un elemento JSON
+                     * (`tmp(i).Campo`, emesso come gmb_val_member_or_index) → coercizione al
+                     * tipo del campo, non errore. Prima "tipo incompatibile (attesa stringa)"
+                     * (DbLedgerModernTests). */
+                    int dyn_val = (vt == TY_VAL)
+                        || (is_json_index_member_call(c, value) && vt != TY_STR);
+                    int json_str = (fstr && dyn_val);
                     if (!json_num && !json_str && fstr != (vt == TY_STR)) {
                         c99_fail(c, line, "assegnamento al campo %s.%s: tipo incompatibile (%s)",
                                  fo->name, fchain, fstr ? "attesa stringa" : "atteso numero");
@@ -16426,12 +16439,12 @@ static void emit_arr_literal_assign(ctx_t* c, const char* target, gmb_expr_t* li
                         int flen = fstr ? cls_field_fixed_len(fo, fchain) : 0;
                         if (flen > 0) {
                             sb_printf(&c->out, "gmb_string_adjust_fixed(");
-                            if (json_str) { sb_put(&c->out, "gmb_val_to_string("); emit_expr(c, value); sb_put(&c->out, ")"); }
+                            if (json_str) { sb_put(&c->out, "gmb_val_to_string_or_empty("); emit_expr(c, value); sb_put(&c->out, ")"); }
                             else emit_expr(c, value);
                             sb_printf(&c->out, ", %d)", flen);
                         } else if (json_str) {
-                            sb_put(&c->out, "gmb_val_to_string("); emit_expr(c, value); sb_put(&c->out, ")");
-                        } else if (!fstr && vt == TY_VAL) {
+                            sb_put(&c->out, "gmb_val_to_string_or_empty("); emit_expr(c, value); sb_put(&c->out, ")");
+                        } else if (!fstr && dyn_val) {
                             /* campo NUMERICO ← val dinamico (es. campo di elemento JSON):
                              * DATE→gmb_val_to_oadate, BIT→(!=0), altrimenti gmb_val_to_double
                              * (parità C#). */
@@ -17440,6 +17453,8 @@ int is_json_index_member_call(ctx_t* c, gmb_expr_t* e) {
     if (!e || e->kind != GMB_EXPR_CALL || !e->var || e->nargs != 1) return 0;
     const char* dot = strchr(e->var, '.');
     if (!dot || dot == e->var || strchr(dot + 1, '.')) return 0;
+    /* Accessor/metodi con emissione dedicata (stringa/double), NON gmb_val_member_or_index. */
+    if (strcasecmp(dot + 1, "Get") == 0 || strcasecmp(dot + 1, "SaveToFile") == 0) return 0;
     char pre[160]; size_t pl = (size_t)(dot - e->var);
     if (pl >= sizeof(pre)) return 0;
     memcpy(pre, e->var, pl); pre[pl] = 0;
@@ -17886,16 +17901,17 @@ static void st_let_assign(ctx_t* c, gmb_stmt_t* s) {
                                             idxs2[k + 1] = s->array_idx_extra[k];
                                         int fstr2 = cls_field_is_str(bfo, dt0 + 1);
                                         int vt2 = etype(c, s->value);
-                                        fprintf(stderr, "[dbg-fa] target=%s field=%s fstr=%d vt=%d kind=%d var=%s ns=%s tk=%d nargs=%d\n",
-                                                bpre, dt0 + 1, fstr2, vt2, (int)s->value->kind,
-                                                s->value->var ? s->value->var : "",
-                                                s->value->ns ? s->value->ns : "", (int)s->value->tk, s->value->nargs);
                                         int json_num2 = (!fstr2 && vt2 == TY_STR && is_json_index_member_call(c, s->value));
                                         /* RHS DINAMICO (val, es. campo di un elemento JSON) verso
                                          * campo STRING: coercizione (parità col gemello sopra). */
-                                        int json_str2 = (fstr2 && vt2 == TY_VAL);
-                                        if (fstr2 && vt2 != TY_STR && !json_str2 && s->value->kind == GMB_EXPR_CALL
-                                            && s->value->var && strchr(s->value->var, '.')) json_str2 = 1; /*DBG*/
+                                        /* RHS DINAMICO: val boxed (gmb_val_t) oppure membro di un
+                                         * elemento JSON (`tmp(i).Campo`, emesso come
+                                         * gmb_val_member_or_index) → coercizione al tipo del campo,
+                                         * non errore. Prima "tipo incompatibile (attesa stringa)"
+                                         * (DbLedgerModernTests). */
+                                        int dyn_val2 = (vt2 == TY_VAL)
+                                            || (is_json_index_member_call(c, s->value) && vt2 != TY_STR);
+                                        int json_str2 = (fstr2 && dyn_val2);
                                         if (!json_num2 && !json_str2 && fstr2 != (vt2 == TY_STR)) {
                                             c99_fail(c, s->line, "assegnamento al campo %s.%s: tipo incompatibile (%s)",
                                                      bfo->name, dt0 + 1, fstr2 ? "attesa stringa" : "atteso numero");
@@ -17919,12 +17935,12 @@ static void st_let_assign(ctx_t* c, gmb_stmt_t* s) {
                                              int flen2 = fstr2 ? cls_field_fixed_len(bfo, dt0 + 1) : 0;
                                              if (flen2 > 0) {
                                                  sb_printf(&c->out, "gmb_string_adjust_fixed(");
-                                                 if (json_str2) { sb_put(&c->out, "gmb_val_to_string("); emit_expr(c, s->value); sb_put(&c->out, ")"); }
+                                                 if (json_str2) { sb_put(&c->out, "gmb_val_to_string_or_empty("); emit_expr(c, s->value); sb_put(&c->out, ")"); }
                                                  else emit_expr(c, s->value);
                                                  sb_printf(&c->out, ", %d)", flen2);
                                              } else if (json_str2) {
-                                                 sb_put(&c->out, "gmb_val_to_string("); emit_expr(c, s->value); sb_put(&c->out, ")");
-                                             } else if (!fstr2 && vt2 == TY_VAL) {
+                                                 sb_put(&c->out, "gmb_val_to_string_or_empty("); emit_expr(c, s->value); sb_put(&c->out, ")");
+                                             } else if (!fstr2 && dyn_val2) {
                                                  const char* lfv2 = cls_field_type_of(bfo, dt0 + 1);
                                                  if (lfv2 && (strncasecmp(lfv2, "DATETIME", 8) == 0 || strncasecmp(lfv2, "DATE", 4) == 0))
                                                      { sb_put(&c->out, "gmb_val_to_oadate("); emit_expr(c, s->value); sb_put(&c->out, ")"); }

@@ -430,6 +430,8 @@ void gmb_print_stage_end(int commit);
  * alla colonna corrente tracciata internamente da gmb_console.c. */
 void gmb_print_tab_zone(void);
 gmb_string_t gmb_val_to_string(gmb_val_t v);
+/* Come gmb_val_to_string ma NIL → "" (assegnazione a un campo STRING). */
+gmb_string_t gmb_val_to_string_or_empty(gmb_val_t v);
 gmb_string_t gmb_cstr_val(gmb_val_t v);   /* CSTR di un val dinamico: spazio se >= 0, bool True/False */
 
 /* ── STRINGBUILDER (builder mutabile di stringhe) ──
@@ -2145,6 +2147,7 @@ gmb_double_t** gmb_ts_covariance_matrix(const double* const* series, int k, int 
 double gmb_hurst_dfa(const double* x, int n, int min_box);
 double* gmb_ts_fracdiff(const double* x, int n, double d, int* out_len);
 gmb_val_t gmb_ts_granger_flat(const double* x, int nx, const double* y, int ny, int p);
+gmb_val_t gmb_ts_garch11_flat(const double* r, int n);
 gmb_double_t** gmb_ts_covariance_obs(const double* const* obs, int n_obs, int n_vars);
 /* MOUSE getters (MOUSE.BUTTON/WHEEL/DBLCLICK/PRESENT/MIDDLE): stato mouse TUI corrente
  * (0 in headless). Implementati in gmb_tui_clipper.c, condivisi da VM/C,

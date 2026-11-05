@@ -1243,6 +1243,7 @@ static const gmb_ns_type_row_t gmb_ns_types[] = {
     { GMB_TOK_TsHurst, 0 },
     { GMB_TOK_TsFracDiff, 0 },
     { GMB_TOK_TsGranger, 0 },
+    { GMB_TOK_TsGarch11, 0 },
     { GMB_TOK_Autocorrelation, 0 },
     { GMB_TOK_Deseasonalize, 0 },
     { GMB_TOK_Decompose, 0 },

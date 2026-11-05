@@ -55,6 +55,7 @@ static const sd_row SD_TBL[] = {
     { GMB_TOK_StatsFTest, SD_TWO_FLAT, "gmb_ftest_flat" },
     { GMB_TOK_StatsKruskal, SD_ONE_VAL, "gmb_kruskal" },
     { GMB_TOK_TsGranger, SD_TWO_FLAT_LONG, "gmb_ts_granger_flat" },
+    { GMB_TOK_TsGarch11, SD_ONE_FLAT, "gmb_ts_garch11_flat" },
     { GMB_TOK_StatsLinRegress, SD_TWO_FLAT, "gmb_linregress_flat" },
     { GMB_TOK_StatsMannWhitney, SD_TWO_FLAT, "gmb_mannwhitney_flat" },
     { GMB_TOK_StatsWilcoxon, SD_TWO_FLAT, "gmb_wilcoxon_flat" },

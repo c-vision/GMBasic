@@ -695,6 +695,16 @@ static void gmb_bf_1064(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
         (void)vm; (void)task; (void)func_code;
         bout->result = gmb_dist_chi_isf(argc >= 2 ? args[1].num : 1, args[0].num);
 }
+static void gmb_bf_1068(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task; (void)func_code;
+        int n = 0;
+        double* a = gmb_vm_list_to_dbl(&args[0], &n);
+        gmb_val_t r = gmb_ts_garch11_flat(a, n);
+        free(a);
+        bout->result = 0;
+        gmb_vm_set_dict_result_owned(r, &bout->is_num, &bout->result_ref, &bout->result_ref_bt);
+}
 static void gmb_bf_1067(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         (void)vm; (void)task; (void)func_code;
@@ -17636,6 +17646,7 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 1065, gmb_bf_1065 },
     { 1066, gmb_bf_1066 },
     { 1067, gmb_bf_1067 },
+    { 1068, gmb_bf_1068 },
     { 1015, gmb_bf_1013 },
     { 1017, gmb_bf_1017 },
     { 1018, gmb_bf_1018 },

@@ -2020,6 +2020,7 @@ public enum TokenKind
     TsHurst,
     TsFracDiff,
     TsGranger,
+    TsGarch11,
     StatsChi2Contingency, StatsMannWhitney, StatsWilcoxon,
     StatsGammaPdf, StatsGammaCdf, StatsGammaPpf, StatsGammaIsf,
     StatsSkewTest, StatsKurtosisTest, StatsJarqueBera,
