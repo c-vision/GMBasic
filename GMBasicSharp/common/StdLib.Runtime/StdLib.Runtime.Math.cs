@@ -111,6 +111,7 @@ public static class MathFunctions
     // CommonLib/Numerics/Stats.cs:646 prima di scriverla).
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double NegativeBinomialPmf(double r, double p, int k) => CommonLib.Numerics.NegativeBinomialPmf(r, p, k);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double HypergeometricPmf(int populationSize, int successStates, int draws, int k) => CommonLib.Numerics.HypergeometricPmf(populationSize, successStates, draws, k);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ChiIsf(double k, double p) => CommonLib.Numerics.ChiIsf(p, k);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double BetaIsf(double a, double b, double p) => CommonLib.Numerics.BetaIsf(p, a, b);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double LogisticIsf(double location, double scale, double p) => CommonLib.Numerics.LogisticIsf(p, location, scale);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double LognormalIsf(double mu, double sigma, double p) => CommonLib.Numerics.LognormalIsf(p, mu, sigma);

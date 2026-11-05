@@ -1089,6 +1089,7 @@ static const gmb_ns_type_row_t gmb_ns_types[] = {
     { GMB_TOK_ChiSquaredPpf, 0 },
     { GMB_TOK_ChiSquaredIsf, 0 },
     { GMB_TOK_ChiPpf, 0 },
+    { GMB_TOK_StatsChiIsf, 0 },
     { GMB_TOK_BetaPpf, 0 },
     { GMB_TOK_FPpf, 0 },
     { GMB_TOK_FIsf, 0 },

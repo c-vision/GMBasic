@@ -1128,6 +1128,7 @@ double gmb_dist_lognormal_isf(double mu, double sigma, double p);
 double gmb_dist_chi2_ppf(double df, double p);
 double gmb_dist_chi2_isf(double df, double p);
 double gmb_dist_chi_ppf(double df, double p);
+double gmb_dist_chi_isf(double df, double p);
 double gmb_dist_beta_ppf(double a, double b, double p);
 double gmb_dist_beta_isf(double a, double b, double p);
 double gmb_dist_f_ppf(double d1, double d2, double p);

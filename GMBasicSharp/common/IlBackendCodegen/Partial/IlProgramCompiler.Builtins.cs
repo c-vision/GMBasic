@@ -463,6 +463,7 @@ public sealed partial class IlProgramCompiler
             case TokenKind.StatsLogisticIsf: EmitOptionalParamsCall(expr, IlRuntimeLogisticIsfMethod, 3, 0.0, 1.0); break;
             case TokenKind.StatsLognormalIsf: EmitOptionalParamsCall(expr, IlRuntimeLognormalIsfMethod, 3, 0.0, 1.0); break;
             case TokenKind.StatsTriangularIsf: EmitOptionalParamsCall(expr, IlRuntimeTriangularIsfMethod, 4, 0.0, 0.5, 1.0); break;
+            case TokenKind.StatsChiIsf: EmitOptionalParamsCall(expr, IlRuntimeChiIsfMethod, 2, 1.0); break;
             case TokenKind.StatsGammaPpf: EmitTripleScalarCall(expr, nameof(IlRuntime.GammaPpf)); break;
             case TokenKind.StatsGammaIsf: EmitTripleScalarCall(expr, nameof(IlRuntime.GammaIsf)); break;
             case TokenKind.AMax: EmitStatsArrayCall(expr, RuntimeMethod(nameof(IlRuntime.AMax))); break;

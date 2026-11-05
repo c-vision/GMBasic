@@ -1094,6 +1094,7 @@ static const gmb_ns_lookup_row_t gmb_ns_lookup[] = {
     { "STATS", "Chi2", GMB_TOK_Chi2Test },
     { "STATS", "Chi2Con", GMB_TOK_StatsChi2Contingency },
     { "STATS", "ChiCdf", GMB_TOK_ChiCdf },
+    { "STATS", "ChiIsf", GMB_TOK_StatsChiIsf },
     { "STATS", "ChiPdf", GMB_TOK_ChiPdf },
     { "STATS", "ChiPpf", GMB_TOK_ChiPpf },
     { "STATS", "ChiSf", GMB_TOK_StatsChiSf },
