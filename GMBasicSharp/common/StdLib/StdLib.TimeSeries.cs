@@ -150,6 +150,8 @@ public sealed partial class StdLib
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.TsFracDiff, "TSFRACDIFF"),
                 [seriesParam, new Parameter(-1, T(TokenKind.Identifier, "d"), new DoubleType(), noFlags, null, false)],
                 doubleArr, TokenKind.TsFracDiff, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.TsGranger, "TSGRANGER"),
+                [seriesParam, series2Param, lagParam], new AnyType(), TokenKind.TsGranger),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Autocorrelation, "TSAUTOCORR"),
                 [seriesParam, lagParam],
                 new DoubleType(), TokenKind.Autocorrelation, ExecutionKind: NativeExecutionKind.Pure),

@@ -25071,6 +25071,35 @@
     },
     {
       "ns": "TIMESERIES",
+      "name": "TSGRANGER",
+      "fn": true,
+      "return": "ANY",
+      "params": [
+        {
+          "name": "series",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "series2",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "lag",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "TIMESERIES",
       "name": "TSHIGHPASS",
       "fn": true,
       "return": "double[]",

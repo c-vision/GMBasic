@@ -2323,6 +2323,8 @@ static const gmb_fn_lookup_row_t gmb_fn_lookup[] = {
     { "TSEMA", GMB_TOK_EMA },
     { "TsFracDiff", GMB_TOK_TsFracDiff },
     { "TSFRACDIFF", GMB_TOK_TsFracDiff },
+    { "TsGranger", GMB_TOK_TsGranger },
+    { "TSGRANGER", GMB_TOK_TsGranger },
     { "TsHighPass", GMB_TOK_TsHighPass },
     { "TSHIGHPASS", GMB_TOK_TsHighPass },
     { "TsHurst", GMB_TOK_TsHurst },

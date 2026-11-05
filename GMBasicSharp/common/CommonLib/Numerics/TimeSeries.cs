@@ -881,6 +881,90 @@ public static partial class Numerics
     }
 
     /// <summary>Hurst exponent via DFA (gmbstats gs_hurst_dfa).</summary>
+    private static double[] SolveLinear(int n, double[] a, double[] b)
+    {
+        for (var i = 0; i < n; i++)
+        {
+            var piv = i;
+            for (var r = i + 1; r < n; r++)
+                if (Math.Abs(a[r * n + i]) > Math.Abs(a[piv * n + i])) piv = r;
+            if (Math.Abs(a[piv * n + i]) < 1e-14) throw new InvalidOperationException("singolare");
+            if (piv != i)
+            {
+                for (var c = i; c < n; c++) (a[i * n + c], a[piv * n + c]) = (a[piv * n + c], a[i * n + c]);
+                (b[i], b[piv]) = (b[piv], b[i]);
+            }
+            var d = a[i * n + i];
+            for (var r = i + 1; r < n; r++)
+            {
+                var f = a[r * n + i] / d;
+                for (var c = i; c < n; c++) a[r * n + c] -= f * a[i * n + c];
+                b[r] -= f * b[i];
+            }
+        }
+        var x = new double[n];
+        for (var i = n - 1; i >= 0; i--)
+        {
+            var sum = b[i];
+            for (var c = i + 1; c < n; c++) sum -= a[i * n + c] * x[c];
+            x[i] = sum / a[i * n + i];
+        }
+        return x;
+    }
+
+    public static StatisticalTestResult Granger(double[] x, double[] y, int p)
+    {
+        var n = Math.Min(x.Length, y.Length);
+        if (p < 1 || n < 3 * p + 2)
+            return new StatisticalTestResult(double.NaN, double.NaN, double.NaN);
+        var m = n - p;
+        var nr = p + 1;
+        var nu = 2 * p + 1;
+        var xr = new double[m * nr];
+        var xu = new double[m * nu];
+        for (var i = p; i < n; i++)
+        {
+            var r = i - p;
+            xr[r * nr] = 1;
+            xu[r * nu] = 1;
+            for (var j = 1; j <= p; j++)
+            {
+                xr[r * nr + j] = x[i - j];
+                xu[r * nu + j] = x[i - j];
+                xu[r * nu + p + j] = y[i - j];
+            }
+        }
+        double[] Rss(double[] xm, int cols)
+        {
+            var ata = new double[cols * cols];
+            var atb = new double[cols];
+            for (var i = 0; i < m; i++)
+                for (var j = 0; j < cols; j++)
+                {
+                    for (var k = 0; k < cols; k++) ata[j * cols + k] += xm[i * cols + j] * xm[i * cols + k];
+                    atb[j] += xm[i * cols + j] * x[i + p];
+                }
+            var coef = SolveLinear(cols, ata, atb);
+            var rss = 0.0;
+            for (var i = 0; i < m; i++)
+            {
+                var r = x[i + p];
+                for (var j = 0; j < cols; j++) r -= coef[j] * xm[i * cols + j];
+                rss += r * r;
+            }
+            return [rss];
+        }
+        var rssR = Rss(xr, nr)[0];
+        var rssU = Rss(xu, nu)[0];
+        if (rssU <= 0) return new StatisticalTestResult(double.NaN, double.NaN, double.NaN);
+        var df1 = (double)p;
+        var df2 = m - nu;
+        var f = ((rssR - rssU) / df1) / (rssU / df2);
+        var xb = df1 * f / (df1 * f + df2);
+        var pv = 1.0 - BetaCdf(df1 / 2.0, df2 / 2.0, xb);
+        return new StatisticalTestResult(f, pv, df1);
+    }
+
     public static double[] FracDiff(double[] x, double d)
     {
         if (d < 0) return Array.Empty<double>();
