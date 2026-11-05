@@ -922,6 +922,14 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "STATS.NcGammaPdf");
         r.Register(Backend.VMC, "STATS.NcGammaCdf");
         r.Register(Backend.VMC, "STATS.NcGammaSf");
+        r.Register(Backend.VMC, "STATS.NcFPdf");
+        r.Register(Backend.VMC, "STATS.NcFCdf");
+        r.Register(Backend.VMC, "STATS.NcFSf");
+        r.Register(Backend.VMC, "STATS.NcTPdf");
+        r.Register(Backend.VMC, "STATS.NcTCdf");
+        r.Register(Backend.VMC, "STATS.NcTSf");
+        r.Register(Backend.VMC, "STATS.ZTPoissonPmf");
+        r.Register(Backend.VMC, "STATS.ZTPoissonCdf");
         r.Register(Backend.VMC, "TIMESERIES.TSHURST");
         r.Register(Backend.VMC, "TIMESERIES.TSFRACDIFF");
         r.Register(Backend.VMC, "TIMESERIES.TSGRANGER");

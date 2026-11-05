@@ -473,6 +473,14 @@ public sealed partial class IlProgramCompiler
             case TokenKind.StatsNcGammaPdf: EmitOptionalParamsCall(expr, IlRuntimeNcGammaPdfMethod, 3, 1.0, 1.0, 0.0); break;
             case TokenKind.StatsNcGammaCdf: EmitOptionalParamsCall(expr, IlRuntimeNcGammaCdfMethod, 3, 1.0, 1.0, 0.0); break;
             case TokenKind.StatsNcGammaSf: EmitOptionalParamsCall(expr, IlRuntimeNcGammaSfMethod, 3, 1.0, 1.0, 0.0); break;
+            case TokenKind.StatsNcFPdf: EmitOptionalParamsCall(expr, IlRuntimeNcFPdfMethod, 4, 1.0, 1.0, 0.0); break;
+            case TokenKind.StatsNcFCdf: EmitOptionalParamsCall(expr, IlRuntimeNcFCdfMethod, 4, 1.0, 1.0, 0.0); break;
+            case TokenKind.StatsNcFSf: EmitOptionalParamsCall(expr, IlRuntimeNcFSfMethod, 4, 1.0, 1.0, 0.0); break;
+            case TokenKind.StatsNcTPdf: EmitOptionalParamsCall(expr, IlRuntimeNcTPdfMethod, 3, 1.0, 0.0); break;
+            case TokenKind.StatsNcTCdf: EmitOptionalParamsCall(expr, IlRuntimeNcTCdfMethod, 3, 1.0, 0.0); break;
+            case TokenKind.StatsNcTSf: EmitOptionalParamsCall(expr, IlRuntimeNcTSfMethod, 3, 1.0, 0.0); break;
+            case TokenKind.StatsZTPoissonPmf: EmitPmfBuiltinCall(expr, IlRuntimeZTPoissonPmfMethod, 2, [(1, false), (0, true)]); break;
+            case TokenKind.StatsZTPoissonCdf: EmitPmfBuiltinCall(expr, IlRuntimeZTPoissonCdfMethod, 2, [(1, false), (0, true)]); break;
             case TokenKind.StatsGammaPpf: EmitTripleScalarCall(expr, nameof(IlRuntime.GammaPpf)); break;
             case TokenKind.StatsGammaIsf: EmitTripleScalarCall(expr, nameof(IlRuntime.GammaIsf)); break;
             case TokenKind.AMax: EmitStatsArrayCall(expr, RuntimeMethod(nameof(IlRuntime.AMax))); break;

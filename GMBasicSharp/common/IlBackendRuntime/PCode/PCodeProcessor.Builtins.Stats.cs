@@ -82,6 +82,14 @@ internal sealed partial class PCodeProcessor
         BuiltInFunction.STATS_NCGAMMAPDF,
         BuiltInFunction.STATS_NCGAMMACDF,
         BuiltInFunction.STATS_NCGAMMASF,
+        BuiltInFunction.STATS_NCFPDF,
+        BuiltInFunction.STATS_NCFCDF,
+        BuiltInFunction.STATS_NCFSF,
+        BuiltInFunction.STATS_NCTPDF,
+        BuiltInFunction.STATS_NCTCDF,
+        BuiltInFunction.STATS_NCTSF,
+        BuiltInFunction.STATS_ZTPOISSONPMF,
+        BuiltInFunction.STATS_ZTPOISSONCDF,
         BuiltInFunction.CHI2TEST,
         BuiltInFunction.FISHEREXACT,
         BuiltInFunction.SHAPIROWILK,
@@ -327,6 +335,38 @@ internal sealed partial class PCodeProcessor
         [BuiltInFunction.TTESTONESAMPLE] = (task, args) =>
         {
                 return HypothesisResult(CommonLib.Numerics.TTestOneSample(ToDoubleArr(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1))));
+        },
+        [BuiltInFunction.STATS_NCFPDF] = (task, args) =>
+        {
+                return CommonLib.Numerics.NcFPdf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 1.0)), SafeDouble(ArgOr(args, 3, 0.0)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_NCFCDF] = (task, args) =>
+        {
+                return CommonLib.Numerics.NcFCdf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 1.0)), SafeDouble(ArgOr(args, 3, 0.0)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_NCFSF] = (task, args) =>
+        {
+                return CommonLib.Numerics.NcFSf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 1.0)), SafeDouble(ArgOr(args, 3, 0.0)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_NCTPDF] = (task, args) =>
+        {
+                return CommonLib.Numerics.NcTPdf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 0.0)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_NCTCDF] = (task, args) =>
+        {
+                return CommonLib.Numerics.NcTCdf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 0.0)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_NCTSF] = (task, args) =>
+        {
+                return CommonLib.Numerics.NcTSf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 0.0)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_ZTPOISSONPMF] = (task, args) =>
+        {
+                return CommonLib.Numerics.ZTPoissonPmf(SafeDouble(ArgOr(args, 1, 1.0)), (int)SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_ZTPOISSONCDF] = (task, args) =>
+        {
+                return CommonLib.Numerics.ZTPoissonCdf(SafeDouble(ArgOr(args, 1, 1.0)), (int)SafeDouble(ArgOr(args, 0)));
         },
         [BuiltInFunction.STATS_NCCHI2PDF] = (task, args) =>
         {
