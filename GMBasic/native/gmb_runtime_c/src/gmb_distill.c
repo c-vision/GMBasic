@@ -2,7 +2,7 @@
  *
  * Vincoli: §0bis (logica nel runtime condiviso), niente stub. Il tokenizer e' quello
  * condiviso (llmtoken, linkato a gmb_runtime). Formato .bin identico a
- * samples/Fixtures/make_lora_dataset.py: <int32 n> poi per sample <int32 len> <int32 tok...>
+ * tools/basic/make_lora_dataset.bas: <int32 n> poi per sample <int32 len> <int32 tok...>
  * <int32 target>, interi little-endian.
  *
  * Semplificazione dichiarata del parser JSON: si estraggono i valori stringa dei primi campi

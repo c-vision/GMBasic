@@ -8,7 +8,7 @@
 #include "gmb_graphics_internal.h"
 #include <string.h>
 /* Tabella ASCII 8x16 GENERATA da Terminus (SIL OFL 1.1): vedi
- * gmb_gfx_cellfont_bitmap.h e tools/py/cellfont_from_bdf.py. */
+ * gmb_gfx_cellfont_bitmap.h e tools/basic/cellfont_from_bdf.bas. */
 #include "gmb_gfx_cellfont_bitmap.h"
 
 static void cf_rect(gmb_gfx_page_t* p, int x, int y, int w, int h, uint32_t c)

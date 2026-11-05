@@ -2,7 +2,8 @@
    piano C99Native). Porting 1:1 del prologo emesso da C99CodeEmitter.cs:
    worker pthread/fiber, coroutine stackful, canali retry-based, select beacon,
    sync primitives Go.
-   GENERATO: non modificare a mano — rigenerare con tools/gmb_c99gpm_gen.py.
+   STORICO: generato una tantum con tools/gmb_c99gpm_gen.py (script RIMOSSO il
+   2026-10-28); ora è sorgente stabile e tracciato: non c'è più nulla da rigenerare.
    Rispetto al testo originale sono soppresse solo le dichiarazioni duplicate
    con include/gmb_c99gpm.h (typedef di piattaforma, forward typedef, GMB_TS_*,
    struct gmb_task, gmb_unwind_frame) e tolto `static` solo all'API pubblica. */
@@ -641,9 +642,7 @@ void gmb_gpm_start(void (*main_entry)(void*)) {
        * Il present_start avviene lazy via gmb_tui_present_gfx quando SCREEN è chiamato. */
       if (gmb_gfx_screen_on()) gmb_gfx_present_start();
 #endif
-      { extern int gmb_gfx_present_on_main_thread(void); static int _li=0; int _main = gmb_gfx_present_on_main_thread();
-        while (gmb_c99_sched_has_active()) {
-          if(_li<5 && getenv("GMB_GFX_DBG")){ _li++; fprintf(stderr,"[loop] it=%d main=%d active=%d on=%d\n", _li, _main, gmb_c99_sched_has_active(), gmb_gfx_screen_on()); }
+      { while (gmb_c99_sched_has_active()) {
           GMB_UI_TRAY_POLL(); gmb_tui_present_gfx(); gmb_iconsole_present_if_active(); gmb_sleep_ms(1); } }
 #ifdef GMB_GFX_SDL_PRESENT
       gmb_gfx_present_stop();

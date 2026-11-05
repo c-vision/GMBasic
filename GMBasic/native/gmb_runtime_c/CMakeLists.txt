@@ -274,6 +274,7 @@ set(GMB_ALL_SRCS
     src/gmb_interp.c
     src/gmb_spatial.c
     src/gmb_network.c
+    src/gmb_ws_client.c
     src/gmb_hpack.c
     src/gmb_http2.c
     src/gmb_validation.c

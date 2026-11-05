@@ -104,6 +104,22 @@ DECLARE FUNCTION MINPATHCOVER LIB "gmbgraph" ALIAS "gfx_min_path_cover" (adj() A
 ' BFS direction-optimizing (Beamer): dist() = n (-1 non raggiunto); ritorna #visitati.
 DECLARE FUNCTION BFSOPT LIB "gmbgraph" ALIAS "gfx_bfs_direction_optimizing" (adj() AS LONG, n AS LONG, src AS LONG, thr AS DOUBLE, dist() AS DOUBLE) AS LONG
 
+' ── Link prediction (baseline, gmbortools `gor_linkpred`) ────────────────────
+' Punteggi per la probabilità che esista l'arco (u,v) in un grafo denso n×n
+' (adj() 0/1 oppure pesata per KATZ). Complementari a DRNL/WL (già sopra).
+' Vicini in comune di u e v.
+DECLARE FUNCTION LINKCN LIB "gmbgraph" ALIAS "gfx_link_common_neighbors" (adj() AS LONG, n AS LONG, u AS LONG, v AS LONG) AS LONG
+' Jaccard: |CN| / |Γ(u) ∪ Γ(v)|.
+DECLARE FUNCTION LINKJACCARD LIB "gmbgraph" ALIAS "gfx_link_jaccard" (adj() AS LONG, n AS LONG, u AS LONG, v AS LONG) AS DOUBLE
+' Adamic-Adar: Σ_{w ∈ CN} 1/log(deg(w)).
+DECLARE FUNCTION LINKADAMICADAR LIB "gmbgraph" ALIAS "gfx_link_adamic_adar" (adj() AS LONG, n AS LONG, u AS LONG, v AS LONG) AS DOUBLE
+' Resource Allocation: Σ_{w ∈ CN} 1/deg(w).
+DECLARE FUNCTION LINKRESOURCEALLOC LIB "gmbgraph" ALIAS "gfx_link_resource_allocation" (adj() AS LONG, n AS LONG, u AS LONG, v AS LONG) AS DOUBLE
+' Preferential Attachment: deg(u)*deg(v).
+DECLARE FUNCTION LINKPREFATTACH LIB "gmbgraph" ALIAS "gfx_link_preferential_attachment" (adj() AS LONG, n AS LONG, u AS LONG, v AS LONG) AS LONG
+' Katz: Σ_{l≥1} β^l (A^l)_{uv}; w() è la matrice DOUBLE pesata. 0.0 su errore.
+DECLARE FUNCTION LINKKATZ LIB "gmbgraph" ALIAS "gfx_link_katz" (w() AS DOUBLE, n AS LONG, beta AS DOUBLE, u AS LONG, v AS LONG) AS DOUBLE
+
 ' ── Sentinella ───────────────────────────────────────────────────────────────
 ' BASIC non ha INFINITY: per "arco assente" usare GRAPH.ABSENT() nei vettori DOUBLE.
 ' Lo shim normalizza qualunque peso >= 1e29 a INFINITY (sentinella di gmbortools).

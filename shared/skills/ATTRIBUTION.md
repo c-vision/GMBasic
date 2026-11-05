@@ -1,6 +1,6 @@
 # Skills — attribution and license status
 
-> **GENERATED** by [`tools/py/skills_attribution.py`](../../tools/py/skills_attribution.py) —
+> **GENERATED** by [`tools/basic/skills_attribution.bas`](../../tools/basic/skills_attribution.bas) —
 > do not edit by hand. Re-run it after adding or removing a skill.
 
 The skills in this folder are **third-party material**, collected from local installs of other

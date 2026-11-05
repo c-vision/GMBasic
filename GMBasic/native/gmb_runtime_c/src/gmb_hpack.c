@@ -10,7 +10,7 @@
  *    e non averlo evita un encoder intero).
  *
  * Tabelle: gmb_hpack_static.h (61 voci) e gmb_hpack_huffman.h (257 codici) sono GENERATE
- * dalla RFC da tools/py/gen_hpack_huffman.py.
+ * dalla RFC da tools/basic/gen_hpack_huffman.bas.
  * ============================================================================ */
 #include "gmb_hpack.h"
 #include "gmb_hpack_static.h"

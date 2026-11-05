@@ -6,7 +6,7 @@
  * (tabella statica + tabella DINAMICA condivisa lungo la connessione) e, facoltativamente,
  * Huffman. È la parte di HTTP/2 che non si può evitare: senza HPACK non si legge nemmeno
  * una richiesta. Le tabelle (257 codici Huffman, 61 voci statiche) sono GENERATE dalla RFC
- * con tools/py/gen_hpack_huffman.py — niente codici scritti a mano.
+ * con tools/basic/gen_hpack_huffman.bas — niente codici scritti a mano.
  * ============================================================================ */
 #ifndef GMB_HPACK_H
 #define GMB_HPACK_H

@@ -208,7 +208,8 @@ byte-identiche; con la cache attiva (c=10) **52.348 rps**. Analisi:
 **Verifica (obbligatoria dopo aver toccato pagine o superfici AI):**
 
 ```sh
-python3 tools/py/bsp_engine_parity.py index.bsp canvas.bsp wasm.bsp
+bash tools/sh/gmb_c99native_run.sh ../tools/basic/bsp_engine_parity.bas bep -- \
+    index.bsp canvas.bsp wasm.bsp
 # index.bsp   OK  (46708 byte, identiche)
 # canvas.bsp  OK  · wasm.bsp OK
 ```
@@ -288,21 +289,21 @@ handshake WebSocket, poi ripulisce ciò che ha creato e ferma la app. Lo script 
 
 ### Click-through della UI (browser headless)
 
-I test HTTP non eseguono il JS. `tools/py/webapp_ui_cdp.py` apre la dashboard in un browser
+I test HTTP non eseguono il JS. `tools/basic/webapp_ui_cdp.bas` apre la dashboard in un browser
 headless via CDP e verifica: palette (Ctrl+K + ricerca fuzzy), rail agenti, Inbox, scorciatoie
 e tab, tema persistito, **creazione agente dal form**, filtri Log salvati, **SSE live**,
 handshake **WebSocket** del canvas, zero errori JS — e lascia uno screenshot in
 `/tmp/webapp_ui.png`.
 
 Un dettaglio del browser headless: a volte il **primo** `onopen` del WebSocket non viene
-consegnato alla pagina anche se il server ha risposto **101** (verificato con gli eventi
-`Network.webSocketHandshakeResponseReceived`) e un WebSocket creato subito dopo apre. Il test
-lo riporta come **WARN** (non FAIL) solo in quel caso; se il 101 non arriva, è FAIL.
+consegnato alla pagina. In quel caso il test verifica l'endpoint **dal contesto della pagina**
+con una socket "fresh": se apre, il server WS della webapp è raggiungibile e il controllo
+passa con il dettaglio (`UI=closed`, `fresh=open`). Nessun WARN: 20 PASS / 0 WARN / 0 FAIL.
 
 ```sh
-tools/py/webapp_ui_cdp.py                    # Chromium headless (default)
-tools/py/webapp_ui_cdp.py --browser obscura  # Obscura (vedi nota)
-tools/py/webapp_ui_cdp.py --cdp http://127.0.0.1:9222   # browser già avviato
+bash tools/sh/gmb_c99native_run.sh ../tools/basic/webapp_ui_cdp.bas wcdp   # Chromium headless (default)
+... -- --browser obscura                                            # Obscura (vedi nota)
+... -- --cdp http://127.0.0.1:9222                                 # browser già avviato
 ```
 
 > **Obscura 0.2.2**: si blocca sul rendering di `index.bsp` (con `<style>` + `<script>` reali

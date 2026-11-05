@@ -196,6 +196,10 @@ int gmb_ws_send_close(int64_t handle, const char* reason);
 int gmb_ws_recv_frame(int64_t handle, int* out_opcode, char** out_payload, size_t* out_payload_len, int64_t timeout_ms);
 /* Chiude e rimuove l'handle WebSocket. */
 void gmb_ws_close(int64_t handle);
+/* 1 se l'handle è ancora vivo (socket aperta), 0 se chiuso/inesistente.
+   Serve al receive-loop client: gmb_ws_recv_frame torna -1 sia su timeout sia su
+   chiusura, e senza questo la funzione resterebbe a girare su un socket morto. */
+int gmb_ws_is_open(int64_t handle);
 /* Handshake server WebSocket su un client HTTP già accettato (per HTTP ROUTE upgrade).
    client_socket è il fd TCP grezzo. Ritorna 0 ok / -1. Il Sec-WebSocket-Accept viene calcolato
    dal Sec-WebSocket-Key della richiesta (headers grezzi). */

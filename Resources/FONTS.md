@@ -19,8 +19,8 @@ Font-derived data (a bitmap is a derivative of the font, so it keeps the font's 
 Regenerate the bitmap with (from the repository root):
 
 ```sh
-python3 tools/py/cellfont_from_bdf.py ter-u16n.bdf \
-    GMBasic/native/gmb_runtime_c/src/gmb_gfx_cellfont_bitmap.h
+bash tools/sh/gmb_c99native_run.sh ../tools/basic/cellfont_from_bdf.bas cfb -- \
+    ter-u16n.bdf GMBasic/native/gmb_runtime_c/src/gmb_gfx_cellfont_bitmap.h
 ```
 
 ## What was removed and why
