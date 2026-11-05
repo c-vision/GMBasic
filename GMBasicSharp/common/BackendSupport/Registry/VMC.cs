@@ -917,6 +917,9 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "STATS.LogisticSf");
         r.Register(Backend.VMC, "STATS.TriangularCdf");
         r.Register(Backend.VMC, "STATS.TriangularSf");
+        r.Register(Backend.VMC, "STATS.WeibullIsf");
+        r.Register(Backend.VMC, "STATS.UniformIsf");
+        r.Register(Backend.VMC, "STATS.ParetoIsf");
         r.Register(Backend.VMC, "STATS.Covariance");
         r.Register(Backend.VMC, "STATS.Range");
         r.Register(Backend.VMC, "STATS.MAX");

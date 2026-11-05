@@ -1497,6 +1497,10 @@ double gmb_dist_triangular_ppf(double a, double b, double c, double p)
     return a + (b - a) * xstd;
 }
 
+double gmb_dist_weibull_isf(double shape, double scale, double p) { return gmb_dist_weibull_ppf(shape, scale, 1.0 - p); }
+double gmb_dist_uniform_isf(double a, double b, double p) { return gmb_dist_uniform_ppf(a, b, 1.0 - p); }
+double gmb_dist_pareto_isf(double scale, double shape, double p) { return gmb_dist_pareto_ppf(scale, shape, 1.0 - p); }
+
 /* ==================== Analisi numerica: regressione, interpolazioni, FFT, time series ==================== */
 
 /* LinearRegression OLS → slope, intercept, r2 */

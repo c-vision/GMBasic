@@ -2014,7 +2014,7 @@ public enum TokenKind
     StatsExpSf, StatsStudentTSf, StatsChiSquaredSf, StatsWeibullSf, StatsFSf, StatsNormalSf, StatsLognormalSf,
     StatsParetoCdf, StatsParetoSf, StatsUniformCdf, StatsUniformSf,
     StatsKendallTau, StatsFTest, StatsBetaSf, StatsChiSf, StatsLogisticCdf, StatsLogisticSf,
-    StatsTriangularCdf, StatsTriangularSf,
+    StatsTriangularCdf, StatsTriangularSf, StatsWeibullIsf, StatsUniformIsf, StatsParetoIsf,
     StatsChi2Contingency, StatsMannWhitney, StatsWilcoxon,
     StatsGammaPdf, StatsGammaCdf, StatsGammaPpf, StatsGammaIsf,
     StatsSkewTest, StatsKurtosisTest, StatsJarqueBera,

@@ -51,6 +51,9 @@ internal sealed partial class PCodeProcessor
         BuiltInFunction.STATS_LOGISTICSF,
         BuiltInFunction.STATS_TRIANGULARCDF,
         BuiltInFunction.STATS_TRIANGULARSF,
+        BuiltInFunction.STATS_WEIBULLISF,
+        BuiltInFunction.STATS_UNIFORMISF,
+        BuiltInFunction.STATS_PARETOISF,
         BuiltInFunction.STATS_GAMMAPPF,
         BuiltInFunction.STATS_GAMMAISF,
         BuiltInFunction.STATS_MODE,
@@ -165,6 +168,18 @@ internal sealed partial class PCodeProcessor
         [BuiltInFunction.STATS_TRIANGULARCDF] = (task, args) =>
         {
                 return CommonLib.Numerics.TriangularCdf(SafeDouble(ArgOr(args, 1, 0.0)), SafeDouble(ArgOr(args, 2, 0.5)), SafeDouble(ArgOr(args, 3, 1.0)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_WEIBULLISF] = (task, args) =>
+        {
+                return CommonLib.Numerics.WeibullIsf(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));
+        },
+        [BuiltInFunction.STATS_UNIFORMISF] = (task, args) =>
+        {
+                return CommonLib.Numerics.UniformIsf(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1, 0.0)), SafeDouble(ArgOr(args, 2, 1.0)));
+        },
+        [BuiltInFunction.STATS_PARETOISF] = (task, args) =>
+        {
+                return CommonLib.Numerics.ParetoIsf(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));
         },
         [BuiltInFunction.STATS_TRIANGULARSF] = (task, args) =>
         {

@@ -73,6 +73,9 @@ public static partial class Numerics
         => loc + scale * Math.Log(p / (1.0 - p));
 
     /// <summary>Quantile uniforme (scipy uniform.ppf): a + p·(b−a).</summary>
+    public static double UniformPpf(double p, double a, double b)
+        => a + p * (b - a);
+
     public static double UniformCdf(double a, double b, double x)
     {
         if (b <= a) return double.NaN;
@@ -83,12 +86,15 @@ public static partial class Numerics
 
     public static double UniformSf(double a, double b, double x) => 1.0 - UniformCdf(a, b, x);
 
-    public static double UniformPpf(double p, double a, double b)
-        => a + p * (b - a);
+    public static double UniformIsf(double p, double a, double b) => UniformPpf(1.0 - p, a, b);
+
+    public static double WeibullIsf(double p, double shape, double scale) => WeibullPpf(1.0 - p, shape, scale);
 
     /// <summary>Quantile Pareto (scipy pareto.ppf): scale·(1−p)^(−1/shape).</summary>
     public static double ParetoPpf(double p, double scale, double shape)
         => scale / Math.Pow(1.0 - p, 1.0 / shape);
+
+    public static double ParetoIsf(double p, double scale, double shape) => ParetoPpf(1.0 - p, scale, shape);
 
     /// <summary>Quantile triangolare (scipy triang.ppf): forma standard [0,1] con mode
     /// c=(mode−min)/(max−min), poi a + (b−a)·x.</summary>

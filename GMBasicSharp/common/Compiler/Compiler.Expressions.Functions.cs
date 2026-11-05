@@ -161,6 +161,8 @@ public sealed partial class Compiler
         { TokenKind.StatsBetaSf, BuiltInFunction.STATS_BETASF }, { TokenKind.StatsChiSf, BuiltInFunction.STATS_CHISF },
         { TokenKind.StatsLogisticCdf, BuiltInFunction.STATS_LOGISTICCDF }, { TokenKind.StatsLogisticSf, BuiltInFunction.STATS_LOGISTICSF },
         { TokenKind.StatsTriangularCdf, BuiltInFunction.STATS_TRIANGULARCDF }, { TokenKind.StatsTriangularSf, BuiltInFunction.STATS_TRIANGULARSF },
+        { TokenKind.StatsWeibullIsf, BuiltInFunction.STATS_WEIBULLISF }, { TokenKind.StatsUniformIsf, BuiltInFunction.STATS_UNIFORMISF },
+        { TokenKind.StatsParetoIsf, BuiltInFunction.STATS_PARETOISF },
         { TokenKind.StatsLinRegress, BuiltInFunction.STATS_LINREGRESS }, { TokenKind.StatsChi2Contingency, BuiltInFunction.STATS_CHI2CON },
         { TokenKind.StatsMannWhitney, BuiltInFunction.STATS_MANNWHITNEY }, { TokenKind.StatsWilcoxon, BuiltInFunction.STATS_WILCOXON },
         { TokenKind.StatsGammaPdf, BuiltInFunction.STATS_GAMMAPDF }, { TokenKind.StatsGammaCdf, BuiltInFunction.STATS_GAMMACDF },
