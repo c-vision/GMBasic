@@ -101,6 +101,7 @@ libgmb_pkg.so	9ebb6fd0e9b08e7980f939c1a282a308de0ca99eacd25f51466b4993e8acc9cd	1
 libgmb_screen.so	7f9bc7fccce064f57df986249e59586c00cc2b4e7ae69211860bf6a590124e84	16872	https://github.com/c-vision/GMBasicModules/releases/download/runtime-v2/libgmb_screen-linux-x64.so
 libgmb_tray.so	f1836b114cacd7e789753155c7f2219302d3d2174efba1402f1254b58a880aa3	16640	https://github.com/c-vision/GMBasicModules/releases/download/runtime-v2/libgmb_tray-linux-x64.so
 libgmbamqp.so	9ba326f714ba9be69049c6fdfbe99f0c2ac538f5bd456e8b2721072c22e85d29	21040	https://github.com/c-vision/GMBasicModules/releases/download/ffi-v2/libgmbamqp-linux-x64.so
+libgmbclm.so	18ae4854f5389b0222ecafcff95643552c93a0f84282616750a002237dc37c81	2424152	https://github.com/c-vision/GMBasicModules/releases/download/runtime-v2/libgmbclm-linux-x64.so
 libgmbgrpc.so	faf4574001780246409582f9d3b2fef47f4936175cb5e9af7a951068542dbfc4	16488	https://github.com/c-vision/GMBasicModules/releases/download/ffi-v2/libgmbgrpc-linux-x64.so
 libgmbkafka.so	e1c2b270b6c5494dfd0a11e7a734c341e80055ffae53218af1e13f95c4167d01	21360	https://github.com/c-vision/GMBasicModules/releases/download/ffi-v2/libgmbkafka-linux-x64.so
 libgmbmqtt.so	716803e99391dff4a323612a65855a772cdb7def2f4c3902864bf6757c25085f	20880	https://github.com/c-vision/GMBasicModules/releases/download/ffi-v2/libgmbmqtt-linux-x64.so
@@ -115,7 +116,6 @@ libgnutls.so.30	ddbae2995750875c07bc218d12a062d73f8250678f54dedda7e9be5068781c98
 libgobject-2.0.so	2bf396b14b469ca2eed46a785b3bc0bd1fd979261c6bf505bc4debdcd0a6870a	399752	https://github.com/c-vision/GMBasicModules/releases/download/support-v4/libgobject-2.0-linux-x64.so
 libgobject-2.0.so.0	2bf396b14b469ca2eed46a785b3bc0bd1fd979261c6bf505bc4debdcd0a6870a	399752	https://github.com/c-vision/GMBasicModules/releases/download/support-v4/libgobject-2.0-linux-x64.so.0
 libgomp.so	135f3c8f006d2fe5e68e51281c7974cb991a03de3bfb3593d68d174dfcf854d1	352304	https://github.com/c-vision/GMBasicModules/releases/download/support-v4/libgomp-linux-x64.so
-libgomp.so.1	135f3c8f006d2fe5e68e51281c7974cb991a03de3bfb3593d68d174dfcf854d1	352304	https://github.com/c-vision/GMBasicModules/releases/download/support-v4/libgomp-linux-x64.so.1
 libgpg-error.so	6cb18a007bfcb623029f4528a36b46578fea7dc34c2b505b8e6e0d99e6348cd1	149760	https://github.com/c-vision/GMBasicModules/releases/download/support-v4/libgpg-error-linux-x64.so
 libgpg-error.so.0	6cb18a007bfcb623029f4528a36b46578fea7dc34c2b505b8e6e0d99e6348cd1	149760	https://github.com/c-vision/GMBasicModules/releases/download/support-v4/libgpg-error-linux-x64.so.0
 libgraphite2.so	fcfaf843b25b58b88319ced52f826fc8213a661f3693c916f88641eddffe05b8	149776	https://github.com/c-vision/GMBasicModules/releases/download/support-v4/libgraphite2-linux-x64.so
