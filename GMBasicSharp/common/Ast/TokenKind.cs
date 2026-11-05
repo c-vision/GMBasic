@@ -869,6 +869,7 @@ public enum TokenKind
     RmtLambdaPlus, RmtLambdaMinus, RmtCoherence, RmtSpectralNorm, RmtDavisKahan, RmtPrincipalAngle, RmtTightness,
     MvGpr, MvSvmFit, MvSvmPredict, MvGmm,
     FittingPolyFit, FittingPolyEval, FittingChebEval, FittingPadeEval, FittingRSquared, FittingRSquaredTest,
+    SimSeed, SimUniform, SimNormal, SimExponential, SimBernoulli, SimBinomial,
     KMeans,               // Clustering K-means
     HoltWinters,          // Predizione serie temporali con Holt-Winters
     AdfTest,              // Test di Dickey-Fuller aumentato (stazionarietà)

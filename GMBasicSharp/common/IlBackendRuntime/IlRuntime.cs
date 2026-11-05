@@ -2229,6 +2229,12 @@ public static partial class IlRuntime
             ["LogLikelihood"] = r.LogLikelihood
         };
     }
+    public static double SimSeed(double seed) => CommonLib.Numerics.SimSeed(seed);
+    public static double SimUniform() => CommonLib.Numerics.SimUniform();
+    public static double SimNormal() => CommonLib.Numerics.SimNormal();
+    public static double SimExponential(double rate) => CommonLib.Numerics.SimExponential(rate);
+    public static double SimBernoulli(double p) => CommonLib.Numerics.SimBernoulli(p);
+    public static double SimBinomial(double n, double p) => CommonLib.Numerics.SimBinomial(n, p);
     public static Dictionary<string, object?> PolyFit(double[] x, double[] y, long degree)
     {
         var r = CommonLib.Numerics.PolyFit(x, y, (int)degree);

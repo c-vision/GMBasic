@@ -6091,6 +6091,35 @@ int emit_bf_fit(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, 
     if (tk == GMB_TOK_FittingRSquaredTest) return fit_rsq_test(c, args, nargs);
     return 0;
 }
+
+/* ── dominio: SIMULATION (RNG deterministico) ── */
+int emit_bf_sim(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
+    (void)name; (void)ns; (void)line;
+    if (tk == GMB_TOK_SimSeed) {
+        if (nargs < 1) return 0;
+        sb_put(&c->out, "(gmb_sim_seed((unsigned long long)("); emit_expr(c, args[0]); sb_put(&c->out, ")), 0.0)");
+        return 1;
+    }
+    if (tk == GMB_TOK_SimUniform) { sb_put(&c->out, "gmb_sim_uniform()"); return 1; }
+    if (tk == GMB_TOK_SimNormal) { sb_put(&c->out, "gmb_sim_normal()"); return 1; }
+    if (tk == GMB_TOK_SimExponential) {
+        if (nargs < 1) return 0;
+        sb_put(&c->out, "gmb_sim_exponential((double)("); emit_expr(c, args[0]); sb_put(&c->out, "))");
+        return 1;
+    }
+    if (tk == GMB_TOK_SimBernoulli) {
+        if (nargs < 1) return 0;
+        sb_put(&c->out, "gmb_sim_bernoulli((double)("); emit_expr(c, args[0]); sb_put(&c->out, "))");
+        return 1;
+    }
+    if (tk == GMB_TOK_SimBinomial) {
+        if (nargs < 2) return 0;
+        sb_put(&c->out, "gmb_sim_binomial((double)("); emit_expr(c, args[0]);
+        sb_put(&c->out, "), (double)("); emit_expr(c, args[1]); sb_put(&c->out, "))");
+        return 1;
+    }
+    return 0;
+}
 int emit_bf_ts(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
     (void)name; (void)ns; (void)line;
     for (size_t i = 0; i < sizeof(TS_TBL) / sizeof(TS_TBL[0]); i++)

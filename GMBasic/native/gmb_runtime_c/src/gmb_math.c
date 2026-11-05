@@ -4156,3 +4156,48 @@ gmb_val_t gmb_fit_rsquared_dict(const double* data, int n)
     gmb_dict_set(&d, "Angle", gmb_make_val_double(angle));
     return gmb_make_val_dict_take(&d);
 }
+
+/* --- SIMULATION: RNG deterministico (SplitMix64) condiviso fra le 4 gambe --- */
+#include <stdint.h>
+static uint64_t g_sim_state = 0x9E3779B97F4A7C15ULL;
+void gmb_sim_seed(uint64_t seed) { g_sim_state = seed ? seed : 0x9E3779B97F4A7C15ULL; }
+static uint64_t gmb_sim_next_u64(void)
+{
+    g_sim_state += 0x9E3779B97F4A7C15ULL;
+    uint64_t z = g_sim_state;
+    z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
+    z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
+    return z ^ (z >> 31);
+}
+static double gmb_sim_next_double(void)
+{
+    return (double)(gmb_sim_next_u64() >> 11) * (1.0 / 9007199254740992.0);
+}
+double gmb_sim_uniform(void) { return gmb_sim_next_double(); }
+double gmb_sim_normal(void)
+{
+    double u, v, s;
+    do {
+        u = 2.0 * gmb_sim_next_double() - 1.0;
+        v = 2.0 * gmb_sim_next_double() - 1.0;
+        s = u * u + v * v;
+    } while (s >= 1.0 || s == 0.0);
+    return u * sqrt(-2.0 * log(s) / s);
+}
+double gmb_sim_exponential(double rate)
+{
+    if (rate <= 0.0) return NAN;
+    return -log(1.0 - gmb_sim_next_double()) / rate;
+}
+double gmb_sim_bernoulli(double p)
+{
+    return gmb_sim_next_double() < p ? 1.0 : 0.0;
+}
+double gmb_sim_binomial(double n_in, double p)
+{
+    int i, n = (int)n_in;
+    double c = 0.0;
+    if (n < 0) return NAN;
+    for (i = 0; i < n; i++) if (gmb_sim_next_double() < p) c += 1.0;
+    return c;
+}

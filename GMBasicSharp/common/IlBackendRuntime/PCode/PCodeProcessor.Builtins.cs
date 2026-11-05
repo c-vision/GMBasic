@@ -4913,6 +4913,30 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         {
                 return Basic.IlBackend.IlRuntime.TsGarch11(ToDoubleArr(ArgOr(args, 0)));
         },
+        [BuiltInFunction.SIM_SEED] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.SimSeed(SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.SIM_UNIFORM] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.SimUniform();
+        },
+        [BuiltInFunction.SIM_NORMAL] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.SimNormal();
+        },
+        [BuiltInFunction.SIM_EXPONENTIAL] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.SimExponential(SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.SIM_BERNOULLI] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.SimBernoulli(SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.SIM_BINOMIAL] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.SimBinomial(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)));
+        },
         [BuiltInFunction.FITTING_POLYFIT] = (task, args) =>
         {
                 return Basic.IlBackend.IlRuntime.PolyFit(ToDoubleArr(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1)), (long)SafeDouble(ArgOr(args, 2)));

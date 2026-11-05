@@ -719,6 +719,18 @@ static void gmb_bf_1090(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
                       : func_code == 1091 ? gmb_dist_nc_t_cdf(df, nc, args[0].num)
                       : gmb_dist_nc_t_sf(df, nc, args[0].num);
 }
+static void gmb_bf_3866(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task;
+        switch (func_code) {
+        case 3866: gmb_sim_seed((unsigned long long)(argc >= 1 ? args[0].num : 0)); bout->result = 0.0; break;
+        case 3867: bout->result = gmb_sim_uniform(); break;
+        case 3868: bout->result = gmb_sim_normal(); break;
+        case 3869: bout->result = gmb_sim_exponential(argc >= 1 ? args[0].num : 1.0); break;
+        case 3870: bout->result = gmb_sim_bernoulli(argc >= 1 ? args[0].num : 0.5); break;
+        default:   bout->result = gmb_sim_binomial(argc >= 1 ? args[0].num : 1, argc >= 2 ? args[1].num : 0.5); break;
+        }
+}
 static void gmb_bf_3860(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         (void)vm; (void)task;
@@ -18166,6 +18178,12 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 3863, gmb_bf_3860 },
     { 3864, gmb_bf_3860 },
     { 3865, gmb_bf_3860 },
+    { 3866, gmb_bf_3866 },
+    { 3867, gmb_bf_3866 },
+    { 3868, gmb_bf_3866 },
+    { 3869, gmb_bf_3866 },
+    { 3870, gmb_bf_3866 },
+    { 3871, gmb_bf_3866 },
     { 3858, gmb_bf_3858 },
     { 3850, gmb_bf_3849 },
     { 3851, gmb_bf_3849 },

@@ -940,6 +940,12 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "FITTING.PadeEval");
         r.Register(Backend.PCodeVM, "FITTING.RSquared");
         r.Register(Backend.PCodeVM, "FITTING.RSquaredTest");
+        r.Register(Backend.PCodeVM, "SIMULATION.SimSeed");
+        r.Register(Backend.PCodeVM, "SIMULATION.SimUniform");
+        r.Register(Backend.PCodeVM, "SIMULATION.SimNormal");
+        r.Register(Backend.PCodeVM, "SIMULATION.SimExponential");
+        r.Register(Backend.PCodeVM, "SIMULATION.SimBernoulli");
+        r.Register(Backend.PCodeVM, "SIMULATION.SimBinomial");
         r.Register(Backend.PCodeVM, "SPATIAL.PDIST");
         r.Register(Backend.PCodeVM, "STATS.PearsonR");
         r.Register(Backend.PCodeVM, "STATS.KendallTau");

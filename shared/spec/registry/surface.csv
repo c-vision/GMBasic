@@ -1087,6 +1087,12 @@ procedure,SIGNAL,LFILTER,SignalLfilter
 procedure,SIGNAL,RESAMPLE,SignalResample
 procedure,SIGNAL,SAVGOLFILTER,SignalSavgolFilter
 procedure,SIGNAL,WELCH,SignalWelch
+procedure,SIMULATION,SIMBERNOULLI,SimBernoulli
+procedure,SIMULATION,SIMBINOMIAL,SimBinomial
+procedure,SIMULATION,SIMEXP,SimExponential
+procedure,SIMULATION,SIMNORMAL,SimNormal
+procedure,SIMULATION,SIMSEED,SimSeed
+procedure,SIMULATION,SIMUNIFORM,SimUniform
 procedure,SPATIAL,CDIST,SpatialCdist
 procedure,SPATIAL,CONVEXHULL,SpatialConvexHull
 procedure,SPATIAL,DISTANCEMATRIX,SpatialDistanceMatrix
