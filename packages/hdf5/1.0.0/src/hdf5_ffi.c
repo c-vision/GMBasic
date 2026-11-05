@@ -14,6 +14,8 @@
  */
 #include "gmbhdf5.h"
 
+#include <hdf5.h>
+
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,6 +24,16 @@
 typedef long long i64;
 
 #define H(h) ((gmb_h5_file *)(size_t)(h))
+
+/*
+ * HDF5 stampa un diagnostico multi-riga sulla console ogni volta che un'operazione fallisce
+ * ("HDF5-DIAG: Error detected ..."). Per un binding BASIC è rumore: l'esito arriva già come
+ * codice di ritorno (0 = ok, negativo = errore). Si disattiva UNA volta, al caricamento della
+ * dylib, la stampa automatica sullo stack di default: i diagnosti restano disponibili a chi
+ * usa l'API HDF5 direttamente, ma non inquinano l'output dei programmi BASIC.
+ */
+static void h5_quiet_errors(void) __attribute__((constructor));
+static void h5_quiet_errors(void) { H5Eset_auto2(H5E_DEFAULT, NULL, NULL); }
 
 i64 ofx_h5_create(const char *path) { return (i64)(size_t)gmb_h5_create(path); }
 i64 ofx_h5_open(const char *path) { return (i64)(size_t)gmb_h5_open(path); }

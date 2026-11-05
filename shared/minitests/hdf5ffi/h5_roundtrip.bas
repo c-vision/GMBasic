@@ -1,5 +1,5 @@
 ' TAG: unsupported-c99native
-' EXPECT: create=-1 |wr_f64=-1 |wr_i64=-1 |wr_zip=-1 |grp=-1 |at_s=-1 |at_f=-1 |list= 4 : 0  0  0 |size= 6 |rd_f64=-1 : 6 : 2 x 3 : 0.5 , 5.5 |rd_i64=-1 : 30 |rd_zip=-1 : 5 |nome_serie= 1 |attr=eur|ver=-1
+' EXPECT: create=-1 |wr_f64=-1 |wr_i64=-1 |wr_zip=-1 |grp=-1 |at_s=-1 |at_f=-1 |list= 4 : 0  0  0 |size= 6 |rd_f64=-1 : 6 : 2 x 3 : 0.5 , 5.5 |rd_i64=-1 : 30 |rd_zip=-1 : 5 |nome_serie= 1 |attr=eur|str_vuota=-1 |ver=-1
 ' HDF5 (pacchetto gmblib-hdf5): scrittura + rilettura di un dataset F64, un I64, un gruppo,
 ' attributi e listing. Nessuna fixture binaria: il file si crea e si legge nel test.
 REQUIRE "hdf5"
@@ -58,6 +58,9 @@ PRINT "|rd_zip="; (HDF5.H5READDBL(fh, "compressa", rz, rdim, rn) = 0); ":"; rz(5
   NEXT k
   PRINT "|nome_serie="; trovato;
 PRINT "|attr="; HDF5.H5READATTRSTR(fh, "serie", "unit");
+  ' H5READSTR su un dataset NUMERICO: non è un dataset di stringhe -> stringa vuota (con
+  ' questo wrapper le stringhe vivono negli attributi; H5READSTR serve ai file di altri tool).
+  PRINT "|str_vuota="; (LEN(HDF5.H5READSTR(fh, "serie")) = 0);
 PRINT "|ver="; (LEN(HDF5.H5VERSION()) > 0)
 CALL HDF5.H5CLOSE(fh)
 PRINT ""
