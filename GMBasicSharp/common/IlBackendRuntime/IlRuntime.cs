@@ -6857,7 +6857,11 @@ public static partial class IlRuntime
     }
     public static object?[] LedgerGet(double id, string? alias = null)
     {
-        var h = LedgerHandleFor(alias); return h >= 0 ? Current.Database.LedgerGet(h, (long)id) : [];
+        /* GET di un ID inesistente/cancellato → array vuoto (parità PCode/VM-C/C99:
+         * prima la gamba IL sollevava KeyNotFoundException e il programma terminava). */
+        var h = LedgerHandleFor(alias);
+        if (h < 0) return [];
+        try { return Current.Database.LedgerGet(h, (long)id); } catch { return []; }
     }
     /// <summary>Converte un object?[] (elementi dict JSON dal runtime Ledger*) in string[]
     /// per i target STRING[] (JSON.Stringify(tuttiConti$) in DbLedgerFullTests). Gli
