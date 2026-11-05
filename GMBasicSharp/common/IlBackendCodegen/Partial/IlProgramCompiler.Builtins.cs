@@ -679,6 +679,12 @@ public sealed partial class IlProgramCompiler
             case TokenKind.FittingPadeEval: EmitDoubleTwoArrayCall(expr, nameof(IlRuntime.PadeEval)); break;
             case TokenKind.FittingRSquared: EmitTimeSeriesArrayOnlyCall(expr, nameof(IlRuntime.RSquared)); break;
             case TokenKind.FittingRSquaredTest: EmitTimeSeriesArrayOnlyCall(expr, nameof(IlRuntime.RSquaredTest)); break;
+            case TokenKind.SimSeed: EmitNumericCall(expr, RuntimeMethod(nameof(IlRuntime.SimSeed))); break;
+            case TokenKind.SimUniform: EmitNoArgCall(expr, nameof(IlRuntime.SimUniform)); break;
+            case TokenKind.SimNormal: EmitNoArgCall(expr, nameof(IlRuntime.SimNormal)); break;
+            case TokenKind.SimExponential: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.SimExponential)), 1); break;
+            case TokenKind.SimBernoulli: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.SimBernoulli)), 1); break;
+            case TokenKind.SimBinomial: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.SimBinomial)), 2); break;
             case TokenKind.Autocorrelation: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.Autocorrelation)); break;
             case TokenKind.Deseasonalize: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.Deseasonalize)); break;
             case TokenKind.Decompose: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.Decompose)); break;

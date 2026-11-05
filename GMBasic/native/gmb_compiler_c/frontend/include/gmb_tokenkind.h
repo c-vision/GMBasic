@@ -2784,9 +2784,15 @@ typedef enum gmb_tokenkind {
     GMB_TOK_FittingPadeEval,
     GMB_TOK_FittingRSquared,
     GMB_TOK_FittingRSquaredTest,
+    GMB_TOK_SimSeed,
+    GMB_TOK_SimUniform,
+    GMB_TOK_SimNormal,
+    GMB_TOK_SimExponential,
+    GMB_TOK_SimBernoulli,
+    GMB_TOK_SimBinomial,
 } gmb_tokenkind_t;
 
-#define GMB_TOK_COUNT 2761
+#define GMB_TOK_COUNT 2767
 
 /* 2026-09-09 (direttiva 2026-09-08): gmb_tokenkind_name()/gmb_tokenkind_from_name() e la
  * tabella gmb_token_names[] sono state RIMOSSE — dispatch solo per TokenKind; la risoluzione
