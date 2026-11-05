@@ -841,6 +841,28 @@ static double gmb_vm_tpe_cb(const double* x, void* c)
         gmb_tpe_vm_ctx_t* t = (gmb_tpe_vm_ctx_t*)c;
         return gmb_vm_call_closure_sync_list(t->cc.vm, t->cc.task, t->cc.cl, x, t->n);
 }
+static void gmb_bf_3885(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task;
+        double a = argc > 0 ? args[0].num : 0, b = argc > 1 ? args[1].num : 0;
+        double s = argc > 1 ? args[1].num : 0;
+        double t = argc > 2 ? args[2].num : 0;
+        switch (func_code) {
+        case 3885: { double v = 0; gmb_vector_get((int64_t)a, (int)b, &v); bout->result = v; break; }
+        case 3886: bout->result = (double)gmb_vector_op((int64_t)a, (int64_t)b, 0, 0, 0); break;
+        case 3887: bout->result = (double)gmb_vector_op((int64_t)a, (int64_t)b, 0, 0, 1); break;
+        case 3888: bout->result = (double)gmb_vector_op((int64_t)a, (int64_t)b, 0, 0, 2); break;
+        case 3889: bout->result = (double)gmb_vector_op((int64_t)a, (int64_t)b, 0, 0, 3); break;
+        case 3890: bout->result = (double)gmb_vector_op((int64_t)a, -1, s, 0, 4); break;
+        case 3891: bout->result = (double)gmb_vector_op((int64_t)a, -1, 0, 0, 5); break;
+        case 3892: bout->result = (double)gmb_vector_op((int64_t)a, (int64_t)b, 0, t, 6); break;
+        case 3893: bout->result = (double)gmb_vector_op((int64_t)a, (int64_t)b, 0, 0, 7); break;
+        case 3894: bout->result = gmb_vector_angle_h((int64_t)a, (int64_t)b); break;
+        case 3895: bout->result = gmb_vector_distance_h((int64_t)a, (int64_t)b); break;
+        case 3896: bout->result = (double)gmb_vector_op((int64_t)a, (int64_t)b, 0, 0, 8); break;
+        default:   bout->result = (double)gmb_vector_op((int64_t)a, (int64_t)b, 0, 0, 9); break;
+        }
+}
 static void gmb_bf_3884(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         (void)func_code;
@@ -18344,6 +18366,19 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 3871, gmb_bf_3866 },
     { 3872, gmb_bf_3872 },
     { 3884, gmb_bf_3884 },
+    { 3885, gmb_bf_3885 },
+    { 3886, gmb_bf_3885 },
+    { 3887, gmb_bf_3885 },
+    { 3888, gmb_bf_3885 },
+    { 3889, gmb_bf_3885 },
+    { 3890, gmb_bf_3885 },
+    { 3891, gmb_bf_3885 },
+    { 3892, gmb_bf_3885 },
+    { 3893, gmb_bf_3885 },
+    { 3894, gmb_bf_3885 },
+    { 3895, gmb_bf_3885 },
+    { 3896, gmb_bf_3885 },
+    { 3897, gmb_bf_3885 },
     { 3873, gmb_bf_3873 },
     { 3876, gmb_bf_3876 },
     { 3877, gmb_bf_3876 },

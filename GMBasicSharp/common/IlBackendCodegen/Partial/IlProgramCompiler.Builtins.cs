@@ -1037,6 +1037,19 @@ public sealed partial class IlProgramCompiler
             case TokenKind.VectorChebyshev: EmitLinAlgLongPairCall(expr, nameof(IlRuntime.VectorChebyshev)); break;
             case TokenKind.VectorCosineDistance: EmitLinAlgLongPairCall(expr, nameof(IlRuntime.VectorCosineDistance)); break;
             case TokenKind.VectorMinkowski: EmitLinAlgLongPairDoubleCall(expr, nameof(IlRuntime.VectorMinkowski)); break;
+            case TokenKind.VGet: EmitLinAlgLongPairCall(expr, nameof(IlRuntime.VGet)); break;
+            case TokenKind.VAdd: EmitLinAlgLongPairCall(expr, nameof(IlRuntime.VAdd)); break;
+            case TokenKind.VSub: EmitLinAlgLongPairCall(expr, nameof(IlRuntime.VSub)); break;
+            case TokenKind.VMul: EmitLinAlgLongPairCall(expr, nameof(IlRuntime.VMul)); break;
+            case TokenKind.VDiv: EmitLinAlgLongPairCall(expr, nameof(IlRuntime.VDiv)); break;
+            case TokenKind.VScale: EmitLongDoubleCall(expr, nameof(IlRuntime.VScale)); break;
+            case TokenKind.VNorm: EmitLongUnaryCall(expr, nameof(IlRuntime.VNormV)); break;
+            case TokenKind.VLerp: EmitLinAlgLongPairDoubleCall(expr, nameof(IlRuntime.VLerp)); break;
+            case TokenKind.VCross: EmitLinAlgLongPairCall(expr, nameof(IlRuntime.VCross)); break;
+            case TokenKind.VAngle: EmitLinAlgLongPairCall(expr, nameof(IlRuntime.VAngle)); break;
+            case TokenKind.VDist: EmitLinAlgLongPairCall(expr, nameof(IlRuntime.VDist)); break;
+            case TokenKind.VMin: EmitLinAlgLongPairCall(expr, nameof(IlRuntime.VMin)); break;
+            case TokenKind.VMax: EmitLinAlgLongPairCall(expr, nameof(IlRuntime.VMax)); break;
             // KDTree (scipy.spatial.KDTree): CREATE(points)→handle; QUERY/QUERYDIST(h,x,k);
             // QUERYBALL(h,x,r).
             case TokenKind.KdTreeCreate: EmitKdTreeCreateCall(expr); break;

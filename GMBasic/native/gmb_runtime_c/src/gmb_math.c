@@ -4765,3 +4765,61 @@ double* gmb_sim_tpe_c99(gmb_fn_t fn, const double* lo, const double* hi, int d,
     c.d = d;
     return gmb_sim_tpe_ctx(gmb_tpe_c99_tramp, &c, lo, hi, d, n_iter, n_init, seed, outn);
 }
+
+/* --- VECTOR: operazioni su handle (gm_vec) --- */
+int64_t gmb_vector_op(int64_t ah, int64_t bh, double s, double t, int op)
+{
+    double a[4] = {0,0,0,0}, b[4] = {0,0,0,0}, r[4];
+    int i;
+    if (!gmb_vector_valid(ah)) return -1;
+    for (i = 0; i < 4; i++) gmb_vector_get(ah, i, &a[i]);
+    if (bh >= 0 && gmb_vector_valid(bh)) for (i = 0; i < 4; i++) gmb_vector_get(bh, i, &b[i]);
+    for (i = 0; i < 4; i++) {
+        double x = a[i], y = b[i];
+        switch (op) {
+        case 0: r[i] = x + y; break;
+        case 1: r[i] = x - y; break;
+        case 2: r[i] = x * y; break;
+        case 3: r[i] = y != 0.0 ? x / y : 0.0; break;
+        case 4: r[i] = x * s; break;
+        case 6: r[i] = x + (y - x) * t; break;
+        case 8: r[i] = x < y ? x : y; break;
+        case 9: r[i] = x > y ? x : y; break;
+        case 10: r[i] = fabs(x); break;
+        default: r[i] = x; break;
+        }
+    }
+    if (op == 5) {
+        double n = sqrt(a[0]*a[0] + a[1]*a[1] + a[2]*a[2] + a[3]*a[3]);
+        if (n > 0.0) for (i = 0; i < 4; i++) r[i] = a[i] / n;
+        else for (i = 0; i < 4; i++) r[i] = a[i];
+    }
+    if (op == 7) {
+        r[0] = a[1]*b[2] - a[2]*b[1];
+        r[1] = a[2]*b[0] - a[0]*b[2];
+        r[2] = a[0]*b[1] - a[1]*b[0];
+        r[3] = 0.0;
+    }
+    return gmb_vector_create(r[0], r[1], r[2], r[3]);
+}
+double gmb_vector_angle_h(int64_t ah, int64_t bh)
+{
+    double a[4] = {0,0,0,0}, b[4] = {0,0,0,0}, dot = 0, na = 0, nb = 0, c;
+    int i;
+    if (!gmb_vector_valid(ah) || !gmb_vector_valid(bh)) return NAN;
+    for (i = 0; i < 4; i++) { gmb_vector_get(ah, i, &a[i]); gmb_vector_get(bh, i, &b[i]); }
+    for (i = 0; i < 4; i++) { dot += a[i]*b[i]; na += a[i]*a[i]; nb += b[i]*b[i]; }
+    if (na <= 0.0 || nb <= 0.0) return NAN;
+    c = fabs(dot) / sqrt(na * nb);
+    if (c > 1.0) c = 1.0;
+    return acos(c);
+}
+double gmb_vector_distance_h(int64_t ah, int64_t bh)
+{
+    double a[4] = {0,0,0,0}, b[4] = {0,0,0,0}, s = 0;
+    int i;
+    if (!gmb_vector_valid(ah) || !gmb_vector_valid(bh)) return NAN;
+    for (i = 0; i < 4; i++) { gmb_vector_get(ah, i, &a[i]); gmb_vector_get(bh, i, &b[i]); }
+    for (i = 0; i < 4; i++) { double d = a[i] - b[i]; s += d * d; }
+    return sqrt(s);
+}

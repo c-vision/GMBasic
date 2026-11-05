@@ -891,6 +891,10 @@ public sealed partial class IlProgramCompiler
     { if (expr.Args.Length != 2) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede handle e buffer/dati."); EmitInt64Argument(expr.Args[0]); EmitCryptoObjectArgument(expr.Args[1]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
     private void EmitIoInt64PairCall(BuiltinFunctionCallExpr expr, string methodName)
     { if (expr.Args.Length != 2) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede handle e posizione."); EmitInt64Argument(expr.Args[0]); EmitInt64Argument(expr.Args[1]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
+    private void EmitLongUnaryCall(BuiltinFunctionCallExpr expr, string methodName)
+    { if (expr.Args.Length != 1) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 1 argomento."); EmitInt64Argument(expr.Args[0]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
+    private void EmitLongDoubleCall(BuiltinFunctionCallExpr expr, string methodName)
+    { if (expr.Args.Length != 2) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 2 argomenti."); EmitInt64Argument(expr.Args[0]); EmitDoubleArgument(expr.Args[1]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
     private void EmitLinAlgLongPairCall(BuiltinFunctionCallExpr expr, string methodName)
     { if (expr.Args.Length != 2) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 2 handle/dimensioni."); EmitInt64Argument(expr.Args[0]); EmitInt64Argument(expr.Args[1]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
 
