@@ -5960,6 +5960,32 @@ static int mv_svm_fit(ctx_t* c, gmb_expr_t** a, int n) {
     sb_put(&c->out, "), (int)("); emit_expr(c, a[4]); sb_put(&c->out, "))");
     return 1;
 }
+static int mv_boost_predict(ctx_t* c, gmb_expr_t** a, int n) {
+    var_t *m, *x;
+    if (n < 2 || !mv_arr(c, a[0], &m) || !mv_arr(c, a[1], &x)) return 0;
+    sb_put(&c->out, "gmb_mv_boost_predict((const double*)"); emit_var_ref(c, m);
+    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, m);
+    sb_put(&c->out, "), (const double*)"); emit_var_ref(c, x); sb_put(&c->out, ")");
+    return 1;
+}
+static int mv_boost_score(ctx_t* c, gmb_expr_t** a, int n) {
+    var_t *m, *X, *y;
+    if (n < 3 || !mv_arr(c, a[0], &m) || !mv_arr(c, a[2], &y)) return 0;
+    if (!a[1] || a[1]->kind != GMB_EXPR_VAR || !a[1]->var) return 0;
+    X = lookup_var(c, a[1]->var);
+    if (!X || !X->is_array) return 0;
+    sb_put(&c->out, "gmb_mv_boost_score((const double*)"); emit_var_ref(c, m);
+    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, m);
+    sb_put(&c->out, "), (const double*)"); emit_var_ref(c, X);
+    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, y);
+    if (X->jagged) {
+        sb_put(&c->out, "), (int)("); emit_ident(c, X->name); sb_put(&c->out, "__cols)");
+    } else if (X->matrix || X->ndims >= 2) {
+        sb_put(&c->out, "), (int)("); sb_bound_var(&c->out, X, 1); sb_put(&c->out, " + 1)");
+    } else return 0;
+    sb_put(&c->out, ", (const double*)"); emit_var_ref(c, y); sb_put(&c->out, ")");
+    return 1;
+}
 static int mv_svm_predict(ctx_t* c, gmb_expr_t** a, int n) {
     var_t *W, *x;
     if (n < 4 || !mv_arr(c, a[0], &W) || !mv_arr(c, a[1], &x)) return 0;
@@ -6034,6 +6060,8 @@ int emit_bf_mv(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, g
     if (tk == GMB_TOK_MvSvmFit) return mv_svm_fit(c, args, nargs);
     if (tk == GMB_TOK_MvGmm) return mv_gmm(c, args, nargs);
     if (tk == GMB_TOK_MvSvmPredict) return mv_svm_predict(c, args, nargs);
+    if (tk == GMB_TOK_MvBoostPredict) return mv_boost_predict(c, args, nargs);
+    if (tk == GMB_TOK_MvBoostScore) return mv_boost_score(c, args, nargs);
     return 0;
 }
 

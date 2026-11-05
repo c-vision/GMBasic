@@ -867,7 +867,7 @@ public enum TokenKind
     Regress,              // Regressione lineare/multipla
     MvGaussPdf, MvStudentPdf, CopulaClaytonCdf, CopulaGumbelCdf, CopulaFrankCdf,
     RmtLambdaPlus, RmtLambdaMinus, RmtCoherence, RmtSpectralNorm, RmtDavisKahan, RmtPrincipalAngle, RmtTightness,
-    MvGpr, MvSvmFit, MvSvmPredict, MvGmm,
+    MvGpr, MvSvmFit, MvSvmPredict, MvGmm, MvBoostFit, MvBoostPredict, MvBoostScore,
     FittingPolyFit, FittingPolyEval, FittingChebEval, FittingPadeEval, FittingRSquared, FittingRSquaredTest,
     SimSeed, SimUniform, SimNormal, SimExponential, SimBernoulli, SimBinomial, SimParticle,
     KMeans,               // Clustering K-means

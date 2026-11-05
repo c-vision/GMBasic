@@ -4258,3 +4258,284 @@ gmb_val_t gmb_sim_particle_filter(const double* obs, int T, double a, double q, 
     free(part); free(w); free(cdf); free(mean); free(var);
     return gmb_make_val_dict_take(&d);
 }
+
+/* --- Gradient boosting (port di gs_boost.c) con modello serializzato --- */
+typedef struct gmb_bnode {
+    int feat; double thr, leaf;
+    struct gmb_bnode *l, *r;
+} gmb_bnode;
+
+static double gmb_b_mean(const double* y, const int* idx, int n)
+{
+    double s = 0;
+    int i;
+    for (i = 0; i < n; i++) s += y[idx[i]];
+    return n > 0 ? s / (double)n : 0.0;
+}
+static int gmb_b_best_split(const double* X, const double* y, const int* idx, int n, int p,
+                            int* bf, double* bt, double* bgain)
+{
+    double s = 0, ss = 0, sse_p, best = -1, bt_ = 0;
+    int bf_ = -1, f, i, j;
+    for (i = 0; i < n; i++) { double v = y[idx[i]]; s += v; ss += v * v; }
+    sse_p = ss - s * s / n;
+    for (f = 0; f < p; f++) {
+        for (i = 0; i < n; i++) {
+            double thr = X[(size_t)idx[i] * p + f];
+            double sl = 0, sll = 0, sr = 0, srr = 0;
+            int nl = 0, nr = 0;
+            for (j = 0; j < n; j++) {
+                double v = X[(size_t)idx[j] * p + f], yy = y[idx[j]];
+                if (v <= thr) { sl += yy; sll += yy * yy; nl++; }
+                else { sr += yy; srr += yy * yy; nr++; }
+            }
+            if (nl < 1 || nr < 1) continue;
+            {
+                double sse = (sll - sl * sl / nl) + (srr - sr * sr / nr);
+                double gain = sse_p - sse;
+                if (gain > best) { best = gain; bf_ = f; bt_ = thr; }
+            }
+        }
+    }
+    *bf = bf_; *bt = bt_; *bgain = best;
+    return bf_ >= 0;
+}
+static void gmb_b_partition(const double* X, const int* idx, int n, int p, int f, double t,
+                            int* li, int* nl, int* ri, int* nr)
+{
+    int j;
+    *nl = 0; *nr = 0;
+    for (j = 0; j < n; j++) {
+        if (X[(size_t)idx[j] * p + f] <= t) li[(*nl)++] = idx[j];
+        else ri[(*nr)++] = idx[j];
+    }
+}
+static gmb_bnode* gmb_b_node(const double* y, const int* idx, int n)
+{
+    gmb_bnode* nd = (gmb_bnode*)calloc(1, sizeof(gmb_bnode));
+    nd->feat = -1; nd->leaf = gmb_b_mean(y, idx, n);
+    return nd;
+}
+static gmb_bnode* gmb_b_depthwise(const double* X, const double* y, const int* idx, int n, int p,
+                                  int depth, int maxd, int minleaf)
+{
+    gmb_bnode* nd = gmb_b_node(y, idx, n);
+    int bf, nl, nr; double bt, g;
+    int *li, *ri;
+    if (depth >= maxd || n < 2 * minleaf) return nd;
+    if (!gmb_b_best_split(X, y, idx, n, p, &bf, &bt, &g) || g <= 0.0) return nd;
+    li = (int*)malloc((size_t)n * sizeof(int));
+    ri = (int*)malloc((size_t)n * sizeof(int));
+    gmb_b_partition(X, idx, n, p, bf, bt, li, &nl, ri, &nr);
+    nd->feat = bf; nd->thr = bt;
+    nd->l = gmb_b_depthwise(X, y, li, nl, p, depth + 1, maxd, minleaf);
+    nd->r = gmb_b_depthwise(X, y, ri, nr, p, depth + 1, maxd, minleaf);
+    free(li); free(ri);
+    return nd;
+}
+typedef struct { gmb_bnode* nd; int* idx; int n; int depth; } gmb_bleaf;
+static gmb_bnode* gmb_b_leafwise(const double* X, const double* y, const int* idx0, int n0, int p,
+                                 int maxd, int minleaf)
+{
+    gmb_bnode* root = gmb_b_node(y, idx0, n0);
+    int cap = 1 << (maxd + 1), nl = 1, max_nodes = (1 << maxd) - 1, nodes = 1;
+    gmb_bleaf* lv = (gmb_bleaf*)malloc((size_t)cap * sizeof(gmb_bleaf));
+    int* a = (int*)malloc((size_t)n0 * sizeof(int));
+    int i;
+    for (i = 0; i < n0; i++) a[i] = idx0[i];
+    lv[0].nd = root; lv[0].idx = a; lv[0].n = n0; lv[0].depth = 0;
+    while (nodes < max_nodes) {
+        int best = -1, bbf = -1, k;
+        double bbt = 0, bg = 0;
+        for (k = 0; k < nl; k++) {
+            int bf; double bt, g;
+            if (lv[k].depth >= maxd || lv[k].n < 2 * minleaf) continue;
+            if (gmb_b_best_split(X, y, lv[k].idx, lv[k].n, p, &bf, &bt, &g) && g > bg) { bg = g; best = k; bbf = bf; bbt = bt; }
+        }
+        if (best < 0 || bg <= 0) break;
+        {
+            gmb_bleaf sp = lv[best];
+            int *li = (int*)malloc((size_t)sp.n * sizeof(int));
+            int *ri = (int*)malloc((size_t)sp.n * sizeof(int));
+            int nli, nri;
+            gmb_b_partition(X, sp.idx, sp.n, p, bbf, bbt, li, &nli, ri, &nri);
+            sp.nd->feat = bbf; sp.nd->thr = bbt;
+            sp.nd->l = gmb_b_node(y, li, nli);
+            sp.nd->r = gmb_b_node(y, ri, nri);
+            lv[best].nd = sp.nd->l; lv[best].idx = li; lv[best].n = nli; lv[best].depth = sp.depth + 1;
+            lv[nl].nd = sp.nd->r; lv[nl].idx = ri; lv[nl].n = nri; lv[nl].depth = sp.depth + 1; nl++;
+            free(sp.idx);
+            nodes++;
+        }
+    }
+    for (i = 0; i < nl; i++) free(lv[i].idx);
+    free(lv);
+    return root;
+}
+static gmb_bnode* gmb_b_symmetric(const double* X, const double* y, const int* idx0, int n0, int p,
+                                  int maxd, int minleaf)
+{
+    gmb_bnode* root = gmb_b_node(y, idx0, n0);
+    int cap = 1 << (maxd + 1), nl = 1, depth, i;
+    gmb_bleaf* lv = (gmb_bleaf*)malloc((size_t)cap * sizeof(gmb_bleaf));
+    int* a = (int*)malloc((size_t)n0 * sizeof(int));
+    for (i = 0; i < n0; i++) a[i] = idx0[i];
+    lv[0].nd = root; lv[0].idx = a; lv[0].n = n0; lv[0].depth = 0;
+    for (depth = 0; depth < maxd; depth++) {
+        int tot = 0, c = 0, k, bf, ok;
+        double bt, g;
+        int* comb;
+        gmb_bleaf* nxt;
+        int nn = 0;
+        for (k = 0; k < nl; k++) tot += lv[k].n;
+        if (tot == 0) break;
+        comb = (int*)malloc((size_t)tot * sizeof(int));
+        for (k = 0; k < nl; k++) for (i = 0; i < lv[k].n; i++) comb[c++] = lv[k].idx[i];
+        ok = (tot >= 2 * minleaf) && gmb_b_best_split(X, y, comb, tot, p, &bf, &bt, &g) && g > 0;
+        free(comb);
+        if (!ok) break;
+        nxt = (gmb_bleaf*)malloc((size_t)cap * sizeof(gmb_bleaf));
+        for (k = 0; k < nl; k++) {
+            gmb_bleaf sp = lv[k];
+            int *li = (int*)malloc((size_t)sp.n * sizeof(int));
+            int *ri = (int*)malloc((size_t)sp.n * sizeof(int));
+            int nli, nri;
+            gmb_b_partition(X, sp.idx, sp.n, p, bf, bt, li, &nli, ri, &nri);
+            sp.nd->feat = bf; sp.nd->thr = bt;
+            sp.nd->l = gmb_b_node(y, li, nli);
+            sp.nd->r = gmb_b_node(y, ri, nri);
+            nxt[nn].nd = sp.nd->l; nxt[nn].idx = li; nxt[nn].n = nli; nxt[nn].depth = depth + 1; nn++;
+            nxt[nn].nd = sp.nd->r; nxt[nn].idx = ri; nxt[nn].n = nri; nxt[nn].depth = depth + 1; nn++;
+            free(sp.idx);
+        }
+        free(lv); lv = nxt; nl = nn;
+    }
+    for (i = 0; i < nl; i++) free(lv[i].idx);
+    free(lv);
+    return root;
+}
+static gmb_bnode* gmb_b_fit_tree(int engine, const double* X, const double* y, const int* idx,
+                                 int n, int p, int maxd, int minleaf)
+{
+    if (engine == 1) return gmb_b_leafwise(X, y, idx, n, p, maxd, minleaf);
+    if (engine == 2) return gmb_b_symmetric(X, y, idx, n, p, maxd, minleaf);
+    return gmb_b_depthwise(X, y, idx, n, p, 0, maxd, minleaf);
+}
+static double gmb_b_tree_predict(const gmb_bnode* n, const double* x)
+{
+    while (n->feat >= 0) n = (x[n->feat] <= n->thr) ? n->l : n->r;
+    return n->leaf;
+}
+static void gmb_b_tree_free(gmb_bnode* n) { if (!n) return; gmb_b_tree_free(n->l); gmb_b_tree_free(n->r); free(n); }
+static int gmb_b_count(const gmb_bnode* n) { return n ? 1 + gmb_b_count(n->l) + gmb_b_count(n->r) : 0; }
+static int gmb_b_serialize(const gmb_bnode* n, double* out, int base, int* next)
+{
+    int me = (*next)++;
+    out[(size_t)base + (size_t)me * 5 + 0] = n->feat;
+    out[(size_t)base + (size_t)me * 5 + 1] = n->thr;
+    out[(size_t)base + (size_t)me * 5 + 2] = n->leaf;
+    if (n->feat >= 0) {
+        int l = gmb_b_serialize(n->l, out, base, next);
+        int r = gmb_b_serialize(n->r, out, base, next);
+        out[(size_t)base + (size_t)me * 5 + 3] = l;
+        out[(size_t)base + (size_t)me * 5 + 4] = r;
+    } else {
+        out[(size_t)base + (size_t)me * 5 + 3] = -1;
+        out[(size_t)base + (size_t)me * 5 + 4] = -1;
+    }
+    return me;
+}
+double* gmb_mv_boost_fit_alloc(const double* X, int n, int p, const double* y,
+                               int engine, int n_est, double lr, int max_depth, int* outn)
+{
+    double *f, *r, *model;
+    int* idx;
+    gmb_bnode** trees;
+    int t, i, n_trees = 0, pos;
+    if (outn) *outn = 0;
+    if (!X || !y || n <= 1 || p <= 0 || engine < 0 || engine > 2 || n_est <= 0 || max_depth < 1 || max_depth > 20) return NULL;
+    if (!(lr > 0.0 && lr <= 1.0)) lr = 0.1;
+    f = (double*)malloc((size_t)n * sizeof(double));
+    r = (double*)malloc((size_t)n * sizeof(double));
+    idx = (int*)malloc((size_t)n * sizeof(int));
+    trees = (gmb_bnode**)malloc((size_t)n_est * sizeof(gmb_bnode*));
+    if (!f || !r || !idx || !trees) { free(f); free(r); free(idx); free(trees); return NULL; }
+    {
+        double s = 0;
+        for (i = 0; i < n; i++) s += y[i];
+        s /= n;
+        for (i = 0; i < n; i++) { f[i] = s; idx[i] = i; }
+        for (t = 0; t < n_est; t++) {
+            gmb_bnode* tree;
+            for (i = 0; i < n; i++) r[i] = y[i] - f[i];
+            tree = gmb_b_fit_tree(engine, X, r, idx, n, p, max_depth, 1);
+            if (!tree) break;
+            trees[n_trees++] = tree;
+            for (i = 0; i < n; i++) f[i] += lr * gmb_b_tree_predict(tree, X + (size_t)i * p);
+        }
+    }
+    {
+        int total = 4;
+        for (t = 0; t < n_trees; t++) total += 1 + gmb_b_count(trees[t]) * 5;
+        model = (double*)malloc((size_t)total * sizeof(double));
+        if (!model) {
+            for (t = 0; t < n_trees; t++) gmb_b_tree_free(trees[t]);
+            free(trees); free(f); free(r); free(idx);
+            return NULL;
+        }
+        model[0] = p; model[1] = n_trees; model[2] = lr;
+        {
+            double s = 0;
+            for (i = 0; i < n; i++) s += y[i];
+            model[3] = s / n;
+        }
+        pos = 4;
+        for (t = 0; t < n_trees; t++) {
+            int cnt = gmb_b_count(trees[t]);
+            int next = 0;
+            model[pos] = cnt;
+            gmb_b_serialize(trees[t], model, pos + 1, &next);
+            pos += 1 + cnt * 5;
+        }
+        *outn = total;
+    }
+    for (t = 0; t < n_trees; t++) gmb_b_tree_free(trees[t]);
+    free(trees); free(f); free(r); free(idx);
+    return model;
+}
+double gmb_mv_boost_predict(const double* model, int mlen, const double* x)
+{
+    int nf, nt, t, pos, node;
+    double v, lr;
+    if (!model || mlen < 4 || !x) return NAN;
+    nf = (int)model[0]; nt = (int)model[1]; lr = model[2]; v = model[3];
+    (void)nf;
+    pos = 4;
+    for (t = 0; t < nt; t++) {
+        int cnt = (int)model[pos];
+        int base = pos + 1;
+        node = 0;
+        while (base + node * 5 + 4 < mlen) {
+            int feat = (int)model[base + node * 5 + 0];
+            if (feat < 0) { v += lr * model[base + node * 5 + 2]; break; }
+            if (x[feat] <= model[base + node * 5 + 1]) node = (int)model[base + node * 5 + 3];
+            else node = (int)model[base + node * 5 + 4];
+        }
+        pos += 1 + cnt * 5;
+    }
+    return v;
+}
+double gmb_mv_boost_score(const double* model, int mlen, const double* X, int n, int p, const double* y)
+{
+    double ym = 0, sst = 0, sse = 0;
+    int i;
+    if (!model || !X || !y || n <= 0 || p <= 0) return NAN;
+    for (i = 0; i < n; i++) ym += y[i];
+    ym /= n;
+    for (i = 0; i < n; i++) {
+        double pr = gmb_mv_boost_predict(model, mlen, X + (size_t)i * p);
+        sst += (y[i] - ym) * (y[i] - ym);
+        sse += (y[i] - pr) * (y[i] - pr);
+    }
+    return sst > 0 ? 1.0 - sse / sst : 0.0;
+}

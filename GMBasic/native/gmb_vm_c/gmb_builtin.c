@@ -719,6 +719,84 @@ static void gmb_bf_1090(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
                       : func_code == 1091 ? gmb_dist_nc_t_cdf(df, nc, args[0].num)
                       : gmb_dist_nc_t_sf(df, nc, args[0].num);
 }
+static void gmb_bf_3873(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task; (void)func_code;
+        int n = 0, p = 0, ny = 0;
+        double* flat = NULL;
+        double* y = gmb_vm_list_to_dbl(&args[1], &ny);
+        if (args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_LIST)
+        {
+                gmb_obj_shared_val_t* sv = (gmb_obj_shared_val_t*)args[0].ref;
+                if (sv->ndims >= 2) {
+                        n = (int)sv->dim_upper[0] + 1; p = (int)sv->dim_upper[1] + 1;
+                        int cnt = (int)sv->list->count;
+                        flat = (double*)malloc((size_t)cnt * sizeof(double));
+                        if (flat) for (int i = 0; i < cnt; i++) { gmb_val_t v = sv->list->items[i]; flat[i] = v.kind==GMB_TYPE_DOUBLE?v.v_double:v.kind==GMB_TYPE_INT?(double)v.v_int:0; }
+                } else if (sv->list->count > 0) {
+                        n = (int)sv->list->count;
+                        for (int i = 0; i < n; i++) { gmb_val_t rv = sv->list->items[i]; if (rv.kind == GMB_TYPE_OBJECT && rv.v_ptr && ((gmb_obj_t*)rv.v_ptr)->kind == GMB_OBJ_LIST) { p = (int)((gmb_obj_shared_val_t*)rv.v_ptr)->list->count; break; } }
+                        if (p > 0) {
+                                flat = (double*)malloc((size_t)n * p * sizeof(double));
+                                if (flat) for (int i = 0; i < n; i++) {
+                                        gmb_val_t rv = sv->list->items[i];
+                                        if (rv.kind == GMB_TYPE_OBJECT && rv.v_ptr && ((gmb_obj_t*)rv.v_ptr)->kind == GMB_OBJ_LIST) {
+                                                gmb_obj_shared_val_t* rl = (gmb_obj_shared_val_t*)rv.v_ptr;
+                                                for (int q = 0; q < p && q < (int)rl->list->count; q++) { gmb_val_t v = rl->list->items[q]; flat[i*p+q] = v.kind==GMB_TYPE_DOUBLE?v.v_double:v.kind==GMB_TYPE_INT?(double)v.v_int:0; }
+                                        }
+                                }
+                        }
+                }
+        }
+        int outn = 0;
+        double* model = gmb_mv_boost_fit_alloc(flat, n, p, y,
+                (int)(argc >= 3 ? args[2].num : 0), (int)(argc >= 4 ? args[3].num : 10),
+                argc >= 5 ? args[4].num : 0.1, (int)(argc >= 6 ? args[5].num : 3), &outn);
+        free(flat); free(y);
+        gmb_vm_set_result_list(model, outn, &bout->is_num, &bout->result_ref);
+}
+static void gmb_bf_3874(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task; (void)func_code;
+        int nm = 0, nx = 0;
+        double* m = gmb_vm_list_to_dbl(&args[0], &nm);
+        double* x = gmb_vm_list_to_dbl(&args[1], &nx);
+        bout->result = gmb_mv_boost_predict(m, nm, x);
+        free(m); free(x);
+}
+static void gmb_bf_3875(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task; (void)func_code;
+        int nm = 0, n = 0, p = 0, ny = 0;
+        double* m = gmb_vm_list_to_dbl(&args[0], &nm);
+        double* y = gmb_vm_list_to_dbl(&args[2], &ny);
+        double* flat = NULL;
+        if (args[1].type == 2 && args[1].ref && args[1].ref->kind == GMB_OBJ_LIST)
+        {
+                gmb_obj_shared_val_t* sv = (gmb_obj_shared_val_t*)args[1].ref;
+                if (sv->ndims >= 2) {
+                        n = (int)sv->dim_upper[0] + 1; p = (int)sv->dim_upper[1] + 1;
+                        int cnt = (int)sv->list->count;
+                        flat = (double*)malloc((size_t)cnt * sizeof(double));
+                        if (flat) for (int i = 0; i < cnt; i++) { gmb_val_t v = sv->list->items[i]; flat[i] = v.kind==GMB_TYPE_DOUBLE?v.v_double:v.kind==GMB_TYPE_INT?(double)v.v_int:0; }
+                } else if (sv->list->count > 0) {
+                        n = (int)sv->list->count;
+                        for (int i = 0; i < n; i++) { gmb_val_t rv = sv->list->items[i]; if (rv.kind == GMB_TYPE_OBJECT && rv.v_ptr && ((gmb_obj_t*)rv.v_ptr)->kind == GMB_OBJ_LIST) { p = (int)((gmb_obj_shared_val_t*)rv.v_ptr)->list->count; break; } }
+                        if (p > 0) {
+                                flat = (double*)malloc((size_t)n * p * sizeof(double));
+                                if (flat) for (int i = 0; i < n; i++) {
+                                        gmb_val_t rv = sv->list->items[i];
+                                        if (rv.kind == GMB_TYPE_OBJECT && rv.v_ptr && ((gmb_obj_t*)rv.v_ptr)->kind == GMB_OBJ_LIST) {
+                                                gmb_obj_shared_val_t* rl = (gmb_obj_shared_val_t*)rv.v_ptr;
+                                                for (int q = 0; q < p && q < (int)rl->list->count; q++) { gmb_val_t v = rl->list->items[q]; flat[i*p+q] = v.kind==GMB_TYPE_DOUBLE?v.v_double:v.kind==GMB_TYPE_INT?(double)v.v_int:0; }
+                                        }
+                                }
+                        }
+                }
+        }
+        bout->result = gmb_mv_boost_score(m, nm, flat, n, p, y);
+        free(m); free(y); free(flat);
+}
 static void gmb_bf_3872(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         (void)vm; (void)task; (void)func_code;
@@ -18200,6 +18278,9 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 3870, gmb_bf_3866 },
     { 3871, gmb_bf_3866 },
     { 3872, gmb_bf_3872 },
+    { 3873, gmb_bf_3873 },
+    { 3874, gmb_bf_3874 },
+    { 3875, gmb_bf_3875 },
     { 3858, gmb_bf_3858 },
     { 3850, gmb_bf_3849 },
     { 3851, gmb_bf_3849 },

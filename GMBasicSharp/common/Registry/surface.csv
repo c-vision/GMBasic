@@ -991,6 +991,9 @@ procedure,MOUSE,RIGHT,MouseRight
 procedure,MOUSE,WHEEL,MouseWheel
 procedure,MOUSE,X,MouseX
 procedure,MOUSE,Y,MouseY
+procedure,MULTIVARIATE,BOOSTFIT,MvBoostFit
+procedure,MULTIVARIATE,BOOSTPREDICT,MvBoostPredict
+procedure,MULTIVARIATE,BOOSTSCORE,MvBoostScore
 procedure,MULTIVARIATE,CopulaClaytonCdf,CopulaClaytonCdf
 procedure,MULTIVARIATE,CopulaFrankCdf,CopulaFrankCdf
 procedure,MULTIVARIATE,CopulaGumbelCdf,CopulaGumbelCdf
