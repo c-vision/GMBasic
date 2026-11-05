@@ -2161,6 +2161,11 @@ public static partial class IlRuntime
         return new Dictionary<string, object?> { ["Theta"] = theta, ["Mu"] = mu, ["Sigma"] = sigma, ["Phi"] = phi, ["HalfLife"] = halfLife };
     }
 
+    public static double MvGaussPdf(double[] x, double[] loc, double[] cov) => CommonLib.Numerics.MvGaussPdf(x, loc, cov);
+    public static double MvStudentPdf(double[] x, double[] loc, double[] cov, double nu) => CommonLib.Numerics.MvStudentPdf(x, loc, cov, nu);
+    public static double CopulaClaytonCdf(double u, double v, double theta) => CommonLib.Numerics.CopulaClaytonCdf(u, v, theta);
+    public static double CopulaGumbelCdf(double u, double v, double theta) => CommonLib.Numerics.CopulaGumbelCdf(u, v, theta);
+    public static double CopulaFrankCdf(double u, double v, double theta) => CommonLib.Numerics.CopulaFrankCdf(u, v, theta);
     public static Dictionary<string, object?> TsGarch11(double[] r)
     {
         var (omega, alpha, beta) = CommonLib.Numerics.Garch11(r);

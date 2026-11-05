@@ -517,6 +517,74 @@ public static partial class Numerics
         return Math.Min(1.0, s);
     }
 
+    private static bool MvPrepare(double[] x, double[] loc, double[] cov, out double halfLogdet, out double q)
+    {
+        halfLogdet = 0; q = 0;
+        var d = x.Length;
+        if (d <= 0 || loc.Length < d || cov.Length < d * d) return false;
+        var L = new double[d, d];
+        var y = new double[d];
+        for (var i = 0; i < d; i++)
+            for (var j = 0; j <= i; j++)
+            {
+                var s = cov[i * d + j];
+                for (var k = 0; k < j; k++) s -= L[i, k] * L[j, k];
+                if (i == j) { if (s <= 0) return false; L[i, j] = Math.Sqrt(s); }
+                else L[i, j] = s / L[j, j];
+            }
+        for (var i = 0; i < d; i++) halfLogdet += Math.Log(L[i, i]);
+        for (var i = 0; i < d; i++)
+        {
+            var s = x[i] - loc[i];
+            for (var j = 0; j < i; j++) s -= L[i, j] * y[j];
+            y[i] = s / L[i, i];
+        }
+        for (var i = 0; i < d; i++) q += y[i] * y[i];
+        return true;
+    }
+
+    public static double MvGaussLogPdf(double[] x, double[] loc, double[] cov)
+    {
+        if (!MvPrepare(x, loc, cov, out var hl, out var q)) return double.NaN;
+        return -0.5 * q - hl - 0.5 * x.Length * Math.Log(2.0 * Math.PI);
+    }
+
+    public static double MvGaussPdf(double[] x, double[] loc, double[] cov) => Math.Exp(MvGaussLogPdf(x, loc, cov));
+
+    public static double MvStudentPdf(double[] x, double[] loc, double[] cov, double nu)
+    {
+        if (nu <= 0) return double.NaN;
+        if (double.IsInfinity(nu)) return MvGaussPdf(x, loc, cov);
+        if (!MvPrepare(x, loc, cov, out var hl, out var q)) return double.NaN;
+        var d = x.Length;
+        var lognorm = SpecialLGamma(0.5 * (nu + d)) - SpecialLGamma(0.5 * nu) - 0.5 * d * Math.Log(nu * Math.PI);
+        return Math.Exp(lognorm - hl - 0.5 * (nu + d) * Math.Log(1.0 + q / nu));
+    }
+
+    public static double CopulaClaytonCdf(double u, double v, double theta)
+    {
+        if (theta <= 0 || u <= 0 || u >= 1 || v <= 0 || v >= 1) return double.NaN;
+        var x = Math.Pow(u, -theta) + Math.Pow(v, -theta) - 1.0;
+        return x > 0 ? Math.Pow(x, -1.0 / theta) : 0.0;
+    }
+
+    public static double CopulaGumbelCdf(double u, double v, double theta)
+    {
+        if (theta < 1 || u <= 0 || u >= 1 || v <= 0 || v >= 1) return double.NaN;
+        var a = Math.Pow(-Math.Log(u), theta);
+        var b = Math.Pow(-Math.Log(v), theta);
+        return Math.Exp(-Math.Pow(a + b, 1.0 / theta));
+    }
+
+    public static double CopulaFrankCdf(double u, double v, double theta)
+    {
+        if (theta <= 0 || u <= 0 || u >= 1 || v <= 0 || v >= 1) return double.NaN;
+        var a = Math.Exp(-theta * u);
+        var b = Math.Exp(-theta * v);
+        var e = Math.Exp(-theta);
+        return -Math.Log(1.0 + (a - 1.0) * (b - 1.0) / (e - 1.0)) / theta;
+    }
+
     /// <summary>
     /// Calcola la funzione di densità di probabilità (PDF) della distribuzione Beta.
     /// </summary>

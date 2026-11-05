@@ -6082,6 +6082,7 @@ int emit_bf_joy(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, 
 int emit_bf_dist(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_hash(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_ts(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
+int emit_bf_mv(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_tool(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_encoding(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 
@@ -7618,6 +7619,11 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_TsLzComplexity, emit_bf_ts },
     { NULL, GMB_TOK_TsBmaWeights, emit_bf_ts },
     { NULL, GMB_TOK_TsLyapunov, emit_bf_ts },
+    { NULL, GMB_TOK_MvGaussPdf, emit_bf_mv },
+    { NULL, GMB_TOK_MvStudentPdf, emit_bf_mv },
+    { NULL, GMB_TOK_CopulaClaytonCdf, emit_bf_mv },
+    { NULL, GMB_TOK_CopulaGumbelCdf, emit_bf_mv },
+    { NULL, GMB_TOK_CopulaFrankCdf, emit_bf_mv },
     { NULL, GMB_TOK_Base58Encode, emit_bf_encoding },
     { NULL, GMB_TOK_Base32Encode, emit_bf_encoding },
     { NULL, GMB_TOK_ToBase64, emit_bf_encoding },

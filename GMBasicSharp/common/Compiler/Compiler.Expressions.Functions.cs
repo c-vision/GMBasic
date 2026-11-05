@@ -93,7 +93,7 @@ public sealed partial class Compiler
         { TokenKind.Mad, BuiltInFunction.MAD }, { TokenKind.Anova, BuiltInFunction.ANOVA },
         { TokenKind.Arima, BuiltInFunction.ARIMA }, { TokenKind.Regress, BuiltInFunction.REGRESS },
         { TokenKind.KMeans, BuiltInFunction.KMEANS }, { TokenKind.HoltWinters, BuiltInFunction.HOLTWINTERS },
-        { TokenKind.AdfTest, BuiltInFunction.ADFTEST }, { TokenKind.Pca, BuiltInFunction.PCA },
+        { TokenKind.AdfTest, BuiltInFunction.ADFTEST }, { TokenKind.Pca, BuiltInFunction.PCA }, { TokenKind.MvGaussPdf, BuiltInFunction.MULTIVARIATE_MVGAUSSPDF }, { TokenKind.MvStudentPdf, BuiltInFunction.MULTIVARIATE_MVSTUDENTPDF }, { TokenKind.CopulaClaytonCdf, BuiltInFunction.MULTIVARIATE_COPULACLAYTONCDF }, { TokenKind.CopulaGumbelCdf, BuiltInFunction.MULTIVARIATE_COPULAGUMBELCDF }, { TokenKind.CopulaFrankCdf, BuiltInFunction.MULTIVARIATE_COPULAFRANKCDF },
         { TokenKind.InterpolateLinear, BuiltInFunction.INTERPOLATELINEAR },
         { TokenKind.InterpolateSpline, BuiltInFunction.INTERPOLATESPLINE },
         { TokenKind.InterpolatePolynomial, BuiltInFunction.INTERPOLATEPOLYNOMIAL },

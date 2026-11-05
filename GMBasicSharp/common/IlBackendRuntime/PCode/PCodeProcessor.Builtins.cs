@@ -4881,6 +4881,26 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         {
                 return Basic.IlBackend.IlRuntime.TsGarch11(ToDoubleArr(ArgOr(args, 0)));
         },
+        [BuiltInFunction.MULTIVARIATE_MVGAUSSPDF] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.MvGaussPdf(ToDoubleArr(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1)), ToDoubleArr(ArgOr(args, 2)));
+        },
+        [BuiltInFunction.MULTIVARIATE_MVSTUDENTPDF] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.MvStudentPdf(ToDoubleArr(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1)), ToDoubleArr(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)));
+        },
+        [BuiltInFunction.MULTIVARIATE_COPULACLAYTONCDF] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.CopulaClaytonCdf(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));
+        },
+        [BuiltInFunction.MULTIVARIATE_COPULAGUMBELCDF] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.CopulaGumbelCdf(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));
+        },
+        [BuiltInFunction.MULTIVARIATE_COPULAFRANKCDF] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.CopulaFrankCdf(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));
+        },
         [BuiltInFunction.TS_KALMAN1D] = (task, args) =>
         {
                 return Basic.IlBackend.IlRuntime.Kalman1D(ToDoubleArr(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4)));

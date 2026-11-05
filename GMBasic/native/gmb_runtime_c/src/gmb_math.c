@@ -3397,3 +3397,66 @@ double gmb_dist_ztpoisson_cdf(double lambda, int k)
     }
     return s > 1 ? 1 : s;
 }
+
+/* --- Distribuzioni multivariate + copule archimedeane (MULTIVARIATE) --- */
+static int gmb_mv_prepare(int d, const double* x, const double* loc, const double* cov,
+                          double* half_logdet, double* q)
+{
+    double L[64][64], y[64];
+    if (d <= 0 || d > 64 || !x || !loc || !cov) return 0;
+    memset(L, 0, sizeof(L));
+    for (int i = 0; i < d; i++)
+        for (int j = 0; j <= i; j++) {
+            double s = cov[i * d + j];
+            for (int k = 0; k < j; k++) s -= L[i][k] * L[j][k];
+            if (i == j) { if (s <= 0) return 0; L[i][j] = sqrt(s); }
+            else L[i][j] = s / L[j][j];
+        }
+    *half_logdet = 0;
+    for (int i = 0; i < d; i++) *half_logdet += log(L[i][i]);
+    for (int i = 0; i < d; i++) {
+        double s = x[i] - loc[i];
+        for (int j = 0; j < i; j++) s -= L[i][j] * y[j];
+        y[i] = s / L[i][i];
+    }
+    *q = 0;
+    for (int i = 0; i < d; i++) *q += y[i] * y[i];
+    return 1;
+}
+double gmb_mv_gauss_logpdf(int d, const double* x, const double* loc, const double* cov)
+{
+    double hl, q;
+    if (!gmb_mv_prepare(d, x, loc, cov, &hl, &q)) return NAN;
+    return -0.5 * q - hl - 0.5 * d * log(2.0 * 3.141592653589793);
+}
+double gmb_mv_gauss_pdf(int d, const double* x, const double* loc, const double* cov)
+{
+    return exp(gmb_mv_gauss_logpdf(d, x, loc, cov));
+}
+double gmb_mv_student_pdf(int d, const double* x, const double* loc, const double* cov, double nu)
+{
+    double hl, q, lognorm;
+    if (nu <= 0) return NAN;
+    if (isinf(nu)) return gmb_mv_gauss_pdf(d, x, loc, cov);
+    if (!gmb_mv_prepare(d, x, loc, cov, &hl, &q)) return NAN;
+    lognorm = lgamma(0.5 * (nu + d)) - lgamma(0.5 * nu) - 0.5 * d * log(nu * 3.141592653589793);
+    return exp(lognorm - hl - 0.5 * (nu + d) * log1p(q / nu));
+}
+double gmb_copula_clayton_cdf(double u, double v, double theta)
+{
+    if (theta <= 0 || u <= 0 || u >= 1 || v <= 0 || v >= 1) return NAN;
+    double x = pow(u, -theta) + pow(v, -theta) - 1.0;
+    return x > 0 ? pow(x, -1.0 / theta) : 0.0;
+}
+double gmb_copula_gumbel_cdf(double u, double v, double theta)
+{
+    if (theta < 1 || u <= 0 || u >= 1 || v <= 0 || v >= 1) return NAN;
+    double a = pow(-log(u), theta), b = pow(-log(v), theta);
+    return exp(-pow(a + b, 1.0 / theta));
+}
+double gmb_copula_frank_cdf(double u, double v, double theta)
+{
+    if (theta <= 0 || u <= 0 || u >= 1 || v <= 0 || v >= 1) return NAN;
+    double a = exp(-theta * u), b = exp(-theta * v), e = exp(-theta);
+    return -log(1.0 + (a - 1.0) * (b - 1.0) / (e - 1.0)) / theta;
+}

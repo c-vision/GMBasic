@@ -719,6 +719,26 @@ static void gmb_bf_1090(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
                       : func_code == 1091 ? gmb_dist_nc_t_cdf(df, nc, args[0].num)
                       : gmb_dist_nc_t_sf(df, nc, args[0].num);
 }
+static void gmb_bf_1095(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task;
+        int nx = 0, nl = 0, nc = 0;
+        double* x = gmb_vm_list_to_dbl(&args[0], &nx);
+        double* lo = gmb_vm_list_to_dbl(&args[1], &nl);
+        double* cv = gmb_vm_list_to_dbl(&args[2], &nc);
+        (void)nl; (void)nc;
+        bout->result = func_code == 1095 ? gmb_mv_gauss_pdf(nx, x, lo, cv)
+                      : gmb_mv_student_pdf(nx, x, lo, cv, argc >= 4 ? args[3].num : 1.0);
+        free(x); free(lo); free(cv);
+}
+static void gmb_bf_1097(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task;
+        double u = args[0].num, v = argc >= 2 ? args[1].num : 0, th = argc >= 3 ? args[2].num : 1;
+        bout->result = func_code == 1097 ? gmb_copula_clayton_cdf(u, v, th)
+                      : func_code == 1098 ? gmb_copula_gumbel_cdf(u, v, th)
+                      : gmb_copula_frank_cdf(u, v, th);
+}
 static void gmb_bf_1093(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         (void)vm; (void)task;
@@ -17802,6 +17822,11 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 1092, gmb_bf_1090 },
     { 1093, gmb_bf_1093 },
     { 1094, gmb_bf_1093 },
+    { 1095, gmb_bf_1095 },
+    { 1096, gmb_bf_1095 },
+    { 1097, gmb_bf_1097 },
+    { 1098, gmb_bf_1097 },
+    { 1099, gmb_bf_1097 },
     { 1015, gmb_bf_1013 },
     { 1017, gmb_bf_1017 },
     { 1018, gmb_bf_1018 },

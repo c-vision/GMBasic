@@ -628,6 +628,11 @@ public sealed partial class IlProgramCompiler
             case TokenKind.TsLzComplexity: EmitTimeSeriesArrayOnlyCall(expr, nameof(IlRuntime.LzComplexity)); break;
             case TokenKind.TsBmaWeights: EmitTimeSeriesArrayOnlyCall(expr, nameof(IlRuntime.BmaWeights)); break;
             case TokenKind.TsLyapunov: EmitTimeSeriesArrayLongLongCall(expr, nameof(IlRuntime.Lyapunov)); break;
+            case TokenKind.MvGaussPdf: EmitThreeArrayCall(expr, RuntimeMethod(nameof(IlRuntime.MvGaussPdf))); break;
+            case TokenKind.MvStudentPdf: EmitThreeArrayDoubleCall(expr, RuntimeMethod(nameof(IlRuntime.MvStudentPdf))); break;
+            case TokenKind.CopulaClaytonCdf: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.CopulaClaytonCdf)), 3); break;
+            case TokenKind.CopulaGumbelCdf: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.CopulaGumbelCdf)), 3); break;
+            case TokenKind.CopulaFrankCdf: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.CopulaFrankCdf)), 3); break;
             case TokenKind.Autocorrelation: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.Autocorrelation)); break;
             case TokenKind.Deseasonalize: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.Deseasonalize)); break;
             case TokenKind.Decompose: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.Decompose)); break;

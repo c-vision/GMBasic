@@ -985,7 +985,12 @@ procedure,MOUSE,RIGHT,MouseRight
 procedure,MOUSE,WHEEL,MouseWheel
 procedure,MOUSE,X,MouseX
 procedure,MOUSE,Y,MouseY
+procedure,MULTIVARIATE,CopulaClaytonCdf,CopulaClaytonCdf
+procedure,MULTIVARIATE,CopulaFrankCdf,CopulaFrankCdf
+procedure,MULTIVARIATE,CopulaGumbelCdf,CopulaGumbelCdf
 procedure,MULTIVARIATE,KMeans,KMeans
+procedure,MULTIVARIATE,MvGaussPdf,MvGaussPdf
+procedure,MULTIVARIATE,MvStudentPdf,MvStudentPdf
 procedure,MULTIVARIATE,Pca,Pca
 procedure,MUTEX,TRYLOCK,MutexTryLock
 procedure,NET,CONN,Conn
