@@ -1147,6 +1147,7 @@ double gmb_mv_rmt_spectral_norm(const double* A, int n);
 double gmb_mv_rmt_davis_kahan(double e_norm, double gap);
 double gmb_mv_rmt_principal_angle(const double* u, const double* v, int n);
 double gmb_mv_rmt_tightness(double observed, double bound);
+gmb_val_t gmb_mv_gp_regress(const double* x, const double* y, int n, const double* xs, int m, double l2, double noise);
 double gmb_special_zeta(double s);
 double gmb_special_zeta_hurwitz(double s, double a);
 double gmb_special_polygamma(double n, double x);

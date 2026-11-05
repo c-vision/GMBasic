@@ -17921,6 +17921,49 @@
     },
     {
       "ns": "MULTIVARIATE",
+      "name": "GPRREGRESS",
+      "fn": true,
+      "return": "GPRESULT",
+      "params": [
+        {
+          "name": "x",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "y",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "xs",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "l2",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "noise",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "MULTIVARIATE",
       "name": "KMeans",
       "fn": true,
       "return": "KMEANSRESULT",

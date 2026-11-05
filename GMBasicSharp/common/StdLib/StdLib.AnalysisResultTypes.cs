@@ -65,6 +65,12 @@ public sealed partial class StdLib
             { "EigenVectors", new ArrayType(new ArrayType(new DoubleType())) }
         });
 
+        RegisterTypeSchema(typeof(GpResultType), new Dictionary<string, DataType>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "Mean", new ArrayType(new DoubleType()) },
+            { "Variance", new ArrayType(new DoubleType()) }
+        });
+
         RegisterTypeSchema(typeof(JohansenResultType), new Dictionary<string, DataType>(StringComparer.OrdinalIgnoreCase)
         {
             { "EigenValues", new ArrayType(new DoubleType()) },

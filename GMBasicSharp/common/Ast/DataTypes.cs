@@ -83,6 +83,7 @@ namespace Basic;
 [JsonDerivedType(typeof(PcaResultType), nameof(PcaResultType))]
 [JsonDerivedType(typeof(HmmResultType), nameof(HmmResultType))]
 [JsonDerivedType(typeof(JohansenResultType), nameof(JohansenResultType))]
+[JsonDerivedType(typeof(GpResultType), nameof(GpResultType))]
 [JsonDerivedType(typeof(LuDecompositionType), nameof(LuDecompositionType))]
 [JsonDerivedType(typeof(QrDecompositionType), nameof(QrDecompositionType))]
 [JsonDerivedType(typeof(SvdDecompositionType), nameof(SvdDecompositionType))]
@@ -915,6 +916,17 @@ public record PcaResultType(Token? SourceToken = null)
     /// Restituisce una rappresentazione testuale compatta del nodo per il debug.
     /// </summary>
     public override string ToString() => "PCARESULT";
+
+    public override AstNode DeepClone() => this with { };
+}
+
+/// <summary>
+/// Rappresenta il tipo di dato per il risultato di una regressione con processo gaussiano.
+/// </summary>
+public record GpResultType(Token? SourceToken = null)
+    : DataType(SourceToken?.Position ?? SourcePosition.Unknown)
+{
+    public override string ToString() => "GPRESULT";
 
     public override AstNode DeepClone() => this with { };
 }

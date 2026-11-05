@@ -24,6 +24,13 @@ public sealed partial class StdLib
             new NativeProcedureDefinition(-1, SymbolFlags.IsPublic, T(TokenKind.Pca, "Pca"),
                 [dataArrayParam], new PcaResultType(),
                 TokenKind.Pca),
+            new NativeProcedureDefinition(-1, SymbolFlags.IsPublic, T(TokenKind.MvGpr, "GPRREGRESS"),
+                [new Parameter(-1, T(TokenKind.Identifier, "x"), new DoubleType(), arrayFlag, null, false),
+                 new Parameter(-1, T(TokenKind.Identifier, "y"), new DoubleType(), arrayFlag, null, false),
+                 new Parameter(-1, T(TokenKind.Identifier, "xs"), new DoubleType(), arrayFlag, null, false),
+                 new Parameter(-1, T(TokenKind.Identifier, "l2"), new DoubleType(), SymbolFlags.None, null, false),
+                 new Parameter(-1, T(TokenKind.Identifier, "noise"), new DoubleType(), SymbolFlags.None, null, false)],
+                new GpResultType(), TokenKind.MvGpr),
             new NativeProcedureDefinition(-1, SymbolFlags.IsPublic, T(TokenKind.RmtLambdaPlus, "RMTLAMBDAPLUS"),
                 [new Parameter(-1, T(TokenKind.Identifier, "n"), new LongType(), SymbolFlags.None, null, false), new Parameter(-1, T(TokenKind.Identifier, "T"), new LongType(), SymbolFlags.None, null, false), new Parameter(-1, T(TokenKind.Identifier, "sigma2"), new DoubleType(), SymbolFlags.None, null, false)],
                 new DoubleType(), TokenKind.RmtLambdaPlus, ExecutionKind: NativeExecutionKind.Pure),
@@ -73,6 +80,7 @@ public sealed partial class StdLib
         {
             { "KMeansResult", new KMeansResultType() },
             { "PcaResult", new PcaResultType() },
+            { "GpResult", new GpResultType() },
         };
 
         RegisterBuiltinNamespace(namespaceName, procedures, types);

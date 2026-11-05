@@ -622,6 +622,8 @@ public sealed partial class IlProgramCompiler
 
     private void EmitTimeSeriesDoubleArrayDoubleCall(BuiltinFunctionCallExpr expr, string methodName)
     { if (expr.Args.Length != 3) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 3 argomenti."); EmitDoubleArgument(expr.Args[0]); EmitDoubleArrayArgument(expr.Args[1]); EmitDoubleArgument(expr.Args[2]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
+    private void EmitThreeArrayTwoDoubleCall(BuiltinFunctionCallExpr expr, string methodName)
+    { if (expr.Args.Length != 5) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 5 argomenti."); for (var i = 0; i < 3; i++) EmitDoubleArrayArgument(expr.Args[i]); EmitDoubleArgument(expr.Args[3]); EmitDoubleArgument(expr.Args[4]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
     private void EmitTimeSeriesThreeArrayCall(BuiltinFunctionCallExpr expr, string methodName)
     { if (expr.Args.Length != 3) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 3 argomenti."); for (var i = 0; i < 3; i++) EmitDoubleArrayArgument(expr.Args[i]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
     private void EmitAnalysisMatrixLongCall(BuiltinFunctionCallExpr expr, string methodName)

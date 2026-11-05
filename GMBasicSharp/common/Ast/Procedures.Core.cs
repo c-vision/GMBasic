@@ -159,6 +159,7 @@ public record ProcedureSignature
             PcaResultType => "PCARESULT",
             HmmResultType => "HMMRESULT",
             JohansenResultType => "JOHANSENRESULT",
+            GpResultType => "GPRESULT",
             LuDecompositionType => "LUDECOMPOSITION",
             QrDecompositionType => "QRDECOMPOSITION",
             SvdDecompositionType => "SVDDECOMPOSITION",
