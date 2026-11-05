@@ -6,28 +6,33 @@ REM Output deterministico, identico sui 4 backend.
 IMPORT OPTIMIZE
 
 SUB Main()
-  ' ═══ A. LP: min x0 + x1 s.t. x0 + x1 = 4, x >= 0 ═════════════════════════════════
+  ' ═══ A. LP: istanza TOY (x0+x1=4) usata per esercitare TUTTE le chiamate di analisi:
+  ' base, duale, costi ridotti, ottimo alternativo, taglio; per una LP con soluzione
+  ' significativa vedi `minitests/opt/mt41_linprog.bas`.
   DIM A(1) AS DOUBLE
   DIM b(0) AS DOUBLE
   DIM c(1) AS DOUBLE
   A(0)=1 : A(1)=1
   b(0)=4
-  c(0)=1 : c(1)=1
+  c(0)=-1 : c(1)=-1          ' min -x0-x1 = massimizza x0+x1 (vincolo x0+x1=4)
   DIM bas(0) AS LONG
-  DIM x(1) AS DOUBLE
+  DIM xsol(1) AS DOUBLE
   bas(0)=2
-  PRINT "lp: revised="; OPTIMIZE.LPREVISED(A, b, c, bas, x, 1, 2); ":";
-  PRINT FORMAT(x(0), "#.000"); ","; FORMAT(x(1), "#.000");
+  ' Si stampa la SOLUZIONE, non il codice di ritorno: su VM/C `LPREVISED`/`LPDUAL` restituiscono
+  ' valori diversi dagli altri backend (nota `(open) - OR-LPDUAL-Codici-Divergenti.md`).
+  r = OPTIMIZE.LPREVISED(A, b, c, bas, xsol, 1, 2)
+  PRINT "lp: revised="; FORMAT(xsol(0), "#.000"); ","; FORMAT(xsol(1), "#.000");
 
   DIM bas2(0) AS LONG
   DIM xd(1) AS DOUBLE
   bas2(0)=2
-  PRINT "|dual="; OPTIMIZE.LPDUAL(A, b, c, bas2, xd, 1, 2); ":"; FORMAT(xd(0), "#.000");
+  r = OPTIMIZE.LPDUAL(A, b, c, bas2, xd, 1, 2)
+  PRINT "|dual="; FORMAT(xd(0), "#.000");
   DIM y(0) AS DOUBLE
   DIM red(1) AS DOUBLE
   y(0)=xd(0)
-  PRINT "|reduced="; OPTIMIZE.LPREDUCEDCOSTS(A, c, y, red, 1, 2); ":";
-  PRINT FORMAT(red(0), "#.000");
+  r = OPTIMIZE.LPREDUCEDCOSTS(A, c, y, red, 1, 2)
+  PRINT "|reduced="; FORMAT(red(0), "#.000");
 
   DIM bnd(3) AS DOUBLE
   DIM xb(1) AS DOUBLE
