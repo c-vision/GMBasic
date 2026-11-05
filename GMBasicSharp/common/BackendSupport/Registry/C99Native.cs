@@ -921,6 +921,7 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "TIMESERIES.TSSTATIONARYBOOTSTRAP");
         r.Register(Backend.C99Native, "TIMESERIES.TSSAMPEN");
         r.Register(Backend.C99Native, "TIMESERIES.TSAPPROXENTROPY");
+        r.Register(Backend.C99Native, "TIMESERIES.TSENTROPYPERM");
         r.Register(Backend.C99Native, "STATS.BetaSf");
         r.Register(Backend.C99Native, "STATS.ChiSf");
         r.Register(Backend.C99Native, "STATS.LogisticCdf");

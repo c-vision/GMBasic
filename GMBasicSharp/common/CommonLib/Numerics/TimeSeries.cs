@@ -923,6 +923,26 @@ public static partial class Numerics
         return Math.Log(b / (n - m + 1.0)) - Math.Log(a / (n - m));
     }
 
+    public static double PermEntropy(double[] x, int m, int lag)
+    {
+        var n = x.Length;
+        if (m < 2 || lag < 1 || n < m * lag) return double.NaN;
+        var patterns = new List<int[]>();
+        for (var i = 0; i <= n - m * lag; i++)
+        {
+            var order = Enumerable.Range(0, m).ToArray();
+            for (var j = 0; j < m; j++)
+                for (var k = j + 1; k < m; k++)
+                    if (x[i + order[k] * lag] < x[i + order[j] * lag])
+                        (order[j], order[k]) = (order[k], order[j]);
+            if (!patterns.Any(p => p.SequenceEqual(order))) patterns.Add((int[])order.Clone());
+        }
+        if (patterns.Count <= 1) return 0;
+        var npat = 1.0;
+        for (var q = 2; q <= m; q++) npat *= q;
+        return Math.Log(patterns.Count) / Math.Log(npat);
+    }
+
     public static double[] StationaryBootstrap(double[] x, int window, int seed)
     {
         var n = x.Length;

@@ -2150,6 +2150,7 @@ public static partial class IlRuntime
     public static double[] StationaryBootstrap(double[] x, long window, long seed) => CommonLib.Numerics.StationaryBootstrap(x, (int)window, (int)seed);
     public static double SampleEntropy(double[] x, long m, double r) => CommonLib.Numerics.SampleEntropy(x, (int)m, r);
     public static double ApproxEntropy(double[] x, long m, double r) => CommonLib.Numerics.ApproxEntropy(x, (int)m, r);
+    public static double PermEntropy(double[] x, long m, long lag) => CommonLib.Numerics.PermEntropy(x, (int)m, (int)lag);
 
     public static Dictionary<string, object?> TsGarch11(double[] r)
     {
@@ -18578,6 +18579,17 @@ public static double TextWidth(string s)
             var raw = (kind ?? "").Trim();
             var k = raw.ToUpperInvariant();
             var kindName = k.StartsWith("CHOICE", StringComparison.Ordinal) ? "CHOICE" : k;
+            if (k.StartsWith("RANK:", StringComparison.Ordinal))
+            {
+                // RANK ("RANK:c1|c2|…"): best-of-N su candidati liberi, solo col provider clm; lo esegue il C.
+                var rankProvider = ResolveDecideProvider(provider, out var rankName, out _);
+                if (rankProvider != "clm") return "{\"error\":\"RANK richiede il provider clm\"}";
+                rankName ??= Basic.Providers.ProviderServer.Instance.GetActiveName(Basic.Providers.ProviderRole.Decide);
+                if (string.IsNullOrWhiteSpace(rankName))
+                    return "{\"error\":\"clm: nessun provider %DECIDE attivo con config (baseUrl)\"}";
+                return Basic.Decision.NativeClm.Run(state ?? "", raw,
+                    Basic.Providers.ProviderServer.Instance.GetConfigMap(rankName));
+            }
             Basic.Decision.DecisionRequest request;
             if (kindName == "CHOICE" && raw.Length > 6 && raw[6] == ':')
             {
@@ -18826,15 +18838,20 @@ public static double TextWidth(string s)
         var ok = true;
         foreach (var provider in providers)
         {
+            Basic.Decision.NativeClm.StatsReset();
             var raw = AiDecide(state, kind, provider);
             System.Text.Json.Nodes.JsonNode? node;
             try { node = System.Text.Json.Nodes.JsonNode.Parse(raw); }
             catch { node = null; }
-            results.Add(new System.Text.Json.Nodes.JsonObject
+            var entry = new System.Text.Json.Nodes.JsonObject
             {
                 ["provider"] = provider,
                 ["result"] = node,
-            });
+            };
+            // Misure del provider clm (tempi encoder/head/rete, embedding, margine), prese dal runtime C.
+            if (Basic.Decision.NativeClm.StatsJson() is { } clmStats)
+                entry["clm"] = System.Text.Json.Nodes.JsonNode.Parse(clmStats);
+            results.Add(entry);
             if (node is System.Text.Json.Nodes.JsonObject obj && obj["error"] is null)
             {
                 var option = obj["option"]?.GetValue<string>();
