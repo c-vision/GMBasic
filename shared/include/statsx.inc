@@ -42,3 +42,18 @@ PUBLIC DECLARE FUNCTION NCTISF LIB "gmbstats" ALIAS "gs_dist_nct_isf" (df AS DOU
 ' --- zero-truncated Poisson ---
 PUBLIC DECLARE FUNCTION ZTPOISSONPMF LIB "gmbstats" ALIAS "gs_dist_ztpoisson_pmf" (lambda AS DOUBLE, k AS LONG) AS DOUBLE
 PUBLIC DECLARE FUNCTION ZTPOISSONCDF LIB "gmbstats" ALIAS "gs_dist_ztpoisson_cdf" (lambda AS DOUBLE, k AS LONG) AS DOUBLE
+
+' --- descrittive scalari (gs_stats_*), a() in ingresso + n esplicito ---
+PUBLIC DECLARE FUNCTION MEAN LIB "gmbstats" ALIAS "gs_stats_mean" (a() AS DOUBLE, n AS LONG) AS DOUBLE
+PUBLIC DECLARE FUNCTION VARIANCE LIB "gmbstats" ALIAS "gs_stats_variance" (a() AS DOUBLE, n AS LONG, sample AS LONG) AS DOUBLE
+PUBLIC DECLARE FUNCTION STDDEV LIB "gmbstats" ALIAS "gs_stats_stddev" (a() AS DOUBLE, n AS LONG, sample AS LONG) AS DOUBLE
+PUBLIC DECLARE FUNCTION SKEWNESS LIB "gmbstats" ALIAS "gs_stats_skewness" (a() AS DOUBLE, n AS LONG) AS DOUBLE
+PUBLIC DECLARE FUNCTION KURTOSIS LIB "gmbstats" ALIAS "gs_stats_kurtosis" (a() AS DOUBLE, n AS LONG) AS DOUBLE
+PUBLIC DECLARE FUNCTION MIN LIB "gmbstats" ALIAS "gs_stats_min" (a() AS DOUBLE, n AS LONG) AS DOUBLE
+PUBLIC DECLARE FUNCTION MAX LIB "gmbstats" ALIAS "gs_stats_max" (a() AS DOUBLE, n AS LONG) AS DOUBLE
+PUBLIC DECLARE FUNCTION RANGE LIB "gmbstats" ALIAS "gs_stats_range" (a() AS DOUBLE, n AS LONG) AS DOUBLE
+PUBLIC DECLARE FUNCTION MEDIAN LIB "gmbstats" ALIAS "gs_stats_median" (a() AS DOUBLE, n AS LONG) AS DOUBLE
+PUBLIC DECLARE FUNCTION PERCENTILE LIB "gmbstats" ALIAS "gs_stats_percentile" (a() AS DOUBLE, n AS LONG, p AS DOUBLE) AS DOUBLE
+PUBLIC DECLARE FUNCTION MAD LIB "gmbstats" ALIAS "gs_stats_mad" (a() AS DOUBLE, n AS LONG) AS DOUBLE
+PUBLIC DECLARE FUNCTION COVARIANCE LIB "gmbstats" ALIAS "gs_stats_covariance" (a() AS DOUBLE, b() AS DOUBLE, n AS LONG, sample AS LONG) AS DOUBLE
+PUBLIC DECLARE FUNCTION CORRELATION LIB "gmbstats" ALIAS "gs_stats_correlation" (a() AS DOUBLE, b() AS DOUBLE, n AS LONG) AS DOUBLE
