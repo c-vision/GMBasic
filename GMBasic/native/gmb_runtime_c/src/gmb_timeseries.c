@@ -944,3 +944,31 @@ gmb_val_t gmb_ts_ou_fit_flat(const double* x, int n, double dt)
     gmb_dict_set(&d, "HalfLife", gmb_make_val_double(log(2.0) / theta));
     return gmb_make_val_dict_take(&d);
 }
+
+/* Lempel-Ziv 76 complexity (gmbstats gs_entropy_lz). */
+double gmb_ts_lz_complexity(const double* x, int n)
+{
+    if (!x || n < 2) return NAN;
+    double* sorted = (double*)malloc((size_t)n * sizeof(double));
+    int* b = (int*)malloc((size_t)n * sizeof(int));
+    if (!sorted || !b) { free(sorted); free(b); return NAN; }
+    for (int i = 0; i < n; i++) sorted[i] = x[i];
+    for (int i = 0; i < n; i++)
+        for (int j = i + 1; j < n; j++)
+            if (sorted[j] < sorted[i]) { double t = sorted[i]; sorted[i] = sorted[j]; sorted[j] = t; }
+    double med = sorted[n / 2];
+    for (int i = 0; i < n; i++) b[i] = x[i] >= med ? 1 : 0;
+    free(sorted);
+    int c = 0, ii = 0;
+    while (ii < n) {
+        int maxlen = 0;
+        for (int start = 0; start < ii; start++) {
+            int m = 0;
+            while (ii + m < n && start + m < ii && b[start + m] == b[ii + m]) m++;
+            if (m > maxlen) maxlen = m;
+        }
+        c++; ii += maxlen + 1;
+    }
+    free(b);
+    return (double)c;
+}

@@ -1,0 +1,8 @@
+' EXPECT: lz= 10
+SUB Main()
+  DIM x(59) AS DOUBLE
+  FOR i = 0 TO 59
+    x(i) = SIN(i * 0.2)
+  NEXT i
+  PRINT "lz="; TIMESERIES.TSENTROPYLZ(x)
+END SUB
