@@ -65,6 +65,12 @@ public sealed partial class StdLib
             { "EigenVectors", new ArrayType(new ArrayType(new DoubleType())) }
         });
 
+        RegisterTypeSchema(typeof(PolyFitResultType), new Dictionary<string, DataType>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "Coef", new ArrayType(new DoubleType()) },
+            { "Ssq", new DoubleType() }
+        });
+
         RegisterTypeSchema(typeof(GmmResultType), new Dictionary<string, DataType>(StringComparer.OrdinalIgnoreCase)
         {
             { "Mu", new ArrayType(new DoubleType()) },

@@ -719,6 +719,41 @@ static void gmb_bf_1090(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
                       : func_code == 1091 ? gmb_dist_nc_t_cdf(df, nc, args[0].num)
                       : gmb_dist_nc_t_sf(df, nc, args[0].num);
 }
+static void gmb_bf_3860(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task;
+        if (func_code == 3860) {
+                int nx = 0, ny = 0;
+                double* x = gmb_vm_list_to_dbl(&args[0], &nx);
+                double* y = gmb_vm_list_to_dbl(&args[1], &ny);
+                gmb_val_t r = gmb_fit_polyfit_dict(x, y, nx, (int)(argc >= 3 ? args[2].num : 1));
+                free(x); free(y);
+                bout->result = 0;
+                gmb_vm_set_dict_result_owned(r, &bout->is_num, &bout->result_ref, &bout->result_ref_bt);
+        } else if (func_code == 3864) {
+                int n = 0;
+                double* v = gmb_vm_list_to_dbl(&args[0], &n);
+                gmb_val_t r = gmb_fit_rsquared_dict(v, n);
+                free(v);
+                bout->result = 0;
+                gmb_vm_set_dict_result_owned(r, &bout->is_num, &bout->result_ref, &bout->result_ref_bt);
+        } else if (func_code == 3861) {
+                int n = 0; double* c = gmb_vm_list_to_dbl(&args[1], &n);
+                bout->result = gmb_fit_poly_eval(args[0].num, c, n - 1); free(c);
+        } else if (func_code == 3862) {
+                int n = 0; double* c = gmb_vm_list_to_dbl(&args[1], &n);
+                bout->result = gmb_fit_cheb_eval(args[0].num, c, n); free(c);
+        } else if (func_code == 3863) {
+                int na = 0, nb = 0;
+                double* a = gmb_vm_list_to_dbl(&args[1], &na);
+                double* b = gmb_vm_list_to_dbl(&args[2], &nb);
+                bout->result = gmb_fit_pade_eval(args[0].num, a, na, b, nb - 1);
+                free(a); free(b);
+        } else {
+                int n = 0; double* v = gmb_vm_list_to_dbl(&args[0], &n);
+                bout->result = gmb_fit_rsquared_test(v, n); free(v);
+        }
+}
 static void gmb_bf_3859(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         (void)vm; (void)task; (void)func_code;
@@ -18125,6 +18160,12 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 3856, gmb_bf_3856 },
     { 3857, gmb_bf_3857 },
     { 3859, gmb_bf_3859 },
+    { 3860, gmb_bf_3860 },
+    { 3861, gmb_bf_3860 },
+    { 3862, gmb_bf_3860 },
+    { 3863, gmb_bf_3860 },
+    { 3864, gmb_bf_3860 },
+    { 3865, gmb_bf_3860 },
     { 3858, gmb_bf_3858 },
     { 3850, gmb_bf_3849 },
     { 3851, gmb_bf_3849 },

@@ -4913,6 +4913,30 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         {
                 return Basic.IlBackend.IlRuntime.TsGarch11(ToDoubleArr(ArgOr(args, 0)));
         },
+        [BuiltInFunction.FITTING_POLYFIT] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.PolyFit(ToDoubleArr(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1)), (long)SafeDouble(ArgOr(args, 2)));
+        },
+        [BuiltInFunction.FITTING_POLYEVAL] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.PolyEval(SafeDouble(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1)));
+        },
+        [BuiltInFunction.FITTING_CHEBEVAL] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.ChebEval(SafeDouble(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1)));
+        },
+        [BuiltInFunction.FITTING_PADEEVAL] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.PadeEval(SafeDouble(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1)), ToDoubleArr(ArgOr(args, 2)));
+        },
+        [BuiltInFunction.FITTING_RSQUARED] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.RSquared(ToDoubleArr(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.FITTING_RSQUAREDTEST] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.RSquaredTest(ToDoubleArr(ArgOr(args, 0)));
+        },
         [BuiltInFunction.MULTIVARIATE_GMMEM1D] = (task, args) =>
         {
                 return Basic.IlBackend.IlRuntime.GmmEm1D(ToDoubleArr(ArgOr(args, 0)), (long)SafeDouble(ArgOr(args, 1)), (long)SafeDouble(ArgOr(args, 2)));

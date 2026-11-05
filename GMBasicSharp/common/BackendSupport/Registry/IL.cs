@@ -945,6 +945,12 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "MULTIVARIATE.SVMFIT");
         r.Register(Backend.IL, "MULTIVARIATE.SVMPREDICT");
         r.Register(Backend.IL, "MULTIVARIATE.GMMEM1D");
+        r.Register(Backend.IL, "FITTING.PolyFit");
+        r.Register(Backend.IL, "FITTING.PolyEval");
+        r.Register(Backend.IL, "FITTING.ChebEval");
+        r.Register(Backend.IL, "FITTING.PadeEval");
+        r.Register(Backend.IL, "FITTING.RSquared");
+        r.Register(Backend.IL, "FITTING.RSquaredTest");
         r.Register(Backend.IL, "SPATIAL.PDIST");
         r.Register(Backend.IL, "STATS.PearsonR");
         r.Register(Backend.IL, "STATS.KendallTau");

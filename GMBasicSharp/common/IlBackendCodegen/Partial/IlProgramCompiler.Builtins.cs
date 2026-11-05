@@ -673,6 +673,12 @@ public sealed partial class IlProgramCompiler
             case TokenKind.MvSvmFit: EmitSvmFitCall(expr, nameof(IlRuntime.SvmFit)); break;
             case TokenKind.MvSvmPredict: EmitTwoArrayLongLongCall(expr, nameof(IlRuntime.SvmPredict)); break;
             case TokenKind.MvGmm: EmitTimeSeriesArrayLongLongCall(expr, nameof(IlRuntime.GmmEm1D)); break;
+            case TokenKind.FittingPolyFit: EmitTimeSeriesTwoArrayLongCall(expr, nameof(IlRuntime.PolyFit)); break;
+            case TokenKind.FittingPolyEval: EmitDoubleArrayCall(expr, nameof(IlRuntime.PolyEval)); break;
+            case TokenKind.FittingChebEval: EmitDoubleArrayCall(expr, nameof(IlRuntime.ChebEval)); break;
+            case TokenKind.FittingPadeEval: EmitDoubleTwoArrayCall(expr, nameof(IlRuntime.PadeEval)); break;
+            case TokenKind.FittingRSquared: EmitTimeSeriesArrayOnlyCall(expr, nameof(IlRuntime.RSquared)); break;
+            case TokenKind.FittingRSquaredTest: EmitTimeSeriesArrayOnlyCall(expr, nameof(IlRuntime.RSquaredTest)); break;
             case TokenKind.Autocorrelation: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.Autocorrelation)); break;
             case TokenKind.Deseasonalize: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.Deseasonalize)); break;
             case TokenKind.Decompose: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.Decompose)); break;

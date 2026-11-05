@@ -4040,3 +4040,119 @@ gmb_val_t gmb_mv_gmm_em_1d(const double* x, int n, int k, int iters)
     gmb_dict_set(&d, "Weight", wv);
     return gmb_make_val_dict_take(&d);
 }
+
+/* --- FITTING: curve fitting (port di gs_fit.c) --- */
+double gmb_fit_cheb_eval(double x, const double* coef, int m)
+{
+    double b1 = 0.0, b2 = 0.0;
+    int j;
+    for (j = m - 1; j >= 1; j--) {
+        double b0 = 2.0 * x * b1 - b2 + coef[j];
+        b2 = b1; b1 = b0;
+    }
+    return x * b1 - b2 + coef[0];
+}
+double gmb_fit_pade_eval(double x, const double* a, int na, const double* b, int nb)
+{
+    double num = 0.0, den = 0.0, xp = 1.0;
+    int i;
+    for (i = 0; i < na; i++) { num += a[i] * xp; xp *= x; }
+    xp = 1.0;
+    for (i = 0; i <= nb; i++) { den += b[i] * xp; xp *= x; }
+    return den != 0.0 ? num / den : 0.0;
+}
+double gmb_fit_poly_eval(double x, const double* coef, int m)
+{
+    double s = 0.0;
+    for (int i = m; i >= 0; i--) s = s * x + coef[i];
+    return s;
+}
+double gmb_fit_poly_ls(const double* x, const double* y, int n, int m, double* coef)
+{
+    int i, j, k, p = m + 1;
+    double* N;
+    double* r;
+    double ssq = 0.0;
+    if (!x || !y || !coef || n < 1 || m < 0 || p > 32) return 0.0;
+    N = (double*)calloc((size_t)p * p, sizeof(double));
+    r = (double*)calloc((size_t)p, sizeof(double));
+    if (!N || !r) { free(N); free(r); return 0.0; }
+    for (i = 0; i < n; i++) {
+        for (j = 0; j < p; j++) {
+            double xj = pow(x[i], (double)j);
+            r[j] += xj * y[i];
+            for (k = 0; k < p; k++) N[j*p+k] += xj * pow(x[i], (double)k);
+        }
+    }
+    if (!gmb_mv_solve(p, N, r, coef)) { free(N); free(r); return 0.0; }
+    for (i = 0; i < n; i++) {
+        double e = y[i] - gmb_fit_poly_eval(x[i], coef, m);
+        ssq += e * e;
+    }
+    free(N); free(r);
+    return ssq;
+}
+void gmb_fit_rsquared(const double* data, int n, double* r2, double* angle)
+{
+    int i, k = 0;
+    double Sx = 0, Sy = 0, Sxy = 0, Sx2 = 0, Sy2 = 0;
+    if (r2) *r2 = 0;
+    if (angle) *angle = 0;
+    if (!data || n <= 2) return;
+    for (i = 0; i < n; i++) {
+        double v = data[i];
+        if (v == 1.7976931348623157e308 || !isfinite(v)) continue;
+        { double x = i + 1; Sx += x; Sy += v; Sxy += x * v; Sx2 += x * x; Sy2 += v * v; k++; }
+    }
+    if (k <= 2) return;
+    {
+        double nn = k;
+        double Sx22 = Sx * Sx / nn, Sy22 = Sy * Sy / nn, SxSy = Sx * Sy / nn;
+        double div = (Sx2 - Sx22) * (Sy2 - Sy22);
+        if (fabs(div) < 2.220446049250313e-16) return;
+        if (r2) *r2 = (Sxy - SxSy) * (Sxy - SxSy) / div;
+        if (angle) *angle = (Sxy - SxSy) / (Sx2 - Sx22);
+    }
+}
+double gmb_fit_rsquared_test(const double* data, int n)
+{
+    double r2 = 0, angle = 0;
+    double weight;
+    gmb_fit_rsquared(data, n, &r2, &angle);
+    weight = 1.0 - 1.0 / sqrt((double)n + 1.0);
+    if (angle < 0) return -fabs(r2) * weight;
+    return r2 * weight;
+}
+static gmb_val_t gmb_fit_nan_dict(void)
+{
+    gmb_dict_t d = gmb_dict_new();
+    gmb_dict_set(&d, "Coef", gmb_make_val_double(NAN));
+    gmb_dict_set(&d, "Ssq", gmb_make_val_double(NAN));
+    return gmb_make_val_dict_take(&d);
+}
+gmb_val_t gmb_fit_polyfit_dict(const double* x, const double* y, int n, int m)
+{
+    double* coef;
+    double ssq;
+    gmb_dict_t d;
+    gmb_val_t cv;
+    if (!x || !y || n < 1 || m < 0 || m > 31) return gmb_fit_nan_dict();
+    coef = (double*)calloc((size_t)(m + 1), sizeof(double));
+    if (!coef) return gmb_fit_nan_dict();
+    ssq = gmb_fit_poly_ls(x, y, n, m, coef);
+    cv = gmb_make_val_list(gmb_list_from_doubles(coef, m + 1));
+    free(coef);
+    d = gmb_dict_new();
+    gmb_dict_set(&d, "Coef", cv);
+    gmb_dict_set(&d, "Ssq", gmb_make_val_double(ssq));
+    return gmb_make_val_dict_take(&d);
+}
+gmb_val_t gmb_fit_rsquared_dict(const double* data, int n)
+{
+    double r2 = 0, angle = 0;
+    gmb_dict_t d = gmb_dict_new();
+    gmb_fit_rsquared(data, n, &r2, &angle);
+    gmb_dict_set(&d, "R2", gmb_make_val_double(r2));
+    gmb_dict_set(&d, "Angle", gmb_make_val_double(angle));
+    return gmb_make_val_dict_take(&d);
+}
