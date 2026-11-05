@@ -1152,12 +1152,8 @@ internal sealed partial class MethodEmitter
         /// runtime, FieldSymbolId è sempre -1 su questi tipi). Ritorna true se gestito.</summary>
         private bool TryEmitDynamicFieldAccess(FieldAccessExpr fa)
         {
-            if (Environment.GetEnvironmentVariable("GMB_DEBUG_V2") == "1")
-                System.Console.Error.WriteLine($"[DYNFIELD] {fa.Field.Lexeme} struct={fa.Structure?.GetType().Name} program={_program is not null} symbol={(fa.Structure is VariableExpr sve0 ? sve0.SymbolId : -1)}");
             if (_program is null || fa.Structure is not VariableExpr sve) return false;
             var dt = _program.Symbols.GetSymbol(sve.SymbolId).DataType;
-            if (Environment.GetEnvironmentVariable("GMB_DEBUG_V2") == "1")
-                System.Console.Error.WriteLine($"[DYNFIELD] {fa.Field.Lexeme} sym={sve.SymbolId} dt={dt?.GetType().Name}");
             var dynamic = dt is FetchResultType or HttpRequestType or HttpResponseType
                 or HttpOptionsType or HttpHeadersType or HttpConfigType or JsonType or AnyType
                 or WebSocketType

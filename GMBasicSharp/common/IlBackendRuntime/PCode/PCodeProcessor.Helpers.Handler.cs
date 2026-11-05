@@ -387,7 +387,6 @@ internal sealed partial class PCodeProcessor
                     if (ib >= 0 && !ids.Contains((double)ib)) ids.Add((double)ib);
                 }
                 DispatchEventHandler(task, hPlur[0], new object?[] { ids });
-                System.Console.Error.WriteLine("[VM] dispatch PLURALE n=" + ids.Count);
             }
         }
         else
@@ -398,7 +397,6 @@ internal sealed partial class PCodeProcessor
                 _pendingSpriteCollisions = null;
                 var (id1, id2, cx, cy) = collisions[0];
                 DispatchEventHandler(task, hSing[0], new object?[] { (double)cx, (double)cy });
-                System.Console.Error.WriteLine("[VM] dispatch SINGOLARE (" + cx + "," + cy + ")");
             }
         }
     }
