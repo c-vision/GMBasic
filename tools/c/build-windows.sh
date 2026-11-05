@@ -40,7 +40,7 @@ BUILD="$PWD/GMBasic/build/cmake-$RID"
 DEPS="$PWD/GMBasic/build/libs"          # contiene <rid>/{include,lib} (cache RID del progetto)
 ZIG_BIN="${ZIG:-$HOME/ai/tools/zig-aarch64-macos-0.17.0/zig}"
 RUNTIME_SRC="$PWD/GMBasic/native/gmb_runtime_c"
-TARGETS="gmb_runtime gmb_chart gmb_tray gmb_boot gmb_compress gmb_gfx gmb_grep gmb_pkg"
+TARGETS="gmb_runtime gmb_chart gmb_tray gmb_boot gmb_compress gmb_gfx gmb_grep gmb_pkg gmbclm"
 CONFIG_ONLY=0
 
 while [ $# -gt 0 ]; do
@@ -108,7 +108,7 @@ set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 # Le shared lib dei progetti (llmtoken/llmcodec/…) non hanno __declspec(dllexport): su macOS
 # esportano tutto, su Windows non esportano NULLA. CMake genera un .def con tutti i simboli.
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
-set(CMAKE_C_FLAGS "-DPCRE2_STATIC -DCURL_STATICLIB -DSDL_MAIN_HANDLED -Wno-incompatible-pointer-types -Wno-int-conversion -I$WINC -include $WINC/gmb_win32.h" CACHE STRING "" FORCE)
+set(CMAKE_C_FLAGS "-DPCRE2_STATIC -DCURL_STATICLIB -DSDL_MAIN_HANDLED -Wno-incompatible-pointer-types -Wno-int-conversion -I$WINC -include stdint.h -include $WINC/gmb_win32.h" CACHE STRING "" FORCE)
 set(CMAKE_EXE_LINKER_FLAGS    "-L$LIBDIR $WIN_SYSTEM_LIBS" CACHE STRING "" FORCE)
 set(CMAKE_SHARED_LINKER_FLAGS "-L$LIBDIR -Wl,--export-all-symbols $WIN_SYSTEM_LIBS" CACHE STRING "" FORCE)
 set(CMAKE_PREFIX_PATH "$LIBDIR;$RID_LIBS;$HOME/gmb-deps/$TRIPLE")

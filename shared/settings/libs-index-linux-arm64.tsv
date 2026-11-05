@@ -101,6 +101,7 @@ libgmb_pkg.so	f7327e13a6669160b4d760964b20109edea999043f55f2b52d7ab339b66dd539	1
 libgmb_screen.so	499a86abb69007657cf7750e49dd7767a0013d7843a637c0d9fa416ba24dba9a	71664	https://github.com/c-vision/GMBasicModules/releases/download/runtime-v2/libgmb_screen-linux-arm64.so
 libgmb_tray.so	f5e075b263870e38aa7e9d09239810a7c3c3e724a55e4b9332596cc085893cdf	71248	https://github.com/c-vision/GMBasicModules/releases/download/runtime-v2/libgmb_tray-linux-arm64.so
 libgmbamqp.so	7311c3aa3eedca6e77bc27f8cde750dcb7cae35e86cbda8ef656d510746d0fbc	71112	https://github.com/c-vision/GMBasicModules/releases/download/ffi-v2/libgmbamqp-linux-arm64.so
+libgmbclm.so	ec90a94eeb78fa99cb7d80987befa03da5a42c094a71b718edddff29121b7635	2507672	https://github.com/c-vision/GMBasicModules/releases/download/runtime-v2/libgmbclm-linux-arm64.so
 libgmbgrpc.so	e2b10cf0a104c0e18d2c34eeb0ac2bcde31f409ac6f7f967cb9f62a109466e29	70680	https://github.com/c-vision/GMBasicModules/releases/download/ffi-v2/libgmbgrpc-linux-arm64.so
 libgmbkafka.so	2c81823b460afbbb8eb70bfca79bb5178ab1bb8dcc75f419a2190cc19950d48f	71456	https://github.com/c-vision/GMBasicModules/releases/download/ffi-v2/libgmbkafka-linux-arm64.so
 libgmbmedia.so	b06a9a6c8e5622baffe988d09b3801b2b5aa7e5368fb85363a7ece2e468a091e	146984	https://github.com/c-vision/GMBasicModules/releases/download/ffi-v2/libgmbmedia-linux-arm64.so

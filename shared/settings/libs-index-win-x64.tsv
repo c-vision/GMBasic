@@ -17,6 +17,7 @@ libgmb_pkg.dll	ed0aacd99a4d77b02bc348b7d164349092f71fcbc81c84c22e1263aa0761d13a	
 libgmb_screen.dll	bcb18767ea7f14712905ba3fd057de13a4d3cdf0eedfa3cef2137e9ea0e7e827	223232	https://github.com/c-vision/GMBasicModules/releases/download/runtime-v2/libgmb_screen-win-x64.dll
 libgmb_tray.dll	9f13db870e35e621b41dbbed3b280da60a9affeba1dc41b0a699543489a13bac	223744	https://github.com/c-vision/GMBasicModules/releases/download/runtime-v2/libgmb_tray-win-x64.dll
 libgmbamqp.dll	cd555a097163c9d1a3d74de73c20155daf606ddb4e43569bc81b46a361a2f4ba	223744	https://github.com/c-vision/GMBasicModules/releases/download/ffi-v2/libgmbamqp-win-x64.dll
+libgmbclm.dll	61923f763737a2b401c1ee75fc54718b0be209cf29ec903f0222cc8fea0c914f	12550656	https://github.com/c-vision/GMBasicModules/releases/download/runtime-v2/libgmbclm-win-x64.dll
 libgmbgrpc.dll	1ffba97195e28853e64c006d7a18e561548459b798e27485aa7da3eae95e1c2c	221696	https://github.com/c-vision/GMBasicModules/releases/download/ffi-v2/libgmbgrpc-win-x64.dll
 libgmbkafka.dll	981fac971a6d1a8a7c064784d6198bec26a7a7b1e9626b25f5e0b2b93b749280	263168	https://github.com/c-vision/GMBasicModules/releases/download/ffi-v2/libgmbkafka-win-x64.dll
 libgmbmqtt.dll	3f8d43b038849ee2b264ff8aa1fdfb639eb772408877693fd13d32ccd2bb4383	222208	https://github.com/c-vision/GMBasicModules/releases/download/ffi-v2/libgmbmqtt-win-x64.dll
