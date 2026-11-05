@@ -312,6 +312,7 @@ set(GMB_ALL_SRCS
     src/gmb_ai.c
     src/gmb_ai_decide.c
     src/gmb_decision_head.c
+    src/gmb_decision_clm.c
     src/gmb_mcp_server.c
     src/gmb_ai_server.c
     src/gmb_brain.c
@@ -1019,6 +1020,12 @@ add_executable(gmb_decision_head_selfcheck tests/decision_head_selfcheck.c)
 target_link_libraries(gmb_decision_head_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_decision_head_selfcheck PRIVATE include)
 add_test(NAME gmb_decision_head_selfcheck COMMAND gmb_decision_head_selfcheck)
+
+# Provider `clm` (JEV/SystemOne): prosa, wire /v1/systemone, head di proiezione, punteggio.
+add_executable(gmb_decision_clm_selfcheck tests/decision_clm_selfcheck.c)
+target_link_libraries(gmb_decision_clm_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_decision_clm_selfcheck PRIVATE include)
+add_test(NAME gmb_decision_clm_selfcheck COMMAND gmb_decision_clm_selfcheck)
 
 # ── Second Brain (registry/manifest/toolchain) e pack firmato: selfcheck dedicati ──────────
 # Isolati con gmb_paths_test_override (nessuna scrittura nella config dell'utente).

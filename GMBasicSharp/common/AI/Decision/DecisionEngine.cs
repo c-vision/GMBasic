@@ -70,6 +70,26 @@ public static class DecisionEngine
                 .Evaluate(request)[0];
         }
 
+        if (p == "clm")
+        {
+            decideName ??= ProviderServer.Instance.GetActiveName(ProviderRole.Decide);
+            if (string.IsNullOrWhiteSpace(decideName))
+                throw new DecisionProviderException("clm: nessun provider %DECIDE attivo con config (baseUrl)");
+            var cfg = ProviderServer.Instance.GetConfigMap(decideName);
+            cfg.TryGetValue("baseUrl", out var baseUrl);
+            if (string.IsNullOrWhiteSpace(baseUrl))
+                throw new DecisionProviderException(cfg.ContainsKey("head")
+                    ? "clm: percorso locale non disponibile: encoder MLX last-token non collegato (usa baseUrl)"
+                    : "clm: baseUrl mancante nel config del provider %DECIDE");
+            cfg.TryGetValue("apiKey", out var apiKey);
+            cfg.TryGetValue("instructions", out var instr);
+            var timeout = TimeSpan.FromSeconds(15);
+            if (cfg.TryGetValue("timeoutMs", out var timeoutText)
+                && int.TryParse(timeoutText, out var timeoutMs) && timeoutMs > 0)
+                timeout = TimeSpan.FromMilliseconds(timeoutMs);
+            return new ClmDecisionProvider(baseUrl, apiKey, instr, timeout).Evaluate(request)[0];
+        }
+
         ISystemOneProvider providerImpl = p switch
         {
             "" or "rules" => new RuleDecisionProvider(),
