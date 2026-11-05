@@ -266,6 +266,7 @@ public enum BuiltInFunction : ushort
     TS_HURST = 1065,
     TS_FRACDIFF = 1066,
     TS_GRANGER = 1067,
+    TS_GARCH11 = 1068,
     SIGNAL_FIRWIN = 1017,
     SIGNAL_FINDPEAKS = 1018,
     SOLVE_IVP = 1019,

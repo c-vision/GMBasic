@@ -152,6 +152,8 @@ public sealed partial class StdLib
                 doubleArr, TokenKind.TsFracDiff, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.TsGranger, "TSGRANGER"),
                 [seriesParam, series2Param, lagParam], new AnyType(), TokenKind.TsGranger),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.TsGarch11, "TSGARCH11"),
+                [seriesParam], new AnyType(), TokenKind.TsGarch11),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Autocorrelation, "TSAUTOCORR"),
                 [seriesParam, lagParam],
                 new DoubleType(), TokenKind.Autocorrelation, ExecutionKind: NativeExecutionKind.Pure),

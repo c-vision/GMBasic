@@ -2146,6 +2146,12 @@ public static partial class IlRuntime
     public static double[] Returns(double[] data) => Basic.StdLibRuntime.TimeSeriesFunctions.Returns(data);
     public static double TsHurst(double[] data) => CommonLib.Numerics.HurstDfa(data);
     public static double[] FracDiff(double[] data, double d) => CommonLib.Numerics.FracDiff(data, d);
+    public static Dictionary<string, object?> TsGarch11(double[] r)
+    {
+        var (omega, alpha, beta) = CommonLib.Numerics.Garch11(r);
+        return new Dictionary<string, object?> { ["Omega"] = omega, ["Alpha"] = alpha, ["Beta"] = beta };
+    }
+
     public static Dictionary<string, object?> TsGranger(double[] x, double[] y, long p) => HypothesisResult(CommonLib.Numerics.Granger(x, y, (int)p));
     public static double Volatility(double[] data) => Basic.StdLibRuntime.TimeSeriesFunctions.Volatility(data);
     public static double Autocorrelation(double[] data, long lag) => Basic.StdLibRuntime.TimeSeriesFunctions.Autocorrelation(data, checked((int)lag));

@@ -747,3 +747,50 @@ gmb_val_t gmb_ts_granger_flat(const double* x, int nx, const double* y, int ny, 
         return gmb_make_val_dict_take(&d);
     }
 }
+
+static double gmb_ts_garch_nll(const double* p, const double* r, int n)
+{
+    double w = p[0], al = p[1], be = p[2], s2 = r[0] * r[0], ll = 0;
+    if (s2 <= 0) s2 = 1e-6;
+    for (int t = 1; t < n; t++) {
+        s2 = w + al * r[t-1] * r[t-1] + be * s2;
+        if (s2 < 1e-12) s2 = 1e-12;
+        ll += log(s2) + r[t] * r[t] / s2;
+    }
+    return 0.5 * ll;
+}
+gmb_val_t gmb_ts_garch11_flat(const double* r, int n)
+{
+    if (!r || n < 5) return gmb_ts_nan_dict();
+    double p[3], h = 1e-5, step = 0.05, v = 0;
+    for (int i = 0; i < n; i++) v += r[i] * r[i];
+    v /= n;
+    p[0] = 0.1 * v; p[1] = 0.1; p[2] = 0.8;
+    for (int it = 0; it < 2000; it++) {
+        double f0 = gmb_ts_garch_nll(p, r, n), grad[3], np[3], gn = 0;
+        for (int i = 0; i < 3; i++) {
+            double save = p[i];
+            p[i] = save + h;
+            grad[i] = (gmb_ts_garch_nll(p, r, n) - f0) / h;
+            p[i] = save;
+            gn += grad[i] * grad[i];
+        }
+        gn = sqrt(gn);
+        if (gn < 1e-10) break;
+        for (int i = 0; i < 3; i++) np[i] = p[i] - step * grad[i] / gn;
+        if (np[0] < 1e-8) np[0] = 1e-8;
+        if (np[1] < 0) np[1] = 0;
+        if (np[2] < 0) np[2] = 0;
+        if (np[1] + np[2] > 0.999) { double ss = 0.999 / (np[1] + np[2]); np[1] *= ss; np[2] *= ss; }
+        if (gmb_ts_garch_nll(np, r, n) < f0) { p[0]=np[0]; p[1]=np[1]; p[2]=np[2]; step *= 1.05; }
+        else step *= 0.5;
+        if (step < 1e-12) break;
+    }
+    {
+        gmb_dict_t d = gmb_dict_new();
+        gmb_dict_set(&d, "Omega", gmb_make_val_double(p[0]));
+        gmb_dict_set(&d, "Alpha", gmb_make_val_double(p[1]));
+        gmb_dict_set(&d, "Beta", gmb_make_val_double(p[2]));
+        return gmb_make_val_dict_take(&d);
+    }
+}
