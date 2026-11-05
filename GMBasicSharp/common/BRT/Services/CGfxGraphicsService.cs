@@ -36,13 +36,6 @@ public sealed class CGfxGraphicsService : IGraphicsService
     [DllImport(Lib)] private static extern void gmb_gfx_preset(int x, int y);
     [DllImport(Lib)] private static extern int gmb_gfx_point(int x, int y);
     [DllImport(Lib)] private static extern double gmb_gfx_canvas_op(string op, double[] args, int nargs, string? path);
-    [DllImport(Lib)] private static extern double gmb_gfx_colormix(double c1, double c2, double t);
-    [DllImport(Lib)] private static extern double gmb_gfx_colorlighten(double c, double amt);
-    [DllImport(Lib)] private static extern double gmb_gfx_colordarken(double c, double amt);
-    [DllImport(Lib)] private static extern double gmb_gfx_colorsaturate(double c, double amt);
-    [DllImport(Lib)] private static extern int gmb_gfx_pointinpolygon(double x, double y, double[] pts, int npoints);
-    [DllImport(Lib)] private static extern int gmb_gfx_pointincircle(double x, double y, double cx, double cy, double r);
-    [DllImport(Lib)] private static extern int gmb_gfx_pointinrect(double x, double y, double x1, double y1, double x2, double y2);
     [DllImport(Lib)] private static extern void gmb_gfx_line(int x1, int y1, int x2, int y2, int color, string? style);
     [DllImport(Lib)] private static extern void gmb_gfx_circle(int x, int y, int r, int color, int fill, double start, double end, double aspect);
     [DllImport(Lib)] private static extern void gmb_gfx_paint(int x, int y, int fill, int border);
@@ -901,22 +894,6 @@ public sealed class CGfxGraphicsService : IGraphicsService
         try { return gmb_gfx_canvas_op(op ?? "", new[] { a0, a1, a2, a3 }, 4, path ?? ""); }
         catch { return -1; }
     }
-
-    // Primitive colore/hit-test: pure e offscreen, sempre dal runtime C (identiche sui backend).
-    public static double ColorMixNative(double c1, double c2, double t)
-    { try { return gmb_gfx_colormix(c1, c2, t); } catch { return 0; } }
-    public static double ColorLightenNative(double c, double amt)
-    { try { return gmb_gfx_colorlighten(c, amt); } catch { return 0; } }
-    public static double ColorDarkenNative(double c, double amt)
-    { try { return gmb_gfx_colordarken(c, amt); } catch { return 0; } }
-    public static double ColorSaturateNative(double c, double amt)
-    { try { return gmb_gfx_colorsaturate(c, amt); } catch { return 0; } }
-    public static int PointInPolygonNative(double x, double y, double[] pts, int n)
-    { try { return gmb_gfx_pointinpolygon(x, y, pts, n); } catch { return 0; } }
-    public static int PointInCircleNative(double x, double y, double cx, double cy, double r)
-    { try { return gmb_gfx_pointincircle(x, y, cx, cy, r); } catch { return 0; } }
-    public static int PointInRectNative(double x, double y, double x1, double y1, double x2, double y2)
-    { try { return gmb_gfx_pointinrect(x, y, x1, y1, x2, y2); } catch { return 0; } }
 
     public int Point(int x, int y)
         => throw new InvalidOperationException(

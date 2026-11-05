@@ -663,15 +663,8 @@ procedure,GRAPHICS,CELL,Cell
 procedure,GRAPHICS,CELLSTR,CellStr
 procedure,GRAPHICS,COLLIDE,Collide
 procedure,GRAPHICS,COLLIDEBATCH,CollideBatch
-procedure,GRAPHICS,COLORDARKEN,ColorDarken
-procedure,GRAPHICS,COLORLIGHTEN,ColorLighten
-procedure,GRAPHICS,COLORMIX,ColorMix
-procedure,GRAPHICS,COLORSATURATE,ColorSaturate
 procedure,GRAPHICS,P2CX,P2CX
 procedure,GRAPHICS,P2CY,P2CY
-procedure,GRAPHICS,POINTINCIRCLE,PointInCircle
-procedure,GRAPHICS,POINTINPOLYGON,PointInPolygon
-procedure,GRAPHICS,POINTINRECT,PointInRect
 procedure,GRAPHICS,Point,Point
 procedure,GRAPHICS,RGB,Rgb
 procedure,GRAPHICS,SCREEN,Screen

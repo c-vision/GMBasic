@@ -18177,46 +18177,6 @@ void gmb_bf_tray(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code,
 
 #ifndef GMB_VM_SPECIALIZED
 
-/* GRAPHICS (2026-11-05): colore e hit-test. Stesse funzioni C di C99/IL/PCode. */
-static void gmb_bf_3900(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-    (void)vm; (void)task; (void)func_code;
-    bout->result = (argc >= 3) ? gmb_gfx_colormix(args[0].num, args[1].num, args[2].num) : 0.0;
-}
-static void gmb_bf_3901(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-    (void)vm; (void)task; (void)func_code;
-    bout->result = (argc >= 2) ? gmb_gfx_colorlighten(args[0].num, args[1].num) : 0.0;
-}
-static void gmb_bf_3902(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-    (void)vm; (void)task; (void)func_code;
-    bout->result = (argc >= 2) ? gmb_gfx_colordarken(args[0].num, args[1].num) : 0.0;
-}
-static void gmb_bf_3903(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-    (void)vm; (void)task; (void)func_code;
-    bout->result = (argc >= 2) ? gmb_gfx_colorsaturate(args[0].num, args[1].num) : 0.0;
-}
-static void gmb_bf_3904(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-    (void)vm; (void)task; (void)func_code;
-    int np = 0;
-    double* pts = (argc >= 3) ? gmb_vm_list_to_dbl(&args[2], &np) : NULL;
-    bout->result = (argc >= 3) ? (double)gmb_gfx_pointinpolygon(args[0].num, args[1].num, pts, np / 2) : 0.0;
-    free(pts);
-}
-static void gmb_bf_3905(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-    (void)vm; (void)task; (void)func_code;
-    bout->result = (argc >= 5) ? (double)gmb_gfx_pointincircle(args[0].num, args[1].num, args[2].num, args[3].num, args[4].num) : 0.0;
-}
-static void gmb_bf_3906(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
-{
-    (void)vm; (void)task; (void)func_code;
-    bout->result = (argc >= 6) ? (double)gmb_gfx_pointinrect(args[0].num, args[1].num, args[2].num, args[3].num, args[4].num, args[5].num) : 0.0;
-}
-
 static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 0, gmb_bf_0 },
     { 1, gmb_bf_1 },
@@ -19787,8 +19747,6 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 3588, gmb_bf_bits },
     { 3590, gmb_bf_bits },
     { 3591, gmb_bf_bits },
-    { 3900, gmb_bf_3900 }, { 3901, gmb_bf_3901 }, { 3902, gmb_bf_3902 }, { 3903, gmb_bf_3903 },
-    { 3904, gmb_bf_3904 }, { 3905, gmb_bf_3905 }, { 3906, gmb_bf_3906 },
 
 };
 #else
