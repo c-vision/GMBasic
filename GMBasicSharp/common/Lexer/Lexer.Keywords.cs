@@ -788,6 +788,7 @@ public sealed partial class Lexer
         
         // --- KEYWORD PLOTTING ---
         { "CHART", TokenKind.Chart },
+        { "CANVAS", TokenKind.Canvas },
         { "PLOT", TokenKind.Plot },
         { "FINANCIAL", TokenKind.Financial },
         { "SHOW", TokenKind.Show },

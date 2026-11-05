@@ -8042,6 +8042,10 @@ public static partial class IlRuntime
     public static double ChartConfigGet(int h, string prop) { try { return Current.Graphics.ChartConfigGet(h, prop); } catch { return 0; } }
     public static string ChartConfigGetStr(int h, string prop) { try { return Current.Graphics.ChartConfigGetStr(h, prop); } catch { return ""; } }
     public static double ChartDraw(int h, string op, double[] args) { try { return Current.Graphics.ChartDraw(h, op, args); } catch { return 0; } }
+    /// <summary>CANVAS op: canvas offscreen. Passa SEMPRE dal runtime C (niente servizio
+    /// grafico dell'host): è un'operazione puramente offscreen, identica sui 4 backend.</summary>
+    public static double CanvasOp(string op, double a0, double a1, double a2, double a3, string path)
+    { try { return CGfxGraphicsService.CanvasOpNative(op, a0, a1, a2, a3, path); } catch { return -1; } }
     public static void FormControlMove(string name, int x, int y, int w, int h) { try { Current.Graphics.FormControlMove(name, x, y, w, h); } catch { } }
     public static void FormControlFocus(string name) { try { Current.Graphics.FormControlFocus(name); } catch { } }
     public static void FormControlZorder(string name, int front) { try { Current.Graphics.FormControlZorder(name, front); } catch { } }
@@ -20792,8 +20796,6 @@ public static double TextWidth(string s)
     public static object? WsConnect(string host, int port, string? path, object? timeout)
     {
         var wsPath = string.IsNullOrEmpty(path) ? "/" : (path.StartsWith('/') ? path : "/" + path);
-        if (Environment.GetEnvironmentVariable("GMB_DEBUG_WS") == "1")
-            System.Console.WriteLine($"[WS] connect {host}:{port}{wsPath}");
         var timeoutMs = timeout switch { double d when d > 0 => (int)d, int i when i > 0 => i, _ => 30000 };
         var client = new System.Net.WebSockets.ClientWebSocket();
         try
@@ -20862,8 +20864,6 @@ public static double TextWidth(string s)
         if (handle is not IlWebSocketHandle ws) return;
         if (type == System.Net.WebSockets.WebSocketMessageType.Close) { DispatchWsEvent(ws, ws.OnCloseSymbolId, ws); return; }
         if (type != System.Net.WebSockets.WebSocketMessageType.Text || text is null) return;
-        if (Environment.GetEnvironmentVariable("GMB_DEBUG_WS") == "1")
-            System.Console.WriteLine($"[WS.RECV] OnMsgSym={ws.OnMessageSymbolId} len={text.Length}");
         DispatchWsEvent(ws, ws.OnMessageSymbolId, ws, text);
     }
 

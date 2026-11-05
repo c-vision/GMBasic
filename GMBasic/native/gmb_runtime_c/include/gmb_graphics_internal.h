@@ -10,6 +10,7 @@
 #include <stdbool.h>
 
 #define GMB_GFX_MAX_PAGES 8
+#define GMB_GFX_MAX_CANVASES 32
 #define GMB_GFX_MAX_PALETTE 256
 #define GMB_GFX_MAX_TEXTURES 512
 #define GMB_GFX_MAX_SPRITES 1024
@@ -48,6 +49,11 @@ typedef struct gmb_gfx_ctx {
     int active_page;
     int visible_page;
     gmb_gfx_page_t pages[GMB_GFX_MAX_PAGES];
+    /* Canvas offscreen (BASIC: CANVAS NEW/USE/...). Handle = indice+1 (1..32), 0 = schermo.
+     * Il canvas attivo dirotta active_page(): le primitive disegnano lì, senza VIEW/WINDOW
+     * né render-scale (coordinate 1:1), così il contenuto è riproducibile e salvabile in PNG. */
+    gmb_gfx_page_t canvases[GMB_GFX_MAX_CANVASES];
+    int canvas_active;
     unsigned char palette[GMB_GFX_MAX_PALETTE][3];
     int palette_size;
     int fg, bg;

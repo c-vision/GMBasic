@@ -6158,6 +6158,16 @@ static void vm_gfx_syscall(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
         gmb_gfx_palette(idx, r, g, b);
         return;
     }
+    case GMB_SC_CANVAS_OP: {
+        /* CANVAS <op> a0..a3 path$: stack = op, a0, a1, a2, a3, path (pop inverso). */
+        char path[1024], op[32];
+        double a[4];
+        vm_pop_str(task, path, sizeof(path));
+        for (int i = 3; i >= 0; i--) a[i] = vm_gfx_pop(task, 0);
+        vm_pop_str(task, op, sizeof(op));
+        gmb_task_push_num(task, gmb_gfx_canvas_op(op, a, 4, path), GMB_BT_NUMBER);
+        return;
+    }
     case GMB_SC_PROGRAM_EXIT:
     {
         double v = 0.0;
@@ -6175,6 +6185,7 @@ void gmb_vm_exec_syscall(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
     switch (code) {
     case GMB_SC_SCREEN: case GMB_SC_CLS: case GMB_SC_PSET: case GMB_SC_PRESET:
     case GMB_SC_LINE: case GMB_SC_CIRCLE: case GMB_SC_PAINT: case GMB_SC_PALETTE:
+    case GMB_SC_CANVAS_OP:
     case GMB_SC_PROGRAM_EXIT:
         vm_gfx_syscall(vm, task, code, argc);
         return;

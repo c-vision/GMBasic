@@ -1239,6 +1239,42 @@ private void EmitBrowserHumanScrollCall(BuiltinFunctionCallExpr expr)
         _il.Emit(OpCodes.Callvirt, GraphicsChartFinancialMethod);
     }
 
+    /// <summary>CANVAS NEW/USE/… → IlRuntime.CanvasOp (canvas offscreen, runtime C).
+    /// ABI uniforme: op string + 4 double (0 se assenti) + path string ("" se assente).</summary>
+    private void EmitCanvasStmt(CanvasStmt cs)
+    {
+        var a = cs.Args;
+        Expr? PathExpr() => cs.Sub switch
+        {
+            "SAVE" => a.Length > 1 ? a[1] : null,
+            "LOAD" => a.Length > 0 ? a[0] : null,
+            _ => null
+        };
+
+        _il.Emit(OpCodes.Ldstr, cs.Sub);
+        for (int i = 0; i < 4; i++)
+        {
+            Expr? e = cs.Sub switch
+            {
+                "SAVE" => (i == 0 && a.Length > 0) ? a[0] : null,
+                "LOAD" => null,
+                _ => i < a.Length ? a[i] : null
+            };
+            // Colori (CLEAR arg 1, SET arg 3): stessa via delle primitive (EmitInt32Arg),
+            // così valgono le regole di PSET/LINE (indice palette o packed).
+            bool isColor = (cs.Sub == "CLEAR" && i == 1) || (cs.Sub == "SET" && i == 3);
+            if (e == null) _il.Emit(OpCodes.Ldc_R8, 0.0);
+            else if (isColor) { EmitInt32Arg(e); _il.Emit(OpCodes.Conv_R8); }
+            else EmitDoubleArgument(e);
+        }
+        var pe = PathExpr();
+        if (pe != null) EmitStringArg(pe); else _il.Emit(OpCodes.Ldstr, "");
+        _il.Emit(OpCodes.Call, IlRuntimeCanvasOpMethod);
+        // Il risultato della call è un double: va coercizzato al tipo del target
+        // (LONG/INTEGER) prima dello store, altrimenti IL invalido o valore perso.
+        if (cs.Into is VariableTarget gv) EmitAssignTargetFromTop(gv, new DoubleType()); else _il.Emit(OpCodes.Pop);
+    }
+
     /// <summary>CHART DRAW handle, "op", args[] → IlRuntime.ChartDraw (oggetti di disegno).</summary>
     private void EmitChartDraw(ChartDrawStmt cm)
     {

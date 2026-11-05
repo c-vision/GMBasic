@@ -11150,6 +11150,33 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                         sb_put(&c->out, "; __sp.data ? __sp.data : \"\"; })), 0.0)");
                         return;
                     }
+                    /* METODI di una variabile WEBSOCKET (client o server): ws.Send(t),
+                     * ws.Close([motivo]). Sono METODI, non chiavi di un dict: senza questo
+                     * ramo finivano nella fusione JSON qui sotto
+                     * (`gmb_val_dict_get(gmb_val_index(ws, t), "Send")` = no-op silenzioso:
+                     * nessun frame inviato). Bug (open) - C99-WS-Client-Send-Close-NoOp. */
+                    if (bvv->gkind == GK_WEBSOCKET) {
+                        if (strcasecmp(bdot + 1, "Send") == 0 && nargs >= 1) {
+                            sb_put(&c->out, "(gmb_ws_send_text((int64_t)gmb_val_to_int(gmb_dict_get(gmb_val_as_dict(");
+                            emit_ident(c, bbuf);
+                            sb_put(&c->out, "), \"__ws_handle\")), (");
+                            emit_str_operand(c, args[0]);
+                            sb_put(&c->out, ").data), 0.0)");
+                            return;
+                        }
+                        if (strcasecmp(bdot + 1, "Close") == 0) {
+                            sb_put(&c->out, "(gmb_ws_send_close((int64_t)gmb_val_to_int(gmb_dict_get(gmb_val_as_dict(");
+                            emit_ident(c, bbuf);
+                            sb_put(&c->out, "), \"__ws_handle\")), ");
+                            if (nargs >= 1 && etype(c, args[0]) == TY_STR) {
+                                sb_put(&c->out, "("); emit_str_operand(c, args[0]); sb_put(&c->out, ").data");
+                            } else {
+                                sb_put(&c->out, "\"\"");
+                            }
+                            sb_put(&c->out, "), 0.0)");
+                            return;
+                        }
+                    }
                     /* DUE sintassi condividono la forma CALL("base.Membro",[idx]):
                      *  - `base.Membro[idx]` (membro JSON/dict PRIMA): Membro è una CHIAVE →
                      *    gmb_val_index(gmb_dict_get(base,"Membro"), idx);
@@ -16505,6 +16532,13 @@ static void emit_arr_literal_assign(ctx_t* c, const char* target, gmb_expr_t* li
                         sb_put(&c->out, "gmb_val_dict_set(");
                         emit_ident(c, dv->name);
                         sb_printf(&c->out, ", \"%s_fn\", gmb_make_val_int((gmb_int_t)(uintptr_t)(void (*)(void*))%s));\n", key, mw);
+                        /* LATO CLIENT: se la socket è connessa (__ws_handle > 0) e marcata
+                         * __ws_client, avvia il receive-loop che dispatcha i frame come task
+                         * GPM (parità VM/C). Sulle socket server è un no-op. */
+                        ind(c);
+                        sb_put(&c->out, "gmb_ws_client_start(");
+                        emit_ident(c, dv->name);
+                        sb_put(&c->out, ");\n");
                         return;
                     }
                 }
@@ -22992,6 +23026,18 @@ static void st_net_cmd(ctx_t* c, gmb_stmt_t* s) {
             sb_put(&c->out, ").data, (int64_t)(");
             if (nn > 3 && na[3]) emit_expr(c, na[3]); else sb_put(&c->out, "10000");
             sb_put(&c->out, "))));\n");
+            /* Marca la socket come LATO CLIENT (solo queste avviano il receive-loop in
+             * gmb_ws_client_start; quelle lato server hanno già il loop del route wrapper). */
+            ind(c);
+            sb_put(&c->out, "gmb_val_dict_set(");
+            emit_ident(c, tv->name);
+            sb_put(&c->out, ", \"__ws_client\", gmb_make_val_int(1));\n");
+            /* Se ws.OnMessage è stato assegnato PRIMA del CONNECT, il loop va avviato ora
+             * che l'handle esiste (no-op senza handler / già avviato). */
+            ind(c);
+            sb_put(&c->out, "gmb_ws_client_start(");
+            emit_ident(c, tv->name);
+            sb_put(&c->out, ");\n");
             break;
         }
         default:
@@ -24213,6 +24259,39 @@ static void st_gfx(ctx_t* c, gmb_stmt_t* s) {
             sb_put(&c->out, "gmb_gfx_chart_draw((int)("); emit_expr(c, ga[0]); sb_put(&c->out, "), ");
             if (ga[1]) emit_str_operand(c, ga[1]); else sb_put(&c->out, "gmb_string_alloc(\"\")");
             { char b[24]; snprintf(b, sizeof(b), ".data, _cd, %d); }\n", ncd); sb_put(&c->out, b); }
+            break;
+        }
+        case 53: case 54: case 55: case 56: case 57: case 58:
+        case 59: case 60: case 61: case 62: case 63: case 64: {
+            /* CANVAS NEW/USE/END/CLEAR/SET/GET/BLIT/SAVE/LOAD/FREE/WIDTH/HEIGHT:
+             * un solo runtime gmb_gfx_canvas_op(op, args[4], 4, path). */
+            static const char* cv_ops[12] = {"NEW","USE","END","CLEAR","SET","GET","BLIT","SAVE","LOAD","FREE","WIDTH","HEIGHT"};
+            static const int cv_nnum[12] = {2,1,0,2,4,3,3,1,0,1,1,1};
+            static const int cv_path[12] = {-1,-1,-1,-1,-1,-1,-1,1,0,-1,-1,-1};
+            int ck = s->net_sub - 53;
+            if (ck < 0 || ck > 11) { c99_fail(c, s->line, "CANVAS: sottocomando non valido"); return; }
+            ind(c); sb_put(&c->out, "{ double _cv[4] = {0,0,0,0}; ");
+            for (int ci = 0; ci < cv_nnum[ck]; ci++) {
+                char b[32]; snprintf(b, sizeof(b), "_cv[%d] = (double)(", ci);
+                sb_put(&c->out, b);
+                /* CLEAR (ck=3, arg 1) e SET (ck=4, arg 3) sono COLORI: stessa conversione
+                 * delle primitive (indice palette, oppure RGB(...) → packed). */
+                int is_color = (ck == 3 && ci == 1) || (ck == 4 && ci == 3);
+                if (!ga[ci]) sb_put(&c->out, "0");
+                else if (is_color) gfx_emit_color(c, ga[ci]);
+                else emit_expr(c, ga[ci]);
+                sb_put(&c->out, "); ");
+            }
+            if (s->net_assign) { emit_net_lhs(c, emit_net_target(c, s->net_assign)); sb_put(&c->out, " = "); }
+            else sb_put(&c->out, "(void)");
+            char hdr[64]; snprintf(hdr, sizeof(hdr), "gmb_gfx_canvas_op(\"%s\", _cv, 4, ", cv_ops[ck]); sb_put(&c->out, hdr);
+            if (cv_path[ck] >= 0 && ga[cv_path[ck]]) {
+                emit_str_operand(c, ga[cv_path[ck]]);
+                sb_put(&c->out, ".data");
+            } else {
+                sb_put(&c->out, "\"\"");
+            }
+            sb_put(&c->out, "); }\n");
             break;
         }
         case 39: { /* PIXELBUFFER w, h, buffer */

@@ -6289,6 +6289,7 @@ internal sealed partial class PCodeProcessor
             case SysCall.CHART_GET:  ChartConfigGet(task); break;
             case SysCall.CHART_GETS: ChartConfigGetS(task); break;
             case SysCall.CHART_DRAW: ChartDraw(task); break;
+            case SysCall.CANVAS_OP: CanvasOp(task); break;
             case SysCall.FORM_CTRL_ADD:    FormCtrlAdd(task); break;
             case SysCall.FORM_CTRL_REMOVE: FormCtrlRemove(task); break;
             case SysCall.FORM_CTRL_DRAW:   FormCtrlDraw(task); break;

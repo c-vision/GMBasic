@@ -1880,6 +1880,11 @@ public static partial class Linker
             case ChartCloseStmt s: return s with { Handle = BindExpression(s.Handle, program, isStrict) };
             case ChartRenderStmt s:
                 return s with { Args = [..s.Args.Select(a => BindExpression(a, program, isStrict))] };
+            case CanvasStmt s:
+                return s with {
+                    Args = [..s.Args.Select(a => BindExpression(a, program, isStrict))],
+                    // INTO va BINDATO: senza, SymbolId resta -1 e lo store non avviene.
+                    Into = s.Into != null ? BindTarget(s.Into, program, isStrict) : null };
 
             // --- CASI BASE ---
             case StopStmt:
