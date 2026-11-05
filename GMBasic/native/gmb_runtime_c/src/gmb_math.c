@@ -3251,3 +3251,27 @@ double gmb_simpson_c99(gmb_fn_t fn, double a, double b, int n)
 {
     return gmb_simpson_ctx(gmb_c99_fn_scalar, &fn, a, b, n);
 }
+
+/* Noncentral chi-square: Poisson mixture of central chi-square (df+2j). */
+double gmb_dist_nc_chi2_pdf(double df, double nc, double x)
+{
+    if (df <= 0 || nc < 0 || x < 0) return NAN;
+    double half = nc * 0.5, w = exp(-half), sum = 0;
+    for (int j = 0; j < 300; j++) {
+        sum += w * gmb_dist_chi2_pdf(df + 2.0 * j, x);
+        w *= half / (j + 1.0);
+    }
+    return sum;
+}
+double gmb_dist_nc_chi2_cdf(double df, double nc, double x)
+{
+    if (df <= 0 || nc < 0) return NAN;
+    if (x <= 0) return 0;
+    double half = nc * 0.5, w = exp(-half), sum = 0;
+    for (int j = 0; j < 300; j++) {
+        sum += w * gmb_dist_chi2_cdf(df + 2.0 * j, x);
+        w *= half / (j + 1.0);
+    }
+    return sum > 1 ? 1 : sum;
+}
+double gmb_dist_nc_chi2_sf(double df, double nc, double x) { return 1.0 - gmb_dist_nc_chi2_cdf(df, nc, x); }

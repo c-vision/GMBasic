@@ -362,6 +362,33 @@ public static partial class Numerics
         return x < 0 ? 0.0 : ChiSquared.CDF(freedom, x);
     }
 
+    public static double NcChi2Pdf(double df, double nc, double x)
+    {
+        if (df <= 0 || nc < 0 || x < 0) return double.NaN;
+        double half = nc * 0.5, w = Math.Exp(-half), sum = 0;
+        for (var j = 0; j < 300; j++)
+        {
+            sum += w * ChiSquaredPdf(df + 2.0 * j, x);
+            w *= half / (j + 1.0);
+        }
+        return sum;
+    }
+
+    public static double NcChi2Cdf(double df, double nc, double x)
+    {
+        if (df <= 0 || nc < 0) return double.NaN;
+        if (x <= 0) return 0;
+        double half = nc * 0.5, w = Math.Exp(-half), sum = 0;
+        for (var j = 0; j < 300; j++)
+        {
+            sum += w * ChiSquaredCdf(df + 2.0 * j, x);
+            w *= half / (j + 1.0);
+        }
+        return Math.Min(1.0, sum);
+    }
+
+    public static double NcChi2Sf(double df, double nc, double x) => 1.0 - NcChi2Cdf(df, nc, x);
+
     /// <summary>
     /// Calcola la funzione di densità di probabilità (PDF) della distribuzione Beta.
     /// </summary>

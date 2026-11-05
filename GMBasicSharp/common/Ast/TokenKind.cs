@@ -2030,6 +2030,7 @@ public enum TokenKind
     TsLzComplexity,
     TsBmaWeights,
     TsLyapunov,
+    StatsNcChi2Pdf, StatsNcChi2Cdf, StatsNcChi2Sf,
     StatsChi2Contingency, StatsMannWhitney, StatsWilcoxon,
     StatsGammaPdf, StatsGammaCdf, StatsGammaPpf, StatsGammaIsf,
     StatsSkewTest, StatsKurtosisTest, StatsJarqueBera,
