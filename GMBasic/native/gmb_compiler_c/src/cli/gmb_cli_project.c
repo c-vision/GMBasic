@@ -7,6 +7,7 @@
  */
 #include "gmb_cli_internal.h"
 #include "gmb_inc_resolve.h"
+#include "gmb_cc_defaults.h"   /* ricetta UNICA degli -I e delle statiche (la stessa del driver) */
 #include "gmb_lexer.h"   /* check: validazione sintattica (parità con gmbcs) */
 #include "gmb_parser.h"
 
@@ -106,23 +107,11 @@ void run_check(const Options* o, const char* project, const char* entry,
  * Prima si puntava a `Resources/libs/<rid>` e alle librerie del builder: un path ASSOLUTO del
  * builder finisce nel binario e su un'altra macchina non carica. */
 static int gmb_cache_libdir(char* out, size_t cap) {
-    const char* home = getenv("HOME");
-    if (!home || !*home) return 0;
-    snprintf(out, cap, "%s/.gmbasic/libs/%s", home, GMB_RID_STR);
-    return is_dir(out);
+    return gmb_cc_cache_libdir(out, cap);   /* una sola copia (gmb_cc_defaults.c) */
 }
 
 /* Cerca il driver accanto al CLI, nel build del repo, poi in tools/. */
 
-/* true se il sorgente usa UI/grafica/AI: serve il runtime COMPLETO (`libgmb_runtime.a`).
- * Stessa logica di tools/gmb_c99native_run.sh: parola chiave ALL'INIZIO della riga (dopo spazi)
- * oppure `IMPORT <namespace>`. Non è un parser: una scelta PRUDENTE (in dubbio → completo). */
-static int ci_word_at(const char* p, const char* w) {
-    size_t n = strlen(w);
-    if (strncasecmp(p, w, n) != 0) return 0;
-    char c = p[n];
-    return (c == ' ' || c == '\t' || c == '(' || c == '\r' || c == '\n' || c == '\0' || c == ',');
-}
 /* Sottostringa case-insensitive (usata per riconoscere i programmi TRAY). */
 static int gmb_ci_contains(const char* hay, const char* needle) {
     size_t n = needle ? strlen(needle) : 0;
@@ -140,42 +129,6 @@ static int source_uses_tray(const char* entry) {
     int used = gmb_ci_contains(src, "TRAY");
     free(src);
     return used;
-}
-
-static int source_needs_full_runtime(const char* entry) {
-    char* src = read_all(entry);
-    if (!src) return 1;
-    static const char* kw[] = {
-        "FORM","READ","TORCH","TRAIN","JINJA","SCREEN","GRAPHICS","SPRITE","SPRITESET","PSET",
-        "PRESET","CIRCLE","PAINT","DRAW","POLYGON","PCOPY","SCREENSET","PALETTE","MOUSE","WINDOW",
-        "IMAGE","BITMAP","TILE","FONT","PLOT","CHART","VIDEO","DBF","ISAM","SPEED","RDD","SQL",
-        "NET","HTTP","AI","LLM","ASR","MEMORY","VECTORDB","DOC","FETCH","TUI"
-    };
-    int need = 0;
-    const char* p = src;
-    while (*p && !need) {
-        while (*p == ' ' || *p == '\t') p++;
-        if (strncasecmp(p, "IMPORT", 6) == 0 && (p[6] == ' ' || p[6] == '\t')) {
-            const char* q = p + 6;
-            while (*q == ' ' || *q == '\t') q++;
-            for (size_t k = 0; k < sizeof kw / sizeof kw[0] && !need; k++)
-                if (ci_word_at(q, kw[k])) need = 1;
-        }
-        for (size_t k = 0; k < sizeof kw / sizeof kw[0] && !need; k++)
-            if (ci_word_at(p, kw[k])) need = 1;
-        /* `PRINT AI.PLUGINSLIST()`: la parola non è a inizio riga. Il punto dopo il namespace
-         * è il segnale: senza, un programma che usa funzioni AI linkava il runtime MINIMO e
-         * falliva con simboli agent/sqlite non definiti. */
-        for (size_t k = 0; k < sizeof kw / sizeof kw[0] && !need; k++) {
-            char nsdot[48];
-            snprintf(nsdot, sizeof nsdot, "%s.", kw[k]);
-            if (gmb_ci_contains(src, nsdot)) need = 1;
-        }
-        while (*p && *p != '\n') p++;
-        if (*p == '\n') p++;
-    }
-    free(src);
-    return need;
 }
 
 int find_driver(Toolchain* tc, const char* argv0) {
@@ -222,47 +175,9 @@ static int add_inc(char* buf, size_t cap, const char* dir) {
  * `dev`). UNA sola implementazione: la usano il link (`build_inc`) E `gmb doctor`, che
  * altrimenti potrebbe dichiarare "a posto" un ambiente con cui `cc` non compila. */
 int gmb_cli_inc_dirs(const char* install, char (*out)[CLI_PATH], int max) {
-    int n = 0;
-    if (!install || !*install || !out || max <= 0) return 0;
-    static const char* rel[] = {
-        "native/gmb_runtime_c/include", "native/gmb_runtime_c/src",
-        "native/gmb_chart/include", "native/gmb_compiler_c/include",
-        "native/gmb_db_c/include", "native/gmb_torch/include",
-        "native/gmb_doc_c/include", "native/gmb_agent_runtime",
-        "gmbllm/include", "gmbllm/include/quant",
-        "gmbllm/include/train", "gmbllm/include/lora",
-    };
-    for (size_t i = 0; i < sizeof rel / sizeof rel[0] && n < max; i++) {
-        char p[CLI_PATH];
-        snprintf(p, sizeof p, "%s/%s", install, rel[i]);
-        if (is_dir(p)) snprintf(out[n++], CLI_PATH, "%s", p);
-    }
-    /* LLMEnv: repo SEPARATO. Prima erano due -I hardcoded (`../LLMEnv`, `../../LLMEnv`):
-     * su un client che la installa altrove, o che la riceve accanto al bundle, gli header
-     * AI non si trovavano. `LLM_ROOT` (env) vince; altrimenti si scopre. */
-    static const char* llmrel[] = {
-        "LLMCodec/include", "LLMJinja", "LLMEngine/moe/include", "LLMEngine/asr/include",
-        "LLMEngine/mlx", "LLMEngine/include", "LLMEngine/Options", "LLMEngine/plugin",
-        "LLMDesc", "LLMToken/include",
-    };
-    char llm[CLI_PATH];
-    if (gmb_resolve_llm_root(llm, sizeof llm) && llm[0]) {
-        for (size_t i = 0; i < sizeof llmrel / sizeof llmrel[0] && n < max; i++) {
-            char p[CLI_PATH];
-            snprintf(p, sizeof p, "%s/%s", llm, llmrel[i]);
-            if (is_dir(p)) snprintf(out[n++], CLI_PATH, "%s", p);
-        }
-    }
-    {
-        /* header delle terze parti: gruppo `dev` della cache (`gmb install --dev`). */
-        char cache[CLI_PATH];
-        if (gmb_cache_libdir(cache, sizeof cache)) {
-            char inc2[CLI_PATH];
-            snprintf(inc2, sizeof inc2, "%s/include", cache);
-            if (is_dir(inc2) && n < max) snprintf(out[n++], CLI_PATH, "%s", inc2);
-        }
-    }
-    return n;
+    /* Ricetta UNICA in `gmb_cc_defaults.c`: la stessa lista che passa il driver `gmbnative`
+     * quando `cc` compila il C emesso. Una copia sola = un verdetto solo. */
+    return gmb_cc_inc_dirs(install, out, max);
 }
 
 /* Ricetta degli -I per compilare il C emesso: quella di tools/gmb_c99native_run.sh (il C
@@ -502,44 +417,15 @@ int build_project(const Options* o, const char* project, const char* entry,
      *    chart, quindi un programma con un solo PRINT moriva sui simboli `_SDL_*`, `_vk*` e
      *    `gmb_chart_*` non definiti. Non si copia però l'intero lib-set di tools/gmb_c99native_run.sh
      *    (db/agent/document/AI): serve ai programmi che usano quei domini, non a un PRINT. */
-    char runtime[CLI_PATH]; runtime[0] = 0;
     /* MINIMO per i programmi TESTUALI: il runtime completo trascina il motore AI
      * (llmdesc/gmbllm/llmcodec) che questo CLI non linka, e `gmb build|run` moriva con
      * "_llmdesc_abi_locate non definito" anche su un solo PRINT (bug riprodotto 2026-10-29).
-     * Stessa scelta di tools/gmb_c99native_run.sh: min se il sorgente non usa UI/AI. */
-    const int need_full = source_needs_full_runtime(entry);
-    int use_min = 0;
-    if (!need_full) {
-        const char* mincand[] = {
-            "native/gmb_runtime_c/build/libgmb_runtime_min.a",
-            "native/gmb_vm_c/build/gmb_runtime_c_build/libgmb_runtime_min.a",
-        };
-        for (size_t i = 0; i < sizeof mincand / sizeof mincand[0]; i++) {
-            char p[CLI_PATH];
-            snprintf(p, sizeof p, "%s/%s", tc.install, mincand[i]);
-            /* un archivio VUOTO/parziale (pochi byte: build interrotta) non è una libreria:
-             * sceglierlo produce un link senza simboli (`_gmb_print_newline` non definito).
-             * Si accetta solo un'archivio con dimensione plausibile. */
-            struct stat st_min;
-            if (!is_file(p) || stat(p, &st_min) != 0 || st_min.st_size < 65536) continue;
-            snprintf(runtime, sizeof runtime, "%s", p);
-            use_min = 1;
-            break;
-        }
-    }
-    /* Il terzo candidato non esiste più nel build attuale: costa un `is_file` e copre i
-     * checkout più datati. */
-    const char* rtcand[] = {
-        "native/gmb_vm_c/build/gmb_runtime_c_build/libgmb_runtime.a",
-        "native/gmb_runtime_c/build/gmb_runtime_c_build/libgmb_runtime.a",
-        "native/gmb_runtime_c/build/libgmb_runtime.a",
-    };
-    for (size_t i = 0; !runtime[0] && i < sizeof rtcand / sizeof rtcand[0]; i++) {
-        char p[CLI_PATH];
-        snprintf(p, sizeof p, "%s/%s", tc.install, rtcand[i]);
-        if (is_file(p)) { snprintf(runtime, sizeof runtime, "%s", p); break; }
-    }
-    if (!runtime[0]) {
+     * Stessa scelta di tools/gmb_c99native_run.sh: min se il sorgente non usa UI/AI.
+     * La scoperta vive in `gmb_cc_defaults.c`: una copia sola, condivisa col driver
+     * `gmbnative` (che linka il C emesso con la STESSA ricetta). */
+    char runtime[CLI_PATH];
+    const int need_full = gmb_cc_source_needs_full_runtime(entry);
+    if (!gmb_cc_runtime_lib(tc.install, need_full, runtime, sizeof runtime)) {
         diag_add(diags, 1, "runtime-missing", entry, 0,
                  "libgmb_runtime.a non trovata: costruisci il runtime C "
                  "(native/gmb_vm_c) o usa tools/gmb_c99native_run.sh");
@@ -550,21 +436,8 @@ int build_project(const Options* o, const char* project, const char* entry,
      * dinamici) e `dynamic_lookup` li lascia risolvere all'host. */
     char chart[CLI_PATH], qchart[CLI_PATH + 8];
     chart[0] = 0; qchart[0] = 0;
-    if (!is_lib) {
-        const char* chartcand[] = {
-            "native/gmb_runtime_c/build/gmb_chart_build/libgmb_chart.a",
-            "native/gmb_vm_c/build/gmb_chart_build/libgmb_chart.a",
-            "native/gmb_runtime_c/build/libgmb_chart.a",
-        };
-        for (size_t i = 0; i < sizeof chartcand / sizeof chartcand[0]; i++) {
-            char p[CLI_PATH];
-            snprintf(p, sizeof p, "%s/%s", tc.install, chartcand[i]);
-            if (!is_file(p)) continue;
-            snprintf(chart, sizeof chart, "%s", p);
-            shell_quote(chart, qchart, sizeof qchart);
-            break;
-        }
-    }
+    if (!is_lib && gmb_cc_chart_lib(tc.install, chart, sizeof chart))
+        shell_quote(chart, qchart, sizeof qchart);
 
     /* Dir di ricerca delle librerie grafiche: prima quelle nel repo (Resources/libs è il
      * bundle che l'app spedisce), poi le dir di sistema. Le -L si emettono solo se esistono. */
@@ -635,19 +508,12 @@ int build_project(const Options* o, const char* project, const char* entry,
          * col runtime COMPLETO — prima il ramo `!use_min` la ometteva e ogni programma
          * grafico falliva con "_llmdesc_set_abi_policy non definito". */
         {
-            const char* ldcand[] = {
-                "native/gmb_runtime_c/build/llmdesc_build/libllmdesc.a",
-                "native/gmb_vm_c/build/gmb_runtime_c_build/llmdesc_build/libllmdesc.a",
-            };
-            for (size_t i = 0; i < sizeof ldcand / sizeof ldcand[0]; i++) {
-                char lp[CLI_PATH];
-                snprintf(lp, sizeof lp, "%s/%s", tc.install, ldcand[i]);
-                if (!is_file(lp)) continue;
+            char lp[CLI_PATH];
+            if (gmb_cc_llmdesc_lib(tc.install, lp, sizeof lp)) {
                 char lq[CLI_PATH + 8];
                 shell_quote(lp, lq, sizeof lq);
                 strncat(libs, " ", sizeof libs - strlen(libs) - 1);
                 strncat(libs, lq, sizeof libs - strlen(libs) - 1);
-                break;
             }
         }
         /* FULL runtime: DBF/ISAM/SPEED/RDD/SQL vivono nella statica `gmb_db_c` (fuori dal
