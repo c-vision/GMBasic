@@ -14296,8 +14296,11 @@ public static double TextWidth(string s)
             // INTEGER?/INTEGER boxati come interi a 16/32 bit: il runtime PCode/VM-C non li
             // distingue da un DOUBLE → parità "DOUBLE" (prima "INT16"/"LONG").
             case short: return "DOUBLE";
-            case int: return "LONG";
-            case long: return "QUAD";
+            /* INTERI a 32/64 bit: anche il runtime PCode/VM-C/C99 li rappresenta come DOUBLE e
+             * TYPEINFO deve dire la stessa cosa (2026-11-04: IL rispondeva "LONG"/"QUAD" e
+             * `system_typeinfo.bas` divergeva su 4 gambe). */
+            case int: return "DOUBLE";
+            case long: return "DOUBLE";
             case decimal: return "CURRENCY";
             case System.DateTime: return "DATETIME";
             case System.Collections.IDictionary dict:
