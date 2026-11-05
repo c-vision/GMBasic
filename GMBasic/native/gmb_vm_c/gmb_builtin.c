@@ -771,6 +771,26 @@ static void gmb_bf_1077(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
         bout->result = gmb_ts_lyapunov(a, n, (int)args[1].num, (int)args[2].num);
         free(a);
 }
+static void gmb_bf_3844(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task; (void)func_code;
+        int n = 0;
+        double* a = gmb_vm_list_to_dbl(&args[0], &n);
+        gmb_val_t r = gmb_ts_kpss_flat(a, n, (int)(argc >= 2 ? args[1].num : -1), (int)(argc >= 3 ? args[2].num : 0));
+        free(a);
+        bout->result = 0;
+        gmb_vm_set_dict_result_owned(r, &bout->is_num, &bout->result_ref, &bout->result_ref_bt);
+}
+static void gmb_bf_3845(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task; (void)func_code;
+        int n = 0;
+        double* a = gmb_vm_list_to_dbl(&args[1], &n);
+        gmb_val_t r = gmb_ts_qlr_flat(a, n, args[0].num, argc >= 3 ? args[2].num : 0.0);
+        free(a);
+        bout->result = 0;
+        gmb_vm_set_dict_result_owned(r, &bout->is_num, &bout->result_ref, &bout->result_ref_bt);
+}
 static void gmb_bf_3823(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         (void)vm; (void)task;
@@ -17910,6 +17930,8 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 3820, gmb_bf_3820 },
     { 3821, gmb_bf_3820 },
     { 3822, gmb_bf_3822 },
+    { 3844, gmb_bf_3844 },
+    { 3845, gmb_bf_3845 },
     { 3823, gmb_bf_3823 },
     { 3824, gmb_bf_3823 },
     { 3825, gmb_bf_3825 },

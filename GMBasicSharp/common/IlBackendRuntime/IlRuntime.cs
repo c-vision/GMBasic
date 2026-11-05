@@ -2172,6 +2172,25 @@ public static partial class IlRuntime
         return new Dictionary<string, object?> { ["Theta"] = theta, ["Mu"] = mu, ["Sigma"] = sigma, ["Phi"] = phi, ["HalfLife"] = halfLife };
     }
 
+    public static Dictionary<string, object?> Kpss(double[] series, long bandwidth, long deterministic)
+    {
+        var r = CommonLib.Numerics.Kpss(series, (int)bandwidth, (int)deterministic);
+        return new Dictionary<string, object?>
+        {
+            ["Statistic"] = r.Statistic, ["Bandwidth"] = r.Bandwidth, ["Observations"] = r.Observations,
+            ["Deterministic"] = r.Deterministic, ["LongRunVariance"] = r.LongRunVariance,
+            ["Critical10"] = r.Critical10, ["Critical5"] = r.Critical5,
+            ["Critical25"] = r.Critical25, ["Critical1"] = r.Critical1
+        };
+    }
+    public static Dictionary<string, object?> Qlr(double l0, double[] lBeta, double kappaHat)
+    {
+        var r = CommonLib.Numerics.Qlr(l0, lBeta, kappaHat);
+        return new Dictionary<string, object?>
+        {
+            ["QLRT"] = r.QlrT, ["QLRTilde"] = r.QlrTilde, ["BestIndex"] = r.BestIndex
+        };
+    }
     public static double HmmForward(double[] lpi, double[] lA, double[] lE) => CommonLib.Numerics.HmmForward(lpi, lA, lE);
     public static double[] HmmViterbi(double[] lpi, double[] lA, double[] lE) => CommonLib.Numerics.HmmViterbi(lpi, lA, lE);
     public static Dictionary<string, object?> HmmFit(double[][] X, long nStates, long nIter)
