@@ -1,0 +1,8 @@
+' EXPECT: w0= 0.665241|w1= 0.244728|w2= 0.090031
+SUB Main()
+  DIM ic() = {100, 102, 104}
+  DIM w() = TIMESERIES.TSBMAWEIGHTS(ic)
+  PRINT "w0="; MATH.ROUND(w(0), 6)
+  PRINT "w1="; MATH.ROUND(w(1), 6)
+  PRINT "w2="; MATH.ROUND(w(2), 6)
+END SUB

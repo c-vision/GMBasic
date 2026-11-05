@@ -1436,6 +1436,7 @@ static int dim_arr_init_kind(const gmb_expr_t* e) {
         { GMB_TOK_TsFracDiff, 1, 2 },
         { GMB_TOK_TsKalman1D, 1, 5 },
         { GMB_TOK_TsStationaryBootstrap, 1, 3 },
+        { GMB_TOK_TsBmaWeights, 1, 1 },
         { GMB_TOK_Deseasonalize, 1, 1 }, { GMB_TOK_TimeSeriesMinMax, 1, 1 },
         { GMB_TOK_AMap, 1, 1 }, { GMB_TOK_AFilter, 1, 1 }, { GMB_TOK_AReverse, 1, 1 },
         { GMB_TOK_ASort, 1, 1 }, { GMB_TOK_APad, 1, 2 }, { GMB_TOK_AClone, 1, 1 }, { GMB_TOK_AUnique, 1, 1 },
@@ -7600,6 +7601,7 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_TsApproxEntropy, emit_bf_ts },
     { NULL, GMB_TOK_TsPermEntropy, emit_bf_ts },
     { NULL, GMB_TOK_TsLzComplexity, emit_bf_ts },
+    { NULL, GMB_TOK_TsBmaWeights, emit_bf_ts },
     { NULL, GMB_TOK_Base58Encode, emit_bf_encoding },
     { NULL, GMB_TOK_Base32Encode, emit_bf_encoding },
     { NULL, GMB_TOK_ToBase64, emit_bf_encoding },
@@ -9647,6 +9649,14 @@ static int dim_arr_timeseries1d(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init) {
         sb_put(&c->out, ", (int)("); emit_arr_len_of(c, av); sb_put(&c->out, "), (int)(");
         emit_expr(c, init->args[1]); sb_put(&c->out, "), (int)(");
         emit_expr(c, init->args[2]); sb_put(&c->out, "), &");
+        emit_ident(c, v->name); sb_put(&c->out, "_len);\n");
+        return 1;
+    }
+    if (init->tk == GMB_TOK_TsBmaWeights) {
+        if (init->nargs < 1) { c99_fail(c, s->line, "DIM %s: TIMESERIES.TSBMAWEIGHTS richiede (ic)", v->name); return 1; }
+        ind(c); emit_ident(c, v->name);
+        sb_put(&c->out, " = gmb_ts_bma_weights("); emit_var_ref(c, av);
+        sb_put(&c->out, ", (int)("); emit_arr_len_of(c, av); sb_put(&c->out, "), &");
         emit_ident(c, v->name); sb_put(&c->out, "_len);\n");
         return 1;
     }

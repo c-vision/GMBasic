@@ -1318,6 +1318,7 @@ procedure,TIMESERIES,TSAPPROXENTROPY,TsApproxEntropy
 procedure,TIMESERIES,TSAUTOCORR,Autocorrelation
 procedure,TIMESERIES,TSBANDPASS,TsBandPass
 procedure,TIMESERIES,TSBANDSTOP,TsBandStop
+procedure,TIMESERIES,TSBMAWEIGHTS,TsBmaWeights
 procedure,TIMESERIES,TSCOVARIANCEMATRIX,TimeSeriesCovarianceMatrix
 procedure,TIMESERIES,TSDECOMPOSE,Decompose
 procedure,TIMESERIES,TSDESEASONALIZE,Deseasonalize

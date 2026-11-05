@@ -186,6 +186,8 @@ public sealed partial class StdLib
                 new AnyType(), TokenKind.TsOuFit),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.TsLzComplexity, "TSENTROPYLZ"),
                 [seriesParam], new DoubleType(), TokenKind.TsLzComplexity, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.TsBmaWeights, "TSBMAWEIGHTS"),
+                [seriesParam], doubleArr, TokenKind.TsBmaWeights, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Autocorrelation, "TSAUTOCORR"),
                 [seriesParam, lagParam],
                 new DoubleType(), TokenKind.Autocorrelation, ExecutionKind: NativeExecutionKind.Pure),

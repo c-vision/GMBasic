@@ -1285,6 +1285,7 @@ static const gmb_ns_lookup_row_t gmb_ns_lookup[] = {
     { "TIMESERIES", "TSAUTOCORR", GMB_TOK_Autocorrelation },
     { "TIMESERIES", "TSBANDPASS", GMB_TOK_TsBandPass },
     { "TIMESERIES", "TSBANDSTOP", GMB_TOK_TsBandStop },
+    { "TIMESERIES", "TSBMAWEIGHTS", GMB_TOK_TsBmaWeights },
     { "TIMESERIES", "TSCOVARIANCEMATRIX", GMB_TOK_TimeSeriesCovarianceMatrix },
     { "TIMESERIES", "TSDECOMPOSE", GMB_TOK_Decompose },
     { "TIMESERIES", "TSDESEASONALIZE", GMB_TOK_Deseasonalize },

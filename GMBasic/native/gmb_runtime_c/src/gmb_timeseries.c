@@ -972,3 +972,16 @@ double gmb_ts_lz_complexity(const double* x, int n)
     free(b);
     return (double)c;
 }
+
+/* BMA weights: w_i ∝ exp(-0.5*(IC_i - min IC)) (gmbstats gs_bma_weights). */
+double* gmb_ts_bma_weights(const double* ic, int n, int* out_len)
+{
+    if (!ic || n < 1) { *out_len = 0; return NULL; }
+    double* out = (double*)malloc((size_t)n * sizeof(double));
+    if (!out) { *out_len = 0; return NULL; }
+    double minic = ic[0], sum = 0;
+    for (int i = 1; i < n; i++) if (ic[i] < minic) minic = ic[i];
+    for (int i = 0; i < n; i++) { out[i] = exp(-0.5 * (ic[i] - minic)); sum += out[i]; }
+    if (sum > 0) for (int i = 0; i < n; i++) out[i] /= sum;
+    *out_len = n; return out;
+}

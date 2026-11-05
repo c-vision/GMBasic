@@ -2028,6 +2028,7 @@ public enum TokenKind
     TsPermEntropy,
     TsOuFit,
     TsLzComplexity,
+    TsBmaWeights,
     StatsChi2Contingency, StatsMannWhitney, StatsWilcoxon,
     StatsGammaPdf, StatsGammaCdf, StatsGammaPpf, StatsGammaIsf,
     StatsSkewTest, StatsKurtosisTest, StatsJarqueBera,

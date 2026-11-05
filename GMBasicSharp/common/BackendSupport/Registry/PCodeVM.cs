@@ -924,6 +924,7 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "TIMESERIES.TSENTROPYPERM");
         r.Register(Backend.PCodeVM, "TIMESERIES.TSOUFIT");
         r.Register(Backend.PCodeVM, "TIMESERIES.TSENTROPYLZ");
+        r.Register(Backend.PCodeVM, "TIMESERIES.TSBMAWEIGHTS");
         r.Register(Backend.PCodeVM, "STATS.BetaSf");
         r.Register(Backend.PCodeVM, "STATS.ChiSf");
         r.Register(Backend.PCodeVM, "STATS.LogisticCdf");

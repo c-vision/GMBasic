@@ -4909,6 +4909,10 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         {
                 return Basic.IlBackend.IlRuntime.LzComplexity(ToDoubleArr(ArgOr(args, 0)));
         },
+        [BuiltInFunction.TS_BMA_WEIGHTS] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.BmaWeights(ToDoubleArr(ArgOr(args, 0)));
+        },
         [BuiltInFunction.VOLGA] = (task, args) =>
         {
                 // Runtime comune (IlRuntime): stessa logica — unica implementazione.
