@@ -34,6 +34,39 @@
               CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 
+    <!-- gmbcs IN `bin/`, come gli altri 13 tool: è la BUILD a metterlo lì (nessun `cp` a mano).
+         .NET non produce un eseguibile singolo: accanto a `gmbcs` servono ~93 assembly, i file
+         *.deps.json/*.runtimeconfig.json e gli asset qui sopra (include/*.inc,
+         system.settings.json). Per questo l'app intera va in `<repo>/bin/gmbcs-app/` e il
+         comando che si digita resta `bin/gmbcs`, un piccolo launcher: un FILE `bin/gmbcs` e una
+         CARTELLA `bin/gmbcs/` non possono convivere (stesso nome). -->
+    <PropertyGroup>
+        <GmbRepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../'))</GmbRepoRoot>
+        <GmbCsBinDir>$(GmbRepoRoot)bin/</GmbCsBinDir>
+        <GmbCsAppDir>$(GmbCsBinDir)gmbcs-app/</GmbCsAppDir>
+    </PropertyGroup>
+    <Target Name="GmbCsToBin" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug'">
+        <ItemGroup>
+            <!-- *.pdb esclusi: servono al debugger, non per eseguire; da soli pesano più del resto. -->
+            <_GmbCsAppFile Include="$(TargetDir)**/*" Exclude="$(TargetDir)**/*.pdb" />
+        </ItemGroup>
+        <!-- SkipUnchangedFiles: dopo la prima volta la copia tocca solo ciò che è cambiato. -->
+        <Copy SourceFiles="@(_GmbCsAppFile)"
+              DestinationFiles="@(_GmbCsAppFile->'$(GmbCsAppDir)%(RecursiveDir)%(Filename)%(Extension)')"
+              SkipUnchangedFiles="true" />
+        <!-- Launcher POSIX + Windows: COPIATI da launchers/ (file versionati), non scritti riga per
+             riga. Su macOS/Linux MSBuild normalizza i backslash in `/` anche nei valori delle task
+             (`$([System.Char]::ConvertFromUtf32(92))` restituisce `/`), quindi un .cmd generato
+             inline usciva con `gmbcs-app/gmbcs.exe`. Con una copia il contenuto è esattamente
+             quello revisionato, identico su ogni piattaforma. -->
+        <Copy SourceFiles="$(MSBuildThisFileDirectory)launchers/gmbcs;$(MSBuildThisFileDirectory)launchers/gmbcs.cmd"
+              DestinationFolder="$(GmbCsBinDir)"
+              SkipUnchangedFiles="true" />
+        <Exec Command="chmod +x '$(GmbCsBinDir)gmbcs'"
+              Condition="!$([MSBuild]::IsOSPlatform('Windows'))" />
+        <Message Importance="high" Text="gmbcs -> $(GmbCsBinDir)gmbcs (+ gmbcs.cmd, $(GmbCsAppDir))" />
+    </Target>
+
     <ItemGroup>
         <ProjectReference Include="..\Executor\Executor.csproj" />
         <ProjectReference Include="..\common\Ast\Ast.csproj" />
