@@ -324,6 +324,8 @@ public enum BuiltInFunction : ushort
     SPECIAL_PARABOLICCYLINDER = 3843,
     TS_KPSS = 3844,
     TS_QLR = 3845,
+    TS_DFGLS = 3846,
+    TS_ENGLEGRANGER = 3847,
     SIGNAL_FIRWIN = 1017,
     SIGNAL_FINDPEAKS = 1018,
     SOLVE_IVP = 1019,

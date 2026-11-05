@@ -2172,6 +2172,24 @@ public static partial class IlRuntime
         return new Dictionary<string, object?> { ["Theta"] = theta, ["Mu"] = mu, ["Sigma"] = sigma, ["Phi"] = phi, ["HalfLife"] = halfLife };
     }
 
+    public static Dictionary<string, object?> Dfgls(double[] series, long lags, long deterministic)
+    {
+        var r = CommonLib.Numerics.Dfgls(series, (int)lags, (int)deterministic);
+        return new Dictionary<string, object?>
+        {
+            ["Statistic"] = r.Statistic, ["Lags"] = r.Lags, ["Observations"] = r.Observations,
+            ["Deterministic"] = r.Deterministic, ["AlphaBar"] = r.AlphaBar
+        };
+    }
+    public static Dictionary<string, object?> EngleGranger(double[][] Y, long dependent, long lags, long withConstant)
+    {
+        var r = CommonLib.Numerics.EngleGranger(Y, (int)dependent, (int)lags, (int)withConstant);
+        return new Dictionary<string, object?>
+        {
+            ["Statistic"] = r.Statistic, ["Lags"] = r.Lags, ["Observations"] = r.Observations,
+            ["NRegressors"] = r.NRegressors, ["WithConstant"] = r.WithConstant
+        };
+    }
     public static Dictionary<string, object?> Kpss(double[] series, long bandwidth, long deterministic)
     {
         var r = CommonLib.Numerics.Kpss(series, (int)bandwidth, (int)deterministic);

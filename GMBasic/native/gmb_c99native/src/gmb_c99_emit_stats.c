@@ -36,7 +36,7 @@ static void sd_flat(ctx_t* c, var_t* v) {
 
 enum { SD_TWO_VAL, SD_ONE_VAL, SD_ONE_VAL_MU, SD_FOUR_INT, SD_VAL_MU_SIG,
        SD_TWO_FLAT, SD_TWO_FLAT_LONG, SD_ONE_FLAT, SD_ONE_FLAT_DOUBLE, SD_CHI2CON,
-       SD_ONE_FLAT_LONG_LONG, SD_ONE_FLAT_DOUBLE_DOUBLE };
+       SD_ONE_FLAT_LONG_LONG, SD_ONE_FLAT_DOUBLE_DOUBLE, SD_MATRIX_LONG_LONG_LONG };
 typedef struct { gmb_tokenkind_t tk; int kind; const char* fn; } sd_row;
 
 static const sd_row SD_TBL[] = {
@@ -67,6 +67,8 @@ static const sd_row SD_TBL[] = {
     { GMB_TOK_StatsDescribe, SD_ONE_FLAT, "gmb_describe_flat" },
     { GMB_TOK_StatsChi2Contingency, SD_CHI2CON, "gmb_chi2con_jagged" },
     { GMB_TOK_TsKpss, SD_ONE_FLAT_LONG_LONG, "gmb_ts_kpss_flat" },
+    { GMB_TOK_TsDfgls, SD_ONE_FLAT_LONG_LONG, "gmb_ts_dfgls_flat" },
+    { GMB_TOK_TsEngleGranger, SD_MATRIX_LONG_LONG_LONG, "gmb_ts_engle_granger_flat" },
     { GMB_TOK_TsQlr, SD_ONE_FLAT_DOUBLE_DOUBLE, "gmb_ts_qlr_flat" },
 };
 
@@ -139,6 +141,22 @@ int emit_bf_stats_dict(ctx_t* c, const char* name, const char* ns, gmb_tokenkind
         if (n != 2 || !sd_var(c, a[0], &x)) return 0;
         sb_put(&c->out, row->fn); sb_put(&c->out, "("); sd_flat(c, x);
         sb_put(&c->out, ", "); emit_expr(c, a[1]); sb_put(&c->out, ")");
+        return 1;
+    case SD_MATRIX_LONG_LONG_LONG:
+        if (n != 4 || !a[0] || a[0]->kind != GMB_EXPR_VAR || !a[0]->var) return 0;
+        x = lookup_var(c, a[0]->var);
+        if (!x || !x->is_array) return 0;
+        sb_put(&c->out, row->fn); sb_put(&c->out, "((const double*)");
+        emit_var_ref(c, x);
+        if (x->jagged) {
+            sb_put(&c->out, ", (int)("); sb_bound_var(&c->out, x, 0); sb_put(&c->out, " + 1), (int)(");
+            emit_ident(c, x->name); sb_put(&c->out, "__cols)");
+        } else if (x->matrix || x->ndims >= 2) {
+            sb_put(&c->out, ", (int)("); sb_bound_var(&c->out, x, 0); sb_put(&c->out, " + 1), (int)(");
+            sb_bound_var(&c->out, x, 1); sb_put(&c->out, " + 1)");
+        } else return 0;
+        sb_put(&c->out, ", (int)("); emit_expr(c, a[1]); sb_put(&c->out, "), (int)(");
+        emit_expr(c, a[2]); sb_put(&c->out, "), (int)("); emit_expr(c, a[3]); sb_put(&c->out, "))");
         return 1;
     case SD_ONE_FLAT_LONG_LONG:
         if (n != 3 || !sd_var(c, a[0], &x)) return 0;
