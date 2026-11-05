@@ -931,6 +931,10 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "STATS.WeibullIsf");
         r.Register(Backend.IL, "STATS.UniformIsf");
         r.Register(Backend.IL, "STATS.ParetoIsf");
+        r.Register(Backend.IL, "STATS.BetaIsf");
+        r.Register(Backend.IL, "STATS.LogisticIsf");
+        r.Register(Backend.IL, "STATS.LognormalIsf");
+        r.Register(Backend.IL, "STATS.TriangularIsf");
         r.Register(Backend.IL, "STATS.Covariance");
         r.Register(Backend.IL, "STATS.Range");
         r.Register(Backend.IL, "STATS.MAX");

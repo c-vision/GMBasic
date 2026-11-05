@@ -1500,6 +1500,10 @@ double gmb_dist_triangular_ppf(double a, double b, double c, double p)
 double gmb_dist_weibull_isf(double shape, double scale, double p) { return gmb_dist_weibull_ppf(shape, scale, 1.0 - p); }
 double gmb_dist_uniform_isf(double a, double b, double p) { return gmb_dist_uniform_ppf(a, b, 1.0 - p); }
 double gmb_dist_pareto_isf(double scale, double shape, double p) { return gmb_dist_pareto_ppf(scale, shape, 1.0 - p); }
+double gmb_dist_beta_isf(double a, double b, double p) { return gmb_dist_beta_ppf(a, b, 1.0 - p); }
+double gmb_dist_logistic_isf(double loc, double scale, double p) { return gmb_dist_logistic_ppf(loc, scale, 1.0 - p); }
+double gmb_dist_lognormal_isf(double mu, double sigma, double p) { return gmb_dist_lognormal_ppf(mu, sigma, 1.0 - p); }
+double gmb_dist_triangular_isf(double a, double b, double c, double p) { return gmb_dist_triangular_ppf(a, b, c, 1.0 - p); }
 
 /* ==================== Analisi numerica: regressione, interpolazioni, FFT, time series ==================== */
 

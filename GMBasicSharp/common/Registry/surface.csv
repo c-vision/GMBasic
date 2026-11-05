@@ -1118,6 +1118,7 @@ procedure,SQL,TOCSV,SqlToCsv
 procedure,STATS,Anova,StatsAnova
 procedure,STATS,BernoulliPmf,BernoulliPmf
 procedure,STATS,BetaCdf,BetaCdf
+procedure,STATS,BetaIsf,StatsBetaIsf
 procedure,STATS,BetaPdf,BetaPdf
 procedure,STATS,BetaPpf,BetaPpf
 procedure,STATS,BetaSf,StatsBetaSf
@@ -1163,10 +1164,12 @@ procedure,STATS,Kurtosis,Kurtosis
 procedure,STATS,KurtosisTest,StatsKurtosisTest
 procedure,STATS,LinRegress,StatsLinRegress
 procedure,STATS,LogisticCdf,StatsLogisticCdf
+procedure,STATS,LogisticIsf,StatsLogisticIsf
 procedure,STATS,LogisticPdf,LogisticPdf
 procedure,STATS,LogisticPpf,LogisticPpf
 procedure,STATS,LogisticSf,StatsLogisticSf
 procedure,STATS,LognormalCdf,LognormalCdf
+procedure,STATS,LognormalIsf,StatsLognormalIsf
 procedure,STATS,LognormalPdf,LognormalPdf
 procedure,STATS,LognormalPpf,LognormalPpf
 procedure,STATS,LognormalSf,StatsLognormalSf
@@ -1209,6 +1212,7 @@ procedure,STATS,TTest,TTest
 procedure,STATS,TTestOneSample,TTestOneSample
 procedure,STATS,TTestPaired,TTestPaired
 procedure,STATS,TriangularCdf,StatsTriangularCdf
+procedure,STATS,TriangularIsf,StatsTriangularIsf
 procedure,STATS,TriangularPdf,TriangularPdf
 procedure,STATS,TriangularPpf,TriangularPpf
 procedure,STATS,TriangularSf,StatsTriangularSf
