@@ -46,11 +46,13 @@ public static class MathFunctions
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double LognormalSf(double mu, double sigma, double x) => 1.0 - CommonLib.Numerics.LognormalCdf(mu, sigma, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ChiPdf(double freedom, double x) => CommonLib.Numerics.ChiPdf(freedom, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ChiCdf(double freedom, double x) => CommonLib.Numerics.ChiCdf(freedom, x);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ChiSf(double freedom, double x) => 1.0 - CommonLib.Numerics.ChiCdf(freedom, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ChiSquaredPdf(double freedom, double x) => CommonLib.Numerics.ChiSquaredPdf(freedom, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ChiSquaredCdf(double freedom, double x) => CommonLib.Numerics.ChiSquaredCdf(freedom, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ChiSquaredSf(double freedom, double x) => 1.0 - CommonLib.Numerics.ChiSquaredCdf(freedom, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double BetaPdf(double a, double b, double x) => CommonLib.Numerics.BetaPdf(a, b, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double BetaCdf(double a, double b, double x) => CommonLib.Numerics.BetaCdf(a, b, x);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double BetaSf(double a, double b, double x) => 1.0 - CommonLib.Numerics.BetaCdf(a, b, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double StudentTPdf(double freedom, double x) => CommonLib.Numerics.StudentTPdf(freedom, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double StudentTCdf(double freedom, double x) => CommonLib.Numerics.StudentTCdf(freedom, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double StudentTSf(double freedom, double x) => 1.0 - CommonLib.Numerics.StudentTCdf(freedom, x);

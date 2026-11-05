@@ -20554,6 +20554,35 @@
     },
     {
       "ns": "STATS",
+      "name": "BetaSf",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "x",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "alpha",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "beta",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "STATS",
       "name": "BinomialPmf",
       "fn": true,
       "return": "double",
@@ -20670,6 +20699,28 @@
       "params": [
         {
           "name": "p",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "k",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "STATS",
+      "name": "ChiSf",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "x",
           "type": "double",
           "optional": false,
           "byRef": false,

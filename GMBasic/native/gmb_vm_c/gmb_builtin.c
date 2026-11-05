@@ -507,13 +507,16 @@ static void gmb_bf_61(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_
             else if (func_code == 63) bout->result = gmb_dist_chi2_pdf(df, args[0].num);
             else if (func_code == 64) bout->result = gmb_dist_chi2_cdf(df, args[0].num);
             else if (func_code == 1039) bout->result = 1.0 - gmb_dist_chi2_cdf(df, args[0].num);
+            else if (func_code == 1051) bout->result = 1.0 - gmb_dist_chi_cdf(df, args[0].num);
             else bout->result = gmb_dist_chi_cdf(df, args[0].num);
         }
 }
 static void gmb_bf_65(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         {
-            bout->result = func_code == 65 ? gmb_dist_beta_pdf(args[1].num, args[2].num, args[0].num) : gmb_dist_beta_cdf(args[1].num, args[2].num, args[0].num);
+            bout->result = func_code == 65 ? gmb_dist_beta_pdf(args[1].num, args[2].num, args[0].num)
+                         : func_code == 1050 ? 1.0 - gmb_dist_beta_cdf(args[1].num, args[2].num, args[0].num)
+                         : gmb_dist_beta_cdf(args[1].num, args[2].num, args[0].num);
         }
 }
 static void gmb_bf_67(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
@@ -17524,6 +17527,8 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 1047, gmb_bf_1046 },
     { 1048, gmb_bf_1048 },
     { 1049, gmb_bf_1049 },
+    { 1050, gmb_bf_65 },
+    { 1051, gmb_bf_61 },
     { 1015, gmb_bf_1013 },
     { 1017, gmb_bf_1017 },
     { 1018, gmb_bf_1018 },
