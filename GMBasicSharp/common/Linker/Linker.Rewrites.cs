@@ -1768,7 +1768,6 @@ public static partial class Linker
         AstRewriteContext context,
         BasicProgram program)
     {
-            Console.Error.WriteLine($"[FPENTRY] ns={bce.Namespace.Lexeme} kind={bce.Name.Kind} args={string.Join(",", bce.Args.Select(a => a.GetType().Name))} ctx={context.ExpectedType}");
         // §4.10(f) — AI.SYMBOL/IMPACT/CALLMAP: fold a link-time (grafo del programma, hook iniettato).
         if (bce.Name.Kind is TokenKind.AiSymbol or TokenKind.AiImpact or TokenKind.AiCallmap
             or TokenKind.AiRevision or TokenKind.AiContext or TokenKind.AiCheckrev or TokenKind.AiPatch or TokenKind.AiFindsymbol or TokenKind.AiRepomap
