@@ -870,7 +870,7 @@ public enum TokenKind
     MvGpr, MvSvmFit, MvSvmPredict, MvGmm, MvBoostFit, MvBoostPredict, MvBoostScore,
     MvBoei, MvBopi, MvBoucb, MvBonext, MvGamblerProb, MvGamblerDur, MvAteIpw, MvAteMatching,
     FittingPolyFit, FittingPolyEval, FittingChebEval, FittingPadeEval, FittingRSquared, FittingRSquaredTest,
-    SimSeed, SimUniform, SimNormal, SimExponential, SimBernoulli, SimBinomial, SimParticle,
+    SimSeed, SimUniform, SimNormal, SimExponential, SimBernoulli, SimBinomial, SimParticle, SimTpe,
     KMeans,               // Clustering K-means
     HoltWinters,          // Predizione serie temporali con Holt-Winters
     AdfTest,              // Test di Dickey-Fuller aumentato (stazionarietà)

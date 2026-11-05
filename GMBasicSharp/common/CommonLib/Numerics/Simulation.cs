@@ -56,6 +56,105 @@ public static partial class Numerics
         return c;
     }
 
+    private static int SimInt(int n)
+    {
+        if (n <= 1) return 0;
+        var v = (int)(SimNextDouble() * n);
+        if (v < 0) v = 0;
+        if (v >= n) v = n - 1;
+        return v;
+    }
+
+    private static double TpeLogPdf(double x, double mu, double sd)
+    {
+        var d = x - mu;
+        return -0.5 * d * d / (sd * sd) - Math.Log(sd);
+    }
+
+    public static double[] Tpe(Func<double[], double> f, double[] lo, double[] hi,
+        int nIter, int nInit, double seed)
+    {
+        const double LNORM = 0.91893853320467274178;
+        var d = lo.Length;
+        if (f is null || d < 1 || nInit < 2 || nIter < 1) return Array.Empty<double>();
+        var m = nInit + nIter;
+        var X = new double[m * d];
+        var Y = new double[m];
+        var sigma = new double[d];
+        var cand = new double[d];
+        var bestx = new double[d];
+        var ord = new int[m];
+        var count = 0;
+        int i, k, it;
+        SimSeed(seed);
+        for (count = 0; count < nInit; count++)
+        {
+            var row = new double[d];
+            for (k = 0; k < d; k++) { row[k] = lo[k] + (hi[k] - lo[k]) * SimUniform(); X[count * d + k] = row[k]; }
+            Y[count] = f(row);
+        }
+        for (k = 0; k < d; k++) sigma[k] = 0.2 * (hi[k] - lo[k]);
+        for (it = 0; it < nIter; it++)
+        {
+            var bestRatio = -1e300;
+            for (i = 0; i < count; i++) ord[i] = i;
+            for (i = 0; i < count; i++)
+                for (var g = i + 1; g < count; g++)
+                    if (Y[ord[g]] < Y[ord[i]]) { var t = ord[i]; ord[i] = ord[g]; ord[g] = t; }
+            var nGood = (int)(0.25 * count);
+            if (nGood < 1) nGood = 1;
+            if (nGood >= count) nGood = count - 1;
+            var nb = count - nGood;
+            for (var c = 0; c < 24; c++)
+            {
+                var src = ord[SimInt(nGood)];
+                double lg, gb;
+                for (k = 0; k < d; k++)
+                {
+                    var xc = X[src * d + k] + sigma[k] * SimNormal();
+                    if (xc < lo[k]) xc = lo[k];
+                    if (xc > hi[k]) xc = hi[k];
+                    cand[k] = xc;
+                }
+                {
+                    double acc = 0.0;
+                    for (var g = 0; g < nGood; g++)
+                    {
+                        var lp = -LNORM;
+                        var id = ord[g];
+                        for (k = 0; k < d; k++) lp += TpeLogPdf(cand[k], X[id * d + k], sigma[k]);
+                        acc += Math.Exp(lp);
+                    }
+                    lg = Math.Log(acc / nGood + 1e-300);
+                }
+                if (nb > 0)
+                {
+                    double acc = 0.0;
+                    for (var g = nGood; g < count; g++)
+                    {
+                        var lp = -LNORM;
+                        var id = ord[g];
+                        for (k = 0; k < d; k++) lp += TpeLogPdf(cand[k], X[id * d + k], sigma[k]);
+                        acc += Math.Exp(lp);
+                    }
+                    gb = Math.Log(acc / nb + 1e-300);
+                }
+                else gb = -1e300;
+                var ratio = lg - gb;
+                if (ratio > bestRatio) { bestRatio = ratio; for (k = 0; k < d; k++) bestx[k] = cand[k]; }
+            }
+            for (k = 0; k < d; k++) X[count * d + k] = bestx[k];
+            Y[count] = f((double[])bestx.Clone());
+            count++;
+        }
+        var best = 0;
+        for (i = 1; i < count; i++) if (Y[i] < Y[best]) best = i;
+        var outp = new double[d + 1];
+        for (k = 0; k < d; k++) outp[k] = X[best * d + k];
+        outp[d] = Y[best];
+        return outp;
+    }
+
     public static (double[] Mean, double[] Variance) ParticleFilter(double[] obs, double a,
         double q, double r, int nParticles, double seed)
     {

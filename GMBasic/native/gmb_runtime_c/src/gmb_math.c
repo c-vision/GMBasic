@@ -4645,3 +4645,123 @@ double gmb_mv_boost_score(const double* model, int mlen, const double* X, int n,
     }
     return sst > 0 ? 1.0 - sse / sst : 0.0;
 }
+
+/* --- TPE (Tree-structured Parzen Estimator), port di gs_tpe --- */
+static int gmb_sim_int(int n)
+{
+    int v;
+    if (n <= 1) return 0;
+    v = (int)(gmb_sim_next_double() * n);
+    if (v < 0) v = 0;
+    if (v >= n) v = n - 1;
+    return v;
+}
+typedef double (*gmb_tpe_fn_t)(const double* x, void* ctx);
+static double gmb_tpe_logpdf_dim(double x, double mu, double sd)
+{
+    double d = x - mu;
+    return -0.5 * d * d / (sd * sd) - log(sd);
+}
+double* gmb_sim_tpe_ctx(gmb_tpe_fn_t f, void* ctx, const double* lo, const double* hi, int d,
+                        int n_iter, int n_init, double seed, int* outn)
+{
+    static const double LNORM = 0.91893853320467274178;
+    double *X, *Y, *sigma, *cand, *bestx, *out;
+    int *ord;
+    int m, count = 0, i, k, it, best = 0;
+    if (outn) *outn = 0;
+    if (!f || !lo || !hi || !outn || d < 1 || n_init < 2 || n_iter < 1) return NULL;
+    m = n_init + n_iter;
+    X = (double*)malloc((size_t)m * d * sizeof(double));
+    Y = (double*)malloc((size_t)m * sizeof(double));
+    sigma = (double*)malloc((size_t)d * sizeof(double));
+    cand = (double*)malloc((size_t)d * sizeof(double));
+    bestx = (double*)malloc((size_t)d * sizeof(double));
+    ord = (int*)malloc((size_t)m * sizeof(int));
+    if (!X || !Y || !sigma || !cand || !bestx || !ord) {
+        free(X); free(Y); free(sigma); free(cand); free(bestx); free(ord);
+        return NULL;
+    }
+    gmb_sim_seed((unsigned long long)seed);
+    for (count = 0; count < n_init; count++) {
+        for (k = 0; k < d; k++) X[(size_t)count * d + k] = lo[k] + (hi[k] - lo[k]) * gmb_sim_uniform();
+        Y[count] = f(&X[(size_t)count * d], ctx);
+    }
+    for (k = 0; k < d; k++) sigma[k] = 0.2 * (hi[k] - lo[k]);
+    for (it = 0; it < n_iter; it++) {
+        int n_good, g, c, nb;
+        double best_ratio = -1e300;
+        for (i = 0; i < count; i++) ord[i] = i;
+        for (i = 0; i < count; i++)
+            for (g = i + 1; g < count; g++)
+                if (Y[ord[g]] < Y[ord[i]]) { int t = ord[i]; ord[i] = ord[g]; ord[g] = t; }
+        n_good = (int)(0.25 * count);
+        if (n_good < 1) n_good = 1;
+        if (n_good >= count) n_good = count - 1;
+        nb = count - n_good;
+        for (c = 0; c < 24; c++) {
+            int src = ord[gmb_sim_int(n_good)];
+            double lg = 0.0, gb = 0.0, ratio;
+            for (k = 0; k < d; k++) {
+                double xc = X[(size_t)src * d + k] + sigma[k] * gmb_sim_normal();
+                if (xc < lo[k]) xc = lo[k];
+                if (xc > hi[k]) xc = hi[k];
+                cand[k] = xc;
+            }
+            {
+                double acc = 0.0;
+                for (g = 0; g < n_good; g++) {
+                    double lp = -LNORM;
+                    int id = ord[g];
+                    for (k = 0; k < d; k++) lp += gmb_tpe_logpdf_dim(cand[k], X[(size_t)id * d + k], sigma[k]);
+                    acc += exp(lp);
+                }
+                lg = log(acc / n_good + 1e-300);
+            }
+            if (nb > 0) {
+                double acc = 0.0;
+                for (g = n_good; g < count; g++) {
+                    double lp = -LNORM;
+                    int id = ord[g];
+                    for (k = 0; k < d; k++) lp += gmb_tpe_logpdf_dim(cand[k], X[(size_t)id * d + k], sigma[k]);
+                    acc += exp(lp);
+                }
+                gb = log(acc / nb + 1e-300);
+            } else gb = -1e300;
+            ratio = lg - gb;
+            if (ratio > best_ratio) { best_ratio = ratio; for (k = 0; k < d; k++) bestx[k] = cand[k]; }
+        }
+        for (k = 0; k < d; k++) X[(size_t)count * d + k] = bestx[k];
+        Y[count] = f(bestx, ctx);
+        count++;
+    }
+    best = 0;
+    for (i = 1; i < count; i++) if (Y[i] < Y[best]) best = i;
+    out = (double*)malloc((size_t)(d + 1) * sizeof(double));
+    if (out) {
+        for (k = 0; k < d; k++) out[k] = X[(size_t)best * d + k];
+        out[d] = Y[best];
+        *outn = d + 1;
+    }
+    free(X); free(Y); free(sigma); free(cand); free(bestx); free(ord);
+    return out;
+}
+typedef struct { gmb_fn_t fn; int d; } gmb_tpe_c99_ctx_t;
+static double gmb_tpe_c99_tramp(const double* x, void* ctx)
+{
+    gmb_tpe_c99_ctx_t* c = (gmb_tpe_c99_ctx_t*)ctx;
+    gmb_int_t prev = gmb_lambda_bound(0);
+    double r;
+    gmb_lambda_bound_set(0, (gmb_int_t)c->d - 1);
+    r = ((double(*)(void*, double*))c->fn.fn)(c->fn.ctx, (double*)x);
+    gmb_lambda_bound_set(0, prev);
+    return r;
+}
+double* gmb_sim_tpe_c99(gmb_fn_t fn, const double* lo, const double* hi, int d,
+                        int n_iter, int n_init, double seed, gmb_int_t* outn)
+{
+    gmb_tpe_c99_ctx_t c;
+    c.fn = fn;
+    c.d = d;
+    return gmb_sim_tpe_ctx(gmb_tpe_c99_tramp, &c, lo, hi, d, n_iter, n_init, seed, outn);
+}

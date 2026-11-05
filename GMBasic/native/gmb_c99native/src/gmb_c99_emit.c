@@ -1439,6 +1439,7 @@ static int dim_arr_init_kind(const gmb_expr_t* e) {
         { GMB_TOK_TsBmaWeights, 1, 1 },
         { GMB_TOK_TsHmmViterbi, 1, 3 },
         { GMB_TOK_MvBoostFit, 1, 6 },
+        { GMB_TOK_SimTpe, 1, 6 },
         { GMB_TOK_Deseasonalize, 1, 1 }, { GMB_TOK_TimeSeriesMinMax, 1, 1 },
         { GMB_TOK_AMap, 1, 1 }, { GMB_TOK_AFilter, 1, 1 }, { GMB_TOK_AReverse, 1, 1 },
         { GMB_TOK_ASort, 1, 1 }, { GMB_TOK_APad, 1, 2 }, { GMB_TOK_AClone, 1, 1 }, { GMB_TOK_AUnique, 1, 1 },
@@ -9681,6 +9682,30 @@ static int dim_arr_timeseries1d(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init) {
      * si controlla: il token TS è univoco (chiave canonica). nm resta solo per i messaggi. */
     const char* nm = init->var;
     var_t* av = NULL;
+    if (init->tk == GMB_TOK_SimTpe) {
+        var_t *lo = NULL, *hi = NULL;
+        if (init->nargs < 6) {
+            c99_fail(c, s->line, "DIM %s: SIMULATION.TPE richiede (f, lo, hi, nIter, nInit, seed)", v->name);
+            return 1;
+        }
+        if (!an1d_arr(c, init->args[1], &lo) || !an1d_arr(c, init->args[2], &hi)) {
+            c99_fail(c, s->line, "DIM %s: lo/hi devono essere array", v->name);
+            return 1;
+        }
+        ind(c);
+        emit_ident(c, v->name);
+        sb_put(&c->out, " = gmb_sim_tpe_c99(");
+        emit_expr(c, init->args[0]);
+        sb_put(&c->out, ", (const double*)"); emit_var_ref(c, lo);
+        sb_put(&c->out, ", (const double*)"); emit_var_ref(c, hi);
+        sb_put(&c->out, ", (int)("); emit_arr_len_of(c, lo);
+        sb_put(&c->out, "), (int)("); emit_expr(c, init->args[3]);
+        sb_put(&c->out, "), (int)("); emit_expr(c, init->args[4]);
+        sb_put(&c->out, "), (double)("); emit_expr(c, init->args[5]);
+        sb_put(&c->out, "), &");
+        emit_ident(c, v->name); sb_put(&c->out, "_len);\n");
+        return 1;
+    }
     if (init->nargs < 1 || !an1d_arr(c, init->args[0], &av)) return 0;
     /* famiglia 1: gmb_ts_*(serie, n, parametro-long, &out_len) — finestra/ordine/periodo
      * (parity StdLib.Runtime.TimeSeries.cs: MA/ROLLMEAN/ROLLSTDDEV/ROLLMAD/ROLLZSCORE/

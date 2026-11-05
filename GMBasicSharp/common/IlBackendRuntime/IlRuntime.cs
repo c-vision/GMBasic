@@ -2245,6 +2245,8 @@ public static partial class IlRuntime
         => CommonLib.Numerics.BoostFit(X, y, (int)engine, (int)nEst, lr, (int)maxDepth);
     public static double BoostPredict(double[] model, double[] x) => CommonLib.Numerics.BoostPredict(model, x);
     public static double BoostScore(double[] model, double[][] X, double[] y) => CommonLib.Numerics.BoostScore(model, X, y);
+    public static double[] Tpe(Func<double[], double> f, double[] lo, double[] hi, long nIter, long nInit, double seed)
+        => CommonLib.Numerics.Tpe(f ?? (_ => 0), lo, hi, (int)nIter, (int)nInit, seed);
     public static Dictionary<string, object?> ParticleFilter(double[] obs, double a, double q, double r, double N, double seed)
     {
         var res = CommonLib.Numerics.ParticleFilter(obs, a, q, r, (int)N, seed);

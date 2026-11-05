@@ -835,6 +835,33 @@ static void gmb_bf_3875(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
         bout->result = gmb_mv_boost_score(m, nm, flat, n, p, y);
         free(m); free(y); free(flat);
 }
+typedef struct { gmb_closure_ctx_t cc; int n; } gmb_tpe_vm_ctx_t;
+static double gmb_vm_tpe_cb(const double* x, void* c)
+{
+        gmb_tpe_vm_ctx_t* t = (gmb_tpe_vm_ctx_t*)c;
+        return gmb_vm_call_closure_sync_list(t->cc.vm, t->cc.task, t->cc.cl, x, t->n);
+}
+static void gmb_bf_3884(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)func_code;
+        gmb_obj_closure_t* cl = (args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_CLOSURE)
+                ? (gmb_obj_closure_t*)args[0].ref : NULL;
+        int nlo = 0, nhi = 0;
+        double* lo = (argc >= 2) ? gmb_vm_list_to_dbl(&args[1], &nlo) : NULL;
+        double* hi = (argc >= 3) ? gmb_vm_list_to_dbl(&args[2], &nhi) : NULL;
+        int d = nlo < nhi ? nlo : nhi;
+        gmb_tpe_vm_ctx_t ctx;
+        gmb_int_t outn = 0;
+        double* r;
+        if (!cl || !lo || !hi || d < 1) { free(lo); free(hi); bout->result = 0; return; }
+        ctx.cc.vm = vm; ctx.cc.task = task; ctx.cc.cl = cl; ctx.n = d;
+        r = gmb_sim_tpe_ctx(gmb_vm_tpe_cb, &ctx, lo, hi, d,
+                            (int)(argc >= 4 ? args[3].num : 10),
+                            (int)(argc >= 5 ? args[4].num : 5),
+                            argc >= 6 ? args[5].num : 1.0, &outn);
+        free(lo); free(hi);
+        gmb_vm_set_result_list(r, (int)outn, &bout->is_num, &bout->result_ref);
+}
 static void gmb_bf_3872(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         (void)vm; (void)task; (void)func_code;
@@ -18316,6 +18343,7 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 3870, gmb_bf_3866 },
     { 3871, gmb_bf_3866 },
     { 3872, gmb_bf_3872 },
+    { 3884, gmb_bf_3884 },
     { 3873, gmb_bf_3873 },
     { 3876, gmb_bf_3876 },
     { 3877, gmb_bf_3876 },

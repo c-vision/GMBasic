@@ -1083,6 +1083,7 @@ static const gmb_ns_lookup_row_t gmb_ns_lookup[] = {
     { "SIMULATION", "SIMNORMAL", GMB_TOK_SimNormal },
     { "SIMULATION", "SIMSEED", GMB_TOK_SimSeed },
     { "SIMULATION", "SIMUNIFORM", GMB_TOK_SimUniform },
+    { "SIMULATION", "TPE", GMB_TOK_SimTpe },
     { "SPATIAL", "CDIST", GMB_TOK_SpatialCdist },
     { "SPATIAL", "CONVEXHULL", GMB_TOK_SpatialConvexHull },
     { "SPATIAL", "DISTANCEMATRIX", GMB_TOK_SpatialDistanceMatrix },

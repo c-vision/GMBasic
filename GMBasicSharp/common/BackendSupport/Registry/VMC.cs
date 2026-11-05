@@ -947,6 +947,7 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "SIMULATION.SimBernoulli");
         r.Register(Backend.VMC, "SIMULATION.SimBinomial");
         r.Register(Backend.VMC, "SIMULATION.PARTICLEFILTER");
+        r.Register(Backend.VMC, "SIMULATION.TPE");
         r.Register(Backend.VMC, "MULTIVARIATE.BOOSTFIT");
         r.Register(Backend.VMC, "MULTIVARIATE.BOOSTPREDICT");
         r.Register(Backend.VMC, "MULTIVARIATE.BOOSTSCORE");
