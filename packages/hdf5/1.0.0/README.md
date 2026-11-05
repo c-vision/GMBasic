@@ -7,26 +7,29 @@ va versionato/distribuito separatamente dai sorgenti di gmbsuite.
 - shim FFI: `src/hdf5_ffi.c` (`ofx_h5_*`), handle = `LONG` (puntatore), stringhe come `STRING`;
 - superficie BASIC: `hdf5.inc` → namespace **`HDF5`** (19 funzioni: le 17 + `H5SIZE` per
   dimensionare `out()` e `H5READDBL` type-agnostica);
-- **relocabile e allineato al runtime**: `lib/osx-arm64/` contiene `libgmbhdf5.dylib` **e**
-  `libhdf5.dylib` (install-name `@rpath/libhdf5.dylib`, rpath `@loader_path`). La dylib HDF5 è
-  **la stessa build 1.14.6 che GMBasic pubblica** in `~/.gmbasic/libs` (`libhdf5.310.dylib`):
-  la VM/C precarica le lib del runtime, quindi una build diversa (es. brew 2.2) risponderebbe solo
-  sui backend che caricano la nostra copia → output divergenti (verificato: `H5VERSION` dava
-  2.2.0 su IL/PCode/C99 e 1.14.6 su VM/C). Con la build allineata, `H5VERSION` è identica sui
-  4 backend.
+- **HDF5 2.2.0 (l'ultima), isolata dal runtime**: `lib/osx-arm64/` contiene `libgmbhdf5.dylib`,
+  `libhdf5.320.dylib` (HDF5 2.2.0, soname 2.x), `libsz.2.dylib` e `libaec.0.dylib`
+  (dipendenze szip/aec), tutte con
+  install-name `@rpath/...` e rpath `@loader_path`. La dylib HDF5 **non** usa il nome standard
+  `libhdf5.dylib` di proposito: il runtime GMBasic pubblica in `~/.gmbasic/libs` una sua
+  libhdf5 1.14.6 con install-name `@rpath/libhdf5.dylib` e la VM/C la precarica; dyld
+  deduplica per install-name, quindi con il nome standard la VM/C riusava la 1.14.6
+  (`H5VERSION` = 2.2.0 su IL/PCode/C99 e 1.14.6 su VM/C). Con `@rpath/libhdf5.320.dylib` e il
+  binding a due livelli le chiamate dello shim restano legate alla **nostra** copia:
+  `H5VERSION` = **2.2.0 su tutti e 4 i backend**.
 
 ## Build
 
 ```bash
-brew install hdf5          # header HDF5 per compilare (la lib linkata NON è quella di brew)
-gmb libs ensure            # popola ~/.gmbasic/libs con la build 1.14.6 del runtime
-bash build.sh              # -> lib/osx-arm64/libgmbhdf5.dylib + libhdf5.dylib (firmate)
+brew install hdf5 libaec   # HDF5 2.2.0 + libsz (szip)
+bash build.sh              # -> lib/osx-arm64/{libgmbhdf5,libhdf5.320,libsz.2,libaec.0}.dylib
 ```
 
-`build.sh` copia `~/.gmbasic/libs/<rid>/libhdf5.310.dylib` nel pacchetto (override:
-`HDF5_DYLIB=/percorso/libhdf5.dylib`) e le ri-firma entrambe: `install_name_tool` invalida la
-firma e macOS uccide il caricamento di una dylib non firmata (SIGKILL). I `.dylib` non sono in
-git (`.gitignore`): si rigenerano con `bash build.sh`.
+`build.sh` copia `libhdf5.320.dylib`, `libsz.2.dylib` e `libaec.0.dylib` da brew, riscrive gli install-name in
+`@rpath/...` (e i riferimenti a szip/aec dentro libhdf5), linka lo shim a `-lhdf5.320` con rpath
+`@loader_path` e ri-firma le tre dylib: `install_name_tool` invalida la firma e macOS uccide il
+caricamento di una dylib non firmata (SIGKILL). I `.dylib` non sono in git (`.gitignore`): si
+rigenerano con `bash build.sh`.
 
 ## Installazione
 
@@ -48,10 +51,10 @@ HDF5.H5CLOSE(h)
 
 ## Note
 
-- `libhdf5.dylib` vive nella **stessa cartella** di `libgmbhdf5.dylib` e viene risolta da dyld
-  con `@rpath` + `@loader_path`: non serve dichiararla in `ffi.libs` (che indica la sola dylib
-  dello shim), ma deve essere copiata insieme al pacchetto — cosa che `gmb pkg install` fa
-  perché copia l'intera cartella.
+- `libhdf5.320.dylib`, `libsz.2.dylib` e `libaec.0.dylib` vivono nella **stessa cartella** di
+  `libgmbhdf5.dylib` e sono risolte da dyld con `@rpath` + `@loader_path`: non vanno dichiarate
+  in `ffi.libs` (che indica la sola dylib dello shim), ma devono essere copiate insieme al
+  pacchetto — cosa che `gmb pkg install` fa perché copia l'intera cartella.
 
 - `out()` di `H5READF64`/`H5READI64`/`H5READDBL` va dimensionato ad almeno `H5SIZE(h, nome)`;
 - `H5WRITEF64C` comprime con deflate+shuffle (`compress` 0..9);

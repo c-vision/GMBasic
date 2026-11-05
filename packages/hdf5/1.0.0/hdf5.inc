@@ -3,8 +3,8 @@
 ' FERMARSI e CHIEDERE.
 '
 ' hdf5.inc — namespace HDF5 (pacchetto gmblib-hdf5): HDF5 come formato di scambio per
-' dataset numerici multidimensionali. Wrapper su libhdf5: il pacchetto porta con sé la dylib
-' 1.14.6 del runtime (rilocabile, nessuna dipendenza dal percorso di brew a runtime).
+' dataset numerici multidimensionali. Wrapper su libhdf5 2.2.0: il pacchetto porta con sé la
+' dylib (rilocabile, nessuna dipendenza dal percorso di brew a runtime).
 '
 ' HANDLE: H5CREATE/H5OPEN ritornano un LONG (0 = errore); H5CLOSE lo libera.
 ' out() va dimensionato almeno a H5SIZE(h, nome) elementi.
