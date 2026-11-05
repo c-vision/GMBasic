@@ -35,7 +35,8 @@ static void sd_flat(ctx_t* c, var_t* v) {
 }
 
 enum { SD_TWO_VAL, SD_ONE_VAL, SD_ONE_VAL_MU, SD_FOUR_INT, SD_VAL_MU_SIG,
-       SD_TWO_FLAT, SD_TWO_FLAT_LONG, SD_ONE_FLAT, SD_ONE_FLAT_DOUBLE, SD_CHI2CON };
+       SD_TWO_FLAT, SD_TWO_FLAT_LONG, SD_ONE_FLAT, SD_ONE_FLAT_DOUBLE, SD_CHI2CON,
+       SD_ONE_FLAT_LONG_LONG, SD_ONE_FLAT_DOUBLE_DOUBLE };
 typedef struct { gmb_tokenkind_t tk; int kind; const char* fn; } sd_row;
 
 static const sd_row SD_TBL[] = {
@@ -65,6 +66,8 @@ static const sd_row SD_TBL[] = {
     { GMB_TOK_StatsJarqueBera, SD_ONE_FLAT, "gmb_jarquebera_flat" },
     { GMB_TOK_StatsDescribe, SD_ONE_FLAT, "gmb_describe_flat" },
     { GMB_TOK_StatsChi2Contingency, SD_CHI2CON, "gmb_chi2con_jagged" },
+    { GMB_TOK_TsKpss, SD_ONE_FLAT_LONG_LONG, "gmb_ts_kpss_flat" },
+    { GMB_TOK_TsQlr, SD_ONE_FLAT_DOUBLE_DOUBLE, "gmb_ts_qlr_flat" },
 };
 
 int emit_bf_stats_dict(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk,
@@ -136,6 +139,18 @@ int emit_bf_stats_dict(ctx_t* c, const char* name, const char* ns, gmb_tokenkind
         if (n != 2 || !sd_var(c, a[0], &x)) return 0;
         sb_put(&c->out, row->fn); sb_put(&c->out, "("); sd_flat(c, x);
         sb_put(&c->out, ", "); emit_expr(c, a[1]); sb_put(&c->out, ")");
+        return 1;
+    case SD_ONE_FLAT_LONG_LONG:
+        if (n != 3 || !sd_var(c, a[0], &x)) return 0;
+        sb_put(&c->out, row->fn); sb_put(&c->out, "("); sd_flat(c, x);
+        sb_put(&c->out, ", (int)("); emit_expr(c, a[1]); sb_put(&c->out, "), (int)(");
+        emit_expr(c, a[2]); sb_put(&c->out, "))");
+        return 1;
+    case SD_ONE_FLAT_DOUBLE_DOUBLE:
+        if (n != 3 || !sd_var(c, a[1], &y)) return 0;
+        sb_put(&c->out, row->fn); sb_put(&c->out, "("); sd_flat(c, y);
+        sb_put(&c->out, ", (double)("); emit_expr(c, a[0]); sb_put(&c->out, "), (double)(");
+        emit_expr(c, a[2]); sb_put(&c->out, "))");
         return 1;
     case SD_CHI2CON:
         if (n != 1 || !a[0] || a[0]->kind != GMB_EXPR_VAR || !a[0]->var) return 0;

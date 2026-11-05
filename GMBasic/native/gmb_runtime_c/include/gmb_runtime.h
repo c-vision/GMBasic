@@ -2205,6 +2205,8 @@ double* gmb_ts_hmm_viterbi(const double* lpi, const double* lA, const double* lE
 gmb_val_t gmb_ts_hmm_viterbi_list(const double* lpi, const double* lA, const double* lE, int K, int n);
 gmb_val_t gmb_ts_hmm_fit(const double* X, int n, int d, int K, int n_iter);
 gmb_val_t gmb_ts_hmm_fit_jagged(const double* const* X, int n, int d, int K, int n_iter);
+gmb_val_t gmb_ts_kpss_flat(const double* series, int n, int bandwidth, int deterministic);
+gmb_val_t gmb_ts_qlr_flat(const double* l_beta, int n_beta, double l0, double kappa_hat);
 double* gmb_ts_bma_weights(const double* ic, int n, int* out_len);
 gmb_double_t** gmb_ts_covariance_obs(const double* const* obs, int n_obs, int n_vars);
 /* MOUSE getters (MOUSE.BUTTON/WHEEL/DBLCLICK/PRESENT/MIDDLE): stato mouse TUI corrente

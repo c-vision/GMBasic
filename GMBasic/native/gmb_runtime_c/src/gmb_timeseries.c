@@ -1299,3 +1299,95 @@ gmb_val_t gmb_ts_hmm_viterbi_list(const double* lpi, const double* lA, const dou
     free(p);
     return r;
 }
+
+/* ==================== KPSS ==================== */
+static double gmb_ts_bartlett_lrv(const double* e, int n, int bw)
+{
+    double total = 0.0;
+    int t, lag;
+    for (t = 0; t < n; t++) total += e[t] * e[t];
+    total /= n;
+    for (lag = 1; lag <= bw; lag++) {
+        double cov = 0.0;
+        for (t = lag; t < n; t++) cov += e[t] * e[t - lag];
+        cov /= n;
+        total += 2.0 * (1.0 - (double)lag / (bw + 1.0)) * cov;
+    }
+    return total;
+}
+
+gmb_val_t gmb_ts_kpss_flat(const double* series, int n, int bandwidth, int deterministic)
+{
+    double* e; double partial = 0.0, ss = 0.0, lrv, stat;
+    int t;
+    gmb_dict_t d;
+    if (!series || n <= 1) {
+        d = gmb_dict_new();
+        gmb_dict_set(&d, "Statistic", gmb_make_val_double(NAN));
+        gmb_dict_set(&d, "Bandwidth", gmb_make_val_double(0));
+        gmb_dict_set(&d, "Observations", gmb_make_val_double(n));
+        gmb_dict_set(&d, "Deterministic", gmb_make_val_double(deterministic));
+        gmb_dict_set(&d, "LongRunVariance", gmb_make_val_double(NAN));
+        gmb_dict_set(&d, "Critical10", gmb_make_val_double(NAN));
+        gmb_dict_set(&d, "Critical5", gmb_make_val_double(NAN));
+        gmb_dict_set(&d, "Critical25", gmb_make_val_double(NAN));
+        gmb_dict_set(&d, "Critical1", gmb_make_val_double(NAN));
+        return gmb_make_val_dict_take(&d);
+    }
+    if (bandwidth < 0) bandwidth = (int)floor(4.0 * pow((double)n / 100.0, 0.25));
+    if (bandwidth >= n) bandwidth = n - 1;
+    e = (double*)malloc((size_t)n * sizeof(double));
+    if (!e) return gmb_hmm_nan_dict();
+    if (deterministic == 1) {
+        double st = 0, sy = 0, stt = 0, sty = 0, b, a;
+        for (t = 0; t < n; t++) { double tt = t + 1; st += tt; sy += series[t]; stt += tt * tt; sty += tt * series[t]; }
+        b = (n * sty - st * sy) / (n * stt - st * st);
+        a = (sy - b * st) / n;
+        for (t = 0; t < n; t++) e[t] = series[t] - a - b * (t + 1);
+    } else {
+        double mean = 0;
+        for (t = 0; t < n; t++) mean += series[t];
+        mean /= n;
+        for (t = 0; t < n; t++) e[t] = series[t] - mean;
+    }
+    for (t = 0; t < n; t++) { partial += e[t]; ss += partial * partial; }
+    lrv = gmb_ts_bartlett_lrv(e, n, bandwidth);
+    stat = (lrv > 0.0) ? ss / ((double)n * n * lrv) : NAN;
+    free(e);
+    d = gmb_dict_new();
+    gmb_dict_set(&d, "Statistic", gmb_make_val_double(stat));
+    gmb_dict_set(&d, "Bandwidth", gmb_make_val_double(bandwidth));
+    gmb_dict_set(&d, "Observations", gmb_make_val_double(n));
+    gmb_dict_set(&d, "Deterministic", gmb_make_val_double(deterministic));
+    gmb_dict_set(&d, "LongRunVariance", gmb_make_val_double(lrv));
+    if (deterministic == 1) {
+        gmb_dict_set(&d, "Critical10", gmb_make_val_double(0.119));
+        gmb_dict_set(&d, "Critical5", gmb_make_val_double(0.146));
+        gmb_dict_set(&d, "Critical25", gmb_make_val_double(0.176));
+        gmb_dict_set(&d, "Critical1", gmb_make_val_double(0.216));
+    } else {
+        gmb_dict_set(&d, "Critical10", gmb_make_val_double(0.347));
+        gmb_dict_set(&d, "Critical5", gmb_make_val_double(0.463));
+        gmb_dict_set(&d, "Critical25", gmb_make_val_double(0.574));
+        gmb_dict_set(&d, "Critical1", gmb_make_val_double(0.739));
+    }
+    return gmb_make_val_dict_take(&d);
+}
+
+/* ==================== QLR ==================== */
+gmb_val_t gmb_ts_qlr_flat(const double* l_beta, int n_beta, double l0, double kappa_hat)
+{
+    int i, best = -1;
+    double qlr_t, qlr_tilde;
+    gmb_dict_t d;
+    if (!l_beta || n_beta <= 0) return gmb_hmm_nan_dict();
+    for (i = 0; i < n_beta; i++)
+        if (best < 0 || l_beta[i] > l_beta[best]) best = i;
+    qlr_t = 2.0 * (l_beta[best] - l0);
+    qlr_tilde = (kappa_hat != 0.0) ? qlr_t / kappa_hat : qlr_t;
+    d = gmb_dict_new();
+    gmb_dict_set(&d, "QLRT", gmb_make_val_double(qlr_t));
+    gmb_dict_set(&d, "QLRTilde", gmb_make_val_double(qlr_tilde));
+    gmb_dict_set(&d, "BestIndex", gmb_make_val_double(best));
+    return gmb_make_val_dict_take(&d);
+}

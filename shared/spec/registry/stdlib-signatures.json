@@ -26150,6 +26150,35 @@
     },
     {
       "ns": "TIMESERIES",
+      "name": "KPSS",
+      "fn": true,
+      "return": "ANY",
+      "params": [
+        {
+          "name": "series",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "bandwidth",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "deterministic",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "TIMESERIES",
       "name": "MaCoefficients",
       "fn": true,
       "return": "double[]",
@@ -26164,6 +26193,35 @@
         {
           "name": "order",
           "type": "int",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "TIMESERIES",
+      "name": "QLR",
+      "fn": true,
+      "return": "ANY",
+      "params": [
+        {
+          "name": "l0",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "lBeta",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "kappaHat",
+          "type": "double",
           "optional": false,
           "byRef": false,
           "array": false

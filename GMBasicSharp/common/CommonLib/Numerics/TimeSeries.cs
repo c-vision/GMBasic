@@ -994,6 +994,69 @@ public static partial class Numerics
         return sxx > 0 ? sxy / sxx : 0;
     }
 
+    // ── KPSS e QLR (parità gs_infer.c) ─────────────────────────────────────────────
+
+    private static double BartlettLrv(double[] e, int n, int bw)
+    {
+        double total = 0.0;
+        int t, lag;
+        for (t = 0; t < n; t++) total += e[t] * e[t];
+        total /= n;
+        for (lag = 1; lag <= bw; lag++)
+        {
+            double cov = 0.0;
+            for (t = lag; t < n; t++) cov += e[t] * e[t - lag];
+            cov /= n;
+            total += 2.0 * (1.0 - (double)lag / (bw + 1.0)) * cov;
+        }
+        return total;
+    }
+
+    public static (double Statistic, int Bandwidth, int Observations, int Deterministic,
+        double LongRunVariance, double Critical10, double Critical5, double Critical25, double Critical1)
+        Kpss(double[] series, int bandwidth, int deterministic)
+    {
+        int n = series.Length, t;
+        if (n <= 1)
+            return (double.NaN, 0, n, deterministic, double.NaN, double.NaN, double.NaN, double.NaN, double.NaN);
+        if (bandwidth < 0) bandwidth = (int)Math.Floor(4.0 * Math.Pow((double)n / 100.0, 0.25));
+        if (bandwidth >= n) bandwidth = n - 1;
+        var e = new double[n];
+        if (deterministic == 1)
+        {
+            double st = 0, sy = 0, stt = 0, sty = 0;
+            for (t = 0; t < n; t++) { double tt = t + 1; st += tt; sy += series[t]; stt += tt * tt; sty += tt * series[t]; }
+            var b = (n * sty - st * sy) / (n * stt - st * st);
+            var a = (sy - b * st) / n;
+            for (t = 0; t < n; t++) e[t] = series[t] - a - b * (t + 1);
+        }
+        else
+        {
+            double mean = 0;
+            for (t = 0; t < n; t++) mean += series[t];
+            mean /= n;
+            for (t = 0; t < n; t++) e[t] = series[t] - mean;
+        }
+        double partial = 0, ss = 0;
+        for (t = 0; t < n; t++) { partial += e[t]; ss += partial * partial; }
+        var lrv = BartlettLrv(e, n, bandwidth);
+        var stat = lrv > 0.0 ? ss / ((double)n * n * lrv) : double.NaN;
+        if (deterministic == 1)
+            return (stat, bandwidth, n, deterministic, lrv, 0.119, 0.146, 0.176, 0.216);
+        return (stat, bandwidth, n, deterministic, lrv, 0.347, 0.463, 0.574, 0.739);
+    }
+
+    public static (double QlrT, double QlrTilde, int BestIndex) Qlr(double l0, double[] lBeta, double kappaHat)
+    {
+        if (lBeta == null || lBeta.Length == 0) return (double.NaN, double.NaN, -1);
+        var best = 0;
+        for (var i = 1; i < lBeta.Length; i++)
+            if (lBeta[i] > lBeta[best]) best = i;
+        var qlrT = 2.0 * (lBeta[best] - l0);
+        var qlrTilde = kappaHat != 0.0 ? qlrT / kappaHat : qlrT;
+        return (qlrT, qlrTilde, best);
+    }
+
     // ── Hidden Markov Model gaussiano (parità gs_hmm.c) ────────────────────────────
 
     private static double HmmLogAdd(double a, double b)
