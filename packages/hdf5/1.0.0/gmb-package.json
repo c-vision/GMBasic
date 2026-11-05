@@ -1,0 +1,20 @@
+{
+  "name": "hdf5",
+  "version": "1.0.0",
+  "description": "HDF5 (dataset numerici multidimensionali) via shim FFI gmbsuite libgmbhdf5. Libhdf5 e' COPIATA nel pacchetto e linkata con install-name @rpath: nessuna dipendenza dal percorso di brew a runtime.",
+  "contentType": "c-ffi",
+  "exports": ["hdf5.inc"],
+  "samples": ["samples"],
+  "build": { "command": "bash build.sh", "cwd": ".", "tool": "cc", "outputs": ["lib/{platform}/libgmbhdf5.dylib"] },
+  "ffi": {
+    "api": "c-abi",
+    "headers": ["include/gmbhdf5.h"],
+    "libs": {
+      "osx-arm64": "lib/osx-arm64/libgmbhdf5.dylib",
+      "osx-arm64-extra": "lib/osx-arm64/libhdf5.dylib"
+    },
+    "link": "",
+    "declareExample": "DECLARE FUNCTION H5OPEN LIB \"gmbhdf5\" ALIAS \"ofx_h5_open\" (path AS STRING) AS LONG"
+  },
+  "dependencies": {}
+}
