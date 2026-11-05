@@ -154,7 +154,7 @@ build_core() {
   local -a plan
   # gmb_runtime_c: gfx (SDL), screen (buffer testo), pkg, compress, grep, tray, ai_llm
   plan=(
-    "$ROOT/native/gmb_runtime_c|gmb_gfx gmb_screen gmb_pkg gmb_compress gmb_grep gmb_tray gmb_ai_llm"
+    "$ROOT/native/gmb_runtime_c|gmb_gfx gmb_screen gmb_pkg gmb_compress gmb_grep gmb_clm gmb_tray gmb_ai_llm"
     "$ROOT/native/gmb_compiler_c|gmb_ai_modelio"
     "$ROOT/native/gmb_sql_ext|gmb_sql_csv_ext gmb_sql_parquet_ext"
   )

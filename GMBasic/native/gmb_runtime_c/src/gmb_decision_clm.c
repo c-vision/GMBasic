@@ -188,24 +188,37 @@ static double num_at(const char* v, int* ok)
 }
 
 /* ── Prosa ───────────────────────────────────────────────────────────────────────────────── */
-typedef struct { sb_t* b; int indent; } render_t;
-static void render(const char* v, int indent, sb_t* b);
+typedef struct { sb_t* b; int indent; int first; const char* sep; } render_t;
+static void render(const char* v, int indent, sb_t* b, const char* sep);
 
-static int is_container(const char* v) { v = skip_ws(v); return *v == '{' || *v == '['; }
+/* Contenitore NON vuoto (quelli vuoti si rendono come stringa vuota, come to_text upstream). */
+static int is_container(const char* v)
+{
+    v = skip_ws(v);
+    if (*v != '{' && *v != '[') return 0;
+    char close = *v == '{' ? '}' : ']';
+    return *skip_ws(v + 1) != close;
+}
 
 static void put_indent(sb_t* b, int n) { for (int i = 0; i < n; i++) sb_str(b, " "); }
 
+/* null → "" ; stringhe grezze ; numeri/true/false come nel JSON. */
 static void put_scalar(sb_t* b, const char* v)
 {
     v = skip_ws(v);
     if (*v == '"') { char* s = str_dup(v); if (s) { sb_str(b, s); free(s); } return; }
     const char* e = skip_value(v);
-    if (e) sb_put(b, v, (size_t)(e - v));
+    if (!e) return;
+    if (*v == '[' || *v == '{') return;                                  /* contenitore vuoto → "" */
+    if ((size_t)(e - v) == 4 && strncmp(v, "null", 4) == 0) return;
+    sb_put(b, v, (size_t)(e - v));
 }
 
 static int render_member(const char* k, size_t kl, const char* v, void* u)
 {
     render_t* r = (render_t*)u;
+    if (!r->first) sb_str(r->b, r->sep);
+    r->first = 0;
     put_indent(r->b, r->indent);
     if (k) {                                    /* oggetto: `chiave: valore` */
         char* key = (char*)malloc(kl + 3);
@@ -214,21 +227,33 @@ static int render_member(const char* k, size_t kl, const char* v, void* u)
         char* dk = str_dup(key);
         sb_str(r->b, dk ? dk : "");
         free(dk); free(key);
-        if (is_container(v)) { sb_str(r->b, ":\n"); render(v, r->indent + 2, r->b); return 0; }
+        if (is_container(v)) { sb_str(r->b, ":\n"); render(v, r->indent + 2, r->b, "\n"); return 0; }
         sb_str(r->b, ": ");
     } else {                                    /* array: `- elemento` */
-        if (is_container(v)) { sb_str(r->b, "-\n"); render(v, r->indent + 2, r->b); return 0; }
+        if (is_container(v)) { sb_str(r->b, "-\n"); render(v, r->indent + 2, r->b, "\n"); return 0; }
         sb_str(r->b, "- ");
     }
     put_scalar(r->b, v);
-    sb_str(r->b, "\n");
     return 0;
 }
 
-static void render(const char* v, int indent, sb_t* b)
+/* `sep` separa i membri dello STESSO livello: i campi di primo livello di un oggetto sono
+ * separati da una riga vuota ("\n\n"), quelli annidati e gli elementi di array da "\n". */
+static void render(const char* v, int indent, sb_t* b, const char* sep)
 {
-    render_t r = { b, indent };
+    render_t r = { b, indent, 1, sep };
     each(v, render_member, &r);
+}
+
+/* Equivalente di `str.strip()` (spazi ASCII): copia heap. */
+static char* strip_dup(const char* s)
+{
+    while (*s == ' ' || *s == '\t' || *s == '\n' || *s == '\r') s++;
+    size_t n = strlen(s);
+    while (n && (s[n - 1] == ' ' || s[n - 1] == '\t' || s[n - 1] == '\n' || s[n - 1] == '\r')) n--;
+    char* c = (char*)malloc(n + 1);
+    if (c) { memcpy(c, s, n); c[n] = 0; }
+    return c;
 }
 
 char* gmb_clm_to_text(const char* state)
@@ -239,8 +264,7 @@ char* gmb_clm_to_text(const char* state)
         const char* e = skip_value(p);
         if (e && *skip_ws(e) == 0) {
             sb_t b = {0};
-            render(p, 0, &b);
-            if (b.n && b.p[b.n - 1] == '\n') b.p[--b.n] = 0;     /* niente newline finale */
+            render(p, 0, &b, *p == '{' ? "\n\n" : "\n");
             return sb_take(&b);
         }
     }
@@ -252,14 +276,18 @@ char* gmb_clm_to_text(const char* state)
 
 char* gmb_clm_state_text(const char* state, const char* instructions)
 {
-    char* s = gmb_clm_to_text(state);
-    if (!s) return NULL;
-    const char* i = instructions ? instructions : "";
-    if (!*s) { free(s); char* c = strdup(i); return c; }
-    if (!*i) return s;
+    /* `state_text` upstream: entrambe le parti sono strip()-ate; contesto prima, domanda dopo. */
+    char* raw = gmb_clm_to_text(state);
+    if (!raw) return NULL;
+    char* s = strip_dup(raw);
+    free(raw);
+    char* i = strip_dup(instructions ? instructions : "");
+    if (!s || !i) { free(s); free(i); return NULL; }
+    if (!*s) { free(s); return i; }
+    if (!*i) { free(i); return s; }
     sb_t b = {0};
     sb_str(&b, s); sb_str(&b, "\n\n"); sb_str(&b, i);
-    free(s);
+    free(s); free(i);
     return sb_take(&b);
 }
 
@@ -313,24 +341,29 @@ static void set_err(char* err, size_t cap, const char* fmt, const char* a)
     if (err && cap) snprintf(err, cap, fmt, a ? a : "");
 }
 
-typedef struct { const char* want; const char* val; } type_t;
-static int has_type_cb(const char* k, size_t kl, const char* v, void* u)
+typedef struct { const char* hit; int depth; } ans_t;
+static const char* find_answer_d(const char* obj, int depth);
+static int ans_cb(const char* k, size_t kl, const char* v, void* u)
 {
     (void)kl;
-    if (k && is_container(v) && *skip_ws(v) == '{' && obj_get(v, "type")) { *(const char**)u = v; return 1; }
+    ans_t* a = (ans_t*)u;
+    const char* s = skip_ws(v);
+    if (!k || *s != '{') return 0;
+    const char* r = find_answer_d(s, a->depth + 1);
+    if (r) { a->hit = r; return 1; }
     return 0;
 }
-
-/* Trova l'oggetto-risposta: il corpo stesso (ha "type") o il primo membro-oggetto che lo ha. */
-static const char* find_answer(const char* body)
+/* Oggetto-risposta: ha "type". Si scende nei membri-oggetto (risposta reale del server:
+ * {"model":…,"answers":{"<qid>":{"type":…}},"usage":…}) fino a 4 livelli. */
+static const char* find_answer_d(const char* obj, int depth)
 {
-    const char* p = skip_ws(body);
-    if (*p != '{') return NULL;
-    if (obj_get(p, "type")) return p;
-    const char* hit = NULL;
-    each(p, has_type_cb, &hit);
-    return hit;
+    if (depth > 4 || *skip_ws(obj) != '{') return NULL;
+    if (obj_get(obj, "type")) return obj;
+    ans_t a = { NULL, depth };
+    each(obj, ans_cb, &a);
+    return a.hit;
 }
+static const char* find_answer(const char* body) { return find_answer_d(skip_ws(body), 0); }
 
 static double prob_of(const char* probs, const char* id)
 {
@@ -670,6 +703,15 @@ int gmb_clm_score(const gmb_clm_head_t* h, const float* state_emb, const float* 
     return rc;
 }
 
+/* L2-normalizza l'embedding come l'embedder upstream: x / (‖x‖ + 1e-12). */
+static void l2_inplace(float* x, int n)
+{
+    double s = 0;
+    for (int i = 0; i < n; i++) s += (double)x[i] * (double)x[i];
+    double d = sqrt(s) + 1e-12;
+    for (int i = 0; i < n; i++) x[i] = (float)(x[i] / d);
+}
+
 int gmb_clm_decide_local(const gmb_clm_head_t* head, gmb_clm_embed_fn embed, void* ctx,
                          const char* state, const char* instructions, gmb_decision_kind_t kind,
                          const gmb_decision_option_t* options, int n, gmb_decision_result_t* out,
@@ -685,17 +727,25 @@ int gmb_clm_decide_local(const gmb_clm_head_t* head, gmb_clm_embed_fn embed, voi
     if (!emb || !st) { free(emb); free(st); return -1; }
     int rc = embed(st, emb, H, ctx);
     free(st);
+    char* ins = strip_dup(instructions ? instructions : "");
     for (int i = 0; i < n && rc == 0; i++) {
         sb_t b = {0};
         if (kind == GMB_DECISION_NOUL) {
-            sb_str(&b, opt_text(&options[i])); sb_str(&b, ": ");
-            sb_str(&b, instructions ? instructions : "");
+            /* upstream: f"{k}: {d}", d = "Yes. This is true: {ins}" / "No. This is false: {ins}" se
+             * ci sono istruzioni, altrimenti la chiave stessa. */
+            const char* k = options[i].id ? options[i].id : "";
+            int is_true = strcasecmp(k, "true") == 0;
+            sb_str(&b, k); sb_str(&b, ": ");
+            if (ins && *ins) { sb_str(&b, is_true ? "Yes. This is true: " : "No. This is false: "); sb_str(&b, ins); }
+            else sb_str(&b, k);
         } else sb_str(&b, opt_text(&options[i]));
         char* ct = sb_take(&b);
         rc = ct ? embed(ct, emb + (size_t)(i + 1) * (size_t)H, H, ctx) : -1;
         free(ct);
     }
+    free(ins);
     if (rc != 0) { free(emb); set_err(err, errcap, "clm: %s", "encoder: embedding fallito"); return -1; }
+    for (int i = 0; i <= n; i++) l2_inplace(emb + (size_t)i * (size_t)H, H);
     float pr[GMB_DECISION_MAX_OPTIONS];
     rc = gmb_clm_score(head, emb, emb + H, n, pr);
     free(emb);

@@ -613,6 +613,23 @@ else()
     target_link_options(gmb_grep PRIVATE -Wl,--allow-shlib-undefined)
 endif()
 
+# Provider `clm` (JEV/SystemOne) come libreria CONDIVISA per P/Invoke (IL/PCode): stessa sorgente
+# del runtime (gmb_decision_clm.c + gmb_ai_decide.c); esporta gmb_ai_decide_clm_run_json.
+add_library(gmb_clm SHARED
+    src/gmb_decision_clm.c
+    src/gmb_ai_decide.c
+)
+target_include_directories(gmb_clm PUBLIC include)
+target_link_libraries(gmb_clm PRIVATE gmb_runtime)
+set_target_properties(gmb_clm PROPERTIES
+    OUTPUT_NAME gmb_clm
+    C_VISIBILITY_PRESET default)
+if(APPLE)
+    target_link_options(gmb_clm PRIVATE -Wl,-undefined,dynamic_lookup)
+else()
+    target_link_options(gmb_clm PRIVATE -Wl,--allow-shlib-undefined)
+endif()
+
 # COMPRESSION come libreria CONDIVISA per P/Invoke (REPL/backends C#): esporta
 # gmb_compress_b64/decompress_b64/free (zstd/lz4/xz + zlib/bz2/brotli).
 add_library(gmb_compress SHARED

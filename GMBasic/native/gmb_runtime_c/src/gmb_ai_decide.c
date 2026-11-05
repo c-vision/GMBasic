@@ -387,16 +387,16 @@ static int dc_typesafe_run(const char* state, const char* kind,
 }
 
 /* ── Provider `clm` (Contrastive Language Models): stesso contratto SystemOne ─────────────────
- * Config del provider %DECIDE: `baseUrl` (server `clm-serve`; se non contiene `/v1/systemone`
- * viene aggiunto), `apiKey`, `timeoutMs`, `instructions` (testo della domanda, opzionale).
- * Senza `baseUrl` il percorso sarebbe LOCALE (encoder MLX + head in C): l'aggancio all'encoder
- * non è ancora cablato → errore ESPLICITO, mai un fallback silenzioso. */
-static int dc_clm_run(const char* state, const char* kind,
-                      const gmb_decision_option_t* options, int n_options,
-                      gmb_decision_kind_t dkind, gmb_decision_result_t* out,
-                      char* err, size_t errcap)
+ * Config del provider %DECIDE (JSON): `baseUrl` (server `clm-serve`; se non contiene
+ * `/v1/systemone` viene aggiunto), `apiKey`, `timeoutMs`, `instructions` (testo della domanda).
+ * Senza `baseUrl` ma con `head` il percorso è LOCALE: encoder MLX last-token (`encoder`, altrimenti
+ * il modello attivo) + head in C. Ogni errore è ESPLICITO, mai un fallback silenzioso.
+ * `cfg` è passata ESPLICITAMENTE: il C# (P/Invoke) tiene il proprio registry dei provider. */
+static int dc_clm_run_cfg(const char* cfg, const char* state, const char* kind,
+                          const gmb_decision_option_t* options, int n_options,
+                          gmb_decision_kind_t dkind, gmb_decision_result_t* out,
+                          char* err, size_t errcap)
 {
-    const char* cfg = gmb_provider_active_config("decide");
     if (!cfg || !*cfg) {
         if (err && errcap) snprintf(err, errcap, "clm: nessun provider %%DECIDE attivo con config (baseUrl)");
         return -1;
@@ -405,13 +405,19 @@ static int dc_clm_run(const char* state, const char* kind,
     if (!base || !*base) {
         free(base);
         char* head = gmb_json_extract(cfg, "head");
-        int has_head = head && *head;
-        free(head);
-        if (err && errcap)
-            snprintf(err, errcap, has_head
-                ? "clm: percorso locale non disponibile: encoder MLX last-token non collegato (usa baseUrl)"
-                : "clm: baseUrl mancante nel config del provider %%DECIDE");
-        return -1;
+        if (!head || !*head) {
+            free(head);
+            if (err && errcap) snprintf(err, errcap, "clm: baseUrl mancante nel config del provider %%DECIDE");
+            return -1;
+        }
+        /* Percorso LOCALE: encoder Qwen3-8B (config "encoder", altrimenti il modello attivo) + head. */
+        char* enc = gmb_json_extract(cfg, "encoder");
+        char* linstr = gmb_json_extract(cfg, "instructions");
+        const char* enc_path = (enc && *enc) ? enc : gmb_ai_decide_active_model_path();
+        int lr = gmb_ai_decide_clm_local_run(state, linstr, dkind, options, n_options,
+                                             enc_path, head, out, err, errcap);
+        free(head); free(enc); free(linstr);
+        return lr == 1 ? 1 : -1;
     }
     char* api = gmb_json_extract(cfg, "apiKey");
     char* timeout_s = gmb_json_extract(cfg, "timeoutMs");
@@ -784,7 +790,7 @@ static char* dc_run_json_inner(const char* state, const char* kind, const char* 
     if (effective_provider && ieq(effective_provider, "clm")) {
         gmb_decision_result_t cr;
         char cerr[GMB_DECISION_ERR_CAP] = "";
-        if (dc_clm_run(state ? state : "", kind, options, n_options, k, &cr, cerr, sizeof cerr) != 1) {
+        if (dc_clm_run_cfg(gmb_provider_active_config("decide"), state ? state : "", kind, options, n_options, k, &cr, cerr, sizeof cerr) != 1) {
             char esc[GMB_DECISION_ERR_CAP + 64];
             json_escape(cerr[0] ? cerr : "clm: errore", esc, sizeof esc);
             char ebuf[GMB_DECISION_ERR_CAP + 96];
@@ -1226,3 +1232,28 @@ char* gmb_ai_decide_verify_json(const char* state, const char* kind, const char*
         !dc_sb_add(&out, &cap, &off, tail, (size_t)tn)) { free(out); return NULL; }
     return out;
 }
+
+/* Entry per P/Invoke (IL/PCode → libgmb_clm): esegue `AI DECIDE` col provider `clm` con la config
+ * passata ESPLICITAMENTE (JSON: baseUrl/apiKey/timeoutMs/instructions oppure head/encoder).
+ * Ritorna lo stesso JSON del runtime C (`{"kind":…}` oppure `{"error":"…"}`), in heap (free con
+ * gmb_ai_decide_free_json). NULL solo su memoria esaurita. */
+char* gmb_ai_decide_clm_run_json(const char* state, const char* kind, const char* config_json)
+{
+    char err[GMB_DECISION_ERR_CAP] = "";
+    gmb_decision_domain_t dom;
+    gmb_decision_result_t r;
+    char buf[1024];
+    if (!kind || gmb_decision_resolve_domain(kind, &dom) != 0) {
+        snprintf(err, sizeof err, "clm: kind non valido");
+    } else if (dc_clm_run_cfg(config_json, state ? state : "", kind, dom.options, dom.n_options,
+                              dom.kind, &r, err, sizeof err) == 1) {
+        if (gmb_decision_result_json(&r, buf, sizeof buf) < 0) return NULL;
+        return strdup(buf);
+    }
+    char esc[GMB_DECISION_ERR_CAP + 64];
+    json_escape(err[0] ? err : "clm: errore", esc, sizeof esc);
+    int n = snprintf(buf, sizeof buf, "{\"error\":\"%s\"}", esc);
+    return n < 0 ? NULL : strdup(buf);
+}
+
+void gmb_ai_decide_free_json(char* p) { free(p); }
