@@ -868,6 +868,7 @@ public enum TokenKind
     MvGaussPdf, MvStudentPdf, CopulaClaytonCdf, CopulaGumbelCdf, CopulaFrankCdf,
     RmtLambdaPlus, RmtLambdaMinus, RmtCoherence, RmtSpectralNorm, RmtDavisKahan, RmtPrincipalAngle, RmtTightness,
     MvGpr, MvSvmFit, MvSvmPredict, MvGmm,
+    FittingPolyFit, FittingPolyEval, FittingChebEval, FittingPadeEval, FittingRSquared, FittingRSquaredTest,
     KMeans,               // Clustering K-means
     HoltWinters,          // Predizione serie temporali con Holt-Winters
     AdfTest,              // Test di Dickey-Fuller aumentato (stazionarietà)

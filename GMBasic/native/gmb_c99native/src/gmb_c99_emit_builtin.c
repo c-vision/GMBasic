@@ -6036,6 +6036,61 @@ int emit_bf_mv(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, g
     if (tk == GMB_TOK_MvSvmPredict) return mv_svm_predict(c, args, nargs);
     return 0;
 }
+
+/* ── dominio: FITTING (curve fitting) ── */
+static int fit_polyfit(ctx_t* c, gmb_expr_t** a, int n) {
+    var_t *x, *y;
+    if (n < 3 || !mv_arr(c, a[0], &x) || !mv_arr(c, a[1], &y)) return 0;
+    sb_put(&c->out, "gmb_fit_polyfit_dict((const double*)"); emit_var_ref(c, x);
+    sb_put(&c->out, ", (const double*)"); emit_var_ref(c, y);
+    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, x);
+    sb_put(&c->out, "), (int)("); emit_expr(c, a[2]); sb_put(&c->out, "))");
+    return 1;
+}
+static int fit_eval1(ctx_t* c, gmb_expr_t** a, int n, const char* fn, int minus_one) {
+    var_t* coef;
+    if (n < 2 || !mv_arr(c, a[1], &coef)) return 0;
+    sb_put(&c->out, fn); sb_put(&c->out, "((double)("); emit_expr(c, a[0]);
+    sb_put(&c->out, "), (const double*)"); emit_var_ref(c, coef);
+    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, coef);
+    if (minus_one) sb_put(&c->out, " - 1");
+    sb_put(&c->out, "))");
+    return 1;
+}
+static int fit_padeeval(ctx_t* c, gmb_expr_t** a, int n) {
+    var_t *pa, *pb;
+    if (n < 3 || !mv_arr(c, a[1], &pa) || !mv_arr(c, a[2], &pb)) return 0;
+    sb_put(&c->out, "gmb_fit_pade_eval((double)("); emit_expr(c, a[0]);
+    sb_put(&c->out, "), (const double*)"); emit_var_ref(c, pa);
+    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, pa);
+    sb_put(&c->out, "), (const double*)"); emit_var_ref(c, pb);
+    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, pb); sb_put(&c->out, " - 1))");
+    return 1;
+}
+static int fit_rsq(ctx_t* c, gmb_expr_t** a, int n) {
+    var_t* v;
+    if (n < 1 || !mv_arr(c, a[0], &v)) return 0;
+    sb_put(&c->out, "gmb_fit_rsquared_dict((const double*)"); emit_var_ref(c, v);
+    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, v); sb_put(&c->out, "))");
+    return 1;
+}
+static int fit_rsq_test(ctx_t* c, gmb_expr_t** a, int n) {
+    var_t* v;
+    if (n < 1 || !mv_arr(c, a[0], &v)) return 0;
+    sb_put(&c->out, "gmb_fit_rsquared_test((const double*)"); emit_var_ref(c, v);
+    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, v); sb_put(&c->out, "))");
+    return 1;
+}
+int emit_bf_fit(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
+    (void)name; (void)ns; (void)line;
+    if (tk == GMB_TOK_FittingPolyFit) return fit_polyfit(c, args, nargs);
+    if (tk == GMB_TOK_FittingPolyEval) return fit_eval1(c, args, nargs, "gmb_fit_poly_eval", 1);
+    if (tk == GMB_TOK_FittingChebEval) return fit_eval1(c, args, nargs, "gmb_fit_cheb_eval", 0);
+    if (tk == GMB_TOK_FittingPadeEval) return fit_padeeval(c, args, nargs);
+    if (tk == GMB_TOK_FittingRSquared) return fit_rsq(c, args, nargs);
+    if (tk == GMB_TOK_FittingRSquaredTest) return fit_rsq_test(c, args, nargs);
+    return 0;
+}
 int emit_bf_ts(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
     (void)name; (void)ns; (void)line;
     for (size_t i = 0; i < sizeof(TS_TBL) / sizeof(TS_TBL[0]); i++)

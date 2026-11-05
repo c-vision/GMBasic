@@ -1152,6 +1152,14 @@ void gmb_mv_svm_fit(const double* X, const double* y, int n, int d, int k, doubl
 int gmb_mv_svm_predict(const double* W, const double* x, int d, int k);
 gmb_val_t gmb_mv_svm_fit_dict(const double* X, const double* y, int n, int d, int k, double C, int max_iter);
 gmb_val_t gmb_mv_gmm_em_1d(const double* x, int n, int k, int iters);
+double gmb_fit_cheb_eval(double x, const double* coef, int m);
+double gmb_fit_pade_eval(double x, const double* a, int na, const double* b, int nb);
+double gmb_fit_poly_eval(double x, const double* coef, int m);
+double gmb_fit_poly_ls(const double* x, const double* y, int n, int m, double* coef);
+void gmb_fit_rsquared(const double* data, int n, double* r2, double* angle);
+double gmb_fit_rsquared_test(const double* data, int n);
+gmb_val_t gmb_fit_polyfit_dict(const double* x, const double* y, int n, int m);
+gmb_val_t gmb_fit_rsquared_dict(const double* data, int n);
 double gmb_special_zeta(double s);
 double gmb_special_zeta_hurwitz(double s, double a);
 double gmb_special_polygamma(double n, double x);

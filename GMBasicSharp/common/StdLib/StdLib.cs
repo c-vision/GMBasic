@@ -183,6 +183,7 @@ public sealed partial class StdLib : IParserRegistry
         CreateStatsNamespace();
         CreateNumericalNamespace();
         CreateMultivariateNamespace();
+        CreateFittingNamespace();
         CreateRegressionNamespace();
         RegisterAnalysisResultTypeSchemas();
         // CreateOptimizeNamespace();  // DEPRECATO 2026-11-03: namespace OPTIMIZE dismesso,

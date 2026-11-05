@@ -86,6 +86,7 @@ namespace Basic;
 [JsonDerivedType(typeof(GpResultType), nameof(GpResultType))]
 [JsonDerivedType(typeof(SvmResultType), nameof(SvmResultType))]
 [JsonDerivedType(typeof(GmmResultType), nameof(GmmResultType))]
+[JsonDerivedType(typeof(PolyFitResultType), nameof(PolyFitResultType))]
 [JsonDerivedType(typeof(LuDecompositionType), nameof(LuDecompositionType))]
 [JsonDerivedType(typeof(QrDecompositionType), nameof(QrDecompositionType))]
 [JsonDerivedType(typeof(SvdDecompositionType), nameof(SvdDecompositionType))]
@@ -919,6 +920,16 @@ public record PcaResultType(Token? SourceToken = null)
     /// </summary>
     public override string ToString() => "PCARESULT";
 
+    public override AstNode DeepClone() => this with { };
+}
+
+/// <summary>
+/// Rappresenta il tipo di dato per il risultato di un fit polinomiale.
+/// </summary>
+public record PolyFitResultType(Token? SourceToken = null)
+    : DataType(SourceToken?.Position ?? SourcePosition.Unknown)
+{
+    public override string ToString() => "POLYFITRESULT";
     public override AstNode DeepClone() => this with { };
 }
 

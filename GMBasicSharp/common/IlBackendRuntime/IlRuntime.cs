@@ -2229,6 +2229,20 @@ public static partial class IlRuntime
             ["LogLikelihood"] = r.LogLikelihood
         };
     }
+    public static Dictionary<string, object?> PolyFit(double[] x, double[] y, long degree)
+    {
+        var r = CommonLib.Numerics.PolyFit(x, y, (int)degree);
+        return new Dictionary<string, object?> { ["Coef"] = r.Coef, ["Ssq"] = r.Ssq };
+    }
+    public static double PolyEval(double x, double[] coef) => CommonLib.Numerics.PolyEval(x, coef);
+    public static double ChebEval(double x, double[] coef) => CommonLib.Numerics.ChebEval(x, coef);
+    public static double PadeEval(double x, double[] a, double[] b) => CommonLib.Numerics.PadeEval(x, a, b);
+    public static Dictionary<string, object?> RSquared(double[] data)
+    {
+        var r = CommonLib.Numerics.RSquared(data);
+        return new Dictionary<string, object?> { ["R2"] = r.R2, ["Angle"] = r.Angle };
+    }
+    public static double RSquaredTest(double[] data) => CommonLib.Numerics.RSquaredTest(data);
     public static Dictionary<string, object?> GmmEm1D(double[] x, long k, long iters)
     {
         var r = CommonLib.Numerics.GmmEm1D(x, (int)k, (int)iters);
