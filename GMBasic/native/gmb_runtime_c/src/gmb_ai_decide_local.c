@@ -57,13 +57,12 @@ int gmb_ai_decide_local_adapter_run(const char* state, const char* kind,
     return -1;
 }
 
-int gmb_ai_decide_clm_local_run(const char* state, const char* instructions, gmb_decision_kind_t kind,
-                                const gmb_decision_option_t* options, int n_options,
-                                const char* encoder_dir, const char* head_path,
-                                gmb_decision_result_t* out, char* err, size_t errcap)
+int gmb_ai_decide_clm_local_scores(const char* state, const char* instructions,
+                                   const char* const* texts, int n,
+                                   const char* encoder_dir, const char* head_path,
+                                   float* probs, gmb_clm_stats_t* st, char* err, size_t errcap)
 {
-    (void)state; (void)instructions; (void)kind; (void)options; (void)n_options;
-    (void)encoder_dir; (void)head_path; (void)out;
+    (void)state; (void)instructions; (void)texts; (void)n; (void)encoder_dir; (void)head_path; (void)probs; (void)st;
     if (err && errcap)
         snprintf(err, errcap, "clm: percorso locale non disponibile: motore MLX non supportato su Windows");
     return -1;
@@ -1009,10 +1008,10 @@ static int clm_embed(const char* text, float* out, int dim, void* vctx)
     return rc;
 }
 
-int gmb_ai_decide_clm_local_run(const char* state, const char* instructions, gmb_decision_kind_t kind,
-                                const gmb_decision_option_t* options, int n_options,
-                                const char* encoder_dir, const char* head_path,
-                                gmb_decision_result_t* out, char* err, size_t errcap)
+int gmb_ai_decide_clm_local_scores(const char* state, const char* instructions,
+                                   const char* const* texts, int n,
+                                   const char* encoder_dir, const char* head_path,
+                                   float* probs, gmb_clm_stats_t* st, char* err, size_t errcap)
 {
     if (!encoder_dir || !*encoder_dir || !head_path || !*head_path) {
         set_err(err, errcap, "clm: config locale incompleta", "servono encoder (Qwen3-8B) e head (safetensors)");
@@ -1023,11 +1022,11 @@ int gmb_ai_decide_clm_local_run(const char* state, const char* instructions, gmb
     if (rc == 0) {
         clm_embed_ctx_t x; x.c = &g_clm; x.err[0] = 0;
         char derr[256] = "";
-        rc = gmb_clm_decide_local(g_clm.head, clm_embed, &x, state, instructions, kind, options, n_options, out, derr, sizeof derr);
-        if (rc != 1) set_err(err, errcap, "clm", x.err[0] ? x.err : derr);
+        rc = gmb_clm_score_texts(g_clm.head, clm_embed, &x, state, instructions, texts, n, probs, st, derr, sizeof derr);
+        if (rc != 0) set_err(err, errcap, "clm", x.err[0] ? x.err : derr);
     }
     pthread_mutex_unlock(&g_clm_lock);
-    return rc == 1 ? 1 : -1;
+    return rc == 0 ? 0 : -1;
 }
 
 #endif /* !_WIN32 */

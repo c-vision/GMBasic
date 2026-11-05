@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <time.h>
 
 /* 24 slot canonici: le etichette sono STABILI (cambiarle invalida bias/T allenati). */
 const gmb_decision_option_t gmb_decision_slots_noul[2] = {
@@ -392,46 +393,54 @@ static int dc_typesafe_run(const char* state, const char* kind,
  * Senza `baseUrl` ma con `head` il percorso è LOCALE: encoder MLX last-token (`encoder`, altrimenti
  * il modello attivo) + head in C. Ogni errore è ESPLICITO, mai un fallback silenzioso.
  * `cfg` è passata ESPLICITAMENTE: il C# (P/Invoke) tiene il proprio registry dei provider. */
-static int dc_clm_run_cfg(const char* cfg, const char* state, const char* kind,
-                          const gmb_decision_option_t* options, int n_options,
-                          gmb_decision_kind_t dkind, gmb_decision_result_t* out,
-                          char* err, size_t errcap)
+static int dc_sb_add(char** buf, size_t* cap, size_t* off, const char* s, size_t len);
+typedef struct { char *base, *api, *timeout, *instr, *head, *enc; } clm_cfg_t;
+
+static void clm_cfg_free(clm_cfg_t* c)
 {
+    free(c->base); free(c->api); free(c->timeout); free(c->instr); free(c->head); free(c->enc);
+    memset(c, 0, sizeof *c);
+}
+
+/* 0 = ok (remoto se base, altrimenti locale), -1 = errore in err. */
+static int clm_cfg_load(const char* cfg, clm_cfg_t* c, char* err, size_t errcap)
+{
+    memset(c, 0, sizeof *c);
     if (!cfg || !*cfg) {
         if (err && errcap) snprintf(err, errcap, "clm: nessun provider %%DECIDE attivo con config (baseUrl)");
         return -1;
     }
-    char* base = gmb_json_extract(cfg, "baseUrl");
-    if (!base || !*base) {
-        free(base);
-        char* head = gmb_json_extract(cfg, "head");
-        if (!head || !*head) {
-            free(head);
-            if (err && errcap) snprintf(err, errcap, "clm: baseUrl mancante nel config del provider %%DECIDE");
-            return -1;
-        }
-        /* Percorso LOCALE: encoder Qwen3-8B (config "encoder", altrimenti il modello attivo) + head. */
-        char* enc = gmb_json_extract(cfg, "encoder");
-        char* linstr = gmb_json_extract(cfg, "instructions");
-        const char* enc_path = (enc && *enc) ? enc : gmb_ai_decide_active_model_path();
-        int lr = gmb_ai_decide_clm_local_run(state, linstr, dkind, options, n_options,
-                                             enc_path, head, out, err, errcap);
-        free(head); free(enc); free(linstr);
-        return lr == 1 ? 1 : -1;
+    c->base = gmb_json_extract(cfg, "baseUrl");
+    c->api = gmb_json_extract(cfg, "apiKey");
+    c->timeout = gmb_json_extract(cfg, "timeoutMs");
+    c->instr = gmb_json_extract(cfg, "instructions");
+    c->head = gmb_json_extract(cfg, "head");
+    c->enc = gmb_json_extract(cfg, "encoder");
+    if ((!c->base || !*c->base) && (!c->head || !*c->head)) {
+        clm_cfg_free(c);
+        if (err && errcap) snprintf(err, errcap, "clm: baseUrl mancante nel config del provider %%DECIDE");
+        return -1;
     }
-    char* api = gmb_json_extract(cfg, "apiKey");
-    char* timeout_s = gmb_json_extract(cfg, "timeoutMs");
-    char* instr = gmb_json_extract(cfg, "instructions");
-    const char* kind_wire = (kind && strncasecmp(kind, "CHOICE", 6) == 0) ? "CHOICE"
-                          : (kind && strncasecmp(kind, "SCORE", 5) == 0) ? "SCORE" : "NOUL";
-    char* req = gmb_clm_build_request(state, kind_wire, options, n_options, instr);
-    free(instr);
-    char url[2048];
-    snprintf(url, sizeof url, "%s%s", base,
-             strstr(base, "/v1/systemone") ? "" : (base[strlen(base) - 1] == '/' ? "v1/systemone" : "/v1/systemone"));
-    free(base);
-    if (!req) { free(api); free(timeout_s); return -1; }
+    return 0;
+}
 
+static __thread gmb_clm_stats_t g_clm_stats;
+static __thread int g_clm_stats_valid;
+
+static double dc_now_ms(void)
+{
+    struct timespec t;
+    clock_gettime(CLOCK_MONOTONIC, &t);
+    return (double)t.tv_sec * 1000.0 + (double)t.tv_nsec / 1e6;
+}
+
+/* POST del corpo `req` a <baseUrl>/v1/systemone → `*js` (heap, NUL-terminato). 0 ok / -1. */
+static int clm_http_post(const clm_cfg_t* c, const char* req, char** js, double* ms_net, char* err, size_t errcap)
+{
+    char url[2048];
+    size_t bl = strlen(c->base);
+    snprintf(url, sizeof url, "%s%s", c->base,
+             strstr(c->base, "/v1/systemone") ? "" : (c->base[bl - 1] == '/' ? "v1/systemone" : "/v1/systemone"));
     gmb_net_http_options_t opts;
     memset(&opts, 0, sizeof opts);
     opts.method = "POST";
@@ -440,12 +449,14 @@ static int dc_clm_run_cfg(const char* cfg, const char* state, const char* kind,
     opts.timeout_ms = 15000;
     opts.allow_redirects = 1;
     opts.max_redirects = 5;
-    if (api && *api) opts.bearer_token = api;
-    if (timeout_s && *timeout_s) { long t = strtol(timeout_s, NULL, 10); if (t > 0) opts.timeout_ms = t; }
+    if (c->api && *c->api) opts.bearer_token = c->api;
+    if (c->timeout && *c->timeout) { long t = strtol(c->timeout, NULL, 10); if (t > 0) opts.timeout_ms = t; }
     int status = 0;
     char* body = NULL; size_t blen = 0; char* neterr = NULL; char* hdrs = NULL;
+    double t0 = dc_now_ms();
     int rc = gmb_net_http_request(url, &opts, &status, &body, &blen, &neterr, &hdrs);
-    free(req); free(api); free(timeout_s); free(hdrs);
+    *ms_net = dc_now_ms() - t0;
+    free(hdrs);
     if (rc != 0) {
         if (err && errcap) snprintf(err, errcap, "clm: HTTP fallito: %s", neterr ? neterr : "errore di rete");
         free(body); free(neterr);
@@ -457,14 +468,176 @@ static int dc_clm_run_cfg(const char* cfg, const char* state, const char* kind,
         free(body);
         return -1;
     }
-    char* js = (char*)malloc(blen + 1);
-    if (!js) { free(body); return -1; }
-    if (body && blen) memcpy(js, body, blen);
-    js[blen] = 0;
+    *js = (char*)malloc(blen + 1);
+    if (!*js) { free(body); return -1; }
+    if (body && blen) memcpy(*js, body, blen);
+    (*js)[blen] = 0;
     free(body);
-    rc = gmb_clm_parse_response(js, dkind, options, n_options, out, err, errcap);
-    free(js);
+    return 0;
+}
+
+static void clm_stats_remote(double ms_total, double ms_net, double margin)
+{
+    memset(&g_clm_stats, 0, sizeof g_clm_stats);
+    g_clm_stats.local = 0; g_clm_stats.ms_total = ms_total; g_clm_stats.ms_net = ms_net; g_clm_stats.margin = margin;
+    g_clm_stats_valid = 1;
+}
+
+static int dc_clm_run_cfg(const char* cfg, const char* state, const char* kind,
+                          const gmb_decision_option_t* options, int n_options,
+                          gmb_decision_kind_t dkind, gmb_decision_result_t* out,
+                          char* err, size_t errcap)
+{
+    clm_cfg_t c;
+    if (clm_cfg_load(cfg, &c, err, errcap) != 0) return -1;
+    double t0 = dc_now_ms();
+    int rc = -1;
+    if (c.base && *c.base) {
+        const char* kind_wire = (kind && strncasecmp(kind, "CHOICE", 6) == 0) ? "CHOICE"
+                              : (kind && strncasecmp(kind, "SCORE", 5) == 0) ? "SCORE" : "NOUL";
+        char* req = gmb_clm_build_request(state, kind_wire, options, n_options, c.instr);
+        char* js = NULL; double ms_net = 0;
+        if (req && clm_http_post(&c, req, &js, &ms_net, err, errcap) == 0) {
+            rc = gmb_clm_parse_response(js, dkind, options, n_options, out, err, errcap);
+            if (rc == 1) {
+                float tmp[GMB_DECISION_MAX_OPTIONS]; (void)tmp;
+                clm_stats_remote(dc_now_ms() - t0, ms_net, out->confidence);
+            }
+        }
+        free(req); free(js);
+    } else {
+        /* LOCALE: encoder Qwen3-8B (config "encoder", altrimenti il modello attivo) + head. */
+        const char* enc_path = (c.enc && *c.enc) ? c.enc : gmb_ai_decide_active_model_path();
+        char** texts = gmb_clm_candidate_texts(dkind, options, n_options, c.instr);
+        float pr[GMB_DECISION_MAX_OPTIONS];
+        gmb_clm_stats_t st;
+        if (texts && n_options <= GMB_DECISION_MAX_OPTIONS &&
+            gmb_ai_decide_clm_local_scores(state, c.instr, (const char* const*)texts, n_options,
+                                           enc_path, c.head, pr, &st, err, errcap) == 0) {
+            int top = 0;
+            for (int i = 1; i < n_options; i++) if (pr[i] > pr[top]) top = i;
+            memset(out, 0, sizeof *out);
+            out->kind = dkind;
+            out->option_id = options[top].id;
+            out->value = (options[top].label && *options[top].label) ? options[top].label : options[top].id;
+            out->probability = pr[top];
+            out->confidence = gmb_clm_confidence(pr, n_options); out->has_confidence = 1;
+            g_clm_stats = st; g_clm_stats_valid = 1;
+            rc = 1;
+        }
+        gmb_clm_free_texts(texts, n_options);
+    }
+    clm_cfg_free(&c);
+    return rc == 1 ? 1 : -1;
+}
+
+/* RANK: best-of-N su candidati liberi (kind "RANK:c1|c2|…"). probs[n] = distribuzione sui candidati. */
+static int dc_clm_rank_cfg(const char* cfg, const char* state, const char* const* cands, int n,
+                           float* probs, char* err, size_t errcap)
+{
+    clm_cfg_t c;
+    if (clm_cfg_load(cfg, &c, err, errcap) != 0) return -1;
+    double t0 = dc_now_ms();
+    int rc = -1;
+    if (c.base && *c.base) {
+        char* req = gmb_clm_build_rank_request(state, c.instr, cands, n);
+        char* js = NULL; double ms_net = 0;
+        if (req && clm_http_post(&c, req, &js, &ms_net, err, errcap) == 0 &&
+            gmb_clm_parse_rank_response(js, n, probs, err, errcap) == 0) {
+            float top = -1, second = -1;
+            for (int i = 0; i < n; i++) { if (probs[i] > top) { second = top; top = probs[i]; } else if (probs[i] > second) second = probs[i]; }
+            clm_stats_remote(dc_now_ms() - t0, ms_net, n > 1 ? (double)(top - second) : 0.0);
+            rc = 0;
+        }
+        free(req); free(js);
+    } else {
+        const char* enc_path = (c.enc && *c.enc) ? c.enc : gmb_ai_decide_active_model_path();
+        gmb_clm_stats_t st;
+        if (gmb_ai_decide_clm_local_scores(state, c.instr, cands, n, enc_path, c.head, probs, &st, err, errcap) == 0) {
+            g_clm_stats = st; g_clm_stats_valid = 1;
+            rc = 0;
+        }
+    }
+    clm_cfg_free(&c);
     return rc;
+}
+
+#define DC_RANK_MAX 256
+
+/* "RANK:c1|c2|…" → {"kind":"RANK","ranked":[{"rank":1,"candidate":"…","probability":p},…],"confidence":c}.
+ * Errori: {"error":"…"} (mai un risultato inventato). */
+static char* dc_rank_run_json(const char* state, const char* kind, const char* cfg)
+{
+    char err[GMB_DECISION_ERR_CAP] = "";
+    char* copy = strdup(kind + 5);
+    const char* cands[DC_RANK_MAX]; int n = 0;
+    float* probs = NULL; char* out = NULL;
+    if (!copy) return NULL;
+    for (char* p = copy; p && *p && n < DC_RANK_MAX; ) {
+        char* sep = strchr(p, '|');
+        if (sep) *sep = 0;
+        while (*p == ' ' || *p == '\t') p++;
+        char* e = p + strlen(p);
+        while (e > p && (e[-1] == ' ' || e[-1] == '\t')) *--e = 0;
+        if (*p) cands[n++] = p;
+        p = sep ? sep + 1 : NULL;
+    }
+    if (n < 2) {
+        snprintf(err, sizeof err, "clm: RANK richiede almeno 2 candidati");
+    } else if (!(probs = (float*)malloc((size_t)n * sizeof(float)))) {
+        snprintf(err, sizeof err, "clm: memoria esaurita");
+    } else if (dc_clm_rank_cfg(cfg, state ? state : "", cands, n, probs, err, sizeof err) == 0) {
+        int* idx = (int*)malloc((size_t)n * sizeof(int));
+        if (idx) {
+            for (int i = 0; i < n; i++) idx[i] = i;
+            for (int i = 1; i < n; i++) {                      /* insertion sort stabile, prob decrescente */
+                int v = idx[i], j = i - 1;
+                while (j >= 0 && probs[idx[j]] < probs[v]) { idx[j + 1] = idx[j]; j--; }
+                idx[j + 1] = v;
+            }
+            size_t cap = 0, off = 0;
+            char hd[64];
+            int hn = snprintf(hd, sizeof hd, "{\"kind\":\"RANK\",\"ranked\":[");
+            dc_sb_add(&out, &cap, &off, hd, (size_t)hn);
+            for (int r = 0; r < n; r++) {
+                int i = idx[r];
+                size_t el = strlen(cands[i]) * 6 + 8;
+                char* esc = (char*)malloc(el);
+                if (!esc) break;
+                json_escape(cands[i], esc, el);
+                char item[64];
+                int in = snprintf(item, sizeof item, "%s{\"rank\":%d,\"candidate\":\"", r ? "," : "", r + 1);
+                dc_sb_add(&out, &cap, &off, item, (size_t)in);
+                dc_sb_add(&out, &cap, &off, esc, strlen(esc));
+                in = snprintf(item, sizeof item, "\",\"probability\":%.6f}", (double)probs[i]);
+                dc_sb_add(&out, &cap, &off, item, (size_t)in);
+                free(esc);
+            }
+            char tl[64];
+            int tn = snprintf(tl, sizeof tl, "],\"confidence\":%.6f}", gmb_clm_confidence(probs, n));
+            dc_sb_add(&out, &cap, &off, tl, (size_t)tn);
+            free(idx);
+        }
+    }
+    free(probs); free(copy);
+    if (out) return out;
+    char esc[GMB_DECISION_ERR_CAP + 64], buf[GMB_DECISION_ERR_CAP + 96];
+    json_escape(err[0] ? err : "clm: errore", esc, sizeof esc);
+    snprintf(buf, sizeof buf, "{\"error\":\"%s\"}", esc);
+    return strdup(buf);
+}
+
+/* Misure dell'ULTIMA decisione clm su questo thread (VERIFY): NULL se non ce n'è stata una. */
+void gmb_ai_decide_clm_stats_reset(void) { g_clm_stats_valid = 0; }
+char* gmb_ai_decide_clm_stats_json(void)
+{
+    if (!g_clm_stats_valid) return NULL;
+    char buf[320];
+    int n = snprintf(buf, sizeof buf,
+        "{\"mode\":\"%s\",\"ms\":%.3f,\"encoderMs\":%.3f,\"headMs\":%.3f,\"netMs\":%.3f,\"embeddings\":%d,\"margin\":%.6f,\"cache\":\"off\"}",
+        g_clm_stats.local ? "local" : "remote", g_clm_stats.ms_total, g_clm_stats.ms_encoder,
+        g_clm_stats.ms_head, g_clm_stats.ms_net, g_clm_stats.embeddings, g_clm_stats.margin);
+    return n < 0 ? NULL : strdup(buf);
 }
 
 /* ── P6 — adapter REMOTO (OpenAI-compatibile) ─────────────────────────────────────────────
@@ -756,6 +929,12 @@ static char* dc_run_json_inner(const char* state, const char* kind, const char* 
         if (decide_kind && *decide_kind) effective_provider = decide_kind;
     }
     g_decide_profile_on = effective_provider && ieq(effective_provider, "verbalizer");
+    /* RANK ("RANK:c1|c2|…"): best-of-N su candidati liberi, solo col provider clm. */
+    if (strncasecmp(kind, "RANK:", 5) == 0) {
+        if (effective_provider && ieq(effective_provider, "clm"))
+            return dc_rank_run_json(state ? state : "", kind, gmb_provider_active_config("decide"));
+        return strdup("{\"error\":\"RANK richiede il provider clm\"}");
+    }
     gmb_decision_domain_t dom;
     if (gmb_decision_resolve_domain(kind, &dom) != 0) return NULL;
     const gmb_decision_option_t* options = dom.options;
@@ -1182,14 +1361,19 @@ char* gmb_ai_decide_verify_json(const char* state, const char* kind, const char*
         while (e > p && (e[-1] == ' ' || e[-1] == '\t')) *--e = 0;
         if (*p) {
             char escp[256]; json_escape(p, escp, sizeof escp);
+            gmb_ai_decide_clm_stats_reset();
             char* r = gmb_ai_decide_run_json(state ? state : "", kind ? kind : "", p);
+            char* cstats = gmb_ai_decide_clm_stats_json();      /* solo se il provider era clm */
             if (!first && !dc_sb_add(&results, &rcap, &roff, ",", 1)) { free(r); break; }
             first = 0;
             char head[512];
             int hn = snprintf(head, sizeof head, "{\"provider\":\"%s\",\"result\":", escp);
             if (hn < 0 || !dc_sb_add(&results, &rcap, &roff, head, (size_t)hn) ||
                 !dc_sb_add(&results, &rcap, &roff, r ? r : "null", strlen(r ? r : "null")) ||
-                !dc_sb_add(&results, &rcap, &roff, "}", 1)) { free(r); break; }
+                (cstats && (!dc_sb_add(&results, &rcap, &roff, ",\"clm\":", 7) ||
+                           !dc_sb_add(&results, &rcap, &roff, cstats, strlen(cstats)))) ||
+                !dc_sb_add(&results, &rcap, &roff, "}", 1)) { free(r); free(cstats); break; }
+            free(cstats);
             if (r) {
                 char* opt = gmb_json_extract(r, "option");
                 char* prob = gmb_json_extract(r, "probability");
@@ -1239,6 +1423,7 @@ char* gmb_ai_decide_verify_json(const char* state, const char* kind, const char*
  * gmb_ai_decide_free_json). NULL solo su memoria esaurita. */
 char* gmb_ai_decide_clm_run_json(const char* state, const char* kind, const char* config_json)
 {
+    if (kind && strncasecmp(kind, "RANK:", 5) == 0) return dc_rank_run_json(state ? state : "", kind, config_json);
     char err[GMB_DECISION_ERR_CAP] = "";
     gmb_decision_domain_t dom;
     gmb_decision_result_t r;

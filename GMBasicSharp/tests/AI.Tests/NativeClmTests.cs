@@ -82,6 +82,44 @@ public sealed class NativeClmTests
     }
 
     [Fact]
+    public async Task Rank_OrdinaPerProbabilita_ERichiestaInFormaRankUpstream()
+    {
+        var (l, url, body) = Serve("{\"model\":\"m\",\"answers\":{\"rank\":{\"type\":\"choice\",\"choice\":\"0\",\"confidence\":0.9,\"probabilities\":{\"0\":0.06,\"1\":0.9,\"2\":0.04}}}}");
+        try
+        {
+            var r = NativeClm.Run("What causes tides?", "RANK:Photosynthesis.|The Moon's pull.|Round Earth.", Cfg(url));
+            r.Should().Be("{\"kind\":\"RANK\",\"ranked\":[{\"rank\":1,\"candidate\":\"The Moon's pull.\",\"probability\":0.900000},{\"rank\":2,\"candidate\":\"Photosynthesis.\",\"probability\":0.060000},{\"rank\":3,\"candidate\":\"Round Earth.\",\"probability\":0.040000}],\"confidence\":0.850000}");
+            (await body).Should().Be("{\"state\":\"What causes tides?\",\"questions\":{\"rank\":{\"type\":\"choice\",\"instructions\":\"\",\"criteria\":{\"0\":\"Photosynthesis.\",\"1\":\"The Moon's pull.\",\"2\":\"Round Earth.\"}}}}|/v1/systemone|Bearer k123");
+        }
+        finally { l.Stop(); }
+    }
+
+    [Fact]
+    public void Rank_ConUnSoloCandidato_ErroreEsplicito()
+        => NativeClm.Run("x", "RANK:solo", Cfg("http://127.0.0.1:9")).Should().Be("{\"error\":\"clm: RANK richiede almeno 2 candidati\"}");
+
+    [Fact]
+    public void Verify_ConClm_AggiungeLeMisure_EConRulesNo()
+    {
+        var (l, url, _) = Serve("{\"answers\":{\"q\":{\"type\":\"noul\",\"noul\":0.83}}}");
+        try
+        {
+            Basic.Providers.ProviderServer.ResetForTests();
+            Basic.Providers.ProviderServer.Instance.Register("decide", "clmv", "clm",
+                new Dictionary<string, string> { ["baseUrl"] = url });
+            var json = Basic.IlBackend.IlRuntime.AiDecideVerify("urgente?", "NOUL", "clmv|rules");
+            var root = System.Text.Json.Nodes.JsonNode.Parse(json)!;
+            var results = root["results"]!.AsArray();
+            results[0]!["clm"]!["mode"]!.GetValue<string>().Should().Be("remote");
+            results[0]!["clm"]!["embeddings"]!.GetValue<int>().Should().Be(0);
+            results[0]!["clm"]!["netMs"]!.GetValue<double>().Should().BeGreaterThanOrEqualTo(0);
+            results[0]!["clm"]!["cache"]!.GetValue<string>().Should().Be("off");
+            results[1]!["clm"].Should().BeNull("rules non è clm: nessuna misura");
+        }
+        finally { l.Stop(); Basic.Providers.ProviderServer.ResetForTests(); }
+    }
+
+    [Fact]
     public void ConfigSenzaBaseUrl_EHead_ErroriEspliciti()
     {
         NativeClm.Run("x", "NOUL", new Dictionary<string, string>()).Should().Be("{\"error\":\"clm: baseUrl mancante nel config del provider %DECIDE\"}");

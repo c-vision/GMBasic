@@ -703,6 +703,14 @@ int gmb_clm_score(const gmb_clm_head_t* h, const float* state_emb, const float* 
     return rc;
 }
 
+#include <time.h>
+static double now_ms(void)
+{
+    struct timespec t;
+    clock_gettime(CLOCK_MONOTONIC, &t);
+    return (double)t.tv_sec * 1000.0 + (double)t.tv_nsec / 1e6;
+}
+
 /* L2-normalizza l'embedding come l'embedder upstream: x / (‖x‖ + 1e-12). */
 static void l2_inplace(float* x, int n)
 {
@@ -712,23 +720,14 @@ static void l2_inplace(float* x, int n)
     for (int i = 0; i < n; i++) x[i] = (float)(x[i] / d);
 }
 
-int gmb_clm_decide_local(const gmb_clm_head_t* head, gmb_clm_embed_fn embed, void* ctx,
-                         const char* state, const char* instructions, gmb_decision_kind_t kind,
-                         const gmb_decision_option_t* options, int n, gmb_decision_result_t* out,
-                         char* err, size_t errcap)
+char** gmb_clm_candidate_texts(gmb_decision_kind_t kind, const gmb_decision_option_t* options,
+                               int n, const char* instructions)
 {
-    if (!head || !embed || !options || n < 1 || n > GMB_DECISION_MAX_OPTIONS) {
-        set_err(err, errcap, "clm: %s", "head, encoder o dominio mancanti");
-        return -1;
-    }
-    int H = head->s.hidden;
-    float* emb = (float*)malloc((size_t)(n + 1) * (size_t)H * sizeof(float));
-    char* st = gmb_clm_state_text(state, instructions);
-    if (!emb || !st) { free(emb); free(st); return -1; }
-    int rc = embed(st, emb, H, ctx);
-    free(st);
+    if (!options || n < 1) return NULL;
+    char** out = (char**)calloc((size_t)n, sizeof(char*));
+    if (!out) return NULL;
     char* ins = strip_dup(instructions ? instructions : "");
-    for (int i = 0; i < n && rc == 0; i++) {
+    for (int i = 0; i < n; i++) {
         sb_t b = {0};
         if (kind == GMB_DECISION_NOUL) {
             /* upstream: f"{k}: {d}", d = "Yes. This is true: {ins}" / "No. This is false: {ins}" se
@@ -739,19 +738,119 @@ int gmb_clm_decide_local(const gmb_clm_head_t* head, gmb_clm_embed_fn embed, voi
             if (ins && *ins) { sb_str(&b, is_true ? "Yes. This is true: " : "No. This is false: "); sb_str(&b, ins); }
             else sb_str(&b, k);
         } else sb_str(&b, opt_text(&options[i]));
-        char* ct = sb_take(&b);
-        rc = ct ? embed(ct, emb + (size_t)(i + 1) * (size_t)H, H, ctx) : -1;
-        free(ct);
+        out[i] = sb_take(&b);
+        if (!out[i]) { gmb_clm_free_texts(out, n); free(ins); return NULL; }
     }
     free(ins);
+    return out;
+}
+
+void gmb_clm_free_texts(char** texts, int n)
+{
+    if (!texts) return;
+    for (int i = 0; i < n; i++) free(texts[i]);
+    free(texts);
+}
+
+int gmb_clm_score_texts(const gmb_clm_head_t* head, gmb_clm_embed_fn embed, void* ctx,
+                        const char* state, const char* instructions,
+                        const char* const* texts, int n, float* probs,
+                        gmb_clm_stats_t* st, char* err, size_t errcap)
+{
+    if (!head || !embed || !texts || !probs || n < 1) {
+        set_err(err, errcap, "clm: %s", "head, encoder o candidati mancanti");
+        return -1;
+    }
+    double t0 = now_ms(), t_enc = 0;
+    int H = head->s.hidden;
+    float* emb = (float*)malloc((size_t)(n + 1) * (size_t)H * sizeof(float));
+    char* stt = gmb_clm_state_text(state, instructions);
+    if (!emb || !stt) { free(emb); free(stt); return -1; }
+    double a = now_ms();
+    int rc = embed(stt, emb, H, ctx);
+    for (int i = 0; i < n && rc == 0; i++) rc = embed(texts[i], emb + (size_t)(i + 1) * (size_t)H, H, ctx);
+    t_enc = now_ms() - a;
+    free(stt);
     if (rc != 0) { free(emb); set_err(err, errcap, "clm: %s", "encoder: embedding fallito"); return -1; }
     for (int i = 0; i <= n; i++) l2_inplace(emb + (size_t)i * (size_t)H, H);
-    float pr[GMB_DECISION_MAX_OPTIONS];
-    rc = gmb_clm_score(head, emb, emb + H, n, pr);
+    a = now_ms();
+    rc = gmb_clm_score(head, emb, emb + H, n, probs);
+    double t_head = now_ms() - a;
     free(emb);
     if (rc != 0) { set_err(err, errcap, "clm: %s", "punteggio fallito"); return -1; }
+    if (st) {
+        float top = -1, second = -1;
+        for (int i = 0; i < n; i++) {
+            if (probs[i] > top) { second = top; top = probs[i]; }
+            else if (probs[i] > second) second = probs[i];
+        }
+        memset(st, 0, sizeof *st);
+        st->local = 1; st->embeddings = n + 1;
+        st->ms_encoder = t_enc; st->ms_head = t_head; st->ms_total = now_ms() - t0;
+        st->margin = n > 1 ? (double)(top - second) : 0.0;
+    }
+    return 0;
+}
+
+int gmb_clm_decide_local(const gmb_clm_head_t* head, gmb_clm_embed_fn embed, void* ctx,
+                         const char* state, const char* instructions, gmb_decision_kind_t kind,
+                         const gmb_decision_option_t* options, int n, gmb_decision_result_t* out,
+                         char* err, size_t errcap)
+{
+    if (!options || n < 1 || n > GMB_DECISION_MAX_OPTIONS) {
+        set_err(err, errcap, "clm: %s", "dominio non valido");
+        return -1;
+    }
+    char** texts = gmb_clm_candidate_texts(kind, options, n, instructions);
+    if (!texts) return -1;
+    float pr[GMB_DECISION_MAX_OPTIONS];
+    int rc = gmb_clm_score_texts(head, embed, ctx, state, instructions, (const char* const*)texts, n, pr, NULL, err, errcap);
+    gmb_clm_free_texts(texts, n);
+    if (rc != 0) return -1;
     int top = 0;
     for (int i = 1; i < n; i++) if (pr[i] > pr[top]) top = i;
     fill(out, kind, &options[top], pr[top], gmb_clm_confidence(pr, n));
     return 1;
+}
+
+/* ── RANK ────────────────────────────────────────────────────────────────────────────────── */
+char* gmb_clm_build_rank_request(const char* state, const char* instructions,
+                                 const char* const* cands, int n)
+{
+    sb_t b = {0};
+    sb_str(&b, "{\"state\":");
+    const char* sp = skip_ws(state ? state : "");
+    const char* se = (*sp == '{' || *sp == '[') ? skip_value(sp) : NULL;
+    if (se && *skip_ws(se) == 0) sb_put(&b, sp, (size_t)(se - sp));
+    else sb_json_str(&b, state ? state : "");
+    sb_str(&b, ",\"questions\":{\"rank\":{\"type\":\"choice\",\"instructions\":");
+    sb_json_str(&b, instructions ? instructions : "");
+    sb_str(&b, ",\"criteria\":{");
+    for (int i = 0; i < n; i++) {
+        char key[24];
+        snprintf(key, sizeof key, "%d", i);
+        if (i) sb_str(&b, ",");
+        sb_json_str(&b, key);
+        sb_str(&b, ":");
+        sb_json_str(&b, cands[i] ? cands[i] : "");
+    }
+    sb_str(&b, "}}}}");
+    return sb_take(&b);
+}
+
+int gmb_clm_parse_rank_response(const char* body, int n, float* probs, char* err, size_t errcap)
+{
+    if (!body || !*body) { set_err(err, errcap, "clm: %s", "risposta vuota"); return -1; }
+    const char* ans = find_answer(body);
+    if (!ans) { set_err(err, errcap, "clm: %s", "risposta senza oggetto 'type'"); return -1; }
+    const char* pr = obj_get(ans, "probabilities");
+    if (!pr) { set_err(err, errcap, "clm: %s", "risposta senza 'probabilities'"); return -1; }
+    for (int i = 0; i < n; i++) {
+        char key[24];
+        snprintf(key, sizeof key, "%d", i);
+        double p = prob_of(pr, key);
+        if (p < 0.0 || p > 1.0) { set_err(err, errcap, "clm: probabilita' mancante o fuori [0,1] per il candidato %s", key); return -1; }
+        probs[i] = (float)p;
+    }
+    return 0;
 }
