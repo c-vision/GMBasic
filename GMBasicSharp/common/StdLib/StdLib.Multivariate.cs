@@ -24,6 +24,19 @@ public sealed partial class StdLib
             new NativeProcedureDefinition(-1, SymbolFlags.IsPublic, T(TokenKind.Pca, "Pca"),
                 [dataArrayParam], new PcaResultType(),
                 TokenKind.Pca),
+            new NativeProcedureDefinition(-1, SymbolFlags.IsPublic, T(TokenKind.MvSvmFit, "SVMFIT"),
+                [new Parameter(-1, T(TokenKind.Identifier, "X"), new DoubleType(), arrayFlag, null, false),
+                 new Parameter(-1, T(TokenKind.Identifier, "y"), new DoubleType(), arrayFlag, null, false),
+                 new Parameter(-1, T(TokenKind.Identifier, "k"), new LongType(), SymbolFlags.None, null, false),
+                 new Parameter(-1, T(TokenKind.Identifier, "C"), new DoubleType(), SymbolFlags.None, null, false),
+                 new Parameter(-1, T(TokenKind.Identifier, "maxIter"), new LongType(), SymbolFlags.None, null, false)],
+                new SvmResultType(), TokenKind.MvSvmFit),
+            new NativeProcedureDefinition(-1, SymbolFlags.IsPublic, T(TokenKind.MvSvmPredict, "SVMPREDICT"),
+                [new Parameter(-1, T(TokenKind.Identifier, "W"), new DoubleType(), arrayFlag, null, false),
+                 new Parameter(-1, T(TokenKind.Identifier, "x"), new DoubleType(), arrayFlag, null, false),
+                 new Parameter(-1, T(TokenKind.Identifier, "d"), new LongType(), SymbolFlags.None, null, false),
+                 new Parameter(-1, T(TokenKind.Identifier, "k"), new LongType(), SymbolFlags.None, null, false)],
+                new DoubleType(), TokenKind.MvSvmPredict, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, SymbolFlags.IsPublic, T(TokenKind.MvGpr, "GPRREGRESS"),
                 [new Parameter(-1, T(TokenKind.Identifier, "x"), new DoubleType(), arrayFlag, null, false),
                  new Parameter(-1, T(TokenKind.Identifier, "y"), new DoubleType(), arrayFlag, null, false),
@@ -81,6 +94,7 @@ public sealed partial class StdLib
             { "KMeansResult", new KMeansResultType() },
             { "PcaResult", new PcaResultType() },
             { "GpResult", new GpResultType() },
+            { "SvmResult", new SvmResultType() },
         };
 
         RegisterBuiltinNamespace(namespaceName, procedures, types);

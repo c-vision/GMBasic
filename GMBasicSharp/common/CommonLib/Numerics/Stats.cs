@@ -602,6 +602,53 @@ public static partial class Numerics
         return (mean, varArr);
     }
 
+    // ── SVM multiclasse (parità gs_svm_multiclass) ──────────────────────────────────
+
+    public static (double[] W, int Classes, int Features) SvmFit(double[][] X, double[] y,
+        int k, double C, int maxIter)
+    {
+        var n = X.Length;
+        var d = n > 0 ? X[0].Length : 0;
+        if (n < 1 || d < 1 || k < 2 || C <= 0.0 || maxIter < 1)
+            return (Array.Empty<double>(), k, d);
+        var W = new double[k * d];
+        var eta = C / n;
+        var changed = true;
+        for (var iter = 0; iter < maxIter && changed; iter++)
+        {
+            changed = false;
+            for (var i = 0; i < n; i++)
+            {
+                var yi = (int)y[i];
+                for (var c = 0; c < k; c++)
+                {
+                    var lbl = c == yi ? 1 : -1;
+                    double margin = 0.0;
+                    for (var j = 0; j < d; j++) margin += W[c * d + j] * X[i][j];
+                    if (lbl * margin < 1.0)
+                    {
+                        for (var j = 0; j < d; j++) W[c * d + j] += eta * lbl * X[i][j];
+                        changed = true;
+                    }
+                }
+            }
+        }
+        return (W, k, d);
+    }
+
+    public static int SvmPredict(double[] W, double[] x, int d, int k)
+    {
+        var best = 0;
+        double bs = -1e300;
+        for (var c = 0; c < k; c++)
+        {
+            double s = 0.0;
+            for (var j = 0; j < d; j++) s += W[c * d + j] * x[j];
+            if (s > bs) { bs = s; best = c; }
+        }
+        return best;
+    }
+
     // ── Random Matrix Theory (parità gs_spectral.c) ─────────────────────────────────
 
     private static void RmtJacobi(int n, double[] A, double[] eval, double[] evec)

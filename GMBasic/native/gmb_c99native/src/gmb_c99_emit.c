@@ -25,7 +25,7 @@ static int gmb_tk_in(gmb_tokenkind_t tk, const gmb_tokenkind_t* s, unsigned n)
     return 0;
 }
 static const gmb_tokenkind_t gmb_tk_dim_num[] = { GMB_TOK_Boolean, GMB_TOK_Bool, GMB_TOK_Long, GMB_TOK_Integer, GMB_TOK_Int, GMB_TOK_Double, GMB_TOK_Single, GMB_TOK_P_Float };
-static const gmb_tokenkind_t gmb_tk_analysis_box[] = { GMB_TOK_KMeans, GMB_TOK_Pca, GMB_TOK_Anova, GMB_TOK_Arima, GMB_TOK_HoltWinters, GMB_TOK_AdfTest, GMB_TOK_P_Regression, GMB_TOK_TsHmmFit, GMB_TOK_TsKpss, GMB_TOK_TsQlr, GMB_TOK_TsDfgls, GMB_TOK_TsEngleGranger, GMB_TOK_TsJohansen, GMB_TOK_MvGpr };
+static const gmb_tokenkind_t gmb_tk_analysis_box[] = { GMB_TOK_KMeans, GMB_TOK_Pca, GMB_TOK_Anova, GMB_TOK_Arima, GMB_TOK_HoltWinters, GMB_TOK_AdfTest, GMB_TOK_P_Regression, GMB_TOK_TsHmmFit, GMB_TOK_TsKpss, GMB_TOK_TsQlr, GMB_TOK_TsDfgls, GMB_TOK_TsEngleGranger, GMB_TOK_TsJohansen, GMB_TOK_MvGpr, GMB_TOK_MvSvmFit };
 static const gmb_tokenkind_t gmb_tk_dictish[] = { GMB_TOK_Dict, GMB_TOK_Sorted, GMB_TOK_Tree, GMB_TOK_AVLTree, GMB_TOK_RedBlack, GMB_TOK_BPlusTree };
 #include "gmb_ns_types.h"
 #include "gmb_lexer.h"
@@ -1523,7 +1523,7 @@ static int dim_val_init_kind(const gmb_expr_t* e) {
         || e->tk == GMB_TOK_StatsDescribe || e->tk == GMB_TOK_StatsChi2Contingency
         || e->tk == GMB_TOK_StatsKendallTau || e->tk == GMB_TOK_StatsFTest
         || e->tk == GMB_TOK_StatsKruskal || e->tk == GMB_TOK_TsGranger || e->tk == GMB_TOK_TsGarch11 || e->tk == GMB_TOK_TsOuFit
-        || e->tk == GMB_TOK_TsHmmFit || e->tk == GMB_TOK_TsKpss || e->tk == GMB_TOK_TsQlr || e->tk == GMB_TOK_TsDfgls || e->tk == GMB_TOK_TsEngleGranger || e->tk == GMB_TOK_TsJohansen || e->tk == GMB_TOK_MvGpr) return 2;
+        || e->tk == GMB_TOK_TsHmmFit || e->tk == GMB_TOK_TsKpss || e->tk == GMB_TOK_TsQlr || e->tk == GMB_TOK_TsDfgls || e->tk == GMB_TOK_TsEngleGranger || e->tk == GMB_TOK_TsJohansen || e->tk == GMB_TOK_MvGpr || e->tk == GMB_TOK_MvSvmFit) return 2;
     /* letterale tupla (a, b, ...) → gmb_val_tuple, gmb_val_t boxed (vedi emit_tuple_lit). */
     if (strcmp(e->var, "_tuple_lit_") == 0) return 1;
     /* Costruttori COLLEZIONE/oggetto che emettono GIÀ un gmb_val_t: NEW LIST/DICT/SET/…
@@ -7663,6 +7663,8 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_RmtPrincipalAngle, emit_bf_mv },
     { NULL, GMB_TOK_RmtTightness, emit_bf_mv },
     { NULL, GMB_TOK_MvGpr, emit_bf_mv },
+    { NULL, GMB_TOK_MvSvmFit, emit_bf_mv },
+    { NULL, GMB_TOK_MvSvmPredict, emit_bf_mv },
     { NULL, GMB_TOK_Base58Encode, emit_bf_encoding },
     { NULL, GMB_TOK_Base32Encode, emit_bf_encoding },
     { NULL, GMB_TOK_ToBase64, emit_bf_encoding },

@@ -2229,6 +2229,13 @@ public static partial class IlRuntime
             ["LogLikelihood"] = r.LogLikelihood
         };
     }
+    public static Dictionary<string, object?> SvmFit(double[][] X, double[] y, long k, double C, long maxIter)
+    {
+        var r = CommonLib.Numerics.SvmFit(X, y, (int)k, C, (int)maxIter);
+        return new Dictionary<string, object?> { ["W"] = r.W, ["Classes"] = r.Classes, ["Features"] = r.Features };
+    }
+    public static double SvmPredict(double[] W, double[] x, long d, long k)
+        => CommonLib.Numerics.SvmPredict(W, x, (int)d, (int)k);
     public static Dictionary<string, object?> GpRegress(double[] x, double[] y, double[] xs, double l2, double noise)
     {
         var r = CommonLib.Numerics.GpRegress(x, y, xs, l2, noise);

@@ -1000,6 +1000,8 @@ procedure,MULTIVARIATE,RMTLAMBDAPLUS,RmtLambdaPlus
 procedure,MULTIVARIATE,RMTPRINCIPALANGLE,RmtPrincipalAngle
 procedure,MULTIVARIATE,RMTSPECTRALNORM,RmtSpectralNorm
 procedure,MULTIVARIATE,RMTTIGHTNESS,RmtTightness
+procedure,MULTIVARIATE,SVMFIT,MvSvmFit
+procedure,MULTIVARIATE,SVMPREDICT,MvSvmPredict
 procedure,MUTEX,TRYLOCK,MutexTryLock
 procedure,NET,CONN,Conn
 procedure,NET,GETHOSTIP,GetHostIp

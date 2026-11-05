@@ -3933,3 +3933,57 @@ gmb_val_t gmb_mv_gp_regress(const double* x, const double* y, int n,
     free(K); free(alpha); free(kx); free(v); free(A); free(sol); free(mean); free(var);
     return gmb_make_val_dict_take(&d);
 }
+
+/* --- SVM multiclasse (perceptron, port di gs_svm_multiclass) --- */
+void gmb_mv_svm_fit(const double* X, const double* y, int n, int d, int k,
+                    double C, int max_iter, double* W)
+{
+    double eta = C / n;
+    int iter, i, j, c, changed = 1;
+    for (i = 0; i < k * d; i++) W[i] = 0.0;
+    for (iter = 0; iter < max_iter && changed; iter++) {
+        changed = 0;
+        for (i = 0; i < n; i++) {
+            const double* xi = X + (size_t)i * d;
+            int yi = (int)y[i];
+            for (c = 0; c < k; c++) {
+                int lbl = (c == yi) ? 1 : -1;
+                double margin = 0.0;
+                for (j = 0; j < d; j++) margin += W[c*d+j] * xi[j];
+                if (lbl * margin < 1.0) {
+                    for (j = 0; j < d; j++) W[c*d+j] += eta * lbl * xi[j];
+                    changed = 1;
+                }
+            }
+        }
+    }
+}
+int gmb_mv_svm_predict(const double* W, const double* x, int d, int k)
+{
+    int c, best = 0, j;
+    double bs = -1e300;
+    for (c = 0; c < k; c++) {
+        double s = 0.0;
+        for (j = 0; j < d; j++) s += W[c*d+j] * x[j];
+        if (s > bs) { bs = s; best = c; }
+    }
+    return best;
+}
+gmb_val_t gmb_mv_svm_fit_dict(const double* X, const double* y, int n, int d, int k,
+                              double C, int max_iter)
+{
+    double* W;
+    gmb_dict_t dict;
+    gmb_val_t wv;
+    if (!X || !y || n < 1 || d < 1 || k < 2 || C <= 0.0 || max_iter < 1) return gmb_mv_nan_dict();
+    W = (double*)calloc((size_t)k * d, sizeof(double));
+    if (!W) return gmb_mv_nan_dict();
+    gmb_mv_svm_fit(X, y, n, d, k, C, max_iter, W);
+    wv = gmb_make_val_list(gmb_list_from_doubles(W, k * d));
+    free(W);
+    dict = gmb_dict_new();
+    gmb_dict_set(&dict, "W", wv);
+    gmb_dict_set(&dict, "Classes", gmb_make_val_double(k));
+    gmb_dict_set(&dict, "Features", gmb_make_val_double(d));
+    return gmb_make_val_dict_take(&dict);
+}
