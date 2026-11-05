@@ -136,9 +136,37 @@ Il provider si sceglie con `USING`; senza, vale il ruolo `%DECIDE` attivo.
 | `local` | legge i logit del modello MLX | modello locale, calibrabile |
 | `typesafe` | HTTP verso un servizio che restituisce la decisione già strutturata | JEV remoto |
 | `adapter` / `llm` | fa **generare** il modello e riconosce l'opzione | endpoint senza logprob |
+| `clm` | HTTP `POST /v1/systemone` verso un server CLM (Contrastive Language Models) | decisione per similarità su embedding |
 
-`local` e `adapter` richiedono un modello attivo; `typesafe` una configurazione `baseUrl`;
+`local` e `adapter` richiedono un modello attivo; `typesafe` e `clm` una configurazione `baseUrl`;
 `rules` e `mock` non richiedono nulla e sono gli unici usabili in un test senza rete.
+
+#### Il provider `clm`
+
+CLM non è una primitiva nuova: è un **provider** di `AI DECIDE`, con lo stesso contratto
+(`NOUL`/`CHOICE`/`SCORE`). La differenza è nel modo di decidere: non legge i logit delle opzioni, ma
+confronta l'embedding dello stato con quello di ogni candidato (`softmax(scala · coseno)`). La
+`PROBABILITY` che restituisce è quindi una **distribuzione sulle opzioni**, non una correttezza
+calibrata: `CALIBRATED` resta `null`.
+
+```basic
+AI REGISTER "team", %DECIDE, "clm", "{""baseUrl"":""http://127.0.0.1:8700"",""apiKey"":""…""}"
+AI DECIDE "{""ticket"":""Login fallito dopo il reset""}", "CHOICE:auth|billing", "team" INTO r
+```
+
+- **Configurazione** (`AI REGISTER`): `baseUrl` (se manca `/v1/systemone` viene aggiunto), `apiKey`
+  (inviata come `Authorization: Bearer`), `timeoutMs`, `instructions` (testo della domanda, opzionale).
+- Lo **stato può essere un oggetto JSON**: viene inviato come JSON e il server lo rende in prosa
+  (`chiave: valore`); le head CLM sono addestrate su prosa, non su JSON.
+- Ogni errore è **esplicito** (`{"error":"clm: …"}`): config senza `baseUrl`, HTTP non 2xx, risposta
+  di tipo diverso da quello chiesto, opzione fuori dal dominio, `probabilities` assenti. Non c'è mai
+  un fallback silenzioso: se lo vuoi, scrivilo (`FALLBACK "rules"`).
+- **Limite attuale**: il percorso *locale* (encoder MLX con pooling sull'ultimo token + head caricata
+  da `safetensors`) ha il calcolo pronto e verificato nel runtime C
+  (`gmb_decision_clm.c`), ma non è ancora collegato all'encoder: con `"head"` al posto di `baseUrl`
+  si ottiene l'errore esplicito `percorso locale non disponibile`.
+- I benchmark pubblicati dall'autore di CLM (GPU, vLLM) sono **dichiarazioni del produttore**, non
+  previsioni per questo runtime.
 
 Il ruolo di decisione si registra con la costante `%DECIDE`:
 

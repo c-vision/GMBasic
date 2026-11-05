@@ -2,6 +2,7 @@
  * Mirror di GMBasicSharp/common/AI/Decision. Il core di inferenza è in LLMEnv (ABI v8
  * CAP_DECIDE); qui non si tocca il motore. */
 #include "gmb_ai_decide.h"
+#include "gmb_decision_clm.h"
 #include "gmb_runtime.h"
 #include "gmb_network.h"
 
@@ -385,6 +386,81 @@ static int dc_typesafe_run(const char* state, const char* kind,
     return 1;
 }
 
+/* ── Provider `clm` (Contrastive Language Models): stesso contratto SystemOne ─────────────────
+ * Config del provider %DECIDE: `baseUrl` (server `clm-serve`; se non contiene `/v1/systemone`
+ * viene aggiunto), `apiKey`, `timeoutMs`, `instructions` (testo della domanda, opzionale).
+ * Senza `baseUrl` il percorso sarebbe LOCALE (encoder MLX + head in C): l'aggancio all'encoder
+ * non è ancora cablato → errore ESPLICITO, mai un fallback silenzioso. */
+static int dc_clm_run(const char* state, const char* kind,
+                      const gmb_decision_option_t* options, int n_options,
+                      gmb_decision_kind_t dkind, gmb_decision_result_t* out,
+                      char* err, size_t errcap)
+{
+    const char* cfg = gmb_provider_active_config("decide");
+    if (!cfg || !*cfg) {
+        if (err && errcap) snprintf(err, errcap, "clm: nessun provider %%DECIDE attivo con config (baseUrl)");
+        return -1;
+    }
+    char* base = gmb_json_extract(cfg, "baseUrl");
+    if (!base || !*base) {
+        free(base);
+        char* head = gmb_json_extract(cfg, "head");
+        int has_head = head && *head;
+        free(head);
+        if (err && errcap)
+            snprintf(err, errcap, has_head
+                ? "clm: percorso locale non disponibile: encoder MLX last-token non collegato (usa baseUrl)"
+                : "clm: baseUrl mancante nel config del provider %%DECIDE");
+        return -1;
+    }
+    char* api = gmb_json_extract(cfg, "apiKey");
+    char* timeout_s = gmb_json_extract(cfg, "timeoutMs");
+    char* instr = gmb_json_extract(cfg, "instructions");
+    const char* kind_wire = (kind && strncasecmp(kind, "CHOICE", 6) == 0) ? "CHOICE"
+                          : (kind && strncasecmp(kind, "SCORE", 5) == 0) ? "SCORE" : "NOUL";
+    char* req = gmb_clm_build_request(state, kind_wire, options, n_options, instr);
+    free(instr);
+    char url[2048];
+    snprintf(url, sizeof url, "%s%s", base,
+             strstr(base, "/v1/systemone") ? "" : (base[strlen(base) - 1] == '/' ? "v1/systemone" : "/v1/systemone"));
+    free(base);
+    if (!req) { free(api); free(timeout_s); return -1; }
+
+    gmb_net_http_options_t opts;
+    memset(&opts, 0, sizeof opts);
+    opts.method = "POST";
+    opts.body = req;
+    opts.body_len = strlen(req);
+    opts.timeout_ms = 15000;
+    opts.allow_redirects = 1;
+    opts.max_redirects = 5;
+    if (api && *api) opts.bearer_token = api;
+    if (timeout_s && *timeout_s) { long t = strtol(timeout_s, NULL, 10); if (t > 0) opts.timeout_ms = t; }
+    int status = 0;
+    char* body = NULL; size_t blen = 0; char* neterr = NULL; char* hdrs = NULL;
+    int rc = gmb_net_http_request(url, &opts, &status, &body, &blen, &neterr, &hdrs);
+    free(req); free(api); free(timeout_s); free(hdrs);
+    if (rc != 0) {
+        if (err && errcap) snprintf(err, errcap, "clm: HTTP fallito: %s", neterr ? neterr : "errore di rete");
+        free(body); free(neterr);
+        return -1;
+    }
+    free(neterr);
+    if (status < 200 || status >= 300) {
+        if (err && errcap) snprintf(err, errcap, "clm: HTTP %d", status);
+        free(body);
+        return -1;
+    }
+    char* js = (char*)malloc(blen + 1);
+    if (!js) { free(body); return -1; }
+    if (body && blen) memcpy(js, body, blen);
+    js[blen] = 0;
+    free(body);
+    rc = gmb_clm_parse_response(js, dkind, options, n_options, out, err, errcap);
+    free(js);
+    return rc;
+}
+
 /* ── P6 — adapter REMOTO (OpenAI-compatibile) ─────────────────────────────────────────────
  * Usa il provider completion attivo quando ha `baseUrl` (endpoint remoto): POST
  * `<baseUrl>[/chat/completions]` con i messaggi system/user, legge
@@ -704,6 +780,30 @@ static char* dc_run_json_inner(const char* state, const char* kind, const char* 
         return tout;
     }
 
+    /* Provider `clm` (contratto SystemOne, wire /v1/systemone). Errori JSON espliciti. */
+    if (effective_provider && ieq(effective_provider, "clm")) {
+        gmb_decision_result_t cr;
+        char cerr[GMB_DECISION_ERR_CAP] = "";
+        if (dc_clm_run(state ? state : "", kind, options, n_options, k, &cr, cerr, sizeof cerr) != 1) {
+            char esc[GMB_DECISION_ERR_CAP + 64];
+            json_escape(cerr[0] ? cerr : "clm: errore", esc, sizeof esc);
+            char ebuf[GMB_DECISION_ERR_CAP + 96];
+            int en = snprintf(ebuf, sizeof ebuf, "{\"error\":\"%s\"}", esc);
+            if (en < 0) return NULL;
+            char* eout = (char*)malloc((size_t)en + 1);
+            if (!eout) return NULL;
+            memcpy(eout, ebuf, (size_t)en + 1);
+            return eout;
+        }
+        char cbuf[1024];
+        if (gmb_decision_result_json(&cr, cbuf, sizeof cbuf) < 0) return NULL;
+        size_t cn = strlen(cbuf);
+        char* cout = (char*)malloc(cn + 1);
+        if (!cout) return NULL;
+        memcpy(cout, cbuf, cn + 1);
+        return cout;
+    }
+
     /* P6 — provider ADAPTER (generativo): il modello locale GENERA la risposta e il testo
      * viene riconosciuto come opzione. Esplicito: nessun match = errore JSON, mai un fallback. */
     if (effective_provider && (ieq(effective_provider, "adapter") || ieq(effective_provider, "llm"))) {
@@ -799,7 +899,7 @@ typedef struct { char prev[64]; int swapped; } dc_alias_t;
 
 static int dc_is_builtin_kind(const char* p) {
     return ieq(p, "rules") || ieq(p, "mock") || ieq(p, "local") || ieq(p, "typesafe")
-        || ieq(p, "adapter") || ieq(p, "llm") || ieq(p, "verbalizer");
+        || ieq(p, "adapter") || ieq(p, "llm") || ieq(p, "verbalizer") || ieq(p, "clm");
 }
 
 /* Ritorna il provider effettivo da passare alla logica interna (kind dell'alias, o l'input). */

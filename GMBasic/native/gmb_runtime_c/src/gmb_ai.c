@@ -120,7 +120,8 @@ int gmb_provider_register(const char* role, const char* name, const char* kind, 
         && strcasecmp(kind, "llamacpp")
         && strcasecmp(kind, "mlx") && strcasecmp(kind, "local")
         && strcasecmp(kind, "rules") && strcasecmp(kind, "mock")
-        && strcasecmp(kind, "typesafe") && strcasecmp(kind, "verbalizer"))
+        && strcasecmp(kind, "typesafe") && strcasecmp(kind, "verbalizer")
+        && strcasecmp(kind, "clm"))
         return 0;
     gmb_provider_t* p = find_provider(role, name);
     if (p) { strncpy(p->kind, kind ? kind : "", 511); strncpy(p->config, config ? config : "", 511); return 1; }
