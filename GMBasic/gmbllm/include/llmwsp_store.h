@@ -60,6 +60,28 @@ int llmwsp_tensor_sha256(const llmwsp_store *s, const llmwsp_tensor *t, char hex
  * sovrapposizione). Restituisce il numero di violazioni (0 = copertura completa); descrive la prima in err. */
 int llmwsp_store_check_coverage(const llmwsp_store *s, char *err, size_t errcap);
 
+/* ---- Writer a streaming (safetensors) -----------------------------------------------------------
+ * L'header è calcolato in anticipo da nome/dtype/forma: i tensori si scrivono poi in ordine, a blocchi,
+ * con memoria costante. Chiusura: verifica che ogni tensore abbia ricevuto esattamente i suoi byte. */
+typedef struct llmwsp_wspec {
+    const char *name;
+    const char *dtype;
+    int         ndim;
+    int64_t     shape[LLMWSP_MAX_DIMS];
+} llmwsp_wspec;
+
+typedef struct llmwsp_writer llmwsp_writer;
+
+/* Crea `path` con l'header per `n` tensori (ordine dato; nomi unici; dtype noto). */
+int llmwsp_writer_open(const char *path, const llmwsp_wspec *spec, size_t n, llmwsp_writer **out,
+                       char *err, size_t errcap);
+/* Accoda byte al tensore corrente; passa al successivo quando ha ricevuto i suoi nbytes. */
+int llmwsp_writer_append(llmwsp_writer *w, const void *buf, size_t n);
+/* Copia a blocchi un tensore dallo store: deve essere il tensore corrente (stesso nome/dtype/forma). */
+int llmwsp_writer_copy(llmwsp_writer *w, const llmwsp_store *s, const llmwsp_tensor *t);
+/* Chiude; 0 solo se TUTTI i tensori sono completi. In ogni caso libera `w`. */
+int llmwsp_writer_close(llmwsp_writer *w, char *err, size_t errcap);
+
 #ifdef __cplusplus
 }
 #endif
