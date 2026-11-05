@@ -943,6 +943,57 @@ public static partial class Numerics
         return Math.Log(patterns.Count) / Math.Log(npat);
     }
 
+    public static double Lyapunov(double[] x, int m, int tau)
+    {
+        var n = x.Length;
+        if (n < m * tau + 8 || m < 2 || tau < 1) return double.NaN;
+        var M = n - (m - 1) * tau;
+        var theiler = Math.Max(m * tau, 10);
+        var d0 = new double[M];
+        var nbr = new int[M];
+        var lambdas = new double[M / 2 + 1];
+        for (var i = 0; i < M; i++)
+        {
+            double best = 1e300; var bj = -1;
+            for (var j = 0; j < M; j++)
+            {
+                if (Math.Abs(i - j) < theiler) continue;
+                double d2 = 0;
+                for (var q = 0; q < m; q++) { var dd = x[i + q * tau] - x[j + q * tau]; d2 += dd * dd; }
+                if (d2 > 0 && d2 < best) { best = d2; bj = j; }
+            }
+            d0[i] = best > 0 ? Math.Sqrt(best) : 1e-9;
+            nbr[i] = bj;
+        }
+        for (var k = 1; k < M / 2; k++)
+        {
+            double sum = 0; var cnt = 0;
+            for (var i = 0; i < M - k; i++)
+            {
+                var jj = nbr[i];
+                if (jj >= 0 && jj + k < M)
+                {
+                    double d2 = 0;
+                    for (var q = 0; q < m; q++) { var dd = x[i + k + q * tau] - x[jj + k + q * tau]; d2 += dd * dd; }
+                    if (d2 > 0) { sum += 0.5 * Math.Log(d2 / (d0[i] * d0[i])); cnt++; }
+                }
+            }
+            lambdas[k] = cnt > 0 ? sum / cnt : 0;
+        }
+        var k0 = 1;
+        var k1 = Math.Min(8, M / 2);
+        if (k1 > M / 2 - 1) k1 = M / 2 - 1;
+        if (k1 <= k0) k1 = k0 + 1;
+        double mx = 0, my = 0;
+        var cc = 0;
+        for (var k = k0; k < k1; k++) { mx += k; my += lambdas[k]; cc++; }
+        if (cc == 0) return 0;
+        mx /= cc; my /= cc;
+        double sxy = 0, sxx = 0;
+        for (var k = k0; k < k1; k++) { var dx = k - mx; var dy = lambdas[k] - my; sxy += dx * dy; sxx += dx * dx; }
+        return sxx > 0 ? sxy / sxx : 0;
+    }
+
     public static double[] BmaWeights(double[] ic)
     {
         var n = ic.Length;

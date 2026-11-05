@@ -2341,6 +2341,8 @@ static const gmb_fn_lookup_row_t gmb_fn_lookup[] = {
     { "TSKALMAN1D", GMB_TOK_TsKalman1D },
     { "TsLowPass", GMB_TOK_TsLowPass },
     { "TSLOWPASS", GMB_TOK_TsLowPass },
+    { "TsLyapunov", GMB_TOK_TsLyapunov },
+    { "TSLYAPUNOV", GMB_TOK_TsLyapunov },
     { "TsLzComplexity", GMB_TOK_TsLzComplexity },
     { "TSMA", GMB_TOK_MovingAverage },
     { "TSMINMAX", GMB_TOK_TimeSeriesMinMax },

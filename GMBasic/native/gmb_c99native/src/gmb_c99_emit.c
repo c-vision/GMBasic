@@ -7602,6 +7602,7 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_TsPermEntropy, emit_bf_ts },
     { NULL, GMB_TOK_TsLzComplexity, emit_bf_ts },
     { NULL, GMB_TOK_TsBmaWeights, emit_bf_ts },
+    { NULL, GMB_TOK_TsLyapunov, emit_bf_ts },
     { NULL, GMB_TOK_Base58Encode, emit_bf_encoding },
     { NULL, GMB_TOK_Base32Encode, emit_bf_encoding },
     { NULL, GMB_TOK_ToBase64, emit_bf_encoding },
