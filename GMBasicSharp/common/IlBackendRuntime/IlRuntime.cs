@@ -2145,6 +2145,7 @@ public static partial class IlRuntime
     }
     public static double[] Returns(double[] data) => Basic.StdLibRuntime.TimeSeriesFunctions.Returns(data);
     public static double TsHurst(double[] data) => CommonLib.Numerics.HurstDfa(data);
+    public static double[] FracDiff(double[] data, double d) => CommonLib.Numerics.FracDiff(data, d);
     public static double Volatility(double[] data) => Basic.StdLibRuntime.TimeSeriesFunctions.Volatility(data);
     public static double Autocorrelation(double[] data, long lag) => Basic.StdLibRuntime.TimeSeriesFunctions.Autocorrelation(data, checked((int)lag));
     public static double[] Deseasonalize(double[] data, long period) => Basic.StdLibRuntime.TimeSeriesFunctions.Deseasonalize(data, checked((int)period));

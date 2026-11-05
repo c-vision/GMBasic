@@ -1289,6 +1289,7 @@ static const gmb_ns_lookup_row_t gmb_ns_lookup[] = {
     { "TIMESERIES", "TSDESEASONALIZE", GMB_TOK_Deseasonalize },
     { "TIMESERIES", "TSDIFFERENCE", GMB_TOK_Difference },
     { "TIMESERIES", "TSEMA", GMB_TOK_EMA },
+    { "TIMESERIES", "TSFRACDIFF", GMB_TOK_TsFracDiff },
     { "TIMESERIES", "TSHIGHPASS", GMB_TOK_TsHighPass },
     { "TIMESERIES", "TSHURST", GMB_TOK_TsHurst },
     { "TIMESERIES", "TSLOWPASS", GMB_TOK_TsLowPass },

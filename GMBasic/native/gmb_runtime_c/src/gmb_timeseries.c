@@ -626,3 +626,20 @@ double gmb_hurst_dfa(const double* x, int n, int min_box)
     free(y); free(ls); free(lx);
     return h;
 }
+
+/* Fractional differencing (gmbstats gs_frac_diff). */
+double* gmb_ts_fracdiff(const double* x, int n, double d, int* out_len)
+{
+    if (!x || n < 1 || d < 0) { *out_len = 0; return NULL; }
+    double* w = (double*)malloc((size_t)n * sizeof(double));
+    double* out = (double*)malloc((size_t)n * sizeof(double));
+    if (!w || !out) { free(w); free(out); *out_len = 0; return NULL; }
+    w[0] = 1.0;
+    for (int k = 1; k < n; k++) w[k] = -w[k - 1] * (d - k + 1) / k;
+    for (int i = 0; i < n; i++) {
+        double sum = 0;
+        for (int k = 0; k <= i; k++) sum += w[k] * x[i - k];
+        out[i] = sum;
+    }
+    free(w); *out_len = n; return out;
+}

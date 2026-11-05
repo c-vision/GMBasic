@@ -264,6 +264,7 @@ public enum BuiltInFunction : ushort
     STATS_KRUSKAL = 1063,
     STATS_CHIISF = 1064,
     TS_HURST = 1065,
+    TS_FRACDIFF = 1066,
     SIGNAL_FIRWIN = 1017,
     SIGNAL_FINDPEAKS = 1018,
     SOLVE_IVP = 1019,

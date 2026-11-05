@@ -2018,6 +2018,7 @@ public enum TokenKind
     StatsBetaIsf, StatsLogisticIsf, StatsLognormalIsf, StatsTriangularIsf,
     StatsKruskal, StatsChiIsf,
     TsHurst,
+    TsFracDiff,
     StatsChi2Contingency, StatsMannWhitney, StatsWilcoxon,
     StatsGammaPdf, StatsGammaCdf, StatsGammaPpf, StatsGammaIsf,
     StatsSkewTest, StatsKurtosisTest, StatsJarqueBera,

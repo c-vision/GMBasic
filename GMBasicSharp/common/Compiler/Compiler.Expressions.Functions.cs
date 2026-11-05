@@ -324,7 +324,7 @@ public sealed partial class Compiler
         { TokenKind.RollingRegression, BuiltInFunction.ROLLINGREGRESSION },
         { TokenKind.RollingDelta, BuiltInFunction.ROLLINGDELTA },
         { TokenKind.Outliers, BuiltInFunction.OUTLIERS }, { TokenKind.Difference, BuiltInFunction.DIFFERENCE },
-        { TokenKind.Returns, BuiltInFunction.RETURNS }, { TokenKind.Volatility, BuiltInFunction.VOLATILITY }, { TokenKind.TsHurst, BuiltInFunction.TS_HURST },
+        { TokenKind.Returns, BuiltInFunction.RETURNS }, { TokenKind.Volatility, BuiltInFunction.VOLATILITY }, { TokenKind.TsHurst, BuiltInFunction.TS_HURST }, { TokenKind.TsFracDiff, BuiltInFunction.TS_FRACDIFF },
         { TokenKind.Autocorrelation, BuiltInFunction.AUTOCORRELATION },
         { TokenKind.Deseasonalize, BuiltInFunction.DESEASONALIZE },
         { TokenKind.Decompose, BuiltInFunction.DECOMPOSE },
