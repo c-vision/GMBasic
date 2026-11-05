@@ -917,6 +917,9 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "STATS.LogisticSf");
         r.Register(Backend.C99Native, "STATS.TriangularCdf");
         r.Register(Backend.C99Native, "STATS.TriangularSf");
+        r.Register(Backend.C99Native, "STATS.WeibullIsf");
+        r.Register(Backend.C99Native, "STATS.UniformIsf");
+        r.Register(Backend.C99Native, "STATS.ParetoIsf");
         r.Register(Backend.C99Native, "STATS.Covariance");
         r.Register(Backend.C99Native, "STATS.Range");
         r.Register(Backend.C99Native, "STATS.MAX");

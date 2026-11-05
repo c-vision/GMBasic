@@ -22132,6 +22132,35 @@
     },
     {
       "ns": "STATS",
+      "name": "ParetoIsf",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "p",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "scale",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "shape",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "STATS",
       "name": "ParetoPdf",
       "fn": true,
       "return": "double",
@@ -22767,6 +22796,35 @@
     },
     {
       "ns": "STATS",
+      "name": "UniformIsf",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "p",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "a",
+          "type": "double",
+          "optional": true,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "b",
+          "type": "double",
+          "optional": true,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "STATS",
       "name": "UniformPdf",
       "fn": true,
       "return": "double",
@@ -22875,6 +22933,35 @@
       "params": [
         {
           "name": "x",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "shape",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "scale",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "STATS",
+      "name": "WeibullIsf",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "p",
           "type": "double",
           "optional": false,
           "byRef": false,

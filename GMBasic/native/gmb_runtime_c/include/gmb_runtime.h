@@ -1135,9 +1135,12 @@ double gmb_dist_student_t_isf(double df, double p);
 double gmb_dist_exp_ppf(double rate, double p);
 double gmb_dist_exp_isf(double rate, double p);
 double gmb_dist_weibull_ppf(double shape, double scale, double p);
+double gmb_dist_weibull_isf(double shape, double scale, double p);
 double gmb_dist_logistic_ppf(double loc, double scale, double p);
 double gmb_dist_uniform_ppf(double a, double b, double p);
+double gmb_dist_uniform_isf(double a, double b, double p);
 double gmb_dist_pareto_ppf(double scale, double shape, double p);
+double gmb_dist_pareto_isf(double scale, double shape, double p);
 double gmb_dist_triangular_ppf(double a, double b, double c, double p);
 
 

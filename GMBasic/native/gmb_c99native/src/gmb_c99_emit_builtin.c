@@ -5305,6 +5305,9 @@ static int ds_shtri_sf(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
     return 1;
 }
 static int ds_triangular_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_shtri_sf(c, a, n, "gmb_dist_triangular_cdf"); }
+static int ds_weibull_isf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_weibull_isf"); }
+static int ds_uniform_isf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_uniform_isf"); }
+static int ds_pareto_isf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_pareto_isf"); }
 static int ds_exp_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2_sf(c, a, n, "gmb_dist_exp_cdf"); }
 static int ds_student_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2_sf(c, a, n, "gmb_dist_student_t_cdf"); }
 static int ds_chisq_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2_sf(c, a, n, "gmb_dist_chi2_cdf"); }
@@ -5544,6 +5547,9 @@ static const ds_row DS_TBL[] = {
     { GMB_TOK_TriangularPpf, ds_triangular_ppf },
     { GMB_TOK_StatsTriangularCdf, ds_triangular_cdf },
     { GMB_TOK_StatsTriangularSf, ds_triangular_sf },
+    { GMB_TOK_StatsWeibullIsf, ds_weibull_isf },
+    { GMB_TOK_StatsUniformIsf, ds_uniform_isf },
+    { GMB_TOK_StatsParetoIsf, ds_pareto_isf },
     { GMB_TOK_UniformPdf, ds_uniform_pdf },
     { GMB_TOK_UniformPpf, ds_uniform_ppf },
     { GMB_TOK_StatsUniformCdf, ds_uniform_cdf },
