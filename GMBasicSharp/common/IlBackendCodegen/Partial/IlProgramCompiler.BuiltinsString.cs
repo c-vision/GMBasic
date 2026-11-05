@@ -647,6 +647,23 @@ public sealed partial class IlProgramCompiler
     { if (expr.Args.Length != 6) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 6 argomenti."); for (var i = 0; i < 3; i++) EmitDoubleArrayArgument(expr.Args[i]); for (var i = 3; i < 6; i++) EmitDoubleArgument(expr.Args[i]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
     private void EmitThreeFlatArrayCall(BuiltinFunctionCallExpr expr, string methodName)
     { if (expr.Args.Length != 3) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 3 argomenti."); for (var i = 0; i < 3; i++) EmitDoubleArrayArgument(expr.Args[i]); _il.Emit(OpCodes.Call, RuntimeMethod(methodName)); }
+    private void EmitTpeCall(BuiltinFunctionCallExpr expr, string methodName)
+    {
+        if (expr.Args.Length != 6) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 6 argomenti.");
+        EmitExpression(expr.Args[0]);
+        // FUNCTION NOMINATA con parametri array: EmitExpression produce il delegate `ref`
+        // (CbRef1D, firma T[]&) mentre IlRuntime.Tpe vuole Func<double[],double>.
+        if (expr.Args[0] is FunctionReferenceExpr fr
+            && _program.Symbols.GetSymbol(fr.SymbolId).DeclarationNode is FunctionDefinition fd
+            && TryRefDelegateType(fd) is { } refDel)
+            EmitRefCallbackAdapter(refDel);
+        EmitDoubleArrayArgument(expr.Args[1]);
+        EmitDoubleArrayArgument(expr.Args[2]);
+        EmitInt64Argument(expr.Args[3]);
+        EmitInt64Argument(expr.Args[4]);
+        EmitDoubleArgument(expr.Args[5]);
+        _il.Emit(OpCodes.Call, RuntimeMethod(methodName));
+    }
     private void EmitBoostFitCall(BuiltinFunctionCallExpr expr, string methodName)
     {
         if (expr.Args.Length != 6) throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 6 argomenti.");

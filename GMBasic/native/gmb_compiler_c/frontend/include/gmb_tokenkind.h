@@ -2802,9 +2802,10 @@ typedef enum gmb_tokenkind {
     GMB_TOK_MvGamblerDur,
     GMB_TOK_MvAteIpw,
     GMB_TOK_MvAteMatching,
+    GMB_TOK_SimTpe,
 } gmb_tokenkind_t;
 
-#define GMB_TOK_COUNT 2779
+#define GMB_TOK_COUNT 2780
 
 /* 2026-09-09 (direttiva 2026-09-08): gmb_tokenkind_name()/gmb_tokenkind_from_name() e la
  * tabella gmb_token_names[] sono state RIMOSSE — dispatch solo per TokenKind; la risoluzione

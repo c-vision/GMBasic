@@ -686,6 +686,7 @@ public sealed partial class IlProgramCompiler
             case TokenKind.SimBernoulli: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.SimBernoulli)), 1); break;
             case TokenKind.SimBinomial: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.SimBinomial)), 2); break;
             case TokenKind.SimParticle: EmitArrayFiveDoubleCall(expr, nameof(IlRuntime.ParticleFilter)); break;
+            case TokenKind.SimTpe: EmitTpeCall(expr, nameof(IlRuntime.Tpe)); break;
             case TokenKind.MvBoostFit: EmitBoostFitCall(expr, nameof(IlRuntime.BoostFit)); break;
             case TokenKind.MvBoostPredict: EmitAnalysisTwoArrayCall(expr, nameof(IlRuntime.BoostPredict)); break;
             case TokenKind.MvBoostScore: EmitThreeArrayCall(expr, nameof(IlRuntime.BoostScore)); break;

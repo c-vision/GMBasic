@@ -4957,6 +4957,19 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         {
                 return Basic.IlBackend.IlRuntime.BoostScore(ToDoubleArr(ArgOr(args, 0)), ToJaggedArr(ArgOr(args, 1)), ToDoubleArr(ArgOr(args, 2)));
         },
+        [BuiltInFunction.SIM_TPE] = (task, args) =>
+        {
+                if (args.Length >= 6 && args[0] is ClosureData tf)
+                {
+                        try
+                        {
+                                Func<double[], double> fn = x => SafeDouble(CallClosureSync(task, tf, x));
+                                return Basic.IlBackend.IlRuntime.Tpe(fn, ToDoubleArr(ArgOr(args, 1)), ToDoubleArr(ArgOr(args, 2)), (long)SafeDouble(ArgOr(args, 3)), (long)SafeDouble(ArgOr(args, 4)), SafeDouble(ArgOr(args, 5)));
+                        }
+                        catch { }
+                }
+                return null;
+        },
         [BuiltInFunction.SIM_PARTICLEFILTER] = (task, args) =>
         {
                 return Basic.IlBackend.IlRuntime.ParticleFilter(ToDoubleArr(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4)), SafeDouble(ArgOr(args, 5)));

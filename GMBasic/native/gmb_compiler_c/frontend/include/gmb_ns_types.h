@@ -1034,6 +1034,7 @@ static const gmb_ns_type_row_t gmb_ns_types[] = {
     { GMB_TOK_SimExponential, 0 },
     { GMB_TOK_SimBernoulli, 0 },
     { GMB_TOK_SimBinomial, 0 },
+    { GMB_TOK_SimTpe, 0 },
     { GMB_TOK_SimParticle, 0 },
     { GMB_TOK_SpatialPdist, 0 },
     { GMB_TOK_SpatialCdist, 0 },

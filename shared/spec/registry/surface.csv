@@ -1105,6 +1105,7 @@ procedure,SIMULATION,SIMEXP,SimExponential
 procedure,SIMULATION,SIMNORMAL,SimNormal
 procedure,SIMULATION,SIMSEED,SimSeed
 procedure,SIMULATION,SIMUNIFORM,SimUniform
+procedure,SIMULATION,TPE,SimTpe
 procedure,SPATIAL,CDIST,SpatialCdist
 procedure,SPATIAL,CONVEXHULL,SpatialConvexHull
 procedure,SPATIAL,DISTANCEMATRIX,SpatialDistanceMatrix
