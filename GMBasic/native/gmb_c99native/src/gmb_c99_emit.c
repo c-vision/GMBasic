@@ -7577,6 +7577,7 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_RandomCryptoBytes, emit_bf_security_tok },
     { NULL, GMB_TOK_Autocorrelation, emit_bf_ts },
     { NULL, GMB_TOK_Volatility, emit_bf_ts },
+    { NULL, GMB_TOK_TsHurst, emit_bf_ts },
     { NULL, GMB_TOK_Base58Encode, emit_bf_encoding },
     { NULL, GMB_TOK_Base32Encode, emit_bf_encoding },
     { NULL, GMB_TOK_ToBase64, emit_bf_encoding },

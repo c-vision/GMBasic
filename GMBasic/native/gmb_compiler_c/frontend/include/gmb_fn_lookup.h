@@ -2323,6 +2323,8 @@ static const gmb_fn_lookup_row_t gmb_fn_lookup[] = {
     { "TSEMA", GMB_TOK_EMA },
     { "TsHighPass", GMB_TOK_TsHighPass },
     { "TSHIGHPASS", GMB_TOK_TsHighPass },
+    { "TsHurst", GMB_TOK_TsHurst },
+    { "TSHURST", GMB_TOK_TsHurst },
     { "TsLowPass", GMB_TOK_TsLowPass },
     { "TSLOWPASS", GMB_TOK_TsLowPass },
     { "TSMA", GMB_TOK_MovingAverage },

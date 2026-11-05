@@ -2142,6 +2142,7 @@ gmb_double_t** gmb_pca(const double* data, int rows, int cols, gmb_int_t* out_ro
 gmb_val_t gmb_pca_dict(const double* data, int rows, int cols);
 /* TSCOVARIANCEMATRIX: matrice di covarianza k×k di k serie (denominatore n). */
 gmb_double_t** gmb_ts_covariance_matrix(const double* const* series, int k, int n);
+double gmb_hurst_dfa(const double* x, int n, int min_box);
 gmb_double_t** gmb_ts_covariance_obs(const double* const* obs, int n_obs, int n_vars);
 /* MOUSE getters (MOUSE.BUTTON/WHEEL/DBLCLICK/PRESENT/MIDDLE): stato mouse TUI corrente
  * (0 in headless). Implementati in gmb_tui_clipper.c, condivisi da VM/C,
