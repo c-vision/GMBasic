@@ -17966,6 +17966,107 @@
     },
     {
       "ns": "MULTIVARIATE",
+      "name": "BOOSTFIT",
+      "fn": true,
+      "return": "double[]",
+      "params": [
+        {
+          "name": "X",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "y",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "engine",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "nEst",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "lr",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "maxDepth",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "MULTIVARIATE",
+      "name": "BOOSTPREDICT",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "model",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "x",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        }
+      ]
+    },
+    {
+      "ns": "MULTIVARIATE",
+      "name": "BOOSTSCORE",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "model",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "X",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "y",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        }
+      ]
+    },
+    {
+      "ns": "MULTIVARIATE",
       "name": "CopulaClaytonCdf",
       "fn": true,
       "return": "double",

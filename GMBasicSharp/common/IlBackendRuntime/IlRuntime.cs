@@ -2229,6 +2229,10 @@ public static partial class IlRuntime
             ["LogLikelihood"] = r.LogLikelihood
         };
     }
+    public static double[] BoostFit(double[][] X, double[] y, long engine, long nEst, double lr, long maxDepth)
+        => CommonLib.Numerics.BoostFit(X, y, (int)engine, (int)nEst, lr, (int)maxDepth);
+    public static double BoostPredict(double[] model, double[] x) => CommonLib.Numerics.BoostPredict(model, x);
+    public static double BoostScore(double[] model, double[][] X, double[] y) => CommonLib.Numerics.BoostScore(model, X, y);
     public static Dictionary<string, object?> ParticleFilter(double[] obs, double a, double q, double r, double N, double seed)
     {
         var res = CommonLib.Numerics.ParticleFilter(obs, a, q, r, (int)N, seed);

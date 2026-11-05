@@ -947,6 +947,9 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "SIMULATION.SimBernoulli");
         r.Register(Backend.C99Native, "SIMULATION.SimBinomial");
         r.Register(Backend.C99Native, "SIMULATION.PARTICLEFILTER");
+        r.Register(Backend.C99Native, "MULTIVARIATE.BOOSTFIT");
+        r.Register(Backend.C99Native, "MULTIVARIATE.BOOSTPREDICT");
+        r.Register(Backend.C99Native, "MULTIVARIATE.BOOSTSCORE");
         r.Register(Backend.C99Native, "SPATIAL.PDIST");
         r.Register(Backend.C99Native, "STATS.PearsonR");
         r.Register(Backend.C99Native, "STATS.KendallTau");
