@@ -161,6 +161,7 @@ public record ProcedureSignature
             JohansenResultType => "JOHANSENRESULT",
             GpResultType => "GPRESULT",
             SvmResultType => "SVMRESULT",
+            GmmResultType => "GMMRESULT",
             LuDecompositionType => "LUDECOMPOSITION",
             QrDecompositionType => "QRDECOMPOSITION",
             SvdDecompositionType => "SVDDECOMPOSITION",

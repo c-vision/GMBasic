@@ -988,6 +988,7 @@ procedure,MOUSE,Y,MouseY
 procedure,MULTIVARIATE,CopulaClaytonCdf,CopulaClaytonCdf
 procedure,MULTIVARIATE,CopulaFrankCdf,CopulaFrankCdf
 procedure,MULTIVARIATE,CopulaGumbelCdf,CopulaGumbelCdf
+procedure,MULTIVARIATE,GMMEM1D,MvGmm
 procedure,MULTIVARIATE,GPRREGRESS,MvGpr
 procedure,MULTIVARIATE,KMeans,KMeans
 procedure,MULTIVARIATE,MvGaussPdf,MvGaussPdf
