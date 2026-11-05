@@ -689,6 +689,14 @@ public sealed partial class IlProgramCompiler
             case TokenKind.MvBoostFit: EmitBoostFitCall(expr, nameof(IlRuntime.BoostFit)); break;
             case TokenKind.MvBoostPredict: EmitAnalysisTwoArrayCall(expr, nameof(IlRuntime.BoostPredict)); break;
             case TokenKind.MvBoostScore: EmitThreeArrayCall(expr, nameof(IlRuntime.BoostScore)); break;
+            case TokenKind.MvBoei: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.BoEi)), 4); break;
+            case TokenKind.MvBopi: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.BoPi)), 4); break;
+            case TokenKind.MvBoucb: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.BoUcb)), 3); break;
+            case TokenKind.MvBonext: EmitThreeArrayThreeDoubleCall(expr, nameof(IlRuntime.BoNext)); break;
+            case TokenKind.MvGamblerProb: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.GamblerRuinProb)), 3); break;
+            case TokenKind.MvGamblerDur: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.GamblerRuinDuration)), 3); break;
+            case TokenKind.MvAteIpw: EmitThreeFlatArrayCall(expr, nameof(IlRuntime.AteIpw)); break;
+            case TokenKind.MvAteMatching: EmitThreeFlatArrayCall(expr, nameof(IlRuntime.AteMatching)); break;
             case TokenKind.Autocorrelation: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.Autocorrelation)); break;
             case TokenKind.Deseasonalize: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.Deseasonalize)); break;
             case TokenKind.Decompose: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.Decompose)); break;

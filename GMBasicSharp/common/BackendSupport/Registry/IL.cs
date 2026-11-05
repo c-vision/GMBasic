@@ -961,6 +961,14 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "MULTIVARIATE.BOOSTFIT");
         r.Register(Backend.IL, "MULTIVARIATE.BOOSTPREDICT");
         r.Register(Backend.IL, "MULTIVARIATE.BOOSTSCORE");
+        r.Register(Backend.IL, "MULTIVARIATE.BOEI");
+        r.Register(Backend.IL, "MULTIVARIATE.BOPI");
+        r.Register(Backend.IL, "MULTIVARIATE.BOUCB");
+        r.Register(Backend.IL, "MULTIVARIATE.BONEXT");
+        r.Register(Backend.IL, "MULTIVARIATE.GAMBLERRUINP");
+        r.Register(Backend.IL, "MULTIVARIATE.GAMBLERRUIND");
+        r.Register(Backend.IL, "MULTIVARIATE.ATEIPW");
+        r.Register(Backend.IL, "MULTIVARIATE.ATEMATCHING");
         r.Register(Backend.IL, "SPATIAL.PDIST");
         r.Register(Backend.IL, "STATS.PearsonR");
         r.Register(Backend.IL, "STATS.KendallTau");

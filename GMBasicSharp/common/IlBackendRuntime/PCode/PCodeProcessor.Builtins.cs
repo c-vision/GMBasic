@@ -4913,6 +4913,38 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         {
                 return Basic.IlBackend.IlRuntime.TsGarch11(ToDoubleArr(ArgOr(args, 0)));
         },
+        [BuiltInFunction.MULTIVARIATE_MVBOEI] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.BoEi(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)));
+        },
+        [BuiltInFunction.MULTIVARIATE_MVBOPI] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.BoPi(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)));
+        },
+        [BuiltInFunction.MULTIVARIATE_MVBOUCB] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.BoUcb(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));
+        },
+        [BuiltInFunction.MULTIVARIATE_MVBONEXT] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.BoNext(ToDoubleArr(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1)), ToDoubleArr(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4)), SafeDouble(ArgOr(args, 5)));
+        },
+        [BuiltInFunction.MULTIVARIATE_MVGAMBLERPROB] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.GamblerRuinProb(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));
+        },
+        [BuiltInFunction.MULTIVARIATE_MVGAMBLERDUR] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.GamblerRuinDuration(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)));
+        },
+        [BuiltInFunction.MULTIVARIATE_MVATEIPW] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.AteIpw(ToDoubleArr(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1)), ToDoubleArr(ArgOr(args, 2)));
+        },
+        [BuiltInFunction.MULTIVARIATE_MVATEMATCHING] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.AteMatching(ToDoubleArr(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1)), ToDoubleArr(ArgOr(args, 2)));
+        },
         [BuiltInFunction.MULTIVARIATE_BOOSTFIT] = (task, args) =>
         {
                 return Basic.IlBackend.IlRuntime.BoostFit(ToJaggedArr(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1)), (long)SafeDouble(ArgOr(args, 2)), (long)SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4)), (long)SafeDouble(ArgOr(args, 5)));

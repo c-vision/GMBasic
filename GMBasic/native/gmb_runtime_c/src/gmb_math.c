@@ -3879,27 +3879,22 @@ static gmb_val_t gmb_mv_nan_dict(void)
     gmb_dict_set(&d, "Variance", gmb_make_val_double(NAN));
     return gmb_make_val_dict_take(&d);
 }
-gmb_val_t gmb_mv_gp_regress(const double* x, const double* y, int n,
-                            const double* xs, int m, double l2, double noise)
+static int gmb_mv_gp_fill(const double* x, const double* y, int n,
+                          const double* xs, int m, double l2, double noise,
+                          double* mean, double* var)
 {
     double *K, *alpha, *kx, *v, *A, *sol;
-    double* mean;
-    double* var;
-    gmb_dict_t d;
     int i, j, q;
-    gmb_val_t meanv, varv;
-    if (!x || !y || !xs || n < 1 || m < 1 || l2 <= 0.0) return gmb_mv_nan_dict();
+    if (!x || !y || !xs || !mean || !var || n < 1 || m < 1 || l2 <= 0.0) return 0;
     K = (double*)malloc((size_t)n * n * sizeof(double));
     alpha = (double*)malloc((size_t)n * sizeof(double));
     kx = (double*)malloc((size_t)n * sizeof(double));
     v = (double*)malloc((size_t)n * sizeof(double));
     A = (double*)malloc((size_t)n * n * sizeof(double));
     sol = (double*)malloc((size_t)n * sizeof(double));
-    mean = (double*)malloc((size_t)m * sizeof(double));
-    var = (double*)malloc((size_t)m * sizeof(double));
-    if (!K || !alpha || !kx || !v || !A || !sol || !mean || !var) {
-        free(K); free(alpha); free(kx); free(v); free(A); free(sol); free(mean); free(var);
-        return gmb_mv_nan_dict();
+    if (!K || !alpha || !kx || !v || !A || !sol) {
+        free(K); free(alpha); free(kx); free(v); free(A); free(sol);
+        return 0;
     }
     for (i = 0; i < n; i++)
         for (j = 0; j < n; j++) {
@@ -3909,10 +3904,9 @@ gmb_val_t gmb_mv_gp_regress(const double* x, const double* y, int n,
     for (i = 0; i < n; i++) alpha[i] = y[i];
     memcpy(A, K, (size_t)n * n * sizeof(double));
     if (!gmb_mv_solve(n, A, alpha, v)) {
-        free(K); free(alpha); free(kx); free(v); free(A); free(mean); free(var);
-        return gmb_mv_nan_dict();
+        free(K); free(alpha); free(kx); free(v); free(A); free(sol);
+        return 0;
     }
-    /* alpha ora e' la soluzione in v; ricopiamola in alpha */
     memcpy(alpha, v, (size_t)n * sizeof(double));
     for (q = 0; q < m; q++) {
         double mu = 0.0, kv;
@@ -3925,13 +3919,125 @@ gmb_val_t gmb_mv_gp_regress(const double* x, const double* y, int n,
         mean[q] = mu;
         var[q] = kv > 0.0 ? kv : 0.0;
     }
-    meanv = gmb_make_val_list(gmb_list_from_doubles(mean, m));
-    varv = gmb_make_val_list(gmb_list_from_doubles(var, m));
+    free(K); free(alpha); free(kx); free(v); free(A); free(sol);
+    return 1;
+}
+gmb_val_t gmb_mv_gp_regress(const double* x, const double* y, int n,
+                            const double* xs, int m, double l2, double noise)
+{
+    double* mean;
+    double* var;
+    gmb_dict_t d;
+    if (!x || !y || !xs || n < 1 || m < 1 || l2 <= 0.0) return gmb_mv_nan_dict();
+    mean = (double*)malloc((size_t)m * sizeof(double));
+    var = (double*)malloc((size_t)m * sizeof(double));
+    if (!mean || !var) { free(mean); free(var); return gmb_mv_nan_dict(); }
+    if (!gmb_mv_gp_fill(x, y, n, xs, m, l2, noise, mean, var)) {
+        free(mean); free(var);
+        return gmb_mv_nan_dict();
+    }
     d = gmb_dict_new();
-    gmb_dict_set(&d, "Mean", meanv);
-    gmb_dict_set(&d, "Variance", varv);
-    free(K); free(alpha); free(kx); free(v); free(A); free(sol); free(mean); free(var);
+    gmb_dict_set(&d, "Mean", gmb_make_val_list(gmb_list_from_doubles(mean, m)));
+    gmb_dict_set(&d, "Variance", gmb_make_val_list(gmb_list_from_doubles(var, m)));
+    free(mean); free(var);
     return gmb_make_val_dict_take(&d);
+}
+
+/* --- Bayesian optimization + gambler's ruin + causal inference (gs_math.c) --- */
+static double gmb_bo_phi(double z) { return 0.3989422804014327 * exp(-0.5 * z * z); }
+static double gmb_bo_Phi(double z) { return gmb_dist_normal_cdf(0.0, 1.0, z); }
+double gmb_mv_bo_ei(double mu, double sd, double best, double xi)
+{
+    double d, z;
+    if (sd <= 1e-300) { d = mu - best - xi; return d > 0.0 ? d : 0.0; }
+    d = mu - best - xi;
+    z = d / sd;
+    return d * gmb_bo_Phi(z) + sd * gmb_bo_phi(z);
+}
+double gmb_mv_bo_pi(double mu, double sd, double best, double xi)
+{
+    if (sd <= 1e-300) return (mu - best - xi > 0.0) ? 1.0 : 0.0;
+    return gmb_bo_Phi((mu - best - xi) / sd);
+}
+double gmb_mv_bo_ucb(double mu, double sd, double kappa) { return mu + kappa * sd; }
+gmb_val_t gmb_mv_bo_next(const double* x, const double* y, int n,
+                         const double* cand, int m, double l2, double noise, double kappa)
+{
+    double* mean;
+    double* var;
+    double bv = -1e300;
+    int i, best = 0;
+    gmb_dict_t d;
+    if (!x || !y || !cand || n < 2 || m < 1) return gmb_mv_nan_dict();
+    mean = (double*)malloc((size_t)m * sizeof(double));
+    var = (double*)malloc((size_t)m * sizeof(double));
+    if (!mean || !var) { free(mean); free(var); return gmb_mv_nan_dict(); }
+    if (!gmb_mv_gp_fill(x, y, n, cand, m, l2, noise, mean, var)) {
+        free(mean); free(var);
+        return gmb_mv_nan_dict();
+    }
+    for (i = 0; i < m; i++) {
+        double u = mean[i] + kappa * sqrt(var[i] > 0.0 ? var[i] : 0.0);
+        if (u > bv) { bv = u; best = i; }
+    }
+    d = gmb_dict_new();
+    gmb_dict_set(&d, "Index", gmb_make_val_double(best));
+    gmb_dict_set(&d, "Value", gmb_make_val_double(bv));
+    free(mean); free(var);
+    return gmb_make_val_dict_take(&d);
+}
+double gmb_mv_gambler_prob(double i, double N, double p)
+{
+    double q, r;
+    if (N <= 0.0 || i < 0.0 || i > N || p < 0.0 || p > 1.0) return NAN;
+    q = 1.0 - p;
+    if (i == 0.0) return 1.0;
+    if (i == N) return 0.0;
+    if (fabs(p - 0.5) < 1e-12) return 1.0 - i / N;
+    r = q / p;
+    return (pow(r, i) - pow(r, N)) / (1.0 - pow(r, N));
+}
+double gmb_mv_gambler_duration(double i, double N, double p)
+{
+    double q, r;
+    if (N <= 0.0 || i < 0.0 || i > N || p < 0.0 || p > 1.0) return NAN;
+    q = 1.0 - p;
+    if (fabs(p - 0.5) < 1e-12) return i * (N - i);
+    r = q / p;
+    return i / (q - p) - (N / (q - p)) * (1.0 - pow(r, i)) / (1.0 - pow(r, N));
+}
+double gmb_mv_ate_ipw(const double* t, const double* y, const double* ps, int n)
+{
+    int i;
+    double s1 = 0.0, s0 = 0.0;
+    if (!t || !y || !ps || n < 1) return NAN;
+    for (i = 0; i < n; i++) {
+        double e = ps[i] < 1e-6 ? 1e-6 : (ps[i] > 1.0 - 1e-6 ? 1.0 - 1e-6 : ps[i]);
+        s1 += t[i] * y[i] / e;
+        s0 += (1.0 - t[i]) * y[i] / (1.0 - e);
+    }
+    return s1 / n - s0 / n;
+}
+double gmb_mv_ate_matching(const double* t, const double* y, const double* ps, int n)
+{
+    int i, j, nt = 0, nc = 0;
+    double att = 0.0, atc = 0.0;
+    if (!t || !y || !ps || n < 2) return NAN;
+    for (i = 0; i < n; i++) {
+        int best = -1;
+        double bd = 1e300;
+        for (j = 0; j < n; j++) {
+            if (t[j] == t[i]) continue;
+            { double dd = fabs(ps[i] - ps[j]); if (dd < bd) { bd = dd; best = j; } }
+        }
+        if (best < 0) continue;
+        if (t[i] > 0.5) { att += y[i] - y[best]; nt++; }
+        else { atc += y[best] - y[i]; nc++; }
+    }
+    att = nt > 0 ? att / nt : 0.0;
+    atc = nc > 0 ? atc / nc : 0.0;
+    if (nt > 0 && nc > 0) return 0.5 * (att + atc);
+    return nt > 0 ? att : atc;
 }
 
 /* --- SVM multiclasse (perceptron, port di gs_svm_multiclass) --- */

@@ -5960,6 +5960,41 @@ static int mv_svm_fit(ctx_t* c, gmb_expr_t** a, int n) {
     sb_put(&c->out, "), (int)("); emit_expr(c, a[4]); sb_put(&c->out, "))");
     return 1;
 }
+static int mv_bo4(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
+    if (n < 4) return 0;
+    sb_put(&c->out, fn);
+    for (int i = 0; i < 4; i++) { sb_put(&c->out, i ? ", (double)(" : "((double)("); emit_expr(c, a[i]); sb_put(&c->out, ")"); }
+    sb_put(&c->out, ")");
+    return 1;
+}
+static int mv_bo3(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
+    if (n < 3) return 0;
+    sb_put(&c->out, fn);
+    for (int i = 0; i < 3; i++) { sb_put(&c->out, i ? ", (double)(" : "((double)("); emit_expr(c, a[i]); sb_put(&c->out, ")"); }
+    sb_put(&c->out, ")");
+    return 1;
+}
+static int mv_bonext(ctx_t* c, gmb_expr_t** a, int n) {
+    var_t *x, *y, *cd;
+    if (n < 6 || !mv_arr(c, a[0], &x) || !mv_arr(c, a[1], &y) || !mv_arr(c, a[2], &cd)) return 0;
+    sb_put(&c->out, "gmb_mv_bo_next((const double*)"); emit_var_ref(c, x);
+    sb_put(&c->out, ", (const double*)"); emit_var_ref(c, y);
+    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, x);
+    sb_put(&c->out, "), (const double*)"); emit_var_ref(c, cd);
+    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, cd); sb_put(&c->out, ")");
+    for (int i = 3; i < 6; i++) { sb_put(&c->out, ", (double)("); emit_expr(c, a[i]); sb_put(&c->out, ")"); }
+    sb_put(&c->out, ")");
+    return 1;
+}
+static int mv_ate(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
+    var_t *t, *y, *ps;
+    if (n < 3 || !mv_arr(c, a[0], &t) || !mv_arr(c, a[1], &y) || !mv_arr(c, a[2], &ps)) return 0;
+    sb_put(&c->out, fn); sb_put(&c->out, "((const double*)"); emit_var_ref(c, t);
+    sb_put(&c->out, ", (const double*)"); emit_var_ref(c, y);
+    sb_put(&c->out, ", (const double*)"); emit_var_ref(c, ps);
+    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, t); sb_put(&c->out, "))");
+    return 1;
+}
 static int mv_boost_predict(ctx_t* c, gmb_expr_t** a, int n) {
     var_t *m, *x;
     if (n < 2 || !mv_arr(c, a[0], &m) || !mv_arr(c, a[1], &x)) return 0;
@@ -6062,6 +6097,14 @@ int emit_bf_mv(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, g
     if (tk == GMB_TOK_MvSvmPredict) return mv_svm_predict(c, args, nargs);
     if (tk == GMB_TOK_MvBoostPredict) return mv_boost_predict(c, args, nargs);
     if (tk == GMB_TOK_MvBoostScore) return mv_boost_score(c, args, nargs);
+    if (tk == GMB_TOK_MvBoei) return mv_bo4(c, args, nargs, "gmb_mv_bo_ei");
+    if (tk == GMB_TOK_MvBopi) return mv_bo4(c, args, nargs, "gmb_mv_bo_pi");
+    if (tk == GMB_TOK_MvBoucb) return mv_bo3(c, args, nargs, "gmb_mv_bo_ucb");
+    if (tk == GMB_TOK_MvBonext) return mv_bonext(c, args, nargs);
+    if (tk == GMB_TOK_MvGamblerProb) return mv_bo3(c, args, nargs, "gmb_mv_gambler_prob");
+    if (tk == GMB_TOK_MvGamblerDur) return mv_bo3(c, args, nargs, "gmb_mv_gambler_duration");
+    if (tk == GMB_TOK_MvAteIpw) return mv_ate(c, args, nargs, "gmb_mv_ate_ipw");
+    if (tk == GMB_TOK_MvAteMatching) return mv_ate(c, args, nargs, "gmb_mv_ate_matching");
     return 0;
 }
 
