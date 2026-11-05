@@ -985,6 +985,8 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "TIMESERIES.HMMFIT");
         r.Register(Backend.IL, "TIMESERIES.KPSS");
         r.Register(Backend.IL, "TIMESERIES.QLR");
+        r.Register(Backend.IL, "TIMESERIES.DFGLS");
+        r.Register(Backend.IL, "TIMESERIES.ENGLEGRANGER");
         r.Register(Backend.IL, "STATS.BetaSf");
         r.Register(Backend.IL, "STATS.ChiSf");
         r.Register(Backend.IL, "STATS.LogisticCdf");

@@ -994,6 +994,172 @@ public static partial class Numerics
         return sxx > 0 ? sxy / sxx : 0;
     }
 
+    // ── nucleo ADF + OLS (parità gs_infer.c) ────────────────────────────────────────
+
+    private static bool InferSolve(int n, double[] A, double[] b, double[] x)
+    {
+        int i, j, k, piv;
+        for (i = 0; i < n; i++)
+        {
+            piv = i;
+            for (j = i + 1; j < n; j++) if (Math.Abs(A[j * n + i]) > Math.Abs(A[piv * n + i])) piv = j;
+            if (Math.Abs(A[piv * n + i]) < 1e-300) return false;
+            if (piv != i)
+            {
+                for (k = 0; k < n; k++) { (A[i * n + k], A[piv * n + k]) = (A[piv * n + k], A[i * n + k]); }
+                (b[i], b[piv]) = (b[piv], b[i]);
+            }
+            for (j = i + 1; j < n; j++)
+            {
+                var f = A[j * n + i] / A[i * n + i];
+                for (k = i; k < n; k++) A[j * n + k] -= f * A[i * n + k];
+                b[j] -= f * b[i];
+            }
+        }
+        for (i = n - 1; i >= 0; i--)
+        {
+            var s = b[i];
+            for (j = i + 1; j < n; j++) s -= A[i * n + j] * x[j];
+            x[i] = s / A[i * n + i];
+        }
+        return true;
+    }
+
+    private static bool InferOls(int rows, int cols, double[] X, double[] y,
+        double[] beta, out double ssr, int leverageCol, out double leverageOut)
+    {
+        ssr = 0.0;
+        leverageOut = 0.0;
+        if (rows <= cols || cols > 64) return false;
+        var XtX = new double[64 * 64];
+        var Xty = new double[64];
+        var z = new double[64];
+        var e = new double[64];
+        int i, j, k;
+        for (i = 0; i < rows; i++)
+            for (j = 0; j < cols; j++)
+            {
+                Xty[j] += X[i * cols + j] * y[i];
+                for (k = 0; k < cols; k++) XtX[j * cols + k] += X[i * cols + j] * X[i * cols + k];
+            }
+        var XtX0 = (double[])XtX.Clone();
+        if (!InferSolve(cols, XtX, Xty, beta)) return false;
+        for (i = 0; i < rows; i++)
+        {
+            double f = 0.0;
+            for (j = 0; j < cols; j++) f += X[i * cols + j] * beta[j];
+            var r = y[i] - f;
+            ssr += r * r;
+        }
+        if (leverageCol >= 0)
+        {
+            for (j = 0; j < cols; j++) e[j] = j == leverageCol ? 1.0 : 0.0;
+            Array.Copy(XtX0, XtX, cols * cols);
+            if (!InferSolve(cols, XtX, e, z)) return false;
+            leverageOut = z[leverageCol];
+        }
+        return true;
+    }
+
+    private static (double Statistic, int Lags, int Observations)? InferAdfCore(
+        int n, double[] series, int lags, int firstObs, int deterministic)
+    {
+        var nd = deterministic;
+        var cols = nd + 1 + lags;
+        var levelCol = nd;
+        var rows = n - firstObs;
+        if (rows <= cols || firstObs < 1 + lags) return null;
+        var X = new double[rows * cols];
+        var y = new double[rows];
+        var beta = new double[cols];
+        for (var row = 0; row < rows; row++)
+        {
+            var t = firstObs + row;
+            y[row] = series[t] - series[t - 1];
+            if (nd >= 1) X[row * cols + 0] = 1.0;
+            if (nd >= 2) X[row * cols + 1] = t + 1;
+            X[row * cols + levelCol] = series[t - 1];
+            for (var l = 1; l <= lags; l++)
+                X[row * cols + levelCol + l] = series[t - l] - series[t - l - 1];
+        }
+        if (!InferOls(rows, cols, X, y, beta, out var ssr, levelCol, out var lev)) return null;
+        var varr = ssr / (rows - cols);
+        var se = Math.Sqrt(varr * lev);
+        return (beta[levelCol] / se, lags, rows);
+    }
+
+    public static (double Statistic, int Lags, int Observations, int Deterministic, double AlphaBar)
+        Dfgls(double[] series, int lags, int deterministic)
+    {
+        var n = series.Length;
+        var nd = deterministic == 1 ? 2 : 1;
+        var cBar = nd == 2 ? 13.5 : 7.0;
+        var alphaBar = 1.0 - cBar / n;
+        if (n <= nd + lags + 4)
+            return (double.NaN, lags, 0, deterministic, double.NaN);
+        var qdDet = new double[n * nd];
+        var qdSer = new double[n];
+        var det = new double[n * nd];
+        var psi = new double[nd];
+        var detrended = new double[n];
+        int t, j;
+        for (t = 0; t < n; t++)
+        {
+            det[t * nd + 0] = 1.0;
+            if (nd == 2) det[t * nd + 1] = t + 1;
+        }
+        for (t = 0; t < n; t++)
+        {
+            for (j = 0; j < nd; j++)
+                qdDet[t * nd + j] = t == 0 ? det[j] : det[t * nd + j] - alphaBar * det[(t - 1) * nd + j];
+            qdSer[t] = t == 0 ? series[0] : series[t] - alphaBar * series[t - 1];
+        }
+        if (!InferOls(n, nd, qdDet, qdSer, psi, out _, -1, out _))
+            return (double.NaN, lags, 0, deterministic, double.NaN);
+        for (t = 0; t < n; t++)
+        {
+            double fit = 0.0;
+            for (j = 0; j < nd; j++) fit += psi[j] * det[t * nd + j];
+            detrended[t] = series[t] - fit;
+        }
+        var ar = InferAdfCore(n, detrended, lags, 1 + lags, 0);
+        if (ar is null) return (double.NaN, lags, 0, deterministic, double.NaN);
+        return (ar.Value.Statistic, ar.Value.Lags, ar.Value.Observations, deterministic, alphaBar);
+    }
+
+    public static (double Statistic, int Lags, int Observations, int NRegressors, int WithConstant)
+        EngleGranger(double[][] Y, int dependent, int lags, int withConstant)
+    {
+        var n = Y.Length;
+        var k = n > 0 ? Y[0].Length : 0;
+        var cols = (k - 1) + (withConstant != 0 ? 1 : 0);
+        if (n <= cols + lags + 2 || k < 2 || dependent < 0 || dependent >= k)
+            return (double.NaN, lags, 0, cols, withConstant);
+        var X = new double[n * cols];
+        var resid = new double[n];
+        var beta = new double[cols];
+        var yc = new double[n];
+        int i, j, row;
+        for (i = 0; i < n; i++)
+        {
+            var c = 0;
+            if (withConstant != 0) X[i * cols + c++] = 1.0;
+            for (j = 0; j < k; j++) if (j != dependent) X[i * cols + c++] = Y[i][j];
+            yc[i] = Y[i][dependent];
+        }
+        if (!InferOls(n, cols, X, yc, beta, out _, -1, out _))
+            return (double.NaN, lags, 0, cols, withConstant);
+        for (row = 0; row < n; row++)
+        {
+            double f = 0.0;
+            for (j = 0; j < cols; j++) f += X[row * cols + j] * beta[j];
+            resid[row] = Y[row][dependent] - f;
+        }
+        var ar = InferAdfCore(n, resid, lags, 1 + lags, withConstant != 0 ? 1 : 0);
+        if (ar is null) return (double.NaN, lags, 0, cols, withConstant);
+        return (ar.Value.Statistic, ar.Value.Lags, ar.Value.Observations, cols, withConstant);
+    }
+
     // ── KPSS e QLR (parità gs_infer.c) ─────────────────────────────────────────────
 
     private static double BartlettLrv(double[] e, int n, int bw)

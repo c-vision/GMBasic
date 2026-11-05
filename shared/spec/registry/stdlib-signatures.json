@@ -26020,6 +26020,71 @@
     },
     {
       "ns": "TIMESERIES",
+      "name": "DFGLS",
+      "fn": true,
+      "return": "ANY",
+      "params": [
+        {
+          "name": "series",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "lags",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "deterministic",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "TIMESERIES",
+      "name": "ENGLEGRANGER",
+      "fn": true,
+      "return": "ANY",
+      "params": [
+        {
+          "name": "data",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "dependent",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "lags",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "withConstant",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "TIMESERIES",
       "name": "HMMFIT",
       "fn": true,
       "return": "HMMRESULT",

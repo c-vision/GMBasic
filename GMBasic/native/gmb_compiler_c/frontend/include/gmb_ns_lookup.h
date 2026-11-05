@@ -1322,6 +1322,8 @@ static const gmb_ns_lookup_row_t gmb_ns_lookup[] = {
     { "SYSTEM", "VARPTR", GMB_TOK_VarPtr },
     { "TIMESERIES", "AdfTest", GMB_TOK_AdfTest },
     { "TIMESERIES", "Arima", GMB_TOK_Arima },
+    { "TIMESERIES", "DFGLS", GMB_TOK_TsDfgls },
+    { "TIMESERIES", "ENGLEGRANGER", GMB_TOK_TsEngleGranger },
     { "TIMESERIES", "HMMFIT", GMB_TOK_TsHmmFit },
     { "TIMESERIES", "HMMFORWARD", GMB_TOK_TsHmmForward },
     { "TIMESERIES", "HMMVITERBI", GMB_TOK_TsHmmViterbi },

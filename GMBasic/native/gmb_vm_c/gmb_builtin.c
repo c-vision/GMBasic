@@ -771,6 +771,50 @@ static void gmb_bf_1077(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
         bout->result = gmb_ts_lyapunov(a, n, (int)args[1].num, (int)args[2].num);
         free(a);
 }
+static void gmb_bf_3846(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task; (void)func_code;
+        int n = 0;
+        double* a = gmb_vm_list_to_dbl(&args[0], &n);
+        gmb_val_t r = gmb_ts_dfgls_flat(a, n, (int)(argc >= 2 ? args[1].num : 1), (int)(argc >= 3 ? args[2].num : 0));
+        free(a);
+        bout->result = 0;
+        gmb_vm_set_dict_result_owned(r, &bout->is_num, &bout->result_ref, &bout->result_ref_bt);
+}
+static void gmb_bf_3847(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task; (void)func_code;
+        int n = 0, k = 0;
+        double* flat = NULL;
+        if (args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_LIST)
+        {
+                gmb_obj_shared_val_t* sv = (gmb_obj_shared_val_t*)args[0].ref;
+                if (sv->ndims >= 2) {
+                        n = (int)sv->dim_upper[0] + 1; k = (int)sv->dim_upper[1] + 1;
+                        int cnt = (int)sv->list->count;
+                        flat = (double*)malloc((size_t)cnt * sizeof(double));
+                        if (flat) for (int i = 0; i < cnt; i++) { gmb_val_t v = sv->list->items[i]; flat[i] = v.kind==GMB_TYPE_DOUBLE?v.v_double:v.kind==GMB_TYPE_INT?(double)v.v_int:0; }
+                } else if (sv->list->count > 0) {
+                        n = (int)sv->list->count;
+                        for (int i = 0; i < n; i++) { gmb_val_t rv = sv->list->items[i]; if (rv.kind == GMB_TYPE_OBJECT && rv.v_ptr && ((gmb_obj_t*)rv.v_ptr)->kind == GMB_OBJ_LIST) { k = (int)((gmb_obj_shared_val_t*)rv.v_ptr)->list->count; break; } }
+                        if (k > 0) {
+                                flat = (double*)malloc((size_t)n * k * sizeof(double));
+                                if (flat) for (int i = 0; i < n; i++) {
+                                        gmb_val_t rv = sv->list->items[i];
+                                        if (rv.kind == GMB_TYPE_OBJECT && rv.v_ptr && ((gmb_obj_t*)rv.v_ptr)->kind == GMB_OBJ_LIST) {
+                                                gmb_obj_shared_val_t* rl = (gmb_obj_shared_val_t*)rv.v_ptr;
+                                                for (int q = 0; q < k && q < (int)rl->list->count; q++) { gmb_val_t v = rl->list->items[q]; flat[i*k+q] = v.kind==GMB_TYPE_DOUBLE?v.v_double:v.kind==GMB_TYPE_INT?(double)v.v_int:0; }
+                                        }
+                                }
+                        }
+                }
+        }
+        gmb_val_t r = gmb_ts_engle_granger_flat(flat, n, k, (int)(argc >= 2 ? args[1].num : 0),
+                                                (int)(argc >= 3 ? args[2].num : 1), (int)(argc >= 4 ? args[3].num : 1));
+        free(flat);
+        bout->result = 0;
+        gmb_vm_set_dict_result_owned(r, &bout->is_num, &bout->result_ref, &bout->result_ref_bt);
+}
 static void gmb_bf_3844(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         (void)vm; (void)task; (void)func_code;
@@ -17931,6 +17975,8 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 3821, gmb_bf_3820 },
     { 3822, gmb_bf_3822 },
     { 3844, gmb_bf_3844 },
+    { 3846, gmb_bf_3846 },
+    { 3847, gmb_bf_3847 },
     { 3845, gmb_bf_3845 },
     { 3823, gmb_bf_3823 },
     { 3824, gmb_bf_3823 },

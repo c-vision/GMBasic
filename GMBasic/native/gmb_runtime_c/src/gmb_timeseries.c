@@ -1391,3 +1391,219 @@ gmb_val_t gmb_ts_qlr_flat(const double* l_beta, int n_beta, double l0, double ka
     gmb_dict_set(&d, "BestIndex", gmb_make_val_double(best));
     return gmb_make_val_dict_take(&d);
 }
+
+/* ==================== nucleo ADF + OLS (parità gs_infer.c) ==================== */
+typedef struct { double statistic, coefficient, standard_error, aic, bic;
+                 int lags, observations, deterministic; } gmb_infer_adf_t;
+
+static int gmb_infer_solve(int n, double* A, double* b, double* x)
+{
+    int i, j, k, piv;
+    for (i = 0; i < n; i++) {
+        piv = i;
+        for (j = i + 1; j < n; j++) if (fabs(A[j*n+i]) > fabs(A[piv*n+i])) piv = j;
+        if (fabs(A[piv*n+i]) < 1e-300) return 0;
+        if (piv != i) {
+            for (k = 0; k < n; k++) { double t = A[i*n+k]; A[i*n+k] = A[piv*n+k]; A[piv*n+k] = t; }
+            { double t = b[i]; b[i] = b[piv]; b[piv] = t; }
+        }
+        for (j = i + 1; j < n; j++) {
+            double f = A[j*n+i] / A[i*n+i];
+            for (k = i; k < n; k++) A[j*n+k] -= f * A[i*n+k];
+            b[j] -= f * b[i];
+        }
+    }
+    for (i = n - 1; i >= 0; i--) {
+        double s = b[i];
+        for (j = i + 1; j < n; j++) s -= A[i*n+j] * x[j];
+        x[i] = s / A[i*n+i];
+    }
+    return 1;
+}
+
+static int gmb_infer_ols(int rows, int cols, const double* X, const double* y,
+                         double* beta, double* ssr, int leverage_col, double* leverage_out)
+{
+    double XtX[64*64], XtX0[64*64], Xty[64], z[64], e[64];
+    int i, j, k;
+    if (rows <= cols || cols > 64) return 0;
+    memset(XtX, 0, sizeof(XtX)); memset(Xty, 0, sizeof(Xty));
+    for (i = 0; i < rows; i++)
+        for (j = 0; j < cols; j++) {
+            Xty[j] += X[i*cols+j] * y[i];
+            for (k = 0; k < cols; k++) XtX[j*cols+k] += X[i*cols+j] * X[i*cols+k];
+        }
+    /* la fattorizzazione e' in-place: serve una copia per il secondo solve (leverage). */
+    memcpy(XtX0, XtX, sizeof(XtX));
+    if (!gmb_infer_solve(cols, XtX, Xty, beta)) return 0;
+    *ssr = 0.0;
+    for (i = 0; i < rows; i++) {
+        double f = 0.0, r;
+        for (j = 0; j < cols; j++) f += X[i*cols+j] * beta[j];
+        r = y[i] - f; *ssr += r * r;
+    }
+    if (leverage_col >= 0 && leverage_out) {
+        for (j = 0; j < cols; j++) e[j] = (j == leverage_col) ? 1.0 : 0.0;
+        memcpy(XtX, XtX0, sizeof(XtX));
+        if (!gmb_infer_solve(cols, XtX, e, z)) return 0;
+        *leverage_out = z[leverage_col];
+    }
+    return 1;
+}
+
+static int gmb_infer_adf_core(int n, const double* series, int lags, int first_obs,
+                              int deterministic, gmb_infer_adf_t* out)
+{
+    int nd = deterministic, cols = nd + 1 + lags, level_col = nd;
+    int rows = n - first_obs, i, row, l;
+    double *X, *y, *beta, ssr = 0.0, lev = 0.0;
+    if (rows <= cols || first_obs < 1 + lags) return 0;
+    X = (double*)calloc((size_t)rows * cols, sizeof(double));
+    y = (double*)malloc((size_t)rows * sizeof(double));
+    beta = (double*)malloc((size_t)cols * sizeof(double));
+    if (!X || !y || !beta) { free(X); free(y); free(beta); return 0; }
+    for (row = 0; row < rows; row++) {
+        int t = first_obs + row;
+        y[row] = series[t] - series[t-1];
+        if (nd >= 1) X[row*cols+0] = 1.0;
+        if (nd >= 2) X[row*cols+1] = t + 1;
+        X[row*cols+level_col] = series[t-1];
+        for (l = 1; l <= lags; l++)
+            X[row*cols+level_col+l] = series[t-l] - series[t-l-1];
+    }
+    if (!gmb_infer_ols(rows, cols, X, y, beta, &ssr, level_col, &lev)) { free(X); free(y); free(beta); return 0; }
+    {
+        double var = ssr / (rows - cols);
+        double se = sqrt(var * lev);
+        double ms = ssr / rows;
+        out->coefficient = beta[level_col];
+        out->standard_error = se;
+        out->statistic = beta[level_col] / se;
+        out->lags = lags;
+        out->observations = rows;
+        out->deterministic = deterministic;
+        out->aic = rows * log(ms) + 2.0 * cols;
+        out->bic = rows * log(ms) + cols * log((double)rows);
+        (void)i;
+    }
+    free(X); free(y); free(beta);
+    return 1;
+}
+
+/* ==================== DF-GLS ==================== */
+gmb_val_t gmb_ts_dfgls_flat(const double* series, int n, int lags, int deterministic)
+{
+    int nd = (deterministic == 1) ? 2 : 1;
+    double c_bar = (nd == 2) ? 13.5 : 7.0;
+    double alpha_bar = 1.0 - c_bar / n;
+    double *qd_det, *qd_ser, *det, *psi, *detrended;
+    gmb_infer_adf_t ar;
+    gmb_dict_t d;
+    int t, j;
+    if (n <= nd + lags + 4 || !series) {
+        d = gmb_dict_new();
+        gmb_dict_set(&d, "Statistic", gmb_make_val_double(NAN));
+        gmb_dict_set(&d, "Lags", gmb_make_val_double(lags));
+        gmb_dict_set(&d, "Observations", gmb_make_val_double(0));
+        gmb_dict_set(&d, "Deterministic", gmb_make_val_double(deterministic));
+        gmb_dict_set(&d, "AlphaBar", gmb_make_val_double(NAN));
+        return gmb_make_val_dict_take(&d);
+    }
+    qd_det = (double*)malloc((size_t)n * nd * sizeof(double));
+    qd_ser = (double*)malloc((size_t)n * sizeof(double));
+    det = (double*)malloc((size_t)n * nd * sizeof(double));
+    psi = (double*)malloc((size_t)nd * sizeof(double));
+    detrended = (double*)malloc((size_t)n * sizeof(double));
+    if (!qd_det || !qd_ser || !det || !psi || !detrended) {
+        free(qd_det); free(qd_ser); free(det); free(psi); free(detrended);
+        return gmb_hmm_nan_dict();
+    }
+    for (t = 0; t < n; t++) {
+        det[t*nd+0] = 1.0;
+        if (nd == 2) det[t*nd+1] = t + 1;
+    }
+    for (t = 0; t < n; t++) {
+        for (j = 0; j < nd; j++)
+            qd_det[t*nd+j] = (t == 0) ? det[j] : det[t*nd+j] - alpha_bar * det[(t-1)*nd+j];
+        qd_ser[t] = (t == 0) ? series[0] : series[t] - alpha_bar * series[t-1];
+    }
+    {
+        double ssr = 0.0, lev = -1;
+        if (!gmb_infer_ols(n, nd, qd_det, qd_ser, psi, &ssr, -1, &lev)) {
+            free(qd_det); free(qd_ser); free(det); free(psi); free(detrended);
+            return gmb_hmm_nan_dict();
+        }
+    }
+    for (t = 0; t < n; t++) {
+        double fit = 0.0;
+        for (j = 0; j < nd; j++) fit += psi[j] * det[t*nd+j];
+        detrended[t] = series[t] - fit;
+    }
+    if (!gmb_infer_adf_core(n, detrended, lags, 1 + lags, 0, &ar)) {
+        free(qd_det); free(qd_ser); free(det); free(psi); free(detrended);
+        return gmb_hmm_nan_dict();
+    }
+    free(qd_det); free(qd_ser); free(det); free(psi); free(detrended);
+    d = gmb_dict_new();
+    gmb_dict_set(&d, "Statistic", gmb_make_val_double(ar.statistic));
+    gmb_dict_set(&d, "Lags", gmb_make_val_double(ar.lags));
+    gmb_dict_set(&d, "Observations", gmb_make_val_double(ar.observations));
+    gmb_dict_set(&d, "Deterministic", gmb_make_val_double(deterministic));
+    gmb_dict_set(&d, "AlphaBar", gmb_make_val_double(alpha_bar));
+    return gmb_make_val_dict_take(&d);
+}
+
+/* ==================== Engle-Granger ==================== */
+gmb_val_t gmb_ts_engle_granger_flat(const double* Y, int n, int k, int dependent,
+                                    int lags, int with_constant)
+{
+    int cols = (k - 1) + (with_constant ? 1 : 0);
+    double *X, *resid, *beta, *yc, ssr = 0.0, lev = -1;
+    gmb_infer_adf_t ar;
+    gmb_dict_t d;
+    int i, j, row;
+    if (n <= cols + lags + 2 || k < 2 || !Y || dependent < 0 || dependent >= k) {
+        d = gmb_dict_new();
+        gmb_dict_set(&d, "Statistic", gmb_make_val_double(NAN));
+        gmb_dict_set(&d, "Lags", gmb_make_val_double(lags));
+        gmb_dict_set(&d, "Observations", gmb_make_val_double(0));
+        gmb_dict_set(&d, "NRegressors", gmb_make_val_double(cols));
+        gmb_dict_set(&d, "WithConstant", gmb_make_val_double(with_constant));
+        return gmb_make_val_dict_take(&d);
+    }
+    X = (double*)calloc((size_t)n * cols, sizeof(double));
+    resid = (double*)malloc((size_t)n * sizeof(double));
+    beta = (double*)malloc((size_t)cols * sizeof(double));
+    yc = (double*)malloc((size_t)n * sizeof(double));
+    if (!X || !resid || !beta || !yc) {
+        free(X); free(resid); free(beta); free(yc);
+        return gmb_hmm_nan_dict();
+    }
+    for (i = 0; i < n; i++) {
+        int c = 0;
+        if (with_constant) X[i*cols+c++] = 1.0;
+        for (j = 0; j < k; j++) if (j != dependent) X[i*cols+c++] = Y[i*k+j];
+        yc[i] = Y[i*k+dependent];
+    }
+    if (!gmb_infer_ols(n, cols, X, yc, beta, &ssr, -1, &lev)) {
+        free(X); free(resid); free(beta); free(yc);
+        return gmb_hmm_nan_dict();
+    }
+    for (row = 0; row < n; row++) {
+        double f = 0.0;
+        for (j = 0; j < cols; j++) f += X[row*cols+j] * beta[j];
+        resid[row] = Y[row*k+dependent] - f;
+    }
+    if (!gmb_infer_adf_core(n, resid, lags, 1 + lags, with_constant ? 1 : 0, &ar)) {
+        free(X); free(resid); free(beta); free(yc);
+        return gmb_hmm_nan_dict();
+    }
+    free(X); free(resid); free(beta); free(yc);
+    d = gmb_dict_new();
+    gmb_dict_set(&d, "Statistic", gmb_make_val_double(ar.statistic));
+    gmb_dict_set(&d, "Lags", gmb_make_val_double(ar.lags));
+    gmb_dict_set(&d, "Observations", gmb_make_val_double(ar.observations));
+    gmb_dict_set(&d, "NRegressors", gmb_make_val_double(cols));
+    gmb_dict_set(&d, "WithConstant", gmb_make_val_double(with_constant));
+    return gmb_make_val_dict_take(&d);
+}
