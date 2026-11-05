@@ -1812,6 +1812,17 @@ static const ma_row MATH_TBL[] = {
      * (solo Gamma/Beta di FINANCE) → "simbolo non trovato". */
     { GMB_TOK_SpecialGamma, 1, "gmb_gamma", NULL },
     { GMB_TOK_SpecialBeta, 2, "gmb_beta_fn", NULL },
+    { GMB_TOK_SpecialZeta, 1, "gmb_special_zeta", NULL },
+    { GMB_TOK_SpecialZetaHurwitz, 2, "gmb_special_zeta_hurwitz", NULL },
+    { GMB_TOK_SpecialPolygamma, 2, "gmb_special_polygamma", NULL },
+    { GMB_TOK_SpecialHypergeom2F1, 4, "gmb_special_hypergeom_2f1", NULL },
+    { GMB_TOK_SpecialHypergeom1F1, 3, "gmb_special_hypergeom_1f1", NULL },
+    { GMB_TOK_SpecialLambertW, 1, "gmb_special_lambert_w", NULL },
+    { GMB_TOK_SpecialMittagLeffler, 3, "gmb_special_mittag_leffler", NULL },
+    { GMB_TOK_SpecialStruveH, 2, "gmb_special_struve_h", NULL },
+    { GMB_TOK_SpecialKelvinBer, 1, "gmb_special_kelvin_ber", NULL },
+    { GMB_TOK_SpecialKelvinBei, 1, "gmb_special_kelvin_bei", NULL },
+    { GMB_TOK_SpecialParabolicCylinder, 2, "gmb_special_parabolic_cylinder", NULL },
 };
 int emit_bf_math(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
     (void)name; (void)ns; (void)line;

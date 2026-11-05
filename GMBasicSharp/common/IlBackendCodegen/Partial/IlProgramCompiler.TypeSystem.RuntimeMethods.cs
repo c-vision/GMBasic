@@ -57,6 +57,17 @@ public sealed partial class IlProgramCompiler
     private static readonly MethodInfo IlRuntimeGammaInccMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.GammaIncc))!;
     private static readonly MethodInfo IlRuntimeBetaIncMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.BetaInc))!;
     private static readonly MethodInfo IlRuntimeDigammaMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.Digamma))!;
+    private static readonly MethodInfo IlRuntimeZetaMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.Zeta))!;
+    private static readonly MethodInfo IlRuntimeZetaHurwitzMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.ZetaHurwitz))!;
+    private static readonly MethodInfo IlRuntimePolygammaMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.Polygamma))!;
+    private static readonly MethodInfo IlRuntimeHypergeom2F1Method = typeof(IlRuntime).GetMethod(nameof(IlRuntime.Hypergeom2F1))!;
+    private static readonly MethodInfo IlRuntimeHypergeom1F1Method = typeof(IlRuntime).GetMethod(nameof(IlRuntime.Hypergeom1F1))!;
+    private static readonly MethodInfo IlRuntimeLambertWMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.LambertW))!;
+    private static readonly MethodInfo IlRuntimeMittagLefflerMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.MittagLeffler))!;
+    private static readonly MethodInfo IlRuntimeStruveHMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.StruveH))!;
+    private static readonly MethodInfo IlRuntimeKelvinBerMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.KelvinBer))!;
+    private static readonly MethodInfo IlRuntimeKelvinBeiMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.KelvinBei))!;
+    private static readonly MethodInfo IlRuntimeParabolicCylinderMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.ParabolicCylinder))!;
     private static readonly MethodInfo IlRuntimeBesselJMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.BesselJ))!;
     private static readonly MethodInfo IlRuntimeBesselYMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.BesselY))!;
     private static readonly MethodInfo IlRuntimeBesselIMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.BesselI))!;

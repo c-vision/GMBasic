@@ -3508,3 +3508,243 @@ double gmb_dist_nc_f_isf(double d1, double d2, double nc, double p) { return gmb
 double gmb_dist_nc_t_ppf(double df, double nc, double p)
 { double par[2] = { df, nc }; return gmb_nc_ppf_t(gmb_nc_cdf_t, par, p); }
 double gmb_dist_nc_t_isf(double df, double nc, double p) { return gmb_dist_nc_t_ppf(df, nc, 1.0 - p); }
+
+/* --- gm_special2: funzioni speciali avanzate (port fedele) --- */
+static double gmb_sp2_lgam(double x)
+{
+    static const double c[9] = {
+        0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+        771.32342877765313, -176.61502916214059, 12.507343278686905,
+        -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7
+    };
+    double a, t; int i;
+    if (x < 0.5) return log(3.14159265358979323846 / sin(3.14159265358979323846 * x)) - gmb_sp2_lgam(1.0 - x);
+    x -= 1.0;
+    a = c[0];
+    t = x + 7.5;
+    for (i = 1; i < 9; i++) a += c[i] / (x + (double)i);
+    return 0.5 * log(2.0 * 3.14159265358979323846) + (x + 0.5) * log(t) - t + log(a);
+}
+static double gmb_sp2_gam(double x)
+{
+    if (x == floor(x) && x <= 0.0) return NAN;
+    if (x < 0.5) return 3.14159265358979323846 / (sin(3.14159265358979323846 * x) * gmb_sp2_gam(1.0 - x));
+    return exp(gmb_sp2_lgam(x));
+}
+double gmb_special_hypergeom_2f1(double a, double b, double c, double x)
+{
+    double s = 1.0, term = 1.0;
+    int n;
+    if (c == 0.0 || (c == floor(c) && c <= 0.0)) return NAN;
+    if (x < -1.0) {
+        double y = x / (x - 1.0);
+        return pow(1.0 - x, -a) * gmb_special_hypergeom_2f1(a, c - b, c, y);
+    }
+    if (x < 0.0 || x < 1.0) {
+        for (n = 0; n < 10000; n++) {
+            term *= (a + n) * (b + n) / ((c + n) * (n + 1.0)) * x;
+            s += term;
+            if (fabs(term) < 1e-16 * fabs(s)) break;
+        }
+        return s;
+    }
+    if (x == 1.0) return gmb_sp2_gam(c) * gmb_sp2_gam(c - a - b) / (gmb_sp2_gam(c - a) * gmb_sp2_gam(c - b));
+    return NAN;
+}
+double gmb_special_hypergeom_1f1(double a, double b, double x)
+{
+    double s, term, u;
+    int n;
+    if (b == 0.0 || (b == floor(b) && b <= 0.0)) return NAN;
+    if (a <= 0.0 && a == floor(a)) {
+        s = 1.0; term = 1.0;
+        for (n = 0; n <= (int)(-a); n++) {
+            term *= (a + n) / ((b + n) * (n + 1.0)) * x;
+            s += term;
+            if (!(fabs(s) < 1e300)) return NAN;
+        }
+        return s;
+    }
+    if (x > 15.0) {
+        double lv, sign = (gmb_sp2_gam(a) < 0.0) ? -1.0 : 1.0;
+        int k;
+        if (fabs(a) > 60.0 || fabs(b) > 60.0 || x > 700.0) lv = 0.0;
+        else lv = lgamma(b) - lgamma(a) + x + (a - b) * log(fabs(x));
+        if (lv > 700.0) return sign * 1e308;
+        if (lv < -700.0) return 0.0;
+        s = 1.0; term = 1.0;
+        for (k = 0; k < 12; k++) {
+            term *= (b - a + k) * (1.0 - a + k) / (k + 1.0) / x;
+            s += term;
+        }
+        return sign * exp(lv) * s;
+    }
+    if (x < -20.0) {
+        double lv, sign = ((gmb_sp2_gam(b) < 0.0) ? -1.0 : 1.0) * ((gmb_sp2_gam(b - a) < 0.0) ? -1.0 : 1.0);
+        double best;
+        int cap;
+        u = -x;
+        if (fabs(a) > 60.0 || fabs(b - a) > 60.0) lv = 0.0;
+        else lv = lgamma(b) - lgamma(b - a) - a * log(u);
+        if (lv > 700.0) return sign * 1e308;
+        if (lv < -700.0) return 0.0;
+        cap = (int)u + 8;
+        if (cap < 16) cap = 16;
+        if (cap > 300) cap = 300;
+        s = 1.0; term = 1.0; best = 1.0;
+        {
+            double minterm = 1.0;
+            for (n = 1; n <= cap; n++) {
+                term *= (a + (n - 1)) * (a - b + n) / n * (-1.0 / u);
+                s += term;
+                if (fabs(term) < minterm) { minterm = fabs(term); best = s; }
+            }
+        }
+        return sign * exp(lv) * best;
+    }
+    s = 1.0; term = 1.0;
+    for (n = 0; n < 100000; n++) {
+        term *= (a + n) / ((b + n) * (n + 1.0)) * x;
+        s += term;
+        if (!(fabs(s) < 1e300)) return NAN;
+        if (fabs(term) < 1e-16 * fabs(s)) break;
+    }
+    return s;
+}
+static const double gmb_sp2_bern[] = {
+    1.0 / 6.0, -1.0 / 30.0, 1.0 / 42.0, -1.0 / 30.0, 5.0 / 66.0,
+    -691.0 / 2730.0, 7.0 / 6.0, -3617.0 / 510.0, 43867.0 / 798.0, -174611.0 / 330.0
+};
+static double gmb_sp2_zeta_em(double s, double a)
+{
+    int N = 20, M = 10, k, j;
+    double sum = 0.0, Np;
+    for (k = 0; k < N; k++) sum += pow(k + a, -s);
+    Np = N + a;
+    sum += pow(Np, 1.0 - s) / (s - 1.0) + 0.5 * pow(Np, -s);
+    for (j = 1; j <= M; j++) {
+        double fact = 1.0, term, rising = 1.0;
+        int m2 = 2 * j;
+        for (k = 1; k <= m2; k++) fact *= (double)k;
+        for (k = 0; k < m2 - 1; k++) rising *= (s + k);
+        term = gmb_sp2_bern[j - 1] / fact * rising * pow(Np, -s - m2 + 1.0);
+        sum += term;
+    }
+    return sum;
+}
+double gmb_special_zeta(double s)
+{
+    if (s == 1.0) return INFINITY;
+    if (s > 1.0) return gmb_sp2_zeta_em(s, 1.0);
+    return pow(2.0, s) * pow(3.14159265358979323846, s - 1.0) * sin(3.14159265358979323846 * s / 2.0) * gmb_sp2_gam(1.0 - s) * gmb_special_zeta(1.0 - s);
+}
+double gmb_special_zeta_hurwitz(double s, double a)
+{
+    if (a <= 0.0 && a == floor(a)) return INFINITY;
+    return gmb_sp2_zeta_em(s, a);
+}
+double gmb_special_polygamma(double n_in, double x)
+{
+    double r = 0.0;
+    int i, n = (int)n_in;
+    if (n < 0 || x <= 0.0) return NAN;
+    if (n == 0) {
+        double res = 0.0;
+        while (x < 6.0) { res -= 1.0 / x; x += 1.0; }
+        {
+            double inv = 1.0 / x, inv2 = inv * inv, p = inv2;
+            res += log(x) - 0.5 * inv;
+            for (i = 1; i <= 10; i++) { res -= gmb_sp2_bern[i - 1] / (2 * i) * p; p *= inv2; }
+        }
+        return res;
+    }
+    {
+        double fact = 1.0, factn1 = 1.0, res;
+        int sign = (n % 2 == 1) ? 1 : -1;
+        for (i = 1; i <= n; i++) fact *= (double)i;
+        for (i = 1; i <= n - 1; i++) factn1 *= (double)i;
+        while (x < 10.0) { r += (double)sign * fact / pow(x, (double)(n + 1)); x += 1.0; }
+        res = factn1 / pow(x, (double)n) + 0.5 * fact / pow(x, (double)(n + 1));
+        for (i = 1; i <= 10; i++) {
+            int m, k2 = 2 * i;
+            double ratio = 1.0;
+            for (m = k2 + 1; m <= k2 + n - 1; m++) ratio *= (double)m;
+            res += gmb_sp2_bern[i - 1] * ratio / pow(x, (double)(k2 + n));
+        }
+        r += ((n % 2 == 1) ? 1.0 : -1.0) * res;
+    }
+    return r;
+}
+double gmb_special_lambert_w(double x)
+{
+    double w;
+    int i;
+    if (x < -1.0 / 2.71828182845904523536) return NAN;
+    if (x == 0.0) return 0.0;
+    if (x == -1.0 / 2.71828182845904523536) return -1.0;
+    if (x > 1.0) w = log(x) - log(log(x) + 1e-300);
+    else w = x;
+    for (i = 0; i < 100; i++) {
+        double ew = exp(w), f = w * ew - x;
+        double wp1 = w + 1.0;
+        double d = ew * wp1 - (w + 2.0) * f / (2.0 * wp1);
+        double dw = f / d;
+        w -= dw;
+        if (fabs(dw) < 1e-16 * (1.0 + fabs(w))) break;
+    }
+    return w;
+}
+double gmb_special_mittag_leffler(double alpha, double beta, double x)
+{
+    double s = 0.0;
+    int k;
+    for (k = 0; k < 2000; k++) {
+        double term = pow(x, (double)k) / gmb_sp2_gam(alpha * k + beta);
+        s += term;
+        if (k > 0 && fabs(term) < 1e-16 * fabs(s)) break;
+    }
+    return s;
+}
+double gmb_special_struve_h(double v, double x)
+{
+    double s = 0.0, h = x / 2.0;
+    int k;
+    for (k = 0; k < 500; k++) {
+        double term = pow(h, 2.0 * k + v + 1.0) / (gmb_sp2_gam(k + 1.5) * gmb_sp2_gam(k + v + 1.5));
+        if (k % 2) term = -term;
+        s += term;
+        if (fabs(term) < 1e-16 * fabs(s)) break;
+    }
+    return s;
+}
+double gmb_special_kelvin_ber(double x)
+{
+    double s = 0.0, h = x / 2.0;
+    int k;
+    for (k = 0; k < 200; k++) {
+        double term = pow(h, 4.0 * k) / (gmb_sp2_gam(2.0 * k + 1.0) * gmb_sp2_gam(2.0 * k + 1.0));
+        if (k % 2) term = -term;
+        s += term;
+        if (fabs(term) < 1e-16 * fabs(s)) break;
+    }
+    return s;
+}
+double gmb_special_kelvin_bei(double x)
+{
+    double s = 0.0, h = x / 2.0;
+    int k;
+    for (k = 0; k < 200; k++) {
+        double term = pow(h, 4.0 * k + 2.0) / (gmb_sp2_gam(2.0 * k + 2.0) * gmb_sp2_gam(2.0 * k + 2.0));
+        if (k % 2) term = -term;
+        s += term;
+        if (fabs(term) < 1e-16 * fabs(s)) break;
+    }
+    return s;
+}
+double gmb_special_parabolic_cylinder(double a, double x)
+{
+    double nu = -a - 0.5;
+    double t1 = sqrt(3.14159265358979323846) / gmb_sp2_gam(0.5 * (1.0 - nu)) * gmb_special_hypergeom_1f1(-0.5 * nu, 0.5, 0.5 * x * x);
+    double t2 = sqrt(2.0 * 3.14159265358979323846) * x / gmb_sp2_gam(-0.5 * nu) * gmb_special_hypergeom_1f1(0.5 * (1.0 - nu), 1.5, 0.5 * x * x);
+    return pow(2.0, 0.5 * nu) * exp(-0.25 * x * x) * (t1 - t2);
+}

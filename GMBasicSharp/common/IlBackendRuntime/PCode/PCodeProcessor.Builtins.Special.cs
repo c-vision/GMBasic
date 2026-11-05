@@ -38,6 +38,17 @@ internal sealed partial class PCodeProcessor
         BuiltInFunction.SPECIAL_GAMMAINCINV,
         BuiltInFunction.SPECIAL_GAMMAINCCINV,
         BuiltInFunction.SPECIAL_BETAINCINV,
+        BuiltInFunction.SPECIAL_ZETA,
+        BuiltInFunction.SPECIAL_ZETAHURWITZ,
+        BuiltInFunction.SPECIAL_POLYGAMMA,
+        BuiltInFunction.SPECIAL_HYPERGEOM2F1,
+        BuiltInFunction.SPECIAL_HYPERGEOM1F1,
+        BuiltInFunction.SPECIAL_LAMBERTW,
+        BuiltInFunction.SPECIAL_MITTAGLEFFLER,
+        BuiltInFunction.SPECIAL_STRUVEH,
+        BuiltInFunction.SPECIAL_KELVINBER,
+        BuiltInFunction.SPECIAL_KELVINBEI,
+        BuiltInFunction.SPECIAL_PARABOLICCYLINDER,
     };
 
     /// <summary>Special: dispatch per BuiltInFunction a TABELLA (Dictionary), non switch (refactor §18).</summary>
@@ -81,6 +92,61 @@ internal sealed partial class PCodeProcessor
         {
                 return args.Length > 2 && args[0] != null && args[1] != null && args[2] != null
                 ? Basic.IlBackend.IlRuntime.BetaInc(SafeDouble(args[0]), SafeDouble(args[1]), SafeDouble(args[2])) : 0.0;
+        },
+        [BuiltInFunction.SPECIAL_ZETA] = (task, args) =>
+        {
+                return args.Length > 0 && args[0] != null
+                ? Basic.IlBackend.IlRuntime.Zeta(SafeDouble(args[0])) : 0.0;
+        },
+        [BuiltInFunction.SPECIAL_ZETAHURWITZ] = (task, args) =>
+        {
+                return args.Length > 1 && args[0] != null && args[1] != null
+                ? Basic.IlBackend.IlRuntime.ZetaHurwitz(SafeDouble(args[0]), SafeDouble(args[1])) : 0.0;
+        },
+        [BuiltInFunction.SPECIAL_POLYGAMMA] = (task, args) =>
+        {
+                return args.Length > 1 && args[0] != null && args[1] != null
+                ? Basic.IlBackend.IlRuntime.Polygamma(SafeDouble(args[0]), SafeDouble(args[1])) : 0.0;
+        },
+        [BuiltInFunction.SPECIAL_HYPERGEOM2F1] = (task, args) =>
+        {
+                return args.Length > 3 && args[0] != null && args[1] != null && args[2] != null && args[3] != null
+                ? Basic.IlBackend.IlRuntime.Hypergeom2F1(SafeDouble(args[0]), SafeDouble(args[1]), SafeDouble(args[2]), SafeDouble(args[3])) : 0.0;
+        },
+        [BuiltInFunction.SPECIAL_HYPERGEOM1F1] = (task, args) =>
+        {
+                return args.Length > 2 && args[0] != null && args[1] != null && args[2] != null
+                ? Basic.IlBackend.IlRuntime.Hypergeom1F1(SafeDouble(args[0]), SafeDouble(args[1]), SafeDouble(args[2])) : 0.0;
+        },
+        [BuiltInFunction.SPECIAL_LAMBERTW] = (task, args) =>
+        {
+                return args.Length > 0 && args[0] != null
+                ? Basic.IlBackend.IlRuntime.LambertW(SafeDouble(args[0])) : 0.0;
+        },
+        [BuiltInFunction.SPECIAL_MITTAGLEFFLER] = (task, args) =>
+        {
+                return args.Length > 2 && args[0] != null && args[1] != null && args[2] != null
+                ? Basic.IlBackend.IlRuntime.MittagLeffler(SafeDouble(args[0]), SafeDouble(args[1]), SafeDouble(args[2])) : 0.0;
+        },
+        [BuiltInFunction.SPECIAL_STRUVEH] = (task, args) =>
+        {
+                return args.Length > 1 && args[0] != null && args[1] != null
+                ? Basic.IlBackend.IlRuntime.StruveH(SafeDouble(args[0]), SafeDouble(args[1])) : 0.0;
+        },
+        [BuiltInFunction.SPECIAL_KELVINBER] = (task, args) =>
+        {
+                return args.Length > 0 && args[0] != null
+                ? Basic.IlBackend.IlRuntime.KelvinBer(SafeDouble(args[0])) : 0.0;
+        },
+        [BuiltInFunction.SPECIAL_KELVINBEI] = (task, args) =>
+        {
+                return args.Length > 0 && args[0] != null
+                ? Basic.IlBackend.IlRuntime.KelvinBei(SafeDouble(args[0])) : 0.0;
+        },
+        [BuiltInFunction.SPECIAL_PARABOLICCYLINDER] = (task, args) =>
+        {
+                return args.Length > 1 && args[0] != null && args[1] != null
+                ? Basic.IlBackend.IlRuntime.ParabolicCylinder(SafeDouble(args[0]), SafeDouble(args[1])) : 0.0;
         },
         [BuiltInFunction.SPECIAL_DIGAMMA] = (task, args) =>
         {

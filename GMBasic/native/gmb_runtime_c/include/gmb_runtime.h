@@ -1140,6 +1140,17 @@ double gmb_mv_student_pdf(int d, const double* x, const double* loc, const doubl
 double gmb_copula_clayton_cdf(double u, double v, double theta);
 double gmb_copula_gumbel_cdf(double u, double v, double theta);
 double gmb_copula_frank_cdf(double u, double v, double theta);
+double gmb_special_zeta(double s);
+double gmb_special_zeta_hurwitz(double s, double a);
+double gmb_special_polygamma(double n, double x);
+double gmb_special_hypergeom_2f1(double a, double b, double c, double x);
+double gmb_special_hypergeom_1f1(double a, double b, double x);
+double gmb_special_lambert_w(double x);
+double gmb_special_mittag_leffler(double alpha, double beta, double x);
+double gmb_special_struve_h(double v, double x);
+double gmb_special_kelvin_ber(double x);
+double gmb_special_kelvin_bei(double x);
+double gmb_special_parabolic_cylinder(double a, double x);
 double gmb_dist_geometric_pmf(double p, int k);
 double gmb_dist_negbinom_pmf(double r, double p, int k);
 double gmb_dist_hypergeom_pmf(int N, int K, int n, int k);

@@ -379,6 +379,17 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "OPTIMIZE.DifferentialEvolution");
         r.Register(Backend.PCodeVM, "NUMERICAL.Differentiate");
         r.Register(Backend.PCodeVM, "SPECIAL.DIGAMMA");
+        r.Register(Backend.PCodeVM, "SPECIAL.ZETA");
+        r.Register(Backend.PCodeVM, "SPECIAL.ZETAHURWITZ");
+        r.Register(Backend.PCodeVM, "SPECIAL.POLYGAMMA");
+        r.Register(Backend.PCodeVM, "SPECIAL.HYPERGEOM2F1");
+        r.Register(Backend.PCodeVM, "SPECIAL.HYPERGEOM1F1");
+        r.Register(Backend.PCodeVM, "SPECIAL.LAMBERTW");
+        r.Register(Backend.PCodeVM, "SPECIAL.MITTAGLEFFLER");
+        r.Register(Backend.PCodeVM, "SPECIAL.STRUVEH");
+        r.Register(Backend.PCodeVM, "SPECIAL.KELVINBER");
+        r.Register(Backend.PCodeVM, "SPECIAL.KELVINBEI");
+        r.Register(Backend.PCodeVM, "SPECIAL.PARABOLICCYLINDER");
         r.Register(Backend.PCodeVM, "GRAPH.Dijkstra");
         r.Register(Backend.PCodeVM, "TRADING.METRICS.DilutedEPS");
         r.Register(Backend.PCodeVM, "IO.DIR");
