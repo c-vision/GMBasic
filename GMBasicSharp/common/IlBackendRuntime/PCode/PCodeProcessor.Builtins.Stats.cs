@@ -49,6 +49,8 @@ internal sealed partial class PCodeProcessor
         BuiltInFunction.STATS_CHISF,
         BuiltInFunction.STATS_LOGISTICCDF,
         BuiltInFunction.STATS_LOGISTICSF,
+        BuiltInFunction.STATS_TRIANGULARCDF,
+        BuiltInFunction.STATS_TRIANGULARSF,
         BuiltInFunction.STATS_GAMMAPPF,
         BuiltInFunction.STATS_GAMMAISF,
         BuiltInFunction.STATS_MODE,
@@ -159,6 +161,14 @@ internal sealed partial class PCodeProcessor
         [BuiltInFunction.STATS_LOGISTICCDF] = (task, args) =>
         {
                 return CommonLib.Numerics.LogisticCdf(SafeDouble(ArgOr(args, 1, 0.0)), SafeDouble(ArgOr(args, 2, 1.0)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_TRIANGULARCDF] = (task, args) =>
+        {
+                return CommonLib.Numerics.TriangularCdf(SafeDouble(ArgOr(args, 1, 0.0)), SafeDouble(ArgOr(args, 2, 0.5)), SafeDouble(ArgOr(args, 3, 1.0)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_TRIANGULARSF] = (task, args) =>
+        {
+                return CommonLib.Numerics.TriangularSf(SafeDouble(ArgOr(args, 1, 0.0)), SafeDouble(ArgOr(args, 2, 0.5)), SafeDouble(ArgOr(args, 3, 1.0)), SafeDouble(ArgOr(args, 0)));
         },
         [BuiltInFunction.STATS_LOGISTICSF] = (task, args) =>
         {

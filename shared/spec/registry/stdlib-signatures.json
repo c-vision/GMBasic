@@ -22594,6 +22594,42 @@
     },
     {
       "ns": "STATS",
+      "name": "TriangularCdf",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "x",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "min",
+          "type": "double",
+          "optional": true,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "mode",
+          "type": "double",
+          "optional": true,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "max",
+          "type": "double",
+          "optional": true,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "STATS",
       "name": "TriangularPdf",
       "fn": true,
       "return": "double",
@@ -22657,6 +22693,42 @@
         },
         {
           "name": "c",
+          "type": "double",
+          "optional": true,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "STATS",
+      "name": "TriangularSf",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "x",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "min",
+          "type": "double",
+          "optional": true,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "mode",
+          "type": "double",
+          "optional": true,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "max",
           "type": "double",
           "optional": true,
           "byRef": false,

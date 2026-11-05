@@ -560,6 +560,17 @@ public static partial class Numerics
     /// <param name="x">Punto in cui valutare la PDF.</param>
     /// <returns>La densità di probabilità.</returns>
     /// <example>double pdf = Numerics.TriangularPdf(0, 5, 10, 5);</example>
+    public static double TriangularCdf(double min, double mode, double max, double x)
+    {
+        if (max <= min || mode < min || mode > max) return double.NaN;
+        if (x <= min) return 0.0;
+        if (x >= max) return 1.0;
+        if (x <= mode) return (x - min) * (x - min) / ((max - min) * (mode - min));
+        return 1.0 - (max - x) * (max - x) / ((max - min) * (max - mode));
+    }
+
+    public static double TriangularSf(double min, double mode, double max, double x) => 1.0 - TriangularCdf(min, mode, max, x);
+
     public static double TriangularPdf(double min, double mode, double max, double x)
     {
         // MathNet.Numerics.Distributions.Triangular.PDF ha firma (lower, upper, mode, x) — "mode"
