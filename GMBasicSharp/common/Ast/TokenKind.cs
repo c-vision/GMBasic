@@ -2577,4 +2577,8 @@ public enum TokenKind
     // condiviso gmb_hll.c + mirror managed CommonLib.Collections.HyperLogLog).
     // In coda (ordinali canonici): mai inserire nel mezzo.
     Hll,
+    // CANVAS (2026-11-05): comando canvas offscreen (NEW/USE/SAVE/...). In coda
+    // (ordinali canonici): mai inserire nel mezzo. La forma CONTROLS `CANVAS x,y,w,h`
+    // resta gestita dal parser dei controlli (disambiguazione come CHART).
+    Canvas,
 }

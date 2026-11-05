@@ -92,6 +92,12 @@ public sealed partial class StdLib
         RegisterCommand(TokenKind.Load, "LOAD", namespaceName,
             Parser.ParseLoadStatement);
 
+        // CANVAS (2026-11-05): canvas offscreen. Comando con sottocomandi (come CHART):
+        // NEW/USE/END/CLEAR/SET/GET/BLIT/SAVE/LOAD/FREE/WIDTH/HEIGHT. La forma CONTROLS
+        // `CANVAS x,y,w,h [NAME …]` è rimandata al parser dei controlli.
+        RegisterCommand(TokenKind.Canvas, "CANVAS", namespaceName,
+            Parser.DispatchCanvasStatement);
+
         // Comandi registrati globalmente per la sintassi legacy (es. SPRITE ...)
         RegisterCommand(TokenKind.Sprite, "SPRITE", namespaceName,
             Parser.ParseSpriteStatement);

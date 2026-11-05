@@ -517,6 +517,7 @@ public enum SysCall : ushort
     SIGNAL_UNSUBSCRIBE = 457,   // SIGNAL UNSUBSCRIBE: (id) — "" = tutte
     SIGNAL_PING = 458,          // SIGNAL PING: nessun argomento
     DBF_CLOSE_AREA = 459,       // DBF CLOSE <alias|area>: chiude SOLO l'area indicata (1 arg)
+    CANVAS_OP = 460,            // CANVAS <OP> h, ... , path$ -> handle/colore/dimensione (7 argomenti)
 }
 
 /// <summary>

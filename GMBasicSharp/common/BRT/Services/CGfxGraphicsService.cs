@@ -35,6 +35,7 @@ public sealed class CGfxGraphicsService : IGraphicsService
     [DllImport(Lib)] private static extern void gmb_gfx_pset(int x, int y, int color);
     [DllImport(Lib)] private static extern void gmb_gfx_preset(int x, int y);
     [DllImport(Lib)] private static extern int gmb_gfx_point(int x, int y);
+    [DllImport(Lib)] private static extern double gmb_gfx_canvas_op(string op, double[] args, int nargs, string? path);
     [DllImport(Lib)] private static extern void gmb_gfx_line(int x1, int y1, int x2, int y2, int color, string? style);
     [DllImport(Lib)] private static extern void gmb_gfx_circle(int x, int y, int r, int color, int fill, double start, double end, double aspect);
     [DllImport(Lib)] private static extern void gmb_gfx_paint(int x, int y, int fill, int border);
@@ -879,6 +880,19 @@ public sealed class CGfxGraphicsService : IGraphicsService
             while (_ops.TryDequeue(out var op)) { try { op(); } catch { } }
         }
         try { return gmb_gfx_point(x, y); } catch { return -1; }
+    }
+
+    /// <summary>CANVAS: operazioni su canvas offscreen. Pure (nessuna finestra/SDL), quindi
+    /// chiamabili direttamente da qualunque thread: prima si drenano le ops accodate per
+    /// restare coerenti con le primitive già in coda, poi si chiama il runtime C.</summary>
+    public static double CanvasOpNative(string op, double a0, double a1, double a2, double a3, string path)
+    {
+        lock (_opsDrainLock)
+        {
+            while (_ops.TryDequeue(out var queued)) { try { queued(); } catch { } }
+        }
+        try { return gmb_gfx_canvas_op(op ?? "", new[] { a0, a1, a2, a3 }, 4, path ?? ""); }
+        catch { return -1; }
     }
 
     public int Point(int x, int y)

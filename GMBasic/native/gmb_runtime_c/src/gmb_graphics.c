@@ -127,8 +127,29 @@ static void free_pages(void)
     g_gfx.visible_page = 0;
 }
 
+/* Canvas offscreen: liberati a shutdown (SCREEN non li tocca: sono indipendenti). */
+static void free_canvases(void)
+{
+    for (int i = 0; i < GMB_GFX_MAX_CANVASES; i++)
+    {
+        free(g_gfx.canvases[i].pixels);
+        g_gfx.canvases[i].pixels = NULL;
+        g_gfx.canvases[i].w = g_gfx.canvases[i].h = 0;
+        g_gfx.canvases[i].in_use = 0;
+    }
+    g_gfx.canvas_active = 0;
+}
+
 gmb_gfx_page_t* active_page(void)
 {
+    /* Canvas attivo: vale anche SENZA SCREEN (disegno offscreen headless). */
+    if (g_gfx.canvas_active > 0)
+    {
+        int i = g_gfx.canvas_active - 1;
+        if (i < GMB_GFX_MAX_CANVASES && g_gfx.canvases[i].in_use && g_gfx.canvases[i].pixels)
+            return &g_gfx.canvases[i];
+        g_gfx.canvas_active = 0;
+    }
     if (!g_gfx.screen_on) return NULL;
     if (g_gfx.active_page < 0 || g_gfx.active_page >= GMB_GFX_MAX_PAGES) return NULL;
     return &g_gfx.pages[g_gfx.active_page];
@@ -232,6 +253,7 @@ void gmb_gfx_init(void)
 void gmb_gfx_shutdown(void)
 {
     free_pages();
+    free_canvases();
     free_textures();
     free_sprites();
     free(g_gfx.font_data);
@@ -304,6 +326,8 @@ void gmb_gfx_screen(int mode, int width, int height, int bpp)
     (void)bpp;
     { extern void gmb_chart_screen_reset(void); gmb_chart_screen_reset(); }
     gmb_gfx_init();
+    /* Un nuovo SCREEN riporta il target allo schermo (i canvas restano allocati). */
+    g_gfx.canvas_active = 0;
     {   /* Override scala per i test headless (es. GMB_GFX_SCALE=2 per confrontare col
          * riferimento nativo del motore C#): altrimenti resta la scala del display. */
         const char* ov = getenv("GMB_GFX_SCALE");
@@ -521,7 +545,7 @@ int gmb_gfx_bg(void) { return g_gfx.bg; }
 void put_pixel(gmb_gfx_page_t* p, int x, int y, uint32_t c)
 {
     if (!p || x < 0 || y < 0 || x >= p->w || y >= p->h) return;
-    if (g_gfx.view_set)
+    if (g_gfx.view_set && !g_gfx.canvas_active)
     {
         /* VIEW è in coordinate LOGICHE, put_pixel riceve NATIVE (×renderScale):
          * confrontare x nativo con vx logico dimezzava il clip su Retina. */
@@ -542,6 +566,9 @@ void put_pixel(gmb_gfx_page_t* p, int x, int y, uint32_t c)
  * gmb_graphics_primitive.c. */
 void gmb_gfx_scale_pt(int* x, int* y)
 {
+    /* Su canvas le coordinate sono 1:1 (niente render-scale del display): il contenuto
+     * dipende solo dai pixel richiesti, quindi è riproducibile e confrontabile fra backend. */
+    if (g_gfx.canvas_active) return;
     float s = g_gfx_scale;
     if (s > 0.0f && s != 1.0f) { *x = (int)lround((double)*x * s); *y = (int)lround((double)*y * s); }
 }
@@ -549,6 +576,8 @@ void gmb_gfx_scale_pt(int* x, int* y)
 /* Mappa coordinate mondo (WINDOW) → pixel del viewport. */
 void gmb_gfx_map(int* x, int* y)
 {
+    /* Canvas: coordinate pixel pure (VIEW/WINDOW sono dello schermo). */
+    if (g_gfx.canvas_active) return;
     if (!g_gfx.window_set)
     {
         /* VIEW senza WINDOW: le coordinate sono RELATIVE al viewport (QB: (0,0)
@@ -592,6 +621,7 @@ void gmb_gfx_pset(int x, int y, int color)
 /* Mappatura WORLD→VIEWPORT in double (coordinate frazionarie con WINDOW). */
 void gmb_gfx_map_d(double* x, double* y)
 {
+    if (g_gfx.canvas_active) return;
     if (!g_gfx.window_set)
     {
         if (g_gfx.view_set) { *x += g_gfx.vx1; *y += g_gfx.vy1; }
@@ -644,6 +674,209 @@ int gmb_gfx_point(int x, int y)
     for (int i = 0; i < g_gfx.palette_size; i++)
         if (palette_rgb(i) == c) return i;
     return (int)c;
+}
+
+/* ============================ Canvas offscreen ============================
+ * Una pagina indipendente dallo schermo. Handle = indice+1 (1..GMB_GFX_MAX_CANVASES),
+ * 0 = schermo. Con canvas attivo active_page() restituisce il canvas: TUTTE le primitive
+ * esistenti (PSET/LINE/CIRCLE/PAINT/DRAW/…) ci disegnano sopra senza modifiche, anche
+ * senza SCREEN (headless). Coordinate 1:1, niente VIEW/WINDOW/render-scale. */
+
+static gmb_gfx_page_t* canvas_page(int h)
+{
+    int i = h - 1;
+    if (i < 0 || i >= GMB_GFX_MAX_CANVASES) return NULL;
+    if (!g_gfx.canvases[i].in_use || !g_gfx.canvases[i].pixels) return NULL;
+    return &g_gfx.canvases[i];
+}
+
+/* h == 0 → pagina visibile dello schermo (per SAVE/BLIT/W/H/GET). */
+static gmb_gfx_page_t* canvas_target(int h)
+{
+    if (h != 0) return canvas_page(h);
+    int vi = g_gfx.visible_page;
+    if (vi < 0 || vi >= GMB_GFX_MAX_PAGES) vi = g_gfx.active_page;
+    gmb_gfx_page_t* p = &g_gfx.pages[vi];
+    return (p->in_use && p->pixels) ? p : NULL;
+}
+
+int gmb_gfx_canvas_new(int w, int h)
+{
+    if (w <= 0 || h <= 0 || w > 16384 || h > 16384) return 0;
+    if ((long long)w * h > 268435456LL) return 0;   /* ~1 GiB di pixel: limite di sicurezza */
+    gmb_gfx_init();
+    for (int i = 0; i < GMB_GFX_MAX_CANVASES; i++)
+    {
+        if (g_gfx.canvases[i].in_use) continue;
+        gmb_gfx_page_t* p = &g_gfx.canvases[i];
+        p->pixels = (uint32_t*)calloc((size_t)w * (size_t)h, sizeof(uint32_t));
+        if (!p->pixels) return 0;
+        p->w = w;
+        p->h = h;
+        p->in_use = 1;
+        /* Palette di default se nessuno SCREEN è stato aperto: senza, gli indici 0..15
+         * sarebbero tutti neri e il disegno headless sarebbe inutilizzabile. */
+        if (g_gfx.palette_size == 0)
+        {
+            memcpy(g_gfx.palette, k_vga16, sizeof(k_vga16));
+            g_gfx.palette_size = 16;
+        }
+        return i + 1;
+    }
+    return 0;
+}
+
+void gmb_gfx_canvas_free(int h)
+{
+    gmb_gfx_page_t* p = canvas_page(h);
+    if (!p) return;
+    free(p->pixels);
+    p->pixels = NULL;
+    p->w = p->h = 0;
+    p->in_use = 0;
+    if (g_gfx.canvas_active == h) g_gfx.canvas_active = 0;
+}
+
+int gmb_gfx_canvas_use(int h)
+{
+    if (h == 0) { g_gfx.canvas_active = 0; return 0; }
+    if (!canvas_page(h)) return -1;
+    g_gfx.canvas_active = h;
+    return 0;
+}
+
+int gmb_gfx_canvas_active(void) { return g_gfx.canvas_active; }
+
+int gmb_gfx_canvas_w(int h)
+{
+    gmb_gfx_page_t* p = canvas_target(h);
+    return p ? p->w : -1;
+}
+
+int gmb_gfx_canvas_h(int h)
+{
+    gmb_gfx_page_t* p = canvas_target(h);
+    return p ? p->h : -1;
+}
+
+int gmb_gfx_canvas_clear(int h, int color)
+{
+    gmb_gfx_page_t* p = canvas_page(h);
+    if (!p) return -1;
+    uint32_t c = (color < 0) ? 0u : resolve_color(color);
+    c &= 0xFFFFFFu;
+    for (size_t i = 0; i < (size_t)p->w * (size_t)p->h; i++) p->pixels[i] = c;
+    return 0;
+}
+
+int gmb_gfx_canvas_set(int h, int x, int y, int color)
+{
+    gmb_gfx_page_t* p = canvas_page(h);
+    if (!p || x < 0 || y < 0 || x >= p->w || y >= p->h) return -1;
+    p->pixels[(size_t)y * p->w + x] = resolve_color(color) & 0xFFFFFFu;
+    return 0;
+}
+
+int gmb_gfx_canvas_get(int h, int x, int y)
+{
+    gmb_gfx_page_t* p = canvas_target(h);
+    if (!p || x < 0 || y < 0 || x >= p->w || y >= p->h) return -1;
+    /* Colore impacchettato con RGB flag: riutilizzabile direttamente come argomento
+     * colore (es. CANVAS SET c, x, y, <risultato di CANVAS GET>). */
+    return (int)((uint32_t)GMB_GFX_RGB_FLAG | (p->pixels[(size_t)y * p->w + x] & 0xFFFFFFu));
+}
+
+int gmb_gfx_canvas_save(int h, const char* path)
+{
+    gmb_gfx_page_t* p = canvas_target(h);
+    if (!p || !path || !*path) return -1;
+    return save_png_rgb24(path, p->pixels, p->w, p->h);
+}
+
+int gmb_gfx_canvas_load(const char* path)
+{
+    size_t len = 0;
+    if (!path || !*path) return -1;
+    unsigned char* data = read_whole_file(path, &len);
+    if (!data) return -1;
+    uint32_t* px = NULL;
+    int w = 0, h = 0;
+    int rc = png_decode(data, len, &px, &w, &h);
+    free(data);
+    if (rc != 0 || !px || w <= 0 || h <= 0) { free(px); return -1; }
+    gmb_gfx_init();
+    for (int i = 0; i < GMB_GFX_MAX_CANVASES; i++)
+    {
+        if (g_gfx.canvases[i].in_use) continue;
+        gmb_gfx_page_t* p = &g_gfx.canvases[i];
+        p->pixels = px;   /* proprietà trasferita */
+        p->w = w;
+        p->h = h;
+        p->in_use = 1;
+        if (g_gfx.palette_size == 0)
+        {
+            memcpy(g_gfx.palette, k_vga16, sizeof(k_vga16));
+            g_gfx.palette_size = 16;
+        }
+        return i + 1;
+    }
+    free(px);
+    return -1;
+}
+
+int gmb_gfx_canvas_blit(int src, int dx, int dy)
+{
+    gmb_gfx_page_t* s = canvas_target(src);
+    gmb_gfx_page_t* d = active_page();
+    if (!s || !d) return -1;
+    /* offset negativi: rifiutati (nessun accesso fuori buffer) */
+    if (dx < 0 || dy < 0) return -1;
+    int w = s->w < d->w - dx ? s->w : d->w - dx;
+    int h = s->h < d->h - dy ? s->h : d->h - dy;
+    if (w <= 0 || h <= 0) return -1;
+    if (s == d)
+    {
+        for (int y = 0; y < h; y++) memmove(d->pixels + (size_t)(dy + y) * d->w + dx,
+                                           s->pixels + (size_t)y * s->w, (size_t)w * sizeof(uint32_t));
+    }
+    else
+    {
+        for (int y = 0; y < h; y++) memcpy(d->pixels + (size_t)(dy + y) * d->w + dx,
+                                          s->pixels + (size_t)y * s->w, (size_t)w * sizeof(uint32_t));
+    }
+    return 0;
+}
+
+static int gmb_streq_ci(const char* a, const char* b)
+{
+    if (!a || !b) return 0;
+    while (*a && *b)
+    {
+        int ca = (unsigned char)*a, cb = (unsigned char)*b;
+        if (ca >= 'a' && ca <= 'z') ca -= 32;
+        if (cb >= 'a' && cb <= 'z') cb -= 32;
+        if (ca != cb) return 0;
+        a++; b++;
+    }
+    return *a == *b;
+}
+
+double gmb_gfx_canvas_op(const char* op, const double* a, int nargs, const char* path)
+{
+    if (!op) return -1;
+    if (gmb_streq_ci(op, "NEW")) return (nargs >= 2) ? gmb_gfx_canvas_new((int)a[0], (int)a[1]) : 0;
+    if (gmb_streq_ci(op, "USE")) return (nargs >= 1) ? gmb_gfx_canvas_use((int)a[0]) : -1;
+    if (gmb_streq_ci(op, "END")) { g_gfx.canvas_active = 0; return 0; }
+    if (gmb_streq_ci(op, "CLEAR")) return (nargs >= 1) ? gmb_gfx_canvas_clear((int)a[0], nargs >= 2 ? (int)a[1] : -1) : -1;
+    if (gmb_streq_ci(op, "SET")) return (nargs >= 4) ? gmb_gfx_canvas_set((int)a[0], (int)a[1], (int)a[2], (int)a[3]) : -1;
+    if (gmb_streq_ci(op, "GET")) return (nargs >= 3) ? gmb_gfx_canvas_get((int)a[0], (int)a[1], (int)a[2]) : -1;
+    if (gmb_streq_ci(op, "BLIT")) return gmb_gfx_canvas_blit(nargs >= 1 ? (int)a[0] : 0, nargs >= 2 ? (int)a[1] : 0, nargs >= 3 ? (int)a[2] : 0);
+    if (gmb_streq_ci(op, "SAVE")) return (nargs >= 1) ? gmb_gfx_canvas_save((int)a[0], path) : -1;
+    if (gmb_streq_ci(op, "LOAD")) return gmb_gfx_canvas_load(path);
+    if (gmb_streq_ci(op, "FREE")) { if (nargs >= 1) gmb_gfx_canvas_free((int)a[0]); return 0; }
+    if (gmb_streq_ci(op, "WIDTH")) return (nargs >= 1) ? gmb_gfx_canvas_w((int)a[0]) : -1;
+    if (gmb_streq_ci(op, "HEIGHT")) return (nargs >= 1) ? gmb_gfx_canvas_h((int)a[0]) : -1;
+    return -1;
 }
 
 /* Primitive spostate in gmb_graphics_primitive.c per evitare monolite */

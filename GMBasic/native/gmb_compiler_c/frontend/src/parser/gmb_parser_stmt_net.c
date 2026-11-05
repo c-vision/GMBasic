@@ -585,6 +585,36 @@ gmb_stmt_t* gmb_p_parse_gfx(gmb_parser_t* p, int line)
         if (gmb_p_match(p, GMB_TOK_Comma)) s->net_args[1] = gmb_p_parse_expr(p);
         return s;
     }
+    if (t->kind == GMB_TOK_Canvas) {
+        /* CANVAS NEW/USE/END/CLEAR/SET/GET/BLIT/SAVE/LOAD/FREE/WIDTH/HEIGHT.
+         * sub 53..64; argomenti in net_args[0..3] (path compreso), INTO in net_assign. */
+        const gmb_token_t* act = gmb_p_peek(p, 1);
+        int sub = 0;
+        if (gmb_p_tok_is_soft_keyword(act, "NEW")) sub = 53;
+        else if (gmb_p_tok_is_soft_keyword(act, "USE")) sub = 54;
+        else if (gmb_p_tok_is_soft_keyword(act, "END")) sub = 55;
+        else if (gmb_p_tok_is_soft_keyword(act, "CLEAR")) sub = 56;
+        else if (gmb_p_tok_is_soft_keyword(act, "SET")) sub = 57;
+        else if (gmb_p_tok_is_soft_keyword(act, "GET")) sub = 58;
+        else if (gmb_p_tok_is_soft_keyword(act, "BLIT")) sub = 59;
+        else if (gmb_p_tok_is_soft_keyword(act, "SAVE")) sub = 60;
+        else if (gmb_p_tok_is_soft_keyword(act, "LOAD")) sub = 61;
+        else if (gmb_p_tok_is_soft_keyword(act, "FREE")) sub = 62;
+        else if (gmb_p_tok_is_soft_keyword(act, "WIDTH")) sub = 63;
+        else if (gmb_p_tok_is_soft_keyword(act, "HEIGHT")) sub = 64;
+        if (sub) {
+            gmb_p_adv(p); gmb_p_adv(p);
+            gmb_stmt_t* s = gfx_stmt(p, sub, 4, line);
+            int i = 0;
+            if (!gmb_p_check(p, GMB_TOK_Newline) && !gmb_p_at_end(p) && !gmb_p_check(p, GMB_TOK_Into)) {
+                s->net_args[i++] = gmb_p_parse_expr(p);
+                while (i < 4 && gmb_p_match(p, GMB_TOK_Comma)) s->net_args[i++] = gmb_p_parse_expr(p);
+            }
+            if (gmb_p_check(p, GMB_TOK_Into)) { gmb_p_adv(p); s->net_assign = net_target_name(p); }
+            s->n_netargs = i;
+            return s;
+        }
+    }
     if (t->kind == GMB_TOK_Chart) {
         const gmb_token_t* act = gmb_p_peek(p, 1);
         int sub = 0; int cfg_get = 0;

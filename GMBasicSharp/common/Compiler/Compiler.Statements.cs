@@ -333,6 +333,7 @@ public sealed partial class Compiler
             case ChartClearStmt ccs: EmitChartClearStatement(ccs); break;
             case ChartCloseStmt ccs2: EmitChartCloseStatement(ccs2); break;
             case ChartRenderStmt crs: EmitChartRenderStatement(crs); break;
+            case CanvasStmt cs: VisitCanvasStatement(cs); break;
             case ConsoleCaptionStmt ccs3: EmitConsoleCaptionStatement(ccs3); break;
             case ConsoleSendKeyStmt csks: EmitConsoleSendKeyStatement(csks); break;
             case ConsoleScrollModeStmt csms: EmitConsoleScrollModeStatement(csms); break;

@@ -306,6 +306,7 @@ public sealed partial class IlProgramCompiler
     private static readonly MethodInfo IlRuntimeChartConfigGetMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.ChartConfigGet))!;
     private static readonly MethodInfo IlRuntimeChartConfigGetStrMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.ChartConfigGetStr))!;
     private static readonly MethodInfo IlRuntimeChartDrawMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.ChartDraw))!;
+    private static readonly MethodInfo IlRuntimeCanvasOpMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.CanvasOp))!;
     private static readonly MethodInfo IlRuntimeFormControlGetStrMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.FormControlGetStr))!;
     private static readonly MethodInfo IlRuntimeFormControlSetMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.FormControlSet))!;
     private static readonly MethodInfo IlRuntimeFormControlMoveMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.FormControlMove))!;
@@ -2487,6 +2488,8 @@ case SpeedSetFilterStmt spSetFilter:
             case ChartRenderStmt crs: EmitChartRenderStatement(crs); break;
             case ChartClearStmt ccs: EmitChartClearStatement(ccs); break;
             case ChartCloseStmt ccs2: EmitChartCloseStatement(ccs2); break;
+            // CANVAS (canvas offscreen): sempre via runtime C (IlRuntime.CanvasOp).
+            case CanvasStmt cv: EmitCanvasStmt(cv); break;
             // Internal/OOP (no-op)
             case AmbiguousMethodStmt: break;
             case BaseConstructorCallStmt: break;

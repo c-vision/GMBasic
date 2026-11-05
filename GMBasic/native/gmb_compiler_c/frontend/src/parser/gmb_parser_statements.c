@@ -598,6 +598,18 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
                              gmb_p_tok_is_soft_keyword(cc, "GETS"));
         if (!cc_sub) return gmb_p_parse_control(p, line);
     }
+    /* CANVAS: con un sottocomando è il comando offscreen (ramo gfx); con coordinate è il
+     * controllo `CONTROLS CANVAS x,y,w,h [NAME …]` — stessa disambiguazione di CHART. */
+    if (t->kind == GMB_TOK_Canvas) {
+        const gmb_token_t* cc = gmb_p_peek(p, 1);
+        bool cc_sub = cc && (gmb_p_tok_is_soft_keyword(cc, "NEW") || gmb_p_tok_is_soft_keyword(cc, "USE") ||
+                             gmb_p_tok_is_soft_keyword(cc, "END") || gmb_p_tok_is_soft_keyword(cc, "CLEAR") ||
+                             gmb_p_tok_is_soft_keyword(cc, "SET") || gmb_p_tok_is_soft_keyword(cc, "GET") ||
+                             gmb_p_tok_is_soft_keyword(cc, "BLIT") || gmb_p_tok_is_soft_keyword(cc, "SAVE") ||
+                             gmb_p_tok_is_soft_keyword(cc, "LOAD") || gmb_p_tok_is_soft_keyword(cc, "FREE") ||
+                             gmb_p_tok_is_soft_keyword(cc, "WIDTH") || gmb_p_tok_is_soft_keyword(cc, "HEIGHT"));
+        if (!cc_sub) return gmb_p_parse_control(p, line);
+    }
     if (t->kind == GMB_TOK_Identifier && (
             gmb_p_tok_is_soft_keyword(t, "CHECK") || gmb_p_tok_is_soft_keyword(t, "RADIO") || gmb_p_tok_is_soft_keyword(t, "TRACK") || gmb_p_tok_is_soft_keyword(t, "IMAGE") ||
             gmb_p_tok_is_soft_keyword(t, "CANVAS") || gmb_p_tok_is_soft_keyword(t, "TILING") ||
@@ -1395,6 +1407,13 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
             nx->kind == GMB_TOK_Financial || nx->kind == GMB_TOK_Set || nx->kind == GMB_TOK_Get ||
             nx->kind == GMB_TOK_Draw ||
             gmb_p_tok_is_soft_keyword(nx, "GETS"))) gfx_cmd = true;
+        if (t->kind == GMB_TOK_Canvas && nx && (gmb_p_tok_is_soft_keyword(nx, "NEW") ||
+            gmb_p_tok_is_soft_keyword(nx, "USE") || gmb_p_tok_is_soft_keyword(nx, "END") ||
+            gmb_p_tok_is_soft_keyword(nx, "CLEAR") || gmb_p_tok_is_soft_keyword(nx, "SET") ||
+            gmb_p_tok_is_soft_keyword(nx, "GET") || gmb_p_tok_is_soft_keyword(nx, "BLIT") ||
+            gmb_p_tok_is_soft_keyword(nx, "SAVE") || gmb_p_tok_is_soft_keyword(nx, "LOAD") ||
+            gmb_p_tok_is_soft_keyword(nx, "FREE") || gmb_p_tok_is_soft_keyword(nx, "WIDTH") ||
+            gmb_p_tok_is_soft_keyword(nx, "HEIGHT"))) gfx_cmd = true;
         if (t->kind == GMB_TOK_PixelBuffer) gfx_cmd = true;
         /* `PIXEL BUFFER w, h, buf` (forma a spazio di PIXELBUFFER: PIXEL + BUFFER).
          * BUFFER è keyword del lexer (GMB_TOK_Buffer, come TokenKind.Buffer in C#):

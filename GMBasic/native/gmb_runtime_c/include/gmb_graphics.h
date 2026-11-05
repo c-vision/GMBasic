@@ -89,6 +89,27 @@ int  gmb_gfx_palette_load(const char* path);
 void gmb_gfx_preset(int x, int y);
 int  gmb_gfx_point(int x, int y);                      /* indice palette o RGB; -1 se fuori */
 void gmb_gfx_line(int x1, int y1, int x2, int y2, int color, const char* style);
+
+/* ---- Canvas offscreen (BASIC: CANVAS ...) ----
+ * Superfici RGBA8 indipendenti dallo schermo: handle >= 1 (0 = schermo/visible page).
+ * Con un canvas attivo (gmb_gfx_canvas_use) le primitive disegnano lì, in coordinate
+ * pixel 1:1 (VIEW/WINDOW e render-scale sono ignorati). */
+int  gmb_gfx_canvas_new(int w, int h);
+void gmb_gfx_canvas_free(int h);
+int  gmb_gfx_canvas_use(int h);                        /* 0 = torna allo schermo */
+int  gmb_gfx_canvas_active(void);
+int  gmb_gfx_canvas_w(int h);
+int  gmb_gfx_canvas_h(int h);
+int  gmb_gfx_canvas_clear(int h, int color);
+int  gmb_gfx_canvas_set(int h, int x, int y, int color);
+int  gmb_gfx_canvas_get(int h, int x, int y);          /* RGB impacchettato (RGB flag); -1 se fuori */
+int  gmb_gfx_canvas_save(int h, const char* path);     /* PNG (h=0: pagina visibile) */
+int  gmb_gfx_canvas_load(const char* path);            /* PNG -> nuovo canvas (handle) */
+int  gmb_gfx_canvas_blit(int src, int dx, int dy);     /* copia su canvas/target attivo */
+/* Dispatcher unico per il comando CANVAS (op = "NEW"/"USE"/...); args in double, path per
+ * SAVE/LOAD. Ritorna il valore dell'operazione (handle, colore, dimensione) o -1. */
+double gmb_gfx_canvas_op(const char* op, const double* args, int nargs, const char* path);
+
 /* COLLIDEBATCH: coppie AABB [i,j,...] su array di posizioni (buffer statico riusato). */
 double* gmb_gfx_collide_batch(const double* xs, int nx, const double* ys, int ny,
                               double w, double h, int* out_len);

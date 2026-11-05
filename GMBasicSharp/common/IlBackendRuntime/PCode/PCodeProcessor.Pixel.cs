@@ -107,4 +107,12 @@ internal sealed partial class PCodeProcessor
     private void ChartConfigGet(PCodeTask task) { var prop = PopS(task); var h = PopI(task); task.PushRef(IlRuntime.ChartConfigGet(h, prop)); }
     private void ChartConfigGetS(PCodeTask task) { var prop = PopS(task); var h = PopI(task); task.PushRef(IlRuntime.ChartConfigGetStr(h, prop)); }
     private void ChartDraw(PCodeTask task) { var arr = task.PopRef(); var op = PopS(task); var h = PopI(task); task.PushRef(IlRuntime.ChartDraw(h, op, ToDoubleArray(arr))); }
+    // CANVAS <op> a0..a3 path$ — ordine di push: op, a0, a1, a2, a3, path.
+    private void CanvasOp(PCodeTask task)
+    {
+        var path = PopS(task);
+        var a3 = PopNum(task); var a2 = PopNum(task); var a1 = PopNum(task); var a0 = PopNum(task);
+        var op = PopS(task);
+        task.PushRef(IlRuntime.CanvasOp(op, a0, a1, a2, a3, path));
+    }
 }

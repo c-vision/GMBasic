@@ -153,6 +153,42 @@ nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è 
 - **GRAPHICS.TEXTWIDTH(x1)** — `LOCATE Y, (640 - TEXTWIDTH(Text$)) / 2` (shared/samples/graphics/GraphicsDrawTextures.bas:205)
 <!-- END DOMAIN TABLE -->
 
+## Superfici offscreen: il comando `CANVAS`
+
+Le primitive di questo capitolo disegnano su una **pagina dello schermo**. Per comporre
+un'immagine senza finestra — un grafico da salvare, una texture da riusare, un report PNG —
+il linguaggio offre il **canvas offscreen**, una superficie RGBA8 indipendente dallo schermo.
+L'handle è un `LONG` (≥ 1); `0` indica lo schermo.
+
+Il comando è organizzato come `CHART`: `CANVAS` seguito da un sottocomando (`NEW`, `USE`,
+`END`, `CLEAR`, `SET`, `GET`, `BLIT`, `SAVE`, `LOAD`, `WIDTH`, `HEIGHT`, `FREE`). `NEW` e
+`LOAD` producono l'handle con `INTO`; `GET`/`WIDTH`/`HEIGHT`/`SAVE` restituiscono il valore
+con `INTO`. La forma `CANVAS x, y, w, h [NAME …]` resta invece il **controllo** a celle del
+namespace `CONTROLS`: la disambiguazione guarda il token successivo, esattamente come per
+`CHART`.
+
+Dentro un canvas le coordinate sono pixel 1:1: `VIEW`, `WINDOW` e la scala del display non si
+applicano, così il contenuto è deterministico e confrontabile fra backend. Con
+`CANVAS USE c` le primitive legacy (`PSET`, `LINE`, `CIRCLE`, `PAINT`, `POLYGON`, `DRAW`,
+`CLEAR`) scrivono sul canvas; in esecuzione headless il servizio grafico dell'host può
+disabilitarle (è il caso del runner IL con `NullGraphicsService`). I sottocomandi nativi
+`SET`/`GET`/`BLIT`/`SAVE`/`LOAD` non dipendono dal servizio e sono quindi la via consigliata
+per generare immagini nei test e nei report.
+
+```basic
+DIM c AS LONG, col AS LONG, ok AS LONG
+CANVAS NEW 320, 200 INTO c
+CANVAS CLEAR c, 0
+FOR x = 0 TO 319 : CANVAS SET c, x, 100, 1 : NEXT x
+CANVAS SAVE c, "grafico.png" INTO ok
+CANVAS FREE c
+```
+
+Esempio completo: `shared/samples/graphics/CanvasPlot.bas` (tutti i sottocomandi, curva
+sinusoidale, PNG, rilettura e blit). MiniTest: `graphics/canvas_core.bas`.
+
+
+
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
 ## Riferimento completo: comandi, funzioni, parametri
@@ -257,6 +293,59 @@ LOAD TEXTURE 1, "sprite.png"
 DRAW TEXTURE 1, 100, 100, 0, 1, 1
 
 
+## 4bis. Canvas offscreen (comando `CANVAS`)
+| Comando | Sintassi | Note |
+|---|---|---|
+| `CANVAS NEW` | `CANVAS NEW w%, h% INTO c%` | crea il canvas (`c%` = 0 se non c'è spazio/memoria) |
+| `CANVAS USE` | `CANVAS USE c%` | da qui `PSET`/`LINE`/`CIRCLE`/`PAINT`/`DRAW`… disegnano sul canvas |
+| `CANVAS END` | `CANVAS END` | il target torna allo schermo |
+| `CANVAS CLEAR` | `CANVAS CLEAR c% [, col%]` | riempie (default nero) |
+| `CANVAS SET` | `CANVAS SET c%, x%, y%, col%` | scrive un pixel |
+| `CANVAS GET` | `CANVAS GET c%, x%, y% INTO col%` | legge un pixel (colore impacchettato, riusabile) |
+| `CANVAS BLIT` | `CANVAS BLIT c% [, dx%, dy%]` | copia `c%` sul target attivo (schermo o altro canvas) |
+| `CANVAS SAVE` | `CANVAS SAVE c%, path$ [INTO ok%]` | salva in PNG (0 = ok, -1 = errore) |
+| `CANVAS LOAD` | `CANVAS LOAD path$ INTO c%` | PNG → nuovo canvas (`-1`/0 se illeggibile) |
+| `CANVAS WIDTH` | `CANVAS WIDTH c% INTO w%` | larghezza (`-1` se handle non valido) |
+| `CANVAS HEIGHT` | `CANVAS HEIGHT c% INTO h%` | altezza |
+| `CANVAS FREE` | `CANVAS FREE c%` | libera la superficie |
+
+CANVAS GET c, 10, 10 INTO col
+CANVAS SET c, 11, 10, col     ' copia un pixel
+
+
+### Esempio: grafico → PNG → rilettura
+
+IMPORT GRAPHICS
+
+SUB Main()
+  DIM c AS LONG, w AS LONG, h AS LONG, col AS LONG, ok AS LONG
+
+  CANVAS NEW 320, 200 INTO c
+  CANVAS WIDTH c INTO w
+  CANVAS HEIGHT c INTO h
+  CANVAS CLEAR c, 0
+
+  ' asse orizzontale + curva (pixel espliciti: identico su tutti i backend)
+  FOR x = 0 TO w - 1
+    CANVAS SET c, x, h \ 2, 1
+  NEXT x
+  FOR x = 0 TO w - 1
+    y = h \ 2 - INT(60 * SIN(6.283185307179586 * x / (w - 1)))
+
+
+### Canvas e primitive di disegno
+
+### Errori
+| Situazione | Risultato |
+|---|---|
+| handle inesistente/liberato | `WIDTH`/`HEIGHT`/`GET`/`SET` → `-1` |
+| coordinata fuori dal canvas | `GET`/`SET` → `-1` (nessun accesso fuori buffer) |
+| `NEW` senza memoria o dimensioni non valide | handle `0` |
+| `LOAD` di file assente/non PNG | handle `-1` (o `0` in `INTO`) |
+| `SAVE` su path non scrivibile | `-1` |
+
+### `CANVAS` è anche un controllo
+
 ## 5. Viewport e finestre
 
 ### `VIEW [SCREEN] [(x1,y1)-(x2,y2)] [, col% [, border%]]`
@@ -360,6 +449,7 @@ PRINT GRAPHICS.COLLIDEBATCH(spritesA, spritesB)
 | `CIRCLE` | `CIRCLE (x!, y!), r! [, col%]` | ✅ |
 | `PAINT` | `PAINT (x!, y!) [, fill%] [, border%]` | ✅ |
 | `POLYGON` | `POLYGON n%, (x!,y!)… [, col%]` | ✅ |
+| `CANVAS` | `CANVAS NEW/USE/END/CLEAR/SET/GET/BLIT/SAVE/LOAD/WIDTH/HEIGHT/FREE` | ✅ (nativo) |
 | `POINT` | `POINT (x!, y!)` → colore | ✅ |
 | `CLEAR` | `CLEAR [(x1,y1)-(x2,y2)] [, col%]` | ✅ |
 | `DRAW` | `DRAW cmd$` (stringa di primitiva) | ✅ |

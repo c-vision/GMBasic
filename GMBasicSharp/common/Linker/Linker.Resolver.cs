@@ -2706,6 +2706,12 @@ public static partial class Linker
                     s.Into, s.Token
                 ) { ScopeId = s.ScopeId };
 
+            case CanvasStmt s:
+                return new CanvasStmt(s.Sub,
+                    [..s.Args.Select(a => ResolveExpression(a, program))],
+                    s.Into != null ? ResolveTarget(s.Into, program) : null,
+                    s.Token) { ScopeId = s.ScopeId };
+
             case ChartClearStmt s:
                 return new ChartClearStmt(ResolveExpression(s.Handle, program), s.Token) { ScopeId = s.ScopeId };
 

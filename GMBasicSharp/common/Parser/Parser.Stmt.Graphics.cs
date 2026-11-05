@@ -97,6 +97,53 @@ riusa le stesse clausole: `GRAPHICS.SPRITE LOAD "a.png", id%`.
 /// </summary>
 public sealed partial class Parser
 {
+    // ========================================================================
+    // --- CANVAS: canvas offscreen (NEW/USE/END/CLEAR/SET/GET/BLIT/SAVE/LOAD/
+    //     FREE/WIDTH/HEIGHT). La forma CONTROLS `CANVAS x,y,w,h [NAME …]`
+    //     resta al parser dei controlli (disambiguazione come CHART). ---
+    // ========================================================================
+    public static Stmt DispatchCanvasStatement(Parser parser, string ns)
+    {
+        var nx = parser.At(1);
+        var sub = (nx.Lexeme ?? "").ToUpperInvariant();
+        bool isSub = sub is "NEW" or "USE" or "END" or "CLEAR" or "SET" or "GET"
+            or "BLIT" or "SAVE" or "LOAD" or "FREE" or "WIDTH" or "HEIGHT";
+        if (!isSub)
+            return ParsePixelControlStandalone(parser, "CONTROLS");
+
+        var tok = parser.Consume(TokenKind.Canvas, "Internal parser error: expected 'CANVAS'.");
+        parser.Advance();   // sottocomando
+
+        var args = new List<Expr>();
+        if (parser.Peek().Kind is not (TokenKind.Newline or TokenKind.Eof or TokenKind.Into))
+        {
+            args.Add(parser.ParseExpression());
+            while (parser.Match(TokenKind.Comma)) args.Add(parser.ParseExpression());
+        }
+        Target? into = null;
+        if (parser.Match(TokenKind.Into)) into = parser.ParseTarget();
+
+        int n = args.Count;
+        bool ok = sub switch
+        {
+            "NEW" => n == 2,
+            "USE" or "FREE" => n == 1,
+            "CLEAR" => n is 1 or 2,
+            "SET" => n == 4,
+            "GET" => n == 3,
+            "BLIT" => n is 1 or 2 or 3,
+            "SAVE" => n == 2,
+            "LOAD" => n == 1,
+            "WIDTH" or "HEIGHT" => n == 1,
+            "END" => n == 0,
+            _ => false
+        };
+        if (!ok)
+            throw CreateError(tok, $"CANVAS {sub}: numero di argomenti non valido ({n}).");
+
+        return new CanvasStmt(sub, [.. args], into, tok);
+    }
+
     /// <summary>
     /// [FASE 1] Parsa un'istruzione SCREEN.
     /// </summary>
