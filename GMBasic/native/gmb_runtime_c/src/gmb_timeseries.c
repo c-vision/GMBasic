@@ -1607,3 +1607,197 @@ gmb_val_t gmb_ts_engle_granger_flat(const double* Y, int n, int k, int dependent
     gmb_dict_set(&d, "WithConstant", gmb_make_val_double(with_constant));
     return gmb_make_val_dict_take(&d);
 }
+
+/* ==================== Johansen ==================== */
+static int gmb_joh_cholesky(int n, const double* A, double* L)
+{
+    int i, j, k;
+    memset(L, 0, (size_t)n * n * sizeof(double));
+    for (i = 0; i < n; i++)
+        for (j = 0; j <= i; j++) {
+            double s = A[i*n+j];
+            for (k = 0; k < j; k++) s -= L[i*n+k] * L[j*n+k];
+            if (i == j) { if (s <= 0) return 0; L[i*n+j] = sqrt(s); }
+            else L[i*n+j] = s / L[j*n+j];
+        }
+    return 1;
+}
+static void gmb_joh_lower_solve(int n, int ncol, const double* L, const double* B, double* X)
+{
+    int i, j, c;
+    for (c = 0; c < ncol; c++)
+        for (i = 0; i < n; i++) {
+            double s = B[i*ncol+c];
+            for (j = 0; j < i; j++) s -= L[i*n+j] * X[j*ncol+c];
+            X[i*ncol+c] = s / L[i*n+i];
+        }
+}
+/* autovalori di una matrice simmetrica (Jacobi ciclico), ordinati crescenti. */
+static void gmb_joh_eig_sym(int n, double* A, double* eval)
+{
+    int i, j, k, sweep;
+    for (sweep = 0; sweep < 100; sweep++) {
+        double off = 0.0, diag = 0.0;
+        for (i = 0; i < n; i++) {
+            diag += A[i*n+i] * A[i*n+i];
+            for (j = i + 1; j < n; j++) off += A[i*n+j] * A[i*n+j];
+        }
+        if (off <= 1e-30 * (diag + 1e-300)) break;
+        for (i = 0; i < n; i++)
+            for (j = i + 1; j < n; j++) {
+                double apq = A[i*n+j];
+                if (fabs(apq) < 1e-300) continue;
+                double app = A[i*n+i], aqq = A[j*n+j];
+                double tau = (aqq - app) / (2.0 * apq);
+                double t = (tau >= 0 ? 1.0 : -1.0) / (fabs(tau) + sqrt(1.0 + tau * tau));
+                double c = 1.0 / sqrt(1.0 + t * t), sn = t * c;
+                for (k = 0; k < n; k++) {
+                    double aik = A[i*n+k], ajk = A[j*n+k];
+                    A[i*n+k] = c * aik - sn * ajk;
+                    A[j*n+k] = sn * aik + c * ajk;
+                }
+                for (k = 0; k < n; k++) {
+                    double aki = A[k*n+i], akj = A[k*n+j];
+                    A[k*n+i] = c * aki - sn * akj;
+                    A[k*n+j] = sn * aki + c * akj;
+                }
+                A[i*n+j] = 0.0; A[j*n+i] = 0.0;
+            }
+    }
+    for (i = 0; i < n; i++) eval[i] = A[i*n+i];
+    for (i = 1; i < n; i++) {
+        double v = eval[i];
+        for (j = i - 1; j >= 0 && eval[j] > v; j--) eval[j+1] = eval[j];
+        eval[j+1] = v;
+    }
+}
+
+static void gmb_joh_residualize(int rows, int ncol, int nreg, const double* Y,
+                                const double* X, double* R)
+{
+    int c, i, j;
+    double* beta = (double*)malloc((size_t)nreg * sizeof(double));
+    double* Xc = (double*)malloc((size_t)rows * nreg * sizeof(double));
+    double* yc = (double*)malloc((size_t)rows * sizeof(double));
+    if (!beta || !Xc || !yc) { free(beta); free(Xc); free(yc); return; }
+    for (c = 0; c < ncol; c++) {
+        double ssr = 0.0, lev = -1;
+        for (i = 0; i < rows; i++) {
+            for (j = 0; j < nreg; j++) Xc[i*nreg+j] = X[i*nreg+j];
+            yc[i] = Y[i*ncol+c];
+        }
+        if (!gmb_infer_ols(rows, nreg, Xc, yc, beta, &ssr, -1, &lev)) { R[c] = 0; continue; }
+        for (i = 0; i < rows; i++) {
+            double f = 0.0;
+            for (j = 0; j < nreg; j++) f += X[i*nreg+j] * beta[j];
+            R[i*ncol+c] = Y[i*ncol+c] - f;
+        }
+    }
+    free(beta); free(Xc); free(yc);
+}
+
+gmb_val_t gmb_ts_johansen_flat(const double* Y, int n_obs, int k, int lags)
+{
+    int rows = n_obs - lags - 1, cc = k * lags + 1;
+    int i, j, r, row, l, v;
+    double *D, *Lv, *COV, *Dr, *Lr, *S00, *S01, *S11, *W, *P, *Lc, *half, *halfT, *sym;
+    double *eval, *trace_s, *max_s, *col, *sol;
+    gmb_dict_t d;
+    if (k < 1 || k > 32 || lags < 0 || !Y || rows <= k + cc) return gmb_hmm_nan_dict();
+    D = (double*)calloc((size_t)rows * k, sizeof(double));
+    Lv = (double*)calloc((size_t)rows * k, sizeof(double));
+    COV = (double*)calloc((size_t)rows * cc, sizeof(double));
+    Dr = (double*)calloc((size_t)rows * k, sizeof(double));
+    Lr = (double*)calloc((size_t)rows * k, sizeof(double));
+    S00 = (double*)malloc((size_t)k * k * sizeof(double));
+    S01 = (double*)malloc((size_t)k * k * sizeof(double));
+    S11 = (double*)malloc((size_t)k * k * sizeof(double));
+    W = (double*)malloc((size_t)k * k * sizeof(double));
+    P = (double*)malloc((size_t)k * k * sizeof(double));
+    Lc = (double*)malloc((size_t)k * k * sizeof(double));
+    half = (double*)malloc((size_t)k * k * sizeof(double));
+    halfT = (double*)malloc((size_t)k * k * sizeof(double));
+    sym = (double*)malloc((size_t)k * k * sizeof(double));
+    eval = (double*)malloc((size_t)k * sizeof(double));
+    trace_s = (double*)malloc((size_t)k * sizeof(double));
+    max_s = (double*)malloc((size_t)k * sizeof(double));
+    if (!D || !Lv || !COV || !Dr || !Lr || !S00 || !S01 || !S11 || !W || !P || !Lc
+        || !half || !halfT || !sym || !eval || !trace_s || !max_s) goto fail;
+
+    /* Y e' n_obs x k (osservazioni x variabili). */
+    for (row = 0; row < rows; row++) {
+        int t = lags + 1 + row;
+        for (v = 0; v < k; v++) {
+            D[row*k+v] = Y[t*k+v] - Y[(t-1)*k+v];
+            Lv[row*k+v] = Y[(t-1)*k+v];
+        }
+        for (l = 1; l <= lags; l++)
+            for (v = 0; v < k; v++)
+                COV[row*cc+(l-1)*k+v] = Y[(t-l)*k+v] - Y[(t-l-1)*k+v];
+        COV[row*cc+cc-1] = 1.0;
+    }
+    gmb_joh_residualize(rows, k, cc, D, COV, Dr);
+    gmb_joh_residualize(rows, k, cc, Lv, COV, Lr);
+    for (i = 0; i < k; i++)
+        for (j = 0; j < k; j++) {
+            double s00 = 0, s01 = 0, s11 = 0;
+            for (row = 0; row < rows; row++) {
+                s00 += Dr[row*k+i] * Dr[row*k+j];
+                s01 += Dr[row*k+i] * Lr[row*k+j];
+                s11 += Lr[row*k+i] * Lr[row*k+j];
+            }
+            S00[i*k+j] = s00 / rows;
+            S01[i*k+j] = s01 / rows;
+            S11[i*k+j] = s11 / rows;
+        }
+    col = (double*)malloc((size_t)k * sizeof(double));
+    sol = (double*)malloc((size_t)k * sizeof(double));
+    if (!col || !sol) { free(col); free(sol); goto fail; }
+    for (j = 0; j < k; j++) {
+        double cm[64*64];
+        memcpy(cm, S00, (size_t)k * k * sizeof(double));
+        for (i = 0; i < k; i++) col[i] = S01[i*k+j];
+        if (!gmb_infer_solve(k, cm, col, sol)) { free(col); free(sol); goto fail; }
+        for (i = 0; i < k; i++) W[i*k+j] = sol[i];
+    }
+    free(col); free(sol);
+    for (i = 0; i < k; i++)
+        for (j = 0; j < k; j++) {
+            double s = 0.0;
+            for (v = 0; v < k; v++) s += S01[v*k+i] * W[v*k+j];
+            P[i*k+j] = s;
+        }
+    memcpy(Lc, S11, (size_t)k * k * sizeof(double));
+    if (!gmb_joh_cholesky(k, S11, Lc)) goto fail;
+    gmb_joh_lower_solve(k, k, Lc, P, half);
+    for (i = 0; i < k; i++) for (j = 0; j < k; j++) halfT[i*k+j] = half[j*k+i];
+    gmb_joh_lower_solve(k, k, Lc, halfT, sym);
+    gmb_joh_eig_sym(k, sym, eval);
+    for (i = 0; i < k; i++) {
+        double lam = eval[i];
+        if (lam < 0.0) lam = 0.0;
+        if (lam > 1.0 - 1e-15) lam = 1.0 - 1e-15;
+        eval[i] = lam;
+    }
+    for (r = 0; r < k; r++) {
+        double tot = 0.0;
+        for (i = r; i < k; i++) tot += -log(1.0 - eval[i]);
+        trace_s[r] = rows * tot;
+        max_s[r] = rows * (-log(1.0 - eval[r]));
+    }
+    d = gmb_dict_new();
+    gmb_dict_set(&d, "EigenValues", gmb_hmm_list(eval, k));
+    gmb_dict_set(&d, "TraceStatistic", gmb_hmm_list(trace_s, k));
+    gmb_dict_set(&d, "MaxStatistic", gmb_hmm_list(max_s, k));
+    gmb_dict_set(&d, "Observations", gmb_make_val_double(rows));
+    gmb_dict_set(&d, "Lags", gmb_make_val_double(lags));
+    free(D); free(Lv); free(COV); free(Dr); free(Lr); free(S00); free(S01); free(S11);
+    free(W); free(P); free(Lc); free(half); free(halfT); free(sym); free(eval);
+    free(trace_s); free(max_s);
+    return gmb_make_val_dict_take(&d);
+fail:
+    free(D); free(Lv); free(COV); free(Dr); free(Lr); free(S00); free(S01); free(S11);
+    free(W); free(P); free(Lc); free(half); free(halfT); free(sym); free(eval);
+    free(trace_s); free(max_s);
+    return gmb_hmm_nan_dict();
+}

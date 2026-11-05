@@ -1297,6 +1297,7 @@ static const gmb_ns_type_row_t gmb_ns_types[] = {
     { GMB_TOK_TsBmaWeights, 0 },
     { GMB_TOK_TsHmmForward, 0 },
     { GMB_TOK_TsHmmViterbi, 0 },
+    { GMB_TOK_TsJohansen, 0 },
     { GMB_TOK_TsDfgls, 0 },
     { GMB_TOK_TsEngleGranger, 0 },
     { GMB_TOK_TsKpss, 0 },

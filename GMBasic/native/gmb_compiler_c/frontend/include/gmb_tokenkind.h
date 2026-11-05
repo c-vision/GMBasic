@@ -2766,9 +2766,10 @@ typedef enum gmb_tokenkind {
     GMB_TOK_TsQlr,
     GMB_TOK_TsDfgls,
     GMB_TOK_TsEngleGranger,
+    GMB_TOK_TsJohansen,
 } gmb_tokenkind_t;
 
-#define GMB_TOK_COUNT 2743
+#define GMB_TOK_COUNT 2744
 
 /* 2026-09-09 (direttiva 2026-09-08): gmb_tokenkind_name()/gmb_tokenkind_from_name() e la
  * tabella gmb_token_names[] sono state RIMOSSE — dispatch solo per TokenKind; la risoluzione

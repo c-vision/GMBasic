@@ -65,6 +65,15 @@ public sealed partial class StdLib
             { "EigenVectors", new ArrayType(new ArrayType(new DoubleType())) }
         });
 
+        RegisterTypeSchema(typeof(JohansenResultType), new Dictionary<string, DataType>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "EigenValues", new ArrayType(new DoubleType()) },
+            { "TraceStatistic", new ArrayType(new DoubleType()) },
+            { "MaxStatistic", new ArrayType(new DoubleType()) },
+            { "Observations", new DoubleType() },
+            { "Lags", new DoubleType() }
+        });
+
         RegisterTypeSchema(typeof(HmmResultType), new Dictionary<string, DataType>(StringComparer.OrdinalIgnoreCase)
         {
             { "Pi", new ArrayType(new DoubleType()) },

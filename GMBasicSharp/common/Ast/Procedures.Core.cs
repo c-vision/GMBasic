@@ -158,6 +158,7 @@ public record ProcedureSignature
             AdfTestResultType => "ADFTESTRESULT",
             PcaResultType => "PCARESULT",
             HmmResultType => "HMMRESULT",
+            JohansenResultType => "JOHANSENRESULT",
             LuDecompositionType => "LUDECOMPOSITION",
             QrDecompositionType => "QRDECOMPOSITION",
             SvdDecompositionType => "SVDDECOMPOSITION",

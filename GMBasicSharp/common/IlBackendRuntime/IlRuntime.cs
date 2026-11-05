@@ -2172,6 +2172,15 @@ public static partial class IlRuntime
         return new Dictionary<string, object?> { ["Theta"] = theta, ["Mu"] = mu, ["Sigma"] = sigma, ["Phi"] = phi, ["HalfLife"] = halfLife };
     }
 
+    public static Dictionary<string, object?> Johansen(double[][] Y, long lags)
+    {
+        var r = CommonLib.Numerics.Johansen(Y, (int)lags);
+        return new Dictionary<string, object?>
+        {
+            ["EigenValues"] = r.EigenValues, ["TraceStatistic"] = r.TraceStatistic,
+            ["MaxStatistic"] = r.MaxStatistic, ["Observations"] = r.Observations, ["Lags"] = r.Lags
+        };
+    }
     public static Dictionary<string, object?> Dfgls(double[] series, long lags, long deterministic)
     {
         var r = CommonLib.Numerics.Dfgls(series, (int)lags, (int)deterministic);

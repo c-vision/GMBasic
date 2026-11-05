@@ -656,6 +656,7 @@ public sealed partial class IlProgramCompiler
             case TokenKind.TsQlr: EmitTimeSeriesDoubleArrayDoubleCall(expr, nameof(IlRuntime.Qlr)); break;
             case TokenKind.TsDfgls: EmitTimeSeriesArrayLongLongCall(expr, nameof(IlRuntime.Dfgls)); break;
             case TokenKind.TsEngleGranger: EmitAnalysisMatrixLongLongLongCall(expr, nameof(IlRuntime.EngleGranger)); break;
+            case TokenKind.TsJohansen: EmitAnalysisMatrixLongCall(expr, nameof(IlRuntime.Johansen)); break;
             case TokenKind.MvGaussPdf: EmitThreeArrayCall(expr, RuntimeMethod(nameof(IlRuntime.MvGaussPdf))); break;
             case TokenKind.MvStudentPdf: EmitThreeArrayDoubleCall(expr, RuntimeMethod(nameof(IlRuntime.MvStudentPdf))); break;
             case TokenKind.CopulaClaytonCdf: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.CopulaClaytonCdf)), 3); break;

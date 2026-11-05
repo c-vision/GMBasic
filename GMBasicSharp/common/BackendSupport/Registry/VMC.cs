@@ -976,6 +976,7 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "TIMESERIES.QLR");
         r.Register(Backend.VMC, "TIMESERIES.DFGLS");
         r.Register(Backend.VMC, "TIMESERIES.ENGLEGRANGER");
+        r.Register(Backend.VMC, "TIMESERIES.JOHANSEN");
         r.Register(Backend.VMC, "STATS.BetaSf");
         r.Register(Backend.VMC, "STATS.ChiSf");
         r.Register(Backend.VMC, "STATS.LogisticCdf");

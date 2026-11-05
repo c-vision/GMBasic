@@ -198,6 +198,10 @@ public sealed partial class StdLib
                  new Parameter(-1, T(TokenKind.Identifier, "logA"), new DoubleType(), arrayFlag, null, false),
                  new Parameter(-1, T(TokenKind.Identifier, "logE"), new DoubleType(), arrayFlag, null, false)],
                 doubleArr, TokenKind.TsHmmViterbi, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.TsJohansen, "JOHANSEN"),
+                [new Parameter(-1, T(TokenKind.Identifier, "data"), new DoubleType(), arrayFlag, null, false),
+                 new Parameter(-1, T(TokenKind.Identifier, "lags"), new LongType(), noFlags, null, false)],
+                new JohansenResultType(), TokenKind.TsJohansen),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.TsDfgls, "DFGLS"),
                 [new Parameter(-1, T(TokenKind.Identifier, "series"), new DoubleType(), arrayFlag, null, false),
                  new Parameter(-1, T(TokenKind.Identifier, "lags"), new LongType(), noFlags, null, false),
@@ -299,7 +303,8 @@ public sealed partial class StdLib
             { "ArimaResult", new ArimaResultType() },
             { "HoltWintersResult", new HoltWintersResultType() },
             { "AdfTestResult", new AdfTestResultType() },
-            { "HmmResult", new HmmResultType() }
+            { "HmmResult", new HmmResultType() },
+            { "JohansenResult", new JohansenResultType() }
         };
         RegisterBuiltinNamespace(namespaceName, procedures, types);
     }
