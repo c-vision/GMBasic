@@ -1,9 +1,9 @@
 ' FILE: TimeSeries/TimeSeriesMatrixGaps.bas
-' Copre le sei funzioni TIMESERIES che ritornano matrici e non avevano esempio.
-' Chiamate qualificate (TIMESERIES.NOME) così restano rintracciabili dal controllo
-' di copertura. Le matrici si leggono con DUE indici: m(i, j).
+' Copre le sei funzioni TIMESERIESX (FFI) che ritornano matrici/vettori strutturati.
+' Chiamate qualificate (TIMESERIESX.NOME) così restano rintracciabili dal controllo
+' di copertura. Le matrici sono PIATTE: row-major (o coppie interleaved).
 
-IMPORT TIMESERIES
+IMPORT TIMESERIESX
 
 SUB Main()
     DIM s(9) AS DOUBLE
@@ -17,13 +17,13 @@ SUB Main()
         s2(i) = 5 + i * 0.25
     NEXT
 
-    ' [finestre][2] = [min, max]
-    DIM mm = TIMESERIES.TSROLLMINMAX(s, 5)
-    PRINT "TSROLLMINMAX finestra0 = min "; mm(0, 0); " max "; mm(0, 1)
+    ' [min0, max0, min1, max1, ...]
+    DIM mm() AS DOUBLE = TIMESERIESX.TSROLLMINMAX(s, 5)
+    PRINT "TSROLLMINMAX finestra0 = min "; mm(0); " max "; mm(1)
 
-    ' 3 x n = [trend, seasonal, residual]
-    DIM dec = TIMESERIES.TSDECOMPOSE(s, 2)
-    PRINT "TSDECOMPOSE trend[0] = "; dec(0, 0)
+    ' 3*n flat: [trend | seasonal | residual]
+    DIM dec() AS DOUBLE = TIMESERIESX.TSDECOMPOSE(s, 2)
+    PRINT "TSDECOMPOSE trend[0] = "; dec(0)
 
     ' m x m covarianza: data = n_obs x n_vars
     DIM data(4) AS ARRAY OF DOUBLE
@@ -32,18 +32,19 @@ SUB Main()
     data(2) = {3.0, 6.0}
     data(3) = {4.0, 8.0}
     data(4) = {5.0, 10.0}
-    DIM cv = TIMESERIES.TSCOVARIANCEMATRIX(data)
-    PRINT "TSCOVARIANCEMATRIX(0,0) = "; cv(0, 0)
+    DIM cv() AS DOUBLE = TIMESERIESX.TSCOVARIANCEMATRIX(data)
+    PRINT "TSCOVARIANCEMATRIX(0,0) = "; cv(0)
 
-    DIM out = TIMESERIES.TSOUTLIERS(s, 2.0)
-    PRINT "TSOUTLIERS conteggio = "; UBOUND(out)
+    DIM idx(9) AS LONG
+    DIM nout AS LONG = TIMESERIESX.TSOUTLIERS(s, 2.0, idx)
+    PRINT "TSOUTLIERS conteggio = "; nout
 
-    ' [finestre][2] = [slope, intercept]
-    DIM rr = TIMESERIES.TSROLLREGRESSION(s, s2, 5)
-    PRINT "TSROLLREGRESSION slope0 = "; rr(0, 0)
+    ' [slope0, intercept0, slope1, intercept1, ...]
+    DIM rr() AS DOUBLE = TIMESERIESX.TSROLLREGRESSION(s, s2, 5)
+    PRINT "TSROLLREGRESSION slope0 = "; rr(0)
 
-    DIM rs = TIMESERIES.TSROLLREGRESSIONSINGLE(s, 5)
-    PRINT "TSROLLREGRESSIONSINGLE slope0 = "; rs(0, 0)
+    DIM rs() AS DOUBLE = TIMESERIESX.TSROLLREGRESSIONSINGLE(s, 5)
+    PRINT "TSROLLREGRESSIONSINGLE slope0 = "; rs(0)
 
     PRINT "TimeSeriesMatrixGaps: completato."
 END SUB
