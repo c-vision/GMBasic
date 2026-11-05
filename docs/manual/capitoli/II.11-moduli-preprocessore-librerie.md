@@ -72,6 +72,10 @@ simbolo a una funzione C.
 | `~/.gmbasic/packages/<nome>/<ver>/` | pacchetti installati su un client |
 | `<progetto>/vendor/<nome>/<ver>/` | pin offline del progetto |
 
+> `shared/include/` contiene **solo** file BASIC (`.inc`): gli header C stanno nel progetto della
+> libreria (`shared/libs/<nome>/include/`) e `tools/sh/gmb_lib.sh check` fallisce se trova un `.h`
+> in `shared/include/`.
+
 Una libreria **nostra e autocontenuta** sta in `shared/libs/` con l'export in
 `shared/include/`; un **pacchetto** sta in `packages/`; una libreria **esterna** sta nella
 cache o dentro un pacchetto.
@@ -380,6 +384,10 @@ const char* s = greet("Mondo", -1);                        /* "Ciao, Mondo" */
 | `~/.gmbasic/libs/<rid>/` | cache delle librerie pubblicate + librerie esterne |
 | `~/.gmbasic/packages/<nome>/<ver>/` | pacchetti installati su un client |
 | `<progetto>/vendor/<nome>/<ver>/` | pin offline del progetto |
+
+> `shared/include/` contiene **solo** file BASIC (`.inc`): gli header C stanno nel progetto della
+> libreria (`shared/libs/<nome>/include/`) e `tools/sh/gmb_lib.sh check` fallisce se trova un `.h`
+> in `shared/include/`.
 
 ## 3. Importare un modulo `.inc` (`IMPORT`)
 
