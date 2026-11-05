@@ -163,6 +163,7 @@ public record ProcedureSignature
             SvmResultType => "SVMRESULT",
             GmmResultType => "GMMRESULT",
             PolyFitResultType => "POLYFITRESULT",
+            ParticleResultType => "PARTICLERESULT",
             LuDecompositionType => "LUDECOMPOSITION",
             QrDecompositionType => "QRDECOMPOSITION",
             SvdDecompositionType => "SVDDECOMPOSITION",

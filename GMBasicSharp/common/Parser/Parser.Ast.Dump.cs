@@ -1850,6 +1850,7 @@ public sealed partial class Parser
             SvmResultType => "SVMRESULT",
             GmmResultType => "GMMRESULT",
             PolyFitResultType => "POLYFITRESULT",
+            ParticleResultType => "PARTICLERESULT",
             LuDecompositionType => "LUDECOMPOSITION",
             QrDecompositionType => "QRDECOMPOSITION",
             SvdDecompositionType => "SVDDECOMPOSITION",

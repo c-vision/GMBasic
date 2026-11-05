@@ -946,6 +946,7 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "SIMULATION.SimExponential");
         r.Register(Backend.PCodeVM, "SIMULATION.SimBernoulli");
         r.Register(Backend.PCodeVM, "SIMULATION.SimBinomial");
+        r.Register(Backend.PCodeVM, "SIMULATION.PARTICLEFILTER");
         r.Register(Backend.PCodeVM, "SPATIAL.PDIST");
         r.Register(Backend.PCodeVM, "STATS.PearsonR");
         r.Register(Backend.PCodeVM, "STATS.KendallTau");

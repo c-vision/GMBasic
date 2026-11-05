@@ -1065,6 +1065,7 @@ static const gmb_ns_lookup_row_t gmb_ns_lookup[] = {
     { "SIGNAL", "RESAMPLE", GMB_TOK_SignalResample },
     { "SIGNAL", "SAVGOLFILTER", GMB_TOK_SignalSavgolFilter },
     { "SIGNAL", "WELCH", GMB_TOK_SignalWelch },
+    { "SIMULATION", "PARTICLEFILTER", GMB_TOK_SimParticle },
     { "SIMULATION", "SIMBERNOULLI", GMB_TOK_SimBernoulli },
     { "SIMULATION", "SIMBINOMIAL", GMB_TOK_SimBinomial },
     { "SIMULATION", "SIMEXP", GMB_TOK_SimExponential },

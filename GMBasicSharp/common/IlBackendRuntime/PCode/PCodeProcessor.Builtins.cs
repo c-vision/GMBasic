@@ -4913,6 +4913,10 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         {
                 return Basic.IlBackend.IlRuntime.TsGarch11(ToDoubleArr(ArgOr(args, 0)));
         },
+        [BuiltInFunction.SIM_PARTICLEFILTER] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.ParticleFilter(ToDoubleArr(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4)), SafeDouble(ArgOr(args, 5)));
+        },
         [BuiltInFunction.SIM_SEED] = (task, args) =>
         {
                 return Basic.IlBackend.IlRuntime.SimSeed(SafeDouble(ArgOr(args, 0)));
