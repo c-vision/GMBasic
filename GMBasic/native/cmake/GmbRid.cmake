@@ -59,6 +59,16 @@ endif()
 set(GMB_LIBS_OUT    "${CMAKE_CURRENT_LIST_DIR}/../../build/libs/${GMB_RID}")
 set(GMB_PLUGINS_OUT "${CMAKE_CURRENT_LIST_DIR}/../../build/plugins/${GMB_RID}")
 
+# ── Dove finiscono i TOOL (i comandi che il programmatore digita) ──────────────────────────
+# `<root del monorepo>/bin/`, generati DIRETTAMENTE dalla build. Prima ognuno restava nella
+# propria build dir e in `bin/` arrivava per `cp` manuale: due copie, e la possibilità concreta
+# di lasciare in `bin/` un binario vecchio (è successo, e il sintomo era un fix "invisibile").
+# Accanto ai tool la ricetta rilocabile crea `libs/<rid>` (symlink alla cache utente in
+# sviluppo, dylib vere in release): è QUESTO che li rende eseguibili da `bin/`.
+# CMAKE_CURRENT_LIST_DIR (e non GMB_CMAKE_DIR, che viene impostato piu' sotto): qui siamo al
+# livello del file incluso, quindi questo e' sempre `<repo>/GMBasic/native/cmake`.
+set(GMB_BIN_OUT "${CMAKE_CURRENT_LIST_DIR}/../../../bin")
+
 # Cartella di QUESTO file, catturata adesso. Dentro una function() CMAKE_CURRENT_LIST_DIR punta
 # al CMakeLists CHIAMANTE (quindi a `gmb_runtime_c/`): il POST_BUILD cercava lì
 # GmbLinkCacheLibs.cmake e falliva con "script non trovato" su ogni eseguibile.
@@ -74,6 +84,9 @@ set(GMB_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}")
 #
 # Ordine delle voci (dyld/ld.so SALTANO quelle che non esistono, quindi le varianti delle
 # due profondità dell'albero convivono):
+# Il tool viene inoltre GENERATO in `<root>/bin/` (vedi GMB_BIN_OUT), non nella build dir:
+# la build dir ne conserva solo un symlink per i path storici degli script.
+#
 #  1. accanto all'eseguibile                        bundle con le dylib in bin/
 #  2. libs/<rid>/ accanto all'eseguibile            bundle "pulito": bin/libs/<rid>/
 #  3. ../GMBasic/build/libs/<rid>                   checkout: nostre dylib (da bin/)
@@ -102,9 +115,33 @@ function(gmb_exe_relocatable _target)
             "${_o}/../../GMBasic/native/gmb_vm_c/build"
             "${_o}/gmb_runtime_c_build/llmtoken_build")
     endif()
+    file(MAKE_DIRECTORY "${GMB_BIN_OUT}")
     set_target_properties(${_target} PROPERTIES
         BUILD_WITH_INSTALL_RPATH TRUE
-        INSTALL_RPATH "${_rpath}")
+        INSTALL_RPATH "${_rpath}"
+        # Il tool nasce in <root>/bin (per-config: i generator multi-config aggiungerebbero
+        # una sottocartella Debug/Release, che romperebbe i path degli script).
+        RUNTIME_OUTPUT_DIRECTORY "${GMB_BIN_OUT}"
+        RUNTIME_OUTPUT_DIRECTORY_DEBUG "${GMB_BIN_OUT}"
+        RUNTIME_OUTPUT_DIRECTORY_RELEASE "${GMB_BIN_OUT}"
+        RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${GMB_BIN_OUT}"
+        RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL "${GMB_BIN_OUT}")
+    # Nella build dir resta un SYMLINK al tool in bin/ (non una copia: non può diventare
+    # stale). Serve a ~10 script/test che invocano ancora `…/<progetto>/build/<tool>`.
+    if(WIN32)
+        add_custom_command(TARGET ${_target} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "$<TARGET_FILE:${_target}>"
+                    "${CMAKE_CURRENT_BINARY_DIR}/$<TARGET_FILE_NAME:${_target}>"
+            COMMENT "build dir: copia del tool gia' generato in ${GMB_BIN_OUT}")
+    else()
+        add_custom_command(TARGET ${_target} POST_BUILD
+            COMMAND ${CMAKE_COMMAND}
+                    "-DTOOL_FILE=$<TARGET_FILE:${_target}>"
+                    "-DLEGACY_PATH=${CMAKE_CURRENT_BINARY_DIR}/$<TARGET_FILE_NAME:${_target}>"
+                    -P "${GMB_CMAKE_DIR}/GmbToolLink.cmake"
+            COMMENT "tool in ${GMB_BIN_OUT}; symlink nella build dir")
+    endif()
     if(NOT WIN32)
         # Il symlink lo crea uno script idempotente: `cmake -E create_symlink` NON sovrascrive,
         # quindi al secondo eseguibile della stessa cartella (e a ogni build successiva) il

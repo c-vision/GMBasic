@@ -57,6 +57,8 @@ target_include_directories(gmb_compiler_c PUBLIC
 add_executable(gmbnative "${CMAKE_CURRENT_SOURCE_DIR}/../gmb_c99native/driver/gmb_c99native_driver.c")
 target_link_libraries(gmbnative PRIVATE gmb_compiler_c)
 target_compile_options(gmbnative PRIVATE -Wall -Wextra)
+# Ricetta unica (native/cmake/GmbRid.cmake): il tool nasce in <root>/bin + rpath relativo.
+gmb_exe_relocatable(gmbnative)
 
 # ── CLI di PROGETTO (O7): `gmb check|build|run --project <dir>`. Linka SOLO il front-end
 # (la discovery `gmb_inc_resolve`, la stessa del compilatore: niente copie nel CLI). È il
@@ -72,6 +74,7 @@ target_include_directories(gmb PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/frontend/inc
     "${CMAKE_CURRENT_SOURCE_DIR}/../gmb_bytecode/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/../gmb_vm_c")
 target_compile_options(gmb PRIVATE -Wall -Wextra)
+gmb_exe_relocatable(gmb)   # in <root>/bin, accanto a gmbnative che il CLI lancia
 
 # ── Language Server (LSP) come TOOL SEPARATO (F2c): serve le IDE e VS Code.
 # Prima viveva dentro la REPL (flag --lsp) e la costringeva a linkare il front-end.
@@ -81,6 +84,7 @@ add_executable(gmblsp
 target_link_libraries(gmblsp PRIVATE gmb_compiler_c)
 target_include_directories(gmblsp PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/frontend/include")
 target_compile_options(gmblsp PRIVATE -Wall -Wextra)
+gmb_exe_relocatable(gmblsp)
 
 # ── Driver chunk A1/GMBC (.bas -> bytecode VM/C): usato da tools/test_mcp_e2e.sh e da
 # gmbsuite. Stesso problema del gmbnative: senza target CMake il binario
@@ -91,6 +95,7 @@ target_include_directories(gmbchunk PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../gmb_
     "${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c/src")
 target_link_libraries(gmbchunk PRIVATE gmb_compiler_c "-lc++" m pthread)
 target_compile_options(gmbchunk PRIVATE -Wall -Wextra)
+gmb_exe_relocatable(gmbchunk)
 
 # ── Model compiler: conversione checkpoint MoE (safetensors/MLX) -> container GGUF ──
 # Modulo DEL COMPILATORE (non tool esterno). Linka il runtime MoE per il writer del container;
