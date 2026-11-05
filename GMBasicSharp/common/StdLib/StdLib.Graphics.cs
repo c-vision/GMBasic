@@ -239,51 +239,6 @@ new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.CollideBatch, "COLLIDE
                 new Parameter(-1, T(TokenKind.Identifier, "size"), new DoubleType(), optionalFlag, null, false)
             ], new DoubleType(), TokenKind.P2CY),
 
-            // --- colore e hit-test (primitive stdlib, 2026-11-05) ---
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.ColorMix, "COLORMIX"),
-            [
-                new Parameter(-1, T(TokenKind.Identifier, "c1"), new DoubleType(), noFlags, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "c2"), new DoubleType(), noFlags, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "t"), new DoubleType(), noFlags, null, false)
-            ], new DoubleType(), TokenKind.ColorMix),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.ColorLighten, "COLORLIGHTEN"),
-            [
-                new Parameter(-1, T(TokenKind.Identifier, "c"), new DoubleType(), noFlags, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "amt"), new DoubleType(), noFlags, null, false)
-            ], new DoubleType(), TokenKind.ColorLighten),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.ColorDarken, "COLORDARKEN"),
-            [
-                new Parameter(-1, T(TokenKind.Identifier, "c"), new DoubleType(), noFlags, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "amt"), new DoubleType(), noFlags, null, false)
-            ], new DoubleType(), TokenKind.ColorDarken),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.ColorSaturate, "COLORSATURATE"),
-            [
-                new Parameter(-1, T(TokenKind.Identifier, "c"), new DoubleType(), noFlags, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "amt"), new DoubleType(), noFlags, null, false)
-            ], new DoubleType(), TokenKind.ColorSaturate),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.PointInPolygon, "POINTINPOLYGON"),
-            [
-                new Parameter(-1, T(TokenKind.Identifier, "x"), new DoubleType(), noFlags, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "y"), new DoubleType(), noFlags, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "pts"), new ArrayType(new DoubleType()), SymbolFlags.IsArray, null, false)
-            ], new LongType(), TokenKind.PointInPolygon),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.PointInCircle, "POINTINCIRCLE"),
-            [
-                new Parameter(-1, T(TokenKind.Identifier, "x"), new DoubleType(), noFlags, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "y"), new DoubleType(), noFlags, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "cx"), new DoubleType(), noFlags, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "cy"), new DoubleType(), noFlags, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "r"), new DoubleType(), noFlags, null, false)
-            ], new LongType(), TokenKind.PointInCircle),
-            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.PointInRect, "POINTINRECT"),
-            [
-                new Parameter(-1, T(TokenKind.Identifier, "x"), new DoubleType(), noFlags, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "y"), new DoubleType(), noFlags, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "x1"), new DoubleType(), noFlags, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "y1"), new DoubleType(), noFlags, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "x2"), new DoubleType(), noFlags, null, false),
-                new Parameter(-1, T(TokenKind.Identifier, "y2"), new DoubleType(), noFlags, null, false)
-            ], new LongType(), TokenKind.PointInRect),
         };
 
         // --- DEFINIZIONE BUILT-IN DEL TIPO SPRITE ---

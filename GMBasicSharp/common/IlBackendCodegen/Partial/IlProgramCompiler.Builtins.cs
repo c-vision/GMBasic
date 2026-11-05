@@ -215,13 +215,6 @@ public sealed partial class IlProgramCompiler
             case TokenKind.C2PY: EmitC2PCall(expr, IlRuntimeC2PYMethod, false); break;
             case TokenKind.P2CX: EmitC2PCall(expr, IlRuntimeP2CXMethod, true); break;
             case TokenKind.P2CY: EmitC2PCall(expr, IlRuntimeP2CYMethod, false); break;
-            case TokenKind.ColorMix: EmitDoubleArgsCall(expr, IlRuntimeColorMixMethod); break;
-            case TokenKind.ColorLighten: EmitDoubleArgsCall(expr, IlRuntimeColorLightenMethod); break;
-            case TokenKind.ColorDarken: EmitDoubleArgsCall(expr, IlRuntimeColorDarkenMethod); break;
-            case TokenKind.ColorSaturate: EmitDoubleArgsCall(expr, IlRuntimeColorSaturateMethod); break;
-            case TokenKind.PointInCircle: EmitDoubleArgsCall(expr, IlRuntimePointInCircleMethod); break;
-            case TokenKind.PointInRect: EmitDoubleArgsCall(expr, IlRuntimePointInRectMethod); break;
-            case TokenKind.PointInPolygon: EmitPointInPolygonCall(expr); break;
             case TokenKind.Cmonth: EmitDateArgBuiltinCall(expr, IlRuntimeCmonthMethod); break;
             case TokenKind.DateDiff: EmitDateDiffCall(expr); break;
             case TokenKind.CType when TryEmitUserDefinedCTypeCall(expr): break;

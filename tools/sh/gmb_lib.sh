@@ -27,7 +27,7 @@ LIBS="$MONO/shared/libs"
 INCLUDE="$MONO/shared/include"
 TOOLS="$MONO/tools/sh"
 
-ALL_LIBS="amqp grpc kafka mqtt nats protobuf media opt graph flow or mathprog gametheory aviation localsearch conic lagrangian scheduling math stats"
+ALL_LIBS="amqp grpc kafka mqtt nats protobuf media opt graph flow or mathprog gametheory aviation localsearch conic lagrangian scheduling math stats graphics"
 
 die() { echo "gmb_lib: $*" >&2; exit 1; }
 
@@ -37,6 +37,8 @@ inc_name() {
   case "$1" in
     opt) echo "optimize.inc" ;;
     or)  echo "ortools.inc" ;;
+    # piu' export per una sola dylib (modello gmbstats): elenco separato da spazi.
+    graphics) echo "gfxcolor.inc gfxshape.inc" ;;
     *)   echo "$1.inc" ;;
   esac
 }
@@ -95,8 +97,10 @@ sync_sources() {
   local lib="$1"
   local dir="$LIBS/$lib"
   mkdir -p "$INCLUDE"
-  local incn; incn="$(inc_name "$lib")"
-  [ -f "$dir/$incn" ] && mv -f "$dir/$incn" "$INCLUDE/$incn"
+  local incn
+  for incn in $(inc_name "$lib"); do
+    [ -f "$dir/$incn" ] && mv -f "$dir/$incn" "$INCLUDE/$incn"
+  done
   return 0
 }
 
@@ -112,8 +116,10 @@ check_one() {
   local E; E="$(ext)"
   local bin="$LIBS/$lib/libgmb$lib.$E"
   [ -f "$bin" ] || die "binario assente: $bin"
-  local incn; incn="$(inc_name "$lib")"
-  [ -f "$INCLUDE/$incn" ] || echo "  ATTENZIONE: manca l'export BASIC $INCLUDE/$incn" >&2
+  local incn
+  for incn in $(inc_name "$lib"); do
+    [ -f "$INCLUDE/$incn" ] || echo "  ATTENZIONE: manca l'export BASIC $INCLUDE/$incn" >&2
+  done
   case " amqp grpc kafka media mqtt nats protobuf " in
     *" $lib "*)
       find "$LIBS/$lib/include" -maxdepth 1 -name 'gmb*.h' -print -quit | grep -q . \

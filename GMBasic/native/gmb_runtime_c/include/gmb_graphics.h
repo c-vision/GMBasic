@@ -110,17 +110,6 @@ int  gmb_gfx_canvas_blit(int src, int dx, int dy);     /* copia su canvas/target
  * SAVE/LOAD. Ritorna il valore dell'operazione (handle, colore, dimensione) o -1. */
 double gmb_gfx_canvas_op(const char* op, const double* args, int nargs, const char* path);
 
-/* ---- Colore e hit-test (primitive stdlib) ----
- * Colori: accettano indice palette o packed (come le primitive) e ritornano un colore
- * impacchettato con RGB flag, riutilizzabile come argomento. */
-double gmb_gfx_colormix(double c1, double c2, double t);        /* t clampato [0,1] */
-double gmb_gfx_colorlighten(double c, double amt);               /* HSL: l += amt */
-double gmb_gfx_colordarken(double c, double amt);                /* HSL: l -= amt */
-double gmb_gfx_colorsaturate(double c, double amt);              /* HSL: s += amt */
-/* pt[2*i], pt[2*i+1] = vertici del poligono (npoints vertici). 1 = dentro (even-odd). */
-int gmb_gfx_pointinpolygon(double x, double y, const double* pts, int npoints);
-int gmb_gfx_pointincircle(double x, double y, double cx, double cy, double r);
-int gmb_gfx_pointinrect(double x, double y, double x1, double y1, double x2, double y2);
 
 /* COLLIDEBATCH: coppie AABB [i,j,...] su array di posizioni (buffer statico riusato). */
 double* gmb_gfx_collide_batch(const double* xs, int nx, const double* ys, int ny,

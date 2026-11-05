@@ -193,6 +193,8 @@ sinusoidale, PNG, rilettura e blit). MiniTest: `graphics/canvas_core.bas`.
 
 
 
+
+
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
 ## Riferimento completo: comandi, funzioni, parametri
@@ -350,32 +352,44 @@ SUB Main()
 
 ### `CANVAS` è anche un controllo
 
-## 4ter. Colore e hit-test (`GRAPHICS`)
-| Funzione | Firma | Semantica |
+## 4ter. Colore e geometria via FFI (`GFXCOLOR`, `GFXSHAPE`)
+
+IMPORT GFXCOLOR
+IMPORT GFXSHAPE
+
+
+### `GFXCOLOR` — colore
+| Funzione | Firma | Risultato |
 |---|---|---|
-| `COLORMIX` | `(c1, c2, t) AS DOUBLE` | interpolazione lineare tra due colori, `t` clampato `[0,1]` |
-| `COLORLIGHTEN` | `(c, amt) AS DOUBLE` | luminosità HSL `+= amt` (clampata) |
-| `COLORDARKEN` | `(c, amt) AS DOUBLE` | luminosità HSL `-= amt` |
-| `COLORSATURATE` | `(c, amt) AS DOUBLE` | saturazione HSL `+= amt` |
-| `POINTINPOLYGON` | `(x, y, pts()) AS LONG` | punto in un poligono (even-odd); `pts` = coppie x,y |
-| `POINTINCIRCLE` | `(x, y, cx, cy, r) AS LONG` | punto nel cerchio (bordo incluso) |
-| `POINTINRECT` | `(x, y, x1, y1, x2, y2) AS LONG` | punto nel rettangolo (vertici in qualunque ordine) |
+| `RGB2HSV` | `(r, g, b, out())` | `out(0)`=H `[0,360)`, `out(1)`=S, `out(2)`=V |
+| `HSV2RGB` | `(h, s, v, out())` | RGB `0..255` |
+| `RGB2HSL` / `HSL2RGB` | `(r,g,b, out())` / `(h,s,l, out())` | H/S/L, poi RGB |
+| `RGB2CMYK` | `(r, g, b, out())` | CMYK `[0,1]` |
+| `CMYK2RGB` | `(c, m, y, k, out())` | RGB `0..255` |
+| `MIX` | `(r1,g1,b1, r2,g2,b2, t, out())` | interpolazione lineare, `t` clampato |
+| `LIGHTEN` / `DARKEN` | `(r, g, b, amt, out())` | luminosità HSL ±amt |
+| `SATURATE` | `(r, g, b, amt, out())` | saturazione HSL +amt |
 
-DIM c AS LONG
-CANVAS NEW 8, 1 INTO c
-FOR x = 0 TO 7
-  CANVAS SET c, x, 0, GRAPHICS.COLORMIX(1, 15, x / 7.0)
-NEXT x
-DIM col AS LONG
-CANVAS GET c, 0, 0 INTO col        ' 0x400000AA (blu scuro, palette 1)
-CANVAS FREE c
+### `GFXSHAPE` — geometria 2D e hit-test
+| Funzione | Firma | Risultato |
+|---|---|---|
+| `POINTINPOLYGON` | `(x, y, pts(), n)` | `1` dentro (even-odd), `0` fuori |
+| `POINTINCIRCLE` | `(x, y, cx, cy, r)` | `1`/`0` (bordo incluso) |
+| `POINTINRECT` | `(x, y, x1, y1, x2, y2)` | `1`/`0` (vertici in qualunque ordine) |
+| `POINTINTRIANGLE` | `(x, y, ax, ay, bx, by, cx, cy)` | `1`/`0` |
+| `POLYGONAREA` | `(pts(), n)` | area (shoelace, ≥ 0) |
+| `POLYGONCENTROID` | `(pts(), n, out())` | baricentro d'area in `out(0..1)` |
+| `CLOSESTPOINTSEG` | `(px, py, ax, ay, bx, by, out())` | punto più vicino sul segmento |
 
-DIM p(7)                            ' quadrato (0,0)-(10,10): 4 vertici
+DIM o(5) AS DOUBLE
+ok = GFXCOLOR.MIX(0, 0, 255, 255, 255, 255, 0.5, o)   ' grigio 128,128,128
+ok = GFXCOLOR.RGB2HSV(0, 128, 255, o)                 ' o(0)=209.88, o(1)=1, o(2)=1
+
+DIM p(7)
 p(0)=0 : p(1)=0 : p(2)=10 : p(3)=0
 p(4)=10 : p(5)=10 : p(6)=0 : p(7)=10
-PRINT GRAPHICS.POINTINPOLYGON(5, 5, p())     ' 1
-PRINT GRAPHICS.POINTINCIRCLE(3, 4, 0, 0, 5)  ' 1
-PRINT GRAPHICS.POINTINRECT(15, 5, 0, 0, 10, 10) ' 0
+PRINT GFXSHAPE.POINTINPOLYGON(5, 5, p(), 8)           ' 1
+PRINT GFXSHAPE.POLYGONAREA(p(), 8)                    ' 100
 
 
 ## 5. Viewport e finestre

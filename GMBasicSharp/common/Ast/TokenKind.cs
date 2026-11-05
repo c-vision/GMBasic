@@ -2581,8 +2581,4 @@ public enum TokenKind
     // (ordinali canonici): mai inserire nel mezzo. La forma CONTROLS `CANVAS x,y,w,h`
     // resta gestita dal parser dei controlli (disambiguazione come CHART).
     Canvas,
-    // GRAPHICS (2026-11-05): colore e hit-test (primitive stdlib). In coda (ordinali
-    // canonici): mai inserire nel mezzo.
-    ColorMix, ColorLighten, ColorDarken, ColorSaturate,
-    PointInPolygon, PointInCircle, PointInRect,
 }

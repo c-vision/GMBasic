@@ -8044,13 +8044,6 @@ public static partial class IlRuntime
     public static double ChartDraw(int h, string op, double[] args) { try { return Current.Graphics.ChartDraw(h, op, args); } catch { return 0; } }
     /// <summary>CANVAS op: canvas offscreen. Passa SEMPRE dal runtime C (niente servizio
     /// grafico dell'host): è un'operazione puramente offscreen, identica sui 4 backend.</summary>
-    public static double ColorMix(double c1, double c2, double t) => CGfxGraphicsService.ColorMixNative(c1, c2, t);
-    public static double ColorLighten(double c, double amt) => CGfxGraphicsService.ColorLightenNative(c, amt);
-    public static double ColorDarken(double c, double amt) => CGfxGraphicsService.ColorDarkenNative(c, amt);
-    public static double ColorSaturate(double c, double amt) => CGfxGraphicsService.ColorSaturateNative(c, amt);
-    public static int PointInPolygon(double x, double y, double[] pts) => CGfxGraphicsService.PointInPolygonNative(x, y, pts, (pts?.Length ?? 0) / 2);
-    public static int PointInCircle(double x, double y, double cx, double cy, double r) => CGfxGraphicsService.PointInCircleNative(x, y, cx, cy, r);
-    public static int PointInRect(double x, double y, double x1, double y1, double x2, double y2) => CGfxGraphicsService.PointInRectNative(x, y, x1, y1, x2, y2);
     public static double CanvasOp(string op, double a0, double a1, double a2, double a3, string path)
     { try { return CGfxGraphicsService.CanvasOpNative(op, a0, a1, a2, a3, path); } catch { return -1; } }
     public static void FormControlMove(string name, int x, int y, int w, int h) { try { Current.Graphics.FormControlMove(name, x, y, w, h); } catch { } }

@@ -307,13 +307,6 @@ public sealed partial class IlProgramCompiler
     private static readonly MethodInfo IlRuntimeChartConfigGetStrMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.ChartConfigGetStr))!;
     private static readonly MethodInfo IlRuntimeChartDrawMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.ChartDraw))!;
     private static readonly MethodInfo IlRuntimeCanvasOpMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.CanvasOp))!;
-    private static readonly MethodInfo IlRuntimeColorMixMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.ColorMix))!;
-    private static readonly MethodInfo IlRuntimeColorLightenMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.ColorLighten))!;
-    private static readonly MethodInfo IlRuntimeColorDarkenMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.ColorDarken))!;
-    private static readonly MethodInfo IlRuntimeColorSaturateMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.ColorSaturate))!;
-    private static readonly MethodInfo IlRuntimePointInPolygonMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.PointInPolygon))!;
-    private static readonly MethodInfo IlRuntimePointInCircleMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.PointInCircle))!;
-    private static readonly MethodInfo IlRuntimePointInRectMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.PointInRect))!;
     private static readonly MethodInfo IlRuntimeFormControlGetStrMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.FormControlGetStr))!;
     private static readonly MethodInfo IlRuntimeFormControlSetMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.FormControlSet))!;
     private static readonly MethodInfo IlRuntimeFormControlMoveMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.FormControlMove))!;
