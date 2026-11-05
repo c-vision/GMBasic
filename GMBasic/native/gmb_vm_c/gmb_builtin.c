@@ -771,6 +771,33 @@ static void gmb_bf_1077(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
         bout->result = gmb_ts_lyapunov(a, n, (int)args[1].num, (int)args[2].num);
         free(a);
 }
+static void gmb_bf_3823(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task;
+        double p = args[0].num;
+        switch (func_code) {
+        case 3823: bout->result = gmb_dist_nc_chi2_ppf(argc >= 2 ? args[1].num : 1, argc >= 3 ? args[2].num : 0, p); break;
+        case 3824: bout->result = gmb_dist_nc_chi2_isf(argc >= 2 ? args[1].num : 1, argc >= 3 ? args[2].num : 0, p); break;
+        case 3827: bout->result = gmb_dist_nc_gamma_ppf(argc >= 2 ? args[1].num : 1, argc >= 3 ? args[2].num : 0, p); break;
+        case 3828: bout->result = gmb_dist_nc_gamma_isf(argc >= 2 ? args[1].num : 1, argc >= 3 ? args[2].num : 0, p); break;
+        case 3831: bout->result = gmb_dist_nc_t_ppf(argc >= 2 ? args[1].num : 1, argc >= 3 ? args[2].num : 0, p); break;
+        default:   bout->result = gmb_dist_nc_t_isf(argc >= 2 ? args[1].num : 1, argc >= 3 ? args[2].num : 0, p); break;
+        }
+}
+static void gmb_bf_3825(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task;
+        double p = args[0].num;
+        double a = argc >= 2 ? args[1].num : 1, b = argc >= 3 ? args[2].num : 1, nc = argc >= 4 ? args[3].num : 0;
+        bout->result = func_code == 3825 ? gmb_dist_nc_beta_ppf(a, b, nc, p) : gmb_dist_nc_beta_isf(a, b, nc, p);
+}
+static void gmb_bf_3829(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task;
+        double p = args[0].num;
+        double d1 = argc >= 2 ? args[1].num : 1, d2 = argc >= 3 ? args[2].num : 1, nc = argc >= 4 ? args[3].num : 0;
+        bout->result = func_code == 3829 ? gmb_dist_nc_f_ppf(d1, d2, nc, p) : gmb_dist_nc_f_isf(d1, d2, nc, p);
+}
 static void gmb_bf_3820(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         (void)vm; (void)task;
@@ -17871,6 +17898,16 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 3820, gmb_bf_3820 },
     { 3821, gmb_bf_3820 },
     { 3822, gmb_bf_3822 },
+    { 3823, gmb_bf_3823 },
+    { 3824, gmb_bf_3823 },
+    { 3825, gmb_bf_3825 },
+    { 3826, gmb_bf_3825 },
+    { 3827, gmb_bf_3823 },
+    { 3828, gmb_bf_3823 },
+    { 3829, gmb_bf_3829 },
+    { 3830, gmb_bf_3829 },
+    { 3831, gmb_bf_3823 },
+    { 3832, gmb_bf_3823 },
     { 1077, gmb_bf_1077 },
     { 1078, gmb_bf_1078 },
     { 1079, gmb_bf_1078 },

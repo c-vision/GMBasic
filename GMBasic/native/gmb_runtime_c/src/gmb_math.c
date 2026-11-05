@@ -3460,3 +3460,51 @@ double gmb_copula_frank_cdf(double u, double v, double theta)
     double a = exp(-theta * u), b = exp(-theta * v), e = exp(-theta);
     return -log(1.0 + (a - 1.0) * (b - 1.0) / (e - 1.0)) / theta;
 }
+
+/* --- Inverse dei non centrali: bisezione sulla CDF (parita' CommonLib) --- */
+typedef double (*gmb_nc_cdf_fn)(const double* par, double x);
+static double gmb_nc_cdf_chi2(const double* par, double x) { return gmb_dist_nc_chi2_cdf(par[0], par[1], x); }
+static double gmb_nc_cdf_beta(const double* par, double x) { return gmb_dist_nc_beta_cdf(par[0], par[1], par[2], x); }
+static double gmb_nc_cdf_gamma(const double* par, double x) { return gmb_dist_nc_gamma_cdf(par[0], par[1], x); }
+static double gmb_nc_cdf_f(const double* par, double x) { return gmb_dist_nc_f_cdf(par[0], par[1], par[2], x); }
+static double gmb_nc_cdf_t(const double* par, double x) { return gmb_dist_nc_t_cdf(par[0], par[1], x); }
+
+static double gmb_nc_bisect(gmb_nc_cdf_fn f, const double* par, double p, double lo, double hi)
+{
+    if (!(p > 0.0 && p < 1.0)) return NAN;
+    for (int i = 0; i < 200; i++) {
+        double mid = 0.5 * (lo + hi);
+        if (f(par, mid) < p) lo = mid; else hi = mid;
+    }
+    return 0.5 * (lo + hi);
+}
+static double gmb_nc_ppf_pos(gmb_nc_cdf_fn f, const double* par, double p)
+{
+    double lo = 0.0, hi = 1.0;
+    if (!(p > 0.0 && p < 1.0)) return NAN;
+    while (f(par, hi) < p && hi < 1e12) hi *= 2.0;
+    return gmb_nc_bisect(f, par, p, lo, hi);
+}
+static double gmb_nc_ppf_t(gmb_nc_cdf_fn f, const double* par, double p)
+{
+    double lo = -1.0, hi = 1.0;
+    if (!(p > 0.0 && p < 1.0)) return NAN;
+    while (f(par, lo) > p && lo > -1e9) lo *= 2.0;
+    while (f(par, hi) < p && hi < 1e9) hi *= 2.0;
+    return gmb_nc_bisect(f, par, p, lo, hi);
+}
+double gmb_dist_nc_chi2_ppf(double df, double nc, double p)
+{ double par[2] = { df, nc }; return gmb_nc_ppf_pos(gmb_nc_cdf_chi2, par, p); }
+double gmb_dist_nc_chi2_isf(double df, double nc, double p) { return gmb_dist_nc_chi2_ppf(df, nc, 1.0 - p); }
+double gmb_dist_nc_beta_ppf(double a, double b, double nc, double p)
+{ double par[3] = { a, b, nc }; return gmb_nc_bisect(gmb_nc_cdf_beta, par, p, 0.0, 1.0); }
+double gmb_dist_nc_beta_isf(double a, double b, double nc, double p) { return gmb_dist_nc_beta_ppf(a, b, nc, 1.0 - p); }
+double gmb_dist_nc_gamma_ppf(double shape, double nc, double p)
+{ double par[2] = { shape, nc }; return gmb_nc_ppf_pos(gmb_nc_cdf_gamma, par, p); }
+double gmb_dist_nc_gamma_isf(double shape, double nc, double p) { return gmb_dist_nc_gamma_ppf(shape, nc, 1.0 - p); }
+double gmb_dist_nc_f_ppf(double d1, double d2, double nc, double p)
+{ double par[3] = { d1, d2, nc }; return gmb_nc_ppf_pos(gmb_nc_cdf_f, par, p); }
+double gmb_dist_nc_f_isf(double d1, double d2, double nc, double p) { return gmb_dist_nc_f_ppf(d1, d2, nc, 1.0 - p); }
+double gmb_dist_nc_t_ppf(double df, double nc, double p)
+{ double par[2] = { df, nc }; return gmb_nc_ppf_t(gmb_nc_cdf_t, par, p); }
+double gmb_dist_nc_t_isf(double df, double nc, double p) { return gmb_dist_nc_t_ppf(df, nc, 1.0 - p); }

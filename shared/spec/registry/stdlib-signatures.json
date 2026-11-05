@@ -22226,12 +22226,84 @@
     },
     {
       "ns": "STATS",
+      "name": "NcBetaIsf",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "p",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "a",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "b",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "nc",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "STATS",
       "name": "NcBetaPdf",
       "fn": true,
       "return": "double",
       "params": [
         {
           "name": "x",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "a",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "b",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "nc",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "STATS",
+      "name": "NcBetaPpf",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "p",
           "type": "double",
           "optional": false,
           "byRef": false,
@@ -22327,12 +22399,70 @@
     },
     {
       "ns": "STATS",
+      "name": "NcChi2Isf",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "p",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "df",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "nc",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "STATS",
       "name": "NcChi2Pdf",
       "fn": true,
       "return": "double",
       "params": [
         {
           "name": "x",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "df",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "nc",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "STATS",
+      "name": "NcChi2Ppf",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "p",
           "type": "double",
           "optional": false,
           "byRef": false,
@@ -22421,12 +22551,84 @@
     },
     {
       "ns": "STATS",
+      "name": "NcFIsf",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "p",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "d1",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "d2",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "nc",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "STATS",
       "name": "NcFPdf",
       "fn": true,
       "return": "double",
       "params": [
         {
           "name": "x",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "d1",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "d2",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "nc",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "STATS",
+      "name": "NcFPpf",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "p",
           "type": "double",
           "optional": false,
           "byRef": false,
@@ -22522,12 +22724,70 @@
     },
     {
       "ns": "STATS",
+      "name": "NcGammaIsf",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "p",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "shape",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "nc",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "STATS",
       "name": "NcGammaPdf",
       "fn": true,
       "return": "double",
       "params": [
         {
           "name": "x",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "shape",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "nc",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "STATS",
+      "name": "NcGammaPpf",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "p",
           "type": "double",
           "optional": false,
           "byRef": false,
@@ -22609,12 +22869,70 @@
     },
     {
       "ns": "STATS",
+      "name": "NcTIsf",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "p",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "df",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "nc",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "STATS",
       "name": "NcTPdf",
       "fn": true,
       "return": "double",
       "params": [
         {
           "name": "x",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "df",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "nc",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "STATS",
+      "name": "NcTPpf",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "p",
           "type": "double",
           "optional": false,
           "byRef": false,

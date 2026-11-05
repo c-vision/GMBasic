@@ -493,6 +493,46 @@ public static partial class Numerics
 
     public static double NcTSf(double df, double nc, double x) => 1.0 - NcTCdf(df, nc, x);
 
+
+    private static double NcBisect(Func<double, double> cdf, double p, double lo, double hi)
+    {
+        if (!(p > 0.0 && p < 1.0)) return double.NaN;
+        for (var i = 0; i < 200; i++)
+        {
+            var mid = 0.5 * (lo + hi);
+            if (cdf(mid) < p) lo = mid; else hi = mid;
+        }
+        return 0.5 * (lo + hi);
+    }
+
+    private static double NcPpfPos(Func<double, double> cdf, double p)
+    {
+        double lo = 0.0, hi = 1.0;
+        if (!(p > 0.0 && p < 1.0)) return double.NaN;
+        while (cdf(hi) < p && hi < 1e12) hi *= 2.0;
+        return NcBisect(cdf, p, lo, hi);
+    }
+
+    private static double NcPpfT(Func<double, double> cdf, double p)
+    {
+        double lo = -1.0, hi = 1.0;
+        if (!(p > 0.0 && p < 1.0)) return double.NaN;
+        while (cdf(lo) > p && lo > -1e9) lo *= 2.0;
+        while (cdf(hi) < p && hi < 1e9) hi *= 2.0;
+        return NcBisect(cdf, p, lo, hi);
+    }
+
+    public static double NcChi2Ppf(double df, double nc, double p) => NcPpfPos(x => NcChi2Cdf(df, nc, x), p);
+    public static double NcChi2Isf(double df, double nc, double p) => NcChi2Ppf(df, nc, 1.0 - p);
+    public static double NcBetaPpf(double a, double b, double nc, double p) => NcBisect(x => NcBetaCdf(a, b, nc, x), p, 0.0, 1.0);
+    public static double NcBetaIsf(double a, double b, double nc, double p) => NcBetaPpf(a, b, nc, 1.0 - p);
+    public static double NcGammaPpf(double shape, double nc, double p) => NcPpfPos(x => NcGammaCdf(shape, nc, x), p);
+    public static double NcGammaIsf(double shape, double nc, double p) => NcGammaPpf(shape, nc, 1.0 - p);
+    public static double NcFPpf(double d1, double d2, double nc, double p) => NcPpfPos(x => NcFCdf(d1, d2, nc, x), p);
+    public static double NcFIsf(double d1, double d2, double nc, double p) => NcFPpf(d1, d2, nc, 1.0 - p);
+    public static double NcTPpf(double df, double nc, double p) => NcPpfT(x => NcTCdf(df, nc, x), p);
+    public static double NcTIsf(double df, double nc, double p) => NcTPpf(df, nc, 1.0 - p);
+
     public static double ZTPoissonPmf(double lambda, int k)
     {
         if (lambda <= 0) return double.NaN;

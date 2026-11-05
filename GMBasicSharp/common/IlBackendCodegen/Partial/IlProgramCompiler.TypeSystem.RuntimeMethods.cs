@@ -187,6 +187,16 @@ public sealed partial class IlProgramCompiler
     private static readonly MethodInfo IlRuntimeNcTPdfMethod = typeof(Basic.StdLibRuntime.MathFunctions).GetMethod(nameof(Basic.StdLibRuntime.MathFunctions.NcTPdf))!;
     private static readonly MethodInfo IlRuntimeNcTCdfMethod = typeof(Basic.StdLibRuntime.MathFunctions).GetMethod(nameof(Basic.StdLibRuntime.MathFunctions.NcTCdf))!;
     private static readonly MethodInfo IlRuntimeNcTSfMethod = typeof(Basic.StdLibRuntime.MathFunctions).GetMethod(nameof(Basic.StdLibRuntime.MathFunctions.NcTSf))!;
+    private static readonly MethodInfo IlRuntimeNcChi2PpfMethod = typeof(Basic.StdLibRuntime.MathFunctions).GetMethod(nameof(Basic.StdLibRuntime.MathFunctions.NcChi2Ppf))!;
+    private static readonly MethodInfo IlRuntimeNcChi2IsfMethod = typeof(Basic.StdLibRuntime.MathFunctions).GetMethod(nameof(Basic.StdLibRuntime.MathFunctions.NcChi2Isf))!;
+    private static readonly MethodInfo IlRuntimeNcBetaPpfMethod = typeof(Basic.StdLibRuntime.MathFunctions).GetMethod(nameof(Basic.StdLibRuntime.MathFunctions.NcBetaPpf))!;
+    private static readonly MethodInfo IlRuntimeNcBetaIsfMethod = typeof(Basic.StdLibRuntime.MathFunctions).GetMethod(nameof(Basic.StdLibRuntime.MathFunctions.NcBetaIsf))!;
+    private static readonly MethodInfo IlRuntimeNcGammaPpfMethod = typeof(Basic.StdLibRuntime.MathFunctions).GetMethod(nameof(Basic.StdLibRuntime.MathFunctions.NcGammaPpf))!;
+    private static readonly MethodInfo IlRuntimeNcGammaIsfMethod = typeof(Basic.StdLibRuntime.MathFunctions).GetMethod(nameof(Basic.StdLibRuntime.MathFunctions.NcGammaIsf))!;
+    private static readonly MethodInfo IlRuntimeNcFPpfMethod = typeof(Basic.StdLibRuntime.MathFunctions).GetMethod(nameof(Basic.StdLibRuntime.MathFunctions.NcFPpf))!;
+    private static readonly MethodInfo IlRuntimeNcFIsfMethod = typeof(Basic.StdLibRuntime.MathFunctions).GetMethod(nameof(Basic.StdLibRuntime.MathFunctions.NcFIsf))!;
+    private static readonly MethodInfo IlRuntimeNcTPpfMethod = typeof(Basic.StdLibRuntime.MathFunctions).GetMethod(nameof(Basic.StdLibRuntime.MathFunctions.NcTPpf))!;
+    private static readonly MethodInfo IlRuntimeNcTIsfMethod = typeof(Basic.StdLibRuntime.MathFunctions).GetMethod(nameof(Basic.StdLibRuntime.MathFunctions.NcTIsf))!;
     private static readonly MethodInfo IlRuntimeZTPoissonPmfMethod = typeof(Basic.StdLibRuntime.MathFunctions).GetMethod(nameof(Basic.StdLibRuntime.MathFunctions.ZTPoissonPmf))!;
     private static readonly MethodInfo IlRuntimeZTPoissonCdfMethod = typeof(Basic.StdLibRuntime.MathFunctions).GetMethod(nameof(Basic.StdLibRuntime.MathFunctions.ZTPoissonCdf))!;
     private static readonly MethodInfo IlRuntimeParetoPdfMethod = typeof(Basic.StdLibRuntime.MathFunctions).GetMethod(nameof(Basic.StdLibRuntime.MathFunctions.ParetoPdf))!;

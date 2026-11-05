@@ -933,6 +933,16 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "STATS.NcTPdf");
         r.Register(Backend.PCodeVM, "STATS.NcTCdf");
         r.Register(Backend.PCodeVM, "STATS.NcTSf");
+        r.Register(Backend.PCodeVM, "STATS.NcChi2Ppf");
+        r.Register(Backend.PCodeVM, "STATS.NcChi2Isf");
+        r.Register(Backend.PCodeVM, "STATS.NcBetaPpf");
+        r.Register(Backend.PCodeVM, "STATS.NcBetaIsf");
+        r.Register(Backend.PCodeVM, "STATS.NcGammaPpf");
+        r.Register(Backend.PCodeVM, "STATS.NcGammaIsf");
+        r.Register(Backend.PCodeVM, "STATS.NcFPpf");
+        r.Register(Backend.PCodeVM, "STATS.NcFIsf");
+        r.Register(Backend.PCodeVM, "STATS.NcTPpf");
+        r.Register(Backend.PCodeVM, "STATS.NcTIsf");
         r.Register(Backend.PCodeVM, "STATS.ZTPoissonPmf");
         r.Register(Backend.PCodeVM, "STATS.ZTPoissonCdf");
         r.Register(Backend.PCodeVM, "TIMESERIES.TSHURST");
