@@ -479,6 +479,16 @@ public sealed partial class IlProgramCompiler
             case TokenKind.StatsNcTPdf: EmitOptionalParamsCall(expr, IlRuntimeNcTPdfMethod, 3, 1.0, 0.0); break;
             case TokenKind.StatsNcTCdf: EmitOptionalParamsCall(expr, IlRuntimeNcTCdfMethod, 3, 1.0, 0.0); break;
             case TokenKind.StatsNcTSf: EmitOptionalParamsCall(expr, IlRuntimeNcTSfMethod, 3, 1.0, 0.0); break;
+            case TokenKind.StatsNcChi2Ppf: EmitOptionalParamsCall(expr, IlRuntimeNcChi2PpfMethod, 3, 1.0, 0.0); break;
+            case TokenKind.StatsNcChi2Isf: EmitOptionalParamsCall(expr, IlRuntimeNcChi2IsfMethod, 3, 1.0, 0.0); break;
+            case TokenKind.StatsNcGammaPpf: EmitOptionalParamsCall(expr, IlRuntimeNcGammaPpfMethod, 3, 1.0, 0.0); break;
+            case TokenKind.StatsNcGammaIsf: EmitOptionalParamsCall(expr, IlRuntimeNcGammaIsfMethod, 3, 1.0, 0.0); break;
+            case TokenKind.StatsNcTPpf: EmitOptionalParamsCall(expr, IlRuntimeNcTPpfMethod, 3, 1.0, 0.0); break;
+            case TokenKind.StatsNcTIsf: EmitOptionalParamsCall(expr, IlRuntimeNcTIsfMethod, 3, 1.0, 0.0); break;
+            case TokenKind.StatsNcBetaPpf: EmitOptionalParamsCall(expr, IlRuntimeNcBetaPpfMethod, 4, 1.0, 1.0, 0.0); break;
+            case TokenKind.StatsNcBetaIsf: EmitOptionalParamsCall(expr, IlRuntimeNcBetaIsfMethod, 4, 1.0, 1.0, 0.0); break;
+            case TokenKind.StatsNcFPpf: EmitOptionalParamsCall(expr, IlRuntimeNcFPpfMethod, 4, 1.0, 1.0, 0.0); break;
+            case TokenKind.StatsNcFIsf: EmitOptionalParamsCall(expr, IlRuntimeNcFIsfMethod, 4, 1.0, 1.0, 0.0); break;
             case TokenKind.StatsZTPoissonPmf: EmitPmfBuiltinCall(expr, IlRuntimeZTPoissonPmfMethod, 2, [(1, false), (0, true)]); break;
             case TokenKind.StatsZTPoissonCdf: EmitPmfBuiltinCall(expr, IlRuntimeZTPoissonCdfMethod, 2, [(1, false), (0, true)]); break;
             case TokenKind.StatsGammaPpf: EmitTripleScalarCall(expr, nameof(IlRuntime.GammaPpf)); break;

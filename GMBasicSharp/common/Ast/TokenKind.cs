@@ -2034,6 +2034,7 @@ public enum TokenKind
     TsHmmForward, TsHmmViterbi, TsHmmFit,
     StatsNcChi2Pdf, StatsNcChi2Cdf, StatsNcChi2Sf,
     StatsNcBetaPdf, StatsNcBetaCdf, StatsNcBetaSf, StatsNcGammaPdf, StatsNcGammaCdf, StatsNcGammaSf,
+    StatsNcChi2Ppf, StatsNcChi2Isf, StatsNcBetaPpf, StatsNcBetaIsf, StatsNcGammaPpf, StatsNcGammaIsf, StatsNcFPpf, StatsNcFIsf, StatsNcTPpf, StatsNcTIsf,
     StatsNcFPdf, StatsNcFCdf, StatsNcFSf, StatsNcTPdf, StatsNcTCdf, StatsNcTSf, StatsZTPoissonPmf, StatsZTPoissonCdf,
     StatsChi2Contingency, StatsMannWhitney, StatsWilcoxon,
     StatsGammaPdf, StatsGammaCdf, StatsGammaPpf, StatsGammaIsf,

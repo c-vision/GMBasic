@@ -88,6 +88,16 @@ internal sealed partial class PCodeProcessor
         BuiltInFunction.STATS_NCTPDF,
         BuiltInFunction.STATS_NCTCDF,
         BuiltInFunction.STATS_NCTSF,
+        BuiltInFunction.STATS_NCCHI2PPF,
+        BuiltInFunction.STATS_NCCHI2ISF,
+        BuiltInFunction.STATS_NCBETAPPF,
+        BuiltInFunction.STATS_NCBETAISF,
+        BuiltInFunction.STATS_NCGAMMAPPF,
+        BuiltInFunction.STATS_NCGAMMAISF,
+        BuiltInFunction.STATS_NCFPPF,
+        BuiltInFunction.STATS_NCFISF,
+        BuiltInFunction.STATS_NCTPPF,
+        BuiltInFunction.STATS_NCTISF,
         BuiltInFunction.STATS_ZTPOISSONPMF,
         BuiltInFunction.STATS_ZTPOISSONCDF,
         BuiltInFunction.CHI2TEST,
@@ -367,6 +377,46 @@ internal sealed partial class PCodeProcessor
         [BuiltInFunction.STATS_ZTPOISSONCDF] = (task, args) =>
         {
                 return CommonLib.Numerics.ZTPoissonCdf(SafeDouble(ArgOr(args, 1, 1.0)), (int)SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_NCCHI2PPF] = (task, args) =>
+        {
+                return CommonLib.Numerics.NcChi2Ppf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 0.0)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_NCCHI2ISF] = (task, args) =>
+        {
+                return CommonLib.Numerics.NcChi2Isf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 0.0)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_NCBETAPPF] = (task, args) =>
+        {
+                return CommonLib.Numerics.NcBetaPpf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 1.0)), SafeDouble(ArgOr(args, 3, 0.0)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_NCBETAISF] = (task, args) =>
+        {
+                return CommonLib.Numerics.NcBetaIsf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 1.0)), SafeDouble(ArgOr(args, 3, 0.0)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_NCGAMMAPPF] = (task, args) =>
+        {
+                return CommonLib.Numerics.NcGammaPpf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 0.0)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_NCGAMMAISF] = (task, args) =>
+        {
+                return CommonLib.Numerics.NcGammaIsf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 0.0)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_NCFPPF] = (task, args) =>
+        {
+                return CommonLib.Numerics.NcFPpf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 1.0)), SafeDouble(ArgOr(args, 3, 0.0)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_NCFISF] = (task, args) =>
+        {
+                return CommonLib.Numerics.NcFIsf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 1.0)), SafeDouble(ArgOr(args, 3, 0.0)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_NCTPPF] = (task, args) =>
+        {
+                return CommonLib.Numerics.NcTPpf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 0.0)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_NCTISF] = (task, args) =>
+        {
+                return CommonLib.Numerics.NcTIsf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 0.0)), SafeDouble(ArgOr(args, 0)));
         },
         [BuiltInFunction.STATS_NCCHI2PDF] = (task, args) =>
         {

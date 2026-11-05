@@ -5478,6 +5478,16 @@ static int ds_ncgammasf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n
 static int ds_ncfpdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh4(c, a, n, "gmb_dist_nc_f_pdf"); }
 static int ds_ncfcdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh4(c, a, n, "gmb_dist_nc_f_cdf"); }
 static int ds_ncfsf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh4(c, a, n, "gmb_dist_nc_f_sf"); }
+static int ds_ncchi2ppf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_nc_chi2_ppf"); }
+static int ds_ncchi2isf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_nc_chi2_isf"); }
+static int ds_ncgammappf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_nc_gamma_ppf"); }
+static int ds_ncgammaisf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_nc_gamma_isf"); }
+static int ds_nctppf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_nc_t_ppf"); }
+static int ds_nctisf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_nc_t_isf"); }
+static int ds_ncbetappf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh4(c, a, n, "gmb_dist_nc_beta_ppf"); }
+static int ds_ncbetaisf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh4(c, a, n, "gmb_dist_nc_beta_isf"); }
+static int ds_ncfppf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh4(c, a, n, "gmb_dist_nc_f_ppf"); }
+static int ds_ncfisf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh4(c, a, n, "gmb_dist_nc_f_isf"); }
 static int ds_nctpdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_nc_t_pdf"); }
 static int ds_nctcdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_nc_t_cdf"); }
 static int ds_nctsf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_nc_t_sf"); }
@@ -5545,6 +5555,16 @@ static const ds_row DS_TBL[] = {
     { GMB_TOK_StatsNcFPdf, ds_ncfpdf },
     { GMB_TOK_StatsNcFCdf, ds_ncfcdf },
     { GMB_TOK_StatsNcFSf, ds_ncfsf },
+    { GMB_TOK_StatsNcChi2Ppf, ds_ncchi2ppf },
+    { GMB_TOK_StatsNcChi2Isf, ds_ncchi2isf },
+    { GMB_TOK_StatsNcBetaPpf, ds_ncbetappf },
+    { GMB_TOK_StatsNcBetaIsf, ds_ncbetaisf },
+    { GMB_TOK_StatsNcGammaPpf, ds_ncgammappf },
+    { GMB_TOK_StatsNcGammaIsf, ds_ncgammaisf },
+    { GMB_TOK_StatsNcFPpf, ds_ncfppf },
+    { GMB_TOK_StatsNcFIsf, ds_ncfisf },
+    { GMB_TOK_StatsNcTPpf, ds_nctppf },
+    { GMB_TOK_StatsNcTIsf, ds_nctisf },
     { GMB_TOK_StatsNcTPdf, ds_nctpdf },
     { GMB_TOK_StatsNcTCdf, ds_nctcdf },
     { GMB_TOK_StatsNcTSf, ds_nctsf },

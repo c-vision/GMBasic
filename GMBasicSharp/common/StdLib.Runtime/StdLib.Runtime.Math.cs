@@ -64,6 +64,16 @@ public static class MathFunctions
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double NcTPdf(double df, double nc, double x) => CommonLib.Numerics.NcTPdf(df, nc, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double NcTCdf(double df, double nc, double x) => CommonLib.Numerics.NcTCdf(df, nc, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double NcTSf(double df, double nc, double x) => CommonLib.Numerics.NcTSf(df, nc, x);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double NcChi2Ppf(double df, double nc, double p) => CommonLib.Numerics.NcChi2Ppf(df, nc, p);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double NcChi2Isf(double df, double nc, double p) => CommonLib.Numerics.NcChi2Isf(df, nc, p);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double NcBetaPpf(double a, double b, double nc, double p) => CommonLib.Numerics.NcBetaPpf(a, b, nc, p);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double NcBetaIsf(double a, double b, double nc, double p) => CommonLib.Numerics.NcBetaIsf(a, b, nc, p);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double NcGammaPpf(double shape, double nc, double p) => CommonLib.Numerics.NcGammaPpf(shape, nc, p);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double NcGammaIsf(double shape, double nc, double p) => CommonLib.Numerics.NcGammaIsf(shape, nc, p);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double NcFPpf(double d1, double d2, double nc, double p) => CommonLib.Numerics.NcFPpf(d1, d2, nc, p);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double NcFIsf(double d1, double d2, double nc, double p) => CommonLib.Numerics.NcFIsf(d1, d2, nc, p);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double NcTPpf(double df, double nc, double p) => CommonLib.Numerics.NcTPpf(df, nc, p);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double NcTIsf(double df, double nc, double p) => CommonLib.Numerics.NcTIsf(df, nc, p);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ZTPoissonPmf(double lambda, int k) => CommonLib.Numerics.ZTPoissonPmf(lambda, k);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ZTPoissonCdf(double lambda, int k) => CommonLib.Numerics.ZTPoissonCdf(lambda, k);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ChiSquaredSf(double freedom, double x) => 1.0 - CommonLib.Numerics.ChiSquaredCdf(freedom, x);
