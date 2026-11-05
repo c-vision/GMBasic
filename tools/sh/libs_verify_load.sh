@@ -48,6 +48,11 @@ cat > "$WORKD/dlopen_probe.c" <<'PROBE'
 #include <stdio.h>
 int main(int argc, char **argv) {
     if (argc < 2) return 2;
+    /* Argomenti 2..N = dipendenze `@rpath/…` presenti nella stessa cartella: si caricano PRIMA
+     * (RTLD_GLOBAL). Con flat namespace un simbolo fornito da un'altra nostra lib gia' caricata
+     * risultava "symbol not found in flat namespace" — falso positivo (caso reale:
+     * libgmb_fonts → _gmb_alert_box_centered, definito in libgmb_gfx/libgmb_compress). */
+    for (int i = 2; i < argc; i++) (void)dlopen(argv[i], RTLD_NOW | RTLD_GLOBAL);
     void *h = dlopen(argv[1], RTLD_NOW | RTLD_GLOBAL);
     if (!h) { printf("%s\n", dlerror()); return 1; }
     dlclose(h);
@@ -57,25 +62,85 @@ PROBE
 "$CC_BIN" -O0 -w "$WORKD/dlopen_probe.c" -o "$WORKD/dlopen_probe" $( [ "$(uname -s)" = "Linux" ] && echo "-ldl" ) \
   || { echo "compilazione del probe dlopen fallita" >&2; exit 1; }
 
-total=0; bad=0
+# ── CHIUSURA DELLE DIPENDENZE `@rpath/…` ───────────────────────────────────────────────────
+# Regola: un bundle è valido solo se OGNI dipendenza `@rpath/<nome>` di OGNI sua libreria
+# esiste NELLA STESSA CARTELLA (o è una libreria di sistema con path assoluto).
+#
+# PERCHÉ ESISTE. Lo `sha256` dice "file integro", il `dlopen` dice "si carica su questa
+# macchina (con questa cache)": nessuno dei due dice "il set è completo nel bundle".
+# Caso reale (2026-11-04): `libSDL2.dylib`/`libSDL3.dylib` erano SALTATI da questo ciclo
+# (`continue`), quindi il caso "SDL3 mancante accanto a SDL2" non veniva mai visto qui ma
+# arrivava all'utente come `Failed loading SDL3 library` a runtime. SDL2 e SDL3 sono un
+# set INDIVISIBILE (la SDL2 distribuita può essere sdl2-compat, che pretende SDL3): lo
+# verifichiamo per chiusura, che non richiede un display e quindi vale anche in CI.
+lib_deps() { # $1 = libreria → una dipendenza per riga (senza header né install name)
+  case "$(uname -s)" in
+    Darwin) otool -L "$1" 2>/dev/null | tail -n +3 | awk '{print $1}' ;;
+    *)      readelf -d "$1" 2>/dev/null | sed -n 's/.*\[\(.*\)\]/\1/p' ;;
+  esac
+}
+
+closure_missing() { # $1 = libreria → nomi che mancano nella sua cartella (vuoto = chiusa)
+  _dir="$(dirname "$1")"; _self="$(basename "$1")"; _out=""
+  for _dep in $(lib_deps "$1"); do
+    case "$_dep" in
+      "$_self")       continue ;;
+      @rpath/*)       _n="${_dep#@rpath/}" ;;
+      @loader_path/*) _n="${_dep#@loader_path/}" ;;
+      /*)             continue ;;   # /usr/lib, /System/...: di sistema, non del bundle
+      *)              _n="$_dep" ;;
+    esac
+    [ -f "$_dir/$_n" ] || _out="$_out $_n"
+  done
+  printf '%s' "$_out"
+}
+
+total=0; bad=0; warn=0; sdl=0
 for f in "$DIR"/*.dylib "$DIR"/*.so "$DIR"/*.so.* "$DIR"/*.dll; do
   [ -f "$f" ] || continue
   base="$(basename "$f")"
-  # SDL2/SDL3, al `dlopen` inizializzano il video e senza display (container/CI) falliscono per
-  # l'AMBIENTE, non per il bundle: la loro presenza è verificata dal controllo delle dipendenze
-  # (ldd/otool), non da un dlopen che richiede un contesto grafico.
+  # SDL2/SDL3: al `dlopen` inizializzano il video e senza display (container/CI) falliscono per
+  # l'AMBIENTE, non per il bundle → su questi NON si fa dlopen, ma la CHIUSURA sì (era il buco).
   case "$base" in
-    libSDL2*|libSDL3*|SDL2*.dll|SDL3*.dll) continue ;;
+    libSDL2*|libSDL3*|SDL2*.dll|SDL3*.dll)
+      total=$((total+1)); sdl=$((sdl+1))
+      miss="$(closure_missing "$f")"
+      if [ -n "$miss" ]; then
+        bad=$((bad+1))
+        printf '  ✗ %-34s dipendenze mancanti:%s\n' "$base" "$miss"
+      elif [ "$QUIET" = "1" ]; then :
+      else printf '  ✓ %s (chiusura ok)\n' "$base"; fi
+      continue ;;
   esac
   total=$((total+1))
-  err="$(env "$VAR=$DIR" "$WORKD/dlopen_probe" "$f" 2>&1)" || {
-    bad=$((bad+1))
+  # Dipendenze sorelle gia' nella cartella: si pre-caricano nel probe (flat namespace).
+  preload=()
+  for _d in $(lib_deps "$f"); do
+    case "$_d" in
+      @rpath/*)       _n="$DIR/${_d#@rpath/}" ;;
+      @loader_path/*) _n="$DIR/${_d#@loader_path/}" ;;
+      *)              continue ;;
+    esac
+    [ "$_n" = "$f" ] || { [ -f "$_n" ] && preload+=("$_n"); }
+  done
+  err="$(env "$VAR=$DIR" "$WORKD/dlopen_probe" "$f" ${preload[@]+"${preload[@]}"} 2>&1)" || {
     # riga utile: quella con "Library not loaded"/"image not found" se c'è, altrimenti la prima
-    msg="$(printf '%s' "$err" | grep -m1 -E 'Library not loaded|image not found|cannot open shared|undefined symbol' || printf '%s' "$err" | head -1)"
-    printf '  ✗ %-34s %s\n' "$base" "$msg"
+    msg="$(printf '%s' "$err" | grep -m1 -E 'Library not loaded|image not found|cannot open shared|undefined symbol|symbol not found' || printf '%s' "$err" | head -1)"
+    case "$msg" in
+      *'symbol not found in flat namespace'*)
+        # NON è un buco del bundle: la lib usa un simbolo definito da una lib SORELLA che il
+        # runtime carica prima con RTLD_GLOBAL (caso reale: libgmb_fonts → _gmb_alert_box_centered,
+        # definito in libgmb_gfx/libgmb_compress, che libgmb_fonts non linka per design).
+        # Contarlo come errore renderebbe il gate inutilizzabile (lo era: 151/152 con un falso rosso).
+        warn=$((warn+1))
+        printf '  ⚠ %-34s simbolo di una lib sorella (RTLD_GLOBAL nel runtime): %s\n' "$base" "$msg" ;;
+      *)
+        bad=$((bad+1))
+        printf '  ✗ %-34s %s\n' "$base" "$msg" ;;
+    esac
   }
   [ "$QUIET" = "1" ] || printf '  ✓ %s\n' "$base"
 done
 
-echo "[libs] caricabilità: $((total-bad))/$total OK in $DIR"
+echo "[libs] caricabilità: $((total-bad))/$total OK in $DIR (di cui $sdl SDL verificati per chiusura, $warn avvisi)"
 [ "$bad" = "0" ] || { echo "[libs] $bad librerie NON caricabili (dipendenza mancante dal bundle?)" >&2; exit 1; }

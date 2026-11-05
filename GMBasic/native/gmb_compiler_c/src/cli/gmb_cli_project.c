@@ -597,9 +597,16 @@ int build_project(const Options* o, const char* project, const char* entry,
             /* -rpath accanto a -L: senza, l'eseguibile linkato trova libSDL2 in fase di link
              * ma non di avvio (`Library not loaded: @rpath/libSDL2.dylib`, nessun LC_RPATH).
              * Stessa scelta di tools/gmb_c99native_run.sh, che bagna di rpath le sue dir. */
+            /* SOLO `-L` (serve al LINK) e NON `-Wl,-rpath,<dir assoluta>`: un rpath assoluto
+             * (`$HOME/.gmbasic/libs/<rid>`, `/usr/lib`) resta cucito nel binario e lo lega
+             * alla macchina che ha compilato — erano le 2 voci assolute di ogni eseguibile
+             * prodotto da `gmb build`. A RUNTIME le dylib arrivano da `libs/<rid>/` accanto
+             * all'eseguibile (prima voce di `ldirs`, relativa) e `gmb_deploy_bundle` ce le
+             * porta con sé, SDL3 compresa (`dp_ensure_sdl3`): il programma gira da qualunque
+             * cartella, anche su un'altra macchina. */
             size_t l = strlen(ldirs);
             if (l < sizeof ldirs)
-                snprintf(ldirs + l, sizeof ldirs - l, " -L%s -Wl,-rpath,%s", q, q);
+                snprintf(ldirs + l, sizeof ldirs - l, " -L%s", q);
             nldirs++;
         }
     }
@@ -758,8 +765,6 @@ int build_project(const Options* o, const char* project, const char* entry,
             char q[CLI_PATH + 8];
             shell_quote(cache2, q, sizeof q);
             strncat(ldirs, " -L", sizeof ldirs - strlen(ldirs) - 1);
-            strncat(ldirs, q, sizeof ldirs - strlen(ldirs) - 1);
-            strncat(ldirs, " -Wl,-rpath,", sizeof ldirs - strlen(ldirs) - 1);
             strncat(ldirs, q, sizeof ldirs - strlen(ldirs) - 1);
         }
         {

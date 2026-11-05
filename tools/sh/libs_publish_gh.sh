@@ -57,7 +57,7 @@ if [ -z "$GROUP" ] || [ -z "$RID" ]; then sed -n '2,45p' "$0" | sed 's/^# \{0,1\
 case "$GROUP" in support|engine|llmmotor|core) ;; *) echo "gruppo non valido: $GROUP (support|engine|llmmotor|core)" >&2; exit 2;; esac
 
 shift 2
-SRC=""; TAG=""; REPO="c-vision/GMBasicModules"; DRY=0; YES=0; INDEX=0; PUSH=0; MANIFEST=""
+SRC=""; TAG=""; REPO="c-vision/GMBasicModules"; DRY=0; YES=0; INDEX=0; PUSH=0; MANIFEST=""; REQ_CLOSURE=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --source) SRC="${2:-}"; shift 2;;
@@ -67,6 +67,7 @@ while [ $# -gt 0 ]; do
     --yes) YES=1; shift;;
     --index) INDEX=1; shift;;
     --push-manifest) INDEX=1; PUSH=1; shift;;
+    --require-closure) REQ_CLOSURE=1; shift;;
     --manifest) MANIFEST="${2:-}"; shift 2;;
     *) echo "opzione sconosciuta: $1" >&2; exit 2;;
   esac
@@ -125,6 +126,25 @@ for f in "${FILES[@]}"; do
     if [ -f "$s/$f" ]; then cp -RL "$s/$f" "$PKGDIR/"; break; fi
   done
 done
+# ── GATE DI CHIUSURA: il bundle deve portare TUTTE le dipendenze `@rpath/…` ─────────────────
+# Classe di errore che prima si evitava a mano: SDL2/SDL3, freetype, harfbuzz, png… un bundle con
+# una dipendenza fuori produce `Failed loading SDL3 library` A RUNTIME, cioè all'utente, e nessuno
+# se ne accorge qui (gli sha dicono "file integro", non "grafo completo").
+# `support` = terze parti: il set è autoconsistente per costruzione → gate BLOCCANTE.
+# `core`/`engine`/`llmmotor`: la chiusura arriva dal gruppo composto (`runtime`), quindi si stampa
+# il referto e si blocca solo con --require-closure.
+if bash "$SCRIPT_DIR/libs_bundle_selfcheck.sh" "$PKGDIR" --quiet; then
+  echo "chiusura dipendenze: OK"
+else
+  if [ "$GROUP" = "support" ] || [ "$REQ_CLOSURE" = "1" ]; then
+    echo "libs_publish_gh: bundle NON chiuso → pubblicazione annullata" >&2
+    echo "  (manca almeno una dipendenza @rpath elencata sopra: va aggiunta allo staging)" >&2
+    exit 1
+  fi
+  echo "AVVISO: bundle non chiuso — atteso per '$GROUP' (le dipendenze arrivano dal gruppo composto);" >&2
+  echo "        bloccalo con --require-closure." >&2
+fi
+
 ZIP="$WORK/gmb-$GROUP-$RID.zip"
 ( cd "$WORK" && zip -q -r -9 "$(basename "$ZIP")" "gmb-$GROUP-$RID" )
 SHA="$(shasum -a 256 "$ZIP" | awk '{print $1}')"
