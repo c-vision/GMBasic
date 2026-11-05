@@ -18,6 +18,38 @@ public static class ModuleDiscovery
 {
     private static readonly string[] SearchPatterns = ["*.bas", "*.inc"];
 
+    /* Cartelle che NON sono sorgenti: `bin/`/`obj/` dei progetti C# contengono COPIE degli
+     * `.inc` condivisi (es. `GMBasicSharp/CompilerCli/bin/.../include/ortools.inc`). Scansione
+     * ricorsiva dalla root del checkout → lo stesso `.inc` veniva caricato due volte e il Linker
+     * falliva con "procedura già definita nel namespace" / "simbolo già dichiarato"
+     * (2026-11-04, `IMPORT OPTIMIZE` dal checkout). */
+    private static readonly HashSet<string> PrunedDirectories =
+        new(StringComparer.OrdinalIgnoreCase) { "bin", "obj", ".git", ".vs", "node_modules" };
+
+    /// <summary>File `.bas`/`.inc` sotto <paramref name="root"/>, saltando le cartelle di build.</summary>
+    private static IEnumerable<string> EnumerateSources(string root)
+    {
+        var stack = new Stack<string>();
+        stack.Push(root);
+        while (stack.Count > 0)
+        {
+            var dir = stack.Pop();
+            string[] files;
+            try { files = Directory.GetFiles(dir); } catch { continue; }
+            foreach (var file in files)
+            {
+                var ext = Path.GetExtension(file);
+                if (ext.Equals(".bas", StringComparison.OrdinalIgnoreCase) ||
+                    ext.Equals(".inc", StringComparison.OrdinalIgnoreCase))
+                    yield return file;
+            }
+            string[] subdirs;
+            try { subdirs = Directory.GetDirectories(dir); } catch { continue; }
+            foreach (var sub in subdirs)
+                if (!PrunedDirectories.Contains(Path.GetFileName(sub))) stack.Push(sub);
+        }
+    }
+
     /// <summary>
     /// Tutti i file `.bas`/`.inc` raggiungibili da <paramref name="projectRoot"/>: la cartella del
     /// progetto (ricorsiva), le <see cref="CommonLib.EffectiveSettings.ImportFolders"/>, i
@@ -30,13 +62,19 @@ public static class ModuleDiscovery
         var projectSourceFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         try
         {
+            // Shadowing per NOME file in TUTTI gli step: il primo visto vince (progetto, poi
+            // import folder, poi file espliciti, poi search folders). Senza, due copie dello
+            // stesso `.inc` (sorgente + artefatto di build) producevano dichiarazioni duplicate.
+            var seenNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            void AddSourceFile(string file)
+            {
+                var full = Path.GetFullPath(file);
+                if (seenNames.Add(Path.GetFileName(full))) projectSourceFiles.Add(full);
+            }
+
             // 1. Cartella del progetto.
             if (Directory.Exists(projectRoot))
-            {
-                foreach (var pattern in SearchPatterns)
-                    foreach (var file in Directory.GetFiles(projectRoot, pattern, SearchOption.AllDirectories))
-                        projectSourceFiles.Add(Path.GetFullPath(file));
-            }
+                foreach (var file in EnumerateSources(projectRoot)) AddSourceFile(file);
 
             // 2. Cartelle di import: relative al progetto E alla repo-root (una libreria condivisa
             //    come `Controls/` deve essere importabile da un sample in qualunque sottocartella).
@@ -46,9 +84,7 @@ public static class ModuleDiscovery
                 {
                     var importPath = Path.GetFullPath(Path.Combine(baseDir, folder));
                     if (!Directory.Exists(importPath)) continue;
-                    foreach (var pattern in SearchPatterns)
-                        foreach (var file in Directory.GetFiles(importPath, pattern, SearchOption.AllDirectories))
-                            projectSourceFiles.Add(Path.GetFullPath(file));
+                    foreach (var file in EnumerateSources(importPath)) AddSourceFile(file);
                 }
             }
 
@@ -58,25 +94,14 @@ public static class ModuleDiscovery
                 foreach (var baseDir in new[] { projectRoot, CommonLib.GmbiPaths.RepoRoot })
                 {
                     var importPath = Path.GetFullPath(Path.Combine(baseDir, file));
-                    if (File.Exists(importPath)) projectSourceFiles.Add(importPath);
+                    if (File.Exists(importPath)) AddSourceFile(importPath);
                 }
             }
 
             // 4. `compiler.searchFolders` (default in CompilerSettings.SearchFolders: include/,
             //    Controls/, <install>/../shared/include, ...). Shadowing per nome file.
-            var localNames = new HashSet<string>(
-                projectSourceFiles.Select(f => Path.GetFileName(f) ?? f), StringComparer.OrdinalIgnoreCase);
             foreach (var searchRoot in ResolveSearchFolders(settings.Compiler.SearchFolders, projectRoot))
-            {
-                foreach (var pattern in SearchPatterns)
-                {
-                    foreach (var file in Directory.GetFiles(searchRoot, pattern, SearchOption.AllDirectories))
-                    {
-                        if (localNames.Contains(Path.GetFileName(file))) continue;
-                        projectSourceFiles.Add(Path.GetFullPath(file));
-                    }
-                }
-            }
+                foreach (var file in EnumerateSources(searchRoot)) AddSourceFile(file);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
