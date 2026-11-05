@@ -3275,3 +3275,39 @@ double gmb_dist_nc_chi2_cdf(double df, double nc, double x)
     return sum > 1 ? 1 : sum;
 }
 double gmb_dist_nc_chi2_sf(double df, double nc, double x) { return 1.0 - gmb_dist_nc_chi2_cdf(df, nc, x); }
+
+/* Noncentral beta: Poisson mixture of central beta(a+j,b). */
+double gmb_dist_nc_beta_pdf(double a, double b, double nc, double x)
+{
+    if (a <= 0 || b <= 0 || nc < 0) return NAN;
+    double half = nc * 0.5, w = exp(-half), sum = 0;
+    for (int j = 0; j < 300; j++) { sum += w * gmb_dist_beta_pdf(a + j, b, x); w *= half / (j + 1.0); }
+    return sum;
+}
+double gmb_dist_nc_beta_cdf(double a, double b, double nc, double x)
+{
+    if (a <= 0 || b <= 0 || nc < 0) return NAN;
+    if (x <= 0) return 0;
+    if (x >= 1) return 1;
+    double half = nc * 0.5, w = exp(-half), sum = 0;
+    for (int j = 0; j < 300; j++) { sum += w * gmb_dist_beta_cdf(a + j, b, x); w *= half / (j + 1.0); }
+    return sum > 1 ? 1 : sum;
+}
+double gmb_dist_nc_beta_sf(double a, double b, double nc, double x) { return 1.0 - gmb_dist_nc_beta_cdf(a, b, nc, x); }
+/* Noncentral gamma (scale=1): Poisson mixture of central gamma(shape+j,1). */
+double gmb_dist_nc_gamma_pdf(double shape, double nc, double x)
+{
+    if (shape <= 0 || nc < 0) return NAN;
+    double half = nc * 0.5, w = exp(-half), sum = 0;
+    for (int j = 0; j < 300; j++) { sum += w * gmb_gamma_pdf(shape + j, 1.0, x); w *= half / (j + 1.0); }
+    return sum;
+}
+double gmb_dist_nc_gamma_cdf(double shape, double nc, double x)
+{
+    if (shape <= 0 || nc < 0) return NAN;
+    if (x <= 0) return 0;
+    double half = nc * 0.5, w = exp(-half), sum = 0;
+    for (int j = 0; j < 300; j++) { sum += w * gmb_gamma_cdf(shape + j, 1.0, x); w *= half / (j + 1.0); }
+    return sum > 1 ? 1 : sum;
+}
+double gmb_dist_nc_gamma_sf(double shape, double nc, double x) { return 1.0 - gmb_dist_nc_gamma_cdf(shape, nc, x); }

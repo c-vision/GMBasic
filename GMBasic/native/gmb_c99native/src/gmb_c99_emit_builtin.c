@@ -5460,6 +5460,21 @@ static int ds_chisq_cdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2(c, a, n
 static int ds_ncchi2_pdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_nc_chi2_pdf"); }
 static int ds_ncchi2_cdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_nc_chi2_cdf"); }
 static int ds_ncchi2_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_nc_chi2_sf"); }
+static int ds_sh4(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
+    if (n < 4) return 0;
+    sb_put(&c->out, fn); sb_put(&c->out, "(");
+    emit_expr(c, a[1]); sb_put(&c->out, ", ");
+    emit_expr(c, a[2]); sb_put(&c->out, ", ");
+    emit_expr(c, a[3]); sb_put(&c->out, ", ");
+    emit_expr(c, a[0]); sb_put(&c->out, ")");
+    return 1;
+}
+static int ds_ncbetapdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh4(c, a, n, "gmb_dist_nc_beta_pdf"); }
+static int ds_ncbetacdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh4(c, a, n, "gmb_dist_nc_beta_cdf"); }
+static int ds_ncbetasf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh4(c, a, n, "gmb_dist_nc_beta_sf"); }
+static int ds_ncgammapdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_nc_gamma_pdf"); }
+static int ds_ncgammacdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_nc_gamma_cdf"); }
+static int ds_ncgammasf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_nc_gamma_sf"); }
 static int ds_chisq_isf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2(c, a, n, "gmb_dist_chi2_isf"); }
 static int ds_chisq_pdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2(c, a, n, "gmb_dist_chi2_pdf"); }
 static int ds_chisq_ppf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2(c, a, n, "gmb_dist_chi2_ppf"); }
@@ -5513,6 +5528,12 @@ static const ds_row DS_TBL[] = {
     { GMB_TOK_StatsNcChi2Pdf, ds_ncchi2_pdf },
     { GMB_TOK_StatsNcChi2Cdf, ds_ncchi2_cdf },
     { GMB_TOK_StatsNcChi2Sf, ds_ncchi2_sf },
+    { GMB_TOK_StatsNcBetaPdf, ds_ncbetapdf },
+    { GMB_TOK_StatsNcBetaCdf, ds_ncbetacdf },
+    { GMB_TOK_StatsNcBetaSf, ds_ncbetasf },
+    { GMB_TOK_StatsNcGammaPdf, ds_ncgammapdf },
+    { GMB_TOK_StatsNcGammaCdf, ds_ncgammacdf },
+    { GMB_TOK_StatsNcGammaSf, ds_ncgammasf },
     { GMB_TOK_StatsChiSquaredSf, ds_chisq_sf }, 
     { GMB_TOK_ChiSquaredIsf, ds_chisq_isf },
     { GMB_TOK_ChiSquaredPdf, ds_chisq_pdf },

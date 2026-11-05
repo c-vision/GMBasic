@@ -1183,9 +1183,15 @@ procedure,STATS,Mean,Mean
 procedure,STATS,Median,Median
 procedure,STATS,Mode,StatsMode
 procedure,STATS,Moment,StatsMoment
+procedure,STATS,NcBetaCdf,StatsNcBetaCdf
+procedure,STATS,NcBetaPdf,StatsNcBetaPdf
+procedure,STATS,NcBetaSf,StatsNcBetaSf
 procedure,STATS,NcChi2Cdf,StatsNcChi2Cdf
 procedure,STATS,NcChi2Pdf,StatsNcChi2Pdf
 procedure,STATS,NcChi2Sf,StatsNcChi2Sf
+procedure,STATS,NcGammaCdf,StatsNcGammaCdf
+procedure,STATS,NcGammaPdf,StatsNcGammaPdf
+procedure,STATS,NcGammaSf,StatsNcGammaSf
 procedure,STATS,NegativeBinomialPmf,NegativeBinomialPmf
 procedure,STATS,NormalCdf,NormalCdf
 procedure,STATS,NormalIsf,NormalIsf

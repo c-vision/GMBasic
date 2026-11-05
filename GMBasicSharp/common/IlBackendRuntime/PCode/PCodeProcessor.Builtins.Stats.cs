@@ -76,6 +76,12 @@ internal sealed partial class PCodeProcessor
         BuiltInFunction.STATS_NCCHI2PDF,
         BuiltInFunction.STATS_NCCHI2CDF,
         BuiltInFunction.STATS_NCCHI2SF,
+        BuiltInFunction.STATS_NCBETAPDF,
+        BuiltInFunction.STATS_NCBETACDF,
+        BuiltInFunction.STATS_NCBETASF,
+        BuiltInFunction.STATS_NCGAMMAPDF,
+        BuiltInFunction.STATS_NCGAMMACDF,
+        BuiltInFunction.STATS_NCGAMMASF,
         BuiltInFunction.CHI2TEST,
         BuiltInFunction.FISHEREXACT,
         BuiltInFunction.SHAPIROWILK,
@@ -329,6 +335,30 @@ internal sealed partial class PCodeProcessor
         [BuiltInFunction.STATS_NCCHI2CDF] = (task, args) =>
         {
                 return CommonLib.Numerics.NcChi2Cdf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 0.0)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_NCBETAPDF] = (task, args) =>
+        {
+                return CommonLib.Numerics.NcBetaPdf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 1.0)), SafeDouble(ArgOr(args, 3, 0.0)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_NCBETACDF] = (task, args) =>
+        {
+                return CommonLib.Numerics.NcBetaCdf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 1.0)), SafeDouble(ArgOr(args, 3, 0.0)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_NCBETASF] = (task, args) =>
+        {
+                return CommonLib.Numerics.NcBetaSf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 1.0)), SafeDouble(ArgOr(args, 3, 0.0)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_NCGAMMAPDF] = (task, args) =>
+        {
+                return CommonLib.Numerics.NcGammaPdf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 0.0)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_NCGAMMACDF] = (task, args) =>
+        {
+                return CommonLib.Numerics.NcGammaCdf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 0.0)), SafeDouble(ArgOr(args, 0)));
+        },
+        [BuiltInFunction.STATS_NCGAMMASF] = (task, args) =>
+        {
+                return CommonLib.Numerics.NcGammaSf(SafeDouble(ArgOr(args, 1, 1.0)), SafeDouble(ArgOr(args, 2, 0.0)), SafeDouble(ArgOr(args, 0)));
         },
         [BuiltInFunction.STATS_NCCHI2SF] = (task, args) =>
         {

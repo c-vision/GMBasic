@@ -2031,6 +2031,7 @@ public enum TokenKind
     TsBmaWeights,
     TsLyapunov,
     StatsNcChi2Pdf, StatsNcChi2Cdf, StatsNcChi2Sf,
+    StatsNcBetaPdf, StatsNcBetaCdf, StatsNcBetaSf, StatsNcGammaPdf, StatsNcGammaCdf, StatsNcGammaSf,
     StatsChi2Contingency, StatsMannWhitney, StatsWilcoxon,
     StatsGammaPdf, StatsGammaCdf, StatsGammaPpf, StatsGammaIsf,
     StatsSkewTest, StatsKurtosisTest, StatsJarqueBera,
