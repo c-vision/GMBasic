@@ -202,3 +202,182 @@ int ofx_gfx_point_in_triangle(double x, double y, double ax, double ay,
     gm_vec2 p = { x, y }, a = { ax, ay }, b = { bx, by }, c = { cx, cy };
     return gm_shape_point_in_triangle(a, b, c, p);
 }
+
+/* ── immagini float 2D (gfx2d.inc) ─────────────────────────────────────────
+ * L'API gmbgraphics passa `gm_image` per valore: qui si avvolgono i buffer del chiamante
+ * (row-major, w*h double) e si copiano i risultati negli array out(). Nessuna allocazione
+ * nascosta: l'unica alloca sono i temporanei delle funzioni che ritornano gm_image. */
+
+#include "gm_gfx_image.h"
+
+static gm_image img_wrap(const double* data, int w, int h)
+{
+    gm_image im;
+    im.w = w;
+    im.h = h;
+    im.data = (gm_real*)data;   /* solo per operazioni in-place */
+    return im;
+}
+
+int ofx_gfx_img_convolve(const double* in, int w, int h, const double* k, int kx, int ky, double* out)
+{
+    if (!in || !k || !out || w <= 0 || h <= 0 || kx <= 0 || ky <= 0) return -1;
+    gm_image a = img_wrap(in, w, h), b = img_wrap(out, w, h);
+    gm_image_convolve(a, k, kx, ky, b);
+    return 0;
+}
+
+int ofx_gfx_img_convolve_sep(const double* in, int w, int h, const double* kx, int nx,
+                             const double* ky, int ny, double* out)
+{
+    if (!in || !kx || !ky || !out || w <= 0 || h <= 0 || nx <= 0 || ny <= 0) return -1;
+    gm_image a = img_wrap(in, w, h), b = img_wrap(out, w, h);
+    gm_image_convolve_sep(a, kx, nx, ky, ny, b);
+    return 0;
+}
+
+int ofx_gfx_img_gaussian(const double* in, int w, int h, double sigma, double* out)
+{
+    if (!in || !out || w <= 0 || h <= 0) return -1;
+    gm_image a = img_wrap(in, w, h), b = img_wrap(out, w, h);
+    gm_image_gaussian(a, sigma, b);
+    return 0;
+}
+
+int ofx_gfx_img_sobel(const double* in, int w, int h, double* gx, double* gy)
+{
+    if (!in || !gx || !gy || w <= 0 || h <= 0) return -1;
+    gm_image a = img_wrap(in, w, h), b = img_wrap(gx, w, h), c = img_wrap(gy, w, h);
+    gm_image_sobel(a, b, c);
+    return 0;
+}
+
+int ofx_gfx_img_resample(const double* in, int w, int h, int nw, int nh, double* out)
+{
+    if (!in || !out || w <= 0 || h <= 0 || nw <= 0 || nh <= 0) return -1;
+    gm_image r = gm_image_resample(img_wrap(in, w, h), nw, nh);
+    if (!r.data) return -1;
+    for (long i = 0; i < (long)nw * nh; i++) out[i] = r.data[i];
+    gm_image_free(&r);
+    return 0;
+}
+
+int ofx_gfx_img_transpose(const double* in, int w, int h, double* out)
+{
+    if (!in || !out || w <= 0 || h <= 0) return -1;
+    gm_image r = gm_image_transpose(img_wrap(in, w, h));
+    if (!r.data) return -1;
+    for (long i = 0; i < (long)w * h; i++) out[i] = r.data[i];
+    gm_image_free(&r);
+    return 0;
+}
+
+int ofx_gfx_img_rotate90(const double* in, int w, int h, int k, double* out)
+{
+    if (!in || !out || w <= 0 || h <= 0) return -1;
+    gm_image r = gm_image_rotate90(img_wrap(in, w, h), k);
+    if (!r.data) return -1;
+    for (long i = 0; i < (long)w * h; i++) out[i] = r.data[i];
+    gm_image_free(&r);
+    return 0;
+}
+
+int ofx_gfx_img_rotate(const double* in, int w, int h, double radians, double bg, double* out)
+{
+    if (!in || !out || w <= 0 || h <= 0) return -1;
+    gm_image r = gm_image_rotate(img_wrap(in, w, h), radians, bg);
+    if (!r.data) return -1;
+    for (long i = 0; i < (long)w * h; i++) out[i] = r.data[i];
+    gm_image_free(&r);
+    return 0;
+}
+
+int ofx_gfx_img_flip_h(const double* in, int w, int h, double* out)
+{
+    if (!in || !out || w <= 0 || h <= 0) return -1;
+    return gm_image_flip_h(img_wrap(in, w, h), img_wrap(out, w, h));
+}
+
+int ofx_gfx_img_flip_v(const double* in, int w, int h, double* out)
+{
+    if (!in || !out || w <= 0 || h <= 0) return -1;
+    return gm_image_flip_v(img_wrap(in, w, h), img_wrap(out, w, h));
+}
+
+int ofx_gfx_img_threshold(const double* in, int w, int h, double t, double lo, double hi, double* out)
+{
+    if (!in || !out || w <= 0 || h <= 0) return -1;
+    return gm_image_threshold(img_wrap(in, w, h), t, lo, hi, img_wrap(out, w, h));
+}
+
+int ofx_gfx_img_normalize(const double* in, int w, int h, double lo, double hi, double* out)
+{
+    if (!in || !out || w <= 0 || h <= 0) return -1;
+    return gm_image_normalize(img_wrap(in, w, h), lo, hi, img_wrap(out, w, h));
+}
+
+int ofx_gfx_img_histogram(const double* in, int w, int h, int nbins, double lo, double hi, double* counts)
+{
+    if (!in || !counts || w <= 0 || h <= 0 || nbins <= 0) return -1;
+    return gm_image_histogram(img_wrap(in, w, h), nbins, lo, hi, counts);
+}
+
+int ofx_gfx_img_hist_equalize(const double* in, int w, int h, int nbins, double* out)
+{
+    if (!in || !out || w <= 0 || h <= 0 || nbins <= 0) return -1;
+    return gm_image_hist_equalize(img_wrap(in, w, h), nbins, img_wrap(out, w, h));
+}
+
+int ofx_gfx_img_median3(const double* in, int w, int h, double* out)
+{
+    if (!in || !out || w <= 0 || h <= 0) return -1;
+    return gm_image_median3(img_wrap(in, w, h), img_wrap(out, w, h));
+}
+
+int ofx_gfx_img_draw_line(double* d, int w, int h, int x0, int y0, int x1, int y1, double v)
+{
+    if (!d || w <= 0 || h <= 0) return -1;
+    gm_image_draw_line(img_wrap(d, w, h), x0, y0, x1, y1, v);
+    return 0;
+}
+
+int ofx_gfx_img_draw_rect_fill(double* d, int w, int h, int x0, int y0, int x1, int y1, double v)
+{
+    if (!d || w <= 0 || h <= 0) return -1;
+    gm_image_draw_rect(img_wrap(d, w, h), x0, y0, x1, y1, v, 1);
+    return 0;
+}
+
+int ofx_gfx_img_draw_rect_stroke(double* d, int w, int h, int x0, int y0, int x1, int y1, double v)
+{
+    if (!d || w <= 0 || h <= 0) return -1;
+    gm_image_draw_rect(img_wrap(d, w, h), x0, y0, x1, y1, v, 0);
+    return 0;
+}
+
+int ofx_gfx_img_draw_circle(double* d, int w, int h, int cx, int cy, int r, double v, int fill)
+{
+    if (!d || w <= 0 || h <= 0) return -1;
+    gm_image_draw_circle(img_wrap(d, w, h), cx, cy, r, v, fill);
+    return 0;
+}
+
+int ofx_gfx_img_warp(const double* in, int c, int h, int w, const double* fx, const double* fy, double* out)
+{
+    if (!in || !fx || !fy || !out || c <= 0 || h <= 0 || w <= 0) return -1;
+    return gm_image_warp_bilinear(out, in, c, h, w, fx, fy);
+}
+
+int ofx_gfx_img_poisson(const double* target, const double* source, const double* mask,
+                        int nx, int ny, double* out, int maxit)
+{
+    if (!target || !source || !mask || !out || nx <= 0 || ny <= 0) return -1;
+    /* mask BASIC = double 0/1; il blend vuole unsigned char: conversione esplicita. */
+    size_t n = (size_t)nx * (size_t)ny;
+    unsigned char* m = (unsigned char*)malloc(n);
+    if (!m) return -1;
+    for (size_t i = 0; i < n; i++) m[i] = (mask[i] != 0.0) ? 1u : 0u;
+    int rc = gm_image_poisson_blend(target, source, m, nx, ny, out, maxit);
+    free(m);
+    return rc;
+}
