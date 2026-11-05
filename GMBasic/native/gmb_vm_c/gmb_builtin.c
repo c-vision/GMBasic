@@ -695,6 +695,14 @@ static void gmb_bf_1064(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
         (void)vm; (void)task; (void)func_code;
         bout->result = gmb_dist_chi_isf(argc >= 2 ? args[1].num : 1, args[0].num);
 }
+static void gmb_bf_1072(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task; (void)func_code;
+        int n = 0;
+        double* a = gmb_vm_list_to_dbl(&args[0], &n);
+        bout->result = gmb_ts_approx_entropy(a, n, (int)args[1].num, args[2].num);
+        free(a);
+}
 static void gmb_bf_1071(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         (void)vm; (void)task; (void)func_code;
@@ -17679,6 +17687,7 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 1069, gmb_bf_1069 },
     { 1070, gmb_bf_1070 },
     { 1071, gmb_bf_1071 },
+    { 1072, gmb_bf_1072 },
     { 1015, gmb_bf_1013 },
     { 1017, gmb_bf_1017 },
     { 1018, gmb_bf_1018 },

@@ -1247,6 +1247,7 @@ static const gmb_ns_type_row_t gmb_ns_types[] = {
     { GMB_TOK_TsKalman1D, 0 },
     { GMB_TOK_TsStationaryBootstrap, 0 },
     { GMB_TOK_TsSampleEntropy, 0 },
+    { GMB_TOK_TsApproxEntropy, 0 },
     { GMB_TOK_Autocorrelation, 0 },
     { GMB_TOK_Deseasonalize, 0 },
     { GMB_TOK_Decompose, 0 },

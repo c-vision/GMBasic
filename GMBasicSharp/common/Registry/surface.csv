@@ -1314,6 +1314,7 @@ procedure,TIMESERIES,AdfTest,AdfTest
 procedure,TIMESERIES,Arima,Arima
 procedure,TIMESERIES,HoltWinters,HoltWinters
 procedure,TIMESERIES,MaCoefficients,MaCoefficients
+procedure,TIMESERIES,TSAPPROXENTROPY,TsApproxEntropy
 procedure,TIMESERIES,TSAUTOCORR,Autocorrelation
 procedure,TIMESERIES,TSBANDPASS,TsBandPass
 procedure,TIMESERIES,TSBANDSTOP,TsBandStop
