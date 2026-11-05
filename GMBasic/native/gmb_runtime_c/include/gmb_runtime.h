@@ -2179,6 +2179,11 @@ double gmb_ts_perm_entropy(const double* x, int n, int m, int lag);
 gmb_val_t gmb_ts_ou_fit_flat(const double* x, int n, double dt);
 double gmb_ts_lz_complexity(const double* x, int n);
 double gmb_ts_lyapunov(const double* x, int n, int m, int tau);
+double gmb_ts_hmm_forward(const double* lpi, const double* lA, const double* lE, int K, int n);
+double* gmb_ts_hmm_viterbi(const double* lpi, const double* lA, const double* lE, int K, int n, int* outn);
+gmb_val_t gmb_ts_hmm_viterbi_list(const double* lpi, const double* lA, const double* lE, int K, int n);
+gmb_val_t gmb_ts_hmm_fit(const double* X, int n, int d, int K, int n_iter);
+gmb_val_t gmb_ts_hmm_fit_jagged(const double* const* X, int n, int d, int K, int n_iter);
 double* gmb_ts_bma_weights(const double* ic, int n, int* out_len);
 gmb_double_t** gmb_ts_covariance_obs(const double* const* obs, int n_obs, int n_vars);
 /* MOUSE getters (MOUSE.BUTTON/WHEEL/DBLCLICK/PRESENT/MIDDLE): stato mouse TUI corrente

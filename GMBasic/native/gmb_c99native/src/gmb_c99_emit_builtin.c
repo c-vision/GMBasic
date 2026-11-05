@@ -5688,6 +5688,53 @@ static int ts_lyapunov(ctx_t* c, gmb_expr_t** a, int n) {
     }
     return 0;
 }
+static int ts_var(ctx_t* c, gmb_expr_t* e, var_t** out) {
+    if (!e || e->kind != GMB_EXPR_VAR || !e->var) return 0;
+    var_t* v = lookup_var(c, e->var);
+    if (!v || !v->is_array || v->matrix || v->vclass[0] || v->jagged) return 0;
+    *out = v;
+    return 1;
+}
+static int ts_hmm_forward(ctx_t* c, gmb_expr_t** a, int n) {
+    var_t *p, *A, *E;
+    if (n < 3 || !ts_var(c, a[0], &p) || !ts_var(c, a[1], &A) || !ts_var(c, a[2], &E)) return 0;
+    sb_put(&c->out, "gmb_ts_hmm_forward((const double*)"); emit_var_ref(c, p);
+    sb_put(&c->out, ", (const double*)"); emit_var_ref(c, A);
+    sb_put(&c->out, ", (const double*)"); emit_var_ref(c, E);
+    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, p);
+    sb_put(&c->out, "), (int)("); emit_arr_len_of(c, E); sb_put(&c->out, ")/(int)(");
+    emit_arr_len_of(c, p); sb_put(&c->out, "))");
+    return 1;
+}
+static int ts_hmm_viterbi(ctx_t* c, gmb_expr_t** a, int n) {
+    var_t *p, *A, *E;
+    if (n < 3 || !ts_var(c, a[0], &p) || !ts_var(c, a[1], &A) || !ts_var(c, a[2], &E)) return 0;
+    sb_put(&c->out, "gmb_ts_hmm_viterbi_list((const double*)"); emit_var_ref(c, p);
+    sb_put(&c->out, ", (const double*)"); emit_var_ref(c, A);
+    sb_put(&c->out, ", (const double*)"); emit_var_ref(c, E);
+    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, p);
+    sb_put(&c->out, "), (int)("); emit_arr_len_of(c, E); sb_put(&c->out, ")/(int)(");
+    emit_arr_len_of(c, p); sb_put(&c->out, "))");
+    return 1;
+}
+static int ts_hmm_fit(ctx_t* c, gmb_expr_t** a, int n) {
+    if (n < 3 || !a[0] || a[0]->kind != GMB_EXPR_VAR || !a[0]->var) return 0;
+    var_t* v = lookup_var(c, a[0]->var);
+    if (!v || !v->is_array) return 0;
+    if (v->jagged) {
+        sb_put(&c->out, "gmb_ts_hmm_fit_jagged((const double* const*)"); emit_var_ref(c, v);
+        sb_put(&c->out, ", (int)("); sb_bound_var(&c->out, v, 0); sb_put(&c->out, " + 1), (int)(");
+        emit_ident(c, v->name); sb_put(&c->out, "__cols), (int)("); emit_expr(c, a[1]);
+        sb_put(&c->out, "), (int)("); emit_expr(c, a[2]); sb_put(&c->out, "))");
+        return 1;
+    }
+    if (!v->matrix && v->ndims < 2) return 0;
+    sb_put(&c->out, "gmb_ts_hmm_fit((const double*)"); emit_var_ref(c, v);
+    sb_put(&c->out, ", (int)("); sb_bound_var(&c->out, v, 0); sb_put(&c->out, " + 1), (int)(");
+    sb_bound_var(&c->out, v, 1); sb_put(&c->out, " + 1), (int)("); emit_expr(c, a[1]);
+    sb_put(&c->out, "), (int)("); emit_expr(c, a[2]); sb_put(&c->out, "))");
+    return 1;
+}
 static int ts_bma_weights(ctx_t* c, gmb_expr_t** a, int n) {
     if (n < 1) return 0;
     if (a[0]->kind != GMB_EXPR_VAR || !a[0]->var) return 0;
@@ -5815,6 +5862,9 @@ static const ts_row TS_TBL[] = {
     { GMB_TOK_TsApproxEntropy, ts_approxent },
     { GMB_TOK_TsPermEntropy, ts_perm_entropy },
     { GMB_TOK_TsLzComplexity, ts_lz },
+    { GMB_TOK_TsHmmForward, ts_hmm_forward },
+    { GMB_TOK_TsHmmViterbi, ts_hmm_viterbi },
+    { GMB_TOK_TsHmmFit, ts_hmm_fit },
     { GMB_TOK_TsBmaWeights, ts_bma_weights },
     { GMB_TOK_TsLyapunov, ts_lyapunov },
 };

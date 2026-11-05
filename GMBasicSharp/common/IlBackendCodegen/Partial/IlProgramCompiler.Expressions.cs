@@ -916,7 +916,7 @@ public sealed partial class IlProgramCompiler
             or SqlResultSetType or WebSocketType or PortfolioResultType or FetchResultType
             or RebalanceStrategyType or BacktestResultType
             or AnovaResultType or RegressionResultType or PcaResultType or KMeansResultType
-            or ArimaResultType or HoltWintersResultType or AdfTestResultType)
+            or ArimaResultType or HoltWintersResultType or AdfTestResultType or HmmResultType)
         {
             EmitExpression(expr.Structure);
             var argClrType = DataTypeMapper.Map(structType, _types, _classTypes);

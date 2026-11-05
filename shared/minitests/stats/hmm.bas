@@ -1,0 +1,27 @@
+' EXPECT: fwd= -4.723182|p0= 0 p1= 1 p2= 1|pi0= 0|a00= 0.893468|m00= 0.940789|c00= 0.087935|ll= 21.555536
+IMPORT TIMESERIES
+SUB Main()
+  DIM lp(1) AS DOUBLE
+  DIM la(3) AS DOUBLE
+  DIM le(5) AS DOUBLE
+  lp(0) = -0.5108256237659907: lp(1) = -0.916290731874155
+  la(0) = -0.3566749439387324: la(1) = -1.2039728043259361
+  la(2) = -0.916290731874155: la(3) = -0.5108256237659907
+  le(0) = -0.1053605156578263: le(1) = -1.6094379124341003
+  le(2) = -2.302585092994046: le(3) = -0.2231435513142097
+  le(4) = -0.6931471805599453: le(5) = -0.6931471805599453
+  PRINT "fwd="; MATH.ROUND(TIMESERIES.HMMFORWARD(lp, la, le), 6)
+  DIM path() = TIMESERIES.HMMVITERBI(lp, la, le)
+  PRINT "p0="; path(0); "p1="; path(1); "p2="; path(2)
+  DIM x(19, 1) AS DOUBLE
+  FOR i = 0 TO 19
+    x(i, 0) = SIN(i * 0.35) + i * 0.05
+    x(i, 1) = COS(i * 0.35) * 0.8
+  NEXT i
+  DIM r = TIMESERIES.HMMFIT(x, 2, 8)
+  PRINT "pi0="; MATH.ROUND(r.Pi(0), 6)
+  PRINT "a00="; MATH.ROUND(r.A(0), 6)
+  PRINT "m00="; MATH.ROUND(r.Means(0), 6)
+  PRINT "c00="; MATH.ROUND(r.Covs(0), 6)
+  PRINT "ll="; MATH.ROUND(r.LogLikelihood, 6)
+END SUB

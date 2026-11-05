@@ -2161,6 +2161,17 @@ public static partial class IlRuntime
         return new Dictionary<string, object?> { ["Theta"] = theta, ["Mu"] = mu, ["Sigma"] = sigma, ["Phi"] = phi, ["HalfLife"] = halfLife };
     }
 
+    public static double HmmForward(double[] lpi, double[] lA, double[] lE) => CommonLib.Numerics.HmmForward(lpi, lA, lE);
+    public static double[] HmmViterbi(double[] lpi, double[] lA, double[] lE) => CommonLib.Numerics.HmmViterbi(lpi, lA, lE);
+    public static Dictionary<string, object?> HmmFit(double[][] X, long nStates, long nIter)
+    {
+        var r = CommonLib.Numerics.HmmFit(X, (int)nStates, (int)nIter);
+        return new Dictionary<string, object?>
+        {
+            ["Pi"] = r.Pi, ["A"] = r.A, ["Means"] = r.Means, ["Covs"] = r.Covs,
+            ["LogLikelihood"] = r.LogLikelihood
+        };
+    }
     public static double MvGaussPdf(double[] x, double[] loc, double[] cov) => CommonLib.Numerics.MvGaussPdf(x, loc, cov);
     public static double MvStudentPdf(double[] x, double[] loc, double[] cov, double nu) => CommonLib.Numerics.MvStudentPdf(x, loc, cov, nu);
     public static double CopulaClaytonCdf(double u, double v, double theta) => CommonLib.Numerics.CopulaClaytonCdf(u, v, theta);

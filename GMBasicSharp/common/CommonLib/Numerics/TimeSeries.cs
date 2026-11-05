@@ -994,6 +994,237 @@ public static partial class Numerics
         return sxx > 0 ? sxy / sxx : 0;
     }
 
+    // ── Hidden Markov Model gaussiano (parità gs_hmm.c) ────────────────────────────
+
+    private static double HmmLogAdd(double a, double b)
+    {
+        if (double.IsNegativeInfinity(a)) return b;
+        if (double.IsNegativeInfinity(b)) return a;
+        var m = a > b ? a : b;
+        return m + Math.Log(Math.Exp(a - m) + Math.Exp(b - m));
+    }
+
+    public static double HmmForward(double[] lpi, double[] lA, double[] lE)
+    {
+        var K = lpi.Length;
+        if (K < 1 || lE.Length % K != 0 || lA.Length < K * K) return double.NaN;
+        var n = lE.Length / K;
+        if (n < 1) return double.NaN;
+        var alpha = new double[n * K];
+        var scale = new double[n];
+        double loglik = 0;
+        for (var i = 0; i < K; i++) { alpha[i] = lpi[i] + lE[i]; scale[0] += alpha[i]; }
+        if (scale[0] < -1e300) return double.NegativeInfinity;
+        for (var i = 0; i < K; i++) alpha[i] -= scale[0];
+        loglik += scale[0];
+        for (var t = 1; t < n; t++)
+        {
+            scale[t] = 0;
+            for (var j = 0; j < K; j++)
+            {
+                var best = double.NegativeInfinity;
+                for (var i = 0; i < K; i++) { var v = alpha[(t - 1) * K + i] + lA[i * K + j]; if (v > best) best = v; }
+                alpha[t * K + j] = best + lE[t * K + j];
+                scale[t] += alpha[t * K + j];
+            }
+            if (scale[t] < -1e300) return double.NegativeInfinity;
+            for (var j = 0; j < K; j++) alpha[t * K + j] -= scale[t];
+            loglik += scale[t];
+        }
+        return loglik;
+    }
+
+    public static double[] HmmViterbi(double[] lpi, double[] lA, double[] lE)
+    {
+        var K = lpi.Length;
+        if (K < 1 || lE.Length % K != 0 || lA.Length < K * K) return Array.Empty<double>();
+        var n = lE.Length / K;
+        if (n < 1) return Array.Empty<double>();
+        var delta = new double[n * K];
+        var psi = new int[n * K];
+        var path = new double[n];
+        for (var i = 0; i < K; i++) delta[i] = lpi[i] + lE[i];
+        for (var t = 1; t < n; t++)
+            for (var j = 0; j < K; j++)
+            {
+                var bj = double.NegativeInfinity;
+                var bi = 0;
+                for (var i = 0; i < K; i++)
+                {
+                    var v = delta[(t - 1) * K + i] + lA[i * K + j];
+                    if (v > bj) { bj = v; bi = i; }
+                }
+                delta[t * K + j] = bj + lE[t * K + j];
+                psi[t * K + j] = bi;
+            }
+        var best = double.NegativeInfinity;
+        for (var j = 0; j < K; j++)
+            if (delta[(n - 1) * K + j] > best) { best = delta[(n - 1) * K + j]; path[n - 1] = j; }
+        for (var t = n - 2; t >= 0; t--) path[t] = psi[(t + 1) * K + (int)path[t + 1]];
+        return path;
+    }
+
+    public static (double[] Pi, double[] A, double[] Means, double[] Covs, double LogLikelihood)
+        HmmFit(double[][] X, int nStates, int nIter)
+    {
+        var n = X.Length;
+        var d = n > 0 ? X[0].Length : 0;
+        var K = nStates;
+        if (X == null || n < K || d < 1 || K < 1 || K > 32 || d > 32)
+            return (Array.Empty<double>(), Array.Empty<double>(), Array.Empty<double>(), Array.Empty<double>(), double.NaN);
+        if (nIter < 1) nIter = 100;
+        var logE = new double[n * K];
+        var lpi = new double[K];
+        var lA = new double[K * K];
+        var al = new double[n * K];
+        var be = new double[n * K];
+        var gam = new double[n * K];
+        var xi = new double[n * K * K];
+        var pi = new double[K];
+        var A = new double[K * K];
+        var means = new double[K * d];
+        var covs = new double[K * d * d];
+        var gmean = new double[d];
+        var gcov = new double[d * d];
+        int t, i, j, it, k;
+
+        for (i = 0; i < K; i++) { pi[i] = 1.0 / K; for (j = 0; j < K; j++) A[i * K + j] = 1.0 / K; }
+        for (k = 0; k < d; k++) { double s = 0; for (t = 0; t < n; t++) s += X[t][k]; gmean[k] = s / n; }
+        for (k = 0; k < d; k++)
+            for (j = 0; j < d; j++)
+            {
+                double s = 0;
+                for (t = 0; t < n; t++) s += (X[t][k] - gmean[k]) * (X[t][j] - gmean[j]);
+                gcov[k * d + j] = s / n;
+            }
+        for (i = 0; i < K; i++)
+        {
+            var t0 = (int)((long)i * n / K);
+            var t1 = (int)((long)(i + 1) * n / K);
+            if (t1 <= t0) t1 = t0 + 1;
+            if (t1 > n) t1 = n;
+            for (k = 0; k < d; k++)
+            {
+                double s = 0;
+                for (t = t0; t < t1; t++) s += X[t][k];
+                means[i * d + k] = s / (t1 - t0);
+            }
+            for (k = 0; k < d * d; k++) covs[i * d * d + k] = gcov[k];
+            for (k = 0; k < d; k++) covs[i * d * d + k * d + k] += 1e-6;
+        }
+
+        for (t = 0; t < n; t++)
+            for (i = 0; i < K; i++)
+                logE[t * K + i] = MvGaussLogPdf(X[t], Slice(means, i * d, d), Slice(covs, i * d * d, d * d));
+
+        for (it = 0; it < nIter; it++)
+        {
+            for (i = 0; i < K; i++) lpi[i] = Math.Log(pi[i] > 0 ? pi[i] : 1e-300);
+            for (i = 0; i < K; i++)
+                for (j = 0; j < K; j++)
+                    lA[i * K + j] = Math.Log(A[i * K + j] > 0 ? A[i * K + j] : 1e-300);
+            for (i = 0; i < K; i++) al[i] = lpi[i] + logE[i];
+            for (t = 1; t < n; t++)
+                for (j = 0; j < K; j++)
+                {
+                    var bj = double.NegativeInfinity;
+                    for (i = 0; i < K; i++) bj = HmmLogAdd(bj, al[(t - 1) * K + i] + lA[i * K + j]);
+                    al[t * K + j] = bj + logE[t * K + j];
+                }
+            for (i = 0; i < K; i++) be[(n - 1) * K + i] = 0;
+            for (t = n - 2; t >= 0; t--)
+                for (i = 0; i < K; i++)
+                {
+                    var bj = double.NegativeInfinity;
+                    for (j = 0; j < K; j++)
+                        bj = HmmLogAdd(bj, lA[i * K + j] + logE[(t + 1) * K + j] + be[(t + 1) * K + j]);
+                    be[t * K + i] = bj;
+                }
+            for (t = 0; t < n; t++)
+            {
+                var s = double.NegativeInfinity;
+                for (i = 0; i < K; i++) s = HmmLogAdd(s, al[t * K + i] + be[t * K + i]);
+                for (i = 0; i < K; i++) gam[t * K + i] = Math.Exp(al[t * K + i] + be[t * K + i] - s);
+            }
+            for (t = 0; t < n - 1; t++)
+            {
+                var s = double.NegativeInfinity;
+                for (i = 0; i < K; i++)
+                    for (j = 0; j < K; j++)
+                    {
+                        xi[(t * K + i) * K + j] = al[t * K + i] + lA[i * K + j] + logE[(t + 1) * K + j] + be[(t + 1) * K + j];
+                        s = HmmLogAdd(s, xi[(t * K + i) * K + j]);
+                    }
+                for (i = 0; i < K; i++)
+                    for (j = 0; j < K; j++)
+                        xi[(t * K + i) * K + j] = Math.Exp(xi[(t * K + i) * K + j] - s);
+            }
+            var newpi = new double[K];
+            var newA = new double[K * K];
+            var newmeans = new double[K * d];
+            var newcovs = new double[K * d * d];
+            for (i = 0; i < K; i++)
+            {
+                double g0 = 0;
+                for (t = 0; t < n; t++) g0 += gam[t * K + i];
+                newpi[i] = gam[i];
+                for (j = 0; j < K; j++)
+                {
+                    double s = 0;
+                    for (t = 0; t < n - 1; t++) s += xi[(t * K + i) * K + j];
+                    newA[i * K + j] = s;
+                }
+                for (k = 0; k < d; k++)
+                {
+                    double s = 0;
+                    for (t = 0; t < n; t++) s += gam[t * K + i] * X[t][k];
+                    newmeans[i * d + k] = g0 > 0 ? s / g0 : 0;
+                }
+                for (k = 0; k < d * d; k++)
+                {
+                    double s = 0;
+                    var kk = k / d;
+                    var ll = k % d;
+                    for (t = 0; t < n; t++)
+                        s += gam[t * K + i] * (X[t][kk] - newmeans[i * d + kk]) * (X[t][ll] - newmeans[i * d + ll]);
+                    newcovs[i * d * d + k] = g0 > 0 ? s / g0 + 1e-6 : 1e-6;
+                }
+            }
+            {
+                double s = 0;
+                for (i = 0; i < K; i++) s += newpi[i];
+                for (i = 0; i < K; i++) newpi[i] = s > 0 ? newpi[i] / s : 1.0 / K;
+                for (i = 0; i < K; i++)
+                {
+                    double s2 = 0;
+                    for (j = 0; j < K; j++) s2 += newA[i * K + j];
+                    for (j = 0; j < K; j++) newA[i * K + j] = s2 > 0 ? newA[i * K + j] / s2 : 1.0 / K;
+                }
+            }
+            Array.Copy(newpi, pi, K);
+            Array.Copy(newA, A, K * K);
+            Array.Copy(newmeans, means, K * d);
+            Array.Copy(newcovs, covs, K * d * d);
+            for (t = 0; t < n; t++)
+                for (i = 0; i < K; i++)
+                    logE[t * K + i] = MvGaussLogPdf(X[t], Slice(means, i * d, d), Slice(covs, i * d * d, d * d));
+        }
+
+        for (i = 0; i < K; i++) lpi[i] = Math.Log(pi[i] > 0 ? pi[i] : 1e-300);
+        for (i = 0; i < K; i++)
+            for (j = 0; j < K; j++)
+                lA[i * K + j] = Math.Log(A[i * K + j] > 0 ? A[i * K + j] : 1e-300);
+        var loglik = HmmForward(lpi, lA, logE);
+        return (pi, A, means, covs, loglik);
+    }
+
+    private static double[] Slice(double[] src, int start, int len)
+    {
+        var r = new double[len];
+        Array.Copy(src, start, r, 0, len);
+        return r;
+    }
+
     public static double[] BmaWeights(double[] ic)
     {
         var n = ic.Length;

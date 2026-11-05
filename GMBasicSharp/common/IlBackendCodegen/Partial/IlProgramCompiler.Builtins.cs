@@ -628,6 +628,9 @@ public sealed partial class IlProgramCompiler
             case TokenKind.TsLzComplexity: EmitTimeSeriesArrayOnlyCall(expr, nameof(IlRuntime.LzComplexity)); break;
             case TokenKind.TsBmaWeights: EmitTimeSeriesArrayOnlyCall(expr, nameof(IlRuntime.BmaWeights)); break;
             case TokenKind.TsLyapunov: EmitTimeSeriesArrayLongLongCall(expr, nameof(IlRuntime.Lyapunov)); break;
+            case TokenKind.TsHmmForward: EmitTimeSeriesThreeArrayCall(expr, nameof(IlRuntime.HmmForward)); break;
+            case TokenKind.TsHmmViterbi: EmitTimeSeriesThreeArrayCall(expr, nameof(IlRuntime.HmmViterbi)); break;
+            case TokenKind.TsHmmFit: EmitAnalysisMatrixLongLongCall(expr, nameof(IlRuntime.HmmFit)); break;
             case TokenKind.MvGaussPdf: EmitThreeArrayCall(expr, RuntimeMethod(nameof(IlRuntime.MvGaussPdf))); break;
             case TokenKind.MvStudentPdf: EmitThreeArrayDoubleCall(expr, RuntimeMethod(nameof(IlRuntime.MvStudentPdf))); break;
             case TokenKind.CopulaClaytonCdf: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.CopulaClaytonCdf)), 3); break;

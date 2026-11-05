@@ -1032,3 +1032,270 @@ double gmb_ts_lyapunov(const double* x, int n, int m, int tau)
     free(d0); free(nbr); free(lambdas);
     return lam;
 }
+
+/* ==================== Hidden Markov Model gaussiano ==================== */
+static double gmb_hmm_logadd(double a, double b)
+{
+    double m;
+    if (a == -INFINITY) return b;
+    if (b == -INFINITY) return a;
+    m = a > b ? a : b;
+    return m + log(exp(a - m) + exp(b - m));
+}
+
+double gmb_ts_hmm_forward(const double* lpi, const double* lA, const double* lE, int K, int n)
+{
+    double* alpha; double* scale; double loglik = 0; int t, i, j;
+    if (!lpi || !lA || !lE || K < 1 || n < 1) return NAN;
+    alpha = (double*)malloc((size_t)n * K * sizeof(double));
+    scale = (double*)calloc((size_t)n, sizeof(double));
+    if (!alpha || !scale) { free(alpha); free(scale); return NAN; }
+    for (i = 0; i < K; i++) { alpha[i] = lpi[i] + lE[i]; scale[0] += alpha[i]; }
+    if (scale[0] < -1e300) { free(alpha); free(scale); return -INFINITY; }
+    for (i = 0; i < K; i++) alpha[i] -= scale[0];
+    loglik += scale[0];
+    for (t = 1; t < n; t++) {
+        scale[t] = 0;
+        for (j = 0; j < K; j++) {
+            double best = -INFINITY;
+            for (i = 0; i < K; i++) { double v = alpha[(t-1)*K+i] + lA[i*K+j]; if (v > best) best = v; }
+            alpha[t*K+j] = best + lE[t*K+j];
+            scale[t] += alpha[t*K+j];
+        }
+        if (scale[t] < -1e300) { free(alpha); free(scale); return -INFINITY; }
+        for (j = 0; j < K; j++) alpha[t*K+j] -= scale[t];
+        loglik += scale[t];
+    }
+    free(alpha); free(scale);
+    return loglik;
+}
+
+double* gmb_ts_hmm_viterbi(const double* lpi, const double* lA, const double* lE, int K, int n, int* outn)
+{
+    double* delta; int* psi; double* path; double best; int t, i, j;
+    if (outn) *outn = 0;
+    if (!lpi || !lA || !lE || K < 1 || n < 1) return NULL;
+    delta = (double*)malloc((size_t)n * K * sizeof(double));
+    psi = (int*)malloc((size_t)n * K * sizeof(int));
+    path = (double*)malloc((size_t)n * sizeof(double));
+    if (!delta || !psi || !path) { free(delta); free(psi); free(path); return NULL; }
+    for (i = 0; i < K; i++) delta[i] = lpi[i] + lE[i];
+    for (t = 1; t < n; t++) {
+        for (j = 0; j < K; j++) {
+            double bj = -INFINITY; int bi = 0;
+            for (i = 0; i < K; i++) {
+                double v = delta[(t-1)*K+i] + lA[i*K+j];
+                if (v > bj) { bj = v; bi = i; }
+            }
+            delta[t*K+j] = bj + lE[t*K+j];
+            psi[t*K+j] = bi;
+        }
+    }
+    best = -INFINITY;
+    for (j = 0; j < K; j++)
+        if (delta[(n-1)*K+j] > best) { best = delta[(n-1)*K+j]; path[n-1] = j; }
+    for (t = n - 2; t >= 0; t--) path[t] = psi[(t+1)*K + (int)path[t+1]];
+    free(delta); free(psi);
+    if (outn) *outn = n;
+    return path;
+}
+
+static gmb_val_t gmb_hmm_list(const double* a, int n)
+{
+    gmb_list_t l = gmb_list_new();
+    for (int i = 0; i < n; i++) gmb_list_add(&l, gmb_make_val_double(a[i]));
+    return gmb_make_val_list_take(&l);
+}
+
+static gmb_val_t gmb_hmm_dict(gmb_val_t pi, gmb_val_t A, gmb_val_t means, gmb_val_t covs, gmb_val_t ll)
+{
+    gmb_dict_t d = gmb_dict_new();
+    gmb_dict_set(&d, "Pi", pi);
+    gmb_dict_set(&d, "A", A);
+    gmb_dict_set(&d, "Means", means);
+    gmb_dict_set(&d, "Covs", covs);
+    gmb_dict_set(&d, "LogLikelihood", ll);
+    return gmb_make_val_dict_take(&d);
+}
+
+static gmb_val_t gmb_hmm_nan_dict(void)
+{
+    return gmb_hmm_dict(gmb_hmm_list(NULL, 0), gmb_hmm_list(NULL, 0),
+                        gmb_hmm_list(NULL, 0), gmb_hmm_list(NULL, 0),
+                        gmb_make_val_double(NAN));
+}
+
+gmb_val_t gmb_ts_hmm_fit(const double* X, int n, int d, int K, int n_iter)
+{
+    double *logE = NULL, *lpi = NULL, *lA = NULL, *al = NULL, *be = NULL, *gam = NULL, *xi = NULL;
+    double *pi = NULL, *A = NULL, *means = NULL, *covs = NULL;
+    double *gmean = NULL, *gcov = NULL;
+    gmb_val_t out;
+    int t, i, j, it, k;
+
+    if (!X || n < K || d < 1 || K < 1 || K > 32 || d > 32) return gmb_hmm_nan_dict();
+    if (n_iter < 1) n_iter = 100;
+    logE = (double*)malloc((size_t)n * K * sizeof(double));
+    lpi = (double*)malloc((size_t)K * sizeof(double));
+    lA = (double*)malloc((size_t)K * K * sizeof(double));
+    al = (double*)malloc((size_t)n * K * sizeof(double));
+    be = (double*)malloc((size_t)n * K * sizeof(double));
+    gam = (double*)malloc((size_t)n * K * sizeof(double));
+    xi = (double*)malloc((size_t)n * K * K * sizeof(double));
+    pi = (double*)malloc((size_t)K * sizeof(double));
+    A = (double*)malloc((size_t)K * K * sizeof(double));
+    means = (double*)calloc((size_t)K * d, sizeof(double));
+    covs = (double*)calloc((size_t)K * d * d, sizeof(double));
+    gmean = (double*)calloc((size_t)d, sizeof(double));
+    gcov = (double*)calloc((size_t)d * d, sizeof(double));
+    if (!logE || !lpi || !lA || !al || !be || !gam || !xi || !pi || !A || !means || !covs || !gmean || !gcov) goto fail;
+
+    /* init deterministico: pi/A uniformi, medie a blocchi, cov globale + ridge */
+    for (i = 0; i < K; i++) { pi[i] = 1.0 / K; for (j = 0; j < K; j++) A[i*K+j] = 1.0 / K; }
+    for (k = 0; k < d; k++) { double s = 0; for (t = 0; t < n; t++) s += X[t*d+k]; gmean[k] = s / n; }
+    for (k = 0; k < d; k++)
+        for (j = 0; j < d; j++) {
+            double s = 0;
+            for (t = 0; t < n; t++) s += (X[t*d+k] - gmean[k]) * (X[t*d+j] - gmean[j]);
+            gcov[k*d+j] = s / n;
+        }
+    for (i = 0; i < K; i++) {
+        int t0 = (int)((long)i * n / K), t1 = (int)((long)(i+1) * n / K);
+        if (t1 <= t0) t1 = t0 + 1;
+        if (t1 > n) t1 = n;
+        for (k = 0; k < d; k++) {
+            double s = 0;
+            for (t = t0; t < t1; t++) s += X[t*d+k];
+            means[i*d+k] = s / (t1 - t0);
+        }
+        for (k = 0; k < d * d; k++) covs[i*d*d+k] = gcov[k];
+        for (k = 0; k < d; k++) covs[i*d*d + k*d + k] += 1e-6;
+    }
+
+    for (t = 0; t < n; t++)
+        for (i = 0; i < K; i++)
+            logE[t*K+i] = gmb_mv_gauss_logpdf(d, &X[t*d], &means[i*d], &covs[i*d*d]);
+
+    for (it = 0; it < n_iter; it++) {
+        double *newpi, *newA, *newmeans, *newcovs;
+        for (i = 0; i < K; i++) lpi[i] = log(pi[i] > 0 ? pi[i] : 1e-300);
+        for (i = 0; i < K; i++)
+            for (j = 0; j < K; j++)
+                lA[i*K+j] = log(A[i*K+j] > 0 ? A[i*K+j] : 1e-300);
+        for (i = 0; i < K; i++) al[i] = lpi[i] + logE[i];
+        for (t = 1; t < n; t++)
+            for (j = 0; j < K; j++) {
+                double bj = -INFINITY;
+                for (i = 0; i < K; i++) bj = gmb_hmm_logadd(bj, al[(t-1)*K+i] + lA[i*K+j]);
+                al[t*K+j] = bj + logE[t*K+j];
+            }
+        for (i = 0; i < K; i++) be[(n-1)*K+i] = 0;
+        for (t = n - 2; t >= 0; t--)
+            for (i = 0; i < K; i++) {
+                double bj = -INFINITY;
+                for (j = 0; j < K; j++)
+                    bj = gmb_hmm_logadd(bj, lA[i*K+j] + logE[(t+1)*K+j] + be[(t+1)*K+j]);
+                be[t*K+i] = bj;
+            }
+        for (t = 0; t < n; t++) {
+            double s = -INFINITY;
+            for (i = 0; i < K; i++) s = gmb_hmm_logadd(s, al[t*K+i] + be[t*K+i]);
+            for (i = 0; i < K; i++) gam[t*K+i] = exp(al[t*K+i] + be[t*K+i] - s);
+        }
+        for (t = 0; t < n - 1; t++) {
+            double s = -INFINITY;
+            for (i = 0; i < K; i++)
+                for (j = 0; j < K; j++) {
+                    xi[(t*K+i)*K+j] = al[t*K+i] + lA[i*K+j] + logE[(t+1)*K+j] + be[(t+1)*K+j];
+                    s = gmb_hmm_logadd(s, xi[(t*K+i)*K+j]);
+                }
+            for (i = 0; i < K; i++)
+                for (j = 0; j < K; j++)
+                    xi[(t*K+i)*K+j] = exp(xi[(t*K+i)*K+j] - s);
+        }
+        newpi = (double*)calloc((size_t)K, sizeof(double));
+        newA = (double*)calloc((size_t)K * K, sizeof(double));
+        newmeans = (double*)calloc((size_t)K * d, sizeof(double));
+        newcovs = (double*)calloc((size_t)K * d * d, sizeof(double));
+        if (!newpi || !newA || !newmeans || !newcovs) {
+            free(newpi); free(newA); free(newmeans); free(newcovs); goto fail;
+        }
+        for (i = 0; i < K; i++) {
+            double g0 = 0;
+            for (t = 0; t < n; t++) g0 += gam[t*K+i];
+            newpi[i] = gam[i];
+            for (j = 0; j < K; j++) {
+                double s = 0;
+                for (t = 0; t < n - 1; t++) s += xi[(t*K+i)*K+j];
+                newA[i*K+j] = s;
+            }
+            for (k = 0; k < d; k++) {
+                double s = 0;
+                for (t = 0; t < n; t++) s += gam[t*K+i] * X[t*d+k];
+                newmeans[i*d+k] = g0 > 0 ? s / g0 : 0;
+            }
+            for (k = 0; k < d*d; k++) {
+                double s = 0; int kk = k / d, ll = k % d;
+                for (t = 0; t < n; t++)
+                    s += gam[t*K+i] * (X[t*d+kk] - newmeans[i*d+kk]) * (X[t*d+ll] - newmeans[i*d+ll]);
+                newcovs[i*d*d+k] = g0 > 0 ? s / g0 + 1e-6 : 1e-6;
+            }
+        }
+        { double s = 0;
+          for (i = 0; i < K; i++) s += newpi[i];
+          for (i = 0; i < K; i++) newpi[i] = s > 0 ? newpi[i] / s : 1.0 / K;
+          for (i = 0; i < K; i++) {
+              double s2 = 0;
+              for (j = 0; j < K; j++) s2 += newA[i*K+j];
+              for (j = 0; j < K; j++) newA[i*K+j] = s2 > 0 ? newA[i*K+j] / s2 : 1.0 / K;
+          }
+        }
+        memcpy(pi, newpi, (size_t)K * sizeof(double));
+        memcpy(A, newA, (size_t)K * K * sizeof(double));
+        memcpy(means, newmeans, (size_t)K * d * sizeof(double));
+        memcpy(covs, newcovs, (size_t)K * d * d * sizeof(double));
+        for (t = 0; t < n; t++)
+            for (i = 0; i < K; i++)
+                logE[t*K+i] = gmb_mv_gauss_logpdf(d, &X[t*d], &means[i*d], &covs[i*d*d]);
+        free(newpi); free(newA); free(newmeans); free(newcovs);
+    }
+
+    for (i = 0; i < K; i++) lpi[i] = log(pi[i] > 0 ? pi[i] : 1e-300);
+    for (i = 0; i < K; i++)
+        for (j = 0; j < K; j++)
+            lA[i*K+j] = log(A[i*K+j] > 0 ? A[i*K+j] : 1e-300);
+    out = gmb_hmm_dict(gmb_hmm_list(pi, K), gmb_hmm_list(A, K*K),
+                       gmb_hmm_list(means, K*d), gmb_hmm_list(covs, K*d*d),
+                       gmb_make_val_double(gmb_ts_hmm_forward(lpi, lA, logE, K, n)));
+    free(logE); free(lpi); free(lA); free(al); free(be); free(gam); free(xi);
+    free(pi); free(A); free(means); free(covs); free(gmean); free(gcov);
+    return out;
+fail:
+    free(logE); free(lpi); free(lA); free(al); free(be); free(gam); free(xi);
+    free(pi); free(A); free(means); free(covs); free(gmean); free(gcov);
+    return gmb_hmm_nan_dict();
+}
+
+gmb_val_t gmb_ts_hmm_fit_jagged(const double* const* X, int n, int d, int K, int n_iter)
+{
+    double* flat; gmb_val_t r; int t, k;
+    if (!X || n < 1 || d < 1) return gmb_hmm_nan_dict();
+    flat = (double*)malloc((size_t)n * d * sizeof(double));
+    if (!flat) return gmb_hmm_nan_dict();
+    for (t = 0; t < n; t++)
+        for (k = 0; k < d; k++) flat[t*d+k] = X[t][k];
+    r = gmb_ts_hmm_fit(flat, n, d, K, n_iter);
+    free(flat);
+    return r;
+}
+
+gmb_val_t gmb_ts_hmm_viterbi_list(const double* lpi, const double* lA, const double* lE, int K, int n)
+{
+    int outn = 0;
+    double* p = gmb_ts_hmm_viterbi(lpi, lA, lE, K, n, &outn);
+    gmb_val_t r;
+    if (!p) return gmb_hmm_list(NULL, 0);
+    r = gmb_hmm_list(p, outn);
+    free(p);
+    return r;
+}

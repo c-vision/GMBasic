@@ -1844,6 +1844,7 @@ public sealed partial class Parser
             HoltWintersResultType => "HOLTWINTERSRESULT",
             AdfTestResultType => "ADFTESTRESULT",
             PcaResultType => "PCARESULT",
+            HmmResultType => "HMMRESULT",
             LuDecompositionType => "LUDECOMPOSITION",
             QrDecompositionType => "QRDECOMPOSITION",
             SvdDecompositionType => "SVDDECOMPOSITION",

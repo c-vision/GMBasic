@@ -25,7 +25,7 @@ static int gmb_tk_in(gmb_tokenkind_t tk, const gmb_tokenkind_t* s, unsigned n)
     return 0;
 }
 static const gmb_tokenkind_t gmb_tk_dim_num[] = { GMB_TOK_Boolean, GMB_TOK_Bool, GMB_TOK_Long, GMB_TOK_Integer, GMB_TOK_Int, GMB_TOK_Double, GMB_TOK_Single, GMB_TOK_P_Float };
-static const gmb_tokenkind_t gmb_tk_analysis_box[] = { GMB_TOK_KMeans, GMB_TOK_Pca, GMB_TOK_Anova, GMB_TOK_Arima, GMB_TOK_HoltWinters, GMB_TOK_AdfTest, GMB_TOK_P_Regression };
+static const gmb_tokenkind_t gmb_tk_analysis_box[] = { GMB_TOK_KMeans, GMB_TOK_Pca, GMB_TOK_Anova, GMB_TOK_Arima, GMB_TOK_HoltWinters, GMB_TOK_AdfTest, GMB_TOK_P_Regression, GMB_TOK_TsHmmFit };
 static const gmb_tokenkind_t gmb_tk_dictish[] = { GMB_TOK_Dict, GMB_TOK_Sorted, GMB_TOK_Tree, GMB_TOK_AVLTree, GMB_TOK_RedBlack, GMB_TOK_BPlusTree };
 #include "gmb_ns_types.h"
 #include "gmb_lexer.h"
@@ -1437,6 +1437,7 @@ static int dim_arr_init_kind(const gmb_expr_t* e) {
         { GMB_TOK_TsKalman1D, 1, 5 },
         { GMB_TOK_TsStationaryBootstrap, 1, 3 },
         { GMB_TOK_TsBmaWeights, 1, 1 },
+        { GMB_TOK_TsHmmViterbi, 1, 3 },
         { GMB_TOK_Deseasonalize, 1, 1 }, { GMB_TOK_TimeSeriesMinMax, 1, 1 },
         { GMB_TOK_AMap, 1, 1 }, { GMB_TOK_AFilter, 1, 1 }, { GMB_TOK_AReverse, 1, 1 },
         { GMB_TOK_ASort, 1, 1 }, { GMB_TOK_APad, 1, 2 }, { GMB_TOK_AClone, 1, 1 }, { GMB_TOK_AUnique, 1, 1 },
@@ -1521,7 +1522,8 @@ static int dim_val_init_kind(const gmb_expr_t* e) {
         || e->tk == GMB_TOK_StatsKurtosisTest || e->tk == GMB_TOK_StatsJarqueBera
         || e->tk == GMB_TOK_StatsDescribe || e->tk == GMB_TOK_StatsChi2Contingency
         || e->tk == GMB_TOK_StatsKendallTau || e->tk == GMB_TOK_StatsFTest
-        || e->tk == GMB_TOK_StatsKruskal || e->tk == GMB_TOK_TsGranger || e->tk == GMB_TOK_TsGarch11 || e->tk == GMB_TOK_TsOuFit) return 2;
+        || e->tk == GMB_TOK_StatsKruskal || e->tk == GMB_TOK_TsGranger || e->tk == GMB_TOK_TsGarch11 || e->tk == GMB_TOK_TsOuFit
+        || e->tk == GMB_TOK_TsHmmFit) return 2;
     /* letterale tupla (a, b, ...) → gmb_val_tuple, gmb_val_t boxed (vedi emit_tuple_lit). */
     if (strcmp(e->var, "_tuple_lit_") == 0) return 1;
     /* Costruttori COLLEZIONE/oggetto che emettono GIÀ un gmb_val_t: NEW LIST/DICT/SET/…
@@ -7619,6 +7621,9 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_TsLzComplexity, emit_bf_ts },
     { NULL, GMB_TOK_TsBmaWeights, emit_bf_ts },
     { NULL, GMB_TOK_TsLyapunov, emit_bf_ts },
+    { NULL, GMB_TOK_TsHmmForward, emit_bf_ts },
+    { NULL, GMB_TOK_TsHmmViterbi, emit_bf_ts },
+    { NULL, GMB_TOK_TsHmmFit, emit_bf_ts },
     { NULL, GMB_TOK_MvGaussPdf, emit_bf_mv },
     { NULL, GMB_TOK_MvStudentPdf, emit_bf_mv },
     { NULL, GMB_TOK_CopulaClaytonCdf, emit_bf_mv },
@@ -9812,7 +9817,30 @@ static int dim_arr_timeseries1d(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init) {
         sb_put(&c->out, ", &"); emit_ident(c, v->name); sb_put(&c->out, "_len);\n");
         return 1;
     }
+    if (init->tk == GMB_TOK_TsHmmViterbi) {
+        if (init->nargs < 3) {
+            c99_fail(c, s->line, "DIM %s: TIMESERIES.HMMVITERBI richiede (logPi, logA, logE)", v->name);
+            return 1;
+        }
+        var_t *pP = NULL, *pA = NULL, *pE = NULL;
+        if (!an1d_arr(c, init->args[0], &pP) || !an1d_arr(c, init->args[1], &pA) || !an1d_arr(c, init->args[2], &pE)) {
+            c99_fail(c, s->line, "DIM %s: argomenti di HMMVITERBI devono essere array", v->name);
+            return 1;
+        }
+        ind(c);
+        emit_ident(c, v->name);
+        sb_put(&c->out, " = gmb_ts_hmm_viterbi((const double*)");
+        emit_var_ref(c, pP);
+        sb_put(&c->out, ", (const double*)"); emit_var_ref(c, pA);
+        sb_put(&c->out, ", (const double*)"); emit_var_ref(c, pE);
+        sb_put(&c->out, ", (int)("); emit_arr_len_of(c, pP);
+        sb_put(&c->out, "), (int)("); emit_arr_len_of(c, pE); sb_put(&c->out, ")/(int)(");
+        emit_arr_len_of(c, pP); sb_put(&c->out, "), &");
+        emit_ident(c, v->name); sb_put(&c->out, "_len);\n");
+        return 1;
+    }
     return 0;
+
 }
 
 
@@ -18444,9 +18472,9 @@ static void st_let_assign(ctx_t* c, gmb_stmt_t* s) {
                 sb_printf(&c->out, "%d, sizeof(gmb_double_t));\n", rn);
                 ind(c);
                 emit_var_ref(c, v);
-                sb_put(&c->out, "[");
+                sb_put(&c->out, "[(gmb_int_t)(");
                 emit_expr(c, s->array_index);
-                sb_put(&c->out, "] = _row;\n");
+                sb_put(&c->out, ")] = _row;\n");
                 ind(c);
                 emit_ident(c, v->name);
                 sb_printf(&c->out, "__cols = %d;\n", rn);
@@ -18454,9 +18482,9 @@ static void st_let_assign(ctx_t* c, gmb_stmt_t* s) {
                 for (int k = 0; k < rn && !c->error[0]; k++) {
                     ind(c);
                     emit_var_ref(c, v);
-                    sb_put(&c->out, "[");
+                    sb_put(&c->out, "[(gmb_int_t)(");
                     emit_expr(c, s->array_index);
-                    sb_printf(&c->out, "][%d] = ", k);
+                    sb_printf(&c->out, ")][%d] = ", k);
                     emit_expr(c, s->value->args[k]);
                     sb_put(&c->out, ";\n");
                 }
