@@ -56,6 +56,9 @@ int64_t llmwsp_read_bytes(const llmwsp_store *s, const llmwsp_tensor *t, uint64_
 /* sha256 esadecimale (65 byte incl. NUL), a blocchi: memoria costante. */
 int llmwsp_tensor_sha256(const llmwsp_store *s, const llmwsp_tensor *t, char hex[65]);
 
+/* sha256 esadecimale di un buffer in memoria (65 byte incl. NUL). */
+void llmwsp_sha256_buf(const void *buf, size_t n, char hex[65]);
+
 /* Copertura: per ogni shard i tensori devono tassellare esattamente la zona dati (nessun buco, nessuna
  * sovrapposizione). Restituisce il numero di violazioni (0 = copertura completa); descrive la prima in err. */
 int llmwsp_store_check_coverage(const llmwsp_store *s, char *err, size_t errcap);
