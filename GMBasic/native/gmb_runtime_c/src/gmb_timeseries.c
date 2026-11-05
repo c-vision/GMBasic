@@ -985,3 +985,50 @@ double* gmb_ts_bma_weights(const double* ic, int n, int* out_len)
     if (sum > 0) for (int i = 0; i < n; i++) out[i] /= sum;
     *out_len = n; return out;
 }
+
+/* Largest Lyapunov exponent (gmbstats gs_lyapunov). */
+double gmb_ts_lyapunov(const double* x, int n, int m, int tau)
+{
+    if (!x || n < m * tau + 8 || m < 2 || tau < 1) return NAN;
+    int M = n - (m - 1) * tau;
+    int theiler = m * tau > 10 ? m * tau : 10;
+    double* d0 = (double*)malloc((size_t)M * sizeof(double));
+    int* nbr = (int*)malloc((size_t)M * sizeof(int));
+    double* lambdas = (double*)calloc((size_t)(M / 2 + 1), sizeof(double));
+    if (!d0 || !nbr || !lambdas) { free(d0); free(nbr); free(lambdas); return NAN; }
+    for (int i = 0; i < M; i++) {
+        double best = 1e300; int bj = -1;
+        for (int j = 0; j < M; j++) {
+            if (abs(i - j) < theiler) continue;
+            double d2 = 0;
+            for (int q = 0; q < m; q++) { double dd = x[i+q*tau] - x[j+q*tau]; d2 += dd*dd; }
+            if (d2 > 0 && d2 < best) { best = d2; bj = j; }
+        }
+        d0[i] = best > 0 ? sqrt(best) : 1e-9;
+        nbr[i] = bj;
+    }
+    for (int k = 1; k < M / 2; k++) {
+        double sum = 0; int cnt = 0;
+        for (int i = 0; i < M - k; i++) {
+            int jj = nbr[i];
+            if (jj >= 0 && jj + k < M) {
+                double d2 = 0;
+                for (int q = 0; q < m; q++) { double dd = x[i+k+q*tau] - x[jj+k+q*tau]; d2 += dd*dd; }
+                if (d2 > 0) { sum += 0.5 * log(d2 / (d0[i] * d0[i])); cnt++; }
+            }
+        }
+        lambdas[k] = cnt > 0 ? sum / cnt : 0;
+    }
+    int k0 = 1, k1 = 8 < M / 2 ? 8 : M / 2;
+    if (k1 > M / 2 - 1) k1 = M / 2 - 1;
+    if (k1 <= k0) k1 = k0 + 1;
+    double mx = 0, my = 0; int cnt = 0;
+    for (int k = k0; k < k1; k++) { mx += k; my += lambdas[k]; cnt++; }
+    if (cnt == 0) { free(d0); free(nbr); free(lambdas); return 0; }
+    mx /= cnt; my /= cnt;
+    double sxy = 0, sxx = 0;
+    for (int k = k0; k < k1; k++) { double dx = k - mx, dy = lambdas[k] - my; sxy += dx*dy; sxx += dx*dx; }
+    double lam = sxx > 0 ? sxy / sxx : 0;
+    free(d0); free(nbr); free(lambdas);
+    return lam;
+}

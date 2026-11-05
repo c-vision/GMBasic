@@ -275,6 +275,7 @@ public enum BuiltInFunction : ushort
     TS_OU_FIT = 1074,
     TS_LZ_COMPLEXITY = 1075,
     TS_BMA_WEIGHTS = 1076,
+    TS_LYAPUNOV = 1077,
     SIGNAL_FIRWIN = 1017,
     SIGNAL_FINDPEAKS = 1018,
     SOLVE_IVP = 1019,

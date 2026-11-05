@@ -1333,6 +1333,7 @@ procedure,TIMESERIES,TSHIGHPASS,TsHighPass
 procedure,TIMESERIES,TSHURST,TsHurst
 procedure,TIMESERIES,TSKALMAN1D,TsKalman1D
 procedure,TIMESERIES,TSLOWPASS,TsLowPass
+procedure,TIMESERIES,TSLYAPUNOV,TsLyapunov
 procedure,TIMESERIES,TSMA,MovingAverage
 procedure,TIMESERIES,TSMINMAX,TimeSeriesMinMax
 procedure,TIMESERIES,TSOUFIT,TsOuFit

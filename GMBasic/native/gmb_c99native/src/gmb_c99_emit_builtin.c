@@ -5633,6 +5633,18 @@ static int ts_autocorr(ctx_t* c, gmb_expr_t** a, int n) {
     }
     return 0;
 }
+static int ts_lyapunov(ctx_t* c, gmb_expr_t** a, int n) {
+    if (n < 3) return 0;
+    if (a[0]->kind != GMB_EXPR_VAR || !a[0]->var) return 0;
+    var_t* av = lookup_var(c, a[0]->var);
+    if (av && av->is_array && !av->matrix) {
+        sb_put(&c->out, "gmb_ts_lyapunov("); emit_var_ref(c, av);
+        sb_put(&c->out, ", (int)("); emit_arr_len_of(c, av); sb_put(&c->out, "), (int)(");
+        emit_expr(c, a[1]); sb_put(&c->out, "), (int)("); emit_expr(c, a[2]); sb_put(&c->out, "))");
+        return 1;
+    }
+    return 0;
+}
 static int ts_bma_weights(ctx_t* c, gmb_expr_t** a, int n) {
     if (n < 1) return 0;
     if (a[0]->kind != GMB_EXPR_VAR || !a[0]->var) return 0;
@@ -5761,6 +5773,7 @@ static const ts_row TS_TBL[] = {
     { GMB_TOK_TsPermEntropy, ts_perm_entropy },
     { GMB_TOK_TsLzComplexity, ts_lz },
     { GMB_TOK_TsBmaWeights, ts_bma_weights },
+    { GMB_TOK_TsLyapunov, ts_lyapunov },
 };
 int emit_bf_ts(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
     (void)name; (void)ns; (void)line;
