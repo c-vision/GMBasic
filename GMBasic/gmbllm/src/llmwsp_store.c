@@ -579,3 +579,9 @@ int llmwsp_writer_close(llmwsp_writer *w, char *err, size_t errcap) {
     wr_free(w);
     return rc;
 }
+
+void llmwsp_sha256_buf(const void *buf, size_t n, char hex[65]) {
+    sha c; sha_init(&c);
+    sha_upd(&c, (const unsigned char *)buf, n);
+    sha_fin(&c, hex);
+}
