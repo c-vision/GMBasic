@@ -811,3 +811,26 @@ double* gmb_ts_kalman1d(const double* z, int n, double a, double h, double q, do
     }
     *out_len = n; return out;
 }
+
+/* Stationary bootstrap (gmbstats gs_stationary_bootstrap). */
+double* gmb_ts_stationary_bootstrap(const double* x, int n, int window, int seed, int* out_len)
+{
+    if (!x || n < 1 || window < 1) { *out_len = 0; return NULL; }
+    double* out = (double*)malloc((size_t)n * sizeof(double));
+    if (!out) { *out_len = 0; return NULL; }
+    double p = 1.0 / window;
+    unsigned s = seed ? (unsigned)seed : 12345u;
+    int idx = (int)((s = s * 1103515245u + 12345u) % (unsigned)n);
+    out[0] = x[idx];
+    for (int i = 1; i < n; i++) {
+        double u = (double)((s = s * 1103515245u + 12345u) % 100000u) / 100000.0;
+        if (u > p) {
+            double u2 = (double)((s = s * 1103515245u + 12345u) % 100000u) / 100000.0;
+            idx = (int)(u2 * (double)n) % n;
+        } else {
+            idx = (idx + 1) % n;
+        }
+        out[i] = x[idx];
+    }
+    *out_len = n; return out;
+}

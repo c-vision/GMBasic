@@ -268,6 +268,7 @@ public enum BuiltInFunction : ushort
     TS_GRANGER = 1067,
     TS_GARCH11 = 1068,
     TS_KALMAN1D = 1069,
+    TS_STATIONARY_BOOTSTRAP = 1070,
     SIGNAL_FIRWIN = 1017,
     SIGNAL_FINDPEAKS = 1018,
     SOLVE_IVP = 1019,

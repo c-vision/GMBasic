@@ -1317,6 +1317,7 @@ static const gmb_ns_lookup_row_t gmb_ns_lookup[] = {
     { "TIMESERIES", "TSROLLSORTINO", GMB_TOK_RollingSortino },
     { "TIMESERIES", "TSROLLSTDDEV", GMB_TOK_RollingStdDev },
     { "TIMESERIES", "TSROLLZSCORE", GMB_TOK_RollingZScore },
+    { "TIMESERIES", "TSSTATIONARYBOOTSTRAP", GMB_TOK_TsStationaryBootstrap },
     { "TIMESERIES", "TSVOLATILITY", GMB_TOK_Volatility },
     { "TIMESERIES", "YuleWalker", GMB_TOK_YuleWalker },
     { "TOOL", "Register", GMB_TOK_ToolRegister },
