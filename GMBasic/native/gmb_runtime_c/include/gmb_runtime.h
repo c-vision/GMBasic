@@ -1124,10 +1124,12 @@ double gmb_dist_skewnormal_pdf(double x, double location, double scale, double s
 double gmb_dist_normal_ppf(double mean, double sd, double p);
 double gmb_dist_normal_isf(double mean, double sd, double p);
 double gmb_dist_lognormal_ppf(double mu, double sigma, double p);
+double gmb_dist_lognormal_isf(double mu, double sigma, double p);
 double gmb_dist_chi2_ppf(double df, double p);
 double gmb_dist_chi2_isf(double df, double p);
 double gmb_dist_chi_ppf(double df, double p);
 double gmb_dist_beta_ppf(double a, double b, double p);
+double gmb_dist_beta_isf(double a, double b, double p);
 double gmb_dist_f_ppf(double d1, double d2, double p);
 double gmb_dist_f_isf(double d1, double d2, double p);
 double gmb_dist_student_t_ppf(double df, double p);
@@ -1137,11 +1139,13 @@ double gmb_dist_exp_isf(double rate, double p);
 double gmb_dist_weibull_ppf(double shape, double scale, double p);
 double gmb_dist_weibull_isf(double shape, double scale, double p);
 double gmb_dist_logistic_ppf(double loc, double scale, double p);
+double gmb_dist_logistic_isf(double loc, double scale, double p);
 double gmb_dist_uniform_ppf(double a, double b, double p);
 double gmb_dist_uniform_isf(double a, double b, double p);
 double gmb_dist_pareto_ppf(double scale, double shape, double p);
 double gmb_dist_pareto_isf(double scale, double shape, double p);
 double gmb_dist_triangular_ppf(double a, double b, double c, double p);
+double gmb_dist_triangular_isf(double a, double b, double c, double p);
 
 
 gmb_double_t gmb_polarx(gmb_double_t r, gmb_double_t angle_deg);

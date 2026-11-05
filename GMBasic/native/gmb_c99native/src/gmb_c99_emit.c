@@ -7059,6 +7059,7 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_StatsLogisticCdf, emit_bf_dist }, { NULL, GMB_TOK_StatsLogisticSf, emit_bf_dist },
     { NULL, GMB_TOK_StatsTriangularCdf, emit_bf_dist }, { NULL, GMB_TOK_StatsTriangularSf, emit_bf_dist },
     { NULL, GMB_TOK_StatsWeibullIsf, emit_bf_dist }, { NULL, GMB_TOK_StatsUniformIsf, emit_bf_dist }, { NULL, GMB_TOK_StatsParetoIsf, emit_bf_dist },
+    { NULL, GMB_TOK_StatsBetaIsf, emit_bf_dist }, { NULL, GMB_TOK_StatsLogisticIsf, emit_bf_dist }, { NULL, GMB_TOK_StatsLognormalIsf, emit_bf_dist }, { NULL, GMB_TOK_StatsTriangularIsf, emit_bf_dist },
     { NULL, GMB_TOK_StatsGammaPdf, emit_bf_dist },
     { NULL, GMB_TOK_StatsGammaPpf, emit_bf_dist },
     { NULL, GMB_TOK_StatsGammaIsf, emit_bf_dist },
