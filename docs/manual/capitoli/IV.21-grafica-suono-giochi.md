@@ -195,6 +195,7 @@ sinusoidale, PNG, rilettura e blit). MiniTest: `graphics/canvas_core.bas`.
 
 
 
+
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
 ## Riferimento completo: comandi, funzioni, parametri
@@ -390,6 +391,25 @@ p(0)=0 : p(1)=0 : p(2)=10 : p(3)=0
 p(4)=10 : p(5)=10 : p(6)=0 : p(7)=10
 PRINT GFXSHAPE.POINTINPOLYGON(5, 5, p(), 8)           ' 1
 PRINT GFXSHAPE.POLYGONAREA(p(), 8)                    ' 100
+
+
+## 4quater. Immagini float via FFI (`GFX2D`)
+| Gruppo | Funzioni |
+|---|---|
+| filtri | `CONVOLVE`, `CONVOLVESEP`, `GAUSSIAN`, `SOBEL`, `MEDIAN3` |
+| trasformazioni | `RESAMPLE`, `TRANSPOSE`, `ROTATE90`, `ROTATE`, `FLIPH`, `FLIPV` |
+| punti | `THRESHOLD`, `NORMALIZE`, `HISTOGRAM`, `HISTEQUALIZE` |
+| disegno in-place | `DRAWLINE`, `DRAWRECT`, `DRAWRECTF`, `DRAWCIRCLE` |
+| avanzate | `WARP` (CHW + flow), `POISSON` (seamless clone) |
+
+IMPORT GFX2D
+DIM a(15) AS DOUBLE, o(15) AS DOUBLE
+FOR i = 0 TO 15 : a(i) = i : NEXT i
+ok = GFX2D.GAUSSIAN(a(), 4, 4, 0.8, o)          ' blur gaussiano
+ok = GFX2D.TRANSPOSE(a(), 4, 4, o)
+ok = GFX2D.THRESHOLD(a(), 4, 4, 7.5, 0, 1, o)
+DIM d(15) AS DOUBLE
+ok = GFX2D.DRAWLINE(d(), 4, 4, 0, 0, 3, 3, 2.5)  ' disegno su array
 
 
 ## 5. Viewport e finestre
