@@ -643,3 +643,107 @@ double* gmb_ts_fracdiff(const double* x, int n, double d, int* out_len)
     }
     free(w); *out_len = n; return out;
 }
+
+/* Gaussian elimination with partial pivoting for small dense systems. */
+static int gmb_ts_solve_lin(int n, double* A, double* b, double* x)
+{
+    for (int i = 0; i < n; i++) {
+        int piv = i;
+        for (int r = i + 1; r < n; r++) if (fabs(A[r*n+i]) > fabs(A[piv*n+i])) piv = r;
+        if (fabs(A[piv*n+i]) < 1e-14) return -1;
+        if (piv != i) {
+            for (int c = i; c < n; c++) { double t = A[i*n+c]; A[i*n+c] = A[piv*n+c]; A[piv*n+c] = t; }
+            double t = b[i]; b[i] = b[piv]; b[piv] = t;
+        }
+        double d = A[i*n+i];
+        for (int r = i + 1; r < n; r++) {
+            double f = A[r*n+i] / d;
+            for (int c = i; c < n; c++) A[r*n+c] -= f * A[i*n+c];
+            b[r] -= f * b[i];
+        }
+    }
+    for (int i = n - 1; i >= 0; i--) {
+        double sum = b[i];
+        for (int c = i + 1; c < n; c++) sum -= A[i*n+c] * x[c];
+        x[i] = sum / A[i*n+i];
+    }
+    return 0;
+}
+static gmb_val_t gmb_ts_nan_dict(void)
+{
+    gmb_dict_t d = gmb_dict_new();
+    gmb_dict_set(&d, "Statistic", gmb_make_val_double(NAN));
+    gmb_dict_set(&d, "PValue", gmb_make_val_double(NAN));
+    gmb_dict_set(&d, "DegreesOfFreedom", gmb_make_val_double(NAN));
+    return gmb_make_val_dict_take(&d);
+}
+/* Granger causality y -> x (F-test), parity gmbstats gs_granger. */
+gmb_val_t gmb_ts_granger_flat(const double* x, int nx, const double* y, int ny, int p)
+{
+    int n = nx < ny ? nx : ny;
+    if (!x || !y || p < 1 || n < 3 * p + 2) return gmb_ts_nan_dict();
+    int m = n - p, nr = p + 1, nu = 2 * p + 1;
+    double* Xr = (double*)malloc((size_t)m * nr * sizeof(double));
+    double* Xu = (double*)malloc((size_t)m * nu * sizeof(double));
+    double* Ar = (double*)calloc((size_t)nr * nr, sizeof(double));
+    double* Au = (double*)calloc((size_t)nu * nu, sizeof(double));
+    double* br = (double*)calloc((size_t)nr, sizeof(double));
+    double* bu = (double*)calloc((size_t)nu, sizeof(double));
+    double* cr = (double*)calloc((size_t)nr, sizeof(double));
+    double* cu = (double*)calloc((size_t)nu, sizeof(double));
+    if (!Xr || !Xu || !Ar || !Au || !br || !bu || !cr || !cu) {
+        free(Xr); free(Xu); free(Ar); free(Au); free(br); free(bu); free(cr); free(cu);
+        return gmb_ts_nan_dict();
+    }
+    for (int i = p; i < n; i++) {
+        int r = i - p;
+        Xr[r*nr] = 1.0; Xu[r*nu] = 1.0;
+        for (int j = 1; j <= p; j++) {
+            Xr[r*nr+j] = x[i-j]; Xu[r*nu+j] = x[i-j];
+            Xu[r*nu+p+j] = y[i-j];
+        }
+    }
+    for (int i = 0; i < m; i++)
+        for (int j = 0; j < nr; j++) {
+            for (int k = 0; k < nr; k++) Ar[j*nr+k] += Xr[i*nr+j] * Xr[i*nr+k];
+            br[j] += Xr[i*nr+j] * x[i+p];
+        }
+    if (gmb_ts_solve_lin(nr, Ar, br, cr) != 0) {
+        free(Xr); free(Xu); free(Ar); free(Au); free(br); free(bu); free(cr); free(cu);
+        return gmb_ts_nan_dict();
+    }
+    double rss_r = 0;
+    for (int i = 0; i < m; i++) {
+        double r = x[i+p];
+        for (int j = 0; j < nr; j++) r -= cr[j] * Xr[i*nr+j];
+        rss_r += r * r;
+    }
+    for (int i = 0; i < m; i++)
+        for (int j = 0; j < nu; j++) {
+            for (int k = 0; k < nu; k++) Au[j*nu+k] += Xu[i*nu+j] * Xu[i*nu+k];
+            bu[j] += Xu[i*nu+j] * x[i+p];
+        }
+    if (gmb_ts_solve_lin(nu, Au, bu, cu) != 0) {
+        free(Xr); free(Xu); free(Ar); free(Au); free(br); free(bu); free(cr); free(cu);
+        return gmb_ts_nan_dict();
+    }
+    double rss_u = 0;
+    for (int i = 0; i < m; i++) {
+        double r = x[i+p];
+        for (int j = 0; j < nu; j++) r -= cu[j] * Xu[i*nu+j];
+        rss_u += r * r;
+    }
+    free(Xr); free(Xu); free(Ar); free(Au); free(br); free(bu); free(cr); free(cu);
+    if (rss_u <= 0) return gmb_ts_nan_dict();
+    double df1 = p, df2 = m - nu;
+    double F = ((rss_r - rss_u) / df1) / (rss_u / df2);
+    double xb = df1 * F / (df1 * F + df2);
+    double pval = 1.0 - gmb_dist_beta_cdf(df1 / 2.0, df2 / 2.0, xb);
+    {
+        gmb_dict_t d = gmb_dict_new();
+        gmb_dict_set(&d, "Statistic", gmb_make_val_double(F));
+        gmb_dict_set(&d, "PValue", gmb_make_val_double(pval));
+        gmb_dict_set(&d, "DegreesOfFreedom", gmb_make_val_double(df1));
+        return gmb_make_val_dict_take(&d);
+    }
+}

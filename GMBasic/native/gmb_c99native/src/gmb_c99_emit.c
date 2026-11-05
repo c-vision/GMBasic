@@ -1518,7 +1518,7 @@ static int dim_val_init_kind(const gmb_expr_t* e) {
         || e->tk == GMB_TOK_StatsKurtosisTest || e->tk == GMB_TOK_StatsJarqueBera
         || e->tk == GMB_TOK_StatsDescribe || e->tk == GMB_TOK_StatsChi2Contingency
         || e->tk == GMB_TOK_StatsKendallTau || e->tk == GMB_TOK_StatsFTest
-        || e->tk == GMB_TOK_StatsKruskal) return 2;
+        || e->tk == GMB_TOK_StatsKruskal || e->tk == GMB_TOK_TsGranger) return 2;
     /* letterale tupla (a, b, ...) → gmb_val_tuple, gmb_val_t boxed (vedi emit_tuple_lit). */
     if (strcmp(e->var, "_tuple_lit_") == 0) return 1;
     /* Costruttori COLLEZIONE/oggetto che emettono GIÀ un gmb_val_t: NEW LIST/DICT/SET/…
@@ -7015,6 +7015,7 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_StatsPearsonR, emit_bf_stats_dict },
     { NULL, GMB_TOK_StatsKendallTau, emit_bf_stats_dict }, { NULL, GMB_TOK_StatsFTest, emit_bf_stats_dict },
     { NULL, GMB_TOK_StatsKruskal, emit_bf_stats_dict },
+    { NULL, GMB_TOK_TsGranger, emit_bf_stats_dict },
     { NULL, GMB_TOK_StatsSpearmanR, emit_bf_stats_dict },
     { NULL, GMB_TOK_StatsLinRegress, emit_bf_stats_dict },
     { NULL, GMB_TOK_StatsMannWhitney, emit_bf_stats_dict },
@@ -17885,10 +17886,16 @@ static void st_let_assign(ctx_t* c, gmb_stmt_t* s) {
                                             idxs2[k + 1] = s->array_idx_extra[k];
                                         int fstr2 = cls_field_is_str(bfo, dt0 + 1);
                                         int vt2 = etype(c, s->value);
+                                        fprintf(stderr, "[dbg-fa] target=%s field=%s fstr=%d vt=%d kind=%d var=%s ns=%s tk=%d nargs=%d\n",
+                                                bpre, dt0 + 1, fstr2, vt2, (int)s->value->kind,
+                                                s->value->var ? s->value->var : "",
+                                                s->value->ns ? s->value->ns : "", (int)s->value->tk, s->value->nargs);
                                         int json_num2 = (!fstr2 && vt2 == TY_STR && is_json_index_member_call(c, s->value));
                                         /* RHS DINAMICO (val, es. campo di un elemento JSON) verso
                                          * campo STRING: coercizione (parità col gemello sopra). */
                                         int json_str2 = (fstr2 && vt2 == TY_VAL);
+                                        if (fstr2 && vt2 != TY_STR && !json_str2 && s->value->kind == GMB_EXPR_CALL
+                                            && s->value->var && strchr(s->value->var, '.')) json_str2 = 1; /*DBG*/
                                         if (!json_num2 && !json_str2 && fstr2 != (vt2 == TY_STR)) {
                                             c99_fail(c, s->line, "assegnamento al campo %s.%s: tipo incompatibile (%s)",
                                                      bfo->name, dt0 + 1, fstr2 ? "attesa stringa" : "atteso numero");
