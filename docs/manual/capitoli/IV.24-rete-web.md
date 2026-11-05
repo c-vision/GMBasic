@@ -1079,10 +1079,11 @@ tools/sh/webapp_up.sh restart   # stop + start
 
 tools/sh/webapp_selftest.sh     # HTTP: gira su webapp_up.sh → runtime C di default
 
-# click-through della UI in un browser headless (Chromium via CDP):
+# click-through della UI in un browser headless (Chromium/Obscura via CDP):
 # palette, rail, Inbox, scorciatoie, tema, creazione agente dal form, filtri,
-# SSE live, WebSocket del canvas, zero errori JS (+ screenshot /tmp/webapp_ui.png)
-tools/py/webapp_ui_cdp.py
+# SSE live, WebSocket canvas, zero errori JS. Exit 1 se un controllo fallisce.
+bash tools/sh/gmb_c99native_run.sh ../tools/basic/webapp_ui_cdp.bas wcdp
+# esito atteso: 20 PASS / 0 WARN / 0 FAIL, screenshot in /tmp/webapp_ui.png
 
 
 ### 3.1ter Il compilatore BSP in C è COMPLETO

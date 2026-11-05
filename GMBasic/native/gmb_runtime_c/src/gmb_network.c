@@ -1741,6 +1741,14 @@ void gmb_ws_close(int64_t handle)
     net_release(handle);
 }
 
+/* gmb_ws_is_open: 1 se l'handle è ancora vivo (socket non chiusa). Usata dal
+ * receive-loop client (gmb_ws_client.c) per distinguere un TIMEOUT da una CHIUSURA:
+ * gmb_ws_recv_frame torna -1 in entrambi i casi. */
+int gmb_ws_is_open(int64_t handle)
+{
+    return net_get(handle) != NULL;
+}
+
 /* send() COMPLETO su socket non-bloccante: il 101 dell'handshake WS è piccolo ma un
  * send() singolo può scrivere solo una PARTE (o EAGAIN): il client resta in
  * "connecting" per sempre. Qui si cicla finché tutti i byte sono usciti. */

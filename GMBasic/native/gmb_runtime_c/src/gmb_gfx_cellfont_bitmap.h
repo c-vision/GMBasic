@@ -1,7 +1,7 @@
 /* ============================================================================
  * gmb_gfx_cellfont_bitmap.h — tabella ASCII 8x16 del font a CELLE del TUI.
  *
- * GENERATO da tools/py/cellfont_from_bdf.py — NON modificare a mano.
+ * GENERATO da tools/basic/cellfont_from_bdf.bas — NON modificare a mano.
  * Sorgente dei glifi: **Terminus** 8x16 (ter-u16n.bdf), Copyright (C) 2020
  * Dimitar Toshkov Zhekov, **SIL Open Font License 1.1** (testo in
  * Resources/licenses/OFL-1.1-Terminus.txt). Il bitmap qui sotto è opera derivata

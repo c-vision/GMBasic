@@ -1,4 +1,4 @@
-/* GENERATO da tools/py/gen_hpack_huffman.py — NON modificare a mano.
+/* GENERATO da tools/basic/gen_hpack_huffman.bas — NON modificare a mano.
  * Tabella STATICA di HPACK (RFC 7541, Appendice A): indice 1..61 (0 = vuoto). */
 #ifndef GMB_HPACK_STATIC_H
 #define GMB_HPACK_STATIC_H

@@ -1,17 +1,17 @@
 SAMPLE → MINITEST: casi d'uso non previsti dai canonici
 
-casi: 50   sample coinvolti: 17
+casi: 50   sample SURFACE: 35
 
 == ARITA (stessa funzione, arità diversa nel canonico) ==
   samples/Ai/AiFullSurfaceCoverage.bas                           AI.search(5)  canonico: 9
-  samples/Ai/AiVaultNotesCoverage.bas                            AI.agentfix(1)  canonico: 2
-  samples/Ai/AiVaultNotesCoverage.bas                            AI.ingestweb(2)  canonico: 3
   samples/Ai/AiVaultNotesCoverage.bas                            AI.memoryrank(1)  canonico: 2
-  samples/Ai/AiVaultNotesCoverage.bas                            AI.qaanswer(2)  canonico: 3
   samples/Ai/AiVaultNotesCoverage.bas                            AI.ragcontextmulti(1)  canonico: 4
+  samples/Ai/AiVaultNotesCoverage.bas                            AI.qaanswer(2)  canonico: 3
+  samples/Ai/AiVaultNotesCoverage.bas                            AI.agentfix(1)  canonico: 2
   samples/Ai/AiVaultNotesCoverage.bas                            AI.syncfolder(2)  canonico: 4
-  samples/Ai/McpFullSurface.bas                                  AI.mcpcall(0)  canonico: 3
+  samples/Ai/AiVaultNotesCoverage.bas                            AI.ingestweb(2)  canonico: 3
   samples/Ai/McpFullSurface.bas                                  AI.mcplisttoolsserver(0)  canonico: 1
+  samples/Ai/McpFullSurface.bas                                  AI.mcpcall(0)  canonico: 3
   samples/Ai/McpFullSurface.bas                                  AI.mcpserverstatus(0)  canonico: 1
   samples/Ai/RuntimeFullCoverage.bas                             AI.stateload(1)  canonico: 2
   samples/Ai/SemapraxFullSurface.bas                             LLM.context(2)  canonico: 1
@@ -26,32 +26,32 @@ casi: 50   sample coinvolti: 17
   samples/Console/WidgetsFullCoverage.bas                        CONTROLS.cs(1)
   samples/Controls/ControlPropertiesCoverage.bas                 CONTROL.md(1)
   samples/Crypto/CryptoFullCoverage.bas                          BLOCKCHAIN.abidecode(2)
+  samples/Databases/RddCompleteCoverage.bas                      RDD.replace(4)
   samples/Databases/RddCompleteCoverage.bas                      RDD.delete(2)
   samples/Databases/RddCompleteCoverage.bas                      RDD.recall(2)
-  samples/Databases/RddCompleteCoverage.bas                      RDD.replace(4)
   samples/Events/OnKeyUncoveredCoverage.bas                      KEY.make(2)
-  samples/Http/HttpStreaming.bas                                 RES.endstream(0)
-  samples/Http/HttpStreaming.bas                                 RES.flush(0)
-  samples/Http/HttpStreaming.bas                                 RES.send(1)
-  samples/Http/HttpStreaming.bas                                 RES.setheader(2)
   samples/Http/HttpStreaming.bas                                 RES.startstream(1)
   samples/Http/HttpStreaming.bas                                 RES.write(1)
-  samples/System/SystemFullCoverage.bas                          SYSTEM.command(1)
+  samples/Http/HttpStreaming.bas                                 RES.flush(0)
+  samples/Http/HttpStreaming.bas                                 RES.endstream(0)
+  samples/Http/HttpStreaming.bas                                 RES.setheader(2)
+  samples/Http/HttpStreaming.bas                                 RES.send(1)
   samples/System/SystemFullCoverage.bas                          SYSTEM.valtype(1)
-  samples/Trading/TradingFullCoverage.bas                        TRADING.PORTFOLIO.kellycriterion(2)
+  samples/System/SystemFullCoverage.bas                          SYSTEM.command(1)
   samples/Trading/TradingFullCoverage.bas                        TRADING.PORTFOLIO.maxreturn(1)
-  samples/Trading/TradingFullCoverage.bas                        TRADING.PORTFOLIO.mincdar(3)
+  samples/Trading/TradingFullCoverage.bas                        TRADING.PORTFOLIO.kellycriterion(2)
   samples/Trading/TradingFullCoverage.bas                        TRADING.PORTFOLIO.mincvar(3)
-  samples/Trading/TradingMetricsUncoveredCoverage.bas            TRADING.METRICS.annualizeddownsidedeviation(3)
-  samples/Trading/TradingMetricsUncoveredCoverage.bas            TRADING.METRICS.annualizedtrackingerror(3)
-  samples/Trading/TradingMetricsUncoveredCoverage.bas            TRADING.METRICS.calmarratio(2)
-  samples/Trading/TradingMetricsUncoveredCoverage.bas            TRADING.METRICS.conditionalvalueatrisk(2)
+  samples/Trading/TradingFullCoverage.bas                        TRADING.PORTFOLIO.mincdar(3)
   samples/Trading/TradingMetricsUncoveredCoverage.bas            TRADING.METRICS.dilutedeps(3)
+  samples/Trading/TradingMetricsUncoveredCoverage.bas            TRADING.METRICS.calmarratio(2)
   samples/Trading/TradingMetricsUncoveredCoverage.bas            TRADING.METRICS.informationratio(3)
-  samples/Trading/TradingMetricsUncoveredCoverage.bas            TRADING.METRICS.omegaratio(2)
-  samples/Trading/TradingMetricsUncoveredCoverage.bas            TRADING.METRICS.returnsskewness(1)
   samples/Trading/TradingMetricsUncoveredCoverage.bas            TRADING.METRICS.treynorratio(4)
+  samples/Trading/TradingMetricsUncoveredCoverage.bas            TRADING.METRICS.conditionalvalueatrisk(2)
+  samples/Trading/TradingMetricsUncoveredCoverage.bas            TRADING.METRICS.returnsskewness(1)
   samples/Trading/TradingMetricsUncoveredCoverage.bas            TRADING.METRICS.ulcerindex(1)
+  samples/Trading/TradingMetricsUncoveredCoverage.bas            TRADING.METRICS.annualizedtrackingerror(3)
+  samples/Trading/TradingMetricsUncoveredCoverage.bas            TRADING.METRICS.annualizeddownsidedeviation(3)
+  samples/Trading/TradingMetricsUncoveredCoverage.bas            TRADING.METRICS.omegaratio(2)
   samples/Trading/TradingPortfolioUncoveredCoverage.bas          TRADING.PORTFOLIO.portfoliomad(1)
-  samples/Trading/TradingPortfolioUncoveredCoverage.bas          TRADING.PORTFOLIO.portfoliosemimad(1)
   samples/Trading/TradingPortfolioUncoveredCoverage.bas          TRADING.PORTFOLIO.portfoliosemimad(2)
+  samples/Trading/TradingPortfolioUncoveredCoverage.bas          TRADING.PORTFOLIO.portfoliosemimad(1)

@@ -2092,6 +2092,12 @@ int gmb_write_all_bytes_list(const char* path, gmb_list_t list);
 /* Variante per gli array del backend C99Native (`DIM b(n) AS BYTE` = double[]). */
 int gmb_write_all_bytes_f64(const char* path, const double* src, int count);
 
+/* WebSocket LATO CLIENT: avvia il receive-loop quando il BASIC registra
+ * `ws.OnMessage`/`ws.OnClose` su una socket creata da `WEBSOCKET CONNECT` (parità VM/C).
+ * Il thread di ricezione NON esegue BASIC: spawna un task GPM per ogni frame.
+ * Definizione in gmb_ws_client.c; il C generato chiama questa funzione. */
+void gmb_ws_client_start(gmb_val_t ws);
+
 /* namespace FONTS (TrueType/OpenType): varianti a lista usate dai backend C.
  * Le definizioni sono in gmb_fonts.c; le API a buffer sono in gmb_fonts.h.
  * Dichiarate qui perché il C generato da C99Native include gmb_runtime.h. */

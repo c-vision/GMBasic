@@ -11,6 +11,7 @@
 #include "gor_graph.h"
 #include "gor_graph2.h"
 #include "gor_graph3.h"
+#include "gor_linkpred.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -595,4 +596,85 @@ i64 gfx_bfs_direction_optimizing(const i64 *adj, i64 n, i64 src, double thr, dou
     free(a);
     free(d);
     return (i64)k;
+}
+
+/* ── Link prediction (gmbortools `gor_linkpred`): baseline su adiacenza densa.
+ * Le funzioni C lavorano su `int*`; qui si converte dall'array LONG del binding. */
+static int *lp_adj(const i64 *adj, i64 n)
+{
+    i64 i;
+    int *a = (int *)malloc((size_t)n * (size_t)n * sizeof(int));
+    if (a == NULL) return NULL;
+    for (i = 0; i < n * n; i++) a[i] = (int)adj[i];
+    return a;
+}
+
+i64 gfx_link_common_neighbors(const i64 *adj, i64 n, i64 u, i64 v)
+{
+    int *a;
+    int r;
+    if (n <= 0 || adj == NULL || u < 0 || v < 0 || u >= n || v >= n) return -1;
+    a = lp_adj(adj, n);
+    if (a == NULL) return -1;
+    r = gor_lp_common_neighbors(a, (int)n, (int)u, (int)v);
+    free(a);
+    return (i64)r;
+}
+
+double gfx_link_jaccard(const i64 *adj, i64 n, i64 u, i64 v)
+{
+    int *a;
+    double r;
+    if (n <= 0 || adj == NULL || u < 0 || v < 0 || u >= n || v >= n) return 0.0;
+    a = lp_adj(adj, n);
+    if (a == NULL) return 0.0;
+    r = (double)gor_lp_jaccard(a, (int)n, (int)u, (int)v);
+    free(a);
+    return r;
+}
+
+double gfx_link_adamic_adar(const i64 *adj, i64 n, i64 u, i64 v)
+{
+    int *a;
+    double r;
+    if (n <= 0 || adj == NULL || u < 0 || v < 0 || u >= n || v >= n) return 0.0;
+    a = lp_adj(adj, n);
+    if (a == NULL) return 0.0;
+    r = (double)gor_lp_adamic_adar(a, (int)n, (int)u, (int)v);
+    free(a);
+    return r;
+}
+
+double gfx_link_resource_allocation(const i64 *adj, i64 n, i64 u, i64 v)
+{
+    int *a;
+    double r;
+    if (n <= 0 || adj == NULL || u < 0 || v < 0 || u >= n || v >= n) return 0.0;
+    a = lp_adj(adj, n);
+    if (a == NULL) return 0.0;
+    r = (double)gor_lp_resource_allocation(a, (int)n, (int)u, (int)v);
+    free(a);
+    return r;
+}
+
+i64 gfx_link_preferential_attachment(const i64 *adj, i64 n, i64 u, i64 v)
+{
+    int *a;
+    int r;
+    if (n <= 0 || adj == NULL || u < 0 || v < 0 || u >= n || v >= n) return 0;
+    a = lp_adj(adj, n);
+    if (a == NULL) return 0;
+    r = gor_lp_preferential_attachment(a, (int)n, (int)u, (int)v);
+    free(a);
+    return (i64)r;
+}
+
+/* Katz: la matrice è DOUBLE (pesata); ritorna lo score, 0.0 su errore. */
+double gfx_link_katz(const double *w, i64 n, double beta, i64 u, i64 v)
+{
+    gor_real score = 0.0;
+    if (n <= 0 || w == NULL || u < 0 || v < 0 || u >= n || v >= n) return 0.0;
+    if (gor_lp_katz((const gor_real *)w, (int)n, (gor_real)beta, (int)u, (int)v, &score) != 0)
+        return 0.0;
+    return (double)score;
 }

@@ -1,4 +1,4 @@
-/* GENERATO da tools/py/gen_hpack_huffman.py — NON modificare a mano.
+/* GENERATO da tools/basic/gen_hpack_huffman.bas — NON modificare a mano.
  * Tabella dei codici Huffman di HPACK (RFC 7541, Appendice B): 256 simboli + EOS (256).
  * `code` è allineato ai bit ALTI (come nell'RFC); `bits` è la lunghezza in bit. */
 #ifndef GMB_HPACK_HUFFMAN_H

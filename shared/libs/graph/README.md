@@ -32,6 +32,7 @@ Gli array `out()` sono dimensionati dal chiamante (`n` per order/comp/dist/color
 | Proprietà | `DIAMETER`, `ECCENTRICITY`, `CLUSTERING`, `SUBGRAPH` |
 | MST | `MSTKRUSKAL` |
 | Avanzati (2ª slice) | `BRIDGES`, `ARTICULATION`, `ASTAR`, `STOERWAGNER`, `KSHORTEST`, `ISOMORPHIC`, `DRNL`, `WL`, `MINPATHCOVER`, `BFSOPT` |
+| Link prediction | `LINKCN`, `LINKJACCARD`, `LINKADAMICADAR`, `LINKRESOURCEALLOC`, `LINKPREFATTACH`, `LINKKATZ` |
 | Sentinella | `ABSENT()` |
 
 ## Sorgenti (copia autonoma)
@@ -40,6 +41,7 @@ Gli array `out()` sono dimensionati dal chiamante (`n` per order/comp/dist/color
 |---|---|
 | `src/gor_core.c`, `src/gor_graph.c`, `src/gor_graph2.c` | `gmbsuite/gmbortools` |
 | `src/gor_graph3.c` | `gmbsuite/gmbortools` (nuovo: porting da `gmb_graph*` nativo) |
+| `src/gor_linkpred.c`, `include/gor_linkpred.h` | `gmbsuite/gmbortools` (link prediction, 2026-11-05) |
 | `src/graph_ffi.c` | shim ABI di questo pacchetto (int64 ↔ int, costruzione `gor_graph`) |
 
 Unica modifica rispetto all'originale: nessuna (i file restano identici); l'adattamento

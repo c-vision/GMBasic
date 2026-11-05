@@ -3,7 +3,7 @@
  * §0bis: logica condivisa (dataset/report) nel runtime C, chiamata dai 4 backend.
  * Fase D1: SAMPLE (raccolta coppie dal modello, filtro VERIFY) + BUILD (jsonl → .bin).
  * BUILD e' implementato qui (tokenizer BPE + split train/hold, formato .bin di
- * make_lora_dataset.py); SAMPLE delega la generazione (motore MLX) alla dylib
+ * tools/basic/make_lora_dataset.bas); SAMPLE delega la generazione (motore MLX) alla dylib
  * gmb_ai_finetune via dlopen. TRAIN/APPLY/EVAL/RESTORE sono fasi successive.
  */
 #ifndef GMB_DISTILL_H
@@ -16,7 +16,7 @@ extern "C" {
 #endif
 
 /* BUILD: legge un file .jsonl di coppie (prompt,risposta) e scrive <out>.train.bin e
- * <out>.hold.bin nel formato di make_lora_dataset.py (interi LE: n, poi len,tok...,target).
+ * <out>.hold.bin nel formato di tools/basic/make_lora_dataset.bas (interi LE: n, poi len,tok...,target).
  * - jsonl_path: righe JSON con campi prompt/response | problem/solution | question/answer.
  * - tokenizer_json: path del tokenizer.json (del model_dir).
  * - out_prefix: prefisso di output (scrive <out_prefix>.train.bin / .hold.bin).
