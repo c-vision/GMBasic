@@ -2134,6 +2134,7 @@ static void gmb_bf_special(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int 
     double a0 = (argc > 0 && args[0].type == 1) ? args[0].num : 0.0;
     double a1 = (argc > 1 && args[1].type == 1) ? args[1].num : 0.0;
     double a2 = (argc > 2 && args[2].type == 1) ? args[2].num : 0.0;
+    double a3 = (argc > 3 && args[3].type == 1) ? args[3].num : 0.0;
     switch (func_code) {
     case 900: bout->result = gmb_gamma(a0); break;           /* SPECIAL_GAMMA */
     case 901: bout->result = gmb_lgamma(a0); break;          /* SPECIAL_LGAMMA */
@@ -2148,6 +2149,17 @@ static void gmb_bf_special(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int 
     case 910: bout->result = gmb_bessely(a0, a1); break;     /* SPECIAL_BESSELY */
     case 911: bout->result = gmb_besseli(a0, a1); break;     /* SPECIAL_BESSELI */
     case 912: bout->result = gmb_besselk(a0, a1); break;     /* SPECIAL_BESSELK */
+    case 3833: bout->result = gmb_special_zeta(a0); break;
+    case 3834: bout->result = gmb_special_zeta_hurwitz(a0, a1); break;
+    case 3835: bout->result = gmb_special_polygamma(a0, a1); break;
+    case 3836: bout->result = gmb_special_hypergeom_2f1(a0, a1, a2, a3); break;
+    case 3837: bout->result = gmb_special_hypergeom_1f1(a0, a1, a2); break;
+    case 3838: bout->result = gmb_special_lambert_w(a0); break;
+    case 3839: bout->result = gmb_special_mittag_leffler(a0, a1, a2); break;
+    case 3840: bout->result = gmb_special_struve_h(a0, a1); break;
+    case 3841: bout->result = gmb_special_kelvin_ber(a0); break;
+    case 3842: bout->result = gmb_special_kelvin_bei(a0); break;
+    case 3843: bout->result = gmb_special_parabolic_cylinder(a0, a1); break;
     default: bout->result = 0.0; break;
     }
 }
@@ -18011,6 +18023,17 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 910, gmb_bf_special },
     { 911, gmb_bf_special },
     { 912, gmb_bf_special },
+    { 3833, gmb_bf_special },
+    { 3834, gmb_bf_special },
+    { 3835, gmb_bf_special },
+    { 3836, gmb_bf_special },
+    { 3837, gmb_bf_special },
+    { 3838, gmb_bf_special },
+    { 3839, gmb_bf_special },
+    { 3840, gmb_bf_special },
+    { 3841, gmb_bf_special },
+    { 3842, gmb_bf_special },
+    { 3843, gmb_bf_special },
     { 913, gmb_bf_vector_dist },
     { 914, gmb_bf_vector_dist },
     { 915, gmb_bf_vector_dist },

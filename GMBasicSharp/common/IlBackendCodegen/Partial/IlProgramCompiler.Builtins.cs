@@ -351,6 +351,17 @@ public sealed partial class IlProgramCompiler
             case TokenKind.SpecialGammaIncc: EmitNumericCall(expr, IlRuntimeGammaInccMethod); break;
             case TokenKind.SpecialBetaInc: EmitNumericCall(expr, IlRuntimeBetaIncMethod); break;
             case TokenKind.SpecialDigamma: EmitNumericCall(expr, IlRuntimeDigammaMethod); break;
+            case TokenKind.SpecialZeta: EmitNumericCall(expr, IlRuntimeZetaMethod); break;
+            case TokenKind.SpecialZetaHurwitz: EmitNumericCall(expr, IlRuntimeZetaHurwitzMethod); break;
+            case TokenKind.SpecialPolygamma: EmitNumericCall(expr, IlRuntimePolygammaMethod); break;
+            case TokenKind.SpecialHypergeom2F1: EmitNumericCall(expr, IlRuntimeHypergeom2F1Method); break;
+            case TokenKind.SpecialHypergeom1F1: EmitNumericCall(expr, IlRuntimeHypergeom1F1Method); break;
+            case TokenKind.SpecialLambertW: EmitNumericCall(expr, IlRuntimeLambertWMethod); break;
+            case TokenKind.SpecialMittagLeffler: EmitNumericCall(expr, IlRuntimeMittagLefflerMethod); break;
+            case TokenKind.SpecialStruveH: EmitNumericCall(expr, IlRuntimeStruveHMethod); break;
+            case TokenKind.SpecialKelvinBer: EmitNumericCall(expr, IlRuntimeKelvinBerMethod); break;
+            case TokenKind.SpecialKelvinBei: EmitNumericCall(expr, IlRuntimeKelvinBeiMethod); break;
+            case TokenKind.SpecialParabolicCylinder: EmitNumericCall(expr, IlRuntimeParabolicCylinderMethod); break;
             case TokenKind.SpecialBesselJ: EmitNumericCall(expr, IlRuntimeBesselJMethod); break;
             case TokenKind.SpecialBesselY: EmitNumericCall(expr, IlRuntimeBesselYMethod); break;
             case TokenKind.SpecialBesselI: EmitNumericCall(expr, IlRuntimeBesselIMethod); break;

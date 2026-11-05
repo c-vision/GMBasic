@@ -1823,6 +1823,17 @@ public static partial class IlRuntime
     public static double GammaIncc(double a, double x) => CommonLib.Numerics.SpecialGammaIncc(a, x);
     public static double BetaInc(double a, double b, double x) => CommonLib.Numerics.SpecialBetaInc(a, b, x);
     public static double Digamma(double x) => CommonLib.Numerics.SpecialDigamma(x);
+    public static double Zeta(double s) => CommonLib.Numerics.SpecialZeta(s);
+    public static double ZetaHurwitz(double s, double a) => CommonLib.Numerics.SpecialZetaHurwitz(s, a);
+    public static double Polygamma(double n, double x) => CommonLib.Numerics.SpecialPolygamma(n, x);
+    public static double Hypergeom2F1(double a, double b, double c, double x) => CommonLib.Numerics.SpecialHypergeom2F1(a, b, c, x);
+    public static double Hypergeom1F1(double a, double b, double x) => CommonLib.Numerics.SpecialHypergeom1F1(a, b, x);
+    public static double LambertW(double x) => CommonLib.Numerics.SpecialLambertW(x);
+    public static double MittagLeffler(double alpha, double beta, double x) => CommonLib.Numerics.SpecialMittagLeffler(alpha, beta, x);
+    public static double StruveH(double v, double x) => CommonLib.Numerics.SpecialStruveH(v, x);
+    public static double KelvinBer(double x) => CommonLib.Numerics.SpecialKelvinBer(x);
+    public static double KelvinBei(double x) => CommonLib.Numerics.SpecialKelvinBei(x);
+    public static double ParabolicCylinder(double a, double x) => CommonLib.Numerics.SpecialParabolicCylinder(a, x);
     public static double BesselJ(double v, double x) => CommonLib.Numerics.SpecialBesselJ(v, x);
     public static double BesselY(double v, double x) => CommonLib.Numerics.SpecialBesselY(v, x);
     public static double BesselI(double v, double x) => CommonLib.Numerics.SpecialBesselI(v, x);

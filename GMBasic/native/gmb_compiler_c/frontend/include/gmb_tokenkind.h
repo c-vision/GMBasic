@@ -2751,9 +2751,20 @@ typedef enum gmb_tokenkind {
     GMB_TOK_StatsNcFIsf,
     GMB_TOK_StatsNcTPpf,
     GMB_TOK_StatsNcTIsf,
+    GMB_TOK_SpecialZeta,
+    GMB_TOK_SpecialZetaHurwitz,
+    GMB_TOK_SpecialPolygamma,
+    GMB_TOK_SpecialHypergeom2F1,
+    GMB_TOK_SpecialHypergeom1F1,
+    GMB_TOK_SpecialLambertW,
+    GMB_TOK_SpecialMittagLeffler,
+    GMB_TOK_SpecialStruveH,
+    GMB_TOK_SpecialKelvinBer,
+    GMB_TOK_SpecialKelvinBei,
+    GMB_TOK_SpecialParabolicCylinder,
 } gmb_tokenkind_t;
 
-#define GMB_TOK_COUNT 2728
+#define GMB_TOK_COUNT 2739
 
 /* 2026-09-09 (direttiva 2026-09-08): gmb_tokenkind_name()/gmb_tokenkind_from_name() e la
  * tabella gmb_token_names[] sono state RIMOSSE — dispatch solo per TokenKind; la risoluzione

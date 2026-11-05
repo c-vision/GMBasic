@@ -2036,6 +2036,7 @@ public enum TokenKind
     StatsNcBetaPdf, StatsNcBetaCdf, StatsNcBetaSf, StatsNcGammaPdf, StatsNcGammaCdf, StatsNcGammaSf,
     StatsNcChi2Ppf, StatsNcChi2Isf, StatsNcBetaPpf, StatsNcBetaIsf, StatsNcGammaPpf, StatsNcGammaIsf, StatsNcFPpf, StatsNcFIsf, StatsNcTPpf, StatsNcTIsf,
     StatsNcFPdf, StatsNcFCdf, StatsNcFSf, StatsNcTPdf, StatsNcTCdf, StatsNcTSf, StatsZTPoissonPmf, StatsZTPoissonCdf,
+    SpecialZeta, SpecialZetaHurwitz, SpecialPolygamma, SpecialHypergeom2F1, SpecialHypergeom1F1, SpecialLambertW, SpecialMittagLeffler, SpecialStruveH, SpecialKelvinBer, SpecialKelvinBei, SpecialParabolicCylinder,
     StatsChi2Contingency, StatsMannWhitney, StatsWilcoxon,
     StatsGammaPdf, StatsGammaCdf, StatsGammaPpf, StatsGammaIsf,
     StatsSkewTest, StatsKurtosisTest, StatsJarqueBera,
