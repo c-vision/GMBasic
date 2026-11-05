@@ -978,6 +978,8 @@ static const gmb_ns_lookup_row_t gmb_ns_lookup[] = {
     { "MULTIVARIATE", "RMTPRINCIPALANGLE", GMB_TOK_RmtPrincipalAngle },
     { "MULTIVARIATE", "RMTSPECTRALNORM", GMB_TOK_RmtSpectralNorm },
     { "MULTIVARIATE", "RMTTIGHTNESS", GMB_TOK_RmtTightness },
+    { "MULTIVARIATE", "SVMFIT", GMB_TOK_MvSvmFit },
+    { "MULTIVARIATE", "SVMPREDICT", GMB_TOK_MvSvmPredict },
     { "MUTEX", "TRYLOCK", GMB_TOK_MutexTryLock },
     { "NET", "CONN", GMB_TOK_Conn },
     { "NET", "GETHOSTIP", GMB_TOK_GetHostIp },

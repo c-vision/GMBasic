@@ -1847,6 +1847,7 @@ public sealed partial class Parser
             HmmResultType => "HMMRESULT",
             JohansenResultType => "JOHANSENRESULT",
             GpResultType => "GPRESULT",
+            SvmResultType => "SVMRESULT",
             LuDecompositionType => "LUDECOMPOSITION",
             QrDecompositionType => "QRDECOMPOSITION",
             SvdDecompositionType => "SVDDECOMPOSITION",

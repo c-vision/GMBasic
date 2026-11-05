@@ -931,6 +931,8 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "MULTIVARIATE.RMTPRINCIPALANGLE");
         r.Register(Backend.PCodeVM, "MULTIVARIATE.RMTTIGHTNESS");
         r.Register(Backend.PCodeVM, "MULTIVARIATE.GPRREGRESS");
+        r.Register(Backend.PCodeVM, "MULTIVARIATE.SVMFIT");
+        r.Register(Backend.PCodeVM, "MULTIVARIATE.SVMPREDICT");
         r.Register(Backend.PCodeVM, "SPATIAL.PDIST");
         r.Register(Backend.PCodeVM, "STATS.PearsonR");
         r.Register(Backend.PCodeVM, "STATS.KendallTau");

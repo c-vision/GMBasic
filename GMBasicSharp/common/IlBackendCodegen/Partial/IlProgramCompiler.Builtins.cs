@@ -670,6 +670,8 @@ public sealed partial class IlProgramCompiler
             case TokenKind.RmtPrincipalAngle: EmitAnalysisTwoArrayCall(expr, nameof(IlRuntime.RmtPrincipalAngle)); break;
             case TokenKind.RmtTightness: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.RmtTightness)), 2); break;
             case TokenKind.MvGpr: EmitThreeArrayTwoDoubleCall(expr, nameof(IlRuntime.GpRegress)); break;
+            case TokenKind.MvSvmFit: EmitSvmFitCall(expr, nameof(IlRuntime.SvmFit)); break;
+            case TokenKind.MvSvmPredict: EmitTwoArrayLongLongCall(expr, nameof(IlRuntime.SvmPredict)); break;
             case TokenKind.Autocorrelation: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.Autocorrelation)); break;
             case TokenKind.Deseasonalize: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.Deseasonalize)); break;
             case TokenKind.Decompose: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.Decompose)); break;

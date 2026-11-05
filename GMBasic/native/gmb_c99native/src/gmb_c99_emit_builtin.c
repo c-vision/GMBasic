@@ -5931,6 +5931,35 @@ static int mv_copula3(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
     sb_put(&c->out, "), (double)("); emit_expr(c, a[2]); sb_put(&c->out, "))");
     return 1;
 }
+static int mv_svm_fit(ctx_t* c, gmb_expr_t** a, int n) {
+    var_t *X, *y;
+    if (n < 5 || !a[0] || a[0]->kind != GMB_EXPR_VAR || !a[0]->var) return 0;
+    X = lookup_var(c, a[0]->var);
+    if (!X || !X->is_array || !mv_arr(c, a[1], &y)) return 0;
+    int dcols = -1;
+    sb_put(&c->out, "gmb_mv_svm_fit_dict((const double*)"); emit_var_ref(c, X);
+    sb_put(&c->out, ", (const double*)"); emit_var_ref(c, y);
+    sb_put(&c->out, ", (int)("); emit_arr_len_of(c, y);
+    if (X->jagged) {
+        sb_put(&c->out, "), (int)("); emit_ident(c, X->name); sb_put(&c->out, "__cols)");
+    } else if (X->matrix || X->ndims >= 2) {
+        sb_put(&c->out, "), (int)("); sb_bound_var(&c->out, X, 1); sb_put(&c->out, " + 1)");
+    } else return 0;
+    (void)dcols;
+    sb_put(&c->out, ", (int)("); emit_expr(c, a[2]);
+    sb_put(&c->out, "), (double)("); emit_expr(c, a[3]);
+    sb_put(&c->out, "), (int)("); emit_expr(c, a[4]); sb_put(&c->out, "))");
+    return 1;
+}
+static int mv_svm_predict(ctx_t* c, gmb_expr_t** a, int n) {
+    var_t *W, *x;
+    if (n < 4 || !mv_arr(c, a[0], &W) || !mv_arr(c, a[1], &x)) return 0;
+    sb_put(&c->out, "(double)gmb_mv_svm_predict((const double*)"); emit_var_ref(c, W);
+    sb_put(&c->out, ", (const double*)"); emit_var_ref(c, x);
+    sb_put(&c->out, ", (int)("); emit_expr(c, a[2]);
+    sb_put(&c->out, "), (int)("); emit_expr(c, a[3]); sb_put(&c->out, "))");
+    return 1;
+}
 static int mv_gp(ctx_t* c, gmb_expr_t** a, int n) {
     var_t *x, *y, *xs;
     if (n < 5 || !mv_arr(c, a[0], &x) || !mv_arr(c, a[1], &y) || !mv_arr(c, a[2], &xs)) return 0;
@@ -5993,6 +6022,8 @@ int emit_bf_mv(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, g
     if (tk == GMB_TOK_RmtPrincipalAngle) return mv_principal_angle(c, args, nargs);
     if (tk == GMB_TOK_RmtTightness) return mv_two_scalar(c, args, nargs, "gmb_mv_rmt_tightness");
     if (tk == GMB_TOK_MvGpr) return mv_gp(c, args, nargs);
+    if (tk == GMB_TOK_MvSvmFit) return mv_svm_fit(c, args, nargs);
+    if (tk == GMB_TOK_MvSvmPredict) return mv_svm_predict(c, args, nargs);
     return 0;
 }
 int emit_bf_ts(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {

@@ -4913,6 +4913,14 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         {
                 return Basic.IlBackend.IlRuntime.TsGarch11(ToDoubleArr(ArgOr(args, 0)));
         },
+        [BuiltInFunction.MULTIVARIATE_SVMFIT] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.SvmFit(ToJaggedArr(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1)), (long)SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3, 1.0)), (long)SafeDouble(ArgOr(args, 4, 100.0)));
+        },
+        [BuiltInFunction.MULTIVARIATE_SVMPREDICT] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.SvmPredict(ToDoubleArr(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1)), (long)SafeDouble(ArgOr(args, 2)), (long)SafeDouble(ArgOr(args, 3)));
+        },
         [BuiltInFunction.MULTIVARIATE_MVGPR] = (task, args) =>
         {
                 return Basic.IlBackend.IlRuntime.GpRegress(ToDoubleArr(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1)), ToDoubleArr(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4)));
