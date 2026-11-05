@@ -90,8 +90,6 @@ public static class IlCoroutineEmitter
             var isGlobalSym = program is null
                 ? (Func<int, bool>?)null
                 : sym => { var s = program.Symbols.GetSymbol(sym); return s.Flags.HasFlag(SymbolFlags.IsGlobal) || s.Flags.HasFlag(SymbolFlags.IsStaticStorage); };
-            if (Environment.GetEnvironmentVariable("GMB_DEBUG_V2") == "1")
-                System.Console.Error.WriteLine($"[EmitV2Steppers] {def.OriginalName.Lexeme}: subset={IsV2Subset(def, mayPark, nameToId, program is null ? null : sym => program.Symbols.GetSymbol(sym).DataType, isGlobalSym)} closure={closureClassOf.ContainsKey(def.SymbolId)}");
             if (!IsV2Subset(def, mayPark, nameToId, program is null ? null : sym => program.Symbols.GetSymbol(sym).DataType, isGlobalSym)) continue;
             try
             {
@@ -256,10 +254,7 @@ public static class IlCoroutineEmitter
     public static bool StatementIsV2(Stmt s, ImmutableHashSet<int> mayPark, Dictionary<string, int>? nameToId = null,
         Func<int, Basic.DataType?>? symbolType = null)
     {
-        var result = StatementIsV2Core(s, mayPark, nameToId, symbolType);
-        if (!result && Environment.GetEnvironmentVariable("GMB_DEBUG_V2") == "1")
-            System.Console.Error.WriteLine($"[SUBSET] '{s.GetType().Name}' non v2 ({s})");
-        return result;
+        return StatementIsV2Core(s, mayPark, nameToId, symbolType);
     }
 
     private static bool StatementIsV2Core(Stmt s, ImmutableHashSet<int> mayPark, Dictionary<string, int>? nameToId = null,

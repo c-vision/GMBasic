@@ -392,8 +392,6 @@ public static class IlGpmRuntime
     {
         value = null;
         if (ch == null) return true;
-        if (Environment.GetEnvironmentVariable("GMB_DEBUG_V2") == "1")
-            System.Console.Error.WriteLine($"[RECV] task {task.Id} ch={(ch == null ? "null" : ch.GetHashCode().ToString())} closed={(ch?.IsClosed)} reentry={frame.Await is IlChannelReceiveAwait}");
         if (frame.Await is IlChannelReceiveAwait op)
         {
             // re-entry (wake): consuma se completata; wake prematuro → resta parcheggiato.
@@ -458,8 +456,6 @@ public static class IlGpmRuntime
     public static bool SendStep(PCodeTask task, IlActivationFrame frame, ChannelInfo? ch, object? value)
     {
         if (ch == null) return true;
-        if (Environment.GetEnvironmentVariable("GMB_DEBUG_V2") == "1")
-            System.Console.Error.WriteLine($"[SEND] task {task.Id} ch={(ch.GetHashCode())} val={value} reentry={frame.Await is IlChannelSendAwait}");
         if (frame.Await is IlChannelSendAwait op)
         {
             if (op.TryConsume(out _, out var err))
@@ -754,25 +750,14 @@ public static class IlGpmRuntime
     public static OnceStepResult OnceStep(PCodeTask task, IlActivationFrame frame, PCodeOnce? once)
     {
         if (frame.Await is IlOnceAwait) frame.Await = null; // re-entry dopo il wake
-        if (once == null)
-        {
-            if (Environment.GetEnvironmentVariable("GMB_DEBUG_V2") == "1")
-                System.Console.Error.WriteLine($"[ONCE] OnceStep: once == null");
-            return OnceStepResult.Skip;
-        }
+        if (once == null) return OnceStepResult.Skip;
         switch (once.TryBegin(task))
         {
             case PCodeOnce.OnceBeginResult.Started:
-                if (Environment.GetEnvironmentVariable("GMB_DEBUG_V2") == "1")
-                    System.Console.Error.WriteLine($"[ONCE] OnceStep: Started");
                 return OnceStepResult.Run;
             case PCodeOnce.OnceBeginResult.Done:
-                if (Environment.GetEnvironmentVariable("GMB_DEBUG_V2") == "1")
-                    System.Console.Error.WriteLine($"[ONCE] OnceStep: Done");
                 return OnceStepResult.Skip;
             default:
-                if (Environment.GetEnvironmentVariable("GMB_DEBUG_V2") == "1")
-                    System.Console.Error.WriteLine($"[ONCE] OnceStep: Parked");
                 frame.Await = new IlOnceAwait();
                 return OnceStepResult.Parked;
         }
@@ -782,8 +767,6 @@ public static class IlGpmRuntime
     /// Once completato. Parità Go once.Do(f).</summary>
     public static void RunOnceBody(PCodeOnce once, int procedureId)
     {
-        if (Environment.GetEnvironmentVariable("GMB_DEBUG_V2") == "1")
-            System.Console.Error.WriteLine($"[ONCE] RunOnceBody proc={procedureId}");
         // GetCallingAssembly qui = lo stepper (assembly del sample) — lo passa a RunFlatSub
         // (che altrimenti vedrebbe IlGpmRuntime come chiamante → proc id collision).
         RunFlatSub(procedureId, System.Reflection.Assembly.GetCallingAssembly());
