@@ -314,6 +314,9 @@ PUBLIC SUB LEASTSQUARESFIT(f AS FUNCTION(x() AS DOUBLE) AS ARRAY, x0() AS DOUBLE
     CALL OPTN_LEASTSQUARESFIT(f, x0, n, UBOUND(out) + 1, bnd, out)
 END SUB
 
+' CONTRATTO di out(): dimensione = NUMERO DI RESIDUI m restituiti dalla callback; i parametri
+' stimati si leggono in out(0..n-1). Con out() piu' corto di m il motore non converge (IL/PCode
+' lo rifiutano, C99/VM-C tolleravano): vedi mt41_leastsquaresfitb.bas.
 PUBLIC SUB LEASTSQUARESFITB(f AS FUNCTION(x() AS DOUBLE) AS ARRAY, x0() AS DOUBLE, bounds() AS DOUBLE, out() AS DOUBLE)
     CALL OPTN_LEASTSQUARESFIT(f, x0, UBOUND(x0) + 1, UBOUND(out) + 1, bounds, out)
 END SUB
