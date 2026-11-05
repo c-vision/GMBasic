@@ -20,7 +20,7 @@
 #include <unistd.h>
 #include <sys/stat.h>   /* stat/mkdir: migrazione ~/.gmb → ~/.gmbasic */
 #include <ctype.h>
-#include <dirent.h>   /* su Windows: shared/include/win32/dirent.h */
+#include <dirent.h>   /* su Windows: GMBasic/native/win32shim/include/dirent.h */
 #if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
 #elif defined(__APPLE__)

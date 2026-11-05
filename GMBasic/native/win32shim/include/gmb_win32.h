@@ -1,6 +1,6 @@
 /* gmb_win32.h — strato di compatibilità POSIX→Win32 per le nostre librerie FFI.
  *
- * Si compila con `-include gmb_win32.h` (forzato) e `-I shared/include/win32`, dove stanno gli
+ * Si compila con `-include gmb_win32.h` (forzato) e `-I GMBasic/native/win32shim/include`, dove stanno gli
  * header-stub POSIX (`netdb.h`, `sys/socket.h`, …): le `#include <…>` dei sorgenti si risolvono
  * qui, e le API vengono mappate su Winsock. Nessuna modifica ai sorgenti: la stessa base di
  * codice compila su macOS/Linux (`-include` non usato) e su Windows.
@@ -22,7 +22,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 /* dirent: i sorgenti usano `DIR`/`opendir`/`readdir` (67 punti). Il nostro header-stub
- * (shared/include/win32/dirent.h) li mappa su FindFirstFile/FindNextFile. */
+ * (GMBasic/native/win32shim/include/dirent.h) li mappa su FindFirstFile/FindNextFile. */
 #include <dirent.h>
 
 #include <stdarg.h>

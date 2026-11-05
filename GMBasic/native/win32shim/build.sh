@@ -11,6 +11,8 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
 # Le nostre librerie interne vivono in `shared/libs` (condivise dai due compilatori).
 LIBS="$(cd "$ROOT/../shared" && pwd)/libs/win32"   # una sottocartella: non sporca shared/libs
+# Le shim header POSIX→Win32 stanno in `include/` QUI (shared/include è riservato agli export
+# BASIC): le usa solo la build Windows (`-I <questo>/include`), non la shim compilata sul Mac.
 mkdir -p "$LIBS"
 OUT="$LIBS/libwin32shim"
 

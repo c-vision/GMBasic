@@ -3,7 +3,7 @@
 #
 # Le 7 librerie (amqp, grpc, kafka, mqtt, nats, protobuf, media) vivono in `shared/libs/<nome>/`
 # e non hanno dipendenze esterne (solo libc/POSIX socket). Su Windows serve lo strato
-# `shared/include/win32` (POSIX→Win32), su macOS il SDK, su Linux un container con gcc.
+# `GMBasic/native/win32shim/include` (POSIX→Win32), su macOS il SDK, su Linux un container con gcc.
 # `media` usa `arm_neon.h`: si compila solo per ARM.
 #
 # USO
@@ -24,7 +24,7 @@ done
 MONO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 LIBS="$MONO/shared/libs"
 INC="$MONO/shared/include"
-WINC="$INC/win32"
+WINC="$MONO/GMBasic/native/win32shim/include"
 ZIG="${ZIG:-$HOME/ai/tools/zig-aarch64-macos-0.17.0/zig}"
 SDK="$(xcrun --sdk macosx --show-sdk-path 2>/dev/null || true)"
 

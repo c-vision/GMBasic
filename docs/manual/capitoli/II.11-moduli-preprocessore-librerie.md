@@ -64,7 +64,7 @@ simbolo a una funzione C.
 | Percorso | Contenuto |
 |---|---|
 | `shared/include/<nome>.inc` | export pubblico del modulo (`NAMESPACE`, `DECLARE`) |
-| `shared/include/gmb<nome>.h` | header C della stessa libreria |
+| `shared/libs/<nome>/include/gmb<nome>.h` | header C della stessa libreria |
 | `shared/libs/<nome>/` | progetto di una libreria **nostra** (`build.sh`, `src/`, `include/`, `samples/`) |
 | `packages/<nome>/<versione>/` | sorgenti di un **pacchetto** con dipendenze esterne |
 | `GMBasic/build/libs/<rid>/` | artefatti di build (gitignored) |
@@ -373,7 +373,7 @@ const char* s = greet("Mondo", -1);                        /* "Ciao, Mondo" */
 | Percorso | Cosa contiene |
 |---|---|
 | `shared/include/<nome>.inc` | export pubblico del modulo (`NAMESPACE`, `DECLARE`) |
-| `shared/include/gmb<nome>.h` | header C della stessa libreria |
+| `shared/libs/<nome>/include/gmb<nome>.h` | header C della stessa libreria |
 | `shared/libs/<nome>/` | sorgenti + build di una libreria **nostra** (`build.sh`, `src/`, `samples/`) |
 | `packages/<nome>/<versione>/` | sorgenti di un **pacchetto** con dipendenze esterne |
 | `GMBasic/build/libs/<rid>/` | artefatti di build (gitignored) |
