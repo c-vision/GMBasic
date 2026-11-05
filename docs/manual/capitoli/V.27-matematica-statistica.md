@@ -202,6 +202,12 @@ il problema intero. **`aviation`** modella una giornata operativa di una compagn
 `AVCREWRESCHED` (ri-assegnazione), `AVHUB` (hub location con economia `alpha`) e
 `AVTAILCONTINUITY` (rotazione degli aeromobili).
 
+Un terzo pacchetto, **`scheduling`**, copre i **grafi temporali**: dato un grafo orientato in
+cui ogni attività ha una finestra `[inizio, fine]` e serve un tempo minimo di connessione,
+`SCHEDPATHSTIMEWINDOWS` elenca i percorsi ammissibili da un'attività all'altra (turni,
+manutenzioni, sequenze di lavorazione). È l'unico caso in cui l'ammissibilità dipende dal
+tempo e non dal costo.
+
 I due mondi hanno la stessa forma mentale: una matrice dei costi, un vettore di decisioni che
 si legge da `out()`, un valore di ritorno che è l'obiettivo. Cambia il segno dei vincoli —
 `LPREVISED`/`LPDUAL`/`LPALTERNATE` lavorano su **uguaglianze** (`A x = b`) come `LPSOLVE`,
@@ -436,6 +442,7 @@ nel corpus di test e sample `.bas`/`.inc`: dove il corpus non usa il simbolo è 
 - **STATS.WILCOXON(x1, x2)** — `r = STATS.WILCOXON(x, y)` (shared/samples/Math/StatsSciPyParityP0.bas:52)
 - **STATS.ZTEST(x1, x2, x3)** — `result = STATS.ZTEST(x, 5.0, 2.0)` (shared/samples/Analysis/StatsSciPyParity.bas:32)
 <!-- END DOMAIN TABLE -->
+
 
 
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
@@ -1478,6 +1485,24 @@ r(1..nx)  = x(0..nx-1) — la soluzione del subproblema
 | mathprog (2ª fascia) | `mathprogffi/mathprog2.bas` | 8 | ✓ | ✓ | ✓ | ✓ |
 | aviation (2ª fascia) | `aviationffi/aviation2.bas` | 6 | ✓ | ✓ | ✓ | ✓ |
 
+## 9. `scheduling` — cammini con finestre temporali
+
+### `SCHEDPATHSTIMEWINDOWS` — percorsi che rispettano le finestre
+
+DECLARE FUNCTION SCHEDPATHSTIMEWINDOWS LIB "gmbscheduling" ALIAS "ofx_sched_paths_time_window" (
+    adj() AS LONG, windows() AS DOUBLE, n AS LONG, s AS LONG, t AS LONG,
+    paths() AS LONG, lens() AS LONG, maxPaths AS LONG) AS LONG
+
+| Parametro | Tipo | Significato |
+|---|---|---|
+| `adj()` | `LONG(n*n)` | Matrice di adiacenza row-major: `1` = arco `u -> v`. |
+| `windows()` | `DOUBLE(2*n+1)` | `start(0..n-1) \| end(0..n-1) \| minConnect`: finestra di ogni attività e tempo minimo di connessione (setup/pulizia) fra due attività consecutive. |
+| `n` | `LONG` | Numero di attività. |
+| `s`, `t` | `LONG` | Attività iniziale e finale. |
+| `paths()` | `LONG(maxPaths*n)` | **Uscita**: i cammini, uno per riga (`paths(k*n + j)` = j-esimo nodo del cammino k). |
+| `lens()` | `LONG(maxPaths)` | **Uscita**: numero di nodi di ciascun cammino. |
+| `maxPaths` | `LONG` | Quanti cammini restituire (i primi trovati in DFS). |
+
 ### Optimize-ORTools-Guida-Utente
 
 *Fonte: `Optimize-ORTools-Guida-Utente`*
@@ -1648,8 +1673,8 @@ IMPORT OPTIMIZE
 |---|---|
 | `CPBINARY` leggeva `allowed[]` oltre l'allocazione (lo shim convertiva `n*n` valori invece di `n*n*D*D`) | **corretto** nello shim: il vincolo binario funziona su 4 backend |
 | `DPEQUIPMENT` dichiarata `AS LONG` ma restituisce un costo `DOUBLE` (valore troncato, es. `-1342177280`) | **corretto** in `ortools.inc` (`AS DOUBLE`); controllo automatico su tutte e 106 le dichiarazioni: unica discrepanza |
-| `TSPERX` restituisce un figlio corretto ma **corrompe l'heap** (SIGBUS nella backend nativa dopo la chiamata) | **aperto**, escluso dal MiniTest: `Bugs/(open) - OR-TSPERX-Corruzione-Heap.md` |
-| `SUBSETSUM` restituisce l'esito giusto ma `take()` non ricostruisce una combinazione che somma al target | **aperto**: `Bugs/(open) - OR-SubsetSum-Ricostruzione.md` |
+| `TSPERX` corrompeva l'heap (SIGBUS nella backend nativa) | **corretto**: guardie sugli estremi in `erx_add` e sui nodi invalidi; ora è nel MiniTest (`routing2.bas`) |
+| `SUBSETSUM` restituiva l'esito giusto ma `take()` non ricostruiva la combinazione | **corretto**: ricostruzione con tabella per prefisso; il MiniTest verifica `Σ items·take = target` |
 
 ## 6. Note pratiche
 
