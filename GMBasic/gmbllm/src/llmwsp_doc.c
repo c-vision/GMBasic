@@ -345,3 +345,8 @@ char *llmwsp_doc_to_json(const llmwsp_doc *d) {
     sb_put(&b, "\n]}\n");
     return b.p;
 }
+
+void llmwsp_doc_dims(const llmwsp_doc *d, llmwsp_dims *o) {
+    o->hidden = d->H; o->heads = d->nh; o->kv_heads = d->nkv; o->head_dim = d->hd;
+    o->inter = d->I; o->vocab = d->V; o->layers = d->layers;
+}

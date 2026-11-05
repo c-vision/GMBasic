@@ -32,10 +32,16 @@ typedef struct llmwsp_leaf {
 
 typedef struct llmwsp_doc llmwsp_doc;
 
+typedef struct llmwsp_dims {
+    int64_t hidden, heads, kv_heads, head_dim, inter, vocab;
+    int     layers;
+} llmwsp_dims;
+
 /* Costruisce il documento da store + config.json (path del file). 0 = ok. */
 int  llmwsp_doc_build(const llmwsp_store *s, const char *config_json, llmwsp_doc **out, char *err, size_t errcap);
 void llmwsp_doc_free(llmwsp_doc *d);
 
+void               llmwsp_doc_dims(const llmwsp_doc *d, llmwsp_dims *out);
 size_t             llmwsp_doc_leaf_count(const llmwsp_doc *d);
 const llmwsp_leaf *llmwsp_doc_leaf(const llmwsp_doc *d, size_t i);
 const llmwsp_leaf *llmwsp_doc_find(const llmwsp_doc *d, const char *addr);

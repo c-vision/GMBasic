@@ -48,6 +48,8 @@ set(GMBLLM_CORE_SOURCES
     src/llmwsp_store.c           # WSP W1: Weight Store (safetensors slice-read, sha256, copertura) — sola lettura
     src/llmwsp_doc.c             # WSP W2: WSP Document (sezionamento completo, partizioni, copertura, indirizzi)
     src/llmwsp_mat.c             # WSP W3: Materializer (clone shard intatti, riscrive solo quelli modificati, provenance)
+    src/llmwsp_linalg.c          # WSP W4: algebra lineare (SVD Jacobi, autovalori non simmetrici, angoli principali)
+    src/llmwsp_analyze.c         # WSP W4: analizzatori senza forward (norme, circuiti OV/QK, copy score, composizione)
     ${LLMENV}/LLMJinja/llmjinja.c            # B2: rendering chat template (Apache, consumato da PUL)
     ${LLMENV}/LLMJinja/llmjinja_builtins.c   # B2: builtins Jinja
     ${LLMENV}/LLMEngine/moe/src/llmengine_moe_quant_alloc.c   # allocatore AUTO formato-per-tensore
@@ -96,7 +98,7 @@ if(GMBLLM_TESTS)
         llmcodec_bnb llmcodec_hqq llmcodec_aqlm llmcodec_vptq llmcodec_spqr llmcodec_higgs)
     set(_gmbllm_test_includes include include/quant ${LLMENV}/LLMCodec/include)
     foreach(_t test_ggml_quants test_conv_gguf_mlx test_conv_sharded test_rolemap test_recipe
-              test_expert3d test_dsv41_source test_gguf_map test_engram test_plugin test_a1_fp8 test_quantcfg test_wsp_store test_wsp_doc test_wsp_mat)
+              test_expert3d test_dsv41_source test_gguf_map test_engram test_plugin test_a1_fp8 test_quantcfg test_wsp_store test_wsp_doc test_wsp_mat test_wsp_linalg test_wsp_analyze)
         add_executable(gmbllm_${_t}_selfcheck tests/${_t}.c)
         target_link_libraries(gmbllm_${_t}_selfcheck PRIVATE gmbllm llmcodec ${_gmbllm_test_plugins})
         target_include_directories(gmbllm_${_t}_selfcheck PRIVATE ${_gmbllm_test_includes})
