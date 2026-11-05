@@ -428,6 +428,95 @@ public static partial class Numerics
 
     public static double NcChi2Sf(double df, double nc, double x) => 1.0 - NcChi2Cdf(df, nc, x);
 
+    public static double NcFPdf(double d1, double d2, double nc, double x)
+    {
+        if (d1 <= 0 || d2 <= 0 || nc < 0) return double.NaN;
+        if (x <= 0) return 0;
+        var y = d1 * x / (d1 * x + d2);
+        var dydx = d1 * d2 / ((d1 * x + d2) * (d1 * x + d2));
+        double half = nc * 0.5, w = Math.Exp(-half), sum = 0;
+        for (var j = 0; j < 400; j++)
+        {
+            sum += w * BetaPdf(d1 * 0.5 + j, d2 * 0.5, y);
+            if (j > half && w < 1e-18) break;
+            w *= half / (j + 1.0);
+        }
+        return sum * dydx;
+    }
+
+    public static double NcFCdf(double d1, double d2, double nc, double x)
+    {
+        if (d1 <= 0 || d2 <= 0 || nc < 0) return double.NaN;
+        if (x <= 0) return 0;
+        var y = d1 * x / (d1 * x + d2);
+        return NcBetaCdf(d1 * 0.5, d2 * 0.5, nc, y);
+    }
+
+    public static double NcFSf(double d1, double d2, double nc, double x) => 1.0 - NcFCdf(d1, d2, nc, x);
+
+    private static double NcTTilde(double df, double mu, double x)
+    {
+        var phi = 0.5 * SpecialErfc(mu / Math.Sqrt(2.0));
+        var half = 0.5 * mu * mu;
+        var y = (x * x) / (x * x + df);
+        var powr = Math.Exp(-half);
+        double sum = 0.0;
+        for (var j = 0; j < 400; j++)
+        {
+            var pj = powr / Math.Exp(SpecialLGamma(j + 1.0));
+            var qj = mu / (Math.Sqrt(2.0) * Math.Exp(SpecialLGamma(j + 1.5))) * powr;
+            sum += pj * SpecialBetaInc(j + 0.5, df / 2.0, y)
+                 + qj * SpecialBetaInc(j + 1.0, df / 2.0, y);
+            if (j > half && Math.Abs(pj) + Math.Abs(qj) < 1e-18) break;
+            powr *= half;
+        }
+        return phi + 0.5 * sum;
+    }
+
+    public static double NcTCdf(double df, double nc, double x)
+    {
+        if (df <= 0) return double.NaN;
+        if (nc == 0) return StudentTCdf(df, x);
+        if (x < 0) return 1.0 - NcTTilde(df, -nc, -x);
+        return NcTTilde(df, nc, x);
+    }
+
+    public static double NcTPdf(double df, double nc, double x)
+    {
+        if (df <= 0) return double.NaN;
+        if (nc == 0) return StudentTPdf(df, x);
+        if (x == 0)
+            return Math.Exp(SpecialLGamma(0.5 * (df + 1.0)) - SpecialLGamma(0.5 * df) - 0.5 * nc * nc)
+                   / Math.Sqrt(Math.PI * df);
+        return (df / x) * (NcTCdf(df + 2.0, nc, x * Math.Sqrt(1.0 + 2.0 / df)) - NcTCdf(df, nc, x));
+    }
+
+    public static double NcTSf(double df, double nc, double x) => 1.0 - NcTCdf(df, nc, x);
+
+    public static double ZTPoissonPmf(double lambda, int k)
+    {
+        if (lambda <= 0) return double.NaN;
+        if (k < 1) return 0.0;
+        var denom = lambda < 1e-6 ? lambda * (1.0 - lambda * 0.5) : 1.0 - Math.Exp(-lambda);
+        return Math.Exp(k * Math.Log(lambda) - SpecialLGamma(k + 1.0) - lambda - Math.Log(denom));
+    }
+
+    public static double ZTPoissonCdf(double lambda, int k)
+    {
+        if (lambda <= 0) return double.NaN;
+        if (k < 1) return 0.0;
+        var denom = lambda < 1e-6 ? lambda * (1.0 - lambda * 0.5) : 1.0 - Math.Exp(-lambda);
+        var p = lambda * Math.Exp(-lambda) / denom;
+        var s = p;
+        for (var j = 2; j <= k; j++)
+        {
+            p *= lambda / j;
+            s += p;
+            if (p < 1e-15 * s) break;
+        }
+        return Math.Min(1.0, s);
+    }
+
     /// <summary>
     /// Calcola la funzione di densità di probabilità (PDF) della distribuzione Beta.
     /// </summary>

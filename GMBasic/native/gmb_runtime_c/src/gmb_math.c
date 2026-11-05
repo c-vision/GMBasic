@@ -3311,3 +3311,89 @@ double gmb_dist_nc_gamma_cdf(double shape, double nc, double x)
     return sum > 1 ? 1 : sum;
 }
 double gmb_dist_nc_gamma_sf(double shape, double nc, double x) { return 1.0 - gmb_dist_nc_gamma_cdf(shape, nc, x); }
+
+/* Noncentral F (via noncentral beta). Y = d1 X/(d1 X + d2) ~ ncbeta(d1/2,d2/2,nc). */
+double gmb_dist_nc_f_pdf(double d1, double d2, double nc, double x)
+{
+    if (d1 <= 0 || d2 <= 0 || nc < 0) return NAN;
+    if (x <= 0) return 0;
+    double y = d1 * x / (d1 * x + d2);
+    double dydx = d1 * d2 / ((d1 * x + d2) * (d1 * x + d2));
+    double half = nc * 0.5, w = exp(-half), sum = 0;
+    for (int j = 0; j < 400; j++) {
+        sum += w * gmb_dist_beta_pdf(d1 * 0.5 + j, d2 * 0.5, y);
+        if (j > half && w < 1e-18) break;
+        w *= half / (j + 1.0);
+    }
+    return sum * dydx;
+}
+double gmb_dist_nc_f_cdf(double d1, double d2, double nc, double x)
+{
+    if (d1 <= 0 || d2 <= 0 || nc < 0) return NAN;
+    if (x <= 0) return 0;
+    double y = d1 * x / (d1 * x + d2);
+    return gmb_dist_nc_beta_cdf(d1 * 0.5, d2 * 0.5, nc, y);
+}
+double gmb_dist_nc_f_sf(double d1, double d2, double nc, double x) { return 1.0 - gmb_dist_nc_f_cdf(d1, d2, nc, x); }
+
+/* Noncentral t (Lenth 1989 series for F~, x >= 0). */
+static double gmb_nc_t_ftilde(double df, double mu, double x)
+{
+    double phi = 0.5 * erfc(mu / sqrt(2.0));
+    double half = 0.5 * mu * mu;
+    double y = (x * x) / (x * x + df);
+    double powr = exp(-half);
+    double sum = 0.0;
+    for (int j = 0; j < 400; j++) {
+        double pj = powr / exp(gmb_lgamma((double)j + 1.0));
+        double qj = mu / (sqrt(2.0) * exp(gmb_lgamma((double)j + 1.5))) * powr;
+        sum += pj * gmb_incbeta((double)j + 0.5, df / 2.0, y)
+             + qj * gmb_incbeta((double)j + 1.0, df / 2.0, y);
+        if ((double)j > half && fabs(pj) + fabs(qj) < 1e-18) break;
+        powr *= half;
+    }
+    return phi + 0.5 * sum;
+}
+double gmb_dist_nc_t_cdf(double df, double nc, double x)
+{
+    if (df <= 0) return NAN;
+    if (nc == 0) return gmb_dist_student_t_cdf(df, x);
+    if (x < 0) return 1.0 - gmb_nc_t_ftilde(df, -nc, -x);
+    return gmb_nc_t_ftilde(df, nc, x);
+}
+double gmb_dist_nc_t_pdf(double df, double nc, double x)
+{
+    if (df <= 0) return NAN;
+    if (nc == 0) return gmb_dist_student_t_pdf(df, x);
+    if (x == 0) return exp(gmb_lgamma(0.5 * (df + 1.0)) - gmb_lgamma(0.5 * df) - 0.5 * nc * nc)
+                    / sqrt(3.141592653589793 * df);
+    return (df / x) * (gmb_dist_nc_t_cdf(df + 2.0, nc, x * sqrt(1.0 + 2.0 / df))
+                       - gmb_dist_nc_t_cdf(df, nc, x));
+}
+double gmb_dist_nc_t_sf(double df, double nc, double x) { return 1.0 - gmb_dist_nc_t_cdf(df, nc, x); }
+
+/* Zero-truncated Poisson (ESL #166). */
+static double gmb_ztp_denom(double lambda)
+{
+    if (lambda < 1e-6) return lambda * (1.0 - lambda * 0.5);
+    return -expm1(-lambda);
+}
+double gmb_dist_ztpoisson_pmf(double lambda, int k)
+{
+    if (lambda <= 0) return NAN;
+    if (k < 1) return 0;
+    return exp((double)k * log(lambda) - lgamma((double)k + 1.0) - lambda - log(gmb_ztp_denom(lambda)));
+}
+double gmb_dist_ztpoisson_cdf(double lambda, int k)
+{
+    if (lambda <= 0) return NAN;
+    if (k < 1) return 0;
+    double denom = gmb_ztp_denom(lambda);
+    double p = lambda * exp(-lambda) / denom, s = p;
+    for (int j = 2; j <= k; j++) {
+        p *= lambda / (double)j;
+        s += p;
+        if (p < 1e-15 * s) break;
+    }
+    return s > 1 ? 1 : s;
+}

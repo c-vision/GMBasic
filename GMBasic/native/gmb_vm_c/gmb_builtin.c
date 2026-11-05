@@ -703,6 +703,29 @@ static void gmb_bf_1081(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
                       : func_code == 1082 ? gmb_dist_nc_beta_cdf(a, b, nc, args[0].num)
                       : gmb_dist_nc_beta_sf(a, b, nc, args[0].num);
 }
+static void gmb_bf_1087(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task;
+        double d1 = argc >= 2 ? args[1].num : 1, d2 = argc >= 3 ? args[2].num : 1, nc = argc >= 4 ? args[3].num : 0;
+        bout->result = func_code == 1087 ? gmb_dist_nc_f_pdf(d1, d2, nc, args[0].num)
+                      : func_code == 1088 ? gmb_dist_nc_f_cdf(d1, d2, nc, args[0].num)
+                      : gmb_dist_nc_f_sf(d1, d2, nc, args[0].num);
+}
+static void gmb_bf_1090(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task;
+        double df = argc >= 2 ? args[1].num : 1, nc = argc >= 3 ? args[2].num : 0;
+        bout->result = func_code == 1090 ? gmb_dist_nc_t_pdf(df, nc, args[0].num)
+                      : func_code == 1091 ? gmb_dist_nc_t_cdf(df, nc, args[0].num)
+                      : gmb_dist_nc_t_sf(df, nc, args[0].num);
+}
+static void gmb_bf_1093(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task;
+        double lambda = argc >= 2 ? args[1].num : 1;
+        bout->result = func_code == 1093 ? gmb_dist_ztpoisson_pmf(lambda, (int)args[0].num)
+                                        : gmb_dist_ztpoisson_cdf(lambda, (int)args[0].num);
+}
 static void gmb_bf_1084(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         (void)vm; (void)task;
@@ -17771,6 +17794,14 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 1084, gmb_bf_1084 },
     { 1085, gmb_bf_1084 },
     { 1086, gmb_bf_1084 },
+    { 1087, gmb_bf_1087 },
+    { 1088, gmb_bf_1087 },
+    { 1089, gmb_bf_1087 },
+    { 1090, gmb_bf_1090 },
+    { 1091, gmb_bf_1090 },
+    { 1092, gmb_bf_1090 },
+    { 1093, gmb_bf_1093 },
+    { 1094, gmb_bf_1093 },
     { 1015, gmb_bf_1013 },
     { 1017, gmb_bf_1017 },
     { 1018, gmb_bf_1018 },

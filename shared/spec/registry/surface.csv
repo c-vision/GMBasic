@@ -1189,9 +1189,15 @@ procedure,STATS,NcBetaSf,StatsNcBetaSf
 procedure,STATS,NcChi2Cdf,StatsNcChi2Cdf
 procedure,STATS,NcChi2Pdf,StatsNcChi2Pdf
 procedure,STATS,NcChi2Sf,StatsNcChi2Sf
+procedure,STATS,NcFCdf,StatsNcFCdf
+procedure,STATS,NcFPdf,StatsNcFPdf
+procedure,STATS,NcFSf,StatsNcFSf
 procedure,STATS,NcGammaCdf,StatsNcGammaCdf
 procedure,STATS,NcGammaPdf,StatsNcGammaPdf
 procedure,STATS,NcGammaSf,StatsNcGammaSf
+procedure,STATS,NcTCdf,StatsNcTCdf
+procedure,STATS,NcTPdf,StatsNcTPdf
+procedure,STATS,NcTSf,StatsNcTSf
 procedure,STATS,NegativeBinomialPmf,NegativeBinomialPmf
 procedure,STATS,NormalCdf,NormalCdf
 procedure,STATS,NormalIsf,NormalIsf
@@ -1239,6 +1245,8 @@ procedure,STATS,WeibullPdf,WeibullPdf
 procedure,STATS,WeibullPpf,WeibullPpf
 procedure,STATS,WeibullSf,StatsWeibullSf
 procedure,STATS,Wilcoxon,StatsWilcoxon
+procedure,STATS,ZTPoissonCdf,StatsZTPoissonCdf
+procedure,STATS,ZTPoissonPmf,StatsZTPoissonPmf
 procedure,STATS,ZTest,ZTest
 procedure,STRINGS,Asc,Asc
 procedure,STRINGS,Camel,Camel

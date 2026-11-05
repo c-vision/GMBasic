@@ -5475,6 +5475,14 @@ static int ds_ncbetasf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh4(c, a, n,
 static int ds_ncgammapdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_nc_gamma_pdf"); }
 static int ds_ncgammacdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_nc_gamma_cdf"); }
 static int ds_ncgammasf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_nc_gamma_sf"); }
+static int ds_ncfpdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh4(c, a, n, "gmb_dist_nc_f_pdf"); }
+static int ds_ncfcdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh4(c, a, n, "gmb_dist_nc_f_cdf"); }
+static int ds_ncfsf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh4(c, a, n, "gmb_dist_nc_f_sf"); }
+static int ds_nctpdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_nc_t_pdf"); }
+static int ds_nctcdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_nc_t_cdf"); }
+static int ds_nctsf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_nc_t_sf"); }
+static int ds_ztpoissonpmf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2i(c, a, n, "gmb_dist_ztpoisson_pmf"); }
+static int ds_ztpoissoncdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2i(c, a, n, "gmb_dist_ztpoisson_cdf"); }
 static int ds_chisq_isf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2(c, a, n, "gmb_dist_chi2_isf"); }
 static int ds_chisq_pdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2(c, a, n, "gmb_dist_chi2_pdf"); }
 static int ds_chisq_ppf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2(c, a, n, "gmb_dist_chi2_ppf"); }
@@ -5534,6 +5542,14 @@ static const ds_row DS_TBL[] = {
     { GMB_TOK_StatsNcGammaPdf, ds_ncgammapdf },
     { GMB_TOK_StatsNcGammaCdf, ds_ncgammacdf },
     { GMB_TOK_StatsNcGammaSf, ds_ncgammasf },
+    { GMB_TOK_StatsNcFPdf, ds_ncfpdf },
+    { GMB_TOK_StatsNcFCdf, ds_ncfcdf },
+    { GMB_TOK_StatsNcFSf, ds_ncfsf },
+    { GMB_TOK_StatsNcTPdf, ds_nctpdf },
+    { GMB_TOK_StatsNcTCdf, ds_nctcdf },
+    { GMB_TOK_StatsNcTSf, ds_nctsf },
+    { GMB_TOK_StatsZTPoissonPmf, ds_ztpoissonpmf },
+    { GMB_TOK_StatsZTPoissonCdf, ds_ztpoissoncdf },
     { GMB_TOK_StatsChiSquaredSf, ds_chisq_sf }, 
     { GMB_TOK_ChiSquaredIsf, ds_chisq_isf },
     { GMB_TOK_ChiSquaredPdf, ds_chisq_pdf },

@@ -58,6 +58,14 @@ public static class MathFunctions
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double NcGammaPdf(double shape, double nc, double x) => CommonLib.Numerics.NcGammaPdf(shape, nc, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double NcGammaCdf(double shape, double nc, double x) => CommonLib.Numerics.NcGammaCdf(shape, nc, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double NcGammaSf(double shape, double nc, double x) => CommonLib.Numerics.NcGammaSf(shape, nc, x);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double NcFPdf(double d1, double d2, double nc, double x) => CommonLib.Numerics.NcFPdf(d1, d2, nc, x);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double NcFCdf(double d1, double d2, double nc, double x) => CommonLib.Numerics.NcFCdf(d1, d2, nc, x);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double NcFSf(double d1, double d2, double nc, double x) => CommonLib.Numerics.NcFSf(d1, d2, nc, x);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double NcTPdf(double df, double nc, double x) => CommonLib.Numerics.NcTPdf(df, nc, x);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double NcTCdf(double df, double nc, double x) => CommonLib.Numerics.NcTCdf(df, nc, x);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double NcTSf(double df, double nc, double x) => CommonLib.Numerics.NcTSf(df, nc, x);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ZTPoissonPmf(double lambda, int k) => CommonLib.Numerics.ZTPoissonPmf(lambda, k);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ZTPoissonCdf(double lambda, int k) => CommonLib.Numerics.ZTPoissonCdf(lambda, k);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ChiSquaredSf(double freedom, double x) => 1.0 - CommonLib.Numerics.ChiSquaredCdf(freedom, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double BetaPdf(double a, double b, double x) => CommonLib.Numerics.BetaPdf(a, b, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double BetaCdf(double a, double b, double x) => CommonLib.Numerics.BetaCdf(a, b, x);
