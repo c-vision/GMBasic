@@ -420,6 +420,14 @@ gmb_string_t gmb_val_to_string(gmb_val_t v) {
     }
 }
 
+/* Stringa di un gmb_val_t per ASSEGNAZIONE a un campo/variabile STRING: NIL → "".
+ * gmb_val_to_string(NIL) rende "<nil>" (giusto in stampa, sbagliato in un campo:
+ * un JSON null assegnato a STRING deve dare stringa vuota, come nelle gambe managed). */
+gmb_string_t gmb_val_to_string_or_empty(gmb_val_t v) {
+    if (v.kind == GMB_TYPE_NIL) return gmb_string_alloc("");
+    return gmb_val_to_string(v);
+}
+
 /* CSTR/CONVERSIONS.CSTR di un gmb_val_t (campo JSON/ANY dinamico): replica
  * CommonLib.ConversionUtils.CStr — numerico → gmb_str_basic (spazio iniziale se >= 0,
  * per gestire il segno), booleano → "True"/"False", altro (stringa/oggetto) →
