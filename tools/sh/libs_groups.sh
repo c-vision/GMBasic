@@ -58,7 +58,7 @@ libs_group_pick() {
         # gruppi separati NESSUN bundle era autoconsistente (gate libs_bundle_selfcheck).
         # `llmmotor` resta fuori (motori AI, 63 MB, solo per inferenza locale) come `dev`.
         case "$f" in
-          libgmb_boot.*|libgmb_ai_llm.*|libgmb_ai_modelio.*|libgmb_tray.*|libgmb_pkg.*|libgmb_gfx.*|libgmb_screen.*|libgmb_compress.*|libgmb_grep.*|libgmb_clm.*|gmb_sql_*|libllmcodec_*|libllmtoken.*|libllmengine_moe_stream.*|libgmb_codec_*) echo "$f";;
+          libgmb_boot.*|libgmb_ai_llm.*|libgmb_ai_modelio.*|libgmb_tray.*|libgmb_pkg.*|libgmb_gfx.*|libgmb_screen.*|libgmb_compress.*|libgmb_grep.*|libgmbclm.*|gmb_sql_*|libllmcodec_*|libllmtoken.*|libllmengine_moe_stream.*|libgmb_codec_*) echo "$f";;
           libgmb_torch*) ;;                          # wrapper torch: vive col componente `torch` (libtorch è external)
           libgmb_*|gmb_sql_*) ;;                     # nostro ma non in runtime
           libgmbamqp.*|libgmbgrpc.*|libgmbkafka.*|libgmbmqtt.*|libgmbnats.*|libgmbprotobuf.*|libgmbmedia.*) ;;  # gruppo `ffi`
@@ -71,7 +71,7 @@ libs_group_pick() {
         # → tenerli separati rendeva i bundle NON autoconsistenti (gate libs_bundle_selfcheck).
         # `boot` sta qui perché è la prima lib che serve (il C# la carica per risolvere le altre).
         case "$f" in
-          libgmb_boot.*|libgmb_ai_llm.*|libgmb_ai_modelio.*|libgmb_torch*|libgmb_tray.*|libgmb_pkg.*|libgmb_gfx.*|libgmb_screen.*|libgmb_compress.*|libgmb_grep.*|libgmb_clm.*|gmb_sql_*|libllmcodec_*|libllmtoken.*|libllmengine_moe_stream.*|libgmb_codec_*) echo "$f";;
+          libgmb_boot.*|libgmb_ai_llm.*|libgmb_ai_modelio.*|libgmb_torch*|libgmb_tray.*|libgmb_pkg.*|libgmb_gfx.*|libgmb_screen.*|libgmb_compress.*|libgmb_grep.*|libgmbclm.*|gmb_sql_*|libllmcodec_*|libllmtoken.*|libllmengine_moe_stream.*|libgmb_codec_*) echo "$f";;
         esac;;
       ffi)
         # Shim FFI delle nostre lib (gmbsuite): caricate a runtime con `DECLARE … LIB "<nome>"`
@@ -95,7 +95,7 @@ libs_group_pick() {
           libgmb_boot.*) echo "$f";;
         esac;;
       core) case "$f" in
-          libgmb_ai_llm.*|libgmb_ai_modelio.*|libgmb_torch*|libgmb_tray.*|libgmb_pkg.*|libgmb_gfx.*|libgmb_screen.*|libgmb_compress.*|libgmb_grep.*|libgmb_clm.*|gmb_sql_*) echo "$f";;
+          libgmb_ai_llm.*|libgmb_ai_modelio.*|libgmb_torch*|libgmb_tray.*|libgmb_pkg.*|libgmb_gfx.*|libgmb_screen.*|libgmb_compress.*|libgmb_grep.*|libgmbclm.*|gmb_sql_*) echo "$f";;
         esac;;
       support) case "$f" in
           libgmb_*|gmb_sql_*|libllm*|libllama*|libggml*|libmtmd*|mlx.metallib|libtorch*|libc10*|libomp*) ;;

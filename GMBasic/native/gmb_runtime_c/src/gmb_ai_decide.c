@@ -1417,7 +1417,7 @@ char* gmb_ai_decide_verify_json(const char* state, const char* kind, const char*
     return out;
 }
 
-/* Entry per P/Invoke (IL/PCode → libgmb_clm): esegue `AI DECIDE` col provider `clm` con la config
+/* Entry per P/Invoke (IL/PCode → libgmbclm): esegue `AI DECIDE` col provider `clm` con la config
  * passata ESPLICITAMENTE (JSON: baseUrl/apiKey/timeoutMs/instructions oppure head/encoder).
  * Ritorna lo stesso JSON del runtime C (`{"kind":…}` oppure `{"error":"…"}`), in heap (free con
  * gmb_ai_decide_free_json). NULL solo su memoria esaurita. */

@@ -187,7 +187,7 @@ AI DECIDE "{""ticket"":""Login fallito dopo il reset""}", "CHOICE:auth|billing",
 
   Produce `clm_head.safetensors` e il file gemello `clm_head.json` (attivazione, residual, dimensioni).
 - **Dalle altre gambe**: l'implementazione è una sola, nel runtime C (VM/C e C99Native la usano
-  direttamente; IL e PCode la chiamano via P/Invoke dalla libreria condivisa `libgmb_clm`). Le quattro
+  direttamente; IL e PCode la chiamano via P/Invoke dalla libreria condivisa `libgmbclm`). Le quattro
   gambe danno lo stesso risultato.
 - **`RANK`: scegliere fra candidati liberi.** È un *tipo* di `AI DECIDE`, non una sintassi nuova:
   `"RANK:cand1|cand2|…"` (almeno due candidati, senza il limite di 16 opzioni di `CHOICE`) e restituisce i

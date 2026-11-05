@@ -464,6 +464,7 @@ libgmb_pkg.dylib	bc9a2fdaf498b2c8a1128aa30c4fe608c635f6483475827dbcb32ac9d7a121a
 libgmb_screen.dylib	319a02269223a313c4d3a0f2fb20f024a05afce1f5e6b35819145960e557e9c5	34864	https://github.com/c-vision/GMBasicModules/releases/download/runtime-v2/libgmb_screen-osx-arm64.dylib
 libgmb_tray.dylib	8074a99fc19749bca010548d85e9b00bf8d8bc103c520d8638bd6a246d8d32a4	54816	https://github.com/c-vision/GMBasicModules/releases/download/runtime-v2/libgmb_tray-osx-arm64.dylib
 libgmbamqp.dylib	5462e979142b873815e2eac32cd001fbcb835df7d86aabdb8e76f651d6a5aec9	34912	https://github.com/c-vision/GMBasicModules/releases/download/ffi-v2/libgmbamqp-osx-arm64.dylib
+libgmbclm.dylib	e0c0e5b1dd561de4d48e7c51dea2498db03bd82e5e289aabc5b1fb336657471f	1892128	https://github.com/c-vision/GMBasicModules/releases/download/runtime-v2/libgmbclm-osx-arm64.dylib
 libgmbgrpc.dylib	ac7f9f8913a96a0fa4e14442df926d66f80e0351e112bbcca165c27dfdad7bb2	50880	https://github.com/c-vision/GMBasicModules/releases/download/ffi-v2/libgmbgrpc-osx-arm64.dylib
 libgmbkafka.dylib	03161d775eaa27194fa1d3fd34e65b80fdf1ddfc19d9e3db4ac3a8d81a341a46	34848	https://github.com/c-vision/GMBasicModules/releases/download/ffi-v2/libgmbkafka-osx-arm64.dylib
 libgmbmedia.dylib	0e0c8d1d33ca07663e1944fb4e24741f70ac0fa6e6a6cceae581e0872848a2cf	143104	https://github.com/c-vision/GMBasicModules/releases/download/ffi-v2/libgmbmedia-osx-arm64.dylib
