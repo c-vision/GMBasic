@@ -879,4 +879,53 @@ public static partial class Numerics
         }
         return result;
     }
+
+    /// <summary>Hurst exponent via DFA (gmbstats gs_hurst_dfa).</summary>
+    public static double HurstDfa(double[] x, int minBox = 4)
+    {
+        var n = x.Length;
+        if (n < 20 || minBox < 2) return double.NaN;
+        var y = new double[n];
+        var mean = x.Average();
+        y[0] = x[0] - mean;
+        for (var i = 1; i < n; i++) y[i] = y[i - 1] + (x[i] - mean);
+        var ls = new List<double>();
+        var lx = new List<double>();
+        for (var t = minBox; t <= n / 2; t *= 2)
+        {
+            var nboxes = n / t;
+            double f = 0;
+            for (var j = 0; j < nboxes; j++)
+            {
+                double mx = 0, my = 0, sxy = 0, sxx = 0;
+                for (var k = 0; k < t; k++) { mx += k; my += y[j * t + k]; }
+                mx /= t; my /= t;
+                for (var k = 0; k < t; k++)
+                {
+                    var dx = k - mx;
+                    var dy = y[j * t + k] - my;
+                    sxy += dx * dy; sxx += dx * dx;
+                }
+                var slope = sxx > 0 ? sxy / sxx : 0;
+                var inter = my - slope * mx;
+                for (var k = 0; k < t; k++)
+                {
+                    var r = y[j * t + k] - (slope * k + inter);
+                    f += r * r;
+                }
+            }
+            f = Math.Sqrt(f / (nboxes * t));
+            ls.Add(Math.Log(t));
+            lx.Add(Math.Log(f));
+        }
+        var m1 = ls.Average();
+        var m2 = lx.Average();
+        double cov = 0, var1 = 0;
+        for (var i = 0; i < ls.Count; i++)
+        {
+            cov += (ls[i] - m1) * (lx[i] - m2);
+            var1 += (ls[i] - m1) * (ls[i] - m1);
+        }
+        return var1 > 0 ? cov / var1 : double.NaN;
+    }
 }

@@ -581,3 +581,48 @@ gmb_double_t* gmb_ts_rolling_regression_single(gmb_double_t* data, gmb_int_t n, 
     }
     return out;
 }
+
+/* Hurst exponent via DFA (detrended fluctuation analysis), parity gmbstats gs_hurst_dfa. */
+double gmb_hurst_dfa(const double* x, int n, int min_box)
+{
+    if (!x || n < 20 || min_box < 2) return NAN;
+    double* y = (double*)malloc((size_t)n * sizeof(double));
+    double* ls = (double*)malloc(sizeof(double) * 64);
+    double* lx = (double*)malloc(sizeof(double) * 64);
+    if (!y || !ls || !lx) { free(y); free(ls); free(lx); return NAN; }
+    double mean = 0;
+    for (int i = 0; i < n; i++) mean += x[i];
+    mean /= n;
+    y[0] = x[0] - mean;
+    for (int i = 1; i < n; i++) y[i] = y[i - 1] + (x[i] - mean);
+    int nb = 0;
+    for (int t = min_box; t <= n / 2 && nb < 64; t *= 2) {
+        int nboxes = n / t;
+        double F = 0;
+        for (int j = 0; j < nboxes; j++) {
+            double mx = 0, my = 0, sxy = 0, sxx = 0;
+            for (int k = 0; k < t; k++) { mx += k; my += y[j * t + k]; }
+            mx /= t; my /= t;
+            for (int k = 0; k < t; k++) {
+                double dx = k - mx, dy = y[j * t + k] - my;
+                sxy += dx * dy; sxx += dx * dx;
+            }
+            double slope = sxx > 0 ? sxy / sxx : 0;
+            double inter = my - slope * mx;
+            for (int k = 0; k < t; k++) {
+                double r = y[j * t + k] - (slope * k + inter);
+                F += r * r;
+            }
+        }
+        F = sqrt(F / (nboxes * t));
+        ls[nb] = log((double)t); lx[nb] = log(F); nb++;
+    }
+    double m1 = 0, m2 = 0;
+    for (int i = 0; i < nb; i++) { m1 += ls[i]; m2 += lx[i]; }
+    m1 /= nb; m2 /= nb;
+    double sxy = 0, sxx = 0;
+    for (int i = 0; i < nb; i++) { sxy += (ls[i] - m1) * (lx[i] - m2); sxx += (ls[i] - m1) * (ls[i] - m1); }
+    double h = sxx > 0 ? sxy / sxx : NAN;
+    free(y); free(ls); free(lx);
+    return h;
+}

@@ -1,0 +1,8 @@
+' EXPECT: hurst= 1.710081
+SUB Main()
+  DIM x(63) AS DOUBLE
+  FOR i = 0 TO 63
+    x(i) = SIN(i * 0.2) + i * 0.01
+  NEXT i
+  PRINT "hurst="; MATH.ROUND(TIMESERIES.TSHURST(x), 6)
+END SUB

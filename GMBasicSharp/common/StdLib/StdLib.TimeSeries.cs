@@ -145,6 +145,8 @@ public sealed partial class StdLib
                 TokenKind.Returns, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Volatility, "TSVOLATILITY"), [seriesParam],
                 new DoubleType(), TokenKind.Volatility, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.TsHurst, "TSHURST"), [seriesParam],
+                new DoubleType(), TokenKind.TsHurst, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.Autocorrelation, "TSAUTOCORR"),
                 [seriesParam, lagParam],
                 new DoubleType(), TokenKind.Autocorrelation, ExecutionKind: NativeExecutionKind.Pure),

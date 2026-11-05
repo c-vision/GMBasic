@@ -913,6 +913,7 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "STATS.FTest");
         r.Register(Backend.VMC, "STATS.Kruskal");
         r.Register(Backend.VMC, "STATS.ChiIsf");
+        r.Register(Backend.VMC, "TIMESERIES.TSHURST");
         r.Register(Backend.VMC, "STATS.BetaSf");
         r.Register(Backend.VMC, "STATS.ChiSf");
         r.Register(Backend.VMC, "STATS.LogisticCdf");

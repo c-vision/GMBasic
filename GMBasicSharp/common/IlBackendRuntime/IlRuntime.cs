@@ -2144,6 +2144,7 @@ public static partial class IlRuntime
         return Basic.StdLibRuntime.TimeSeriesFunctions.Difference(data, checked((int)order));
     }
     public static double[] Returns(double[] data) => Basic.StdLibRuntime.TimeSeriesFunctions.Returns(data);
+    public static double TsHurst(double[] data) => CommonLib.Numerics.HurstDfa(data);
     public static double Volatility(double[] data) => Basic.StdLibRuntime.TimeSeriesFunctions.Volatility(data);
     public static double Autocorrelation(double[] data, long lag) => Basic.StdLibRuntime.TimeSeriesFunctions.Autocorrelation(data, checked((int)lag));
     public static double[] Deseasonalize(double[] data, long period) => Basic.StdLibRuntime.TimeSeriesFunctions.Deseasonalize(data, checked((int)period));
@@ -18526,7 +18527,7 @@ public static double TextWidth(string s)
                 && string.Equals(server.GetKind(active), "verbalizer", StringComparison.OrdinalIgnoreCase))
                 decideName = active;
         }
-        else if (p is not ("rules" or "mock" or "local" or "typesafe" or "adapter" or "llm")
+        else if (p is not ("rules" or "mock" or "local" or "typesafe" or "clm" or "adapter" or "llm")
                  && string.Equals(server.GetRole(requested), Basic.Providers.ProviderRole.Decide,
                      StringComparison.Ordinal))
         {
@@ -18611,6 +18612,28 @@ public static double TextWidth(string s)
                     && int.TryParse(timeoutText, out var timeoutMs) && timeoutMs > 0)
                     timeout = TimeSpan.FromMilliseconds(timeoutMs);
                 result = new Basic.Decision.TypesafeDecisionProvider(baseUrl ?? "", apiKey, model, timeout)
+                    .Evaluate(request)[0];
+            }
+            else if (p == "clm")
+            {
+                // Provider CLM (contratto SystemOne, wire /v1/systemone): config dal %DECIDE attivo.
+                // Senza baseUrl il percorso locale (encoder MLX + head) non è cablato → errore esplicito.
+                decideName ??= Basic.Providers.ProviderServer.Instance.GetActiveName(
+                    Basic.Providers.ProviderRole.Decide);
+                if (string.IsNullOrWhiteSpace(decideName))
+                    return "{\"error\":\"clm: nessun provider %DECIDE attivo con config (baseUrl)\"}";
+                var clmCfg = Basic.Providers.ProviderServer.Instance.GetConfigMap(decideName);
+                clmCfg.TryGetValue("baseUrl", out var clmUrl);
+                if (string.IsNullOrWhiteSpace(clmUrl))
+                    return clmCfg.ContainsKey("head")
+                        ? "{\"error\":\"clm: percorso locale non disponibile: encoder MLX last-token non collegato (usa baseUrl)\"}"
+                        : "{\"error\":\"clm: baseUrl mancante nel config del provider %DECIDE\"}";
+                clmCfg.TryGetValue("apiKey", out var clmKey);
+                clmCfg.TryGetValue("instructions", out var clmInstr);
+                var clmTimeout = TimeSpan.FromSeconds(15);
+                if (clmCfg.TryGetValue("timeoutMs", out var clmTo) && int.TryParse(clmTo, out var clmMs) && clmMs > 0)
+                    clmTimeout = TimeSpan.FromMilliseconds(clmMs);
+                result = new Basic.Decision.ClmDecisionProvider(clmUrl, clmKey, clmInstr, clmTimeout)
                     .Evaluate(request)[0];
             }
             else if (p is "adapter" or "llm")

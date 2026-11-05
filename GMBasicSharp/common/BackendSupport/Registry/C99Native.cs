@@ -913,6 +913,7 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "STATS.FTest");
         r.Register(Backend.C99Native, "STATS.Kruskal");
         r.Register(Backend.C99Native, "STATS.ChiIsf");
+        r.Register(Backend.C99Native, "TIMESERIES.TSHURST");
         r.Register(Backend.C99Native, "STATS.BetaSf");
         r.Register(Backend.C99Native, "STATS.ChiSf");
         r.Register(Backend.C99Native, "STATS.LogisticCdf");

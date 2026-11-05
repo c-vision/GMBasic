@@ -4865,6 +4865,10 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
                 // Runtime comune (IlRuntime): stessa logica — unica implementazione.
                 return Basic.IlBackend.IlRuntime.Volatility(ToDoubleArr(ArgOr(args, 0)));
         },
+        [BuiltInFunction.TS_HURST] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.TsHurst(ToDoubleArr(ArgOr(args, 0)));
+        },
         [BuiltInFunction.VOLGA] = (task, args) =>
         {
                 // Runtime comune (IlRuntime): stessa logica — unica implementazione.

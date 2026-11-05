@@ -1240,6 +1240,7 @@ static const gmb_ns_type_row_t gmb_ns_types[] = {
     { GMB_TOK_Difference, 0 },
     { GMB_TOK_Returns, 0 },
     { GMB_TOK_Volatility, 0 },
+    { GMB_TOK_TsHurst, 0 },
     { GMB_TOK_Autocorrelation, 0 },
     { GMB_TOK_Deseasonalize, 0 },
     { GMB_TOK_Decompose, 0 },
