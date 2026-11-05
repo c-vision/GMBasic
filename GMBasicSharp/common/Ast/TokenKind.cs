@@ -865,6 +865,7 @@ public enum TokenKind
     Anova,                // Analisi della varianza
     Arima,                // Modello ARIMA per serie temporali
     Regress,              // Regressione lineare/multipla
+    MvGaussPdf, MvStudentPdf, CopulaClaytonCdf, CopulaGumbelCdf, CopulaFrankCdf,
     KMeans,               // Clustering K-means
     HoltWinters,          // Predizione serie temporali con Holt-Winters
     AdfTest,              // Test di Dickey-Fuller aumentato (stazionarietà)

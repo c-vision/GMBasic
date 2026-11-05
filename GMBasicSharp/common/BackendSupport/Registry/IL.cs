@@ -918,6 +918,11 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.IL, "GRAPH.Path");
         r.Register(Backend.IL, "TRADING.METRICS.PBRatio");
         r.Register(Backend.IL, "MULTIVARIATE.Pca");
+        r.Register(Backend.IL, "MULTIVARIATE.MvGaussPdf");
+        r.Register(Backend.IL, "MULTIVARIATE.MvStudentPdf");
+        r.Register(Backend.IL, "MULTIVARIATE.CopulaClaytonCdf");
+        r.Register(Backend.IL, "MULTIVARIATE.CopulaGumbelCdf");
+        r.Register(Backend.IL, "MULTIVARIATE.CopulaFrankCdf");
         r.Register(Backend.IL, "SPATIAL.PDIST");
         r.Register(Backend.IL, "STATS.PearsonR");
         r.Register(Backend.IL, "STATS.KendallTau");

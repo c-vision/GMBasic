@@ -907,6 +907,11 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.C99Native, "GRAPH.Path");
         r.Register(Backend.C99Native, "TRADING.METRICS.PBRatio");
         r.Register(Backend.C99Native, "MULTIVARIATE.Pca");
+        r.Register(Backend.C99Native, "MULTIVARIATE.MvGaussPdf");
+        r.Register(Backend.C99Native, "MULTIVARIATE.MvStudentPdf");
+        r.Register(Backend.C99Native, "MULTIVARIATE.CopulaClaytonCdf");
+        r.Register(Backend.C99Native, "MULTIVARIATE.CopulaGumbelCdf");
+        r.Register(Backend.C99Native, "MULTIVARIATE.CopulaFrankCdf");
         r.Register(Backend.C99Native, "SPATIAL.PDIST");
         r.Register(Backend.C99Native, "STATS.PearsonR");
         r.Register(Backend.C99Native, "STATS.KendallTau");

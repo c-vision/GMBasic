@@ -17834,6 +17834,93 @@
     },
     {
       "ns": "MULTIVARIATE",
+      "name": "CopulaClaytonCdf",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "u",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "v",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "theta",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "MULTIVARIATE",
+      "name": "CopulaFrankCdf",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "u",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "v",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "theta",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "MULTIVARIATE",
+      "name": "CopulaGumbelCdf",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "u",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "v",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "theta",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "MULTIVARIATE",
       "name": "KMeans",
       "fn": true,
       "return": "KMEANSRESULT",
@@ -17848,6 +17935,71 @@
         {
           "name": "k",
           "type": "int",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "MULTIVARIATE",
+      "name": "MvGaussPdf",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "x",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "loc",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "cov",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        }
+      ]
+    },
+    {
+      "ns": "MULTIVARIATE",
+      "name": "MvStudentPdf",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "x",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "loc",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "cov",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "nu",
+          "type": "double",
           "optional": false,
           "byRef": false,
           "array": false

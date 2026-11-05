@@ -5818,6 +5818,47 @@ static const ts_row TS_TBL[] = {
     { GMB_TOK_TsBmaWeights, ts_bma_weights },
     { GMB_TOK_TsLyapunov, ts_lyapunov },
 };
+/* ── dominio: MULTIVARIATE (distribuzioni multivariate + copule) ── */
+static int mv_arr(ctx_t* c, gmb_expr_t* e, var_t** out) {
+    if (!e || e->kind != GMB_EXPR_VAR || !e->var) return 0;
+    var_t* v = lookup_var(c, e->var);
+    if (!v || !v->is_array || v->matrix || v->vclass[0] || v->jagged) return 0;
+    *out = v;
+    return 1;
+}
+static int mv_gauss_pdf(ctx_t* c, gmb_expr_t** a, int n) {
+    var_t *x, *lo, *cv;
+    if (n < 3 || !mv_arr(c, a[0], &x) || !mv_arr(c, a[1], &lo) || !mv_arr(c, a[2], &cv)) return 0;
+    sb_put(&c->out, "gmb_mv_gauss_pdf((int)("); emit_arr_len_of(c, x); sb_put(&c->out, "), (const double*)");
+    emit_var_ref(c, x); sb_put(&c->out, ", (const double*)"); emit_var_ref(c, lo);
+    sb_put(&c->out, ", (const double*)"); emit_var_ref(c, cv); sb_put(&c->out, ")");
+    return 1;
+}
+static int mv_student_pdf(ctx_t* c, gmb_expr_t** a, int n) {
+    var_t *x, *lo, *cv;
+    if (n < 4 || !mv_arr(c, a[0], &x) || !mv_arr(c, a[1], &lo) || !mv_arr(c, a[2], &cv)) return 0;
+    sb_put(&c->out, "gmb_mv_student_pdf((int)("); emit_arr_len_of(c, x); sb_put(&c->out, "), (const double*)");
+    emit_var_ref(c, x); sb_put(&c->out, ", (const double*)"); emit_var_ref(c, lo);
+    sb_put(&c->out, ", (const double*)"); emit_var_ref(c, cv); sb_put(&c->out, ", (double)(");
+    emit_expr(c, a[3]); sb_put(&c->out, "))");
+    return 1;
+}
+static int mv_copula3(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
+    if (n < 3) return 0;
+    sb_put(&c->out, fn); sb_put(&c->out, "((double)("); emit_expr(c, a[0]);
+    sb_put(&c->out, "), (double)("); emit_expr(c, a[1]);
+    sb_put(&c->out, "), (double)("); emit_expr(c, a[2]); sb_put(&c->out, "))");
+    return 1;
+}
+int emit_bf_mv(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
+    (void)name; (void)ns; (void)line;
+    if (tk == GMB_TOK_MvGaussPdf) return mv_gauss_pdf(c, args, nargs);
+    if (tk == GMB_TOK_MvStudentPdf) return mv_student_pdf(c, args, nargs);
+    if (tk == GMB_TOK_CopulaClaytonCdf) return mv_copula3(c, args, nargs, "gmb_copula_clayton_cdf");
+    if (tk == GMB_TOK_CopulaGumbelCdf) return mv_copula3(c, args, nargs, "gmb_copula_gumbel_cdf");
+    if (tk == GMB_TOK_CopulaFrankCdf) return mv_copula3(c, args, nargs, "gmb_copula_frank_cdf");
+    return 0;
+}
 int emit_bf_ts(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line) {
     (void)name; (void)ns; (void)line;
     for (size_t i = 0; i < sizeof(TS_TBL) / sizeof(TS_TBL[0]); i++)
