@@ -184,7 +184,8 @@ public sealed partial class StdLib : IParserRegistry
         CreateStatsNamespace();
         CreateNumericalNamespace();
         CreateMultivariateNamespace();
-        CreateFittingNamespace();
+        // FITTING: namespace LIBERATO — ri-esposto via FFI (shared/include/fitting.inc, libgmbstats).
+        // CreateFittingNamespace();
         CreateSimulationNamespace();
         CreateRegressionNamespace();
         RegisterAnalysisResultTypeSchemas();

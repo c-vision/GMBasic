@@ -654,12 +654,6 @@ procedure,FINANCE,SYD,Syd
 procedure,FINANCE,XIRR,Xirr
 procedure,FINANCE,XNPV,Xnpv
 procedure,FINANCE,YEARFRAC,YearFrac
-procedure,FITTING,CHEBEVAL,FittingChebEval
-procedure,FITTING,PADEEVAL,FittingPadeEval
-procedure,FITTING,POLYEVAL,FittingPolyEval
-procedure,FITTING,POLYFIT,FittingPolyFit
-procedure,FITTING,RSQUARED,FittingRSquared
-procedure,FITTING,RSQUAREDTEST,FittingRSquaredTest
 procedure,FONTS,TTGLYPHS,TtGlyphsFunc
 procedure,FONTS,TTMETRICS,TtMetricsFunc
 procedure,FONTS,TTRENDER,TtRenderFunc
