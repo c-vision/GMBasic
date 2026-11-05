@@ -142,7 +142,8 @@ public sealed partial class StdLib : IParserRegistry
         CreateMathNamespace();
         CreateMatrixNamespace();
         CreateLinalgNamespace();
-        CreateSpecialNamespace();
+        // SPECIAL: namespace LIBERATO — ri-esposto via FFI (shared/include/special.inc, libgmbmath).
+        // CreateSpecialNamespace();
         CreateSignalNamespace();
         CreateVectorNamespace();
         CreateIONamespace();
