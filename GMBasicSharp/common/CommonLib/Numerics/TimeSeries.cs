@@ -943,6 +943,31 @@ public static partial class Numerics
         return Math.Log(patterns.Count) / Math.Log(npat);
     }
 
+    public static double LzComplexity(double[] x)
+    {
+        var n = x.Length;
+        if (n < 2) return double.NaN;
+        var sorted = (double[])x.Clone();
+        Array.Sort(sorted);
+        var med = sorted[n / 2];
+        var b = new int[n];
+        for (var i = 0; i < n; i++) b[i] = x[i] >= med ? 1 : 0;
+        var c = 0;
+        var ii = 0;
+        while (ii < n)
+        {
+            var maxlen = 0;
+            for (var start = 0; start < ii; start++)
+            {
+                var m = 0;
+                while (ii + m < n && start + m < ii && b[start + m] == b[ii + m]) m++;
+                if (m > maxlen) maxlen = m;
+            }
+            c++; ii += maxlen + 1;
+        }
+        return c;
+    }
+
     public static (double Theta, double Mu, double Sigma, double Phi, double HalfLife) OuFit(double[] x, double dt)
     {
         var n = x.Length;

@@ -608,6 +608,7 @@ public sealed partial class IlProgramCompiler
             case TokenKind.TsApproxEntropy: EmitTimeSeriesArrayLongDoubleCall(expr, nameof(IlRuntime.ApproxEntropy)); break;
             case TokenKind.TsPermEntropy: EmitTimeSeriesArrayLongLongCall(expr, nameof(IlRuntime.PermEntropy)); break;
             case TokenKind.TsOuFit: EmitTimeSeriesArrayDoubleCall(expr, nameof(IlRuntime.TsOuFit)); break;
+            case TokenKind.TsLzComplexity: EmitTimeSeriesArrayOnlyCall(expr, nameof(IlRuntime.LzComplexity)); break;
             case TokenKind.Autocorrelation: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.Autocorrelation)); break;
             case TokenKind.Deseasonalize: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.Deseasonalize)); break;
             case TokenKind.Decompose: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.Decompose)); break;
