@@ -3748,3 +3748,101 @@ double gmb_special_parabolic_cylinder(double a, double x)
     double t2 = sqrt(2.0 * 3.14159265358979323846) * x / gmb_sp2_gam(-0.5 * nu) * gmb_special_hypergeom_1f1(0.5 * (1.0 - nu), 1.5, 0.5 * x * x);
     return pow(2.0, 0.5 * nu) * exp(-0.25 * x * x) * (t1 - t2);
 }
+
+/* --- Random Matrix Theory (MULTIVARIATE) --- */
+static void gmb_rmt_jacobi(int n, double* A, double* eval, double* evec)
+{
+    int i, j, k, sweep;
+    memset(evec, 0, (size_t)n * n * sizeof(double));
+    for (i = 0; i < n; i++) evec[i * n + i] = 1.0;
+    for (sweep = 0; sweep < 100; sweep++) {
+        double off = 0.0, diag = 0.0;
+        for (i = 0; i < n; i++) {
+            diag += A[i*n+i] * A[i*n+i];
+            for (j = i + 1; j < n; j++) off += A[i*n+j] * A[i*n+j];
+        }
+        if (off <= 1e-30 * (diag + 1e-300)) break;
+        for (i = 0; i < n; i++)
+            for (j = i + 1; j < n; j++) {
+                double apq = A[i*n+j];
+                if (fabs(apq) < 1e-300) continue;
+                double app = A[i*n+i], aqq = A[j*n+j];
+                double tau = (aqq - app) / (2.0 * apq);
+                double t = (tau >= 0 ? 1.0 : -1.0) / (fabs(tau) + sqrt(1.0 + tau * tau));
+                double c = 1.0 / sqrt(1.0 + t * t), sn = t * c;
+                for (k = 0; k < n; k++) {
+                    double aik = A[i*n+k], ajk = A[j*n+k];
+                    A[i*n+k] = c * aik - sn * ajk;
+                    A[j*n+k] = sn * aik + c * ajk;
+                }
+                for (k = 0; k < n; k++) {
+                    double aki = A[k*n+i], akj = A[k*n+j];
+                    A[k*n+i] = c * aki - sn * akj;
+                    A[k*n+j] = sn * aki + c * akj;
+                }
+                for (k = 0; k < n; k++) {
+                    double vik = evec[k*n+i], vjk = evec[k*n+j];
+                    evec[k*n+i] = c * vik - sn * vjk;
+                    evec[k*n+j] = sn * vik + c * vjk;
+                }
+                A[i*n+j] = 0.0; A[j*n+i] = 0.0;
+            }
+    }
+    for (i = 0; i < n; i++) eval[i] = A[i*n+i];
+}
+double gmb_mv_rmt_lambda_plus(int n, int T, double sigma2)
+{
+    if (n < 1 || T < 1 || sigma2 < 0.0) return NAN;
+    double r = sqrt((double)n / T);
+    return sigma2 * (1.0 + r) * (1.0 + r);
+}
+double gmb_mv_rmt_lambda_minus(int n, int T, double sigma2)
+{
+    if (n < 1 || T < 1 || sigma2 < 0.0) return NAN;
+    double r = sqrt((double)n / T);
+    return sigma2 * (1.0 - r) * (1.0 - r);
+}
+double gmb_mv_rmt_coherence(const double* v, int n)
+{
+    double mx = 0.0;
+    int i;
+    if (!v || n < 1) return NAN;
+    for (i = 0; i < n; i++) { double a = fabs(v[i]); if (a > mx) mx = a; }
+    return (double)n * mx * mx;
+}
+double gmb_mv_rmt_spectral_norm(const double* A, int n)
+{
+    double *W, *eval, *evec, mx = 0.0;
+    int i;
+    if (!A || n < 1) return NAN;
+    W = (double*)malloc((size_t)n * n * sizeof(double));
+    eval = (double*)malloc((size_t)n * sizeof(double));
+    evec = (double*)malloc((size_t)n * n * sizeof(double));
+    if (!W || !eval || !evec) { free(W); free(eval); free(evec); return NAN; }
+    memcpy(W, A, (size_t)n * n * sizeof(double));
+    gmb_rmt_jacobi(n, W, eval, evec);
+    for (i = 0; i < n; i++) { double a = fabs(eval[i]); if (a > mx) mx = a; }
+    free(W); free(eval); free(evec);
+    return mx;
+}
+double gmb_mv_rmt_davis_kahan(double e_norm, double gap)
+{
+    if (gap <= 0.0) return NAN;
+    return fabs(e_norm) / gap;
+}
+double gmb_mv_rmt_principal_angle(const double* u, const double* v, int n)
+{
+    double nu = 0.0, nv = 0.0, dot = 0.0, c;
+    int i;
+    if (!u || !v || n < 1) return NAN;
+    for (i = 0; i < n; i++) { nu += u[i]*u[i]; nv += v[i]*v[i]; dot += u[i]*v[i]; }
+    if (nu <= 0.0 || nv <= 0.0) return NAN;
+    c = fabs(dot) / sqrt(nu * nv);
+    if (c > 1.0) c = 1.0;
+    return acos(c);
+}
+double gmb_mv_rmt_tightness(double observed, double bound)
+{
+    if (bound <= 0.0) return 0.0;
+    return fabs(observed) / bound;
+}

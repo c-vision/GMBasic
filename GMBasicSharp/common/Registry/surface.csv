@@ -992,6 +992,13 @@ procedure,MULTIVARIATE,KMeans,KMeans
 procedure,MULTIVARIATE,MvGaussPdf,MvGaussPdf
 procedure,MULTIVARIATE,MvStudentPdf,MvStudentPdf
 procedure,MULTIVARIATE,Pca,Pca
+procedure,MULTIVARIATE,RMTCOHERENCE,RmtCoherence
+procedure,MULTIVARIATE,RMTDAVISKAHAN,RmtDavisKahan
+procedure,MULTIVARIATE,RMTLAMBDAMINUS,RmtLambdaMinus
+procedure,MULTIVARIATE,RMTLAMBDAPLUS,RmtLambdaPlus
+procedure,MULTIVARIATE,RMTPRINCIPALANGLE,RmtPrincipalAngle
+procedure,MULTIVARIATE,RMTSPECTRALNORM,RmtSpectralNorm
+procedure,MULTIVARIATE,RMTTIGHTNESS,RmtTightness
 procedure,MUTEX,TRYLOCK,MutexTryLock
 procedure,NET,CONN,Conn
 procedure,NET,GETHOSTIP,GetHostIp

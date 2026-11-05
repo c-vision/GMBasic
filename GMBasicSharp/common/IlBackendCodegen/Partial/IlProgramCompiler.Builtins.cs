@@ -662,6 +662,13 @@ public sealed partial class IlProgramCompiler
             case TokenKind.CopulaClaytonCdf: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.CopulaClaytonCdf)), 3); break;
             case TokenKind.CopulaGumbelCdf: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.CopulaGumbelCdf)), 3); break;
             case TokenKind.CopulaFrankCdf: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.CopulaFrankCdf)), 3); break;
+            case TokenKind.RmtLambdaPlus: EmitNumericCall(expr, RuntimeMethod(nameof(IlRuntime.RmtLambdaPlus))); break;
+            case TokenKind.RmtLambdaMinus: EmitNumericCall(expr, RuntimeMethod(nameof(IlRuntime.RmtLambdaMinus))); break;
+            case TokenKind.RmtCoherence: EmitTimeSeriesArrayOnlyCall(expr, nameof(IlRuntime.RmtCoherence)); break;
+            case TokenKind.RmtSpectralNorm: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.RmtSpectralNorm)); break;
+            case TokenKind.RmtDavisKahan: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.RmtDavisKahan)), 2); break;
+            case TokenKind.RmtPrincipalAngle: EmitAnalysisTwoArrayCall(expr, nameof(IlRuntime.RmtPrincipalAngle)); break;
+            case TokenKind.RmtTightness: EmitDoubleArityBuiltinCall(expr, RuntimeMethod(nameof(IlRuntime.RmtTightness)), 2); break;
             case TokenKind.Autocorrelation: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.Autocorrelation)); break;
             case TokenKind.Deseasonalize: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.Deseasonalize)); break;
             case TokenKind.Decompose: EmitTimeSeriesArrayLongCall(expr, nameof(IlRuntime.Decompose)); break;

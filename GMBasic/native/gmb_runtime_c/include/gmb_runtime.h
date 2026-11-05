@@ -1140,6 +1140,13 @@ double gmb_mv_student_pdf(int d, const double* x, const double* loc, const doubl
 double gmb_copula_clayton_cdf(double u, double v, double theta);
 double gmb_copula_gumbel_cdf(double u, double v, double theta);
 double gmb_copula_frank_cdf(double u, double v, double theta);
+double gmb_mv_rmt_lambda_plus(int n, int T, double sigma2);
+double gmb_mv_rmt_lambda_minus(int n, int T, double sigma2);
+double gmb_mv_rmt_coherence(const double* v, int n);
+double gmb_mv_rmt_spectral_norm(const double* A, int n);
+double gmb_mv_rmt_davis_kahan(double e_norm, double gap);
+double gmb_mv_rmt_principal_angle(const double* u, const double* v, int n);
+double gmb_mv_rmt_tightness(double observed, double bound);
 double gmb_special_zeta(double s);
 double gmb_special_zeta_hurwitz(double s, double a);
 double gmb_special_polygamma(double n, double x);
