@@ -1239,6 +1239,24 @@ private void EmitBrowserHumanScrollCall(BuiltinFunctionCallExpr expr)
         _il.Emit(OpCodes.Callvirt, GraphicsChartFinancialMethod);
     }
 
+    /// <summary>Chiamata runtime con N argomenti DOUBLE (firma fissa, non params).</summary>
+    private void EmitDoubleArgsCall(BuiltinFunctionCallExpr expr, MethodInfo method)
+    {
+        foreach (var a in expr.Args) EmitDoubleArgument(a);
+        _il.Emit(OpCodes.Call, method);
+    }
+
+    /// <summary>POINTINPOLYGON(x, y, pts()): n vertici = lunghezza array / 2.</summary>
+    private void EmitPointInPolygonCall(BuiltinFunctionCallExpr expr)
+    {
+        if (expr.Args.Length != 3)
+            throw new NotSupportedException("Backend IL: POINTINPOLYGON richiede (x, y, pts()).");
+        EmitDoubleArgument(expr.Args[0]);
+        EmitDoubleArgument(expr.Args[1]);
+        EmitArrayAsDoubleArray(expr.Args[2]);
+        _il.Emit(OpCodes.Call, IlRuntimePointInPolygonMethod);
+    }
+
     /// <summary>CANVAS NEW/USE/… → IlRuntime.CanvasOp (canvas offscreen, runtime C).
     /// ABI uniforme: op string + 4 double (0 se assenti) + path string ("" se assente).</summary>
     private void EmitCanvasStmt(CanvasStmt cs)

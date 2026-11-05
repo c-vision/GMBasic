@@ -2040,6 +2040,39 @@ static int gf_key_make(ctx_t* c, gmb_expr_t** a, int n) {
     sb_put(&c->out, "((double)(int)("); emit_expr(c, a[0]); sb_put(&c->out, "))");
     return 1;
 }
+/* Colore e hit-test (2026-11-05): stesse funzioni del runtime usate da IL/PCode/VM-C. */
+static int gf_num_fn(ctx_t* c, gmb_expr_t** a, int n, const char* fn, int want) {
+    if (n < want) { sb_put(&c->out, "0.0"); return 1; }
+    sb_put(&c->out, "((gmb_double_t)"); sb_put(&c->out, fn); sb_put(&c->out, "(");
+    for (int i = 0; i < want; i++) {
+        if (i) sb_put(&c->out, ", ");
+        sb_put(&c->out, "(double)("); emit_expr(c, a[i]); sb_put(&c->out, ")");
+    }
+    sb_put(&c->out, "))");
+    return 1;
+}
+static int gf_colormix(ctx_t* c, gmb_expr_t** a, int n) { return gf_num_fn(c, a, n, "gmb_gfx_colormix", 3); }
+static int gf_colorlighten(ctx_t* c, gmb_expr_t** a, int n) { return gf_num_fn(c, a, n, "gmb_gfx_colorlighten", 2); }
+static int gf_colordarken(ctx_t* c, gmb_expr_t** a, int n) { return gf_num_fn(c, a, n, "gmb_gfx_colordarken", 2); }
+static int gf_colorsaturate(ctx_t* c, gmb_expr_t** a, int n) { return gf_num_fn(c, a, n, "gmb_gfx_colorsaturate", 2); }
+static int gf_pointincircle(ctx_t* c, gmb_expr_t** a, int n) { return gf_num_fn(c, a, n, "gmb_gfx_pointincircle", 5); }
+static int gf_pointinrect(ctx_t* c, gmb_expr_t** a, int n) { return gf_num_fn(c, a, n, "gmb_gfx_pointinrect", 6); }
+static int gf_pointinpoly(ctx_t* c, gmb_expr_t** a, int n) {
+    if (n < 3) { sb_put(&c->out, "0"); return 1; }
+    var_t* av = NULL;
+    /* Array passato come `p` oppure `p()` (CALL con 0 argomenti): stesso trattamento di
+     * gfx_arr_var in gmb_c99_emit.c. */
+    if (!a[2]->var || !(a[2]->kind == GMB_EXPR_VAR || (a[2]->kind == GMB_EXPR_CALL && a[2]->nargs == 0))
+        || !(av = lookup_var(c, a[2]->var)) || !av->is_array) {
+        sb_put(&c->out, "0"); return 1;
+    }
+    sb_put(&c->out, "((gmb_double_t)gmb_gfx_pointinpolygon((double)("); emit_expr(c, a[0]);
+    sb_put(&c->out, "), (double)("); emit_expr(c, a[1]);
+    sb_put(&c->out, "), (const double*)("); emit_var_ref(c, av);
+    sb_put(&c->out, "), (int)("); emit_arr_len_of(c, av); sb_put(&c->out, "/2)))");
+    return 1;
+}
+
 static const gf_row GF_TBL[] = {
     { GMB_TOK_TextWidth, gf_textwidth }, { GMB_TOK_TextHeight, gf_textheight },
     { GMB_TOK_WindowWidth, gf_window_size }, { GMB_TOK_WindowHeight, gf_window_size },
@@ -2050,6 +2083,10 @@ static const gf_row GF_TBL[] = {
     { GMB_TOK_Point, gf_point }, { GMB_TOK_Cell, gf_cell }, { GMB_TOK_CellStr, gf_cellstr },
     { GMB_TOK_Screen, gf_screen }, { GMB_TOK_Collide, gf_collide },
     { GMB_TOK_ScreenInfo, gf_screeninfo }, { GMB_TOK_CollideBatch, gf_collidebatch },
+    { GMB_TOK_ColorMix, gf_colormix }, { GMB_TOK_ColorLighten, gf_colorlighten },
+    { GMB_TOK_ColorDarken, gf_colordarken }, { GMB_TOK_ColorSaturate, gf_colorsaturate },
+    { GMB_TOK_PointInPolygon, gf_pointinpoly }, { GMB_TOK_PointInCircle, gf_pointincircle },
+    { GMB_TOK_PointInRect, gf_pointinrect },
 };
 static int gf_rgb(ctx_t* c, gmb_expr_t** a, int n, int line) {
     if (n < 3) { c99_fail(c, line, "RGB richiede (r,g,b[,a])"); return 0; }
@@ -6324,9 +6361,13 @@ static int en_encode(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
 }
 static int en_decode(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
     if (n < 1) return 0;
+    /* FROMBASE64/BASE58/BASE32: il risultato è BINARIO. Costruire la stringa con
+     * gmb_string_alloc((char*)_dec) la tronca al primo NUL (decodifica di dati binari
+     * ⇒ stringa vuota/zeri: bug C99-FROMBASE64-Payload-Grandi). Serve la variante
+     * consapevole della lunghezza; _dec è nostro e va liberato dopo la copia. */
     sb_printf(&c->out, "({ size_t _dec_n = 0; uint8_t* _dec = %s(", fn);
     emit_str_operand(c, a[0]);
-    sb_put(&c->out, ".data, &_dec_n); gmb_string_alloc(_dec ? (char*)_dec : \"\"); })");
+    sb_put(&c->out, ".data, &_dec_n); gmb_string_t _ds = gmb_string_from_bytes(_dec ? (char*)_dec : \"\", (gmb_int_t)(_dec ? _dec_n : 0)); if (_dec) free(_dec); _ds; })");
     return 1;
 }
 static int en_base58encode(ctx_t* c, gmb_expr_t** a, int n) { return en_encode(c, a, n, "gmb_base58_encode"); }

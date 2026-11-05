@@ -5473,6 +5473,20 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         {
                 return Basic.IlBackend.IlRuntime.C2PY(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)));
         },
+        [BuiltInFunction.COLORMIX] = (task, args) =>
+            Basic.IlBackend.IlRuntime.ColorMix(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2))),
+        [BuiltInFunction.COLORLIGHTEN] = (task, args) =>
+            Basic.IlBackend.IlRuntime.ColorLighten(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1))),
+        [BuiltInFunction.COLORDARKEN] = (task, args) =>
+            Basic.IlBackend.IlRuntime.ColorDarken(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1))),
+        [BuiltInFunction.COLORSATURATE] = (task, args) =>
+            Basic.IlBackend.IlRuntime.ColorSaturate(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1))),
+        [BuiltInFunction.POINTINPOLYGON] = (task, args) =>
+            Basic.IlBackend.IlRuntime.PointInPolygon(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), ToDoubleArray(ArgOr(args, 2))),
+        [BuiltInFunction.POINTINCIRCLE] = (task, args) =>
+            Basic.IlBackend.IlRuntime.PointInCircle(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4))),
+        [BuiltInFunction.POINTINRECT] = (task, args) =>
+            Basic.IlBackend.IlRuntime.PointInRect(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4)), SafeDouble(ArgOr(args, 5))),
         [BuiltInFunction.P2CX] = (task, args) =>
         {
                 return Basic.IlBackend.IlRuntime.P2CX(SafeDouble(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)));

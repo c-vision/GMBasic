@@ -191,6 +191,8 @@ sinusoidale, PNG, rilettura e blit). MiniTest: `graphics/canvas_core.bas`.
 
 
 
+
+
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
 ## Riferimento completo: comandi, funzioni, parametri
@@ -347,6 +349,34 @@ SUB Main()
 | `SAVE` su path non scrivibile | `-1` |
 
 ### `CANVAS` è anche un controllo
+
+## 4ter. Colore e hit-test (`GRAPHICS`)
+| Funzione | Firma | Semantica |
+|---|---|---|
+| `COLORMIX` | `(c1, c2, t) AS DOUBLE` | interpolazione lineare tra due colori, `t` clampato `[0,1]` |
+| `COLORLIGHTEN` | `(c, amt) AS DOUBLE` | luminosità HSL `+= amt` (clampata) |
+| `COLORDARKEN` | `(c, amt) AS DOUBLE` | luminosità HSL `-= amt` |
+| `COLORSATURATE` | `(c, amt) AS DOUBLE` | saturazione HSL `+= amt` |
+| `POINTINPOLYGON` | `(x, y, pts()) AS LONG` | punto in un poligono (even-odd); `pts` = coppie x,y |
+| `POINTINCIRCLE` | `(x, y, cx, cy, r) AS LONG` | punto nel cerchio (bordo incluso) |
+| `POINTINRECT` | `(x, y, x1, y1, x2, y2) AS LONG` | punto nel rettangolo (vertici in qualunque ordine) |
+
+DIM c AS LONG
+CANVAS NEW 8, 1 INTO c
+FOR x = 0 TO 7
+  CANVAS SET c, x, 0, GRAPHICS.COLORMIX(1, 15, x / 7.0)
+NEXT x
+DIM col AS LONG
+CANVAS GET c, 0, 0 INTO col        ' 0x400000AA (blu scuro, palette 1)
+CANVAS FREE c
+
+DIM p(7)                            ' quadrato (0,0)-(10,10): 4 vertici
+p(0)=0 : p(1)=0 : p(2)=10 : p(3)=0
+p(4)=10 : p(5)=10 : p(6)=0 : p(7)=10
+PRINT GRAPHICS.POINTINPOLYGON(5, 5, p())     ' 1
+PRINT GRAPHICS.POINTINCIRCLE(3, 4, 0, 0, 5)  ' 1
+PRINT GRAPHICS.POINTINRECT(15, 5, 0, 0, 10, 10) ' 0
+
 
 ## 5. Viewport e finestre
 
