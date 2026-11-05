@@ -52,6 +52,7 @@ set(GMBLLM_CORE_SOURCES
     src/llmwsp_analyze.c         # WSP W4: analizzatori senza forward (norme, circuiti OV/QK, copy score, composizione)
     src/llmwsp_fixture.c         # WSP W4: fixture compilate a verità nota (copy, induction) per validare gli analizzatori
     src/llmwsp_overlay.c         # WSP W6: overlay copy-on-write, edit, journal, recipe/replay, patch sparsa
+    src/llmwsp_derive.c          # WSP W7: chirurgia di architettura (layer, gruppi kv, neuroni MLP) con config/gmbarch coerenti
     ${LLMENV}/LLMJinja/llmjinja.c            # B2: rendering chat template (Apache, consumato da PUL)
     ${LLMENV}/LLMJinja/llmjinja_builtins.c   # B2: builtins Jinja
     ${LLMENV}/LLMEngine/moe/src/llmengine_moe_quant_alloc.c   # allocatore AUTO formato-per-tensore
@@ -100,7 +101,7 @@ if(GMBLLM_TESTS)
         llmcodec_bnb llmcodec_hqq llmcodec_aqlm llmcodec_vptq llmcodec_spqr llmcodec_higgs)
     set(_gmbllm_test_includes include include/quant ${LLMENV}/LLMCodec/include)
     foreach(_t test_ggml_quants test_conv_gguf_mlx test_conv_sharded test_rolemap test_recipe
-              test_expert3d test_dsv41_source test_gguf_map test_engram test_plugin test_a1_fp8 test_quantcfg test_wsp_store test_wsp_doc test_wsp_mat test_wsp_linalg test_wsp_analyze test_wsp_fixture test_wsp_overlay)
+              test_expert3d test_dsv41_source test_gguf_map test_engram test_plugin test_a1_fp8 test_quantcfg test_wsp_store test_wsp_doc test_wsp_mat test_wsp_linalg test_wsp_analyze test_wsp_fixture test_wsp_overlay test_wsp_derive)
         add_executable(gmbllm_${_t}_selfcheck tests/${_t}.c)
         target_link_libraries(gmbllm_${_t}_selfcheck PRIVATE gmbllm llmcodec ${_gmbllm_test_plugins})
         target_include_directories(gmbllm_${_t}_selfcheck PRIVATE ${_gmbllm_test_includes})
