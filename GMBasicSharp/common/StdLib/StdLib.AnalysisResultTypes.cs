@@ -64,5 +64,14 @@ public sealed partial class StdLib
             { "EigenValues", new ArrayType(new DoubleType()) },
             { "EigenVectors", new ArrayType(new ArrayType(new DoubleType())) }
         });
+
+        RegisterTypeSchema(typeof(HmmResultType), new Dictionary<string, DataType>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "Pi", new ArrayType(new DoubleType()) },
+            { "A", new ArrayType(new DoubleType()) },
+            { "Means", new ArrayType(new DoubleType()) },
+            { "Covs", new ArrayType(new DoubleType()) },
+            { "LogLikelihood", new DoubleType() }
+        });
     }
 }

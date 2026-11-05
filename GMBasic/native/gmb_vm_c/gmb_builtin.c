@@ -771,6 +771,70 @@ static void gmb_bf_1077(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
         bout->result = gmb_ts_lyapunov(a, n, (int)args[1].num, (int)args[2].num);
         free(a);
 }
+static void gmb_bf_3820(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task;
+        int np = 0, na = 0, ne = 0;
+        double* p = gmb_vm_list_to_dbl(&args[0], &np);
+        double* A = gmb_vm_list_to_dbl(&args[1], &na);
+        double* E = gmb_vm_list_to_dbl(&args[2], &ne);
+        int n = np > 0 ? ne / np : 0;
+        (void)na;
+        if (func_code == 3820) {
+                bout->result = gmb_ts_hmm_forward(p, A, E, np, n);
+        } else {
+                int outn = 0;
+                double* path = gmb_ts_hmm_viterbi(p, A, E, np, n, &outn);
+                gmb_vm_set_result_list(path, outn, &bout->is_num, &bout->result_ref);
+        }
+        free(p); free(A); free(E);
+}
+static void gmb_bf_3822(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+        (void)vm; (void)task; (void)func_code;
+        int K = argc >= 2 ? (int)args[1].num : 1;
+        int it = argc >= 3 ? (int)args[2].num : 100;
+        gmb_val_t r = gmb_ts_hmm_fit(NULL, 0, 0, 0, 0);
+        if (args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_LIST)
+        {
+                gmb_obj_shared_val_t* sv = (gmb_obj_shared_val_t*)args[0].ref;
+                if (sv->ndims >= 2)
+                {
+                        int n = (int)sv->dim_upper[0] + 1, d = (int)sv->dim_upper[1] + 1;
+                        int cnt = (int)sv->list->count;
+                        double* flat = (double*)malloc((size_t)cnt * sizeof(double));
+                        if (flat) {
+                                for (int i = 0; i < cnt; i++) { gmb_val_t v = sv->list->items[i]; flat[i] = v.kind==GMB_TYPE_DOUBLE?v.v_double:v.kind==GMB_TYPE_INT?(double)v.v_int:0; }
+                                r = gmb_ts_hmm_fit(flat, n, d, K, it);
+                                free(flat);
+                        }
+                }
+                else if (sv->list->count > 0)
+                {
+                        int n = (int)sv->list->count, d = 0;
+                        for (int i = 0; i < n; i++) {
+                                gmb_val_t rv = sv->list->items[i];
+                                if (rv.kind == GMB_TYPE_OBJECT && rv.v_ptr && ((gmb_obj_t*)rv.v_ptr)->kind == GMB_OBJ_LIST) { d = (int)((gmb_obj_shared_val_t*)rv.v_ptr)->list->count; break; }
+                        }
+                        if (d > 0) {
+                                double* flat = (double*)malloc((size_t)n * d * sizeof(double));
+                                if (flat) {
+                                        for (int i = 0; i < n; i++) {
+                                                gmb_val_t rv = sv->list->items[i];
+                                                if (rv.kind == GMB_TYPE_OBJECT && rv.v_ptr && ((gmb_obj_t*)rv.v_ptr)->kind == GMB_OBJ_LIST) {
+                                                        gmb_obj_shared_val_t* rl = (gmb_obj_shared_val_t*)rv.v_ptr;
+                                                        for (int q = 0; q < d && q < (int)rl->list->count; q++) { gmb_val_t v = rl->list->items[q]; flat[i*d+q] = v.kind==GMB_TYPE_DOUBLE?v.v_double:v.kind==GMB_TYPE_INT?(double)v.v_int:0; }
+                                                }
+                                        }
+                                        r = gmb_ts_hmm_fit(flat, n, d, K, it);
+                                        free(flat);
+                                }
+                        }
+                }
+        }
+        bout->result = 0;
+        gmb_vm_set_dict_result_owned(r, &bout->is_num, &bout->result_ref, &bout->result_ref_bt);
+}
 static void gmb_bf_1076(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         (void)vm; (void)task; (void)func_code;
@@ -17804,6 +17868,9 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 1074, gmb_bf_1074 },
     { 1075, gmb_bf_1075 },
     { 1076, gmb_bf_1076 },
+    { 3820, gmb_bf_3820 },
+    { 3821, gmb_bf_3820 },
+    { 3822, gmb_bf_3822 },
     { 1077, gmb_bf_1077 },
     { 1078, gmb_bf_1078 },
     { 1079, gmb_bf_1078 },

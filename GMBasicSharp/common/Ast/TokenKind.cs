@@ -2031,6 +2031,7 @@ public enum TokenKind
     TsLzComplexity,
     TsBmaWeights,
     TsLyapunov,
+    TsHmmForward, TsHmmViterbi, TsHmmFit,
     StatsNcChi2Pdf, StatsNcChi2Cdf, StatsNcChi2Sf,
     StatsNcBetaPdf, StatsNcBetaCdf, StatsNcBetaSf, StatsNcGammaPdf, StatsNcGammaCdf, StatsNcGammaSf,
     StatsNcFPdf, StatsNcFCdf, StatsNcFSf, StatsNcTPdf, StatsNcTCdf, StatsNcTSf, StatsZTPoissonPmf, StatsZTPoissonCdf,

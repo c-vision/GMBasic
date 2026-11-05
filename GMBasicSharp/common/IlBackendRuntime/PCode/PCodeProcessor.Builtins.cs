@@ -4877,6 +4877,18 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         {
                 return Basic.IlBackend.IlRuntime.TsGranger(ToDoubleArr(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1)), (long)SafeDouble(ArgOr(args, 2)));
         },
+        [BuiltInFunction.TS_HMMFORWARD] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.HmmForward(ToDoubleArr(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1)), ToDoubleArr(ArgOr(args, 2)));
+        },
+        [BuiltInFunction.TS_HMMVITERBI] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.HmmViterbi(ToDoubleArr(ArgOr(args, 0)), ToDoubleArr(ArgOr(args, 1)), ToDoubleArr(ArgOr(args, 2)));
+        },
+        [BuiltInFunction.TS_HMMFIT] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.HmmFit(ToJaggedArr(ArgOr(args, 0)), (long)SafeDouble(ArgOr(args, 1)), (long)SafeDouble(ArgOr(args, 2)));
+        },
         [BuiltInFunction.TS_GARCH11] = (task, args) =>
         {
                 return Basic.IlBackend.IlRuntime.TsGarch11(ToDoubleArr(ArgOr(args, 0)));

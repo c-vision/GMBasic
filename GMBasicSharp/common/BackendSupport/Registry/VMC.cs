@@ -948,6 +948,9 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.VMC, "TIMESERIES.TSENTROPYLZ");
         r.Register(Backend.VMC, "TIMESERIES.TSBMAWEIGHTS");
         r.Register(Backend.VMC, "TIMESERIES.TSLYAPUNOV");
+        r.Register(Backend.VMC, "TIMESERIES.HMMFORWARD");
+        r.Register(Backend.VMC, "TIMESERIES.HMMVITERBI");
+        r.Register(Backend.VMC, "TIMESERIES.HMMFIT");
         r.Register(Backend.VMC, "STATS.BetaSf");
         r.Register(Backend.VMC, "STATS.ChiSf");
         r.Register(Backend.VMC, "STATS.LogisticCdf");

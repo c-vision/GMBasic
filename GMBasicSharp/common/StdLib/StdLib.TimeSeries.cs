@@ -188,6 +188,21 @@ public sealed partial class StdLib
                 [seriesParam], new DoubleType(), TokenKind.TsLzComplexity, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.TsBmaWeights, "TSBMAWEIGHTS"),
                 [seriesParam], doubleArr, TokenKind.TsBmaWeights, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.TsHmmForward, "HMMFORWARD"),
+                [new Parameter(-1, T(TokenKind.Identifier, "logPi"), new DoubleType(), arrayFlag, null, false),
+                 new Parameter(-1, T(TokenKind.Identifier, "logA"), new DoubleType(), arrayFlag, null, false),
+                 new Parameter(-1, T(TokenKind.Identifier, "logE"), new DoubleType(), arrayFlag, null, false)],
+                new DoubleType(), TokenKind.TsHmmForward, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.TsHmmViterbi, "HMMVITERBI"),
+                [new Parameter(-1, T(TokenKind.Identifier, "logPi"), new DoubleType(), arrayFlag, null, false),
+                 new Parameter(-1, T(TokenKind.Identifier, "logA"), new DoubleType(), arrayFlag, null, false),
+                 new Parameter(-1, T(TokenKind.Identifier, "logE"), new DoubleType(), arrayFlag, null, false)],
+                doubleArr, TokenKind.TsHmmViterbi, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.TsHmmFit, "HMMFIT"),
+                [new Parameter(-1, T(TokenKind.Identifier, "data"), new DoubleType(), arrayFlag, null, false),
+                 new Parameter(-1, T(TokenKind.Identifier, "nStates"), new LongType(), noFlags, null, false),
+                 new Parameter(-1, T(TokenKind.Identifier, "nIter"), new LongType(), noFlags, null, false)],
+                new HmmResultType(), TokenKind.TsHmmFit),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.TsLyapunov, "TSLYAPUNOV"),
                 [seriesParam,
                  new Parameter(-1, T(TokenKind.Identifier, "m"), new LongType(), noFlags, null, false),
@@ -262,7 +277,8 @@ public sealed partial class StdLib
         {
             { "ArimaResult", new ArimaResultType() },
             { "HoltWintersResult", new HoltWintersResultType() },
-            { "AdfTestResult", new AdfTestResultType() }
+            { "AdfTestResult", new AdfTestResultType() },
+            { "HmmResult", new HmmResultType() }
         };
         RegisterBuiltinNamespace(namespaceName, procedures, types);
     }
