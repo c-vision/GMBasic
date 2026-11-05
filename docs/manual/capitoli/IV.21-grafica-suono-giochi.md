@@ -189,6 +189,7 @@ sinusoidale, PNG, rilettura e blit). MiniTest: `graphics/canvas_core.bas`.
 
 
 
+
 <!-- BEGIN SURFACE (generato da tools/sh/manual_surface.sh — non modificare a mano) -->
 
 ## Riferimento completo: comandi, funzioni, parametri
