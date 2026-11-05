@@ -161,10 +161,39 @@ AI DECIDE "{""ticket"":""Login fallito dopo il reset""}", "CHOICE:auth|billing",
 - Ogni errore è **esplicito** (`{"error":"clm: …"}`): config senza `baseUrl`, HTTP non 2xx, risposta
   di tipo diverso da quello chiesto, opzione fuori dal dominio, `probabilities` assenti. Non c'è mai
   un fallback silenzioso: se lo vuoi, scrivilo (`FALLBACK "rules"`).
-- **Limite attuale**: il percorso *locale* (encoder MLX con pooling sull'ultimo token + head caricata
-  da `safetensors`) ha il calcolo pronto e verificato nel runtime C
-  (`gmb_decision_clm.c`), ma non è ancora collegato all'encoder: con `"head"` al posto di `baseUrl`
-  si ottiene l'errore esplicito `percorso locale non disponibile`.
+- **Percorso locale (senza server, senza CUDA)**: al posto di `baseUrl` si danno `head` (i pesi della
+  head, in `safetensors`) ed `encoder` (la cartella HF di **Qwen3-8B**, in bf16: la head è addestrata
+  su quell'encoder, e con un altro encoder o con una versione quantizzata i risultati non sono garantiti). L'encoder
+  gira su MLX con il pooling sull'**ultimo token** (dopo la RMSNorm finale); la head e il punteggio
+  `softmax(scala · coseno)` sono in C. I testi oltre 2048 token si troncano tenendo gli ultimi 2048,
+  come fa il server.
+
+  ```basic
+  AI REGISTER "clm", %DECIDE, "clm", "{""head"":""~/ai/Models/CLM-v0.1-8B/clm_head.safetensors"",""encoder"":""~/ai/Models/Qwen3-8B""}"
+  AI DECIDE "What causes tides on Earth?", "CHOICE:The Moon's gravitational pull.|Photosynthesis in plants.|Because the Earth is round.", "clm" INTO r
+  ```
+
+  Qui le opzioni di `CHOICE` sono il **testo dei candidati**: con CLM scegli fra frasi libere, e il
+  risultato non dipende dall'ordine in cui le elenchi. La domanda (se c'è) va nel config come
+  `instructions`. Il sample `shared/samples/AiLLM/CLMLocal.bas` mostra l'uso completo.
+- **Preparare i pesi**: il checkpoint pubblicato è un file `torch.save` (`CLM_v0.1-8B.pt`, 75 MB). Si
+  converte una volta con lo strumento C del repo, senza Python e senza eseguire il file (il lettore
+  accetta solo un sottoinsieme ristretto del formato e rifiuta tutto il resto):
+
+  ```bash
+  cc -O2 tools/c/clm_head_convert.c -o clm_head_convert -lm
+  ./clm_head_convert ~/ai/Models/CLM-v0.1-8B/CLM_v0.1-8B.pt ~/ai/Models/CLM-v0.1-8B/clm_head.safetensors
+  ```
+
+  Produce `clm_head.safetensors` e il file gemello `clm_head.json` (attivazione, residual, dimensioni).
+- **Dalle altre gambe**: l'implementazione è una sola, nel runtime C (VM/C e C99Native la usano
+  direttamente; IL e PCode la chiamano via P/Invoke dalla libreria condivisa `libgmb_clm`). Le quattro
+  gambe danno lo stesso risultato.
+- **Quanto è sensibile**: la scala della head è 100, quindi differenze minime negli embedding (diverso
+  hardware o precisione) spostano molto le probabilità. Sull'esempio di ranking del README di CLM si
+  ottiene 0,9935 contro 0,993 dichiarato; sull'esempio dello smistamento del ticket 0,988 contro
+  0,939 dichiarato (stessa scelta, `billing`, ma probabilità diversa). Trattale come stime, non come
+  valori da confrontare al decimale con un'altra installazione.
 - I benchmark pubblicati dall'autore di CLM (GPU, vLLM) sono **dichiarazioni del produttore**, non
   previsioni per questo runtime.
 

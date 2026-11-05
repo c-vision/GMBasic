@@ -2,7 +2,7 @@
 ' Senza rete e senza modello: verifica la REGISTRAZIONE del kind e gli errori ESPLICITI
 ' (config senza baseUrl, percorso locale non cablato, server irraggiungibile) + il fallback scritto.
 ' Il wire, la prosa e la head sono coperti da gmb_decision_clm_selfcheck (C) e dai test C# di ClmDecisionProvider.
-' EXPECT: clm-nourl={"error":"clm: baseUrl mancante nel config del provider %DECIDE"}|clm-local={"error":"clm: percorso locale non disponibile: encoder MLX last-token non collegato (usa baseUrl)"}|clm-fallback={"kind":"NOUL","option":"true","value":"true","probability":1.000000,"confidence":null,"calibrated":null}|clm-down={"error":"clm: HTTP fallito
+' EXPECT: clm-nourl={"error":"clm: baseUrl mancante nel config del provider %DECIDE"}|clm-local={"error":"clm: config locale incompleta: servono encoder (Qwen3-8B) e head (safetensors)"}|clm-fallback={"kind":"NOUL","option":"true","value":"true","probability":1.000000,"confidence":null,"calibrated":null}|clm-down={"error":"clm: HTTP fallito
 IMPORT AI
 
 SUB Main()

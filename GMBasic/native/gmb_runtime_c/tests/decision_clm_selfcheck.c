@@ -82,8 +82,11 @@ int main(void)
     /* ── prosa ── */
     char* t = gmb_clm_to_text("{\"ticket\":\"Login fails\",\"tags\":[\"a\",\"b\"],"
                               "\"user\":{\"name\":\"Ann\",\"age\":30},\"ok\":true}");
-    check_str(t, "ticket: Login fails\ntags:\n  - a\n  - b\nuser:\n  name: Ann\n  age: 30\nok: true",
-              "to_text oggetto annidato");
+    check_str(t, "ticket: Login fails\n\ntags:\n  - a\n  - b\n\nuser:\n  name: Ann\n  age: 30\n\nok: true",
+              "to_text oggetto annidato (riga vuota fra i campi di primo livello)");
+    free(t);
+    t = gmb_clm_to_text("{\"a\":null,\"b\":[],\"c\":{}}");
+    check_str(t, "a: \n\nb: \n\nc: ", "to_text null e contenitori vuoti = stringa vuota");
     free(t);
     t = gmb_clm_to_text("[\"x\",{\"k\":1}]");
     check_str(t, "- x\n-\n  k: 1", "to_text array con oggetto");
@@ -99,6 +102,9 @@ int main(void)
     free(t);
     t = gmb_clm_state_text("{\"a\":1}", "Quale team?");
     check_str(t, "a: 1\n\nQuale team?", "state_text contesto+domanda");
+    free(t);
+    t = gmb_clm_state_text("  contesto \n", "\n Domanda? ");
+    check_str(t, "contesto\n\nDomanda?", "state_text: strip di entrambe le parti");
     free(t);
     t = gmb_clm_state_text("solo stato", "");
     check_str(t, "solo stato", "state_text senza domanda");
@@ -135,6 +141,11 @@ int main(void)
           "\"probabilities\":{\"auth\":0.8,\"b\":0.2}}", GMB_DECISION_CHOICE, ch, 2, &r, err, sizeof err) == 1, "choice ok");
     CHECK(strcmp(r.option_id, "auth") == 0 && NEAR(r.probability, 0.8, 1e-9) && NEAR(r.confidence, 0.6, 1e-9)
           && r.has_confidence, "choice campi");
+    /* Forma REALE del server: {"model":…,"answers":{"<qid>":{…}},"usage":…} */
+    CHECK(gmb_clm_parse_response("{\"model\":\"clm-latest\",\"answers\":{\"q\":{\"type\":\"choice\",\"choice\":\"auth\","
+          "\"confidence\":0.5,\"probabilities\":{\"auth\":0.75,\"b\":0.25}}},\"usage\":{\"billing_units\":1}}",
+          GMB_DECISION_CHOICE, ch, 2, &r, err, sizeof err) == 1 && strcmp(r.option_id, "auth") == 0
+          && NEAR(r.probability, 0.75, 1e-9), "risposta reale sotto 'answers'");
     CHECK(gmb_clm_parse_response("{\"q\":{\"type\":\"choice\",\"choice\":\"b\","
           "\"probabilities\":{\"auth\":0.3,\"b\":0.7}}}", GMB_DECISION_CHOICE, ch, 2, &r, err, sizeof err) == 1, "choice sotto id");
     CHECK(strcmp(r.option_id, "b") == 0 && NEAR(r.confidence, 0.4, 1e-6), "confidence calcolata = 0.7-0.3");

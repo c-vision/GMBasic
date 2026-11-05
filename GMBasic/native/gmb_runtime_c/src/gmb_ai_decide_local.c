@@ -56,6 +56,18 @@ int gmb_ai_decide_local_adapter_run(const char* state, const char* kind,
         snprintf(err, errcap, "adapter non disponibile: motore MLX non supportato su Windows");
     return -1;
 }
+
+int gmb_ai_decide_clm_local_run(const char* state, const char* instructions, gmb_decision_kind_t kind,
+                                const gmb_decision_option_t* options, int n_options,
+                                const char* encoder_dir, const char* head_path,
+                                gmb_decision_result_t* out, char* err, size_t errcap)
+{
+    (void)state; (void)instructions; (void)kind; (void)options; (void)n_options;
+    (void)encoder_dir; (void)head_path; (void)out;
+    if (err && errcap)
+        snprintf(err, errcap, "clm: percorso locale non disponibile: motore MLX non supportato su Windows");
+    return -1;
+}
 #else
 
 #include "gmb_runtime.h"
@@ -832,6 +844,190 @@ done:
     if (all_ids) for (int i = 0; i < n_domains; i++) free(all_ids[i]);
     free(all_ids); free(all_lens); free(eff); free(eopt);
     return rc2;
+}
+
+
+/* ── Provider `clm` LOCALE: encoder MLX (last-token) + head di proiezione in C ───────────────
+ * Contesto separato da quello di `local` (modello e tokenizer diversi: Qwen3-8B per la head CLM).
+ * La head e il punteggio sono nel core (`gmb_decision_clm.c`); qui c'è solo l'embedder. */
+#include "gmb_decision_clm.h"
+#include "gmb_st.h"
+
+#define CLM_MAX_TOKENS 2048   /* come --max-model-len / truncate_prompt_tokens upstream */
+
+typedef struct {
+    int state;
+    char encoder[LOCAL_MODEL_CAP];
+    char head_path[LOCAL_MODEL_CAP];
+    void* lib;
+    const LlmEngineLlmEngine* eng;
+    LlmEngineLlmModel model_h;
+    void* tok;
+    int (*last_hidden)(void* sess, float* out, int cap);
+    gmb_clm_head_t* head;
+    float* norm_w;                   /* model.norm.weight (RMSNorm finale), norm_dim float */
+    int norm_dim;
+    double norm_eps;
+} clm_ctx_t;
+
+static clm_ctx_t g_clm;
+static pthread_mutex_t g_clm_lock = PTHREAD_MUTEX_INITIALIZER;
+
+typedef struct { clm_ctx_t* c; char err[LOCAL_ERR_CAP]; } clm_embed_ctx_t;
+
+static void clm_close_locked(clm_ctx_t* c)
+{
+    if (c->head) gmb_clm_head_free(c->head);
+    free(c->norm_w);
+    if (c->eng && c->model_h) c->eng->free_model(c->model_h);
+    if (c->tok) llmtoken_free((llmtoken_handle)c->tok);
+    if (c->lib) dlclose(c->lib);
+    memset(c, 0, sizeof *c);
+}
+
+/* L'hidden che `llm_ai_mlx_session_last_hidden` restituisce è PRE-norma-finale (pending_h: il motore
+ * applica `final_norm` a parte per i logit). Il pooling last-token di vLLM, su cui è addestrata la head
+ * CLM, usa l'output DOPO la RMSNorm finale: la applichiamo qui con `model.norm.weight` dello shard del
+ * modello e `rms_norm_eps` della sua config.json. 0 ok / -1 con motivo in err. */
+static int clm_load_final_norm(clm_ctx_t* c, const char* enc, int dim, char* err, size_t errcap)
+{
+    char path[LOCAL_MODEL_CAP + 128], shard[160] = "model.safetensors";
+    snprintf(path, sizeof path, "%s/model.safetensors.index.json", enc);
+    FILE* f = fopen(path, "rb");
+    if (f) {
+        char* txt = (char*)malloc(1 << 20);
+        size_t n = txt ? fread(txt, 1, (1 << 20) - 1, f) : 0;
+        fclose(f);
+        if (txt) {
+            txt[n] = 0;
+            const char* k = strstr(txt, "\"model.norm.weight\"");
+            const char* q = k ? strchr(k + 19, '"') : NULL;           /* apre il valore */
+            const char* e = q ? strchr(q + 1, '"') : NULL;
+            if (q && e && (size_t)(e - q - 1) < sizeof shard) { memcpy(shard, q + 1, (size_t)(e - q - 1)); shard[e - q - 1] = 0; }
+            free(txt);
+        }
+    }
+    snprintf(path, sizeof path, "%s/%s", enc, shard);
+    GstEntry* ents = NULL; uint32_t ne = 0; uint64_t hl = 0;
+    if (gst_read_header(path, &ents, &ne, &hl) != 0) { set_err(err, errcap, "clm: shard con model.norm.weight illeggibile", path); return -1; }
+    const GstEntry* t = NULL;
+    for (uint32_t i = 0; i < ne; i++) if (strcmp(ents[i].name, "model.norm.weight") == 0) { t = &ents[i]; break; }
+    uint8_t* raw = NULL; size_t rn = 0;
+    int ok = t && t->ndim == 1 && (int)t->shape[0] == dim && gst_read_tensor(path, t, &raw, &rn) == 0 && raw;
+    if (!ok) { free(ents); free(raw); set_err(err, errcap, "clm: model.norm.weight assente o di dimensione inattesa", path); return -1; }
+    int bytes = strcmp(t->dtype, "F32") == 0 ? 4 : 2, bf = t->dtype[0] == 'B';
+    if (rn < (size_t)dim * (size_t)bytes) { free(ents); free(raw); set_err(err, errcap, "clm: model.norm.weight troncato", path); return -1; }
+    float* w = (float*)malloc((size_t)dim * sizeof(float));
+    if (!w) { free(ents); free(raw); return -1; }
+    for (int i = 0; i < dim; i++) {
+        if (bytes == 4) memcpy(&w[i], raw + (size_t)i * 4, 4);
+        else {
+            uint16_t h; memcpy(&h, raw + (size_t)i * 2, 2);
+            if (bf) { uint32_t u = (uint32_t)h << 16; memcpy(&w[i], &u, 4); }
+            else { uint32_t sg = (h >> 15) & 1, ex = (h >> 10) & 31, mn = h & 1023; float v = ex == 0 ? ldexpf((float)mn, -24) : ldexpf((float)(mn | 1024), (int)ex - 25); w[i] = sg ? -v : v; }
+        }
+    }
+    free(ents); free(raw);
+    c->norm_w = w; c->norm_dim = dim; c->norm_eps = 1e-6;
+    snprintf(path, sizeof path, "%s/config.json", enc);
+    f = fopen(path, "rb");
+    if (f) {
+        char buf[8192]; size_t n = fread(buf, 1, sizeof buf - 1, f); buf[n] = 0; fclose(f);
+        char* v = gmb_json_extract(buf, "rms_norm_eps");
+        if (v && *v && atof(v) > 0.0) c->norm_eps = atof(v);
+        free(v);
+    }
+    return 0;
+}
+
+static int clm_ensure(const char* encoder_dir, const char* head_path, char* err, size_t errcap)
+{
+    char enc[LOCAL_MODEL_CAP], hp[LOCAL_MODEL_CAP];
+    expand_home(encoder_dir, enc, sizeof enc);
+    expand_home(head_path, hp, sizeof hp);
+    if (g_clm.state == 1 && strcmp(g_clm.encoder, enc) == 0 && strcmp(g_clm.head_path, hp) == 0) return 0;
+    if (g_clm.state == 1) clm_close_locked(&g_clm);
+
+    void* lib = open_engine_lib();
+    if (!lib) { set_err(err, errcap, "clm: encoder non disponibile", "libgmb_ai_mlx/libllm_ai_mlx non caricabile"); return -1; }
+    typedef const LlmEngineLlmEngine* (*engine_get_fn)(void);
+    engine_get_fn get = (engine_get_fn)dlsym(lib, "llmengine_llm_engine_mlx");
+    const LlmEngineLlmEngine* eng = get ? get() : NULL;
+    int (*lh)(void*, float*, int) = (int (*)(void*, float*, int))dlsym(lib, "llm_ai_mlx_session_last_hidden");
+    if (!eng || !eng->load_model || !eng->create_session || !eng->destroy_session || !eng->append_ids || !lh) {
+        dlclose(lib);
+        set_err(err, errcap, "clm: encoder non disponibile", "motore MLX senza last_hidden (dylib non allineata)");
+        return -1;
+    }
+    LlmEngineLlmModel m = eng->load_model(enc);
+    if (!m) { dlclose(lib); set_err(err, errcap, "clm: encoder non caricabile", enc); return -1; }
+    void* tok = llmmodelio_tokenizer_open(enc);
+    if (!tok) { eng->free_model(m); dlclose(lib); set_err(err, errcap, "clm: tokenizer non caricabile", enc); return -1; }
+    char herr[256] = "";
+    gmb_clm_head_t* head = gmb_clm_head_load(hp, herr, sizeof herr);
+    if (!head) {
+        llmtoken_free((llmtoken_handle)tok); eng->free_model(m); dlclose(lib);
+        set_err(err, errcap, herr[0] ? herr : "clm: head non caricabile", NULL);
+        return -1;
+    }
+    g_clm.lib = lib; g_clm.eng = eng; g_clm.model_h = m; g_clm.tok = tok; g_clm.last_hidden = lh; g_clm.head = head;
+    if (clm_load_final_norm(&g_clm, enc, gmb_clm_head_hidden_size(head), err, errcap) != 0) {
+        clm_close_locked(&g_clm);
+        return -1;
+    }
+    snprintf(g_clm.encoder, sizeof g_clm.encoder, "%s", enc);
+    snprintf(g_clm.head_path, sizeof g_clm.head_path, "%s", hp);
+    g_clm.state = 1;
+    return 0;
+}
+
+/* Embedding last-token di `text` (nessun prefisso/suffisso/EOS aggiunto, come l'embedder upstream). */
+static int clm_embed(const char* text, float* out, int dim, void* vctx)
+{
+    clm_embed_ctx_t* x = (clm_embed_ctx_t*)vctx;
+    clm_ctx_t* c = x->c;
+    int32_t* ids = (int32_t*)malloc((size_t)LOCAL_TOKEN_CAP * sizeof(int32_t));
+    if (!ids) { snprintf(x->err, sizeof x->err, "memoria esaurita"); return -1; }
+    int n = llmtoken_encode((llmtoken_handle)c->tok, text, ids, LOCAL_TOKEN_CAP);
+    if (n <= 0 || n >= LOCAL_TOKEN_CAP) { free(ids); snprintf(x->err, sizeof x->err, "tokenizzazione fallita"); return -1; }
+    int off = n > CLM_MAX_TOKENS ? n - CLM_MAX_TOKENS : 0;       /* tiene gli ULTIMI 2048 token */
+    LlmEngineLlmSession sess = c->eng->create_session(c->model_h);
+    if (!sess) { free(ids); snprintf(x->err, sizeof x->err, "sessione non creata"); return -1; }
+    int rc = -1;
+    if (c->eng->append_ids(sess, ids + off, n - off) != 0) snprintf(x->err, sizeof x->err, "prefill fallito");
+    else if (c->last_hidden(sess, out, dim) != dim) snprintf(x->err, sizeof x->err, "last_hidden fallito (dim attesa %d)", dim);
+    else {
+        /* RMSNorm finale (vedi clm_load_final_norm): y = x / sqrt(mean(x²)+eps) · w. */
+        double ms = 0;
+        for (int i = 0; i < dim; i++) ms += (double)out[i] * (double)out[i];
+        double inv = 1.0 / sqrt(ms / (double)dim + c->norm_eps);
+        for (int i = 0; i < dim; i++) out[i] = (float)((double)out[i] * inv * (double)c->norm_w[i]);
+        rc = 0;
+    }
+    c->eng->destroy_session(sess);
+    free(ids);
+    return rc;
+}
+
+int gmb_ai_decide_clm_local_run(const char* state, const char* instructions, gmb_decision_kind_t kind,
+                                const gmb_decision_option_t* options, int n_options,
+                                const char* encoder_dir, const char* head_path,
+                                gmb_decision_result_t* out, char* err, size_t errcap)
+{
+    if (!encoder_dir || !*encoder_dir || !head_path || !*head_path) {
+        set_err(err, errcap, "clm: config locale incompleta", "servono encoder (Qwen3-8B) e head (safetensors)");
+        return -1;
+    }
+    pthread_mutex_lock(&g_clm_lock);
+    int rc = clm_ensure(encoder_dir, head_path, err, errcap);
+    if (rc == 0) {
+        clm_embed_ctx_t x; x.c = &g_clm; x.err[0] = 0;
+        char derr[256] = "";
+        rc = gmb_clm_decide_local(g_clm.head, clm_embed, &x, state, instructions, kind, options, n_options, out, derr, sizeof derr);
+        if (rc != 1) set_err(err, errcap, "clm", x.err[0] ? x.err : derr);
+    }
+    pthread_mutex_unlock(&g_clm_lock);
+    return rc == 1 ? 1 : -1;
 }
 
 #endif /* !_WIN32 */

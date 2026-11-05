@@ -136,8 +136,26 @@ int gmb_ai_decide_local_run_group(const char* state, const gmb_decision_domain_t
  * l'oggetto del core sia linkato e che la dylib abbia un entry point stabile. */
 const char* gmb_ai_decide_active_model_path(void);
 
+/* P/Invoke (IL/PCode → libgmb_clm): `AI DECIDE` col provider `clm` con la config del provider passata
+ * ESPLICITAMENTE (JSON: baseUrl/apiKey/timeoutMs/instructions, oppure head/encoder per il locale).
+ * Ritorna il JSON del risultato o `{"error":"…"}` (heap: libera con gmb_ai_decide_free_json). */
+char* gmb_ai_decide_clm_run_json(const char* state, const char* kind, const char* config_json);
+void gmb_ai_decide_free_json(char* p);
+
 /* 1 se la decisione in corso usa un provider `%DECIDE` di kind `verbalizer` (profilo da applicare). */
 int gmb_ai_decide_profile_active(void);
+
+/* Provider `clm` LOCALE (JEV/SystemOne): encoder MLX con pooling sull'ULTIMO token (mai la media)
+ * + head di proiezione in C (`gmb_decision_clm.c`). Implementato in `gmb_ai_decide_local.c`
+ * (dylib AI, dove vive il motore MLX; errore esplicito su Windows). `encoder_dir` = Qwen3-8B
+ * (HF), `head_path` = safetensors prodotto da tools/c/clm_head_convert. I testi oltre 2048 token
+ * sono troncati TENENDO GLI ULTIMI 2048 (come `truncate_prompt_tokens` di vLLM). `instructions`
+ * può essere NULL. `out->option_id/value` puntano a `options[i]`. 1 = ok, -1 = errore in `err`. */
+int gmb_ai_decide_clm_local_run(const char* state, const char* instructions,
+                                gmb_decision_kind_t kind,
+                                const gmb_decision_option_t* options, int n_options,
+                                const char* encoder_dir, const char* head_path,
+                                gmb_decision_result_t* out, char* err, size_t errcap);
 
 #ifdef __cplusplus
 }

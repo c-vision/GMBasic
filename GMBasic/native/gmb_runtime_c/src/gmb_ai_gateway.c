@@ -19,7 +19,8 @@
 #include "gmb_distill.h"
 #include "gmb_ai_decide.h"
 #include "gmb_decision_head.h"
-#include "gmb_st.h"                /* gst_*: keep-alive per la dylib AI (model I/O) */
+#include "gmb_decision_clm.h"
+#include "gmb_st.h"              /* gst_*: keep-alive per la dylib AI (model I/O) */
 #include "llmengine_moe_arch.h"    /* llmengine_moe_arch_family_name / role_of_tensor */
 #include "llmengine_moe_json.h"    /* llmengine_moe_slurp / json_* */
 
@@ -241,6 +242,38 @@ GMB_AI_WEAK int gmb_ai_decide_local_run(const char* state, const char* kind,
         return -1;
     }
     return fn(state, kind, options, n_options, out, err, errcap);
+}
+
+/* Provider `clm` locale: encoder MLX last-token (dylib AI) + head in C. La dylib risolve a
+ * load-time i simboli `gmb_clm_*` del core: senza ancora `-Wl,-dead_strip` li rimuove. */
+GMB_AI_WEAK int gmb_ai_decide_clm_local_run(const char* state, const char* instructions,
+                                            gmb_decision_kind_t kind,
+                                            const gmb_decision_option_t* options, int n_options,
+                                            const char* encoder_dir, const char* head_path,
+                                            gmb_decision_result_t* out, char* err, size_t errcap)
+{
+    static void* volatile g_clm_core_anchor;
+    g_clm_core_anchor = (void*)&gmb_clm_head_load;
+    g_clm_core_anchor = (void*)&gmb_clm_head_free;
+    g_clm_core_anchor = (void*)&gmb_clm_head_hidden_size;
+    g_clm_core_anchor = (void*)&gmb_clm_head_projection_dim;
+    g_clm_core_anchor = (void*)&gmb_clm_decide_local;
+    g_clm_core_anchor = (void*)&gmb_clm_score;
+    g_clm_core_anchor = (void*)&gmb_clm_state_text;
+    g_clm_core_anchor = (void*)&gmb_clm_to_text;
+    g_clm_core_anchor = (void*)&gmb_clm_confidence;
+    g_clm_core_anchor = (void*)&gst_read_header;      /* usati da gmb_clm_head_load */
+    g_clm_core_anchor = (void*)&gst_read_tensor;
+    int (*fn)(const char*, const char*, gmb_decision_kind_t, const gmb_decision_option_t*, int,
+              const char*, const char*, gmb_decision_result_t*, char*, size_t) =
+        (int (*)(const char*, const char*, gmb_decision_kind_t, const gmb_decision_option_t*, int,
+                 const char*, const char*, gmb_decision_result_t*, char*, size_t))
+            ai_sym("gmb_ai_decide_clm_local_run");
+    if (!fn) {
+        set_err_local(err, errcap);
+        return -1;
+    }
+    return fn(state, instructions, kind, options, n_options, encoder_dir, head_path, out, err, errcap);
 }
 
 /* P6 — adapter generativo (generazione sul modello locale). */
