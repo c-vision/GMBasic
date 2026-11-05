@@ -14,6 +14,8 @@ NAMESPACE OPTIMIZE
 ' (0 ottimo, 1 inammissibile, 2 illimitato).
 DECLARE FUNCTION LPSOLVE LIB "gmbmathprog" ALIAS "ofx_lp_solve" (A() AS DOUBLE, b() AS DOUBLE, c() AS DOUBLE, m AS LONG, n AS LONG, x() AS DOUBLE, y() AS DOUBLE, info() AS DOUBLE) AS LONG
 ' Revised simplex da base ammissibile basis() = m; x() = n.
+' basis(): base iniziale, indici di colonna in [0, n+m): 0..n-1 sono le colonne di A,
+' n..n+m-1 le slack (vettore unitario e costo 0). La base ottima torna in basis().
 DECLARE FUNCTION LPREVISED LIB "gmbmathprog" ALIAS "ofx_lp_revised" (A() AS DOUBLE, b() AS DOUBLE, c() AS DOUBLE, basis() AS LONG, x() AS DOUBLE, m AS LONG, n AS LONG) AS LONG
 ' LP con bound: bounds() = s[m] | b[m] | l[n] | u[n] (i bound possono essere ±1e30).
 DECLARE FUNCTION LPBOUNDS LIB "gmbmathprog" ALIAS "ofx_lp_bounds" (A() AS DOUBLE, bounds() AS DOUBLE, c() AS DOUBLE, x() AS DOUBLE, m AS LONG, n AS LONG) AS LONG

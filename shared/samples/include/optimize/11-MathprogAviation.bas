@@ -6,9 +6,8 @@ REM Output deterministico, identico sui 4 backend.
 IMPORT OPTIMIZE
 
 SUB Main()
-  ' ═══ A. LP: istanza TOY (x0+x1=4) usata per esercitare TUTTE le chiamate di analisi:
-  ' base, duale, costi ridotti, ottimo alternativo, taglio; per una LP con soluzione
-  ' significativa vedi `minitests/opt/mt41_linprog.bas`.
+  ' ═══ A. LP: min -x0-x1 s.t. x0+x1 = 4, x >= 0. Base iniziale = colonna di SLACK (indice n=2):
+  ' il simplesso revised la accetta (le colonne n..n+m-1 sono le slack) e converge a (4,0).
   DIM A(1) AS DOUBLE
   DIM b(0) AS DOUBLE
   DIM c(1) AS DOUBLE

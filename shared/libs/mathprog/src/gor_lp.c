@@ -342,6 +342,7 @@ int gor_lp_dual_simplex(int m, int n, const double *A, const double *b,
     double *T, *red, *cB, *M;
     int *bas;
     if (m < 1 || n < 1 || !A || !b || !c || !basis || !x) return 4;
+    for (i = 0; i < m; i++) if (basis[i] < 0 || basis[i] >= n + m) return 4;
     T = (double *)malloc((size_t)m * ncols * sizeof(double));
     red = (double *)malloc((size_t)n * sizeof(double));
     cB = (double *)malloc((size_t)m * sizeof(double));
@@ -389,7 +390,7 @@ int gor_lp_dual_simplex(int m, int n, const double *A, const double *b,
     for (it = 0; it < max_iter; it++) {
         int r = -1, ent = -1;
         double worst = -1e-9, bestratio = 1e300;
-        for (i = 0; i < m; i++) cB[i] = c[bas[i]];
+        for (i = 0; i < m; i++) cB[i] = (bas[i] >= 0 && bas[i] < n) ? c[bas[i]] : 0.0;
         for (j = 0; j < n; j++) {
             double s = c[j];
             for (i = 0; i < m; i++) s -= cB[i] * T[(size_t)i * ncols + j];
@@ -516,6 +517,18 @@ int gor_lp_solve_bounds(int m, int n, const double *A, const double *s,
 
 /* ===================== Revised simplex (da athityakumar/or_lab) ===================== */
 
+/* Colonna `col` della matrice [A | I]: le colonne n..n+m-1 sono le slack (vettore unitario).
+ * `gor_lp_revised_simplex` documenta la base iniziale come "colonne di slack n, n+1, …", ma
+ * indicizzava A[.. + basis[j]] senza controllo: con un indice >= n leggeva fuori da A (UB,
+ * risultati diversi fra backend — 2026-11-04). Fuori range -> colonna nulla (base singolare,
+ * gestita come errore). */
+static double lp_acol(int m, int n, const double *A, int row, int col)
+{
+    if (col >= 0 && col < n) return A[(size_t)row * n + col];
+    if (col >= n && col < n + m) return (col - n == row) ? 1.0 : 0.0;
+    return 0.0;
+}
+
 int gor_lp_revised_simplex(int m, int n, const double *A, const double *b,
                            const double *c, const int *basis, int max_iter, double *x)
 {
@@ -537,7 +550,7 @@ int gor_lp_revised_simplex(int m, int n, const double *A, const double *b,
         double *W = (double *)malloc((size_t)m * 2 * m * sizeof(double));
         if (!W) { free(Binv); free(xB); free(y); free(d); free(cB); free(bas); return 4; }
         for (i = 0; i < m; i++) {
-            for (j = 0; j < m; j++) W[(size_t)i * 2 * m + j] = A[(size_t)i * n + basis[j]];
+            for (j = 0; j < m; j++) W[(size_t)i * 2 * m + j] = lp_acol(m, n, A, i, basis[j]);
             for (j = 0; j < m; j++) W[(size_t)i * 2 * m + m + j] = (i == j) ? 1.0 : 0.0;
         }
         for (k = 0; k < m; k++) {
