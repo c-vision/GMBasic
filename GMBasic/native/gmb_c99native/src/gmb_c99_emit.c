@@ -1435,6 +1435,7 @@ static int dim_arr_init_kind(const gmb_expr_t* e) {
         { GMB_TOK_Difference, 1, 1 }, { GMB_TOK_Returns, 1, 1 },
         { GMB_TOK_TsFracDiff, 1, 2 },
         { GMB_TOK_TsKalman1D, 1, 5 },
+        { GMB_TOK_TsStationaryBootstrap, 1, 3 },
         { GMB_TOK_Deseasonalize, 1, 1 }, { GMB_TOK_TimeSeriesMinMax, 1, 1 },
         { GMB_TOK_AMap, 1, 1 }, { GMB_TOK_AFilter, 1, 1 }, { GMB_TOK_AReverse, 1, 1 },
         { GMB_TOK_ASort, 1, 1 }, { GMB_TOK_APad, 1, 2 }, { GMB_TOK_AClone, 1, 1 }, { GMB_TOK_AUnique, 1, 1 },
@@ -7593,6 +7594,7 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_TsHurst, emit_bf_ts },
     { NULL, GMB_TOK_TsFracDiff, emit_bf_ts },
     { NULL, GMB_TOK_TsKalman1D, emit_bf_ts },
+    { NULL, GMB_TOK_TsStationaryBootstrap, emit_bf_ts },
     { NULL, GMB_TOK_Base58Encode, emit_bf_encoding },
     { NULL, GMB_TOK_Base32Encode, emit_bf_encoding },
     { NULL, GMB_TOK_ToBase64, emit_bf_encoding },
@@ -9631,6 +9633,16 @@ static int dim_arr_timeseries1d(ctx_t* c, gmb_stmt_t* s, gmb_expr_t* init) {
         sb_put(&c->out, ", (gmb_int_t)("); emit_arr_len_of(c, av); sb_put(&c->out, ")");
         sb_put(&c->out, ", (2.0/((gmb_double_t)("); emit_expr(c, init->args[1]); sb_put(&c->out, ")+1.0))");
         sb_put(&c->out, ", &"); emit_ident(c, v->name); sb_put(&c->out, "_len);\n");
+        return 1;
+    }
+    if (init->tk == GMB_TOK_TsStationaryBootstrap) {
+        if (init->nargs < 3) { c99_fail(c, s->line, "DIM %s: TIMESERIES.TSSTATIONARYBOOTSTRAP richiede (serie,window,seed)", v->name); return 1; }
+        ind(c); emit_ident(c, v->name);
+        sb_put(&c->out, " = gmb_ts_stationary_bootstrap("); emit_var_ref(c, av);
+        sb_put(&c->out, ", (int)("); emit_arr_len_of(c, av); sb_put(&c->out, "), (int)(");
+        emit_expr(c, init->args[1]); sb_put(&c->out, "), (int)(");
+        emit_expr(c, init->args[2]); sb_put(&c->out, "), &");
+        emit_ident(c, v->name); sb_put(&c->out, "_len);\n");
         return 1;
     }
     if (init->tk == GMB_TOK_TsKalman1D) {

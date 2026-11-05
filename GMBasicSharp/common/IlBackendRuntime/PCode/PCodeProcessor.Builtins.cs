@@ -4885,6 +4885,10 @@ if (args.Length > 0 && args[0] is System.Collections.IList wts) { var w = new do
         {
                 return Basic.IlBackend.IlRuntime.Kalman1D(ToDoubleArr(ArgOr(args, 0)), SafeDouble(ArgOr(args, 1)), SafeDouble(ArgOr(args, 2)), SafeDouble(ArgOr(args, 3)), SafeDouble(ArgOr(args, 4)));
         },
+        [BuiltInFunction.TS_STATIONARY_BOOTSTRAP] = (task, args) =>
+        {
+                return Basic.IlBackend.IlRuntime.StationaryBootstrap(ToDoubleArr(ArgOr(args, 0)), (long)SafeDouble(ArgOr(args, 1)), (long)SafeDouble(ArgOr(args, 2)));
+        },
         [BuiltInFunction.VOLGA] = (task, args) =>
         {
                 // Runtime comune (IlRuntime): stessa logica — unica implementazione.

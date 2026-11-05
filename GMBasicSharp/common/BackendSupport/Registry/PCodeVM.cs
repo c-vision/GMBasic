@@ -918,6 +918,7 @@ public sealed partial class BackendImplementationRegistry
         r.Register(Backend.PCodeVM, "TIMESERIES.TSGRANGER");
         r.Register(Backend.PCodeVM, "TIMESERIES.TSGARCH11");
         r.Register(Backend.PCodeVM, "TIMESERIES.TSKALMAN1D");
+        r.Register(Backend.PCodeVM, "TIMESERIES.TSSTATIONARYBOOTSTRAP");
         r.Register(Backend.PCodeVM, "STATS.BetaSf");
         r.Register(Backend.PCodeVM, "STATS.ChiSf");
         r.Register(Backend.PCodeVM, "STATS.LogisticCdf");

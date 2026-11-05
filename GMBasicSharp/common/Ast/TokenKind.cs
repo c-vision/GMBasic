@@ -2022,6 +2022,7 @@ public enum TokenKind
     TsGranger,
     TsGarch11,
     TsKalman1D,
+    TsStationaryBootstrap,
     StatsChi2Contingency, StatsMannWhitney, StatsWilcoxon,
     StatsGammaPdf, StatsGammaCdf, StatsGammaPpf, StatsGammaIsf,
     StatsSkewTest, StatsKurtosisTest, StatsJarqueBera,

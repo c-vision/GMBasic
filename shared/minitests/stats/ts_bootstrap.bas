@@ -1,0 +1,7 @@
+' EXPECT: y0= 4|y7= 6
+SUB Main()
+  DIM x() = {1, 2, 3, 4, 5, 6, 7, 8}
+  DIM y() = TIMESERIES.TSSTATIONARYBOOTSTRAP(x, 3, 42)
+  PRINT "y0="; y(0)
+  PRINT "y7="; y(7)
+END SUB

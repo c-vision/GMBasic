@@ -25735,6 +25735,35 @@
     },
     {
       "ns": "TIMESERIES",
+      "name": "TSSTATIONARYBOOTSTRAP",
+      "fn": true,
+      "return": "double[]",
+      "params": [
+        {
+          "name": "series",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": true
+        },
+        {
+          "name": "window",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "seed",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "TIMESERIES",
       "name": "TSVOLATILITY",
       "fn": true,
       "return": "double",

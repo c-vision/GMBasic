@@ -2147,6 +2147,7 @@ public static partial class IlRuntime
     public static double TsHurst(double[] data) => CommonLib.Numerics.HurstDfa(data);
     public static double[] FracDiff(double[] data, double d) => CommonLib.Numerics.FracDiff(data, d);
     public static double[] Kalman1D(double[] z, double a, double h, double q, double r) => CommonLib.Numerics.Kalman1D(z, a, h, q, r);
+    public static double[] StationaryBootstrap(double[] x, long window, long seed) => CommonLib.Numerics.StationaryBootstrap(x, (int)window, (int)seed);
 
     public static Dictionary<string, object?> TsGarch11(double[] r)
     {
