@@ -1,4 +1,6 @@
-' EXPECT: fwd= -4.723182|p0= 0 p1= 1 p2= 1|pi0= 0|a00= 0.893468|m00= 0.940789|c00= 0.087935|ll= 21.555536
+' EXPECT: fwd= -4.723182|vll= -3.247275|p0= 0 p1= 1 p2= 1|pi0= 0|a00= 0.893468|m00= 0.940789|c00= 0.087935|ll= 21.555536
+' HMM: forward/Viterbi via TIMESERIESX (FFI), fit ancora nel builtin TIMESERIES.
+IMPORT TIMESERIESX
 IMPORT TIMESERIES
 SUB Main()
   DIM lp(1) AS DOUBLE
@@ -10,13 +12,13 @@ SUB Main()
   le(0) = -0.1053605156578263: le(1) = -1.6094379124341003
   le(2) = -2.302585092994046: le(3) = -0.2231435513142097
   le(4) = -0.6931471805599453: le(5) = -0.6931471805599453
-  PRINT "fwd="; MATH.ROUND(TIMESERIES.HMMFORWARD(lp, la, le), 6)
-  DIM path() = TIMESERIES.HMMVITERBI(lp, la, le)
+  PRINT "fwd="; MATH.ROUND(TIMESERIESX.HMMFORWARD(lp, la, le), 6)
+  DIM path(2) AS LONG
+  PRINT "vll="; MATH.ROUND(TIMESERIESX.HMMVITERBI(lp, la, le, path), 6)
   PRINT "p0="; path(0); "p1="; path(1); "p2="; path(2)
-  DIM x(19, 1) AS DOUBLE
+  DIM x(19) AS ARRAY OF DOUBLE
   FOR i = 0 TO 19
-    x(i, 0) = SIN(i * 0.35) + i * 0.05
-    x(i, 1) = COS(i * 0.35) * 0.8
+    x(i) = {SIN(i * 0.35) + i * 0.05, COS(i * 0.35) * 0.8}
   NEXT i
   DIM r = TIMESERIES.HMMFIT(x, 2, 8)
   PRINT "pi0="; MATH.ROUND(r.Pi(0), 6)

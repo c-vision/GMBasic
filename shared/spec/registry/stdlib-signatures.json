@@ -26075,71 +26075,6 @@
     },
     {
       "ns": "TIMESERIES",
-      "name": "DFGLS",
-      "fn": true,
-      "return": "ANY",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "lags",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "deterministic",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "ENGLEGRANGER",
-      "fn": true,
-      "return": "ANY",
-      "params": [
-        {
-          "name": "data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "dependent",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "lags",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "withConstant",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
       "name": "HMMFIT",
       "fn": true,
       "return": "HMMRESULT",
@@ -26164,64 +26099,6 @@
           "optional": false,
           "byRef": false,
           "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "HMMFORWARD",
-      "fn": true,
-      "return": "double",
-      "params": [
-        {
-          "name": "logPi",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "logA",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "logE",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "HMMVITERBI",
-      "fn": true,
-      "return": "double[]",
-      "params": [
-        {
-          "name": "logPi",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "logA",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "logE",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
         }
       ]
     },
@@ -26270,57 +26147,6 @@
     },
     {
       "ns": "TIMESERIES",
-      "name": "JOHANSEN",
-      "fn": true,
-      "return": "JOHANSENRESULT",
-      "params": [
-        {
-          "name": "data",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "lags",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "KPSS",
-      "fn": true,
-      "return": "ANY",
-      "params": [
-        {
-          "name": "series",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "bandwidth",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "deterministic",
-          "type": "long",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
       "name": "MaCoefficients",
       "fn": true,
       "return": "double[]",
@@ -26335,35 +26161,6 @@
         {
           "name": "order",
           "type": "int",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        }
-      ]
-    },
-    {
-      "ns": "TIMESERIES",
-      "name": "QLR",
-      "fn": true,
-      "return": "ANY",
-      "params": [
-        {
-          "name": "l0",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": false
-        },
-        {
-          "name": "lBeta",
-          "type": "double",
-          "optional": false,
-          "byRef": false,
-          "array": true
-        },
-        {
-          "name": "kappaHat",
-          "type": "double",
           "optional": false,
           "byRef": false,
           "array": false
