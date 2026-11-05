@@ -1207,8 +1207,10 @@ procedure,STATS,StudentTSf,StatsStudentTSf
 procedure,STATS,TTest,TTest
 procedure,STATS,TTestOneSample,TTestOneSample
 procedure,STATS,TTestPaired,TTestPaired
+procedure,STATS,TriangularCdf,StatsTriangularCdf
 procedure,STATS,TriangularPdf,TriangularPdf
 procedure,STATS,TriangularPpf,TriangularPpf
+procedure,STATS,TriangularSf,StatsTriangularSf
 procedure,STATS,UniformCdf,StatsUniformCdf
 procedure,STATS,UniformPdf,UniformPdf
 procedure,STATS,UniformPpf,UniformPpf

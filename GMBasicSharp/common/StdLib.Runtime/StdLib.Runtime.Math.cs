@@ -87,6 +87,8 @@ public static class MathFunctions
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double UniformCdf(double a, double b, double x) => CommonLib.Numerics.UniformCdf(a, b, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double UniformSf(double a, double b, double x) => CommonLib.Numerics.UniformSf(a, b, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ParetoPpf(double scale, double shape, double p) => CommonLib.Numerics.ParetoPpf(p, scale, shape);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double TriangularCdf(double min, double mode, double max, double x) => CommonLib.Numerics.TriangularCdf(min, mode, max, x);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double TriangularSf(double min, double mode, double max, double x) => CommonLib.Numerics.TriangularSf(min, mode, max, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double TriangularPpf(double min, double mode, double max, double p) => CommonLib.Numerics.TriangularPpf(p, min, mode, max);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ParetoPdf(double scale, double shape, double x) => CommonLib.Numerics.ParetoPdf(scale, shape, x);
     [MethodImpl(MethodImplOptions.AggressiveInlining)] public static double ParetoCdf(double scale, double shape, double x) => CommonLib.Numerics.ParetoCdf(scale, shape, x);

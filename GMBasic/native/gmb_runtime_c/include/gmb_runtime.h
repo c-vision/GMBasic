@@ -1117,6 +1117,7 @@ double gmb_dist_pareto_cdf(double xm, double alpha, double x);
 double gmb_dist_logistic_pdf(double mu, double s, double x);
 double gmb_dist_logistic_cdf(double mu, double s, double x);
 double gmb_dist_triangular_pdf(double a, double b, double c, double x);
+double gmb_dist_triangular_cdf(double a, double b, double c, double x);
 double gmb_dist_uniform_pdf(double a, double b, double x);
 double gmb_dist_uniform_cdf(double a, double b, double x);
 double gmb_dist_skewnormal_pdf(double x, double location, double scale, double shape);

@@ -290,6 +290,18 @@ public sealed partial class StdLib
                 new Parameter(-1, T(TokenKind.Identifier, "b"), new DoubleType(), SymbolFlags.IsOptional, null, false),
                 new Parameter(-1, T(TokenKind.Identifier, "c"), new DoubleType(), SymbolFlags.IsOptional, null, false)
             ], new DoubleType(), TokenKind.TriangularPdf, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsTriangularCdf, "TriangularCdf"),
+            [
+                xParam, new Parameter(-1, T(TokenKind.Identifier, "min"), new DoubleType(), SymbolFlags.IsOptional, null, false),
+                new Parameter(-1, T(TokenKind.Identifier, "mode"), new DoubleType(), SymbolFlags.IsOptional, null, false),
+                new Parameter(-1, T(TokenKind.Identifier, "max"), new DoubleType(), SymbolFlags.IsOptional, null, false)
+            ], new DoubleType(), TokenKind.StatsTriangularCdf, ExecutionKind: NativeExecutionKind.Pure),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.StatsTriangularSf, "TriangularSf"),
+            [
+                xParam, new Parameter(-1, T(TokenKind.Identifier, "min"), new DoubleType(), SymbolFlags.IsOptional, null, false),
+                new Parameter(-1, T(TokenKind.Identifier, "mode"), new DoubleType(), SymbolFlags.IsOptional, null, false),
+                new Parameter(-1, T(TokenKind.Identifier, "max"), new DoubleType(), SymbolFlags.IsOptional, null, false)
+            ], new DoubleType(), TokenKind.StatsTriangularSf, ExecutionKind: NativeExecutionKind.Pure),
             new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.UniformPdf, "UniformPdf"),
             [
                 xParam, new Parameter(-1, T(TokenKind.Identifier, "a"), new DoubleType(), SymbolFlags.IsOptional, null, false),

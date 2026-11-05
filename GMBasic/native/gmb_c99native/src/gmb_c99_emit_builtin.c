@@ -5289,6 +5289,22 @@ static int ds_beta_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3_sf(c, a, 
 static int ds_chi_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2_sf(c, a, n, "gmb_dist_chi_cdf"); }
 static int ds_logistic_cdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3(c, a, n, "gmb_dist_logistic_cdf"); }
 static int ds_logistic_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh3_sf(c, a, n, "gmb_dist_logistic_cdf"); }
+static int ds_shtri(ctx_t* c, gmb_expr_t** a, int n, const char* fn);
+static int ds_triangular_cdf(ctx_t* c, gmb_expr_t** a, int n) { return ds_shtri(c, a, n, "gmb_dist_triangular_cdf"); }
+static int ds_shtri_sf(ctx_t* c, gmb_expr_t** a, int n, const char* fn) {
+    if (n < 1) return 0;
+    sb_put(&c->out, "(1.0 - "); sb_put(&c->out, fn); sb_put(&c->out, "(");
+    if (n >= 2) emit_expr(c, a[1]); else sb_put(&c->out, "0");
+    sb_put(&c->out, ", ");
+    if (n >= 4) emit_expr(c, a[3]); else sb_put(&c->out, "1");
+    sb_put(&c->out, ", ");
+    if (n >= 3) emit_expr(c, a[2]); else sb_put(&c->out, "0.5");
+    sb_put(&c->out, ", ");
+    emit_expr(c, a[0]);
+    sb_put(&c->out, "))");
+    return 1;
+}
+static int ds_triangular_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_shtri_sf(c, a, n, "gmb_dist_triangular_cdf"); }
 static int ds_exp_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2_sf(c, a, n, "gmb_dist_exp_cdf"); }
 static int ds_student_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2_sf(c, a, n, "gmb_dist_student_t_cdf"); }
 static int ds_chisq_sf(ctx_t* c, gmb_expr_t** a, int n) { return ds_sh2_sf(c, a, n, "gmb_dist_chi2_cdf"); }
@@ -5526,6 +5542,8 @@ static const ds_row DS_TBL[] = {
     { GMB_TOK_StudentTPpf, ds_studentt_ppf },
     { GMB_TOK_TriangularPdf, ds_triangular_pdf },
     { GMB_TOK_TriangularPpf, ds_triangular_ppf },
+    { GMB_TOK_StatsTriangularCdf, ds_triangular_cdf },
+    { GMB_TOK_StatsTriangularSf, ds_triangular_sf },
     { GMB_TOK_UniformPdf, ds_uniform_pdf },
     { GMB_TOK_UniformPpf, ds_uniform_ppf },
     { GMB_TOK_StatsUniformCdf, ds_uniform_cdf },

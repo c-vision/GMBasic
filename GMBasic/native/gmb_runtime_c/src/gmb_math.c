@@ -1422,6 +1422,14 @@ double gmb_dist_triangular_pdf(double a, double b, double c, double x) {
     if (x <= c) return (x == a) ? 0 : 2 * (x - a) / ((b - a) * (c - a));
     return 2 * (b - x) / ((b - a) * (b - c));
 }
+
+double gmb_dist_triangular_cdf(double a, double b, double c, double x) {
+    if (b <= a || c < a || c > b) return NAN;
+    if (x <= a) return 0;
+    if (x >= b) return 1;
+    if (x <= c) return ((x - a) * (x - a)) / ((b - a) * (c - a));
+    return 1.0 - ((b - x) * (b - x)) / ((b - a) * (b - c));
+}
 double gmb_dist_uniform_pdf(double a, double b, double x) {
     if (b <= a) return 0;
     return (x >= a && x <= b) ? 1.0 / (b - a) : 0;
